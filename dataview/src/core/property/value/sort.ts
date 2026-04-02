@@ -1,4 +1,4 @@
-import type { GroupProperty } from '@/core/contracts'
+import type { GroupProperty } from '@dataview/core/contracts'
 import {
   getKind,
   getPropertyKind

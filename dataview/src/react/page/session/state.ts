@@ -1,17 +1,17 @@
 import type {
   GroupDocument,
   ViewId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import {
   getDocumentPropertyById,
   getDocumentProperties,
   getDocumentViewById,
   getDocumentViews
-} from '@/core/document'
+} from '@dataview/core/document'
 import {
   createDerivedStore,
   type ReadStore
-} from '@/runtime/store'
+} from '@dataview/runtime/store'
 import {
   ROOT_SETTINGS_ROUTE,
   cloneSettingsRoute,

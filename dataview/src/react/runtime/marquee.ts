@@ -12,12 +12,12 @@ import {
   rectFromPoints,
   type Box,
   type Point
-} from '@/react/dom/geometry'
-import { disableUserSelect } from '@/react/dom/selection'
+} from '@dataview/react/dom/geometry'
+import { disableUserSelect } from '@dataview/react/dom/selection'
 import {
   resolveDefaultAutoPanTargets,
   useAutoPan
-} from '@/react/runtime/interaction/autoPan'
+} from '@dataview/react/runtime/interaction/autoPan'
 
 export interface Session {
   start: Point

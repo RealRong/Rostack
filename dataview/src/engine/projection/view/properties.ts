@@ -1,7 +1,7 @@
 import type {
   GroupProperty,
   PropertyId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import type {
   PropertyList
 } from './types'

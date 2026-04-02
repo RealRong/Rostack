@@ -9,15 +9,15 @@ import {
   useActiveView,
   useEngine,
   useProperties
-} from '@/react/editor'
-import { meta, renderMessage } from '@/meta'
-import { PropertyPicker } from '@/react/page/features/viewQuery/PropertyPicker'
+} from '@dataview/react/editor'
+import { meta, renderMessage } from '@dataview/meta'
+import { PropertyPicker } from '@dataview/react/page/features/viewQuery/PropertyPicker'
 import {
   Button,
   Popover,
   QueryChip,
   VerticalReorderList
-} from '@/react/ui'
+} from '@dataview/react/ui'
 import { SortRuleRow } from './SortRuleRow'
 import {
   getAvailableSorterProperties,

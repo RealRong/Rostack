@@ -6,10 +6,10 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent
 } from 'react'
-import type { PropertyId } from '@/core/contracts'
-import { disableUserSelect } from '@/react/dom/selection'
-import { useCurrentView, useEngine } from '@/react/editor'
-import { useStoreValue } from '@/react/runtime/store'
+import type { PropertyId } from '@dataview/core/contracts'
+import { disableUserSelect } from '@dataview/react/dom/selection'
+import { useCurrentView, useEngine } from '@dataview/react/editor'
+import { useStoreValue } from '@dataview/react/runtime/store'
 import { closestTableTargetElement } from '../dom/targets'
 import { useTableContext } from '../context'
 import { MIN_COLUMN_WIDTH } from '../layout'

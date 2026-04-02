@@ -1,4 +1,4 @@
-import type { PropertyId, RecordId, ViewId } from '@/core/contracts'
+import type { PropertyId, RecordId, ViewId } from '@dataview/core/contracts'
 
 const seeds = {
   record: 0,

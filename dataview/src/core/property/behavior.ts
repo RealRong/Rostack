@@ -1,6 +1,6 @@
 import type {
   GroupProperty
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 
 export interface PropertyValueBehavior {
   canEdit: boolean

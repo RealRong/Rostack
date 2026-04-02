@@ -1,19 +1,19 @@
 import { ChevronRight } from 'lucide-react'
 import { forwardRef, useEffect, useState } from 'react'
-import type { GroupBucketSort, GroupProperty } from '@/core/contracts'
+import type { GroupBucketSort, GroupProperty } from '@dataview/core/contracts'
 import {
   getPropertyGroupMeta
-} from '@/core/property'
+} from '@dataview/core/property'
 import {
   resolveViewGroupState
-} from '@/core/query'
+} from '@dataview/core/query'
 import {
   useActiveView,
   useEngine,
   useProperties
-} from '@/react/editor'
-import { meta, renderMessage } from '@/meta'
-import { Button, Input, Menu, Popover } from '@/react/ui'
+} from '@dataview/react/editor'
+import { meta, renderMessage } from '@dataview/meta'
+import { Button, Input, Menu, Popover } from '@dataview/react/ui'
 
 const GroupMenuRow = forwardRef<HTMLButtonElement, {
   label: string

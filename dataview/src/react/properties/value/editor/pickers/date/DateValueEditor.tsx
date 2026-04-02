@@ -12,17 +12,17 @@ import {
   getAvailableTimezones,
   getDatePropertyConfig,
   resolveDefaultDateTimezone
-} from '@/core/property'
-import { useEngine } from '@/react/editor'
-import { meta, renderMessage } from '@/meta'
+} from '@dataview/core/property'
+import { useEngine } from '@dataview/react/editor'
+import { meta, renderMessage } from '@dataview/meta'
 import {
   Input,
   Menu,
   cn,
   type MenuItem
-} from '@/react/ui'
+} from '@dataview/react/ui'
 import type { PropertyValueDraftEditorProps } from '../../contracts'
-import { focusInputWithoutScroll } from '@/react/dom/focus'
+import { focusInputWithoutScroll } from '@dataview/react/dom/focus'
 import { isComposing } from '../../shared/keyboard'
 import { useDraftCommit } from '../../shared/useDraftCommit'
 import {

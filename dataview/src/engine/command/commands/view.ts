@@ -8,27 +8,27 @@ import type {
   GroupView,
   GroupViewQuery,
   RecordId
-} from '@/core/contracts/state'
-import type { GroupGalleryOptions } from '@/core/contracts/gallery'
-import type { GroupKanbanOptions } from '@/core/contracts/kanban'
-import type { GroupTableOptions, GroupViewDisplayOptions } from '@/core/contracts/viewOptions'
-import type { GroupBaseOperation } from '@/core/contracts/operations'
+} from '@dataview/core/contracts/state'
+import type { GroupGalleryOptions } from '@dataview/core/contracts/gallery'
+import type { GroupKanbanOptions } from '@dataview/core/contracts/kanban'
+import type { GroupTableOptions, GroupViewDisplayOptions } from '@dataview/core/contracts/viewOptions'
+import type { GroupBaseOperation } from '@dataview/core/contracts/operations'
 import type { IndexedCommand } from '../context'
 import {
   getDocumentProperties,
   getDocumentPropertyById,
   getDocumentViewById
-} from '@/core/document'
+} from '@dataview/core/document'
 import {
   getPropertyFilterOps,
   getPropertyGroupMeta,
   isGroupBucketSort
-} from '@/core/property'
-import { normalizeGroupViewQuery, isSameViewQuery } from '@/core/query'
-import { orderedViewRecords } from '@/core/view'
-import { reorderRecordBlockIds } from '@/core/view/order'
-import { createDefaultGroupViewOptions } from '@/core/view/options'
-import { cloneGroupViewOptions } from '@/core/view/shared'
+} from '@dataview/core/property'
+import { normalizeGroupViewQuery, isSameViewQuery } from '@dataview/core/query'
+import { orderedViewRecords } from '@dataview/core/view'
+import { reorderRecordBlockIds } from '@dataview/core/view/order'
+import { createDefaultGroupViewOptions } from '@dataview/core/view/options'
+import { cloneGroupViewOptions } from '@dataview/core/view/shared'
 import { createViewId } from '../entityId'
 import { createIssue, hasValidationErrors, type GroupValidationIssue } from '../issues'
 import {

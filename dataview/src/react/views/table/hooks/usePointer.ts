@@ -7,33 +7,33 @@ import {
   type PointerEvent as ReactPointerEvent,
   type PointerEventHandler
 } from 'react'
-import type { Point } from '@/react/dom/geometry'
+import type { Point } from '@dataview/react/dom/geometry'
 import {
   fill,
   gridSelection
-} from '@/table'
+} from '@dataview/table'
 import {
   type AppearanceList,
   type PropertyList,
   sameField,
   toRecordField
-} from '@/engine/projection/view'
+} from '@dataview/engine/projection/view'
 import {
   type AppearanceId,
   type CurrentView,
   type FieldId
-} from '@/react/view'
-import { resolvePropertyPrimaryAction } from '@/core/property'
-import { isBlockingSurfaceElement } from '@/react/dom/blockingSurface'
+} from '@dataview/react/view'
+import { resolvePropertyPrimaryAction } from '@dataview/core/property'
+import { isBlockingSurfaceElement } from '@dataview/react/dom/blockingSurface'
 import {
   containsRelatedTarget,
   shouldCapturePointer
-} from '@/react/dom/interactive'
-import { useCurrentView, useEngine } from '@/react/editor'
+} from '@dataview/react/dom/interactive'
+import { useCurrentView, useEngine } from '@dataview/react/editor'
 import {
   resolveDefaultAutoPanTargets,
   useAutoPan
-} from '@/react/runtime/interaction/autoPan'
+} from '@dataview/react/runtime/interaction/autoPan'
 import type { TableHoverTarget } from '../model/hover'
 import { useTableContext } from '../context'
 import {

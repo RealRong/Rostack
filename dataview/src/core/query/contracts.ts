@@ -3,7 +3,7 @@ import type {
   GroupProperty,
   GroupGroupBy,
   GroupViewQuery as StoredGroupViewQuery
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 
 export type GroupViewQuery = StoredGroupViewQuery
 

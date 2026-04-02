@@ -4,18 +4,18 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./engine": "./src/engine/index.ts",
-    "./react": "./src/react/index.ts"
+    ".": "./index.ts",
+    "./engine": "./engine.ts",
+    "./react": "./react.ts"
   },
   "scripts": {
-    "build": "npm run typecheck && npm run demo:build",
+    "build": "pnpm run typecheck && pnpm run demo:build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "rm -rf .tmp/group-test-dist && tsc -p tsconfig.test.json && node scripts/prepare-test-dist.cjs && node --test test/*.test.cjs",
-    "demo:dev": "vite --config demo/vite.config.ts",
-    "demo:build": "vite build --config demo/vite.config.ts",
-    "demo:preview": "vite preview --config demo/vite.config.ts",
-    "demo:typecheck": "tsc -p demo/tsconfig.json --noEmit"
+    "demo:dev": "pnpm --dir ../apps/dataview dev",
+    "demo:build": "pnpm --dir ../apps/dataview build",
+    "demo:preview": "pnpm --dir ../apps/dataview preview",
+    "demo:typecheck": "pnpm --dir ../apps/dataview typecheck"
   },
   "dependencies": {
     "@date-fns/tz": "^1.4.1",

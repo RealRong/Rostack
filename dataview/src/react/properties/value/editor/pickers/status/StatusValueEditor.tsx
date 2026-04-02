@@ -6,15 +6,15 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent
 } from 'react'
-import { getPropertyOptions, getStatusSections } from '@/core/property'
-import { usePageActions } from '@/react/editor'
-import { meta, renderMessage } from '@/meta'
-import { PropertyOptionTag } from '@/react/properties/options'
-import { usePropertyEdit } from '@/react/propertyEdit'
-import type { PropertyEditIntent } from '@/react/page/interaction'
-import { Button, Input } from '@/react/ui'
+import { getPropertyOptions, getStatusSections } from '@dataview/core/property'
+import { usePageActions } from '@dataview/react/editor'
+import { meta, renderMessage } from '@dataview/meta'
+import { PropertyOptionTag } from '@dataview/react/properties/options'
+import { usePropertyEdit } from '@dataview/react/propertyEdit'
+import type { PropertyEditIntent } from '@dataview/react/page/interaction'
+import { Button, Input } from '@dataview/react/ui'
 import type { PropertyValueDraftEditorProps } from '../../contracts'
-import { focusInputWithoutScroll } from '@/react/dom/focus'
+import { focusInputWithoutScroll } from '@dataview/react/dom/focus'
 import {
   isComposing,
   keyAction

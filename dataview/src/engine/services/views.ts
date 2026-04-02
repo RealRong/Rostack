@@ -1,8 +1,8 @@
 import type {
   GroupViewType,
   ViewId
-} from '@/core/contracts'
-import { getDocumentViews } from '@/core/document'
+} from '@dataview/core/contracts'
+import { getDocumentViews } from '@dataview/core/document'
 import type {
   GroupEngine,
   GroupViewsEngineApi

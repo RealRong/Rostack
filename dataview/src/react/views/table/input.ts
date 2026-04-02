@@ -1,18 +1,18 @@
-import type { KeyInput } from '@/react/page/interaction'
+import type { KeyInput } from '@dataview/react/page/interaction'
 import {
   type CurrentView,
   type FieldId
-} from '@/react/view'
+} from '@dataview/react/view'
 import type {
   GroupEngine
-} from '@/engine'
+} from '@dataview/engine'
 import {
   recordIdsOfAppearances,
   toRecordField
-} from '@/engine/projection/view'
+} from '@dataview/engine/projection/view'
 import {
   selection as rowSelection
-} from '@/react/view/selection'
+} from '@dataview/react/view/selection'
 import {
   gridKeyAction,
   isSelectAll,
@@ -20,7 +20,7 @@ import {
   planPaste,
   range,
   type TableKeyInput
-} from '@/table'
+} from '@dataview/table'
 import type { CellOpenInput } from './openCell'
 import type { GridSelectionStore } from './gridSelection'
 

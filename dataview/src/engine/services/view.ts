@@ -8,11 +8,11 @@ import type {
   GroupViewType,
   RecordId,
   ViewId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import {
   getDocumentPropertyById,
   getDocumentViewById
-} from '@/core/document'
+} from '@dataview/core/document'
 import {
   addViewFilter,
   addViewSorter,
@@ -36,19 +36,19 @@ import {
   setViewSorter,
   toggleViewGroupBucketCollapsed,
   toggleViewGroup
-} from '@/core/query'
+} from '@dataview/core/query'
 import {
   TITLE_PROPERTY_ID
-} from '@/core/property'
+} from '@dataview/core/property'
 import {
   createUniquePropertyName
-} from '@/core/property'
+} from '@dataview/core/property'
 import {
   resolveGrouping,
   resolveSectionRecordIds
-} from '@/engine/projection/view'
-import { createRecordId } from '@/engine/command/entityId'
-import { meta, renderMessage } from '@/meta'
+} from '@dataview/engine/projection/view'
+import { createRecordId } from '@dataview/engine/command/entityId'
+import { meta, renderMessage } from '@dataview/meta'
 import type {
   GroupEngine,
   GroupViewDisplaySettingsApi,

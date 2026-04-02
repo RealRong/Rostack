@@ -1,7 +1,7 @@
 import {
   createValueStore,
   type ValueStore
-} from '@/runtime/store'
+} from '@dataview/runtime/store'
 import {
   ROOT_SETTINGS_ROUTE,
   cloneSettingsRoute,

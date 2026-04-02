@@ -8,7 +8,7 @@ import {
   scrollByClamped,
   viewportRect,
   type ScrollNode
-} from '@/react/dom/scroll'
+} from '@dataview/react/dom/scroll'
 
 const DEFAULT_AUTO_PAN_EDGE = 96
 const DEFAULT_AUTO_PAN_MAX_STEP = 22

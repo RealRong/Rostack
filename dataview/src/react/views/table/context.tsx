@@ -7,8 +7,8 @@ import {
   useRef,
   type ReactNode
 } from 'react'
-import { useEngine } from '@/react/editor'
-import { useEditorContext } from '@/react/editor/provider'
+import { useEngine } from '@dataview/react/editor'
+import { useEditorContext } from '@dataview/react/editor/provider'
 import { createNodes } from './dom/registry'
 import type { TableLayout } from './layout'
 import {

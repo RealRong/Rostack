@@ -11,18 +11,18 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import { forwardRef, useEffect, useState } from 'react'
-import type { GroupBucketSort, GroupProperty, GroupView } from '@/core/contracts'
-import { resolveViewGroupState } from '@/core/query'
+import type { GroupBucketSort, GroupProperty, GroupView } from '@dataview/core/contracts'
+import { resolveViewGroupState } from '@dataview/core/query'
 import {
   useActiveView,
   useEngine,
   useProperties,
   useViews
-} from '@/react/editor'
-import { meta, renderMessage } from '@/meta'
-import { Button, Input } from '@/react/ui'
+} from '@dataview/react/editor'
+import { meta, renderMessage } from '@dataview/meta'
+import { Button, Input } from '@dataview/react/ui'
 import { useViewSettings } from '../context'
-import { supportsGroupSettings } from '@/react/page/session/settings'
+import { supportsGroupSettings } from '@dataview/react/page/session/settings'
 
 type RootRouteKind = 'layout' | 'viewProperties' | 'propertyList' | 'filter' | 'sort' | 'group'
 

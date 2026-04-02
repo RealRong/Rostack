@@ -8,14 +8,14 @@ import { ChevronRight } from 'lucide-react'
 import type {
   GroupProperty,
   PropertyId
-} from '@/core/contracts'
-import { useCurrentView, useEngine } from '@/react/editor'
-import { cn } from '@/react/ui'
-import { Button } from '@/react/ui/button'
+} from '@dataview/core/contracts'
+import { useCurrentView, useEngine } from '@dataview/react/editor'
+import { cn } from '@dataview/react/ui'
+import { Button } from '@dataview/react/ui/button'
 import type {
   AppearanceId,
   Section as TableSection
-} from '@/react/view'
+} from '@dataview/react/view'
 import { useTableContext } from '../../context'
 import { ColumnHeaderRow } from '../column/ColumnHeaderRow'
 import { Row } from '../row/Row'

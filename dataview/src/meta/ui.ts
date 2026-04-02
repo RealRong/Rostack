@@ -3,7 +3,7 @@ import type {
   GroupFilterRule,
   GroupSorter,
   GroupViewType
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import { message, renderMessage, type MessageSpec } from './message'
 import { sort } from './sort'
 import { view } from './view'

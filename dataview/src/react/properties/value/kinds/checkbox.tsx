@@ -1,9 +1,9 @@
-import type { GroupProperty } from '@/core/contracts'
-import { parsePropertyDraft } from '@/core/property'
+import type { GroupProperty } from '@dataview/core/contracts'
+import { parsePropertyDraft } from '@dataview/core/property'
 import {
   cn,
   uiTone
-} from '@/react/ui'
+} from '@dataview/react/ui'
 import { CheckboxEditor } from '../editor/basic/CheckboxEditor'
 import type { PropertyValueSpec } from './contracts'
 import { renderEmpty } from './shared'

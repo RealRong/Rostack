@@ -1,4 +1,4 @@
-import type { Rect } from '@/react/dom/geometry'
+import type { Rect } from '@dataview/react/dom/geometry'
 import type { DropTarget } from './ids'
 import type {
   BoardLayout

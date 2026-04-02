@@ -1,4 +1,4 @@
-import type { GroupCommandType } from '@/core/contracts/commands'
+import type { GroupCommandType } from '@dataview/core/contracts/commands'
 import type { IndexedCommand } from './context'
 
 export type GroupValidationSeverity = 'error' | 'warning'

@@ -1,9 +1,9 @@
 import {
   createValueStore
-} from '@/runtime/store'
+} from '@dataview/runtime/store'
 import type {
   AppearanceId
-} from '@/engine/projection/view'
+} from '@dataview/engine/projection/view'
 import type {
   Selection,
   SelectionStore

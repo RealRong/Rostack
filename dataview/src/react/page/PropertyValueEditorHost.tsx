@@ -10,23 +10,23 @@ import {
   PropertyValueEditor,
   getPropertyValueSpec,
   type PropertyValueEditorHandle
-} from '@/react/properties/value'
+} from '@dataview/react/properties/value'
 import {
   useEngine
-} from '@/react/editor'
-import type { EditInput } from '@/react/page/interaction'
+} from '@dataview/react/editor'
+import type { EditInput } from '@dataview/react/page/interaction'
 import {
   usePropertyEditInternals,
   usePropertyEdit,
   type PropertyEditSession,
   type ValueEditorResult,
-} from '@/react/propertyEdit'
+} from '@dataview/react/propertyEdit'
 import {
   BLOCKING_SURFACE_ATTR
-} from '@/react/dom/blockingSurface'
-import { useBlockingSurface } from '@/react/ui/blockingSurface'
-import { PopoverContainerProvider } from '@/react/ui/popover'
-import { useStoreValue } from '@/react/runtime/store'
+} from '@dataview/react/dom/blockingSurface'
+import { useBlockingSurface } from '@dataview/react/ui/blockingSurface'
+import { PopoverContainerProvider } from '@dataview/react/ui/popover'
+import { useStoreValue } from '@dataview/react/runtime/store'
 
 const PANEL_MIN_WIDTH = 180
 const PANEL_WIDTHS = {

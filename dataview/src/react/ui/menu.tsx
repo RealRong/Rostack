@@ -10,7 +10,7 @@ import {
   type ReactNode
 } from 'react'
 import type { Placement } from '@floating-ui/react'
-import { closestTarget } from '@/react/dom/interactive'
+import { closestTarget } from '@dataview/react/dom/interactive'
 import { Button } from './button'
 import { Popover, PopoverScope, type PopoverOffset } from './popover'
 import { Switch } from './switch'

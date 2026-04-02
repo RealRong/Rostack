@@ -1,4 +1,4 @@
-import type { GroupCommitChangeSet, GroupDocument } from '@/core/contracts'
+import type { GroupCommitChangeSet, GroupDocument } from '@dataview/core/contracts'
 import type { GroupEngineReadApi } from '../../types'
 import { createReadSource } from './source'
 

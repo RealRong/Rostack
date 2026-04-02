@@ -4,8 +4,8 @@ import {
   normalizeRect,
   type Point,
   type Rect
-} from '@/react/dom/geometry'
-import type { AppearanceId } from '@/react/view'
+} from '@dataview/react/dom/geometry'
+import type { AppearanceId } from '@dataview/react/view'
 
 export interface TableRowRect {
   rowId: AppearanceId

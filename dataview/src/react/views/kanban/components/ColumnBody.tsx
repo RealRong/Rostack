@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { cn } from '@/react/ui'
-import type { Section } from '@/react/view'
+import { cn } from '@dataview/react/ui'
+import type { Section } from '@dataview/react/view'
 import { useBoardContext } from '../board'
 import { useColumnVirtual } from '../virtual'
 import { Card } from './Card'

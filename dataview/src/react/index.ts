@@ -3,7 +3,7 @@ export {
   GalleryView,
   useGalleryContext
 } from './views/gallery'
-export type { GroupTableOptions, GroupViewDisplayOptions } from '@/core/contracts'
+export type { GroupTableOptions, GroupViewDisplayOptions } from '@dataview/core/contracts'
 export type {
   Gallery,
   GalleryOptions,
@@ -45,7 +45,7 @@ export {
   usePropertyById,
   useTitlePropertyId
 } from './editor'
-export { meta, renderMessage } from '@/meta'
+export { meta, renderMessage } from '@dataview/meta'
 export type {
   GroupEngine,
   EngineProviderProps

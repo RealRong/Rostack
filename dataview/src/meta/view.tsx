@@ -4,7 +4,7 @@ import {
   Table2,
   type LucideIcon
 } from 'lucide-react'
-import type { GroupViewType } from '@/core/contracts'
+import type { GroupViewType } from '@dataview/core/contracts'
 import { message } from './message'
 import { defineMetaCollection } from './shared'
 

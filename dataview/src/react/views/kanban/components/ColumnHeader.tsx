@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import type { Section } from '@/react/view'
+import type { Section } from '@dataview/react/view'
 
 const colorStyle = (color?: string): CSSProperties | undefined => {
   if (!color) {

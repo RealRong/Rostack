@@ -4,20 +4,20 @@ import type {
   GroupView,
   RecordId,
   ViewId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import {
   GROUP_KANBAN_EMPTY_BUCKET_KEY
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import {
   getDocumentPropertyById
-} from '@/core/document'
+} from '@dataview/core/document'
 import {
   GROUP_STATUS_CATEGORIES,
   createDateGroupValue,
   getPropertyOption,
   getStatusDefaultOption,
   parseDateGroupKey
-} from '@/core/property'
+} from '@dataview/core/property'
 import {
   resolveProjection,
   type ProjectionSection

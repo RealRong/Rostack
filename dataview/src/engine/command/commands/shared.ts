@@ -3,10 +3,10 @@ import type {
   GroupCommandType,
   GroupEditTarget,
   GroupValueApplyAction
-} from '@/core/contracts/commands'
-import type { GroupBaseOperation } from '@/core/contracts/operations'
-import type { GroupDocument, GroupRecord } from '@/core/contracts/state'
-import { enumerateRecords, hasDocumentProperty, hasDocumentRecord, hasDocumentView } from '@/core/document'
+} from '@dataview/core/contracts/commands'
+import type { GroupBaseOperation } from '@dataview/core/contracts/operations'
+import type { GroupDocument, GroupRecord } from '@dataview/core/contracts/state'
+import { enumerateRecords, hasDocumentProperty, hasDocumentRecord, hasDocumentView } from '@dataview/core/document'
 import type { IndexedCommand } from '../context'
 import { deriveIndexedCommand } from '../context'
 import { createIssue, hasValidationErrors, type GroupValidationIssue } from '../issues'

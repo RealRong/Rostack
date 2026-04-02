@@ -1,10 +1,10 @@
 import { useCallback, type RefObject } from 'react'
-import type { AppearanceId } from '@/react/view'
-import { pointIn } from '@/react/dom/geometry'
+import type { AppearanceId } from '@dataview/react/view'
+import { pointIn } from '@dataview/react/dom/geometry'
 import {
   usePointerDragSession,
   type PointerPosition
-} from '@/react/runtime/interaction/usePointerDragSession'
+} from '@dataview/react/runtime/interaction/usePointerDragSession'
 import type { GalleryDropTarget } from './hitTest'
 import { dropTargetFromPoint } from './hitTest'
 import type { GalleryLayout } from './layout'

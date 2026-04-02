@@ -1,4 +1,4 @@
-import { useEditorContext } from '@/react/editor/provider'
+import { useEditorContext } from '@dataview/react/editor/provider'
 import type {
   PropertyEditApi
 } from './types'

@@ -1,21 +1,21 @@
-import type { GroupBaseOperation } from '@/core/contracts/operations'
+import type { GroupBaseOperation } from '@dataview/core/contracts/operations'
 import type {
   GroupDocument,
   GroupProperty,
   GroupView,
   PropertyId
-} from '@/core/contracts/state'
+} from '@dataview/core/contracts/state'
 import {
   getDocumentViews
-} from '@/core/document'
+} from '@dataview/core/document'
 import {
   getPropertyFilterOps,
   getPropertyGroupMeta
-} from '@/core/property'
+} from '@dataview/core/property'
 import {
   cloneGroupViewOptions,
   prunePropertyFromViewOptions
-} from '@/core/view'
+} from '@dataview/core/view'
 
 const buildViewPutOperation = (view: GroupView): GroupBaseOperation => ({
   type: 'document.view.put',

@@ -4,20 +4,20 @@ import type {
   GroupView,
   RecordId,
   ViewId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import {
   getDocumentPropertyById,
   getDocumentRecords,
   getDocumentViewById,
   getDocumentViews
-} from '@/core/document'
-import { isFilterRuleEffective } from '@/core/property'
-import { applyRecordOrder, normalizeRecordOrderIds } from '@/core/view/order'
+} from '@dataview/core/document'
+import { isFilterRuleEffective } from '@dataview/core/property'
+import { applyRecordOrder, normalizeRecordOrderIds } from '@dataview/core/view/order'
 import {
   compareGroupSort,
   matchGroupFilter,
   matchGroupSearch
-} from '@/core/query/semantics'
+} from '@dataview/core/query/semantics'
 
 export interface ResolvedViewRecordState {
   view?: GroupView

@@ -12,13 +12,13 @@ import type {
   GroupProperty,
   GroupPropertyOption,
   GroupStatusCategory
-} from '@/core/contracts'
-import { getPropertyOptions, getStatusSections } from '@/core/property'
-import { useEngine } from '@/react/editor'
-import { meta, renderMessage } from '@/meta'
+} from '@dataview/core/contracts'
+import { getPropertyOptions, getStatusSections } from '@dataview/core/property'
+import { useEngine } from '@dataview/react/editor'
+import { meta, renderMessage } from '@dataview/meta'
 import {
   PropertyOptionTag
-} from '@/react/properties/options'
+} from '@dataview/react/properties/options'
 import {
   Button,
   Input,
@@ -27,7 +27,7 @@ import {
   cn,
   uiTone,
   type VerticalReorderItemState
-} from '@/react/ui'
+} from '@dataview/react/ui'
 
 const moveItem = <Item,>(items: readonly Item[], from: number, to: number) => {
   const next = [...items]

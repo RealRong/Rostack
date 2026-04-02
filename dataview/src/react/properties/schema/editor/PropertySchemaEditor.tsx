@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react'
 import type {
   PropertyId,
   GroupProperty
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import {
   useEngine,
   usePropertyById,
   useTitlePropertyId
-} from '@/react/editor'
-import { meta, renderMessage } from '@/meta'
-import { Input } from '@/react/ui'
+} from '@dataview/react/editor'
+import { meta, renderMessage } from '@dataview/meta'
+import { Input } from '@dataview/react/ui'
 import { PropertyKindPicker } from '../PropertyKindPicker'
 import { PropertyFormatSection } from './PropertyFormatSection'
 import { PropertyOptionsSection } from './PropertyOptionsSection'

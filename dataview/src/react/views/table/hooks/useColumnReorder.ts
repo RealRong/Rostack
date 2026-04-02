@@ -8,9 +8,9 @@ import {
   useSensors,
   type DragEndEvent
 } from '@dnd-kit/core'
-import type { PropertyId } from '@/core/contracts'
-import { columnBeforeId } from '@/table'
-import { useCurrentView, useEngine } from '@/react/editor'
+import type { PropertyId } from '@dataview/core/contracts'
+import { columnBeforeId } from '@dataview/table'
+import { useCurrentView, useEngine } from '@dataview/react/editor'
 import { useTableContext } from '../context'
 
 const COLUMN_SORT_SCOPE_SEPARATOR = '\u0000'

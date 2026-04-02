@@ -1,5 +1,5 @@
-import type { GroupProperty } from '@/core/contracts'
-import { getPropertyOptions } from '@/core/property'
+import type { GroupProperty } from '@dataview/core/contracts'
+import { getPropertyOptions } from '@dataview/core/property'
 import type { RenderProps } from './contracts'
 
 export const renderEmpty = (props: RenderProps) => (

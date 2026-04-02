@@ -1,20 +1,20 @@
 import { memo, useCallback } from 'react'
-import type { GroupProperty } from '@/core/contracts'
+import type { GroupProperty } from '@dataview/core/contracts'
 import {
   canQuickTogglePropertyValue,
   resolvePropertyPrimaryAction
-} from '@/core/property'
+} from '@dataview/core/property'
 import {
   toRecordField
-} from '@/engine/projection/view'
+} from '@dataview/engine/projection/view'
 import {
   type AppearanceId
-} from '@/react/view'
-import { useCurrentView, useEngine } from '@/react/editor'
-import { fieldAttrs } from '@/react/propertyEdit'
+} from '@dataview/react/view'
+import { useCurrentView, useEngine } from '@dataview/react/editor'
+import { fieldAttrs } from '@dataview/react/propertyEdit'
 import { useTableContext } from '../../context'
-import { useKeyedStoreValue } from '@/react/runtime/store'
-import { cn } from '@/react/ui'
+import { useKeyedStoreValue } from '@dataview/react/runtime/store'
+import { cn } from '@dataview/react/ui'
 import { CellValue } from './CellValue'
 
 export interface CellProps {

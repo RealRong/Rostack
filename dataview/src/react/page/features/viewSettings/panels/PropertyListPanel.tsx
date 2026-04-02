@@ -1,8 +1,8 @@
 import { Plus } from 'lucide-react'
-import { PropertyPicker } from '@/react/page/features/viewQuery/PropertyPicker'
-import { useProperties } from '@/react/editor'
-import { meta, renderMessage } from '@/meta'
-import { Button } from '@/react/ui'
+import { PropertyPicker } from '@dataview/react/page/features/viewQuery/PropertyPicker'
+import { useProperties } from '@dataview/react/editor'
+import { meta, renderMessage } from '@dataview/meta'
+import { Button } from '@dataview/react/ui'
 import { useViewSettings } from '../context'
 
 export const PropertyListPanel = () => {

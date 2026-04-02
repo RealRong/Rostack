@@ -1,4 +1,4 @@
-import type { KeyedReadStore, ReadStore } from '@/runtime/store'
+import type { KeyedReadStore, ReadStore } from '@dataview/runtime/store'
 import { useExternalValue } from './useExternalValue'
 
 export const useStoreValue = <T,>(

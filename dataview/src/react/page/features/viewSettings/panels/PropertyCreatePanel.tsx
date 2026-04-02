@@ -1,6 +1,6 @@
-import { PropertyKindPicker } from '@/react/properties/schema'
-import { useEngine } from '@/react/editor'
-import { meta, renderMessage } from '@/meta'
+import { PropertyKindPicker } from '@dataview/react/properties/schema'
+import { useEngine } from '@dataview/react/editor'
+import { meta, renderMessage } from '@dataview/meta'
 import { useViewSettings } from '../context'
 
 export const PropertyCreatePanel = () => {

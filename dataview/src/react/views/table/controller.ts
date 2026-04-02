@@ -1,23 +1,23 @@
-import type { GroupEngine } from '@/engine'
+import type { GroupEngine } from '@dataview/engine'
 import {
   revealElement,
   revealY
-} from '@/react/dom/scroll'
+} from '@dataview/react/dom/scroll'
 import {
   createInteractionCoordinator,
   type InteractionApi
-} from '@/react/page/interaction'
+} from '@dataview/react/page/interaction'
 import {
   type AppearanceId,
   type CurrentView,
   type Section
-} from '@/react/view'
+} from '@dataview/react/view'
 import {
   createDerivedStore,
   type ReadStore
-} from '@/runtime/store'
-import type { ResolvedPageState } from '@/react/page/session/types'
-import type { PropertyEditApi } from '@/react/propertyEdit'
+} from '@dataview/runtime/store'
+import type { ResolvedPageState } from '@dataview/react/page/session/types'
+import type { PropertyEditApi } from '@dataview/react/propertyEdit'
 import {
   createCapabilities,
   type Capabilities

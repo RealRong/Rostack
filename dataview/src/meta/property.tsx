@@ -17,7 +17,7 @@ import {
 import type {
   GroupPropertyConfig,
   GroupPropertyKind
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import { message } from './message'
 import { defineMetaCollection } from './shared'
 

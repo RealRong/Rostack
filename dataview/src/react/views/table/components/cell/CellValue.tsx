@@ -1,5 +1,5 @@
-import type { GroupProperty } from '@/core/contracts'
-import { PropertyValueContent } from '@/react/properties/value'
+import type { GroupProperty } from '@dataview/core/contracts'
+import { PropertyValueContent } from '@dataview/react/properties/value'
 
 export interface CellValueProps {
   property: GroupProperty

@@ -1,8 +1,8 @@
-import type { PropertyId } from '@/core/contracts'
+import type { PropertyId } from '@dataview/core/contracts'
 import type {
   AppearanceId,
   FieldId
-} from '@/react/view'
+} from '@dataview/react/view'
 
 const cellKey = (cell: {
   appearanceId: AppearanceId

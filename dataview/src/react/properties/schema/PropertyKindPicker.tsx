@@ -1,6 +1,6 @@
-import type { GroupPropertyKind } from '@/core/contracts'
-import { meta, renderMessage } from '@/meta'
-import { Menu } from '@/react/ui'
+import type { GroupPropertyKind } from '@dataview/core/contracts'
+import { meta, renderMessage } from '@dataview/meta'
+import { Menu } from '@dataview/react/ui'
 
 export interface PropertyKindPickerProps {
   kind?: GroupPropertyKind

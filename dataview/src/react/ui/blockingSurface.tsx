@@ -10,7 +10,7 @@ import {
 import type {
   OpenBlockingSurfaceInput,
   BlockingSurfaceBackdrop
-} from '@/react/page/session/types'
+} from '@dataview/react/page/session/types'
 
 export interface BlockingSurfaceController {
   setBlockingSurface: (input: OpenBlockingSurfaceInput) => void

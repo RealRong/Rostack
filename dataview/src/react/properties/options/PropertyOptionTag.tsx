@@ -1,4 +1,4 @@
-import { cn, uiTone } from '@/react/ui'
+import { cn, uiTone } from '@dataview/react/ui'
 
 export interface PropertyOptionTagProps {
   label: string

@@ -1,10 +1,10 @@
-import type { GroupProperty } from '@/core/contracts'
-import { parsePropertyDraft } from '@/core/property'
+import type { GroupProperty } from '@dataview/core/contracts'
+import { parsePropertyDraft } from '@dataview/core/property'
 import type {
   AppearanceList,
   FieldId,
   PropertyList
-} from '@/engine/projection/view'
+} from '@dataview/engine/projection/view'
 import {
   grid
 } from './grid'

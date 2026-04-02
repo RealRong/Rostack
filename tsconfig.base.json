@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "paths": {
+      "@ui": ["ui/index.ts"],
+      "@ui/*": ["ui/*"],
+      "@dataview": ["dataview/index.ts"],
+      "@dataview/*": ["dataview/src/*"],
+      "@whiteboard": ["whiteboard/index.ts"]
+    }
+  }
+}

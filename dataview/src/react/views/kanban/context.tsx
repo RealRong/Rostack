@@ -4,11 +4,11 @@ import {
   useContext,
   type ReactNode
 } from 'react'
-import type { ViewId } from '@/core/contracts'
+import type { ViewId } from '@dataview/core/contracts'
 import type {
   GroupKanbanCreateCardInput,
   GroupKanbanMoveCardsInput
-} from '@/engine'
+} from '@dataview/engine'
 
 export interface KanbanProviderProps {
   viewId: ViewId

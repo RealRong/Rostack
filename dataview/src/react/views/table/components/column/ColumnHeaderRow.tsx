@@ -10,7 +10,7 @@ import {
 import type {
   GroupProperty,
   PropertyId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import { columnSortId } from '../../hooks/useColumnReorder'
 import { ColumnHeader } from './ColumnHeader'
 

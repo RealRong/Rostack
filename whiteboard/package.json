@@ -10,9 +10,12 @@
     "typescript": "^5.4.5"
   },
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "pnpm --filter @whiteboard/core --filter @whiteboard/engine --filter @whiteboard/editor --filter @whiteboard/react --filter @whiteboard/collab -r build",
     "bench": "pnpm --filter @whiteboard/engine run bench:check",
-    "lint": "pnpm -r lint",
-    "test": "pnpm -r test"
+    "lint": "pnpm --filter @whiteboard/core --filter @whiteboard/engine --filter @whiteboard/editor --filter @whiteboard/react --filter @whiteboard/collab -r lint",
+    "demo:dev": "pnpm --dir ../apps/whiteboard dev",
+    "demo:build": "pnpm --dir ../apps/whiteboard build",
+    "demo:preview": "pnpm --dir ../apps/whiteboard preview",
+    "test": "pnpm --filter @whiteboard/core --filter @whiteboard/engine --filter @whiteboard/editor --filter @whiteboard/react --filter @whiteboard/collab -r test"
   }
 }

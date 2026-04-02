@@ -1,17 +1,37 @@
-import { fileURLToPath, URL } from 'node:url'
+import path from 'node:path'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-const root = fileURLToPath(new URL('./', import.meta.url))
-const src = fileURLToPath(new URL('../src', import.meta.url))
+const repoRoot = path.resolve(__dirname, '../..')
+const resolveFromRoot = (relativePath: string) =>
+  path.resolve(repoRoot, relativePath)
 
 export default defineConfig({
-  root,
+  root: __dirname,
   plugins: [react()],
   resolve: {
-    alias: {
-      '@': src
-    }
+    alias: [
+      {
+        find: /^@ui$/,
+        replacement: resolveFromRoot('ui/index.ts')
+      },
+      {
+        find: /^@ui\/(.+)$/,
+        replacement: `${resolveFromRoot('ui')}/$1`
+      },
+      {
+        find: /^@dataview$/,
+        replacement: resolveFromRoot('dataview/index.ts')
+      },
+      {
+        find: /^@dataview\/(.+)$/,
+        replacement: `${resolveFromRoot('dataview/src')}/$1`
+      },
+      {
+        find: /^@whiteboard$/,
+        replacement: resolveFromRoot('whiteboard/index.ts')
+      }
+    ]
   },
   server: {
     host: '127.0.0.1',

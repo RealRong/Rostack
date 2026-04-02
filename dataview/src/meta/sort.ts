@@ -1,7 +1,7 @@
 import type {
   GroupSortDirection,
   GroupSorter
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import { message } from './message'
 import { defineMetaCollection } from './shared'
 

@@ -1,8 +1,8 @@
 import { Check } from 'lucide-react'
 import { useState } from 'react'
-import type { PropertyId, GroupProperty } from '@/core/contracts'
-import { meta, renderMessage, type MessageSpec } from '@/meta'
-import { Button, Input } from '@/react/ui'
+import type { PropertyId, GroupProperty } from '@dataview/core/contracts'
+import { meta, renderMessage, type MessageSpec } from '@dataview/meta'
+import { Button, Input } from '@dataview/react/ui'
 
 export interface PropertyPickerProps {
   properties: readonly GroupProperty[]

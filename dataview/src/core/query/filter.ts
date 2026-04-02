@@ -1,8 +1,8 @@
 import type {
   GroupProperty,
   GroupFilterRule
-} from '@/core/contracts'
-import { createDefaultPropertyFilterRule } from '@/core/property'
+} from '@dataview/core/contracts'
+import { createDefaultPropertyFilterRule } from '@dataview/core/property'
 import type { GroupViewQuery } from './contracts'
 import { cloneFilterRule, cloneViewQuery } from './shared'
 

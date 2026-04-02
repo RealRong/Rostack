@@ -1,4 +1,4 @@
-import type { PropertyId, RecordId } from '@/core/contracts'
+import type { PropertyId, RecordId } from '@dataview/core/contracts'
 
 export interface Modifiers {
   shiftKey: boolean

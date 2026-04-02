@@ -5,16 +5,16 @@ import {
   GripVertical,
   X
 } from 'lucide-react'
-import type { GroupProperty, GroupSorter } from '@/core/contracts'
-import { meta, renderMessage } from '@/meta'
-import { PropertyPicker } from '@/react/page/features/viewQuery/PropertyPicker'
+import type { GroupProperty, GroupSorter } from '@dataview/core/contracts'
+import { meta, renderMessage } from '@dataview/meta'
+import { PropertyPicker } from '@dataview/react/page/features/viewQuery/PropertyPicker'
 import {
   Button,
   Menu,
   Popover,
   cn,
   type VerticalReorderItemState
-} from '@/react/ui'
+} from '@dataview/react/ui'
 import {
   SORT_DIRECTIONS,
   findSorterProperty,

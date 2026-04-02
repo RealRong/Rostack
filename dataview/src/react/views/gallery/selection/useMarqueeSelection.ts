@@ -1,13 +1,13 @@
 import type { RefObject } from 'react'
-import { idsInRect } from '@/react/dom/geometry'
-import { useMarquee } from '@/react/runtime/marquee'
+import { idsInRect } from '@dataview/react/dom/geometry'
+import { useMarquee } from '@dataview/react/runtime/marquee'
 import {
   type AppearanceId,
   type Selection
-} from '@/react/view'
+} from '@dataview/react/view'
 import {
   selection as currentViewSelection
-} from '@/react/view/selection'
+} from '@dataview/react/view/selection'
 import { type GalleryLayout } from '../reorder'
 
 interface Options {

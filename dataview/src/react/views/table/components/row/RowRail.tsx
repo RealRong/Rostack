@@ -1,11 +1,11 @@
 import { GripVertical } from 'lucide-react'
 import type { PointerEvent, ReactNode } from 'react'
-import type { AppearanceId } from '@/react/view'
+import type { AppearanceId } from '@dataview/react/view'
 import {
   type RowRailState,
   type RowRailStateInput
 } from '../../model/rowRail'
-import { cn } from '@/react/ui'
+import { cn } from '@dataview/react/ui'
 import {
   TABLE_REORDER_HANDLE_SIZE,
   TABLE_REORDER_RAIL_GAP,

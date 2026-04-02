@@ -1,11 +1,11 @@
-import type { GroupProperty } from '@/core/contracts'
+import type { GroupProperty } from '@dataview/core/contracts'
 import {
   formatTimeZoneLabel,
   getAvailableTimezones,
   getDatePropertyConfig,
   getPropertyConfig,
   getUrlPropertyConfig
-} from '@/core/property'
+} from '@dataview/core/property'
 import {
   meta,
   renderMessage,
@@ -14,8 +14,8 @@ import {
   type PropertyDisplayDateFormatId,
   type PropertyDisplayTimeFormatId,
   type PropertyNumberFormatId
-} from '@/meta'
-import { Menu } from '@/react/ui'
+} from '@dataview/meta'
+import { Menu } from '@dataview/react/ui'
 import {
   PropertyChoiceList,
   PropertyPopoverRow,

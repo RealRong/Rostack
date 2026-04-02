@@ -3,17 +3,17 @@ import type {
   GroupProperty,
   PropertyId,
   RecordId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import {
   resolvePropertyPrimaryAction
-} from '@/core/property'
+} from '@dataview/core/property'
 import {
   useCurrentView,
   useEngine
-} from '@/react/editor'
+} from '@dataview/react/editor'
 import {
   PropertyValueContent
-} from '@/react/properties/value'
+} from '@dataview/react/properties/value'
 import {
   belowFieldAnchor,
   createPropertyEditOpener,
@@ -21,14 +21,14 @@ import {
   resolveOpenAnchor,
   usePropertyEdit,
   type PropertyEditTarget
-} from '@/react/propertyEdit'
+} from '@dataview/react/propertyEdit'
 import {
   stepViewFieldByIntent
-} from '@/react/view/field'
+} from '@dataview/react/view/field'
 import type {
   ViewFieldRef
-} from '@/react/view'
-import { cn } from '@/react/ui'
+} from '@dataview/react/view'
+import { cn } from '@dataview/react/ui'
 
 export interface CardFieldProps {
   field: ViewFieldRef

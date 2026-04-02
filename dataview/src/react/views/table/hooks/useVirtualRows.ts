@@ -1,11 +1,11 @@
 import {
   useMemo
 } from 'react'
-import { useViewportVersion } from '@/react/dom/viewport'
-import type { AppearanceId } from '@/react/view'
+import { useViewportVersion } from '@dataview/react/dom/viewport'
+import type { AppearanceId } from '@dataview/react/view'
 import {
   scrollViewport
-} from '@/react/dom/scroll'
+} from '@dataview/react/dom/scroll'
 import { useTableContext } from '../context'
 
 const DEFAULT_OVERSCAN = 360

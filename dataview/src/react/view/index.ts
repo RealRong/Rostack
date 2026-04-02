@@ -7,7 +7,7 @@ export type {
   Section,
   SectionKey,
   ViewFieldRef
-} from '@/engine/projection/view'
+} from '@dataview/engine/projection/view'
 export type {
   Commands,
   CreateInSectionInput,

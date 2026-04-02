@@ -3,7 +3,7 @@ import type {
   GroupView,
   PropertyId,
   RecordId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 
 export type AppearanceId = string
 export type SectionKey = string

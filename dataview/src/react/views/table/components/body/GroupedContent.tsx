@@ -5,11 +5,11 @@ import type {
 import type {
   GroupProperty,
   PropertyId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import type {
   AppearanceId,
   Section as ViewSection
-} from '@/react/view'
+} from '@dataview/react/view'
 import { useVirtualSections } from '../../hooks/useVirtualSections'
 import { Section } from './Section'
 

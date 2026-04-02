@@ -3,7 +3,7 @@ import type {
   GroupFilterRule,
   GroupGroupBy,
   GroupSorter
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import type { GroupViewQuery } from './contracts'
 
 export const cloneFilterRule = (rule: GroupFilterRule): GroupFilterRule => ({

@@ -2,16 +2,16 @@ import type {
   AppearanceId,
   CurrentView,
   FieldId
-} from '@/react/view'
+} from '@dataview/react/view'
 import {
   gridSelection,
   type GridSelection
-} from '@/table'
+} from '@dataview/table'
 import {
   createValueStore,
   type ReadStore,
   type ValueStore
-} from '@/runtime/store'
+} from '@dataview/runtime/store'
 
 export interface GridSelectionStore {
   store: ValueStore<GridSelection | null>

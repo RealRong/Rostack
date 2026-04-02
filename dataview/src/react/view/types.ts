@@ -1,10 +1,10 @@
 import type {
   PropertyId,
   RecordId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import type {
   ReadStore
-} from '@/runtime/store'
+} from '@dataview/runtime/store'
 import type {
   AppearanceId,
   Appearance,
@@ -19,7 +19,7 @@ import type {
   SectionKey,
   ViewFieldRef,
   ViewProjection
-} from '@/engine/projection/view'
+} from '@dataview/engine/projection/view'
 
 export type {
   AppearanceId,
@@ -34,7 +34,7 @@ export type {
   Section,
   SectionKey,
   ViewFieldRef
-} from '@/engine/projection/view'
+} from '@dataview/engine/projection/view'
 
 export interface Selection {
   ids: readonly AppearanceId[]

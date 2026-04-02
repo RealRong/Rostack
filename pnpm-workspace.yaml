@@ -1,0 +1,6 @@
+packages:
+  - 'apps/*'
+  - 'dataview'
+  - 'whiteboard'
+  - 'whiteboard/packages/*'
+  - 'ui'

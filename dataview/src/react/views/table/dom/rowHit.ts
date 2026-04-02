@@ -4,8 +4,8 @@ import {
   pointIn,
   type Point,
   type Rect
-} from '@/react/dom/geometry'
-import type { AppearanceId } from '@/react/view'
+} from '@dataview/react/dom/geometry'
+import type { AppearanceId } from '@dataview/react/view'
 import {
   rowGapHitAtPoint,
   rowIdAtPoint,

@@ -3,7 +3,7 @@ import type {
   GroupEditTarget,
   GroupValueApplyAction,
   RecordId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import type {
   GroupEngine,
   GroupRecordsEngineApi

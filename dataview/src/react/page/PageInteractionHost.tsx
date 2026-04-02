@@ -1,10 +1,10 @@
 import { createPortal } from 'react-dom'
-import { usePageActions, usePageValue } from '@/react/editor'
+import { usePageActions, usePageValue } from '@dataview/react/editor'
 import {
   BLOCKING_SURFACE_ATTR,
   BLOCKING_SURFACE_BACKDROP_ATTR
-} from '@/react/dom/blockingSurface'
-import { cn } from '@/react/ui/utils'
+} from '@dataview/react/dom/blockingSurface'
+import { cn } from '@dataview/react/ui/utils'
 
 export const PageInteractionHost = () => {
   const page = usePageActions()

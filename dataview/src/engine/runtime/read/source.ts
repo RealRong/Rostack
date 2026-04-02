@@ -1,4 +1,4 @@
-import type { PropertyId, GroupDocument, GroupProperty, GroupRecord, GroupView, RecordId, ViewId } from '@/core/contracts'
+import type { PropertyId, GroupDocument, GroupProperty, GroupRecord, GroupView, RecordId, ViewId } from '@dataview/core/contracts'
 import {
   createDerivedStore,
   createKeyedDerivedStore,
@@ -6,16 +6,16 @@ import {
   type ReadStore,
   type ValueStore,
   type KeyedReadStore
-} from '@/runtime/store'
+} from '@dataview/runtime/store'
 import {
   getDocumentPropertyById,
   getDocumentRecordById,
   getDocumentViewById
-} from '@/core/document'
+} from '@dataview/core/document'
 import {
   resolveViewProjection,
   type ViewProjection
-} from '@/engine/projection/view'
+} from '@dataview/engine/projection/view'
 
 export const equalIds = <T extends string>(left: readonly T[], right: readonly T[]) => (
   left.length === right.length && left.every((value, index) => value === right[index])

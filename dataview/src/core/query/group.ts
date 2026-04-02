@@ -2,10 +2,10 @@ import type {
   BucketState,
   GroupProperty,
   GroupGroupBy
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import {
   getPropertyGroupMeta
-} from '@/core/property'
+} from '@dataview/core/property'
 import type {
   GroupViewQuery,
   ResolvedViewGroupState,

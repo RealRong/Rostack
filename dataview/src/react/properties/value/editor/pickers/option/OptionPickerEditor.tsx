@@ -9,23 +9,23 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent
 } from 'react'
-import { getPropertyOptions } from '@/core/property'
-import { meta, renderMessage } from '@/meta'
+import { getPropertyOptions } from '@dataview/core/property'
+import { meta, renderMessage } from '@dataview/meta'
 import {
   OptionEditorPopover,
   OptionToken,
   PropertyOptionTag
-} from '@/react/properties/options'
-import { useEngine } from '@/react/editor'
-import type { PropertyEditIntent } from '@/react/page/interaction'
+} from '@dataview/react/properties/options'
+import { useEngine } from '@dataview/react/editor'
+import type { PropertyEditIntent } from '@dataview/react/page/interaction'
 import {
   Button,
   VerticalReorderList,
   cn,
   type VerticalReorderItemState
-} from '@/react/ui'
+} from '@dataview/react/ui'
 import type { PropertyValueDraftEditorProps } from '../../contracts'
-import { focusInputWithoutScroll } from '@/react/dom/focus'
+import { focusInputWithoutScroll } from '@dataview/react/dom/focus'
 import {
   isComposing,
   keyAction

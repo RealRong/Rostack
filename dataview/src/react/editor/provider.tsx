@@ -5,30 +5,30 @@ import {
   useMemo,
   type ReactNode
 } from 'react'
-import type { GroupEngine } from '@/engine'
+import type { GroupEngine } from '@dataview/engine'
 import {
   createDerivedStore,
   createValueStore,
   type ReadStore,
   type ValueStore
-} from '@/runtime/store'
+} from '@dataview/runtime/store'
 import {
   createCurrentViewStore,
-} from '@/react/view/currentViewStore'
+} from '@dataview/react/view/currentViewStore'
 import type {
   CurrentView
-} from '@/react/view'
+} from '@dataview/react/view'
 import {
   createResolvedPageStateStore,
-} from '@/react/page/session/state'
+} from '@dataview/react/page/session/state'
 import {
   createPageSessionApi
-} from '@/react/page/session/api'
+} from '@dataview/react/page/session/api'
 import type {
   PageSessionApi,
   PageSessionInput,
   ResolvedPageState
-} from '@/react/page/session/types'
+} from '@dataview/react/page/session/types'
 import type {
   CloseValueEditorOptions,
   OpenValueEditorInput,
@@ -37,7 +37,7 @@ import type {
   ValueEditorAnchor,
   ValueEditorResult,
   ViewFieldRef
-} from '@/react/propertyEdit/types'
+} from '@dataview/react/propertyEdit/types'
 
 export interface EngineProviderProps {
   engine: GroupEngine

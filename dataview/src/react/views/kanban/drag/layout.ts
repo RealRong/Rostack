@@ -1,11 +1,11 @@
 import {
   elementRectIn,
   type Rect
-} from '@/react/dom/geometry'
+} from '@dataview/react/dom/geometry'
 import type {
   AppearanceId,
   SectionKey
-} from '@/react/view'
+} from '@dataview/react/view'
 
 export interface CardLayout {
   id: AppearanceId

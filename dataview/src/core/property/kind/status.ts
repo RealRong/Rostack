@@ -2,7 +2,7 @@ import type {
   GroupProperty,
   GroupPropertyOption,
   GroupStatusCategory
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 
 export const GROUP_STATUS_CATEGORIES = [
   'todo',

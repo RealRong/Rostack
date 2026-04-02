@@ -4,13 +4,13 @@ import {
   meta,
   renderMessage,
   type MessageSpec
-} from '@/meta'
+} from '@dataview/meta'
 import {
   Button,
   Menu,
   Popover,
   Switch
-} from '@/react/ui'
+} from '@dataview/react/ui'
 
 export const PropertyMenuRow = forwardRef<HTMLButtonElement, {
   label: string

@@ -1,7 +1,7 @@
-import type { PropertyEditIntent } from '@/react/page/interaction'
-import type { ViewFieldRef } from '@/engine/projection/view'
+import type { PropertyEditIntent } from '@dataview/react/page/interaction'
+import type { ViewFieldRef } from '@dataview/engine/projection/view'
 
-export type { ViewFieldRef } from '@/engine/projection/view'
+export type { ViewFieldRef } from '@dataview/engine/projection/view'
 
 export interface ValueEditorAnchor {
   x: number

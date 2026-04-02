@@ -1,4 +1,4 @@
-import type { PropertyEditIntent } from '@/react/page/interaction'
+import type { PropertyEditIntent } from '@dataview/react/page/interaction'
 
 export type KeyAction =
   | {

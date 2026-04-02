@@ -6,4 +6,4 @@ export type {
   GroupGalleryOptions as GalleryOptions,
   GroupGalleryCardSize,
   GroupGalleryOptions
-} from '@/core/contracts'
+} from '@dataview/core/contracts'

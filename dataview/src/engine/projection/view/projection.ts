@@ -5,16 +5,16 @@ import type {
   GroupView,
   RecordId,
   ViewId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import {
   getDocumentProperties
-} from '@/core/document'
+} from '@dataview/core/document'
 import {
   resolveGroupedRecords
-} from '@/core/query/grouping'
+} from '@dataview/core/query/grouping'
 import {
   resolveViewRecordState
-} from '@/core/view'
+} from '@dataview/core/view'
 import type {
   Appearance,
   AppearanceId,

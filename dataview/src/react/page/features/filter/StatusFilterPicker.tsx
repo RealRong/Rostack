@@ -9,7 +9,7 @@ import type {
   GroupProperty,
   GroupFilterRule,
   GroupStatusCategory
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import {
   createEmptyStatusFilterValue,
   getStatusCategoryLabel,
@@ -18,10 +18,10 @@ import {
   isStatusFilterOptionSelected,
   toggleStatusFilterCategory,
   toggleStatusFilterOption
-} from '@/core/property'
-import { meta, renderMessage } from '@/meta'
-import { PropertyOptionTag } from '@/react/properties/options'
-import { Button, cn } from '@/react/ui'
+} from '@dataview/core/property'
+import { meta, renderMessage } from '@dataview/meta'
+import { PropertyOptionTag } from '@dataview/react/properties/options'
+import { Button, cn } from '@dataview/react/ui'
 
 export interface StatusFilterPickerProps {
   property?: GroupProperty

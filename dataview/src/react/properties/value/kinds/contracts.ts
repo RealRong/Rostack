@@ -2,7 +2,7 @@ import type {
   ComponentType,
   ReactNode
 } from 'react'
-import type { PropertyDraftParseResult } from '@/core/property'
+import type { PropertyDraftParseResult } from '@dataview/core/property'
 import type { PropertyValueDraftEditorProps } from '../editor'
 
 export interface RenderProps {

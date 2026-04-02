@@ -1,7 +1,7 @@
 import {
   createValueStore,
   type ValueStore
-} from '@/runtime/store'
+} from '@dataview/runtime/store'
 
 export type InteractionMode = 'idle' | 'pointer' | 'keyboard' | 'drag' | 'fill'
 export type InteractionGesture =

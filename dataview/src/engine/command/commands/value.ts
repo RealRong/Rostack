@@ -1,5 +1,5 @@
-import type { GroupBaseOperation } from '@/core/contracts/operations'
-import type { GroupDocument } from '@/core/contracts/state'
+import type { GroupBaseOperation } from '@dataview/core/contracts/operations'
+import type { GroupDocument } from '@dataview/core/contracts/state'
 import type { IndexedCommand } from '../context'
 import {
   resolveCommandResult,

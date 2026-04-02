@@ -1,6 +1,6 @@
 import type {
   GroupEngine
-} from '@/engine'
+} from '@dataview/engine'
 import { useEditorContext } from './provider'
 
 export const useEngine = (): GroupEngine => useEditorContext().engine

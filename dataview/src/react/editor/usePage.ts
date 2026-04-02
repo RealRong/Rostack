@@ -3,15 +3,15 @@ import {
 } from 'react'
 import type {
   Equality
-} from '@/runtime/store'
+} from '@dataview/runtime/store'
 import type {
   PageSessionApi,
   ResolvedPageState
-} from '@/react/page/session/types'
+} from '@dataview/react/page/session/types'
 import {
   useExternalValue,
   useStoreValue
-} from '@/react/runtime/store'
+} from '@dataview/react/runtime/store'
 import { useEditorContext } from './provider'
 
 export const usePage = (): ResolvedPageState => {

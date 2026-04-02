@@ -1,4 +1,4 @@
-import './styles/whiteboard-react.css'
+import '../../../../ui/css/whiteboard.css'
 
 export { Whiteboard } from './Whiteboard'
 export { useEditor } from './runtime/hooks/useEditor'

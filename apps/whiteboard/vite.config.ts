@@ -2,19 +2,44 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'node:path'
 
-const resolveRoot = (relativePath: string) =>
-  path.resolve(__dirname, '..', '..', relativePath)
+const repoRoot = path.resolve(__dirname, '../..')
+const whiteboardRoot = path.resolve(repoRoot, 'whiteboard')
+const resolveFromRoot = (relativePath: string) =>
+  path.resolve(repoRoot, relativePath)
+const resolveWhiteboard = (relativePath: string) =>
+  path.resolve(whiteboardRoot, relativePath)
 
-const coreSrc = resolveRoot('packages/whiteboard-core/src')
-const collabSrc = resolveRoot('packages/whiteboard-collab/src')
-const editorSrc = resolveRoot('packages/whiteboard-editor/src')
-const engineSrc = resolveRoot('packages/whiteboard-engine/src')
-const reactSrc = resolveRoot('packages/whiteboard-react/src')
+const coreSrc = resolveWhiteboard('packages/whiteboard-core/src')
+const collabSrc = resolveWhiteboard('packages/whiteboard-collab/src')
+const editorSrc = resolveWhiteboard('packages/whiteboard-editor/src')
+const engineSrc = resolveWhiteboard('packages/whiteboard-engine/src')
+const reactSrc = resolveWhiteboard('packages/whiteboard-react/src')
 
 export default defineConfig({
+  root: __dirname,
   plugins: [react()],
   resolve: {
     alias: [
+      {
+        find: /^@ui$/,
+        replacement: resolveFromRoot('ui/index.ts')
+      },
+      {
+        find: /^@ui\/(.+)$/,
+        replacement: `${resolveFromRoot('ui')}/$1`
+      },
+      {
+        find: /^@dataview$/,
+        replacement: resolveFromRoot('dataview/index.ts')
+      },
+      {
+        find: /^@dataview\/(.+)$/,
+        replacement: `${resolveFromRoot('dataview/src')}/$1`
+      },
+      {
+        find: /^@whiteboard$/,
+        replacement: resolveFromRoot('whiteboard/index.ts')
+      },
       {
         find: /^@whiteboard\/react$/,
         replacement: path.join(reactSrc, 'index.ts')

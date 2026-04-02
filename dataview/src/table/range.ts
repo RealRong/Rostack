@@ -2,8 +2,8 @@ import type {
   AppearanceList,
   FieldId,
   PropertyList
-} from '@/engine/projection/view'
-import { sameField } from '@/engine/projection/view'
+} from '@dataview/engine/projection/view'
+import { sameField } from '@dataview/engine/projection/view'
 import {
   grid
 } from './grid'

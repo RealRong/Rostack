@@ -1,7 +1,7 @@
 import type {
   PropertyId,
   ViewId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 
 export type QueryBarEntry =
   | {

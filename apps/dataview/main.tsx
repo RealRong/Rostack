@@ -1,5 +1,5 @@
+import '@ui/css/core.css'
 import './styles.css'
-import './styles/query.css'
 
 import { createRoot } from 'react-dom/client'
 import {
@@ -7,8 +7,8 @@ import {
   createGroupEngine,
   type GroupDocument,
   type GroupProperty
-} from '../src/index'
-import { EngineProvider, Page } from '../src/react'
+} from '@dataview'
+import { EngineProvider, Page } from '@dataview/react'
 
 const FIELD_TITLE = 'title'
 const FIELD_STATUS = 'status'

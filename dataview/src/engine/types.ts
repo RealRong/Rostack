@@ -22,11 +22,11 @@ import type {
   RecordId,
   ViewId,
   PropertyId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import type { GroupHistoryOptions, GroupHistoryState } from './history'
-import type { GroupValidationIssue } from '@/engine/command'
-import type { KeyedReadStore, ReadStore } from '@/runtime/store'
-import type { ViewProjection } from '@/engine/projection/view'
+import type { GroupValidationIssue } from '@dataview/engine/command'
+import type { KeyedReadStore, ReadStore } from '@dataview/runtime/store'
+import type { ViewProjection } from '@dataview/engine/projection/view'
 
 export interface CreateGroupEngineOptions {
   document: GroupDocument

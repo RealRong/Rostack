@@ -4,8 +4,8 @@ import {
   Table2
 } from 'lucide-react'
 import { type ComponentType } from 'react'
-import type { GroupViewType } from '@/core/contracts'
-import { useActiveView } from '@/react/editor'
+import type { GroupViewType } from '@dataview/core/contracts'
+import { useActiveView } from '@dataview/react/editor'
 
 interface IconProps {
   className?: string

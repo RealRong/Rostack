@@ -3,15 +3,15 @@ import { useEffect, useState } from 'react'
 import type {
   GroupProperty,
   GroupPropertyOption
-} from '@/core/contracts'
-import { getPropertyOptions } from '@/core/property'
-import { useEngine } from '@/react/editor'
-import { meta, renderMessage } from '@/meta'
+} from '@dataview/core/contracts'
+import { getPropertyOptions } from '@dataview/core/property'
+import { useEngine } from '@dataview/react/editor'
+import { meta, renderMessage } from '@dataview/meta'
 import {
   OptionEditorPopover,
   PropertyOptionTag
-} from '@/react/properties/options'
-import { Button } from '@/react/ui'
+} from '@dataview/react/properties/options'
+import { Button } from '@dataview/react/ui'
 import { PropertyStatusOptionsSection } from './PropertyStatusOptionsSection'
 
 const PlainPropertyOptionsSection = (props: {

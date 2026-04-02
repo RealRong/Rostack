@@ -17,7 +17,7 @@ export {
 
 export type {
   GroupEngine
-} from '@/engine'
+} from '@dataview/engine'
 
 export type {
   BlockingSurfaceBackdrop,
@@ -33,7 +33,7 @@ export type {
   SettingsRoute,
   SettingsState,
   PageInteractionState,
-} from '@/react/page/session/types'
+} from '@dataview/react/page/session/types'
 export type {
   CloseValueEditorOptions,
   OpenValueEditorInput,
@@ -41,4 +41,4 @@ export type {
   ValueEditorAnchor,
   ValueEditorResult,
   ViewFieldRef
-} from '@/react/propertyEdit/types'
+} from '@dataview/react/propertyEdit/types'

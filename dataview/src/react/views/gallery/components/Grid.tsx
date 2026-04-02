@@ -1,4 +1,4 @@
-import { PAGE_INLINE_INSET_CSS } from '@/react/page/layout'
+import { PAGE_INLINE_INSET_CSS } from '@dataview/react/page/layout'
 import { useGalleryController } from '../useGalleryController'
 import { Card } from './Card'
 import { Overlay } from './Overlay'

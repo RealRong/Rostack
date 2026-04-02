@@ -9,16 +9,16 @@ import {
   closestCenter,
   DndContext
 } from '@dnd-kit/core'
-import { modifiers } from '@/react/page/interaction'
-import { DragGhost } from '@/react/dom/dragGhost'
-import { hasInteractiveTarget } from '@/react/dom/interactive'
+import { modifiers } from '@dataview/react/page/interaction'
+import { DragGhost } from '@dataview/react/dom/dragGhost'
+import { hasInteractiveTarget } from '@dataview/react/dom/interactive'
 import {
   useCurrentView,
   useEngine,
   usePageValue
-} from '@/react/editor'
-import { useStoreValue } from '@/react/runtime/store'
-import { type FieldId } from '@/react/view'
+} from '@dataview/react/editor'
+import { useStoreValue } from '@dataview/react/runtime/store'
+import { type FieldId } from '@dataview/react/view'
 import { applyPaste, handleTableKey } from '../../input'
 import {
   gridContentBounds,

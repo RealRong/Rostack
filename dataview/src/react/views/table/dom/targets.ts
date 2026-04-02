@@ -1,17 +1,17 @@
-import type { PropertyId } from '@/core/contracts'
-import type { Point } from '@/react/dom/geometry'
-import { targetElement } from '@/react/dom/interactive'
+import type { PropertyId } from '@dataview/core/contracts'
+import type { Point } from '@dataview/react/dom/geometry'
+import { targetElement } from '@dataview/react/dom/interactive'
 import {
   type AppearanceList,
   type PropertyList
-} from '@/engine/projection/view'
+} from '@dataview/engine/projection/view'
 import {
   grid,
-} from '@/table'
+} from '@dataview/table'
 import type {
   AppearanceId,
   FieldId
-} from '@/react/view'
+} from '@dataview/react/view'
 
 export type TableTargetKind =
   | 'cell'

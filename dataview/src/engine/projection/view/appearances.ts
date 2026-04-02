@@ -1,6 +1,6 @@
 import type {
   RecordId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import type {
   Appearance,
   AppearanceId,

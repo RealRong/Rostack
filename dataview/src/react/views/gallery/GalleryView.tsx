@@ -1,4 +1,4 @@
-import type { ViewId } from '@/core/contracts'
+import type { ViewId } from '@dataview/core/contracts'
 import { Grid } from './components/Grid'
 import { GalleryProvider } from './context'
 

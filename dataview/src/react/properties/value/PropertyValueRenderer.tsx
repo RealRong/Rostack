@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { GroupProperty } from '@/core/contracts'
+import type { GroupProperty } from '@dataview/core/contracts'
 import { getPropertyValueSpec } from './kinds'
 
 export interface PropertyValueRendererProps {

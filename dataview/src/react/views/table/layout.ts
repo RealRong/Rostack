@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import type { PropertyId, GroupProperty } from '@/core/contracts'
+import type { PropertyId, GroupProperty } from '@dataview/core/contracts'
 
 export interface TableLayout {
   rowHeight: number

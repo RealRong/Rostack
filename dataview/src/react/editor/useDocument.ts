@@ -1,18 +1,18 @@
 import type {
   PropertyId,
   ViewId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import {
   getDocumentProperties,
   getDocumentViews
-} from '@/core/document'
+} from '@dataview/core/document'
 import {
   TITLE_PROPERTY_ID
-} from '@/core/property'
+} from '@dataview/core/property'
 import {
   useKeyedStoreValue,
   useStoreValue
-} from '@/react/runtime/store'
+} from '@dataview/react/runtime/store'
 import { useEngine } from './useEngine'
 import { usePageValue } from './usePage'
 

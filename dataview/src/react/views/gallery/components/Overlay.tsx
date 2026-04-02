@@ -4,9 +4,9 @@ import type {
   GroupProperty,
   GroupRecord,
   ViewId
-} from '@/core/contracts'
-import { cn } from '@/react/ui'
-import type { AppearanceId } from '@/react/view'
+} from '@dataview/core/contracts'
+import { cn } from '@dataview/react/ui'
+import type { AppearanceId } from '@dataview/react/view'
 import { CardBody } from './CardBody'
 
 export const Overlay = (props: {

@@ -1,7 +1,7 @@
 import type {
   PropertyId
-} from '@/core/contracts'
-import type { AppearanceId } from '@/engine/projection/view'
+} from '@dataview/core/contracts'
+import type { AppearanceId } from '@dataview/engine/projection/view'
 
 export interface TableRowReorderHint {
   beforeId: AppearanceId | null

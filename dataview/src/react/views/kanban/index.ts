@@ -10,4 +10,4 @@ export type {
   GroupKanbanOptions as KanbanOptions,
   GroupKanbanNewRecordPosition,
   GroupKanbanOptions
-} from '@/core/contracts'
+} from '@dataview/core/contracts'

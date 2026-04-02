@@ -1,6 +1,6 @@
 import type { CreateGroupEngineOptions, GroupEngine } from '../types'
-import { cloneGroupDocument } from '@/core/document'
-import { resolveWriteBatch } from '@/engine/command'
+import { cloneGroupDocument } from '@dataview/core/document'
+import { resolveWriteBatch } from '@dataview/engine/command'
 import { read as createRead } from '../runtime/read/read'
 import { commitRuntime } from '../runtime/commit/runtime'
 import { document } from './document'

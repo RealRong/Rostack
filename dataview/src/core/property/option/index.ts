@@ -2,7 +2,7 @@ import type {
   GroupProperty,
   GroupPropertyConfig,
   GroupPropertyOption
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import {
   hasPropertyOptions
 } from '../kind/spec'

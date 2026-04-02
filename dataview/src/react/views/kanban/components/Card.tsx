@@ -1,7 +1,7 @@
-import type { GroupRecord } from '@/core/contracts'
-import { shouldCapturePointer } from '@/react/dom/interactive'
-import { cn } from '@/react/ui'
-import type { AppearanceId } from '@/react/view'
+import type { GroupRecord } from '@dataview/core/contracts'
+import { shouldCapturePointer } from '@dataview/react/dom/interactive'
+import { cn } from '@dataview/react/ui'
+import type { AppearanceId } from '@dataview/react/view'
 import { useBoardContext } from '../board'
 import { CardBody } from './CardBody'
 

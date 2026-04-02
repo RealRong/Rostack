@@ -1,11 +1,11 @@
-import type { GroupProperty, PropertyId } from '@/core/contracts'
-import { resolvePropertyValueBehavior } from '@/core/property'
+import type { GroupProperty, PropertyId } from '@dataview/core/contracts'
+import { resolvePropertyValueBehavior } from '@dataview/core/property'
 import type {
   AppearanceId,
   AppearanceList,
   FieldId,
   PropertyList
-} from '@/engine/projection/view'
+} from '@dataview/engine/projection/view'
 import type { GridSelection } from './gridSelection'
 import { range } from './range'
 

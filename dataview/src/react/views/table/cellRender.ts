@@ -1,27 +1,27 @@
 import type {
   RecordId,
   GroupRecord
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import {
   createDerivedStore,
   createKeyedDerivedStore,
   type KeyedReadStore,
   type ReadStore
-} from '@/runtime/store'
+} from '@dataview/runtime/store'
 import {
   sameField
-} from '@/engine/projection/view'
+} from '@dataview/engine/projection/view'
 import type {
   CurrentView,
   FieldId
-} from '@/react/view'
+} from '@dataview/react/view'
 import {
   fill,
   grid,
   range,
   gridSelection,
   type GridSelection
-} from '@/table'
+} from '@dataview/table'
 import type { Capabilities } from './capabilities'
 import { cellChrome, type CellChromeState } from './model/chrome'
 

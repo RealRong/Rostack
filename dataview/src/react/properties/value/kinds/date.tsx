@@ -1,6 +1,6 @@
-import type { GroupProperty } from '@/core/contracts'
-import { formatDateValue } from '@/core/property'
-import { cn } from '@/react/ui'
+import type { GroupProperty } from '@dataview/core/contracts'
+import { formatDateValue } from '@dataview/core/property'
+import { cn } from '@dataview/react/ui'
 import { DateValueEditor } from '../editor/pickers/date/DateValueEditor'
 import {
   createDateValueDraft,

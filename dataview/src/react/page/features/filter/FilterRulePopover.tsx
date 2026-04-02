@@ -1,6 +1,6 @@
 import { Check, ChevronDown, Filter, Trash } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import type { GroupProperty, GroupFilterRule } from '@/core/contracts'
+import type { GroupProperty, GroupFilterRule } from '@dataview/core/contracts'
 import {
   applyPropertyFilterPreset,
   findPropertyOption,
@@ -8,10 +8,10 @@ import {
   isFilterRuleEffective,
   parseDateInputDraft,
   readDatePrimaryString
-} from '@/core/property'
-import { meta, renderMessage } from '@/meta'
-import { PropertyOptionTag } from '@/react/properties/options'
-import { Button, Input, Menu, Popover, QueryChip, cn } from '@/react/ui'
+} from '@dataview/core/property'
+import { meta, renderMessage } from '@dataview/meta'
+import { PropertyOptionTag } from '@dataview/react/properties/options'
+import { Button, Input, Menu, Popover, QueryChip, cn } from '@dataview/react/ui'
 import { StatusFilterPicker } from './StatusFilterPicker'
 
 export interface FilterRulePopoverProps {

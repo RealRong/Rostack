@@ -4,15 +4,15 @@ import {
   GripVertical
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import type { GroupProperty } from '@/core/contracts'
-import { TITLE_PROPERTY_ID } from '@/core/property'
+import type { GroupProperty } from '@dataview/core/contracts'
+import { TITLE_PROPERTY_ID } from '@dataview/core/property'
 import {
   useActiveView,
   useEngine,
   useProperties
-} from '@/react/editor'
-import { meta, renderMessage } from '@/meta'
-import { Button, Input, VerticalReorderList, cn, type VerticalReorderItemState } from '@/react/ui'
+} from '@dataview/react/editor'
+import { meta, renderMessage } from '@dataview/meta'
+import { Button, Input, VerticalReorderList, cn, type VerticalReorderItemState } from '@dataview/react/ui'
 
 interface PropertyRowProps {
   property: GroupProperty

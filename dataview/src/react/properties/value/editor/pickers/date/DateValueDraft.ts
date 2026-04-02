@@ -4,7 +4,7 @@ import {
   setMinutes,
   setSeconds
 } from 'date-fns'
-import type { GroupDateValue, GroupProperty } from '@/core/contracts'
+import type { GroupDateValue, GroupProperty } from '@dataview/core/contracts'
 import {
   type DateValueKind,
   isDateOnlyString,
@@ -14,7 +14,7 @@ import {
   readDateValue,
   resolveDefaultDateTimezone,
   resolveDefaultDateValueKind
-} from '@/core/property'
+} from '@dataview/core/property'
 
 export type DateDraftBoundary = 'start' | 'end'
 

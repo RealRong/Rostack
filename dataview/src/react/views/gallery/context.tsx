@@ -6,7 +6,7 @@ import {
   type ReactNode,
   type RefObject
 } from 'react'
-import type { ViewId } from '@/core/contracts'
+import type { ViewId } from '@dataview/core/contracts'
 
 export interface GalleryProviderProps {
   viewId: ViewId

@@ -2,7 +2,7 @@ import type {
   PropertyId,
   RecordId,
   ViewId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import type {
   AppearanceList,
   AppearanceId,

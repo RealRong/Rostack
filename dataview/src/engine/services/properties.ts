@@ -2,17 +2,17 @@ import type {
   PropertyId,
   GroupProperty,
   GroupPropertyOption
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import {
   findPropertyOptionByName,
   hasPropertyOptions,
   getPropertyOptions
-} from '@/core/property'
+} from '@dataview/core/property'
 import {
   getDocumentPropertyById,
   getDocumentProperties
-} from '@/core/document'
-import { createPropertyId } from '@/engine/command/entityId'
+} from '@dataview/core/document'
+import { createPropertyId } from '@dataview/engine/command/entityId'
 import type {
   GroupEngine,
   GroupPropertiesEngineApi

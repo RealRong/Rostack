@@ -2,10 +2,10 @@ import type {
   GroupProperty,
   GroupRecord,
   ViewId
-} from '@/core/contracts'
-import { shouldCapturePointer } from '@/react/dom/interactive'
-import { cn } from '@/react/ui'
-import type { AppearanceId } from '@/react/view'
+} from '@dataview/core/contracts'
+import { shouldCapturePointer } from '@dataview/react/dom/interactive'
+import { cn } from '@dataview/react/ui'
+import type { AppearanceId } from '@dataview/react/view'
 import { CardBody } from './CardBody'
 
 export const Card = (props: {

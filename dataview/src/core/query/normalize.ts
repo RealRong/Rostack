@@ -1,6 +1,6 @@
 import type {
   GroupViewQuery as StoredGroupViewQuery
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import type { GroupViewQuery } from './contracts'
 import { cloneGroup } from './shared'
 

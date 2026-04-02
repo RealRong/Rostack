@@ -1,13 +1,13 @@
-import { getAvailableFilterProperties } from '@/react/page/features/filter/filterUi'
-import { getAvailableSorterProperties } from '@/react/page/features/sort'
-import { PropertyPicker } from '@/react/page/features/viewQuery/PropertyPicker'
+import { getAvailableFilterProperties } from '@dataview/react/page/features/filter/filterUi'
+import { getAvailableSorterProperties } from '@dataview/react/page/features/sort'
+import { PropertyPicker } from '@dataview/react/page/features/viewQuery/PropertyPicker'
 import {
   useActiveView,
   useEngine,
   usePageActions,
   useProperties
-} from '@/react/editor'
-import { meta } from '@/meta'
+} from '@dataview/react/editor'
+import { meta } from '@dataview/meta'
 import { useViewSettings } from '../context'
 
 export const QueryFieldPickerPanel = (props: {

@@ -3,10 +3,10 @@ import {
   useActiveView,
   usePageActions,
   usePageValue
-} from '@/react/editor'
-import { meta, renderMessage } from '@/meta'
-import { PropertySchemaEditor } from '@/react/properties/schema'
-import { Button, PanelHeader, Popover } from '@/react/ui'
+} from '@dataview/react/editor'
+import { meta, renderMessage } from '@dataview/meta'
+import { PropertySchemaEditor } from '@dataview/react/properties/schema'
+import { Button, PanelHeader, Popover } from '@dataview/react/ui'
 import {
   ViewSettingsContext,
 } from './context'

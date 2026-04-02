@@ -1,18 +1,18 @@
 import type {
   ViewId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import type {
   GroupEngine
-} from '@/engine'
+} from '@dataview/engine'
 import {
   createDerivedStore,
   createReadStore,
   createValueStore,
   type ReadStore
-} from '@/runtime/store'
+} from '@dataview/runtime/store'
 import {
   createGrouping
-} from '@/engine/projection/view'
+} from '@dataview/engine/projection/view'
 import {
   createCommands
 } from './commands'
@@ -29,7 +29,7 @@ import type {
 } from './types'
 import type {
   ResolvedPageState
-} from '@/react/page/session/types'
+} from '@dataview/react/page/session/types'
 
 export const createCurrentViewStore = (input: {
   engine: GroupEngine

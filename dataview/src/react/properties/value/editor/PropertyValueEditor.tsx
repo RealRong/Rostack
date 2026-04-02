@@ -8,7 +8,7 @@ import {
   cancel,
   commit,
   type PropertyEditIntent
-} from '@/react/page/interaction'
+} from '@dataview/react/page/interaction'
 import { getPropertyValueSpec } from '../kinds'
 import type {
   PropertyValueEditorHandle,

@@ -2,7 +2,7 @@ import type {
   GroupCommand,
   GroupCommandPayload,
   GroupCommandType
-} from '@/core/contracts/commands'
+} from '@dataview/core/contracts/commands'
 
 export type IndexedCommand<TType extends GroupCommandType = GroupCommandType> = TType extends GroupCommandType
   ? Extract<GroupCommand, { type: TType }> & {

@@ -1,7 +1,7 @@
-import type { GroupDocument, GroupProperty, GroupPropertyOption } from '@/core/contracts/state'
+import type { GroupDocument, GroupProperty, GroupPropertyOption } from '@dataview/core/contracts/state'
 import {
   getDocumentPropertyById
-} from '@/core/document'
+} from '@dataview/core/document'
 import type { IndexedCommand } from '../context'
 import { createIssue, type GroupValidationIssue } from '../issues'
 import {
@@ -11,7 +11,7 @@ import {
   isGroupPropertyKind,
   isValidDateTimeZone,
   TITLE_PROPERTY_ID
-} from '@/core/property'
+} from '@dataview/core/property'
 import {
   isNonEmptyString
 } from '../commands/shared'

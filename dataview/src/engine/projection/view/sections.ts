@@ -1,6 +1,6 @@
 import type {
   GroupGroupBy
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import type {
   Section,
   SectionKey

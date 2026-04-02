@@ -2,7 +2,7 @@ import type {
   PropertyId,
   GroupProperty,
   GroupSorter
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 
 export const SORT_DIRECTIONS = [
   'asc',

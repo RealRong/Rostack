@@ -2,7 +2,7 @@ import type {
   PropertyId,
   GroupProperty,
   GroupFilterRule
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 
 export const getFilterPropertyId = (
   rule: Pick<GroupFilterRule, 'property'>

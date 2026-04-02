@@ -2,7 +2,7 @@ import type {
   GroupProperty,
   GroupViewType,
   PropertyId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import type {
   SettingsRoute
 } from './types'

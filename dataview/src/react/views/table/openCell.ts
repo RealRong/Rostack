@@ -2,20 +2,20 @@ import type {
   CurrentView,
   FieldId,
   ViewFieldRef
-} from '@/react/view'
+} from '@dataview/react/view'
 import {
   createPropertyEditOpener,
   type PropertyEditApi,
   type ValueEditorResult,
   type PropertyEditTarget,
   resolveOpenAnchor
-} from '@/react/propertyEdit'
+} from '@dataview/react/propertyEdit'
 import {
   fieldId,
   fieldOf,
   stepViewFieldByIntent,
   type FieldScope
-} from '@/react/view/field'
+} from '@dataview/react/view/field'
 import type { GridSelectionStore } from './gridSelection'
 import type { Dom } from './dom'
 

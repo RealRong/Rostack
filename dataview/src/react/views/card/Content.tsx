@@ -3,11 +3,11 @@ import type {
   GroupProperty,
   GroupRecord,
   ViewId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import type {
   AppearanceId,
   ViewFieldRef
-} from '@/react/view'
+} from '@dataview/react/view'
 import { CardField } from './Field'
 
 export interface CardContentProps {

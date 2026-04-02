@@ -1,16 +1,16 @@
 import type {
   PropertyId,
   ViewId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import type {
   PropertyEditIntent
-} from '@/react/page/interaction'
+} from '@dataview/react/page/interaction'
 import type {
   AppearanceId,
   AppearanceList,
   FieldId,
   ViewFieldRef
-} from '@/engine/projection/view'
+} from '@dataview/engine/projection/view'
 
 export interface FieldScope {
   appearanceIds: readonly AppearanceId[]

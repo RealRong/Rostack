@@ -1,4 +1,4 @@
-import type { GroupDocument } from '@/core/contracts/state'
+import type { GroupDocument } from '@dataview/core/contracts/state'
 import type { IndexedCommand } from '../context'
 import { createIssue } from '../issues'
 import { resolveCommandResult, isNonEmptyString } from './shared'

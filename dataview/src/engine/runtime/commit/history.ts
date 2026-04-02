@@ -1,5 +1,5 @@
-import type { GroupBaseOperation } from '@/core/contracts/operations'
-import type { GroupCommitHistoryDepth, GroupHistoryState } from '@/engine/history'
+import type { GroupBaseOperation } from '@dataview/core/contracts/operations'
+import type { GroupCommitHistoryDepth, GroupHistoryState } from '@dataview/engine/history'
 
 export interface GroupHistoryEntry {
   undo: GroupBaseOperation[]

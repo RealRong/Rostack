@@ -3,12 +3,12 @@ import {
   createValueStore,
   type KeyedReadStore,
   type ValueStore
-} from '@/runtime/store'
-import type { Point } from '@/react/dom/geometry'
+} from '@dataview/runtime/store'
+import type { Point } from '@dataview/react/dom/geometry'
 import type {
   AppearanceId,
   FieldId
-} from '@/react/view'
+} from '@dataview/react/view'
 import {
   hoveredCellOf,
   hoveredRowIdOf,

@@ -1,9 +1,9 @@
-import type { GroupCommand } from '@/core/contracts/commands'
-import type { GroupDocument } from '@/core/contracts/state'
+import type { GroupCommand } from '@dataview/core/contracts/commands'
+import type { GroupDocument } from '@dataview/core/contracts/state'
 import { resolveCommand, type ResolvedCommand } from './commands'
 import { indexCommand } from './context'
 import { hasValidationErrors, type GroupValidationIssue } from './issues'
-import { reduceOperations } from '@/core/operation'
+import { reduceOperations } from '@dataview/core/operation'
 
 export interface ResolvedWriteBatch {
   operations: ResolvedCommand['operations']

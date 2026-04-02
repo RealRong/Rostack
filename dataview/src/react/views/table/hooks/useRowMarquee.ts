@@ -3,23 +3,23 @@ import {
   useMemo,
   useRef
 } from 'react'
-import type { Point } from '@/react/dom/geometry'
+import type { Point } from '@dataview/react/dom/geometry'
 import {
   type AppearanceId,
   type CurrentView,
   type Selection
-} from '@/react/view'
+} from '@dataview/react/view'
 import {
   emptySelection,
   selection
-} from '@/react/view/selection'
+} from '@dataview/react/view/selection'
 import {
   closestTarget,
   interactiveSelector
-} from '@/react/dom/interactive'
-import { useCurrentView } from '@/react/editor'
-import { useStoreValue } from '@/react/runtime/store'
-import { useMarquee } from '@/react/runtime/marquee'
+} from '@dataview/react/dom/interactive'
+import { useCurrentView } from '@dataview/react/editor'
+import { useStoreValue } from '@dataview/react/runtime/store'
+import { useMarquee } from '@dataview/react/runtime/marquee'
 import {
   rowMarqueeMode,
   rowMarqueeState,

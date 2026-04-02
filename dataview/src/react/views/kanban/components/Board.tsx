@@ -1,4 +1,4 @@
-import { PAGE_INLINE_INSET_CSS } from '@/react/page/layout'
+import { PAGE_INLINE_INSET_CSS } from '@dataview/react/page/layout'
 import { BoardProvider, useBoardContext, useBoardController } from '../board'
 import { Empty } from './Empty'
 import { Column } from './Column'

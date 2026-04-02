@@ -3,11 +3,11 @@ import {
 } from 'react'
 import type {
   Section
-} from '@/react/view'
-import { useViewportVersion } from '@/react/dom/viewport'
+} from '@dataview/react/view'
+import { useViewportVersion } from '@dataview/react/dom/viewport'
 import {
   scrollViewport
-} from '@/react/dom/scroll'
+} from '@dataview/react/dom/scroll'
 import { useTableContext } from '../context'
 
 const DEFAULT_OVERSCAN = 360

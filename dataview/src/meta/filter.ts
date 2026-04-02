@@ -1,7 +1,7 @@
 import type {
   GroupProperty,
   GroupFilterRule
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import {
   getPropertyFilterPreset,
   getPropertyFilterPresets,
@@ -10,7 +10,7 @@ import {
   getPropertyDisplayValue,
   getStatusFilterTargetLabel,
   readStatusFilterValue
-} from '@/core/property'
+} from '@dataview/core/property'
 import { message, renderMessage } from './message'
 
 export type FilterValueEditorKind =

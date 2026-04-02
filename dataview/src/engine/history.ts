@@ -9,7 +9,7 @@ export type {
   GroupCommitValueChange,
   GroupCommitChangeSet,
   GroupCommitChangeSummary
-} from '@/core/contracts/changeSet'
+} from '@dataview/core/contracts/changeSet'
 
 export interface GroupHistoryState extends GroupCommitHistoryDepth {
   capacity: number

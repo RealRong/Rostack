@@ -1,4 +1,4 @@
-import type { GroupDocument } from '@/core/contracts'
+import type { GroupDocument } from '@dataview/core/contracts'
 
 export interface GroupInstanceDocument {
   peekDocument: () => GroupDocument

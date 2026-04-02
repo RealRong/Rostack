@@ -18,8 +18,8 @@ import {
 import {
   BLOCKING_SURFACE_ATTR,
   BLOCKING_SURFACE_BACKDROP_ATTR
-} from '@/react/dom/blockingSurface'
-import { closestTarget } from '@/react/dom/interactive'
+} from '@dataview/react/dom/blockingSurface'
+import { closestTarget } from '@dataview/react/dom/interactive'
 import {
   createContext,
   cloneElement,

@@ -1,10 +1,10 @@
 import type { ComponentType } from 'react'
-import type { GroupProperty } from '@/core/contracts'
+import type { GroupProperty } from '@dataview/core/contracts'
 import {
   getPropertyDisplayValue,
   parsePropertyDraft
-} from '@/core/property'
-import { cn } from '@/react/ui'
+} from '@dataview/core/property'
+import { cn } from '@dataview/react/ui'
 import {
   InputEditor,
   type InputKind

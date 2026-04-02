@@ -1,20 +1,20 @@
 import { ChevronDown } from 'lucide-react'
-import { FilterRulePopover } from '@/react/page/features/filter'
+import { FilterRulePopover } from '@dataview/react/page/features/filter'
 import {
   getAvailableFilterProperties,
   getFilterPropertyId
-} from '@/react/page/features/filter/filterUi'
-import { SortPopover, getAvailableSorterProperties } from '@/react/page/features/sort'
+} from '@dataview/react/page/features/filter/filterUi'
+import { SortPopover, getAvailableSorterProperties } from '@dataview/react/page/features/sort'
 import {
   useActiveView,
   useEngine,
   usePageActions,
   usePageValue,
   useProperties
-} from '@/react/editor'
-import { meta, renderMessage } from '@/meta'
-import type { QueryBarEntry } from '@/react/page/session/types'
-import { Popover, QueryChip } from '@/react/ui'
+} from '@dataview/react/editor'
+import { meta, renderMessage } from '@dataview/meta'
+import type { QueryBarEntry } from '@dataview/react/page/session/types'
+import { Popover, QueryChip } from '@dataview/react/ui'
 import { PropertyPicker } from './PropertyPicker'
 
 export type ViewQueryOpenEntry = QueryBarEntry

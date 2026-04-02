@@ -1,14 +1,14 @@
 import {
   useRef
 } from 'react'
-import { type Equality } from '@/runtime/store'
+import { type Equality } from '@dataview/runtime/store'
 import type {
   CurrentView
-} from '@/react/view'
+} from '@dataview/react/view'
 import {
   useExternalValue,
   useStoreValue
-} from '@/react/runtime/store'
+} from '@dataview/react/runtime/store'
 import { useEditorContext } from './provider'
 
 export function useCurrentView(): CurrentView | undefined

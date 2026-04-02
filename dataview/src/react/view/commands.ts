@@ -3,23 +3,23 @@ import type {
   GroupView,
   RecordId,
   ViewId
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import {
   TITLE_PROPERTY_ID
-} from '@/core/property'
+} from '@dataview/core/property'
 import {
   createRecordId
-} from '@/engine/command/entityId'
+} from '@dataview/engine/command/entityId'
 import type {
   GroupEngine
-} from '@/engine'
+} from '@dataview/engine'
 import {
   move,
   readSectionRecordIds,
   recordIdsOfAppearances,
   type GroupNext,
   type Grouping
-} from '@/engine/projection/view'
+} from '@dataview/engine/projection/view'
 import {
   selection as selectionHelpers
 } from './selection'

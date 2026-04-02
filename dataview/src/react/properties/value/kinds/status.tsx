@@ -1,9 +1,9 @@
-import type { GroupProperty } from '@/core/contracts'
+import type { GroupProperty } from '@dataview/core/contracts'
 import {
   getPropertyDisplayValue,
   parsePropertyDraft
-} from '@/core/property'
-import { PropertyOptionTag } from '@/react/properties/options'
+} from '@dataview/core/property'
+import { PropertyOptionTag } from '@dataview/react/properties/options'
 import { StatusValueEditor } from '../editor/pickers/status/StatusValueEditor'
 import type { PropertyValueSpec } from './contracts'
 import {

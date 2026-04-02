@@ -7,26 +7,26 @@ import {
 import type {
   GroupProperty,
   GroupRecord
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import {
   resolveGroupTitleProperty
-} from '@/core/view'
+} from '@dataview/core/view'
 import {
   useCurrentView,
   useEngine
-} from '@/react/editor'
-import { useStoreValue } from '@/react/runtime/store'
+} from '@dataview/react/editor'
+import { useStoreValue } from '@dataview/react/runtime/store'
 import {
   closestTarget,
   interactiveSelector
-} from '@/react/dom/interactive'
+} from '@dataview/react/dom/interactive'
 import {
   move as currentViewMove
-} from '@/engine/projection/view'
+} from '@dataview/engine/projection/view'
 import {
   type AppearanceId,
   type CurrentView
-} from '@/react/view'
+} from '@dataview/react/view'
 import { useGalleryContext } from './context'
 import type { GalleryDropTarget } from './reorder'
 import {

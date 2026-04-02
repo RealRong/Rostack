@@ -2,10 +2,10 @@ import type {
   GroupProperty,
   GroupRecord,
   ViewId
-} from '@/core/contracts'
-import { CardContent } from '@/react/views/card'
-import { cn } from '@/react/ui'
-import type { AppearanceId } from '@/react/view'
+} from '@dataview/core/contracts'
+import { CardContent } from '@dataview/react/views/card'
+import { cn } from '@dataview/react/ui'
+import type { AppearanceId } from '@dataview/react/view'
 
 export const CardBody = (props: {
   appearanceId: AppearanceId

@@ -1,11 +1,11 @@
 import {
   type AppearanceId,
   type FieldId
-} from '@/react/view'
+} from '@dataview/react/view'
 import {
   pageScrollNode,
   type ScrollNode
-} from '@/react/dom/scroll'
+} from '@dataview/react/dom/scroll'
 import type { Nodes } from './registry'
 import type { TableLayout } from '../layout'
 

@@ -1,8 +1,8 @@
-import type { GroupProperty } from '@/core/contracts'
+import type { GroupProperty } from '@dataview/core/contracts'
 import type {
   EditInput,
   PropertyEditIntent
-} from '@/react/page/interaction'
+} from '@dataview/react/page/interaction'
 
 export interface PropertyValueEditorProps {
   property?: GroupProperty

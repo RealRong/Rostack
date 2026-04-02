@@ -1,7 +1,7 @@
 import type {
   GroupSortDirection,
   GroupSorter
-} from '@/core/contracts'
+} from '@dataview/core/contracts'
 import type { GroupViewQuery } from './contracts'
 import { cloneSorter, cloneViewQuery } from './shared'
 

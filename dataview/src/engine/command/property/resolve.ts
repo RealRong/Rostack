@@ -1,11 +1,11 @@
-import type { GroupBaseOperation } from '@/core/contracts/operations'
-import type { GroupDocument, GroupProperty, GroupPropertyOption } from '@/core/contracts/state'
+import type { GroupBaseOperation } from '@dataview/core/contracts/operations'
+import type { GroupDocument, GroupProperty, GroupPropertyOption } from '@dataview/core/contracts/state'
 import {
   getDocumentPropertyById,
   getDocumentProperties,
   getDocumentRecords,
   getDocumentViews
-} from '@/core/document'
+} from '@dataview/core/document'
 import {
   createUniquePropertyName,
   createUniquePropertyOptionToken,
@@ -16,10 +16,10 @@ import {
   replacePropertyOptions,
   TITLE_PROPERTY_ID,
   convertPropertyKindConfig
-} from '@/core/property'
+} from '@dataview/core/property'
 import {
   cloneGroupViewOptions
-} from '@/core/view'
+} from '@dataview/core/view'
 import type { IndexedCommand } from '../context'
 import { createPropertyId } from '../entityId'
 import { createIssue, hasValidationErrors, type GroupValidationIssue } from '../issues'

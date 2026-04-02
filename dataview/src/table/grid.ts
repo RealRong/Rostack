@@ -1,10 +1,10 @@
-import type { PropertyId } from '@/core/contracts'
+import type { PropertyId } from '@dataview/core/contracts'
 import type {
   AppearanceId,
   AppearanceList,
   FieldId,
   PropertyList
-} from '@/engine/projection/view'
+} from '@dataview/engine/projection/view'
 
 const emptyAppearanceIds = [] as readonly AppearanceId[]
 const emptyPropertyIds = [] as readonly PropertyId[]

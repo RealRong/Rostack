@@ -4,17 +4,17 @@ import {
   useState,
   type RefObject
 } from 'react'
-import { idsInRect } from '@/react/dom/geometry'
-import { useMarquee } from '@/react/runtime/marquee'
-import { useStoreValue } from '@/react/runtime/store'
+import { idsInRect } from '@dataview/react/dom/geometry'
+import { useMarquee } from '@dataview/react/runtime/marquee'
+import { useStoreValue } from '@dataview/react/runtime/store'
 import {
   type AppearanceId,
   type CurrentView,
   type Selection
-} from '@/react/view'
+} from '@dataview/react/view'
 import {
   selection as currentViewSelection
-} from '@/react/view/selection'
+} from '@dataview/react/view/selection'
 import { type BoardLayout } from '../drag'
 
 interface Options {

@@ -23,7 +23,7 @@ import {
 } from '@ui/vertical-reorder-list'
 import { cn } from '@ui/utils'
 import { useEngine } from '@dataview/react/editor'
-import type { PropertyEditIntent } from '@dataview/react/page/interaction'
+import type { PropertyEditIntent } from '@dataview/react/interaction'
 import type { PropertyValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@dataview/react/dom/focus'
 import {

@@ -27,7 +27,7 @@ import { useCurrentView, useEngine, usePageActions } from '@dataview/react/edito
 import { useTableContext } from '../../context'
 import { meta, renderMessage } from '@dataview/meta'
 import { PropertyKindPicker } from '@dataview/react/properties/schema'
-import { useStoreValue } from '@dataview/react/runtime/store'
+import { useStoreValue } from '@dataview/react/store'
 
 export interface ColumnHeaderProps {
   property: GroupProperty

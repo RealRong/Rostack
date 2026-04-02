@@ -1,44 +1,23 @@
 import type {
   PropertyId,
-  ViewId
 } from '@dataview/core/contracts'
 import type {
   PropertyEditIntent
-} from '@dataview/react/page/interaction'
+} from '@dataview/react/interaction'
 import type {
   AppearanceId,
   AppearanceList,
   FieldId,
   ViewFieldRef
 } from '@dataview/engine/projection/view'
+import {
+  fieldId,
+  fieldOf
+} from '@dataview/engine/projection/view'
 
 export interface FieldScope {
   appearanceIds: readonly AppearanceId[]
   propertyIds: readonly PropertyId[]
-}
-
-export const fieldId = (
-  field: Pick<ViewFieldRef, 'appearanceId' | 'propertyId'>
-): FieldId => ({
-  appearanceId: field.appearanceId,
-  propertyId: field.propertyId
-})
-
-export const fieldOf = (input: {
-  viewId: ViewId
-  field: FieldId
-  appearances?: Pick<AppearanceList, 'get'>
-}): ViewFieldRef | null => {
-  const recordId = input.appearances?.get(input.field.appearanceId)?.recordId
-
-  return recordId
-    ? {
-      viewId: input.viewId,
-      appearanceId: input.field.appearanceId,
-      recordId,
-      propertyId: input.field.propertyId
-    }
-    : null
 }
 
 const stepIndex = (
@@ -135,9 +114,9 @@ export const stepViewFieldByIntent = (input: {
 
   return next
     ? fieldOf({
-      viewId: input.field.viewId,
-      field: next,
-      appearances: input.appearances
-    })
+        viewId: input.field.viewId,
+        field: next,
+        appearances: input.appearances
+      })
     : null
 }

@@ -46,7 +46,6 @@ const createTransformSession = (
     ctx.write.preview.selection.setNodePatches(
       toTransformNodePatches(preview.nodePatches)
     )
-    ctx.write.preview.selection.setGuides(preview.guides)
   }
 
   return {
@@ -64,6 +63,7 @@ const createTransformSession = (
       }
     },
     cleanup: () => {
+      ctx.snap.clear()
       ctx.write.preview.selection.clearPreview()
     }
   }

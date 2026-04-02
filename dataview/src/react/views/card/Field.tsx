@@ -22,10 +22,10 @@ import {
 } from '@dataview/react/dom/field'
 import {
   stepViewFieldByIntent
-} from '@dataview/react/view/field'
+} from '@dataview/react/field/navigation'
 import type {
   ViewFieldRef
-} from '@dataview/react/view'
+} from '@dataview/engine/projection/view'
 import { useEditorContext } from '@dataview/react/editor/provider'
 import { cn } from '@ui/utils'
 

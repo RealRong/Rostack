@@ -1,4 +1,4 @@
-import type { AppearanceId } from '@dataview/react/view'
+import type { AppearanceId } from '@dataview/react/currentView'
 
 const emptyRowIds = [] as readonly AppearanceId[]
 type RowSelectionMode = 'replace' | 'toggle' | 'range'

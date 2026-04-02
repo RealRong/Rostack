@@ -9,11 +9,11 @@ import {
 } from '@dataview/engine/projection/view'
 import {
   type AppearanceId
-} from '@dataview/react/view'
+} from '@dataview/react/currentView'
 import { useCurrentView, useEngine } from '@dataview/react/editor'
 import { fieldAttrs } from '@dataview/react/dom/field'
 import { useTableContext } from '../../context'
-import { useKeyedStoreValue } from '@dataview/react/runtime/store'
+import { useKeyedStoreValue } from '@dataview/react/store'
 import { cn } from '@ui/utils'
 import { CellValue } from './CellValue'
 

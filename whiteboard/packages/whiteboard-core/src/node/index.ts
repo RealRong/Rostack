@@ -72,6 +72,7 @@ export {
 } from './move'
 export type {
   MoveCommit,
+  MoveEdgePlan,
   MoveEdgeChange,
   MoveEffect,
   MoveMember,
@@ -84,7 +85,6 @@ export {
   stepMoveSession
 } from './moveSession'
 export type {
-  MoveIntent,
   MoveSession,
   MoveSnapResolver,
   MoveStepResult

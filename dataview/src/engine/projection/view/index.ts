@@ -18,6 +18,8 @@ export {
   recordIdsOfAppearances
 } from './appearances'
 export {
+  fieldId,
+  fieldOf,
   replaceFieldProperty,
   sameField,
   sameViewField,

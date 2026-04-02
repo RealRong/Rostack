@@ -2,7 +2,7 @@ import {
   useMemo
 } from 'react'
 import { useViewportVersion } from '@dataview/react/dom/viewport'
-import type { AppearanceId } from '@dataview/react/view'
+import type { AppearanceId } from '@dataview/react/currentView'
 import {
   scrollViewport
 } from '@dataview/react/dom/scroll'

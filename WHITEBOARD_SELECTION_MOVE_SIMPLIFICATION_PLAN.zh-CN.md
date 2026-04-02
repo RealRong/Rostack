@@ -202,14 +202,34 @@ commit 不应该依赖 preview-only 状态。
 
 这说明它不是 move 的核心输出，而是一个 preview-only 的 UI 衍生状态。
 
-如果目前没有真正的“拖入 container 并改变 owner / frame 归属”的提交逻辑，那么把这个字段放在 core `MoveEffect` 里，语义上是偏重的。
+如果产品语义是：
 
-更合理的处理有两种：
+- move 过程中
+- 指针进入某个 frame
+- 这个 frame 就要高亮
 
-1. 如果这个高亮没有产品价值，直接删掉。
-2. 如果这个高亮有价值，就把它从 `MoveEffect` 里拆出来，改成明确的 preview 附加字段，例如：
+那么这个能力应该被定义成：
+
+- drop target preview
+
+而不是：
+
+- move effect 的一部分
+
+也就是说，它不应该继续以 `MoveEffect.hovered` 这种形式挂在 move 几何结果里。
+
+更合理的处理是：
+
+1. 保留这个高亮能力。
+2. 但把它从 `MoveEffect` 里拆出去。
+3. 改成明确的 drop target preview 字段，例如：
+   - `frameHoverId`
+   - `dropTargetId`
    - `containerHoverId`
-   - `previewContainerId`
+
+如果当前目标就是 frame 高亮，我最推荐直接叫：
+
+- `frameHoverId`
 
 不建议继续沿用 `hovered` 这个名字，因为它太泛，不知道 hover 的到底是谁、为什么 hover、是否影响 commit。
 
@@ -280,13 +300,23 @@ selection move 只需要提供：
 
 建议优先级：
 
-1. 如果没有稳定产品价值，删除。
-2. 如果要保留，就从 core move 的主 effect 模型中拆出去。
+1. 保留它的产品能力。
+2. 但从 core move 的主 effect 模型中拆出去。
+3. 改成独立的 drop target preview 字段，例如 `frameHoverId`。
 
 更清晰的方案是：
 
 - `MoveEffect` 只保留位移结果
-- container hover 作为 editor preview 层的附加计算结果
+- `frameHoverId` 作为 editor preview 层的附加计算结果
+
+更进一步，建议把这部分能力显式抽成一个独立模块，例如：
+
+- `resolveMoveDropTarget`
+- 或 `resolveMoveFrameHover`
+
+它只负责回答一个问题：
+
+- 当前 pointer 下，应该高亮哪个 frame
 
 ### 5. 评估 `selectedEdges` / `relatedEdges` 的命名
 
@@ -400,7 +430,7 @@ move(nodes, edges, delta)
 - snap policy 解析
 - preview overlay 写入
 - document commit
-- container hover 这类 UI 衍生反馈
+- frame hover / drop target 这类 UI 衍生反馈
 
 也就是说，它应该是：
 
@@ -489,6 +519,40 @@ type MoveProjection = {
 - `buildMoveCommit`
 
 三者都可以是纯模块，但职责不要混。
+
+## drop target preview 的推荐边界
+
+如果 frame 高亮是明确要保留的交互反馈，建议把它定义成独立于 move geometry 的第四层：
+
+### `resolveMoveDropTarget`
+
+输入：
+
+- `pointerWorld`
+- `nodes`
+- `excludeIds`
+
+输出：
+
+- `frameHoverId`
+
+它只负责：
+
+- 根据当前 pointer 命中结果决定应该高亮哪个 frame
+
+它不负责：
+
+- node / edge 几何投影
+- snap
+- document commit
+
+如果以后真的要支持拖入 frame 后改变 owner / frame 归属，再在这个基础上补一层：
+
+- candidate
+- accept
+- commit
+
+但在当前阶段，只做 `frameHoverId` 这层 preview 反馈就够了。
 
 ## snap 模块的推荐边界
 
@@ -588,7 +652,21 @@ selection move 不需要再直接关心：
 
 它只负责纯几何结果。
 
-### 3. `buildMoveCommit`
+### 3. `resolveMoveDropTarget`
+
+输入：
+
+- `pointerWorld`
+- `nodes`
+- `excludeIds`
+
+输出：
+
+- `frameHoverId`
+
+它只负责 frame 高亮这类 drop target preview。
+
+### 4. `buildMoveCommit`
 
 输入：
 
@@ -644,13 +722,13 @@ selection move 不需要再直接关心：
 
 - `guides`
 
+### drop target preview 输出
+
+- `frameHoverId`
+
 ### interaction end
 
 - `snap.clear()`
-
-### 可选 preview 附加输出
-
-- `containerHoverId`
 
 ### commit 输出
 
@@ -660,7 +738,7 @@ selection move 不需要再直接关心：
 这个模型的重点是：
 
 - core move 输出“真实位移结果”
-- UI hover 输出“纯反馈信息”
+- drop target preview 输出“纯反馈信息”
 - 两者不混在一个暧昧的 effect 语义里
 - edge 的显示解算和 edge 的文档写入明确分层
 - selection move 只消费 `snapped rect`，不直接管理 snap guides
@@ -683,9 +761,10 @@ selection move 不需要再直接关心：
 目标：
 
 - 明确它是 preview-only 语义
-- 评估是否应该保留
+- 改成独立的 `frameHoverId`
+- 下沉到独立的 drop target preview 解析
 
-如果发现现在只有高亮，没有任何真实 drop/归属提交逻辑，这一步很值得做。
+如果当前阶段还没有真实 drop/归属提交逻辑，这一步尤其值得先做，因为它可以先把“高亮反馈”和“几何结果”彻底分开。
 
 ### Phase 3: 收敛 snap 模型
 
@@ -716,7 +795,7 @@ selection move 不需要再直接关心：
 
 也就是说：
 
-- move 不要假装自己还负责 container hover 语义
+- move 不要假装自己还负责 frame hover 语义
 - snap 不要把策略细节暴露给 selection move
 - snap 的 transient 展示状态要由自己收尾
 - preview 不要和 commit 混成一个 effect 心智模型
@@ -727,7 +806,7 @@ selection move 不需要再直接关心：
 
 1. 保留当前 editor 交互主线，不重写。
 2. 在 core move 层先删 `MoveIntent` 和 `MoveSession.target`。
-3. 把 `MoveEffect.hovered` 视为可选的 preview 衍生信息，而不是 move 本体。
+3. 把 `MoveEffect.hovered` 改造成独立的 `frameHoverId` / drop target preview。
 4. 把 `allowCross` 视为 snap policy 内部策略，而不是 selection move 概念。
 5. 让 interaction 结束时显式调用 `snap.clear()`，但只清 snap 自己的状态。
 6. 不动 `MoveSet`、edge follow、selected edge translate 这些真正承载业务语义的部分。
@@ -749,7 +828,7 @@ build move set
 这份方案对应的代码改造顺序建议是：
 
 1. 先做 `MoveIntent` / `MoveSession.target` 删除。
-2. 再决定 `hovered` 是删除还是下沉到 preview 层。
+2. 再把 `hovered` 改造成独立的 `frameHoverId` / drop target preview。
 3. 最后把 snap policy、guide 管理、`snap.clear()` 生命周期和 selection move 主流程拆清楚。
 
 这样每一步都很小，回归面也可控。

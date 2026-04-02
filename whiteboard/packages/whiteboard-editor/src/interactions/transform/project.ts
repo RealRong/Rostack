@@ -20,7 +20,6 @@ const RESIZE_MIN_SIZE = {
 }
 
 const ZOOM_EPSILON = 0.0001
-const EMPTY_GUIDES: TransformPreview['guides'] = []
 
 const projectResizeFrame = (input: {
   ctx: TransformInteractionCtx
@@ -48,10 +47,7 @@ const projectResizeFrame = (input: {
     disabled: input.pointer.modifiers.alt || input.drag.startRotation !== 0
   })
 
-  return {
-    guides: snapped.guides,
-    nextRect: getResizeUpdateRect(snapped.update)
-  }
+  return getResizeUpdateRect(snapped)
 }
 
 const projectSingleResize = (input: {
@@ -59,7 +55,7 @@ const projectSingleResize = (input: {
   plan: Extract<TransformPlan, { kind: 'single-resize' }>
   pointer: TransformPointerInput
 }): TransformPreview => {
-  const frame = projectResizeFrame({
+  const nextRect = projectResizeFrame({
     ctx: input.ctx,
     drag: input.plan.drag,
     pointer: input.pointer,
@@ -67,16 +63,15 @@ const projectSingleResize = (input: {
   })
 
   return {
-    guides: frame.guides,
     nodePatches: [{
       id: input.plan.target.id,
       position: {
-        x: frame.nextRect.x,
-        y: frame.nextRect.y
+        x: nextRect.x,
+        y: nextRect.y
       },
       size: {
-        width: frame.nextRect.width,
-        height: frame.nextRect.height
+        width: nextRect.width,
+        height: nextRect.height
       }
     }]
   }
@@ -87,7 +82,7 @@ const projectMultiScale = (input: {
   plan: Extract<TransformPlan, { kind: 'multi-scale' }>
   pointer: TransformPointerInput
 }): TransformPreview => {
-  const frame = projectResizeFrame({
+  const nextRect = projectResizeFrame({
     ctx: input.ctx,
     drag: input.plan.drag,
     pointer: input.pointer,
@@ -95,10 +90,9 @@ const projectMultiScale = (input: {
   })
 
   return {
-    guides: frame.guides,
     nodePatches: projectResizePatches({
       startRect: input.plan.box,
-      nextRect: frame.nextRect,
+      nextRect,
       members: input.plan.targets
     })
   }
@@ -108,7 +102,6 @@ const projectSingleRotate = (input: {
   plan: Extract<TransformPlan, { kind: 'single-rotate' }>
   pointer: TransformPointerInput
 }): TransformPreview => ({
-  guides: EMPTY_GUIDES,
   nodePatches: [{
     id: input.plan.target.id,
     rotation: computeNextRotation({

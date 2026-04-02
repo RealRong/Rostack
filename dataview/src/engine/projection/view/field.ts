@@ -40,6 +40,30 @@ export const sameViewField = (
   && sameField(left, right)
 )
 
+export const fieldId = (
+  field: Pick<ViewFieldRef, 'appearanceId' | 'propertyId'>
+): FieldId => ({
+  appearanceId: field.appearanceId,
+  propertyId: field.propertyId
+})
+
+export const fieldOf = (input: {
+  viewId: ViewId
+  field: FieldId
+  appearances?: Pick<AppearanceList, 'get'>
+}): ViewFieldRef | null => {
+  const recordId = input.appearances?.get(input.field.appearanceId)?.recordId
+
+  return recordId
+    ? {
+        viewId: input.viewId,
+        appearanceId: input.field.appearanceId,
+        recordId,
+        propertyId: input.field.propertyId
+      }
+    : null
+}
+
 export const replaceFieldProperty = (
   field: ViewFieldRef,
   propertyId: PropertyId

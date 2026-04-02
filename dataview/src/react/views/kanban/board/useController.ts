@@ -26,7 +26,7 @@ import {
 import {
   type AppearanceId,
   type CurrentView
-} from '@dataview/react/view'
+} from '@dataview/react/currentView'
 import {
   type Kanban,
   useKanbanContext

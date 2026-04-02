@@ -1,16 +1,20 @@
 import type {
   CurrentView,
+} from '@dataview/react/currentView'
+import type {
   FieldId,
   ViewFieldRef
-} from '@dataview/react/view'
-import type { PropertyEditApi, ValueEditorResult } from '@dataview/react/propertyEdit'
+} from '@dataview/engine/projection/view'
+import type { PropertyEditApi, ValueEditorResult } from '@dataview/react/page/valueEditor'
 import { ownerDocumentOf, resolveFieldAnchor } from '@dataview/react/dom/field'
 import {
   fieldId,
-  fieldOf,
+  fieldOf
+} from '@dataview/engine/projection/view'
+import {
   stepViewFieldByIntent,
   type FieldScope
-} from '@dataview/react/view/field'
+} from '@dataview/react/field/navigation'
 import type { GridSelectionStore } from './gridSelection'
 import type { Dom } from './dom'
 

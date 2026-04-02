@@ -12,7 +12,7 @@ import {
 import {
   useKeyedStoreValue,
   useStoreValue
-} from '@dataview/react/runtime/store'
+} from '@dataview/react/store'
 import { useEngine } from './useEngine'
 import { usePageValue } from './usePage'
 

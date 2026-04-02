@@ -8,18 +8,18 @@ import {
   type AppearanceId,
   type CurrentView,
   type Selection
-} from '@dataview/react/view'
+} from '@dataview/react/currentView'
 import {
   emptySelection,
   selection
-} from '@dataview/react/view/selection'
+} from '@dataview/react/currentView/selection'
 import {
   closestTarget,
   interactiveSelector
 } from '@dataview/react/dom/interactive'
 import { useCurrentView } from '@dataview/react/editor'
-import { useStoreValue } from '@dataview/react/runtime/store'
-import { useMarquee } from '@dataview/react/runtime/marquee'
+import { useStoreValue } from '@dataview/react/store'
+import { useMarquee } from '@dataview/react/interaction/useMarquee'
 import {
   rowMarqueeMode,
   rowMarqueeState,

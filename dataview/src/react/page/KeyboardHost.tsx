@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { keyDown } from '@dataview/react/page/interaction'
+import { keyDown } from '@dataview/react/interaction'
 import { useCurrentView, useEngine, usePageValue } from '@dataview/react/editor'
 import { closestTarget } from '@dataview/react/dom/interactive'
 import { pageShortcutAction } from './keyboard'

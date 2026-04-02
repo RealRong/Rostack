@@ -9,7 +9,7 @@ import {
   closestCenter,
   DndContext
 } from '@dnd-kit/core'
-import { modifiers } from '@dataview/react/page/interaction'
+import { modifiers } from '@dataview/react/interaction'
 import { DragGhost } from '@dataview/react/dom/dragGhost'
 import { hasInteractiveTarget } from '@dataview/react/dom/interactive'
 import {
@@ -17,8 +17,8 @@ import {
   useEngine,
   usePageValue
 } from '@dataview/react/editor'
-import { useStoreValue } from '@dataview/react/runtime/store'
-import { type FieldId } from '@dataview/react/view'
+import { useStoreValue } from '@dataview/react/store'
+import { type FieldId } from '@dataview/react/currentView'
 import { applyPaste, handleTableKey } from '../../input'
 import {
   gridContentBounds,

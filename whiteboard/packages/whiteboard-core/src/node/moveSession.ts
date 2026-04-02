@@ -13,45 +13,32 @@ import {
   buildMoveSet,
   projectMovePreview,
   type MoveCommit,
+  type MoveEdgePlan,
   type MoveEffect,
   type MoveSet
 } from './move'
 import { getNodeAABB } from '../geometry'
-import type { Guide } from './snap'
-
-export type MoveIntent = {
-  target: SelectionTarget
-}
 
 export type MoveSession = {
-  target: SelectionTarget
   nodes: readonly Node[]
   move: MoveSet
+  edgePlan: MoveEdgePlan
   bounds: Rect
   origin: Point
   startWorld: Point
   delta: Point
-  selectedEdges: readonly Edge[]
-  relatedEdges: readonly Edge[]
   nodeSize: Size
 }
 
 export type MoveSnapResolver = (input: {
   rect: Rect
   excludeIds: readonly NodeId[]
-  allowCross: boolean
-}) => {
-  rect: Rect
-  guides: readonly Guide[]
-}
+}) => Rect
 
 export type MoveStepResult = {
   session: MoveSession
   preview: MoveEffect
-  guides: readonly Guide[]
 }
-
-const EMPTY_GUIDES: readonly Guide[] = []
 
 const getMoveBounds = (
   nodes: readonly Node[],
@@ -74,13 +61,13 @@ const getMoveBounds = (
 export const startMoveSession = (input: {
   nodes: readonly Node[]
   edges: readonly Edge[]
-  intent: MoveIntent
+  target: SelectionTarget
   startWorld: Point
   nodeSize: Size
 }): MoveSession | null => {
   const move = buildMoveSet({
     nodes: input.nodes,
-    ids: input.intent.target.nodeIds,
+    ids: input.target.nodeIds,
     nodeSize: input.nodeSize
   })
   if (!move.members.length) {
@@ -92,12 +79,15 @@ export const startMoveSession = (input: {
     return null
   }
 
-  const selectedEdgeIds = new Set(input.intent.target.edgeIds)
+  const draggedEdgeIds = new Set(input.target.edgeIds)
 
   return {
-    target: input.intent.target,
     nodes: input.nodes,
     move,
+    edgePlan: {
+      dragged: input.edges.filter((edge) => draggedEdgeIds.has(edge.id)),
+      follow: input.edges.filter((edge) => !draggedEdgeIds.has(edge.id))
+    },
     bounds,
     origin: {
       x: bounds.x,
@@ -108,8 +98,6 @@ export const startMoveSession = (input: {
       x: 0,
       y: 0
     },
-    selectedEdges: input.edges.filter((edge) => selectedEdgeIds.has(edge.id)),
-    relatedEdges: input.edges.filter((edge) => !selectedEdgeIds.has(edge.id)),
     nodeSize: input.nodeSize
   }
 }
@@ -117,7 +105,6 @@ export const startMoveSession = (input: {
 export const stepMoveSession = (input: {
   session: MoveSession
   pointerWorld: Point
-  allowCross: boolean
   snap?: MoveSnapResolver
 }): MoveStepResult => {
   const { session } = input
@@ -128,18 +115,20 @@ export const stepMoveSession = (input: {
     height: session.bounds.height
   }
   const snapped = input.snap
-    ? input.snap({
+    ? {
         rect: rawRect,
-        excludeIds: session.move.members.map((member) => member.id),
-        allowCross: input.allowCross
-      })
+        snappedRect: input.snap({
+          rect: rawRect,
+          excludeIds: session.move.members.map((member) => member.id)
+        })
+      }
     : {
         rect: rawRect,
-        guides: EMPTY_GUIDES
+        snappedRect: rawRect
       }
   const delta = {
-    x: snapped.rect.x - session.origin.x,
-    y: snapped.rect.y - session.origin.y
+    x: snapped.snappedRect.x - session.origin.x,
+    y: snapped.snappedRect.y - session.origin.y
   }
   const nextSession = {
     ...session,
@@ -150,13 +139,11 @@ export const stepMoveSession = (input: {
     session: nextSession,
     preview: projectMovePreview({
       nodes: session.nodes,
-      relatedEdges: session.relatedEdges,
-      selectedEdges: session.selectedEdges,
+      edgePlan: session.edgePlan,
       move: session.move,
       delta,
       nodeSize: session.nodeSize
-    }),
-    guides: snapped.guides
+    })
   }
 }
 
@@ -164,5 +151,5 @@ export const finishMoveSession = (
   session: MoveSession
 ): MoveCommit => buildMoveCommit({
     delta: session.delta,
-    selectedEdges: session.selectedEdges
+    edgePlan: session.edgePlan
   })

@@ -9,7 +9,7 @@ import type {
 import type {
   AppearanceId,
   Section as ViewSection
-} from '@dataview/react/view'
+} from '@dataview/react/currentView'
 import { useVirtualSections } from '../../hooks/useVirtualSections'
 import { Section } from './Section'
 

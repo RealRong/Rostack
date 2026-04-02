@@ -9,7 +9,7 @@ import {
 import type { PropertyId } from '@dataview/core/contracts'
 import { disableUserSelect } from '@dataview/react/dom/selection'
 import { useCurrentView, useEngine } from '@dataview/react/editor'
-import { useStoreValue } from '@dataview/react/runtime/store'
+import { useStoreValue } from '@dataview/react/store'
 import { closestTableTargetElement } from '../dom/targets'
 import { useTableContext } from '../context'
 import { MIN_COLUMN_WIDTH } from '../layout'

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, type RefObject } from 'react'
-import type { SectionKey } from '@dataview/react/view'
+import type { SectionKey } from '@dataview/react/currentView'
 import {
   readBoardLayout,
   type BoardLayout,

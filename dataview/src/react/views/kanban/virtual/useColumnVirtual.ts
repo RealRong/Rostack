@@ -7,7 +7,7 @@ import {
   type RefObject
 } from 'react'
 import { useViewportVersion } from '@dataview/react/dom/viewport'
-import type { AppearanceId } from '@dataview/react/view'
+import type { AppearanceId } from '@dataview/react/currentView'
 
 const DEFAULT_CARD_HEIGHT = 96
 const DEFAULT_GAP = 8

@@ -5,13 +5,13 @@ import {
 } from 'react'
 import {
   selection
-} from '@dataview/react/view/selection'
+} from '@dataview/react/currentView/selection'
 import type {
   AppearanceId
-} from '@dataview/react/view'
+} from '@dataview/react/currentView'
 import { useCurrentView } from '@dataview/react/editor'
 import { useTableContext } from '../../context'
-import { useStoreValue } from '@dataview/react/runtime/store'
+import { useStoreValue } from '@dataview/react/store'
 import { RowSelectionButton, TableLeadingRail } from './RowRail'
 
 export interface RowScopeSelectionRailProps {

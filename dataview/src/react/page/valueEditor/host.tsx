@@ -15,17 +15,17 @@ import {
   useEngine
 } from '@dataview/react/editor'
 import { useEditorContext } from '@dataview/react/editor/provider'
-import type { EditInput } from '@dataview/react/page/interaction'
+import type { EditInput } from '@dataview/react/interaction'
 import {
   type PropertyEditSession,
   type ValueEditorResult,
-} from '@dataview/react/propertyEdit'
+} from './types'
 import {
   BLOCKING_SURFACE_ATTR,
   useBlockingSurface
 } from '@ui/blocking-surface'
 import { PopoverContainerProvider } from '@ui/popover'
-import { useStoreValue } from '@dataview/react/runtime/store'
+import { useStoreValue } from '@dataview/react/store'
 
 const PANEL_MIN_WIDTH = 180
 const PANEL_WIDTHS = {

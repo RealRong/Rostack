@@ -5,7 +5,7 @@ import {
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import { cloneDragGhostNode } from '@dataview/react/dom/dragGhost'
-import type { AppearanceId } from '@dataview/react/view'
+import type { AppearanceId } from '@dataview/react/currentView'
 import {
   rowDragIds,
   rowSelectionTarget,
@@ -15,8 +15,8 @@ import {
   type TableRowReorderHint
 } from '@dataview/table'
 import { useCurrentView } from '@dataview/react/editor'
-import { useStoreValue } from '@dataview/react/runtime/store'
-import { usePointerDragSession } from '@dataview/react/runtime/interaction/usePointerDragSession'
+import { useStoreValue } from '@dataview/react/store'
+import { usePointerDragSession } from '@dataview/react/interaction/usePointerDragSession'
 import { useTableContext } from '../context'
 
 export interface RowReorderOverlayModel {

@@ -40,6 +40,45 @@ type SelectionInteractionCtx = Pick<
   'read' | 'write' | 'config' | 'snap'
 >
 
+const findParentFrameId = (
+  ctx: SelectionInteractionCtx,
+  nodeId: string
+) => {
+  let currentOwnerId = ctx.read.node.owner(nodeId)
+
+  while (currentOwnerId) {
+    const owner = ctx.read.index.node.get(currentOwnerId)?.node
+    if (!owner) {
+      return undefined
+    }
+    if (owner.type === 'frame') {
+      return owner.id
+    }
+
+    currentOwnerId = ctx.read.node.owner(owner.id)
+  }
+
+  return undefined
+}
+
+const resolveFrameHoverId = (
+  ctx: SelectionInteractionCtx,
+  session: Parameters<typeof finishMoveSession>[0],
+  pointerWorld: {
+    x: number
+    y: number
+  }
+) => {
+  const movingIds = new Set(session.move.members.map((member) => member.id))
+  let frameId = ctx.read.frame.at(pointerWorld)
+
+  while (frameId && movingIds.has(frameId)) {
+    frameId = findParentFrameId(ctx, frameId)
+  }
+
+  return frameId
+}
+
 type MoveInteractionInput = {
   start: PointerDownInput
   target: SelectionTarget
@@ -59,9 +98,7 @@ export const createMoveInteraction = (
     edges: ctx.read.edge.list.get()
       .map((edgeId) => ctx.read.edge.item.get(edgeId)?.edge)
       .filter((edge): edge is Edge => Boolean(edge)),
-    intent: {
-      target: input.target
-    },
+    target: input.target,
     startWorld: input.start.world,
     nodeSize: ctx.config.nodeSize
   })
@@ -73,38 +110,38 @@ export const createMoveInteraction = (
   if (input.prepareSelection) {
     ctx.write.session.selection.replace(input.prepareSelection)
   }
-  let allowCross = false
+  let modifiers = input.start.modifiers
 
   const project = (input: {
     world: {
       x: number
       y: number
     }
-    allowCross: boolean
+    modifiers: PointerDownInput['modifiers']
   }) => {
-    allowCross = input.allowCross
+    modifiers = input.modifiers
     const result = stepMoveSession({
       session,
       pointerWorld: input.world,
-      allowCross: input.allowCross,
       snap: ctx.read.tool.is('select')
-        ? ({ rect, excludeIds, allowCross }) => ctx.snap.node.move({
+        ? ({ rect, excludeIds }) => ctx.snap.node.move({
             rect,
             excludeIds,
-            allowCross
+            modifiers: input.modifiers
           })
         : undefined
     })
 
     session = result.session
     ctx.write.preview.selection.setNodePatches(
-      toMoveNodePatches(result),
-      result.preview.hovered
+      toMoveNodePatches(result)
     )
     ctx.write.preview.selection.setEdgePatches(
       toMoveEdgePatches(result)
     )
-    ctx.write.preview.selection.setGuides(result.guides)
+    ctx.write.preview.selection.setFrameHover(
+      resolveFrameHoverId(ctx, session, input.world)
+    )
   }
 
   ctx.write.preview.selection.clearPreview()
@@ -117,14 +154,14 @@ export const createMoveInteraction = (
       frame: (pointer) => {
         project({
           world: ctx.read.viewport.pointer(pointer).world,
-          allowCross
+          modifiers
         })
       }
     },
     move: (next) => {
       project({
         world: next.world,
-        allowCross: next.modifiers.alt
+        modifiers: next.modifiers
       })
     },
     up: () => {
@@ -144,6 +181,7 @@ export const createMoveInteraction = (
       return FINISH
     },
     cleanup: () => {
+      ctx.snap.clear()
       ctx.write.preview.selection.clearPreview()
     }
   }

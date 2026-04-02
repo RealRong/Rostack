@@ -78,6 +78,13 @@ export const createEditor = ({
     overlay,
     viewport: runtime.public.viewport
   })
+  const write = createEditorWrite({
+    engine,
+    read,
+    runtime,
+    overlay,
+    insertPresetCatalog
+  })
   const snap = createSnapRuntime({
     readZoom: () => runtime.public.viewport.get().zoom,
     node: {
@@ -88,14 +95,8 @@ export const createEditor = ({
       config: engine.config.edge,
       nodeSize: engine.config.nodeSize,
       query: read.edge.connectCandidates
-    }
-  })
-  const write = createEditorWrite({
-    engine,
-    read,
-    runtime,
-    overlay,
-    insertPresetCatalog
+    },
+    writeGuides: write.preview.selection.setGuides
   })
   const nodeTextCommands = {
     preview: ({ nodeId, size }) => {

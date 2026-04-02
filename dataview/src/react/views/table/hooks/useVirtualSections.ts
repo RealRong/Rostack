@@ -3,7 +3,7 @@ import {
 } from 'react'
 import type {
   Section
-} from '@dataview/react/view'
+} from '@dataview/react/currentView'
 import { useViewportVersion } from '@dataview/react/dom/viewport'
 import {
   scrollViewport

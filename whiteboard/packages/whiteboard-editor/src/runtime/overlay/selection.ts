@@ -56,7 +56,7 @@ export const isSelectionOverlayStateEqual = (
   right: SelectionOverlayState
 ) => (
   left.node.patches === right.node.patches
-  && left.node.hovered === right.node.hovered
+  && left.node.frameHoverId === right.node.frameHoverId
   && left.edge === right.edge
   && isMarqueeEqual(left.marquee, right.marquee)
   && left.guides === right.guides
@@ -78,7 +78,7 @@ export const normalizeSelectionOverlayState = (
 
   if (
     nodePatches === EMPTY_NODE_PATCHES
-    && state.node.hovered === undefined
+    && state.node.frameHoverId === undefined
     && edge === EMPTY_EDGE_PATCHES
     && guides === EMPTY_GUIDES
     && marquee === undefined
@@ -88,11 +88,11 @@ export const normalizeSelectionOverlayState = (
 
   return {
     node:
-      nodePatches === EMPTY_NODE_PATCHES && state.node.hovered === undefined
+      nodePatches === EMPTY_NODE_PATCHES && state.node.frameHoverId === undefined
         ? EMPTY_NODE_SELECTION_OVERLAY
         : {
             patches: nodePatches,
-            hovered: state.node.hovered
+            frameHoverId: state.node.frameHoverId
           },
     edge,
     marquee,

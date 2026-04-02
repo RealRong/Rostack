@@ -1,5 +1,5 @@
 import type { GroupRecord } from '@dataview/core/contracts'
-import type { AppearanceId } from '@dataview/react/view'
+import type { AppearanceId } from '@dataview/react/currentView'
 import { CardContent } from '@dataview/react/views/card'
 import { cn } from '@ui/utils'
 import { useBoardContext } from '../board'

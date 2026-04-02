@@ -14,10 +14,10 @@ import {
 } from '@dataview/runtime/store'
 import {
   createCurrentViewStore,
-} from '@dataview/react/view/currentViewStore'
+} from '@dataview/react/currentView/store'
 import type {
   CurrentView
-} from '@dataview/react/view'
+} from '@dataview/react/currentView'
 import {
   createResolvedPageStateStore,
 } from '@dataview/react/page/session/state'
@@ -37,7 +37,7 @@ import type {
   ValueEditorAnchor,
   ValueEditorResult,
   ViewFieldRef
-} from '@dataview/react/propertyEdit/types'
+} from '@dataview/react/page/valueEditor'
 
 export interface EngineProviderProps {
   engine: GroupEngine

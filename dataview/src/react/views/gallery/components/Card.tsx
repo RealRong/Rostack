@@ -5,7 +5,7 @@ import type {
 } from '@dataview/core/contracts'
 import { shouldCapturePointer } from '@dataview/react/dom/interactive'
 import { cn } from '@ui/utils'
-import type { AppearanceId } from '@dataview/react/view'
+import type { AppearanceId } from '@dataview/react/currentView'
 import { CardBody } from './CardBody'
 
 export const Card = (props: {

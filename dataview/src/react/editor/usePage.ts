@@ -11,7 +11,7 @@ import type {
 import {
   useExternalValue,
   useStoreValue
-} from '@dataview/react/runtime/store'
+} from '@dataview/react/store'
 import { useEditorContext } from './provider'
 
 export const usePage = (): ResolvedPageState => {

@@ -1,3 +1,4 @@
+export { PropertyValueEditorHost } from './host'
 export type {
   CloseValueEditorOptions,
   OpenValueEditorInput,

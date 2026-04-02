@@ -15,7 +15,7 @@ import {
   useCurrentView,
   useEngine
 } from '@dataview/react/editor'
-import { useStoreValue } from '@dataview/react/runtime/store'
+import { useStoreValue } from '@dataview/react/store'
 import {
   closestTarget,
   interactiveSelector
@@ -26,7 +26,7 @@ import {
 import {
   type AppearanceId,
   type CurrentView
-} from '@dataview/react/view'
+} from '@dataview/react/currentView'
 import { useGalleryContext } from './context'
 import type { GalleryDropTarget } from './reorder'
 import {

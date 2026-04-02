@@ -6,7 +6,7 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import { cn } from '@ui/utils'
-import type { AppearanceId } from '@dataview/react/view'
+import type { AppearanceId } from '@dataview/react/currentView'
 import { CardBody } from './CardBody'
 
 export const Overlay = (props: {

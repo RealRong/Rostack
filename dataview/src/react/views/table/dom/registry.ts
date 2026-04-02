@@ -2,7 +2,7 @@ import type { PropertyId } from '@dataview/core/contracts'
 import type {
   AppearanceId,
   FieldId
-} from '@dataview/react/view'
+} from '@dataview/react/currentView'
 
 const cellKey = (cell: {
   appearanceId: AppearanceId

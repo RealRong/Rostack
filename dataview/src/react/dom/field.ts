@@ -1,4 +1,4 @@
-import type { ViewFieldRef } from '@dataview/react/view'
+import type { ViewFieldRef } from '@dataview/engine/projection/view'
 
 export interface FieldAnchor {
   x: number

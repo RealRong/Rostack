@@ -131,17 +131,33 @@ export const createPreviewWrite = ({
     }
   },
   selection: {
-    setNodePatches: (patches, hovered) => {
+    setNodePatches: (patches) => {
       overlay.set((current) => ({
         ...current,
         selection: {
           ...current.selection,
           node: {
-            patches,
-            hovered
+            ...current.selection.node,
+            patches
           }
         }
       }))
+    },
+    setFrameHover: (frameHoverId) => {
+      overlay.set((current) => (
+        current.selection.node.frameHoverId === frameHoverId
+          ? current
+          : {
+              ...current,
+              selection: {
+                ...current.selection,
+                node: {
+                  ...current.selection.node,
+                  frameHoverId
+                }
+              }
+            }
+      ))
     },
     setEdgePatches: (patches) => {
       overlay.set((current) => ({
@@ -177,20 +193,20 @@ export const createPreviewWrite = ({
     clearPreview: () => {
       overlay.set((current) => (
         current.selection.node.patches.length === 0
-        && current.selection.node.hovered === undefined
+        && current.selection.node.frameHoverId === undefined
         && current.selection.edge.length === 0
         && current.selection.guides.length === 0
           ? current
           : {
               ...current,
               selection: {
-                ...current.selection,
-                node: {
-                  patches: EMPTY_NODE_PATCHES,
-                  hovered: undefined
-                },
-                edge: EMPTY_EDGE_PATCHES,
-                guides: EMPTY_GUIDES
+              ...current.selection,
+              node: {
+                patches: EMPTY_NODE_PATCHES,
+                frameHoverId: undefined
+              },
+              edge: EMPTY_EDGE_PATCHES,
+              guides: EMPTY_GUIDES
               }
             }
       ))
@@ -198,7 +214,7 @@ export const createPreviewWrite = ({
     clearTransient: () => {
       overlay.set((current) => (
         current.selection.node.patches.length === 0
-        && current.selection.node.hovered === undefined
+        && current.selection.node.frameHoverId === undefined
         && current.selection.edge.length === 0
         && current.selection.marquee === undefined
         && current.selection.guides.length === 0
@@ -208,7 +224,7 @@ export const createPreviewWrite = ({
               selection: {
                 node: {
                   patches: EMPTY_NODE_PATCHES,
-                  hovered: undefined
+                  frameHoverId: undefined
                 },
                 edge: EMPTY_EDGE_PATCHES,
                 guides: EMPTY_GUIDES

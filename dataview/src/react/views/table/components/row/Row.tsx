@@ -6,12 +6,12 @@ import {
 import type {
   AppearanceId,
   CurrentView
-} from '@dataview/react/view'
+} from '@dataview/react/currentView'
 import { shouldCapturePointer } from '@dataview/react/dom/interactive'
 import { useCurrentView } from '@dataview/react/editor'
 import { rowRailState } from '../../model/rowRail'
 import { useTableContext } from '../../context'
-import { useKeyedStoreValue, useStoreValue } from '@dataview/react/runtime/store'
+import { useKeyedStoreValue, useStoreValue } from '@dataview/react/store'
 import { cn } from '@ui/utils'
 import { Cell } from '../cell/Cell'
 import { RowRail } from './RowRail'

@@ -1,8 +1,8 @@
-import type { KeyInput } from '@dataview/react/page/interaction'
+import type { KeyInput } from '@dataview/react/interaction'
 import {
   type CurrentView,
   type FieldId
-} from '@dataview/react/view'
+} from '@dataview/react/currentView'
 import type {
   GroupEngine
 } from '@dataview/engine'
@@ -12,7 +12,7 @@ import {
 } from '@dataview/engine/projection/view'
 import {
   selection as rowSelection
-} from '@dataview/react/view/selection'
+} from '@dataview/react/currentView/selection'
 import {
   gridKeyAction,
   isSelectAll,

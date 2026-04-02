@@ -1,4 +1,4 @@
-import type { PropertyEditIntent } from '@dataview/react/page/interaction'
+import type { PropertyEditIntent } from '@dataview/react/interaction'
 import type { ViewFieldRef } from '@dataview/engine/projection/view'
 
 export type { ViewFieldRef } from '@dataview/engine/projection/view'

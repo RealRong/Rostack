@@ -343,10 +343,8 @@ export type EditorPreviewWrite = {
     }
   }
   selection: {
-    setNodePatches: (
-      patches: readonly NodePatchEntry[],
-      hovered?: NodeId
-    ) => void
+    setNodePatches: (patches: readonly NodePatchEntry[]) => void
+    setFrameHover: (frameHoverId?: NodeId) => void
     setEdgePatches: (patches: readonly EdgeOverlayEntry[]) => void
     setMarquee: (marquee?: MarqueeOverlayState) => void
     setGuides: (guides: readonly Guide[]) => void

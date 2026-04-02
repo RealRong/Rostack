@@ -7,7 +7,7 @@ import type {
 import type {
   AppearanceId,
   ViewFieldRef
-} from '@dataview/react/view'
+} from '@dataview/react/currentView'
 import { CardField } from './Field'
 
 export interface CardContentProps {

@@ -6,18 +6,18 @@ import {
 import {
   createInteractionCoordinator,
   type InteractionApi
-} from '@dataview/react/page/interaction'
+} from '@dataview/react/interaction'
 import {
   type AppearanceId,
   type CurrentView,
   type Section
-} from '@dataview/react/view'
+} from '@dataview/react/currentView'
 import {
   createDerivedStore,
   type ReadStore
 } from '@dataview/runtime/store'
 import type { ResolvedPageState } from '@dataview/react/page/session/types'
-import type { PropertyEditApi } from '@dataview/react/propertyEdit'
+import type { PropertyEditApi } from '@dataview/react/page/valueEditor'
 import {
   createCapabilities,
   type Capabilities

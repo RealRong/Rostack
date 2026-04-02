@@ -20,7 +20,7 @@ export type NodePatchEntry = {
 
 export type NodeSelectionOverlayState = {
   patches: readonly NodePatchEntry[]
-  hovered?: NodeId
+  frameHoverId?: NodeId
 }
 
 export type NodeTextOverlayState = {

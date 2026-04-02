@@ -5,7 +5,7 @@ import {
   type ReactNode
 } from 'react'
 import { createPortal } from 'react-dom'
-import type { PointerPosition } from '@dataview/react/runtime/interaction/usePointerDragSession'
+import type { PointerPosition } from '@dataview/react/interaction/usePointerDragSession'
 
 const OFFSCREEN_TRANSLATE = 'translate3d(-9999px, -9999px, 0)'
 

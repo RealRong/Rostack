@@ -5,7 +5,7 @@ import {
   type Point,
   type Rect
 } from '@dataview/react/dom/geometry'
-import type { AppearanceId } from '@dataview/react/view'
+import type { AppearanceId } from '@dataview/react/currentView'
 import {
   rowGapHitAtPoint,
   rowIdAtPoint,

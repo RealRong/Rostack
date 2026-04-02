@@ -17,7 +17,7 @@ import { disableUserSelect } from '@dataview/react/dom/selection'
 import {
   resolveDefaultAutoPanTargets,
   useAutoPan
-} from '@dataview/react/runtime/interaction/autoPan'
+} from '@dataview/react/interaction/autoPan'
 
 export interface Session {
   start: Point

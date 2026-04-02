@@ -22,7 +22,7 @@ import {
   type AppearanceId,
   type CurrentView,
   type FieldId
-} from '@dataview/react/view'
+} from '@dataview/react/currentView'
 import { resolvePropertyPrimaryAction } from '@dataview/core/property'
 import { isBlockingSurfaceElement } from '@ui/blocking-surface'
 import {
@@ -33,7 +33,7 @@ import { useCurrentView, useEngine } from '@dataview/react/editor'
 import {
   resolveDefaultAutoPanTargets,
   useAutoPan
-} from '@dataview/react/runtime/interaction/autoPan'
+} from '@dataview/react/interaction/autoPan'
 import type { TableHoverTarget } from '../model/hover'
 import { useTableContext } from '../context'
 import {

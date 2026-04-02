@@ -1,4 +1,4 @@
-import type { Section } from '@dataview/react/view'
+import type { Section } from '@dataview/react/currentView'
 import { useBoardContext } from '../board'
 import { ColumnBody } from './ColumnBody'
 import { ColumnHeader } from './ColumnHeader'

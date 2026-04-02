@@ -1,7 +1,7 @@
 import {
   type AppearanceId,
   type FieldId
-} from '@dataview/react/view'
+} from '@dataview/react/currentView'
 import {
   pageScrollNode,
   type ScrollNode

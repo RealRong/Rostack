@@ -166,7 +166,7 @@ const toNodeOverlayMap = (
     state.selection.node.patches.length === 0
     && state.node.text.patches.length === 0
     && state.draw.hidden.length === 0
-    && state.selection.node.hovered === undefined
+    && state.selection.node.frameHoverId === undefined
   ) {
     return EMPTY_NODE_OVERLAY_MAP
   }
@@ -193,17 +193,17 @@ const toNodeOverlayMap = (
             ...entry.patch
           }
         : entry.patch,
-      hovered: state.selection.node.hovered === entry.id,
+      hovered: state.selection.node.frameHoverId === entry.id,
       hidden: hiddenSet.has(entry.id)
     })
   }
 
-  if (state.selection.node.hovered !== undefined) {
-    const current = next.get(state.selection.node.hovered)
-    next.set(state.selection.node.hovered, {
+  if (state.selection.node.frameHoverId !== undefined) {
+    const current = next.get(state.selection.node.frameHoverId)
+    next.set(state.selection.node.frameHoverId, {
       patch: current?.patch,
       hovered: true,
-      hidden: hiddenSet.has(state.selection.node.hovered)
+      hidden: hiddenSet.has(state.selection.node.frameHoverId)
     })
   }
 

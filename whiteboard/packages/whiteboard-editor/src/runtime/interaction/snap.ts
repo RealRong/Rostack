@@ -18,6 +18,7 @@ import {
   type VerticalResizeEdge
 } from '@whiteboard/core/node'
 import type { Point, Rect, Size } from '@whiteboard/core/types'
+import type { ModifierKeys } from '../../types/input'
 
 const EMPTY_GUIDES: readonly Guide[] = []
 const DEFAULT_MIN_SIZE: Size = {
@@ -33,7 +34,7 @@ export type ResizeSnapSource = {
 export type MoveSnapInput = {
   rect: Rect
   excludeIds?: readonly string[]
-  allowCross?: boolean
+  modifiers?: ModifierKeys
   disabled?: boolean
 }
 
@@ -45,19 +46,14 @@ export type ResizeSnapInput = {
   disabled?: boolean
 }
 
-export type MoveSnapResult = {
-  rect: Rect
-  guides: readonly Guide[]
-}
+export type MoveSnapResult = Rect
 
-export type ResizeSnapResult = {
-  update: ResizeUpdate
-  guides: readonly Guide[]
-}
+export type ResizeSnapResult = ResizeUpdate
 
 export type NodeSnapRuntime = {
   move: (input: MoveSnapInput) => MoveSnapResult
   resize: (input: ResizeSnapInput) => ResizeSnapResult
+  clear: () => void
 }
 
 export type EdgeSnapRuntime = {
@@ -67,6 +63,7 @@ export type EdgeSnapRuntime = {
 export type SnapRuntime = {
   node: NodeSnapRuntime
   edge: EdgeSnapRuntime
+  clear: () => void
 }
 
 const toResizeUpdate = (
@@ -97,11 +94,13 @@ const filterCandidates = (
 const createNodeSnapRuntime = ({
   config,
   readZoom,
-  query
+  query,
+  writeGuides
 }: {
   config: SnapThresholdConfig
   readZoom: () => number
   query: (rect: Rect) => readonly SnapCandidate[]
+  writeGuides: (guides: readonly Guide[]) => void
 }): NodeSnapRuntime => {
   const readThreshold = () => resolveSnapThresholdWorld(
     config,
@@ -112,17 +111,16 @@ const createNodeSnapRuntime = ({
     move: ({
       rect,
       excludeIds,
-      allowCross = false,
+      modifiers,
       disabled = false
     }) => {
       if (disabled) {
-        return {
-          rect,
-          guides: EMPTY_GUIDES
-        }
+        writeGuides(EMPTY_GUIDES)
+        return rect
       }
 
       const threshold = readThreshold()
+      const allowCrossSnap = modifiers?.alt ?? false
       const result = computeSnap(
         rect,
         filterCandidates(
@@ -131,19 +129,19 @@ const createNodeSnapRuntime = ({
         ),
         threshold,
         undefined,
-        { allowCross }
+        { allowCross: allowCrossSnap }
       )
 
+      const guides = result.guides.length > 0
+        ? result.guides
+        : EMPTY_GUIDES
+      writeGuides(guides)
+
       return {
-        rect: {
-          x: rect.x + (result.dx ?? 0),
-          y: rect.y + (result.dy ?? 0),
-          width: rect.width,
-          height: rect.height
-        },
-        guides: result.guides.length > 0
-          ? result.guides
-          : EMPTY_GUIDES
+        x: rect.x + (result.dx ?? 0),
+        y: rect.y + (result.dy ?? 0),
+        width: rect.width,
+        height: rect.height
       }
     },
     resize: ({
@@ -154,10 +152,8 @@ const createNodeSnapRuntime = ({
       disabled = false
     }) => {
       if (disabled || (!source.x && !source.y)) {
-        return {
-          update: toResizeUpdate(rect),
-          guides: EMPTY_GUIDES
-        }
+        writeGuides(EMPTY_GUIDES)
+        return toResizeUpdate(rect)
       }
 
       const threshold = readThreshold()
@@ -175,12 +171,16 @@ const createNodeSnapRuntime = ({
         }
       })
 
-      return {
-        update: toResizeUpdate(result.rect),
-        guides: result.guides.length > 0
+      writeGuides(
+        result.guides.length > 0
           ? result.guides
           : EMPTY_GUIDES
-      }
+      )
+
+      return toResizeUpdate(result.rect)
+    },
+    clear: () => {
+      writeGuides(EMPTY_GUIDES)
     }
   }
 }
@@ -212,7 +212,8 @@ const createEdgeSnapRuntime = ({
 export const createSnapRuntime = ({
   readZoom,
   node,
-  edge
+  edge,
+  writeGuides
 }: {
   readZoom: () => number
   node: {
@@ -224,16 +225,21 @@ export const createSnapRuntime = ({
     nodeSize: Size
     query: (rect: Rect) => readonly EdgeConnectCandidate[]
   }
+  writeGuides: (guides: readonly Guide[]) => void
 }): SnapRuntime => ({
   node: createNodeSnapRuntime({
     config: node.config,
     readZoom,
-    query: node.query
+    query: node.query,
+    writeGuides
   }),
   edge: createEdgeSnapRuntime({
     config: edge.config,
     nodeSize: edge.nodeSize,
     readZoom,
     query: edge.query
-  })
+  }),
+  clear: () => {
+    writeGuides(EMPTY_GUIDES)
+  }
 })

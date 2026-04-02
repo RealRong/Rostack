@@ -15,7 +15,7 @@ import { useCurrentView, useEngine } from '@dataview/react/editor'
 import type {
   AppearanceId,
   Section as TableSection
-} from '@dataview/react/view'
+} from '@dataview/react/currentView'
 import { useTableContext } from '../../context'
 import { ColumnHeaderRow } from '../column/ColumnHeaderRow'
 import { Row } from '../row/Row'

@@ -1,7 +1,7 @@
 import type {
   AppearanceId,
   FieldId
-} from '@dataview/react/view'
+} from '@dataview/react/currentView'
 
 export type TableHoverTarget =
   | {

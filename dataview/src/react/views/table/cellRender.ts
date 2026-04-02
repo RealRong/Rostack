@@ -14,7 +14,7 @@ import {
 import type {
   CurrentView,
   FieldId
-} from '@dataview/react/view'
+} from '@dataview/react/currentView'
 import {
   fill,
   grid,

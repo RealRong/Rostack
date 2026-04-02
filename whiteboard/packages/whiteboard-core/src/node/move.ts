@@ -12,14 +12,8 @@ import type {
   Point,
   Size
 } from '../types'
-import {
-  expandGroupMembers,
-  isContainerNode
-} from './group'
-import {
-  expandFrameSelection,
-  resolveNodeFrame
-} from './frame'
+import { expandGroupMembers } from './group'
+import { expandFrameSelection } from './frame'
 import { filterRootIds } from './owner'
 
 export type MoveMember = {
@@ -42,10 +36,14 @@ export type MoveEdgeChange = {
   patch: EdgePatch
 }
 
+export type MoveEdgePlan = {
+  dragged: readonly Edge[]
+  follow: readonly Edge[]
+}
+
 export type MoveEffect = {
   nodes: readonly MoveNodePosition[]
   edges: readonly MoveEdgeChange[]
-  hovered?: NodeId
 }
 
 export type MoveCommit = {
@@ -59,11 +57,6 @@ const EMPTY_POSITIONS: readonly MoveNodePosition[] = []
 const EMPTY_EDGES: readonly MoveEdgeChange[] = []
 const EMPTY_MEMBER_ID_SET: ReadonlySet<NodeId> = new Set<NodeId>()
 
-const toNodeById = (
-  nodes: readonly Node[]
-): ReadonlyMap<NodeId, Node> =>
-  new Map(nodes.map((node) => [node.id, node]))
-
 const toMemberIdSet = (
   members: readonly MoveMember[]
 ): ReadonlySet<NodeId> => (
@@ -71,11 +64,6 @@ const toMemberIdSet = (
     ? new Set(members.map((member) => member.id))
     : EMPTY_MEMBER_ID_SET
 )
-
-const toPositionById = (
-  positions: readonly MoveNodePosition[]
-): ReadonlyMap<NodeId, Point> =>
-  new Map(positions.map((entry) => [entry.id, entry.position]))
 
 export const buildMoveSet = (options: {
   nodes: readonly Node[]
@@ -139,64 +127,6 @@ export const projectMovePositions = (
       y: member.position.y + delta.y
     }
   }))
-}
-
-const resolveSharedContainerTarget = (options: {
-  rootIds: readonly NodeId[]
-  positionById: ReadonlyMap<NodeId, Point>
-  nodeById: ReadonlyMap<NodeId, Node>
-  nodes: readonly Node[]
-  memberIds: ReadonlySet<NodeId>
-  nodeSize: Size
-}): NodeId | undefined => {
-  let hovered: NodeId | undefined
-
-  for (let index = 0; index < options.rootIds.length; index += 1) {
-    const rootId = options.rootIds[index]!
-    const node = options.nodeById.get(rootId)
-    const position = options.positionById.get(rootId)
-    if (!node || node.type === 'group' || !position) {
-      continue
-    }
-
-    const target = resolveNodeFrame({
-      nodes: options.nodes,
-      nodeId: node.id,
-      getNodeRect: (candidate) => {
-        if (candidate.type === 'group') {
-          return undefined
-        }
-
-        const nextPosition = options.positionById.get(candidate.id)
-        return getNodeAABB(
-          nextPosition
-            ? {
-                ...candidate,
-                position: nextPosition
-              }
-            : candidate,
-          options.nodeSize
-        )
-      },
-      getFrameRect: (candidate) => (
-        candidate.type === 'frame' && !options.memberIds.has(candidate.id)
-          ? getNodeAABB(candidate, options.nodeSize)
-          : undefined
-      )
-    })
-    if (!target) {
-      return undefined
-    }
-    if (hovered === undefined) {
-      hovered = target
-      continue
-    }
-    if (hovered !== target) {
-      return undefined
-    }
-  }
-
-  return hovered
 }
 
 const collectFollowEdgePatches = (options: {
@@ -275,13 +205,7 @@ export const resolveMoveEffect = (options: {
     }
   }
 
-  const nodeById = toNodeById(options.nodes)
   const memberIds = toMemberIdSet(options.move.members)
-  const positionById = toPositionById(positions)
-  const hasStationaryFrame = options.nodes.some((node) => (
-    isContainerNode(node)
-    && !memberIds.has(node.id)
-  ))
 
   return {
     nodes: positions,
@@ -289,37 +213,26 @@ export const resolveMoveEffect = (options: {
       memberIds,
       delta: options.delta,
       edges: options.edges ?? []
-    }),
-    hovered: hasStationaryFrame
-      ? resolveSharedContainerTarget({
-          rootIds: options.move.rootIds,
-          positionById,
-          nodeById,
-          nodes: options.nodes,
-          memberIds,
-          nodeSize: options.nodeSize
-        })
-      : undefined
+    })
   }
 }
 
 export const projectMovePreview = (options: {
   nodes: readonly Node[]
-  relatedEdges?: readonly Edge[]
-  selectedEdges?: readonly Edge[]
+  edgePlan?: MoveEdgePlan
   move: MoveSet
   delta: Point
   nodeSize: Size
 }): MoveEffect => {
   const effect = resolveMoveEffect({
     nodes: options.nodes,
-    edges: options.relatedEdges,
+    edges: options.edgePlan?.follow,
     move: options.move,
     delta: options.delta,
     nodeSize: options.nodeSize
   })
   const selectedEdgeChanges = collectMovedEdgePatches({
-    edges: options.selectedEdges ?? [],
+    edges: options.edgePlan?.dragged ?? [],
     delta: options.delta
   })
 
@@ -337,14 +250,14 @@ export const projectMovePreview = (options: {
 
 export const buildMoveCommit = (options: {
   delta: Point
-  selectedEdges?: readonly Edge[]
+  edgePlan?: MoveEdgePlan
 }): MoveCommit => ({
   delta:
     options.delta.x === 0 && options.delta.y === 0
       ? undefined
       : options.delta,
   edges: collectMovedEdgePatches({
-    edges: options.selectedEdges ?? [],
+    edges: options.edgePlan?.dragged ?? [],
     delta: options.delta
   })
 })

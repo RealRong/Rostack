@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { flushSync } from 'react-dom'
-import type { PropertyEditIntent } from '@dataview/react/page/interaction'
+import type { PropertyEditIntent } from '@dataview/react/interaction'
 
 export const useDraftCommit = <TDraft,>(input: {
   onDraftChange: (draft: TDraft) => void

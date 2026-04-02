@@ -41,4 +41,4 @@ export type {
   ValueEditorAnchor,
   ValueEditorResult,
   ViewFieldRef
-} from '@dataview/react/propertyEdit/types'
+} from '@dataview/react/page/valueEditor'

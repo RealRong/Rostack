@@ -21,7 +21,7 @@ export default defineConfig({
       },
       {
         find: /^@dataview$/,
-        replacement: resolveFromRoot('dataview/index.ts')
+        replacement: resolveFromRoot('dataview/src/index.ts')
       },
       {
         find: /^@dataview\/(.+)$/,
@@ -29,7 +29,7 @@ export default defineConfig({
       },
       {
         find: /^@whiteboard$/,
-        replacement: resolveFromRoot('whiteboard/index.ts')
+        replacement: resolveFromRoot('whiteboard/packages/whiteboard-react/src/index.ts')
       }
     ]
   },

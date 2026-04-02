@@ -11,9 +11,9 @@
     "paths": {
       "@ui": ["ui/index.ts"],
       "@ui/*": ["ui/*"],
-      "@dataview": ["dataview/index.ts"],
+      "@dataview": ["dataview/src/index.ts"],
       "@dataview/*": ["dataview/src/*"],
-      "@whiteboard": ["whiteboard/index.ts"]
+      "@whiteboard": ["whiteboard/packages/whiteboard-react/src/index.ts"]
     }
   }
 }

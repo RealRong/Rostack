@@ -7,7 +7,7 @@ import type {
   AppearanceId,
   CurrentView
 } from '@dataview/react/currentView'
-import { shouldCapturePointer } from '@dataview/react/dom/interactive'
+import { shouldCapturePointer } from '@dataview/dom/interactive'
 import { useCurrentView } from '@dataview/react/editor'
 import { rowRailState } from '../../model/rowRail'
 import { useTableContext } from '../../context'

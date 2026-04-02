@@ -6,7 +6,7 @@ import type {
   ViewFieldRef
 } from '@dataview/engine/projection/view'
 import type { PropertyEditApi, ValueEditorResult } from '@dataview/react/page/valueEditor'
-import { ownerDocumentOf, resolveFieldAnchor } from '@dataview/react/dom/field'
+import { ownerDocumentOf, resolveFieldAnchor } from '@dataview/dom/field'
 import {
   fieldId,
   fieldOf

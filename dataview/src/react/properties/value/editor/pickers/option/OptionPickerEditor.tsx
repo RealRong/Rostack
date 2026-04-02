@@ -25,7 +25,7 @@ import { cn } from '@ui/utils'
 import { useEngine } from '@dataview/react/editor'
 import type { PropertyEditIntent } from '@dataview/react/interaction'
 import type { PropertyValueDraftEditorProps } from '../../contracts'
-import { focusInputWithoutScroll } from '@dataview/react/dom/focus'
+import { focusInputWithoutScroll } from '@dataview/dom/focus'
 import {
   isComposing,
   keyAction

@@ -1,6 +1,6 @@
 import type { PropertyId } from '@dataview/core/contracts'
-import type { Point } from '@dataview/react/dom/geometry'
-import { targetElement } from '@dataview/react/dom/interactive'
+import type { Point } from '@dataview/dom/geometry'
+import { targetElement } from '@dataview/dom/interactive'
 import {
   type AppearanceList,
   type PropertyList

@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import { idsInRect } from '@dataview/react/dom/geometry'
+import { idsInRect } from '@dataview/dom/geometry'
 import { useMarquee } from '@dataview/react/interaction/useMarquee'
 import {
   type AppearanceId,

@@ -15,7 +15,7 @@ import { meta, renderMessage } from '@dataview/meta'
 import { PropertyOptionTag } from '@dataview/react/properties/options'
 import type { PropertyEditIntent } from '@dataview/react/interaction'
 import type { PropertyValueDraftEditorProps } from '../../contracts'
-import { focusInputWithoutScroll } from '@dataview/react/dom/focus'
+import { focusInputWithoutScroll } from '@dataview/dom/focus'
 import {
   isComposing,
   keyAction

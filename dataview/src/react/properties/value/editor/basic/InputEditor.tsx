@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { focusInputWithoutScroll } from '@dataview/react/dom/focus'
+import { focusInputWithoutScroll } from '@dataview/dom/focus'
 import {
   isComposing,
   keyAction

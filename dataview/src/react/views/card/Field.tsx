@@ -19,7 +19,7 @@ import {
   fieldAttrs,
   ownerDocumentOf,
   resolveFieldAnchor
-} from '@dataview/react/dom/field'
+} from '@dataview/dom/field'
 import {
   stepViewFieldByIntent
 } from '@dataview/react/field/navigation'

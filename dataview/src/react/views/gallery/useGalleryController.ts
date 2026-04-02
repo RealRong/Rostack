@@ -19,7 +19,7 @@ import { useStoreValue } from '@dataview/react/store'
 import {
   closestTarget,
   interactiveSelector
-} from '@dataview/react/dom/interactive'
+} from '@dataview/dom/interactive'
 import {
   move as currentViewMove
 } from '@dataview/engine/projection/view'

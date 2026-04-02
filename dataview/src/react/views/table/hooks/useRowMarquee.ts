@@ -3,7 +3,7 @@ import {
   useMemo,
   useRef
 } from 'react'
-import type { Point } from '@dataview/react/dom/geometry'
+import type { Point } from '@dataview/dom/geometry'
 import {
   type AppearanceId,
   type CurrentView,
@@ -16,7 +16,7 @@ import {
 import {
   closestTarget,
   interactiveSelector
-} from '@dataview/react/dom/interactive'
+} from '@dataview/dom/interactive'
 import { useCurrentView } from '@dataview/react/editor'
 import { useStoreValue } from '@dataview/react/store'
 import { useMarquee } from '@dataview/react/interaction/useMarquee'

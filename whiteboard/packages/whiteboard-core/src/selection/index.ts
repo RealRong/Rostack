@@ -32,7 +32,7 @@ export {
   type SelectionMarqueeItems
 } from './marquee'
 export {
-  matchSelectionRelease,
+  matchSelectionTap,
   resolveSelectionPressMode,
   resolveSelectionPressDecision,
   resolveSelectionPressTarget,
@@ -41,7 +41,7 @@ export {
   type SelectionPressDecision,
   type SelectionPressPolicyDeps,
   type SelectionPressResolution,
-  type SelectionPressSubject,
+  type SelectionPressTargetInput,
   type SelectionPressTarget,
-  type SelectionReleaseDecision
+  type SelectionTapAction
 } from './press'

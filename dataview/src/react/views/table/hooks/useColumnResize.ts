@@ -7,7 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import type { PropertyId } from '@dataview/core/contracts'
-import { disableUserSelect } from '@dataview/react/dom/selection'
+import { disableUserSelect } from '@dataview/dom/selection'
 import { useCurrentView, useEngine } from '@dataview/react/editor'
 import { useStoreValue } from '@dataview/react/store'
 import { closestTableTargetElement } from '../dom/targets'

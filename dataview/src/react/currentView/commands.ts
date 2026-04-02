@@ -1,6 +1,5 @@
 import type {
   GroupCommand,
-  GroupView,
   RecordId,
   ViewId
 } from '@dataview/core/contracts'
@@ -14,9 +13,11 @@ import type {
   GroupEngine
 } from '@dataview/engine'
 import {
+  createGrouping,
   move,
   readSectionRecordIds,
   recordIdsOfAppearances,
+  type ViewProjection,
   type GroupNext,
   type Grouping
 } from '@dataview/engine/projection/view'
@@ -111,7 +112,7 @@ const toValueCommand = (
 
 const createGroupWriteCommands = (input: {
   engine: GroupEngine
-  view: GroupView
+  view: ViewProjection['view']
   appearances: AppearanceList
   ids: readonly string[]
   targetSection: string
@@ -181,7 +182,7 @@ const createGroupWriteCommands = (input: {
 
 const moveIds = (input: {
   engine: GroupEngine
-  view: GroupView
+  view: ViewProjection['view']
   appearances: AppearanceList
   grouping?: Grouping
   sections: readonly Section[]
@@ -259,7 +260,7 @@ const moveIds = (input: {
 
 const createInSection = (input: {
   engine: GroupEngine
-  view: GroupView
+  view: ViewProjection['view']
   appearances: AppearanceList
   grouping?: Grouping
   sections: readonly Section[]
@@ -354,16 +355,18 @@ const removeSelection = (input: {
 
 export const createCommands = (input: {
   engine: GroupEngine
-  view: GroupView
-  appearances: AppearanceList
-  grouping?: Grouping
-  sections: readonly Section[]
   selection: SelectionStore
+  currentView: () => ViewProjection | undefined
 }): Commands => ({
   selection: {
     all: () => {
+      const currentView = input.currentView()
+      if (!currentView) {
+        return
+      }
+
       input.selection.set(
-        selectionHelpers.all(input.appearances.ids)
+        selectionHelpers.all(currentView.appearances.ids)
       )
     },
     clear: () => {
@@ -372,23 +375,38 @@ export const createCommands = (input: {
       )
     },
     set: (ids, options) => {
+      const currentView = input.currentView()
+      if (!currentView) {
+        return
+      }
+
       input.selection.set(
-        selectionHelpers.set(input.appearances.ids, ids, options)
+        selectionHelpers.set(currentView.appearances.ids, ids, options)
       )
     },
     toggle: ids => {
+      const currentView = input.currentView()
+      if (!currentView) {
+        return
+      }
+
       input.selection.set(
         selectionHelpers.toggle(
-          input.appearances.ids,
+          currentView.appearances.ids,
           input.selection.get(),
           ids
         )
       )
     },
     extend: to => {
+      const currentView = input.currentView()
+      if (!currentView) {
+        return
+      }
+
       input.selection.set(
         selectionHelpers.extend(
-          input.appearances.ids,
+          currentView.appearances.ids,
           input.selection.get(),
           to
         )
@@ -397,34 +415,82 @@ export const createCommands = (input: {
   },
   move: {
     selection: target => {
+      const currentView = input.currentView()
+      if (!currentView) {
+        return
+      }
+
+      const grouping = createGrouping({
+        document: input.engine.read.document.get(),
+        view: currentView.view,
+        sections: currentView.sections
+      })
+
       moveIds({
-        ...input,
+        engine: input.engine,
+        view: currentView.view,
+        appearances: currentView.appearances,
+        grouping,
+        sections: currentView.sections,
+        selection: input.selection,
         ids: input.selection.get().ids,
         target
       })
     },
     ids: (ids, target) => {
+      const currentView = input.currentView()
+      if (!currentView) {
+        return
+      }
+
+      const grouping = createGrouping({
+        document: input.engine.read.document.get(),
+        view: currentView.view,
+        sections: currentView.sections
+      })
+
       moveIds({
-        ...input,
+        engine: input.engine,
+        view: currentView.view,
+        appearances: currentView.appearances,
+        grouping,
+        sections: currentView.sections,
+        selection: input.selection,
         ids,
         target
       })
     }
   },
   mutation: {
-    create: (section, createInput) => createInSection({
-      engine: input.engine,
-      view: input.view,
-      appearances: input.appearances,
-      grouping: input.grouping,
-      sections: input.sections,
-      section,
-      createInput
-    }),
+    create: (section, createInput) => {
+      const currentView = input.currentView()
+      if (!currentView) {
+        return undefined
+      }
+
+      return createInSection({
+        engine: input.engine,
+        view: currentView.view,
+        appearances: currentView.appearances,
+        grouping: createGrouping({
+          document: input.engine.read.document.get(),
+          view: currentView.view,
+          sections: currentView.sections
+        }),
+        sections: currentView.sections,
+        section,
+        createInput
+      })
+    },
     remove: () => {
+      const currentView = input.currentView()
+      if (!currentView) {
+        return
+      }
+
       removeSelection({
         engine: input.engine,
-        appearances: input.appearances,
+        appearances: currentView.appearances,
         selection: input.selection
       })
     }

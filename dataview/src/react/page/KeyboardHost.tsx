@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { keyDown } from '@dataview/react/interaction'
 import { useCurrentView, useEngine, usePageValue } from '@dataview/react/editor'
-import { closestTarget } from '@dataview/react/dom/interactive'
+import { closestTarget } from '@dataview/dom/interactive'
 import { pageShortcutAction } from './keyboard'
 
 const editingTargetSelector = [

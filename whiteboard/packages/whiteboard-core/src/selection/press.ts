@@ -10,7 +10,7 @@ type ModifierEventLike = {
   meta: boolean
 }
 
-export type SelectionPressSubject<TField extends string = string> =
+export type SelectionPressTargetInput<TField extends string = string> =
   | { kind: 'background' }
   | {
       kind: 'selection-box'
@@ -39,7 +39,7 @@ export type SelectionPressTarget<TField extends string = string> =
       nodeId: NodeId
     }
 
-export type SelectionReleaseDecision<TField extends string = string> =
+export type SelectionTapAction<TField extends string = string> =
   | { kind: 'clear' }
   | {
       kind: 'select'
@@ -72,7 +72,7 @@ export type SelectionMarqueeDecision = Extract<
 
 export type SelectionPressDecision<TField extends string = string> = {
   chrome: boolean
-  release?: SelectionReleaseDecision<TField>
+  tap?: SelectionTapAction<TField>
   drag?: SelectionDragDecision
   hold?: SelectionMarqueeDecision
 }
@@ -228,38 +228,38 @@ const readPressNodeTarget = <TField extends string>(
 export const resolveSelectionPressTarget = <TField extends string>(
   deps: SelectionPressPolicyDeps,
   input: {
-    subject: SelectionPressSubject<TField>
+    targetInput: SelectionPressTargetInput<TField>
     mode: SelectionMode
     selectedNodeIds: readonly NodeId[]
   }
 ): SelectionPressTarget<TField> | undefined => {
-  const { subject } = input
+  const { targetInput } = input
 
-  switch (subject.kind) {
+  switch (targetInput.kind) {
     case 'background':
       return { kind: 'background' }
     case 'selection-box':
-      return subject.part === 'body'
+      return targetInput.part === 'body'
         ? { kind: 'selection-box' }
         : undefined
     case 'node':
-      if (subject.part === 'body') {
-        return readPressNodeTarget(deps, input, subject.nodeId)
+      if (targetInput.part === 'body') {
+        return readPressNodeTarget(deps, input, targetInput.nodeId)
       }
 
-      if (subject.shell === 'frame') {
+      if (targetInput.shell === 'frame') {
         return {
           kind: 'node',
-          nodeId: subject.nodeId,
-          hitNodeId: subject.nodeId,
-          field: subject.field
+          nodeId: targetInput.nodeId,
+          hitNodeId: targetInput.nodeId,
+          field: targetInput.field
         }
       }
 
-      return subject.shell === 'group'
+      return targetInput.shell === 'group'
         ? {
             kind: 'group-shell',
-            nodeId: subject.nodeId
+            nodeId: targetInput.nodeId
           }
         : undefined
   }
@@ -290,7 +290,7 @@ const decideBackgroundPress = <TField extends string>(
   mode: SelectionMode
 ): SelectionPressDecision<TField> => ({
   chrome: false,
-  release: mode === 'replace'
+  tap: mode === 'replace'
     ? { kind: 'clear' }
     : undefined,
   drag: {
@@ -368,7 +368,7 @@ const decideNodePress = <TField extends string>(
 
   return {
     chrome: selected || dragCurrentSelection,
-    release: node.locked
+    tap: node.locked
       ? {
           kind: 'select',
           target: nextSelection
@@ -423,7 +423,7 @@ const decideGroupShellPress = <TField extends string>(
 
   return {
     chrome: selected,
-    release: {
+    tap: {
       kind: 'select',
       target: nextSelection
     },
@@ -448,12 +448,12 @@ export const resolveSelectionPressDecision = <TField extends string>(
   input: {
     modifiers: ModifierEventLike
     selection: SelectionSummary
-    subject: SelectionPressSubject<TField>
+    targetInput: SelectionPressTargetInput<TField>
   }
 ): SelectionPressResolution<TField> | undefined => {
   const mode = resolveSelectionPressMode(input.modifiers)
   const target = resolveSelectionPressTarget(deps, {
-    subject: input.subject,
+    targetInput: input.targetInput,
     mode,
     selectedNodeIds: input.selection.target.nodeIds
   })
@@ -478,33 +478,33 @@ export const resolveSelectionPressDecision = <TField extends string>(
     : undefined
 }
 
-export const matchSelectionRelease = <TField extends string>(
+export const matchSelectionTap = <TField extends string>(
   target: SelectionPressTarget<TField>,
-  subject: SelectionPressSubject<TField> | undefined
+  targetInput: SelectionPressTargetInput<TField> | undefined
 ) => {
-  if (!subject) {
+  if (!targetInput) {
     return false
   }
 
   switch (target.kind) {
     case 'background':
-      return subject.kind === 'background'
+      return targetInput.kind === 'background'
     case 'selection-box':
-      return subject.kind === 'selection-box'
-        && subject.part === 'body'
+      return targetInput.kind === 'selection-box'
+        && targetInput.part === 'body'
     case 'group-shell':
       return (
-        subject.kind === 'node'
-        && subject.part === 'shell'
-        && subject.shell === 'group'
-        && subject.nodeId === target.nodeId
+        targetInput.kind === 'node'
+        && targetInput.part === 'shell'
+        && targetInput.shell === 'group'
+        && targetInput.nodeId === target.nodeId
       )
     case 'node':
       return (
-        subject.kind === 'node'
+        targetInput.kind === 'node'
         && (
-          subject.nodeId === target.nodeId
-          || subject.nodeId === target.hitNodeId
+          targetInput.nodeId === target.nodeId
+          || targetInput.nodeId === target.hitNodeId
         )
       )
   }

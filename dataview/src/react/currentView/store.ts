@@ -5,84 +5,75 @@ import type {
   GroupEngine
 } from '@dataview/engine'
 import {
-  createDerivedStore,
-  createReadStore,
   createValueStore,
   type ReadStore
 } from '@dataview/runtime/store'
 import {
-  createGrouping
-} from '@dataview/engine/projection/view'
-import {
   createCommands
 } from './commands'
 import {
-  createSelectionStore
+  createSelectionStore,
+  emptySelection,
+  selection as selectionHelpers
 } from './selection'
 import {
   syncSelection
 } from './selection'
 import type {
-  CurrentView,
-  Selection,
-  SelectionStore
+  CurrentView
 } from './types'
+import {
+  resolveActiveViewId
+} from '@dataview/react/page/session/state'
 import type {
-  ResolvedPageState
+  PageSessionState
 } from '@dataview/react/page/session/types'
 
 export const createCurrentViewStore = (input: {
   engine: GroupEngine
-  pageStateStore: ReadStore<ResolvedPageState>
+  pageStore: ReadStore<PageSessionState>
 }): {
   currentView: ReadStore<CurrentView | undefined>
   dispose: () => void
 } => {
-  const selections = new Map<ViewId, SelectionStore>()
-  const selectionReads = new Map<ViewId, ReadStore<Selection>>()
-  const activeViewIdStore = createDerivedStore<ViewId | undefined>({
-    get: read => read(input.pageStateStore).activeViewId
+  const selection = createSelectionStore()
+  const commands = createCommands({
+    engine: input.engine,
+    selection,
+    currentView: () => resolveProjection()
   })
 
-  const resolve = (): CurrentView | undefined => {
-    const viewId = activeViewIdStore.get()
+  const resolveCurrentViewId = (): ViewId | undefined => (
+    resolveActiveViewId(
+      input.engine.read.document.get(),
+      input.pageStore.get().activeViewId
+    )
+  )
+
+  function resolveProjection() {
+    const viewId = resolveCurrentViewId()
     if (!viewId) {
       return undefined
     }
 
-    const projection = input.engine.read.viewProjection.get(viewId)
+    return input.engine.read.viewProjection.get(viewId)
+  }
+
+  const resolve = (): CurrentView | undefined => {
+    const projection = resolveProjection()
     if (!projection) {
+      if (!selectionHelpers.equal(selection.get(), emptySelection)) {
+        selection.set(emptySelection)
+      }
       return undefined
     }
-
-    const selection = selections.get(projection.view.id) ?? createSelectionStore()
-    selections.set(projection.view.id, selection)
-    const selectionRead = selectionReads.get(projection.view.id) ?? createReadStore<Selection>({
-      get: selection.get,
-      subscribe: selection.subscribe,
-      isEqual: selection.isEqual
-    })
-    selectionReads.set(projection.view.id, selectionRead)
-
-    const grouping = createGrouping({
-      document: input.engine.read.document.get(),
-      view: projection.view,
-      sections: projection.sections
-    })
 
     syncSelection(selection, projection.appearances.ids)
 
     return {
       ...projection,
-      selection: selectionRead,
-      commands: createCommands({
-        engine: input.engine,
-        view: projection.view,
-        appearances: projection.appearances,
-        grouping,
-        sections: projection.sections,
-        selection
-      })
+      selection,
+      commands
     }
   }
 
@@ -93,7 +84,16 @@ export const createCurrentViewStore = (input: {
     store.set(resolve())
   }
   const unsubscribeDocument = input.engine.read.document.subscribe(sync)
-  const unsubscribeActiveViewId = activeViewIdStore.subscribe(sync)
+  let lastPageViewId = input.pageStore.get().activeViewId
+  const unsubscribePage = input.pageStore.subscribe(() => {
+    const nextPageViewId = input.pageStore.get().activeViewId
+    if (nextPageViewId === lastPageViewId) {
+      return
+    }
+
+    lastPageViewId = nextPageViewId
+    sync()
+  })
 
   return {
     currentView: {
@@ -102,7 +102,7 @@ export const createCurrentViewStore = (input: {
     },
     dispose: () => {
       unsubscribeDocument()
-      unsubscribeActiveViewId()
+      unsubscribePage()
     }
   }
 }

@@ -2,7 +2,7 @@ import type { GroupEngine } from '@dataview/engine'
 import {
   revealElement,
   revealY
-} from '@dataview/react/dom/scroll'
+} from '@dataview/dom/scroll'
 import {
   createInteractionCoordinator,
   type InteractionApi

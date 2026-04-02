@@ -5,7 +5,7 @@ import {
 import {
   pageScrollNode,
   type ScrollNode
-} from '@dataview/react/dom/scroll'
+} from '@dataview/dom/scroll'
 import type { Nodes } from './registry'
 import type { TableLayout } from '../layout'
 

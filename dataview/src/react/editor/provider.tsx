@@ -148,8 +148,8 @@ const EngineProviderInner = (props: EngineProviderProps) => {
     dispose
   } = useMemo(() => createCurrentViewStore({
     engine: props.engine,
-    pageStateStore
-  }), [pageStateStore, props.engine])
+    pageStore: page.store
+  }), [page.store, props.engine])
 
   useEffect(() => () => {
     dispose()

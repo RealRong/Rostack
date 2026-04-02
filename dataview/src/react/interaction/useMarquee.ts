@@ -12,8 +12,8 @@ import {
   rectFromPoints,
   type Box,
   type Point
-} from '@dataview/react/dom/geometry'
-import { disableUserSelect } from '@dataview/react/dom/selection'
+} from '@dataview/dom/geometry'
+import { disableUserSelect } from '@dataview/dom/selection'
 import {
   resolveDefaultAutoPanTargets,
   useAutoPan

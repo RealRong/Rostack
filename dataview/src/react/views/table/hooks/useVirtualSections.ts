@@ -7,7 +7,7 @@ import type {
 import { useViewportVersion } from '@dataview/react/dom/viewport'
 import {
   scrollViewport
-} from '@dataview/react/dom/scroll'
+} from '@dataview/dom/scroll'
 import { useTableContext } from '../context'
 
 const DEFAULT_OVERSCAN = 360

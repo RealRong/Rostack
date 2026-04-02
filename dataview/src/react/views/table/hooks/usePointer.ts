@@ -7,7 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type PointerEventHandler
 } from 'react'
-import type { Point } from '@dataview/react/dom/geometry'
+import type { Point } from '@dataview/dom/geometry'
 import {
   fill,
   gridSelection
@@ -28,7 +28,7 @@ import { isBlockingSurfaceElement } from '@ui/blocking-surface'
 import {
   containsRelatedTarget,
   shouldCapturePointer
-} from '@dataview/react/dom/interactive'
+} from '@dataview/dom/interactive'
 import { useCurrentView, useEngine } from '@dataview/react/editor'
 import {
   resolveDefaultAutoPanTargets,

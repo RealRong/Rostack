@@ -6,7 +6,7 @@ import {
 import {
   scrollViewport,
   type ScrollNode
-} from './scroll'
+} from '@dataview/dom/scroll'
 
 export type ViewportTarget = HTMLElement | Window
 

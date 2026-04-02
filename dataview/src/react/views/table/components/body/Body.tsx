@@ -11,7 +11,7 @@ import {
 } from '@dnd-kit/core'
 import { modifiers } from '@dataview/react/interaction'
 import { DragGhost } from '@dataview/react/dom/dragGhost'
-import { hasInteractiveTarget } from '@dataview/react/dom/interactive'
+import { hasInteractiveTarget } from '@dataview/dom/interactive'
 import {
   useCurrentView,
   useEngine,

@@ -3,7 +3,7 @@ import type {
   GroupRecord,
   ViewId
 } from '@dataview/core/contracts'
-import { shouldCapturePointer } from '@dataview/react/dom/interactive'
+import { shouldCapturePointer } from '@dataview/dom/interactive'
 import { cn } from '@ui/utils'
 import type { AppearanceId } from '@dataview/react/currentView'
 import { CardBody } from './CardBody'

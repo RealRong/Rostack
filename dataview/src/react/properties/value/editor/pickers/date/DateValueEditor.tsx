@@ -19,7 +19,7 @@ import { cn } from '@ui/utils'
 import { useEngine } from '@dataview/react/editor'
 import { meta, renderMessage } from '@dataview/meta'
 import type { PropertyValueDraftEditorProps } from '../../contracts'
-import { focusInputWithoutScroll } from '@dataview/react/dom/focus'
+import { focusInputWithoutScroll } from '@dataview/dom/focus'
 import { isComposing } from '../../shared/keyboard'
 import { useDraftCommit } from '../../shared/useDraftCommit'
 import {

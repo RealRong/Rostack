@@ -4,7 +4,7 @@ import {
   type KeyedReadStore,
   type ValueStore
 } from '@dataview/runtime/store'
-import type { Point } from '@dataview/react/dom/geometry'
+import type { Point } from '@dataview/dom/geometry'
 import type {
   AppearanceId,
   FieldId

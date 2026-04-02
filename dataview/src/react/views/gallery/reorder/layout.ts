@@ -1,7 +1,7 @@
 import {
   elementRectIn,
   type Rect
-} from '@dataview/react/dom/geometry'
+} from '@dataview/dom/geometry'
 import type { AppearanceId } from '@dataview/react/currentView'
 
 export interface CardLayout {

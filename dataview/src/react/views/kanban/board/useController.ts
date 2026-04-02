@@ -13,9 +13,9 @@ import {
   resolveGroupTitleProperty
 } from '@dataview/core/view'
 import {
+  useDataView,
   useCurrentView,
-  useEngine
-} from '@dataview/react/editor'
+} from '@dataview/react/dataview'
 import {
   closestTarget,
   interactiveSelector
@@ -60,7 +60,7 @@ export interface BoardController {
 
 export const useBoardController = (): BoardController => {
   const kanban = useKanbanContext()
-  const engine = useEngine()
+  const engine = useDataView().engine
   const currentView = useCurrentView(view => (
     view?.view.id === kanban.viewId
       ? view

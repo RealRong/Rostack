@@ -5,9 +5,11 @@ import {
 import type { Point } from '@whiteboard/core/types'
 import type { PointerDownInput, PointerSample } from '../../types/input'
 import type { InteractionCtx } from '../../runtime/interaction/ctx'
+import type {
+  InteractionSession
+} from '../../runtime/interaction'
 import type { DrawBrushKind } from '../../types/tool'
 import type {
-  DrawPreview,
   ResolvedDrawStyle
 } from '../../types/draw'
 import { readDrawStyle } from '../../draw/model'
@@ -25,7 +27,6 @@ type DrawPointer = {
 }
 
 export type StrokeSession = {
-  kind: 'stroke'
   brush: DrawBrushKind
   style: ResolvedDrawStyle
   points: readonly Point[]
@@ -53,7 +54,7 @@ const resolveStrokePoints = (
   zoom: readZoom(ctx)
 })
 
-export const clearStrokeOverlay = (
+const clearStrokeOverlay = (
   ctx: DrawInteractionCtx
 ) => {
   ctx.write.preview.draw.setPreview(null)
@@ -135,7 +136,6 @@ export const startStrokeSession = (
   }
 
   return {
-    kind: 'stroke',
     brush: tool.kind,
     style: readStyle(ctx, tool.kind),
     points: [input.world],
@@ -144,7 +144,7 @@ export const startStrokeSession = (
   }
 }
 
-export const stepStrokeSession = (
+const stepStrokeSession = (
   session: StrokeSession,
   input: DrawPointer,
   force = false
@@ -162,17 +162,7 @@ export const stepStrokeSession = (
   return nextSession
 }
 
-export const writeStrokeSession = (
-  ctx: DrawInteractionCtx,
-  previous: StrokeSession,
-  next: StrokeSession
-) => {
-  if (previous.points !== next.points) {
-    writeStrokePreview(ctx, next)
-  }
-}
-
-export const commitStrokeSession = (
+const commitStrokeSession = (
   ctx: DrawInteractionCtx,
   session: StrokeSession
 ) => {
@@ -205,4 +195,39 @@ export const commitStrokeSession = (
       opacity: session.style.opacity
     }
   })
+}
+
+export const createStrokeInteractionSession = (
+  ctx: DrawInteractionCtx,
+  initial: StrokeSession
+): InteractionSession => {
+  let session = initial
+
+  const step = (
+    input: DrawPointer,
+    force = false
+  ) => {
+    const nextSession = stepStrokeSession(session, input, force)
+    if (nextSession.points !== session.points) {
+      writeStrokePreview(ctx, nextSession)
+    }
+    session = nextSession
+  }
+
+  return {
+    mode: 'draw',
+    move: (input) => {
+      step(input)
+    },
+    up: (input) => {
+      step(input, true)
+      commitStrokeSession(ctx, session)
+      return {
+        kind: 'finish'
+      }
+    },
+    cleanup: () => {
+      clearStrokeOverlay(ctx)
+    }
+  }
 }

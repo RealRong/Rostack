@@ -7,8 +7,7 @@ import {
   useRef,
   type ReactNode
 } from 'react'
-import { useEngine } from '@dataview/react/editor'
-import { useEditorContext } from '@dataview/react/editor/provider'
+import { useDataView } from '@dataview/react/dataview'
 import { createNodes } from './dom/registry'
 import type { TableLayout } from './layout'
 import {
@@ -33,8 +32,8 @@ export const useTableContext = (): TableController => {
 }
 
 export const TableProvider = (props: TableProviderProps) => {
-  const engine = useEngine()
-  const editorContext = useEditorContext()
+  const dataView = useDataView()
+  const engine = dataView.engine
   const containerRef = useRef<HTMLDivElement | null>(null)
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const nodes = useMemo(
@@ -49,15 +48,15 @@ export const TableProvider = (props: TableProviderProps) => {
   }), [props.headerHeight, props.rowHeight])
   const table = useMemo(() => createTableController({
     engine,
-    pageStore: editorContext.pageStore,
-    currentViewStore: editorContext.currentViewStore,
-    propertyEdit: editorContext.propertyEdit,
+    pageStore: dataView.page.store,
+    currentViewStore: dataView.currentView.store,
+    propertyEdit: dataView.valueEditor,
     layout,
     nodes
   }), [
-    editorContext.currentViewStore,
-    editorContext.pageStore,
-    editorContext.propertyEdit,
+    dataView.currentView.store,
+    dataView.page.store,
+    dataView.valueEditor,
     engine,
     layout,
     nodes

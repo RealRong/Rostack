@@ -10,7 +10,7 @@ import {
 } from '@dnd-kit/core'
 import type { PropertyId } from '@dataview/core/contracts'
 import { columnBeforeId } from '@dataview/table'
-import { useCurrentView, useEngine } from '@dataview/react/editor'
+import { useCurrentView, useDataView } from '@dataview/react/dataview'
 import { useTableContext } from '../context'
 
 const COLUMN_SORT_SCOPE_SEPARATOR = '\u0000'
@@ -41,7 +41,7 @@ export interface ColumnReorderApi {
 }
 
 export const useColumnReorder = (): ColumnReorderApi => {
-  const editor = useEngine()
+  const editor = useDataView().engine
   const table = useTableContext()
   const currentView = useCurrentView()
   if (!currentView) {

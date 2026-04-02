@@ -1,13 +1,14 @@
 import { Plus } from 'lucide-react'
+import { getDocumentProperties } from '@dataview/core/document'
 import { PropertyPicker } from '@dataview/react/page/features/viewQuery/PropertyPicker'
 import { Button } from '@ui/button'
-import { useProperties } from '@dataview/react/editor'
+import { useDocument } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { useViewSettings } from '../context'
 
 export const PropertyListPanel = () => {
   const router = useViewSettings()
-  const properties = useProperties()
+  const properties = getDocumentProperties(useDocument())
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

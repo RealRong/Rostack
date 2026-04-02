@@ -9,7 +9,7 @@ import {
 import type {
   AppearanceId
 } from '@dataview/react/currentView'
-import { useCurrentView } from '@dataview/react/editor'
+import { useCurrentView } from '@dataview/react/dataview'
 import { useTableContext } from '../../context'
 import { useStoreValue } from '@dataview/react/store'
 import { RowSelectionButton, TableLeadingRail } from './RowRail'

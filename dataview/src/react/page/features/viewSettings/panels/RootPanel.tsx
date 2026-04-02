@@ -12,13 +12,16 @@ import {
 } from 'lucide-react'
 import { forwardRef, useEffect, useState } from 'react'
 import type { GroupBucketSort, GroupProperty, GroupView } from '@dataview/core/contracts'
+import {
+  getDocumentProperties,
+  getDocumentViews
+} from '@dataview/core/document'
 import { resolveViewGroupState } from '@dataview/core/query'
 import {
-  useActiveView,
-  useEngine,
-  useProperties,
-  useViews
-} from '@dataview/react/editor'
+  useCurrentView,
+  useDataView,
+  useDocument
+} from '@dataview/react/dataview'
 import { Button } from '@ui/button'
 import { Input } from '@ui/input'
 import { meta, renderMessage } from '@dataview/meta'
@@ -204,11 +207,13 @@ const readGroupSummary = (
 }
 
 export const RootPanel = () => {
-  const engine = useEngine()
+  const dataView = useDataView()
+  const engine = dataView.engine
+  const document = useDocument()
   const router = useViewSettings()
-  const currentView = useActiveView()
-  const properties = useProperties()
-  const viewsCount = useViews().length
+  const currentView = useCurrentView(view => view?.view)
+  const properties = getDocumentProperties(document)
+  const viewsCount = getDocumentViews(document).length
   const propertyCount = currentView?.options.display.propertyIds.length ?? 0
   const group = resolveViewGroupState(properties, currentView?.query.group)
   const menuItems: RootMenuItemConfig[] = [

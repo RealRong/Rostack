@@ -9,8 +9,7 @@ import {
 import { getPropertyOptions, getStatusSections } from '@dataview/core/property'
 import { Button } from '@ui/button'
 import { Input } from '@ui/input'
-import { usePageActions } from '@dataview/react/editor'
-import { useEditorContext } from '@dataview/react/editor/provider'
+import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { PropertyOptionTag } from '@dataview/react/properties/options'
 import type { PropertyEditIntent } from '@dataview/react/interaction'
@@ -39,8 +38,9 @@ const categoryLabel = (category: 'todo' | 'in_progress' | 'complete') => {
 export const StatusValueEditor = (
   props: PropertyValueDraftEditorProps<string>
 ) => {
-  const page = usePageActions()
-  const { propertyEdit } = useEditorContext()
+  const dataView = useDataView()
+  const page = dataView.page
+  const valueEditor = dataView.valueEditor
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [query, setQuery] = useState('')
   const property = props.property
@@ -225,7 +225,7 @@ export const StatusValueEditor = (
           leading={<Settings2 className="size-4" size={16} strokeWidth={1.8} />}
           onMouseDown={event => event.preventDefault()}
           onClick={() => {
-            propertyEdit.close({
+            valueEditor.close({
               silent: true
             })
             window.requestAnimationFrame(() => {

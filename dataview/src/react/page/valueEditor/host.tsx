@@ -12,9 +12,8 @@ import {
   type PropertyValueEditorHandle
 } from '@dataview/react/properties/value'
 import {
-  useEngine
-} from '@dataview/react/editor'
-import { useEditorContext } from '@dataview/react/editor/provider'
+  useDataView
+} from '@dataview/react/dataview'
 import type { EditInput } from '@dataview/react/interaction'
 import {
   type PropertyEditSession,
@@ -75,11 +74,10 @@ export const resolvePropertyValueEditorPosition = (input: {
 }
 
 export const PropertyValueEditorHost = () => {
-  const engine = useEngine()
-  const {
-    propertyEdit,
-    propertyEditSessionStore
-  } = useEditorContext()
+  const dataView = useDataView()
+  const engine = dataView.engine
+  const valueEditor = dataView.valueEditor
+  const propertyEditSessionStore = valueEditor.sessionStore
   const session = useStoreValue(propertyEditSessionStore)
   const property = session
     ? engine.read.property.get(session.field.propertyId)
@@ -115,8 +113,8 @@ export const PropertyValueEditorHost = () => {
   }, [propertyEditSessionStore])
 
   useEffect(() => () => {
-    propertyEdit.close()
-  }, [propertyEdit])
+    valueEditor.close()
+  }, [valueEditor])
 
   useEffect(() => {
     if (!session || (property && record)) {
@@ -187,9 +185,9 @@ export const PropertyValueEditorHost = () => {
     }
 
     if (handled === undefined) {
-      propertyEdit.close()
+      valueEditor.close()
     }
-  }, [propertyEdit])
+  }, [valueEditor])
 
   useBlockingSurface({
     open: Boolean(session && property && record && position),

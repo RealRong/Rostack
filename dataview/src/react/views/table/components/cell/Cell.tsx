@@ -10,7 +10,7 @@ import {
 import {
   type AppearanceId
 } from '@dataview/react/currentView'
-import { useCurrentView, useEngine } from '@dataview/react/editor'
+import { useCurrentView, useDataView } from '@dataview/react/dataview'
 import { fieldAttrs } from '@dataview/dom/field'
 import { useTableContext } from '../../context'
 import { useKeyedStoreValue } from '@dataview/react/store'
@@ -28,7 +28,7 @@ const same = (left: CellProps, right: CellProps) => (
 )
 
 const View = (props: CellProps) => {
-  const engine = useEngine()
+  const engine = useDataView().engine
   const table = useTableContext()
   const currentView = useCurrentView()
   if (!currentView) {

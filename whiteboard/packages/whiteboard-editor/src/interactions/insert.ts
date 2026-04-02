@@ -25,9 +25,11 @@ export const createInsertInteraction = (
     const result = editor.write.document.insert.preset(presetKey, {
       at: start.world
     })
-    if (result) {
-      editor.write.session.tool.set(selectTool())
+    if (!result) {
+      return null
     }
+
+    editor.write.session.tool.set(selectTool())
 
     return 'handled'
   }

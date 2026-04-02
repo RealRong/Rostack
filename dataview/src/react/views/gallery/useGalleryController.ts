@@ -12,9 +12,9 @@ import {
   resolveGroupTitleProperty
 } from '@dataview/core/view'
 import {
+  useDataView,
   useCurrentView,
-  useEngine
-} from '@dataview/react/editor'
+} from '@dataview/react/dataview'
 import { useStoreValue } from '@dataview/react/store'
 import {
   closestTarget,
@@ -60,7 +60,7 @@ export interface GalleryController {
 
 export const useGalleryController = (): GalleryController => {
   const { layout, viewId } = useGalleryContext()
-  const engine = useEngine()
+  const engine = useDataView().engine
   const currentView = useCurrentView(view => (
     view?.view.id === viewId
       ? view

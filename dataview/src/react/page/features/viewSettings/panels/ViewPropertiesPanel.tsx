@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { GroupProperty } from '@dataview/core/contracts'
+import { getDocumentProperties } from '@dataview/core/document'
 import { TITLE_PROPERTY_ID } from '@dataview/core/property'
 import { Button } from '@ui/button'
 import { Input } from '@ui/input'
@@ -14,10 +15,10 @@ import {
 } from '@ui/vertical-reorder-list'
 import { cn } from '@ui/utils'
 import {
-  useActiveView,
-  useEngine,
-  useProperties
-} from '@dataview/react/editor'
+  useCurrentView,
+  useDataView,
+  useDocument
+} from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 
 interface PropertyRowProps {
@@ -80,12 +81,14 @@ const PropertyRow = (props: PropertyRowProps) => {
 }
 
 export const ViewPropertiesPanel = () => {
-  const engine = useEngine()
-  const currentView = useActiveView()
+  const dataView = useDataView()
+  const engine = dataView.engine
+  const document = useDocument()
+  const currentView = useCurrentView(view => view?.view)
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined
-  const properties = useProperties()
+  const properties = getDocumentProperties(document)
   const [query, setQuery] = useState('')
   const normalizedQuery = query.trim().toLowerCase()
   const titlePropertyId = TITLE_PROPERTY_ID

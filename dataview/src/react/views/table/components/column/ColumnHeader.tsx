@@ -23,7 +23,7 @@ import { cn } from '@ui/utils'
 import { TITLE_PROPERTY_ID } from '@dataview/core/property'
 import { getUrlPropertyConfig } from '@dataview/core/property'
 import { getSorterPropertyId } from '@dataview/react/page/features/sort'
-import { useCurrentView, useEngine, usePageActions } from '@dataview/react/editor'
+import { useCurrentView, useDataView } from '@dataview/react/dataview'
 import { useTableContext } from '../../context'
 import { meta, renderMessage } from '@dataview/meta'
 import { PropertyKindPicker } from '@dataview/react/properties/schema'
@@ -72,8 +72,9 @@ const ResizeHandle = (props: ResizeHandleProps) => (
 )
 
 export const ColumnHeader = (props: ColumnHeaderProps) => {
-  const editor = useEngine()
-  const page = usePageActions()
+  const dataView = useDataView()
+  const editor = dataView.engine
+  const page = dataView.page
   const [menuOpen, setMenuOpen] = useState(false)
   const pointerStartRef = useRef<{
     x: number

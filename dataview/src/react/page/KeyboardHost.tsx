@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { keyDown } from '@dataview/react/interaction'
-import { useCurrentView, useEngine, usePageValue } from '@dataview/react/editor'
+import { useCurrentView, useDataView, usePageValue } from '@dataview/react/dataview'
 import { closestTarget } from '@dataview/dom/interactive'
 import { pageShortcutAction } from './keyboard'
 
@@ -12,7 +12,7 @@ const editingTargetSelector = [
 ].join(', ')
 
 export const PageKeyboardHost = () => {
-  const engine = useEngine()
+  const engine = useDataView().engine
   const currentView = useCurrentView()
   const uiLock = usePageValue(state => state.lock)
 

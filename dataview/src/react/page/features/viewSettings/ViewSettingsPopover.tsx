@@ -3,10 +3,10 @@ import { Button } from '@ui/button'
 import { PanelHeader } from '@ui/panel-header'
 import { Popover } from '@ui/popover'
 import {
-  useActiveView,
-  usePageActions,
+  useCurrentView,
+  useDataView,
   usePageValue
-} from '@dataview/react/editor'
+} from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { PropertySchemaEditor } from '@dataview/react/properties/schema'
 import {
@@ -21,8 +21,9 @@ import { RootPanel } from './panels/RootPanel'
 import { ViewPropertiesPanel } from './panels/ViewPropertiesPanel'
 
 export const ViewSettingsPopover = () => {
-  const page = usePageActions()
-  const currentView = useActiveView()
+  const dataView = useDataView()
+  const page = dataView.page
+  const currentView = useCurrentView(view => view?.view)
   const viewSettings = usePageValue(state => state.settings)
   const open = viewSettings.visible
   const resolvedRoute = viewSettings.route

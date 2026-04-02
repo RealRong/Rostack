@@ -11,11 +11,11 @@ import type {
 } from '@dataview/core/contracts'
 import { Button } from '@ui/button'
 import { cn } from '@ui/utils'
-import { useCurrentView, useEngine } from '@dataview/react/editor'
 import type {
   AppearanceId,
   Section as TableSection
 } from '@dataview/react/currentView'
+import { useCurrentView, useDataView } from '@dataview/react/dataview'
 import { useTableContext } from '../../context'
 import { ColumnHeaderRow } from '../column/ColumnHeaderRow'
 import { Row } from '../row/Row'
@@ -52,7 +52,7 @@ const same = (left: SectionProps, right: SectionProps) => (
 )
 
 const View = (props: SectionProps) => {
-  const editor = useEngine()
+  const { engine } = useDataView()
   const table = useTableContext()
   const currentView = useCurrentView()
   if (!currentView) {
@@ -67,9 +67,9 @@ const View = (props: SectionProps) => {
   }, [])
 
   const onToggleClick = useCallback(() => {
-    editor.view(currentView.view.id).grouping.toggleBucketCollapsed(props.section.key)
+    engine.view(currentView.view.id).grouping.toggleBucketCollapsed(props.section.key)
     table.focus()
-  }, [currentView.view.id, editor, props.section.key, table])
+  }, [currentView.view.id, engine, props.section.key, table])
 
   return (
     <section

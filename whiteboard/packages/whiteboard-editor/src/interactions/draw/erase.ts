@@ -1,5 +1,8 @@
 import { getSegmentBounds } from '@whiteboard/core/geometry'
 import type {
+  InteractionSession
+} from '../../runtime/interaction'
+import type {
   NodeId,
   Point,
   Rect
@@ -20,7 +23,6 @@ type DrawPointer = {
 }
 
 export type EraseSession = {
-  kind: 'erase'
   ids: readonly NodeId[]
   lastWorld: Point
 }
@@ -91,18 +93,18 @@ export const startEraseSession = (
     || tool.kind !== 'eraser'
     || input.editable
     || input.ignoreInput
+    || input.ignoreSelection
   ) {
     return null
   }
 
   return collectErasePoint(ctx, {
-    kind: 'erase',
     ids: [],
     lastWorld: input.world
   }, input.world)
 }
 
-export const stepEraseSession = (
+const stepEraseSession = (
   ctx: DrawInteractionCtx,
   session: EraseSession,
   input: DrawPointer
@@ -116,21 +118,49 @@ export const stepEraseSession = (
   return nextSession
 }
 
-export const writeEraseSession = (
-  ctx: DrawInteractionCtx,
-  previous: EraseSession,
-  next: EraseSession
-) => {
-  if (previous.ids !== next.ids) {
-    ctx.write.preview.draw.setHidden(next.ids)
-  }
-}
-
-export const commitEraseSession = (
+const commitEraseSession = (
   ctx: DrawInteractionCtx,
   session: EraseSession
 ) => {
   if (session.ids.length > 0) {
     ctx.write.document.node.delete([...session.ids])
+  }
+}
+
+export const createEraseInteractionSession = (
+  ctx: DrawInteractionCtx,
+  initial: EraseSession
+): InteractionSession => {
+  let session = initial
+
+  if (session.ids.length > 0) {
+    ctx.write.preview.draw.setHidden(session.ids)
+  }
+
+  const step = (
+    input: DrawPointer
+  ) => {
+    const nextSession = stepEraseSession(ctx, session, input)
+    if (nextSession.ids !== session.ids) {
+      ctx.write.preview.draw.setHidden(nextSession.ids)
+    }
+    session = nextSession
+  }
+
+  return {
+    mode: 'draw',
+    move: (input) => {
+      step(input)
+    },
+    up: (input) => {
+      step(input)
+      commitEraseSession(ctx, session)
+      return {
+        kind: 'finish'
+      }
+    },
+    cleanup: () => {
+      ctx.write.preview.draw.clear()
+    }
   }
 }

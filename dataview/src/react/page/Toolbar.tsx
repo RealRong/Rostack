@@ -9,6 +9,10 @@ import type {
   GroupView,
   GroupViewType
 } from '@dataview/core/contracts'
+import {
+  getDocumentProperties,
+  getDocumentViews
+} from '@dataview/core/document'
 import { Button } from '@ui/button'
 import { Input } from '@ui/input'
 import { Label } from '@ui/label'
@@ -20,13 +24,11 @@ import { getAvailableSorterProperties } from '@dataview/react/page/features/sort
 import { PropertyPicker } from '@dataview/react/page/features/viewQuery/PropertyPicker'
 import { ViewSettingsPopover } from '@dataview/react/page/features/viewSettings'
 import {
-  useActiveView,
-  useEngine,
-  usePageActions,
+  useCurrentView,
+  useDataView,
+  useDocument,
   usePageValue,
-  useProperties,
-  useViews
-} from '@dataview/react/editor'
+} from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 
 interface CreateViewPopoverProps {
@@ -35,8 +37,9 @@ interface CreateViewPopoverProps {
 }
 
 const CreateViewPopover = (props: CreateViewPopoverProps) => {
-  const engine = useEngine()
-  const page = usePageActions()
+  const dataView = useDataView()
+  const engine = dataView.engine
+  const page = dataView.page
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [name, setName] = useState('')
   const [type, setType] = useState<GroupViewType>('table')
@@ -160,12 +163,14 @@ const ViewTab = (props: ViewTabProps) => {
 export interface PageToolbarProps { }
 
 export const PageToolbar = () => {
-  const engine = useEngine()
-  const page = usePageActions()
+  const dataView = useDataView()
+  const engine = dataView.engine
+  const page = dataView.page
+  const document = useDocument()
   const queryBar = usePageValue(state => state.query)
-  const properties = useProperties()
-  const views = useViews()
-  const currentView = useActiveView()
+  const properties = getDocumentProperties(document)
+  const views = getDocumentViews(document)
+  const currentView = useCurrentView(view => view?.view)
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined

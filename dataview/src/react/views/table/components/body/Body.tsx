@@ -14,9 +14,9 @@ import { DragGhost } from '@dataview/react/dom/dragGhost'
 import { hasInteractiveTarget } from '@dataview/dom/interactive'
 import {
   useCurrentView,
-  useEngine,
+  useDataView,
   usePageValue
-} from '@dataview/react/editor'
+} from '@dataview/react/dataview'
 import { useStoreValue } from '@dataview/react/store'
 import { type FieldId } from '@dataview/react/currentView'
 import { applyPaste, handleTableKey } from '../../input'
@@ -37,7 +37,7 @@ import { MarqueeOverlay } from '../overlay/MarqueeOverlay'
 import { Surface } from './Surface'
 
 const View = () => {
-  const engine = useEngine()
+  const engine = useDataView().engine
   const table = useTableContext()
   const currentView = useCurrentView()
   if (!currentView) {

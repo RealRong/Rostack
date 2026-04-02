@@ -1,5 +1,5 @@
 import { GalleryView } from '@dataview/react/views/gallery'
-import { useCurrentView } from '@dataview/react/editor'
+import { useCurrentView } from '@dataview/react/dataview'
 import type { KanbanViewProps } from '@dataview/react/views/kanban'
 import { KanbanView } from '@dataview/react/views/kanban'
 import type { TableViewProps } from '@dataview/react/views/table'

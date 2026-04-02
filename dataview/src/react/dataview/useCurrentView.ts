@@ -9,7 +9,7 @@ import {
   useExternalValue,
   useStoreValue
 } from '@dataview/react/store'
-import { useEditorContext } from './provider'
+import { useDataView } from './provider'
 
 export function useCurrentView(): CurrentView | undefined
 export function useCurrentView<TResult>(
@@ -20,7 +20,8 @@ export function useCurrentView<TResult>(
   selector?: (currentView: CurrentView | undefined) => TResult,
   isEqual?: Equality<TResult>
 ): CurrentView | TResult | undefined {
-  const { currentViewStore } = useEditorContext()
+  const dataView = useDataView()
+  const currentViewStore = dataView.currentView.store
 
   if (!selector) {
     return useStoreValue(currentViewStore)

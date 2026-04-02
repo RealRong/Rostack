@@ -17,7 +17,7 @@ import {
   closestTarget,
   interactiveSelector
 } from '@dataview/dom/interactive'
-import { useCurrentView } from '@dataview/react/editor'
+import { useCurrentView } from '@dataview/react/dataview'
 import { useStoreValue } from '@dataview/react/store'
 import { useMarquee } from '@dataview/react/interaction/useMarquee'
 import {

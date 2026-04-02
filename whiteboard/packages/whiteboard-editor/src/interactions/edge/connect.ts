@@ -14,11 +14,9 @@ import { getNodeAnchorPoint } from '@whiteboard/core/node'
 import type { EdgeAnchor, EdgeType, NodeId } from '@whiteboard/core/types'
 import type {
   InteractionControl,
-  InteractionSession,
-  InteractionStartResult
+  InteractionSession
 } from '../../runtime/interaction'
 import type { PointerDownInput } from '../../types/input'
-import { readEdgeType } from '../../edge/preset'
 import type { ConnectNodeEntry, EdgeInteractionCtx } from './types'
 
 const readViewport = (
@@ -37,7 +35,7 @@ const readConnectNode = (
   return entry
 }
 
-const createEdgeConnectState = (
+export const resolveEdgeCreateState = (
   ctx: EdgeInteractionCtx,
   input: PointerDownInput,
   edgeType: EdgeType
@@ -102,7 +100,7 @@ const createEdgeConnectState = (
   })
 }
 
-const createReconnectState = (
+export const resolveEdgeReconnectState = (
   ctx: EdgeInteractionCtx,
   input: {
     edgeId: import('@whiteboard/core/types').EdgeId
@@ -208,7 +206,7 @@ const writeConnectPreview = ({
   )
 }
 
-const createConnectSession = (
+export const createEdgeConnectSession = (
   ctx: EdgeInteractionCtx,
   initial: EdgeConnectState,
   control: InteractionControl
@@ -279,57 +277,4 @@ const createConnectSession = (
       ctx.write.preview.edge.clear()
     }
   }
-}
-
-export const startEdgeConnectInteraction = (
-  ctx: EdgeInteractionCtx,
-  input: PointerDownInput,
-  control: InteractionControl
-): InteractionStartResult => {
-  const tool = ctx.read.tool.get()
-
-  if (tool.type === 'edge') {
-    const canStartFromNodeHandle =
-      input.pick.kind === 'node'
-      && input.pick.part === 'connect'
-      && Boolean(input.pick.side)
-
-    if (
-      !canStartFromNodeHandle
-      && (input.editable || input.ignoreInput || input.ignoreSelection)
-    ) {
-      return null
-    }
-
-    return createConnectSession(
-      ctx,
-      createEdgeConnectState(ctx, input, readEdgeType(tool.preset)),
-      control
-    )
-  }
-
-  if (
-    tool.type !== 'select'
-    || input.pick.kind !== 'edge'
-    || input.pick.part !== 'end'
-    || !input.pick.end
-  ) {
-    return null
-  }
-
-  const state = createReconnectState(ctx, {
-    edgeId: input.pick.id,
-    end: input.pick.end,
-    pointerId: input.pointerId,
-    world: input.world
-  })
-  if (!state || state.kind !== 'reconnect') {
-    return null
-  }
-
-  ctx.write.session.selection.replace({
-    edgeIds: [state.edgeId]
-  })
-
-  return createConnectSession(ctx, state, control)
 }

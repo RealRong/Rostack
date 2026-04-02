@@ -5,7 +5,7 @@ import type {
   GroupPropertyOption
 } from '@dataview/core/contracts'
 import { getPropertyOptions } from '@dataview/core/property'
-import { useEngine } from '@dataview/react/editor'
+import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import {
   OptionEditorPopover,
@@ -17,7 +17,7 @@ import { PropertyStatusOptionsSection } from './PropertyStatusOptionsSection'
 const PlainPropertyOptionsSection = (props: {
   property: GroupProperty
 }) => {
-  const editor = useEngine()
+  const editor = useDataView().engine
   const [editingOptionId, setEditingOptionId] = useState<string>()
   const options = getPropertyOptions(props.property)
 

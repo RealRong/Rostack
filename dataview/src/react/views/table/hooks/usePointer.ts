@@ -29,7 +29,7 @@ import {
   containsRelatedTarget,
   shouldCapturePointer
 } from '@dataview/dom/interactive'
-import { useCurrentView, useEngine } from '@dataview/react/editor'
+import { useCurrentView, useDataView } from '@dataview/react/dataview'
 import {
   resolveDefaultAutoPanTargets,
   useAutoPan
@@ -413,7 +413,7 @@ const useHoverBinding = (input: {
 export const usePointer = (
   options: PointerOptions
 ): PointerBinding => {
-  const editor = useEngine()
+  const editor = useDataView().engine
   const table = useTableContext()
   const currentView = useCurrentView()
   if (!currentView) {

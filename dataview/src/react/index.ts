@@ -35,21 +35,19 @@ export type { TableViewProps } from './views/table'
 export {
   EngineProvider,
   useCurrentView,
-  useEngine,
+  useDataView,
   usePage,
-  usePageActions,
   usePageValue,
-  useActiveView,
-  useViews,
-  useProperties,
+  useDocument,
+  useViewById,
   usePropertyById,
   useTitlePropertyId
-} from './editor'
+} from './dataview'
 export { meta, renderMessage } from '@dataview/meta'
 export type {
   GroupEngine,
   EngineProviderProps
-} from './editor'
+} from './dataview'
 export type {
   PageInteractionState,
   PageLock,

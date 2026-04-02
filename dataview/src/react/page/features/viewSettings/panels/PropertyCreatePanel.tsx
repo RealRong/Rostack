@@ -1,10 +1,10 @@
 import { PropertyKindPicker } from '@dataview/react/properties/schema'
-import { useEngine } from '@dataview/react/editor'
+import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { useViewSettings } from '../context'
 
 export const PropertyCreatePanel = () => {
-  const editor = useEngine()
+  const editor = useDataView().engine
   const router = useViewSettings()
 
   return (

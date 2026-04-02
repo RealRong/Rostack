@@ -45,16 +45,21 @@ export interface EngineProviderProps {
   children?: ReactNode
 }
 
-export interface EditorContextValue {
+export interface DataViewContextValue {
   engine: GroupEngine
-  currentViewStore: ReadStore<CurrentView | undefined>
-  pageStore: ReadStore<ResolvedPageState>
-  page: PageSessionApi
-  propertyEdit: PropertyEditApi
-  propertyEditSessionStore: ValueStore<PropertyEditSession | null>
+  currentView: {
+    store: ReadStore<CurrentView | undefined>
+    get: () => CurrentView | undefined
+  }
+  page: PageSessionApi & {
+    store: ReadStore<ResolvedPageState>
+  }
+  valueEditor: PropertyEditApi & {
+    sessionStore: ValueStore<PropertyEditSession | null>
+  }
 }
 
-const EditorContext = createContext<EditorContextValue | null>(null)
+const DataViewContext = createContext<DataViewContextValue | null>(null)
 export const EngineProvider = (props: EngineProviderProps) => (
   <EngineProviderInner {...props} />
 )
@@ -120,24 +125,27 @@ const dismissSession = (
 
 const EngineProviderInner = (props: EngineProviderProps) => {
   const page = useMemo(() => createPageSessionApi(props.initialPage), [])
-  const propertyEditSessionStore = useMemo(() => createValueStore<PropertyEditSession | null>({
+  const valueEditorSessionStore = useMemo(() => createValueStore<PropertyEditSession | null>({
     initial: null
   }), [])
   const valueEditorOpen = useMemo(() => createDerivedStore<boolean>({
-    get: read => Boolean(read(propertyEditSessionStore))
-  }), [propertyEditSessionStore])
-  const propertyEdit = useMemo<PropertyEditApi>(() => ({
+    get: read => Boolean(read(valueEditorSessionStore))
+  }), [valueEditorSessionStore])
+  const valueEditor = useMemo<PropertyEditApi & {
+    sessionStore: ValueStore<PropertyEditSession | null>
+  }>(() => ({
+    sessionStore: valueEditorSessionStore,
     open: input => {
-      dismissSession(propertyEditSessionStore)
-      propertyEditSessionStore.set(createSession(input))
+      dismissSession(valueEditorSessionStore)
+      valueEditorSessionStore.set(createSession(input))
       return true
     },
     close: (options?: CloseValueEditorOptions) => {
-      dismissSession(propertyEditSessionStore, {
+      dismissSession(valueEditorSessionStore, {
         silent: options?.silent
       })
     }
-  }), [propertyEditSessionStore])
+  }), [valueEditorSessionStore])
   const pageStateStore = useMemo(() => createResolvedPageStateStore({
     document: props.engine.read.document,
     page: page.store,
@@ -156,31 +164,34 @@ const EngineProviderInner = (props: EngineProviderProps) => {
     page.dispose()
   }, [dispose, page])
 
-  const value = useMemo<EditorContextValue>(() => ({
+  const value = useMemo<DataViewContextValue>(() => ({
     engine: props.engine,
-    currentViewStore: currentView,
-    pageStore: pageStateStore,
-    page,
-    propertyEdit,
-    propertyEditSessionStore
+    currentView: {
+      store: currentView,
+      get: currentView.get
+    },
+    page: {
+      ...page,
+      store: pageStateStore
+    },
+    valueEditor
   }), [
     currentView,
     page,
     pageStateStore,
-    propertyEdit,
-    propertyEditSessionStore,
+    valueEditor,
     props.engine
   ])
 
   return (
-    <EditorContext.Provider value={value}>
+    <DataViewContext.Provider value={value}>
       {props.children}
-    </EditorContext.Provider>
+    </DataViewContext.Provider>
   )
 }
 
-export const useEditorContext = (): EditorContextValue => {
-  const value = useContext(EditorContext)
+export const useDataView = (): DataViewContextValue => {
+  const value = useContext(DataViewContext)
   if (!value) {
     throw new Error('Missing <EngineProvider>.')
   }

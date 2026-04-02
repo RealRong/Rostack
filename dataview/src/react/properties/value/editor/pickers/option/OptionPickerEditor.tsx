@@ -22,7 +22,7 @@ import {
   type VerticalReorderItemState
 } from '@ui/vertical-reorder-list'
 import { cn } from '@ui/utils'
-import { useEngine } from '@dataview/react/editor'
+import { useDataView } from '@dataview/react/dataview'
 import type { PropertyEditIntent } from '@dataview/react/interaction'
 import type { PropertyValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@dataview/dom/focus'
@@ -201,7 +201,7 @@ const OptionRow = (props: {
 export const OptionPickerEditor = (
   props: OptionPickerEditorProps
 ) => {
-  const editor = useEngine()
+  const editor = useDataView().engine
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [query, setQuery] = useState('')
   const [editingOptionId, setEditingOptionId] = useState<string>()

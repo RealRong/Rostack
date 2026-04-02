@@ -14,7 +14,7 @@ import {
   showRowHint,
   type TableRowReorderHint
 } from '@dataview/table'
-import { useCurrentView } from '@dataview/react/editor'
+import { useCurrentView } from '@dataview/react/dataview'
 import { useStoreValue } from '@dataview/react/store'
 import { usePointerDragSession } from '@dataview/react/interaction/usePointerDragSession'
 import { useTableContext } from '../context'

@@ -8,9 +8,9 @@ import {
   resolvePropertyPrimaryAction
 } from '@dataview/core/property'
 import {
+  useDataView,
   useCurrentView,
-  useEngine
-} from '@dataview/react/editor'
+} from '@dataview/react/dataview'
 import {
   PropertyValueContent
 } from '@dataview/react/properties/value'
@@ -26,7 +26,6 @@ import {
 import type {
   ViewFieldRef
 } from '@dataview/engine/projection/view'
-import { useEditorContext } from '@dataview/react/editor/provider'
 import { cn } from '@ui/utils'
 
 export interface CardFieldProps {
@@ -55,8 +54,9 @@ const applyRecordValue = (input: {
 }
 
 export const CardField = (props: CardFieldProps) => {
-  const engine = useEngine()
-  const { propertyEdit } = useEditorContext()
+  const dataView = useDataView()
+  const engine = dataView.engine
+  const valueEditor = dataView.valueEditor
   const currentView = useCurrentView(view => (
     view?.view.id === props.field.viewId
       ? view
@@ -95,7 +95,7 @@ export const CardField = (props: CardFieldProps) => {
       return false
     }
 
-    return propertyEdit.open({
+    return valueEditor.open({
       field: target.field,
       anchor,
       onResolve: result => {

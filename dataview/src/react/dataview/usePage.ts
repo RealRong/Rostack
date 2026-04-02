@@ -12,10 +12,11 @@ import {
   useExternalValue,
   useStoreValue
 } from '@dataview/react/store'
-import { useEditorContext } from './provider'
+import { useDataView } from './provider'
 
 export const usePage = (): ResolvedPageState => {
-  const { pageStore } = useEditorContext()
+  const { page } = useDataView()
+  const pageStore = page.store
   return useStoreValue(pageStore)
 }
 
@@ -23,7 +24,8 @@ export const usePageValue = <TResult,>(
   selector: (state: ResolvedPageState) => TResult,
   isEqual?: Equality<TResult>
 ): TResult => {
-  const { pageStore } = useEditorContext()
+  const { page } = useDataView()
+  const pageStore = page.store
   const selectorRef = useRef(selector)
   selectorRef.current = selector
 
@@ -33,7 +35,3 @@ export const usePageValue = <TResult,>(
     isEqual ?? Object.is
   )
 }
-
-export const usePageActions = (): PageSessionApi => (
-  useEditorContext().page
-)

@@ -8,7 +8,7 @@ import {
 } from 'react'
 import type { PropertyId } from '@dataview/core/contracts'
 import { disableUserSelect } from '@dataview/dom/selection'
-import { useCurrentView, useEngine } from '@dataview/react/editor'
+import { useCurrentView, useDataView } from '@dataview/react/dataview'
 import { useStoreValue } from '@dataview/react/store'
 import { closestTableTargetElement } from '../dom/targets'
 import { useTableContext } from '../context'
@@ -39,7 +39,7 @@ const samePreview = (
 }
 
 export const useColumnResize = () => {
-  const editor = useEngine()
+  const editor = useDataView().engine
   const table = useTableContext()
   const currentView = useCurrentView()
   if (!currentView) {

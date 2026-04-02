@@ -1,6 +1,6 @@
 import { useMemo, type CSSProperties } from 'react'
 import { BlockingSurfaceProvider } from '@ui/blocking-surface'
-import { usePageActions } from '@dataview/react/editor'
+import { useDataView } from '@dataview/react/dataview'
 import { ViewQueryBar } from '@dataview/react/page/features/viewQuery/ViewQueryBar'
 import { PageInteractionHost } from '@dataview/react/page/PageInteractionHost'
 import { PageKeyboardHost } from '@dataview/react/page/KeyboardHost'
@@ -23,7 +23,7 @@ const chromeStyle: CSSProperties = {
 }
 
 export const Page = (props: PageProps) => {
-  const page = usePageActions()
+  const page = useDataView().page
   const blockingSurfaceController = useMemo(() => ({
     setBlockingSurface: page.surface.set,
     clearBlockingSurface: page.surface.clear

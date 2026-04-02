@@ -4,10 +4,10 @@ import type {
   GroupProperty
 } from '@dataview/core/contracts'
 import {
-  useEngine,
+  useDataView,
   usePropertyById,
   useTitlePropertyId
-} from '@dataview/react/editor'
+} from '@dataview/react/dataview'
 import { Input } from '@ui/input'
 import { meta, renderMessage } from '@dataview/meta'
 import { PropertyKindPicker } from '../PropertyKindPicker'
@@ -20,7 +20,7 @@ export interface PropertySchemaEditorProps {
 }
 
 export const PropertySchemaEditor = (props: PropertySchemaEditorProps) => {
-  const editor = useEngine()
+  const editor = useDataView().engine
   const property = usePropertyById(props.propertyId)
   const titlePropertyId = useTitlePropertyId()
   const isTitleProperty = property?.id === titlePropertyId

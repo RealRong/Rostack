@@ -4,10 +4,10 @@ import {
   BLOCKING_SURFACE_BACKDROP_ATTR
 } from '@ui/blocking-surface'
 import { cn } from '@ui/utils'
-import { usePageActions, usePageValue } from '@dataview/react/editor'
+import { useDataView, usePageValue } from '@dataview/react/dataview'
 
 export const PageInteractionHost = () => {
-  const page = usePageActions()
+  const page = useDataView().page
   const active = usePageValue(state => (
     state.interaction.blockingSurfaces.at(-1) ?? null
   ))

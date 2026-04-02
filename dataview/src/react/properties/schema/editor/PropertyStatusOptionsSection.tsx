@@ -14,7 +14,7 @@ import type {
   GroupStatusCategory
 } from '@dataview/core/contracts'
 import { getPropertyOptions, getStatusSections } from '@dataview/core/property'
-import { useEngine } from '@dataview/react/editor'
+import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { Button } from '@ui/button'
 import { Input } from '@ui/input'
@@ -307,7 +307,7 @@ const categoryMeta = (category: GroupStatusCategory) => {
 export const PropertyStatusOptionsSection = (props: {
   property: GroupProperty
 }) => {
-  const editor = useEngine()
+  const editor = useDataView().engine
   const [editingOptionId, setEditingOptionId] = useState<string>()
   const options = getPropertyOptions(props.property)
   const sections = getStatusSections(props.property)

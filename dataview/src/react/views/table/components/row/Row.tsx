@@ -8,7 +8,7 @@ import type {
   CurrentView
 } from '@dataview/react/currentView'
 import { shouldCapturePointer } from '@dataview/dom/interactive'
-import { useCurrentView } from '@dataview/react/editor'
+import { useCurrentView } from '@dataview/react/dataview'
 import { rowRailState } from '../../model/rowRail'
 import { useTableContext } from '../../context'
 import { useKeyedStoreValue, useStoreValue } from '@dataview/react/store'

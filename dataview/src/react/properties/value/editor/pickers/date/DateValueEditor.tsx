@@ -16,7 +16,7 @@ import {
 import { Input } from '@ui/input'
 import { Menu, type MenuItem } from '@ui/menu'
 import { cn } from '@ui/utils'
-import { useEngine } from '@dataview/react/editor'
+import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import type { PropertyValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@dataview/dom/focus'
@@ -81,7 +81,7 @@ const DateBoundarySection = (props: {
 export const DateValueEditor = (
   props: PropertyValueDraftEditorProps<DateValueDraft>
 ) => {
-  const editor = useEngine()
+  const editor = useDataView().engine
   const startDateRef = useRef<HTMLInputElement | null>(null)
   const property = props.property?.kind === 'date'
     ? props.property

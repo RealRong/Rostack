@@ -5,15 +5,16 @@ import {
   Plus,
   Trash2
 } from 'lucide-react'
+import { getDocumentProperties } from '@dataview/core/document'
 import { Button } from '@ui/button'
 import { Popover } from '@ui/popover'
 import { QueryChip } from '@ui/query-chip'
 import { VerticalReorderList } from '@ui/vertical-reorder-list'
 import {
-  useActiveView,
-  useEngine,
-  useProperties
-} from '@dataview/react/editor'
+  useCurrentView,
+  useDataView,
+  useDocument
+} from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { PropertyPicker } from '@dataview/react/page/features/viewQuery/PropertyPicker'
 import { SortRuleRow } from './SortRuleRow'
@@ -28,9 +29,11 @@ export interface SortPopoverProps {
 }
 
 export const SortPopover = (props: SortPopoverProps) => {
-  const engine = useEngine()
-  const properties = useProperties()
-  const currentView = useActiveView()
+  const dataView = useDataView()
+  const engine = dataView.engine
+  const document = useDocument()
+  const properties = getDocumentProperties(document)
+  const currentView = useCurrentView(view => view?.view)
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined

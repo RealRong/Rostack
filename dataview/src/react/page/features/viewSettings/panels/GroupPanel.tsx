@@ -1,6 +1,7 @@
 import { ChevronRight } from 'lucide-react'
 import { forwardRef, useEffect, useState } from 'react'
 import type { GroupBucketSort, GroupProperty } from '@dataview/core/contracts'
+import { getDocumentProperties } from '@dataview/core/document'
 import {
   getPropertyGroupMeta
 } from '@dataview/core/property'
@@ -8,10 +9,10 @@ import {
   resolveViewGroupState
 } from '@dataview/core/query'
 import {
-  useActiveView,
-  useEngine,
-  useProperties
-} from '@dataview/react/editor'
+  useCurrentView,
+  useDataView,
+  useDocument
+} from '@dataview/react/dataview'
 import { Button } from '@ui/button'
 import { Input } from '@ui/input'
 import { Menu } from '@ui/menu'
@@ -99,12 +100,14 @@ const readBucketSortLabel = (bucketSort: GroupBucketSort | undefined) => {
 }
 
 export const GroupPanel = () => {
-  const engine = useEngine()
-  const currentView = useActiveView()
+  const dataView = useDataView()
+  const engine = dataView.engine
+  const document = useDocument()
+  const currentView = useCurrentView(view => view?.view)
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined
-  const properties = useProperties()
+  const properties = getDocumentProperties(document)
   const group = resolveViewGroupState(properties, currentView?.query.group)
   const groupProperty = group.property
   const [propertyOpen, setPropertyOpen] = useState(false)

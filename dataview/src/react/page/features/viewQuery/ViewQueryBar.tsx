@@ -1,4 +1,5 @@
 import { ChevronDown } from 'lucide-react'
+import { getDocumentProperties } from '@dataview/core/document'
 import { FilterRulePopover } from '@dataview/react/page/features/filter'
 import {
   getAvailableFilterProperties,
@@ -6,12 +7,11 @@ import {
 } from '@dataview/react/page/features/filter/filterUi'
 import { SortPopover, getAvailableSorterProperties } from '@dataview/react/page/features/sort'
 import {
-  useActiveView,
-  useEngine,
-  usePageActions,
+  useCurrentView,
+  useDataView,
+  useDocument,
   usePageValue,
-  useProperties
-} from '@dataview/react/editor'
+} from '@dataview/react/dataview'
 import { Popover } from '@ui/popover'
 import { QueryChip } from '@ui/query-chip'
 import { meta, renderMessage } from '@dataview/meta'
@@ -21,11 +21,13 @@ import { PropertyPicker } from './PropertyPicker'
 export type ViewQueryOpenEntry = QueryBarEntry
 
 export const ViewQueryBar = () => {
-  const engine = useEngine()
-  const page = usePageActions()
-  const properties = useProperties()
+  const dataView = useDataView()
+  const engine = dataView.engine
+  const page = dataView.page
+  const document = useDocument()
+  const properties = getDocumentProperties(document)
   const queryBar = usePageValue(state => state.query)
-  const currentView = useActiveView()
+  const currentView = useCurrentView(view => view?.view)
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined

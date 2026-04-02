@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./.tmp/group-test-dist",
+    "module": "CommonJS",
+    "target": "ES2022",
+    "noEmit": false,
+    "declaration": false
+  },
+  "include": ["src"]
+}

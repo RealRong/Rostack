@@ -1,0 +1,107 @@
+import type { KernelReadImpact } from '@whiteboard/core/kernel'
+import type { NodeItem } from '@engine-types/projection'
+import type { ReadStore } from '@engine-types/store'
+import type { NodeId } from '@whiteboard/core/types'
+import { createValueStore } from '../../store'
+import type { ReadSnapshot } from '@engine-types/internal/read'
+import { createTrackedRead } from './tracked'
+
+export const createNodeProjection = (initialSnapshot: ReadSnapshot) => {
+  const cacheById = new Map<NodeId, NodeItem>()
+  const list = createValueStore(
+    initialSnapshot.model.canvas.nodeIds as readonly NodeId[]
+  )
+  const tracked = createTrackedRead<NodeId, NodeItem | undefined>({
+    emptyValue: undefined,
+    read: (nodeId) => readCached(nodeId)
+  })
+  let snapshotRef: ReadSnapshot = initialSnapshot
+
+  const getNodeMap = () => snapshotRef.model.canvas.nodeById
+
+  const readEntry = (
+    nodeId: NodeId,
+    previous?: NodeItem
+  ) => {
+    const node = getNodeMap().get(nodeId)
+    const canvasNode = snapshotRef.index.node.get(nodeId)
+    if (!node || !canvasNode) {
+      return undefined
+    }
+
+    if (previous && previous.node === node && previous.rect === canvasNode.rect) {
+      return previous
+    }
+
+    return {
+      node,
+      rect: canvasNode.rect
+    } satisfies NodeItem
+  }
+
+  const readCached = (
+    nodeId: NodeId
+  ) => {
+    const next = readEntry(nodeId, cacheById.get(nodeId))
+    if (next) {
+      cacheById.set(nodeId, next)
+    } else {
+      cacheById.delete(nodeId)
+    }
+    return next
+  }
+
+  const applyChange = (
+    impact: KernelReadImpact,
+    snapshot: ReadSnapshot,
+    extraChangedNodeIds: readonly NodeId[] = []
+  ) => {
+    snapshotRef = snapshot
+    const prevIds = list.get()
+    const nextIds = snapshotRef.model.canvas.nodeIds as readonly NodeId[]
+    const idsChanged = prevIds !== nextIds
+
+    if (idsChanged) {
+      list.set(nextIds)
+    }
+
+    const changedNodeIds = new Set<NodeId>()
+
+    if (
+      impact.reset
+      || impact.node.list
+      || ((impact.node.geometry || impact.node.value) && impact.node.ids.length === 0)
+    ) {
+      cacheById.forEach((_, nodeId) => {
+        changedNodeIds.add(nodeId)
+      })
+      for (const nodeId of tracked.keys()) {
+        changedNodeIds.add(nodeId)
+      }
+    } else {
+      impact.node.ids.forEach((nodeId) => {
+        changedNodeIds.add(nodeId)
+      })
+    }
+
+    extraChangedNodeIds.forEach((nodeId) => {
+      changedNodeIds.add(nodeId)
+    })
+
+    if (idsChanged) {
+      prevIds.forEach((nodeId) => {
+        if (!snapshotRef.model.canvas.nodeById.has(nodeId)) {
+          changedNodeIds.add(nodeId)
+        }
+      })
+    }
+
+    tracked.sync(changedNodeIds)
+  }
+
+  return {
+    list: list as ReadStore<readonly NodeId[]>,
+    item: tracked.item,
+    applyChange
+  }
+}

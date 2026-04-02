@@ -1,0 +1,37 @@
+{
+  "name": "@whiteboard/editor",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./insert": {
+      "types": "./dist/insert.d.ts",
+      "import": "./dist/insert.js",
+      "require": "./dist/insert.cjs"
+    },
+    "./draw": {
+      "types": "./dist/draw.d.ts",
+      "import": "./dist/draw.js",
+      "require": "./dist/draw.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@whiteboard/core": "workspace:*",
+    "@whiteboard/engine": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsup",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "echo \"No tests\""
+  }
+}

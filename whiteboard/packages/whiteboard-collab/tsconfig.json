@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "@whiteboard/core/*": ["../whiteboard-core/src/*/index.ts"],
+      "@whiteboard/engine": ["../whiteboard-engine/src/index.ts"],
+      "@engine-types/*": ["../whiteboard-engine/src/types/*"]
+    }
+  },
+  "include": ["src"]
+}

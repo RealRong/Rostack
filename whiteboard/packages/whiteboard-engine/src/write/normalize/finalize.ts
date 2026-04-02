@@ -1,0 +1,481 @@
+import {
+  isPointEqual
+} from '@whiteboard/core/geometry'
+import { createNodeUpdateOperation } from '@whiteboard/core/node'
+import { compileNodeFieldUpdate } from '@whiteboard/core/schema'
+import type {
+  Document,
+  Edge,
+  EdgeEnd,
+  EdgeId,
+  EdgeLabel,
+  Node,
+  NodeId,
+  Operation,
+  Point,
+  Size
+} from '@whiteboard/core/types'
+
+const TEXT_WIDTH_MODE_KEY = 'widthMode'
+type NodeEdgeEnd = Extract<EdgeEnd, { kind: 'node' }>
+
+type NodeChange = {
+  before?: Node
+  after?: Node
+  geometry: boolean
+  relation: boolean
+  value: boolean
+}
+
+type EdgeChange = {
+  before?: Edge
+  after?: Edge
+  geometry: boolean
+  value: boolean
+}
+
+type WriteChanges = {
+  nodes: ReadonlyMap<NodeId, NodeChange>
+  edges: ReadonlyMap<EdgeId, EdgeChange>
+}
+
+type TouchedIds = {
+  nodeIds: ReadonlySet<NodeId>
+  edgeIds: ReadonlySet<EdgeId>
+}
+
+const readNodeGeometry = (
+  node: Node | undefined
+): {
+  position?: Point
+  size?: Size
+  rotation?: number
+} | undefined => (
+  node && node.type !== 'group'
+    ? {
+        position: node.position,
+        size: node.size,
+        rotation: node.rotation
+      }
+    : undefined
+)
+
+const collectTouchedIds = (
+  operations: readonly Operation[]
+): TouchedIds => {
+  const nodeIds = new Set<NodeId>()
+  const edgeIds = new Set<EdgeId>()
+
+  operations.forEach((operation) => {
+    switch (operation.type) {
+      case 'node.create':
+        nodeIds.add(operation.node.id)
+        return
+      case 'node.update':
+      case 'node.delete':
+        nodeIds.add(operation.id)
+        return
+      case 'edge.create':
+        edgeIds.add(operation.edge.id)
+        return
+      case 'edge.update':
+      case 'edge.delete':
+        edgeIds.add(operation.id)
+        return
+      default:
+        return
+    }
+  })
+
+  return {
+    nodeIds,
+    edgeIds
+  }
+}
+
+const isSizeEqual = (
+  left?: Size,
+  right?: Size
+) => (
+  (left?.width ?? 0) === (right?.width ?? 0)
+  && (left?.height ?? 0) === (right?.height ?? 0)
+)
+
+const isRotationEqual = (
+  left?: number,
+  right?: number
+) => (left ?? 0) === (right ?? 0)
+
+const isArrayEqual = (
+  left: readonly unknown[] | undefined,
+  right: readonly unknown[] | undefined
+) => {
+  if (left === right) {
+    return true
+  }
+  if (!left || !right) {
+    return false
+  }
+  if (left.length !== right.length) {
+    return false
+  }
+
+  return left.every((value, index) => value === right[index])
+}
+
+const isPointOptionalEqual = (
+  left?: Point,
+  right?: Point
+) => {
+  if (left === right) {
+    return true
+  }
+  if (!left || !right) {
+    return false
+  }
+  return isPointEqual(left, right)
+}
+
+const isPointArrayEqual = (
+  left: readonly Point[] | undefined,
+  right: readonly Point[] | undefined
+) => {
+  if (left === right) {
+    return true
+  }
+  if (!left || !right) {
+    return false
+  }
+  if (left.length !== right.length) {
+    return false
+  }
+
+  return left.every((point, index) =>
+    isPointEqual(point, right[index]!)
+  )
+}
+
+const isShallowEqual = (
+  left: object | undefined,
+  right: object | undefined
+) => {
+  if (left === right) {
+    return true
+  }
+  if (!left || !right) {
+    return false
+  }
+
+  const leftRecord = left as Record<string, unknown>
+  const rightRecord = right as Record<string, unknown>
+  const leftKeys = Object.keys(leftRecord)
+  const rightKeys = Object.keys(rightRecord)
+  if (leftKeys.length !== rightKeys.length) {
+    return false
+  }
+
+  return leftKeys.every((key) => {
+    const leftValue = leftRecord[key]
+    const rightValue = rightRecord[key]
+    if (leftValue === rightValue) {
+      return true
+    }
+    if (Array.isArray(leftValue) && Array.isArray(rightValue)) {
+      return isArrayEqual(leftValue, rightValue)
+    }
+    return false
+  })
+}
+
+const isEdgeAnchorEqual = (
+  left: NodeEdgeEnd['anchor'],
+  right: NodeEdgeEnd['anchor']
+) => (
+  left?.side === right?.side
+  && (left?.offset ?? 0) === (right?.offset ?? 0)
+)
+
+const isEdgeEndEqual = (
+  left: EdgeEnd,
+  right: EdgeEnd
+) => {
+  if (left.kind !== right.kind) {
+    return false
+  }
+
+  if (left.kind === 'point' && right.kind === 'point') {
+    return isPointEqual(left.point, right.point)
+  }
+
+  if (left.kind === 'node' && right.kind === 'node') {
+    return (
+      left.nodeId === right.nodeId
+      && isEdgeAnchorEqual(left.anchor, right.anchor)
+    )
+  }
+
+  return false
+}
+
+const isEdgeRouteEqual = (
+  left: Edge['route'],
+  right: Edge['route']
+) => (
+  left?.kind === right?.kind
+  && isPointArrayEqual(
+    left?.kind === 'manual' ? left.points : undefined,
+    right?.kind === 'manual' ? right.points : undefined
+  )
+)
+
+const isEdgeLabelEqual = (
+  left?: EdgeLabel,
+  right?: EdgeLabel
+) => (
+  left?.text === right?.text
+  && left?.position === right?.position
+  && isPointOptionalEqual(left?.offset, right?.offset)
+)
+
+const diffNodeChange = (
+  before: Node | undefined,
+  after: Node | undefined
+): NodeChange | undefined => {
+  if (!before && !after) {
+    return undefined
+  }
+
+  if (!before || !after) {
+    return {
+      before,
+      after,
+      geometry: true,
+      relation: true,
+      value: true
+    }
+  }
+
+  const beforeGeometry = readNodeGeometry(before)
+  const afterGeometry = readNodeGeometry(after)
+  const geometry = (
+    !isPointOptionalEqual(beforeGeometry?.position, afterGeometry?.position)
+    || !isSizeEqual(beforeGeometry?.size, afterGeometry?.size)
+    || !isRotationEqual(beforeGeometry?.rotation, afterGeometry?.rotation)
+  )
+  const relation = (
+    !isArrayEqual(before.children, after.children)
+    || before.type !== after.type
+  )
+  const value = (
+    before.layer !== after.layer
+    || before.zIndex !== after.zIndex
+    || before.locked !== after.locked
+    || !isShallowEqual(before.data, after.data)
+    || !isShallowEqual(before.style, after.style)
+  )
+
+  if (!geometry && !relation && !value) {
+    return undefined
+  }
+
+  return {
+    before,
+    after,
+    geometry,
+    relation,
+    value
+  }
+}
+
+const diffEdgeChange = (
+  before: Edge | undefined,
+  after: Edge | undefined
+): EdgeChange | undefined => {
+  if (!before && !after) {
+    return undefined
+  }
+
+  if (!before || !after) {
+    return {
+      before,
+      after,
+      geometry: true,
+      value: true
+    }
+  }
+
+  const geometry = (
+    !isEdgeEndEqual(before.source, after.source)
+    || !isEdgeEndEqual(before.target, after.target)
+    || before.type !== after.type
+    || !isEdgeRouteEqual(before.route, after.route)
+  )
+  const value = (
+    !isShallowEqual(before.style, after.style)
+    || !isEdgeLabelEqual(before.label, after.label)
+    || !isShallowEqual(before.data, after.data)
+  )
+
+  if (!geometry && !value) {
+    return undefined
+  }
+
+  return {
+    before,
+    after,
+    geometry,
+    value
+  }
+}
+
+const diffChanges = ({
+  beforeDocument,
+  afterDocument,
+  touched
+}: {
+  beforeDocument: Document
+  afterDocument: Document
+  touched: TouchedIds
+}): WriteChanges => {
+  const nodes = new Map<NodeId, NodeChange>()
+  touched.nodeIds.forEach((nodeId) => {
+    const change = diffNodeChange(
+      beforeDocument.nodes.entities[nodeId],
+      afterDocument.nodes.entities[nodeId]
+    )
+    if (change) {
+      nodes.set(nodeId, change)
+    }
+  })
+
+  const edges = new Map<EdgeId, EdgeChange>()
+  touched.edgeIds.forEach((edgeId) => {
+    const change = diffEdgeChange(
+      beforeDocument.edges.entities[edgeId],
+      afterDocument.edges.entities[edgeId]
+    )
+    if (change) {
+      edges.set(edgeId, change)
+    }
+  })
+
+  return {
+    nodes,
+    edges
+  }
+}
+
+export const collectChanges = ({
+  beforeDocument,
+  afterDocument,
+  operations
+}: {
+  beforeDocument: Document
+  afterDocument: Document
+  operations: readonly Operation[]
+}): WriteChanges => diffChanges({
+  beforeDocument,
+  afterDocument,
+  touched: collectTouchedIds(operations)
+})
+
+const hasNodeSizeChange = (
+  change: NodeChange
+) => {
+  if (!change.before || !change.after) {
+    return false
+  }
+
+  const before = readNodeGeometry(change.before)?.size
+  const after = readNodeGeometry(change.after)?.size
+  if (!before && !after) {
+    return false
+  }
+
+  return (
+    (before?.width ?? 0) !== (after?.width ?? 0)
+    || (before?.height ?? 0) !== (after?.height ?? 0)
+  )
+}
+
+const collectNodeDataOps = ({
+  document,
+  changes,
+  nodeSize: _nodeSize
+}: {
+  document: Document
+  changes: WriteChanges
+  nodeSize: Size
+}): Operation[] => {
+  const next: Operation[] = []
+
+  changes.nodes.forEach((change, nodeId) => {
+    if (!change.after || !change.geometry) {
+      return
+    }
+
+    const node = document.nodes.entities[nodeId]
+    if (!node) {
+      return
+    }
+
+    let data = node.data
+
+    if (node.type === 'text' && hasNodeSizeChange(change)) {
+      if (node.data?.[TEXT_WIDTH_MODE_KEY] !== 'fixed') {
+        data = {
+          ...(data ?? {}),
+          [TEXT_WIDTH_MODE_KEY]: 'fixed'
+        }
+      }
+    }
+
+    if (isShallowEqual(node.data, data)) {
+      return
+    }
+
+    next.push(createNodeUpdateOperation(
+      nodeId,
+      compileNodeFieldUpdate(
+        { scope: 'data', path: TEXT_WIDTH_MODE_KEY },
+        'fixed'
+      )
+    ))
+  })
+
+  return next
+}
+
+export const collectFinalizeOps = ({
+  afterDocument,
+  changes,
+  nodeSize
+}: {
+  afterDocument: Document
+  changes: WriteChanges
+  nodeSize: Size
+}): Operation[] => {
+  return collectNodeDataOps({
+    document: afterDocument,
+    changes,
+    nodeSize
+  })
+}
+
+export const collectDirtyNodeIds = (
+  changes: WriteChanges
+): ReadonlySet<NodeId> => {
+  const nodeIds = new Set<NodeId>()
+
+  changes.nodes.forEach((change, nodeId) => {
+    if (!change.geometry && !change.relation) {
+      return
+    }
+
+    if (change.after) {
+      nodeIds.add(nodeId)
+    }
+  })
+
+  return nodeIds
+}

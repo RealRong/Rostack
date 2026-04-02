@@ -1,0 +1,312 @@
+import type { GroupEngine } from '@/engine'
+import {
+  revealElement,
+  revealY
+} from '@/react/dom/scroll'
+import {
+  createInteractionCoordinator,
+  type InteractionApi
+} from '@/react/page/interaction'
+import {
+  type AppearanceId,
+  type CurrentView,
+  type Section
+} from '@/react/view'
+import {
+  createDerivedStore,
+  type ReadStore
+} from '@/runtime/store'
+import type { ResolvedPageState } from '@/react/page/session/types'
+import type { PropertyEditApi } from '@/react/propertyEdit'
+import {
+  createCapabilities,
+  type Capabilities
+} from './capabilities'
+import {
+  createDom,
+  type Dom
+} from './dom'
+import type { Nodes } from './dom/registry'
+import {
+  createCellOpener,
+  type CellOpenInput
+} from './openCell'
+import {
+  createRowHit,
+  type RowHit
+} from './dom/rowHit'
+import { createHover, type Hover } from './hover'
+import type { TableLayout } from './layout'
+import { createCellRender, type CellRender } from './cellRender'
+import {
+  createGridSelection,
+  type GridSelectionStore
+} from './gridSelection'
+
+export interface TableController {
+  gridSelection: GridSelectionStore
+  layout: TableLayout
+  nodes: Nodes
+  dom: Dom
+  rowHit: RowHit
+  focus: () => void
+  openCell: (input: CellOpenInput) => boolean
+  interaction: InteractionApi
+  capabilities: ReadStore<Capabilities>
+  hover: Hover
+  cellRender: CellRender
+  revealCursor: () => void
+  revealRow: (rowId: AppearanceId) => void
+  dispose: () => void
+}
+
+export type {
+  Capabilities,
+  CellOpenInput,
+  GridSelectionStore,
+  CellRender
+}
+
+const sectionBlockHeight = (input: {
+  section: Section
+  rowHeight: number
+  headerHeight: number
+}) => input.section.collapsed
+    ? input.headerHeight
+    : (
+      input.headerHeight
+      + input.headerHeight
+      + (input.section.ids.length * input.rowHeight)
+    )
+
+const flatRowTarget = (input: {
+  currentView: CurrentView
+  rowId: AppearanceId
+  rowHeight: number
+  headerHeight: number
+}): {
+  rowId: AppearanceId
+  top: number
+  bottom: number
+} | null => {
+  const rowIndex = input.currentView.appearances.indexOf(input.rowId)
+
+  return rowIndex === undefined
+    ? null
+    : {
+      rowId: input.rowId,
+      top: input.headerHeight + (rowIndex * input.rowHeight),
+      bottom: input.headerHeight + ((rowIndex + 1) * input.rowHeight)
+    }
+}
+
+const groupedRowTarget = (input: {
+  currentView: CurrentView
+  rowId: AppearanceId
+  rowHeight: number
+  headerHeight: number
+}): {
+  rowId: AppearanceId
+  top: number
+  bottom: number
+} | null => {
+  let sectionTop = 0
+
+  for (const section of input.currentView.sections) {
+    const rowIndex = section.ids.indexOf(input.rowId)
+    if (rowIndex !== -1) {
+      const top = sectionTop + input.headerHeight + input.headerHeight + (rowIndex * input.rowHeight)
+      return {
+        rowId: input.rowId,
+        top,
+        bottom: top + input.rowHeight
+      }
+    }
+
+    sectionTop += sectionBlockHeight({
+      section,
+      rowHeight: input.rowHeight,
+      headerHeight: input.headerHeight
+    })
+  }
+
+  return null
+}
+
+const rowTarget = (input: {
+  currentView: CurrentView
+  rowId: AppearanceId
+  rowHeight: number
+  headerHeight: number
+}): {
+  rowId: AppearanceId
+  top: number
+  bottom: number
+} | null => input.currentView.view.query.group
+    ? groupedRowTarget(input)
+    : flatRowTarget(input)
+
+const selectionRow = (input: {
+  currentView: CurrentView | undefined
+  gridSelection: ReturnType<GridSelectionStore['get']>
+  rowHeight: number
+  headerHeight: number
+}): {
+  rowId: AppearanceId
+  top: number
+  bottom: number
+} | null => {
+  const currentView = input.currentView
+  if (!currentView) {
+    return null
+  }
+
+  const rowSelection = currentView.selection.get()
+  const rowId = input.gridSelection?.focus.appearanceId
+    ?? rowSelection.focus
+    ?? rowSelection.ids[0]
+  if (!rowId) {
+    return null
+  }
+
+  return rowTarget({
+    currentView,
+    rowId,
+    rowHeight: input.rowHeight,
+    headerHeight: input.headerHeight
+  })
+}
+
+export const createTableController = (options: {
+  engine: GroupEngine
+  pageStore: ReadStore<ResolvedPageState>
+  currentViewStore: ReadStore<CurrentView | undefined>
+  propertyEdit: PropertyEditApi
+  layout: TableLayout
+  nodes: Nodes
+}): TableController => {
+  const currentView = options.currentViewStore
+  const gridSelection = createGridSelection(currentView)
+  const lockedStore = createDerivedStore<boolean>({
+    get: read => read(options.pageStore).lock !== null
+  })
+  const valueEditorOpenStore = createDerivedStore<boolean>({
+    get: read => read(options.pageStore).valueEditorOpen
+  })
+  const interaction = createInteractionCoordinator()
+  const capabilities = createCapabilities({
+    currentView,
+    locked: lockedStore,
+    interaction: interaction.store
+  })
+  const hover = createHover()
+  const dom = createDom({
+    layout: options.layout,
+    nodes: options.nodes
+  })
+  const rowHit = createRowHit({
+    containerRef: options.layout.containerRef,
+    nodes: options.nodes
+  })
+  const focus = () => {
+    dom.container()?.focus({
+      preventScroll: true
+    })
+  }
+  const revealTarget = (target: {
+    rowId: AppearanceId
+    top: number
+    bottom: number
+  }) => {
+    const scrollNode = dom.scrollRoot()
+    if (!scrollNode) {
+      return
+    }
+
+    const rowNode = dom.row(target.rowId)
+    if (rowNode) {
+      revealElement(scrollNode, rowNode, 8)
+      return
+    }
+
+    const canvas = dom.canvas()
+    if (!canvas) {
+      return
+    }
+
+    const canvasRect = canvas.getBoundingClientRect()
+    revealY({
+      node: scrollNode,
+      top: canvasRect.top + target.top,
+      bottom: canvasRect.top + target.bottom,
+      inset: 8
+    })
+  }
+  const revealRow = (rowId: AppearanceId) => {
+    const activeCurrentView = currentView.get()
+    if (!activeCurrentView) {
+      return
+    }
+
+    const target = rowTarget({
+      currentView: activeCurrentView,
+      rowId,
+      rowHeight: options.layout.rowHeight,
+      headerHeight: options.layout.headerHeight
+    })
+    if (!target) {
+      return
+    }
+
+    revealTarget(target)
+  }
+  const revealCursor = () => {
+    const target = selectionRow({
+      currentView: currentView.get(),
+      gridSelection: gridSelection.get(),
+      rowHeight: options.layout.rowHeight,
+      headerHeight: options.layout.headerHeight
+    })
+    if (!target) {
+      return
+    }
+
+    revealTarget(target)
+  }
+  const openCell = createCellOpener({
+    propertyEdit: options.propertyEdit,
+    currentView: currentView.get,
+    gridSelection,
+    dom,
+    revealCursor,
+    focus
+  })
+  const cellRender = createCellRender({
+    gridSelectionStore: gridSelection.store,
+    valueEditorOpenStore,
+    currentViewStore: currentView,
+    capabilitiesStore: capabilities,
+    hoverCellStore: hover.cell,
+    recordStore: options.engine.read.record
+  })
+
+  return {
+    gridSelection,
+    layout: options.layout,
+    nodes: options.nodes,
+    dom,
+    rowHit,
+    focus,
+    openCell,
+    interaction: interaction.api,
+    capabilities,
+    hover,
+    cellRender,
+    revealCursor,
+    revealRow,
+    dispose: () => {
+      interaction.api.cancel()
+      gridSelection.dispose()
+    }
+  }
+}

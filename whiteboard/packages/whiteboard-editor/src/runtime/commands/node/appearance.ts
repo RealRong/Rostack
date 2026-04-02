@@ -1,0 +1,68 @@
+import { compileNodeFieldUpdates } from '@whiteboard/core/schema'
+import type { EngineInstance } from '@whiteboard/engine'
+import type {
+  EditorNodeAppearanceCommands,
+  EditorNodeDocumentCommands
+} from '../../../types/editor'
+import { styleUpdate } from './document'
+
+export const createNodeAppearanceCommands = ({
+  engine,
+  document
+}: {
+  engine: EngineInstance
+  document: EditorNodeDocumentCommands
+}): EditorNodeAppearanceCommands => ({
+  setFill: (nodeIds, fill) => document.updateMany(
+    nodeIds.map((id) => {
+      const node = engine.read.node.item.get(id)?.node
+
+      return {
+        id,
+        update:
+          node?.type === 'sticky'
+            ? compileNodeFieldUpdates([
+                {
+                  field: {
+                    scope: 'style',
+                    path: 'fill'
+                  },
+                  value: fill
+                },
+                {
+                  field: {
+                    scope: 'data',
+                    path: 'background'
+                  },
+                  value: fill
+                }
+              ])
+            : styleUpdate('fill', fill)
+      }
+    })
+  ),
+  setStroke: (nodeIds, stroke) => document.updateMany(
+    nodeIds.map((id) => ({
+      id,
+      update: styleUpdate('stroke', stroke)
+    }))
+  ),
+  setStrokeWidth: (nodeIds, width) => document.updateMany(
+    nodeIds.map((id) => ({
+      id,
+      update: styleUpdate('strokeWidth', width)
+    }))
+  ),
+  setOpacity: (nodeIds, opacity) => document.updateMany(
+    nodeIds.map((id) => ({
+      id,
+      update: styleUpdate('opacity', opacity)
+    }))
+  ),
+  setTextColor: (nodeIds, color) => document.updateMany(
+    nodeIds.map((id) => ({
+      id,
+      update: styleUpdate('color', color)
+    }))
+  )
+})

@@ -1,0 +1,217 @@
+import type { KeyInput } from '@/react/page/interaction'
+import {
+  type CurrentView,
+  type FieldId
+} from '@/react/view'
+import type {
+  GroupEngine
+} from '@/engine'
+import {
+  recordIdsOfAppearances,
+  toRecordField
+} from '@/engine/projection/view'
+import {
+  selection as rowSelection
+} from '@/react/view/selection'
+import {
+  gridKeyAction,
+  isSelectAll,
+  parseClipboardMatrix,
+  planPaste,
+  range,
+  type TableKeyInput
+} from '@/table'
+import type { CellOpenInput } from './openCell'
+import type { GridSelectionStore } from './gridSelection'
+
+const currentKey = (
+  input: TableKeyInput | KeyInput
+): TableKeyInput => 'type' in input
+    ? {
+      key: input.key,
+      modifiers: input.modifiers
+    }
+    : input
+
+export const handleTableKey = (input: {
+  key: TableKeyInput | KeyInput
+  editor: GroupEngine
+  currentView: CurrentView
+  locked: boolean
+  readCell: (cell: FieldId) => {
+    exists: boolean
+  }
+  gridSelection: GridSelectionStore
+  openCell: (input: CellOpenInput) => boolean
+  reveal: () => void
+  setKeyboardMode: () => void
+}) => {
+  if (input.locked) {
+    return false
+  }
+
+  const key = currentKey(input.key)
+  if (isSelectAll(key)) {
+    input.currentView.commands.selection.all()
+    input.gridSelection.clear()
+    input.setKeyboardMode()
+    input.reveal()
+    return true
+  }
+
+  const currentGridSelection = input.gridSelection.get()
+  if (currentGridSelection) {
+    if (key.key === 'Escape') {
+      const currentRange = range.from(currentGridSelection)
+      const rowIds = currentRange
+        ? range.appearances(currentRange, input.currentView.appearances)
+        : []
+      input.currentView.commands.selection.set(rowIds, {
+        anchor: rowIds[0],
+        focus: rowIds[rowIds.length - 1]
+      })
+      input.gridSelection.clear()
+      input.setKeyboardMode()
+      input.reveal()
+      return true
+    }
+
+    const action = gridKeyAction({
+      key,
+      selection: currentGridSelection,
+      appearances: input.currentView.appearances,
+      properties: input.currentView.properties,
+      read: {
+        cell: input.readCell,
+        property: propertyId => input.currentView.properties.get(propertyId)
+      }
+    })
+    if (!action) {
+      return false
+    }
+
+    input.setKeyboardMode()
+
+    switch (action.kind) {
+      case 'move-cell':
+        input.gridSelection.move(action.rowDelta, action.columnDelta, {
+          extend: action.extend,
+          wrap: action.wrap
+        })
+        input.reveal()
+        return true
+      case 'open-cell':
+        input.openCell({
+          cell: action.cell,
+          seedDraft: action.seedDraft
+        })
+        return true
+      case 'clear-cells':
+        input.editor.records.clearValues({
+          recordIds: recordIdsOfAppearances(
+            input.currentView.appearances,
+            action.appearanceIds
+          ),
+          propertyIds: action.propertyIds
+        })
+        input.reveal()
+        return true
+    }
+  }
+
+  const currentSelection = input.currentView.selection.get()
+  if (!currentSelection.ids.length) {
+    return false
+  }
+
+  switch (key.key) {
+    case 'ArrowUp':
+    case 'ArrowDown': {
+      const next = rowSelection.step(
+        input.currentView.appearances.ids,
+        currentSelection,
+        key.key === 'ArrowUp' ? -1 : 1,
+        {
+          extend: key.modifiers.shiftKey
+        }
+      )
+      if (!next) {
+        return false
+      }
+
+      input.currentView.commands.selection.set(next.ids, {
+        anchor: next.anchor,
+        focus: next.focus
+      })
+      input.setKeyboardMode()
+      input.reveal()
+      return true
+    }
+    case 'ArrowRight':
+    case 'Enter': {
+      const rowId = currentSelection.focus ?? currentSelection.ids[0]
+      if (!rowId) {
+        return false
+      }
+
+      input.gridSelection.first(rowId)
+      input.setKeyboardMode()
+      input.reveal()
+      return true
+    }
+    case 'Backspace':
+    case 'Delete':
+      input.currentView.commands.mutation.remove()
+      input.setKeyboardMode()
+      input.reveal()
+      return true
+    default:
+      return false
+  }
+}
+
+export const applyPaste = (input: {
+  editor: GroupEngine
+  currentView: CurrentView | undefined
+  gridSelection: ReturnType<GridSelectionStore['get']>
+  text: string
+}) => {
+  if (!input.currentView) {
+    return false
+  }
+  const currentView = input.currentView
+
+  const matrix = parseClipboardMatrix(input.text)
+  if (!matrix.length) {
+    return false
+  }
+
+  const entries = planPaste({
+    selection: input.gridSelection,
+    appearances: currentView.appearances,
+    properties: currentView.properties,
+    matrix
+  })
+  if (!entries.length) {
+    return false
+  }
+
+  entries.forEach(entry => {
+    const target = toRecordField({
+      appearanceId: entry.cell.appearanceId,
+      propertyId: entry.cell.propertyId
+    }, currentView.appearances)
+    if (!target) {
+      return
+    }
+
+    if (entry.value === undefined) {
+      input.editor.records.clearValue(target.recordId, target.propertyId)
+      return
+    }
+
+    input.editor.records.setValue(target.recordId, target.propertyId, entry.value)
+  })
+
+  return true
+}

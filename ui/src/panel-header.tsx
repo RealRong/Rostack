@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronLeft } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { Button } from './button'
 
 export interface PanelHeaderProps {

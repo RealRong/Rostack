@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
+import { Select } from '@ui/select'
+import { cn } from '@ui/utils'
 import { focusWithoutScroll } from '@dataview/react/dom/focus'
-import { Select, cn } from '@dataview/react/ui'
 import {
   isComposing,
   keyAction

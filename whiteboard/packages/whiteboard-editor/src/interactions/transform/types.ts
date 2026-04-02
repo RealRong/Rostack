@@ -31,22 +31,39 @@ export type RotateDragState = RotateGestureSnapshot & {
   pointerId: number
 }
 
-export type TransformDragState = ResizeDragState | RotateDragState
-
 export type TransformTarget = {
   id: NodeId
   node: Node
   rect: Rect
 }
 
-export type TransformSession = {
-  targets: readonly TransformTarget[]
-  commitTargetIds?: ReadonlySet<NodeId>
-  drag: TransformDragState
+export type SingleResizePlan = {
+  kind: 'single-resize'
+  target: TransformTarget
+  drag: ResizeDragState
 }
 
-export type TransformProjection = {
-  patches: readonly TransformPreviewPatch[]
+export type SingleRotatePlan = {
+  kind: 'single-rotate'
+  target: TransformTarget
+  drag: RotateDragState
+}
+
+export type MultiScalePlan = {
+  kind: 'multi-scale'
+  box: Rect
+  targets: readonly TransformTarget[]
+  commitIds: ReadonlySet<NodeId>
+  drag: ResizeDragState
+}
+
+export type TransformPlan =
+  | SingleResizePlan
+  | SingleRotatePlan
+  | MultiScalePlan
+
+export type TransformPreview = {
+  nodePatches: readonly TransformPreviewPatch[]
   guides: readonly Guide[]
 }
 

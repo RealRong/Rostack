@@ -1,4 +1,4 @@
-import type { UiTagTone } from '@dataview/react/ui'
+import type { UiTagTone } from '@ui/tone'
 import { message } from './message'
 import { defineMetaCollection } from './shared'
 

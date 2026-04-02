@@ -22,11 +22,15 @@ export default defineConfig({
     alias: [
       {
         find: /^@ui$/,
-        replacement: resolveFromRoot('ui/index.ts')
+        replacement: resolveFromRoot('ui/src/index.ts')
+      },
+      {
+        find: /^@ui\/css\/(.+)$/,
+        replacement: `${resolveFromRoot('ui/css')}/$1`
       },
       {
         find: /^@ui\/(.+)$/,
-        replacement: `${resolveFromRoot('ui')}/$1`
+        replacement: `${resolveFromRoot('ui/src')}/$1`
       },
       {
         find: /^@dataview$/,

@@ -2,6 +2,16 @@ import type {
   PropertyId,
   ViewId
 } from '@dataview/core/contracts'
+import type {
+  BlockingSurfaceBackdrop,
+  BlockingSurfaceState,
+  OpenBlockingSurfaceInput
+} from '@ui/blocking-surface'
+export type {
+  BlockingSurfaceBackdrop,
+  BlockingSurfaceState,
+  OpenBlockingSurfaceInput
+} from '@ui/blocking-surface'
 
 export type QueryBarEntry =
   | {
@@ -28,19 +38,6 @@ export type SettingsRoute =
   | { kind: 'propertyEdit', propertyId: PropertyId }
   | { kind: 'filter' }
   | { kind: 'sort' }
-
-export type BlockingSurfaceBackdrop = 'transparent' | 'dim'
-
-export interface BlockingSurfaceState {
-  id: string
-  source: string
-  backdrop: BlockingSurfaceBackdrop
-  dismissOnBackdropPress: boolean
-}
-
-export interface OpenBlockingSurfaceInput extends BlockingSurfaceState {
-  onDismiss?: () => void
-}
 
 export interface PageInteractionState {
   blockingSurfaces: readonly BlockingSurfaceState[]

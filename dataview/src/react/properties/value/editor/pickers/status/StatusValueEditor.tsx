@@ -7,12 +7,13 @@ import {
   type KeyboardEvent as ReactKeyboardEvent
 } from 'react'
 import { getPropertyOptions, getStatusSections } from '@dataview/core/property'
+import { Button } from '@ui/button'
+import { Input } from '@ui/input'
 import { usePageActions } from '@dataview/react/editor'
 import { meta, renderMessage } from '@dataview/meta'
 import { PropertyOptionTag } from '@dataview/react/properties/options'
 import { usePropertyEdit } from '@dataview/react/propertyEdit'
 import type { PropertyEditIntent } from '@dataview/react/page/interaction'
-import { Button, Input } from '@dataview/react/ui'
 import type { PropertyValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@dataview/react/dom/focus'
 import {

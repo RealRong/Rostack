@@ -12,9 +12,10 @@ import {
   usePageValue,
   useProperties
 } from '@dataview/react/editor'
+import { Popover } from '@ui/popover'
+import { QueryChip } from '@ui/query-chip'
 import { meta, renderMessage } from '@dataview/meta'
 import type { QueryBarEntry } from '@dataview/react/page/session/types'
-import { Popover, QueryChip } from '@dataview/react/ui'
 import { PropertyPicker } from './PropertyPicker'
 
 export type ViewQueryOpenEntry = QueryBarEntry

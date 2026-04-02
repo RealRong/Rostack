@@ -1,7 +1,11 @@
 import { Check } from 'lucide-react'
 import { useEffect, useState, type ReactElement } from 'react'
+import { Button } from '@ui/button'
+import { Input } from '@ui/input'
+import { Popover } from '@ui/popover'
+import { uiTone } from '@ui/tone'
+import { cn } from '@ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
-import { Button, Input, Popover, cn, uiTone } from '@dataview/react/ui'
 
 export interface OptionLike {
   id: string

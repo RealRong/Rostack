@@ -28,7 +28,7 @@ import {
 import type {
   ViewFieldRef
 } from '@dataview/react/view'
-import { cn } from '@dataview/react/ui'
+import { cn } from '@ui/utils'
 
 export interface CardFieldProps {
   field: ViewFieldRef

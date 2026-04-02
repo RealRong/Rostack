@@ -1,9 +1,7 @@
 import type { GroupProperty } from '@dataview/core/contracts'
 import { parsePropertyDraft } from '@dataview/core/property'
-import {
-  cn,
-  uiTone
-} from '@dataview/react/ui'
+import { uiTone } from '@ui/tone'
+import { cn } from '@ui/utils'
 import { CheckboxEditor } from '../editor/basic/CheckboxEditor'
 import type { PropertyValueSpec } from './contracts'
 import { renderEmpty } from './shared'

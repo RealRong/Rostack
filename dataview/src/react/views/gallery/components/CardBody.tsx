@@ -4,7 +4,7 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import { CardContent } from '@dataview/react/views/card'
-import { cn } from '@dataview/react/ui'
+import { cn } from '@ui/utils'
 import type { AppearanceId } from '@dataview/react/view'
 
 export const CardBody = (props: {

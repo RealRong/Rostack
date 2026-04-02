@@ -1,7 +1,7 @@
 import type { GroupProperty } from '@dataview/core/contracts'
 import { getPropertyDisplayValue, parsePropertyDraft } from '@dataview/core/property'
 import { PropertyOptionTag } from '@dataview/react/properties/options'
-import { cn } from '@dataview/react/ui'
+import { cn } from '@ui/utils'
 import { OptionPickerEditor } from '../editor/pickers/option/OptionPickerEditor'
 import type { PropertyValueDraftEditorProps } from '../editor'
 import type { PropertyValueSpec } from './contracts'

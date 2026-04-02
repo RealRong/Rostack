@@ -12,8 +12,11 @@ import {
   useEngine,
   useProperties
 } from '@dataview/react/editor'
+import { Button } from '@ui/button'
+import { Input } from '@ui/input'
+import { Menu } from '@ui/menu'
+import { Popover } from '@ui/popover'
 import { meta, renderMessage } from '@dataview/meta'
-import { Button, Input, Menu, Popover } from '@dataview/react/ui'
 
 const GroupMenuRow = forwardRef<HTMLButtonElement, {
   label: string

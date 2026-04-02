@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { GroupProperty } from '@dataview/core/contracts'
-import { cn, uiTone } from '@dataview/react/ui'
+import { uiTone } from '@ui/tone'
+import { cn } from '@ui/utils'
 import { PropertyValueRenderer } from './PropertyValueRenderer'
 import { getPropertyValueSpec } from './kinds'
 

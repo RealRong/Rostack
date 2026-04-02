@@ -3,17 +3,15 @@ import {
   computeResizeRect,
   getResizeSourceEdges,
   getResizeUpdateRect,
-  projectResizeTransformPatches,
-  projectRotateTransformPatches
+  projectResizePatches
 } from '@whiteboard/core/node'
-import type { NodeId, Rect } from '@whiteboard/core/types'
+import type { NodeId } from '@whiteboard/core/types'
 import type {
   ResizeDragState,
-  RotateDragState,
   TransformInteractionCtx,
+  TransformPlan,
   TransformPointerInput,
-  TransformProjection,
-  TransformSession
+  TransformPreview
 } from './types'
 
 const RESIZE_MIN_SIZE = {
@@ -22,95 +20,127 @@ const RESIZE_MIN_SIZE = {
 }
 
 const ZOOM_EPSILON = 0.0001
-const EMPTY_GUIDES: TransformProjection['guides'] = []
+const EMPTY_GUIDES: TransformPreview['guides'] = []
 
-const getResizeStartRect = (
-  drag: ResizeDragState
-): Rect => ({
-  x: drag.startCenter.x - drag.startSize.width / 2,
-  y: drag.startCenter.y - drag.startSize.height / 2,
-  width: drag.startSize.width,
-  height: drag.startSize.height
-})
-
-const computeResizeProjection = ({
-  ctx,
-  session,
-  drag,
-  input
-}: {
+const projectResizeFrame = (input: {
   ctx: TransformInteractionCtx
-  session: TransformSession
   drag: ResizeDragState
-  input: TransformPointerInput
-}): TransformProjection => {
+  pointer: TransformPointerInput
+  excludeNodeIds: readonly NodeId[]
+}) => {
   const rawRect = computeResizeRect({
-    drag,
-    currentScreen: input.screen,
-    zoom: Math.max(ctx.read.viewport.get().zoom, ZOOM_EPSILON),
+    drag: input.drag,
+    currentScreen: input.pointer.screen,
+    zoom: Math.max(input.ctx.read.viewport.get().zoom, ZOOM_EPSILON),
     minSize: RESIZE_MIN_SIZE,
-    altKey: input.modifiers.alt,
-    shiftKey: input.modifiers.shift
+    altKey: input.pointer.modifiers.alt,
+    shiftKey: input.pointer.modifiers.shift
   })
-  const { sourceX, sourceY } = getResizeSourceEdges(drag.handle)
-  const excludeNodeIds: readonly NodeId[] = session.targets.map((target) => target.id)
-
-  const snapped = ctx.snap.node.resize({
+  const { sourceX, sourceY } = getResizeSourceEdges(input.drag.handle)
+  const snapped = input.ctx.snap.node.resize({
     rect: rawRect.rect,
     source: {
       x: sourceX,
       y: sourceY
     },
     minSize: RESIZE_MIN_SIZE,
-    excludeIds: excludeNodeIds,
-    disabled: input.modifiers.alt || drag.startRotation !== 0
+    excludeIds: input.excludeNodeIds,
+    disabled: input.pointer.modifiers.alt || input.drag.startRotation !== 0
   })
 
   return {
     guides: snapped.guides,
-    patches: projectResizeTransformPatches({
-      startRect: getResizeStartRect(drag),
-      nextRect: getResizeUpdateRect(snapped.update),
-      targets: session.targets
+    nextRect: getResizeUpdateRect(snapped.update)
+  }
+}
+
+const projectSingleResize = (input: {
+  ctx: TransformInteractionCtx
+  plan: Extract<TransformPlan, { kind: 'single-resize' }>
+  pointer: TransformPointerInput
+}): TransformPreview => {
+  const frame = projectResizeFrame({
+    ctx: input.ctx,
+    drag: input.plan.drag,
+    pointer: input.pointer,
+    excludeNodeIds: [input.plan.target.id]
+  })
+
+  return {
+    guides: frame.guides,
+    nodePatches: [{
+      id: input.plan.target.id,
+      position: {
+        x: frame.nextRect.x,
+        y: frame.nextRect.y
+      },
+      size: {
+        width: frame.nextRect.width,
+        height: frame.nextRect.height
+      }
+    }]
+  }
+}
+
+const projectMultiScale = (input: {
+  ctx: TransformInteractionCtx
+  plan: Extract<TransformPlan, { kind: 'multi-scale' }>
+  pointer: TransformPointerInput
+}): TransformPreview => {
+  const frame = projectResizeFrame({
+    ctx: input.ctx,
+    drag: input.plan.drag,
+    pointer: input.pointer,
+    excludeNodeIds: input.plan.targets.map((target) => target.id)
+  })
+
+  return {
+    guides: frame.guides,
+    nodePatches: projectResizePatches({
+      startRect: input.plan.box,
+      nextRect: frame.nextRect,
+      members: input.plan.targets
     })
   }
 }
 
-const computeRotateProjection = ({
-  session,
-  drag,
-  input
-}: {
-  session: TransformSession
-  drag: RotateDragState
-  input: TransformPointerInput
-}): TransformProjection => ({
+const projectSingleRotate = (input: {
+  plan: Extract<TransformPlan, { kind: 'single-rotate' }>
+  pointer: TransformPointerInput
+}): TransformPreview => ({
   guides: EMPTY_GUIDES,
-  patches: projectRotateTransformPatches({
-    targetId: session.targets[0]!.id,
+  nodePatches: [{
+    id: input.plan.target.id,
     rotation: computeNextRotation({
-      drag,
-      currentPoint: input.world,
-      shiftKey: input.modifiers.shift
+      drag: input.plan.drag,
+      currentPoint: input.pointer.world,
+      shiftKey: input.pointer.modifiers.shift
     })
-  })
+  }]
 })
 
 export const projectTransform = (input: {
   ctx: TransformInteractionCtx
-  session: TransformSession
+  plan: TransformPlan
   pointer: TransformPointerInput
-}): TransformProjection => (
-  input.session.drag.mode === 'resize'
-    ? computeResizeProjection({
+}): TransformPreview => {
+  switch (input.plan.kind) {
+    case 'single-resize':
+      return projectSingleResize({
         ctx: input.ctx,
-        session: input.session,
-        drag: input.session.drag,
-        input: input.pointer
+        plan: input.plan,
+        pointer: input.pointer
       })
-    : computeRotateProjection({
-        session: input.session,
-        drag: input.session.drag,
-        input: input.pointer
+    case 'single-rotate':
+      return projectSingleRotate({
+        plan: input.plan,
+        pointer: input.pointer
       })
-)
+    case 'multi-scale':
+      return projectMultiScale({
+        ctx: input.ctx,
+        plan: input.plan,
+        pointer: input.pointer
+      })
+  }
+}

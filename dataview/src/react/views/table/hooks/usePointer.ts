@@ -24,7 +24,7 @@ import {
   type FieldId
 } from '@dataview/react/view'
 import { resolvePropertyPrimaryAction } from '@dataview/core/property'
-import { isBlockingSurfaceElement } from '@dataview/react/dom/blockingSurface'
+import { isBlockingSurfaceElement } from '@ui/blocking-surface'
 import {
   containsRelatedTarget,
   shouldCapturePointer

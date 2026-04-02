@@ -13,14 +13,11 @@ import {
   getDatePropertyConfig,
   resolveDefaultDateTimezone
 } from '@dataview/core/property'
+import { Input } from '@ui/input'
+import { Menu, type MenuItem } from '@ui/menu'
+import { cn } from '@ui/utils'
 import { useEngine } from '@dataview/react/editor'
 import { meta, renderMessage } from '@dataview/meta'
-import {
-  Input,
-  Menu,
-  cn,
-  type MenuItem
-} from '@dataview/react/ui'
 import type { PropertyValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@dataview/react/dom/focus'
 import { isComposing } from '../../shared/keyboard'

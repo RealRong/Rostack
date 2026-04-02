@@ -1,4 +1,7 @@
 import { Settings2 } from 'lucide-react'
+import { Button } from '@ui/button'
+import { PanelHeader } from '@ui/panel-header'
+import { Popover } from '@ui/popover'
 import {
   useActiveView,
   usePageActions,
@@ -6,7 +9,6 @@ import {
 } from '@dataview/react/editor'
 import { meta, renderMessage } from '@dataview/meta'
 import { PropertySchemaEditor } from '@dataview/react/properties/schema'
-import { Button, PanelHeader, Popover } from '@dataview/react/ui'
 import {
   ViewSettingsContext,
 } from './context'

@@ -1,24 +1,36 @@
 import { buildTransformCommitUpdates } from '@whiteboard/core/node'
 import type {
   TransformInteractionCtx,
-  TransformProjection,
-  TransformSession
+  TransformPlan,
+  TransformPreview
 } from './types'
 
 export const commitTransform = (
   ctx: TransformInteractionCtx,
-  session: TransformSession,
-  projection: TransformProjection | null
+  plan: TransformPlan,
+  preview: TransformPreview | null
 ) => {
-  if (!projection?.patches.length) {
+  if (!preview?.nodePatches.length) {
     return
   }
 
-  const updates = buildTransformCommitUpdates({
-    targets: session.targets,
-    patches: projection.patches,
-    commitTargetIds: session.commitTargetIds
-  })
+  const updates = (() => {
+    switch (plan.kind) {
+      case 'single-resize':
+      case 'single-rotate':
+        return buildTransformCommitUpdates({
+          targets: [plan.target],
+          patches: preview.nodePatches
+        })
+      case 'multi-scale':
+        return buildTransformCommitUpdates({
+          targets: plan.targets,
+          patches: preview.nodePatches,
+          commitTargetIds: plan.commitIds
+        })
+    }
+  })()
+
   if (!updates.length) {
     return
   }

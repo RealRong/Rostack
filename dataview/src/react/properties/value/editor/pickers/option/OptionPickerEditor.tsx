@@ -16,14 +16,14 @@ import {
   OptionToken,
   PropertyOptionTag
 } from '@dataview/react/properties/options'
+import { Button } from '@ui/button'
+import {
+  VerticalReorderList,
+  type VerticalReorderItemState
+} from '@ui/vertical-reorder-list'
+import { cn } from '@ui/utils'
 import { useEngine } from '@dataview/react/editor'
 import type { PropertyEditIntent } from '@dataview/react/page/interaction'
-import {
-  Button,
-  VerticalReorderList,
-  cn,
-  type VerticalReorderItemState
-} from '@dataview/react/ui'
 import type { PropertyValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@dataview/react/dom/focus'
 import {

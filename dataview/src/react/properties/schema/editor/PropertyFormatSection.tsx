@@ -15,7 +15,7 @@ import {
   type PropertyDisplayTimeFormatId,
   type PropertyNumberFormatId
 } from '@dataview/meta'
-import { Menu } from '@dataview/react/ui'
+import { Menu } from '@ui/menu'
 import {
   PropertyChoiceList,
   PropertyPopoverRow,

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { cn } from '@dataview/react/ui'
+import { cn } from '@ui/utils'
 import { useBoardContext } from '../board'
 import { CardBody } from './CardBody'
 

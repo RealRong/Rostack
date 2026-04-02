@@ -5,7 +5,7 @@ import type {
   GroupRecord,
   ViewId
 } from '@dataview/core/contracts'
-import { cn } from '@dataview/react/ui'
+import { cn } from '@ui/utils'
 import type { AppearanceId } from '@dataview/react/view'
 import { CardBody } from './CardBody'
 

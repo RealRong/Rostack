@@ -1,6 +1,6 @@
 import type { GroupRecord } from '@dataview/core/contracts'
 import { shouldCapturePointer } from '@dataview/react/dom/interactive'
-import { cn } from '@dataview/react/ui'
+import { cn } from '@ui/utils'
 import type { AppearanceId } from '@dataview/react/view'
 import { useBoardContext } from '../board'
 import { CardBody } from './CardBody'

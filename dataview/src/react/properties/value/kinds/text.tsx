@@ -4,7 +4,7 @@ import {
   getPropertyDisplayValue,
   parsePropertyDraft
 } from '@dataview/core/property'
-import { cn } from '@dataview/react/ui'
+import { cn } from '@ui/utils'
 import {
   InputEditor,
   type InputKind

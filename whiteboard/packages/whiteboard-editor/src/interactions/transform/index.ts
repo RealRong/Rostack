@@ -4,8 +4,8 @@ import type {
   InteractionSession
 } from '../../runtime/interaction'
 import { commitTransform } from './commit'
+import { createTransformPlan } from './plan'
 import { projectTransform } from './project'
-import { startTransformSession } from './start'
 import type {
   TransformInteractionCtx,
   TransformPointerInput
@@ -29,7 +29,7 @@ const toTransformNodePatches = (
 
 const createTransformSession = (
   ctx: TransformInteractionCtx,
-  initial: NonNullable<ReturnType<typeof startTransformSession>>
+  plan: NonNullable<ReturnType<typeof createTransformPlan>>
 ): InteractionSession => {
   let latest = null as ReturnType<typeof projectTransform> | null
 
@@ -37,28 +37,28 @@ const createTransformSession = (
   const project = (
     input: TransformPointerInput
   ) => {
-    const projection = projectTransform({
+    const preview = projectTransform({
       ctx,
-      session: initial,
+      plan,
       pointer: input
     })
-    latest = projection
+    latest = preview
     ctx.write.preview.selection.setNodePatches(
-      toTransformNodePatches(projection.patches)
+      toTransformNodePatches(preview.nodePatches)
     )
-    ctx.write.preview.selection.setGuides(projection.guides)
+    ctx.write.preview.selection.setGuides(preview.guides)
   }
 
   return {
     mode: 'node-transform',
-    pointerId: initial.drag.pointerId,
+    pointerId: plan.drag.pointerId,
     chrome: false,
     move: (input) => {
       project(input)
     },
     up: (input) => {
       project(input)
-      commitTransform(ctx, initial, latest)
+      commitTransform(ctx, plan, latest)
       return {
         kind: 'finish'
       }
@@ -74,9 +74,9 @@ export const createTransformInteraction = (
 ): InteractionBinding => ({
   key: 'transform',
   start: (input) => {
-    const session = startTransformSession(ctx, input)
-    return session
-      ? createTransformSession(ctx, session)
+    const plan = createTransformPlan(ctx, input)
+    return plan
+      ? createTransformSession(ctx, plan)
       : null
   }
 })

@@ -6,7 +6,7 @@ import type {
   ResizeDragState,
   TransformInteractionCtx,
   TransformPickHandle,
-  TransformSession,
+  TransformPlan,
   TransformTarget
 } from './types'
 
@@ -52,12 +52,64 @@ const createRotateDrag = (options: {
   }
 }
 
-const readNodeTransformSession = (
+const createSingleResizePlan = (options: {
+  target: TransformTarget
+  input: PointerDownInput
+  direction: NonNullable<TransformPickHandle['direction']>
+  rotation: number
+}): TransformPlan => ({
+  kind: 'single-resize',
+  target: options.target,
+  drag: createResizeDrag({
+    pointerId: options.input.pointerId,
+    handle: options.direction,
+    rect: options.target.rect,
+    rotation: options.rotation,
+    startScreen: options.input.client
+  })
+})
+
+const createSingleRotatePlan = (options: {
+  target: TransformTarget
+  input: PointerDownInput
+  rotation: number
+}): TransformPlan => ({
+  kind: 'single-rotate',
+  target: options.target,
+  drag: createRotateDrag({
+    pointerId: options.input.pointerId,
+    rect: options.target.rect,
+    rotation: options.rotation,
+    start: options.input.world
+  })
+})
+
+const createMultiScalePlan = (options: {
+  box: TransformTarget['rect']
+  targets: readonly TransformTarget[]
+  commitIds: ReadonlySet<NodeId>
+  input: PointerDownInput
+  direction: NonNullable<TransformPickHandle['direction']>
+}): TransformPlan => ({
+  kind: 'multi-scale',
+  box: options.box,
+  targets: options.targets,
+  commitIds: options.commitIds,
+  drag: createResizeDrag({
+    pointerId: options.input.pointerId,
+    handle: options.direction,
+    rect: options.box,
+    rotation: 0,
+    startScreen: options.input.client
+  })
+})
+
+const readNodeTransformPlan = (
   ctx: TransformInteractionCtx,
   nodeId: NodeId,
   handle: TransformPickHandle,
   input: PointerDownInput
-): TransformSession | undefined => {
+): TransformPlan | undefined => {
   const entry = ctx.read.index.node.get(nodeId)
   if (!entry || entry.node.locked) {
     return undefined
@@ -75,38 +127,30 @@ const readNodeTransformSession = (
       return undefined
     }
 
-    return {
-      targets: [target],
-      drag: createResizeDrag({
-        pointerId: input.pointerId,
-        handle: handle.direction,
-        rect: entry.rect,
-        rotation: entry.rotation,
-        startScreen: input.client
-      })
-    }
+    return createSingleResizePlan({
+      target,
+      input,
+      direction: handle.direction,
+      rotation: entry.rotation
+    })
   }
 
   if (!capability.rotate) {
     return undefined
   }
 
-  return {
-    targets: [target],
-    drag: createRotateDrag({
-      pointerId: input.pointerId,
-      rect: entry.rect,
-      rotation: entry.rotation,
-      start: input.world
-    })
-  }
+  return createSingleRotatePlan({
+    target,
+    input,
+    rotation: entry.rotation
+  })
 }
 
-const readSelectionTransformSession = (
+const readSelectionTransformPlan = (
   ctx: TransformInteractionCtx,
   handle: TransformPickHandle,
   input: PointerDownInput
-): TransformSession | undefined => {
+): TransformPlan | undefined => {
   const selection = ctx.read.selection.summary.get()
   const selectionBox = ctx.read.selection.transformBox.get()
   if (
@@ -123,23 +167,19 @@ const readSelectionTransformSession = (
     return undefined
   }
 
-  return {
+  return createMultiScalePlan({
+    box: selectionBox.box,
     targets: resolved.targets as readonly TransformTarget[],
-    commitTargetIds: resolved.commitIds,
-    drag: createResizeDrag({
-      pointerId: input.pointerId,
-      handle: handle.direction,
-      rect: selectionBox.box,
-      rotation: 0,
-      startScreen: input.client
-    })
-  }
+    commitIds: resolved.commitIds,
+    input,
+    direction: handle.direction
+  })
 }
 
-export const startTransformSession = (
+export const createTransformPlan = (
   ctx: TransformInteractionCtx,
   input: PointerDownInput
-): TransformSession | null => {
+): TransformPlan | null => {
   const tool = ctx.read.tool.get()
 
   if (
@@ -152,8 +192,8 @@ export const startTransformSession = (
   }
 
   if (input.pick.kind === 'node') {
-    return readNodeTransformSession(ctx, input.pick.id, input.pick.handle, input) ?? null
+    return readNodeTransformPlan(ctx, input.pick.id, input.pick.handle, input) ?? null
   }
 
-  return readSelectionTransformSession(ctx, input.pick.handle, input) ?? null
+  return readSelectionTransformPlan(ctx, input.pick.handle, input) ?? null
 }

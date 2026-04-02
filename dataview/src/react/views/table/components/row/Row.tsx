@@ -12,7 +12,7 @@ import { useCurrentView } from '@dataview/react/editor'
 import { rowRailState } from '../../model/rowRail'
 import { useTableContext } from '../../context'
 import { useKeyedStoreValue, useStoreValue } from '@dataview/react/runtime/store'
-import { cn } from '@dataview/react/ui'
+import { cn } from '@ui/utils'
 import { Cell } from '../cell/Cell'
 import { RowRail } from './RowRail'
 

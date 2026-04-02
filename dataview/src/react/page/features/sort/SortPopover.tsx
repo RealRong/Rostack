@@ -5,6 +5,10 @@ import {
   Plus,
   Trash2
 } from 'lucide-react'
+import { Button } from '@ui/button'
+import { Popover } from '@ui/popover'
+import { QueryChip } from '@ui/query-chip'
+import { VerticalReorderList } from '@ui/vertical-reorder-list'
 import {
   useActiveView,
   useEngine,
@@ -12,12 +16,6 @@ import {
 } from '@dataview/react/editor'
 import { meta, renderMessage } from '@dataview/meta'
 import { PropertyPicker } from '@dataview/react/page/features/viewQuery/PropertyPicker'
-import {
-  Button,
-  Popover,
-  QueryChip,
-  VerticalReorderList
-} from '@dataview/react/ui'
 import { SortRuleRow } from './SortRuleRow'
 import {
   getAvailableSorterProperties,

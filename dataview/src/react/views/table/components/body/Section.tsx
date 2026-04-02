@@ -9,9 +9,9 @@ import type {
   GroupProperty,
   PropertyId
 } from '@dataview/core/contracts'
+import { Button } from '@ui/button'
+import { cn } from '@ui/utils'
 import { useCurrentView, useEngine } from '@dataview/react/editor'
-import { cn } from '@dataview/react/ui'
-import { Button } from '@dataview/react/ui/button'
 import type {
   AppearanceId,
   Section as TableSection

@@ -1,7 +1,7 @@
 import type { GroupRecord } from '@dataview/core/contracts'
 import type { AppearanceId } from '@dataview/react/view'
 import { CardContent } from '@dataview/react/views/card'
-import { cn } from '@dataview/react/ui'
+import { cn } from '@ui/utils'
 import { useBoardContext } from '../board'
 
 export const CardBody = (props: {

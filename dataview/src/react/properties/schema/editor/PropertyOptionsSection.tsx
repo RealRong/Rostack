@@ -11,7 +11,7 @@ import {
   OptionEditorPopover,
   PropertyOptionTag
 } from '@dataview/react/properties/options'
-import { Button } from '@dataview/react/ui'
+import { Button } from '@ui/button'
 import { PropertyStatusOptionsSection } from './PropertyStatusOptionsSection'
 
 const PlainPropertyOptionsSection = (props: {

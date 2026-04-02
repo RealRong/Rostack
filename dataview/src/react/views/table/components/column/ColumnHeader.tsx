@@ -17,6 +17,9 @@ import {
   type PointerEvent
 } from 'react'
 import type { PropertyId, GroupProperty } from '@dataview/core/contracts'
+import { Menu, type MenuItem } from '@ui/menu'
+import { Popover } from '@ui/popover'
+import { cn } from '@ui/utils'
 import { TITLE_PROPERTY_ID } from '@dataview/core/property'
 import { getUrlPropertyConfig } from '@dataview/core/property'
 import { getSorterPropertyId } from '@dataview/react/page/features/sort'
@@ -24,7 +27,6 @@ import { useCurrentView, useEngine, usePageActions } from '@dataview/react/edito
 import { useTableContext } from '../../context'
 import { meta, renderMessage } from '@dataview/meta'
 import { PropertyKindPicker } from '@dataview/react/properties/schema'
-import { Menu, Popover, cn, type MenuItem } from '@dataview/react/ui'
 import { useStoreValue } from '@dataview/react/runtime/store'
 
 export interface ColumnHeaderProps {

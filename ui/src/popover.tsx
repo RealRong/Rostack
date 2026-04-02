@@ -18,8 +18,7 @@ import {
 import {
   BLOCKING_SURFACE_ATTR,
   BLOCKING_SURFACE_BACKDROP_ATTR
-} from '@dataview/react/dom/blockingSurface'
-import { closestTarget } from '@dataview/react/dom/interactive'
+} from './blocking-surface'
 import {
   createContext,
   cloneElement,
@@ -38,7 +37,8 @@ import {
 import {
   useBlockingSurface,
   useBlockingSurfaceController
-} from './blockingSurface'
+} from './blocking-surface'
+import { closestTarget } from './dom'
 import { cn } from './utils'
 
 const POPOVER_TRANSITION_MS = 200

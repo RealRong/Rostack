@@ -5,7 +5,7 @@ import {
   type RowRailState,
   type RowRailStateInput
 } from '../../model/rowRail'
-import { cn } from '@dataview/react/ui'
+import { cn } from '@ui/utils'
 import {
   TABLE_REORDER_HANDLE_SIZE,
   TABLE_REORDER_RAIL_GAP,

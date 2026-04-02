@@ -9,6 +9,12 @@ import type {
   GroupView,
   GroupViewType
 } from '@dataview/core/contracts'
+import { Button } from '@ui/button'
+import { Input } from '@ui/input'
+import { Label } from '@ui/label'
+import { Popover } from '@ui/popover'
+import { Select } from '@ui/select'
+import { cn } from '@ui/utils'
 import { getAvailableFilterProperties } from '@dataview/react/page/features/filter/filterUi'
 import { getAvailableSorterProperties } from '@dataview/react/page/features/sort'
 import { PropertyPicker } from '@dataview/react/page/features/viewQuery/PropertyPicker'
@@ -22,7 +28,6 @@ import {
   useViews
 } from '@dataview/react/editor'
 import { meta, renderMessage } from '@dataview/meta'
-import { Button, Input, Label, Popover, Select, cn } from '@dataview/react/ui'
 
 interface CreateViewPopoverProps {
   open: boolean

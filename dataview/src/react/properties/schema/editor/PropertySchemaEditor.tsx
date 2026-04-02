@@ -8,8 +8,8 @@ import {
   usePropertyById,
   useTitlePropertyId
 } from '@dataview/react/editor'
+import { Input } from '@ui/input'
 import { meta, renderMessage } from '@dataview/meta'
-import { Input } from '@dataview/react/ui'
 import { PropertyKindPicker } from '../PropertyKindPicker'
 import { PropertyFormatSection } from './PropertyFormatSection'
 import { PropertyOptionsSection } from './PropertyOptionsSection'

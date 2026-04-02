@@ -1,5 +1,7 @@
 import { X } from 'lucide-react'
-import { Button, cn, uiTone } from '@dataview/react/ui'
+import { Button } from '@ui/button'
+import { uiTone } from '@ui/tone'
+import { cn } from '@ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
 
 export interface OptionTokenProps {

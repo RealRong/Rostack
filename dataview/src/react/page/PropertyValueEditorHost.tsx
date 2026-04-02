@@ -22,10 +22,10 @@ import {
   type ValueEditorResult,
 } from '@dataview/react/propertyEdit'
 import {
-  BLOCKING_SURFACE_ATTR
-} from '@dataview/react/dom/blockingSurface'
-import { useBlockingSurface } from '@dataview/react/ui/blockingSurface'
-import { PopoverContainerProvider } from '@dataview/react/ui/popover'
+  BLOCKING_SURFACE_ATTR,
+  useBlockingSurface
+} from '@ui/blocking-surface'
+import { PopoverContainerProvider } from '@ui/popover'
 import { useStoreValue } from '@dataview/react/runtime/store'
 
 const PANEL_MIN_WIDTH = 180

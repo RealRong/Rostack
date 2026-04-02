@@ -6,13 +6,19 @@ import {
 import { useMemo, useState } from 'react'
 import type { GroupProperty } from '@dataview/core/contracts'
 import { TITLE_PROPERTY_ID } from '@dataview/core/property'
+import { Button } from '@ui/button'
+import { Input } from '@ui/input'
+import {
+  VerticalReorderList,
+  type VerticalReorderItemState
+} from '@ui/vertical-reorder-list'
+import { cn } from '@ui/utils'
 import {
   useActiveView,
   useEngine,
   useProperties
 } from '@dataview/react/editor'
 import { meta, renderMessage } from '@dataview/meta'
-import { Button, Input, VerticalReorderList, cn, type VerticalReorderItemState } from '@dataview/react/ui'
 
 interface PropertyRowProps {
   property: GroupProperty

@@ -7,6 +7,6 @@ module.exports = {
     path.join(__dirname, 'index.html'),
     path.join(__dirname, 'main.tsx'),
     path.join(__dirname, '../../dataview/src/react/**/*.{ts,tsx}'),
-    path.join(__dirname, '../../ui/react/**/*.{ts,tsx}')
+    path.join(__dirname, '../../ui/src/**/*.{ts,tsx}')
   ]
 }

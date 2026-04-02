@@ -6,15 +6,13 @@ import {
   X
 } from 'lucide-react'
 import type { GroupProperty, GroupSorter } from '@dataview/core/contracts'
+import { Button } from '@ui/button'
+import { Menu } from '@ui/menu'
+import { Popover } from '@ui/popover'
+import type { VerticalReorderItemState } from '@ui/vertical-reorder-list'
+import { cn } from '@ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
 import { PropertyPicker } from '@dataview/react/page/features/viewQuery/PropertyPicker'
-import {
-  Button,
-  Menu,
-  Popover,
-  cn,
-  type VerticalReorderItemState
-} from '@dataview/react/ui'
 import {
   SORT_DIRECTIONS,
   findSorterProperty,

@@ -9,9 +9,14 @@ import {
   parseDateInputDraft,
   readDatePrimaryString
 } from '@dataview/core/property'
+import { Button } from '@ui/button'
+import { Input } from '@ui/input'
+import { Menu } from '@ui/menu'
+import { Popover } from '@ui/popover'
+import { QueryChip } from '@ui/query-chip'
+import { cn } from '@ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
 import { PropertyOptionTag } from '@dataview/react/properties/options'
-import { Button, Input, Menu, Popover, QueryChip, cn } from '@dataview/react/ui'
 import { StatusFilterPicker } from './StatusFilterPicker'
 
 export interface FilterRulePopoverProps {

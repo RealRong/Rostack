@@ -7,15 +7,31 @@ import {
   useRef,
   type ReactNode
 } from 'react'
-import type {
-  OpenBlockingSurfaceInput,
-  BlockingSurfaceBackdrop
-} from '@dataview/react/page/session/types'
+
+export const BLOCKING_SURFACE_ATTR = 'data-ui-blocking-surface'
+export const BLOCKING_SURFACE_BACKDROP_ATTR = 'data-ui-blocking-surface-backdrop'
+
+export type BlockingSurfaceBackdrop = 'transparent' | 'dim'
+
+export interface BlockingSurfaceState {
+  id: string
+  source: string
+  backdrop: BlockingSurfaceBackdrop
+  dismissOnBackdropPress: boolean
+}
+
+export interface OpenBlockingSurfaceInput extends BlockingSurfaceState {
+  onDismiss?: () => void
+}
 
 export interface BlockingSurfaceController {
   setBlockingSurface: (input: OpenBlockingSurfaceInput) => void
   clearBlockingSurface: (id: string) => void
 }
+
+export const isBlockingSurfaceElement = (element: Element | null) => (
+  Boolean(element?.closest(`[${BLOCKING_SURFACE_ATTR}]`))
+)
 
 const BlockingSurfaceContext = createContext<BlockingSurfaceController | null>(null)
 

@@ -14,7 +14,7 @@ import { useCurrentView, useEngine } from '@dataview/react/editor'
 import { fieldAttrs } from '@dataview/react/propertyEdit'
 import { useTableContext } from '../../context'
 import { useKeyedStoreValue } from '@dataview/react/runtime/store'
-import { cn } from '@dataview/react/ui'
+import { cn } from '@ui/utils'
 import { CellValue } from './CellValue'
 
 export interface CellProps {

@@ -19,8 +19,9 @@ import {
   useProperties,
   useViews
 } from '@dataview/react/editor'
+import { Button } from '@ui/button'
+import { Input } from '@ui/input'
 import { meta, renderMessage } from '@dataview/meta'
-import { Button, Input } from '@dataview/react/ui'
 import { useViewSettings } from '../context'
 import { supportsGroupSettings } from '@dataview/react/page/session/settings'
 

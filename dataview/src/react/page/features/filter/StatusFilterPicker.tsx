@@ -19,9 +19,10 @@ import {
   toggleStatusFilterCategory,
   toggleStatusFilterOption
 } from '@dataview/core/property'
+import { Button } from '@ui/button'
+import { cn } from '@ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
 import { PropertyOptionTag } from '@dataview/react/properties/options'
-import { Button, cn } from '@dataview/react/ui'
 
 export interface StatusFilterPickerProps {
   property?: GroupProperty

@@ -16,18 +16,18 @@ import type {
 import { getPropertyOptions, getStatusSections } from '@dataview/core/property'
 import { useEngine } from '@dataview/react/editor'
 import { meta, renderMessage } from '@dataview/meta'
+import { Button } from '@ui/button'
+import { Input } from '@ui/input'
+import { Popover } from '@ui/popover'
+import { uiTone } from '@ui/tone'
+import {
+  VerticalReorderList,
+  type VerticalReorderItemState
+} from '@ui/vertical-reorder-list'
+import { cn } from '@ui/utils'
 import {
   PropertyOptionTag
 } from '@dataview/react/properties/options'
-import {
-  Button,
-  Input,
-  Popover,
-  VerticalReorderList,
-  cn,
-  uiTone,
-  type VerticalReorderItemState
-} from '@dataview/react/ui'
 
 const moveItem = <Item,>(items: readonly Item[], from: number, to: number) => {
   const next = [...items]

@@ -195,12 +195,30 @@ const createSelectionSession = (
   })
 }
 
-const createSelectionTransition = (input: {
+const replaceSelectionSession = (input: {
   ctx: SelectionInteractionCtx
   start: PointerDownInput
   decision: SelectionDragDecision | SelectionMarqueeDecision | undefined
-  pointer?: PointerMoveInput
-  control?: InteractionControl
+  control: InteractionControl
+}) => {
+  const next = createSelectionSession({
+    ctx: input.ctx,
+    start: input.start,
+    decision: input.decision
+  })
+  if (!next) {
+    return
+  }
+
+  input.control.replace(next)
+}
+
+const createSelectionReplaceTransition = (input: {
+  ctx: SelectionInteractionCtx
+  start: PointerDownInput
+  decision: SelectionDragDecision | SelectionMarqueeDecision | undefined
+  pointer: PointerMoveInput
+  control: InteractionControl
 }): InteractionSessionTransition => {
   const next = createSelectionSession({
     ctx: input.ctx,
@@ -213,16 +231,9 @@ const createSelectionTransition = (input: {
     } satisfies InteractionSessionTransition
   }
 
-  if (input.pointer) {
-    next.move?.(input.pointer)
-    if (next.autoPan) {
-      input.control?.pan(toPanPointer(input.pointer))
-    }
-  } else {
-    input.control?.replace(next)
-    return {
-      kind: 'finish'
-    } satisfies InteractionSessionTransition
+  next.move?.(input.pointer)
+  if (next.autoPan) {
+    input.control.pan(toPanPointer(input.pointer))
   }
 
   return {
@@ -244,7 +255,7 @@ const armHold = (input: {
 
   const holdTask = createTimeoutTask(() => {
     input.setHoldTask(null)
-    createSelectionTransition({
+    replaceSelectionSession({
       ctx: input.ctx,
       start: input.start,
       decision: input.plan.decision.hold,
@@ -277,7 +288,7 @@ export const createPressInteraction = (
 
       cancelHold(holdTask)
       holdTask = null
-      return createSelectionTransition({
+      return createSelectionReplaceTransition({
         ctx,
         start,
         decision: pressPlan.decision.drag,

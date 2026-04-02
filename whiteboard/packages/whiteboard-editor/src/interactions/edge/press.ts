@@ -84,6 +84,15 @@ export type EdgePressPlan = {
 
 const HANDLED: InteractionStartResult = 'handled'
 
+const selectEdge = (
+  ctx: EdgeInteractionCtx,
+  edgeId: EdgeId
+) => {
+  ctx.write.session.selection.replace({
+    edgeIds: [edgeId]
+  })
+}
+
 const readCapability = (
   ctx: EdgeInteractionCtx,
   edgeId: EdgeId
@@ -265,6 +274,91 @@ export const resolveEdgePressPlan = (
   }
 }
 
+const startEdgeConnectPlan = (
+  ctx: EdgeInteractionCtx,
+  decision: Extract<EdgePressDecision, { kind: 'connect' }>,
+  control: InteractionControl
+): InteractionStartResult => {
+  if (decision.selectEdgeId) {
+    selectEdge(ctx, decision.selectEdgeId)
+  }
+
+  return createEdgeConnectSession(ctx, decision.state, control)
+}
+
+const startEdgeMoveBodyPlan = (
+  ctx: EdgeInteractionCtx,
+  start: PointerDownInput,
+  decision: Extract<EdgePressDecision, { kind: 'move-body' }>,
+  control: InteractionControl
+) => {
+  selectEdge(ctx, decision.edgeId)
+  return createEdgeBodyMoveSession(ctx, {
+    edgeId: decision.edgeId,
+    pointerId: start.pointerId,
+    start: start.world
+  }, control)
+}
+
+const startEdgeRoutePointDragPlan = (
+  ctx: EdgeInteractionCtx,
+  decision: Extract<EdgePressDecision, { kind: 'drag-route-point' }>,
+  control: InteractionControl
+) => createEdgeRoutePointSession(ctx, {
+  edgeId: decision.edgeId,
+  index: decision.index,
+  pointerId: decision.pointerId,
+  start: decision.start,
+  origin: decision.origin
+}, control)
+
+const runEdgeRemoveRoutePointPlan = (
+  ctx: EdgeInteractionCtx,
+  decision: Extract<EdgePressDecision, { kind: 'remove-route-point' }>
+): InteractionStartResult => {
+  ctx.write.document.edge.route.remove(
+    decision.edgeId,
+    decision.index
+  )
+  ctx.write.preview.edge.clearPatches()
+  return HANDLED
+}
+
+const runEdgeInsertRoutePointPlan = (
+  ctx: EdgeInteractionCtx,
+  decision: Extract<EdgePressDecision, { kind: 'insert-route-point' }>,
+  control: InteractionControl
+): InteractionStartResult => {
+  selectEdge(ctx, decision.edgeId)
+
+  const result = ctx.write.document.edge.route.insert(
+    decision.edgeId,
+    decision.worldPoint
+  )
+
+  if (!decision.dragAfterInsert) {
+    ctx.write.preview.edge.clear()
+    return HANDLED
+  }
+
+  if (!result.ok) {
+    ctx.write.preview.edge.clearPatches()
+    return HANDLED
+  }
+
+  const origin =
+    readEdgeRouteOrigin(ctx, decision.edgeId, result.data.index)
+    ?? decision.worldPoint
+
+  return createEdgeRoutePointSession(ctx, {
+    edgeId: decision.edgeId,
+    index: result.data.index,
+    pointerId: decision.dragAfterInsert.pointerId,
+    start: decision.dragAfterInsert.start,
+    origin
+  }, control)
+}
+
 export const startEdgePressPlan = (
   ctx: EdgeInteractionCtx,
   start: PointerDownInput,
@@ -273,68 +367,14 @@ export const startEdgePressPlan = (
 ): InteractionStartResult => {
   switch (plan.decision.kind) {
     case 'connect':
-      if (plan.decision.selectEdgeId) {
-        ctx.write.session.selection.replace({
-          edgeIds: [plan.decision.selectEdgeId]
-        })
-      }
-
-      return createEdgeConnectSession(ctx, plan.decision.state, control)
+      return startEdgeConnectPlan(ctx, plan.decision, control)
     case 'move-body':
-      ctx.write.session.selection.replace({
-        edgeIds: [plan.decision.edgeId]
-      })
-      return createEdgeBodyMoveSession(ctx, {
-        edgeId: plan.decision.edgeId,
-        pointerId: start.pointerId,
-        start: start.world
-      }, control)
-    case 'insert-route-point': {
-      ctx.write.session.selection.replace({
-        edgeIds: [plan.decision.edgeId]
-      })
-
-      const result = ctx.write.document.edge.route.insert(
-        plan.decision.edgeId,
-        plan.decision.worldPoint
-      )
-
-      if (!plan.decision.dragAfterInsert) {
-        ctx.write.preview.edge.clear()
-        return HANDLED
-      }
-
-      if (!result.ok) {
-        ctx.write.preview.edge.clearPatches()
-        return HANDLED
-      }
-
-      const origin =
-        readEdgeRouteOrigin(ctx, plan.decision.edgeId, result.data.index)
-        ?? plan.decision.worldPoint
-
-      return createEdgeRoutePointSession(ctx, {
-        edgeId: plan.decision.edgeId,
-        index: result.data.index,
-        pointerId: plan.decision.dragAfterInsert.pointerId,
-        start: plan.decision.dragAfterInsert.start,
-        origin
-      }, control)
-    }
+      return startEdgeMoveBodyPlan(ctx, start, plan.decision, control)
+    case 'insert-route-point':
+      return runEdgeInsertRoutePointPlan(ctx, plan.decision, control)
     case 'drag-route-point':
-      return createEdgeRoutePointSession(ctx, {
-        edgeId: plan.decision.edgeId,
-        index: plan.decision.index,
-        pointerId: plan.decision.pointerId,
-        start: plan.decision.start,
-        origin: plan.decision.origin
-      }, control)
+      return startEdgeRoutePointDragPlan(ctx, plan.decision, control)
     case 'remove-route-point':
-      ctx.write.document.edge.route.remove(
-        plan.decision.edgeId,
-        plan.decision.index
-      )
-      ctx.write.preview.edge.clearPatches()
-      return HANDLED
+      return runEdgeRemoveRoutePointPlan(ctx, plan.decision)
   }
 }

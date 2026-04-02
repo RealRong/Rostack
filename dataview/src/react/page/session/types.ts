@@ -91,8 +91,8 @@ export interface PageSessionApi {
     push(route: SettingsRoute): void
   }
   surface: {
-    set(input: OpenBlockingSurfaceInput): void
-    clear(id: string): void
-    dismissTop(): void
+    open(input: OpenBlockingSurfaceInput): void
+    close(id: string): void
+    dismiss(): void
   }
 }

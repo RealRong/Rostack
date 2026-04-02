@@ -25,8 +25,8 @@ const chromeStyle: CSSProperties = {
 export const Page = (props: PageProps) => {
   const page = useDataView().page
   const blockingSurfaceController = useMemo(() => ({
-    setBlockingSurface: page.surface.set,
-    clearBlockingSurface: page.surface.clear
+    setBlockingSurface: page.surface.open,
+    clearBlockingSurface: page.surface.close
   }), [page])
 
   return (

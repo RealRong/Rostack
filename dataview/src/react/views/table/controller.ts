@@ -17,7 +17,7 @@ import {
   type ReadStore
 } from '@dataview/runtime/store'
 import type { ResolvedPageState } from '@dataview/react/page/session/types'
-import type { PropertyEditApi } from '@dataview/react/page/valueEditor'
+import type { ValueEditorApi } from '@dataview/react/page/valueEditor'
 import {
   createCapabilities,
   type Capabilities
@@ -181,7 +181,7 @@ export const createTableController = (options: {
   engine: GroupEngine
   pageStore: ReadStore<ResolvedPageState>
   currentViewStore: ReadStore<CurrentView | undefined>
-  propertyEdit: PropertyEditApi
+  valueEditor: ValueEditorApi
   layout: TableLayout
   nodes: Nodes
 }): TableController => {
@@ -274,7 +274,7 @@ export const createTableController = (options: {
     revealTarget(target)
   }
   const openCell = createCellOpener({
-    propertyEdit: options.propertyEdit,
+    valueEditor: options.valueEditor,
     currentView: currentView.get,
     gridSelection,
     dom,

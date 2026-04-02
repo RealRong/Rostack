@@ -32,8 +32,8 @@ import type {
 import type {
   CloseValueEditorOptions,
   OpenValueEditorInput,
-  PropertyEditApi,
-  PropertyEditSession,
+  ValueEditorApi,
+  ValueEditorSession,
   ValueEditorAnchor,
   ValueEditorResult,
   ViewFieldRef
@@ -54,8 +54,8 @@ export interface DataViewContextValue {
   page: PageSessionApi & {
     store: ReadStore<ResolvedPageState>
   }
-  valueEditor: PropertyEditApi & {
-    sessionStore: ValueStore<PropertyEditSession | null>
+  valueEditor: ValueEditorApi & {
+    store: ValueStore<ValueEditorSession | null>
   }
 }
 
@@ -86,7 +86,7 @@ const normalizeAnchor = (
 
 const createSession = (
   input: OpenValueEditorInput
-): PropertyEditSession => ({
+): ValueEditorSession => ({
   field: cloneField(input.field),
   anchor: normalizeAnchor(input.anchor),
   ...(input.seedDraft !== undefined
@@ -102,7 +102,7 @@ const createSession = (
 })
 
 const dismissSession = (
-  store: ValueStore<PropertyEditSession | null>,
+  store: ValueStore<ValueEditorSession | null>,
   options?: {
     result?: ValueEditorResult
     silent?: boolean
@@ -125,27 +125,27 @@ const dismissSession = (
 
 const EngineProviderInner = (props: EngineProviderProps) => {
   const page = useMemo(() => createPageSessionApi(props.initialPage), [])
-  const valueEditorSessionStore = useMemo(() => createValueStore<PropertyEditSession | null>({
+  const valueEditorStore = useMemo(() => createValueStore<ValueEditorSession | null>({
     initial: null
   }), [])
   const valueEditorOpen = useMemo(() => createDerivedStore<boolean>({
-    get: read => Boolean(read(valueEditorSessionStore))
-  }), [valueEditorSessionStore])
-  const valueEditor = useMemo<PropertyEditApi & {
-    sessionStore: ValueStore<PropertyEditSession | null>
+    get: read => Boolean(read(valueEditorStore))
+  }), [valueEditorStore])
+  const valueEditor = useMemo<ValueEditorApi & {
+    store: ValueStore<ValueEditorSession | null>
   }>(() => ({
-    sessionStore: valueEditorSessionStore,
+    store: valueEditorStore,
     open: input => {
-      dismissSession(valueEditorSessionStore)
-      valueEditorSessionStore.set(createSession(input))
+      dismissSession(valueEditorStore)
+      valueEditorStore.set(createSession(input))
       return true
     },
     close: (options?: CloseValueEditorOptions) => {
-      dismissSession(valueEditorSessionStore, {
+      dismissSession(valueEditorStore, {
         silent: options?.silent
       })
     }
-  }), [valueEditorSessionStore])
+  }), [valueEditorStore])
   const pageStateStore = useMemo(() => createResolvedPageStateStore({
     document: props.engine.read.document,
     page: page.store,

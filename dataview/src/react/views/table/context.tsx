@@ -50,7 +50,7 @@ export const TableProvider = (props: TableProviderProps) => {
     engine,
     pageStore: dataView.page.store,
     currentViewStore: dataView.currentView.store,
-    propertyEdit: dataView.valueEditor,
+    valueEditor: dataView.valueEditor,
     layout,
     nodes
   }), [

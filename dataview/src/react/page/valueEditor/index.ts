@@ -2,8 +2,8 @@ export { PropertyValueEditorHost } from './host'
 export type {
   CloseValueEditorOptions,
   OpenValueEditorInput,
-  PropertyEditApi,
-  PropertyEditSession,
+  ValueEditorApi,
+  ValueEditorSession,
   ValueEditorAnchor,
   ValueEditorResult,
   ViewFieldRef

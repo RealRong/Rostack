@@ -35,7 +35,7 @@ export type {
 export type {
   CloseValueEditorOptions,
   OpenValueEditorInput,
-  PropertyEditApi,
+  ValueEditorApi,
   ValueEditorAnchor,
   ValueEditorResult,
   ViewFieldRef

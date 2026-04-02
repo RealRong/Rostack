@@ -32,9 +32,12 @@ export interface OpenValueEditorInput {
   onResolve?: (result: ValueEditorResult) => void
 }
 
-export interface PropertyEditSession extends OpenValueEditorInput { }
+export interface ValueEditorSession extends OpenValueEditorInput { }
 
-export interface PropertyEditApi {
+export interface ValueEditorApi {
   open(input: OpenValueEditorInput): boolean
   close(options?: CloseValueEditorOptions): void
 }
+
+export type PropertyEditSession = ValueEditorSession
+export type PropertyEditApi = ValueEditorApi

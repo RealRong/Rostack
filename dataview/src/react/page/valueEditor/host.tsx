@@ -16,7 +16,7 @@ import {
 } from '@dataview/react/dataview'
 import type { EditInput } from '@dataview/react/interaction'
 import {
-  type PropertyEditSession,
+  type ValueEditorSession,
   type ValueEditorResult,
 } from './types'
 import {
@@ -42,7 +42,7 @@ const clamp = (
 ) => Math.max(min, Math.min(value, max))
 
 export const resolvePropertyValueEditorPosition = (input: {
-  anchor: PropertyEditSession['anchor']
+  anchor: ValueEditorSession['anchor']
   viewportWidth: number
   viewportHeight: number
   desiredWidth: number
@@ -77,8 +77,8 @@ export const PropertyValueEditorHost = () => {
   const dataView = useDataView()
   const engine = dataView.engine
   const valueEditor = dataView.valueEditor
-  const propertyEditSessionStore = valueEditor.sessionStore
-  const session = useStoreValue(propertyEditSessionStore)
+  const valueEditorStore = valueEditor.store
+  const session = useStoreValue(valueEditorStore)
   const property = session
     ? engine.read.property.get(session.field.propertyId)
     : undefined
@@ -101,16 +101,16 @@ export const PropertyValueEditorHost = () => {
     : undefined
 
   const clearSession = useCallback((result?: ValueEditorResult) => {
-    const current = propertyEditSessionStore.get()
+    const current = valueEditorStore.get()
     if (!current) {
       return
     }
 
-    propertyEditSessionStore.set(null)
+    valueEditorStore.set(null)
     current.onResolve?.(result ?? {
       kind: 'dismiss'
     })
-  }, [propertyEditSessionStore])
+  }, [valueEditorStore])
 
   useEffect(() => () => {
     valueEditor.close()

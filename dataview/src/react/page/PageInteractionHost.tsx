@@ -31,7 +31,7 @@ export const PageInteractionHost = () => {
         event.preventDefault()
         event.stopPropagation()
         if (active.dismissOnBackdropPress) {
-          page.surface.dismissTop()
+          page.surface.dismiss()
         }
       }}
       onMouseDown={event => {

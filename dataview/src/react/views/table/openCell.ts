@@ -5,7 +5,7 @@ import type {
   FieldId,
   ViewFieldRef
 } from '@dataview/engine/projection/view'
-import type { PropertyEditApi, ValueEditorResult } from '@dataview/react/page/valueEditor'
+import type { ValueEditorApi, ValueEditorResult } from '@dataview/react/page/valueEditor'
 import { ownerDocumentOf, resolveFieldAnchor } from '@dataview/dom/field'
 import {
   fieldId,
@@ -68,7 +68,7 @@ export const finishCellEdit = (input: {
 }
 
 export const createCellOpener = (options: {
-  propertyEdit: PropertyEditApi
+  valueEditor: ValueEditorApi
   currentView: () => CurrentView | undefined
   gridSelection: GridSelectionStore
   dom: Dom
@@ -99,7 +99,7 @@ export const createCellOpener = (options: {
 
     const anchor = resolveAnchor(target)
     if (anchor) {
-      const opened = options.propertyEdit.open({
+      const opened = options.valueEditor.open({
         field: target.field,
         anchor,
         seedDraft: target.seedDraft,

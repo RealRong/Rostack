@@ -210,9 +210,9 @@ export const createPageSessionApi = (
       }
     },
     surface: {
-      set: setSurface,
-      clear: clearSurface,
-      dismissTop: () => {
+      open: setSurface,
+      close: clearSurface,
+      dismiss: () => {
         const current = store.get().interaction.blockingSurfaces.at(-1)
         if (!current) {
           return

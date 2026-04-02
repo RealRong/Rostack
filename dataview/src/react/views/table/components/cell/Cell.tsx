@@ -11,7 +11,7 @@ import {
   type AppearanceId
 } from '@dataview/react/view'
 import { useCurrentView, useEngine } from '@dataview/react/editor'
-import { fieldAttrs } from '@dataview/react/propertyEdit'
+import { fieldAttrs } from '@dataview/react/dom/field'
 import { useTableContext } from '../../context'
 import { useKeyedStoreValue } from '@dataview/react/runtime/store'
 import { cn } from '@ui/utils'

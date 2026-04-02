@@ -103,15 +103,28 @@ move session 只保留这些核心字段：
 - 哪些 edge 要跟着动
 - 哪些已选 edge 要整体平移
 
+这里的关键不是“session 里一定要是这几个裸字段”，而是：
+
+- node move 语义要独立存在
+- edge 行为也要有明确分类
+
+后续更推荐把：
+
+- `selectedEdges`
+- `relatedEdges`
+
+收敛成一个更明确的 `edgePlan`，而不是长期保留两个平铺字段。
+
 ### preview 层
 
 preview 只应该表达这次 move 的直接结果：
 
 - 节点的新位置
 - edge 的预览 patch
-- guide
 
 如果还有“当前像是在 hover 某个 frame / container”这种 UI 反馈，它应该被明确视为 preview 附加语义，而不是 move 本体语义。
+
+`guides` 更适合作为 snap runtime 的展示副产物，而不是 selection move 自己管理的主输出。
 
 ### commit 层
 
@@ -153,14 +166,15 @@ commit 不应该依赖 preview-only 状态。
 
 ### 判断
 
-这不是 selection move 的核心概念，更像一个高级 snap 策略。
+这不是 selection move 的核心概念，而是 snap 模块内部的一种策略。
 
-如果按更常见、更稳定的交互设计，建议二选一：
+如果要保留这层能力，建议完全下沉到 snap policy：
 
-1. 直接删除这层能力，只保留同边 snap。
-2. 如果确认要保留，至少重命名成更直白的名字，例如 `allowCrossSnap`。
+1. selection move 只声明“我要做一次 move snap”。
+2. snap runtime 根据交互上下文和 modifiers 自己决定是否启用 cross snap。
+3. `allowCross` 最多作为 snap 内部策略名存在，不应该暴露给 selection move。
 
-不建议继续保留 `allowCross` 这个抽象名字，因为它脱离上下文几乎不可读。
+如果后续仍然要在代码里保留这个命名，也更建议放在 snap 模块内部并重命名成 `allowCrossSnap`，而不是继续作为 interaction 层公开参数。
 
 ## `MoveEffect.hovered` 是什么
 
@@ -238,14 +252,27 @@ commit 不应该依赖 preview-only 状态。
 
 ### 3. 重新处理 `allowCross`
 
-这是 selection move 里最像“高级遗留选项”的一项。
+这是 selection move 里最像“策略泄漏”的一项。
 
-建议优先级：
+建议目标：
 
-1. 最优：删除。
-2. 次优：保留，但只存在于 snap runtime，且重命名为 `allowCrossSnap`。
+1. `allowCross` 可以保留。
+2. 但它只存在于 snap runtime / snap policy 内部。
+3. selection move 不再传递 `allowCross` 这类策略参数。
 
-不建议让 selection move 的主交互代码继续携带一个语义不透明的 `allowCross`。
+selection move 只需要提供：
+
+- raw rect
+- excludeIds
+- interaction context
+
+至于：
+
+- 要不要 cross snap
+- `Alt` 是否表示 cross snap
+- guide 怎么画
+
+都不应该由 selection move 关心。
 
 ### 4. 重新处理 `MoveEffect.hovered`
 
@@ -263,17 +290,29 @@ commit 不应该依赖 preview-only 状态。
 
 ### 5. 评估 `selectedEdges` / `relatedEdges` 的命名
 
-这两个字段本身未必该删，但命名还可以更直白。
+这两个字段对应的行为语义本身不应该删，但它们的表达方式还可以继续收敛。
 
 它们的真实语义更接近：
 
 - `selectedEdges`: 当前直接选中的 edge，需要整体跟着平移
 - `relatedEdges`: 两端节点都在 move 集合里的 edge，需要做 follow patch
 
+这说明问题不在于“有没有必要区分”，而在于“是不是必须以两个顶层数组字段来表达”。
+
 如果后续还要继续简化，可以考虑更贴近行为的命名，例如：
 
 - `draggedEdges`
 - `followEdges`
+
+或者更进一步，直接收敛成：
+
+- `edgePlan.dragged`
+- `edgePlan.follow`
+
+这比两个裸字段更清楚，因为它明确表示：
+
+- 这是一次 move 的 edge 行为计划
+- 不是两个临时列表碰巧被挂在 session 上
 
 这不是最高优先级，但有助于把 move 的读法变成“节点怎么动，edge 为什么动”。
 
@@ -310,6 +349,260 @@ commit 不应该依赖 preview-only 状态。
 
 这两种 edge 行为确实不同，不应该为了“更短”强行并掉。
 
+这里尤其要避免一个常见误区：
+
+- edge 的显示路径可以根据 node 几何实时解算
+- 但 edge 的文档数据不应该因为订阅了 node 变化就偷偷回写
+
+因为 edge 虽然没有独立的 `size/position`，但它依然有自己的持久化几何字段，例如：
+
+- point end 的坐标
+- manual route 的 points
+
+这些字段如果要变化，应该在 commit 时显式生成 patch，而不是靠 edge store 的订阅副作用去隐式改文档。
+
+所以更合理的边界是：
+
+- read / resolved 层可以 reactive 地根据 node 几何解 path
+- write / document 层仍然显式提交 edge patch
+
+这也意味着：
+
+- `selectedEdges` 对应的直接拖动 edge，语义上必须保留
+- `relatedEdges` 对应的 follow edges，功能上也必须保留
+
+只是它们未必必须以当前字段形态长期存在。
+
+## 是否需要纯 move 模块
+
+需要，而且这是 selection move 很值得做的一次结构收敛。
+
+但这个纯模块不应该定义成一个语义很宽的黑箱，例如：
+
+```ts
+move(nodes, edges, delta)
+```
+
+这种接口看起来短，实际会把“哪些节点该动、哪些 edge 是直接拖动、哪些 edge 是跟随变化”全都藏进函数内部重新猜，反而会让边界变差。
+
+更合理的设计是一个纯 `projectMove` 模块，它只负责几何结果投影，不负责交互编排。
+
+### 这个纯模块应该负责什么
+
+- 根据 move members 和 delta 计算 node 位置预览
+- 根据 edge 行为计划计算 edge patch
+- 输出 move preview 的纯结果
+
+### 这个纯模块不应该负责什么
+
+- selection 判定
+- pointer 交互
+- snap policy 解析
+- preview overlay 写入
+- document commit
+- container hover 这类 UI 衍生反馈
+
+也就是说，它应该是：
+
+- 几何投影模块
+
+而不是：
+
+- 交互大黑箱
+
+### 推荐输入形状
+
+推荐输入不是：
+
+- `nodes`
+- `edges`
+- `delta`
+
+而是：
+
+- `nodes`
+- `move`
+- `edgePlan`
+- `delta`
+- `nodeSize`
+
+因为 move 纯模块真正需要的不是“所有 edge”，而是“这次 move 的明确语义计划”。
+
+如果继续用更清楚的命名，它可以长这样：
+
+```ts
+projectMove({
+  nodes,
+  move,
+  edgePlan: {
+    dragged,
+    follow
+  },
+  delta,
+  nodeSize
+})
+```
+
+这里：
+
+- `move` 表示哪些 node members 真正会动
+- `edgePlan.dragged` 表示被直接拖动的 edge
+- `edgePlan.follow` 表示随 node 变化而更新的 edge
+
+这比单纯传一整个 `edges` 列表更不容易丢语义。
+
+### 推荐输出形状
+
+输出确实应该是“node / edge 的变化结果”，例如：
+
+```ts
+type MoveProjection = {
+  nodes: readonly MoveNodePosition[]
+  edges: readonly MoveEdgeChange[]
+}
+```
+
+如果后续觉得调试上还需要保留边来源，也可以变成：
+
+```ts
+type MoveProjection = {
+  nodes: readonly MoveNodePosition[]
+  draggedEdgePatches: readonly MoveEdgeChange[]
+  followEdgePatches: readonly MoveEdgeChange[]
+}
+```
+
+然后由上层决定是否合并。
+
+### 为什么 preview 和 commit 不要并成一个函数
+
+因为这两层虽然相关，但职责不同：
+
+- preview 需要的是成员节点的位置结果
+- commit 对 node 往往只需要 roots + delta
+- commit 对 edge 需要的是显式 patch
+
+所以更好的拆法是：
+
+- `planMove`
+- `projectMove`
+- `buildMoveCommit`
+
+三者都可以是纯模块，但职责不要混。
+
+## snap 模块的推荐边界
+
+如果沿着这次简化方向继续收敛，snap 的边界建议明确成两层：
+
+### 1. snap core
+
+纯计算：
+
+- 输入 raw rect
+- 输入 candidates / excludeIds / context
+- 输出 snapped rect
+- 输出 guides
+
+### 2. snap runtime
+
+交互服务：
+
+- 解析 modifiers 和 interaction context
+- 决定当前 snap policy
+- 调用 snap core
+- 自己写入和清理 guides
+- 把 `snapped rect` 返回给调用方
+
+为了让 interaction 生命周期更对称，snap runtime 最好还提供一个显式清理入口，例如：
+
+- `snap.clear()`
+
+或者如果后续状态会变多，也可以考虑：
+
+- `snap.end()`
+
+这样 selection move 的职责就会非常干净：
+
+- 提供 raw rect
+- 拿回 `snapped rect`
+- 用 `snapped rect` 继续做 move project / commit
+- 在 interaction 结束或取消时调用一次 snap 清理
+
+selection move 不需要再直接关心：
+
+- `allowCross`
+- `guides`
+- `Alt` 和具体 snap 策略之间的映射
+
+这里要特别强调一个边界：
+
+- `guides` 可以由 snap runtime 自己写入
+- `snapped rect` 不能被 snap 模块藏进隐式状态，必须显式返回给 move 主流程
+
+因为 `snapped rect` 是后续计算 delta、project preview、build commit 的主输入，不是可选 UI 副产物。
+
+同样地：
+
+- `snap.clear()` 只应该清 snap 自己的瞬时展示状态
+- 不应该顺手清 node patches / edge patches / container hover 之类的 move preview 状态
+
+也就是说，它的职责应该非常窄，只负责：
+
+- guides
+- 未来可能属于 snap runtime 的其他 transient presentation state
+
+## 推荐的最终纯模块拆法
+
+如果按概念最少、可读性最强的方向，我建议最终收敛成这三层：
+
+### 1. `planMove`
+
+输入：
+
+- selection target
+- nodes
+- edges
+- nodeSize
+
+输出：
+
+- `move`
+- `edgePlan`
+
+也就是把“这次移动会影响谁”在开始阶段一次性讲清楚。
+
+### 2. `projectMove`
+
+输入：
+
+- `nodes`
+- `move`
+- `edgePlan`
+- `delta`
+- `nodeSize`
+
+输出：
+
+- `nodePatches`
+- `edgePatches`
+
+它只负责纯几何结果。
+
+### 3. `buildMoveCommit`
+
+输入：
+
+- `move`
+- `edgePlan`
+- `delta`
+
+输出：
+
+- node commit payload
+- edge commit payload
+
+它只负责把 move 结果翻译成文档写入。
+
 ## 推荐的最终模型
 
 推荐把 selection move 收敛成下面这个模型：
@@ -329,16 +622,31 @@ commit 不应该依赖 preview-only 状态。
 - `origin`
 - `startWorld`
 - `delta`
-- `selectedEdges`
-- `relatedEdges`
+- `edgePlan`
 - `nodes`
 - `nodeSize`
+
+其中：
+
+- `edgePlan.dragged` 对应当前直接拖动的 edge
+- `edgePlan.follow` 对应当前随 node 变化的 edge
 
 ### move/project 输出
 
 - `nodePatches`
 - `edgePatches`
+
+### snap 输出
+
+- `snappedRect`
+
+### snap runtime 副产物
+
 - `guides`
+
+### interaction end
+
+- `snap.clear()`
 
 ### 可选 preview 附加输出
 
@@ -354,6 +662,8 @@ commit 不应该依赖 preview-only 状态。
 - core move 输出“真实位移结果”
 - UI hover 输出“纯反馈信息”
 - 两者不混在一个暧昧的 effect 语义里
+- edge 的显示解算和 edge 的文档写入明确分层
+- selection move 只消费 `snapped rect`，不直接管理 snap guides
 
 ## 推荐实施顺序
 
@@ -363,6 +673,7 @@ commit 不应该依赖 preview-only 状态。
 
 - 删除 `MoveIntent`
 - 删除 `MoveSession.target`
+- 把 `selectedEdges` / `relatedEdges` 收敛到 `edgePlan`
 - 把相关命名改清楚
 
 这一步只做 API 收敛，不动行为，是最稳的一步。
@@ -380,12 +691,10 @@ commit 不应该依赖 preview-only 状态。
 
 目标：
 
-- 删除 `allowCross`
-
-或者：
-
-- 至少重命名成 `allowCrossSnap`
-- 并把它约束在 snap runtime 范围内
+- 把 `allowCross` 下沉到 snap policy
+- 让 snap runtime 自己管理 `guides`
+- 让 selection move 只消费 `snapped rect`
+- 在 interaction end / cancel 时显式执行 `snap.clear()`
 
 这一步做完，selection move 主线会明显更干净。
 
@@ -408,7 +717,8 @@ commit 不应该依赖 preview-only 状态。
 也就是说：
 
 - move 不要假装自己还负责 container hover 语义
-- snap 不要暴露一个难读的开关名
+- snap 不要把策略细节暴露给 selection move
+- snap 的 transient 展示状态要由自己收尾
 - preview 不要和 commit 混成一个 effect 心智模型
 
 ## 最终建议
@@ -418,8 +728,9 @@ commit 不应该依赖 preview-only 状态。
 1. 保留当前 editor 交互主线，不重写。
 2. 在 core move 层先删 `MoveIntent` 和 `MoveSession.target`。
 3. 把 `MoveEffect.hovered` 视为可选的 preview 衍生信息，而不是 move 本体。
-4. 把 `allowCross` 视为高级 snap 策略，而不是 move 核心概念。
-5. 不动 `MoveSet`、edge follow、selected edge translate 这些真正承载业务语义的部分。
+4. 把 `allowCross` 视为 snap policy 内部策略，而不是 selection move 概念。
+5. 让 interaction 结束时显式调用 `snap.clear()`，但只清 snap 自己的状态。
+6. 不动 `MoveSet`、edge follow、selected edge translate 这些真正承载业务语义的部分。
 
 这样收敛下来，selection move 会接近一个非常标准的实现：
 
@@ -439,6 +750,6 @@ build move set
 
 1. 先做 `MoveIntent` / `MoveSession.target` 删除。
 2. 再决定 `hovered` 是删除还是下沉到 preview 层。
-3. 最后收掉 `allowCross`。
+3. 最后把 snap policy、guide 管理、`snap.clear()` 生命周期和 selection move 主流程拆清楚。
 
 这样每一步都很小，回归面也可控。

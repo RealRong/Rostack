@@ -16,18 +16,17 @@ import {
 } from '@dataview/react/properties/value'
 import {
   belowFieldAnchor,
-  createPropertyEditOpener,
   fieldAttrs,
-  resolveOpenAnchor,
-  usePropertyEdit,
-  type PropertyEditTarget
-} from '@dataview/react/propertyEdit'
+  ownerDocumentOf,
+  resolveFieldAnchor
+} from '@dataview/react/dom/field'
 import {
   stepViewFieldByIntent
 } from '@dataview/react/view/field'
 import type {
   ViewFieldRef
 } from '@dataview/react/view'
+import { useEditorContext } from '@dataview/react/editor/provider'
 import { cn } from '@ui/utils'
 
 export interface CardFieldProps {
@@ -57,7 +56,7 @@ const applyRecordValue = (input: {
 
 export const CardField = (props: CardFieldProps) => {
   const engine = useEngine()
-  const propertyEdit = usePropertyEdit()
+  const { propertyEdit } = useEditorContext()
   const currentView = useCurrentView(view => (
     view?.view.id === props.field.viewId
       ? view
@@ -79,29 +78,49 @@ export const CardField = (props: CardFieldProps) => {
   }
   const property = props.property
 
-  const openField = createPropertyEditOpener<PropertyEditTarget>({
-    propertyEdit,
-    anchor: target => resolveOpenAnchor({
-      field: target.field,
-      element: target.element,
-      fallback: belowFieldAnchor
-    }),
-    next: (target, intent) => {
-      const field = stepViewFieldByIntent({
-        field: target.field,
-        scope: {
-          appearanceIds: [target.field.appearanceId],
-          propertyIds: props.fieldPropertyIds
-        },
-        appearances: currentView.appearances,
-        intent
-      })
+  const openField = (target: {
+    field: ViewFieldRef
+    element?: Element | null
+  }): boolean => {
+    const anchor = resolveFieldAnchor(
+      ownerDocumentOf(target.element),
+      target.field
+    ) ?? (
+      target.element instanceof HTMLElement
+        ? belowFieldAnchor(target.element)
+        : undefined
+    )
 
-      return field
-        ? { field }
-        : null
+    if (!anchor) {
+      return false
     }
-  })
+
+    return propertyEdit.open({
+      field: target.field,
+      anchor,
+      onResolve: result => {
+        if (result.kind !== 'commit' || result.intent === 'done') {
+          return
+        }
+
+        const field = stepViewFieldByIntent({
+          field: target.field,
+          scope: {
+            appearanceIds: [target.field.appearanceId],
+            propertyIds: props.fieldPropertyIds
+          },
+          appearances: currentView.appearances,
+          intent: result.intent
+        })
+
+        if (!field) {
+          return
+        }
+
+        openField({ field })
+      }
+    })
+  }
 
   const onQuickToggle = () => {
     const action = resolvePropertyPrimaryAction({

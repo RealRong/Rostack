@@ -1,4 +1,10 @@
-import type { ValueEditorAnchor, ViewFieldRef } from './types'
+import type { ViewFieldRef } from '@dataview/react/view'
+
+export interface FieldAnchor {
+  x: number
+  y: number
+  width: number
+}
 
 export const FIELD_VIEW_ID_ATTR = 'data-property-edit-view-id'
 export const FIELD_APPEARANCE_ID_ATTR = 'data-property-edit-appearance-id'
@@ -9,7 +15,7 @@ const fieldSelector = `[${FIELD_VIEW_ID_ATTR}]`
 
 export const fieldAnchor = (
   element?: Element | null
-): ValueEditorAnchor | undefined => {
+): FieldAnchor | undefined => {
   if (!(element instanceof HTMLElement)) {
     return undefined
   }
@@ -24,7 +30,7 @@ export const fieldAnchor = (
 
 export const belowFieldAnchor = (
   element?: Element | null
-): ValueEditorAnchor | undefined => {
+): FieldAnchor | undefined => {
   if (!(element instanceof HTMLElement)) {
     return undefined
   }
@@ -72,7 +78,7 @@ export const fieldElement = (
 export const resolveFieldAnchor = (
   doc: Document | undefined,
   field: ViewFieldRef
-): ValueEditorAnchor | undefined => (
+): FieldAnchor | undefined => (
   fieldAnchor(fieldElement(doc, field))
 )
 

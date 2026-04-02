@@ -14,10 +14,9 @@ import {
 import {
   useEngine
 } from '@dataview/react/editor'
+import { useEditorContext } from '@dataview/react/editor/provider'
 import type { EditInput } from '@dataview/react/page/interaction'
 import {
-  usePropertyEditInternals,
-  usePropertyEdit,
   type PropertyEditSession,
   type ValueEditorResult,
 } from '@dataview/react/propertyEdit'
@@ -77,10 +76,10 @@ export const resolvePropertyValueEditorPosition = (input: {
 
 export const PropertyValueEditorHost = () => {
   const engine = useEngine()
-  const propertyEdit = usePropertyEdit()
   const {
+    propertyEdit,
     propertyEditSessionStore
-  } = usePropertyEditInternals()
+  } = useEditorContext()
   const session = useStoreValue(propertyEditSessionStore)
   const property = session
     ? engine.read.property.get(session.field.propertyId)

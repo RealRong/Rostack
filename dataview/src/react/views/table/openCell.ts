@@ -3,13 +3,8 @@ import type {
   FieldId,
   ViewFieldRef
 } from '@dataview/react/view'
-import {
-  createPropertyEditOpener,
-  type PropertyEditApi,
-  type ValueEditorResult,
-  type PropertyEditTarget,
-  resolveOpenAnchor
-} from '@dataview/react/propertyEdit'
+import type { PropertyEditApi, ValueEditorResult } from '@dataview/react/propertyEdit'
+import { ownerDocumentOf, resolveFieldAnchor } from '@dataview/react/dom/field'
 import {
   fieldId,
   fieldOf,
@@ -25,8 +20,11 @@ export interface CellOpenInput {
   seedDraft?: string
 }
 
-interface OpenTarget extends PropertyEditTarget {
+interface OpenTarget {
   cell: CellOpenInput['cell']
+  field: ViewFieldRef
+  element?: Element | null
+  seedDraft?: string
 }
 
 export const finishCellEdit = (input: {
@@ -84,50 +82,10 @@ export const createCellOpener = (options: {
     propertyIds: currentView.properties.ids
   })
 
-  const open = createPropertyEditOpener<OpenTarget>({
-    propertyEdit: options.propertyEdit,
-    anchor: target => resolveOpenAnchor({
-      field: target.field,
-      element: target.element ?? options.dom.cell(target.cell)
-    }),
-    next: (target, intent) => {
-      const currentView = options.currentView()
-      if (!currentView) {
-        return null
-      }
-
-      const field = stepViewFieldByIntent({
-        field: target.field,
-        scope: nextScope(currentView),
-        appearances: currentView.appearances,
-        intent
-      })
-      if (!field) {
-        return null
-      }
-
-      return {
-        cell: fieldId(field),
-        field,
-        element: options.dom.cell(fieldId(field))
-      }
-    },
-    done: ({ target, result }) => {
-      finishCellEdit({
-        currentView: options.currentView(),
-        field: target.field,
-        result,
-        gridSelection: options.gridSelection,
-        revealSelection: options.revealCursor,
-        focus: options.focus,
-        reopen: field => openTarget({
-          cell: fieldId(field),
-          field
-        })
-      })
-    },
-    afterOpen: syncTarget
-  })
+  const resolveAnchor = (target: OpenTarget) => resolveFieldAnchor(
+    ownerDocumentOf(target.element ?? options.dom.cell(target.cell)),
+    target.field
+  )
 
   const openTarget = (
     target: OpenTarget,
@@ -135,8 +93,51 @@ export const createCellOpener = (options: {
   ): boolean => {
     syncTarget(target)
 
-    if (open(target)) {
-      return true
+    const anchor = resolveAnchor(target)
+    if (anchor) {
+      const opened = options.propertyEdit.open({
+        field: target.field,
+        anchor,
+        seedDraft: target.seedDraft,
+        onResolve: result => {
+          if (result.kind === 'commit' && result.intent !== 'done') {
+            const currentView = options.currentView()
+            if (currentView) {
+              const nextField = stepViewFieldByIntent({
+                field: target.field,
+                scope: nextScope(currentView),
+                appearances: currentView.appearances,
+                intent: result.intent
+              })
+
+              if (nextField && openTarget({
+                cell: fieldId(nextField),
+                field: nextField,
+                element: options.dom.cell(fieldId(nextField))
+              })) {
+                return
+              }
+            }
+          }
+
+          finishCellEdit({
+            currentView: options.currentView(),
+            field: target.field,
+            result,
+            gridSelection: options.gridSelection,
+            revealSelection: options.revealCursor,
+            focus: options.focus,
+            reopen: field => openTarget({
+              cell: fieldId(field),
+              field
+            })
+          })
+        }
+      })
+
+      if (opened) {
+        return true
+      }
     }
 
     if (typeof window === 'undefined' || attempt >= 2) {

@@ -10,9 +10,9 @@ import { getPropertyOptions, getStatusSections } from '@dataview/core/property'
 import { Button } from '@ui/button'
 import { Input } from '@ui/input'
 import { usePageActions } from '@dataview/react/editor'
+import { useEditorContext } from '@dataview/react/editor/provider'
 import { meta, renderMessage } from '@dataview/meta'
 import { PropertyOptionTag } from '@dataview/react/properties/options'
-import { usePropertyEdit } from '@dataview/react/propertyEdit'
 import type { PropertyEditIntent } from '@dataview/react/page/interaction'
 import type { PropertyValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@dataview/react/dom/focus'
@@ -40,7 +40,7 @@ export const StatusValueEditor = (
   props: PropertyValueDraftEditorProps<string>
 ) => {
   const page = usePageActions()
-  const propertyEdit = usePropertyEdit()
+  const { propertyEdit } = useEditorContext()
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [query, setQuery] = useState('')
   const property = props.property

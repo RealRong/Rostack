@@ -19,7 +19,7 @@ import { CardPropertySlot } from '@dataview/react/views/shared'
 import { Button } from '@ui/button'
 import { Input } from '@ui/input'
 import { cn } from '@ui/utils'
-import type { AppearanceId } from '@dataview/react/currentView'
+import type { AppearanceId } from '@dataview/react/runtime/currentView'
 
 const TITLE_PLACEHOLDER = '输入名称...'
 
@@ -173,6 +173,7 @@ export const CardSurface = (props: {
                   value={props.record.values[property.id]}
                   fieldPropertyIds={fieldPropertyIds}
                   mode={mode}
+                  openOnClick
                   onSelect={props.onSelect}
                   valueClassName="text-[13px] leading-6 text-foreground"
                 />

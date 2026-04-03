@@ -6,13 +6,13 @@ import {
 import type { Point } from '@dataview/dom/geometry'
 import {
   type AppearanceId
-} from '@dataview/react/currentView'
+} from '@dataview/react/runtime/currentView'
 import {
   emptySelection,
   selection,
   type Selection,
   type SelectionApi
-} from '@dataview/react/selection'
+} from '@dataview/react/runtime/selection'
 import {
   closestTarget,
   interactiveSelector

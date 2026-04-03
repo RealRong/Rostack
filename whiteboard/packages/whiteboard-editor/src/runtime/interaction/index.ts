@@ -1,5 +1,16 @@
 export { createInteractionRuntime } from './runtime'
 export { createSnapRuntime } from './snap'
+export {
+  createEdgeConnectGesture,
+  createEdgeMoveGesture,
+  createEdgeRouteGesture,
+  createMarqueeGesture,
+  createMoveGesture,
+  createTransformGesture,
+  readEdgeGestureOverlayState,
+  EMPTY_SELECTION_PREVIEW,
+  readSelectionGesturePreview
+} from './gesture'
 export { GestureTuning } from './config'
 export type { InteractionCtx } from './ctx'
 export type {
@@ -24,3 +35,12 @@ export type {
   ResizeSnapSource,
   SnapRuntime
 } from './snap'
+export type {
+  ActiveGesture,
+  EdgeConnectGesture,
+  EdgeMoveGesture,
+  EdgeRouteGesture,
+  MarqueeGesture,
+  MoveGesture,
+  TransformGesture
+} from './gesture'

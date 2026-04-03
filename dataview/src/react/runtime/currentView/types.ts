@@ -30,7 +30,8 @@ export type {
   Schema,
   Section,
   SectionKey,
-  ViewFieldRef
+  ViewFieldRef,
+  ViewProjection
 } from '@dataview/engine/projection/view'
 
 export interface CreateInSectionInput {

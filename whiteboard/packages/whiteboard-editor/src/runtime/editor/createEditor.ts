@@ -68,7 +68,8 @@ export const createEditor = ({
     space: runtime.state.space
   })
   const overlay = createOverlay({
-    viewport: runtime.public.viewport
+    viewport: runtime.public.viewport,
+    gesture: interaction.gesture
   })
   const read = createRead({
     engineRead: engine.read,
@@ -95,8 +96,7 @@ export const createEditor = ({
       config: engine.config.edge,
       nodeSize: engine.config.nodeSize,
       query: read.edge.connectCandidates
-    },
-    writeGuides: write.preview.selection.setGuides
+    }
   })
   const nodeTextCommands = {
     preview: ({ nodeId, size }) => {

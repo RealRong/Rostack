@@ -30,7 +30,7 @@ import {
 } from './types'
 import type {
   SelectionStore
-} from '@dataview/react/selection'
+} from '@dataview/react/runtime/selection'
 
 const createMoveOrderCommand = (
   viewId: ViewId,

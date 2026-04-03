@@ -1,5 +1,5 @@
 import type { Rect } from '@dataview/dom/geometry'
-import type { AppearanceId } from '@dataview/react/currentView'
+import type { AppearanceId } from '@dataview/react/runtime/currentView'
 import type {
   GalleryLayout
 } from './layout'

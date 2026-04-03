@@ -3,7 +3,7 @@ import type {
   GroupRecord,
   PropertyId
 } from '@dataview/core/contracts'
-import type { AppearanceId } from '@dataview/react/currentView'
+import type { AppearanceId } from '@dataview/react/runtime/currentView'
 import type {
   ViewFieldRef
 } from '@dataview/engine/projection/view'

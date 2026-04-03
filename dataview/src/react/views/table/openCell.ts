@@ -1,11 +1,11 @@
 import type {
   CurrentView,
-} from '@dataview/react/currentView'
+} from '@dataview/react/runtime/currentView'
 import type {
   FieldId,
   ViewFieldRef
 } from '@dataview/engine/projection/view'
-import type { ValueEditorApi, ValueEditorResult } from '@dataview/react/page/valueEditor'
+import type { ValueEditorApi, ValueEditorResult } from '@dataview/react/runtime/valueEditor'
 import { ownerDocumentOf, resolveFieldAnchor } from '@dataview/dom/field'
 import {
   fieldId,

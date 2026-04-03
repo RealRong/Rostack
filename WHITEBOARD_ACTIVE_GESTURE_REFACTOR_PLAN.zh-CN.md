@@ -611,3 +611,1236 @@ SelectionTarget
 - `Overlay/Presentation`: 当前反馈如何显示
 
 这就是我现在认为的长期最优。
+
+## 详细 API 设计
+
+这一节只回答一个目标：
+
+- 怎么把上面的方向收敛成一套可以直接落地的 API
+
+原则只有三个：
+
+1. 名字短
+2. 状态少
+3. 数据流单向
+
+不追求“抽象完美”，只追求读起来一眼知道每层在做什么。
+
+## 命名原则
+
+### 1. 稳定事实用名词
+
+例如：
+
+- `SelectionTarget`
+- `SelectionAffordance`
+- `ActiveGesture`
+- `SnapResult`
+
+### 2. 计算动作用动词
+
+例如：
+
+- `resolveSelectionPress`
+- `createGesture`
+- `stepGesture`
+- `finishGesture`
+- `cancelGesture`
+- `solveMoveSnap`
+- `solveResizeSnap`
+
+### 3. 不再引入大而泛的名字
+
+尽量不用这些词：
+
+- `plan`
+- `intent`
+- `followup`
+- `runtime state`
+- `interaction model`
+
+原因不是这些词绝对不能用，而是它们太泛，读代码时脑子里还要二次翻译。
+
+### 4. gesture 内部字段只保留四个短名字
+
+建议统一成：
+
+- `kind`
+- `start`
+- `draft`
+- `meta`
+
+解释：
+
+- `kind`
+  这次手势是什么
+
+- `start`
+  pointer down 时不可变快照
+
+- `draft`
+  当前 pointer move 后的临时结果
+
+- `meta`
+  少量策略位和清理信息
+
+不建议继续保留：
+
+- `base / derived / feedback / commit`
+
+这组名字虽然也能用，但对现在这套 whiteboard 来说还是偏重。  
+更短、更直接的版本是：
+
+- `start`
+- `draft`
+
+而：
+
+- `view` 从 `draft` 派生
+- `apply` 从 `draft` 派生
+
+也就是说，真正存状态的只有：
+
+- `start`
+- `draft`
+
+这样复杂度最低。
+
+## 最小 store 设计
+
+长期最优建议全局只显式保留这几个核心 store：
+
+```ts
+type EditorState = {
+  selection: SelectionTarget
+  gesture: ActiveGesture | null
+}
+```
+
+然后全部用 derived read 来拿：
+
+- `affordance = deriveSelectionAffordance(selection, scene)`
+- `overlay = deriveOverlay(selection, affordance, gesture)`
+
+关键点：
+
+- `affordance` 不单独落成可写状态
+- `overlay` 不单独作为 feature 主写状态
+- `gesture` 是唯一临时交互状态
+
+如果要更明确一点，可以理解成：
+
+```text
+持久状态只有 selection
+临时状态只有 gesture
+其余尽量 derive
+```
+
+这是整个简化里最重要的一条。
+
+## 顶层 API
+
+顶层建议只暴露下面这组 API。
+
+```ts
+type GestureRuntime = {
+  get(): ActiveGesture | null
+  start(input: GestureStartInput): void
+  step(input: GestureStepInput): void
+  end(input: GestureEndInput): void
+  cancel(): void
+}
+```
+
+说明：
+
+- `start`
+  pointer down 后决定进入 gesture 时调用
+
+- `step`
+  pointer move 时推进当前 gesture
+
+- `end`
+  pointer up 时根据当前 `draft` 生成 commit 并落盘
+
+- `cancel`
+  escape / pointer cancel / cleanup
+
+这里不要再额外引入：
+
+- `idle`
+- `running`
+- `committing`
+- `cleanuping`
+
+这些状态枚举。
+
+原因是 runtime 本身已经有：
+
+- `gesture === null`
+- `gesture !== null`
+
+这已经足够表达绝大多数逻辑。
+
+## Press API
+
+press 层建议收敛成一个函数：
+
+```ts
+type SelectionPressResult = {
+  chrome: boolean
+  tap?: SelectionTap
+  drag?: GestureStartInput
+  hold?: GestureStartInput
+}
+
+function resolveSelectionPress(input: ResolveSelectionPressInput): SelectionPressResult
+```
+
+这里继续保留：
+
+- `tap`
+- `drag`
+- `hold`
+
+不要再换成更多概念。
+
+### `SelectionTap` 建议也保持很小
+
+```ts
+type SelectionTap =
+  | { kind: 'clear' }
+  | { kind: 'select'; target: SelectionTarget }
+  | { kind: 'toggle'; id: NodeId }
+```
+
+如果未来要支持 field/focus，可以再加，不要一开始扩大。
+
+### `GestureStartInput` 统一成最少结构
+
+```ts
+type GestureStartInput =
+  | { kind: 'move'; input: MoveGestureInput }
+  | { kind: 'marquee'; input: MarqueeGestureInput }
+  | { kind: 'transform'; input: TransformGestureInput }
+```
+
+顶层只看：
+
+- 这次创建哪种 gesture
+- 其余具体数据下沉到各自 input
+
+## `ActiveGesture` 主类型
+
+建议最终收敛成：
+
+```ts
+type ActiveGesture =
+  | MoveGesture
+  | MarqueeGesture
+  | TransformGesture
+```
+
+并且三者字段风格一致：
+
+```ts
+type MoveGesture = {
+  kind: 'move'
+  start: MoveStart
+  draft: MoveDraft
+  meta: MoveMeta
+}
+
+type MarqueeGesture = {
+  kind: 'marquee'
+  start: MarqueeStart
+  draft: MarqueeDraft
+  meta: MarqueeMeta
+}
+
+type TransformGesture = {
+  kind: 'transform'
+  start: TransformStart
+  draft: TransformDraft
+  meta: TransformMeta
+}
+```
+
+这里没有：
+
+- `status`
+- `phase`
+- `step`
+- `followup`
+
+原因是这些都不是真正必要状态。
+
+## Move Gesture API
+
+### `MoveStart`
+
+```ts
+type MoveStart = {
+  point: Point
+  selection: SelectionTarget
+  roots: readonly NodeId[]
+  bounds: Rect
+  snapIds: readonly NodeId[]
+}
+```
+
+解释：
+
+- `point`
+  pointer down world 点
+
+- `selection`
+  开始 move 时的稳定选区快照
+
+- `roots`
+  这次真正会移动的 root nodes
+
+- `bounds`
+  这组对象的初始 visual bounds
+
+- `snapIds`
+  snap 时需要排除的 ids
+
+不建议在 `start` 里再塞：
+
+- guides
+- hovered
+- preview patches
+
+这些都不是 start 事实。
+
+### `MoveDraft`
+
+```ts
+type MoveDraft = {
+  delta: Vector
+  bounds: Rect
+  nodes: readonly NodePatch[]
+  edges: readonly EdgePatch[]
+  hoverId?: NodeId
+  guides: readonly Guide[]
+}
+```
+
+这就是 move 过程中唯一需要不断更新的临时结果。
+
+解释：
+
+- `delta`
+  当前实际生效位移
+
+- `bounds`
+  snap 修正后的 moving rect
+
+- `nodes`
+  节点预览 patch
+
+- `edges`
+  edge 预览 patch
+
+- `hoverId`
+  当前 frame / container hover
+
+- `guides`
+  snap guides
+
+这里建议直接把 `hoverId` 和 `guides` 放进 `draft`。
+
+不要单独再发明：
+
+- `MoveEffect`
+- `PreviewEffect`
+- `DropTargetPreview`
+
+因为对当前阶段来说，它们都只是 move 的临时结果。
+
+### `MoveMeta`
+
+```ts
+type MoveMeta = {
+  selectionMode: 'keep' | 'restore'
+}
+```
+
+只保留一个策略位就够了。
+
+解释：
+
+- `keep`
+  pointer up 后保留当前 selection
+
+- `restore`
+  pointer up 后恢复 drag 前的 selection
+
+这就是之前 `persist / temporary` 的最小落地版。
+
+### Move 过程 API
+
+```ts
+function createMoveGesture(input: MoveGestureInput): MoveGesture
+function stepMoveGesture(gesture: MoveGesture, input: GestureStepInput): MoveGesture
+function finishMoveGesture(gesture: MoveGesture): GestureApply
+```
+
+其中：
+
+```ts
+type MoveGestureInput = {
+  point: Point
+  selection: SelectionTarget
+  affordance: SelectionAffordance
+  scene: MoveScene
+  snap?: MoveSnapSolver
+  selectionMode: 'keep' | 'restore'
+}
+```
+
+`stepMoveGesture` 的逻辑应该非常直白：
+
+1. 算 raw delta
+2. 算 raw bounds
+3. 调 `snap`
+4. 生成 `draft`
+5. 返回新 gesture
+
+没有别的隐藏状态。
+
+## Marquee Gesture API
+
+### `MarqueeStart`
+
+```ts
+type MarqueeStart = {
+  point: Point
+  mode: 'intersect' | 'contain'
+  initial: SelectionTarget
+}
+```
+
+这里只保留三件事：
+
+- 从哪里开始框
+- 这次框选规则是什么
+- 开始前的选区是什么
+
+### `MarqueeDraft`
+
+```ts
+type MarqueeDraft = {
+  rect: Rect
+  target: SelectionTarget
+}
+```
+
+解释：
+
+- `rect`
+  当前 marquee rect
+
+- `target`
+  当前 marquee 算出来的临时选区
+
+不再单独保存：
+
+- `selectedIds`
+- `frameIds`
+- `groupIds`
+
+这些都应该来自场景查询，不是 gesture 自己存的事实。
+
+### `MarqueeMeta`
+
+```ts
+type MarqueeMeta = {
+  keepHandles: boolean
+}
+```
+
+如果暂时根本不需要这类策略，`meta` 甚至可以为空对象。
+
+### Marquee 过程 API
+
+```ts
+function createMarqueeGesture(input: MarqueeGestureInput): MarqueeGesture
+function stepMarqueeGesture(gesture: MarqueeGesture, input: GestureStepInput): MarqueeGesture
+function finishMarqueeGesture(gesture: MarqueeGesture): GestureApply
+```
+
+其中 `finish` 通常只会产出：
+
+```ts
+type GestureApply = {
+  selection?: SelectionTarget
+  nodes?: readonly NodePatch[]
+  edges?: readonly EdgePatch[]
+}
+```
+
+marquee 最常见只改：
+
+- `selection`
+
+## Transform Gesture API
+
+### `TransformStart`
+
+```ts
+type TransformStart = {
+  point: Point
+  handle: TransformHandle
+  selection: SelectionTarget
+  bounds: Rect
+}
+```
+
+### `TransformDraft`
+
+```ts
+type TransformDraft = {
+  bounds: Rect
+  nodes: readonly NodePatch[]
+  guides: readonly Guide[]
+}
+```
+
+如果未来恢复旋转，也建议保持同一个形状：
+
+```ts
+type TransformDraft = {
+  bounds: Rect
+  nodes: readonly NodePatch[]
+  guides: readonly Guide[]
+  angle?: number
+}
+```
+
+不要额外发明一个单独 `RotateDraft`。
+
+### `TransformMeta`
+
+```ts
+type TransformMeta = {
+  mode: 'resize' | 'rotate'
+}
+```
+
+如果多选长期不允许 rotate，那么：
+
+- 单选可以 `mode = 'resize' | 'rotate'`
+- 多选固定 `mode = 'resize'`
+
+不用再让 transform runtime 到处判断。
+
+### Transform 过程 API
+
+```ts
+function createTransformGesture(input: TransformGestureInput): TransformGesture
+function stepTransformGesture(gesture: TransformGesture, input: GestureStepInput): TransformGesture
+function finishTransformGesture(gesture: TransformGesture): GestureApply
+```
+
+## Snap API
+
+snap 长期最优建议明确拆成两个 solver：
+
+```ts
+function solveMoveSnap(input: MoveSnapInput): MoveSnapResult
+function solveResizeSnap(input: ResizeSnapInput): ResizeSnapResult
+```
+
+不要保留一个既做 move 又做 resize、还带副作用的大 runtime。
+
+### `MoveSnapInput`
+
+```ts
+type MoveSnapInput = {
+  rect: Rect
+  excludeIds: readonly NodeId[]
+  mode: 'normal' | 'cross'
+}
+```
+
+### `MoveSnapResult`
+
+```ts
+type MoveSnapResult = {
+  rect: Rect
+  guides: readonly Guide[]
+  hoverId?: NodeId
+}
+```
+
+这里的命名刻意很短：
+
+- 输入是 `rect`
+- 输出还是 `rect`
+
+不要写：
+
+- `rawRect`
+- `snappedRect`
+- `resolvedRect`
+
+如果在函数内部需要区分，再用局部变量。
+
+对 API 使用者来说：
+
+- 传进去一个 rect
+- 拿回来一个 rect
+
+就够了。
+
+### `mode` 命名
+
+`allowCross` 建议在公开 API 层改成：
+
+```ts
+mode: 'normal' | 'cross'
+```
+
+理由：
+
+- 比 `allowCross` 更短
+- 语义是策略模式，不是布尔特判
+- 以后如果还有别的 snap 策略更容易扩展
+
+如果后续仍然觉得 `'cross'` 不够直观，也可以改成：
+
+- `'same-edge' | 'cross-edge'`
+
+但第一版我更建议：
+
+- `'normal' | 'cross'`
+
+## Overlay API
+
+overlay 不建议继续作为“交互模块随手往里写 patch 的地方”。
+
+长期最优应该只有一个 derived API：
+
+```ts
+type OverlayState = {
+  box?: Rect
+  handles?: TransformHandleSet
+  guides: readonly Guide[]
+  hoverId?: NodeId
+  marquee?: Rect
+}
+
+function deriveOverlay(input: {
+  selection: SelectionTarget
+  affordance: SelectionAffordance
+  gesture: ActiveGesture | null
+}): OverlayState
+```
+
+这一步非常关键。
+
+也就是说，长期要尽量删除这种写法：
+
+- `write.preview.nodes(...)`
+- `write.preview.selection(...)`
+- `snap.clear()`
+- `overlay.feedback.snap.write(...)`
+
+更合理的是：
+
+- gesture 变了
+- overlay 自动 derive
+
+这样 cleanup 会自然简单很多。
+
+## `GestureApply` 统一提交协议
+
+建议所有 gesture 的 `finish` 都统一返回：
+
+```ts
+type GestureApply = {
+  selection?: SelectionTarget
+  nodes?: readonly NodePatch[]
+  edges?: readonly EdgePatch[]
+}
+```
+
+如果确实需要额外 cleanup 策略，可以在 runtime 层做，不要塞进 apply。
+
+### 为什么要统一成这个形状
+
+因为对 editor 来说，pointer up 后真正会落盘的东西无非就是：
+
+- selection 变了
+- nodes 变了
+- edges 变了
+
+不要再为不同 gesture 定义不同 commit 大协议。
+
+## runtime 内部推荐实现
+
+如果按最少状态实现，runtime 内部其实只需要：
+
+```ts
+let gesture: ActiveGesture | null = null
+```
+
+然后：
+
+```ts
+function start(input: GestureStartInput) {
+  gesture = createGesture(input)
+}
+
+function step(input: GestureStepInput) {
+  if (!gesture) return
+  gesture = stepGesture(gesture, input)
+}
+
+function end(input: GestureEndInput) {
+  if (!gesture) return
+  gesture = stepGesture(gesture, input)
+  const apply = finishGesture(gesture)
+  applyGesture(apply)
+  gesture = null
+}
+
+function cancel() {
+  gesture = null
+}
+```
+
+这套实现的关键是：
+
+- runtime 不存第二份 preview
+- runtime 不存第二份 snap guides
+- runtime 不存第二份 hovered target
+
+全部都在 `gesture.draft` 或 derived overlay 里。
+
+## 推荐删除的状态和概念
+
+如果按这套 API 走，长期建议逐步删除或淡化这些东西：
+
+- feature-specific `preview write`
+- `snap.clear()` 这类显式清空 API
+- `MoveEffect`
+- `hovered` 这种过泛命名
+- 每条 interaction 自己维护一份 overlay patch
+- “commit 依赖 preview store” 这种反向依赖
+
+对应的替代方式是：
+
+- preview 来自 `gesture.draft`
+- overlay 来自 `deriveOverlay`
+- cleanup 通过 `gesture = null` 自然完成
+
+## 最终推荐的一套短命名
+
+如果要压缩到最简短、同时还能看懂，我推荐最后统一成这组名字：
+
+### 类型名
+
+- `SelectionTarget`
+- `SelectionAffordance`
+- `ActiveGesture`
+- `MoveGesture`
+- `MarqueeGesture`
+- `TransformGesture`
+- `GestureApply`
+- `OverlayState`
+- `SnapResult`
+
+### 函数名
+
+- `resolveSelectionPress`
+- `createGesture`
+- `stepGesture`
+- `finishGesture`
+- `cancelGesture`
+- `solveMoveSnap`
+- `solveResizeSnap`
+- `deriveOverlay`
+
+### 字段名
+
+- `kind`
+- `start`
+- `draft`
+- `meta`
+- `point`
+- `bounds`
+- `rect`
+- `nodes`
+- `edges`
+- `guides`
+- `hoverId`
+
+这组命名的目标就是：
+
+- 没有空话
+- 没有抽象味太重的词
+- 看到名字基本就知道里面装什么
+
+## 最后结论
+
+如果按“状态越少、复杂度越低、命名越短越清晰”的标准来做，长期最优不是继续拆更多层，而是收敛成下面这个最小闭环：
+
+```text
+selection
+-> affordance
+-> press
+-> gesture(start/draft)
+-> snap
+-> overlay(derived)
+-> apply
+```
+
+其中真正持久存下来的只有两件事：
+
+- `selection`
+- `gesture`
+
+其余尽量都 derive 或在局部计算里结束。
+
+这会是我现在认为最稳、最短、最不容易再次长歪的一版 API 设计。
+
+## 已实施收敛
+
+这一轮已经先做掉了两块最值得马上收紧的地方。
+
+### 1. `snap` 已经从 side effect runtime 收成显式结果
+
+现在 `snap` 不再直接写 guides，也不再需要 `clear()`。
+
+已经改成：
+
+- `node.move(input) -> { rect, guides }`
+- `node.resize(input) -> { update, guides }`
+
+这一步的价值是：
+
+- `selection move` 自己显式接收 snap 结果
+- `transform` 自己显式接收 snap 结果
+- guides 的来源变得可读
+- cleanup 不再依赖“顺手清一个 snap store”
+
+也就是说，`snap` 现在更接近 solver，而不是 UI runtime。
+
+### 2. selection preview 已经从多写口收成单一写口
+
+原来 selection preview 是分散写的：
+
+- 写 node patches
+- 写 edge patches
+- 写 frame hover
+- 写 guides
+- 写 marquee
+
+现在已经收成：
+
+- `preview.selection.replace(preview)`
+- `preview.selection.clear()`
+
+也就是说，当前 selection 交互的临时反馈，已经能以“一次完整替换”的方式写入。
+
+这一步的价值是：
+
+- `move` 不再到处写三四次
+- `transform` 不再单独管 guides 清理
+- `marquee` 也回到同一条 preview 通道
+- selection preview 的 mental model 明显变简单
+
+### 3. `move / marquee / transform` 三条线已经统一成“单次写完整反馈”
+
+这三条线现在都已经收敛成同一个模式：
+
+1. 算当前 gesture 结果
+2. 组装完整 preview
+3. 一次 `replace`
+4. cleanup 时统一 `clear`
+
+这虽然还不是完整 `ActiveGesture`，但已经把最容易分叉的那层写状态先收住了。
+
+## 本轮继续实施
+
+在上面那一轮基础上，这次已经把核心运行态继续往前推进了一步。
+
+### 1. runtime 已经显式托管 `gesture`
+
+现在 interaction runtime 不再只管 `active session`，还会显式维护：
+
+- `gesture: ActiveGesture | null`
+
+selection 三条主链现在都会把当前临时状态写到 `session.gesture`：
+
+- `selection-move`
+- `selection-marquee`
+- `selection-transform`
+
+runtime 在这些时机统一同步 `gesture`：
+
+- activate
+- pointer move
+- pointer up
+- auto pan frame
+- keydown / keyup / blur
+- finish / cancel / cleanup
+
+这意味着：
+
+- 当前 selection 手势的临时事实终于有了统一宿主
+- 不再需要 interaction 自己再维护一份 overlay preview 写口
+
+### 2. selection preview 写 API 已经整体删除
+
+现在已经不再有这套 API：
+
+- `preview.selection.replace`
+- `preview.selection.clear`
+
+也就是说，selection 的临时 feedback 不再是“外部主动写 overlay”。
+
+现在的结构变成：
+
+- interaction session 更新 `gesture`
+- overlay 订阅 `gesture`
+- overlay 内部把 `gesture.draft` 投影成 selection overlay state
+
+这一步很关键，因为它意味着：
+
+- selection preview 不再是独立状态源
+- overlay 不再需要 selection feature 主动喂 patch
+
+### 3. overlay 的 selection feedback 已经由 `gesture` 驱动
+
+现在 overlay 内部会把：
+
+- `gesture -> selection preview -> selection overlay`
+
+串起来。
+
+也就是说：
+
+- node patches
+- edge patches
+- frame hover
+- marquee rect
+- snap guides
+
+这些 selection 主链反馈，现在都来自当前 `gesture`。
+
+这一步虽然还没有把 overlay 整体彻底变成纯 derive-only store，但对 selection 这条线来说，主干已经完成了。
+
+### 4. `move / marquee / transform` 已经变成显式 gesture 写法
+
+当前三条线现在的结构已经变成：
+
+#### move
+
+- core move session 仍然负责 move 纯计算
+- interaction 把结果组装成 `MoveGesture.draft`
+- runtime 托管当前 gesture
+- overlay 从 gesture 画蓝框 / preview / guides
+
+#### marquee
+
+- marquee session 仍然负责 marquee rect 与 matched selection
+- interaction 把结果组装成 `MarqueeGesture.draft`
+- overlay 只消费 draft 里的 marquee
+
+#### transform
+
+- transform plan / project 仍然负责几何计算
+- interaction 把结果组装成 `TransformGesture.draft`
+- resize snap guides 也进入 draft
+
+### 5. cleanup 已经进一步收敛
+
+对 selection 主链来说，cleanup 现在已经不再负责：
+
+- 清 selection preview patch
+- 清 marquee
+- 清 guides
+- 清 hover
+
+这些都跟随 `gesture = null` 一起自然消失。
+
+目前 cleanup 只保留真正的业务动作，例如：
+
+- temporary drag 结束后恢复旧 selection
+
+这是这轮重构最重要的结果之一。
+
+## 当前代码现在的状态
+
+经过这轮之后，当前系统已经比之前更接近下面这个结构：
+
+```text
+selection
+-> affordance
+-> interaction session
+-> snap result
+-> selection preview replace
+-> overlay selectors
+```
+
+相比之前，已经少了一层最糟糕的隐式耦合：
+
+- snap 偷偷写 guides
+- interaction 再写别的 preview
+- cleanup 再到处 clear
+
+现在这层已经被削掉了。
+
+但长期看，仍然没有真正完成的部分还有两大块。
+
+## 还没做完的根问题
+
+### 1. 还没有统一的 `ActiveGesture`
+
+现在虽然 runtime 已经显式托管 `gesture`，但 gesture 模型本身还只先覆盖了 selection 三条主链。
+
+也就是说：
+
+- edge interaction 还没接入
+- draw interaction 还没接入
+- runtime state 的更多派生语义还没全面切到 gesture
+
+selection 这条线已经完成了第一阶段，但全局还没有完全统一。
+
+另外，gesture 的内部几何事实虽然已经进入显式模型，但还没有把所有 interaction 相关局部变量都彻底搬空，例如：
+
+- commit 前局部缓存
+- 少量 session 内部辅助变量
+
+也就是说：
+
+- 数据流更清楚了
+- 但全系统级的临时手势模型还没有完全统一
+
+### 2. `overlay` 还是一个可写状态池
+
+虽然 selection 主链已经改成由 `gesture` 驱动，但 overlay 整体仍然还是一个混合模型：
+
+- selection feedback 来自 gesture
+- draw / edge / text / mindmap 仍然走主动写 overlay
+
+长期最优还是应该继续往前走到：
+
+- gesture 持有 `draft`
+- overlay 只做 `derive`
+
+这一步还没做。
+
+## 下一阶段实施方案
+
+如果继续按“尽量精简、尽量重构、不在乎成本”的标准推进，我建议下面这个顺序。
+
+## Phase 1. 引入最小 `ActiveGesture`
+
+目标不是一口气重写所有 interaction，而是只覆盖：
+
+- `selection move`
+- `selection marquee`
+- `selection transform`
+
+### 目标结构
+
+```ts
+type ActiveGesture =
+  | MoveGesture
+  | MarqueeGesture
+  | TransformGesture
+```
+
+并且统一成：
+
+```ts
+type Gesture = {
+  kind: string
+  start: ...
+  draft: ...
+  meta: ...
+}
+```
+
+### 这一阶段要做什么
+
+1. 把 `selection/move.ts` 的局部 `session + modifiers + restoreSelection` 收进 `MoveGesture`
+2. 把 `selection/marquee.ts` 的局部 `session + emittedKey` 收进 `MarqueeGesture`
+3. 把 `transform/index.ts` 的局部 `plan + latest + modifiers` 收进 `TransformGesture`
+4. 增加统一分派：
+   - `createGesture`
+   - `stepGesture`
+   - `finishGesture`
+
+### 这一阶段不要做什么
+
+- 不要先动 edge interaction
+- 不要先动 draw
+- 不要先试图做全系统通用 interaction framework
+
+这一步只解决：
+
+- selection 主链的临时状态终于有统一归宿
+
+## Phase 2. 把 selection preview 从“可写 overlay”升级成“gesture draft 的投影”
+
+这一步的核心目标是：
+
+- `preview.selection.replace(...)` 继续存在一小段时间作为过渡
+- 但内部语义开始向 `gesture.draft` 靠拢
+
+长期最终目标是：
+
+- move preview 来自 `MoveGesture.draft`
+- marquee preview 来自 `MarqueeGesture.draft`
+- transform preview 来自 `TransformGesture.draft`
+
+然后统一：
+
+```ts
+deriveOverlay({ selection, affordance, gesture })
+```
+
+### 这一阶段要做什么
+
+1. 增加 `deriveSelectionPreview(gesture)` 或直接并入 `deriveOverlay`
+2. React 不再依赖 interaction 自己拼的多份 selection 临时状态
+3. `preview.selection.replace` 逐步退成兼容层，最终删除
+
+### 这一阶段完成后的收益
+
+- cleanup 基本只剩 `gesture = null`
+- guides / marquee / hover / node patches 不再需要分别清理
+
+## Phase 3. interaction runtime 直接托管 `gesture`
+
+现在 runtime 管的是“当前 session”，而不是“当前 gesture”。
+
+长期我建议直接变成：
+
+```ts
+type InteractionRuntimeState = {
+  gesture: ActiveGesture | null
+}
+```
+
+session 仍然可以作为内部执行模型存在，但不再是主语义出口。
+
+### 这一阶段要做什么
+
+1. 在 runtime 里显式持有 `gesture`
+2. `mode` 尽量从 `gesture.kind` derive
+3. `transforming / selecting / drawing` 尽量从 `gesture.kind` derive
+
+### 这一阶段完成后的收益
+
+- 交互运行态只剩一个真正重要的东西：当前 gesture
+- `interaction.state` 不再需要围着 session 补各种派生语义
+
+## Phase 4. 继续纯化 `snap`
+
+虽然这轮已经把 `snap` 从 side effect runtime 收成显式结果了，但还可以继续收。
+
+下一步建议：
+
+- 不再叫 `createSnapRuntime`
+- 改成更直接的：
+  - `solveMoveSnap`
+  - `solveResizeSnap`
+  - `solveEdgeConnect`
+
+也就是从“对象式 runtime”继续简化到“纯函数 solver”。
+
+### 这一阶段要做什么
+
+1. 把 `readZoom / query / config` 通过依赖注入包成 solver context
+2. interaction 只调用纯 solver
+3. 删除 `snap` 这个“像状态机但又不是状态机”的中间层
+
+### 这一阶段完成后的收益
+
+- `snap` 从 API 语义上彻底变成计算服务
+- interaction / gesture / overlay 的边界会更清楚
+
+## Phase 5. 再决定 edge / draw 是否接入同一模型
+
+这一阶段不应该提前。
+
+等 selection 主链完全稳定以后，再看：
+
+- edge connect / drag / route
+- draw stroke / erase
+
+是否值得统一成更泛化的 `ActiveGesture`。
+
+如果接入后能减少概念，就接。  
+如果接入后只是为了统一而统一，就不要做。
+
+## 推荐的实际落地顺序
+
+如果按工程执行来排，我建议这样推进：
+
+1. 先完成 `MoveGesture`
+2. 再完成 `MarqueeGesture`
+3. 再完成 `TransformGesture`
+4. 然后做 `deriveOverlay`
+5. 最后决定要不要替换 runtime 的主状态出口
+
+原因很简单：
+
+- move 最复杂，收益最大
+- marquee 最简单，适合作为第二个验证点
+- transform 依赖 affordance 和 snap，放第三个最稳
+
+## 这套实施方案的判断标准
+
+后续每做一步，都应该拿下面三个标准来判断是不是在变好：
+
+### 1. 当前手势的临时事实是否只存在一处
+
+如果一个 gesture 的临时事实同时存在：
+
+- session 局部变量
+- preview store
+- overlay selector
+- React 私有推断
+
+那就还没收敛好。
+
+### 2. cleanup 是否越来越接近 `gesture = null`
+
+如果 cleanup 还需要：
+
+- 清 guides
+- 清 marquee
+- 清 hover
+- 清 node preview
+- 清 edge preview
+
+那说明临时反馈还没有真正挂在 gesture 上。
+
+### 3. React 是否只消费，不再解释
+
+如果 React 还在做一套新的交互语义判断，那就说明底层模型还不够完整。
+
+## 最后判断
+
+这轮已经做掉的重构，主要是把最明显的隐式状态先清掉了：
+
+- snap side effect
+- selection preview 多写口
+
+这两步不是终局，但非常值得做，因为它们把下一步真正的 `ActiveGesture` 重构路已经铺开了。
+
+如果继续往长期最优推进，下一刀就应该直接落在：
+
+- `MoveGesture`
+- `MarqueeGesture`
+- `TransformGesture`
+
+而不是再去补更多局部判断。

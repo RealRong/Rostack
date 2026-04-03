@@ -9,11 +9,11 @@ import { useMarquee } from '@dataview/react/interaction/useMarquee'
 import {
   type AppearanceId,
   type CurrentView
-} from '@dataview/react/currentView'
+} from '@dataview/react/runtime/currentView'
 import {
   selection as selectionHelpers,
   type Selection
-} from '@dataview/react/selection'
+} from '@dataview/react/runtime/selection'
 import {
   useDataView,
   useSelection as useDataViewSelection

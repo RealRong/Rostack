@@ -1,4 +1,3 @@
-import type { Guide } from '@whiteboard/core/node'
 import type { NodeId, Size } from '@whiteboard/core/types'
 import {
   isNodePatchEqual,
@@ -7,7 +6,6 @@ import {
   type EdgeGuide,
   type EdgeOverlayEntry,
   type EditorOverlay,
-  type MarqueeOverlayState,
   type MindmapDragFeedback,
   type NodePatch,
   type NodePatchEntry
@@ -16,7 +14,6 @@ import type { DrawPreview } from '../../types/draw'
 import type { EditorPreviewWrite } from '../../types/editor'
 
 const EMPTY_EDGE_PATCHES: readonly EdgeOverlayEntry[] = []
-const EMPTY_GUIDES: readonly Guide[] = []
 const EMPTY_NODE_IDS: readonly NodeId[] = []
 const EMPTY_NODE_PATCHES: readonly NodePatchEntry[] = []
 
@@ -128,109 +125,6 @@ export const createPreviewWrite = ({
           }
         })
       }
-    }
-  },
-  selection: {
-    setNodePatches: (patches) => {
-      overlay.set((current) => ({
-        ...current,
-        selection: {
-          ...current.selection,
-          node: {
-            ...current.selection.node,
-            patches
-          }
-        }
-      }))
-    },
-    setFrameHover: (frameHoverId) => {
-      overlay.set((current) => (
-        current.selection.node.frameHoverId === frameHoverId
-          ? current
-          : {
-              ...current,
-              selection: {
-                ...current.selection,
-                node: {
-                  ...current.selection.node,
-                  frameHoverId
-                }
-              }
-            }
-      ))
-    },
-    setEdgePatches: (patches) => {
-      overlay.set((current) => ({
-        ...current,
-        selection: {
-          ...current.selection,
-          edge: patches
-        }
-      }))
-    },
-    setMarquee: (marquee) => {
-      overlay.set((current) => (
-        current.selection.marquee === marquee
-          ? current
-          : {
-              ...current,
-              selection: {
-                ...current.selection,
-                marquee
-              }
-            }
-      ))
-    },
-    setGuides: (guides) => {
-      overlay.set((current) => ({
-        ...current,
-        selection: {
-          ...current.selection,
-          guides
-        }
-      }))
-    },
-    clearPreview: () => {
-      overlay.set((current) => (
-        current.selection.node.patches.length === 0
-        && current.selection.node.frameHoverId === undefined
-        && current.selection.edge.length === 0
-        && current.selection.guides.length === 0
-          ? current
-          : {
-              ...current,
-              selection: {
-              ...current.selection,
-              node: {
-                patches: EMPTY_NODE_PATCHES,
-                frameHoverId: undefined
-              },
-              edge: EMPTY_EDGE_PATCHES,
-              guides: EMPTY_GUIDES
-              }
-            }
-      ))
-    },
-    clearTransient: () => {
-      overlay.set((current) => (
-        current.selection.node.patches.length === 0
-        && current.selection.node.frameHoverId === undefined
-        && current.selection.edge.length === 0
-        && current.selection.marquee === undefined
-        && current.selection.guides.length === 0
-          ? current
-          : {
-              ...current,
-              selection: {
-                node: {
-                  patches: EMPTY_NODE_PATCHES,
-                  frameHoverId: undefined
-                },
-                edge: EMPTY_EDGE_PATCHES,
-                guides: EMPTY_GUIDES
-              }
-            }
-      ))
     }
   },
   edge: {

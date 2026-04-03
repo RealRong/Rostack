@@ -16,8 +16,9 @@ import {
   useDataView,
   useInlineSessionValue
 } from '@dataview/react/dataview'
+import { useKeyedStoreValue } from '@dataview/react/store'
 import { cn } from '@ui/utils'
-import type { AppearanceId } from '@dataview/react/currentView'
+import type { AppearanceId } from '@dataview/react/runtime/currentView'
 import { CardSurface } from './CardSurface'
 
 const readTitleDraft = (
@@ -53,13 +54,14 @@ export const Card = (props: {
 }) => {
   const dataView = useDataView()
   const engine = dataView.engine
+  const record = useKeyedStoreValue(engine.read.record, props.record.id) ?? props.record
   const [hovered, setHovered] = useState(false)
   const editing = useInlineSessionValue(target => (
     target?.viewId === props.viewId
       && target.appearanceId === props.appearanceId
   ))
-  const [titleDraft, setTitleDraft] = useState(() => readTitleDraft(props.titleProperty, props.record))
-  const committedTitle = readTitleDraft(props.titleProperty, props.record)
+  const [titleDraft, setTitleDraft] = useState(() => readTitleDraft(props.titleProperty, record))
+  const committedTitle = readTitleDraft(props.titleProperty, record)
   const titleDraftRef = useRef(titleDraft)
   const committedTitleRef = useRef(committedTitle)
 
@@ -81,12 +83,19 @@ export const Card = (props: {
 
   const enterEdit = useCallback(() => {
     props.onSelect('replace')
-    setTitleDraft(readTitleDraft(props.titleProperty, props.record))
+    setTitleDraft(readTitleDraft(props.titleProperty, record))
     dataView.inlineSession.enter({
       viewId: props.viewId,
       appearanceId: props.appearanceId
     })
-  }, [dataView.inlineSession, props])
+  }, [
+    dataView.inlineSession,
+    props.appearanceId,
+    props.onSelect,
+    props.titleProperty,
+    props.viewId,
+    record
+  ])
 
   const commitTitle = useCallback(() => {
     if (!props.titleProperty) {
@@ -98,10 +107,10 @@ export const Card = (props: {
       return
     }
 
-    engine.records.setValue(props.record.id, props.titleProperty.id, nextValue)
+    engine.records.setValue(record.id, props.titleProperty.id, nextValue)
   }, [
     engine.records,
-    props.record.id,
+    record.id,
     props.titleProperty
   ])
 
@@ -210,7 +219,7 @@ export const Card = (props: {
     >
       <CardSurface
         appearanceId={props.appearanceId}
-        record={props.record}
+        record={record}
         viewId={props.viewId}
         titleProperty={props.titleProperty}
         properties={props.properties}

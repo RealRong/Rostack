@@ -8,7 +8,7 @@ import type { Point } from '@dataview/dom/geometry'
 import type {
   AppearanceId,
   FieldId
-} from '@dataview/react/currentView'
+} from '@dataview/react/runtime/currentView'
 import {
   hoveredCellOf,
   hoveredRowIdOf,

@@ -2,6 +2,7 @@ import {
   createDerivedStore,
   createValueStore
 } from '@whiteboard/engine'
+import type { ActiveGesture } from './gesture'
 import type {
   InteractionBinding,
   InteractionControl,
@@ -68,6 +69,7 @@ export const createInteractionRuntime = ({
   }
 }): InteractionRuntime => {
   const active = createValueStore<SessionMeta | null>(null)
+  const gesture = createValueStore<ActiveGesture | null>(null)
   const busy = createDerivedStore({
     get: (read) => read(active) !== null
   })
@@ -110,9 +112,16 @@ export const createInteractionRuntime = ({
     }
   ) => pointerId === undefined || input.pointerId === pointerId
 
+  const syncGesture = (
+    running: RunningSession | null
+  ) => {
+    gesture.set(running?.session.gesture ?? null)
+  }
+
   const syncActive = (running: RunningSession | null) => {
     if (!running) {
       active.set(null)
+      syncGesture(null)
       return
     }
 
@@ -123,6 +132,7 @@ export const createInteractionRuntime = ({
       pointerId: running.pointerId,
       chrome: running.session.chrome
     })
+    syncGesture(running)
   }
 
   const cleanup = (running: RunningSession) => {
@@ -146,6 +156,9 @@ export const createInteractionRuntime = ({
           }
 
           applyTransition(running, options.frame?.(pointer))
+          if (current?.id === running.id) {
+            syncGesture(running)
+          }
         }
       })
     }
@@ -288,6 +301,9 @@ export const createInteractionRuntime = ({
       }
 
       applyTransition(running, running.session.move?.(input))
+      if (current?.id === running.id) {
+        syncGesture(running)
+      }
       return true
     }
 
@@ -303,6 +319,9 @@ export const createInteractionRuntime = ({
     }
 
     applyTransition(running, running.session.up?.(input))
+    if (current?.id === running.id) {
+      syncGesture(running)
+    }
     return true
   }
 
@@ -346,6 +365,9 @@ export const createInteractionRuntime = ({
     }
 
     applyTransition(running, running.session.keydown?.(input))
+    if (current?.id === running.id) {
+      syncGesture(running)
+    }
 
     if (active.get() && input.key === 'Escape') {
       cancel()
@@ -372,6 +394,9 @@ export const createInteractionRuntime = ({
     }
 
     applyTransition(running, running.session.keyup?.(input))
+    if (current?.id === running.id) {
+      syncGesture(running)
+    }
     return true
   }
 
@@ -387,6 +412,9 @@ export const createInteractionRuntime = ({
 
     if (running.session.blur) {
       applyTransition(running, running.session.blur())
+      if (current?.id === running.id) {
+        syncGesture(running)
+      }
       return
     }
 
@@ -397,6 +425,7 @@ export const createInteractionRuntime = ({
     mode,
     busy,
     chrome,
+    gesture,
     state,
     handlePointerDown,
     handlePointerMove,

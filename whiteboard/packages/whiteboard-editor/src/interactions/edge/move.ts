@@ -1,17 +1,24 @@
 import { isPointEqual } from '@whiteboard/core/geometry'
 import { moveEdge } from '@whiteboard/core/edge'
 import type {
+  EdgeId,
+  Point
+} from '@whiteboard/core/types'
+import type {
   InteractionControl,
   InteractionSession,
   InteractionSessionTransition
 } from '../../runtime/interaction'
+import {
+  createEdgeMoveGesture
+} from '../../runtime/interaction'
 import type { EdgeInteractionCtx } from './types'
 
 type EdgeBodyMoveSession = {
-  edgeId: import('@whiteboard/core/types').EdgeId
+  edgeId: EdgeId
   pointerId: number
-  start: import('@whiteboard/core/types').Point
-  delta: import('@whiteboard/core/types').Point
+  start: Point
+  delta: Point
 }
 
 type PointerClient = {
@@ -70,21 +77,6 @@ const projectBodyMove = ({
   }
 }
 
-const writeBodyMovePreview = ({
-  ctx,
-  session,
-  patch
-}: {
-  ctx: EdgeInteractionCtx
-  session: EdgeBodyMoveSession
-  patch: ReturnType<typeof moveEdge>
-}) => {
-  ctx.write.preview.edge.setInteraction([{
-    id: session.edgeId,
-    patch
-  }])
-}
-
 const commitBodyMove = ({
   ctx,
   session
@@ -100,9 +92,9 @@ const commitBodyMove = ({
 export const createEdgeBodyMoveSession = (
   ctx: EdgeInteractionCtx,
   input: {
-    edgeId: import('@whiteboard/core/types').EdgeId
+    edgeId: EdgeId
     pointerId: number
-    start: import('@whiteboard/core/types').Point
+    start: Point
   },
   control: InteractionControl
 ): InteractionSession => {
@@ -112,6 +104,7 @@ export const createEdgeBodyMoveSession = (
     start: input.start,
     delta: { x: 0, y: 0 }
   }
+  let interaction = null as InteractionSession | null
 
   const step = (
     pointer: PointerClient
@@ -127,17 +120,26 @@ export const createEdgeBodyMoveSession = (
 
     if (result.session !== session) {
       session = result.session
-      writeBodyMovePreview({
-        ctx,
-        session,
-        patch: result.patch
+      interaction!.gesture = createEdgeMoveGesture({
+        start: {
+          point: input.start,
+          edgeId: session.edgeId
+        },
+        draft: {
+          patches: [{
+            id: session.edgeId,
+            patch: result.patch
+          }]
+        },
+        meta: {}
       })
     }
   }
 
-  return {
+  interaction = {
     mode: 'edge-drag',
     pointerId: session.pointerId,
+    gesture: null,
     autoPan: {
       frame: (pointer) => step(pointer)
     },
@@ -170,8 +172,8 @@ export const createEdgeBodyMoveSession = (
       })
       return FINISH
     },
-    cleanup: () => {
-      ctx.write.preview.edge.clearPatches()
-    }
+    cleanup: () => {}
   }
+
+  return interaction
 }

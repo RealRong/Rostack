@@ -14,10 +14,10 @@ import {
 } from '@dataview/react/field/navigation'
 import type {
   CurrentView
-} from '@dataview/react/currentView'
+} from '@dataview/react/runtime/currentView'
 import type {
   ValueEditorApi
-} from '@dataview/react/page/valueEditor'
+} from '@dataview/react/runtime/valueEditor'
 
 export const openCardField = (input: {
   valueEditor: ValueEditorApi

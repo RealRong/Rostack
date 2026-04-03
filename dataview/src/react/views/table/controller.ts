@@ -11,16 +11,16 @@ import {
   type AppearanceId,
   type CurrentView,
   type Section
-} from '@dataview/react/currentView'
+} from '@dataview/react/runtime/currentView'
 import type {
   Selection
-} from '@dataview/react/selection'
+} from '@dataview/react/runtime/selection'
 import {
   createDerivedStore,
   type ReadStore
 } from '@dataview/runtime/store'
 import type { ResolvedPageState } from '@dataview/react/page/session/types'
-import type { ValueEditorApi } from '@dataview/react/page/valueEditor'
+import type { ValueEditorApi } from '@dataview/react/runtime/valueEditor'
 import {
   createCapabilities,
   type Capabilities

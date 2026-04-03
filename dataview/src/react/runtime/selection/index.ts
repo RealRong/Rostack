@@ -1,6 +1,4 @@
-export {
-  createSelectionApi
-} from './api'
+export { createSelectionApi } from './api'
 export {
   createSelectionStore,
   emptySelection,

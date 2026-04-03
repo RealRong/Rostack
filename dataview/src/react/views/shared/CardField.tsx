@@ -32,6 +32,7 @@ export interface CardFieldProps {
   className?: string
   valueClassName?: string
   density?: 'default' | 'compact'
+  openOnClick?: boolean
   onSelect?: () => void
 }
 
@@ -102,6 +103,16 @@ export const CardField = (props: CardFieldProps) => {
     value: props.value
   })
 
+  const open = (element: HTMLElement) => {
+    openCardField({
+      valueEditor,
+      currentView,
+      field: props.field,
+      fieldPropertyIds: props.fieldPropertyIds,
+      element
+    })
+  }
+
   if (action.kind === 'quickToggle') {
     return (
       <div className={cn('min-w-0', props.className)}>
@@ -122,21 +133,27 @@ export const CardField = (props: CardFieldProps) => {
       type="button"
       {...fieldAttrs(props.field)}
       onClick={event => {
+        if (props.openOnClick) {
+          event.preventDefault()
+          event.stopPropagation()
+          open(event.currentTarget)
+          return
+        }
+
         event.stopPropagation()
         props.onSelect?.()
       }}
       onDoubleClick={event => {
+        if (props.openOnClick) {
+          event.preventDefault()
+          event.stopPropagation()
+          return
+        }
+
         event.preventDefault()
         event.stopPropagation()
         props.onSelect?.()
-
-        openCardField({
-          valueEditor,
-          currentView,
-          field: props.field,
-          fieldPropertyIds: props.fieldPropertyIds,
-          element: event.currentTarget
-        })
+        open(event.currentTarget)
       }}
       className={cn('min-w-0 select-none text-left', props.className)}
     >

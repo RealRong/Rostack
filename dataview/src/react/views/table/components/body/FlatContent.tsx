@@ -7,7 +7,7 @@ import type {
   GroupProperty,
   PropertyId
 } from '@dataview/core/contracts'
-import type { AppearanceId } from '@dataview/react/currentView'
+import type { AppearanceId } from '@dataview/react/runtime/currentView'
 import { useTableContext } from '../../context'
 import {
   useVirtualRows,

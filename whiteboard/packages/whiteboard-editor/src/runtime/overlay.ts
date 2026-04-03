@@ -3,6 +3,11 @@ import type { Guide } from '@whiteboard/core/node'
 import type { DrawPreview } from '../types/draw'
 import type { EditorViewportRuntime } from './editor/types'
 import {
+  readEdgeGestureOverlayState,
+  readSelectionGesturePreview,
+  type ActiveGesture
+} from './interaction'
+import {
   EMPTY_EDGE_GUIDE,
   EMPTY_EDGE_OVERLAY,
   EMPTY_EDGE_OVERLAY_MAP,
@@ -28,6 +33,7 @@ import {
   isMarqueeFeedbackEqual,
   isSelectionOverlayStateEqual,
   normalizeSelectionOverlayState,
+  toSelectionOverlayState,
   projectWorldRect
 } from './overlay/selection'
 import type {
@@ -48,6 +54,7 @@ export type {
   MarqueeFeedback,
   MarqueeOverlayState,
   MindmapDragFeedback,
+  SelectionPreviewState,
   NodeOverlayProjection,
   NodeOverlayState,
   NodePatch,
@@ -127,10 +134,22 @@ const isOverlayStateEqual = (
   && left.mindmap.drag === right.mindmap.drag
 )
 
+const isEdgeGestureKind = (
+  gesture: ActiveGesture | null
+): gesture is Extract<ActiveGesture, {
+  kind: 'edge-connect' | 'edge-move' | 'edge-route'
+}> => (
+  gesture?.kind === 'edge-connect'
+  || gesture?.kind === 'edge-move'
+  || gesture?.kind === 'edge-route'
+)
+
 export const createOverlay = ({
-  viewport
+  viewport,
+  gesture
 }: {
   viewport: Pick<EditorViewportRuntime, 'worldToScreen'> & ReadStore<unknown>
+  gesture: Pick<ReadStore<ActiveGesture | null>, 'get' | 'subscribe'>
 }): EditorOverlay => {
   const state = createValueStore<EditorOverlayState>(EMPTY_OVERLAY_STATE, {
     isEqual: isOverlayStateEqual
@@ -177,6 +196,24 @@ export const createOverlay = ({
 
   let current = EMPTY_OVERLAY_STATE
 
+  const composeState = (
+    base: EditorOverlayState
+  ): EditorOverlayState => {
+    const activeGesture = gesture.get()
+    const nextSelection = toSelectionOverlayState(
+      readSelectionGesturePreview(activeGesture)
+    )
+    const nextEdge = isEdgeGestureKind(activeGesture)
+      ? normalizeEdgeOverlayState(readEdgeGestureOverlayState(activeGesture))
+      : base.edge
+
+    return normalizeOverlayState({
+      ...base,
+      selection: nextSelection,
+      edge: nextEdge
+    })
+  }
+
   const syncStores = (
     next: EditorOverlayState
   ) => {
@@ -211,15 +248,27 @@ export const createOverlay = ({
   const write = (
     next: EditorOverlayState
   ) => {
-    const normalized = normalizeOverlayState(next)
-    if (isOverlayStateEqual(current, normalized)) {
+    current = normalizeOverlayState(next)
+    const composed = composeState(current)
+    if (isOverlayStateEqual(state.get(), composed)) {
       return
     }
 
-    current = normalized
-    state.set(normalized)
-    syncStores(normalized)
+    state.set(composed)
+    syncStores(composed)
   }
+
+  gesture.subscribe(() => {
+    const composed = composeState(current)
+    if (isOverlayStateEqual(state.get(), composed)) {
+      return
+    }
+
+    state.set(composed)
+    syncStores(composed)
+  })
+  state.set(composeState(current))
+  syncStores(state.get())
 
   return {
     get: state.get,

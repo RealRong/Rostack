@@ -12,6 +12,7 @@ import {
 } from '@whiteboard/core/node'
 import type { EdgeId, NodeId, Rect } from '@whiteboard/core/types'
 import {
+  createMarqueeGesture,
   GestureTuning,
   type InteractionCtx,
   type InteractionSession,
@@ -119,8 +120,7 @@ export const createMarqueeInteraction = (
     match: input.action.match
   })
   let emittedKey = ''
-
-  ctx.write.preview.selection.setMarquee(undefined)
+  let interaction = null as InteractionSession | null
   if (input.action.clearOnStart) {
     ctx.write.session.selection.clear()
   }
@@ -154,18 +154,34 @@ export const createMarqueeInteraction = (
       })
     }
 
-    ctx.write.preview.selection.setMarquee({
-      worldRect,
-      match: input.action.match
+    interaction!.gesture = createMarqueeGesture({
+      start: {
+        point: input.start.world,
+        initial: input.action.base
+      },
+      draft: {
+        nodePatches: [],
+        edgePatches: [],
+        frameHoverId: undefined,
+        guides: [],
+        marquee: {
+          worldRect,
+          match: input.action.match
+        }
+      },
+      meta: {
+        match: input.action.match
+      }
     })
 
     return true
   }
 
-  return {
+  interaction = {
     mode: 'marquee',
     pointerId: input.start.pointerId,
     chrome: false,
+    gesture: null,
     autoPan: {
       frame: (pointer) => {
         if (!session.active) {
@@ -206,8 +222,8 @@ export const createMarqueeInteraction = (
       })
       return FINISH
     },
-    cleanup: () => {
-      ctx.write.preview.selection.setMarquee(undefined)
-    }
+    cleanup: () => {}
   }
+
+  return interaction
 }

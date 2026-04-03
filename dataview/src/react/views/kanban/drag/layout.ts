@@ -5,7 +5,7 @@ import {
 import type {
   AppearanceId,
   SectionKey
-} from '@dataview/react/currentView'
+} from '@dataview/react/runtime/currentView'
 
 export interface CardLayout {
   id: AppearanceId

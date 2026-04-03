@@ -1,6 +1,6 @@
 import { createDerivedStore, type ReadStore } from '@dataview/runtime/store'
 import type { InteractionState } from '@dataview/react/interaction'
-import type { CurrentView } from '@dataview/react/currentView'
+import type { CurrentView } from '@dataview/react/runtime/currentView'
 
 export interface Capabilities {
   canHover: boolean

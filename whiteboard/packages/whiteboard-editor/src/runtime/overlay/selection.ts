@@ -12,6 +12,7 @@ import {
 import type {
   MarqueeFeedback,
   MarqueeOverlayState,
+  SelectionPreviewState,
   SelectionOverlayState
 } from './types'
 
@@ -99,6 +100,18 @@ export const normalizeSelectionOverlayState = (
     guides
   }
 }
+
+export const toSelectionOverlayState = (
+  preview: SelectionPreviewState
+): SelectionOverlayState => normalizeSelectionOverlayState({
+  node: {
+    patches: preview.nodePatches,
+    frameHoverId: preview.frameHoverId
+  },
+  edge: preview.edgePatches,
+  marquee: preview.marquee,
+  guides: preview.guides
+})
 
 export const projectWorldRect = (
   viewport: Pick<EditorViewportRuntime, 'worldToScreen'>,

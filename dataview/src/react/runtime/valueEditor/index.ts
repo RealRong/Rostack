@@ -1,10 +1,12 @@
+export { createValueEditorApi } from './api'
 export { PropertyValueEditorHost } from './host'
 export type {
   CloseValueEditorOptions,
   OpenValueEditorInput,
   ValueEditorApi,
-  ValueEditorSession,
   ValueEditorAnchor,
+  ValueEditorController,
   ValueEditorResult,
+  ValueEditorSession,
   ViewFieldRef
 } from './types'

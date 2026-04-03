@@ -22,11 +22,11 @@ export type {
 export type {
   InlineSessionApi,
   InlineSessionTarget
-} from '@dataview/react/inlineSession'
+} from '@dataview/react/runtime/inlineSession'
 export type {
   Selection,
   SelectionApi
-} from '@dataview/react/selection'
+} from '@dataview/react/runtime/selection'
 export type {
   BlockingSurfaceBackdrop,
   BlockingSurfaceState,
@@ -49,4 +49,4 @@ export type {
   ValueEditorAnchor,
   ValueEditorResult,
   ViewFieldRef
-} from '@dataview/react/page/valueEditor'
+} from '@dataview/react/runtime/valueEditor'

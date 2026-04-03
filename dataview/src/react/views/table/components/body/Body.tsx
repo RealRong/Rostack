@@ -18,7 +18,7 @@ import {
   usePageValue
 } from '@dataview/react/dataview'
 import { useStoreValue } from '@dataview/react/store'
-import { type FieldId } from '@dataview/react/currentView'
+import { type FieldId } from '@dataview/react/runtime/currentView'
 import { applyPaste, handleTableKey } from '../../input'
 import {
   gridContentBounds,

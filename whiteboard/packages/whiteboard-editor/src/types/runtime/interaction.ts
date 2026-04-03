@@ -1,4 +1,5 @@
 import type { ReadStore } from '@whiteboard/engine'
+import type { ActiveGesture } from '../../runtime/interaction/gesture'
 import type {
   KeyboardInput,
   PointerDownInput,
@@ -63,6 +64,7 @@ export type InteractionSession = {
   mode: InteractionSessionMode
   pointerId?: number
   chrome?: boolean
+  gesture?: ActiveGesture | null
   autoPan?: AutoPanOptions
   move?: (input: PointerMoveInput) => InteractionSessionTransition | void
   up?: (input: PointerUpInput) => InteractionSessionTransition | void
@@ -90,6 +92,7 @@ export type InteractionRuntime = {
   mode: ReadStore<InteractionMode>
   busy: ReadStore<boolean>
   chrome: ReadStore<boolean>
+  gesture: ReadStore<ActiveGesture | null>
   state: ReadStore<InteractionState>
   handlePointerDown: (input: PointerDownInput) => boolean
   handlePointerMove: (input: PointerMoveInput) => boolean

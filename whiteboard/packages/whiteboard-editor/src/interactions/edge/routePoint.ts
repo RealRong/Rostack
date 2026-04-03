@@ -6,6 +6,9 @@ import type {
   InteractionSession,
   InteractionSessionTransition
 } from '../../runtime/interaction'
+import {
+  createEdgeRouteGesture
+} from '../../runtime/interaction'
 import type { PointerDownInput } from '../../types/input'
 import type { EdgeInteractionCtx } from './types'
 
@@ -183,22 +186,6 @@ const projectRouteDrag = ({
   }
 }
 
-const writeRouteDragPreview = ({
-  ctx,
-  session,
-  patch
-}: {
-  ctx: EdgeInteractionCtx
-  session: EdgeRouteDragSession
-  patch: ReturnType<typeof moveRoutePoint>
-}) => {
-  ctx.write.preview.edge.setInteraction([{
-    id: session.edgeId,
-    patch,
-    activeRouteIndex: session.index
-  }])
-}
-
 const commitRouteDrag = ({
   ctx,
   session
@@ -234,12 +221,7 @@ export const createEdgeRoutePointSession = (
     origin: input.origin,
     point: input.point ?? input.origin
   }
-
-  writeRouteDragPreview({
-    ctx,
-    session,
-    patch: undefined
-  })
+  let interaction = null as InteractionSession | null
 
   const step = (
     pointer: PointerClient
@@ -255,17 +237,41 @@ export const createEdgeRoutePointSession = (
 
     if (result.session !== session) {
       session = result.session
-      writeRouteDragPreview({
-        ctx,
-        session,
-        patch: result.patch
+      interaction!.gesture = createEdgeRouteGesture({
+        start: {
+          point: input.start,
+          edgeId: session.edgeId,
+          index: session.index
+        },
+        draft: {
+          patches: [{
+            id: session.edgeId,
+            patch: result.patch,
+            activeRouteIndex: session.index
+          }]
+        },
+        meta: {}
       })
     }
   }
 
-  return {
+  interaction = {
     mode: 'edge-route',
     pointerId: session.pointerId,
+    gesture: createEdgeRouteGesture({
+      start: {
+        point: input.start,
+        edgeId: session.edgeId,
+        index: session.index
+      },
+      draft: {
+        patches: [{
+          id: session.edgeId,
+          activeRouteIndex: session.index
+        }]
+      },
+      meta: {}
+    }),
     autoPan: {
       frame: (pointer) => step(pointer)
     },
@@ -298,8 +304,8 @@ export const createEdgeRoutePointSession = (
       })
       return FINISH
     },
-    cleanup: () => {
-      ctx.write.preview.edge.clearPatches()
-    }
+    cleanup: () => {}
   }
+
+  return interaction
 }

@@ -1,17 +1,14 @@
-import {
-  useRef
-} from 'react'
 import type {
   Equality
 } from '@dataview/runtime/store'
 import type {
   Selection
-} from '@dataview/react/selection'
+} from '@dataview/react/runtime/selection'
 import {
-  useExternalValue,
   useStoreValue
 } from '@dataview/react/store'
 import { useDataView } from './provider'
+import { useStoreSelector } from './storeSelector'
 
 export const useSelection = (): Selection => {
   const { selection } = useDataView()
@@ -23,13 +20,5 @@ export const useSelectionValue = <TResult,>(
   isEqual?: Equality<TResult>
 ): TResult => {
   const { selection } = useDataView()
-  const selectionStore = selection.store
-  const selectorRef = useRef(selector)
-  selectorRef.current = selector
-
-  return useExternalValue(
-    selectionStore.subscribe,
-    () => selectorRef.current(selectionStore.get()),
-    isEqual ?? Object.is
-  )
+  return useStoreSelector(selection.store, selector, isEqual)
 }

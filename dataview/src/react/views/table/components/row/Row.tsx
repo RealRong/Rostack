@@ -5,10 +5,10 @@ import {
 } from 'react'
 import type {
   AppearanceId
-} from '@dataview/react/currentView'
+} from '@dataview/react/runtime/currentView'
 import type {
   SelectionApi
-} from '@dataview/react/selection'
+} from '@dataview/react/runtime/selection'
 import { shouldCapturePointer } from '@dataview/dom/interactive'
 import {
   useCurrentView,

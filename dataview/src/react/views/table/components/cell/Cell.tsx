@@ -9,7 +9,7 @@ import {
 } from '@dataview/engine/projection/view'
 import {
   type AppearanceId
-} from '@dataview/react/currentView'
+} from '@dataview/react/runtime/currentView'
 import { useCurrentView, useDataView } from '@dataview/react/dataview'
 import { fieldAttrs } from '@dataview/dom/field'
 import { useTableContext } from '../../context'

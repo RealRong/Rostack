@@ -1,15 +1,12 @@
-import {
-  useRef
-} from 'react'
 import { type Equality } from '@dataview/runtime/store'
 import type {
   CurrentView
-} from '@dataview/react/currentView'
+} from '@dataview/react/runtime/currentView'
 import {
-  useExternalValue,
   useStoreValue
 } from '@dataview/react/store'
 import { useDataView } from './provider'
+import { useStoreSelector } from './storeSelector'
 
 export function useCurrentView(): CurrentView | undefined
 export function useCurrentView<TResult>(
@@ -21,19 +18,11 @@ export function useCurrentView<TResult>(
   isEqual?: Equality<TResult>
 ): CurrentView | TResult | undefined {
   const dataView = useDataView()
-  const currentViewStore = dataView.currentView.store
+  const currentViewStore = dataView.currentView
 
   if (!selector) {
     return useStoreValue(currentViewStore)
   }
 
-  const selectorRef = useRef(selector)
-  selectorRef.current = selector
-  const equal = isEqual ?? Object.is
-
-  return useExternalValue(
-    currentViewStore.subscribe,
-    () => selectorRef.current(currentViewStore.get()),
-    equal
-  )
+  return useStoreSelector(currentViewStore, selector, isEqual)
 }

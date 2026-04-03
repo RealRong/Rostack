@@ -16,6 +16,9 @@ import type {
   InteractionControl,
   InteractionSession
 } from '../../runtime/interaction'
+import {
+  createEdgeConnectGesture as createGesture
+} from '../../runtime/interaction'
 import type { PointerDownInput } from '../../types/input'
 import type { ConnectNodeEntry, EdgeInteractionCtx } from './types'
 
@@ -179,31 +182,38 @@ const commitConnectState = ({
   ctx.write.document.edge.create(commit.input)
 }
 
-const writeConnectPreview = ({
-  ctx,
+const toConnectGesture = ({
   state
 }: {
-  ctx: EdgeInteractionCtx
   state: EdgeConnectState
 }) => {
   const preview = resolveEdgeConnectPreview(state)
 
-  ctx.write.preview.edge.setInteraction(
-    state.kind === 'reconnect' && preview?.patch
-      ? [{
-          id: state.edgeId,
-          patch: preview.patch
-        }]
-      : []
-  )
-  ctx.write.preview.edge.setGuide(
-    preview
-      ? {
-          line: preview.line,
-          snap: preview.snap
-        }
-      : undefined
-  )
+  return createGesture({
+    start: {
+      point: state.from.point
+    },
+    draft: {
+      patches:
+        state.kind === 'reconnect' && preview?.patch
+          ? [{
+              id: state.edgeId,
+              patch: preview.patch
+            }]
+          : [],
+      guide: preview
+        ? {
+            line: preview.line,
+            snap: preview.snap
+          }
+        : undefined
+    },
+    meta: {
+      mode: state.kind === 'reconnect'
+        ? 'reconnect'
+        : 'create'
+    }
+  })
 }
 
 export const createEdgeConnectSession = (
@@ -212,14 +222,14 @@ export const createEdgeConnectSession = (
   control: InteractionControl
 ): InteractionSession => {
   let session = initial
-  writeConnectPreview({
-    ctx,
-    state: session
-  })
+  let interaction = null as InteractionSession | null
 
-  return {
+  interaction = {
     mode: 'edge-connect',
     pointerId: session.pointerId,
+    gesture: toConnectGesture({
+      state: session
+    }),
     autoPan: {
       frame: (pointer) => {
         const next = updateConnectState({
@@ -235,8 +245,7 @@ export const createEdgeConnectSession = (
         }
 
         session = next
-        writeConnectPreview({
-          ctx,
+        interaction!.gesture = toConnectGesture({
           state: session
         })
       }
@@ -255,8 +264,7 @@ export const createEdgeConnectSession = (
       }
 
       session = next
-      writeConnectPreview({
-        ctx,
+      interaction!.gesture = toConnectGesture({
         state: session
       })
       control.pan({
@@ -273,8 +281,8 @@ export const createEdgeConnectSession = (
         kind: 'finish'
       }
     },
-    cleanup: () => {
-      ctx.write.preview.edge.clear()
-    }
+    cleanup: () => {}
   }
+
+  return interaction
 }

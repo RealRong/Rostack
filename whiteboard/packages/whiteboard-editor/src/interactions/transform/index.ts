@@ -3,6 +3,9 @@ import type {
   InteractionBinding,
   InteractionSession
 } from '../../runtime/interaction'
+import {
+  createTransformGesture
+} from '../../runtime/interaction'
 import { commitTransform } from './commit'
 import { createTransformPlan } from './plan'
 import { projectTransform } from './project'
@@ -34,8 +37,8 @@ const createTransformSession = (
 ): InteractionSession => {
   let latest = null as ReturnType<typeof projectTransform> | null
   let modifiers = start.modifiers
+  let interaction = null as InteractionSession | null
 
-  ctx.write.preview.selection.clearPreview()
   const project = (
     input: TransformPointerInput
   ) => {
@@ -46,15 +49,31 @@ const createTransformSession = (
       pointer: input
     })
     latest = preview
-    ctx.write.preview.selection.setNodePatches(
-      toTransformNodePatches(preview.nodePatches)
-    )
+    interaction!.gesture = createTransformGesture({
+      start: {
+        point: start.world,
+        selection: ctx.read.selection.target.get()
+      },
+      draft: {
+        nodePatches: toTransformNodePatches(preview.nodePatches),
+        edgePatches: [],
+        frameHoverId: undefined,
+        marquee: undefined,
+        guides: preview.guides
+      },
+      meta: {
+        mode: plan.kind === 'single-rotate'
+          ? 'rotate'
+          : 'resize'
+      }
+    })
   }
 
-  return {
+  interaction = {
     mode: 'node-transform',
     pointerId: plan.drag.pointerId,
     chrome: false,
+    gesture: null,
     autoPan: {
       frame: (pointer) => {
         project({
@@ -74,11 +93,10 @@ const createTransformSession = (
         kind: 'finish'
       }
     },
-    cleanup: () => {
-      ctx.snap.clear()
-      ctx.write.preview.selection.clearPreview()
-    }
+    cleanup: () => {}
   }
+
+  return interaction
 }
 
 export const createTransformInteraction = (

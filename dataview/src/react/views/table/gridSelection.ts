@@ -2,7 +2,7 @@ import type {
   AppearanceId,
   CurrentView,
   FieldId
-} from '@dataview/react/currentView'
+} from '@dataview/react/runtime/currentView'
 import {
   gridSelection,
   type GridSelection

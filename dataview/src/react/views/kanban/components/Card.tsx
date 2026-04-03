@@ -1,7 +1,9 @@
 import type { GroupRecord } from '@dataview/core/contracts'
 import { shouldCapturePointer } from '@dataview/dom/interactive'
+import { useDataView } from '@dataview/react/dataview'
+import { useKeyedStoreValue } from '@dataview/react/store'
 import { cn } from '@ui/utils'
-import type { AppearanceId } from '@dataview/react/currentView'
+import type { AppearanceId } from '@dataview/react/runtime/currentView'
 import { useBoardContext } from '../board'
 import { CardSurface } from './CardSurface'
 
@@ -11,6 +13,8 @@ export const Card = (props: {
   measureRef?: (node: HTMLDivElement | null) => void
 }) => {
   const controller = useBoardContext()
+  const engine = useDataView().engine
+  const record = useKeyedStoreValue(engine.read.record, props.record.id) ?? props.record
   const selected = controller.selection.selectedIdSet.has(props.appearanceId)
   const marqueeSelected = controller.selection.marqueeIdSet.has(props.appearanceId)
   const active = controller.drag.activeId === props.appearanceId
@@ -56,7 +60,7 @@ export const Card = (props: {
     >
       <CardSurface
         appearanceId={props.appearanceId}
-        record={props.record}
+        record={record}
         selected={selected}
         marqueeSelected={marqueeSelected}
         onSelect={mode => controller.selection.select(props.appearanceId, mode)}

@@ -3,11 +3,11 @@ import { idsInRect } from '@dataview/dom/geometry'
 import { useMarquee } from '@dataview/react/interaction/useMarquee'
 import {
   type AppearanceId
-} from '@dataview/react/currentView'
+} from '@dataview/react/runtime/currentView'
 import {
   selection as selectionHelpers,
   type Selection
-} from '@dataview/react/selection'
+} from '@dataview/react/runtime/selection'
 import { type GalleryLayout } from '../reorder'
 
 interface Options {

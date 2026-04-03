@@ -1,17 +1,14 @@
-import {
-  useRef
-} from 'react'
 import type {
   Equality
 } from '@dataview/runtime/store'
 import type {
   InlineSessionTarget
-} from '@dataview/react/inlineSession'
+} from '@dataview/react/runtime/inlineSession'
 import {
-  useExternalValue,
   useStoreValue
 } from '@dataview/react/store'
 import { useDataView } from './provider'
+import { useStoreSelector } from './storeSelector'
 
 export const useInlineSession = (): InlineSessionTarget | null => {
   const { inlineSession } = useDataView()
@@ -23,13 +20,5 @@ export const useInlineSessionValue = <TResult,>(
   isEqual?: Equality<TResult>
 ): TResult => {
   const { inlineSession } = useDataView()
-  const inlineSessionStore = inlineSession.store
-  const selectorRef = useRef(selector)
-  selectorRef.current = selector
-
-  return useExternalValue(
-    inlineSessionStore.subscribe,
-    () => selectorRef.current(inlineSessionStore.get()),
-    isEqual ?? Object.is
-  )
+  return useStoreSelector(inlineSession.store, selector, isEqual)
 }

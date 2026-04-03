@@ -1,4 +1,5 @@
 import {
+  type Guide,
   type MoveStepResult,
   finishMoveSession,
   startMoveSession,
@@ -13,6 +14,9 @@ import type {
   InteractionCtx,
   InteractionSession,
   InteractionSessionTransition
+} from '../../runtime/interaction'
+import {
+  createMoveGesture as createGesture
 } from '../../runtime/interaction'
 import type {
   PointerDownInput
@@ -112,50 +116,66 @@ export const createMoveInteraction = (
   const restoreSelection = input.selection.kind === 'temporary'
     ? input.selection.restoreSelection
     : undefined
+  const visibleSelection = input.selection.visibleSelection
+    ?? ctx.read.selection.target.get()
 
   if (input.selection.visibleSelection) {
     ctx.write.session.selection.replace(input.selection.visibleSelection)
   }
   let modifiers = input.start.modifiers
+  let interaction = null as InteractionSession | null
 
-  const project = (input: {
+  const project = (nextInput: {
     world: {
       x: number
       y: number
     }
     modifiers: PointerDownInput['modifiers']
   }) => {
-    modifiers = input.modifiers
+    modifiers = nextInput.modifiers
+    let guides: readonly Guide[] = []
     const result = stepMoveSession({
       session,
-      pointerWorld: input.world,
+      pointerWorld: nextInput.world,
       snap: ctx.read.tool.is('select')
-        ? ({ rect, excludeIds }) => ctx.snap.node.move({
-            rect,
-            excludeIds,
-            modifiers: input.modifiers
-          })
+        ? ({ rect, excludeIds }) => {
+            const snapped = ctx.snap.node.move({
+              rect,
+              excludeIds,
+              modifiers: nextInput.modifiers
+            })
+            guides = snapped.guides
+            return snapped.rect
+          }
         : undefined
     })
 
     session = result.session
-    ctx.write.preview.selection.setNodePatches(
-      toMoveNodePatches(result)
-    )
-    ctx.write.preview.selection.setEdgePatches(
-      toMoveEdgePatches(result)
-    )
-    ctx.write.preview.selection.setFrameHover(
-      resolveFrameHoverId(ctx, session, input.world)
-    )
+    interaction!.gesture = createGesture({
+      start: {
+        point: input.start.world,
+        selection: visibleSelection
+      },
+      draft: {
+        nodePatches: toMoveNodePatches(result),
+        edgePatches: toMoveEdgePatches(result),
+        frameHoverId: resolveFrameHoverId(ctx, session, nextInput.world),
+        guides,
+        marquee: undefined
+      },
+      meta: {
+        selectionMode: restoreSelection
+          ? 'restore'
+          : 'keep'
+      }
+    })
   }
 
-  ctx.write.preview.selection.clearPreview()
-
-  return {
+  interaction = {
     mode: 'node-drag',
     pointerId: input.start.pointerId,
     chrome: false,
+    gesture: null,
     autoPan: {
       frame: (pointer) => {
         project({
@@ -187,11 +207,11 @@ export const createMoveInteraction = (
       return FINISH
     },
     cleanup: () => {
-      ctx.snap.clear()
-      ctx.write.preview.selection.clearPreview()
       if (restoreSelection) {
         ctx.write.session.selection.replace(restoreSelection)
       }
     }
   }
+
+  return interaction
 }

@@ -46,14 +46,19 @@ export type ResizeSnapInput = {
   disabled?: boolean
 }
 
-export type MoveSnapResult = Rect
+export type MoveSnapResult = {
+  rect: Rect
+  guides: readonly Guide[]
+}
 
-export type ResizeSnapResult = ResizeUpdate
+export type ResizeSnapResult = {
+  update: ResizeUpdate
+  guides: readonly Guide[]
+}
 
 export type NodeSnapRuntime = {
   move: (input: MoveSnapInput) => MoveSnapResult
   resize: (input: ResizeSnapInput) => ResizeSnapResult
-  clear: () => void
 }
 
 export type EdgeSnapRuntime = {
@@ -63,7 +68,6 @@ export type EdgeSnapRuntime = {
 export type SnapRuntime = {
   node: NodeSnapRuntime
   edge: EdgeSnapRuntime
-  clear: () => void
 }
 
 const toResizeUpdate = (
@@ -94,13 +98,11 @@ const filterCandidates = (
 const createNodeSnapRuntime = ({
   config,
   readZoom,
-  query,
-  writeGuides
+  query
 }: {
   config: SnapThresholdConfig
   readZoom: () => number
   query: (rect: Rect) => readonly SnapCandidate[]
-  writeGuides: (guides: readonly Guide[]) => void
 }): NodeSnapRuntime => {
   const readThreshold = () => resolveSnapThresholdWorld(
     config,
@@ -115,8 +117,10 @@ const createNodeSnapRuntime = ({
       disabled = false
     }) => {
       if (disabled) {
-        writeGuides(EMPTY_GUIDES)
-        return rect
+        return {
+          rect,
+          guides: EMPTY_GUIDES
+        }
       }
 
       const threshold = readThreshold()
@@ -132,16 +136,16 @@ const createNodeSnapRuntime = ({
         { allowCross: allowCrossSnap }
       )
 
-      const guides = result.guides.length > 0
-        ? result.guides
-        : EMPTY_GUIDES
-      writeGuides(guides)
-
       return {
-        x: rect.x + (result.dx ?? 0),
-        y: rect.y + (result.dy ?? 0),
-        width: rect.width,
-        height: rect.height
+        rect: {
+          x: rect.x + (result.dx ?? 0),
+          y: rect.y + (result.dy ?? 0),
+          width: rect.width,
+          height: rect.height
+        },
+        guides: result.guides.length > 0
+          ? result.guides
+          : EMPTY_GUIDES
       }
     },
     resize: ({
@@ -152,8 +156,10 @@ const createNodeSnapRuntime = ({
       disabled = false
     }) => {
       if (disabled || (!source.x && !source.y)) {
-        writeGuides(EMPTY_GUIDES)
-        return toResizeUpdate(rect)
+        return {
+          update: toResizeUpdate(rect),
+          guides: EMPTY_GUIDES
+        }
       }
 
       const threshold = readThreshold()
@@ -171,16 +177,12 @@ const createNodeSnapRuntime = ({
         }
       })
 
-      writeGuides(
-        result.guides.length > 0
+      return {
+        update: toResizeUpdate(result.rect),
+        guides: result.guides.length > 0
           ? result.guides
           : EMPTY_GUIDES
-      )
-
-      return toResizeUpdate(result.rect)
-    },
-    clear: () => {
-      writeGuides(EMPTY_GUIDES)
+      }
     }
   }
 }
@@ -212,8 +214,7 @@ const createEdgeSnapRuntime = ({
 export const createSnapRuntime = ({
   readZoom,
   node,
-  edge,
-  writeGuides
+  edge
 }: {
   readZoom: () => number
   node: {
@@ -225,21 +226,16 @@ export const createSnapRuntime = ({
     nodeSize: Size
     query: (rect: Rect) => readonly EdgeConnectCandidate[]
   }
-  writeGuides: (guides: readonly Guide[]) => void
 }): SnapRuntime => ({
   node: createNodeSnapRuntime({
     config: node.config,
     readZoom,
-    query: node.query,
-    writeGuides
+    query: node.query
   }),
   edge: createEdgeSnapRuntime({
     config: edge.config,
     nodeSize: edge.nodeSize,
     readZoom,
     query: edge.query
-  }),
-  clear: () => {
-    writeGuides(EMPTY_GUIDES)
-  }
+  })
 })

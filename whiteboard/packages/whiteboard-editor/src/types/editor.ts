@@ -47,11 +47,8 @@ import type { EditorOverlay } from '../runtime/overlay'
 import type {
   EdgeGuide,
   EdgeOverlayEntry,
-  MarqueeOverlayState,
-  MindmapDragFeedback,
-  NodePatchEntry
+  MindmapDragFeedback
 } from '../runtime/overlay'
-import type { Guide } from '@whiteboard/core/node'
 
 type EngineCommands = import('@whiteboard/engine').EngineInstance['commands']
 type EngineNodeCommands = EngineCommands['node']
@@ -341,15 +338,6 @@ export type EditorPreviewWrite = {
       setSize: (nodeId: NodeId, size?: Size) => void
       clearSize: (nodeId: NodeId) => void
     }
-  }
-  selection: {
-    setNodePatches: (patches: readonly NodePatchEntry[]) => void
-    setFrameHover: (frameHoverId?: NodeId) => void
-    setEdgePatches: (patches: readonly EdgeOverlayEntry[]) => void
-    setMarquee: (marquee?: MarqueeOverlayState) => void
-    setGuides: (guides: readonly Guide[]) => void
-    clearPreview: () => void
-    clearTransient: () => void
   }
   edge: {
     setInteraction: (entries: readonly EdgeOverlayEntry[]) => void

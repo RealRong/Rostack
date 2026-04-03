@@ -15,9 +15,9 @@ import {
   useDataView
 } from '@dataview/react/dataview'
 import type { EditInput } from '@dataview/react/interaction'
-import {
-  type ValueEditorSession,
-  type ValueEditorResult,
+import type {
+  ValueEditorResult,
+  ValueEditorSession
 } from './types'
 import {
   BLOCKING_SURFACE_ATTR,
@@ -77,8 +77,7 @@ export const PropertyValueEditorHost = () => {
   const dataView = useDataView()
   const engine = dataView.engine
   const valueEditor = dataView.valueEditor
-  const valueEditorStore = valueEditor.store
-  const session = useStoreValue(valueEditorStore)
+  const session = useStoreValue(valueEditor.store)
   const property = session
     ? engine.read.property.get(session.field.propertyId)
     : undefined
@@ -101,16 +100,16 @@ export const PropertyValueEditorHost = () => {
     : undefined
 
   const clearSession = useCallback((result?: ValueEditorResult) => {
-    const current = valueEditorStore.get()
+    const current = valueEditor.store.get()
     if (!current) {
       return
     }
 
-    valueEditorStore.set(null)
+    valueEditor.store.set(null)
     current.onResolve?.(result ?? {
       kind: 'dismiss'
     })
-  }, [valueEditorStore])
+  }, [valueEditor.store])
 
   useEffect(() => () => {
     valueEditor.close()

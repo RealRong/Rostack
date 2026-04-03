@@ -21,6 +21,7 @@ export interface AddCardPropertyTriggerProps {
   property: GroupProperty
   fieldPropertyIds: readonly PropertyId[]
   className?: string
+  openOnClick?: boolean
   onSelect?: () => void
 }
 
@@ -48,7 +49,9 @@ export const AddCardPropertyTrigger = (props: AddCardPropertyTriggerProps) => {
       )}
       onClick={event => {
         event.stopPropagation()
-        props.onSelect?.()
+        if (!props.openOnClick) {
+          props.onSelect?.()
+        }
         openCardField({
           valueEditor: dataView.valueEditor,
           currentView,

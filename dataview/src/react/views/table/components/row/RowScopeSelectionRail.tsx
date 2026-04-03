@@ -5,10 +5,10 @@ import {
 } from 'react'
 import {
   selection
-} from '@dataview/react/selection'
+} from '@dataview/react/runtime/selection'
 import type {
   AppearanceId
-} from '@dataview/react/currentView'
+} from '@dataview/react/runtime/currentView'
 import {
   useCurrentView,
   useDataView,

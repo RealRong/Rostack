@@ -49,13 +49,13 @@ export const TableProvider = (props: TableProviderProps) => {
   const table = useMemo(() => createTableController({
     engine,
     pageStore: dataView.page.store,
-    currentViewStore: dataView.currentView.store,
+    currentViewStore: dataView.currentView,
     selectionStore: dataView.selection.store,
     valueEditor: dataView.valueEditor,
     layout,
     nodes
   }), [
-    dataView.currentView.store,
+    dataView.currentView,
     dataView.page.store,
     dataView.selection.store,
     dataView.valueEditor,

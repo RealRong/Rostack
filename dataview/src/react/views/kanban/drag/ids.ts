@@ -1,4 +1,4 @@
-import type { AppearanceId, SectionKey } from '@dataview/react/currentView'
+import type { AppearanceId, SectionKey } from '@dataview/react/runtime/currentView'
 
 export interface DropTarget {
   sectionKey: SectionKey

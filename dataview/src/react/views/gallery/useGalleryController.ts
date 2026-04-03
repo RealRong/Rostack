@@ -26,7 +26,7 @@ import {
 import {
   type AppearanceId,
   type CurrentView
-} from '@dataview/react/currentView'
+} from '@dataview/react/runtime/currentView'
 import { useGalleryContext } from './context'
 import type { GalleryDropTarget } from './reorder'
 import {

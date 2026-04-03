@@ -22,7 +22,7 @@ import {
   type AppearanceId,
   type CurrentView,
   type FieldId
-} from '@dataview/react/currentView'
+} from '@dataview/react/runtime/currentView'
 import { resolvePropertyPrimaryAction } from '@dataview/core/property'
 import { isBlockingSurfaceElement } from '@ui/blocking-surface'
 import {

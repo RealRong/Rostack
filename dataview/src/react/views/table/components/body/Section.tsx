@@ -14,7 +14,7 @@ import { cn } from '@ui/utils'
 import type {
   AppearanceId,
   Section as TableSection
-} from '@dataview/react/currentView'
+} from '@dataview/react/runtime/currentView'
 import { useCurrentView, useDataView } from '@dataview/react/dataview'
 import { useTableContext } from '../../context'
 import { ColumnHeaderRow } from '../column/ColumnHeaderRow'
@@ -118,7 +118,7 @@ const View = (props: SectionProps) => {
               onResizeStart={props.onResizeStart}
             />
           </div>
-          {props.section.ids.map(rowId => (
+          {props.section.ids.map((rowId: AppearanceId) => (
             <Row
               key={rowId}
               appearanceId={rowId}

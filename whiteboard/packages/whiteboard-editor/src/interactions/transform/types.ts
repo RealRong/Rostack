@@ -1,4 +1,5 @@
 import type {
+  Guide,
   ResizeGestureSnapshot,
   ResizeDirection,
   RotateGestureSnapshot,
@@ -63,6 +64,7 @@ export type TransformPlan =
 
 export type TransformPreview = {
   nodePatches: readonly TransformPreviewPatch[]
+  guides: readonly Guide[]
 }
 
 export type TransformPickHandle = Pick<TransformHandle, 'kind' | 'direction'>

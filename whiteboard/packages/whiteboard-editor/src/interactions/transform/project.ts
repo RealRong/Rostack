@@ -47,7 +47,10 @@ const projectResizeFrame = (input: {
     disabled: input.pointer.modifiers.alt || input.drag.startRotation !== 0
   })
 
-  return getResizeUpdateRect(snapped)
+  return {
+    rect: getResizeUpdateRect(snapped.update),
+    guides: snapped.guides
+  }
 }
 
 const projectSingleResize = (input: {
@@ -63,15 +66,16 @@ const projectSingleResize = (input: {
   })
 
   return {
+    guides: nextRect.guides,
     nodePatches: [{
       id: input.plan.target.id,
       position: {
-        x: nextRect.x,
-        y: nextRect.y
+        x: nextRect.rect.x,
+        y: nextRect.rect.y
       },
       size: {
-        width: nextRect.width,
-        height: nextRect.height
+        width: nextRect.rect.width,
+        height: nextRect.rect.height
       }
     }]
   }
@@ -90,9 +94,10 @@ const projectMultiScale = (input: {
   })
 
   return {
+    guides: nextRect.guides,
     nodePatches: projectResizePatches({
       startRect: input.plan.box,
-      nextRect,
+      nextRect: nextRect.rect,
       members: input.plan.targets
     })
   }
@@ -102,6 +107,7 @@ const projectSingleRotate = (input: {
   plan: Extract<TransformPlan, { kind: 'single-rotate' }>
   pointer: TransformPointerInput
 }): TransformPreview => ({
+  guides: [],
   nodePatches: [{
     id: input.plan.target.id,
     rotation: computeNextRotation({

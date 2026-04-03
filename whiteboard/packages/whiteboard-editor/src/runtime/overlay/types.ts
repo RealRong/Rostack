@@ -91,6 +91,14 @@ export type SelectionOverlayState = {
   guides: readonly Guide[]
 }
 
+export type SelectionPreviewState = {
+  nodePatches: readonly NodePatchEntry[]
+  edgePatches: readonly EdgeOverlayEntry[]
+  frameHoverId?: NodeId
+  marquee?: MarqueeOverlayState
+  guides: readonly Guide[]
+}
+
 export type EditorOverlayState = {
   node: NodeOverlayState
   edge: EdgeOverlayState

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { cn } from '@ui/utils'
-import type { Section } from '@dataview/react/currentView'
+import type { Section } from '@dataview/react/runtime/currentView'
 import { useBoardContext } from '../board'
 import { useColumnVirtual } from '../virtual'
 import { Card } from './Card'
@@ -12,12 +12,14 @@ export const ColumnBody = (props: {
   const controller = useBoardContext()
   const bodyRef = useRef<HTMLDivElement | null>(null)
   const overTarget = controller.drag.overTarget
+  const sectionOverTarget = overTarget?.sectionKey === props.section.key
+    ? overTarget
+    : undefined
   const overscan = useMemo(
     () => controller.boostedSectionKeySet.has(props.section.key) ? 960 : undefined,
     [controller.boostedSectionKeySet, props.section.key]
   )
-  const isColumnTarget = overTarget?.sectionKey === props.section.key
-    && !overTarget?.beforeAppearanceId
+  const isColumnTarget = !!sectionOverTarget && !sectionOverTarget.beforeAppearanceId
   const virtual = useColumnVirtual({
     ids: props.section.ids,
     bodyRef,
@@ -31,9 +33,9 @@ export const ColumnBody = (props: {
     }
   }, [controller.layouts, props.section.key, virtual.layouts])
 
-  const indicatorTop = overTarget?.sectionKey === props.section.key
-    ? overTarget.beforeAppearanceId
-      ? Math.max(0, (virtual.positionById.get(overTarget.beforeAppearanceId)?.top ?? virtual.totalHeight) - 4)
+  const indicatorTop = sectionOverTarget
+    ? sectionOverTarget.beforeAppearanceId
+      ? Math.max(0, (virtual.positionById.get(sectionOverTarget.beforeAppearanceId)?.top ?? virtual.totalHeight) - 4)
       : Math.max(0, virtual.totalHeight - 4)
     : undefined
 

@@ -111,21 +111,19 @@ export const deriveSelectionSummary = ({
   const transform = count > 0
     ? {
         move: nodeItems.every((node) => !node.locked),
-        resize: edgeCount === 0
-          ? (
-              nodeCount === 1
-                ? (
-                    canResizeNodes
-                      ? 'resize' as const
-                      : canScaleNodes
-                        ? 'scale' as const
-                        : 'none' as const
-                  )
-                : nodeCount > 1 && canScaleNodes
-                  ? 'scale' as const
-                  : 'none' as const
-            )
-          : 'none' as const
+        resize: nodeCount === 0
+          ? 'none' as const
+          : nodeCount === 1
+            ? (
+                canResizeNodes
+                  ? 'resize' as const
+                  : canScaleNodes
+                    ? 'scale' as const
+                    : 'none' as const
+              )
+            : canScaleNodes
+              ? 'scale' as const
+              : 'none' as const
       }
     : EMPTY_TRANSFORM
   const box = readBounds({
@@ -167,8 +165,9 @@ export const deriveSelectionSummary = ({
 }
 
 export const resolveSelectionTransformBox = (
-  selection: SelectionSummary
+  selection: SelectionSummary,
+  box: Rect | undefined = selection.box
 ): SelectionTransformBox => ({
-  box: selection.box,
-  canResize: selection.transform.resize === 'scale'
+  box,
+  canResize: selection.transform.resize !== 'none'
 })

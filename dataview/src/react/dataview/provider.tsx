@@ -24,11 +24,17 @@ import {
 import {
   createPageSessionApi
 } from '@dataview/react/page/session/api'
+import {
+  createInlineSessionApi
+} from '@dataview/react/inlineSession'
 import type {
   PageSessionApi,
   PageSessionInput,
   ResolvedPageState
 } from '@dataview/react/page/session/types'
+import type {
+  InlineSessionApi
+} from '@dataview/react/inlineSession'
 import type {
   CloseValueEditorOptions,
   OpenValueEditorInput,
@@ -54,6 +60,7 @@ export interface DataViewContextValue {
   page: PageSessionApi & {
     store: ReadStore<ResolvedPageState>
   }
+  inlineSession: InlineSessionApi
   valueEditor: ValueEditorApi & {
     store: ValueStore<ValueEditorSession | null>
   }
@@ -125,6 +132,7 @@ const dismissSession = (
 
 const EngineProviderInner = (props: EngineProviderProps) => {
   const page = useMemo(() => createPageSessionApi(props.initialPage), [])
+  const inlineSession = useMemo(() => createInlineSessionApi(), [])
   const valueEditorStore = useMemo(() => createValueStore<ValueEditorSession | null>({
     initial: null
   }), [])
@@ -164,6 +172,28 @@ const EngineProviderInner = (props: EngineProviderProps) => {
     page.dispose()
   }, [dispose, page])
 
+  useEffect(() => {
+    const syncInlineSession = () => {
+      const session = inlineSession.store.get()
+      if (!session) {
+        return
+      }
+
+      const view = currentView.get()
+      if (!view) {
+        inlineSession.exit()
+        return
+      }
+
+      if (view.view.id !== session.viewId || !view.appearances.has(session.appearanceId)) {
+        inlineSession.exit()
+      }
+    }
+
+    syncInlineSession()
+    return currentView.subscribe(syncInlineSession)
+  }, [currentView, inlineSession])
+
   const value = useMemo<DataViewContextValue>(() => ({
     engine: props.engine,
     currentView: {
@@ -174,9 +204,11 @@ const EngineProviderInner = (props: EngineProviderProps) => {
       ...page,
       store: pageStateStore
     },
+    inlineSession,
     valueEditor
   }), [
     currentView,
+    inlineSession,
     page,
     pageStateStore,
     valueEditor,

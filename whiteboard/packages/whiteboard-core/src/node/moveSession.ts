@@ -17,7 +17,7 @@ import {
   type MoveEffect,
   type MoveSet
 } from './move'
-import { getNodeAABB } from '../geometry'
+import { getNodeVisualBounds } from './bounds'
 
 export type MoveSession = {
   nodes: readonly Node[]
@@ -48,11 +48,12 @@ const getMoveBounds = (
   const nodeById = new Map(nodes.map((node) => [node.id, node] as const))
   const rects = move.members.flatMap((member) => {
     const node = nodeById.get(member.id)
-    if (!node || node.type === 'group') {
+    if (!node) {
       return []
     }
 
-    return [getNodeAABB(node, nodeSize)]
+    const rect = getNodeVisualBounds(node, nodeSize)
+    return rect ? [rect] : []
   })
 
   return getRectsBoundingRect(rects)
@@ -117,9 +118,9 @@ export const stepMoveSession = (input: {
   const snapped = input.snap
     ? {
         rect: rawRect,
-        snappedRect: input.snap({
+      snappedRect: input.snap({
           rect: rawRect,
-          excludeIds: session.move.members.map((member) => member.id)
+          excludeIds: session.move.snapExcludeIds
         })
       }
     : {

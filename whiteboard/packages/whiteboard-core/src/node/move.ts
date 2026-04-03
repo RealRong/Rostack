@@ -2,7 +2,6 @@ import {
   moveEdge,
   moveEdgeRoute
 } from '../edge'
-import { getNodeAABB } from '../geometry'
 import type {
   Edge,
   EdgeId,
@@ -10,11 +9,17 @@ import type {
   Node,
   NodeId,
   Point,
+  Rect,
   Size
 } from '../types'
-import { expandGroupMembers } from './group'
+import {
+  expandGroupMembers,
+  getGroupDescendants,
+  getNodesBoundingRect
+} from './group'
 import { expandFrameSelection } from './frame'
 import { filterRootIds } from './owner'
+import { getNodeVisualBounds } from './bounds'
 
 export type MoveMember = {
   id: NodeId
@@ -24,6 +29,7 @@ export type MoveMember = {
 export type MoveSet = {
   rootIds: readonly NodeId[]
   members: readonly MoveMember[]
+  snapExcludeIds: readonly NodeId[]
 }
 
 export type MoveNodePosition = {
@@ -53,6 +59,7 @@ export type MoveCommit = {
 
 const EMPTY_ROOT_IDS: readonly NodeId[] = []
 const EMPTY_MEMBERS: readonly MoveMember[] = []
+const EMPTY_SNAP_EXCLUDE_IDS: readonly NodeId[] = []
 const EMPTY_POSITIONS: readonly MoveNodePosition[] = []
 const EMPTY_EDGES: readonly MoveEdgeChange[] = []
 const EMPTY_MEMBER_ID_SET: ReadonlySet<NodeId> = new Set<NodeId>()
@@ -79,21 +86,38 @@ export const buildMoveSet = (options: {
   if (!rootIds.length) {
     return {
       rootIds: EMPTY_ROOT_IDS,
-      members: EMPTY_MEMBERS
+      members: EMPTY_MEMBERS,
+      snapExcludeIds: EMPTY_SNAP_EXCLUDE_IDS
     }
+  }
+
+  const groupRectCache = new Map<NodeId, Rect | undefined>()
+  const readNodeRect = (
+    node: Node
+  ): Rect | undefined => {
+    if (node.type !== 'group') {
+      return getNodeVisualBounds(node, nodeSize)
+    }
+
+    if (groupRectCache.has(node.id)) {
+      return groupRectCache.get(node.id)
+    }
+
+    const rect = getNodesBoundingRect(
+      getGroupDescendants(nodes, node.id),
+      nodeSize
+    )
+    groupRectCache.set(node.id, rect)
+    return rect
   }
 
   const expandedIds = expandFrameSelection({
     nodes,
     ids: expandGroupMembers(nodes, rootIds).map((node) => node.id),
-    getNodeRect: (node) => (
-      node.type === 'group'
-        ? undefined
-        : getNodeAABB(node, nodeSize)
-    ),
+    getNodeRect: readNodeRect,
     getFrameRect: (node) => (
       node.type === 'frame'
-        ? getNodeAABB(node, nodeSize)
+        ? getNodeVisualBounds(node, nodeSize)
         : undefined
     )
   })
@@ -105,10 +129,19 @@ export const buildMoveSet = (options: {
         }]
       : []
   ))
+  const snapExcludeIds = nodes.flatMap((node) => (
+    expandedIds.has(node.id)
+      ? [node.id]
+      : []
+  ))
 
   return {
     rootIds,
-    members: members.length > 0 ? members : EMPTY_MEMBERS
+    members: members.length > 0 ? members : EMPTY_MEMBERS,
+    snapExcludeIds:
+      snapExcludeIds.length > 0
+        ? snapExcludeIds
+        : EMPTY_SNAP_EXCLUDE_IDS
   }
 }
 

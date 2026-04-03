@@ -1,6 +1,7 @@
 import { EMPTY_SELECTION_TARGET, type SelectionTarget } from './target'
 import { applySelection, findGroupAncestor, type SelectionMode } from '../node'
 import type { EdgeId, Node, NodeId } from '../types'
+import type { SelectionAffordance } from './affordance'
 import type { SelectionSummary } from './summary'
 
 type ModifierEventLike = {
@@ -35,7 +36,7 @@ export type SelectionPressTarget<TField extends string = string> =
       field?: TField
     }
   | {
-      kind: 'group-shell'
+      kind: 'container-shell'
       nodeId: NodeId
     }
 
@@ -51,11 +52,22 @@ export type SelectionTapAction<TField extends string = string> =
       field: TField
     }
 
+export type SelectionMoveSelectionBehavior =
+  | {
+      kind: 'persist'
+      visibleSelection?: SelectionTarget
+    }
+  | {
+      kind: 'temporary'
+      visibleSelection: SelectionTarget
+      restoreSelection: SelectionTarget
+    }
+
 export type SelectionDragDecision =
   | {
       kind: 'move'
       target: SelectionTarget
-      prepareSelection?: SelectionTarget
+      selection: SelectionMoveSelectionBehavior
     }
   | {
       kind: 'marquee'
@@ -153,6 +165,22 @@ const getCurrentSelection = (
   edgeIds: selection.target.edgeIds
 })
 
+const createPersistMoveSelection = (
+  visibleSelection?: SelectionTarget
+): SelectionMoveSelectionBehavior => ({
+  kind: 'persist',
+  visibleSelection
+})
+
+const createTemporaryMoveSelection = (
+  visibleSelection: SelectionTarget,
+  restoreSelection: SelectionTarget
+): SelectionMoveSelectionBehavior => ({
+  kind: 'temporary',
+  visibleSelection,
+  restoreSelection
+})
+
 const findSelectedGroupId = (
   deps: Pick<SelectionPressPolicyDeps, 'getNode' | 'getOwnerId'>,
   nodeId: NodeId,
@@ -247,43 +275,23 @@ export const resolveSelectionPressTarget = <TField extends string>(
         return readPressNodeTarget(deps, input, targetInput.nodeId)
       }
 
-      if (targetInput.shell === 'frame') {
+      if (targetInput.shell === 'frame' || targetInput.shell === 'group') {
         return {
-          kind: 'node',
-          nodeId: targetInput.nodeId,
-          hitNodeId: targetInput.nodeId,
-          field: targetInput.field
+          kind: 'container-shell',
+          nodeId: targetInput.nodeId
         }
       }
-
-      return targetInput.shell === 'group'
-        ? {
-            kind: 'group-shell',
-            nodeId: targetInput.nodeId
-          }
-        : undefined
+      return undefined
   }
 }
 
 const canDragSelectionBox = (
-  selection: SelectionSummary
-) => {
-  if (!selection.box) {
-    return false
-  }
-
-  if (selection.items.count > 1) {
-    return true
-  }
-
-  return (
-    selection.transform.resize === 'scale'
-    && !(
-      selection.kind === 'node'
-      && selection.items.primaryNode?.type === 'group'
-    )
-  )
-}
+  affordance: SelectionAffordance
+) => (
+  affordance.moveHit === 'body'
+  && affordance.canMove
+  && !affordance.showSingleNodeOverlay
+)
 
 const decideBackgroundPress = <TField extends string>(
   selection: SelectionSummary,
@@ -302,13 +310,14 @@ const decideBackgroundPress = <TField extends string>(
 })
 
 const decideSelectionBoxPress = <TField extends string>(
-  selection: SelectionSummary
+  selection: SelectionSummary,
+  affordance: SelectionAffordance
 ): SelectionPressDecision<TField> | undefined => {
   if (!selection.target.nodeIds.length && !selection.target.edgeIds.length) {
     return undefined
   }
 
-  if (!canDragSelectionBox(selection)) {
+  if (!canDragSelectionBox(affordance)) {
     return undefined
   }
 
@@ -317,7 +326,8 @@ const decideSelectionBoxPress = <TField extends string>(
     drag: selection.target.nodeIds.length > 0
       ? {
           kind: 'move',
-          target: getCurrentSelection(selection)
+          target: getCurrentSelection(selection),
+          selection: createPersistMoveSelection()
         }
       : undefined,
     hold: HOLD_TO_CONTAIN_MARQUEE
@@ -365,6 +375,19 @@ const decideNodePress = <TField extends string>(
     repeat || dragCurrentSelection || selected
       ? selectedEdgeIds
       : []
+  const currentSelection = getCurrentSelection(selection)
+  const dragSelection = toNodeSelection(dragNodeIds)
+  const dragSelectionBehavior =
+    mode === 'replace' && !selected && !dragCurrentSelection
+      ? createTemporaryMoveSelection(
+          dragSelection,
+          currentSelection
+        )
+      : createPersistMoveSelection(
+          repeat || dragCurrentSelection || selected
+            ? undefined
+            : dragSelection
+        )
 
   return {
     chrome: selected || dragCurrentSelection,
@@ -393,15 +416,13 @@ const decideNodePress = <TField extends string>(
         nodeIds: dragNodeIds,
         edgeIds: dragEdgeIds
       },
-      prepareSelection: dragCurrentSelection
-        ? undefined
-        : toNodeSelection(dragNodeIds)
+      selection: dragSelectionBehavior
     },
     hold: HOLD_TO_CONTAIN_MARQUEE
   }
 }
 
-const decideGroupShellPress = <TField extends string>(
+const decideContainerShellPress = <TField extends string>(
   deps: Pick<SelectionPressPolicyDeps, 'getNode'>,
   selection: SelectionSummary,
   mode: SelectionMode,
@@ -413,13 +434,32 @@ const decideGroupShellPress = <TField extends string>(
   }
 
   const selected = isSelectedNode(node.id, selection.target.nodeIds)
-  const repeat = mode === 'replace' && selected
   const nextSelection = applyNodeTapSelection(
     selection.target.nodeIds,
     selection.target.edgeIds,
     node.id,
     mode
   )
+  const dragCurrentSelection = mode === 'replace' && selected
+  const dragNodeIds = dragCurrentSelection
+    ? selection.target.nodeIds
+    : nextSelection.nodeIds
+  const dragEdgeIds = dragCurrentSelection
+    ? selection.target.edgeIds
+    : []
+  const currentSelection = getCurrentSelection(selection)
+  const dragSelection = toNodeSelection(dragNodeIds)
+  const dragSelectionBehavior =
+    mode === 'replace' && !selected
+      ? createTemporaryMoveSelection(
+          dragSelection,
+          currentSelection
+        )
+      : createPersistMoveSelection(
+          dragCurrentSelection
+            ? undefined
+            : dragSelection
+        )
 
   return {
     chrome: selected,
@@ -427,18 +467,14 @@ const decideGroupShellPress = <TField extends string>(
       kind: 'select',
       target: nextSelection
     },
-    drag: repeat
-      ? {
-          kind: 'move',
-          target: getCurrentSelection(selection),
-          prepareSelection: toNodeSelection(selection.target.nodeIds)
-        }
-      : {
-          kind: 'marquee',
-          match: 'touch',
-          mode,
-          base: getCurrentSelection(selection)
-        },
+    drag: {
+      kind: 'move',
+      target: {
+        nodeIds: dragNodeIds,
+        edgeIds: dragEdgeIds
+      },
+      selection: dragSelectionBehavior
+    },
     hold: HOLD_TO_CONTAIN_MARQUEE
   }
 }
@@ -448,6 +484,7 @@ export const resolveSelectionPressDecision = <TField extends string>(
   input: {
     modifiers: ModifierEventLike
     selection: SelectionSummary
+    affordance: SelectionAffordance
     targetInput: SelectionPressTargetInput<TField>
   }
 ): SelectionPressResolution<TField> | undefined => {
@@ -465,10 +502,10 @@ export const resolveSelectionPressDecision = <TField extends string>(
     target.kind === 'background'
       ? decideBackgroundPress<TField>(input.selection, mode)
       : target.kind === 'selection-box'
-        ? decideSelectionBoxPress<TField>(input.selection)
+        ? decideSelectionBoxPress<TField>(input.selection, input.affordance)
         : target.kind === 'node'
           ? decideNodePress(deps, input.selection, mode, target)
-          : decideGroupShellPress<TField>(deps, input.selection, mode, target.nodeId)
+          : decideContainerShellPress<TField>(deps, input.selection, mode, target.nodeId)
 
   return decision
     ? {
@@ -492,11 +529,14 @@ export const matchSelectionTap = <TField extends string>(
     case 'selection-box':
       return targetInput.kind === 'selection-box'
         && targetInput.part === 'body'
-    case 'group-shell':
+    case 'container-shell':
       return (
         targetInput.kind === 'node'
         && targetInput.part === 'shell'
-        && targetInput.shell === 'group'
+        && (
+          targetInput.shell === 'group'
+          || targetInput.shell === 'frame'
+        )
         && targetInput.nodeId === target.nodeId
       )
     case 'node':

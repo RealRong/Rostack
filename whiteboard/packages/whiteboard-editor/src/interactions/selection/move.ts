@@ -4,7 +4,10 @@ import {
   startMoveSession,
   stepMoveSession
 } from '@whiteboard/core/node'
-import type { SelectionTarget } from '@whiteboard/core/selection'
+import type {
+  SelectionMoveSelectionBehavior,
+  SelectionTarget
+} from '@whiteboard/core/selection'
 import type { Edge } from '@whiteboard/core/types'
 import type {
   InteractionCtx,
@@ -82,7 +85,7 @@ const resolveFrameHoverId = (
 type MoveInteractionInput = {
   start: PointerDownInput
   target: SelectionTarget
-  prepareSelection?: SelectionTarget
+  selection: SelectionMoveSelectionBehavior
 }
 
 export const createMoveInteraction = (
@@ -106,9 +109,12 @@ export const createMoveInteraction = (
     return null
   }
   let session = initialSession
+  const restoreSelection = input.selection.kind === 'temporary'
+    ? input.selection.restoreSelection
+    : undefined
 
-  if (input.prepareSelection) {
-    ctx.write.session.selection.replace(input.prepareSelection)
+  if (input.selection.visibleSelection) {
+    ctx.write.session.selection.replace(input.selection.visibleSelection)
   }
   let modifiers = input.start.modifiers
 
@@ -183,6 +189,9 @@ export const createMoveInteraction = (
     cleanup: () => {
       ctx.snap.clear()
       ctx.write.preview.selection.clearPreview()
+      if (restoreSelection) {
+        ctx.write.session.selection.replace(restoreSelection)
+      }
     }
   }
 }

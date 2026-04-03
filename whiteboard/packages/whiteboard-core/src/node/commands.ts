@@ -1,5 +1,4 @@
 import { applyNodeDefaults, getMissingNodeFields } from '../schema'
-import { getNodeAABB } from '../geometry'
 import { err, ok } from '../types'
 import type {
   CoreRegistries,
@@ -25,6 +24,7 @@ import {
   getNodesBoundingRect,
   sanitizeGroupNode
 } from './group'
+import { getNodeVisualBounds } from './bounds'
 import {
   buildMoveSet,
   projectMovePositions
@@ -104,7 +104,7 @@ const readLayoutEntries = ({
           getGroupDescendants(nodes, node.id),
           nodeSize
         )
-      : getNodeAABB(node, nodeSize)
+      : getNodeVisualBounds(node, nodeSize)
     const position = bounds
       ? {
           x: bounds.x,

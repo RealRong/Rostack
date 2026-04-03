@@ -8,11 +8,11 @@ import type {
   Size,
   SpatialNode
 } from '../types'
-import { getNodeAABB } from '../geometry'
 import {
   findOwnerAncestor,
   getOwnerDescendants
 } from './owner'
+import { getNodesVisualBoundingRect } from './bounds'
 
 type OwnedNode = Pick<Node, 'id' | 'type' | 'children'>
 
@@ -87,42 +87,7 @@ export const sanitizeGroupPatch = (
 export const getNodesBoundingRect = (
   nodes: readonly Node[],
   fallbackSize: Size
-): Rect | undefined => {
-  if (!nodes.length) return undefined
-
-  let minX = Number.POSITIVE_INFINITY
-  let minY = Number.POSITIVE_INFINITY
-  let maxX = Number.NEGATIVE_INFINITY
-  let maxY = Number.NEGATIVE_INFINITY
-
-  nodes.forEach((node) => {
-    if (node.type === 'group') {
-      return
-    }
-
-    const rect = getNodeAABB(node, fallbackSize)
-    minX = Math.min(minX, rect.x)
-    minY = Math.min(minY, rect.y)
-    maxX = Math.max(maxX, rect.x + rect.width)
-    maxY = Math.max(maxY, rect.y + rect.height)
-  })
-
-  if (
-    !Number.isFinite(minX)
-    || !Number.isFinite(minY)
-    || !Number.isFinite(maxX)
-    || !Number.isFinite(maxY)
-  ) {
-    return undefined
-  }
-
-  return {
-    x: minX,
-    y: minY,
-    width: Math.max(0, maxX - minX),
-    height: Math.max(0, maxY - minY)
-  }
-}
+): Rect | undefined => getNodesVisualBoundingRect(nodes, fallbackSize)
 
 export const getGroupChildrenMap = <TNode extends OwnedNode>(
   nodes: readonly TNode[]

@@ -15,18 +15,13 @@ import {
   PropertyValueContent
 } from '@dataview/react/properties/value'
 import {
-  belowFieldAnchor,
-  fieldAttrs,
-  ownerDocumentOf,
-  resolveFieldAnchor
+  fieldAttrs
 } from '@dataview/dom/field'
-import {
-  stepViewFieldByIntent
-} from '@dataview/react/field/navigation'
 import type {
   ViewFieldRef
 } from '@dataview/engine/projection/view'
 import { cn } from '@ui/utils'
+import { openCardField } from './openCardField'
 
 export interface CardFieldProps {
   field: ViewFieldRef
@@ -35,6 +30,8 @@ export interface CardFieldProps {
   fieldPropertyIds: readonly PropertyId[]
   emptyPlaceholder?: ReactNode
   className?: string
+  valueClassName?: string
+  density?: 'default' | 'compact'
   onSelect?: () => void
 }
 
@@ -72,55 +69,12 @@ export const CardField = (props: CardFieldProps) => {
         property={props.property}
         value={props.value}
         emptyPlaceholder={props.emptyPlaceholder}
-        className={props.className}
+        className={props.valueClassName}
+        density={props.density}
       />
     )
   }
   const property = props.property
-
-  const openField = (target: {
-    field: ViewFieldRef
-    element?: Element | null
-  }): boolean => {
-    const anchor = resolveFieldAnchor(
-      ownerDocumentOf(target.element),
-      target.field
-    ) ?? (
-      target.element instanceof HTMLElement
-        ? belowFieldAnchor(target.element)
-        : undefined
-    )
-
-    if (!anchor) {
-      return false
-    }
-
-    return valueEditor.open({
-      field: target.field,
-      anchor,
-      onResolve: result => {
-        if (result.kind !== 'commit' || result.intent === 'done') {
-          return
-        }
-
-        const field = stepViewFieldByIntent({
-          field: target.field,
-          scope: {
-            appearanceIds: [target.field.appearanceId],
-            propertyIds: props.fieldPropertyIds
-          },
-          appearances: currentView.appearances,
-          intent: result.intent
-        })
-
-        if (!field) {
-          return
-        }
-
-        openField({ field })
-      }
-    })
-  }
 
   const onQuickToggle = () => {
     const action = resolvePropertyPrimaryAction({
@@ -155,7 +109,8 @@ export const CardField = (props: CardFieldProps) => {
           property={property}
           value={props.value}
           emptyPlaceholder={props.emptyPlaceholder}
-          className={props.className}
+          className={props.valueClassName}
+          density={props.density}
           onQuickToggle={onQuickToggle}
         />
       </div>
@@ -175,8 +130,11 @@ export const CardField = (props: CardFieldProps) => {
         event.stopPropagation()
         props.onSelect?.()
 
-        openField({
+        openCardField({
+          valueEditor,
+          currentView,
           field: props.field,
+          fieldPropertyIds: props.fieldPropertyIds,
           element: event.currentTarget
         })
       }}
@@ -186,7 +144,8 @@ export const CardField = (props: CardFieldProps) => {
         property={property}
         value={props.value}
         emptyPlaceholder={props.emptyPlaceholder}
-        className={props.className}
+        className={props.valueClassName}
+        density={props.density}
       />
     </button>
   )

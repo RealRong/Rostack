@@ -152,9 +152,9 @@ const readSelectionTransformPlan = (
   input: PointerDownInput
 ): TransformPlan | undefined => {
   const selection = ctx.read.selection.summary.get()
-  const selectionBox = ctx.read.selection.transformBox.get()
+  const selectionBox = ctx.read.selection.affordance.get()
   if (
-    !selectionBox.box
+    !selectionBox.transformBox
     || handle.kind !== 'resize'
     || !handle.direction
     || !selectionBox.canResize
@@ -168,7 +168,7 @@ const readSelectionTransformPlan = (
   }
 
   return createMultiScalePlan({
-    box: selectionBox.box,
+    box: selectionBox.transformBox,
     targets: resolved.targets as readonly TransformTarget[],
     commitIds: resolved.commitIds,
     input,

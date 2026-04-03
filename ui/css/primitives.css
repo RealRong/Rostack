@@ -299,6 +299,15 @@
   color: hsl(var(--ui-text-secondary));
 }
 
+.ui-shadow-sm {
+  box-shadow: var(--ui-shadow-sm);
+}
+
+.ui-card-bg {
+  background: var(--ui-card-bg);
+}
+
+
 .ui-pill {
   background-color: hsl(var(--ui-surface-subtle));
   color: hsl(var(--ui-text-primary));

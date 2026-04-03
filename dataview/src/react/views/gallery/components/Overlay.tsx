@@ -7,7 +7,7 @@ import type {
 } from '@dataview/core/contracts'
 import { cn } from '@ui/utils'
 import type { AppearanceId } from '@dataview/react/currentView'
-import { CardBody } from './CardBody'
+import { CardSurface } from './CardSurface'
 
 export const Overlay = (props: {
   appearanceId?: AppearanceId
@@ -69,7 +69,7 @@ export const Overlay = (props: {
           </>
         ) : null}
         <div className={cn(props.dragCount > 1 && 'relative')}>
-          <CardBody
+          <CardSurface
             appearanceId={props.appearanceId ?? props.record.id}
             record={props.record}
             viewId={props.viewId}

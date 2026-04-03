@@ -1,8 +1,11 @@
 import {
+  deriveSelectionAffordance,
   deriveSelectionSummary,
+  isSelectionAffordanceEqual,
   isSelectionSummaryEqual,
   resolveSelectionTransformBox,
   resolveSelectionBoxTarget,
+  type SelectionAffordance,
   type SelectionSummary,
   type SelectionTransformBox,
   type SelectionTarget
@@ -21,6 +24,7 @@ export type SelectionRead = {
   target: ReadStore<SelectionTarget>
   summary: ReadStore<SelectionSummary>
   transformBox: ReadStore<SelectionTransformBox>
+  affordance: ReadStore<SelectionAffordance>
 }
 
 const readRuntimeNodes = (input: {
@@ -76,7 +80,7 @@ export const createSelectionRead = ({
         ),
         isNodeScalable: (entry) => (
           !entry.locked
-          && node.capability(entry).role !== 'frame'
+          && node.capability(entry).role === 'content'
         ),
         resolveNodeTransformCapability: (entry) => {
           const capability = node.capability(entry)
@@ -91,15 +95,51 @@ export const createSelectionRead = ({
     isEqual: isSelectionSummaryEqual
   })
   const transformBox = createDerivedStore<SelectionTransformBox>({
-    get: (readStore) => resolveSelectionTransformBox(
-      readStore(summary)
-    ),
+    get: (readStore) => {
+      const selectionTarget = readStore(source)
+      const runtimeNodes = readRuntimeNodes({
+        node,
+        readStore
+      })
+      const box = selectionTarget.nodeIds.length > 0
+        ? targetBounds.track(readStore, resolveSelectionBoxTarget({
+          nodeIds: selectionTarget.nodeIds
+        }, runtimeNodes))
+        : undefined
+
+      return resolveSelectionTransformBox(
+        readStore(summary),
+        box
+      )
+    },
     isEqual: isSelectionTransformBoxEqual
+  })
+  const affordance = createDerivedStore<SelectionAffordance>({
+    get: (readStore) => {
+      const selection = readStore(summary)
+      const resolvedTransformBox = readStore(transformBox)
+
+      return deriveSelectionAffordance({
+        selection,
+        transformBox: resolvedTransformBox.box,
+        resolveNodeRole: (entry) => node.capability(entry).role,
+        resolveNodeTransformCapability: (entry) => {
+          const capability = node.capability(entry)
+
+          return {
+            resize: capability.resize,
+            rotate: capability.rotate
+          }
+        }
+      })
+    },
+    isEqual: isSelectionAffordanceEqual
   })
 
   return {
     target: source,
     summary,
-    transformBox
+    transformBox,
+    affordance
   }
 }

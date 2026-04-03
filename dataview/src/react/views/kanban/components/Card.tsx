@@ -3,7 +3,7 @@ import { shouldCapturePointer } from '@dataview/dom/interactive'
 import { cn } from '@ui/utils'
 import type { AppearanceId } from '@dataview/react/currentView'
 import { useBoardContext } from '../board'
-import { CardBody } from './CardBody'
+import { CardSurface } from './CardSurface'
 
 export const Card = (props: {
   appearanceId: AppearanceId
@@ -54,7 +54,7 @@ export const Card = (props: {
         draggingSelected && !active && 'opacity-60'
       )}
     >
-      <CardBody
+      <CardSurface
         appearanceId={props.appearanceId}
         record={props.record}
         selected={selected}

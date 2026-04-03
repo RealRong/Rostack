@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@ui/utils'
 import { useBoardContext } from '../board'
-import { CardBody } from './CardBody'
+import { CardSurface } from './CardSurface'
 
 export const Overlay = () => {
   const controller = useBoardContext()
@@ -59,7 +59,7 @@ export const Overlay = () => {
           </>
         ) : null}
         <div className={cn(controller.drag.dragIds.length > 1 && 'relative')}>
-          <CardBody
+          <CardSurface
             appearanceId={appearanceId}
             record={record}
             selected={false}

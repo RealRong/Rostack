@@ -5,6 +5,7 @@ export {
   useDataView
 } from './provider'
 export { useCurrentView } from './useCurrentView'
+export { useInlineSession, useInlineSessionValue } from './useInlineSession'
 export { usePage, usePageValue } from './usePage'
 export {
   useDocument,
@@ -17,6 +18,10 @@ export type {
   GroupEngine
 } from '@dataview/engine'
 
+export type {
+  InlineSessionApi,
+  InlineSessionTarget
+} from '@dataview/react/inlineSession'
 export type {
   BlockingSurfaceBackdrop,
   BlockingSurfaceState,

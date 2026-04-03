@@ -154,6 +154,7 @@ export const resolveSelectionPressPlan = (
   }, {
     modifiers: input.modifiers,
     selection: ctx.read.selection.summary.get(),
+    affordance: ctx.read.selection.affordance.get(),
     targetInput
   })
   if (!resolved) {
@@ -185,7 +186,7 @@ const createSelectionSession = (
     return createMoveInteraction(input.ctx, {
       start: input.start,
       target: input.decision.target,
-      prepareSelection: input.decision.prepareSelection
+      selection: input.decision.selection
     })
   }
 

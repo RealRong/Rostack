@@ -11,7 +11,6 @@ import { useEditor } from '../../../runtime/hooks/useEditor'
 import { usePickRef } from '../../../runtime/hooks/usePickRef'
 import { useStoreValue } from '../../../runtime/hooks/useStoreValue'
 import { useNodeView } from '../hooks/useNodeView'
-import { useSelection } from '../selection'
 import { FrameNodeChrome } from '../registry/default/frame'
 
 const FrameBodyItem = memo(({
@@ -52,11 +51,9 @@ const FrameBodyItem = memo(({
 FrameBodyItem.displayName = 'FrameBodyItem'
 
 const GroupShellItem = memo(({
-  nodeId,
-  selected
+  nodeId
 }: {
   nodeId: NodeId
-  selected: boolean
 }) => {
   const view = useNodeView(nodeId)
   if (!view) {
@@ -84,7 +81,6 @@ const GroupShellItem = memo(({
           nodeId={nodeId}
           side={hit.key}
           style={hit.style}
-          active={selected}
         />
       ))}
     </div>
@@ -222,8 +218,6 @@ ContainerChromeItem.displayName = 'ContainerChromeItem'
 export const FrameLayer = () => {
   const editor = useEditor()
   const nodeIds = useStoreValue(editor.read.node.list)
-  const selection = useSelection()
-  const selectedSet = selection.summary.target.nodeSet
   const frameIds = useMemo(() => editor.read.frame.list(), [editor, nodeIds])
   const groupIds = useMemo(
     () => nodeIds.filter((nodeId) => {
@@ -251,7 +245,6 @@ export const FrameLayer = () => {
         <GroupShellItem
           key={nodeId}
           nodeId={nodeId}
-          selected={selectedSet.has(nodeId)}
         />
       ))}
     </div>

@@ -15,6 +15,13 @@ export {
   type SelectionTransform
 } from './summary'
 export {
+  deriveSelectionAffordance,
+  isSelectionAffordanceEqual,
+  type SelectionAffordance,
+  type SelectionAffordanceMoveHit,
+  type SelectionAffordanceOwner
+} from './affordance'
+export {
   getTargetBounds,
   resolveSelectionBoxTarget,
   type BoundsTarget
@@ -37,6 +44,7 @@ export {
   resolveSelectionPressDecision,
   resolveSelectionPressTarget,
   type SelectionDragDecision,
+  type SelectionMoveSelectionBehavior,
   type SelectionMarqueeDecision,
   type SelectionPressDecision,
   type SelectionPressPolicyDeps,

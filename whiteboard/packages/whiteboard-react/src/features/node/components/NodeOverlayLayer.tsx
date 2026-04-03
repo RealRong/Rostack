@@ -139,14 +139,14 @@ const SelectionHandlesOverlay = ({
 }) => {
   if (
     !presentation.selection.boxState.handles
-    || !presentation.selection.boxState.box
+    || !presentation.selection.boxState.transformBox
   ) {
     return null
   }
 
   return (
     <TransformHandles
-      rect={presentation.selection.boxState.box}
+      rect={presentation.selection.boxState.transformBox}
       rotation={0}
       canResize={presentation.selection.boxState.canResize}
       canRotate={false}

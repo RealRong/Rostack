@@ -1,10 +1,29 @@
-import type { GroupRecord } from '@dataview/core/contracts'
+import type {
+  GroupProperty,
+  GroupRecord,
+  PropertyId
+} from '@dataview/core/contracts'
 import type { AppearanceId } from '@dataview/react/currentView'
-import { CardContent } from '@dataview/react/views/card'
+import type {
+  ViewFieldRef
+} from '@dataview/engine/projection/view'
+import { CardField } from '@dataview/react/views/shared'
 import { cn } from '@ui/utils'
 import { useBoardContext } from '../board'
 
-export const CardBody = (props: {
+const fieldRef = (input: {
+  viewId: string
+  appearanceId: AppearanceId
+  recordId: string
+  propertyId: string
+}): ViewFieldRef => ({
+  viewId: input.viewId,
+  appearanceId: input.appearanceId,
+  recordId: input.recordId,
+  propertyId: input.propertyId
+})
+
+export const CardSurface = (props: {
   appearanceId: AppearanceId
   record: GroupRecord
   selected?: boolean
@@ -16,6 +35,13 @@ export const CardBody = (props: {
   const controller = useBoardContext()
   const titleProperty = controller.titleProperty
   const properties = controller.properties
+  const fieldPropertyIds: readonly PropertyId[] = Array.from(new Set(
+    [
+      titleProperty,
+      ...properties
+    ].filter((property): property is GroupProperty => Boolean(property))
+      .map(property => property.id)
+  ))
 
   return (
     <article
@@ -31,17 +57,50 @@ export const CardBody = (props: {
           {props.dragCount}
         </span>
       ) : null}
-      <CardContent
-        appearanceId={props.appearanceId}
-        record={props.record}
-        viewId={controller.currentView.view.id}
-        titleProperty={titleProperty}
-        properties={properties}
-        propertyLayout="wrap"
-        titleEmptyPlaceholder={props.record.id}
-        propertyEmptyPlaceholder="—"
-        onSelect={() => props.onSelect?.('replace')}
-      />
+      <div className="min-w-0">
+        <div className="min-w-0 pb-2 text-[15px] font-semibold leading-5 text-foreground">
+          <CardField
+            field={fieldRef({
+              viewId: controller.currentView.view.id,
+              appearanceId: props.appearanceId,
+              recordId: props.record.id,
+              propertyId: titleProperty?.id ?? 'title'
+            })}
+            property={titleProperty}
+            value={titleProperty
+              ? props.record.values[titleProperty.id]
+              : undefined}
+            fieldPropertyIds={fieldPropertyIds}
+            emptyPlaceholder={props.record.id}
+            onSelect={() => props.onSelect?.('replace')}
+            valueClassName="text-[15px] font-semibold leading-5 text-foreground"
+          />
+        </div>
+
+        {properties.length ? (
+          <div className="mx-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 pb-2 pt-0 leading-5">
+            {properties.map(property => (
+              <div key={property.id} className="inline-flex min-w-0 max-w-full">
+                <CardField
+                  field={fieldRef({
+                    viewId: controller.currentView.view.id,
+                    appearanceId: props.appearanceId,
+                    recordId: props.record.id,
+                    propertyId: property.id
+                  })}
+                  property={property}
+                  value={props.record.values[property.id]}
+                  fieldPropertyIds={fieldPropertyIds}
+                  emptyPlaceholder="—"
+                  onSelect={() => props.onSelect?.('replace')}
+                  density="compact"
+                  valueClassName="text-xs leading-5 text-foreground"
+                />
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </article>
   )
 }

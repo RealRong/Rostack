@@ -36,6 +36,8 @@ export {
   EngineProvider,
   useCurrentView,
   useDataView,
+  useInlineSession,
+  useInlineSessionValue,
   usePage,
   usePageValue,
   useDocument,
@@ -47,6 +49,10 @@ export { meta, renderMessage } from '@dataview/meta'
 export type {
   GroupEngine,
   EngineProviderProps
+} from './dataview'
+export type {
+  InlineSessionApi,
+  InlineSessionTarget
 } from './dataview'
 export type {
   PageInteractionState,

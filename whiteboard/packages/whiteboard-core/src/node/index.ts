@@ -46,6 +46,10 @@ export type {
   OwnerState
 } from './owner'
 export {
+  getNodeVisualBounds,
+  getNodesVisualBoundingRect
+} from './bounds'
+export {
   findGroupAncestor,
   expandGroupMembers,
   getGroupChildrenMap,

@@ -78,6 +78,7 @@
   --ui-danger-foreground: var(--color-neutral-0);
   --ui-danger-surface: var(--color-red-100);
   --ui-popover-shadow: 0 20px 24px 0 #1919190d, 0 5px 8px 0 #19191907, 0 0 0 1px #2a1c0012;
+  --ui-shadow-sm: 0px 4px 12px 0px #19191907, 0px 1px 2px 0px #19191905;
 
   --tag-neutral-background: var(--color-neutral-100);
   --tag-neutral-foreground: var(--color-neutral-700);
@@ -129,6 +130,8 @@
   --input: var(--ui-border-subtle);
   --ring: var(--ui-focus-ring);
   --radius: var(--control-radius);
+
+  --ui-card-bg: #fff;
 }
 
 :root.dark,
@@ -218,8 +221,11 @@
   --ui-danger-foreground: var(--ui-text-inverse);
   --ui-danger-surface: var(--color-red-100);
   --ui-popover-shadow: 0 0 0 1px #383836, 0 14px 28px -6px #19191933, 0 2px 4px -1px #1919191e;
-
+  --ui-shadow-sm: 0px 2px 4px 0px #19191914;
+  
   --tag-neutral-background: var(--color-badge-gray-background);
   --tag-neutral-foreground: var(--color-badge-gray-foreground);
   --status-unchecked-hover-background: var(--color-neutral-200);
+
+  --ui-card-bg: #ffffff0e;
 }

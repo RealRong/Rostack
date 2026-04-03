@@ -4,6 +4,7 @@ import type {
   NodeDistributeMode
 } from '@whiteboard/core/node'
 import type { Rect } from '@whiteboard/core/types'
+import type { SelectionAffordance } from '@whiteboard/core/selection'
 import type {
   NodeSelectionCan,
   NodeSummary,
@@ -36,6 +37,8 @@ type EditTarget = ReturnType<Editor['state']['edit']['get']>
 type BaseSelection = {
   target: ReturnType<Editor['read']['selection']['target']['get']>
   summary: ReturnType<Editor['read']['selection']['summary']['get']>
+  transformBox: ReturnType<Editor['read']['selection']['transformBox']['get']>
+  affordance: SelectionAffordance
 }
 type Tool = ReturnType<Editor['state']['tool']['get']>
 
@@ -82,6 +85,7 @@ type SelectionView = BaseSelection & {
 
 type SelectionBoxState = {
   box?: Rect
+  transformBox?: Rect
   interactive: boolean
   frame: boolean
   handles: boolean
@@ -370,24 +374,19 @@ const readSelectionMenuView = ({
 const resolveSelectionBoxState = (
   selection: BaseSelection
 ): SelectionBoxState => {
-  const box = selection.summary.box
-  const canResize = selection.summary.transform.resize === 'scale'
-  const interactive = Boolean(box) && (
-    selection.summary.items.count > 1
-    || (
-      selection.summary.transform.resize === 'scale'
-      && !(
-        selection.summary.kind === 'node'
-        && selection.summary.items.primaryNode?.type === 'group'
-      )
-    )
-  )
+  const box = selection.affordance.displayBox
+  const transformBox = selection.affordance.transformBox
+  const canMove = selection.affordance.canMove
+  const canResize = selection.affordance.canResize
 
   return {
     box,
-    interactive,
-    frame: Boolean(box) && selection.summary.items.nodeCount > 0,
-    handles: Boolean(box) && canResize,
+    transformBox,
+    interactive:
+      canMove
+      && selection.affordance.moveHit === 'body',
+    frame: Boolean(box) && selection.affordance.owner !== 'none',
+    handles: Boolean(transformBox) && canResize,
     canResize
   }
 }
@@ -409,6 +408,9 @@ const resolveSelectionChrome = ({
   const pureNodeSelection =
     (selection.summary.kind === 'node' || selection.summary.kind === 'nodes')
     && selection.summary.items.edgeCount === 0
+  const hasTransformChrome =
+    selection.affordance.canResize
+    || selection.affordance.canRotate
 
   return {
     toolbar:
@@ -419,7 +421,7 @@ const resolveSelectionChrome = ({
     transform:
       tool.type === 'select'
       && !editing
-      && pureNodeSelection
+      && hasTransformChrome
       && (
         transforming
         || chrome
@@ -435,25 +437,29 @@ const resolveSelectionChrome = ({
 const resolveSelectionPresentation = (
   selection: SelectionView,
   chrome: SelectionChrome
-): SelectionPresentation => ({
-  selection,
-  chrome,
-  showToolbar: chrome.toolbar,
-  singleTransformNodeId:
-    selection.summary.kind === 'node'
-      ? selection.summary.target.nodeIds[0]
-      : undefined,
-  showSelectionFrame:
-    selection.boxState.frame
-    && selection.summary.kind !== 'node',
-  showSelectionHandles:
-    chrome.transform
-    && selection.boxState.handles,
-  connectNodeIds:
-    chrome.connect
-      ? selection.summary.target.nodeIds
-      : []
-})
+): SelectionPresentation => {
+  const singleTransformNodeId = selection.affordance.showSingleNodeOverlay
+    ? selection.affordance.ownerNodeId
+    : undefined
+
+  return {
+    selection,
+    chrome,
+    showToolbar: chrome.toolbar,
+    singleTransformNodeId,
+    showSelectionFrame:
+      selection.boxState.frame
+      && singleTransformNodeId === undefined,
+    showSelectionHandles:
+      chrome.transform
+      && selection.boxState.handles
+      && singleTransformNodeId === undefined,
+    connectNodeIds:
+      chrome.connect
+        ? selection.summary.target.nodeIds
+        : []
+  }
+}
 
 const resolveSelectionView = (
   editor: Editor,
@@ -502,13 +508,17 @@ export const useSelection = () => {
   const clipboard = useClipboardActions()
   const target = useStoreValue(editor.read.selection.target)
   const summary = useStoreValue(editor.read.selection.summary)
+  const transformBox = useStoreValue(editor.read.selection.transformBox)
+  const affordance = useStoreValue(editor.read.selection.affordance)
 
   return useMemo(
     () => resolveSelectionView(editor, {
       target,
-      summary
+      summary,
+      transformBox,
+      affordance
     }, clipboard, registry),
-    [clipboard, editor, registry, summary, target]
+    [affordance, clipboard, editor, registry, summary, target, transformBox]
   )
 }
 

@@ -12,7 +12,7 @@ import type { DrawBrushKind } from '../../types/tool'
 import type {
   ResolvedDrawStyle
 } from '../../types/draw'
-import { readDrawStyle } from '../../draw/model'
+import { readDrawStyle } from '../../draw'
 
 const DRAW_MIN_LENGTH_SCREEN = 4
 const SAMPLE_DISTANCE_SCREEN = 1

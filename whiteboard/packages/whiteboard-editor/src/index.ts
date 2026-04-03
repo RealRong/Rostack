@@ -37,10 +37,10 @@ export {
   insertTool,
   isDrawBrushKind,
   isDrawKind,
+  readEdgeType,
   isSameTool,
   selectTool
 } from './tool/model'
-export { readEdgeType } from './edge/preset'
 export type {
   DrawBrushKind,
   DrawKind,
@@ -51,6 +51,16 @@ export type {
   InsertTool,
   Tool
 } from './types/tool'
+export type {
+  InsertPresetCatalog,
+  InsertPlacement,
+  InsertPreset,
+  InsertPresetGroup,
+  MindmapInsertPreset,
+  MindmapTemplate,
+  NodeInsertPreset,
+  StickyTone
+} from './types/insert'
 export type {
   ControlId,
   NodeDefinition,

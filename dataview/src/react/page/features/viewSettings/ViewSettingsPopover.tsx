@@ -49,7 +49,7 @@ export const ViewSettingsPopover = () => {
         return <PropertyListPanel />
       case 'propertyCreate':
         return <PropertyCreatePanel />
-      case 'propertyEdit':
+      case 'propertySchema':
         return <PropertySchemaEditor propertyId={resolvedRoute.propertyId} />
       case 'filter':
         return <QueryFieldPickerPanel kind="filter" />

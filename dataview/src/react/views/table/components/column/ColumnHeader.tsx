@@ -178,7 +178,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
           setMenuOpen(false)
           window.requestAnimationFrame(() => {
             page.settings.open({
-              kind: 'propertyEdit',
+              kind: 'propertySchema',
               propertyId: props.property.id
             })
           })

@@ -16,7 +16,7 @@ export const PropertyListPanel = () => {
         properties={properties}
         onSelect={propertyId => {
           router.push({
-            kind: 'propertyEdit',
+            kind: 'propertySchema',
             propertyId
           })
         }}

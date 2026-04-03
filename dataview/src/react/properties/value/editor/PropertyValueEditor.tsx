@@ -7,7 +7,7 @@ import {
 import {
   cancel,
   commit,
-  type PropertyEditIntent
+  type ValueEditorIntent
 } from '@dataview/react/interaction'
 import { getPropertyValueSpec } from '../kinds'
 import type {
@@ -31,7 +31,7 @@ export const PropertyValueEditor = forwardRef<
     setDraftState(nextDraft)
   }
 
-  const submit = (intent: PropertyEditIntent = 'done') => {
+  const submit = (intent: ValueEditorIntent = 'done') => {
     const parsed = spec.parseDraft(draftRef.current)
     if (parsed.type === 'invalid') {
       props.onInvalid?.()

@@ -15,7 +15,7 @@ type SettingsRouteKind =
   | 'viewProperties'
   | 'propertyList'
   | 'propertyCreate'
-  | 'propertyEdit'
+  | 'propertySchema'
   | 'filter'
   | 'sort'
 
@@ -228,8 +228,8 @@ export const ui = {
           return message('meta.ui.viewSettings.route.propertyList', 'Edit properties')
         case 'propertyCreate':
           return message('meta.ui.viewSettings.route.propertyCreate', 'New Property')
-        case 'propertyEdit':
-          return message('meta.ui.viewSettings.route.propertyEdit', 'Edit Property')
+        case 'propertySchema':
+          return message('meta.ui.viewSettings.route.propertySchema', 'Edit Property')
         case 'filter':
           return message('meta.ui.viewSettings.route.filter', 'Filter')
         case 'sort':

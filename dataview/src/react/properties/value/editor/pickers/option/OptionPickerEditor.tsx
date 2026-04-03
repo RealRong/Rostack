@@ -23,7 +23,7 @@ import {
 } from '@ui/vertical-reorder-list'
 import { cn } from '@ui/utils'
 import { useDataView } from '@dataview/react/dataview'
-import type { PropertyEditIntent } from '@dataview/react/interaction'
+import type { ValueEditorIntent } from '@dataview/react/interaction'
 import type { PropertyValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@dataview/dom/focus'
 import {
@@ -289,7 +289,7 @@ export const OptionPickerEditor = (
 
   const updateMultiSelection = (
     nextSelectedIds: readonly string[],
-    intent: PropertyEditIntent = 'done',
+    intent: ValueEditorIntent = 'done',
     close = true
   ) => {
     const nextDraft = joinSelectedIds(nextSelectedIds)
@@ -305,7 +305,7 @@ export const OptionPickerEditor = (
 
   const selectOption = (
     optionId: string,
-    intent: PropertyEditIntent = 'done',
+    intent: ValueEditorIntent = 'done',
     close = props.mode === 'single'
   ) => {
     if (props.mode === 'single') {
@@ -324,7 +324,7 @@ export const OptionPickerEditor = (
   }
 
   const createOption = (
-    intent: PropertyEditIntent = 'done',
+    intent: ValueEditorIntent = 'done',
     close = props.mode === 'single'
   ) => {
     const created = editor.properties.options.create(property.id, query)

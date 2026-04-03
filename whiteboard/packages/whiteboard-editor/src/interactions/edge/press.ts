@@ -5,7 +5,7 @@ import type {
   InteractionStartResult
 } from '../../runtime/interaction'
 import type { PointerDownInput } from '../../types/input'
-import { readEdgeType } from '../../edge/preset'
+import { readEdgeType } from '../../tool/model'
 import {
   createEdgeConnectSession,
   resolveEdgeCreateState,

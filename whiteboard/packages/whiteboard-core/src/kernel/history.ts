@@ -44,16 +44,20 @@ export const createHistory = <
   let isApplying = false
   let lastUpdatedAt: number | undefined
 
+  const createSnapshot = (): HistoryState => ({
+    canUndo: undoStack.length > 0,
+    canRedo: redoStack.length > 0,
+    undoDepth: undoStack.length,
+    redoDepth: redoStack.length,
+    isApplying,
+    lastUpdatedAt
+  })
+
+  let snapshot = createSnapshot()
+
   const emit = () => {
     lastUpdatedAt = readNow()
-    const snapshot: HistoryState = {
-      canUndo: undoStack.length > 0,
-      canRedo: redoStack.length > 0,
-      undoDepth: undoStack.length,
-      redoDepth: redoStack.length,
-      isApplying,
-      lastUpdatedAt
-    }
+    snapshot = createSnapshot()
     listeners.forEach((listener) => listener(snapshot))
   }
 
@@ -81,14 +85,7 @@ export const createHistory = <
     emit()
   }
 
-  const get = (): HistoryState => ({
-    canUndo: undoStack.length > 0,
-    canRedo: redoStack.length > 0,
-    undoDepth: undoStack.length,
-    redoDepth: redoStack.length,
-    isApplying,
-    lastUpdatedAt
-  })
+  const get = (): HistoryState => snapshot
 
   return {
     get,

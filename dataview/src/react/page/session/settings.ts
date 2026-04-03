@@ -23,9 +23,9 @@ export const cloneSettingsRoute = (
   }
 
   switch (route.kind) {
-    case 'propertyEdit':
+    case 'propertySchema':
       return {
-        kind: 'propertyEdit',
+        kind: 'propertySchema',
         propertyId: route.propertyId
       }
     default:
@@ -41,7 +41,7 @@ export const equalSettingsRoute = (
     return false
   }
 
-  if (left.kind === 'propertyEdit' && right.kind === 'propertyEdit') {
+  if (left.kind === 'propertySchema' && right.kind === 'propertySchema') {
     return left.propertyId === right.propertyId
   }
 
@@ -58,7 +58,7 @@ export const parentSettingsRoute = (
 ): SettingsRoute => {
   switch (route.kind) {
     case 'propertyCreate':
-    case 'propertyEdit':
+    case 'propertySchema':
       return { kind: 'propertyList' }
     case 'layout':
     case 'group':
@@ -95,7 +95,7 @@ export const normalizeSettingsRoute = (
       return supportsGroupSettings(viewType)
         ? route
         : ROOT_SETTINGS_ROUTE
-    case 'propertyEdit':
+    case 'propertySchema':
       return findProperty(properties, route.propertyId)
         ? route
         : { kind: 'propertyList' }

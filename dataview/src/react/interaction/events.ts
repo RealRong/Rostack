@@ -7,7 +7,7 @@ export interface Modifiers {
   altKey: boolean
 }
 
-export type PropertyEditIntent =
+export type ValueEditorIntent =
   | 'done'
   | 'next-field'
   | 'previous-field'
@@ -69,7 +69,7 @@ export type InteractionEvent =
   | {
       type: 'edit.commit'
       value: unknown | undefined
-      intent: PropertyEditIntent
+      intent: ValueEditorIntent
     }
   | {
       type: 'edit.cancel'
@@ -124,7 +124,7 @@ export const keyDown = (input: {
 
 export const commit = (
   value: unknown | undefined,
-  intent: PropertyEditIntent = 'done'
+  intent: ValueEditorIntent = 'done'
 ): EditInput => ({
   type: 'edit.commit',
   value,

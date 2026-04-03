@@ -2,7 +2,7 @@ import type {
   PropertyId,
 } from '@dataview/core/contracts'
 import type {
-  PropertyEditIntent
+  ValueEditorIntent
 } from '@dataview/react/interaction'
 import type {
   AppearanceId,
@@ -71,7 +71,7 @@ export const stepField = (input: {
 export const stepFieldByIntent = (input: {
   field: FieldId
   scope: FieldScope
-  intent: PropertyEditIntent
+  intent: ValueEditorIntent
 }): FieldId | null => {
   switch (input.intent) {
     case 'next-field':
@@ -104,7 +104,7 @@ export const stepViewFieldByIntent = (input: {
   field: ViewFieldRef
   scope: FieldScope
   appearances?: Pick<AppearanceList, 'get'>
-  intent: PropertyEditIntent
+  intent: ValueEditorIntent
 }): ViewFieldRef | null => {
   const next = stepFieldByIntent({
     field: fieldId(input.field),

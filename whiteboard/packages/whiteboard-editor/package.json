@@ -11,11 +11,6 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./insert": {
-      "types": "./dist/insert.d.ts",
-      "import": "./dist/insert.js",
-      "require": "./dist/insert.cjs"
-    },
     "./draw": {
       "types": "./dist/draw.d.ts",
       "import": "./dist/draw.js",

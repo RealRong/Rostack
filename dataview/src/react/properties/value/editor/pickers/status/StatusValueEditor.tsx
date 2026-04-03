@@ -12,7 +12,7 @@ import { Input } from '@ui/input'
 import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { PropertyOptionTag } from '@dataview/react/properties/options'
-import type { PropertyEditIntent } from '@dataview/react/interaction'
+import type { ValueEditorIntent } from '@dataview/react/interaction'
 import type { PropertyValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@dataview/dom/focus'
 import {
@@ -99,7 +99,7 @@ export const StatusValueEditor = (
 
   const selectOption = (
     optionId: string,
-    intent: PropertyEditIntent = 'done',
+    intent: ValueEditorIntent = 'done',
     deferred = false
   ) => {
     setQuery('')
@@ -230,13 +230,13 @@ export const StatusValueEditor = (
             })
             window.requestAnimationFrame(() => {
               page.settings.open({
-                kind: 'propertyEdit',
+                kind: 'propertySchema',
                 propertyId: property.id
               })
             })
           }}
         >
-          {renderMessage(meta.ui.viewSettings.routeTitle('propertyEdit'))}
+          {renderMessage(meta.ui.viewSettings.routeTitle('propertySchema'))}
         </Button>
       </div>
     </div>

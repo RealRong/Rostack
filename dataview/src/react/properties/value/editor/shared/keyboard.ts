@@ -1,9 +1,9 @@
-import type { PropertyEditIntent } from '@dataview/react/interaction'
+import type { ValueEditorIntent } from '@dataview/react/interaction'
 
 export type KeyAction =
   | {
     type: 'submit'
-    intent: PropertyEditIntent
+    intent: ValueEditorIntent
   }
   | {
     type: 'cancel'
@@ -26,7 +26,7 @@ export const keyAction = (input: {
   key: string
   shiftKey: boolean
   composing: boolean
-  enterIntent?: PropertyEditIntent
+  enterIntent?: ValueEditorIntent
 }): KeyAction => {
   if (input.composing) {
     return {

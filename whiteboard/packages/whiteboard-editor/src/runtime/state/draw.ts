@@ -1,8 +1,5 @@
 import { createValueStore, type ValueStore } from '@whiteboard/engine'
-import {
-  DRAW_SLOTS,
-  normalizeDrawPreferences
-} from '../../draw/model'
+import { DRAW_SLOTS } from '../../draw'
 import type {
   BrushStyle,
   DrawBrush,
@@ -33,6 +30,30 @@ const isSameStyle = (
   left.color === right.color
   && left.width === right.width
 )
+
+const normalizeBrush = (
+  brush: DrawBrush
+): DrawBrush => {
+  const slot = DRAW_SLOTS.includes(brush.slot)
+    ? brush.slot
+    : DRAW_SLOTS[0]
+
+  return {
+    slot,
+    slots: {
+      '1': normalizeStyle(brush.slots['1']),
+      '2': normalizeStyle(brush.slots['2']),
+      '3': normalizeStyle(brush.slots['3'])
+    }
+  }
+}
+
+const normalizeDrawPreferences = (
+  value: DrawPreferences
+): DrawPreferences => ({
+  pen: normalizeBrush(value.pen),
+  highlighter: normalizeBrush(value.highlighter)
+})
 
 const isSameBrush = (
   left: DrawBrush,

@@ -35,7 +35,7 @@ export type SettingsRoute =
   | { kind: 'viewProperties' }
   | { kind: 'propertyList' }
   | { kind: 'propertyCreate' }
-  | { kind: 'propertyEdit', propertyId: PropertyId }
+  | { kind: 'propertySchema', propertyId: PropertyId }
   | { kind: 'filter' }
   | { kind: 'sort' }
 

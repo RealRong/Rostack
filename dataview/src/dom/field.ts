@@ -6,10 +6,10 @@ export interface FieldAnchor {
   width: number
 }
 
-export const FIELD_VIEW_ID_ATTR = 'data-property-edit-view-id'
-export const FIELD_APPEARANCE_ID_ATTR = 'data-property-edit-appearance-id'
-export const FIELD_RECORD_ID_ATTR = 'data-property-edit-record-id'
-export const FIELD_PROPERTY_ID_ATTR = 'data-property-edit-property-id'
+export const FIELD_VIEW_ID_ATTR = 'data-value-editor-view-id'
+export const FIELD_APPEARANCE_ID_ATTR = 'data-value-editor-appearance-id'
+export const FIELD_RECORD_ID_ATTR = 'data-value-editor-record-id'
+export const FIELD_PROPERTY_ID_ATTR = 'data-value-editor-property-id'
 
 const fieldSelector = `[${FIELD_VIEW_ID_ATTR}]`
 
@@ -63,10 +63,10 @@ export const fieldElement = (
   const nodes = doc.querySelectorAll<HTMLElement>(fieldSelector)
   for (const node of nodes) {
     if (
-      node.dataset.propertyEditViewId === field.viewId
-      && node.dataset.propertyEditAppearanceId === field.appearanceId
-      && node.dataset.propertyEditRecordId === field.recordId
-      && node.dataset.propertyEditPropertyId === field.propertyId
+      node.dataset.valueEditorViewId === field.viewId
+      && node.dataset.valueEditorAppearanceId === field.appearanceId
+      && node.dataset.valueEditorRecordId === field.recordId
+      && node.dataset.valueEditorPropertyId === field.propertyId
     ) {
       return node
     }

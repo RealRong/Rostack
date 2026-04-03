@@ -1,5 +1,5 @@
 import { isDrawBrushKind } from '../../tool/model'
-import { readDrawSlot } from '../../draw/model'
+import { readDrawSlot } from '../../draw'
 import type { PointerSample } from '../../types/input'
 import type { EditorViewWrite } from '../../types/editor'
 import type { RuntimeStateController } from '../state'

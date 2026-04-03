@@ -1,4 +1,4 @@
-import type { PropertyEditIntent } from '@dataview/react/interaction'
+import type { ValueEditorIntent } from '@dataview/react/interaction'
 import type { ViewFieldRef } from '@dataview/engine/projection/view'
 
 export type { ViewFieldRef } from '@dataview/engine/projection/view'
@@ -16,7 +16,7 @@ export interface CloseValueEditorOptions {
 export type ValueEditorResult =
   | {
     kind: 'commit'
-    intent: PropertyEditIntent
+    intent: ValueEditorIntent
   }
   | {
     kind: 'cancel'
@@ -38,6 +38,3 @@ export interface ValueEditorApi {
   open(input: OpenValueEditorInput): boolean
   close(options?: CloseValueEditorOptions): void
 }
-
-export type PropertyEditSession = ValueEditorSession
-export type PropertyEditApi = ValueEditorApi

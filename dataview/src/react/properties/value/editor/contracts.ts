@@ -1,7 +1,7 @@
 import type { GroupProperty } from '@dataview/core/contracts'
 import type {
   EditInput,
-  PropertyEditIntent
+  ValueEditorIntent
 } from '@dataview/react/interaction'
 
 export interface PropertyValueEditorProps {
@@ -9,7 +9,7 @@ export interface PropertyValueEditorProps {
   value: unknown
   seedDraft?: string
   autoFocus?: boolean
-  enterIntent?: PropertyEditIntent
+  enterIntent?: ValueEditorIntent
   onInput: (input: EditInput) => boolean | void
   onInvalid?: () => void
 }
@@ -18,13 +18,13 @@ export interface PropertyValueDraftEditorProps<TDraft = unknown> {
   property?: GroupProperty
   draft: TDraft
   autoFocus?: boolean
-  enterIntent?: PropertyEditIntent
+  enterIntent?: ValueEditorIntent
   onDraftChange: (draft: TDraft) => void
-  onCommit: (intent?: PropertyEditIntent) => boolean
+  onCommit: (intent?: ValueEditorIntent) => boolean
   onCancel: () => void
 }
 
 export interface PropertyValueEditorHandle {
-  submit: (intent?: PropertyEditIntent) => boolean
+  submit: (intent?: ValueEditorIntent) => boolean
   cancel: () => void
 }

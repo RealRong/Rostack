@@ -21,7 +21,7 @@ export const PropertyCreatePanel = () => {
         }
 
         router.push({
-          kind: 'propertyEdit',
+          kind: 'propertySchema',
           propertyId
         })
       }}

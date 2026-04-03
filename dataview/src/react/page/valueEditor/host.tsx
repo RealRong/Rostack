@@ -191,7 +191,7 @@ export const PropertyValueEditorHost = () => {
 
   useBlockingSurface({
     open: Boolean(session && property && record && position),
-    source: 'property-edit',
+    source: 'value-editor',
     backdrop: 'transparent',
     dismissOnBackdropPress: true,
     onDismiss: closeFromBackdrop

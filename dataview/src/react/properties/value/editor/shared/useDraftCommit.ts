@@ -1,14 +1,14 @@
 import { useCallback } from 'react'
 import { flushSync } from 'react-dom'
-import type { PropertyEditIntent } from '@dataview/react/interaction'
+import type { ValueEditorIntent } from '@dataview/react/interaction'
 
 export const useDraftCommit = <TDraft,>(input: {
   onDraftChange: (draft: TDraft) => void
-  onCommit: (intent?: PropertyEditIntent) => boolean
+  onCommit: (intent?: ValueEditorIntent) => boolean
 }) => {
   const commitDraft = useCallback((
     nextDraft: TDraft,
-    intent: PropertyEditIntent = 'done'
+    intent: ValueEditorIntent = 'done'
   ) => {
     flushSync(() => {
       input.onDraftChange(nextDraft)
@@ -18,7 +18,7 @@ export const useDraftCommit = <TDraft,>(input: {
 
   const commitDraftDeferred = useCallback((
     nextDraft: TDraft,
-    intent: PropertyEditIntent = 'done'
+    intent: ValueEditorIntent = 'done'
   ) => {
     flushSync(() => {
       input.onDraftChange(nextDraft)

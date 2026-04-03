@@ -17,6 +17,9 @@ import {
   useCurrentView,
 } from '@dataview/react/dataview'
 import {
+  dataviewAppearanceSelector
+} from '@dataview/dom/appearance'
+import {
   closestTarget,
   interactiveSelector
 } from '@dataview/dom/interactive'
@@ -113,7 +116,7 @@ export const useBoardController = (): BoardController => {
     getLayout: layouts.read,
     canStart: event => {
       return !closestTarget(event.target, [
-        '[data-kanban-card-id]',
+        dataviewAppearanceSelector,
         interactiveSelector
       ].join(','))
     }

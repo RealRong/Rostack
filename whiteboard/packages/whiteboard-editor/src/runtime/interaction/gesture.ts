@@ -1,5 +1,3 @@
-import type { Point } from '@whiteboard/core/types'
-import type { SelectionTarget } from '@whiteboard/core/selection'
 import type {
   EdgeGuide,
   EdgeOverlayEntry,
@@ -9,38 +7,17 @@ import type {
 
 export type MoveGesture = {
   kind: 'selection-move'
-  start: {
-    point: Point
-    selection: SelectionTarget
-  }
   draft: SelectionPreviewState
-  meta: {
-    selectionMode: 'keep' | 'restore'
-  }
 }
 
 export type MarqueeGesture = {
   kind: 'selection-marquee'
-  start: {
-    point: Point
-    initial: SelectionTarget
-  }
   draft: SelectionPreviewState
-  meta: {
-    match: import('@whiteboard/core/selection').MarqueeMatch
-  }
 }
 
 export type TransformGesture = {
   kind: 'selection-transform'
-  start: {
-    point: Point
-    selection: SelectionTarget
-  }
   draft: SelectionPreviewState
-  meta: {
-    mode: 'resize' | 'rotate'
-  }
 }
 
 export type EdgeGestureDraft = {
@@ -50,34 +27,17 @@ export type EdgeGestureDraft = {
 
 export type EdgeConnectGesture = {
   kind: 'edge-connect'
-  start: {
-    point: Point
-  }
   draft: EdgeGestureDraft
-  meta: {
-    mode: 'create' | 'reconnect'
-  }
 }
 
 export type EdgeMoveGesture = {
   kind: 'edge-move'
-  start: {
-    point: Point
-    edgeId: import('@whiteboard/core/types').EdgeId
-  }
   draft: EdgeGestureDraft
-  meta: {}
 }
 
 export type EdgeRouteGesture = {
   kind: 'edge-route'
-  start: {
-    point: Point
-    edgeId: import('@whiteboard/core/types').EdgeId
-    index: number
-  }
   draft: EdgeGestureDraft
-  meta: {}
 }
 
 export type ActiveGesture =

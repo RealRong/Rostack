@@ -3,6 +3,7 @@ import {
 } from '@dataview/runtime/store'
 import type {
   InlineSessionApi,
+  InlineSessionExitEvent,
   InlineSessionTarget
 } from './types'
 
@@ -29,15 +30,46 @@ export const createInlineSessionApi = (
     initial,
     isEqual: sameTarget
   })
+  const listeners = new Set<(event: InlineSessionExitEvent) => void>()
+
+  const notifyExit = (event: InlineSessionExitEvent) => {
+    Array.from(listeners).forEach(listener => {
+      listener(event)
+    })
+  }
 
   return {
     store,
     enter: target => {
+      const current = store.get()
+      if (current && !sameTarget(current, target)) {
+        notifyExit({
+          target: current,
+          reason: 'programmatic'
+        })
+      }
+
       store.set(target)
     },
-    exit: () => {
+    exit: options => {
+      const current = store.get()
+      if (!current) {
+        return
+      }
+
       store.set(null)
+      notifyExit({
+        target: current,
+        reason: options?.reason ?? 'programmatic'
+      })
     },
     isActive: target => sameTarget(store.get(), target)
+    ,
+    onExit: listener => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    }
   }
 }

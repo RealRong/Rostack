@@ -2,7 +2,11 @@ import { useMemo, type CSSProperties } from 'react'
 import { BlockingSurfaceProvider } from '@ui/blocking-surface'
 import { useDataView } from '@dataview/react/dataview'
 import { ViewQueryBar } from '@dataview/react/page/features/viewQuery/ViewQueryBar'
-import { PageInteractionHost, PageKeyboardHost } from '@dataview/react/page/hosts'
+import {
+  PageInlineSessionHost,
+  PageInteractionHost,
+  PageKeyboardHost
+} from '@dataview/react/page/hosts'
 import { PropertyValueEditorHost } from '@dataview/react/runtime/valueEditor'
 import { PageBody, type PageBodyProps } from './Body'
 import { PageToolbar } from './Toolbar'
@@ -53,6 +57,7 @@ export const Page = (props: PageProps) => {
           </div>
         </div>
         <PageInteractionHost />
+        <PageInlineSessionHost />
         <PageKeyboardHost />
         <PropertyValueEditorHost />
       </div>

@@ -2,6 +2,9 @@ import {
   elementRectIn,
   type Rect
 } from '@dataview/dom/geometry'
+import {
+  DATAVIEW_APPEARANCE_ID_ATTR
+} from '@dataview/dom/appearance'
 import type {
   AppearanceId,
   SectionKey
@@ -62,10 +65,10 @@ export const readBoardLayout = (
             }
           }))
         : Array.from(
-          bodyTarget.querySelectorAll<HTMLElement>('[data-kanban-card-id]')
+          bodyTarget.querySelectorAll<HTMLElement>(`[${DATAVIEW_APPEARANCE_ID_ATTR}]`)
         )
           .map(cardNode => {
-            const id = cardNode.dataset.kanbanCardId
+            const id = cardNode.getAttribute(DATAVIEW_APPEARANCE_ID_ATTR)
             if (!id) {
               return undefined
             }

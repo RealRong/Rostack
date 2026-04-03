@@ -6,5 +6,5 @@ export const createEdgeInteraction = (
   ctx: EdgeInteractionCtx
 ): InteractionBinding => ({
   key: 'edge',
-  start: (input, control) => startEdgeInteraction(ctx, input, control)
+  start: (input) => startEdgeInteraction(ctx, input)
 })

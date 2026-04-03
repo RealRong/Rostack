@@ -37,11 +37,6 @@ export type AutoPanPointer = Readonly<{
 
 export type InteractionKeyboardInput = KeyboardInput
 
-export type InteractionControl = Readonly<{
-  replace: (session: InteractionSession) => void
-  pan: (pointer: AutoPanPointer) => void
-}>
-
 export type InteractionSessionTransition =
   | {
       kind: 'finish'
@@ -65,6 +60,9 @@ export type InteractionSession = {
   pointerId?: number
   chrome?: boolean
   gesture?: ActiveGesture | null
+  attach?: (
+    dispatch: (transition: InteractionSessionTransition) => void
+  ) => void
   autoPan?: AutoPanOptions
   move?: (input: PointerMoveInput) => InteractionSessionTransition | void
   up?: (input: PointerUpInput) => InteractionSessionTransition | void
@@ -83,8 +81,7 @@ export type InteractionStartResult =
 export type InteractionBinding = {
   key: string
   start?: (
-    input: PointerDownInput,
-    control: InteractionControl
+    input: PointerDownInput
   ) => InteractionStartResult
 }
 

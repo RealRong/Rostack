@@ -2,6 +2,9 @@ import {
   elementRectIn,
   type Rect
 } from '@dataview/dom/geometry'
+import {
+  DATAVIEW_APPEARANCE_ID_ATTR
+} from '@dataview/dom/appearance'
 import type { AppearanceId } from '@dataview/react/runtime/currentView'
 
 export interface CardLayout {
@@ -21,10 +24,10 @@ export const readGalleryLayout = (
   }
 
   const cards = Array.from(
-    container.querySelectorAll<HTMLElement>('[data-gallery-card-id]')
+    container.querySelectorAll<HTMLElement>(`[${DATAVIEW_APPEARANCE_ID_ATTR}]`)
   )
     .map(cardNode => {
-      const id = cardNode.dataset.galleryCardId
+      const id = cardNode.getAttribute(DATAVIEW_APPEARANCE_ID_ATTR)
       if (!id) {
         return undefined
       }

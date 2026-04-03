@@ -60,9 +60,7 @@ export const Overlay = () => {
         ) : null}
         <div className={cn(controller.drag.dragIds.length > 1 && 'relative')}>
           <CardSurface
-            appearanceId={appearanceId}
             record={record}
-            selected={false}
             dragging
             dragCount={controller.drag.dragIds.length}
           />

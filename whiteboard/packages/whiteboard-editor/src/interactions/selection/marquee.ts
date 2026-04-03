@@ -95,11 +95,11 @@ const writeMatchedSelection = (
 
 const projectMarquee = (
   input: {
-    session: ReturnType<typeof startMarqueeSession>
+    state: ReturnType<typeof startMarqueeSession>
     pointer: MarqueePointer
   }
 ) => stepMarqueeSession({
-  session: input.session,
+  session: input.state,
   currentScreen: input.pointer.screen,
   currentWorld: input.pointer.world,
   minDistance: GestureTuning.dragMinDistance
@@ -113,7 +113,7 @@ export const createMarqueeInteraction = (
     kind: 'finish'
   } satisfies InteractionSessionTransition
 
-  let session = startMarqueeSession({
+  let state = startMarqueeSession({
     pointerId: input.start.pointerId,
     startScreen: input.start.screen,
     startWorld: input.start.world,
@@ -129,10 +129,10 @@ export const createMarqueeInteraction = (
     pointer: MarqueePointer
   ) => {
     const result = projectMarquee({
-      session,
+      state,
       pointer
     })
-    session = result.session
+    state = result.session
     if (!result.active || !result.worldRect) {
       return false
     }
@@ -155,10 +155,6 @@ export const createMarqueeInteraction = (
     }
 
     interaction!.gesture = createMarqueeGesture({
-      start: {
-        point: input.start.world,
-        initial: input.action.base
-      },
       draft: {
         nodePatches: [],
         edgePatches: [],
@@ -168,9 +164,6 @@ export const createMarqueeInteraction = (
           worldRect,
           match: input.action.match
         }
-      },
-      meta: {
-        match: input.action.match
       }
     })
 
@@ -184,7 +177,7 @@ export const createMarqueeInteraction = (
     gesture: null,
     autoPan: {
       frame: (pointer) => {
-        if (!session.active) {
+        if (!state.active) {
           return
         }
 
@@ -200,12 +193,12 @@ export const createMarqueeInteraction = (
     },
     up: (next) => {
       const finalState = projectMarquee({
-        session,
+        state,
         pointer: next
       })
-      session = finalState.session
+      state = finalState.session
 
-      const finished = finishMarqueeSession(session)
+      const finished = finishMarqueeSession(state)
       if (!finished.active || !finished.worldRect) {
         return FINISH
       }

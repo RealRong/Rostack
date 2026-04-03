@@ -14,7 +14,6 @@ export {
 export { GestureTuning } from './config'
 export type { InteractionCtx } from './ctx'
 export type {
-  InteractionControl,
   InteractionBinding,
   InteractionKeyboardInput,
   InteractionMode,

@@ -1,180 +1,90 @@
 import {
-  useCallback,
-  useEffect,
-  useRef,
+  useMemo,
   useState
 } from 'react'
+import { FileText } from 'lucide-react'
 import type {
-  GroupProperty,
   GroupRecord,
-  ViewId
+  RecordId
 } from '@dataview/core/contracts'
+import {
+  isEmptyPropertyValue
+} from '@dataview/core/property'
+import {
+  DATAVIEW_APPEARANCE_ID_ATTR
+} from '@dataview/dom/appearance'
 import {
   shouldCapturePointer
 } from '@dataview/dom/interactive'
 import {
-  useDataView,
-  useInlineSessionValue
+  useDataView
 } from '@dataview/react/dataview'
 import { useKeyedStoreValue } from '@dataview/react/store'
+import {
+  CardContent
+} from '@dataview/react/views/shared'
 import { cn } from '@ui/utils'
 import type { AppearanceId } from '@dataview/react/runtime/currentView'
-import { CardSurface } from './CardSurface'
-
-const readTitleDraft = (
-  titleProperty: GroupProperty | undefined,
-  record: GroupRecord
-) => {
-  if (!titleProperty) {
-    return ''
-  }
-
-  const value = record.values[titleProperty.id]
-  return typeof value === 'string'
-    ? value
-    : value === undefined || value === null
-      ? ''
-      : String(value)
-}
+import { useGalleryContext } from '../context'
+import {
+  CARD_TITLE_PLACEHOLDER
+} from '@dataview/react/views/shared/cardTitleValue'
+import {
+  useCardTitleEditing
+} from '@dataview/react/views/shared/useCardTitleEditing'
 
 export const Card = (props: {
   appearanceId: AppearanceId
-  record: GroupRecord
-  viewId: ViewId
-  titleProperty?: GroupProperty
-  properties: readonly GroupProperty[]
-  selected: boolean
-  marqueeSelected: boolean
-  active: boolean
-  draggingSelected: boolean
-  canDrag: boolean
-  shouldIgnoreClick: () => boolean
-  onPointerDown: (appearanceId: AppearanceId, event: React.PointerEvent<HTMLDivElement>) => void
-  onSelect: (mode?: 'replace' | 'toggle') => void
 }) => {
+  const controller = useGalleryContext()
   const dataView = useDataView()
   const engine = dataView.engine
-  const record = useKeyedStoreValue(engine.read.record, props.record.id) ?? props.record
+  const recordId = controller.currentView.appearances.get(props.appearanceId)?.recordId ?? '' as RecordId
+  const record = useKeyedStoreValue(engine.read.record, recordId)
+  if (!record) {
+    return null
+  }
+
+  return (
+    <GalleryCardContent
+      appearanceId={props.appearanceId}
+      record={record}
+    />
+  )
+}
+
+const GalleryCardContent = (props: {
+  appearanceId: AppearanceId
+  record: GroupRecord
+}) => {
+  const controller = useGalleryContext()
+  const viewId = controller.currentView.view.id
+  const titleProperty = controller.titleProperty
+  const properties = controller.properties
+  const selected = controller.selectedIdSet.has(props.appearanceId)
+  const marqueeSelected = controller.marqueeIdSet.has(props.appearanceId)
+  const active = controller.drag.activeId === props.appearanceId
+  const draggingSelected = controller.drag.activeId !== undefined
+    && controller.drag.dragIdSet.has(props.appearanceId)
+  const canDrag = controller.canReorder
   const [hovered, setHovered] = useState(false)
-  const editing = useInlineSessionValue(target => (
-    target?.viewId === props.viewId
-      && target.appearanceId === props.appearanceId
-  ))
-  const [titleDraft, setTitleDraft] = useState(() => readTitleDraft(props.titleProperty, record))
-  const committedTitle = readTitleDraft(props.titleProperty, record)
-  const titleDraftRef = useRef(titleDraft)
-  const committedTitleRef = useRef(committedTitle)
-
-  useEffect(() => {
-    titleDraftRef.current = titleDraft
-  }, [titleDraft])
-
-  useEffect(() => {
-    committedTitleRef.current = committedTitle
-  }, [committedTitle])
-
-  useEffect(() => {
-    if (editing) {
-      return
-    }
-
-    setTitleDraft(committedTitle)
-  }, [committedTitle, editing])
-
-  const enterEdit = useCallback(() => {
-    props.onSelect('replace')
-    setTitleDraft(readTitleDraft(props.titleProperty, record))
-    dataView.inlineSession.enter({
-      viewId: props.viewId,
-      appearanceId: props.appearanceId
-    })
-  }, [
-    dataView.inlineSession,
-    props.appearanceId,
-    props.onSelect,
-    props.titleProperty,
-    props.viewId,
-    record
-  ])
-
-  const commitTitle = useCallback(() => {
-    if (!props.titleProperty) {
-      return
-    }
-
-    const nextValue = titleDraftRef.current.trim()
-    if (nextValue === committedTitleRef.current) {
-      return
-    }
-
-    engine.records.setValue(record.id, props.titleProperty.id, nextValue)
-  }, [
-    engine.records,
-    record.id,
-    props.titleProperty
-  ])
-
-  const cancelEdit = useCallback(() => {
-    setTitleDraft(committedTitleRef.current)
-    dataView.inlineSession.exit()
-  }, [dataView.inlineSession])
-
-  useEffect(() => {
-    if (!editing) {
-      return
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') {
-        return
-      }
-
-      event.preventDefault()
-      event.stopPropagation()
-
-      if (dataView.valueEditor.store.get()) {
-        dataView.valueEditor.close()
-        return
-      }
-
-      cancelEdit()
-    }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (dataView.valueEditor.store.get()) {
-        return
-      }
-
-      const target = event.target
-      const ownerCardId = target instanceof Element
-        ? target.closest('[data-gallery-card-id]')?.getAttribute('data-gallery-card-id')
-        : null
-      if (ownerCardId === props.appearanceId) {
-        return
-      }
-
-      commitTitle()
-      dataView.inlineSession.exit()
-    }
-
-    document.addEventListener('keydown', handleKeyDown, true)
-    document.addEventListener('pointerdown', handlePointerDown, true)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, true)
-      document.removeEventListener('pointerdown', handlePointerDown, true)
-    }
-  }, [
-    cancelEdit,
-    commitTitle,
-    dataView.inlineSession,
-    dataView.valueEditor,
-    editing,
-    props.appearanceId
-  ])
+  const editing = useCardTitleEditing({
+    viewId,
+    appearanceId: props.appearanceId,
+    record: props.record,
+    titleProperty
+  })
+  const visibleProperties = useMemo(() => {
+    return editing.mode === 'edit'
+      ? properties
+      : properties.filter(property => !isEmptyPropertyValue(props.record.values[property.id]))
+  }, [editing.mode, properties, props.record])
 
   return (
     <div
-      data-gallery-card-id={props.appearanceId}
+      {...{
+        [DATAVIEW_APPEARANCE_ID_ATTR]: props.appearanceId
+      }}
       onPointerEnter={() => {
         setHovered(true)
       }}
@@ -182,7 +92,7 @@ export const Card = (props: {
         setHovered(false)
       }}
       onPointerDown={event => {
-        if (editing) {
+        if (editing.editing) {
           return
         }
 
@@ -190,14 +100,14 @@ export const Card = (props: {
           return
         }
 
-        props.onPointerDown(props.appearanceId, event)
+        controller.drag.onPointerDown(props.appearanceId, event)
       }}
       onClick={event => {
-        if (editing) {
+        if (editing.editing) {
           return
         }
 
-        if (props.shouldIgnoreClick()) {
+        if (controller.drag.shouldIgnoreClick()) {
           event.preventDefault()
           event.stopPropagation()
           return
@@ -207,31 +117,56 @@ export const Card = (props: {
           return
         }
 
-        props.onSelect(event.metaKey || event.ctrlKey ? 'toggle' : 'replace')
+        controller.select(
+          props.appearanceId,
+          event.metaKey || event.ctrlKey ? 'toggle' : 'replace'
+        )
       }}
       className={cn(
         'touch-none',
-        !editing && 'select-none',
-        !editing && props.canDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
-        props.active && 'opacity-35',
-        props.draggingSelected && !props.active && 'opacity-60'
+        !editing.editing && 'select-none',
+        !editing.editing && canDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
+        active && 'opacity-35',
+        draggingSelected && !active && 'opacity-60'
       )}
     >
-      <CardSurface
+      <CardContent
+        slots={{
+          root: cn(
+            'relative h-full rounded-lg p-3 transition-colors ui-shadow-sm ui-card-bg',
+            selected && 'border-primary bg-primary/[0.05]',
+            !selected && marqueeSelected && 'border-primary/40 bg-primary/[0.04]'
+          ),
+          title: {
+            row: 'flex min-w-0 items-start gap-2.5 pb-2',
+            content: 'min-w-0 flex-1',
+            text: 'text-base font-semibold leading-6',
+            input: 'text-base font-semibold leading-6 text-foreground'
+          },
+          property: {
+            list: 'flex flex-col pb-2 pt-0 leading-6',
+            item: 'min-w-0 pb-2 last:pb-0',
+            value: 'text-[13px] leading-6 text-foreground'
+          }
+        }}
+        viewId={viewId}
         appearanceId={props.appearanceId}
-        record={record}
-        viewId={props.viewId}
-        titleProperty={props.titleProperty}
-        properties={props.properties}
-        selected={props.selected}
-        marqueeSelected={props.marqueeSelected}
-        mode={editing ? 'edit' : 'view'}
-        showEditAction={hovered && !editing && !props.active}
-        titleDraft={titleDraft}
-        onTitleDraftChange={setTitleDraft}
-        onEnterEdit={enterEdit}
-        onCommitTitle={commitTitle}
-        onSelect={() => props.onSelect('replace')}
+        record={props.record}
+        titleProperty={titleProperty}
+        properties={visibleProperties}
+        mode={editing.mode}
+        committedTitle={editing.committedTitle}
+        titleDraft={editing.titleDraft}
+        titlePlaceholder={CARD_TITLE_PLACEHOLDER}
+        onTitleDraftChange={editing.setTitleDraft}
+        onCommitTitle={editing.commitTitle}
+        onSubmitTitle={editing.submitTitle}
+        onSelect={() => controller.select(props.appearanceId, 'replace')}
+        showEditAction={hovered && !editing.editing && !active}
+        onEnterEdit={editing.enterEdit}
+        titleLeading={(
+          <FileText className="mt-0.5 size-5 shrink-0 text-muted-foreground" size={18} strokeWidth={1.8} />
+        )}
       />
     </div>
   )

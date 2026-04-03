@@ -3,12 +3,12 @@ import type {
 } from '../../runtime/interaction'
 import type { InteractionCtx } from '../../runtime/interaction/ctx'
 import {
-  createStrokeInteractionSession,
-  startStrokeSession,
+  createStrokeSession,
+  startStrokeState,
 } from './stroke'
 import {
-  createEraseInteractionSession,
-  startEraseSession,
+  createEraseSession,
+  startEraseState,
 } from './erase'
 
 type DrawInteractionCtx = Pick<
@@ -28,15 +28,15 @@ export const createDrawInteraction = (
     }
 
     if (tool.kind === 'eraser') {
-      const session = startEraseSession(ctx, input)
-      return session
-        ? createEraseInteractionSession(ctx, session)
+      const state = startEraseState(ctx, input)
+      return state
+        ? createEraseSession(ctx, state)
         : null
     }
 
-    const session = startStrokeSession(ctx, input)
-    return session
-      ? createStrokeInteractionSession(ctx, session)
+    const state = startStrokeState(ctx, input)
+    return state
+      ? createStrokeSession(ctx, state)
       : null
   }
 })

@@ -5,21 +5,17 @@ import {
   type SelectionMarqueeDecision,
   type SelectionPressDecision,
   type SelectionPressTargetInput,
-  type SelectionPressTarget,
-  type SelectionTapAction
+  type SelectionPressTarget
 } from '@whiteboard/core/selection'
 import { createTimeoutTask, type TimeoutTask } from '@whiteboard/engine'
 import {
   GestureTuning,
   type InteractionCtx,
-  type InteractionControl,
   type InteractionSession,
   type InteractionSessionTransition
 } from '../../runtime/interaction'
 import type {
-  PointerDownInput,
-  PointerMoveInput,
-  PointerUpInput
+  PointerDownInput
 } from '../../types/input'
 import { createMarqueeInteraction } from './marquee'
 import { createMoveInteraction } from './move'
@@ -30,32 +26,6 @@ type SelectionInteractionCtx = Pick<
   InteractionCtx,
   'read' | 'write' | 'config' | 'snap'
 >
-
-export type SelectionPressPlan = {
-  target: SelectionPressTarget<SelectionPressField>
-  decision: SelectionPressDecision<SelectionPressField>
-  start: {
-    clientX: number
-    clientY: number
-  }
-}
-
-const toPanPointer = (
-  input: PointerMoveInput
-) => ({
-  clientX: input.client.x,
-  clientY: input.client.y
-})
-
-const cancelHold = (
-  holdTask: TimeoutTask | null
-) => {
-  if (holdTask === null) {
-    return
-  }
-
-  holdTask.cancel()
-}
 
 const resolveSelectionPressTargetInput = (
   ctx: SelectionInteractionCtx,
@@ -98,38 +68,13 @@ const resolveSelectionPressTargetInput = (
   }
 }
 
-const hasMovedEnough = (
-  plan: SelectionPressPlan,
-  input: PointerMoveInput
-) => {
-  const dx = Math.abs(input.client.x - plan.start.clientX)
-  const dy = Math.abs(input.client.y - plan.start.clientY)
-
-  return dx >= GestureTuning.dragMinDistance || dy >= GestureTuning.dragMinDistance
-}
-
-const runTapAction = (
-  input: {
-    ctx: SelectionInteractionCtx
-    action: SelectionTapAction<SelectionPressField>
-  }
-) => {
-  switch (input.action.kind) {
-    case 'clear':
-      input.ctx.write.session.selection.clear()
-      return
-    case 'select':
-      input.ctx.write.session.selection.replace(input.action.target)
-      return
-    case 'edit':
-      input.ctx.write.session.edit.start(input.action.nodeId, input.action.field)
-  }
-}
-
-export const resolveSelectionPressPlan = (
+const resolveSelectionPress = (
   ctx: SelectionInteractionCtx,
   input: PointerDownInput
-): SelectionPressPlan | null => {
+): {
+  target: SelectionPressTarget<SelectionPressField>
+  decision: SelectionPressDecision<SelectionPressField>
+} | null => {
   const tool = ctx.read.tool.get()
 
   if (
@@ -163,11 +108,7 @@ export const resolveSelectionPressPlan = (
 
   return {
     target: resolved.target,
-    decision: resolved.decision,
-    start: {
-      clientX: input.client.x,
-      clientY: input.client.y
-    }
+    decision: resolved.decision
   }
 }
 
@@ -196,145 +137,123 @@ const createSelectionSession = (
   })
 }
 
-const replaceSelectionSession = (input: {
-  ctx: SelectionInteractionCtx
-  start: PointerDownInput
-  decision: SelectionDragDecision | SelectionMarqueeDecision | undefined
-  control: InteractionControl
-}) => {
-  const next = createSelectionSession({
-    ctx: input.ctx,
-    start: input.start,
-    decision: input.decision
-  })
-  if (!next) {
-    return
-  }
-
-  input.control.replace(next)
-}
-
-const createSelectionReplaceTransition = (input: {
-  ctx: SelectionInteractionCtx
-  start: PointerDownInput
-  decision: SelectionDragDecision | SelectionMarqueeDecision | undefined
-  pointer: PointerMoveInput
-  control: InteractionControl
-}): InteractionSessionTransition => {
-  const next = createSelectionSession({
-    ctx: input.ctx,
-    start: input.start,
-    decision: input.decision
-  })
-  if (!next) {
-    return {
-      kind: 'finish'
-    } satisfies InteractionSessionTransition
-  }
-
-  next.move?.(input.pointer)
-  if (next.autoPan) {
-    input.control.pan(toPanPointer(input.pointer))
-  }
-
-  return {
-    kind: 'replace',
-    session: next
-  } satisfies InteractionSessionTransition
-}
-
-const armHold = (input: {
-  ctx: SelectionInteractionCtx
-  start: PointerDownInput
-  plan: SelectionPressPlan
-  control: InteractionControl
-  setHoldTask: (task: TimeoutTask | null) => void
-}) => {
-  if (!input.plan.decision.hold) {
-    return
-  }
-
-  const holdTask = createTimeoutTask(() => {
-    input.setHoldTask(null)
-    replaceSelectionSession({
-      ctx: input.ctx,
-      start: input.start,
-      decision: input.plan.decision.hold,
-      control: input.control
-    })
-  })
-  input.setHoldTask(holdTask)
-  holdTask.schedule(GestureTuning.holdDelay)
-}
-
-export const createPressInteraction = (
+const createPressSession = (
   ctx: SelectionInteractionCtx,
   start: PointerDownInput,
-  pressPlan: SelectionPressPlan,
-  control: InteractionControl
+  resolved: {
+    target: SelectionPressTarget<SelectionPressField>
+    decision: SelectionPressDecision<SelectionPressField>
+  }
 ): InteractionSession => {
   const FINISH = {
     kind: 'finish'
   } satisfies InteractionSessionTransition
   let holdTask: TimeoutTask | null = null
+  let dispatchTransition:
+    | ((transition: InteractionSessionTransition) => void)
+    | null = null
 
   const pressSession: InteractionSession = {
     mode: 'press',
     pointerId: start.pointerId,
-    chrome: pressPlan.decision.chrome,
+    chrome: resolved.decision.chrome,
+    attach: (dispatch) => {
+      dispatchTransition = dispatch
+    },
     move: (input) => {
-      if (!hasMovedEnough(pressPlan, input)) {
+      const dx = Math.abs(input.client.x - start.client.x)
+      const dy = Math.abs(input.client.y - start.client.y)
+      if (
+        dx < GestureTuning.dragMinDistance
+        && dy < GestureTuning.dragMinDistance
+      ) {
         return
       }
 
-      cancelHold(holdTask)
+      holdTask?.cancel()
       holdTask = null
-      return createSelectionReplaceTransition({
+      const next = createSelectionSession({
         ctx,
         start,
-        decision: pressPlan.decision.drag,
-        pointer: input,
-        control
+        decision: resolved.decision.drag
       })
+      if (!next) {
+        return FINISH
+      }
+
+      next.move?.(input)
+      return {
+        kind: 'replace',
+        session: next
+      }
     },
     up: (input) => {
-      cancelHold(holdTask)
+      holdTask?.cancel()
       holdTask = null
-      const tap = pressPlan.decision.tap
+      const tap = resolved.decision.tap
       if (!tap) {
         return FINISH
       }
 
       const targetInput = resolveSelectionPressTargetInput(ctx, input)
-      if (!matchSelectionTap(pressPlan.target, targetInput)) {
+      if (!matchSelectionTap(resolved.target, targetInput)) {
         return FINISH
       }
 
-      runTapAction({
-        ctx,
-        action: tap
-      })
+      switch (tap.kind) {
+        case 'clear':
+          ctx.write.session.selection.clear()
+          break
+        case 'select':
+          ctx.write.session.selection.replace(tap.target)
+          break
+        case 'edit':
+          ctx.write.session.edit.start(tap.nodeId, tap.field)
+          break
+      }
       return FINISH
     },
     cancel: () => {
-      cancelHold(holdTask)
+      holdTask?.cancel()
       holdTask = null
     },
     cleanup: () => {
-      cancelHold(holdTask)
+      holdTask?.cancel()
       holdTask = null
     }
   }
 
-  armHold({
-    ctx,
-    start,
-    plan: pressPlan,
-    control,
-    setHoldTask: (task) => {
-      holdTask = task
-    }
-  })
+  if (resolved.decision.hold) {
+    holdTask = createTimeoutTask(() => {
+      holdTask = null
+      const next = createSelectionSession({
+        ctx,
+        start,
+        decision: resolved.decision.hold
+      })
+      dispatchTransition?.(
+        next
+          ? {
+              kind: 'replace',
+              session: next
+            }
+          : {
+              kind: 'finish'
+            }
+      )
+    })
+    holdTask.schedule(GestureTuning.holdDelay)
+  }
 
   return pressSession
+}
+
+export const startSelectionPress = (
+  ctx: SelectionInteractionCtx,
+  input: PointerDownInput
+): InteractionSession | null => {
+  const resolved = resolveSelectionPress(ctx, input)
+  return resolved
+    ? createPressSession(ctx, input, resolved)
+    : null
 }

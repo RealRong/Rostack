@@ -2,7 +2,7 @@ import {
   createRootDrag,
   createSubtreeDrag,
   projectMindmapDrag,
-  type MindmapDragSession
+  type MindmapDragSession as CoreMindmapDragState
 } from '@whiteboard/core/mindmap'
 import type { Point } from '@whiteboard/core/types'
 import type {
@@ -19,32 +19,32 @@ type MindmapInteractionCtx = Pick<
 >
 
 const toMindmapDragFeedback = (
-  session: MindmapDragSession
+  state: CoreMindmapDragState
 ): MindmapDragFeedback => {
-  if (session.kind === 'root') {
+  if (state.kind === 'root') {
     return {
-      treeId: session.treeId,
+      treeId: state.treeId,
       kind: 'root',
-      baseOffset: session.position
+      baseOffset: state.position
     }
   }
 
   return {
-    treeId: session.treeId,
+    treeId: state.treeId,
     kind: 'subtree',
-    baseOffset: session.baseOffset,
+    baseOffset: state.baseOffset,
     preview: {
-      nodeId: session.nodeId,
-      ghost: session.ghost,
-      drop: session.drop
+      nodeId: state.nodeId,
+      ghost: state.ghost,
+      drop: state.drop
     }
   }
 }
 
-const resolveMindmapDragSession = (
+const resolveMindmapDragState = (
   ctx: MindmapInteractionCtx,
   input: PointerDownInput
-): MindmapDragSession | null => {
+): CoreMindmapDragState | null => {
   const tool = ctx.read.tool.get()
 
   if (
@@ -89,11 +89,11 @@ const resolveMindmapDragSession = (
       }) ?? null
 }
 
-const projectMindmapSession = (input: {
+const projectMindmapState = (input: {
   ctx: MindmapInteractionCtx
-  state: MindmapDragSession
+  state: CoreMindmapDragState
   world: Point
-}): MindmapDragSession => projectMindmapDrag({
+}): CoreMindmapDragState => projectMindmapDrag({
   active: input.state,
   world: input.world,
   treeView:
@@ -104,7 +104,7 @@ const projectMindmapSession = (input: {
 
 const commitMindmapDrag = (
   ctx: MindmapInteractionCtx,
-  state: MindmapDragSession
+  state: CoreMindmapDragState
 ) => {
   if (state.kind === 'root') {
     ctx.write.document.mindmap.moveRoot({
@@ -138,37 +138,37 @@ const commitMindmapDrag = (
 
 const createMindmapSession = (
   ctx: MindmapInteractionCtx,
-  initial: MindmapDragSession
+  initial: CoreMindmapDragState
 ): InteractionSession => {
-  let session = initial
-  ctx.write.preview.mindmap.setDrag(toMindmapDragFeedback(session))
+  let state = initial
+  ctx.write.preview.mindmap.setDrag(toMindmapDragFeedback(state))
 
   return {
     mode: 'mindmap-drag',
-    pointerId: session.pointerId,
+    pointerId: state.pointerId,
     chrome: false,
     autoPan: {
       frame: (pointer) => {
-        session = projectMindmapSession(
+        state = projectMindmapState(
           {
             ctx,
-            state: session,
+            state,
             world: ctx.read.viewport.pointer(pointer).world
           }
         )
-        ctx.write.preview.mindmap.setDrag(toMindmapDragFeedback(session))
+        ctx.write.preview.mindmap.setDrag(toMindmapDragFeedback(state))
       }
     },
     move: (next) => {
-      session = projectMindmapSession({
+      state = projectMindmapState({
         ctx,
-        state: session,
+        state,
         world: next.world
       })
-      ctx.write.preview.mindmap.setDrag(toMindmapDragFeedback(session))
+      ctx.write.preview.mindmap.setDrag(toMindmapDragFeedback(state))
     },
     up: () => {
-      commitMindmapDrag(ctx, session)
+      commitMindmapDrag(ctx, state)
       return {
         kind: 'finish'
       }
@@ -184,7 +184,7 @@ export const createMindmapInteraction = (
 ): InteractionBinding => ({
   key: 'mindmap',
   start: (input) => {
-    const state = resolveMindmapDragSession(ctx, input)
+    const state = resolveMindmapDragState(ctx, input)
     return state
       ? createMindmapSession(ctx, state)
       : null

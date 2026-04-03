@@ -86,18 +86,50 @@ const bindInlineSessionToCurrentView = (input: {
 
     const view = input.currentView.get()
     if (!view) {
-      input.inlineSession.exit()
+      input.inlineSession.exit({
+        reason: 'view-change'
+      })
       return
     }
 
     if (view.view.id !== session.viewId || !view.appearances.has(session.appearanceId)) {
-      input.inlineSession.exit()
+      input.inlineSession.exit({
+        reason: 'view-change'
+      })
     }
   }
 
   sync()
   return input.currentView.subscribe(sync)
 }
+
+const bindInlineSessionToSelection = (input: {
+  selection: SelectionApi
+  inlineSession: InlineSessionApi
+}) => joinUnsubscribes([
+  input.inlineSession.store.subscribe(() => {
+    const session = input.inlineSession.store.get()
+    if (!session) {
+      return
+    }
+
+    if (!selectionHelpers.equal(input.selection.get(), emptySelection)) {
+      input.selection.store.set(emptySelection)
+    }
+  }),
+  input.selection.store.subscribe(() => {
+    const selection = input.selection.store.get()
+    if (!selection.ids.length) {
+      return
+    }
+
+    if (input.inlineSession.store.get()) {
+      input.inlineSession.exit({
+        reason: 'selection'
+      })
+    }
+  })
+])
 
 export const createDataViewRuntime = (input: {
   engine: GroupEngine
@@ -128,6 +160,10 @@ export const createDataViewRuntime = (input: {
     bindSelectionToCurrentView({
       currentView,
       selection
+    }),
+    bindInlineSessionToSelection({
+      selection,
+      inlineSession
     }),
     bindInlineSessionToCurrentView({
       currentView,

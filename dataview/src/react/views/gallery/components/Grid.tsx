@@ -1,5 +1,5 @@
 import { PAGE_INLINE_INSET_CSS } from '@dataview/react/page/layout'
-import { useGalleryController } from '../useGalleryController'
+import { useGalleryContext } from '../context'
 import { Card } from './Card'
 import { Overlay } from './Overlay'
 
@@ -8,20 +8,14 @@ const contentInsetStyle = {
 } as const
 
 export const Grid = () => {
-  const controller = useGalleryController()
+  const controller = useGalleryContext()
   const {
     currentView,
-    titleProperty,
-    properties,
-    canReorder,
     containerRef,
     cardMinWidth,
-    drag,
     indicator,
     marquee,
-    marqueeIdSet,
-    reorderDisabledMessage,
-    selectedIdSet
+    reorderDisabledMessage
   } = controller
   const grouped = Boolean(currentView.view.query.group)
   const appearanceIds = currentView.appearances.ids
@@ -104,33 +98,12 @@ export const Grid = () => {
                       gridTemplateColumns: `repeat(auto-fill, minmax(${cardMinWidth}px, 1fr))`
                     }}
                   >
-                    {section.ids.map(id => {
-                      const record = controller.readRecord(id)
-                      if (!record) {
-                        return null
-                      }
-
-                      return (
-                        <Card
-                          key={id}
-                          appearanceId={id}
-                          record={record}
-                          viewId={currentView.view.id}
-                          titleProperty={titleProperty}
-                          properties={properties}
-                          selected={selectedIdSet.has(id)}
-                          marqueeSelected={marqueeIdSet.has(id)}
-                          active={drag.activeId === id}
-                          draggingSelected={drag.activeId !== undefined && drag.dragIdSet.has(id)}
-                          canDrag={canReorder}
-                          shouldIgnoreClick={drag.shouldIgnoreClick}
-                          onPointerDown={drag.onPointerDown}
-                          onSelect={mode => {
-                            controller.select(id, mode)
-                          }}
-                        />
-                      )
-                    })}
+                    {section.ids.map(id => (
+                      <Card
+                        key={id}
+                        appearanceId={id}
+                      />
+                    ))}
                   </div>
                 ) : (
                   <div className="rounded-3xl border border-dashed bg-card px-6 py-10 text-sm text-muted-foreground">
@@ -146,17 +119,7 @@ export const Grid = () => {
           </div>
         )}
       </div>
-      <Overlay
-        appearanceId={drag.activeId}
-        record={drag.activeId ? controller.readRecord(drag.activeId) : undefined}
-        viewId={currentView.view.id}
-        titleProperty={titleProperty}
-        properties={properties}
-        dragCount={drag.dragIds.length}
-        width={drag.overlaySize.width}
-        pointerRef={drag.pointerRef}
-        overlayOffsetRef={drag.overlayOffsetRef}
-      />
+      <Overlay />
     </div>
   )
 }

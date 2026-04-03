@@ -70,13 +70,13 @@ const findParentFrameId = (
 
 const resolveFrameHoverId = (
   ctx: SelectionInteractionCtx,
-  session: Parameters<typeof finishMoveSession>[0],
+  state: Parameters<typeof finishMoveSession>[0],
   pointerWorld: {
     x: number
     y: number
   }
 ) => {
-  const movingIds = new Set(session.move.members.map((member) => member.id))
+  const movingIds = new Set(state.move.members.map((member) => member.id))
   let frameId = ctx.read.frame.at(pointerWorld)
 
   while (frameId && movingIds.has(frameId)) {
@@ -100,7 +100,7 @@ export const createMoveInteraction = (
     kind: 'finish'
   } satisfies InteractionSessionTransition
 
-  const initialSession = startMoveSession({
+  const initialState = startMoveSession({
     nodes: ctx.read.index.node.all().map((entry) => entry.node),
     edges: ctx.read.edge.list.get()
       .map((edgeId) => ctx.read.edge.item.get(edgeId)?.edge)
@@ -109,15 +109,13 @@ export const createMoveInteraction = (
     startWorld: input.start.world,
     nodeSize: ctx.config.nodeSize
   })
-  if (!initialSession) {
+  if (!initialState) {
     return null
   }
-  let session = initialSession
+  let state = initialState
   const restoreSelection = input.selection.kind === 'temporary'
     ? input.selection.restoreSelection
     : undefined
-  const visibleSelection = input.selection.visibleSelection
-    ?? ctx.read.selection.target.get()
 
   if (input.selection.visibleSelection) {
     ctx.write.session.selection.replace(input.selection.visibleSelection)
@@ -135,7 +133,7 @@ export const createMoveInteraction = (
     modifiers = nextInput.modifiers
     let guides: readonly Guide[] = []
     const result = stepMoveSession({
-      session,
+      session: state,
       pointerWorld: nextInput.world,
       snap: ctx.read.tool.is('select')
         ? ({ rect, excludeIds }) => {
@@ -150,23 +148,14 @@ export const createMoveInteraction = (
         : undefined
     })
 
-    session = result.session
+    state = result.session
     interaction!.gesture = createGesture({
-      start: {
-        point: input.start.world,
-        selection: visibleSelection
-      },
       draft: {
         nodePatches: toMoveNodePatches(result),
         edgePatches: toMoveEdgePatches(result),
-        frameHoverId: resolveFrameHoverId(ctx, session, nextInput.world),
+        frameHoverId: resolveFrameHoverId(ctx, state, nextInput.world),
         guides,
         marquee: undefined
-      },
-      meta: {
-        selectionMode: restoreSelection
-          ? 'restore'
-          : 'keep'
       }
     })
   }
@@ -191,11 +180,11 @@ export const createMoveInteraction = (
       })
     },
     up: () => {
-      const commit = finishMoveSession(session)
+      const commit = finishMoveSession(state)
 
       if (commit.delta) {
         ctx.write.document.node.move({
-          ids: session.move.rootIds,
+          ids: state.move.rootIds,
           delta: commit.delta
         })
       }

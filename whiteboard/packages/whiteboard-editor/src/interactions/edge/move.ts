@@ -5,7 +5,6 @@ import type {
   Point
 } from '@whiteboard/core/types'
 import type {
-  InteractionControl,
   InteractionSession,
   InteractionSessionTransition
 } from '../../runtime/interaction'
@@ -14,7 +13,7 @@ import {
 } from '../../runtime/interaction'
 import type { EdgeInteractionCtx } from './types'
 
-type EdgeBodyMoveSession = {
+type EdgeBodyMoveState = {
   edgeId: EdgeId
   pointerId: number
   start: Point
@@ -40,37 +39,37 @@ const readViewport = (
 
 const projectBodyMove = ({
   ctx,
-  session,
+  state,
   input
 }: {
   ctx: EdgeInteractionCtx
-  session: EdgeBodyMoveSession
+  state: EdgeBodyMoveState
   input: PointerClient
 }) => {
-  const item = ctx.read.edge.item.get(session.edgeId)
+  const item = ctx.read.edge.item.get(state.edgeId)
   if (!item || !ctx.read.edge.capability(item.edge).move) {
     return {
       ok: false as const,
-      session
+      state
     }
   }
 
   const { world } = readViewport(ctx).pointer(input)
   const delta = {
-    x: world.x - session.start.x,
-    y: world.y - session.start.y
+    x: world.x - state.start.x,
+    y: world.y - state.start.y
   }
-  if (isPointEqual(delta, session.delta)) {
+  if (isPointEqual(delta, state.delta)) {
     return {
       ok: true as const,
-      session
+      state
     }
   }
 
   return {
     ok: true as const,
-    session: {
-      ...session,
+    state: {
+      ...state,
       delta
     },
     patch: moveEdge(item.edge, delta)
@@ -79,13 +78,13 @@ const projectBodyMove = ({
 
 const commitBodyMove = ({
   ctx,
-  session
+  state
 }: {
   ctx: EdgeInteractionCtx
-  session: EdgeBodyMoveSession
+  state: EdgeBodyMoveState
 }) => {
-  if (!isPointEqual(session.delta, { x: 0, y: 0 })) {
-    ctx.write.document.edge.move(session.edgeId, session.delta)
+  if (!isPointEqual(state.delta, { x: 0, y: 0 })) {
+    ctx.write.document.edge.move(state.edgeId, state.delta)
   }
 }
 
@@ -95,10 +94,9 @@ export const createEdgeBodyMoveSession = (
     edgeId: EdgeId
     pointerId: number
     start: Point
-  },
-  control: InteractionControl
+  }
 ): InteractionSession => {
-  let session: EdgeBodyMoveSession = {
+  let state: EdgeBodyMoveState = {
     edgeId: input.edgeId,
     pointerId: input.pointerId,
     start: input.start,
@@ -111,34 +109,29 @@ export const createEdgeBodyMoveSession = (
   ): InteractionSessionTransition | void => {
     const result = projectBodyMove({
       ctx,
-      session,
+      state,
       input: pointer
     })
     if (!result.ok) {
       return CANCEL
     }
 
-    if (result.session !== session) {
-      session = result.session
+    if (result.state !== state) {
+      state = result.state
       interaction!.gesture = createEdgeMoveGesture({
-        start: {
-          point: input.start,
-          edgeId: session.edgeId
-        },
         draft: {
           patches: [{
-            id: session.edgeId,
+            id: state.edgeId,
             patch: result.patch
           }]
-        },
-        meta: {}
+        }
       })
     }
   }
 
   interaction = {
     mode: 'edge-drag',
-    pointerId: session.pointerId,
+    pointerId: state.pointerId,
     gesture: null,
     autoPan: {
       frame: (pointer) => step(pointer)
@@ -151,11 +144,6 @@ export const createEdgeBodyMoveSession = (
       if (transition) {
         return transition
       }
-
-      control.pan({
-        clientX: input.client.x,
-        clientY: input.client.y
-      })
     },
     up: (input) => {
       const transition = step({
@@ -168,7 +156,7 @@ export const createEdgeBodyMoveSession = (
 
       commitBodyMove({
         ctx,
-        session
+        state
       })
       return FINISH
     },

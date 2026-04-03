@@ -5,7 +5,6 @@ import {
 import type { ActiveGesture } from './gesture'
 import type {
   InteractionBinding,
-  InteractionControl,
   InteractionKeyboardInput,
   InteractionRuntime,
   InteractionSession,
@@ -99,6 +98,10 @@ export const createInteractionRuntime = ({
   })
   let nextId = 1
   let current: RunningSession | null = null
+  let lastPointer: {
+    clientX: number
+    clientY: number
+  } | null = null
   const autoPan = createAutoPan({
     getViewport
   })
@@ -116,6 +119,31 @@ export const createInteractionRuntime = ({
     running: RunningSession | null
   ) => {
     gesture.set(running?.session.gesture ?? null)
+  }
+
+  const refreshAutoPan = () => {
+    if (!lastPointer) {
+      return
+    }
+
+    autoPan.update(lastPointer)
+  }
+
+  const attachSession = (
+    running: RunningSession
+  ) => {
+    const session = running.session
+    session.attach?.((transition) => {
+      if (current?.id !== running.id || running.session !== session) {
+        return
+      }
+
+      applyTransition(running, transition)
+      if (current?.id === running.id) {
+        syncGesture(running)
+        refreshAutoPan()
+      }
+    })
   }
 
   const syncActive = (running: RunningSession | null) => {
@@ -158,6 +186,7 @@ export const createInteractionRuntime = ({
           applyTransition(running, options.frame?.(pointer))
           if (current?.id === running.id) {
             syncGesture(running)
+            refreshAutoPan()
           }
         }
       })
@@ -168,8 +197,10 @@ export const createInteractionRuntime = ({
     running: RunningSession
   ) => {
     current = running
+    attachSession(running)
     syncActive(running)
     applyAutoPan(running)
+    refreshAutoPan()
   }
 
   const replaceRunningSession = (
@@ -243,6 +274,11 @@ export const createInteractionRuntime = ({
       return false
     }
 
+    lastPointer = {
+      clientX: input.client.x,
+      clientY: input.client.y
+    }
+
     const bindings = readBindings()
     for (let index = 0; index < bindings.length; index += 1) {
       const binding = bindings[index]
@@ -253,20 +289,7 @@ export const createInteractionRuntime = ({
       const id = nextId++
       let running: RunningSession | null = null
 
-      const control: InteractionControl = {
-        replace: (session) => {
-          if (!running) {
-            return
-          }
-
-          replaceRunningSession(running, session)
-        },
-        pan: (pointer) => {
-          autoPan.update(pointer)
-        }
-      }
-
-      const startResult = binding.start(input, control)
+      const startResult = binding.start(input)
       if (!startResult) {
         continue
       }
@@ -294,6 +317,10 @@ export const createInteractionRuntime = ({
   const handlePointerMove = (
     input: PointerMoveInput
   ) => {
+    lastPointer = {
+      clientX: input.client.x,
+      clientY: input.client.y
+    }
     const running = current
     if (running) {
       if (!matchesPointer(running.pointerId, input)) {
@@ -303,6 +330,7 @@ export const createInteractionRuntime = ({
       applyTransition(running, running.session.move?.(input))
       if (current?.id === running.id) {
         syncGesture(running)
+        refreshAutoPan()
       }
       return true
     }
@@ -313,6 +341,10 @@ export const createInteractionRuntime = ({
   const handlePointerUp = (
     input: PointerUpInput
   ) => {
+    lastPointer = {
+      clientX: input.client.x,
+      clientY: input.client.y
+    }
     const running = current
     if (!running || !matchesPointer(running.pointerId, input)) {
       return false
@@ -321,6 +353,7 @@ export const createInteractionRuntime = ({
     applyTransition(running, running.session.up?.(input))
     if (current?.id === running.id) {
       syncGesture(running)
+      refreshAutoPan()
     }
     return true
   }
@@ -339,6 +372,7 @@ export const createInteractionRuntime = ({
   }
 
   const handlePointerLeave = () => {
+    lastPointer = null
   }
 
   const handleWheel = (

@@ -4,9 +4,9 @@ import {
   useState,
   type RefObject
 } from 'react'
+import type { ViewId } from '@dataview/core/contracts'
 import type {
-  GroupProperty,
-  GroupRecord
+  GroupProperty
 } from '@dataview/core/contracts'
 import {
   resolveGroupTitleProperty
@@ -16,6 +16,9 @@ import {
   useCurrentView,
   useSelection,
 } from '@dataview/react/dataview'
+import {
+  dataviewAppearanceSelector
+} from '@dataview/dom/appearance'
 import {
   closestTarget,
   interactiveSelector
@@ -27,7 +30,6 @@ import {
   type AppearanceId,
   type CurrentView
 } from '@dataview/react/runtime/currentView'
-import { useGalleryContext } from './context'
 import type { GalleryDropTarget } from './reorder'
 import {
   readGalleryLayout,
@@ -54,16 +56,16 @@ export interface GalleryController {
   indicator?: GalleryDropTarget['indicator']
   cardMinWidth: number
   reorderDisabledMessage?: string
-  readRecord: (id: AppearanceId) => GroupRecord | undefined
   select: (id: AppearanceId, mode?: 'replace' | 'toggle') => void
 }
 
-export const useGalleryController = (): GalleryController => {
-  const { layout, viewId } = useGalleryContext()
+export const useGalleryController = (input: {
+  viewId: ViewId
+  containerRef: RefObject<HTMLDivElement | null>
+}): GalleryController => {
   const dataView = useDataView()
-  const engine = dataView.engine
   const currentView = useCurrentView(view => (
-    view?.view.id === viewId
+    view?.view.id === input.viewId
       ? view
       : undefined
   ))
@@ -85,13 +87,6 @@ export const useGalleryController = (): GalleryController => {
   )
   const canReorder = !currentView.view.query.group && !currentView.view.query.sorters.length
 
-  const readRecord = useCallback((id: AppearanceId) => {
-    const recordId = currentView.appearances.get(id)?.recordId
-    return recordId
-      ? engine.read.record.get(recordId)
-      : undefined
-  }, [currentView, engine.read.record])
-
   const selectionState = useSelection()
   const [dragging, setDragging] = useState(false)
   const [marqueeIds, setMarqueeIds] = useState<readonly AppearanceId[]>([])
@@ -104,12 +99,12 @@ export const useGalleryController = (): GalleryController => {
     [marqueeIds]
   )
   const getLayout = useCallback(
-    () => readGalleryLayout(layout.containerRef.current),
-    [layout.containerRef]
+    () => readGalleryLayout(input.containerRef.current),
+    [input.containerRef]
   )
 
   const drag = useCardReorder({
-    containerRef: layout.containerRef,
+    containerRef: input.containerRef,
     canDrag: canReorder,
     itemMap: new Map(currentView.appearances.ids.map(id => [id, id] as const)),
     getLayout,
@@ -157,7 +152,7 @@ export const useGalleryController = (): GalleryController => {
   }, [currentView, drag.dragIds, drag.overTarget])
 
   const marquee = useMarqueeSelection({
-    containerRef: layout.containerRef,
+    containerRef: input.containerRef,
     cardOrder: currentView.appearances.ids,
     disabled: dragging,
     getLayout,
@@ -176,7 +171,7 @@ export const useGalleryController = (): GalleryController => {
     },
     canStart: event => {
       return !closestTarget(event.target, [
-        '[data-gallery-card-id]',
+        dataviewAppearanceSelector,
         interactiveSelector
       ].join(','))
     }
@@ -205,7 +200,7 @@ export const useGalleryController = (): GalleryController => {
     titleProperty,
     properties,
     canReorder,
-    containerRef: layout.containerRef,
+    containerRef: input.containerRef,
     selectedIdSet,
     marqueeIdSet,
     drag,
@@ -213,7 +208,6 @@ export const useGalleryController = (): GalleryController => {
     indicator,
     cardMinWidth,
     reorderDisabledMessage,
-    readRecord,
     select
   }), [
     canReorder,
@@ -221,11 +215,10 @@ export const useGalleryController = (): GalleryController => {
     currentView,
     drag,
     indicator,
-    layout.containerRef,
+    input.containerRef,
     marquee,
     marqueeIdSet,
     properties,
-    readRecord,
     reorderDisabledMessage,
     select,
     selectedIdSet,

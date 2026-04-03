@@ -3,38 +3,29 @@ import {
   createElement,
   useContext,
   useRef,
-  type ReactNode,
-  type RefObject
+  type ReactNode
 } from 'react'
 import type { ViewId } from '@dataview/core/contracts'
+import {
+  type GalleryController,
+  useGalleryController
+} from './useGalleryController'
 
 export interface GalleryProviderProps {
   viewId: ViewId
   children?: ReactNode
 }
 
-export interface Layout {
-  containerRef: RefObject<HTMLDivElement | null>
-}
+export type Gallery = GalleryController
 
-export interface Gallery {
-  viewId: ViewId
-  layout: Layout
-}
-
-type Value = Gallery
-
-const Ctx = createContext<Value | null>(null)
+const Ctx = createContext<Gallery | null>(null)
 
 export const GalleryProvider = (props: GalleryProviderProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const layout: Layout = {
-    containerRef
-  }
-  const value: Value = {
+  const value = useGalleryController({
     viewId: props.viewId,
-    layout
-  }
+    containerRef
+  })
 
   return createElement(Ctx.Provider, { value }, props.children)
 }

@@ -1,4 +1,6 @@
 export { CardField, type CardFieldProps } from './CardField'
+export { CardContent, type CardContentProps } from './CardContent'
+export { CardTitle, type CardTitleProps } from './CardTitle'
 export {
   AddCardPropertyTrigger,
   type AddCardPropertyTriggerProps

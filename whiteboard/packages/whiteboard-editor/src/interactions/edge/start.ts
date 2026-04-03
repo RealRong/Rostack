@@ -1,23 +1,25 @@
 import type {
-  InteractionControl,
   InteractionStartResult
 } from '../../runtime/interaction'
 import type { PointerDownInput } from '../../types/input'
-import {
-  resolveEdgePressPlan,
-  startEdgePressPlan
-} from './press'
+import { startEdgeConnectInteraction } from './connect'
+import { startEdgePress } from './press'
+import { startEdgeRouteHandleInteraction } from './routePoint'
 import type { EdgeInteractionCtx } from './types'
 
 export const startEdgeInteraction = (
   ctx: EdgeInteractionCtx,
-  input: PointerDownInput,
-  control: InteractionControl
+  input: PointerDownInput
 ): InteractionStartResult => {
-  const plan = resolveEdgePressPlan(ctx, input)
-  if (!plan) {
-    return null
+  const route = startEdgeRouteHandleInteraction(ctx, input)
+  if (route) {
+    return route
   }
 
-  return startEdgePressPlan(ctx, input, plan, control)
+  const connect = startEdgeConnectInteraction(ctx, input)
+  if (connect) {
+    return connect
+  }
+
+  return startEdgePress(ctx, input)
 }

@@ -6,6 +6,7 @@ import type {
 import {
   createTransformGesture
 } from '../../runtime/interaction'
+import type { PointerDownInput } from '../../types/input'
 import { commitTransform } from './commit'
 import { createTransformPlan } from './plan'
 import { projectTransform } from './project'
@@ -50,21 +51,12 @@ const createTransformSession = (
     })
     latest = preview
     interaction!.gesture = createTransformGesture({
-      start: {
-        point: start.world,
-        selection: ctx.read.selection.target.get()
-      },
       draft: {
         nodePatches: toTransformNodePatches(preview.nodePatches),
         edgePatches: [],
         frameHoverId: undefined,
         marquee: undefined,
         guides: preview.guides
-      },
-      meta: {
-        mode: plan.kind === 'single-rotate'
-          ? 'rotate'
-          : 'resize'
       }
     })
   }
@@ -99,18 +91,23 @@ const createTransformSession = (
   return interaction
 }
 
+export const startTransformInteraction = (
+  ctx: TransformInteractionCtx,
+  input: PointerDownInput
+) => {
+  const plan = createTransformPlan(ctx, input)
+  return plan
+    ? createTransformSession(ctx, plan, {
+        screen: input.screen,
+        world: input.world,
+        modifiers: input.modifiers
+      })
+    : null
+}
+
 export const createTransformInteraction = (
   ctx: TransformInteractionCtx
 ): InteractionBinding => ({
   key: 'transform',
-  start: (input) => {
-    const plan = createTransformPlan(ctx, input)
-    return plan
-      ? createTransformSession(ctx, plan, {
-          screen: input.screen,
-          world: input.world,
-          modifiers: input.modifiers
-        })
-      : null
-  }
+  start: (input) => startTransformInteraction(ctx, input)
 })

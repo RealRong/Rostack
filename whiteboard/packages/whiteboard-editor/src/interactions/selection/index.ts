@@ -2,7 +2,7 @@ import type {
   InteractionBinding,
   InteractionCtx
 } from '../../runtime/interaction'
-import { createPressInteraction, resolveSelectionPressPlan } from './press'
+import { startSelectionPress } from './press'
 
 type SelectionInteractionCtx = Pick<
   InteractionCtx,
@@ -13,10 +13,5 @@ export const createSelectionInteraction = (
   ctx: SelectionInteractionCtx
 ): InteractionBinding => ({
   key: 'selection',
-  start: (input, control) => {
-    const plan = resolveSelectionPressPlan(ctx, input)
-    return plan
-      ? createPressInteraction(ctx, input, plan, control)
-      : null
-  }
+  start: (input) => startSelectionPress(ctx, input)
 })

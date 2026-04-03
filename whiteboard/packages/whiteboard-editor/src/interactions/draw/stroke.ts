@@ -26,7 +26,7 @@ type DrawPointer = {
   samples: readonly PointerSample[]
 }
 
-export type StrokeSession = {
+export type StrokeState = {
   brush: DrawBrushKind
   style: ResolvedDrawStyle
   points: readonly Point[]
@@ -62,12 +62,12 @@ const clearStrokeOverlay = (
 
 const writeStrokePreview = (
   ctx: DrawInteractionCtx,
-  session: StrokeSession
+  state: StrokeState
 ) => {
   ctx.write.preview.draw.setPreview({
-    kind: session.brush,
-    style: session.style,
-    points: resolveStrokePoints(ctx, session.points)
+    kind: state.brush,
+    style: state.style,
+    points: resolveStrokePoints(ctx, state.points)
   })
 }
 
@@ -81,14 +81,14 @@ const hasMovedEnough = (
 }
 
 const appendStrokeSample = (
-  session: StrokeSession,
+  state: StrokeState,
   sample: PointerSample,
   force = false
-): StrokeSession => {
-  const previous = session.points[session.points.length - 1]
+): StrokeState => {
+  const previous = state.points[state.points.length - 1]
 
-  if (!force && !hasMovedEnough(session.lastScreen, sample.screen)) {
-    return session
+  if (!force && !hasMovedEnough(state.lastScreen, sample.screen)) {
+    return state
   }
 
   if (
@@ -96,32 +96,32 @@ const appendStrokeSample = (
     && previous.x === sample.world.x
     && previous.y === sample.world.y
   ) {
-    return session.lastScreen.x === sample.screen.x
-      && session.lastScreen.y === sample.screen.y
-      ? session
+    return state.lastScreen.x === sample.screen.x
+      && state.lastScreen.y === sample.screen.y
+      ? state
       : {
-          ...session,
+          ...state,
           lastScreen: sample.screen
         }
   }
 
   return {
-    ...session,
-    points: [...session.points, sample.world],
+    ...state,
+    points: [...state.points, sample.world],
     lengthScreen:
-      session.lengthScreen
+      state.lengthScreen
       + Math.hypot(
-          sample.screen.x - session.lastScreen.x,
-          sample.screen.y - session.lastScreen.y
+          sample.screen.x - state.lastScreen.x,
+          sample.screen.y - state.lastScreen.y
         ),
     lastScreen: sample.screen
   }
 }
 
-export const startStrokeSession = (
+export const startStrokeState = (
   ctx: DrawInteractionCtx,
   input: PointerDownInput
-): StrokeSession | null => {
+): StrokeState | null => {
   const tool = ctx.read.tool.get()
 
   if (
@@ -144,38 +144,38 @@ export const startStrokeSession = (
   }
 }
 
-const stepStrokeSession = (
-  session: StrokeSession,
+const stepStrokeState = (
+  state: StrokeState,
   input: DrawPointer,
   force = false
 ) => {
-  let nextSession = session
+  let nextState = state
 
   for (let index = 0; index < input.samples.length; index += 1) {
-    nextSession = appendStrokeSample(
-      nextSession,
+    nextState = appendStrokeSample(
+      nextState,
       input.samples[index]!,
       force && index === input.samples.length - 1
     )
   }
 
-  return nextSession
+  return nextState
 }
 
-const commitStrokeSession = (
+const commitStrokeState = (
   ctx: DrawInteractionCtx,
-  session: StrokeSession
+  state: StrokeState
 ) => {
   if (
-    session.points.length < 2
-    || session.lengthScreen < DRAW_MIN_LENGTH_SCREEN
+    state.points.length < 2
+    || state.lengthScreen < DRAW_MIN_LENGTH_SCREEN
   ) {
     return
   }
 
   const stroke = resolveDrawStroke({
-    points: resolveStrokePoints(ctx, session.points),
-    width: session.style.width
+    points: resolveStrokePoints(ctx, state.points),
+    width: state.style.width
   })
   if (!stroke) {
     return
@@ -190,28 +190,28 @@ const commitStrokeSession = (
       baseSize: stroke.size
     },
     style: {
-      stroke: session.style.color,
-      strokeWidth: session.style.width,
-      opacity: session.style.opacity
+      stroke: state.style.color,
+      strokeWidth: state.style.width,
+      opacity: state.style.opacity
     }
   })
 }
 
-export const createStrokeInteractionSession = (
+export const createStrokeSession = (
   ctx: DrawInteractionCtx,
-  initial: StrokeSession
+  initial: StrokeState
 ): InteractionSession => {
-  let session = initial
+  let state = initial
 
   const step = (
     input: DrawPointer,
     force = false
   ) => {
-    const nextSession = stepStrokeSession(session, input, force)
-    if (nextSession.points !== session.points) {
-      writeStrokePreview(ctx, nextSession)
+    const nextState = stepStrokeState(state, input, force)
+    if (nextState.points !== state.points) {
+      writeStrokePreview(ctx, nextState)
     }
-    session = nextSession
+    state = nextState
   }
 
   return {
@@ -221,7 +221,7 @@ export const createStrokeInteractionSession = (
     },
     up: (input) => {
       step(input, true)
-      commitStrokeSession(ctx, session)
+      commitStrokeState(ctx, state)
       return {
         kind: 'finish'
       }

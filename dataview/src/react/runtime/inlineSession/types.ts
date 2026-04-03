@@ -7,9 +7,25 @@ export interface InlineSessionTarget {
   appearanceId: AppearanceId
 }
 
+export type InlineSessionExitReason =
+  | 'submit'
+  | 'escape'
+  | 'outside'
+  | 'selection'
+  | 'view-change'
+  | 'programmatic'
+
+export interface InlineSessionExitEvent {
+  target: InlineSessionTarget
+  reason: InlineSessionExitReason
+}
+
 export interface InlineSessionApi {
   store: ValueStore<InlineSessionTarget | null>
   enter(target: InlineSessionTarget): void
-  exit(): void
+  exit(options?: {
+    reason?: InlineSessionExitReason
+  }): void
   isActive(target: InlineSessionTarget): boolean
+  onExit(listener: (event: InlineSessionExitEvent) => void): () => void
 }

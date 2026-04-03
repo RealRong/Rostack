@@ -22,7 +22,7 @@ type DrawPointer = {
   samples: readonly PointerSample[]
 }
 
-export type EraseSession = {
+export type EraseState = {
   ids: readonly NodeId[]
   lastWorld: Point
 }
@@ -42,18 +42,18 @@ const queryDrawNodeIdsInRect = (
 
 const collectErasePoint = (
   ctx: DrawInteractionCtx,
-  session: EraseSession,
+  state: EraseState,
   world: Point
-): EraseSession => {
+): EraseState => {
   const halfWorld =
     ERASER_HIT_EPSILON_SCREEN
     / Math.max(readZoom(ctx), ZOOM_EPSILON)
   const nodeIds = queryDrawNodeIdsInRect(
     ctx,
-    getSegmentBounds(session.lastWorld, world, halfWorld)
+    getSegmentBounds(state.lastWorld, world, halfWorld)
   )
-  const knownIds = new Set(session.ids)
-  const nextIds = [...session.ids]
+  const knownIds = new Set(state.ids)
+  const nextIds = [...state.ids]
 
   for (let index = 0; index < nodeIds.length; index += 1) {
     const nodeId = nodeIds[index]!
@@ -65,27 +65,27 @@ const collectErasePoint = (
     nextIds.push(nodeId)
   }
 
-  const ids = nextIds.length === session.ids.length
-    ? session.ids
+  const ids = nextIds.length === state.ids.length
+    ? state.ids
     : nextIds
 
   return (
-    ids === session.ids
-    && session.lastWorld.x === world.x
-    && session.lastWorld.y === world.y
+    ids === state.ids
+    && state.lastWorld.x === world.x
+    && state.lastWorld.y === world.y
   )
-    ? session
+    ? state
     : {
-        ...session,
+        ...state,
         ids,
         lastWorld: world
       }
 }
 
-export const startEraseSession = (
+export const startEraseState = (
   ctx: DrawInteractionCtx,
   input: PointerDownInput
-): EraseSession | null => {
+): EraseState | null => {
   const tool = ctx.read.tool.get()
 
   if (
@@ -104,47 +104,47 @@ export const startEraseSession = (
   }, input.world)
 }
 
-const stepEraseSession = (
+const stepEraseState = (
   ctx: DrawInteractionCtx,
-  session: EraseSession,
+  state: EraseState,
   input: DrawPointer
 ) => {
-  let nextSession = session
+  let nextState = state
 
   for (let index = 0; index < input.samples.length; index += 1) {
-    nextSession = collectErasePoint(ctx, nextSession, input.samples[index]!.world)
+    nextState = collectErasePoint(ctx, nextState, input.samples[index]!.world)
   }
 
-  return nextSession
+  return nextState
 }
 
-const commitEraseSession = (
+const commitEraseState = (
   ctx: DrawInteractionCtx,
-  session: EraseSession
+  state: EraseState
 ) => {
-  if (session.ids.length > 0) {
-    ctx.write.document.node.delete([...session.ids])
+  if (state.ids.length > 0) {
+    ctx.write.document.node.delete([...state.ids])
   }
 }
 
-export const createEraseInteractionSession = (
+export const createEraseSession = (
   ctx: DrawInteractionCtx,
-  initial: EraseSession
+  initial: EraseState
 ): InteractionSession => {
-  let session = initial
+  let state = initial
 
-  if (session.ids.length > 0) {
-    ctx.write.preview.draw.setHidden(session.ids)
+  if (state.ids.length > 0) {
+    ctx.write.preview.draw.setHidden(state.ids)
   }
 
   const step = (
     input: DrawPointer
   ) => {
-    const nextSession = stepEraseSession(ctx, session, input)
-    if (nextSession.ids !== session.ids) {
-      ctx.write.preview.draw.setHidden(nextSession.ids)
+    const nextState = stepEraseState(ctx, state, input)
+    if (nextState.ids !== state.ids) {
+      ctx.write.preview.draw.setHidden(nextState.ids)
     }
-    session = nextSession
+    state = nextState
   }
 
   return {
@@ -154,7 +154,7 @@ export const createEraseInteractionSession = (
     },
     up: (input) => {
       step(input)
-      commitEraseSession(ctx, session)
+      commitEraseState(ctx, state)
       return {
         kind: 'finish'
       }

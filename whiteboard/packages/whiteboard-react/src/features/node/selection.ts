@@ -101,7 +101,6 @@ type SelectionPresentation = {
   singleTransformNodeId?: string
   showSelectionFrame: boolean
   showSelectionHandles: boolean
-  hideSelectionFrameForSingleShape: boolean
   connectNodeIds: readonly string[]
 }
 
@@ -444,14 +443,12 @@ const resolveSelectionPresentation = (
     selection.summary.kind === 'node'
       ? selection.summary.target.nodeIds[0]
       : undefined,
-  showSelectionFrame: selection.boxState.frame,
+  showSelectionFrame:
+    selection.boxState.frame
+    && selection.summary.kind !== 'node',
   showSelectionHandles:
     chrome.transform
     && selection.boxState.handles,
-  hideSelectionFrameForSingleShape:
-    selection.summary.kind === 'node'
-    && selection.summary.items.nodeCount === 1
-    && selection.summary.items.primaryNode?.type === 'shape',
   connectNodeIds:
     chrome.connect
       ? selection.summary.target.nodeIds

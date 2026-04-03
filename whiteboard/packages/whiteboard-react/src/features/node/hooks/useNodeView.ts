@@ -26,6 +26,16 @@ const buildNodeTransformStyle = (
   }
 }
 
+const buildOverlayFrameStyle = (
+  rect: NodeItem['rect'],
+  rotation: number
+): CSSProperties => ({
+  transform: `translate(${rect.x}px, ${rect.y}px)${rotation !== 0 ? ` rotate(${rotation}deg)` : ''}`,
+  width: rect.width,
+  height: rect.height,
+  transformOrigin: rotation !== 0 ? 'center center' : undefined
+})
+
 export type NodeView = {
   nodeId: NodeId
   node: NodeItem['node']
@@ -47,7 +57,8 @@ export type NodeOverlayView = {
   nodeId: NodeView['nodeId']
   node: NodeView['node']
   rect: NodeView['rect']
-  frameRect: NodeView['frameRect']
+  transformRect: NodeView['frameRect']
+  transformFrameStyle: CSSProperties
   rotation: NodeView['rotation']
   canConnect: NodeView['canConnect']
   canResize: NodeView['canResize']
@@ -68,7 +79,7 @@ const resolveNodeOverlayViewState = (
 ): NodeOverlayView => {
   const node = item.node
   const rect = item.rect
-  const frameRect = editor.read.node.outline(nodeId) ?? rect
+  const transformRect = editor.read.node.outline(nodeId) ?? rect
   const rotation = node.type === 'group'
     ? 0
     : (typeof node.rotation === 'number' ? node.rotation : 0)
@@ -78,7 +89,8 @@ const resolveNodeOverlayViewState = (
     nodeId,
     node,
     rect,
-    frameRect,
+    transformRect,
+    transformFrameStyle: buildOverlayFrameStyle(transformRect, rotation),
     rotation,
     canConnect: capability.connect,
     canResize: capability.resize,

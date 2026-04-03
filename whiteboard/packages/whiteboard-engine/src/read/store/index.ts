@@ -195,6 +195,7 @@ export const createRead = ({
     options?: Parameters<typeof index.node.idsInRect>[1]
   ): NodeId[] => {
     const match = options?.match ?? 'touch'
+    const policy = options?.policy ?? 'default'
     const candidateIds = index.node.idsInRect(rect, {
       ...options,
       match: match === 'contain' ? 'touch' : match
@@ -203,6 +204,7 @@ export const createRead = ({
       rect,
       candidateIds,
       match,
+      policy,
       getEntry: index.node.get,
       getDescendants: treeIndex.ids,
       matchEntry: matchCanvasNodeRect

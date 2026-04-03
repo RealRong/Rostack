@@ -147,6 +147,7 @@ export {
   type NodeRectMatchEntry,
   type NodeRectHitEntry,
   type NodeRectHitMatch,
+  type NodeRectHitPolicy,
   type NodeRectQuery,
   type NodeRectHitOptions
 } from './hitTest'

@@ -45,6 +45,21 @@ const resolveElement = (
     : null
 )
 
+const resolveElementAtPoint = (
+  container: Element,
+  input: ClientPointInput
+) => {
+  const document = container.ownerDocument
+  if (!document?.elementFromPoint) {
+    return null
+  }
+
+  return resolveElement(
+    document.elementFromPoint(input.clientX, input.clientY),
+    container
+  )
+}
+
 const readPointerSnapshot = (
   editor: WhiteboardRuntime,
   input: ClientPointInput
@@ -77,7 +92,8 @@ export const resolveHostPoint = ({
   container: Element
   event: TargetEvent
 }): HostResolvedPoint => {
-  const element = resolveElement(event.target, container)
+  const element = resolveElementAtPoint(container, event)
+    ?? resolveElement(event.target, container)
   const point = readPointerSnapshot(editor, event)
 
   return {

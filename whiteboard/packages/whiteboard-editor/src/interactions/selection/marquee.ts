@@ -65,7 +65,8 @@ const readMatchedItems = (
   }
 ): MarqueeItems => ({
   nodeIds: input.ctx.read.node.idsInRect(input.rect, {
-    match: input.match
+    match: input.match,
+    policy: 'selection-marquee'
   }),
   edgeIds: input.ctx.read.edge.idsInRect(input.rect, {
     match: input.match

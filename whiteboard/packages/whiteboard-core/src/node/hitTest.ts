@@ -23,20 +23,24 @@ export type NodeRectMatchEntry = {
 export type NodeRectHitOptions = {
   match?: 'touch' | 'contain'
   exclude?: readonly NodeId[]
+  policy?: 'default' | 'selection-marquee'
 }
 
 export type NodeRectHitMatch = NonNullable<NodeRectHitOptions['match']>
+export type NodeRectHitPolicy = NonNullable<NodeRectHitOptions['policy']>
 
 export type NodeRectQuery<TEntry extends NodeRectHitEntry> = {
   rect: Rect
   candidateIds: readonly NodeId[]
   match: NodeRectHitMatch
+  policy: NodeRectHitPolicy
   getEntry: (nodeId: NodeId) => TEntry | undefined
   getDescendants?: (nodeId: NodeId) => readonly NodeId[]
   matchEntry: (
     entry: TEntry,
     rect: Rect,
-    match: NodeRectHitMatch
+    match: NodeRectHitMatch,
+    policy: NodeRectHitPolicy
   ) => boolean
 }
 
@@ -66,18 +70,26 @@ export const getNodeIdsInRect = (
 export const matchCanvasNodeRect = (
   entry: NodeRectMatchEntry,
   rect: Rect,
-  match: NodeRectHitMatch
+  match: NodeRectHitMatch,
+  policy: NodeRectHitPolicy
 ) => {
+  const effectiveMatch =
+    policy === 'selection-marquee'
+    && entry.node.type === 'frame'
+    && match === 'touch'
+      ? 'contain'
+      : match
+
   switch (entry.node.type) {
     case 'draw':
       return matchDrawRect({
         node: entry.node,
         rect: entry.rect,
         queryRect: rect,
-        mode: match
+        mode: effectiveMatch
       })
     default:
-      return match === 'contain'
+      return effectiveMatch === 'contain'
         ? rectContainsRotatedRect(rect, entry.rect, entry.rotation)
         : true
   }
@@ -87,6 +99,7 @@ export const filterNodeIdsInRect = <TEntry extends NodeRectHitEntry>({
   rect,
   candidateIds,
   match,
+  policy,
   getEntry,
   getDescendants,
   matchEntry
@@ -124,7 +137,7 @@ export const filterNodeIdsInRect = <TEntry extends NodeRectHitEntry>({
       return matched
     }
 
-    const matched = matchEntry(entry, rect, match)
+    const matched = matchEntry(entry, rect, match, policy)
     matchCache.set(nodeId, matched)
     return matched
   }

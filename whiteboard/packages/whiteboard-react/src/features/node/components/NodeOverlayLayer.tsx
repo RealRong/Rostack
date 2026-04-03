@@ -57,27 +57,16 @@ const NodeTransformOverlayItem = memo(({
 
   if (!view) return null
 
-  const frameRect = view.node.type === 'shape'
-    ? view.frameRect
-    : view.rect
-
   return (
     <>
-      {view.node.type === 'shape' ? (
-        <div
-          className="wb-node-transform-frame"
-          style={{
-            transform: `translate(${frameRect.x}px, ${frameRect.y}px)${view.rotation !== 0 ? ` rotate(${view.rotation}deg)` : ''}`,
-            width: frameRect.width,
-            height: frameRect.height,
-            transformOrigin: view.rotation !== 0 ? 'center center' : undefined
-          }}
-        />
-      ) : null}
+      <div
+        className="wb-node-transform-frame"
+        style={view.transformFrameStyle}
+      />
       {showHandles && !view.node.locked ? (
         <NodeTransformHandles
           node={view.node}
-          rect={frameRect}
+          rect={view.transformRect}
           rotation={view.rotation}
           canResize={view.canResize}
           canRotate={view.canRotate}
@@ -182,7 +171,7 @@ export const NodeOverlayLayer = () => {
             showHandles={presentation.chrome.transform}
           />
         ) : null}
-        {presentation.showSelectionFrame && !presentation.hideSelectionFrameForSingleShape ? (
+        {presentation.showSelectionFrame ? (
           <SelectionFrameOverlay
             presentation={presentation}
           />

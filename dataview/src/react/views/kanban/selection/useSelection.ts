@@ -6,15 +6,18 @@ import {
 } from 'react'
 import { idsInRect } from '@dataview/dom/geometry'
 import { useMarquee } from '@dataview/react/interaction/useMarquee'
-import { useStoreValue } from '@dataview/react/store'
 import {
   type AppearanceId,
-  type CurrentView,
-  type Selection
+  type CurrentView
 } from '@dataview/react/currentView'
 import {
-  selection as currentViewSelection
-} from '@dataview/react/currentView/selection'
+  selection as selectionHelpers,
+  type Selection
+} from '@dataview/react/selection'
+import {
+  useDataView,
+  useSelection as useDataViewSelection
+} from '@dataview/react/dataview'
 import { type BoardLayout } from '../drag'
 
 interface Options {
@@ -27,7 +30,8 @@ interface Options {
 }
 
 export const useSelection = (options: Options) => {
-  const selection = useStoreValue(options.currentView.selection)
+  const dataView = useDataView()
+  const selection = useDataViewSelection()
   const [marqueeIds, setMarqueeIds] = useState<readonly AppearanceId[]>([])
   const selectedIdSet = useMemo(
     () => new Set(selection.ids),
@@ -39,7 +43,7 @@ export const useSelection = (options: Options) => {
   )
 
   useEffect(() => {
-    setMarqueeIds(current => currentViewSelection.normalize(options.cardOrder, current))
+    setMarqueeIds(current => selectionHelpers.normalize(options.cardOrder, current))
   }, [options.cardOrder])
 
   const hitIds = (
@@ -54,8 +58,8 @@ export const useSelection = (options: Options) => {
     ids: readonly AppearanceId[],
     mode: 'replace' | 'toggle'
   ): Selection => mode === 'toggle'
-    ? currentViewSelection.toggle(options.cardOrder, selection, ids)
-    : currentViewSelection.set(options.cardOrder, ids)
+    ? selectionHelpers.toggle(options.cardOrder, selection, ids)
+    : selectionHelpers.set(options.cardOrder, ids)
 
   const marquee = useMarquee({
     containerRef: options.containerRef,
@@ -87,21 +91,21 @@ export const useSelection = (options: Options) => {
       const ids = hitIds(session.box)
       setMarqueeIds([])
       if (session.metaKey || session.ctrlKey) {
-        options.currentView.commands.selection.toggle(ids)
+        dataView.selection.toggle(ids)
         return
       }
 
-      options.currentView.commands.selection.set(ids)
+      dataView.selection.set(ids)
     }
   })
 
   const select = (id: AppearanceId, mode: 'replace' | 'toggle' = 'replace') => {
     if (mode === 'toggle') {
-      options.currentView.commands.selection.toggle([id])
+      dataView.selection.toggle([id])
       return
     }
 
-    options.currentView.commands.selection.set([id])
+    dataView.selection.set([id])
   }
 
   return {

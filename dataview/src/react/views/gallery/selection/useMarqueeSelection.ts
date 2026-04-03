@@ -2,12 +2,12 @@ import type { RefObject } from 'react'
 import { idsInRect } from '@dataview/dom/geometry'
 import { useMarquee } from '@dataview/react/interaction/useMarquee'
 import {
-  type AppearanceId,
-  type Selection
+  type AppearanceId
 } from '@dataview/react/currentView'
 import {
-  selection as currentViewSelection
-} from '@dataview/react/currentView/selection'
+  selection as selectionHelpers,
+  type Selection
+} from '@dataview/react/selection'
 import { type GalleryLayout } from '../reorder'
 
 interface Options {
@@ -38,8 +38,8 @@ export const useMarqueeSelection = (options: Options) => {
     ids: readonly AppearanceId[],
     mode: 'replace' | 'toggle'
   ) => mode === 'toggle'
-    ? currentViewSelection.toggle(options.cardOrder, options.currentSelection, ids)
-    : currentViewSelection.set(options.cardOrder, ids)
+    ? selectionHelpers.toggle(options.cardOrder, options.currentSelection, ids)
+    : selectionHelpers.set(options.cardOrder, ids)
 
   return useMarquee({
     containerRef: options.containerRef,

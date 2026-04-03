@@ -11,6 +11,5 @@ export type {
 export type {
   Commands,
   CreateInSectionInput,
-  CurrentView,
-  Selection
+  CurrentView
 } from './types'

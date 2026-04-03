@@ -27,6 +27,10 @@ import {
 import {
   createInlineSessionApi
 } from '@dataview/react/inlineSession'
+import {
+  createSelectionApi,
+  createSelectionStore
+} from '@dataview/react/selection'
 import type {
   PageSessionApi,
   PageSessionInput,
@@ -35,6 +39,9 @@ import type {
 import type {
   InlineSessionApi
 } from '@dataview/react/inlineSession'
+import type {
+  SelectionApi
+} from '@dataview/react/selection'
 import type {
   CloseValueEditorOptions,
   OpenValueEditorInput,
@@ -60,6 +67,7 @@ export interface DataViewContextValue {
   page: PageSessionApi & {
     store: ReadStore<ResolvedPageState>
   }
+  selection: SelectionApi
   inlineSession: InlineSessionApi
   valueEditor: ValueEditorApi & {
     store: ValueStore<ValueEditorSession | null>
@@ -132,6 +140,7 @@ const dismissSession = (
 
 const EngineProviderInner = (props: EngineProviderProps) => {
   const page = useMemo(() => createPageSessionApi(props.initialPage), [])
+  const selectionStore = useMemo(() => createSelectionStore(), [])
   const inlineSession = useMemo(() => createInlineSessionApi(), [])
   const valueEditorStore = useMemo(() => createValueStore<ValueEditorSession | null>({
     initial: null
@@ -164,8 +173,15 @@ const EngineProviderInner = (props: EngineProviderProps) => {
     dispose
   } = useMemo(() => createCurrentViewStore({
     engine: props.engine,
-    pageStore: page.store
-  }), [page.store, props.engine])
+    pageStore: page.store,
+    selection: selectionStore
+  }), [page.store, props.engine, selectionStore])
+  const selection = useMemo(() => createSelectionApi({
+    store: selectionStore,
+    scope: {
+      currentView: currentView.get
+    }
+  }), [currentView, selectionStore])
 
   useEffect(() => () => {
     dispose()
@@ -204,10 +220,12 @@ const EngineProviderInner = (props: EngineProviderProps) => {
       ...page,
       store: pageStateStore
     },
+    selection,
     inlineSession,
     valueEditor
   }), [
     currentView,
+    selection,
     inlineSession,
     page,
     pageStateStore,

@@ -12,6 +12,9 @@ import {
   type CurrentView,
   type Section
 } from '@dataview/react/currentView'
+import type {
+  Selection
+} from '@dataview/react/selection'
 import {
   createDerivedStore,
   type ReadStore
@@ -148,6 +151,7 @@ const rowTarget = (input: {
 
 const selectionRow = (input: {
   currentView: CurrentView | undefined
+  selection: Selection
   gridSelection: ReturnType<GridSelectionStore['get']>
   rowHeight: number
   headerHeight: number
@@ -161,10 +165,9 @@ const selectionRow = (input: {
     return null
   }
 
-  const rowSelection = currentView.selection.get()
   const rowId = input.gridSelection?.focus.appearanceId
-    ?? rowSelection.focus
-    ?? rowSelection.ids[0]
+    ?? input.selection.focus
+    ?? input.selection.ids[0]
   if (!rowId) {
     return null
   }
@@ -181,6 +184,7 @@ export const createTableController = (options: {
   engine: GroupEngine
   pageStore: ReadStore<ResolvedPageState>
   currentViewStore: ReadStore<CurrentView | undefined>
+  selectionStore: ReadStore<Selection>
   valueEditor: ValueEditorApi
   layout: TableLayout
   nodes: Nodes
@@ -263,6 +267,7 @@ export const createTableController = (options: {
   const revealCursor = () => {
     const target = selectionRow({
       currentView: currentView.get(),
+      selection: options.selectionStore.get(),
       gridSelection: gridSelection.get(),
       rowHeight: options.layout.rowHeight,
       headerHeight: options.layout.headerHeight

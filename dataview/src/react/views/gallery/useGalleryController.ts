@@ -14,8 +14,8 @@ import {
 import {
   useDataView,
   useCurrentView,
+  useSelection,
 } from '@dataview/react/dataview'
-import { useStoreValue } from '@dataview/react/store'
 import {
   closestTarget,
   interactiveSelector
@@ -60,7 +60,8 @@ export interface GalleryController {
 
 export const useGalleryController = (): GalleryController => {
   const { layout, viewId } = useGalleryContext()
-  const engine = useDataView().engine
+  const dataView = useDataView()
+  const engine = dataView.engine
   const currentView = useCurrentView(view => (
     view?.view.id === viewId
       ? view
@@ -91,7 +92,7 @@ export const useGalleryController = (): GalleryController => {
       : undefined
   }, [currentView, engine.read.record])
 
-  const selectionState = useStoreValue(currentView.selection)
+  const selectionState = useSelection()
   const [dragging, setDragging] = useState(false)
   const [marqueeIds, setMarqueeIds] = useState<readonly AppearanceId[]>([])
   const selectedIdSet = useMemo(
@@ -163,11 +164,11 @@ export const useGalleryController = (): GalleryController => {
     currentSelection: selectionState,
     commitSelection: (ids, mode) => {
       if (mode === 'toggle') {
-        currentView.commands.selection.toggle(ids)
+        dataView.selection.toggle(ids)
         return
       }
 
-      currentView.commands.selection.set(ids)
+      dataView.selection.set(ids)
     },
     setMarquee: setMarqueeIds,
     clearMarquee: () => {
@@ -183,12 +184,12 @@ export const useGalleryController = (): GalleryController => {
 
   const select = useCallback((id: AppearanceId, mode: 'replace' | 'toggle' = 'replace') => {
     if (mode === 'toggle') {
-      currentView.commands.selection.toggle([id])
+      dataView.selection.toggle([id])
       return
     }
 
-    currentView.commands.selection.set([id])
-  }, [currentView])
+    dataView.selection.set([id])
+  }, [dataView.selection])
 
   const cardMinWidth = CARD_MIN_WIDTH[currentView.view.options.gallery.cardSize]
   const reorderDisabledMessage = currentView.view.query.sorters.length > 0

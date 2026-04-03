@@ -4,11 +4,17 @@ import {
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import type {
-  AppearanceId,
-  CurrentView
+  AppearanceId
 } from '@dataview/react/currentView'
+import type {
+  SelectionApi
+} from '@dataview/react/selection'
 import { shouldCapturePointer } from '@dataview/dom/interactive'
-import { useCurrentView } from '@dataview/react/dataview'
+import {
+  useCurrentView,
+  useDataView,
+  useSelection
+} from '@dataview/react/dataview'
 import { rowRailState } from '../../model/rowRail'
 import { useTableContext } from '../../context'
 import { useKeyedStoreValue, useStoreValue } from '@dataview/react/store'
@@ -40,12 +46,7 @@ const same = (left: RowProps, right: RowProps) => (
 )
 
 const useRowSelection = (rowId: AppearanceId) => {
-  const currentView = useCurrentView()
-  if (!currentView) {
-    throw new Error('Table row requires an active current view.')
-  }
-
-  const currentSelection = useStoreValue(currentView.selection)
+  const currentSelection = useSelection()
 
   return {
     selected: currentSelection.ids.includes(rowId)
@@ -53,20 +54,21 @@ const useRowSelection = (rowId: AppearanceId) => {
 }
 
 export const applyRowCheckboxSelection = (input: {
-  currentView: Pick<CurrentView, 'commands'>
+  selection: Pick<SelectionApi, 'extend' | 'toggle'>
   rowId: AppearanceId
   shiftKey: boolean
 }) => {
   if (input.shiftKey) {
-    input.currentView.commands.selection.extend(input.rowId)
+    input.selection.extend(input.rowId)
     return
   }
 
-  input.currentView.commands.selection.toggle([input.rowId])
+  input.selection.toggle([input.rowId])
 }
 
 const View = (props: RowProps) => {
   const table = useTableContext()
+  const dataView = useDataView()
   const currentView = useCurrentView()
   if (!currentView) {
     throw new Error('Table row requires an active current view.')
@@ -107,7 +109,7 @@ const View = (props: RowProps) => {
       event,
       up: () => {
         applyRowCheckboxSelection({
-          currentView,
+          selection: dataView.selection,
           rowId: props.appearanceId,
           shiftKey: event.shiftKey
         })
@@ -115,7 +117,7 @@ const View = (props: RowProps) => {
         table.focus()
       }
     })
-  }, [currentView, props.appearanceId, table])
+  }, [dataView.selection, props.appearanceId, table])
 
   return (
     <div

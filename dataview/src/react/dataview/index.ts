@@ -6,6 +6,7 @@ export {
 } from './provider'
 export { useCurrentView } from './useCurrentView'
 export { useInlineSession, useInlineSessionValue } from './useInlineSession'
+export { useSelection, useSelectionValue } from './useSelection'
 export { usePage, usePageValue } from './usePage'
 export {
   useDocument,
@@ -22,6 +23,10 @@ export type {
   InlineSessionApi,
   InlineSessionTarget
 } from '@dataview/react/inlineSession'
+export type {
+  Selection,
+  SelectionApi
+} from '@dataview/react/selection'
 export type {
   BlockingSurfaceBackdrop,
   BlockingSurfaceState,

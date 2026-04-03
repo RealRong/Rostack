@@ -5,20 +5,23 @@ import {
 } from 'react'
 import type { Point } from '@dataview/dom/geometry'
 import {
-  type AppearanceId,
-  type CurrentView,
-  type Selection
+  type AppearanceId
 } from '@dataview/react/currentView'
 import {
   emptySelection,
-  selection
-} from '@dataview/react/currentView/selection'
+  selection,
+  type Selection,
+  type SelectionApi
+} from '@dataview/react/selection'
 import {
   closestTarget,
   interactiveSelector
 } from '@dataview/dom/interactive'
-import { useCurrentView } from '@dataview/react/dataview'
-import { useStoreValue } from '@dataview/react/store'
+import {
+  useCurrentView,
+  useDataView,
+  useSelection as useDataViewSelection
+} from '@dataview/react/dataview'
 import { useMarquee } from '@dataview/react/interaction/useMarquee'
 import {
   rowMarqueeMode,
@@ -35,7 +38,7 @@ const emptyState: RowMarqueeState = {
 }
 
 export const startRowMarquee = (input: {
-  currentView: Pick<CurrentView, 'commands'>
+  selection: Pick<SelectionApi, 'clear'>
   currentSelection: Selection
   clearGridSelection: () => void
   clearHover: (point?: Point | null) => void
@@ -49,7 +52,7 @@ export const startRowMarquee = (input: {
   input.clearHover(input.point)
 
   if (rowMarqueeMode(input) === 'replace') {
-    input.currentView.commands.selection.clear()
+    input.selection.clear()
   }
 
   return baseSelection
@@ -57,12 +60,13 @@ export const startRowMarquee = (input: {
 
 export const useRowMarquee = (disabled: boolean) => {
   const table = useTableContext()
+  const dataView = useDataView()
   const currentView = useCurrentView()
   if (!currentView) {
     throw new Error('Table row marquee requires an active current view.')
   }
 
-  const currentSelection = useStoreValue(currentView.selection)
+  const currentSelection = useDataViewSelection()
   const layout = table.layout
   const rowIds = currentView.appearances.ids
   const rowIndexById = useMemo(
@@ -117,11 +121,11 @@ export const useRowMarquee = (disabled: boolean) => {
           }
         )
 
-    currentView.commands.selection.set(nextSelection.ids, {
+    dataView.selection.set(nextSelection.ids, {
       anchor: nextSelection.anchor,
       focus: nextSelection.focus
     })
-  }, [currentView, edgeAtPoint, rowIds])
+  }, [currentView, dataView.selection, edgeAtPoint, rowIds])
 
   const marquee = useMarquee<HTMLDivElement>({
     containerRef: layout.containerRef,
@@ -135,7 +139,7 @@ export const useRowMarquee = (disabled: boolean) => {
     },
     onStart: session => {
       baseSelectionRef.current = startRowMarquee({
-        currentView,
+        selection: dataView.selection,
         currentSelection,
         clearGridSelection: table.gridSelection.clear,
         clearHover: table.hover.clear,
@@ -163,7 +167,7 @@ export const useRowMarquee = (disabled: boolean) => {
     },
     onEnd: (session, meta) => {
       if (meta.cancelled) {
-        currentView.commands.selection.set(baseSelectionRef.current.ids, {
+        dataView.selection.set(baseSelectionRef.current.ids, {
           anchor: baseSelectionRef.current.anchor,
           focus: baseSelectionRef.current.focus
         })

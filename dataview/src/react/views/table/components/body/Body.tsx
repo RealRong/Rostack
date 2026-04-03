@@ -38,6 +38,7 @@ import { Surface } from './Surface'
 
 const View = () => {
   const engine = useDataView().engine
+  const selection = useDataView().selection
   const table = useTableContext()
   const currentView = useCurrentView()
   if (!currentView) {
@@ -91,6 +92,8 @@ const View = () => {
       },
       editor: engine,
       currentView,
+      selection: selection.get(),
+      selectionApi: selection,
       locked,
       readCell,
       gridSelection: table.gridSelection,
@@ -110,6 +113,7 @@ const View = () => {
     engine,
     locked,
     readCell,
+    selection,
     table
   ])
   const onPaste = useCallback<ClipboardEventHandler<HTMLDivElement>>(event => {

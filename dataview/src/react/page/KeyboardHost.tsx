@@ -1,6 +1,10 @@
 import { useEffect } from 'react'
 import { keyDown } from '@dataview/react/interaction'
-import { useCurrentView, useDataView, usePageValue } from '@dataview/react/dataview'
+import {
+  useCurrentView,
+  useDataView,
+  usePageValue
+} from '@dataview/react/dataview'
 import { closestTarget } from '@dataview/dom/interactive'
 import { pageShortcutAction } from './keyboard'
 
@@ -12,7 +16,8 @@ const editingTargetSelector = [
 ].join(', ')
 
 export const PageKeyboardHost = () => {
-  const engine = useDataView().engine
+  const dataView = useDataView()
+  const engine = dataView.engine
   const currentView = useCurrentView()
   const uiLock = usePageValue(state => state.lock)
 
@@ -63,7 +68,7 @@ export const PageKeyboardHost = () => {
             return
           }
 
-          currentView?.commands.selection.all()
+          dataView.selection.all()
           event.preventDefault()
           return
         case 'clear-selection':
@@ -71,7 +76,7 @@ export const PageKeyboardHost = () => {
             return
           }
 
-          currentView?.commands.selection.clear()
+          dataView.selection.clear()
           event.preventDefault()
           return
         case 'remove-selection':
@@ -89,7 +94,7 @@ export const PageKeyboardHost = () => {
     return () => {
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [currentView, engine, uiLock])
+  }, [currentView, dataView.selection, engine, uiLock])
 
   return null
 }

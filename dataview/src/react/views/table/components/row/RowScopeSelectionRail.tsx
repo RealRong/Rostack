@@ -5,13 +5,16 @@ import {
 } from 'react'
 import {
   selection
-} from '@dataview/react/currentView/selection'
+} from '@dataview/react/selection'
 import type {
   AppearanceId
 } from '@dataview/react/currentView'
-import { useCurrentView } from '@dataview/react/dataview'
+import {
+  useCurrentView,
+  useDataView,
+  useSelection
+} from '@dataview/react/dataview'
 import { useTableContext } from '../../context'
-import { useStoreValue } from '@dataview/react/store'
 import { RowSelectionButton, TableLeadingRail } from './RowRail'
 
 export interface RowScopeSelectionRailProps {
@@ -21,12 +24,13 @@ export interface RowScopeSelectionRailProps {
 
 const View = (props: RowScopeSelectionRailProps) => {
   const table = useTableContext()
+  const dataView = useDataView()
   const currentView = useCurrentView()
   if (!currentView) {
     throw new Error('Table row scope selection requires an active current view.')
   }
 
-  const currentSelection = useStoreValue(currentView.selection)
+  const currentSelection = useSelection()
   const selectedRowIds = currentSelection.ids
   const selectedRowIdSet = new Set(selectedRowIds)
   const rowCount = props.rowIds.length
@@ -48,7 +52,7 @@ const View = (props: RowScopeSelectionRailProps) => {
         if (allSelected) {
           const scopeSet = new Set(props.rowIds)
           const nextIds = currentSelection.ids.filter(rowId => !scopeSet.has(rowId))
-          currentView.commands.selection.set(nextIds, {
+          dataView.selection.set(nextIds, {
             anchor: currentSelection.anchor,
             focus: currentSelection.focus
           })
@@ -57,7 +61,7 @@ const View = (props: RowScopeSelectionRailProps) => {
             ...currentSelection.ids,
             ...props.rowIds
           ])
-          currentView.commands.selection.set(nextIds, {
+          dataView.selection.set(nextIds, {
             anchor: currentSelection.anchor ?? nextIds[0],
             focus: currentSelection.focus ?? nextIds[nextIds.length - 1]
           })
@@ -69,8 +73,8 @@ const View = (props: RowScopeSelectionRailProps) => {
     })
   }, [
     allSelected,
-    currentView,
     currentSelection,
+    dataView.selection,
     props.rowIds,
     table,
     table.gridSelection,

@@ -22,16 +22,15 @@ import {
   type Grouping
 } from '@dataview/engine/projection/view'
 import {
-  selection as selectionHelpers
-} from './selection'
-import type {
   AppearanceList,
   Commands,
   CreateInSectionInput,
   Placement,
-  SelectionStore,
   Section
 } from './types'
+import type {
+  SelectionStore
+} from '@dataview/react/selection'
 
 const createMoveOrderCommand = (
   viewId: ViewId,
@@ -186,7 +185,6 @@ const moveIds = (input: {
   appearances: AppearanceList
   grouping?: Grouping
   sections: readonly Section[]
-  selection: SelectionStore
   ids: readonly string[]
   target: Placement
 }) => {
@@ -358,85 +356,7 @@ export const createCommands = (input: {
   selection: SelectionStore
   currentView: () => ViewProjection | undefined
 }): Commands => ({
-  selection: {
-    all: () => {
-      const currentView = input.currentView()
-      if (!currentView) {
-        return
-      }
-
-      input.selection.set(
-        selectionHelpers.all(currentView.appearances.ids)
-      )
-    },
-    clear: () => {
-      input.selection.set(
-        selectionHelpers.clear()
-      )
-    },
-    set: (ids, options) => {
-      const currentView = input.currentView()
-      if (!currentView) {
-        return
-      }
-
-      input.selection.set(
-        selectionHelpers.set(currentView.appearances.ids, ids, options)
-      )
-    },
-    toggle: ids => {
-      const currentView = input.currentView()
-      if (!currentView) {
-        return
-      }
-
-      input.selection.set(
-        selectionHelpers.toggle(
-          currentView.appearances.ids,
-          input.selection.get(),
-          ids
-        )
-      )
-    },
-    extend: to => {
-      const currentView = input.currentView()
-      if (!currentView) {
-        return
-      }
-
-      input.selection.set(
-        selectionHelpers.extend(
-          currentView.appearances.ids,
-          input.selection.get(),
-          to
-        )
-      )
-    }
-  },
   move: {
-    selection: target => {
-      const currentView = input.currentView()
-      if (!currentView) {
-        return
-      }
-
-      const grouping = createGrouping({
-        document: input.engine.read.document.get(),
-        view: currentView.view,
-        sections: currentView.sections
-      })
-
-      moveIds({
-        engine: input.engine,
-        view: currentView.view,
-        appearances: currentView.appearances,
-        grouping,
-        sections: currentView.sections,
-        selection: input.selection,
-        ids: input.selection.get().ids,
-        target
-      })
-    },
     ids: (ids, target) => {
       const currentView = input.currentView()
       if (!currentView) {
@@ -455,7 +375,6 @@ export const createCommands = (input: {
         appearances: currentView.appearances,
         grouping,
         sections: currentView.sections,
-        selection: input.selection,
         ids,
         target
       })

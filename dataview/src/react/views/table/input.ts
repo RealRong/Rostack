@@ -4,6 +4,10 @@ import {
   type FieldId
 } from '@dataview/react/currentView'
 import type {
+  Selection,
+  SelectionApi
+} from '@dataview/react/selection'
+import type {
   GroupEngine
 } from '@dataview/engine'
 import {
@@ -12,7 +16,7 @@ import {
 } from '@dataview/engine/projection/view'
 import {
   selection as rowSelection
-} from '@dataview/react/currentView/selection'
+} from '@dataview/react/selection'
 import {
   gridKeyAction,
   isSelectAll,
@@ -37,6 +41,8 @@ export const handleTableKey = (input: {
   key: TableKeyInput | KeyInput
   editor: GroupEngine
   currentView: CurrentView
+  selection: Selection
+  selectionApi: Pick<SelectionApi, 'all' | 'set'>
   locked: boolean
   readCell: (cell: FieldId) => {
     exists: boolean
@@ -52,7 +58,7 @@ export const handleTableKey = (input: {
 
   const key = currentKey(input.key)
   if (isSelectAll(key)) {
-    input.currentView.commands.selection.all()
+    input.selectionApi.all()
     input.gridSelection.clear()
     input.setKeyboardMode()
     input.reveal()
@@ -66,7 +72,7 @@ export const handleTableKey = (input: {
       const rowIds = currentRange
         ? range.appearances(currentRange, input.currentView.appearances)
         : []
-      input.currentView.commands.selection.set(rowIds, {
+      input.selectionApi.set(rowIds, {
         anchor: rowIds[0],
         focus: rowIds[rowIds.length - 1]
       })
@@ -119,7 +125,7 @@ export const handleTableKey = (input: {
     }
   }
 
-  const currentSelection = input.currentView.selection.get()
+  const currentSelection = input.selection
   if (!currentSelection.ids.length) {
     return false
   }
@@ -139,7 +145,7 @@ export const handleTableKey = (input: {
         return false
       }
 
-      input.currentView.commands.selection.set(next.ids, {
+      input.selectionApi.set(next.ids, {
         anchor: next.anchor,
         focus: next.focus
       })

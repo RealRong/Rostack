@@ -12,13 +12,10 @@ import {
   createCommands
 } from './commands'
 import {
-  createSelectionStore,
   emptySelection,
-  selection as selectionHelpers
-} from './selection'
-import {
+  selection as selectionHelpers,
   syncSelection
-} from './selection'
+} from '@dataview/react/selection'
 import type {
   CurrentView
 } from './types'
@@ -28,18 +25,21 @@ import {
 import type {
   PageSessionState
 } from '@dataview/react/page/session/types'
+import type {
+  SelectionStore
+} from '@dataview/react/selection'
 
 export const createCurrentViewStore = (input: {
   engine: GroupEngine
   pageStore: ReadStore<PageSessionState>
+  selection: SelectionStore
 }): {
   currentView: ReadStore<CurrentView | undefined>
   dispose: () => void
 } => {
-  const selection = createSelectionStore()
   const commands = createCommands({
     engine: input.engine,
-    selection,
+    selection: input.selection,
     currentView: () => resolveProjection()
   })
 
@@ -62,17 +62,16 @@ export const createCurrentViewStore = (input: {
   const resolve = (): CurrentView | undefined => {
     const projection = resolveProjection()
     if (!projection) {
-      if (!selectionHelpers.equal(selection.get(), emptySelection)) {
-        selection.set(emptySelection)
+      if (!selectionHelpers.equal(input.selection.get(), emptySelection)) {
+        input.selection.set(emptySelection)
       }
       return undefined
     }
 
-    syncSelection(selection, projection.appearances.ids)
+    syncSelection(input.selection, projection.appearances.ids)
 
     return {
       ...projection,
-      selection,
       commands
     }
   }

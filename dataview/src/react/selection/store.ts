@@ -10,11 +10,12 @@ import type {
 } from './types'
 
 const emptyIds = [] as readonly AppearanceId[]
-type SelectMode = 'replace' | 'toggle' | 'range'
 
 export const emptySelection: Selection = {
   ids: emptyIds
 }
+
+type SelectMode = 'replace' | 'toggle' | 'range'
 
 const sameIds = (
   left: readonly AppearanceId[],
@@ -258,7 +259,9 @@ export const syncSelection = (
   ids: readonly AppearanceId[]
 ) => {
   const next = reconcileSelection(ids, store.get())
-  if (!selection.equal(store.get(), next)) {
-    store.set(next)
+  if (selection.equal(store.get(), next)) {
+    return
   }
+
+  store.set(next)
 }

@@ -38,6 +38,8 @@ export {
   useDataView,
   useInlineSession,
   useInlineSessionValue,
+  useSelection,
+  useSelectionValue,
   usePage,
   usePageValue,
   useDocument,
@@ -53,6 +55,10 @@ export type {
 export type {
   InlineSessionApi,
   InlineSessionTarget
+} from './dataview'
+export type {
+  Selection,
+  SelectionApi
 } from './dataview'
 export type {
   PageInteractionState,

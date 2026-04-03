@@ -50,12 +50,14 @@ export const TableProvider = (props: TableProviderProps) => {
     engine,
     pageStore: dataView.page.store,
     currentViewStore: dataView.currentView.store,
+    selectionStore: dataView.selection.store,
     valueEditor: dataView.valueEditor,
     layout,
     nodes
   }), [
     dataView.currentView.store,
     dataView.page.store,
+    dataView.selection.store,
     dataView.valueEditor,
     engine,
     layout,

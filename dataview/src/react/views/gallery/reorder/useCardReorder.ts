@@ -7,7 +7,7 @@ import {
 } from '@dataview/react/interaction/usePointerDragSession'
 import type { GalleryDropTarget } from './hitTest'
 import { dropTargetFromPoint } from './hitTest'
-import type { GalleryLayout } from './layout'
+import type { GalleryLayoutCache } from '../virtual'
 
 const INDICATOR_EPSILON = 0.5
 
@@ -17,7 +17,7 @@ interface Options {
   itemMap: ReadonlyMap<AppearanceId, AppearanceId>
   getDragIds: (activeId: AppearanceId) => readonly AppearanceId[]
   onDrop: (cardIds: readonly AppearanceId[], target: GalleryDropTarget) => void
-  getLayout: () => GalleryLayout | null
+  getLayout: () => GalleryLayoutCache | null
   onDraggingChange?: (dragging: boolean) => void
 }
 
@@ -25,7 +25,8 @@ const sameTarget = (
   left?: GalleryDropTarget,
   right?: GalleryDropTarget
 ) => (
-  left?.anchorId === right?.anchorId
+  left?.sectionKey === right?.sectionKey
+  && left?.anchorId === right?.anchorId
   && left?.side === right?.side
   && left?.beforeAppearanceId === right?.beforeAppearanceId
   && Math.abs((left?.indicator.left ?? 0) - (right?.indicator.left ?? 0)) <= INDICATOR_EPSILON

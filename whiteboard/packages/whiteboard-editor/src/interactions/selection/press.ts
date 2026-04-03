@@ -9,11 +9,13 @@ import {
 } from '@whiteboard/core/selection'
 import { createTimeoutTask, type TimeoutTask } from '@whiteboard/engine'
 import {
-  GestureTuning,
-  type InteractionCtx,
-  type InteractionSession,
-  type InteractionSessionTransition
-} from '../../runtime/interaction'
+  GestureTuning
+} from '../../runtime/interaction/config'
+import type { InteractionContext } from '../context'
+import type {
+  InteractionSession,
+  InteractionSessionTransition
+} from '../../runtime/interaction/types'
 import type {
   PointerDownInput
 } from '../../types/input'
@@ -23,7 +25,7 @@ import { createMoveInteraction } from './move'
 type SelectionPressField = NonNullable<PointerDownInput['field']>
 type SelectionSubjectInput = Pick<PointerDownInput, 'pick' | 'field'>
 type SelectionInteractionCtx = Pick<
-  InteractionCtx,
+  InteractionContext,
   'read' | 'write' | 'config' | 'snap'
 >
 

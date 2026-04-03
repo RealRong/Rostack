@@ -35,6 +35,7 @@ import {
 
 export const Card = (props: {
   appearanceId: AppearanceId
+  measureRef?: (node: HTMLDivElement | null) => void
 }) => {
   const controller = useGalleryContext()
   const dataView = useDataView()
@@ -49,6 +50,7 @@ export const Card = (props: {
     <GalleryCardContent
       appearanceId={props.appearanceId}
       record={record}
+      measureRef={props.measureRef}
     />
   )
 }
@@ -56,13 +58,13 @@ export const Card = (props: {
 const GalleryCardContent = (props: {
   appearanceId: AppearanceId
   record: GroupRecord
+  measureRef?: (node: HTMLDivElement | null) => void
 }) => {
   const controller = useGalleryContext()
   const viewId = controller.currentView.view.id
   const titleProperty = controller.titleProperty
   const properties = controller.properties
   const selected = controller.selectedIdSet.has(props.appearanceId)
-  const marqueeSelected = controller.marqueeIdSet.has(props.appearanceId)
   const active = controller.drag.activeId === props.appearanceId
   const draggingSelected = controller.drag.activeId !== undefined
     && controller.drag.dragIdSet.has(props.appearanceId)
@@ -82,6 +84,9 @@ const GalleryCardContent = (props: {
 
   return (
     <div
+      ref={node => {
+        props.measureRef?.(node)
+      }}
       {...{
         [DATAVIEW_APPEARANCE_ID_ATTR]: props.appearanceId
       }}
@@ -134,8 +139,7 @@ const GalleryCardContent = (props: {
         slots={{
           root: cn(
             'relative h-full rounded-lg p-3 transition-colors ui-shadow-sm ui-card-bg',
-            selected && 'border-primary bg-primary/[0.05]',
-            !selected && marqueeSelected && 'border-primary/40 bg-primary/[0.04]'
+            selected && 'border-primary bg-primary/[0.05]'
           ),
           title: {
             row: 'flex min-w-0 items-start gap-2.5 pb-2',

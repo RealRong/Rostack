@@ -7,10 +7,8 @@ import type {
 import type {
   InteractionSession,
   InteractionSessionTransition
-} from '../../runtime/interaction'
-import {
-  createEdgeMoveGesture
-} from '../../runtime/interaction'
+} from '../../runtime/interaction/types'
+import { createEdgeGesture } from '../../runtime/interaction/gesture'
 import type { EdgeInteractionCtx } from './types'
 
 type EdgeBodyMoveState = {
@@ -18,11 +16,6 @@ type EdgeBodyMoveState = {
   pointerId: number
   start: Point
   delta: Point
-}
-
-type PointerClient = {
-  clientX: number
-  clientY: number
 }
 
 const FINISH = {
@@ -33,59 +26,15 @@ const CANCEL = {
   kind: 'cancel'
 } satisfies InteractionSessionTransition
 
-const readViewport = (
-  ctx: EdgeInteractionCtx
-) => ctx.read.viewport
+const readMovableEdge = (
+  ctx: EdgeInteractionCtx,
+  edgeId: EdgeId
+) => {
+  const item = ctx.read.edge.item.get(edgeId)
 
-const projectBodyMove = ({
-  ctx,
-  state,
-  input
-}: {
-  ctx: EdgeInteractionCtx
-  state: EdgeBodyMoveState
-  input: PointerClient
-}) => {
-  const item = ctx.read.edge.item.get(state.edgeId)
-  if (!item || !ctx.read.edge.capability(item.edge).move) {
-    return {
-      ok: false as const,
-      state
-    }
-  }
-
-  const { world } = readViewport(ctx).pointer(input)
-  const delta = {
-    x: world.x - state.start.x,
-    y: world.y - state.start.y
-  }
-  if (isPointEqual(delta, state.delta)) {
-    return {
-      ok: true as const,
-      state
-    }
-  }
-
-  return {
-    ok: true as const,
-    state: {
-      ...state,
-      delta
-    },
-    patch: moveEdge(item.edge, delta)
-  }
-}
-
-const commitBodyMove = ({
-  ctx,
-  state
-}: {
-  ctx: EdgeInteractionCtx
-  state: EdgeBodyMoveState
-}) => {
-  if (!isPointEqual(state.delta, { x: 0, y: 0 })) {
-    ctx.write.document.edge.move(state.edgeId, state.delta)
-  }
+  return item && ctx.read.edge.capability(item.edge).move
+    ? item.edge
+    : undefined
 }
 
 export const createEdgeBodyMoveSession = (
@@ -105,28 +54,36 @@ export const createEdgeBodyMoveSession = (
   let interaction = null as InteractionSession | null
 
   const step = (
-    pointer: PointerClient
+    world: Point
   ): InteractionSessionTransition | void => {
-    const result = projectBodyMove({
-      ctx,
-      state,
-      input: pointer
-    })
-    if (!result.ok) {
+    const edge = readMovableEdge(ctx, state.edgeId)
+    if (!edge) {
       return CANCEL
     }
 
-    if (result.state !== state) {
-      state = result.state
-      interaction!.gesture = createEdgeMoveGesture({
-        draft: {
-          patches: [{
-            id: state.edgeId,
-            patch: result.patch
-          }]
-        }
-      })
+    const delta = {
+      x: world.x - state.start.x,
+      y: world.y - state.start.y
     }
+    if (isPointEqual(delta, state.delta)) {
+      return
+    }
+
+    const patch = moveEdge(edge, delta)
+    state = {
+      ...state,
+      delta
+    }
+
+    interaction!.gesture = createEdgeGesture(
+      'edge-move',
+      {
+        patches: [{
+          id: state.edgeId,
+          patch
+        }]
+      }
+    )
   }
 
   interaction = {
@@ -134,30 +91,24 @@ export const createEdgeBodyMoveSession = (
     pointerId: state.pointerId,
     gesture: null,
     autoPan: {
-      frame: (pointer) => step(pointer)
+      frame: (pointer) => step(ctx.read.viewport.pointer(pointer).world)
     },
     move: (input) => {
-      const transition = step({
-        clientX: input.client.x,
-        clientY: input.client.y
-      })
+      const transition = step(input.world)
       if (transition) {
         return transition
       }
     },
     up: (input) => {
-      const transition = step({
-        clientX: input.client.x,
-        clientY: input.client.y
-      })
+      const transition = step(input.world)
       if (transition) {
         return transition
       }
 
-      commitBodyMove({
-        ctx,
-        state
-      })
+      if (!isPointEqual(state.delta, { x: 0, y: 0 })) {
+        ctx.write.document.edge.move(state.edgeId, state.delta)
+      }
+
       return FINISH
     },
     cleanup: () => {}

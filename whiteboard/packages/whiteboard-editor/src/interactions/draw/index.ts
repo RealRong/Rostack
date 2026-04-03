@@ -1,18 +1,18 @@
 import type {
   InteractionBinding
-} from '../../runtime/interaction'
-import type { InteractionCtx } from '../../runtime/interaction/ctx'
+} from '../../runtime/interaction/types'
+import type { InteractionContext } from '../context'
 import {
   createStrokeSession,
-  startStrokeState,
+  startStrokeState
 } from './stroke'
 import {
   createEraseSession,
-  startEraseState,
+  startEraseState
 } from './erase'
 
 type DrawInteractionCtx = Pick<
-  InteractionCtx,
+  InteractionContext,
   'read' | 'write'
 >
 

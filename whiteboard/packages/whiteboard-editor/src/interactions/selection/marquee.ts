@@ -1,34 +1,27 @@
 import {
-  createMarqueeItemsKey,
-  finishMarqueeSession,
-  startMarqueeSession,
-  stepMarqueeSession,
+  createMarqueeRect,
+  finishMarqueeSelection,
+  startMarqueeSelection,
+  stepMarqueeSelection,
   type SelectionMarqueeDecision,
   type SelectionTarget
 } from '@whiteboard/core/selection'
+import type { Rect } from '@whiteboard/core/types'
 import {
-  applySelection,
-  type SelectionMode
-} from '@whiteboard/core/node'
-import type { EdgeId, NodeId, Rect } from '@whiteboard/core/types'
-import {
-  createMarqueeGesture,
-  GestureTuning,
-  type InteractionCtx,
-  type InteractionSession,
-  type InteractionSessionTransition
-} from '../../runtime/interaction'
+  createSelectionGesture
+} from '../../runtime/interaction/gesture'
+import { GestureTuning } from '../../runtime/interaction/config'
+import type { InteractionContext } from '../context'
+import type {
+  InteractionSession,
+  InteractionSessionTransition
+} from '../../runtime/interaction/types'
 import type { PointerDownInput } from '../../types/input'
 
 type SelectionInteractionCtx = Pick<
-  InteractionCtx,
+  InteractionContext,
   'read' | 'write' | 'config' | 'snap'
 >
-
-type MarqueeItems = {
-  nodeIds: readonly NodeId[]
-  edgeIds: readonly EdgeId[]
-}
 
 type MarqueePointer = Pick<PointerDownInput, 'screen' | 'world'>
 
@@ -37,34 +30,13 @@ type MarqueeInteractionInput = {
   action: SelectionMarqueeDecision
 }
 
-const applyMatchedSelection = (
-  base: SelectionTarget,
-  matched: SelectionTarget,
-  mode: SelectionMode
-): SelectionTarget => ({
-  nodeIds: [
-    ...applySelection(
-      new Set(base.nodeIds),
-      [...matched.nodeIds],
-      mode
-    )
-  ],
-  edgeIds: [
-    ...applySelection(
-      new Set(base.edgeIds),
-      [...matched.edgeIds],
-      mode
-    )
-  ]
-})
-
-const readMatchedItems = (
+const readMatchedSelection = (
   input: {
     ctx: SelectionInteractionCtx
     rect: Rect
     match: SelectionMarqueeDecision['match']
   }
-): MarqueeItems => ({
+): SelectionTarget => ({
   nodeIds: input.ctx.read.node.idsInRect(input.rect, {
     match: input.match,
     policy: 'selection-marquee'
@@ -72,37 +44,6 @@ const readMatchedItems = (
   edgeIds: input.ctx.read.edge.idsInRect(input.rect, {
     match: input.match
   })
-})
-
-const writeMatchedSelection = (
-  input: {
-    ctx: SelectionInteractionCtx
-    action: SelectionMarqueeDecision
-    items: MarqueeItems
-  }
-) => {
-  input.ctx.write.session.selection.replace(
-    applyMatchedSelection(
-      input.action.base,
-      {
-        nodeIds: input.items.nodeIds,
-        edgeIds: input.items.edgeIds
-      },
-      input.action.mode
-    )
-  )
-}
-
-const projectMarquee = (
-  input: {
-    state: ReturnType<typeof startMarqueeSession>
-    pointer: MarqueePointer
-  }
-) => stepMarqueeSession({
-  session: input.state,
-  currentScreen: input.pointer.screen,
-  currentWorld: input.pointer.world,
-  minDistance: GestureTuning.dragMinDistance
 })
 
 export const createMarqueeInteraction = (
@@ -113,14 +54,16 @@ export const createMarqueeInteraction = (
     kind: 'finish'
   } satisfies InteractionSessionTransition
 
-  let state = startMarqueeSession({
+  let state = startMarqueeSelection({
     pointerId: input.start.pointerId,
     startScreen: input.start.screen,
     startWorld: input.start.world,
-    match: input.action.match
+    match: input.action.match,
+    mode: input.action.mode,
+    base: input.action.base
   })
-  let emittedKey = ''
   let interaction = null as InteractionSession | null
+
   if (input.action.clearOnStart) {
     ctx.write.session.selection.clear()
   }
@@ -128,44 +71,39 @@ export const createMarqueeInteraction = (
   const step = (
     pointer: MarqueePointer
   ) => {
-    const result = projectMarquee({
+    const result = stepMarqueeSelection({
       state,
-      pointer
+      currentScreen: pointer.screen,
+      currentWorld: pointer.world,
+      minDistance: GestureTuning.dragMinDistance,
+      matched: readMatchedSelection({
+        ctx,
+        rect: createMarqueeRect(state.startWorld, pointer.world),
+        match: input.action.match
+      })
     })
-    state = result.session
-    if (!result.active || !result.worldRect) {
+    state = result.state
+    if (!result.draft.active || !result.draft.worldRect) {
       return false
     }
 
-    const worldRect = result.worldRect
-    const matched = readMatchedItems({
-      ctx,
-      rect: worldRect,
-      match: input.action.match
-    })
-    const nextKey = createMarqueeItemsKey(matched)
-
-    if (nextKey !== emittedKey) {
-      emittedKey = nextKey
-      writeMatchedSelection({
-        ctx,
-        action: input.action,
-        items: matched
-      })
+    if (result.draft.changed && result.draft.selection) {
+      ctx.write.session.selection.replace(result.draft.selection)
     }
 
-    interaction!.gesture = createMarqueeGesture({
-      draft: {
+    interaction!.gesture = createSelectionGesture(
+      'selection-marquee',
+      {
         nodePatches: [],
         edgePatches: [],
         frameHoverId: undefined,
         guides: [],
         marquee: {
-          worldRect,
+          worldRect: result.draft.worldRect,
           match: input.action.match
         }
       }
-    })
+    )
 
     return true
   }
@@ -192,27 +130,8 @@ export const createMarqueeInteraction = (
       step(next)
     },
     up: (next) => {
-      const finalState = projectMarquee({
-        state,
-        pointer: next
-      })
-      state = finalState.session
-
-      const finished = finishMarqueeSession(state)
-      if (!finished.active || !finished.worldRect) {
-        return FINISH
-      }
-
-      const matched = readMatchedItems({
-        ctx,
-        rect: finished.worldRect,
-        match: input.action.match
-      })
-      writeMatchedSelection({
-        ctx,
-        action: input.action,
-        items: matched
-      })
+      step(next)
+      finishMarqueeSelection(state)
       return FINISH
     },
     cleanup: () => {}

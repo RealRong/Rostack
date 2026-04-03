@@ -1,31 +1,39 @@
 import { rectFromPoints } from '../geometry'
 import type {
-  EdgeId,
-  NodeId,
   Point,
   Rect
 } from '../types'
-
-export type SelectionMarqueeItems = {
-  nodeIds: readonly NodeId[]
-  edgeIds: readonly EdgeId[]
-}
+import {
+  applySelectionTarget,
+  isSelectionTargetEqual,
+  type SelectionTarget
+} from './target'
+import type { SelectionMode } from '../node/selection'
 
 export type MarqueeMatch = 'touch' | 'contain'
 
-export type MarqueeSession = {
+export type MarqueeSelectionState = {
   pointerId: number
   startScreen: Point
   startWorld: Point
   match: MarqueeMatch
+  mode: SelectionMode
+  base: SelectionTarget
   active: boolean
   worldRect?: Rect
+  selection: SelectionTarget
 }
 
-export type MarqueeStepResult = {
-  session: MarqueeSession
+export type MarqueeSelectionDraft = {
   active: boolean
   worldRect?: Rect
+  selection?: SelectionTarget
+  changed: boolean
+}
+
+export type MarqueeSelectionStepResult = {
+  state: MarqueeSelectionState
+  draft: MarqueeSelectionDraft
 }
 
 export const createMarqueeRect = (
@@ -49,65 +57,85 @@ export const hasMarqueeStarted = (options: {
   return dx >= options.minDistance || dy >= options.minDistance
 }
 
-export const createMarqueeItemsKey = (
-  items: SelectionMarqueeItems
-) => [
-  [...items.nodeIds].sort().join('|'),
-  [...items.edgeIds].sort().join('|')
-].join('::')
-
-export const startMarqueeSession = (input: {
-  pointerId: number
-  startScreen: Point
-  startWorld: Point
-  match: MarqueeMatch
-}): MarqueeSession => ({
+export const startMarqueeSelection = (
+  input: {
+    pointerId: number
+    startScreen: Point
+    startWorld: Point
+    match: MarqueeMatch
+    mode: SelectionMode
+    base: SelectionTarget
+  }
+): MarqueeSelectionState => ({
   pointerId: input.pointerId,
   startScreen: input.startScreen,
   startWorld: input.startWorld,
   match: input.match,
-  active: false
+  mode: input.mode,
+  base: input.base,
+  active: false,
+  selection: input.base
 })
 
-export const stepMarqueeSession = (input: {
-  session: MarqueeSession
-  currentScreen: Point
-  currentWorld: Point
-  minDistance: number
-}): MarqueeStepResult => {
+export const stepMarqueeSelection = (
+  input: {
+    state: MarqueeSelectionState
+    currentScreen: Point
+    currentWorld: Point
+    minDistance: number
+    matched: SelectionTarget
+  }
+): MarqueeSelectionStepResult => {
   const active = hasMarqueeStarted({
-    startScreen: input.session.startScreen,
+    startScreen: input.state.startScreen,
     currentScreen: input.currentScreen,
     minDistance: input.minDistance,
-    active: input.session.active
+    active: input.state.active
   })
   if (!active) {
     return {
-      session: input.session,
-      active: false
+      state: input.state,
+      draft: {
+        active: false,
+        changed: false
+      }
     }
   }
 
   const worldRect = createMarqueeRect(
-    input.session.startWorld,
+    input.state.startWorld,
     input.currentWorld
   )
-  const session = {
-    ...input.session,
+  const selection = applySelectionTarget(
+    input.state.base,
+    input.matched,
+    input.state.mode
+  )
+  const state = {
+    ...input.state,
     active: true,
-    worldRect
-  } satisfies MarqueeSession
+    worldRect,
+    selection
+  } satisfies MarqueeSelectionState
 
   return {
-    session,
-    active: true,
-    worldRect
+    state,
+    draft: {
+      active: true,
+      worldRect,
+      selection,
+      changed: !isSelectionTargetEqual(input.state.selection, selection)
+    }
   }
 }
 
-export const finishMarqueeSession = (
-  session: MarqueeSession
-) => ({
-  active: session.active,
-  worldRect: session.worldRect
-})
+export const finishMarqueeSelection = (
+  state: MarqueeSelectionState
+): MarqueeSelectionDraft => ({
+    active: state.active,
+    worldRect: state.worldRect,
+    selection: state.active
+      ? state.selection
+      : undefined,
+    changed: false
+  })

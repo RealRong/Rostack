@@ -2,19 +2,19 @@ import {
   createRootDrag,
   createSubtreeDrag,
   projectMindmapDrag,
-  type MindmapDragSession as CoreMindmapDragState
+  type MindmapDragState as CoreMindmapDragState
 } from '@whiteboard/core/mindmap'
 import type { Point } from '@whiteboard/core/types'
 import type {
   InteractionBinding,
   InteractionSession
-} from '../runtime/interaction'
-import type { InteractionCtx } from '../runtime/interaction'
+} from '../runtime/interaction/types'
+import type { InteractionContext } from './context'
 import type { MindmapDragFeedback } from '../runtime/overlay'
 import type { PointerDownInput } from '../types/input'
 
 type MindmapInteractionCtx = Pick<
-  InteractionCtx,
+  InteractionContext,
   'read' | 'write' | 'config'
 >
 

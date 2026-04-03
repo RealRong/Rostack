@@ -84,15 +84,15 @@ export type {
   MoveSet
 } from './move'
 export {
-  finishMoveSession,
-  startMoveSession,
-  stepMoveSession
-} from './moveSession'
+  finishMoveState,
+  startMoveState,
+  stepMoveState
+} from './moveState'
 export type {
-  MoveSession,
+  MoveState,
   MoveSnapResolver,
   MoveStepResult
-} from './moveSession'
+} from './moveState'
 export { deriveCanvasNodes, deriveVisibleNodes } from './visibility'
 export {
   deriveNodeReadSlices,
@@ -106,11 +106,14 @@ export {
   buildTransformHandles,
   computeNextRotation,
   computeResizeRect,
+  finishTransform,
   getResizeUpdateRect,
   projectResizePatches,
   projectResizeTransformPatches,
   projectRotateTransformPatches,
   resolveSelectionTransformTargets,
+  startTransform,
+  stepTransform,
   getResizeSourceEdges,
   resizeHandleMap,
   toTransformCommitPatch,
@@ -124,11 +127,21 @@ export type {
   ResizeDirection,
   RotateGestureInput,
   RotateGestureSnapshot,
+  TransformCommit,
   TransformCommitUpdate,
+  TransformDraft,
+  TransformModifiers,
   TransformSelectionMember,
+  TransformResizeSnapInput,
+  TransformResizeSnapResolver,
+  TransformResizeSnapResult,
   TransformSelectionTargets,
   TransformPreviewPatch,
   TransformProjectionMember,
+  TransformSpec,
+  TransformState,
+  TransformStepInput,
+  TransformStepResult,
   TransformHandle,
   VerticalResizeEdge
 } from './transform'

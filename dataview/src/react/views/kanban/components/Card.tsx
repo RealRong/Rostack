@@ -33,7 +33,6 @@ export const Card = (props: {
   const record = useKeyedStoreValue(engine.read.record, props.record.id) ?? props.record
   const titleProperty = controller.titleProperty
   const selected = controller.selection.selectedIdSet.has(props.appearanceId)
-  const marqueeSelected = controller.selection.marqueeIdSet.has(props.appearanceId)
   const active = controller.drag.activeId === props.appearanceId
   const draggingSelected = controller.drag.activeId !== undefined
     && controller.drag.dragIdSet.has(props.appearanceId)
@@ -103,8 +102,7 @@ export const Card = (props: {
         slots={{
           root: cn(
             'ui-surface-content relative rounded-2xl px-4 py-2.5 transition-colors',
-            selected && 'border-primary bg-primary/[0.05]',
-            !selected && marqueeSelected && 'border-primary/40 bg-primary/[0.04]'
+            selected && 'border-primary bg-primary/[0.05]'
           ),
           title: {
             text: 'text-[15px] font-semibold leading-5',

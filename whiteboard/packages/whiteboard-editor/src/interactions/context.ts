@@ -1,8 +1,8 @@
 import type { BoardConfig } from '@whiteboard/core/config'
-import type { Editor } from '../../types/editor'
-import type { SnapRuntime } from './snap'
+import type { Editor } from '../types/editor'
+import type { SnapRuntime } from '../runtime/interaction/snap'
 
-export type InteractionCtx = {
+export type InteractionContext = {
   read: Editor['read']
   write: Editor['write']
   config: Readonly<BoardConfig>

@@ -1,10 +1,10 @@
-import type { InteractionBinding } from '../runtime/interaction'
-import type { InteractionCtx } from '../runtime/interaction/ctx'
+import type { InteractionContext } from './context'
+import type { InteractionBinding } from '../runtime/interaction/types'
 import type { InsertPresetKey } from '../types/tool'
 import { selectTool } from '../tool/model'
 
 export const createInsertInteraction = (
-  editor: Pick<InteractionCtx, 'read' | 'write'>
+  editor: Pick<InteractionContext, 'read' | 'write'>
 ): InteractionBinding => ({
   key: 'insert.preset',
   start: (start) => {

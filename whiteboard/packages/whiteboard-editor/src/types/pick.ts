@@ -6,26 +6,24 @@ import type {
   NodeId
 } from '@whiteboard/core/types'
 
+export type TransformPickHandle = {
+  id: TransformHandle['id']
+  kind: TransformHandle['kind']
+  direction?: TransformHandle['direction']
+}
+
 export type EditorPick =
   | { kind: 'background' }
   | {
       kind: 'selection-box'
       part: 'body' | 'transform'
-      handle?: {
-        id: TransformHandle['id']
-        kind: TransformHandle['kind']
-        direction?: TransformHandle['direction']
-      }
+      handle?: TransformPickHandle
     }
   | {
       kind: 'node'
       id: NodeId
       part: 'body' | 'shell' | 'transform' | 'connect'
-      handle?: {
-        id: TransformHandle['id']
-        kind: TransformHandle['kind']
-        direction?: TransformHandle['direction']
-      }
+      handle?: TransformPickHandle
       side?: EdgeAnchor['side']
     }
   | {

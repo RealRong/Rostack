@@ -123,6 +123,7 @@ export const insertRoutePoint = (
   nextPoints.splice(nextInsertIndex, 0, pointWorld)
   return ok({
     index: nextInsertIndex,
+    point: pointWorld,
     patch: createRoutePatch(edge, nextPoints)
   })
 }

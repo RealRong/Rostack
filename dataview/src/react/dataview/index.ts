@@ -20,6 +20,12 @@ export type {
 } from '@dataview/engine'
 
 export type {
+  MarqueeAdapter,
+  MarqueeApi,
+  MarqueeMode,
+  MarqueeSessionState
+} from '@dataview/react/runtime/marquee'
+export type {
   InlineSessionApi,
   InlineSessionTarget
 } from '@dataview/react/runtime/inlineSession'

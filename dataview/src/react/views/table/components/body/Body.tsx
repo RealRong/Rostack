@@ -31,8 +31,7 @@ import { useRowMarquee } from '../../hooks/useRowMarquee'
 import { useRowReorder } from '../../hooks/useRowReorder'
 import { usePointer } from '../../hooks/usePointer'
 import { RowDropIndicator } from '../overlay/RowDropIndicator'
-import { FlatContent } from './FlatContent'
-import { GroupedContent } from './GroupedContent'
+import { BlockContent } from './BlockContent'
 import { MarqueeOverlay } from '../overlay/MarqueeOverlay'
 import { Surface } from './Surface'
 
@@ -167,31 +166,19 @@ const View = () => {
               width={Math.max(0, gridBounds.right - gridBounds.left)}
             />
           ) : null}
-          {currentView.view.query.group ? (
-            <GroupedContent
-              sections={currentView.sections}
-              columns={columns}
-              template={template}
-              marqueeActive={marquee.active}
-              dragActive={rowReorder.active}
-              dragIdSet={rowReorder.dragIdSet}
-              onDragStart={rowReorder.startDrag}
-              resizingPropertyId={columnResize.preview?.propertyId}
-              onResizeStart={columnResize.onResizeStart}
-            />
-          ) : (
-            <FlatContent
-              rowIds={currentView.appearances.ids}
-              columns={columns}
-              template={template}
-              marqueeActive={marquee.active}
-              dragActive={rowReorder.active}
-              dragIdSet={rowReorder.dragIdSet}
-              onDragStart={rowReorder.startDrag}
-              resizingPropertyId={columnResize.preview?.propertyId}
-              onResizeStart={columnResize.onResizeStart}
-            />
-          )}
+          <BlockContent
+            grouped={Boolean(currentView.view.query.group)}
+            rowIds={currentView.appearances.ids}
+            sections={currentView.sections}
+            columns={columns}
+            template={template}
+            marqueeActive={marquee.active}
+            dragActive={rowReorder.active}
+            dragIdSet={rowReorder.dragIdSet}
+            onDragStart={rowReorder.startDrag}
+            resizingPropertyId={columnResize.preview?.propertyId}
+            onResizeStart={columnResize.onResizeStart}
+          />
         </Surface>
       </DndContext>
       <DragGhost

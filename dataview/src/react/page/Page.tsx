@@ -5,7 +5,8 @@ import { ViewQueryBar } from '@dataview/react/page/features/viewQuery/ViewQueryB
 import {
   PageInlineSessionHost,
   PageInteractionHost,
-  PageKeyboardHost
+  PageKeyboardHost,
+  PageMarqueeHost
 } from '@dataview/react/page/hosts'
 import { PropertyValueEditorHost } from '@dataview/react/runtime/valueEditor'
 import { PageBody, type PageBodyProps } from './Body'
@@ -58,6 +59,7 @@ export const Page = (props: PageProps) => {
         </div>
         <PageInteractionHost />
         <PageInlineSessionHost />
+        <PageMarqueeHost />
         <PageKeyboardHost />
         <PropertyValueEditorHost />
       </div>

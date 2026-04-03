@@ -8,7 +8,7 @@ import type {
   MindmapTree
 } from './types'
 import type {
-  MindmapDragSession,
+  MindmapDragState,
   RootMindmapDrag,
   SubtreeDropTargetOptions,
   SubtreeMindmapDrag
@@ -359,10 +359,10 @@ const projectSubtreeDrop = (
 )
 
 export const projectMindmapDrag = (options: {
-  active: MindmapDragSession
+  active: MindmapDragState
   world: Point
   treeView?: MindmapTreeView
-}): MindmapDragSession => {
+}): MindmapDragState => {
   const {
     active,
     world,

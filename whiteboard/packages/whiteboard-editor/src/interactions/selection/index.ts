@@ -1,11 +1,11 @@
 import type {
-  InteractionBinding,
-  InteractionCtx
-} from '../../runtime/interaction'
+  InteractionBinding
+} from '../../runtime/interaction/types'
+import type { InteractionContext } from '../context'
 import { startSelectionPress } from './press'
 
 type SelectionInteractionCtx = Pick<
-  InteractionCtx,
+  InteractionContext,
   'read' | 'write' | 'config' | 'snap'
 >
 

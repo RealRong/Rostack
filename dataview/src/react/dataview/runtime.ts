@@ -38,6 +38,10 @@ import {
   createValueEditorApi,
   type ValueEditorController
 } from '@dataview/react/runtime/valueEditor'
+import {
+  createMarqueeApi,
+  type MarqueeApi
+} from '@dataview/react/runtime/marquee'
 
 export interface DataViewContextValue {
   engine: GroupEngine
@@ -46,6 +50,7 @@ export interface DataViewContextValue {
     store: ReadStore<ResolvedPageState>
   }
   selection: SelectionApi
+  marquee: MarqueeApi
   inlineSession: InlineSessionApi
   valueEditor: ValueEditorController
 }
@@ -131,12 +136,33 @@ const bindInlineSessionToSelection = (input: {
   })
 ])
 
+const bindMarqueeToCurrentView = (input: {
+  currentView: ReadStore<CurrentView | undefined>
+  marquee: MarqueeApi
+}) => {
+  const sync = () => {
+    const session = input.marquee.get()
+    if (!session) {
+      return
+    }
+
+    const view = input.currentView.get()
+    if (!view || view.view.id !== session.ownerViewId) {
+      input.marquee.clear()
+    }
+  }
+
+  sync()
+  return input.currentView.subscribe(sync)
+}
+
 export const createDataViewRuntime = (input: {
   engine: GroupEngine
   initialPage?: PageSessionInput
 }): DataViewRuntime => {
   const page = createPageSessionApi(input.initialPage)
   const selectionStore = createSelectionStore()
+  const marquee = createMarqueeApi()
   const inlineSession = createInlineSessionApi()
   const valueEditor = createValueEditorApi()
   const currentView = createCurrentViewStore({
@@ -161,6 +187,10 @@ export const createDataViewRuntime = (input: {
       currentView,
       selection
     }),
+    bindMarqueeToCurrentView({
+      currentView,
+      marquee
+    }),
     bindInlineSessionToSelection({
       selection,
       inlineSession
@@ -179,6 +209,7 @@ export const createDataViewRuntime = (input: {
       store: pageStateStore
     },
     selection,
+    marquee,
     inlineSession,
     valueEditor,
     dispose: () => {

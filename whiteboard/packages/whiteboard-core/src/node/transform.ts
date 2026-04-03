@@ -17,6 +17,7 @@ import {
   isContainerNode
 } from './group'
 import { filterRootIds } from './owner'
+import type { Guide } from './snap'
 
 type ResizeHandleMeta = {
   sx: -1 | 0 | 1
@@ -101,6 +102,106 @@ export type TransformCommitUpdate = {
   update: {
     fields: NodeFieldPatch
   }
+}
+
+export type TransformModifiers = {
+  alt: boolean
+  shift: boolean
+}
+
+export type TransformResizeSnapInput = {
+  rect: Rect
+  source: {
+    x?: HorizontalResizeEdge
+    y?: VerticalResizeEdge
+  }
+  minSize: Size
+  excludeIds: readonly NodeId[]
+  disabled: boolean
+}
+
+export type TransformResizeSnapResult = {
+  rect: Rect
+  guides: readonly Guide[]
+}
+
+export type TransformResizeSnapResolver = (
+  input: TransformResizeSnapInput
+) => TransformResizeSnapResult
+
+export type TransformSpec<TNode extends Node> =
+  | {
+      kind: 'single-resize'
+      pointerId: number
+      target: TransformSelectionMember<TNode>
+      handle: ResizeDirection
+      rotation: number
+      startScreen: Point
+    }
+  | {
+      kind: 'single-rotate'
+      pointerId: number
+      target: TransformSelectionMember<TNode>
+      rotation: number
+      startWorld: Point
+    }
+  | {
+      kind: 'multi-scale'
+      pointerId: number
+      box: Rect
+      targets: readonly TransformSelectionMember<TNode>[]
+      commitIds: ReadonlySet<NodeId>
+      handle: ResizeDirection
+      startScreen: Point
+    }
+
+type TransformStateBase<TNode extends Node> = {
+  pointerId: number
+  patches: readonly TransformPreviewPatch[]
+  commitTargets: readonly TransformSelectionMember<TNode>[]
+  commitIds?: ReadonlySet<NodeId>
+}
+
+export type TransformState<TNode extends Node> =
+  | (TransformStateBase<TNode> & {
+      kind: 'single-resize'
+      target: TransformSelectionMember<TNode>
+      drag: ResizeGestureSnapshot
+    })
+  | (TransformStateBase<TNode> & {
+      kind: 'single-rotate'
+      target: TransformSelectionMember<TNode>
+      drag: RotateGestureSnapshot
+    })
+  | (TransformStateBase<TNode> & {
+      kind: 'multi-scale'
+      box: Rect
+      targets: readonly TransformSelectionMember<TNode>[]
+      drag: ResizeGestureSnapshot
+    })
+
+export type TransformDraft = {
+  nodePatches: readonly TransformPreviewPatch[]
+  guides: readonly Guide[]
+}
+
+export type TransformCommit = readonly TransformCommitUpdate[]
+
+export type TransformStepInput<TNode extends Node> = {
+  state: TransformState<TNode>
+  screen: Point
+  world: Point
+  modifiers: TransformModifiers
+  zoom: number
+  minSize: Size
+  rotateSnapStep?: number
+  zoomEpsilon?: number
+  snap?: TransformResizeSnapResolver
+}
+
+export type TransformStepResult<TNode extends Node> = {
+  state: TransformState<TNode>
+  draft: TransformDraft
 }
 
 const ZOOM_EPSILON = 0.0001
@@ -304,6 +405,40 @@ export const computeResizeRect = (options: ResizeGestureInput) => {
   }
 }
 
+const createResizeDrag = (input: {
+  handle: ResizeDirection
+  rect: Rect
+  rotation: number
+  startScreen: Point
+}): ResizeGestureSnapshot => ({
+  handle: input.handle,
+  startScreen: input.startScreen,
+  startCenter: getRectCenter(input.rect),
+  startRotation: input.rotation,
+  startSize: {
+    width: input.rect.width,
+    height: input.rect.height
+  },
+  startAspect: input.rect.width / Math.max(input.rect.height, ZOOM_EPSILON)
+})
+
+const createRotateDrag = (input: {
+  rect: Rect
+  rotation: number
+  startWorld: Point
+}): RotateGestureSnapshot => {
+  const center = getRectCenter(input.rect)
+
+  return {
+    center,
+    startAngle: Math.atan2(
+      input.startWorld.y - center.y,
+      input.startWorld.x - center.x
+    ),
+    startRotation: input.rotation
+  }
+}
+
 export const getResizeUpdateRect = (
   update: ResizeUpdate
 ): Rect => ({
@@ -376,6 +511,58 @@ export const projectRotateTransformPatches = (options: {
   id: options.targetId,
   rotation: options.rotation
 }]
+
+export const startTransform = <
+  TNode extends Node
+>(
+  spec: TransformSpec<TNode>
+): TransformState<TNode> => {
+  switch (spec.kind) {
+    case 'single-resize':
+      return {
+        kind: 'single-resize',
+        pointerId: spec.pointerId,
+        target: spec.target,
+        drag: createResizeDrag({
+          handle: spec.handle,
+          rect: spec.target.rect,
+          rotation: spec.rotation,
+          startScreen: spec.startScreen
+        }),
+        patches: [],
+        commitTargets: [spec.target]
+      }
+    case 'single-rotate':
+      return {
+        kind: 'single-rotate',
+        pointerId: spec.pointerId,
+        target: spec.target,
+        drag: createRotateDrag({
+          rect: spec.target.rect,
+          rotation: spec.rotation,
+          startWorld: spec.startWorld
+        }),
+        patches: [],
+        commitTargets: [spec.target]
+      }
+    case 'multi-scale':
+      return {
+        kind: 'multi-scale',
+        pointerId: spec.pointerId,
+        box: spec.box,
+        targets: spec.targets,
+        drag: createResizeDrag({
+          handle: spec.handle,
+          rect: spec.box,
+          rotation: 0,
+          startScreen: spec.startScreen
+        }),
+        patches: [],
+        commitTargets: spec.targets,
+        commitIds: spec.commitIds
+      }
+  }
+}
 
 export const resolveSelectionTransformTargets = <
   TNode extends Pick<Node, 'id' | 'type' | 'children'>
@@ -457,6 +644,106 @@ export const computeNextRotation = (options: RotateGestureInput) => {
   return nextRotation
 }
 
+const stepResizeTransform = <
+  TNode extends Node
+>(
+  state: Extract<TransformState<TNode>, {
+    kind: 'single-resize' | 'multi-scale'
+  }>,
+  input: TransformStepInput<TNode>
+): TransformStepResult<TNode> => {
+  const rawRect = computeResizeRect({
+    drag: state.drag,
+    currentScreen: input.screen,
+    zoom: Math.max(input.zoom, input.zoomEpsilon ?? ZOOM_EPSILON),
+    minSize: input.minSize,
+    altKey: input.modifiers.alt,
+    shiftKey: input.modifiers.shift,
+    zoomEpsilon: input.zoomEpsilon
+  }).rect
+  const { sourceX, sourceY } = getResizeSourceEdges(state.drag.handle)
+  const snap = input.snap?.({
+    rect: rawRect,
+    source: {
+      x: sourceX,
+      y: sourceY
+    },
+    minSize: input.minSize,
+    excludeIds:
+      state.kind === 'single-resize'
+        ? [state.target.id]
+        : state.targets.map((target) => target.id),
+    disabled: input.modifiers.alt || state.drag.startRotation !== 0
+  })
+  const nextRect = snap?.rect ?? rawRect
+  const guides = snap?.guides ?? []
+  const patches = state.kind === 'single-resize'
+    ? projectResizeTransformPatches({
+        startRect: state.target.rect,
+        nextRect,
+        targets: [state.target]
+      })
+    : projectResizeTransformPatches({
+        startRect: state.box,
+        nextRect,
+        targets: state.targets
+      })
+
+  return {
+    state: {
+      ...state,
+      patches
+    },
+    draft: {
+      nodePatches: patches,
+      guides
+    }
+  }
+}
+
+const stepRotateTransform = <
+  TNode extends Node
+>(
+  state: Extract<TransformState<TNode>, { kind: 'single-rotate' }>,
+  input: TransformStepInput<TNode>
+): TransformStepResult<TNode> => {
+  const rotation = computeNextRotation({
+    drag: state.drag,
+    currentPoint: input.world,
+    shiftKey: input.modifiers.shift,
+    rotateSnapStep: input.rotateSnapStep
+  })
+  const patches = projectRotateTransformPatches({
+    targetId: state.target.id,
+    rotation
+  })
+
+  return {
+    state: {
+      ...state,
+      patches
+    },
+    draft: {
+      nodePatches: patches,
+      guides: []
+    }
+  }
+}
+
+export const stepTransform = <
+  TNode extends Node
+>(
+  input: TransformStepInput<TNode>
+): TransformStepResult<TNode> => {
+  switch (input.state.kind) {
+    case 'single-resize':
+    case 'multi-scale':
+      return stepResizeTransform(input.state, input)
+    case 'single-rotate':
+      return stepRotateTransform(input.state, input)
+  }
+}
+
 export const buildTransformCommitUpdates = (options: {
   targets: readonly {
     id: NodeId
@@ -498,3 +785,13 @@ export const buildTransformCommitUpdates = (options: {
     }]
   })
 }
+
+export const finishTransform = <
+  TNode extends Node
+>(
+  state: TransformState<TNode>
+): TransformCommit => buildTransformCommitUpdates({
+    targets: state.commitTargets,
+    patches: state.patches,
+    commitTargetIds: state.commitIds
+  })

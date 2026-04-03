@@ -1,13 +1,12 @@
 import {
-  useCallback,
-  useEffect,
   useMemo,
-  useReducer,
-  useRef,
   type RefObject
 } from 'react'
 import { useViewportVersion } from '@dataview/react/dom/viewport'
 import type { AppearanceId } from '@dataview/react/runtime/currentView'
+import {
+  useMeasuredHeights
+} from '@dataview/react/virtual'
 
 const DEFAULT_CARD_HEIGHT = 96
 const DEFAULT_GAP = 8
@@ -76,78 +75,15 @@ export const useColumnVirtual = (options: Options) => {
   const gap = options.gap ?? DEFAULT_GAP
   const overscan = options.overscan ?? DEFAULT_OVERSCAN
   const viewportVersion = useViewportVersion(options.bodyRef)
-  const [measureVersion, bumpVersion] = useReducer((value: number) => value + 1, 0)
-  const heightMapRef = useRef<Map<AppearanceId, number>>(new Map())
-  const observerMapRef = useRef<Map<AppearanceId, ResizeObserver>>(new Map())
-  const nodeMapRef = useRef<Map<AppearanceId, HTMLElement>>(new Map())
-
-  useEffect(() => {
-    const cardIdSet = new Set(options.ids)
-
-    Array.from(observerMapRef.current.entries()).forEach(([cardId, observer]) => {
-      if (cardIdSet.has(cardId)) {
-        return
-      }
-
-      observer.disconnect()
-      observerMapRef.current.delete(cardId)
-      nodeMapRef.current.delete(cardId)
-    })
-  }, [options.ids])
-
-  useEffect(() => {
-    return () => {
-      observerMapRef.current.forEach(observer => observer.disconnect())
-      observerMapRef.current.clear()
-      nodeMapRef.current.clear()
-    }
-  }, [])
-
-  const measure = useCallback((cardId: AppearanceId) => {
-    return (node: HTMLDivElement | null) => {
-      const previousObserver = observerMapRef.current.get(cardId)
-      if (previousObserver) {
-        previousObserver.disconnect()
-        observerMapRef.current.delete(cardId)
-      }
-
-      nodeMapRef.current.delete(cardId)
-
-      if (!node) {
-        return
-      }
-
-      const updateHeight = (height: number) => {
-        const normalized = Math.max(1, Math.round(height))
-        if (heightMapRef.current.get(cardId) === normalized) {
-          return
-        }
-
-        heightMapRef.current.set(cardId, normalized)
-        bumpVersion()
-      }
-
-      updateHeight(node.getBoundingClientRect().height)
-      const observer = new ResizeObserver(entries => {
-        const entry = entries[0]
-        if (!entry) {
-          return
-        }
-
-        updateHeight(entry.contentRect.height)
-      })
-
-      observer.observe(node)
-      observerMapRef.current.set(cardId, observer)
-      nodeMapRef.current.set(cardId, node)
-    }
-  }, [])
+  const measured = useMeasuredHeights({
+    ids: options.ids
+  })
 
   const items = useMemo<readonly VirtualCardLayout[]>(() => {
     let top = 0
 
     return options.ids.map((id, index) => {
-      const height = heightMapRef.current.get(id) ?? estimatedHeight
+      const height = measured.heightById.get(id) ?? estimatedHeight
       const item: VirtualCardLayout = {
         id,
         top,
@@ -157,7 +93,7 @@ export const useColumnVirtual = (options: Options) => {
       top += height + (index < options.ids.length - 1 ? gap : 0)
       return item
     })
-  }, [estimatedHeight, gap, measureVersion, options.ids])
+  }, [estimatedHeight, gap, measured.heightById, options.ids])
 
   const totalHeight = useMemo(
     () => items.length ? items[items.length - 1]!.top + items[items.length - 1]!.height : 0,
@@ -198,6 +134,6 @@ export const useColumnVirtual = (options: Options) => {
     layouts,
     positionById,
     totalHeight,
-    measure
+    measure: measured.measure
   }
 }

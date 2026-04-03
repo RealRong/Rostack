@@ -1,10 +1,10 @@
 import type {
   NodeId
 } from '@whiteboard/core/types'
-import type { InteractionCtx } from '../../runtime/interaction/ctx'
+import type { InteractionContext } from '../context'
 
 export type EdgeInteractionCtx = Pick<
-  InteractionCtx,
+  InteractionContext,
   'read' | 'write' | 'config' | 'snap'
 >
 

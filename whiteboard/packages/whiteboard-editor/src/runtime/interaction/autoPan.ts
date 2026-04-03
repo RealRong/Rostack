@@ -1,12 +1,14 @@
 import { createRafTask } from '@whiteboard/engine'
 import type { Point } from '@whiteboard/core/types'
 import type { ViewportInputRuntime } from '../viewport'
-import type {
-  AutoPanOptions,
-  AutoPanPointer
-} from '../../types/runtime/interaction'
+import type { InteractionSession } from './types'
 
 type PanVector = Point
+type AutoPanPointer = {
+  clientX: number
+  clientY: number
+}
+type AutoPanOptions = NonNullable<InteractionSession['autoPan']>
 
 type AutoPanSessionState = {
   pointer: AutoPanPointer | null

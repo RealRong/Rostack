@@ -1,10 +1,16 @@
 import type { Rect } from '@dataview/dom/geometry'
-import type { AppearanceId } from '@dataview/react/runtime/currentView'
 import type {
-  GalleryLayout
-} from './layout'
+  AppearanceId,
+  SectionKey
+} from '@dataview/react/runtime/currentView'
+import type {
+  GalleryLayoutCache
+} from '../virtual'
+
+type GalleryCard = GalleryLayoutCache['cards'][number]
 
 export interface GalleryDropTarget {
+  sectionKey: SectionKey
   anchorId: AppearanceId
   side: 'left' | 'right'
   beforeAppearanceId?: AppearanceId
@@ -15,39 +21,17 @@ export interface GalleryDropTarget {
   }
 }
 
-const ROW_TOLERANCE = 16
 const EDGE_OFFSET = 8
 
-interface RowLayout {
-  cards: GalleryLayout['cards']
+interface RowHitLayout {
+  sectionKey: SectionKey
   top: number
   bottom: number
-}
-
-const groupRows = (cards: GalleryLayout['cards']) => {
-  return cards.reduce<RowLayout[]>((rows, card) => {
-    const current = rows[rows.length - 1]
-    if (!current || Math.abs(card.rect.top - current.top) > ROW_TOLERANCE) {
-      rows.push({
-        cards: [card],
-        top: card.rect.top,
-        bottom: card.rect.bottom
-      })
-      return rows
-    }
-
-    const nextCards = [...current.cards, card]
-    rows[rows.length - 1] = {
-      cards: nextCards,
-      top: Math.min(current.top, card.rect.top),
-      bottom: Math.max(current.bottom, card.rect.bottom)
-    }
-    return rows
-  }, [])
+  cards: readonly GalleryCard[]
 }
 
 const rowDistance = (
-  row: RowLayout,
+  row: Pick<RowHitLayout, 'top' | 'bottom'>,
   y: number
 ) => {
   if (y < row.top) {
@@ -60,9 +44,9 @@ const rowDistance = (
 }
 
 const resolveRow = (
-  rows: readonly RowLayout[],
+  rows: readonly RowHitLayout[],
   y: number
-) => rows.reduce<RowLayout | undefined>((best, row) => {
+) => rows.reduce<RowHitLayout | undefined>((best, row) => {
   if (!best) {
     return row
   }
@@ -75,7 +59,7 @@ const resolveRow = (
 const centerX = (rect: Rect) => rect.left + rect.width / 2
 
 export const dropTargetFromPoint = (
-  layout: GalleryLayout | null,
+  layout: GalleryLayoutCache | null,
   point: {
     x: number
     y: number
@@ -94,7 +78,30 @@ export const dropTargetFromPoint = (
     return undefined
   }
 
-  const rows = groupRows(cards)
+  const cardsByRowKey = cards.reduce<Map<string, GalleryCard[]>>((map, card) => {
+    const key = `${card.sectionKey}\u0000${card.rowIndex}`
+    const current = map.get(key)
+    if (current) {
+      current.push(card)
+      return map
+    }
+
+    map.set(key, [card])
+    return map
+  }, new Map())
+  const rows = layout.rows.flatMap<RowHitLayout>(row => {
+    const rowCards = cardsByRowKey.get(`${row.sectionKey}\u0000${row.rowIndex}`)
+    if (!rowCards?.length) {
+      return []
+    }
+
+    return [{
+      sectionKey: row.sectionKey,
+      top: row.top,
+      bottom: row.top + row.height,
+      cards: rowCards
+    }]
+  })
   const row = resolveRow(rows, point.y)
   if (!row || !row.cards.length) {
     return undefined
@@ -107,13 +114,14 @@ export const dropTargetFromPoint = (
   }
 
   if (point.x <= firstCard.rect.left) {
-      return {
-        anchorId: firstCard.id,
-        side: 'left',
-        beforeAppearanceId: firstCard.id,
-        indicator: {
-          left: Math.max(0, firstCard.rect.left - EDGE_OFFSET),
-          top: firstCard.rect.top,
+    return {
+      sectionKey: row.sectionKey,
+      anchorId: firstCard.id,
+      side: 'left',
+      beforeAppearanceId: firstCard.id,
+      indicator: {
+        left: Math.max(0, firstCard.rect.left - EDGE_OFFSET),
+        top: firstCard.rect.top,
         height: firstCard.rect.height
       }
     }
@@ -134,6 +142,7 @@ export const dropTargetFromPoint = (
       const side = point.x < centerX(card.rect) ? 'left' : 'right'
 
       return {
+        sectionKey: row.sectionKey,
         anchorId: card.id,
         side,
         beforeAppearanceId: side === 'left' ? card.id : nextCard?.id,
@@ -150,6 +159,7 @@ export const dropTargetFromPoint = (
     const nextRowCard = row.cards[index + 1]
     if (nextRowCard && point.x > card.rect.right && point.x < nextRowCard.rect.left) {
       return {
+        sectionKey: row.sectionKey,
         anchorId: nextRowCard.id,
         side: 'left',
         beforeAppearanceId: nextRowCard.id,
@@ -168,6 +178,7 @@ export const dropTargetFromPoint = (
     : undefined
 
   return {
+    sectionKey: row.sectionKey,
     anchorId: lastCard.id,
     side: 'right',
     beforeAppearanceId: nextVisibleCard?.id,

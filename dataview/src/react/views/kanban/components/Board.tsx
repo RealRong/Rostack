@@ -24,18 +24,17 @@ const KanbanBoardCanvas = () => {
 
       <div
         ref={controller.scrollRef}
-        onPointerDown={controller.selection.marquee.onPointerDown}
         className="relative overflow-x-auto pb-4"
         style={contentInsetStyle}
       >
-        {controller.selection.marquee.box ? (
+        {controller.selection.marqueeBox ? (
           <div
             className="pointer-events-none absolute z-20 rounded-md border border-primary/60 bg-primary/10"
             style={{
-              left: controller.selection.marquee.box.left,
-              top: controller.selection.marquee.box.top,
-              width: controller.selection.marquee.box.width,
-              height: controller.selection.marquee.box.height
+              left: controller.selection.marqueeBox.left,
+              top: controller.selection.marqueeBox.top,
+              width: controller.selection.marqueeBox.width,
+              height: controller.selection.marqueeBox.height
             }}
           />
         ) : null}

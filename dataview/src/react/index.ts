@@ -53,6 +53,12 @@ export type {
   EngineProviderProps
 } from './dataview'
 export type {
+  MarqueeAdapter,
+  MarqueeApi,
+  MarqueeMode,
+  MarqueeSessionState
+} from './dataview'
+export type {
   InlineSessionApi,
   InlineSessionTarget
 } from './dataview'

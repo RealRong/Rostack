@@ -1,9 +1,9 @@
 import {
   type Guide,
   type MoveStepResult,
-  finishMoveSession,
-  startMoveSession,
-  stepMoveSession
+  finishMoveState,
+  startMoveState,
+  stepMoveState
 } from '@whiteboard/core/node'
 import type {
   SelectionMoveSelectionBehavior,
@@ -11,13 +11,11 @@ import type {
 } from '@whiteboard/core/selection'
 import type { Edge } from '@whiteboard/core/types'
 import type {
-  InteractionCtx,
   InteractionSession,
   InteractionSessionTransition
-} from '../../runtime/interaction'
-import {
-  createMoveGesture as createGesture
-} from '../../runtime/interaction'
+} from '../../runtime/interaction/types'
+import type { InteractionContext } from '../context'
+import { createSelectionGesture } from '../../runtime/interaction/gesture'
 import type {
   PointerDownInput
 } from '../../types/input'
@@ -43,7 +41,7 @@ const toMoveEdgePatches = (
 }))
 
 type SelectionInteractionCtx = Pick<
-  InteractionCtx,
+  InteractionContext,
   'read' | 'write' | 'config' | 'snap'
 >
 
@@ -70,7 +68,7 @@ const findParentFrameId = (
 
 const resolveFrameHoverId = (
   ctx: SelectionInteractionCtx,
-  state: Parameters<typeof finishMoveSession>[0],
+  state: Parameters<typeof finishMoveState>[0],
   pointerWorld: {
     x: number
     y: number
@@ -100,7 +98,7 @@ export const createMoveInteraction = (
     kind: 'finish'
   } satisfies InteractionSessionTransition
 
-  const initialState = startMoveSession({
+  const initialState = startMoveState({
     nodes: ctx.read.index.node.all().map((entry) => entry.node),
     edges: ctx.read.edge.list.get()
       .map((edgeId) => ctx.read.edge.item.get(edgeId)?.edge)
@@ -132,8 +130,8 @@ export const createMoveInteraction = (
   }) => {
     modifiers = nextInput.modifiers
     let guides: readonly Guide[] = []
-    const result = stepMoveSession({
-      session: state,
+    const result = stepMoveState({
+      state,
       pointerWorld: nextInput.world,
       snap: ctx.read.tool.is('select')
         ? ({ rect, excludeIds }) => {
@@ -148,16 +146,17 @@ export const createMoveInteraction = (
         : undefined
     })
 
-    state = result.session
-    interaction!.gesture = createGesture({
-      draft: {
+    state = result.state
+    interaction!.gesture = createSelectionGesture(
+      'selection-move',
+      {
         nodePatches: toMoveNodePatches(result),
         edgePatches: toMoveEdgePatches(result),
         frameHoverId: resolveFrameHoverId(ctx, state, nextInput.world),
         guides,
         marquee: undefined
       }
-    })
+    )
   }
 
   interaction = {
@@ -180,7 +179,7 @@ export const createMoveInteraction = (
       })
     },
     up: () => {
-      const commit = finishMoveSession(state)
+      const commit = finishMoveState(state)
 
       if (commit.delta) {
         ctx.write.document.node.move({

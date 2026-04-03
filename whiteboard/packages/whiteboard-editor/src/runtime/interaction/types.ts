@@ -1,14 +1,14 @@
 import type { ReadStore } from '@whiteboard/engine'
-import type { ActiveGesture } from '../../runtime/interaction/gesture'
+import type { ActiveGesture } from './gesture'
 import type {
   KeyboardInput,
   PointerDownInput,
   PointerMoveInput,
   PointerUpInput,
   WheelInput
-} from '../input'
+} from '../../types/input'
 
-export type InteractionMode =
+type InteractionMode =
   | 'idle'
   | 'press'
   | 'draw'
@@ -21,21 +21,10 @@ export type InteractionMode =
   | 'edge-connect'
   | 'edge-route'
 
-export type InteractionSessionMode = Exclude<InteractionMode, 'idle'>
-
-export type InteractionState = Readonly<{
-  busy: boolean
-  chrome: boolean
-  mode: InteractionMode
-  transforming: boolean
-}>
-
-export type AutoPanPointer = Readonly<{
+type AutoPanPointer = Readonly<{
   clientX: number
   clientY: number
 }>
-
-export type InteractionKeyboardInput = KeyboardInput
 
 export type InteractionSessionTransition =
   | {
@@ -49,14 +38,14 @@ export type InteractionSessionTransition =
       session: InteractionSession
     }
 
-export type AutoPanOptions = Readonly<{
+type AutoPanOptions = Readonly<{
   frame?: (pointer: AutoPanPointer) => InteractionSessionTransition | void
   threshold?: number
   maxSpeed?: number
 }>
 
 export type InteractionSession = {
-  mode: InteractionSessionMode
+  mode: Exclude<InteractionMode, 'idle'>
   pointerId?: number
   chrome?: boolean
   gesture?: ActiveGesture | null
@@ -66,8 +55,8 @@ export type InteractionSession = {
   autoPan?: AutoPanOptions
   move?: (input: PointerMoveInput) => InteractionSessionTransition | void
   up?: (input: PointerUpInput) => InteractionSessionTransition | void
-  keydown?: (input: InteractionKeyboardInput) => InteractionSessionTransition | void
-  keyup?: (input: InteractionKeyboardInput) => InteractionSessionTransition | void
+  keydown?: (input: KeyboardInput) => InteractionSessionTransition | void
+  keyup?: (input: KeyboardInput) => InteractionSessionTransition | void
   blur?: () => InteractionSessionTransition | void
   cancel?: () => void
   cleanup?: () => void
@@ -90,7 +79,6 @@ export type InteractionRuntime = {
   busy: ReadStore<boolean>
   chrome: ReadStore<boolean>
   gesture: ReadStore<ActiveGesture | null>
-  state: ReadStore<InteractionState>
   handlePointerDown: (input: PointerDownInput) => boolean
   handlePointerMove: (input: PointerMoveInput) => boolean
   handlePointerUp: (input: PointerUpInput) => boolean
@@ -100,7 +88,7 @@ export type InteractionRuntime = {
   handlePointerLeave: () => void
   handleWheel: (input: WheelInput) => boolean
   cancel: () => void
-  handleKeyDown: (input: InteractionKeyboardInput) => boolean
-  handleKeyUp: (input: InteractionKeyboardInput) => boolean
+  handleKeyDown: (input: KeyboardInput) => boolean
+  handleKeyUp: (input: KeyboardInput) => boolean
   handleBlur: () => void
 }

@@ -20,13 +20,13 @@
 核心判断是：
 
 - `gallery` 的正确虚拟单位不是 card，而是 row
-- `gallery` 的 card 宽度应视为固定 preset 宽度，而不是响应式拉伸宽度
+- `gallery` 的 size 应视为 `minCardWidth preset`，实际卡宽由 layout 显式解算
 - `table` 的正确虚拟单位不是 section，而是统一的 content block
 - 两者上层不需要两套虚拟化内核，只需要不同的 block builder
 
 在当前产品约束下，`gallery` 还可以进一步简化：
 
-- `small / medium / large` 就是固定卡片宽度
+- `small / medium / large` 就是最小卡片宽度 preset
 - 推荐直接收敛成：
   - `sm = 220`
   - `md = 260`
@@ -35,7 +35,7 @@
 
 这意味着 `gallery` 不需要做“任意响应式网格虚拟化”，只需要做：
 
-- 固定卡宽
+- `minCardWidth + resolvedCardWidth`
 - 显式 row layout
 - row virtualization
 - 基于 layout cache 的 marquee / reorder
@@ -312,25 +312,39 @@ export interface TableLayoutCache {
 
 如果按 card 做一维虚拟化，会把布局语义错误地推向 waterfall/masonry。
 
-## 2. card 宽度固定，不再依赖 CSS grid 拉伸
+## 2. size 是 min width preset，layout 负责解算实际 card 宽度
 
-`gallery` 的 card 宽度建议直接定义成固定 preset，而不是：
+`gallery` 的 size 仍然保持离散 preset，但语义应该是：
 
-- `minmax(cardMinWidth, 1fr)`
-- 随容器宽度自动拉伸
+- `sm -> minCardWidth = 220`
+- `md -> minCardWidth = 260`
+- `lg -> minCardWidth = 300`
+
+实际布局效果应等价于：
+
+- `repeat(auto-fill, minmax(220px, 1fr))`
+- `repeat(auto-fill, minmax(260px, 1fr))`
+- `repeat(auto-fill, minmax(300px, 1fr))`
+
+但实现上不应该把整套几何真相重新交给浏览器，而应该继续由 layout builder 显式产出：
+
+- `columnCount`
+- `resolvedCardWidth`
+- row `top / height`
+- card rects
 
 原因：
 
-1. 固定宽度更符合当前产品语义  
-   `gallery` 的 size 本来就是“小 / 中 / 大”三个离散选项，而不是连续响应式缩放。
+1. 更接近真实产品语义  
+   用户配置的是“小 / 中 / 大”三个最小宽度档位，而不是一个固定像素宽度。
 
-2. 高度缓存更稳定  
-   card 的真实宽度只在 preset 变化时才变化，不会因为 viewport 每次变化都重新变高或变矮。
+2. 交互主干不被打断  
+   marquee / reorder / hit test 仍然统一读取 layout cache，而不是去猜 CSS grid 的排版结果。
 
-3. 虚拟布局可直接数学求解  
+3. 虚拟布局仍然可数学求解  
    布局层只需要知道：
    - `containerWidth`
-   - `cardWidth`
+   - `minCardWidth`
    - `gap`
    - `ids`
    - `heightById`
@@ -338,7 +352,7 @@ export interface TableLayoutCache {
 推荐常量：
 
 ```ts
-const GALLERY_CARD_WIDTH = {
+const GALLERY_CARD_MIN_WIDTH = {
   sm: 220,
   md: 260,
   lg: 300
@@ -347,11 +361,25 @@ const GALLERY_CARD_WIDTH = {
 const GALLERY_CARD_GAP = 16
 ```
 
-因此第一阶段的 gallery 实现应明确调整为：
+布局层推荐先解算：
 
-- controller 输出 `cardWidth`
-- 组件层不再把宽度交给 CSS grid 自动分配
-- 行和卡片 rect 全部由布局 builder 直接产出
+```ts
+columnCount = Math.max(
+  1,
+  Math.floor((contentWidth + gap) / (minCardWidth + gap))
+)
+
+resolvedCardWidth = (
+  contentWidth - gap * (columnCount - 1)
+) / columnCount
+```
+
+因此 gallery 的正确实现应明确调整为：
+
+- controller / layout 输出 `resolvedCardWidth`
+- row 仍然是虚拟单位
+- row 内部可以使用 `grid-template-columns: repeat(columnCount, minmax(0, 1fr))`
+- 行和卡片 rect 全部由 layout builder 直接产出
 
 ## 3. 先算 columnCount，再切 rows
 
@@ -360,7 +388,7 @@ const GALLERY_CARD_GAP = 16
 输入：
 
 - `containerWidth`
-- `cardWidth`
+- `minCardWidth`
 - `gap`
 - `ids`
 - `heightById`
@@ -378,13 +406,21 @@ const GALLERY_CARD_GAP = 16
 推荐列数计算：
 
 ```ts
-columnCount = max(1, floor((containerWidth + gap) / (cardWidth + gap)))
+columnCount = max(1, floor((contentWidth + gap) / (minCardWidth + gap)))
+```
+
+推荐实际卡宽：
+
+```ts
+resolvedCardWidth = (
+  contentWidth - gap * (columnCount - 1)
+) / columnCount
 ```
 
 推荐卡片水平定位：
 
 ```ts
-left = columnIndex * (cardWidth + gap)
+left = columnIndex * (resolvedCardWidth + gap)
 ```
 
 推荐 row 高度：
@@ -410,10 +446,17 @@ rowTop = prefixSum(previousRowHeights + gap)
 
 额外规则：
 
-- 正常 viewport resize 不需要清空测量缓存
-- 只有在 `cardWidth preset` 变化时，才需要清空或按新宽度重新测量
+- 正常 viewport resize 会改变 `resolvedCardWidth`
+- 因此高度缓存不应再只是 `id -> height`
+- 正确模型应升级成“按实际 card 宽度分桶”的缓存
 
-这正是固定 card 宽度带来的直接收益。
+也就是：
+
+```ts
+Map<measuredCardWidth, Map<appearanceId, height>>
+```
+
+这样即使 viewport 变化，旧宽度下的测量也不会污染新宽度的布局。
 
 ## 5. 分组场景
 
@@ -706,11 +749,11 @@ DOM 只承担：
 
 推荐分三步落地，不建议一步改完所有 view。
 
-## 第一阶段：gallery fixed-width row virtualization
+## 第一阶段：gallery min-width row virtualization
 
 目标：
 
-- 明确 `gallery` 的 card 宽度为固定 preset
+- 明确 `gallery` 的 size 是 `minCardWidth preset`
 - `gallery` 从全量 grid 渲染切到 row block 渲染
 - 建立 `GalleryLayoutCache`
 - `Grid` 只渲染 visible rows
@@ -747,14 +790,14 @@ interface GalleryLayoutCache {
 
 第一阶段的 `Grid` 应转成如下渲染方式：
 
-- 外层是一个固定 `height = totalHeight` 的相对定位容器
-- visible rows 使用 `position: absolute`
-- row 内部用固定 card width + gap 布局当前 row 的 cards
+- 外层是一个 spacer + visible band 容器
+- row 作为可见 block 顺序渲染
+- row 内部使用 `grid-template-columns: repeat(columnCount, minmax(0, 1fr))`
 
 这一步之后，gallery 的主链路就会变成：
 
 ```txt
-ids + containerWidth + cardWidth + heightById
+ids + containerWidth + minCardWidth + heightByIdByWidthBucket
   -> row layout cache
   -> visible row blocks
   -> render
@@ -829,14 +872,16 @@ marquee / reorder / indicator / navigation
 
 `useGalleryController` 输出：
 
-- `cardWidth`
+- `layout`
+- `blocks`
+- `measure`
 - `containerRef`
 - `currentView`
 - `selection`
 - `drag`
 - `marquee`
 
-不再输出 `cardMinWidth`。
+不再单独输出顶层 `cardWidth` / `cardMinWidth`。
 
 ### A2. virtual/layout 层
 
@@ -844,9 +889,9 @@ marquee / reorder / indicator / navigation
 
 - section 列表
 - `containerWidth`
-- `cardWidth`
+- `minCardWidth`
 - `gap`
-- `heightById`
+- `heightByIdByWidthBucket`
 
 输出：
 
@@ -859,8 +904,8 @@ marquee / reorder / indicator / navigation
 
 - 读取 layout cache
 - 读取 visible row blocks
-- 渲染 absolute rows
-- row 内渲染 cards
+- 用 spacer + visible band 渲染 rows
+- row 内用 grid 渲染 cards
 
 不再把所有 card 直接塞进一个浏览器控制的 `grid auto-fill` 容器里。
 
@@ -870,7 +915,7 @@ marquee / reorder / indicator / navigation
 
 - 首次挂载测量高度
 - `ResizeObserver` 监听高度变化
-- 写回 `heightById`
+- 按当前 `resolvedCardWidth` 写回对应宽度桶
 - 触发布局重算
 
 ### A5. marquee

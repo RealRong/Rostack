@@ -5,14 +5,12 @@ import {
 import type { ActiveGesture } from './gesture'
 import type {
   InteractionBinding,
-  InteractionKeyboardInput,
   InteractionRuntime,
   InteractionSession,
-  InteractionSessionTransition,
-  InteractionSessionMode,
-  InteractionState
-} from '../../types/runtime/interaction'
+  InteractionSessionTransition
+} from './types'
 import type {
+  KeyboardInput,
   PointerDownInput,
   PointerMoveInput,
   PointerUpInput,
@@ -24,7 +22,7 @@ import { createAutoPan } from './autoPan'
 type SessionMeta = Readonly<{
   id: number
   key: string
-  mode: InteractionSessionMode
+  mode: InteractionSession['mode']
   pointerId?: number
   chrome?: boolean
 }>
@@ -81,20 +79,6 @@ export const createInteractionRuntime = ({
       return current === null
         || Boolean(current.chrome)
     }
-  })
-  const state = createDerivedStore<InteractionState>({
-    get: (read) => ({
-      busy: read(busy),
-      chrome: read(chrome),
-      mode: read(mode),
-      transforming: read(mode) === 'node-transform'
-    }),
-    isEqual: (left, right) => (
-      left.busy === right.busy
-      && left.chrome === right.chrome
-      && left.mode === right.mode
-      && left.transforming === right.transforming
-    )
   })
   let nextId = 1
   let current: RunningSession | null = null
@@ -382,7 +366,7 @@ export const createInteractionRuntime = ({
   }
 
   const handleKeyDown = (
-    input: InteractionKeyboardInput
+    input: KeyboardInput
   ) => {
     let handled = false
 
@@ -411,7 +395,7 @@ export const createInteractionRuntime = ({
   }
 
   const handleKeyUp = (
-    input: InteractionKeyboardInput
+    input: KeyboardInput
   ) => {
     let handled = false
 
@@ -460,7 +444,6 @@ export const createInteractionRuntime = ({
     busy,
     chrome,
     gesture,
-    state,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,

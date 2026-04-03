@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useState,
   type RefObject
@@ -12,10 +13,15 @@ import {
   resolveGroupTitleProperty
 } from '@dataview/core/view'
 import {
+  idsInRect,
+  type Box
+} from '@dataview/dom/geometry'
+import {
   useDataView,
   useCurrentView,
-  useSelection,
+  useSelection
 } from '@dataview/react/dataview'
+import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
 import {
   dataviewAppearanceSelector
 } from '@dataview/dom/appearance'
@@ -28,33 +34,34 @@ import {
 } from '@dataview/engine/projection/view'
 import {
   type AppearanceId,
-  type CurrentView
+  type CurrentView,
+  type Section
 } from '@dataview/react/runtime/currentView'
 import type { GalleryDropTarget } from './reorder'
 import {
-  readGalleryLayout,
   useCardReorder
 } from './reorder'
-import { useMarqueeSelection } from './selection'
-
-const CARD_MIN_WIDTH = {
-  sm: 200,
-  md: 260,
-  lg: 320
-} as const
+import {
+  GALLERY_CARD_MIN_WIDTH,
+  useGalleryBlocks,
+  type GalleryBlock,
+  type GalleryLayoutCache
+} from './virtual'
 
 export interface GalleryController {
   currentView: CurrentView
+  sections: readonly Section[]
   titleProperty?: GroupProperty
   properties: readonly GroupProperty[]
   canReorder: boolean
   containerRef: RefObject<HTMLDivElement | null>
+  layout: GalleryLayoutCache
+  blocks: readonly GalleryBlock[]
+  measure: (id: AppearanceId) => (node: HTMLDivElement | null) => void
   selectedIdSet: ReadonlySet<AppearanceId>
-  marqueeIdSet: ReadonlySet<AppearanceId>
+  marqueeBox: Box | null
   drag: ReturnType<typeof useCardReorder>
-  marquee: ReturnType<typeof useMarqueeSelection>
   indicator?: GalleryDropTarget['indicator']
-  cardMinWidth: number
   reorderDisabledMessage?: string
   select: (id: AppearanceId, mode?: 'replace' | 'toggle') => void
 }
@@ -86,22 +93,63 @@ export const useGalleryController = (input: {
     [currentView.properties.all, titleProperty?.id]
   )
   const canReorder = !currentView.view.query.group && !currentView.view.query.sorters.length
+  const [dragging, setDragging] = useState(false)
+  const grouped = Boolean(currentView.view.query.group)
+  const sections = useMemo<readonly Section[]>(() => (
+    grouped
+      ? currentView.sections
+      : [{
+          key: 'all',
+          title: '',
+          color: undefined,
+          collapsed: false,
+          ids: currentView.appearances.ids
+        }]
+  ), [currentView.appearances.ids, currentView.sections, grouped])
+  const minCardWidth = GALLERY_CARD_MIN_WIDTH[currentView.view.options.gallery.cardSize]
+  const virtual = useGalleryBlocks({
+    grouped,
+    sections,
+    minCardWidth,
+    containerRef: input.containerRef,
+    overscan: dragging ? 1200 : 640
+  })
 
   const selectionState = useSelection()
-  const [dragging, setDragging] = useState(false)
-  const [marqueeIds, setMarqueeIds] = useState<readonly AppearanceId[]>([])
   const selectedIdSet = useMemo(
     () => new Set(selectionState.ids),
     [selectionState.ids]
   )
-  const marqueeIdSet = useMemo(
-    () => new Set(marqueeIds),
-    [marqueeIds]
+  const marqueeBox = useStoreSelector(
+    dataView.marquee.store,
+    session => session?.ownerViewId === currentView.view.id
+      ? session.box
+      : null
   )
-  const getLayout = useCallback(
-    () => readGalleryLayout(input.containerRef.current),
-    [input.containerRef]
-  )
+  const getLayout = useCallback(() => virtual.layout, [virtual.layout])
+
+  useEffect(() => dataView.marquee.registerAdapter({
+    viewId: currentView.view.id,
+    containerRef: input.containerRef,
+    disabled: dragging,
+    canStart: event => !closestTarget(event.target, [
+      dataviewAppearanceSelector,
+      interactiveSelector
+    ].join(',')),
+    resolveIds: box => idsInRect(
+      currentView.appearances.ids,
+      virtual.layout.cards,
+      box
+    ),
+    order: () => currentView.appearances.ids
+  }), [
+    currentView.appearances.ids,
+    currentView.view.id,
+    dataView.marquee,
+    dragging,
+    input.containerRef,
+    virtual.layout.cards
+  ])
 
   const drag = useCardReorder({
     containerRef: input.containerRef,
@@ -117,7 +165,7 @@ export const useGalleryController = (input: {
     onDrop: (ids, target) => {
       const section = target.beforeAppearanceId
         ? currentView.appearances.sectionOf(target.beforeAppearanceId)
-        : currentView.sections[0]?.key
+        : target.sectionKey
       if (!section) {
         return
       }
@@ -136,7 +184,7 @@ export const useGalleryController = (input: {
 
     const section = drag.overTarget.beforeAppearanceId
       ? currentView.appearances.sectionOf(drag.overTarget.beforeAppearanceId)
-      : currentView.sections[0]?.key
+      : drag.overTarget.sectionKey
     if (!section) {
       return undefined
     }
@@ -151,32 +199,6 @@ export const useGalleryController = (input: {
       : undefined
   }, [currentView, drag.dragIds, drag.overTarget])
 
-  const marquee = useMarqueeSelection({
-    containerRef: input.containerRef,
-    cardOrder: currentView.appearances.ids,
-    disabled: dragging,
-    getLayout,
-    currentSelection: selectionState,
-    commitSelection: (ids, mode) => {
-      if (mode === 'toggle') {
-        dataView.selection.toggle(ids)
-        return
-      }
-
-      dataView.selection.set(ids)
-    },
-    setMarquee: setMarqueeIds,
-    clearMarquee: () => {
-      setMarqueeIds([])
-    },
-    canStart: event => {
-      return !closestTarget(event.target, [
-        dataviewAppearanceSelector,
-        interactiveSelector
-      ].join(','))
-    }
-  })
-
   const select = useCallback((id: AppearanceId, mode: 'replace' | 'toggle' = 'replace') => {
     if (mode === 'toggle') {
       dataView.selection.toggle([id])
@@ -186,7 +208,6 @@ export const useGalleryController = (input: {
     dataView.selection.set([id])
   }, [dataView.selection])
 
-  const cardMinWidth = CARD_MIN_WIDTH[currentView.view.options.gallery.cardSize]
   const reorderDisabledMessage = currentView.view.query.sorters.length > 0
     ? 'Card reorder is disabled while a field sort is active. Clear sort to drag cards again.'
     : currentView.view.query.group
@@ -197,31 +218,35 @@ export const useGalleryController = (input: {
 
   return useMemo(() => ({
     currentView,
+    sections,
     titleProperty,
     properties,
     canReorder,
     containerRef: input.containerRef,
+    layout: virtual.layout,
+    blocks: virtual.blocks,
+    measure: virtual.measure,
     selectedIdSet,
-    marqueeIdSet,
+    marqueeBox,
     drag,
-    marquee,
     indicator,
-    cardMinWidth,
     reorderDisabledMessage,
     select
   }), [
     canReorder,
-    cardMinWidth,
     currentView,
     drag,
     indicator,
     input.containerRef,
-    marquee,
-    marqueeIdSet,
+    marqueeBox,
     properties,
     reorderDisabledMessage,
+    sections,
     select,
     selectedIdSet,
-    titleProperty
+    titleProperty,
+    virtual.blocks,
+    virtual.layout,
+    virtual.measure
   ])
 }

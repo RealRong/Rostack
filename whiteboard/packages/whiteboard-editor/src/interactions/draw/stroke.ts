@@ -4,10 +4,10 @@ import {
 } from '@whiteboard/core/node'
 import type { Point } from '@whiteboard/core/types'
 import type { PointerDownInput, PointerSample } from '../../types/input'
-import type { InteractionCtx } from '../../runtime/interaction/ctx'
+import type { InteractionContext } from '../context'
 import type {
   InteractionSession
-} from '../../runtime/interaction'
+} from '../../runtime/interaction/types'
 import type { DrawBrushKind } from '../../types/tool'
 import type {
   ResolvedDrawStyle
@@ -18,7 +18,7 @@ const DRAW_MIN_LENGTH_SCREEN = 4
 const SAMPLE_DISTANCE_SCREEN = 1
 
 type DrawInteractionCtx = Pick<
-  InteractionCtx,
+  InteractionContext,
   'read' | 'write'
 >
 

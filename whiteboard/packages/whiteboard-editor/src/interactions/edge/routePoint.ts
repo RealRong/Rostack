@@ -1,14 +1,17 @@
-import { isPointEqual } from '@whiteboard/core/geometry'
-import { moveRoutePoint } from '@whiteboard/core/edge'
-import type { EdgeId, Point } from '@whiteboard/core/types'
+import {
+  finishRouteHandleState,
+  resolveRouteHandleTarget,
+  startRouteHandleState,
+  stepRouteHandleState,
+  type EdgeView
+} from '@whiteboard/core/edge'
+import type { EdgeId } from '@whiteboard/core/types'
 import type {
   InteractionStartResult,
   InteractionSession,
   InteractionSessionTransition
-} from '../../runtime/interaction'
-import {
-  createEdgeRouteGesture
-} from '../../runtime/interaction'
+} from '../../runtime/interaction/types'
+import { createEdgeGesture } from '../../runtime/interaction/gesture'
 import type { PointerDownInput } from '../../types/input'
 import type { EdgeInteractionCtx } from './types'
 
@@ -16,29 +19,6 @@ type EdgeRoutePick = Extract<PointerDownInput['pick'], {
   kind: 'edge'
 }> & {
   part: 'path'
-}
-
-type EdgeRouteHandleTarget =
-  | {
-      kind: 'anchor'
-      edgeId: EdgeId
-      index: number
-      point: Point
-    }
-  | {
-      kind: 'insert'
-      edgeId: EdgeId
-      index: number
-      point: Point
-    }
-
-type EdgeRouteDragState = {
-  edgeId: EdgeId
-  index: number
-  pointerId: number
-  start: Point
-  origin: Point
-  point: Point
 }
 
 type PointerClient = {
@@ -60,16 +40,6 @@ const readViewport = (
   ctx: EdgeInteractionCtx
 ) => ctx.read.viewport
 
-const readEditableRouteView = (
-  ctx: EdgeInteractionCtx,
-  edgeId: EdgeId
-) => {
-  const view = ctx.read.edge.resolved.get(edgeId)
-  return view && readCapability(ctx, edgeId)?.editRoute
-    ? view
-    : undefined
-}
-
 const readCapability = (
   ctx: EdgeInteractionCtx,
   edgeId: EdgeId
@@ -77,6 +47,17 @@ const readCapability = (
   const item = ctx.read.edge.item.get(edgeId)
   return item
     ? ctx.read.edge.capability(item.edge)
+    : undefined
+}
+
+const readEditableRouteView = (
+  ctx: EdgeInteractionCtx,
+  edgeId: EdgeId
+): EdgeView | undefined => {
+  const view = ctx.read.edge.resolved.get(edgeId)
+
+  return view && readCapability(ctx, edgeId)?.editRoute
+    ? view
     : undefined
 }
 
@@ -96,10 +77,10 @@ const isEdgeRoutePick = (
   && pick.part === 'path'
 )
 
-const resolveEdgeRouteHandleTarget = (
+const resolvePickTarget = (
   ctx: EdgeInteractionCtx,
   pick: PointerDownInput['pick']
-): EdgeRouteHandleTarget | undefined => {
+) => {
   if (!isEdgeRoutePick(pick)) {
     return undefined
   }
@@ -109,112 +90,14 @@ const resolveEdgeRouteHandleTarget = (
     return undefined
   }
 
-  if (pick.index !== undefined) {
-    const handle = view.handles.find((entry) => (
-      entry.kind === 'anchor'
-      && entry.index === pick.index
-    ))
-    if (!handle || handle.kind !== 'anchor') {
-      return undefined
-    }
-
-    return {
-      kind: 'anchor',
-      edgeId: pick.id,
-      index: handle.index,
-      point: handle.point
-    }
-  }
-
-  const insertIndex = pick.insert ?? 0
-  const handle = view.handles.find((entry) => (
-    entry.kind === 'insert'
-    && entry.insertIndex === insertIndex
-  ))
-  if (!handle || handle.kind !== 'insert') {
-    return undefined
-  }
-
-  return {
-    kind: 'insert',
+  return resolveRouteHandleTarget({
     edgeId: pick.id,
-    index: handle.insertIndex,
-    point: handle.point
-  }
-}
-
-const readRouteAnchorPoint = (
-  ctx: EdgeInteractionCtx,
-  edgeId: EdgeId,
-  index: number
-) => {
-  const view = readEditableRouteView(ctx, edgeId)
-  if (!view) {
-    return undefined
-  }
-
-  const handle = view.handles.find((entry) => (
-    entry.kind === 'anchor'
-    && entry.index === index
-  ))
-
-  return handle?.kind === 'anchor'
-    ? handle.point
-    : undefined
-}
-
-const projectRouteDrag = ({
-  ctx,
-  state,
-  input
-}: {
-  ctx: EdgeInteractionCtx
-  state: EdgeRouteDragState
-  input: PointerClient
-}) => {
-  const item = ctx.read.edge.item.get(state.edgeId)
-  if (!item || !readCapability(ctx, state.edgeId)?.editRoute) {
-    return {
-      ok: false as const,
-      state
+    handles: view.handles,
+    pick: {
+      index: pick.index,
+      insert: pick.insert
     }
-  }
-
-  const { world } = readViewport(ctx).pointer(input)
-  const point = {
-    x: state.origin.x + (world.x - state.start.x),
-    y: state.origin.y + (world.y - state.start.y)
-  }
-  if (isPointEqual(point, state.point)) {
-    return {
-      ok: true as const,
-      state
-    }
-  }
-
-  return {
-    ok: true as const,
-    state: {
-      ...state,
-      point
-    },
-    patch: moveRoutePoint(item.edge, state.index, point)
-  }
-}
-
-const commitRouteDrag = ({
-  ctx,
-  state
-}: {
-  ctx: EdgeInteractionCtx
-  state: EdgeRouteDragState
-}) => {
-  if (
-    readCapability(ctx, state.edgeId)?.editRoute
-    && !isPointEqual(state.point, state.origin)
-  ) {
-    ctx.write.document.edge.route.move(state.edgeId, state.index, state.point)
-  }
+  })
 }
 
 export const createEdgeRoutePointSession = (
@@ -223,58 +106,67 @@ export const createEdgeRoutePointSession = (
     edgeId: EdgeId
     index: number
     pointerId: number
-    start: Point
-    origin: Point
-    point?: Point
+    startWorld: PointerDownInput['world']
+    origin: PointerDownInput['world']
+    point?: PointerDownInput['world']
   }
 ): InteractionSession => {
-  let state: EdgeRouteDragState = {
+  let state = startRouteHandleState({
     edgeId: input.edgeId,
     index: input.index,
     pointerId: input.pointerId,
-    start: input.start,
+    startWorld: input.startWorld,
     origin: input.origin,
-    point: input.point ?? input.origin
-  }
+    point: input.point
+  })
   let interaction = null as InteractionSession | null
 
   const step = (
     pointer: PointerClient
   ): InteractionSessionTransition | void => {
-    const result = projectRouteDrag({
-      ctx,
-      state,
-      input: pointer
-    })
-    if (!result.ok) {
+    const item = ctx.read.edge.item.get(state.edgeId)
+    if (!item || !readCapability(ctx, state.edgeId)?.editRoute) {
       return CANCEL
     }
 
-    if (result.state !== state) {
-      state = result.state
-      interaction!.gesture = createEdgeRouteGesture({
-        draft: {
-          patches: [{
-            id: state.edgeId,
-            patch: result.patch,
-            activeRouteIndex: state.index
-          }]
-        }
-      })
+    const result = stepRouteHandleState({
+      state,
+      edge: item.edge,
+      pointerWorld: readViewport(ctx).pointer(pointer).world
+    })
+    state = result.state
+
+    if (!result.draft) {
+      return
     }
+    if (!result.draft.patch) {
+      return CANCEL
+    }
+
+    interaction!.gesture = createEdgeGesture(
+      'edge-route',
+      {
+        patches: [{
+          id: state.edgeId,
+          patch: result.draft.patch,
+          activeRouteIndex: result.draft.activeRouteIndex
+        }]
+      }
+    )
   }
 
   interaction = {
     mode: 'edge-route',
     pointerId: state.pointerId,
-    gesture: createEdgeRouteGesture({
-      draft: {
+    gesture: createEdgeGesture(
+      'edge-route',
+      {
         patches: [{
           id: state.edgeId,
           activeRouteIndex: state.index
         }]
       }
-    }),
+    ),
     autoPan: {
       frame: (pointer) => step(pointer)
     },
@@ -296,10 +188,11 @@ export const createEdgeRoutePointSession = (
         return transition
       }
 
-      commitRouteDrag({
-        ctx,
-        state
-      })
+      const commit = finishRouteHandleState(state)
+      if (readCapability(ctx, state.edgeId)?.editRoute && commit.point) {
+        ctx.write.document.edge.route.move(commit.edgeId, commit.index, commit.point)
+      }
+
       return FINISH
     },
     cleanup: () => {}
@@ -317,7 +210,7 @@ export const startEdgeRouteHandleInteraction = (
     return null
   }
 
-  const target = resolveEdgeRouteHandleTarget(ctx, start.pick)
+  const target = resolvePickTarget(ctx, start.pick)
   if (!target) {
     return null
   }
@@ -328,23 +221,22 @@ export const startEdgeRouteHandleInteraction = (
     return HANDLED
   }
 
+  selectEdge(ctx, target.edgeId)
+
   if (target.kind === 'anchor') {
-    selectEdge(ctx, target.edgeId)
     return createEdgeRoutePointSession(ctx, {
       edgeId: target.edgeId,
       index: target.index,
       pointerId: start.pointerId,
-      start: start.world,
+      startWorld: start.world,
       origin: target.point
     })
   }
 
-  selectEdge(ctx, target.edgeId)
   const result = ctx.write.document.edge.route.insert(
     target.edgeId,
     start.world
   )
-
   if (!result.ok) {
     ctx.write.preview.edge.clearPatches()
     return HANDLED
@@ -354,7 +246,7 @@ export const startEdgeRouteHandleInteraction = (
     edgeId: target.edgeId,
     index: result.data.index,
     pointerId: start.pointerId,
-    start: start.world,
-    origin: readRouteAnchorPoint(ctx, target.edgeId, result.data.index) ?? start.world
+    startWorld: start.world,
+    origin: result.data.point
   })
 }

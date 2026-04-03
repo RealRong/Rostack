@@ -140,4 +140,5 @@ export type InsertRoutePointResult =
   Result<{
     patch: EdgePatch
     index: number
+    point: Point
   }, 'invalid'>

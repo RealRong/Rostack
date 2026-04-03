@@ -7,7 +7,7 @@ export * from './dropTarget'
 export * from './drag'
 export type {
   MindmapConnectionLine,
-  MindmapDragSession,
+  MindmapDragState,
   MindmapInsertPlacement,
   MindmapInsertPlan,
   RootMindmapDrag,

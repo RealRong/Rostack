@@ -1,0 +1,55 @@
+import type {
+  Rect
+} from '@dataview/dom/geometry'
+import type {
+  AppearanceId,
+  Section
+} from '@dataview/react/runtime/currentView'
+import type {
+  VirtualBlock
+} from '@dataview/react/virtual'
+
+export interface GalleryRowLayout {
+  sectionKey: Section['key']
+  rowIndex: number
+  top: number
+  height: number
+  ids: readonly AppearanceId[]
+}
+
+export interface GalleryCardLayout {
+  id: AppearanceId
+  sectionKey: Section['key']
+  rowIndex: number
+  columnIndex: number
+  rect: Rect
+}
+
+export interface GallerySectionHeaderBlock extends VirtualBlock {
+  kind: 'section-header'
+  section: Pick<Section, 'key' | 'title' | 'color'>
+}
+
+export interface GalleryRowBlock extends VirtualBlock {
+  kind: 'row'
+  row: GalleryRowLayout
+}
+
+export interface GallerySectionEmptyBlock extends VirtualBlock {
+  kind: 'section-empty'
+  section: Pick<Section, 'key' | 'title'>
+}
+
+export type GalleryBlock =
+  | GallerySectionHeaderBlock
+  | GalleryRowBlock
+  | GallerySectionEmptyBlock
+
+export interface GalleryLayoutCache {
+  blocks: readonly GalleryBlock[]
+  rows: readonly GalleryRowLayout[]
+  cards: readonly GalleryCardLayout[]
+  totalHeight: number
+  columnCount: number
+  cardWidth: number
+}

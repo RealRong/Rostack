@@ -48,6 +48,18 @@ export type ActiveGesture =
   | EdgeMoveGesture
   | EdgeRouteGesture
 
+export type SelectionGestureKind = ActiveGesture['kind'] & (
+  | 'selection-move'
+  | 'selection-marquee'
+  | 'selection-transform'
+)
+
+export type EdgeGestureKind = ActiveGesture['kind'] & (
+  | 'edge-connect'
+  | 'edge-move'
+  | 'edge-route'
+)
+
 export const EMPTY_SELECTION_PREVIEW: SelectionPreviewState = {
   nodePatches: [],
   edgePatches: [],
@@ -58,47 +70,25 @@ export const EMPTY_EDGE_GESTURE_PREVIEW: EdgeGestureDraft = {
   patches: []
 }
 
-export const createMoveGesture = (
-  input: Omit<MoveGesture, 'kind'>
-): MoveGesture => ({
-  kind: 'selection-move',
-  ...input
-})
+export const createSelectionGesture = <
+  TKind extends SelectionGestureKind
+>(
+  kind: TKind,
+  draft: SelectionPreviewState
+): Extract<ActiveGesture, { kind: TKind }> => ({
+    kind,
+    draft
+  }) as Extract<ActiveGesture, { kind: TKind }>
 
-export const createMarqueeGesture = (
-  input: Omit<MarqueeGesture, 'kind'>
-): MarqueeGesture => ({
-  kind: 'selection-marquee',
-  ...input
-})
-
-export const createTransformGesture = (
-  input: Omit<TransformGesture, 'kind'>
-): TransformGesture => ({
-  kind: 'selection-transform',
-  ...input
-})
-
-export const createEdgeConnectGesture = (
-  input: Omit<EdgeConnectGesture, 'kind'>
-): EdgeConnectGesture => ({
-  kind: 'edge-connect',
-  ...input
-})
-
-export const createEdgeMoveGesture = (
-  input: Omit<EdgeMoveGesture, 'kind'>
-): EdgeMoveGesture => ({
-  kind: 'edge-move',
-  ...input
-})
-
-export const createEdgeRouteGesture = (
-  input: Omit<EdgeRouteGesture, 'kind'>
-): EdgeRouteGesture => ({
-  kind: 'edge-route',
-  ...input
-})
+export const createEdgeGesture = <
+  TKind extends EdgeGestureKind
+>(
+  kind: TKind,
+  draft: EdgeGestureDraft
+): Extract<ActiveGesture, { kind: TKind }> => ({
+    kind,
+    draft
+  }) as Extract<ActiveGesture, { kind: TKind }>
 
 export const readSelectionGesturePreview = (
   gesture: ActiveGesture | null | undefined

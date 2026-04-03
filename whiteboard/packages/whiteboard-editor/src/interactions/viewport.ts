@@ -1,8 +1,8 @@
 import type {
   InteractionBinding,
   InteractionSession
-} from '../runtime/interaction'
-import type { InteractionCtx } from '../runtime/interaction/ctx'
+} from '../runtime/interaction/types'
+import type { InteractionContext } from './context'
 type PanState = {
   lastClient: {
     x: number
@@ -18,7 +18,7 @@ type PanPointer = {
 }
 
 type ViewportInteractionDeps = Pick<
-  InteractionCtx,
+  InteractionContext,
   'read' | 'write'
 >
 

@@ -27,16 +27,15 @@ export {
   type BoundsTarget
 } from './bounds'
 export {
-  createMarqueeItemsKey,
   createMarqueeRect,
-  finishMarqueeSession,
+  finishMarqueeSelection,
   hasMarqueeStarted,
-  startMarqueeSession,
-  stepMarqueeSession,
+  startMarqueeSelection,
+  stepMarqueeSelection,
   type MarqueeMatch,
-  type MarqueeSession,
-  type MarqueeStepResult,
-  type SelectionMarqueeItems
+  type MarqueeSelectionDraft,
+  type MarqueeSelectionState,
+  type MarqueeSelectionStepResult
 } from './marquee'
 export {
   matchSelectionTap,

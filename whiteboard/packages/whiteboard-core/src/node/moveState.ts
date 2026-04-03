@@ -19,7 +19,7 @@ import {
 } from './move'
 import { getNodeVisualBounds } from './bounds'
 
-export type MoveSession = {
+export type MoveState = {
   nodes: readonly Node[]
   move: MoveSet
   edgePlan: MoveEdgePlan
@@ -36,7 +36,7 @@ export type MoveSnapResolver = (input: {
 }) => Rect
 
 export type MoveStepResult = {
-  session: MoveSession
+  state: MoveState
   preview: MoveEffect
 }
 
@@ -59,13 +59,13 @@ const getMoveBounds = (
   return getRectsBoundingRect(rects)
 }
 
-export const startMoveSession = (input: {
+export const startMoveState = (input: {
   nodes: readonly Node[]
   edges: readonly Edge[]
   target: SelectionTarget
   startWorld: Point
   nodeSize: Size
-}): MoveSession | null => {
+}): MoveState | null => {
   const move = buildMoveSet({
     nodes: input.nodes,
     ids: input.target.nodeIds,
@@ -103,24 +103,24 @@ export const startMoveSession = (input: {
   }
 }
 
-export const stepMoveSession = (input: {
-  session: MoveSession
+export const stepMoveState = (input: {
+  state: MoveState
   pointerWorld: Point
   snap?: MoveSnapResolver
 }): MoveStepResult => {
-  const { session } = input
+  const { state } = input
   const rawRect = {
-    x: session.origin.x + (input.pointerWorld.x - session.startWorld.x),
-    y: session.origin.y + (input.pointerWorld.y - session.startWorld.y),
-    width: session.bounds.width,
-    height: session.bounds.height
+    x: state.origin.x + (input.pointerWorld.x - state.startWorld.x),
+    y: state.origin.y + (input.pointerWorld.y - state.startWorld.y),
+    width: state.bounds.width,
+    height: state.bounds.height
   }
   const snapped = input.snap
     ? {
         rect: rawRect,
       snappedRect: input.snap({
           rect: rawRect,
-          excludeIds: session.move.snapExcludeIds
+          excludeIds: state.move.snapExcludeIds
         })
       }
     : {
@@ -128,29 +128,29 @@ export const stepMoveSession = (input: {
         snappedRect: rawRect
       }
   const delta = {
-    x: snapped.snappedRect.x - session.origin.x,
-    y: snapped.snappedRect.y - session.origin.y
+    x: snapped.snappedRect.x - state.origin.x,
+    y: snapped.snappedRect.y - state.origin.y
   }
-  const nextSession = {
-    ...session,
+  const nextState = {
+    ...state,
     delta
-  } satisfies MoveSession
+  } satisfies MoveState
 
   return {
-    session: nextSession,
+    state: nextState,
     preview: projectMovePreview({
-      nodes: session.nodes,
-      edgePlan: session.edgePlan,
-      move: session.move,
+      nodes: state.nodes,
+      edgePlan: state.edgePlan,
+      move: state.move,
       delta,
-      nodeSize: session.nodeSize
+      nodeSize: state.nodeSize
     })
   }
 }
 
-export const finishMoveSession = (
-  session: MoveSession
+export const finishMoveState = (
+  state: MoveState
 ): MoveCommit => buildMoveCommit({
-    delta: session.delta,
-    edgePlan: session.edgePlan
+    delta: state.delta,
+    edgePlan: state.edgePlan
   })

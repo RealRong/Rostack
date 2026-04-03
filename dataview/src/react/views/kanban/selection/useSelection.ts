@@ -1,23 +1,18 @@
 import {
   useEffect,
   useMemo,
-  useState,
   type RefObject
 } from 'react'
-import { idsInRect } from '@dataview/dom/geometry'
-import { useMarquee } from '@dataview/react/interaction/useMarquee'
+import { idsInRect, type Box } from '@dataview/dom/geometry'
 import {
   type AppearanceId,
   type CurrentView
 } from '@dataview/react/runtime/currentView'
 import {
-  selection as selectionHelpers,
-  type Selection
-} from '@dataview/react/runtime/selection'
-import {
   useDataView,
   useSelection as useDataViewSelection
 } from '@dataview/react/dataview'
+import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
 import { type BoardLayout } from '../drag'
 
 interface Options {
@@ -25,79 +20,46 @@ interface Options {
   containerRef: RefObject<HTMLElement | null>
   cardOrder: readonly AppearanceId[]
   disabled?: boolean
-  canStart?: Parameters<typeof useMarquee<HTMLElement>>[0]['canStart']
+  canStart?: (event: PointerEvent) => boolean
   getLayout: () => BoardLayout | null
 }
 
 export const useSelection = (options: Options) => {
   const dataView = useDataView()
   const selection = useDataViewSelection()
-  const [marqueeIds, setMarqueeIds] = useState<readonly AppearanceId[]>([])
   const selectedIdSet = useMemo(
     () => new Set(selection.ids),
     [selection.ids]
   )
-  const marqueeIdSet = useMemo(
-    () => new Set(marqueeIds),
-    [marqueeIds]
+  const marqueeBox = useStoreSelector(
+    dataView.marquee.store,
+    session => session?.ownerViewId === options.currentView.view.id
+      ? session.box
+      : null
   )
 
   useEffect(() => {
-    setMarqueeIds(current => selectionHelpers.normalize(options.cardOrder, current))
-  }, [options.cardOrder])
-
-  const hitIds = (
-    box: Parameters<NonNullable<Parameters<typeof useMarquee<HTMLElement>>[0]['onStart']>>[0]['box'] | null
-  ) => idsInRect(
+    return dataView.marquee.registerAdapter({
+      viewId: options.currentView.view.id,
+      containerRef: options.containerRef,
+      disabled: options.disabled,
+      canStart: options.canStart ?? (() => true),
+      resolveIds: (box: Box) => idsInRect(
+        options.cardOrder,
+        options.getLayout()?.columns.flatMap(column => column.cards) ?? [],
+        box
+      ),
+      order: () => options.cardOrder
+    })
+  }, [
+    dataView.marquee,
+    options.canStart,
     options.cardOrder,
-    options.getLayout()?.columns.flatMap(column => column.cards) ?? [],
-    box
-  )
-
-  const nextSelection = (
-    ids: readonly AppearanceId[],
-    mode: 'replace' | 'toggle'
-  ): Selection => mode === 'toggle'
-    ? selectionHelpers.toggle(options.cardOrder, selection, ids)
-    : selectionHelpers.set(options.cardOrder, ids)
-
-  const marquee = useMarquee({
-    containerRef: options.containerRef,
-    disabled: options.disabled,
-    autoPan: true,
-    canStart: options.canStart,
-    onStart: session => {
-      setMarqueeIds(
-        nextSelection(
-          hitIds(session.box),
-          session.metaKey || session.ctrlKey ? 'toggle' : 'replace'
-        ).ids
-      )
-    },
-    onChange: session => {
-      setMarqueeIds(
-        nextSelection(
-          hitIds(session.box),
-          session.metaKey || session.ctrlKey ? 'toggle' : 'replace'
-        ).ids
-      )
-    },
-    onEnd: session => {
-      if (!session) {
-        setMarqueeIds([])
-        return
-      }
-
-      const ids = hitIds(session.box)
-      setMarqueeIds([])
-      if (session.metaKey || session.ctrlKey) {
-        dataView.selection.toggle(ids)
-        return
-      }
-
-      dataView.selection.set(ids)
-    }
-  })
+    options.containerRef,
+    options.currentView.view.id,
+    options.disabled,
+    options.getLayout
+  ])
 
   const select = (id: AppearanceId, mode: 'replace' | 'toggle' = 'replace') => {
     if (mode === 'toggle') {
@@ -112,8 +74,7 @@ export const useSelection = (options: Options) => {
     selection,
     selectedIds: selection.ids,
     selectedIdSet,
-    marqueeIdSet,
-    marquee,
+    marqueeBox,
     select
   }
 }

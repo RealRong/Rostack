@@ -82,6 +82,6 @@ export type SubtreeMindmapDrag = {
   drop?: MindmapDragDropTarget
 }
 
-export type MindmapDragSession =
+export type MindmapDragState =
   | RootMindmapDrag
   | SubtreeMindmapDrag

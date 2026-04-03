@@ -6,7 +6,7 @@ import {
   readEdgeGestureOverlayState,
   readSelectionGesturePreview,
   type ActiveGesture
-} from './interaction'
+} from './interaction/gesture'
 import {
   EMPTY_EDGE_GUIDE,
   EMPTY_EDGE_OVERLAY,

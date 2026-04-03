@@ -1,20 +1,20 @@
 import { getSegmentBounds } from '@whiteboard/core/geometry'
 import type {
   InteractionSession
-} from '../../runtime/interaction'
+} from '../../runtime/interaction/types'
 import type {
   NodeId,
   Point,
   Rect
 } from '@whiteboard/core/types'
 import type { PointerDownInput, PointerSample } from '../../types/input'
-import type { InteractionCtx } from '../../runtime/interaction/ctx'
+import type { InteractionContext } from '../context'
 
 const ERASER_HIT_EPSILON_SCREEN = 2
 const ZOOM_EPSILON = 0.0001
 
 type DrawInteractionCtx = Pick<
-  InteractionCtx,
+  InteractionContext,
   'read' | 'write'
 >
 

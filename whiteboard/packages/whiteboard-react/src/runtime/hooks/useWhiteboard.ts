@@ -5,10 +5,11 @@ import type { WhiteboardRuntime } from '../../types/runtime'
 import type { ClipboardBridge } from '../bridge/clipboard'
 import type { InsertBridge } from '../bridge/insert'
 import type { PointerBridge } from '../bridge/pointer'
+import { EngineInstance } from '@whiteboard/engine'
 
 export type WhiteboardContextValue = {
   editor: WhiteboardRuntime
-  engine: import('@whiteboard/engine').EngineInstance
+  engine: EngineInstance
   registry: NodeRegistry
   config: ResolvedConfig
   pointer: PointerBridge

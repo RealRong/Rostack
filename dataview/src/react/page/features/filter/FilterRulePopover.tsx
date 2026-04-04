@@ -143,11 +143,11 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
     >
       <div className="flex max-h-[72vh] flex-col">
         <div className={cn(
-          'px-2 pt-2',
+          'px-2.5 pt-2',
           bodyLayout === 'none' ? 'pb-2' : 'pb-1'
         )}>
           <div className="flex items-center gap-1">
-            <div className="min-w-0 flex-1 gap-1 flex items-center truncate text-sm font-medium text-foreground">
+            <div className="min-w-0 flex-1 text-sm gap-1 flex items-end truncate font-medium text-foreground">
               {propertyLabel}
 
               {props.property && presentation.condition ? (
@@ -159,7 +159,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
                   offset={6}
                   surface="scoped"
                   trigger={(
-                    <div className="flex h-5 cursor-pointer items-center gap-1 rounded-md px-1 font-semibold text-muted-foreground transition-[background-color,color] hover:bg-hover hover:text-foreground">
+                    <div className="flex h-5 text-sm cursor-pointer items-center gap-1 rounded-md px-1 font-semibold text-muted-foreground transition-[background-color,color] hover:bg-hover hover:text-foreground">
                       {renderMessage(presentation.condition.message)}
                       <ChevronDown className="opacity-70" size={12} strokeWidth={2} />
                     </div>
@@ -199,7 +199,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
 
         {bodyLayout !== 'none' ? (
           <div className={cn(
-            bodyLayout === 'inset' ? 'px-2 pb-3 pt-2' : 'px-1.5 pb-2 pt-1'
+            bodyLayout === 'inset' ? 'px-2.5 pb-2.5 pt-1' : 'px-1.5 pb-2 pt-1'
           )}>
             {editorKind === 'status' ? (
               <StatusFilterPicker

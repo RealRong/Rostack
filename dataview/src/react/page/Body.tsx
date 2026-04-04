@@ -16,7 +16,7 @@ export const PageBody = (props: PageBodyProps) => {
 
   if (!view) {
     return (
-      <div className="rounded-xl border border-dashed border-default bg-surface-muted/55 px-6 py-10 text-sm text-fg-muted">
+      <div className="rounded-xl border border-dashed bg-surface-muted/55 px-6 py-10 text-sm text-fg-muted">
         No view selected.
       </div>
     )
@@ -45,7 +45,7 @@ export const PageBody = (props: PageBodyProps) => {
       )
     default:
       return (
-        <div className="rounded-xl border border-dashed border-default bg-surface-muted/55 px-6 py-10 text-sm text-fg-muted">
+        <div className="rounded-xl border border-dashed bg-surface-muted/55 px-6 py-10 text-sm text-fg-muted">
           Unsupported view type: {view.type}
         </div>
       )

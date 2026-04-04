@@ -108,7 +108,7 @@ export const Card = (props: {
       }}
       slots={{
         root: cn(
-          'relative rounded-xl border border-default bg-surface p-3 transition-colors',
+          'relative rounded-xl border bg-surface p-3 transition-colors',
           selected && 'border-primary'
         ),
         title: {

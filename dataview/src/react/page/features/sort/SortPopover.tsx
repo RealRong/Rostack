@@ -60,7 +60,7 @@ export const SortPopover = (props: SortPopoverProps) => {
       backdrop="transparent"
       trigger={(
         <QueryChip
-          state={props.open ? 'open' : 'active'}
+          state={'active'}
           leading={<ArrowUpDown className="size-[14px] shrink-0" size={14} strokeWidth={1.8} />}
           trailing={<ChevronDown className="size-[14px] shrink-0" size={14} strokeWidth={1.8} />}
         >

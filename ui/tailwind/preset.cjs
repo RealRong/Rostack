@@ -89,6 +89,9 @@ module.exports = {
       }
     },
     extend: {
+      borderColor: {
+        DEFAULT: alphaColor('--border')
+      },
       borderRadius: {
         lg: 'var(--control-radius)',
         md: 'calc(var(--control-radius) - 2px)',

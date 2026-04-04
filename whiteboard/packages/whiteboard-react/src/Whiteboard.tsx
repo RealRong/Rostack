@@ -1,12 +1,12 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react'
+import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react'
 import type { WhiteboardProps } from './types/common/board'
+import { resolveConfig } from './config'
 import { WhiteboardProvider } from './runtime/hooks/useWhiteboard'
 import type { WhiteboardInstance as Editor } from './types/runtime'
 import { Surface } from './canvas/Surface'
 import { DocumentSync } from './runtime/whiteboard/DocumentSync'
 import { CollabLifecycle } from './runtime/whiteboard/CollabLifecycle'
 import { EditorLifecycle } from './runtime/whiteboard/EditorLifecycle'
-import { useWhiteboardConfig } from './runtime/whiteboard/config'
 import { useWhiteboardRuntime } from './runtime/whiteboard/runtime'
 
 const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function WhiteboardInner(
@@ -26,7 +26,10 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
     boardConfig,
     editorConfig,
     viewportLimits
-  } = useWhiteboardConfig(options)
+  } = useMemo(
+    () => resolveConfig(options),
+    [options]
+  )
   const {
     whiteboard,
     inputDocument,

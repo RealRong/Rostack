@@ -21,7 +21,7 @@ export const QueryChip = forwardRef<HTMLButtonElement, QueryChipProps>(
       type={type ?? 'button'}
       data-state={state}
       className={cn(
-        'inline-flex h-6 min-w-0 select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-full border-0 bg-transparent px-2 text-sm font-medium leading-6 text-fg-muted transition-[background-color,color,opacity,box-shadow] duration-75 hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:[box-shadow:inset_0_0_0_1px_var(--ui-accent-outline)] disabled:cursor-default disabled:opacity-40',
+        'inline-flex h-7 min-w-0 select-none items-center justify-center gap-1 whitespace-nowrap rounded-full border-0 bg-transparent px-2 text-sm font-semibold text-fg-muted transition-all duration-75 hover:bg-hover hover:text-fg focus-visible:outline-none disabled:cursor-default disabled:opacity-40',
         state === 'active' && 'bg-accent-tint text-accent hover:bg-accent-tint hover:text-accent',
         state === 'open' && 'bg-hover text-fg hover:bg-hover',
         className

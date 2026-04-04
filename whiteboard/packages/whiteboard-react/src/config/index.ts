@@ -3,14 +3,17 @@ import {
   DEFAULT_BOARD_CONFIG,
   type BoardConfig as EngineBoardConfig
 } from '@whiteboard/core/config'
-import {
-  selectTool
-} from '@whiteboard/editor'
+import type { Viewport } from '@whiteboard/core/types'
+import { selectTool } from '@whiteboard/editor'
 import type { WhiteboardOptions } from '../types/common/board'
 import type { ResolvedConfig } from '../types/common/config'
-import { DEFAULT_VIEWPORT } from './defaultViewport'
 
 const ZOOM_EPSILON = 0.0001
+
+const DEFAULT_VIEWPORT: Viewport = {
+  center: { x: 0, y: 0 },
+  zoom: 1
+}
 
 const DEFAULT_CONFIG: ResolvedConfig = {
   className: undefined,
@@ -38,25 +41,28 @@ const DEFAULT_CONFIG: ResolvedConfig = {
   shortcuts: undefined
 }
 
-const mergeConfig = (
-  defaults: ResolvedConfig,
-  overrides?: WhiteboardOptions
-): ResolvedConfig => mergeValue(defaults, overrides)
+type ConfigBundle = {
+  resolvedConfig: ResolvedConfig
+  boardConfig: EngineBoardConfig
+  editorConfig: {
+    mindmapLayout: ResolvedConfig['mindmapLayout']
+    history: ResolvedConfig['history']
+  }
+  viewportLimits: {
+    minZoom: number
+    maxZoom: number
+  }
+}
 
-export const normalizeConfig = (
+const normalizeConfig = (
   options?: WhiteboardOptions
 ): ResolvedConfig => {
-  const merged = mergeConfig(DEFAULT_CONFIG, options)
-  const {
-    initialTool,
-    ...rest
-  } = merged
+  const merged = mergeValue(DEFAULT_CONFIG, options)
   const minZoom = Math.max(ZOOM_EPSILON, merged.viewport.minZoom)
   const maxZoom = Math.max(minZoom, merged.viewport.maxZoom)
 
   return {
-    ...rest,
-    initialTool,
+    ...merged,
     viewport: {
       ...merged.viewport,
       initial: merged.viewport.initial ?? DEFAULT_VIEWPORT,
@@ -71,17 +77,11 @@ export const normalizeConfig = (
   }
 }
 
-export const toBoardConfig = (
+const toBoardConfig = (
   config: ResolvedConfig
 ): EngineBoardConfig => ({
-  nodeSize: {
-    width: config.nodeSize.width,
-    height: config.nodeSize.height
-  },
-  mindmapNodeSize: {
-    width: config.mindmapNodeSize.width,
-    height: config.mindmapNodeSize.height
-  },
+  nodeSize: config.nodeSize,
+  mindmapNodeSize: config.mindmapNodeSize,
   node: {
     groupPadding: config.node.groupPadding,
     snapThresholdScreen: config.node.snapThresholdScreen,
@@ -95,4 +95,21 @@ export const toBoardConfig = (
   }
 })
 
-export { DEFAULT_CONFIG, DEFAULT_VIEWPORT }
+export const resolveConfig = (
+  options?: WhiteboardOptions
+): ConfigBundle => {
+  const resolvedConfig = normalizeConfig(options)
+
+  return {
+    resolvedConfig,
+    boardConfig: toBoardConfig(resolvedConfig),
+    editorConfig: {
+      mindmapLayout: resolvedConfig.mindmapLayout,
+      history: resolvedConfig.history
+    },
+    viewportLimits: {
+      minZoom: resolvedConfig.viewport.minZoom,
+      maxZoom: resolvedConfig.viewport.maxZoom
+    }
+  }
+}

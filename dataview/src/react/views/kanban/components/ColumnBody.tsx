@@ -108,7 +108,7 @@ export const ColumnBody = (props: {
       ) : (
         <div
           className={cn(
-            'flex h-full items-center justify-center rounded-2xl border border-dashed border-default bg-surface-muted/55 px-4 py-8 text-center text-sm text-fg-muted',
+            'flex h-full items-center justify-center rounded-2xl border border-dashed bg-surface-muted/55 px-4 py-8 text-center text-sm text-fg-muted',
             isColumnTarget && 'border-primary/40 bg-primary/[0.04] text-foreground/80'
           )}
         >

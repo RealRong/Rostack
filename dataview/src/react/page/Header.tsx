@@ -43,7 +43,7 @@ export const PageHeader = (_props: PageHeaderProps) => {
         </div>
         {currentView ? (
           <div className="mt-2 flex min-w-0 items-center gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-default bg-surface-muted">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border bg-surface-muted">
               <CurrentIcon className="size-5" size={18} strokeWidth={2} />
             </div>
             <div className="min-w-0">

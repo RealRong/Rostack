@@ -241,7 +241,7 @@ export const PropertyValueEditorHost = () => {
         <PopoverContainerProvider container={container}>
           <div
             ref={panelRef}
-            className="overflow-auto rounded-xl border border-floating bg-floating shadow-popover"
+            className="overflow-auto rounded-xl bg-floating shadow-popover"
             style={{
               maxHeight: position.maxHeight
             }}

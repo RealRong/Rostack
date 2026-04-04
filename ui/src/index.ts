@@ -9,12 +9,29 @@ export {
   type MenuSubmenuOpenPolicy
 } from './menu'
 export {
+  DropdownMenu,
+  type DropdownMenuProps
+} from './dropdown-menu'
+export {
   Popover,
   PopoverContainerProvider,
   PopoverScope,
   type PopoverOffset,
   type PopoverProps
 } from './popover'
+export {
+  OverlayProvider,
+  useLayer,
+  useOverlay,
+  useOverlayDismiss,
+  useOverlayKey,
+  useOverlayPointer,
+  type OverlayApi,
+  type OverlayCloseReason,
+  type OverlayLayerHandle,
+  type OverlayLayerKind,
+  type OverlayLayerOptions
+} from './overlay'
 export { PanelHeader, type PanelHeaderProps } from './panel-header'
 export { Switch, type SwitchProps } from './switch'
 export {

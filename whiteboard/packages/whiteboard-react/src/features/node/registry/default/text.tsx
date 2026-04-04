@@ -9,13 +9,14 @@ import {
   stopEditingPointerDown,
   syncEditableDraft
 } from '../../dom/editableText'
-import { useAutoFontSize } from '../../hooks/useAutoFontSize'
+import { useStickyFontSize } from '../../hooks/useStickyFontSize'
 import {
   bindNodeTextSource,
   measureTextNodeSize,
   readEditableText,
   STICKY_DEFAULT_FILL,
   STICKY_PLACEHOLDER,
+  TEXT_DEFAULT_FONT_SIZE,
   TEXT_PLACEHOLDER
 } from '../../text'
 import {
@@ -36,7 +37,6 @@ const stickySchema = createSchema('sticky', 'Sticky', [
   createTextField('text'),
   styleField('fill', 'Fill', 'color'),
   styleField('color', 'Text color', 'color'),
-  styleField('fontSize', 'Font size', 'number', { min: 8, step: 1 }),
   styleField('stroke', 'Stroke', 'color'),
   styleField('strokeWidth', 'Stroke width', 'number', { min: 0, step: 1 })
 ])
@@ -54,7 +54,6 @@ const readStickyFill = (
 )
 
 const TextNodeRenderer = ({
-  write,
   node,
   rect,
   selected,
@@ -77,34 +76,20 @@ const TextNodeRenderer = ({
     })
     sourceRef.current = element
   }
-  const manualFontSize = getStyleNumber(node, 'fontSize')
   const placeholder = isSticky ? STICKY_PLACEHOLDER : TEXT_PLACEHOLDER
-  const displayFontSize = useAutoFontSize({
-    text,
-    placeholder,
+  const stickyFontSize = useStickyFontSize({
+    text: editing ? draft : text,
     rect,
-    variant,
-    manualFontSize,
     sourceRef
   })
-  const [editingFontSize, setEditingFontSize] = useState<number | null>(null)
-  const fontSize = isSticky && editing
-    ? (editingFontSize ?? displayFontSize)
-    : displayFontSize
+  const fontSize = isSticky
+    ? stickyFontSize
+    : (getStyleNumber(node, 'fontSize') ?? TEXT_DEFAULT_FONT_SIZE)
   const color = getStyleString(node, 'color') ?? 'var(--ui-text-primary)'
 
   useEffect(() => {
     setDraft(text)
   }, [text])
-
-  useEffect(() => {
-    if (!isSticky || !editing) {
-      setEditingFontSize(null)
-      return
-    }
-
-    setEditingFontSize((current) => current ?? displayFontSize)
-  }, [displayFontSize, editing, isSticky])
 
   useEffect(() => {
     if (!editing) {

@@ -38,6 +38,13 @@ import {
   useBlockingSurface,
   useBlockingSurfaceController
 } from './blocking-surface'
+import {
+  OverlayLayerProvider,
+  useLayer,
+  useOptionalOverlay,
+  useOverlayKey,
+  useOverlayPointer
+} from './overlay'
 import { closestTarget } from './dom'
 import { cn } from './utils'
 
@@ -134,6 +141,7 @@ export const Popover = (props: PopoverProps) => {
   const inheritedScopeId = useContext(PopoverScopeContext)
   const inheritedContainer = useContext(PopoverContainerContext)
   const blockingSurfaceController = useBlockingSurfaceController()
+  const overlay = useOptionalOverlay()
   const scopeId = props.scopeId ?? inheritedScopeId
   const container = props.container === undefined
     ? inheritedContainer
@@ -152,6 +160,13 @@ export const Popover = (props: PopoverProps) => {
   const dismissBlockingSurface = useCallback(() => {
     setOpen(false)
   }, [setOpen])
+  const layer = useLayer({
+    open,
+    kind: 'popover',
+    modal: props.modal,
+    blocking: surface === 'blocking',
+    onClose: () => setOpen(false)
+  })
 
   useBlockingSurface({
     open: open && surface === 'blocking' && Boolean(blockingSurfaceController),
@@ -195,19 +210,23 @@ export const Popover = (props: PopoverProps) => {
 
   const click = useClick(floating.context)
   const dismiss = useDismiss(floating.context, {
-    outsidePress: props.closeOnInteractOutside === false
+    outsidePress: overlay
       ? false
-      : event => {
-          if (
-            scopeId
-            && closestTarget(event.target, `[${POPOVER_SCOPE_ATTR}="${scopeId}"]`)
-          ) {
-            return false
-          }
+      : props.closeOnInteractOutside === false
+        ? false
+        : event => {
+            if (
+              scopeId
+              && closestTarget(event.target, `[${POPOVER_SCOPE_ATTR}="${scopeId}"]`)
+            ) {
+              return false
+            }
 
-          return true
-        },
-    escapeKey: props.closeOnEscape ?? true
+            return true
+          },
+    escapeKey: overlay
+      ? false
+      : (props.closeOnEscape ?? true)
   })
   const role = useRole(floating.context, {
     role: 'dialog'
@@ -264,6 +283,69 @@ export const Popover = (props: PopoverProps) => {
     })
   )
 
+  useOverlayKey({
+    layerId: layer.id,
+    when: () => (
+      Boolean(overlay)
+      && open
+      && props.closeOnEscape !== false
+      && layer.isTop()
+    ),
+    onKeyDown: event => {
+      if (event.defaultPrevented || event.isComposing || event.key !== 'Escape') {
+        return
+      }
+
+      event.preventDefault()
+      event.stopPropagation()
+      layer.close('escape')
+      return true
+    }
+  })
+
+  useOverlayPointer({
+    layerId: layer.id,
+    when: () => (
+      Boolean(overlay)
+      && open
+      && props.closeOnInteractOutside !== false
+      && layer.isTop()
+    ),
+    onPointerDown: event => {
+      const target = event.target instanceof Element
+        ? event.target
+        : null
+      if (!target) {
+        return
+      }
+
+      if (
+        scopeId
+        && closestTarget(target, `[${POPOVER_SCOPE_ATTR}="${scopeId}"]`)
+      ) {
+        return
+      }
+
+      const referenceElement = floating.refs.reference.current
+      const floatingElement = floating.refs.floating.current
+      if (
+        floatingElement instanceof Element
+        && floatingElement.contains(target)
+      ) {
+        return
+      }
+
+      if (
+        referenceElement instanceof Element
+        && referenceElement.contains(target)
+      ) {
+        return
+      }
+
+      layer.close('outside')
+    }
+  })
+
   const floatingContent = (
     <div
       ref={floating.refs.setFloating}
@@ -298,7 +380,9 @@ export const Popover = (props: PopoverProps) => {
           props.contentClassName
         )}
       >
-        {props.children}
+        <OverlayLayerProvider layerId={layer.id}>
+          {props.children}
+        </OverlayLayerProvider>
       </div>
     </div>
   )
@@ -309,6 +393,11 @@ export const Popover = (props: PopoverProps) => {
     event.preventDefault()
     event.stopPropagation()
     if (props.dismissOnBackdropPress ?? true) {
+      if (overlay) {
+        layer.close('backdrop')
+        return
+      }
+
       setOpen(false)
     }
   }

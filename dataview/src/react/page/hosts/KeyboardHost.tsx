@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useOverlayKey } from '@ui/overlay'
 import { keyDown } from '@dataview/react/interaction'
 import { useCurrentView, useDataView, usePageValue } from '@dataview/react/dataview'
 import { closestTarget } from '@dataview/dom/interactive'
@@ -11,30 +11,21 @@ const editingTargetSelector = [
   '[contenteditable="true"]'
 ].join(', ')
 
-const keyboardPrioritySurfaceSelector = [
-  '[role="menu"]',
-  '[role="menuitem"]',
-  '[role="menuitemcheckbox"]'
-].join(', ')
-
 export const PageKeyboardHost = () => {
   const dataView = useDataView()
   const engine = dataView.engine
   const currentView = useCurrentView()
   const uiLock = usePageValue(state => state.lock)
 
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    const onKeyDown = (event: KeyboardEvent) => {
+  useOverlayKey({
+    order: -100,
+    onKeyDown: (event, overlay) => {
       if (
         event.defaultPrevented
         || event.isComposing
         || closestTarget(event.target, editingTargetSelector)
         || uiLock
-        || closestTarget(event.target, keyboardPrioritySurfaceSelector)
+        || overlay.topLayerId
       ) {
         return
       }
@@ -58,7 +49,7 @@ export const PageKeyboardHost = () => {
 
           engine.history.undo()
           event.preventDefault()
-          return
+          return true
         case 'redo':
           if (!engine.history.canRedo()) {
             return
@@ -66,7 +57,7 @@ export const PageKeyboardHost = () => {
 
           engine.history.redo()
           event.preventDefault()
-          return
+          return true
         case 'select-all':
           if (currentView?.view.type === 'table') {
             return
@@ -74,7 +65,7 @@ export const PageKeyboardHost = () => {
 
           dataView.selection.all()
           event.preventDefault()
-          return
+          return true
         case 'clear-selection':
           if (currentView?.view.type === 'table') {
             return
@@ -82,7 +73,7 @@ export const PageKeyboardHost = () => {
 
           dataView.selection.clear()
           event.preventDefault()
-          return
+          return true
         case 'remove-selection':
           if (currentView?.view.type === 'table') {
             return
@@ -90,15 +81,10 @@ export const PageKeyboardHost = () => {
 
           currentView?.commands.mutation.remove()
           event.preventDefault()
-          return
+          return true
       }
     }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-    }
-  }, [currentView, dataView.selection, engine, uiLock])
+  })
 
   return null
 }

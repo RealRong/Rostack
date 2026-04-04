@@ -17,8 +17,8 @@ import {
   type PointerEvent
 } from 'react'
 import type { PropertyId, GroupProperty } from '@dataview/core/contracts'
-import { Menu, type MenuItem } from '@ui/menu'
-import { Popover } from '@ui/popover'
+import { DropdownMenu } from '@ui/dropdown-menu'
+import { type MenuItem } from '@ui/menu'
 import { cn } from '@ui/utils'
 import { TITLE_PROPERTY_ID } from '@dataview/core/property'
 import { getUrlPropertyConfig } from '@dataview/core/property'
@@ -385,22 +385,17 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
         zIndex: isDragging ? 1 : undefined
       }}
     >
-      <Popover
+      <DropdownMenu
         open={menuOpen}
         onOpenChange={setMenuOpen}
         initialFocus={-1}
-        scopeId={menuScopeId}
         surface="blocking"
         backdrop="transparent"
+        items={items}
+        menuScopeId={menuScopeId}
         trigger={trigger}
         contentClassName="min-w-0 w-[280px] p-1"
-      >
-        <Menu
-          items={items}
-          onClose={() => setMenuOpen(false)}
-          scopeId={menuScopeId}
-        />
-      </Popover>
+      />
       <ResizeHandle
         propertyId={props.property.id}
         active={Boolean(props.resizeActive)}

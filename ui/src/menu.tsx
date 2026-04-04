@@ -20,6 +20,9 @@ const MENU_SUBMENU_OFFSET: PopoverOffset = {
   mainAxis: -8
 }
 
+const MENU_ROOT_ATTR = 'data-menu-root-id'
+const MENU_ITEM_KEY_ATTR = 'data-menu-item-key'
+
 export interface MenuActionItem {
   kind: 'action'
   key: string
@@ -113,18 +116,19 @@ const resolveMenuItemActiveClassName = (input: {
   active: boolean
   destructive?: boolean
 }) => {
-  if (!input.active) {
-    return undefined
+  if (input.active) {
+    return input.destructive
+      ? 'bg-destructive/10 text-destructive'
+      : 'bg-hover text-fg'
   }
 
   return input.destructive
-    ? 'bg-destructive/10 text-destructive'
-    : 'bg-hover text-fg'
+    ? 'hover:bg-transparent'
+    : 'hover:bg-transparent hover:text-fg'
 }
 
-const MENU_ITEM_BASE_CLASS_NAME = 'hover:bg-transparent'
-
 const MenuList = (props: MenuListProps) => {
+  const rootId = useId()
   const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const enabledItemKeys = useMemo(
     () => getEnabledItemKeys(props.items),
@@ -139,25 +143,23 @@ const MenuList = (props: MenuListProps) => {
     ),
     [props.items]
   )
-  const [activeKey, setActiveKey] = useState<string | null>(enabledItemKeys[0] ?? null)
+  const [focusKey, setFocusKey] = useState<string | null>(enabledItemKeys[0] ?? null)
   const [openSubmenuKey, setOpenSubmenuKey] = useState<string | null>(null)
 
-  const focusKey = useCallback((nextKey: string | null) => {
+  const focusItem = useCallback((nextKey: string | null) => {
     if (!nextKey) {
       return
     }
 
-    setActiveKey(nextKey)
-    window.requestAnimationFrame(() => {
-      itemRefs.current[nextKey]?.focus()
-    })
+    setFocusKey(nextKey)
+    itemRefs.current[nextKey]?.focus({ preventScroll: true })
   }, [])
 
   useEffect(() => {
-    if (!activeKey || !enabledItemKeys.includes(activeKey)) {
-      setActiveKey(enabledItemKeys[0] ?? null)
+    if (!focusKey || !enabledItemKeys.includes(focusKey)) {
+      setFocusKey(enabledItemKeys[0] ?? null)
     }
-  }, [activeKey, enabledItemKey, enabledItemKeys])
+  }, [enabledItemKey, enabledItemKeys, focusKey])
 
   useEffect(() => {
     if (openSubmenuKey && !props.items.some(item => item.kind === 'submenu' && item.key === openSubmenuKey)) {
@@ -170,35 +172,42 @@ const MenuList = (props: MenuListProps) => {
       return
     }
 
-    focusKey(enabledItemKeys[0] ?? null)
-  }, [enabledItemKey, enabledItemKeys, focusKey, props.autoFocus])
+    focusItem(enabledItemKeys[0] ?? null)
+  }, [enabledItemKey, enabledItemKeys, focusItem, props.autoFocus])
 
   const moveFocus = useCallback((delta: number) => {
     if (!enabledItemKeys.length) {
       return
     }
 
-    const currentIndex = activeKey
-      ? enabledItemKeys.indexOf(activeKey)
+    const currentIndex = focusKey
+      ? enabledItemKeys.indexOf(focusKey)
       : -1
     const baseIndex = currentIndex === -1
       ? (delta > 0 ? -1 : 0)
       : currentIndex
     const nextIndex = (baseIndex + delta + enabledItemKeys.length) % enabledItemKeys.length
+
     setOpenSubmenuKey(null)
-    focusKey(enabledItemKeys[nextIndex] ?? null)
-  }, [activeKey, enabledItemKeys, focusKey])
+    focusItem(enabledItemKeys[nextIndex] ?? null)
+  }, [enabledItemKeys, focusItem, focusKey])
+
   const collapseSubmenu = useCallback(() => {
     setOpenSubmenuKey(null)
   }, [])
 
   const handleKeyDownCapture = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
-    const target = closestTarget<HTMLElement>(event.target, '[data-menu-item-key]')
+    const menuRoot = closestTarget<HTMLElement>(event.target, `[${MENU_ROOT_ATTR}]`)
+    if (menuRoot?.getAttribute(MENU_ROOT_ATTR) !== rootId) {
+      return
+    }
+
+    const target = closestTarget<HTMLElement>(event.target, `[${MENU_ITEM_KEY_ATTR}]`)
     if (!target) {
       return
     }
 
-    const currentKey = target.dataset.menuItemKey
+    const currentKey = target.getAttribute(MENU_ITEM_KEY_ATTR)
     if (!currentKey) {
       return
     }
@@ -207,31 +216,42 @@ const MenuList = (props: MenuListProps) => {
     switch (event.key) {
       case 'ArrowDown':
         event.preventDefault()
+        event.stopPropagation()
         moveFocus(1)
         break
       case 'ArrowUp':
         event.preventDefault()
+        event.stopPropagation()
         moveFocus(-1)
         break
       case 'Home':
         event.preventDefault()
+        event.stopPropagation()
         setOpenSubmenuKey(null)
-        focusKey(enabledItemKeys[0] ?? null)
+        focusItem(enabledItemKeys[0] ?? null)
         break
       case 'End':
         event.preventDefault()
+        event.stopPropagation()
         setOpenSubmenuKey(null)
-        focusKey(enabledItemKeys[enabledItemKeys.length - 1] ?? null)
+        focusItem(enabledItemKeys[enabledItemKeys.length - 1] ?? null)
         break
       case 'ArrowRight':
-        if (currentItem?.kind !== 'submenu' || currentItem.disabled) {
-          return
-        }
-
         event.preventDefault()
-        setOpenSubmenuKey(currentItem.key)
+        event.stopPropagation()
+        if (currentItem?.kind === 'submenu' && !currentItem.disabled) {
+          setOpenSubmenuKey(currentItem.key)
+        }
         break
       case 'ArrowLeft':
+        event.preventDefault()
+        event.stopPropagation()
+        if (props.onRequestClose) {
+          setOpenSubmenuKey(null)
+          props.onRequestClose()
+          props.focusTrigger?.()
+        }
+        break
       case 'Escape':
         if (props.onRequestClose) {
           event.preventDefault()
@@ -251,11 +271,14 @@ const MenuList = (props: MenuListProps) => {
       default:
         break
     }
-  }, [enabledItemKeys, focusKey, itemMap, moveFocus, props])
+  }, [enabledItemKeys, focusItem, itemMap, moveFocus, props, rootId])
 
   return (
     <div
       role="menu"
+      {...{
+        [MENU_ROOT_ATTR]: rootId
+      }}
       className="flex flex-col gap-0.5"
       onKeyDownCapture={handleKeyDownCapture}
     >
@@ -286,33 +309,32 @@ const MenuList = (props: MenuListProps) => {
         }
 
         if (item.kind === 'action') {
-          const active = activeKey === item.key
+          const active = focusKey === item.key
           return (
             <Button
               key={item.key}
               ref={ref}
-              data-menu-item-key={item.key}
+              {...{
+                [MENU_ITEM_KEY_ATTR]: item.key
+              }}
               role="menuitem"
-              tabIndex={activeKey === item.key ? 0 : -1}
+              tabIndex={focusKey === item.key ? 0 : -1}
               layout="row"
               variant={item.tone === 'destructive' ? 'ghostDestructive' : undefined}
               focusRing={false}
               leading={item.leading}
               suffix={item.suffix}
               disabled={item.disabled}
-              className={cn(
-                MENU_ITEM_BASE_CLASS_NAME,
-                resolveMenuItemActiveClassName({
-                  active,
-                  destructive: item.tone === 'destructive'
-                })
-              )}
+              className={resolveMenuItemActiveClassName({
+                active,
+                destructive: item.tone === 'destructive'
+              })}
               onFocus={() => {
-                setActiveKey(item.key)
+                setFocusKey(item.key)
                 collapseSubmenu()
               }}
               onMouseEnter={() => {
-                setActiveKey(item.key)
+                focusItem(item.key)
                 collapseSubmenu()
               }}
               onClick={() => {
@@ -329,26 +351,25 @@ const MenuList = (props: MenuListProps) => {
 
         if (item.kind === 'toggle') {
           const indicator = item.indicator ?? 'check'
-          const active = activeKey === item.key
+          const active = focusKey === item.key
           return (
             <Button
               key={item.key}
               ref={ref}
-              data-menu-item-key={item.key}
+              {...{
+                [MENU_ITEM_KEY_ATTR]: item.key
+              }}
               role="menuitemcheckbox"
               aria-checked={item.checked}
-              tabIndex={activeKey === item.key ? 0 : -1}
+              tabIndex={focusKey === item.key ? 0 : -1}
               layout="row"
               focusRing={false}
               leading={item.leading}
               suffix={item.suffix}
               disabled={item.disabled}
-              className={cn(
-                MENU_ITEM_BASE_CLASS_NAME,
-                resolveMenuItemActiveClassName({
-                  active
-                })
-              )}
+              className={resolveMenuItemActiveClassName({
+                active
+              })}
               trailing={indicator === 'switch'
                 ? (
                     <Switch
@@ -362,11 +383,11 @@ const MenuList = (props: MenuListProps) => {
                   ? <Check className="size-4 text-foreground" size={16} strokeWidth={1.8} />
                   : undefined}
               onFocus={() => {
-                setActiveKey(item.key)
+                setFocusKey(item.key)
                 collapseSubmenu()
               }}
               onMouseEnter={() => {
-                setActiveKey(item.key)
+                focusItem(item.key)
                 collapseSubmenu()
               }}
               onClick={() => {
@@ -382,7 +403,8 @@ const MenuList = (props: MenuListProps) => {
         }
 
         const open = openSubmenuKey === item.key
-        const active = activeKey === item.key || open
+        const active = focusKey === item.key || open
+
         return (
           <Popover
             key={item.key}
@@ -400,26 +422,27 @@ const MenuList = (props: MenuListProps) => {
             trigger={(
               <Button
                 ref={ref}
-                data-menu-item-key={item.key}
+                {...{
+                  [MENU_ITEM_KEY_ATTR]: item.key
+                }}
                 role="menuitem"
                 aria-haspopup="menu"
                 aria-expanded={open}
-                tabIndex={activeKey === item.key ? 0 : -1}
+                tabIndex={focusKey === item.key ? 0 : -1}
                 layout="row"
                 focusRing={false}
                 leading={item.leading}
                 suffix={item.suffix}
                 disabled={item.disabled}
-                className={cn(
-                  MENU_ITEM_BASE_CLASS_NAME,
-                  resolveMenuItemActiveClassName({
-                    active
-                  })
-                )}
+                className={resolveMenuItemActiveClassName({
+                  active
+                })}
                 trailing={<ChevronRight className="size-4" size={16} strokeWidth={1.8} />}
-                onFocus={() => setActiveKey(item.key)}
+                onFocus={() => {
+                  setFocusKey(item.key)
+                }}
                 onMouseEnter={() => {
-                  setActiveKey(item.key)
+                  focusItem(item.key)
                   if (!item.disabled && props.submenuOpenPolicy === 'hover') {
                     setOpenSubmenuKey(item.key)
                   }
@@ -429,19 +452,7 @@ const MenuList = (props: MenuListProps) => {
               </Button>
             )}
           >
-            <div
-              className="flex max-h-[72vh] flex-col"
-              onKeyDownCapture={event => {
-                if (event.key !== 'ArrowLeft' && event.key !== 'Escape') {
-                  return
-                }
-
-                event.preventDefault()
-                event.stopPropagation()
-                setOpenSubmenuKey(null)
-                focusKey(item.key)
-              }}
-            >
+            <div className="flex max-h-[72vh] flex-col">
               {item.items?.length ? (
                 <MenuList
                   items={item.items}
@@ -451,7 +462,7 @@ const MenuList = (props: MenuListProps) => {
                   }}
                   autoFocus={false}
                   onRequestClose={() => setOpenSubmenuKey(null)}
-                  focusTrigger={() => focusKey(item.key)}
+                  focusTrigger={() => focusItem(item.key)}
                   submenuOpenPolicy={props.submenuOpenPolicy}
                 />
               ) : renderSubmenuContent(item.content)}
@@ -467,6 +478,7 @@ export const Menu = (props: MenuProps) => {
   const generatedScopeId = useId()
   const scopeId = props.scopeId ?? generatedScopeId
   const submenuOpenPolicy = props.submenuOpenPolicy ?? 'hover'
+
   return (
     <PopoverScope id={scopeId}>
       <div className="flex max-h-[72vh] flex-col">

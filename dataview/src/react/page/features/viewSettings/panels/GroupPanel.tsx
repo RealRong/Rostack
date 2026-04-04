@@ -14,9 +14,8 @@ import {
   useDocument
 } from '@dataview/react/dataview'
 import { Button } from '@ui/button'
+import { DropdownMenu } from '@ui/dropdown-menu'
 import { Input } from '@ui/input'
-import { Menu } from '@ui/menu'
-import { Popover } from '@ui/popover'
 import { meta, renderMessage } from '@dataview/meta'
 
 const GroupMenuRow = forwardRef<HTMLButtonElement, {
@@ -211,13 +210,14 @@ export const GroupPanel = () => {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 py-2">
       <div className="flex flex-col gap-0.5">
-        <Popover
+        <DropdownMenu
           open={propertyOpen}
           onOpenChange={setPropertyOpen}
           placement="right-start"
           offset={10}
           initialFocus={-1}
           surface="scoped"
+          items={propertyItems}
           contentClassName="w-[240px] p-1.5"
           trigger={(
             <GroupMenuRow
@@ -227,21 +227,17 @@ export const GroupPanel = () => {
               onClick={() => undefined}
             />
           )}
-        >
-          <Menu
-            onClose={() => setPropertyOpen(false)}
-            items={propertyItems}
-          />
-        </Popover>
+        />
 
         {groupProperty && availableModes.length > 1 ? (
-          <Popover
+          <DropdownMenu
             open={modeOpen}
             onOpenChange={setModeOpen}
             placement="right-start"
             offset={10}
             initialFocus={-1}
             surface="scoped"
+            items={modeItems}
             contentClassName="w-[220px] p-1.5"
             trigger={(
               <GroupMenuRow
@@ -251,22 +247,18 @@ export const GroupPanel = () => {
                 onClick={() => undefined}
               />
             )}
-          >
-            <Menu
-              onClose={() => setModeOpen(false)}
-              items={modeItems}
-            />
-          </Popover>
+          />
         ) : null}
 
         {groupProperty && bucketSortItems.length > 0 ? (
-          <Popover
+          <DropdownMenu
             open={sortOpen}
             onOpenChange={setSortOpen}
             placement="right-start"
             offset={10}
             initialFocus={-1}
             surface="scoped"
+            items={bucketSortItems}
             contentClassName="w-[220px] p-1.5"
             trigger={(
               <GroupMenuRow
@@ -276,12 +268,7 @@ export const GroupPanel = () => {
                 onClick={() => undefined}
               />
             )}
-          >
-            <Menu
-              onClose={() => setSortOpen(false)}
-              items={bucketSortItems}
-            />
-          </Popover>
+          />
         ) : null}
       </div>
 

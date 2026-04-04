@@ -17,8 +17,9 @@ import {
   getDocumentViews
 } from '@dataview/core/document'
 import { Button } from '@ui/button'
+import { DropdownMenu } from '@ui/dropdown-menu'
 import { Input } from '@ui/input'
-import { Menu, type MenuItem } from '@ui/menu'
+import { type MenuItem } from '@ui/menu'
 import { Popover } from '@ui/popover'
 import { cn } from '@ui/utils'
 import { CreateViewPopover } from '@dataview/react/page/features/createView'
@@ -90,7 +91,7 @@ const ViewTab = (props: ViewTabProps) => {
 
   return (
     <div className="relative shrink-0">
-      <Popover
+      <DropdownMenu
         open={props.menuOpen}
         onOpenChange={open => {
           if (open) {
@@ -104,6 +105,8 @@ const ViewTab = (props: ViewTabProps) => {
         placement="bottom-start"
         surface="blocking"
         backdrop="transparent"
+        items={items}
+        autoFocus={false}
         trigger={(
           <span
             aria-hidden="true"
@@ -111,13 +114,7 @@ const ViewTab = (props: ViewTabProps) => {
           />
         )}
         contentClassName="w-[220px] p-1.5"
-      >
-        <Menu
-          items={items}
-          onClose={props.onCloseMenu}
-          autoFocus={false}
-        />
-      </Popover>
+      />
       <button
         type="button"
         onClick={props.onClick}

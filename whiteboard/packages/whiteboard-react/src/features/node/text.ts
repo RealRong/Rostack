@@ -4,8 +4,6 @@ export {
   STICKY_DEFAULT_STROKE_WIDTH,
   STICKY_DEFAULT_TEXT_COLOR,
   STICKY_PLACEHOLDER,
-  STICKY_START_SIZE,
-  TEXT_AUTO_MAX_WIDTH,
   TEXT_DEFAULT_FONT_SIZE,
   TEXT_MIN_WIDTH,
   TEXT_PLACEHOLDER,
@@ -26,11 +24,7 @@ export {
   readEditableText
 } from '../../dom/editable/text'
 export { bindNodeTextSource } from './dom/textSourceRegistry'
-export type { TextAutoFontTask } from './dom/textLayout'
 export {
-  createTextAutoFontTask,
-  estimateTextAutoFont,
   measureBoundTextNodeSize,
-  measureTextNodeSize,
-  scheduleTextAutoFont
-} from './dom/textLayout'
+  measureTextNodeSize
+} from './dom/textMeasure'

@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import type { GroupProperty, GroupSorter } from '@dataview/core/contracts'
 import { Button } from '@ui/button'
-import { Menu } from '@ui/menu'
+import { DropdownMenu } from '@ui/dropdown-menu'
 import { Popover } from '@ui/popover'
 import type { VerticalReorderItemState } from '@ui/vertical-reorder-list'
 import { cn } from '@ui/utils'
@@ -101,12 +101,24 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
         </div>
       </Popover>
 
-      <Popover
+      <DropdownMenu
         open={directionOpen}
         onOpenChange={setDirectionOpen}
         initialFocus={-1}
         placement="bottom-start"
         surface="scoped"
+        items={SORT_DIRECTIONS.map(direction => ({
+          kind: 'toggle' as const,
+          key: direction,
+          label: renderMessage(meta.sort.direction.get(direction).message),
+          checked: props.sorter.direction === direction,
+          onSelect: () => {
+            props.onChange({
+              ...props.sorter,
+              direction
+            })
+          }
+        }))}
         trigger={(
           <Button
             layout="row"
@@ -117,23 +129,7 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
           </Button>
         )}
         contentClassName="min-w-0 w-[180px] p-1.5"
-      >
-        <Menu
-          onClose={() => setDirectionOpen(false)}
-          items={SORT_DIRECTIONS.map(direction => ({
-            kind: 'toggle' as const,
-            key: direction,
-            label: renderMessage(meta.sort.direction.get(direction).message),
-            checked: props.sorter.direction === direction,
-            onSelect: () => {
-              props.onChange({
-                ...props.sorter,
-                direction
-              })
-            }
-          }))}
-        />
-      </Popover>
+      />
 
       <Button
         size="icon"

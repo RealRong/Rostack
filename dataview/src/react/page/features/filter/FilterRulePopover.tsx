@@ -10,8 +10,8 @@ import {
   readDatePrimaryString
 } from '@dataview/core/property'
 import { Button } from '@ui/button'
+import { DropdownMenu } from '@ui/dropdown-menu'
 import { Input } from '@ui/input'
-import { Menu } from '@ui/menu'
 import { Popover } from '@ui/popover'
 import { cn } from '@ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
@@ -151,13 +151,23 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
               {propertyLabel}
 
               {props.property && presentation.condition ? (
-                <Popover
+                <DropdownMenu
                   open={conditionOpen}
                   onOpenChange={setConditionOpen}
                   initialFocus={-1}
                   placement="bottom-start"
                   offset={6}
                   surface="scoped"
+                  items={conditionItems.map(item => ({
+                    kind: 'toggle' as const,
+                    key: item.id,
+                    label: renderMessage(item.message),
+                    checked: item.id === presentation.condition?.id,
+                    onSelect: () => {
+                      props.onChange(applyPropertyFilterPreset(props.rule, props.property, item))
+                      setConditionOpen(false)
+                    }
+                  }))}
                   trigger={(
                     <div className="flex h-5 text-sm cursor-pointer items-center gap-1 rounded-md px-1 font-semibold text-muted-foreground transition-[background-color,color] hover:bg-hover hover:text-foreground">
                       {renderMessage(presentation.condition.message)}
@@ -165,20 +175,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
                     </div>
                   )}
                   contentClassName="w-[220px] p-1.5"
-                >
-                  <Menu
-                    items={conditionItems.map(item => ({
-                      kind: 'toggle' as const,
-                      key: item.id,
-                      label: renderMessage(item.message),
-                      checked: item.id === presentation.condition?.id,
-                      onSelect: () => {
-                        props.onChange(applyPropertyFilterPreset(props.rule, props.property, item))
-                        setConditionOpen(false)
-                      }
-                    }))}
-                  />
-                </Popover>
+                />
               ) : null}
             </div>
 

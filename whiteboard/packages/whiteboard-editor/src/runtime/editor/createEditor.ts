@@ -1,18 +1,15 @@
 import type { EngineInstance } from '@whiteboard/engine'
-import type { Viewport } from '@whiteboard/core/types'
 import type { NodeRegistry } from '../../types/node'
-import type { DrawPreferences } from '../../types/draw'
-import type { InsertPresetCatalog } from '../../types/insert'
 import type { Tool } from '../../types/tool'
 import type {
   Editor
 } from '../../types/editor'
-import type { EditorInputPolicy } from './types'
 import {
   createInteractionRuntime,
   createSnapRuntime
 } from '../interaction'
 import type { InteractionContext } from '../../interactions/context'
+import type { EditorHost } from '../../host/types'
 import type { InteractionBinding } from '../interaction/types'
 import { createEditorInteractions } from '../../interactions'
 import { createEdgeHoverService } from '../../interactions/edge/hover'
@@ -27,40 +24,25 @@ import { createEditorWrite } from '../write'
 export const createEditor = ({
   engine,
   initialTool,
-  initialViewport,
-  viewportLimits,
-  inputPolicy: initialInputPolicy,
   registry,
-  insertPresetCatalog,
-  initialDrawPreferences
+  host
 }: {
   engine: EngineInstance
   initialTool: Tool
-  initialViewport: Viewport
-  viewportLimits: {
-    minZoom: number
-    maxZoom: number
-  }
-  inputPolicy: EditorInputPolicy
   registry: NodeRegistry
-  insertPresetCatalog: InsertPresetCatalog
-  initialDrawPreferences: DrawPreferences
+  host: EditorHost
 }): Editor => {
   const runtime = createRuntimeState({
-    initialTool,
-    initialViewport,
-    viewportLimits,
-    inputPolicy: initialInputPolicy,
-    initialDrawPreferences
+    initialTool
   })
   let interactions: readonly InteractionBinding[] = []
   const interaction = createInteractionRuntime({
-    getViewport: () => runtime.state.viewport.input,
+    getViewport: () => host.viewport.input,
     getBindings: () => interactions,
     space: runtime.state.space
   })
   const overlay = createOverlay({
-    viewport: runtime.public.viewport,
+    viewport: host.viewport.read,
     gesture: interaction.gesture
   })
   const read = createRead({
@@ -69,17 +51,17 @@ export const createEditor = ({
     history: engine.history,
     runtime,
     overlay,
-    viewport: runtime.public.viewport
+    host
   })
   const write = createEditorWrite({
     engine,
     read,
     runtime,
     overlay,
-    insertPresetCatalog
+    host
   })
   const snap = createSnapRuntime({
-    readZoom: () => runtime.public.viewport.get().zoom,
+    readZoom: () => host.viewport.read.get().zoom,
     node: {
       config: engine.config.node,
       query: engine.read.index.snap.inRect
@@ -94,11 +76,13 @@ export const createEditor = ({
     engine,
     read,
     write,
-    runtime
+    runtime,
+    host
   })
   const state = createEditorState({
     interaction,
-    runtime
+    runtime,
+    host
   })
 
   const interactionContext: InteractionContext = {
@@ -113,7 +97,7 @@ export const createEditor = ({
   const input = createEditorInput({
     interaction,
     edgeHover,
-    runtime,
+    host,
     write
   })
 
@@ -144,14 +128,6 @@ export const createEditor = ({
     commands,
     input,
     configure: (config) => {
-      write.session.tool.set(config.tool)
-
-      write.view.viewport.setLimits(config.viewport)
-      write.view.inputPolicy.set({
-        panEnabled: config.viewport.enablePan,
-        wheelEnabled: config.viewport.enableWheel,
-        wheelSensitivity: config.viewport.wheelSensitivity
-      })
       engine.configure({
         mindmapLayout: config.mindmapLayout,
         history: config.history

@@ -9,7 +9,7 @@ import {
   PropertyValueContent
 } from '@dataview/react/properties/value'
 import { cn } from '@ui/utils'
-import { useBoardContext } from '../board'
+import { useKanbanContext } from '../context'
 import {
   readCardTitleText
 } from '@dataview/react/views/shared/cardTitleValue'
@@ -19,7 +19,7 @@ export const CardSurface = (props: {
   dragging?: boolean
   dragCount?: number
 }) => {
-  const controller = useBoardContext()
+  const controller = useKanbanContext()
   const titleProperty = controller.titleProperty
   const properties = controller.properties
 

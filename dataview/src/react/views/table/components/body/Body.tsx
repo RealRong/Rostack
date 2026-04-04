@@ -1,6 +1,7 @@
 import {
   memo,
   useCallback,
+  useEffect,
   useMemo,
   type ClipboardEventHandler,
   type KeyboardEventHandler
@@ -11,12 +12,22 @@ import {
 } from '@dnd-kit/core'
 import { modifiers } from '@dataview/react/interaction'
 import { DragGhost } from '@dataview/react/dom/dragGhost'
-import { hasInteractiveTarget } from '@dataview/dom/interactive'
+import {
+  closestTarget,
+  hasInteractiveTarget,
+  interactiveSelector
+} from '@dataview/dom/interactive'
 import {
   useCurrentView,
   useDataView,
   usePageValue
 } from '@dataview/react/dataview'
+import {
+  resolveDefaultAutoPanTargets
+} from '@dataview/react/interaction/autoPan'
+import {
+  selectionTargetFromElement
+} from '@dataview/react/runtime/marquee'
 import { useStoreValue } from '@dataview/react/store'
 import { type FieldId } from '@dataview/react/runtime/currentView'
 import { applyPaste, handleTableKey } from '../../input'
@@ -27,17 +38,17 @@ import {
 import { useTableContext } from '../../context'
 import { useColumnResize } from '../../hooks/useColumnResize'
 import { useColumnReorder } from '../../hooks/useColumnReorder'
-import { useRowMarquee } from '../../hooks/useRowMarquee'
 import { useRowReorder } from '../../hooks/useRowReorder'
 import { usePointer } from '../../hooks/usePointer'
+import { hasTableTarget } from '../../dom/targets'
 import { RowDropIndicator } from '../overlay/RowDropIndicator'
 import { BlockContent } from './BlockContent'
-import { MarqueeOverlay } from '../overlay/MarqueeOverlay'
 import { Surface } from './Surface'
 
 const View = () => {
-  const engine = useDataView().engine
-  const selection = useDataView().selection
+  const dataView = useDataView()
+  const engine = dataView.engine
+  const selection = dataView.selection
   const table = useTableContext()
   const currentView = useCurrentView()
   if (!currentView) {
@@ -47,6 +58,8 @@ const View = () => {
   const locked = usePageValue(state => state.lock !== null)
   const columns = currentView.properties.all
   const capabilities = useStoreValue(table.capabilities)
+  const marqueeSession = useStoreValue(dataView.marquee.store)
+  const marqueeActive = marqueeSession?.ownerViewId === currentView.view.id
   const columnResize = useColumnResize()
   const template = useMemo(
     () => gridTemplate(columns, columnResize.widths),
@@ -54,17 +67,58 @@ const View = () => {
   )
   const columnReorder = useColumnReorder()
   const rowReorder = useRowReorder()
-  const marquee = useRowMarquee(
-    rowReorder.active || columnResize.active
-  )
+  const marqueeDisabled = rowReorder.active || columnResize.active
+  const onBlankPointerDown = useCallback(() => {}, [])
+
+  useEffect(() => dataView.marquee.registerAdapter({
+    viewId: currentView.view.id,
+    disabled: marqueeDisabled,
+    canStart: event => {
+      const container = table.layout.containerRef.current
+      return Boolean(
+        container
+        && event.target instanceof Node
+        && container.contains(event.target)
+        && !hasTableTarget(event.target)
+        && !closestTarget(event.target, interactiveSelector)
+      )
+    },
+    getTargets: () => table.nodes.rows(currentView.appearances.ids).map(node => {
+      const rowId = node.dataset.rowId as typeof currentView.appearances.ids[number] | undefined
+      return rowId
+        ? selectionTargetFromElement(rowId, node)
+        : null
+    }).filter((target): target is NonNullable<typeof target> => Boolean(target)),
+    order: () => currentView.appearances.ids,
+    resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(table.layout.containerRef.current),
+    onStart: () => {
+      table.gridSelection.clear()
+      table.hover.clear()
+    },
+    onEnd: () => {
+      table.focus()
+    },
+    onCancel: () => {
+      table.focus()
+    }
+  }), [
+    currentView.appearances.ids,
+    currentView.view.id,
+    dataView.marquee,
+    marqueeDisabled,
+    table.layout.containerRef,
+    table.nodes,
+    table
+  ])
+
   const pointer = usePointer({
     enabled: (
       capabilities.canHover
-      && !marquee.active
+      && !marqueeActive
       && !rowReorder.active
       && !columnResize.active
     ),
-    onBlankPointerDown: marquee.onPointerDown
+    onBlankPointerDown
   })
   const readCell = useCallback((cell: FieldId) => {
     const recordId = currentView.appearances.get(cell.appearanceId)?.recordId
@@ -158,7 +212,6 @@ const View = () => {
           onKeyDown={onKeyDown}
           onPaste={onPaste}
         >
-          <MarqueeOverlay box={marquee.box} />
           {rowIndicatorTop !== null && gridBounds ? (
             <RowDropIndicator
               top={rowIndicatorTop}
@@ -172,7 +225,7 @@ const View = () => {
             sections={currentView.sections}
             columns={columns}
             template={template}
-            marqueeActive={marquee.active}
+            marqueeActive={marqueeActive}
             dragActive={rowReorder.active}
             dragIdSet={rowReorder.dragIdSet}
             onDragStart={rowReorder.startDrag}

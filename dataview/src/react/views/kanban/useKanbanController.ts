@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -7,7 +8,8 @@ import {
 } from 'react'
 import type {
   GroupProperty,
-  GroupRecord
+  GroupRecord,
+  ViewId
 } from '@dataview/core/contracts'
 import {
   resolveGroupTitleProperty
@@ -15,8 +17,10 @@ import {
 import {
   useDataView,
   useCurrentView,
+  useSelection as useDataViewSelection,
 } from '@dataview/react/dataview'
 import {
+  DATAVIEW_APPEARANCE_ID_ATTR,
   dataviewAppearanceSelector
 } from '@dataview/dom/appearance'
 import {
@@ -28,50 +32,69 @@ import {
 } from '@dataview/engine/projection/view'
 import {
   type AppearanceId,
-  type CurrentView
+  type CurrentView,
+  type SectionKey
 } from '@dataview/react/runtime/currentView'
 import {
-  type Kanban,
-  useKanbanContext
-} from '../context'
+  resolveDefaultAutoPanTargets
+} from '@dataview/react/interaction/autoPan'
+import {
+  selectionTargetFromElement
+} from '@dataview/react/runtime/marquee'
+import {
+  readBoardLayout,
+  type BoardLayout,
+  type CardPosition
+} from './drag'
 import {
   useDrag
-} from '../drag'
-import {
-  useSelection
-} from '../selection'
-import type {
-  LayoutRegistry
-} from './useLayoutRegistry'
-import {
-  useLayoutRegistry
-} from './useLayoutRegistry'
+} from './drag'
 
-export interface BoardController {
+interface KanbanSelectionState {
+  selection: ReturnType<typeof useDataViewSelection>
+  selectedIds: readonly AppearanceId[]
+  selectedIdSet: ReadonlySet<AppearanceId>
+  select: (id: AppearanceId, mode?: 'replace' | 'toggle') => void
+}
+
+interface KanbanLayoutRegistry {
+  set: (key: SectionKey, layouts: readonly CardPosition[]) => void
+  clear: (key: SectionKey) => void
+  read: () => BoardLayout | null
+}
+
+export interface KanbanController {
   currentView: CurrentView
   titleProperty?: GroupProperty
   properties: readonly GroupProperty[]
   canReorder: boolean
-  layout: Kanban['layout']
+  layout: {
+    columnWidth: number
+    columnMinHeight: number
+  }
   scrollRef: RefObject<HTMLDivElement | null>
-  layouts: LayoutRegistry
-  selection: ReturnType<typeof useSelection>
+  layouts: KanbanLayoutRegistry
+  selection: KanbanSelectionState
   drag: ReturnType<typeof useDrag>
   boostedSectionKeySet: ReadonlySet<string>
   readRecord: (id: AppearanceId) => GroupRecord | undefined
 }
 
-export const useBoardController = (): BoardController => {
-  const kanban = useKanbanContext()
-  const engine = useDataView().engine
+export const useKanbanController = (input: {
+  viewId: ViewId
+  columnWidth: number
+  columnMinHeight: number
+}): KanbanController => {
+  const dataView = useDataView()
+  const engine = dataView.engine
   const currentView = useCurrentView(view => (
-    view?.view.id === kanban.viewId
+    view?.view.id === input.viewId
       ? view
       : undefined
   ))
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [dragging, setDragging] = useState(false)
-  const layouts = useLayoutRegistry(scrollRef)
+  const columnLayoutsRef = useRef<Map<SectionKey, readonly CardPosition[]>>(new Map())
 
   if (!currentView) {
     throw new Error('Kanban view requires an active current view.')
@@ -108,19 +131,69 @@ export const useBoardController = (): BoardController => {
     currentView.sections.flatMap(section => section.ids.map(id => [id, section.key] as const))
   ), [currentView.sections])
 
-  const selection = useSelection({
-    currentView,
-    containerRef: scrollRef,
-    cardOrder: currentView.appearances.ids,
-    disabled: dragging,
-    getLayout: layouts.read,
-    canStart: event => {
-      return !closestTarget(event.target, [
+  const selectionValue = useDataViewSelection()
+  const selectedIdSet = useMemo(
+    () => new Set(selectionValue.ids),
+    [selectionValue.ids]
+  )
+  const layouts = useMemo<KanbanLayoutRegistry>(() => ({
+    set: (key, positions) => {
+      columnLayoutsRef.current.set(key, positions)
+    },
+    clear: key => {
+      columnLayoutsRef.current.delete(key)
+    },
+    read: () => readBoardLayout(scrollRef.current, columnLayoutsRef.current)
+  }), [])
+
+  useEffect(() => {
+    return dataView.marquee.registerAdapter({
+      viewId: currentView.view.id,
+      disabled: dragging,
+      canStart: (event: PointerEvent) => !closestTarget(event.target, [
         dataviewAppearanceSelector,
         interactiveSelector
-      ].join(','))
+      ].join(',')),
+      getTargets: () => (
+        Array.from(
+          scrollRef.current?.querySelectorAll<HTMLElement>(`[${DATAVIEW_APPEARANCE_ID_ATTR}]`)
+          ?? []
+        )
+          .map(node => {
+            const id = node.getAttribute(DATAVIEW_APPEARANCE_ID_ATTR) as AppearanceId | null
+            return id
+              ? selectionTargetFromElement(id, node)
+              : null
+          })
+          .filter((target): target is NonNullable<typeof target> => Boolean(target))
+      ),
+      order: () => currentView.appearances.ids,
+      resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(scrollRef.current)
+    })
+  }, [
+    currentView.appearances.ids,
+    currentView.view.id,
+    dataView.marquee,
+    dragging,
+  ])
+
+  const selection = useMemo<KanbanSelectionState>(() => ({
+    selection: selectionValue,
+    selectedIds: selectionValue.ids,
+    selectedIdSet,
+    select: (id, mode = 'replace') => {
+      if (mode === 'toggle') {
+        dataView.selection.toggle([id])
+        return
+      }
+
+      dataView.selection.set([id])
     }
-  })
+  }), [
+    dataView.selection,
+    selectedIdSet,
+    selectionValue
+  ])
 
   const drag = useDrag({
     containerRef: scrollRef,
@@ -160,7 +233,10 @@ export const useBoardController = (): BoardController => {
     titleProperty,
     properties,
     canReorder,
-    layout: kanban.layout,
+    layout: {
+      columnWidth: input.columnWidth,
+      columnMinHeight: input.columnMinHeight
+    },
     scrollRef,
     layouts,
     selection,
@@ -172,7 +248,8 @@ export const useBoardController = (): BoardController => {
     canReorder,
     currentView,
     drag,
-    kanban.layout,
+    input.columnMinHeight,
+    input.columnWidth,
     layouts,
     properties,
     readRecord,

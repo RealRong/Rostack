@@ -30,7 +30,7 @@ import {
   CARD_TITLE_PLACEHOLDER
 } from '@dataview/react/views/shared/cardTitleValue'
 import {
-  useCardTitleEditing
+  useCardEditingState
 } from '@dataview/react/views/shared/useCardTitleEditing'
 
 export const Card = (props: {
@@ -70,17 +70,17 @@ const GalleryCardContent = (props: {
     && controller.drag.dragIdSet.has(props.appearanceId)
   const canDrag = controller.canReorder
   const [hovered, setHovered] = useState(false)
-  const editing = useCardTitleEditing({
+  const editing = useCardEditingState({
     viewId,
-    appearanceId: props.appearanceId,
-    record: props.record,
-    titleProperty
+    appearanceId: props.appearanceId
   })
-  const visibleProperties = useMemo(() => {
-    return editing.mode === 'edit'
-      ? properties
-      : properties.filter(property => !isEmptyPropertyValue(props.record.values[property.id]))
-  }, [editing.mode, properties, props.record])
+  const hasVisibleProperties = useMemo(() => properties.some(property => (
+    property.id !== titleProperty?.id
+    && (
+      editing
+        || !isEmptyPropertyValue(props.record.values[property.id])
+    )
+  )), [editing, properties, props.record, titleProperty?.id])
 
   return (
     <div
@@ -97,7 +97,7 @@ const GalleryCardContent = (props: {
         setHovered(false)
       }}
       onPointerDown={event => {
-        if (editing.editing) {
+        if (editing) {
           return
         }
 
@@ -108,7 +108,7 @@ const GalleryCardContent = (props: {
         controller.drag.onPointerDown(props.appearanceId, event)
       }}
       onClick={event => {
-        if (editing.editing) {
+        if (editing) {
           return
         }
 
@@ -129,8 +129,8 @@ const GalleryCardContent = (props: {
       }}
       className={cn(
         'touch-none',
-        !editing.editing && 'select-none',
-        !editing.editing && canDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
+        !editing && 'select-none',
+        !editing && canDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
         active && 'opacity-35',
         draggingSelected && !active && 'opacity-60'
       )}
@@ -142,35 +142,27 @@ const GalleryCardContent = (props: {
             selected && 'border-primary bg-primary/[0.05]'
           ),
           title: {
-            row: 'flex min-w-0 items-start gap-2.5 pb-2',
+            row: cn(
+              'flex min-w-0 items-start gap-2.5',
+              hasVisibleProperties && 'pb-2'
+            ),
             content: 'min-w-0 flex-1',
             text: 'text-base font-semibold leading-6',
             input: 'text-base font-semibold leading-6 text-foreground'
           },
           property: {
-            list: 'flex flex-col pb-2 pt-0 leading-6',
-            item: 'min-w-0 pb-2 last:pb-0',
-            value: 'text-[13px] leading-6 text-foreground'
+            list: 'flex flex-col gap-2',
+            item: 'min-w-0',
+            value: 'text-[12px]'
           }
         }}
         viewId={viewId}
         appearanceId={props.appearanceId}
         record={props.record}
         titleProperty={titleProperty}
-        properties={visibleProperties}
-        mode={editing.mode}
-        committedTitle={editing.committedTitle}
-        titleDraft={editing.titleDraft}
+        properties={properties}
         titlePlaceholder={CARD_TITLE_PLACEHOLDER}
-        onTitleDraftChange={editing.setTitleDraft}
-        onCommitTitle={editing.commitTitle}
-        onSubmitTitle={editing.submitTitle}
-        onSelect={() => controller.select(props.appearanceId, 'replace')}
-        showEditAction={hovered && !editing.editing && !active}
-        onEnterEdit={editing.enterEdit}
-        titleLeading={(
-          <FileText className="mt-0.5 size-5 shrink-0 text-muted-foreground" size={18} strokeWidth={1.8} />
-        )}
+        showEditAction={hovered && !editing && !active}
       />
     </div>
   )

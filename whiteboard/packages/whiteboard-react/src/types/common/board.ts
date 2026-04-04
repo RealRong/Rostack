@@ -20,7 +20,7 @@ export type WhiteboardOptions = {
   node?: NodeConfig
   edge?: EdgeConfig
   history?: HistoryOptions
-  tool?: Tool
+  initialTool?: Tool
   shortcuts?: ShortcutOverrides
 }
 

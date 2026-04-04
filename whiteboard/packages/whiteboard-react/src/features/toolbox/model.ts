@@ -22,6 +22,7 @@ import {
 } from './presets'
 import type {
   ToolPaletteBrushState,
+  ToolPaletteMemory,
   ToolPaletteView
 } from '../../types/toolbox'
 
@@ -41,35 +42,86 @@ const readToolPaletteBrushState = (
   }
 }
 
+export const DEFAULT_TOOL_PALETTE_MEMORY: ToolPaletteMemory = {
+  drawKind: DEFAULT_DRAW_KIND,
+  edgePreset: DEFAULT_EDGE_PRESET_KEY,
+  stickyPreset: DEFAULT_STICKY_PRESET_KEY,
+  shapePreset: DEFAULT_SHAPE_PRESET_KEY,
+  mindmapPreset: DEFAULT_MINDMAP_PRESET_KEY
+}
+
+export const rememberToolPaletteTool = (
+  memory: ToolPaletteMemory,
+  tool: Tool
+): ToolPaletteMemory => {
+  if (tool.type === 'draw') {
+    return {
+      ...memory,
+      drawKind: tool.kind
+    }
+  }
+
+  if (tool.type === 'edge') {
+    return {
+      ...memory,
+      edgePreset: tool.preset
+    }
+  }
+
+  if (tool.type !== 'insert') {
+    return memory
+  }
+
+  const group = readInsertPresetGroup(tool.preset)
+  if (group === 'sticky') {
+    return {
+      ...memory,
+      stickyPreset: tool.preset
+    }
+  }
+  if (group === 'shape') {
+    return {
+      ...memory,
+      shapePreset: tool.preset
+    }
+  }
+  if (group === 'mindmap') {
+    return {
+      ...memory,
+      mindmapPreset: tool.preset
+    }
+  }
+
+  return memory
+}
+
 export const readToolPaletteView = ({
   tool,
   drawState,
-  lastDrawKind = DEFAULT_DRAW_KIND,
-  lastEdgePreset = DEFAULT_EDGE_PRESET_KEY
+  memory = DEFAULT_TOOL_PALETTE_MEMORY
 }: {
   tool: Tool
   drawState: DrawState
-  lastDrawKind?: DrawKind
-  lastEdgePreset?: EdgePresetKey
+  memory?: ToolPaletteMemory
 }): ToolPaletteView => {
   const insertGroup = tool.type === 'insert'
     ? readInsertPresetGroup(tool.preset)
     : undefined
   const stickyPreset = tool.type === 'insert' && insertGroup === 'sticky'
     ? tool.preset
-    : DEFAULT_STICKY_PRESET_KEY
+    : memory.stickyPreset
   const shapePreset = tool.type === 'insert' && insertGroup === 'shape'
     ? tool.preset
-    : DEFAULT_SHAPE_PRESET_KEY
+    : memory.shapePreset
   const mindmapPreset = tool.type === 'insert' && insertGroup === 'mindmap'
     ? tool.preset
-    : DEFAULT_MINDMAP_PRESET_KEY
+    : memory.mindmapPreset
   const edgePreset = tool.type === 'edge'
     ? tool.preset
-    : lastEdgePreset
+    : memory.edgePreset
   const drawKind = tool.type === 'draw'
     ? tool.kind
-    : lastDrawKind
+    : memory.drawKind
   const drawBrush = readToolPaletteBrushState(drawState, drawKind)
   const drawStyle = readDrawStyle(drawState, drawBrush.brushKind)
 

@@ -69,6 +69,10 @@ export const usePointer = ({
     }
 
     const input = resolveCanvasPointerInput('down', container, event)
+    if (host.insert.pointerDown(editor, input)) {
+      consumeDomEvent(event)
+      return true
+    }
     const result = editor.input.pointerDown(input)
     if (result.handled) {
       consumeDomEvent(event)

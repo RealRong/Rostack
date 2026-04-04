@@ -60,11 +60,9 @@ export const useWhiteboardRuntime = ({
   }
   const engine = engineRef.current!
 
-  const editorRef = useRef<Editor | null>(null)
-  if (!editorRef.current) {
-    editorRef.current = createEditor({
-      engine,
-      initialTool: resolvedConfig.tool,
+  const hostRef = useRef<ReturnType<typeof createHostRuntime> | null>(null)
+  if (!hostRef.current) {
+    hostRef.current = createHostRuntime({
       initialViewport: resolvedConfig.viewport.initial,
       viewportLimits: {
         minZoom: resolvedConfig.viewport.minZoom,
@@ -75,17 +73,23 @@ export const useWhiteboardRuntime = ({
         wheelEnabled: resolvedConfig.viewport.enableWheel,
         wheelSensitivity: resolvedConfig.viewport.wheelSensitivity
       },
-      registry: registryRef.current,
-      insertPresetCatalog: INSERT_PRESET_CATALOG,
-      initialDrawPreferences: DEFAULT_DRAW_PREFERENCES
+      drawPreferences: DEFAULT_DRAW_PREFERENCES,
+      insertPresetCatalog: INSERT_PRESET_CATALOG
     })
   }
-  const editor = editorRef.current!
-  const hostRef = useRef<ReturnType<typeof createHostRuntime> | null>(null)
-  if (!hostRef.current) {
-    hostRef.current = createHostRuntime()
-  }
   const host = hostRef.current
+
+  const editorRef = useRef<Editor | null>(null)
+  if (!editorRef.current) {
+    editorRef.current = createEditor({
+      engine,
+      initialTool: resolvedConfig.initialTool,
+      registry: registryRef.current,
+      host: host.editorHost
+    })
+    host.insert.bind(editorRef.current)
+  }
+  const editor = editorRef.current!
 
   return {
     editor,

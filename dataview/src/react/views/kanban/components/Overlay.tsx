@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@ui/utils'
-import { useBoardContext } from '../board'
+import { useKanbanContext } from '../context'
 import { CardSurface } from './CardSurface'
 
 export const Overlay = () => {
-  const controller = useBoardContext()
+  const controller = useKanbanContext()
   const appearanceId = controller.drag.activeId
   const record = appearanceId
     ? controller.readRecord(appearanceId)

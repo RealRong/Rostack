@@ -219,6 +219,38 @@ export type EditorClipboardCommands = {
   ) => boolean
 }
 
+export type EditorInsertCommands = {
+  preset: (
+    preset: InsertPresetKey,
+    options: {
+      at: Point
+      ownerId?: NodeId
+    }
+  ) => EditorInsertResult | undefined
+  text: (options: {
+    at: Point
+    ownerId?: NodeId
+  }) => EditorInsertResult | undefined
+  frame: (options: {
+    at: Point
+    ownerId?: NodeId
+  }) => EditorInsertResult | undefined
+  sticky: (options: {
+    toneKey?: string
+    at: Point
+    ownerId?: NodeId
+  }) => EditorInsertResult | undefined
+  shape: (options: {
+    kind: ShapeKind
+    at: Point
+    ownerId?: NodeId
+  }) => EditorInsertResult | undefined
+  mindmap: (options: {
+    templateKey?: string
+    at: Point
+  }) => EditorInsertResult | undefined
+}
+
 export type EditorCommands = Omit<EngineCommands, 'tool' | 'selection' | 'interaction' | 'edge' | 'viewport' | 'node' | 'mindmap'> & {
   tool: {
     set: (tool: Tool) => void
@@ -244,37 +276,7 @@ export type EditorCommands = Omit<EngineCommands, 'tool' | 'selection' | 'intera
   node: EditorNodeCommands
   mindmap: EditorMindmapCommands
   clipboard: EditorClipboardCommands
-  insert: {
-    preset: (
-      preset: InsertPresetKey,
-      options: {
-        at: Point
-        ownerId?: NodeId
-      }
-    ) => EditorInsertResult | undefined
-    text: (options: {
-      at: Point
-      ownerId?: NodeId
-    }) => EditorInsertResult | undefined
-    frame: (options: {
-      at: Point
-      ownerId?: NodeId
-    }) => EditorInsertResult | undefined
-    sticky: (options: {
-      toneKey?: string
-      at: Point
-      ownerId?: NodeId
-    }) => EditorInsertResult | undefined
-    shape: (options: {
-      kind: ShapeKind
-      at: Point
-      ownerId?: NodeId
-    }) => EditorInsertResult | undefined
-    mindmap: (options: {
-      templateKey?: string
-      at: Point
-    }) => EditorInsertResult | undefined
-  }
+  insert: EditorInsertCommands
 }
 
 export type EditorDocumentNodeTextWrite = Pick<
@@ -292,7 +294,6 @@ export type EditorDocumentWrite = {
   edge: EngineCommands['edge']
   node: EditorDocumentNodeWrite
   mindmap: EditorMindmapCommands
-  insert: EditorCommands['insert']
 }
 
 export type EditorSessionWrite = {
@@ -370,14 +371,6 @@ export type Editor = {
   commands: EditorCommands
   input: EditorInput
   configure: (config: {
-    tool: Tool
-    viewport: {
-      minZoom: number
-      maxZoom: number
-      enablePan: boolean
-      enableWheel: boolean
-      wheelSensitivity: number
-    }
     mindmapLayout: MindmapLayoutConfig
     history?: KernelHistoryConfig
   }) => void

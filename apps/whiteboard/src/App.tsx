@@ -441,7 +441,7 @@ export const App = () => {
           options={{
             className: 'rostack-ui-theme',
             style: { width: '100%', height: '100%' },
-            tool: { type: 'select' },
+            initialTool: { type: 'select' },
             mindmapLayout: { mode: 'simple' }
           }}
         />

@@ -1,8 +1,12 @@
-import type { RefObject } from 'react'
 import type { AppearanceId } from '@dataview/react/runtime/currentView'
-import type { Box, Point } from '@dataview/dom/geometry'
+import type {
+  Box,
+  Point,
+  RectItem
+} from '@dataview/dom/geometry'
 import type { ValueStore } from '@dataview/runtime/store'
 import type { ViewId } from '@dataview/core/contracts'
+import type { AutoPanTargets } from '@dataview/react/interaction/autoPan'
 
 export type MarqueeMode = 'replace' | 'add' | 'toggle'
 
@@ -15,12 +19,17 @@ export interface MarqueeSessionState {
   baseSelectedIds: readonly AppearanceId[]
 }
 
+export interface SelectionTarget extends RectItem<AppearanceId> { }
+
 export interface MarqueeAdapter {
   viewId: ViewId
-  containerRef: RefObject<HTMLElement | null>
   canStart: (event: PointerEvent) => boolean
-  resolveIds: (box: Box) => readonly AppearanceId[]
+  getTargets: () => readonly SelectionTarget[]
   order: () => readonly AppearanceId[]
+  resolveAutoPanTargets?: () => AutoPanTargets | null
+  onStart?: (session: MarqueeSessionState) => void
+  onEnd?: (session: MarqueeSessionState) => void
+  onCancel?: (session: MarqueeSessionState) => void
   disabled?: boolean
 }
 

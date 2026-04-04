@@ -1,13 +1,11 @@
 import {
   ArrowUpDown,
   Filter,
-  Plus,
   Search,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type {
-  GroupView,
-  GroupViewType
+  GroupView
 } from '@dataview/core/contracts'
 import {
   getDocumentProperties,
@@ -15,10 +13,9 @@ import {
 } from '@dataview/core/document'
 import { Button } from '@ui/button'
 import { Input } from '@ui/input'
-import { Label } from '@ui/label'
 import { Popover } from '@ui/popover'
-import { Select } from '@ui/select'
 import { cn } from '@ui/utils'
+import { CreateViewPopover } from '@dataview/react/page/features/createView'
 import { getAvailableFilterProperties } from '@dataview/react/page/features/filter/filterUi'
 import { getAvailableSorterProperties } from '@dataview/react/page/features/sort'
 import { PropertyPicker } from '@dataview/react/page/features/viewQuery/PropertyPicker'
@@ -30,110 +27,6 @@ import {
   usePageValue,
 } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
-
-interface CreateViewPopoverProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-}
-
-const CreateViewPopover = (props: CreateViewPopoverProps) => {
-  const dataView = useDataView()
-  const engine = dataView.engine
-  const page = dataView.page
-  const inputRef = useRef<HTMLInputElement | null>(null)
-  const [name, setName] = useState('')
-  const [type, setType] = useState<GroupViewType>('table')
-
-  return (
-    <Popover
-      open={props.open}
-      onOpenChange={open => {
-        props.onOpenChange(open)
-        if (!open) {
-          setName('')
-          setType('table')
-        }
-      }}
-      initialFocus={inputRef}
-      surface="blocking"
-      backdrop="transparent"
-      trigger={(
-        <Button
-          size="icon"
-          pressed={props.open}
-          aria-label={renderMessage(meta.ui.toolbar.newView)}
-        >
-          <Plus className="size-4" size={15} strokeWidth={1} />
-        </Button>
-      )}
-      contentClassName="w-[320px]"
-    >
-      <div className="flex flex-col gap-4">
-        <div className="space-y-1">
-          <h3 className="text-sm font-semibold">
-            {renderMessage(meta.ui.toolbar.createView.title)}
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            {renderMessage(meta.ui.toolbar.createView.description)}
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <Label>{renderMessage(meta.ui.toolbar.createView.nameLabel)}</Label>
-          <Input
-            ref={inputRef}
-            value={name}
-            onChange={event => setName(event.target.value)}
-            placeholder={renderMessage(meta.ui.toolbar.createView.namePlaceholder)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label>{renderMessage(meta.ui.toolbar.createView.typeLabel)}</Label>
-          <Select
-            value={type}
-            onChange={event => setType(event.target.value as GroupViewType)}
-          >
-            {meta.view.list.map(item => (
-              <option key={item.id} value={item.id}>{renderMessage(item.message)}</option>
-            ))}
-          </Select>
-        </div>
-
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => props.onOpenChange(false)}
-          >
-            {renderMessage(meta.ui.toolbar.createView.close)}
-          </Button>
-          <Button
-            type="button"
-            disabled={!name.trim()}
-            onClick={() => {
-              const viewId = engine.views.create({
-                name,
-                type
-              })
-              if (!viewId) {
-                return
-              }
-
-              page.setActiveViewId(viewId)
-
-              setName('')
-              setType('table')
-              props.onOpenChange(false)
-            }}
-          >
-            {renderMessage(meta.ui.toolbar.createView.create)}
-          </Button>
-        </div>
-      </div>
-    </Popover>
-  )
-}
 
 interface ViewTabProps {
   view: GroupView
@@ -174,7 +67,6 @@ export const PageToolbar = () => {
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined
-  const [createOpen, setCreateOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
   const searchQuery = currentView?.query.search.query ?? ''
   const filterRules = currentView?.query.filter.rules ?? []
@@ -184,10 +76,15 @@ export const PageToolbar = () => {
   const filterCount = filterRules.length
   const sortCount = sorters.length
   const [searchExpanded, setSearchExpanded] = useState(() => Boolean(searchQuery.trim()))
+  const [toolbarRoute, setToolbarRoute] = useState<null | 'addFilter' | 'addSort'>(null)
 
   useEffect(() => {
     setSearchExpanded(Boolean(currentView?.query.search.query.trim()))
   }, [currentView?.id, currentView?.query.search.query])
+
+  useEffect(() => {
+    setToolbarRoute(null)
+  }, [currentView?.id])
 
   return (
     <section className="text-card-foreground">
@@ -201,10 +98,7 @@ export const PageToolbar = () => {
               onClick={() => page.setActiveViewId(view.id)}
             />
           ))}
-          <CreateViewPopover
-            open={createOpen}
-            onOpenChange={setCreateOpen}
-          />
+          <CreateViewPopover />
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
@@ -264,16 +158,18 @@ export const PageToolbar = () => {
             </Button>
           ) : (
             <Popover
-              open={queryBar.route?.kind === 'addFilter'}
+              open={toolbarRoute === 'addFilter'}
               onOpenChange={open => {
                 if (open) {
-                  page.query.open({
-                    kind: 'addFilter'
-                  })
+                  setToolbarRoute('addFilter')
                   return
                 }
 
-                page.query.close()
+                setToolbarRoute(current => (
+                  current === 'addFilter'
+                    ? null
+                    : current
+                ))
               }}
               initialFocus={-1}
               surface="blocking"
@@ -281,7 +177,7 @@ export const PageToolbar = () => {
               trigger={(
                 <Button
                   size="icon"
-                  pressed={queryBar.route?.kind === 'addFilter'}
+                  pressed={toolbarRoute === 'addFilter'}
                   title={renderMessage(meta.ui.toolbar.filter)}
                   aria-label={renderMessage(meta.ui.toolbar.filter)}
                   disabled={!currentView}
@@ -297,10 +193,7 @@ export const PageToolbar = () => {
                   emptyMessage={meta.ui.fieldPicker.allFiltered}
                   onSelect={propertyId => {
                     currentViewDomain?.filters.add(propertyId)
-                    page.query.open({
-                      kind: 'filter',
-                      propertyId
-                    })
+                    setToolbarRoute(null)
                   }}
                 />
               </div>
@@ -326,16 +219,18 @@ export const PageToolbar = () => {
             </Button>
           ) : (
             <Popover
-              open={queryBar.route?.kind === 'addSort'}
+              open={toolbarRoute === 'addSort'}
               onOpenChange={open => {
                 if (open) {
-                  page.query.open({
-                    kind: 'addSort'
-                  })
+                  setToolbarRoute('addSort')
                   return
                 }
 
-                page.query.close()
+                setToolbarRoute(current => (
+                  current === 'addSort'
+                    ? null
+                    : current
+                ))
               }}
               initialFocus={-1}
               surface="blocking"
@@ -343,7 +238,7 @@ export const PageToolbar = () => {
               trigger={(
                 <Button
                   size="icon"
-                  pressed={queryBar.route?.kind === 'addSort'}
+                  pressed={toolbarRoute === 'addSort'}
                   title={renderMessage(meta.ui.toolbar.sort)}
                   aria-label={renderMessage(meta.ui.toolbar.sort)}
                   disabled={!currentView}
@@ -359,9 +254,7 @@ export const PageToolbar = () => {
                   emptyMessage={meta.ui.fieldPicker.allSorted}
                   onSelect={propertyId => {
                     currentViewDomain?.sorters.add(propertyId)
-                    page.query.open({
-                      kind: 'sort'
-                    })
+                    setToolbarRoute(null)
                   }}
                 />
               </div>

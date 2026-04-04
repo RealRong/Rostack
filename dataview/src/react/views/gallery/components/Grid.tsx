@@ -16,7 +16,6 @@ export const Grid = () => {
     containerRef,
     indicator,
     layout,
-    marqueeBox,
     reorderDisabledMessage
   } = controller
   const empty = controller.currentView.appearances.ids.length === 0
@@ -43,17 +42,6 @@ export const Grid = () => {
         className="relative"
         style={contentInsetStyle}
       >
-        {marqueeBox ? (
-          <div
-            className="pointer-events-none absolute z-20 rounded-md border border-primary/60 bg-primary/10"
-            style={{
-              left: marqueeBox.left,
-              top: marqueeBox.top,
-              width: marqueeBox.width,
-              height: marqueeBox.height
-            }}
-          />
-        ) : null}
         {indicator ? (
           <div
             className="pointer-events-none absolute z-30"

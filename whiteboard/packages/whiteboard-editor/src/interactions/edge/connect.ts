@@ -22,9 +22,19 @@ import type {
   InteractionSession
 } from '../../runtime/interaction/types'
 import { createEdgeGesture } from '../../runtime/interaction/gesture'
-import { readEdgeType } from '../../tool/model'
+import type { EdgePresetKey } from '../../types/tool'
 import type { PointerDownInput } from '../../types/input'
 import type { ConnectNodeEntry, EdgeInteractionCtx } from './types'
+
+const EDGE_PRESET_TYPE = {
+  'edge.straight': 'linear',
+  'edge.elbow': 'step',
+  'edge.curve': 'curve'
+} as const satisfies Record<EdgePresetKey, EdgeType>
+
+const readEdgePresetType = (
+  preset: EdgePresetKey
+): EdgeType => EDGE_PRESET_TYPE[preset]
 
 const readConnectNode = (
   ctx: EdgeInteractionCtx,
@@ -155,10 +165,10 @@ const resolveEdgeConnectState = (
       return undefined
     }
 
-    return resolveCreateFromNode(ctx, input, readEdgeType(tool.preset))
+    return resolveCreateFromNode(ctx, input, readEdgePresetType(tool.preset))
       ?? startEdgeCreate({
         pointerId: input.pointerId,
-        edgeType: readEdgeType(tool.preset),
+        edgeType: readEdgePresetType(tool.preset),
         from: toEdgeDraftEnd(input.world),
         to: toEdgeDraftEnd(input.world)
       })

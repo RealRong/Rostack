@@ -31,7 +31,10 @@ const PreviewSurface = (props: {
 }) => {
   const titleText = readCardTitleText(props.titleProperty, props.record)
   const visibleProperties = props.properties.filter(property => (
+    property.id !== props.titleProperty?.id
+    && (
     !isEmptyPropertyValue(props.record.values[property.id])
+    )
   ))
 
   return (
@@ -42,7 +45,10 @@ const PreviewSurface = (props: {
         </span>
       ) : null}
       <div className="min-w-0">
-        <div className="flex min-w-0 items-start gap-2.5 pb-2">
+        <div className={cn(
+          'flex min-w-0 items-start gap-2.5',
+          visibleProperties.length > 0 && 'pb-2'
+        )}>
           <FileText className="mt-0.5 size-5 shrink-0 text-muted-foreground" size={18} strokeWidth={1.8} />
           <div className="min-w-0 flex-1">
             <CardTitle

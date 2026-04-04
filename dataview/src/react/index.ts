@@ -11,9 +11,15 @@ export type {
   GroupGalleryCardSize,
   GroupGalleryOptions
 } from './views/gallery'
-export { KanbanView, useKanbanContext } from './views/kanban'
+export {
+  KanbanView,
+  KanbanProvider,
+  useKanbanContext,
+  useKanbanController
+} from './views/kanban'
 export type {
   Kanban,
+  KanbanController,
   KanbanViewProps,
   KanbanCreateCardInput,
   KanbanOptions,
@@ -56,7 +62,8 @@ export type {
   MarqueeAdapter,
   MarqueeApi,
   MarqueeMode,
-  MarqueeSessionState
+  MarqueeSessionState,
+  SelectionTarget
 } from './dataview'
 export type {
   InlineSessionApi,

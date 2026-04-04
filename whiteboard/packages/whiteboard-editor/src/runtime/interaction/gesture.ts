@@ -3,7 +3,7 @@ import type {
   EdgeOverlayEntry,
   EdgeOverlayState,
   SelectionPreviewState
-} from '../overlay'
+} from '../overlay/types'
 
 export type MoveGesture = {
   kind: 'selection-move'

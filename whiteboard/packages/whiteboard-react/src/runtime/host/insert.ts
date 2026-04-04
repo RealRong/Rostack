@@ -1,25 +1,20 @@
+import {
+  selectTool,
+  type EditorInsertCommands,
+  type EditorInsertResult,
+  type InsertPlacement,
+  type InsertPreset,
+  type InsertPresetCatalog,
+  type MindmapInsertPreset,
+  type NodeInsertPreset,
+  type PointerDownInput
+} from '@whiteboard/editor'
+import {
+  createEditorInsertCommandRegistry,
+  type EditorInsertCommandRegistry
+} from '@whiteboard/editor/host'
 import type { NodeId, Point, SpatialNodeInput } from '@whiteboard/core/types'
-import type {
-  EditorDocumentWrite,
-  EditorInsertResult
-} from '../../types/editor'
-import type {
-  EditorRead,
-  EditorSessionWrite
-} from '../../types/editor'
-import type { EditField } from '../state/edit'
-import type {
-  InsertPlacement,
-  InsertPreset,
-  InsertPresetCatalog
-} from '../../types/insert'
-import { moveMindmapRoot } from './mindmap'
-
-type InsertWriterHost = {
-  read: EditorRead
-  document: Pick<EditorDocumentWrite, 'node' | 'mindmap'>
-  session: Pick<EditorSessionWrite, 'selection' | 'edit'>
-}
+import type { WhiteboardRuntime } from '../../types/runtime'
 
 const placeNodeInput = ({
   world,
@@ -49,7 +44,7 @@ const toInsertResult = ({
   field
 }: {
   nodeId: NodeId
-  field?: EditField
+  field?: NodeInsertPreset['focus']
 }): EditorInsertResult => ({
   nodeId,
   edit: field
@@ -66,17 +61,17 @@ const insertNodePreset = ({
   world,
   ownerId
 }: {
-  editor: InsertWriterHost
-  preset: Extract<InsertPreset, { kind: 'node' }>
+  editor: WhiteboardRuntime
+  preset: NodeInsertPreset
   world: Point
   ownerId?: NodeId
 }): EditorInsertResult | undefined => {
-  const result = editor.document.node.create(
+  const result = editor.commands.node.create(
     placeNodeInput({
       world,
       input: {
         ...preset.input(world),
-        ownerId
+        ownerId: preset.canNest === false ? undefined : ownerId
       },
       placement: preset.placement
     })
@@ -96,11 +91,11 @@ const insertMindmapPreset = ({
   preset,
   world
 }: {
-  editor: InsertWriterHost
-  preset: Extract<InsertPreset, { kind: 'mindmap' }>
+  editor: WhiteboardRuntime
+  preset: MindmapInsertPreset
   world: Point
 }): EditorInsertResult | undefined => {
-  const result = editor.document.mindmap.create({
+  const result = editor.commands.mindmap.create({
     rootData: preset.template.root
   })
   if (!result.ok) {
@@ -108,7 +103,7 @@ const insertMindmapPreset = ({
   }
 
   preset.template.children?.forEach((child) => {
-    editor.document.mindmap.insert(result.data.mindmapId, {
+    editor.commands.mindmap.insert(result.data.mindmapId, {
       kind: 'child',
       parentId: result.data.rootId,
       payload: child.data,
@@ -122,8 +117,7 @@ const insertMindmapPreset = ({
   const width = rect?.width ?? 260
   const height = rect?.height ?? 180
 
-  moveMindmapRoot({
-    editor,
+  editor.commands.mindmap.moveRoot({
     nodeId: result.data.mindmapId,
     position: {
       x: world.x - width / 2,
@@ -132,61 +126,61 @@ const insertMindmapPreset = ({
     threshold: 0
   })
 
-  return toInsertResult({
+  return {
     nodeId: result.data.mindmapId
-  })
+  }
 }
 
 const runInsertPreset = ({
   editor,
   preset,
-  world,
+  at,
   ownerId
 }: {
-  editor: InsertWriterHost
+  editor: WhiteboardRuntime
   preset: InsertPreset
-  world: Point
+  at: Point
   ownerId?: NodeId
-}) => {
+}): EditorInsertResult | undefined => {
   const result = preset.kind === 'node'
     ? insertNodePreset({
         editor,
         preset,
-        world,
-        ownerId: preset.canNest === false ? undefined : ownerId
+        world: at,
+        ownerId
       })
     : insertMindmapPreset({
         editor,
         preset,
-        world
+        world: at
       })
 
   if (!result) {
     return undefined
   }
 
-  editor.session.selection.replace({
+  editor.commands.selection.replace({
     nodeIds: [result.nodeId]
   })
   if (result.edit) {
-    editor.session.edit.start(result.edit.nodeId, result.edit.field)
+    editor.commands.edit.start(result.edit.nodeId, result.edit.field)
   }
 
   return result
 }
 
-export const createInsertCommands = ({
-  writerHost,
+const createInsertPresetCommands = ({
+  editor,
   catalog
 }: {
-  writerHost: InsertWriterHost
+  editor: WhiteboardRuntime
   catalog: InsertPresetCatalog
-}): import('../../types/editor').EditorCommands['insert'] => {
+}): EditorInsertCommands => {
   const insertPresetByKey = (input: {
     presetKey: string
     options: {
-      at: { x: number; y: number }
-      ownerId?: string
+      at: Point
+      ownerId?: NodeId
     }
   }) => {
     const preset = catalog.get(input.presetKey)
@@ -195,9 +189,9 @@ export const createInsertCommands = ({
     }
 
     return runInsertPreset({
-      editor: writerHost,
+      editor,
       preset,
-      world: input.options.at,
+      at: input.options.at,
       ownerId: input.options.ownerId
     })
   }
@@ -230,5 +224,60 @@ export const createInsertCommands = ({
         presetKey: templateKey,
         options: { at }
       })
+  }
+}
+
+export type HostInsertRuntime = {
+  get: EditorInsertCommandRegistry['get']
+  bind: (editor: WhiteboardRuntime) => void
+  clear: () => void
+  pointerDown: (
+    editor: WhiteboardRuntime,
+    input: PointerDownInput
+  ) => boolean
+}
+
+export const createHostInsertRuntime = ({
+  catalog
+}: {
+  catalog: InsertPresetCatalog
+}): HostInsertRuntime => {
+  const registry = createEditorInsertCommandRegistry()
+
+  return {
+    get: registry.get,
+    bind: (editor) => {
+      registry.set(
+        createInsertPresetCommands({
+          editor,
+          catalog
+        })
+      )
+    },
+    clear: () => {
+      registry.clear()
+    },
+    pointerDown: (editor, input) => {
+      const tool = editor.state.tool.get()
+      if (
+        tool.type !== 'insert'
+        || input.pick.kind !== 'background'
+        || input.editable
+        || input.ignoreInput
+        || input.ignoreSelection
+      ) {
+        return false
+      }
+
+      const result = registry.get()?.preset(tool.preset, {
+        at: input.world
+      })
+      if (!result) {
+        return false
+      }
+
+      editor.commands.tool.set(selectTool())
+      return true
+    }
   }
 }

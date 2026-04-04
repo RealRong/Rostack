@@ -1,6 +1,5 @@
 import { PAGE_INLINE_INSET_CSS } from '@dataview/react/page/layout'
-import { BoardProvider, useBoardContext, useBoardController } from '../board'
-import { Empty } from './Empty'
+import { useKanbanContext } from '../context'
 import { Column } from './Column'
 import { Overlay } from './Overlay'
 
@@ -8,8 +7,8 @@ const contentInsetStyle = {
   paddingInline: PAGE_INLINE_INSET_CSS
 } as const
 
-const KanbanBoardCanvas = () => {
-  const controller = useBoardContext()
+export const KanbanCanvas = () => {
+  const controller = useKanbanContext()
   const dragDisabledBySort = controller.currentView.view.query.sorters.length > 0
 
   return (
@@ -27,17 +26,6 @@ const KanbanBoardCanvas = () => {
         className="relative overflow-x-auto pb-4"
         style={contentInsetStyle}
       >
-        {controller.selection.marqueeBox ? (
-          <div
-            className="pointer-events-none absolute z-20 rounded-md border border-primary/60 bg-primary/10"
-            style={{
-              left: controller.selection.marqueeBox.left,
-              top: controller.selection.marqueeBox.top,
-              width: controller.selection.marqueeBox.width,
-              height: controller.selection.marqueeBox.height
-            }}
-          />
-        ) : null}
         <div className="flex min-w-max items-start gap-4">
           {controller.currentView.sections.map(section => (
             <Column
@@ -49,23 +37,5 @@ const KanbanBoardCanvas = () => {
       </div>
       <Overlay />
     </div>
-  )
-}
-
-export const Board = () => {
-  const controller = useBoardController()
-
-  if (!controller.currentView.view.query.group) {
-    return (
-      <div style={contentInsetStyle}>
-        <Empty />
-      </div>
-    )
-  }
-
-  return (
-    <BoardProvider value={controller}>
-      <KanbanBoardCanvas />
-    </BoardProvider>
   )
 }

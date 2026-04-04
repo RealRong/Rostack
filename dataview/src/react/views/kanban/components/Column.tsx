@@ -1,12 +1,12 @@
 import type { Section } from '@dataview/react/runtime/currentView'
-import { useBoardContext } from '../board'
+import { useKanbanContext } from '../context'
 import { ColumnBody } from './ColumnBody'
 import { ColumnHeader } from './ColumnHeader'
 
 export const Column = (props: {
   section: Section
 }) => {
-  const controller = useBoardContext()
+  const controller = useKanbanContext()
 
   return (
     <section

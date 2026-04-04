@@ -3,18 +3,18 @@ import type { WhiteboardInstance as Editor } from '../../types/runtime'
 
 export const EditorLifecycle = ({
   editor,
-  runtimeConfig
+  editorConfig
 }: {
   editor: Editor
-  runtimeConfig: Parameters<Editor['configure']>[0]
+  editorConfig: Parameters<Editor['configure']>[0]
 }) => {
   useEffect(() => () => {
     editor.dispose()
   }, [editor])
 
   useEffect(() => {
-    editor.configure(runtimeConfig)
-  }, [editor, runtimeConfig])
+    editor.configure(editorConfig)
+  }, [editor, editorConfig])
 
   return null
 }

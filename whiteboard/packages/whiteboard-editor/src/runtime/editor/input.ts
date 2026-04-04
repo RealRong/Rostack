@@ -1,17 +1,17 @@
 import type { Editor, EditorWriteApi } from '../../types/editor'
 import type { InteractionRuntime } from '../interaction/types'
 import type { EdgeHoverService } from '../../interactions/edge/hover'
-import type { RuntimeStateController } from '../state'
+import type { EditorHost } from '../../host/types'
 
 export const createEditorInput = ({
   interaction,
   edgeHover,
-  runtime,
+  host,
   write
 }: {
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
-  runtime: Pick<RuntimeStateController, 'state'>
+  host: Pick<EditorHost, 'inputPolicy'>
   write: EditorWriteApi
 }): Editor['input'] => {
   const writePointer = (input: {
@@ -72,7 +72,7 @@ export const createEditorInput = ({
       interaction.handlePointerLeave()
     },
     wheel: (input) => {
-      const policy = runtime.state.inputPolicy.get()
+      const policy = host.inputPolicy.store.get()
       if (!policy.wheelEnabled) {
         return false
       }

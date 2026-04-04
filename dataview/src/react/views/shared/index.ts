@@ -10,3 +10,4 @@ export {
   type CardPropertySlotProps
 } from './CardPropertySlot'
 export { openCardField } from './openCardField'
+export { useCardEditingState, useCardTitleEditing } from './useCardTitleEditing'

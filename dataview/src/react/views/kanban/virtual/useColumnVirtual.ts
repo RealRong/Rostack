@@ -2,20 +2,19 @@ import {
   useMemo,
   type RefObject
 } from 'react'
-import { useViewportVersion } from '@dataview/react/dom/viewport'
 import type { AppearanceId } from '@dataview/react/runtime/currentView'
 import {
-  useMeasuredHeights
+  useMeasuredHeights,
+  useVirtualBlocks,
+  type VirtualBlock
 } from '@dataview/react/virtual'
 
 const DEFAULT_CARD_HEIGHT = 96
 const DEFAULT_GAP = 8
 const DEFAULT_OVERSCAN = 360
 
-interface VirtualCardLayout {
+interface VirtualCardLayout extends VirtualBlock {
   id: AppearanceId
-  top: number
-  height: number
 }
 
 interface Options {
@@ -26,55 +25,10 @@ interface Options {
   overscan?: number
 }
 
-const findStartIndex = (
-  items: readonly VirtualCardLayout[],
-  start: number
-) => {
-  let low = 0
-  let high = items.length - 1
-  let answer = items.length
-
-  while (low <= high) {
-    const middle = Math.floor((low + high) / 2)
-    const item = items[middle]
-    if (item && item.top + item.height >= start) {
-      answer = middle
-      high = middle - 1
-    } else {
-      low = middle + 1
-    }
-  }
-
-  return answer
-}
-
-const findEndIndex = (
-  items: readonly VirtualCardLayout[],
-  end: number
-) => {
-  let low = 0
-  let high = items.length - 1
-  let answer = items.length
-
-  while (low <= high) {
-    const middle = Math.floor((low + high) / 2)
-    const item = items[middle]
-    if (item && item.top <= end) {
-      low = middle + 1
-      answer = low
-    } else {
-      high = middle - 1
-    }
-  }
-
-  return answer
-}
-
 export const useColumnVirtual = (options: Options) => {
   const estimatedHeight = options.estimatedHeight ?? DEFAULT_CARD_HEIGHT
   const gap = options.gap ?? DEFAULT_GAP
   const overscan = options.overscan ?? DEFAULT_OVERSCAN
-  const viewportVersion = useViewportVersion(options.bodyRef)
   const measured = useMeasuredHeights({
     ids: options.ids
   })
@@ -85,6 +39,7 @@ export const useColumnVirtual = (options: Options) => {
     return options.ids.map((id, index) => {
       const height = measured.heightById.get(id) ?? estimatedHeight
       const item: VirtualCardLayout = {
+        key: id,
         id,
         top,
         height
@@ -94,29 +49,15 @@ export const useColumnVirtual = (options: Options) => {
       return item
     })
   }, [estimatedHeight, gap, measured.heightById, options.ids])
-
-  const totalHeight = useMemo(
-    () => items.length ? items[items.length - 1]!.top + items[items.length - 1]!.height : 0,
-    [items]
-  )
-
-  const visibleItems = useMemo(() => {
-    const bodyNode = options.bodyRef.current
-    if (!bodyNode || !items.length || typeof window === 'undefined') {
-      return items
-    }
-
-    const rect = bodyNode.getBoundingClientRect()
-    const start = Math.max(0, -rect.top - overscan)
-    const end = Math.max(0, window.innerHeight - rect.top + overscan)
-    const startIndex = findStartIndex(items, start)
-    const endIndex = Math.max(startIndex, findEndIndex(items, end))
-
-    return items.slice(startIndex, endIndex)
-  }, [items, options.bodyRef, overscan, totalHeight, viewportVersion])
+  const virtual = useVirtualBlocks({
+    blocks: items,
+    canvasRef: options.bodyRef,
+    overscan
+  })
 
   const layouts = useMemo<readonly VirtualCardLayout[]>(
     () => items.map(item => ({
+      key: item.key,
       id: item.id,
       top: item.top,
       height: item.height
@@ -130,10 +71,10 @@ export const useColumnVirtual = (options: Options) => {
   )
 
   return {
-    items: visibleItems,
+    items: virtual.items,
     layouts,
     positionById,
-    totalHeight,
+    totalHeight: virtual.totalHeight,
     measure: measured.measure
   }
 }

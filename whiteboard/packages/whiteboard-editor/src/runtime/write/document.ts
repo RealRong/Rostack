@@ -1,12 +1,10 @@
 import type { EngineInstance } from '@whiteboard/engine'
-import type { InsertPresetCatalog } from '../../types/insert'
 import type {
   EditorDocumentWrite,
   EditorPreviewWrite,
   EditorRead,
   EditorSessionWrite
 } from '../../types/editor'
-import { createInsertCommands } from '../commands/insert'
 import { createMindmapWrite } from '../commands/mindmap'
 import { createNodeAppearanceCommands } from '../commands/node/appearance'
 import { createNodeDocumentCommands } from '../commands/node/document'
@@ -17,14 +15,12 @@ export const createDocumentWrite = ({
   engine,
   read,
   session,
-  preview,
-  insertPresetCatalog
+  preview
 }: {
   engine: EngineInstance
   read: EditorRead
   session: Pick<EditorSessionWrite, 'edit' | 'selection'>
   preview: Pick<EditorPreviewWrite, 'node'>
-  insertPresetCatalog: InsertPresetCatalog
 }): EditorDocumentWrite => {
   const nodeDocument = createNodeDocumentCommands(engine)
   const nodeAppearance = createNodeAppearanceCommands({
@@ -77,24 +73,12 @@ export const createDocumentWrite = ({
       }
     }
   })
-  const insert = createInsertCommands({
-    writerHost: {
-      read,
-      document: {
-        node,
-        mindmap
-      },
-      session
-    },
-    catalog: insertPresetCatalog
-  })
 
   return {
     doc: engine.commands.document,
     history: engine.commands.history,
     edge: engine.commands.edge,
     node,
-    mindmap,
-    insert
+    mindmap
   }
 }

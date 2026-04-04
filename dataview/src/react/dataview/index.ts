@@ -23,7 +23,8 @@ export type {
   MarqueeAdapter,
   MarqueeApi,
   MarqueeMode,
-  MarqueeSessionState
+  MarqueeSessionState,
+  SelectionTarget
 } from '@dataview/react/runtime/marquee'
 export type {
   InlineSessionApi,

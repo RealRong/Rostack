@@ -1,8 +1,8 @@
 import type { EngineInstance } from '@whiteboard/engine'
 import type { EditorRead, EditorWriteApi } from '../../types/editor'
-import type { InsertPresetCatalog } from '../../types/insert'
 import type { RuntimeStateController } from '../state'
 import type { EditorOverlay } from '../overlay'
+import type { EditorHost } from '../../host/types'
 import { createDocumentWrite } from './document'
 import { createPreviewWrite } from './preview'
 import { createSessionWrite } from './session'
@@ -13,13 +13,13 @@ export const createEditorWrite = ({
   read,
   runtime,
   overlay,
-  insertPresetCatalog
+  host
 }: {
   engine: EngineInstance
   read: EditorRead
   runtime: RuntimeStateController
   overlay: Pick<EditorOverlay, 'set'>
-  insertPresetCatalog: InsertPresetCatalog
+  host: Pick<EditorHost, 'viewport' | 'inputPolicy' | 'draw'>
 }): EditorWriteApi => {
   const preview = createPreviewWrite({
     overlay
@@ -29,14 +29,14 @@ export const createEditorWrite = ({
     runtime
   })
   const view = createViewWrite({
-    runtime
+    runtime,
+    host
   })
   const document = createDocumentWrite({
     engine,
     read,
     session,
-    preview,
-    insertPresetCatalog
+    preview
   })
 
   return {

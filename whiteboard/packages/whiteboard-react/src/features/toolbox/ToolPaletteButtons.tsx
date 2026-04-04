@@ -10,7 +10,6 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import {
-  DEFAULT_DRAW_KIND,
   type DrawKind,
   type Tool
 } from '@whiteboard/editor'
@@ -56,7 +55,7 @@ export const ToolPaletteButtons = ({
     current: Partial<Record<'draw' | 'edge' | 'sticky' | 'shape' | 'mindmap', HTMLButtonElement | null>>
   }
 }) => {
-  const DrawButtonIcon = DRAW_KIND_ICON[palette.drawKind ?? DEFAULT_DRAW_KIND]
+  const DrawButtonIcon = DRAW_KIND_ICON[palette.drawKind]
   const toolIcon = tool.type === 'hand' ? Hand : MousePointer2
 
   return (

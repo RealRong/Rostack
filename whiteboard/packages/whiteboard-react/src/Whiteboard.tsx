@@ -8,6 +8,7 @@ import { Surface } from './canvas/Surface'
 import { DocumentSync } from './runtime/whiteboard/DocumentSync'
 import { CollabLifecycle } from './runtime/whiteboard/CollabLifecycle'
 import { EditorLifecycle } from './runtime/whiteboard/EditorLifecycle'
+import { HostLifecycle } from './runtime/whiteboard/HostLifecycle'
 import { useWhiteboardConfig } from './runtime/whiteboard/config'
 import { useWhiteboardRuntime } from './runtime/whiteboard/runtime'
 
@@ -26,7 +27,8 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
   const {
     resolvedConfig,
     boardConfig,
-    runtimeConfig
+    editorConfig,
+    hostConfig
   } = useWhiteboardConfig(options)
   const {
     editor,
@@ -69,9 +71,13 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
             collab={collab}
             engine={engine}
           />
+          <HostLifecycle
+            host={host}
+            hostConfig={hostConfig}
+          />
           <EditorLifecycle
             editor={editor}
-            runtimeConfig={runtimeConfig}
+            editorConfig={editorConfig}
           />
           <Surface
             resolvedConfig={resolvedConfig}

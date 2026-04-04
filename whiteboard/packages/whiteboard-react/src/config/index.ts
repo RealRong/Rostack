@@ -34,7 +34,7 @@ const DEFAULT_CONFIG: ResolvedConfig = {
     captureSystem: true,
     captureRemote: false
   },
-  tool: selectTool(),
+  initialTool: selectTool(),
   shortcuts: undefined
 }
 
@@ -47,12 +47,16 @@ export const normalizeConfig = (
   options?: WhiteboardOptions
 ): ResolvedConfig => {
   const merged = mergeConfig(DEFAULT_CONFIG, options)
+  const {
+    initialTool,
+    ...rest
+  } = merged
   const minZoom = Math.max(ZOOM_EPSILON, merged.viewport.minZoom)
   const maxZoom = Math.max(minZoom, merged.viewport.maxZoom)
 
   return {
-    ...merged,
-    tool: merged.tool,
+    ...rest,
+    initialTool,
     viewport: {
       ...merged.viewport,
       initial: merged.viewport.initial ?? DEFAULT_VIEWPORT,

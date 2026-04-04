@@ -15,7 +15,7 @@ export const EMPTY_EDGE_OVERLAY: EdgeOverlayState = {
   interaction: EMPTY_EDGE_PATCHES
 }
 export const EMPTY_EDGE_OVERLAY_PROJECTION: EdgeOverlayProjection = {}
-export const EMPTY_EDGE_OVERLAY_MAP = new Map<EdgeId, EdgeOverlayProjection>()
+const EMPTY_EDGE_OVERLAY_MAP = new Map<EdgeId, EdgeOverlayProjection>()
 
 export const isEdgeGuideEqual = (
   left: EdgeGuide,

@@ -28,7 +28,7 @@ import {
 } from '@whiteboard/core/geometry'
 import type {
   NodeOverlayProjection
-} from '../overlay'
+} from '../overlay/types'
 import {
   createOverlayStateStore,
   createPatchedItemStore

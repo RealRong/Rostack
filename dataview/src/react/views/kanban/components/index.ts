@@ -1,4 +1,4 @@
-export { Board } from './Board'
+export { KanbanCanvas } from './KanbanCanvas'
 export { Empty } from './Empty'
 export { Column } from './Column'
 export { ColumnBody } from './ColumnBody'

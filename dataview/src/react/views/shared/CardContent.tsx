@@ -11,10 +11,12 @@ import type {
   AppearanceId,
   ViewFieldRef
 } from '@dataview/react/runtime/currentView'
+import { isEmptyPropertyValue } from '@dataview/core/property'
 import { Button } from '@ui/button'
 import { cn } from '@ui/utils'
 import { CardPropertySlot } from './CardPropertySlot'
 import { CardTitle } from './CardTitle'
+import { useCardTitleEditing } from './useCardTitleEditing'
 
 const fieldRef = (input: {
   viewId: ViewId
@@ -49,32 +51,38 @@ export interface CardContentProps {
   record: GroupRecord
   titleProperty?: GroupProperty
   properties: readonly GroupProperty[]
-  mode: 'view' | 'edit'
-  committedTitle: string
-  titleDraft: string
   titlePlaceholder: string
-  onTitleDraftChange: (value: string) => void
-  onCommitTitle: () => void
-  onSubmitTitle: () => void
-  onSelect: () => void
   showEditAction?: boolean
-  onEnterEdit?: () => void
   titleLeading?: ReactNode
   propertyDensity?: 'default' | 'compact'
 }
 
 export const CardContent = (props: CardContentProps) => {
+  const editing = useCardTitleEditing({
+    viewId: props.viewId,
+    appearanceId: props.appearanceId,
+    record: props.record,
+    titleProperty: props.titleProperty
+  })
+  const fieldProperties = useMemo(() => props.properties.filter(
+    property => property.id !== props.titleProperty?.id
+  ), [props.properties, props.titleProperty?.id])
+  const visibleProperties = useMemo(() => (
+    editing.mode === 'edit'
+      ? fieldProperties
+      : fieldProperties.filter(property => !isEmptyPropertyValue(props.record.values[property.id]))
+  ), [editing.mode, fieldProperties, props.record])
   const fieldPropertyIds: readonly PropertyId[] = useMemo(() => Array.from(new Set(
     [
       props.titleProperty,
-      ...props.properties
+      ...fieldProperties
     ].filter((property): property is GroupProperty => Boolean(property))
       .map(property => property.id)
-  )), [props.properties, props.titleProperty])
+  )), [fieldProperties, props.titleProperty])
 
   return (
     <article className={props.slots?.root}>
-      {props.showEditAction ? (
+      {props.showEditAction && !editing.editing ? (
         <Button
           size="icon"
           variant="ghost"
@@ -84,33 +92,33 @@ export const CardContent = (props: CardContentProps) => {
           onClick={event => {
             event.preventDefault()
             event.stopPropagation()
-            props.onEnterEdit?.()
+            editing.enterEdit()
           }}
         >
           <SquarePen className="size-4" size={15} strokeWidth={1.8} />
         </Button>
       ) : null}
       <div className="min-w-0">
-        <div className={cn('min-w-0 pb-2', props.slots?.title?.row)}>
+        <div className={cn('min-w-0', props.slots?.title?.row)}>
           {props.titleLeading ? props.titleLeading : null}
           <div className={cn('min-w-0', props.slots?.title?.content)}>
             <CardTitle
-              editing={props.mode === 'edit'}
-              text={props.committedTitle}
-              draft={props.titleDraft}
+              editing={editing.mode === 'edit'}
+              text={editing.committedTitle}
+              draft={editing.titleDraft}
               placeholder={props.titlePlaceholder}
               textClassName={props.slots?.title?.text}
               inputClassName={props.slots?.title?.input}
-              onDraftChange={props.onTitleDraftChange}
-              onCommit={props.onCommitTitle}
-              onSubmit={props.onSubmitTitle}
+              onDraftChange={editing.setTitleDraft}
+              onCommit={editing.commitTitle}
+              onSubmit={editing.submitTitle}
             />
           </div>
         </div>
 
-        {props.properties.length ? (
+        {visibleProperties.length ? (
           <div className={props.slots?.property?.list}>
-            {props.properties.map(property => (
+            {visibleProperties.map(property => (
               <div key={property.id} className={props.slots?.property?.item}>
                 <CardPropertySlot
                   field={fieldRef({
@@ -122,9 +130,8 @@ export const CardContent = (props: CardContentProps) => {
                   property={property}
                   value={props.record.values[property.id]}
                   fieldPropertyIds={fieldPropertyIds}
-                  mode={props.mode}
+                  mode={editing.mode}
                   openOnClick
-                  onSelect={props.onSelect}
                   density={props.propertyDensity}
                   valueClassName={props.slots?.property?.value}
                 />

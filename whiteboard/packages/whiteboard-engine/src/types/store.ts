@@ -3,6 +3,8 @@ export type ReadStore<T> = {
   subscribe: (listener: () => void) => () => void
 }
 
+export type StoreSchedule = 'sync' | 'microtask' | 'raf'
+
 export type KeyedReadStore<Key, T> = {
   get: (key: Key) => T
   subscribe: (key: Key, listener: () => void) => () => void

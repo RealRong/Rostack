@@ -1,7 +1,12 @@
 export { createMarqueeApi } from './api'
+export {
+  boxFromDomRect,
+  selectionTargetFromElement
+} from './dom'
 export type {
   MarqueeAdapter,
   MarqueeApi,
   MarqueeMode,
-  MarqueeSessionState
+  MarqueeSessionState,
+  SelectionTarget
 } from './types'

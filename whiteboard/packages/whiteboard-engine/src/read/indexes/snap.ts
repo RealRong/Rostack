@@ -1,6 +1,9 @@
 import type { CanvasNode } from '@engine-types/projection'
 import type { NodeId, Rect } from '@whiteboard/core/types'
-import type { SnapCandidate } from '@whiteboard/core/node'
+import {
+  getNodeOutlineBounds,
+  type SnapCandidate
+} from '@whiteboard/core/node'
 import type { EngineReadIndex } from '@engine-types/instance'
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import {
@@ -34,6 +37,20 @@ const toRectTuple = (rect: Rect): RectTuple => ({
   width: toFiniteOrUndefined(rect.width),
   height: toFiniteOrUndefined(rect.height)
 })
+
+const canIndexSnapCandidate = (
+  entry: CanvasNode
+) => entry.node.type !== 'group'
+
+const resolveSnapRect = (
+  entry: CanvasNode
+): Rect => entry.node.type === 'shape'
+  ? getNodeOutlineBounds(
+      entry.node,
+      entry.rect,
+      entry.rotation
+    )
+  : entry.aabb
 
 type SnapCacheEntry = {
   rect: RectTuple
@@ -130,6 +147,20 @@ export class SnapIndex {
     this.orderDirty = true
   }
 
+  private deleteEntry = (
+    nodeId: NodeId,
+    current: SnapCacheEntry | undefined
+  ) => {
+    if (!current) {
+      return false
+    }
+
+    this.removeFromBuckets(nodeId, current.cellKeys)
+    this.byId.delete(nodeId)
+    this.orderDirty = true
+    return true
+  }
+
   applyChange = (
     impact: KernelReadImpact,
     node: Pick<EngineReadIndex['node'], 'all' | 'get'>,
@@ -164,13 +195,21 @@ export class SnapIndex {
       seen.add(nodeId)
       nextOrderedIds.push(nodeId)
 
-      const rect = toRectTuple(entry.aabb)
+      if (!canIndexSnapCandidate(entry)) {
+        const current = this.byId.get(nodeId)
+        if (this.deleteEntry(nodeId, current)) {
+          changed = true
+        }
+        return
+      }
+
+      const rect = toRectTuple(resolveSnapRect(entry))
       const current = this.byId.get(nodeId)
       if (current && isSameRectTuple(current.rect, rect)) {
         return
       }
 
-      this.writeEntry(nodeId, entry.aabb, current, false)
+      this.writeEntry(nodeId, resolveSnapRect(entry), current, false)
       changed = true
     })
 
@@ -204,18 +243,24 @@ export class SnapIndex {
       const current = this.byId.get(nodeId)
 
       if (!entry) {
-        if (!current) continue
-        this.removeFromBuckets(nodeId, current.cellKeys)
-        this.byId.delete(nodeId)
-        removed.add(nodeId)
-        changed = true
+        if (this.deleteEntry(nodeId, current)) {
+          removed.add(nodeId)
+          changed = true
+        }
         continue
       }
 
-      const rect = toRectTuple(entry.aabb)
+      if (!canIndexSnapCandidate(entry)) {
+        if (this.deleteEntry(nodeId, current)) {
+          changed = true
+        }
+        continue
+      }
+
+      const rect = toRectTuple(resolveSnapRect(entry))
       if (current && isSameRectTuple(current.rect, rect)) continue
 
-      this.writeEntry(nodeId, entry.aabb, current, true)
+      this.writeEntry(nodeId, resolveSnapRect(entry), current, true)
       changed = true
     }
 

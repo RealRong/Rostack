@@ -4,6 +4,7 @@ export type {
   KeyedReadStore,
   ReadFn,
   ReadStore,
+  StoreSchedule,
   StagedKeyedStore,
   StagedValueStore,
   ValueStore
@@ -11,6 +12,10 @@ export type {
 export { createValueStore } from './value'
 export { createKeyedStore } from './keyed'
 export { createDerivedStore, createKeyedDerivedStore } from './derived'
+export {
+  createProjectedKeyedStore,
+  createProjectedStore
+} from './projected'
 export {
   createStagedKeyedStore,
   createStagedValueStore

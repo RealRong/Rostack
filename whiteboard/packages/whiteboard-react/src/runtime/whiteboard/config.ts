@@ -13,18 +13,22 @@ export const useWhiteboardConfig = (
     () => toBoardConfig(resolvedConfig),
     [resolvedConfig]
   )
-  const runtimeConfig = useMemo(
+  const editorConfig = useMemo(
     () => ({
-      tool: resolvedConfig.tool,
+      mindmapLayout: resolvedConfig.mindmapLayout,
+      history: resolvedConfig.history
+    }),
+    [resolvedConfig]
+  )
+  const hostConfig = useMemo(
+    () => ({
       viewport: {
         minZoom: resolvedConfig.viewport.minZoom,
         maxZoom: resolvedConfig.viewport.maxZoom,
         enablePan: resolvedConfig.viewport.enablePan,
         enableWheel: resolvedConfig.viewport.enableWheel,
         wheelSensitivity: resolvedConfig.viewport.wheelSensitivity
-      },
-      mindmapLayout: resolvedConfig.mindmapLayout,
-      history: resolvedConfig.history
+      }
     }),
     [resolvedConfig]
   )
@@ -32,6 +36,7 @@ export const useWhiteboardConfig = (
   return {
     resolvedConfig,
     boardConfig,
-    runtimeConfig
+    editorConfig,
+    hostConfig
   }
 }

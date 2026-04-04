@@ -1,8 +1,5 @@
 import {
-  DEFAULT_DRAW_KIND,
-  DEFAULT_EDGE_PRESET_KEY,
-  type DrawKind,
-  type EdgePresetKey
+  type DrawKind
 } from '@whiteboard/editor'
 import {
   useCallback,
@@ -22,9 +19,14 @@ import { ToolPaletteButtons } from './ToolPaletteButtons'
 import { ToolPaletteMenu } from './ToolPaletteMenu'
 import { createToolPaletteController } from './controller'
 import {
+  DEFAULT_TOOL_PALETTE_MEMORY,
+  rememberToolPaletteTool,
   readToolPaletteView
 } from './model'
-import type { ToolPaletteMenuKey } from '../../types/toolbox'
+import type {
+  ToolPaletteMemory,
+  ToolPaletteMenuKey
+} from '../../types/toolbox'
 
 type ToolPaletteMenuPlacement = {
   left: number
@@ -123,8 +125,7 @@ export const ToolPalette = ({
   const tool = useTool()
   const surface = useElementSize(containerRef)
   const rootRef = useRef<HTMLDivElement | null>(null)
-  const drawKindRef = useRef<DrawKind>(DEFAULT_DRAW_KIND)
-  const edgePresetRef = useRef<EdgePresetKey>(DEFAULT_EDGE_PRESET_KEY)
+  const paletteMemoryRef = useRef<ToolPaletteMemory>(DEFAULT_TOOL_PALETTE_MEMORY)
   const buttonRefByKey = useRef<Partial<Record<ToolPaletteMenuKey, HTMLButtonElement | null>>>({})
   const [openMenu, setOpenMenu] = useState<ToolPaletteMenuKey | null>(null)
   const [drawPanelOpen, setDrawPanelOpen] = useState(false)
@@ -132,20 +133,14 @@ export const ToolPalette = ({
   const palette = readToolPaletteView({
     tool,
     drawState,
-    lastDrawKind: drawKindRef.current,
-    lastEdgePreset: edgePresetRef.current
+    memory: paletteMemoryRef.current
   })
 
   useEffect(() => {
-    if (tool.type === 'draw') {
-      drawKindRef.current = tool.kind
-    }
-  }, [tool])
-
-  useEffect(() => {
-    if (tool.type === 'edge') {
-      edgePresetRef.current = tool.preset
-    }
+    paletteMemoryRef.current = rememberToolPaletteTool(
+      paletteMemoryRef.current,
+      tool
+    )
   }, [tool])
 
   const menuStyle = useMemo(() => {
@@ -180,8 +175,7 @@ export const ToolPalette = ({
     openMenu,
     closeMenu,
     setOpenMenu,
-    setDrawPanelOpen,
-    edgePresetRef
+    setDrawPanelOpen
   }), [closeMenu, editor, openMenu, palette, tool])
 
   useOverlayDismiss({

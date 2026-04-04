@@ -58,7 +58,7 @@ export default defineConfig({
       },
       {
         find: /^@whiteboard\/editor\/(.+)$/,
-        replacement: `${editorSrc}/$1.ts`
+        replacement: `${editorSrc}/$1`
       },
       {
         find: /^@whiteboard\/engine$/,

@@ -4,6 +4,8 @@ export {
   createDerivedStore,
   createKeyedDerivedStore,
   createKeyedStore,
+  createProjectedKeyedStore,
+  createProjectedStore,
   createRafKeyedStore,
   createRafValueStore,
   createStagedKeyedStore,
@@ -31,6 +33,7 @@ export type {
   KeyedStorePatch,
   ReadFn,
   ReadStore,
+  StoreSchedule,
   StagedKeyedStore,
   StagedValueStore,
   ValueStore

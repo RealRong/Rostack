@@ -11,7 +11,7 @@ import type {
 
 export type ResolvedConfig = Omit<
   WhiteboardOptions,
-  'nodeSize' | 'mindmapNodeSize' | 'mindmapLayout' | 'viewport' | 'node' | 'edge' | 'history' | 'tool'
+  'nodeSize' | 'mindmapNodeSize' | 'mindmapLayout' | 'viewport' | 'node' | 'edge' | 'history' | 'initialTool'
 > & {
   nodeSize: Size
   mindmapNodeSize: Size
@@ -20,5 +20,5 @@ export type ResolvedConfig = Omit<
   node: Required<NodeConfig>
   edge: Required<EdgeConfig>
   history: KernelHistoryConfig
-  tool: Tool
+  initialTool: Tool
 }

@@ -7,7 +7,10 @@
     "paths": {
       "@whiteboard/collab": ["whiteboard/packages/whiteboard-collab/src/index.ts"],
       "@whiteboard/editor": ["whiteboard/packages/whiteboard-editor/src/index.ts"],
-      "@whiteboard/editor/*": ["whiteboard/packages/whiteboard-editor/src/*.ts"],
+      "@whiteboard/editor/*": [
+        "whiteboard/packages/whiteboard-editor/src/*",
+        "whiteboard/packages/whiteboard-editor/src/*/index.ts"
+      ],
       "@whiteboard/react": ["whiteboard/packages/whiteboard-react/src/index.ts"],
       "@whiteboard/engine": ["whiteboard/packages/whiteboard-engine/src/index.ts"],
       "@engine-types": ["whiteboard/packages/whiteboard-engine/src/types/index.ts"],

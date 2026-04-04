@@ -18,7 +18,7 @@ import {
 } from '@whiteboard/engine'
 import type {
   EdgeOverlayProjection
-} from '../overlay'
+} from '../overlay/types'
 import {
   createOverlayStateStore,
   createPatchedItemStore

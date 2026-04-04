@@ -3,14 +3,19 @@ import {
   useEffect,
   useRef
 } from 'react'
+import { createPortal } from 'react-dom'
 import type { Point } from '@dataview/dom/geometry'
 import {
-  pointIn,
+  idsInRect,
   rectFromPoints
 } from '@dataview/dom/geometry'
 import { disableUserSelect } from '@dataview/dom/selection'
 import {
-  resolveDefaultAutoPanTargets,
+  scrollMetrics,
+  type ScrollNode
+} from '@dataview/dom/scroll'
+import {
+  type AutoPanTargets,
   useAutoPan
 } from '@dataview/react/interaction/autoPan'
 import {
@@ -77,6 +82,50 @@ const resolveMarqueeSelection = (input: {
   }
 }
 
+interface ScrollAnchorState {
+  x?: {
+    node: ScrollNode
+    start: number
+  }
+  y?: {
+    node: ScrollNode
+    start: number
+  }
+}
+
+const readScrollAnchorState = (
+  targets: AutoPanTargets | null | undefined
+): ScrollAnchorState => ({
+  x: targets?.x?.node
+    ? {
+        node: targets.x.node,
+        start: scrollMetrics(targets.x.node).left
+      }
+    : undefined,
+  y: targets?.y?.node
+    ? {
+        node: targets.y.node,
+        start: scrollMetrics(targets.y.node).top
+      }
+    : undefined
+})
+
+const resolveScrolledAnchor = (
+  anchor: Point,
+  scrollState: ScrollAnchorState
+): Point => ({
+  x: anchor.x - (
+    scrollState.x
+      ? scrollMetrics(scrollState.x.node).left - scrollState.x.start
+      : 0
+  ),
+  y: anchor.y - (
+    scrollState.y
+      ? scrollMetrics(scrollState.y.node).top - scrollState.y.start
+      : 0
+  )
+})
+
 export const PageMarqueeHost = () => {
   const dataView = useDataView()
   const currentView = useCurrentView()
@@ -84,6 +133,7 @@ export const PageMarqueeHost = () => {
   const session = useStoreValue(dataView.marquee.store)
   const pointerRef = useRef<Point | null>(null)
   const anchorRef = useRef<Point | null>(null)
+  const scrollAnchorRef = useRef<ScrollAnchorState>({})
 
   const resolveAdapter = useCallback((viewId?: string): MarqueeAdapter | undefined => (
     viewId
@@ -92,10 +142,15 @@ export const PageMarqueeHost = () => {
   ), [dataView.marquee])
 
   const applySelection = useCallback((nextSession: MarqueeSessionState, adapter: MarqueeAdapter) => {
+    const order = adapter.order()
     const nextSelection = resolveMarqueeSelection({
-      order: adapter.order(),
+      order,
       baseSelectedIds: nextSession.baseSelectedIds,
-      hitIds: adapter.resolveIds(nextSession.box),
+      hitIds: idsInRect(
+        order,
+        adapter.getTargets(),
+        nextSession.box
+      ),
       mode: nextSession.mode
     })
 
@@ -107,22 +162,24 @@ export const PageMarqueeHost = () => {
 
   const update = useCallback(() => {
     const currentSession = dataView.marquee.get()
-    if (!currentSession) {
+    const anchor = anchorRef.current
+    const pointer = pointerRef.current
+    if (!currentSession || !anchor || !pointer) {
       return
     }
 
     const adapter = resolveAdapter(currentSession.ownerViewId)
-    const container = adapter?.containerRef.current
-    const anchor = anchorRef.current
-    const pointer = pointerRef.current
-    if (!adapter || !container || !anchor || !pointer) {
+    if (!adapter) {
       return
     }
 
     const nextSession: MarqueeSessionState = {
       ...currentSession,
       current: pointer,
-      box: rectFromPoints(anchor, pointIn(container, pointer))
+      box: rectFromPoints(
+        resolveScrolledAnchor(anchor, scrollAnchorRef.current),
+        pointer
+      )
     }
     dataView.marquee.update(nextSession)
     applySelection(nextSession, adapter)
@@ -137,9 +194,10 @@ export const PageMarqueeHost = () => {
   }, [session])
 
   const resolveTargets = useCallback(
-    () => resolveDefaultAutoPanTargets(
-      resolveAdapter(dataView.marquee.get()?.ownerViewId)?.containerRef.current
-    ),
+    () => {
+      const adapter = resolveAdapter(dataView.marquee.get()?.ownerViewId)
+      return adapter?.resolveAutoPanTargets?.() ?? null
+    },
     [dataView.marquee, resolveAdapter]
   )
   const autoPanState = useAutoPan({
@@ -158,28 +216,16 @@ export const PageMarqueeHost = () => {
       update()
     }
 
-    const targets: EventTarget[] = []
-    const pushTarget = (target: EventTarget | null | undefined) => {
-      if (!target || targets.includes(target)) {
-        return
-      }
-
-      targets.push(target)
-    }
-
-    pushTarget(resolveAdapter(session.ownerViewId)?.containerRef.current)
-    autoPanState.watchTargets.forEach(pushTarget)
-
-    targets.forEach(target => {
+    autoPanState.watchTargets.forEach(target => {
       target.addEventListener?.('scroll', handleScroll, { passive: true })
     })
 
     return () => {
-      targets.forEach(target => {
+      autoPanState.watchTargets.forEach(target => {
         target.removeEventListener?.('scroll', handleScroll)
       })
     }
-  }, [autoPanState.watchTargets, resolveAdapter, session, update])
+  }, [autoPanState.watchTargets, session, update])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -205,11 +251,15 @@ export const PageMarqueeHost = () => {
       }
 
       if (event.type === 'pointercancel') {
+        resolveAdapter(currentSession.ownerViewId)?.onCancel?.(currentSession)
         dataView.selection.set(currentSession.baseSelectedIds)
+      } else {
+        resolveAdapter(currentSession.ownerViewId)?.onEnd?.(currentSession)
       }
 
       pointerRef.current = null
       anchorRef.current = null
+      scrollAnchorRef.current = {}
       dataView.marquee.clear()
     }
 
@@ -240,13 +290,9 @@ export const PageMarqueeHost = () => {
       }
 
       const adapter = resolveAdapter(currentView.view.id)
-      const container = adapter?.containerRef.current
       if (
         !adapter
         || adapter.disabled
-        || !container
-        || !(event.target instanceof Node)
-        || !container.contains(event.target)
         || !adapter.canStart(event)
       ) {
         return
@@ -264,8 +310,11 @@ export const PageMarqueeHost = () => {
         x: event.clientX,
         y: event.clientY
       }
-      anchorRef.current = pointIn(container, start)
+      anchorRef.current = start
       pointerRef.current = start
+      scrollAnchorRef.current = readScrollAnchorState(
+        adapter.resolveAutoPanTargets?.()
+      )
 
       const nextSession: MarqueeSessionState = {
         ownerViewId: currentView.view.id,
@@ -276,11 +325,12 @@ export const PageMarqueeHost = () => {
         }),
         start,
         current: start,
-        box: rectFromPoints(anchorRef.current, anchorRef.current),
+        box: rectFromPoints(start, start),
         baseSelectedIds: dataView.selection.get().ids
       }
 
       dataView.marquee.start(nextSession)
+      adapter.onStart?.(nextSession)
       applySelection(nextSession, adapter)
     }
 
@@ -312,9 +362,11 @@ export const PageMarqueeHost = () => {
 
       event.preventDefault()
       event.stopPropagation()
+      resolveAdapter(currentSession.ownerViewId)?.onCancel?.(currentSession)
       dataView.selection.set(currentSession.baseSelectedIds)
       pointerRef.current = null
       anchorRef.current = null
+      scrollAnchorRef.current = {}
       dataView.marquee.clear()
     }
 
@@ -324,5 +376,20 @@ export const PageMarqueeHost = () => {
     }
   }, [dataView.marquee, dataView.selection])
 
-  return null
+  if (!session || typeof document === 'undefined') {
+    return null
+  }
+
+  return createPortal(
+    <div
+      className="pointer-events-none fixed z-[80] rounded-md border border-primary/60 bg-primary/10"
+      style={{
+        left: session.box.left,
+        top: session.box.top,
+        width: session.box.width,
+        height: session.box.height
+      }}
+    />,
+    document.body
+  )
 }

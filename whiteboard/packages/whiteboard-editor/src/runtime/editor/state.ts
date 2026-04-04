@@ -4,13 +4,16 @@ import {
 import type { Editor, EditorInteractionState } from '../../types/editor'
 import type { InteractionRuntime } from '../interaction/types'
 import type { RuntimeStateController } from '../state'
+import type { EditorHost } from '../../host/types'
 
 export const createEditorState = ({
   interaction,
-  runtime
+  runtime,
+  host
 }: {
   interaction: InteractionRuntime
   runtime: RuntimeStateController
+  host: Pick<EditorHost, 'viewport'>
 }): Editor['state'] => {
   const interactionState = createDerivedStore<EditorInteractionState>({
     get: (readStore) => {
@@ -52,6 +55,7 @@ export const createEditorState = ({
 
   return {
     ...runtime.public.state,
+    viewport: host.viewport.read,
     interaction: interactionState
   } satisfies Editor['state']
 }

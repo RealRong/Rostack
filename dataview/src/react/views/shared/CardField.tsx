@@ -33,7 +33,6 @@ export interface CardFieldProps {
   valueClassName?: string
   density?: 'default' | 'compact'
   openOnClick?: boolean
-  onSelect?: () => void
 }
 
 const applyRecordValue = (input: {
@@ -87,7 +86,7 @@ export const CardField = (props: CardFieldProps) => {
       return
     }
 
-    props.onSelect?.()
+    dataView.selection.set([props.field.appearanceId])
     applyRecordValue({
       setValue: engine.records.setValue,
       clearValue: engine.records.clearValue,
@@ -141,7 +140,7 @@ export const CardField = (props: CardFieldProps) => {
         }
 
         event.stopPropagation()
-        props.onSelect?.()
+        dataView.selection.set([props.field.appearanceId])
       }}
       onDoubleClick={event => {
         if (props.openOnClick) {
@@ -152,7 +151,7 @@ export const CardField = (props: CardFieldProps) => {
 
         event.preventDefault()
         event.stopPropagation()
-        props.onSelect?.()
+        dataView.selection.set([props.field.appearanceId])
         open(event.currentTarget)
       }}
       className={cn('min-w-0 select-none text-left', props.className)}

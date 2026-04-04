@@ -49,8 +49,7 @@ export const createToolPaletteController = ({
   openMenu,
   closeMenu,
   setOpenMenu,
-  setDrawPanelOpen,
-  edgePresetRef
+  setDrawPanelOpen
 }: {
   editor: Editor
   tool: Tool
@@ -59,9 +58,6 @@ export const createToolPaletteController = ({
   closeMenu: () => void
   setOpenMenu: MenuSetter
   setDrawPanelOpen: DrawPanelSetter
-  edgePresetRef: {
-    current: EdgePresetKey
-  }
 }): ToolPaletteController => ({
   togglePrimaryTool: () => {
     closeMenu()
@@ -126,7 +122,6 @@ export const createToolPaletteController = ({
   },
   selectEdgePreset: (value) => {
     closeMenu()
-    edgePresetRef.current = value
     editor.commands.tool.set(edgeTool(value))
   },
   selectInsertPreset: (value) => {

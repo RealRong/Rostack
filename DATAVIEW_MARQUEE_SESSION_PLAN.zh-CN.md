@@ -2,101 +2,106 @@
 
 ## 结论
 
-`gallery` 和 `kanban` 当前都不应该继续各自维护一套局部 `marquee` 交互链路。
-
-长期最优方案应该是：
+长期最优方案不再是“每个 view 维护自己的局部 marquee 几何系统”，而是统一成：
 
 1. `marquee` 作为 page 级全局交互模式存在
-2. 具体 view 只提供几何命中与启动条件
-3. `selection` 继续作为唯一选择真相源
-4. `marquee session` 只额外保存起手快照与 box
+2. 页面上的蓝框就是唯一的 `marquee box`
+3. 各个 view 只提供当前可选 item 的 `bounding rect`
+4. `selection` 继续作为唯一选择真相源
+5. `marquee session` 只额外保存起手快照与 box
 
 也就是：
 
 - `marquee` 的生命周期与状态协调放到 page/runtime
-- `gallery` / `kanban` 继续各自负责 `resolveIds(box)`
-- 不把 DOM 几何、layout cache、hit test 强行并到 page 层
+- `marquee box` 直接定义在 page / viewport 视觉空间
+- view 侧只负责提供当前可见 item rect、顺序、启动条件
+- 最终命中语义统一为“蓝框与 item rect 相交即选中”
 
-## 当前问题
+这条语义最接近用户实际看到的效果，也最接近 Notion 一类产品的行为。
 
-当前实现已经暴露出两个结构性问题。
+## 为什么要改口
 
-### 1. `gallery` 的 marquee box 会偏离指针
-
-根因不是指针事件本身错了，而是坐标系修正重复了。
-
-当前 `useMarquee` 返回的 `box` 已经是：
-
-- 相对当前 marquee 容器
-- 含 scroll offset
-
-但 `gallery` 渲染层又额外做了一次 `contentInsetLeft` 扣减，导致 box 在视觉上整体向左偏移。
-
-这说明：
-
-- 现在 box 的视觉渲染坐标系和 hit test 坐标系没有统一收敛
-- view 局部自己维护 overlay 更容易产生重复 offset 修正
-
-### 2. 开始新一轮框选时，旧 selection 不会立刻消失
-
-当前 `gallery` 和 `kanban` 都是：
-
-- page 全局 `selection`
-- view 局部 `marqueeIds`
-
-开始框选时只更新 `marqueeIds`，但真正的选择状态仍然是旧的 committed selection。
-
-于是视图渲染会同时看到：
-
-- 旧的 committed selection
-- 新 box 对应的临时命中结果
-
-这会导致 replace marquee 的视觉语义不对。
-
-Notion 一类产品的正确语义应该是：
-
-- replace marquee 开始后，界面直接反映当前 box 推导出的 selection
-- add / toggle marquee 开始时，以开始瞬间的 selection 作为基线
-- 选择结果在拖动过程中可以直接同步写回全局 `selection`
-
-## 为什么值得上升为 page 级全局模式
-
-当前 dataview 的前提已经足够支持这件事：
-
-- 同一时刻只有一个 current view 可见
-- `selection` 已经是 page 级状态
-- `inlineSession` / `valueEditor` 也已经是 page 级状态
-
-在这种约束下，`marquee` 继续留在 view 内，只会带来：
-
-- gallery/kanban 两套 session 生命周期
-- 两套 selection 推导语义
-- 两套 overlay 坐标修正
-- 两套 auto-pan / cancel / commit 处理
-
-这条线应该收敛。
-
-## 但不应该全局化到什么程度
-
-不应该把整个 marquee 逻辑做成一个“page 层理解所有 view 布局细节”的大系统。
-
-长期最优边界是：
-
-- page 层只拥有 session、模式、起手快照、取消/结束
-- view 层继续拥有 layout cache、hit test、canStart
-
-所以正确结构不是：
-
-- page 级统一几何系统
-
-而是：
+之前的方案更偏向：
 
 - page 级 session
-- view 级 adapter
+- view 内部局部坐标系
+- `resolveIds(box)` 这种 view-local hit test
+
+这条线在工程上能做，但会持续遇到下面这些问题：
+
+### 1. box 的视觉坐标系和命中坐标系容易分叉
+
+例如 `gallery` 之前出现过 box 左偏，本质上就是：
+
+- box 先在一个局部坐标系里生成
+- 渲染层又做了一次额外偏移修正
+
+这说明“box 在哪渲染”和“hit test 用哪个坐标系”绑得过紧。
+
+### 2. 起手范围会被 view container 限死
+
+如果要求：
+
+- 事件 target 必须落在 `view.containerRef`
+
+那么就做不到接近 Notion 的交互语义：
+
+- header 下方空白区可以起手
+- query bar 周围空白区可以起手
+- view 周围的页面空白区也可以起手
+
+### 3. overflow / auto-pan 会把局部几何模型越拖越重
+
+尤其是横向滚动场景，如果坚持 content-space 推导，就会不断引入：
+
+- page box 和 content box 的换算
+- scroll offset 参与命中
+- 各个 view 自己维护投影逻辑
+
+但用户真正关心的不是这些内部坐标，而是：
+
+- 蓝框现在看起来碰到了谁
+
+## 核心模型
+
+长期统一成下面这个模型：
+
+- page 级 `marquee box`
+- view 提供 `selection targets`
+- 只要 target rect 与 box 相交，就算命中
+
+建议统一成下面这类结构：
+
+```ts
+export interface SelectionTarget {
+  id: AppearanceId
+  rect: Box
+}
+```
+
+其中：
+
+- `rect`
+  表示当前 item 在 page / viewport 视觉空间中的实时 `bounding rect`
+
+最终命中公式就是：
+
+```ts
+hitIds = targets
+  .filter(target => intersects(target.rect, box))
+  .map(target => target.id)
+```
+
+这条语义非常直接：
+
+- 蓝框碰到 item
+- item 就选中
+- 蓝框没碰到
+- item 就不选中
 
 ## 长期最优的数据结构
 
-建议在 page/runtime 新增 `MarqueeSessionState`。
+page/runtime 仍然需要一个统一的 `MarqueeSessionState`。
 
 ```ts
 export interface MarqueeSessionState {
@@ -109,7 +114,7 @@ export interface MarqueeSessionState {
 }
 ```
 
-其中几个字段的职责必须明确：
+几个字段的职责必须明确：
 
 - `ownerViewId`
   当前是哪一个 view 持有这轮 marquee
@@ -118,15 +123,18 @@ export interface MarqueeSessionState {
   本轮是 replace / add / toggle 里的哪一种
 
 - `start` / `current`
-  当前 pointer 几何信息，用于持续推导 `box`
+  当前 pointer 几何信息，用于持续推导 page 级蓝框
 
 - `box`
-  当前 marquee 的实时矩形
+  页面上用户实际看到的蓝框
 
 - `baseSelectedIds`
   marquee 开始瞬间的 selection 快照
 
-这里最关键的是 `baseSelectedIds` 必须存在。
+这里最关键的是两点：
+
+- `box` 必须是页面上用户实际看到的蓝框
+- `baseSelectedIds` 必须存在
 
 原因：
 
@@ -134,7 +142,7 @@ export interface MarqueeSessionState {
 - 但 `add` / `toggle` 不能基于已经被拖动过程改写过的当前 selection 继续算
 - 必须每次都从“起手快照 + 当前命中结果”重新推导
 
-否则结果会依赖拖动路径，而不是只依赖当前 box。
+否则结果会依赖拖动路径，而不是只依赖当前蓝框。
 
 ## 统一后的选择语义
 
@@ -184,9 +192,8 @@ export interface MarqueeAdapter {
   owner: {
     viewId: ViewId
   }
-  containerRef: RefObject<HTMLElement | null>
   canStart: (event: PointerEvent | ReactPointerEvent) => boolean
-  resolveIds: (box: Box) => readonly AppearanceId[]
+  getTargets: () => readonly SelectionTarget[]
   order: readonly AppearanceId[]
   disabled?: boolean
 }
@@ -194,14 +201,11 @@ export interface MarqueeAdapter {
 
 其中：
 
-- `containerRef`
-  定义当前 session 的局部坐标系
-
 - `canStart`
   决定哪些区域允许发起 marquee
 
-- `resolveIds`
-  根据当前 box 做命中测试
+- `getTargets`
+  返回当前可见 item 的实时 rect
 
 - `order`
   用于构造最终 selection 顺序
@@ -209,15 +213,17 @@ export interface MarqueeAdapter {
 page 层不需要理解：
 
 - gallery 的 row
-- gallery 的 card rect
 - kanban 的 columns
-- kanban 的 card layout
+- table 的 content-space 几何
+- timeline 的时间轴换算
 
-这些都留在 view 自己的 adapter 内部。
+这些都留在 view 自己产生 target rect 的内部逻辑里。
 
-## Gallery 与 Kanban 的 adapter 形态
+## Gallery 与 Kanban 的 target 形态
 
 ### Gallery
+
+`gallery` 的 target 就是 card rect。
 
 `gallery` 的 adapter 继续读取：
 
@@ -225,43 +231,88 @@ page 层不需要理解：
 - `cardOrder`
 - 现有 `canStart`
 
-`resolveIds(box)` 本质上仍然就是：
+最终做的事是：
 
-- `idsInRect(cardOrder, layout.cards, box)`
+- 读取当前可见 card 的 `bounding rect`
+- 作为 `SelectionTarget[]` 返回
 
 ### Kanban
 
+`kanban` 的 target 也是 card rect。
+
 `kanban` 的 adapter 继续读取：
 
-- board layout 中的 card rects
+- board layout 中的 card
 - `cardOrder`
 - 现有 `canStart`
 
-`resolveIds(box)` 本质上还是：
+最终做的事是：
 
-- `idsInRect(cardOrder, cards, box)`
+- 读取当前可见 card 的 `bounding rect`
+- 作为 `SelectionTarget[]` 返回
 
 ## Overlay 是否也应 page 级统一
 
-长期来看可以，但不建议第一步就做。
+结论是应该。
 
-更稳的路线是：
+如果采用“视觉上蓝框碰到 item rect 就选中”的产品语义，那么 `marquee overlay` 本身就应该是 page 级蓝框。
 
-1. 先把 session 提到 page 级
-2. box 先仍由 owning view 渲染
-3. 等坐标系完全稳定后，再考虑是否迁移到 page host
+更准确地说，应统一的是：
+
+1. page 级 session 生命周期
+2. page 级 `selection`
+3. page 级互斥规则
+4. page 级 `marquee box`
+
+不应统一的是：
+
+1. view 内部如何收集 target rect
+2. view 局部的布局与虚拟化细节
+3. 各 view 的禁区判断与启动条件
 
 原因：
 
-- 当前已出现重复 offset 修正问题
-- 如果立刻把 box 也提到 page host，会新增一层 page/global 坐标换算
-- 风险会比先收敛 session 更高
+- 用户实际看到的是 page 上那块蓝框
+- 用户判断命中的依据也是蓝框是否碰到可见 item
+- box 与 item rect 放在同一视觉坐标系内，命中语义最直接
+- page 级 box 也允许未来从 view 周围空白区、header 下方、query bar 周围空白区发起 marquee
 
-所以第一阶段建议：
+所以长期最优边界应明确为：
 
 - page 级统一 session
-- view 级渲染 overlay
-- 只有 owner view 才显示 box
+- page 级渲染蓝框 overlay
+- view 级提供 target rect
+- 只有 owner view 的 target 会参与命中
+
+## Marquee Overlay 与 Drag Preview 不是一回事
+
+这里要明确区分两类 overlay，避免后面继续混用术语。
+
+### 1. Marquee Overlay
+
+这是框选时那块半透明 box。
+
+它的职责是：
+
+- 反馈当前 page 级 marquee session 的视觉范围
+
+它应作为 page 级蓝框存在。
+
+### 2. Drag Preview Overlay
+
+这是拖卡片时跟随指针的预览层。
+
+它通常通过 portal 挂到 `document.body`，因为它的职责是：
+
+- 跟随全局指针
+- 跨越原始 scroll/container 边界显示拖拽预览
+
+所以：
+
+- `marquee overlay` 应是 page-level
+- `drag preview overlay` 继续是 portal/fixed 全局预览层
+
+这两者不要再试图统一到同一个宿主层。
 
 ## 与现有 page 全局状态的关系
 
@@ -312,36 +363,39 @@ page 级 session 的价值就在于：
 
 - 生命周期只有一份
 - 与其他 page 级交互状态更容易统一协调
-- 每个 view 只保留几何与命中测试职责
+- 每个 view 只保留 target 提供与禁区判断职责
 
 ## 分阶段落地建议
 
-推荐分两步，不要一步把所有几何渲染都抬到 page 层。
+推荐分两步，不要一步做重型几何缓存系统。
 
 ### 第一步
 
-- 修正 `gallery` 当前 box 左偏问题
 - page/runtime 新增 `marquee session`
-- `gallery` / `kanban` 接入 adapter
+- page host 渲染统一蓝框
+- `gallery` / `kanban` 接入 `SelectionTarget` adapter
 - 拖动过程中直接同步更新全局 `selection`
-- 删除 view 局部 `marqueeIds`
+- 删除 view 局部 `marqueeIds` 与局部 marquee box 渲染
 
 这一步完成后：
 
 - 新框选开始时旧 selection 会立刻被当前 box 结果覆盖
-- gallery/kanban 的 marquee 语义会统一
+- gallery/kanban 的 marquee 语义会统一到“视觉相交即选中”
 - 与 selection 的关系会稳定
 
 ### 第二步
 
-- 评估是否把 overlay 渲染统一到 page host
-- 如果迁移，要求先明确 page/global 坐标系
-- 只有在所有 view 的坐标基准完全统一后才做
+- 把 `table` 也接入 page 级 marquee session
+- target 语义改为 row band rect
+- 为未来 `timeline` 预留同样的 target rect 模型
+- 如有性能压力，再补 target rect cache / registry，而不是先做复杂投影模型
 
 ## 明确不做的事
 
 - 不把 gallery/kanban 的 layout cache 合并到 page 层
 - 不让 page marquee 理解 row、column、card 几何细节
+- 不让 page marquee 理解 table content-space 或 timeline time-space 推导
+- 不把 marquee box 与 drag preview 当作同一种 overlay
 - 不继续保留 `marqueeIds` 作为长期并列状态
 - 不为了 marquee 再引入一套独立于 `selection` 的 preview selection 状态
 
@@ -352,11 +406,12 @@ page 级 session 的价值就在于：
 - `marquee` 升为 page 级 session
 - `selection` 保持唯一真相源
 - `marquee session` 只负责 `baseSelectedIds + box + mode`
-- `gallery` / `kanban` 退回到 adapter 职责，只负责命中测试与局部坐标系
+- page host 渲染唯一的蓝框
+- 各个 view 退回到 adapter 职责，只负责提供可见 `SelectionTarget` 与顺序
 
 这样才能同时解决：
 
 - gallery box 偏移
 - replace marquee 视觉语义错误
-- gallery/kanban 交互规则分叉
+- gallery/kanban/table 后续交互规则分叉
 - marquee 与 inline session / value editor 协调困难

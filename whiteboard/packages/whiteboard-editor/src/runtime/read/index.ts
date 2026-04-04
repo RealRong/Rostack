@@ -2,10 +2,10 @@ import type { EngineRead, ReadStore } from '@whiteboard/engine'
 import type { HistoryState } from '@whiteboard/core/kernel'
 import type { NodeRegistry } from '../../types/node'
 import type { DrawPreferences } from '../../types/draw'
-import type { Tool } from '../../types/tool'
 import type { EditorOverlay } from '../overlay'
 import type { EditorViewportRuntime } from '../editor/types'
 import type { RuntimeStateController } from '../state'
+import type { EditorHost } from '../../host/types'
 import {
   createNodeRead,
   type NodeRead
@@ -55,14 +55,14 @@ export const createRead = ({
   history,
   runtime,
   overlay,
-  viewport
+  host
 }: {
   engineRead: EngineRead
   registry: NodeRegistry
   history: ReadStore<HistoryState>
   runtime: Pick<RuntimeStateController, 'state'>
   overlay: Pick<EditorOverlay, 'selectors'>
-  viewport: Pick<EditorViewportRuntime, 'get' | 'subscribe' | 'pointer' | 'worldToScreen' | 'input'>
+  host: Pick<EditorHost, 'viewport' | 'inputPolicy' | 'draw'>
 }): RuntimeRead => {
   const nodeRead: NodeRead = createNodeRead({
     read: engineRead,
@@ -102,17 +102,17 @@ export const createRead = ({
     index: engineRead.index,
     tool: toolRead,
     space: runtime.state.space,
-    inputPolicy: runtime.state.inputPolicy,
+    inputPolicy: host.inputPolicy.store,
     draw: {
-      preferences: runtime.state.drawPreferences.store
+      preferences: host.draw.preferences
     },
     viewport: {
-      get: viewport.get,
-      subscribe: viewport.subscribe,
-      pointer: viewport.pointer,
-      worldToScreen: viewport.worldToScreen,
-      screenPoint: viewport.input.screenPoint,
-      size: viewport.input.size
+      get: host.viewport.read.get,
+      subscribe: host.viewport.read.subscribe,
+      pointer: host.viewport.read.pointer,
+      worldToScreen: host.viewport.read.worldToScreen,
+      screenPoint: host.viewport.input.screenPoint,
+      size: host.viewport.input.size
     },
     overlay: {
       feedback: overlay.selectors.feedback

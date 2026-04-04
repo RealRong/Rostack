@@ -21,6 +21,14 @@ import {
   readCardTitleText
 } from './cardTitleValue'
 
+export const useCardEditingState = (input: {
+  viewId: ViewId
+  appearanceId: AppearanceId
+}) => useInlineSessionValue(target => (
+  target?.viewId === input.viewId
+    && target.appearanceId === input.appearanceId
+))
+
 export const useCardTitleEditing = (input: {
   viewId: ViewId
   appearanceId: AppearanceId
@@ -29,10 +37,10 @@ export const useCardTitleEditing = (input: {
 }) => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const editing = useInlineSessionValue(target => (
-    target?.viewId === input.viewId
-      && target.appearanceId === input.appearanceId
-  ))
+  const editing = useCardEditingState({
+    viewId: input.viewId,
+    appearanceId: input.appearanceId
+  })
   const committedTitle = readCardTitleText(input.titleProperty, input.record)
   const [titleDraft, setTitleDraft] = useState(() => committedTitle)
   const titleDraftRef = useRef(titleDraft)

@@ -24,7 +24,7 @@ export const EMPTY_SELECTION_OVERLAY: SelectionOverlayState = {
   guides: EMPTY_GUIDES
 }
 
-export const isMarqueeEqual = (
+const isMarqueeEqual = (
   left: MarqueeOverlayState | undefined,
   right: MarqueeOverlayState | undefined
 ) => (

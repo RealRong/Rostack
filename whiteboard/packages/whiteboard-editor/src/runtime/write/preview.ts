@@ -2,20 +2,20 @@ import type { NodeId, Size } from '@whiteboard/core/types'
 import {
   isNodePatchEqual,
   readNodePatchEntry,
-  replaceNodePatchEntry,
-  type EdgeGuide,
-  type EdgeOverlayEntry,
-  type EditorOverlay,
-  type MindmapDragFeedback,
-  type NodePatch,
-  type NodePatchEntry
-} from '../overlay'
+  replaceNodePatchEntry
+} from '../overlay/node'
+import type {
+  EdgeGuide,
+  EdgeOverlayEntry,
+  EditorOverlay,
+  MindmapDragFeedback,
+  NodePatch
+} from '../overlay/types'
 import type { DrawPreview } from '../../types/draw'
 import type { EditorPreviewWrite } from '../../types/editor'
 
 const EMPTY_EDGE_PATCHES: readonly EdgeOverlayEntry[] = []
 const EMPTY_NODE_IDS: readonly NodeId[] = []
-const EMPTY_NODE_PATCHES: readonly NodePatchEntry[] = []
 
 const mergeTextPreviewPatch = (
   patch: NodePatch | undefined,

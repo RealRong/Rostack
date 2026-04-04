@@ -17,9 +17,9 @@ import {
 } from '@dataview/react/views/shared'
 import { cn } from '@ui/utils'
 import type { AppearanceId } from '@dataview/react/runtime/currentView'
-import { useBoardContext } from '../board'
+import { useKanbanContext } from '../context'
 import {
-  useCardTitleEditing
+  useCardEditingState
 } from '@dataview/react/views/shared/useCardTitleEditing'
 
 export const Card = (props: {
@@ -27,7 +27,7 @@ export const Card = (props: {
   record: GroupRecord
   measureRef?: (node: HTMLDivElement | null) => void
 }) => {
-  const controller = useBoardContext()
+  const controller = useKanbanContext()
   const dataView = useDataView()
   const engine = dataView.engine
   const record = useKeyedStoreValue(engine.read.record, props.record.id) ?? props.record
@@ -38,11 +38,9 @@ export const Card = (props: {
     && controller.drag.dragIdSet.has(props.appearanceId)
   const canDrag = controller.canReorder
   const [hovered, setHovered] = useState(false)
-  const editing = useCardTitleEditing({
+  const editing = useCardEditingState({
     viewId: controller.currentView.view.id,
-    appearanceId: props.appearanceId,
-    record,
-    titleProperty
+    appearanceId: props.appearanceId
   })
 
   return (
@@ -60,7 +58,7 @@ export const Card = (props: {
         setHovered(false)
       }}
       onPointerDown={event => {
-        if (editing.editing) {
+        if (editing) {
           return
         }
 
@@ -71,7 +69,7 @@ export const Card = (props: {
         controller.drag.onPointerDown(props.appearanceId, event)
       }}
       onClick={event => {
-        if (editing.editing) {
+        if (editing) {
           return
         }
 
@@ -92,8 +90,8 @@ export const Card = (props: {
       }}
       className={cn(
         'touch-none',
-        !editing.editing && 'select-none',
-        !editing.editing && canDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
+        !editing && 'select-none',
+        !editing && canDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
         active && 'opacity-35',
         draggingSelected && !active && 'opacity-60'
       )}
@@ -119,16 +117,8 @@ export const Card = (props: {
         record={record}
         titleProperty={titleProperty}
         properties={controller.properties}
-        mode={editing.mode}
-        committedTitle={editing.committedTitle}
-        titleDraft={editing.titleDraft}
         titlePlaceholder={record.id}
-        onTitleDraftChange={editing.setTitleDraft}
-        onCommitTitle={editing.commitTitle}
-        onSubmitTitle={editing.submitTitle}
-        onSelect={() => controller.selection.select(props.appearanceId, 'replace')}
-        showEditAction={hovered && !editing.editing && !active}
-        onEnterEdit={editing.enterEdit}
+        showEditAction={hovered && !editing && !active}
         propertyDensity="compact"
       />
     </div>

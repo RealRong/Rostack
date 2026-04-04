@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { cn } from '@ui/utils'
 import type { Section } from '@dataview/react/runtime/currentView'
-import { useBoardContext } from '../board'
+import { useKanbanContext } from '../context'
 import { useColumnVirtual } from '../virtual'
 import { Card } from './Card'
 import { ColumnDropIndicator } from './ColumnDropIndicator'
@@ -9,7 +9,7 @@ import { ColumnDropIndicator } from './ColumnDropIndicator'
 export const ColumnBody = (props: {
   section: Section
 }) => {
-  const controller = useBoardContext()
+  const controller = useKanbanContext()
   const bodyRef = useRef<HTMLDivElement | null>(null)
   const overTarget = controller.drag.overTarget
   const sectionOverTarget = overTarget?.sectionKey === props.section.key

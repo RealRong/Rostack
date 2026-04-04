@@ -2,170 +2,102 @@
 
 ## 结论
 
-`table row marquee` 不应该直接套进当前 `gallery/kanban` 这条“`box -> hit ids`”的 card marquee 适配模型。
+`table row marquee` 长期也应纳入 page 级 marquee session，但不再坚持 edge interval 作为主模型。
 
 长期最优方案应该是：
 
 1. page 层统一“拖拽选择 session 生命周期”
-2. `table` 保留自己的 row-edge interval 选择模型
-3. overlay 改成 row band，而不是自由矩形 box
-4. overlay 继续在 table 局部坐标系内渲染，不提升到 page host
+2. page host 渲染统一蓝框
+3. `table` 提供 row band `bounding rect`
+4. 只要 row band rect 与蓝框相交，就选中该 row
+5. table 仍可保留局部 row band 强化视觉反馈
 
 换句话说：
 
-- `gallery/kanban` 适合 `box -> ids`
-- `table row marquee` 适合 `point -> edge -> interval`
+- `gallery/kanban` 的 target 是 card rect
+- `table` 的 target 是 row band rect
+- 三者统一为 `page box -> intersect visible target rects`
 
-它们可以共享 page 级手势生命周期，但不应该被强行压成同一种命中算法。
+## 为什么要改口
 
-## 当前实现的本质
+之前把 table 定义成：
 
-当前 `table row marquee` 的核心不是矩形命中，而是行边界推导。
+- `point -> row edge -> interval`
 
-现有链路大致是：
+这在数学上是自洽的，但不一定最贴近实际产品语义。
 
-1. pointer 在 table blank area 开始
-2. 根据 point 命中最近 row edge
-3. 维护 `startEdge / currentEdge`
-4. 从 edge interval 推导出 row ids
-5. 按 `replace / toggle / range` 写回 selection
+如果目标是接近 Notion 这类“你视觉上看到蓝框碰到 item，就算选中”的体验，那么更直接的语义应该是：
 
-关键文件有：
+- 页面有一块蓝框
+- 每一行暴露一个当前可见的 row band rect
+- 蓝框与 row band rect 相交即选中
 
-- [`useRowMarquee.ts`](/Users/realrong/Rostack/dataview/src/react/views/table/hooks/useRowMarquee.ts)
-- [`model/marquee.ts`](/Users/realrong/Rostack/dataview/src/react/views/table/model/marquee.ts)
+这样更简单，也更统一。
 
-这条链本身是合理的。
+## 为什么视觉 rect 命中更对
 
-## 为什么不应该退回成 box-hit 方案
+table 的产品语义其实不是“我要维护一套抽象 edge 区间数学”，而是：
 
-如果把 table row marquee 强行改成和 `gallery/kanban` 一样的：
+- 我眼睛看到蓝框碰到了哪几行
 
-- `box -> hit row rects`
+如果采用 row band rect 命中：
 
-会有几个问题。
+### 1. 与用户视觉感受一致
 
-### 1. 选择语义会退化
+- 蓝框碰到行就选中
+- 蓝框没碰到就不选中
 
-table row marquee 真实选择的是一个连续 row interval，而不是“哪些 row rect 与 box 相交”。
+不需要额外解释 content-space、edge、投影几何。
 
-interval 模型的好处是：
+### 2. 横向滚动天然成立
 
-- 行区间稳定
-- `shift` 范围语义自然
-- 结果不依赖 row rect 命中细节
+即使 table 因为 page 边缘 auto-pan 横向滚动，用户在屏幕上看到的蓝框宽度也不会凭空变大。
 
-### 2. 横向拖动本来就不是选择语义的一部分
+这时只需要重新读取当前可见 row band rect：
 
-row marquee 只关心垂直范围，不关心水平方向。
+- 蓝框还是原来那块蓝框
+- 哪些行当前与它相交，就选哪些行
 
-如果改成 box-hit：
+不需要把蓝框变形成 content-space 宽框。
 
-- pointer 的 x 变化会进入命中计算
-- overlay 也会表现成一个自由矩形
+### 3. 与 gallery/kanban 可以共用同一套主模型
 
-这与 row selection 的产品语义不一致。
+统一后：
 
-### 3. 现有模型已经更接近长期最优
+- `gallery/kanban` 是 card rect
+- `table` 是 row band rect
 
-table 当前用 edge interval 推导 selection，其实比 box-hit 更对。
-
-真正需要收敛的不是它的数学模型，而是：
-
-- 生命周期
-- 与 page 全局状态的协调
-- overlay 视觉表达
-
-## 长期最优的统一边界
-
-page 层应该统一的是“拖拽选择 session”，不是“命中算法”。
-
-所以建议把当前 page marquee 再抽象一层，变成 page 级 `drag-select session`。
-
-page 层统一负责：
-
-- pointer capture
-- auto-pan
-- `Esc` / cancel
-- 与 `inlineSession` / `valueEditor` 的互斥
-- 当前只有一个活动 drag-select session
-- `baseSelectedIds` 快照
-
-view 层继续负责：
-
-- `canStart`
-- 本地几何模型
-- 选择推导公式
-- overlay 的局部渲染
+page 层都只需要做 `intersect(box, rect)`。
 
 ## 建议的数据结构
 
-建议 page/runtime 最终统一成一个更泛化的 session 状态。
+建议 table 也接入通用的 `SelectionTarget`。
 
 ```ts
-export interface DragSelectSessionState {
-  ownerViewId: ViewId
-  kind: 'card-box' | 'table-row-band'
-  mode: 'replace' | 'add' | 'toggle'
-  start: Point
-  current: Point
-  box: Box
-  baseSelectedIds: readonly AppearanceId[]
+export interface SelectionTarget {
+  id: AppearanceId
+  rect: Box
 }
 ```
 
 其中：
 
-- `kind`
-  说明当前 session 属于哪一类 view 选择模型
+- `rect`
+  表示某一行当前可见的 row band rect，坐标统一在 page / viewport 视觉空间
 
-- `mode`
-  说明是 replace / add / toggle
+table adapter 需要提供的就是：
 
-- `baseSelectedIds`
-  用于拖动过程中重算 selection，以及 `Esc` 回滚
+- `canStart`
+- `getTargets`
+- `order`
 
-注意：
-
-- `box` 可以继续存在，因为 page 级 auto-pan / pointer 生命周期依然有用
-- 但 `table-row-band` 不一定直接把 `box` 当作最终选择语义
-
-## Table 的 adapter 应承担什么职责
-
-对 table 来说，adapter 不该是简单的：
-
-- `resolveIds(box)`
-
-而应是更接近 strategy 的结构：
-
-```ts
-export interface TableRowDragSelectAdapter {
-  ownerViewId: ViewId
-  containerRef: RefObject<HTMLElement | null>
-  disabled?: boolean
-  canStart: (event: PointerEvent) => boolean
-  start: (session: DragSelectSessionState) => void
-  update: (session: DragSelectSessionState) => void
-  cancel: (session: DragSelectSessionState) => void
-  end: (session: DragSelectSessionState) => void
-}
-```
-
-其内部逻辑仍然是：
-
-- `point -> row edge`
-- `startEdge/currentEdge -> interval`
-- `interval -> selection`
-
-这样 page 层不需要理解 row edge、row height、header offset。
+而不是继续让 page 层理解 row edge。
 
 ## Table Row Selection 的正确语义
 
-table row marquee 长期应保持下面这套规则。
+长期建议规则如下。
 
 ### 1. 只允许从 blank area 启动
-
-也就是现有 `onBlankPointerDown` 语义继续保留。
 
 不能从这些区域发起：
 
@@ -182,18 +114,15 @@ table row marquee 长期应保持下面这套规则。
 - 清掉 `gridSelection`
 - 清掉 hover
 
-这点和当前实现基本一致，应继续保留。
-
 ### 3. 拖动过程中直接同步更新全局 selection
 
 与 `gallery/kanban` 一样，`selection` 应保持唯一真相源。
 
-所以 table row marquee 也不需要额外 preview selection。
-
 正确方式是：
 
 - pointer move
-- 根据 `startEdge/currentEdge` 推导 row ids
+- 读取当前可见 row band rect
+- 直接做 `intersect(box, rect)`
 - 直接写回全局 `selection`
 
 ### 4. `Esc` / cancel 时回滚
@@ -230,69 +159,55 @@ table row marquee 长期应保持下面这套规则。
 
 ## Overlay 长期应该怎么做
 
-当前 table 用的是自由矩形 box overlay：
+当前推荐把 overlay 分成两层。
 
-- [`MarqueeOverlay.tsx`](/Users/realrong/Rostack/dataview/src/react/views/table/components/overlay/MarqueeOverlay.tsx)
+### 1. page 级蓝框
 
-这不是长期最优。
+这是统一的 marquee box。
 
-table row marquee 的 overlay 应改成：
+它负责：
 
-- row band overlay
+- 告诉用户当前视觉框选范围
+- 与其他 view 保持一致
+
+### 2. table 局部 row band 强化反馈
+
+table 可以额外渲染 row band overlay，用来强化“你正在选中哪些行”。
 
 也就是：
 
-- 横向直接吸附到 grid content bounds
-- 纵向吸附到 `startEdge/currentEdge` 对应的 top/bottom
+- 横向吸附到当前 row band 的内容宽度
+- 纵向跟随实际命中的行集合
 
-最终效果应是一条跨整行宽度的半透明选择带，而不是自由矩形。
+它不是命中模型的前提，只是更贴近 table 的反馈。
 
-### 为什么 row band 更对
+### 为什么 row band 仍然值得保留
 
 因为 row marquee 的真实语义是：
 
-- 选择一段连续行区间
+- 我正在选择一批行
 
 而不是：
 
-- 选择一个二维矩形区域
+- 我在做自由二维区域编辑
 
-所以视觉反馈也应表达“行带”，而不是“框”。
+所以：
+
+- page 蓝框负责统一交互
+- row band 负责 table 专属反馈
 
 ## Overlay 应放在哪一层
 
-我不建议把 table row marquee overlay 提到 page host。
+不再是“二选一”，而是分层：
 
-长期最优仍然应放在：
-
-- table surface / canvas 局部层
+- page host 负责统一蓝框
+- table surface / canvas 负责可选的 row band overlay
 
 原因：
 
-### 1. table 有自己的局部坐标系
-
-table 当前有：
-
-- `containerRef`
-- `canvasRef`
-- `paddingInline`
-- 水平滚动
-
-这些都属于 table 局部几何。
-
-### 2. table 已有现成 content bounds 模型
-
-例如：
-
-- [`gridContentBounds`](/Users/realrong/Rostack/dataview/src/react/views/table/layout.ts)
-
-这类几何天然属于 table 局部，不应上升到 page/global 坐标系。
-
-### 3. 可与 drop indicator 共用同一坐标系
-
-row marquee overlay 和 row reorder indicator 都是 row-level 视觉反馈。
-
-它们继续共用 table canvas 坐标系是最自然的。
+- 蓝框是全局交互语义
+- row band 是 table 局部反馈语义
+- 两者职责不同，不应该互相替代
 
 ## 与 Row Reorder 的关系
 
@@ -318,52 +233,54 @@ row marquee overlay 和 row reorder indicator 都是 row-level 视觉反馈。
 
 三者不应统一的是：
 
-- 具体命中算法
-- 选择几何模型
-- overlay 视觉表达
+- view 内部 target 收集方式
+- table 的 row band 强化反馈
+- timeline 未来自己的局部反馈样式
 
 所以长期结构应是：
 
-- `gallery/kanban`: `box -> ids`
-- `table row marquee`: `point -> edge -> interval`
+- `gallery/kanban`: card rect targets
+- `table row marquee`: row band rect targets
 
 ## 分阶段落地建议
 
 ### 第一步
 
-- 保留 table 当前 row interval 选择数学模型
-- 不把它硬改成 box-hit
-- 先让 page 层 session 能承载 table row marquee 生命周期
+- 先让 table 接入 page 级 marquee session
+- 保留 blank area 启动限制
+- 用当前可见 row band rect 做命中
 
 ### 第二步
 
-- 把 table row marquee 从局部 hook 接到 page 级 drag-select session
-- 保持 `selection` 单一真相源
-- 保持 `Esc` 回滚 `baseSelectedIds`
+- page host 渲染统一蓝框
+- table 命中统一切到 `intersect(box, rowBandRect)`
+- 保持 `selection` 单一真相源与 `Esc` 回滚
 
 ### 第三步
 
-- 把 overlay 从自由 box 改成 row band
-- 继续留在 table local surface 渲染
+- 增加 table row band 强化反馈
+- 与 row reorder indicator 协调层级
+- 如有性能压力，再补 rect cache / registry
 
 ## 明确不做的事
 
-- 不把 table row marquee 降级成 `box -> hit rows`
-- 不把 table 的局部几何细节抬到 page 层
-- 不让 page host 直接负责 table row band 渲染
+- 不再把 table marquee 绑定到 edge interval 模型
+- 不把 table 的局部布局细节抬到 page 层
+- 不让 page 层理解 row edge、header offset、content-space 公式
 - 不同时保留 row marquee selection 与 grid selection 两套激活状态
 
 ## 最终结论
 
-`table row marquee` 的长期最优方案不是复用当前 card marquee adapter，而是：
+`table row marquee` 的长期最优方案是：
 
 - 共享 page 级拖拽选择 session 生命周期
-- 保留 table 自己的 edge-based row interval 选择模型
-- 把 overlay 改成 full-width row band
-- overlay 继续在 table 局部坐标系中渲染
+- 共用 page 级蓝框
+- table 提供 row band rect targets
+- 蓝框与 row band rect 相交即选中
+- table 可额外渲染局部 row band 作为强化反馈
 
 这样才能同时保住：
 
-- row selection 的正确语义
+- 与用户视觉感知一致的选择语义
 - 与 grid selection 的清晰边界
 - 和 row reorder / hover / table layout 的一致性

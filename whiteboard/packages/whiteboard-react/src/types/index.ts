@@ -1,6 +1,7 @@
 export type { WhiteboardInstance, WhiteboardRuntime } from './runtime'
 export type {
   ToolPaletteBrushState,
+  ToolPaletteMemory,
   ToolPaletteMenuKey,
   ToolPaletteView
 } from './toolbox'

@@ -7,7 +7,7 @@ import type { Point } from '@whiteboard/core/types'
 import type {
   Editor,
   EditorClipboardTarget
-} from '../types/editor'
+} from '../../types/editor'
 
 type ClipboardEditor = Pick<Editor, 'read'> & {
   commands: Omit<Editor['commands'], 'clipboard'>

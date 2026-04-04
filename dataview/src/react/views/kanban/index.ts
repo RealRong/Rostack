@@ -1,11 +1,15 @@
 export { KanbanView } from './KanbanView'
 export type { KanbanViewProps } from './KanbanView'
-export { useKanbanContext } from './context'
+export { KanbanProvider, useKanbanContext } from './context'
 export type {
   Kanban,
   KanbanCreateCardInput,
   KanbanMoveCardsInput
 } from './context'
+export {
+  useKanbanController,
+  type KanbanController
+} from './useKanbanController'
 export type {
   GroupKanbanOptions as KanbanOptions,
   GroupKanbanNewRecordPosition,

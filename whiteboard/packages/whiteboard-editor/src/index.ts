@@ -37,7 +37,6 @@ export {
   insertTool,
   isDrawBrushKind,
   isDrawKind,
-  readEdgeType,
   isSameTool,
   selectTool
 } from './tool/model'
@@ -69,4 +68,4 @@ export type {
   NodeHit,
   NodeMeta,
   NodeFamily
-} from './types/node'
+} from './types/node/index'

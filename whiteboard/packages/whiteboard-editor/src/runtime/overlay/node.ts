@@ -1,9 +1,5 @@
 import { isPointEqual } from '@whiteboard/core/geometry'
 import type { NodeId } from '@whiteboard/core/types'
-import {
-  createStagedKeyedStore,
-  type StagedKeyedStore
-} from '@whiteboard/engine'
 import type {
   EditorOverlayState,
   NodeOverlayProjection,
@@ -14,9 +10,6 @@ import type {
   NodeTextOverlayState
 } from './types'
 
-type NodeOverlayStore =
-  Pick<StagedKeyedStore<NodeId, NodeOverlayProjection, EditorOverlayState>, 'get' | 'subscribe' | 'write' | 'clear' | 'flush'>
-
 export const EMPTY_NODE_PATCHES: readonly NodePatchEntry[] = []
 export const EMPTY_NODE_HIDDEN: readonly NodeId[] = []
 
@@ -24,7 +17,7 @@ export const EMPTY_NODE_SELECTION_OVERLAY: NodeSelectionOverlayState = {
   patches: EMPTY_NODE_PATCHES
 }
 
-export const EMPTY_NODE_TEXT_OVERLAY: NodeTextOverlayState = {
+const EMPTY_NODE_TEXT_OVERLAY: NodeTextOverlayState = {
   patches: EMPTY_NODE_PATCHES
 }
 
@@ -37,7 +30,7 @@ export const EMPTY_NODE_OVERLAY_PROJECTION: NodeOverlayProjection = {
   hidden: false
 }
 
-export const EMPTY_NODE_OVERLAY_MAP = new Map<NodeId, NodeOverlayProjection>()
+const EMPTY_NODE_OVERLAY_MAP = new Map<NodeId, NodeOverlayProjection>()
 
 const isSameSize = (
   left: { width: number, height: number } | undefined,
@@ -159,7 +152,7 @@ export const normalizeNodeOverlayState = (
   }
 }
 
-const toNodeOverlayMap = (
+export const toNodeOverlayMap = (
   state: EditorOverlayState
 ) => {
   if (
@@ -220,45 +213,4 @@ const toNodeOverlayMap = (
   }
 
   return next
-}
-
-export const createNodeOverlayStore = (): NodeOverlayStore => {
-  let scheduled = false
-  let token = 0
-
-  const store = createStagedKeyedStore<NodeId, NodeOverlayProjection, EditorOverlayState>({
-    schedule: () => {
-      if (scheduled) {
-        return
-      }
-
-      scheduled = true
-      const currentToken = token + 1
-      token = currentToken
-      queueMicrotask(() => {
-        if (!scheduled || currentToken !== token) {
-          return
-        }
-
-        scheduled = false
-        store.flush()
-      })
-    },
-    emptyState: EMPTY_NODE_OVERLAY_MAP,
-    emptyValue: EMPTY_NODE_OVERLAY_PROJECTION,
-    build: toNodeOverlayMap,
-    isEqual: isNodeProjectionEqual
-  })
-
-  return {
-    get: store.get,
-    subscribe: store.subscribe,
-    write: store.write,
-    clear: () => {
-      scheduled = false
-      token += 1
-      store.clear()
-    },
-    flush: store.flush
-  }
 }

@@ -24,6 +24,14 @@ export type ToolPaletteBrushState = {
   slot: DrawSlot
 }
 
+export type ToolPaletteMemory = {
+  drawKind: DrawKind
+  edgePreset: EdgePresetKey
+  stickyPreset: string
+  shapePreset: string
+  mindmapPreset: string
+}
+
 export type ToolPaletteView = {
   insertGroup?: InsertPresetGroup
   stickyPreset: string

@@ -1,4 +1,4 @@
-import { uiTone } from '@ui/tone'
+import { resolveOptionBadgeStyle } from '@ui/color'
 import { cn } from '@ui/utils'
 
 export interface PropertyOptionTagProps {
@@ -19,10 +19,10 @@ export const PropertyOptionTag = (props: PropertyOptionTagProps) => {
 
   return (
     <span
+      style={resolveOptionBadgeStyle(props.color)}
       className={cn(
         'inline-flex min-w-0 max-w-full items-center whitespace-nowrap font-medium',
         sizeClassName[size],
-        uiTone.tag(props.color),
         props.interactive && 'transition-colors',
         props.className
       )}

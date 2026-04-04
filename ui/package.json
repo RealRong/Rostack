@@ -15,11 +15,14 @@
     "./query-chip": "./src/query-chip.tsx",
     "./select": "./src/select.tsx",
     "./switch": "./src/switch.tsx",
+    "./color": "./src/color/index.ts",
     "./tone": "./src/tone.ts",
     "./utils": "./src/utils.ts",
     "./vertical-reorder-list": "./src/vertical-reorder-list.tsx",
     "./tailwind/preset": "./tailwind/preset.cjs",
     "./css/core.css": "./css/core.css",
+    "./css/tokens.css": "./css/tokens.css",
+    "./css/semantic.css": "./css/semantic.css",
     "./css/theme.css": "./css/theme.css",
     "./css/base.css": "./css/base.css",
     "./css/primitives.css": "./css/primitives.css",
@@ -44,6 +47,7 @@
   },
   "files": [
     "css",
+    "legacy",
     "src",
     "tailwind",
     "README.md"

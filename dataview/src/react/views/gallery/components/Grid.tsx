@@ -1,5 +1,5 @@
 import { PAGE_INLINE_INSET_CSS } from '@dataview/react/page/layout'
-import { cn } from '@ui/utils'
+import { resolveOptionDotStyle } from '@ui/color'
 import { useGalleryContext } from '../context'
 import { GALLERY_CARD_GAP } from '../virtual'
 import { Card } from './Card'
@@ -15,8 +15,7 @@ export const Grid = () => {
     blocks,
     containerRef,
     indicator,
-    layout,
-    reorderDisabledMessage
+    layout
   } = controller
   const empty = controller.currentView.appearances.ids.length === 0
   const sectionSizeByKey = new Map(
@@ -29,14 +28,6 @@ export const Grid = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      {reorderDisabledMessage ? (
-        <div style={contentInsetStyle}>
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            {reorderDisabledMessage}
-          </div>
-        </div>
-      ) : null}
-
       <div
         ref={containerRef}
         className="relative"
@@ -80,12 +71,12 @@ export const Grid = () => {
                         marginTop
                       }}
                     >
-                      {block.section.color ? (
+                      {controller.groupUsesOptionColors ? (
                         <span
                           className="inline-flex h-2.5 w-2.5 rounded-full"
-                          style={{
-                            backgroundColor: block.section.color
-                          }}
+                          style={resolveOptionDotStyle(
+                            controller.readSectionColorId(block.section.key)
+                          )}
                         />
                       ) : null}
                       <h3 className="text-sm font-semibold text-foreground">
@@ -121,12 +112,11 @@ export const Grid = () => {
                       }}
                     >
                       {block.row.ids.map(id => (
-                        <div key={id} className={cn('min-w-0')}>
-                          <Card
-                            appearanceId={id}
-                            measureRef={controller.measure(id)}
-                          />
-                        </div>
+                        <Card
+                          key={id}
+                          appearanceId={id}
+                          measureRef={controller.measure(id)}
+                        />
                       ))}
                     </div>
                   )

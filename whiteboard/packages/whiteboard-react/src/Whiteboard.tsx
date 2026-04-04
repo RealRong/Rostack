@@ -72,6 +72,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
             engine={engine}
           />
           <HostLifecycle
+            editor={editor}
             host={host}
             hostConfig={hostConfig}
           />

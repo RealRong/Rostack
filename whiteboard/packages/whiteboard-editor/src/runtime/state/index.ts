@@ -2,7 +2,12 @@ import { createValueStore, type ValueStore } from '@whiteboard/engine'
 import type { Tool } from '../../types/tool'
 import type { EditorRead, EditorState } from '../../types/editor'
 import type { PointerSample } from '../../types/input'
+import type { DrawPreferences } from '../../types/draw'
 import { createEditState, type EditState } from './edit'
+import {
+  createDrawPreferencesState,
+  type DrawPreferencesState
+} from './draw'
 import {
   createSelectionState,
   type SelectionState
@@ -54,6 +59,7 @@ const isOrderedEqual = (
 
 export type EditorRuntimeState = {
   tool: ValueStore<Tool>
+  draw: DrawPreferencesState
   selection: SelectionState
   edit: EditState
   pointer: ValueStore<PointerSample | null>
@@ -63,25 +69,29 @@ export type EditorRuntimeState = {
 export type RuntimeStateController = {
   state: EditorRuntimeState
   public: {
-    state: Pick<EditorState, 'tool' | 'edit' | 'selection'>
+    state: Pick<EditorState, 'tool' | 'draw' | 'edit' | 'selection'>
   }
   resetLocal: () => void
   reconcileAfterCommit: (read: ReadNodeEdge) => void
 }
 
 export const createRuntimeState = ({
-  initialTool
+  initialTool,
+  initialDrawPreferences
 }: {
   initialTool: Tool
+  initialDrawPreferences: DrawPreferences
 }): RuntimeStateController => {
   const tool = createValueStore<Tool>(initialTool)
+  const draw = createDrawPreferencesState(initialDrawPreferences)
   const selection = createSelectionState()
   const edit = createEditState()
   const pointer = createValueStore<PointerSample | null>(null)
   const space = createValueStore(false)
 
-  const publicState: Pick<EditorState, 'tool' | 'edit' | 'selection'> = {
+  const publicState: Pick<EditorState, 'tool' | 'draw' | 'edit' | 'selection'> = {
     tool,
+    draw: draw.store,
     edit: edit.source,
     selection: selection.source
   }
@@ -89,6 +99,7 @@ export const createRuntimeState = ({
   return {
     state: {
       tool,
+      draw,
       selection,
       edit,
       pointer,

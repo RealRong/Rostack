@@ -31,8 +31,8 @@ const EdgeItemBase = ({
   const svgPath = entry.path.svgPath
 
   const { stroke, strokeWidth, dash, markerStart, markerEnd, hitWidth, animation } = useMemo(() => {
-    const baseStroke = edge.style?.stroke ?? 'hsl(var(--ui-text-primary, 40 2.1% 28%))'
-    const stroke = selected ? 'hsl(var(--ui-accent, 209.8 76.7% 51.2%))' : baseStroke
+    const baseStroke = edge.style?.stroke ?? 'var(--ui-text-primary)'
+    const stroke = selected ? 'var(--ui-accent)' : baseStroke
     const baseWidth = edge.style?.strokeWidth ?? 2
     const strokeWidth = selected ? Math.max(baseWidth, 3) : baseWidth
     const isAnimated = Boolean(edge.style?.animated)

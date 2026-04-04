@@ -12,9 +12,9 @@ export const STICKY_START_SIZE = {
 
 export const TEXT_PLACEHOLDER = 'Text'
 export const STICKY_PLACEHOLDER = 'Sticky'
-export const STICKY_DEFAULT_FILL = 'hsl(var(--tag-yellow-background, 47.6 70.7% 92%))'
-export const STICKY_DEFAULT_TEXT_COLOR = 'hsl(var(--ui-text-primary, 40 2.1% 28%))'
-export const STICKY_DEFAULT_STROKE = 'hsl(var(--ui-text-primary, 40 2.1% 28%) / 0.12)'
+export const STICKY_DEFAULT_FILL = 'var(--ui-yellow-bg-strong)'
+export const STICKY_DEFAULT_TEXT_COLOR = 'var(--ui-text-primary)'
+export const STICKY_DEFAULT_STROKE = 'rgb(from var(--ui-text-primary) r g b / 0.12)'
 export const STICKY_DEFAULT_STROKE_WIDTH = 1
 
 export const FRAME_START_SIZE = {
@@ -24,8 +24,8 @@ export const FRAME_START_SIZE = {
 
 export const FRAME_DEFAULT_TITLE = 'Frame'
 export const FRAME_DEFAULT_FILL = 'transparent'
-export const FRAME_DEFAULT_STROKE = 'hsl(var(--ui-border-strong, 40 9.1% 93.5%))'
-export const FRAME_DEFAULT_TEXT_COLOR = 'hsl(var(--ui-text-secondary, 37.5 3.3% 47.5%))'
+export const FRAME_DEFAULT_STROKE = 'var(--ui-border-strong)'
+export const FRAME_DEFAULT_TEXT_COLOR = 'var(--ui-text-secondary)'
 export const FRAME_DEFAULT_STROKE_WIDTH = 1
 
 export const createTextNodeInput = (): Omit<SpatialNodeInput, 'position'> => ({

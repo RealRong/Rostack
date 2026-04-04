@@ -76,6 +76,18 @@ export const createDrawPreferencesState = (
   return {
     store,
     commands: {
+      set: (preferences) => {
+        const next = normalizeDrawPreferences(preferences)
+        const current = store.get()
+        if (
+          isSameBrush(current.pen, next.pen)
+          && isSameBrush(current.highlighter, next.highlighter)
+        ) {
+          return
+        }
+
+        store.set(next)
+      },
       slot: (kind, slot) => {
         store.update((current) => {
           const previous = current[kind]

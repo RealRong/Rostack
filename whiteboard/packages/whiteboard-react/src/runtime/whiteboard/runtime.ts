@@ -63,17 +63,6 @@ export const useWhiteboardRuntime = ({
   const hostRef = useRef<ReturnType<typeof createHostRuntime> | null>(null)
   if (!hostRef.current) {
     hostRef.current = createHostRuntime({
-      initialViewport: resolvedConfig.viewport.initial,
-      viewportLimits: {
-        minZoom: resolvedConfig.viewport.minZoom,
-        maxZoom: resolvedConfig.viewport.maxZoom
-      },
-      inputPolicy: {
-        panEnabled: resolvedConfig.viewport.enablePan,
-        wheelEnabled: resolvedConfig.viewport.enableWheel,
-        wheelSensitivity: resolvedConfig.viewport.wheelSensitivity
-      },
-      drawPreferences: DEFAULT_DRAW_PREFERENCES,
       insertPresetCatalog: INSERT_PRESET_CATALOG
     })
   }
@@ -84,8 +73,9 @@ export const useWhiteboardRuntime = ({
     editorRef.current = createEditor({
       engine,
       initialTool: resolvedConfig.initialTool,
+      initialDrawPreferences: DEFAULT_DRAW_PREFERENCES,
+      initialViewport: resolvedConfig.viewport.initial,
       registry: registryRef.current,
-      host: host.editorHost
     })
     host.insert.bind(editorRef.current)
   }

@@ -114,7 +114,7 @@ export const toSelectionOverlayState = (
 })
 
 export const projectWorldRect = (
-  viewport: Pick<EditorViewportRuntime, 'worldToScreen'>,
+  viewport: EditorViewportRuntime['read'],
   worldRect: Rect
 ): Rect => {
   const topLeft = viewport.worldToScreen({

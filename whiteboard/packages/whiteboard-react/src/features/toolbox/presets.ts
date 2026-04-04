@@ -34,42 +34,42 @@ const STICKY_TONES: readonly StickyTone[] = [
   {
     key: 'sticky.yellow',
     label: 'Yellow',
-    fill: 'hsl(var(--tag-yellow-background, 47.6 70.7% 92%))'
+    fill: 'var(--ui-yellow-bg-strong)'
   },
   {
     key: 'sticky.blue',
     label: 'Blue',
-    fill: 'hsl(var(--tag-blue-background, 206.1 79.3% 94.3%))'
+    fill: 'var(--ui-blue-bg-strong)'
   },
   {
     key: 'sticky.green',
     label: 'Green',
-    fill: 'hsl(var(--tag-green-background, 146.7 24.3% 92.7%))'
+    fill: 'var(--ui-green-bg-strong)'
   },
   {
     key: 'sticky.pink',
     label: 'Pink',
-    fill: 'hsl(var(--tag-pink-background, 331.8 63% 94.7%))'
+    fill: 'var(--ui-pink-bg-strong)'
   },
   {
     key: 'sticky.purple',
     label: 'Purple',
-    fill: 'hsl(var(--tag-purple-background, 274.3 53.8% 94.9%))'
+    fill: 'var(--ui-purple-bg-strong)'
   },
   {
     key: 'sticky.red',
     label: 'Red',
-    fill: 'hsl(var(--tag-red-background, 5.7 77.8% 94.7%))'
+    fill: 'var(--ui-red-bg-strong)'
   },
   {
     key: 'sticky.orange',
     label: 'Orange',
-    fill: 'hsl(var(--tag-orange-background, 26.9 78.4% 92.7%))'
+    fill: 'var(--ui-orange-bg-strong)'
   },
   {
     key: 'sticky.gray',
     label: 'Gray',
-    fill: 'hsl(var(--tag-gray-background, 40 9.1% 93.5%))'
+    fill: 'var(--ui-gray-bg-strong)'
   }
 ] as const
 

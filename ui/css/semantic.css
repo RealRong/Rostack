@@ -1,0 +1,61 @@
+.ui-light-theme,
+.ui-dark-theme {
+  --ui-canvas: var(--ui-bg-page);
+  --ui-surface: var(--ui-bg-card);
+  --ui-surface-muted: var(--ui-bg-panel);
+  --ui-surface-subtle: var(--ui-bg-subtle);
+  --ui-surface-strong: var(--ui-border-default);
+  --ui-surface-hover: var(--ui-bg-hover);
+
+  --ui-control-hover: var(--ui-bg-hover);
+  --ui-control-pressed: var(--ui-bg-pressed);
+
+  --ui-border-subtle: var(--ui-border-default);
+  --ui-divider: var(--ui-default-bg-strong);
+  --ui-divider-strong: var(--ui-gray-bg-strong);
+  --ui-overlay-subtle: var(--ui-default-bg-muted);
+  --ui-overlay-strong: var(--ui-default-bg-strong);
+
+  --ui-accent-surface: var(--ui-blue-border-muted);
+  --ui-accent-overlay-subtle: var(--ui-blue-bg-soft);
+  --ui-accent-overlay: var(--ui-blue-bg-muted);
+  --ui-accent-divider: var(--ui-blue-bg-muted);
+  --ui-accent-outline: var(--ui-blue-bg-strong);
+  --ui-accent-frame-border: var(--ui-accent);
+  --ui-accent-text: var(--ui-blue-text);
+  --ui-accent-tint-subtle: var(--ui-blue-bg-muted);
+  --ui-focus-ring: var(--ui-accent);
+
+  --ui-popover-shadow: var(--ui-shadow-floating);
+  --ui-card-bg: var(--ui-bg-card);
+  --ui-floating-bg: var(--ui-bg-card);
+  --ui-floating-border: var(--ui-border-default);
+  --ui-field-bg: var(--ui-bg-card);
+  --ui-field-embedded-bg: var(--ui-default-bg-muted);
+
+  --ui-solid: var(--ui-text-primary);
+  --ui-solid-foreground: var(--ui-bg-page);
+
+  --control-radius: 0.5rem;
+  --radius: var(--control-radius);
+
+  --background: var(--ui-bg-page);
+  --foreground: var(--ui-text-primary);
+  --card: var(--ui-bg-card);
+  --card-foreground: var(--ui-text-primary);
+  --popover: var(--ui-floating-bg);
+  --popover-foreground: var(--ui-text-primary);
+  --primary: var(--ui-accent);
+  --primary-foreground: var(--ui-accent-foreground);
+  --secondary: var(--ui-bg-panel);
+  --secondary-foreground: var(--ui-text-primary);
+  --muted: var(--ui-bg-panel);
+  --muted-foreground: var(--ui-text-secondary);
+  --accent: var(--ui-bg-hover);
+  --accent-foreground: var(--ui-text-primary);
+  --destructive: var(--ui-danger);
+  --destructive-foreground: var(--ui-danger-foreground);
+  --border: var(--ui-border-default);
+  --input: var(--ui-border-default);
+  --ring: var(--ui-focus-ring);
+}

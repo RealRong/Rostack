@@ -33,7 +33,7 @@ export const DrawNodeDefinition: NodeDefinition = {
   render: ({ node, selected }) => {
     const points = readDrawPoints(node)
     const baseSize = readDrawBaseSize(node)
-    const stroke = getStyleString(node, 'stroke') ?? 'hsl(var(--ui-text-primary, 40 2.1% 28%))'
+    const stroke = getStyleString(node, 'stroke') ?? 'var(--ui-text-primary)'
     const strokeWidth = getStyleNumber(node, 'strokeWidth') ?? 2
     const opacity = getStyleNumber(node, 'opacity') ?? 1
 

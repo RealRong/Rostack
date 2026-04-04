@@ -5,7 +5,6 @@ import type { DrawPreferences } from '../../types/draw'
 import type { EditorOverlay } from '../overlay'
 import type { EditorViewportRuntime } from '../editor/types'
 import type { RuntimeStateController } from '../state'
-import type { EditorHost } from '../../host/types'
 import {
   createNodeRead,
   type NodeRead
@@ -27,20 +26,13 @@ export type RuntimeRead = Omit<EngineRead, 'node' | 'edge'> & {
   edge: EdgeRead
   selection: SelectionRead
   tool: ToolRead
+  draw: ReadStore<DrawPreferences>
   space: ReadStore<boolean>
-  inputPolicy: ReadStore<{
-    panEnabled: boolean
-    wheelEnabled: boolean
-    wheelSensitivity: number
-  }>
-  draw: {
-    preferences: ReadStore<DrawPreferences>
-  }
   viewport: {
-    get: EditorViewportRuntime['get']
-    subscribe: EditorViewportRuntime['subscribe']
-    pointer: EditorViewportRuntime['pointer']
-    worldToScreen: EditorViewportRuntime['worldToScreen']
+    get: EditorViewportRuntime['read']['get']
+    subscribe: EditorViewportRuntime['read']['subscribe']
+    pointer: EditorViewportRuntime['read']['pointer']
+    worldToScreen: EditorViewportRuntime['read']['worldToScreen']
     screenPoint: EditorViewportRuntime['input']['screenPoint']
     size: EditorViewportRuntime['input']['size']
   }
@@ -55,14 +47,14 @@ export const createRead = ({
   history,
   runtime,
   overlay,
-  host
+  viewport
 }: {
   engineRead: EngineRead
   registry: NodeRegistry
   history: ReadStore<HistoryState>
   runtime: Pick<RuntimeStateController, 'state'>
   overlay: Pick<EditorOverlay, 'selectors'>
-  host: Pick<EditorHost, 'viewport' | 'inputPolicy' | 'draw'>
+  viewport: EditorViewportRuntime
 }): RuntimeRead => {
   const nodeRead: NodeRead = createNodeRead({
     read: engineRead,
@@ -101,18 +93,15 @@ export const createRead = ({
     slice: engineRead.slice,
     index: engineRead.index,
     tool: toolRead,
+    draw: runtime.state.draw.store,
     space: runtime.state.space,
-    inputPolicy: host.inputPolicy.store,
-    draw: {
-      preferences: host.draw.preferences
-    },
     viewport: {
-      get: host.viewport.read.get,
-      subscribe: host.viewport.read.subscribe,
-      pointer: host.viewport.read.pointer,
-      worldToScreen: host.viewport.read.worldToScreen,
-      screenPoint: host.viewport.input.screenPoint,
-      size: host.viewport.input.size
+      get: viewport.read.get,
+      subscribe: viewport.read.subscribe,
+      pointer: viewport.read.pointer,
+      worldToScreen: viewport.read.worldToScreen,
+      screenPoint: viewport.input.screenPoint,
+      size: viewport.input.size
     },
     overlay: {
       feedback: overlay.selectors.feedback

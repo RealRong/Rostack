@@ -8,6 +8,21 @@ type WheelInput = Parameters<Editor['input']['wheel']>[0]
 
 type ViewportInputOptions = {
   wheelEnabled: boolean
+  wheelSensitivity: number
+}
+
+const applyWheelSensitivity = (
+  input: WheelInput,
+  wheelSensitivity: number
+): WheelInput => {
+  if (!input.modifiers.ctrl && !input.modifiers.meta) {
+    return input
+  }
+
+  return {
+    ...input,
+    deltaY: input.deltaY * wheelSensitivity
+  }
 }
 
 const isTextInputElement = (target: EventTarget | null) => {
@@ -88,22 +103,27 @@ export const useBindViewportInput = ({
     }
     const wheelTask = createRafTask(flushWheel)
 
-    const scheduleWheel = (input: WheelInput) => {
+    const scheduleWheel = (
+      input: WheelInput,
+      wheelSensitivity: number
+    ) => {
+      const nextInput = applyWheelSensitivity(input, wheelSensitivity)
+
       if (pendingWheelInput) {
-        pendingWheelInput.deltaX += input.deltaX
-        pendingWheelInput.deltaY += input.deltaY
-        pendingWheelInput.client = input.client
-        pendingWheelInput.screen = input.screen
-        pendingWheelInput.world = input.world
-        pendingWheelInput.modifiers.alt = pendingWheelInput.modifiers.alt || input.modifiers.alt
-        pendingWheelInput.modifiers.shift = pendingWheelInput.modifiers.shift || input.modifiers.shift
-        pendingWheelInput.modifiers.ctrl = pendingWheelInput.modifiers.ctrl || input.modifiers.ctrl
-        pendingWheelInput.modifiers.meta = pendingWheelInput.modifiers.meta || input.modifiers.meta
+        pendingWheelInput.deltaX += nextInput.deltaX
+        pendingWheelInput.deltaY += nextInput.deltaY
+        pendingWheelInput.client = nextInput.client
+        pendingWheelInput.screen = nextInput.screen
+        pendingWheelInput.world = nextInput.world
+        pendingWheelInput.modifiers.alt = pendingWheelInput.modifiers.alt || nextInput.modifiers.alt
+        pendingWheelInput.modifiers.shift = pendingWheelInput.modifiers.shift || nextInput.modifiers.shift
+        pendingWheelInput.modifiers.ctrl = pendingWheelInput.modifiers.ctrl || nextInput.modifiers.ctrl
+        pendingWheelInput.modifiers.meta = pendingWheelInput.modifiers.meta || nextInput.modifiers.meta
       } else {
         pendingWheelInput = {
-          ...input,
+          ...nextInput,
           modifiers: {
-            ...input.modifiers
+            ...nextInput.modifiers
           }
         }
       }
@@ -119,7 +139,7 @@ export const useBindViewportInput = ({
       scheduleWheel(resolveWheelInput({
         editor,
         event
-      }))
+      }), options.wheelSensitivity)
 
       if (event.cancelable) {
         event.preventDefault()

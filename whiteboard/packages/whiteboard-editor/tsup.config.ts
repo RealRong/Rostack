@@ -3,8 +3,7 @@ import { defineConfig } from 'tsup'
 export default defineConfig({
   entry: {
     index: 'src/index.ts',
-    draw: 'src/draw.ts',
-    host: 'src/host/index.ts'
+    draw: 'src/draw.ts'
   },
   format: ['esm', 'cjs'],
   dts: true,

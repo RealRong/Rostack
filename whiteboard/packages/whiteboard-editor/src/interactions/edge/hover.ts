@@ -1,6 +1,6 @@
 import { createRafTask } from '@whiteboard/engine'
 import { Point } from '@whiteboard/core/types'
-import type { EdgeInteractionCtx } from './types'
+import type { InteractionContext } from '../context'
 
 export type EdgeHoverService = {
   move: (world: Point) => void
@@ -8,7 +8,7 @@ export type EdgeHoverService = {
 }
 
 export const createEdgeHoverService = (
-  ctx: EdgeInteractionCtx
+  ctx: InteractionContext
 ): EdgeHoverService => {
   let hoverPoint: Point | null = null
 

@@ -24,10 +24,7 @@ export const useWhiteboardConfig = (
     () => ({
       viewport: {
         minZoom: resolvedConfig.viewport.minZoom,
-        maxZoom: resolvedConfig.viewport.maxZoom,
-        enablePan: resolvedConfig.viewport.enablePan,
-        enableWheel: resolvedConfig.viewport.enableWheel,
-        wheelSensitivity: resolvedConfig.viewport.wheelSensitivity
+        maxZoom: resolvedConfig.viewport.maxZoom
       }
     }),
     [resolvedConfig]

@@ -11,6 +11,10 @@ import { createTimeoutTask, type TimeoutTask } from '@whiteboard/engine'
 import {
   GestureTuning
 } from '../../runtime/interaction/config'
+import {
+  FINISH,
+  replaceSession
+} from '../../runtime/interaction/result'
 import type { InteractionContext } from '../context'
 import type {
   InteractionSession,
@@ -24,13 +28,9 @@ import { createMoveInteraction } from './move'
 
 type SelectionPressField = NonNullable<PointerDownInput['field']>
 type SelectionSubjectInput = Pick<PointerDownInput, 'pick' | 'field'>
-type SelectionInteractionCtx = Pick<
-  InteractionContext,
-  'read' | 'write' | 'config' | 'snap'
->
 
 const resolveSelectionPressTargetInput = (
-  ctx: SelectionInteractionCtx,
+  ctx: InteractionContext,
   input: SelectionSubjectInput
 ): SelectionPressTargetInput<SelectionPressField> | undefined => {
   switch (input.pick.kind) {
@@ -71,7 +71,7 @@ const resolveSelectionPressTargetInput = (
 }
 
 const resolveSelectionPress = (
-  ctx: SelectionInteractionCtx,
+  ctx: InteractionContext,
   input: PointerDownInput
 ): {
   target: SelectionPressTarget<SelectionPressField>
@@ -116,7 +116,7 @@ const resolveSelectionPress = (
 
 const createSelectionSession = (
   input: {
-    ctx: SelectionInteractionCtx
+    ctx: InteractionContext
     start: PointerDownInput
     decision: SelectionDragDecision | SelectionMarqueeDecision | undefined
   }
@@ -140,16 +140,13 @@ const createSelectionSession = (
 }
 
 const createPressSession = (
-  ctx: SelectionInteractionCtx,
+  ctx: InteractionContext,
   start: PointerDownInput,
   resolved: {
     target: SelectionPressTarget<SelectionPressField>
     decision: SelectionPressDecision<SelectionPressField>
   }
 ): InteractionSession => {
-  const FINISH = {
-    kind: 'finish'
-  } satisfies InteractionSessionTransition
   let holdTask: TimeoutTask | null = null
   let dispatchTransition:
     | ((transition: InteractionSessionTransition) => void)
@@ -184,10 +181,7 @@ const createPressSession = (
       }
 
       next.move?.(input)
-      return {
-        kind: 'replace',
-        session: next
-      }
+      return replaceSession(next)
     },
     up: (input) => {
       holdTask?.cancel()
@@ -235,13 +229,8 @@ const createPressSession = (
       })
       dispatchTransition?.(
         next
-          ? {
-              kind: 'replace',
-              session: next
-            }
-          : {
-              kind: 'finish'
-            }
+          ? replaceSession(next)
+          : FINISH
       )
     })
     holdTask.schedule(GestureTuning.holdDelay)
@@ -251,7 +240,7 @@ const createPressSession = (
 }
 
 export const startSelectionPress = (
-  ctx: SelectionInteractionCtx,
+  ctx: InteractionContext,
   input: PointerDownInput
 ): InteractionSession | null => {
   const resolved = resolveSelectionPress(ctx, input)

@@ -1,4 +1,3 @@
-import type { UiTagTone } from '@ui/tone'
 import { message } from './message'
 import { defineMetaCollection } from './shared'
 
@@ -17,59 +16,48 @@ export type OptionColorId =
 export interface OptionColorDescriptor {
   id: OptionColorId | string
   message: ReturnType<typeof message>
-  tone: UiTagTone
 }
 
 const OPTION_COLOR_ITEMS = [
   {
     id: '',
-    message: message('meta.option.color.default', 'Default'),
-    tone: 'neutral'
+    message: message('meta.option.color.default', 'Default')
   },
   {
     id: 'gray',
-    message: message('meta.option.color.gray', 'Gray'),
-    tone: 'gray'
+    message: message('meta.option.color.gray', 'Gray')
   },
   {
     id: 'brown',
-    message: message('meta.option.color.brown', 'Brown'),
-    tone: 'brown'
+    message: message('meta.option.color.brown', 'Brown')
   },
   {
     id: 'orange',
-    message: message('meta.option.color.orange', 'Orange'),
-    tone: 'orange'
+    message: message('meta.option.color.orange', 'Orange')
   },
   {
     id: 'yellow',
-    message: message('meta.option.color.yellow', 'Yellow'),
-    tone: 'yellow'
+    message: message('meta.option.color.yellow', 'Yellow')
   },
   {
     id: 'green',
-    message: message('meta.option.color.green', 'Green'),
-    tone: 'green'
+    message: message('meta.option.color.green', 'Green')
   },
   {
     id: 'blue',
-    message: message('meta.option.color.blue', 'Blue'),
-    tone: 'blue'
+    message: message('meta.option.color.blue', 'Blue')
   },
   {
     id: 'purple',
-    message: message('meta.option.color.purple', 'Purple'),
-    tone: 'purple'
+    message: message('meta.option.color.purple', 'Purple')
   },
   {
     id: 'pink',
-    message: message('meta.option.color.pink', 'Pink'),
-    tone: 'pink'
+    message: message('meta.option.color.pink', 'Pink')
   },
   {
     id: 'red',
-    message: message('meta.option.color.red', 'Red'),
-    tone: 'red'
+    message: message('meta.option.color.red', 'Red')
   }
 ] as const satisfies readonly OptionColorDescriptor[]
 
@@ -78,8 +66,7 @@ export const option = {
     defaultId: '',
     fallback: (id?: string) => ({
       id: id ?? '',
-      message: message('meta.option.color.unknown', id ?? 'Default'),
-      tone: 'neutral'
+      message: message('meta.option.color.unknown', id ?? 'Default')
     })
   })
 } as const

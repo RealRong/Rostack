@@ -12,15 +12,11 @@ import type {
   InteractionBinding,
   InteractionSession
 } from '../runtime/interaction/types'
+import { FINISH } from '../runtime/interaction/result'
 import type { InteractionContext } from './context'
 import { createSelectionGesture } from '../runtime/interaction/gesture'
 import type { PointerDownInput } from '../types/input'
 import type { TransformPickHandle } from '../types/pick'
-
-type TransformInteractionCtx = Pick<
-  InteractionContext,
-  'read' | 'write' | 'config' | 'snap'
->
 
 type TransformTarget = TransformSelectionMember<Node>
 
@@ -46,7 +42,7 @@ const toTransformNodePatches = (
 }))
 
 const readTransformTarget = (
-  ctx: TransformInteractionCtx,
+  ctx: InteractionContext,
   nodeId: NodeId
 ): TransformTarget | undefined => {
   const entry = ctx.read.index.node.get(nodeId)
@@ -61,7 +57,7 @@ const readTransformTarget = (
 }
 
 const readNodeTransformSpec = (
-  ctx: TransformInteractionCtx,
+  ctx: InteractionContext,
   nodeId: NodeId,
   handle: TransformPickHandle,
   input: PointerDownInput
@@ -106,7 +102,7 @@ const readNodeTransformSpec = (
 }
 
 const readSelectionTransformSpec = (
-  ctx: TransformInteractionCtx,
+  ctx: InteractionContext,
   handle: TransformPickHandle,
   input: PointerDownInput
 ): TransformSpec<Node> | undefined => {
@@ -138,7 +134,7 @@ const readSelectionTransformSpec = (
 }
 
 const resolveTransformSpec = (
-  ctx: TransformInteractionCtx,
+  ctx: InteractionContext,
   input: PointerDownInput
 ): TransformSpec<Node> | null => {
   const tool = ctx.read.tool.get()
@@ -159,7 +155,7 @@ const resolveTransformSpec = (
 }
 
 const createTransformSession = (
-  ctx: TransformInteractionCtx,
+  ctx: InteractionContext,
   spec: TransformSpec<Node>,
   start: Pick<PointerDownInput, 'modifiers'>
 ): InteractionSession => {
@@ -227,9 +223,7 @@ const createTransformSession = (
         ctx.write.document.node.document.updateMany(updates)
       }
 
-      return {
-        kind: 'finish'
-      }
+      return FINISH
     },
     cleanup: () => { }
   }
@@ -238,7 +232,7 @@ const createTransformSession = (
 }
 
 export const startTransformInteraction = (
-  ctx: TransformInteractionCtx,
+  ctx: InteractionContext,
   input: PointerDownInput
 ) => {
   const spec = resolveTransformSpec(ctx, input)
@@ -251,7 +245,7 @@ export const startTransformInteraction = (
 }
 
 export const createTransformInteraction = (
-  ctx: TransformInteractionCtx
+  ctx: InteractionContext
 ): InteractionBinding => ({
   key: 'transform',
   start: (input) => startTransformInteraction(ctx, input)

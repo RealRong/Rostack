@@ -16,7 +16,7 @@ export const createOverlay = ({
   viewport,
   gesture
 }: {
-  viewport: Pick<EditorViewportRuntime, 'worldToScreen'> & ReadStore<unknown>
+  viewport: EditorViewportRuntime['read']
   gesture: Pick<ReadStore<ActiveGesture | null>, 'get' | 'subscribe'>
 }): EditorOverlay => {
   const state = createOverlayState({

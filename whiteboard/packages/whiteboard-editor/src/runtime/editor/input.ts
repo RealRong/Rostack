@@ -1,17 +1,14 @@
 import type { Editor, EditorWriteApi } from '../../types/editor'
 import type { InteractionRuntime } from '../interaction/types'
 import type { EdgeHoverService } from '../../interactions/edge/hover'
-import type { EditorHost } from '../../host/types'
 
 export const createEditorInput = ({
   interaction,
   edgeHover,
-  host,
   write
 }: {
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
-  host: Pick<EditorHost, 'inputPolicy'>
   write: EditorWriteApi
 }): Editor['input'] => {
   const writePointer = (input: {
@@ -72,11 +69,6 @@ export const createEditorInput = ({
       interaction.handlePointerLeave()
     },
     wheel: (input) => {
-      const policy = host.inputPolicy.store.get()
-      if (!policy.wheelEnabled) {
-        return false
-      }
-
       writePointer(input)
 
       if (interaction.handleWheel(input)) {
@@ -92,7 +84,7 @@ export const createEditorInput = ({
           clientX: input.client.x,
           clientY: input.client.y
         },
-        policy.wheelSensitivity
+        1
       )
       return true
     },

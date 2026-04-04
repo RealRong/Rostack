@@ -5,7 +5,7 @@
 }
 
 * {
-  border-color: hsl(var(--border, var(--ui-border-subtle)));
+  border-color: var(--border, var(--ui-border-default));
 }
 
 html,
@@ -19,7 +19,8 @@ body,
 
 body {
   margin: 0;
-  color: hsl(var(--foreground, var(--ui-text-primary)));
+  background: var(--background, var(--ui-bg-page));
+  color: var(--foreground, var(--ui-text-primary));
   font-family:
     ui-sans-serif,
     -apple-system,
@@ -34,8 +35,8 @@ body {
 }
 
 ::selection {
-  background: hsl(var(--ui-accent-surface));
-  color: hsl(var(--ui-text-primary));
+  background: var(--ui-accent-surface);
+  color: var(--ui-text-primary);
 }
 
 button,

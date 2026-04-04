@@ -48,6 +48,7 @@ import {
   type GalleryBlock,
   type GalleryLayoutCache
 } from './virtual'
+import { usesOptionGroupingColors } from '@dataview/react/views/shared/optionGrouping'
 
 export interface GalleryController {
   currentView: CurrentView
@@ -55,14 +56,15 @@ export interface GalleryController {
   titleProperty?: GroupProperty
   properties: readonly GroupProperty[]
   canReorder: boolean
+  groupUsesOptionColors: boolean
   containerRef: RefObject<HTMLDivElement | null>
   layout: GalleryLayoutCache
   blocks: readonly GalleryBlock[]
-  measure: (id: AppearanceId) => (node: HTMLDivElement | null) => void
+  measure: (id: AppearanceId) => (node: HTMLElement | null) => void
   selectedIdSet: ReadonlySet<AppearanceId>
   drag: ReturnType<typeof useCardReorder>
   indicator?: GalleryDropTarget['indicator']
-  reorderDisabledMessage?: string
+  readSectionColorId: (sectionKey: string) => string | undefined
   select: (id: AppearanceId, mode?: 'replace' | 'toggle') => void
 }
 
@@ -95,6 +97,13 @@ export const useGalleryController = (input: {
   const canReorder = !currentView.view.query.group && !currentView.view.query.sorters.length
   const [dragging, setDragging] = useState(false)
   const grouped = Boolean(currentView.view.query.group)
+  const groupProperty = useMemo(() => {
+    const groupPropertyId = currentView.view.query.group?.property
+    return groupPropertyId
+      ? currentView.schema.properties.get(groupPropertyId)
+      : undefined
+  }, [currentView.schema.properties, currentView.view.query.group?.property])
+  const groupUsesOptionColors = grouped && usesOptionGroupingColors(groupProperty)
   const sections = useMemo<readonly Section[]>(() => (
     grouped
       ? currentView.sections
@@ -106,6 +115,9 @@ export const useGalleryController = (input: {
           ids: currentView.appearances.ids
         }]
   ), [currentView.appearances.ids, currentView.sections, grouped])
+  const sectionColorByKey = useMemo(() => new Map(
+    sections.map(section => [section.key, section.color] as const)
+  ), [sections])
   const minCardWidth = GALLERY_CARD_MIN_WIDTH[currentView.view.options.gallery.cardSize]
   const virtual = useGalleryBlocks({
     grouped,
@@ -121,6 +133,11 @@ export const useGalleryController = (input: {
     [selectionState.ids]
   )
   const getLayout = useCallback(() => virtual.layout, [virtual.layout])
+  const readSectionColorId = useCallback((sectionKey: string) => (
+    groupUsesOptionColors
+      ? sectionColorByKey.get(sectionKey)
+      : undefined
+  ), [groupUsesOptionColors, sectionColorByKey])
 
   useEffect(() => dataView.marquee.registerAdapter({
     viewId: currentView.view.id,
@@ -209,20 +226,13 @@ export const useGalleryController = (input: {
     dataView.selection.set([id])
   }, [dataView.selection])
 
-  const reorderDisabledMessage = currentView.view.query.sorters.length > 0
-    ? 'Card reorder is disabled while a field sort is active. Clear sort to drag cards again.'
-    : currentView.view.query.group
-      ? 'Card reorder is disabled while the gallery is grouped.'
-      : !canReorder
-      ? 'Card reorder is disabled for this view configuration.'
-      : undefined
-
   return useMemo(() => ({
     currentView,
     sections,
     titleProperty,
     properties,
     canReorder,
+    groupUsesOptionColors,
     containerRef: input.containerRef,
     layout: virtual.layout,
     blocks: virtual.blocks,
@@ -230,16 +240,17 @@ export const useGalleryController = (input: {
     selectedIdSet,
     drag,
     indicator,
-    reorderDisabledMessage,
+    readSectionColorId,
     select
   }), [
     canReorder,
     currentView,
     drag,
+    groupUsesOptionColors,
     indicator,
     input.containerRef,
     properties,
-    reorderDisabledMessage,
+    readSectionColorId,
     sections,
     select,
     selectedIdSet,

@@ -5,7 +5,7 @@ import {
 import type { NodeRegistry } from '../types/node'
 import type { WhiteboardRuntime } from '../types/runtime'
 
-type CreateEditorInput = Omit<Parameters<typeof createEditorBase>[0], 'registry'> & {
+export type CreateEditorInput = Omit<Parameters<typeof createEditorBase>[0], 'registry'> & {
   registry: NodeRegistry
 }
 

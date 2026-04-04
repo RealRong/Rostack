@@ -1,82 +1,15 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import type {
-  GroupProperty,
-  GroupRecord
-} from '@dataview/core/contracts'
-import {
-  isEmptyPropertyValue
-} from '@dataview/core/property'
 import {
   useDataView
 } from '@dataview/react/dataview'
-import {
-  PropertyValueContent
-} from '@dataview/react/properties/value'
-import { CardTitle } from '@dataview/react/views/shared'
+import { CardPreview } from '@dataview/react/views/shared'
 import { cn } from '@ui/utils'
 import { FileText } from 'lucide-react'
 import { useGalleryContext } from '../context'
 import {
-  CARD_TITLE_PLACEHOLDER,
-  readCardTitleText
+  CARD_TITLE_PLACEHOLDER
 } from '@dataview/react/views/shared/cardTitleValue'
-
-const PreviewSurface = (props: {
-  appearanceId: string
-  record: GroupRecord
-  titleProperty?: GroupProperty
-  properties: readonly GroupProperty[]
-  dragCount: number
-}) => {
-  const titleText = readCardTitleText(props.titleProperty, props.record)
-  const visibleProperties = props.properties.filter(property => (
-    property.id !== props.titleProperty?.id
-    && (
-    !isEmptyPropertyValue(props.record.values[property.id])
-    )
-  ))
-
-  return (
-    <div className="relative h-full rounded-lg p-3 transition-colors ui-shadow-sm ui-card-bg shadow-lg">
-      {props.dragCount > 1 ? (
-        <span className="absolute right-3 top-3 inline-flex min-w-6 items-center justify-center rounded-full bg-foreground px-1.5 py-0.5 text-[10px] font-semibold text-background">
-          {props.dragCount}
-        </span>
-      ) : null}
-      <div className="min-w-0">
-        <div className={cn(
-          'flex min-w-0 items-start gap-2.5',
-          visibleProperties.length > 0 && 'pb-2'
-        )}>
-          <FileText className="mt-0.5 size-5 shrink-0 text-muted-foreground" size={18} strokeWidth={1.8} />
-          <div className="min-w-0 flex-1">
-            <CardTitle
-              editing={false}
-              text={titleText}
-              placeholder={CARD_TITLE_PLACEHOLDER}
-              textClassName="text-base font-semibold leading-6"
-            />
-          </div>
-        </div>
-
-        {visibleProperties.length ? (
-          <div className="flex flex-col pb-2 pt-0 leading-6">
-            {visibleProperties.map(property => (
-              <div key={property.id} className="min-w-0 pb-2 last:pb-0">
-                <PropertyValueContent
-                  property={property}
-                  value={props.record.values[property.id]}
-                  className="text-[13px] leading-6 text-foreground"
-                />
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </div>
-    </div>
-  )
-}
 
 export const Overlay = () => {
   const controller = useGalleryContext()
@@ -137,12 +70,33 @@ export const Overlay = () => {
           </>
         ) : null}
         <div className={cn(controller.drag.dragIds.length > 1 && 'relative')}>
-          <PreviewSurface
-            appearanceId={appearanceId}
+          <CardPreview
             record={record}
             titleProperty={controller.titleProperty}
             properties={controller.properties}
-            dragCount={controller.drag.dragIds.length}
+            titlePlaceholder={CARD_TITLE_PLACEHOLDER}
+            slots={{
+              root: 'relative h-full rounded-xl p-3 transition-colors ui-shadow-sm ui-card-bg shadow-lg',
+              title: {
+                row: 'flex min-w-0 items-start gap-2.5',
+                rowWhenProperties: 'pb-2',
+                content: 'min-w-0 flex-1',
+                text: 'text-base font-semibold leading-6'
+              },
+              property: {
+                list: 'flex flex-col gap-2',
+                item: 'min-w-0',
+                value: 'text-[13px] leading-6 text-foreground'
+              }
+            }}
+            titleLeading={(
+              <FileText className="mt-0.5 size-5 shrink-0 text-muted-foreground" size={18} strokeWidth={1.8} />
+            )}
+            badge={controller.drag.dragIds.length > 1 ? (
+              <span className="absolute right-3 top-3 inline-flex min-w-6 items-center justify-center rounded-full bg-foreground px-1.5 py-0.5 text-[10px] font-semibold text-background">
+                {controller.drag.dragIds.length}
+              </span>
+            ) : undefined}
           />
         </div>
       </div>

@@ -1,10 +1,12 @@
 import { Check } from 'lucide-react'
 import { useEffect, useState, type ReactElement } from 'react'
 import { Button } from '@ui/button'
+import {
+  resolveOptionDotStyle,
+  resolveOptionColorToken
+} from '@ui/color'
 import { Input } from '@ui/input'
 import { Popover } from '@ui/popover'
-import { uiTone } from '@ui/tone'
-import { cn } from '@ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
 
 export interface OptionLike {
@@ -91,10 +93,11 @@ export const OptionEditorPopover = (props: OptionEditorPopoverProps) => {
                   layout="row"
                   leading={(
                     <span
-                      className={cn(
-                        'inline-flex h-3 w-3 shrink-0 rounded-full border border-border/60',
-                        uiTone.tag(color.tone)
-                      )}
+                      className="inline-flex h-3 w-3 shrink-0 rounded-full border"
+                      style={{
+                        ...resolveOptionDotStyle(color.id),
+                        borderColor: resolveOptionColorToken(color.id, 'badge-border')
+                      }}
                     />
                   )}
                   trailing={active

@@ -18,6 +18,14 @@ export {
 export { PanelHeader, type PanelHeaderProps } from './panel-header'
 export { QueryChip, type QueryChipProps, type QueryChipState } from './query-chip'
 export { Switch, type SwitchProps } from './switch'
+export {
+  normalizeOptionColorId,
+  resolveOptionBadgeStyle,
+  resolveOptionCardStyle,
+  resolveOptionColorToken,
+  resolveOptionColumnStyle,
+  resolveOptionDotStyle
+} from './color'
 export { uiTone, type UiTagTone } from './tone'
 export {
   VerticalReorderList,
@@ -37,3 +45,7 @@ export {
   useBlockingSurfaceController
 } from './blocking-surface'
 export { cn } from './utils'
+export type {
+  UiOptionColorId,
+  UiOptionColorTokenUsage
+} from './color'

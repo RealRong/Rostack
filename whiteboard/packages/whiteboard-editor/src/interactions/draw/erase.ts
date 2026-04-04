@@ -1,4 +1,5 @@
 import { getSegmentBounds } from '@whiteboard/core/geometry'
+import { FINISH } from '../../runtime/interaction/result'
 import type {
   InteractionSession
 } from '../../runtime/interaction/types'
@@ -13,26 +14,17 @@ import type { InteractionContext } from '../context'
 const ERASER_HIT_EPSILON_SCREEN = 2
 const ZOOM_EPSILON = 0.0001
 
-type DrawInteractionCtx = Pick<
-  InteractionContext,
-  'read' | 'write'
->
-
 type DrawPointer = {
   samples: readonly PointerSample[]
 }
 
-export type EraseState = {
+type EraseState = {
   ids: readonly NodeId[]
   lastWorld: Point
 }
 
-const readZoom = (
-  ctx: DrawInteractionCtx
-) => ctx.read.viewport.get().zoom
-
 const queryDrawNodeIdsInRect = (
-  ctx: DrawInteractionCtx,
+  ctx: InteractionContext,
   rect: Rect
 ): readonly NodeId[] => ctx.read.node.idsInRect(rect, {
   match: 'touch'
@@ -41,13 +33,13 @@ const queryDrawNodeIdsInRect = (
 ))
 
 const collectErasePoint = (
-  ctx: DrawInteractionCtx,
+  ctx: InteractionContext,
   state: EraseState,
   world: Point
 ): EraseState => {
   const halfWorld =
     ERASER_HIT_EPSILON_SCREEN
-    / Math.max(readZoom(ctx), ZOOM_EPSILON)
+    / Math.max(ctx.read.viewport.get().zoom, ZOOM_EPSILON)
   const nodeIds = queryDrawNodeIdsInRect(
     ctx,
     getSegmentBounds(state.lastWorld, world, halfWorld)
@@ -83,7 +75,7 @@ const collectErasePoint = (
 }
 
 export const startEraseState = (
-  ctx: DrawInteractionCtx,
+  ctx: InteractionContext,
   input: PointerDownInput
 ): EraseState | null => {
   const tool = ctx.read.tool.get()
@@ -105,7 +97,7 @@ export const startEraseState = (
 }
 
 const stepEraseState = (
-  ctx: DrawInteractionCtx,
+  ctx: InteractionContext,
   state: EraseState,
   input: DrawPointer
 ) => {
@@ -119,7 +111,7 @@ const stepEraseState = (
 }
 
 const commitEraseState = (
-  ctx: DrawInteractionCtx,
+  ctx: InteractionContext,
   state: EraseState
 ) => {
   if (state.ids.length > 0) {
@@ -128,7 +120,7 @@ const commitEraseState = (
 }
 
 export const createEraseSession = (
-  ctx: DrawInteractionCtx,
+  ctx: InteractionContext,
   initial: EraseState
 ): InteractionSession => {
   let state = initial
@@ -155,9 +147,7 @@ export const createEraseSession = (
     up: (input) => {
       step(input)
       commitEraseState(ctx, state)
-      return {
-        kind: 'finish'
-      }
+      return FINISH
     },
     cleanup: () => {
       ctx.write.preview.draw.clear()

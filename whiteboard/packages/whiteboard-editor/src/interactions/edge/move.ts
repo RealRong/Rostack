@@ -5,11 +5,14 @@ import type {
   Point
 } from '@whiteboard/core/types'
 import type {
-  InteractionSession,
-  InteractionSessionTransition
+  InteractionSession
 } from '../../runtime/interaction/types'
+import {
+  CANCEL,
+  FINISH
+} from '../../runtime/interaction/result'
 import { createEdgeGesture } from '../../runtime/interaction/gesture'
-import type { EdgeInteractionCtx } from './types'
+import type { InteractionContext } from '../context'
 
 type EdgeBodyMoveState = {
   edgeId: EdgeId
@@ -18,16 +21,8 @@ type EdgeBodyMoveState = {
   delta: Point
 }
 
-const FINISH = {
-  kind: 'finish'
-} satisfies InteractionSessionTransition
-
-const CANCEL = {
-  kind: 'cancel'
-} satisfies InteractionSessionTransition
-
 const readMovableEdge = (
-  ctx: EdgeInteractionCtx,
+  ctx: InteractionContext,
   edgeId: EdgeId
 ) => {
   const item = ctx.read.edge.item.get(edgeId)
@@ -38,7 +33,7 @@ const readMovableEdge = (
 }
 
 export const createEdgeBodyMoveSession = (
-  ctx: EdgeInteractionCtx,
+  ctx: InteractionContext,
   input: {
     edgeId: EdgeId
     pointerId: number
@@ -55,7 +50,7 @@ export const createEdgeBodyMoveSession = (
 
   const step = (
     world: Point
-  ): InteractionSessionTransition | void => {
+  ) => {
     const edge = readMovableEdge(ctx, state.edgeId)
     if (!edge) {
       return CANCEL

@@ -34,6 +34,7 @@ export type DrawPreview = Readonly<{
 }>
 
 export type DrawCommands = {
+  set: (preferences: DrawPreferences) => void
   slot: (kind: DrawBrushKind, slot: DrawSlot) => void
   patch: (
     kind: DrawBrushKind,

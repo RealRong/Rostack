@@ -1,5 +1,9 @@
-import type { ReactNode } from 'react'
-import { useMemo } from 'react'
+import {
+  forwardRef,
+  useMemo,
+  type ComponentPropsWithoutRef,
+  type ReactNode
+} from 'react'
 import { SquarePen } from 'lucide-react'
 import type {
   GroupProperty,
@@ -30,7 +34,7 @@ const fieldRef = (input: {
   propertyId: input.propertyId
 })
 
-export interface CardContentProps {
+export interface CardContentProps extends Omit<ComponentPropsWithoutRef<'article'>, 'children'> {
   slots?: {
     root?: string
     editAction?: string
@@ -57,36 +61,54 @@ export interface CardContentProps {
   propertyDensity?: 'default' | 'compact'
 }
 
-export const CardContent = (props: CardContentProps) => {
+export const CardContent = forwardRef<HTMLElement, CardContentProps>((props, ref) => {
+  const {
+    slots,
+    viewId,
+    appearanceId,
+    record,
+    titleProperty,
+    properties,
+    titlePlaceholder,
+    showEditAction,
+    titleLeading,
+    propertyDensity,
+    className,
+    ...rootProps
+  } = props
   const editing = useCardTitleEditing({
-    viewId: props.viewId,
-    appearanceId: props.appearanceId,
-    record: props.record,
-    titleProperty: props.titleProperty
+    viewId,
+    appearanceId,
+    record,
+    titleProperty
   })
-  const fieldProperties = useMemo(() => props.properties.filter(
-    property => property.id !== props.titleProperty?.id
-  ), [props.properties, props.titleProperty?.id])
+  const fieldProperties = useMemo(() => properties.filter(
+    property => property.id !== titleProperty?.id
+  ), [properties, titleProperty?.id])
   const visibleProperties = useMemo(() => (
     editing.mode === 'edit'
       ? fieldProperties
-      : fieldProperties.filter(property => !isEmptyPropertyValue(props.record.values[property.id]))
-  ), [editing.mode, fieldProperties, props.record])
+      : fieldProperties.filter(property => !isEmptyPropertyValue(record.values[property.id]))
+  ), [editing.mode, fieldProperties, record])
   const fieldPropertyIds: readonly PropertyId[] = useMemo(() => Array.from(new Set(
     [
-      props.titleProperty,
+      titleProperty,
       ...fieldProperties
     ].filter((property): property is GroupProperty => Boolean(property))
       .map(property => property.id)
-  )), [fieldProperties, props.titleProperty])
+  )), [fieldProperties, titleProperty])
 
   return (
-    <article className={props.slots?.root}>
-      {props.showEditAction && !editing.editing ? (
+    <article
+      {...rootProps}
+      ref={ref}
+      className={cn(slots?.root, className)}
+    >
+      {showEditAction && !editing.editing ? (
         <Button
           size="icon"
           variant="ghost"
-          className={cn('absolute right-2 top-2 z-10', props.slots?.editAction)}
+          className={cn('absolute right-2 top-2.5 z-10', slots?.editAction)}
           aria-label="Edit card"
           title="Edit card"
           onClick={event => {
@@ -98,48 +120,47 @@ export const CardContent = (props: CardContentProps) => {
           <SquarePen className="size-4" size={15} strokeWidth={1.8} />
         </Button>
       ) : null}
-      <div className="min-w-0">
-        <div className={cn('min-w-0', props.slots?.title?.row)}>
-          {props.titleLeading ? props.titleLeading : null}
-          <div className={cn('min-w-0', props.slots?.title?.content)}>
-            <CardTitle
-              editing={editing.mode === 'edit'}
-              text={editing.committedTitle}
-              draft={editing.titleDraft}
-              placeholder={props.titlePlaceholder}
-              textClassName={props.slots?.title?.text}
-              inputClassName={props.slots?.title?.input}
-              onDraftChange={editing.setTitleDraft}
-              onCommit={editing.commitTitle}
-              onSubmit={editing.submitTitle}
-            />
-          </div>
-        </div>
-
-        {visibleProperties.length ? (
-          <div className={props.slots?.property?.list}>
-            {visibleProperties.map(property => (
-              <div key={property.id} className={props.slots?.property?.item}>
-                <CardPropertySlot
-                  field={fieldRef({
-                    viewId: props.viewId,
-                    appearanceId: props.appearanceId,
-                    recordId: props.record.id,
-                    propertyId: property.id
-                  })}
-                  property={property}
-                  value={props.record.values[property.id]}
-                  fieldPropertyIds={fieldPropertyIds}
-                  mode={editing.mode}
-                  openOnClick
-                  density={props.propertyDensity}
-                  valueClassName={props.slots?.property?.value}
-                />
-              </div>
-            ))}
-          </div>
-        ) : null}
+      <div className={cn('min-w-0', slots?.title?.row)}>
+        {titleLeading ? titleLeading : null}
+        <CardTitle
+          editing={editing.mode === 'edit'}
+          text={editing.committedTitle}
+          draft={editing.titleDraft}
+          placeholder={titlePlaceholder}
+          rootClassName={slots?.title?.content}
+          textClassName={slots?.title?.text}
+          inputClassName={slots?.title?.input}
+          onDraftChange={editing.setTitleDraft}
+          onCommit={editing.commitTitle}
+          onSubmit={editing.submitTitle}
+        />
       </div>
+
+      {visibleProperties.length ? (
+        <div className={slots?.property?.list}>
+          {visibleProperties.map(property => (
+            <div key={property.id} className={slots?.property?.item}>
+              <CardPropertySlot
+                field={fieldRef({
+                  viewId,
+                  appearanceId,
+                  recordId: record.id,
+                  propertyId: property.id
+                })}
+                property={property}
+                value={record.values[property.id]}
+                fieldPropertyIds={fieldPropertyIds}
+                mode={editing.mode}
+                openOnClick
+                density={propertyDensity}
+                valueClassName={slots?.property?.value}
+              />
+            </div>
+          ))}
+        </div>
+      ) : null}
     </article>
   )
-}
+})
+
+CardContent.displayName = 'CardContent'

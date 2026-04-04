@@ -2,11 +2,11 @@ import type {
   InteractionStartResult
 } from '../../runtime/interaction/types'
 import type { PointerDownInput } from '../../types/input'
+import type { InteractionContext } from '../context'
 import { createEdgeBodyMoveSession } from './move'
-import type { EdgeInteractionCtx } from './types'
 
 const readCapability = (
-  ctx: EdgeInteractionCtx,
+  ctx: InteractionContext,
   edgeId: string
 ) => {
   const item = ctx.read.edge.item.get(edgeId)
@@ -16,7 +16,7 @@ const readCapability = (
 }
 
 export const startEdgePress = (
-  ctx: EdgeInteractionCtx,
+  ctx: InteractionContext,
   start: PointerDownInput
 ): InteractionStartResult | null => {
   if (ctx.read.tool.get().type !== 'select') {

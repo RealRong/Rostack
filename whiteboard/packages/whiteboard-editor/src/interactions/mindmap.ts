@@ -9,14 +9,10 @@ import type {
   InteractionBinding,
   InteractionSession
 } from '../runtime/interaction/types'
+import { FINISH } from '../runtime/interaction/result'
 import type { InteractionContext } from './context'
 import type { MindmapDragFeedback } from '../runtime/overlay'
 import type { PointerDownInput } from '../types/input'
-
-type MindmapInteractionCtx = Pick<
-  InteractionContext,
-  'read' | 'write' | 'config'
->
 
 const toMindmapDragFeedback = (
   state: CoreMindmapDragState
@@ -42,7 +38,7 @@ const toMindmapDragFeedback = (
 }
 
 const resolveMindmapDragState = (
-  ctx: MindmapInteractionCtx,
+  ctx: InteractionContext,
   input: PointerDownInput
 ): CoreMindmapDragState | null => {
   const tool = ctx.read.tool.get()
@@ -90,7 +86,7 @@ const resolveMindmapDragState = (
 }
 
 const projectMindmapState = (input: {
-  ctx: MindmapInteractionCtx
+  ctx: InteractionContext
   state: CoreMindmapDragState
   world: Point
 }): CoreMindmapDragState => projectMindmapDrag({
@@ -103,7 +99,7 @@ const projectMindmapState = (input: {
 })
 
 const commitMindmapDrag = (
-  ctx: MindmapInteractionCtx,
+  ctx: InteractionContext,
   state: CoreMindmapDragState
 ) => {
   if (state.kind === 'root') {
@@ -137,7 +133,7 @@ const commitMindmapDrag = (
 }
 
 const createMindmapSession = (
-  ctx: MindmapInteractionCtx,
+  ctx: InteractionContext,
   initial: CoreMindmapDragState
 ): InteractionSession => {
   let state = initial
@@ -169,9 +165,7 @@ const createMindmapSession = (
     },
     up: () => {
       commitMindmapDrag(ctx, state)
-      return {
-        kind: 'finish'
-      }
+      return FINISH
     },
     cleanup: () => {
       ctx.write.preview.mindmap.clear()
@@ -180,7 +174,7 @@ const createMindmapSession = (
 }
 
 export const createMindmapInteraction = (
-  ctx: MindmapInteractionCtx
+  ctx: InteractionContext
 ): InteractionBinding => ({
   key: 'mindmap',
   start: (input) => {

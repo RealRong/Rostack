@@ -8,6 +8,7 @@ import type { InteractionContext } from '../context'
 import type {
   InteractionSession
 } from '../../runtime/interaction/types'
+import { FINISH } from '../../runtime/interaction/result'
 import type { DrawBrushKind } from '../../types/tool'
 import type {
   ResolvedDrawStyle
@@ -16,11 +17,6 @@ import { readDrawStyle } from '../../draw'
 
 const DRAW_MIN_LENGTH_SCREEN = 4
 const SAMPLE_DISTANCE_SCREEN = 1
-
-type DrawInteractionCtx = Pick<
-  InteractionContext,
-  'read' | 'write'
->
 
 type DrawPointer = {
   samples: readonly PointerSample[]
@@ -35,19 +31,19 @@ export type StrokeState = {
 }
 
 const readZoom = (
-  ctx: DrawInteractionCtx
+  ctx: InteractionContext
 ) => ctx.read.viewport.get().zoom
 
 const readStyle = (
-  ctx: DrawInteractionCtx,
+  ctx: InteractionContext,
   kind: DrawBrushKind
 ) => readDrawStyle(
-  ctx.read.draw.preferences.get(),
+  ctx.read.draw.get(),
   kind
 )
 
 const resolveStrokePoints = (
-  ctx: DrawInteractionCtx,
+  ctx: InteractionContext,
   points: readonly Point[]
 ) => resolveDrawPoints({
   points,
@@ -55,13 +51,13 @@ const resolveStrokePoints = (
 })
 
 const clearStrokeOverlay = (
-  ctx: DrawInteractionCtx
+  ctx: InteractionContext
 ) => {
   ctx.write.preview.draw.setPreview(null)
 }
 
 const writeStrokePreview = (
-  ctx: DrawInteractionCtx,
+  ctx: InteractionContext,
   state: StrokeState
 ) => {
   ctx.write.preview.draw.setPreview({
@@ -119,7 +115,7 @@ const appendStrokeSample = (
 }
 
 export const startStrokeState = (
-  ctx: DrawInteractionCtx,
+  ctx: InteractionContext,
   input: PointerDownInput
 ): StrokeState | null => {
   const tool = ctx.read.tool.get()
@@ -163,7 +159,7 @@ const stepStrokeState = (
 }
 
 const commitStrokeState = (
-  ctx: DrawInteractionCtx,
+  ctx: InteractionContext,
   state: StrokeState
 ) => {
   if (
@@ -198,7 +194,7 @@ const commitStrokeState = (
 }
 
 export const createStrokeSession = (
-  ctx: DrawInteractionCtx,
+  ctx: InteractionContext,
   initial: StrokeState
 ): InteractionSession => {
   let state = initial
@@ -222,9 +218,7 @@ export const createStrokeSession = (
     up: (input) => {
       step(input, true)
       commitStrokeState(ctx, state)
-      return {
-        kind: 'finish'
-      }
+      return FINISH
     },
     cleanup: () => {
       clearStrokeOverlay(ctx)

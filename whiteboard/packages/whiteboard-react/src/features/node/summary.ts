@@ -266,7 +266,7 @@ export const readNodeSelectionStyle = ({
   const primary = nodes[0]
   const stroke = typeof primary?.style?.stroke === 'string'
     ? primary.style.stroke
-    : 'hsl(var(--ui-text-primary, 40 2.1% 28%))'
+    : 'var(--ui-text-primary)'
   const strokeWidth = typeof primary?.style?.strokeWidth === 'number'
     ? primary.style.strokeWidth
     : 1

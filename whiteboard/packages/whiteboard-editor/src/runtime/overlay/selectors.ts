@@ -34,7 +34,7 @@ export const createOverlaySelectors = ({
   viewport
 }: {
   state: ReadStore<EditorOverlayState>
-  viewport: Pick<EditorViewportRuntime, 'worldToScreen'> & ReadStore<unknown>
+  viewport: EditorViewportRuntime['read']
 }): EditorOverlay['selectors'] => {
   const node = createProjectedKeyedStore({
     source: state,

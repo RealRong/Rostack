@@ -1,6 +1,6 @@
 import { X } from 'lucide-react'
 import { Button } from '@ui/button'
-import { uiTone } from '@ui/tone'
+import { resolveOptionBadgeStyle } from '@ui/color'
 import { cn } from '@ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
 
@@ -13,9 +13,9 @@ export interface OptionTokenProps {
 
 export const OptionToken = (props: OptionTokenProps) => (
   <span
+    style={resolveOptionBadgeStyle(props.color)}
     className={cn(
       'inline-flex min-w-0 max-w-full items-center gap-1 rounded-[4px] pl-1.5 pr-1 text-[12px] font-medium leading-5',
-      uiTone.tag(props.color),
       props.className
     )}
   >
@@ -26,6 +26,7 @@ export const OptionToken = (props: OptionTokenProps) => (
       <Button
         variant="plain"
         size="iconBare"
+        className="text-current"
         aria-label={renderMessage(meta.ui.property.options.clear(props.label))}
         onMouseDown={event => {
           event.preventDefault()
@@ -37,7 +38,7 @@ export const OptionToken = (props: OptionTokenProps) => (
           props.onRemove?.()
         }}
       >
-        <X className="size-3 text-muted-foreground" size={12} strokeWidth={1.8} />
+        <X className="size-3 opacity-70" size={12} strokeWidth={1.8} />
       </Button>
     ) : null}
   </span>

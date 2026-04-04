@@ -9,10 +9,28 @@ import { useHostRuntime } from '../runtime/hooks/useHost'
 import { consumeDomEvent } from '../runtime/host/event'
 import { resolvePointerInput } from '../runtime/host/input'
 
+const isViewportPanStart = (
+  event: PointerEvent,
+  editor: ReturnType<typeof useEditor>
+) => {
+  const middleDrag = event.button === 1 || (event.buttons & 4) === 4
+  if (middleDrag) {
+    return true
+  }
+
+  const leftDrag = event.button === 0 || (event.buttons & 1) === 1
+  return leftDrag && (
+    editor.read.space.get()
+    || editor.read.tool.is('hand')
+  )
+}
+
 export const usePointer = ({
-  containerRef
+  containerRef,
+  panEnabled
 }: {
   containerRef: RefObject<HTMLDivElement | null>
+  panEnabled: boolean
 }) => {
   const editor = useEditor()
   const host = useHostRuntime()
@@ -68,6 +86,10 @@ export const usePointer = ({
       return false
     }
 
+    if (!panEnabled && isViewportPanStart(event, editor)) {
+      return false
+    }
+
     const input = resolveCanvasPointerInput('down', container, event)
     if (host.insert.pointerDown(editor, input)) {
       consumeDomEvent(event)
@@ -109,7 +131,7 @@ export const usePointer = ({
     }
 
     return result.handled
-  }, [clearSession, containerRef, editor, host, refreshContainerRect])
+  }, [clearSession, containerRef, editor, host, panEnabled, refreshContainerRect])
 
   const onPointerMove = useCallback((event: PointerEvent) => {
     if (releaseSessionRef.current) {

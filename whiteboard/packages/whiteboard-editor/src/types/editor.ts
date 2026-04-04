@@ -20,6 +20,7 @@ import type {
 } from '@whiteboard/core/types'
 import type { MindmapLayoutConfig } from './mindmap'
 import type {
+  DrawPreferences,
   BrushStylePatch,
   DrawSlot
 } from './draw'
@@ -107,6 +108,7 @@ export type EditorInteractionState = Readonly<{
 
 export type EditorState = {
   tool: ReadStore<Tool>
+  draw: ReadStore<DrawPreferences>
   edit: ReadStore<EditTarget>
   selection: ReadStore<SelectionTarget>
   interaction: ReadStore<EditorInteractionState>
@@ -256,6 +258,7 @@ export type EditorCommands = Omit<EngineCommands, 'tool' | 'selection' | 'intera
     set: (tool: Tool) => void
   }
   draw: {
+    set: (preferences: DrawPreferences) => void
     slot: (slot: DrawSlot) => void
     patch: (patch: BrushStylePatch) => void
   }
@@ -276,7 +279,6 @@ export type EditorCommands = Omit<EngineCommands, 'tool' | 'selection' | 'intera
   node: EditorNodeCommands
   mindmap: EditorMindmapCommands
   clipboard: EditorClipboardCommands
-  insert: EditorInsertCommands
 }
 
 export type EditorDocumentNodeTextWrite = Pick<
@@ -312,18 +314,6 @@ export type EditorViewWrite = {
   }
   space: {
     set: (value: boolean) => void
-  }
-  inputPolicy: {
-    set: (policy: {
-      panEnabled: boolean
-      wheelEnabled: boolean
-      wheelSensitivity: number
-    }) => void
-    patch: (patch: Partial<{
-      panEnabled: boolean
-      wheelEnabled: boolean
-      wheelSensitivity: number
-    }>) => void
   }
   draw: EditorCommands['draw']
 }

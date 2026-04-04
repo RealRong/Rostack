@@ -11,13 +11,8 @@ import {
   startEraseState
 } from './erase'
 
-type DrawInteractionCtx = Pick<
-  InteractionContext,
-  'read' | 'write'
->
-
 export const createDrawInteraction = (
-  ctx: DrawInteractionCtx
+  ctx: InteractionContext
 ): InteractionBinding => ({
   key: 'draw',
   start: (input) => {

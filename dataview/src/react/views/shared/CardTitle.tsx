@@ -8,6 +8,7 @@ export interface CardTitleProps {
   text: string
   draft?: string
   placeholder: string
+  rootClassName?: string
   textClassName?: string
   inputClassName?: string
   onDraftChange?: (value: string) => void
@@ -23,19 +24,19 @@ export const CardTitle = (props: CardTitleProps) => {
       return
     }
 
-    focusInputWithoutScroll(inputRef.current, {
-      select: true
-    })
+    focusInputWithoutScroll(inputRef.current)
   }, [props.editing])
 
   if (props.editing) {
     return (
-      <Input
+      <input
         ref={inputRef}
         value={props.draft ?? ''}
         placeholder={props.placeholder}
         className={cn(
-          'h-auto rounded-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0',
+          'min-w-0',
+          props.rootClassName,
+          'h-auto rounded-none outline-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0',
           props.inputClassName
         )}
         onClick={event => {
@@ -62,15 +63,15 @@ export const CardTitle = (props: CardTitleProps) => {
     <div
       className={cn(
         'min-w-0',
+        'truncate',
+        props.rootClassName,
         props.text.trim()
           ? 'text-foreground'
           : 'text-muted-foreground',
         props.textClassName
       )}
     >
-      <div className="truncate">
-        {props.text.trim() || props.placeholder}
-      </div>
+      {props.text.trim() || props.placeholder}
     </div>
   )
 }

@@ -10,9 +10,11 @@ import type {
   SelectionTarget
 } from '@whiteboard/core/selection'
 import type { Edge } from '@whiteboard/core/types'
+import {
+  FINISH
+} from '../../runtime/interaction/result'
 import type {
-  InteractionSession,
-  InteractionSessionTransition
+  InteractionSession
 } from '../../runtime/interaction/types'
 import type { InteractionContext } from '../context'
 import { createSelectionGesture } from '../../runtime/interaction/gesture'
@@ -40,13 +42,8 @@ const toMoveEdgePatches = (
   }
 }))
 
-type SelectionInteractionCtx = Pick<
-  InteractionContext,
-  'read' | 'write' | 'config' | 'snap'
->
-
 const findParentFrameId = (
-  ctx: SelectionInteractionCtx,
+  ctx: InteractionContext,
   nodeId: string
 ) => {
   let currentOwnerId = ctx.read.node.owner(nodeId)
@@ -67,7 +64,7 @@ const findParentFrameId = (
 }
 
 const resolveFrameHoverId = (
-  ctx: SelectionInteractionCtx,
+  ctx: InteractionContext,
   state: Parameters<typeof finishMoveState>[0],
   pointerWorld: {
     x: number
@@ -91,13 +88,9 @@ type MoveInteractionInput = {
 }
 
 export const createMoveInteraction = (
-  ctx: SelectionInteractionCtx,
+  ctx: InteractionContext,
   input: MoveInteractionInput
 ): InteractionSession | null => {
-  const FINISH = {
-    kind: 'finish'
-  } satisfies InteractionSessionTransition
-
   const initialState = startMoveState({
     nodes: ctx.read.index.node.all().map((entry) => entry.node),
     edges: ctx.read.edge.list.get()

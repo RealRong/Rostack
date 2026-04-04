@@ -1,32 +1,18 @@
 import type { EngineInstance } from '@whiteboard/engine'
 import type { Editor, EditorRead, EditorWriteApi } from '../../types/editor'
-import type { RuntimeStateController } from '../state'
-import type { EditorHost } from '../../host/types'
+import type { EditorViewportRuntime } from './types'
 import { createClipboard } from '../commands/clipboard'
-
-const createInsertCommandDelegate = (
-  host: Pick<EditorHost, 'insert'>
-): Editor['commands']['insert'] => ({
-  preset: (preset, options) => host.insert.get()?.preset(preset, options),
-  text: (options) => host.insert.get()?.text(options),
-  frame: (options) => host.insert.get()?.frame(options),
-  sticky: (options) => host.insert.get()?.sticky(options),
-  shape: (options) => host.insert.get()?.shape(options),
-  mindmap: (options) => host.insert.get()?.mindmap(options)
-})
 
 export const createEditorCommands = ({
   engine,
   read,
   write,
-  runtime,
-  host
+  viewport
 }: {
   engine: EngineInstance
   read: EditorRead
   write: EditorWriteApi
-  runtime: Pick<RuntimeStateController, 'public'>
-  host: Pick<EditorHost, 'viewport' | 'insert'>
+  viewport: EditorViewportRuntime['read']
 }): Editor['commands'] => {
   const nodeTextCommands = {
     preview: ({ nodeId, size }) => {
@@ -65,8 +51,7 @@ export const createEditorCommands = ({
       ...write.document.node,
       text: nodeTextCommands
     },
-    mindmap: write.document.mindmap,
-    insert: createInsertCommandDelegate(host)
+    mindmap: write.document.mindmap
   } satisfies Omit<Editor['commands'], 'clipboard'>
 
   return {
@@ -76,7 +61,7 @@ export const createEditorCommands = ({
         commands: baseCommands,
         read,
         state: {
-          viewport: host.viewport.read
+          viewport
         }
       }
     })

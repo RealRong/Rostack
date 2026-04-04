@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+const alphaColor = variable => `rgb(from var(${variable}) r g b / <alpha-value>)`
+
 module.exports = {
   darkMode: ['class'],
   theme: {
@@ -16,38 +18,38 @@ module.exports = {
         sm: 'calc(var(--control-radius) - 4px)'
       },
       colors: {
-        border: 'hsl(var(--ui-border-subtle))',
-        input: 'hsl(var(--ui-border-subtle))',
-        ring: 'hsl(var(--ui-focus-ring))',
-        background: 'hsl(var(--ui-canvas))',
-        foreground: 'hsl(var(--ui-text-primary))',
+        border: alphaColor('--border'),
+        input: alphaColor('--input'),
+        ring: alphaColor('--ring'),
+        background: alphaColor('--background'),
+        foreground: alphaColor('--foreground'),
         primary: {
-          DEFAULT: 'hsl(var(--ui-accent))',
-          foreground: 'hsl(var(--ui-accent-foreground))'
+          DEFAULT: alphaColor('--primary'),
+          foreground: alphaColor('--primary-foreground')
         },
         secondary: {
-          DEFAULT: 'hsl(var(--ui-surface-muted))',
-          foreground: 'hsl(var(--ui-text-primary))'
+          DEFAULT: alphaColor('--secondary'),
+          foreground: alphaColor('--secondary-foreground')
         },
         destructive: {
-          DEFAULT: 'hsl(var(--ui-danger))',
-          foreground: 'hsl(var(--ui-danger-foreground))'
+          DEFAULT: alphaColor('--destructive'),
+          foreground: alphaColor('--destructive-foreground')
         },
         muted: {
-          DEFAULT: 'hsl(var(--ui-surface-muted))',
-          foreground: 'hsl(var(--ui-text-secondary))'
+          DEFAULT: alphaColor('--muted'),
+          foreground: alphaColor('--muted-foreground')
         },
         accent: {
-          DEFAULT: 'hsl(var(--ui-surface-hover))',
-          foreground: 'hsl(var(--ui-text-primary))'
+          DEFAULT: alphaColor('--accent'),
+          foreground: alphaColor('--accent-foreground')
         },
         card: {
-          DEFAULT: 'hsl(var(--ui-surface))',
-          foreground: 'hsl(var(--ui-text-primary))'
+          DEFAULT: alphaColor('--card'),
+          foreground: alphaColor('--card-foreground')
         },
         popover: {
-          DEFAULT: 'hsl(var(--ui-surface))',
-          foreground: 'hsl(var(--ui-text-primary))'
+          DEFAULT: alphaColor('--popover'),
+          foreground: alphaColor('--popover-foreground')
         }
       }
     }

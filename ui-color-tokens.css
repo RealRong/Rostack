@@ -1,0 +1,397 @@
+/*
+ * UI color token proposal
+ *
+ * Naming rules:
+ * - Neutral tokens use: --ui-text-*, --ui-icon-*, --ui-border-*, --ui-bg-*
+ * - Color families use: --ui-<color>-text, --ui-<color>-border, --ui-<color>-bg-*
+ * - Use --ui-<color>-bg-soft for large grouped areas
+ * - Use --ui-<color>-bg-strong for badges / pills
+ * - Use --ui-<color>-card-bg for cards rendered inside tinted areas
+ */
+
+:root,
+.ui-light-theme {
+  color-scheme: light;
+
+  /* Neutral */
+  --ui-text-primary: #2c2c2b;
+  --ui-text-secondary: #7d7a75;
+  --ui-text-tertiary: #a19e99;
+  --ui-text-disabled: #d4d3cf;
+
+  --ui-icon-primary: #383836;
+  --ui-icon-secondary: #8e8b86;
+  --ui-icon-tertiary: #ada9a3;
+  --ui-icon-disabled: #d4d3cf;
+
+  --ui-border-default: #e6e5e3;
+  --ui-border-muted: #f0efed;
+  --ui-border-strong: #d4d3cf;
+
+  --ui-bg-page: #fff;
+  --ui-bg-panel: #f9f8f7;
+  --ui-bg-subtle: #f0efed;
+  --ui-bg-card: #fff;
+  --ui-bg-hover: #37352f0f;
+  --ui-bg-pressed: #37352f29;
+  --ui-overlay-bg: #0f0f0f99;
+
+  /* Default */
+  --ui-default-text: #2c2c2b;
+  --ui-default-text-muted: #7d7a75;
+  --ui-default-icon: #383836;
+  --ui-default-icon-muted: #8e8b86;
+  --ui-default-border: #e6e5e3;
+  --ui-default-border-muted: #f0efed;
+  --ui-default-border-strong: #d4d3cf;
+  --ui-default-bg-soft: #fff0;
+  --ui-default-bg-muted: #42230308;
+  --ui-default-bg-strong: #2a1c0012;
+  --ui-default-card-bg: #fff;
+  --ui-default-card-bg-hover: #f9f8f7;
+  --ui-default-card-bg-pressed: #f0efed;
+
+  /* Blue */
+  --ui-blue-text: #264a72;
+  --ui-blue-text-muted: #83abe1;
+  --ui-blue-icon: #264a72;
+  --ui-blue-icon-muted: #83abe1;
+  --ui-blue-border: #cee3f7;
+  --ui-blue-border-muted: #e5f2fc;
+  --ui-blue-border-strong: #b6d4f3;
+  --ui-blue-bg-soft: #0080d50c;
+  --ui-blue-bg-muted: #007cd718;
+  --ui-blue-bg-strong: #0076d934;
+  --ui-blue-card-bg: #fff;
+  --ui-blue-card-bg-hover: #e5f2fc;
+  --ui-blue-card-bg-pressed: #cee3f7;
+
+  /* Brown */
+  --ui-brown-text: #584437;
+  --ui-brown-text-muted: #bca290;
+  --ui-brown-icon: #584437;
+  --ui-brown-icon-muted: #bca290;
+  --ui-brown-border: #ebdfd7;
+  --ui-brown-border-muted: #f5ede9;
+  --ui-brown-border-strong: #e0cdc0;
+  --ui-brown-bg-soft: #733b0309;
+  --ui-brown-bg-muted: #8b2e0016;
+  --ui-brown-bg-strong: #7f330028;
+  --ui-brown-card-bg: #fff;
+  --ui-brown-card-bg-hover: #f5ede9;
+  --ui-brown-card-bg-pressed: #ebdfd7;
+
+  /* Gray */
+  --ui-gray-text: #494846;
+  --ui-gray-text-muted: #ada9a3;
+  --ui-gray-icon: #494846;
+  --ui-gray-icon-muted: #ada9a3;
+  --ui-gray-border: #e6e5e3;
+  --ui-gray-border-muted: #f0efed;
+  --ui-gray-border-strong: #d4d3cf;
+  --ui-gray-bg-soft: #42230308;
+  --ui-gray-bg-muted: #2a1c0012;
+  --ui-gray-bg-strong: #1c13011c;
+  --ui-gray-card-bg: #fff;
+  --ui-gray-card-bg-hover: #f0efed;
+  --ui-gray-card-bg-pressed: #e6e5e3;
+
+  /* Green */
+  --ui-green-text: #2a533c;
+  --ui-green-text-muted: #8bb79d;
+  --ui-green-icon: #2a533c;
+  --ui-green-icon-muted: #8bb79d;
+  --ui-green-border: #d7e6dd;
+  --ui-green-border-muted: #e8f1ec;
+  --ui-green-border-strong: #bed9c9;
+  --ui-green-bg-soft: #03571f09;
+  --ui-green-bg-muted: #00642d17;
+  --ui-green-bg-strong: #00602628;
+  --ui-green-card-bg: #fff;
+  --ui-green-card-bg-hover: #e8f1ec;
+  --ui-green-card-bg-pressed: #d7e6dd;
+
+  /* Orange */
+  --ui-orange-text: #6a4222;
+  --ui-orange-text-muted: #cba27d;
+  --ui-orange-icon: #6a4222;
+  --ui-orange-icon-muted: #cba27d;
+  --ui-orange-border: #f3ddcb;
+  --ui-orange-border-muted: #fbebde;
+  --ui-orange-border-strong: #eaccb2;
+  --ui-orange-bg-soft: #ba48030b;
+  --ui-orange-bg-muted: #e0650121;
+  --ui-orange-bg-strong: #c4580034;
+  --ui-orange-card-bg: #fff;
+  --ui-orange-card-bg-hover: #fbebde;
+  --ui-orange-card-bg-pressed: #f3ddcb;
+
+  /* Pink */
+  --ui-pink-text: #68354e;
+  --ui-pink-text-muted: #c897ad;
+  --ui-pink-icon: #68354e;
+  --ui-pink-icon-muted: #c897ad;
+  --ui-pink-border: #f4d8e4;
+  --ui-pink-border-muted: #fae9f1;
+  --ui-pink-border-strong: #eac4d5;
+  --ui-pink-bg-soft: #a1034208;
+  --ui-pink-bg-muted: #c5005d16;
+  --ui-pink-bg-strong: #b7004e27;
+  --ui-pink-card-bg: #fff;
+  --ui-pink-card-bg-hover: #fae9f1;
+  --ui-pink-card-bg-pressed: #f4d8e4;
+
+  /* Purple */
+  --ui-purple-text: #553b69;
+  --ui-purple-text-muted: #b49cc6;
+  --ui-purple-icon: #553b69;
+  --ui-purple-icon-muted: #b49cc6;
+  --ui-purple-border: #e8dbf2;
+  --ui-purple-border-muted: #f3ebf9;
+  --ui-purple-border-strong: #dbc8e8;
+  --ui-purple-bg-soft: #6203a108;
+  --ui-purple-bg-muted: #6600b214;
+  --ui-purple-bg-strong: #5c00a324;
+  --ui-purple-card-bg: #fff;
+  --ui-purple-card-bg-hover: #f3ebf9;
+  --ui-purple-card-bg-pressed: #e8dbf2;
+
+  /* Red */
+  --ui-red-text: #6d3531;
+  --ui-red-text-muted: #d0988d;
+  --ui-red-icon: #6d3531;
+  --ui-red-icon-muted: #d0988d;
+  --ui-red-border: #f7d9d5;
+  --ui-red-border-muted: #fce9e7;
+  --ui-red-border-strong: #f0c5be;
+  --ui-red-bg-soft: #c7030309;
+  --ui-red-bg-muted: #df160018;
+  --ui-red-bg-strong: #ce18002a;
+  --ui-red-card-bg: #fff;
+  --ui-red-card-bg-hover: #fce9e7;
+  --ui-red-card-bg-pressed: #f7d9d5;
+
+  /* Teal */
+  --ui-teal-text: #18505b;
+  --ui-teal-text-muted: #7eb6c2;
+  --ui-teal-icon: #18505b;
+  --ui-teal-icon-muted: #7eb6c2;
+  --ui-teal-border: #cae9f0;
+  --ui-teal-border-muted: #e0f3f7;
+  --ui-teal-border-strong: #b0dbe4;
+  --ui-teal-bg-soft: #0396ab0c;
+  --ui-teal-bg-muted: #019dbd1f;
+  --ui-teal-bg-strong: #0095b735;
+  --ui-teal-card-bg: #fff;
+  --ui-teal-card-bg-hover: #e0f3f7;
+  --ui-teal-card-bg-pressed: #cae9f0;
+
+  /* Yellow */
+  --ui-yellow-text: #655121;
+  --ui-yellow-text-muted: #d8c283;
+  --ui-yellow-icon: #655121;
+  --ui-yellow-icon-muted: #d8c283;
+  --ui-yellow-border: #f2e3b7;
+  --ui-yellow-border-muted: #f9f3dc;
+  --ui-yellow-border-strong: #e8d497;
+  --ui-yellow-bg-soft: #cfaf0010;
+  --ui-yellow-bg-muted: #d3a80023;
+  --ui-yellow-bg-strong: #d19c0048;
+  --ui-yellow-card-bg: #fff;
+  --ui-yellow-card-bg-hover: #f9f3dc;
+  --ui-yellow-card-bg-pressed: #f2e3b7;
+}
+
+@media screen {
+  .ui-dark-theme {
+    color-scheme: dark;
+
+    /* Neutral */
+    --ui-text-primary: #f0efed;
+    --ui-text-secondary: #ada9a3;
+    --ui-text-tertiary: #7d7a75;
+    --ui-text-disabled: #383836;
+
+    --ui-icon-primary: #e6e5e3;
+    --ui-icon-secondary: #ada9a3;
+    --ui-icon-tertiary: #7d7a75;
+    --ui-icon-disabled: #494846;
+
+    --ui-border-default: #383836;
+    --ui-border-muted: #2c2c2b;
+    --ui-border-strong: #5f5e59;
+
+    --ui-bg-page: #191919;
+    --ui-bg-panel: #202020;
+    --ui-bg-subtle: #383836;
+    --ui-bg-card: #202020;
+    --ui-bg-hover: #ffffff0e;
+    --ui-bg-pressed: #ffffff08;
+    --ui-overlay-bg: #0f0f0fcc;
+
+    /* Default */
+    --ui-default-text: #f0efed;
+    --ui-default-text-muted: #ada9a3;
+    --ui-default-icon: #e6e5e3;
+    --ui-default-icon-muted: #ada9a3;
+    --ui-default-border: #383836;
+    --ui-default-border-muted: #2c2c2b;
+    --ui-default-border-strong: #5f5e59;
+    --ui-default-bg-soft: #19191900;
+    --ui-default-bg-muted: #fcfcfc08;
+    --ui-default-bg-strong: #fffff315;
+    --ui-default-card-bg: #202020;
+    --ui-default-card-bg-hover: #2c2c2b;
+    --ui-default-card-bg-pressed: #383836;
+
+    /* Blue */
+    --ui-blue-text: #e5f2fc;
+    --ui-blue-text-muted: #355f8b;
+    --ui-blue-icon: #e5f2fc;
+    --ui-blue-icon-muted: #387dc9;
+    --ui-blue-border: #233850;
+    --ui-blue-border-muted: #213041;
+    --ui-blue-border-strong: #355f8b;
+    --ui-blue-bg-soft: #298bfd10;
+    --ui-blue-bg-muted: #439bff3d;
+    --ui-blue-bg-strong: #51a6ff7e;
+    --ui-blue-card-bg: #213041;
+    --ui-blue-card-bg-hover: #233850;
+    --ui-blue-card-bg-pressed: #355f8b;
+
+    /* Brown */
+    --ui-brown-text: #f5ede9;
+    --ui-brown-text-muted: #6d5340;
+    --ui-brown-icon: #f5ede9;
+    --ui-brown-icon-muted: #9f765a;
+    --ui-brown-border: #45362d;
+    --ui-brown-border-muted: #382d26;
+    --ui-brown-border-strong: #6d5340;
+    --ui-brown-bg-soft: #fd9e650d;
+    --ui-brown-bg-muted: #ffb18131;
+    --ui-brown-bg-strong: #ffb8845d;
+    --ui-brown-card-bg: #382d26;
+    --ui-brown-card-bg-hover: #45362d;
+    --ui-brown-card-bg-pressed: #6d5340;
+
+    /* Gray */
+    --ui-gray-text: #f0efed;
+    --ui-gray-text-muted: #5f5e59;
+    --ui-gray-icon: #f0efed;
+    --ui-gray-icon-muted: #5f5e59;
+    --ui-gray-border: #383836;
+    --ui-gray-border-muted: #2c2c2b;
+    --ui-gray-border-strong: #5f5e59;
+    --ui-gray-bg-soft: #fcfcfc08;
+    --ui-gray-bg-muted: #ffffeb1a;
+    --ui-gray-bg-strong: #fffceb4e;
+    --ui-gray-card-bg: #2c2c2b;
+    --ui-gray-card-bg-hover: #383836;
+    --ui-gray-card-bg-pressed: #5f5e59;
+
+    /* Green */
+    --ui-green-text: #e8f1ec;
+    --ui-green-text-muted: #37674c;
+    --ui-green-icon: #e8f1ec;
+    --ui-green-icon-muted: #50946e;
+    --ui-green-border: #263d30;
+    --ui-green-border-muted: #24342b;
+    --ui-green-border-strong: #37674c;
+    --ui-green-bg-soft: #53ff8c09;
+    --ui-green-bg-muted: #6cffac28;
+    --ui-green-bg-strong: #71ffaf56;
+    --ui-green-card-bg: #24342b;
+    --ui-green-card-bg-hover: #263d30;
+    --ui-green-card-bg-pressed: #37674c;
+
+    /* Orange */
+    --ui-orange-text: #fbebde;
+    --ui-orange-text-muted: #88522f;
+    --ui-orange-icon: #fbebde;
+    --ui-orange-icon-muted: #d27b2d;
+    --ui-orange-border: #53361f;
+    --ui-orange-border-muted: #3d2a1d;
+    --ui-orange-border-strong: #88522f;
+    --ui-orange-bg-soft: #fe8b470b;
+    --ui-orange-bg-muted: #ff934b47;
+    --ui-orange-bg-strong: #ff8f477b;
+    --ui-orange-card-bg: #3d2a1d;
+    --ui-orange-card-bg-hover: #53361f;
+    --ui-orange-card-bg-pressed: #88522f;
+
+    /* Pink */
+    --ui-pink-text: #fae9f1;
+    --ui-pink-text-muted: #7b4760;
+    --ui-pink-icon: #fae9f1;
+    --ui-pink-icon-muted: #c14c8a;
+    --ui-pink-border: #4e2b3c;
+    --ui-pink-border-muted: #3f2631;
+    --ui-pink-border-strong: #7b4760;
+    --ui-pink-bg-soft: #ff4e950e;
+    --ui-pink-bg-muted: #ff67b13b;
+    --ui-pink-bg-strong: #ff85c06d;
+    --ui-pink-card-bg: #3f2631;
+    --ui-pink-card-bg-hover: #4e2b3c;
+    --ui-pink-card-bg-pressed: #7b4760;
+
+    /* Purple */
+    --ui-purple-text: #f3ebf9;
+    --ui-purple-text-muted: #674d7b;
+    --ui-purple-icon: #f3ebf9;
+    --ui-purple-icon-muted: #9a6bb4;
+    --ui-purple-border: #3c2d47;
+    --ui-purple-border-muted: #36293f;
+    --ui-purple-border-strong: #674d7b;
+    --ui-purple-bg-soft: #c465fd0d;
+    --ui-purple-bg-muted: #c87dff33;
+    --ui-purple-bg-strong: #d093ff6d;
+    --ui-purple-card-bg: #36293f;
+    --ui-purple-card-bg-hover: #3c2d47;
+    --ui-purple-card-bg-pressed: #674d7b;
+
+    /* Red */
+    --ui-red-text: #fce9e7;
+    --ui-red-text-muted: #924943;
+    --ui-red-icon: #fce9e7;
+    --ui-red-icon-muted: #cf5148;
+    --ui-red-border: #502c29;
+    --ui-red-border-muted: #412725;
+    --ui-red-border-strong: #924943;
+    --ui-red-bg-soft: #fb6b6b0c;
+    --ui-red-bg-muted: #ff685c3d;
+    --ui-red-bg-strong: #ff746986;
+    --ui-red-card-bg: #412725;
+    --ui-red-card-bg-hover: #502c29;
+    --ui-red-card-bg-pressed: #924943;
+
+    /* Teal */
+    --ui-teal-text: #e0f3f7;
+    --ui-teal-text-muted: #226471;
+    --ui-teal-icon: #e0f3f7;
+    --ui-teal-icon-muted: #2c8b9e;
+    --ui-teal-border: #143d45;
+    --ui-teal-border-muted: #193439;
+    --ui-teal-border-strong: #226471;
+    --ui-teal-bg-soft: #007ea414;
+    --ui-teal-bg-muted: #00cdf533;
+    --ui-teal-bg-strong: #31ddff61;
+    --ui-teal-card-bg: #193439;
+    --ui-teal-card-bg-hover: #143d45;
+    --ui-teal-card-bg-pressed: #226471;
+
+    /* Yellow */
+    --ui-yellow-text: #f9f3dc;
+    --ui-yellow-text-muted: #836426;
+    --ui-yellow-icon: #f9f3dc;
+    --ui-yellow-icon-muted: #cb9434;
+    --ui-yellow-border: #504425;
+    --ui-yellow-border-muted: #373325;
+    --ui-yellow-border-strong: #836426;
+    --ui-yellow-bg-soft: #ffe8300b;
+    --ui-yellow-bg-muted: #ffcd4b3d;
+    --ui-yellow-bg-strong: #ffbc3575;
+    --ui-yellow-card-bg: #373325;
+    --ui-yellow-card-bg-hover: #504425;
+    --ui-yellow-card-bg-pressed: #836426;
+  }
+}

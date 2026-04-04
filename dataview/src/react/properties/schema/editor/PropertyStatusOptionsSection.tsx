@@ -19,7 +19,10 @@ import { meta, renderMessage } from '@dataview/meta'
 import { Button } from '@ui/button'
 import { Input } from '@ui/input'
 import { Popover } from '@ui/popover'
-import { uiTone } from '@ui/tone'
+import {
+  resolveOptionColorToken,
+  resolveOptionDotStyle
+} from '@ui/color'
 import {
   VerticalReorderList,
   type VerticalReorderItemState
@@ -149,10 +152,11 @@ const StatusOptionEditorPopover = (props: {
                   layout="row"
                   leading={(
                     <span
-                      className={cn(
-                        'inline-flex h-3 w-3 shrink-0 rounded-full border border-border/60',
-                        uiTone.tag(color.tone)
-                      )}
+                      className="inline-flex h-3 w-3 shrink-0 rounded-full border"
+                      style={{
+                        ...resolveOptionDotStyle(color.id),
+                        borderColor: resolveOptionColorToken(color.id, 'badge-border')
+                      }}
                     />
                   )}
                   trailing={active

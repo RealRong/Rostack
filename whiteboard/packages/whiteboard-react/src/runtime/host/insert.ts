@@ -9,12 +9,28 @@ import {
   type NodeInsertPreset,
   type PointerDownInput
 } from '@whiteboard/editor'
-import {
-  createEditorInsertCommandRegistry,
-  type EditorInsertCommandRegistry
-} from '@whiteboard/editor/host'
 import type { NodeId, Point, SpatialNodeInput } from '@whiteboard/core/types'
 import type { WhiteboardRuntime } from '../../types/runtime'
+
+type InsertCommandRegistry = {
+  get: () => EditorInsertCommands | null
+  set: (commands: EditorInsertCommands) => void
+  clear: () => void
+}
+
+const createInsertCommandRegistry = (): InsertCommandRegistry => {
+  let current: EditorInsertCommands | null = null
+
+  return {
+    get: () => current,
+    set: (commands) => {
+      current = commands
+    },
+    clear: () => {
+      current = null
+    }
+  }
+}
 
 const placeNodeInput = ({
   world,
@@ -228,7 +244,7 @@ const createInsertPresetCommands = ({
 }
 
 export type HostInsertRuntime = {
-  get: EditorInsertCommandRegistry['get']
+  get: InsertCommandRegistry['get']
   bind: (editor: WhiteboardRuntime) => void
   clear: () => void
   pointerDown: (
@@ -242,7 +258,7 @@ export const createHostInsertRuntime = ({
 }: {
   catalog: InsertPresetCatalog
 }): HostInsertRuntime => {
-  const registry = createEditorInsertCommandRegistry()
+  const registry = createInsertCommandRegistry()
 
   return {
     get: registry.get,

@@ -10,55 +10,57 @@
   --wb-z-selection: 8;
   --wb-z-toolbar: 9;
   --wb-z-context-menu: 10;
-  --wb-ui-canvas: var(--ui-canvas, 30 14.3% 97.3%);
-  --wb-ui-surface: var(--ui-surface, 0 0% 100%);
-  --wb-ui-surface-muted: var(--ui-surface-muted, 40 9.1% 93.5%);
-  --wb-ui-surface-subtle: var(--ui-surface-subtle, 60 6.7% 94.1%);
-  --wb-ui-surface-strong: var(--ui-surface-strong, 40 5.7% 89.6%);
-  --wb-ui-surface-hover: var(--ui-surface-hover, 40 9.1% 93.5%);
-  --wb-ui-text-primary: var(--ui-text-primary, 40 2.1% 28%);
-  --wb-ui-text-secondary: var(--ui-text-secondary, 37.5 3.3% 47.5%);
-  --wb-ui-text-tertiary: var(--ui-text-tertiary, 36 5.7% 65.9%);
-  --wb-ui-border-subtle: var(--ui-border-subtle, 40 5.7% 89.6%);
-  --wb-ui-border-strong: var(--ui-border-strong, 40 9.1% 93.5%);
-  --wb-ui-accent: var(--ui-accent, 209.8 76.7% 51.2%);
-  --wb-ui-accent-surface: var(--ui-accent-surface, 206.1 79.3% 94.3%);
-  --wb-ui-danger: var(--ui-danger, 4 58.4% 54.7%);
-  --wb-tag-yellow-background: var(--tag-yellow-background, 47.6 70.7% 92%);
-  --wb-surface: hsl(var(--wb-ui-surface));
-  --wb-surface-elevated: hsl(var(--wb-ui-surface) / 0.96);
-  --wb-surface-overlay: hsl(var(--wb-ui-surface) / 0.98);
-  --wb-surface-muted: hsl(var(--wb-ui-surface-muted));
-  --wb-surface-subtle: hsl(var(--wb-ui-surface-subtle));
-  --wb-surface-strong: hsl(var(--wb-ui-surface-strong));
-  --wb-surface-hover: hsl(var(--wb-ui-surface-hover));
-  --wb-text-primary: hsl(var(--wb-ui-text-primary));
-  --wb-text-secondary: hsl(var(--wb-ui-text-secondary));
-  --wb-text-tertiary: hsl(var(--wb-ui-text-tertiary));
-  --wb-border-subtle: hsl(var(--wb-ui-border-subtle));
-  --wb-border-strong: hsl(var(--wb-ui-border-strong));
-  --wb-accent: hsl(var(--wb-ui-accent));
-  --wb-accent-surface: hsl(var(--wb-ui-accent-surface));
-  --wb-accent-outline-soft: hsl(var(--wb-ui-accent) / 0.28);
-  --wb-accent-border: hsl(var(--wb-ui-accent) / 0.45);
-  --wb-selection-border: hsl(var(--wb-ui-accent) / 0.9);
-  --wb-selection-fill: hsl(var(--wb-ui-accent) / 0.12);
-  --wb-danger: hsl(var(--wb-ui-danger));
+  --wb-ui-canvas: var(--ui-canvas, #fff);
+  --wb-ui-surface: var(--ui-surface, #fff);
+  --wb-ui-surface-muted: var(--ui-surface-muted, #f9f8f7);
+  --wb-ui-surface-subtle: var(--ui-surface-subtle, #f0efed);
+  --wb-ui-surface-strong: var(--ui-surface-strong, #e6e5e3);
+  --wb-ui-surface-hover: var(--ui-surface-hover, #37352f0f);
+  --wb-ui-text-primary: var(--ui-text-primary, #2c2c2b);
+  --wb-ui-text-secondary: var(--ui-text-secondary, #7d7a75);
+  --wb-ui-text-tertiary: var(--ui-text-tertiary, #a19e99);
+  --wb-ui-border-subtle: var(--ui-border-subtle, #e6e5e3);
+  --wb-ui-border-strong: var(--ui-border-strong, #d4d3cf);
+  --wb-ui-accent: var(--ui-accent, #2383e2);
+  --wb-ui-accent-surface: var(--ui-accent-surface, #e5f2fc);
+  --wb-ui-danger: var(--ui-danger, #d44c47);
+  --wb-option-fill-yellow: var(--ui-yellow-bg-strong, #d19c0048);
+  --wb-option-fill-blue: var(--ui-blue-bg-strong, #0076d934);
+  --wb-option-fill-red: var(--ui-red-bg-strong, #ce18002a);
+  --wb-surface: var(--wb-ui-surface);
+  --wb-surface-elevated: rgb(from var(--wb-ui-surface) r g b / 0.96);
+  --wb-surface-overlay: rgb(from var(--wb-ui-surface) r g b / 0.98);
+  --wb-surface-muted: var(--wb-ui-surface-muted);
+  --wb-surface-subtle: var(--wb-ui-surface-subtle);
+  --wb-surface-strong: var(--wb-ui-surface-strong);
+  --wb-surface-hover: var(--wb-ui-surface-hover);
+  --wb-text-primary: var(--wb-ui-text-primary);
+  --wb-text-secondary: var(--wb-ui-text-secondary);
+  --wb-text-tertiary: var(--wb-ui-text-tertiary);
+  --wb-border-subtle: var(--wb-ui-border-subtle);
+  --wb-border-strong: var(--wb-ui-border-strong);
+  --wb-accent: var(--wb-ui-accent);
+  --wb-accent-surface: var(--wb-ui-accent-surface);
+  --wb-accent-outline-soft: rgb(from var(--wb-ui-accent) r g b / 0.28);
+  --wb-accent-border: rgb(from var(--wb-ui-accent) r g b / 0.45);
+  --wb-selection-border: rgb(from var(--wb-ui-accent) r g b / 0.9);
+  --wb-selection-fill: rgb(from var(--wb-ui-accent) r g b / 0.12);
+  --wb-danger: var(--wb-ui-danger);
   --wb-shadow-popover: var(--ui-popover-shadow, 0 12px 32px rgba(15, 15, 15, 0.12), 0 0 0 1px rgba(15, 15, 15, 0.04));
-  --wb-shadow-ink: 0 2px 6px hsl(var(--wb-ui-text-primary) / 0.16);
-  --wb-shadow-accent-sm: 0 2px 6px hsl(var(--wb-ui-accent) / 0.25);
-  --wb-shadow-accent-md: 0 4px 12px hsl(var(--wb-ui-accent) / 0.16);
-  --wb-shadow-accent-lg: 0 4px 10px hsl(var(--wb-ui-accent) / 0.35);
-  --wb-canvas-background-default: linear-gradient(180deg, hsl(var(--wb-ui-canvas)) 0%, hsl(var(--wb-ui-surface)) 68%);
-  --wb-canvas-pattern-color: hsl(var(--wb-ui-text-primary) / 0.08);
-  --wb-preview-line: hsl(var(--wb-ui-text-primary) / 0.7);
-  --wb-mindmap-surface: hsl(var(--wb-tag-yellow-background));
+  --wb-shadow-ink: 0 2px 6px rgb(from var(--wb-ui-text-primary) r g b / 0.16);
+  --wb-shadow-accent-sm: 0 2px 6px rgb(from var(--wb-ui-accent) r g b / 0.25);
+  --wb-shadow-accent-md: 0 4px 12px rgb(from var(--wb-ui-accent) r g b / 0.16);
+  --wb-shadow-accent-lg: 0 4px 10px rgb(from var(--wb-ui-accent) r g b / 0.35);
+  --wb-canvas-background-default: linear-gradient(180deg, var(--wb-ui-canvas) 0%, var(--wb-ui-surface) 68%);
+  --wb-canvas-pattern-color: rgb(from var(--wb-ui-text-primary) r g b / 0.08);
+  --wb-preview-line: rgb(from var(--wb-ui-text-primary) r g b / 0.7);
+  --wb-mindmap-surface: var(--wb-option-fill-yellow);
   --wb-mindmap-border: var(--wb-text-primary);
   --wb-mindmap-line: var(--wb-text-primary);
   --wb-mindmap-text: var(--wb-text-primary);
   --wb-button-hover: var(--wb-surface-hover);
   --wb-button-active-text: var(--wb-text-primary);
-  --wb-panel-shadow: 0 8px 18px hsl(var(--wb-ui-text-primary) / 0.08), 0 0 0 1px hsl(var(--wb-ui-border-subtle) / 0.35);
+  --wb-panel-shadow: 0 8px 18px rgb(from var(--wb-ui-text-primary) r g b / 0.08), 0 0 0 1px rgb(from var(--wb-ui-border-subtle) r g b / 0.35);
   position: relative;
   width: 100%;
   height: 100%;
@@ -227,7 +229,7 @@
   left: 0;
   top: 0;
   border-radius: 12px;
-  box-shadow: inset 0 0 0 2px var(--wb-selection-border), 0 0 0 9999px hsl(var(--wb-ui-accent) / 0.03);
+  box-shadow: inset 0 0 0 2px var(--wb-selection-border), 0 0 0 9999px rgb(from var(--wb-ui-accent) r g b / 0.03);
   pointer-events: none;
   z-index: 0;
 }
@@ -285,7 +287,7 @@
   padding: 6px;
   border-radius: 12px;
   background: var(--wb-surface-elevated);
-  border: 1px solid hsl(var(--wb-ui-border-subtle) / 0.4);
+  border: 1px solid rgb(from var(--wb-ui-border-subtle) r g b / 0.4);
   box-shadow: var(--wb-panel-shadow);
   pointer-events: auto;
 }
@@ -299,7 +301,7 @@
 .wb-canvas-dock-divider {
   width: 1px;
   align-self: stretch;
-  background: hsl(var(--wb-ui-border-subtle) / 0.4);
+  background: rgb(from var(--wb-ui-border-subtle) r g b / 0.4);
 }
 
 .wb-canvas-dock-button,
@@ -355,7 +357,7 @@
   padding: 6px;
   border-radius: 12px;
   background: var(--wb-surface-elevated);
-  border: 1px solid hsl(var(--wb-ui-border-subtle) / 0.4);
+  border: 1px solid rgb(from var(--wb-ui-border-subtle) r g b / 0.4);
   box-shadow: var(--wb-panel-shadow);
   pointer-events: auto;
 }
@@ -385,7 +387,7 @@
 }
 
 .wb-left-toolbar-button[data-active='true'] {
-  background: hsl(var(--wb-ui-surface-hover) / 0.82);
+  background: rgb(from var(--wb-ui-surface-hover) r g b / 0.82);
   color: var(--wb-text-primary);
 }
 
@@ -401,7 +403,7 @@
   bottom: 7px;
   height: 4px;
   border-radius: 999px;
-  background: hsl(var(--wb-ui-surface-strong) / 0.9);
+  background: rgb(from var(--wb-ui-surface-strong) r g b / 0.9);
   opacity: 0.9;
 }
 
@@ -427,7 +429,7 @@
   width: 100%;
   height: 1px;
   margin: 2px 0;
-  background: hsl(var(--wb-ui-border-subtle) / 0.4);
+  background: rgb(from var(--wb-ui-border-subtle) r g b / 0.4);
 }
 
 .wb-left-toolbar-menu {
@@ -438,7 +440,7 @@
   padding: 8px;
   border-radius: 10px;
   background: var(--wb-surface-overlay);
-  border: 1px solid hsl(var(--wb-ui-border-subtle) / 0.45);
+  border: 1px solid rgb(from var(--wb-ui-border-subtle) r g b / 0.45);
   box-shadow: var(--wb-panel-shadow);
   pointer-events: auto;
   overflow: auto;
@@ -466,7 +468,7 @@
 .wb-left-toolbar-draw-panel {
   border-radius: 14px;
   background: var(--wb-surface-overlay);
-  border: 1px solid hsl(var(--wb-ui-border-subtle) / 0.45);
+  border: 1px solid rgb(from var(--wb-ui-border-subtle) r g b / 0.45);
   box-shadow: var(--wb-panel-shadow);
 }
 
@@ -492,7 +494,7 @@
   width: 100%;
   height: 1px;
   margin: 4px 0 2px;
-  background: hsl(var(--wb-ui-border-subtle) / 0.45);
+  background: rgb(from var(--wb-ui-border-subtle) r g b / 0.45);
 }
 
 .wb-left-toolbar-draw-kind,
@@ -517,18 +519,18 @@
 .wb-left-toolbar-draw-slot:hover,
 .wb-left-toolbar-draw-slot:focus-visible,
 .wb-left-toolbar-draw-slot[data-active='true'] {
-  background: hsl(var(--wb-ui-accent) / 0.1);
+  background: rgb(from var(--wb-ui-accent) r g b / 0.1);
   color: var(--wb-text-primary);
 }
 
 .wb-left-toolbar-draw-slot-dot {
   border-radius: 999px;
-  box-shadow: inset 0 0 0 1px hsl(var(--wb-ui-text-primary) / 0.08);
+  box-shadow: inset 0 0 0 1px rgb(from var(--wb-ui-text-primary) r g b / 0.08);
 }
 
 .wb-left-toolbar-draw-slot[data-active='true'] {
   background: transparent;
-  box-shadow: inset 0 0 0 2px hsl(var(--wb-ui-accent) / 0.22);
+  box-shadow: inset 0 0 0 2px rgb(from var(--wb-ui-accent) r g b / 0.22);
 }
 
 .wb-left-toolbar-draw-panel {
@@ -682,7 +684,7 @@
   height: 100%;
   border-radius: 0;
   border: none;
-  box-shadow: inset 0 1px 0 hsl(var(--wb-ui-surface) / 0.14);
+  box-shadow: inset 0 1px 0 rgb(from var(--wb-ui-surface) r g b / 0.14);
 }
 
 .wb-left-toolbar-sticky-preview::after {
@@ -693,7 +695,7 @@
   width: 12px;
   height: 12px;
   border-top-right-radius: 0;
-  background: linear-gradient(135deg, hsl(var(--wb-ui-surface) / 0.56) 0%, hsl(var(--wb-ui-surface) / 0) 100%);
+  background: linear-gradient(135deg, rgb(from var(--wb-ui-surface) r g b / 0.56) 0%, rgb(from var(--wb-ui-surface) r g b / 0) 100%);
 }
 
 .wb-left-toolbar-template {
@@ -793,11 +795,11 @@
   height: 24px;
   display: block;
   overflow: visible;
-  --wb-toolbar-preview-fill: hsl(var(--wb-ui-surface-subtle));
-  --wb-toolbar-preview-fill-blue: hsl(var(--tag-blue-background, 206.1 79.3% 94.3%));
-  --wb-toolbar-preview-fill-yellow: hsl(var(--tag-yellow-background, 47.6 70.7% 92%));
-  --wb-toolbar-preview-fill-red: hsl(var(--tag-red-background, 5.7 77.8% 94.7%));
-  --wb-toolbar-preview-fill-yellow-soft: hsl(var(--tag-yellow-background, 47.6 70.7% 92%) / 0.9);
+  --wb-toolbar-preview-fill: var(--wb-ui-surface-subtle);
+  --wb-toolbar-preview-fill-blue: var(--wb-option-fill-blue);
+  --wb-toolbar-preview-fill-yellow: var(--wb-option-fill-yellow);
+  --wb-toolbar-preview-fill-red: var(--wb-option-fill-red);
+  --wb-toolbar-preview-fill-yellow-soft: rgb(from var(--wb-option-fill-yellow) r g b / 0.9);
 }
 
 .wb-left-toolbar-mindmap-preview {
@@ -814,13 +816,13 @@
 }
 
 .wb-left-toolbar-mindmap-preview-node {
-  fill: hsl(var(--wb-ui-surface));
+  fill: var(--wb-ui-surface);
   stroke: currentColor;
   stroke-width: 1;
 }
 
 .wb-left-toolbar-mindmap-preview-node-root {
-  fill: hsl(var(--wb-tag-yellow-background));
+  fill: var(--wb-option-fill-yellow);
 }
 
 .wb-node-toolbar {
@@ -831,7 +833,7 @@
   padding: 4px;
   border-radius: 10px;
   background: var(--wb-surface-elevated);
-  border: 1px solid hsl(var(--wb-ui-border-subtle) / 0.4);
+  border: 1px solid rgb(from var(--wb-ui-border-subtle) r g b / 0.4);
   box-shadow: var(--wb-panel-shadow);
   pointer-events: auto;
   backdrop-filter: none;
@@ -908,8 +910,8 @@
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  border: 1px solid hsl(var(--wb-ui-border-subtle) / 0.42);
-  background: hsl(var(--wb-ui-surface) / 0.96);
+  border: 1px solid rgb(from var(--wb-ui-border-subtle) r g b / 0.42);
+  background: rgb(from var(--wb-ui-surface) r g b / 0.96);
   color: var(--wb-text-secondary);
   display: inline-flex;
   align-items: center;
@@ -1075,7 +1077,7 @@
   padding: 0 9px;
   border: none;
   border-radius: 999px;
-  background: hsl(var(--wb-ui-surface-strong) / 0.58);
+  background: rgb(from var(--wb-ui-surface-strong) r g b / 0.58);
   color: var(--wb-text-secondary);
   display: inline-flex;
   align-items: center;
@@ -1114,7 +1116,7 @@
   height: 16px;
   padding: 0 4px;
   border-radius: 999px;
-  background: hsl(var(--wb-ui-surface) / 0.95);
+  background: rgb(from var(--wb-ui-surface) r g b / 0.95);
   color: var(--wb-text-tertiary);
   display: inline-flex;
   align-items: center;
@@ -1143,7 +1145,7 @@
 
 .wb-node-toolbar-layout-divider {
   width: 1px;
-  background: hsl(var(--wb-ui-border-subtle) / 0.4);
+  background: rgb(from var(--wb-ui-border-subtle) r g b / 0.4);
   align-self: stretch;
 }
 
@@ -1204,7 +1206,7 @@
   padding: 6px;
   border-radius: 10px;
   background: var(--wb-surface-overlay);
-  border: 1px solid hsl(var(--wb-ui-border-subtle) / 0.45);
+  border: 1px solid rgb(from var(--wb-ui-border-subtle) r g b / 0.45);
   box-shadow: var(--wb-panel-shadow);
   pointer-events: auto;
   backdrop-filter: none;
@@ -1214,7 +1216,7 @@
 .wb-context-menu-section + .wb-context-menu-section {
   margin-top: 6px;
   padding-top: 6px;
-  border-top: 1px solid hsl(var(--wb-ui-border-subtle) / 0.18);
+  border-top: 1px solid rgb(from var(--wb-ui-border-subtle) r g b / 0.18);
 }
 
 .wb-context-menu-section-title {
@@ -1278,7 +1280,7 @@
   padding: 6px;
   border-radius: 10px;
   background: var(--wb-surface-overlay);
-  border: 1px solid hsl(var(--wb-ui-border-subtle) / 0.45);
+  border: 1px solid rgb(from var(--wb-ui-border-subtle) r g b / 0.45);
   box-shadow: var(--wb-panel-shadow);
 }
 
@@ -1531,7 +1533,7 @@
   top: 0;
   border-radius: 12px;
   border: calc(1px / var(--wb-zoom, 1)) dashed var(--wb-accent);
-  background: hsl(var(--wb-ui-accent) / 0.08);
+  background: rgb(from var(--wb-ui-accent) r g b / 0.08);
   pointer-events: none;
 }
 
@@ -1679,7 +1681,7 @@
   top: 58%;
   bottom: -12px;
   z-index: -1;
-  background: hsl(var(--wb-ui-text-primary) / 0.18);
+  background: rgb(from var(--wb-ui-text-primary) r g b / 0.18);
   filter: blur(12px);
   opacity: 0.22;
   transform: translateY(5px) scaleY(0.72);
@@ -1759,7 +1761,7 @@
   font-size: 14px;
   line-height: 1;
   color: var(--wb-text-secondary);
-  background: hsl(var(--ui-surface, 0 0% 100%) / 0.92);
+  background: rgb(from var(--ui-surface, #fff) r g b / 0.92);
   box-shadow: none;
   pointer-events: auto;
   user-select: none;

@@ -36,9 +36,10 @@ export const Surface = ({
   const tool = useTool()
   const viewportInput = useMemo(
     () => ({
-      wheelEnabled: resolvedConfig.viewport.enableWheel
+      wheelEnabled: resolvedConfig.viewport.enableWheel,
+      wheelSensitivity: resolvedConfig.viewport.wheelSensitivity
     }),
-    [resolvedConfig.viewport.enableWheel]
+    [resolvedConfig.viewport.enableWheel, resolvedConfig.viewport.wheelSensitivity]
   )
   const transformStyle = useMemo(
     () => ({
@@ -62,7 +63,8 @@ export const Surface = ({
     options: viewportInput
   })
   usePointer({
-    containerRef
+    containerRef,
+    panEnabled: resolvedConfig.viewport.enablePan
   })
 
   return (

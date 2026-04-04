@@ -15,11 +15,6 @@
       "types": "./dist/draw.d.ts",
       "import": "./dist/draw.js",
       "require": "./dist/draw.cjs"
-    },
-    "./host": {
-      "types": "./dist/host.d.ts",
-      "import": "./dist/host.js",
-      "require": "./dist/host.cjs"
     }
   },
   "files": [

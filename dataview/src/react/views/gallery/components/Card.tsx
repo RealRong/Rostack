@@ -1,6 +1,7 @@
 import {
   useMemo,
-  useState
+  useState,
+  type CSSProperties
 } from 'react'
 import { FileText } from 'lucide-react'
 import type {
@@ -35,7 +36,9 @@ import {
 
 export const Card = (props: {
   appearanceId: AppearanceId
-  measureRef?: (node: HTMLDivElement | null) => void
+  measureRef?: (node: HTMLElement | null) => void
+  className?: string
+  style?: CSSProperties
 }) => {
   const controller = useGalleryContext()
   const dataView = useDataView()
@@ -51,6 +54,8 @@ export const Card = (props: {
       appearanceId={props.appearanceId}
       record={record}
       measureRef={props.measureRef}
+      className={props.className}
+      style={props.style}
     />
   )
 }
@@ -58,7 +63,9 @@ export const Card = (props: {
 const GalleryCardContent = (props: {
   appearanceId: AppearanceId
   record: GroupRecord
-  measureRef?: (node: HTMLDivElement | null) => void
+  measureRef?: (node: HTMLElement | null) => void
+  className?: string
+  style?: CSSProperties
 }) => {
   const controller = useGalleryContext()
   const viewId = controller.currentView.view.id
@@ -83,10 +90,8 @@ const GalleryCardContent = (props: {
   )), [editing, properties, props.record, titleProperty?.id])
 
   return (
-    <div
-      ref={node => {
-        props.measureRef?.(node)
-      }}
+    <CardContent
+      ref={props.measureRef}
       {...{
         [DATAVIEW_APPEARANCE_ID_ATTR]: props.appearanceId
       }}
@@ -128,42 +133,42 @@ const GalleryCardContent = (props: {
         )
       }}
       className={cn(
+        'min-w-0',
         'touch-none',
         !editing && 'select-none',
         !editing && canDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
         active && 'opacity-35',
-        draggingSelected && !active && 'opacity-60'
+        draggingSelected && !active && 'opacity-60',
+        props.className
       )}
-    >
-      <CardContent
-        slots={{
-          root: cn(
-            'relative h-full rounded-lg p-3 transition-colors ui-shadow-sm ui-card-bg',
-            selected && 'border-primary bg-primary/[0.05]'
+      style={props.style}
+      slots={{
+        root: cn(
+          'relative h-full rounded-xl p-3 transition-colors ui-shadow-sm ui-card-bg',
+          selected && 'border-primary bg-primary/[0.05]'
+        ),
+        title: {
+          row: cn(
+            'flex min-w-0 items-start gap-2.5',
+            hasVisibleProperties && 'pb-2'
           ),
-          title: {
-            row: cn(
-              'flex min-w-0 items-start gap-2.5',
-              hasVisibleProperties && 'pb-2'
-            ),
-            content: 'min-w-0 flex-1',
-            text: 'text-base font-semibold leading-6',
-            input: 'text-base font-semibold leading-6 text-foreground'
-          },
-          property: {
-            list: 'flex flex-col gap-2',
-            item: 'min-w-0',
-            value: 'text-[12px]'
-          }
-        }}
-        viewId={viewId}
-        appearanceId={props.appearanceId}
-        record={props.record}
-        titleProperty={titleProperty}
-        properties={properties}
-        titlePlaceholder={CARD_TITLE_PLACEHOLDER}
-        showEditAction={hovered && !editing && !active}
-      />
-    </div>
+          content: 'min-w-0 flex-1',
+          text: 'text-base font-semibold leading-6',
+          input: 'text-base font-semibold leading-6 text-foreground'
+        },
+        property: {
+          list: 'flex flex-col gap-2',
+          item: 'min-w-0',
+          value: 'text-[12px]'
+        }
+      }}
+      viewId={viewId}
+      appearanceId={props.appearanceId}
+      record={props.record}
+      titleProperty={titleProperty}
+      properties={properties}
+      titlePlaceholder={CARD_TITLE_PLACEHOLDER}
+      showEditAction={hovered && !editing && !active}
+    />
   )
 }

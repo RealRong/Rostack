@@ -2,7 +2,7 @@ import { TableProvider } from './context'
 import { Body } from './components/body/Body'
 
 const DEFAULT_ROW_HEIGHT = 36
-const DEFAULT_HEADER_HEIGHT = 36
+const DEFAULT_HEADER_HEIGHT = 32
 
 export interface TableViewProps {
   rowHeight?: number

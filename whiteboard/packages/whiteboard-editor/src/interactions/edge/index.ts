@@ -1,34 +1,27 @@
 import type {
-  InteractionBinding,
-  InteractionStartResult
+  InteractionBinding
 } from '../../runtime/interaction/types'
-import type { PointerDownInput } from '../../types/input'
+import type { InteractionContext } from '../context'
 import { startEdgeConnectInteraction } from './connect'
 import { startEdgePress } from './press'
 import { startEdgeRouteHandleInteraction } from './routePoint'
-import type { EdgeInteractionCtx } from './types'
-
-const startEdgeInteraction = (
-  ctx: EdgeInteractionCtx,
-  input: PointerDownInput
-): InteractionStartResult => {
-  for (const start of [
-    startEdgeRouteHandleInteraction,
-    startEdgeConnectInteraction,
-    startEdgePress
-  ] as const) {
-    const result = start(ctx, input)
-    if (result) {
-      return result
-    }
-  }
-
-  return null
-}
 
 export const createEdgeInteraction = (
-  ctx: EdgeInteractionCtx
+  ctx: InteractionContext
 ): InteractionBinding => ({
   key: 'edge',
-  start: (input) => startEdgeInteraction(ctx, input)
+  start: (input) => {
+    for (const start of [
+      startEdgeRouteHandleInteraction,
+      startEdgeConnectInteraction,
+      startEdgePress
+    ] as const) {
+      const result = start(ctx, input)
+      if (result) {
+        return result
+      }
+    }
+
+    return null
+  }
 })

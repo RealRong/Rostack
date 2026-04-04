@@ -3,17 +3,17 @@ import {
 } from '@whiteboard/engine'
 import type { Editor, EditorInteractionState } from '../../types/editor'
 import type { InteractionRuntime } from '../interaction/types'
+import type { EditorViewportRuntime } from './types'
 import type { RuntimeStateController } from '../state'
-import type { EditorHost } from '../../host/types'
 
 export const createEditorState = ({
   interaction,
   runtime,
-  host
+  viewport
 }: {
   interaction: InteractionRuntime
   runtime: RuntimeStateController
-  host: Pick<EditorHost, 'viewport'>
+  viewport: EditorViewportRuntime['read']
 }): Editor['state'] => {
   const interactionState = createDerivedStore<EditorInteractionState>({
     get: (readStore) => {
@@ -55,7 +55,7 @@ export const createEditorState = ({
 
   return {
     ...runtime.public.state,
-    viewport: host.viewport.read,
+    viewport,
     interaction: interactionState
   } satisfies Editor['state']
 }

@@ -2,28 +2,22 @@ import { useEffect } from 'react'
 import type { WhiteboardHostRuntime } from '../host/runtime'
 
 export const HostLifecycle = ({
+  editor,
   host,
   hostConfig
 }: {
+  editor: import('../../types/runtime').WhiteboardRuntime
   host: WhiteboardHostRuntime
   hostConfig: {
     viewport: {
       minZoom: number
       maxZoom: number
-      enablePan: boolean
-      enableWheel: boolean
-      wheelSensitivity: number
     }
   }
 }) => {
   useEffect(() => {
-    host.editorHost.viewport.setLimits(hostConfig.viewport)
-    host.editorHost.inputPolicy.set({
-      panEnabled: hostConfig.viewport.enablePan,
-      wheelEnabled: hostConfig.viewport.enableWheel,
-      wheelSensitivity: hostConfig.viewport.wheelSensitivity
-    })
-  }, [host, hostConfig])
+    editor.commands.viewport.setLimits(hostConfig.viewport)
+  }, [editor, host, hostConfig])
 
   useEffect(() => () => {
     host.insert.clear()

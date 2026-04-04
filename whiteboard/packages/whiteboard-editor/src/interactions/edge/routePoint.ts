@@ -8,12 +8,16 @@ import {
 import type { EdgeId } from '@whiteboard/core/types'
 import type {
   InteractionStartResult,
-  InteractionSession,
-  InteractionSessionTransition
+  InteractionSession
 } from '../../runtime/interaction/types'
+import {
+  CANCEL,
+  FINISH,
+  HANDLED
+} from '../../runtime/interaction/result'
 import { createEdgeGesture } from '../../runtime/interaction/gesture'
 import type { PointerDownInput } from '../../types/input'
-import type { EdgeInteractionCtx } from './types'
+import type { InteractionContext } from '../context'
 
 type EdgeRoutePick = Extract<PointerDownInput['pick'], {
   kind: 'edge'
@@ -26,22 +30,12 @@ type PointerClient = {
   clientY: number
 }
 
-const FINISH = {
-  kind: 'finish'
-} satisfies InteractionSessionTransition
-
-const CANCEL = {
-  kind: 'cancel'
-} satisfies InteractionSessionTransition
-
-const HANDLED: InteractionStartResult = 'handled'
-
 const readViewport = (
-  ctx: EdgeInteractionCtx
+  ctx: InteractionContext
 ) => ctx.read.viewport
 
 const readCapability = (
-  ctx: EdgeInteractionCtx,
+  ctx: InteractionContext,
   edgeId: EdgeId
 ) => {
   const item = ctx.read.edge.item.get(edgeId)
@@ -51,7 +45,7 @@ const readCapability = (
 }
 
 const readEditableRouteView = (
-  ctx: EdgeInteractionCtx,
+  ctx: InteractionContext,
   edgeId: EdgeId
 ): EdgeView | undefined => {
   const view = ctx.read.edge.resolved.get(edgeId)
@@ -62,7 +56,7 @@ const readEditableRouteView = (
 }
 
 const selectEdge = (
-  ctx: EdgeInteractionCtx,
+  ctx: InteractionContext,
   edgeId: EdgeId
 ) => {
   ctx.write.session.selection.replace({
@@ -78,7 +72,7 @@ const isEdgeRoutePick = (
 )
 
 const resolvePickTarget = (
-  ctx: EdgeInteractionCtx,
+  ctx: InteractionContext,
   pick: PointerDownInput['pick']
 ) => {
   if (!isEdgeRoutePick(pick)) {
@@ -101,7 +95,7 @@ const resolvePickTarget = (
 }
 
 export const createEdgeRoutePointSession = (
-  ctx: EdgeInteractionCtx,
+  ctx: InteractionContext,
   input: {
     edgeId: EdgeId
     index: number
@@ -123,7 +117,7 @@ export const createEdgeRoutePointSession = (
 
   const step = (
     pointer: PointerClient
-  ): InteractionSessionTransition | void => {
+  ) => {
     const item = ctx.read.edge.item.get(state.edgeId)
     if (!item || !readCapability(ctx, state.edgeId)?.editRoute) {
       return CANCEL
@@ -202,7 +196,7 @@ export const createEdgeRoutePointSession = (
 }
 
 export const startEdgeRouteHandleInteraction = (
-  ctx: EdgeInteractionCtx,
+  ctx: InteractionContext,
   start: PointerDownInput
 ): InteractionStartResult | null => {
   const tool = ctx.read.tool.get()

@@ -103,7 +103,7 @@ export const DrawStrokeSelectionShape = ({
         cy={point.y}
         r={Math.max(6, width / 2 + 4)}
         fill="none"
-        stroke="hsl(var(--ui-accent, 209.8 76.7% 51.2%) / 0.3)"
+        stroke="rgb(from var(--ui-accent) r g b / 0.3)"
         strokeWidth={haloWidth}
         vectorEffect="non-scaling-stroke"
         pointerEvents="none"
@@ -115,7 +115,7 @@ export const DrawStrokeSelectionShape = ({
     <path
       d={buildDrawPath(points)}
       fill="none"
-      stroke="hsl(var(--ui-accent, 209.8 76.7% 51.2%) / 0.3)"
+      stroke="rgb(from var(--ui-accent) r g b / 0.3)"
       strokeWidth={haloWidth}
       strokeLinecap="round"
       strokeLinejoin="round"

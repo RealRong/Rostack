@@ -1,20 +1,20 @@
 import type { PointerSample } from '../../types/input'
 import type { EditorViewWrite } from '../../types/editor'
+import type { EditorViewportRuntime } from '../editor/types'
 import type { RuntimeStateController } from '../state'
-import type { EditorHost } from '../../host/types'
 
 export const createViewWrite = ({
   runtime,
-  host
+  viewport
 }: {
   runtime: RuntimeStateController
-  host: Pick<EditorHost, 'viewport' | 'inputPolicy' | 'draw'>
+  viewport: EditorViewportRuntime
 }): EditorViewWrite => ({
   viewport: {
-    ...host.viewport.commands,
-    ...host.viewport.input,
-    setRect: host.viewport.setRect,
-    setLimits: host.viewport.setLimits
+    ...viewport.commands,
+    ...viewport.input,
+    setRect: viewport.setRect,
+    setLimits: viewport.setLimits
   },
   pointer: {
     set: (sample: PointerSample) => {
@@ -29,13 +29,24 @@ export const createViewWrite = ({
       runtime.state.space.set(value)
     }
   },
-  inputPolicy: {
-    set: (policy) => {
-      host.inputPolicy.set(policy)
+  draw: {
+    set: (preferences) => {
+      runtime.state.draw.commands.set(preferences)
+    },
+    slot: (slot) => {
+      const tool = runtime.state.tool.get()
+      const kind = tool.type === 'draw' && tool.kind !== 'eraser'
+        ? tool.kind
+        : 'pen'
+      runtime.state.draw.commands.slot(kind, slot)
     },
     patch: (patch) => {
-      host.inputPolicy.patch(patch)
+      const tool = runtime.state.tool.get()
+      const kind = tool.type === 'draw' && tool.kind !== 'eraser'
+        ? tool.kind
+        : 'pen'
+      const slot = runtime.state.draw.store.get()[kind].slot
+      runtime.state.draw.commands.patch(kind, slot, patch)
     }
-  },
-  draw: host.draw.commands
+  }
 })

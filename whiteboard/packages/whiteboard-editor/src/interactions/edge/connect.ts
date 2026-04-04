@@ -21,10 +21,15 @@ import type {
   InteractionStartResult,
   InteractionSession
 } from '../../runtime/interaction/types'
+import { FINISH } from '../../runtime/interaction/result'
 import { createEdgeGesture } from '../../runtime/interaction/gesture'
 import type { EdgePresetKey } from '../../types/tool'
 import type { PointerDownInput } from '../../types/input'
-import type { ConnectNodeEntry, EdgeInteractionCtx } from './types'
+import type { InteractionContext } from '../context'
+
+type ConnectNodeEntry = NonNullable<
+  ReturnType<InteractionContext['read']['index']['node']['get']>
+>
 
 const EDGE_PRESET_TYPE = {
   'edge.straight': 'linear',
@@ -37,7 +42,7 @@ const readEdgePresetType = (
 ): EdgeType => EDGE_PRESET_TYPE[preset]
 
 const readConnectNode = (
-  ctx: EdgeInteractionCtx,
+  ctx: InteractionContext,
   nodeId: NodeId
 ): ConnectNodeEntry | undefined => {
   const entry = ctx.read.index.node.get(nodeId)
@@ -49,7 +54,7 @@ const readConnectNode = (
 }
 
 const resolveCreateFromNode = (
-  ctx: EdgeInteractionCtx,
+  ctx: InteractionContext,
   input: PointerDownInput,
   edgeType: EdgeType
 ): EdgeConnectState | undefined => {
@@ -114,7 +119,7 @@ const resolveCreateFromNode = (
 }
 
 const resolveReconnectState = (
-  ctx: EdgeInteractionCtx,
+  ctx: InteractionContext,
   edgeId: EdgeId,
   end: 'source' | 'target',
   pointerId: number
@@ -147,7 +152,7 @@ const resolveReconnectState = (
 }
 
 const resolveEdgeConnectState = (
-  ctx: EdgeInteractionCtx,
+  ctx: InteractionContext,
   input: PointerDownInput
 ): EdgeConnectState | undefined => {
   const tool = ctx.read.tool.get()
@@ -192,7 +197,7 @@ const resolveEdgeConnectState = (
 }
 
 const commitConnectState = (
-  ctx: EdgeInteractionCtx,
+  ctx: InteractionContext,
   state: EdgeConnectState
 ) => {
   const commit = toEdgeConnectCommit(state)
@@ -234,7 +239,7 @@ const toConnectGesture = (
 }
 
 export const createEdgeConnectSession = (
-  ctx: EdgeInteractionCtx,
+  ctx: InteractionContext,
   initial: EdgeConnectState
 ): InteractionSession => {
   let state = initial
@@ -272,9 +277,7 @@ export const createEdgeConnectSession = (
     },
     up: () => {
       commitConnectState(ctx, state)
-      return {
-        kind: 'finish'
-      }
+      return FINISH
     },
     cleanup: () => {}
   }
@@ -283,7 +286,7 @@ export const createEdgeConnectSession = (
 }
 
 export const startEdgeConnectInteraction = (
-  ctx: EdgeInteractionCtx,
+  ctx: InteractionContext,
   input: PointerDownInput
 ): InteractionStartResult | null => {
   const state = resolveEdgeConnectState(ctx, input)

@@ -49,6 +49,7 @@ import {
 import {
   useDrag
 } from './drag'
+import { usesOptionGroupingColors } from '@dataview/react/views/shared/optionGrouping'
 
 interface KanbanSelectionState {
   selection: ReturnType<typeof useDataViewSelection>
@@ -68,6 +69,7 @@ export interface KanbanController {
   titleProperty?: GroupProperty
   properties: readonly GroupProperty[]
   canReorder: boolean
+  groupUsesOptionColors: boolean
   layout: {
     columnWidth: number
     columnMinHeight: number
@@ -77,6 +79,8 @@ export interface KanbanController {
   selection: KanbanSelectionState
   drag: ReturnType<typeof useDrag>
   boostedSectionKeySet: ReadonlySet<string>
+  readSectionColorId: (sectionKey: SectionKey) => string | undefined
+  readAppearanceColorId: (id: AppearanceId) => string | undefined
   readRecord: (id: AppearanceId) => GroupRecord | undefined
 }
 
@@ -107,17 +111,20 @@ export const useKanbanController = (input: {
     [currentView.schema.properties]
   )
   const properties = useMemo(() => {
-    const groupPropertyId = currentView.view.query.group?.property
-
     return currentView.properties.all.filter(property => (
       property.id !== titleProperty?.id
-      && property.id !== groupPropertyId
     ))
   }, [
     currentView.properties.all,
-    currentView.view.query.group?.property,
     titleProperty?.id
   ])
+  const groupProperty = useMemo(() => {
+    const groupPropertyId = currentView.view.query.group?.property
+    return groupPropertyId
+      ? currentView.schema.properties.get(groupPropertyId)
+      : undefined
+  }, [currentView.schema.properties, currentView.view.query.group?.property])
+  const groupUsesOptionColors = usesOptionGroupingColors(groupProperty)
   const canReorder = Boolean(currentView.view.query.group) && !currentView.view.query.sorters.length
 
   const readRecord = useCallback((id: AppearanceId) => {
@@ -129,6 +136,9 @@ export const useKanbanController = (input: {
 
   const sectionKeyById = useMemo(() => new Map(
     currentView.sections.flatMap(section => section.ids.map(id => [id, section.key] as const))
+  ), [currentView.sections])
+  const sectionColorByKey = useMemo(() => new Map(
+    currentView.sections.map(section => [section.key, section.color] as const)
   ), [currentView.sections])
 
   const selectionValue = useDataViewSelection()
@@ -194,6 +204,17 @@ export const useKanbanController = (input: {
     selectedIdSet,
     selectionValue
   ])
+  const readSectionColorId = useCallback((sectionKey: SectionKey) => (
+    groupUsesOptionColors
+      ? sectionColorByKey.get(sectionKey)
+      : undefined
+  ), [groupUsesOptionColors, sectionColorByKey])
+  const readAppearanceColorId = useCallback((id: AppearanceId) => {
+    const sectionKey = sectionKeyById.get(id)
+    return sectionKey
+      ? readSectionColorId(sectionKey)
+      : undefined
+  }, [readSectionColorId, sectionKeyById])
 
   const drag = useDrag({
     containerRef: scrollRef,
@@ -233,6 +254,7 @@ export const useKanbanController = (input: {
     titleProperty,
     properties,
     canReorder,
+    groupUsesOptionColors,
     layout: {
       columnWidth: input.columnWidth,
       columnMinHeight: input.columnMinHeight
@@ -242,17 +264,22 @@ export const useKanbanController = (input: {
     selection,
     drag,
     boostedSectionKeySet,
+    readSectionColorId,
+    readAppearanceColorId,
     readRecord
   }), [
     boostedSectionKeySet,
     canReorder,
     currentView,
     drag,
+    groupUsesOptionColors,
     input.columnMinHeight,
     input.columnWidth,
     layouts,
     properties,
+    readAppearanceColorId,
     readRecord,
+    readSectionColorId,
     selection,
     titleProperty
   ])

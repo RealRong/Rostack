@@ -93,7 +93,7 @@ export const resolveNodeToolbarModel = ({
       : undefined
   const strokeValue = typeof primaryNode.style?.stroke === 'string'
     ? primaryNode.style.stroke
-    : 'hsl(var(--ui-text-primary, 40 2.1% 28%))'
+    : 'var(--ui-text-primary)'
   const strokeWidthValue = typeof primaryNode.style?.strokeWidth === 'number'
     ? primaryNode.style.strokeWidth
     : 1
@@ -104,7 +104,7 @@ export const resolveNodeToolbarModel = ({
   const textValue = readTextValue(primaryNode, primarySchema)
   const textColor = typeof primaryNode.style?.color === 'string'
     ? primaryNode.style.color
-    : 'hsl(var(--ui-text-primary, 40 2.1% 28%))'
+    : 'var(--ui-text-primary)'
   const textFontSize = typeof primaryNode.style?.fontSize === 'number'
     ? primaryNode.style.fontSize
     : undefined

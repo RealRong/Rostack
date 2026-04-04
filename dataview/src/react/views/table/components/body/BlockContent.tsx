@@ -26,8 +26,6 @@ import { ColumnHeaderRow } from '../column/ColumnHeaderRow'
 import { Button } from '@ui/button'
 import { cn } from '@ui/utils'
 
-const HEADER_HEIGHT = 36
-
 const SectionHeader = (props: {
   section: Section
 }) => {
@@ -42,10 +40,7 @@ const SectionHeader = (props: {
     <div
       data-table-target="group-row"
       data-group-key={props.section.key}
-      className="ui-divider-bottom flex items-center"
-      style={{
-        height: HEADER_HEIGHT
-      }}
+      className="ui-divider-bottom flex h-full items-center"
     >
       <Button
         variant="plain"
@@ -87,7 +82,7 @@ const ColumnHeaderBlock = (props: {
     event: ReactPointerEvent<HTMLButtonElement>
   ) => void
 }) => (
-  <div className="ui-divider-bottom relative h-9 bg-transparent text-muted-foreground">
+  <div className="ui-divider-bottom relative h-full bg-transparent text-muted-foreground">
     <RowScopeSelectionRail
       rowIds={props.rowIds}
       label={props.label}

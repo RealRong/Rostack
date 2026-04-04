@@ -1,6 +1,8 @@
 import {
-  useState
+  useState,
+  type CSSProperties
 } from 'react'
+import { resolveOptionCardStyle } from '@ui/color'
 import type {
   GroupRecord,
 } from '@dataview/core/contracts'
@@ -25,7 +27,9 @@ import {
 export const Card = (props: {
   appearanceId: AppearanceId
   record: GroupRecord
-  measureRef?: (node: HTMLDivElement | null) => void
+  measureRef?: (node: HTMLElement | null) => void
+  className?: string
+  style?: CSSProperties
 }) => {
   const controller = useKanbanContext()
   const dataView = useDataView()
@@ -42,12 +46,11 @@ export const Card = (props: {
     viewId: controller.currentView.view.id,
     appearanceId: props.appearanceId
   })
+  const sectionColorId = controller.readAppearanceColorId(props.appearanceId)
 
   return (
-    <div
-      ref={node => {
-        props.measureRef?.(node)
-      }}
+    <CardContent
+      ref={props.measureRef}
       {...{
         [DATAVIEW_APPEARANCE_ID_ATTR]: props.appearanceId
       }}
@@ -89,38 +92,44 @@ export const Card = (props: {
         )
       }}
       className={cn(
+        'min-w-0',
         'touch-none',
         !editing && 'select-none',
         !editing && canDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
         active && 'opacity-35',
-        draggingSelected && !active && 'opacity-60'
+        draggingSelected && !active && 'opacity-60',
+        props.className
       )}
-    >
-      <CardContent
-        slots={{
-          root: cn(
-            'ui-surface-content relative rounded-2xl px-4 py-2.5 transition-colors',
-            selected && 'border-primary bg-primary/[0.05]'
-          ),
-          title: {
-            text: 'text-[15px] font-semibold leading-5',
-            input: 'text-[15px] font-semibold leading-5 text-foreground'
-          },
-          property: {
-            list: 'mx-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 pb-2 pt-0 leading-5',
-            item: 'inline-flex min-w-0 max-w-full',
-            value: 'text-xs leading-5 text-foreground'
-          }
-        }}
-        viewId={controller.currentView.view.id}
-        appearanceId={props.appearanceId}
-        record={record}
-        titleProperty={titleProperty}
-        properties={controller.properties}
-        titlePlaceholder={record.id}
-        showEditAction={hovered && !editing && !active}
-        propertyDensity="compact"
-      />
-    </div>
+      style={{
+        ...(controller.groupUsesOptionColors
+          ? resolveOptionCardStyle(sectionColorId)
+          : undefined),
+        ...props.style
+      }}
+      slots={{
+        root: cn(
+          'ui-surface-content relative rounded-xl p-3 transition-colors',
+          selected && 'border-primary'
+        ),
+        title: {
+          content: 'min-w-0 flex-1 w-full',
+          text: 'font-semibold',
+          input: 'font-semibold text-foreground'
+        },
+        property: {
+          list: 'flex flex-wrap items-center gap-2 mt-1',
+          item: 'inline-flex min-w-0 max-w-full',
+          value: 'text-sm text-foreground'
+        }
+      }}
+      viewId={controller.currentView.view.id}
+      appearanceId={props.appearanceId}
+      record={record}
+      titleProperty={titleProperty}
+      properties={controller.properties}
+      titlePlaceholder={record.id}
+      showEditAction={hovered && !editing && !active}
+      propertyDensity="compact"
+    />
   )
 }

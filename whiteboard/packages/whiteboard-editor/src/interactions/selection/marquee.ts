@@ -11,17 +11,14 @@ import {
   createSelectionGesture
 } from '../../runtime/interaction/gesture'
 import { GestureTuning } from '../../runtime/interaction/config'
+import {
+  FINISH
+} from '../../runtime/interaction/result'
 import type { InteractionContext } from '../context'
 import type {
-  InteractionSession,
-  InteractionSessionTransition
+  InteractionSession
 } from '../../runtime/interaction/types'
 import type { PointerDownInput } from '../../types/input'
-
-type SelectionInteractionCtx = Pick<
-  InteractionContext,
-  'read' | 'write' | 'config' | 'snap'
->
 
 type MarqueePointer = Pick<PointerDownInput, 'screen' | 'world'>
 
@@ -32,7 +29,7 @@ type MarqueeInteractionInput = {
 
 const readMatchedSelection = (
   input: {
-    ctx: SelectionInteractionCtx
+    ctx: InteractionContext
     rect: Rect
     match: SelectionMarqueeDecision['match']
   }
@@ -47,13 +44,9 @@ const readMatchedSelection = (
 })
 
 export const createMarqueeInteraction = (
-  ctx: SelectionInteractionCtx,
+  ctx: InteractionContext,
   input: MarqueeInteractionInput
 ): InteractionSession => {
-  const FINISH = {
-    kind: 'finish'
-  } satisfies InteractionSessionTransition
-
   let state = startMarqueeSelection({
     pointerId: input.start.pointerId,
     startScreen: input.start.screen,

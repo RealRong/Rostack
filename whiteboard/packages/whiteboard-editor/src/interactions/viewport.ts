@@ -2,6 +2,7 @@ import type {
   InteractionBinding,
   InteractionSession
 } from '../runtime/interaction/types'
+import { FINISH } from '../runtime/interaction/result'
 import type { InteractionContext } from './context'
 type PanState = {
   lastClient: {
@@ -55,10 +56,6 @@ export const createViewportInteraction = (
 ): InteractionBinding => ({
   key: 'viewport.pan',
   start: (input) => {
-    if (!ctx.read.inputPolicy.get().panEnabled) {
-      return null
-    }
-
     if (input.ignoreInput) {
       return null
     }
@@ -84,11 +81,7 @@ export const createViewportInteraction = (
       move: (event) => {
         updatePan(ctx, state, event)
       },
-      up: () => {
-        return {
-          kind: 'finish'
-        }
-      }
+      up: () => FINISH
     }
 
     return session

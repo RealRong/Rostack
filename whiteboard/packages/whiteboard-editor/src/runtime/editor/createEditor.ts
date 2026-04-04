@@ -1,6 +1,8 @@
 import type { EngineInstance } from '@whiteboard/engine'
+import type { Viewport } from '@whiteboard/core/types'
 import type { NodeRegistry } from '../../types/node'
 import type { Tool } from '../../types/tool'
+import type { DrawPreferences } from '../../types/draw'
 import type {
   Editor
 } from '../../types/editor'
@@ -9,8 +11,8 @@ import {
   createSnapRuntime
 } from '../interaction'
 import type { InteractionContext } from '../../interactions/context'
-import type { EditorHost } from '../../host/types'
 import type { InteractionBinding } from '../interaction/types'
+import { createViewport } from '../viewport'
 import { createEditorInteractions } from '../../interactions'
 import { createEdgeHoverService } from '../../interactions/edge/hover'
 import { createOverlay } from '../overlay'
@@ -24,25 +26,31 @@ import { createEditorWrite } from '../write'
 export const createEditor = ({
   engine,
   initialTool,
+  initialDrawPreferences,
+  initialViewport,
   registry,
-  host
 }: {
   engine: EngineInstance
   initialTool: Tool
+  initialDrawPreferences: DrawPreferences
+  initialViewport: Viewport
   registry: NodeRegistry
-  host: EditorHost
 }): Editor => {
   const runtime = createRuntimeState({
-    initialTool
+    initialTool,
+    initialDrawPreferences
+  })
+  const viewport = createViewport({
+    initialViewport
   })
   let interactions: readonly InteractionBinding[] = []
   const interaction = createInteractionRuntime({
-    getViewport: () => host.viewport.input,
+    getViewport: () => viewport.input,
     getBindings: () => interactions,
     space: runtime.state.space
   })
   const overlay = createOverlay({
-    viewport: host.viewport.read,
+    viewport: viewport.read,
     gesture: interaction.gesture
   })
   const read = createRead({
@@ -51,17 +59,17 @@ export const createEditor = ({
     history: engine.history,
     runtime,
     overlay,
-    host
+    viewport
   })
   const write = createEditorWrite({
     engine,
     read,
     runtime,
     overlay,
-    host
+    viewport
   })
   const snap = createSnapRuntime({
-    readZoom: () => host.viewport.read.get().zoom,
+    readZoom: () => viewport.read.get().zoom,
     node: {
       config: engine.config.node,
       query: engine.read.index.snap.inRect
@@ -76,13 +84,12 @@ export const createEditor = ({
     engine,
     read,
     write,
-    runtime,
-    host
+    viewport: viewport.read
   })
   const state = createEditorState({
     interaction,
     runtime,
-    host
+    viewport: viewport.read
   })
 
   const interactionContext: InteractionContext = {
@@ -97,7 +104,6 @@ export const createEditor = ({
   const input = createEditorInput({
     interaction,
     edgeHover,
-    host,
     write
   })
 

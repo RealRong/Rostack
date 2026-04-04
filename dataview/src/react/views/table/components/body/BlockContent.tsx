@@ -40,7 +40,7 @@ const SectionHeader = (props: {
     <div
       data-table-target="group-row"
       data-group-key={props.section.key}
-      className="ui-divider-bottom flex h-full items-center"
+      className="flex h-full items-center border-b border-divider"
     >
       <Button
         variant="plain"
@@ -82,7 +82,7 @@ const ColumnHeaderBlock = (props: {
     event: ReactPointerEvent<HTMLButtonElement>
   ) => void
 }) => (
-  <div className="ui-divider-bottom relative h-full bg-transparent text-muted-foreground">
+  <div className="relative h-full border-b border-divider bg-transparent text-muted-foreground">
     <RowScopeSelectionRail
       rowIds={props.rowIds}
       label={props.label}

@@ -86,7 +86,7 @@ const ViewSettingsIdentitySection = (props: {
   }
 
   return (
-    <div className="ui-divider-bottom px-1.5 py-2">
+    <div className="border-b border-divider px-1.5 py-2">
       <div className="flex items-start gap-2">
         <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground">
           <Icon className="size-4" size={16} strokeWidth={1.8} />
@@ -120,7 +120,7 @@ const ViewSettingsActionsSection = (props: {
   onRemove: () => void
 }) => {
   return (
-    <div className="ui-divider-top flex flex-col gap-0.5 p-2">
+    <div className="flex flex-col gap-0.5 border-t border-divider p-2">
       <Button
         layout="row"
         leading={<Copy className="size-4" size={14} strokeWidth={1.8} />}

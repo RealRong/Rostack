@@ -21,7 +21,7 @@ export const PropertyListPanel = () => {
           })
         }}
       />
-      <div className="ui-divider-top px-2 py-2">
+      <div className="border-t border-divider px-2 py-2">
         <Button
           className='w-full'
           leading={<Plus className="size-4 shrink-0" size={16} strokeWidth={1.8} />}

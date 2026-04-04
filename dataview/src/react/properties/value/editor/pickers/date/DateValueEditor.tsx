@@ -319,7 +319,7 @@ export const DateValueEditor = (
           />
         </div>
 
-        <div className="ui-divider-top py-2 mx-1.5">
+        <div className="mx-1.5 border-t border-divider py-2">
           <Menu
             submenuOpenPolicy='click'
             items={settingsItems}

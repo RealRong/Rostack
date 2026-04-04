@@ -97,19 +97,17 @@ const View = (props: CellProps) => {
         event.stopPropagation()
       }}
       className={cn(
-        'ui-divider-end relative box-border h-full min-w-0'
+        'relative box-border h-full min-w-0 border-r border-divider'
       )}
     >
-      {cellRender.chrome.selection ? (
+      {cellRender.chrome.selection || cellRender.chrome.frame ? (
         <div
           aria-hidden="true"
-          className="ui-accent-overlay pointer-events-none absolute inset-0"
-        />
-      ) : null}
-      {cellRender.chrome.frame ? (
-        <div
-          aria-hidden="true"
-          className="ui-accent-frame pointer-events-none absolute inset-0"
+          className={cn(
+            'pointer-events-none absolute inset-0',
+            cellRender.chrome.selection && 'bg-accent-overlay',
+            cellRender.chrome.frame && 'rounded-[2px] border-2 border-accent-frame'
+          )}
         />
       ) : null}
       <div
@@ -136,7 +134,7 @@ const View = (props: CellProps) => {
           data-table-fill-handle="true"
           data-row-id={props.appearanceId}
           data-property-id={props.property.id}
-          className="ui-accent-handle absolute -bottom-1 -right-1 z-20 h-[9px] w-[9px]"
+          className="absolute -bottom-1 -right-1 z-20 h-[9px] w-[9px] box-border cursor-ns-resize rounded-full border-2 border-primary bg-background transition-transform touch-none"
         />
       ) : null}
     </div>

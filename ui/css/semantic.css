@@ -22,8 +22,8 @@
   --ui-accent-divider: var(--ui-blue-bg-muted);
   --ui-accent-outline: var(--ui-blue-bg-strong);
   --ui-accent-frame-border: var(--ui-accent);
-  --ui-accent-text: var(--ui-blue-text);
-  --ui-accent-tint-subtle: var(--ui-blue-bg-muted);
+  --ui-accent-text: var(--ui-accent);
+  --ui-accent-tint-subtle: var(--ui-blue-bg-tint);
   --ui-focus-ring: var(--ui-accent);
 
   --ui-popover-shadow: var(--ui-shadow-floating);

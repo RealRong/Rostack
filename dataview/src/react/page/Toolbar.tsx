@@ -43,8 +43,8 @@ const ViewTab = (props: ViewTabProps) => {
       type="button"
       onClick={props.onClick}
       className={cn(
-        'ui-view-tab inline-flex h-9 shrink-0 items-center gap-2 rounded-3xl font-semibold px-4 transition-colors',
-        props.active && 'ui-view-tab--active'
+        'inline-flex h-9 shrink-0 items-center gap-2 rounded-3xl bg-transparent px-4 font-semibold text-fg-muted transition-[background-color,color] hover:bg-hover hover:text-fg',
+        props.active && 'bg-pressed text-fg hover:bg-pressed'
       )}
     >
       <Icon className="shrink-0" size={16} strokeWidth={1.5} />

@@ -1,6 +1,5 @@
 import {
-  createEditor as createEditorBase,
-  type NodeRegistry as EditorNodeRegistry
+  createEditor as createEditorBase
 } from '@whiteboard/editor'
 import type { NodeRegistry } from '../types/node'
 import type { WhiteboardRuntime } from '../types/runtime'
@@ -12,6 +11,5 @@ export type CreateEditorInput = Omit<Parameters<typeof createEditorBase>[0], 're
 export const createEditor = (
   input: CreateEditorInput
 ): WhiteboardRuntime => createEditorBase({
-  ...input,
-  registry: input.registry as unknown as EditorNodeRegistry
+  ...input
 }) as WhiteboardRuntime

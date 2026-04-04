@@ -150,7 +150,7 @@ export const StatusValueEditor = (
 
   return (
     <div className="flex min-h-0 flex-col" onKeyDown={onKeyDown}>
-      <div className="ui-divider-bottom px-3 py-3">
+      <div className="border-b border-divider px-3 py-3">
         {selectedOption ? (
           <div className="mb-2 flex items-center gap-1">
             <div className="min-w-0">
@@ -185,7 +185,7 @@ export const StatusValueEditor = (
           {sections.map((section, index) => (
             <div
               key={section.category}
-              className={index === 0 ? 'pb-4' : 'ui-divider-top py-4'}
+              className={index === 0 ? 'pb-4' : 'border-t border-divider py-4'}
             >
               <div className="text-[12px] font-medium text-muted-foreground">
                 {categoryLabel(section.category)}
@@ -219,7 +219,7 @@ export const StatusValueEditor = (
         </div>
       </div>
 
-      <div className="ui-divider-top px-2 py-2">
+      <div className="border-t border-divider px-2 py-2">
         <Button
           layout="row"
           leading={<Settings2 className="size-4" size={16} strokeWidth={1.8} />}

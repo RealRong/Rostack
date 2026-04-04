@@ -249,7 +249,7 @@ const MenuList = (props: MenuListProps) => {
           return (
             <div
               key={item.key}
-              className="ui-divider-top my-1"
+              className="my-1 border-t border-divider"
               onMouseEnter={collapseSubmenu}
             />
           )

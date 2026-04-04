@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import type { Point } from '@whiteboard/core/types'
 import { useEditorRuntime } from '../../../runtime/hooks/useEditor'
-import { useNodeRegistry } from '../../../runtime/hooks/useEnvironment'
-import { useHostRuntime } from '../../../runtime/hooks/useHost'
+import {
+  useNodeRegistry,
+  useWhiteboard,
+  type WhiteboardContextValue
+} from '../../../runtime/hooks/useWhiteboard'
 import { useElementSize } from '../../../runtime/hooks/useElementSize'
 import { useOverlayDismiss } from '../../../runtime/overlay/useOverlayDismiss'
-import { isContextMenuIgnoredTarget } from '../../../runtime/host/domTargets'
+import { isContextMenuIgnoredTarget } from '../../../runtime/dom/domTargets'
 import {
-  resolveHostPoint,
-  type HostResolvedPoint
-} from '../../../runtime/host/input'
-import { useClipboardActions } from '../../../runtime/host/useClipboardActions'
+  type ResolvedPoint
+} from '../../../runtime/dom/input'
+import type { ClipboardBridge } from '../../../runtime/bridge/clipboard'
 import {
   duplicateNodesAndSelect,
   groupNodesAndSelect,
@@ -199,7 +201,7 @@ const readContextMenuView = ({
 }: {
   editor: ReturnType<typeof useEditorRuntime>
   registry: ReturnType<typeof useNodeRegistry>
-  point: HostResolvedPoint
+  point: ResolvedPoint
 }): ContextMenuView | null => {
   switch (point.pick.kind) {
     case 'selection-box': {
@@ -318,14 +320,14 @@ const readSelectionStyleGroup = ({
 
 const readCanvasGroups = ({
   editor,
-  host,
+  whiteboard,
   clipboard,
   view,
   dismiss
 }: {
   editor: ReturnType<typeof useEditorRuntime>
-  host: ReturnType<typeof useHostRuntime>
-  clipboard: ReturnType<typeof useClipboardActions>
+  whiteboard: WhiteboardContextValue
+  clipboard: ClipboardBridge
   view: Extract<ContextMenuView, { kind: 'canvas' }>
   dismiss: () => void
 }): readonly MenuGroup[] => [
@@ -348,7 +350,7 @@ const readCanvasGroups = ({
     items: CREATE_PRESETS.map((preset) => ({
       key: preset.key,
       label: preset.label,
-      onSelect: bindMenuDismiss(() => host.insert.get()?.preset(preset.key, {
+      onSelect: bindMenuDismiss(() => whiteboard.insert.preset(preset.key, {
         at: view.canvas.world
       }), dismiss)
     }))
@@ -389,7 +391,7 @@ const readEdgeGroups = ({
   dismiss
 }: {
   editor: ReturnType<typeof useEditorRuntime>
-  clipboard: ReturnType<typeof useClipboardActions>
+  clipboard: ClipboardBridge
   view: Extract<ContextMenuView, { kind: 'edge' }>
   dismiss: () => void
 }): readonly MenuGroup[] => [
@@ -427,7 +429,7 @@ const readSelectionGroups = ({
   dismiss
 }: {
   editor: ReturnType<typeof useEditorRuntime>
-  clipboard: ReturnType<typeof useClipboardActions>
+  clipboard: ClipboardBridge
   view: Extract<ContextMenuView, { kind: 'selection' }>
   dismiss: () => void
 }): readonly MenuGroup[] => {
@@ -705,14 +707,14 @@ const ContextMenuGroupView = ({
 
 const readMenuGroups = ({
   editor,
-  host,
+  whiteboard,
   clipboard,
   view,
   dismiss
 }: {
   editor: ReturnType<typeof useEditorRuntime>
-  host: ReturnType<typeof useHostRuntime>
-  clipboard: ReturnType<typeof useClipboardActions>
+  whiteboard: WhiteboardContextValue
+  clipboard: ClipboardBridge
   view: ContextMenuView
   dismiss: () => void
 }): readonly MenuGroup[] => {
@@ -720,7 +722,7 @@ const readMenuGroups = ({
     case 'canvas':
       return readCanvasGroups({
         editor,
-        host,
+        whiteboard,
         clipboard,
         view,
         dismiss
@@ -757,8 +759,8 @@ export const ContextMenu = ({
 }) => {
   const editor = useEditorRuntime()
   const registry = useNodeRegistry()
-  const host = useHostRuntime()
-  const clipboard = useClipboardActions()
+  const whiteboard = useWhiteboard()
+  const clipboard = whiteboard.clipboard
   const surface = useElementSize(containerRef)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const lastOpenRef = useRef<{ x: number; y: number; time: number } | null>(null)
@@ -781,13 +783,10 @@ export const ContextMenu = ({
     const openFromEvent = (
       event: Pick<MouseEvent | PointerEvent, 'target' | 'clientX' | 'clientY'>
     ) => {
-      const point = resolveHostPoint({
-        editor,
-        pick: host.pick,
+      const point = whiteboard.pointer.resolvePoint({
         container,
         event
       })
-      host.pointer.set(point.world)
       if (point.ignoreContextMenu) {
         return false
       }
@@ -847,7 +846,7 @@ export const ContextMenu = ({
       container.removeEventListener('pointerdown', onPointerDown, true)
       container.removeEventListener('contextmenu', onContextMenu)
     }
-  }, [clipboard, containerRef, dismiss, editor, host, registry])
+  }, [containerRef, dismiss, editor, registry, whiteboard])
 
   useOverlayDismiss({
     enabled: view !== null,
@@ -879,7 +878,7 @@ export const ContextMenu = ({
   }
   const groups = readMenuGroups({
     editor,
-    host,
+    whiteboard,
     clipboard,
     view,
     dismiss

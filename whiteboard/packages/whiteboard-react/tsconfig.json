@@ -7,10 +7,7 @@
     "paths": {
       "@whiteboard/core/*": ["../whiteboard-core/src/*/index.ts"],
       "@whiteboard/editor": ["../whiteboard-editor/src/index.ts"],
-      "@whiteboard/editor/*": [
-        "../whiteboard-editor/src/*",
-        "../whiteboard-editor/src/*/index.ts"
-      ],
+      "@whiteboard/editor/draw": ["../whiteboard-editor/src/draw.ts"],
       "@whiteboard/engine": ["../whiteboard-engine/src/index.ts"],
       "@engine-types": ["../whiteboard-engine/src/types/index.ts"],
       "@engine-types/*": ["../whiteboard-engine/src/types/*"]

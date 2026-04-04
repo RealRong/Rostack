@@ -3,10 +3,15 @@ import type { WhiteboardInstance as Editor } from '../../types/runtime'
 
 export const EditorLifecycle = ({
   editor,
-  editorConfig
+  editorConfig,
+  viewportLimits
 }: {
   editor: Editor
   editorConfig: Parameters<Editor['configure']>[0]
+  viewportLimits: {
+    minZoom: number
+    maxZoom: number
+  }
 }) => {
   useEffect(() => () => {
     editor.dispose()
@@ -15,6 +20,10 @@ export const EditorLifecycle = ({
   useEffect(() => {
     editor.configure(editorConfig)
   }, [editor, editorConfig])
+
+  useEffect(() => {
+    editor.commands.viewport.setLimits(viewportLimits)
+  }, [editor, viewportLimits])
 
   return null
 }

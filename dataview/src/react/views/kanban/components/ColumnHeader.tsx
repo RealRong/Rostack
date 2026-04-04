@@ -26,7 +26,7 @@ export const ColumnHeader = (props: {
         </div>
       </div>
       {props.section.collapsed ? (
-        <div className="ui-pill rounded-full px-2 py-1 text-[11px] font-medium">
+        <div className="rounded-full bg-surface-subtle px-2 py-1 text-[11px] font-medium text-fg">
           {props.section.ids.length}
         </div>
       ) : null}

@@ -20,12 +20,10 @@ export const useWhiteboardConfig = (
     }),
     [resolvedConfig]
   )
-  const hostConfig = useMemo(
+  const viewportLimits = useMemo(
     () => ({
-      viewport: {
-        minZoom: resolvedConfig.viewport.minZoom,
-        maxZoom: resolvedConfig.viewport.maxZoom
-      }
+      minZoom: resolvedConfig.viewport.minZoom,
+      maxZoom: resolvedConfig.viewport.maxZoom
     }),
     [resolvedConfig]
   )
@@ -34,6 +32,6 @@ export const useWhiteboardConfig = (
     resolvedConfig,
     boardConfig,
     editorConfig,
-    hostConfig
+    viewportLimits
   }
 }

@@ -4,7 +4,7 @@ import type { NodeItem } from '@whiteboard/engine'
 import type { NodeId } from '@whiteboard/core/types'
 import type { WhiteboardRuntime as Editor } from '../../../types/runtime'
 import { useEditorRuntime } from '../../../runtime/hooks/useEditor'
-import { useNodeRegistry } from '../../../runtime/hooks/useEnvironment'
+import { useNodeRegistry } from '../../../runtime/hooks/useWhiteboard'
 import { useOptionalKeyedStoreValue } from '../../../runtime/hooks/useStoreValue'
 import type { NodeDefinition, NodeRegistry, NodeRenderProps, NodeWrite } from '../../../types/node'
 

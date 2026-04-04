@@ -286,7 +286,7 @@ export const GroupPanel = () => {
       </div>
 
       {groupProperty && showBucketInterval ? (
-        <div className="ui-divider-top mt-3 px-2 pb-1 pt-3">
+        <div className="mt-3 border-t border-divider px-2 pb-1 pt-3">
           <div className="mb-2 text-[11px] font-medium text-muted-foreground">
             {renderMessage(meta.ui.viewSettings.bucketInterval)}
           </div>

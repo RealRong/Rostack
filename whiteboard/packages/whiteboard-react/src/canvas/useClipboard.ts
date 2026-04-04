@@ -2,16 +2,16 @@ import { useEffect, type RefObject } from 'react'
 import {
   isEditableTarget,
   isInputIgnoredTarget
-} from '../runtime/host/domTargets'
-import { consumeDomEvent } from '../runtime/host/event'
-import { useClipboardActions } from '../runtime/host/useClipboardActions'
+} from '../runtime/dom/domTargets'
+import { consumeDomEvent } from '../runtime/dom/event'
+import { useWhiteboard } from '../runtime/hooks/useWhiteboard'
 
 export const useClipboard = ({
   containerRef
 }: {
   containerRef: RefObject<HTMLDivElement | null>
 }) => {
-  const clipboard = useClipboardActions()
+  const clipboard = useWhiteboard().clipboard
 
   useEffect(() => {
     const container = containerRef.current

@@ -1,7 +1,6 @@
 import {
   selectTool,
-  type EditorInsertCommands,
-  type EditorInsertResult,
+  type InsertPresetKey,
   type InsertPlacement,
   type InsertPreset,
   type InsertPresetCatalog,
@@ -12,24 +11,45 @@ import {
 import type { NodeId, Point, SpatialNodeInput } from '@whiteboard/core/types'
 import type { WhiteboardRuntime } from '../../types/runtime'
 
-type InsertCommandRegistry = {
-  get: () => EditorInsertCommands | null
-  set: (commands: EditorInsertCommands) => void
-  clear: () => void
+type InsertResult = {
+  nodeId: NodeId
+  edit?: {
+    nodeId: NodeId
+    field: NonNullable<NodeInsertPreset['focus']>
+  }
 }
 
-const createInsertCommandRegistry = (): InsertCommandRegistry => {
-  let current: EditorInsertCommands | null = null
-
-  return {
-    get: () => current,
-    set: (commands) => {
-      current = commands
-    },
-    clear: () => {
-      current = null
+export type InsertBridge = {
+  preset: (
+    preset: InsertPresetKey,
+    options: {
+      at: Point
+      ownerId?: NodeId
     }
-  }
+  ) => InsertResult | undefined
+  text: (options: {
+    at: Point
+    ownerId?: NodeId
+  }) => InsertResult | undefined
+  frame: (options: {
+    at: Point
+    ownerId?: NodeId
+  }) => InsertResult | undefined
+  sticky: (options: {
+    toneKey?: string
+    at: Point
+    ownerId?: NodeId
+  }) => InsertResult | undefined
+  shape: (options: {
+    kind: Parameters<InsertPresetCatalog['defaults']['shape']>[0]
+    at: Point
+    ownerId?: NodeId
+  }) => InsertResult | undefined
+  mindmap: (options: {
+    templateKey?: string
+    at: Point
+  }) => InsertResult | undefined
+  pointerDown: (input: PointerDownInput) => boolean
 }
 
 const placeNodeInput = ({
@@ -61,7 +81,7 @@ const toInsertResult = ({
 }: {
   nodeId: NodeId
   field?: NodeInsertPreset['focus']
-}): EditorInsertResult => ({
+}): InsertResult => ({
   nodeId,
   edit: field
     ? {
@@ -81,7 +101,7 @@ const insertNodePreset = ({
   preset: NodeInsertPreset
   world: Point
   ownerId?: NodeId
-}): EditorInsertResult | undefined => {
+}): InsertResult | undefined => {
   const result = editor.commands.node.create(
     placeNodeInput({
       world,
@@ -110,7 +130,7 @@ const insertMindmapPreset = ({
   editor: WhiteboardRuntime
   preset: MindmapInsertPreset
   world: Point
-}): EditorInsertResult | undefined => {
+}): InsertResult | undefined => {
   const result = editor.commands.mindmap.create({
     rootData: preset.template.root
   })
@@ -157,7 +177,7 @@ const runInsertPreset = ({
   preset: InsertPreset
   at: Point
   ownerId?: NodeId
-}): EditorInsertResult | undefined => {
+}): InsertResult | undefined => {
   const result = preset.kind === 'node'
     ? insertNodePreset({
         editor,
@@ -178,20 +198,21 @@ const runInsertPreset = ({
   editor.commands.selection.replace({
     nodeIds: [result.nodeId]
   })
-  if (result.edit) {
-    editor.commands.edit.start(result.edit.nodeId, result.edit.field)
+  const edit = result.edit
+  if (edit) {
+    editor.commands.edit.start(edit.nodeId, edit.field)
   }
 
   return result
 }
 
-const createInsertPresetCommands = ({
+const createInsertCommands = ({
   editor,
   catalog
 }: {
   editor: WhiteboardRuntime
   catalog: InsertPresetCatalog
-}): EditorInsertCommands => {
+}): Omit<InsertBridge, 'pointerDown'> => {
   const insertPresetByKey = (input: {
     presetKey: string
     options: {
@@ -243,37 +264,21 @@ const createInsertPresetCommands = ({
   }
 }
 
-export type HostInsertRuntime = {
-  get: InsertCommandRegistry['get']
-  bind: (editor: WhiteboardRuntime) => void
-  clear: () => void
-  pointerDown: (
-    editor: WhiteboardRuntime,
-    input: PointerDownInput
-  ) => boolean
-}
-
-export const createHostInsertRuntime = ({
+export const createInsertBridge = ({
+  editor,
   catalog
 }: {
+  editor: WhiteboardRuntime
   catalog: InsertPresetCatalog
-}): HostInsertRuntime => {
-  const registry = createInsertCommandRegistry()
+}): InsertBridge => {
+  const commands = createInsertCommands({
+    editor,
+    catalog
+  })
 
   return {
-    get: registry.get,
-    bind: (editor) => {
-      registry.set(
-        createInsertPresetCommands({
-          editor,
-          catalog
-        })
-      )
-    },
-    clear: () => {
-      registry.clear()
-    },
-    pointerDown: (editor, input) => {
+    ...commands,
+    pointerDown: (input) => {
       const tool = editor.state.tool.get()
       if (
         tool.type !== 'insert'
@@ -285,7 +290,7 @@ export const createHostInsertRuntime = ({
         return false
       }
 
-      const result = registry.get()?.preset(tool.preset, {
+      const result = commands.preset(tool.preset, {
         at: input.world
       })
       if (!result) {

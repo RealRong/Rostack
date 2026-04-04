@@ -76,7 +76,7 @@ export const Overlay = () => {
             properties={controller.properties}
             titlePlaceholder={CARD_TITLE_PLACEHOLDER}
             slots={{
-              root: 'relative h-full rounded-xl p-3 transition-colors ui-shadow-sm ui-card-bg shadow-lg',
+              root: 'relative h-full rounded-xl bg-card p-3 shadow-sm shadow-lg transition-colors',
               title: {
                 row: 'flex min-w-0 items-start gap-2.5',
                 rowWhenProperties: 'pb-2',

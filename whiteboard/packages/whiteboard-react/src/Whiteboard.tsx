@@ -1,14 +1,11 @@
-import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react'
+import { forwardRef, useImperativeHandle, useRef } from 'react'
 import type { WhiteboardProps } from './types/common/board'
-import { EditorProvider } from './runtime/hooks/useEditor'
-import { EnvironmentProvider } from './runtime/hooks/useEnvironment'
-import { HostProvider } from './runtime/hooks/useHost'
+import { WhiteboardProvider } from './runtime/hooks/useWhiteboard'
 import type { WhiteboardInstance as Editor } from './types/runtime'
 import { Surface } from './canvas/Surface'
 import { DocumentSync } from './runtime/whiteboard/DocumentSync'
 import { CollabLifecycle } from './runtime/whiteboard/CollabLifecycle'
 import { EditorLifecycle } from './runtime/whiteboard/EditorLifecycle'
-import { HostLifecycle } from './runtime/whiteboard/HostLifecycle'
 import { useWhiteboardConfig } from './runtime/whiteboard/config'
 import { useWhiteboardRuntime } from './runtime/whiteboard/runtime'
 
@@ -28,13 +25,10 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
     resolvedConfig,
     boardConfig,
     editorConfig,
-    hostConfig
+    viewportLimits
   } = useWhiteboardConfig(options)
   const {
-    editor,
-    registry,
-    host,
-    engine,
+    whiteboard,
     inputDocument,
     lastOutboundDocumentRef,
     onDocumentChangeRef
@@ -46,48 +40,35 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
     resolvedConfig,
     boardConfig
   })
-  const environment = useMemo(
-    () => ({
-      registry,
-      config: resolvedConfig
-    }),
-    [registry, resolvedConfig]
-  )
+  const editor = whiteboard.editor
+  const engine = whiteboard.engine
 
   useImperativeHandle(ref, () => editor, [editor])
 
   return (
-    <EnvironmentProvider value={environment}>
-      <EditorProvider value={editor}>
-        <HostProvider value={host}>
-          <DocumentSync
-            editor={editor}
-            document={document}
-            inputDocument={inputDocument}
-            lastOutboundDocumentRef={lastOutboundDocumentRef}
-            onDocumentChangeRef={onDocumentChangeRef}
-          />
-          <CollabLifecycle
-            collab={collab}
-            engine={engine}
-          />
-          <HostLifecycle
-            editor={editor}
-            host={host}
-            hostConfig={hostConfig}
-          />
-          <EditorLifecycle
-            editor={editor}
-            editorConfig={editorConfig}
-          />
-          <Surface
-            resolvedConfig={resolvedConfig}
-            containerRef={containerRef}
-            containerStyle={resolvedConfig.style}
-          />
-        </HostProvider>
-      </EditorProvider>
-    </EnvironmentProvider>
+    <WhiteboardProvider value={whiteboard}>
+      <DocumentSync
+        editor={editor}
+        document={document}
+        inputDocument={inputDocument}
+        lastOutboundDocumentRef={lastOutboundDocumentRef}
+        onDocumentChangeRef={onDocumentChangeRef}
+      />
+      <CollabLifecycle
+        collab={collab}
+        engine={engine}
+      />
+      <EditorLifecycle
+        editor={editor}
+        editorConfig={editorConfig}
+        viewportLimits={viewportLimits}
+      />
+      <Surface
+        resolvedConfig={resolvedConfig}
+        containerRef={containerRef}
+        containerStyle={resolvedConfig.style}
+      />
+    </WhiteboardProvider>
   )
 })
 

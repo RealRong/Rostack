@@ -177,8 +177,8 @@ const syncSystemTheme = () => {
   const media = window.matchMedia('(prefers-color-scheme: dark)')
   const apply = () => {
     const theme = media.matches ? 'dark' : 'light'
-    document.documentElement.dataset.theme = theme
-    document.documentElement.classList.toggle('dark', theme === 'dark')
+    document.documentElement.classList.toggle('ui-dark-theme', theme === 'dark')
+    document.documentElement.classList.toggle('ui-light-theme', theme !== 'dark')
   }
 
   apply()

@@ -439,7 +439,6 @@ export const App = () => {
           onDocumentChange={onDocumentChange}
           collab={collab}
           options={{
-            className: 'rostack-ui-theme',
             style: { width: '100%', height: '100%' },
             initialTool: { type: 'select' },
             mindmapLayout: { mode: 'simple' }

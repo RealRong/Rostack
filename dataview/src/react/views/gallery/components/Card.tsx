@@ -144,7 +144,7 @@ const GalleryCardContent = (props: {
       style={props.style}
       slots={{
         root: cn(
-          'relative h-full rounded-xl p-3 transition-colors ui-shadow-sm ui-card-bg',
+          'relative h-full rounded-xl bg-card p-3 shadow-sm transition-colors',
           selected && 'border-primary bg-primary/[0.05]'
         ),
         title: {

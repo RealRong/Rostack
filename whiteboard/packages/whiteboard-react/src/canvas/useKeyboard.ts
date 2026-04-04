@@ -4,16 +4,16 @@ import {
   detectShortcutPlatform,
   readShortcut,
   resolveShortcutBindings
-} from '../runtime/host/shortcut'
+} from '../runtime/dom/shortcut'
 import type { ShortcutOverrides } from '../types/common/shortcut'
 import { useEditorRuntime } from '../runtime/hooks/useEditor'
-import { consumeDomEvent } from '../runtime/host/event'
-import { isKeyboardIgnoredTarget } from '../runtime/host/domTargets'
+import { consumeDomEvent } from '../runtime/dom/event'
+import { isKeyboardIgnoredTarget } from '../runtime/dom/domTargets'
 import {
   DefaultShortcutBindings,
   runShortcut
 } from './shortcut'
-import { resolveKeyboardInput } from '../runtime/host/input'
+import { resolveKeyboardInput } from '../runtime/dom/input'
 
 export const useKeyboard = ({
   containerRef,

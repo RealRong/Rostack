@@ -4,17 +4,17 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from './utils'
 
 const buttonVariants = cva(
-  'ui-button inline-flex shrink-0 items-center justify-center gap-2.5 whitespace-nowrap rounded-lg text-sm font-medium transition-colors duration-150 outline-none focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40',
+  'inline-flex shrink-0 items-center justify-center gap-2.5 whitespace-nowrap rounded-lg border border-transparent text-sm font-medium transition-[background-color,border-color,color,opacity,box-shadow] duration-150 outline-none focus-visible:outline-none focus-visible:[box-shadow:0_0_0_3px_rgb(from_var(--ui-focus-ring)_r_g_b_/_0.14)] disabled:pointer-events-none disabled:opacity-40',
   {
     variants: {
       variant: {
-        default: 'ui-button-primary',
-        destructive: 'ui-button-destructive',
-        secondary: 'ui-control',
-        outline: 'ui-button-outline',
-        ghost: 'ui-control',
+        default: 'bg-fg text-background hover:opacity-95',
+        destructive: 'bg-destructive text-destructive-foreground hover:opacity-95',
+        secondary: 'bg-transparent text-fg hover:bg-hover',
+        outline: 'border-default bg-surface text-fg hover:border-strong hover:bg-hover',
+        ghost: 'bg-transparent text-fg hover:bg-hover',
         plain: 'bg-transparent text-foreground hover:bg-transparent',
-        ghostDestructive: 'ui-control text-destructive hover:bg-destructive/10 hover:text-destructive',
+        ghostDestructive: 'bg-transparent text-destructive hover:bg-destructive/10 hover:text-destructive',
         link: 'text-primary underline-offset-4 hover:underline'
       },
       size: {
@@ -25,12 +25,12 @@ const buttonVariants = cva(
       },
       layout: {
         default: '',
-        row: 'ui-hover-control h-8 w-full max-w-full justify-start text-left',
-        chip: 'ui-chip-control h-7 max-w-full justify-start rounded-lg px-2.5',
-        panel: 'ui-panel-control h-auto w-full max-w-full justify-start rounded-xl px-3 py-3 text-left'
+        row: 'h-8 w-full max-w-full justify-start rounded-lg px-2.5 text-left',
+        chip: 'h-7 max-w-full justify-start rounded-lg bg-overlay-subtle px-2.5 text-left text-fg hover:bg-hover',
+        panel: 'h-auto w-full max-w-full justify-start rounded-xl bg-overlay-subtle px-3 py-3 text-left hover:bg-hover'
       },
       pressed: {
-        true: 'ui-button--pressed'
+        true: ''
       }
     },
     defaultVariants: {
@@ -83,6 +83,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const isGhostDestructive = resolvedVariant === 'ghostDestructive'
     const shouldStartAlign = isRow || isChip || isPanel || (hasStructuredContent && resolvedSize !== 'icon' && resolvedSize !== 'iconBare')
     const shouldFlexLabel = isRow || isPanel
+    const usesPressableSurface = isRow || isChip || isPanel || resolvedVariant === 'ghost' || resolvedVariant === 'secondary'
 
     return (
       <Comp
@@ -92,10 +93,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(
           buttonVariants({ variant: resolvedVariant, size: resolvedSize, layout: resolvedLayout, pressed }),
           shouldStartAlign && 'justify-start text-left',
-          isChip && tone === 'subtle' && 'ui-chip-control--subtle',
-          isRow && pressed && 'ui-hover-control--selected',
-          isChip && pressed && 'ui-chip-control--active',
-          isPanel && pressed && 'ui-panel-control--active',
+          isChip && tone === 'subtle' && 'bg-transparent text-fg-muted hover:bg-hover hover:text-fg',
+          usesPressableSurface && pressed && 'bg-pressed text-fg hover:bg-pressed',
+          resolvedVariant === 'outline' && pressed && 'border-strong bg-pressed hover:bg-pressed',
           className
         )}
         {...props}

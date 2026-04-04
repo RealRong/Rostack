@@ -24,7 +24,7 @@ const BackgroundPick: EditorPick = {
   kind: 'background'
 }
 
-export type HostResolvedPoint = {
+export type ResolvedPoint = {
   pick: EditorPick
   client: Point
   screen: Point
@@ -81,7 +81,7 @@ const toPointerSample = (
   input: ClientPointInput
 ): PointerSample => readPointerSnapshot(editor, input)
 
-export const resolveHostPoint = ({
+export const resolvePoint = ({
   editor,
   pick,
   container,
@@ -91,7 +91,7 @@ export const resolveHostPoint = ({
   pick: PickRegistry
   container: Element
   event: TargetEvent
-}): HostResolvedPoint => {
+}): ResolvedPoint => {
   const element = resolveElementAtPoint(container, event)
     ?? resolveElement(event.target, container)
   const point = readPointerSnapshot(editor, event)
@@ -122,7 +122,7 @@ export const resolvePointerInput = <Phase extends PointerPhase>({
   container: Element
   event: PointerEvent
 }): PointerInput<Phase> => {
-  const resolved = resolveHostPoint({
+  const resolved = resolvePoint({
     editor,
     pick,
     container,

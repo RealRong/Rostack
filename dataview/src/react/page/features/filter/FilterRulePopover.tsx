@@ -13,10 +13,10 @@ import { Button } from '@ui/button'
 import { Input } from '@ui/input'
 import { Menu } from '@ui/menu'
 import { Popover } from '@ui/popover'
-import { QueryChip } from '@ui/query-chip'
 import { cn } from '@ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
 import { PropertyOptionTag } from '@dataview/react/properties/options'
+import { QueryChip } from '../query'
 import { StatusFilterPicker } from './StatusFilterPicker'
 
 export interface FilterRulePopoverProps {
@@ -159,7 +159,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
                   offset={6}
                   surface="scoped"
                   trigger={(
-                    <div className="flex h-5 cursor-pointer items-center gap-1 rounded-md px-1 font-semibold text-muted-foreground transition ui-control">
+                    <div className="flex h-5 cursor-pointer items-center gap-1 rounded-md px-1 font-semibold text-muted-foreground transition-[background-color,color] hover:bg-hover hover:text-foreground">
                       {renderMessage(presentation.condition.message)}
                       <ChevronDown className="opacity-70" size={12} strokeWidth={2} />
                     </div>

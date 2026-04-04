@@ -45,7 +45,7 @@ export const DragHandle = (props: DragHandleProps) => {
         event.stopPropagation()
         props.onPointerStart(event)
       }}
-      className="ui-handle pointer-events-auto inline-flex cursor-grab items-center justify-center rounded-md border-0 bg-transparent text-muted-foreground transition-colors hover:bg-muted/70 active:cursor-grabbing"
+      className="pointer-events-auto inline-flex cursor-grab items-center justify-center rounded-md border-0 bg-transparent text-muted-foreground transition-[background-color,color] hover:bg-hover hover:text-foreground active:cursor-grabbing"
       style={{
         width: TABLE_REORDER_HANDLE_SIZE,
         height: TABLE_REORDER_HANDLE_SIZE

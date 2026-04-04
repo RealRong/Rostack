@@ -33,7 +33,6 @@ import type {
   WheelInput
 } from './input'
 import type {
-  InsertPresetKey,
   Tool
 } from './tool'
 import type { RuntimeRead } from '../runtime/read'
@@ -43,7 +42,6 @@ import type {
   ViewportRead
 } from '../runtime/viewport'
 import type { EditField, EditTarget } from '../runtime/state/edit'
-import type { ShapeKind } from '@whiteboard/core/node'
 import type { EditorOverlay } from '../runtime/overlay'
 import type {
   EdgeGuide,
@@ -65,14 +63,6 @@ export type EditorClipboardTarget =
 export type EditorClipboardOptions = {
   origin?: Point
   ownerId?: NodeId
-}
-
-export type EditorInsertResult = {
-  nodeId: NodeId
-  edit?: {
-    nodeId: NodeId
-    field: EditField
-  }
 }
 
 export type EditorPointerDispatchResult = {
@@ -219,38 +209,6 @@ export type EditorClipboardCommands = {
     packet: ClipboardPacket,
     options?: EditorClipboardOptions
   ) => boolean
-}
-
-export type EditorInsertCommands = {
-  preset: (
-    preset: InsertPresetKey,
-    options: {
-      at: Point
-      ownerId?: NodeId
-    }
-  ) => EditorInsertResult | undefined
-  text: (options: {
-    at: Point
-    ownerId?: NodeId
-  }) => EditorInsertResult | undefined
-  frame: (options: {
-    at: Point
-    ownerId?: NodeId
-  }) => EditorInsertResult | undefined
-  sticky: (options: {
-    toneKey?: string
-    at: Point
-    ownerId?: NodeId
-  }) => EditorInsertResult | undefined
-  shape: (options: {
-    kind: ShapeKind
-    at: Point
-    ownerId?: NodeId
-  }) => EditorInsertResult | undefined
-  mindmap: (options: {
-    templateKey?: string
-    at: Point
-  }) => EditorInsertResult | undefined
 }
 
 export type EditorCommands = Omit<EngineCommands, 'tool' | 'selection' | 'interaction' | 'edge' | 'viewport' | 'node' | 'mindmap'> & {

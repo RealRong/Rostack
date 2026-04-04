@@ -13,9 +13,9 @@ import {
   usePageValue,
 } from '@dataview/react/dataview'
 import { Popover } from '@ui/popover'
-import { QueryChip } from '@ui/query-chip'
 import { meta, renderMessage } from '@dataview/meta'
 import type { QueryBarEntry } from '@dataview/react/page/session/types'
+import { QueryChip } from '../query'
 import { PropertyPicker } from './PropertyPicker'
 
 export type ViewQueryOpenEntry = QueryBarEntry

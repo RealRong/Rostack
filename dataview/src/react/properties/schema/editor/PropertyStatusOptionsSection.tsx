@@ -171,7 +171,7 @@ const StatusOptionEditorPopover = (props: {
           </div>
         </div>
 
-        <div className="ui-divider-top pt-1.5">
+        <div className="border-t border-divider pt-1.5">
           <div className="px-1.5 pb-1 text-[11px] font-medium text-muted-foreground">
             {renderMessage(meta.ui.property.status.moveTo)}
           </div>
@@ -206,7 +206,7 @@ const StatusOptionEditorPopover = (props: {
           </div>
         </div>
 
-        <div className="ui-divider-top pt-1.5">
+        <div className="border-t border-divider pt-1.5">
           <Button
             variant="ghostDestructive"
             layout="row"

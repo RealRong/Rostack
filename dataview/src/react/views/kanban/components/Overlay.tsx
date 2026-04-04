@@ -58,8 +58,8 @@ export const Overlay = () => {
       <div className="relative">
         {controller.drag.dragIds.length > 1 ? (
           <>
-            <div className="ui-surface-floating absolute inset-x-3 top-3 h-full rounded-2xl opacity-60" />
-            <div className="ui-surface-floating absolute inset-x-1.5 top-1.5 h-full rounded-2xl opacity-80" />
+            <div className="absolute inset-x-3 top-3 h-full rounded-2xl border border-default bg-surface opacity-60 shadow-popover" />
+            <div className="absolute inset-x-1.5 top-1.5 h-full rounded-2xl border border-default bg-surface opacity-80 shadow-popover" />
           </>
         ) : null}
         <div className={cn(controller.drag.dragIds.length > 1 && 'relative')}>
@@ -75,7 +75,7 @@ export const Overlay = () => {
             showEmptyProperties
             emptyPlaceholder="—"
             slots={{
-              root: 'ui-surface-content ui-surface-floating relative rounded-2xl px-4 py-2.5 transition-colors',
+              root: 'relative rounded-2xl border border-default bg-surface px-4 py-2.5 shadow-popover transition-colors',
               title: {
                 row: 'min-w-0',
                 rowWhenProperties: 'pb-2',

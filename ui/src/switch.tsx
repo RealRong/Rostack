@@ -11,20 +11,22 @@ export interface SwitchProps {
 }
 
 export const Switch = (props: SwitchProps) => {
+  const trackClassName = cn(
+    'relative inline-flex h-5 w-11 shrink-0 rounded-full bg-surface-strong transition-colors',
+    props.checked && 'bg-primary',
+    props.disabled && 'cursor-not-allowed opacity-50',
+    props.className
+  )
+
   if (props.interactive === false) {
     return (
       <span
         aria-hidden="true"
-        className={cn(
-          'ui-switch relative inline-flex h-5 w-11 shrink-0 rounded-full transition-colors',
-          props.checked && 'ui-switch--checked',
-          props.disabled && 'cursor-not-allowed opacity-50',
-          props.className
-        )}
+        className={trackClassName}
       >
         <span
           className={cn(
-            'ui-switch__thumb absolute top-0.5 h-4 w-4 rounded-full transition-transform',
+            'absolute top-0.5 h-4 w-4 rounded-full bg-surface shadow-[0_0_0_1px_rgb(from_var(--ui-border-default)_r_g_b_/_0.4)] transition-transform',
             props.checked ? 'translate-x-[22px]' : 'translate-x-0.5'
           )}
         />
@@ -41,16 +43,11 @@ export const Switch = (props: SwitchProps) => {
       aria-labelledby={props['aria-labelledby']}
       disabled={props.disabled}
       onClick={() => props.onCheckedChange(!props.checked)}
-      className={cn(
-        'ui-switch relative inline-flex h-5 w-11 shrink-0 rounded-full transition-colors',
-        props.checked && 'ui-switch--checked',
-        props.disabled && 'cursor-not-allowed opacity-50',
-        props.className
-      )}
+      className={trackClassName}
     >
       <span
         className={cn(
-          'ui-switch__thumb absolute top-0.5 h-5 w-5 rounded-full transition-transform',
+          'absolute top-0.5 h-5 w-5 rounded-full bg-surface shadow-[0_0_0_1px_rgb(from_var(--ui-border-default)_r_g_b_/_0.4)] transition-transform',
           props.checked ? 'translate-x-[22px]' : 'translate-x-0.5'
         )}
       />

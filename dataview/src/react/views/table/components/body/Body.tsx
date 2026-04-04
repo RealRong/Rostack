@@ -240,7 +240,7 @@ const View = () => {
         pointerRef={rowReorder.overlay.pointerRef}
         offsetRef={rowReorder.overlay.overlayOffsetRef}
         badge={rowReorder.overlay.extraCount ? (
-          <span className="ui-accent-chip rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]">
+          <span className="rounded-full border border-accent-divider bg-accent-tint px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-accent">
             +{rowReorder.overlay.extraCount}
           </span>
         ) : undefined}

@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import type { GroupProperty } from '@dataview/core/contracts'
-import { uiTone } from '@ui/tone'
 import { cn } from '@ui/utils'
 import { PropertyValueRenderer } from './PropertyValueRenderer'
 import { getPropertyValueSpec } from './kinds'
@@ -37,7 +36,9 @@ const QuickToggleButton = (props: {
       props.density === 'compact'
         ? 'h-5 min-w-[4.75rem] px-2'
         : 'px-2 py-0.5',
-      uiTone.checkbox(props.checked),
+      props.checked
+        ? 'bg-green text-green'
+        : 'bg-gray-muted text-gray hover:bg-gray',
       props.className
     )}
   >

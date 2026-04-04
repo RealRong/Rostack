@@ -8,7 +8,6 @@ import {
 import { getDocumentProperties } from '@dataview/core/document'
 import { Button } from '@ui/button'
 import { Popover } from '@ui/popover'
-import { QueryChip } from '@ui/query-chip'
 import { VerticalReorderList } from '@ui/vertical-reorder-list'
 import {
   useCurrentView,
@@ -22,6 +21,7 @@ import {
   getAvailableSorterProperties,
   getSorterItemId
 } from './sortUi'
+import { QueryChip } from '../query'
 
 export interface SortPopoverProps {
   open: boolean
@@ -97,7 +97,7 @@ export const SortPopover = (props: SortPopoverProps) => {
           )}
         />
 
-        <div className="ui-divider-top mt-2 flex flex-col gap-0.5 pt-1">
+        <div className="mt-2 flex flex-col gap-0.5 border-t border-divider pt-1">
           {availableProperties.length ? (
             <Popover
               open={addSortOpen}

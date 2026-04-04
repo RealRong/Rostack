@@ -1,7 +1,7 @@
 import type { EdgeId } from '@whiteboard/core/types'
 import { memo } from 'react'
 import { useEditor } from '../../../runtime/hooks/useEditor'
-import { useResolvedConfig } from '../../../runtime/hooks/useEnvironment'
+import { useResolvedConfig } from '../../../runtime/hooks/useWhiteboard'
 import { useStoreValue } from '../../../runtime/hooks/useStoreValue'
 import { useSelection } from '../../node/selection'
 import { useEdgeView } from '../hooks/useEdgeView'

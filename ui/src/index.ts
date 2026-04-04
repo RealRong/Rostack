@@ -16,7 +16,6 @@ export {
   type PopoverProps
 } from './popover'
 export { PanelHeader, type PanelHeaderProps } from './panel-header'
-export { QueryChip, type QueryChipProps, type QueryChipState } from './query-chip'
 export { Switch, type SwitchProps } from './switch'
 export {
   normalizeOptionColorId,
@@ -26,7 +25,6 @@ export {
   resolveOptionColumnStyle,
   resolveOptionDotStyle
 } from './color'
-export { uiTone, type UiTagTone } from './tone'
 export {
   VerticalReorderList,
   type VerticalReorderHandleProps,

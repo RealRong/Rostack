@@ -34,5 +34,4 @@ export type NodeDefinition = {
 
 export type NodeRegistry = {
   get: (type: NodeType) => NodeDefinition | undefined
-  register: (definition: NodeDefinition) => void
 }

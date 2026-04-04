@@ -7,11 +7,14 @@ import { DEFAULT_DRAW_PREFERENCES } from '../../features/toolbox/drawPreferences
 import { INSERT_PRESET_CATALOG } from '../../features/toolbox/presets'
 import type { WhiteboardProps } from '../../types/common/board'
 import type { ResolvedConfig } from '../../types/common/config'
-import type { WhiteboardRuntime as Editor } from '../../types/runtime'
+import { createClipboardBridge } from '../bridge/clipboard'
+import { createInsertBridge } from '../bridge/insert'
+import { createPointerBridge } from '../bridge/pointer'
+import { createClipboardHostAdapter } from '../dom/clipboard'
 import { createEditor } from '../editor'
-import { createHostRuntime } from '../host/runtime'
+import type { WhiteboardContextValue } from '../hooks/useWhiteboard'
 
-type EngineRuntime = ReturnType<typeof createEngine>
+type WhiteboardServices = Omit<WhiteboardContextValue, 'config'>
 
 export const isMirroredDocumentFromEngine = (
   outbound: Document,
@@ -46,7 +49,7 @@ export const useWhiteboardRuntime = ({
 
   onDocumentChangeRef.current = onDocumentChange
 
-  const engineRef = useRef<EngineRuntime | null>(null)
+  const engineRef = useRef<WhiteboardContextValue['engine'] | null>(null)
   if (!engineRef.current) {
     engineRef.current = createEngine({
       registries: coreRegistries,
@@ -60,15 +63,7 @@ export const useWhiteboardRuntime = ({
   }
   const engine = engineRef.current!
 
-  const hostRef = useRef<ReturnType<typeof createHostRuntime> | null>(null)
-  if (!hostRef.current) {
-    hostRef.current = createHostRuntime({
-      insertPresetCatalog: INSERT_PRESET_CATALOG
-    })
-  }
-  const host = hostRef.current
-
-  const editorRef = useRef<Editor | null>(null)
+  const editorRef = useRef<WhiteboardContextValue['editor'] | null>(null)
   if (!editorRef.current) {
     editorRef.current = createEditor({
       engine,
@@ -77,15 +72,45 @@ export const useWhiteboardRuntime = ({
       initialViewport: resolvedConfig.viewport.initial,
       registry: registryRef.current,
     })
-    host.insert.bind(editorRef.current)
   }
   const editor = editorRef.current!
 
+  const servicesRef = useRef<WhiteboardServices | null>(null)
+  if (!servicesRef.current) {
+    const insert = createInsertBridge({
+      editor,
+      catalog: INSERT_PRESET_CATALOG
+    })
+    const pointer = createPointerBridge({
+      editor,
+      insert
+    })
+    const clipboard = createClipboardBridge({
+      editor,
+      adapter: createClipboardHostAdapter(),
+      readPointer: pointer.getWorld
+    })
+
+    servicesRef.current = {
+      editor,
+      engine,
+      registry: registryRef.current,
+      pointer,
+      clipboard,
+      insert
+    }
+  }
+  const services = servicesRef.current!
+  const whiteboard = useMemo(
+    () => ({
+      ...services,
+      config: resolvedConfig
+    }),
+    [resolvedConfig, services]
+  )
+
   return {
-    editor,
-    registry: registryRef.current,
-    host,
-    engine,
+    whiteboard,
     inputDocument,
     lastOutboundDocumentRef,
     onDocumentChangeRef

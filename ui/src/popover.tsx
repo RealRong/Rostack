@@ -294,7 +294,7 @@ export const Popover = (props: PopoverProps) => {
           ...transitionStyles
         }}
         className={cn(
-          'ui-popover-panel ui-surface-floating min-w-[280px] rounded-xl p-4 text-popover-foreground',
+          'min-w-[280px] rounded-xl bg-floating p-4 text-fg shadow-popover transition-[opacity,transform] duration-200 ease-out will-change-[opacity,transform]',
           props.contentClassName
         )}
       >
@@ -335,7 +335,7 @@ export const Popover = (props: PopoverProps) => {
                     aria-hidden="true"
                     className={cn(
                       'fixed inset-0 z-40',
-                      backdrop === 'dim' ? 'bg-black/10' : 'bg-transparent'
+                      backdrop === 'dim' ? 'bg-overlay' : 'bg-transparent'
                     )}
                     {...{
                       [BLOCKING_SURFACE_ATTR]: '',

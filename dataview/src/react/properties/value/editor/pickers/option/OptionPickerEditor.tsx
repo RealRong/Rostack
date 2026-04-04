@@ -529,7 +529,7 @@ export const OptionPickerEditor = (
         </div>
       </div>
 
-      <div className="ui-divider-top flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col border-t border-divider">
         <div className="px-3 py-2 text-[12px] font-medium text-muted-foreground">
           {renderMessage(meta.ui.property.options.selectOrCreate(props.mode === 'multi'))}
         </div>

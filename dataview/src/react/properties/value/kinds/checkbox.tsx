@@ -1,6 +1,5 @@
 import type { GroupProperty } from '@dataview/core/contracts'
 import { parsePropertyDraft } from '@dataview/core/property'
-import { uiTone } from '@ui/tone'
 import { cn } from '@ui/utils'
 import { CheckboxEditor } from '../editor/basic/CheckboxEditor'
 import type { PropertyValueSpec } from './contracts'
@@ -33,7 +32,9 @@ export const createCheckboxPropertySpec = (
       <span
         className={cn(
           'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
-          uiTone.checkbox(props.value),
+          props.value
+            ? 'bg-green text-green'
+            : 'bg-gray-muted text-gray',
           props.className
         )}
       >

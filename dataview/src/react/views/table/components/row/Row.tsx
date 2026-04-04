@@ -91,7 +91,7 @@ const View = (props: RowProps) => {
   })
   const rowTone = cn(
     props.isDragging && 'bg-muted/60 opacity-40',
-    rowSelection.selected && 'ui-accent-overlay'
+    rowSelection.selected && 'bg-accent-overlay'
   )
 
   const onRowPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -127,7 +127,7 @@ const View = (props: RowProps) => {
       role="row"
       aria-selected={rowSelection.selected}
       onPointerDown={onRowPointerDown}
-      className="ui-divider-bottom relative text-sm text-foreground transition-colors focus:outline-none"
+      className="relative border-b border-divider text-sm text-foreground transition-colors focus:outline-none"
       style={{
         height: props.rowHeight,
         boxSizing: 'border-box'

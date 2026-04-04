@@ -10,9 +10,7 @@ export type {
   EditorClipboardOptions,
   EditorClipboardTarget,
   EditorCommands,
-  EditorInsertCommands,
-  EditorInput,
-  EditorInsertResult
+  EditorInput
 } from './types/editor'
 export type {
   KeyboardInput,

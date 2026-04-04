@@ -1,7 +1,8 @@
-import '../../../../ui/css/whiteboard.css'
+import './styles/whiteboard-react.css'
 
 export { Whiteboard } from './Whiteboard'
 export { useEditor } from './runtime/hooks/useEditor'
+export { useWhiteboard } from './runtime/hooks/useWhiteboard'
 export { createNodeRegistry, createDefaultNodeRegistry } from './features/node/registry'
 
 export type {

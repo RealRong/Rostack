@@ -1,7 +1,7 @@
 import { useEffect, type RefObject } from 'react'
 import { createRafTask } from '@whiteboard/engine'
 import type { WhiteboardRuntime as Editor } from '../../types/runtime'
-import { resolveWheelInput } from '../host/input'
+import { resolveWheelInput } from '../dom/input'
 
 type ContainerRect = Parameters<Editor['commands']['viewport']['setRect']>[0]
 type WheelInput = Parameters<Editor['input']['wheel']>[0]

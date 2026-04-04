@@ -112,7 +112,7 @@ export const OptionEditorPopover = (props: OptionEditorPopoverProps) => {
           </div>
         </div>
         {props.onDelete ? (
-          <div className="ui-divider-top pt-1.5">
+          <div className="border-t border-divider pt-1.5">
             <Button
               variant="ghostDestructive"
               layout="row"

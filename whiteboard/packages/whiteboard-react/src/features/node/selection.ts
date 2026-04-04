@@ -21,11 +21,11 @@ import {
   useInteraction,
   useTool
 } from '../../runtime/hooks/useEditor'
-import { useNodeRegistry } from '../../runtime/hooks/useEnvironment'
+import { useNodeRegistry, useWhiteboard } from '../../runtime/hooks/useWhiteboard'
 import { useStoreValue } from '../../runtime/hooks/useStoreValue'
 import type { WhiteboardRuntime as Editor } from '../../types/runtime'
 import type { NodeRegistry } from '../../types/node'
-import { useClipboardActions } from '../../runtime/host/useClipboardActions'
+import type { ClipboardBridge } from '../../runtime/bridge/clipboard'
 import { selectNodesByTypeKey } from './actions'
 import {
   duplicateNodesAndSelect,
@@ -148,7 +148,7 @@ const readSelectionMenuView = ({
   registry
 }: {
   editor: Editor
-  clipboard: ReturnType<typeof useClipboardActions>
+  clipboard: ClipboardBridge
   selection: BaseSelection
   summary: NodeSummary
   can: NodeSelectionCan
@@ -464,7 +464,7 @@ const resolveSelectionPresentation = (
 const resolveSelectionView = (
   editor: Editor,
   selection: BaseSelection,
-  clipboard: ReturnType<typeof useClipboardActions>,
+  clipboard: ClipboardBridge,
   registry: Pick<NodeRegistry, 'get'>
 ): SelectionView => {
   const boxState = resolveSelectionBoxState(selection)
@@ -505,7 +505,7 @@ const resolveSelectionView = (
 export const useSelection = () => {
   const editor = useEditor()
   const registry = useNodeRegistry()
-  const clipboard = useClipboardActions()
+  const clipboard = useWhiteboard().clipboard
   const target = useStoreValue(editor.read.selection.target)
   const summary = useStoreValue(editor.read.selection.summary)
   const transformBox = useStoreValue(editor.read.selection.transformBox)

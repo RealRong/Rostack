@@ -11,6 +11,8 @@ export type ClipboardHostAdapter = {
   read: (event?: ClipboardEvent) => Promise<ClipboardPacket | undefined>
 }
 
+export type ClipboardAdapter = ClipboardHostAdapter
+
 const writeClipboardPacketToEvent = (
   packet: ClipboardPacket,
   event: ClipboardEvent

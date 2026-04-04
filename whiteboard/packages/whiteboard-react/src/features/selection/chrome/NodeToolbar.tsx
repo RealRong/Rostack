@@ -9,7 +9,7 @@ import type { Point } from '@whiteboard/core/types'
 import {
   useEditorRuntime
 } from '../../../runtime/hooks/useEditor'
-import { useNodeRegistry } from '../../../runtime/hooks/useEnvironment'
+import { useNodeRegistry } from '../../../runtime/hooks/useWhiteboard'
 import { useElementSize } from '../../../runtime/hooks/useElementSize'
 import { useStoreValue } from '../../../runtime/hooks/useStoreValue'
 import { useOverlayDismiss } from '../../../runtime/overlay/useOverlayDismiss'

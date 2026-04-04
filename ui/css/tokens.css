@@ -67,6 +67,7 @@
   --ui-blue-bg-soft: #0080d50c;
   --ui-blue-bg-muted: #007cd718;
   --ui-blue-bg-strong: #0076d934;
+  --ui-blue-bg-tint: #007cd718;
   --ui-blue-card-bg: #fff;
   --ui-blue-card-bg-hover: #e5f2fc;
   --ui-blue-card-bg-pressed: #cee3f7;
@@ -232,7 +233,7 @@
     --ui-bg-hover: #ffffff0e;
     --ui-bg-pressed: #ffffff08;
     --ui-overlay-bg: #0f0f0fcc;
-    --ui-accent: #4fa7ff;
+    --ui-accent: #2783de;
     --ui-accent-foreground: #191919;
     --ui-danger: #ff7469;
     --ui-danger-foreground: #191919;
@@ -263,8 +264,9 @@
     --ui-blue-border-muted: #213041;
     --ui-blue-border-strong: #355f8b;
     --ui-blue-bg-soft: #298bfd10;
-    --ui-blue-bg-muted: #439bff3d;
+    --ui-blue-bg-muted: #2383e212;
     --ui-blue-bg-strong: #51a6ff7e;
+    --ui-blue-bg-tint: #439bff3d;
     --ui-blue-card-bg: #213041;
     --ui-blue-card-bg-hover: #233850;
     --ui-blue-card-bg-pressed: #355f8b;

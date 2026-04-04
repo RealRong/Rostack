@@ -57,8 +57,8 @@ export default defineConfig({
         replacement: path.join(editorSrc, 'index.ts')
       },
       {
-        find: /^@whiteboard\/editor\/(.+)$/,
-        replacement: `${editorSrc}/$1`
+        find: /^@whiteboard\/editor\/draw$/,
+        replacement: path.join(editorSrc, 'draw.ts')
       },
       {
         find: /^@whiteboard\/engine$/,

@@ -21,6 +21,7 @@ type SettingsRouteKind =
 
 type CardSizeId = 'sm' | 'md' | 'lg'
 type NewRecordPositionId = 'start' | 'end'
+type LayoutTypeId = 'table' | 'kanban' | 'gallery'
 
 const findProperty = (
   properties: readonly GroupProperty[],
@@ -275,10 +276,29 @@ export const ui = {
         'meta.ui.viewSettings.layoutPanel.viewTypeFieldDescription',
         'Choose how this database is presented.'
       ),
+      viewTypeOption: (value: LayoutTypeId) => {
+        switch (value) {
+          case 'gallery':
+            return message('meta.ui.viewSettings.layoutPanel.viewTypeOption.gallery', 'Gallery')
+          case 'kanban':
+            return message('meta.ui.viewSettings.layoutPanel.viewTypeOption.kanban', 'Kanban')
+          case 'table':
+          default:
+            return message('meta.ui.viewSettings.layoutPanel.viewTypeOption.table', 'Table')
+        }
+      },
       tableTitle: message('meta.ui.viewSettings.layoutPanel.tableTitle', 'Table'),
       tableDescription: message(
         'meta.ui.viewSettings.layoutPanel.tableDescription',
         'Table-specific layout settings will live here.'
+      ),
+      showVerticalLines: message(
+        'meta.ui.viewSettings.layoutPanel.showVerticalLines',
+        'Show vertical lines'
+      ),
+      showVerticalLinesDescription: message(
+        'meta.ui.viewSettings.layoutPanel.showVerticalLinesDescription',
+        'Display separators between table columns.'
       ),
       tableInlineStatus: message(
         'meta.ui.viewSettings.layoutPanel.tableInlineStatus',
@@ -317,6 +337,18 @@ export const ui = {
       kanbanDescription: message(
         'meta.ui.viewSettings.layoutPanel.kanbanDescription',
         'Control how cards behave inside each column.'
+      ),
+      fillColumnColor: message(
+        'meta.ui.viewSettings.layoutPanel.fillColumnColor',
+        'Fill column color'
+      ),
+      fillColumnColorDescription: message(
+        'meta.ui.viewSettings.layoutPanel.fillColumnColorDescription',
+        'Tint each column with its option color while cards stay deeper.'
+      ),
+      fillColumnColorDisabledDescription: message(
+        'meta.ui.viewSettings.layoutPanel.fillColumnColorDisabledDescription',
+        'Available when grouped by status or select options.'
       ),
       newCardPosition: message(
         'meta.ui.viewSettings.layoutPanel.newCardPosition',

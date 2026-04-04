@@ -4,4 +4,5 @@ export type GroupKanbanNewRecordPosition = 'start' | 'end'
 
 export interface GroupKanbanOptions {
   newRecordPosition: GroupKanbanNewRecordPosition
+  fillColumnColor: boolean
 }

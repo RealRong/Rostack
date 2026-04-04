@@ -47,6 +47,11 @@ export const Card = (props: {
     appearanceId: props.appearanceId
   })
   const sectionColorId = controller.readAppearanceColorId(props.appearanceId)
+  const surfaceStyle = resolveOptionCardStyle(
+    controller.fillColumnColor
+      ? sectionColorId
+      : undefined
+  )
 
   return (
     <CardContent
@@ -101,15 +106,17 @@ export const Card = (props: {
         props.className
       )}
       style={{
-        ...(controller.groupUsesOptionColors
-          ? resolveOptionCardStyle(sectionColorId)
+        ...surfaceStyle,
+        ...(selected
+          ? {
+              boxShadow: 'var(--ui-shadow-sm), 0 0 0 2px var(--ui-accent-frame-border)'
+            }
           : undefined),
         ...props.style
       }}
       slots={{
         root: cn(
-          'relative rounded-xl border bg-surface p-3 transition-colors',
-          selected && 'border-primary'
+          'relative rounded-xl px-3 py-2.5 transition-colors'
         ),
         title: {
           content: 'min-w-0 flex-1 w-full',

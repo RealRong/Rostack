@@ -12,6 +12,10 @@ import type { NodeDefinition, NodeWrite } from '../../../../types/node'
 import { useEdit, useEditor } from '../../../../runtime/hooks/useEditor'
 import { usePickRef } from '../../../../runtime/hooks/usePickRef'
 import {
+  isEscapeEditingKey,
+  stopEditingPointerDown
+} from '../../dom/editableText'
+import {
   createSchema,
   createTextField,
   getDataString,
@@ -83,9 +87,7 @@ export const FrameNodeChrome = ({
           data-input-ignore
           value={draft}
           autoFocus
-          onPointerDown={(event) => {
-            event.stopPropagation()
-          }}
+          onPointerDown={stopEditingPointerDown}
           onChange={(event) => {
             setDraft(event.target.value)
           }}
@@ -95,7 +97,7 @@ export const FrameNodeChrome = ({
               event.preventDefault()
               commit()
             }
-            if (event.key === 'Escape') {
+            if (isEscapeEditingKey(event)) {
               event.preventDefault()
               setDraft(title)
               editor.commands.node.text.cancel({

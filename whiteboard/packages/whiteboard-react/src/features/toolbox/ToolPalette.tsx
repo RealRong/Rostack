@@ -12,7 +12,7 @@ import {
   useEditor,
   useTool
 } from '../../runtime/hooks/useEditor'
-import { useElementSize } from '../../runtime/hooks/useElementSize'
+import { useElementSize } from '../../dom/observe/useElementSize'
 import { useStoreValue } from '../../runtime/hooks/useStoreValue'
 import { useOverlayDismiss } from '../../runtime/overlay/useOverlayDismiss'
 import { ToolPaletteButtons } from './ToolPaletteButtons'

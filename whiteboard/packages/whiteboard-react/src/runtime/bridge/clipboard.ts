@@ -1,7 +1,7 @@
 import type { Point } from '@whiteboard/core/types'
 import type { EditorClipboardTarget } from '@whiteboard/editor'
 import type { WhiteboardRuntime } from '../../types/runtime'
-import type { ClipboardAdapter } from '../dom/clipboard'
+import type { ClipboardAdapter } from '../../dom/host/clipboard'
 
 const clonePoint = (
   point: Point

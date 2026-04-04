@@ -15,7 +15,7 @@ import {
   isInputIgnoredTarget,
   isSelectionIgnoredTarget,
   readEditableFieldTarget
-} from './domTargets'
+} from './targets'
 
 type TargetEvent = Pick<MouseEvent | PointerEvent | WheelEvent, 'target' | 'clientX' | 'clientY'>
 type ClientPointInput = Pick<MouseEvent | PointerEvent | WheelEvent, 'clientX' | 'clientY'>

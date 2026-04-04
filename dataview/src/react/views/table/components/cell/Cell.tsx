@@ -34,6 +34,7 @@ const View = (props: CellProps) => {
   if (!currentView) {
     throw new Error('Table cell requires an active current view.')
   }
+  const showVerticalLines = currentView.view.options.table.showVerticalLines
 
   const cell = {
     appearanceId: props.appearanceId,
@@ -97,7 +98,8 @@ const View = (props: CellProps) => {
         event.stopPropagation()
       }}
       className={cn(
-        'relative box-border h-full min-w-0 border-r border-divider'
+        'relative box-border h-full min-w-0',
+        showVerticalLines && 'border-r border-divider'
       )}
     >
       {cellRender.chrome.selection || cellRender.chrome.frame ? (

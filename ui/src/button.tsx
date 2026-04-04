@@ -4,7 +4,7 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from './utils'
 
 const buttonVariants = cva(
-  'inline-flex shrink-0 items-center justify-center gap-2.5 whitespace-nowrap rounded-lg border border-transparent text-sm font-medium transition-[background-color,border-color,color,opacity,box-shadow] duration-150 outline-none focus-visible:outline-none focus-visible:[box-shadow:0_0_0_3px_rgb(from_var(--ui-focus-ring)_r_g_b_/_0.14)] disabled:pointer-events-none disabled:opacity-40',
+  'inline-flex shrink-0 items-center justify-center gap-2.5 whitespace-nowrap rounded-lg border border-transparent text-sm font-medium transition-[background-color,border-color,color,opacity,box-shadow] duration-150 outline-none disabled:pointer-events-none disabled:opacity-40',
   {
     variants: {
       variant: {
@@ -50,6 +50,7 @@ export interface ButtonProps
   suffix?: React.ReactNode
   trailing?: React.ReactNode
   tone?: 'default' | 'subtle'
+  focusRing?: boolean
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -63,6 +64,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     suffix,
     trailing,
     tone = 'default',
+    focusRing = true,
     children,
     type,
     className,
@@ -92,6 +94,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         data-pressed={pressed ? 'true' : undefined}
         className={cn(
           buttonVariants({ variant: resolvedVariant, size: resolvedSize, layout: resolvedLayout, pressed }),
+          focusRing && 'focus-visible:outline-none focus-visible:[box-shadow:0_0_0_3px_rgb(from_var(--ui-focus-ring)_r_g_b_/_0.14)]',
           shouldStartAlign && 'justify-start text-left',
           isChip && tone === 'subtle' && 'bg-transparent text-fg-muted hover:bg-hover hover:text-fg',
           usesPressableSurface && pressed && 'bg-pressed text-fg hover:bg-pressed',

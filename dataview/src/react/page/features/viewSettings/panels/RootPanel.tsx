@@ -10,7 +10,7 @@ import {
   Trash2,
   type LucideIcon
 } from 'lucide-react'
-import { forwardRef, useEffect, useState } from 'react'
+import { forwardRef, useEffect, useRef, useState } from 'react'
 import type { GroupBucketSort, GroupProperty, GroupView } from '@dataview/core/contracts'
 import {
   getDocumentProperties,
@@ -61,13 +61,26 @@ ViewSettingsMenuButton.displayName = 'ViewSettingsMenuButton'
 const ViewSettingsIdentitySection = (props: {
   currentView?: GroupView
   onRename: (name: string) => void
+  autoFocusName?: boolean
 }) => {
   const [name, setName] = useState(props.currentView?.name ?? '')
+  const inputRef = useRef<HTMLInputElement | null>(null)
   const Icon = meta.view.get(props.currentView?.type).Icon
 
   useEffect(() => {
     setName(props.currentView?.name ?? '')
   }, [props.currentView?.id, props.currentView?.name])
+
+  useEffect(() => {
+    if (!props.autoFocusName) {
+      return
+    }
+
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    })
+  }, [props.autoFocusName, props.currentView?.id])
 
   const commit = () => {
     if (!props.currentView) {
@@ -94,6 +107,7 @@ const ViewSettingsIdentitySection = (props: {
 
         <div className="min-w-0 flex-1 space-y-1">
           <Input
+            ref={inputRef}
             value={name}
             onChange={event => setName(event.target.value)}
             onBlur={commit}
@@ -264,6 +278,7 @@ export const RootPanel = () => {
       </div>
       <ViewSettingsIdentitySection
         currentView={currentView}
+        autoFocusName={router.route.kind === 'root' && router.route.focusTarget === 'viewName'}
         onRename={name => {
           if (!currentView) {
             return

@@ -11,6 +11,12 @@ const editingTargetSelector = [
   '[contenteditable="true"]'
 ].join(', ')
 
+const keyboardPrioritySurfaceSelector = [
+  '[role="menu"]',
+  '[role="menuitem"]',
+  '[role="menuitemcheckbox"]'
+].join(', ')
+
 export const PageKeyboardHost = () => {
   const dataView = useDataView()
   const engine = dataView.engine
@@ -27,6 +33,8 @@ export const PageKeyboardHost = () => {
         event.defaultPrevented
         || event.isComposing
         || closestTarget(event.target, editingTargetSelector)
+        || uiLock
+        || closestTarget(event.target, keyboardPrioritySurfaceSelector)
       ) {
         return
       }
@@ -60,7 +68,7 @@ export const PageKeyboardHost = () => {
           event.preventDefault()
           return
         case 'select-all':
-          if (uiLock || currentView?.view.type === 'table') {
+          if (currentView?.view.type === 'table') {
             return
           }
 
@@ -68,7 +76,7 @@ export const PageKeyboardHost = () => {
           event.preventDefault()
           return
         case 'clear-selection':
-          if (uiLock || currentView?.view.type === 'table') {
+          if (currentView?.view.type === 'table') {
             return
           }
 
@@ -76,7 +84,7 @@ export const PageKeyboardHost = () => {
           event.preventDefault()
           return
         case 'remove-selection':
-          if (uiLock || currentView?.view.type === 'table') {
+          if (currentView?.view.type === 'table') {
             return
           }
 

@@ -1,15 +1,15 @@
 import type { EditorPick } from '@whiteboard/editor'
 import type { Point } from '@whiteboard/core/types'
 import type { WhiteboardRuntime } from '../../types/runtime'
-import { consumeDomEvent } from '../dom/event'
+import { consumeDomEvent } from '../../dom/host/event'
 import {
   resolvePoint,
   resolvePointerInput,
   type ResolvedPoint
-} from '../dom/input'
-import { createPickRegistry } from '../dom/pickRegistry'
-import { createPointerSession } from '../dom/pointerSession'
-import { createDocumentSelectionLock } from '../dom/selectionLock'
+} from '../../dom/host/input'
+import { createPickRegistry } from '../../dom/host/pickRegistry'
+import { createPointerSession } from '../../dom/host/pointerSession'
+import { createDocumentSelectionLock } from '../../dom/host/selectionLock'
 import type { InsertBridge } from './insert'
 
 const isViewportPanStart = (

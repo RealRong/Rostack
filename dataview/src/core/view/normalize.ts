@@ -65,6 +65,12 @@ const normalizeWidths = (
   return next
 }
 
+const normalizeShowVerticalLines = (value: unknown) => (
+  typeof value === 'boolean'
+    ? value
+    : true
+)
+
 export const normalizeGroupViewOptions = (
   options: unknown,
   context: NormalizeGroupViewOptionsContext = {}
@@ -84,7 +90,8 @@ export const normalizeGroupViewOptions = (
         : defaultOptions.display.propertyIds
     },
     table: {
-      widths: normalizeWidths(table?.widths, validPropertyIds)
+      widths: normalizeWidths(table?.widths, validPropertyIds),
+      showVerticalLines: normalizeShowVerticalLines(table?.showVerticalLines)
     },
     gallery: normalizeGroupGalleryOptions(root?.gallery),
     kanban: normalizeGroupKanbanOptions(root?.kanban)

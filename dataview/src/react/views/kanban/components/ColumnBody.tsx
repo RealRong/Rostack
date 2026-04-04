@@ -7,6 +7,8 @@ import { useColumnVirtual } from '../virtual'
 import { Card } from './Card'
 import { ColumnDropIndicator } from './ColumnDropIndicator'
 
+const FILLED_COLUMN_INSET = 8
+
 export const ColumnBody = (props: {
   section: Section
 }) => {
@@ -26,6 +28,9 @@ export const ColumnBody = (props: {
     bodyRef,
     overscan
   })
+  const contentInset = controller.fillColumnColor
+    ? FILLED_COLUMN_INSET
+    : 0
 
   useEffect(() => {
     controller.layouts.set(props.section.key, virtual.layouts)
@@ -36,8 +41,8 @@ export const ColumnBody = (props: {
 
   const indicatorTop = sectionOverTarget
     ? sectionOverTarget.beforeAppearanceId
-      ? Math.max(0, (virtual.positionById.get(sectionOverTarget.beforeAppearanceId)?.top ?? virtual.totalHeight) - 4)
-      : Math.max(0, virtual.totalHeight - 4)
+      ? Math.max(0, (virtual.positionById.get(sectionOverTarget.beforeAppearanceId)?.top ?? virtual.totalHeight) - 4) + contentInset
+      : Math.max(0, virtual.totalHeight - 4) + contentInset
     : undefined
   const firstItem = virtual.items[0]
   const lastItem = virtual.items[virtual.items.length - 1]
@@ -55,16 +60,20 @@ export const ColumnBody = (props: {
         isColumnTarget && 'outline outline-2 outline-primary/20 -outline-offset-2'
       )}
       style={{
-        ...(controller.groupUsesOptionColors
+        ...(controller.fillColumnColor
           ? resolveOptionColumnStyle(controller.readSectionColorId(props.section.key))
           : undefined),
+        padding: contentInset || undefined,
         minHeight: Math.max(controller.layout.columnMinHeight, props.section.ids.length ? 0 : 120)
       }}
     >
       {props.section.ids.length ? (
         <>
           {indicatorTop !== undefined ? (
-            <ColumnDropIndicator top={indicatorTop} />
+            <ColumnDropIndicator
+              top={indicatorTop}
+              inset={contentInset}
+            />
           ) : null}
           {topSpacerHeight ? (
             <div

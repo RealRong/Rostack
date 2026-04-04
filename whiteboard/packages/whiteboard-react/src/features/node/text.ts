@@ -24,13 +24,13 @@ export type {
 export {
   focusEditableEnd,
   readEditableText
-} from './textContent'
-export type { TextAutoFontTask } from './textLayout'
+} from '../../dom/editable/text'
+export { bindNodeTextSource } from './dom/textSourceRegistry'
+export type { TextAutoFontTask } from './dom/textLayout'
 export {
-  bindNodeTextSource,
   createTextAutoFontTask,
   estimateTextAutoFont,
   measureBoundTextNodeSize,
   measureTextNodeSize,
   scheduleTextAutoFont
-} from './textLayout'
+} from './dom/textLayout'

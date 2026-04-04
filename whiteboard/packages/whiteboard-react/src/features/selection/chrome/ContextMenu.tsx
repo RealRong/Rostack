@@ -6,12 +6,12 @@ import {
   useWhiteboard,
   type WhiteboardContextValue
 } from '../../../runtime/hooks/useWhiteboard'
-import { useElementSize } from '../../../runtime/hooks/useElementSize'
+import { useElementSize } from '../../../dom/observe/useElementSize'
 import { useOverlayDismiss } from '../../../runtime/overlay/useOverlayDismiss'
-import { isContextMenuIgnoredTarget } from '../../../runtime/dom/domTargets'
+import { isContextMenuIgnoredTarget } from '../../../dom/host/targets'
 import {
   type ResolvedPoint
-} from '../../../runtime/dom/input'
+} from '../../../dom/host/input'
 import type { ClipboardBridge } from '../../../runtime/bridge/clipboard'
 import {
   duplicateNodesAndSelect,

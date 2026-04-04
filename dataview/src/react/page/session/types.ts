@@ -29,7 +29,7 @@ export type QueryBarEntry =
     }
 
 export type SettingsRoute =
-  | { kind: 'root' }
+  | { kind: 'root', focusTarget?: 'viewName' }
   | { kind: 'layout' }
   | { kind: 'group' }
   | { kind: 'viewProperties' }

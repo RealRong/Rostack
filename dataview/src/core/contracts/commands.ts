@@ -125,6 +125,11 @@ export type GroupCommand =
       widths: GroupTableOptions['widths']
     }
   | {
+      type: 'view.table.setShowVerticalLines'
+      viewId: ViewId
+      value: boolean
+    }
+  | {
       type: 'view.gallery.setShowPropertyLabels'
       viewId: ViewId
       value: boolean
@@ -138,6 +143,11 @@ export type GroupCommand =
       type: 'view.kanban.setNewRecordPosition'
       viewId: ViewId
       value: GroupKanbanNewRecordPosition
+    }
+  | {
+      type: 'view.kanban.setFillColumnColor'
+      viewId: ViewId
+      value: boolean
     }
   | {
       type: 'view.order.move'

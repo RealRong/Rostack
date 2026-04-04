@@ -30,6 +30,7 @@ import {
   resolveViewDuplicateCommand,
   resolveViewGallerySetCardSizeCommand,
   resolveViewGallerySetShowPropertyLabelsCommand,
+  resolveViewKanbanSetFillColumnColorCommand,
   resolveViewKanbanSetNewRecordPositionCommand,
   resolveViewOrderClearCommand,
   resolveViewOrderMoveCommand,
@@ -38,6 +39,7 @@ import {
   resolveViewQuerySetCommand,
   resolveViewRenameCommand,
   resolveViewRemoveCommand,
+  resolveViewTableSetShowVerticalLinesCommand,
   resolveViewTableSetWidthsCommand,
   resolveViewTypeSetCommand
 } from './view'
@@ -96,12 +98,16 @@ export const resolveCommand = (document: GroupDocument, command: IndexedCommand)
       return resolveViewDisplaySetPropertyIdsCommand(document, command)
     case 'view.table.setWidths':
       return resolveViewTableSetWidthsCommand(document, command)
+    case 'view.table.setShowVerticalLines':
+      return resolveViewTableSetShowVerticalLinesCommand(document, command)
     case 'view.gallery.setShowPropertyLabels':
       return resolveViewGallerySetShowPropertyLabelsCommand(document, command)
     case 'view.gallery.setCardSize':
       return resolveViewGallerySetCardSizeCommand(document, command)
     case 'view.kanban.setNewRecordPosition':
       return resolveViewKanbanSetNewRecordPositionCommand(document, command)
+    case 'view.kanban.setFillColumnColor':
+      return resolveViewKanbanSetFillColumnColorCommand(document, command)
     case 'view.order.move':
       return resolveViewOrderMoveCommand(document, command)
     case 'view.order.clear':

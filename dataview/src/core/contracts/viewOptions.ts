@@ -8,6 +8,7 @@ export interface GroupViewDisplayOptions {
 
 export interface GroupTableOptions {
   widths: Readonly<Partial<Record<PropertyId, number>>>
+  showVerticalLines: boolean
 }
 
 export interface GroupViewOptions {

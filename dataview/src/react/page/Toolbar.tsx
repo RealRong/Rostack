@@ -1,11 +1,16 @@
 import {
   ArrowUpDown,
+  Copy,
   Filter,
+  Settings2,
   Search,
+  SquarePen,
+  Trash2,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type {
-  GroupView
+  GroupView,
+  ViewId
 } from '@dataview/core/contracts'
 import {
   getDocumentProperties,
@@ -13,6 +18,7 @@ import {
 } from '@dataview/core/document'
 import { Button } from '@ui/button'
 import { Input } from '@ui/input'
+import { Menu, type MenuItem } from '@ui/menu'
 import { Popover } from '@ui/popover'
 import { cn } from '@ui/utils'
 import { CreateViewPopover } from '@dataview/react/page/features/createView'
@@ -32,24 +38,103 @@ interface ViewTabProps {
   view: GroupView
   active: boolean
   onClick: () => void
+  menuOpen: boolean
+  canRemove: boolean
+  onOpenMenu: () => void
+  onCloseMenu: () => void
+  onRename: () => void
+  onEdit: () => void
+  onDuplicate: () => void
+  onRemove: () => void
 }
 
 const ViewTab = (props: ViewTabProps) => {
   const viewType = meta.view.get(props.view.type)
   const Icon = viewType.Icon
+  const items: readonly MenuItem[] = [
+    {
+      kind: 'action',
+      key: 'rename',
+      label: '重命名',
+      leading: <SquarePen className="size-4" size={16} strokeWidth={1.8} />,
+      onSelect: props.onRename
+    },
+    {
+      kind: 'action',
+      key: 'edit',
+      label: '编辑视图',
+      leading: <Settings2 className="size-4" size={16} strokeWidth={1.8} />,
+      onSelect: props.onEdit
+    },
+    {
+      kind: 'divider',
+      key: 'divider-actions'
+    },
+    {
+      kind: 'action',
+      key: 'duplicate',
+      label: '创建视图副本',
+      leading: <Copy className="size-4" size={16} strokeWidth={1.8} />,
+      onSelect: props.onDuplicate
+    },
+    {
+      kind: 'action',
+      key: 'remove',
+      label: '删除视图',
+      leading: <Trash2 className="size-4" size={16} strokeWidth={1.8} />,
+      tone: 'destructive',
+      disabled: !props.canRemove,
+      onSelect: props.onRemove
+    }
+  ]
 
   return (
-    <button
-      type="button"
-      onClick={props.onClick}
-      className={cn(
-        'inline-flex h-9 shrink-0 items-center gap-2 rounded-3xl bg-transparent px-4 font-semibold text-fg-muted transition-[background-color,color] hover:bg-hover hover:text-fg',
-        props.active && 'bg-pressed text-fg hover:bg-pressed'
-      )}
-    >
-      <Icon className="shrink-0" size={16} strokeWidth={1.5} />
-      <span className="truncate">{props.view.name}</span>
-    </button>
+    <div className="relative shrink-0">
+      <Popover
+        open={props.menuOpen}
+        onOpenChange={open => {
+          if (open) {
+            props.onOpenMenu()
+            return
+          }
+
+          props.onCloseMenu()
+        }}
+        initialFocus={0}
+        placement="bottom-start"
+        surface="blocking"
+        backdrop="transparent"
+        trigger={(
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+          />
+        )}
+        contentClassName="w-[220px] p-1.5"
+      >
+        <Menu
+          items={items}
+          onClose={props.onCloseMenu}
+          autoFocus={false}
+        />
+      </Popover>
+      <button
+        type="button"
+        onClick={props.onClick}
+        onContextMenu={event => {
+          event.preventDefault()
+          event.stopPropagation()
+          props.onOpenMenu()
+        }}
+        className={cn(
+          'inline-flex h-9 shrink-0 select-none items-center gap-2 rounded-3xl bg-transparent px-4 font-semibold text-fg-muted transition-[background-color,color] hover:bg-hover hover:text-fg',
+          props.active && 'bg-pressed text-fg hover:bg-pressed'
+        )}
+      >
+        <Icon className="shrink-0" size={16} strokeWidth={1.5} />
+        <span className="truncate">{props.view.name}</span>
+      </button>
+    </div>
   )
 }
 
@@ -77,6 +162,7 @@ export const PageToolbar = () => {
   const sortCount = sorters.length
   const [searchExpanded, setSearchExpanded] = useState(() => Boolean(searchQuery.trim()))
   const [toolbarRoute, setToolbarRoute] = useState<null | 'addFilter' | 'addSort'>(null)
+  const [tabMenuViewId, setTabMenuViewId] = useState<ViewId | null>(null)
 
   useEffect(() => {
     setSearchExpanded(Boolean(currentView?.query.search.query.trim()))
@@ -85,6 +171,12 @@ export const PageToolbar = () => {
   useEffect(() => {
     setToolbarRoute(null)
   }, [currentView?.id])
+
+  useEffect(() => {
+    if (tabMenuViewId && !views.some(view => view.id === tabMenuViewId)) {
+      setTabMenuViewId(null)
+    }
+  }, [tabMenuViewId, views])
 
   return (
     <section className="text-card-foreground">
@@ -95,7 +187,44 @@ export const PageToolbar = () => {
               key={view.id}
               view={view}
               active={view.id === currentView?.id}
+              menuOpen={tabMenuViewId === view.id}
+              canRemove={views.length > 1}
               onClick={() => page.setActiveViewId(view.id)}
+              onOpenMenu={() => setTabMenuViewId(view.id)}
+              onCloseMenu={() => {
+                setTabMenuViewId(current => (
+                  current === view.id
+                    ? null
+                    : current
+                ))
+              }}
+              onRename={() => {
+                setTabMenuViewId(null)
+                page.setActiveViewId(view.id)
+                page.settings.open({
+                  kind: 'root',
+                  focusTarget: 'viewName'
+                })
+              }}
+              onEdit={() => {
+                setTabMenuViewId(null)
+                page.setActiveViewId(view.id)
+                page.settings.open({
+                  kind: 'root'
+                })
+              }}
+              onDuplicate={() => {
+                setTabMenuViewId(null)
+                engine.views.duplicate(view.id)
+              }}
+              onRemove={() => {
+                if (views.length <= 1) {
+                  return
+                }
+
+                setTabMenuViewId(null)
+                engine.views.remove(view.id)
+              }}
             />
           ))}
           <CreateViewPopover />

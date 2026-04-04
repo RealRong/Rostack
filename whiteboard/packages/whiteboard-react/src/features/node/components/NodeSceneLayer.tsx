@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useEditor } from '../../../runtime/hooks/useEditor'
 import { useStoreValue } from '../../../runtime/hooks/useStoreValue'
-import { useNodeSizeObserver } from '../hooks/useNodeSizeObserver'
+import { useNodeSizeObserver } from '../dom/nodeSizeObserver'
 import { useSelection } from '../selection'
 import { NodeItem } from './NodeItem'
 

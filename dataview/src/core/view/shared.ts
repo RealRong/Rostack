@@ -24,13 +24,15 @@ export const cloneGroupViewOptions = (
   table: {
     widths: {
       ...options.table.widths
-    }
+    },
+    showVerticalLines: options.table.showVerticalLines
   },
   gallery: {
     showPropertyLabels: options.gallery.showPropertyLabels,
     cardSize: options.gallery.cardSize
   },
   kanban: {
-    newRecordPosition: options.kanban.newRecordPosition
+    newRecordPosition: options.kanban.newRecordPosition,
+    fillColumnColor: options.kanban.fillColumnColor
   }
 })

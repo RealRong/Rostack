@@ -23,6 +23,13 @@ export const cloneSettingsRoute = (
   }
 
   switch (route.kind) {
+    case 'root':
+      return route.focusTarget
+        ? {
+            kind: 'root',
+            focusTarget: route.focusTarget
+          }
+        : ROOT_SETTINGS_ROUTE
     case 'propertySchema':
       return {
         kind: 'propertySchema',
@@ -43,6 +50,10 @@ export const equalSettingsRoute = (
 
   if (left.kind === 'propertySchema' && right.kind === 'propertySchema') {
     return left.propertyId === right.propertyId
+  }
+
+  if (left.kind === 'root' && right.kind === 'root') {
+    return left.focusTarget === right.focusTarget
   }
 
   return true

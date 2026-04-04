@@ -14,6 +14,7 @@ const OPTION_COLOR_TOKEN_SUFFIX: Record<UiOptionColorTokenUsage, string> = {
   'column-bg': 'bg-soft',
   'column-border': 'border-muted',
   'card-bg': 'card-bg',
+  'card-border': 'border-muted',
   'card-bg-hover': 'card-bg-hover',
   'card-bg-pressed': 'card-bg-pressed',
   'dot-bg': 'bg-strong',
@@ -60,5 +61,6 @@ export const resolveOptionColumnStyle = (
 export const resolveOptionCardStyle = (
   color: string | null | undefined
 ): CSSProperties => ({
-  backgroundColor: resolveOptionColorToken(color, 'card-bg')
+  backgroundColor: resolveOptionColorToken(color, 'card-bg'),
+  boxShadow: `var(--ui-shadow-sm), 0 0 0 1px ${resolveOptionColorToken(color, 'card-border')}`
 })

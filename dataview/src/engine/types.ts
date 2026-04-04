@@ -183,6 +183,7 @@ export interface GroupViewDisplaySettingsApi {
 
 export interface GroupViewTableSettingsApi {
   setColumnWidths: (widths: Partial<Record<PropertyId, number>>) => void
+  setShowVerticalLines: (checked: boolean) => void
 }
 
 export interface GroupViewGallerySettingsApi {
@@ -192,6 +193,7 @@ export interface GroupViewGallerySettingsApi {
 
 export interface GroupViewKanbanSettingsApi {
   setNewRecordPosition: (value: GroupKanbanNewRecordPosition) => void
+  setFillColumnColor: (checked: boolean) => void
 }
 
 export interface GroupViewSettingsApi {

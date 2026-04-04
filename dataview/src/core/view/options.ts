@@ -20,7 +20,8 @@ export const cloneGroupTableOptions = (
 ): GroupTableOptions => ({
   widths: {
     ...table.widths
-  }
+  },
+  showVerticalLines: table.showVerticalLines
 })
 
 export const resolveGroupTitleProperty = <T extends Pick<GroupProperty, 'id'>>(
@@ -55,14 +56,16 @@ export const createDefaultGroupViewOptions = (
 ): GroupViewOptions => ({
   display: createDefaultGroupViewDisplayOptions(type, properties),
   table: {
-    widths: {}
+    widths: {},
+    showVerticalLines: true
   },
   gallery: {
     showPropertyLabels: true,
     cardSize: 'md'
   },
   kanban: {
-    newRecordPosition: 'end'
+    newRecordPosition: 'end',
+    fillColumnColor: true
   }
 })
 
@@ -89,7 +92,10 @@ export const prunePropertyFromViewOptions = (
       ...current.table.widths
     }
     delete widths[propertyId]
-    current.table = { widths }
+    current.table = {
+      ...current.table,
+      widths
+    }
   }
 
   return current

@@ -109,6 +109,21 @@ const renderSubmenuContent = (content: MenuSubmenuItem['content']) => (
   typeof content === 'function' ? content() : content
 )
 
+const resolveMenuItemActiveClassName = (input: {
+  active: boolean
+  destructive?: boolean
+}) => {
+  if (!input.active) {
+    return undefined
+  }
+
+  return input.destructive
+    ? 'bg-destructive/10 text-destructive'
+    : 'bg-hover text-fg'
+}
+
+const MENU_ITEM_BASE_CLASS_NAME = 'hover:bg-transparent'
+
 const MenuList = (props: MenuListProps) => {
   const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const enabledItemKeys = useMemo(
@@ -271,6 +286,7 @@ const MenuList = (props: MenuListProps) => {
         }
 
         if (item.kind === 'action') {
+          const active = activeKey === item.key
           return (
             <Button
               key={item.key}
@@ -280,9 +296,17 @@ const MenuList = (props: MenuListProps) => {
               tabIndex={activeKey === item.key ? 0 : -1}
               layout="row"
               variant={item.tone === 'destructive' ? 'ghostDestructive' : undefined}
+              focusRing={false}
               leading={item.leading}
               suffix={item.suffix}
               disabled={item.disabled}
+              className={cn(
+                MENU_ITEM_BASE_CLASS_NAME,
+                resolveMenuItemActiveClassName({
+                  active,
+                  destructive: item.tone === 'destructive'
+                })
+              )}
               onFocus={() => {
                 setActiveKey(item.key)
                 collapseSubmenu()
@@ -305,6 +329,7 @@ const MenuList = (props: MenuListProps) => {
 
         if (item.kind === 'toggle') {
           const indicator = item.indicator ?? 'check'
+          const active = activeKey === item.key
           return (
             <Button
               key={item.key}
@@ -314,10 +339,16 @@ const MenuList = (props: MenuListProps) => {
               aria-checked={item.checked}
               tabIndex={activeKey === item.key ? 0 : -1}
               layout="row"
+              focusRing={false}
               leading={item.leading}
               suffix={item.suffix}
               disabled={item.disabled}
-              pressed={indicator === 'check' ? item.checked : undefined}
+              className={cn(
+                MENU_ITEM_BASE_CLASS_NAME,
+                resolveMenuItemActiveClassName({
+                  active
+                })
+              )}
               trailing={indicator === 'switch'
                 ? (
                     <Switch
@@ -351,6 +382,7 @@ const MenuList = (props: MenuListProps) => {
         }
 
         const open = openSubmenuKey === item.key
+        const active = activeKey === item.key || open
         return (
           <Popover
             key={item.key}
@@ -358,7 +390,7 @@ const MenuList = (props: MenuListProps) => {
             onOpenChange={nextOpen => setOpenSubmenuKey(nextOpen ? item.key : null)}
             placement={item.placement ?? 'right-start'}
             offset={item.offset ?? MENU_SUBMENU_OFFSET}
-            initialFocus={-1}
+            initialFocus={0}
             surface="scoped"
             closeOnEscape={false}
             contentClassName={cn(
@@ -374,10 +406,16 @@ const MenuList = (props: MenuListProps) => {
                 aria-expanded={open}
                 tabIndex={activeKey === item.key ? 0 : -1}
                 layout="row"
+                focusRing={false}
                 leading={item.leading}
                 suffix={item.suffix}
                 disabled={item.disabled}
-                pressed={open}
+                className={cn(
+                  MENU_ITEM_BASE_CLASS_NAME,
+                  resolveMenuItemActiveClassName({
+                    active
+                  })
+                )}
                 trailing={<ChevronRight className="size-4" size={16} strokeWidth={1.8} />}
                 onFocus={() => setActiveKey(item.key)}
                 onMouseEnter={() => {
@@ -411,7 +449,7 @@ const MenuList = (props: MenuListProps) => {
                     setOpenSubmenuKey(null)
                     props.onClose?.()
                   }}
-                  autoFocus
+                  autoFocus={false}
                   onRequestClose={() => setOpenSubmenuKey(null)}
                   focusTrigger={() => focusKey(item.key)}
                   submenuOpenPolicy={props.submenuOpenPolicy}

@@ -13,10 +13,16 @@ import {
 import type { NodeDefinition, NodeRenderProps } from '../../../../types/node'
 import { useEdit, useEditor } from '../../../../runtime/hooks/useEditor'
 import {
+  focusEditableDraftEnd,
+  isEscapeEditingKey,
+  isSubmitEditingKey,
+  stopEditingPointerDown,
+  syncEditableDraft
+} from '../../dom/editableText'
+import {
   ShapeGlyph
 } from '../../shape'
 import {
-  focusEditableEnd,
   readEditableText,
   TEXT_DEFAULT_FONT_SIZE
 } from '../../text'
@@ -85,17 +91,8 @@ const ShapeLabel = ({
       return
     }
 
-    if (readEditableText(element) !== draft) {
-      element.textContent = draft
-    }
-
-    const frame = requestAnimationFrame(() => {
-      focusEditableEnd(element)
-    })
-
-    return () => {
-      cancelAnimationFrame(frame)
-    }
+    syncEditableDraft(element, draft)
+    return focusEditableDraftEnd(element)
   }, [draft, editing, node.id])
 
   const cancel = () => {
@@ -114,13 +111,13 @@ const ShapeLabel = ({
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') {
+    if (isEscapeEditingKey(event)) {
       event.preventDefault()
       cancel()
       return
     }
 
-    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+    if (isSubmitEditingKey(event)) {
       event.preventDefault()
       commit(readEditableText(event.currentTarget))
     }
@@ -146,9 +143,7 @@ const ShapeLabel = ({
         role="textbox"
         aria-multiline="true"
         spellCheck={false}
-        onPointerDown={(event) => {
-          event.stopPropagation()
-        }}
+        onPointerDown={stopEditingPointerDown}
         onInput={(event) => {
           setDraft(readEditableText(event.currentTarget))
         }}

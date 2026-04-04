@@ -450,6 +450,22 @@ export const createViewEngineApi = (options: {
         viewId: options.viewId,
         widths
       })
+    },
+    setShowVerticalLines: checked => {
+      const currentView = readCurrentView()
+      if (!currentView) {
+        return
+      }
+
+      if (currentView.options.table.showVerticalLines === checked) {
+        return
+      }
+
+      commitCommand({
+        type: 'view.table.setShowVerticalLines',
+        viewId: options.viewId,
+        value: checked
+      })
     }
   }
 
@@ -572,6 +588,22 @@ export const createViewEngineApi = (options: {
         type: 'view.kanban.setNewRecordPosition',
         viewId: options.viewId,
         value
+      })
+    },
+    setFillColumnColor: checked => {
+      const currentView = readCurrentView()
+      if (!currentView) {
+        return
+      }
+
+      if (currentView.options.kanban.fillColumnColor === checked) {
+        return
+      }
+
+      commitCommand({
+        type: 'view.kanban.setFillColumnColor',
+        viewId: options.viewId,
+        value: checked
       })
     }
   }

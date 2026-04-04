@@ -70,6 +70,7 @@ export interface KanbanController {
   properties: readonly GroupProperty[]
   canReorder: boolean
   groupUsesOptionColors: boolean
+  fillColumnColor: boolean
   layout: {
     columnWidth: number
     columnMinHeight: number
@@ -125,6 +126,8 @@ export const useKanbanController = (input: {
       : undefined
   }, [currentView.schema.properties, currentView.view.query.group?.property])
   const groupUsesOptionColors = usesOptionGroupingColors(groupProperty)
+  const fillColumnColor = groupUsesOptionColors
+    && currentView.view.options.kanban.fillColumnColor
   const canReorder = Boolean(currentView.view.query.group) && !currentView.view.query.sorters.length
 
   const readRecord = useCallback((id: AppearanceId) => {
@@ -255,6 +258,7 @@ export const useKanbanController = (input: {
     properties,
     canReorder,
     groupUsesOptionColors,
+    fillColumnColor,
     layout: {
       columnWidth: input.columnWidth,
       columnMinHeight: input.columnMinHeight
@@ -271,6 +275,7 @@ export const useKanbanController = (input: {
     boostedSectionKeySet,
     canReorder,
     currentView,
+    fillColumnColor,
     drag,
     groupUsesOptionColors,
     input.columnMinHeight,

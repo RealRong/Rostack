@@ -7,6 +7,7 @@ import {
 } from './shared'
 
 const DEFAULT_NEW_RECORD_POSITION: GroupKanbanNewRecordPosition = 'end'
+const DEFAULT_FILL_COLUMN_COLOR = true
 
 export const normalizeGroupKanbanOptions = (
   value: unknown
@@ -16,12 +17,16 @@ export const normalizeGroupKanbanOptions = (
   return {
     newRecordPosition: kanban?.newRecordPosition === 'start'
       ? 'start'
-      : DEFAULT_NEW_RECORD_POSITION
+      : DEFAULT_NEW_RECORD_POSITION,
+    fillColumnColor: typeof kanban?.fillColumnColor === 'boolean'
+      ? kanban.fillColumnColor
+      : DEFAULT_FILL_COLUMN_COLOR
   }
 }
 
 export const cloneGroupKanbanOptions = (
   options: GroupKanbanOptions
 ): GroupKanbanOptions => ({
-  newRecordPosition: options.newRecordPosition
+  newRecordPosition: options.newRecordPosition,
+  fillColumnColor: options.fillColumnColor
 })

@@ -20,6 +20,7 @@ export type UiOptionColorTokenUsage =
   | 'column-bg'
   | 'column-border'
   | 'card-bg'
+  | 'card-border'
   | 'card-bg-hover'
   | 'card-bg-pressed'
   | 'dot-bg'

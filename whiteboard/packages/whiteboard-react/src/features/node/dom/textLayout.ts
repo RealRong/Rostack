@@ -18,9 +18,8 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import { createRafTask } from '@whiteboard/engine'
-import type { WhiteboardRuntime as Editor } from '../../types/runtime'
-
-type TextField = 'text' | 'title'
+import type { WhiteboardRuntime as Editor } from '../../../types/runtime'
+import { resolveNodeTextSource } from './textSourceRegistry'
 
 type TextSizeMeasureElements = {
   host: HTMLDivElement
@@ -86,8 +85,6 @@ export type TextAutoFontTask = {
   input: Omit<TextAutoFontInput, 'priority'>
 }
 
-const registryByEditor = new WeakMap<Editor, Map<string, HTMLElement>>()
-
 const TEXT_DEFAULT_LINE_HEIGHT_RATIO = 1.4
 const EMPTY_LINE = '\u00A0'
 const FIT_EPSILON = 0
@@ -97,28 +94,6 @@ let textSizeMeasureElements: TextSizeMeasureElements | null = null
 let textAutoFontMeasureElements: TextAutoFontMeasureElements | null = null
 const textAutoFontCache = new Map<string, number>()
 const textAutoFontQueue: TextAutoFontQueueTask[] = []
-
-const toSourceKey = (
-  nodeId: NodeId,
-  field: TextField
-) => `${nodeId}:${field}`
-
-const readRegistry = (
-  editor: Editor
-) => {
-  let registry = registryByEditor.get(editor)
-  if (!registry) {
-    registry = new Map<string, HTMLElement>()
-    registryByEditor.set(editor, registry)
-  }
-  return registry
-}
-
-const resolveNodeTextSource = (
-  editor: Editor,
-  nodeId: NodeId,
-  field: TextField
-) => registryByEditor.get(editor)?.get(toSourceKey(nodeId, field))
 
 const readNumber = (
   value: string
@@ -478,31 +453,6 @@ const flushAutoFontQueue = () => {
 const textAutoFontQueueTask = createRafTask(flushAutoFontQueue, {
   fallback: 'microtask'
 })
-
-export const bindNodeTextSource = ({
-  editor,
-  nodeId,
-  field,
-  current,
-  next
-}: {
-  editor: Editor
-  nodeId: NodeId
-  field: TextField
-  current: HTMLElement | null
-  next: HTMLElement | null
-}) => {
-  const registry = readRegistry(editor)
-  const key = toSourceKey(nodeId, field)
-
-  if (current && registry.get(key) === current) {
-    registry.delete(key)
-  }
-
-  if (next) {
-    registry.set(key, next)
-  }
-}
 
 export const measureTextNodeSize = ({
   node,

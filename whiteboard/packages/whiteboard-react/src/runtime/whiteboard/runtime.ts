@@ -10,7 +10,7 @@ import type { ResolvedConfig } from '../../types/common/config'
 import { createClipboardBridge } from '../bridge/clipboard'
 import { createInsertBridge } from '../bridge/insert'
 import { createPointerBridge } from '../bridge/pointer'
-import { createClipboardHostAdapter } from '../dom/clipboard'
+import { createClipboardHostAdapter } from '../../dom/host/clipboard'
 import { createEditor } from '../editor'
 import type { WhiteboardContextValue } from '../hooks/useWhiteboard'
 

@@ -271,6 +271,10 @@ const validateTableOptions = (
     }
   })
 
+  if (typeof table.showVerticalLines !== 'boolean') {
+    issues.push(createIssue(command, 'error', 'view.invalidProjection', 'table.showVerticalLines must be boolean', `${path}.showVerticalLines`))
+  }
+
   return issues
 }
 
@@ -301,6 +305,10 @@ const validateKanbanOptions = (
 
   if (kanban.newRecordPosition !== 'start' && kanban.newRecordPosition !== 'end') {
     issues.push(createIssue(command, 'error', 'view.invalidProjection', 'kanban.newRecordPosition is invalid', `${path}.newRecordPosition`))
+  }
+
+  if (typeof kanban.fillColumnColor !== 'boolean') {
+    issues.push(createIssue(command, 'error', 'view.invalidProjection', 'kanban.fillColumnColor must be boolean', `${path}.fillColumnColor`))
   }
 
   return issues
@@ -698,25 +706,62 @@ export const resolveViewTableSetWidthsCommand = (
   document: GroupDocument,
   command: Extract<IndexedCommand, { type: 'view.table.setWidths' }>
 ) => {
+  const view = getDocumentViewById(document, command.viewId)
   const issues = [
     ...validateViewExists(document, command, command.viewId),
-    ...validateTableOptions(document, command, { widths: command.widths }, 'widths')
+    ...(view
+      ? validateTableOptions(document, command, {
+          ...view.options.table,
+          widths: command.widths
+        }, 'widths')
+      : [])
   ]
   if (hasValidationErrors(issues)) {
     return resolveCommandResult(issues)
   }
 
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, currentView => (
+    sameWidths(currentView.options.table.widths, command.widths)
+      ? currentView
+      : {
+          ...currentView,
+          options: {
+            ...cloneGroupViewOptions(currentView.options),
+            table: {
+              ...currentView.options.table,
+              widths: {
+                ...command.widths
+              }
+            }
+          }
+        }
+  )))
+}
+
+export const resolveViewTableSetShowVerticalLinesCommand = (
+  document: GroupDocument,
+  command: Extract<IndexedCommand, { type: 'view.table.setShowVerticalLines' }>
+) => {
+  const issues = [
+    ...validateViewExists(document, command, command.viewId)
+  ]
+  if (typeof command.value !== 'boolean') {
+    issues.push(createIssue(command, 'error', 'view.invalidProjection', 'table.showVerticalLines must be boolean', 'value'))
+  }
+  if (hasValidationErrors(issues)) {
+    return resolveCommandResult(issues)
+  }
+
   return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => (
-    sameWidths(view.options.table.widths, command.widths)
+    view.options.table.showVerticalLines === command.value
       ? view
       : {
           ...view,
           options: {
             ...cloneGroupViewOptions(view.options),
             table: {
-              widths: {
-                ...command.widths
-              }
+              ...view.options.table,
+              showVerticalLines: command.value
             }
           }
         }
@@ -801,6 +846,36 @@ export const resolveViewKanbanSetNewRecordPositionCommand = (
             kanban: {
               ...view.options.kanban,
               newRecordPosition: command.value
+            }
+          }
+        }
+  )))
+}
+
+export const resolveViewKanbanSetFillColumnColorCommand = (
+  document: GroupDocument,
+  command: Extract<IndexedCommand, { type: 'view.kanban.setFillColumnColor' }>
+) => {
+  const issues = [
+    ...validateViewExists(document, command, command.viewId)
+  ]
+  if (typeof command.value !== 'boolean') {
+    issues.push(createIssue(command, 'error', 'view.invalidProjection', 'kanban.fillColumnColor must be boolean', 'value'))
+  }
+  if (hasValidationErrors(issues)) {
+    return resolveCommandResult(issues)
+  }
+
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => (
+    view.options.kanban.fillColumnColor === command.value
+      ? view
+      : {
+          ...view,
+          options: {
+            ...cloneGroupViewOptions(view.options),
+            kanban: {
+              ...view.options.kanban,
+              fillColumnColor: command.value
             }
           }
         }

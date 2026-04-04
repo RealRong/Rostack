@@ -89,6 +89,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   }
 
   const view = currentView.view
+  const showVerticalLines = view.options.table.showVerticalLines
   const sortable = useSortable({
     id: props.sortId,
     transition: {
@@ -373,7 +374,10 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       }}
       data-table-target="column"
       data-column-id={props.property.id}
-      className="group/header relative box-border h-full min-w-0"
+      className={cn(
+        'group/header relative box-border h-full min-w-0',
+        showVerticalLines && 'border-r border-divider'
+      )}
       style={{
         transform: translate,
         transition: sortable.transition,

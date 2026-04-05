@@ -25,7 +25,7 @@ export const CreateViewPopover = () => {
       open={open}
       onOpenChange={setOpen}
       initialFocus={-1}
-      surface="blocking"
+      mode="blocking"
       backdrop="transparent"
       trigger={(
         <Button

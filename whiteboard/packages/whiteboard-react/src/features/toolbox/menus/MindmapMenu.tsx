@@ -1,8 +1,13 @@
-import { ChipColumn, MenuSection } from '../../selection/chrome/menus/MenuPrimitives'
+import { cn } from '@ui'
 import {
   MINDMAP_INSERT_PRESETS,
   MINDMAP_INSERT_TEMPLATES
 } from '../presets'
+import {
+  TOOLBOX_OPTION_BUTTON_CLASSNAME,
+  ToolboxButton,
+  ToolboxMenuSection
+} from '../primitives'
 
 const MindmapTemplatePreview = ({
   templateKey
@@ -16,7 +21,7 @@ const MindmapTemplatePreview = ({
     <svg
       viewBox="0 0 72 48"
       aria-hidden="true"
-      className="wb-left-toolbar-mindmap-preview"
+      className="block h-10 w-16"
     >
       <rect
         x="26"
@@ -24,7 +29,9 @@ const MindmapTemplatePreview = ({
         width="20"
         height="14"
         rx="7"
-        className="wb-left-toolbar-mindmap-preview-node wb-left-toolbar-mindmap-preview-node-root"
+        fill="var(--ui-yellow-bg-strong)"
+        stroke="currentColor"
+        strokeWidth="1"
       />
       {children.slice(0, 4).map((child, index) => {
         const left = child.side === 'left'
@@ -36,7 +43,10 @@ const MindmapTemplatePreview = ({
           <g key={`${templateKey}:${index}`}>
             <path
               d={`M${lineStartX} 24 C${left ? 22 : 50} 24, ${left ? 18 : 54} ${y + 4}, ${lineEndX} ${y + 4}`}
-              className="wb-left-toolbar-mindmap-preview-line"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1"
+              opacity="0.75"
             />
             <rect
               x={targetX}
@@ -44,7 +54,9 @@ const MindmapTemplatePreview = ({
               width="12"
               height="8"
               rx="4"
-              className="wb-left-toolbar-mindmap-preview-node"
+              fill="var(--ui-surface)"
+              stroke="currentColor"
+              strokeWidth="1"
             />
           </g>
         )
@@ -60,27 +72,28 @@ export const MindmapMenu = ({
   value?: string
   onChange: (value: string) => void
 }) => (
-  <MenuSection title="Mindmap">
-    <ChipColumn>
+  <ToolboxMenuSection title="Mindmap">
+    <div className="flex flex-col gap-1">
       {MINDMAP_INSERT_PRESETS.map((preset) => (
-        <button
+        <ToolboxButton
           key={preset.key}
           type="button"
-          className="wb-left-toolbar-template"
-          data-active={value === preset.key ? 'true' : undefined}
+          className={cn(
+            TOOLBOX_OPTION_BUTTON_CLASSNAME,
+            'grid grid-cols-[72px_minmax(0,1fr)] items-center gap-2.5 px-2.5 py-2'
+          )}
+          pressed={value === preset.key}
           onClick={() => onChange(preset.key)}
-          data-selection-ignore
-          data-input-ignore
         >
-          <span className="wb-left-toolbar-template-preview">
+          <span className="inline-flex h-12 w-[72px] items-center justify-center rounded-lg bg-surface-subtle text-fg-muted">
             <MindmapTemplatePreview templateKey={preset.key} />
           </span>
-          <span className="wb-left-toolbar-template-copy">
-            <span className="wb-left-toolbar-template-title">{preset.label}</span>
-            <span className="wb-left-toolbar-template-desc">{preset.description}</span>
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-sm leading-5 text-fg">{preset.label}</span>
+            <span className="text-xs leading-4 text-fg-muted">{preset.description}</span>
           </span>
-        </button>
+        </ToolboxButton>
       ))}
-    </ChipColumn>
-  </MenuSection>
+    </div>
+  </ToolboxMenuSection>
 )

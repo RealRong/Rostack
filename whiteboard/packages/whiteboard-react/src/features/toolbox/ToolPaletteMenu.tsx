@@ -8,66 +8,44 @@ import { MindmapMenu } from './menus/MindmapMenu'
 import { ShapeMenu } from './menus/ShapeMenu'
 import { StickyMenu } from './menus/StickyMenu'
 import type { ToolPaletteController } from './controller'
-
-type ToolPaletteMenuPlacement = {
-  left: number
-  top: number
-  width: number
-}
+import { TOOLBOX_PANEL_CLASSNAME } from './primitives'
+import { cn } from '@ui'
 
 export const ToolPaletteMenu = ({
   openMenu,
-  menuStyle,
   palette,
   drawPanelOpen,
   controller
 }: {
   openMenu: ToolPaletteMenuKey | null
-  menuStyle?: ToolPaletteMenuPlacement
   palette: ToolPaletteView
   drawPanelOpen: boolean
   controller: ToolPaletteController
 }) => {
-  if (!openMenu || !menuStyle) {
+  if (!openMenu) {
     return null
   }
 
   if (openMenu === 'draw') {
     return (
-      <div
-        className="wb-left-toolbar-draw-floating"
-        style={{
-          left: menuStyle.left,
-          top: menuStyle.top,
-          transform: 'translateY(-50%)'
-        }}
-        data-selection-ignore
-        data-input-ignore
-      >
-        <DrawMenu
-          kind={palette.drawKind}
-          activeSlot={palette.drawBrush.slot}
-          slots={palette.drawBrush.brush.slots}
-          panelOpen={drawPanelOpen}
-          onKind={controller.selectDrawKind}
-          onSlot={controller.selectDrawSlot}
-          onPatch={controller.patchDrawStyle}
-        />
-      </div>
+      <DrawMenu
+        kind={palette.drawKind}
+        activeSlot={palette.drawBrush.slot}
+        slots={palette.drawBrush.brush.slots}
+        panelOpen={drawPanelOpen}
+        onKind={controller.selectDrawKind}
+        onSlot={controller.selectDrawSlot}
+        onPatch={controller.patchDrawStyle}
+      />
     )
   }
 
   return (
     <div
-      className="wb-left-toolbar-menu"
-      style={{
-        left: menuStyle.left,
-        top: menuStyle.top,
-        width: menuStyle.width,
-        transform: 'translateY(-50%)'
-      }}
-      data-selection-ignore
-      data-input-ignore
+      className={cn(
+        'max-h-[calc(100vh-32px)] min-w-[220px] max-w-[320px] overflow-auto rounded-[10px] p-2 text-sm',
+        TOOLBOX_PANEL_CLASSNAME
+      )}
     >
       {openMenu === 'edge' ? (
         <EdgeMenu

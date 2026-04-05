@@ -4,17 +4,11 @@ import {
   equalSettingsRoute
 } from './settings'
 import type {
-  BlockingSurfaceState,
-  PageInteractionState,
   PageSessionInput,
   PageSessionState,
   QueryBarEntry,
   SettingsState
 } from './types'
-
-const EMPTY_INTERACTION_STATE: PageInteractionState = {
-  blockingSurfaces: []
-}
 
 export const cloneQueryBarEntry = (
   entry: QueryBarEntry | null | undefined
@@ -42,14 +36,6 @@ const cloneSettingsState = (
   route: cloneSettingsRoute(settings?.route ?? ROOT_SETTINGS_ROUTE)
 })
 
-const cloneInteractionState = (
-  interaction: Partial<PageInteractionState> | PageInteractionState | undefined
-): PageInteractionState => ({
-  blockingSurfaces: interaction?.blockingSurfaces?.map(surface => ({
-    ...surface
-  })) ?? EMPTY_INTERACTION_STATE.blockingSurfaces
-})
-
 const equalQueryBarEntry = (
   left: QueryBarEntry | null,
   right: QueryBarEntry | null
@@ -74,26 +60,6 @@ const equalSettingsState = (
   && equalSettingsRoute(left.route, right.route)
 )
 
-export const equalBlockingSurface = (
-  left: BlockingSurfaceState,
-  right: BlockingSurfaceState
-) => (
-  left.id === right.id
-  && left.source === right.source
-  && left.backdrop === right.backdrop
-  && left.dismissOnBackdropPress === right.dismissOnBackdropPress
-)
-
-const equalInteractionState = (
-  left: PageInteractionState,
-  right: PageInteractionState
-) => (
-  left.blockingSurfaces.length === right.blockingSurfaces.length
-  && left.blockingSurfaces.every((surface, index) => (
-    equalBlockingSurface(surface, right.blockingSurfaces[index] as BlockingSurfaceState)
-  ))
-)
-
 export const equalPageSessionState = (
   left: PageSessionState,
   right: PageSessionState
@@ -102,7 +68,6 @@ export const equalPageSessionState = (
   && left.query.visible === right.query.visible
   && equalQueryBarEntry(left.query.route, right.query.route)
   && equalSettingsState(left.settings, right.settings)
-  && equalInteractionState(left.interaction, right.interaction)
 )
 
 export const createDefaultPageSessionState = (
@@ -113,6 +78,6 @@ export const createDefaultPageSessionState = (
     visible: input?.query?.visible ?? true,
     route: cloneQueryBarEntry(input?.query?.route)
   },
-  settings: cloneSettingsState(input?.settings),
-  interaction: cloneInteractionState(input?.interaction)
+  settings: cloneSettingsState(input?.settings)
 })
+

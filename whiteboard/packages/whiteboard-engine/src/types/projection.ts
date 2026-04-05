@@ -9,6 +9,7 @@ import type { ResolvedEdgeEnds } from '@whiteboard/core/edge'
 import type {
   Edge,
   EdgeId,
+  NodeGeometry,
   Node,
   NodeId,
   Rect,
@@ -17,9 +18,7 @@ import type {
 
 export type CanvasNode = {
   node: Node
-  rect: Rect
-  aabb: Rect
-  rotation: number
+  geometry: NodeGeometry
 }
 
 export type EdgeItem = {

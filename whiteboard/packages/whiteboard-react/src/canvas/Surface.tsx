@@ -20,6 +20,7 @@ import {
 } from '../features/node/components/FrameLayer'
 import { NodeOverlayLayer } from '../features/node/components/NodeOverlayLayer'
 import { NodeSceneLayer } from '../features/node/components/NodeSceneLayer'
+import { Marquee } from '../features/selection/Marquee'
 import type { ResolvedConfig } from '../types/common/config'
 import type { WhiteboardPresenceBinding } from '../types/common/presence'
 
@@ -72,34 +73,41 @@ export const Surface = ({
 
   return (
     <div
-      ref={containerRef}
-      className={resolvedConfig.className ? `wb-root-container ${resolvedConfig.className}` : 'wb-root-container'}
-      data-tool={tool.type}
-      data-tool-value={
-        tool.type === 'edge' || tool.type === 'insert'
-          ? tool.preset
-          : tool.type === 'draw'
-            ? tool.kind
-            : undefined
-      }
+      className={resolvedConfig.className ? `wb-container ${resolvedConfig.className}` : 'wb-container'}
       style={containerStyle}
-      tabIndex={0}
     >
-      <Background />
-      <div className="wb-root-viewport" style={transformStyle}>
-        <FrameLayer />
-        <EdgeLayer />
-        <NodeSceneLayer />
-        <MindmapSceneLayer />
-        <ContainerChromeLayer />
-        <NodeOverlayLayer />
-        <EdgeOverlayLayer />
-        <DrawLayer />
+      <div
+        ref={containerRef}
+        className="wb-root-container"
+        data-tool={tool.type}
+        data-tool-value={
+          tool.type === 'edge' || tool.type === 'insert'
+            ? tool.preset
+            : tool.type === 'draw'
+              ? tool.kind
+              : undefined
+        }
+        tabIndex={0}
+      >
+        <Background />
+        <div className="wb-root-viewport" style={transformStyle}>
+          <FrameLayer />
+          <EdgeLayer />
+          <NodeSceneLayer />
+          <MindmapSceneLayer />
+          <ContainerChromeLayer />
+          <NodeOverlayLayer />
+          <EdgeOverlayLayer />
+          <DrawLayer />
+        </div>
+        <Marquee />
       </div>
-      <Chrome
-        containerRef={containerRef}
-        presenceBinding={presenceBinding}
-      />
+      <div className="wb-overlay">
+        <Chrome
+          containerRef={containerRef}
+          presenceBinding={presenceBinding}
+        />
+      </div>
     </div>
   )
 }

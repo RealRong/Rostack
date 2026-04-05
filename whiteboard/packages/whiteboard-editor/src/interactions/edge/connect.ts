@@ -10,7 +10,7 @@ import {
   toEdgeDraftEnd,
   type EdgeConnectState
 } from '@whiteboard/core/edge'
-import { getNodeAnchorPoint } from '@whiteboard/core/node'
+import { getNodeAnchor } from '@whiteboard/core/node'
 import type {
   EdgeAnchor,
   EdgeId,
@@ -30,6 +30,14 @@ import type { InteractionContext } from '../context'
 type ConnectNodeEntry = NonNullable<
   ReturnType<InteractionContext['read']['index']['node']['get']>
 >
+
+const readNodeRotation = (
+  entry: ConnectNodeEntry
+) => (
+  entry.node.type === 'group'
+    ? 0
+    : (entry.node.rotation ?? 0)
+)
 
 const EDGE_PRESET_TYPE = {
   'edge.straight': 'linear',
@@ -81,7 +89,12 @@ const resolveCreateFromNode = (
         kind: 'node',
         nodeId: pick.id,
         anchor,
-        point: getNodeAnchorPoint(entry.node, entry.rect, anchor, entry.rotation)
+        point: getNodeAnchor(
+          entry.node,
+          entry.geometry.rect,
+          anchor,
+          readNodeRotation(entry)
+        )
       },
       to: toEdgeDraftEnd(input.world)
     })
@@ -98,8 +111,8 @@ const resolveCreateFromNode = (
 
   const resolved = resolveAnchorFromPoint({
     node: entry.node,
-    rect: entry.rect,
-    rotation: entry.rotation,
+    rect: entry.geometry.rect,
+    rotation: readNodeRotation(entry),
     pointWorld: input.world,
     zoom: ctx.read.viewport.get().zoom,
     config: ctx.config.edge

@@ -26,7 +26,6 @@ import {
   resolveDefaultAutoPanTargets
 } from '@dataview/react/interaction/autoPan'
 import { useStoreValue } from '@dataview/react/store'
-import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
 import { type FieldId } from '@dataview/react/runtime/currentView'
 import { applyPaste, handleTableKey } from '../../input'
 import {
@@ -56,10 +55,8 @@ const View = () => {
   const locked = usePageValue(state => state.lock !== null)
   const columns = currentView.properties.all
   const capabilities = useStoreValue(table.capabilities)
-  const marqueeActive = useStoreSelector(
-    dataView.marquee.store,
-    session => session?.ownerViewId === currentView.view.id
-  )
+  const virtualInteraction = useStoreValue(table.virtual.interaction)
+  const marqueeActive = virtualInteraction.marqueeActive
   const columnResize = useColumnResize()
   const template = useMemo(
     () => gridTemplate(columns, columnResize.widths),
@@ -222,9 +219,6 @@ const View = () => {
             />
           ) : null}
           <BlockContent
-            grouped={Boolean(currentView.view.query.group)}
-            rowIds={currentView.appearances.ids}
-            sections={currentView.sections}
             columns={columns}
             template={template}
             marqueeActive={marqueeActive}

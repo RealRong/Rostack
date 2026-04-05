@@ -6,7 +6,7 @@ const {
 } = require('../.tmp/group-test-dist/core/document/index.js')
 const {
   resolvePageState
-} = require('../.tmp/group-test-dist/react/page/session/state.js')
+} = require('../.tmp/group-test-dist/react/page/state/resolved.js')
 
 const createDocument = () => normalizeGroupDocument({
   schemaVersion: 1,
@@ -57,9 +57,6 @@ const createPageSession = () => ({
     route: {
       kind: 'root'
     }
-  },
-  interaction: {
-    blockingSurfaces: []
   }
 })
 
@@ -74,23 +71,13 @@ test('resolved page state exposes valueEditorOpen through public state', () => {
   assert.equal(state.lock, 'value-editor')
 })
 
-test('resolved page state prioritizes page surfaces over value editor lock', () => {
+test('resolved page state leaves lock empty when the value editor is closed', () => {
   const state = resolvePageState(
     createDocument(),
-    {
-      ...createPageSession(),
-      interaction: {
-        blockingSurfaces: [{
-          id: 'surface-1',
-          source: 'test',
-          backdrop: 'transparent',
-          dismissOnBackdropPress: true
-        }]
-      }
-    },
-    true
+    createPageSession(),
+    false
   )
 
-  assert.equal(state.valueEditorOpen, true)
-  assert.equal(state.lock, 'page-surface')
+  assert.equal(state.valueEditorOpen, false)
+  assert.equal(state.lock, null)
 })

@@ -1,4 +1,5 @@
 import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react'
+import { OverlayProvider } from '@ui'
 import type { WhiteboardProps } from './types/common/board'
 import { resolveConfig } from './config'
 import {
@@ -55,33 +56,35 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
   return (
     <WhiteboardServicesProvider value={services}>
       <WhiteboardConfigProvider value={resolvedConfig}>
-        <DocumentSync
-          editor={editor}
-          document={document}
-          inputDocument={inputDocument}
-          lastOutboundDocumentRef={lastOutboundDocumentRef}
-          onDocumentChangeRef={onDocumentChangeRef}
-        />
-        <CollabLifecycle
-          collab={collab}
-          engine={engine}
-        />
-        <PresenceLifecycle
-          binding={collab?.presence?.binding}
-          editor={editor}
-          containerRef={containerRef}
-        />
-        <EditorLifecycle
-          editor={editor}
-          editorConfig={editorConfig}
-          viewportLimits={viewportLimits}
-        />
-        <Surface
-          resolvedConfig={resolvedConfig}
-          containerRef={containerRef}
-          containerStyle={resolvedConfig.style}
-          presenceBinding={collab?.presence?.binding}
-        />
+        <OverlayProvider>
+          <DocumentSync
+            editor={editor}
+            document={document}
+            inputDocument={inputDocument}
+            lastOutboundDocumentRef={lastOutboundDocumentRef}
+            onDocumentChangeRef={onDocumentChangeRef}
+          />
+          <CollabLifecycle
+            collab={collab}
+            engine={engine}
+          />
+          <PresenceLifecycle
+            binding={collab?.presence?.binding}
+            editor={editor}
+            containerRef={containerRef}
+          />
+          <EditorLifecycle
+            editor={editor}
+            editorConfig={editorConfig}
+            viewportLimits={viewportLimits}
+          />
+          <Surface
+            resolvedConfig={resolvedConfig}
+            containerRef={containerRef}
+            containerStyle={resolvedConfig.style}
+            presenceBinding={collab?.presence?.binding}
+          />
+        </OverlayProvider>
       </WhiteboardConfigProvider>
     </WhiteboardServicesProvider>
   )

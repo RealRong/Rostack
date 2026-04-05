@@ -2,16 +2,6 @@ import type {
   PropertyId,
   ViewId
 } from '@dataview/core/contracts'
-import type {
-  BlockingSurfaceBackdrop,
-  BlockingSurfaceState,
-  OpenBlockingSurfaceInput
-} from '@ui/blocking-surface'
-export type {
-  BlockingSurfaceBackdrop,
-  BlockingSurfaceState,
-  OpenBlockingSurfaceInput
-} from '@ui/blocking-surface'
 
 export type QueryBarEntry =
   | {
@@ -39,10 +29,6 @@ export type SettingsRoute =
   | { kind: 'filter' }
   | { kind: 'sort' }
 
-export interface PageInteractionState {
-  blockingSurfaces: readonly BlockingSurfaceState[]
-}
-
 export interface QueryBarState {
   visible: boolean
   route: QueryBarEntry | null
@@ -53,22 +39,19 @@ export interface SettingsState {
   route: SettingsRoute
 }
 
-export interface PageSessionInput extends Partial<Omit<PageSessionState, 'query' | 'settings' | 'interaction'>> {
+export interface PageSessionInput extends Partial<Omit<PageSessionState, 'query' | 'settings'>> {
   query?: Partial<QueryBarState>
   settings?: Partial<SettingsState>
-  interaction?: Partial<PageInteractionState>
 }
 
 export interface PageSessionState {
   activeViewId?: ViewId
   query: QueryBarState
   settings: SettingsState
-  interaction: PageInteractionState
 }
 
 export type PageLock =
   | null
-  | 'page-surface'
   | 'value-editor'
 
 export interface ResolvedPageState extends PageSessionState {
@@ -89,10 +72,5 @@ export interface PageSessionApi {
     close(): void
     back(): void
     push(route: SettingsRoute): void
-  }
-  surface: {
-    open(input: OpenBlockingSurfaceInput): void
-    close(id: string): void
-    dismiss(): void
   }
 }

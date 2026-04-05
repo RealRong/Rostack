@@ -61,7 +61,6 @@ export const OptionEditorPopover = (props: OptionEditorPopoverProps) => {
       placement="bottom-start"
       offset={10}
       initialFocus={-1}
-      surface="scoped"
       contentClassName="w-[220px] p-1.5"
     >
       <div className="flex flex-col gap-2">

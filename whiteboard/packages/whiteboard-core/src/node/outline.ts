@@ -1,9 +1,18 @@
-import type { EdgeAnchor, Node, Point, Rect } from '../types'
+import type {
+  EdgeAnchor,
+  Node,
+  NodeGeometry,
+  NodeOutline,
+  Point,
+  Rect
+} from '../types'
 import {
   clamp,
+  getAnchorPoint,
   expandRect,
   getAABBFromPoints,
   getRectCenter,
+  getRotatedCorners,
   rotatePoint
 } from '../geometry'
 import { readShapeKind, type ShapeKind } from './shape'
@@ -223,6 +232,15 @@ const createRoundedRectOutline = (options: {
     )
   }
 }
+
+const FULL_RECT_OUTLINE = createRoundedRectOutline({
+  left: 0,
+  top: 0,
+  right: 100,
+  bottom: 100,
+  radiusX: 0,
+  radiusY: 0
+})
 
 const RECT_OUTLINE = createRoundedRectOutline({
   left: 3,
@@ -484,7 +502,7 @@ const getOutlineSpec = (
   node: Pick<Node, 'type' | 'data'>
 ): OutlineSpec => {
   if (node.type !== 'shape') {
-    return RECT_OUTLINE
+    return FULL_RECT_OUTLINE
   }
 
   return OUTLINE_BY_SHAPE_KIND[readShapeKind(node)]
@@ -717,7 +735,7 @@ const resolveAutoSide = (
       : 'top'
 }
 
-export const getNodeAnchorPoint = (
+const getNodeAnchorPoint = (
   node: Pick<Node, 'type' | 'data'>,
   rect: Rect,
   anchor?: EdgeAnchor,
@@ -739,22 +757,7 @@ export const getNodeAnchorPoint = (
   return toWorldPoint(local, center, rotation)
 }
 
-export const getNodeOutlineRect = (
-  node: Pick<Node, 'type' | 'data' | 'style'>,
-  rect: Rect
-): Rect => {
-  if (node.type !== 'shape') {
-    return rect
-  }
-
-  return expandOutlineBounds(
-    rect,
-    node,
-    getAABBFromPoints(readOutlinePoints(node, rect))
-  )
-}
-
-export const getNodeOutlineBounds = (
+const getNodeShapeBounds = (
   node: Pick<Node, 'type' | 'data' | 'style'>,
   rect: Rect,
   rotation = 0
@@ -777,7 +780,72 @@ export const getNodeOutlineBounds = (
   )
 }
 
-export const getNodeAnchorFromPoint = (
+export const getNodeBounds = (
+  node: Pick<Node, 'type' | 'data' | 'style'>,
+  rect: Rect,
+  rotation = 0
+): Rect => (
+  node.type === 'shape'
+    ? getNodeShapeBounds(node, rect, rotation)
+    : (
+        rotation === 0
+          ? rect
+          : getAABBFromPoints(getRotatedCorners(rect, rotation))
+      )
+)
+
+export const getNodeOutline = (
+  node: Pick<Node, 'type' | 'data' | 'style'>,
+  rect: Rect,
+  rotation = 0
+): NodeOutline => {
+  if (node.type !== 'shape') {
+    return {
+      kind: 'rect',
+      rect,
+      rotation
+    }
+  }
+
+  const center = getRectCenter(rect)
+
+  return {
+    kind: 'polygon',
+    points: readOutlinePoints(node, rect).map((point) => (
+      rotation
+        ? rotatePoint(point, center, rotation)
+        : point
+    ))
+  }
+}
+
+export const getNodeGeometry = (
+  node: Pick<Node, 'type' | 'data' | 'style'>,
+  rect: Rect,
+  rotation = 0
+): NodeGeometry => {
+  const outline = getNodeOutline(node, rect, rotation)
+
+  return {
+    rect,
+    outline,
+    bounds: getNodeBounds(node, rect, rotation)
+  }
+}
+
+export const getNodeAnchor = (
+  node: Pick<Node, 'type' | 'data'>,
+  rect: Rect,
+  anchor?: EdgeAnchor,
+  rotation = 0,
+  defaultOffset = DEFAULT_ANCHOR_OFFSET
+): Point => (
+  node.type === 'shape'
+    ? getNodeAnchorPoint(node, rect, anchor, rotation, defaultOffset)
+    : getAnchorPoint(rect, anchor, rotation, defaultOffset)
+)
+
+export const projectNodeAnchor = (
   node: Pick<Node, 'type' | 'data'>,
   rect: Rect,
   rotation: number,
@@ -804,7 +872,7 @@ export const getNodeAnchorFromPoint = (
 
   return {
     anchor,
-    point: getNodeAnchorPoint(node, rect, anchor, rotation, anchorOffset)
+    point: getNodeAnchor(node, rect, anchor, rotation, anchorOffset)
   }
 }
 
@@ -826,11 +894,11 @@ export const getAutoNodeAnchor = (
 
     return {
       anchor,
-      point: getNodeAnchorPoint(node, rect, anchor, rotation, anchor.offset)
+      point: getNodeAnchor(node, rect, anchor, rotation, anchor.offset)
     }
   }
 
-  return getNodeAnchorFromPoint(
+  return projectNodeAnchor(
     node,
     rect,
     rotation,

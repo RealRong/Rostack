@@ -27,6 +27,12 @@ export interface UseVirtualBlocksResult<TBlock extends VirtualBlock> {
   totalHeight: number
 }
 
+const resolveInitialViewportHeight = () => (
+  typeof window !== 'undefined'
+    ? Math.max(0, window.innerHeight)
+    : DEFAULT_OVERSCAN
+)
+
 export const useVirtualBlocks = <TBlock extends VirtualBlock>(
   options: UseVirtualBlocksOptions<TBlock>
 ): UseVirtualBlocksResult<TBlock> => {
@@ -40,14 +46,36 @@ export const useVirtualBlocks = <TBlock extends VirtualBlock>(
     : 0
 
   const items = useMemo(() => {
-    const canvas = options.canvasRef.current
-    if (!canvas || !options.blocks.length) {
+    if (!options.blocks.length) {
       return options.blocks
+    }
+
+    const canvas = options.canvasRef.current
+    if (!canvas) {
+      return options.blocks.slice(
+        0,
+        Math.max(
+          1,
+          findVirtualBlockEndIndex(
+            options.blocks,
+            resolveInitialViewportHeight() + overscan
+          )
+        )
+      )
     }
 
     const viewport = scrollViewport(canvas)
     if (!viewport) {
-      return options.blocks
+      return options.blocks.slice(
+        0,
+        Math.max(
+          1,
+          findVirtualBlockEndIndex(
+            options.blocks,
+            resolveInitialViewportHeight() + overscan
+          )
+        )
+      )
     }
 
     const canvasRect = canvas.getBoundingClientRect()

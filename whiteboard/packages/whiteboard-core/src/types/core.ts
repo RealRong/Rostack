@@ -41,6 +41,23 @@ export type Size = { width: number; height: number }
 export type Rect = { x: number; y: number; width: number; height: number }
 export type Viewport = { center: Point; zoom: number }
 
+export type NodeOutline =
+  | {
+      kind: 'rect'
+      rect: Rect
+      rotation: number
+    }
+  | {
+      kind: 'polygon'
+      points: Point[]
+    }
+
+export type NodeGeometry = {
+  rect: Rect
+  outline: NodeOutline
+  bounds: Rect
+}
+
 export const NODE_TYPES = [
   'text',
   'sticky',
@@ -428,6 +445,7 @@ export interface ChangeSet {
 export interface NodeTypeDefinition {
   type: NodeType
   label?: string
+  geometry?: 'rect' | 'shape'
   defaultData?: Record<string, unknown>
   schema?: NodeSchema
   validate?: (data: unknown) => boolean

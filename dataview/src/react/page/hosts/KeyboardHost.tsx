@@ -15,7 +15,7 @@ export const PageKeyboardHost = () => {
   const dataView = useDataView()
   const engine = dataView.engine
   const currentView = useCurrentView()
-  const uiLock = usePageValue(state => state.lock)
+  const valueEditorOpen = usePageValue(state => state.valueEditorOpen)
 
   useOverlayKey({
     order: -100,
@@ -24,7 +24,7 @@ export const PageKeyboardHost = () => {
         event.defaultPrevented
         || event.isComposing
         || closestTarget(event.target, editingTargetSelector)
-        || uiLock
+        || valueEditorOpen
         || overlay.topLayerId
       ) {
         return

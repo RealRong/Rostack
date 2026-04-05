@@ -11,17 +11,14 @@ import {
 } from '../../../runtime/hooks/useEditor'
 import { useNodeRegistry } from '../../../runtime/hooks/useWhiteboard'
 import { useElementSize } from '../../../dom/observe/useElementSize'
-import { useStoreValue } from '../../../runtime/hooks/useStoreValue'
-import { useOverlayDismiss } from '../../../runtime/overlay/useOverlayDismiss'
+import { WhiteboardPopover } from '../../../runtime/overlay/chrome'
 import { useSelectionPresentation } from '../../node/selection'
 import {
   measureBoundTextNodeSize,
   TEXT_DEFAULT_FONT_SIZE
 } from '../../node/text'
 import {
-  buildToolbarMenuStyle,
   buildToolbarStyle,
-  readMenuAnchor
 } from './layout'
 import type { ToolbarItemKey } from '../../../types/selection'
 import { FillMenu } from './menus/FillMenu'
@@ -44,14 +41,12 @@ export const NodeToolbar = ({
   const editor = useEditorRuntime()
   const registry = useNodeRegistry()
   const surface = useElementSize(containerRef)
-  const viewport = useStoreValue(editor.state.viewport)
   const presentation = useSelectionPresentation()
   const selection = presentation.selection
   const worldToScreen = useCallback(
     (point: Point) => editor.read.viewport.worldToScreen(point),
     [editor]
   )
-  const rootRef = useRef<HTMLDivElement | null>(null)
   const buttonRefByKey = useRef<Partial<Record<ToolbarMenuKey, HTMLButtonElement | null>>>({})
   const [activeMenuKey, setActiveMenuKey] = useState<ToolbarMenuKey | null>(null)
   const closeMenu = useCallback(() => {
@@ -80,11 +75,6 @@ export const NodeToolbar = ({
       closeMenu()
     }
   }, [closeMenu, showsNodeToolbar])
-  useOverlayDismiss({
-    enabled: activeMenuKey !== null,
-    rootRef,
-    onDismiss: closeMenu
-  })
 
   if (!showsNodeToolbar || !toolbar) return null
 
@@ -96,19 +86,6 @@ export const NodeToolbar = ({
     itemCount: toolbar.items.length
   })
 
-  const activeMenuAnchor = activeMenuKey
-    ? readMenuAnchor({
-        container: containerRef.current,
-        button: buttonRefByKey.current[activeMenuKey]
-      })
-    : undefined
-  const menuStyle = activeMenuAnchor
-    ? buildToolbarMenuStyle({
-        anchor: activeMenuAnchor,
-        containerWidth: surface.width,
-        containerHeight: surface.height
-      })
-    : undefined
   const menu = selection.menu
   const filter = menu?.filter
     ? {
@@ -246,14 +223,20 @@ export const NodeToolbar = ({
     }
   }
 
+  const activeMenuButton = activeMenuKey
+    ? buttonRefByKey.current[activeMenuKey]
+    : null
+  const menuContentClassName = activeMenuKey === 'more'
+    ? 'min-w-0 p-0'
+    : activeMenuKey === 'layout'
+      ? 'min-w-0 p-2'
+      : 'min-w-[220px] p-2'
+
   return (
-    <div className="wb-node-toolbar-layer" ref={rootRef}>
+    <div className="wb-node-toolbar-layer">
       <div
         className="wb-node-toolbar"
         style={toolbarStyle}
-        data-context-menu-ignore
-        data-selection-ignore
-        data-input-ignore
         onPointerDown={(event) => {
           event.stopPropagation()
         }}
@@ -270,8 +253,6 @@ export const NodeToolbar = ({
               ref={(element) => {
                 buttonRefByKey.current[item.key] = element
               }}
-              data-selection-ignore
-              data-input-ignore
               onPointerDown={(event) => {
                 event.stopPropagation()
               }}
@@ -284,19 +265,21 @@ export const NodeToolbar = ({
           )
         })}
       </div>
-      {menuStyle && activeMenuKey ? (
-        <div
-          className="wb-node-toolbar-menu"
-          style={menuStyle}
-          data-context-menu-ignore
-          data-selection-ignore
-          data-input-ignore
-          onPointerDown={(event) => {
-            event.stopPropagation()
+      {activeMenuKey && activeMenuButton ? (
+        <WhiteboardPopover
+          open
+          anchor={activeMenuButton}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) {
+              closeMenu()
+            }
           }}
+          placement="bottom"
+          offset={8}
+          contentClassName={menuContentClassName}
         >
           {renderMenu()}
-        </div>
+        </WhiteboardPopover>
       ) : null}
     </div>
   )

@@ -20,6 +20,14 @@ import type { TransformPickHandle } from '../types/pick'
 
 type TransformTarget = TransformSelectionMember<Node>
 
+const readNodeRotation = (
+  node: Node
+) => (
+  node.type === 'group'
+    ? 0
+    : (typeof node.rotation === 'number' ? node.rotation : 0)
+)
+
 const RESIZE_MIN_SIZE = {
   width: 20,
   height: 20
@@ -51,7 +59,7 @@ const readTransformTarget = (
     ? {
       id: entry.node.id,
       node: entry.node,
-      rect: entry.rect
+      rect: entry.geometry.rect
     }
     : undefined
 }
@@ -83,7 +91,7 @@ const readNodeTransformSpec = (
       pointerId: input.pointerId,
       target,
       handle: handle.direction,
-      rotation: entry.rotation,
+      rotation: readNodeRotation(entry.node),
       startScreen: input.client
     }
   }
@@ -96,7 +104,7 @@ const readNodeTransformSpec = (
     kind: 'single-rotate',
     pointerId: input.pointerId,
     target,
-    rotation: entry.rotation,
+    rotation: readNodeRotation(entry.node),
     startWorld: input.world
   }
 }

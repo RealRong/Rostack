@@ -13,10 +13,11 @@ export {
 } from './duplicate'
 export {
   getAutoNodeAnchor,
-  getNodeOutlineBounds,
-  getNodeOutlineRect,
-  getNodeAnchorFromPoint,
-  getNodeAnchorPoint,
+  getNodeAnchor,
+  getNodeBounds,
+  getNodeGeometry,
+  getNodeOutline,
+  projectNodeAnchor,
   type NodeOutlineAnchorOptions
 } from './outline'
 export {
@@ -45,10 +46,6 @@ export {
 export type {
   OwnerState
 } from './owner'
-export {
-  getNodeVisualBounds,
-  getNodesVisualBoundingRect
-} from './bounds'
 export {
   findGroupAncestor,
   expandGroupMembers,

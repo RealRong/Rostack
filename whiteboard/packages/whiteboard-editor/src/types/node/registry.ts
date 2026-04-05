@@ -22,6 +22,7 @@ export type NodeDefinition = {
   meta: NodeMeta
   describe?: (node: Node) => NodeMeta
   role?: NodeRole
+  geometry?: 'rect' | 'shape'
   hit?: NodeHit
   connect?: boolean
   schema?: NodeSchema

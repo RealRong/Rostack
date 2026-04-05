@@ -2,6 +2,7 @@ import { buildEdgeCreateOperation } from '../edge/commands'
 import { readEdgeRoutePoints } from '../edge/types'
 import { resolveEdgeEnds } from '../edge/endpoints'
 import { getAABBFromPoints, getNodeRect, getRectCenter } from '../geometry'
+import { getNodeGeometry } from '../node'
 import {
   getGroupDescendants,
   getNodesBoundingRect,
@@ -94,6 +95,22 @@ const offsetPoint = (
   x: point.x + delta.x,
   y: point.y + delta.y
 })
+
+const toEdgeNodeSnapshot = (
+  node: SpatialNode,
+  nodeSize: Size
+) => {
+  const rect = getNodeRect(node, nodeSize)
+
+  return {
+    node,
+    geometry: getNodeGeometry(
+      node,
+      rect,
+      typeof node.rotation === 'number' ? node.rotation : 0
+    )
+  }
+}
 
 const cloneEdgeEnd = (end: EdgeEnd): EdgeEnd => (
   isNodeEdgeEnd(end)
@@ -335,22 +352,14 @@ const getEdgeBounds = ({
       ? (() => {
         const node = readSpatialNode(nodesById.get(edge.source.nodeId))
         if (!node) return undefined
-        return {
-          node,
-          rect: getNodeRect(node, nodeSize),
-          rotation: node.rotation
-        }
+        return toEdgeNodeSnapshot(node, nodeSize)
       })()
       : undefined,
     target: isNodeEdgeEnd(edge.target)
       ? (() => {
         const node = readSpatialNode(nodesById.get(edge.target.nodeId))
         if (!node) return undefined
-        return {
-          node,
-          rect: getNodeRect(node, nodeSize),
-          rotation: node.rotation
-        }
+        return toEdgeNodeSnapshot(node, nodeSize)
       })()
       : undefined
   })
@@ -505,18 +514,10 @@ const detachEdge = ({
   const resolved = resolveEdgeEnds({
     edge,
     source: sourceNode
-      ? {
-        node: sourceNode,
-        rect: getNodeRect(sourceNode, nodeSize),
-        rotation: sourceNode.rotation
-      }
+      ? toEdgeNodeSnapshot(sourceNode, nodeSize)
       : undefined,
     target: targetNode
-      ? {
-        node: targetNode,
-        rect: getNodeRect(targetNode, nodeSize),
-        rotation: targetNode.rotation
-      }
+      ? toEdgeNodeSnapshot(targetNode, nodeSize)
       : undefined
   })
 
@@ -557,18 +558,10 @@ const detachSelectionEdge = ({
   const resolved = resolveEdgeEnds({
     edge,
     source: sourceNode
-      ? {
-        node: sourceNode,
-        rect: getNodeRect(sourceNode, nodeSize),
-        rotation: sourceNode.rotation
-      }
+      ? toEdgeNodeSnapshot(sourceNode, nodeSize)
       : undefined,
     target: targetNode
-      ? {
-        node: targetNode,
-        rect: getNodeRect(targetNode, nodeSize),
-        rotation: targetNode.rotation
-      }
+      ? toEdgeNodeSnapshot(targetNode, nodeSize)
       : undefined
   })
 

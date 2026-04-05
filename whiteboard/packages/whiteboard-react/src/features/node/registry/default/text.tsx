@@ -277,6 +277,7 @@ export const TextNodeDefinition: NodeDefinition = {
     controls: ['text']
   },
   role: 'content',
+  geometry: 'rect',
   schema: textSchema,
   defaultData: { text: '' },
   render: (props) => <TextNodeRenderer {...props} variant="text" />,
@@ -292,6 +293,7 @@ export const StickyNodeDefinition: NodeDefinition = {
     controls: ['fill', 'text']
   },
   role: 'content',
+  geometry: 'rect',
   schema: stickySchema,
   defaultData: { text: '' },
   render: (props) => <TextNodeRenderer {...props} variant="sticky" />,

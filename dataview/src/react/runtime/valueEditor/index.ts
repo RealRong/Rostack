@@ -5,8 +5,10 @@ export type {
   OpenValueEditorInput,
   ValueEditorApi,
   ValueEditorAnchor,
+  ValueEditorCloseAction,
   ValueEditorController,
   ValueEditorResult,
+  ValueEditorSessionPolicy,
   ValueEditorSession,
   ViewFieldRef
 } from './types'

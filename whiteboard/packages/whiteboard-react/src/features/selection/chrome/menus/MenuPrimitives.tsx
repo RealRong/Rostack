@@ -15,8 +15,6 @@ export const ColorSwatch = ({
     data-active={active ? 'true' : undefined}
     style={{ ['--wb-swatch-color' as string]: color }}
     onClick={onClick}
-    data-selection-ignore
-    data-input-ignore
     aria-label={color}
   />
 )
@@ -74,8 +72,6 @@ export const Chip = ({
     data-tone={tone}
     disabled={disabled}
     onClick={onClick}
-    data-selection-ignore
-    data-input-ignore
   >
     {children}
   </button>
@@ -108,8 +104,6 @@ export const MenuItem = ({
     disabled={disabled}
     data-tone={tone}
     onClick={onClick}
-    data-selection-ignore
-    data-input-ignore
   >
     {children}
   </button>

@@ -5,9 +5,10 @@ import {
   useState
 } from 'react'
 import {
+  apply,
   cancel,
   commit,
-  type ValueEditorIntent
+  type EditorSubmitTrigger
 } from '@dataview/react/interaction'
 import { getPropertyValueSpec } from '../kinds'
 import type {
@@ -31,16 +32,36 @@ export const PropertyValueEditor = forwardRef<
     setDraftState(nextDraft)
   }
 
-  const submit = (intent: ValueEditorIntent = 'done') => {
+  const parseDraft = () => {
     const parsed = spec.parseDraft(draftRef.current)
     if (parsed.type === 'invalid') {
       props.onInvalid?.()
+      return null
+    }
+
+    return parsed
+  }
+
+  const applyDraft = () => {
+    const parsed = parseDraft()
+    if (!parsed) {
+      return false
+    }
+
+    return props.onInput(apply(
+      parsed.type === 'clear' ? undefined : parsed.value
+    )) === true
+  }
+
+  const submit = (trigger: EditorSubmitTrigger = 'programmatic') => {
+    const parsed = parseDraft()
+    if (!parsed) {
       return false
     }
 
     return props.onInput(commit(
       parsed.type === 'clear' ? undefined : parsed.value,
-      intent
+      trigger
     )) === true
   }
 
@@ -49,6 +70,7 @@ export const PropertyValueEditor = forwardRef<
   }
 
   useImperativeHandle(ref, () => ({
+    apply: applyDraft,
     submit,
     cancel: cancelEditing
   }), [props.onInput, props.onInvalid, spec])
@@ -59,9 +81,9 @@ export const PropertyValueEditor = forwardRef<
         property={props.property}
         draft={draft}
         autoFocus={props.autoFocus}
-        enterIntent={props.enterIntent ?? 'done'}
         onDraftChange={setDraft}
-        onCommit={intent => submit(intent ?? 'done')}
+        onApply={applyDraft}
+        onCommit={submit}
         onCancel={cancelEditing}
       />
     </div>

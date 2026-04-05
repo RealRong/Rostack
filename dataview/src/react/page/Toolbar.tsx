@@ -103,7 +103,7 @@ const ViewTab = (props: ViewTabProps) => {
         }}
         initialFocus={0}
         placement="bottom-start"
-        surface="blocking"
+        mode="blocking"
         backdrop="transparent"
         items={items}
         autoFocus={false}
@@ -298,7 +298,7 @@ export const PageToolbar = () => {
                 ))
               }}
               initialFocus={-1}
-              surface="blocking"
+              mode="blocking"
               backdrop="transparent"
               trigger={(
                 <Button
@@ -359,7 +359,7 @@ export const PageToolbar = () => {
                 ))
               }}
               initialFocus={-1}
-              surface="blocking"
+              mode="blocking"
               backdrop="transparent"
               trigger={(
                 <Button

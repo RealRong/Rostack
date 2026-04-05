@@ -14,22 +14,33 @@ export {
 } from './dropdown-menu'
 export {
   Popover,
-  PopoverContainerProvider,
-  PopoverScope,
+  type PopoverAnchor,
+  type PopoverAnchorPoint,
+  type PopoverAnchorRect,
+  type PopoverAnchorReference,
   type PopoverOffset,
   type PopoverProps
 } from './popover'
 export {
   OverlayProvider,
+  OverlayRoot,
+  OVERLAY_BACKDROP_ATTR,
+  OVERLAY_BLOCKING_ATTR,
+  OVERLAY_BLOCKING_BACKDROP_ATTR,
+  OVERLAY_LAYER_ATTR,
+  isOverlayBlockingElement,
   useLayer,
   useOverlay,
+  useOverlayLayerId,
   useOverlayDismiss,
   useOverlayKey,
   useOverlayPointer,
   type OverlayApi,
+  type OverlayBackdrop,
   type OverlayCloseReason,
   type OverlayLayerHandle,
   type OverlayLayerKind,
+  type OverlayLayerMode,
   type OverlayLayerOptions
 } from './overlay'
 export { PanelHeader, type PanelHeaderProps } from './panel-header'
@@ -48,17 +59,6 @@ export {
   type VerticalReorderItemState,
   type VerticalReorderListProps
 } from './vertical-reorder-list'
-export {
-  BLOCKING_SURFACE_ATTR,
-  BLOCKING_SURFACE_BACKDROP_ATTR,
-  BlockingSurfaceProvider,
-  type BlockingSurfaceBackdrop,
-  type BlockingSurfaceController,
-  type BlockingSurfaceState,
-  type OpenBlockingSurfaceInput,
-  useBlockingSurface,
-  useBlockingSurfaceController
-} from './blocking-surface'
 export { cn } from './utils'
 export type {
   UiOptionColorId,

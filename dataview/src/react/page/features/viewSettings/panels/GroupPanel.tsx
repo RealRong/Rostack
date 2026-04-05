@@ -216,7 +216,6 @@ export const GroupPanel = () => {
           placement="right-start"
           offset={10}
           initialFocus={-1}
-          surface="scoped"
           items={propertyItems}
           contentClassName="w-[240px] p-1.5"
           trigger={(
@@ -236,7 +235,6 @@ export const GroupPanel = () => {
             placement="right-start"
             offset={10}
             initialFocus={-1}
-            surface="scoped"
             items={modeItems}
             contentClassName="w-[220px] p-1.5"
             trigger={(
@@ -257,7 +255,6 @@ export const GroupPanel = () => {
             placement="right-start"
             offset={10}
             initialFocus={-1}
-            surface="scoped"
             items={bucketSortItems}
             contentClassName="w-[220px] p-1.5"
             trigger={(

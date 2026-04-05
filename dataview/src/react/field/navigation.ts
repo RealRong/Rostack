@@ -2,17 +2,9 @@ import type {
   PropertyId,
 } from '@dataview/core/contracts'
 import type {
-  ValueEditorIntent
-} from '@dataview/react/interaction'
-import type {
   AppearanceId,
   AppearanceList,
-  FieldId,
-  ViewFieldRef
-} from '@dataview/engine/projection/view'
-import {
-  fieldId,
-  fieldOf
+  FieldId
 } from '@dataview/engine/projection/view'
 
 export interface FieldScope {
@@ -66,57 +58,4 @@ export const stepField = (input: {
     appearanceId,
     propertyId
   }
-}
-
-export const stepFieldByIntent = (input: {
-  field: FieldId
-  scope: FieldScope
-  intent: ValueEditorIntent
-}): FieldId | null => {
-  switch (input.intent) {
-    case 'next-field':
-      return stepField({
-        field: input.field,
-        scope: input.scope,
-        rowDelta: 0,
-        columnDelta: 1
-      })
-    case 'previous-field':
-      return stepField({
-        field: input.field,
-        scope: input.scope,
-        rowDelta: 0,
-        columnDelta: -1
-      })
-    case 'next-item':
-      return stepField({
-        field: input.field,
-        scope: input.scope,
-        rowDelta: 1,
-        columnDelta: 0
-      })
-    default:
-      return null
-  }
-}
-
-export const stepViewFieldByIntent = (input: {
-  field: ViewFieldRef
-  scope: FieldScope
-  appearances?: Pick<AppearanceList, 'get'>
-  intent: ValueEditorIntent
-}): ViewFieldRef | null => {
-  const next = stepFieldByIntent({
-    field: fieldId(input.field),
-    scope: input.scope,
-    intent: input.intent
-  })
-
-  return next
-    ? fieldOf({
-        viewId: input.field.viewId,
-        field: next,
-        appearances: input.appearances
-      })
-    : null
 }

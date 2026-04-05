@@ -24,7 +24,7 @@ import {
   getNodesBoundingRect,
   sanitizeGroupNode
 } from './group'
-import { getNodeVisualBounds } from './bounds'
+import { getNodeBoundsByNode } from './bounds'
 import {
   buildMoveSet,
   projectMovePositions
@@ -104,7 +104,7 @@ const readLayoutEntries = ({
           getGroupDescendants(nodes, node.id),
           nodeSize
         )
-      : getNodeVisualBounds(node, nodeSize)
+      : getNodeBoundsByNode(node, nodeSize)
     const position = bounds
       ? {
           x: bounds.x,

@@ -64,7 +64,7 @@ const PresenceNodeSelection = ({
     <div
       className="wb-presence-selection"
       style={{
-        ...toScreenRect(editor, editor.read.node.outline(nodeId) ?? item.rect),
+        ...toScreenRect(editor, editor.read.node.bounds(nodeId) ?? item.rect),
         borderColor: color,
         backgroundColor: `${color}18`
       }}

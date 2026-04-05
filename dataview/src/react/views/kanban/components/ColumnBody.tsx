@@ -8,6 +8,7 @@ import { Card } from './Card'
 import { ColumnDropIndicator } from './ColumnDropIndicator'
 
 const FILLED_COLUMN_INSET = 8
+const CARD_GAP = 8
 
 export const ColumnBody = (props: {
   section: Section
@@ -41,15 +42,15 @@ export const ColumnBody = (props: {
 
   const indicatorTop = sectionOverTarget
     ? sectionOverTarget.beforeAppearanceId
-      ? Math.max(0, (virtual.positionById.get(sectionOverTarget.beforeAppearanceId)?.top ?? virtual.totalHeight) - 4) + contentInset
-      : Math.max(0, virtual.totalHeight - 4) + contentInset
+      ? Math.max(0, (virtual.positionById.get(sectionOverTarget.beforeAppearanceId)?.top ?? virtual.totalHeight) - 4)
+      : Math.max(0, virtual.totalHeight - 4)
     : undefined
   const firstItem = virtual.items[0]
-  const lastItem = virtual.items[virtual.items.length - 1]
-  const topSpacerHeight = firstItem?.top ?? 0
-  const bottomSpacerHeight = lastItem
-    ? Math.max(0, virtual.totalHeight - lastItem.top - lastItem.height)
-    : Math.max(0, virtual.totalHeight)
+  const windowStartTop = firstItem?.top ?? 0
+  const contentHeight = Math.max(
+    controller.layout.columnMinHeight,
+    virtual.totalHeight
+  )
 
   return (
     <div
@@ -63,57 +64,59 @@ export const ColumnBody = (props: {
         ...(controller.fillColumnColor
           ? resolveOptionColumnStyle(controller.readSectionColorId(props.section.key))
           : undefined),
+        overflowAnchor: 'none',
         padding: contentInset || undefined,
         minHeight: Math.max(controller.layout.columnMinHeight, props.section.ids.length ? 0 : 120)
       }}
     >
       {props.section.ids.length ? (
-        <>
+        <div
+          style={{
+            position: 'relative',
+            height: contentHeight,
+            overflowAnchor: 'none'
+          }}
+        >
           {indicatorTop !== undefined ? (
             <ColumnDropIndicator
               top={indicatorTop}
-              inset={contentInset}
             />
           ) : null}
-          {topSpacerHeight ? (
+          {virtual.items.length ? (
             <div
-              aria-hidden="true"
               style={{
-                height: topSpacerHeight
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                top: 0,
+                transform: `translateY(${windowStartTop}px)`
               }}
-            />
-          ) : null}
-          <div
-            className="flex flex-col"
-            style={{
-              gap: 8
-            }}
-          >
-            {virtual.items.map(item => {
-              const record = controller.readRecord(item.id)
-              if (!record) {
-                return null
-              }
+            >
+              <div
+                className="flex flex-col"
+                style={{
+                  gap: CARD_GAP
+                }}
+              >
+                {virtual.items.map(item => {
+                  const record = controller.readRecord(item.id)
+                  if (!record) {
+                    return null
+                  }
 
-              return (
-                <Card
-                  key={item.id}
-                  appearanceId={item.id}
-                  record={record}
-                  measureRef={virtual.measure(item.id)}
-                />
-              )
-            })}
-          </div>
-          {bottomSpacerHeight ? (
-            <div
-              aria-hidden="true"
-              style={{
-                height: bottomSpacerHeight
-              }}
-            />
+                  return (
+                    <Card
+                      key={item.id}
+                      appearanceId={item.id}
+                      record={record}
+                      measureRef={virtual.measure(item.id)}
+                    />
+                  )
+                })}
+              </div>
+            </div>
           ) : null}
-        </>
+        </div>
       ) : (
         <div
           className={cn(

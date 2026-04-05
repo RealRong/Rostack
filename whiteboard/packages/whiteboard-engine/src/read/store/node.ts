@@ -29,13 +29,17 @@ export const createNodeProjection = (initialSnapshot: ReadSnapshot) => {
       return undefined
     }
 
-    if (previous && previous.node === node && previous.rect === canvasNode.rect) {
+    if (
+      previous
+      && previous.node === node
+      && previous.rect === canvasNode.geometry.rect
+    ) {
       return previous
     }
 
     return {
       node,
-      rect: canvasNode.rect
+      rect: canvasNode.geometry.rect
     } satisfies NodeItem
   }
 

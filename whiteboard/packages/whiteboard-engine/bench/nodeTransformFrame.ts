@@ -238,8 +238,10 @@ const main = () => {
         client: startClient
       }),
       handle: 'se',
-      rect: nodeRect.rect,
-      rotation: nodeRect.rotation
+      rect: nodeRect.geometry.rect,
+      rotation: nodeRect.node.type === 'group'
+        ? 0
+        : (nodeRect.node.rotation ?? 0)
     })
     if (!draft) {
       throw new Error(`nodeTransform.beginResize failed at run ${run + 1}`)

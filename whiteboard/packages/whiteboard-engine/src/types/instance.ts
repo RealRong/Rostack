@@ -20,6 +20,7 @@ import type {
   CoreRegistries,
   Document,
   EdgeId,
+  NodeGeometry,
   Node,
   NodeId,
   Operation,
@@ -56,8 +57,9 @@ export type NodeRead = {
   list: ReadStore<readonly NodeId[]>
   item: KeyedReadStore<NodeId, Readonly<NodeItem> | undefined>
   owner: (nodeId: NodeId) => NodeId | undefined
+  geometry: (nodeId: NodeId) => NodeGeometry | undefined
+  rect: (nodeId: NodeId) => Rect | undefined
   bounds: (nodeId: NodeId) => Rect | undefined
-  frame: (nodeId: NodeId) => Rect | undefined
   idsInRect: (rect: Rect, options?: NodeRectHitOptions) => NodeId[]
   transformTargets: (
     nodeIds: readonly NodeId[]

@@ -65,8 +65,6 @@ export const TextMenu = ({
                 commit()
               }
             }}
-            data-selection-ignore
-            data-input-ignore
           />
         </MenuSection>
       ) : null}

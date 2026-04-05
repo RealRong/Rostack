@@ -1,8 +1,8 @@
 import {
   applyNodeProjectionPatch,
   applyNodeProjectionRect,
-  getNodeOutlineBounds,
-  getNodeOutlineRect,
+  getNodeBounds,
+  getNodeGeometry,
   resolveNodeConnect,
   resolveNodeRole,
   resolveNodeTransform,
@@ -16,16 +16,13 @@ import type {
   NodeItem
 } from '@whiteboard/engine'
 import type {
+  NodeGeometry,
   Node,
   NodeId,
   NodeType,
   Rect
 } from '@whiteboard/core/types'
 import type { NodeRegistry } from '../../types/node'
-import {
-  getAABBFromPoints,
-  getRotatedCorners
-} from '@whiteboard/core/geometry'
 import type {
   NodeOverlayProjection
 } from '../overlay/types'
@@ -53,7 +50,9 @@ export type NodeRead = {
   item: KeyedReadStore<NodeId, NodeItem | undefined>
   state: KeyedReadStore<NodeId, NodeRuntimeState>
   owner: (nodeId: NodeId) => NodeId | undefined
-  outline: (nodeId: NodeId) => Rect | undefined
+  geometry: (nodeId: NodeId) => NodeGeometry | undefined
+  rect: (nodeId: NodeId) => Rect | undefined
+  bounds: (nodeId: NodeId) => Rect | undefined
   capability: (node: Pick<Node, 'type'> | NodeType) => NodeCapability
   idsInRect: (rect: Rect, options?: NodeRectHitOptions) => NodeId[]
   transformTargets: (
@@ -103,27 +102,15 @@ const readNodeRotation = (
 
 export const getNodeItemBounds = (
   item: NodeItem
-): Rect => {
-  const rotation = readNodeRotation(item.node)
+): Rect => getNodeBounds(item.node, item.rect, readNodeRotation(item.node))
 
-  if (item.node.type === 'group') {
-    return item.rect
-  }
-
-  if (item.node.type === 'shape') {
-    return getNodeOutlineBounds(item.node, item.rect, rotation)
-  }
-
-  return rotation === 0
-    ? item.rect
-    : getAABBFromPoints(getRotatedCorners(item.rect, rotation))
-}
-
-const readNodeItemOutline = (
+const readNodeItemGeometry = (
   item: NodeItem
-): Rect => item.node.type === 'shape'
-  ? getNodeOutlineRect(item.node, item.rect)
-  : item.rect
+): NodeGeometry => getNodeGeometry(
+  item.node,
+  item.rect,
+  readNodeRotation(item.node)
+)
 
 const toNodeRuntimeState = (
   projection: NodeOverlayProjection
@@ -210,10 +197,17 @@ export const createNodeRead = ({
     item,
     state,
     owner: read.node.owner,
-    outline: (nodeId) => {
+    geometry: (nodeId) => {
       const nextItem = item.get(nodeId)
       return nextItem
-        ? readNodeItemOutline(nextItem)
+        ? readNodeItemGeometry(nextItem)
+        : undefined
+    },
+    rect: (nodeId) => item.get(nodeId)?.rect,
+    bounds: (nodeId) => {
+      const nextItem = item.get(nodeId)
+      return nextItem
+        ? getNodeItemBounds(nextItem)
         : undefined
     },
     capability,

@@ -1,4 +1,4 @@
-import type { ValueEditorIntent } from '@dataview/react/interaction'
+import type { EditorSubmitTrigger } from '@dataview/react/interaction'
 import type { ViewFieldRef } from '@dataview/engine/projection/view'
 import type { ReadStore, ValueStore } from '@dataview/runtime/store'
 
@@ -14,13 +14,34 @@ export interface CloseValueEditorOptions {
   silent?: boolean
 }
 
+export type ValueEditorCloseAction =
+  | {
+      kind: 'focus-owner'
+    }
+  | {
+      kind: 'move-next-item'
+    }
+  | {
+      kind: 'move-next-field'
+    }
+  | {
+      kind: 'move-previous-field'
+    }
+
+export interface ValueEditorSessionPolicy {
+  resolveOnCommit: (trigger: EditorSubmitTrigger) => ValueEditorCloseAction
+  applyCloseAction: (action: ValueEditorCloseAction) => boolean
+  onCancel?: () => void
+  onDismiss?: () => void
+}
+
 export type ValueEditorResult =
   | {
-    kind: 'commit'
-    intent: ValueEditorIntent
-  }
+      kind: 'commit'
+      trigger: EditorSubmitTrigger
+    }
   | {
-    kind: 'cancel'
+      kind: 'cancel'
   }
   | {
     kind: 'dismiss'
@@ -29,6 +50,7 @@ export type ValueEditorResult =
 export interface OpenValueEditorInput {
   field: ViewFieldRef
   anchor: ValueEditorAnchor
+  policy: ValueEditorSessionPolicy
   seedDraft?: string
   onResolve?: (result: ValueEditorResult) => void
 }

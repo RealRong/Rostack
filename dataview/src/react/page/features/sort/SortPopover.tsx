@@ -56,7 +56,7 @@ export const SortPopover = (props: SortPopoverProps) => {
       }}
       initialFocus={-1}
       closeOnInteractOutside={false}
-      surface="blocking"
+      mode="blocking"
       backdrop="transparent"
       trigger={(
         <QueryChip
@@ -104,7 +104,6 @@ export const SortPopover = (props: SortPopoverProps) => {
               onOpenChange={setAddSortOpen}
               initialFocus={-1}
               placement="bottom-start"
-              surface="scoped"
               trigger={(
                 <Button
                   layout="row"

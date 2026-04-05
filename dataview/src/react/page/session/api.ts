@@ -10,12 +10,9 @@ import {
 import {
   cloneQueryBarEntry,
   createDefaultPageSessionState,
-  equalBlockingSurface,
   equalPageSessionState
 } from './state'
 import type {
-  BlockingSurfaceState,
-  OpenBlockingSurfaceInput,
   PageSessionApi,
   PageSessionInput,
   PageSessionState,
@@ -34,67 +31,6 @@ export const createPageSessionApi = (
     initial: createDefaultPageSessionState(initial),
     isEqual: equalPageSessionState
   })
-  const blockingSurfaceHandlers = new Map<string, {
-    onDismiss?: () => void
-  }>()
-
-  const setSurface = (next: OpenBlockingSurfaceInput) => {
-    if (next.onDismiss) {
-      blockingSurfaceHandlers.set(next.id, {
-        onDismiss: next.onDismiss
-      })
-    } else {
-      blockingSurfaceHandlers.delete(next.id)
-    }
-
-    store.update(prev => {
-      const nextSurface: BlockingSurfaceState = {
-        id: next.id,
-        source: next.source,
-        backdrop: next.backdrop,
-        dismissOnBackdropPress: next.dismissOnBackdropPress
-      }
-      const index = prev.interaction.blockingSurfaces.findIndex(surface => surface.id === next.id)
-      if (index === -1) {
-        return {
-          ...prev,
-          interaction: {
-            blockingSurfaces: [...prev.interaction.blockingSurfaces, nextSurface]
-          }
-        }
-      }
-
-      if (equalBlockingSurface(prev.interaction.blockingSurfaces[index] as BlockingSurfaceState, nextSurface)) {
-        return prev
-      }
-
-      const nextBlockingSurfaces = [...prev.interaction.blockingSurfaces]
-      nextBlockingSurfaces.splice(index, 1, nextSurface)
-      return {
-        ...prev,
-        interaction: {
-          blockingSurfaces: nextBlockingSurfaces
-        }
-      }
-    })
-  }
-
-  const clearSurface = (id: string) => {
-    blockingSurfaceHandlers.delete(id)
-    store.update(prev => {
-      const nextBlockingSurfaces = prev.interaction.blockingSurfaces.filter(surface => surface.id !== id)
-      if (nextBlockingSurfaces.length === prev.interaction.blockingSurfaces.length) {
-        return prev
-      }
-
-      return {
-        ...prev,
-        interaction: {
-          blockingSurfaces: nextBlockingSurfaces
-        }
-      }
-    })
-  }
 
   const api: PageSessionApi = {
     setActiveViewId: viewId => {
@@ -208,32 +144,13 @@ export const createPageSessionApi = (
           }
         }))
       }
-    },
-    surface: {
-      open: setSurface,
-      close: clearSurface,
-      dismiss: () => {
-        const current = store.get().interaction.blockingSurfaces.at(-1)
-        if (!current) {
-          return
-        }
-
-        const handler = blockingSurfaceHandlers.get(current.id)
-        if (handler?.onDismiss) {
-          handler.onDismiss()
-          return
-        }
-
-        clearSurface(current.id)
-      }
     }
   }
 
   return {
     ...api,
     store,
-    dispose: () => {
-      blockingSurfaceHandlers.clear()
-    }
+    dispose: () => {}
   }
 }
+

@@ -73,7 +73,7 @@ export const ViewSettingsPopover = () => {
           page.settings.close()
         }}
         initialFocus={-1}
-        surface="blocking"
+        mode="blocking"
         backdrop="transparent"
         trigger={(
           <Button

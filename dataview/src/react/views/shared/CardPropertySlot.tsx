@@ -1,6 +1,5 @@
 import type {
-  GroupProperty,
-  PropertyId
+  GroupProperty
 } from '@dataview/core/contracts'
 import {
   isEmptyPropertyValue
@@ -15,7 +14,6 @@ export interface CardPropertySlotProps {
   field: ViewFieldRef
   property: GroupProperty
   value: unknown
-  fieldPropertyIds: readonly PropertyId[]
   mode: 'view' | 'edit'
   className?: string
   valueClassName?: string
@@ -31,7 +29,6 @@ export const CardPropertySlot = (props: CardPropertySlotProps) => {
         <AddCardPropertyTrigger
           field={props.field}
           property={props.property}
-          fieldPropertyIds={props.fieldPropertyIds}
           className={props.className}
           openOnClick={props.openOnClick}
         />
@@ -44,7 +41,6 @@ export const CardPropertySlot = (props: CardPropertySlotProps) => {
       field={props.field}
       property={props.property}
       value={props.value}
-      fieldPropertyIds={props.fieldPropertyIds}
       className={props.className}
       valueClassName={props.valueClassName}
       density={props.density}

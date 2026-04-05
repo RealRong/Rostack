@@ -27,6 +27,14 @@ type ScoredConnectTarget = EdgeConnectResult & {
   distance: number
 }
 
+const readNodeRotation = (
+  node: Node
+) => (
+  node.type === 'group'
+    ? 0
+    : (typeof node.rotation === 'number' ? node.rotation : 0)
+)
+
 export const DEFAULT_EDGE_ANCHOR_OFFSET = 0.5
 
 const distanceToRect = (
@@ -109,17 +117,17 @@ export const resolveEdgeConnectTarget = ({
     const threshold = resolveEdgeConnectThresholdWorld(
       config,
       zoom,
-      candidate.rect
+      candidate.geometry.rect
     )
 
-    if (distanceToRect(candidate.aabb, pointWorld) > threshold) {
+    if (distanceToRect(candidate.geometry.bounds, pointWorld) > threshold) {
       continue
     }
 
     const resolved = resolveAnchorFromPoint({
       node: candidate.node,
-      rect: candidate.rect,
-      rotation: candidate.rotation,
+      rect: candidate.geometry.rect,
+      rotation: readNodeRotation(candidate.node),
       pointWorld,
       zoom,
       config,

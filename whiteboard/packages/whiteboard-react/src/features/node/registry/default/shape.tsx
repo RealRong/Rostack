@@ -214,6 +214,7 @@ export const ShapeNodeDefinition: NodeDefinition = {
     text: 'Rectangle'
   },
   role: 'content',
+  geometry: 'shape',
   schema: shapeSchema,
   render: (props) => <ShapeNodeRenderer {...props} />,
   style: () => ({

@@ -17,6 +17,7 @@ import type { InteractionContext } from '../context'
 type EdgeBodyMoveState = {
   edgeId: EdgeId
   pointerId: number
+  edge: ReturnType<typeof readMovableEdge>
   start: Point
   delta: Point
 }
@@ -40,9 +41,11 @@ export const createEdgeBodyMoveSession = (
     start: Point
   }
 ): InteractionSession => {
+  const edge = readMovableEdge(ctx, input.edgeId)
   let state: EdgeBodyMoveState = {
     edgeId: input.edgeId,
     pointerId: input.pointerId,
+    edge,
     start: input.start,
     delta: { x: 0, y: 0 }
   }
@@ -51,8 +54,7 @@ export const createEdgeBodyMoveSession = (
   const step = (
     world: Point
   ) => {
-    const edge = readMovableEdge(ctx, state.edgeId)
-    if (!edge) {
+    if (!state.edge) {
       return CANCEL
     }
 
@@ -64,7 +66,7 @@ export const createEdgeBodyMoveSession = (
       return
     }
 
-    const patch = moveEdge(edge, delta)
+    const patch = moveEdge(state.edge, delta)
     state = {
       ...state,
       delta

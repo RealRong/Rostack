@@ -12,12 +12,7 @@ import {
 import type { Placement } from '@floating-ui/react'
 import { Button } from './button'
 import { closestTarget } from './dom'
-import {
-  OverlayLayerProvider,
-  useLayer,
-  useOverlayKey
-} from './overlay'
-import { Popover, PopoverScope, type PopoverOffset } from './popover'
+import { Popover, type PopoverOffset } from './popover'
 import { Switch } from './switch'
 import { cn } from './utils'
 
@@ -91,7 +86,6 @@ export interface MenuProps {
   items: readonly MenuItem[]
   onClose?: () => void
   autoFocus?: boolean
-  scopeId?: string
   submenuOpenPolicy?: MenuSubmenuOpenPolicy
   open?: boolean
 }
@@ -137,6 +131,7 @@ const resolveMenuItemActiveClassName = (input: {
 const MenuList = (props: MenuListProps) => {
   const rootId = useId()
   const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+  const parentOpen = props.open ?? true
   const enabledItemKeys = useMemo(
     () => getEnabledItemKeys(props.items),
     [props.items]
@@ -157,19 +152,6 @@ const MenuList = (props: MenuListProps) => {
     props.onRequestClose?.()
     props.focusTrigger?.()
   }, [props])
-  const layer = useLayer({
-    open: props.open ?? true,
-    kind: 'menu',
-    onClose: () => {
-      if (props.onRequestClose) {
-        requestClose()
-        return
-      }
-
-      props.onClose?.()
-    }
-  })
-
   const focusItem = useCallback((nextKey: string | null) => {
     if (!nextKey) {
       return
@@ -190,6 +172,12 @@ const MenuList = (props: MenuListProps) => {
       setOpenSubmenuKey(null)
     }
   }, [openSubmenuKey, props.items])
+
+  useEffect(() => {
+    if (props.open === false && openSubmenuKey !== null) {
+      setOpenSubmenuKey(null)
+    }
+  }, [openSubmenuKey, props.open])
 
   useEffect(() => {
     if (!props.autoFocus) {
@@ -282,7 +270,7 @@ const MenuList = (props: MenuListProps) => {
           return
         }
 
-        if (event.key === 'Escape' && props.onClose) {
+        if (props.onClose) {
           event.preventDefault()
           event.stopPropagation()
           props.onClose()
@@ -291,53 +279,18 @@ const MenuList = (props: MenuListProps) => {
       default:
         break
     }
-  }, [enabledItemKeys, focusItem, itemMap, moveFocus, props, requestClose, rootId])
-
-  useOverlayKey({
-    layerId: layer.id,
-    when: () => (
-      (props.open ?? true)
-      && layer.isTop()
-    ),
-    onKeyDown: event => {
-      if (event.defaultPrevented || event.isComposing) {
-        return
-      }
-
-      if (event.key === 'ArrowLeft' && props.onRequestClose) {
-        event.preventDefault()
-        event.stopPropagation()
-        requestClose()
-        return true
-      }
-
-      if (event.key !== 'Escape') {
-        return
-      }
-
-      event.preventDefault()
-      event.stopPropagation()
-      if (props.onRequestClose) {
-        requestClose()
-        return true
-      }
-
-      props.onClose?.()
-      return true
-    }
-  })
+  }, [enabledItemKeys, focusItem, itemMap, moveFocus, props.onClose, props.onRequestClose, requestClose, rootId])
 
   return (
-    <OverlayLayerProvider layerId={layer.id}>
-      <div
-        role="menu"
-        {...{
-          [MENU_ROOT_ATTR]: rootId
-        }}
-        className="flex flex-col gap-0.5"
-        onKeyDownCapture={handleKeyDownCapture}
-      >
-        {props.items.map(item => {
+    <div
+      role="menu"
+      {...{
+        [MENU_ROOT_ATTR]: rootId
+      }}
+      className="flex flex-col gap-0.5"
+      onKeyDownCapture={handleKeyDownCapture}
+    >
+      {props.items.map(item => {
         if (item.kind === 'divider') {
           return (
             <div
@@ -457,7 +410,7 @@ const MenuList = (props: MenuListProps) => {
           )
         }
 
-        const open = openSubmenuKey === item.key
+        const open = parentOpen && openSubmenuKey === item.key
         const active = focusKey === item.key || open
 
         return (
@@ -465,12 +418,10 @@ const MenuList = (props: MenuListProps) => {
             key={item.key}
             open={open}
             onOpenChange={nextOpen => setOpenSubmenuKey(nextOpen ? item.key : null)}
+            kind="menu"
             placement={item.placement ?? 'right-start'}
             offset={item.offset ?? MENU_SUBMENU_OFFSET}
             initialFocus={0}
-            surface="scoped"
-            registerLayer={false}
-            closeOnEscape={false}
             contentClassName={cn(
               'min-w-0',
               item.contentClassName ?? (item.items ? 'w-[180px] p-1.5' : 'p-0')
@@ -526,28 +477,23 @@ const MenuList = (props: MenuListProps) => {
             </div>
           </Popover>
         )
-        })}
-      </div>
-    </OverlayLayerProvider>
+      })}
+    </div>
   )
 }
 
 export const Menu = (props: MenuProps) => {
-  const generatedScopeId = useId()
-  const scopeId = props.scopeId ?? generatedScopeId
   const submenuOpenPolicy = props.submenuOpenPolicy ?? 'hover'
 
   return (
-    <PopoverScope id={scopeId}>
-      <div className="flex max-h-[72vh] flex-col">
-        <MenuList
-          items={props.items}
-          open={props.open ?? true}
-          onClose={props.onClose}
-          autoFocus={props.autoFocus ?? true}
-          submenuOpenPolicy={submenuOpenPolicy}
-        />
-      </div>
-    </PopoverScope>
+    <div className="flex max-h-[72vh] flex-col">
+      <MenuList
+        items={props.items}
+        open={props.open ?? true}
+        onClose={props.onClose}
+        autoFocus={props.autoFocus ?? true}
+        submenuOpenPolicy={submenuOpenPolicy}
+      />
+    </div>
   )
 }

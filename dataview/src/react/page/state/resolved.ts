@@ -16,7 +16,6 @@ import {
   normalizeSettingsRoute
 } from '@dataview/react/page/session/settings'
 import type {
-  PageInteractionState,
   PageSessionState,
   QueryBarEntry,
   QueryBarState,
@@ -26,14 +25,6 @@ import type {
 import {
   resolveActiveViewId
 } from './activeView'
-
-const cloneInteractionState = (
-  interaction: Partial<PageInteractionState> | PageInteractionState | undefined
-): PageInteractionState => ({
-  blockingSurfaces: interaction?.blockingSurfaces?.map(surface => ({
-    ...surface
-  })) ?? []
-})
 
 const resolveQueryBarEntry = (
   document: GroupDocument,
@@ -110,28 +101,20 @@ export const resolveSettingsState = (
     : cloneSettingsRoute(settings.route)
 })
 
-export const resolveInteractionState = (
-  interaction: PageInteractionState
-): PageInteractionState => cloneInteractionState(interaction)
-
 export const resolvePageState = (
   document: GroupDocument,
   page: PageSessionState,
   valueEditorOpen: boolean
 ): ResolvedPageState => {
   const activeViewId = resolveActiveViewId(document, page.activeViewId)
-  const interaction = resolveInteractionState(page.interaction)
-  const lock = interaction.blockingSurfaces.length > 0
-    ? 'page-surface'
-    : valueEditorOpen
-      ? 'value-editor'
-      : null
+  const lock = valueEditorOpen
+    ? 'value-editor'
+    : null
 
   return {
     activeViewId,
     query: resolveQueryBarState(document, activeViewId, page.query),
     settings: resolveSettingsState(document, activeViewId, page.settings),
-    interaction,
     valueEditorOpen,
     lock
   }
@@ -148,3 +131,4 @@ export const createResolvedPageStateStore = (options: {
     read(options.valueEditorOpen)
   )
 })
+

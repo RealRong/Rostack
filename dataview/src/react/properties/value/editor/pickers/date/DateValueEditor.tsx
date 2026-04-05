@@ -20,7 +20,10 @@ import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import type { PropertyValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@dataview/dom/focus'
-import { isComposing } from '../../shared/keyboard'
+import {
+  isComposing,
+  keyAction
+} from '../../shared/keyboard'
 import { useDraftCommit } from '../../shared/useDraftCommit'
 import {
   applyDateDraftNow,
@@ -96,6 +99,7 @@ export const DateValueEditor = (
   const defaultTimezone = resolveDefaultDateTimezone(props.property)
   const { commitDraft } = useDraftCommit({
     onDraftChange: props.onDraftChange,
+    onApply: props.onApply,
     onCommit: props.onCommit
   })
 
@@ -110,7 +114,13 @@ export const DateValueEditor = (
   }, [props.autoFocus])
 
   const onKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') {
+    const action = keyAction({
+      key: event.key,
+      shiftKey: event.shiftKey,
+      composing: isComposing(event.nativeEvent)
+    })
+
+    if (action.type === 'cancel') {
       event.preventDefault()
       event.stopPropagation()
       props.onCancel()
@@ -118,14 +128,13 @@ export const DateValueEditor = (
     }
 
     if (
-      event.key === 'Enter'
-      && !isComposing(event.nativeEvent)
+      action.type === 'commit'
       && !(event.target instanceof HTMLButtonElement)
       && !(event.target instanceof HTMLSelectElement)
     ) {
       event.preventDefault()
       event.stopPropagation()
-      props.onCommit(props.enterIntent ?? 'done')
+      props.onCommit(action.trigger)
       return
     }
 

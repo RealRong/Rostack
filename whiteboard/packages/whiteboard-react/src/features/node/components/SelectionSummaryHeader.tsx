@@ -81,8 +81,6 @@ export const SelectionTypeFilterStrip = ({
           onSelect(item.key)
         }}
         title={`Keep only ${item.name}`}
-        data-selection-ignore
-        data-input-ignore
       >
         <span className="wb-selection-filter-chip-icon">
           <NodeTypeIcon icon={item.icon} />

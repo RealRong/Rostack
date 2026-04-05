@@ -16,8 +16,6 @@ import {
   exportSliceFromNodes
 } from '@whiteboard/core/document'
 import {
-  getNodeOutlineBounds,
-  getNodeOutlineRect,
   collectFrameMembers,
   filterNodeIdsInRect,
   resolveSelectionTransformTargets,
@@ -55,6 +53,13 @@ export const createRead = ({
   read: EngineRead
   invalidate: (impact: KernelReadImpact) => void
 } => {
+  const readNodeRotation = (
+    node: Node
+  ) => (
+    node.type === 'group'
+      ? 0
+      : (typeof node.rotation === 'number' ? node.rotation : 0)
+  )
   const readDocument = document.get
   const readModel = createReadModel({ readDocument })
 
@@ -111,33 +116,14 @@ export const createRead = ({
     nodeId: NodeId
   ) => index.node.get(nodeId)
 
-  const readProjectedNodeBounds = (nodeId: NodeId): Rect | undefined => {
-    const item = nodeProjection.item.get(nodeId)
-    const canvasNode = readCanvasNode(nodeId)
-    if (!item || !canvasNode) {
-      return undefined
-    }
+  const readProjectedNodeGeometry = (nodeId: NodeId) =>
+    readCanvasNode(nodeId)?.geometry
 
-    return item.node.type === 'shape'
-      ? getNodeOutlineBounds(
-          item.node,
-          canvasNode.rect,
-          canvasNode.rotation
-        )
-      : canvasNode.aabb
-  }
+  const readProjectedNodeRect = (nodeId: NodeId): Rect | undefined =>
+    readProjectedNodeGeometry(nodeId)?.rect
 
-  const readProjectedNodeFrame = (nodeId: NodeId): Rect | undefined => {
-    const item = nodeProjection.item.get(nodeId)
-    const canvasNode = readCanvasNode(nodeId)
-    if (!item || !canvasNode) {
-      return undefined
-    }
-
-    return item.node.type === 'shape'
-      ? getNodeOutlineRect(item.node, canvasNode.rect)
-      : canvasNode.rect
-  }
+  const readProjectedNodeBounds = (nodeId: NodeId): Rect | undefined =>
+    readProjectedNodeGeometry(nodeId)?.bounds
 
   const readOrderedNodes = (): Node[] => nodeProjection.list.get()
     .map((nodeId) => index.node.get(nodeId)?.node)
@@ -148,7 +134,7 @@ export const createRead = ({
   ): Rect | undefined => {
     const entry = index.node.get(frameId)
     return entry?.node.type === 'frame'
-      ? entry.rect
+      ? entry.geometry.rect
       : undefined
   }
 
@@ -205,7 +191,16 @@ export const createRead = ({
       candidateIds,
       match,
       policy,
-      getEntry: index.node.get,
+      getEntry: (nodeId) => {
+        const entry = index.node.get(nodeId)
+        return entry
+          ? {
+              node: entry.node,
+              rect: entry.geometry.rect,
+              rotation: readNodeRotation(entry.node)
+            }
+          : undefined
+      },
       getDescendants: treeIndex.ids,
       matchEntry: matchCanvasNodeRect
     })
@@ -217,7 +212,7 @@ export const createRead = ({
     index.node.all().map((entry) => ({
       id: entry.node.id,
       node: entry.node,
-      rect: entry.rect
+      rect: entry.geometry.rect
     })),
     nodeIds
   )
@@ -261,7 +256,7 @@ export const createRead = ({
   }
 
   const readDocumentBounds = (): Rect | undefined => {
-    const rects: Rect[] = nodeRectIndex.all().map((entry) => entry.aabb)
+    const rects: Rect[] = nodeRectIndex.all().map((entry) => entry.geometry.bounds)
 
     edgeProjection.list.get().forEach((edgeId) => {
       const rect = readEdgeBounds(edgeId)
@@ -315,8 +310,9 @@ export const createRead = ({
         list: nodeProjection.list,
         item: nodeProjection.item,
         owner: treeIndex.owner,
+        geometry: readProjectedNodeGeometry,
+        rect: readProjectedNodeRect,
         bounds: readProjectedNodeBounds,
-        frame: readProjectedNodeFrame,
         idsInRect: readNodeIdsInRect,
         transformTargets: readNodeTransformTargets
       },

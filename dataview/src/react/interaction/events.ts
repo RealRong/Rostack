@@ -7,11 +7,12 @@ export interface Modifiers {
   altKey: boolean
 }
 
-export type ValueEditorIntent =
-  | 'done'
-  | 'next-field'
-  | 'previous-field'
-  | 'next-item'
+export type EditorSubmitTrigger =
+  | 'enter'
+  | 'tab-next'
+  | 'tab-previous'
+  | 'outside'
+  | 'programmatic'
 
 export interface Point {
   x: number
@@ -67,9 +68,13 @@ export type InteractionEvent =
       modifiers: Modifiers
     }
   | {
+      type: 'edit.apply'
+      value: unknown | undefined
+    }
+  | {
       type: 'edit.commit'
       value: unknown | undefined
-      intent: ValueEditorIntent
+      trigger: EditorSubmitTrigger
     }
   | {
       type: 'edit.cancel'
@@ -95,7 +100,7 @@ export type KeyInput = Extract<InteractionEvent, {
 }>
 
 export type EditInput = Extract<InteractionEvent, {
-  type: 'edit.commit' | 'edit.cancel'
+  type: 'edit.apply' | 'edit.commit' | 'edit.cancel'
 }>
 
 export const modifiers = (input: {
@@ -122,13 +127,20 @@ export const keyDown = (input: {
   modifiers: modifiers(input)
 })
 
+export const apply = (
+  value: unknown | undefined
+): EditInput => ({
+  type: 'edit.apply',
+  value
+})
+
 export const commit = (
   value: unknown | undefined,
-  intent: ValueEditorIntent = 'done'
+  trigger: EditorSubmitTrigger = 'programmatic'
 ): EditInput => ({
   type: 'edit.commit',
   value,
-  intent
+  trigger
 })
 
 export const cancel = (): EditInput => ({

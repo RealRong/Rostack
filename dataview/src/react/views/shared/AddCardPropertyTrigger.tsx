@@ -1,9 +1,7 @@
 import type {
-  GroupProperty,
-  PropertyId
+  GroupProperty
 } from '@dataview/core/contracts'
 import {
-  useCurrentView,
   useDataView
 } from '@dataview/react/dataview'
 import type {
@@ -19,21 +17,12 @@ import { openCardField } from './openCardField'
 export interface AddCardPropertyTriggerProps {
   field: ViewFieldRef
   property: GroupProperty
-  fieldPropertyIds: readonly PropertyId[]
   className?: string
   openOnClick?: boolean
 }
 
 export const AddCardPropertyTrigger = (props: AddCardPropertyTriggerProps) => {
   const dataView = useDataView()
-  const currentView = useCurrentView(view => (
-    view?.view.id === props.field.viewId
-      ? view
-      : undefined
-  ))
-  if (!currentView) {
-    throw new Error('Add card property trigger requires an active current view.')
-  }
 
   const kind = meta.property.kind.get(props.property.kind)
   const Icon = kind.Icon
@@ -53,10 +42,11 @@ export const AddCardPropertyTrigger = (props: AddCardPropertyTriggerProps) => {
         }
         openCardField({
           valueEditor: dataView.valueEditor,
-          currentView,
           field: props.field,
-          fieldPropertyIds: props.fieldPropertyIds,
-          element: event.currentTarget
+          element: event.currentTarget,
+          focusOwner: () => {
+            dataView.selection.set([props.field.appearanceId])
+          }
         })
       }}
     >

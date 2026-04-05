@@ -1,9 +1,9 @@
-import type { ValueEditorIntent } from '@dataview/react/interaction'
+import type { EditorSubmitTrigger } from '@dataview/react/interaction'
 
 export type KeyAction =
   | {
-    type: 'submit'
-    intent: ValueEditorIntent
+    type: 'commit'
+    trigger: EditorSubmitTrigger
   }
   | {
     type: 'cancel'
@@ -26,7 +26,6 @@ export const keyAction = (input: {
   key: string
   shiftKey: boolean
   composing: boolean
-  enterIntent?: ValueEditorIntent
 }): KeyAction => {
   if (input.composing) {
     return {
@@ -37,13 +36,13 @@ export const keyAction = (input: {
   switch (input.key) {
     case 'Enter':
       return {
-        type: 'submit',
-        intent: input.enterIntent ?? 'done'
+        type: 'commit',
+        trigger: 'enter'
       }
     case 'Tab':
       return {
-        type: 'submit',
-        intent: input.shiftKey ? 'previous-field' : 'next-field'
+        type: 'commit',
+        trigger: input.shiftKey ? 'tab-previous' : 'tab-next'
       }
     case 'Escape':
       return {

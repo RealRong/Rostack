@@ -1,8 +1,8 @@
-import { getNodeAABB, getNodeRect, getRectsBoundingRect } from '../geometry'
+import { getNodeRect, getRectsBoundingRect } from '../geometry'
 import type { Node, Rect, Size } from '../types'
-import { getNodeOutlineBounds } from './outline'
+import { getNodeBounds } from './outline'
 
-export const getNodeVisualBounds = (
+export const getNodeBoundsByNode = (
   node: Node,
   fallbackSize: Size
 ): Rect | undefined => {
@@ -10,22 +10,18 @@ export const getNodeVisualBounds = (
     return undefined
   }
 
-  if (node.type === 'shape') {
-    const rect = getNodeRect(node, fallbackSize)
-    const rotation = typeof node.rotation === 'number' ? node.rotation : 0
+  const rect = getNodeRect(node, fallbackSize)
+  const rotation = typeof node.rotation === 'number' ? node.rotation : 0
 
-    return getNodeOutlineBounds(node, rect, rotation)
-  }
-
-  return getNodeAABB(node, fallbackSize)
+  return getNodeBounds(node, rect, rotation)
 }
 
-export const getNodesVisualBoundingRect = (
+export const getNodesBounds = (
   nodes: readonly Node[],
   fallbackSize: Size
 ): Rect | undefined => {
   const rects = nodes.flatMap((node) => {
-    const rect = getNodeVisualBounds(node, fallbackSize)
+    const rect = getNodeBoundsByNode(node, fallbackSize)
     return rect ? [rect] : []
   })
 

@@ -1,3 +1,7 @@
+import {
+  Menu,
+  type MenuItem as UiMenuItem
+} from '@ui'
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import type { Point } from '@whiteboard/core/types'
 import { useEditorRuntime } from '../../../runtime/hooks/useEditor'
@@ -6,8 +10,7 @@ import {
   useWhiteboardServices,
   type WhiteboardServicesContextValue
 } from '../../../runtime/hooks/useWhiteboard'
-import { useElementSize } from '../../../dom/observe/useElementSize'
-import { useOverlayDismiss } from '../../../runtime/overlay/useOverlayDismiss'
+import { WhiteboardPopover } from '../../../runtime/overlay/chrome'
 import { isContextMenuIgnoredTarget } from '../../../dom/host/targets'
 import {
   type ResolvedPoint
@@ -39,18 +42,9 @@ import {
   readNodeSummary
 } from '../../node/summary'
 import {
-  isDuplicateMenuOpen,
-  readContextMenuPlacement
+  isDuplicateMenuOpen
 } from './layout'
 import { bindMenuDismiss } from './menuAction'
-
-type ContextMenuSide = 'left' | 'right'
-type ContextMenuRenderState = {
-  submenuKey: string | null
-  submenuSide: ContextMenuSide
-  openSubmenu: (key: string) => void
-  clearSubmenu: () => void
-}
 
 type MenuItem = {
   key: string
@@ -74,11 +68,11 @@ type ContextSelectionFilter = {
 type ContextMenuView =
   | {
       kind: 'canvas'
-    screen: Point
-    canvas: {
-      world: Point
+      screen: Point
+      canvas: {
+        world: Point
+      }
     }
-  }
   | {
       kind: 'selection'
       screen: Point
@@ -96,6 +90,8 @@ type ContextMenuView =
         id: string
       }
     }
+
+const MENU_SECTION_TITLE_CLASSNAME = 'px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.02em] text-fg-muted'
 
 const COLOR_OPTIONS = [
   { label: 'Ink', value: 'var(--ui-text-primary)' },
@@ -142,16 +138,69 @@ const DISTRIBUTE_ITEMS = [
   { key: 'layout.distribute.vertical', label: 'Distribute vertically', mode: 'vertical' }
 ] as const
 
-const MenuIgnoreAttrs = {
-  'data-context-menu-ignore': '',
-  'data-selection-ignore': '',
-  'data-input-ignore': ''
-} as const
-
 const withCurrentLabel = (
   label: string,
   active: boolean
 ) => active ? `${label} (Current)` : label
+
+const buildContextMenuItems = (
+  groups: readonly MenuGroup[]
+): readonly UiMenuItem[] => {
+  const items: UiMenuItem[] = []
+
+  const toUiMenuItem = (item: MenuItem): UiMenuItem => {
+    if (item.children?.length) {
+      return {
+        kind: 'submenu',
+        key: item.key,
+        label: item.label,
+        disabled: item.disabled,
+        items: item.children.map(toUiMenuItem)
+      }
+    }
+
+    return {
+      kind: 'action',
+      key: item.key,
+      label: item.label,
+      disabled: item.disabled,
+      tone: item.tone === 'danger'
+        ? 'destructive'
+        : 'default',
+      closeOnSelect: false,
+      onSelect: () => {
+        item.onSelect?.()
+      }
+    }
+  }
+
+  groups.forEach((group, index) => {
+    if (index > 0) {
+      items.push({
+        kind: 'divider',
+        key: `divider:${group.key}`
+      })
+    }
+
+    if (group.title) {
+      items.push({
+        kind: 'custom',
+        key: `title:${group.key}`,
+        render: () => (
+          <div className={MENU_SECTION_TITLE_CLASSNAME}>
+            {group.title}
+          </div>
+        )
+      })
+    }
+
+    group.items.forEach((item) => {
+      items.push(toUiMenuItem(item))
+    })
+  })
+
+  return items
+}
 
 const readSelectionContextView = (
   editor: ReturnType<typeof useEditorRuntime>,
@@ -612,99 +661,6 @@ const readSelectionGroups = ({
   return groups
 }
 
-const ContextMenuItemView = ({
-  item,
-  state
-}: {
-  item: MenuItem
-  state: ContextMenuRenderState
-}) => {
-  const open = state.submenuKey === item.key
-  const children = item.children?.length
-
-  if (!children) {
-    return (
-      <button
-        key={item.key}
-        type="button"
-        className="wb-context-menu-item"
-        data-tone={item.tone === 'danger' ? 'danger' : undefined}
-        disabled={item.disabled}
-        data-context-menu-item={item.key}
-        onClick={item.onSelect}
-        onPointerEnter={state.clearSubmenu}
-        onFocus={state.clearSubmenu}
-        {...MenuIgnoreAttrs}
-      >
-        <span>{item.label}</span>
-      </button>
-    )
-  }
-
-  return (
-    <div
-      key={item.key}
-      className="wb-context-menu-item-shell"
-      data-open={open ? 'true' : undefined}
-      onPointerEnter={() => {
-        state.openSubmenu(item.key)
-      }}
-      onFocus={() => {
-        state.openSubmenu(item.key)
-      }}
-      data-context-menu-ignore
-    >
-      <button
-        type="button"
-        className="wb-context-menu-item"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        data-context-menu-item={item.key}
-        {...MenuIgnoreAttrs}
-      >
-        <span>{item.label}</span>
-        <span className="wb-context-menu-item-caret" aria-hidden="true">›</span>
-      </button>
-      {open ? (
-        <div
-          className="wb-context-submenu"
-          data-side={state.submenuSide}
-          {...MenuIgnoreAttrs}
-        >
-          {item.children?.map((child) => (
-            <ContextMenuItemView
-              key={child.key}
-              item={child}
-              state={state}
-            />
-          ))}
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-const ContextMenuGroupView = ({
-  group,
-  state
-}: {
-  group: MenuGroup
-  state: ContextMenuRenderState
-}) => (
-  <div className="wb-context-menu-section">
-    {group.title ? (
-      <div className="wb-context-menu-section-title">{group.title}</div>
-    ) : null}
-    {group.items.map((item) => (
-      <ContextMenuItemView
-        key={item.key}
-        item={item}
-        state={state}
-      />
-    ))}
-  </div>
-)
-
 const readMenuGroups = ({
   editor,
   whiteboard,
@@ -761,20 +717,12 @@ export const ContextMenu = ({
   const registry = useNodeRegistry()
   const whiteboard = useWhiteboardServices()
   const { clipboard, pointer } = whiteboard
-  const surface = useElementSize(containerRef)
-  const rootRef = useRef<HTMLDivElement | null>(null)
   const lastOpenRef = useRef<{ x: number; y: number; time: number } | null>(null)
   const [view, setView] = useState<ContextMenuView | null>(null)
-  const [submenuKey, setSubmenuKey] = useState<string | null>(null)
 
   const dismiss = useCallback(() => {
     setView(null)
-    setSubmenuKey(null)
   }, [])
-
-  useEffect(() => {
-    setSubmenuKey(null)
-  }, [view])
 
   useEffect(() => {
     const container = containerRef.current
@@ -802,7 +750,6 @@ export const ContextMenu = ({
       }
 
       setView(nextView)
-      setSubmenuKey(null)
       lastOpenRef.current = {
         x: event.clientX,
         y: event.clientY,
@@ -848,34 +795,8 @@ export const ContextMenu = ({
     }
   }, [containerRef, dismiss, editor, pointer, registry])
 
-  useOverlayDismiss({
-    enabled: view !== null,
-    rootRef,
-    onDismiss: dismiss
-  })
-
   if (!view) return null
 
-  const placement = readContextMenuPlacement({
-    screen: view.screen,
-    containerWidth: surface.width,
-    containerHeight: surface.height
-  })
-  const menuStyle = {
-    left: placement.left,
-    top: placement.top,
-    transform: placement.transform
-  }
-  const renderState: ContextMenuRenderState = {
-    submenuKey,
-    submenuSide: placement.submenuSide,
-    openSubmenu: (key) => {
-      setSubmenuKey(key)
-    },
-    clearSubmenu: () => {
-      setSubmenuKey(null)
-    }
-  }
   const groups = readMenuGroups({
     editor,
     whiteboard,
@@ -883,31 +804,34 @@ export const ContextMenu = ({
     view,
     dismiss
   })
+  const menuItems = buildContextMenuItems(groups)
   const filterTypes = readFilterTypes(view)
 
   return (
-    <div className="wb-context-menu-layer" ref={rootRef} data-context-menu-ignore>
-      <div
-        className="wb-context-menu"
-        style={menuStyle}
-        {...MenuIgnoreAttrs}
-        onContextMenu={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-        }}
-        onPointerDown={(event) => {
-          event.stopPropagation()
-        }}
-        onPointerLeave={() => {
-          renderState.clearSubmenu()
-        }}
-      >
+    <WhiteboardPopover
+      open
+      anchor={view.screen}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          dismiss()
+        }
+      }}
+      placement="bottom-start"
+      offset={0}
+      animated={false}
+      mode="blocking"
+      backdrop="transparent"
+      contentClassName="min-w-0 w-[240px] p-1.5"
+    >
+      <div className="flex flex-col gap-2">
         {view.kind === 'selection' ? (
           <>
             <SelectionSummaryHeader summary={view.selection.summary} />
             {filterTypes?.length ? (
-              <div className="wb-context-menu-section">
-                <div className="wb-context-menu-section-title">Filter</div>
+              <div className="flex flex-col gap-2 rounded-xl bg-surface-subtle px-2 py-2">
+                <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.02em] text-fg-muted">
+                  Filter
+                </div>
                 <SelectionTypeFilterStrip
                   types={filterTypes}
                   onSelect={(key) => {
@@ -928,14 +852,13 @@ export const ContextMenu = ({
             ) : null}
           </>
         ) : null}
-        {groups.map((group) => (
-          <ContextMenuGroupView
-            key={group.key}
-            group={group}
-            state={renderState}
+        {menuItems.length ? (
+          <Menu
+            items={menuItems}
+            autoFocus
           />
-        ))}
+        ) : null}
       </div>
-    </div>
+    </WhiteboardPopover>
   )
 }

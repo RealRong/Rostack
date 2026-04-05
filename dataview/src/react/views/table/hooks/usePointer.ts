@@ -24,7 +24,7 @@ import {
   type FieldId
 } from '@dataview/react/runtime/currentView'
 import { resolvePropertyPrimaryAction } from '@dataview/core/property'
-import { isBlockingSurfaceElement } from '@ui/blocking-surface'
+import { isOverlayBlockingElement } from '@ui/overlay'
 import {
   containsRelatedTarget,
   shouldCapturePointer
@@ -191,7 +191,7 @@ const allowsRowHoverFallback = (
     return true
   }
 
-  if (isBlockingSurfaceElement(element)) {
+  if (isOverlayBlockingElement(element)) {
     return false
   }
 

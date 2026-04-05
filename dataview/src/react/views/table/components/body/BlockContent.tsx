@@ -17,16 +17,14 @@ import type {
   Section
 } from '@dataview/react/runtime/currentView'
 import {
-  useTableBlocks
-} from '../../virtual'
+  useStoreValue
+} from '@dataview/react/store'
 import { useTableContext } from '../../context'
 import { Row } from '../row/Row'
 import { RowScopeSelectionRail } from '../row/RowScopeSelectionRail'
 import { ColumnHeaderRow } from '../column/ColumnHeaderRow'
 import { Button } from '@ui/button'
 import { cn } from '@ui/utils'
-
-const TABLE_MARQUEE_OVERSCAN = 960
 
 const SectionHeader = (props: {
   section: Section
@@ -100,9 +98,6 @@ const ColumnHeaderBlock = (props: {
 )
 
 export interface BlockContentProps {
-  grouped: boolean
-  rowIds: readonly AppearanceId[]
-  sections: readonly Section[]
   columns: readonly GroupProperty[]
   template: string
   marqueeActive: boolean
@@ -121,23 +116,15 @@ export interface BlockContentProps {
 
 export const BlockContent = (props: BlockContentProps) => {
   const table = useTableContext()
-  const virtual = useTableBlocks({
-    grouped: props.grouped,
-    rowIds: props.rowIds,
-    sections: props.sections,
-    overscan: props.marqueeActive
-      ? TABLE_MARQUEE_OVERSCAN
-      : undefined
-  })
-  const blocks = virtual.items
-  const windowStartTop = blocks[0]?.top ?? 0
+  const window = useStoreValue(table.virtual.window)
+  const blocks = window.items
 
   return (
     <div
       style={{
         overflowAnchor: 'none',
         position: 'relative',
-        height: virtual.totalHeight
+        height: window.totalHeight
       }}
     >
       {blocks.length ? (
@@ -147,7 +134,7 @@ export const BlockContent = (props: BlockContentProps) => {
             left: 0,
             right: 0,
             top: 0,
-            transform: `translateY(${windowStartTop}px)`
+            transform: `translateY(${window.startTop}px)`
           }}
         >
           {blocks.map(block => {

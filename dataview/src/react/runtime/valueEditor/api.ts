@@ -37,6 +37,7 @@ const createSession = (
 ): ValueEditorSession => ({
   field: cloneField(input.field),
   anchor: normalizeAnchor(input.anchor),
+  policy: input.policy,
   ...(input.seedDraft !== undefined
     ? {
         seedDraft: input.seedDraft
@@ -66,6 +67,7 @@ const dismissSession = (
     return
   }
 
+  current.policy.onDismiss?.()
   current.onResolve?.(options?.result ?? {
     kind: 'dismiss'
   })

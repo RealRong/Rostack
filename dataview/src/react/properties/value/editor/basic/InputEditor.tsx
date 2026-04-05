@@ -48,14 +48,13 @@ export const InputEditor = (props: InputEditorProps) => {
         const action = keyAction({
           key: event.key,
           shiftKey: event.shiftKey,
-          composing: isComposing(event.nativeEvent),
-          enterIntent: props.enterIntent
+          composing: isComposing(event.nativeEvent)
         })
 
         switch (action.type) {
-          case 'submit':
+          case 'commit':
             event.preventDefault()
-            props.onCommit(action.intent)
+            props.onCommit(action.trigger)
             return
           case 'cancel':
             event.preventDefault()

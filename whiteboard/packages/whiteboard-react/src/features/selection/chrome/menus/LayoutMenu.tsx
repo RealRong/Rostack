@@ -44,8 +44,6 @@ const LayoutIconButton = ({
     onClick={onClick}
     title={label}
     aria-label={label}
-    data-selection-ignore
-    data-input-ignore
   >
     {children}
   </button>

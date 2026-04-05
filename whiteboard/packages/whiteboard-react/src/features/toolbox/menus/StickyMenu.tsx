@@ -1,8 +1,13 @@
-import { MenuSection } from '../../selection/chrome/menus/MenuPrimitives'
+import { cn } from '@ui'
 import {
   STICKY_INSERT_OPTIONS,
   STICKY_INSERT_PRESETS
 } from '../presets'
+import {
+  TOOLBOX_GRID_BUTTON_CLASSNAME,
+  ToolboxButton,
+  ToolboxMenuSection
+} from '../primitives'
 
 export const StickyMenu = ({
   value,
@@ -11,31 +16,35 @@ export const StickyMenu = ({
   value?: string
   onChange: (value: string) => void
 }) => (
-  <MenuSection title="Sticky notes">
-    <div className="wb-left-toolbar-sticky-grid">
+  <ToolboxMenuSection title="Sticky notes">
+    <div className="grid grid-cols-4 gap-2">
       {STICKY_INSERT_PRESETS.map((preset, index) => {
         const option = STICKY_INSERT_OPTIONS[index]
         return (
-          <button
+          <ToolboxButton
             key={preset.key}
             type="button"
-            className="wb-left-toolbar-sticky-option"
-            data-active={value === preset.key ? 'true' : undefined}
+            className={cn(
+              TOOLBOX_GRID_BUTTON_CLASSNAME,
+              'aspect-square flex-col items-stretch gap-1.5',
+              value === preset.key && '[box-shadow:inset_0_0_0_1px_rgb(from_var(--ui-accent)_r_g_b_/_0.45)]'
+            )}
+            pressed={value === preset.key}
             onClick={() => onChange(preset.key)}
-            data-selection-ignore
-            data-input-ignore
             aria-label={preset.label}
             title={preset.label}
           >
             <span
-              className="wb-left-toolbar-sticky-preview"
+              className="relative h-full w-full overflow-hidden rounded-none border-none shadow-[inset_0_1px_0_rgb(from_var(--ui-surface)_r_g_b_/_0.14)]"
               style={{
                 background: option.fill
               }}
-            />
-          </button>
+            >
+              <span className="absolute right-0 top-0 h-3 w-3 bg-[linear-gradient(135deg,rgb(from_var(--ui-surface)_r_g_b_/_0.56)_0%,rgb(from_var(--ui-surface)_r_g_b_/_0)_100%)]" />
+            </span>
+          </ToolboxButton>
         )
       })}
     </div>
-  </MenuSection>
+  </ToolboxMenuSection>
 )

@@ -5,16 +5,15 @@ import type {
   FieldId,
   ViewFieldRef
 } from '@dataview/engine/projection/view'
-import type { ValueEditorApi, ValueEditorResult } from '@dataview/react/runtime/valueEditor'
+import type {
+  ValueEditorApi,
+  ValueEditorCloseAction,
+  ValueEditorSessionPolicy
+} from '@dataview/react/runtime/valueEditor'
 import { ownerDocumentOf, resolveFieldAnchor } from '@dataview/dom/field'
 import {
-  fieldId,
   fieldOf
 } from '@dataview/engine/projection/view'
-import {
-  stepViewFieldByIntent,
-  type FieldScope
-} from '@dataview/react/field/navigation'
 import type { GridSelectionStore } from './gridSelection'
 import type { Dom } from './dom'
 
@@ -31,40 +30,80 @@ interface OpenTarget {
   seedDraft?: string
 }
 
-export const finishCellEdit = (input: {
-  currentView?: Pick<CurrentView, 'appearances' | 'properties'>
-  field: ViewFieldRef
-  result: ValueEditorResult
-  gridSelection: {
-    set: (cell: FieldId, anchor?: FieldId) => void
+export const resolveTableCloseAction = (trigger: 'enter' | 'tab-next' | 'tab-previous' | 'outside' | 'programmatic') => {
+  switch (trigger) {
+    case 'enter':
+      return {
+        kind: 'move-next-item'
+      } as const
+    case 'tab-next':
+      return {
+        kind: 'move-next-field'
+      } as const
+    case 'tab-previous':
+      return {
+        kind: 'move-previous-field'
+      } as const
+    case 'outside':
+    case 'programmatic':
+    default:
+      return {
+        kind: 'focus-owner'
+      } as const
   }
+}
+
+const createTableSessionPolicy = (input: {
+  cell: FieldId
+  gridSelection: GridSelectionStore
   revealSelection: () => void
   focus: () => void
-  reopen: (field: ViewFieldRef) => boolean
-}) => {
-  if (
-    input.currentView
-    && input.result.kind === 'commit'
-    && input.result.intent !== 'done'
-  ) {
-    const field = stepViewFieldByIntent({
-      field: input.field,
-      scope: {
-        appearanceIds: input.currentView.appearances.ids,
-        propertyIds: input.currentView.properties.ids
-      },
-      appearances: input.currentView.appearances,
-      intent: input.result.intent
-    })
-
-    if (field && input.reopen(field)) {
-      return
-    }
+}): ValueEditorSessionPolicy => {
+  const finish = () => {
+    input.revealSelection()
+    input.focus()
   }
 
-  input.gridSelection.set(fieldId(input.field))
-  input.revealSelection()
-  input.focus()
+  const focusOwner = () => {
+    input.gridSelection.set(input.cell)
+    finish()
+    return true
+  }
+
+  const moveSelection = (
+    rowDelta: number,
+    columnDelta: number,
+    options?: {
+      wrap?: boolean
+    }
+  ) => {
+    input.gridSelection.move(rowDelta, columnDelta, options)
+    finish()
+    return true
+  }
+
+  return {
+    resolveOnCommit: resolveTableCloseAction,
+    applyCloseAction: (action: ValueEditorCloseAction) => {
+      switch (action.kind) {
+        case 'move-next-item':
+          return moveSelection(1, 0)
+        case 'move-next-field':
+          return moveSelection(0, 1, {
+            wrap: true
+          })
+        case 'move-previous-field':
+          return moveSelection(0, -1, {
+            wrap: true
+          })
+        case 'focus-owner':
+        default:
+          return focusOwner()
+      }
+    },
+    onCancel: focusOwner,
+    onDismiss: focusOwner
+  }
 }
 
 export const createCellOpener = (options: {
@@ -79,12 +118,6 @@ export const createCellOpener = (options: {
     options.gridSelection.set(target.cell)
     options.revealCursor()
   }
-  const nextScope = (
-    currentView: Pick<CurrentView, 'appearances' | 'properties'>
-  ): FieldScope => ({
-    appearanceIds: currentView.appearances.ids,
-    propertyIds: currentView.properties.ids
-  })
 
   const resolveAnchor = (target: OpenTarget) => resolveFieldAnchor(
     ownerDocumentOf(target.element ?? options.dom.cell(target.cell)),
@@ -102,41 +135,13 @@ export const createCellOpener = (options: {
       const opened = options.valueEditor.open({
         field: target.field,
         anchor,
-        seedDraft: target.seedDraft,
-        onResolve: result => {
-          if (result.kind === 'commit' && result.intent !== 'done') {
-            const currentView = options.currentView()
-            if (currentView) {
-              const nextField = stepViewFieldByIntent({
-                field: target.field,
-                scope: nextScope(currentView),
-                appearances: currentView.appearances,
-                intent: result.intent
-              })
-
-              if (nextField && openTarget({
-                cell: fieldId(nextField),
-                field: nextField,
-                element: options.dom.cell(fieldId(nextField))
-              })) {
-                return
-              }
-            }
-          }
-
-          finishCellEdit({
-            currentView: options.currentView(),
-            field: target.field,
-            result,
-            gridSelection: options.gridSelection,
-            revealSelection: options.revealCursor,
-            focus: options.focus,
-            reopen: field => openTarget({
-              cell: fieldId(field),
-              field
-            })
-          })
-        }
+        policy: createTableSessionPolicy({
+          cell: target.cell,
+          gridSelection: options.gridSelection,
+          revealSelection: options.revealCursor,
+          focus: options.focus
+        }),
+        seedDraft: target.seedDraft
       })
 
       if (opened) {

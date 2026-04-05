@@ -128,7 +128,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
       onOpenChange={props.onOpenChange}
       initialFocus={-1}
       closeOnInteractOutside={!conditionOpen}
-      surface="blocking"
+      mode="blocking"
       backdrop="transparent"
       trigger={(
         <QueryChip
@@ -157,7 +157,6 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
                   initialFocus={-1}
                   placement="bottom-start"
                   offset={6}
-                  surface="scoped"
                   items={conditionItems.map(item => ({
                     kind: 'toggle' as const,
                     key: item.id,

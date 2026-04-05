@@ -102,7 +102,7 @@ export const ViewQueryBar = () => {
             page.query.close()
           }}
           initialFocus={-1}
-          surface="blocking"
+          mode="blocking"
           backdrop="transparent"
           trigger={(
             <QueryChip
@@ -143,7 +143,7 @@ export const ViewQueryBar = () => {
             page.query.close()
           }}
           initialFocus={-1}
-          surface="blocking"
+          mode="blocking"
           backdrop="transparent"
           trigger={(
             <QueryChip

@@ -4,7 +4,8 @@ import { Column } from './Column'
 import { Overlay } from './Overlay'
 
 const contentInsetStyle = {
-  paddingInline: PAGE_INLINE_INSET_CSS
+  paddingInline: PAGE_INLINE_INSET_CSS,
+  overflowAnchor: 'none'
 } as const
 
 export const KanbanCanvas = () => {
@@ -17,7 +18,12 @@ export const KanbanCanvas = () => {
         className="relative overflow-x-auto pb-4"
         style={contentInsetStyle}
       >
-        <div className="flex min-w-max items-start gap-4">
+        <div
+          className="flex min-w-max items-start gap-4"
+          style={{
+            overflowAnchor: 'none'
+          }}
+        >
           {controller.currentView.sections.map(section => (
             <Column
               key={section.key}

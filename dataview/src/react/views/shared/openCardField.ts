@@ -1,6 +1,3 @@
-import type {
-  PropertyId
-} from '@dataview/core/contracts'
 import {
   belowFieldAnchor,
   ownerDocumentOf,
@@ -9,22 +6,29 @@ import {
 import type {
   ViewFieldRef
 } from '@dataview/engine/projection/view'
-import {
-  stepViewFieldByIntent
-} from '@dataview/react/field/navigation'
 import type {
-  CurrentView
-} from '@dataview/react/runtime/currentView'
-import type {
-  ValueEditorApi
+  ValueEditorApi,
+  ValueEditorSessionPolicy
 } from '@dataview/react/runtime/valueEditor'
+
+const createCardSessionPolicy = (focusOwner: () => void): ValueEditorSessionPolicy => ({
+  resolveOnCommit: () => ({
+    kind: 'focus-owner'
+  }),
+  applyCloseAction: () => {
+    focusOwner()
+    return true
+  },
+  onCancel: focusOwner,
+  onDismiss: focusOwner
+})
 
 export const openCardField = (input: {
   valueEditor: ValueEditorApi
-  currentView: Pick<CurrentView, 'appearances'>
   field: ViewFieldRef
-  fieldPropertyIds: readonly PropertyId[]
   element?: Element | null
+  seedDraft?: string
+  focusOwner: () => void
 }): boolean => {
   const anchor = resolveFieldAnchor(
     ownerDocumentOf(input.element),
@@ -42,29 +46,7 @@ export const openCardField = (input: {
   return input.valueEditor.open({
     field: input.field,
     anchor,
-    onResolve: result => {
-      if (result.kind !== 'commit' || result.intent === 'done') {
-        return
-      }
-
-      const field = stepViewFieldByIntent({
-        field: input.field,
-        scope: {
-          appearanceIds: [input.field.appearanceId],
-          propertyIds: input.fieldPropertyIds
-        },
-        appearances: input.currentView.appearances,
-        intent: result.intent
-      })
-
-      if (!field) {
-        return
-      }
-
-      openCardField({
-        ...input,
-        field
-      })
-    }
+    seedDraft: input.seedDraft,
+    policy: createCardSessionPolicy(input.focusOwner)
   })
 }

@@ -11,7 +11,6 @@ import {
 import { useSortable } from '@dnd-kit/sortable'
 import {
   useCallback,
-  useId,
   useRef,
   useState,
   type PointerEvent
@@ -81,7 +80,6 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
     y: number
   } | null>(null)
   const suppressClickRef = useRef(false)
-  const menuScopeId = useId()
   const table = useTableContext()
   const currentView = useCurrentView()
   if (!currentView) {
@@ -387,10 +385,9 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
         open={menuOpen}
         onOpenChange={setMenuOpen}
         initialFocus={-1}
-        surface="blocking"
+        mode="blocking"
         backdrop="transparent"
         items={items}
-        menuScopeId={menuScopeId}
         trigger={trigger}
         contentClassName="min-w-0 w-[280px] p-1"
       />

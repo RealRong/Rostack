@@ -7,6 +7,10 @@ import {
   useState
 } from 'react'
 import {
+  getDocumentPropertyById,
+  getDocumentRecordById
+} from '@dataview/core/document'
+import {
   PropertyValueEditor,
   getPropertyValueSpec,
   type PropertyValueEditorHandle
@@ -20,10 +24,10 @@ import type {
   ValueEditorSession
 } from './types'
 import {
-  BLOCKING_SURFACE_ATTR,
-  useBlockingSurface
-} from '@ui/blocking-surface'
-import { PopoverContainerProvider } from '@ui/popover'
+  OverlayProvider,
+  OVERLAY_BLOCKING_ATTR,
+  OVERLAY_BLOCKING_BACKDROP_ATTR
+} from '@ui/overlay'
 import { useStoreValue } from '@dataview/react/store'
 
 const PANEL_MIN_WIDTH = 180
@@ -78,14 +82,13 @@ export const PropertyValueEditorHost = () => {
   const engine = dataView.engine
   const valueEditor = dataView.valueEditor
   const session = useStoreValue(valueEditor.store)
-  const property = session
-    ? engine.read.property.get(session.field.propertyId)
+  const document = useStoreValue(engine.read.document)
+  const field = session?.field
+  const property = field
+    ? getDocumentPropertyById(document, field.propertyId)
     : undefined
-  const record = session
-    ? engine.read.record.get(session.field.recordId)
-    : undefined
-  const view = session
-    ? engine.read.view.get(session.field.viewId)
+  const record = field
+    ? getDocumentRecordById(document, field.recordId)
     : undefined
   const editorRef = useRef<PropertyValueEditorHandle | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
@@ -106,6 +109,9 @@ export const PropertyValueEditorHost = () => {
     }
 
     valueEditor.store.set(null)
+    if (!result || result.kind === 'dismiss') {
+      current.policy.onDismiss?.()
+    }
     current.onResolve?.(result ?? {
       kind: 'dismiss'
     })
@@ -178,23 +184,16 @@ export const PropertyValueEditorHost = () => {
   }, [session, spec?.panelWidth])
 
   const closeFromBackdrop = useCallback(() => {
-    const handled = editorRef.current?.submit('done')
-    if (handled === true) {
+    if (!editorRef.current) {
+      valueEditor.close()
       return
     }
 
-    if (handled === undefined) {
-      valueEditor.close()
+    const handled = editorRef.current.submit('outside')
+    if (handled) {
+      return
     }
   }, [valueEditor])
-
-  useBlockingSurface({
-    open: Boolean(session && property && record && position),
-    source: 'value-editor',
-    backdrop: 'transparent',
-    dismissOnBackdropPress: true,
-    onDismiss: closeFromBackdrop
-  })
 
   if (!session || !property || !record || !position) {
     return null
@@ -202,21 +201,31 @@ export const PropertyValueEditorHost = () => {
 
   const applyInput = (input: EditInput) => {
     switch (input.type) {
+      case 'edit.apply':
+        if (input.value === undefined) {
+          engine.records.clearValue(record.id, property.id)
+        } else {
+          engine.records.setValue(record.id, property.id, input.value)
+        }
+        return true
       case 'edit.commit':
         if (input.value === undefined) {
           engine.records.clearValue(record.id, property.id)
         } else {
           engine.records.setValue(record.id, property.id, input.value)
         }
+        const action = session.policy.resolveOnCommit(input.trigger)
         clearSession({
           kind: 'commit',
-          intent: input.intent
+          trigger: input.trigger
         })
+        session.policy.applyCloseAction(action)
         return true
       case 'edit.cancel':
         clearSession({
           kind: 'cancel'
         })
+        session.policy.onCancel?.()
         return true
     }
   }
@@ -224,10 +233,31 @@ export const PropertyValueEditorHost = () => {
   return (
     <div className="pointer-events-none absolute inset-0 z-[60]">
       <div
+        aria-hidden="true"
+        className="pointer-events-auto fixed inset-0"
+        {...{
+          [OVERLAY_BLOCKING_ATTR]: '',
+          [OVERLAY_BLOCKING_BACKDROP_ATTR]: ''
+        }}
+        onPointerDown={event => {
+          event.preventDefault()
+          event.stopPropagation()
+          closeFromBackdrop()
+        }}
+        onMouseDown={event => {
+          event.preventDefault()
+          event.stopPropagation()
+        }}
+        onClick={event => {
+          event.preventDefault()
+          event.stopPropagation()
+        }}
+      />
+      <div
         ref={setContainerRef}
         className="pointer-events-auto fixed"
         {...{
-          [BLOCKING_SURFACE_ATTR]: ''
+          [OVERLAY_BLOCKING_ATTR]: ''
         }}
         style={{
           left: position.left,
@@ -238,7 +268,7 @@ export const PropertyValueEditorHost = () => {
           event.stopPropagation()
         }}
       >
-        <PopoverContainerProvider container={container}>
+        <OverlayProvider portalRoot={container}>
           <div
             ref={panelRef}
             className="overflow-auto rounded-xl bg-floating shadow-popover"
@@ -247,19 +277,16 @@ export const PropertyValueEditorHost = () => {
             }}
           >
             <PropertyValueEditor
-              key={`${session.field.viewId}\u0000${session.field.appearanceId}\u0000${session.field.propertyId}`}
+              key={`${session.field.viewId}\u0000${session.field.appearanceId}\u0000${session.field.propertyId}\u0000${property.kind}`}
               ref={editorRef}
               property={property}
               value={record.values[property.id]}
               seedDraft={session.seedDraft}
               autoFocus
-              enterIntent={view?.type === 'table'
-                ? 'next-item'
-                : 'done'}
               onInput={applyInput}
             />
           </div>
-        </PopoverContainerProvider>
+        </OverlayProvider>
       </div>
     </div>
   )

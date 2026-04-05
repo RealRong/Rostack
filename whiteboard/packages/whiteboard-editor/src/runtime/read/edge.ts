@@ -7,6 +7,7 @@ import {
   resolveEdgeView,
   type EdgeView as CoreEdgeView
 } from '@whiteboard/core/edge'
+import { getNodeGeometry } from '@whiteboard/core/node'
 import { isPointEdgeEnd } from '@whiteboard/core/types'
 import type { EdgeId, Node, NodeId, NodeType, Rect } from '@whiteboard/core/types'
 import {
@@ -40,10 +41,13 @@ const toNodeCanvasSnapshot = (
   item: NodeItem
 ): EdgeNodeCanvasSnapshot => ({
   node: item.node,
-  rect: item.rect,
-  rotation: item.node.type === 'group'
-    ? 0
-    : (item.node.rotation ?? 0)
+  geometry: getNodeGeometry(
+    item.node,
+    item.rect,
+    item.node.type === 'group'
+      ? 0
+      : (item.node.rotation ?? 0)
+  )
 })
 
 const isEdgeItemEqual = (
@@ -203,9 +207,7 @@ export const createEdgeRead = ({
       candidates.push({
         nodeId: entry.node.id,
         node: entry.node,
-        rect: entry.rect,
-        aabb: entry.aabb,
-        rotation: entry.rotation
+        geometry: entry.geometry
       })
     }
 

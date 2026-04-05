@@ -2,7 +2,7 @@ import type { EdgeAnchor, Node, Point, Rect } from '../types'
 import { isPointEqual } from '../geometry'
 import {
   getAutoNodeAnchor,
-  getNodeAnchorFromPoint
+  projectNodeAnchor
 } from '../node/outline'
 import type { AnchorSnapOptions, EdgeConnectTarget } from '../types/edge'
 
@@ -26,7 +26,7 @@ export const getAnchorFromPoint = (
   rotation: number,
   point: Point,
   options: AnchorSnapOptions
-) => getNodeAnchorFromPoint(node, rect, rotation, point, options)
+) => projectNodeAnchor(node, rect, rotation, point, options)
 
 export const getAutoAnchorFromRect = (
   node: Pick<Node, 'type' | 'data'>,

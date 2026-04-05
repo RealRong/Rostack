@@ -20,8 +20,8 @@ import type { ReadSnapshot } from '@engine-types/internal/read'
 import { createTrackedRead } from './tracked'
 
 type EdgeCacheEntry = {
-  sourceRectRef?: CanvasNode
-  targetRectRef?: CanvasNode
+  sourceNodeRef?: CanvasNode
+  targetNodeRef?: CanvasNode
   sourceGeometry?: NodeGeometryTuple
   targetGeometry?: NodeGeometryTuple
   structure: EdgeStructureTuple
@@ -65,8 +65,8 @@ type EdgeStructureTuple = {
 }
 
 type EdgeCacheMaterial = {
-  sourceRectRef?: CanvasNode
-  targetRectRef?: CanvasNode
+  sourceNodeRef?: CanvasNode
+  targetNodeRef?: CanvasNode
   sourceGeometry?: NodeGeometryTuple
   targetGeometry?: NodeGeometryTuple
   structure: EdgeStructureTuple
@@ -98,6 +98,14 @@ const emptyState = (): EdgeCacheState => ({
   ids: [],
   byId: new Map<EdgeId, EdgeItem>()
 })
+
+const readNodeRotation = (
+  node: CanvasNode['node']
+) => (
+  node.type === 'group'
+    ? 0
+    : (typeof node.rotation === 'number' ? node.rotation : 0)
+)
 
 const isSameView = (
   prevIds: readonly EdgeId[],
@@ -145,11 +153,11 @@ const buildView = ({
 }
 
 const toNodeGeometryTuple = (entry: CanvasNode): NodeGeometryTuple => ({
-  x: entry.rect.x,
-  y: entry.rect.y,
-  width: entry.rect.width,
-  height: entry.rect.height,
-  rotation: entry.rotation
+  x: entry.geometry.rect.x,
+  y: entry.geometry.rect.y,
+  width: entry.geometry.rect.width,
+  height: entry.geometry.rect.height,
+  rotation: readNodeRotation(entry.node)
 })
 
 const toEdgeStructureTuple = (edge: EdgeItem['edge']): EdgeStructureTuple => ({
@@ -229,22 +237,22 @@ export const createEdgeProjection = (initialSnapshot: ReadSnapshot) => {
   const toEdgeCacheMaterial = (
     edge: EdgeItem['edge']
   ): EdgeCacheMaterial | undefined => {
-    const sourceRectRef =
+    const sourceNodeRef =
       edge.source.kind === 'node'
         ? getNodeRect(snapshotRef)(edge.source.nodeId)
         : undefined
-    const targetRectRef =
+    const targetNodeRef =
       edge.target.kind === 'node'
         ? getNodeRect(snapshotRef)(edge.target.nodeId)
         : undefined
-    if (edge.source.kind === 'node' && !sourceRectRef) return undefined
-    if (edge.target.kind === 'node' && !targetRectRef) return undefined
+    if (edge.source.kind === 'node' && !sourceNodeRef) return undefined
+    if (edge.target.kind === 'node' && !targetNodeRef) return undefined
 
     return {
-      sourceRectRef,
-      targetRectRef,
-      sourceGeometry: sourceRectRef ? toNodeGeometryTuple(sourceRectRef) : undefined,
-      targetGeometry: targetRectRef ? toNodeGeometryTuple(targetRectRef) : undefined,
+      sourceNodeRef,
+      targetNodeRef,
+      sourceGeometry: sourceNodeRef ? toNodeGeometryTuple(sourceNodeRef) : undefined,
+      targetGeometry: targetNodeRef ? toNodeGeometryTuple(targetNodeRef) : undefined,
       structure: toEdgeStructureTuple(edge)
     }
   }
@@ -257,8 +265,8 @@ export const createEdgeProjection = (initialSnapshot: ReadSnapshot) => {
     if (!previous) return undefined
 
     const isSameGeometry = (
-      previous.sourceRectRef === material.sourceRectRef
-      && previous.targetRectRef === material.targetRectRef
+      previous.sourceNodeRef === material.sourceNodeRef
+      && previous.targetNodeRef === material.targetNodeRef
     ) || (
         (
           previous.sourceGeometry === undefined
@@ -281,8 +289,8 @@ export const createEdgeProjection = (initialSnapshot: ReadSnapshot) => {
 
     if (
       previous.entry.edge === edge
-      && previous.sourceRectRef === material.sourceRectRef
-      && previous.targetRectRef === material.targetRectRef
+      && previous.sourceNodeRef === material.sourceNodeRef
+      && previous.targetNodeRef === material.targetNodeRef
     ) {
       return previous
     }
@@ -293,8 +301,8 @@ export const createEdgeProjection = (initialSnapshot: ReadSnapshot) => {
       ends: previous.entry.ends
     }
     return {
-      sourceRectRef: material.sourceRectRef,
-      targetRectRef: material.targetRectRef,
+      sourceNodeRef: material.sourceNodeRef,
+      targetNodeRef: material.targetNodeRef,
       sourceGeometry: material.sourceGeometry,
       targetGeometry: material.targetGeometry,
       structure: material.structure,
@@ -306,18 +314,18 @@ export const createEdgeProjection = (initialSnapshot: ReadSnapshot) => {
     edge: EdgeItem['edge'],
     material: EdgeCacheMaterial
   ): EdgeCacheEntry | undefined => {
-    const sourceRectRef = material.sourceRectRef
-    const targetRectRef = material.targetRectRef
+    const sourceNodeRef = material.sourceNodeRef
+    const targetNodeRef = material.targetNodeRef
     const ends = resolveEdgeEnds({
       edge,
-      source: sourceRectRef,
-      target: targetRectRef
+      source: sourceNodeRef,
+      target: targetNodeRef
     })
     if (!ends) return undefined
 
     return {
-      sourceRectRef,
-      targetRectRef,
+      sourceNodeRef,
+      targetNodeRef,
       sourceGeometry: material.sourceGeometry,
       targetGeometry: material.targetGeometry,
       structure: material.structure,

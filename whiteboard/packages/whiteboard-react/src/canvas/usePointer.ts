@@ -20,6 +20,10 @@ export const usePointer = ({
     }
 
     const onPointerDown = (event: PointerEvent) => {
+      if (event.button === 2) {
+        return
+      }
+
       pointer.down({
         container,
         event,

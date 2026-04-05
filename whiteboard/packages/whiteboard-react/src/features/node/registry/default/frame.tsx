@@ -144,6 +144,7 @@ export const FrameNodeDefinition: NodeDefinition = {
     controls: ['fill', 'stroke', 'text']
   },
   role: 'frame',
+  geometry: 'rect',
   schema: frameSchema,
   defaultData: {
     title: FRAME_DEFAULT_TITLE

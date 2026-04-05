@@ -3,6 +3,7 @@ import {
   Highlighter,
   PencilLine
 } from 'lucide-react'
+import { cn } from '@ui'
 import type {
   BrushStyle,
   BrushStylePatch,
@@ -16,11 +17,13 @@ import type {
   DrawKind
 } from '@whiteboard/editor'
 import { isDrawBrushKind } from '@whiteboard/editor'
-import {
-  ColorSwatch,
-  MenuSection
-} from '../../selection/chrome/menus/MenuPrimitives'
 import { COLORS } from '../../selection/chrome/menus/options'
+import {
+  TOOLBOX_PANEL_CLASSNAME,
+  ToolboxButton,
+  ToolboxColorSwatch,
+  ToolboxMenuSection
+} from '../primitives'
 
 const DRAW_KIND_ICONS = {
   pen: PencilLine,
@@ -70,65 +73,66 @@ export const DrawMenu = ({
 
   return (
     <div
-      className="wb-left-toolbar-draw-menu"
+      className="flex items-start gap-3"
       data-brush={brushKind ? 'true' : undefined}
     >
-      <div className="wb-left-toolbar-draw-dock">
+      <div className={cn(
+        TOOLBOX_PANEL_CLASSNAME,
+        'flex w-14 flex-col items-center gap-1 p-[8px_7px]'
+      )}>
         <div
-          className="wb-left-toolbar-draw-rail"
+          className="flex w-full flex-col items-center gap-1"
           role="toolbar"
           aria-label="Draw kind"
         >
           {(Object.keys(DRAW_KIND_ICONS) as DrawKind[]).map((value) => {
             const Icon = DRAW_KIND_ICONS[value]
             return (
-              <button
+              <ToolboxButton
                 key={value}
                 type="button"
-                className="wb-left-toolbar-draw-kind"
-                data-active={kind === value ? 'true' : undefined}
+                className="h-10 w-10 rounded-xl text-fg-muted hover:text-fg"
+                pressed={kind === value}
                 onClick={() => onKind(value)}
-                data-selection-ignore
-                data-input-ignore
                 aria-label={value}
                 title={value}
               >
                 <Icon size={20} strokeWidth={1} absoluteStrokeWidth />
-              </button>
+              </ToolboxButton>
             )
           })}
         </div>
         {brushKind && activeSlot && slots ? (
           <>
-            <div className="wb-left-toolbar-draw-dock-divider" />
+            <div className="my-[4px] h-px w-full bg-[rgb(from_var(--ui-border-subtle)_r_g_b_/_0.45)]" />
             <div
-              className="wb-left-toolbar-draw-slot-list"
+              className="flex w-full flex-col items-center gap-1"
               role="toolbar"
               aria-label="Draw slot"
             >
               {DRAW_SLOTS.map((slot) => {
                 const slotStyle = slots[slot]
                 return (
-                  <button
+                  <ToolboxButton
                     key={slot}
                     type="button"
-                    className="wb-left-toolbar-draw-slot"
-                    data-active={activeSlot === slot ? 'true' : undefined}
+                    className={cn(
+                      'h-10 w-10 rounded-xl text-fg-muted hover:text-fg',
+                      activeSlot === slot && 'bg-transparent [box-shadow:inset_0_0_0_2px_rgb(from_var(--ui-accent)_r_g_b_/_0.22)] hover:bg-transparent'
+                    )}
                     onClick={() => onSlot(slot)}
-                    data-selection-ignore
-                    data-input-ignore
                     aria-label={`slot ${slot}`}
                     title={`slot ${slot}`}
                   >
                     <span
-                      className="wb-left-toolbar-draw-slot-dot"
+                      className="rounded-full shadow-[inset_0_0_0_1px_rgb(from_var(--ui-text-primary)_r_g_b_/_0.08)]"
                       style={{
                         width: resolveSlotSize(slotStyle.width),
                         height: resolveSlotSize(slotStyle.width),
                         background: slotStyle.color
                       }}
                     />
-                  </button>
+                  </ToolboxButton>
                 )
               })}
             </div>
@@ -136,13 +140,13 @@ export const DrawMenu = ({
         ) : null}
       </div>
       {panelOpen && brushKind && activeSlot && slots && style ? (
-        <div className="wb-left-toolbar-draw-panel">
-          <div className="wb-left-toolbar-draw-panel-body">
-            <MenuSection title="Width">
-              <div className="wb-left-toolbar-draw-slider-wrap">
+        <div className={cn(TOOLBOX_PANEL_CLASSNAME, 'w-[292px] p-3')}>
+          <div className="min-w-0">
+            <ToolboxMenuSection title="Width">
+              <div className="flex flex-col gap-2.5">
                 <input
                   type="range"
-                  className="wb-left-toolbar-draw-slider"
+                  className="m-0 w-full [accent-color:var(--ui-accent)]"
                   min={DRAW_WIDTH_RANGE[brushKind].min}
                   max={DRAW_WIDTH_RANGE[brushKind].max}
                   step={1}
@@ -152,12 +156,10 @@ export const DrawMenu = ({
                       width: Number(event.currentTarget.value)
                     })
                   }}
-                  data-selection-ignore
-                  data-input-ignore
                 />
-                <div className="wb-left-toolbar-draw-slider-value">
+                <div className="flex items-center justify-between gap-2 text-[13px] text-fg-muted">
                   <span
-                    className="wb-left-toolbar-draw-slider-sample"
+                    className="shrink-0 rounded-full"
                     style={{
                       width: Math.max(10, Math.min(28, style.width * 2)),
                       height: Math.max(2, style.width),
@@ -168,19 +170,21 @@ export const DrawMenu = ({
                   <span>{style.width}px</span>
                 </div>
               </div>
-            </MenuSection>
-            <MenuSection title="All colors">
-              <div className="wb-node-toolbar-swatch-grid">
-                {COLORS.map((color) => (
-                  <ColorSwatch
-                    key={color}
-                    color={color}
-                    active={style.color === color}
-                    onClick={() => onPatch({ color })}
-                  />
-                ))}
-              </div>
-            </MenuSection>
+            </ToolboxMenuSection>
+            <div className="mt-4">
+              <ToolboxMenuSection title="All colors">
+                <div className="grid grid-cols-5 gap-2.5">
+                  {COLORS.map((color) => (
+                    <ToolboxColorSwatch
+                      key={color}
+                      color={color}
+                      active={style.color === color}
+                      onClick={() => onPatch({ color })}
+                    />
+                  ))}
+                </div>
+              </ToolboxMenuSection>
+            </div>
           </div>
         </div>
       ) : null}

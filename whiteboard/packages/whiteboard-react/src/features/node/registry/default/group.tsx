@@ -18,6 +18,7 @@ export const GroupNodeDefinition: NodeDefinition = {
     controls: []
   },
   role: 'group',
+  geometry: 'rect',
   render: () => null,
   style: groupStyle,
   connect: false,

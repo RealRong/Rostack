@@ -25,6 +25,7 @@ export const DrawNodeDefinition: NodeDefinition = {
     controls: ['stroke']
   },
   role: 'content',
+  geometry: 'rect',
   hit: 'path',
   connect: false,
   canResize: false,

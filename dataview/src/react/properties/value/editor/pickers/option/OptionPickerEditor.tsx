@@ -18,19 +18,22 @@ import {
 } from '@dataview/react/properties/options'
 import { Button } from '@ui/button'
 import {
+  PickerList,
+  usePickerList
+} from '@ui/picker-list'
+import {
   VerticalReorderList,
   type VerticalReorderItemState
 } from '@ui/vertical-reorder-list'
 import { cn } from '@ui/utils'
 import { useDataView } from '@dataview/react/dataview'
-import type { ValueEditorIntent } from '@dataview/react/interaction'
+import type { EditorSubmitTrigger } from '@dataview/react/interaction'
 import type { PropertyValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@dataview/dom/focus'
 import {
   isComposing,
   keyAction
 } from '../../shared/keyboard'
-import { useListHighlight } from '../../shared/useListHighlight'
 import { useDraftCommit } from '../../shared/useDraftCommit'
 
 const splitSelectedIds = (draft: string) => draft
@@ -53,11 +56,11 @@ const moveItem = <Item,>(items: readonly Item[], from: number, to: number) => {
   return next
 }
 
-const toggleSelectedIds = (
+const appendSelectedId = (
   selectedIds: readonly string[],
   optionId: string
 ) => selectedIds.includes(optionId)
-    ? selectedIds.filter(id => id !== optionId)
+    ? selectedIds
     : [...selectedIds, optionId]
 
 const removeSelectedId = (
@@ -259,8 +262,10 @@ export const OptionPickerEditor = (
     setItemRef,
     moveNext,
     movePrev,
+    moveFirst,
+    moveLast,
     getItemId
-  } = useListHighlight({
+  } = usePickerList({
     items: navigationItems,
     preferredKey: preferredHighlightedKey
   })
@@ -282,36 +287,39 @@ export const OptionPickerEditor = (
   if (!property) {
     return null
   }
-  const { commitDraft, commitDraftDeferred } = useDraftCommit({
+  const { applyDraft, commitDraft, commitDraftDeferred } = useDraftCommit({
     onDraftChange: props.onDraftChange,
+    onApply: props.onApply,
     onCommit: props.onCommit
   })
 
   const updateMultiSelection = (
     nextSelectedIds: readonly string[],
-    intent: ValueEditorIntent = 'done',
-    close = true
+    mode: 'apply' | 'commit',
+    trigger: EditorSubmitTrigger = 'programmatic'
   ) => {
     const nextDraft = joinSelectedIds(nextSelectedIds)
     setQuery('')
 
-    if (!close) {
-      props.onDraftChange(nextDraft)
+    if (mode === 'apply') {
+      applyDraft(nextDraft)
       return
     }
 
-    commitDraft(nextDraft, intent)
+    commitDraft(nextDraft, trigger)
   }
 
   const selectOption = (
     optionId: string,
-    intent: ValueEditorIntent = 'done',
-    close = props.mode === 'single'
+    mode: 'apply' | 'commit' = props.mode === 'single'
+      ? 'commit'
+      : 'apply',
+    trigger: EditorSubmitTrigger = 'programmatic'
   ) => {
     if (props.mode === 'single') {
       setQuery('')
-      if (close) {
-        commitDraftDeferred(optionId, intent)
+      if (mode === 'commit') {
+        commitDraftDeferred(optionId, trigger)
         return
       }
 
@@ -319,13 +327,20 @@ export const OptionPickerEditor = (
       return
     }
 
-    const nextSelectedIds = toggleSelectedIds(selectedIds, optionId)
-    updateMultiSelection(nextSelectedIds, intent, close)
+    if (selectedIdSet.has(optionId)) {
+      setQuery('')
+      return
+    }
+
+    const nextSelectedIds = appendSelectedId(selectedIds, optionId)
+    updateMultiSelection(nextSelectedIds, mode, trigger)
   }
 
   const createOption = (
-    intent: ValueEditorIntent = 'done',
-    close = props.mode === 'single'
+    mode: 'apply' | 'commit' = props.mode === 'single'
+      ? 'commit'
+      : 'apply',
+    trigger: EditorSubmitTrigger = 'programmatic'
   ) => {
     const created = editor.properties.options.create(property.id, query)
     if (!created) {
@@ -334,8 +349,8 @@ export const OptionPickerEditor = (
 
     if (props.mode === 'single') {
       setQuery('')
-      if (close) {
-        commitDraftDeferred(created.id, intent)
+      if (mode === 'commit') {
+        commitDraftDeferred(created.id, trigger)
         return true
       }
 
@@ -346,7 +361,7 @@ export const OptionPickerEditor = (
     const nextSelectedIds = selectedIdSet.has(created.id)
       ? selectedIds
       : [...selectedIds, created.id]
-    updateMultiSelection(nextSelectedIds, intent, close)
+    updateMultiSelection(nextSelectedIds, mode, trigger)
     return true
   }
 
@@ -375,20 +390,8 @@ export const OptionPickerEditor = (
     const action = keyAction({
       key: event.key,
       shiftKey: event.shiftKey,
-      composing,
-      enterIntent: props.enterIntent
+      composing
     })
-
-    if (
-      props.mode === 'multi'
-      && event.key === 'Backspace'
-      && !query
-      && selectedOptions.length > 0
-    ) {
-      event.preventDefault()
-      props.onDraftChange(joinSelectedIds(selectedIds.slice(0, -1)))
-      return
-    }
 
     if (!composing && event.key === 'ArrowDown') {
       event.preventDefault()
@@ -404,41 +407,92 @@ export const OptionPickerEditor = (
       return
     }
 
+    if (!composing && event.key === 'Home') {
+      event.preventDefault()
+      event.stopPropagation()
+      moveFirst()
+      return
+    }
+
+    if (!composing && event.key === 'End') {
+      event.preventDefault()
+      event.stopPropagation()
+      moveLast()
+      return
+    }
+
     if (action.type === 'cancel') {
       event.preventDefault()
       props.onCancel()
       return
     }
 
-    if (!composing && action.type === 'submit') {
+    if (!composing && action.type === 'commit') {
       event.preventDefault()
 
+      if (props.mode === 'multi' && action.trigger === 'enter') {
+        if (highlightedKey === CREATE_OPTION_KEY) {
+          if (canCreate && createOption('apply')) {
+            return
+          }
+        }
+
+        if (highlightedKey) {
+          selectOption(highlightedKey, 'apply')
+          return
+        }
+
+        if (exactMatch) {
+          selectOption(exactMatch.id, 'apply')
+          return
+        }
+
+        if (filteredOptions.length === 1) {
+          selectOption(filteredOptions[0].id, 'apply')
+          return
+        }
+
+        if (canCreate && createOption('apply')) {
+          return
+        }
+
+        return
+      }
+
+      if (
+        props.mode === 'multi'
+        && (action.trigger === 'tab-next' || action.trigger === 'tab-previous')
+      ) {
+        props.onCommit(action.trigger)
+        return
+      }
+
       if (highlightedKey === CREATE_OPTION_KEY) {
-        if (canCreate && createOption(action.intent, true)) {
+        if (canCreate && createOption('commit', action.trigger)) {
           return
         }
       }
 
       if (highlightedKey) {
-        selectOption(highlightedKey, action.intent, true)
+        selectOption(highlightedKey, 'commit', action.trigger)
         return
       }
 
       if (exactMatch) {
-        selectOption(exactMatch.id, action.intent, true)
+        selectOption(exactMatch.id, 'commit', action.trigger)
         return
       }
 
       if (filteredOptions.length === 1) {
-        selectOption(filteredOptions[0].id, action.intent, true)
+        selectOption(filteredOptions[0].id, 'commit', action.trigger)
         return
       }
 
-      if (canCreate && createOption(action.intent, true)) {
+      if (canCreate && createOption('commit', action.trigger)) {
         return
       }
 
-      props.onCommit(action.intent)
+      props.onCommit(action.trigger)
       return
     }
 
@@ -470,7 +524,11 @@ export const OptionPickerEditor = (
         setHighlightedKey(option.id)
       }}
       onSelect={() => {
-        selectOption(option.id, 'done', props.mode === 'single')
+        selectOption(
+          option.id,
+          props.mode === 'single' ? 'commit' : 'apply',
+          'programmatic'
+        )
       }}
       onOpenChange={open => {
         setEditingOptionId(open ? option.id : undefined)
@@ -536,41 +594,92 @@ export const OptionPickerEditor = (
 
         <div className="max-h-72 overflow-y-auto px-2 pb-2">
           {normalized ? (
-            <div className="flex flex-col gap-0.5">
-              {filteredOptions.map(option => renderRow(option))}
-              {canCreate ? (
-                <div
-                  id={getItemId(CREATE_OPTION_KEY)}
-                  ref={node => {
-                    setItemRef(CREATE_OPTION_KEY, node)
-                  }}
-                  className={cn(
-                    'rounded-lg transition-colors',
-                    highlightedKey === CREATE_OPTION_KEY
-                      ? 'bg-[var(--ui-control-hover)]'
-                      : 'hover:bg-[var(--ui-control-hover)]'
-                  )}
-                  onMouseEnter={() => {
-                    setHighlightedKey(CREATE_OPTION_KEY)
-                  }}
-                >
-                  <Button
-                    variant="ghost"
-                    layout="row"
-                    onMouseDown={preventMouseDefault}
-                    onClick={event => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      createOption('done', props.mode === 'single')
+            <PickerList
+              items={navigationItems}
+              highlightedKey={highlightedKey}
+              setHighlightedKey={setHighlightedKey}
+              setItemRef={setItemRef}
+              getItemId={getItemId}
+              className="gap-0.5"
+              renderItem={({ item, highlighted, id, ref }) => {
+                if (item.key === CREATE_OPTION_KEY) {
+                  return (
+                    <div
+                      key={item.key}
+                      id={id}
+                      ref={ref}
+                      className={cn(
+                        'rounded-lg transition-colors',
+                        highlighted
+                          ? 'bg-[var(--ui-control-hover)]'
+                          : 'hover:bg-[var(--ui-control-hover)]'
+                      )}
+                      onMouseEnter={() => {
+                        setHighlightedKey(CREATE_OPTION_KEY)
+                      }}
+                    >
+                      <Button
+                        variant="ghost"
+                        layout="row"
+                        onMouseDown={preventMouseDefault}
+                        onClick={event => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          createOption(
+                            props.mode === 'single' ? 'commit' : 'apply',
+                            'programmatic'
+                          )
+                        }}
+                      >
+                        <span className="truncate">
+                          {renderMessage(meta.ui.property.options.create(query.trim()))}
+                        </span>
+                      </Button>
+                    </div>
+                  )
+                }
+
+                const option = filteredOptions.find(candidate => candidate.id === item.key)
+                if (!option) {
+                  return null
+                }
+
+                return (
+                  <OptionRow
+                    key={option.id}
+                    option={option}
+                    highlighted={highlighted}
+                    open={editingOptionId === option.id}
+                    id={id}
+                    rowRef={ref}
+                    onHighlight={() => {
+                      setHighlightedKey(option.id)
                     }}
-                  >
-                    <span className="truncate">
-                      {renderMessage(meta.ui.property.options.create(query.trim()))}
-                    </span>
-                  </Button>
-                </div>
-              ) : null}
-            </div>
+                    onSelect={() => {
+                      selectOption(
+                        option.id,
+                        props.mode === 'single' ? 'commit' : 'apply',
+                        'programmatic'
+                      )
+                    }}
+                    onOpenChange={open => {
+                      setEditingOptionId(open ? option.id : undefined)
+                      if (open) {
+                        setHighlightedKey(option.id)
+                      }
+                    }}
+                    onRename={name => editor.properties.options.update(property.id, option.id, { name }) !== undefined}
+                    onColorChange={color => {
+                      editor.properties.options.update(property.id, option.id, { color })
+                    }}
+                    onDelete={() => {
+                      editor.properties.options.remove(property.id, option.id)
+                      removeOptionFromDraft(option.id)
+                    }}
+                  />
+                )
+              }}
+            />
           ) : (
             <VerticalReorderList
               items={options}

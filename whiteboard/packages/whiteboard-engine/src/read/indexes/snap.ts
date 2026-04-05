@@ -1,9 +1,6 @@
 import type { CanvasNode } from '@engine-types/projection'
 import type { NodeId, Rect } from '@whiteboard/core/types'
-import {
-  getNodeOutlineBounds,
-  type SnapCandidate
-} from '@whiteboard/core/node'
+import type { SnapCandidate } from '@whiteboard/core/node'
 import type { EngineReadIndex } from '@engine-types/instance'
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import {
@@ -44,13 +41,7 @@ const canIndexSnapCandidate = (
 
 const resolveSnapRect = (
   entry: CanvasNode
-): Rect => entry.node.type === 'shape'
-  ? getNodeOutlineBounds(
-      entry.node,
-      entry.rect,
-      entry.rotation
-    )
-  : entry.aabb
+): Rect => entry.geometry.bounds
 
 type SnapCacheEntry = {
   rect: RectTuple

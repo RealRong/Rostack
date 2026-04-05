@@ -2,6 +2,7 @@ export {
   createInteractionCoordinator
 } from './coordinator'
 export {
+  apply,
   cancel,
   commit,
   keyDown,
@@ -25,6 +26,6 @@ export type {
   KeyInput,
   Modifiers,
   Point,
-  ValueEditorIntent,
+  EditorSubmitTrigger,
   PointerInput
 } from './events'

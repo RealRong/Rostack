@@ -101,7 +101,6 @@ export const PropertyPopoverRow = (props: {
       open={open}
       onOpenChange={setOpen}
       initialFocus={-1}
-      surface="scoped"
       trigger={(
         <PropertyMenuRow
           label={props.label}

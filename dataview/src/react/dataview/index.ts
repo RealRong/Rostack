@@ -35,9 +35,6 @@ export type {
   SelectionApi
 } from '@dataview/react/runtime/selection'
 export type {
-  BlockingSurfaceBackdrop,
-  BlockingSurfaceState,
-  OpenBlockingSurfaceInput,
   PageLock,
   PageSessionApi,
   PageSessionInput,
@@ -46,14 +43,15 @@ export type {
   QueryBarState,
   ResolvedPageState,
   SettingsRoute,
-  SettingsState,
-  PageInteractionState,
+  SettingsState
 } from '@dataview/react/page/session/types'
 export type {
   CloseValueEditorOptions,
   OpenValueEditorInput,
   ValueEditorApi,
   ValueEditorAnchor,
+  ValueEditorCloseAction,
   ValueEditorResult,
+  ValueEditorSessionPolicy,
   ViewFieldRef
 } from '@dataview/react/runtime/valueEditor'

@@ -12,7 +12,7 @@ import {
   findOwnerAncestor,
   getOwnerDescendants
 } from './owner'
-import { getNodesVisualBoundingRect } from './bounds'
+import { getNodesBounds } from './bounds'
 
 type OwnedNode = Pick<Node, 'id' | 'type' | 'children'>
 
@@ -87,7 +87,7 @@ export const sanitizeGroupPatch = (
 export const getNodesBoundingRect = (
   nodes: readonly Node[],
   fallbackSize: Size
-): Rect | undefined => getNodesVisualBoundingRect(nodes, fallbackSize)
+): Rect | undefined => getNodesBounds(nodes, fallbackSize)
 
 export const getGroupChildrenMap = <TNode extends OwnedNode>(
   nodes: readonly TNode[]

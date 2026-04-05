@@ -1,5 +1,5 @@
 import type { GroupProperty } from '@dataview/core/contracts'
-import { getPropertyDisplayValue, parsePropertyDraft } from '@dataview/core/property'
+import { parsePropertyDraft } from '@dataview/core/property'
 import { PropertyOptionTag } from '@dataview/react/properties/options'
 import { cn } from '@ui/utils'
 import { OptionPickerEditor } from '../editor/pickers/option/OptionPickerEditor'
@@ -29,7 +29,7 @@ export const createMultiSelectPropertySpec = (
 
     const values = props.value.map(item => ({
       id: item,
-      label: getPropertyDisplayValue(property, item) ?? String(item),
+      label: optionForValue(property, item)?.name ?? String(item),
       color: optionForValue(property, item)?.color
     }))
     const visible = values.slice(0, 2)

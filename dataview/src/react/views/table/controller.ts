@@ -15,6 +15,9 @@ import {
 import type {
   Selection
 } from '@dataview/react/runtime/selection'
+import type {
+  MarqueeSessionState
+} from '@dataview/react/runtime/marquee'
 import {
   selection as selectionHelpers
 } from '@dataview/react/runtime/selection'
@@ -52,11 +55,16 @@ import {
   createGridSelection,
   type GridSelectionStore
 } from './gridSelection'
+import {
+  createTableVirtualRuntime,
+  type TableVirtualRuntime
+} from './virtual/runtime'
 
 export interface TableController {
   gridSelection: GridSelectionStore
   marqueeSelection: ValueStore<Selection | null>
   layout: TableLayout
+  virtual: TableVirtualRuntime
   nodes: Nodes
   dom: Dom
   rowHit: RowHit
@@ -193,6 +201,7 @@ export const createTableController = (options: {
   pageStore: ReadStore<ResolvedPageState>
   currentViewStore: ReadStore<CurrentView | undefined>
   selectionStore: ReadStore<Selection>
+  marqueeStore: ReadStore<MarqueeSessionState | null>
   valueEditor: ValueEditorApi
   layout: TableLayout
   nodes: Nodes
@@ -226,6 +235,11 @@ export const createTableController = (options: {
     interaction: interaction.store
   })
   const hover = createHover()
+  const virtual = createTableVirtualRuntime({
+    currentViewStore: currentView,
+    marqueeStore: options.marqueeStore,
+    layout: options.layout
+  })
   const dom = createDom({
     layout: options.layout,
     nodes: options.nodes
@@ -321,6 +335,7 @@ export const createTableController = (options: {
     gridSelection,
     marqueeSelection,
     layout: options.layout,
+    virtual,
     nodes: options.nodes,
     dom,
     rowHit,
@@ -336,6 +351,7 @@ export const createTableController = (options: {
       interaction.api.cancel()
       gridSelection.dispose()
       marqueeSelection.set(null)
+      virtual.dispose()
     }
   }
 }

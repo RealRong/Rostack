@@ -11,7 +11,7 @@ import {
 
 const DEFAULT_CARD_HEIGHT = 96
 const DEFAULT_GAP = 8
-const DEFAULT_OVERSCAN = 360
+const DEFAULT_OVERSCAN = 960
 
 interface VirtualCardLayout extends VirtualBlock {
   id: AppearanceId
@@ -25,13 +25,37 @@ interface Options {
   overscan?: number
 }
 
+const resolveEstimatedHeight = (
+  heightById: ReadonlyMap<AppearanceId, number>,
+  fallback: number
+) => {
+  const values = Array.from(heightById.values())
+    .filter(value => Number.isFinite(value) && value > 0)
+    .sort((left, right) => left - right)
+
+  if (!values.length) {
+    return fallback
+  }
+
+  const middle = Math.floor(values.length / 2)
+  return values.length % 2 === 0
+    ? Math.round((values[middle - 1] + values[middle]) / 2)
+    : values[middle]
+}
+
 export const useColumnVirtual = (options: Options) => {
-  const estimatedHeight = options.estimatedHeight ?? DEFAULT_CARD_HEIGHT
   const gap = options.gap ?? DEFAULT_GAP
   const overscan = options.overscan ?? DEFAULT_OVERSCAN
   const measured = useMeasuredHeights({
     ids: options.ids
   })
+  const estimatedHeight = useMemo(
+    () => resolveEstimatedHeight(
+      measured.heightById,
+      options.estimatedHeight ?? DEFAULT_CARD_HEIGHT
+    ),
+    [measured.heightById, options.estimatedHeight]
+  )
 
   const items = useMemo<readonly VirtualCardLayout[]>(() => {
     let top = 0

@@ -1,6 +1,8 @@
 import {
   useEffect,
+  useLayoutEffect,
   useReducer,
+  useRef,
   type RefObject
 } from 'react'
 import {
@@ -55,8 +57,26 @@ export const useViewportVersion = <TTarget extends ViewportTarget>(
   targetRef: RefObject<TTarget | null>
 ) => {
   const [version, bump] = useReducer((value: number) => value + 1, 0)
+  const targetNodeRef = useRef<ViewportTarget | null>(null)
+  const cleanupRef = useRef<(() => void) | null>(null)
 
-  useEffect(() => watchViewport(targetRef.current, bump), [targetRef])
+  useLayoutEffect(() => {
+    const target = targetRef.current
+    if (targetNodeRef.current === target) {
+      return
+    }
+
+    cleanupRef.current?.()
+    targetNodeRef.current = target
+    cleanupRef.current = watchViewport(target, bump)
+    bump()
+  })
+
+  useEffect(() => () => {
+    cleanupRef.current?.()
+    cleanupRef.current = null
+    targetNodeRef.current = null
+  }, [])
 
   return version
 }

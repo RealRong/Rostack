@@ -71,7 +71,6 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
         onOpenChange={setPropertyOpen}
         initialFocus={-1}
         placement="bottom-start"
-        surface="scoped"
         trigger={(
           <Button
             layout="row"
@@ -106,7 +105,6 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
         onOpenChange={setDirectionOpen}
         initialFocus={-1}
         placement="bottom-start"
-        surface="scoped"
         items={SORT_DIRECTIONS.map(direction => ({
           kind: 'toggle' as const,
           key: direction,

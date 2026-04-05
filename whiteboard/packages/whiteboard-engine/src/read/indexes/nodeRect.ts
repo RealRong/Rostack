@@ -1,7 +1,6 @@
 import type { CanvasNode } from '@engine-types/projection'
 import type { Node, NodeId, Rect } from '@whiteboard/core/types'
 import {
-  getNodeOutlineBounds,
   getNodeIdsInRect as getNodeIdsInRectRaw,
   type NodeRectHitOptions
 } from '@whiteboard/core/node'
@@ -13,6 +12,14 @@ import { NodeGeometryCache } from '../../geometry/nodeGeometry'
 import { TreeIndex } from './tree'
 
 type Rebuild = 'none' | 'dirty' | 'full'
+
+const readNodeRotation = (
+  node: Node
+) => (
+  node.type === 'group'
+    ? 0
+    : (typeof node.rotation === 'number' ? node.rotation : 0)
+)
 
 const resolveRebuild = (impact: KernelReadImpact): Rebuild => {
   if (impact.reset || impact.node.list) {
@@ -176,9 +183,7 @@ export class NodeRectIndex {
       ))
       .filter((entry): entry is CanvasNode => Boolean(entry))
       .map((entry) => (
-        entry.node.type === 'shape'
-          ? getNodeOutlineBounds(entry.node, entry.rect, entry.rotation)
-          : entry.aabb
+        entry.geometry.bounds
       ))
     visited.delete(current.node.id)
 
@@ -207,9 +212,15 @@ export class NodeRectIndex {
 
     return {
       node: current.node,
-      rect,
-      aabb: rect,
-      rotation: 0
+      geometry: {
+        rect,
+        outline: {
+          kind: 'rect',
+          rect,
+          rotation: 0
+        },
+        bounds: rect
+      }
     }
   }
 
@@ -220,15 +231,14 @@ export class NodeRectIndex {
     left === right
     || (
       left?.node === right?.node
-      && left?.rotation === right?.rotation
-      && left?.rect.x === right?.rect.x
-      && left?.rect.y === right?.rect.y
-      && left?.rect.width === right?.rect.width
-      && left?.rect.height === right?.rect.height
-      && left?.aabb.x === right?.aabb.x
-      && left?.aabb.y === right?.aabb.y
-      && left?.aabb.width === right?.aabb.width
-      && left?.aabb.height === right?.aabb.height
+      && left?.geometry.rect.x === right?.geometry.rect.x
+      && left?.geometry.rect.y === right?.geometry.rect.y
+      && left?.geometry.rect.width === right?.geometry.rect.width
+      && left?.geometry.rect.height === right?.geometry.rect.height
+      && left?.geometry.bounds.x === right?.geometry.bounds.x
+      && left?.geometry.bounds.y === right?.geometry.bounds.y
+      && left?.geometry.bounds.width === right?.geometry.bounds.width
+      && left?.geometry.bounds.height === right?.geometry.bounds.height
     )
   )
 
@@ -311,7 +321,15 @@ export class NodeRectIndex {
   nodeIdsInRect = (
     rect: Rect,
     options?: NodeRectHitOptions
-  ): NodeId[] => getNodeIdsInRectRaw(rect, this.all(), options)
+  ): NodeId[] => getNodeIdsInRectRaw(
+    rect,
+    this.all().map((entry) => ({
+      node: entry.node,
+      rect: entry.geometry.rect,
+      rotation: readNodeRotation(entry.node)
+    })),
+    options
+  )
 
   byId = (nodeId: NodeId): CanvasNode | undefined =>
     this.entriesById.get(nodeId)

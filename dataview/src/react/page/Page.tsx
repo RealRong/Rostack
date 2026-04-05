@@ -1,11 +1,8 @@
-import { useMemo, type CSSProperties } from 'react'
-import { BlockingSurfaceProvider } from '@ui/blocking-surface'
+import { type CSSProperties } from 'react'
 import { OverlayProvider } from '@ui/overlay'
-import { useDataView } from '@dataview/react/dataview'
 import { ViewQueryBar } from '@dataview/react/page/features/viewQuery/ViewQueryBar'
 import {
   PageInlineSessionHost,
-  PageInteractionHost,
   PageKeyboardHost,
   PageMarqueeHost
 } from '@dataview/react/page/hosts'
@@ -28,47 +25,38 @@ const chromeStyle: CSSProperties = {
 }
 
 export const Page = (props: PageProps) => {
-  const page = useDataView().page
-  const blockingSurfaceController = useMemo(() => ({
-    setBlockingSurface: page.surface.open,
-    clearBlockingSurface: page.surface.close
-  }), [page])
-
   return (
     <OverlayProvider>
-      <BlockingSurfaceProvider controller={blockingSurfaceController}>
+      <div
+        className="relative flex h-full min-h-0 flex-col overflow-hidden"
+        style={pageStyle}
+      >
         <div
-          className="relative flex h-full min-h-0 flex-col overflow-hidden"
-          style={pageStyle}
+          data-page-scroll=""
+          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+          style={{
+            overflowAnchor: 'none'
+          }}
         >
-          <div
-            data-page-scroll=""
-            className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
-            style={{
-              overflowAnchor: 'none'
-            }}
-          >
-            <div className="flex min-h-full flex-col gap-5 py-6">
-              <div
-                className="flex flex-col gap-2"
-                style={chromeStyle}
-              >
-                <PageToolbar />
-                <ViewQueryBar />
-              </div>
-              <PageBody
-                table={props.table}
-                kanban={props.kanban}
-              />
+          <div className="flex min-h-full flex-col gap-5 py-6">
+            <div
+              className="flex flex-col gap-2"
+              style={chromeStyle}
+            >
+              <PageToolbar />
+              <ViewQueryBar />
             </div>
+            <PageBody
+              table={props.table}
+              kanban={props.kanban}
+            />
           </div>
-          <PageInteractionHost />
-          <PageInlineSessionHost />
-          <PageMarqueeHost />
-          <PageKeyboardHost />
-          <PropertyValueEditorHost />
         </div>
-      </BlockingSurfaceProvider>
+        <PageInlineSessionHost />
+        <PageMarqueeHost />
+        <PageKeyboardHost />
+        <PropertyValueEditorHost />
+      </div>
     </OverlayProvider>
   )
 }

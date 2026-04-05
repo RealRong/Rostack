@@ -23,6 +23,14 @@ import {
 import { EdgePresetGlyph } from './menus/EdgeMenu'
 import { TEXT_INSERT_PRESET } from './presets'
 import type { ToolPaletteController } from './controller'
+import {
+  TOOLBOX_BUTTON_TINT_CLASSNAME,
+  TOOLBOX_GRID_BUTTON_CLASSNAME,
+  TOOLBOX_ICON_BUTTON_CLASSNAME,
+  TOOLBOX_SURFACE_CLASSNAME,
+  ToolboxButton
+} from './primitives'
+import { cn } from '@ui'
 
 const ToolIcon = ({
   icon: Icon
@@ -59,84 +67,77 @@ export const ToolPaletteButtons = ({
   const toolIcon = tool.type === 'hand' ? Hand : MousePointer2
 
   return (
-    <div className="wb-left-toolbar">
-      <button
+    <div className={cn(
+      TOOLBOX_SURFACE_CLASSNAME,
+      'pointer-events-auto absolute left-4 top-4 flex w-[52px] flex-col gap-1 p-1.5'
+    )}>
+      <ToolboxButton
         type="button"
-        className="wb-left-toolbar-button"
-        data-active={tool.type === 'select' || tool.type === 'hand' ? 'true' : undefined}
+        className={TOOLBOX_ICON_BUTTON_CLASSNAME}
+        pressed={tool.type === 'select' || tool.type === 'hand'}
         onClick={controller.togglePrimaryTool}
-        data-selection-ignore
-        data-input-ignore
         title={tool.type === 'hand' ? 'Hand' : 'Select'}
       >
         <ToolIcon icon={toolIcon} />
-      </button>
-      <div className="wb-left-toolbar-divider" />
-      <button
+      </ToolboxButton>
+      <div className="mx-0 my-0.5 h-px w-full bg-[rgb(from_var(--ui-border-subtle)_r_g_b_/_0.4)]" />
+      <ToolboxButton
         ref={(element) => {
           buttonRefByKey.current.edge = element
         }}
         type="button"
-        className="wb-left-toolbar-button"
-        data-active={tool.type === 'edge' ? 'true' : undefined}
+        className={TOOLBOX_ICON_BUTTON_CLASSNAME}
+        pressed={tool.type === 'edge'}
         onClick={controller.toggleEdgeMenu}
-        data-selection-ignore
-        data-input-ignore
         title="Edge"
       >
-        <span className="wb-left-toolbar-button-edge-preview">
+        <span className="inline-flex h-[22px] w-[22px] items-center justify-center text-current">
           <EdgePresetGlyph preset={palette.edgePreset} />
         </span>
-      </button>
-      <button
+      </ToolboxButton>
+      <ToolboxButton
         ref={(element) => {
           buttonRefByKey.current.sticky = element
         }}
         type="button"
-        className="wb-left-toolbar-button"
-        data-active={palette.insertGroup === 'sticky' ? 'true' : undefined}
+        className={TOOLBOX_ICON_BUTTON_CLASSNAME}
+        pressed={palette.insertGroup === 'sticky'}
         onClick={() => {
           controller.toggleInsertMenu('sticky')
         }}
-        data-selection-ignore
-        data-input-ignore
         title="Sticky note"
       >
         <span
-          className="wb-left-toolbar-button-tint"
+          className={TOOLBOX_BUTTON_TINT_CLASSNAME}
           style={{
             background: palette.stickyTone?.fill
           }}
         />
         <ToolIcon icon={StickyNote} />
-      </button>
-      <button
+      </ToolboxButton>
+      <ToolboxButton
         type="button"
-        className="wb-left-toolbar-button"
-        data-active={tool.type === 'insert' && tool.preset === TEXT_INSERT_PRESET.key ? 'true' : undefined}
+        className={TOOLBOX_ICON_BUTTON_CLASSNAME}
+        pressed={tool.type === 'insert' && tool.preset === TEXT_INSERT_PRESET.key}
         onClick={controller.activateTextTool}
-        data-selection-ignore
-        data-input-ignore
         title="Text"
       >
         <ToolIcon icon={Type} />
-      </button>
-      <button
+      </ToolboxButton>
+      <ToolboxButton
         ref={(element) => {
           buttonRefByKey.current.shape = element
         }}
         type="button"
-        className="wb-left-toolbar-button"
-        data-active={palette.insertGroup === 'shape' ? 'true' : undefined}
+        className={TOOLBOX_ICON_BUTTON_CLASSNAME}
+        pressed={palette.insertGroup === 'shape'}
         onClick={() => {
           controller.toggleInsertMenu('shape')
         }}
-        data-selection-ignore
-        data-input-ignore
         title="Shapes"
       >
         {palette.shapeKind ? (
-          <span className="wb-left-toolbar-button-shape-preview">
+          <span className="inline-flex h-[22px] w-[22px] items-center justify-center text-current">
             <ShapeGlyph
               kind={palette.shapeKind}
               width={22}
@@ -147,22 +148,20 @@ export const ToolPaletteButtons = ({
             />
           </span>
         ) : null}
-      </button>
-      <button
+      </ToolboxButton>
+      <ToolboxButton
         ref={(element) => {
           buttonRefByKey.current.draw = element
         }}
         type="button"
-        className="wb-left-toolbar-button"
-        data-active={tool.type === 'draw' ? 'true' : undefined}
+        className={TOOLBOX_ICON_BUTTON_CLASSNAME}
+        pressed={tool.type === 'draw'}
         onClick={controller.toggleDrawMenu}
-        data-selection-ignore
-        data-input-ignore
         title="Draw"
       >
         {palette.drawButtonStyle ? (
           <span
-            className="wb-left-toolbar-button-tint"
+            className={TOOLBOX_BUTTON_TINT_CLASSNAME}
             style={{
               background: palette.drawButtonStyle.color,
               opacity: palette.drawButtonStyle.opacity
@@ -170,23 +169,21 @@ export const ToolPaletteButtons = ({
           />
         ) : null}
         <ToolIcon icon={DrawButtonIcon} />
-      </button>
-      <button
+      </ToolboxButton>
+      <ToolboxButton
         ref={(element) => {
           buttonRefByKey.current.mindmap = element
         }}
         type="button"
-        className="wb-left-toolbar-button"
-        data-active={palette.insertGroup === 'mindmap' ? 'true' : undefined}
+        className={TOOLBOX_ICON_BUTTON_CLASSNAME}
+        pressed={palette.insertGroup === 'mindmap'}
         onClick={() => {
           controller.toggleInsertMenu('mindmap')
         }}
-        data-selection-ignore
-        data-input-ignore
         title="Mindmap"
       >
         <ToolIcon icon={GitBranch} />
-      </button>
+      </ToolboxButton>
     </div>
   )
 }

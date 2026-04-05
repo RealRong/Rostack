@@ -1,3 +1,7 @@
+import {
+  useEffect,
+  useLayoutEffect
+} from 'react'
 import type {
   ClipboardEventHandler,
   KeyboardEventHandler,
@@ -23,6 +27,14 @@ export interface SurfaceProps {
 export const Surface = (props: SurfaceProps) => {
   const table = useTableContext()
   const layout = table.layout
+
+  useLayoutEffect(() => {
+    table.virtual.attach()
+  })
+
+  useEffect(() => () => {
+    table.virtual.detach()
+  }, [table.virtual])
 
   return (
     <div

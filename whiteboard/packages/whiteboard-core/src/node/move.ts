@@ -19,7 +19,7 @@ import {
 } from './group'
 import { expandFrameSelection } from './frame'
 import { filterRootIds } from './owner'
-import { getNodeVisualBounds } from './bounds'
+import { getNodeBoundsByNode } from './bounds'
 
 export type MoveMember = {
   id: NodeId
@@ -96,7 +96,7 @@ export const buildMoveSet = (options: {
     node: Node
   ): Rect | undefined => {
     if (node.type !== 'group') {
-      return getNodeVisualBounds(node, nodeSize)
+      return getNodeBoundsByNode(node, nodeSize)
     }
 
     if (groupRectCache.has(node.id)) {
@@ -117,7 +117,7 @@ export const buildMoveSet = (options: {
     getNodeRect: readNodeRect,
     getFrameRect: (node) => (
       node.type === 'frame'
-        ? getNodeVisualBounds(node, nodeSize)
+        ? getNodeBoundsByNode(node, nodeSize)
         : undefined
     )
   })

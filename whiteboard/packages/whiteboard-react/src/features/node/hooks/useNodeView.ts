@@ -79,7 +79,7 @@ const resolveNodeOverlayViewState = (
 ): NodeOverlayView => {
   const node = item.node
   const rect = item.rect
-  const transformRect = editor.read.node.outline(nodeId) ?? rect
+  const transformRect = editor.read.node.rect(nodeId) ?? rect
   const rotation = node.type === 'group'
     ? 0
     : (typeof node.rotation === 'number' ? node.rotation : 0)
@@ -108,7 +108,7 @@ const resolveNodeViewState = (
 ): NodeView => {
   const resolvedNode = item.node
   const rect = item.rect
-  const frameRect = editor.read.node.outline(nodeId) ?? rect
+  const frameRect = editor.read.node.rect(nodeId) ?? rect
   const hidden = state.hidden
   const resizing = state.resizing
   const rotation = resolvedNode.type === 'group'

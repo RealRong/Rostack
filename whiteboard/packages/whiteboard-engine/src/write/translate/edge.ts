@@ -13,6 +13,7 @@ import {
   resolveEdgePathFromRects
 } from '@whiteboard/core/edge'
 import { getNodeRect } from '@whiteboard/core/geometry'
+import { getNodeGeometry } from '@whiteboard/core/node'
 import {
   bringOrderForward,
   bringOrderToFront,
@@ -82,15 +83,21 @@ const resolvePath = (
     source: sourceNode
       ? {
           node: sourceNode,
-          rect: getNodeRect(sourceNode, nodeSize),
-          rotation: sourceNode.rotation
+          geometry: getNodeGeometry(
+            sourceNode,
+            getNodeRect(sourceNode, nodeSize),
+            sourceNode.rotation ?? 0
+          )
         }
       : undefined,
     target: targetNode
       ? {
           node: targetNode,
-          rect: getNodeRect(targetNode, nodeSize),
-          rotation: targetNode.rotation
+          geometry: getNodeGeometry(
+            targetNode,
+            getNodeRect(targetNode, nodeSize),
+            targetNode.rotation ?? 0
+          )
         }
       : undefined
   }).path

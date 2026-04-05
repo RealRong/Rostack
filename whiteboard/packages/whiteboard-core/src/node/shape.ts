@@ -89,9 +89,9 @@ const BLUE_FILL = 'var(--ui-blue-bg-strong)'
 const BLUE_STROKE = 'var(--ui-blue-text)'
 const YELLOW_FILL = 'rgb(from var(--ui-yellow-bg-strong) r g b / 0.9)'
 const YELLOW_STROKE = 'rgb(from var(--ui-yellow-text) r g b / 0.72)'
-const PREVIEW_FILL = 'var(--wb-toolbar-preview-fill)'
-const PREVIEW_FILL_BLUE = 'var(--wb-toolbar-preview-fill-blue)'
-const PREVIEW_FILL_YELLOW_SOFT = 'var(--wb-toolbar-preview-fill-yellow-soft)'
+const PREVIEW_FILL = 'var(--ui-surface-subtle)'
+const PREVIEW_FILL_BLUE = 'var(--ui-blue-bg-strong)'
+const PREVIEW_FILL_YELLOW_SOFT = 'var(--ui-yellow-bg-strong)'
 const SHAPE_META_CONTROLS = ['fill', 'stroke', 'text'] as const
 
 export const isShapeKind = (

@@ -5,6 +5,8 @@
     "baseUrl": "../..",
     "types": ["vite/client"],
     "paths": {
+      "@ui": ["ui/src/index.ts"],
+      "@ui/*": ["ui/src/*"],
       "@whiteboard/collab": ["whiteboard/packages/whiteboard-collab/src/index.ts"],
       "@whiteboard/editor": ["whiteboard/packages/whiteboard-editor/src/index.ts"],
       "@whiteboard/editor/draw": ["whiteboard/packages/whiteboard-editor/src/draw.ts"],

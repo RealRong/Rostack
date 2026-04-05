@@ -9,7 +9,10 @@ import {
 } from 'react'
 import { useDataView } from '@dataview/react/dataview'
 import { createNodes } from './dom/registry'
-import type { TableLayout } from './layout'
+import {
+  contentBounds,
+  type TableLayout
+} from './layout'
 import {
   createTableController,
   type TableController
@@ -38,9 +41,13 @@ export const TableProvider = (props: TableProviderProps) => {
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const nodes = useMemo(
     () => createNodes({
-      resolveContainer: () => containerRef.current
+      resolveContainer: () => containerRef.current,
+      resolveHorizontalBounds: () => contentBounds({
+        container: containerRef.current,
+        canvas: canvasRef.current
+      })
     }),
-    [containerRef]
+    [canvasRef, containerRef]
   )
   const layout = useMemo<TableLayout>(() => ({
     rowHeight: props.rowHeight,
@@ -53,11 +60,13 @@ export const TableProvider = (props: TableProviderProps) => {
     pageStore: dataView.page.store,
     currentViewStore: dataView.currentView,
     selectionStore: dataView.selection.store,
+    marqueeStore: dataView.marquee.store,
     valueEditor: dataView.valueEditor,
     layout,
     nodes
   }), [
     dataView.currentView,
+    dataView.marquee.store,
     dataView.page.store,
     dataView.selection.store,
     dataView.valueEditor,

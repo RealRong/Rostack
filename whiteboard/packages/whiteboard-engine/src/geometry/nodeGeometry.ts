@@ -1,5 +1,6 @@
-import type { Node, NodeId, Rect, Size } from '@whiteboard/core/types'
-import { getNodeAABB, getNodeRect } from '@whiteboard/core/geometry'
+import type { Node, NodeGeometry, NodeId, Rect, Size } from '@whiteboard/core/types'
+import { getNodeRect } from '@whiteboard/core/geometry'
+import { getNodeGeometry } from '@whiteboard/core/node'
 import { isSameRectWithRotationTuple, toFiniteOrUndefined } from '@whiteboard/core/utils'
 
 type NodeGeometryStateTuple = {
@@ -17,9 +18,7 @@ type NodeGeometryCacheEntry = {
 
 type NodeGeometryEntry = {
   node: Node
-  rect: Rect
-  aabb: Rect
-  rotation: number
+  geometry: NodeGeometry
 }
 
 export class NodeGeometryCache {
@@ -48,25 +47,38 @@ export class NodeGeometryCache {
     node.type === 'group'
       ? {
           node,
-          rect: {
-            x: 0,
-            y: 0,
-            width: 0,
-            height: 0
-          },
-          aabb: {
-            x: 0,
-            y: 0,
-            width: 0,
-            height: 0
-          },
-          rotation: 0
+          geometry: {
+            rect: {
+              x: 0,
+              y: 0,
+              width: 0,
+              height: 0
+            },
+            outline: {
+              kind: 'rect',
+              rect: {
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 0
+              },
+              rotation: 0
+            },
+            bounds: {
+              x: 0,
+              y: 0,
+              width: 0,
+              height: 0
+            }
+          }
         }
       : {
           node,
-          rect: getNodeRect(node, this.nodeSize),
-          aabb: getNodeAABB(node, this.nodeSize),
-          rotation: typeof node.rotation === 'number' ? node.rotation : 0
+          geometry: getNodeGeometry(
+            node,
+            getNodeRect(node, this.nodeSize),
+            typeof node.rotation === 'number' ? node.rotation : 0
+          )
         }
   )
 

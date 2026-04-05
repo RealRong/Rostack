@@ -1,6 +1,7 @@
 import type {
   InteractionStartResult
 } from '../../runtime/interaction/types'
+import { HANDLED } from '../../runtime/interaction/result'
 import type { PointerDownInput } from '../../types/input'
 import type { InteractionContext } from '../context'
 import { createEdgeBodyMoveSession } from './move'
@@ -31,13 +32,13 @@ export const startEdgePress = (
   }
 
   const edgeId = start.pick.id
-  if (!readCapability(ctx, edgeId)?.move) {
-    return null
-  }
-
   ctx.write.session.selection.replace({
     edgeIds: [edgeId]
   })
+
+  if (!readCapability(ctx, edgeId)?.move) {
+    return HANDLED
+  }
 
   return createEdgeBodyMoveSession(ctx, {
     edgeId,

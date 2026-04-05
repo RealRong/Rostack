@@ -25,20 +25,19 @@ export const CheckboxEditor = (props: PropertyValueDraftEditorProps<string>) => 
       value={props.draft}
       onChange={event => {
         props.onDraftChange(event.target.value)
-        props.onCommit()
+        props.onCommit('programmatic')
       }}
       onKeyDown={event => {
         const action = keyAction({
           key: event.key,
           shiftKey: event.shiftKey,
-          composing: isComposing(event.nativeEvent),
-          enterIntent: props.enterIntent
+          composing: isComposing(event.nativeEvent)
         })
 
         switch (action.type) {
-          case 'submit':
+          case 'commit':
             event.preventDefault()
-            props.onCommit(action.intent)
+            props.onCommit(action.trigger)
             return
           case 'cancel':
             event.preventDefault()

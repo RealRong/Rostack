@@ -9,10 +9,11 @@ import {
 import { getPropertyOptions, getStatusSections } from '@dataview/core/property'
 import { Button } from '@ui/button'
 import { Input } from '@ui/input'
+import { usePickerList } from '@ui/picker-list'
 import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { PropertyOptionTag } from '@dataview/react/properties/options'
-import type { ValueEditorIntent } from '@dataview/react/interaction'
+import type { EditorSubmitTrigger } from '@dataview/react/interaction'
 import type { PropertyValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@dataview/dom/focus'
 import {
@@ -78,6 +79,23 @@ export const StatusValueEditor = (
       }))
       .filter(section => section.options.length > 0)
   }, [property, normalizedQuery])
+  const navigationItems = useMemo(
+    () => sections.flatMap(section => section.options.map(option => ({
+      key: option.id
+    }))),
+    [sections]
+  )
+  const {
+    highlightedKey,
+    setHighlightedKey,
+    moveNext,
+    movePrev,
+    moveFirst,
+    moveLast
+  } = usePickerList({
+    items: navigationItems,
+    preferredKey: props.draft || null
+  })
 
   useEffect(() => {
     if (!props.autoFocus) {
@@ -94,21 +112,22 @@ export const StatusValueEditor = (
   }
   const { commitDraft, commitDraftDeferred } = useDraftCommit({
     onDraftChange: props.onDraftChange,
+    onApply: props.onApply,
     onCommit: props.onCommit
   })
 
   const selectOption = (
     optionId: string,
-    intent: ValueEditorIntent = 'done',
+    trigger: EditorSubmitTrigger = 'programmatic',
     deferred = false
   ) => {
     setQuery('')
     if (deferred) {
-      commitDraftDeferred(optionId, intent)
+      commitDraftDeferred(optionId, trigger)
       return
     }
 
-    commitDraft(optionId, intent)
+    commitDraft(optionId, trigger)
   }
 
   const clearSelection = () => {
@@ -121,9 +140,36 @@ export const StatusValueEditor = (
     const action = keyAction({
       key: event.key,
       shiftKey: event.shiftKey,
-      composing,
-      enterIntent: props.enterIntent
+      composing
     })
+
+    if (!composing && event.key === 'ArrowDown') {
+      event.preventDefault()
+      event.stopPropagation()
+      moveNext()
+      return
+    }
+
+    if (!composing && event.key === 'ArrowUp') {
+      event.preventDefault()
+      event.stopPropagation()
+      movePrev()
+      return
+    }
+
+    if (!composing && event.key === 'Home') {
+      event.preventDefault()
+      event.stopPropagation()
+      moveFirst()
+      return
+    }
+
+    if (!composing && event.key === 'End') {
+      event.preventDefault()
+      event.stopPropagation()
+      moveLast()
+      return
+    }
 
     if (action.type === 'cancel') {
       event.preventDefault()
@@ -131,20 +177,25 @@ export const StatusValueEditor = (
       return
     }
 
-    if (action.type === 'submit') {
+    if (action.type === 'commit') {
       event.preventDefault()
 
+      if (highlightedKey) {
+        selectOption(highlightedKey, action.trigger)
+        return
+      }
+
       if (exactMatch) {
-        selectOption(exactMatch.id, action.intent)
+        selectOption(exactMatch.id, action.trigger)
         return
       }
 
       if (sections.length === 1 && sections[0]?.options.length === 1) {
-        selectOption(sections[0].options[0].id, action.intent)
+        selectOption(sections[0].options[0].id, action.trigger)
         return
       }
 
-      props.onCommit(action.intent)
+      props.onCommit(action.trigger)
     }
   }
 
@@ -175,7 +226,10 @@ export const StatusValueEditor = (
         <Input
           ref={inputRef}
           value={query}
-          onChange={event => setQuery(event.target.value)}
+          onChange={event => {
+            setQuery(event.target.value)
+            setHighlightedKey(null)
+          }}
           placeholder={renderMessage(meta.ui.property.status.searchPlaceholder)}
         />
       </div>
@@ -195,16 +249,21 @@ export const StatusValueEditor = (
                   <button
                     key={option.id}
                     type="button"
-                    className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    className={highlightedKey === option.id
+                      ? 'rounded-full bg-hover outline-none ring-2 ring-primary/30'
+                      : 'rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary/30'}
                     onPointerDown={event => {
                       event.preventDefault()
                       event.stopPropagation()
                     }}
                     onMouseDown={event => event.preventDefault()}
+                    onMouseEnter={() => {
+                      setHighlightedKey(option.id)
+                    }}
                     onClick={event => {
                       event.preventDefault()
                       event.stopPropagation()
-                      selectOption(option.id, 'done', true)
+                      selectOption(option.id, 'programmatic', true)
                     }}
                   >
                     <PropertyOptionTag

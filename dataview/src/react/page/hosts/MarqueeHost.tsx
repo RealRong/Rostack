@@ -23,6 +23,7 @@ import {
   useDataView,
   usePageValue
 } from '@dataview/react/dataview'
+import { useOverlay } from '@ui/overlay'
 import {
   selection as selectionHelpers,
   type Selection
@@ -129,7 +130,8 @@ const resolveScrolledAnchor = (
 export const PageMarqueeHost = () => {
   const dataView = useDataView()
   const currentView = useCurrentView()
-  const uiLock = usePageValue(state => state.lock)
+  const overlay = useOverlay()
+  const valueEditorOpen = usePageValue(state => state.valueEditorOpen)
   const session = useStoreValue(dataView.marquee.store)
   const pointerRef = useRef<Point | null>(null)
   const anchorRef = useRef<Point | null>(null)
@@ -348,7 +350,8 @@ export const PageMarqueeHost = () => {
     const onPointerDown = (event: PointerEvent) => {
       if (
         event.button !== 0
-        || uiLock
+        || overlay.topLayerId !== null
+        || valueEditorOpen
         || dataView.valueEditor.openStore.get()
         || dataView.marquee.get()
         || !currentView
@@ -412,8 +415,9 @@ export const PageMarqueeHost = () => {
     dataView.marquee,
     dataView.selection,
     dataView.valueEditor,
+    overlay.topLayerId,
     resolveAdapter,
-    uiLock
+    valueEditorOpen
   ])
 
   useEffect(() => {

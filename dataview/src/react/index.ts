@@ -74,7 +74,6 @@ export type {
   SelectionApi
 } from './dataview'
 export type {
-  PageInteractionState,
   PageLock,
   PageSessionApi,
   PageSessionInput,

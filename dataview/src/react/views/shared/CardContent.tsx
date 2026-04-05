@@ -8,7 +8,6 @@ import { SquarePen } from 'lucide-react'
 import type {
   GroupProperty,
   GroupRecord,
-  PropertyId,
   ViewId
 } from '@dataview/core/contracts'
 import type {
@@ -90,14 +89,6 @@ export const CardContent = forwardRef<HTMLElement, CardContentProps>((props, ref
       ? fieldProperties
       : fieldProperties.filter(property => !isEmptyPropertyValue(record.values[property.id]))
   ), [editing.mode, fieldProperties, record])
-  const fieldPropertyIds: readonly PropertyId[] = useMemo(() => Array.from(new Set(
-    [
-      titleProperty,
-      ...fieldProperties
-    ].filter((property): property is GroupProperty => Boolean(property))
-      .map(property => property.id)
-  )), [fieldProperties, titleProperty])
-
   return (
     <article
       {...rootProps}
@@ -149,7 +140,6 @@ export const CardContent = forwardRef<HTMLElement, CardContentProps>((props, ref
                 })}
                 property={property}
                 value={record.values[property.id]}
-                fieldPropertyIds={fieldPropertyIds}
                 mode={editing.mode}
                 openOnClick
                 density={propertyDensity}

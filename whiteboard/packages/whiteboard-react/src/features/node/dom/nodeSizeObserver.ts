@@ -78,8 +78,8 @@ export const useNodeSizeObserver = () => {
         if (!current || !isValidSize(size)) return
 
         const committedSize = {
-          width: current.rect.width,
-          height: current.rect.height
+          width: current.geometry.rect.width,
+          height: current.geometry.rect.height
         }
         if (isSameSize(committedSize, size)) {
           nextState.lastSizeById.set(nodeId, size)

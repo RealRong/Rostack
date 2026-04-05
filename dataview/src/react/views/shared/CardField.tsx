@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import type {
   GroupProperty,
-  PropertyId,
   RecordId
 } from '@dataview/core/contracts'
 import {
@@ -9,7 +8,6 @@ import {
 } from '@dataview/core/property'
 import {
   useDataView,
-  useCurrentView,
 } from '@dataview/react/dataview'
 import {
   PropertyValueContent
@@ -27,7 +25,6 @@ export interface CardFieldProps {
   field: ViewFieldRef
   property?: GroupProperty
   value: unknown
-  fieldPropertyIds: readonly PropertyId[]
   emptyPlaceholder?: ReactNode
   className?: string
   valueClassName?: string
@@ -54,14 +51,6 @@ export const CardField = (props: CardFieldProps) => {
   const dataView = useDataView()
   const engine = dataView.engine
   const valueEditor = dataView.valueEditor
-  const currentView = useCurrentView(view => (
-    view?.view.id === props.field.viewId
-      ? view
-      : undefined
-  ))
-  if (!currentView) {
-    throw new Error('Card field requires an active current view.')
-  }
 
   if (!props.property) {
     return (
@@ -105,10 +94,11 @@ export const CardField = (props: CardFieldProps) => {
   const open = (element: HTMLElement) => {
     openCardField({
       valueEditor,
-      currentView,
       field: props.field,
-      fieldPropertyIds: props.fieldPropertyIds,
-      element
+      element,
+      focusOwner: () => {
+        dataView.selection.set([props.field.appearanceId])
+      }
     })
   }
 

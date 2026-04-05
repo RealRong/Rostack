@@ -46,6 +46,10 @@ export interface Nodes {
 
 export const createNodes = (options?: {
   resolveContainer?: () => HTMLElement | null
+  resolveHorizontalBounds?: () => {
+    left: number
+    right: number
+  } | null
 }): Nodes => {
   const columnNodes = new Map<PropertyId, HTMLElement>()
   const rowNodes = new Map<AppearanceId, HTMLElement>()
@@ -90,6 +94,24 @@ export const createNodes = (options?: {
     }
 
     return rectIn(container, box)
+  }
+
+  const resolveHorizontalBounds = () => options?.resolveHorizontalBounds?.()
+
+  const resolvedRowRect = (
+    rect: Rect
+  ): Rect => {
+    const bounds = resolveHorizontalBounds()
+    if (!bounds) {
+      return rect
+    }
+
+    return {
+      ...rect,
+      left: bounds.left,
+      right: bounds.right,
+      width: Math.max(0, bounds.right - bounds.left)
+    }
   }
 
   return {
@@ -149,7 +171,7 @@ export const createNodes = (options?: {
       return rowIds.filter(rowId => {
         const rect = cachedRowRect(rowId)
         return rect
-          ? intersects(local, rect)
+          ? intersects(local, resolvedRowRect(rect))
           : false
       })
     },

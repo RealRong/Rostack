@@ -3,7 +3,6 @@ export {
 } from './activeView'
 export {
   createResolvedPageStateStore,
-  resolveInteractionState,
   resolvePageState,
   resolveQueryBarState,
   resolveSettingsState

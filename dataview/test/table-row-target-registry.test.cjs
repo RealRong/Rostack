@@ -111,3 +111,46 @@ test('row marquee cache stays in container-local coordinates as the page viewpor
     bottom: 136
   }), ['row-3'])
 })
+
+test('row marquee cache resolves horizontal hit bounds from the current table content bounds', () => {
+  const container = createContainer()
+  let bounds = {
+    left: 20,
+    right: 320
+  }
+  const nodes = createNodes({
+    resolveContainer: () => container,
+    resolveHorizontalBounds: () => bounds
+  })
+  const rowNode = createRowNode({
+    left: 20,
+    top: 120,
+    right: 320,
+    bottom: 156,
+    width: 300,
+    height: 36
+  })
+
+  nodes.registerRow('row-4', rowNode)
+  nodes.startRowMarquee(['row-4'])
+  nodes.registerRow('row-4', null)
+
+  bounds = {
+    left: 80,
+    right: 260
+  }
+
+  assert.deepStrictEqual(nodes.hitRows(['row-4'], {
+    left: 120,
+    top: 124,
+    right: 180,
+    bottom: 136
+  }), ['row-4'])
+
+  assert.deepStrictEqual(nodes.hitRows(['row-4'], {
+    left: 20,
+    top: 124,
+    right: 60,
+    bottom: 136
+  }), [])
+})

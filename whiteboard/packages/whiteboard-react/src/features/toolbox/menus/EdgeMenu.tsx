@@ -1,5 +1,10 @@
 import type { EdgePresetKey } from '@whiteboard/editor'
-import { MenuSection } from '../../selection/chrome/menus/MenuPrimitives'
+import { cn } from '@ui'
+import {
+  TOOLBOX_OPTION_BUTTON_CLASSNAME,
+  ToolboxButton,
+  ToolboxMenuSection
+} from '../primitives'
 
 type EdgeOption = {
   key: EdgePresetKey
@@ -23,7 +28,7 @@ export const EdgePresetGlyph = ({
         <svg
           viewBox="0 0 32 24"
           aria-hidden="true"
-          className="wb-left-toolbar-edge-glyph"
+          className="block h-6 w-8 overflow-visible fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1]"
         >
           <path d="M5 18H14V7H27" />
         </svg>
@@ -33,7 +38,7 @@ export const EdgePresetGlyph = ({
         <svg
           viewBox="0 0 32 24"
           aria-hidden="true"
-          className="wb-left-toolbar-edge-glyph"
+          className="block h-6 w-8 overflow-visible fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1]"
         >
           <path d="M5 18C10 18 12 6 18 6C22 6 24 11 27 11" />
         </svg>
@@ -44,7 +49,7 @@ export const EdgePresetGlyph = ({
         <svg
           viewBox="0 0 32 24"
           aria-hidden="true"
-          className="wb-left-toolbar-edge-glyph"
+          className="block h-6 w-8 overflow-visible fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1]"
         >
           <path d="M5 18 27 6" />
         </svg>
@@ -59,24 +64,25 @@ export const EdgeMenu = ({
   value: EdgePresetKey
   onChange: (value: EdgePresetKey) => void
 }) => (
-  <MenuSection title="Edge">
-    <div className="wb-left-toolbar-edge-list">
+  <ToolboxMenuSection title="Edge">
+    <div className="flex flex-col gap-1">
       {EDGE_OPTIONS.map((option) => (
-        <button
+        <ToolboxButton
           key={option.key}
           type="button"
-          className="wb-left-toolbar-edge-option"
-          data-active={value === option.key ? 'true' : undefined}
+          className={cn(
+            TOOLBOX_OPTION_BUTTON_CLASSNAME,
+            'min-h-10 gap-2.5'
+          )}
+          pressed={value === option.key}
           onClick={() => onChange(option.key)}
-          data-selection-ignore
-          data-input-ignore
         >
-          <span className="wb-left-toolbar-edge-option-preview">
+          <span className="inline-flex h-6 w-8 items-center justify-center text-fg-muted">
             <EdgePresetGlyph preset={option.key} />
           </span>
-          <span className="wb-left-toolbar-edge-option-label">{option.label}</span>
-        </button>
+          <span className="text-sm leading-5 text-fg">{option.label}</span>
+        </ToolboxButton>
       ))}
     </div>
-  </MenuSection>
+  </ToolboxMenuSection>
 )

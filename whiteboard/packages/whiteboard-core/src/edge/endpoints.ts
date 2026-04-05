@@ -1,6 +1,6 @@
 import { getRectCenter } from '../geometry'
-import { getNodeAnchorPoint } from '../node/outline'
-import type { EdgeAnchor, EdgeEnd, Node, Point, Rect } from '../types/core'
+import { getNodeAnchor } from '../node/outline'
+import type { EdgeAnchor, EdgeEnd, Node, NodeGeometry, Point } from '../types/core'
 import { isNodeEdgeEnd } from '../types/core'
 import type {
   ResolveEdgeEndsInput,
@@ -12,28 +12,35 @@ import { getAutoAnchorFromRect } from './anchor'
 type ResolveNodeEndInput = {
   end: Extract<EdgeEnd, { kind: 'node' }>
   node: {
-    node: Pick<Node, 'type' | 'data'>
-    rect: Rect
-    rotation?: number
+    node: Node
+    geometry: NodeGeometry
   }
   otherPoint: Point
 }
+
+const readNodeRotation = (
+  node: Node
+) => (
+  node.type === 'group'
+    ? 0
+    : (typeof node.rotation === 'number' ? node.rotation : 0)
+)
 
 const resolveNodeEnd = ({
   end,
   node,
   otherPoint
 }: ResolveNodeEndInput): ResolvedEdgeEnd => {
-  const rotation = node.rotation ?? 0
+  const rotation = readNodeRotation(node.node)
   const auto = getAutoAnchorFromRect(
     node.node,
-    node.rect,
+    node.geometry.rect,
     rotation,
     otherPoint
   )
   const anchor = end.anchor ?? auto.anchor
   const point = end.anchor
-    ? getNodeAnchorPoint(node.node, node.rect, anchor, rotation)
+    ? getNodeAnchor(node.node, node.geometry.rect, anchor, rotation)
     : auto.point
 
   return {
@@ -57,11 +64,11 @@ export const resolveEdgeEnds = ({
 }: ResolveEdgeEndsInput): ResolvedEdgeEnds | undefined => {
   const sourceRefPoint =
     isNodeEdgeEnd(edge.target)
-      ? (target ? getRectCenter(target.rect) : undefined)
+      ? (target ? getRectCenter(target.geometry.rect) : undefined)
       : edge.target.point
   const targetRefPoint =
     isNodeEdgeEnd(edge.source)
-      ? (source ? getRectCenter(source.rect) : undefined)
+      ? (source ? getRectCenter(source.geometry.rect) : undefined)
       : edge.source.point
 
   let resolvedSource: ResolvedEdgeEnd | undefined

@@ -17,7 +17,7 @@ import {
   type MoveEffect,
   type MoveSet
 } from './move'
-import { getNodeVisualBounds } from './bounds'
+import { getNodeBoundsByNode } from './bounds'
 
 export type MoveState = {
   nodes: readonly Node[]
@@ -52,7 +52,7 @@ const getMoveBounds = (
       return []
     }
 
-    const rect = getNodeVisualBounds(node, nodeSize)
+    const rect = getNodeBoundsByNode(node, nodeSize)
     return rect ? [rect] : []
   })
 

@@ -3,7 +3,6 @@ import { Popover, type PopoverProps } from './popover'
 import {
   Menu,
   type MenuItem,
-  type MenuProps,
   type MenuSubmenuOpenPolicy
 } from './menu'
 
@@ -11,7 +10,6 @@ export interface DropdownMenuProps extends Omit<PopoverProps, 'children'> {
   items: readonly MenuItem[]
   autoFocus?: boolean
   submenuOpenPolicy?: MenuSubmenuOpenPolicy
-  menuScopeId?: MenuProps['scopeId']
 }
 
 export const DropdownMenu = (props: DropdownMenuProps) => {
@@ -19,7 +17,6 @@ export const DropdownMenu = (props: DropdownMenuProps) => {
     items,
     autoFocus,
     submenuOpenPolicy,
-    menuScopeId,
     open: controlledOpen,
     onOpenChange,
     defaultOpen,
@@ -41,15 +38,13 @@ export const DropdownMenu = (props: DropdownMenuProps) => {
       open={open}
       onOpenChange={setOpen}
       defaultOpen={undefined}
-      registerLayer={false}
-      closeOnEscape={false}
+      kind="menu"
     >
       <Menu
         items={items}
         open={open}
         onClose={() => setOpen(false)}
         autoFocus={autoFocus}
-        scopeId={menuScopeId}
         submenuOpenPolicy={submenuOpenPolicy}
       />
     </Popover>

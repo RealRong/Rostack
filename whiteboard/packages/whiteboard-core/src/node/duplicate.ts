@@ -19,7 +19,7 @@ import {
   isOwnerNode
 } from './group'
 import { expandFrameSelection } from './frame'
-import { getNodeVisualBounds } from './bounds'
+import { getNodeBoundsByNode } from './bounds'
 
 export const expandNodeSelection = (
   nodes: readonly Node[],
@@ -40,10 +40,10 @@ export const expandNodeSelection = (
   const withFrames = expandFrameSelection({
     nodes,
     ids: [...expandedIds],
-    getNodeRect: (node) => getNodeVisualBounds(node, nodeSize),
+    getNodeRect: (node) => getNodeBoundsByNode(node, nodeSize),
     getFrameRect: (node) => (
       node.type === 'frame'
-        ? getNodeVisualBounds(node, nodeSize)
+        ? getNodeBoundsByNode(node, nodeSize)
         : undefined
     )
   })

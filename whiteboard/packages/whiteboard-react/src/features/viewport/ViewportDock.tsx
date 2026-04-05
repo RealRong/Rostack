@@ -11,10 +11,6 @@ import { useEditor } from '../../runtime/hooks/useEditor'
 import { useStoreValue } from '../../runtime/hooks/useStoreValue'
 
 const ZOOM_FACTOR = 1.2
-const BUTTON_PROPS = {
-  'data-selection-ignore': true,
-  'data-input-ignore': true
-} as const
 const iconButtonClassName = cn(
   'h-9 w-9 rounded-[10px] text-fg-muted hover:text-fg'
 )
@@ -52,8 +48,6 @@ export const ViewportDock = () => {
   return (
     <div
       className="pointer-events-none absolute inset-0 z-[var(--wb-z-toolbar)] overflow-visible"
-      data-selection-ignore
-      data-input-ignore
     >
       <div className="pointer-events-auto absolute bottom-4 right-4 inline-flex items-center gap-2 rounded-xl border border-[rgb(from_var(--ui-border-subtle)_r_g_b_/_0.4)] bg-floating p-1.5 shadow-popover">
         <div className="inline-flex items-center gap-0.5">
@@ -66,7 +60,6 @@ export const ViewportDock = () => {
             }}
             disabled={!history.canUndo || history.isApplying}
             title="Undo"
-            {...BUTTON_PROPS}
           >
             <ToolIcon icon={Undo2} />
           </Button>
@@ -79,7 +72,6 @@ export const ViewportDock = () => {
             }}
             disabled={!history.canRedo || history.isApplying}
             title="Redo"
-            {...BUTTON_PROPS}
           >
             <ToolIcon icon={Redo2} />
           </Button>
@@ -92,7 +84,6 @@ export const ViewportDock = () => {
             className={iconButtonClassName}
             onClick={fitToScreen}
             title="Fit to screen"
-            {...BUTTON_PROPS}
           >
             <ToolIcon icon={Scan} />
           </Button>
@@ -107,7 +98,6 @@ export const ViewportDock = () => {
               editor.commands.viewport.zoomTo(viewport.zoom / ZOOM_FACTOR)
             }}
             title="Zoom out"
-            {...BUTTON_PROPS}
           >
             <ToolIcon icon={Minus} />
           </Button>
@@ -119,7 +109,6 @@ export const ViewportDock = () => {
               editor.commands.viewport.zoomTo(1)
             }}
             title="Reset zoom"
-            {...BUTTON_PROPS}
           >
             {formatZoom(viewport.zoom)}
           </Button>
@@ -131,7 +120,6 @@ export const ViewportDock = () => {
               editor.commands.viewport.zoomTo(viewport.zoom * ZOOM_FACTOR)
             }}
             title="Zoom in"
-            {...BUTTON_PROPS}
           >
             <ToolIcon icon={Plus} />
           </Button>

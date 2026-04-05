@@ -4,12 +4,12 @@ import type {
   EdgeAnchor,
   EdgeEnd,
   EdgeId,
+  NodeGeometry,
   EdgePatch,
   Node,
   NodeId,
   Operation,
   Point,
-  Rect,
   Result
 } from './core'
 
@@ -28,10 +28,8 @@ export type EdgeConnectConfig = {
 
 export type EdgeConnectCandidate = {
   nodeId: NodeId
-  node: Pick<Node, 'type' | 'data'>
-  rect: Rect
-  aabb: Rect
-  rotation: number
+  node: Node
+  geometry: NodeGeometry
 }
 
 export type EdgeConnectResult = {
@@ -52,9 +50,8 @@ export type ResolvedEdgeEnds = {
 }
 
 export type EdgeNodeCanvasSnapshot = {
-  node: Pick<Node, 'type' | 'data'>
-  rect: Rect
-  rotation?: number
+  node: Node
+  geometry: NodeGeometry
 }
 
 export type ResolveEdgeEndsInput = {

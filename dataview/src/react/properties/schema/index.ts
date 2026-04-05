@@ -1,5 +1,8 @@
 export { PropertySchemaEditor } from './editor'
-export { PropertyKindPicker } from './PropertyKindPicker'
+export {
+  PropertyKindPicker,
+  buildPropertyKindMenuItems
+} from './PropertyKindPicker'
 export type {
   PropertySchemaEditorProps
 } from './editor'

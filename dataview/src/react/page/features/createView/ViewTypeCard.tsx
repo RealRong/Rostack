@@ -19,16 +19,16 @@ export const ViewTypeCard = (props: ViewTypeCardProps) => {
       aria-label={label}
       onClick={() => props.onSelect(item)}
       className={cn(
-        'group flex flex-col items-center justify-center gap-2 rounded-xl p-2 text-center transition-colors',
+        'group flex flex-col items-center justify-center gap-1 rounded-xl p-2 text-center transition-colors',
         item.enabled
-          ? 'hover:bg-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+          ? 'hover:bg-hover'
           : 'cursor-not-allowed opacity-45'
       )}
     >
       <div className={cn(
-        'flex size-8 items-center justify-center rounded-xl transition-colors',
+        'flex size-8 items-center justify-center',
         item.enabled
-          ? 'text-foreground group-hover:border-border group-hover:bg-accent'
+          ? 'text-foreground'
           : 'text-muted-foreground'
       )}>
         <Icon className="size-6" size={24} strokeWidth={1.8} />

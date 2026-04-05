@@ -41,10 +41,12 @@ export const DropdownMenu = (props: DropdownMenuProps) => {
       open={open}
       onOpenChange={setOpen}
       defaultOpen={undefined}
+      registerLayer={false}
       closeOnEscape={false}
     >
       <Menu
         items={items}
+        open={open}
         onClose={() => setOpen(false)}
         autoFocus={autoFocus}
         scopeId={menuScopeId}

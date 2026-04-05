@@ -134,6 +134,8 @@ export const PageMarqueeHost = () => {
   const pointerRef = useRef<Point | null>(null)
   const anchorRef = useRef<Point | null>(null)
   const scrollAnchorRef = useRef<ScrollAnchorState>({})
+  const frameRef = useRef<number | null>(null)
+  const selectionRef = useRef<Selection | null>(null)
 
   const resolveAdapter = useCallback((viewId?: string): MarqueeAdapter | undefined => (
     viewId
@@ -141,24 +143,37 @@ export const PageMarqueeHost = () => {
       : undefined
   ), [dataView.marquee])
 
-  const applySelection = useCallback((nextSession: MarqueeSessionState, adapter: MarqueeAdapter) => {
-    const order = adapter.order()
-    const nextSelection = resolveMarqueeSelection({
-      order,
-      baseSelectedIds: nextSession.baseSelectedIds,
-      hitIds: idsInRect(
-        order,
-        adapter.getTargets(),
-        nextSession.box
-      ),
-      mode: nextSession.mode
-    })
-
+  const commitSelection = useCallback((nextSelection: Selection) => {
     dataView.selection.set(nextSelection.ids, {
       anchor: nextSelection.anchor,
       focus: nextSelection.focus
     })
   }, [dataView.selection])
+
+  const applySelection = useCallback((nextSession: MarqueeSessionState, adapter: MarqueeAdapter) => {
+    const order = adapter.order()
+    const hitIds = adapter.getHitIds?.(nextSession)
+      ?? idsInRect(
+        order,
+        adapter.getTargets?.() ?? [],
+        nextSession.box
+      )
+    const nextSelection = resolveMarqueeSelection({
+      order,
+      baseSelectedIds: nextSession.baseSelectedIds,
+      hitIds,
+      mode: nextSession.mode
+    })
+    selectionRef.current = nextSelection
+
+    if (adapter.previewSelection) {
+      adapter.previewSelection(nextSelection)
+      return nextSelection
+    }
+
+    commitSelection(nextSelection)
+    return nextSelection
+  }, [commitSelection])
 
   const update = useCallback(() => {
     const currentSession = dataView.marquee.get()
@@ -184,6 +199,28 @@ export const PageMarqueeHost = () => {
     dataView.marquee.update(nextSession)
     applySelection(nextSession, adapter)
   }, [applySelection, dataView.marquee, resolveAdapter])
+  const scheduleUpdate = useCallback(() => {
+    if (typeof window === 'undefined') {
+      update()
+      return
+    }
+
+    if (frameRef.current !== null) {
+      return
+    }
+
+    frameRef.current = window.requestAnimationFrame(() => {
+      frameRef.current = null
+      update()
+    })
+  }, [update])
+
+  useEffect(() => () => {
+    if (typeof window !== 'undefined' && frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current)
+      frameRef.current = null
+    }
+  }, [])
 
   useEffect(() => {
     if (!session || typeof document === 'undefined') {
@@ -204,7 +241,7 @@ export const PageMarqueeHost = () => {
     active: session !== null,
     pointerRef,
     resolveTargets,
-    onPan: update
+    onPan: scheduleUpdate
   })
 
   useEffect(() => {
@@ -213,7 +250,7 @@ export const PageMarqueeHost = () => {
     }
 
     const handleScroll = () => {
-      update()
+      scheduleUpdate()
     }
 
     autoPanState.watchTargets.forEach(target => {
@@ -225,7 +262,7 @@ export const PageMarqueeHost = () => {
         target.removeEventListener?.('scroll', handleScroll)
       })
     }
-  }, [autoPanState.watchTargets, session, update])
+  }, [autoPanState.watchTargets, scheduleUpdate, session])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -241,25 +278,55 @@ export const PageMarqueeHost = () => {
         x: event.clientX,
         y: event.clientY
       }
-      update()
+      scheduleUpdate()
     }
 
     const end = (event: PointerEvent) => {
+      if (typeof window !== 'undefined' && frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current)
+        frameRef.current = null
+      }
+      pointerRef.current = {
+        x: event.clientX,
+        y: event.clientY
+      }
+      update()
+
       const currentSession = dataView.marquee.get()
       if (!currentSession) {
         return
       }
 
+      const adapter = resolveAdapter(currentSession.ownerViewId)
+      const nextSelection = selectionRef.current
+        ?? selectionHelpers.set(
+          adapter?.order() ?? currentSession.baseSelectedIds,
+          currentSession.baseSelectedIds
+        )
+
       if (event.type === 'pointercancel') {
-        resolveAdapter(currentSession.ownerViewId)?.onCancel?.(currentSession)
-        dataView.selection.set(currentSession.baseSelectedIds)
+        adapter?.onCancel?.(currentSession, nextSelection)
+        if (adapter?.previewSelection) {
+          commitSelection(selectionHelpers.set(
+            adapter.order(),
+            currentSession.baseSelectedIds
+          ))
+          adapter.clearPreviewSelection?.()
+        } else {
+          dataView.selection.set(currentSession.baseSelectedIds)
+        }
       } else {
-        resolveAdapter(currentSession.ownerViewId)?.onEnd?.(currentSession)
+        if (adapter?.previewSelection) {
+          commitSelection(nextSelection)
+          adapter.clearPreviewSelection?.()
+        }
+        adapter?.onEnd?.(currentSession, nextSelection)
       }
 
       pointerRef.current = null
       anchorRef.current = null
       scrollAnchorRef.current = {}
+      selectionRef.current = null
       dataView.marquee.clear()
     }
 
@@ -271,7 +338,7 @@ export const PageMarqueeHost = () => {
       window.removeEventListener('pointerup', end, true)
       window.removeEventListener('pointercancel', end, true)
     }
-  }, [dataView.marquee, dataView.selection, update])
+  }, [dataView.marquee, dataView.selection, scheduleUpdate, update])
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -362,11 +429,26 @@ export const PageMarqueeHost = () => {
 
       event.preventDefault()
       event.stopPropagation()
-      resolveAdapter(currentSession.ownerViewId)?.onCancel?.(currentSession)
-      dataView.selection.set(currentSession.baseSelectedIds)
+      const adapter = resolveAdapter(currentSession.ownerViewId)
+      const nextSelection = selectionRef.current
+        ?? selectionHelpers.set(
+          adapter?.order() ?? currentSession.baseSelectedIds,
+          currentSession.baseSelectedIds
+        )
+      adapter?.onCancel?.(currentSession, nextSelection)
+      if (adapter?.previewSelection) {
+        commitSelection(selectionHelpers.set(
+          adapter.order(),
+          currentSession.baseSelectedIds
+        ))
+        adapter.clearPreviewSelection?.()
+      } else {
+        dataView.selection.set(currentSession.baseSelectedIds)
+      }
       pointerRef.current = null
       anchorRef.current = null
       scrollAnchorRef.current = {}
+      selectionRef.current = null
       dataView.marquee.clear()
     }
 
@@ -374,7 +456,7 @@ export const PageMarqueeHost = () => {
     return () => {
       document.removeEventListener('keydown', onKeyDown, true)
     }
-  }, [dataView.marquee, dataView.selection])
+  }, [commitSelection, dataView.marquee, dataView.selection, resolveAdapter])
 
   if (!session || typeof document === 'undefined') {
     return null

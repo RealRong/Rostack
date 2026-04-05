@@ -21,15 +21,18 @@ import {
 import { NodeOverlayLayer } from '../features/node/components/NodeOverlayLayer'
 import { NodeSceneLayer } from '../features/node/components/NodeSceneLayer'
 import type { ResolvedConfig } from '../types/common/config'
+import type { WhiteboardPresenceBinding } from '../types/common/presence'
 
 export const Surface = ({
   resolvedConfig,
   containerRef,
-  containerStyle
+  containerStyle,
+  presenceBinding
 }: {
   resolvedConfig: ResolvedConfig
   containerRef: RefObject<HTMLDivElement | null>
   containerStyle?: CSSProperties
+  presenceBinding?: WhiteboardPresenceBinding
 }) => {
   const editor = useEditorRuntime()
   const viewport = useStoreValue(editor.state.viewport)
@@ -93,7 +96,10 @@ export const Surface = ({
         <EdgeOverlayLayer />
         <DrawLayer />
       </div>
-      <Chrome containerRef={containerRef} />
+      <Chrome
+        containerRef={containerRef}
+        presenceBinding={presenceBinding}
+      />
     </div>
   )
 }

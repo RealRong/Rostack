@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import type { EditorPick } from '@whiteboard/editor'
-import { useWhiteboard } from './useWhiteboard'
+import { useWhiteboardServices } from './useWhiteboard'
 
 const toPickKey = (
   pick: EditorPick
@@ -44,7 +44,7 @@ const toPickKey = (
 export const usePickRef = (
   pick: EditorPick
 ) => {
-  const whiteboard = useWhiteboard()
+  const { pointer } = useWhiteboardServices()
   const elementRef = useRef<Element | null>(null)
   const releaseRef = useRef<(() => void) | null>(null)
   const key = toPickKey(pick)
@@ -59,9 +59,9 @@ export const usePickRef = (
     elementRef.current = element
 
     if (element) {
-      releaseRef.current = whiteboard.pointer.bindPick(element, pick)
+      releaseRef.current = pointer.bindPick(element, pick)
     }
-  }, [key, pick, whiteboard])
+  }, [key, pick, pointer])
 
   useEffect(() => {
     const element = elementRef.current
@@ -70,13 +70,13 @@ export const usePickRef = (
     }
 
     releaseRef.current?.()
-    releaseRef.current = whiteboard.pointer.bindPick(element, pick)
+    releaseRef.current = pointer.bindPick(element, pick)
 
     return () => {
       releaseRef.current?.()
       releaseRef.current = null
     }
-  }, [key, pick, whiteboard])
+  }, [key, pick, pointer])
 
   return bind
 }

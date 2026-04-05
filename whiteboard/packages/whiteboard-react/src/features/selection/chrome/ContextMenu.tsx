@@ -3,8 +3,8 @@ import type { Point } from '@whiteboard/core/types'
 import { useEditorRuntime } from '../../../runtime/hooks/useEditor'
 import {
   useNodeRegistry,
-  useWhiteboard,
-  type WhiteboardContextValue
+  useWhiteboardServices,
+  type WhiteboardServicesContextValue
 } from '../../../runtime/hooks/useWhiteboard'
 import { useElementSize } from '../../../dom/observe/useElementSize'
 import { useOverlayDismiss } from '../../../runtime/overlay/useOverlayDismiss'
@@ -326,7 +326,7 @@ const readCanvasGroups = ({
   dismiss
 }: {
   editor: ReturnType<typeof useEditorRuntime>
-  whiteboard: WhiteboardContextValue
+  whiteboard: WhiteboardServicesContextValue
   clipboard: ClipboardBridge
   view: Extract<ContextMenuView, { kind: 'canvas' }>
   dismiss: () => void
@@ -713,7 +713,7 @@ const readMenuGroups = ({
   dismiss
 }: {
   editor: ReturnType<typeof useEditorRuntime>
-  whiteboard: WhiteboardContextValue
+  whiteboard: WhiteboardServicesContextValue
   clipboard: ClipboardBridge
   view: ContextMenuView
   dismiss: () => void
@@ -759,8 +759,8 @@ export const ContextMenu = ({
 }) => {
   const editor = useEditorRuntime()
   const registry = useNodeRegistry()
-  const whiteboard = useWhiteboard()
-  const clipboard = whiteboard.clipboard
+  const whiteboard = useWhiteboardServices()
+  const { clipboard, pointer } = whiteboard
   const surface = useElementSize(containerRef)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const lastOpenRef = useRef<{ x: number; y: number; time: number } | null>(null)
@@ -783,7 +783,7 @@ export const ContextMenu = ({
     const openFromEvent = (
       event: Pick<MouseEvent | PointerEvent, 'target' | 'clientX' | 'clientY'>
     ) => {
-      const point = whiteboard.pointer.resolvePoint({
+      const point = pointer.resolvePoint({
         container,
         event
       })
@@ -846,7 +846,7 @@ export const ContextMenu = ({
       container.removeEventListener('pointerdown', onPointerDown, true)
       container.removeEventListener('contextmenu', onContextMenu)
     }
-  }, [containerRef, dismiss, editor, registry, whiteboard])
+  }, [containerRef, dismiss, editor, pointer, registry])
 
   useOverlayDismiss({
     enabled: view !== null,

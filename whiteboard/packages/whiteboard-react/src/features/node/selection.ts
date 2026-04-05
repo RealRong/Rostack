@@ -21,7 +21,10 @@ import {
   useInteraction,
   useTool
 } from '../../runtime/hooks/useEditor'
-import { useNodeRegistry, useWhiteboard } from '../../runtime/hooks/useWhiteboard'
+import {
+  useNodeRegistry,
+  useWhiteboardServices
+} from '../../runtime/hooks/useWhiteboard'
 import { useStoreValue } from '../../runtime/hooks/useStoreValue'
 import type { WhiteboardRuntime as Editor } from '../../types/runtime'
 import type { NodeRegistry } from '../../types/node'
@@ -505,7 +508,7 @@ const resolveSelectionView = (
 export const useSelection = () => {
   const editor = useEditor()
   const registry = useNodeRegistry()
-  const clipboard = useWhiteboard().clipboard
+  const { clipboard } = useWhiteboardServices()
   const target = useStoreValue(editor.read.selection.target)
   const summary = useStoreValue(editor.read.selection.summary)
   const transformBox = useStoreValue(editor.read.selection.transformBox)

@@ -2,7 +2,7 @@ import type {
   WhiteboardInstance,
   WhiteboardRuntime
 } from '../../types/runtime'
-import { useWhiteboard } from './useWhiteboard'
+import { useWhiteboardServices } from './useWhiteboard'
 import { useStoreValue } from './useStoreValue'
 
 type EditTarget = ReturnType<WhiteboardInstance['state']['edit']['get']>
@@ -10,7 +10,7 @@ type Tool = ReturnType<WhiteboardInstance['state']['tool']['get']>
 type InteractionState = ReturnType<WhiteboardInstance['state']['interaction']['get']>
 
 export const useEditorRuntime = (): WhiteboardRuntime => {
-  return useWhiteboard().editor
+  return useWhiteboardServices().editor
 }
 
 export const useEditor = (): WhiteboardRuntime => useEditorRuntime()

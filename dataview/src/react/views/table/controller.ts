@@ -16,8 +16,15 @@ import type {
   Selection
 } from '@dataview/react/runtime/selection'
 import {
+  selection as selectionHelpers
+} from '@dataview/react/runtime/selection'
+import {
   createDerivedStore,
+  createValueStore,
   type ReadStore
+} from '@dataview/runtime/store'
+import type {
+  ValueStore
 } from '@dataview/runtime/store'
 import type { ResolvedPageState } from '@dataview/react/page/session/types'
 import type { ValueEditorApi } from '@dataview/react/runtime/valueEditor'
@@ -48,6 +55,7 @@ import {
 
 export interface TableController {
   gridSelection: GridSelectionStore
+  marqueeSelection: ValueStore<Selection | null>
   layout: TableLayout
   nodes: Nodes
   dom: Dom
@@ -191,6 +199,20 @@ export const createTableController = (options: {
 }): TableController => {
   const currentView = options.currentViewStore
   const gridSelection = createGridSelection(currentView)
+  const marqueeSelection = createValueStore<Selection | null>({
+    initial: null,
+    isEqual: (left, right) => {
+      if (left === right) {
+        return true
+      }
+
+      if (!left || !right) {
+        return false
+      }
+
+      return selectionHelpers.equal(left, right)
+    }
+  })
   const lockedStore = createDerivedStore<boolean>({
     get: read => read(options.pageStore).lock !== null
   })
@@ -297,6 +319,7 @@ export const createTableController = (options: {
 
   return {
     gridSelection,
+    marqueeSelection,
     layout: options.layout,
     nodes: options.nodes,
     dom,
@@ -312,6 +335,7 @@ export const createTableController = (options: {
     dispose: () => {
       interaction.api.cancel()
       gridSelection.dispose()
+      marqueeSelection.set(null)
     }
   }
 }

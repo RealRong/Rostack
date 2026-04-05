@@ -37,8 +37,10 @@ export const TableProvider = (props: TableProviderProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const nodes = useMemo(
-    () => createNodes(),
-    []
+    () => createNodes({
+      resolveContainer: () => containerRef.current
+    }),
+    [containerRef]
   )
   const layout = useMemo<TableLayout>(() => ({
     rowHeight: props.rowHeight,

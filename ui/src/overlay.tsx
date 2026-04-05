@@ -164,18 +164,40 @@ export const OverlayProvider = (props: {
   }, [])
 
   const updateLayer = useCallback((id: string, patch: Partial<OverlayLayerOptions>) => {
-    setLayers(prev => prev.map(layer => (
-      layer.id === id
-        ? {
-            ...layer,
-            ...(patch.kind ? { kind: patch.kind } : {}),
-            ...(patch.parentId !== undefined ? { parentId: patch.parentId } : {}),
-            ...(patch.modal !== undefined ? { modal: patch.modal } : {}),
-            ...(patch.blocking !== undefined ? { blocking: patch.blocking } : {}),
-            ...(patch.onClose !== undefined ? { onClose: patch.onClose } : {})
-          }
-        : layer
-    )))
+    setLayers(prev => {
+      let changed = false
+      const next = prev.map(layer => {
+        if (layer.id !== id) {
+          return layer
+        }
+
+        const nextLayer: OverlayLayerRecord = {
+          ...layer,
+          ...(patch.kind ? { kind: patch.kind } : {}),
+          ...(patch.parentId !== undefined ? { parentId: patch.parentId } : {}),
+          ...(patch.modal !== undefined ? { modal: patch.modal } : {}),
+          ...(patch.blocking !== undefined ? { blocking: patch.blocking } : {}),
+          ...(patch.onClose !== undefined ? { onClose: patch.onClose } : {})
+        }
+
+        if (
+          nextLayer.kind !== layer.kind
+          || nextLayer.parentId !== layer.parentId
+          || nextLayer.modal !== layer.modal
+          || nextLayer.blocking !== layer.blocking
+          || nextLayer.onClose !== layer.onClose
+        ) {
+          changed = true
+          return nextLayer
+        }
+
+        return layer
+      })
+
+      return changed
+        ? next
+        : prev
+    })
   }, [])
 
   const runDismissHandlers = useCallback((reason: OverlayCloseReason) => {
@@ -382,17 +404,22 @@ export const useLayer = (input: {
   onClose?: (reason: OverlayCloseReason) => void
 }): OverlayLayerHandle => {
   const overlay = useOptionalOverlay()
+  const addLayer = overlay?.addLayer
+  const removeLayer = overlay?.removeLayer
+  const updateLayer = overlay?.updateLayer
+  const closeLayer = overlay?.closeLayer
+  const isTopLayer = overlay?.isTopLayer
   const inheritedParentId = useContext(OverlayParentLayerContext)
   const generatedId = useId()
   const id = input.id ?? generatedId
   const closeRef = useLatestRef(input.onClose)
 
   useEffect(() => {
-    if (!overlay || !input.open) {
+    if (!addLayer || !removeLayer || !input.open) {
       return
     }
 
-    overlay.addLayer({
+    addLayer({
       id,
       kind: input.kind,
       parentId: input.parentId === undefined
@@ -404,9 +431,10 @@ export const useLayer = (input: {
     })
 
     return () => {
-      overlay.removeLayer(id)
+      removeLayer(id)
     }
   }, [
+    addLayer,
     closeRef,
     id,
     inheritedParentId,
@@ -415,15 +443,15 @@ export const useLayer = (input: {
     input.modal,
     input.open,
     input.parentId,
-    overlay
+    removeLayer
   ])
 
   useEffect(() => {
-    if (!overlay || !input.open) {
+    if (!updateLayer || !input.open) {
       return
     }
 
-    overlay.updateLayer(id, {
+    updateLayer(id, {
       kind: input.kind,
       parentId: input.parentId === undefined
         ? inheritedParentId
@@ -441,23 +469,23 @@ export const useLayer = (input: {
     input.modal,
     input.open,
     input.parentId,
-    overlay
+    updateLayer
   ])
 
   const close = useCallback((reason: OverlayCloseReason) => {
-    if (overlay) {
-      return overlay.closeLayer(id, reason)
+    if (closeLayer) {
+      return closeLayer(id, reason)
     }
 
     closeRef.current?.(reason)
     return true
-  }, [closeRef, id, overlay])
+  }, [closeLayer, closeRef, id])
 
   const isTop = useCallback(() => (
-    overlay
-      ? overlay.isTopLayer(id)
+    isTopLayer
+      ? isTopLayer(id)
       : true
-  ), [id, overlay])
+  ), [id, isTopLayer])
 
   return useMemo(() => ({
     id,
@@ -477,54 +505,57 @@ export const OverlayLayerProvider = (props: {
 
 export const useOverlayKey = (input: OverlayKeyHandlerOptions) => {
   const overlay = useOptionalOverlay()
+  const addKeyHandler = overlay?.addKeyHandler
   const handlerRef = useLatestRef(input)
 
   useEffect(() => {
-    if (!overlay) {
+    if (!addKeyHandler) {
       return
     }
 
-    return overlay.addKeyHandler({
+    return addKeyHandler({
       layerId: input.layerId,
       order: input.order,
       when: () => handlerRef.current.when ? handlerRef.current.when() : true,
       onKeyDown: (event, api) => handlerRef.current.onKeyDown(event, api)
     })
-  }, [input.layerId, input.order, overlay, handlerRef])
+  }, [addKeyHandler, handlerRef, input.layerId, input.order])
 }
 
 export const useOverlayPointer = (input: OverlayPointerHandlerOptions) => {
   const overlay = useOptionalOverlay()
+  const addPointerHandler = overlay?.addPointerHandler
   const handlerRef = useLatestRef(input)
 
   useEffect(() => {
-    if (!overlay) {
+    if (!addPointerHandler) {
       return
     }
 
-    return overlay.addPointerHandler({
+    return addPointerHandler({
       layerId: input.layerId,
       order: input.order,
       when: () => handlerRef.current.when ? handlerRef.current.when() : true,
       onPointerDown: (event, api) => handlerRef.current.onPointerDown(event, api)
     })
-  }, [input.layerId, input.order, overlay, handlerRef])
+  }, [addPointerHandler, handlerRef, input.layerId, input.order])
 }
 
 export const useOverlayDismiss = (input: OverlayDismissHandlerOptions) => {
   const overlay = useOptionalOverlay()
+  const addDismissHandler = overlay?.addDismissHandler
   const handlerRef = useLatestRef(input)
 
   useEffect(() => {
-    if (!overlay) {
+    if (!addDismissHandler) {
       return
     }
 
-    return overlay.addDismissHandler({
+    return addDismissHandler({
       layerId: input.layerId,
       order: input.order,
       when: () => handlerRef.current.when ? handlerRef.current.when() : true,
       onDismiss: (reason, api) => handlerRef.current.onDismiss(reason, api)
     })
-  }, [input.layerId, input.order, overlay, handlerRef])
+  }, [addDismissHandler, handlerRef, input.layerId, input.order])
 }

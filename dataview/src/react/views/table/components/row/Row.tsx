@@ -1,6 +1,8 @@
 import {
   memo,
   useCallback,
+  useLayoutEffect,
+  useRef,
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import type {
@@ -12,8 +14,7 @@ import type {
 import { shouldCapturePointer } from '@dataview/dom/interactive'
 import {
   useCurrentView,
-  useDataView,
-  useSelection
+  useDataView
 } from '@dataview/react/dataview'
 import { rowRailState } from '../../model/rowRail'
 import { useTableContext } from '../../context'
@@ -21,6 +22,7 @@ import { useKeyedStoreValue, useStoreValue } from '@dataview/react/store'
 import { cn } from '@ui/utils'
 import { Cell } from '../cell/Cell'
 import { RowRail } from './RowRail'
+import { useEffectiveRowSelected } from '../../hooks/useEffectiveRowSelection'
 
 export interface RowProps {
   appearanceId: AppearanceId
@@ -45,14 +47,6 @@ const same = (left: RowProps, right: RowProps) => (
   && left.onDragStart === right.onDragStart
 )
 
-const useRowSelection = (rowId: AppearanceId) => {
-  const currentSelection = useSelection()
-
-  return {
-    selected: currentSelection.ids.includes(rowId)
-  }
-}
-
 export const applyRowCheckboxSelection = (input: {
   selection: Pick<SelectionApi, 'extend' | 'toggle'>
   rowId: AppearanceId
@@ -74,24 +68,38 @@ const View = (props: RowProps) => {
     throw new Error('Table row requires an active current view.')
   }
   const columns = currentView.properties.all
+  const rowNodeRef = useRef<HTMLDivElement | null>(null)
 
   const rowRef = useCallback((node: HTMLDivElement | null) => {
+    rowNodeRef.current = node
+  }, [])
+
+  useLayoutEffect(() => {
+    const node = rowNodeRef.current
+    if (!node) {
+      return
+    }
+
     table.nodes.registerRow(props.appearanceId, node)
+
+    return () => {
+      table.nodes.registerRow(props.appearanceId, null)
+    }
   }, [props.appearanceId, table.nodes])
   const capabilities = useStoreValue(table.capabilities)
   const rawHovered = useKeyedStoreValue(table.hover.row, props.appearanceId)
   const hovered = capabilities.canHover && rawHovered
-  const rowSelection = useRowSelection(props.appearanceId)
+  const selected = useEffectiveRowSelected(table, props.appearanceId)
   const rail = rowRailState({
     dragActive: props.dragActive,
     dragDisabled: !capabilities.canRowDrag,
     marqueeActive: props.marqueeActive,
     hovered,
-    selected: rowSelection.selected
+    selected
   })
   const rowTone = cn(
     props.isDragging && 'bg-muted/60 opacity-40',
-    rowSelection.selected && 'bg-accent-overlay'
+    selected && 'bg-accent-overlay'
   )
 
   const onRowPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -125,7 +133,7 @@ const View = (props: RowProps) => {
       data-table-target="row"
       data-row-id={props.appearanceId}
       role="row"
-      aria-selected={rowSelection.selected}
+      aria-selected={selected}
       onPointerDown={onRowPointerDown}
       className="relative border-b border-divider text-sm text-foreground transition-colors focus:outline-none"
       style={{
@@ -135,7 +143,7 @@ const View = (props: RowProps) => {
     >
       <RowRail
         rowId={props.appearanceId}
-        selected={rowSelection.selected}
+        selected={selected}
         state={rail}
         marqueeActive={props.marqueeActive}
         onSelectionPointerStart={onSelectionPointerStart}

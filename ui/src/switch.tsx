@@ -12,8 +12,8 @@ export interface SwitchProps {
 
 export const Switch = (props: SwitchProps) => {
   const trackClassName = cn(
-    'relative inline-flex h-5 w-11 shrink-0 rounded-full bg-surface-strong transition-colors',
-    props.checked && 'bg-primary',
+    'relative inline-flex items-center p-[2px] h-[14px] w-[26px] shrink-0 rounded-full bg-surface-strong transition-colors',
+    props.checked && 'bg-accent',
     props.disabled && 'cursor-not-allowed opacity-50',
     props.className
   )
@@ -23,11 +23,12 @@ export const Switch = (props: SwitchProps) => {
       <span
         aria-hidden="true"
         className={trackClassName}
+        style={{ boxSizing: 'content-box' }}
       >
         <span
           className={cn(
-            'absolute top-0.5 h-4 w-4 rounded-full bg-surface shadow-[0_0_0_1px_rgb(from_var(--ui-border-default)_r_g_b_/_0.4)] transition-transform',
-            props.checked ? 'translate-x-[22px]' : 'translate-x-0.5'
+            'h-4 w-4 rounded-full bg-white transition-transform',
+            props.checked ? 'translate-x-[12px]' : 'translate-x-0'
           )}
         />
       </span>
@@ -38,6 +39,7 @@ export const Switch = (props: SwitchProps) => {
     <button
       type="button"
       role="switch"
+      style={{ boxSizing: 'content-box' }}
       aria-checked={props.checked}
       aria-label={props['aria-label']}
       aria-labelledby={props['aria-labelledby']}
@@ -47,8 +49,8 @@ export const Switch = (props: SwitchProps) => {
     >
       <span
         className={cn(
-          'absolute top-0.5 h-5 w-5 rounded-full bg-surface shadow-[0_0_0_1px_rgb(from_var(--ui-border-default)_r_g_b_/_0.4)] transition-transform',
-          props.checked ? 'translate-x-[22px]' : 'translate-x-0.5'
+          'h-4 w-4 rounded-full bg-white transition-transform',
+          props.checked ? 'translate-x-[12px]' : 'translate-x-0'
         )}
       />
     </button>

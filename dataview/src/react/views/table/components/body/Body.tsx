@@ -25,10 +25,8 @@ import {
 import {
   resolveDefaultAutoPanTargets
 } from '@dataview/react/interaction/autoPan'
-import {
-  selectionTargetFromElement
-} from '@dataview/react/runtime/marquee'
 import { useStoreValue } from '@dataview/react/store'
+import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
 import { type FieldId } from '@dataview/react/runtime/currentView'
 import { applyPaste, handleTableKey } from '../../input'
 import {
@@ -58,8 +56,10 @@ const View = () => {
   const locked = usePageValue(state => state.lock !== null)
   const columns = currentView.properties.all
   const capabilities = useStoreValue(table.capabilities)
-  const marqueeSession = useStoreValue(dataView.marquee.store)
-  const marqueeActive = marqueeSession?.ownerViewId === currentView.view.id
+  const marqueeActive = useStoreSelector(
+    dataView.marquee.store,
+    session => session?.ownerViewId === currentView.view.id
+  )
   const columnResize = useColumnResize()
   const template = useMemo(
     () => gridTemplate(columns, columnResize.widths),
@@ -83,23 +83,26 @@ const View = () => {
         && !closestTarget(event.target, interactiveSelector)
       )
     },
-    getTargets: () => table.nodes.rows(currentView.appearances.ids).map(node => {
-      const rowId = node.dataset.rowId as typeof currentView.appearances.ids[number] | undefined
-      return rowId
-        ? selectionTargetFromElement(rowId, node)
-        : null
-    }).filter((target): target is NonNullable<typeof target> => Boolean(target)),
+    getHitIds: session => table.nodes.hitRows(currentView.appearances.ids, session.box),
     order: () => currentView.appearances.ids,
+    previewSelection: nextSelection => {
+      table.marqueeSelection.set(nextSelection)
+    },
+    clearPreviewSelection: () => {
+      table.marqueeSelection.set(null)
+    },
     resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(table.layout.containerRef.current),
     onStart: () => {
+      table.nodes.startRowMarquee(currentView.appearances.ids)
+      table.marqueeSelection.set(null)
       table.gridSelection.clear()
       table.hover.clear()
     },
     onEnd: () => {
-      table.focus()
+      table.nodes.endRowMarquee()
     },
     onCancel: () => {
-      table.focus()
+      table.nodes.endRowMarquee()
     }
   }), [
     currentView.appearances.ids,
@@ -107,7 +110,6 @@ const View = () => {
     dataView.marquee,
     marqueeDisabled,
     table.layout.containerRef,
-    table.nodes,
     table
   ])
 

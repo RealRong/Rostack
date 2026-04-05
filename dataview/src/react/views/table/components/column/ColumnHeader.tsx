@@ -26,7 +26,7 @@ import { getSorterPropertyId } from '@dataview/react/page/features/sort'
 import { useCurrentView, useDataView } from '@dataview/react/dataview'
 import { useTableContext } from '../../context'
 import { meta, renderMessage } from '@dataview/meta'
-import { PropertyKindPicker } from '@dataview/react/properties/schema'
+import { buildPropertyKindMenuItems } from '@dataview/react/properties/schema'
 import { useStoreValue } from '@dataview/react/store'
 
 export interface ColumnHeaderProps {
@@ -158,16 +158,14 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       leading: <ArrowLeftRight className="size-4" size={16} strokeWidth={1.8} />,
       suffix: renderMessage(kind.message),
       contentClassName: 'w-[240px] p-1.5',
-      content: () => (
-        <PropertyKindPicker
-          kind={props.property.kind}
-          isTitleProperty={isTitleProperty}
-          onSelect={kind => {
-            editor.properties.convert(props.property.id, { kind })
-            setMenuOpen(false)
-          }}
-        />
-      )
+      items: buildPropertyKindMenuItems({
+        kind: props.property.kind,
+        isTitleProperty,
+        onSelect: kind => {
+          editor.properties.convert(props.property.id, { kind })
+          setMenuOpen(false)
+        }
+      })
     },
     ...(!urlConfig
       ? [{

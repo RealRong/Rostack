@@ -116,6 +116,7 @@ export interface PopoverProps {
   animated?: boolean
   scopeId?: string
   container?: Element | null
+  registerLayer?: boolean
 }
 
 export const PopoverScope = (props: {
@@ -142,6 +143,7 @@ export const Popover = (props: PopoverProps) => {
   const inheritedContainer = useContext(PopoverContainerContext)
   const blockingSurfaceController = useBlockingSurfaceController()
   const overlay = useOptionalOverlay()
+  const registerLayer = props.registerLayer !== false
   const scopeId = props.scopeId ?? inheritedScopeId
   const container = props.container === undefined
     ? inheritedContainer
@@ -161,7 +163,7 @@ export const Popover = (props: PopoverProps) => {
     setOpen(false)
   }, [setOpen])
   const layer = useLayer({
-    open,
+    open: open && registerLayer,
     kind: 'popover',
     modal: props.modal,
     blocking: surface === 'blocking',
@@ -210,7 +212,7 @@ export const Popover = (props: PopoverProps) => {
 
   const click = useClick(floating.context)
   const dismiss = useDismiss(floating.context, {
-    outsidePress: overlay
+    outsidePress: overlay && registerLayer
       ? false
       : props.closeOnInteractOutside === false
         ? false
@@ -224,7 +226,7 @@ export const Popover = (props: PopoverProps) => {
 
             return true
           },
-    escapeKey: overlay
+    escapeKey: overlay && registerLayer
       ? false
       : (props.closeOnEscape ?? true)
   })
@@ -287,6 +289,7 @@ export const Popover = (props: PopoverProps) => {
     layerId: layer.id,
     when: () => (
       Boolean(overlay)
+      && registerLayer
       && open
       && props.closeOnEscape !== false
       && layer.isTop()
@@ -307,6 +310,7 @@ export const Popover = (props: PopoverProps) => {
     layerId: layer.id,
     when: () => (
       Boolean(overlay)
+      && registerLayer
       && open
       && props.closeOnInteractOutside !== false
       && layer.isTop()
@@ -380,9 +384,11 @@ export const Popover = (props: PopoverProps) => {
           props.contentClassName
         )}
       >
-        <OverlayLayerProvider layerId={layer.id}>
-          {props.children}
-        </OverlayLayerProvider>
+        {registerLayer ? (
+          <OverlayLayerProvider layerId={layer.id}>
+            {props.children}
+          </OverlayLayerProvider>
+        ) : props.children}
       </div>
     </div>
   )
@@ -393,7 +399,7 @@ export const Popover = (props: PopoverProps) => {
     event.preventDefault()
     event.stopPropagation()
     if (props.dismissOnBackdropPress ?? true) {
-      if (overlay) {
+      if (overlay && registerLayer) {
         layer.close('backdrop')
         return
       }

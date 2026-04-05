@@ -39,8 +39,10 @@ import {
   resolveDefaultAutoPanTargets
 } from '@dataview/react/interaction/autoPan'
 import {
-  selectionTargetFromElement
+  createVisualTargetRegistry,
+  type VisualTargetRegistry
 } from '@dataview/react/runtime/marquee'
+import { useStoreValue } from '@dataview/react/store'
 import {
   readBoardLayout,
   type BoardLayout,
@@ -83,6 +85,8 @@ export interface KanbanController {
   readSectionColorId: (sectionKey: SectionKey) => string | undefined
   readAppearanceColorId: (id: AppearanceId) => string | undefined
   readRecord: (id: AppearanceId) => GroupRecord | undefined
+  marqueeActive: boolean
+  visualTargets: VisualTargetRegistry
 }
 
 export const useKanbanController = (input: {
@@ -100,6 +104,9 @@ export const useKanbanController = (input: {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [dragging, setDragging] = useState(false)
   const columnLayoutsRef = useRef<Map<SectionKey, readonly CardPosition[]>>(new Map())
+  const visualTargets = useRef(createVisualTargetRegistry({
+    resolveScrollTargets: () => resolveDefaultAutoPanTargets(scrollRef.current)
+  })).current
 
   if (!currentView) {
     throw new Error('Kanban view requires an active current view.')
@@ -145,6 +152,8 @@ export const useKanbanController = (input: {
   ), [currentView.sections])
 
   const selectionValue = useDataViewSelection()
+  const marqueeSession = useStoreValue(dataView.marquee.store)
+  const marqueeActive = marqueeSession?.ownerViewId === currentView.view.id
   const selectedIdSet = useMemo(
     () => new Set(selectionValue.ids),
     [selectionValue.ids]
@@ -167,27 +176,25 @@ export const useKanbanController = (input: {
         dataviewAppearanceSelector,
         interactiveSelector
       ].join(',')),
-      getTargets: () => (
-        Array.from(
-          scrollRef.current?.querySelectorAll<HTMLElement>(`[${DATAVIEW_APPEARANCE_ID_ATTR}]`)
-          ?? []
-        )
-          .map(node => {
-            const id = node.getAttribute(DATAVIEW_APPEARANCE_ID_ATTR) as AppearanceId | null
-            return id
-              ? selectionTargetFromElement(id, node)
-              : null
-          })
-          .filter((target): target is NonNullable<typeof target> => Boolean(target))
-      ),
+      getTargets: () => visualTargets.getTargets(currentView.appearances.ids),
       order: () => currentView.appearances.ids,
-      resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(scrollRef.current)
+      resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(scrollRef.current),
+      onStart: () => {
+        visualTargets.clearFrozen()
+      },
+      onEnd: () => {
+        visualTargets.clearFrozen()
+      },
+      onCancel: () => {
+        visualTargets.clearFrozen()
+      }
     })
   }, [
     currentView.appearances.ids,
     currentView.view.id,
     dataView.marquee,
     dragging,
+    visualTargets,
   ])
 
   const selection = useMemo<KanbanSelectionState>(() => ({
@@ -270,7 +277,9 @@ export const useKanbanController = (input: {
     boostedSectionKeySet,
     readSectionColorId,
     readAppearanceColorId,
-    readRecord
+    readRecord,
+    marqueeActive,
+    visualTargets
   }), [
     boostedSectionKeySet,
     canReorder,
@@ -281,11 +290,13 @@ export const useKanbanController = (input: {
     input.columnMinHeight,
     input.columnWidth,
     layouts,
+    marqueeActive,
     properties,
     readAppearanceColorId,
     readRecord,
     readSectionColorId,
     selection,
-    titleProperty
+    titleProperty,
+    visualTargets
   ])
 }

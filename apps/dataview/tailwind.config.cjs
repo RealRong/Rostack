@@ -5,7 +5,7 @@ module.exports = {
   presets: [require('../../ui/tailwind/preset.cjs')],
   content: [
     path.join(__dirname, 'index.html'),
-    path.join(__dirname, 'main.tsx'),
+    path.join(__dirname, 'src/**/*.{ts,tsx}'),
     path.join(__dirname, '../../dataview/src/react/**/*.{ts,tsx}'),
     path.join(__dirname, '../../ui/src/**/*.{ts,tsx}')
   ]

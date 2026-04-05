@@ -11,7 +11,7 @@
   "scripts": {
     "build": "pnpm run typecheck && pnpm run demo:build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "rm -rf .tmp/group-test-dist && tsc -p tsconfig.test.json && node scripts/prepare-test-dist.cjs && node --test test/*.test.cjs",
+    "test": "rm -rf .tmp/group-test-build .tmp/group-test-dist && tsc -p tsconfig.test.json && node scripts/prepare-test-dist.cjs && node --test test/*.test.cjs",
     "demo:dev": "pnpm --dir ../apps/dataview dev",
     "demo:build": "pnpm --dir ../apps/dataview build",
     "demo:preview": "pnpm --dir ../apps/dataview preview",

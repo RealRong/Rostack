@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 .demo-root {
   position: relative;
   height: 100%;
@@ -11,65 +15,4 @@
   inset: 0;
   touch-action: none;
   overscroll-behavior: none;
-}
-
-.demo-presence-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 24;
-  pointer-events: none;
-}
-
-.demo-remote-selection {
-  position: absolute;
-  border: 2px solid;
-  border-radius: 14px;
-  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.5);
-}
-
-.demo-remote-selection-edge {
-  border-style: dashed;
-  border-radius: 20px;
-}
-
-.demo-remote-cursor {
-  position: absolute;
-  transform: translate(-2px, -2px);
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.demo-remote-cursor-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 999px;
-  background: var(--demo-user-color);
-  box-shadow: 0 0 0 3px rgb(255 255 255 / 0.92), 0 12px 28px rgb(15 23 42 / 0.18);
-  flex: 0 0 auto;
-}
-
-.demo-remote-cursor-label {
-  margin-top: -6px;
-  padding: 7px 10px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--demo-user-color) 84%, white 16%);
-  color: white;
-  min-width: 104px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  box-shadow: 0 18px 36px rgb(15 23 42 / 0.18);
-}
-
-.demo-remote-cursor-label strong {
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.1;
-}
-
-.demo-remote-cursor-label span {
-  font-size: 11px;
-  opacity: 0.86;
-  line-height: 1.15;
 }

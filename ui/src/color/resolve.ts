@@ -14,7 +14,7 @@ const OPTION_COLOR_TOKEN_SUFFIX: Record<UiOptionColorTokenUsage, string> = {
   'column-bg': 'bg-soft',
   'column-border': 'border-muted',
   'card-bg': 'card-bg',
-  'card-border': 'border-muted',
+  'card-border': 'border-alpha-muted',
   'card-bg-hover': 'card-bg-hover',
   'card-bg-pressed': 'card-bg-pressed',
   'dot-bg': 'bg-strong',

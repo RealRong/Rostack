@@ -26,6 +26,8 @@ import { ColumnHeaderRow } from '../column/ColumnHeaderRow'
 import { Button } from '@ui/button'
 import { cn } from '@ui/utils'
 
+const TABLE_MARQUEE_OVERSCAN = 960
+
 const SectionHeader = (props: {
   section: Section
 }) => {
@@ -122,83 +124,86 @@ export const BlockContent = (props: BlockContentProps) => {
   const virtual = useTableBlocks({
     grouped: props.grouped,
     rowIds: props.rowIds,
-    sections: props.sections
+    sections: props.sections,
+    overscan: props.marqueeActive
+      ? TABLE_MARQUEE_OVERSCAN
+      : undefined
   })
-  const lastBlock = virtual.items[virtual.items.length - 1]
-  const bottomSpacerHeight = lastBlock
-    ? Math.max(0, virtual.totalHeight - lastBlock.top - lastBlock.height)
-    : 0
+  const blocks = virtual.items
+  const windowStartTop = blocks[0]?.top ?? 0
 
   return (
-    <div>
-      {virtual.items.map((block, index) => {
-        const previous = virtual.items[index - 1]
-        const marginTop = index === 0
-          ? block.top
-          : Math.max(0, block.top - previous!.top - previous!.height)
-
-        switch (block.kind) {
-          case 'section-header':
-            return (
-              <div
-                key={block.key}
-                style={{
-                  height: block.height,
-                  marginTop
-                }}
-              >
-                <SectionHeader section={block.section} />
-              </div>
-            )
-          case 'column-header':
-            return (
-              <div
-                key={block.key}
-                style={{
-                  height: block.height,
-                  marginTop
-                }}
-              >
-                <ColumnHeaderBlock
-                  scopeId={block.scopeId}
-                  rowIds={block.rowIds}
-                  label={block.label}
-                  columns={props.columns}
-                  template={props.template}
-                  resizingPropertyId={props.resizingPropertyId}
-                  onResizeStart={props.onResizeStart}
-                />
-              </div>
-            )
-          case 'row':
-            return (
-              <div
-                key={block.key}
-                style={{
-                  height: block.height,
-                  marginTop
-                }}
-              >
-                <Row
-                  appearanceId={block.rowId}
-                  template={props.template}
-                  rowHeight={table.layout.rowHeight}
-                  marqueeActive={props.marqueeActive}
-                  dragActive={props.dragActive}
-                  isDragging={props.dragIdSet.has(block.rowId)}
-                  onDragStart={props.onDragStart}
-                />
-              </div>
-            )
-        }
-      })}
-      {bottomSpacerHeight ? (
+    <div
+      style={{
+        overflowAnchor: 'none',
+        position: 'relative',
+        height: virtual.totalHeight
+      }}
+    >
+      {blocks.length ? (
         <div
-          aria-hidden="true"
           style={{
-            height: bottomSpacerHeight
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 0,
+            transform: `translateY(${windowStartTop}px)`
           }}
-        />
+        >
+          {blocks.map(block => {
+            switch (block.kind) {
+              case 'section-header':
+                return (
+                  <div
+                    key={block.key}
+                    style={{
+                      height: block.height
+                    }}
+                  >
+                    <SectionHeader section={block.section} />
+                  </div>
+                )
+              case 'column-header':
+                return (
+                  <div
+                    key={block.key}
+                    style={{
+                      height: block.height
+                    }}
+                  >
+                    <ColumnHeaderBlock
+                      scopeId={block.scopeId}
+                      rowIds={block.rowIds}
+                      label={block.label}
+                      columns={props.columns}
+                      template={props.template}
+                      resizingPropertyId={props.resizingPropertyId}
+                      onResizeStart={props.onResizeStart}
+                    />
+                  </div>
+                )
+              case 'row':
+                return (
+                  <div
+                    key={block.key}
+                    style={{
+                      height: block.height
+                    }}
+                  >
+                    <Row
+                      appearanceId={block.rowId}
+                      template={props.template}
+                      rowHeight={table.layout.rowHeight}
+                      marqueeActive={props.marqueeActive}
+                      dragActive={props.dragActive}
+                      isDragging={props.dragIdSet.has(block.rowId)}
+                      onDragStart={props.onDragStart}
+                    />
+                  </div>
+                )
+            }
+          })}
+        </div>
       ) : null}
     </div>
   )

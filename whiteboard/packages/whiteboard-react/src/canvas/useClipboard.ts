@@ -4,14 +4,14 @@ import {
   isInputIgnoredTarget
 } from '../dom/host/targets'
 import { consumeDomEvent } from '../dom/host/event'
-import { useWhiteboard } from '../runtime/hooks/useWhiteboard'
+import { useWhiteboardServices } from '../runtime/hooks/useWhiteboard'
 
 export const useClipboard = ({
   containerRef
 }: {
   containerRef: RefObject<HTMLDivElement | null>
 }) => {
-  const clipboard = useWhiteboard().clipboard
+  const { clipboard } = useWhiteboardServices()
 
   useEffect(() => {
     const container = containerRef.current

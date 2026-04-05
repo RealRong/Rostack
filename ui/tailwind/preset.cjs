@@ -144,8 +144,8 @@ module.exports = {
           foreground: alphaColor('--muted-foreground')
         },
         accent: {
-          DEFAULT: alphaColor('--accent'),
-          foreground: alphaColor('--accent-foreground')
+          DEFAULT: alphaColor('--ui-accent'),
+          foreground: alphaColor('--ui-accent-foreground')
         },
         card: {
           DEFAULT: alphaColor('--card'),

@@ -10,7 +10,19 @@ export type {
   HistoryOptions,
   WhiteboardProps
 } from './types/common/board'
-export type { WhiteboardCollabOptions } from './types/common/collab'
+export type {
+  WhiteboardCollabOptions,
+  WhiteboardCollabPresenceOptions
+} from './types/common/collab'
+export type {
+  WhiteboardPresenceActivity,
+  WhiteboardPresenceBinding,
+  WhiteboardPresencePointer,
+  WhiteboardPresenceSelection,
+  WhiteboardPresenceState,
+  WhiteboardPresenceTool,
+  WhiteboardPresenceUser
+} from './types/common/presence'
 export type { WhiteboardInstance } from './types/runtime'
 export type { Tool } from '@whiteboard/editor'
 export type {

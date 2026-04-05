@@ -7,6 +7,7 @@ import type {
 import type { ValueStore } from '@dataview/runtime/store'
 import type { ViewId } from '@dataview/core/contracts'
 import type { AutoPanTargets } from '@dataview/react/interaction/autoPan'
+import type { Selection } from '@dataview/react/runtime/selection'
 
 export type MarqueeMode = 'replace' | 'add' | 'toggle'
 
@@ -24,12 +25,15 @@ export interface SelectionTarget extends RectItem<AppearanceId> { }
 export interface MarqueeAdapter {
   viewId: ViewId
   canStart: (event: PointerEvent) => boolean
-  getTargets: () => readonly SelectionTarget[]
+  getTargets?: () => readonly SelectionTarget[]
+  getHitIds?: (session: MarqueeSessionState) => readonly AppearanceId[]
   order: () => readonly AppearanceId[]
   resolveAutoPanTargets?: () => AutoPanTargets | null
+  previewSelection?: (selection: Selection) => void
+  clearPreviewSelection?: () => void
   onStart?: (session: MarqueeSessionState) => void
-  onEnd?: (session: MarqueeSessionState) => void
-  onCancel?: (session: MarqueeSessionState) => void
+  onEnd?: (session: MarqueeSessionState, selection: Selection) => void
+  onCancel?: (session: MarqueeSessionState, selection: Selection) => void
   disabled?: boolean
 }
 

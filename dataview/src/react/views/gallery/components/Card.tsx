@@ -1,5 +1,8 @@
 import {
+  useCallback,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties
 } from 'react'
@@ -81,6 +84,11 @@ const GalleryCardContent = (props: {
     viewId,
     appearanceId: props.appearanceId
   })
+  const cardNodeRef = useRef<HTMLElement | null>(null)
+  const measureRefRef = useRef(props.measureRef)
+  measureRefRef.current = props.measureRef
+  const marqueeActiveRef = useRef(controller.marqueeActive)
+  marqueeActiveRef.current = controller.marqueeActive
   const hasVisibleProperties = useMemo(() => properties.some(property => (
     property.id !== titleProperty?.id
     && (
@@ -88,10 +96,30 @@ const GalleryCardContent = (props: {
         || !isEmptyPropertyValue(props.record.values[property.id])
     )
   )), [editing, properties, props.record, titleProperty?.id])
+  const contentRef = useCallback((node: HTMLElement | null) => {
+    cardNodeRef.current = node
+    measureRefRef.current?.(node)
+  }, [])
+
+  useLayoutEffect(() => {
+    const node = cardNodeRef.current
+    if (!node) {
+      return
+    }
+
+    controller.visualTargets.register(props.appearanceId, node)
+
+    return () => {
+      if (marqueeActiveRef.current) {
+        controller.visualTargets.freeze(props.appearanceId, node)
+      }
+      controller.visualTargets.register(props.appearanceId, null)
+    }
+  }, [controller.visualTargets, props.appearanceId])
 
   return (
     <CardContent
-      ref={props.measureRef}
+      ref={contentRef}
       {...{
         [DATAVIEW_APPEARANCE_ID_ATTR]: props.appearanceId
       }}

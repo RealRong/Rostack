@@ -37,6 +37,9 @@ export const Surface = (props: SurfaceProps) => {
       onKeyDown={props.onKeyDown}
       onPaste={props.onPaste}
       className="relative overflow-x-auto overflow-y-visible focus:outline-none"
+      style={{
+        overflowAnchor: 'none'
+      }}
     >
       <div
         ref={layout.canvasRef}
@@ -46,6 +49,7 @@ export const Surface = (props: SurfaceProps) => {
           display: 'inline-block',
           verticalAlign: 'top',
           boxSizing: 'border-box',
+          overflowAnchor: 'none',
           paddingInline: PAGE_INLINE_INSET_CSS,
           paddingBottom: PAGE_PADDING_BOTTOM
         }}

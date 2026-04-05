@@ -1,6 +1,7 @@
 import type {
-  Tool,
-  WhiteboardCollabOptions
+  WhiteboardCollabOptions,
+  WhiteboardPresenceBinding,
+  WhiteboardPresenceState
 } from '@whiteboard/react'
 import * as Y from 'yjs'
 
@@ -59,38 +60,9 @@ export type DemoUser = {
   color: string
 }
 
-export type DemoPresenceState = {
-  user: DemoUser
-  pointer?: {
-    world: {
-      x: number
-      y: number
-    }
-    timestamp: number
-  }
-  selection?: {
-    nodeIds: readonly string[]
-    edgeIds: readonly string[]
-  }
-  tool?: {
-    type: Tool['type']
-    value?: string
-  }
-  activity?: 'idle' | 'pointing' | 'dragging' | 'editing'
-  updatedAt: number
-}
+export type DemoPresenceState = WhiteboardPresenceState
 
-export type DemoAwareness = {
-  clientId: string
-  user: DemoUser
-  getLocalState: () => DemoPresenceState | null
-  getStates: () => ReadonlyMap<string, DemoPresenceState>
-  setLocalState: (state: DemoPresenceState | null) => void
-  updateLocalState: (
-    recipe: (prev: DemoPresenceState | null) => DemoPresenceState | null
-  ) => void
-  subscribe: (listener: () => void) => () => void
-}
+export type DemoAwareness = WhiteboardPresenceBinding
 
 type DemoCollabBinding = {
   doc: Y.Doc
@@ -330,28 +302,6 @@ export const createDemoUser = (): DemoUser => {
   }
   writeSessionStorage(storageKey, JSON.stringify(user))
   return user
-}
-
-export const serializeTool = (
-  tool: Tool
-): DemoPresenceState['tool'] => {
-  switch (tool.type) {
-    case 'edge':
-    case 'insert':
-      return {
-        type: tool.type,
-        value: tool.preset
-      }
-    case 'draw':
-      return {
-        type: tool.type,
-        value: tool.kind
-      }
-    default:
-      return {
-        type: tool.type
-      }
-  }
 }
 
 const createChannelName = (roomId: string) =>

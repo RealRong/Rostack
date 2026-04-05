@@ -26,6 +26,9 @@
   --ui-border-default: #e6e5e3;
   --ui-border-muted: #f0efed;
   --ui-border-strong: #d4d3cf;
+  --ui-border-alpha: #1c13011c;
+  --ui-border-alpha-muted: #2a1c0012;
+  --ui-border-alpha-strong: #1b150030;
 
   --ui-bg-page: #fff;
   --ui-bg-panel: #f9f8f7;
@@ -49,6 +52,9 @@
   --ui-default-border: #e6e5e3;
   --ui-default-border-muted: #f0efed;
   --ui-default-border-strong: #d4d3cf;
+  --ui-default-border-alpha: #1c13011c;
+  --ui-default-border-alpha-muted: #2a1c0012;
+  --ui-default-border-alpha-strong: #1b150030;
   --ui-default-bg-soft: #fff0;
   --ui-default-bg-muted: #42230308;
   --ui-default-bg-strong: #2a1c0012;
@@ -64,6 +70,9 @@
   --ui-blue-border: #cee3f7;
   --ui-blue-border-muted: #e5f2fc;
   --ui-blue-border-strong: #b6d4f3;
+  --ui-blue-border-alpha: #0076d934;
+  --ui-blue-border-alpha-muted: #007cd718;
+  --ui-blue-border-alpha-strong: #0070db49;
   --ui-blue-bg-soft: #0080d50c;
   --ui-blue-bg-muted: #007cd718;
   --ui-blue-bg-strong: #0076d934;
@@ -80,6 +89,9 @@
   --ui-brown-border: #ebdfd7;
   --ui-brown-border-muted: #f5ede9;
   --ui-brown-border-strong: #e0cdc0;
+  --ui-brown-border-alpha: #7f330028;
+  --ui-brown-border-alpha-muted: #8b2e0016;
+  --ui-brown-border-alpha-strong: #8134003f;
   --ui-brown-bg-soft: #733b0309;
   --ui-brown-bg-muted: #8b2e0016;
   --ui-brown-bg-strong: #7f330028;
@@ -95,6 +107,9 @@
   --ui-gray-border: #e6e5e3;
   --ui-gray-border-muted: #f0efed;
   --ui-gray-border-strong: #d4d3cf;
+  --ui-gray-border-alpha: #1c13011c;
+  --ui-gray-border-alpha-muted: #2a1c0012;
+  --ui-gray-border-alpha-strong: #1b150030;
   --ui-gray-bg-soft: #42230308;
   --ui-gray-bg-muted: #2a1c0012;
   --ui-gray-bg-strong: #1c13011c;
@@ -110,6 +125,9 @@
   --ui-green-border: #d7e6dd;
   --ui-green-border-muted: #e8f1ec;
   --ui-green-border-strong: #bed9c9;
+  --ui-green-border-alpha: #00602628;
+  --ui-green-border-alpha-muted: #00642d17;
+  --ui-green-border-alpha-strong: #006a2b41;
   --ui-green-bg-soft: #03571f09;
   --ui-green-bg-muted: #00642d17;
   --ui-green-bg-strong: #00602628;
@@ -125,6 +143,9 @@
   --ui-orange-border: #f3ddcb;
   --ui-orange-border-muted: #fbebde;
   --ui-orange-border-strong: #eaccb2;
+  --ui-orange-border-alpha: #c4580034;
+  --ui-orange-border-alpha-muted: #e0650121;
+  --ui-orange-border-alpha-strong: #ba56004d;
   --ui-orange-bg-soft: #ba48030b;
   --ui-orange-bg-muted: #e0650121;
   --ui-orange-bg-strong: #c4580034;
@@ -140,6 +161,9 @@
   --ui-pink-border: #f4d8e4;
   --ui-pink-border-muted: #fae9f1;
   --ui-pink-border-strong: #eac4d5;
+  --ui-pink-border-alpha: #b7004e27;
+  --ui-pink-border-alpha-muted: #c5005d16;
+  --ui-pink-border-alpha-strong: #a400493b;
   --ui-pink-bg-soft: #a1034208;
   --ui-pink-bg-muted: #c5005d16;
   --ui-pink-bg-strong: #b7004e27;
@@ -155,6 +179,9 @@
   --ui-purple-border: #e8dbf2;
   --ui-purple-border-muted: #f3ebf9;
   --ui-purple-border-strong: #dbc8e8;
+  --ui-purple-border-alpha: #5c00a324;
+  --ui-purple-border-alpha-muted: #6600b214;
+  --ui-purple-border-alpha-strong: #58019537;
   --ui-purple-bg-soft: #6203a108;
   --ui-purple-bg-muted: #6600b214;
   --ui-purple-bg-strong: #5c00a324;
@@ -170,6 +197,9 @@
   --ui-red-border: #f7d9d5;
   --ui-red-border-muted: #fce9e7;
   --ui-red-border-strong: #f0c5be;
+  --ui-red-border-alpha: #ce18002a;
+  --ui-red-border-alpha-muted: #df160018;
+  --ui-red-border-alpha-strong: #c41b0041;
   --ui-red-bg-soft: #c7030309;
   --ui-red-bg-muted: #df160018;
   --ui-red-bg-strong: #ce18002a;
@@ -185,6 +215,9 @@
   --ui-teal-border: #cae9f0;
   --ui-teal-border-muted: #e0f3f7;
   --ui-teal-border-strong: #b0dbe4;
+  --ui-teal-border-alpha: #0095b735;
+  --ui-teal-border-alpha-muted: #019dbd1f;
+  --ui-teal-border-alpha-strong: #008ba84f;
   --ui-teal-bg-soft: #0396ab0c;
   --ui-teal-bg-muted: #019dbd1f;
   --ui-teal-bg-strong: #0095b735;
@@ -200,6 +233,9 @@
   --ui-yellow-border: #f2e3b7;
   --ui-yellow-border-muted: #f9f3dc;
   --ui-yellow-border-strong: #e8d497;
+  --ui-yellow-border-alpha: #d19c0048;
+  --ui-yellow-border-alpha-muted: #d3a80023;
+  --ui-yellow-border-alpha-strong: #c7960068;
   --ui-yellow-bg-soft: #cfaf0010;
   --ui-yellow-bg-muted: #d3a80023;
   --ui-yellow-bg-strong: #d19c0048;
@@ -225,6 +261,9 @@
     --ui-border-default: #383836;
     --ui-border-muted: #2c2c2b;
     --ui-border-strong: #5f5e59;
+    --ui-border-alpha: #ffffeb1a;
+    --ui-border-alpha-muted: #fffff315;
+    --ui-border-alpha-strong: #fffceb4e;
 
     --ui-bg-page: #191919;
     --ui-bg-panel: #202020;
@@ -248,6 +287,9 @@
     --ui-default-border: #383836;
     --ui-default-border-muted: #2c2c2b;
     --ui-default-border-strong: #5f5e59;
+    --ui-default-border-alpha: #ffffeb1a;
+    --ui-default-border-alpha-muted: #fffff315;
+    --ui-default-border-alpha-strong: #fffceb4e;
     --ui-default-bg-soft: #19191900;
     --ui-default-bg-muted: #fcfcfc08;
     --ui-default-bg-strong: #fffff315;
@@ -263,6 +305,9 @@
     --ui-blue-border: #233850;
     --ui-blue-border-muted: #213041;
     --ui-blue-border-strong: #355f8b;
+    --ui-blue-border-alpha: #439bff3d;
+    --ui-blue-border-alpha-muted: #479dff2c;
+    --ui-blue-border-alpha-strong: #51a6ff7e;
     --ui-blue-bg-soft: #298bfd10;
     --ui-blue-bg-muted: #2383e212;
     --ui-blue-bg-strong: #51a6ff7e;
@@ -279,6 +324,9 @@
     --ui-brown-border: #45362d;
     --ui-brown-border-muted: #382d26;
     --ui-brown-border-strong: #6d5340;
+    --ui-brown-border-alpha: #ffb18131;
+    --ui-brown-border-alpha-muted: #ffae7a22;
+    --ui-brown-border-alpha-strong: #ffb8845d;
     --ui-brown-bg-soft: #fd9e650d;
     --ui-brown-bg-muted: #ffb18131;
     --ui-brown-bg-strong: #ffb8845d;
@@ -294,6 +342,9 @@
     --ui-gray-border: #383836;
     --ui-gray-border-muted: #2c2c2b;
     --ui-gray-border-strong: #5f5e59;
+    --ui-gray-border-alpha: #ffffeb1a;
+    --ui-gray-border-alpha-muted: #fffff315;
+    --ui-gray-border-alpha-strong: #fffceb4e;
     --ui-gray-bg-soft: #fcfcfc08;
     --ui-gray-bg-muted: #ffffeb1a;
     --ui-gray-bg-strong: #fffceb4e;
@@ -309,6 +360,9 @@
     --ui-green-border: #263d30;
     --ui-green-border-muted: #24342b;
     --ui-green-border-strong: #37674c;
+    --ui-green-border-alpha: #6cffac28;
+    --ui-green-border-alpha-muted: #77ffb31e;
+    --ui-green-border-alpha-strong: #71ffaf56;
     --ui-green-bg-soft: #53ff8c09;
     --ui-green-bg-muted: #6cffac28;
     --ui-green-bg-strong: #71ffaf56;
@@ -324,6 +378,9 @@
     --ui-orange-border: #53361f;
     --ui-orange-border-muted: #3d2a1d;
     --ui-orange-border-strong: #88522f;
+    --ui-orange-border-alpha: #ff934b47;
+    --ui-orange-border-alpha-muted: #ff863328;
+    --ui-orange-border-alpha-strong: #ff8f477b;
     --ui-orange-bg-soft: #fe8b470b;
     --ui-orange-bg-muted: #ff934b47;
     --ui-orange-bg-strong: #ff8f477b;
@@ -339,6 +396,9 @@
     --ui-pink-border: #4e2b3c;
     --ui-pink-border-muted: #3f2631;
     --ui-pink-border-strong: #7b4760;
+    --ui-pink-border-alpha: #ff67b13b;
+    --ui-pink-border-alpha-muted: #ff68ab2a;
+    --ui-pink-border-alpha-strong: #ff85c06d;
     --ui-pink-bg-soft: #ff4e950e;
     --ui-pink-bg-muted: #ff67b13b;
     --ui-pink-bg-strong: #ff85c06d;
@@ -354,6 +414,9 @@
     --ui-purple-border: #3c2d47;
     --ui-purple-border-muted: #36293f;
     --ui-purple-border-strong: #674d7b;
+    --ui-purple-border-alpha: #c87dff33;
+    --ui-purple-border-alpha-muted: #c97aff2a;
+    --ui-purple-border-alpha-strong: #d093ff6d;
     --ui-purple-bg-soft: #c465fd0d;
     --ui-purple-bg-muted: #c87dff33;
     --ui-purple-bg-strong: #d093ff6d;
@@ -369,6 +432,9 @@
     --ui-red-border: #502c29;
     --ui-red-border-muted: #412725;
     --ui-red-border-strong: #924943;
+    --ui-red-border-alpha: #ff685c3d;
+    --ui-red-border-alpha-muted: #ff6a5e2c;
+    --ui-red-border-alpha-strong: #ff746986;
     --ui-red-bg-soft: #fb6b6b0c;
     --ui-red-bg-muted: #ff685c3d;
     --ui-red-bg-strong: #ff746986;
@@ -384,6 +450,9 @@
     --ui-teal-border: #143d45;
     --ui-teal-border-muted: #193439;
     --ui-teal-border-strong: #226471;
+    --ui-teal-border-alpha: #00cdf533;
+    --ui-teal-border-alpha-muted: #19dbff23;
+    --ui-teal-border-alpha-strong: #31ddff61;
     --ui-teal-bg-soft: #007ea414;
     --ui-teal-bg-muted: #00cdf533;
     --ui-teal-bg-strong: #31ddff61;
@@ -399,6 +468,9 @@
     --ui-yellow-border: #504425;
     --ui-yellow-border-muted: #373325;
     --ui-yellow-border-strong: #836426;
+    --ui-yellow-border-alpha: #ffcd4b3d;
+    --ui-yellow-border-alpha-muted: #ffe17521;
+    --ui-yellow-border-alpha-strong: #ffbc3575;
     --ui-yellow-bg-soft: #ffe8300b;
     --ui-yellow-bg-muted: #ffcd4b3d;
     --ui-yellow-bg-strong: #ffbc3575;

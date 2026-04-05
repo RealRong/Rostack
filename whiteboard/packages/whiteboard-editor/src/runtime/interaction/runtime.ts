@@ -213,7 +213,6 @@ export const createInteractionRuntime = ({
     if (current?.id !== running.id) {
       return
     }
-
     running.session.cancel?.()
     if (current?.id !== running.id) {
       return

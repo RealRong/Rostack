@@ -190,7 +190,6 @@ export const createViewport = ({
       if (isSameBoxTuple(rect, next)) {
         return
       }
-
       rect = copyRect(next)
     },
     setLimits: (next) => {

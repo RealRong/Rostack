@@ -6,10 +6,21 @@ import {
   Undo2,
   type LucideIcon
 } from 'lucide-react'
+import { Button, cn } from '@ui'
 import { useEditor } from '../../runtime/hooks/useEditor'
 import { useStoreValue } from '../../runtime/hooks/useStoreValue'
 
 const ZOOM_FACTOR = 1.2
+const BUTTON_PROPS = {
+  'data-selection-ignore': true,
+  'data-input-ignore': true
+} as const
+const iconButtonClassName = cn(
+  'h-9 w-9 rounded-[10px] text-fg-muted hover:text-fg'
+)
+const zoomButtonClassName = cn(
+  'h-9 min-w-[58px] rounded-[10px] px-2.5 text-sm font-medium text-fg-muted hover:text-fg'
+)
 
 const ToolIcon = ({
   icon: Icon
@@ -40,90 +51,90 @@ export const ViewportDock = () => {
 
   return (
     <div
-      className="wb-canvas-dock-layer"
+      className="pointer-events-none absolute inset-0 z-[var(--wb-z-toolbar)] overflow-visible"
       data-selection-ignore
       data-input-ignore
     >
-      <div className="wb-canvas-dock">
-        <div className="wb-canvas-dock-group">
-          <button
+      <div className="pointer-events-auto absolute bottom-4 right-4 inline-flex items-center gap-2 rounded-xl border border-[rgb(from_var(--ui-border-subtle)_r_g_b_/_0.4)] bg-floating p-1.5 shadow-popover">
+        <div className="inline-flex items-center gap-0.5">
+          <Button
             type="button"
-            className="wb-canvas-dock-button"
+            variant="ghost"
+            className={iconButtonClassName}
             onClick={() => {
               editor.commands.history.undo()
             }}
             disabled={!history.canUndo || history.isApplying}
             title="Undo"
-            data-selection-ignore
-            data-input-ignore
+            {...BUTTON_PROPS}
           >
             <ToolIcon icon={Undo2} />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="wb-canvas-dock-button"
+            variant="ghost"
+            className={iconButtonClassName}
             onClick={() => {
               editor.commands.history.redo()
             }}
             disabled={!history.canRedo || history.isApplying}
             title="Redo"
-            data-selection-ignore
-            data-input-ignore
+            {...BUTTON_PROPS}
           >
             <ToolIcon icon={Redo2} />
-          </button>
+          </Button>
         </div>
-        <div className="wb-canvas-dock-divider" />
-        <div className="wb-canvas-dock-group">
-          <button
+        <div className="self-stretch border-l border-divider" />
+        <div className="inline-flex items-center gap-0.5">
+          <Button
             type="button"
-            className="wb-canvas-dock-button"
+            variant="ghost"
+            className={iconButtonClassName}
             onClick={fitToScreen}
             title="Fit to screen"
-            data-selection-ignore
-            data-input-ignore
+            {...BUTTON_PROPS}
           >
             <ToolIcon icon={Scan} />
-          </button>
+          </Button>
         </div>
-        <div className="wb-canvas-dock-divider" />
-        <div className="wb-canvas-dock-group">
-          <button
+        <div className="self-stretch border-l border-divider" />
+        <div className="inline-flex items-center gap-0.5">
+          <Button
             type="button"
-            className="wb-canvas-dock-button"
+            variant="ghost"
+            className={iconButtonClassName}
             onClick={() => {
               editor.commands.viewport.zoomTo(viewport.zoom / ZOOM_FACTOR)
             }}
             title="Zoom out"
-            data-selection-ignore
-            data-input-ignore
+            {...BUTTON_PROPS}
           >
             <ToolIcon icon={Minus} />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="wb-canvas-dock-zoom"
+            variant="ghost"
+            className={zoomButtonClassName}
             onClick={() => {
               editor.commands.viewport.zoomTo(1)
             }}
             title="Reset zoom"
-            data-selection-ignore
-            data-input-ignore
+            {...BUTTON_PROPS}
           >
             {formatZoom(viewport.zoom)}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="wb-canvas-dock-button"
+            variant="ghost"
+            className={iconButtonClassName}
             onClick={() => {
               editor.commands.viewport.zoomTo(viewport.zoom * ZOOM_FACTOR)
             }}
             title="Zoom in"
-            data-selection-ignore
-            data-input-ignore
+            {...BUTTON_PROPS}
           >
             <ToolIcon icon={Plus} />
-          </button>
+          </Button>
         </div>
       </div>
     </div>

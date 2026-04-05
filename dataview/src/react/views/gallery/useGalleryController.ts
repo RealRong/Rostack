@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type RefObject
 } from 'react'
@@ -36,8 +37,10 @@ import {
   resolveDefaultAutoPanTargets
 } from '@dataview/react/interaction/autoPan'
 import {
-  selectionTargetFromElement
+  createVisualTargetRegistry,
+  type VisualTargetRegistry
 } from '@dataview/react/runtime/marquee'
+import { useStoreValue } from '@dataview/react/store'
 import type { GalleryDropTarget } from './reorder'
 import {
   useCardReorder
@@ -66,6 +69,8 @@ export interface GalleryController {
   indicator?: GalleryDropTarget['indicator']
   readSectionColorId: (sectionKey: string) => string | undefined
   select: (id: AppearanceId, mode?: 'replace' | 'toggle') => void
+  marqueeActive: boolean
+  visualTargets: VisualTargetRegistry
 }
 
 export const useGalleryController = (input: {
@@ -96,6 +101,9 @@ export const useGalleryController = (input: {
   )
   const canReorder = !currentView.view.query.group && !currentView.view.query.sorters.length
   const [dragging, setDragging] = useState(false)
+  const visualTargets = useRef(createVisualTargetRegistry({
+    resolveScrollTargets: () => resolveDefaultAutoPanTargets(input.containerRef.current)
+  })).current
   const grouped = Boolean(currentView.view.query.group)
   const groupProperty = useMemo(() => {
     const groupPropertyId = currentView.view.query.group?.property
@@ -128,6 +136,8 @@ export const useGalleryController = (input: {
   })
 
   const selectionState = useSelection()
+  const marqueeSession = useStoreValue(dataView.marquee.store)
+  const marqueeActive = marqueeSession?.ownerViewId === currentView.view.id
   const selectedIdSet = useMemo(
     () => new Set(selectionState.ids),
     [selectionState.ids]
@@ -146,27 +156,25 @@ export const useGalleryController = (input: {
       event.target,
       `[${DATAVIEW_APPEARANCE_ID_ATTR}],${interactiveSelector}`
     ),
-    getTargets: () => (
-      Array.from(
-        input.containerRef.current?.querySelectorAll<HTMLElement>(`[${DATAVIEW_APPEARANCE_ID_ATTR}]`)
-        ?? []
-      )
-        .map(node => {
-          const id = node.getAttribute(DATAVIEW_APPEARANCE_ID_ATTR) as AppearanceId | null
-          return id
-            ? selectionTargetFromElement(id, node)
-            : null
-        })
-        .filter((target): target is NonNullable<typeof target> => Boolean(target))
-    ),
+    getTargets: () => visualTargets.getTargets(currentView.appearances.ids),
     order: () => currentView.appearances.ids,
-    resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(input.containerRef.current)
+    resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(input.containerRef.current),
+    onStart: () => {
+      visualTargets.clearFrozen()
+    },
+    onEnd: () => {
+      visualTargets.clearFrozen()
+    },
+    onCancel: () => {
+      visualTargets.clearFrozen()
+    }
   }), [
     currentView.appearances.ids,
     currentView.view.id,
     dataView.marquee,
     dragging,
-    input.containerRef
+    input.containerRef,
+    visualTargets
   ])
 
   const drag = useCardReorder({
@@ -241,7 +249,9 @@ export const useGalleryController = (input: {
     drag,
     indicator,
     readSectionColorId,
-    select
+    select,
+    marqueeActive,
+    visualTargets
   }), [
     canReorder,
     currentView,
@@ -249,12 +259,14 @@ export const useGalleryController = (input: {
     groupUsesOptionColors,
     indicator,
     input.containerRef,
+    marqueeActive,
     properties,
     readSectionColorId,
     sections,
     select,
     selectedIdSet,
     titleProperty,
+    visualTargets,
     virtual.blocks,
     virtual.layout,
     virtual.measure

@@ -1,4 +1,7 @@
 import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
   useState,
   type CSSProperties
 } from 'react'
@@ -46,16 +49,41 @@ export const Card = (props: {
     viewId: controller.currentView.view.id,
     appearanceId: props.appearanceId
   })
+  const cardNodeRef = useRef<HTMLElement | null>(null)
+  const measureRefRef = useRef(props.measureRef)
+  measureRefRef.current = props.measureRef
+  const marqueeActiveRef = useRef(controller.marqueeActive)
+  marqueeActiveRef.current = controller.marqueeActive
   const sectionColorId = controller.readAppearanceColorId(props.appearanceId)
   const surfaceStyle = resolveOptionCardStyle(
     controller.fillColumnColor
       ? sectionColorId
       : undefined
   )
+  const contentRef = useCallback((node: HTMLElement | null) => {
+    cardNodeRef.current = node
+    measureRefRef.current?.(node)
+  }, [])
+
+  useLayoutEffect(() => {
+    const node = cardNodeRef.current
+    if (!node) {
+      return
+    }
+
+    controller.visualTargets.register(props.appearanceId, node)
+
+    return () => {
+      if (marqueeActiveRef.current) {
+        controller.visualTargets.freeze(props.appearanceId, node)
+      }
+      controller.visualTargets.register(props.appearanceId, null)
+    }
+  }, [controller.visualTargets, props.appearanceId])
 
   return (
     <CardContent
-      ref={props.measureRef}
+      ref={contentRef}
       {...{
         [DATAVIEW_APPEARANCE_ID_ATTR]: props.appearanceId
       }}

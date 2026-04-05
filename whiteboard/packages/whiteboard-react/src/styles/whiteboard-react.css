@@ -10,6 +10,7 @@
   --wb-z-selection: 8;
   --wb-z-toolbar: 9;
   --wb-z-context-menu: 10;
+  --wb-z-presence: 11;
   --wb-ui-canvas: var(--ui-canvas, #fff);
   --wb-ui-surface: var(--ui-surface, #fff);
   --wb-ui-surface-muted: var(--ui-surface-muted, #f9f8f7);
@@ -224,6 +225,67 @@
   background: transparent;
 }
 
+.wb-presence-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--wb-z-presence);
+}
+
+.wb-presence-selection {
+  position: absolute;
+  border: 2px solid;
+  border-radius: 14px;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.5);
+}
+
+.wb-presence-selection-edge {
+  border-style: dashed;
+  border-radius: 20px;
+}
+
+.wb-presence-cursor {
+  position: absolute;
+  transform: translate(-2px, -2px);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.wb-presence-cursor-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--wb-presence-user-color);
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 0.92), 0 12px 28px rgb(15 23 42 / 0.18);
+  flex: 0 0 auto;
+}
+
+.wb-presence-cursor-label {
+  margin-top: -6px;
+  padding: 7px 10px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--wb-presence-user-color) 84%, white 16%);
+  color: white;
+  min-width: 104px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 18px 36px rgb(15 23 42 / 0.18);
+}
+
+.wb-presence-cursor-label strong {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.wb-presence-cursor-label span {
+  font-size: 11px;
+  opacity: 0.86;
+  line-height: 1.15;
+}
+
 .wb-container-scope-outline {
   position: absolute;
   left: 0;
@@ -269,82 +331,6 @@
   z-index: var(--wb-z-toolbar);
 }
 
-.wb-canvas-dock-layer {
-  position: absolute;
-  inset: 0;
-  overflow: visible;
-  pointer-events: none;
-  z-index: var(--wb-z-toolbar);
-}
-
-.wb-canvas-dock {
-  position: absolute;
-  right: 16px;
-  bottom: 16px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px;
-  border-radius: 12px;
-  background: var(--wb-surface-elevated);
-  border: 1px solid rgb(from var(--wb-ui-border-subtle) r g b / 0.4);
-  box-shadow: var(--wb-panel-shadow);
-  pointer-events: auto;
-}
-
-.wb-canvas-dock-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.wb-canvas-dock-divider {
-  width: 1px;
-  align-self: stretch;
-  background: rgb(from var(--wb-ui-border-subtle) r g b / 0.4);
-}
-
-.wb-canvas-dock-button,
-.wb-canvas-dock-zoom {
-  height: 36px;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--wb-text-secondary);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: none;
-  appearance: none;
-}
-
-.wb-canvas-dock-button {
-  width: 36px;
-  padding: 0;
-}
-
-.wb-canvas-dock-zoom {
-  min-width: 58px;
-  padding: 0 10px;
-  font-size: 14px;
-  line-height: 1;
-  font-weight: 500;
-}
-
-.wb-canvas-dock-button:hover,
-.wb-canvas-dock-button:focus-visible,
-.wb-canvas-dock-zoom:hover,
-.wb-canvas-dock-zoom:focus-visible {
-  background: var(--wb-button-hover);
-  color: var(--wb-text-primary);
-}
-
-.wb-canvas-dock-button:disabled,
-.wb-canvas-dock-zoom:disabled {
-  opacity: 0.36;
-  cursor: default;
-}
 
 .wb-left-toolbar {
   position: absolute;

@@ -12,9 +12,9 @@ import { createInsertBridge } from '../bridge/insert'
 import { createPointerBridge } from '../bridge/pointer'
 import { createClipboardHostAdapter } from '../../dom/host/clipboard'
 import { createEditor } from '../editor'
-import type { WhiteboardContextValue } from '../hooks/useWhiteboard'
+import type { WhiteboardServicesContextValue } from '../hooks/useWhiteboard'
 
-type WhiteboardServices = Omit<WhiteboardContextValue, 'config'>
+type WhiteboardServices = WhiteboardServicesContextValue
 
 export const isMirroredDocumentFromEngine = (
   outbound: Document,
@@ -49,7 +49,7 @@ export const useWhiteboardRuntime = ({
 
   onDocumentChangeRef.current = onDocumentChange
 
-  const engineRef = useRef<WhiteboardContextValue['engine'] | null>(null)
+  const engineRef = useRef<WhiteboardServices['engine'] | null>(null)
   if (!engineRef.current) {
     engineRef.current = createEngine({
       registries: coreRegistries,
@@ -63,7 +63,7 @@ export const useWhiteboardRuntime = ({
   }
   const engine = engineRef.current!
 
-  const editorRef = useRef<WhiteboardContextValue['editor'] | null>(null)
+  const editorRef = useRef<WhiteboardServices['editor'] | null>(null)
   if (!editorRef.current) {
     editorRef.current = createEditor({
       engine,
@@ -101,16 +101,9 @@ export const useWhiteboardRuntime = ({
     }
   }
   const services = servicesRef.current!
-  const whiteboard = useMemo(
-    () => ({
-      ...services,
-      config: resolvedConfig
-    }),
-    [resolvedConfig, services]
-  )
 
   return {
-    whiteboard,
+    services,
     inputDocument,
     lastOutboundDocumentRef,
     onDocumentChangeRef

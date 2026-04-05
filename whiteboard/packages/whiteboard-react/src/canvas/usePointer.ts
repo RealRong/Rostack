@@ -1,5 +1,5 @@
-import { useEffect, type RefObject } from 'react'
-import { useWhiteboard } from '../runtime/hooks/useWhiteboard'
+import { useEffect, useRef, type RefObject } from 'react'
+import { useWhiteboardServices } from '../runtime/hooks/useWhiteboard'
 
 export const usePointer = ({
   containerRef,
@@ -8,7 +8,10 @@ export const usePointer = ({
   containerRef: RefObject<HTMLDivElement | null>
   panEnabled: boolean
 }) => {
-  const whiteboard = useWhiteboard()
+  const { pointer } = useWhiteboardServices()
+  const panEnabledRef = useRef(panEnabled)
+
+  panEnabledRef.current = panEnabled
 
   useEffect(() => {
     const container = containerRef.current
@@ -17,22 +20,22 @@ export const usePointer = ({
     }
 
     const onPointerDown = (event: PointerEvent) => {
-      whiteboard.pointer.down({
+      pointer.down({
         container,
         event,
-        panEnabled
+        panEnabled: panEnabledRef.current
       })
     }
 
     const onPointerMove = (event: PointerEvent) => {
-      whiteboard.pointer.move({
+      pointer.move({
         container,
         event
       })
     }
 
     const onPointerLeave = () => {
-      whiteboard.pointer.leave()
+      pointer.leave()
     }
 
     container.addEventListener('pointerdown', onPointerDown, true)
@@ -43,7 +46,7 @@ export const usePointer = ({
       container.removeEventListener('pointerdown', onPointerDown, true)
       container.removeEventListener('pointermove', onPointerMove)
       container.removeEventListener('pointerleave', onPointerLeave)
-      whiteboard.pointer.cancel()
+      pointer.cancel()
     }
-  }, [containerRef, panEnabled, whiteboard])
+  }, [containerRef, pointer])
 }

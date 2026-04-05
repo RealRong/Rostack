@@ -44,6 +44,9 @@ export const Page = (props: PageProps) => {
           <div
             data-page-scroll=""
             className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+            style={{
+              overflowAnchor: 'none'
+            }}
           >
             <div className="flex min-h-full flex-col gap-5 py-6">
               <div

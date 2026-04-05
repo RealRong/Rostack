@@ -3,6 +3,9 @@ export {
   boxFromDomRect,
   selectionTargetFromElement
 } from './dom'
+export {
+  createVisualTargetRegistry
+} from './visualTargets'
 export type {
   MarqueeAdapter,
   MarqueeApi,
@@ -10,3 +13,6 @@ export type {
   MarqueeSessionState,
   SelectionTarget
 } from './types'
+export type {
+  VisualTargetRegistry
+} from './visualTargets'

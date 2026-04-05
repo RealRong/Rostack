@@ -241,6 +241,6 @@ export const startEdgeRouteHandleInteraction = (
     index: result.data.index,
     pointerId: start.pointerId,
     startWorld: start.world,
-    origin: result.data.point
+    origin: target.point
   })
 }

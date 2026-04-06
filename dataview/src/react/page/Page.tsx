@@ -6,7 +6,7 @@ import {
   PageKeyboardHost,
   PageMarqueeHost
 } from '@dataview/react/page/hosts'
-import { PropertyValueEditorHost } from '@dataview/react/runtime/valueEditor'
+import { FieldValueEditorHost } from '@dataview/react/runtime/valueEditor'
 import { PageBody, type PageBodyProps } from './Body'
 import { PageToolbar } from './Toolbar'
 import { PAGE_INLINE_INSET_CSS, PAGE_INLINE_INSET_VALUE } from './layout'
@@ -38,7 +38,7 @@ export const Page = (props: PageProps) => {
             overflowAnchor: 'none'
           }}
         >
-          <div className="flex min-h-full flex-col gap-5 py-6">
+          <div className="flex min-h-full flex-col gap-5 pt-6">
             <div
               className="flex flex-col gap-2"
               style={chromeStyle}
@@ -55,7 +55,7 @@ export const Page = (props: PageProps) => {
         <PageInlineSessionHost />
         <PageMarqueeHost />
         <PageKeyboardHost />
-        <PropertyValueEditorHost />
+        <FieldValueEditorHost />
       </div>
     </OverlayProvider>
   )

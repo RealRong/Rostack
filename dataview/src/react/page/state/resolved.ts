@@ -1,10 +1,10 @@
 import type {
-  GroupDocument,
+  DataDoc,
   ViewId
 } from '@dataview/core/contracts'
 import {
-  getDocumentPropertyById,
-  getDocumentProperties,
+  getDocumentFieldById,
+  getDocumentCustomFields,
   getDocumentViewById
 } from '@dataview/core/document'
 import {
@@ -27,7 +27,7 @@ import {
 } from './activeView'
 
 const resolveQueryBarEntry = (
-  document: GroupDocument,
+  document: DataDoc,
   activeViewId: ViewId | undefined,
   entry: QueryBarEntry | null
 ): QueryBarEntry | null => {
@@ -52,23 +52,23 @@ const resolveQueryBarEntry = (
       : null
   }
 
-  if (!getDocumentPropertyById(document, entry.propertyId)) {
+  if (!getDocumentFieldById(document, entry.fieldId)) {
     return null
   }
 
   return query.filter.rules.some(rule => (
-    typeof rule.property === 'string'
-    && rule.property === entry.propertyId
+    typeof rule.field === 'string'
+    && rule.field === entry.fieldId
   ))
     ? {
         kind: 'filter',
-        propertyId: entry.propertyId
+        fieldId: entry.fieldId
       }
     : null
 }
 
 export const resolveQueryBarState = (
-  document: GroupDocument,
+  document: DataDoc,
   activeViewId: ViewId | undefined,
   queryState: QueryBarState
 ): QueryBarState => {
@@ -86,7 +86,7 @@ export const resolveQueryBarState = (
 }
 
 export const resolveSettingsState = (
-  document: GroupDocument,
+  document: DataDoc,
   activeViewId: ViewId | undefined,
   settings: SettingsState
 ): SettingsState => ({
@@ -94,7 +94,7 @@ export const resolveSettingsState = (
   route: activeViewId
     ? normalizeSettingsRoute(
         settings.route,
-        getDocumentProperties(document),
+        getDocumentCustomFields(document),
         true,
         getDocumentViewById(document, activeViewId)?.type
       )
@@ -102,7 +102,7 @@ export const resolveSettingsState = (
 })
 
 export const resolvePageState = (
-  document: GroupDocument,
+  document: DataDoc,
   page: PageSessionState,
   valueEditorOpen: boolean
 ): ResolvedPageState => {
@@ -121,7 +121,7 @@ export const resolvePageState = (
 }
 
 export const createResolvedPageStateStore = (options: {
-  document: ReadStore<GroupDocument>
+  document: ReadStore<DataDoc>
   page: ReadStore<PageSessionState>
   valueEditorOpen: ReadStore<boolean>
 }) => createDerivedStore<ResolvedPageState>({
@@ -131,4 +131,3 @@ export const createResolvedPageStateStore = (options: {
     read(options.valueEditorOpen)
   )
 })
-

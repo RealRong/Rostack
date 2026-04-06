@@ -1,39 +1,40 @@
 import type {
-  GroupEntityTable,
-  GroupProperty,
-  GroupPropertyConfig,
-  GroupPropertyKind,
-  PropertyId
+  EntityTable,
+  FlatOption,
+  CustomField,
+  CustomFieldKind,
+  StatusOption,
+  CustomFieldId
 } from '../../contracts/state'
 import {
-  GROUP_PROPERTY_KINDS,
-  createKindConfig
+  createDefaultDatePropertyConfig,
+  DATE_DISPLAY_FORMATS,
+  DATE_TIME_FORMATS,
+  DATE_VALUE_KINDS,
+  isValidDateTimeZone
+} from '../kind/date'
+import {
+  CUSTOM_FIELD_KINDS,
+  createDefaultFieldOfKind
 } from '../kind/spec'
+import {
+  createDefaultStatusOptions,
+  STATUS_CATEGORIES
+} from '../kind/status'
 
-export const TITLE_PROPERTY_ID = 'title' as PropertyId
+export const isCustomFieldKind = (value: unknown): value is CustomFieldKind => (
+  typeof value === 'string' && CUSTOM_FIELD_KINDS.includes(value as CustomFieldKind)
+)
 
-export const isGroupPropertyKind = (value: unknown): value is GroupPropertyKind => {
-  return typeof value === 'string' && GROUP_PROPERTY_KINDS.includes(value as GroupPropertyKind)
-}
-
-export const isTitlePropertyId = (value: unknown): value is PropertyId => value === TITLE_PROPERTY_ID
-
-export const createTitleProperty = (name = 'Title'): GroupProperty => ({
-  id: TITLE_PROPERTY_ID,
-  name,
-  kind: 'text',
-  config: defaultPropertyConfig('text')
-})
-
-export const createPropertyKey = (value: string) => value
+export const createFieldKey = (value: string) => value
   .trim()
   .toLowerCase()
   .replace(/[^a-z0-9]+/g, '_')
   .replace(/^_+|_+$/g, '')
 
-export const createUniquePropertyName = (
+export const createUniqueFieldName = (
   baseName: string,
-  properties: readonly Pick<GroupProperty, 'name'>[] | readonly string[]
+  fields: readonly Pick<CustomField, 'name'>[] | readonly string[]
 ) => {
   const normalizedBaseName = baseName.trim()
   if (!normalizedBaseName) {
@@ -41,11 +42,11 @@ export const createUniquePropertyName = (
   }
 
   const nameSet = new Set(
-    properties
-      .map(property => (
-        typeof property === 'string'
-          ? property
-          : property.name
+    fields
+      .map(field => (
+        typeof field === 'string'
+          ? field
+          : field.name
       ).trim())
       .filter(Boolean)
   )
@@ -62,84 +63,186 @@ export const createUniquePropertyName = (
   return `${normalizedBaseName}${suffix}`
 }
 
-export const defaultPropertyConfig = (kind: GroupPropertyKind): GroupPropertyConfig => {
-  return createKindConfig(kind)
-}
-
-export const getPropertyConfig = (property: Pick<GroupProperty, 'kind' | 'config'>): GroupPropertyConfig => {
-  if (property.config?.type === property.kind) {
-    return property.config
+const normalizeOptionColor = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null
   }
 
-  return defaultPropertyConfig(property.kind)
+  const normalized = value.trim()
+  return normalized || null
 }
 
-export const normalizeGroupProperty = (property: GroupProperty): GroupProperty => {
-  const kind = isTitlePropertyId(property.id)
-    ? 'text'
-    : property.kind
-  const next: GroupProperty = {
-    id: property.id,
-    name: property.name,
-    kind,
-    config: structuredClone(
-      isTitlePropertyId(property.id)
-        ? defaultPropertyConfig('text')
-        : getPropertyConfig({
-            kind,
-            config: property.config
-          })
-    )
+const normalizeFlatOption = (
+  option: FlatOption
+): FlatOption | undefined => {
+  const id = option.id?.trim()
+  const name = option.name?.trim()
+  if (!id || !name) {
+    return undefined
   }
 
-  if (property.meta !== undefined) {
-    next.meta = structuredClone(property.meta)
+  return {
+    id,
+    name,
+    color: normalizeOptionColor(option.color)
   }
-
-  return next
 }
 
-export const normalizeGroupProperties = (
-  properties: GroupEntityTable<PropertyId, GroupProperty>
-): GroupEntityTable<PropertyId, GroupProperty> => {
-  const byId = {} as Record<PropertyId, GroupProperty>
-  const order: PropertyId[] = [TITLE_PROPERTY_ID]
-  const seen = new Set<PropertyId>([TITLE_PROPERTY_ID])
+const normalizeStatusOption = (
+  option: StatusOption
+): StatusOption | undefined => {
+  const normalized = normalizeFlatOption(option)
+  if (!normalized) {
+    return undefined
+  }
 
-  byId[TITLE_PROPERTY_ID] = properties.byId[TITLE_PROPERTY_ID]
-    ? normalizeGroupProperty(properties.byId[TITLE_PROPERTY_ID])
-    : createTitleProperty()
+  return {
+    ...normalized,
+    category: STATUS_CATEGORIES.includes(option.category)
+      ? option.category
+      : 'todo'
+  }
+}
 
-  const push = (property: GroupProperty | undefined) => {
-    if (!property) {
+export const createDefaultCustomField = (input: {
+  id: CustomFieldId
+  name: string
+  kind: CustomFieldKind
+  meta?: Record<string, unknown>
+}): CustomField => createDefaultFieldOfKind(input.kind, input)
+
+export const normalizeCustomField = (field: CustomField): CustomField => {
+  const base = {
+    id: field.id,
+    name: field.name,
+    ...(field.meta !== undefined
+      ? { meta: structuredClone(field.meta) }
+      : {})
+  }
+
+  switch (field.kind) {
+    case 'text':
+    case 'email':
+    case 'phone':
+    case 'boolean':
+      return {
+        ...base,
+        kind: field.kind
+      }
+    case 'url':
+      return {
+        ...base,
+        kind: 'url',
+        displayFullUrl: field.displayFullUrl === true
+      }
+    case 'number':
+      return {
+        ...base,
+        kind: 'number',
+        format: ['number', 'integer', 'percent', 'currency'].includes(field.format)
+          ? field.format
+          : 'number',
+        precision: typeof field.precision === 'number' && Number.isInteger(field.precision) && field.precision >= 0
+          ? field.precision
+          : null,
+        currency: typeof field.currency === 'string' && field.currency.trim()
+          ? field.currency.trim()
+          : null,
+        useThousandsSeparator: field.useThousandsSeparator === true
+      }
+    case 'select':
+      return {
+        ...base,
+        kind: 'select',
+        options: field.options
+          .map(normalizeFlatOption)
+          .filter((option): option is FlatOption => Boolean(option))
+      }
+    case 'multiSelect':
+      return {
+        ...base,
+        kind: 'multiSelect',
+        options: field.options
+          .map(normalizeFlatOption)
+          .filter((option): option is FlatOption => Boolean(option))
+      }
+    case 'status': {
+      const options = field.options
+        .map(normalizeStatusOption)
+        .filter((option): option is StatusOption => Boolean(option))
+
+      return {
+        ...base,
+        kind: 'status',
+        options: options.length
+          ? options
+          : createDefaultStatusOptions()
+      }
+    }
+    case 'date': {
+      const defaults = createDefaultDatePropertyConfig()
+
+      return {
+        ...base,
+        kind: 'date',
+        displayDateFormat: DATE_DISPLAY_FORMATS.includes(field.displayDateFormat)
+          ? field.displayDateFormat
+          : defaults.displayDateFormat,
+        displayTimeFormat: DATE_TIME_FORMATS.includes(field.displayTimeFormat)
+          ? field.displayTimeFormat
+          : defaults.displayTimeFormat,
+        defaultValueKind: DATE_VALUE_KINDS.includes(field.defaultValueKind)
+          ? field.defaultValueKind
+          : defaults.defaultValueKind,
+        defaultTimezone: typeof field.defaultTimezone === 'string'
+          ? (isValidDateTimeZone(field.defaultTimezone)
+              ? field.defaultTimezone.trim()
+              : defaults.defaultTimezone)
+          : field.defaultTimezone === null
+            ? null
+            : defaults.defaultTimezone
+      }
+    }
+    case 'asset':
+      return {
+        ...base,
+        kind: 'asset',
+        multiple: field.multiple !== false,
+        accept: ['any', 'image', 'video', 'audio', 'media'].includes(field.accept)
+          ? field.accept
+          : 'any'
+      }
+  }
+}
+
+export const normalizeCustomFields = (
+  fields: EntityTable<CustomFieldId, CustomField>
+): EntityTable<CustomFieldId, CustomField> => {
+  const byId = {} as Record<CustomFieldId, CustomField>
+  const order: CustomFieldId[] = []
+  const seen = new Set<CustomFieldId>()
+
+  const push = (field: CustomField | undefined) => {
+    if (!field) {
       return
     }
 
-    const nextProperty = normalizeGroupProperty(property)
-    if (seen.has(nextProperty.id)) {
+    const nextField = normalizeCustomField(field)
+    if (seen.has(nextField.id)) {
       return
     }
 
-    seen.add(nextProperty.id)
-    byId[nextProperty.id] = nextProperty
-    order.push(nextProperty.id)
+    seen.add(nextField.id)
+    byId[nextField.id] = nextField
+    order.push(nextField.id)
   }
 
-  properties.order.forEach(propertyId => {
-    if (propertyId === TITLE_PROPERTY_ID) {
-      return
-    }
-
-    push(properties.byId[propertyId])
+  fields.order.forEach(fieldId => {
+    push(fields.byId[fieldId])
   })
 
-  Object.keys(properties.byId).forEach(propertyIdKey => {
-    const propertyId = propertyIdKey as PropertyId
-    if (propertyId === TITLE_PROPERTY_ID) {
-      return
-    }
-
-    push(properties.byId[propertyId])
+  Object.keys(fields.byId).forEach(fieldIdKey => {
+    push(fields.byId[fieldIdKey as CustomFieldId])
   })
 
   return {

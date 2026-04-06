@@ -1,4 +1,4 @@
-import type { PropertyId } from '@dataview/core/contracts'
+import type { CustomFieldId } from '@dataview/core/contracts'
 import {
   elementRectIn,
   intersects,
@@ -7,25 +7,25 @@ import {
 } from '@dataview/dom/geometry'
 import type {
   AppearanceId,
-  FieldId
+  CellRef
 } from '@dataview/react/runtime/currentView'
 
 const cellKey = (cell: {
   appearanceId: AppearanceId
-  propertyId: PropertyId
-}) => `${cell.appearanceId}\u0000${cell.propertyId}`
+  fieldId: CustomFieldId
+}) => `${cell.appearanceId}\u0000${cell.fieldId}`
 
 export interface Nodes {
-  column: (propertyId: PropertyId) => HTMLElement | null
+  column: (fieldId: CustomFieldId) => HTMLElement | null
   row: (rowId: AppearanceId) => HTMLElement | null
   cell: (cell: {
     appearanceId: AppearanceId
-    propertyId: PropertyId
+    fieldId: CustomFieldId
   }) => HTMLElement | null
-  columns: (propertyIds: readonly PropertyId[]) => readonly HTMLElement[]
+  columns: (fieldIds: readonly CustomFieldId[]) => readonly HTMLElement[]
   rows: (rowIds: readonly AppearanceId[]) => readonly HTMLElement[]
   registerColumn: (
-    propertyId: PropertyId,
+    fieldId: CustomFieldId,
     node: HTMLElement | null
   ) => void
   registerRow: (
@@ -39,7 +39,7 @@ export interface Nodes {
     box: Pick<Rect, 'left' | 'top' | 'right' | 'bottom'>
   ) => readonly AppearanceId[]
   registerCell: (
-    cell: FieldId,
+    cell: CellRef,
     node: HTMLElement | null
   ) => void
 }
@@ -51,7 +51,7 @@ export const createNodes = (options?: {
     right: number
   } | null
 }): Nodes => {
-  const columnNodes = new Map<PropertyId, HTMLElement>()
+  const columnNodes = new Map<CustomFieldId, HTMLElement>()
   const rowNodes = new Map<AppearanceId, HTMLElement>()
   const rowRects = new Map<AppearanceId, Rect>()
   const cellNodes = new Map<string, HTMLElement>()
@@ -115,24 +115,24 @@ export const createNodes = (options?: {
   }
 
   return {
-    column: propertyId => columnNodes.get(propertyId) ?? null,
+    column: fieldId => columnNodes.get(fieldId) ?? null,
     row: rowId => rowNodes.get(rowId) ?? null,
     cell: cell => cellNodes.get(cellKey(cell)) ?? null,
-    columns: propertyIds => propertyIds.flatMap(propertyId => {
-      const node = columnNodes.get(propertyId)
+    columns: fieldIds => fieldIds.flatMap(fieldId => {
+      const node = columnNodes.get(fieldId)
       return node ? [node] : []
     }),
     rows: rowIds => rowIds.flatMap(rowId => {
       const node = rowNodes.get(rowId)
       return node ? [node] : []
     }),
-    registerColumn: (propertyId, node) => {
+    registerColumn: (fieldId, node) => {
       if (!node) {
-        columnNodes.delete(propertyId)
+        columnNodes.delete(fieldId)
         return
       }
 
-      columnNodes.set(propertyId, node)
+      columnNodes.set(fieldId, node)
     },
     registerRow: (rowId, node) => {
       if (!node) {

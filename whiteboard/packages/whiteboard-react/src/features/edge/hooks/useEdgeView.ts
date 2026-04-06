@@ -60,26 +60,43 @@ export const useSelectedEdgeView = (): SelectedEdgeView | undefined => {
       return undefined
     }
 
+    const isStepManual =
+      entry.edge.type === 'step'
+      && entry.edge.route?.kind === 'manual'
     const routePoints: SelectedEdgeRoutePointView[] = entry.handles.flatMap<SelectedEdgeRoutePointView>((handle) => {
       if (handle.kind === 'anchor') {
+        if (isStepManual) {
+          return []
+        }
+
         return [{
           key: `${edgeId}:anchor:${handle.index}`,
-          kind: 'anchor' as const,
+          kind: 'anchor',
           edgeId,
-          index: handle.index,
           point: handle.point,
-          active: state.activeRouteIndex === handle.index
+          active: state.activeRouteIndex === handle.index,
+          deletable: true,
+          pick: {
+            kind: 'anchor',
+            index: handle.index
+          }
         }]
       }
 
-      if (handle.kind === 'insert') {
+      if (handle.kind === 'segment') {
         return [{
-          key: `${edgeId}:insert:${handle.insertIndex}`,
-          kind: 'insert' as const,
+          key: `${edgeId}:${handle.role}:${handle.segmentIndex}`,
+          kind: handle.role,
           edgeId,
-          insertIndex: handle.insertIndex,
           point: handle.point,
-          active: false as const
+          active: state.activeRouteIndex === handle.insertIndex,
+          deletable: false,
+          pick: {
+            kind: 'segment',
+            insertIndex: handle.insertIndex,
+            segmentIndex: handle.segmentIndex,
+            axis: handle.axis
+          }
         }]
       }
 

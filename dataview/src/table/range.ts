@@ -1,9 +1,9 @@
 import type {
   AppearanceList,
-  FieldId,
-  PropertyList
+  CellRef,
+  FieldList
 } from '@dataview/engine/projection/view'
-import { sameField } from '@dataview/engine/projection/view'
+import { sameCellRef } from '@dataview/engine/projection/view'
 import {
   grid
 } from './grid'
@@ -12,15 +12,15 @@ import {
 } from './gridSelection'
 
 export interface TableCellRange {
-  anchor: FieldId
-  focus: FieldId
+  anchor: CellRef
+  focus: CellRef
 }
 
 export interface TableCellRangeEdges {
   rowStart: number
   rowEnd: number
-  propertyStart: number
-  propertyEnd: number
+  fieldStart: number
+  fieldEnd: number
 }
 
 const from = (
@@ -35,23 +35,23 @@ const from = (
 const equal = (
   left: TableCellRange,
   right: TableCellRange
-) => sameField(left.anchor, right.anchor) && sameField(left.focus, right.focus)
+) => sameCellRef(left.anchor, right.anchor) && sameCellRef(left.focus, right.focus)
 
 const edges = (
   currentRange: TableCellRange,
   appearances: Pick<AppearanceList, 'indexOf'>,
-  properties: Pick<PropertyList, 'indexOf'>
+  fields: Pick<FieldList, 'indexOf'>
 ): TableCellRangeEdges | undefined => {
   const anchorRowIndex = grid.appearanceIndex(appearances, currentRange.anchor.appearanceId)
   const focusRowIndex = grid.appearanceIndex(appearances, currentRange.focus.appearanceId)
-  const anchorPropertyIndex = grid.propertyIndex(properties, currentRange.anchor.propertyId)
-  const focusPropertyIndex = grid.propertyIndex(properties, currentRange.focus.propertyId)
+  const anchorFieldIndex = grid.fieldIndex(fields, currentRange.anchor.fieldId)
+  const focusFieldIndex = grid.fieldIndex(fields, currentRange.focus.fieldId)
 
   if (
     anchorRowIndex === undefined
     || focusRowIndex === undefined
-    || anchorPropertyIndex === undefined
-    || focusPropertyIndex === undefined
+    || anchorFieldIndex === undefined
+    || focusFieldIndex === undefined
   ) {
     return undefined
   }
@@ -59,8 +59,8 @@ const edges = (
   return {
     rowStart: Math.min(anchorRowIndex, focusRowIndex),
     rowEnd: Math.max(anchorRowIndex, focusRowIndex),
-    propertyStart: Math.min(anchorPropertyIndex, focusPropertyIndex),
-    propertyEnd: Math.max(anchorPropertyIndex, focusPropertyIndex)
+    fieldStart: Math.min(anchorFieldIndex, focusFieldIndex),
+    fieldEnd: Math.max(anchorFieldIndex, focusFieldIndex)
   }
 }
 
@@ -69,39 +69,39 @@ const appearances = (
   source: Pick<AppearanceList, 'indexOf' | 'ids'>
 ) => grid.appearancesBetween(source, currentRange.anchor.appearanceId, currentRange.focus.appearanceId)
 
-const properties = (
+const fields = (
   currentRange: TableCellRange,
-  source: Pick<PropertyList, 'indexOf' | 'ids'>
-) => grid.propertiesBetween(source, currentRange.anchor.propertyId, currentRange.focus.propertyId)
+  source: Pick<FieldList, 'indexOf' | 'ids'>
+) => grid.fieldsBetween(source, currentRange.anchor.fieldId, currentRange.focus.fieldId)
 
 const hasCell = (
   currentRange: TableCellRange,
   appearancesSource: Pick<AppearanceList, 'indexOf'>,
-  propertiesSource: Pick<PropertyList, 'indexOf'>,
-  cell: FieldId
+  propertiesSource: Pick<FieldList, 'indexOf'>,
+  cell: CellRef
 ) => {
   const currentEdges = edges(currentRange, appearancesSource, propertiesSource)
   const rowIndex = grid.appearanceIndex(appearancesSource, cell.appearanceId)
-  const propertyIndex = grid.propertyIndex(propertiesSource, cell.propertyId)
+  const fieldIndex = grid.fieldIndex(propertiesSource, cell.fieldId)
   return currentEdges !== undefined
     && rowIndex !== undefined
-    && propertyIndex !== undefined
+    && fieldIndex !== undefined
     && rowIndex >= currentEdges.rowStart
     && rowIndex <= currentEdges.rowEnd
-    && propertyIndex >= currentEdges.propertyStart
-    && propertyIndex <= currentEdges.propertyEnd
+    && fieldIndex >= currentEdges.fieldStart
+    && fieldIndex <= currentEdges.fieldEnd
 }
 
 const isSingle = (
   currentRange: TableCellRange,
   appearancesSource: Pick<AppearanceList, 'indexOf'>,
-  propertiesSource: Pick<PropertyList, 'indexOf'>
+  propertiesSource: Pick<FieldList, 'indexOf'>
 ) => {
   const currentEdges = edges(currentRange, appearancesSource, propertiesSource)
   return Boolean(
     currentEdges
     && currentEdges.rowStart === currentEdges.rowEnd
-    && currentEdges.propertyStart === currentEdges.propertyEnd
+    && currentEdges.fieldStart === currentEdges.fieldEnd
   )
 }
 
@@ -110,7 +110,7 @@ export const range = {
   equal,
   edges,
   appearances,
-  properties,
+  fields,
   hasCell,
   isSingle
 } as const

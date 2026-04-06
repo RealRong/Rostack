@@ -43,6 +43,16 @@ const createRoutePatch = (
         }
 })
 
+export const setRoutePoints = (
+  edge: Edge,
+  points?: readonly Point[]
+): EdgePatch => createRoutePatch(
+  edge,
+  points
+    ? [...points]
+    : undefined
+)
+
 const validateEdgeEnd = (
   doc: Document,
   end: EdgeInput['source'] | undefined,

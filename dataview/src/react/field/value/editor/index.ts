@@ -1,6 +1,6 @@
-export { PropertyValueEditor } from './PropertyValueEditor'
+export { FieldValueEditor } from './FieldValueEditor'
 export type {
-  PropertyValueDraftEditorProps,
-  PropertyValueEditorHandle,
-  PropertyValueEditorProps
+  FieldValueDraftEditorProps,
+  FieldValueEditorHandle,
+  FieldValueEditorProps
 } from './contracts'

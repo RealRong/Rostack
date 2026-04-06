@@ -1,13 +1,13 @@
-import type { GroupProperty } from '@dataview/core/contracts'
+import type { CustomField } from '@dataview/core/contracts'
 import {
   getKind,
-  getPropertyKind
+  getFieldKind
 } from '../kind'
 
-export const comparePropertyValues = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+export const compareFieldValues = (
+  field: CustomField | undefined,
   left: unknown,
   right: unknown
 ): number => (
-  (getPropertyKind(property) ?? getKind('text')).compare(property, left, right)
+  (getFieldKind(field) ?? getKind('text')).compare(field, left, right)
 )

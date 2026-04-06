@@ -1,36 +1,38 @@
 import type {
-  GroupAggregateSpec,
-  GroupDocument,
-  GroupFilter,
-  GroupGroupBy,
-  GroupSearch,
-  GroupSorter,
-  GroupView,
-  GroupViewQuery,
+  AggregateSpec,
+  DataDoc,
+  Filter,
+  Grouping,
+  Search,
+  Sorter,
+  View,
+  ViewQuery,
   RecordId
 } from '@dataview/core/contracts/state'
-import type { GroupGalleryOptions } from '@dataview/core/contracts/gallery'
-import type { GroupKanbanOptions } from '@dataview/core/contracts/kanban'
-import type { GroupTableOptions, GroupViewDisplayOptions } from '@dataview/core/contracts/viewOptions'
-import type { GroupBaseOperation } from '@dataview/core/contracts/operations'
+import type { GalleryOptions } from '@dataview/core/contracts/gallery'
+import type { KanbanOptions } from '@dataview/core/contracts/kanban'
+import type { TableOptions, ViewDisplayOptions } from '@dataview/core/contracts/viewOptions'
+import type { BaseOperation } from '@dataview/core/contracts/operations'
 import type { IndexedCommand } from '../context'
 import {
-  getDocumentProperties,
-  getDocumentPropertyById,
+  getDocumentFieldById,
+  getDocumentFields,
   getDocumentViewById
 } from '@dataview/core/document'
 import {
-  getPropertyFilterOps,
-  getPropertyGroupMeta,
+  getFieldFilterOps,
+  getFieldGroupMeta
+} from '@dataview/core/field'
+import {
   isGroupBucketSort
-} from '@dataview/core/property'
-import { normalizeGroupViewQuery, isSameViewQuery } from '@dataview/core/query'
+} from '@dataview/core/field'
+import { normalizeViewQuery, isSameViewQuery } from '@dataview/core/query'
 import { orderedViewRecords } from '@dataview/core/view'
 import { reorderRecordBlockIds } from '@dataview/core/view/order'
-import { createDefaultGroupViewOptions } from '@dataview/core/view/options'
-import { cloneGroupViewOptions } from '@dataview/core/view/shared'
+import { createDefaultViewOptions } from '@dataview/core/view/options'
+import { cloneViewOptions } from '@dataview/core/view/shared'
 import { createViewId } from '../entityId'
-import { createIssue, hasValidationErrors, type GroupValidationIssue } from '../issues'
+import { createIssue, hasValidationErrors, type ValidationIssue } from '../issues'
 import {
   deriveCommand,
   hasRecord,
@@ -46,13 +48,13 @@ const sameRecordOrder = (left: readonly RecordId[], right: readonly RecordId[]) 
   left.length === right.length && left.every((recordId, index) => recordId === right[index])
 )
 
-const samePropertyIds = (left: readonly string[], right: readonly string[]) => (
+const sameFieldIds = (left: readonly string[], right: readonly string[]) => (
   left.length === right.length && left.every((value, index) => value === right[index])
 )
 
 const sameWidths = (
-  left: GroupTableOptions['widths'],
-  right: GroupTableOptions['widths']
+  left: TableOptions['widths'],
+  right: TableOptions['widths']
 ) => {
   const leftKeys = Object.keys(left)
   const rightKeys = Object.keys(right)
@@ -65,32 +67,32 @@ const sameWidths = (
 }
 
 const sameAggregates = (
-  left: readonly GroupAggregateSpec[],
-  right: readonly GroupAggregateSpec[]
+  left: readonly AggregateSpec[],
+  right: readonly AggregateSpec[]
 ) => JSON.stringify(left) === JSON.stringify(right)
 
-const validatePropertyIdList = (
-  document: GroupDocument,
+const validateFieldIdList = (
+  document: DataDoc,
   command: IndexedCommand,
-  propertyIds: readonly unknown[],
+  fieldIds: readonly unknown[],
   path: string
 ) => {
-  const issues: GroupValidationIssue[] = []
+  const issues: ValidationIssue[] = []
   const seen = new Set<string>()
 
-  propertyIds.forEach((propertyId, index) => {
-    if (!isNonEmptyString(propertyId)) {
-      issues.push(createIssue(command, 'error', 'view.invalidProjection', 'property id must be a non-empty string', `${path}.${index}`))
+  fieldIds.forEach((fieldId, index) => {
+    if (!isNonEmptyString(fieldId)) {
+      issues.push(createIssue(command, 'error', 'view.invalidProjection', 'field id must be a non-empty string', `${path}.${index}`))
       return
     }
-    if (seen.has(propertyId)) {
-      issues.push(createIssue(command, 'error', 'view.invalidProjection', `Duplicate property id: ${propertyId}`, `${path}.${index}`))
+    if (seen.has(fieldId)) {
+      issues.push(createIssue(command, 'error', 'view.invalidProjection', `Duplicate field id: ${fieldId}`, `${path}.${index}`))
       return
     }
-    seen.add(propertyId)
+    seen.add(fieldId)
 
-    if (!getDocumentPropertyById(document, propertyId)) {
-      issues.push(createIssue(command, 'error', 'field.notFound', `Unknown property: ${propertyId}`, `${path}.${index}`))
+    if (!getDocumentFieldById(document, fieldId)) {
+      issues.push(createIssue(command, 'error', 'field.notFound', `Unknown field: ${fieldId}`, `${path}.${index}`))
     }
   })
 
@@ -98,41 +100,41 @@ const validatePropertyIdList = (
 }
 
 const validateFilter = (
-  document: GroupDocument,
+  document: DataDoc,
   command: IndexedCommand,
-  filter?: GroupFilter,
+  filter?: Filter,
   path = 'filter'
 ) => {
   if (!filter) {
     return []
   }
 
-  const issues: GroupValidationIssue[] = []
+  const issues: ValidationIssue[] = []
   if (!filter.rules.length) {
     issues.push(createIssue(command, 'warning', 'view.invalidProjection', 'Filter rules are empty', `${path}.rules`))
   }
 
   filter.rules.forEach((rule, index) => {
-    if (!isNonEmptyString(rule.property)) {
-      issues.push(createIssue(command, 'error', 'view.invalidProjection', 'Filter property must be a non-empty string', `${path}.rules.${index}.property`))
+    if (!isNonEmptyString(rule.field)) {
+      issues.push(createIssue(command, 'error', 'view.invalidProjection', 'Filter field must be a non-empty string', `${path}.rules.${index}.field`))
     }
     if (!isNonEmptyString(rule.op)) {
       issues.push(createIssue(command, 'error', 'view.invalidProjection', 'Filter operator must be a non-empty string', `${path}.rules.${index}.op`))
       return
     }
 
-    const property = getDocumentPropertyById(document, rule.property)
-    if (!property) {
-      issues.push(createIssue(command, 'error', 'field.notFound', `Unknown property: ${rule.property}`, `${path}.rules.${index}.property`))
+    const field = getDocumentFieldById(document, rule.field)
+    if (!field) {
+      issues.push(createIssue(command, 'error', 'field.notFound', `Unknown field: ${rule.field}`, `${path}.rules.${index}.field`))
       return
     }
 
-    if (!getPropertyFilterOps(property).includes(rule.op)) {
+    if (!getFieldFilterOps(field).includes(rule.op)) {
       issues.push(createIssue(
         command,
         'error',
         'view.invalidProjection',
-        `Filter operator ${rule.op} is invalid for ${property.kind} fields`,
+        `Filter operator ${rule.op} is invalid for ${field.kind} fields`,
         `${path}.rules.${index}.op`
       ))
     }
@@ -142,44 +144,44 @@ const validateFilter = (
 }
 
 const validateSearch = (
-  document: GroupDocument,
+  document: DataDoc,
   command: IndexedCommand,
-  search?: GroupSearch,
+  search?: Search,
   path = 'search'
 ) => {
   if (!search) {
     return []
   }
 
-  const issues: GroupValidationIssue[] = []
+  const issues: ValidationIssue[] = []
   if (typeof search.query !== 'string') {
     issues.push(createIssue(command, 'error', 'view.invalidProjection', 'Search query must be a string', `${path}.query`))
   }
 
-  if (search.properties) {
-    issues.push(...validatePropertyIdList(document, command, search.properties, `${path}.properties`))
+  if (search.fields) {
+    issues.push(...validateFieldIdList(document, command, search.fields, `${path}.fields`))
   }
 
   return issues
 }
 
-const validateSorters = (document: GroupDocument, command: IndexedCommand, sorters?: GroupSorter[], path = 'sorters') => {
+const validateSorters = (document: DataDoc, command: IndexedCommand, sorters?: Sorter[], path = 'sorters') => {
   if (!sorters) {
     return []
   }
 
-  const issues: GroupValidationIssue[] = []
+  const issues: ValidationIssue[] = []
   const seen = new Set<string>()
 
   sorters.forEach((sorter, index) => {
-    if (!isNonEmptyString(sorter.property)) {
-      issues.push(createIssue(command, 'error', 'view.invalidProjection', 'Sorter property must be a non-empty string', `${path}.${index}.property`))
-    } else if (!getDocumentPropertyById(document, sorter.property)) {
-      issues.push(createIssue(command, 'error', 'field.notFound', `Unknown property: ${sorter.property}`, `${path}.${index}.property`))
-    } else if (seen.has(sorter.property)) {
-      issues.push(createIssue(command, 'error', 'view.invalidProjection', `Duplicate sorter property: ${sorter.property}`, `${path}.${index}.property`))
+    if (!isNonEmptyString(sorter.field)) {
+      issues.push(createIssue(command, 'error', 'view.invalidProjection', 'Sorter field must be a non-empty string', `${path}.${index}.field`))
+    } else if (!getDocumentFieldById(document, sorter.field)) {
+      issues.push(createIssue(command, 'error', 'field.notFound', `Unknown field: ${sorter.field}`, `${path}.${index}.field`))
+    } else if (seen.has(sorter.field)) {
+      issues.push(createIssue(command, 'error', 'view.invalidProjection', `Duplicate sorter field: ${sorter.field}`, `${path}.${index}.field`))
     } else {
-      seen.add(sorter.property)
+      seen.add(sorter.field)
     }
 
     if (sorter.direction !== 'asc' && sorter.direction !== 'desc') {
@@ -191,42 +193,42 @@ const validateSorters = (document: GroupDocument, command: IndexedCommand, sorte
 }
 
 const validateGroupBy = (
-  document: GroupDocument,
+  document: DataDoc,
   command: IndexedCommand,
-  groupBy?: GroupGroupBy,
+  groupBy?: Grouping,
   path = 'query.group'
 ) => {
   if (!groupBy) {
     return []
   }
 
-  const issues = isNonEmptyString(groupBy.property)
+  const issues = isNonEmptyString(groupBy.field)
     ? []
-    : [createIssue(command, 'error', 'view.invalidProjection', 'group property must be a non-empty string', `${path}.property`)]
+    : [createIssue(command, 'error', 'view.invalidProjection', 'group field must be a non-empty string', `${path}.field`)]
 
-  const property = isNonEmptyString(groupBy.property)
-    ? getDocumentPropertyById(document, groupBy.property)
+  const field = isNonEmptyString(groupBy.field)
+    ? getDocumentFieldById(document, groupBy.field)
     : undefined
-  const propertyGroupMeta = property
-    ? getPropertyGroupMeta(property)
+  const fieldGroupMeta = field
+    ? getFieldGroupMeta(field)
     : undefined
-  const propertyGroupMetaForMode = property
-    ? getPropertyGroupMeta(property, { mode: groupBy.mode })
+  const fieldGroupMetaForMode = field
+    ? getFieldGroupMeta(field, { mode: groupBy.mode })
     : undefined
 
-  if (!property) {
-    issues.push(createIssue(command, 'error', 'field.notFound', `Unknown property: ${groupBy.property}`, `${path}.property`))
+  if (!field) {
+    issues.push(createIssue(command, 'error', 'field.notFound', `Unknown field: ${groupBy.field}`, `${path}.field`))
   }
 
   if (!isNonEmptyString(groupBy.mode)) {
     issues.push(createIssue(command, 'error', 'view.invalidProjection', 'group mode must be a non-empty string', `${path}.mode`))
-  } else if (property && (!propertyGroupMeta?.modes.length || !propertyGroupMeta.modes.includes(groupBy.mode))) {
+  } else if (field && (!fieldGroupMeta?.modes.length || !fieldGroupMeta.modes.includes(groupBy.mode))) {
     issues.push(createIssue(command, 'error', 'view.invalidProjection', 'group mode is invalid for this field', `${path}.mode`))
   }
 
   if (!isGroupBucketSort(groupBy.bucketSort)) {
     issues.push(createIssue(command, 'error', 'view.invalidProjection', 'group bucketSort is invalid', `${path}.bucketSort`))
-  } else if (property && !propertyGroupMetaForMode?.sorts.includes(groupBy.bucketSort)) {
+  } else if (field && !fieldGroupMetaForMode?.sorts.includes(groupBy.bucketSort)) {
     issues.push(createIssue(command, 'error', 'view.invalidProjection', 'group bucketSort is invalid for this field', `${path}.bucketSort`))
   }
 
@@ -235,7 +237,7 @@ const validateGroupBy = (
       || !Number.isFinite(groupBy.bucketInterval)
       || groupBy.bucketInterval <= 0) {
       issues.push(createIssue(command, 'error', 'view.invalidProjection', 'group bucketInterval must be a positive finite number', `${path}.bucketInterval`))
-    } else if (property && !propertyGroupMetaForMode?.supportsInterval) {
+    } else if (field && !fieldGroupMetaForMode?.supportsInterval) {
       issues.push(createIssue(command, 'error', 'view.invalidProjection', 'group bucketInterval is invalid for this field', `${path}.bucketInterval`))
     }
   }
@@ -244,30 +246,30 @@ const validateGroupBy = (
 }
 
 const validateDisplayOptions = (
-  document: GroupDocument,
+  document: DataDoc,
   command: IndexedCommand,
-  display: GroupViewDisplayOptions,
+  display: ViewDisplayOptions,
   path: string
-) => validatePropertyIdList(document, command, display.propertyIds, `${path}.propertyIds`)
+) => validateFieldIdList(document, command, display.fieldIds, `${path}.fieldIds`)
 
 const validateTableOptions = (
-  document: GroupDocument,
+  document: DataDoc,
   command: IndexedCommand,
-  table: GroupTableOptions,
+  table: TableOptions,
   path: string
 ) => {
-  const issues: GroupValidationIssue[] = []
+  const issues: ValidationIssue[] = []
 
-  Object.entries(table.widths).forEach(([propertyId, width]) => {
-    if (!isNonEmptyString(propertyId)) {
-      issues.push(createIssue(command, 'error', 'view.invalidProjection', 'width property id must be a non-empty string', `${path}.widths`))
+  Object.entries(table.widths).forEach(([fieldId, width]) => {
+    if (!isNonEmptyString(fieldId)) {
+      issues.push(createIssue(command, 'error', 'view.invalidProjection', 'width field id must be a non-empty string', `${path}.widths`))
       return
     }
-    if (!getDocumentPropertyById(document, propertyId)) {
-      issues.push(createIssue(command, 'error', 'field.notFound', `Unknown property: ${propertyId}`, `${path}.widths.${propertyId}`))
+    if (!getDocumentFieldById(document, fieldId)) {
+      issues.push(createIssue(command, 'error', 'field.notFound', `Unknown field: ${fieldId}`, `${path}.widths.${fieldId}`))
     }
     if (typeof width !== 'number' || !Number.isFinite(width) || width <= 0) {
-      issues.push(createIssue(command, 'error', 'view.invalidProjection', 'column width must be a positive finite number', `${path}.widths.${propertyId}`))
+      issues.push(createIssue(command, 'error', 'view.invalidProjection', 'column width must be a positive finite number', `${path}.widths.${fieldId}`))
     }
   })
 
@@ -280,13 +282,13 @@ const validateTableOptions = (
 
 const validateGalleryOptions = (
   command: IndexedCommand,
-  gallery: GroupGalleryOptions,
+  gallery: GalleryOptions,
   path: string
 ) => {
-  const issues: GroupValidationIssue[] = []
+  const issues: ValidationIssue[] = []
 
-  if (typeof gallery.showPropertyLabels !== 'boolean') {
-    issues.push(createIssue(command, 'error', 'view.invalidProjection', 'gallery.showPropertyLabels must be boolean', `${path}.showPropertyLabels`))
+  if (typeof gallery.showFieldLabels !== 'boolean') {
+    issues.push(createIssue(command, 'error', 'view.invalidProjection', 'gallery.showFieldLabels must be boolean', `${path}.showFieldLabels`))
   }
 
   if (!['sm', 'md', 'lg'].includes(gallery.cardSize)) {
@@ -298,10 +300,10 @@ const validateGalleryOptions = (
 
 const validateKanbanOptions = (
   command: IndexedCommand,
-  kanban: GroupKanbanOptions,
+  kanban: KanbanOptions,
   path: string
 ) => {
-  const issues: GroupValidationIssue[] = []
+  const issues: ValidationIssue[] = []
 
   if (kanban.newRecordPosition !== 'start' && kanban.newRecordPosition !== 'end') {
     issues.push(createIssue(command, 'error', 'view.invalidProjection', 'kanban.newRecordPosition is invalid', `${path}.newRecordPosition`))
@@ -315,9 +317,9 @@ const validateKanbanOptions = (
 }
 
 const validateViewOptions = (
-  document: GroupDocument,
+  document: DataDoc,
   command: IndexedCommand,
-  options: GroupView['options'],
+  options: View['options'],
   path = 'options'
 ) => [
   ...validateDisplayOptions(document, command, options.display, `${path}.display`),
@@ -327,12 +329,12 @@ const validateViewOptions = (
 ]
 
 const validateOrders = (
-  document: GroupDocument,
+  document: DataDoc,
   command: IndexedCommand,
   orders: readonly RecordId[],
   path: string
 ) => {
-  const issues: GroupValidationIssue[] = []
+  const issues: ValidationIssue[] = []
   const seen = new Set<RecordId>()
 
   orders.forEach((recordId, index) => {
@@ -354,8 +356,8 @@ const validateOrders = (
   return issues
 }
 
-const validateAggregateSpec = (command: IndexedCommand, spec: GroupAggregateSpec, path: string) => {
-  const issues: GroupValidationIssue[] = []
+const validateAggregateSpec = (command: IndexedCommand, spec: AggregateSpec, path: string) => {
+  const issues: ValidationIssue[] = []
   if (!isNonEmptyString(spec.key)) {
     issues.push(createIssue(command, 'error', 'view.invalidProjection', 'Aggregate key must be a non-empty string', `${path}.key`))
   }
@@ -371,12 +373,12 @@ const validateAggregateSpec = (command: IndexedCommand, spec: GroupAggregateSpec
   return issues
 }
 
-const validateAggregates = (command: IndexedCommand, aggregates?: GroupAggregateSpec[], path = 'aggregates') => {
+const validateAggregates = (command: IndexedCommand, aggregates?: AggregateSpec[], path = 'aggregates') => {
   if (!aggregates) {
     return []
   }
 
-  const issues: GroupValidationIssue[] = []
+  const issues: ValidationIssue[] = []
   aggregates.forEach((spec, index) => {
     issues.push(...validateAggregateSpec(command, spec, `${path}.${index}`))
   })
@@ -384,9 +386,9 @@ const validateAggregates = (command: IndexedCommand, aggregates?: GroupAggregate
 }
 
 const validateViewQuery = (
-  document: GroupDocument,
+  document: DataDoc,
   command: IndexedCommand,
-  query: GroupViewQuery,
+  query: ViewQuery,
   path = 'query'
 ) => [
   ...validateFilter(document, command, query.filter, `${path}.filter`),
@@ -395,8 +397,8 @@ const validateViewQuery = (
   ...validateGroupBy(document, command, query.group, `${path}.group`)
 ]
 
-const validateViewPut = (document: GroupDocument, command: Extract<IndexedCommand, { type: 'view.put' }>) => {
-  const issues: GroupValidationIssue[] = []
+const validateViewPut = (document: DataDoc, command: Extract<IndexedCommand, { type: 'view.put' }>) => {
+  const issues: ValidationIssue[] = []
   if (!isNonEmptyString(command.view.id)) {
     issues.push(createIssue(command, 'error', 'view.invalid', 'View id must be a non-empty string', 'view.id'))
   }
@@ -415,15 +417,15 @@ const validateViewPut = (document: GroupDocument, command: Extract<IndexedComman
   return issues
 }
 
-const buildViewPutOperation = (view: GroupView): GroupBaseOperation => ({
+const buildViewPutOperation = (view: View): BaseOperation => ({
   type: 'document.view.put',
   view
 })
 
 const resolveViewUpdate = (
-  document: GroupDocument,
+  document: DataDoc,
   viewId: string,
-  updater: (view: GroupView) => GroupView
+  updater: (view: View) => View
 ) => {
   const view = getDocumentViewById(document, viewId)
   if (!view) {
@@ -434,7 +436,7 @@ const resolveViewUpdate = (
   return nextView === view ? [] : [buildViewPutOperation(nextView)]
 }
 
-const validateOrderMove = (document: GroupDocument, command: Extract<IndexedCommand, { type: 'view.order.move' }>) => {
+const validateOrderMove = (document: DataDoc, command: Extract<IndexedCommand, { type: 'view.order.move' }>) => {
   const issues = [
     ...validateBatchItems(command, command.recordIds, 'recordIds')
   ]
@@ -465,12 +467,12 @@ const validateOrderMove = (document: GroupDocument, command: Extract<IndexedComm
   return issues
 }
 
-const validateOrderSet = (document: GroupDocument, command: Extract<IndexedCommand, { type: 'view.order.set' }>) => {
+const validateOrderSet = (document: DataDoc, command: Extract<IndexedCommand, { type: 'view.order.set' }>) => {
   return validateOrders(document, command, command.orders, 'orders')
 }
 
 const planOrderMove = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.order.move' }>
 ) => resolveViewUpdate(document, command.viewId, view => {
   const currentOrder = orderedViewRecords(document, view.id).map(record => record.id)
@@ -496,7 +498,7 @@ const planOrderMove = (
 })
 
 const planOrderClear = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.order.clear' }>
 ) => resolveViewUpdate(document, command.viewId, view => (
   view.orders.length
@@ -508,7 +510,7 @@ const planOrderClear = (
 ))
 
 const planOrderSet = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.order.set' }>
 ) => resolveViewUpdate(document, command.viewId, view => {
   if (sameRecordOrder(command.orders, view.orders)) {
@@ -522,7 +524,7 @@ const planOrderSet = (
 })
 
 export const resolveViewPutCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.put' }>
 ) => {
   return resolveCommandResult(
@@ -532,11 +534,11 @@ export const resolveViewPutCommand = (
 }
 
 export const resolveViewCreateCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.create' }>
 ) => {
   const explicitViewId = command.input.id?.trim()
-  const issues: GroupValidationIssue[] = []
+  const issues: ValidationIssue[] = []
   if (command.input.id !== undefined && !explicitViewId) {
     issues.push(createIssue(command, 'error', 'view.invalid', 'View id must be a non-empty string', 'input.id'))
   }
@@ -547,15 +549,15 @@ export const resolveViewCreateCommand = (
     return resolveCommandResult(issues)
   }
 
-  const view: GroupView = {
+  const view: View = {
     id: explicitViewId || createViewId(),
     name: command.input.name,
     type: command.input.type,
-    query: normalizeGroupViewQuery(command.input.query),
+    query: normalizeViewQuery(command.input.query),
     aggregates: structuredClone(command.input.aggregates ?? []),
     options: command.input.options
-      ? cloneGroupViewOptions(command.input.options)
-      : createDefaultGroupViewOptions(command.input.type, getDocumentProperties(document)),
+      ? cloneViewOptions(command.input.options)
+      : createDefaultViewOptions(command.input.type, getDocumentFields(document)),
     orders: command.input.orders ? [...command.input.orders] : []
   }
 
@@ -565,7 +567,7 @@ export const resolveViewCreateCommand = (
 }
 
 export const resolveViewDuplicateCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.duplicate' }>
 ) => {
   const issues = validateViewExists(document, command, command.viewId)
@@ -588,7 +590,7 @@ export const resolveViewDuplicateCommand = (
 }
 
 export const resolveViewRenameCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.rename' }>
 ) => {
   const issues = validateViewExists(document, command, command.viewId)
@@ -610,7 +612,7 @@ export const resolveViewRenameCommand = (
 }
 
 export const resolveViewTypeSetCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.type.set' }>
 ) => {
   const issues = validateViewExists(document, command, command.viewId)
@@ -632,7 +634,7 @@ export const resolveViewTypeSetCommand = (
 }
 
 export const resolveViewQuerySetCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.query.set' }>
 ) => {
   const issues = [
@@ -648,13 +650,13 @@ export const resolveViewQuerySetCommand = (
       ? view
       : {
           ...view,
-          query: normalizeGroupViewQuery(command.query)
+          query: normalizeViewQuery(command.query)
         }
   )))
 }
 
 export const resolveViewAggregatesSetCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.aggregates.set' }>
 ) => {
   const issues = [
@@ -675,27 +677,27 @@ export const resolveViewAggregatesSetCommand = (
   )))
 }
 
-export const resolveViewDisplaySetPropertyIdsCommand = (
-  document: GroupDocument,
-  command: Extract<IndexedCommand, { type: 'view.display.setPropertyIds' }>
+export const resolveViewDisplaySetFieldIdsCommand = (
+  document: DataDoc,
+  command: Extract<IndexedCommand, { type: 'view.display.setFieldIds' }>
 ) => {
   const issues = [
     ...validateViewExists(document, command, command.viewId),
-    ...validatePropertyIdList(document, command, command.propertyIds, 'propertyIds')
+    ...validateFieldIdList(document, command, command.fieldIds, 'fieldIds')
   ]
   if (hasValidationErrors(issues)) {
     return resolveCommandResult(issues)
   }
 
   return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => (
-    samePropertyIds(view.options.display.propertyIds, command.propertyIds)
+    sameFieldIds(view.options.display.fieldIds, command.fieldIds)
       ? view
       : {
           ...view,
           options: {
-            ...cloneGroupViewOptions(view.options),
+            ...cloneViewOptions(view.options),
             display: {
-              propertyIds: [...command.propertyIds]
+              fieldIds: [...command.fieldIds]
             }
           }
         }
@@ -703,7 +705,7 @@ export const resolveViewDisplaySetPropertyIdsCommand = (
 }
 
 export const resolveViewTableSetWidthsCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.table.setWidths' }>
 ) => {
   const view = getDocumentViewById(document, command.viewId)
@@ -726,7 +728,7 @@ export const resolveViewTableSetWidthsCommand = (
       : {
           ...currentView,
           options: {
-            ...cloneGroupViewOptions(currentView.options),
+            ...cloneViewOptions(currentView.options),
             table: {
               ...currentView.options.table,
               widths: {
@@ -739,7 +741,7 @@ export const resolveViewTableSetWidthsCommand = (
 }
 
 export const resolveViewTableSetShowVerticalLinesCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.table.setShowVerticalLines' }>
 ) => {
   const issues = [
@@ -758,7 +760,7 @@ export const resolveViewTableSetShowVerticalLinesCommand = (
       : {
           ...view,
           options: {
-            ...cloneGroupViewOptions(view.options),
+            ...cloneViewOptions(view.options),
             table: {
               ...view.options.table,
               showVerticalLines: command.value
@@ -769,27 +771,27 @@ export const resolveViewTableSetShowVerticalLinesCommand = (
 }
 
 export const resolveViewGallerySetShowPropertyLabelsCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.gallery.setShowPropertyLabels' }>
 ) => {
   const issues = validateViewExists(document, command, command.viewId)
   if (typeof command.value !== 'boolean') {
-    issues.push(createIssue(command, 'error', 'view.invalidProjection', 'gallery.showPropertyLabels must be boolean', 'value'))
+    issues.push(createIssue(command, 'error', 'view.invalidProjection', 'gallery.showFieldLabels must be boolean', 'value'))
   }
   if (hasValidationErrors(issues)) {
     return resolveCommandResult(issues)
   }
 
   return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => (
-    view.options.gallery.showPropertyLabels === command.value
+    view.options.gallery.showFieldLabels === command.value
       ? view
       : {
           ...view,
           options: {
-            ...cloneGroupViewOptions(view.options),
+            ...cloneViewOptions(view.options),
             gallery: {
               ...view.options.gallery,
-              showPropertyLabels: command.value
+              showFieldLabels: command.value
             }
           }
         }
@@ -797,7 +799,7 @@ export const resolveViewGallerySetShowPropertyLabelsCommand = (
 }
 
 export const resolveViewGallerySetCardSizeCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.gallery.setCardSize' }>
 ) => {
   const issues = validateViewExists(document, command, command.viewId)
@@ -814,7 +816,7 @@ export const resolveViewGallerySetCardSizeCommand = (
       : {
           ...view,
           options: {
-            ...cloneGroupViewOptions(view.options),
+            ...cloneViewOptions(view.options),
             gallery: {
               ...view.options.gallery,
               cardSize: command.value
@@ -825,7 +827,7 @@ export const resolveViewGallerySetCardSizeCommand = (
 }
 
 export const resolveViewKanbanSetNewRecordPositionCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.kanban.setNewRecordPosition' }>
 ) => {
   const issues = validateViewExists(document, command, command.viewId)
@@ -842,7 +844,7 @@ export const resolveViewKanbanSetNewRecordPositionCommand = (
       : {
           ...view,
           options: {
-            ...cloneGroupViewOptions(view.options),
+            ...cloneViewOptions(view.options),
             kanban: {
               ...view.options.kanban,
               newRecordPosition: command.value
@@ -853,7 +855,7 @@ export const resolveViewKanbanSetNewRecordPositionCommand = (
 }
 
 export const resolveViewKanbanSetFillColumnColorCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.kanban.setFillColumnColor' }>
 ) => {
   const issues = [
@@ -872,7 +874,7 @@ export const resolveViewKanbanSetFillColumnColorCommand = (
       : {
           ...view,
           options: {
-            ...cloneGroupViewOptions(view.options),
+            ...cloneViewOptions(view.options),
             kanban: {
               ...view.options.kanban,
               fillColumnColor: command.value
@@ -883,7 +885,7 @@ export const resolveViewKanbanSetFillColumnColorCommand = (
 }
 
 export const resolveViewOrderMoveCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.order.move' }>
 ) => {
   const issues = validateViewExists(document, command, command.viewId)
@@ -898,7 +900,7 @@ export const resolveViewOrderMoveCommand = (
 }
 
 export const resolveViewOrderClearCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.order.clear' }>
 ) => {
   const issues = validateViewExists(document, command, command.viewId)
@@ -910,7 +912,7 @@ export const resolveViewOrderClearCommand = (
 }
 
 export const resolveViewOrderSetCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.order.set' }>
 ) => {
   const issues = validateViewExists(document, command, command.viewId)
@@ -925,7 +927,7 @@ export const resolveViewOrderSetCommand = (
 }
 
 export const resolveViewRemoveCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.remove' }>
 ) => {
   const issues = validateViewExists(document, command, command.viewId)

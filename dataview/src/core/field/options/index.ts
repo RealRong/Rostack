@@ -1,20 +1,23 @@
 import type {
-  GroupProperty,
-  GroupPropertyConfig,
-  GroupPropertyOption
+  FlatOption,
+  MultiSelectField,
+  CustomField,
+  FieldOption,
+  SelectField,
+  StatusField,
+  StatusOption
 } from '@dataview/core/contracts'
 import {
-  hasPropertyOptions
+  hasFieldOptions
 } from '../kind/spec'
 import {
-  createPropertyKey,
-  getPropertyConfig
+  createFieldKey
 } from '../schema'
 
 export const normalizeOptionToken = (value: string) => value.trim().toLowerCase()
 
-export const findPropertyOptionByName = (
-  options: readonly GroupPropertyOption[],
+export const findFieldOptionByName = (
+  options: readonly FieldOption[],
   name: string
 ) => {
   const normalizedName = normalizeOptionToken(name)
@@ -25,22 +28,18 @@ export const findPropertyOptionByName = (
   return options.find(option => normalizeOptionToken(option.name) === normalizedName)
 }
 
-export const getPropertyOptions = (
-  property?: Pick<GroupProperty, 'kind' | 'config'>
-): GroupPropertyOption[] => {
-  if (!property || !hasPropertyOptions(property)) {
-    return []
-  }
-  const config = getPropertyConfig(property)
-  if (!('options' in config) || !Array.isArray(config.options)) {
+export const getFieldOptions = (
+  field?: CustomField
+): FieldOption[] => {
+  if (!field || !hasFieldOptions(field)) {
     return []
   }
 
-  return config.options
+  return field.options
 }
 
-export const findPropertyOption = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+export const findFieldOption = (
+  field: CustomField | undefined,
   value: unknown
 ) => {
   if (typeof value !== 'string') {
@@ -48,22 +47,21 @@ export const findPropertyOption = (
   }
 
   const normalizedValue = normalizeOptionToken(value)
-  if (!property || !normalizedValue) {
+  if (!field || !normalizedValue) {
     return undefined
   }
 
-  return getPropertyOptions(property).find(option => (
+  return getFieldOptions(field).find(option => (
     normalizeOptionToken(option.id) === normalizedValue
-    || normalizeOptionToken(option.key) === normalizedValue
     || normalizeOptionToken(option.name) === normalizedValue
   ))
 }
 
-export const getPropertyOption = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+export const getFieldOption = (
+  field: CustomField | undefined,
   optionId: unknown
 ) => {
-  if (typeof optionId !== 'string' || !property) {
+  if (typeof optionId !== 'string' || !field) {
     return undefined
   }
 
@@ -72,35 +70,35 @@ export const getPropertyOption = (
     return undefined
   }
 
-  return getPropertyOptions(property).find(option => option.id === normalizedId)
+  return getFieldOptions(field).find(option => option.id === normalizedId)
 }
 
-export const getPropertyOptionTokens = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+export const getFieldOptionTokens = (
+  field: CustomField | undefined,
   optionId: unknown
 ) => {
-  const option = getPropertyOption(property, optionId)
+  const option = getFieldOption(field, optionId)
   if (!option) {
     return typeof optionId === 'string' && optionId.trim() ? [optionId] : []
   }
 
-  return Array.from(new Set([option.name, option.key, option.id].filter(Boolean)))
+  return Array.from(new Set([option.name, option.id]))
 }
 
-export const getPropertyOptionOrder = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+export const getFieldOptionOrder = (
+  field: CustomField | undefined,
   optionId: unknown
 ) => {
-  if (!property || typeof optionId !== 'string') {
+  if (!field || typeof optionId !== 'string') {
     return undefined
   }
 
-  const index = getPropertyOptions(property).findIndex(option => option.id === optionId)
+  const index = getFieldOptions(field).findIndex(option => option.id === optionId)
   return index >= 0 ? index : undefined
 }
 
-export const matchesPropertyOptionValue = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+export const matchesFieldOptionValue = (
+  field: CustomField | undefined,
   actual: unknown,
   expected: unknown
 ) => {
@@ -108,28 +106,28 @@ export const matchesPropertyOptionValue = (
     return actual === expected
   }
 
-  return getPropertyOptionTokens(property, actual).some(token => (
+  return getFieldOptionTokens(field, actual).some(token => (
     normalizeOptionToken(token) === normalizeOptionToken(expected)
   ))
 }
 
-export const containsPropertyOptionToken = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+export const containsFieldOptionToken = (
+  field: CustomField | undefined,
   value: unknown,
   expected: unknown
 ) => (
   typeof expected === 'string'
-    && getPropertyOptionTokens(property, value).some(token => (
+    && getFieldOptionTokens(field, value).some(token => (
       normalizeOptionToken(token).includes(normalizeOptionToken(expected))
     ))
 )
 
-export const createUniquePropertyOptionToken = (
-  options: readonly GroupPropertyOption[],
+export const createUniqueFieldOptionToken = (
+  options: readonly FieldOption[],
   name: string
 ) => {
-  const baseToken = createPropertyKey(name) || 'option'
-  const usedTokens = new Set(options.flatMap(option => [option.id, option.key]))
+  const baseToken = createFieldKey(name) || 'option'
+  const usedTokens = new Set(options.map(option => option.id))
 
   let nextToken = baseToken
   let suffix = 2
@@ -141,30 +139,41 @@ export const createUniquePropertyOptionToken = (
   return nextToken
 }
 
-export const replacePropertyOptions = (
-  property: GroupProperty,
-  options: GroupPropertyOption[]
-): GroupPropertyConfig => {
-  const config = getPropertyConfig(property)
-
-  switch (config.type) {
+export const replaceFieldOptions = (
+  field: CustomField,
+  options: FieldOption[]
+): Pick<SelectField, 'options'> | Pick<MultiSelectField, 'options'> | Pick<StatusField, 'options'> | {} => {
+  switch (field.kind) {
     case 'select':
       return {
-        ...config,
-        options
+        options: options.map(option => ({
+          id: option.id,
+          name: option.name,
+          color: option.color ?? null
+        })) as FlatOption[]
       }
     case 'multiSelect':
       return {
-        ...config,
-        options
+        options: options.map(option => ({
+          id: option.id,
+          name: option.name,
+          color: option.color ?? null
+        })) as FlatOption[]
       }
-    case 'status': {
+    case 'status':
       return {
-        ...config,
-        options
+        options: options.flatMap(option => (
+          'category' in option
+            ? [{
+                id: option.id,
+                name: option.name,
+                color: option.color ?? null,
+                category: option.category
+              } satisfies StatusOption]
+            : []
+        ))
       }
-    }
     default:
-      return config
+      return {}
   }
 }

@@ -1,4 +1,4 @@
-import type { GroupView, GroupViewOptions } from '../contracts'
+import type { View, ViewOptions } from '../contracts'
 
 export type JsonObject = Record<string, unknown>
 
@@ -15,11 +15,11 @@ export const toTrimmedString = (value: unknown) => {
   return normalized.length ? normalized : undefined
 }
 
-export const cloneGroupViewOptions = (
-  options: GroupViewOptions
-): GroupViewOptions => ({
+export const cloneViewOptions = (
+  options: ViewOptions
+): ViewOptions => ({
   display: {
-    propertyIds: [...options.display.propertyIds]
+    fieldIds: [...options.display.fieldIds]
   },
   table: {
     widths: {
@@ -28,7 +28,7 @@ export const cloneGroupViewOptions = (
     showVerticalLines: options.table.showVerticalLines
   },
   gallery: {
-    showPropertyLabels: options.gallery.showPropertyLabels,
+    showFieldLabels: options.gallery.showFieldLabels,
     cardSize: options.gallery.cardSize
   },
   kanban: {

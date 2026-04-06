@@ -1,13 +1,13 @@
 import type {
   BucketState,
-  GroupProperty,
-  GroupGroupBy
+  Field,
+  Grouping
 } from '@dataview/core/contracts'
 import {
-  getPropertyGroupMeta
-} from '@dataview/core/property'
+  getFieldGroupMeta
+} from '@dataview/core/field'
 import type {
-  GroupViewQuery,
+  ViewQuery,
   ResolvedViewGroupState,
   ViewGroupPatch
 } from './contracts'
@@ -17,12 +17,12 @@ import {
   sameGroup
 } from './shared'
 
-type GroupableProperty = Pick<GroupProperty, 'id' | 'kind' | 'config'>
+type GroupableField = Field
 
 const findProperty = (
-  properties: readonly GroupProperty[],
-  propertyId: string
-) => properties.find(property => property.id === propertyId)
+  fields: readonly Field[],
+  fieldId: string
+) => fields.find(field => field.id === fieldId)
 
 const normalizeBucketState = (
   state: BucketState | undefined
@@ -66,17 +66,17 @@ const patchBuckets = (
 }
 
 const buildStoredGroup = (input: {
-  property: GroupableProperty
-  patch?: Partial<ViewGroupPatch> & Pick<GroupGroupBy, 'showEmpty' | 'buckets'>
-}): GroupGroupBy => {
-  const normalized = getPropertyGroupMeta(
-    input.property,
+  field: GroupableField
+  patch?: Partial<ViewGroupPatch> & Pick<Grouping, 'showEmpty' | 'buckets'>
+}): Grouping => {
+  const normalized = getFieldGroupMeta(
+    input.field,
     input.patch
   )
   const buckets = cloneBuckets(input.patch?.buckets)
 
   return {
-    property: input.property.id,
+    field: input.field.id,
     mode: normalized.mode,
     bucketSort: normalized.sort || 'manual',
     ...(normalized.bucketInterval !== undefined
@@ -92,11 +92,11 @@ const buildStoredGroup = (input: {
 }
 
 const patchViewGroup = (
-  query: GroupViewQuery,
-  property: GroupableProperty,
-  patch?: Partial<ViewGroupPatch> & Pick<GroupGroupBy, 'showEmpty' | 'buckets'>
-): GroupViewQuery => {
-  const currentMeta = getPropertyGroupMeta(property)
+  query: ViewQuery,
+  field: GroupableField,
+  patch?: Partial<ViewGroupPatch> & Pick<Grouping, 'showEmpty' | 'buckets'>
+): ViewQuery => {
+  const currentMeta = getFieldGroupMeta(field)
   if (!currentMeta.modes.length || !currentMeta.sorts.length) {
     return query
   }
@@ -105,7 +105,7 @@ const patchViewGroup = (
   const nextMode = patch?.mode ?? currentGroup?.mode
   const nextBucketInterval = patch?.bucketInterval ?? currentGroup?.bucketInterval
   const buckets = (
-    currentGroup?.property === property.id
+    currentGroup?.field === field.id
     && currentGroup?.mode === nextMode
     && currentGroup?.bucketInterval === nextBucketInterval
   )
@@ -113,7 +113,7 @@ const patchViewGroup = (
     : undefined
 
   const nextGroup = buildStoredGroup({
-    property,
+    field,
     patch: {
       mode: nextMode,
       bucketSort: patch?.bucketSort ?? currentGroup?.bucketSort,
@@ -133,29 +133,29 @@ const patchViewGroup = (
 }
 
 const resolveGroupProperty = (
-  query: GroupViewQuery,
-  property: GroupableProperty
+  query: ViewQuery,
+  field: GroupableField
 ) => (
-  query.group?.property === property.id
-    ? property
+  query.group?.field === field.id
+    ? field
     : undefined
 )
 
 export const resolveViewGroupState = (
-  properties: readonly GroupProperty[],
-  group: GroupGroupBy | undefined
+  fields: readonly Field[],
+  group: Grouping | undefined
 ): ResolvedViewGroupState => {
-  const propertyId = typeof group?.property === 'string'
-    ? group.property
+  const fieldId = typeof group?.field === 'string'
+    ? group.field
     : ''
-  const property = propertyId
-    ? findProperty(properties, propertyId)
+  const field = fieldId
+    ? findProperty(fields, fieldId)
     : undefined
 
-  if (!property) {
+  if (!field) {
     return {
-      property: undefined,
-      propertyId: '',
+      field: undefined,
+      fieldId: '',
       mode: '',
       bucketSort: undefined,
       showEmpty: undefined
@@ -163,8 +163,8 @@ export const resolveViewGroupState = (
   }
 
   return {
-    property,
-    propertyId: property.id,
+    field,
+    fieldId: field.id,
     mode: group?.mode ?? '',
     bucketSort: group?.bucketSort,
     bucketInterval: group?.bucketInterval,
@@ -173,16 +173,16 @@ export const resolveViewGroupState = (
 }
 
 export const setViewGroup = (
-  query: GroupViewQuery,
-  property: Pick<GroupProperty, 'id' | 'kind' | 'config'>
-): GroupViewQuery => {
-  const groupMeta = getPropertyGroupMeta(property)
+  query: ViewQuery,
+  field: Field
+): ViewQuery => {
+  const groupMeta = getFieldGroupMeta(field)
   if (!groupMeta.modes.length || !groupMeta.sorts.length) {
     return query
   }
 
   const nextGroup = buildStoredGroup({
-    property
+    field
   })
 
   if (sameGroup(query.group, nextGroup)) {
@@ -195,8 +195,8 @@ export const setViewGroup = (
 }
 
 export const clearViewGroup = (
-  query: GroupViewQuery
-): GroupViewQuery => {
+  query: ViewQuery
+): ViewQuery => {
   if (!query.group) {
     return query
   }
@@ -207,50 +207,50 @@ export const clearViewGroup = (
 }
 
 export const toggleViewGroup = (
-  query: GroupViewQuery,
-  property: Pick<GroupProperty, 'id' | 'kind' | 'config'>
-): GroupViewQuery => (
-  query.group?.property === property.id
+  query: ViewQuery,
+  field: Field
+): ViewQuery => (
+  query.group?.field === field.id
     ? clearViewGroup(query)
-    : setViewGroup(query, property)
+    : setViewGroup(query, field)
 )
 
 export const setViewGroupMode = (
-  query: GroupViewQuery,
-  property: Pick<GroupProperty, 'id' | 'kind' | 'config'>,
+  query: ViewQuery,
+  field: Field,
   mode: string
-): GroupViewQuery => patchViewGroup(query, property, { mode })
+): ViewQuery => patchViewGroup(query, field, { mode })
 
 export const setViewGroupBucketSort = (
-  query: GroupViewQuery,
-  property: Pick<GroupProperty, 'id' | 'kind' | 'config'>,
-  bucketSort: GroupGroupBy['bucketSort']
-): GroupViewQuery => patchViewGroup(query, property, { bucketSort })
+  query: ViewQuery,
+  field: Field,
+  bucketSort: Grouping['bucketSort']
+): ViewQuery => patchViewGroup(query, field, { bucketSort })
 
 export const setViewGroupBucketInterval = (
-  query: GroupViewQuery,
-  property: Pick<GroupProperty, 'id' | 'kind' | 'config'>,
-  bucketInterval: GroupGroupBy['bucketInterval']
-): GroupViewQuery => patchViewGroup(query, property, { bucketInterval })
+  query: ViewQuery,
+  field: Field,
+  bucketInterval: Grouping['bucketInterval']
+): ViewQuery => patchViewGroup(query, field, { bucketInterval })
 
 export const setViewGroupShowEmpty = (
-  query: GroupViewQuery,
-  property: Pick<GroupProperty, 'id' | 'kind' | 'config'>,
+  query: ViewQuery,
+  field: Field,
   showEmpty: boolean
-): GroupViewQuery => patchViewGroup(query, property, { showEmpty })
+): ViewQuery => patchViewGroup(query, field, { showEmpty })
 
 export const setViewGroupBucketHidden = (
-  query: GroupViewQuery,
-  property: Pick<GroupProperty, 'id' | 'kind' | 'config'>,
+  query: ViewQuery,
+  field: Field,
   key: string,
   hidden: boolean
-): GroupViewQuery => {
-  const activeProperty = resolveGroupProperty(query, property)
+): ViewQuery => {
+  const activeProperty = resolveGroupProperty(query, field)
   if (!activeProperty) {
     return query
   }
 
-  return patchViewGroup(query, property, {
+  return patchViewGroup(query, field, {
     buckets: patchBuckets(query.group?.buckets, key, {
       hidden
     })
@@ -258,17 +258,17 @@ export const setViewGroupBucketHidden = (
 }
 
 export const setViewGroupBucketCollapsed = (
-  query: GroupViewQuery,
-  property: Pick<GroupProperty, 'id' | 'kind' | 'config'>,
+  query: ViewQuery,
+  field: Field,
   key: string,
   collapsed: boolean
-): GroupViewQuery => {
-  const activeProperty = resolveGroupProperty(query, property)
+): ViewQuery => {
+  const activeProperty = resolveGroupProperty(query, field)
   if (!activeProperty) {
     return query
   }
 
-  return patchViewGroup(query, property, {
+  return patchViewGroup(query, field, {
     buckets: patchBuckets(query.group?.buckets, key, {
       collapsed
     })
@@ -276,12 +276,12 @@ export const setViewGroupBucketCollapsed = (
 }
 
 export const toggleViewGroupBucketCollapsed = (
-  query: GroupViewQuery,
-  property: Pick<GroupProperty, 'id' | 'kind' | 'config'>,
+  query: ViewQuery,
+  field: Field,
   key: string
-): GroupViewQuery => setViewGroupBucketCollapsed(
+): ViewQuery => setViewGroupBucketCollapsed(
   query,
-  property,
+  field,
   key,
   query.group?.buckets?.[key]?.collapsed !== true
 )

@@ -12,12 +12,12 @@ import {
   Table2,
   type LucideIcon
 } from 'lucide-react'
-import type { GroupViewType } from '@dataview/core/contracts'
+import type { ViewType } from '@dataview/core/contracts'
 import { message, meta, type MessageSpec } from '@dataview/meta'
 
 export interface CreateViewItem {
   id: string
-  type: GroupViewType | string
+  type: ViewType | string
   label: MessageSpec
   Icon: LucideIcon
   enabled: boolean

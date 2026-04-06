@@ -1,27 +1,26 @@
-import type { GroupProperty } from '@dataview/core/contracts'
-import { parsePropertyDraft } from '@dataview/core/property'
-import { PropertyOptionTag } from '@dataview/react/properties/options'
+import type { CustomField } from '@dataview/core/contracts'
+import { getFieldOption, parseFieldDraft } from '@dataview/core/field'
+import { FieldOptionTag } from '@dataview/react/field/options'
 import { cn } from '@ui/utils'
 import { OptionPickerEditor } from '../editor/pickers/option/OptionPickerEditor'
-import type { PropertyValueDraftEditorProps } from '../editor'
-import type { PropertyValueSpec } from './contracts'
+import type { FieldValueDraftEditorProps } from '../editor'
+import type { FieldValueSpec } from './contracts'
 import {
-  optionForValue,
   renderEmpty
 } from './shared'
 
-const MultiSelectEditor = (props: PropertyValueDraftEditorProps<string>) => (
+const MultiSelectEditor = (props: FieldValueDraftEditorProps<string>) => (
   <OptionPickerEditor {...props} mode="multi" />
 )
 
 export const createMultiSelectPropertySpec = (
-  property: GroupProperty | undefined
-): PropertyValueSpec<string> => ({
+  property: CustomField | undefined
+): FieldValueSpec<string> => ({
   capability: {},
   panelWidth: 'picker',
   Editor: MultiSelectEditor,
   createDraft: (value, seedDraft) => seedDraft ?? (Array.isArray(value) ? value.join(', ') : ''),
-  parseDraft: draft => parsePropertyDraft(property, draft),
+  parseDraft: draft => parseFieldDraft(property, draft),
   render: props => {
     if (!Array.isArray(props.value) || !props.value.length) {
       return renderEmpty(props)
@@ -29,8 +28,8 @@ export const createMultiSelectPropertySpec = (
 
     const values = props.value.map(item => ({
       id: item,
-      label: optionForValue(property, item)?.name ?? String(item),
-      color: optionForValue(property, item)?.color
+      label: getFieldOption(property, item)?.name ?? String(item),
+      color: getFieldOption(property, item)?.color
     }))
     const visible = values.slice(0, 2)
     const rest = values.length - visible.length
@@ -38,10 +37,10 @@ export const createMultiSelectPropertySpec = (
     return (
       <span className={cn('inline-flex max-w-full items-center gap-1 overflow-hidden', props.className)}>
         {visible.map(item => (
-          <PropertyOptionTag
+          <FieldOptionTag
             key={String(item.id)}
             label={item.label}
-            color={item.color}
+            color={item.color ?? undefined}
             className="max-w-[8rem]"
           />
         ))}

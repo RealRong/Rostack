@@ -1,30 +1,30 @@
-import type { GroupEntityTable, GroupRecord, RecordId } from '../contracts/state'
+import type { EntityTable, Row, RecordId } from '../contracts/state'
 
-export const cloneRecordInput = (record: GroupRecord): GroupRecord => structuredClone(record)
+export const cloneRecordInput = (record: Row): Row => structuredClone(record)
 
 export const cloneEntityInput = <TEntity>(entity: TEntity): TEntity => structuredClone(entity)
 
-export const listEntityTable = <TId extends string, TEntity extends { id: TId }>(table: GroupEntityTable<TId, TEntity>): TEntity[] => {
+export const listEntityTable = <TId extends string, TEntity extends { id: TId }>(table: EntityTable<TId, TEntity>): TEntity[] => {
   return table.order
     .map(entityId => table.byId[entityId])
     .filter((entity): entity is TEntity => Boolean(entity))
 }
 
-export const getEntityTableIds = <TId extends string, TEntity extends { id: TId }>(table: GroupEntityTable<TId, TEntity>): TId[] => {
+export const getEntityTableIds = <TId extends string, TEntity extends { id: TId }>(table: EntityTable<TId, TEntity>): TId[] => {
   return table.order.slice()
 }
 
 export const getEntityTableById = <TId extends string, TEntity extends { id: TId }>(
-  table: GroupEntityTable<TId, TEntity>,
+  table: EntityTable<TId, TEntity>,
   entityId: TId
 ): TEntity | undefined => table.byId[entityId]
 
 export const hasEntityTableId = <TId extends string, TEntity extends { id: TId }>(
-  table: GroupEntityTable<TId, TEntity>,
+  table: EntityTable<TId, TEntity>,
   entityId: TId
 ) => Boolean(table.byId[entityId])
 
-export const cloneEntityTable = <TId extends string, TEntity extends { id: TId }>(table: GroupEntityTable<TId, TEntity>): GroupEntityTable<TId, TEntity> => {
+export const cloneEntityTable = <TId extends string, TEntity extends { id: TId }>(table: EntityTable<TId, TEntity>): EntityTable<TId, TEntity> => {
   const byId = {} as Record<TId, TEntity>
 
   Object.keys(table.byId).forEach(entityIdKey => {
@@ -38,8 +38,8 @@ export const cloneEntityTable = <TId extends string, TEntity extends { id: TId }
   }
 }
 
-export const cloneRecordTable = (table: GroupEntityTable<RecordId, GroupRecord>): GroupEntityTable<RecordId, GroupRecord> => {
-  const byId: Record<RecordId, GroupRecord> = {}
+export const cloneRecordTable = (table: EntityTable<RecordId, Row>): EntityTable<RecordId, Row> => {
+  const byId: Record<RecordId, Row> = {}
 
   Object.keys(table.byId).forEach(recordIdKey => {
     const recordId = recordIdKey as RecordId
@@ -83,9 +83,9 @@ export const mergePatchedEntity = <TEntity extends object>(current: TEntity, pat
 }
 
 export const putEntityTableEntity = <TId extends string, TEntity extends { id: TId }>(
-  table: GroupEntityTable<TId, TEntity>,
+  table: EntityTable<TId, TEntity>,
   entity: TEntity
-): GroupEntityTable<TId, TEntity> => {
+): EntityTable<TId, TEntity> => {
   const exists = Boolean(table.byId[entity.id])
 
   return {
@@ -98,10 +98,10 @@ export const putEntityTableEntity = <TId extends string, TEntity extends { id: T
 }
 
 export const patchEntityTableEntity = <TId extends string, TEntity extends { id: TId }>(
-  table: GroupEntityTable<TId, TEntity>,
+  table: EntityTable<TId, TEntity>,
   entityId: TId,
   patch: Partial<Omit<TEntity, 'id'>>
-): GroupEntityTable<TId, TEntity> => {
+): EntityTable<TId, TEntity> => {
   const entity = table.byId[entityId]
   if (!entity) {
     return table
@@ -122,9 +122,9 @@ export const patchEntityTableEntity = <TId extends string, TEntity extends { id:
 }
 
 export const removeEntityTableEntity = <TId extends string, TEntity extends { id: TId }>(
-  table: GroupEntityTable<TId, TEntity>,
+  table: EntityTable<TId, TEntity>,
   entityId: TId
-): GroupEntityTable<TId, TEntity> => {
+): EntityTable<TId, TEntity> => {
   if (!table.byId[entityId]) {
     return table
   }
@@ -138,8 +138,8 @@ export const removeEntityTableEntity = <TId extends string, TEntity extends { id
   }
 }
 
-export const normalizeRecordInput = (records: readonly GroupRecord[]): GroupEntityTable<RecordId, GroupRecord> => {
-  const byId: Record<RecordId, GroupRecord> = {}
+export const normalizeRecordInput = (records: readonly Row[]): EntityTable<RecordId, Row> => {
+  const byId: Record<RecordId, Row> = {}
   const order: RecordId[] = []
   const seen = new Set<RecordId>()
 
@@ -158,7 +158,7 @@ export const normalizeRecordInput = (records: readonly GroupRecord[]): GroupEnti
   }
 }
 
-export const normalizeEntityTable = <TId extends string, TEntity extends { id: TId }>(table: GroupEntityTable<TId, TEntity>): GroupEntityTable<TId, TEntity> => {
+export const normalizeEntityTable = <TId extends string, TEntity extends { id: TId }>(table: EntityTable<TId, TEntity>): EntityTable<TId, TEntity> => {
   const byId = {} as Record<TId, TEntity>
   const order: TId[] = []
   const seen = new Set<TId>()
@@ -190,8 +190,8 @@ export const normalizeEntityTable = <TId extends string, TEntity extends { id: T
   }
 }
 
-export const normalizeRecordTable = (table: GroupEntityTable<RecordId, GroupRecord>): GroupEntityTable<RecordId, GroupRecord> => {
-  const byId: Record<RecordId, GroupRecord> = {}
+export const normalizeRecordTable = (table: EntityTable<RecordId, Row>): EntityTable<RecordId, Row> => {
+  const byId: Record<RecordId, Row> = {}
   const order: RecordId[] = []
   const seen = new Set<RecordId>()
 

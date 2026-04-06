@@ -1,5 +1,5 @@
 import type {
-  PropertyId,
+  FieldId,
   RecordId,
   ViewId
 } from '@dataview/core/contracts'
@@ -8,27 +8,27 @@ import type {
   AppearanceId,
 } from './types'
 
-export interface FieldId {
+export interface CellRef {
   appearanceId: AppearanceId
-  propertyId: PropertyId
+  fieldId: FieldId
 }
 
-export interface ViewFieldRef extends FieldId {
+export interface ViewFieldRef extends CellRef {
   viewId: ViewId
   recordId: RecordId
 }
 
 export interface RecordFieldRef {
   recordId: RecordId
-  propertyId: PropertyId
+  fieldId: FieldId
 }
 
-export const sameField = (
-  left: FieldId,
-  right: FieldId
+export const sameCellRef = (
+  left: CellRef,
+  right: CellRef
 ) => (
   left.appearanceId === right.appearanceId
-  && left.propertyId === right.propertyId
+  && left.fieldId === right.fieldId
 )
 
 export const sameViewField = (
@@ -37,19 +37,19 @@ export const sameViewField = (
 ) => (
   left.viewId === right.viewId
   && left.recordId === right.recordId
-  && sameField(left, right)
+  && sameCellRef(left, right)
 )
 
 export const fieldId = (
-  field: Pick<ViewFieldRef, 'appearanceId' | 'propertyId'>
-): FieldId => ({
+  field: Pick<ViewFieldRef, 'appearanceId' | 'fieldId'>
+): CellRef => ({
   appearanceId: field.appearanceId,
-  propertyId: field.propertyId
+  fieldId: field.fieldId
 })
 
 export const fieldOf = (input: {
   viewId: ViewId
-  field: FieldId
+  field: CellRef
   appearances?: Pick<AppearanceList, 'get'>
 }): ViewFieldRef | null => {
   const recordId = input.appearances?.get(input.field.appearanceId)?.recordId
@@ -59,21 +59,21 @@ export const fieldOf = (input: {
         viewId: input.viewId,
         appearanceId: input.field.appearanceId,
         recordId,
-        propertyId: input.field.propertyId
+        fieldId: input.field.fieldId
       }
     : null
 }
 
-export const replaceFieldProperty = (
+export const replaceField = (
   field: ViewFieldRef,
-  propertyId: PropertyId
+  fieldId: FieldId
 ): ViewFieldRef => ({
   ...field,
-  propertyId
+  fieldId
 })
 
 export const toRecordField = (
-  field: FieldId | ViewFieldRef,
+  field: CellRef | ViewFieldRef,
   appearances?: Pick<AppearanceList, 'get'>
 ): RecordFieldRef | null => {
   const recordId = 'recordId' in field
@@ -83,7 +83,7 @@ export const toRecordField = (
   return recordId
     ? {
         recordId,
-        propertyId: field.propertyId
+        fieldId: field.fieldId
       }
     : null
 }

@@ -1,36 +1,36 @@
 import type {
-  GroupProperty,
-  GroupFilterRule
+  Field,
+  FilterRule
 } from '@dataview/core/contracts'
-import { createDefaultPropertyFilterRule } from '@dataview/core/property'
-import type { GroupViewQuery } from './contracts'
+import { createDefaultFieldFilterRule } from '@dataview/core/field'
+import type { ViewQuery } from './contracts'
 import { cloneFilterRule, cloneViewQuery } from './shared'
 
 export const findViewFilterIndex = (
-  query: GroupViewQuery,
-  propertyId: string
+  query: ViewQuery,
+  fieldId: string
 ) => query.filter.rules.findIndex(rule => (
-  typeof rule.property === 'string' && rule.property === propertyId
+  typeof rule.field === 'string' && rule.field === fieldId
 ))
 
 export const addViewFilter = (
-  query: GroupViewQuery,
-  property: Pick<GroupProperty, 'id' | 'kind'>
+  query: ViewQuery,
+  field: Field
 ) => {
-  if (findViewFilterIndex(query, property.id) !== -1) {
+  if (findViewFilterIndex(query, field.id) !== -1) {
     return query
   }
 
   const next = cloneViewQuery(query)
-  next.filter.rules.push(createDefaultPropertyFilterRule(property))
+  next.filter.rules.push(createDefaultFieldFilterRule(field))
   return next
 }
 
 export const setViewFilter = (
-  query: GroupViewQuery,
+  query: ViewQuery,
   index: number,
-  rule: GroupFilterRule
-): GroupViewQuery => {
+  rule: FilterRule
+): ViewQuery => {
   if (!query.filter.rules[index]) {
     return query
   }
@@ -41,9 +41,9 @@ export const setViewFilter = (
 }
 
 export const removeViewFilter = (
-  query: GroupViewQuery,
+  query: ViewQuery,
   index: number
-): GroupViewQuery => {
+): ViewQuery => {
   if (index < 0 || index >= query.filter.rules.length) {
     return query
   }

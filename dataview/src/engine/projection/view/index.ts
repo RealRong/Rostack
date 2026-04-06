@@ -2,13 +2,14 @@ export type {
   AppearanceId,
   Appearance,
   AppearanceList,
-  FieldId,
+  CellRef,
   Plan,
   Placement,
-  PropertyList,
+  FieldList,
   RecordFieldRef,
   Schema,
   Section,
+  SectionBucket,
   SectionKey,
   ViewFieldRef,
   ViewProjection
@@ -20,8 +21,8 @@ export {
 export {
   fieldId,
   fieldOf,
-  replaceFieldProperty,
-  sameField,
+  replaceField,
+  sameCellRef,
   sameViewField,
   toRecordField
 } from './field'
@@ -30,7 +31,7 @@ export {
   readSectionRecordIds,
   resolveGrouping,
   resolveSectionRecordIds,
-  type GroupNext,
+  type GroupingNextValue,
   type Grouping
 } from './grouping'
 export {
@@ -43,8 +44,8 @@ export {
   type ProjectionSection
 } from './projection'
 export {
-  createProperties
-} from './properties'
+  createFields
+} from './fields'
 export {
   createSections,
   sections

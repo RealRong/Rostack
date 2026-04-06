@@ -1,8 +1,8 @@
 import type {
-  GroupProperty,
-  GroupFilterRule,
-  GroupSorter,
-  GroupViewType
+  Field,
+  FilterRule,
+  Sorter,
+  ViewType
 } from '@dataview/core/contracts'
 import { message, renderMessage, type MessageSpec } from './message'
 import { sort } from './sort'
@@ -13,9 +13,9 @@ type SettingsRouteKind =
   | 'layout'
   | 'group'
   | 'viewProperties'
-  | 'propertyList'
-  | 'propertyCreate'
-  | 'propertySchema'
+  | 'fieldList'
+  | 'fieldCreate'
+  | 'fieldSchema'
   | 'filter'
   | 'sort'
 
@@ -23,12 +23,12 @@ type CardSizeId = 'sm' | 'md' | 'lg'
 type NewRecordPositionId = 'start' | 'end'
 type LayoutTypeId = 'table' | 'kanban' | 'gallery'
 
-const findProperty = (
-  properties: readonly GroupProperty[],
-  propertyId: unknown
+const findField = (
+  fields: readonly Field[],
+  fieldId: unknown
 ) => (
-  typeof propertyId === 'string'
-    ? properties.find(property => property.id === propertyId)
+  typeof fieldId === 'string'
+    ? fields.find(field => field.id === fieldId)
     : undefined
 )
 
@@ -45,11 +45,11 @@ const summarizeCount = (
 
 export const ui = {
   fieldPicker: {
-    searchPlaceholder: message('meta.ui.fieldPicker.searchPlaceholder', 'Search properties'),
-    empty: message('meta.ui.fieldPicker.empty', 'No matching properties.'),
-    noAvailable: message('meta.ui.fieldPicker.noAvailable', 'No available properties.'),
-    allFiltered: message('meta.ui.fieldPicker.allFiltered', 'All properties are already filtered.'),
-    allSorted: message('meta.ui.fieldPicker.allSorted', 'All properties are already sorted.')
+    searchPlaceholder: message('meta.ui.fieldPicker.searchPlaceholder', 'Search fields'),
+    empty: message('meta.ui.fieldPicker.empty', 'No matching fields.'),
+    noAvailable: message('meta.ui.fieldPicker.noAvailable', 'No available fields.'),
+    allFiltered: message('meta.ui.fieldPicker.allFiltered', 'All fields are already filtered.'),
+    allSorted: message('meta.ui.fieldPicker.allSorted', 'All fields are already sorted.')
   },
   toolbar: {
     newView: message('meta.ui.toolbar.newView', 'New view'),
@@ -75,7 +75,7 @@ export const ui = {
         ? message('meta.ui.toolbar.sortButton.single', 'Sort · 1 sort')
         : message('meta.ui.toolbar.sortButton.multiple', 'Sort · {count} sorts', { count })
     ),
-    settings: (viewType?: GroupViewType | string) => (
+    settings: (viewType?: ViewType | string) => (
       viewType
         ? message('meta.ui.toolbar.settings.currentView', 'Settings · {view}', {
             view: renderMessage(view.get(viewType).message)
@@ -83,53 +83,53 @@ export const ui = {
         : message('meta.ui.toolbar.settings.default', 'Settings')
     )
   },
-  property: {
+  field: {
     editor: {
-      propertyNamePlaceholder: message('meta.ui.property.editor.propertyNamePlaceholder', 'Property name'),
-      type: message('meta.ui.property.editor.type', 'Type'),
-      format: message('meta.ui.property.editor.format', 'Format'),
-      displayFullUrl: message('meta.ui.property.editor.displayFullUrl', 'Show full URL'),
-      displayDateFormat: message('meta.ui.property.editor.displayDateFormat', 'Date format'),
-      displayTimeFormat: message('meta.ui.property.editor.displayTimeFormat', 'Time format'),
-      defaultValueKind: message('meta.ui.property.editor.defaultValueKind', 'Default value'),
-      defaultTimezone: message('meta.ui.property.editor.defaultTimezone', 'Default timezone'),
-      duplicate: message('meta.ui.property.editor.duplicate', 'Duplicate property'),
-      remove: message('meta.ui.property.editor.remove', 'Delete property')
+      fieldNamePlaceholder: message('meta.ui.field.editor.fieldNamePlaceholder', 'Field name'),
+      type: message('meta.ui.field.editor.type', 'Type'),
+      format: message('meta.ui.field.editor.format', 'Format'),
+      displayFullUrl: message('meta.ui.field.editor.displayFullUrl', 'Show full URL'),
+      displayDateFormat: message('meta.ui.field.editor.displayDateFormat', 'Date format'),
+      displayTimeFormat: message('meta.ui.field.editor.displayTimeFormat', 'Time format'),
+      defaultValueKind: message('meta.ui.field.editor.defaultValueKind', 'Default value'),
+      defaultTimezone: message('meta.ui.field.editor.defaultTimezone', 'Default timezone'),
+      duplicate: message('meta.ui.field.editor.duplicate', 'Duplicate field'),
+      remove: message('meta.ui.field.editor.remove', 'Delete field')
     },
     options: {
-      title: message('meta.ui.property.options.title', 'Options'),
-      add: message('meta.ui.property.options.add', 'Add option'),
-      untitled: message('meta.ui.property.options.untitled', 'Untitled'),
-      namePlaceholder: message('meta.ui.property.options.namePlaceholder', 'Option name'),
-      remove: message('meta.ui.property.options.remove', 'Delete option'),
+      title: message('meta.ui.field.options.title', 'Options'),
+      add: message('meta.ui.field.options.add', 'Add option'),
+      untitled: message('meta.ui.field.options.untitled', 'Untitled'),
+      namePlaceholder: message('meta.ui.field.options.namePlaceholder', 'Option name'),
+      remove: message('meta.ui.field.options.remove', 'Delete option'),
       selectOrCreate: (multiple: boolean) => (
         multiple
-          ? message('meta.ui.property.options.selectOrCreate.multiple', 'Select or create options')
-          : message('meta.ui.property.options.selectOrCreate.single', 'Select or create an option')
+          ? message('meta.ui.field.options.selectOrCreate.multiple', 'Select or create options')
+          : message('meta.ui.field.options.selectOrCreate.single', 'Select or create an option')
       ),
-      create: (name: string) => message('meta.ui.property.options.create', 'Create "{name}"', { name }),
-      clear: (name: string) => message('meta.ui.property.options.clear', 'Clear {name}', { name }),
-      edit: (name: string) => message('meta.ui.property.options.edit', 'Edit {name}', { name }),
-      reorder: (name: string) => message('meta.ui.property.options.reorder', 'Reorder {name}', { name })
+      create: (name: string) => message('meta.ui.field.options.create', 'Create "{name}"', { name }),
+      clear: (name: string) => message('meta.ui.field.options.clear', 'Clear {name}', { name }),
+      edit: (name: string) => message('meta.ui.field.options.edit', 'Edit {name}', { name }),
+      reorder: (name: string) => message('meta.ui.field.options.reorder', 'Reorder {name}', { name })
     },
     status: {
-      todo: message('meta.ui.property.status.todo', 'To do'),
-      inProgress: message('meta.ui.property.status.inProgress', 'In progress'),
-      complete: message('meta.ui.property.status.complete', 'Complete'),
-      moveTo: message('meta.ui.property.status.moveTo', 'Move to'),
-      searchPlaceholder: message('meta.ui.property.status.searchPlaceholder', 'Search options')
+      todo: message('meta.ui.field.status.todo', 'To do'),
+      inProgress: message('meta.ui.field.status.inProgress', 'In progress'),
+      complete: message('meta.ui.field.status.complete', 'Complete'),
+      moveTo: message('meta.ui.field.status.moveTo', 'Move to'),
+      searchPlaceholder: message('meta.ui.field.status.searchPlaceholder', 'Search options')
     }
   },
   filter: {
     label: message('meta.ui.filter.label', 'Filter'),
-    deletedProperty: message('meta.ui.filter.deletedProperty', 'Deleted property'),
+    deletedField: message('meta.ui.filter.deletedField', 'Deleted field'),
     remove: message('meta.ui.filter.remove', 'Remove filter'),
     noOptions: message('meta.ui.filter.noOptions', 'No options.'),
     clearSelection: message('meta.ui.filter.clearSelection', 'Clear selection')
   },
   sort: {
     label: message('meta.ui.sort.label', 'Sort'),
-    deletedProperty: message('meta.ui.sort.deletedProperty', 'Deleted property'),
+    deletedField: message('meta.ui.sort.deletedField', 'Deleted field'),
     add: message('meta.ui.sort.add', 'Add sort'),
     clear: message('meta.ui.sort.clear', 'Delete sorts'),
     remove: message('meta.ui.sort.remove', 'Remove sort'),
@@ -139,12 +139,12 @@ export const ui = {
     title: message('meta.ui.viewSettings.title', 'View settings'),
     viewNamePlaceholder: message('meta.ui.viewSettings.viewNamePlaceholder', 'View name'),
     layout: message('meta.ui.viewSettings.layout', 'Layout'),
-    visibleProperties: message('meta.ui.viewSettings.visibleProperties', 'Visible properties'),
-    editProperties: message('meta.ui.viewSettings.editProperties', 'Edit properties'),
+    visibleFields: message('meta.ui.viewSettings.visibleFields', 'Visible fields'),
+    editFields: message('meta.ui.viewSettings.editFields', 'Edit fields'),
     filter: message('meta.ui.viewSettings.filter', 'Filter'),
     sort: message('meta.ui.viewSettings.sort', 'Sort'),
     group: message('meta.ui.viewSettings.group', 'Group'),
-    groupProperty: message('meta.ui.viewSettings.groupProperty', 'Property'),
+    groupField: message('meta.ui.viewSettings.groupField', 'Field'),
     groupMode: message('meta.ui.viewSettings.groupMode', 'Mode'),
     groupByValue: message('meta.ui.viewSettings.groupByValue', 'By value'),
     groupByOption: message('meta.ui.viewSettings.groupByOption', 'By option'),
@@ -168,8 +168,8 @@ export const ui = {
     remove: message('meta.ui.viewSettings.remove', 'Remove'),
     shown: (count: number) => message('meta.ui.viewSettings.shown', '{count} shown', { count }),
     filterSummary: (
-      rules: readonly GroupFilterRule[],
-      properties: readonly GroupProperty[]
+      rules: readonly FilterRule[],
+      fields: readonly Field[]
     ) => {
       if (!rules.length) {
         return message('meta.ui.viewSettings.filterSummary.empty', 'No filters')
@@ -184,14 +184,14 @@ export const ui = {
         )
       }
 
-      const property = findProperty(properties, rules[0]?.property)
-      return property
-        ? message('meta.ui.viewSettings.filterSummary.field', '{field}', { field: property.name })
+      const field = findField(fields, rules[0]?.field)
+      return field
+        ? message('meta.ui.viewSettings.filterSummary.field', '{field}', { field: field.name })
         : message('meta.ui.viewSettings.filterSummary.single', '1 filter')
     },
     sortSummary: (
-      sorters: readonly GroupSorter[],
-      properties: readonly GroupProperty[]
+      sorters: readonly Sorter[],
+      fields: readonly Field[]
     ) => {
       if (!sorters.length) {
         return message('meta.ui.viewSettings.sortSummary.empty', 'Manual')
@@ -207,13 +207,13 @@ export const ui = {
       }
 
       const sorterItem = sorters[0]
-      const property = findProperty(properties, sorterItem?.property)
-      if (!property) {
+      const field = findField(fields, sorterItem?.field)
+      if (!field) {
         return message('meta.ui.viewSettings.sortSummary.single', '1 sort')
       }
 
       return message('meta.ui.viewSettings.sortSummary.field', '{field} · {direction}', {
-        field: property.name,
+        field: field.name,
         direction: renderMessage(sort.direction.get(sorterItem.direction).message)
       })
     },
@@ -224,13 +224,13 @@ export const ui = {
         case 'group':
           return message('meta.ui.viewSettings.route.group', 'Group')
         case 'viewProperties':
-          return message('meta.ui.viewSettings.route.viewProperties', 'Visible properties')
-        case 'propertyList':
-          return message('meta.ui.viewSettings.route.propertyList', 'Edit properties')
-        case 'propertyCreate':
-          return message('meta.ui.viewSettings.route.propertyCreate', 'New Property')
-        case 'propertySchema':
-          return message('meta.ui.viewSettings.route.propertySchema', 'Edit Property')
+          return message('meta.ui.viewSettings.route.viewProperties', 'Visible fields')
+        case 'fieldList':
+          return message('meta.ui.viewSettings.route.propertyList', 'Edit fields')
+        case 'fieldCreate':
+          return message('meta.ui.viewSettings.route.propertyCreate', 'New field')
+        case 'fieldSchema':
+          return message('meta.ui.viewSettings.route.propertySchema', 'Edit field')
         case 'filter':
           return message('meta.ui.viewSettings.route.filter', 'Filter')
         case 'sort':
@@ -240,28 +240,28 @@ export const ui = {
           return message('meta.ui.viewSettings.route.root', 'View Settings')
       }
     },
-    propertiesPanel: {
-      shownIn: (viewType?: GroupViewType | string) => message(
-        'meta.ui.viewSettings.propertiesPanel.shownIn',
+    fieldsPanel: {
+      shownIn: (viewType?: ViewType | string) => message(
+        'meta.ui.viewSettings.fieldsPanel.shownIn',
         'Shown in {view}',
         {
           view: renderMessage(view.get(viewType).message)
         }
       ),
-      hideAll: message('meta.ui.viewSettings.propertiesPanel.hideAll', 'Hide all'),
-      add: message('meta.ui.viewSettings.propertiesPanel.add', 'Add Property'),
+      hideAll: message('meta.ui.viewSettings.fieldsPanel.hideAll', 'Hide all'),
+      add: message('meta.ui.viewSettings.fieldsPanel.add', 'Add field'),
       reorder: (name: string) => message(
-        'meta.ui.viewSettings.propertiesPanel.reorder',
+        'meta.ui.viewSettings.fieldsPanel.reorder',
         'Reorder {name}',
         { name }
       ),
       hide: (name: string) => message(
-        'meta.ui.viewSettings.propertiesPanel.hide',
+        'meta.ui.viewSettings.fieldsPanel.hide',
         'Hide {name}',
         { name }
       ),
       show: (name: string) => message(
-        'meta.ui.viewSettings.propertiesPanel.show',
+        'meta.ui.viewSettings.fieldsPanel.show',
         'Show {name}',
         { name }
       )
@@ -309,13 +309,13 @@ export const ui = {
         'meta.ui.viewSettings.layoutPanel.galleryDescription',
         'Control how cards render in gallery layout.'
       ),
-      showPropertyLabels: message(
+      showFieldLabels: message(
         'meta.ui.viewSettings.layoutPanel.showFieldLabels',
         'Show field labels'
       ),
-      showPropertyLabelsDescription: message(
+      showFieldLabelsDescription: message(
         'meta.ui.viewSettings.layoutPanel.showFieldLabelsDescription',
-        'Display property names above each value.'
+        'Display field names above each value.'
       ),
       cardSize: message('meta.ui.viewSettings.layoutPanel.cardSize', 'Card size'),
       cardSizeDescription: message(

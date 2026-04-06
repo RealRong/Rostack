@@ -1,38 +1,39 @@
 import type {
-  GroupProperty,
-  GroupPropertyOption,
-  GroupStatusCategory
+  CustomField,
+  StatusField,
+  StatusOption,
+  StatusCategory
 } from '@dataview/core/contracts'
 
-export const GROUP_STATUS_CATEGORIES = [
+export const STATUS_CATEGORIES = [
   'todo',
   'in_progress',
   'complete'
-] as const satisfies readonly GroupStatusCategory[]
+] as const satisfies readonly StatusCategory[]
 
-export interface GroupStatusSection {
-  category: GroupStatusCategory
-  options: GroupPropertyOption[]
+export interface StatusSection {
+  category: StatusCategory
+  options: StatusOption[]
 }
 
-export interface GroupStatusFilterTarget {
+export interface StatusFilterTarget {
   kind: 'category' | 'option'
   value: string
 }
 
-export interface GroupStatusFilterValue {
-  targets: GroupStatusFilterTarget[]
+export interface StatusFilterValue {
+  targets: StatusFilterTarget[]
 }
 
-type StatusProperty = Pick<GroupProperty, 'kind' | 'config'>
+type StatusProperty = CustomField | undefined
 
-const CATEGORY_LABELS: Record<GroupStatusCategory, string> = {
+const CATEGORY_LABELS: Record<StatusCategory, string> = {
   todo: 'To do',
   in_progress: 'In progress',
   complete: 'Complete'
 }
 
-const CATEGORY_COLORS: Record<GroupStatusCategory, string> = {
+const CATEGORY_COLORS: Record<StatusCategory, string> = {
   todo: 'gray',
   in_progress: 'blue',
   complete: 'green'
@@ -41,28 +42,25 @@ const CATEGORY_COLORS: Record<GroupStatusCategory, string> = {
 const DEFAULT_STATUS_OPTIONS = [
   {
     id: 'not_started',
-    key: 'not_started',
     name: 'Not started',
     color: 'gray',
     category: 'todo'
   },
   {
     id: 'in_progress',
-    key: 'in_progress',
     name: 'In progress',
     color: 'blue',
     category: 'in_progress'
   },
   {
     id: 'done',
-    key: 'done',
     name: 'Done',
     color: 'green',
     category: 'complete'
   }
-] as const satisfies readonly GroupPropertyOption[]
+] as const satisfies readonly StatusOption[]
 
-const CATEGORY_ALIASES: Record<GroupStatusCategory, readonly string[]> = {
+const CATEGORY_ALIASES: Record<StatusCategory, readonly string[]> = {
   todo: ['todo', 'to do', 'not_started', 'not started', 'backlog', 'waiting', 'pending', 'planned', '待办', '未开始'],
   in_progress: ['in_progress', 'in progress', 'doing', 'active', 'progress', 'processing', '进行中', '处理中'],
   complete: ['complete', 'completed', 'done', 'finished', 'closed', '已完成', '完成']
@@ -75,28 +73,26 @@ const normalizeToken = (value: unknown) => String(value ?? '')
 const getStatusOptions = (
   property?: StatusProperty
 ) => (
-  property?.kind === 'status'
-  && property.config?.type === 'status'
-  && Array.isArray(property.config.options)
+  property?.kind === 'status' && Array.isArray(property.options)
 )
-  ? property.config.options
+  ? property.options
   : []
 
 const isGroupStatusCategory = (
   value: unknown
-): value is GroupStatusCategory => (
+): value is StatusCategory => (
   typeof value === 'string'
-  && GROUP_STATUS_CATEGORIES.includes(value as GroupStatusCategory)
+  && STATUS_CATEGORIES.includes(value as StatusCategory)
 )
 
 const inferCategoryFromText = (
   values: readonly unknown[]
-): GroupStatusCategory | undefined => {
+): StatusCategory | undefined => {
   const normalized = values
     .map(normalizeToken)
     .filter(Boolean)
 
-  for (const category of GROUP_STATUS_CATEGORIES) {
+  for (const category of STATUS_CATEGORIES) {
     const aliases = CATEGORY_ALIASES[category]
     if (normalized.some(token => aliases.includes(token))) {
       return category
@@ -119,7 +115,7 @@ const getStatusOptionRecord = (
 
 const sortOptionTargets = (
   property: StatusProperty | undefined,
-  targets: readonly GroupStatusFilterTarget[]
+  targets: readonly StatusFilterTarget[]
 ) => {
   const optionOrder = new Map(getStatusOptions(property).map((option, index) => [option.id, index]))
 
@@ -150,29 +146,29 @@ const sortOptionTargets = (
   })
 }
 
-export const createDefaultStatusOptions = (): GroupPropertyOption[] => (
+export const createDefaultStatusOptions = (): StatusOption[] => (
   DEFAULT_STATUS_OPTIONS.map(option => ({ ...option }))
 )
 
 export const getStatusCategoryLabel = (
-  category: GroupStatusCategory
+  category: StatusCategory
 ) => CATEGORY_LABELS[category]
 
 export const getStatusCategoryColor = (
-  category: GroupStatusCategory
+  category: StatusCategory
 ) => CATEGORY_COLORS[category]
 
 export const getStatusCategoryOrder = (
   category: unknown
 ) => {
-  const index = GROUP_STATUS_CATEGORIES.findIndex(item => item === category)
+  const index = STATUS_CATEGORIES.findIndex(item => item === category)
   return index >= 0 ? index : Number.MAX_SAFE_INTEGER
 }
 
 export const getStatusOptionCategory = (
   property: StatusProperty | undefined,
   optionId: unknown
-): GroupStatusCategory | undefined => {
+): StatusCategory | undefined => {
   const option = getStatusOptionRecord(property, optionId)
   if (!option) {
     return undefined
@@ -182,7 +178,7 @@ export const getStatusOptionCategory = (
     return option.category
   }
 
-  const inferred = inferCategoryFromText([option.id, option.key, option.name])
+  const inferred = inferCategoryFromText([option.id, option.name])
   if (inferred) {
     return inferred
   }
@@ -192,10 +188,10 @@ export const getStatusOptionCategory = (
 
 export const getStatusSections = (
   property?: StatusProperty
-): GroupStatusSection[] => {
+): StatusSection[] => {
   const options = getStatusOptions(property)
 
-  return GROUP_STATUS_CATEGORIES.map(category => ({
+  return STATUS_CATEGORIES.map(category => ({
     category,
     options: options.filter(option => getStatusOptionCategory(property, option.id) === category)
   }))
@@ -203,23 +199,23 @@ export const getStatusSections = (
 
 export const getStatusDefaultOption = (
   property: StatusProperty | undefined,
-  category: GroupStatusCategory
+  category: StatusCategory
 ) => getStatusSections(property)
   .find(section => section.category === category)
   ?.options[0]
 
-export const createEmptyStatusFilterValue = (): GroupStatusFilterValue => ({
+export const createEmptyStatusFilterValue = (): StatusFilterValue => ({
   targets: []
 })
 
 export const isStatusFilterTarget = (
   value: unknown
-): value is GroupStatusFilterTarget => {
+): value is StatusFilterTarget => {
   if (!value || typeof value !== 'object') {
     return false
   }
 
-  const target = value as Partial<GroupStatusFilterTarget>
+  const target = value as Partial<StatusFilterTarget>
   return (
     (target.kind === 'category' || target.kind === 'option')
     && typeof target.value === 'string'
@@ -229,20 +225,20 @@ export const isStatusFilterTarget = (
 
 export const isStatusFilterValue = (
   value: unknown
-): value is GroupStatusFilterValue => {
+): value is StatusFilterValue => {
   if (!value || typeof value !== 'object') {
     return false
   }
 
-  const filterValue = value as Partial<GroupStatusFilterValue>
+  const filterValue = value as Partial<StatusFilterValue>
   return Array.isArray(filterValue.targets)
 }
 
 export const normalizeStatusFilterTargets = (
   property: StatusProperty | undefined,
-  input: readonly GroupStatusFilterTarget[]
-): GroupStatusFilterTarget[] => {
-  const categorySet = new Set<GroupStatusCategory>()
+  input: readonly StatusFilterTarget[]
+): StatusFilterTarget[] => {
+  const categorySet = new Set<StatusCategory>()
   const optionSet = new Set<string>()
 
   input.forEach(target => {
@@ -279,8 +275,8 @@ export const normalizeStatusFilterTargets = (
     })
   })
 
-  const normalized: GroupStatusFilterTarget[] = [
-    ...GROUP_STATUS_CATEGORIES
+  const normalized: StatusFilterTarget[] = [
+    ...STATUS_CATEGORIES
       .filter(category => categorySet.has(category))
       .map(category => ({
         kind: 'category' as const,
@@ -298,7 +294,7 @@ export const normalizeStatusFilterTargets = (
 export const readStatusFilterValue = (
   property: StatusProperty | undefined,
   value: unknown
-): GroupStatusFilterValue => {
+): StatusFilterValue => {
   if (isStatusFilterValue(value)) {
     return {
       targets: normalizeStatusFilterTargets(
@@ -342,7 +338,7 @@ export const isStatusFilterEffective = (
 export const isStatusFilterCategorySelected = (
   property: StatusProperty | undefined,
   value: unknown,
-  category: GroupStatusCategory
+  category: StatusCategory
 ) => readStatusFilterValue(property, value).targets.some(target => (
   target.kind === 'category' && target.value === category
 ))
@@ -365,8 +361,8 @@ export const isStatusFilterOptionSelected = (
 export const toggleStatusFilterCategory = (
   property: StatusProperty | undefined,
   value: unknown,
-  category: GroupStatusCategory
-): GroupStatusFilterValue => {
+  category: StatusCategory
+): StatusFilterValue => {
   const current = readStatusFilterValue(property, value).targets
   const hasCategory = current.some(target => (
     target.kind === 'category' && target.value === category
@@ -397,7 +393,7 @@ export const toggleStatusFilterOption = (
   property: StatusProperty | undefined,
   value: unknown,
   optionId: string
-): GroupStatusFilterValue => {
+): StatusFilterValue => {
   const current = readStatusFilterValue(property, value).targets
   const category = getStatusOptionCategory(property, optionId)
   if (!category) {
@@ -451,7 +447,7 @@ export const toggleStatusFilterOption = (
 
 export const getStatusFilterTargetLabel = (
   property: StatusProperty | undefined,
-  target: GroupStatusFilterTarget
+  target: StatusFilterTarget
 ) => {
   if (target.kind === 'category' && isGroupStatusCategory(target.value)) {
     return getStatusCategoryLabel(target.value)

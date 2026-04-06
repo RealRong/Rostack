@@ -9,11 +9,11 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type {
-  GroupView,
+  View,
   ViewId
 } from '@dataview/core/contracts'
 import {
-  getDocumentProperties,
+  getDocumentCustomFields,
   getDocumentViews
 } from '@dataview/core/document'
 import { Button } from '@ui/button'
@@ -25,7 +25,7 @@ import { cn } from '@ui/utils'
 import { CreateViewPopover } from '@dataview/react/page/features/createView'
 import { getAvailableFilterProperties } from '@dataview/react/page/features/filter/filterUi'
 import { getAvailableSorterProperties } from '@dataview/react/page/features/sort'
-import { PropertyPicker } from '@dataview/react/page/features/viewQuery/PropertyPicker'
+import { FieldPicker } from '@dataview/react/page/features/viewQuery/FieldPicker'
 import { ViewSettingsPopover } from '@dataview/react/page/features/viewSettings'
 import {
   useCurrentView,
@@ -36,7 +36,7 @@ import {
 import { meta, renderMessage } from '@dataview/meta'
 
 interface ViewTabProps {
-  view: GroupView
+  view: View
   active: boolean
   onClick: () => void
   menuOpen: boolean
@@ -143,7 +143,7 @@ export const PageToolbar = () => {
   const page = dataView.page
   const document = useDocument()
   const queryBar = usePageValue(state => state.query)
-  const properties = getDocumentProperties(document)
+  const fields = getDocumentCustomFields(document)
   const views = getDocumentViews(document)
   const currentView = useCurrentView(view => view?.view)
   const currentViewDomain = currentView
@@ -153,8 +153,8 @@ export const PageToolbar = () => {
   const searchQuery = currentView?.query.search.query ?? ''
   const filterRules = currentView?.query.filter.rules ?? []
   const sorters = currentView?.query.sorters ?? []
-  const availableFilterProperties = getAvailableFilterProperties(properties, filterRules)
-  const availableSorterProperties = getAvailableSorterProperties(properties, sorters)
+  const availableFilterProperties = getAvailableFilterProperties(fields, filterRules)
+  const availableSorterProperties = getAvailableSorterProperties(fields, sorters)
   const filterCount = filterRules.length
   const sortCount = sorters.length
   const [searchExpanded, setSearchExpanded] = useState(() => Boolean(searchQuery.trim()))
@@ -314,11 +314,11 @@ export const PageToolbar = () => {
               contentClassName="w-[280px] p-0"
             >
               <div className="flex max-h-[72vh] flex-col">
-                <PropertyPicker
-                  properties={availableFilterProperties}
+                <FieldPicker
+                  fields={availableFilterProperties}
                   emptyMessage={meta.ui.fieldPicker.allFiltered}
-                  onSelect={propertyId => {
-                    currentViewDomain?.filters.add(propertyId)
+                  onSelect={fieldId => {
+                    currentViewDomain?.filters.add(fieldId)
                     setToolbarRoute(null)
                   }}
                 />
@@ -375,11 +375,11 @@ export const PageToolbar = () => {
               contentClassName="w-[280px] p-0"
             >
               <div className="flex max-h-[72vh] flex-col">
-                <PropertyPicker
-                  properties={availableSorterProperties}
+                <FieldPicker
+                  fields={availableSorterProperties}
                   emptyMessage={meta.ui.fieldPicker.allSorted}
-                  onSelect={propertyId => {
-                    currentViewDomain?.sorters.add(propertyId)
+                  onSelect={fieldId => {
+                    currentViewDomain?.sorters.add(fieldId)
                     setToolbarRoute(null)
                   }}
                 />

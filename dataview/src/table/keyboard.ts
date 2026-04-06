@@ -1,10 +1,10 @@
-import type { GroupProperty, PropertyId } from '@dataview/core/contracts'
-import { resolvePropertyValueBehavior } from '@dataview/core/property'
+import type { Field, FieldId } from '@dataview/core/contracts'
+import { resolveFieldValueBehavior } from '@dataview/core/field'
 import type {
   AppearanceId,
   AppearanceList,
-  FieldId,
-  PropertyList
+  CellRef,
+  FieldList
 } from '@dataview/engine/projection/view'
 import type { GridSelection } from './gridSelection'
 import { range } from './range'
@@ -20,10 +20,10 @@ export interface TableKeyInput {
 }
 
 export interface TableKeyboardRead {
-  cell: (cell: FieldId) => {
+  cell: (cell: CellRef) => {
     exists: boolean
   }
-  property: (propertyId: PropertyId) => GroupProperty | undefined
+  field: (fieldId: FieldId) => Field | undefined
 }
 
 export type TableGridKeyAction =
@@ -36,13 +36,13 @@ export type TableGridKeyAction =
     }
   | {
       kind: 'open-cell'
-      cell: FieldId
+      cell: CellRef
       seedDraft?: string
     }
   | {
       kind: 'clear-cells'
       appearanceIds: readonly AppearanceId[]
-      propertyIds: readonly PropertyId[]
+      fieldIds: readonly FieldId[]
     }
 
 const isPrintableKey = (input: TableKeyInput) => (
@@ -62,12 +62,12 @@ export const gridKeyAction = (input: {
   key: TableKeyInput
   selection: GridSelection
   appearances: Pick<AppearanceList, 'indexOf' | 'ids'>
-  properties: Pick<PropertyList, 'indexOf' | 'ids'>
+  fields: Pick<FieldList, 'indexOf' | 'ids'>
   read: TableKeyboardRead
 }): TableGridKeyAction | null => {
-  const behavior = resolvePropertyValueBehavior({
+  const behavior = resolveFieldValueBehavior({
     exists: input.read.cell(input.selection.focus).exists,
-    property: input.read.property(input.selection.focus.propertyId)
+    field: input.read.field(input.selection.focus.fieldId)
   })
   const canEdit = behavior.canEdit
 
@@ -121,7 +121,7 @@ export const gridKeyAction = (input: {
       return {
         kind: 'clear-cells',
         appearanceIds: currentRange ? range.appearances(currentRange, input.appearances) : [],
-        propertyIds: currentRange ? range.properties(currentRange, input.properties) : []
+        fieldIds: currentRange ? range.fields(currentRange, input.fields) : []
       }
     }
     default:

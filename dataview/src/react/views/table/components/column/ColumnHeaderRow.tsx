@@ -8,26 +8,26 @@ import {
   horizontalListSortingStrategy
 } from '@dnd-kit/sortable'
 import type {
-  GroupProperty,
-  PropertyId
+  Field,
+  FieldId
 } from '@dataview/core/contracts'
 import { columnSortId } from '../../hooks/useColumnReorder'
 import { ColumnHeader } from './ColumnHeader'
 
 export interface ColumnHeaderRowProps {
   scopeId: string
-  columns: readonly GroupProperty[]
+  columns: readonly Field[]
   template: string
-  resizingPropertyId?: PropertyId
+  resizingPropertyId?: FieldId
   onResizeStart: (
-    propertyId: PropertyId,
+    fieldId: FieldId,
     event: PointerEvent<HTMLButtonElement>
   ) => void
 }
 
 const View = (props: ColumnHeaderRowProps) => {
   const sortIds = useMemo(
-    () => props.columns.map(property => columnSortId(props.scopeId, property.id)),
+    () => props.columns.map(field => columnSortId(props.scopeId, field.id)),
     [props.columns, props.scopeId]
   )
 
@@ -42,12 +42,12 @@ const View = (props: ColumnHeaderRowProps) => {
           gridTemplateColumns: props.template
         }}
       >
-        {props.columns.map((property, index) => (
+        {props.columns.map((field, index) => (
           <ColumnHeader
-            key={property.id}
-            property={property}
-            sortId={sortIds[index] ?? columnSortId(props.scopeId, property.id)}
-            resizeActive={property.id === props.resizingPropertyId}
+            key={field.id}
+            field={field}
+            sortId={sortIds[index] ?? columnSortId(props.scopeId, field.id)}
+            resizeActive={field.id === props.resizingPropertyId}
             onResizeStart={props.onResizeStart}
           />
         ))}

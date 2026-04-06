@@ -1,19 +1,19 @@
 import type {
   BucketState,
-  GroupFilterRule,
-  GroupGroupBy,
-  GroupSorter
+  FilterRule,
+  Grouping,
+  Sorter
 } from '@dataview/core/contracts'
-import type { GroupViewQuery } from './contracts'
+import type { ViewQuery } from './contracts'
 
-export const cloneFilterRule = (rule: GroupFilterRule): GroupFilterRule => ({
-  property: rule.property,
+export const cloneFilterRule = (rule: FilterRule): FilterRule => ({
+  field: rule.field,
   op: rule.op,
   value: structuredClone(rule.value)
 })
 
-export const cloneSorter = (sorter: GroupSorter): GroupSorter => ({
-  property: sorter.property,
+export const cloneSorter = (sorter: Sorter): Sorter => ({
+  field: sorter.field,
   direction: sorter.direction
 })
 
@@ -42,10 +42,10 @@ export const cloneBuckets = (
     : undefined
 }
 
-export const cloneGroup = (group: GroupGroupBy | undefined): GroupGroupBy | undefined => (
+export const cloneGrouping = (group: Grouping | undefined): Grouping | undefined => (
   group
     ? {
-        property: group.property,
+        field: group.field,
         mode: group.mode,
         bucketSort: group.bucketSort,
         ...(group.bucketInterval !== undefined
@@ -61,11 +61,11 @@ export const cloneGroup = (group: GroupGroupBy | undefined): GroupGroupBy | unde
     : undefined
 )
 
-export const cloneViewQuery = (query: GroupViewQuery): GroupViewQuery => ({
+export const cloneViewQuery = (query: ViewQuery): ViewQuery => ({
   search: {
     query: query.search.query,
-    properties: query.search.properties?.length
-      ? [...query.search.properties]
+    fields: query.search.fields?.length
+      ? [...query.search.fields]
       : undefined
   },
   filter: {
@@ -73,7 +73,7 @@ export const cloneViewQuery = (query: GroupViewQuery): GroupViewQuery => ({
     rules: query.filter.rules.map(cloneFilterRule)
   },
   sorters: query.sorters.map(cloneSorter),
-  group: cloneGroup(query.group)
+  group: cloneGrouping(query.group)
 })
 
 export const sameStringArray = (
@@ -90,19 +90,19 @@ export const sameStringArray = (
 }
 
 export const sameFilterRule = (
-  left: GroupFilterRule,
-  right: GroupFilterRule
+  left: FilterRule,
+  right: FilterRule
 ) => (
-  left.property === right.property
+  left.field === right.field
   && left.op === right.op
   && JSON.stringify(left.value) === JSON.stringify(right.value)
 )
 
 export const sameGroup = (
-  left: GroupGroupBy | undefined,
-  right: GroupGroupBy | undefined
+  left: Grouping | undefined,
+  right: Grouping | undefined
 ) => (
-  left?.property === right?.property
+  left?.field === right?.field
   && left?.mode === right?.mode
   && left?.bucketSort === right?.bucketSort
   && left?.bucketInterval === right?.bucketInterval

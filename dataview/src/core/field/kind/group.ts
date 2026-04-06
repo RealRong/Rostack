@@ -1,4 +1,4 @@
-export interface GroupBucket {
+export interface Bucket {
   key: string
   title: string
   value?: unknown
@@ -7,11 +7,11 @@ export interface GroupBucket {
   color?: string
 }
 
-export type GroupBucketSortValue = string | number | boolean | null | undefined
+export type BucketSortValue = string | number | boolean | null | undefined
 
-export interface ResolvedGroupBucket extends GroupBucket {
+export interface ResolvedBucket extends Bucket {
   order: number
-  sortValue?: GroupBucketSortValue
+  sortValue?: BucketSortValue
 }
 
 const labelCollator = new Intl.Collator(undefined, {
@@ -36,8 +36,8 @@ export const compareLabels = (
 ) => labelCollator.compare(left, right)
 
 export const compareGroupSortValues = (
-  left: GroupBucketSortValue,
-  right: GroupBucketSortValue
+  left: BucketSortValue,
+  right: BucketSortValue
 ): number => {
   if (left == null || right == null) {
     return left == null
@@ -60,10 +60,10 @@ export const compareGroupSortValues = (
   return compareLabels(String(left), String(right))
 }
 
-export const readBucketOrder = (bucket: GroupBucket) => (
-  (bucket as ResolvedGroupBucket).order ?? Number.MAX_SAFE_INTEGER
+export const readBucketOrder = (bucket: Bucket) => (
+  (bucket as ResolvedBucket).order ?? Number.MAX_SAFE_INTEGER
 )
 
-export const readBucketSortValue = (bucket: GroupBucket) => (
-  (bucket as ResolvedGroupBucket).sortValue
+export const readBucketSortValue = (bucket: Bucket) => (
+  (bucket as ResolvedBucket).sortValue
 )

@@ -1,8 +1,8 @@
-export const GROUP_KANBAN_EMPTY_BUCKET_KEY = '(empty)'
+export const KANBAN_EMPTY_BUCKET_KEY = '(empty)'
 
-export type GroupKanbanNewRecordPosition = 'start' | 'end'
+export type KanbanNewRecordPosition = 'start' | 'end'
 
-export interface GroupKanbanOptions {
-  newRecordPosition: GroupKanbanNewRecordPosition
+export interface KanbanOptions {
+  newRecordPosition: KanbanNewRecordPosition
   fillColumnColor: boolean
 }

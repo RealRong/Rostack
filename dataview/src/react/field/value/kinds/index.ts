@@ -1,5 +1,5 @@
-export { getPropertyValueSpec } from './registry'
+export { getFieldValueSpec } from './registry'
 export type {
-  PropertyValueSpec,
+  FieldValueSpec,
   RenderProps
 } from './contracts'

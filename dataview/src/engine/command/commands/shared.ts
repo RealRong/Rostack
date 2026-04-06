@@ -1,41 +1,41 @@
 import type {
-  GroupCommandPayload,
-  GroupCommandType,
-  GroupEditTarget,
-  GroupValueApplyAction
+  CommandPayload,
+  CommandType,
+  EditTarget,
+  ValueApplyAction
 } from '@dataview/core/contracts/commands'
-import type { GroupBaseOperation } from '@dataview/core/contracts/operations'
-import type { GroupDocument, GroupRecord } from '@dataview/core/contracts/state'
-import { enumerateRecords, hasDocumentProperty, hasDocumentRecord, hasDocumentView } from '@dataview/core/document'
+import type { BaseOperation } from '@dataview/core/contracts/operations'
+import type { DataDoc, Row } from '@dataview/core/contracts/state'
+import { enumerateRecords, hasDocumentCustomField, hasDocumentRecord, hasDocumentView } from '@dataview/core/document'
 import type { IndexedCommand } from '../context'
 import { deriveIndexedCommand } from '../context'
-import { createIssue, hasValidationErrors, type GroupValidationIssue } from '../issues'
+import { createIssue, hasValidationErrors, type ValidationIssue } from '../issues'
 
 export interface CommandResolution {
-  issues: GroupValidationIssue[]
-  operations: GroupBaseOperation[]
+  issues: ValidationIssue[]
+  operations: BaseOperation[]
 }
 
 export const resolveCommandResult = (
-  issues: GroupValidationIssue[],
-  operations: GroupBaseOperation[] = []
+  issues: ValidationIssue[],
+  operations: BaseOperation[] = []
 ): CommandResolution => ({
   issues,
   operations: hasValidationErrors(issues) ? [] : operations
 })
 
-export const deriveCommand = <TType extends GroupCommandType>(
+export const deriveCommand = <TType extends CommandType>(
   command: IndexedCommand,
   type: TType,
-  payload: GroupCommandPayload<TType>
+  payload: CommandPayload<TType>
 ) => deriveIndexedCommand(command, type, payload)
 
-export const hasRecord = (document: GroupDocument, recordId: string) => hasDocumentRecord(document, recordId)
-export const hasView = (document: GroupDocument, viewId: string) => hasDocumentView(document, viewId)
-export const hasProperty = (document: GroupDocument, propertyId: string) => hasDocumentProperty(document, propertyId)
+export const hasRecord = (document: DataDoc, recordId: string) => hasDocumentRecord(document, recordId)
+export const hasView = (document: DataDoc, viewId: string) => hasDocumentView(document, viewId)
+export const hasCustomField = (document: DataDoc, fieldId: string) => hasDocumentCustomField(document, fieldId)
 export const isNonEmptyString = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0
 
-export const resolveEditTargetRecordIds = (target: GroupEditTarget) => {
+export const resolveEditTargetRecordIds = (target: EditTarget) => {
   switch (target.type) {
     case 'record':
       return [target.recordId]
@@ -48,7 +48,7 @@ export const resolveEditTargetRecordIds = (target: GroupEditTarget) => {
   }
 }
 
-export const collectRecordIds = (records: GroupRecord[]) => {
+export const collectRecordIds = (records: Row[]) => {
   const recordIds: string[] = []
   enumerateRecords(records, entry => {
     recordIds.push(entry.record.id)
@@ -56,9 +56,9 @@ export const collectRecordIds = (records: GroupRecord[]) => {
   return recordIds
 }
 
-export const hasHierarchyPayload = (records: GroupRecord[]) => {
+export const hasHierarchyPayload = (records: Row[]) => {
   return records.some(record => {
-    const rawRecord = record as GroupRecord & { children?: unknown; expanded?: unknown }
+    const rawRecord = record as Row & { children?: unknown; expanded?: unknown }
     return Array.isArray(rawRecord.children) || rawRecord.expanded !== undefined
   })
 }
@@ -70,7 +70,7 @@ export const validateBatchItems = (command: IndexedCommand, items: readonly unkn
   return [createIssue(command, 'error', 'batch.emptyCollection', `${command.type} requires at least one item`, path)]
 }
 
-export const validateEditTarget = (document: GroupDocument, command: IndexedCommand, target: GroupEditTarget): GroupValidationIssue[] => {
+export const validateEditTarget = (document: DataDoc, command: IndexedCommand, target: EditTarget): ValidationIssue[] => {
   switch (target.type) {
     case 'record':
       return hasRecord(document, target.recordId)
@@ -92,13 +92,13 @@ export const validateEditTarget = (document: GroupDocument, command: IndexedComm
   }
 }
 
-export const validateValueApplyAction = (command: IndexedCommand, action: GroupValueApplyAction): GroupValidationIssue[] => {
+export const validateValueApplyAction = (command: IndexedCommand, action: ValueApplyAction): ValidationIssue[] => {
   switch (action.type) {
     case 'set':
     case 'clear':
-      return isNonEmptyString(action.property)
+      return isNonEmptyString(action.field)
         ? []
-        : [createIssue(command, 'error', 'value.invalidField', `${command.type} requires a non-empty property`, 'action.property')]
+        : [createIssue(command, 'error', 'value.invalidField', `${command.type} requires a non-empty field`, 'action.field')]
     case 'patch':
       return Object.keys(action.patch).length
         ? []
@@ -110,10 +110,10 @@ export const validateValueApplyAction = (command: IndexedCommand, action: GroupV
   }
 }
 
-export const validateViewExists = (document: GroupDocument, command: IndexedCommand, viewId: string) => {
+export const validateViewExists = (document: DataDoc, command: IndexedCommand, viewId: string) => {
   return hasView(document, viewId) ? [] : [createIssue(command, 'error', 'view.notFound', `Unknown view: ${viewId}`, 'viewId')]
 }
 
-export const validatePropertyExists = (document: GroupDocument, command: IndexedCommand, propertyId: string) => {
-  return hasProperty(document, propertyId) ? [] : [createIssue(command, 'error', 'field.notFound', `Unknown property: ${propertyId}`, 'propertyId')]
+export const validateCustomFieldExists = (document: DataDoc, command: IndexedCommand, fieldId: string) => {
+  return hasCustomField(document, fieldId) ? [] : [createIssue(command, 'error', 'field.notFound', `Unknown field: ${fieldId}`, 'fieldId')]
 }

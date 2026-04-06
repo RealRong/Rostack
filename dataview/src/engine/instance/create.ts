@@ -1,19 +1,19 @@
-import type { CreateGroupEngineOptions, GroupEngine } from '../types'
-import { cloneGroupDocument } from '@dataview/core/document'
+import type { CreateEngineOptions, Engine } from '../types'
+import { cloneDocument } from '@dataview/core/document'
 import { resolveWriteBatch } from '@dataview/engine/command'
 import { read as createRead } from '../runtime/read/read'
 import { commitRuntime } from '../runtime/commit/runtime'
 import { document } from './document'
 import {
-  createPropertiesEngineApi,
+  createFieldsEngineApi,
   createRecordsEngineApi,
   createViewEngineApi,
   createViewsEngineApi
 } from '../services'
 
-export const createGroupEngine = (options: CreateGroupEngineOptions): GroupEngine => {
+export const createEngine = (options: CreateEngineOptions): Engine => {
   const historyCapacity = Math.max(0, options.history?.capacity ?? 100)
-  const initialDocument = cloneGroupDocument(options.document)
+  const initialDocument = cloneDocument(options.document)
 
   const instanceDocument = document({
     initialDocument
@@ -34,8 +34,8 @@ export const createGroupEngine = (options: CreateGroupEngineOptions): GroupEngin
       document: read.document,
       recordIds: read.recordIds,
       record: read.record,
-      propertyIds: read.propertyIds,
-      property: read.property,
+      customFieldIds: read.customFieldIds,
+      customField: read.customField,
       viewIds: read.viewIds,
       view: read.view,
       viewProjection: read.viewProjection
@@ -56,18 +56,18 @@ export const createGroupEngine = (options: CreateGroupEngineOptions): GroupEngin
       clear: commit.history.clear
     },
     document: {
-      export: () => cloneGroupDocument(instanceDocument.peekDocument()),
+      export: () => cloneDocument(instanceDocument.peekDocument()),
       replace: document => {
         commit.replace(document)
-        return cloneGroupDocument(instanceDocument.peekDocument())
+        return cloneDocument(instanceDocument.peekDocument())
       }
     }
-  } as GroupEngine
+  } as Engine
 
   engine.views = createViewsEngineApi({
     engine
   })
-  engine.properties = createPropertiesEngineApi({
+  engine.fields = createFieldsEngineApi({
     engine
   })
   engine.records = createRecordsEngineApi({
@@ -81,4 +81,4 @@ export const createGroupEngine = (options: CreateGroupEngineOptions): GroupEngin
   return engine
 }
 
-export type { CreateGroupEngineOptions, GroupEngine } from '../types'
+export type { CreateEngineOptions, Engine } from '../types'

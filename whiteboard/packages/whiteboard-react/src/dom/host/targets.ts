@@ -1,17 +1,3 @@
-export const readEditableFieldTarget = (
-  target: EventTarget | null
-): 'text' | 'title' | undefined => {
-  if (!(target instanceof Element)) return undefined
-
-  const value = target
-    .closest('[data-node-editable-field]')
-    ?.getAttribute('data-node-editable-field')
-
-  return value === 'text' || value === 'title'
-    ? value
-    : undefined
-}
-
 export const isEditableTarget = (target: EventTarget | null) => {
   if (!(target instanceof Element)) return false
   if (target.closest('[contenteditable]:not([contenteditable="false"])')) return true

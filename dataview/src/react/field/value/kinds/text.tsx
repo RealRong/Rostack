@@ -1,20 +1,20 @@
 import type { ComponentType } from 'react'
-import type { GroupProperty } from '@dataview/core/contracts'
+import type { Field } from '@dataview/core/contracts'
 import {
-  getPropertyDisplayValue,
-  parsePropertyDraft
-} from '@dataview/core/property'
+  getFieldDisplayValue,
+  parseFieldDraft
+} from '@dataview/core/field'
 import { cn } from '@ui/utils'
 import {
   InputEditor,
   type InputKind
 } from '../editor/basic/InputEditor'
-import type { PropertyValueDraftEditorProps } from '../editor'
-import type { PropertyValueSpec } from './contracts'
+import type { FieldValueDraftEditorProps } from '../editor'
+import type { FieldValueSpec } from './contracts'
 import { renderEmpty } from './shared'
 
 const resolveInputKind = (
-  property?: GroupProperty
+  property?: Field
 ): InputKind => {
   switch (property?.kind) {
     case 'number':
@@ -35,22 +35,22 @@ const toInputDraft = (
   return String(value)
 }
 
-const TextInputEditor = (props: PropertyValueDraftEditorProps<string>) => (
+const TextInputEditor = (props: FieldValueDraftEditorProps<string>) => (
   <InputEditor {...props} type="text" />
 )
 
-const NumberInputEditor = (props: PropertyValueDraftEditorProps<string>) => (
+const NumberInputEditor = (props: FieldValueDraftEditorProps<string>) => (
   <InputEditor {...props} type="number" />
 )
 
-const inputEditors: Record<InputKind, ComponentType<PropertyValueDraftEditorProps<string>>> = {
+const inputEditors: Record<InputKind, ComponentType<FieldValueDraftEditorProps<string>>> = {
   text: TextInputEditor,
   number: NumberInputEditor
 }
 
 export const createTextPropertySpec = (
-  property: GroupProperty | undefined
-): PropertyValueSpec<string> => {
+  property: Field | undefined
+): FieldValueSpec<string> => {
   const type = resolveInputKind(property)
 
   return {
@@ -58,9 +58,9 @@ export const createTextPropertySpec = (
     panelWidth: 'default',
     Editor: inputEditors[type],
     createDraft: (value, seedDraft) => seedDraft ?? toInputDraft(type, value),
-    parseDraft: draft => parsePropertyDraft(property, draft),
+    parseDraft: draft => parseFieldDraft(property, draft),
     render: props => {
-      const display = getPropertyDisplayValue(property, props.value)
+      const display = getFieldDisplayValue(property, props.value)
       if (!display) {
         return renderEmpty(props)
       }

@@ -1,16 +1,19 @@
 import type {
-  GroupProperty,
-  GroupFilterRule
+  Field,
+  FilterRule
 } from '@dataview/core/contracts'
 import {
-  getPropertyFilterPreset,
-  getPropertyFilterPresets,
+  getFieldDisplayValue,
+  getFieldFilterPreset,
+  getFieldFilterPresets,
+  isCustomField
+} from '@dataview/core/field'
+import {
   type KindFilterPreset,
-  getPropertyOption,
-  getPropertyDisplayValue,
+  getFieldOption,
   getStatusFilterTargetLabel,
   readStatusFilterValue
-} from '@dataview/core/property'
+} from '@dataview/core/field'
 import { message, renderMessage } from './message'
 
 export type FilterValueEditorKind =
@@ -40,7 +43,7 @@ export interface FilterPresentation {
 }
 
 const toConditionDescriptor = (
-  property: Pick<GroupProperty, 'kind'> | undefined,
+  property: Pick<Field, 'kind'> | undefined,
   preset: KindFilterPreset
 ): FilterConditionDescriptor => {
   switch (preset.id) {
@@ -93,7 +96,7 @@ const toConditionDescriptor = (
         summary: message('meta.filter.condition.unchecked.summary', 'is unchecked')
       }
     case 'exists_true':
-      return property?.kind === 'file' || property?.kind === 'media'
+      return property?.kind === 'asset'
         ? {
             ...preset,
             message: message('meta.filter.condition.exists_true.file', 'Has value'),
@@ -121,7 +124,7 @@ const toConditionDescriptor = (
 }
 
 const getValueEditorKind = (
-  property: Pick<GroupProperty, 'kind'> | undefined,
+  property: Pick<Field, 'kind'> | undefined,
   condition: Pick<FilterConditionDescriptor, 'hidesValue'> | undefined
 ): FilterValueEditorKind => {
   if (!property || !condition || condition.hidesValue) {
@@ -144,7 +147,7 @@ const getValueEditorKind = (
 }
 
 const getValuePlaceholder = (
-  property?: Pick<GroupProperty, 'kind'>
+  property?: Pick<Field, 'kind'>
 ) => {
   switch (property?.kind) {
     case 'date':
@@ -157,21 +160,21 @@ const getValuePlaceholder = (
 }
 
 const getValueText = (
-  property: GroupProperty | undefined,
-  rule: GroupFilterRule
+  property: Field | undefined,
+  rule: FilterRule
 ) => {
-  if (property?.kind === 'status') {
+  if (property?.kind === 'status' && isCustomField(property)) {
     return readStatusFilterValue(property, rule.value).targets
       .map(target => getStatusFilterTargetLabel(property, target))
       .join(', ')
   }
 
-  if (property?.kind === 'multiSelect' && typeof rule.value === 'string') {
-    return getPropertyOption(property, rule.value)?.name ?? rule.value
+  if (property?.kind === 'multiSelect' && typeof rule.value === 'string' && isCustomField(property)) {
+    return getFieldOption(property, rule.value)?.name ?? rule.value
   }
 
   if (property) {
-    return getPropertyDisplayValue(property, rule.value) ?? ''
+    return getFieldDisplayValue(property, rule.value) ?? ''
   }
 
   if (Array.isArray(rule.value)) {
@@ -183,15 +186,15 @@ const getValueText = (
 
 export const filter = {
   conditions: (
-    property?: Pick<GroupProperty, 'kind'>
+    property?: Pick<Field, 'kind'>
   ): readonly FilterConditionDescriptor[] => (
-    getPropertyFilterPresets(property).map(preset => toConditionDescriptor(property, preset))
+    getFieldFilterPresets(property).map(preset => toConditionDescriptor(property, preset))
   ),
   present: (
-    property: GroupProperty | undefined,
-    rule: GroupFilterRule
+    property: Field | undefined,
+    rule: FilterRule
   ): FilterPresentation => {
-    const preset = getPropertyFilterPreset(property, rule)
+    const preset = getFieldFilterPreset(property, rule)
     const condition = preset
       ? toConditionDescriptor(property, preset)
       : undefined

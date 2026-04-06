@@ -1,20 +1,20 @@
-export interface GroupCommitHistoryDepth {
+export interface CommitHistoryDepth {
   undoDepth: number
   redoDepth: number
 }
 
 export type {
-  GroupCommitChangedIds,
-  GroupCommitEntityChange,
-  GroupCommitValueChange,
-  GroupCommitChangeSet,
-  GroupCommitChangeSummary
+  CommitChangedIds,
+  CommitEntityChange,
+  CommitValueChange,
+  CommitChangeSet,
+  CommitChangeSummary
 } from '@dataview/core/contracts/changeSet'
 
-export interface GroupHistoryState extends GroupCommitHistoryDepth {
+export interface HistoryState extends CommitHistoryDepth {
   capacity: number
 }
 
-export interface GroupHistoryOptions {
+export interface HistoryOptions {
   capacity?: number
 }

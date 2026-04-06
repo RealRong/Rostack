@@ -20,7 +20,7 @@ export const cloneQueryBarEntry = (
   return entry.kind === 'filter'
     ? {
         kind: 'filter',
-        propertyId: entry.propertyId
+        fieldId: entry.fieldId
       }
     : entry.kind === 'addFilter'
       ? { kind: 'addFilter' }
@@ -48,7 +48,7 @@ const equalQueryBarEntry = (
     && (
       left.kind !== 'filter'
       || right.kind !== 'filter'
-      || left.propertyId === right.propertyId
+      || left.fieldId === right.fieldId
     )
 }
 
@@ -80,4 +80,3 @@ export const createDefaultPageSessionState = (
   },
   settings: cloneSettingsState(input?.settings)
 })
-

@@ -1,14 +1,19 @@
-import { useEffect, useMemo, useRef } from 'react'
-import { resolveOptionColumnStyle } from '@ui/color'
+import { useRef } from 'react'
+import { DATAVIEW_APPEARANCE_ID_ATTR } from '@dataview/dom/appearance'
 import { cn } from '@ui/utils'
 import type { Section } from '@dataview/react/runtime/currentView'
 import { useKanbanContext } from '../context'
-import { useColumnVirtual } from '../virtual'
 import { Card } from './Card'
 import { ColumnDropIndicator } from './ColumnDropIndicator'
 
-const FILLED_COLUMN_INSET = 8
 const CARD_GAP = 8
+
+const findCardNode = (
+  container: HTMLElement,
+  appearanceId: string
+) => Array.from(
+  container.querySelectorAll<HTMLElement>(`[${DATAVIEW_APPEARANCE_ID_ATTR}]`)
+).find(node => node.getAttribute(DATAVIEW_APPEARANCE_ID_ATTR) === appearanceId)
 
 export const ColumnBody = (props: {
   section: Section
@@ -19,61 +24,47 @@ export const ColumnBody = (props: {
   const sectionOverTarget = overTarget?.sectionKey === props.section.key
     ? overTarget
     : undefined
-  const overscan = useMemo(
-    () => controller.boostedSectionKeySet.has(props.section.key) ? 960 : undefined,
-    [controller.boostedSectionKeySet, props.section.key]
-  )
   const isColumnTarget = !!sectionOverTarget && !sectionOverTarget.beforeAppearanceId
-  const virtual = useColumnVirtual({
-    ids: props.section.ids,
-    bodyRef,
-    overscan
-  })
-  const contentInset = controller.fillColumnColor
-    ? FILLED_COLUMN_INSET
-    : 0
-
-  useEffect(() => {
-    controller.layouts.set(props.section.key, virtual.layouts)
-    return () => {
-      controller.layouts.clear(props.section.key)
+  const indicatorTop = (() => {
+    const bodyNode = bodyRef.current
+    if (!sectionOverTarget || !bodyNode) {
+      return undefined
     }
-  }, [controller.layouts, props.section.key, virtual.layouts])
 
-  const indicatorTop = sectionOverTarget
-    ? sectionOverTarget.beforeAppearanceId
-      ? Math.max(0, (virtual.positionById.get(sectionOverTarget.beforeAppearanceId)?.top ?? virtual.totalHeight) - 4)
-      : Math.max(0, virtual.totalHeight - 4)
-    : undefined
-  const firstItem = virtual.items[0]
-  const windowStartTop = firstItem?.top ?? 0
-  const contentHeight = Math.max(
-    controller.layout.columnMinHeight,
-    virtual.totalHeight
-  )
+    const bodyRect = bodyNode.getBoundingClientRect()
+    if (sectionOverTarget.beforeAppearanceId) {
+      const cardNode = findCardNode(bodyNode, sectionOverTarget.beforeAppearanceId)
+      if (!cardNode) {
+        return undefined
+      }
+
+      return Math.max(0, cardNode.getBoundingClientRect().top - bodyRect.top - 4)
+    }
+
+    const cards = Array.from(
+      bodyNode.querySelectorAll<HTMLElement>(`[${DATAVIEW_APPEARANCE_ID_ATTR}]`)
+    )
+    const lastCard = cards[cards.length - 1]
+    return lastCard
+      ? Math.max(0, lastCard.getBoundingClientRect().bottom - bodyRect.top - 4)
+      : undefined
+  })()
 
   return (
     <div
       ref={bodyRef}
       data-kanban-column-body
-      className={cn(
-        'relative rounded-2xl transition-colors',
-        isColumnTarget && 'outline outline-2 outline-primary/20 -outline-offset-2'
-      )}
+      className="relative"
       style={{
-        ...(controller.fillColumnColor
-          ? resolveOptionColumnStyle(controller.readSectionColorId(props.section.key))
-          : undefined),
         overflowAnchor: 'none',
-        padding: contentInset || undefined,
         minHeight: Math.max(controller.layout.columnMinHeight, props.section.ids.length ? 0 : 120)
       }}
     >
       {props.section.ids.length ? (
         <div
+          className="flex flex-col"
           style={{
-            position: 'relative',
-            height: contentHeight,
+            gap: CARD_GAP,
             overflowAnchor: 'none'
           }}
         >
@@ -82,40 +73,20 @@ export const ColumnBody = (props: {
               top={indicatorTop}
             />
           ) : null}
-          {virtual.items.length ? (
-            <div
-              style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                top: 0,
-                transform: `translateY(${windowStartTop}px)`
-              }}
-            >
-              <div
-                className="flex flex-col"
-                style={{
-                  gap: CARD_GAP
-                }}
-              >
-                {virtual.items.map(item => {
-                  const record = controller.readRecord(item.id)
-                  if (!record) {
-                    return null
-                  }
+          {props.section.ids.map(id => {
+            const record = controller.readRecord(id)
+            if (!record) {
+              return null
+            }
 
-                  return (
-                    <Card
-                      key={item.id}
-                      appearanceId={item.id}
-                      record={record}
-                      measureRef={virtual.measure(item.id)}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-          ) : null}
+            return (
+              <Card
+                key={id}
+                appearanceId={id}
+                record={record}
+              />
+            )
+          })}
         </div>
       ) : (
         <div

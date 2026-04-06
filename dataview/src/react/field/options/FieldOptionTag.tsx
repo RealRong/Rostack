@@ -1,7 +1,7 @@
 import { resolveOptionBadgeStyle } from '@ui/color'
 import { cn } from '@ui/utils'
 
-export interface PropertyOptionTagProps {
+export interface FieldOptionTagProps {
   label: string
   color?: string
   size?: 'sm' | 'md'
@@ -9,12 +9,12 @@ export interface PropertyOptionTagProps {
   className?: string
 }
 
-const sizeClassName: Record<NonNullable<PropertyOptionTagProps['size']>, string> = {
+const sizeClassName: Record<NonNullable<FieldOptionTagProps['size']>, string> = {
   sm: 'h-5 rounded-[4px] px-1.5 text-[12px] leading-5',
   md: 'h-6 rounded-[5px] px-2 text-[13px] leading-6'
 }
 
-export const PropertyOptionTag = (props: PropertyOptionTagProps) => {
+export const FieldOptionTag = (props: FieldOptionTagProps) => {
   const size = props.size ?? 'sm'
 
   return (

@@ -18,10 +18,17 @@ export const createEdgeHoverService = (
       return
     }
 
-    const target = ctx.snap.edge.connect(hoverPoint)
+    const evaluation = ctx.snap.edge.connect({
+      pointerWorld: hoverPoint
+    })
     ctx.write.preview.edge.setGuide(
-      target
-        ? { snap: target.pointWorld }
+      evaluation.focusedNodeId || evaluation.resolution.mode !== 'free'
+        ? {
+            connect: {
+              focusedNodeId: evaluation.focusedNodeId,
+              resolution: evaluation.resolution
+            }
+          }
         : undefined
     )
   })

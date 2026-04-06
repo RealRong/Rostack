@@ -1,5 +1,5 @@
-import type { GroupBaseOperation } from '@dataview/core/contracts/operations'
-import type { GroupDocument } from '@dataview/core/contracts/state'
+import type { BaseOperation } from '@dataview/core/contracts/operations'
+import type { DataDoc } from '@dataview/core/contracts/state'
 import type { IndexedCommand } from '../context'
 import {
   resolveCommandResult,
@@ -9,7 +9,7 @@ import {
 } from './shared'
 
 export const resolveValueApplyCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'value.apply' }>
 ) => {
   const issues = [
@@ -23,21 +23,21 @@ export const resolveValueApplyCommand = (
         return {
           type: 'document.value.set',
           recordId,
-          property: command.action.property,
+          field: command.action.field,
           value: command.action.value
-        } satisfies GroupBaseOperation
+        } satisfies BaseOperation
       case 'patch':
         return {
           type: 'document.value.patch',
           recordId,
           patch: command.action.patch
-        } satisfies GroupBaseOperation
+        } satisfies BaseOperation
       case 'clear':
         return {
           type: 'document.value.clear',
           recordId,
-          property: command.action.property
-        } satisfies GroupBaseOperation
+          field: command.action.field
+        } satisfies BaseOperation
       default: {
         const unexpectedAction: never = command.action
         throw new Error(`Unsupported value.apply action: ${unexpectedAction}`)

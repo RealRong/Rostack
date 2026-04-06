@@ -1,7 +1,7 @@
-import { getDocumentProperties } from '@dataview/core/document'
+import { getDocumentCustomFields } from '@dataview/core/document'
 import { getAvailableFilterProperties } from '@dataview/react/page/features/filter/filterUi'
 import { getAvailableSorterProperties } from '@dataview/react/page/features/sort'
-import { PropertyPicker } from '@dataview/react/page/features/viewQuery/PropertyPicker'
+import { FieldPicker } from '@dataview/react/page/features/viewQuery/FieldPicker'
 import {
   useCurrentView,
   useDataView,
@@ -21,30 +21,30 @@ export const QueryFieldPickerPanel = (props: {
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined
-  const properties = getDocumentProperties(document)
+  const fields = getDocumentCustomFields(document)
   const router = useViewSettings()
 
   return (
     <div className="min-h-0 flex-1 overflow-hidden">
-      <PropertyPicker
-        properties={props.kind === 'filter'
-          ? getAvailableFilterProperties(properties, currentView?.query.filter.rules ?? [])
-          : getAvailableSorterProperties(properties, currentView?.query.sorters ?? [])}
+      <FieldPicker
+        fields={props.kind === 'filter'
+          ? getAvailableFilterProperties(fields, currentView?.query.filter.rules ?? [])
+          : getAvailableSorterProperties(fields, currentView?.query.sorters ?? [])}
         emptyMessage={props.kind === 'filter'
           ? meta.ui.fieldPicker.allFiltered
           : meta.ui.fieldPicker.allSorted}
-        onSelect={propertyId => {
+        onSelect={fieldId => {
           if (props.kind === 'filter') {
-            currentViewDomain?.filters.add(propertyId)
+            currentViewDomain?.filters.add(fieldId)
             page.query.open({
               kind: 'filter',
-              propertyId
+              fieldId
             })
             router.close()
             return
           }
 
-          currentViewDomain?.sorters.add(propertyId)
+          currentViewDomain?.sorters.add(fieldId)
           page.query.open({
             kind: 'sort'
           })

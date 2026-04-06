@@ -1,9 +1,9 @@
-import type { GroupCommandType } from '@dataview/core/contracts/commands'
+import type { CommandType } from '@dataview/core/contracts/commands'
 import type { IndexedCommand } from './context'
 
-export type GroupValidationSeverity = 'error' | 'warning'
+export type ValidationSeverity = 'error' | 'warning'
 
-export type GroupValidationCode =
+export type ValidationCode =
   | 'batch.emptyCollection'
   | 'record.notFound'
   | 'record.duplicateId'
@@ -25,22 +25,22 @@ export type GroupValidationCode =
   | 'value.emptyPatch'
   | 'external.invalidSource'
 
-export interface GroupValidationIssue {
-  severity: GroupValidationSeverity
-  code: GroupValidationCode
+export interface ValidationIssue {
+  severity: ValidationSeverity
+  code: ValidationCode
   message: string
   commandIndex: number
-  commandType: GroupCommandType
+  commandType: CommandType
   path?: string
 }
 
 export const createIssue = (
   command: IndexedCommand,
-  severity: GroupValidationSeverity,
-  code: GroupValidationCode,
+  severity: ValidationSeverity,
+  code: ValidationCode,
   message: string,
   path?: string
-): GroupValidationIssue => ({
+): ValidationIssue => ({
   severity,
   code,
   message,
@@ -49,4 +49,4 @@ export const createIssue = (
   path
 })
 
-export const hasValidationErrors = (issues: readonly GroupValidationIssue[]) => issues.some(issue => issue.severity === 'error')
+export const hasValidationErrors = (issues: readonly ValidationIssue[]) => issues.some(issue => issue.severity === 'error')

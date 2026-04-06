@@ -27,7 +27,7 @@ export const OptionToken = (props: OptionTokenProps) => (
         variant="plain"
         size="iconBare"
         className="text-current"
-        aria-label={renderMessage(meta.ui.property.options.clear(props.label))}
+        aria-label={renderMessage(meta.ui.field.options.clear(props.label))}
         onMouseDown={event => {
           event.preventDefault()
           event.stopPropagation()

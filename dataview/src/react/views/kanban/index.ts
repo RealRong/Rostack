@@ -11,7 +11,6 @@ export {
   type KanbanController
 } from './useKanbanController'
 export type {
-  GroupKanbanOptions as KanbanOptions,
-  GroupKanbanNewRecordPosition,
-  GroupKanbanOptions
+  KanbanNewRecordPosition,
+  KanbanOptions
 } from '@dataview/core/contracts'

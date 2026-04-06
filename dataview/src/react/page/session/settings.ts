@@ -1,7 +1,7 @@
 import type {
-  GroupProperty,
-  GroupViewType,
-  PropertyId
+  CustomField,
+  ViewType,
+  CustomFieldId
 } from '@dataview/core/contracts'
 import type {
   SettingsRoute
@@ -9,11 +9,11 @@ import type {
 
 export const ROOT_SETTINGS_ROUTE: SettingsRoute = { kind: 'root' }
 
-const GROUP_ENABLED_VIEW_TYPES = new Set<GroupViewType | string>(['table', 'kanban'])
+const GROUPABLE_VIEW_TYPES = new Set<ViewType | string>(['table', 'kanban'])
 
 export const supportsGroupSettings = (
-  viewType: GroupViewType | string | undefined
-) => GROUP_ENABLED_VIEW_TYPES.has(viewType ?? 'table')
+  viewType: ViewType | string | undefined
+) => GROUPABLE_VIEW_TYPES.has(viewType ?? 'table')
 
 export const cloneSettingsRoute = (
   route: SettingsRoute | null | undefined
@@ -30,10 +30,10 @@ export const cloneSettingsRoute = (
             focusTarget: route.focusTarget
           }
         : ROOT_SETTINGS_ROUTE
-    case 'propertySchema':
+    case 'fieldSchema':
       return {
-        kind: 'propertySchema',
-        propertyId: route.propertyId
+        kind: 'fieldSchema',
+        fieldId: route.fieldId
       }
     default:
       return route
@@ -48,8 +48,8 @@ export const equalSettingsRoute = (
     return false
   }
 
-  if (left.kind === 'propertySchema' && right.kind === 'propertySchema') {
-    return left.propertyId === right.propertyId
+  if (left.kind === 'fieldSchema' && right.kind === 'fieldSchema') {
+    return left.fieldId === right.fieldId
   }
 
   if (left.kind === 'root' && right.kind === 'root') {
@@ -59,22 +59,22 @@ export const equalSettingsRoute = (
   return true
 }
 
-const findProperty = (
-  properties: readonly GroupProperty[],
-  propertyId: PropertyId
-) => properties.find(property => property.id === propertyId)
+const findField = (
+  fields: readonly CustomField[],
+  fieldId: CustomFieldId
+) => fields.find(field => field.id === fieldId)
 
 export const parentSettingsRoute = (
   route: SettingsRoute
 ): SettingsRoute => {
   switch (route.kind) {
-    case 'propertyCreate':
-    case 'propertySchema':
-      return { kind: 'propertyList' }
+    case 'fieldCreate':
+    case 'fieldSchema':
+      return { kind: 'fieldList' }
     case 'layout':
     case 'group':
     case 'viewProperties':
-    case 'propertyList':
+    case 'fieldList':
     case 'filter':
     case 'sort':
     case 'root':
@@ -85,9 +85,9 @@ export const parentSettingsRoute = (
 
 export const normalizeSettingsRoute = (
   route: SettingsRoute,
-  properties: readonly GroupProperty[],
+  fields: readonly CustomField[],
   hasView: boolean,
-  viewType?: GroupViewType | string
+  viewType?: ViewType | string
 ): SettingsRoute => {
   if (!hasView) {
     return ROOT_SETTINGS_ROUTE
@@ -97,8 +97,8 @@ export const normalizeSettingsRoute = (
     case 'root':
     case 'layout':
     case 'viewProperties':
-    case 'propertyList':
-    case 'propertyCreate':
+    case 'fieldList':
+    case 'fieldCreate':
     case 'filter':
     case 'sort':
       return route
@@ -106,10 +106,10 @@ export const normalizeSettingsRoute = (
       return supportsGroupSettings(viewType)
         ? route
         : ROOT_SETTINGS_ROUTE
-    case 'propertySchema':
-      return findProperty(properties, route.propertyId)
+    case 'fieldSchema':
+      return findField(fields, route.fieldId)
         ? route
-        : { kind: 'propertyList' }
+        : { kind: 'fieldList' }
     default:
       return parentSettingsRoute(route)
   }

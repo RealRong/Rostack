@@ -1,22 +1,22 @@
-import type { GroupCommitChangeSet } from '../contracts/changeSet'
-import type { GroupBaseOperation } from '../contracts/operations'
-import type { GroupDocument } from '../contracts/state'
+import type { CommitChangeSet } from '../contracts/changeSet'
+import type { BaseOperation } from '../contracts/operations'
+import type { DataDoc } from '../contracts/state'
 import { type ChangeCollector, createChangeCollector, getOperationChangedSlices } from '../commit/changeSet'
 import { enumerateRecords } from '../document'
 import { reduceOperation } from './reducer'
 import { buildInverseOperations } from './history/inverse'
 
 export interface ApplyOperationsResult {
-  document: GroupDocument
-  changeSet: GroupCommitChangeSet
-  undo: GroupBaseOperation[]
-  redo: GroupBaseOperation[]
+  document: DataDoc
+  changeSet: CommitChangeSet
+  undo: BaseOperation[]
+  redo: BaseOperation[]
 }
 
 const cloneValue = <T>(value: T): T => structuredClone(value)
 
 const collectOperationChanges = (
-  operation: GroupBaseOperation,
+  operation: BaseOperation,
   collector: ChangeCollector
 ) => {
   collector.addSlices(getOperationChangedSlices(operation))
@@ -39,7 +39,7 @@ const collectOperationChanges = (
       return
     }
     case 'document.value.set': {
-      collector.addValueChange(operation.recordId, [operation.property])
+      collector.addValueChange(operation.recordId, [operation.field])
       return
     }
     case 'document.value.patch': {
@@ -47,7 +47,7 @@ const collectOperationChanges = (
       return
     }
     case 'document.value.clear': {
-      collector.addValueChange(operation.recordId, [operation.property])
+      collector.addValueChange(operation.recordId, [operation.field])
       return
     }
     case 'document.view.put': {
@@ -58,16 +58,16 @@ const collectOperationChanges = (
       collector.addViewRemoved(operation.viewId)
       return
     }
-    case 'document.property.put': {
-      collector.addPropertyPut(operation.property.id)
+    case 'document.customField.put': {
+      collector.addFieldPut(operation.field.id)
       return
     }
-    case 'document.property.patch': {
-      collector.addPropertyUpdated(operation.propertyId)
+    case 'document.customField.patch': {
+      collector.addFieldUpdated(operation.fieldId)
       return
     }
-    case 'document.property.remove': {
-      collector.addPropertyRemoved(operation.propertyId)
+    case 'document.customField.remove': {
+      collector.addFieldRemoved(operation.fieldId)
       return
     }
     case 'external.version.bump':
@@ -75,10 +75,10 @@ const collectOperationChanges = (
   }
 }
 
-export const applyOperations = (document: GroupDocument, operations: readonly GroupBaseOperation[], collector?: ChangeCollector): ApplyOperationsResult => {
+export const applyOperations = (document: DataDoc, operations: readonly BaseOperation[], collector?: ChangeCollector): ApplyOperationsResult => {
   const changeCollector = collector ?? createChangeCollector(document)
   let nextDocument = document
-  const undoBatches: GroupBaseOperation[][] = []
+  const undoBatches: BaseOperation[][] = []
   const redo = operations.map(operation => cloneValue(operation))
 
   for (const operation of operations) {

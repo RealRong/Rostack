@@ -7,7 +7,7 @@ import {
 import type { Point } from '@dataview/dom/geometry'
 import type {
   AppearanceId,
-  FieldId
+  CellRef
 } from '@dataview/react/runtime/currentView'
 import {
   hoveredCellOf,
@@ -17,7 +17,7 @@ import {
 } from './model/hover'
 
 export interface Hover {
-  cell: KeyedReadStore<FieldId, boolean>
+  cell: KeyedReadStore<CellRef, boolean>
   row: KeyedReadStore<AppearanceId, boolean>
   get: () => TableHoverTarget | null
   point: () => Point | null
@@ -33,7 +33,7 @@ interface HoverState {
   pointer: Point | null
 }
 
-const cellKey = (cell: FieldId) => `${cell.appearanceId}\u0000${cell.propertyId}`
+const cellKey = (cell: CellRef) => `${cell.appearanceId}\u0000${cell.fieldId}`
 
 const samePoint = (
   left: Point | null,
@@ -69,7 +69,7 @@ export const createHover = (): Hover => {
   }
 
   return {
-    cell: createKeyedDerivedStore<FieldId, boolean>({
+    cell: createKeyedDerivedStore<CellRef, boolean>({
       keyOf: cellKey,
       get: (read, cell) => {
         const hoveredCell = hoveredCellOf(read(state).target)
@@ -78,7 +78,7 @@ export const createHover = (): Hover => {
         }
 
         return hoveredCell.appearanceId === cell.appearanceId
-          && hoveredCell.propertyId === cell.propertyId
+          && hoveredCell.fieldId === cell.fieldId
       },
       isEqual: Object.is
     }),

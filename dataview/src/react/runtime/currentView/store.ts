@@ -2,7 +2,7 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import type {
-  GroupEngine
+  Engine
 } from '@dataview/engine'
 import {
   createDerivedStore,
@@ -25,7 +25,7 @@ import type {
 } from '@dataview/react/runtime/selection'
 
 export const createCurrentViewStore = (input: {
-  engine: GroupEngine
+  engine: Engine
   pageStore: ReadStore<PageSessionState>
   selection: SelectionStore
 }): ReadStore<CurrentView | undefined> => {

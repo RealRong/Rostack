@@ -1,7 +1,7 @@
 import type {
-  PropertyId,
-  GroupProperty,
-  GroupSorter
+  Field,
+  FieldId,
+  Sorter
 } from '@dataview/core/contracts'
 
 export const SORT_DIRECTIONS = [
@@ -9,65 +9,65 @@ export const SORT_DIRECTIONS = [
   'desc'
 ] as const
 
-export const getSorterPropertyId = (
-  sorter: Pick<GroupSorter, 'property'>
-): PropertyId | undefined => {
-  if (typeof sorter.property !== 'string') {
+export const getSorterFieldId = (
+  sorter: Pick<Sorter, 'field'>
+): FieldId | undefined => {
+  if (typeof sorter.field !== 'string') {
     return undefined
   }
 
-  return sorter.property
+  return sorter.field
 }
 
 export const getSorterItemId = (
-  sorter: Pick<GroupSorter, 'property'>,
+  sorter: Pick<Sorter, 'field'>,
   index: number
-) => getSorterPropertyId(sorter) ?? `sorter_${index}`
+) => getSorterFieldId(sorter) ?? `sorter_${index}`
 
 export const findSorterProperty = (
-  properties: readonly GroupProperty[],
-  sorter: Pick<GroupSorter, 'property'>
+  fields: readonly Field[],
+  sorter: Pick<Sorter, 'field'>
 ) => {
-  const propertyId = getSorterPropertyId(sorter)
-  return propertyId
-    ? properties.find(property => property.id === propertyId)
+  const fieldId = getSorterFieldId(sorter)
+  return fieldId
+    ? fields.find(property => property.id === fieldId)
     : undefined
 }
 
 export const getAvailableSorterProperties = (
-  properties: readonly GroupProperty[],
-  sorters: readonly GroupSorter[]
+  fields: readonly Field[],
+  sorters: readonly Sorter[]
 ) => {
-  const usedPropertyIds = new Set<PropertyId>()
+  const usedFieldIds = new Set<FieldId>()
 
   sorters.forEach(sorter => {
-    const propertyId = getSorterPropertyId(sorter)
-    if (propertyId) {
-      usedPropertyIds.add(propertyId)
+    const fieldId = getSorterFieldId(sorter)
+    if (fieldId) {
+      usedFieldIds.add(fieldId)
     }
   })
 
-  return properties.filter(property => !usedPropertyIds.has(property.id))
+  return fields.filter(property => !usedFieldIds.has(property.id))
 }
 
 export const getAvailableSorterPropertiesForIndex = (
-  properties: readonly GroupProperty[],
-  sorters: readonly GroupSorter[],
+  fields: readonly Field[],
+  sorters: readonly Sorter[],
   index: number
 ) => {
-  const currentPropertyId = getSorterPropertyId(sorters[index] ?? { property: undefined })
-  const usedPropertyIds = new Set<PropertyId>()
+  const currentFieldId = getSorterFieldId(sorters[index] ?? { field: undefined })
+  const usedFieldIds = new Set<FieldId>()
 
   sorters.forEach((sorter, sorterIndex) => {
     if (sorterIndex === index) {
       return
     }
 
-    const propertyId = getSorterPropertyId(sorter)
-    if (propertyId) {
-      usedPropertyIds.add(propertyId)
+    const fieldId = getSorterFieldId(sorter)
+    if (fieldId) {
+      usedFieldIds.add(fieldId)
     }
   })
 
-  return properties.filter(property => property.id === currentPropertyId || !usedPropertyIds.has(property.id))
+  return fields.filter(property => property.id === currentFieldId || !usedFieldIds.has(property.id))
 }

@@ -6,9 +6,9 @@ import {
   isComposing,
   keyAction
 } from '../shared/keyboard'
-import type { PropertyValueDraftEditorProps } from '../contracts'
+import type { FieldValueDraftEditorProps } from '../contracts'
 
-export const CheckboxEditor = (props: PropertyValueDraftEditorProps<string>) => {
+export const CheckboxEditor = (props: FieldValueDraftEditorProps<string>) => {
   const selectRef = useRef<HTMLSelectElement | null>(null)
 
   useEffect(() => {

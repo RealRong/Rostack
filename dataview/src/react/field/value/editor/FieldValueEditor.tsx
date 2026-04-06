@@ -10,17 +10,21 @@ import {
   commit,
   type EditorSubmitTrigger
 } from '@dataview/react/interaction'
-import { getPropertyValueSpec } from '../kinds'
+import { isCustomField } from '@dataview/core/field'
+import { getFieldValueSpec } from '../kinds'
 import type {
-  PropertyValueEditorHandle,
-  PropertyValueEditorProps
+  FieldValueEditorHandle,
+  FieldValueEditorProps
 } from './contracts'
 
-export const PropertyValueEditor = forwardRef<
-  PropertyValueEditorHandle,
-  PropertyValueEditorProps
+export const FieldValueEditor = forwardRef<
+  FieldValueEditorHandle,
+  FieldValueEditorProps
 >((props, ref) => {
-  const spec = getPropertyValueSpec(props.property)
+  const spec = getFieldValueSpec(props.property)
+  const editorProperty = isCustomField(props.property)
+    ? props.property
+    : undefined
   const [draft, setDraftState] = useState(() => (
     spec.createDraft(props.value, props.seedDraft)
   ))
@@ -78,7 +82,7 @@ export const PropertyValueEditor = forwardRef<
   return (
     <div>
       <spec.Editor
-        property={props.property}
+        property={editorProperty}
         draft={draft}
         autoFocus={props.autoFocus}
         onDraftChange={setDraft}
@@ -90,4 +94,4 @@ export const PropertyValueEditor = forwardRef<
   )
 })
 
-PropertyValueEditor.displayName = 'PropertyValueEditor'
+FieldValueEditor.displayName = 'FieldValueEditor'

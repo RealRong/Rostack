@@ -1,12 +1,12 @@
 import type {
-  GroupBucketSort,
-  GroupFilterOperator,
-  GroupFilterRule,
-  GroupGroupBy,
-  GroupProperty,
-  GroupPropertyKind
+  BucketSort,
+  FilterOperator,
+  FilterRule,
+  Grouping,
+  CustomField,
+  CustomFieldKind
 } from '../../contracts/state'
-import { GROUP_KANBAN_EMPTY_BUCKET_KEY } from '../../contracts/kanban'
+import { KANBAN_EMPTY_BUCKET_KEY } from '../../contracts/kanban'
 import {
   createDateGroupKey,
   formatDateGroupTitle,
@@ -26,18 +26,18 @@ import {
   getStatusCategoryOrder,
   getStatusDefaultOption,
   getStatusOptionCategory,
-  GROUP_STATUS_CATEGORIES,
+  STATUS_CATEGORIES,
   isStatusFilterEffective,
   matchStatusFilter
 } from './status'
 import {
-  containsPropertyOptionToken,
-  getPropertyOption,
-  getPropertyOptions,
-  getPropertyOptionOrder,
-  getPropertyOptionTokens,
-  matchesPropertyOptionValue
-} from '../option'
+  containsFieldOptionToken,
+  getFieldOption,
+  getFieldOptions,
+  getFieldOptionOrder,
+  getFieldOptionTokens,
+  matchesFieldOptionValue
+} from '../options'
 import {
   formatUrlDisplayValue
 } from './url'
@@ -46,8 +46,8 @@ import {
   compareLabels,
   readBucketOrder,
   readBucketSortValue,
-  type GroupBucket,
-  type ResolvedGroupBucket
+  type Bucket,
+  type ResolvedBucket
 } from './group'
 import {
   kindSpecs,
@@ -55,38 +55,38 @@ import {
   type KindSpec
 } from './spec'
 import {
-  isEmptyPropertyValue,
+  isEmptyFieldValue,
   normalizeSearchableValue,
   readBooleanValue,
   readLooseNumberDraft,
   readNumberValue,
-  type PropertyDraftParseResult
+  type FieldDraftParseResult
 } from './shared'
 
-type PropertyInput = Pick<GroupProperty, 'kind' | 'config'> | undefined
+type FieldInput = CustomField | undefined
 
 export interface Kind extends KindSpec {
-  parseDraft: (property: PropertyInput, draft: string) => PropertyDraftParseResult
-  display: (property: PropertyInput, value: unknown) => string | undefined
-  search: (property: PropertyInput, value: unknown) => string[]
-  compare: (property: PropertyInput, left: unknown, right: unknown) => number
-  createFilterValue: (property: PropertyInput, op: GroupFilterOperator) => unknown
-  isFilterEffective: (property: PropertyInput, op: GroupFilterOperator, value: unknown) => boolean
-  match: (property: PropertyInput, value: unknown, op: GroupFilterOperator, expected: unknown) => boolean
-  groupDomain: (property: PropertyInput, mode: string) => readonly GroupBucket[]
+  parseDraft: (field: FieldInput, draft: string) => FieldDraftParseResult
+  display: (field: FieldInput, value: unknown) => string | undefined
+  search: (field: FieldInput, value: unknown) => string[]
+  compare: (field: FieldInput, left: unknown, right: unknown) => number
+  createFilterValue: (field: FieldInput, op: FilterOperator) => unknown
+  isFilterEffective: (field: FieldInput, op: FilterOperator, value: unknown) => boolean
+  match: (field: FieldInput, value: unknown, op: FilterOperator, expected: unknown) => boolean
+  groupDomain: (field: FieldInput, mode: string) => readonly Bucket[]
   groupEntries: (
-    property: PropertyInput,
+    field: FieldInput,
     value: unknown,
     mode: string,
     bucketInterval?: number
-  ) => readonly GroupBucket[]
+  ) => readonly Bucket[]
 }
 
-export interface PropertyGroupMeta {
+export interface FieldGroupMeta {
   modes: readonly string[]
   mode: string
-  sorts: readonly GroupBucketSort[]
-  sort: GroupBucketSort | ''
+  sorts: readonly BucketSort[]
+  sort: BucketSort | ''
   supportsInterval: boolean
   bucketInterval?: number
   showEmpty: boolean
@@ -108,7 +108,7 @@ const comparePrimitive = (
   return left > right ? 1 : -1
 }
 
-export type { GroupBucket } from './group'
+export type { Bucket } from './group'
 
 const compareText = (
   left: unknown,
@@ -119,7 +119,7 @@ const compareText = (
 )
 
 const displayPlainValue = (value: unknown): string | undefined => {
-  if (isEmptyPropertyValue(value)) {
+  if (isEmptyFieldValue(value)) {
     return undefined
   }
 
@@ -129,35 +129,35 @@ const displayPlainValue = (value: unknown): string | undefined => {
 }
 
 const getOptionDisplay = (
-  property: PropertyInput,
+  field: FieldInput,
   optionId: unknown
 ) => {
-  const option = getPropertyOption(property, optionId)
+  const option = getFieldOption(field, optionId)
   return option?.name ?? (typeof optionId === 'string' ? optionId : undefined)
 }
 
 const displayOptionValue = (
-  property: PropertyInput,
+  field: FieldInput,
   value: unknown
-) => isEmptyPropertyValue(value)
+) => isEmptyFieldValue(value)
   ? undefined
-  : getOptionDisplay(property, value)
+  : getOptionDisplay(field, value)
 
 const displayMultiOptionValue = (
-  property: PropertyInput,
+  field: FieldInput,
   value: unknown
 ) => {
-  if (isEmptyPropertyValue(value)) {
+  if (isEmptyFieldValue(value)) {
     return undefined
   }
 
   return Array.isArray(value)
-    ? value.map(item => getOptionDisplay(property, item) ?? String(item)).join(', ')
+    ? value.map(item => getOptionDisplay(field, item) ?? String(item)).join(', ')
     : undefined
 }
 
-const displayCheckboxValue = (value: unknown) => {
-  if (isEmptyPropertyValue(value)) {
+const displayBooleanValue = (value: unknown) => {
+  if (isEmptyFieldValue(value)) {
     return undefined
   }
 
@@ -166,26 +166,26 @@ const displayCheckboxValue = (value: unknown) => {
 }
 
 const searchOptionValue = (
-  property: PropertyInput,
+  field: FieldInput,
   value: unknown
-) => getPropertyOptionTokens(property, value)
+) => getFieldOptionTokens(field, value)
 
 const searchMultiOptionValue = (
-  property: PropertyInput,
+  field: FieldInput,
   value: unknown
 ) => Array.isArray(value)
-  ? value.flatMap(item => getPropertyOptionTokens(property, item))
+  ? value.flatMap(item => getFieldOptionTokens(field, item))
   : []
 
 const parseTextDraft = (
-  _property: PropertyInput,
+  _field: FieldInput,
   draft: string
-): PropertyDraftParseResult => ({ type: 'set', value: draft })
+): FieldDraftParseResult => ({ type: 'set', value: draft })
 
 const parseNumberDraft = (
-  _property: PropertyInput,
+  _field: FieldInput,
   draft: string
-): PropertyDraftParseResult => {
+): FieldDraftParseResult => {
   if (!draft.trim()) {
     return { type: 'clear' }
   }
@@ -197,9 +197,9 @@ const parseNumberDraft = (
 }
 
 const parseDateDraft = (
-  _property: PropertyInput,
+  _field: FieldInput,
   draft: string
-): PropertyDraftParseResult => {
+): FieldDraftParseResult => {
   if (!draft.trim()) {
     return { type: 'clear' }
   }
@@ -211,18 +211,18 @@ const parseDateDraft = (
 }
 
 const parseSingleOptionDraft = (
-  _property: PropertyInput,
+  _field: FieldInput,
   draft: string
-): PropertyDraftParseResult => (
+): FieldDraftParseResult => (
   draft.trim()
     ? { type: 'set', value: draft.trim() }
     : { type: 'clear' }
 )
 
 const parseMultiOptionDraft = (
-  _property: PropertyInput,
+  _field: FieldInput,
   draft: string
-): PropertyDraftParseResult => {
+): FieldDraftParseResult => {
   const value = draft
     .split(',')
     .map(item => item.trim())
@@ -233,10 +233,10 @@ const parseMultiOptionDraft = (
     : { type: 'clear' }
 }
 
-const parseCheckboxDraft = (
-  _property: PropertyInput,
+const parseBooleanDraft = (
+  _field: FieldInput,
   draft: string
-): PropertyDraftParseResult => {
+): FieldDraftParseResult => {
   if (!draft.trim()) {
     return { type: 'clear' }
   }
@@ -248,21 +248,21 @@ const parseCheckboxDraft = (
 }
 
 const parseBinaryAssetDraft = (
-  _property: PropertyInput,
+  _field: FieldInput,
   draft: string
-): PropertyDraftParseResult => (
+): FieldDraftParseResult => (
   !draft.trim()
     ? { type: 'clear' }
     : { type: 'invalid' }
 )
 
 const compareDisplayText = (
-  property: PropertyInput,
+  field: FieldInput,
   left: unknown,
   right: unknown
 ) => compareText(
-  getPropertyKind(property)?.display(property, left),
-  getPropertyKind(property)?.display(property, right)
+  getFieldKind(field)?.display(field, left),
+  getFieldKind(field)?.display(field, right)
 )
 
 const compareNumberValues = (
@@ -291,7 +291,7 @@ const compareDateValues = (
   return compareText(left, right)
 }
 
-const compareCheckboxValues = (
+const compareBooleanValues = (
   left: unknown,
   right: unknown
 ) => {
@@ -305,21 +305,21 @@ const compareCheckboxValues = (
 }
 
 const compareOptionValues = (
-  property: PropertyInput,
+  field: FieldInput,
   left: unknown,
   right: unknown
 ) => {
-  const leftOrder = getPropertyOptionOrder(property, left)
-  const rightOrder = getPropertyOptionOrder(property, right)
+  const leftOrder = getFieldOptionOrder(field, left)
+  const rightOrder = getFieldOptionOrder(field, right)
   if (leftOrder !== undefined && rightOrder !== undefined) {
     return comparePrimitive(leftOrder, rightOrder)
   }
 
-  return compareDisplayText(property, left, right)
+  return compareDisplayText(field, left, right)
 }
 
 const compareTextValues = (
-  _property: PropertyInput,
+  _field: FieldInput,
   left: unknown,
   right: unknown
 ) => {
@@ -339,16 +339,16 @@ const compareTextValues = (
 
 const toScalarKey = (value: unknown): string => {
   if (value === undefined || value === null) {
-    return GROUP_KANBAN_EMPTY_BUCKET_KEY
+    return KANBAN_EMPTY_BUCKET_KEY
   }
 
   if (typeof value === 'string') {
     const normalized = value.trim()
-    return normalized.length ? normalized : GROUP_KANBAN_EMPTY_BUCKET_KEY
+    return normalized.length ? normalized : KANBAN_EMPTY_BUCKET_KEY
   }
 
   if (typeof value === 'number') {
-    return Number.isFinite(value) ? String(value) : GROUP_KANBAN_EMPTY_BUCKET_KEY
+    return Number.isFinite(value) ? String(value) : KANBAN_EMPTY_BUCKET_KEY
   }
 
   if (typeof value === 'boolean') {
@@ -399,13 +399,13 @@ const scalarSortValue = (
 }
 
 const createObservedScalarBucket = (
-  property: PropertyInput,
+  field: FieldInput,
   value: unknown,
   order = Number.MAX_SAFE_INTEGER
-): ResolvedGroupBucket => {
-  if (isEmptyPropertyValue(value)) {
+): ResolvedBucket => {
+  if (isEmptyFieldValue(value)) {
     return {
-      key: GROUP_KANBAN_EMPTY_BUCKET_KEY,
+      key: KANBAN_EMPTY_BUCKET_KEY,
       title: 'Empty',
       clearValue: true,
       empty: true,
@@ -414,7 +414,7 @@ const createObservedScalarBucket = (
     }
   }
 
-  const displayValue = (getPropertyKind(property) ?? getKind('text')).display(property, value)
+  const displayValue = (getFieldKind(field) ?? getKind('text')).display(field, value)
   const normalizedStringValue = typeof value === 'string'
     ? value.trim()
     : undefined
@@ -433,24 +433,24 @@ const createObservedScalarBucket = (
 }
 
 const createObservedBuckets = (
-  property: PropertyInput,
+  field: FieldInput,
   value: unknown
-): readonly GroupBucket[] => (
+): readonly Bucket[] => (
   Array.isArray(value)
-    ? value.map((item, index) => createObservedScalarBucket(property, item, index))
-    : [createObservedScalarBucket(property, value)]
+    ? value.map((item, index) => createObservedScalarBucket(field, item, index))
+    : [createObservedScalarBucket(field, value)]
 )
 
 const createOptionBucket = (
-  option: { id: string; name: string; color?: string },
+  option: { id: string; name: string; color?: string | null },
   order: number,
   value: unknown = option.id
-): ResolvedGroupBucket => ({
+): ResolvedBucket => ({
   key: option.id,
   title: option.name,
   value,
   clearValue: false,
-  color: option.color,
+  color: option.color ?? undefined,
   empty: false,
   order,
   sortValue: option.name
@@ -471,7 +471,7 @@ const decimalRangeTitle = (start: number, interval: number) => (
 const createNumberRangeBucket = (
   start: number,
   interval: number
-): ResolvedGroupBucket => ({
+): ResolvedBucket => ({
   key: `range:${start}:${interval}`,
   title: Number.isInteger(start) && Number.isInteger(interval)
     ? integerRangeTitle(start, interval)
@@ -489,7 +489,7 @@ const createNumberRangeBucket = (
 const createDateGroupBucket = (
   mode: DateGroupMode,
   start: string
-): ResolvedGroupBucket => ({
+): ResolvedBucket => ({
   key: createDateGroupKey(mode, start),
   title: formatDateGroupTitle(start, mode),
   value: start,
@@ -505,11 +505,11 @@ const createDateGroupBucket = (
   }) ?? null
 })
 
-const createCheckboxBucket = (
+const createBooleanBucket = (
   key: 'true' | 'false' | '(empty)',
   order: number
-): ResolvedGroupBucket => {
-  if (key === GROUP_KANBAN_EMPTY_BUCKET_KEY) {
+): ResolvedBucket => {
+  if (key === KANBAN_EMPTY_BUCKET_KEY) {
     return {
       key,
       title: 'Empty',
@@ -522,7 +522,7 @@ const createCheckboxBucket = (
 
   return {
     key,
-    title: key === 'true' ? 'Checked' : 'Unchecked',
+      title: key === 'true' ? 'Checked' : 'Unchecked',
     value: key === 'true',
     clearValue: false,
     empty: false,
@@ -534,8 +534,8 @@ const createCheckboxBucket = (
 const createPresenceBucket = (
   key: 'present' | '(empty)',
   order: number
-): ResolvedGroupBucket => (
-  key === GROUP_KANBAN_EMPTY_BUCKET_KEY
+): ResolvedBucket => (
+  key === KANBAN_EMPTY_BUCKET_KEY
     ? {
         key,
         title: 'Empty',
@@ -556,12 +556,12 @@ const createPresenceBucket = (
 )
 
 const createStatusCategoryBucket = (
-  property: PropertyInput,
-  category: typeof GROUP_STATUS_CATEGORIES[number]
-): ResolvedGroupBucket => ({
+  field: FieldInput,
+  category: typeof STATUS_CATEGORIES[number]
+): ResolvedBucket => ({
   key: category,
   title: getStatusCategoryLabel(category),
-  value: getStatusDefaultOption(property, category)?.id,
+  value: getStatusDefaultOption(field, category)?.id,
   clearValue: false,
   color: getStatusCategoryColor(category),
   empty: false,
@@ -570,10 +570,10 @@ const createStatusCategoryBucket = (
 })
 
 const hasNonEmptyArrayValue = (value: unknown) => (
-  Array.isArray(value) && value.some(item => !isEmptyPropertyValue(item))
+  Array.isArray(value) && value.some(item => !isEmptyFieldValue(item))
 )
 
-const GROUP_BUCKET_SORTS = new Set<GroupBucketSort>([
+const BUCKET_SORTS = new Set<BucketSort>([
   'manual',
   'labelAsc',
   'labelDesc',
@@ -592,22 +592,22 @@ const normalizeGroupBucketInterval = (
 }
 
 const createEmptyFilterValue = (
-  _property: PropertyInput,
-  _op: GroupFilterOperator
+  _field: FieldInput,
+  _op: FilterOperator
 ) => undefined
 
 const createTextFilterValue = (
-  _property: PropertyInput,
-  _op: GroupFilterOperator
+  _field: FieldInput,
+  _op: FilterOperator
 ) => ''
 
 const createStatusFilterValue = (
-  _property: PropertyInput,
-  _op: GroupFilterOperator
+  _field: FieldInput,
+  _op: FilterOperator
 ) => createEmptyStatusFilterValue()
 
 const isBaseFilterEffective = (
-  op: GroupFilterOperator,
+  op: FilterOperator,
   value: unknown
 ): boolean => {
   if (op === 'custom') {
@@ -622,11 +622,11 @@ const isBaseFilterEffective = (
     return hasNonEmptyArrayValue(value)
   }
 
-  return !isEmptyPropertyValue(value)
+  return !isEmptyFieldValue(value)
 }
 
 const isNumberFilterEffective = (
-  op: GroupFilterOperator,
+  op: FilterOperator,
   value: unknown
 ) => {
   if (op === 'custom') {
@@ -645,7 +645,7 @@ const isNumberFilterEffective = (
 }
 
 const isDateFilterEffective = (
-  op: GroupFilterOperator,
+  op: FilterOperator,
   value: unknown
 ) => {
   if (op === 'custom') {
@@ -663,8 +663,8 @@ const isDateFilterEffective = (
   return readDateComparableTimestamp(value) !== undefined
 }
 
-const isCheckboxFilterEffective = (
-  op: GroupFilterOperator,
+const isBooleanFilterEffective = (
+  op: FilterOperator,
   value: unknown
 ) => {
   if (op === 'custom') {
@@ -683,14 +683,14 @@ const isCheckboxFilterEffective = (
 }
 
 const isMultiSelectFilterEffective = (
-  op: GroupFilterOperator,
+  op: FilterOperator,
   value: unknown
 ) => {
   if (op === 'custom' || op === 'exists' || op === 'in') {
     return isBaseFilterEffective(op, value)
   }
 
-  return hasNonEmptyArrayValue(value) || !isEmptyPropertyValue(value)
+  return hasNonEmptyArrayValue(value) || !isEmptyFieldValue(value)
 }
 
 const containsText = (
@@ -742,7 +742,7 @@ const matchDateEq = (
   return value === expected
 }
 
-const matchCheckboxEq = (
+const matchBooleanEq = (
   value: unknown,
   expected: unknown
 ) => {
@@ -756,12 +756,12 @@ const matchCheckboxEq = (
 }
 
 const matchMultiSelectEq = (
-  property: PropertyInput,
+  field: FieldInput,
   value: unknown,
   expected: unknown
 ) => Array.isArray(value) && Array.isArray(expected)
   ? value.length === expected.length
-    && value.every((item, index) => matchesPropertyOptionValue(property, item, expected[index]))
+    && value.every((item, index) => matchesFieldOptionValue(field, item, expected[index]))
   : false
 
 const matchDefaultContains = (
@@ -770,96 +770,96 @@ const matchDefaultContains = (
 ) => containsText(value, expected)
 
 const matchMultiSelectContains = (
-  property: PropertyInput,
+  field: FieldInput,
   value: unknown,
   expected: unknown
 ) => Array.isArray(value)
-  ? value.some(item => matchesPropertyOptionValue(property, item, expected))
+  ? value.some(item => matchesFieldOptionValue(field, item, expected))
   : false
 
 const defaultGroupDomain = (
-  _property: PropertyInput,
+  _field: FieldInput,
   _mode: string
-): readonly GroupBucket[] => []
+): readonly Bucket[] => []
 
 const defaultGroupEntries = (
-  property: PropertyInput,
+  field: FieldInput,
   value: unknown
-): readonly GroupBucket[] => createObservedBuckets(property, value)
+): readonly Bucket[] => createObservedBuckets(field, value)
 
 const numberGroupEntries = (
-  property: PropertyInput,
+  field: FieldInput,
   value: unknown,
   mode: string,
   bucketInterval?: number
-): readonly GroupBucket[] => {
+): readonly Bucket[] => {
   const interval = bucketInterval ?? 10
   if (mode === 'range' && typeof value === 'number' && Number.isFinite(value)) {
     const start = Math.floor(value / interval) * interval
     return [createNumberRangeBucket(start, interval)]
   }
 
-  return [createObservedScalarBucket(property, value)]
+  return [createObservedScalarBucket(field, value)]
 }
 
 const dateGroupEntries = (
-  property: PropertyInput,
+  field: FieldInput,
   value: unknown,
   mode: string
-): readonly GroupBucket[] => {
+): readonly Bucket[] => {
   const normalizedMode = mode as DateGroupMode
   const start = readDateGroupStart(value, normalizedMode)
 
   return start
     ? [createDateGroupBucket(normalizedMode, start)]
-    : [createObservedScalarBucket(property, value)]
+    : [createObservedScalarBucket(field, value)]
 }
 
 const selectGroupDomain = (
-  property: PropertyInput
-): readonly GroupBucket[] => {
-  const options = getPropertyOptions(property)
+  field: FieldInput
+): readonly Bucket[] => {
+  const options = getFieldOptions(field)
 
   return [
     ...options.map((option, index) => createOptionBucket(option, index)),
-    createObservedScalarBucket(property, undefined, options.length)
+    createObservedScalarBucket(field, undefined, options.length)
   ]
 }
 
 const selectGroupEntries = (
-  property: PropertyInput,
+  field: FieldInput,
   value: unknown
-): readonly GroupBucket[] => {
-  const options = getPropertyOptions(property)
+): readonly Bucket[] => {
+  const options = getFieldOptions(field)
   const option = typeof value === 'string'
     ? options.find(item => item.id === value)
     : undefined
 
   return [option
     ? createOptionBucket(option, options.indexOf(option))
-    : createObservedScalarBucket(property, value)]
+    : createObservedScalarBucket(field, value)]
 }
 
 const multiSelectGroupDomain = (
-  property: PropertyInput
-): readonly GroupBucket[] => {
-  const options = getPropertyOptions(property)
+  field: FieldInput
+): readonly Bucket[] => {
+  const options = getFieldOptions(field)
 
   return [
     ...options.map((option, index) => createOptionBucket(option, index, [option.id])),
-    createObservedScalarBucket(property, undefined, options.length)
+    createObservedScalarBucket(field, undefined, options.length)
   ]
 }
 
 const multiSelectGroupEntries = (
-  property: PropertyInput,
+  field: FieldInput,
   value: unknown
-): readonly GroupBucket[] => {
+): readonly Bucket[] => {
   if (!Array.isArray(value) || value.length === 0) {
-    return [createObservedScalarBucket(property, undefined)]
+    return [createObservedScalarBucket(field, undefined)]
   }
 
-  const options = getPropertyOptions(property)
+  const options = getFieldOptions(field)
   return value.map((item, index) => {
     const option = typeof item === 'string'
       ? options.find(candidate => candidate.id === item)
@@ -867,169 +867,169 @@ const multiSelectGroupEntries = (
 
     return option
       ? createOptionBucket(option, options.indexOf(option), [option.id])
-      : createObservedScalarBucket(property, item, index)
+      : createObservedScalarBucket(field, item, index)
   })
 }
 
 const statusGroupDomain = (
-  property: PropertyInput,
+  field: FieldInput,
   mode: string
-): readonly GroupBucket[] => {
+): readonly Bucket[] => {
   if (mode === 'category') {
     return [
-      ...GROUP_STATUS_CATEGORIES
-        .map(category => createStatusCategoryBucket(property, category)),
-      createObservedScalarBucket(property, undefined, GROUP_STATUS_CATEGORIES.length)
+      ...STATUS_CATEGORIES
+        .map(category => createStatusCategoryBucket(field, category)),
+      createObservedScalarBucket(field, undefined, STATUS_CATEGORIES.length)
     ]
   }
 
-  const options = getPropertyOptions(property)
+  const options = getFieldOptions(field)
 
   return [
     ...options.map((option, index) => createOptionBucket(option, index)),
-    createObservedScalarBucket(property, undefined, options.length)
+    createObservedScalarBucket(field, undefined, options.length)
   ]
 }
 
 const statusGroupEntries = (
-  property: PropertyInput,
+  field: FieldInput,
   value: unknown,
   mode: string
-): readonly GroupBucket[] => {
-  const options = getPropertyOptions(property)
+): readonly Bucket[] => {
+  const options = getFieldOptions(field)
   const option = typeof value === 'string'
     ? options.find(item => item.id === value)
     : undefined
 
   if (mode === 'category') {
     if (!option) {
-      return [createObservedScalarBucket(property, value)]
+      return [createObservedScalarBucket(field, value)]
     }
 
-    const category = getStatusOptionCategory(property, option.id)
+    const category = getStatusOptionCategory(field, option.id)
     return category
-      ? [createStatusCategoryBucket(property, category)]
-      : [createObservedScalarBucket(property, value)]
+      ? [createStatusCategoryBucket(field, category)]
+      : [createObservedScalarBucket(field, value)]
   }
 
   return [option
     ? createOptionBucket(option, options.indexOf(option))
-    : createObservedScalarBucket(property, value)]
+    : createObservedScalarBucket(field, value)]
 }
 
-const checkboxGroupDomain = (
-  _property: PropertyInput,
+const booleanGroupDomain = (
+  _field: FieldInput,
   _mode: string
-): readonly GroupBucket[] => [
-  createCheckboxBucket('true', 0),
-  createCheckboxBucket('false', 1),
-  createCheckboxBucket(GROUP_KANBAN_EMPTY_BUCKET_KEY, 2)
+): readonly Bucket[] => [
+  createBooleanBucket('true', 0),
+  createBooleanBucket('false', 1),
+  createBooleanBucket(KANBAN_EMPTY_BUCKET_KEY, 2)
 ]
 
-const checkboxGroupEntries = (
-  _property: PropertyInput,
+const booleanGroupEntries = (
+  _field: FieldInput,
   value: unknown
-): readonly GroupBucket[] => {
+): readonly Bucket[] => {
   if (value === true) {
-    return [createCheckboxBucket('true', 0)]
+    return [createBooleanBucket('true', 0)]
   }
 
   if (value === false) {
-    return [createCheckboxBucket('false', 1)]
+    return [createBooleanBucket('false', 1)]
   }
 
-  return [createCheckboxBucket(GROUP_KANBAN_EMPTY_BUCKET_KEY, 2)]
+  return [createBooleanBucket(KANBAN_EMPTY_BUCKET_KEY, 2)]
 }
 
 const presenceGroupDomain = (
-  _property: PropertyInput,
+  _field: FieldInput,
   _mode: string
-): readonly GroupBucket[] => [
+): readonly Bucket[] => [
   createPresenceBucket('present', 0),
-  createPresenceBucket(GROUP_KANBAN_EMPTY_BUCKET_KEY, 1)
+  createPresenceBucket(KANBAN_EMPTY_BUCKET_KEY, 1)
 ]
 
 const presenceGroupEntries = (
-  _property: PropertyInput,
+  _field: FieldInput,
   value: unknown
-): readonly GroupBucket[] => (
-  isEmptyPropertyValue(value)
-    ? [createPresenceBucket(GROUP_KANBAN_EMPTY_BUCKET_KEY, 1)]
+): readonly Bucket[] => (
+  isEmptyFieldValue(value)
+    ? [createPresenceBucket(KANBAN_EMPTY_BUCKET_KEY, 1)]
     : [createPresenceBucket('present', 0)]
 )
 
 const textRuntime = {
   parseDraft: parseTextDraft,
-  display: (_property: PropertyInput, value: unknown) => displayPlainValue(value),
-  search: (_property: PropertyInput, value: unknown) => normalizeSearchableValue(value),
+  display: (_field: FieldInput, value: unknown) => displayPlainValue(value),
+  search: (_field: FieldInput, value: unknown) => normalizeSearchableValue(value),
   compare: compareTextValues,
   createFilterValue: createTextFilterValue,
-  isFilterEffective: (_property: PropertyInput, op: GroupFilterOperator, value: unknown) => isBaseFilterEffective(op, value),
-  matchEq: (_property: PropertyInput, value: unknown, expected: unknown) => matchDefaultEq(value, expected),
-  matchContains: (_property: PropertyInput, value: unknown, expected: unknown) => matchDefaultContains(value, expected),
+  isFilterEffective: (_field: FieldInput, op: FilterOperator, value: unknown) => isBaseFilterEffective(op, value),
+  matchEq: (_field: FieldInput, value: unknown, expected: unknown) => matchDefaultEq(value, expected),
+  matchContains: (_field: FieldInput, value: unknown, expected: unknown) => matchDefaultContains(value, expected),
   groupDomain: defaultGroupDomain,
   groupEntries: defaultGroupEntries
 }
 
 const numberRuntime = {
   parseDraft: parseNumberDraft,
-  display: (_property: PropertyInput, value: unknown) => displayPlainValue(value),
-  search: (_property: PropertyInput, value: unknown) => normalizeSearchableValue(value),
-  compare: (_property: PropertyInput, left: unknown, right: unknown) => compareNumberValues(left, right),
+  display: (_field: FieldInput, value: unknown) => displayPlainValue(value),
+  search: (_field: FieldInput, value: unknown) => normalizeSearchableValue(value),
+  compare: (_field: FieldInput, left: unknown, right: unknown) => compareNumberValues(left, right),
   createFilterValue: createEmptyFilterValue,
-  isFilterEffective: (_property: PropertyInput, op: GroupFilterOperator, value: unknown) => isNumberFilterEffective(op, value),
-  matchEq: (_property: PropertyInput, value: unknown, expected: unknown) => matchNumberEq(value, expected),
-  matchContains: (_property: PropertyInput, value: unknown, expected: unknown) => matchDefaultContains(value, expected),
+  isFilterEffective: (_field: FieldInput, op: FilterOperator, value: unknown) => isNumberFilterEffective(op, value),
+  matchEq: (_field: FieldInput, value: unknown, expected: unknown) => matchNumberEq(value, expected),
+  matchContains: (_field: FieldInput, value: unknown, expected: unknown) => matchDefaultContains(value, expected),
   groupDomain: defaultGroupDomain,
   groupEntries: numberGroupEntries
 }
 
 const dateRuntime = {
   parseDraft: parseDateDraft,
-  display: (property: PropertyInput, value: unknown) => formatDateValue(property, value),
-  search: (property: PropertyInput, value: unknown) => getDateSearchTokens(property, value),
-  compare: (_property: PropertyInput, left: unknown, right: unknown) => compareDateValues(left, right),
+  display: (field: FieldInput, value: unknown) => formatDateValue(field, value),
+  search: (field: FieldInput, value: unknown) => getDateSearchTokens(field, value),
+  compare: (_field: FieldInput, left: unknown, right: unknown) => compareDateValues(left, right),
   createFilterValue: createEmptyFilterValue,
-  isFilterEffective: (_property: PropertyInput, op: GroupFilterOperator, value: unknown) => isDateFilterEffective(op, value),
-  matchEq: (_property: PropertyInput, value: unknown, expected: unknown) => matchDateEq(value, expected),
-  matchContains: (_property: PropertyInput, value: unknown, expected: unknown) => matchDefaultContains(value, expected),
+  isFilterEffective: (_field: FieldInput, op: FilterOperator, value: unknown) => isDateFilterEffective(op, value),
+  matchEq: (_field: FieldInput, value: unknown, expected: unknown) => matchDateEq(value, expected),
+  matchContains: (_field: FieldInput, value: unknown, expected: unknown) => matchDefaultContains(value, expected),
   groupDomain: defaultGroupDomain,
   groupEntries: dateGroupEntries
 }
 
 const singleOptionRuntime = {
   parseDraft: parseSingleOptionDraft,
-  display: (property: PropertyInput, value: unknown) => displayOptionValue(property, value),
-  search: (property: PropertyInput, value: unknown) => searchOptionValue(property, value),
-  compare: (property: PropertyInput, left: unknown, right: unknown) => compareOptionValues(property, left, right),
+  display: (field: FieldInput, value: unknown) => displayOptionValue(field, value),
+  search: (field: FieldInput, value: unknown) => searchOptionValue(field, value),
+  compare: (field: FieldInput, left: unknown, right: unknown) => compareOptionValues(field, left, right),
   createFilterValue: createEmptyFilterValue,
-  isFilterEffective: (_property: PropertyInput, op: GroupFilterOperator, value: unknown) => isBaseFilterEffective(op, value),
-  matchEq: (property: PropertyInput, value: unknown, expected: unknown) => matchesPropertyOptionValue(property, value, expected),
-  matchContains: (property: PropertyInput, value: unknown, expected: unknown) => containsPropertyOptionToken(property, value, expected),
+  isFilterEffective: (_field: FieldInput, op: FilterOperator, value: unknown) => isBaseFilterEffective(op, value),
+  matchEq: (field: FieldInput, value: unknown, expected: unknown) => matchesFieldOptionValue(field, value, expected),
+  matchContains: (field: FieldInput, value: unknown, expected: unknown) => containsFieldOptionToken(field, value, expected),
   groupDomain: selectGroupDomain,
   groupEntries: selectGroupEntries
 }
 
 const multiOptionRuntime = {
   parseDraft: parseMultiOptionDraft,
-  display: (property: PropertyInput, value: unknown) => displayMultiOptionValue(property, value),
-  search: (property: PropertyInput, value: unknown) => searchMultiOptionValue(property, value),
-  compare: (property: PropertyInput, left: unknown, right: unknown) => compareDisplayText(property, left, right),
+  display: (field: FieldInput, value: unknown) => displayMultiOptionValue(field, value),
+  search: (field: FieldInput, value: unknown) => searchMultiOptionValue(field, value),
+  compare: (field: FieldInput, left: unknown, right: unknown) => compareDisplayText(field, left, right),
   createFilterValue: createEmptyFilterValue,
-  isFilterEffective: (_property: PropertyInput, op: GroupFilterOperator, value: unknown) => isMultiSelectFilterEffective(op, value),
-  matchEq: (property: PropertyInput, value: unknown, expected: unknown) => matchMultiSelectEq(property, value, expected),
-  matchContains: (property: PropertyInput, value: unknown, expected: unknown) => matchMultiSelectContains(property, value, expected),
+  isFilterEffective: (_field: FieldInput, op: FilterOperator, value: unknown) => isMultiSelectFilterEffective(op, value),
+  matchEq: (field: FieldInput, value: unknown, expected: unknown) => matchMultiSelectEq(field, value, expected),
+  matchContains: (field: FieldInput, value: unknown, expected: unknown) => matchMultiSelectContains(field, value, expected),
   groupDomain: multiSelectGroupDomain,
   groupEntries: multiSelectGroupEntries
 }
 
 const statusRuntime = {
   parseDraft: parseSingleOptionDraft,
-  display: (property: PropertyInput, value: unknown) => displayOptionValue(property, value),
-  search: (property: PropertyInput, value: unknown) => searchOptionValue(property, value),
-  compare: (property: PropertyInput, left: unknown, right: unknown) => compareStatusPropertyValues(property, left, right),
+  display: (field: FieldInput, value: unknown) => displayOptionValue(field, value),
+  search: (field: FieldInput, value: unknown) => searchOptionValue(field, value),
+  compare: (field: FieldInput, left: unknown, right: unknown) => compareStatusPropertyValues(field, left, right),
   createFilterValue: createStatusFilterValue,
-  isFilterEffective: (property: PropertyInput, op: GroupFilterOperator, value: unknown) => {
+  isFilterEffective: (field: FieldInput, op: FilterOperator, value: unknown) => {
     if (op === 'custom' || op === 'exists') {
       return isBaseFilterEffective(op, value)
     }
@@ -1038,75 +1038,75 @@ const statusRuntime = {
       return hasNonEmptyArrayValue(value)
     }
 
-    return isStatusFilterEffective(property, value)
+    return isStatusFilterEffective(field, value)
   },
-  matchEq: (property: PropertyInput, value: unknown, expected: unknown) => matchStatusFilter(property, value, expected),
-  matchContains: (property: PropertyInput, value: unknown, expected: unknown) => containsPropertyOptionToken(property, value, expected),
+  matchEq: (field: FieldInput, value: unknown, expected: unknown) => matchStatusFilter(field, value, expected),
+  matchContains: (field: FieldInput, value: unknown, expected: unknown) => containsFieldOptionToken(field, value, expected),
   groupDomain: statusGroupDomain,
   groupEntries: statusGroupEntries
 }
 
-const checkboxRuntime = {
-  parseDraft: parseCheckboxDraft,
-  display: (_property: PropertyInput, value: unknown) => displayCheckboxValue(value),
-  search: (_property: PropertyInput, value: unknown) => normalizeSearchableValue(value),
-  compare: (_property: PropertyInput, left: unknown, right: unknown) => compareCheckboxValues(left, right),
+const booleanRuntime = {
+  parseDraft: parseBooleanDraft,
+  display: (_field: FieldInput, value: unknown) => displayBooleanValue(value),
+  search: (_field: FieldInput, value: unknown) => normalizeSearchableValue(value),
+  compare: (_field: FieldInput, left: unknown, right: unknown) => compareBooleanValues(left, right),
   createFilterValue: createEmptyFilterValue,
-  isFilterEffective: (_property: PropertyInput, op: GroupFilterOperator, value: unknown) => isCheckboxFilterEffective(op, value),
-  matchEq: (_property: PropertyInput, value: unknown, expected: unknown) => matchCheckboxEq(value, expected),
-  matchContains: (_property: PropertyInput, value: unknown, expected: unknown) => matchDefaultContains(value, expected),
-  groupDomain: checkboxGroupDomain,
-  groupEntries: checkboxGroupEntries
+  isFilterEffective: (_field: FieldInput, op: FilterOperator, value: unknown) => isBooleanFilterEffective(op, value),
+  matchEq: (_field: FieldInput, value: unknown, expected: unknown) => matchBooleanEq(value, expected),
+  matchContains: (_field: FieldInput, value: unknown, expected: unknown) => matchDefaultContains(value, expected),
+  groupDomain: booleanGroupDomain,
+  groupEntries: booleanGroupEntries
 }
 
 const urlRuntime = {
   parseDraft: parseTextDraft,
-  display: (property: PropertyInput, value: unknown) => {
-    if (isEmptyPropertyValue(value)) {
+  display: (field: FieldInput, value: unknown) => {
+    if (isEmptyFieldValue(value)) {
       return undefined
     }
 
-    return formatUrlDisplayValue(property, value)
+    return formatUrlDisplayValue(field, value)
   },
-  search: (_property: PropertyInput, value: unknown) => normalizeSearchableValue(value),
+  search: (_field: FieldInput, value: unknown) => normalizeSearchableValue(value),
   compare: compareTextValues,
   createFilterValue: createTextFilterValue,
-  isFilterEffective: (_property: PropertyInput, op: GroupFilterOperator, value: unknown) => isBaseFilterEffective(op, value),
-  matchEq: (_property: PropertyInput, value: unknown, expected: unknown) => matchDefaultEq(value, expected),
-  matchContains: (_property: PropertyInput, value: unknown, expected: unknown) => matchDefaultContains(value, expected),
+  isFilterEffective: (_field: FieldInput, op: FilterOperator, value: unknown) => isBaseFilterEffective(op, value),
+  matchEq: (_field: FieldInput, value: unknown, expected: unknown) => matchDefaultEq(value, expected),
+  matchContains: (_field: FieldInput, value: unknown, expected: unknown) => matchDefaultContains(value, expected),
   groupDomain: defaultGroupDomain,
   groupEntries: defaultGroupEntries
 }
 
 const binaryRuntime = {
   parseDraft: parseBinaryAssetDraft,
-  display: (_property: PropertyInput, value: unknown) => displayPlainValue(value),
-  search: (_property: PropertyInput, value: unknown) => normalizeSearchableValue(value),
+  display: (_field: FieldInput, value: unknown) => displayPlainValue(value),
+  search: (_field: FieldInput, value: unknown) => normalizeSearchableValue(value),
   compare: compareTextValues,
   createFilterValue: createEmptyFilterValue,
-  isFilterEffective: (_property: PropertyInput, op: GroupFilterOperator, value: unknown) => isBaseFilterEffective(op, value),
-  matchEq: (_property: PropertyInput, value: unknown, expected: unknown) => matchDefaultEq(value, expected),
-  matchContains: (_property: PropertyInput, value: unknown, expected: unknown) => matchDefaultContains(value, expected),
+  isFilterEffective: (_field: FieldInput, op: FilterOperator, value: unknown) => isBaseFilterEffective(op, value),
+  matchEq: (_field: FieldInput, value: unknown, expected: unknown) => matchDefaultEq(value, expected),
+  matchContains: (_field: FieldInput, value: unknown, expected: unknown) => matchDefaultContains(value, expected),
   groupDomain: presenceGroupDomain,
   groupEntries: presenceGroupEntries
 }
 
 interface KindRuntimeCore {
-  parseDraft: (property: PropertyInput, draft: string) => PropertyDraftParseResult
-  display: (property: PropertyInput, value: unknown) => string | undefined
-  search: (property: PropertyInput, value: unknown) => string[]
-  compare: (property: PropertyInput, left: unknown, right: unknown) => number
-  createFilterValue: (property: PropertyInput, op: GroupFilterOperator) => unknown
-  isFilterEffective: (property: PropertyInput, op: GroupFilterOperator, value: unknown) => boolean
-  matchEq: (property: PropertyInput, value: unknown, expected: unknown) => boolean
-  matchContains: (property: PropertyInput, value: unknown, expected: unknown) => boolean
-  groupDomain: (property: PropertyInput, mode: string) => readonly GroupBucket[]
+  parseDraft: (field: FieldInput, draft: string) => FieldDraftParseResult
+  display: (field: FieldInput, value: unknown) => string | undefined
+  search: (field: FieldInput, value: unknown) => string[]
+  compare: (field: FieldInput, left: unknown, right: unknown) => number
+  createFilterValue: (field: FieldInput, op: FilterOperator) => unknown
+  isFilterEffective: (field: FieldInput, op: FilterOperator, value: unknown) => boolean
+  matchEq: (field: FieldInput, value: unknown, expected: unknown) => boolean
+  matchContains: (field: FieldInput, value: unknown, expected: unknown) => boolean
+  groupDomain: (field: FieldInput, mode: string) => readonly Bucket[]
   groupEntries: (
-    property: PropertyInput,
+    field: FieldInput,
     value: unknown,
     mode: string,
     bucketInterval?: number
-  ) => readonly GroupBucket[]
+  ) => readonly Bucket[]
 }
 
 const kindRuntime = {
@@ -1116,18 +1116,17 @@ const kindRuntime = {
   multiSelect: multiOptionRuntime,
   status: statusRuntime,
   date: dateRuntime,
-  checkbox: checkboxRuntime,
+  boolean: booleanRuntime,
   url: urlRuntime,
   email: textRuntime,
   phone: textRuntime,
-  file: binaryRuntime,
-  media: binaryRuntime
-} as const satisfies Record<GroupPropertyKind, KindRuntimeCore>
+  asset: binaryRuntime
+} as const satisfies Record<CustomFieldKind, KindRuntimeCore>
 
 const createMatch = (runtime: KindRuntimeCore): Kind['match'] => (
-  property: PropertyInput,
+  field: FieldInput,
   value: unknown,
-  op: GroupFilterOperator,
+  op: FilterOperator,
   expected: unknown
 ) => {
   if (op === 'custom') {
@@ -1136,33 +1135,33 @@ const createMatch = (runtime: KindRuntimeCore): Kind['match'] => (
 
   if (op === 'exists') {
     return expected === false
-      ? isEmptyPropertyValue(value)
-      : !isEmptyPropertyValue(value)
+      ? isEmptyFieldValue(value)
+      : !isEmptyFieldValue(value)
   }
 
   if (op === 'eq') {
-    return runtime.matchEq(property, value, expected)
+    return runtime.matchEq(field, value, expected)
   }
 
   if (op === 'neq') {
-    return !runtime.matchEq(property, value, expected)
+    return !runtime.matchEq(field, value, expected)
   }
 
   if (op === 'contains') {
-    return runtime.matchContains(property, value, expected)
+    return runtime.matchContains(field, value, expected)
   }
 
   if (op === 'in') {
     return Array.isArray(expected)
-      ? expected.some(item => runtime.matchEq(property, value, item))
+      ? expected.some(item => runtime.matchEq(field, value, item))
       : false
   }
 
-  if (isEmptyPropertyValue(value) || isEmptyPropertyValue(expected)) {
+  if (isEmptyFieldValue(value) || isEmptyFieldValue(expected)) {
     return false
   }
 
-  const result = runtime.compare(property, value, expected)
+  const result = runtime.compare(field, value, expected)
   if (op === 'gt') return result > 0
   if (op === 'gte') return result >= 0
   if (op === 'lt') return result < 0
@@ -1170,7 +1169,7 @@ const createMatch = (runtime: KindRuntimeCore): Kind['match'] => (
 }
 
 const createKind = (
-  kind: GroupPropertyKind,
+  kind: CustomFieldKind,
   runtime: KindRuntimeCore
 ): Kind => ({
   ...kindSpecs[kind],
@@ -1192,37 +1191,36 @@ export const kinds = {
   multiSelect: createKind('multiSelect', kindRuntime.multiSelect),
   status: createKind('status', kindRuntime.status),
   date: createKind('date', kindRuntime.date),
-  checkbox: createKind('checkbox', kindRuntime.checkbox),
+  boolean: createKind('boolean', kindRuntime.boolean),
   url: createKind('url', kindRuntime.url),
   email: createKind('email', kindRuntime.email),
   phone: createKind('phone', kindRuntime.phone),
-  file: createKind('file', kindRuntime.file),
-  media: createKind('media', kindRuntime.media)
-} as const satisfies Record<GroupPropertyKind, Kind>
+  asset: createKind('asset', kindRuntime.asset)
+} as const satisfies Record<CustomFieldKind, Kind>
 
 export const getKind = (
-  kind: GroupPropertyKind
+  kind: CustomFieldKind
 ): Kind => kinds[kind]
 
-export const getPropertyKind = (
-  property?: Pick<GroupProperty, 'kind'>
+export const getFieldKind = (
+  field?: Pick<CustomField, 'kind'>
 ): Kind | undefined => (
-  property
-    ? getKind(property.kind)
+  field
+    ? getKind(field.kind)
     : undefined
 )
 
 export const isGroupBucketSort = (
   value: unknown
-): value is GroupBucketSort => (
-  typeof value === 'string' && GROUP_BUCKET_SORTS.has(value as GroupBucketSort)
+): value is BucketSort => (
+  typeof value === 'string' && BUCKET_SORTS.has(value as BucketSort)
 )
 
-export const getPropertyGroupMeta = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
-  group?: Partial<Pick<GroupGroupBy, 'mode' | 'bucketSort' | 'bucketInterval'>>
-): PropertyGroupMeta => {
-  const kind = getPropertyKind(property)
+export const getFieldGroupMeta = (
+  field: CustomField | undefined,
+  group?: Partial<Pick<Grouping, 'mode' | 'bucketSort' | 'bucketInterval'>>
+): FieldGroupMeta => {
+  const kind = getFieldKind(field)
   if (!kind) {
     return {
       modes: [],
@@ -1269,29 +1267,29 @@ export const getPropertyGroupMeta = (
 }
 
 const getRuntimeKind = (
-  property?: Pick<GroupProperty, 'kind'>
-) => getPropertyKind(property) ?? getKind('text')
+  field?: Pick<CustomField, 'kind'>
+) => getFieldKind(field) ?? getKind('text')
 
 export const resolveGroupBucketDomain = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
-  group?: Partial<Pick<GroupGroupBy, 'mode'>>
-): readonly GroupBucket[] => {
-  if (!property) {
+  field: CustomField | undefined,
+  group?: Partial<Pick<Grouping, 'mode'>>
+): readonly Bucket[] => {
+  if (!field) {
     return []
   }
 
-  const meta = getPropertyGroupMeta(property, group)
-  return getRuntimeKind(property).groupDomain(property, meta.mode)
+  const meta = getFieldGroupMeta(field, group)
+  return getRuntimeKind(field).groupDomain(field, meta.mode)
 }
 
 export const resolveGroupBucketEntries = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+  field: CustomField | undefined,
   value: unknown,
-  group?: Partial<Pick<GroupGroupBy, 'mode' | 'bucketInterval'>>
-): readonly GroupBucket[] => {
-  const meta = getPropertyGroupMeta(property, group)
-  return getRuntimeKind(property).groupEntries(
-    property,
+  group?: Partial<Pick<Grouping, 'mode' | 'bucketInterval'>>
+): readonly Bucket[] => {
+  const meta = getFieldGroupMeta(field, group)
+  return getRuntimeKind(field).groupEntries(
+    field,
     value,
     meta.mode,
     meta.bucketInterval
@@ -1299,16 +1297,16 @@ export const resolveGroupBucketEntries = (
 }
 
 export const compareGroupBuckets = (
-  left: GroupBucket,
-  right: GroupBucket,
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
-  group?: Partial<Pick<GroupGroupBy, 'bucketSort' | 'mode'>>
+  left: Bucket,
+  right: Bucket,
+  field: CustomField | undefined,
+  group?: Partial<Pick<Grouping, 'bucketSort' | 'mode'>>
 ): number => {
   if (left.empty !== right.empty) {
     return left.empty ? 1 : -1
   }
 
-  const bucketSort = getPropertyGroupMeta(property, group).sort || 'manual'
+  const bucketSort = getFieldGroupMeta(field, group).sort || 'manual'
   const leftOrder = readBucketOrder(left)
   const rightOrder = readBucketOrder(right)
 
@@ -1333,81 +1331,81 @@ export const compareGroupBuckets = (
 
 const matchesFilterPreset = (
   preset: KindFilterPreset,
-  rule: GroupFilterRule
+  rule: FilterRule
 ) => (
   preset.operator === rule.op
   && (preset.value === undefined || Object.is(preset.value, rule.value))
 )
 
 export const isFilterRuleEffective = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
-  op: GroupFilterOperator,
+  field: CustomField | undefined,
+  op: FilterOperator,
   value: unknown
-): boolean => getRuntimeKind(property).isFilterEffective(property, op, value)
+): boolean => getRuntimeKind(field).isFilterEffective(field, op, value)
 
-export const matchPropertyFilter = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+export const matchFieldFilter = (
+  field: CustomField | undefined,
   value: unknown,
-  op: GroupFilterOperator,
+  op: FilterOperator,
   expected: unknown
 ): boolean => {
-  const kind = getRuntimeKind(property)
-  if (op !== 'custom' && !kind.isFilterEffective(property, op, expected)) {
+  const kind = getRuntimeKind(field)
+  if (op !== 'custom' && !kind.isFilterEffective(field, op, expected)) {
     return true
   }
 
-  return kind.match(property, value, op, expected)
+  return kind.match(field, value, op, expected)
 }
 
-export const getPropertyFilterOps = (
-  property?: Pick<GroupProperty, 'kind'>
-): readonly GroupFilterOperator[] => getRuntimeKind(property).filter.ops
+export const getFieldFilterOps = (
+  field?: Pick<CustomField, 'kind'>
+): readonly FilterOperator[] => getRuntimeKind(field).filter.ops
 
-export const getPropertyFilterPresets = (
-  property?: Pick<GroupProperty, 'kind'>
-): readonly KindFilterPreset[] => getRuntimeKind(property).filter.presets
+export const getFieldFilterPresets = (
+  field?: Pick<CustomField, 'kind'>
+): readonly KindFilterPreset[] => getRuntimeKind(field).filter.presets
 
-export const getPropertyFilterPreset = (
-  property?: Pick<GroupProperty, 'kind' | 'config'>,
-  rule?: GroupFilterRule
+export const getFieldFilterPreset = (
+  field?: CustomField,
+  rule?: FilterRule
 ): KindFilterPreset | undefined => {
-  const presets = getRuntimeKind(property).filter.presets
+  const presets = getRuntimeKind(field).filter.presets
   return rule
     ? presets.find(preset => matchesFilterPreset(preset, rule)) ?? presets[0]
     : presets[0]
 }
 
-export const createDefaultPropertyFilterRule = (
-  property: Pick<GroupProperty, 'id' | 'kind' | 'config'>
-): GroupFilterRule => {
-  const kind = getRuntimeKind(property)
+export const createDefaultFieldFilterRule = (
+  field: CustomField
+): FilterRule => {
+  const kind = getRuntimeKind(field)
   const preset = kind.filter.presets[0]
   const op = preset?.operator ?? kind.filter.ops[0] ?? 'contains'
 
   return {
-    property: property.id,
+    field: field.id,
     op,
     value: preset?.value !== undefined
       ? preset.value
-      : kind.createFilterValue(property, op)
+      : kind.createFilterValue(field, op)
   }
 }
 
-export const applyPropertyFilterPreset = (
-  rule: GroupFilterRule,
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+export const applyFieldFilterPreset = (
+  rule: FilterRule,
+  field: CustomField | undefined,
   preset: Pick<KindFilterPreset, 'operator' | 'value'>
-): GroupFilterRule => {
-  const kind = getRuntimeKind(property)
-  const currentPreset = getPropertyFilterPreset(property, rule)
+): FilterRule => {
+  const kind = getRuntimeKind(field)
+  const currentPreset = getFieldFilterPreset(field, rule)
 
   return {
-    property: rule.property,
+    field: rule.field,
     op: preset.operator,
     value: preset.value !== undefined
       ? preset.value
       : currentPreset?.value === undefined
         ? rule.value
-        : kind.createFilterValue(property, preset.operator)
+        : kind.createFilterValue(field, preset.operator)
   }
 }

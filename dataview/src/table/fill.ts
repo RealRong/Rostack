@@ -1,7 +1,7 @@
 import type {
   AppearanceList,
-  FieldId,
-  PropertyList
+  CellRef,
+  FieldList
 } from '@dataview/engine/projection/view'
 import {
   range
@@ -11,24 +11,24 @@ import {
 } from './gridSelection'
 
 export interface TableFillEntry {
-  cell: FieldId
+  cell: CellRef
   value: unknown | undefined
 }
 
 const handleCell = (
   current: GridSelection | null,
   appearances: Pick<AppearanceList, 'indexOf' | 'ids'>,
-  properties: Pick<PropertyList, 'indexOf' | 'ids'>
-): FieldId | undefined => {
+  fields: Pick<FieldList, 'indexOf' | 'ids'>
+): CellRef | undefined => {
   if (!current) {
     return undefined
   }
 
   const currentRange = range.from(current)
   const rowIds = currentRange ? range.appearances(currentRange, appearances) : []
-  const propertyIds = currentRange ? range.properties(currentRange, properties) : []
+  const fieldIds = currentRange ? range.fields(currentRange, fields) : []
 
-  if (rowIds.length !== 1 || !propertyIds.length) {
+  if (rowIds.length !== 1 || !fieldIds.length) {
     return undefined
   }
 
@@ -38,14 +38,14 @@ const handleCell = (
 const can = (
   current: GridSelection | null,
   appearances: Pick<AppearanceList, 'indexOf' | 'ids'>,
-  properties: Pick<PropertyList, 'indexOf' | 'ids'>
-) => Boolean(handleCell(current, appearances, properties))
+  fields: Pick<FieldList, 'indexOf' | 'ids'>
+) => Boolean(handleCell(current, appearances, fields))
 
 const plan = (
   current: GridSelection | null,
   appearances: Pick<AppearanceList, 'indexOf' | 'ids'>,
-  properties: Pick<PropertyList, 'indexOf' | 'ids'>,
-  read: (cell: FieldId) => {
+  fields: Pick<FieldList, 'indexOf' | 'ids'>,
+  read: (cell: CellRef) => {
     exists: boolean
     value: unknown
   }
@@ -59,23 +59,23 @@ const plan = (
     return []
   }
 
-  const propertyIds = range.properties(currentRange, properties)
+  const fieldIds = range.fields(currentRange, fields)
   const targetAppearanceIds = range.appearances(currentRange, appearances)
     .filter(appearanceId => appearanceId !== current.anchor.appearanceId)
 
-  if (!propertyIds.length || !targetAppearanceIds.length) {
+  if (!fieldIds.length || !targetAppearanceIds.length) {
     return []
   }
 
   return targetAppearanceIds.flatMap(appearanceId => (
-    propertyIds.map(propertyId => ({
+    fieldIds.map(fieldId => ({
       cell: {
         appearanceId,
-        propertyId
+        fieldId
       },
       value: read({
         appearanceId: current.anchor.appearanceId,
-        propertyId
+        fieldId
       }).value
     }))
   ))

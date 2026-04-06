@@ -1,6 +1,10 @@
 import {
   DEFAULT_EDGE_ANCHOR_OFFSET,
+  type EdgeConnectEvaluation,
+  type EdgeConnectPreview,
+  type EdgeNodeCanvasSnapshot,
   resolveAnchorFromPoint,
+  resolveEdgeView,
   resolveEdgeConnectPreview,
   resolveReconnectDraftEnd,
   setEdgeConnectTarget,
@@ -12,7 +16,9 @@ import {
 } from '@whiteboard/core/edge'
 import { getNodeAnchor } from '@whiteboard/core/node'
 import type {
+  Edge,
   EdgeAnchor,
+  EdgeEnd,
   EdgeId,
   EdgeType,
   NodeId
@@ -226,10 +232,106 @@ const commitConnectState = (
   ctx.write.document.edge.create(commit.input)
 }
 
-const toConnectGesture = (
+const toPreviewEdgeEnd = (
+  draft: EdgeConnectState['from']
+): EdgeEnd => (
+  draft.kind === 'node'
+    ? {
+        kind: 'node',
+        nodeId: draft.nodeId,
+        anchor: draft.anchor
+      }
+    : {
+        kind: 'point',
+        point: draft.point
+      }
+)
+
+const readNodeSnapshot = (
+  ctx: InteractionContext,
+  nodeId: NodeId
+): EdgeNodeCanvasSnapshot | undefined => {
+  const entry = ctx.read.index.node.get(nodeId)
+  if (!entry) {
+    return undefined
+  }
+
+  return {
+    node: entry.node,
+    geometry: entry.geometry
+  }
+}
+
+const resolveCreatePreviewPath = (
+  ctx: InteractionContext,
   state: EdgeConnectState
+): EdgeConnectPreview['path'] | undefined => {
+  if (state.kind !== 'create' || !state.to) {
+    return undefined
+  }
+
+  const edge: Edge = {
+    id: '__preview__',
+    source: toPreviewEdgeEnd(state.from),
+    target: toPreviewEdgeEnd(state.to),
+    type: state.edgeType,
+    route: { kind: 'auto' }
+  }
+
+  const source = state.from.kind === 'node'
+    ? readNodeSnapshot(ctx, state.from.nodeId)
+    : undefined
+  const target = state.to.kind === 'node'
+    ? readNodeSnapshot(ctx, state.to.nodeId)
+    : undefined
+
+  if (
+    (state.from.kind === 'node' && !source)
+    || (state.to.kind === 'node' && !target)
+  ) {
+    return undefined
+  }
+
+  const view = resolveEdgeView({
+    edge,
+    source,
+    target
+  })
+
+  return {
+    svgPath: view.path.svgPath,
+    style: edge.style
+  }
+}
+
+const toDraftEndFromEvaluation = (
+  evaluation: EdgeConnectEvaluation
+) => toEdgeDraftEnd(
+  evaluation.resolution.pointWorld,
+  evaluation.resolution.mode === 'free'
+    ? undefined
+    : {
+        nodeId: evaluation.resolution.nodeId,
+        anchor: evaluation.resolution.anchor,
+        pointWorld: evaluation.resolution.pointWorld
+      }
+)
+
+const toConnectGesture = (
+  ctx: InteractionContext,
+  state: EdgeConnectState,
+  evaluation: EdgeConnectEvaluation,
+  showPreviewPath: boolean
 ) => {
-  const preview = resolveEdgeConnectPreview(state)
+  const preview = resolveEdgeConnectPreview(
+    state,
+    showPreviewPath
+      ? resolveCreatePreviewPath(ctx, state)
+      : undefined
+  )
+  const hasConnectFeedback =
+    evaluation.focusedNodeId !== undefined
+    || evaluation.resolution.mode !== 'free'
 
   return createEdgeGesture(
     'edge-connect',
@@ -242,9 +344,13 @@ const toConnectGesture = (
             }]
           : [],
       guide: preview
+        || hasConnectFeedback
         ? {
-            line: preview.line,
-            snap: preview.snap
+            path: preview?.path,
+            connect: {
+              focusedNodeId: evaluation.focusedNodeId,
+              resolution: evaluation.resolution
+            }
           }
         : undefined
     }
@@ -256,7 +362,47 @@ export const createEdgeConnectSession = (
   initial: EdgeConnectState
 ): InteractionSession => {
   let state = initial
+  let evaluation: EdgeConnectEvaluation = {
+    resolution: {
+      mode: 'free',
+      pointWorld: initial.to?.point ?? initial.from.point
+    }
+  }
+  let lastWorld = initial.to?.point ?? initial.from.point
+  const originWorld = lastWorld
   let interaction = null as InteractionSession | null
+
+  const showPreviewPath = () => Math.hypot(
+    lastWorld.x - originWorld.x,
+    lastWorld.y - originWorld.y
+  ) > 3 / Math.max(ctx.read.viewport.get().zoom, 0.0001)
+
+  const refreshGesture = () => {
+    if (!interaction) {
+      return
+    }
+
+    interaction.gesture = toConnectGesture(
+      ctx,
+      state,
+      evaluation,
+      showPreviewPath()
+    )
+  }
+
+  const evaluate = (
+    world: PointerDownInput['world']
+  ) => {
+    lastWorld = world
+    evaluation = ctx.snap.edge.connect({
+      pointerWorld: world
+    })
+    state = setEdgeConnectTarget(
+      state,
+      toDraftEndFromEvaluation(evaluation)
+    )
+    refreshGesture()
+  }
 
   const step = (
     world: PointerDownInput['world'],
@@ -266,17 +412,15 @@ export const createEdgeConnectSession = (
       return
     }
 
-    state = setEdgeConnectTarget(
-      state,
-      toEdgeDraftEnd(world, ctx.snap.edge.connect(world))
-    )
-    interaction!.gesture = toConnectGesture(state)
+    evaluate(world)
   }
+
+  evaluate(lastWorld)
 
   interaction = {
     mode: 'edge-connect',
     pointerId: state.pointerId,
-    gesture: toConnectGesture(state),
+    gesture: toConnectGesture(ctx, state, evaluation, false),
     autoPan: {
       frame: (pointer) => {
         step(

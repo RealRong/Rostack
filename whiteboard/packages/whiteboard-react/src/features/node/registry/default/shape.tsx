@@ -12,8 +12,9 @@ import {
 } from 'react'
 import type { NodeDefinition, NodeRenderProps } from '../../../../types/node'
 import { useEdit, useEditor } from '../../../../runtime/hooks/useEditor'
+import { usePickRef } from '../../../../runtime/hooks/usePickRef'
 import {
-  focusEditableDraftEnd,
+  focusEditableDraft,
   isEscapeEditingKey,
   isSubmitEditingKey,
   stopEditingPointerDown,
@@ -73,9 +74,15 @@ const ShapeLabel = ({
   const editor = useEditor()
   const edit = useEdit()
   const editing = edit?.nodeId === node.id && edit.field === 'text'
+  const editCaret = editing ? edit.caret : undefined
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
   const [draft, setDraft] = useState(text)
   const editorRef = useRef<HTMLDivElement | null>(null)
+  const labelRef = usePickRef({
+    kind: 'node',
+    id: node.id,
+    part: 'body'
+  })
 
   useEffect(() => {
     setDraft(text)
@@ -92,8 +99,20 @@ const ShapeLabel = ({
     }
 
     syncEditableDraft(element, draft)
-    return focusEditableDraftEnd(element)
-  }, [draft, editing, node.id])
+  }, [draft, editing])
+
+  useEffect(() => {
+    if (!editing) {
+      return
+    }
+
+    const element = editorRef.current
+    if (!element) {
+      return
+    }
+
+    return focusEditableDraft(element, editCaret)
+  }, [editCaret, editing])
 
   const cancel = () => {
     setDraft(text)
@@ -135,7 +154,6 @@ const ShapeLabel = ({
       <div
         ref={editorRef}
         className="wb-shape-node-label wb-shape-node-editor"
-        data-node-editable-field="text"
         data-selection-ignore
         data-input-ignore
         contentEditable="plaintext-only"
@@ -158,8 +176,8 @@ const ShapeLabel = ({
 
   return (
     <div
+      ref={labelRef}
       className="wb-shape-node-label"
-      data-node-editable-field="text"
       style={style}
     >
       {text}
@@ -216,6 +234,7 @@ export const ShapeNodeDefinition: NodeDefinition = {
   role: 'content',
   geometry: 'shape',
   schema: shapeSchema,
+  enter: true,
   render: (props) => <ShapeNodeRenderer {...props} />,
   style: () => ({
     border: 'none',

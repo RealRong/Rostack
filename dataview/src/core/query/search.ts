@@ -1,10 +1,10 @@
-import type { GroupViewQuery } from './contracts'
+import type { ViewQuery } from './contracts'
 import { cloneViewQuery } from './shared'
 
 export const setViewSearchQuery = (
-  query: GroupViewQuery,
+  query: ViewQuery,
   value: string
-): GroupViewQuery => {
+): ViewQuery => {
   if (query.search.query === value) {
     return query
   }
@@ -13,8 +13,8 @@ export const setViewSearchQuery = (
     ...cloneViewQuery(query),
     search: {
       query: value,
-      properties: query.search.properties?.length
-        ? [...query.search.properties]
+      fields: query.search.fields?.length
+        ? [...query.search.fields]
         : undefined
     }
   }

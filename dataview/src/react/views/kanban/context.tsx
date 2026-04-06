@@ -5,14 +5,14 @@ import {
   type ReactNode
 } from 'react'
 import type {
-  GroupKanbanCreateCardInput,
-  GroupKanbanMoveCardsInput
+  KanbanCreateCardInput,
+  KanbanMoveCardsInput
 } from '@dataview/engine'
 import type { KanbanController } from './useKanbanController'
 
 export type {
-  GroupKanbanCreateCardInput as KanbanCreateCardInput,
-  GroupKanbanMoveCardsInput as KanbanMoveCardsInput
+  KanbanCreateCardInput as KanbanCreateCardInput,
+  KanbanMoveCardsInput as KanbanMoveCardsInput
 }
 
 export type Kanban = KanbanController

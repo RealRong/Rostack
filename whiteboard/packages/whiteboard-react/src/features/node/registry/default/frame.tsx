@@ -62,6 +62,12 @@ export const FrameNodeChrome = ({
     id: node.id,
     part: 'shell'
   })
+  const titleRef = usePickRef({
+    kind: 'node',
+    id: node.id,
+    part: 'field',
+    field: 'title'
+  })
 
   useEffect(() => {
     setDraft(title)
@@ -110,8 +116,8 @@ export const FrameNodeChrome = ({
         />
       ) : (
         <div
+          ref={titleRef}
           className="wb-frame-title"
-          data-node-editable-field="title"
           style={{ color }}
         >
           {title}
@@ -151,6 +157,5 @@ export const FrameNodeDefinition: NodeDefinition = {
   },
   render: () => null,
   style: (props) => frameStyle(props.node),
-  canRotate: false,
-  enter: true
+  canRotate: false
 }

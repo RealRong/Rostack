@@ -4,6 +4,7 @@ import {
   useDataView
 } from '@dataview/react/dataview'
 import { CardPreview } from '@dataview/react/views/shared'
+import { resolveNeutralCardStyle } from '@ui/color'
 import { cn } from '@ui/utils'
 import { FileText } from 'lucide-react'
 import { useGalleryContext } from '../context'
@@ -71,12 +72,12 @@ export const Overlay = () => {
         ) : null}
         <div className={cn(controller.drag.dragIds.length > 1 && 'relative')}>
           <CardPreview
+            style={resolveNeutralCardStyle('default', 'preview')}
             record={record}
-            titleProperty={controller.titleProperty}
-            properties={controller.properties}
+            fields={controller.fields}
             titlePlaceholder={CARD_TITLE_PLACEHOLDER}
             slots={{
-              root: 'relative h-full rounded-xl bg-card p-3 shadow-sm shadow-lg transition-colors',
+              root: 'relative h-full rounded-xl p-3 transition-colors',
               title: {
                 row: 'flex min-w-0 items-start gap-2.5',
                 rowWhenProperties: 'pb-2',

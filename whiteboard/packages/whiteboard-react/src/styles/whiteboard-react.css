@@ -714,6 +714,12 @@
   z-index: 1;
 }
 
+.wb-node-handle[data-active='true'] {
+  background: var(--wb-accent);
+  border-color: var(--wb-surface);
+  box-shadow: var(--wb-shadow-accent-lg);
+}
+
 .wb-node-connect-handle-layer {
   position: absolute;
   left: 0;

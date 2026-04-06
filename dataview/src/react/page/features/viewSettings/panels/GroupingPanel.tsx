@@ -1,10 +1,10 @@
 import { ChevronRight } from 'lucide-react'
 import { forwardRef, useEffect, useState } from 'react'
-import type { GroupBucketSort, GroupProperty } from '@dataview/core/contracts'
-import { getDocumentProperties } from '@dataview/core/document'
+import type { BucketSort, Field } from '@dataview/core/contracts'
+import { getDocumentFields } from '@dataview/core/document'
 import {
-  getPropertyGroupMeta
-} from '@dataview/core/property'
+  getFieldGroupMeta
+} from '@dataview/core/field'
 import {
   resolveViewGroupState
 } from '@dataview/core/query'
@@ -18,7 +18,7 @@ import { DropdownMenu } from '@ui/dropdown-menu'
 import { Input } from '@ui/input'
 import { meta, renderMessage } from '@dataview/meta'
 
-const GroupMenuRow = forwardRef<HTMLButtonElement, {
+const GroupingMenuRow = forwardRef<HTMLButtonElement, {
   label: string
   suffix?: string
   pressed?: boolean
@@ -36,10 +36,10 @@ const GroupMenuRow = forwardRef<HTMLButtonElement, {
   </Button>
 ))
 
-GroupMenuRow.displayName = 'GroupMenuRow'
+GroupingMenuRow.displayName = 'GroupingMenuRow'
 
 const readGroupModeLabel = (
-  property: GroupProperty | undefined,
+  property: Field | undefined,
   mode: string
 ) => {
   if (!property) {
@@ -48,6 +48,7 @@ const readGroupModeLabel = (
 
   switch (property.kind) {
     case 'text':
+    case 'title':
     case 'url':
     case 'email':
     case 'phone':
@@ -81,7 +82,7 @@ const readGroupModeLabel = (
   }
 }
 
-const readBucketSortLabel = (bucketSort: GroupBucketSort | undefined) => {
+const readBucketSortLabel = (bucketSort: BucketSort | undefined) => {
   switch (bucketSort) {
     case 'manual':
       return renderMessage(meta.ui.viewSettings.bucketSortManual)
@@ -98,7 +99,7 @@ const readBucketSortLabel = (bucketSort: GroupBucketSort | undefined) => {
   }
 }
 
-export const GroupPanel = () => {
+export const GroupingPanel = () => {
   const dataView = useDataView()
   const engine = dataView.engine
   const document = useDocument()
@@ -106,10 +107,10 @@ export const GroupPanel = () => {
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined
-  const properties = getDocumentProperties(document)
-  const group = resolveViewGroupState(properties, currentView?.query.group)
-  const groupProperty = group.property
-  const [propertyOpen, setPropertyOpen] = useState(false)
+  const fields = getDocumentFields(document)
+  const group = resolveViewGroupState(fields, currentView?.query.group)
+  const groupField = group.field
+  const [fieldOpen, setFieldOpen] = useState(false)
   const [modeOpen, setModeOpen] = useState(false)
   const [sortOpen, setSortOpen] = useState(false)
   const [intervalDraft, setIntervalDraft] = useState(
@@ -117,7 +118,7 @@ export const GroupPanel = () => {
       ? String(group.bucketInterval)
       : ''
   )
-  const groupMeta = getPropertyGroupMeta(groupProperty, {
+  const groupMeta = getFieldGroupMeta(groupField, {
     ...(group.mode ? { mode: group.mode } : {}),
     ...(group.bucketSort ? { bucketSort: group.bucketSort } : {}),
     ...(group.bucketInterval !== undefined ? { bucketInterval: group.bucketInterval } : {})
@@ -132,10 +133,10 @@ export const GroupPanel = () => {
         ? String(group.bucketInterval)
         : ''
     )
-  }, [group.bucketInterval, group.propertyId, group.mode])
+  }, [group.bucketInterval, group.fieldId, group.mode])
 
   const commitInterval = () => {
-    if (!groupProperty) {
+    if (!groupField) {
       return
     }
 
@@ -158,21 +159,21 @@ export const GroupPanel = () => {
       kind: 'toggle' as const,
       key: 'none',
       label: renderMessage(meta.ui.viewSettings.none),
-      checked: !group.propertyId,
+      checked: !group.fieldId,
       onSelect: () => {
         currentViewDomain?.grouping.clear()
-        setPropertyOpen(false)
+        setFieldOpen(false)
       }
     },
-    ...properties.map(property => ({
+    ...fields.map(property => ({
       kind: 'toggle' as const,
       key: property.id,
       label: property.name,
-      suffix: renderMessage(meta.property.kind.get(property.kind).message),
-      checked: group.propertyId === property.id,
+      suffix: renderMessage(meta.field.kind.get(property.kind).message),
+      checked: group.fieldId === property.id,
       onSelect: () => {
-        currentViewDomain?.grouping.setProperty(property.id)
-        setPropertyOpen(false)
+        currentViewDomain?.grouping.setField(property.id)
+        setFieldOpen(false)
       }
     }))
   ]
@@ -180,10 +181,10 @@ export const GroupPanel = () => {
   const modeItems = availableModes.map(mode => ({
     kind: 'toggle' as const,
     key: mode,
-    label: readGroupModeLabel(groupProperty, mode) ?? mode,
+    label: readGroupModeLabel(groupField, mode) ?? mode,
     checked: group.mode === mode,
     onSelect: () => {
-      if (!groupProperty) {
+      if (!groupField) {
         return
       }
 
@@ -198,7 +199,7 @@ export const GroupPanel = () => {
     label: readBucketSortLabel(bucketSort) ?? bucketSort,
     checked: group.bucketSort === bucketSort,
     onSelect: () => {
-      if (!groupProperty) {
+      if (!groupField) {
         return
       }
 
@@ -211,24 +212,24 @@ export const GroupPanel = () => {
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 py-2">
       <div className="flex flex-col gap-0.5">
         <DropdownMenu
-          open={propertyOpen}
-          onOpenChange={setPropertyOpen}
+          open={fieldOpen}
+          onOpenChange={setFieldOpen}
           placement="right-start"
           offset={10}
           initialFocus={-1}
           items={propertyItems}
           contentClassName="w-[240px] p-1.5"
           trigger={(
-            <GroupMenuRow
-              label={renderMessage(meta.ui.viewSettings.groupProperty)}
-              suffix={groupProperty?.name ?? renderMessage(meta.ui.viewSettings.none)}
-              pressed={propertyOpen}
+            <GroupingMenuRow
+              label={renderMessage(meta.ui.viewSettings.groupField)}
+              suffix={groupField?.name ?? renderMessage(meta.ui.viewSettings.none)}
+              pressed={fieldOpen}
               onClick={() => undefined}
             />
           )}
         />
 
-        {groupProperty && availableModes.length > 1 ? (
+        {groupField && availableModes.length > 1 ? (
           <DropdownMenu
             open={modeOpen}
             onOpenChange={setModeOpen}
@@ -238,9 +239,9 @@ export const GroupPanel = () => {
             items={modeItems}
             contentClassName="w-[220px] p-1.5"
             trigger={(
-              <GroupMenuRow
+              <GroupingMenuRow
                 label={renderMessage(meta.ui.viewSettings.groupMode)}
-                suffix={readGroupModeLabel(groupProperty, group.mode)}
+                suffix={readGroupModeLabel(groupField, group.mode)}
                 pressed={modeOpen}
                 onClick={() => undefined}
               />
@@ -248,7 +249,7 @@ export const GroupPanel = () => {
           />
         ) : null}
 
-        {groupProperty && bucketSortItems.length > 0 ? (
+        {groupField && bucketSortItems.length > 0 ? (
           <DropdownMenu
             open={sortOpen}
             onOpenChange={setSortOpen}
@@ -258,7 +259,7 @@ export const GroupPanel = () => {
             items={bucketSortItems}
             contentClassName="w-[220px] p-1.5"
             trigger={(
-              <GroupMenuRow
+              <GroupingMenuRow
                 label={renderMessage(meta.ui.viewSettings.bucketSort)}
                 suffix={readBucketSortLabel(group.bucketSort)}
                 pressed={sortOpen}
@@ -269,7 +270,7 @@ export const GroupPanel = () => {
         ) : null}
       </div>
 
-      {groupProperty && showBucketInterval ? (
+      {groupField && showBucketInterval ? (
         <div className="mt-3 border-t border-divider px-2 pb-1 pt-3">
           <div className="mb-2 text-[11px] font-medium text-muted-foreground">
             {renderMessage(meta.ui.viewSettings.bucketInterval)}

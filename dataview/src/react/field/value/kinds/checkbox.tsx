@@ -1,13 +1,13 @@
-import type { GroupProperty } from '@dataview/core/contracts'
-import { parsePropertyDraft } from '@dataview/core/property'
+import type { CustomField } from '@dataview/core/contracts'
+import { parseFieldDraft } from '@dataview/core/field'
 import { cn } from '@ui/utils'
 import { CheckboxEditor } from '../editor/basic/CheckboxEditor'
-import type { PropertyValueSpec } from './contracts'
+import type { FieldValueSpec } from './contracts'
 import { renderEmpty } from './shared'
 
 export const createCheckboxPropertySpec = (
-  property: GroupProperty | undefined
-): PropertyValueSpec<string> => ({
+  property: CustomField | undefined
+): FieldValueSpec<string> => ({
   capability: {
     quickToggle: true
   },
@@ -22,7 +22,7 @@ export const createCheckboxPropertySpec = (
           ? ''
           : String(value)
   ),
-  parseDraft: draft => parsePropertyDraft(property, draft),
+  parseDraft: draft => parseFieldDraft(property, draft),
   render: props => {
     if (props.value !== true && props.value !== false) {
       return renderEmpty(props)

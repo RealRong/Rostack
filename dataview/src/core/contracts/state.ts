@@ -1,39 +1,53 @@
 export type RecordId = string
 export type ViewId = string
-export type PropertyId = string
-export type GroupNodeId = string
-export type GroupViewType = 'table' | 'gallery' | 'list' | 'kanban' | 'calendar' | (string & {})
-export type GroupSortDirection = 'asc' | 'desc'
-export type GroupBucketSort = 'manual' | 'labelAsc' | 'labelDesc' | 'valueAsc' | 'valueDesc'
-export type GroupFilterOperator = 'eq' | 'neq' | 'contains' | 'in' | 'gt' | 'gte' | 'lt' | 'lte' | 'exists' | 'custom'
-export type GroupResolvedGroupKey = string | number | boolean | null | undefined
+export type CustomFieldId = string
+export const TITLE_FIELD_ID = 'title'
+export type TitleFieldId = typeof TITLE_FIELD_ID
+export type FieldId = CustomFieldId | TitleFieldId
+export type NodeId = string
+export type ViewType = 'table' | 'gallery' | 'list' | 'kanban' | 'calendar' | (string & {})
+export type SortDirection = 'asc' | 'desc'
+export type BucketSort = 'manual' | 'labelAsc' | 'labelDesc' | 'valueAsc' | 'valueDesc'
+export type FilterOperator = 'eq' | 'neq' | 'contains' | 'in' | 'gt' | 'gte' | 'lt' | 'lte' | 'exists' | 'custom'
+export type ResolvedGroupKey = string | number | boolean | null | undefined
 export type IndexPath = number[]
-export type GroupAggregateOperator = 'count' | 'sum' | 'avg' | 'min' | 'max'
-export type GroupAggregateScope = 'all' | 'visible'
-export type GroupStatusCategory = 'todo' | 'in_progress' | 'complete'
-export type GroupPropertyKind =
+export type AggregateOperator = 'count' | 'sum' | 'avg' | 'min' | 'max'
+export type AggregateScope = 'all' | 'visible'
+export type StatusCategory = 'todo' | 'in_progress' | 'complete'
+export type NumberFormat = 'number' | 'integer' | 'percent' | 'currency'
+export type DateDisplayFormat = 'full' | 'short' | 'mdy' | 'dmy' | 'ymd' | 'relative'
+export type TimeDisplayFormat = '12h' | '24h'
+export type DateValueKind = 'date' | 'datetime'
+export type AssetAccept = 'any' | 'image' | 'video' | 'audio' | 'media'
+export type FieldKind = 'title' | CustomFieldKind
+export type CustomFieldKind =
   | 'text'
   | 'number'
   | 'select'
   | 'multiSelect'
   | 'status'
   | 'date'
-  | 'checkbox'
+  | 'boolean'
   | 'url'
   | 'email'
   | 'phone'
-  | 'file'
-  | 'media'
+  | 'asset'
 
-export interface GroupPropertyOption {
+export interface FlatOption {
   id: string
-  key: string
   name: string
-  color?: string
-  category?: GroupStatusCategory
+  color: string | null
 }
 
-export type GroupDateValue =
+export interface StatusOption extends FlatOption {
+  category: StatusCategory
+}
+
+export type FieldOption =
+  | FlatOption
+  | StatusOption
+
+export type DateValue =
   | {
       kind: 'date'
       start: string
@@ -46,7 +60,7 @@ export type GroupDateValue =
       timezone: string | null
     }
 
-export interface GroupFileValue {
+export interface FileValue {
   id: string
   name: string
   url?: string
@@ -55,102 +69,156 @@ export interface GroupFileValue {
   meta?: Record<string, unknown>
 }
 
-export type GroupPropertyConfig =
-  | {
-      type: 'text'
-    }
-  | {
-      type: 'number'
-      format?: 'number' | 'integer' | 'percent' | 'currency'
-      precision?: number
-      currency?: string
-      useThousandsSeparator?: boolean
-    }
-  | {
-      type: 'select'
-      options: GroupPropertyOption[]
-    }
-  | {
-      type: 'multiSelect'
-      options: GroupPropertyOption[]
-    }
-  | {
-      type: 'status'
-      options: GroupPropertyOption[]
-    }
-  | {
-      type: 'date'
-      displayDateFormat?: 'full' | 'short' | 'mdy' | 'dmy' | 'ymd' | 'relative'
-      displayTimeFormat?: '12h' | '24h'
-      defaultValueKind?: 'date' | 'datetime'
-      defaultTimezone?: string | null
-    }
-  | {
-      type: 'checkbox'
-      label?: string
-    }
-  | {
-      type: 'url'
-      displayFullUrl?: boolean
-    }
-  | {
-      type: 'email'
-    }
-  | {
-      type: 'phone'
-    }
-  | {
-      type: 'file'
-      multiple?: boolean
-      accept?: string[]
-    }
-  | {
-      type: 'media'
-      multiple?: boolean
-      accept?: Array<'image' | 'video' | 'audio'>
-    }
-
-export interface GroupAggregateSpec {
+export interface AggregateSpec {
   key: string
-  op: GroupAggregateOperator
-  property?: PropertyId
-  scope?: GroupAggregateScope
+  op: AggregateOperator
+  property?: CustomFieldId
+  scope?: AggregateScope
 }
 
-export interface GroupRecord {
+export interface Row {
   id: RecordId
+  title: string
   type?: string
-  values: Partial<Record<PropertyId, unknown>>
+  values: Partial<Record<CustomFieldId, unknown>>
   meta?: Record<string, unknown>
 }
 
-export interface GroupProperty {
-  id: PropertyId
+export interface TitleField {
+  id: TitleFieldId
   name: string
-  kind: GroupPropertyKind
-  config?: GroupPropertyConfig
+  kind: 'title'
+  system: true
   meta?: Record<string, unknown>
 }
 
-export interface GroupFilterRule {
-  property: PropertyId
-  op: GroupFilterOperator
+export interface TextField {
+  id: CustomFieldId
+  name: string
+  kind: 'text'
+  meta?: Record<string, unknown>
+}
+
+export interface UrlField {
+  id: CustomFieldId
+  name: string
+  kind: 'url'
+  displayFullUrl: boolean
+  meta?: Record<string, unknown>
+}
+
+export interface EmailField {
+  id: CustomFieldId
+  name: string
+  kind: 'email'
+  meta?: Record<string, unknown>
+}
+
+export interface PhoneField {
+  id: CustomFieldId
+  name: string
+  kind: 'phone'
+  meta?: Record<string, unknown>
+}
+
+export interface NumberField {
+  id: CustomFieldId
+  name: string
+  kind: 'number'
+  format: NumberFormat
+  precision: number | null
+  currency: string | null
+  useThousandsSeparator: boolean
+  meta?: Record<string, unknown>
+}
+
+export interface SelectField {
+  id: CustomFieldId
+  name: string
+  kind: 'select'
+  options: FlatOption[]
+  meta?: Record<string, unknown>
+}
+
+export interface MultiSelectField {
+  id: CustomFieldId
+  name: string
+  kind: 'multiSelect'
+  options: FlatOption[]
+  meta?: Record<string, unknown>
+}
+
+export interface StatusField {
+  id: CustomFieldId
+  name: string
+  kind: 'status'
+  options: StatusOption[]
+  meta?: Record<string, unknown>
+}
+
+export interface DateField {
+  id: CustomFieldId
+  name: string
+  kind: 'date'
+  displayDateFormat: DateDisplayFormat
+  displayTimeFormat: TimeDisplayFormat
+  defaultValueKind: DateValueKind
+  defaultTimezone: string | null
+  meta?: Record<string, unknown>
+}
+
+export interface BooleanField {
+  id: CustomFieldId
+  name: string
+  kind: 'boolean'
+  meta?: Record<string, unknown>
+}
+
+export interface AssetField {
+  id: CustomFieldId
+  name: string
+  kind: 'asset'
+  multiple: boolean
+  accept: AssetAccept
+  meta?: Record<string, unknown>
+}
+
+export type CustomField =
+  | TextField
+  | UrlField
+  | EmailField
+  | PhoneField
+  | NumberField
+  | SelectField
+  | MultiSelectField
+  | StatusField
+  | DateField
+  | BooleanField
+  | AssetField
+
+export type Field =
+  | TitleField
+  | CustomField
+
+export interface FilterRule {
+  field: FieldId
+  op: FilterOperator
   value?: unknown
 }
 
-export interface GroupFilter {
+export interface Filter {
   mode: 'and' | 'or'
-  rules: GroupFilterRule[]
+  rules: FilterRule[]
 }
 
-export interface GroupSearch {
+export interface Search {
   query: string
-  properties?: PropertyId[]
+  fields?: FieldId[]
 }
 
-export interface GroupSorter {
-  property: PropertyId
-  direction: GroupSortDirection
+export interface Sorter {
+  field: FieldId
+  direction: SortDirection
 }
 
 export interface BucketState {
@@ -158,46 +226,46 @@ export interface BucketState {
   collapsed?: boolean
 }
 
-export interface GroupGroupBy {
-  property: PropertyId
+export interface Grouping {
+  field: FieldId
   mode: string
-  bucketSort: GroupBucketSort
+  bucketSort: BucketSort
   bucketInterval?: number
   showEmpty?: boolean
   buckets?: Readonly<Record<string, BucketState>>
 }
 
-export interface GroupViewQuery {
-  filter: GroupFilter
-  search: GroupSearch
-  sorters: GroupSorter[]
-  group?: GroupGroupBy
+export interface ViewQuery {
+  filter: Filter
+  search: Search
+  sorters: Sorter[]
+  group?: Grouping
 }
 
-export interface GroupView {
+export interface View {
   id: ViewId
-  type: GroupViewType
+  type: ViewType
   name: string
-  query: GroupViewQuery
-  aggregates: GroupAggregateSpec[]
-  options: import('./viewOptions').GroupViewOptions
+  query: ViewQuery
+  aggregates: AggregateSpec[]
+  options: import('./viewOptions').ViewOptions
   orders: RecordId[]
 }
 
-export interface GroupEntityTable<TId extends string, TEntity extends { id: TId }> {
+export interface EntityTable<TId extends string, TEntity extends { id: TId }> {
   byId: Record<TId, TEntity>
   order: TId[]
 }
 
-export interface GroupDocument {
+export interface DataDoc {
   schemaVersion: number
-  records: GroupEntityTable<RecordId, GroupRecord>
-  properties: GroupEntityTable<PropertyId, GroupProperty>
-  views: GroupEntityTable<ViewId, GroupView>
+  records: EntityTable<RecordId, Row>
+  fields: EntityTable<CustomFieldId, CustomField>
+  views: EntityTable<ViewId, View>
   meta?: Record<string, unknown>
 }
 
-export type GroupStateSlice =
+export type StateSlice =
   | 'documentRecords'
   | 'documentViews'
   | 'documentProperties'

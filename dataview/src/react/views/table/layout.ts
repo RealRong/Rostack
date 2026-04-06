@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import type { PropertyId, GroupProperty } from '@dataview/core/contracts'
+import type { Field, FieldId } from '@dataview/core/contracts'
 
 export interface TableLayout {
   rowHeight: number
@@ -12,11 +12,11 @@ export const DEFAULT_COLUMN_WIDTH = 160
 export const MIN_COLUMN_WIDTH = 96
 
 export const gridTemplate = (
-  columns: readonly GroupProperty[],
-  widths?: ReadonlyMap<PropertyId, number>
+  columns: readonly Field[],
+  widths?: ReadonlyMap<FieldId, number>
 ) => columns
-  .map(property => {
-    const width = widths?.get(property.id)
+  .map(field => {
+    const width = widths?.get(field.id)
     return width
       ? `${Math.max(MIN_COLUMN_WIDTH, width)}px`
       : `minmax(${DEFAULT_COLUMN_WIDTH}px, 1fr)`

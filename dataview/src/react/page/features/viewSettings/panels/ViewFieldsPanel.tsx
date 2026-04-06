@@ -4,9 +4,8 @@ import {
   GripVertical
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import type { GroupProperty } from '@dataview/core/contracts'
-import { getDocumentProperties } from '@dataview/core/document'
-import { TITLE_PROPERTY_ID } from '@dataview/core/property'
+import type { Field } from '@dataview/core/contracts'
+import { getDocumentFields } from '@dataview/core/document'
 import { Button } from '@ui/button'
 import { Input } from '@ui/input'
 import {
@@ -21,15 +20,15 @@ import {
 } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 
-interface PropertyRowProps {
-  property: GroupProperty
+interface FieldRowProps {
+  property: Field
   visible: boolean
   onToggle: (checked: boolean) => void
   drag?: VerticalReorderItemState
 }
 
-const PropertyRow = (props: PropertyRowProps) => {
-  const kind = meta.property.kind.get(props.property.kind)
+const FieldRow = (props: FieldRowProps) => {
+  const kind = meta.field.kind.get(props.property.kind)
   const Icon = kind.Icon
 
   return (
@@ -41,7 +40,7 @@ const PropertyRow = (props: PropertyRowProps) => {
     >
       <Button
         aria-label={props.drag
-          ? renderMessage(meta.ui.viewSettings.propertiesPanel.reorder(props.property.name))
+          ? renderMessage(meta.ui.viewSettings.fieldsPanel.reorder(props.property.name))
           : undefined}
         {...props.drag?.handle.attributes}
         {...props.drag?.handle.listeners}
@@ -63,8 +62,8 @@ const PropertyRow = (props: PropertyRowProps) => {
       <Button
         aria-label={renderMessage(
           props.visible
-            ? meta.ui.viewSettings.propertiesPanel.hide(props.property.name)
-            : meta.ui.viewSettings.propertiesPanel.show(props.property.name)
+            ? meta.ui.viewSettings.fieldsPanel.hide(props.property.name)
+            : meta.ui.viewSettings.fieldsPanel.show(props.property.name)
         )}
         onClick={() => props.onToggle(!props.visible)}
         size="icon"
@@ -80,7 +79,7 @@ const PropertyRow = (props: PropertyRowProps) => {
   )
 }
 
-export const ViewPropertiesPanel = () => {
+export const ViewFieldsPanel = () => {
   const dataView = useDataView()
   const engine = dataView.engine
   const document = useDocument()
@@ -88,35 +87,34 @@ export const ViewPropertiesPanel = () => {
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined
-  const properties = getDocumentProperties(document)
+  const fields = getDocumentFields(document)
   const [query, setQuery] = useState('')
   const normalizedQuery = query.trim().toLowerCase()
-  const titlePropertyId = TITLE_PROPERTY_ID
-  const displayPropertyIds = currentView?.options.display.propertyIds ?? []
+  const displayFieldIds = currentView?.options.display.fieldIds ?? []
   const propertyMap = useMemo(
-    () => new Map(properties.map(property => [property.id, property] as const)),
-    [properties]
+    () => new Map(fields.map(property => [property.id, property] as const)),
+    [fields]
   )
-  const visibleProperties = useMemo(
-    () => displayPropertyIds
-      .map(propertyId => propertyMap.get(propertyId))
-      .filter((property): property is GroupProperty => Boolean(property)),
-    [displayPropertyIds, propertyMap]
+  const visibleFields = useMemo(
+    () => displayFieldIds
+      .map(fieldId => propertyMap.get(fieldId))
+      .filter((property): property is Field => Boolean(property)),
+    [displayFieldIds, propertyMap]
   )
   const hiddenProperties = useMemo(
-    () => properties.filter(property => !displayPropertyIds.includes(property.id)),
-    [displayPropertyIds, properties]
+    () => fields.filter(property => !displayFieldIds.includes(property.id)),
+    [displayFieldIds, fields]
   )
   const filteredVisibleProperties = useMemo(
-    () => visibleProperties.filter(property => {
+    () => visibleFields.filter(property => {
       if (!normalizedQuery) {
         return true
       }
 
-      const kindLabel = renderMessage(meta.property.kind.get(property.kind).message).toLowerCase()
+      const kindLabel = renderMessage(meta.field.kind.get(property.kind).message).toLowerCase()
       return property.name.toLowerCase().includes(normalizedQuery) || kindLabel.includes(normalizedQuery)
     }),
-    [normalizedQuery, visibleProperties]
+    [normalizedQuery, visibleFields]
   )
   const filteredHiddenProperties = useMemo(
     () => hiddenProperties.filter(property => {
@@ -124,15 +122,12 @@ export const ViewPropertiesPanel = () => {
         return true
       }
 
-      const kindLabel = renderMessage(meta.property.kind.get(property.kind).message).toLowerCase()
+      const kindLabel = renderMessage(meta.field.kind.get(property.kind).message).toLowerCase()
       return property.name.toLowerCase().includes(normalizedQuery) || kindLabel.includes(normalizedQuery)
     }),
     [hiddenProperties, normalizedQuery]
   )
-  const hideableVisiblePropertyIds = useMemo(
-    () => displayPropertyIds.filter(propertyId => propertyId !== titlePropertyId),
-    [displayPropertyIds, titlePropertyId]
-  )
+  const hideableVisiblePropertyIds = displayFieldIds
   const hasFilteredResults = filteredVisibleProperties.length > 0 || filteredHiddenProperties.length > 0
 
   return (
@@ -148,17 +143,17 @@ export const ViewPropertiesPanel = () => {
       <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
         <div className="mb-1 flex items-center gap-3 px-2 text-sm mb-3 font-medium text-muted-foreground">
           <div className="min-w-0 flex-1">
-            {renderMessage(meta.ui.viewSettings.propertiesPanel.shownIn(currentView?.type))}
+            {renderMessage(meta.ui.viewSettings.fieldsPanel.shownIn(currentView?.type))}
           </div>
           {hideableVisiblePropertyIds.length !== 0 && <div
             onClick={() => {
-              currentViewDomain?.display.setVisibleProperties(
-                titlePropertyId ? [titlePropertyId] : []
+              currentViewDomain?.display.setVisibleFields(
+                []
               )
             }}
             className='text-primary cursor-pointer'
           >
-            {renderMessage(meta.ui.viewSettings.propertiesPanel.hideAll)}
+            {renderMessage(meta.ui.viewSettings.fieldsPanel.hideAll)}
           </div>}
         </div>
 
@@ -168,39 +163,39 @@ export const ViewPropertiesPanel = () => {
               items={filteredVisibleProperties}
               getItemId={property => property.id}
               onMove={(from, to) => {
-                const propertyId = displayPropertyIds[from]
-                const beforePropertyId = displayPropertyIds[to]
-                if (!propertyId || !beforePropertyId || propertyId === beforePropertyId) {
+                const fieldId = displayFieldIds[from]
+                const beforeFieldId = displayFieldIds[to]
+                if (!fieldId || !beforeFieldId || fieldId === beforeFieldId) {
                   return
                 }
 
-                const nextBeforePropertyId = from < to
-                  ? displayPropertyIds[to + 1] ?? null
-                  : beforePropertyId
-                currentViewDomain?.display.moveVisibleProperties(
-                  [propertyId],
-                  nextBeforePropertyId
+                const nextBeforeFieldId = from < to
+                  ? displayFieldIds[to + 1] ?? null
+                  : beforeFieldId
+                currentViewDomain?.display.moveVisibleFields(
+                  [fieldId],
+                  nextBeforeFieldId
                 )
               }}
               className='gap-1'
               renderItem={(property, drag) => (
-                <PropertyRow
+                <FieldRow
                   property={property}
                   visible
                   drag={normalizedQuery ? undefined : drag}
                   onToggle={checked => {
-                    if (checked || property.id === titlePropertyId) {
+                    if (checked) {
                       return
                     }
 
-                    currentViewDomain?.display.hideProperty(property.id)
+                    currentViewDomain?.display.hideField(property.id)
                   }}
                 />
               )}
             />
 
             {filteredHiddenProperties.map(property => (
-              <PropertyRow
+              <FieldRow
                 key={property.id}
                 property={property}
                 visible={false}
@@ -209,7 +204,7 @@ export const ViewPropertiesPanel = () => {
                     return
                   }
 
-                  currentViewDomain?.display.showProperty(property.id)
+                  currentViewDomain?.display.showField(property.id)
                 }}
               />
             ))}

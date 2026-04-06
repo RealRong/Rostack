@@ -1,4 +1,4 @@
-import type { PropertyId, RecordId, ViewId } from '@dataview/core/contracts'
+import type { CustomFieldId, RecordId, ViewId } from '@dataview/core/contracts'
 
 const seeds = {
   record: 0,
@@ -13,6 +13,6 @@ const nextId = (prefix: keyof typeof seeds) => {
 
 export const createRecordId = (): RecordId => nextId('record')
 
-export const createPropertyId = (): PropertyId => nextId('field')
+export const createPropertyId = (): CustomFieldId => nextId('field')
 
 export const createViewId = (): ViewId => nextId('view')

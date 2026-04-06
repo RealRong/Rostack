@@ -1,65 +1,65 @@
 import type {
-  GroupSortDirection,
-  GroupSorter
+  SortDirection,
+  Sorter
 } from '@dataview/core/contracts'
-import type { GroupViewQuery } from './contracts'
+import type { ViewQuery } from './contracts'
 import { cloneSorter, cloneViewQuery } from './shared'
 
 export const findViewSorterIndex = (
-  query: GroupViewQuery,
-  propertyId: string
+  query: ViewQuery,
+  fieldId: string
 ) => query.sorters.findIndex(sorter => (
-  typeof sorter.property === 'string' && sorter.property === propertyId
+  typeof sorter.field === 'string' && sorter.field === fieldId
 ))
 
 export const addViewSorter = (
-  query: GroupViewQuery,
-  propertyId: string,
-  direction: GroupSortDirection = 'asc'
+  query: ViewQuery,
+  fieldId: string,
+  direction: SortDirection = 'asc'
 ) => {
-  if (findViewSorterIndex(query, propertyId) !== -1) {
+  if (findViewSorterIndex(query, fieldId) !== -1) {
     return query
   }
 
   const next = cloneViewQuery(query)
   next.sorters.push({
-    property: propertyId,
+    field: fieldId,
     direction
   })
   return next
 }
 
 export const setViewSorter = (
-  query: GroupViewQuery,
-  propertyId: string,
-  direction: GroupSortDirection
-): GroupViewQuery => {
+  query: ViewQuery,
+  fieldId: string,
+  direction: SortDirection
+): ViewQuery => {
   const next = cloneViewQuery(query)
-  const existingIndex = findViewSorterIndex(next, propertyId)
+  const existingIndex = findViewSorterIndex(next, fieldId)
 
   if (existingIndex === -1) {
     next.sorters.push({
-      property: propertyId,
+      field: fieldId,
       direction
     })
     return next
   }
 
   next.sorters[existingIndex] = {
-    property: propertyId,
+    field: fieldId,
     direction
   }
   return next
 }
 
 export const setOnlyViewSorter = (
-  query: GroupViewQuery,
-  propertyId: string,
-  direction: GroupSortDirection
-): GroupViewQuery => {
+  query: ViewQuery,
+  fieldId: string,
+  direction: SortDirection
+): ViewQuery => {
   if (
     query.sorters.length === 1
-    && query.sorters[0]?.property === propertyId
+    && query.sorters[0]?.field === fieldId
     && query.sorters[0]?.direction === direction
   ) {
     return query
@@ -67,17 +67,17 @@ export const setOnlyViewSorter = (
 
   const next = cloneViewQuery(query)
   next.sorters = [{
-    property: propertyId,
+    field: fieldId,
     direction
   }]
   return next
 }
 
 export const replaceViewSorter = (
-  query: GroupViewQuery,
+  query: ViewQuery,
   index: number,
-  sorter: GroupSorter
-): GroupViewQuery => {
+  sorter: Sorter
+): ViewQuery => {
   if (!query.sorters[index]) {
     return query
   }
@@ -88,9 +88,9 @@ export const replaceViewSorter = (
 }
 
 export const removeViewSorter = (
-  query: GroupViewQuery,
+  query: ViewQuery,
   index: number
-): GroupViewQuery => {
+): ViewQuery => {
   if (index < 0 || index >= query.sorters.length) {
     return query
   }
@@ -101,10 +101,10 @@ export const removeViewSorter = (
 }
 
 export const moveViewSorter = (
-  query: GroupViewQuery,
+  query: ViewQuery,
   from: number,
   to: number
-): GroupViewQuery => {
+): ViewQuery => {
   if (
     from < 0
     || from >= query.sorters.length
@@ -126,8 +126,8 @@ export const moveViewSorter = (
 }
 
 export const clearViewSorters = (
-  query: GroupViewQuery
-): GroupViewQuery => {
+  query: ViewQuery
+): ViewQuery => {
   if (!query.sorters.length) {
     return query
   }

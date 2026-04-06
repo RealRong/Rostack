@@ -1,15 +1,15 @@
-import type { GroupDocument } from '../contracts/state'
-import { normalizeGroupProperties } from '../property'
+import type { DataDoc } from '../contracts/state'
+import { normalizeCustomFields } from '../field'
 import { cloneEntityTable, cloneRecordTable, normalizeEntityTable, normalizeRecordTable } from './shared'
 import { normalizeDocumentViews } from './views'
 
-export const normalizeGroupDocument = (document: GroupDocument): GroupDocument => {
+export const normalizeDocument = (document: DataDoc): DataDoc => {
   const records = normalizeRecordTable(document.records)
 
   return {
     schemaVersion: document.schemaVersion,
     records,
-    properties: normalizeGroupProperties(normalizeEntityTable(document.properties)),
+    fields: normalizeCustomFields(normalizeEntityTable(document.fields)),
     views: normalizeDocumentViews({
       ...document,
       records
@@ -18,10 +18,10 @@ export const normalizeGroupDocument = (document: GroupDocument): GroupDocument =
   }
 }
 
-export const cloneGroupDocument = (document: GroupDocument): GroupDocument => ({
+export const cloneDocument = (document: DataDoc): DataDoc => ({
   schemaVersion: document.schemaVersion,
   records: cloneRecordTable(document.records),
-  properties: cloneEntityTable(document.properties),
+  fields: cloneEntityTable(document.fields),
   views: cloneEntityTable(document.views),
   ...(Object.prototype.hasOwnProperty.call(document, 'meta')
     ? {

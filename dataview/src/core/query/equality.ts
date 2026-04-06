@@ -1,4 +1,4 @@
-import type { GroupViewQuery } from './contracts'
+import type { ViewQuery } from './contracts'
 import {
   sameFilterRule,
   sameGroup,
@@ -6,13 +6,13 @@ import {
 } from './shared'
 
 export const isSameViewQuery = (
-  left: GroupViewQuery,
-  right: GroupViewQuery
+  left: ViewQuery,
+  right: ViewQuery
 ) => {
   if (left.search.query !== right.search.query) {
     return false
   }
-  if (!sameStringArray(left.search.properties, right.search.properties)) {
+  if (!sameStringArray(left.search.fields, right.search.fields)) {
     return false
   }
   if (left.filter.mode !== right.filter.mode) {
@@ -42,7 +42,7 @@ export const isSameViewQuery = (
     if (
       !leftSorter
       || !rightSorter
-      || leftSorter.property !== rightSorter.property
+      || leftSorter.field !== rightSorter.field
       || leftSorter.direction !== rightSorter.direction
     ) {
       return false

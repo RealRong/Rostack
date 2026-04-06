@@ -6,7 +6,7 @@
  * - Color families use: --ui-<color>-text, --ui-<color>-border, --ui-<color>-bg-*
  * - Use --ui-<color>-bg-soft for large grouped areas
  * - Use --ui-<color>-bg-strong for badges / pills
- * - Use --ui-<color>-card-bg for cards rendered inside tinted areas
+ * - Use --ui-<color>-bg-card for cards rendered inside tinted areas
  */
 
 .ui-light-theme {
@@ -34,6 +34,9 @@
   --ui-bg-panel: #f9f8f7;
   --ui-bg-subtle: #f0efed;
   --ui-bg-card: #fff;
+  --ui-bg-card-preview: #fff;
+  --ui-bg-card-hover: #37352f0a;
+  --ui-bg-card-pressed: #f0efed;
   --ui-bg-hover: #37352f0f;
   --ui-bg-pressed: #37352f29;
   --ui-overlay-bg: #0f0f0f99;
@@ -58,9 +61,9 @@
   --ui-default-bg-soft: #fff0;
   --ui-default-bg-muted: #42230308;
   --ui-default-bg-strong: #2a1c0012;
-  --ui-default-card-bg: #fff;
-  --ui-default-card-bg-hover: #f9f8f7;
-  --ui-default-card-bg-pressed: #f0efed;
+  --ui-default-bg-card: #fff;
+  --ui-default-bg-card-hover: #f9f8f7;
+  --ui-default-bg-card-pressed: #f0efed;
 
   /* Blue */
   --ui-blue-text: #264a72;
@@ -77,9 +80,9 @@
   --ui-blue-bg-muted: #007cd718;
   --ui-blue-bg-strong: #0076d934;
   --ui-blue-bg-tint: #007cd718;
-  --ui-blue-card-bg: #fff;
-  --ui-blue-card-bg-hover: #e5f2fc;
-  --ui-blue-card-bg-pressed: #cee3f7;
+  --ui-blue-bg-card: #fff;
+  --ui-blue-bg-card-hover: #e5f2fc;
+  --ui-blue-bg-card-pressed: #cee3f7;
 
   /* Brown */
   --ui-brown-text: #584437;
@@ -95,9 +98,9 @@
   --ui-brown-bg-soft: #733b0309;
   --ui-brown-bg-muted: #8b2e0016;
   --ui-brown-bg-strong: #7f330028;
-  --ui-brown-card-bg: #fff;
-  --ui-brown-card-bg-hover: #f5ede9;
-  --ui-brown-card-bg-pressed: #ebdfd7;
+  --ui-brown-bg-card: #fff;
+  --ui-brown-bg-card-hover: #f5ede9;
+  --ui-brown-bg-card-pressed: #ebdfd7;
 
   /* Gray */
   --ui-gray-text: #494846;
@@ -113,9 +116,9 @@
   --ui-gray-bg-soft: #42230308;
   --ui-gray-bg-muted: #2a1c0012;
   --ui-gray-bg-strong: #1c13011c;
-  --ui-gray-card-bg: #fff;
-  --ui-gray-card-bg-hover: #f0efed;
-  --ui-gray-card-bg-pressed: #e6e5e3;
+  --ui-gray-bg-card: #fff;
+  --ui-gray-bg-card-hover: #f0efed;
+  --ui-gray-bg-card-pressed: #e6e5e3;
 
   /* Green */
   --ui-green-text: #2a533c;
@@ -131,9 +134,9 @@
   --ui-green-bg-soft: #03571f09;
   --ui-green-bg-muted: #00642d17;
   --ui-green-bg-strong: #00602628;
-  --ui-green-card-bg: #fff;
-  --ui-green-card-bg-hover: #e8f1ec;
-  --ui-green-card-bg-pressed: #d7e6dd;
+  --ui-green-bg-card: #fff;
+  --ui-green-bg-card-hover: #e8f1ec;
+  --ui-green-bg-card-pressed: #d7e6dd;
 
   /* Orange */
   --ui-orange-text: #6a4222;
@@ -149,9 +152,9 @@
   --ui-orange-bg-soft: #ba48030b;
   --ui-orange-bg-muted: #e0650121;
   --ui-orange-bg-strong: #c4580034;
-  --ui-orange-card-bg: #fff;
-  --ui-orange-card-bg-hover: #fbebde;
-  --ui-orange-card-bg-pressed: #f3ddcb;
+  --ui-orange-bg-card: #fff;
+  --ui-orange-bg-card-hover: #fbebde;
+  --ui-orange-bg-card-pressed: #f3ddcb;
 
   /* Pink */
   --ui-pink-text: #68354e;
@@ -167,9 +170,9 @@
   --ui-pink-bg-soft: #a1034208;
   --ui-pink-bg-muted: #c5005d16;
   --ui-pink-bg-strong: #b7004e27;
-  --ui-pink-card-bg: #fff;
-  --ui-pink-card-bg-hover: #fae9f1;
-  --ui-pink-card-bg-pressed: #f4d8e4;
+  --ui-pink-bg-card: #fff;
+  --ui-pink-bg-card-hover: #fae9f1;
+  --ui-pink-bg-card-pressed: #f4d8e4;
 
   /* Purple */
   --ui-purple-text: #553b69;
@@ -185,9 +188,9 @@
   --ui-purple-bg-soft: #6203a108;
   --ui-purple-bg-muted: #6600b214;
   --ui-purple-bg-strong: #5c00a324;
-  --ui-purple-card-bg: #fff;
-  --ui-purple-card-bg-hover: #f3ebf9;
-  --ui-purple-card-bg-pressed: #e8dbf2;
+  --ui-purple-bg-card: #fff;
+  --ui-purple-bg-card-hover: #f3ebf9;
+  --ui-purple-bg-card-pressed: #e8dbf2;
 
   /* Red */
   --ui-red-text: #6d3531;
@@ -203,9 +206,9 @@
   --ui-red-bg-soft: #c7030309;
   --ui-red-bg-muted: #df160018;
   --ui-red-bg-strong: #ce18002a;
-  --ui-red-card-bg: #fff;
-  --ui-red-card-bg-hover: #fce9e7;
-  --ui-red-card-bg-pressed: #f7d9d5;
+  --ui-red-bg-card: #fff;
+  --ui-red-bg-card-hover: #fce9e7;
+  --ui-red-bg-card-pressed: #f7d9d5;
 
   /* Teal */
   --ui-teal-text: #18505b;
@@ -221,9 +224,9 @@
   --ui-teal-bg-soft: #0396ab0c;
   --ui-teal-bg-muted: #019dbd1f;
   --ui-teal-bg-strong: #0095b735;
-  --ui-teal-card-bg: #fff;
-  --ui-teal-card-bg-hover: #e0f3f7;
-  --ui-teal-card-bg-pressed: #cae9f0;
+  --ui-teal-bg-card: #fff;
+  --ui-teal-bg-card-hover: #e0f3f7;
+  --ui-teal-bg-card-pressed: #cae9f0;
 
   /* Yellow */
   --ui-yellow-text: #655121;
@@ -239,9 +242,9 @@
   --ui-yellow-bg-soft: #cfaf0010;
   --ui-yellow-bg-muted: #d3a80023;
   --ui-yellow-bg-strong: #d19c0048;
-  --ui-yellow-card-bg: #fff;
-  --ui-yellow-card-bg-hover: #f9f3dc;
-  --ui-yellow-card-bg-pressed: #f2e3b7;
+  --ui-yellow-bg-card: #fff;
+  --ui-yellow-bg-card-hover: #f9f3dc;
+  --ui-yellow-bg-card-pressed: #f2e3b7;
 }
 
 .ui-dark-theme {
@@ -269,6 +272,9 @@
     --ui-bg-panel: #202020;
     --ui-bg-subtle: #383836;
     --ui-bg-card: #202020;
+    --ui-bg-card-preview: #ffffff0e;
+    --ui-bg-card-hover: #2f2f2f;
+    --ui-bg-card-pressed: #383836;
     --ui-bg-hover: #ffffff0e;
     --ui-bg-pressed: #ffffff08;
     --ui-overlay-bg: #0f0f0fcc;
@@ -293,9 +299,9 @@
     --ui-default-bg-soft: #19191900;
     --ui-default-bg-muted: #fcfcfc08;
     --ui-default-bg-strong: #fffff315;
-    --ui-default-card-bg: #202020;
-    --ui-default-card-bg-hover: #2c2c2b;
-    --ui-default-card-bg-pressed: #383836;
+    --ui-default-bg-card: #202020;
+    --ui-default-bg-card-hover: #2c2c2b;
+    --ui-default-bg-card-pressed: #383836;
 
     /* Blue */
     --ui-blue-text: #e5f2fc;
@@ -312,9 +318,9 @@
     --ui-blue-bg-muted: #2383e212;
     --ui-blue-bg-strong: #51a6ff7e;
     --ui-blue-bg-tint: #439bff3d;
-    --ui-blue-card-bg: #213041;
-    --ui-blue-card-bg-hover: #233850;
-    --ui-blue-card-bg-pressed: #355f8b;
+    --ui-blue-bg-card: #213041;
+    --ui-blue-bg-card-hover: #233850;
+    --ui-blue-bg-card-pressed: #355f8b;
 
     /* Brown */
     --ui-brown-text: #f5ede9;
@@ -330,9 +336,9 @@
     --ui-brown-bg-soft: #fd9e650d;
     --ui-brown-bg-muted: #ffb18131;
     --ui-brown-bg-strong: #ffb8845d;
-    --ui-brown-card-bg: #382d26;
-    --ui-brown-card-bg-hover: #45362d;
-    --ui-brown-card-bg-pressed: #6d5340;
+    --ui-brown-bg-card: #382d26;
+    --ui-brown-bg-card-hover: #45362d;
+    --ui-brown-bg-card-pressed: #6d5340;
 
     /* Gray */
     --ui-gray-text: #f0efed;
@@ -348,9 +354,9 @@
     --ui-gray-bg-soft: #fcfcfc08;
     --ui-gray-bg-muted: #ffffeb1a;
     --ui-gray-bg-strong: #fffceb4e;
-    --ui-gray-card-bg: #2c2c2b;
-    --ui-gray-card-bg-hover: #383836;
-    --ui-gray-card-bg-pressed: #5f5e59;
+    --ui-gray-bg-card: #2c2c2b;
+    --ui-gray-bg-card-hover: #383836;
+    --ui-gray-bg-card-pressed: #5f5e59;
 
     /* Green */
     --ui-green-text: #e8f1ec;
@@ -366,9 +372,9 @@
     --ui-green-bg-soft: #53ff8c09;
     --ui-green-bg-muted: #6cffac28;
     --ui-green-bg-strong: #71ffaf56;
-    --ui-green-card-bg: #24342b;
-    --ui-green-card-bg-hover: #263d30;
-    --ui-green-card-bg-pressed: #37674c;
+    --ui-green-bg-card: #24342b;
+    --ui-green-bg-card-hover: #263d30;
+    --ui-green-bg-card-pressed: #37674c;
 
     /* Orange */
     --ui-orange-text: #fbebde;
@@ -384,9 +390,9 @@
     --ui-orange-bg-soft: #fe8b470b;
     --ui-orange-bg-muted: #ff934b47;
     --ui-orange-bg-strong: #ff8f477b;
-    --ui-orange-card-bg: #3d2a1d;
-    --ui-orange-card-bg-hover: #53361f;
-    --ui-orange-card-bg-pressed: #88522f;
+    --ui-orange-bg-card: #3d2a1d;
+    --ui-orange-bg-card-hover: #53361f;
+    --ui-orange-bg-card-pressed: #88522f;
 
     /* Pink */
     --ui-pink-text: #fae9f1;
@@ -402,9 +408,9 @@
     --ui-pink-bg-soft: #ff4e950e;
     --ui-pink-bg-muted: #ff67b13b;
     --ui-pink-bg-strong: #ff85c06d;
-    --ui-pink-card-bg: #3f2631;
-    --ui-pink-card-bg-hover: #4e2b3c;
-    --ui-pink-card-bg-pressed: #7b4760;
+    --ui-pink-bg-card: #3f2631;
+    --ui-pink-bg-card-hover: #4e2b3c;
+    --ui-pink-bg-card-pressed: #7b4760;
 
     /* Purple */
     --ui-purple-text: #f3ebf9;
@@ -420,9 +426,9 @@
     --ui-purple-bg-soft: #c465fd0d;
     --ui-purple-bg-muted: #c87dff33;
     --ui-purple-bg-strong: #d093ff6d;
-    --ui-purple-card-bg: #36293f;
-    --ui-purple-card-bg-hover: #3c2d47;
-    --ui-purple-card-bg-pressed: #674d7b;
+    --ui-purple-bg-card: #36293f;
+    --ui-purple-bg-card-hover: #3c2d47;
+    --ui-purple-bg-card-pressed: #674d7b;
 
     /* Red */
     --ui-red-text: #fce9e7;
@@ -438,9 +444,9 @@
     --ui-red-bg-soft: #fb6b6b0c;
     --ui-red-bg-muted: #ff685c3d;
     --ui-red-bg-strong: #ff746986;
-    --ui-red-card-bg: #412725;
-    --ui-red-card-bg-hover: #502c29;
-    --ui-red-card-bg-pressed: #924943;
+    --ui-red-bg-card: #412725;
+    --ui-red-bg-card-hover: #502c29;
+    --ui-red-bg-card-pressed: #924943;
 
     /* Teal */
     --ui-teal-text: #e0f3f7;
@@ -456,9 +462,9 @@
     --ui-teal-bg-soft: #007ea414;
     --ui-teal-bg-muted: #00cdf533;
     --ui-teal-bg-strong: #31ddff61;
-    --ui-teal-card-bg: #193439;
-    --ui-teal-card-bg-hover: #143d45;
-    --ui-teal-card-bg-pressed: #226471;
+    --ui-teal-bg-card: #193439;
+    --ui-teal-bg-card-hover: #143d45;
+    --ui-teal-bg-card-pressed: #226471;
 
     /* Yellow */
     --ui-yellow-text: #f9f3dc;
@@ -474,7 +480,7 @@
     --ui-yellow-bg-soft: #ffe8300b;
     --ui-yellow-bg-muted: #ffcd4b3d;
     --ui-yellow-bg-strong: #ffbc3575;
-    --ui-yellow-card-bg: #373325;
-    --ui-yellow-card-bg-hover: #504425;
-    --ui-yellow-card-bg-pressed: #836426;
+    --ui-yellow-bg-card: #373325;
+    --ui-yellow-bg-card-hover: #504425;
+    --ui-yellow-bg-card-pressed: #836426;
 }

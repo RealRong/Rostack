@@ -20,7 +20,7 @@ export type SelectionPressTargetInput<TField extends string = string> =
   | {
       kind: 'node'
       nodeId: NodeId
-      part: 'body' | 'shell'
+      part: 'body' | 'shell' | 'field'
       shell?: 'content' | 'frame' | 'group'
       field?: TField
     }
@@ -47,9 +47,15 @@ export type SelectionTapAction<TField extends string = string> =
       target: SelectionTarget
     }
   | {
-      kind: 'edit'
+      kind: 'edit-node'
+      nodeId: NodeId
+      selection?: SelectionTarget
+    }
+  | {
+      kind: 'edit-field'
       nodeId: NodeId
       field: TField
+      selection?: SelectionTarget
     }
 
 export type SelectionMoveSelectionBehavior =
@@ -97,6 +103,7 @@ export type SelectionPressResolution<TField extends string = string> = {
 export type SelectionPressPolicyDeps = {
   getNode: (nodeId: NodeId) => Node | undefined
   getOwnerId: (nodeId: NodeId) => NodeId | undefined
+  canEnter: (nodeId: NodeId) => boolean
 }
 
 const HOLD_TO_CONTAIN_MARQUEE: SelectionMarqueeDecision = {
@@ -271,7 +278,7 @@ export const resolveSelectionPressTarget = <TField extends string>(
         ? { kind: 'selection-box' }
         : undefined
     case 'node':
-      if (targetInput.part === 'body') {
+      if (targetInput.part === 'body' || targetInput.part === 'field') {
         return readPressNodeTarget(deps, input, targetInput.nodeId)
       }
 
@@ -335,7 +342,7 @@ const decideSelectionBoxPress = <TField extends string>(
 }
 
 const decideNodePress = <TField extends string>(
-  deps: Pick<SelectionPressPolicyDeps, 'getNode'>,
+  deps: Pick<SelectionPressPolicyDeps, 'getNode' | 'canEnter'>,
   selection: SelectionSummary,
   mode: SelectionMode,
   target: Extract<SelectionPressTarget<TField>, { kind: 'node' }>
@@ -389,6 +396,16 @@ const decideNodePress = <TField extends string>(
             : dragSelection
         )
 
+  const explicitFieldEdit =
+    mode === 'replace'
+    && nodeId === hitNodeId
+    && Boolean(field)
+    && !node.locked
+  const implicitEdit =
+    repeat
+    && nodeId === hitNodeId
+    && deps.canEnter(node.id)
+
   return {
     chrome: selected || dragCurrentSelection,
     tap: node.locked
@@ -396,16 +413,18 @@ const decideNodePress = <TField extends string>(
           kind: 'select',
           target: nextSelection
         }
-      : repeat
-        ? (
-          nodeId === hitNodeId && field
-            ? {
-                kind: 'edit',
-                nodeId: node.id,
-                field
-              }
-            : undefined
-        )
+      : explicitFieldEdit
+        ? {
+            kind: 'edit-field',
+            nodeId: node.id,
+            field: field!,
+            selection: nextSelection
+          }
+        : implicitEdit
+          ? {
+              kind: 'edit-node',
+              nodeId: node.id
+            }
         : {
             kind: 'select',
             target: nextSelection

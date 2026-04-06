@@ -78,27 +78,27 @@ const NodeTransformOverlayItem = memo(({
 
 NodeTransformOverlayItem.displayName = 'NodeTransformOverlayItem'
 
-const NodeConnectOverlayItem = memo(({
-  nodeId
-}: {
-  nodeId: NodeId
-}) => {
-  const view = useNodeOverlayView(nodeId)
+const EdgeConnectOverlay = () => {
+  const editor = useEditorRuntime()
+  const hint = useStoreValue(editor.read.overlay.feedback.edgeGuide)
+  const connect = hint.connect
+  const view = useNodeOverlayView(connect?.focusedNodeId)
 
   if (!view || !view.canConnect) return null
+
+  const activeSide = connect?.resolution.mode === 'handle'
+    ? connect.resolution.side
+    : undefined
 
   return (
     <NodeConnectHandles
       node={view.node}
       rect={view.rect}
       rotation={view.rotation}
+      activeSide={activeSide}
     />
   )
-})
-
-NodeConnectOverlayItem.displayName = 'NodeConnectOverlayItem'
-
-const EMPTY_NODE_IDS: readonly NodeId[] = []
+}
 
 const SelectionFrameOverlay = ({
   presentation
@@ -158,9 +158,6 @@ export const NodeOverlayLayer = () => {
   const editor = useEditorRuntime()
   const guides = useStoreValue(editor.read.overlay.feedback.snap)
   const presentation = useSelectionPresentation()
-  const connectNodeIds = presentation.connectNodeIds.length > 0
-    ? presentation.connectNodeIds
-    : EMPTY_NODE_IDS
 
   return (
     <>
@@ -181,12 +178,7 @@ export const NodeOverlayLayer = () => {
             presentation={presentation}
           />
         ) : null}
-        {connectNodeIds.map((nodeId) => (
-          <NodeConnectOverlayItem
-            key={`connect:${nodeId}`}
-            nodeId={nodeId}
-          />
-        ))}
+        <EdgeConnectOverlay />
       </div>
       <NodeInteractionGuidesLayer guides={guides} />
     </>

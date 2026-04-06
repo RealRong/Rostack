@@ -1,9 +1,9 @@
-import type { GroupCommitChangeSet, GroupCommitChangeSummary, GroupCommitChangedIds, GroupCommitEntityChange } from '../contracts/changeSet'
-import type { GroupOperationType } from '../contracts/operations'
-import type { PropertyId, GroupDocument, GroupStateSlice, RecordId, ViewId } from '../contracts/state'
-import { getDocumentPropertyById, getDocumentViewById } from '../document'
+import type { CommitChangeSet, CommitChangeSummary, CommitChangedIds, CommitEntityChange } from '../contracts/changeSet'
+import type { OperationType } from '../contracts/operations'
+import type { CustomFieldId, DataDoc, StateSlice, RecordId, ViewId } from '../contracts/state'
+import { getDocumentCustomFieldById, getDocumentViewById } from '../document'
 
-export const getOperationChangedSlices = (operation: { type: GroupOperationType }): GroupStateSlice[] => {
+export const getOperationChangedSlices = (operation: { type: OperationType }): StateSlice[] => {
   switch (operation.type) {
     case 'document.record.insert':
     case 'document.record.patch':
@@ -16,19 +16,19 @@ export const getOperationChangedSlices = (operation: { type: GroupOperationType 
     case 'document.view.put':
     case 'document.view.remove':
       return ['documentViews']
-    case 'document.property.put':
-    case 'document.property.patch':
-    case 'document.property.remove':
+    case 'document.customField.put':
+    case 'document.customField.patch':
+    case 'document.customField.remove':
       return ['documentProperties']
     case 'external.version.bump':
       return ['externalRelations']
   }
 }
 
-export const summarizeCommitChanges = (changes: GroupCommitChangeSet): GroupCommitChangeSummary => ({
+export const summarizeCommitChanges = (changes: CommitChangeSet): CommitChangeSummary => ({
   touchesDocument: changes.changedSlices.some(slice => slice.startsWith('document')),
   touchesRecords: Boolean(changes.records),
-  touchesProperties: Boolean(changes.properties),
+  touchesFields: Boolean(changes.fields),
   touchesViews: Boolean(changes.views),
   touchesValues: Boolean(changes.values)
 })
@@ -41,9 +41,9 @@ const toEntityChange = <T extends string>(input: {
   added: Set<T>
   updated: Set<T>
   removed: Set<T>
-}): GroupCommitEntityChange<T> | undefined => {
+}): CommitEntityChange<T> | undefined => {
   const added = toArray(input.added)
-  const updated = toArray(input.updated) as GroupCommitChangedIds<T> | undefined
+  const updated = toArray(input.updated) as CommitChangedIds<T> | undefined
   const removed = toArray(input.removed)
 
   if (!added && !updated && !removed) {
@@ -58,37 +58,37 @@ const toEntityChange = <T extends string>(input: {
 }
 
 export interface ChangeCollector {
-  addSlices: (slices: GroupStateSlice[]) => void
+  addSlices: (slices: StateSlice[]) => void
   addRecordAdded: (recordId: RecordId) => void
   addRecordUpdated: (recordId: RecordId) => void
   addRecordRemoved: (recordId: RecordId) => void
-  addPropertyPut: (propertyId: PropertyId) => void
-  addPropertyUpdated: (propertyId: PropertyId) => void
-  addPropertyRemoved: (propertyId: PropertyId) => void
+  addFieldPut: (fieldId: CustomFieldId) => void
+  addFieldUpdated: (fieldId: CustomFieldId) => void
+  addFieldRemoved: (fieldId: CustomFieldId) => void
   addViewPut: (viewId: ViewId) => void
   addViewUpdated: (viewId: ViewId) => void
   addViewRemoved: (viewId: ViewId) => void
-  addValueChange: (recordId: RecordId, propertyIds: readonly PropertyId[]) => void
-  build: () => GroupCommitChangeSet
+  addValueChange: (recordId: RecordId, fieldIds: readonly CustomFieldId[]) => void
+  build: () => CommitChangeSet
 }
 
-export const createChangeCollector = (baseDocument: GroupDocument): ChangeCollector => {
-  const changedSlices = new Set<GroupStateSlice>()
+export const createChangeCollector = (baseDocument: DataDoc): ChangeCollector => {
+  const changedSlices = new Set<StateSlice>()
 
   const recordsAdded = new Set<RecordId>()
   const recordsUpdated = new Set<RecordId>()
   const recordsRemoved = new Set<RecordId>()
 
-  const propertiesAdded = new Set<PropertyId>()
-  const propertiesUpdated = new Set<PropertyId>()
-  const propertiesRemoved = new Set<PropertyId>()
+  const fieldsAdded = new Set<CustomFieldId>()
+  const fieldsUpdated = new Set<CustomFieldId>()
+  const fieldsRemoved = new Set<CustomFieldId>()
 
   const viewsAdded = new Set<ViewId>()
   const viewsUpdated = new Set<ViewId>()
   const viewsRemoved = new Set<ViewId>()
 
   const valueRecordIds = new Set<RecordId>()
-  const valuePropertyIds = new Set<PropertyId>()
+  const valueFieldIds = new Set<CustomFieldId>()
 
   return {
     addSlices: (slices) => {
@@ -97,15 +97,15 @@ export const createChangeCollector = (baseDocument: GroupDocument): ChangeCollec
     addRecordAdded: (recordId) => recordsAdded.add(recordId),
     addRecordUpdated: (recordId) => recordsUpdated.add(recordId),
     addRecordRemoved: (recordId) => recordsRemoved.add(recordId),
-    addPropertyPut: (propertyId) => {
-      if (getDocumentPropertyById(baseDocument, propertyId)) {
-        propertiesUpdated.add(propertyId)
+    addFieldPut: (fieldId) => {
+      if (getDocumentCustomFieldById(baseDocument, fieldId)) {
+        fieldsUpdated.add(fieldId)
       } else {
-        propertiesAdded.add(propertyId)
+        fieldsAdded.add(fieldId)
       }
     },
-    addPropertyUpdated: (propertyId) => propertiesUpdated.add(propertyId),
-    addPropertyRemoved: (propertyId) => propertiesRemoved.add(propertyId),
+    addFieldUpdated: (fieldId) => fieldsUpdated.add(fieldId),
+    addFieldRemoved: (fieldId) => fieldsRemoved.add(fieldId),
     addViewPut: (viewId) => {
       if (getDocumentViewById(baseDocument, viewId)) {
         viewsUpdated.add(viewId)
@@ -115,15 +115,15 @@ export const createChangeCollector = (baseDocument: GroupDocument): ChangeCollec
     },
     addViewUpdated: (viewId) => viewsUpdated.add(viewId),
     addViewRemoved: (viewId) => viewsRemoved.add(viewId),
-    addValueChange: (recordId, propertyIds) => {
+    addValueChange: (recordId, fieldIds) => {
       valueRecordIds.add(recordId)
-      propertyIds.forEach(propertyId => valuePropertyIds.add(propertyId))
+      fieldIds.forEach(fieldId => valueFieldIds.add(fieldId))
     },
     build: () => {
-      const values = valueRecordIds.size || valuePropertyIds.size
+      const values = valueRecordIds.size || valueFieldIds.size
         ? {
-            recordIds: toArray(valueRecordIds) as GroupCommitChangedIds<RecordId> | undefined,
-            propertyIds: toArray(valuePropertyIds) as GroupCommitChangedIds<PropertyId> | undefined
+            recordIds: toArray(valueRecordIds) as CommitChangedIds<RecordId> | undefined,
+            fieldIds: toArray(valueFieldIds) as CommitChangedIds<CustomFieldId> | undefined
           }
         : undefined
 
@@ -134,10 +134,10 @@ export const createChangeCollector = (baseDocument: GroupDocument): ChangeCollec
           updated: recordsUpdated,
           removed: recordsRemoved
         }),
-        properties: toEntityChange({
-          added: propertiesAdded,
-          updated: propertiesUpdated,
-          removed: propertiesRemoved
+        fields: toEntityChange({
+          added: fieldsAdded,
+          updated: fieldsUpdated,
+          removed: fieldsRemoved
         }),
         views: toEntityChange({
           added: viewsAdded,

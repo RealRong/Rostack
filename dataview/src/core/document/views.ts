@@ -1,23 +1,23 @@
 import type {
   BucketState,
-  GroupBucketSort,
-  GroupDocument,
-  GroupEntityTable,
-  GroupFilterOperator,
-  GroupView,
+  BucketSort,
+  DataDoc,
+  EntityTable,
+  FilterOperator,
+  View,
   RecordId,
   ViewId
 } from '../contracts/state'
-import { getDocumentProperties } from './properties'
+import { getDocumentFields } from './fields'
 import { normalizeRecordOrderIds } from '../view/order'
-import { normalizeGroupViewOptions } from '../view/normalize'
-import { normalizeGroupViewQuery } from '../query'
+import { normalizeViewOptions } from '../view/normalize'
+import { normalizeViewQuery } from '../query'
 import {
   cloneEntityInput,
   normalizeEntityTable
 } from './shared'
 
-const replaceDocumentViewsTable = (document: GroupDocument, views: GroupEntityTable<ViewId, GroupView>): GroupDocument => {
+const replaceDocumentViewsTable = (document: DataDoc, views: EntityTable<ViewId, View>): DataDoc => {
   if (views === document.views) {
     return document
   }
@@ -28,22 +28,22 @@ const replaceDocumentViewsTable = (document: GroupDocument, views: GroupEntityTa
   }
 }
 
-const createValidRecordIdSet = (document: GroupDocument) => new Set<RecordId>(document.records.order)
+const createValidRecordIdSet = (document: DataDoc) => new Set<RecordId>(document.records.order)
 
 export const normalizeViewOrders = (
-  document: GroupDocument,
+  document: DataDoc,
   orders: readonly RecordId[] | undefined
 ) => normalizeRecordOrderIds(orders, createValidRecordIdSet(document))
 
-const normalizeFilterOperator = (value: unknown): GroupFilterOperator => (
+const normalizeFilterOperator = (value: unknown): FilterOperator => (
   typeof value === 'string'
-    ? value as GroupFilterOperator
+    ? value as FilterOperator
     : 'custom'
 )
 
-const normalizeBucketSort = (value: unknown): GroupBucketSort => (
+const normalizeBucketSort = (value: unknown): BucketSort => (
   typeof value === 'string'
-    ? value as GroupBucketSort
+    ? value as BucketSort
     : 'manual'
 )
 
@@ -90,7 +90,7 @@ const normalizeDocumentViewQuery = (query: unknown) => {
     ? query as {
         search?: {
           query?: unknown
-          properties?: unknown
+          fields?: unknown
         }
         filter?: {
           mode?: unknown
@@ -98,7 +98,7 @@ const normalizeDocumentViewQuery = (query: unknown) => {
         }
         sorters?: unknown
         group?: {
-          property?: unknown
+          field?: unknown
           mode?: unknown
           bucketSort?: unknown
           bucketInterval?: unknown
@@ -109,9 +109,9 @@ const normalizeDocumentViewQuery = (query: unknown) => {
     : undefined
 
   const buckets = normalizeBuckets(source?.group?.buckets)
-  const nextGroup = source?.group && typeof source.group.property === 'string'
+  const nextGroup = source?.group && typeof source.group.field === 'string'
     ? {
-        property: source.group.property,
+        field: source.group.field,
         mode: typeof source.group.mode === 'string' ? source.group.mode : '',
         bucketSort: normalizeBucketSort(source.group.bucketSort),
         ...(typeof source.group.bucketInterval === 'number'
@@ -129,8 +129,8 @@ const normalizeDocumentViewQuery = (query: unknown) => {
   return {
     search: {
       query: typeof source?.search?.query === 'string' ? source.search.query : '',
-      ...(Array.isArray(source?.search?.properties)
-        ? { properties: source.search.properties.filter(value => typeof value === 'string') }
+      ...(Array.isArray(source?.search?.fields)
+        ? { fields: source.search.fields.filter(value => typeof value === 'string') }
         : {})
     },
     filter: {
@@ -140,12 +140,12 @@ const normalizeDocumentViewQuery = (query: unknown) => {
             .filter(rule => typeof rule === 'object' && rule !== null)
             .map(rule => {
               const currentRule = rule as {
-                property?: unknown
+                field?: unknown
                 op?: unknown
                 value?: unknown
               }
               return {
-                property: typeof currentRule.property === 'string' ? currentRule.property : '',
+                field: typeof currentRule.field === 'string' ? currentRule.field : '',
                 op: normalizeFilterOperator(currentRule.op),
                 ...(Object.prototype.hasOwnProperty.call(currentRule, 'value')
                   ? { value: structuredClone(currentRule.value) }
@@ -159,27 +159,27 @@ const normalizeDocumentViewQuery = (query: unknown) => {
           .filter(sorter => typeof sorter === 'object' && sorter !== null)
           .map(sorter => {
             const currentSorter = sorter as {
-              property?: unknown
+              field?: unknown
               direction?: unknown
             }
             return {
-              property: typeof currentSorter.property === 'string' ? currentSorter.property : '',
+              field: typeof currentSorter.field === 'string' ? currentSorter.field : '',
               direction: currentSorter.direction === 'desc' ? 'desc' : 'asc'
             }
           })
       : [],
     ...(nextGroup ? { group: nextGroup } : {})
-  } satisfies GroupView['query']
+  } satisfies View['query']
 }
 
 const normalizeDocumentView = (
-  document: GroupDocument,
-  view: GroupView
-): GroupView => {
-  const properties = getDocumentProperties(document)
-  const normalizedOptions = normalizeGroupViewOptions(view.options, {
+  document: DataDoc,
+  view: View
+): View => {
+  const fields = getDocumentFields(document)
+  const normalizedOptions = normalizeViewOptions(view.options, {
     type: view.type,
-    properties
+    fields
   })
 
   return {
@@ -193,9 +193,9 @@ const normalizeDocumentView = (
   }
 }
 
-export const normalizeDocumentViews = (document: GroupDocument): GroupEntityTable<ViewId, GroupView> => {
+export const normalizeDocumentViews = (document: DataDoc): EntityTable<ViewId, View> => {
   const views = normalizeEntityTable(document.views)
-  const byId = {} as Record<ViewId, GroupView>
+  const byId = {} as Record<ViewId, View>
 
   views.order.forEach(viewId => {
     const view = views.byId[viewId]
@@ -212,17 +212,17 @@ export const normalizeDocumentViews = (document: GroupDocument): GroupEntityTabl
   }
 }
 
-export const getDocumentViews = (document: GroupDocument): GroupView[] => {
+export const getDocumentViews = (document: DataDoc): View[] => {
   return document.views.order
     .map(viewId => document.views.byId[viewId])
-    .filter((view): view is GroupView => Boolean(view))
+    .filter((view): view is View => Boolean(view))
 }
 
-export const getDocumentViewIds = (document: GroupDocument): ViewId[] => document.views.order.slice()
-export const getDocumentViewById = (document: GroupDocument, viewId: ViewId) => document.views.byId[viewId]
-export const hasDocumentView = (document: GroupDocument, viewId: ViewId) => Boolean(document.views.byId[viewId])
+export const getDocumentViewIds = (document: DataDoc): ViewId[] => document.views.order.slice()
+export const getDocumentViewById = (document: DataDoc, viewId: ViewId) => document.views.byId[viewId]
+export const hasDocumentView = (document: DataDoc, viewId: ViewId) => Boolean(document.views.byId[viewId])
 
-export const putDocumentView = (document: GroupDocument, view: GroupView): GroupDocument => {
+export const putDocumentView = (document: DataDoc, view: View): DataDoc => {
   const exists = Boolean(document.views.byId[view.id])
   const nextView = cloneEntityInput(view)
 
@@ -235,7 +235,7 @@ export const putDocumentView = (document: GroupDocument, view: GroupView): Group
   })
 }
 
-export const removeDocumentView = (document: GroupDocument, viewId: ViewId): GroupDocument => {
+export const removeDocumentView = (document: DataDoc, viewId: ViewId): DataDoc => {
   if (!document.views.byId[viewId]) {
     return document
   }

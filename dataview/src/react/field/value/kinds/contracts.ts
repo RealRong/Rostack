@@ -2,8 +2,8 @@ import type {
   ComponentType,
   ReactNode
 } from 'react'
-import type { PropertyDraftParseResult } from '@dataview/core/property'
-import type { PropertyValueDraftEditorProps } from '../editor'
+import type { FieldDraftParseResult } from '@dataview/core/field'
+import type { FieldValueDraftEditorProps } from '../editor'
 
 export interface RenderProps {
   value: unknown
@@ -11,16 +11,16 @@ export interface RenderProps {
   className?: string
 }
 
-export type PropertyValueEditorPanelWidth = 'default' | 'picker' | 'calendar'
+export type FieldValueEditorPanelWidth = 'default' | 'picker' | 'calendar'
 
-export interface PropertyValueSpec<TDraft = unknown> {
+export interface FieldValueSpec<TDraft = unknown> {
   capability: {
     quickToggle?: boolean
   }
-  panelWidth: PropertyValueEditorPanelWidth
-  Editor: ComponentType<PropertyValueDraftEditorProps<TDraft>>
+  panelWidth: FieldValueEditorPanelWidth
+  Editor: ComponentType<FieldValueDraftEditorProps<TDraft>>
   createDraft: (value: unknown, seedDraft?: string) => TDraft
-  parseDraft: (draft: TDraft) => PropertyDraftParseResult
+  parseDraft: (draft: TDraft) => FieldDraftParseResult
   render: (props: RenderProps) => ReactNode
   toggle?: (value: unknown) => unknown | undefined
 }

@@ -1,76 +1,78 @@
 import type {
-  PropertyId,
-  GroupDocument,
-  GroupFilterRule,
-  GroupGroupBy,
-  GroupRecord,
-  GroupResolvedGroupKey,
-  GroupSearch,
-  GroupSorter
+  DataDoc,
+  FilterRule,
+  Grouping,
+  Row,
+  ResolvedGroupKey,
+  Search,
+  Sorter
 } from '../contracts/state'
-import { getDocumentPropertyById } from '../document'
 import {
-  comparePropertyValues,
-  getPropertySearchTokens,
-  matchPropertyFilter,
+  getDocumentFieldById,
+  getDocumentCustomFieldById
+} from '../document'
+import {
+  compareFieldValues,
+  getFieldSearchTokens,
+  getRecordFieldValue,
+  matchFieldFilter,
   normalizeSearchableValue,
-  resolveGroupBucketEntries
-} from '../property'
+  resolveFieldGroupBucketEntries
+} from '../field'
 export {
   normalizeSearchableValue
-} from '../property'
-
-export const getRecordPropertyValue = (record: GroupRecord, property: PropertyId): unknown => record.values[property]
+} from '../field'
 
 export const matchGroupFilter = (
-  record: GroupRecord,
-  rule: GroupFilterRule,
-  document: GroupDocument
+  record: Row,
+  rule: FilterRule,
+  document: DataDoc
 ): boolean => {
   if (rule.op === 'custom') {
     return false
   }
 
-  const property = getDocumentPropertyById(document, rule.property)
-  const value = getRecordPropertyValue(record, rule.property)
-  return matchPropertyFilter(property, value, rule.op, rule.value)
+  const field = getDocumentFieldById(document, rule.field)
+  const value = getRecordFieldValue(record, rule.field)
+  return matchFieldFilter(field, value, rule.op, rule.value)
 }
 
 export const matchGroupSearch = (
-  record: GroupRecord,
-  search: GroupSearch,
-  document: GroupDocument
+  record: Row,
+  search: Search,
+  document: DataDoc
 ): boolean => {
   const query = search.query.trim().toLowerCase()
   if (!query) {
     return true
   }
 
-  const candidates = search.properties?.length
-    ? search.properties.flatMap(property => {
-        const resolvedProperty = getDocumentPropertyById(document, property)
-        return getPropertySearchTokens(resolvedProperty, getRecordPropertyValue(record, property))
+  const candidates = search.fields?.length
+    ? search.fields.flatMap(fieldId => {
+        const resolvedField = getDocumentFieldById(document, fieldId)
+        return getFieldSearchTokens(resolvedField, getRecordFieldValue(record, fieldId))
       })
     : [
+        ...normalizeSearchableValue(record.title),
         ...normalizeSearchableValue(record.type),
         ...normalizeSearchableValue(record.meta),
-        ...Object.entries(record.values).flatMap(([propertyId, value]) => getPropertySearchTokens(getDocumentPropertyById(document, propertyId), value))
+        ...Object.entries(record.values).flatMap(([fieldId, value]) => getFieldSearchTokens(getDocumentCustomFieldById(document, fieldId), value))
       ]
 
   return candidates.some(candidate => candidate.toLowerCase().includes(query))
 }
 
 export const compareGroupSort = (
-  left: GroupRecord,
-  right: GroupRecord,
-  sorter: GroupSorter,
-  document: GroupDocument
+  left: Row,
+  right: Row,
+  sorter: Sorter,
+  document: DataDoc
 ): number => {
-  const property = getDocumentPropertyById(document, sorter.property)
-  const result = comparePropertyValues(
-    property,
-    getRecordPropertyValue(left, sorter.property),
-    getRecordPropertyValue(right, sorter.property)
+  const field = getDocumentFieldById(document, sorter.field)
+  const result = compareFieldValues(
+    field,
+    getRecordFieldValue(left, sorter.field),
+    getRecordFieldValue(right, sorter.field)
   )
   if (result === 0) {
     return 0
@@ -80,13 +82,13 @@ export const compareGroupSort = (
 }
 
 export const resolveGroupKey = (
-  record: GroupRecord,
-  groupBy: GroupGroupBy,
-  document: GroupDocument
-): GroupResolvedGroupKey | GroupResolvedGroupKey[] => {
-  const entries = resolveGroupBucketEntries(
-    getDocumentPropertyById(document, groupBy.property),
-    getRecordPropertyValue(record, groupBy.property),
+  record: Row,
+  groupBy: Grouping,
+  document: DataDoc
+): ResolvedGroupKey | ResolvedGroupKey[] => {
+  const entries = resolveFieldGroupBucketEntries(
+    getDocumentFieldById(document, groupBy.field),
+    getRecordFieldValue(record, groupBy.field),
     groupBy
   )
 

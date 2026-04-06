@@ -1,18 +1,18 @@
-import type { GroupDocument } from '@dataview/core/contracts'
-
-export interface GroupInstanceDocument {
-  peekDocument: () => GroupDocument
-  installDocument: (document: GroupDocument) => GroupDocument
-}
+import type { DataDoc } from '@dataview/core/contracts'
 
 export interface CreateInstanceDocumentOptions {
-  initialDocument: GroupDocument
+  initialDocument: DataDoc
 }
 
-export const document = (options: CreateInstanceDocumentOptions): GroupInstanceDocument => {
+export interface InstanceDocument {
+  peekDocument: () => DataDoc
+  installDocument: (document: DataDoc) => DataDoc
+}
+
+export const document = (options: CreateInstanceDocumentOptions): InstanceDocument => {
   let currentDocument = options.initialDocument
 
-  const installDocument = (nextDocument: GroupDocument) => {
+  const installDocument = (nextDocument: DataDoc) => {
     currentDocument = nextDocument
     return currentDocument
   }

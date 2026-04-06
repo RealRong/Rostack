@@ -1,8 +1,8 @@
-import type { GroupBaseOperation } from '../../contracts/operations'
-import type { GroupDocument, GroupProperty, GroupRecord, GroupView } from '../../contracts/state'
+import type { BaseOperation } from '../../contracts/operations'
+import type { DataDoc, CustomField, Row, View } from '../../contracts/state'
 import {
   enumerateRecords,
-  getDocumentPropertyById,
+  getDocumentCustomFieldById,
   getDocumentRecordById,
   getDocumentRecordIndex,
   getDocumentViewById
@@ -12,15 +12,15 @@ const hasOwn = (record: Record<string, unknown>, key: string) => Object.prototyp
 const cloneValue = <T>(value: T): T => structuredClone(value)
 const readObjectValue = (value: unknown, key: string) => (value as Record<string, unknown>)[key]
 
-const collectInsertedRecordIds = (records: readonly GroupRecord[]) => {
+const collectInsertedRecordIds = (records: readonly Row[]) => {
   const recordIds: string[] = []
-  enumerateRecords(records as GroupRecord[], entry => {
+  enumerateRecords(records as Row[], entry => {
     recordIds.push(entry.record.id)
   })
   return recordIds
 }
 
-const captureRecordEntries = (document: GroupDocument, recordIds: readonly string[]) => {
+const captureRecordEntries = (document: DataDoc, recordIds: readonly string[]) => {
   return recordIds
     .map(recordId => {
       const record = getDocumentRecordById(document, recordId)
@@ -33,14 +33,14 @@ const captureRecordEntries = (document: GroupDocument, recordIds: readonly strin
         index
       }
     })
-    .filter((entry): entry is { record: GroupRecord; index: number } => Boolean(entry))
+    .filter((entry): entry is { record: Row; index: number } => Boolean(entry))
     .sort((left, right) => left.index - right.index)
 }
 
 const buildRecordInverse = (
-  before: GroupDocument,
-  operation: Extract<GroupBaseOperation, { type: 'document.record.insert' | 'document.record.patch' | 'document.record.remove' }>
-): GroupBaseOperation[] => {
+  before: DataDoc,
+  operation: Extract<BaseOperation, { type: 'document.record.insert' | 'document.record.patch' | 'document.record.remove' }>
+): BaseOperation[] => {
   switch (operation.type) {
     case 'document.record.insert':
       return [{ type: 'document.record.remove', recordIds: collectInsertedRecordIds(operation.records) }]
@@ -52,7 +52,7 @@ const buildRecordInverse = (
 
       const patch = Object.fromEntries(
         Object.keys(operation.patch).map(key => [key, cloneValue(readObjectValue(record, key))])
-      ) as Partial<Omit<GroupRecord, 'id'>>
+      ) as Partial<Omit<Row, 'id'>>
 
       return [{ type: 'document.record.patch', recordId: operation.recordId, patch }]
     }
@@ -63,14 +63,14 @@ const buildRecordInverse = (
         target: {
           index: entry.index
         }
-      }) satisfies GroupBaseOperation)
+      }) satisfies BaseOperation)
   }
 }
 
 const buildValueInverse = (
-  before: GroupDocument,
-  operation: Extract<GroupBaseOperation, { type: 'document.value.set' | 'document.value.patch' | 'document.value.clear' }>
-): GroupBaseOperation[] => {
+  before: DataDoc,
+  operation: Extract<BaseOperation, { type: 'document.value.set' | 'document.value.patch' | 'document.value.clear' }>
+): BaseOperation[] => {
   const record = getDocumentRecordById(before, operation.recordId)
   if (!record) {
     return []
@@ -78,68 +78,68 @@ const buildValueInverse = (
 
   switch (operation.type) {
     case 'document.value.set': {
-      const property = String(operation.property)
-      if (hasOwn(record.values, property)) {
-        return [{ type: 'document.value.set', recordId: operation.recordId, property, value: cloneValue(record.values[property]) }]
+      const fieldId = String(operation.field)
+      if (hasOwn(record.values, fieldId)) {
+        return [{ type: 'document.value.set', recordId: operation.recordId, field: fieldId, value: cloneValue(record.values[fieldId]) }]
       }
 
-      return [{ type: 'document.value.clear', recordId: operation.recordId, property }]
+      return [{ type: 'document.value.clear', recordId: operation.recordId, field: fieldId }]
     }
     case 'document.value.patch':
-      return Object.keys(operation.patch).map(property => {
-        if (hasOwn(record.values, property)) {
+      return Object.keys(operation.patch).map(fieldId => {
+        if (hasOwn(record.values, fieldId)) {
           return {
             type: 'document.value.set',
             recordId: operation.recordId,
-            property,
-            value: cloneValue(record.values[property])
-          } satisfies GroupBaseOperation
+            field: fieldId,
+            value: cloneValue(record.values[fieldId])
+          } satisfies BaseOperation
         }
 
         return {
           type: 'document.value.clear',
           recordId: operation.recordId,
-          property
-        } satisfies GroupBaseOperation
+          field: fieldId
+        } satisfies BaseOperation
       })
     case 'document.value.clear': {
-      const property = String(operation.property)
-      if (!hasOwn(record.values, property)) {
+      const fieldId = String(operation.field)
+      if (!hasOwn(record.values, fieldId)) {
         return []
       }
 
-      return [{ type: 'document.value.set', recordId: operation.recordId, property, value: cloneValue(record.values[property]) }]
+      return [{ type: 'document.value.set', recordId: operation.recordId, field: fieldId, value: cloneValue(record.values[fieldId]) }]
     }
   }
 }
 
 const buildPropertyPatchInverse = (
-  before: GroupDocument,
-  operation: Extract<GroupBaseOperation, { type: 'document.property.patch' }>
-): GroupBaseOperation[] => {
-  const property = getDocumentPropertyById(before, operation.propertyId)
-  if (!property) {
+  before: DataDoc,
+  operation: Extract<BaseOperation, { type: 'document.customField.patch' }>
+): BaseOperation[] => {
+  const field = getDocumentCustomFieldById(before, operation.fieldId)
+  if (!field) {
     return []
   }
 
   const patch = Object.fromEntries(
-    Object.keys(operation.patch).map(key => [key, cloneValue(readObjectValue(property, key))])
-  ) as Partial<Omit<GroupProperty, 'id'>>
+    Object.keys(operation.patch).map(key => [key, cloneValue(readObjectValue(field, key))])
+  ) as Partial<Omit<CustomField, 'id'>>
 
-  return [{ type: 'document.property.patch', propertyId: operation.propertyId, patch }]
+  return [{ type: 'document.customField.patch', fieldId: operation.fieldId, patch }]
 }
 
 const buildSchemaInverse = (
-  before: GroupDocument,
-  operation: Extract<GroupBaseOperation, {
+  before: DataDoc,
+  operation: Extract<BaseOperation, {
     type:
       | 'document.view.put'
       | 'document.view.remove'
-      | 'document.property.put'
-      | 'document.property.patch'
-      | 'document.property.remove'
+      | 'document.customField.put'
+      | 'document.customField.patch'
+      | 'document.customField.remove'
   }>
-): GroupBaseOperation[] => {
+): BaseOperation[] => {
   switch (operation.type) {
     case 'document.view.put': {
       const previousView = getDocumentViewById(before, operation.view.id)
@@ -151,22 +151,22 @@ const buildSchemaInverse = (
       const previousView = getDocumentViewById(before, operation.viewId)
       return previousView ? [{ type: 'document.view.put', view: cloneValue(previousView) }] : []
     }
-    case 'document.property.put': {
-      const previousProperty = getDocumentPropertyById(before, operation.property.id)
-      return previousProperty
-        ? [{ type: 'document.property.put', property: cloneValue(previousProperty) }]
-        : [{ type: 'document.property.remove', propertyId: operation.property.id }]
+    case 'document.customField.put': {
+      const previousField = getDocumentCustomFieldById(before, operation.field.id)
+      return previousField
+        ? [{ type: 'document.customField.put', field: cloneValue(previousField) }]
+        : [{ type: 'document.customField.remove', fieldId: operation.field.id }]
     }
-    case 'document.property.patch':
+    case 'document.customField.patch':
       return buildPropertyPatchInverse(before, operation)
-    case 'document.property.remove': {
-      const previousProperty = getDocumentPropertyById(before, operation.propertyId)
-      return previousProperty ? [{ type: 'document.property.put', property: cloneValue(previousProperty) }] : []
+    case 'document.customField.remove': {
+      const previousField = getDocumentCustomFieldById(before, operation.fieldId)
+      return previousField ? [{ type: 'document.customField.put', field: cloneValue(previousField) }] : []
     }
   }
 }
 
-export const buildInverseOperations = (before: GroupDocument, operation: GroupBaseOperation): GroupBaseOperation[] => {
+export const buildInverseOperations = (before: DataDoc, operation: BaseOperation): BaseOperation[] => {
   switch (operation.type) {
     case 'document.record.insert':
     case 'document.record.patch':
@@ -178,9 +178,9 @@ export const buildInverseOperations = (before: GroupDocument, operation: GroupBa
       return buildValueInverse(before, operation)
     case 'document.view.put':
     case 'document.view.remove':
-    case 'document.property.put':
-    case 'document.property.patch':
-    case 'document.property.remove':
+    case 'document.customField.put':
+    case 'document.customField.patch':
+    case 'document.customField.remove':
       return buildSchemaInverse(before, operation)
     case 'external.version.bump':
       return [{ type: 'external.version.bump', source: operation.source }]

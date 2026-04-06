@@ -1,9 +1,9 @@
 import { ChevronDown } from 'lucide-react'
-import { getDocumentProperties } from '@dataview/core/document'
+import { getDocumentFields } from '@dataview/core/document'
 import { FilterRulePopover } from '@dataview/react/page/features/filter'
 import {
   getAvailableFilterProperties,
-  getFilterPropertyId
+  getFilterFieldId
 } from '@dataview/react/page/features/filter/filterUi'
 import { SortPopover, getAvailableSorterProperties } from '@dataview/react/page/features/sort'
 import {
@@ -16,7 +16,7 @@ import { Popover } from '@ui/popover'
 import { meta, renderMessage } from '@dataview/meta'
 import type { QueryBarEntry } from '@dataview/react/page/session/types'
 import { QueryChip } from '../query'
-import { PropertyPicker } from './PropertyPicker'
+import { FieldPicker } from './FieldPicker'
 
 export type ViewQueryOpenEntry = QueryBarEntry
 
@@ -25,7 +25,7 @@ export const ViewQueryBar = () => {
   const engine = dataView.engine
   const page = dataView.page
   const document = useDocument()
-  const properties = getDocumentProperties(document)
+  const fields = getDocumentFields(document)
   const queryBar = usePageValue(state => state.query)
   const currentView = useCurrentView(view => view?.view)
   const currentViewDomain = currentView
@@ -33,8 +33,8 @@ export const ViewQueryBar = () => {
     : undefined
   const filters = currentView?.query.filter.rules ?? []
   const sorts = currentView?.query.sorters ?? []
-  const availableFilterProperties = getAvailableFilterProperties(properties, filters)
-  const availableSorterProperties = getAvailableSorterProperties(properties, sorts)
+  const availableFilterProperties = getAvailableFilterProperties(fields, filters)
+  const availableSorterProperties = getAvailableSorterProperties(fields, sorts)
 
   if (!currentView || !queryBar.visible || (!filters.length && !sorts.length)) {
     return null
@@ -60,18 +60,18 @@ export const ViewQueryBar = () => {
 
       {filters.map((rule, index) => (
         <FilterRulePopover
-          key={`filter_${getFilterPropertyId(rule) ?? index}`}
-          property={typeof rule.property === 'string'
-            ? properties.find(property => property.id === rule.property)
+          key={`filter_${getFilterFieldId(rule) ?? index}`}
+          property={typeof rule.field === 'string'
+            ? fields.find(property => property.id === rule.field)
             : undefined}
           rule={rule}
-          open={queryBar.route?.kind === 'filter' && queryBar.route.propertyId === getFilterPropertyId(rule)}
+          open={queryBar.route?.kind === 'filter' && queryBar.route.fieldId === getFilterFieldId(rule)}
           onOpenChange={open => {
-            const propertyId = getFilterPropertyId(rule)
-            if (open && propertyId) {
+            const fieldId = getFilterFieldId(rule)
+            if (open && fieldId) {
               page.query.open({
                 kind: 'filter',
-                propertyId
+                fieldId
               })
               return
             }
@@ -115,13 +115,13 @@ export const ViewQueryBar = () => {
           contentClassName="w-[280px] p-0"
         >
           <div className="flex max-h-[72vh] flex-col">
-            <PropertyPicker
-              properties={availableFilterProperties}
-              onSelect={propertyId => {
-                currentViewDomain?.filters.add(propertyId)
+            <FieldPicker
+              fields={availableFilterProperties}
+              onSelect={fieldId => {
+                currentViewDomain?.filters.add(fieldId)
                 page.query.open({
                   kind: 'filter',
-                  propertyId
+                  fieldId
                 })
               }}
             />
@@ -156,10 +156,10 @@ export const ViewQueryBar = () => {
           contentClassName="w-[280px] p-0"
         >
           <div className="flex max-h-[72vh] flex-col">
-            <PropertyPicker
-              properties={availableSorterProperties}
-              onSelect={propertyId => {
-                currentViewDomain?.sorters.add(propertyId)
+            <FieldPicker
+              fields={availableSorterProperties}
+              onSelect={fieldId => {
+                currentViewDomain?.sorters.add(fieldId)
                 page.query.open({
                   kind: 'sort'
                 })

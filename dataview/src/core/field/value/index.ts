@@ -1,30 +1,30 @@
 import type {
-  GroupProperty
+  CustomField
 } from '../../contracts/state'
 import {
   getKind,
-  getPropertyKind
+  getFieldKind
 } from '../kind'
-import type { PropertyDraftParseResult } from '../kind/shared'
-export type { PropertyDraftParseResult } from '../kind/shared'
+import type { FieldDraftParseResult } from '../kind/shared'
+export type { FieldDraftParseResult } from '../kind/shared'
 export {
-  isEmptyPropertyValue,
-  normalizePropertyToken,
+  isEmptyFieldValue,
+  normalizeFieldToken,
   normalizeSearchableValue,
   readBooleanValue,
   readNumberValue
 } from '../kind/shared'
 
-export const parsePropertyDraft = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+export const parseCustomFieldDraft = (
+  field: CustomField | undefined,
   draft: string
-): PropertyDraftParseResult => (
-  (getPropertyKind(property) ?? getKind('text')).parseDraft(property, draft)
+): FieldDraftParseResult => (
+  (getFieldKind(field) ?? getKind('text')).parseDraft(field, draft)
 )
 
-export const getPropertyDisplayValue = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+export const getCustomFieldDisplayValue = (
+  field: CustomField | undefined,
   value: unknown
 ): string | undefined => (
-  (getPropertyKind(property) ?? getKind('text')).display(property, value)
+  (getFieldKind(field) ?? getKind('text')).display(field, value)
 )

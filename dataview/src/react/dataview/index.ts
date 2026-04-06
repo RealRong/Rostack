@@ -10,13 +10,12 @@ export { useSelection, useSelectionValue } from './useSelection'
 export { usePage, usePageValue } from './usePage'
 export {
   useDocument,
-  usePropertyById,
-  useTitlePropertyId,
+  useFieldById,
   useViewById
 } from './useDocument'
 
 export type {
-  GroupEngine
+  Engine
 } from '@dataview/engine'
 
 export type {

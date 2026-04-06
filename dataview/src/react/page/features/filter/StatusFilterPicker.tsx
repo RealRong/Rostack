@@ -6,9 +6,9 @@ import {
   SquareCheck
 } from 'lucide-react'
 import type {
-  GroupProperty,
-  GroupFilterRule,
-  GroupStatusCategory
+  Field,
+  FilterRule,
+  StatusCategory
 } from '@dataview/core/contracts'
 import {
   createEmptyStatusFilterValue,
@@ -18,20 +18,20 @@ import {
   isStatusFilterOptionSelected,
   toggleStatusFilterCategory,
   toggleStatusFilterOption
-} from '@dataview/core/property'
+} from '@dataview/core/field'
 import { Button } from '@ui/button'
 import { cn } from '@ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
-import { PropertyOptionTag } from '@dataview/react/properties/options'
+import { FieldOptionTag } from '@dataview/react/field/options'
 
 export interface StatusFilterPickerProps {
-  property?: GroupProperty
-  rule: GroupFilterRule
-  onChange: (rule: GroupFilterRule) => void
+  property?: Field
+  rule: FilterRule
+  onChange: (rule: FilterRule) => void
 }
 
 const categoryVisual = (
-  category: GroupStatusCategory
+  category: StatusCategory
 ) => {
   switch (category) {
     case 'todo':
@@ -66,7 +66,8 @@ export const StatusFilterPicker = (
     return null
   }
 
-  const sections = getStatusSections(props.property)
+  const property = props.property
+  const sections = getStatusSections(property)
   const hasOptions = sections.some(section => section.options.length > 0)
 
   if (!hasOptions) {
@@ -82,7 +83,7 @@ export const StatusFilterPicker = (
       <div className="flex flex-col gap-0.5 px-1.5 pb-2 pt-1">
         {sections.map(section => {
           const categorySelected = isStatusFilterCategorySelected(
-            props.property,
+            property,
             props.rule.value,
             section.category
           )
@@ -102,7 +103,7 @@ export const StatusFilterPicker = (
                   props.onChange({
                     ...props.rule,
                     value: toggleStatusFilterCategory(
-                      props.property,
+                      property,
                       props.rule.value,
                       section.category
                     )
@@ -126,7 +127,7 @@ export const StatusFilterPicker = (
 
               {section.options.map(option => {
                 const optionSelected = isStatusFilterOptionSelected(
-                  props.property,
+                  property,
                   props.rule.value,
                   option.id
                 )
@@ -144,16 +145,16 @@ export const StatusFilterPicker = (
                         props.onChange({
                           ...props.rule,
                           value: toggleStatusFilterOption(
-                            props.property,
+                            property,
                             props.rule.value,
                             option.id
                           )
                         })
                       }}
                     >
-                      <PropertyOptionTag
+                      <FieldOptionTag
                         label={option.name}
-                        color={option.color}
+                        color={option.color ?? undefined}
                       />
                     </Button>
                   </div>

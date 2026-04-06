@@ -1,37 +1,37 @@
 import type {
-  GroupProperty
+  CustomField
 } from '@dataview/core/contracts'
 
-export interface PropertyValueBehavior {
+export interface FieldValueBehavior {
   canEdit: boolean
   canQuickToggle: boolean
   toggle?: (value: unknown) => unknown | undefined
 }
 
-const toggleCheckboxValue = (value: unknown) => value === true
+const toggleBooleanValue = (value: unknown) => value === true
   ? false
   : true
 
-export const canQuickTogglePropertyValue = (
-  property?: GroupProperty
-) => property?.kind === 'checkbox'
+export const canQuickToggleCustomFieldValue = (
+  field?: CustomField
+) => field?.kind === 'boolean'
 
-export const resolvePropertyValueBehavior = (input: {
+export const resolveCustomFieldValueBehavior = (input: {
   exists: boolean
-  property?: GroupProperty
-}): PropertyValueBehavior => {
-  if (!input.property) {
+  field?: CustomField
+}): FieldValueBehavior => {
+  if (!input.field) {
     return {
       canEdit: false,
       canQuickToggle: false
     }
   }
 
-  return canQuickTogglePropertyValue(input.property)
+  return canQuickToggleCustomFieldValue(input.field)
     ? {
         canEdit: input.exists,
         canQuickToggle: input.exists,
-        toggle: toggleCheckboxValue
+        toggle: toggleBooleanValue
       }
     : {
         canEdit: input.exists,
@@ -39,14 +39,14 @@ export const resolvePropertyValueBehavior = (input: {
       }
 }
 
-export const resolvePropertyPrimaryAction = (input: {
+export const resolveCustomFieldPrimaryAction = (input: {
   exists: boolean
-  property?: GroupProperty
+  field?: CustomField
   value: unknown
 }) => {
-  const behavior = resolvePropertyValueBehavior({
+  const behavior = resolveCustomFieldValueBehavior({
     exists: input.exists,
-    property: input.property
+    field: input.field
   })
 
   if (behavior.canQuickToggle) {

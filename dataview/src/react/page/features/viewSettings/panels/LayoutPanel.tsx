@@ -1,11 +1,11 @@
-import type { GroupViewType } from '@dataview/core/contracts'
+import type { ViewType } from '@dataview/core/contracts'
 import { useCurrentView, useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { usesOptionGroupingColors } from '@dataview/react/views/shared/optionGrouping'
 import { Switch } from '@ui/switch'
 import { cn } from '@ui/utils'
 
-const SUPPORTED_LAYOUT_TYPES = ['table', 'kanban', 'gallery'] as const satisfies readonly GroupViewType[]
+const SUPPORTED_LAYOUT_TYPES = ['table', 'kanban', 'gallery'] as const satisfies readonly ViewType[]
 
 const LayoutTypeCard = (props: {
   type: (typeof SUPPORTED_LAYOUT_TYPES)[number]
@@ -70,10 +70,10 @@ export const LayoutPanel = () => {
   const viewApi = view
     ? engine.view(view.id)
     : undefined
-  const groupProperty = view?.query.group?.property
-    ? currentView?.schema.properties.get(view.query.group.property)
+  const groupField = view?.query.group?.field
+    ? currentView?.schema.fields.get(view.query.group.field)
     : undefined
-  const canFillKanbanColumns = usesOptionGroupingColors(groupProperty)
+  const canFillKanbanColumns = usesOptionGroupingColors(groupField)
 
   if (!view || !viewApi) {
     return <div className="min-h-0 flex-1 overflow-y-auto" />

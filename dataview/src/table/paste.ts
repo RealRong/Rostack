@@ -1,9 +1,9 @@
-import type { GroupProperty } from '@dataview/core/contracts'
-import { parsePropertyDraft } from '@dataview/core/property'
+import type { Field } from '@dataview/core/contracts'
+import { parseFieldDraft } from '@dataview/core/field'
 import type {
   AppearanceList,
-  FieldId,
-  PropertyList
+  CellRef,
+  FieldList
 } from '@dataview/engine/projection/view'
 import {
   grid
@@ -14,7 +14,7 @@ import {
 import { range } from './range'
 
 export interface TablePasteEntry {
-  cell: FieldId
+  cell: CellRef
   value: unknown | undefined
 }
 
@@ -35,10 +35,10 @@ export const parseClipboardMatrix = (text: string): string[][] => {
 }
 
 const parseCellDraft = (
-  property: GroupProperty,
+  field: Field,
   draft: string
 ): { ok: boolean; value?: unknown } => {
-  const parsed = parsePropertyDraft(property, draft)
+  const parsed = parseFieldDraft(field, draft)
   switch (parsed.type) {
     case 'set':
       return {
@@ -61,7 +61,7 @@ const parseCellDraft = (
 const planRangeBroadcast = (
   currentSelection: GridSelection | null,
   appearances: Pick<AppearanceList, 'indexOf' | 'ids'>,
-  properties: PropertyList,
+  fields: FieldList,
   draft: string
 ): TablePasteEntry[] => {
   const currentRange = range.from(currentSelection)
@@ -70,21 +70,21 @@ const planRangeBroadcast = (
   }
 
   const appearanceIds = range.appearances(currentRange, appearances)
-  const propertyIds = range.properties(currentRange, properties)
-  if (!appearanceIds.length || !propertyIds.length) {
+  const fieldIds = range.fields(currentRange, fields)
+  if (!appearanceIds.length || !fieldIds.length) {
     return []
   }
 
-  const propertyMap = new Map(properties.all.map(property => [property.id, property] as const))
+  const fieldMap = new Map(fields.all.map(field => [field.id, field] as const))
 
   return appearanceIds.flatMap(appearanceId => (
-    propertyIds.flatMap(propertyId => {
-      const property = propertyMap.get(propertyId)
-      if (!property) {
+    fieldIds.flatMap(fieldId => {
+      const field = fieldMap.get(fieldId)
+      if (!field) {
         return []
       }
 
-      const parsed = parseCellDraft(property, draft)
+      const parsed = parseCellDraft(field, draft)
       if (!parsed.ok) {
         return []
       }
@@ -92,7 +92,7 @@ const planRangeBroadcast = (
       return [{
         cell: {
           appearanceId,
-          propertyId
+          fieldId
         },
         value: parsed.value
       }]
@@ -103,7 +103,7 @@ const planRangeBroadcast = (
 export const planPaste = (options: {
   selection: GridSelection | null
   appearances: Pick<AppearanceList, 'indexOf' | 'ids' | 'at'>
-  properties: PropertyList
+  fields: FieldList
   matrix: readonly (readonly string[])[]
 }): TablePasteEntry[] => {
   const anchorCell = options.selection?.anchor
@@ -113,19 +113,19 @@ export const planPaste = (options: {
 
   if (options.matrix.length === 1 && options.matrix[0]?.length === 1) {
     const currentRange = range.from(options.selection)
-    if (currentRange && !range.isSingle(currentRange, options.appearances, options.properties)) {
+    if (currentRange && !range.isSingle(currentRange, options.appearances, options.fields)) {
       return planRangeBroadcast(
         options.selection,
         options.appearances,
-        options.properties,
+        options.fields,
         options.matrix[0][0] ?? ''
       )
     }
   }
 
   const rowStart = grid.appearanceIndex(options.appearances, anchorCell.appearanceId)
-  const propertyStart = grid.propertyIndex(options.properties, anchorCell.propertyId)
-  if (rowStart === undefined || propertyStart === undefined) {
+  const fieldStart = grid.fieldIndex(options.fields, anchorCell.fieldId)
+  if (rowStart === undefined || fieldStart === undefined) {
     return []
   }
 
@@ -136,12 +136,12 @@ export const planPaste = (options: {
     }
 
     return row.flatMap((draft, columnOffset) => {
-      const property = options.properties.all[propertyStart + columnOffset]
-      if (!property) {
+      const field = options.fields.all[fieldStart + columnOffset]
+      if (!field) {
         return []
       }
 
-      const parsed = parseCellDraft(property, draft)
+      const parsed = parseCellDraft(field, draft)
       if (!parsed.ok) {
         return []
       }
@@ -149,7 +149,7 @@ export const planPaste = (options: {
       return [{
         cell: {
           appearanceId,
-          propertyId: property.id
+          fieldId: field.id
         },
         value: parsed.value
       }]

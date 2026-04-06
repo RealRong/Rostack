@@ -3,13 +3,12 @@ export {
   GalleryView,
   useGalleryContext
 } from './views/gallery'
-export type { GroupTableOptions, GroupViewDisplayOptions } from '@dataview/core/contracts'
+export type { TableOptions, ViewDisplayOptions } from '@dataview/core/contracts'
 export type {
   Gallery,
-  GalleryOptions,
   GalleryViewProps,
-  GroupGalleryCardSize,
-  GroupGalleryOptions
+  GalleryCardSize,
+  GalleryOptions
 } from './views/gallery'
 export {
   KanbanView,
@@ -22,9 +21,8 @@ export type {
   KanbanController,
   KanbanViewProps,
   KanbanCreateCardInput,
+  KanbanNewRecordPosition,
   KanbanOptions,
-  GroupKanbanNewRecordPosition,
-  GroupKanbanOptions,
   KanbanMoveCardsInput
 } from './views/kanban'
 export { Page } from './page'
@@ -50,12 +48,11 @@ export {
   usePageValue,
   useDocument,
   useViewById,
-  usePropertyById,
-  useTitlePropertyId
+  useFieldById
 } from './dataview'
 export { meta, renderMessage } from '@dataview/meta'
 export type {
-  GroupEngine,
+  Engine,
   EngineProviderProps
 } from './dataview'
 export type {

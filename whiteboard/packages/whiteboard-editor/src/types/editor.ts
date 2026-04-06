@@ -41,7 +41,7 @@ import type {
   ViewportInputRuntime,
   ViewportRead
 } from '../runtime/viewport'
-import type { EditField, EditTarget } from '../runtime/state/edit'
+import type { EditCaret, EditField, EditTarget } from '../runtime/state/edit'
 import type { EditorOverlay } from '../runtime/overlay'
 import type {
   EdgeGuide,
@@ -221,7 +221,13 @@ export type EditorCommands = Omit<EngineCommands, 'tool' | 'selection' | 'intera
     patch: (patch: BrushStylePatch) => void
   }
   edit: {
-    start: (nodeId: NodeId, field: EditField) => void
+    start: (
+      nodeId: NodeId,
+      field: EditField,
+      options?: {
+        caret?: EditCaret
+      }
+    ) => void
     clear: () => void
   }
   selection: {

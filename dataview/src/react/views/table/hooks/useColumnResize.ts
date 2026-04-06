@@ -6,7 +6,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent
 } from 'react'
-import type { PropertyId } from '@dataview/core/contracts'
+import type { FieldId } from '@dataview/core/contracts'
 import { disableUserSelect } from '@dataview/dom/selection'
 import { useCurrentView, useDataView } from '@dataview/react/dataview'
 import { useStoreValue } from '@dataview/react/store'
@@ -15,16 +15,16 @@ import { useTableContext } from '../context'
 import { MIN_COLUMN_WIDTH } from '../layout'
 
 interface ColumnWidthPreview {
-  propertyId: PropertyId
-  widths: ReadonlyMap<PropertyId, number>
+  fieldId: FieldId
+  widths: ReadonlyMap<FieldId, number>
 }
 
 const sameWidths = (
-  left: ReadonlyMap<PropertyId, number>,
-  right: ReadonlyMap<PropertyId, number>
+  left: ReadonlyMap<FieldId, number>,
+  right: ReadonlyMap<FieldId, number>
 ) => (
   left.size === right.size
-  && Array.from(left.entries()).every(([propertyId, width]) => right.get(propertyId) === width)
+  && Array.from(left.entries()).every(([fieldId, width]) => right.get(fieldId) === width)
 )
 
 const samePreview = (
@@ -35,7 +35,7 @@ const samePreview = (
     return left === right
   }
 
-  return left.propertyId === right.propertyId && sameWidths(left.widths, right.widths)
+  return left.fieldId === right.fieldId && sameWidths(left.widths, right.widths)
 }
 
 export const useColumnResize = () => {
@@ -46,11 +46,11 @@ export const useColumnResize = () => {
     throw new Error('Table column resize requires an active current view.')
   }
 
-  const columns = currentView.properties.all
+  const columns = currentView.fields.all
   const canResize = useStoreValue(table.capabilities).canColumnResize
   const persistedWidths = useMemo(
     () => new Map(
-      Object.entries(currentView.view.options.table.widths ?? {}) as [PropertyId, number][]
+      Object.entries(currentView.view.options.table.widths ?? {}) as [FieldId, number][]
     ),
     [currentView.view.options.table.widths]
   )
@@ -75,7 +75,7 @@ export const useColumnResize = () => {
   }, [preview])
 
   const onResizeStart = useCallback((
-    propertyId: PropertyId,
+    fieldId: FieldId,
     event: ReactPointerEvent<HTMLButtonElement>
   ) => {
     if (!canResize) {
@@ -87,9 +87,9 @@ export const useColumnResize = () => {
       return
     }
 
-    const widths = new Map<PropertyId, number>()
+    const widths = new Map<FieldId, number>()
     for (const columnNode of table.nodes.columns(columns.map(column => column.id))) {
-      const columnId = columnNode.dataset.columnId as PropertyId | undefined
+      const columnId = columnNode.dataset.columnId as FieldId | undefined
       if (!columnId) {
         continue
       }
@@ -100,7 +100,7 @@ export const useColumnResize = () => {
       )
     }
 
-    const startWidth = widths.get(propertyId)
+    const startWidth = widths.get(fieldId)
       ?? Math.max(MIN_COLUMN_WIDTH, Math.round(node.getBoundingClientRect().width))
     const startX = event.clientX
     const started = table.interaction.start({
@@ -117,33 +117,33 @@ export const useColumnResize = () => {
         )
         const current = previewRef.current
         const nextWidths = new Map(current?.widths ?? widths)
-        if (nextWidths.get(propertyId) === nextWidth) {
+        if (nextWidths.get(fieldId) === nextWidth) {
           return
         }
 
-        nextWidths.set(propertyId, nextWidth)
+        nextWidths.set(fieldId, nextWidth)
         setPreviewState({
-          propertyId,
+          fieldId,
           widths: nextWidths
         })
       },
       up: () => {
         const current = previewRef.current
-        if (current?.propertyId === propertyId) {
-          const nextWidths: Partial<Record<PropertyId, number>> = {}
-          columns.forEach(property => {
-            const width = current.widths.get(property.id)
+        if (current?.fieldId === fieldId) {
+          const nextWidths: Partial<Record<FieldId, number>> = {}
+          columns.forEach(field => {
+            const width = current.widths.get(field.id)
             if (!width) {
               return
             }
 
-            nextWidths[property.id] = width
+            nextWidths[field.id] = width
           })
 
           const persistedEntries = Array.from(persistedWidths.entries())
           const changed = (
             persistedEntries.length !== Object.keys(nextWidths).length
-            || columns.some(property => persistedWidths.get(property.id) !== nextWidths[property.id])
+            || columns.some(field => persistedWidths.get(field.id) !== nextWidths[field.id])
           )
 
           if (changed) {
@@ -164,7 +164,7 @@ export const useColumnResize = () => {
     }
 
     setPreviewState({
-      propertyId,
+      fieldId,
       widths
     })
   }, [

@@ -5,7 +5,7 @@ import {
   Plus,
   Trash2
 } from 'lucide-react'
-import { getDocumentProperties } from '@dataview/core/document'
+import { getDocumentFields } from '@dataview/core/document'
 import { Button } from '@ui/button'
 import { Popover } from '@ui/popover'
 import { VerticalReorderList } from '@ui/vertical-reorder-list'
@@ -15,7 +15,7 @@ import {
   useDocument
 } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
-import { PropertyPicker } from '@dataview/react/page/features/viewQuery/PropertyPicker'
+import { FieldPicker } from '@dataview/react/page/features/viewQuery/FieldPicker'
 import { SortRuleRow } from './SortRuleRow'
 import {
   getAvailableSorterProperties,
@@ -32,14 +32,14 @@ export const SortPopover = (props: SortPopoverProps) => {
   const dataView = useDataView()
   const engine = dataView.engine
   const document = useDocument()
-  const properties = getDocumentProperties(document)
+  const fields = getDocumentFields(document)
   const currentView = useCurrentView(view => view?.view)
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined
   const [addSortOpen, setAddSortOpen] = useState(false)
   const sorters = currentView?.query.sorters ?? []
-  const availableProperties = getAvailableSorterProperties(properties, sorters)
+  const availableFields = getAvailableSorterProperties(fields, sorters)
 
   if (!sorters.length) {
     return null
@@ -78,7 +78,7 @@ export const SortPopover = (props: SortPopoverProps) => {
           }}
           renderItem={(sorter, drag, index) => (
             <SortRuleRow
-              properties={properties}
+              fields={fields}
               sorters={sorters}
               index={index}
               sorter={sorter}
@@ -98,7 +98,7 @@ export const SortPopover = (props: SortPopoverProps) => {
         />
 
         <div className="mt-2 flex flex-col gap-0.5 border-t border-divider pt-1">
-          {availableProperties.length ? (
+          {availableFields.length ? (
             <Popover
               open={addSortOpen}
               onOpenChange={setAddSortOpen}
@@ -115,11 +115,11 @@ export const SortPopover = (props: SortPopoverProps) => {
               contentClassName="w-[280px] p-0"
             >
               <div className="flex max-h-[72vh] flex-col">
-                <PropertyPicker
-                  properties={availableProperties}
+                <FieldPicker
+                  fields={availableFields}
                   emptyMessage={meta.ui.fieldPicker.allSorted}
-                  onSelect={propertyId => {
-                    currentViewDomain?.sorters.add(propertyId)
+                  onSelect={fieldId => {
+                    currentViewDomain?.sorters.add(fieldId)
                     setAddSortOpen(false)
                   }}
                 />

@@ -1,17 +1,18 @@
 import type { KeyInput } from '@dataview/react/interaction'
+import { isTitleFieldId } from '@dataview/core/field'
+import type { FieldId } from '@dataview/core/contracts'
 import {
   type CurrentView,
-  type FieldId
+  type CellRef
 } from '@dataview/react/runtime/currentView'
 import type {
   Selection,
   SelectionApi
 } from '@dataview/react/runtime/selection'
 import type {
-  GroupEngine
+  Engine
 } from '@dataview/engine'
 import {
-  recordIdsOfAppearances,
   toRecordField
 } from '@dataview/engine/projection/view'
 import {
@@ -28,6 +29,51 @@ import {
 import type { CellOpenInput } from './openCell'
 import type { GridSelectionStore } from './gridSelection'
 
+const clearRecordField = (input: {
+  editor: Engine
+  recordId: string
+  fieldId: string
+}) => {
+  if (isTitleFieldId(input.fieldId)) {
+    input.editor.command({
+      type: 'record.apply',
+      target: {
+        type: 'record',
+        recordId: input.recordId
+      },
+      patch: {
+        title: ''
+      }
+    })
+    return
+  }
+
+  input.editor.records.clearValue(input.recordId, input.fieldId)
+}
+
+const setRecordField = (input: {
+  editor: Engine
+  recordId: string
+  fieldId: string
+  value: unknown
+}) => {
+  if (isTitleFieldId(input.fieldId)) {
+    input.editor.command({
+      type: 'record.apply',
+      target: {
+        type: 'record',
+        recordId: input.recordId
+      },
+      patch: {
+        title: String(input.value ?? '')
+      }
+    })
+    return
+  }
+
+  input.editor.records.setValue(input.recordId, input.fieldId, input.value)
+}
+
 const currentKey = (
   input: TableKeyInput | KeyInput
 ): TableKeyInput => 'type' in input
@@ -39,12 +85,12 @@ const currentKey = (
 
 export const handleTableKey = (input: {
   key: TableKeyInput | KeyInput
-  editor: GroupEngine
+  editor: Engine
   currentView: CurrentView
   selection: Selection
   selectionApi: Pick<SelectionApi, 'all' | 'set'>
   locked: boolean
-  readCell: (cell: FieldId) => {
+  readCell: (cell: CellRef) => {
     exists: boolean
   }
   gridSelection: GridSelectionStore
@@ -86,10 +132,10 @@ export const handleTableKey = (input: {
       key,
       selection: currentGridSelection,
       appearances: input.currentView.appearances,
-      properties: input.currentView.properties,
+      fields: input.currentView.fields,
       read: {
         cell: input.readCell,
-        property: propertyId => input.currentView.properties.get(propertyId)
+        field: (fieldId: FieldId) => input.currentView.fields.get(fieldId)
       }
     })
     if (!action) {
@@ -113,12 +159,19 @@ export const handleTableKey = (input: {
         })
         return true
       case 'clear-cells':
-        input.editor.records.clearValues({
-          recordIds: recordIdsOfAppearances(
-            input.currentView.appearances,
-            action.appearanceIds
-          ),
-          propertyIds: action.propertyIds
+        action.appearanceIds.forEach(appearanceId => {
+          const recordId = input.currentView.appearances.get(appearanceId)?.recordId
+          if (!recordId) {
+            return
+          }
+
+          action.fieldIds.forEach(fieldId => {
+            clearRecordField({
+              editor: input.editor,
+              recordId,
+              fieldId
+            })
+          })
         })
         input.reveal()
         return true
@@ -177,7 +230,7 @@ export const handleTableKey = (input: {
 }
 
 export const applyPaste = (input: {
-  editor: GroupEngine
+  editor: Engine
   currentView: CurrentView | undefined
   gridSelection: ReturnType<GridSelectionStore['get']>
   text: string
@@ -195,7 +248,7 @@ export const applyPaste = (input: {
   const entries = planPaste({
     selection: input.gridSelection,
     appearances: currentView.appearances,
-    properties: currentView.properties,
+    fields: currentView.fields,
     matrix
   })
   if (!entries.length) {
@@ -205,18 +258,27 @@ export const applyPaste = (input: {
   entries.forEach(entry => {
     const target = toRecordField({
       appearanceId: entry.cell.appearanceId,
-      propertyId: entry.cell.propertyId
+      fieldId: entry.cell.fieldId
     }, currentView.appearances)
     if (!target) {
       return
     }
 
     if (entry.value === undefined) {
-      input.editor.records.clearValue(target.recordId, target.propertyId)
+      clearRecordField({
+        editor: input.editor,
+        recordId: target.recordId,
+        fieldId: target.fieldId
+      })
       return
     }
 
-    input.editor.records.setValue(target.recordId, target.propertyId, entry.value)
+    setRecordField({
+      editor: input.editor,
+      recordId: target.recordId,
+      fieldId: target.fieldId,
+      value: entry.value
+    })
   })
 
   return true

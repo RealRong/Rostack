@@ -1,16 +1,16 @@
-import type { PropertyId } from '@dataview/core/contracts'
+import type { CustomFieldId } from '@dataview/core/contracts'
 import type { Point } from '@dataview/dom/geometry'
 import { targetElement } from '@dataview/dom/interactive'
 import {
   type AppearanceList,
-  type PropertyList
+  type FieldList
 } from '@dataview/engine/projection/view'
 import {
   grid,
 } from '@dataview/table'
 import type {
   AppearanceId,
-  FieldId
+  CellRef
 } from '@dataview/react/runtime/currentView'
 
 export type TableTargetKind =
@@ -60,27 +60,27 @@ export const closestTableTargetElement = (
 
 const cellIdFromElement = (
   element: HTMLElement | null
-): FieldId | null => (
-  element?.dataset.rowId && element.dataset.propertyId
+): CellRef | null => (
+  element?.dataset.rowId && element.dataset.fieldId
     ? {
         appearanceId: element.dataset.rowId as AppearanceId,
-        propertyId: element.dataset.propertyId as PropertyId
+        fieldId: element.dataset.fieldId as CustomFieldId
       }
     : null
 )
 
 const resolveCellId = (
   appearances: Pick<AppearanceList, 'has'>,
-  properties: Pick<PropertyList, 'has'>,
-  cell: FieldId | null
-): FieldId | null => {
-  if (!cell || !grid.containsCell(appearances, properties, cell)) {
+  fields: Pick<FieldList, 'has'>,
+  cell: CellRef | null
+): CellRef | null => {
+  if (!cell || !grid.containsCell(appearances, fields, cell)) {
     return null
   }
 
   return {
     appearanceId: cell.appearanceId,
-    propertyId: cell.propertyId
+    fieldId: cell.fieldId
   }
 }
 
@@ -91,30 +91,30 @@ export const hasTableTarget = (
 const cellFromElement = (
   element: Element | null,
   appearances: Pick<AppearanceList, 'has'>,
-  properties: Pick<PropertyList, 'has'>
-): FieldId | null => resolveCellId(
+  fields: Pick<FieldList, 'has'>
+): CellRef | null => resolveCellId(
   appearances,
-  properties,
+  fields,
   cellIdFromElement(element instanceof HTMLElement ? element : null)
 )
 
 export const cellFromTarget = (
   target: EventTarget | null,
   appearances: Pick<AppearanceList, 'has'>,
-  properties: Pick<PropertyList, 'has'>,
+  fields: Pick<FieldList, 'has'>,
   kind?: 'cell' | 'fill-handle'
-): FieldId | null => cellFromElement(
+): CellRef | null => cellFromElement(
   closestTableTargetElement(target, kind),
   appearances,
-  properties
+  fields
 )
 
 export const cellFromPoint = (
   point: Point | null,
   appearances: Pick<AppearanceList, 'has'>,
-  properties: Pick<PropertyList, 'has'>,
+  fields: Pick<FieldList, 'has'>,
   kind?: 'cell' | 'fill-handle'
-): FieldId | null => {
+): CellRef | null => {
   if (!point || typeof document === 'undefined') {
     return null
   }
@@ -125,6 +125,6 @@ export const cellFromPoint = (
       kind
     ),
     appearances,
-    properties
+    fields
   )
 }

@@ -1,9 +1,10 @@
 import { memo, useCallback } from 'react'
-import type { GroupProperty } from '@dataview/core/contracts'
+import type { Field } from '@dataview/core/contracts'
 import {
-  canQuickTogglePropertyValue,
-  resolvePropertyPrimaryAction
-} from '@dataview/core/property'
+  canQuickToggleFieldValue,
+  isTitleFieldId,
+  resolveFieldPrimaryAction
+} from '@dataview/core/field'
 import {
   toRecordField
 } from '@dataview/engine/projection/view'
@@ -19,12 +20,12 @@ import { CellValue } from './CellValue'
 
 export interface CellProps {
   appearanceId: AppearanceId
-  property: GroupProperty
+  field: Field
 }
 
 const same = (left: CellProps, right: CellProps) => (
   left.appearanceId === right.appearanceId
-  && left.property === right.property
+  && left.field === right.field
 )
 
 const View = (props: CellProps) => {
@@ -38,19 +39,19 @@ const View = (props: CellProps) => {
 
   const cell = {
     appearanceId: props.appearanceId,
-    propertyId: props.property.id
+    fieldId: props.field.id
   }
   const cellRef = useCallback((node: HTMLDivElement | null) => {
     table.nodes.registerCell(cell, node)
-  }, [cell.appearanceId, cell.propertyId, table.nodes])
+  }, [cell.appearanceId, cell.fieldId, table.nodes])
   const cellRender = useKeyedStoreValue(table.cellRender, cell)
   const recordId = currentView.appearances.get(props.appearanceId)?.recordId
-  const canQuickToggle = canQuickTogglePropertyValue(props.property)
+  const canQuickToggle = canQuickToggleFieldValue(props.field)
 
   const onQuickToggle = () => {
-    const action = resolvePropertyPrimaryAction({
+    const action = resolveFieldPrimaryAction({
       exists: cellRender.exists,
-      property: props.property,
+      field: props.field,
       value: cellRender.value
     })
     if (action.kind !== 'quickToggle') {
@@ -59,7 +60,7 @@ const View = (props: CellProps) => {
 
     const target = toRecordField({
       appearanceId: cell.appearanceId,
-      propertyId: cell.propertyId
+      fieldId: cell.fieldId
     }, currentView.appearances)
     if (!target) {
       return
@@ -68,11 +69,39 @@ const View = (props: CellProps) => {
     table.gridSelection.set(cell)
     table.focus()
     if (action.value === undefined) {
-      engine.records.clearValue(target.recordId, target.propertyId)
+      if (isTitleFieldId(target.fieldId)) {
+        engine.command({
+          type: 'record.apply',
+          target: {
+            type: 'record',
+            recordId: target.recordId
+          },
+          patch: {
+            title: ''
+          }
+        })
+        return
+      }
+
+      engine.records.clearValue(target.recordId, target.fieldId)
       return
     }
 
-    engine.records.setValue(target.recordId, target.propertyId, action.value)
+    if (isTitleFieldId(target.fieldId)) {
+      engine.command({
+        type: 'record.apply',
+        target: {
+          type: 'record',
+          recordId: target.recordId
+        },
+        patch: {
+          title: String(action.value ?? '')
+        }
+      })
+      return
+    }
+
+    engine.records.setValue(target.recordId, target.fieldId, action.value)
   }
 
   if (!cellRender.exists || !recordId) {
@@ -85,12 +114,12 @@ const View = (props: CellProps) => {
       data-table-target="cell"
       data-table-cell="true"
       data-row-id={props.appearanceId}
-      data-property-id={props.property.id}
+      data-field-id={props.field.id}
       {...fieldAttrs({
         viewId: currentView.view.id,
         appearanceId: props.appearanceId,
         recordId,
-        propertyId: props.property.id
+        fieldId: props.field.id
       })}
       role="gridcell"
       aria-selected={cellRender.selected}
@@ -120,7 +149,7 @@ const View = (props: CellProps) => {
       >
         <div className="min-w-0 flex-1">
           <CellValue
-            property={props.property}
+            field={props.field}
             value={cellRender.value}
             canQuickToggle={canQuickToggle}
             onQuickToggle={onQuickToggle}
@@ -135,7 +164,7 @@ const View = (props: CellProps) => {
           data-table-target="fill-handle"
           data-table-fill-handle="true"
           data-row-id={props.appearanceId}
-          data-property-id={props.property.id}
+          data-field-id={props.field.id}
           className="absolute -bottom-1 -right-1 z-20 h-[9px] w-[9px] box-border cursor-ns-resize rounded-full border-2 border-primary bg-background transition-transform touch-none"
         />
       ) : null}

@@ -1,66 +1,50 @@
 import type {
-  PropertyId,
-  GroupProperty,
-  GroupTableOptions,
-  GroupViewOptions,
-  GroupViewDisplayOptions,
-  GroupViewType
+  Field,
+  FieldId,
+  TableOptions,
+  ViewOptions,
+  ViewDisplayOptions,
+  ViewType
 } from '../contracts'
-import { TITLE_PROPERTY_ID } from '../property'
-import { cloneGroupViewOptions } from './shared'
+import { cloneViewOptions } from './shared'
 
-export const cloneGroupViewDisplayOptions = (
-  display: GroupViewDisplayOptions
-): GroupViewDisplayOptions => ({
-  propertyIds: [...display.propertyIds]
+export const cloneViewDisplayOptions = (
+  display: ViewDisplayOptions
+): ViewDisplayOptions => ({
+  fieldIds: [...display.fieldIds]
 })
 
-export const cloneGroupTableOptions = (
-  table: GroupTableOptions
-): GroupTableOptions => ({
+export const cloneTableOptions = (
+  table: TableOptions
+): TableOptions => ({
   widths: {
     ...table.widths
   },
   showVerticalLines: table.showVerticalLines
 })
 
-export const resolveGroupTitleProperty = <T extends Pick<GroupProperty, 'id'>>(
-  properties: readonly T[]
-): T | undefined => properties.find(property => property.id === TITLE_PROPERTY_ID)
-
-export const resolveGroupTitlePropertyId = (
-  properties: readonly Pick<GroupProperty, 'id'>[]
-) => (
-  properties.some(property => property.id === TITLE_PROPERTY_ID)
-    ? TITLE_PROPERTY_ID
-    : undefined
-)
-
-export const createDefaultGroupViewDisplayOptions = (
-  type: GroupViewType,
-  properties: readonly GroupProperty[]
-): GroupViewDisplayOptions => ({
-  propertyIds: !properties.length
+export const createDefaultViewDisplayOptions = (
+  type: ViewType,
+  fields: readonly Field[]
+): ViewDisplayOptions => ({
+  fieldIds: !fields.length
     ? []
     : type === 'table'
-      ? properties.map(property => property.id)
-      : (() => {
-          const titlePropertyId = resolveGroupTitlePropertyId(properties)
-          return titlePropertyId ? [titlePropertyId] : []
-        })()
+      ? fields.map(field => field.id)
+      : []
 })
 
-export const createDefaultGroupViewOptions = (
-  type: GroupViewType,
-  properties: readonly GroupProperty[]
-): GroupViewOptions => ({
-  display: createDefaultGroupViewDisplayOptions(type, properties),
+export const createDefaultViewOptions = (
+  type: ViewType,
+  fields: readonly Field[]
+): ViewOptions => ({
+  display: createDefaultViewDisplayOptions(type, fields),
   table: {
     widths: {},
     showVerticalLines: true
   },
   gallery: {
-    showPropertyLabels: true,
+    showFieldLabels: true,
     cardSize: 'md'
   },
   kanban: {
@@ -69,13 +53,13 @@ export const createDefaultGroupViewOptions = (
   }
 })
 
-export const prunePropertyFromViewOptions = (
-  options: GroupViewOptions,
-  propertyId: PropertyId
-): GroupViewOptions => {
-  const current = cloneGroupViewOptions(options)
-  const hasDisplay = current.display.propertyIds.some(id => id === propertyId)
-  const hasWidth = Object.prototype.hasOwnProperty.call(current.table.widths, propertyId)
+export const pruneFieldFromViewOptions = (
+  options: ViewOptions,
+  fieldId: FieldId
+): ViewOptions => {
+  const current = cloneViewOptions(options)
+  const hasDisplay = current.display.fieldIds.some(id => id === fieldId)
+  const hasWidth = Object.prototype.hasOwnProperty.call(current.table.widths, fieldId)
 
   if (!hasDisplay && !hasWidth) {
     return options
@@ -83,7 +67,7 @@ export const prunePropertyFromViewOptions = (
 
   if (hasDisplay) {
     current.display = {
-      propertyIds: current.display.propertyIds.filter(id => id !== propertyId)
+      fieldIds: current.display.fieldIds.filter(id => id !== fieldId)
     }
   }
 
@@ -91,7 +75,7 @@ export const prunePropertyFromViewOptions = (
     const widths = {
       ...current.table.widths
     }
-    delete widths[propertyId]
+    delete widths[fieldId]
     current.table = {
       ...current.table,
       widths

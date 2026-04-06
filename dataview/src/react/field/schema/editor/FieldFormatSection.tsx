@@ -1,65 +1,58 @@
-import type { GroupProperty } from '@dataview/core/contracts'
+import type { CustomField } from '@dataview/core/contracts'
 import {
   formatTimeZoneLabel,
-  getAvailableTimezones,
-  getDatePropertyConfig,
-  getPropertyConfig,
-  getUrlPropertyConfig
-} from '@dataview/core/property'
+  getAvailableTimezones
+} from '@dataview/core/field'
 import {
   meta,
   renderMessage,
   type MessageSpec,
-  type PropertyDateValueKindId,
-  type PropertyDisplayDateFormatId,
-  type PropertyDisplayTimeFormatId,
-  type PropertyNumberFormatId
+  type FieldDateValueKindId,
+  type FieldDisplayDateFormatId,
+  type FieldDisplayTimeFormatId,
+  type FieldNumberFormatId
 } from '@dataview/meta'
 import { Menu } from '@ui/menu'
 import {
-  PropertyChoiceList,
-  PropertyPopoverRow,
-  PropertySwitchRow
-} from './PropertySchemaRows'
+  FieldChoiceList,
+  FieldPopoverRow,
+  FieldSwitchRow
+} from './FieldSchemaRows'
 
 const FLOATING_TIMEZONE_ID = '__floating__'
 
-export const PropertyFormatSection = (props: {
-  property: GroupProperty
-  update: (patch: Partial<Omit<GroupProperty, 'id'>>) => void
+export const FieldFormatSection = (props: {
+  property: CustomField
+  update: (patch: Partial<Omit<CustomField, 'id'>>) => void
 }) => {
-  const config = getPropertyConfig(props.property)
-  const numberFormat = config.type === 'number'
-    ? meta.property.number.format.get(config.format)
+  const numberFormat = props.property.kind === 'number'
+    ? meta.field.number.format.get(props.property.format)
     : undefined
   const dateConfig = props.property.kind === 'date'
-    ? getDatePropertyConfig(props.property)
+    ? props.property
     : undefined
   const urlConfig = props.property.kind === 'url'
-    ? getUrlPropertyConfig(props.property)
+    ? props.property
     : undefined
   const displayDateFormat = dateConfig
-    ? meta.property.date.displayDateFormat.get(dateConfig.displayDateFormat)
+    ? meta.field.date.displayDateFormat.get(dateConfig.displayDateFormat)
     : undefined
   const displayTimeFormat = dateConfig
-    ? meta.property.date.displayTimeFormat.get(dateConfig.displayTimeFormat)
+    ? meta.field.date.displayTimeFormat.get(dateConfig.displayTimeFormat)
     : undefined
   const defaultValueKind = dateConfig
-    ? meta.property.date.defaultValueKind.get(dateConfig.defaultValueKind)
+    ? meta.field.date.defaultValueKind.get(dateConfig.defaultValueKind)
     : undefined
   const timezoneOptions = getAvailableTimezones()
 
-  const setNumberFormat = (value: PropertyNumberFormatId) => {
-    if (config.type !== 'number') {
+  const setNumberFormat = (value: FieldNumberFormatId) => {
+    if (props.property.kind !== 'number') {
       return
     }
 
     props.update({
-      config: {
-        ...config,
-        format: value
-      }
-    })
+      format: value
+    } as Partial<Omit<CustomField, 'id'>>)
   }
 
   const setDateConfig = (
@@ -70,11 +63,8 @@ export const PropertyFormatSection = (props: {
     }
 
     props.update({
-      config: {
-        ...dateConfig,
-        ...patch
-      }
-    })
+      ...patch
+    } as Partial<Omit<CustomField, 'id'>>)
   }
 
   const setUrlConfig = (
@@ -85,25 +75,22 @@ export const PropertyFormatSection = (props: {
     }
 
     props.update({
-      config: {
-        ...urlConfig,
-        ...patch
-      }
-    })
+      ...patch
+    } as Partial<Omit<CustomField, 'id'>>)
   }
 
   if (numberFormat) {
     return (
-      <PropertyPopoverRow
-        label={renderMessage(meta.ui.property.editor.format)}
+      <FieldPopoverRow
+        label={renderMessage(meta.ui.field.editor.format)}
         suffix={renderMessage(numberFormat.message)}
         widthClassName="w-[220px]"
       >
         {close => (
-          <PropertyChoiceList
-            value={numberFormat.id as PropertyNumberFormatId}
-            options={meta.property.number.format.list as readonly {
-              id: PropertyNumberFormatId
+          <FieldChoiceList
+            value={numberFormat.id as FieldNumberFormatId}
+            options={meta.field.number.format.list as readonly {
+              id: FieldNumberFormatId
               message: MessageSpec
             }[]}
             onSelect={value => {
@@ -112,14 +99,14 @@ export const PropertyFormatSection = (props: {
             }}
           />
         )}
-      </PropertyPopoverRow>
+      </FieldPopoverRow>
     )
   }
 
   if (urlConfig) {
     return (
-      <PropertySwitchRow
-        label={renderMessage(meta.ui.property.editor.displayFullUrl)}
+      <FieldSwitchRow
+        label={renderMessage(meta.ui.field.editor.displayFullUrl)}
         checked={urlConfig.displayFullUrl}
         onToggle={() => setUrlConfig({
           displayFullUrl: !urlConfig.displayFullUrl
@@ -134,16 +121,16 @@ export const PropertyFormatSection = (props: {
 
   return (
     <>
-      <PropertyPopoverRow
-        label={renderMessage(meta.ui.property.editor.displayDateFormat)}
+      <FieldPopoverRow
+        label={renderMessage(meta.ui.field.editor.displayDateFormat)}
         suffix={renderMessage(displayDateFormat.message)}
         widthClassName="w-[220px]"
       >
         {close => (
-          <PropertyChoiceList
-            value={displayDateFormat.id as PropertyDisplayDateFormatId}
-            options={meta.property.date.displayDateFormat.list as readonly {
-              id: PropertyDisplayDateFormatId
+          <FieldChoiceList
+            value={displayDateFormat.id as FieldDisplayDateFormatId}
+            options={meta.field.date.displayDateFormat.list as readonly {
+              id: FieldDisplayDateFormatId
               message: MessageSpec
             }[]}
             onSelect={value => {
@@ -154,18 +141,18 @@ export const PropertyFormatSection = (props: {
             }}
           />
         )}
-      </PropertyPopoverRow>
+      </FieldPopoverRow>
 
-      <PropertyPopoverRow
-        label={renderMessage(meta.ui.property.editor.displayTimeFormat)}
+      <FieldPopoverRow
+        label={renderMessage(meta.ui.field.editor.displayTimeFormat)}
         suffix={renderMessage(displayTimeFormat.message)}
         widthClassName="w-[220px]"
       >
         {close => (
-          <PropertyChoiceList
-            value={displayTimeFormat.id as PropertyDisplayTimeFormatId}
-            options={meta.property.date.displayTimeFormat.list as readonly {
-              id: PropertyDisplayTimeFormatId
+          <FieldChoiceList
+            value={displayTimeFormat.id as FieldDisplayTimeFormatId}
+            options={meta.field.date.displayTimeFormat.list as readonly {
+              id: FieldDisplayTimeFormatId
               message: MessageSpec
             }[]}
             onSelect={value => {
@@ -176,18 +163,18 @@ export const PropertyFormatSection = (props: {
             }}
           />
         )}
-      </PropertyPopoverRow>
+      </FieldPopoverRow>
 
-      <PropertyPopoverRow
-        label={renderMessage(meta.ui.property.editor.defaultValueKind)}
+      <FieldPopoverRow
+        label={renderMessage(meta.ui.field.editor.defaultValueKind)}
         suffix={renderMessage(defaultValueKind.message)}
         widthClassName="w-[220px]"
       >
         {close => (
-          <PropertyChoiceList
-            value={defaultValueKind.id as PropertyDateValueKindId}
-            options={meta.property.date.defaultValueKind.list as readonly {
-              id: PropertyDateValueKindId
+          <FieldChoiceList
+            value={defaultValueKind.id as FieldDateValueKindId}
+            options={meta.field.date.defaultValueKind.list as readonly {
+              id: FieldDateValueKindId
               message: MessageSpec
             }[]}
             onSelect={value => {
@@ -198,11 +185,11 @@ export const PropertyFormatSection = (props: {
             }}
           />
         )}
-      </PropertyPopoverRow>
+      </FieldPopoverRow>
 
       {dateConfig.defaultValueKind === 'datetime' ? (
-        <PropertyPopoverRow
-          label={renderMessage(meta.ui.property.editor.defaultTimezone)}
+        <FieldPopoverRow
+          label={renderMessage(meta.ui.field.editor.defaultTimezone)}
           suffix={formatTimeZoneLabel(dateConfig.defaultTimezone ?? null)}
           widthClassName="w-[240px]"
         >
@@ -236,7 +223,7 @@ export const PropertyFormatSection = (props: {
               ]}
             />
           )}
-        </PropertyPopoverRow>
+        </FieldPopoverRow>
       ) : null}
     </>
   )

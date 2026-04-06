@@ -1,12 +1,12 @@
 import type {
   AppearanceId,
-  FieldId
+  CellRef
 } from '@dataview/react/runtime/currentView'
 
 export type TableHoverTarget =
   | {
       type: 'cell'
-      cell: FieldId
+      cell: CellRef
     }
   | {
       type: 'row-rail'
@@ -28,7 +28,7 @@ export const sameHoverTarget = (
   if (left.type === 'cell' && right.type === 'cell') {
     return (
       left.cell.appearanceId === right.cell.appearanceId
-      && left.cell.propertyId === right.cell.propertyId
+      && left.cell.fieldId === right.cell.fieldId
     )
   }
 
@@ -53,6 +53,6 @@ export const hoveredRowIdOf = (
 
 export const hoveredCellOf = (
   target: TableHoverTarget | null
-): FieldId | null => target?.type === 'cell'
+): CellRef | null => target?.type === 'cell'
   ? target.cell
   : null

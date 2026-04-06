@@ -4,17 +4,17 @@ import {
   setMinutes,
   setSeconds
 } from 'date-fns'
-import type { GroupDateValue, GroupProperty } from '@dataview/core/contracts'
+import type { DateValue, CustomField } from '@dataview/core/contracts'
 import {
   type DateValueKind,
   isDateOnlyString,
   normalizeDateValue,
   parseDateInputDraft,
-  type PropertyDraftParseResult,
+  type FieldDraftParseResult,
   readDateValue,
   resolveDefaultDateTimezone,
   resolveDefaultDateValueKind
-} from '@dataview/core/property'
+} from '@dataview/core/field'
 
 export type DateDraftBoundary = 'start' | 'end'
 
@@ -67,7 +67,7 @@ const markDirty = (draft: DateValueDraft): DateValueDraft => ({
 })
 
 const createBaseDraft = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined
+  property: CustomField | undefined
 ): DateValueDraft => {
   const now = new Date()
   const today = toLocalDateString(now)
@@ -91,8 +91,8 @@ const createBaseDraft = (
 }
 
 const fromResolvedDateValue = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
-  value: GroupDateValue
+  property: CustomField | undefined,
+  value: DateValue
 ): DateValueDraft => {
   const base = createBaseDraft(property)
 
@@ -131,7 +131,7 @@ const fromResolvedDateValue = (
 }
 
 export const createDateValueDraft = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+  property: CustomField | undefined,
   value: unknown,
   seedDraft?: string
 ): DateValueDraft => {
@@ -290,7 +290,7 @@ export const clearDateValueDraft = (
 
 export const parseDateValueDraft = (
   draft: DateValueDraft
-): PropertyDraftParseResult => {
+): FieldDraftParseResult => {
   if (!draft.hasValue && !draft.dirty) {
     return { type: 'clear' }
   }

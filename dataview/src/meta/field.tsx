@@ -15,30 +15,31 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import type {
-  GroupPropertyConfig,
-  GroupPropertyKind
+  DateField,
+  NumberField,
+  CustomFieldKind
 } from '@dataview/core/contracts'
 import { message } from './message'
 import { defineMetaCollection } from './shared'
 
-export type PropertyNumberFormatId = NonNullable<
-  Extract<GroupPropertyConfig, { type: 'number' }>['format']
+export type FieldNumberFormatId = NonNullable<
+  NumberField['format']
 >
 
-export type PropertyDisplayDateFormatId = NonNullable<
-  Extract<GroupPropertyConfig, { type: 'date' }>['displayDateFormat']
+export type FieldDisplayDateFormatId = NonNullable<
+  DateField['displayDateFormat']
 >
 
-export type PropertyDisplayTimeFormatId = NonNullable<
-  Extract<GroupPropertyConfig, { type: 'date' }>['displayTimeFormat']
+export type FieldDisplayTimeFormatId = NonNullable<
+  DateField['displayTimeFormat']
 >
 
-export type PropertyDateValueKindId = NonNullable<
-  Extract<GroupPropertyConfig, { type: 'date' }>['defaultValueKind']
+export type FieldDateValueKindId = NonNullable<
+  DateField['defaultValueKind']
 >
 
-export interface PropertyKindDescriptor {
-  id: GroupPropertyKind | string
+export interface FieldKindDescriptor {
+  id: CustomFieldKind | string
   message: ReturnType<typeof message>
   defaultName: ReturnType<typeof message>
   Icon: LucideIcon
@@ -47,7 +48,7 @@ export interface PropertyKindDescriptor {
   }
 }
 
-export interface PropertyFormatDescriptor<TId extends string = string> {
+export interface FieldFormatDescriptor<TId extends string = string> {
   id: TId | string
   message: ReturnType<typeof message>
 }
@@ -55,8 +56,8 @@ export interface PropertyFormatDescriptor<TId extends string = string> {
 const PROPERTY_KIND_ITEMS = [
   {
     id: 'text',
-    message: message('meta.property.kind.text', 'Text'),
-    defaultName: message('meta.property.kind.text.defaultName', '文本'),
+    message: message('meta.field.kind.text', 'Text'),
+    defaultName: message('meta.field.kind.text.defaultName', '文本'),
     Icon: Type,
     supports: {
       options: false
@@ -64,8 +65,8 @@ const PROPERTY_KIND_ITEMS = [
   },
   {
     id: 'number',
-    message: message('meta.property.kind.number', 'Number'),
-    defaultName: message('meta.property.kind.number.defaultName', '数字'),
+    message: message('meta.field.kind.number', 'Number'),
+    defaultName: message('meta.field.kind.number.defaultName', '数字'),
     Icon: Hash,
     supports: {
       options: false
@@ -73,8 +74,8 @@ const PROPERTY_KIND_ITEMS = [
   },
   {
     id: 'select',
-    message: message('meta.property.kind.select', 'Select'),
-    defaultName: message('meta.property.kind.select.defaultName', '单选'),
+    message: message('meta.field.kind.select', 'Select'),
+    defaultName: message('meta.field.kind.select.defaultName', '单选'),
     Icon: Tag,
     supports: {
       options: true
@@ -82,8 +83,8 @@ const PROPERTY_KIND_ITEMS = [
   },
   {
     id: 'multiSelect',
-    message: message('meta.property.kind.multiSelect', 'Multi-select'),
-    defaultName: message('meta.property.kind.multiSelect.defaultName', '多选'),
+    message: message('meta.field.kind.multiSelect', 'Multi-select'),
+    defaultName: message('meta.field.kind.multiSelect.defaultName', '多选'),
     Icon: Tags,
     supports: {
       options: true
@@ -91,8 +92,8 @@ const PROPERTY_KIND_ITEMS = [
   },
   {
     id: 'status',
-    message: message('meta.property.kind.status', 'Status'),
-    defaultName: message('meta.property.kind.status.defaultName', '状态'),
+    message: message('meta.field.kind.status', 'Status'),
+    defaultName: message('meta.field.kind.status.defaultName', '状态'),
     Icon: ListChecks,
     supports: {
       options: true
@@ -100,17 +101,17 @@ const PROPERTY_KIND_ITEMS = [
   },
   {
     id: 'date',
-    message: message('meta.property.kind.date', 'Date'),
-    defaultName: message('meta.property.kind.date.defaultName', '日期'),
+    message: message('meta.field.kind.date', 'Date'),
+    defaultName: message('meta.field.kind.date.defaultName', '日期'),
     Icon: Calendar,
     supports: {
       options: false
     }
   },
   {
-    id: 'checkbox',
-    message: message('meta.property.kind.checkbox', 'Checkbox'),
-    defaultName: message('meta.property.kind.checkbox.defaultName', '复选框'),
+    id: 'boolean',
+    message: message('meta.field.kind.boolean', 'Boolean'),
+    defaultName: message('meta.field.kind.boolean.defaultName', '布尔'),
     Icon: CheckSquare,
     supports: {
       options: false
@@ -118,8 +119,8 @@ const PROPERTY_KIND_ITEMS = [
   },
   {
     id: 'url',
-    message: message('meta.property.kind.url', 'URL'),
-    defaultName: message('meta.property.kind.url.defaultName', '网址'),
+    message: message('meta.field.kind.url', 'URL'),
+    defaultName: message('meta.field.kind.url.defaultName', '网址'),
     Icon: Link2,
     supports: {
       options: false
@@ -127,8 +128,8 @@ const PROPERTY_KIND_ITEMS = [
   },
   {
     id: 'email',
-    message: message('meta.property.kind.email', 'Email'),
-    defaultName: message('meta.property.kind.email.defaultName', '邮箱'),
+    message: message('meta.field.kind.email', 'Email'),
+    defaultName: message('meta.field.kind.email.defaultName', '邮箱'),
     Icon: Mail,
     supports: {
       options: false
@@ -136,107 +137,98 @@ const PROPERTY_KIND_ITEMS = [
   },
   {
     id: 'phone',
-    message: message('meta.property.kind.phone', 'Phone'),
-    defaultName: message('meta.property.kind.phone.defaultName', '电话'),
+    message: message('meta.field.kind.phone', 'Phone'),
+    defaultName: message('meta.field.kind.phone.defaultName', '电话'),
     Icon: Phone,
     supports: {
       options: false
     }
   },
   {
-    id: 'file',
-    message: message('meta.property.kind.file', 'File'),
-    defaultName: message('meta.property.kind.file.defaultName', '文件'),
+    id: 'asset',
+    message: message('meta.field.kind.asset', 'Asset'),
+    defaultName: message('meta.field.kind.asset.defaultName', '资源'),
     Icon: File,
     supports: {
       options: false
     }
-  },
-  {
-    id: 'media',
-    message: message('meta.property.kind.media', 'Media'),
-    defaultName: message('meta.property.kind.media.defaultName', '媒体'),
-    Icon: Image,
-    supports: {
-      options: false
-    }
   }
-] as const satisfies readonly PropertyKindDescriptor[]
+] as const satisfies readonly FieldKindDescriptor[]
 
 const NUMBER_FORMAT_ITEMS = [
   {
     id: 'number',
-    message: message('meta.property.number.format.number', 'Number')
+    message: message('meta.field.number.format.number', 'Number')
   },
   {
     id: 'integer',
-    message: message('meta.property.number.format.integer', 'Integer')
+    message: message('meta.field.number.format.integer', 'Integer')
   },
   {
     id: 'percent',
-    message: message('meta.property.number.format.percent', 'Percent')
+    message: message('meta.field.number.format.percent', 'Percent')
   },
   {
     id: 'currency',
-    message: message('meta.property.number.format.currency', 'Currency')
+    message: message('meta.field.number.format.currency', 'Currency')
   }
-] as const satisfies readonly PropertyFormatDescriptor<PropertyNumberFormatId>[]
+] as const satisfies readonly FieldFormatDescriptor<FieldNumberFormatId>[]
 
 const DATE_DISPLAY_FORMAT_ITEMS = [
   {
     id: 'full',
-    message: message('meta.property.date.displayDateFormat.full', 'Full')
+    message: message('meta.field.date.displayDateFormat.full', 'Full')
   },
   {
     id: 'short',
-    message: message('meta.property.date.displayDateFormat.short', 'Short')
+    message: message('meta.field.date.displayDateFormat.short', 'Short')
   },
   {
     id: 'mdy',
-    message: message('meta.property.date.displayDateFormat.mdy', 'MM/DD/YYYY')
+    message: message('meta.field.date.displayDateFormat.mdy', 'MM/DD/YYYY')
   },
   {
     id: 'dmy',
-    message: message('meta.property.date.displayDateFormat.dmy', 'DD/MM/YYYY')
+    message: message('meta.field.date.displayDateFormat.dmy', 'DD/MM/YYYY')
   },
   {
     id: 'ymd',
-    message: message('meta.property.date.displayDateFormat.ymd', 'YYYY/MM/DD')
+    message: message('meta.field.date.displayDateFormat.ymd', 'YYYY/MM/DD')
   },
   {
     id: 'relative',
-    message: message('meta.property.date.displayDateFormat.relative', 'Relative')
+    message: message('meta.field.date.displayDateFormat.relative', 'Relative')
   }
-] as const satisfies readonly PropertyFormatDescriptor<PropertyDisplayDateFormatId>[]
+] as const satisfies readonly FieldFormatDescriptor<FieldDisplayDateFormatId>[]
 
 const DATE_TIME_FORMAT_ITEMS = [
   {
     id: '12h',
-    message: message('meta.property.date.displayTimeFormat.12h', '12-hour')
+    message: message('meta.field.date.displayTimeFormat.12h', '12-hour')
   },
   {
     id: '24h',
-    message: message('meta.property.date.displayTimeFormat.24h', '24-hour')
+    message: message('meta.field.date.displayTimeFormat.24h', '24-hour')
   }
-] as const satisfies readonly PropertyFormatDescriptor<PropertyDisplayTimeFormatId>[]
+] as const satisfies readonly FieldFormatDescriptor<FieldDisplayTimeFormatId>[]
 
 const DATE_VALUE_KIND_ITEMS = [
   {
     id: 'date',
-    message: message('meta.property.date.defaultValueKind.date', 'Date')
+    message: message('meta.field.date.defaultValueKind.date', 'Date')
   },
   {
     id: 'datetime',
-    message: message('meta.property.date.defaultValueKind.datetime', 'Date & time')
+    message: message('meta.field.date.defaultValueKind.datetime', 'Date & time')
   }
-] as const satisfies readonly PropertyFormatDescriptor<PropertyDateValueKindId>[]
+] as const satisfies readonly FieldFormatDescriptor<FieldDateValueKindId>[]
 
-export const property = {
+export const field = {
   kind: defineMetaCollection(PROPERTY_KIND_ITEMS, {
     fallback: (id?: string) => ({
       id: id ?? 'unknown',
-      message: message('meta.property.kind.unknown', id ?? 'Unknown'),
-      defaultName: message('meta.property.kind.unknown.defaultName', id ?? '属性'),
+      message: message('meta.field.kind.unknown', id ?? 'Unknown'),
+      defaultName: message('meta.field.kind.unknown.defaultName', id ?? '属性'),
       Icon: CircleDot,
       supports: {
         options: false
@@ -248,7 +240,7 @@ export const property = {
       defaultId: 'number',
       fallback: (id?: string) => ({
         id: id ?? 'number',
-        message: message('meta.property.number.format.unknown', id ?? 'Number')
+        message: message('meta.field.number.format.unknown', id ?? 'Number')
       })
     })
   },
@@ -257,21 +249,21 @@ export const property = {
       defaultId: 'short',
       fallback: (id?: string) => ({
         id: id ?? 'short',
-        message: message('meta.property.date.displayDateFormat.unknown', id ?? 'Short')
+        message: message('meta.field.date.displayDateFormat.unknown', id ?? 'Short')
       })
     }),
     displayTimeFormat: defineMetaCollection(DATE_TIME_FORMAT_ITEMS, {
       defaultId: '12h',
       fallback: (id?: string) => ({
         id: id ?? '12h',
-        message: message('meta.property.date.displayTimeFormat.unknown', id ?? '12-hour')
+        message: message('meta.field.date.displayTimeFormat.unknown', id ?? '12-hour')
       })
     }),
     defaultValueKind: defineMetaCollection(DATE_VALUE_KIND_ITEMS, {
       defaultId: 'date',
       fallback: (id?: string) => ({
         id: id ?? 'date',
-        message: message('meta.property.date.defaultValueKind.unknown', id ?? 'Date')
+        message: message('meta.field.date.defaultValueKind.unknown', id ?? 'Date')
       })
     })
   }

@@ -1,30 +1,30 @@
-import type { PropertyId, GroupStateSlice, RecordId, ViewId } from './state'
+import type { CustomFieldId, StateSlice, RecordId, ViewId } from './state'
 
-export type GroupCommitChangedIds<T extends string = string> = readonly T[] | 'all'
+export type CommitChangedIds<T extends string = string> = readonly T[] | 'all'
 
-export interface GroupCommitEntityChange<T extends string = string> {
+export interface CommitEntityChange<T extends string = string> {
   added?: readonly T[]
-  updated?: GroupCommitChangedIds<T>
+  updated?: CommitChangedIds<T>
   removed?: readonly T[]
 }
 
-export interface GroupCommitValueChange {
-  recordIds?: GroupCommitChangedIds<RecordId>
-  propertyIds?: GroupCommitChangedIds<PropertyId>
+export interface CommitValueChange {
+  recordIds?: CommitChangedIds<RecordId>
+  fieldIds?: CommitChangedIds<CustomFieldId>
 }
 
-export interface GroupCommitChangeSet {
-  changedSlices: readonly GroupStateSlice[]
-  records?: GroupCommitEntityChange<RecordId>
-  properties?: GroupCommitEntityChange<PropertyId>
-  views?: GroupCommitEntityChange<ViewId>
-  values?: GroupCommitValueChange
+export interface CommitChangeSet {
+  changedSlices: readonly StateSlice[]
+  records?: CommitEntityChange<RecordId>
+  fields?: CommitEntityChange<CustomFieldId>
+  views?: CommitEntityChange<ViewId>
+  values?: CommitValueChange
 }
 
-export interface GroupCommitChangeSummary {
+export interface CommitChangeSummary {
   touchesDocument: boolean
   touchesRecords: boolean
-  touchesProperties: boolean
+  touchesFields: boolean
   touchesViews: boolean
   touchesValues: boolean
 }

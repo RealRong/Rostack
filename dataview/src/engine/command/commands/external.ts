@@ -1,10 +1,10 @@
-import type { GroupDocument } from '@dataview/core/contracts/state'
+import type { DataDoc } from '@dataview/core/contracts/state'
 import type { IndexedCommand } from '../context'
 import { createIssue } from '../issues'
 import { resolveCommandResult, isNonEmptyString } from './shared'
 
 export const resolveExternalBumpCommand = (
-  _document: GroupDocument,
+  _document: DataDoc,
   command: Extract<IndexedCommand, { type: 'external.bumpVersion' }>
 ) => {
   const issues = isNonEmptyString(command.source)

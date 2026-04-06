@@ -1,14 +1,14 @@
 import { filter } from './filter'
 import { message, renderMessage } from './message'
+import { field } from './field'
 import { option } from './option'
-import { property } from './property'
 import { sort } from './sort'
 import { ui } from './ui'
 import { view } from './view'
 
 export const meta = {
   view,
-  property,
+  field,
   option,
   filter,
   sort,
@@ -36,9 +36,9 @@ export type {
 } from './option'
 
 export type {
-  PropertyDateValueKindId,
-  PropertyDisplayDateFormatId,
-  PropertyDisplayTimeFormatId,
-  PropertyKindDescriptor,
-  PropertyNumberFormatId
-} from './property'
+  FieldDateValueKindId,
+  FieldDisplayDateFormatId,
+  FieldDisplayTimeFormatId,
+  FieldKindDescriptor,
+  FieldNumberFormatId
+} from './field'

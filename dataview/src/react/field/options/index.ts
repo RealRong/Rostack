@@ -1,9 +1,9 @@
-export { PropertyOptionTag } from './PropertyOptionTag'
+export { FieldOptionTag } from './FieldOptionTag'
 export { OptionToken } from './OptionToken'
 export { OptionEditorPopover } from './OptionEditorPopover'
 export type {
-  PropertyOptionTagProps
-} from './PropertyOptionTag'
+  FieldOptionTagProps
+} from './FieldOptionTag'
 export type { OptionTokenProps } from './OptionToken'
 export type {
   OptionEditorPopoverProps,

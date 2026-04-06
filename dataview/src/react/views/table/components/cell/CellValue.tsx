@@ -1,8 +1,8 @@
-import type { GroupProperty } from '@dataview/core/contracts'
-import { PropertyValueContent } from '@dataview/react/properties/value'
+import type { Field } from '@dataview/core/contracts'
+import { FieldValueContent } from '@dataview/react/field/value'
 
 export interface CellValueProps {
-  property: GroupProperty
+  field: Field
   value: unknown
   canQuickToggle: boolean
   onQuickToggle: () => void
@@ -10,8 +10,8 @@ export interface CellValueProps {
 
 export const CellValue = (props: CellValueProps) => {
   return (
-    <PropertyValueContent
-      property={props.property}
+    <FieldValueContent
+      property={props.field}
       value={props.value}
       onQuickToggle={props.canQuickToggle
         ? props.onQuickToggle

@@ -31,10 +31,13 @@ const buildEdgeHandles = (
     })
   })
 
-  path.segments.forEach((segment) => {
+  path.segments.forEach((segment, segmentIndex) => {
     handles.push({
-      kind: 'insert',
+      kind: 'segment',
+      role: segment.role,
       insertIndex: segment.insertIndex,
+      segmentIndex,
+      axis: segment.from.x === segment.to.x ? 'x' : 'y',
       point: segment.insertPoint ?? {
         x: (segment.from.x + segment.to.x) / 2,
         y: (segment.from.y + segment.to.y) / 2

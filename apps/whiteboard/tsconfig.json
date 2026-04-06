@@ -18,6 +18,7 @@
       "@whiteboard/core/utils": ["whiteboard/packages/whiteboard-core/src/utils/index.ts"],
       "@whiteboard/core/geometry": ["whiteboard/packages/whiteboard-core/src/geometry/index.ts"],
       "@whiteboard/core/node": ["whiteboard/packages/whiteboard-core/src/node/index.ts"],
+      "@whiteboard/core/selection": ["whiteboard/packages/whiteboard-core/src/selection/index.ts"],
       "@whiteboard/core/mindmap": ["whiteboard/packages/whiteboard-core/src/mindmap/index.ts"],
       "@whiteboard/core/edge": ["whiteboard/packages/whiteboard-core/src/edge/index.ts"],
       "@whiteboard/core/schema": ["whiteboard/packages/whiteboard-core/src/schema/index.ts"],

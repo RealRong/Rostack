@@ -22,8 +22,10 @@ export type EdgeConnectTarget = {
 }
 
 export type EdgeConnectConfig = {
-  anchorSnapMin: number
-  anchorSnapRatio: number
+  activationPaddingScreen: number
+  outlineSnapMin: number
+  outlineSnapRatio: number
+  handleSnapScreen: number
 }
 
 export type EdgeConnectCandidate = {
@@ -32,10 +34,39 @@ export type EdgeConnectCandidate = {
   geometry: NodeGeometry
 }
 
+export type ConnectMode =
+  | 'free'
+  | 'outline'
+  | 'handle'
+
 export type EdgeConnectResult = {
   nodeId: NodeId
   anchor: EdgeAnchor
   pointWorld: Point
+}
+
+export type ConnectResolution =
+  | {
+      mode: 'free'
+      pointWorld: Point
+    }
+  | {
+      mode: 'outline'
+      nodeId: NodeId
+      pointWorld: Point
+      anchor: EdgeAnchor
+    }
+  | {
+      mode: 'handle'
+      nodeId: NodeId
+      pointWorld: Point
+      anchor: EdgeAnchor
+      side: EdgeAnchor['side']
+    }
+
+export type EdgeConnectEvaluation = {
+  focusedNodeId?: NodeId
+  resolution: ConnectResolution
 }
 
 export type ResolvedEdgeEnd = {
@@ -74,6 +105,7 @@ export type EdgePathInput = {
 export type EdgePathSegment = {
   from: Point
   to: Point
+  role: 'insert' | 'control'
   insertIndex: number
   insertPoint?: Point
   hitPoints?: readonly Point[]
@@ -101,8 +133,11 @@ export type EdgeHandle =
       mode: 'fixed' | 'grow'
     }
   | {
-      kind: 'insert'
+      kind: 'segment'
+      role: EdgePathSegment['role']
       insertIndex: number
+      segmentIndex: number
+      axis: 'x' | 'y'
       point: Point
     }
 

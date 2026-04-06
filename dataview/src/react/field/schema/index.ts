@@ -1,11 +1,11 @@
-export { PropertySchemaEditor } from './editor'
+export { FieldSchemaEditor } from './editor'
 export {
-  PropertyKindPicker,
-  buildPropertyKindMenuItems
-} from './PropertyKindPicker'
+  FieldKindPicker,
+  buildFieldKindMenuItems
+} from './FieldKindPicker'
 export type {
-  PropertySchemaEditorProps
+  FieldSchemaEditorProps
 } from './editor'
 export type {
-  PropertyKindPickerProps
-} from './PropertyKindPicker'
+  FieldKindPickerProps
+} from './FieldKindPicker'

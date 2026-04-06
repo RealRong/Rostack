@@ -12,11 +12,14 @@ export {
   expandNodeSelection
 } from './duplicate'
 export {
+  containsPointInNodeOutline,
+  distanceToNodeOutline,
   getAutoNodeAnchor,
   getNodeAnchor,
   getNodeBounds,
   getNodeGeometry,
   getNodeOutline,
+  projectPointToNodeOutline,
   projectNodeAnchor,
   type NodeOutlineAnchorOptions
 } from './outline'

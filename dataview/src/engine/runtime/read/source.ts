@@ -1,4 +1,4 @@
-import type { PropertyId, GroupDocument, GroupProperty, GroupRecord, GroupView, RecordId, ViewId } from '@dataview/core/contracts'
+import type { CustomFieldId, DataDoc, CustomField, Row, View, RecordId, ViewId } from '@dataview/core/contracts'
 import {
   createDerivedStore,
   createKeyedDerivedStore,
@@ -8,7 +8,7 @@ import {
   type KeyedReadStore
 } from '@dataview/runtime/store'
 import {
-  getDocumentPropertyById,
+  getDocumentCustomFieldById,
   getDocumentRecordById,
   getDocumentViewById
 } from '@dataview/core/document'
@@ -22,19 +22,19 @@ export const equalIds = <T extends string>(left: readonly T[], right: readonly T
 )
 
 export interface ReadSource {
-  document: ValueStore<GroupDocument>
+  document: ValueStore<DataDoc>
   recordIds: ReadStore<readonly RecordId[]>
-  record: KeyedReadStore<RecordId, GroupRecord | undefined>
-  propertyIds: ReadStore<readonly PropertyId[]>
-  property: KeyedReadStore<PropertyId, GroupProperty | undefined>
+  record: KeyedReadStore<RecordId, Row | undefined>
+  customFieldIds: ReadStore<readonly CustomFieldId[]>
+  customField: KeyedReadStore<CustomFieldId, CustomField | undefined>
   viewIds: ReadStore<readonly ViewId[]>
-  view: KeyedReadStore<ViewId, GroupView | undefined>
+  view: KeyedReadStore<ViewId, View | undefined>
   viewProjection: KeyedReadStore<ViewId, ViewProjection | undefined>
-  setDocument: (document: GroupDocument) => void
+  setDocument: (document: DataDoc) => void
 }
 
-export const createReadSource = (document: GroupDocument): ReadSource => {
-  const documentStore = createValueStore<GroupDocument>({
+export const createReadSource = (document: DataDoc): ReadSource => {
+  const documentStore = createValueStore<DataDoc>({
     initial: document
   })
 
@@ -43,8 +43,8 @@ export const createReadSource = (document: GroupDocument): ReadSource => {
     isEqual: equalIds
   })
 
-  const propertyIds: ReadStore<readonly PropertyId[]> = createDerivedStore<readonly PropertyId[]>({
-    get: read => read(documentStore).properties.order,
+  const customFieldIds: ReadStore<readonly CustomFieldId[]> = createDerivedStore<readonly CustomFieldId[]>({
+    get: read => read(documentStore).fields.order,
     isEqual: equalIds
   })
 
@@ -53,15 +53,15 @@ export const createReadSource = (document: GroupDocument): ReadSource => {
     isEqual: equalIds
   })
 
-  const recordById: KeyedReadStore<RecordId, GroupRecord | undefined> = createKeyedDerivedStore<RecordId, GroupRecord | undefined>({
+  const recordById: KeyedReadStore<RecordId, Row | undefined> = createKeyedDerivedStore<RecordId, Row | undefined>({
     get: (read, recordId) => getDocumentRecordById(read(documentStore), recordId)
   })
 
-  const propertyById: KeyedReadStore<PropertyId, GroupProperty | undefined> = createKeyedDerivedStore<PropertyId, GroupProperty | undefined>({
-    get: (read, propertyId) => getDocumentPropertyById(read(documentStore), propertyId)
+  const customFieldById: KeyedReadStore<CustomFieldId, CustomField | undefined> = createKeyedDerivedStore<CustomFieldId, CustomField | undefined>({
+    get: (read, fieldId) => getDocumentCustomFieldById(read(documentStore), fieldId)
   })
 
-  const viewById: KeyedReadStore<ViewId, GroupView | undefined> = createKeyedDerivedStore<ViewId, GroupView | undefined>({
+  const viewById: KeyedReadStore<ViewId, View | undefined> = createKeyedDerivedStore<ViewId, View | undefined>({
     get: (read, viewId) => getDocumentViewById(read(documentStore), viewId)
   })
   const viewProjectionById: KeyedReadStore<ViewId, ViewProjection | undefined> = createKeyedDerivedStore<ViewId, ViewProjection | undefined>({
@@ -75,8 +75,8 @@ export const createReadSource = (document: GroupDocument): ReadSource => {
     document: documentStore,
     recordIds,
     record: recordById,
-    propertyIds,
-    property: propertyById,
+    customFieldIds,
+    customField: customFieldById,
     viewIds,
     view: viewById,
     viewProjection: viewProjectionById,

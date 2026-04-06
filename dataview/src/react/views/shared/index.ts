@@ -3,12 +3,12 @@ export { CardContent, type CardContentProps } from './CardContent'
 export { CardPreview, type CardPreviewProps } from './CardPreview'
 export { CardTitle, type CardTitleProps } from './CardTitle'
 export {
-  AddCardPropertyTrigger,
-  type AddCardPropertyTriggerProps
-} from './AddCardPropertyTrigger'
+  AddCardFieldTrigger,
+  type AddCardFieldTriggerProps
+} from './AddCardFieldTrigger'
 export {
-  CardPropertySlot,
-  type CardPropertySlotProps
-} from './CardPropertySlot'
+  CardFieldSlot,
+  type CardFieldSlotProps
+} from './CardFieldSlot'
 export { openCardField } from './openCardField'
 export { useCardEditingState, useCardTitleEditing } from './useCardTitleEditing'

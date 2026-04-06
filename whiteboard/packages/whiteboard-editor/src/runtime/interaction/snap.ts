@@ -1,9 +1,9 @@
 import {
+  resolveEdgeConnectEvaluation,
   resolveEdgeConnectQueryRect,
-  resolveEdgeConnectTarget,
   type EdgeConnectCandidate,
   type EdgeConnectConfig,
-  type EdgeConnectResult
+  type EdgeConnectEvaluation
 } from '@whiteboard/core/edge'
 import {
   computeResizeSnap,
@@ -62,7 +62,9 @@ export type NodeSnapRuntime = {
 }
 
 export type EdgeSnapRuntime = {
-  connect: (pointWorld: Point) => EdgeConnectResult | undefined
+  connect: (input: {
+    pointerWorld: Point
+  }) => EdgeConnectEvaluation
 }
 
 export type SnapRuntime = {
@@ -198,12 +200,14 @@ const createEdgeSnapRuntime = ({
   readZoom: () => number
   query: (rect: Rect) => readonly EdgeConnectCandidate[]
 }): EdgeSnapRuntime => ({
-  connect: (pointWorld) => {
+  connect: ({
+    pointerWorld
+  }) => {
     const zoom = readZoom()
-    return resolveEdgeConnectTarget({
-      pointWorld,
+    return resolveEdgeConnectEvaluation({
+      pointWorld: pointerWorld,
       candidates: query(
-        resolveEdgeConnectQueryRect(pointWorld, zoom, config, nodeSize)
+        resolveEdgeConnectQueryRect(pointerWorld, zoom, config, nodeSize)
       ),
       zoom,
       config

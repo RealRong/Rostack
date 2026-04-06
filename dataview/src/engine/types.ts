@@ -1,301 +1,301 @@
 import type {
-  GroupBucketSort,
-  GroupCommand,
-  GroupCommitChangeSet,
-  GroupDocument,
-  GroupEditTarget,
-  GroupFilterRule,
-  GroupGalleryCardSize,
-  GroupGroupBy,
-  GroupProperty,
-  GroupPropertyConfig,
-  GroupPropertyKind,
-  GroupPropertyOption,
-  GroupKanbanNewRecordPosition,
-  GroupStatusCategory,
-  GroupRecord,
-  GroupSortDirection,
-  GroupSorter,
-  GroupValueApplyAction,
-  GroupView,
-  GroupViewType,
+  FieldId,
+  BucketSort,
+  Command,
+  CommitChangeSet,
+  DataDoc,
+  EditTarget,
+  FilterRule,
+  GalleryCardSize,
+  Grouping,
+  CustomField,
+  CustomFieldKind,
+  FieldOption,
+  KanbanNewRecordPosition,
+  StatusCategory,
+  Row,
+  SortDirection,
+  Sorter,
+  ValueApplyAction,
+  View,
+  ViewType,
   RecordId,
   ViewId,
-  PropertyId
+  CustomFieldId
 } from '@dataview/core/contracts'
-import type { GroupHistoryOptions, GroupHistoryState } from './history'
-import type { GroupValidationIssue } from '@dataview/engine/command'
+import type { HistoryOptions, HistoryState } from './history'
+import type { ValidationIssue } from '@dataview/engine/command'
 import type { KeyedReadStore, ReadStore } from '@dataview/runtime/store'
 import type { ViewProjection } from '@dataview/engine/projection/view'
 
-export interface CreateGroupEngineOptions {
-  document: GroupDocument
-  history?: GroupHistoryOptions
+export interface CreateEngineOptions {
+  document: DataDoc
+  history?: HistoryOptions
 }
 
-export interface GroupCommitResult {
-  issues: GroupValidationIssue[]
+export interface CommitResult {
+  issues: ValidationIssue[]
   applied: boolean
-  changes?: GroupCommitChangeSet
+  changes?: CommitChangeSet
 }
 
-export interface GroupCreatedEntities {
+export interface CreatedEntities {
   records?: readonly RecordId[]
-  properties?: readonly PropertyId[]
+  fields?: readonly CustomFieldId[]
   views?: readonly ViewId[]
 }
 
-export interface GroupCommandResult extends GroupCommitResult {
-  created?: GroupCreatedEntities
+export interface CommandResult extends CommitResult {
+  created?: CreatedEntities
 }
-export interface GroupHistoryActionResult extends GroupCommitResult {}
+export interface HistoryActionResult extends CommitResult {}
 
-export interface GroupEngineReadApi {
-  document: ReadStore<GroupDocument>
+export interface EngineReadApi {
+  document: ReadStore<DataDoc>
   recordIds: ReadStore<readonly RecordId[]>
-  record: KeyedReadStore<RecordId, GroupRecord | undefined>
-  propertyIds: ReadStore<readonly PropertyId[]>
-  property: KeyedReadStore<PropertyId, GroupProperty | undefined>
+  record: KeyedReadStore<RecordId, Row | undefined>
+  customFieldIds: ReadStore<readonly CustomFieldId[]>
+  customField: KeyedReadStore<CustomFieldId, CustomField | undefined>
   viewIds: ReadStore<readonly ViewId[]>
-  view: KeyedReadStore<ViewId, GroupView | undefined>
+  view: KeyedReadStore<ViewId, View | undefined>
   viewProjection: KeyedReadStore<ViewId, ViewProjection | undefined>
 }
 
-export interface GroupEngineHistoryApi {
-  state: () => GroupHistoryState
+export interface EngineHistoryApi {
+  state: () => HistoryState
   canUndo: () => boolean
   canRedo: () => boolean
-  undo: () => GroupHistoryActionResult
-  redo: () => GroupHistoryActionResult
+  undo: () => HistoryActionResult
+  redo: () => HistoryActionResult
   clear: () => void
 }
 
-export interface GroupEngineDocumentApi {
-  export: () => GroupDocument
-  replace: (document: GroupDocument) => GroupDocument
+export interface EngineDocumentApi {
+  export: () => DataDoc
+  replace: (document: DataDoc) => DataDoc
 }
 
-export interface GroupViewsEngineApi {
-  list: () => readonly GroupView[]
-  get: (viewId: ViewId) => GroupView | undefined
+export interface ViewsEngineApi {
+  list: () => readonly View[]
+  get: (viewId: ViewId) => View | undefined
   create: (input: {
     name: string
-    type: GroupViewType
+    type: ViewType
   }) => ViewId | undefined
   rename: (viewId: ViewId, name: string) => void
   duplicate: (viewId: ViewId) => ViewId | undefined
   remove: (viewId: ViewId) => void
 }
 
-export interface GroupPropertiesEngineApi {
-  list: () => readonly GroupProperty[]
-  get: (propertyId: PropertyId) => GroupProperty | undefined
+export interface FieldsEngineApi {
+  list: () => readonly CustomField[]
+  get: (fieldId: CustomFieldId) => CustomField | undefined
   create: (input: {
     name: string
-    kind?: GroupPropertyKind
-  }) => PropertyId | undefined
-  rename: (propertyId: PropertyId, name: string) => void
-  update: (propertyId: PropertyId, patch: Partial<Omit<GroupProperty, 'id'>>) => void
+    kind?: CustomFieldKind
+  }) => CustomFieldId | undefined
+  rename: (fieldId: CustomFieldId, name: string) => void
+  update: (fieldId: CustomFieldId, patch: Partial<Omit<CustomField, 'id'>>) => void
+  replaceSchema: (fieldId: CustomFieldId, schema: CustomField) => void
   convert: (
-    propertyId: PropertyId,
+    fieldId: CustomFieldId,
     input: {
-      kind: GroupPropertyKind
-      config?: GroupPropertyConfig
+      kind: CustomFieldKind
     }
   ) => void
-  duplicate: (propertyId: PropertyId) => PropertyId | undefined
-  remove: (propertyId: PropertyId) => boolean
+  duplicate: (fieldId: CustomFieldId) => CustomFieldId | undefined
+  remove: (fieldId: CustomFieldId) => boolean
   options: {
-    append: (propertyId: PropertyId) => GroupPropertyOption | undefined
-    create: (propertyId: PropertyId, name: string) => GroupPropertyOption | undefined
+    append: (fieldId: CustomFieldId) => FieldOption | undefined
+    create: (fieldId: CustomFieldId, name: string) => FieldOption | undefined
     reorder: (
-      propertyId: PropertyId,
+      fieldId: CustomFieldId,
       optionIds: readonly string[]
     ) => void
     update: (
-      propertyId: PropertyId,
+      fieldId: CustomFieldId,
       optionId: string,
       patch: {
         name?: string
         color?: string
-        category?: GroupStatusCategory
+        category?: StatusCategory
       }
-    ) => GroupPropertyOption | undefined
-    remove: (propertyId: PropertyId, optionId: string) => void
+    ) => FieldOption | undefined
+    remove: (fieldId: CustomFieldId, optionId: string) => void
   }
 }
 
-export interface GroupRecordsEngineApi {
-  get: (recordId: RecordId) => GroupRecord | undefined
+export interface RecordsEngineApi {
+  get: (recordId: RecordId) => Row | undefined
   create: (input?: {
-    values?: Partial<Record<PropertyId, unknown>>
+    values?: Partial<Record<CustomFieldId, unknown>>
   }) => RecordId | undefined
   remove: (recordId: RecordId) => void
   removeMany: (recordIds: readonly RecordId[]) => void
-  setValue: (recordId: RecordId, propertyId: PropertyId, value: unknown) => void
-  clearValue: (recordId: RecordId, propertyId: PropertyId) => void
+  setValue: (recordId: RecordId, fieldId: CustomFieldId, value: unknown) => void
+  clearValue: (recordId: RecordId, fieldId: CustomFieldId) => void
   clearValues: (input: {
     recordIds: readonly RecordId[]
-    propertyIds: readonly PropertyId[]
+    fieldIds: readonly CustomFieldId[]
   }) => void
   apply: (command: {
-    target: GroupEditTarget
-    action: GroupValueApplyAction
+    target: EditTarget
+    action: ValueApplyAction
   }) => void
 }
 
-export interface GroupViewQueryApi {
+export interface ViewQueryApi {
   setSearchQuery: (value: string) => void
-  addFilter: (propertyId: PropertyId) => void
-  setFilter: (index: number, rule: GroupFilterRule) => void
+  addFilter: (fieldId: FieldId) => void
+  setFilter: (index: number, rule: FilterRule) => void
   removeFilter: (index: number) => void
-  addSorter: (propertyId: PropertyId, direction?: GroupSortDirection) => void
-  setSorter: (propertyId: PropertyId, direction: GroupSortDirection) => void
-  setOnlySorter: (propertyId: PropertyId, direction: GroupSortDirection) => void
-  replaceSorter: (index: number, sorter: GroupSorter) => void
+  addSorter: (fieldId: FieldId, direction?: SortDirection) => void
+  setSorter: (fieldId: FieldId, direction: SortDirection) => void
+  setOnlySorter: (fieldId: FieldId, direction: SortDirection) => void
+  replaceSorter: (index: number, sorter: Sorter) => void
   removeSorter: (index: number) => void
   moveSorter: (from: number, to: number) => void
   clearSorters: () => void
-  setGroup: (propertyId: PropertyId) => void
+  setGroup: (fieldId: FieldId) => void
   clearGroup: () => void
-  toggleGroup: (propertyId: PropertyId) => void
+  toggleGroup: (fieldId: FieldId) => void
   setGroupMode: (mode: string) => void
-  setGroupBucketSort: (bucketSort: GroupBucketSort) => void
-  setGroupBucketInterval: (bucketInterval: GroupGroupBy['bucketInterval']) => void
+  setGroupBucketSort: (bucketSort: BucketSort) => void
+  setGroupBucketInterval: (bucketInterval: Grouping['bucketInterval']) => void
   setGroupShowEmpty: (showEmpty: boolean) => void
   setGroupBucketHidden: (key: string, hidden: boolean) => void
   setGroupBucketCollapsed: (key: string, collapsed: boolean) => void
   toggleGroupBucketCollapsed: (key: string) => void
 }
 
-export interface GroupViewDisplaySettingsApi {
-  setPropertyIds: (propertyIds: readonly PropertyId[]) => void
-  movePropertyIds: (
-    propertyIds: readonly PropertyId[],
-    beforePropertyId?: PropertyId | null
+export interface ViewDisplayApi {
+  setFieldIds: (fieldIds: readonly FieldId[]) => void
+  moveFieldIds: (
+    fieldIds: readonly FieldId[],
+    beforeFieldId?: FieldId | null
   ) => void
-  showProperty: (
-    propertyId: PropertyId,
-    beforePropertyId?: PropertyId | null
+  showField: (
+    fieldId: FieldId,
+    beforeFieldId?: FieldId | null
   ) => void
-  hideProperty: (propertyId: PropertyId) => void
+  hideField: (fieldId: FieldId) => void
 }
 
-export interface GroupViewTableSettingsApi {
-  setColumnWidths: (widths: Partial<Record<PropertyId, number>>) => void
+export interface ViewTableApi {
+  setColumnWidths: (widths: Partial<Record<FieldId, number>>) => void
   setShowVerticalLines: (checked: boolean) => void
 }
 
-export interface GroupViewGallerySettingsApi {
+export interface ViewGalleryApi {
   setShowPropertyLabels: (checked: boolean) => void
-  setCardSize: (value: GroupGalleryCardSize) => void
+  setCardSize: (value: GalleryCardSize) => void
 }
 
-export interface GroupViewKanbanSettingsApi {
-  setNewRecordPosition: (value: GroupKanbanNewRecordPosition) => void
+export interface ViewKanbanApi {
+  setNewRecordPosition: (value: KanbanNewRecordPosition) => void
   setFillColumnColor: (checked: boolean) => void
 }
 
-export interface GroupViewSettingsApi {
-  display: GroupViewDisplaySettingsApi
-  table: GroupViewTableSettingsApi
-  gallery: GroupViewGallerySettingsApi
-  kanban: GroupViewKanbanSettingsApi
+export interface ViewSettingsApi {
+  display: ViewDisplayApi
+  table: ViewTableApi
+  gallery: ViewGalleryApi
+  kanban: ViewKanbanApi
 }
 
-export interface GroupViewOrderApi {
+export interface ViewOrderApi {
   move: (recordIds: readonly RecordId[], beforeRecordId?: RecordId) => void
   clear: () => void
 }
 
-export interface GroupKanbanCreateCardInput {
+export interface KanbanCreateCardInput {
   groupKey: string
   title: string
 }
 
-export interface GroupKanbanMoveCardsInput {
+export interface KanbanMoveCardsInput {
   recordIds: readonly RecordId[]
   groupKey: string
   beforeRecordId?: RecordId
 }
 
-export interface GroupKanbanApi {
-  createCard: (input: GroupKanbanCreateCardInput) => RecordId | undefined
-  moveCards: (input: GroupKanbanMoveCardsInput) => void
+export interface KanbanApi {
+  createCard: (input: KanbanCreateCardInput) => RecordId | undefined
+  moveCards: (input: KanbanMoveCardsInput) => void
 }
 
-export interface GroupViewEngineApi {
-  setType: (type: GroupViewType) => void
+export interface ViewEngineApi {
+  setType: (type: ViewType) => void
   search: {
     setQuery: (value: string) => void
   }
   filters: {
-    add: (propertyId: PropertyId) => void
-    update: (index: number, rule: GroupFilterRule) => void
+    add: (fieldId: FieldId) => void
+    update: (index: number, rule: FilterRule) => void
     remove: (index: number) => void
     clear: () => void
   }
   sorters: {
-    add: (propertyId: PropertyId, direction?: GroupSortDirection) => void
+    add: (fieldId: FieldId, direction?: SortDirection) => void
     move: (from: number, to: number) => void
-    replace: (index: number, sorter: GroupSorter) => void
+    replace: (index: number, sorter: Sorter) => void
     remove: (index: number) => void
     clear: () => void
-    setOnly: (propertyId: PropertyId, direction: GroupSortDirection) => void
+    setOnly: (fieldId: FieldId, direction: SortDirection) => void
   }
   grouping: {
-    setProperty: (propertyId: PropertyId) => void
+    setField: (fieldId: FieldId) => void
     clear: () => void
     setMode: (mode: string) => void
-    setBucketSort: (bucketSort: GroupBucketSort) => void
-    setBucketInterval: (bucketInterval: GroupGroupBy['bucketInterval']) => void
+    setBucketSort: (bucketSort: BucketSort) => void
+    setBucketInterval: (bucketInterval: Grouping['bucketInterval']) => void
     setShowEmpty: (showEmpty: boolean) => void
     setBucketHidden: (key: string, hidden: boolean) => void
     setBucketCollapsed: (key: string, collapsed: boolean) => void
     toggleBucketCollapsed: (key: string) => void
   }
   display: {
-    setVisibleProperties: (propertyIds: readonly PropertyId[]) => void
-    moveVisibleProperties: (
-      propertyIds: readonly PropertyId[],
-      beforePropertyId?: PropertyId | null
+    setVisibleFields: (fieldIds: readonly FieldId[]) => void
+    moveVisibleFields: (
+      fieldIds: readonly FieldId[],
+      beforeFieldId?: FieldId | null
     ) => void
-    showProperty: (
-      propertyId: PropertyId,
-      beforePropertyId?: PropertyId | null
+    showField: (
+      fieldId: FieldId,
+      beforeFieldId?: FieldId | null
     ) => void
-    hideProperty: (propertyId: PropertyId) => void
+    hideField: (fieldId: FieldId) => void
   }
   table: {
-    setColumnWidths: (widths: Partial<Record<PropertyId, number>>) => void
+    setColumnWidths: (widths: Partial<Record<FieldId, number>>) => void
     insertColumnLeftOf: (
-      anchorPropertyId: PropertyId,
+      anchorFieldId: FieldId,
       input?: {
         name?: string
-        kind?: GroupPropertyKind
+        kind?: CustomFieldKind
       }
-    ) => PropertyId | undefined
+    ) => CustomFieldId | undefined
     insertColumnRightOf: (
-      anchorPropertyId: PropertyId,
+      anchorFieldId: FieldId,
       input?: {
         name?: string
-        kind?: GroupPropertyKind
+        kind?: CustomFieldKind
       }
-    ) => PropertyId | undefined
+    ) => CustomFieldId | undefined
   }
-  query: GroupViewQueryApi
-  settings: GroupViewSettingsApi
-  order: GroupViewOrderApi
-  kanban: GroupKanbanApi
+  query: ViewQueryApi
+  settings: ViewSettingsApi
+  order: ViewOrderApi
+  kanban: KanbanApi
 }
 
-export interface GroupEngine {
-  read: GroupEngineReadApi
-  command: (command: GroupCommand | readonly GroupCommand[]) => GroupCommandResult
-  history: GroupEngineHistoryApi
-  document: GroupEngineDocumentApi
-  views: GroupViewsEngineApi
-  properties: GroupPropertiesEngineApi
-  records: GroupRecordsEngineApi
-  view: (viewId: ViewId) => GroupViewEngineApi
+export interface Engine {
+  read: EngineReadApi
+  command: (command: Command | readonly Command[]) => CommandResult
+  history: EngineHistoryApi
+  document: EngineDocumentApi
+  views: ViewsEngineApi
+  fields: FieldsEngineApi
+  records: RecordsEngineApi
+  view: (viewId: ViewId) => ViewEngineApi
 }

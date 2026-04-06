@@ -1,23 +1,24 @@
 import type {
-  GroupDocument,
-  GroupProperty,
-  GroupView,
+  DataDoc,
+  Field,
+  CustomField,
+  View,
   RecordId,
   ViewId
 } from '@dataview/core/contracts'
 import {
-  GROUP_KANBAN_EMPTY_BUCKET_KEY
+  KANBAN_EMPTY_BUCKET_KEY
 } from '@dataview/core/contracts'
 import {
-  getDocumentPropertyById
+  getDocumentFieldById
 } from '@dataview/core/document'
 import {
-  GROUP_STATUS_CATEGORIES,
+  STATUS_CATEGORIES,
   createDateGroupValue,
-  getPropertyOption,
+  getFieldOption,
   getStatusDefaultOption,
   parseDateGroupKey
-} from '@dataview/core/property'
+} from '@dataview/core/field'
 import {
   resolveProjection,
   type ProjectionSection
@@ -35,7 +36,7 @@ import type {
   SectionKey
 } from './types'
 
-export type GroupNext =
+export type GroupingNextValue =
   | { value: unknown }
   | { clear: true }
 
@@ -45,14 +46,14 @@ export interface Grouping {
     value: unknown,
     from: SectionKey | undefined,
     to: SectionKey
-  ) => GroupNext | undefined
+  ) => GroupingNextValue | undefined
 }
 
 const emptyRecordIds = [] as const satisfies readonly RecordId[]
 
 const isEmptySection = (
   key: SectionKey
-) => key === GROUP_KANBAN_EMPTY_BUCKET_KEY
+) => key === KANBAN_EMPTY_BUCKET_KEY
 
 const parseNumberRangeKey = (
   key: string
@@ -116,7 +117,7 @@ const appendOptionId = (
 
 const nextTextValue = (
   sectionKey: SectionKey
-): GroupNext => (
+): GroupingNextValue => (
   isEmptySection(sectionKey)
     ? { clear: true }
     : { value: sectionKey }
@@ -124,7 +125,7 @@ const nextTextValue = (
 
 const nextNumberValue = (
   sectionKey: SectionKey
-): GroupNext | undefined => {
+): GroupingNextValue | undefined => {
   if (isEmptySection(sectionKey)) {
     return { clear: true }
   }
@@ -136,48 +137,48 @@ const nextNumberValue = (
 }
 
 const nextSelectValue = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+  field: CustomField | undefined,
   sectionKey: SectionKey
-): GroupNext | undefined => {
+): GroupingNextValue | undefined => {
   if (isEmptySection(sectionKey)) {
     return { clear: true }
   }
 
-  return getPropertyOption(property, sectionKey)
+  return getFieldOption(field, sectionKey)
     ? { value: sectionKey }
     : undefined
 }
 
 const nextStatusValue = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+  field: CustomField | undefined,
   mode: string,
   sectionKey: SectionKey
-): GroupNext | undefined => {
+): GroupingNextValue | undefined => {
   if (isEmptySection(sectionKey)) {
     return { clear: true }
   }
 
   if (mode === 'category') {
-    const category = sectionKey as typeof GROUP_STATUS_CATEGORIES[number]
+    const category = sectionKey as typeof STATUS_CATEGORIES[number]
 
-    if (!GROUP_STATUS_CATEGORIES.includes(category)) {
+    if (!STATUS_CATEGORIES.includes(category)) {
       return undefined
     }
 
-    const option = getStatusDefaultOption(property, category)
+    const option = getStatusDefaultOption(field, category)
     return option
       ? { value: option.id }
       : undefined
   }
 
-  return getPropertyOption(property, sectionKey)
+  return getFieldOption(field, sectionKey)
     ? { value: sectionKey }
     : undefined
 }
 
 const nextCheckboxValue = (
   sectionKey: SectionKey
-): GroupNext | undefined => {
+): GroupingNextValue | undefined => {
   if (isEmptySection(sectionKey)) {
     return { clear: true }
   }
@@ -194,10 +195,10 @@ const nextCheckboxValue = (
 }
 
 const nextDateValue = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+  field: CustomField | undefined,
   sectionKey: SectionKey,
   currentValue: unknown
-): GroupNext | undefined => {
+): GroupingNextValue | undefined => {
   if (isEmptySection(sectionKey)) {
     return { clear: true }
   }
@@ -208,7 +209,7 @@ const nextDateValue = (
   }
 
   const next = createDateGroupValue(
-    property,
+    field,
     parsed.start,
     currentValue
   )
@@ -222,7 +223,7 @@ const nextMultiSelectValue = (
   sectionKey: SectionKey,
   currentValue: unknown,
   from: SectionKey | undefined
-): GroupNext => {
+): GroupingNextValue => {
   let next = normalizeOptionIds(currentValue)
 
   if (from && !isEmptySection(from)) {
@@ -240,21 +241,22 @@ const nextMultiSelectValue = (
 
 const nextPresenceValue = (
   sectionKey: SectionKey
-): GroupNext | undefined => (
+): GroupingNextValue | undefined => (
   isEmptySection(sectionKey)
     ? { clear: true }
     : undefined
 )
 
 const createNext = (
-  property: GroupProperty,
+  field: Field,
   mode: string
 ): Grouping['next'] => (
   value,
   from,
   to
 ) => {
-  switch (property.kind) {
+  switch (field.kind) {
+    case 'title':
     case 'text':
     case 'url':
     case 'email':
@@ -263,17 +265,16 @@ const createNext = (
     case 'number':
       return nextNumberValue(to)
     case 'date':
-      return nextDateValue(property, to, value)
+      return nextDateValue(field, to, value)
     case 'select':
-      return nextSelectValue(property, to)
+      return nextSelectValue(field, to)
     case 'status':
-      return nextStatusValue(property, mode, to)
-    case 'checkbox':
+      return nextStatusValue(field, mode, to)
+    case 'boolean':
       return nextCheckboxValue(to)
     case 'multiSelect':
       return nextMultiSelectValue(to, value, from)
-    case 'file':
-    case 'media':
+    case 'asset':
       return nextPresenceValue(to)
     default:
       return undefined
@@ -281,8 +282,8 @@ const createNext = (
 }
 
 export const createGrouping = (input: {
-  document: GroupDocument
-  view: Pick<GroupView, 'query'>
+  document: DataDoc
+  view: Pick<View, 'query'>
   sections: readonly ProjectionSection[]
 }): Grouping | undefined => {
   const group = input.view.query.group
@@ -290,19 +291,19 @@ export const createGrouping = (input: {
     return undefined
   }
 
-  const property = getDocumentPropertyById(input.document, group.property)
-  if (!property) {
+  const field = getDocumentFieldById(input.document, group.field)
+  if (!field) {
     return undefined
   }
 
   return {
     sections: createSections(input.sections, group),
-    next: createNext(property, group.mode)
+    next: createNext(field, group.mode)
   }
 }
 
 export const resolveGrouping = (
-  document: GroupDocument,
+  document: DataDoc,
   viewId: ViewId | undefined
 ): Grouping | undefined => {
   const resolved = resolveProjection(document, viewId)
@@ -332,7 +333,7 @@ export const readSectionRecordIds = (
 }
 
 export const resolveSectionRecordIds = (
-  document: GroupDocument,
+  document: DataDoc,
   viewId: ViewId | undefined,
   sectionKey: SectionKey
 ): readonly RecordId[] => {

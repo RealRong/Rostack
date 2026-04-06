@@ -1,6 +1,8 @@
 import type { CSSProperties } from 'react'
 import {
   UI_OPTION_COLOR_IDS,
+  type UiCardSurfaceState,
+  type UiNeutralCardSurfaceTone,
   type UiOptionColorId,
   type UiOptionColorTokenUsage
 } from './types'
@@ -13,13 +15,32 @@ const OPTION_COLOR_TOKEN_SUFFIX: Record<UiOptionColorTokenUsage, string> = {
   'badge-border': 'border',
   'column-bg': 'bg-soft',
   'column-border': 'border-muted',
-  'card-bg': 'card-bg',
+  'bg-card': 'bg-card',
   'card-border': 'border-alpha-muted',
-  'card-bg-hover': 'card-bg-hover',
-  'card-bg-pressed': 'card-bg-pressed',
+  'bg-card-hover': 'bg-card-hover',
+  'bg-card-pressed': 'bg-card-pressed',
   'dot-bg': 'bg-strong',
   text: 'text',
   'text-muted': 'text-muted'
+}
+
+const CARD_STATE_USAGE: Record<UiCardSurfaceState, UiOptionColorTokenUsage> = {
+  default: 'bg-card',
+  hover: 'bg-card-hover',
+  pressed: 'bg-card-pressed'
+}
+
+const NEUTRAL_CARD_BACKGROUND_TOKEN: Record<UiNeutralCardSurfaceTone, Record<UiCardSurfaceState, string>> = {
+  solid: {
+    default: 'var(--ui-bg-card)',
+    hover: 'var(--ui-bg-card-hover)',
+    pressed: 'var(--ui-bg-card-pressed)'
+  },
+  preview: {
+    default: 'var(--ui-bg-card-preview)',
+    hover: 'var(--ui-bg-card-hover)',
+    pressed: 'var(--ui-bg-card-pressed)'
+  }
 }
 
 export const normalizeOptionColorId = (
@@ -59,8 +80,17 @@ export const resolveOptionColumnStyle = (
 })
 
 export const resolveOptionCardStyle = (
-  color: string | null | undefined
+  color: string | null | undefined,
+  state: UiCardSurfaceState = 'default'
 ): CSSProperties => ({
-  backgroundColor: resolveOptionColorToken(color, 'card-bg'),
+  backgroundColor: resolveOptionColorToken(color, CARD_STATE_USAGE[state]),
   boxShadow: `var(--ui-shadow-sm), 0 0 0 1px ${resolveOptionColorToken(color, 'card-border')}`
+})
+
+export const resolveNeutralCardStyle = (
+  state: UiCardSurfaceState = 'default',
+  tone: UiNeutralCardSurfaceTone = 'solid'
+): CSSProperties => ({
+  backgroundColor: NEUTRAL_CARD_BACKGROUND_TOKEN[tone][state],
+  boxShadow: 'var(--ui-shadow-sm), 0 0 0 1px var(--ui-border-alpha-muted)'
 })

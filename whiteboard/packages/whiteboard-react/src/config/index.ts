@@ -90,8 +90,10 @@ const toBoardConfig = (
   },
   edge: {
     hitTestThresholdScreen: config.edge.hitTestThresholdScreen,
-    anchorSnapMin: config.edge.anchorSnapMin,
-    anchorSnapRatio: config.edge.anchorSnapRatio
+    activationPaddingScreen: config.edge.activationPaddingScreen,
+    outlineSnapMin: config.edge.outlineSnapMin,
+    outlineSnapRatio: config.edge.outlineSnapRatio,
+    handleSnapScreen: config.edge.handleSnapScreen
   }
 })
 

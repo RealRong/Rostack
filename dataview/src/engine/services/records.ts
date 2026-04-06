@@ -1,20 +1,20 @@
 import type {
-  PropertyId,
-  GroupEditTarget,
-  GroupValueApplyAction,
+  CustomFieldId,
+  EditTarget,
+  ValueApplyAction,
   RecordId
 } from '@dataview/core/contracts'
 import type {
-  GroupEngine,
-  GroupRecordsEngineApi
+  Engine,
+  RecordsEngineApi
 } from '../types'
 
 export const createRecordsEngineApi = (options: {
-  engine: Pick<GroupEngine, 'read' | 'command'>
-}): GroupRecordsEngineApi => {
+  engine: Pick<Engine, 'read' | 'command'>
+}): RecordsEngineApi => {
   const apply = (command: {
-    target: GroupEditTarget
-    action: GroupValueApplyAction
+    target: EditTarget
+    action: ValueApplyAction
   }) => {
     options.engine.command({
       type: 'value.apply',
@@ -52,7 +52,7 @@ export const createRecordsEngineApi = (options: {
         recordIds: nextRecordIds
       })
     },
-    setValue: (recordId: RecordId, propertyId: PropertyId, value: unknown) => {
+    setValue: (recordId: RecordId, fieldId: CustomFieldId, value: unknown) => {
       apply({
         target: {
           type: 'record',
@@ -60,12 +60,12 @@ export const createRecordsEngineApi = (options: {
         },
         action: {
           type: 'set',
-          property: propertyId,
+          field: fieldId,
           value
         }
       })
     },
-    clearValue: (recordId: RecordId, propertyId: PropertyId) => {
+    clearValue: (recordId: RecordId, fieldId: CustomFieldId) => {
       apply({
         target: {
           type: 'record',
@@ -73,18 +73,18 @@ export const createRecordsEngineApi = (options: {
         },
         action: {
           type: 'clear',
-          property: propertyId
+          field: fieldId
         }
       })
     },
     clearValues: input => {
       const recordIds = Array.from(new Set(input.recordIds))
-      const propertyIds = Array.from(new Set(input.propertyIds))
-      if (!recordIds.length || !propertyIds.length) {
+      const fieldIds = Array.from(new Set(input.fieldIds))
+      if (!recordIds.length || !fieldIds.length) {
         return
       }
 
-      options.engine.command(propertyIds.map(propertyId => ({
+      options.engine.command(fieldIds.map(fieldId => ({
         type: 'value.apply' as const,
         target: {
           type: 'records' as const,
@@ -92,7 +92,7 @@ export const createRecordsEngineApi = (options: {
         },
         action: {
           type: 'clear' as const,
-          property: propertyId
+          field: fieldId
         }
       })))
     },

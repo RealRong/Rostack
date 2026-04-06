@@ -7,14 +7,18 @@ import {
   useState
 } from 'react'
 import {
-  getDocumentPropertyById,
+  getDocumentFieldById,
   getDocumentRecordById
 } from '@dataview/core/document'
 import {
-  PropertyValueEditor,
-  getPropertyValueSpec,
-  type PropertyValueEditorHandle
-} from '@dataview/react/properties/value'
+  isTitleField,
+  isTitleFieldId
+} from '@dataview/core/field'
+import {
+  FieldValueEditor,
+  getFieldValueSpec,
+  type FieldValueEditorHandle
+} from '@dataview/react/field/value'
 import {
   useDataView
 } from '@dataview/react/dataview'
@@ -45,7 +49,7 @@ const clamp = (
   max: number
 ) => Math.max(min, Math.min(value, max))
 
-export const resolvePropertyValueEditorPosition = (input: {
+export const resolveFieldValueEditorPosition = (input: {
   anchor: ValueEditorSession['anchor']
   viewportWidth: number
   viewportHeight: number
@@ -77,7 +81,7 @@ export const resolvePropertyValueEditorPosition = (input: {
   }
 }
 
-export const PropertyValueEditorHost = () => {
+export const FieldValueEditorHost = () => {
   const dataView = useDataView()
   const engine = dataView.engine
   const valueEditor = dataView.valueEditor
@@ -85,12 +89,12 @@ export const PropertyValueEditorHost = () => {
   const document = useStoreValue(engine.read.document)
   const field = session?.field
   const property = field
-    ? getDocumentPropertyById(document, field.propertyId)
+    ? getDocumentFieldById(document, field.fieldId)
     : undefined
   const record = field
     ? getDocumentRecordById(document, field.recordId)
     : undefined
-  const editorRef = useRef<PropertyValueEditorHandle | null>(null)
+  const editorRef = useRef<FieldValueEditorHandle | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const [container, setContainer] = useState<HTMLDivElement | null>(null)
   const [panelHeight, setPanelHeight] = useState(0)
@@ -99,7 +103,7 @@ export const PropertyValueEditorHost = () => {
   }, [])
 
   const spec = property
-    ? getPropertyValueSpec(property)
+    ? getFieldValueSpec(property)
     : undefined
 
   const clearSession = useCallback((result?: ValueEditorResult) => {
@@ -145,7 +149,7 @@ export const PropertyValueEditorHost = () => {
       session.anchor.width
     )
 
-    return resolvePropertyValueEditorPosition({
+    return resolveFieldValueEditorPosition({
       anchor: session.anchor,
       viewportWidth,
       viewportHeight,
@@ -202,6 +206,22 @@ export const PropertyValueEditorHost = () => {
   const applyInput = (input: EditInput) => {
     switch (input.type) {
       case 'edit.apply':
+        if (isTitleField(property)) {
+          engine.command({
+            type: 'record.apply',
+            target: {
+              type: 'record',
+              recordId: record.id
+            },
+            patch: {
+              title: input.value === undefined
+                ? ''
+                : String(input.value ?? '')
+            }
+          })
+          return true
+        }
+
         if (input.value === undefined) {
           engine.records.clearValue(record.id, property.id)
         } else {
@@ -209,7 +229,20 @@ export const PropertyValueEditorHost = () => {
         }
         return true
       case 'edit.commit':
-        if (input.value === undefined) {
+        if (isTitleField(property)) {
+          engine.command({
+            type: 'record.apply',
+            target: {
+              type: 'record',
+              recordId: record.id
+            },
+            patch: {
+              title: input.value === undefined
+                ? ''
+                : String(input.value ?? '')
+            }
+          })
+        } else if (input.value === undefined) {
           engine.records.clearValue(record.id, property.id)
         } else {
           engine.records.setValue(record.id, property.id, input.value)
@@ -276,11 +309,13 @@ export const PropertyValueEditorHost = () => {
               maxHeight: position.maxHeight
             }}
           >
-            <PropertyValueEditor
-              key={`${session.field.viewId}\u0000${session.field.appearanceId}\u0000${session.field.propertyId}\u0000${property.kind}`}
+            <FieldValueEditor
+              key={`${session.field.viewId}\u0000${session.field.appearanceId}\u0000${session.field.fieldId}\u0000${property.kind}`}
               ref={editorRef}
               property={property}
-              value={record.values[property.id]}
+              value={isTitleFieldId(property.id)
+                ? record.title
+                : record.values[property.id]}
               seedDraft={session.seedDraft}
               autoFocus
               onInput={applyInput}

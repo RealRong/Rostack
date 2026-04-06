@@ -6,18 +6,18 @@ import {
 } from 'react'
 import { SquarePen } from 'lucide-react'
 import type {
-  GroupProperty,
-  GroupRecord,
+  CustomField,
+  Row,
   ViewId
 } from '@dataview/core/contracts'
 import type {
   AppearanceId,
   ViewFieldRef
 } from '@dataview/react/runtime/currentView'
-import { isEmptyPropertyValue } from '@dataview/core/property'
+import { isEmptyFieldValue } from '@dataview/core/field'
 import { Button } from '@ui/button'
 import { cn } from '@ui/utils'
-import { CardPropertySlot } from './CardPropertySlot'
+import { CardFieldSlot } from './CardFieldSlot'
 import { CardTitle } from './CardTitle'
 import { useCardTitleEditing } from './useCardTitleEditing'
 
@@ -25,12 +25,12 @@ const fieldRef = (input: {
   viewId: ViewId
   appearanceId: AppearanceId
   recordId: string
-  propertyId: string
+  fieldId: string
 }): ViewFieldRef => ({
   viewId: input.viewId,
   appearanceId: input.appearanceId,
   recordId: input.recordId,
-  propertyId: input.propertyId
+  fieldId: input.fieldId
 })
 
 export interface CardContentProps extends Omit<ComponentPropsWithoutRef<'article'>, 'children'> {
@@ -51,9 +51,8 @@ export interface CardContentProps extends Omit<ComponentPropsWithoutRef<'article
   }
   viewId: ViewId
   appearanceId: AppearanceId
-  record: GroupRecord
-  titleProperty?: GroupProperty
-  properties: readonly GroupProperty[]
+  record: Row
+  fields: readonly CustomField[]
   titlePlaceholder: string
   showEditAction?: boolean
   titleLeading?: ReactNode
@@ -66,8 +65,7 @@ export const CardContent = forwardRef<HTMLElement, CardContentProps>((props, ref
     viewId,
     appearanceId,
     record,
-    titleProperty,
-    properties,
+    fields,
     titlePlaceholder,
     showEditAction,
     titleLeading,
@@ -78,16 +76,13 @@ export const CardContent = forwardRef<HTMLElement, CardContentProps>((props, ref
   const editing = useCardTitleEditing({
     viewId,
     appearanceId,
-    record,
-    titleProperty
+    record
   })
-  const fieldProperties = useMemo(() => properties.filter(
-    property => property.id !== titleProperty?.id
-  ), [properties, titleProperty?.id])
-  const visibleProperties = useMemo(() => (
+  const fieldProperties = useMemo(() => fields, [fields])
+  const visibleFields = useMemo(() => (
     editing.mode === 'edit'
       ? fieldProperties
-      : fieldProperties.filter(property => !isEmptyPropertyValue(record.values[property.id]))
+      : fieldProperties.filter(property => !isEmptyFieldValue(record.values[property.id]))
   ), [editing.mode, fieldProperties, record])
   return (
     <article
@@ -127,18 +122,18 @@ export const CardContent = forwardRef<HTMLElement, CardContentProps>((props, ref
         />
       </div>
 
-      {visibleProperties.length ? (
+      {visibleFields.length ? (
         <div className={slots?.property?.list}>
-          {visibleProperties.map(property => (
+          {visibleFields.map(property => (
             <div key={property.id} className={slots?.property?.item}>
-              <CardPropertySlot
+              <CardFieldSlot
                 field={fieldRef({
                   viewId,
                   appearanceId,
                   recordId: record.id,
-                  propertyId: property.id
+                  fieldId: property.id
                 })}
-                property={property}
+                customField={property}
                 value={record.values[property.id]}
                 mode={editing.mode}
                 openOnClick

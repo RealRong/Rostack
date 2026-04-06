@@ -1,12 +1,12 @@
 import type {
-  GroupSortDirection,
-  GroupSorter
+  SortDirection,
+  Sorter
 } from '@dataview/core/contracts'
 import { message } from './message'
 import { defineMetaCollection } from './shared'
 
 export interface SortDirectionDescriptor {
-  id: GroupSortDirection | string
+  id: SortDirection | string
   message: ReturnType<typeof message>
 }
 
@@ -29,7 +29,7 @@ export const sort = {
       message: message('meta.sort.direction.unknown', id ?? 'Ascending')
     })
   }),
-  summary: (sorters: readonly GroupSorter[]) => ({
+  summary: (sorters: readonly Sorter[]) => ({
     message: !sorters.length
       ? message('meta.sort.summary.empty', 'Sort')
       : sorters.length === 1

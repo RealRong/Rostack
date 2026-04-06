@@ -1,29 +1,26 @@
 import { useEffect, useState } from 'react'
 import type {
-  PropertyId,
-  GroupProperty
+  CustomFieldId,
+  CustomField
 } from '@dataview/core/contracts'
 import {
   useDataView,
-  usePropertyById,
-  useTitlePropertyId
+  useFieldById
 } from '@dataview/react/dataview'
 import { Input } from '@ui/input'
 import { meta, renderMessage } from '@dataview/meta'
-import { PropertyKindPicker } from '../PropertyKindPicker'
-import { PropertyFormatSection } from './PropertyFormatSection'
-import { PropertyOptionsSection } from './PropertyOptionsSection'
-import { PropertyPopoverRow } from './PropertySchemaRows'
+import { FieldKindPicker } from '../FieldKindPicker'
+import { FieldFormatSection } from './FieldFormatSection'
+import { FieldOptionsSection } from './FieldOptionsSection'
+import { FieldPopoverRow } from './FieldSchemaRows'
 
-export interface PropertySchemaEditorProps {
-  propertyId: PropertyId
+export interface FieldSchemaEditorProps {
+  fieldId: CustomFieldId
 }
 
-export const PropertySchemaEditor = (props: PropertySchemaEditorProps) => {
+export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
   const editor = useDataView().engine
-  const property = usePropertyById(props.propertyId)
-  const titlePropertyId = useTitlePropertyId()
-  const isTitleProperty = property?.id === titlePropertyId
+  const property = useFieldById(props.fieldId)
   const [nameDraft, setNameDraft] = useState('')
 
   useEffect(() => {
@@ -34,15 +31,15 @@ export const PropertySchemaEditor = (props: PropertySchemaEditorProps) => {
     return null
   }
 
-  const kind = meta.property.kind.get(property.kind)
+  const kind = meta.field.kind.get(property.kind)
   const KindIcon = kind.Icon
 
   const rename = (name: string) => {
-    editor.properties.rename(property.id, name)
+    editor.fields.rename(property.id, name)
   }
 
-  const update = (patch: Partial<Omit<GroupProperty, 'id'>>) => {
-    editor.properties.update(property.id, patch)
+  const update = (patch: Partial<Omit<CustomField, 'id'>>) => {
+    editor.fields.update(property.id, patch)
   }
 
   const commitName = () => {
@@ -78,7 +75,7 @@ export const PropertySchemaEditor = (props: PropertySchemaEditorProps) => {
                 event.preventDefault()
                 commitName()
               }}
-              placeholder={renderMessage(meta.ui.property.editor.propertyNamePlaceholder)}
+              placeholder={renderMessage(meta.ui.field.editor.fieldNamePlaceholder)}
             />
           </div>
         </div>
@@ -86,28 +83,28 @@ export const PropertySchemaEditor = (props: PropertySchemaEditorProps) => {
 
       <div className="flex-1 overflow-y-auto px-2 pb-3">
         <div className="flex flex-col gap-0.5">
-          <PropertyPopoverRow
-            label={renderMessage(meta.ui.property.editor.type)}
+          <FieldPopoverRow
+            label={renderMessage(meta.ui.field.editor.type)}
             suffix={renderMessage(kind.message)}
             widthClassName="w-[240px]"
           >
             {close => (
-              <PropertyKindPicker
+              <FieldKindPicker
                 kind={property.kind}
-                isTitleProperty={isTitleProperty}
+                isTitleProperty={false}
                 onSelect={kind => {
-                  editor.properties.convert(property.id, { kind })
+                  editor.fields.convert(property.id, { kind })
                   close()
                 }}
               />
             )}
-          </PropertyPopoverRow>
+          </FieldPopoverRow>
 
           {kind.supports.options ? (
-            <PropertyOptionsSection property={property} />
+            <FieldOptionsSection property={property} />
           ) : null}
 
-          <PropertyFormatSection
+          <FieldFormatSection
             property={property}
             update={update}
           />

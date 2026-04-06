@@ -1,23 +1,23 @@
 import { Plus } from 'lucide-react'
-import { getDocumentProperties } from '@dataview/core/document'
-import { PropertyPicker } from '@dataview/react/page/features/viewQuery/PropertyPicker'
+import { getDocumentCustomFields } from '@dataview/core/document'
+import { FieldPicker } from '@dataview/react/page/features/viewQuery/FieldPicker'
 import { Button } from '@ui/button'
 import { useDocument } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { useViewSettings } from '../context'
 
-export const PropertyListPanel = () => {
+export const FieldListPanel = () => {
   const router = useViewSettings()
-  const properties = getDocumentProperties(useDocument())
+  const fields = getDocumentCustomFields(useDocument())
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <PropertyPicker
-        properties={properties}
-        onSelect={propertyId => {
+      <FieldPicker
+        fields={fields}
+        onSelect={fieldId => {
           router.push({
-            kind: 'propertySchema',
-            propertyId
+            kind: 'fieldSchema',
+            fieldId
           })
         }}
       />
@@ -25,9 +25,9 @@ export const PropertyListPanel = () => {
         <Button
           className='w-full'
           leading={<Plus className="size-4 shrink-0" size={16} strokeWidth={1.8} />}
-          onClick={() => router.push({ kind: 'propertyCreate' })}
+          onClick={() => router.push({ kind: 'fieldCreate' })}
         >
-          {renderMessage(meta.ui.viewSettings.propertiesPanel.add)}
+          {renderMessage(meta.ui.viewSettings.fieldsPanel.add)}
         </Button>
       </div>
     </div>

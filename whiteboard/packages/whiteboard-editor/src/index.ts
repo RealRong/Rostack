@@ -2,6 +2,11 @@ export {
   createEditor
 } from './runtime/editor/createEditor'
 export type {
+  EditCaret,
+  EditField,
+  EditTarget
+} from './runtime/state/edit'
+export type {
   Editor,
   EditorOverlayRead,
   EditorRead,

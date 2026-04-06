@@ -78,7 +78,7 @@ export const OptionEditorPopover = (props: OptionEditorPopoverProps) => {
             event.preventDefault()
             commitName()
           }}
-          placeholder={renderMessage(meta.ui.property.options.namePlaceholder)}
+          placeholder={renderMessage(meta.ui.field.options.namePlaceholder)}
         />
 
         <div>
@@ -120,7 +120,7 @@ export const OptionEditorPopover = (props: OptionEditorPopoverProps) => {
                 props.onOpenChange(false)
               }}
             >
-              {renderMessage(meta.ui.property.options.remove)}
+              {renderMessage(meta.ui.field.options.remove)}
             </Button>
           </div>
         ) : null}

@@ -1,66 +1,66 @@
-import type { GroupHistoryState } from '@dataview/engine/history'
-import type { GroupDocument } from '@dataview/core/contracts'
-import { cloneGroupDocument } from '@dataview/core/document'
+import type { HistoryState } from '@dataview/engine/history'
+import type { DataDoc } from '@dataview/core/contracts'
+import { cloneDocument } from '@dataview/core/document'
 import { applyOperations } from '@dataview/core/operation'
 import type { ResolvedWriteBatch } from '@dataview/engine/command'
-import type { GroupCommitResult, GroupCreatedEntities, GroupCommandResult } from '../../types'
-import type { GroupRead } from '../read/read'
-import type { GroupHistoryReplay } from './history'
+import type { CommitResult, CreatedEntities, CommandResult } from '../../types'
+import type { ReadRuntime } from '../read/read'
+import type { HistoryReplay } from './history'
 import { historyStacks } from './history'
 
 interface CommitDocumentStore {
-  peekDocument: () => GroupDocument
-  installDocument: (document: GroupDocument) => GroupDocument
+  peekDocument: () => DataDoc
+  installDocument: (document: DataDoc) => DataDoc
 }
 
 export interface CommitRuntimeOptions {
   document: CommitDocumentStore
-  read: Pick<GroupRead, 'clear' | 'syncDocument'>
+  read: Pick<ReadRuntime, 'clear' | 'syncDocument'>
   historyCapacity: number
 }
 
-export interface GroupCommitRuntime {
+export interface CommitRuntime {
   history: {
-    state: () => GroupHistoryState
+    state: () => HistoryState
     canUndo: () => boolean
     canRedo: () => boolean
     clear: () => void
-    undo: () => GroupCommitResult
-    redo: () => GroupCommitResult
+    undo: () => CommitResult
+    redo: () => CommitResult
   }
-  dispatch: (writeBatch: ResolvedWriteBatch) => GroupCommandResult
-  replace: (document: GroupDocument) => void
+  dispatch: (writeBatch: ResolvedWriteBatch) => CommandResult
+  replace: (document: DataDoc) => void
 }
 
-const createdFromChanges = (changes?: GroupCommitResult['changes']): GroupCreatedEntities | undefined => {
+const createdFromChanges = (changes?: CommitResult['changes']): CreatedEntities | undefined => {
   if (!changes) {
     return undefined
   }
 
-  const created: GroupCreatedEntities = {
+  const created: CreatedEntities = {
     records: changes.records?.added,
-    properties: changes.properties?.added,
+    fields: changes.fields?.added,
     views: changes.views?.added
   }
 
-  return created.records?.length || created.properties?.length || created.views?.length
+  return created.records?.length || created.fields?.length || created.views?.length
     ? created
     : undefined
 }
 
-export const commitRuntime = (options: CommitRuntimeOptions): GroupCommitRuntime => {
+export const commitRuntime = (options: CommitRuntimeOptions): CommitRuntime => {
   const store = options.document
   const history = historyStacks({
     capacity: options.historyCapacity
   })
-  const finalize = <TResult extends GroupCommitResult>(result: TResult, shouldSyncDocument: boolean): TResult => {
+  const finalize = <TResult extends CommitResult>(result: TResult, shouldSyncDocument: boolean): TResult => {
     if (shouldSyncDocument) {
       options.read.syncDocument(store.peekDocument(), result.changes)
     }
     return result
   }
 
-  const dispatch = (writeBatch: ResolvedWriteBatch): GroupCommandResult => {
+  const dispatch = (writeBatch: ResolvedWriteBatch): CommandResult => {
     if (!writeBatch.canApply) {
       return finalize(
         {
@@ -102,7 +102,7 @@ export const commitRuntime = (options: CommitRuntimeOptions): GroupCommitRuntime
     )
   }
 
-  const replay = (replay?: GroupHistoryReplay): GroupCommitResult => {
+  const replay = (replay?: HistoryReplay): CommitResult => {
     const entry = replay
     const beforeDocument = store.peekDocument()
 
@@ -144,7 +144,7 @@ export const commitRuntime = (options: CommitRuntimeOptions): GroupCommitRuntime
     history: historyApi,
     dispatch,
     replace: document => {
-      const nextDocument = cloneGroupDocument(document)
+      const nextDocument = cloneDocument(document)
 
       history.clear()
       options.read.clear()

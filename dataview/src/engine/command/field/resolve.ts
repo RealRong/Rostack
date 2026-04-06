@@ -1,33 +1,32 @@
-import type { GroupBaseOperation } from '@dataview/core/contracts/operations'
-import type { GroupDocument, GroupProperty, GroupPropertyOption } from '@dataview/core/contracts/state'
+import type { BaseOperation } from '@dataview/core/contracts/operations'
+import type { DataDoc, CustomField, FieldOption } from '@dataview/core/contracts/state'
 import {
-  getDocumentPropertyById,
-  getDocumentProperties,
+  getDocumentCustomFieldById,
+  getDocumentCustomFields,
   getDocumentRecords,
   getDocumentViews
 } from '@dataview/core/document'
 import {
-  createUniquePropertyName,
-  createUniquePropertyOptionToken,
-  defaultPropertyConfig,
-  findPropertyOptionByName,
-  getPropertyOptions,
-  hasPropertyOptions,
-  replacePropertyOptions,
-  TITLE_PROPERTY_ID,
-  convertPropertyKindConfig
-} from '@dataview/core/property'
+  createDefaultCustomField,
+  createUniqueFieldName,
+  createUniqueFieldOptionToken,
+  convertFieldKind,
+  findFieldOptionByName,
+  getFieldOptions,
+  hasFieldOptions,
+  replaceFieldOptions
+} from '@dataview/core/field'
 import {
-  cloneGroupViewOptions
+  cloneViewOptions
 } from '@dataview/core/view'
 import type { IndexedCommand } from '../context'
 import { createPropertyId } from '../entityId'
-import { createIssue, hasValidationErrors, type GroupValidationIssue } from '../issues'
+import { createIssue, hasValidationErrors, type ValidationIssue } from '../issues'
 import {
   deriveCommand,
-  hasProperty,
+  hasCustomField,
   resolveCommandResult,
-  validatePropertyExists
+  validateCustomFieldExists
 } from '../commands/shared'
 import {
   resolvePropertyConvertViewOperations,
@@ -42,37 +41,37 @@ import {
 const DEFAULT_OPTION_NAME = 'Option'
 
 const createPropertyConvertPatch = (
-  property: GroupProperty,
+  property: CustomField,
   input: {
-    kind: GroupProperty['kind']
-    config?: GroupProperty['config']
+    kind: CustomField['kind']
   }
-): Partial<Omit<GroupProperty, 'id'>> => ({
-  kind: input.kind,
-  config: input.config ?? convertPropertyKindConfig(property, input.kind)
-})
+): Partial<Omit<CustomField, 'id'>> => {
+  const next = convertFieldKind(property, input.kind)
+  const { id: _id, ...patch } = next
+  return patch
+}
 
 const resolveOptionPropertyContext = (
-  document: GroupDocument,
+  document: DataDoc,
   command: IndexedCommand,
-  propertyId: string
+  fieldId: string
 ) => {
-  const issues = validatePropertyExists(document, command, propertyId)
+  const issues = validateCustomFieldExists(document, command, fieldId)
   if (hasValidationErrors(issues)) {
     return {
       issues
     }
   }
 
-  const property = getDocumentPropertyById(document, propertyId)
+  const property = getDocumentCustomFieldById(document, fieldId)
   if (!property) {
     return {
       issues
     }
   }
 
-  if (!hasPropertyOptions(property)) {
-    issues.push(createIssue(command, 'error', 'field.invalid', 'Property does not support options', 'propertyId'))
+  if (!hasFieldOptions(property)) {
+    issues.push(createIssue(command, 'error', 'field.invalid', 'Field does not support options', 'fieldId'))
     return {
       issues
     }
@@ -81,15 +80,15 @@ const resolveOptionPropertyContext = (
   return {
     issues,
     property,
-    options: getPropertyOptions(property)
+    options: getFieldOptions(property)
   }
 }
 
-const createOptionName = (options: readonly GroupPropertyOption[]) => {
+const createOptionName = (options: readonly FieldOption[]) => {
   let index = 1
   let nextName = DEFAULT_OPTION_NAME
 
-  while (findPropertyOptionByName(options, nextName)) {
+  while (findFieldOptionByName(options, nextName)) {
     index += 1
     nextName = `${DEFAULT_OPTION_NAME} ${index}`
   }
@@ -98,15 +97,15 @@ const createOptionName = (options: readonly GroupPropertyOption[]) => {
 }
 
 const createNextPropertyOption = (
-  property: GroupProperty & { kind: 'select' | 'multiSelect' | 'status' },
-  options: readonly GroupPropertyOption[],
+  property: CustomField & { kind: 'select' | 'multiSelect' | 'status' },
+  options: readonly FieldOption[],
   name: string
-): GroupPropertyOption => {
-  const token = createUniquePropertyOptionToken(options, name)
+): FieldOption => {
+  const token = createUniqueFieldOptionToken(options, name)
   return {
     id: token,
-    key: token,
     name,
+    color: null,
     ...(property.kind === 'status'
       ? { category: 'todo' as const }
       : {})
@@ -114,15 +113,15 @@ const createNextPropertyOption = (
 }
 
 export const resolvePropertyCreateCommand = (
-  document: GroupDocument,
-  command: Extract<IndexedCommand, { type: 'property.create' }>
+  document: DataDoc,
+  command: Extract<IndexedCommand, { type: 'customField.create' }>
 ) => {
   const explicitPropertyId = command.input.id?.trim()
-  const idIssues: GroupValidationIssue[] = []
+  const idIssues: ValidationIssue[] = []
   if (command.input.id !== undefined && !explicitPropertyId) {
     idIssues.push(createIssue(command, 'error', 'field.invalid', 'Field id must be a non-empty string', 'input.id'))
   }
-  if (explicitPropertyId && hasProperty(document, explicitPropertyId)) {
+  if (explicitPropertyId && hasCustomField(document, explicitPropertyId)) {
     idIssues.push(createIssue(command, 'error', 'field.invalid', `Field already exists: ${explicitPropertyId}`, 'input.id'))
   }
 
@@ -130,18 +129,17 @@ export const resolvePropertyCreateCommand = (
     return resolveCommandResult(idIssues)
   }
 
-  const propertyId = explicitPropertyId || createPropertyId()
+  const fieldId = explicitPropertyId || createPropertyId()
   const kind = command.input.kind ?? 'text'
-  const property: GroupProperty = {
-    id: propertyId,
+  const property = createDefaultCustomField({
+    id: fieldId,
     name: command.input.name,
     kind,
-    config: command.input.config ?? defaultPropertyConfig(kind),
     meta: command.input.meta
-  }
+  })
 
-  const putResult = resolvePropertyPutCommand(document, deriveCommand(command, 'property.put', {
-    property
+  const putResult = resolvePropertyPutCommand(document, deriveCommand(command, 'customField.put', {
+    field: property
   }))
   const viewOperations = resolvePropertyCreateViewOperations(document, property)
 
@@ -152,42 +150,37 @@ export const resolvePropertyCreateCommand = (
 }
 
 export const resolvePropertyPutCommand = (
-  document: GroupDocument,
-  command: Extract<IndexedCommand, { type: 'property.put' }>
+  document: DataDoc,
+  command: Extract<IndexedCommand, { type: 'customField.put' }>
 ) => {
   return resolveCommandResult(
-    validateProperty(document, command, command.property, 'property'),
-    [{ type: 'document.property.put', property: command.property }]
+    validateProperty(document, command, command.field, 'field'),
+    [{ type: 'document.customField.put', field: command.field }]
   )
 }
 
 export const resolvePropertyConvertCommand = (
-  document: GroupDocument,
-  command: Extract<IndexedCommand, { type: 'property.convert' }>
+  document: DataDoc,
+  command: Extract<IndexedCommand, { type: 'customField.convert' }>
 ) => {
-  const issues = validatePropertyExists(document, command, command.propertyId)
+  const issues = validateCustomFieldExists(document, command, command.fieldId)
   if (hasValidationErrors(issues)) {
     return resolveCommandResult(issues)
   }
 
-  if (command.propertyId === TITLE_PROPERTY_ID) {
-    issues.push(createIssue(command, 'error', 'field.invalid', 'Title property cannot be converted', 'propertyId'))
-    return resolveCommandResult(issues)
-  }
-
-  const property = getDocumentPropertyById(document, command.propertyId)
+  const property = getDocumentCustomFieldById(document, command.fieldId)
   if (!property) {
     return resolveCommandResult(issues)
   }
 
-  const patchResult = resolvePropertyPatchCommand(document, deriveCommand(command, 'property.patch', {
-    propertyId: command.propertyId,
+  const patchResult = resolvePropertyPatchCommand(document, deriveCommand(command, 'customField.patch', {
+    fieldId: command.fieldId,
     patch: createPropertyConvertPatch(property, command.input)
   }))
   const nextProperty = {
     ...property,
     ...createPropertyConvertPatch(property, command.input)
-  } as GroupProperty
+  } as CustomField
 
   return resolveCommandResult(
     [...issues, ...patchResult.issues],
@@ -196,45 +189,34 @@ export const resolvePropertyConvertCommand = (
 }
 
 export const resolvePropertyDuplicateCommand = (
-  document: GroupDocument,
-  command: Extract<IndexedCommand, { type: 'property.duplicate' }>
+  document: DataDoc,
+  command: Extract<IndexedCommand, { type: 'customField.duplicate' }>
 ) => {
-  const issues = validatePropertyExists(document, command, command.propertyId)
+  const issues = validateCustomFieldExists(document, command, command.fieldId)
   if (hasValidationErrors(issues)) {
     return resolveCommandResult(issues)
   }
 
-  const sourceProperty = getDocumentPropertyById(document, command.propertyId)
+  const sourceProperty = getDocumentCustomFieldById(document, command.fieldId)
   if (!sourceProperty) {
     return resolveCommandResult(issues)
   }
 
-  const properties = getDocumentProperties(document)
+  const properties = getDocumentCustomFields(document)
   const nextPropertyId = createPropertyId()
-  const nextName = createUniquePropertyName(`${sourceProperty.name} Copy`, properties)
-  const isTitleProperty = sourceProperty.id === TITLE_PROPERTY_ID
-  const nextKind = isTitleProperty ? 'text' : sourceProperty.kind
-  const nextConfig = isTitleProperty
-    ? { type: 'text' as const }
-    : structuredClone(sourceProperty.config)
-  const nextProperty: GroupProperty = {
+  const nextName = createUniqueFieldName(`${sourceProperty.name} Copy`, properties)
+  const nextProperty: CustomField = {
     ...structuredClone(sourceProperty),
     id: nextPropertyId,
-    name: nextName,
-    kind: nextKind,
-    config: nextConfig
+    name: nextName
   }
 
-  const createResult = resolvePropertyCreateCommand(document, deriveCommand(command, 'property.create', {
-    input: {
-      id: nextPropertyId,
-      name: nextName,
-      kind: nextKind,
-      config: nextConfig
-    }
+  const putResult = resolvePropertyPutCommand(document, deriveCommand(command, 'customField.put', {
+    field: nextProperty
   }))
+  const createViewOperations = resolvePropertyCreateViewOperations(document, nextProperty)
 
-  const recordOperations: GroupBaseOperation[] = getDocumentRecords(document)
+  const recordOperations: BaseOperation[] = getDocumentRecords(document)
     .flatMap(record => {
       if (!Object.prototype.hasOwnProperty.call(record.values, sourceProperty.id)) {
         return []
@@ -243,21 +225,21 @@ export const resolvePropertyDuplicateCommand = (
       return [{
         type: 'document.value.set' as const,
         recordId: record.id,
-        property: nextPropertyId,
+        field: nextPropertyId,
         value: structuredClone(record.values[sourceProperty.id])
       }]
     })
 
-  const viewOperations: GroupBaseOperation[] = getDocumentViews(document)
+  const viewOperations: BaseOperation[] = getDocumentViews(document)
     .flatMap(view => {
-      const sourcePropertyIds = view.options.display.propertyIds
-      const currentPropertyIds = (
-        view.type === 'table' && !sourcePropertyIds.includes(nextPropertyId)
-          ? [...sourcePropertyIds, nextPropertyId]
-          : sourcePropertyIds
+      const sourceFieldIds = view.options.display.fieldIds
+      const currentFieldIds = (
+        view.type === 'table' && !sourceFieldIds.includes(nextPropertyId)
+          ? [...sourceFieldIds, nextPropertyId]
+          : sourceFieldIds
       )
-      const sourceIndex = sourcePropertyIds.indexOf(sourceProperty.id)
-      const createdIndex = currentPropertyIds.indexOf(nextPropertyId)
+      const sourceIndex = sourceFieldIds.indexOf(sourceProperty.id)
+      const createdIndex = currentFieldIds.indexOf(nextPropertyId)
 
       if (sourceIndex === -1) {
         if (createdIndex === -1) {
@@ -269,50 +251,73 @@ export const resolvePropertyDuplicateCommand = (
           view: {
             ...view,
             options: {
-              ...cloneGroupViewOptions(view.options),
+              ...cloneViewOptions(view.options),
               display: {
-                propertyIds: currentPropertyIds.filter(id => id !== nextPropertyId)
+                fieldIds: currentFieldIds.filter(id => id !== nextPropertyId)
               }
             }
           }
         }]
       }
 
-      const withoutCreated = currentPropertyIds.filter(id => id !== nextPropertyId)
-      const nextPropertyIds = [...withoutCreated]
-      const insertIndex = Math.min(sourceIndex + 1, nextPropertyIds.length)
-      nextPropertyIds.splice(insertIndex, 0, nextPropertyId)
+      const withoutCreated = currentFieldIds.filter(id => id !== nextPropertyId)
+      const nextFieldIds = [...withoutCreated]
+      const insertIndex = Math.min(sourceIndex + 1, nextFieldIds.length)
+      nextFieldIds.splice(insertIndex, 0, nextPropertyId)
 
       return [{
         type: 'document.view.put' as const,
         view: {
           ...view,
           options: {
-            ...cloneGroupViewOptions(view.options),
-            display: {
-              propertyIds: nextPropertyIds
+              ...cloneViewOptions(view.options),
+              display: {
+                fieldIds: nextFieldIds
+              }
             }
           }
-        }
       }]
     })
 
   return resolveCommandResult(
-    [...issues, ...createResult.issues],
-    [...createResult.operations, ...recordOperations, ...viewOperations]
+    [...issues, ...putResult.issues],
+    [...putResult.operations, ...createViewOperations, ...recordOperations, ...viewOperations]
   )
 }
 
-export const resolvePropertyPatchCommand = (
-  document: GroupDocument,
-  command: Extract<IndexedCommand, { type: 'property.patch' }>
+export const resolvePropertyReplaceSchemaCommand = (
+  document: DataDoc,
+  command: Extract<IndexedCommand, { type: 'customField.replaceSchema' }>
 ) => {
-  const issues = validatePropertyExists(document, command, command.propertyId)
+  const issues = validateCustomFieldExists(document, command, command.fieldId)
   if (hasValidationErrors(issues)) {
     return resolveCommandResult(issues)
   }
 
-  const property = getDocumentPropertyById(document, command.propertyId)
+  const schema = {
+    ...structuredClone(command.schema),
+    id: command.fieldId
+  } satisfies CustomField
+
+  return resolveCommandResult(
+    [...issues, ...validateProperty(document, command, schema, 'schema')],
+    [{
+      type: 'document.customField.put',
+      field: schema
+    }]
+  )
+}
+
+export const resolvePropertyPatchCommand = (
+  document: DataDoc,
+  command: Extract<IndexedCommand, { type: 'customField.patch' }>
+) => {
+  const issues = validateCustomFieldExists(document, command, command.fieldId)
+  if (hasValidationErrors(issues)) {
+    return resolveCommandResult(issues)
+  }
+
+  const property = getDocumentCustomFieldById(document, command.fieldId)
   if (!property) {
     return resolveCommandResult(issues)
   }
@@ -320,24 +325,24 @@ export const resolvePropertyPatchCommand = (
   if (!Object.keys(command.patch).length) {
     issues.push(createIssue(command, 'error', 'field.invalid', 'field.patch patch cannot be empty', 'patch'))
   } else {
-    issues.push(...validateTitlePropertyPatch(command, command.propertyId, command.patch, 'patch'))
-    issues.push(...validateProperty(document, command, { ...property, ...command.patch }, 'patch'))
+    issues.push(...validateTitlePropertyPatch())
+    issues.push(...validateProperty(document, command, { ...(property as CustomField), ...(command.patch as Partial<CustomField>) } as CustomField, 'patch'))
   }
 
   return resolveCommandResult(issues, [
     {
-      type: 'document.property.patch',
-      propertyId: command.propertyId,
+      type: 'document.customField.patch',
+      fieldId: command.fieldId,
       patch: command.patch
     }
   ])
 }
 
 export const resolvePropertyOptionRemoveCommand = (
-  document: GroupDocument,
-  command: Extract<IndexedCommand, { type: 'property.option.remove' }>
+  document: DataDoc,
+  command: Extract<IndexedCommand, { type: 'customField.option.remove' }>
 ) => {
-  const context = resolveOptionPropertyContext(document, command, command.propertyId)
+  const context = resolveOptionPropertyContext(document, command, command.fieldId)
   if (!context.property || !context.options || hasValidationErrors(context.issues)) {
     return resolveCommandResult(context.issues)
   }
@@ -353,20 +358,18 @@ export const resolvePropertyOptionRemoveCommand = (
     return resolveCommandResult(context.issues)
   }
 
-  const patchResult = resolvePropertyPatchCommand(document, deriveCommand(command, 'property.patch', {
-    propertyId: context.property.id,
-    patch: {
-      config: replacePropertyOptions(
-        context.property,
-        context.options.filter(option => option.id !== optionId)
-      )
-    }
+  const patchResult = resolvePropertyPatchCommand(document, deriveCommand(command, 'customField.patch', {
+    fieldId: context.property.id,
+    patch: replaceFieldOptions(
+      context.property,
+      context.options.filter(option => option.id !== optionId)
+    ) as Partial<Omit<CustomField, 'id'>>
   }))
   if (hasValidationErrors(patchResult.issues)) {
     return resolveCommandResult([...context.issues, ...patchResult.issues])
   }
 
-  const operations: GroupBaseOperation[] = [...patchResult.operations]
+  const operations: BaseOperation[] = [...patchResult.operations]
 
   if (context.property.kind === 'select' || context.property.kind === 'status') {
     getDocumentRecords(document).forEach(record => {
@@ -377,7 +380,7 @@ export const resolvePropertyOptionRemoveCommand = (
       operations.push({
         type: 'document.value.clear',
         recordId: record.id,
-        property: context.property.id
+        field: context.property.id
       })
     })
 
@@ -399,13 +402,13 @@ export const resolvePropertyOptionRemoveCommand = (
       ? {
           type: 'document.value.set',
           recordId: record.id,
-          property: context.property.id,
+          field: context.property.id,
           value: nextValue
         }
       : {
           type: 'document.value.clear',
           recordId: record.id,
-          property: context.property.id
+          field: context.property.id
         })
   })
 
@@ -413,10 +416,10 @@ export const resolvePropertyOptionRemoveCommand = (
 }
 
 export const resolvePropertyOptionCreateCommand = (
-  document: GroupDocument,
-  command: Extract<IndexedCommand, { type: 'property.option.create' }>
+  document: DataDoc,
+  command: Extract<IndexedCommand, { type: 'customField.option.create' }>
 ) => {
-  const context = resolveOptionPropertyContext(document, command, command.propertyId)
+  const context = resolveOptionPropertyContext(document, command, command.fieldId)
   if (!context.property || !context.options || hasValidationErrors(context.issues)) {
     return resolveCommandResult(context.issues)
   }
@@ -427,7 +430,7 @@ export const resolvePropertyOptionCreateCommand = (
     return resolveCommandResult(context.issues)
   }
 
-  if (explicitName && findPropertyOptionByName(context.options, explicitName)) {
+  if (explicitName && findFieldOptionByName(context.options, explicitName)) {
     return resolveCommandResult(context.issues)
   }
 
@@ -437,19 +440,17 @@ export const resolvePropertyOptionCreateCommand = (
     explicitName ?? createOptionName(context.options)
   )
 
-  return resolvePropertyPatchCommand(document, deriveCommand(command, 'property.patch', {
-    propertyId: context.property.id,
-    patch: {
-      config: replacePropertyOptions(context.property, [...context.options, nextOption])
-    }
+  return resolvePropertyPatchCommand(document, deriveCommand(command, 'customField.patch', {
+    fieldId: context.property.id,
+    patch: replaceFieldOptions(context.property, [...context.options, nextOption]) as Partial<Omit<CustomField, 'id'>>
   }))
 }
 
 export const resolvePropertyOptionReorderCommand = (
-  document: GroupDocument,
-  command: Extract<IndexedCommand, { type: 'property.option.reorder' }>
+  document: DataDoc,
+  command: Extract<IndexedCommand, { type: 'customField.option.reorder' }>
 ) => {
-  const context = resolveOptionPropertyContext(document, command, command.propertyId)
+  const context = resolveOptionPropertyContext(document, command, command.fieldId)
   if (!context.property || !context.options || hasValidationErrors(context.issues)) {
     return resolveCommandResult(context.issues)
   }
@@ -465,7 +466,7 @@ export const resolvePropertyOptionReorderCommand = (
       seen.add(optionId)
       return optionMap.get(optionId)
     })
-    .filter((option): option is GroupPropertyOption => Boolean(option))
+    .filter((option): option is FieldOption => Boolean(option))
   const rest = context.options.filter(option => !seen.has(option.id))
   const nextOptions = [...ordered, ...rest]
 
@@ -476,19 +477,17 @@ export const resolvePropertyOptionReorderCommand = (
     return resolveCommandResult(context.issues)
   }
 
-  return resolvePropertyPatchCommand(document, deriveCommand(command, 'property.patch', {
-    propertyId: context.property.id,
-    patch: {
-      config: replacePropertyOptions(context.property, nextOptions)
-    }
+  return resolvePropertyPatchCommand(document, deriveCommand(command, 'customField.patch', {
+    fieldId: context.property.id,
+    patch: replaceFieldOptions(context.property, nextOptions) as Partial<Omit<CustomField, 'id'>>
   }))
 }
 
 export const resolvePropertyOptionUpdateCommand = (
-  document: GroupDocument,
-  command: Extract<IndexedCommand, { type: 'property.option.update' }>
+  document: DataDoc,
+  command: Extract<IndexedCommand, { type: 'customField.option.update' }>
 ) => {
-  const context = resolveOptionPropertyContext(document, command, command.propertyId)
+  const context = resolveOptionPropertyContext(document, command, command.fieldId)
   if (!context.property || !context.options || hasValidationErrors(context.issues)) {
     return resolveCommandResult(context.issues)
   }
@@ -512,20 +511,20 @@ export const resolvePropertyOptionUpdateCommand = (
       return resolveCommandResult(context.issues)
     }
 
-    const conflicting = findPropertyOptionByName(context.options, nextName)
+    const conflicting = findFieldOptionByName(context.options, nextName)
     if (conflicting && conflicting.id !== optionId) {
       context.issues.push(createIssue(command, 'error', 'field.invalid', `Duplicate property option name: ${nextName}`, 'patch.name'))
       return resolveCommandResult(context.issues)
     }
   }
 
-  const nextOption: GroupPropertyOption = {
+  const nextOption: FieldOption = {
     ...target,
     ...(nextName ? { name: nextName } : {}),
     ...(command.patch.color !== undefined
       ? (command.patch.color.trim()
           ? { color: command.patch.color.trim() }
-          : { color: undefined })
+          : { color: null })
       : {}),
     ...(context.property.kind === 'status' && command.patch.category !== undefined
       ? { category: command.patch.category }
@@ -534,40 +533,37 @@ export const resolvePropertyOptionUpdateCommand = (
 
   const sameName = nextOption.name === target.name
   const sameColor = nextOption.color === target.color
-  const sameCategory = nextOption.category === target.category
+  const sameCategory = (
+    context.property.kind === 'status'
+      ? ('category' in nextOption && 'category' in target && nextOption.category === target.category)
+      : true
+  )
   if (sameName && sameColor && sameCategory) {
     return resolveCommandResult(context.issues)
   }
 
-  return resolvePropertyPatchCommand(document, deriveCommand(command, 'property.patch', {
-    propertyId: context.property.id,
-    patch: {
-      config: replacePropertyOptions(
-        context.property,
-        context.options.map(option => option.id === optionId ? nextOption : option)
-      )
-    }
+  return resolvePropertyPatchCommand(document, deriveCommand(command, 'customField.patch', {
+    fieldId: context.property.id,
+    patch: replaceFieldOptions(
+      context.property,
+      context.options.map(option => option.id === optionId ? nextOption : option)
+    ) as Partial<Omit<CustomField, 'id'>>
   }))
 }
 
 export const resolvePropertyRemoveCommand = (
-  document: GroupDocument,
-  command: Extract<IndexedCommand, { type: 'property.remove' }>
+  document: DataDoc,
+  command: Extract<IndexedCommand, { type: 'customField.remove' }>
 ) => {
-  const issues = validatePropertyExists(document, command, command.propertyId)
+  const issues = validateCustomFieldExists(document, command, command.fieldId)
   if (hasValidationErrors(issues)) {
     return resolveCommandResult(issues)
   }
 
-  if (command.propertyId === TITLE_PROPERTY_ID) {
-    issues.push(createIssue(command, 'error', 'field.invalid', 'Title property cannot be removed', 'propertyId'))
-    return resolveCommandResult(issues)
-  }
-
-  const operations = resolvePropertyRemoveViewOperations(document, command.propertyId)
+  const operations = resolvePropertyRemoveViewOperations(document, command.fieldId)
   operations.push({
-    type: 'document.property.remove',
-    propertyId: command.propertyId
+    type: 'document.customField.remove',
+    fieldId: command.fieldId
   })
 
   return resolveCommandResult(issues, operations)

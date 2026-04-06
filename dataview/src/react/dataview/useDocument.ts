@@ -1,10 +1,4 @@
-import type {
-  PropertyId,
-  ViewId
-} from '@dataview/core/contracts'
-import {
-  TITLE_PROPERTY_ID
-} from '@dataview/core/property'
+import type { CustomFieldId, ViewId } from '@dataview/core/contracts'
 import {
   useKeyedStoreValue,
   useStoreValue
@@ -25,11 +19,9 @@ export const useViewById = (
     : undefined
 }
 
-export const usePropertyById = (
-  propertyId: PropertyId
+export const useFieldById = (
+  fieldId: CustomFieldId
 ) => {
   const dataView = useDataView()
-  return useKeyedStoreValue(dataView.engine.read.property, propertyId)
+  return useKeyedStoreValue(dataView.engine.read.customField, fieldId)
 }
-
-export const useTitlePropertyId = (): PropertyId => TITLE_PROPERTY_ID

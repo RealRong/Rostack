@@ -6,15 +6,15 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent
 } from 'react'
-import { getPropertyOptions, getStatusSections } from '@dataview/core/property'
+import { getFieldOptions, getStatusSections } from '@dataview/core/field'
 import { Button } from '@ui/button'
 import { Input } from '@ui/input'
 import { usePickerList } from '@ui/picker-list'
 import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
-import { PropertyOptionTag } from '@dataview/react/properties/options'
+import { FieldOptionTag } from '@dataview/react/field/options'
 import type { EditorSubmitTrigger } from '@dataview/react/interaction'
-import type { PropertyValueDraftEditorProps } from '../../contracts'
+import type { FieldValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@dataview/dom/focus'
 import {
   isComposing,
@@ -27,17 +27,17 @@ const normalizeToken = (value: string) => value.trim().toLowerCase()
 const categoryLabel = (category: 'todo' | 'in_progress' | 'complete') => {
   switch (category) {
     case 'todo':
-      return renderMessage(meta.ui.property.status.todo)
+      return renderMessage(meta.ui.field.status.todo)
     case 'in_progress':
-      return renderMessage(meta.ui.property.status.inProgress)
+      return renderMessage(meta.ui.field.status.inProgress)
     case 'complete':
     default:
-      return renderMessage(meta.ui.property.status.complete)
+      return renderMessage(meta.ui.field.status.complete)
   }
 }
 
 export const StatusValueEditor = (
-  props: PropertyValueDraftEditorProps<string>
+  props: FieldValueDraftEditorProps<string>
 ) => {
   const dataView = useDataView()
   const page = dataView.page
@@ -45,7 +45,7 @@ export const StatusValueEditor = (
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [query, setQuery] = useState('')
   const property = props.property
-  const options = getPropertyOptions(property)
+  const options = getFieldOptions(property)
   const normalizedQuery = normalizeToken(query)
   const selectedOption = useMemo(
     () => options.find(option => option.id === props.draft),
@@ -58,7 +58,6 @@ export const StatusValueEditor = (
 
     return options.find(option => (
       normalizeToken(option.name) === normalizedQuery
-      || normalizeToken(option.key) === normalizedQuery
       || normalizeToken(option.id) === normalizedQuery
     ))
   }, [normalizedQuery, options])
@@ -73,7 +72,6 @@ export const StatusValueEditor = (
         ...section,
         options: section.options.filter(option => (
           normalizeToken(option.name).includes(normalizedQuery)
-          || normalizeToken(option.key).includes(normalizedQuery)
           || normalizeToken(option.id).includes(normalizedQuery)
         ))
       }))
@@ -205,9 +203,9 @@ export const StatusValueEditor = (
         {selectedOption ? (
           <div className="mb-2 flex items-center gap-1">
             <div className="min-w-0">
-              <PropertyOptionTag
+              <FieldOptionTag
                 label={selectedOption.name}
-                color={selectedOption.color}
+                color={selectedOption.color ?? undefined}
                 size="md"
               />
             </div>
@@ -230,7 +228,7 @@ export const StatusValueEditor = (
             setQuery(event.target.value)
             setHighlightedKey(null)
           }}
-          placeholder={renderMessage(meta.ui.property.status.searchPlaceholder)}
+          placeholder={renderMessage(meta.ui.field.status.searchPlaceholder)}
         />
       </div>
 
@@ -266,9 +264,9 @@ export const StatusValueEditor = (
                       selectOption(option.id, 'programmatic', true)
                     }}
                   >
-                    <PropertyOptionTag
+                    <FieldOptionTag
                       label={option.name}
-                      color={option.color}
+                      color={option.color ?? undefined}
                     />
                   </button>
                 ))}
@@ -289,13 +287,13 @@ export const StatusValueEditor = (
             })
             window.requestAnimationFrame(() => {
               page.settings.open({
-                kind: 'propertySchema',
-                propertyId: property.id
+                kind: 'fieldSchema',
+                fieldId: property.id
               })
             })
           }}
         >
-          {renderMessage(meta.ui.viewSettings.routeTitle('propertySchema'))}
+          {renderMessage(meta.ui.viewSettings.routeTitle('fieldSchema'))}
         </Button>
       </div>
     </div>

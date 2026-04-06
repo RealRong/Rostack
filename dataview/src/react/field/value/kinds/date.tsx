@@ -1,5 +1,5 @@
-import type { GroupProperty } from '@dataview/core/contracts'
-import { formatDateValue } from '@dataview/core/property'
+import type { CustomField } from '@dataview/core/contracts'
+import { formatDateValue } from '@dataview/core/field'
 import { cn } from '@ui/utils'
 import { DateValueEditor } from '../editor/pickers/date/DateValueEditor'
 import {
@@ -7,12 +7,12 @@ import {
   parseDateValueDraft,
   type DateValueDraft
 } from '../editor/pickers/date/DateValueDraft'
-import type { PropertyValueSpec } from './contracts'
+import type { FieldValueSpec } from './contracts'
 import { renderEmpty } from './shared'
 
 export const createDatePropertySpec = (
-  property: GroupProperty | undefined
-): PropertyValueSpec<DateValueDraft> => ({
+  property: CustomField | undefined
+): FieldValueSpec<DateValueDraft> => ({
   capability: {},
   panelWidth: 'calendar',
   Editor: DateValueEditor,

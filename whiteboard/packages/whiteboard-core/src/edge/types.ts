@@ -1,8 +1,11 @@
 import type { EdgeRoute, Point } from '../types/core'
 export type {
   AnchorSnapOptions,
+  ConnectMode,
+  ConnectResolution,
   EdgeConnectCandidate,
   EdgeConnectConfig,
+  EdgeConnectEvaluation,
   EdgeConnectResult,
   EdgeNodeCanvasSnapshot,
   EdgeConnectTarget,

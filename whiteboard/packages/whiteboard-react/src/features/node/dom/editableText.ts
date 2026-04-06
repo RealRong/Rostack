@@ -2,7 +2,12 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent
 } from 'react'
-import { focusEditableEnd, readEditableText } from '../../../dom/editable/text'
+import type { EditCaret } from '@whiteboard/editor'
+import {
+  focusEditableEnd,
+  focusEditablePoint,
+  readEditableText
+} from '../../../dom/editable/text'
 
 export const syncEditableDraft = (
   element: HTMLDivElement,
@@ -13,10 +18,15 @@ export const syncEditableDraft = (
   }
 }
 
-export const focusEditableDraftEnd = (
-  element: HTMLDivElement
+export const focusEditableDraft = (
+  element: HTMLDivElement,
+  caret?: EditCaret
 ) => {
   const frame = requestAnimationFrame(() => {
+    if (caret?.kind === 'point' && focusEditablePoint(element, caret.client)) {
+      return
+    }
+
     focusEditableEnd(element)
   })
 

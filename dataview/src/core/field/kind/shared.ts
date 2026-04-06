@@ -1,4 +1,4 @@
-export type PropertyDraftParseResult =
+export type FieldDraftParseResult =
   | { type: 'set'; value: unknown }
   | { type: 'clear' }
   | { type: 'invalid' }
@@ -22,7 +22,7 @@ export const normalizeSearchableValue = (value: unknown): string[] => {
   return [String(value)]
 }
 
-export const normalizePropertyToken = (value: unknown) => String(value).trim().toLowerCase()
+export const normalizeFieldToken = (value: unknown) => String(value).trim().toLowerCase()
 
 const normalizeNumericDraftChar = (value: string) => {
   if (value >= '0' && value <= '9') {
@@ -132,7 +132,7 @@ export const readBooleanValue = (value: unknown): boolean | undefined => {
     return undefined
   }
 
-  const normalized = normalizePropertyToken(value)
+  const normalized = normalizeFieldToken(value)
   if (BOOLEAN_TRUE.has(normalized)) {
     return true
   }
@@ -155,7 +155,7 @@ export const readNumberValue = (value: unknown): number | undefined => {
   return undefined
 }
 
-export const isEmptyPropertyValue = (value: unknown): boolean => {
+export const isEmptyFieldValue = (value: unknown): boolean => {
   if (value === undefined || value === null) {
     return true
   }

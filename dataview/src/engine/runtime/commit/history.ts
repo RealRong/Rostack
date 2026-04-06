@@ -1,33 +1,38 @@
-import type { GroupBaseOperation } from '@dataview/core/contracts/operations'
-import type { GroupCommitHistoryDepth, GroupHistoryState } from '@dataview/engine/history'
+import type { BaseOperation } from '@dataview/core/contracts/operations'
+import type { CommitHistoryDepth, HistoryState } from '@dataview/engine/history'
 
-export interface GroupHistoryEntry {
-  undo: GroupBaseOperation[]
-  redo: GroupBaseOperation[]
+export interface HistoryEntry {
+  undo: BaseOperation[]
+  redo: BaseOperation[]
 }
 
-export interface GroupHistoryReplay {
+export interface HistoryReplay {
   kind: 'undo' | 'redo'
-  operations: GroupBaseOperation[]
+  operations: BaseOperation[]
 }
 
 export interface HistoryStacksOptions {
   capacity: number
 }
 
-export interface GroupHistoryStacks {
+export interface HistoryStacks {
   clear: () => void
-  getState: () => GroupHistoryState
-  pushUndo: (entry: GroupHistoryEntry) => void
+  getState: () => HistoryState
+  pushUndo: (entry: HistoryEntry) => void
   clearRedo: () => void
-  undo: () => GroupHistoryReplay | undefined
-  redo: () => GroupHistoryReplay | undefined
+  undo: () => HistoryReplay | undefined
+  redo: () => HistoryReplay | undefined
   canUndo: () => boolean
   canRedo: () => boolean
-  depth: () => GroupCommitHistoryDepth
+  depth: () => CommitHistoryDepth
 }
 
-const trimUndoStack = (entries: GroupHistoryEntry[], capacity: number) => {
+export interface HistoryEntry {
+  undo: BaseOperation[]
+  redo: BaseOperation[]
+}
+
+const trimUndoStack = (entries: HistoryEntry[], capacity: number) => {
   if (!capacity) {
     return []
   }
@@ -37,21 +42,21 @@ const trimUndoStack = (entries: GroupHistoryEntry[], capacity: number) => {
   return entries.slice(entries.length - capacity)
 }
 
-export const historyStacks = (options: HistoryStacksOptions): GroupHistoryStacks => {
-  let undoStack: GroupHistoryEntry[] = []
-  let redoStack: GroupHistoryEntry[] = []
+export const historyStacks = (options: HistoryStacksOptions): HistoryStacks => {
+  let undoStack: HistoryEntry[] = []
+  let redoStack: HistoryEntry[] = []
 
   return {
     clear() {
       undoStack = []
       redoStack = []
     },
-    getState: (): GroupHistoryState => ({
+    getState: (): HistoryState => ({
       capacity: options.capacity,
       undoDepth: undoStack.length,
       redoDepth: redoStack.length
     }),
-    pushUndo(entry: GroupHistoryEntry) {
+    pushUndo(entry: HistoryEntry) {
       undoStack = trimUndoStack([...undoStack, entry], options.capacity)
     },
     clearRedo() {

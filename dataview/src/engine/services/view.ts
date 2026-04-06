@@ -1,18 +1,20 @@
 import type {
-  PropertyId,
-  GroupCommand,
-  GroupDocument,
-  GroupPropertyKind,
-  GroupView,
-  GroupViewQuery,
-  GroupViewType,
+  FieldId,
+  Command,
+  DataDoc,
+  CustomFieldId,
+  CustomFieldKind,
+  View,
+  ViewQuery,
+  ViewType,
   RecordId,
   ViewId
 } from '@dataview/core/contracts'
 import {
-  getDocumentPropertyById,
+  getDocumentFieldById,
   getDocumentViewById
 } from '@dataview/core/document'
+import { isTitleFieldId } from '@dataview/core/field'
 import {
   addViewFilter,
   addViewSorter,
@@ -38,11 +40,8 @@ import {
   toggleViewGroup
 } from '@dataview/core/query'
 import {
-  TITLE_PROPERTY_ID
-} from '@dataview/core/property'
-import {
-  createUniquePropertyName
-} from '@dataview/core/property'
+  createUniqueFieldName
+} from '@dataview/core/field'
 import {
   resolveGrouping,
   resolveSectionRecordIds
@@ -50,18 +49,18 @@ import {
 import { createRecordId } from '@dataview/engine/command/entityId'
 import { meta, renderMessage } from '@dataview/meta'
 import type {
-  GroupEngine,
-  GroupViewDisplaySettingsApi,
-  GroupViewGallerySettingsApi,
-  GroupViewKanbanSettingsApi,
-  GroupKanbanApi,
-  GroupKanbanCreateCardInput,
-  GroupKanbanMoveCardsInput,
-  GroupViewOrderApi,
-  GroupViewQueryApi,
-  GroupViewEngineApi,
-  GroupViewSettingsApi,
-  GroupViewTableSettingsApi
+  Engine,
+  ViewDisplayApi,
+  ViewGalleryApi,
+  ViewKanbanApi,
+  KanbanApi,
+  KanbanCreateCardInput,
+  KanbanMoveCardsInput,
+  ViewOrderApi,
+  ViewQueryApi,
+  ViewEngineApi,
+  ViewSettingsApi,
+  ViewTableApi
 } from '../types'
 
 const uniqueIds = <T,>(ids: readonly T[]) => Array.from(new Set(ids))
@@ -95,8 +94,8 @@ const moveIds = <T,>(
 }
 
 const sameWidths = (
-  left: Partial<Record<PropertyId, number>>,
-  right: Partial<Record<PropertyId, number>>
+  left: Partial<Record<FieldId, number>>,
+  right: Partial<Record<FieldId, number>>
 ) => {
   const leftKeys = Object.keys(left)
   const rightKeys = Object.keys(right)
@@ -105,27 +104,27 @@ const sameWidths = (
     return false
   }
 
-  return leftKeys.every(key => left[key as PropertyId] === right[key as PropertyId])
+  return leftKeys.every(key => left[key as FieldId] === right[key as FieldId])
 }
 
-const resolveQueryGroupProperty = (
-  document: GroupDocument,
-  query: GroupViewQuery
+const resolveQueryGroupField = (
+  document: DataDoc,
+  query: ViewQuery
 ) => {
-  const propertyId = query.group?.property
-  if (typeof propertyId !== 'string') {
+  const fieldId = query.group?.field
+  if (typeof fieldId !== 'string') {
     return undefined
   }
 
-  return getDocumentPropertyById(document, propertyId as PropertyId)
+  return getDocumentFieldById(document, fieldId as FieldId)
 }
 
 export const createViewEngineApi = (options: {
-  engine: Pick<GroupEngine, 'read' | 'command' | 'properties'>
+  engine: Pick<Engine, 'read' | 'command' | 'fields'>
   viewId: ViewId
-}): GroupViewEngineApi => {
+}): ViewEngineApi => {
   const dispatch = (
-    command: Parameters<GroupEngine['command']>[0]
+    command: Parameters<Engine['command']>[0]
   ) => options.engine.command(command)
   const readDocument = () => options.engine.read.document.get()
   const readCurrentView = () => getDocumentViewById(readDocument(), options.viewId)
@@ -142,7 +141,7 @@ export const createViewEngineApi = (options: {
     }
   }
 
-  const commitCommands = (commands: readonly GroupCommand[]) => {
+  const commitCommands = (commands: readonly Command[]) => {
     if (!commands.length) {
       return true
     }
@@ -150,7 +149,7 @@ export const createViewEngineApi = (options: {
     return dispatch(commands).applied
   }
 
-  const commitCommand = (command: GroupCommand | undefined) => {
+  const commitCommand = (command: Command | undefined) => {
     if (!command) {
       return false
     }
@@ -160,12 +159,12 @@ export const createViewEngineApi = (options: {
 
   const updateQuery = (
     updater: (
-      current: GroupViewQuery,
+      current: ViewQuery,
       state: {
         document: ReturnType<typeof readDocument>
-        view: GroupView
+        view: View
       }
-    ) => GroupViewQuery
+    ) => ViewQuery
   ) => {
     const state = readCurrentState()
     if (!state) {
@@ -188,7 +187,7 @@ export const createViewEngineApi = (options: {
   const createMoveOrderCommand = (
     recordIds: readonly RecordId[],
     beforeRecordId?: RecordId
-  ): GroupCommand | undefined => {
+  ): Command | undefined => {
     const nextRecordIds = uniqueIds(recordIds)
     if (!nextRecordIds.length) {
       return undefined
@@ -202,7 +201,7 @@ export const createViewEngineApi = (options: {
     }
   }
 
-  const order: GroupViewOrderApi = {
+  const order: ViewOrderApi = {
     move: (recordIds, beforeRecordId) => {
       commitCommand(createMoveOrderCommand(recordIds, beforeRecordId))
     },
@@ -214,21 +213,21 @@ export const createViewEngineApi = (options: {
     }
   }
 
-  const search: GroupViewEngineApi['search'] = {
+  const search: ViewEngineApi['search'] = {
     setQuery: value => {
       query.setSearchQuery(value)
     }
   }
 
-  const query: GroupViewQueryApi = {
+  const query: ViewQueryApi = {
     setSearchQuery: value => {
       updateQuery(current => setViewSearchQuery(current, value))
     },
-    addFilter: propertyId => {
+    addFilter: fieldId => {
       updateQuery((current, state) => {
-        const property = getDocumentPropertyById(state.document, propertyId)
-        return property
-          ? addViewFilter(current, property)
+        const field = getDocumentFieldById(state.document, fieldId)
+        return field
+          ? addViewFilter(current, field)
           : current
       })
     },
@@ -238,14 +237,14 @@ export const createViewEngineApi = (options: {
     removeFilter: index => {
       updateQuery(current => removeViewFilter(current, index))
     },
-    addSorter: (propertyId, direction) => {
-      updateQuery(current => addViewSorter(current, propertyId, direction))
+    addSorter: (fieldId, direction) => {
+      updateQuery(current => addViewSorter(current, fieldId, direction))
     },
-    setSorter: (propertyId, direction) => {
-      updateQuery(current => setViewSorter(current, propertyId, direction))
+    setSorter: (fieldId, direction) => {
+      updateQuery(current => setViewSorter(current, fieldId, direction))
     },
-    setOnlySorter: (propertyId, direction) => {
-      updateQuery(current => setOnlyViewSorter(current, propertyId, direction))
+    setOnlySorter: (fieldId, direction) => {
+      updateQuery(current => setOnlyViewSorter(current, fieldId, direction))
     },
     replaceSorter: (index, sorter) => {
       updateQuery(current => replaceViewSorter(current, index, sorter))
@@ -259,84 +258,84 @@ export const createViewEngineApi = (options: {
     clearSorters: () => {
       updateQuery(current => clearViewSorters(current))
     },
-    setGroup: propertyId => {
+    setGroup: fieldId => {
       updateQuery((current, state) => {
-        const property = getDocumentPropertyById(state.document, propertyId)
-        return property
-          ? setViewGroup(current, property)
+        const field = getDocumentFieldById(state.document, fieldId)
+        return field
+          ? setViewGroup(current, field)
           : current
       })
     },
     clearGroup: () => {
       updateQuery(current => clearViewGroup(current))
     },
-    toggleGroup: propertyId => {
+    toggleGroup: fieldId => {
       updateQuery((current, state) => {
-        const property = getDocumentPropertyById(state.document, propertyId)
-        return property
-          ? toggleViewGroup(current, property)
+        const field = getDocumentFieldById(state.document, fieldId)
+        return field
+          ? toggleViewGroup(current, field)
           : current
       })
     },
     setGroupMode: mode => {
       updateQuery((current, state) => {
-        const property = resolveQueryGroupProperty(state.document, current)
-        return property
-          ? setViewGroupMode(current, property, mode)
+        const field = resolveQueryGroupField(state.document, current)
+        return field
+          ? setViewGroupMode(current, field, mode)
           : current
       })
     },
     setGroupBucketSort: bucketSort => {
       updateQuery((current, state) => {
-        const property = resolveQueryGroupProperty(state.document, current)
-        return property
-          ? setViewGroupBucketSort(current, property, bucketSort)
+        const field = resolveQueryGroupField(state.document, current)
+        return field
+          ? setViewGroupBucketSort(current, field, bucketSort)
           : current
       })
     },
     setGroupBucketInterval: bucketInterval => {
       updateQuery((current, state) => {
-        const property = resolveQueryGroupProperty(state.document, current)
-        return property
-          ? setViewGroupBucketInterval(current, property, bucketInterval)
+        const field = resolveQueryGroupField(state.document, current)
+        return field
+          ? setViewGroupBucketInterval(current, field, bucketInterval)
           : current
       })
     },
     setGroupShowEmpty: showEmpty => {
       updateQuery((current, state) => {
-        const property = resolveQueryGroupProperty(state.document, current)
-        return property
-          ? setViewGroupShowEmpty(current, property, showEmpty)
+        const field = resolveQueryGroupField(state.document, current)
+        return field
+          ? setViewGroupShowEmpty(current, field, showEmpty)
           : current
       })
     },
     setGroupBucketHidden: (key, hidden) => {
       updateQuery((current, state) => {
-        const property = resolveQueryGroupProperty(state.document, current)
-        return property
-          ? setViewGroupBucketHidden(current, property, key, hidden)
+        const field = resolveQueryGroupField(state.document, current)
+        return field
+          ? setViewGroupBucketHidden(current, field, key, hidden)
           : current
       })
     },
     setGroupBucketCollapsed: (key, collapsed) => {
       updateQuery((current, state) => {
-        const property = resolveQueryGroupProperty(state.document, current)
-        return property
-          ? setViewGroupBucketCollapsed(current, property, key, collapsed)
+        const field = resolveQueryGroupField(state.document, current)
+        return field
+          ? setViewGroupBucketCollapsed(current, field, key, collapsed)
           : current
       })
     },
     toggleGroupBucketCollapsed: key => {
       updateQuery((current, state) => {
-        const property = resolveQueryGroupProperty(state.document, current)
-        return property
-          ? toggleViewGroupBucketCollapsed(current, property, key)
+        const field = resolveQueryGroupField(state.document, current)
+        return field
+          ? toggleViewGroupBucketCollapsed(current, field, key)
           : current
       })
     }
   }
 
-  const setType = (type: GroupViewType) => {
+  const setType = (type: ViewType) => {
     const currentView = readCurrentView()
     if (!currentView || currentView.type === type) {
       return
@@ -349,90 +348,90 @@ export const createViewEngineApi = (options: {
     })
   }
 
-  const display: GroupViewDisplaySettingsApi = {
-    setPropertyIds: propertyIds => {
+  const display: ViewDisplayApi = {
+    setFieldIds: fieldIds => {
       const state = readCurrentState()
       if (!state) {
         return
       }
 
-      const currentPropertyIds = state.view.options.display.propertyIds
+      const currentFieldIds = state.view.options.display.fieldIds
       if (
-        currentPropertyIds.length === propertyIds.length
-        && currentPropertyIds.every((propertyId, index) => propertyId === propertyIds[index])
+        currentFieldIds.length === fieldIds.length
+        && currentFieldIds.every((fieldId, index) => fieldId === fieldIds[index])
       ) {
         return
       }
 
       commitCommand({
-        type: 'view.display.setPropertyIds',
+        type: 'view.display.setFieldIds',
         viewId: options.viewId,
-        propertyIds: [...propertyIds]
+        fieldIds: [...fieldIds]
       })
     },
-    movePropertyIds: (propertyIds, beforePropertyId) => {
+    moveFieldIds: (fieldIds, beforeFieldId) => {
       const state = readCurrentState()
       if (!state) {
         return
       }
 
-      display.setPropertyIds(
+      display.setFieldIds(
         moveIds(
-          state.view.options.display.propertyIds,
-          propertyIds,
-          beforePropertyId
+          state.view.options.display.fieldIds,
+          fieldIds,
+          beforeFieldId
         )
       )
     },
-    showProperty: (propertyId, beforePropertyId) => {
+    showField: (fieldId, beforeFieldId) => {
       const state = readCurrentState()
       if (!state) {
         return
       }
 
-      const currentPropertyIds = state.view.options.display.propertyIds
-      const nextPropertyIds = currentPropertyIds.includes(propertyId)
-        ? currentPropertyIds
-        : [...currentPropertyIds, propertyId]
+      const currentFieldIds = state.view.options.display.fieldIds
+      const nextFieldIds = currentFieldIds.includes(fieldId)
+        ? currentFieldIds
+        : [...currentFieldIds, fieldId]
 
-      display.setPropertyIds(
+      display.setFieldIds(
         moveIds(
-          nextPropertyIds,
-          [propertyId],
-          beforePropertyId
+          nextFieldIds,
+          [fieldId],
+          beforeFieldId
         )
       )
     },
-    hideProperty: propertyId => {
+    hideField: fieldId => {
       const state = readCurrentState()
       if (!state) {
         return
       }
 
-      display.setPropertyIds(
-        state.view.options.display.propertyIds.filter(
-          currentPropertyId => currentPropertyId !== propertyId
+      display.setFieldIds(
+        state.view.options.display.fieldIds.filter(
+          currentFieldId => currentFieldId !== fieldId
         )
       )
     }
   }
 
-  const displayApi: GroupViewEngineApi['display'] = {
-    setVisibleProperties: propertyIds => {
-      display.setPropertyIds(propertyIds)
+  const displayApi: ViewEngineApi['display'] = {
+    setVisibleFields: fieldIds => {
+      display.setFieldIds(fieldIds)
     },
-    moveVisibleProperties: (propertyIds, beforePropertyId) => {
-      display.movePropertyIds(propertyIds, beforePropertyId)
+    moveVisibleFields: (fieldIds, beforeFieldId) => {
+      display.moveFieldIds(fieldIds, beforeFieldId)
     },
-    showProperty: (propertyId, beforePropertyId) => {
-      display.showProperty(propertyId, beforePropertyId)
+    showField: (fieldId, beforeFieldId) => {
+      display.showField(fieldId, beforeFieldId)
     },
-    hideProperty: propertyId => {
-      display.hideProperty(propertyId)
+    hideField: fieldId => {
+      display.hideField(fieldId)
     }
   }
 
-  const table: GroupViewTableSettingsApi = {
+  const table: ViewTableApi = {
     setColumnWidths: widths => {
       const state = readCurrentState()
       if (!state) {
@@ -469,83 +468,83 @@ export const createViewEngineApi = (options: {
     }
   }
 
-  const readVisiblePropertyIds = () => (
-    readCurrentView()?.options.display.propertyIds ?? []
+  const readVisibleFieldIds = () => (
+    readCurrentView()?.options.display.fieldIds ?? []
   )
   const resolveInsertBeforeId = (
-    anchorPropertyId: PropertyId,
+    anchorFieldId: FieldId,
     side: 'left' | 'right'
-  ): PropertyId | null => {
-    const propertyIds = readVisiblePropertyIds()
-    const anchorIndex = propertyIds.findIndex(
-      propertyId => propertyId === anchorPropertyId
+  ): FieldId | null => {
+    const fieldIds = readVisibleFieldIds()
+    const anchorIndex = fieldIds.findIndex(
+      fieldId => fieldId === anchorFieldId
     )
     if (anchorIndex === -1) {
       return null
     }
 
     return side === 'left'
-      ? anchorPropertyId
-      : propertyIds[anchorIndex + 1] ?? null
+      ? anchorFieldId
+      : fieldIds[anchorIndex + 1] ?? null
   }
   const createProperty = (input?: {
     name?: string
-    kind?: GroupPropertyKind
-  }): PropertyId | undefined => {
+    kind?: CustomFieldKind
+  }): CustomFieldId | undefined => {
     const kind = input?.kind ?? 'text'
     const explicitName = input?.name?.trim()
-    const name = explicitName || createUniquePropertyName(
-      renderMessage(meta.property.kind.get(kind).defaultName),
-      options.engine.properties.list()
+    const name = explicitName || createUniqueFieldName(
+      renderMessage(meta.field.kind.get(kind).defaultName),
+      options.engine.fields.list()
     )
 
     if (!name) {
       return undefined
     }
 
-    return options.engine.properties.create({
+    return options.engine.fields.create({
       name,
       kind
     })
   }
-  const tableApi: GroupViewEngineApi['table'] = {
+  const tableApi: ViewEngineApi['table'] = {
     setColumnWidths: widths => {
       table.setColumnWidths(widths)
     },
-    insertColumnLeftOf: (anchorPropertyId, input) => {
+    insertColumnLeftOf: (anchorFieldId, input) => {
       const createdPropertyId = createProperty(input)
       if (!createdPropertyId) {
         return undefined
       }
 
-      display.showProperty(
+      display.showField(
         createdPropertyId,
-        resolveInsertBeforeId(anchorPropertyId, 'left')
+        resolveInsertBeforeId(anchorFieldId, 'left')
       )
       return createdPropertyId
     },
-    insertColumnRightOf: (anchorPropertyId, input) => {
+    insertColumnRightOf: (anchorFieldId, input) => {
       const createdPropertyId = createProperty(input)
       if (!createdPropertyId) {
         return undefined
       }
 
-      display.showProperty(
+      display.showField(
         createdPropertyId,
-        resolveInsertBeforeId(anchorPropertyId, 'right')
+        resolveInsertBeforeId(anchorFieldId, 'right')
       )
       return createdPropertyId
     }
   }
 
-  const gallery: GroupViewGallerySettingsApi = {
+  const gallery: ViewGalleryApi = {
     setShowPropertyLabels: checked => {
       const currentView = readCurrentView()
       if (!currentView) {
         return
       }
 
-      if (currentView.options.gallery.showPropertyLabels === checked) {
+      if (currentView.options.gallery.showFieldLabels === checked) {
         return
       }
 
@@ -573,7 +572,7 @@ export const createViewEngineApi = (options: {
     }
   }
 
-  const kanbanSettings: GroupViewKanbanSettingsApi = {
+  const kanbanSettings: ViewKanbanApi = {
     setNewRecordPosition: value => {
       const currentView = readCurrentView()
       if (!currentView) {
@@ -608,16 +607,16 @@ export const createViewEngineApi = (options: {
     }
   }
 
-  const settings: GroupViewSettingsApi = {
+  const settings: ViewSettingsApi = {
     display,
     table,
     gallery,
     kanban: kanbanSettings
   }
 
-  const filters: GroupViewEngineApi['filters'] = {
-    add: propertyId => {
-      query.addFilter(propertyId)
+  const filters: ViewEngineApi['filters'] = {
+    add: fieldId => {
+      query.addFilter(fieldId)
     },
     update: (index, rule) => {
       query.setFilter(index, rule)
@@ -633,9 +632,9 @@ export const createViewEngineApi = (options: {
     }
   }
 
-  const sorters: GroupViewEngineApi['sorters'] = {
-    add: (propertyId, direction) => {
-      query.addSorter(propertyId, direction)
+  const sorters: ViewEngineApi['sorters'] = {
+    add: (fieldId, direction) => {
+      query.addSorter(fieldId, direction)
     },
     move: (from, to) => {
       query.moveSorter(from, to)
@@ -649,14 +648,14 @@ export const createViewEngineApi = (options: {
     clear: () => {
       query.clearSorters()
     },
-    setOnly: (propertyId, direction) => {
-      query.setOnlySorter(propertyId, direction)
+    setOnly: (fieldId, direction) => {
+      query.setOnlySorter(fieldId, direction)
     }
   }
 
-  const grouping: GroupViewEngineApi['grouping'] = {
-    setProperty: propertyId => {
-      query.setGroup(propertyId)
+  const grouping: ViewEngineApi['grouping'] = {
+    setField: fieldId => {
+      query.setGroup(fieldId)
     },
     clear: () => {
       query.clearGroup()
@@ -684,28 +683,28 @@ export const createViewEngineApi = (options: {
     }
   }
 
-  const kanban: GroupKanbanApi = {
-    createCard: (input: GroupKanbanCreateCardInput) => {
+  const kanban: KanbanApi = {
+    createCard: (input: KanbanCreateCardInput) => {
       const document = readDocument()
       const view = readCurrentView()
-      const title = input.title.trim()
+      let title = input.title.trim()
       if (!view || !title) {
         return undefined
       }
 
       const grouping = resolveGrouping(document, options.viewId)
-      const groupPropertyId = view.query.group?.property
+      const groupPropertyId = view.query.group?.field
       if (view.query.group && !grouping) {
         return undefined
       }
 
-      const values: Partial<Record<PropertyId, unknown>> = {
-        [TITLE_PROPERTY_ID]: title
-      }
+      const values: Partial<Record<CustomFieldId, unknown>> = {}
 
       if (groupPropertyId && grouping) {
         const next = grouping.next(
-          values[groupPropertyId],
+          isTitleFieldId(groupPropertyId)
+            ? title
+            : values[groupPropertyId],
           undefined,
           input.groupKey
         )
@@ -713,7 +712,11 @@ export const createViewEngineApi = (options: {
           return undefined
         }
 
-        if ('clear' in next) {
+        if (isTitleFieldId(groupPropertyId)) {
+          if (!('clear' in next)) {
+            title = String(next.value ?? '')
+          }
+        } else if ('clear' in next) {
           delete values[groupPropertyId]
         } else {
           values[groupPropertyId] = next.value
@@ -721,10 +724,11 @@ export const createViewEngineApi = (options: {
       }
 
       const recordId = createRecordId()
-      const commands: GroupCommand[] = [{
+      const commands: Command[] = [{
         type: 'record.create',
         input: {
           id: recordId,
+          title,
           values
         }
       }]
@@ -753,7 +757,7 @@ export const createViewEngineApi = (options: {
         ? recordId
         : undefined
     },
-    moveCards: (input: GroupKanbanMoveCardsInput) => {
+    moveCards: (input: KanbanMoveCardsInput) => {
       const document = readDocument()
       const view = readCurrentView()
       const recordIds = uniqueIds(input.recordIds)
@@ -763,8 +767,8 @@ export const createViewEngineApi = (options: {
       }
 
       const grouping = resolveGrouping(document, options.viewId)
-      const propertyId = view.query.group?.property
-      if (!grouping || !propertyId) {
+      const fieldId = view.query.group?.field
+      if (!grouping || !fieldId) {
         return
       }
 
@@ -773,10 +777,13 @@ export const createViewEngineApi = (options: {
         return
       }
 
-      const valueCommands: GroupCommand[] = []
+      const valueCommands: Command[] = []
 
       for (const recordId of recordIds) {
-        const currentValue = options.engine.read.record.get(recordId)?.values[propertyId]
+        const record = options.engine.read.record.get(recordId)
+        const currentValue = isTitleFieldId(fieldId)
+          ? record?.title
+          : record?.values[fieldId]
         const next = grouping.next(
           currentValue,
           undefined,
@@ -786,23 +793,38 @@ export const createViewEngineApi = (options: {
           return
         }
 
-        valueCommands.push({
-          type: 'value.apply',
-          target: {
-            type: 'record',
-            recordId
-          },
-          action: 'clear' in next
+        valueCommands.push(
+          isTitleFieldId(fieldId)
             ? {
-                type: 'clear',
-                property: propertyId
+                type: 'record.apply',
+                target: {
+                  type: 'record',
+                  recordId
+                },
+                patch: {
+                  title: 'clear' in next
+                    ? ''
+                    : String(next.value ?? '')
+                }
               }
             : {
-                type: 'set',
-                property: propertyId,
-                value: next.value
+                type: 'value.apply',
+                target: {
+                  type: 'record',
+                  recordId
+                },
+                action: 'clear' in next
+                  ? {
+                      type: 'clear',
+                      field: fieldId
+                    }
+                  : {
+                      type: 'set',
+                      field: fieldId,
+                      value: next.value
+                    }
               }
-        })
+        )
       }
 
       commitCommands([

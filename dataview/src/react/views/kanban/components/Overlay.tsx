@@ -1,11 +1,14 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { CardPreview } from '@dataview/react/views/shared'
-import { resolveOptionCardStyle } from '@ui/color'
+import {
+  resolveNeutralCardStyle,
+  resolveOptionCardStyle
+} from '@ui/color'
 import { cn } from '@ui/utils'
 import { useKanbanContext } from '../context'
 
-const stackedCardStyle = resolveOptionCardStyle(undefined)
+const stackedCardStyle = resolveNeutralCardStyle('default', 'preview')
 
 export const Overlay = () => {
   const controller = useKanbanContext()
@@ -72,14 +75,11 @@ export const Overlay = () => {
         ) : null}
         <div className={cn(controller.drag.dragIds.length > 1 && 'relative')}>
           <CardPreview
-            style={resolveOptionCardStyle(
-              controller.fillColumnColor
-                ? sectionColorId
-                : undefined
-            )}
+            style={controller.fillColumnColor
+              ? resolveOptionCardStyle(sectionColorId)
+              : resolveNeutralCardStyle('default', 'preview')}
             record={record}
-            titleProperty={controller.titleProperty}
-            properties={controller.properties}
+            fields={controller.fields}
             titlePlaceholder={record.id}
             propertyDensity="compact"
             showEmptyProperties

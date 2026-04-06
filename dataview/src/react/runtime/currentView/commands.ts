@@ -1,16 +1,15 @@
 import type {
-  GroupCommand,
+  FieldId,
+  Command,
   RecordId,
   ViewId
 } from '@dataview/core/contracts'
-import {
-  TITLE_PROPERTY_ID
-} from '@dataview/core/property'
+import { isTitleFieldId } from '@dataview/core/field'
 import {
   createRecordId
 } from '@dataview/engine/command/entityId'
 import type {
-  GroupEngine
+  Engine
 } from '@dataview/engine'
 import {
   createGrouping,
@@ -18,7 +17,7 @@ import {
   readSectionRecordIds,
   recordIdsOfAppearances,
   type ViewProjection,
-  type GroupNext,
+  type GroupingNextValue,
   type Grouping
 } from '@dataview/engine/projection/view'
 import {
@@ -36,7 +35,7 @@ const createMoveOrderCommand = (
   viewId: ViewId,
   recordIds: readonly RecordId[],
   beforeRecordId?: RecordId
-): GroupCommand | undefined => {
+): Command | undefined => {
   if (!recordIds.length) {
     return undefined
   }
@@ -80,45 +79,58 @@ const sameValue = (
 
 const toValueCommand = (
   recordId: RecordId,
-  propertyId: string,
-  next: GroupNext
-): GroupCommand => (
-  'clear' in next
+  fieldId: FieldId,
+  next: GroupingNextValue
+): Command => (
+  isTitleFieldId(fieldId)
     ? {
-        type: 'value.apply',
+        type: 'record.apply',
         target: {
           type: 'record',
           recordId
         },
-        action: {
-          type: 'clear',
-          property: propertyId
+        patch: {
+          title: 'clear' in next
+            ? ''
+            : String(next.value ?? '')
         }
       }
-    : {
-        type: 'value.apply',
-        target: {
-          type: 'record',
-          recordId
-        },
-        action: {
-          type: 'set',
-          property: propertyId,
-          value: next.value
+    : 'clear' in next
+      ? {
+          type: 'value.apply',
+          target: {
+            type: 'record',
+            recordId
+          },
+          action: {
+            type: 'clear',
+            field: fieldId
+          }
         }
-      }
+      : {
+          type: 'value.apply',
+          target: {
+            type: 'record',
+            recordId
+          },
+          action: {
+            type: 'set',
+            field: fieldId,
+            value: next.value
+          }
+        }
 )
 
 const createGroupWriteCommands = (input: {
-  engine: GroupEngine
+  engine: Engine
   view: ViewProjection['view']
   appearances: AppearanceList
   ids: readonly string[]
   targetSection: string
   grouping: Grouping
-}): readonly GroupCommand[] | undefined => {
-  const propertyId = input.view.query.group?.property
-  if (!propertyId) {
+}): readonly Command[] | undefined => {
+  const fieldId = input.view.query.group?.field
+  if (!fieldId) {
     return []
   }
 
@@ -139,11 +151,13 @@ const createGroupWriteCommands = (input: {
     appearanceIdsByRecordId.set(recordId, [id])
   })
 
-  const commands: GroupCommand[] = []
+  const commands: Command[] = []
 
   for (const [recordId, appearanceIds] of appearanceIdsByRecordId) {
     const record = input.engine.read.record.get(recordId)
-    const initialValue = record?.values[propertyId]
+    const initialValue = isTitleFieldId(fieldId)
+      ? record?.title
+      : record?.values[fieldId]
     let currentValue = initialValue
 
     for (const appearanceId of appearanceIds) {
@@ -168,7 +182,7 @@ const createGroupWriteCommands = (input: {
     commands.push(
       toValueCommand(
         recordId,
-        propertyId,
+        fieldId,
         currentValue === undefined
           ? { clear: true }
           : { value: currentValue }
@@ -180,7 +194,7 @@ const createGroupWriteCommands = (input: {
 }
 
 const moveIds = (input: {
-  engine: GroupEngine
+  engine: Engine
   view: ViewProjection['view']
   appearances: AppearanceList
   grouping?: Grouping
@@ -220,7 +234,7 @@ const moveIds = (input: {
         recordIds
       )
     : undefined
-  const commands: GroupCommand[] = []
+  const commands: Command[] = []
 
   if (sectionChanged && input.grouping) {
     const valueCommands = createGroupWriteCommands({
@@ -257,7 +271,7 @@ const moveIds = (input: {
 }
 
 const createInSection = (input: {
-  engine: GroupEngine
+  engine: Engine
   view: ViewProjection['view']
   appearances: AppearanceList
   grouping?: Grouping
@@ -265,7 +279,7 @@ const createInSection = (input: {
   section: string
   createInput?: CreateInSectionInput
 }) => {
-  const propertyId = input.view.query.group?.property
+  const fieldId = input.view.query.group?.field
   if (input.view.query.group && !input.grouping) {
     return undefined
   }
@@ -274,13 +288,13 @@ const createInSection = (input: {
     ...(input.createInput?.values ?? {})
   }
 
-  if (input.createInput?.title?.trim()) {
-    values[TITLE_PROPERTY_ID] = input.createInput.title.trim()
-  }
+  let title = input.createInput?.title?.trim()
 
-  if (propertyId && input.grouping) {
+  if (fieldId && input.grouping) {
     const next = input.grouping.next(
-      values[propertyId],
+      isTitleFieldId(fieldId)
+        ? title
+        : values[fieldId],
       undefined,
       input.section
     )
@@ -288,18 +302,23 @@ const createInSection = (input: {
       return undefined
     }
 
-    if ('clear' in next) {
-      delete values[propertyId]
+    if (isTitleFieldId(fieldId)) {
+      if (!('clear' in next)) {
+        title = String(next.value ?? '')
+      }
+    } else if ('clear' in next) {
+      delete values[fieldId]
     } else {
-      values[propertyId] = next.value
+      values[fieldId] = next.value
     }
   }
 
   const recordId = createRecordId()
-  const commands: GroupCommand[] = [{
+  const commands: Command[] = [{
     type: 'record.create',
     input: {
       id: recordId,
+      ...(title ? { title } : {}),
       values
     }
   }]
@@ -333,7 +352,7 @@ const createInSection = (input: {
 }
 
 const removeSelection = (input: {
-  engine: GroupEngine
+  engine: Engine
   appearances: AppearanceList
   selection: SelectionStore
 }) => {
@@ -352,7 +371,7 @@ const removeSelection = (input: {
 }
 
 export const createCommands = (input: {
-  engine: GroupEngine
+  engine: Engine
   selection: SelectionStore
   currentView: () => ViewProjection | undefined
 }): Commands => ({

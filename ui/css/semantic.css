@@ -27,7 +27,6 @@
   --ui-focus-ring: var(--ui-accent);
 
   --ui-popover-shadow: var(--ui-shadow-floating);
-  --ui-card-bg: var(--ui-bg-card);
   --ui-floating-bg: var(--ui-bg-card);
   --ui-floating-border: var(--ui-border-default);
   --ui-field-bg: var(--ui-bg-card);
@@ -41,8 +40,6 @@
 
   --background: var(--ui-bg-page);
   --foreground: var(--ui-text-primary);
-  --card: var(--ui-bg-card);
-  --card-foreground: var(--ui-text-primary);
   --popover: var(--ui-floating-bg);
   --popover-foreground: var(--ui-text-primary);
   --primary: var(--ui-accent);

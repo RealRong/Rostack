@@ -1,5 +1,5 @@
 import type {
-  PropertyId,
+  CustomFieldId,
   ViewId
 } from '@dataview/core/contracts'
 
@@ -12,7 +12,7 @@ export type QueryBarEntry =
     }
   | {
       kind: 'filter'
-      propertyId: PropertyId
+      fieldId: CustomFieldId
     }
   | {
       kind: 'sort'
@@ -23,9 +23,9 @@ export type SettingsRoute =
   | { kind: 'layout' }
   | { kind: 'group' }
   | { kind: 'viewProperties' }
-  | { kind: 'propertyList' }
-  | { kind: 'propertyCreate' }
-  | { kind: 'propertySchema', propertyId: PropertyId }
+  | { kind: 'fieldList' }
+  | { kind: 'fieldCreate' }
+  | { kind: 'fieldSchema', fieldId: CustomFieldId }
   | { kind: 'filter' }
   | { kind: 'sort' }
 

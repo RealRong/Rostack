@@ -4,6 +4,7 @@ import {
   getNodeBounds,
   getNodeGeometry,
   resolveNodeConnect,
+  resolveNodeEnter,
   resolveNodeRole,
   resolveNodeTransform,
   type NodeRole,
@@ -41,6 +42,7 @@ export type NodeRuntimeState = {
 export type NodeCapability = {
   role: NodeRole
   connect: boolean
+  enter: boolean
   resize: boolean
   rotate: boolean
 }
@@ -169,6 +171,7 @@ const createNodeCapabilityResolver = (
   return {
     role: resolveNodeRole(definition),
     connect: resolveNodeConnect(definition),
+    enter: resolveNodeEnter(definition),
     resize: transform.resize,
     rotate: transform.rotate
   }

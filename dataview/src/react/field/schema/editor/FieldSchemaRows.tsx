@@ -10,7 +10,7 @@ import { Menu } from '@ui/menu'
 import { Popover } from '@ui/popover'
 import { Switch } from '@ui/switch'
 
-export const PropertyMenuRow = forwardRef<HTMLButtonElement, {
+export const FieldMenuRow = forwardRef<HTMLButtonElement, {
   label: string
   suffix?: string
   pressed?: boolean
@@ -28,9 +28,9 @@ export const PropertyMenuRow = forwardRef<HTMLButtonElement, {
   </Button>
 ))
 
-PropertyMenuRow.displayName = 'PropertyMenuRow'
+FieldMenuRow.displayName = 'FieldMenuRow'
 
-export const PropertyToggleRow = (props: {
+export const FieldToggleRow = (props: {
   label: string
   checked: boolean
   onToggle: () => void
@@ -47,7 +47,7 @@ export const PropertyToggleRow = (props: {
   </Button>
 )
 
-export const PropertySwitchRow = (props: {
+export const FieldSwitchRow = (props: {
   label: string
   checked: boolean
   onToggle: () => void
@@ -67,7 +67,7 @@ export const PropertySwitchRow = (props: {
   </Button>
 )
 
-export const PropertyChoiceList = <TValue extends string>(props: {
+export const FieldChoiceList = <TValue extends string>(props: {
   value: TValue
   options: readonly {
     id: TValue
@@ -88,7 +88,7 @@ export const PropertyChoiceList = <TValue extends string>(props: {
   )
 }
 
-export const PropertyPopoverRow = (props: {
+export const FieldPopoverRow = (props: {
   label: string
   suffix?: string
   widthClassName: string
@@ -102,7 +102,7 @@ export const PropertyPopoverRow = (props: {
       onOpenChange={setOpen}
       initialFocus={-1}
       trigger={(
-        <PropertyMenuRow
+        <FieldMenuRow
           label={props.label}
           suffix={props.suffix}
           pressed={open}

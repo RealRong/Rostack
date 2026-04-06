@@ -5,14 +5,14 @@ import {
   GripVertical,
   X
 } from 'lucide-react'
-import type { GroupProperty, GroupSorter } from '@dataview/core/contracts'
+import type { Field, Sorter } from '@dataview/core/contracts'
 import { Button } from '@ui/button'
 import { DropdownMenu } from '@ui/dropdown-menu'
 import { Popover } from '@ui/popover'
 import type { VerticalReorderItemState } from '@ui/vertical-reorder-list'
 import { cn } from '@ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
-import { PropertyPicker } from '@dataview/react/page/features/viewQuery/PropertyPicker'
+import { FieldPicker } from '@dataview/react/page/features/viewQuery/FieldPicker'
 import {
   SORT_DIRECTIONS,
   findSorterProperty,
@@ -20,25 +20,25 @@ import {
 } from './sortUi'
 
 export interface SortRuleRowProps {
-  properties: readonly GroupProperty[]
-  sorters: readonly GroupSorter[]
+  fields: readonly Field[]
+  sorters: readonly Sorter[]
   index: number
-  sorter: GroupSorter
-  onChange: (sorter: GroupSorter) => void
+  sorter: Sorter
+  onChange: (sorter: Sorter) => void
   onRemove: () => void
   drag?: VerticalReorderItemState
 }
 
 export const SortRuleRow = (props: SortRuleRowProps) => {
-  const [propertyOpen, setPropertyOpen] = useState(false)
+  const [fieldOpen, setFieldOpen] = useState(false)
   const [directionOpen, setDirectionOpen] = useState(false)
-  const property = findSorterProperty(props.properties, props.sorter)
-  const availableProperties = getAvailableSorterPropertiesForIndex(props.properties, props.sorters, props.index)
-  const propertyLabel = property?.name ?? renderMessage(meta.ui.sort.deletedProperty)
+  const property = findSorterProperty(props.fields, props.sorter)
+  const availableFields = getAvailableSorterPropertiesForIndex(props.fields, props.sorters, props.index)
+  const fieldLabel = property?.name ?? renderMessage(meta.ui.sort.deletedField)
   const propertyKind = property
-    ? meta.property.kind.get(property.kind)
+    ? meta.field.kind.get(property.kind)
     : undefined
-  const PropertyIcon = propertyKind?.Icon
+  const FieldIcon = propertyKind?.Icon
 
   return (
     <div
@@ -52,7 +52,7 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
         {...props.drag?.handle.attributes}
         {...props.drag?.handle.listeners}
         aria-label={props.drag
-          ? renderMessage(meta.ui.sort.reorder(propertyLabel))
+          ? renderMessage(meta.ui.sort.reorder(fieldLabel))
           : undefined}
         disabled={!props.drag}
         size="icon"
@@ -67,34 +67,34 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
       </Button>
 
       <Popover
-        open={propertyOpen}
-        onOpenChange={setPropertyOpen}
+        open={fieldOpen}
+        onOpenChange={setFieldOpen}
         initialFocus={-1}
         placement="bottom-start"
         trigger={(
           <Button
             layout="row"
-            leading={property && PropertyIcon
-              ? <PropertyIcon className="size-4 shrink-0" size={16} strokeWidth={1.8} />
+            leading={property && FieldIcon
+              ? <FieldIcon className="size-4 shrink-0" size={16} strokeWidth={1.8} />
               : <ArrowUpDown className="size-4 shrink-0" size={16} strokeWidth={1.8} />}
             trailing={<ChevronDown className="size-4 shrink-0" size={16} strokeWidth={1.8} />}
           >
-            {propertyLabel}
+            {fieldLabel}
           </Button>
         )}
         contentClassName="w-[280px] p-0"
       >
         <div className="flex max-h-[72vh] flex-col">
-          <PropertyPicker
-            properties={availableProperties}
-            selectedPropertyId={property?.id}
+          <FieldPicker
+            fields={availableFields}
+            selectedFieldId={property?.id}
             emptyMessage={meta.ui.fieldPicker.noAvailable}
-            onSelect={propertyId => {
+            onSelect={fieldId => {
               props.onChange({
-                property: propertyId,
+                field: fieldId,
                 direction: props.sorter.direction
               })
-              setPropertyOpen(false)
+              setFieldOpen(false)
             }}
           />
         </div>

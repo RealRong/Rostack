@@ -1,6 +1,5 @@
 import type { Point } from '@whiteboard/core/types'
 import type { ValueStore } from '@whiteboard/engine'
-import type { EditField } from '../runtime/state/edit'
 import type { EditorPick } from './pick'
 
 export type ModifierKeys = {
@@ -37,7 +36,6 @@ export type PointerInput<
   samples: readonly PointerSample[]
   modifiers: ModifierKeys
   pick: EditorPick
-  field?: EditField
   editable: boolean
   ignoreInput: boolean
   ignoreSelection: boolean

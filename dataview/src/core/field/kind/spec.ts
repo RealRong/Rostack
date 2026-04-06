@@ -1,10 +1,10 @@
 import type {
-  GroupBucketSort,
-  GroupFilterOperator,
-  GroupProperty,
-  GroupPropertyConfig,
-  GroupPropertyKind,
-  GroupPropertyOption
+  BucketSort,
+  FilterOperator,
+  CustomField,
+  CustomFieldKind,
+  FieldOption,
+  CustomFieldId
 } from '../../contracts/state'
 import {
   createDefaultDatePropertyConfig
@@ -17,28 +17,32 @@ import {
   createDefaultUrlPropertyConfig
 } from './url'
 
-export type OptionKind = Extract<GroupPropertyKind, 'select' | 'multiSelect' | 'status'>
+export type OptionKind = Extract<CustomFieldKind, 'select' | 'multiSelect' | 'status'>
 
 export interface KindFilterPreset {
   id: string
-  operator: GroupFilterOperator
+  operator: FilterOperator
   value?: unknown
   hidesValue?: boolean
 }
 
 export interface KindSpec {
-  config: () => GroupPropertyConfig
-  convertConfig: (property: Pick<GroupProperty, 'kind' | 'config'>) => GroupPropertyConfig
+  create: (input: {
+    id: CustomFieldId
+    name: string
+    meta?: Record<string, unknown>
+  }) => CustomField
+  convert: (field: CustomField) => CustomField
   hasOptions: boolean
   filter: {
-    ops: readonly GroupFilterOperator[]
+    ops: readonly FilterOperator[]
     presets: readonly KindFilterPreset[]
   }
   group: {
     modes: readonly string[]
     mode: string
-    sorts: readonly GroupBucketSort[]
-    sort: GroupBucketSort | ''
+    sorts: readonly BucketSort[]
+    sort: BucketSort | ''
     showEmpty: boolean
     intervalModes?: readonly string[]
     bucketInterval?: number
@@ -49,7 +53,7 @@ const DEFAULT_GROUP_BUCKET_INTERVAL = 10
 
 const createFilterPreset = (
   id: string,
-  operator: GroupFilterOperator,
+  operator: FilterOperator,
   options?: {
     value?: unknown
     hidesValue?: boolean
@@ -103,7 +107,7 @@ const MULTI_SELECT_PRESETS = [
   })
 ] as const satisfies readonly KindFilterPreset[]
 
-const CHECKBOX_PRESETS = [
+const BOOLEAN_PRESETS = [
   createFilterPreset('checked', 'eq', {
     value: true,
     hidesValue: true
@@ -122,7 +126,7 @@ const CHECKBOX_PRESETS = [
   })
 ] as const satisfies readonly KindFilterPreset[]
 
-const FILE_MEDIA_PRESETS = [
+const ASSET_PRESETS = [
   createFilterPreset('exists_true', 'exists', {
     value: true,
     hidesValue: true
@@ -147,48 +151,47 @@ const TEXT_PRESETS = [
   })
 ] as const satisfies readonly KindFilterPreset[]
 
-const readOptionConfigOptions = (
-  property: Pick<GroupProperty, 'kind' | 'config'>
-): GroupPropertyOption[] => {
-  if (
-    property.config?.type === 'select'
-    || property.config?.type === 'multiSelect'
-    || property.config?.type === 'status'
-  ) {
-    return Array.isArray(property.config.options)
-      ? property.config.options
-      : []
-  }
-
-  return []
-}
-
-const cloneOptionConfig = (
-  type: Extract<GroupPropertyConfig['type'], 'select' | 'multiSelect'>,
-  property: Pick<GroupProperty, 'kind' | 'config'>
-): GroupPropertyConfig => ({
-  type,
-  options: readOptionConfigOptions(property).map(option => ({ ...option }))
+const cloneBase = (field: CustomField) => ({
+  id: field.id,
+  name: field.name,
+  ...(field.meta !== undefined
+    ? { meta: structuredClone(field.meta) }
+    : {})
 })
 
-const cloneStatusConfig = (
-  property: Pick<GroupProperty, 'kind' | 'config'>
-): GroupPropertyConfig => {
-  const sourceOptions = readOptionConfigOptions(property)
+const readOptionFieldOptions = (
+  field: CustomField
+): FieldOption[] => (
+  field.kind === 'select'
+  || field.kind === 'multiSelect'
+  || field.kind === 'status'
+)
+  ? field.options
+  : []
 
-  return {
-    type: 'status',
-    options: sourceOptions.length
-      ? sourceOptions.map(option => ({
-          ...option,
-          category: getStatusOptionCategory(property, option.id) ?? 'todo'
-        }))
-      : createDefaultStatusOptions()
-  }
+const cloneFlatOptions = (field: CustomField) => (
+  readOptionFieldOptions(field).map(option => ({
+    id: option.id,
+    name: option.name,
+    color: option.color ?? null
+  }))
+)
+
+const cloneStatusOptions = (field: CustomField) => {
+  const sourceOptions = readOptionFieldOptions(field)
+
+  return sourceOptions.length
+    ? sourceOptions.map(option => ({
+        id: option.id,
+        name: option.name,
+        color: option.color ?? null,
+        category: getStatusOptionCategory(field, option.id) ?? 'todo'
+      }))
+    : createDefaultStatusOptions()
 }
 
 const createLabelGroup = (
-  sort: GroupBucketSort,
+  sort: BucketSort,
   showEmpty: boolean
 ): KindSpec['group'] => ({
   modes: ['value'],
@@ -199,7 +202,7 @@ const createLabelGroup = (
 })
 
 const createValueGroup = (
-  sort: GroupBucketSort,
+  sort: BucketSort,
   showEmpty: boolean
 ): KindSpec['group'] => ({
   modes: ['value'],
@@ -236,25 +239,24 @@ const createPresenceGroup = (): KindSpec['group'] => ({
   showEmpty: true
 })
 
-export const GROUP_PROPERTY_KINDS = [
+export const CUSTOM_FIELD_KINDS = [
   'text',
   'number',
   'select',
   'multiSelect',
   'status',
   'date',
-  'checkbox',
+  'boolean',
   'url',
   'email',
   'phone',
-  'file',
-  'media'
-] as const satisfies readonly GroupPropertyKind[]
+  'asset'
+] as const satisfies readonly CustomFieldKind[]
 
 export const kindSpecs = {
   text: {
-    config: () => ({ type: 'text' }),
-    convertConfig: () => ({ type: 'text' }),
+    create: input => ({ ...input, kind: 'text' }),
+    convert: field => ({ ...cloneBase(field), kind: 'text' }),
     hasOptions: false,
     filter: {
       ops: ['contains', 'eq', 'neq', 'exists'],
@@ -263,8 +265,8 @@ export const kindSpecs = {
     group: createLabelGroup('labelAsc', false)
   },
   number: {
-    config: () => ({ type: 'number', format: 'number' }),
-    convertConfig: () => ({ type: 'number', format: 'number' }),
+    create: input => ({ ...input, kind: 'number', format: 'number', precision: null, currency: null, useThousandsSeparator: false }),
+    convert: field => ({ ...cloneBase(field), kind: 'number', format: 'number', precision: null, currency: null, useThousandsSeparator: false }),
     hasOptions: false,
     filter: {
       ops: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'exists'],
@@ -279,8 +281,8 @@ export const kindSpecs = {
     }
   },
   select: {
-    config: () => ({ type: 'select', options: [] }),
-    convertConfig: property => cloneOptionConfig('select', property),
+    create: input => ({ ...input, kind: 'select', options: [] }),
+    convert: field => ({ ...cloneBase(field), kind: 'select', options: cloneFlatOptions(field) }),
     hasOptions: true,
     filter: {
       ops: ['eq', 'neq', 'in', 'exists'],
@@ -289,8 +291,8 @@ export const kindSpecs = {
     group: createOptionGroup(['option'], 'option')
   },
   multiSelect: {
-    config: () => ({ type: 'multiSelect', options: [] }),
-    convertConfig: property => cloneOptionConfig('multiSelect', property),
+    create: input => ({ ...input, kind: 'multiSelect', options: [] }),
+    convert: field => ({ ...cloneBase(field), kind: 'multiSelect', options: cloneFlatOptions(field) }),
     hasOptions: true,
     filter: {
       ops: ['contains', 'in', 'exists'],
@@ -299,8 +301,8 @@ export const kindSpecs = {
     group: createOptionGroup(['option'], 'option')
   },
   status: {
-    config: () => ({ type: 'status', options: createDefaultStatusOptions() }),
-    convertConfig: property => cloneStatusConfig(property),
+    create: input => ({ ...input, kind: 'status', options: createDefaultStatusOptions() }),
+    convert: field => ({ ...cloneBase(field), kind: 'status', options: cloneStatusOptions(field) }),
     hasOptions: true,
     filter: {
       ops: ['eq', 'neq', 'in', 'exists'],
@@ -309,8 +311,8 @@ export const kindSpecs = {
     group: createOptionGroup(['option', 'category'], 'option')
   },
   date: {
-    config: () => createDefaultDatePropertyConfig(),
-    convertConfig: () => createDefaultDatePropertyConfig(),
+    create: input => ({ ...input, kind: 'date', ...createDefaultDatePropertyConfig() }),
+    convert: field => ({ ...cloneBase(field), kind: 'date', ...createDefaultDatePropertyConfig() }),
     hasOptions: false,
     filter: {
       ops: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'exists'],
@@ -322,19 +324,19 @@ export const kindSpecs = {
       mode: 'month'
     }
   },
-  checkbox: {
-    config: () => ({ type: 'checkbox' }),
-    convertConfig: () => ({ type: 'checkbox' }),
+  boolean: {
+    create: input => ({ ...input, kind: 'boolean' }),
+    convert: field => ({ ...cloneBase(field), kind: 'boolean' }),
     hasOptions: false,
     filter: {
       ops: ['eq', 'neq', 'exists'],
-      presets: CHECKBOX_PRESETS
+      presets: BOOLEAN_PRESETS
     },
     group: createBooleanGroup()
   },
   url: {
-    config: () => createDefaultUrlPropertyConfig(),
-    convertConfig: () => createDefaultUrlPropertyConfig(),
+    create: input => ({ ...input, kind: 'url', ...createDefaultUrlPropertyConfig() }),
+    convert: field => ({ ...cloneBase(field), kind: 'url', ...createDefaultUrlPropertyConfig() }),
     hasOptions: false,
     filter: {
       ops: ['contains', 'eq', 'neq', 'exists'],
@@ -343,8 +345,8 @@ export const kindSpecs = {
     group: createLabelGroup('labelAsc', false)
   },
   email: {
-    config: () => ({ type: 'email' }),
-    convertConfig: () => ({ type: 'email' }),
+    create: input => ({ ...input, kind: 'email' }),
+    convert: field => ({ ...cloneBase(field), kind: 'email' }),
     hasOptions: false,
     filter: {
       ops: ['contains', 'eq', 'neq', 'exists'],
@@ -353,8 +355,8 @@ export const kindSpecs = {
     group: createLabelGroup('labelAsc', false)
   },
   phone: {
-    config: () => ({ type: 'phone' }),
-    convertConfig: () => ({ type: 'phone' }),
+    create: input => ({ ...input, kind: 'phone' }),
+    convert: field => ({ ...cloneBase(field), kind: 'phone' }),
     hasOptions: false,
     filter: {
       ops: ['contains', 'eq', 'neq', 'exists'],
@@ -362,51 +364,50 @@ export const kindSpecs = {
     },
     group: createLabelGroup('labelAsc', false)
   },
-  file: {
-    config: () => ({ type: 'file', multiple: true }),
-    convertConfig: () => ({ type: 'file', multiple: true }),
+  asset: {
+    create: input => ({ ...input, kind: 'asset', multiple: true, accept: 'any' }),
+    convert: field => ({ ...cloneBase(field), kind: 'asset', multiple: true, accept: 'any' }),
     hasOptions: false,
     filter: {
       ops: ['contains', 'exists'],
-      presets: FILE_MEDIA_PRESETS
-    },
-    group: createPresenceGroup()
-  },
-  media: {
-    config: () => ({ type: 'media', multiple: true }),
-    convertConfig: () => ({ type: 'media', multiple: true }),
-    hasOptions: false,
-    filter: {
-      ops: ['contains', 'exists'],
-      presets: FILE_MEDIA_PRESETS
+      presets: ASSET_PRESETS
     },
     group: createPresenceGroup()
   }
-} as const satisfies Record<GroupPropertyKind, KindSpec>
+} as const satisfies Record<CustomFieldKind, KindSpec>
 
 export const getKindSpec = (
-  kind: GroupPropertyKind
+  kind: CustomFieldKind
 ): KindSpec => kindSpecs[kind]
 
-export const getPropertyKindSpec = (
-  property?: Pick<GroupProperty, 'kind'>
+export const getFieldKindSpec = (
+  field?: Pick<CustomField, 'kind'>
 ): KindSpec | undefined => (
-  property
-    ? getKindSpec(property.kind)
+  field
+    ? getKindSpec(field.kind)
     : undefined
 )
 
-export const createKindConfig = (
-  kind: GroupPropertyKind
-): GroupPropertyConfig => getKindSpec(kind).config()
+export const createDefaultFieldOfKind = (
+  kind: CustomFieldKind,
+  input: {
+    id: CustomFieldId
+    name: string
+    meta?: Record<string, unknown>
+  }
+): CustomField => getKindSpec(kind).create(input)
 
-export const convertPropertyKindConfig = (
-  property: Pick<GroupProperty, 'kind' | 'config'>,
-  kind: GroupPropertyKind
-): GroupPropertyConfig => getKindSpec(kind).convertConfig(property)
+export const convertFieldKind = (
+  field: CustomField,
+  kind: CustomFieldKind
+): CustomField => getKindSpec(kind).convert(field)
 
-export const hasPropertyOptions = (
-  property?: Pick<GroupProperty, 'kind'>
-): property is Pick<GroupProperty, 'kind'> & { kind: OptionKind } => (
-  Boolean(property && getKindSpec(property.kind).hasOptions)
+export const createKindConfig = createDefaultFieldOfKind
+
+export const convertFieldKindConfig = convertFieldKind
+
+export const hasFieldOptions = (
+  field?: Pick<CustomField, 'kind'>
+): field is Pick<CustomField, 'kind'> & { kind: OptionKind } => (
+  Boolean(field && getKindSpec(field.kind).hasOptions)
 )

@@ -16,6 +16,15 @@ const toPickKey = (
         pick.handle?.direction ?? ''
       ].join(':')
     case 'node':
+      if (pick.part === 'field') {
+        return [
+          'node',
+          pick.id,
+          pick.part,
+          pick.field
+        ].join(':')
+      }
+
       return [
         'node',
         pick.id,
@@ -30,7 +39,8 @@ const toPickKey = (
         pick.part,
         pick.end ?? '',
         pick.index ?? '',
-        pick.insert ?? ''
+        pick.insert ?? '',
+        pick.segment ?? ''
       ].join(':')
     case 'mindmap':
       return [

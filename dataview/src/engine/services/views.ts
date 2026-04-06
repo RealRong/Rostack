@@ -1,16 +1,16 @@
 import type {
-  GroupViewType,
+  ViewType,
   ViewId
 } from '@dataview/core/contracts'
 import { getDocumentViews } from '@dataview/core/document'
 import type {
-  GroupEngine,
-  GroupViewsEngineApi
+  Engine,
+  ViewsEngineApi
 } from '../types'
 
 export const createViewsEngineApi = (options: {
-  engine: Pick<GroupEngine, 'read' | 'command'>
-}): GroupViewsEngineApi => {
+  engine: Pick<Engine, 'read' | 'command'>
+}): ViewsEngineApi => {
   const readViews = () => getDocumentViews(options.engine.read.document.get())
 
   return {

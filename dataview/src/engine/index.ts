@@ -1,32 +1,32 @@
 export type {
-  CreateGroupEngineOptions,
-  GroupCommitResult,
-  GroupCreatedEntities,
-  GroupCommandResult,
-  GroupEngine,
-  GroupEngineDocumentApi,
-  GroupEngineHistoryApi,
-  GroupEngineReadApi,
-  GroupHistoryActionResult
+  CreateEngineOptions,
+  CommitResult,
+  CreatedEntities,
+  CommandResult,
+  Engine,
+  EngineDocumentApi,
+  EngineHistoryApi,
+  EngineReadApi,
+  HistoryActionResult
 } from './types'
 export type {
-  GroupKanbanApi,
-  GroupKanbanCreateCardInput,
-  GroupKanbanMoveCardsInput,
-  GroupViewDisplaySettingsApi,
-  GroupViewGallerySettingsApi,
-  GroupViewKanbanSettingsApi,
-  GroupPropertiesEngineApi,
-  GroupRecordsEngineApi,
-  GroupViewEngineApi,
-  GroupViewOrderApi,
-  GroupViewQueryApi,
-  GroupViewSettingsApi,
-  GroupViewTableSettingsApi,
-  GroupViewsEngineApi
+  KanbanApi,
+  KanbanCreateCardInput,
+  KanbanMoveCardsInput,
+  ViewDisplayApi,
+  ViewGalleryApi,
+  ViewKanbanApi,
+  FieldsEngineApi,
+  RecordsEngineApi,
+  ViewEngineApi,
+  ViewOrderApi,
+  ViewQueryApi,
+  ViewSettingsApi,
+  ViewTableApi,
+  ViewsEngineApi
 } from './types'
-export { createGroupEngine } from './instance/create'
+export { createEngine } from './instance/create'
 export type {
-  GroupHistoryOptions,
-  GroupHistoryState
+  HistoryOptions,
+  HistoryState
 } from './history'

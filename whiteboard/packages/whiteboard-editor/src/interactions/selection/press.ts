@@ -8,6 +8,8 @@ import {
   type SelectionPressTarget
 } from '@whiteboard/core/selection'
 import { createTimeoutTask, type TimeoutTask } from '@whiteboard/engine'
+import type { Node } from '@whiteboard/core/types'
+import type { EditField } from '../../runtime/state/edit'
 import {
   GestureTuning
 } from '../../runtime/interaction/config'
@@ -26,8 +28,25 @@ import type {
 import { createMarqueeInteraction } from './marquee'
 import { createMoveInteraction } from './move'
 
-type SelectionPressField = NonNullable<PointerDownInput['field']>
-type SelectionSubjectInput = Pick<PointerDownInput, 'pick' | 'field'>
+type SelectionPressField = EditField
+type SelectionSubjectInput = Pick<PointerDownInput, 'pick'>
+
+const resolveImplicitEditField = (
+  node: Node | undefined
+): EditField | undefined => {
+  if (!node) {
+    return undefined
+  }
+
+  switch (node.type) {
+    case 'text':
+    case 'sticky':
+    case 'shape':
+      return 'text'
+    default:
+      return undefined
+  }
+}
 
 const resolveSelectionPressTargetInput = (
   ctx: InteractionContext,
@@ -44,25 +63,36 @@ const resolveSelectionPressTargetInput = (
         part: input.pick.part
       }
     case 'node': {
-      if (input.pick.part !== 'body' && input.pick.part !== 'shell') {
-        return undefined
-      }
-
-      const targetInput: SelectionPressTargetInput<SelectionPressField> = {
-        kind: 'node',
-        nodeId: input.pick.id,
-        part: input.pick.part,
-        field: input.field
+      if (input.pick.part === 'field') {
+        return {
+          kind: 'node',
+          nodeId: input.pick.id,
+          part: 'field',
+          field: input.pick.field
+        }
       }
 
       if (input.pick.part === 'shell') {
         const node = ctx.read.node.item.get(input.pick.id)?.node
-        targetInput.shell = node
+        return {
+          kind: 'node',
+          nodeId: input.pick.id,
+          part: 'shell',
+          shell: node
           ? ctx.read.node.capability(node).role
           : 'content'
+        }
       }
 
-      return targetInput
+      if (input.pick.part === 'body') {
+        return {
+          kind: 'node',
+          nodeId: input.pick.id,
+          part: 'body'
+        }
+      }
+
+      return undefined
     }
     case 'edge':
     case 'mindmap':
@@ -97,7 +127,13 @@ const resolveSelectionPress = (
 
   const resolved = resolveSelectionPressDecision({
     getNode: (nodeId) => ctx.read.node.item.get(nodeId)?.node,
-    getOwnerId: ctx.read.node.owner
+    getOwnerId: ctx.read.node.owner,
+    canEnter: (nodeId) => {
+      const node = ctx.read.node.item.get(nodeId)?.node
+      return node
+        ? ctx.read.node.capability(node).enter
+        : false
+    }
   }, {
     modifiers: input.modifiers,
     selection: ctx.read.selection.summary.get(),
@@ -203,8 +239,31 @@ const createPressSession = (
         case 'select':
           ctx.write.session.selection.replace(tap.target)
           break
-        case 'edit':
-          ctx.write.session.edit.start(tap.nodeId, tap.field)
+        case 'edit-node': {
+          const field = resolveImplicitEditField(
+            ctx.read.node.item.get(tap.nodeId)?.node
+          )
+          if (!field) {
+            break
+          }
+          ctx.write.session.edit.start(tap.nodeId, field, {
+            caret: {
+              kind: 'point',
+              client: input.client
+            }
+          })
+          break
+        }
+        case 'edit-field':
+          if (tap.selection) {
+            ctx.write.session.selection.replace(tap.selection)
+          }
+          ctx.write.session.edit.start(tap.nodeId, tap.field, {
+            caret: {
+              kind: 'point',
+              client: input.client
+            }
+          })
           break
       }
       return FINISH

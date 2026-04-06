@@ -1,4 +1,11 @@
-export { cloneGroupDocument, normalizeGroupDocument } from './normalize'
+export { cloneDocument, normalizeDocument } from './normalize'
+export {
+  getDocumentFieldById,
+  getDocumentFieldIds,
+  getDocumentFields,
+  getDocumentTitleField,
+  isDocumentTitleFieldId
+} from './fields'
 export {
   clearDocumentValue,
   enumerateRecords,
@@ -15,14 +22,14 @@ export {
   setDocumentValue
 } from './records'
 export {
-  getDocumentProperties,
-  getDocumentPropertyById,
-  getDocumentPropertyIds,
-  hasDocumentProperty,
-  patchDocumentProperty,
-  putDocumentProperty,
-  removeDocumentProperty
-} from './properties'
+  getDocumentCustomFields,
+  getDocumentCustomFieldById,
+  getDocumentCustomFieldIds,
+  hasDocumentCustomField,
+  patchDocumentCustomField,
+  putDocumentCustomField,
+  removeDocumentCustomField
+} from './customFields'
 export {
   getDocumentViewById,
   getDocumentViewIds,

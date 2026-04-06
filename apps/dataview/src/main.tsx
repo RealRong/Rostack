@@ -3,14 +3,13 @@ import './styles.css'
 
 import { createRoot } from 'react-dom/client'
 import {
-  createDefaultGroupViewOptions,
-  createGroupEngine,
-  type GroupDocument,
-  type GroupProperty
+  createDefaultViewOptions,
+  createEngine,
+  type DataDoc,
+  type CustomField
 } from '@dataview'
 import { EngineProvider, Page } from '@dataview/react'
 
-const FIELD_TITLE = 'title'
 const FIELD_STATUS = 'status'
 const FIELD_POINTS = 'points'
 
@@ -20,73 +19,62 @@ const VIEW_KANBAN = 'view_kanban'
 const STATUS_OPTIONS = [
   {
     id: 'todo',
-    key: 'todo',
     name: 'Todo',
-    color: 'gray'
+    color: 'gray',
+    category: 'todo'
   },
   {
     id: 'doing',
-    key: 'doing',
     name: 'In Progress',
-    color: 'blue'
+    color: 'blue',
+    category: 'in_progress'
   },
   {
     id: 'done',
-    key: 'done',
     name: 'Done',
-    color: 'green'
+    color: 'green',
+    category: 'complete'
   }
 ] as const
 
-const createProperties = (): GroupProperty[] => ([
-  {
-    id: FIELD_TITLE,
-    name: 'Title',
-    kind: 'text',
-    config: {
-      type: 'text'
-    }
-  },
+const createFields = (): CustomField[] => ([
   {
     id: FIELD_STATUS,
     name: 'Status',
-    kind: 'select',
-    config: {
-      type: 'select',
-      options: STATUS_OPTIONS.map(option => ({ ...option }))
-    }
+    kind: 'status',
+    options: STATUS_OPTIONS.map(option => ({ ...option }))
   },
   {
     id: FIELD_POINTS,
     name: 'Points',
     kind: 'number',
-    config: {
-      type: 'number',
-      format: 'number'
-    }
+    format: 'number',
+    precision: null,
+    currency: null,
+    useThousandsSeparator: false
   }
 ])
 
-const createPropertyTable = (
-  properties: readonly GroupProperty[]
-): GroupDocument['properties'] => {
-  const byId = {} as GroupDocument['properties']['byId']
+const createFieldTable = (
+  fields: readonly CustomField[]
+): DataDoc['fields'] => {
+  const byId = {} as DataDoc['fields']['byId']
 
-  properties.forEach(property => {
-    byId[property.id] = property
+  fields.forEach(field => {
+    byId[field.id] = field
   })
 
   return {
     byId,
-    order: properties.map(property => property.id)
+    order: fields.map(field => field.id)
   }
 }
 
-const createDefaultDocument = (): GroupDocument => {
+const createDefaultDocument = (): DataDoc => {
   const count = 180
-  const properties = createProperties()
-  const propertyTable = createPropertyTable(properties)
-  const records: GroupDocument['records'] = {
+  const fields = createFields()
+  const fieldTable = createFieldTable(fields)
+  const records: DataDoc['records'] = {
     byId: {},
     order: []
   }
@@ -95,9 +83,9 @@ const createDefaultDocument = (): GroupDocument => {
     const id = `rec_${String(index + 1).padStart(5, '0')}`
     records.byId[id] = {
       id,
+      title: `Task ${String(index + 1).padStart(5, '0')}`,
       type: 'task',
       values: {
-        [FIELD_TITLE]: `Task ${String(index + 1).padStart(5, '0')}`,
         [FIELD_STATUS]: STATUS_OPTIONS[Math.floor(Math.random() * STATUS_OPTIONS.length)]?.id ?? 'todo',
         [FIELD_POINTS]: Math.floor(Math.random() * 13) + 1
       }
@@ -107,7 +95,7 @@ const createDefaultDocument = (): GroupDocument => {
 
   return {
     schemaVersion: 1,
-    properties: propertyTable,
+    fields: fieldTable,
     views: {
       byId: {
         [VIEW_TABLE]: {
@@ -122,15 +110,10 @@ const createDefaultDocument = (): GroupDocument => {
             search: {
               query: ''
             },
-            sorters: [
-              {
-                property: FIELD_TITLE,
-                direction: 'asc'
-              }
-            ]
+            sorters: []
           },
           aggregates: [],
-          options: createDefaultGroupViewOptions('table', properties),
+          options: createDefaultViewOptions('table', fields),
           orders: []
         },
         [VIEW_KANBAN]: {
@@ -147,16 +130,16 @@ const createDefaultDocument = (): GroupDocument => {
             },
             sorters: [],
             group: {
-              property: FIELD_STATUS,
+              field: FIELD_STATUS,
               mode: 'option',
               bucketSort: 'manual'
             }
           },
           aggregates: [],
           options: {
-            ...createDefaultGroupViewOptions('kanban', properties),
+            ...createDefaultViewOptions('kanban', fields),
             display: {
-              propertyIds: [FIELD_TITLE, FIELD_POINTS]
+              fieldIds: [FIELD_POINTS]
             }
           },
           orders: []
@@ -202,7 +185,7 @@ if (!root) {
 
 syncSystemTheme()
 
-const engine = createGroupEngine({
+const engine = createEngine({
   document: createDefaultDocument()
 })
 

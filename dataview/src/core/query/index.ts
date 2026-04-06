@@ -1,9 +1,9 @@
 export type {
-  GroupViewQuery,
+  ViewQuery,
   ResolvedViewGroupState,
   ViewGroupPatch
 } from './contracts'
-export { normalizeGroupViewQuery } from './normalize'
+export { normalizeViewQuery } from './normalize'
 export { isSameViewQuery } from './equality'
 export { setViewSearchQuery } from './search'
 export {

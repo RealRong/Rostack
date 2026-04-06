@@ -1,19 +1,19 @@
 import type {
-  GroupBucketSort,
-  GroupProperty,
-  GroupGroupBy,
-  GroupViewQuery as StoredGroupViewQuery
+  BucketSort,
+  Field,
+  Grouping,
+  ViewQuery as StoredGroupViewQuery
 } from '@dataview/core/contracts'
 
-export type GroupViewQuery = StoredGroupViewQuery
+export type ViewQuery = StoredGroupViewQuery
 
 export interface ResolvedViewGroupState {
-  property?: GroupProperty
-  propertyId: string
+  field?: Field
+  fieldId: string
   mode: string
-  bucketSort?: GroupBucketSort
+  bucketSort?: BucketSort
   bucketInterval?: number
   showEmpty?: boolean
 }
 
-export type ViewGroupPatch = Pick<GroupGroupBy, 'mode' | 'bucketSort' | 'bucketInterval' | 'showEmpty'>
+export type ViewGroupPatch = Pick<Grouping, 'mode' | 'bucketSort' | 'bucketInterval' | 'showEmpty'>

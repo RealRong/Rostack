@@ -4,11 +4,11 @@ import {
   isComposing,
   keyAction
 } from '../shared/keyboard'
-import type { PropertyValueDraftEditorProps } from '../contracts'
+import type { FieldValueDraftEditorProps } from '../contracts'
 
 export type InputKind = 'text' | 'number'
 
-export interface InputEditorProps extends PropertyValueDraftEditorProps<string> {
+export interface InputEditorProps extends FieldValueDraftEditorProps<string> {
   type: InputKind
 }
 

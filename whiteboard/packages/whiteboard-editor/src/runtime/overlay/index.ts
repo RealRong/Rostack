@@ -6,6 +6,7 @@ import { createOverlayState } from './state'
 import type { EditorOverlay } from './types'
 
 export type {
+  EdgeConnectFeedback,
   EdgeGuide,
   EdgeOverlayEntry,
   EditorOverlay,

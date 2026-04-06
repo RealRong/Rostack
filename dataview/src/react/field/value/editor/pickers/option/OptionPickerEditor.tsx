@@ -9,13 +9,13 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent
 } from 'react'
-import { getPropertyOptions } from '@dataview/core/property'
+import { getFieldOptions } from '@dataview/core/field'
 import { meta, renderMessage } from '@dataview/meta'
 import {
   OptionEditorPopover,
   OptionToken,
-  PropertyOptionTag
-} from '@dataview/react/properties/options'
+  FieldOptionTag
+} from '@dataview/react/field/options'
 import { Button } from '@ui/button'
 import {
   PickerList,
@@ -28,7 +28,7 @@ import {
 import { cn } from '@ui/utils'
 import { useDataView } from '@dataview/react/dataview'
 import type { EditorSubmitTrigger } from '@dataview/react/interaction'
-import type { PropertyValueDraftEditorProps } from '../../contracts'
+import type { FieldValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@dataview/dom/focus'
 import {
   isComposing,
@@ -69,11 +69,11 @@ const removeSelectedId = (
 ) => selectedIds.filter(id => id !== optionId)
 
 const optionLabel = (
-  option: ReturnType<typeof getPropertyOptions>[number]
-) => option.name.trim() || renderMessage(meta.ui.property.options.untitled)
+  option: ReturnType<typeof getFieldOptions>[number]
+) => option.name.trim() || renderMessage(meta.ui.field.options.untitled)
 
 const filterOptionsByQuery = (
-  options: ReturnType<typeof getPropertyOptions>,
+  options: ReturnType<typeof getFieldOptions>,
   query: string
 ) => {
   const normalized = normalizeQuery(query)
@@ -88,7 +88,7 @@ const filterOptionsByQuery = (
 
 export type PickerMode = 'single' | 'multi'
 
-export interface OptionPickerEditorProps extends PropertyValueDraftEditorProps<string> {
+export interface OptionPickerEditorProps extends FieldValueDraftEditorProps<string> {
   mode: PickerMode
 }
 
@@ -109,7 +109,7 @@ const stopEventPropagation = (event: {
 }
 
 const OptionRow = (props: {
-  option: ReturnType<typeof getPropertyOptions>[number]
+  option: ReturnType<typeof getFieldOptions>[number]
   highlighted: boolean
   open: boolean
   id?: string
@@ -149,7 +149,7 @@ const OptionRow = (props: {
         <Button
           variant="plain"
           size="iconBare"
-          aria-label={renderMessage(meta.ui.property.options.reorder(label))}
+          aria-label={renderMessage(meta.ui.field.options.reorder(label))}
           {...props.drag.handle.attributes}
           {...props.drag.handle.listeners}
           ref={props.drag.handle.setActivatorNodeRef}
@@ -166,9 +166,9 @@ const OptionRow = (props: {
       )}
 
       <div className="min-w-0 flex-1 flex items-center">
-        <PropertyOptionTag
+        <FieldOptionTag
           label={label}
-          color={props.option.color}
+          color={props.option.color ?? undefined}
           className="max-w-full"
         />
       </div>
@@ -177,7 +177,10 @@ const OptionRow = (props: {
         (props.open || props.highlighted) && 'opacity-100'
       )}>
         <OptionEditorPopover
-          option={props.option}
+          option={{
+            ...props.option,
+            color: props.option.color ?? undefined
+          }}
           open={props.open}
           onOpenChange={props.onOpenChange}
           onRename={props.onRename}
@@ -187,7 +190,7 @@ const OptionRow = (props: {
             <Button
               variant="plain"
               size="iconBare"
-              aria-label={renderMessage(meta.ui.property.options.edit(label))}
+              aria-label={renderMessage(meta.ui.field.options.edit(label))}
               onClick={event => {
                 event.stopPropagation()
               }}
@@ -209,7 +212,7 @@ export const OptionPickerEditor = (
   const [query, setQuery] = useState('')
   const [editingOptionId, setEditingOptionId] = useState<string>()
   const property = props.property
-  const options = getPropertyOptions(property)
+  const options = getFieldOptions(property)
   const filteredOptions = useMemo(
     () => filterOptionsByQuery(options, query),
     [options, query]
@@ -342,7 +345,7 @@ export const OptionPickerEditor = (
       : 'apply',
     trigger: EditorSubmitTrigger = 'programmatic'
   ) => {
-    const created = editor.properties.options.create(property.id, query)
+    const created = editor.fields.options.create(property.id, query)
     if (!created) {
       return false
     }
@@ -500,14 +503,14 @@ export const OptionPickerEditor = (
   }
 
   const reorderOptions = (from: number, to: number) => {
-    editor.properties.options.reorder(
+    editor.fields.options.reorder(
       property.id,
       moveItem(options, from, to).map(option => option.id)
     )
   }
 
   const renderRow = (
-    option: ReturnType<typeof getPropertyOptions>[number],
+    option: ReturnType<typeof getFieldOptions>[number],
     drag?: VerticalReorderItemState
   ) => (
     <OptionRow
@@ -536,12 +539,12 @@ export const OptionPickerEditor = (
           setHighlightedKey(option.id)
         }
       }}
-      onRename={name => editor.properties.options.update(property.id, option.id, { name }) !== undefined}
+      onRename={name => editor.fields.options.update(property.id, option.id, { name }) !== undefined}
       onColorChange={color => {
-        editor.properties.options.update(property.id, option.id, { color })
+        editor.fields.options.update(property.id, option.id, { color })
       }}
       onDelete={() => {
-        editor.properties.options.remove(property.id, option.id)
+        editor.fields.options.remove(property.id, option.id)
         removeOptionFromDraft(option.id)
       }}
     />
@@ -565,7 +568,7 @@ export const OptionPickerEditor = (
             <OptionToken
               key={option.id}
               label={optionLabel(option)}
-              color={option.color}
+              color={option.color ?? undefined}
               onRemove={() => {
                 removeOptionFromDraft(option.id)
                 focusInputWithoutScroll(inputRef.current)
@@ -581,7 +584,7 @@ export const OptionPickerEditor = (
             }}
             placeholder={selectedOptions.length
               ? ''
-              : renderMessage(meta.ui.property.options.selectOrCreate(props.mode === 'multi'))}
+              : renderMessage(meta.ui.field.options.selectOrCreate(props.mode === 'multi'))}
             className="min-w-[4ch] flex-1 border-0 bg-transparent px-1 py-1 text-sm font-semibold text-foreground outline-none placeholder:text-muted-foreground"
           />
         </div>
@@ -589,7 +592,7 @@ export const OptionPickerEditor = (
 
       <div className="flex min-h-0 flex-1 flex-col border-t border-divider">
         <div className="px-3 py-2 text-[12px] font-medium text-muted-foreground">
-          {renderMessage(meta.ui.property.options.selectOrCreate(props.mode === 'multi'))}
+          {renderMessage(meta.ui.field.options.selectOrCreate(props.mode === 'multi'))}
         </div>
 
         <div className="max-h-72 overflow-y-auto px-2 pb-2">
@@ -632,7 +635,7 @@ export const OptionPickerEditor = (
                         }}
                       >
                         <span className="truncate">
-                          {renderMessage(meta.ui.property.options.create(query.trim()))}
+                          {renderMessage(meta.ui.field.options.create(query.trim()))}
                         </span>
                       </Button>
                     </div>
@@ -668,12 +671,12 @@ export const OptionPickerEditor = (
                         setHighlightedKey(option.id)
                       }
                     }}
-                    onRename={name => editor.properties.options.update(property.id, option.id, { name }) !== undefined}
+                    onRename={name => editor.fields.options.update(property.id, option.id, { name }) !== undefined}
                     onColorChange={color => {
-                      editor.properties.options.update(property.id, option.id, { color })
+                      editor.fields.options.update(property.id, option.id, { color })
                     }}
                     onDelete={() => {
-                      editor.properties.options.remove(property.id, option.id)
+                      editor.fields.options.remove(property.id, option.id)
                       removeOptionFromDraft(option.id)
                     }}
                   />

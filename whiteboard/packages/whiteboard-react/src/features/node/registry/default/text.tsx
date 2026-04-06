@@ -3,7 +3,7 @@ import type { CSSProperties, KeyboardEvent } from 'react'
 import type { NodeDefinition, NodeRenderProps } from '../../../../types/node'
 import { useEdit, useEditor } from '../../../../runtime/hooks/useEditor'
 import {
-  focusEditableDraftEnd,
+  focusEditableDraft,
   isEscapeEditingKey,
   isSubmitEditingKey,
   stopEditingPointerDown,
@@ -62,6 +62,7 @@ const TextNodeRenderer = ({
   const editor = useEditor()
   const edit = useEdit()
   const editing = edit?.nodeId === node.id && edit.field === 'text'
+  const editCaret = editing ? edit.caret : undefined
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
   const [draft, setDraft] = useState(text)
   const isSticky = variant === 'sticky'
@@ -114,9 +115,8 @@ const TextNodeRenderer = ({
       return
     }
 
-    syncEditableDraft(element, draft)
-    return focusEditableDraftEnd(element)
-  }, [draft, editing])
+    return focusEditableDraft(element, editCaret)
+  }, [editCaret, editing])
 
   useLayoutEffect(() => {
     if (!editing || isSticky) {
@@ -221,12 +221,11 @@ const TextNodeRenderer = ({
   }
 
   return (
-    <div
-      className={`wb-default-text-display${isSticky ? ' wb-sticky-content' : ''}`}
-      data-node-editable-field="text"
-      ref={setSourceRef}
-      style={{
-        fontSize,
+      <div
+        className={`wb-default-text-display${isSticky ? ' wb-sticky-content' : ''}`}
+        ref={setSourceRef}
+        style={{
+          fontSize,
         color,
         opacity: selected ? 1 : 0.9
       }}
@@ -280,6 +279,7 @@ export const TextNodeDefinition: NodeDefinition = {
   geometry: 'rect',
   schema: textSchema,
   defaultData: { text: '' },
+  enter: true,
   render: (props) => <TextNodeRenderer {...props} variant="text" />,
   style: createTextStyle('text')
 }
@@ -296,6 +296,7 @@ export const StickyNodeDefinition: NodeDefinition = {
   geometry: 'rect',
   schema: stickySchema,
   defaultData: { text: '' },
+  enter: true,
   render: (props) => <TextNodeRenderer {...props} variant="sticky" />,
   style: createTextStyle('sticky')
 }

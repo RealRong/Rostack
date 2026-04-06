@@ -14,16 +14,19 @@ import {
 } from '@dataview/table'
 import {
   type AppearanceList,
-  type PropertyList,
-  sameField,
+  type FieldList,
+  sameCellRef,
   toRecordField
 } from '@dataview/engine/projection/view'
 import {
   type AppearanceId,
   type CurrentView,
-  type FieldId
+  type CellRef
 } from '@dataview/react/runtime/currentView'
-import { resolvePropertyPrimaryAction } from '@dataview/core/property'
+import {
+  isTitleFieldId,
+  resolveFieldPrimaryAction
+} from '@dataview/core/field'
 import { isOverlayBlockingElement } from '@ui/overlay'
 import {
   containsRelatedTarget,
@@ -58,7 +61,7 @@ type CellIntent = 'primary' | 'set' | 'extend'
 type PointerState =
   | {
       type: 'press'
-      cell: FieldId
+      cell: CellRef
       element?: Element | null
       start: {
         x: number
@@ -69,14 +72,14 @@ type PointerState =
   | {
       type: 'drag'
       mode: 'pointer'
-      anchor: FieldId
-      lastTarget?: FieldId
+      anchor: CellRef
+      lastTarget?: CellRef
     }
   | {
       type: 'drag'
       mode: 'fill'
-      anchor: FieldId
-      lastTarget?: FieldId
+      anchor: CellRef
+      lastTarget?: CellRef
     }
 
 type FillPointerState = Extract<PointerState, {
@@ -87,7 +90,7 @@ type FillPointerState = Extract<PointerState, {
 interface RowHoverContext {
   container: HTMLElement | null
   appearances: Pick<AppearanceList, 'has'>
-  properties: Pick<PropertyList, 'has'>
+  fields: Pick<FieldList, 'has'>
   rowIds: readonly AppearanceId[]
   rowIdAtPoint: (input: {
     rowIds: readonly AppearanceId[]
@@ -146,11 +149,11 @@ const rowHoverTargetFromElement = (
 const hoverTargetFromElement = (
   target: EventTarget | null,
   appearances: Pick<AppearanceList, 'has'>,
-  properties: Pick<PropertyList, 'has'>
+  fields: Pick<FieldList, 'has'>
 ): TableHoverTarget | null => {
   const cell = (
-    cellFromTarget(target, appearances, properties, 'cell')
-    ?? cellFromTarget(target, appearances, properties, 'fill-handle')
+    cellFromTarget(target, appearances, fields, 'cell')
+    ?? cellFromTarget(target, appearances, fields, 'fill-handle')
   )
   if (cell) {
     return {
@@ -218,7 +221,7 @@ const hoverTargetFromPoint = (
     ? hoverTargetFromElement(
         element,
         context.appearances,
-        context.properties
+        context.fields
       )
     : null
   if (target) {
@@ -249,12 +252,12 @@ const useHoverBinding = (input: {
   const rowContext = useCallback((): RowHoverContext => ({
     container: input.table.dom.container(),
     appearances: input.currentView.appearances,
-    properties: input.currentView.properties,
+    fields: input.currentView.fields,
     rowIds: rowIdsRef.current,
     rowIdAtPoint: input.table.rowHit.idAtPoint
   }), [
     input.currentView.appearances,
-    input.currentView.properties,
+    input.currentView.fields,
     input.table
   ])
 
@@ -283,7 +286,7 @@ const useHoverBinding = (input: {
       hoverTargetFromElement(
         targetRef.current,
         input.currentView.appearances,
-        input.currentView.properties
+        input.currentView.fields
       )
       ?? rowHoverTargetFromPoint(point, rowContext()),
       point
@@ -291,7 +294,7 @@ const useHoverBinding = (input: {
   }, [
     clear,
     input.currentView.appearances,
-    input.currentView.properties,
+    input.currentView.fields,
     input.table,
     rowContext
   ])
@@ -432,10 +435,10 @@ export const usePointer = (
   })
 
   const readGridSelection = useCallback(() => table.gridSelection.get(), [table])
-  const readColumn = useCallback((propertyId: string) => (
-    currentView.properties.all.find(property => property.id === propertyId)
-  ), [currentView.properties.all])
-  const readCell = useCallback((cell: FieldId) => {
+  const readColumn = useCallback((fieldId: string) => (
+    currentView.fields.all.find(field => field.id === fieldId)
+  ), [currentView.fields.all])
+  const readCell = useCallback((cell: CellRef) => {
     const recordId = currentView.appearances.get(cell.appearanceId)?.recordId
     const record = recordId
       ? editor.read.record.get(recordId)
@@ -443,25 +446,25 @@ export const usePointer = (
 
     return {
       exists: Boolean(record),
-      value: record?.values[cell.propertyId]
+      value: record?.values[cell.fieldId]
     }
   }, [currentView.appearances, editor])
 
   const selectCell = useCallback((
-    cell: FieldId,
-    anchor: FieldId = cell
+    cell: CellRef,
+    anchor: CellRef = cell
   ) => {
     table.gridSelection.set(cell, anchor)
     table.focus()
   }, [table])
 
-  const setDragTarget = useCallback((target: FieldId | undefined) => {
+  const setDragTarget = useCallback((target: CellRef | undefined) => {
     const current = stateRef.current
     if (!target || current?.type !== 'drag') {
       return
     }
 
-    if (current.lastTarget && sameField(current.lastTarget, target)) {
+    if (current.lastTarget && sameCellRef(current.lastTarget, target)) {
       return
     }
 
@@ -483,10 +486,10 @@ export const usePointer = (
       cellFromPoint(
         point,
         currentView.appearances,
-        currentView.properties
+        currentView.fields
       ) ?? undefined
     )
-  }, [currentView.appearances, currentView.properties, setDragTarget, table.hover])
+  }, [currentView.appearances, currentView.fields, setDragTarget, table.hover])
 
   const resolveAutoPanTargets = useCallback(
     () => dragActive
@@ -502,33 +505,61 @@ export const usePointer = (
   })
 
   const writeCell = useCallback((
-    cell: FieldId,
+    cell: CellRef,
     value: unknown | undefined
   ) => {
     const target = toRecordField({
       appearanceId: cell.appearanceId,
-      propertyId: cell.propertyId
+      fieldId: cell.fieldId
     }, currentView.appearances)
     if (!target) {
       return
     }
 
     if (value === undefined) {
-      editor.records.clearValue(target.recordId, target.propertyId)
+      if (isTitleFieldId(target.fieldId)) {
+        editor.command({
+          type: 'record.apply',
+          target: {
+            type: 'record',
+            recordId: target.recordId
+          },
+          patch: {
+            title: ''
+          }
+        })
+        return
+      }
+
+      editor.records.clearValue(target.recordId, target.fieldId)
       return
     }
 
-    editor.records.setValue(target.recordId, target.propertyId, value)
+    if (isTitleFieldId(target.fieldId)) {
+      editor.command({
+        type: 'record.apply',
+        target: {
+          type: 'record',
+          recordId: target.recordId
+        },
+        patch: {
+          title: String(value ?? '')
+        }
+      })
+      return
+    }
+
+    editor.records.setValue(target.recordId, target.fieldId, value)
   }, [currentView.appearances, editor])
 
   const runPrimary = useCallback((
-    cell: FieldId,
+    cell: CellRef,
     intent: CellIntent,
     element?: Element | null
   ) => {
     const currentSelection = readGridSelection()
     const anchor = gridSelection.anchor(currentSelection) ?? cell
-    const property = readColumn(cell.propertyId)
+    const field = readColumn(cell.fieldId)
     const data = readCell(cell)
 
     if (intent === 'set' || intent === 'extend') {
@@ -539,9 +570,9 @@ export const usePointer = (
       return
     }
 
-    const action = resolvePropertyPrimaryAction({
+    const action = resolveFieldPrimaryAction({
       exists: data.exists,
-      property,
+      field: field,
       value: data.value
     })
     switch (action.kind) {
@@ -566,7 +597,7 @@ export const usePointer = (
     const entries = fill.plan(
       currentSelection,
       currentView.appearances,
-      currentView.properties,
+      currentView.fields,
       readCell
     )
     if (!entries.length) {
@@ -580,7 +611,7 @@ export const usePointer = (
     table.focus()
   }, [
     currentView.appearances,
-    currentView.properties,
+    currentView.fields,
     readCell,
     table,
     writeCell
@@ -598,7 +629,7 @@ export const usePointer = (
     const target = cellFromPoint(
       point,
       currentView.appearances,
-      currentView.properties
+      currentView.fields
     ) ?? undefined
 
     if (current.type === 'press') {
@@ -630,7 +661,7 @@ export const usePointer = (
     setDragTarget(target)
   }, [
     currentView.appearances,
-    currentView.properties,
+    currentView.fields,
     readGridSelection,
     setDragTarget,
     table
@@ -668,7 +699,7 @@ export const usePointer = (
   }, [table])
 
   const startPress = useCallback((
-    cell: FieldId,
+    cell: CellRef,
     event: ReactPointerEvent<HTMLDivElement>,
     element?: Element | null
   ) => {
@@ -701,7 +732,7 @@ export const usePointer = (
   }, [cancel, finish, move, table])
 
   const startFill = useCallback((
-    cell: FieldId,
+    cell: CellRef,
     event: ReactPointerEvent<HTMLDivElement>
   ) => {
     stateRef.current = {
@@ -774,7 +805,7 @@ export const usePointer = (
       const fillCell = cellFromTarget(
         event.target,
         currentView.appearances,
-        currentView.properties,
+        currentView.fields,
         'fill-handle'
       )
       if (fillCell) {
@@ -786,7 +817,7 @@ export const usePointer = (
       const cell = cellFromTarget(
         event.target,
         currentView.appearances,
-        currentView.properties,
+        currentView.fields,
         'cell'
       )
       if (cell) {
@@ -804,7 +835,7 @@ export const usePointer = (
     },
     [
       currentView.appearances,
-      currentView.properties,
+      currentView.fields,
       startFill,
       startPress
     ]

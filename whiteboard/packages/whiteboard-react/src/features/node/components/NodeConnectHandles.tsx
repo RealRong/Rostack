@@ -10,6 +10,7 @@ type NodeConnectHandlesProps = {
   node: NodeViewNode
   rect: NodeViewRect
   rotation: number
+  activeSide?: EdgeAnchor['side']
 }
 
 const NODE_CONNECT_SIDES = ['top', 'right', 'bottom', 'left'] as const
@@ -17,7 +18,8 @@ const NODE_CONNECT_SIDES = ['top', 'right', 'bottom', 'left'] as const
 const NodeConnectHandleItem = ({
   nodeId,
   side,
-  point
+  point,
+  active
 }: {
   nodeId: NodeViewNode['id']
   side: EdgeAnchor['side']
@@ -25,6 +27,7 @@ const NodeConnectHandleItem = ({
     x: number
     y: number
   }
+  active: boolean
 }) => {
   const ref = usePickRef({
     kind: 'node',
@@ -38,6 +41,7 @@ const NodeConnectHandleItem = ({
       ref={ref}
       data-selection-ignore
       className="wb-node-handle"
+      data-active={active ? 'true' : undefined}
       style={{
         left: `calc(${point.x}px - (12px / var(--wb-zoom, 1) / 2))`,
         top: `calc(${point.y}px - (12px / var(--wb-zoom, 1) / 2))`,
@@ -53,7 +57,8 @@ const NodeConnectHandleItem = ({
 export const NodeConnectHandles = ({
   node,
   rect,
-  rotation
+  rotation,
+  activeSide
 }: NodeConnectHandlesProps) => {
   const localRect = {
     x: 0,
@@ -99,6 +104,7 @@ export const NodeConnectHandles = ({
             nodeId={node.id}
             side={side}
             point={point}
+            active={activeSide === side}
           />
         )
       })}

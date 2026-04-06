@@ -713,6 +713,60 @@ const projectToOutline = (
   return best
 }
 
+const isPointOnSegment = (
+  pointValue: Point,
+  from: Point,
+  to: Point,
+  epsilon = 0.0001
+) => {
+  const cross = (pointValue.y - from.y) * (to.x - from.x)
+    - (pointValue.x - from.x) * (to.y - from.y)
+  if (Math.abs(cross) > epsilon) {
+    return false
+  }
+
+  const dot = (pointValue.x - from.x) * (to.x - from.x)
+    + (pointValue.y - from.y) * (to.y - from.y)
+  if (dot < -epsilon) {
+    return false
+  }
+
+  const lengthSq = (to.x - from.x) * (to.x - from.x)
+    + (to.y - from.y) * (to.y - from.y)
+
+  return dot <= lengthSq + epsilon
+}
+
+const isPointInPolygon = (
+  pointValue: Point,
+  points: readonly Point[]
+) => {
+  if (points.length < 3) {
+    return false
+  }
+
+  let inside = false
+
+  for (let index = 0, previous = points.length - 1; index < points.length; previous = index, index += 1) {
+    const current = points[index]!
+    const prior = points[previous]!
+
+    if (isPointOnSegment(pointValue, prior, current)) {
+      return true
+    }
+
+    const intersects = (
+      (current.y > pointValue.y) !== (prior.y > pointValue.y)
+      && pointValue.x < ((prior.x - current.x) * (pointValue.y - current.y)) / ((prior.y - current.y) || 1) + current.x
+    )
+    if (intersects) {
+      inside = !inside
+    }
+  }
+
+  return inside
+}
+
 const toWorldPoint = (
   pointValue: Point,
   center: Point,
@@ -819,6 +873,21 @@ export const getNodeOutline = (
   }
 }
 
+export const containsPointInNodeOutline = (
+  node: Pick<Node, 'type' | 'data' | 'style'>,
+  rect: Rect,
+  rotation: number,
+  pointValue: Point
+) => {
+  const outline = getNodeOutline(node, rect, rotation)
+
+  if (outline.kind === 'rect') {
+    return isPointInPolygon(pointValue, getRotatedCorners(outline.rect, outline.rotation))
+  }
+
+  return isPointInPolygon(pointValue, outline.points)
+}
+
 export const getNodeGeometry = (
   node: Pick<Node, 'type' | 'data' | 'style'>,
   rect: Rect,
@@ -844,6 +913,38 @@ export const getNodeAnchor = (
     ? getNodeAnchorPoint(node, rect, anchor, rotation, defaultOffset)
     : getAnchorPoint(rect, anchor, rotation, defaultOffset)
 )
+
+export const projectPointToNodeOutline = (
+  node: Pick<Node, 'type' | 'data' | 'style'>,
+  rect: Rect,
+  rotation: number,
+  pointValue: Point,
+  defaultOffset = DEFAULT_ANCHOR_OFFSET
+) => {
+  const center = getRectCenter(rect)
+  const localPoint = rotation
+    ? rotatePoint(pointValue, center, -rotation)
+    : pointValue
+  const projected = projectToOutline(node, rect, localPoint)
+  const anchor: EdgeAnchor = {
+    side: projected.side,
+    offset: projected.offset
+  }
+  const point = getNodeAnchor(node, rect, anchor, rotation, defaultOffset)
+
+  return {
+    point,
+    anchor,
+    distance: distance(pointValue, point)
+  }
+}
+
+export const distanceToNodeOutline = (
+  node: Pick<Node, 'type' | 'data' | 'style'>,
+  rect: Rect,
+  rotation: number,
+  pointValue: Point
+) => projectPointToNodeOutline(node, rect, rotation, pointValue).distance
 
 export const projectNodeAnchor = (
   node: Pick<Node, 'type' | 'data'>,

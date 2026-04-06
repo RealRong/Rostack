@@ -67,7 +67,7 @@ const View = (props: RowProps) => {
   if (!currentView) {
     throw new Error('Table row requires an active current view.')
   }
-  const columns = currentView.properties.all
+  const columns = currentView.fields.all
   const rowNodeRef = useRef<HTMLDivElement | null>(null)
 
   const rowRef = useCallback((node: HTMLDivElement | null) => {
@@ -163,11 +163,11 @@ const View = (props: RowProps) => {
           gridTemplateColumns: props.template
         }}
       >
-        {columns.map(property => (
+        {columns.map(field => (
           <Cell
-            key={property.id}
+            key={field.id}
             appearanceId={props.appearanceId}
-            property={property}
+            field={field}
           />
         ))}
       </div>

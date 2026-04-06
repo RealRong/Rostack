@@ -1,6 +1,6 @@
 import {
   type AppearanceId,
-  type FieldId
+  type CellRef
 } from '@dataview/react/runtime/currentView'
 import {
   pageScrollNode,
@@ -14,7 +14,7 @@ export interface Dom {
   canvas: () => HTMLDivElement | null
   scrollRoot: () => ScrollNode | null
   row: (rowId: AppearanceId) => HTMLElement | null
-  cell: (cell: FieldId) => HTMLElement | null
+  cell: (cell: CellRef) => HTMLElement | null
 }
 
 export const createDom = (options: {

@@ -4,7 +4,7 @@ export type {
   ResolveWriteBatchOptions
 } from './resolveWriteBatch'
 export type {
-  GroupValidationCode,
-  GroupValidationIssue,
-  GroupValidationSeverity
+  ValidationCode,
+  ValidationIssue,
+  ValidationSeverity
 } from './issues'

@@ -1,28 +1,28 @@
-import { PropertyKindPicker } from '@dataview/react/properties/schema'
+import { FieldKindPicker } from '@dataview/react/field/schema'
 import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { useViewSettings } from '../context'
 
-export const PropertyCreatePanel = () => {
+export const FieldCreatePanel = () => {
   const editor = useDataView().engine
   const router = useViewSettings()
 
   return (
-    <PropertyKindPicker
+    <FieldKindPicker
       kind={undefined}
       isTitleProperty={false}
       onSelect={kind => {
-        const propertyId = editor.properties.create({
+        const fieldId = editor.fields.create({
           kind,
-          name: renderMessage(meta.property.kind.get(kind).defaultName)
+          name: renderMessage(meta.field.kind.get(kind).defaultName)
         })
-        if (!propertyId) {
+        if (!fieldId) {
           return
         }
 
         router.push({
-          kind: 'propertySchema',
-          propertyId
+          kind: 'fieldSchema',
+          fieldId
         })
       }}
     />

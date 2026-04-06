@@ -1,5 +1,5 @@
 import type {
-  GroupDocument,
+  DataDoc,
   ViewId
 } from '@dataview/core/contracts'
 import {
@@ -7,7 +7,7 @@ import {
 } from '@dataview/core/document'
 
 export const resolveActiveViewId = (
-  document: GroupDocument,
+  document: DataDoc,
   activeViewId?: ViewId
 ) => {
   const views = getDocumentViews(document)

@@ -98,7 +98,6 @@ type SelectionBoxState = {
 type SelectionChrome = {
   toolbar: boolean
   transform: boolean
-  connect: boolean
 }
 
 type SelectionPresentation = {
@@ -108,7 +107,6 @@ type SelectionPresentation = {
   singleTransformNodeId?: string
   showSelectionFrame: boolean
   showSelectionHandles: boolean
-  connectNodeIds: readonly string[]
 }
 
 const EMPTY_SUMMARY: NodeSummary = {
@@ -428,12 +426,7 @@ const resolveSelectionChrome = ({
       && (
         transforming
         || chrome
-      ),
-    connect:
-      tool.type === 'edge'
-      && !editing
-      && chrome
-      && selection.summary.items.count > 0
+      )
   }
 }
 
@@ -456,11 +449,7 @@ const resolveSelectionPresentation = (
     showSelectionHandles:
       chrome.transform
       && selection.boxState.handles
-      && singleTransformNodeId === undefined,
-    connectNodeIds:
-      chrome.connect
-        ? selection.summary.target.nodeIds
-        : []
+      && singleTransformNodeId === undefined
   }
 }
 

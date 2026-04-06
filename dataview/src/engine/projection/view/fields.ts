@@ -1,26 +1,26 @@
 import type {
-  GroupProperty,
-  PropertyId
+  Field,
+  FieldId
 } from '@dataview/core/contracts'
 import type {
-  PropertyList
+  FieldList
 } from './types'
 
-const emptyIds = [] as readonly PropertyId[]
+const emptyIds = [] as readonly FieldId[]
 
-export const createProperties = (input: {
-  propertyIds: readonly PropertyId[]
-  byId: ReadonlyMap<PropertyId, GroupProperty>
-}): PropertyList => {
-  const all = input.propertyIds.flatMap(propertyId => {
-    const property = input.byId.get(propertyId)
-    return property
-      ? [property]
+export const createFields = (input: {
+  fieldIds: readonly FieldId[]
+  byId: ReadonlyMap<FieldId, Field>
+}): FieldList => {
+  const all = input.fieldIds.flatMap(fieldId => {
+    const field = input.byId.get(fieldId)
+    return field
+      ? [field]
       : []
   })
-  const ids = all.map(property => property.id)
+  const ids = all.map(field => field.id)
   const indexById = new Map(ids.map((id, index) => [id, index] as const))
-  const visibleById = new Map(all.map(property => [property.id, property] as const))
+  const visibleById = new Map(all.map(field => [field.id, field] as const))
 
   return {
     ids,

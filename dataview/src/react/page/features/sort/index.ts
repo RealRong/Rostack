@@ -3,6 +3,6 @@ export type { SortPopoverProps } from './SortPopover'
 export {
   getAvailableSorterProperties,
   getAvailableSorterPropertiesForIndex,
-  getSorterPropertyId,
+  getSorterFieldId,
   findSorterProperty
 } from './sortUi'

@@ -1,13 +1,13 @@
 import type {
-  GroupDocument,
-  GroupProperty,
-  GroupRecord,
-  GroupView,
+  DataDoc,
+  Field,
+  Row,
+  View,
   RecordId,
   ViewId
 } from '@dataview/core/contracts'
 import {
-  getDocumentProperties
+  getDocumentFields
 } from '@dataview/core/document'
 import {
   resolveGroupedRecords
@@ -19,16 +19,17 @@ import type {
   Appearance,
   AppearanceId,
   Schema,
+  SectionBucket,
   SectionKey,
   ViewProjection
 } from './types'
 import { createAppearances } from './appearances'
 import { createGrouping } from './grouping'
-import { createProperties } from './properties'
+import { createFields } from './fields'
 import { createSections } from './sections'
 
 export interface ProjectionResult {
-  view: GroupView
+  view: View
   schema: Schema
   appearances: ReadonlyMap<AppearanceId, Appearance>
   sections: readonly ProjectionSection[]
@@ -38,16 +39,17 @@ export interface ProjectionSection {
   key: SectionKey
   title: string
   color?: string
+  bucket?: SectionBucket
   ids: readonly AppearanceId[]
 }
 
 const ROOT_SECTION_KEY = 'root' as SectionKey
 
 const createSchema = (
-  properties: readonly GroupProperty[]
+  fields: readonly Field[]
 ): Schema => ({
-  properties: new Map(
-    properties.map(property => [property.id, property] as const)
+  fields: new Map(
+    fields.map(field => [field.id, field] as const)
   )
 })
 
@@ -85,9 +87,9 @@ const materializeAppearances = (input: {
 }
 
 const createGroupedProjection = (input: {
-  document: GroupDocument
-  view: GroupView
-  visibleRecords: readonly GroupRecord[]
+  document: DataDoc
+  view: View
+  visibleRecords: readonly Row[]
 }): {
   appearances: ReadonlyMap<AppearanceId, Appearance>
   sections: readonly ProjectionSection[]
@@ -101,6 +103,14 @@ const createGroupedProjection = (input: {
     key: group.key,
     title: group.title,
     color: group.color,
+    bucket: {
+      key: group.key,
+      title: group.title,
+      value: group.value,
+      clearValue: group.clearValue,
+      empty: group.empty,
+      color: group.color
+    },
     ids: materializeAppearances({
       section: group.key,
       recordIds: group.records,
@@ -115,7 +125,7 @@ const createGroupedProjection = (input: {
 }
 
 const createFlatProjection = (
-  visibleRecords: readonly GroupRecord[]
+  visibleRecords: readonly Row[]
 ): {
   appearances: ReadonlyMap<AppearanceId, Appearance>
   sections: readonly ProjectionSection[]
@@ -138,7 +148,7 @@ const createFlatProjection = (
 }
 
 export const resolveProjection = (
-  document: GroupDocument,
+  document: DataDoc,
   viewId?: ViewId
 ): ProjectionResult | undefined => {
   const {
@@ -150,11 +160,11 @@ export const resolveProjection = (
     return undefined
   }
 
-  const properties = getDocumentProperties(document)
+  const fields = getDocumentFields(document)
 
   return {
     view,
-    schema: createSchema(properties),
+    schema: createSchema(fields),
     ...(view.query.group
       ? createGroupedProjection({
           document,
@@ -167,7 +177,7 @@ export const resolveProjection = (
 }
 
 export const resolveViewProjection = (
-  document: GroupDocument,
+  document: DataDoc,
   viewId: ViewId
 ): ViewProjection | undefined => {
   const resolved = resolveProjection(document, viewId)
@@ -193,9 +203,9 @@ export const resolveViewProjection = (
       sections
     }),
     sections,
-    properties: createProperties({
-      propertyIds: resolved.view.options.display.propertyIds,
-      byId: resolved.schema.properties
+    fields: createFields({
+      fieldIds: resolved.view.options.display.fieldIds,
+      byId: resolved.schema.fields
     })
   }
 }

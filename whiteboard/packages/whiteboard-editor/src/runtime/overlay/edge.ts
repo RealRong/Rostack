@@ -2,6 +2,7 @@ import { isPointEqual } from '@whiteboard/core/geometry'
 import { isEdgePatchEqual } from '@whiteboard/core/edge'
 import type { EdgeId } from '@whiteboard/core/types'
 import type {
+  EdgeConnectFeedback,
   EdgeGuide,
   EdgeOverlayEntry,
   EdgeOverlayProjection,
@@ -17,13 +18,90 @@ export const EMPTY_EDGE_OVERLAY: EdgeOverlayState = {
 export const EMPTY_EDGE_OVERLAY_PROJECTION: EdgeOverlayProjection = {}
 const EMPTY_EDGE_OVERLAY_MAP = new Map<EdgeId, EdgeOverlayProjection>()
 
+const isEdgeConnectFeedbackEqual = (
+  left: EdgeConnectFeedback | undefined,
+  right: EdgeConnectFeedback | undefined
+) => {
+  const leftResolution = left?.resolution
+  const rightResolution = right?.resolution
+
+  if (
+    left?.focusedNodeId !== right?.focusedNodeId
+    || leftResolution?.mode !== rightResolution?.mode
+    || !isPointEqual(leftResolution?.pointWorld, rightResolution?.pointWorld)
+  ) {
+    return false
+  }
+
+  if (!leftResolution || !rightResolution) {
+    return leftResolution === rightResolution
+  }
+
+  if (leftResolution.mode === 'free' || rightResolution.mode === 'free') {
+    return leftResolution.mode === rightResolution.mode
+  }
+
+  if (leftResolution.nodeId !== rightResolution.nodeId) {
+    return false
+  }
+
+  if (
+    leftResolution.anchor.side !== rightResolution.anchor.side
+    || leftResolution.anchor.offset !== rightResolution.anchor.offset
+  ) {
+    return false
+  }
+
+  if (leftResolution.mode === 'handle' || rightResolution.mode === 'handle') {
+    return leftResolution.mode === 'handle'
+      && rightResolution.mode === 'handle'
+      && leftResolution.side === rightResolution.side
+  }
+
+  return true
+}
+
+const isDashEqual = (
+  left: readonly number[] | undefined,
+  right: readonly number[] | undefined
+) => {
+  if (left === right) {
+    return true
+  }
+
+  if (!left || !right || left.length !== right.length) {
+    return false
+  }
+
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) {
+      return false
+    }
+  }
+
+  return true
+}
+
+const isEdgeGuidePathEqual = (
+  left: EdgeGuide['path'],
+  right: EdgeGuide['path']
+) => (
+  left?.svgPath === right?.svgPath
+  && left?.style?.stroke === right?.style?.stroke
+  && left?.style?.strokeWidth === right?.style?.strokeWidth
+  && left?.style?.animated === right?.style?.animated
+  && left?.style?.animationSpeed === right?.style?.animationSpeed
+  && left?.style?.markerStart === right?.style?.markerStart
+  && left?.style?.markerEnd === right?.style?.markerEnd
+  && isDashEqual(left?.style?.dash, right?.style?.dash)
+)
+
 export const isEdgeGuideEqual = (
   left: EdgeGuide,
   right: EdgeGuide
 ) => (
-  isPointEqual(left.line?.from, right.line?.from)
-  && isPointEqual(left.line?.to, right.line?.to)
-  && isPointEqual(left.snap, right.snap)
+  isEdgeGuidePathEqual(left.path, right.path)
+  && isEdgeConnectFeedbackEqual(left.connect, right.connect)
 )
 
 export const isEdgeProjectionEqual = (
@@ -38,7 +116,7 @@ const isEdgeGuideEmpty = (
   guide: EdgeGuide | undefined
 ) => (
   guide === undefined
-  || (!guide.line && !guide.snap)
+  || (!guide.path && !guide.connect)
 )
 
 export const normalizeEdgeOverlayState = (

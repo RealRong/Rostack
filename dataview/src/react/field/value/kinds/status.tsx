@@ -1,35 +1,35 @@
-import type { GroupProperty } from '@dataview/core/contracts'
+import type { CustomField } from '@dataview/core/contracts'
 import {
-  getPropertyDisplayValue,
-  parsePropertyDraft
-} from '@dataview/core/property'
-import { PropertyOptionTag } from '@dataview/react/properties/options'
+  getFieldOption,
+  getFieldDisplayValue,
+  parseFieldDraft
+} from '@dataview/core/field'
+import { FieldOptionTag } from '@dataview/react/field/options'
 import { StatusValueEditor } from '../editor/pickers/status/StatusValueEditor'
-import type { PropertyValueSpec } from './contracts'
+import type { FieldValueSpec } from './contracts'
 import {
-  optionForValue,
   renderEmpty
 } from './shared'
 
 export const createStatusPropertySpec = (
-  property: GroupProperty | undefined
-): PropertyValueSpec<string> => ({
+  property: CustomField | undefined
+): FieldValueSpec<string> => ({
   capability: {},
   panelWidth: 'picker',
   Editor: StatusValueEditor,
   createDraft: (value, seedDraft) => seedDraft ?? (value === undefined || value === null ? '' : String(value)),
-  parseDraft: draft => parsePropertyDraft(property, draft),
+  parseDraft: draft => parseFieldDraft(property, draft),
   render: props => {
-    const display = getPropertyDisplayValue(property, props.value)
-    const selected = optionForValue(property, props.value)
+    const display = getFieldDisplayValue(property, props.value)
+    const selected = property ? getFieldOption(property, props.value) : undefined
     if (!display) {
       return renderEmpty(props)
     }
 
     return (
-      <PropertyOptionTag
+      <FieldOptionTag
         label={display}
-        color={selected?.color}
+        color={selected?.color ?? undefined}
         className={props.className}
       />
     )

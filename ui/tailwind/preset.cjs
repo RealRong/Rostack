@@ -148,8 +148,8 @@ module.exports = {
           foreground: alphaColor('--ui-accent-foreground')
         },
         card: {
-          DEFAULT: alphaColor('--card'),
-          foreground: alphaColor('--card-foreground')
+          DEFAULT: 'var(--ui-bg-card)',
+          foreground: 'var(--ui-text-primary)'
         },
         popover: {
           DEFAULT: alphaColor('--popover'),

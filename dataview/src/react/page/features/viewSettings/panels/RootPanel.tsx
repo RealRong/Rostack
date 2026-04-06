@@ -11,9 +11,9 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import { forwardRef, useEffect, useRef, useState } from 'react'
-import type { GroupBucketSort, GroupProperty, GroupView } from '@dataview/core/contracts'
+import type { BucketSort, Field, View } from '@dataview/core/contracts'
 import {
-  getDocumentProperties,
+  getDocumentFields,
   getDocumentViews
 } from '@dataview/core/document'
 import { resolveViewGroupState } from '@dataview/core/query'
@@ -28,7 +28,7 @@ import { meta, renderMessage } from '@dataview/meta'
 import { useViewSettings } from '../context'
 import { supportsGroupSettings } from '@dataview/react/page/session/settings'
 
-type RootRouteKind = 'layout' | 'viewProperties' | 'propertyList' | 'filter' | 'sort' | 'group'
+type RootRouteKind = 'layout' | 'viewProperties' | 'fieldList' | 'filter' | 'sort' | 'group'
 
 interface RootMenuItemConfig {
   icon: LucideIcon
@@ -59,7 +59,7 @@ const ViewSettingsMenuButton = forwardRef<HTMLButtonElement, RootMenuItemConfig 
 ViewSettingsMenuButton.displayName = 'ViewSettingsMenuButton'
 
 const ViewSettingsIdentitySection = (props: {
-  currentView?: GroupView
+  currentView?: View
   onRename: (name: string) => void
   autoFocusName?: boolean
 }) => {
@@ -157,7 +157,7 @@ const ViewSettingsActionsSection = (props: {
 }
 
 const readGroupModeLabel = (
-  property: GroupProperty | undefined,
+  property: Field | undefined,
   mode: string
 ) => {
   if (!property) {
@@ -179,7 +179,7 @@ const readGroupModeLabel = (
   }
 }
 
-const readBucketSortLabel = (bucketSort: GroupBucketSort | undefined) => {
+const readBucketSortLabel = (bucketSort: BucketSort | undefined) => {
   switch (bucketSort) {
     case 'manual':
       return renderMessage(meta.ui.viewSettings.bucketSortManual)
@@ -199,12 +199,12 @@ const readBucketSortLabel = (bucketSort: GroupBucketSort | undefined) => {
 const readGroupSummary = (
   group: ReturnType<typeof resolveViewGroupState>
 ) => {
-  if (!group.property) {
+  if (!group.field) {
     return renderMessage(meta.ui.viewSettings.none)
   }
 
-  const parts = [group.property.name]
-  const modeLabel = readGroupModeLabel(group.property, group.mode)
+  const parts = [group.field.name]
+  const modeLabel = readGroupModeLabel(group.field, group.mode)
   const bucketSortLabel = readBucketSortLabel(group.bucketSort)
 
   if (modeLabel) {
@@ -226,10 +226,10 @@ export const RootPanel = () => {
   const document = useDocument()
   const router = useViewSettings()
   const currentView = useCurrentView(view => view?.view)
-  const properties = getDocumentProperties(document)
+  const fields = getDocumentFields(document)
   const viewsCount = getDocumentViews(document).length
-  const propertyCount = currentView?.options.display.propertyIds.length ?? 0
-  const group = resolveViewGroupState(properties, currentView?.query.group)
+  const propertyCount = currentView?.options.display.fieldIds.length ?? 0
+  const group = resolveViewGroupState(fields, currentView?.query.group)
   const menuItems: RootMenuItemConfig[] = [
     {
       icon: Settings2,
@@ -239,25 +239,25 @@ export const RootPanel = () => {
     },
     {
       icon: Eye,
-      label: renderMessage(meta.ui.viewSettings.visibleProperties),
+      label: renderMessage(meta.ui.viewSettings.visibleFields),
       suffix: renderMessage(meta.ui.viewSettings.shown(propertyCount)),
       panel: 'viewProperties'
     },
     {
       icon: SquarePen,
-      label: renderMessage(meta.ui.viewSettings.editProperties),
-      panel: 'propertyList'
+      label: renderMessage(meta.ui.viewSettings.editFields),
+      panel: 'fieldList'
     },
     {
       icon: Filter,
       label: renderMessage(meta.ui.viewSettings.filter),
-      suffix: renderMessage(meta.ui.viewSettings.filterSummary(currentView?.query.filter.rules ?? [], properties)),
+      suffix: renderMessage(meta.ui.viewSettings.filterSummary(currentView?.query.filter.rules ?? [], fields)),
       panel: 'filter'
     },
     {
       icon: ArrowUpDown,
       label: renderMessage(meta.ui.viewSettings.sort),
-      suffix: renderMessage(meta.ui.viewSettings.sortSummary(currentView?.query.sorters ?? [], properties)),
+      suffix: renderMessage(meta.ui.viewSettings.sortSummary(currentView?.query.sorters ?? [], fields)),
       panel: 'sort'
     },
     {

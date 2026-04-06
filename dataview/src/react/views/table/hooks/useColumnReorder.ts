@@ -8,7 +8,7 @@ import {
   useSensors,
   type DragEndEvent
 } from '@dnd-kit/core'
-import type { PropertyId } from '@dataview/core/contracts'
+import type { FieldId } from '@dataview/core/contracts'
 import { columnBeforeId } from '@dataview/table'
 import { useCurrentView, useDataView } from '@dataview/react/dataview'
 import { useTableContext } from '../context'
@@ -17,19 +17,19 @@ const COLUMN_SORT_SCOPE_SEPARATOR = '\u0000'
 
 export const columnSortId = (
   scopeId: string,
-  propertyId: PropertyId
-) => `${scopeId}${COLUMN_SORT_SCOPE_SEPARATOR}${propertyId}`
+  fieldId: FieldId
+) => `${scopeId}${COLUMN_SORT_SCOPE_SEPARATOR}${fieldId}`
 
 const columnPropertyId = (
   id: string
-): PropertyId | null => {
+): FieldId | null => {
   const index = id.lastIndexOf(COLUMN_SORT_SCOPE_SEPARATOR)
-  const propertyId = index === -1
+  const fieldId = index === -1
     ? id
     : id.slice(index + COLUMN_SORT_SCOPE_SEPARATOR.length)
 
-  return propertyId
-    ? propertyId as PropertyId
+  return fieldId
+    ? fieldId as FieldId
     : null
 }
 
@@ -48,9 +48,9 @@ export const useColumnReorder = (): ColumnReorderApi => {
     throw new Error('Table column reorder requires an active current view.')
   }
 
-  const columns = currentView.properties.all
-  const propertyIds = useMemo(
-    () => columns.map(property => property.id),
+  const columns = currentView.fields.all
+  const fieldIds = useMemo(
+    () => columns.map(field => field.id),
     [columns]
   )
   const sensors = useSensors(
@@ -89,7 +89,7 @@ export const useColumnReorder = (): ColumnReorderApi => {
     }
 
     const beforeId = columnBeforeId({
-      columnIds: propertyIds,
+      columnIds: fieldIds,
       sourceId: sourcePropertyId,
       overId: overPropertyId
     })
@@ -98,12 +98,12 @@ export const useColumnReorder = (): ColumnReorderApi => {
       return
     }
 
-    editor.view(currentView.view.id).display.moveVisibleProperties(
+    editor.view(currentView.view.id).display.moveVisibleFields(
       [sourcePropertyId],
       beforeId
     )
     finishDrag()
-  }, [currentView.view.id, editor, finishDrag, propertyIds])
+  }, [currentView.view.id, editor, finishDrag, fieldIds])
 
   const onDragCancel = useCallback(() => {
     finishDrag()

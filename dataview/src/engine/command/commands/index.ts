@@ -1,4 +1,4 @@
-import type { GroupDocument } from '@dataview/core/contracts/state'
+import type { DataDoc } from '@dataview/core/contracts/state'
 import type { IndexedCommand } from '../context'
 import { resolveExternalBumpCommand } from './external'
 import {
@@ -10,9 +10,10 @@ import {
   resolvePropertyOptionReorderCommand,
   resolvePropertyOptionUpdateCommand,
   resolvePropertyPatchCommand,
+  resolvePropertyReplaceSchemaCommand,
   resolvePropertyPutCommand,
   resolvePropertyRemoveCommand
-} from '../property'
+} from '../field'
 import {
   resolveRecordCreateCommand,
   resolveRecordApplyCommand,
@@ -26,7 +27,7 @@ import {
 import {
   resolveViewAggregatesSetCommand,
   resolveViewCreateCommand,
-  resolveViewDisplaySetPropertyIdsCommand,
+  resolveViewDisplaySetFieldIdsCommand,
   resolveViewDuplicateCommand,
   resolveViewGallerySetCardSizeCommand,
   resolveViewGallerySetShowPropertyLabelsCommand,
@@ -46,7 +47,7 @@ import {
 
 export interface ResolvedCommand extends CommandResolution {}
 
-export const resolveCommand = (document: GroupDocument, command: IndexedCommand): ResolvedCommand => {
+export const resolveCommand = (document: DataDoc, command: IndexedCommand): ResolvedCommand => {
   switch (command.type) {
     case 'value.apply':
       return resolveValueApplyCommand(document, command)
@@ -54,25 +55,27 @@ export const resolveCommand = (document: GroupDocument, command: IndexedCommand)
       return resolveRecordCreateCommand(document, command)
     case 'record.apply':
       return resolveRecordApplyCommand(document, command)
-    case 'property.create':
+    case 'customField.create':
       return resolvePropertyCreateCommand(document, command)
-    case 'property.convert':
+    case 'customField.convert':
       return resolvePropertyConvertCommand(document, command)
-    case 'property.duplicate':
+    case 'customField.replaceSchema':
+      return resolvePropertyReplaceSchemaCommand(document, command)
+    case 'customField.duplicate':
       return resolvePropertyDuplicateCommand(document, command)
-    case 'property.put':
+    case 'customField.put':
       return resolvePropertyPutCommand(document, command)
-    case 'property.patch':
+    case 'customField.patch':
       return resolvePropertyPatchCommand(document, command)
-    case 'property.option.create':
+    case 'customField.option.create':
       return resolvePropertyOptionCreateCommand(document, command)
-    case 'property.option.reorder':
+    case 'customField.option.reorder':
       return resolvePropertyOptionReorderCommand(document, command)
-    case 'property.option.update':
+    case 'customField.option.update':
       return resolvePropertyOptionUpdateCommand(document, command)
-    case 'property.option.remove':
+    case 'customField.option.remove':
       return resolvePropertyOptionRemoveCommand(document, command)
-    case 'property.remove':
+    case 'customField.remove':
       return resolvePropertyRemoveCommand(document, command)
     case 'external.bumpVersion':
       return resolveExternalBumpCommand(document, command)
@@ -94,8 +97,8 @@ export const resolveCommand = (document: GroupDocument, command: IndexedCommand)
       return resolveViewQuerySetCommand(document, command)
     case 'view.aggregates.set':
       return resolveViewAggregatesSetCommand(document, command)
-    case 'view.display.setPropertyIds':
-      return resolveViewDisplaySetPropertyIdsCommand(document, command)
+    case 'view.display.setFieldIds':
+      return resolveViewDisplaySetFieldIdsCommand(document, command)
     case 'view.table.setWidths':
       return resolveViewTableSetWidthsCommand(document, command)
     case 'view.table.setShowVerticalLines':

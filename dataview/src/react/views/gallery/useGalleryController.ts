@@ -8,11 +8,9 @@ import {
 } from 'react'
 import type { ViewId } from '@dataview/core/contracts'
 import type {
-  GroupProperty
+  CustomField
 } from '@dataview/core/contracts'
-import {
-  resolveGroupTitleProperty
-} from '@dataview/core/view'
+import { isCustomField } from '@dataview/core/field'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
 } from '@dataview/dom/appearance'
@@ -56,8 +54,7 @@ import { usesOptionGroupingColors } from '@dataview/react/views/shared/optionGro
 export interface GalleryController {
   currentView: CurrentView
   sections: readonly Section[]
-  titleProperty?: GroupProperty
-  properties: readonly GroupProperty[]
+  fields: readonly CustomField[]
   canReorder: boolean
   groupUsesOptionColors: boolean
   containerRef: RefObject<HTMLDivElement | null>
@@ -87,17 +84,9 @@ export const useGalleryController = (input: {
     throw new Error('Gallery view requires an active current view.')
   }
 
-  const titleProperty = useMemo(
-    () => resolveGroupTitleProperty(
-      Array.from(currentView.schema.properties.values())
-    ),
-    [currentView.schema.properties]
-  )
-  const properties = useMemo(
-    () => currentView.properties.all.filter(
-      property => property.id !== titleProperty?.id
-    ),
-    [currentView.properties.all, titleProperty?.id]
+  const fields = useMemo(
+    () => currentView.fields.all.filter(isCustomField),
+    [currentView.fields.all]
   )
   const canReorder = !currentView.view.query.group && !currentView.view.query.sorters.length
   const [dragging, setDragging] = useState(false)
@@ -105,13 +94,13 @@ export const useGalleryController = (input: {
     resolveScrollTargets: () => resolveDefaultAutoPanTargets(input.containerRef.current)
   })).current
   const grouped = Boolean(currentView.view.query.group)
-  const groupProperty = useMemo(() => {
-    const groupPropertyId = currentView.view.query.group?.property
-    return groupPropertyId
-      ? currentView.schema.properties.get(groupPropertyId)
+  const groupField = useMemo(() => {
+    const groupFieldId = currentView.view.query.group?.field
+    return groupFieldId
+      ? currentView.schema.fields.get(groupFieldId)
       : undefined
-  }, [currentView.schema.properties, currentView.view.query.group?.property])
-  const groupUsesOptionColors = grouped && usesOptionGroupingColors(groupProperty)
+  }, [currentView.schema.fields, currentView.view.query.group?.field])
+  const groupUsesOptionColors = grouped && usesOptionGroupingColors(groupField)
   const sections = useMemo<readonly Section[]>(() => (
     grouped
       ? currentView.sections
@@ -237,8 +226,7 @@ export const useGalleryController = (input: {
   return useMemo(() => ({
     currentView,
     sections,
-    titleProperty,
-    properties,
+    fields,
     canReorder,
     groupUsesOptionColors,
     containerRef: input.containerRef,
@@ -260,12 +248,11 @@ export const useGalleryController = (input: {
     indicator,
     input.containerRef,
     marqueeActive,
-    properties,
+    fields,
     readSectionColorId,
     sections,
     select,
     selectedIdSet,
-    titleProperty,
     visualTargets,
     virtual.blocks,
     virtual.layout,

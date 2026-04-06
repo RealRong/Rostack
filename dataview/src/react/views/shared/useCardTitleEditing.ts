@@ -5,8 +5,7 @@ import {
   useState
 } from 'react'
 import type {
-  GroupProperty,
-  GroupRecord,
+  Row,
   ViewId
 } from '@dataview/core/contracts'
 import {
@@ -32,8 +31,7 @@ export const useCardEditingState = (input: {
 export const useCardTitleEditing = (input: {
   viewId: ViewId
   appearanceId: AppearanceId
-  record: GroupRecord
-  titleProperty?: GroupProperty
+  record: Row
 }) => {
   const dataView = useDataView()
   const engine = dataView.engine
@@ -41,7 +39,7 @@ export const useCardTitleEditing = (input: {
     viewId: input.viewId,
     appearanceId: input.appearanceId
   })
-  const committedTitle = readCardTitleText(input.titleProperty, input.record)
+  const committedTitle = readCardTitleText(input.record)
   const [titleDraft, setTitleDraft] = useState(() => committedTitle)
   const titleDraftRef = useRef(titleDraft)
   const committedTitleRef = useRef(committedTitle)
@@ -68,7 +66,7 @@ export const useCardTitleEditing = (input: {
   }, [committedTitle, editing])
 
   const enterEdit = useCallback(() => {
-    setTitleDraft(readCardTitleText(input.titleProperty, input.record))
+    setTitleDraft(readCardTitleText(input.record))
     dataView.selection.clear()
     dataView.inlineSession.enter({
       viewId: input.viewId,
@@ -79,16 +77,11 @@ export const useCardTitleEditing = (input: {
     dataView.selection,
     input.appearanceId,
     input.record,
-    input.titleProperty,
     input.viewId
   ])
 
   const commitTitle = useCallback(() => {
     if (exitEffectRef.current === 'discard') {
-      return
-    }
-
-    if (!input.titleProperty) {
       return
     }
 
@@ -98,11 +91,19 @@ export const useCardTitleEditing = (input: {
     }
 
     committedTitleRef.current = nextValue
-    engine.records.setValue(input.record.id, input.titleProperty.id, nextValue)
+    engine.command({
+      type: 'record.apply',
+      target: {
+        type: 'record',
+        recordId: input.record.id
+      },
+      patch: {
+        title: nextValue
+      }
+    })
   }, [
-    engine.records,
-    input.record.id,
-    input.titleProperty
+    engine,
+    input.record.id
   ])
 
   const resetTitleDraft = useCallback(() => {

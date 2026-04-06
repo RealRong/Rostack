@@ -16,23 +16,25 @@ export type EdgeView = EdgeResolved & {
   >['edge']
 }
 
-export type SelectedEdgeRoutePointView =
-  | {
-      key: string
-      kind: 'anchor'
-      edgeId: EdgeId
-      index: number
-      point: EdgeHandle['point']
-      active: boolean
-    }
-  | {
-      key: string
-      kind: 'insert'
-      edgeId: EdgeId
-      insertIndex: number
-      point: EdgeHandle['point']
-      active: false
-    }
+export type SelectedEdgeRoutePointView = {
+  key: string
+  kind: 'anchor' | 'insert' | 'control'
+  edgeId: EdgeId
+  point: EdgeHandle['point']
+  active: boolean
+  deletable: boolean
+  pick:
+    | {
+        kind: 'anchor'
+        index: number
+      }
+    | {
+        kind: 'segment'
+        insertIndex: number
+        segmentIndex: number
+        axis: 'x' | 'y'
+      }
+}
 
 export type SelectedEdgeView = {
   edgeId: EdgeId

@@ -15,34 +15,33 @@ import {
   useState,
   type PointerEvent
 } from 'react'
-import type { PropertyId, GroupProperty } from '@dataview/core/contracts'
+import type { Field, FieldId, CustomField } from '@dataview/core/contracts'
 import { DropdownMenu } from '@ui/dropdown-menu'
 import { type MenuItem } from '@ui/menu'
 import { cn } from '@ui/utils'
-import { TITLE_PROPERTY_ID } from '@dataview/core/property'
-import { getUrlPropertyConfig } from '@dataview/core/property'
-import { getSorterPropertyId } from '@dataview/react/page/features/sort'
+import { isCustomField } from '@dataview/core/field'
+import { getSorterFieldId } from '@dataview/react/page/features/sort'
 import { useCurrentView, useDataView } from '@dataview/react/dataview'
 import { useTableContext } from '../../context'
 import { meta, renderMessage } from '@dataview/meta'
-import { buildPropertyKindMenuItems } from '@dataview/react/properties/schema'
+import { buildFieldKindMenuItems } from '@dataview/react/field/schema'
 import { useStoreValue } from '@dataview/react/store'
 
 export interface ColumnHeaderProps {
-  property: GroupProperty
+  field: Field
   sortId: string
   resizeActive?: boolean
   onResizeStart: (
-    propertyId: PropertyId,
+    fieldId: FieldId,
     event: PointerEvent<HTMLButtonElement>
   ) => void
 }
 
 interface ResizeHandleProps {
-  propertyId: PropertyId
+  fieldId: FieldId
   active: boolean
   onResizeStart: (
-    propertyId: PropertyId,
+    fieldId: FieldId,
     event: PointerEvent<HTMLButtonElement>
   ) => void
 }
@@ -56,7 +55,7 @@ const ResizeHandle = (props: ResizeHandleProps) => (
     onPointerDown={event => {
       event.preventDefault()
       event.stopPropagation()
-      props.onResizeStart(props.propertyId, event)
+      props.onResizeStart(props.fieldId, event)
     }}
   >
     <span
@@ -99,33 +98,35 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
     ? `translate3d(${Math.round(sortable.transform.x)}px, 0, 0)`
     : undefined
   const isDragging = sortable.isDragging
-  const isTitleProperty = props.property.id === TITLE_PROPERTY_ID
-  const grouped = view.query.group?.property === props.property.id
+  const grouped = view.query.group?.field === props.field.id
   const sortDirection = view.query.sorters.find(
-    sorter => getSorterPropertyId(sorter) === props.property.id
+    sorter => getSorterFieldId(sorter) === props.field.id
   )?.direction
-  const kind = meta.property.kind.get(props.property.kind)
+  const kind = meta.field.kind.get(props.field.kind)
   const sortDirectionMeta = sortDirection
     ? meta.sort.direction.get(sortDirection)
     : undefined
   const columnRef = useCallback((node: HTMLDivElement | null) => {
     sortable.setNodeRef(node)
-    table.nodes.registerColumn(props.property.id, node)
-  }, [props.property.id, sortable, table.nodes])
-  const urlConfig = props.property.kind === 'url'
-    ? getUrlPropertyConfig(props.property)
+    table.nodes.registerColumn(props.field.id, node)
+  }, [props.field.id, sortable, table.nodes])
+  const customField = isCustomField(props.field)
+    ? props.field
+    : undefined
+  const urlConfig = customField?.kind === 'url'
+    ? customField
     : undefined
   const viewApi = editor.view(view.id)
 
   const insertProperty = (side: 'left' | 'right') => {
     if (side === 'left') {
-      viewApi.table.insertColumnLeftOf(props.property.id, {
+      viewApi.table.insertColumnLeftOf(props.field.id, {
         kind: 'text'
       })
       return
     }
 
-    viewApi.table.insertColumnRightOf(props.property.id, {
+    viewApi.table.insertColumnRightOf(props.field.id, {
       kind: 'text'
     })
   }
@@ -135,37 +136,36 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       ? [{
         kind: 'toggle' as const,
         key: 'displayFullUrl',
-        label: renderMessage(meta.ui.property.editor.displayFullUrl),
+        label: renderMessage(meta.ui.field.editor.displayFullUrl),
         checked: urlConfig.displayFullUrl,
         indicator: 'switch' as const,
         closeOnSelect: false,
         onSelect: () => {
-          editor.properties.update(props.property.id, {
-            config: {
-              ...urlConfig,
-              displayFullUrl: !urlConfig.displayFullUrl
-            }
-          })
+          editor.fields.update(urlConfig.id, {
+            displayFullUrl: !urlConfig.displayFullUrl
+          } as Partial<Omit<CustomField, 'id'>>)
         }
       }]
       : []),
-    {
-      kind: 'submenu',
-      key: 'changeType',
-      label: '更改类型',
-      leading: <ArrowLeftRight className="size-4" size={16} strokeWidth={1.8} />,
-      suffix: renderMessage(kind.message),
-      contentClassName: 'w-[240px] p-1.5',
-      items: buildPropertyKindMenuItems({
-        kind: props.property.kind,
-        isTitleProperty,
-        onSelect: kind => {
-          editor.properties.convert(props.property.id, { kind })
-          setMenuOpen(false)
-        }
-      })
-    },
-    ...(!urlConfig
+    ...(customField
+      ? [{
+        kind: 'submenu' as const,
+        key: 'changeType',
+        label: '更改类型',
+        leading: <ArrowLeftRight className="size-4" size={16} strokeWidth={1.8} />,
+        suffix: renderMessage(kind.message),
+        contentClassName: 'w-[240px] p-1.5',
+        items: buildFieldKindMenuItems({
+          kind: customField.kind,
+          isTitleProperty: false,
+          onSelect: kind => {
+            editor.fields.convert(customField.id, { kind })
+            setMenuOpen(false)
+          }
+        })
+      }]
+      : []),
+    ...(!urlConfig && customField
       ? [{
         kind: 'action' as const,
         key: 'editProperty',
@@ -175,15 +175,15 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
           setMenuOpen(false)
           window.requestAnimationFrame(() => {
             page.settings.open({
-              kind: 'propertySchema',
-              propertyId: props.property.id
+              kind: 'fieldSchema',
+              fieldId: customField.id
             })
           })
         }
       }]
       : []),
     {
-      kind: 'action',
+      kind: 'action' as const,
       key: 'group',
       label: grouped ? '取消分组' : '按此列分组',
       leading: <PanelsTopLeft className="size-4" size={16} strokeWidth={1.8} />,
@@ -193,24 +193,24 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
           return
         }
 
-        viewApi.grouping.setProperty(props.property.id)
+        viewApi.grouping.setField(props.field.id)
       }
     },
     {
-      kind: 'action',
+      kind: 'action' as const,
       key: 'filter',
       label: '筛选',
       leading: <Filter className="size-4" size={16} strokeWidth={1.8} />,
       onSelect: () => {
-        viewApi.filters.add(props.property.id)
+        viewApi.filters.add(props.field.id)
         page.query.open({
           kind: 'filter',
-          propertyId: props.property.id
+          fieldId: props.field.id
         })
       }
     },
     {
-      kind: 'submenu',
+      kind: 'submenu' as const,
       key: 'sort',
       label: '排序',
       leading: <ArrowUpDown className="size-4" size={16} strokeWidth={1.8} />,
@@ -219,41 +219,37 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
         : undefined,
       items: [
         {
-          kind: 'toggle',
+          kind: 'toggle' as const,
           key: 'sortAsc',
           label: renderMessage(meta.sort.direction.get('asc').message),
           checked: sortDirection === 'asc',
           onSelect: () => {
-            viewApi.sorters.setOnly(props.property.id, 'asc')
+            viewApi.sorters.setOnly(props.field.id, 'asc')
           }
         },
         {
-          kind: 'toggle',
+          kind: 'toggle' as const,
           key: 'sortDesc',
           label: renderMessage(meta.sort.direction.get('desc').message),
           checked: sortDirection === 'desc',
           onSelect: () => {
-            viewApi.sorters.setOnly(props.property.id, 'desc')
+            viewApi.sorters.setOnly(props.field.id, 'desc')
           }
         }
       ]
     },
     {
-      kind: 'action',
+      kind: 'action' as const,
       key: 'hide',
       label: '隐藏',
       leading: <EyeOff className="size-4" size={16} strokeWidth={1.8} />,
-      disabled: isTitleProperty,
+      disabled: false,
       onSelect: () => {
-        if (isTitleProperty) {
-          return
-        }
-
-        viewApi.display.hideProperty(props.property.id)
+        viewApi.display.hideField(props.field.id)
       }
     },
     {
-      kind: 'toggle',
+      kind: 'toggle' as const,
       key: 'wrap',
       label: '内容换行显示',
       checked: false,
@@ -261,11 +257,11 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       onSelect: () => undefined
     },
     {
-      kind: 'divider',
+      kind: 'divider' as const,
       key: 'divider-structure'
     },
     {
-      kind: 'action',
+      kind: 'action' as const,
       key: 'insertLeft',
       label: '在左侧插入',
       onSelect: () => {
@@ -273,37 +269,34 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       }
     },
     {
-      kind: 'action',
+      kind: 'action' as const,
       key: 'insertRight',
       label: '在右侧插入',
       onSelect: () => {
         insertProperty('right')
       }
     },
-    {
-      kind: 'action',
-      key: 'duplicate',
-      label: '创建属性副本',
-      leading: <Copy className="size-4" size={16} strokeWidth={1.8} />,
-      onSelect: () => {
-        editor.properties.duplicate(props.property.id)
-      }
-    },
-    {
-      kind: 'action',
-      key: 'delete',
-      label: '删除属性',
-      leading: <Trash2 className="size-4" size={16} strokeWidth={1.8} />,
-      tone: 'destructive',
-      disabled: isTitleProperty,
-      onSelect: () => {
-        if (isTitleProperty) {
-          return
-        }
-
-        editor.properties.remove(props.property.id)
-      }
-    }
+    ...(propertyField
+      ? [{
+          kind: 'action' as const,
+          key: 'duplicate',
+          label: '创建属性副本',
+          leading: <Copy className="size-4" size={16} strokeWidth={1.8} />,
+          onSelect: () => {
+            editor.fields.duplicate(propertyField.id)
+          }
+        }, {
+          kind: 'action' as const,
+          key: 'delete',
+          label: '删除属性',
+          leading: <Trash2 className="size-4" size={16} strokeWidth={1.8} />,
+          tone: 'destructive' as const,
+          disabled: false,
+          onSelect: () => {
+            editor.fields.remove(propertyField.id)
+          }
+        }]
+      : [])
   ]
 
   const trigger = (
@@ -358,7 +351,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
         event.stopPropagation()
       }}
     >
-      <span className="truncate">{props.property.name}</span>
+      <span className="truncate">{props.field.name}</span>
     </div>
   )
 
@@ -369,7 +362,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
         columnRef(node)
       }}
       data-table-target="column"
-      data-column-id={props.property.id}
+      data-column-id={props.field.id}
       className={cn(
         'group/header relative box-border h-full min-w-0',
         showVerticalLines && 'border-r border-divider'
@@ -392,7 +385,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
         contentClassName="min-w-0 w-[280px] p-1"
       />
       <ResizeHandle
-        propertyId={props.property.id}
+        fieldId={props.field.id}
         active={Boolean(props.resizeActive)}
         onResizeStart={props.onResizeStart}
       />

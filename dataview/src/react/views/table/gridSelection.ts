@@ -1,7 +1,7 @@
 import type {
   AppearanceId,
   CurrentView,
-  FieldId
+  CellRef
 } from '@dataview/react/runtime/currentView'
 import {
   gridSelection,
@@ -17,7 +17,7 @@ export interface GridSelectionStore {
   store: ValueStore<GridSelection | null>
   get: () => GridSelection | null
   clear: () => void
-  set: (cell: FieldId, anchor?: FieldId) => void
+  set: (cell: CellRef, anchor?: CellRef) => void
   move: (
     rowDelta: number,
     columnDelta: number,
@@ -44,7 +44,7 @@ export const createGridSelection = (
       ? gridSelection.reconcile(
           current,
           currentView.appearances,
-          currentView.properties
+          currentView.fields
         )
       : null
     )
@@ -70,7 +70,7 @@ export const createGridSelection = (
         rowDelta,
         columnDelta,
         currentView.appearances,
-        currentView.properties,
+        currentView.fields,
         options
       ) ?? current)
     },
@@ -83,7 +83,7 @@ export const createGridSelection = (
       store.update(current => gridSelection.first(
         current,
         currentView.appearances,
-        currentView.properties,
+        currentView.fields,
         rowId
       ) ?? null)
     },

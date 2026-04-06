@@ -1,17 +1,17 @@
 import type {
-  GroupKanbanNewRecordPosition,
-  GroupKanbanOptions
+  KanbanNewRecordPosition,
+  KanbanOptions
 } from '../contracts/kanban'
 import {
   isJsonObject
 } from './shared'
 
-const DEFAULT_NEW_RECORD_POSITION: GroupKanbanNewRecordPosition = 'end'
+const DEFAULT_NEW_RECORD_POSITION: KanbanNewRecordPosition = 'end'
 const DEFAULT_FILL_COLUMN_COLOR = true
 
-export const normalizeGroupKanbanOptions = (
+export const normalizeKanbanOptions = (
   value: unknown
-): GroupKanbanOptions => {
+): KanbanOptions => {
   const kanban = isJsonObject(value) ? value : undefined
 
   return {
@@ -24,9 +24,9 @@ export const normalizeGroupKanbanOptions = (
   }
 }
 
-export const cloneGroupKanbanOptions = (
-  options: GroupKanbanOptions
-): GroupKanbanOptions => ({
+export const cloneKanbanOptions = (
+  options: KanbanOptions
+): KanbanOptions => ({
   newRecordPosition: options.newRecordPosition,
   fillColumnColor: options.fillColumnColor
 })

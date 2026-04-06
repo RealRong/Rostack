@@ -1,17 +1,17 @@
 import type {
   AppearanceId,
   AppearanceList,
-  FieldId,
-  PropertyList
+  CellRef,
+  FieldList
 } from '@dataview/engine/projection/view'
-import { sameField } from '@dataview/engine/projection/view'
+import { sameCellRef } from '@dataview/engine/projection/view'
 import {
   grid
 } from './grid'
 
 export interface GridSelection {
-  focus: FieldId
-  anchor: FieldId
+  focus: CellRef
+  anchor: CellRef
 }
 
 const equal = (
@@ -22,12 +22,12 @@ const equal = (
     return left === right
   }
 
-  return sameField(left.focus, right.focus) && sameField(left.anchor, right.anchor)
+  return sameCellRef(left.focus, right.focus) && sameCellRef(left.anchor, right.anchor)
 }
 
 const set = (
-  focus: FieldId,
-  anchor: FieldId = focus
+  focus: CellRef,
+  anchor: CellRef = focus
 ): GridSelection => ({
   focus,
   anchor
@@ -35,16 +35,16 @@ const set = (
 
 const focus = (
   current: GridSelection | null
-): FieldId | undefined => current?.focus
+): CellRef | undefined => current?.focus
 
 const anchor = (
   current: GridSelection | null
-): FieldId | undefined => current?.anchor
+): CellRef | undefined => current?.anchor
 
 const reconcile = (
   current: GridSelection | null,
   appearances: Pick<AppearanceList, 'has' | 'indexOf' | 'ids' | 'at'>,
-  properties: Pick<PropertyList, 'has' | 'ids' | 'at'>
+  fields: Pick<FieldList, 'has' | 'ids' | 'at'>
 ): GridSelection | null => {
   if (!current) {
     return null
@@ -54,16 +54,16 @@ const reconcile = (
     return null
   }
 
-  const focusCell = properties.has(current.focus.propertyId)
+  const focusCell = fields.has(current.focus.fieldId)
     ? current.focus
-    : grid.firstCell(appearances, properties, current.focus.appearanceId)
+    : grid.firstCell(appearances, fields, current.focus.appearanceId)
   if (!focusCell) {
     return null
   }
 
   const anchorCell = (
     appearances.has(current.anchor.appearanceId)
-    && properties.has(current.anchor.propertyId)
+    && fields.has(current.anchor.fieldId)
   )
     ? current.anchor
     : focusCell
@@ -74,12 +74,12 @@ const reconcile = (
 const first = (
   current: GridSelection | null,
   appearances: Pick<AppearanceList, 'ids' | 'has' | 'indexOf' | 'at'>,
-  properties: Pick<PropertyList, 'ids' | 'at'>,
+  fields: Pick<FieldList, 'ids' | 'at'>,
   appearanceId?: AppearanceId
 ): GridSelection | undefined => {
   const targetCell = grid.firstCell(
     appearances,
-    properties,
+    fields,
     appearanceId ?? current?.focus.appearanceId
   )
   return targetCell
@@ -92,19 +92,19 @@ const move = (
   rowDelta: number,
   columnDelta: number,
   appearances: Pick<AppearanceList, 'ids' | 'indexOf' | 'at'>,
-  properties: Pick<PropertyList, 'ids' | 'indexOf' | 'at'>,
+  fields: Pick<FieldList, 'ids' | 'indexOf' | 'at'>,
   options?: {
     extend?: boolean
     wrap?: boolean
   }
 ): GridSelection | undefined => {
-  if (!current || !appearances.ids.length || !properties.ids.length) {
+  if (!current || !appearances.ids.length || !fields.ids.length) {
     return undefined
   }
 
   const nextFocus = grid.stepField(
     appearances,
-    properties,
+    fields,
     options?.extend ? current.focus : current.anchor,
     {
       rowDelta,

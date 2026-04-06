@@ -26,7 +26,7 @@ import {
   resolveDefaultAutoPanTargets
 } from '@dataview/react/interaction/autoPan'
 import { useStoreValue } from '@dataview/react/store'
-import { type FieldId } from '@dataview/react/runtime/currentView'
+import { type CellRef } from '@dataview/react/runtime/currentView'
 import { applyPaste, handleTableKey } from '../../input'
 import {
   gridContentBounds,
@@ -53,7 +53,7 @@ const View = () => {
   }
 
   const locked = usePageValue(state => state.lock !== null)
-  const columns = currentView.properties.all
+  const columns = currentView.fields.all
   const capabilities = useStoreValue(table.capabilities)
   const virtualInteraction = useStoreValue(table.virtual.interaction)
   const marqueeActive = virtualInteraction.marqueeActive
@@ -119,7 +119,7 @@ const View = () => {
     ),
     onBlankPointerDown
   })
-  const readCell = useCallback((cell: FieldId) => {
+  const readCell = useCallback((cell: CellRef) => {
     const recordId = currentView.appearances.get(cell.appearanceId)?.recordId
     const record = recordId
       ? engine.read.record.get(recordId)
@@ -225,7 +225,7 @@ const View = () => {
             dragActive={rowReorder.active}
             dragIdSet={rowReorder.dragIdSet}
             onDragStart={rowReorder.startDrag}
-            resizingPropertyId={columnResize.preview?.propertyId}
+            resizingPropertyId={columnResize.preview?.fieldId}
             onResizeStart={columnResize.onResizeStart}
           />
         </Surface>

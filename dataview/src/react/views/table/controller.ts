@@ -1,4 +1,4 @@
-import type { GroupEngine } from '@dataview/engine'
+import type { Engine } from '@dataview/engine'
 import {
   revealElement,
   revealY
@@ -197,7 +197,7 @@ const selectionRow = (input: {
 }
 
 export const createTableController = (options: {
-  engine: GroupEngine
+  engine: Engine
   pageStore: ReadStore<ResolvedPageState>
   currentViewStore: ReadStore<CurrentView | undefined>
   selectionStore: ReadStore<Selection>

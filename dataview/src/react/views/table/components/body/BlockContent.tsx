@@ -5,8 +5,8 @@ import {
   ChevronRight
 } from 'lucide-react'
 import type {
-  GroupProperty,
-  PropertyId
+  Field,
+  FieldId
 } from '@dataview/core/contracts'
 import {
   useCurrentView,
@@ -74,11 +74,11 @@ const ColumnHeaderBlock = (props: {
   scopeId: string
   rowIds: readonly AppearanceId[]
   label?: string
-  columns: readonly GroupProperty[]
+  columns: readonly Field[]
   template: string
-  resizingPropertyId?: PropertyId
+  resizingPropertyId?: FieldId
   onResizeStart: (
-    propertyId: PropertyId,
+    fieldId: FieldId,
     event: ReactPointerEvent<HTMLButtonElement>
   ) => void
 }) => (
@@ -98,7 +98,7 @@ const ColumnHeaderBlock = (props: {
 )
 
 export interface BlockContentProps {
-  columns: readonly GroupProperty[]
+  columns: readonly Field[]
   template: string
   marqueeActive: boolean
   dragActive: boolean
@@ -107,9 +107,9 @@ export interface BlockContentProps {
     rowId: AppearanceId
     event: ReactPointerEvent<HTMLButtonElement>
   }) => void
-  resizingPropertyId?: PropertyId
+  resizingPropertyId?: FieldId
   onResizeStart: (
-    propertyId: PropertyId,
+    fieldId: FieldId,
     event: ReactPointerEvent<HTMLButtonElement>
   ) => void
 }

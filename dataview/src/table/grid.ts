@@ -1,13 +1,13 @@
-import type { PropertyId } from '@dataview/core/contracts'
+import type { CustomFieldId } from '@dataview/core/contracts'
 import type {
   AppearanceId,
   AppearanceList,
-  FieldId,
-  PropertyList
+  CellRef,
+  FieldList
 } from '@dataview/engine/projection/view'
 
 const emptyAppearanceIds = [] as readonly AppearanceId[]
-const emptyPropertyIds = [] as readonly PropertyId[]
+const emptyFieldIds = [] as readonly CustomFieldId[]
 
 const clampIndex = (value: number, max: number) => {
   if (max <= 0) {
@@ -22,36 +22,36 @@ const hasAppearance = (
   appearanceId: AppearanceId
 ) => appearances.has(appearanceId)
 
-const hasProperty = (
-  properties: Pick<PropertyList, 'has'>,
-  propertyId: PropertyId
-) => properties.has(propertyId)
+const hasField = (
+  fields: Pick<FieldList, 'has'>,
+  fieldId: CustomFieldId
+) => fields.has(fieldId)
 
 const containsCell = (
   appearances: Pick<AppearanceList, 'has'>,
-  properties: Pick<PropertyList, 'has'>,
-  cell: FieldId
-) => hasAppearance(appearances, cell.appearanceId) && hasProperty(properties, cell.propertyId)
+  fields: Pick<FieldList, 'has'>,
+  cell: CellRef
+) => hasAppearance(appearances, cell.appearanceId) && hasField(fields, cell.fieldId)
 
 const appearanceIndex = (
   appearances: Pick<AppearanceList, 'indexOf'>,
   appearanceId: AppearanceId
 ) => appearances.indexOf(appearanceId)
 
-const propertyIndex = (
-  properties: Pick<PropertyList, 'indexOf'>,
-  propertyId: PropertyId
-) => properties.indexOf(propertyId)
+const fieldIndex = (
+  fields: Pick<FieldList, 'indexOf'>,
+  fieldId: CustomFieldId
+) => fields.indexOf(fieldId)
 
 const appearanceAt = (
   appearances: Pick<AppearanceList, 'at'>,
   index: number
 ) => appearances.at(index)
 
-const propertyAt = (
-  properties: Pick<PropertyList, 'at'>,
+const fieldAt = (
+  fields: Pick<FieldList, 'at'>,
   index: number
-) => properties.at(index)
+) => fields.at(index)
 
 const normalizeAppearanceIds = (
   appearances: Pick<AppearanceList, 'ids'>,
@@ -75,129 +75,129 @@ const appearancesBetween = (
   return appearances.ids.slice(Math.min(start, end), Math.max(start, end) + 1)
 }
 
-const propertiesBetween = (
-  properties: Pick<PropertyList, 'indexOf' | 'ids'>,
-  startId: PropertyId,
-  endId: PropertyId
+const fieldsBetween = (
+  fields: Pick<FieldList, 'indexOf' | 'ids'>,
+  startId: CustomFieldId,
+  endId: CustomFieldId
 ) => {
-  const start = properties.indexOf(startId)
-  const end = properties.indexOf(endId)
+  const start = fields.indexOf(startId)
+  const end = fields.indexOf(endId)
   if (start === undefined || end === undefined) {
-    return emptyPropertyIds
+    return emptyFieldIds
   }
 
-  return properties.ids.slice(Math.min(start, end), Math.max(start, end) + 1)
+  return fields.ids.slice(Math.min(start, end), Math.max(start, end) + 1)
 }
 
 const cellAt = (
   appearances: Pick<AppearanceList, 'at'>,
-  properties: Pick<PropertyList, 'at'>,
+  fields: Pick<FieldList, 'at'>,
   nextAppearanceIndex: number,
-  nextPropertyIndex: number
-): FieldId | undefined => {
+  nextFieldIndex: number
+): CellRef | undefined => {
   const appearanceId = appearanceAt(appearances, nextAppearanceIndex)
-  const propertyId = propertyAt(properties, nextPropertyIndex)
-  return appearanceId && propertyId
+  const fieldId = fieldAt(fields, nextFieldIndex)
+  return appearanceId && fieldId
     ? {
         appearanceId,
-        propertyId
+        fieldId
       }
     : undefined
 }
 
 const edgeCell = (
   appearances: Pick<AppearanceList, 'indexOf' | 'ids' | 'at'>,
-  properties: Pick<PropertyList, 'ids' | 'at'>,
+  fields: Pick<FieldList, 'ids' | 'at'>,
   appearanceId: AppearanceId,
   side: 'start' | 'end'
-): FieldId | undefined => {
+): CellRef | undefined => {
   const nextAppearanceIndex = appearanceIndex(appearances, appearanceId)
-  if (nextAppearanceIndex === undefined || !properties.ids.length) {
+  if (nextAppearanceIndex === undefined || !fields.ids.length) {
     return undefined
   }
 
   return cellAt(
     appearances,
-    properties,
+    fields,
     nextAppearanceIndex,
-    side === 'start' ? 0 : properties.ids.length - 1
+    side === 'start' ? 0 : fields.ids.length - 1
   )
 }
 
 const firstCell = (
   appearances: Pick<AppearanceList, 'ids' | 'has' | 'indexOf' | 'at'>,
-  properties: Pick<PropertyList, 'ids' | 'at'>,
+  fields: Pick<FieldList, 'ids' | 'at'>,
   appearanceId?: AppearanceId
-): FieldId | undefined => {
+): CellRef | undefined => {
   const nextAppearanceId = appearanceId && hasAppearance(appearances, appearanceId)
     ? appearanceId
     : appearanceAt(appearances, 0)
   return nextAppearanceId
-    ? edgeCell(appearances, properties, nextAppearanceId, 'start')
+    ? edgeCell(appearances, fields, nextAppearanceId, 'start')
     : undefined
 }
 
 const stepField = (
   appearances: Pick<AppearanceList, 'ids' | 'indexOf' | 'at'>,
-  properties: Pick<PropertyList, 'ids' | 'indexOf' | 'at'>,
-  cell: FieldId,
+  fields: Pick<FieldList, 'ids' | 'indexOf' | 'at'>,
+  cell: CellRef,
   options: {
     rowDelta: number
     columnDelta: number
     wrap?: boolean
   }
-): FieldId | undefined => {
+): CellRef | undefined => {
   const currentAppearanceIndex = appearanceIndex(appearances, cell.appearanceId)
-  const currentPropertyIndex = propertyIndex(properties, cell.propertyId)
+  const currentFieldIndex = fieldIndex(fields, cell.fieldId)
   if (
     currentAppearanceIndex === undefined
-    || currentPropertyIndex === undefined
+    || currentFieldIndex === undefined
     || !appearances.ids.length
-    || !properties.ids.length
+    || !fields.ids.length
   ) {
     return undefined
   }
 
   let nextAppearanceIndex = clampIndex(currentAppearanceIndex + options.rowDelta, appearances.ids.length)
-  let nextPropertyIndex = clampIndex(currentPropertyIndex + options.columnDelta, properties.ids.length)
+  let nextFieldIndex = clampIndex(currentFieldIndex + options.columnDelta, fields.ids.length)
 
   if (options.wrap && options.rowDelta === 0) {
-    const rawPropertyIndex = currentPropertyIndex + options.columnDelta
-    if (rawPropertyIndex < 0) {
+    const rawFieldIndex = currentFieldIndex + options.columnDelta
+    if (rawFieldIndex < 0) {
       nextAppearanceIndex = clampIndex(currentAppearanceIndex - 1, appearances.ids.length)
-      nextPropertyIndex = nextAppearanceIndex === currentAppearanceIndex
+      nextFieldIndex = nextAppearanceIndex === currentAppearanceIndex
         ? 0
-        : properties.ids.length - 1
-    } else if (rawPropertyIndex >= properties.ids.length) {
+        : fields.ids.length - 1
+    } else if (rawFieldIndex >= fields.ids.length) {
       nextAppearanceIndex = clampIndex(currentAppearanceIndex + 1, appearances.ids.length)
-      nextPropertyIndex = nextAppearanceIndex === currentAppearanceIndex
-        ? properties.ids.length - 1
+      nextFieldIndex = nextAppearanceIndex === currentAppearanceIndex
+        ? fields.ids.length - 1
         : 0
     } else {
-      nextPropertyIndex = rawPropertyIndex
+      nextFieldIndex = rawFieldIndex
     }
   }
 
   return cellAt(
     appearances,
-    properties,
+    fields,
     nextAppearanceIndex,
-    nextPropertyIndex
+    nextFieldIndex
   )
 }
 
 export const grid = {
   clampIndex,
   hasAppearance,
-  hasProperty,
+  hasField,
   containsCell,
   appearanceIndex,
-  propertyIndex,
+  fieldIndex,
   appearanceAt,
-  propertyAt,
+  fieldAt,
   normalizeAppearanceIds,
   appearancesBetween,
-  propertiesBetween,
+  fieldsBetween,
   cellAt,
   edgeCell,
   firstCell,

@@ -10,13 +10,13 @@ import {
   startOfYear
 } from 'date-fns'
 import type {
-  GroupDateValue,
-  GroupProperty,
-  GroupPropertyConfig
+  DateValue,
+  DateField,
+  CustomField
 } from '../../contracts/state'
 
-export type DatePropertyConfig = Extract<GroupPropertyConfig, { type: 'date' }>
-export type DateValueKind = GroupDateValue['kind']
+export type DatePropertyConfig = Pick<DateField, 'displayDateFormat' | 'displayTimeFormat' | 'defaultValueKind' | 'defaultTimezone'>
+export type DateValueKind = DateValue['kind']
 export type DateDisplayFormat = NonNullable<DatePropertyConfig['displayDateFormat']>
 export type DateTimeFormat = NonNullable<DatePropertyConfig['displayTimeFormat']>
 export type DateGroupMode = 'day' | 'week' | 'month' | 'quarter' | 'year'
@@ -210,7 +210,7 @@ const formatDateValueText = (
 }
 
 const readRelativeBase = (
-  value: GroupDateValue
+  value: DateValue
 ): DateLike => (
   value.kind === 'datetime' && value.timezone
     ? TZDateMini.tz(value.timezone)
@@ -218,7 +218,7 @@ const readRelativeBase = (
 )
 
 const formatSingleDateValue = (
-  value: GroupDateValue,
+  value: DateValue,
   config: DatePropertyConfig
 ) => {
   const relativeBase = readRelativeBase(value)
@@ -263,7 +263,7 @@ const formatSingleDateValue = (
   return `${dateText} ${timeText}`
 }
 
-const resolveDateInput = (value: unknown): GroupDateValue | undefined => {
+const resolveDateInput = (value: unknown): DateValue | undefined => {
   if (isGroupDateValue(value)) {
     return normalizeDateValue(value)
   }
@@ -287,7 +287,7 @@ const resolveDateInput = (value: unknown): GroupDateValue | undefined => {
   return undefined
 }
 
-const getDateTimeParts = (value: GroupDateValue) => {
+const getDateTimeParts = (value: DateValue) => {
   if (value.kind === 'date') {
     return parseDateOnly(value.start)
   }
@@ -295,7 +295,7 @@ const getDateTimeParts = (value: GroupDateValue) => {
   return parseDateTime(value.start)
 }
 
-const toComparableTimestamp = (value: GroupDateValue): number | undefined => {
+const toComparableTimestamp = (value: DateValue): number | undefined => {
   if (value.kind === 'date') {
     const parts = parseDateOnly(value.start)
     return parts
@@ -318,7 +318,6 @@ const toComparableTimestamp = (value: GroupDateValue): number | undefined => {
 }
 
 export const createDefaultDatePropertyConfig = (): DatePropertyConfig => ({
-  type: 'date',
   displayDateFormat: 'short',
   displayTimeFormat: '12h',
   defaultValueKind: 'date',
@@ -326,30 +325,29 @@ export const createDefaultDatePropertyConfig = (): DatePropertyConfig => ({
 })
 
 export const getDatePropertyConfig = (
-  property?: Pick<GroupProperty, 'kind' | 'config'>
+  property?: CustomField
 ): DatePropertyConfig => {
   const defaults = createDefaultDatePropertyConfig()
 
-  if (!property || property.kind !== 'date' || property.config?.type !== 'date') {
+  if (!property || property.kind !== 'date') {
     return defaults
   }
 
   return {
-    type: 'date',
-    displayDateFormat: DATE_DISPLAY_FORMATS.includes(property.config.displayDateFormat ?? 'short')
-      ? property.config.displayDateFormat ?? 'short'
+    displayDateFormat: DATE_DISPLAY_FORMATS.includes(property.displayDateFormat ?? 'short')
+      ? property.displayDateFormat ?? 'short'
       : defaults.displayDateFormat,
-    displayTimeFormat: DATE_TIME_FORMATS.includes(property.config.displayTimeFormat ?? '12h')
-      ? property.config.displayTimeFormat ?? '12h'
+    displayTimeFormat: DATE_TIME_FORMATS.includes(property.displayTimeFormat ?? '12h')
+      ? property.displayTimeFormat ?? '12h'
       : defaults.displayTimeFormat,
-    defaultValueKind: DATE_VALUE_KINDS.includes(property.config.defaultValueKind ?? 'date')
-      ? property.config.defaultValueKind ?? 'date'
+    defaultValueKind: DATE_VALUE_KINDS.includes(property.defaultValueKind ?? 'date')
+      ? property.defaultValueKind ?? 'date'
       : defaults.defaultValueKind,
-    defaultTimezone: typeof property.config.defaultTimezone === 'string'
-      ? isValidDateTimeZone(property.config.defaultTimezone)
-        ? property.config.defaultTimezone.trim()
+    defaultTimezone: typeof property.defaultTimezone === 'string'
+      ? isValidDateTimeZone(property.defaultTimezone)
+        ? property.defaultTimezone.trim()
         : defaults.defaultTimezone
-      : property.config.defaultTimezone === null
+      : property.defaultTimezone === null
         ? null
         : defaults.defaultTimezone
   }
@@ -359,12 +357,12 @@ export const isDateOnlyString = (value: string) => Boolean(parseDateOnly(value))
 
 export const isDateTimeString = (value: string) => Boolean(parseDateTime(value))
 
-export const isGroupDateValue = (value: unknown): value is GroupDateValue => {
+export const isGroupDateValue = (value: unknown): value is DateValue => {
   if (!value || typeof value !== 'object') {
     return false
   }
 
-  const input = value as GroupDateValue
+  const input = value as DateValue
   if (input.kind === 'date') {
     return typeof input.start === 'string' && (input.end === undefined || typeof input.end === 'string')
   }
@@ -376,8 +374,8 @@ export const isGroupDateValue = (value: unknown): value is GroupDateValue => {
 }
 
 export const normalizeDateValue = (
-  value: GroupDateValue
-): GroupDateValue | undefined => {
+  value: DateValue
+): DateValue | undefined => {
   if (value.kind === 'date') {
     const start = parseDateOnly(value.start)
     const end = value.end ? parseDateOnly(value.end) : undefined
@@ -440,7 +438,7 @@ export const normalizeDateValue = (
 
 export const parseDateInputDraft = (
   value: string
-): GroupDateValue | undefined => {
+): DateValue | undefined => {
   const trimmed = value.trim()
   if (!trimmed) {
     return undefined
@@ -526,7 +524,7 @@ export const parseDateGroupKey = (
 }
 
 const readDateStartParts = (
-  value: GroupDateValue
+  value: DateValue
 ) => value.kind === 'date'
   ? parseDateOnly(value.start)
   : parseDateOnly(value.start.slice(0, 10))
@@ -594,10 +592,10 @@ export const formatDateGroupTitle = (
 }
 
 export const createDateGroupValue = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+  property: CustomField | undefined,
   start: string,
   currentValue: unknown
-): GroupDateValue | undefined => {
+): DateValue | undefined => {
   if (!parseDateOnly(start)) {
     return undefined
   }
@@ -622,7 +620,7 @@ export const createDateGroupValue = (
 }
 
 export const formatDateValue = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+  property: CustomField | undefined,
   value: unknown
 ): string | undefined => {
   const resolved = resolveDateInput(value)
@@ -639,7 +637,7 @@ export const formatDateValue = (
       ...(resolved.kind === 'datetime'
         ? { timezone: resolved.timezone }
         : {})
-    } as GroupDateValue,
+    } as DateValue,
     config
   )
   if (!startText) {
@@ -657,7 +655,7 @@ export const formatDateValue = (
       ...(resolved.kind === 'datetime'
         ? { timezone: resolved.timezone }
         : {})
-    } as GroupDateValue,
+    } as DateValue,
     config
   )
 
@@ -667,7 +665,7 @@ export const formatDateValue = (
 }
 
 export const getDateSearchTokens = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+  property: CustomField | undefined,
   value: unknown
 ): string[] => {
   const resolved = resolveDateInput(value)
@@ -690,11 +688,11 @@ export const getDateSearchTokens = (
 }
 
 export const resolveDefaultDateValueKind = (
-  property?: Pick<GroupProperty, 'kind' | 'config'>
+  property?: CustomField
 ): DateValueKind => getDatePropertyConfig(property).defaultValueKind ?? 'date'
 
 export const resolveDefaultDateTimezone = (
-  property?: Pick<GroupProperty, 'kind' | 'config'>
+  property?: CustomField
 ) => getDatePropertyConfig(property).defaultTimezone ?? null
 
 export const getAvailableTimezones = () => {
@@ -722,7 +720,7 @@ export const readDateValueKind = (
 
 export const readDateValue = (
   value: unknown
-): GroupDateValue | undefined => resolveDateInput(value)
+): DateValue | undefined => resolveDateInput(value)
 
 export const readDatePrimaryString = (
   value: unknown

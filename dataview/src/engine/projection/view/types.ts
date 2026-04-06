@@ -1,12 +1,15 @@
 import type {
-  GroupProperty,
-  GroupView,
-  PropertyId,
+  Field,
+  FieldId,
+  View,
   RecordId
 } from '@dataview/core/contracts'
+import type { Bucket } from '@dataview/core/field'
 
 export type AppearanceId = string
 export type SectionKey = string
+
+export interface SectionBucket extends Pick<Bucket, 'key' | 'title' | 'value' | 'clearValue' | 'empty' | 'color'> {}
 
 export interface Appearance {
   id: AppearanceId
@@ -18,6 +21,7 @@ export interface Section {
   key: SectionKey
   title: string
   color?: string
+  bucket?: SectionBucket
   ids: readonly AppearanceId[]
   collapsed: boolean
 }
@@ -37,17 +41,17 @@ export interface AppearanceList {
 }
 
 export interface Schema {
-  properties: ReadonlyMap<PropertyId, GroupProperty>
+  fields: ReadonlyMap<FieldId, Field>
 }
 
-export interface PropertyList {
-  ids: readonly PropertyId[]
-  all: readonly GroupProperty[]
-  get: (id: PropertyId) => GroupProperty | undefined
-  has: (id: PropertyId) => boolean
-  indexOf: (id: PropertyId) => number | undefined
-  at: (index: number) => PropertyId | undefined
-  range: (anchor: PropertyId, focus: PropertyId) => readonly PropertyId[]
+export interface FieldList {
+  ids: readonly FieldId[]
+  all: readonly Field[]
+  get: (id: FieldId) => Field | undefined
+  has: (id: FieldId) => boolean
+  indexOf: (id: FieldId) => number | undefined
+  at: (index: number) => FieldId | undefined
+  range: (anchor: FieldId, focus: FieldId) => readonly FieldId[]
 }
 
 export interface Placement {
@@ -62,15 +66,15 @@ export interface Plan {
 }
 
 export interface ViewProjection {
-  view: GroupView
+  view: View
   schema: Schema
   appearances: AppearanceList
   sections: readonly Section[]
-  properties: PropertyList
+  fields: FieldList
 }
 
 export type {
-  FieldId,
+  CellRef,
   RecordFieldRef,
   ViewFieldRef
 } from './field'

@@ -27,12 +27,19 @@ export type EditorPick =
       side?: EdgeAnchor['side']
     }
   | {
+      kind: 'node'
+      id: NodeId
+      part: 'field'
+      field: 'text' | 'title'
+    }
+  | {
       kind: 'edge'
       id: EdgeId
       part: 'body' | 'end' | 'path'
       end?: 'source' | 'target'
       index?: number
       insert?: number
+      segment?: number
     }
   | {
       kind: 'mindmap'

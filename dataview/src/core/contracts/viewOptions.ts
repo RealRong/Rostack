@@ -1,19 +1,19 @@
-import type { GroupGalleryOptions } from './gallery'
-import type { GroupKanbanOptions } from './kanban'
-import type { PropertyId } from './state'
+import type { GalleryOptions } from './gallery'
+import type { KanbanOptions } from './kanban'
+import type { FieldId } from './state'
 
-export interface GroupViewDisplayOptions {
-  propertyIds: readonly PropertyId[]
+export interface ViewDisplayOptions {
+  fieldIds: readonly FieldId[]
 }
 
-export interface GroupTableOptions {
-  widths: Readonly<Partial<Record<PropertyId, number>>>
+export interface TableOptions {
+  widths: Readonly<Partial<Record<FieldId, number>>>
   showVerticalLines: boolean
 }
 
-export interface GroupViewOptions {
-  display: GroupViewDisplayOptions
-  table: GroupTableOptions
-  gallery: GroupGalleryOptions
-  kanban: GroupKanbanOptions
+export interface ViewOptions {
+  display: ViewDisplayOptions
+  table: TableOptions
+  gallery: GalleryOptions
+  kanban: KanbanOptions
 }

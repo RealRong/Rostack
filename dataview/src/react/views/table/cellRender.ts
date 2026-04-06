@@ -1,6 +1,6 @@
 import type {
   RecordId,
-  GroupRecord
+  Row
 } from '@dataview/core/contracts'
 import {
   createDerivedStore,
@@ -9,11 +9,11 @@ import {
   type ReadStore
 } from '@dataview/runtime/store'
 import {
-  sameField
+  sameCellRef
 } from '@dataview/engine/projection/view'
 import type {
   CurrentView,
-  FieldId
+  CellRef
 } from '@dataview/react/runtime/currentView'
 import {
   fill,
@@ -36,22 +36,22 @@ interface SelectionChrome {
   rangeEdges?: {
     rowStart: number
     rowEnd: number
-    propertyStart: number
-    propertyEnd: number
+    fieldStart: number
+    fieldEnd: number
   }
-  focusCell?: FieldId
+  focusCell?: CellRef
   selectionVisible: boolean
 }
 
 const equalCell = (
-  left: FieldId | undefined,
-  right: FieldId | undefined
+  left: CellRef | undefined,
+  right: CellRef | undefined
 ) => {
   if (!left || !right) {
     return left === right
   }
 
-  return sameField(left, right)
+  return sameCellRef(left, right)
 }
 
 const equalSelectionChrome = (
@@ -60,8 +60,8 @@ const equalSelectionChrome = (
 ) => (
   left.rangeEdges?.rowStart === right.rangeEdges?.rowStart
   && left.rangeEdges?.rowEnd === right.rangeEdges?.rowEnd
-  && left.rangeEdges?.propertyStart === right.rangeEdges?.propertyStart
-  && left.rangeEdges?.propertyEnd === right.rangeEdges?.propertyEnd
+  && left.rangeEdges?.fieldStart === right.rangeEdges?.fieldStart
+  && left.rangeEdges?.fieldEnd === right.rangeEdges?.fieldEnd
   && equalCell(left.focusCell, right.focusCell)
   && left.selectionVisible === right.selectionVisible
 )
@@ -79,17 +79,17 @@ const equalRenderState = (
   && left.chrome.fill === right.chrome.fill
 )
 
-const cellCacheKey = (cell: FieldId) => `${cell.appearanceId}\u0000${cell.propertyId}`
+const cellCacheKey = (cell: CellRef) => `${cell.appearanceId}\u0000${cell.fieldId}`
 
-export type CellRender = KeyedReadStore<FieldId, CellRenderState>
+export type CellRender = KeyedReadStore<CellRef, CellRenderState>
 
 export const createCellRender = (options: {
   gridSelectionStore: ReadStore<GridSelection | null>
   valueEditorOpenStore: ReadStore<boolean>
   currentViewStore: ReadStore<CurrentView | undefined>
   capabilitiesStore: ReadStore<Capabilities>
-  hoverCellStore: KeyedReadStore<FieldId, boolean>
-  recordStore: KeyedReadStore<RecordId, GroupRecord | undefined>
+  hoverCellStore: KeyedReadStore<CellRef, boolean>
+  recordStore: KeyedReadStore<RecordId, Row | undefined>
 }): CellRender => {
   const selectionChrome = createDerivedStore<SelectionChrome>({
     get: readStore => {
@@ -99,7 +99,7 @@ export const createCellRender = (options: {
       const currentView = readStore(options.currentViewStore)
       return {
         rangeEdges: currentRange && currentView
-          ? range.edges(currentRange, currentView.appearances, currentView.properties)
+          ? range.edges(currentRange, currentView.appearances, currentView.fields)
           : undefined,
         focusCell,
         selectionVisible: !readStore(options.valueEditorOpenStore)
@@ -108,7 +108,7 @@ export const createCellRender = (options: {
     isEqual: equalSelectionChrome
   })
 
-  const fillCell = createDerivedStore<FieldId | undefined>({
+  const fillCell = createDerivedStore<CellRef | undefined>({
     get: readStore => {
       if (!readStore(options.capabilitiesStore).showFillHandle) {
         return undefined
@@ -122,13 +122,13 @@ export const createCellRender = (options: {
       return fill.handleCell(
         readStore(options.gridSelectionStore),
         currentView.appearances,
-        currentView.properties
+        currentView.fields
       )
     },
     isEqual: equalCell
   })
 
-  return createKeyedDerivedStore<FieldId, CellRenderState>({
+  return createKeyedDerivedStore<CellRef, CellRenderState>({
     keyOf: cellCacheKey,
     get: (readStore, cell) => {
       const currentCapabilities = readStore(options.capabilitiesStore)
@@ -140,8 +140,8 @@ export const createCellRender = (options: {
       const rowIndex = currentView
         ? grid.appearanceIndex(currentView.appearances, cell.appearanceId)
         : undefined
-      const propertyIndex = currentView
-        ? grid.propertyIndex(currentView.properties, cell.propertyId)
+      const fieldIndex = currentView
+        ? grid.fieldIndex(currentView.fields, cell.fieldId)
         : undefined
       const hovered = currentCapabilities.canHover
         && readStore(options.hoverCellStore, cell)
@@ -151,11 +151,11 @@ export const createCellRender = (options: {
       const selected = (
         rangeEdges
         && rowIndex !== undefined
-        && propertyIndex !== undefined
+        && fieldIndex !== undefined
         && rowIndex >= rangeEdges.rowStart
         && rowIndex <= rangeEdges.rowEnd
-        && propertyIndex >= rangeEdges.propertyStart
-        && propertyIndex <= rangeEdges.propertyEnd
+        && fieldIndex >= rangeEdges.fieldStart
+        && fieldIndex <= rangeEdges.fieldEnd
       ) ?? false
       const chrome = cellChrome({
         selected,
@@ -167,7 +167,7 @@ export const createCellRender = (options: {
 
       return {
         exists: Boolean(record),
-        value: record?.values[cell.propertyId],
+        value: record?.values[cell.fieldId],
         selected: chrome.selection,
         chrome
       }

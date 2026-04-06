@@ -1,4 +1,5 @@
 export {
+  resolveNeutralCardStyle,
   normalizeOptionColorId,
   resolveOptionBadgeStyle,
   resolveOptionCardStyle,
@@ -8,6 +9,8 @@ export {
 } from './resolve'
 
 export type {
+  UiCardSurfaceState,
+  UiNeutralCardSurfaceTone,
   UiOptionColorId,
   UiOptionColorTokenUsage
 } from './types'

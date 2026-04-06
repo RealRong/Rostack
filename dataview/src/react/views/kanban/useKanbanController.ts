@@ -7,13 +7,12 @@ import {
   type RefObject
 } from 'react'
 import type {
-  GroupProperty,
-  GroupRecord,
+  Field,
+  CustomField,
+  Row,
   ViewId
 } from '@dataview/core/contracts'
-import {
-  resolveGroupTitleProperty
-} from '@dataview/core/view'
+import { isCustomField } from '@dataview/core/field'
 import {
   useDataView,
   useCurrentView,
@@ -44,9 +43,7 @@ import {
 } from '@dataview/react/runtime/marquee'
 import { useStoreValue } from '@dataview/react/store'
 import {
-  readBoardLayout,
-  type BoardLayout,
-  type CardPosition
+  readBoardLayout
 } from './drag'
 import {
   useDrag
@@ -60,16 +57,10 @@ interface KanbanSelectionState {
   select: (id: AppearanceId, mode?: 'replace' | 'toggle') => void
 }
 
-interface KanbanLayoutRegistry {
-  set: (key: SectionKey, layouts: readonly CardPosition[]) => void
-  clear: (key: SectionKey) => void
-  read: () => BoardLayout | null
-}
-
 export interface KanbanController {
   currentView: CurrentView
-  titleProperty?: GroupProperty
-  properties: readonly GroupProperty[]
+  fields: readonly CustomField[]
+  groupField?: Field
   canReorder: boolean
   groupUsesOptionColors: boolean
   fillColumnColor: boolean
@@ -78,13 +69,11 @@ export interface KanbanController {
     columnMinHeight: number
   }
   scrollRef: RefObject<HTMLDivElement | null>
-  layouts: KanbanLayoutRegistry
   selection: KanbanSelectionState
   drag: ReturnType<typeof useDrag>
-  boostedSectionKeySet: ReadonlySet<string>
   readSectionColorId: (sectionKey: SectionKey) => string | undefined
   readAppearanceColorId: (id: AppearanceId) => string | undefined
-  readRecord: (id: AppearanceId) => GroupRecord | undefined
+  readRecord: (id: AppearanceId) => Row | undefined
   marqueeActive: boolean
   visualTargets: VisualTargetRegistry
 }
@@ -103,7 +92,6 @@ export const useKanbanController = (input: {
   ))
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [dragging, setDragging] = useState(false)
-  const columnLayoutsRef = useRef<Map<SectionKey, readonly CardPosition[]>>(new Map())
   const visualTargets = useRef(createVisualTargetRegistry({
     resolveScrollTargets: () => resolveDefaultAutoPanTargets(scrollRef.current)
   })).current
@@ -112,27 +100,18 @@ export const useKanbanController = (input: {
     throw new Error('Kanban view requires an active current view.')
   }
 
-  const titleProperty = useMemo(
-    () => resolveGroupTitleProperty(
-      Array.from(currentView.schema.properties.values())
-    ),
-    [currentView.schema.properties]
-  )
-  const properties = useMemo(() => {
-    return currentView.properties.all.filter(property => (
-      property.id !== titleProperty?.id
-    ))
+  const fields = useMemo(() => {
+    return currentView.fields.all.filter(isCustomField)
   }, [
-    currentView.properties.all,
-    titleProperty?.id
+    currentView.fields.all
   ])
-  const groupProperty = useMemo(() => {
-    const groupPropertyId = currentView.view.query.group?.property
-    return groupPropertyId
-      ? currentView.schema.properties.get(groupPropertyId)
+  const groupField = useMemo(() => {
+    const groupFieldId = currentView.view.query.group?.field
+    return groupFieldId
+      ? currentView.schema.fields.get(groupFieldId)
       : undefined
-  }, [currentView.schema.properties, currentView.view.query.group?.property])
-  const groupUsesOptionColors = usesOptionGroupingColors(groupProperty)
+  }, [currentView.schema.fields, currentView.view.query.group?.field])
+  const groupUsesOptionColors = usesOptionGroupingColors(groupField)
   const fillColumnColor = groupUsesOptionColors
     && currentView.view.options.kanban.fillColumnColor
   const canReorder = Boolean(currentView.view.query.group) && !currentView.view.query.sorters.length
@@ -158,15 +137,6 @@ export const useKanbanController = (input: {
     () => new Set(selectionValue.ids),
     [selectionValue.ids]
   )
-  const layouts = useMemo<KanbanLayoutRegistry>(() => ({
-    set: (key, positions) => {
-      columnLayoutsRef.current.set(key, positions)
-    },
-    clear: key => {
-      columnLayoutsRef.current.delete(key)
-    },
-    read: () => readBoardLayout(scrollRef.current, columnLayoutsRef.current)
-  }), [])
 
   useEffect(() => {
     return dataView.marquee.registerAdapter({
@@ -230,7 +200,7 @@ export const useKanbanController = (input: {
     containerRef: scrollRef,
     canDrag: canReorder,
     itemMap: new Map(currentView.appearances.ids.map(id => [id, id] as const)),
-    getLayout: layouts.read,
+    getLayout: () => readBoardLayout(scrollRef.current),
     getDragIds: activeId => currentViewMove.drag(
       currentView.appearances.ids,
       selection.selectedIds,
@@ -245,24 +215,10 @@ export const useKanbanController = (input: {
     }
   })
 
-  const boostedSectionKeySet = useMemo(() => {
-    const keys = new Set<string>()
-    drag.dragIds.forEach(id => {
-      const key = sectionKeyById.get(id)
-      if (key) {
-        keys.add(key)
-      }
-    })
-    if (drag.overTarget?.sectionKey) {
-      keys.add(drag.overTarget.sectionKey)
-    }
-    return keys
-  }, [drag.dragIds, drag.overTarget?.sectionKey, sectionKeyById])
-
   return useMemo(() => ({
     currentView,
-    titleProperty,
-    properties,
+    fields,
+    groupField,
     canReorder,
     groupUsesOptionColors,
     fillColumnColor,
@@ -271,32 +227,28 @@ export const useKanbanController = (input: {
       columnMinHeight: input.columnMinHeight
     },
     scrollRef,
-    layouts,
     selection,
     drag,
-    boostedSectionKeySet,
     readSectionColorId,
     readAppearanceColorId,
     readRecord,
     marqueeActive,
     visualTargets
   }), [
-    boostedSectionKeySet,
     canReorder,
     currentView,
     fillColumnColor,
     drag,
     groupUsesOptionColors,
+    groupField,
     input.columnMinHeight,
     input.columnWidth,
-    layouts,
     marqueeActive,
-    properties,
+    fields,
     readAppearanceColorId,
     readRecord,
     readSectionColorId,
     selection,
-    titleProperty,
     visualTargets
   ])
 }

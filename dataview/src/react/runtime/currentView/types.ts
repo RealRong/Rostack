@@ -1,18 +1,19 @@
 import type {
-  PropertyId,
+  CustomFieldId,
   RecordId
 } from '@dataview/core/contracts'
 import type {
   AppearanceId,
   Appearance,
   AppearanceList,
-  FieldId,
+  CellRef,
   Plan,
   Placement,
-  PropertyList,
+  FieldList,
   RecordFieldRef,
   Schema,
   Section,
+  SectionBucket,
   SectionKey,
   ViewFieldRef,
   ViewProjection
@@ -22,13 +23,14 @@ export type {
   AppearanceId,
   Appearance,
   AppearanceList,
-  FieldId,
+  CellRef,
   Plan,
   Placement,
-  PropertyList,
+  FieldList,
   RecordFieldRef,
   Schema,
   Section,
+  SectionBucket,
   SectionKey,
   ViewFieldRef,
   ViewProjection
@@ -36,7 +38,7 @@ export type {
 
 export interface CreateInSectionInput {
   title?: string
-  values?: Partial<Record<PropertyId, unknown>>
+  values?: Partial<Record<CustomFieldId, unknown>>
 }
 
 export interface Commands {

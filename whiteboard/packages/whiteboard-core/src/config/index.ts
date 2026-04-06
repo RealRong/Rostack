@@ -11,8 +11,10 @@ export type BoardConfig = {
   }
   edge: {
     hitTestThresholdScreen: number
-    anchorSnapMin: number
-    anchorSnapRatio: number
+    activationPaddingScreen: number
+    outlineSnapMin: number
+    outlineSnapRatio: number
+    handleSnapScreen: number
   }
 }
 
@@ -37,7 +39,9 @@ export const DEFAULT_BOARD_CONFIG: BoardConfig = {
   },
   edge: {
     hitTestThresholdScreen: 10,
-    anchorSnapMin: 12,
-    anchorSnapRatio: 0.18
+    activationPaddingScreen: 24,
+    outlineSnapMin: 12,
+    outlineSnapRatio: 0.18,
+    handleSnapScreen: 14
   }
 }

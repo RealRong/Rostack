@@ -1,13 +1,13 @@
 import type {
-  GroupGalleryCardSize,
-  GroupGalleryOptions
+  GalleryCardSize,
+  GalleryOptions
 } from '../contracts/gallery'
 import { isJsonObject } from './shared'
 
-const DEFAULT_CARD_SIZE: GroupGalleryCardSize = 'md'
+const DEFAULT_CARD_SIZE: GalleryCardSize = 'md'
 const DEFAULT_SHOW_FIELD_LABELS = true
 
-const normalizeCardSize = (value: unknown): GroupGalleryCardSize => {
+const normalizeCardSize = (value: unknown): GalleryCardSize => {
   switch (value) {
     case 'sm':
     case 'lg':
@@ -17,21 +17,21 @@ const normalizeCardSize = (value: unknown): GroupGalleryCardSize => {
   }
 }
 
-export const normalizeGroupGalleryOptions = (
+export const normalizeGalleryOptions = (
   value: unknown
-): GroupGalleryOptions => {
+): GalleryOptions => {
   const gallery = isJsonObject(value) ? value : undefined
   return {
-    showPropertyLabels: typeof gallery?.showPropertyLabels === 'boolean'
-      ? gallery.showPropertyLabels
+    showFieldLabels: typeof gallery?.showFieldLabels === 'boolean'
+      ? gallery.showFieldLabels
       : DEFAULT_SHOW_FIELD_LABELS,
     cardSize: normalizeCardSize(gallery?.cardSize)
   }
 }
 
-export const cloneGroupGalleryOptions = (
-  options: GroupGalleryOptions
-): GroupGalleryOptions => ({
-  showPropertyLabels: options.showPropertyLabels,
+export const cloneGalleryOptions = (
+  options: GalleryOptions
+): GalleryOptions => ({
+  showFieldLabels: options.showFieldLabels,
   cardSize: options.cardSize
 })

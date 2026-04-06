@@ -9,11 +9,11 @@ import {
 } from 'lucide-react'
 import { useEffect, useState, type ReactElement } from 'react'
 import type {
-  GroupProperty,
-  GroupPropertyOption,
-  GroupStatusCategory
+  CustomField,
+  FieldOption,
+  StatusCategory
 } from '@dataview/core/contracts'
-import { getPropertyOptions, getStatusSections } from '@dataview/core/property'
+import { getFieldOptions, getStatusSections } from '@dataview/core/field'
 import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { Button } from '@ui/button'
@@ -29,8 +29,8 @@ import {
 } from '@ui/vertical-reorder-list'
 import { cn } from '@ui/utils'
 import {
-  PropertyOptionTag
-} from '@dataview/react/properties/options'
+  FieldOptionTag
+} from '@dataview/react/field/options'
 
 const moveItem = <Item,>(items: readonly Item[], from: number, to: number) => {
   const next = [...items]
@@ -45,8 +45,8 @@ const moveItem = <Item,>(items: readonly Item[], from: number, to: number) => {
 
 const buildOrderedIds = (
   sections: ReturnType<typeof getStatusSections>,
-  category: GroupStatusCategory,
-  reordered: readonly GroupPropertyOption[]
+  category: StatusCategory,
+  reordered: readonly FieldOption[]
 ) => sections.flatMap(section => (
   section.category === category
     ? reordered.map(option => option.id)
@@ -56,8 +56,8 @@ const buildOrderedIds = (
 const buildIdsAfterCategoryMove = (
   sections: ReturnType<typeof getStatusSections>,
   optionId: string,
-  from: GroupStatusCategory,
-  to: GroupStatusCategory
+  from: StatusCategory,
+  to: StatusCategory
 ) => sections.flatMap(section => {
   const ids = section.options
     .map(option => option.id)
@@ -75,13 +75,13 @@ const buildIdsAfterCategoryMove = (
 })
 
 const StatusOptionEditorPopover = (props: {
-  option: GroupPropertyOption
+  option: FieldOption
   open: boolean
-  currentCategory: GroupStatusCategory
+  currentCategory: StatusCategory
   onOpenChange: (open: boolean) => void
   onRename: (name: string) => boolean | void
   onColorChange: (color: string) => void
-  onMoveCategory: (category: GroupStatusCategory) => void
+  onMoveCategory: (category: StatusCategory) => void
   onDelete: () => void
   trigger: ReactElement
 }) => {
@@ -137,7 +137,7 @@ const StatusOptionEditorPopover = (props: {
             event.preventDefault()
             commitName()
           }}
-          placeholder={renderMessage(meta.ui.property.options.namePlaceholder)}
+          placeholder={renderMessage(meta.ui.field.options.namePlaceholder)}
         />
 
         <div>
@@ -172,7 +172,7 @@ const StatusOptionEditorPopover = (props: {
 
         <div className="border-t border-divider pt-1.5">
           <div className="px-1.5 pb-1 text-[11px] font-medium text-muted-foreground">
-            {renderMessage(meta.ui.property.status.moveTo)}
+            {renderMessage(meta.ui.field.status.moveTo)}
           </div>
 
           <div className="flex flex-col gap-0.5">
@@ -214,7 +214,7 @@ const StatusOptionEditorPopover = (props: {
               props.onOpenChange(false)
             }}
           >
-            {renderMessage(meta.ui.property.options.remove)}
+            {renderMessage(meta.ui.field.options.remove)}
           </Button>
         </div>
       </div>
@@ -223,13 +223,13 @@ const StatusOptionEditorPopover = (props: {
 }
 
 const StatusOptionRow = (props: {
-  option: GroupPropertyOption
+  option: FieldOption
   open: boolean
-  currentCategory: GroupStatusCategory
+  currentCategory: StatusCategory
   onOpenChange: (open: boolean) => void
   onRename: (name: string) => void
   onColorChange: (color: string) => void
-  onMoveCategory: (category: GroupStatusCategory) => void
+  onMoveCategory: (category: StatusCategory) => void
   onDelete: () => void
   drag?: VerticalReorderItemState
 }) => (
@@ -271,9 +271,9 @@ const StatusOptionRow = (props: {
             onClick={() => undefined}
           >
             <div className="min-w-0">
-              <PropertyOptionTag
-                label={props.option.name.trim() || renderMessage(meta.ui.property.options.untitled)}
-                color={props.option.color}
+              <FieldOptionTag
+                label={props.option.name.trim() || renderMessage(meta.ui.field.options.untitled)}
+                color={props.option.color ?? undefined}
               />
             </div>
           </Button>
@@ -283,36 +283,36 @@ const StatusOptionRow = (props: {
   </div>
 )
 
-const categoryMeta = (category: GroupStatusCategory) => {
+const categoryMeta = (category: StatusCategory) => {
   switch (category) {
     case 'todo':
       return {
-        label: renderMessage(meta.ui.property.status.todo),
+        label: renderMessage(meta.ui.field.status.todo),
         Icon: CircleDashed,
         className: 'text-muted-foreground'
       }
     case 'in_progress':
       return {
-        label: renderMessage(meta.ui.property.status.inProgress),
+        label: renderMessage(meta.ui.field.status.inProgress),
         Icon: CirclePlay,
         className: 'text-blue-500'
       }
     case 'complete':
     default:
       return {
-        label: renderMessage(meta.ui.property.status.complete),
+        label: renderMessage(meta.ui.field.status.complete),
         Icon: CircleCheck,
         className: 'text-green-500'
       }
   }
 }
 
-export const PropertyStatusOptionsSection = (props: {
-  property: GroupProperty
+export const FieldStatusOptionsSection = (props: {
+  property: CustomField
 }) => {
   const editor = useDataView().engine
   const [editingOptionId, setEditingOptionId] = useState<string>()
-  const options = getPropertyOptions(props.property)
+  const options = getFieldOptions(props.property)
   const sections = getStatusSections(props.property)
 
   useEffect(() => {
@@ -322,12 +322,16 @@ export const PropertyStatusOptionsSection = (props: {
   }, [editingOptionId, options])
 
   const updateOption = (
-    option: GroupPropertyOption,
-    patch: Partial<GroupPropertyOption>
-  ) => editor.properties.options.update(props.property.id, option.id, patch)
+    option: FieldOption,
+    patch: Partial<FieldOption>
+  ) => editor.fields.options.update(props.property.id, option.id, {
+    ...(patch.name !== undefined ? { name: patch.name } : {}),
+    ...(patch.color !== undefined ? { color: patch.color ?? '' } : {}),
+    ...('category' in patch && patch.category !== undefined ? { category: patch.category } : {})
+  })
 
-  const appendOption = (category: GroupStatusCategory) => {
-    const option = editor.properties.options.append(props.property.id)
+  const appendOption = (category: StatusCategory) => {
+    const option = editor.fields.options.append(props.property.id)
     if (!option) {
       return
     }
@@ -341,7 +345,7 @@ export const PropertyStatusOptionsSection = (props: {
   return (
     <div className="space-y-2 pt-1">
       <div className="px-1.5 text-[11px] font-medium text-muted-foreground">
-        {renderMessage(meta.ui.property.options.title)}
+        {renderMessage(meta.ui.field.options.title)}
       </div>
 
       {sections.map(section => {
@@ -371,7 +375,7 @@ export const PropertyStatusOptionsSection = (props: {
                 className="gap-0.5"
                 onMove={(from, to) => {
                   const reordered = moveItem(section.options, from, to)
-                  editor.properties.options.reorder(
+                  editor.fields.options.reorder(
                     props.property.id,
                     buildOrderedIds(sections, section.category, reordered)
                   )
@@ -398,7 +402,7 @@ export const PropertyStatusOptionsSection = (props: {
                           return
                         }
 
-                        editor.properties.options.reorder(
+                        editor.fields.options.reorder(
                           props.property.id,
                           buildIdsAfterCategoryMove(
                             sections,
@@ -411,7 +415,7 @@ export const PropertyStatusOptionsSection = (props: {
                         setEditingOptionId(undefined)
                       }}
                       onDelete={() => {
-                        editor.properties.options.remove(props.property.id, option.id)
+                        editor.fields.options.remove(props.property.id, option.id)
                       }}
                     />
                   )
@@ -424,7 +428,7 @@ export const PropertyStatusOptionsSection = (props: {
                 leading={<Plus className="size-4" size={14} strokeWidth={1.8} />}
                 onClick={() => appendOption(section.category)}
               >
-                {renderMessage(meta.ui.property.options.add)}
+                {renderMessage(meta.ui.field.options.add)}
               </Button>
             </div>
           </div>

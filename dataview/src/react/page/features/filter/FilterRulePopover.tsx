@@ -1,35 +1,38 @@
 import { Check, ChevronDown, Filter, Trash } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import type { GroupProperty, GroupFilterRule } from '@dataview/core/contracts'
+import type { Field, FilterRule } from '@dataview/core/contracts'
 import {
-  applyPropertyFilterPreset,
-  findPropertyOption,
-  getPropertyOptions,
-  isFilterRuleEffective,
+  applyFieldFilterPreset,
+  isFieldFilterEffective,
+} from '@dataview/core/field'
+import {
+  findFieldOption,
+  getFieldOptions,
   parseDateInputDraft,
   readDatePrimaryString
-} from '@dataview/core/property'
+} from '@dataview/core/field'
+import { isCustomField } from '@dataview/core/field'
 import { Button } from '@ui/button'
 import { DropdownMenu } from '@ui/dropdown-menu'
 import { Input } from '@ui/input'
 import { Popover } from '@ui/popover'
 import { cn } from '@ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
-import { PropertyOptionTag } from '@dataview/react/properties/options'
+import { FieldOptionTag } from '@dataview/react/field/options'
 import { QueryChip } from '../query'
 import { StatusFilterPicker } from './StatusFilterPicker'
 
 export interface FilterRulePopoverProps {
-  property?: GroupProperty
-  rule: GroupFilterRule
+  property?: Field
+  rule: FilterRule
   open: boolean
   onOpenChange: (open: boolean) => void
-  onChange: (rule: GroupFilterRule) => void
+  onChange: (rule: FilterRule) => void
   onRemove?: () => void
 }
 
 const readFilterDraft = (
-  property: Pick<GroupProperty, 'kind'> | undefined,
+  property: Pick<Field, 'kind'> | undefined,
   value: unknown
 ) => {
   switch (property?.kind) {
@@ -45,10 +48,10 @@ const readFilterDraft = (
 }
 
 const applyFilterDraft = (
-  rule: GroupFilterRule,
-  property: Pick<GroupProperty, 'kind'> | undefined,
+  rule: FilterRule,
+  property: Pick<Field, 'kind'> | undefined,
   draft: string
-): GroupFilterRule | null => {
+): FilterRule | null => {
   switch (property?.kind) {
     case 'number': {
       const trimmed = draft.trim()
@@ -98,19 +101,21 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
   const [draft, setDraft] = useState(() => committedDraft)
 
   const presentation = meta.filter.present(props.property, props.rule)
-  const active = isFilterRuleEffective(props.property, props.rule.op, props.rule.value)
+  const active = isFieldFilterEffective(props.property, props.rule.op, props.rule.value)
   const bodyLayout = presentation.bodyLayout
-  const propertyLabel = props.property?.name ?? renderMessage(meta.ui.filter.deletedProperty)
+  const fieldLabel = props.property?.name ?? renderMessage(meta.ui.filter.deletedField)
   const propertyKind = props.property
-    ? meta.property.kind.get(props.property.kind)
+    ? meta.field.kind.get(props.property.kind)
     : undefined
-  const PropertyIcon = propertyKind?.Icon ?? Filter
+  const FieldIcon = propertyKind?.Icon ?? Filter
   const conditionItems = meta.filter.conditions(props.property)
   const editorKind = presentation.value.editor
-  const propertyOptions = getPropertyOptions(props.property)
-  const selectedOption = props.property?.kind === 'status'
+  const propertyOptions = isCustomField(props.property)
+    ? getFieldOptions(props.property)
+    : []
+  const selectedOption = !isCustomField(props.property) || props.property.kind === 'status'
     ? undefined
-    : findPropertyOption(props.property, props.rule.value)
+    : findFieldOption(props.property, props.rule.value)
 
   useEffect(() => {
     if (!props.open) {
@@ -133,10 +138,10 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
       trigger={(
         <QueryChip
           state={active ? 'active' : props.open ? 'open' : 'idle'}
-          leading={<PropertyIcon className="size-[14px] shrink-0" size={14} strokeWidth={1.8} />}
+          leading={<FieldIcon className="size-[14px] shrink-0" size={14} strokeWidth={1.8} />}
           trailing={<ChevronDown className="size-[14px]" size={14} strokeWidth={1.8} />}
         >
-          {propertyLabel}
+          {fieldLabel}
         </QueryChip>
       )}
       contentClassName="w-[320px] p-0"
@@ -148,7 +153,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
         )}>
           <div className="flex items-center gap-1">
             <div className="min-w-0 flex-1 text-sm gap-1 flex items-end truncate font-medium text-foreground">
-              {propertyLabel}
+              {fieldLabel}
 
               {props.property && presentation.condition ? (
                 <DropdownMenu
@@ -163,7 +168,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
                     label: renderMessage(item.message),
                     checked: item.id === presentation.condition?.id,
                     onSelect: () => {
-                      props.onChange(applyPropertyFilterPreset(props.rule, props.property, item))
+                      props.onChange(applyFieldFilterPreset(props.rule, props.property, item))
                       setConditionOpen(false)
                     }
                   }))}
@@ -224,9 +229,9 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
                           : undefined}
                         pressed={selected}
                       >
-                        <PropertyOptionTag
+                        <FieldOptionTag
                           label={option.name}
-                          color={option.color}
+                          color={option.color ?? undefined}
                         />
                       </Button>
                     )

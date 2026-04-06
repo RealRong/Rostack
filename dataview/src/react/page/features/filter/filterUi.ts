@@ -1,38 +1,38 @@
 import type {
-  PropertyId,
-  GroupProperty,
-  GroupFilterRule
+  Field,
+  FieldId,
+  FilterRule
 } from '@dataview/core/contracts'
 
-export const getFilterPropertyId = (
-  rule: Pick<GroupFilterRule, 'property'>
-): PropertyId | undefined => {
-  if (typeof rule.property !== 'string') {
+export const getFilterFieldId = (
+  rule: Pick<FilterRule, 'field'>
+): FieldId | undefined => {
+  if (typeof rule.field !== 'string') {
     return undefined
   }
 
-  return rule.property
+  return rule.field
 }
 
-const getFilterPropertyIds = (
-  rules: readonly GroupFilterRule[]
-): Set<PropertyId> => {
-  const propertyIds = new Set<PropertyId>()
+const getFilterFieldIds = (
+  rules: readonly FilterRule[]
+): Set<FieldId> => {
+  const fieldIds = new Set<FieldId>()
 
   rules.forEach(rule => {
-    const propertyId = getFilterPropertyId(rule)
-    if (propertyId) {
-      propertyIds.add(propertyId)
+    const fieldId = getFilterFieldId(rule)
+    if (fieldId) {
+      fieldIds.add(fieldId)
     }
   })
 
-  return propertyIds
+  return fieldIds
 }
 
 export const getAvailableFilterProperties = (
-  properties: readonly GroupProperty[],
-  rules: readonly GroupFilterRule[]
+  fields: readonly Field[],
+  rules: readonly FilterRule[]
 ) => {
-  const usedPropertyIds = getFilterPropertyIds(rules)
-  return properties.filter(property => !usedPropertyIds.has(property.id))
+  const usedFieldIds = getFilterFieldIds(rules)
+  return fields.filter(property => !usedFieldIds.has(property.id))
 }

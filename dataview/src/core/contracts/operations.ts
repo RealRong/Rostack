@@ -1,21 +1,21 @@
-import type { PropertyId, GroupProperty, GroupRecord, GroupView, RecordId, ViewId } from './state'
+import type { CustomFieldId, CustomField, Row, View, RecordId, ViewId } from './state'
 
-export interface GroupRecordInsertTarget {
+export interface RowInsertTarget {
   index?: number
 }
 
-export type GroupValuePatch = Partial<Record<PropertyId, unknown>>
+export type ValuePatch = Partial<Record<CustomFieldId, unknown>>
 
-export type GroupBaseOperation =
+export type BaseOperation =
   | {
       type: 'document.record.insert'
-      records: GroupRecord[]
-      target?: GroupRecordInsertTarget
+      records: Row[]
+      target?: RowInsertTarget
     }
   | {
       type: 'document.record.patch'
       recordId: RecordId
-      patch: Partial<Omit<GroupRecord, 'id'>>
+      patch: Partial<Omit<Row, 'id'>>
     }
   | {
       type: 'document.record.remove'
@@ -24,45 +24,45 @@ export type GroupBaseOperation =
   | {
       type: 'document.value.set'
       recordId: RecordId
-      property: PropertyId
+      field: CustomFieldId
       value: unknown
     }
   | {
       type: 'document.value.patch'
       recordId: RecordId
-      patch: GroupValuePatch
+      patch: ValuePatch
     }
   | {
       type: 'document.value.clear'
       recordId: RecordId
-      property: PropertyId
+      field: CustomFieldId
     }
   | {
       type: 'document.view.put'
-      view: GroupView
+      view: View
     }
   | {
       type: 'document.view.remove'
       viewId: ViewId
     }
   | {
-      type: 'document.property.put'
-      property: GroupProperty
+      type: 'document.customField.put'
+      field: CustomField
     }
   | {
-      type: 'document.property.patch'
-      propertyId: PropertyId
-      patch: Partial<Omit<GroupProperty, 'id'>>
+      type: 'document.customField.patch'
+      fieldId: CustomFieldId
+      patch: Partial<Omit<CustomField, 'id'>>
     }
   | {
-      type: 'document.property.remove'
-      propertyId: PropertyId
+      type: 'document.customField.remove'
+      fieldId: CustomFieldId
     }
   | {
       type: 'external.version.bump'
       source: string
     }
 
-export type GroupOperationType = GroupBaseOperation['type']
+export type OperationType = BaseOperation['type']
 
-export type GroupOperationPayload<TType extends GroupOperationType> = Omit<Extract<GroupBaseOperation, { type: TType }>, 'type'>
+export type OperationPayload<TType extends OperationType> = Omit<Extract<BaseOperation, { type: TType }>, 'type'>

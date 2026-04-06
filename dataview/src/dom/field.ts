@@ -9,7 +9,7 @@ export interface FieldAnchor {
 export const FIELD_VIEW_ID_ATTR = 'data-value-editor-view-id'
 export const FIELD_APPEARANCE_ID_ATTR = 'data-value-editor-appearance-id'
 export const FIELD_RECORD_ID_ATTR = 'data-value-editor-record-id'
-export const FIELD_PROPERTY_ID_ATTR = 'data-value-editor-property-id'
+export const FIELD_FIELD_ID_ATTR = 'data-value-editor-field-id'
 
 const fieldSelector = `[${FIELD_VIEW_ID_ATTR}]`
 
@@ -49,7 +49,7 @@ export const fieldAttrs = (
   [FIELD_VIEW_ID_ATTR]: field.viewId,
   [FIELD_APPEARANCE_ID_ATTR]: field.appearanceId,
   [FIELD_RECORD_ID_ATTR]: field.recordId,
-  [FIELD_PROPERTY_ID_ATTR]: field.propertyId
+  [FIELD_FIELD_ID_ATTR]: field.fieldId
 })
 
 export const fieldElement = (
@@ -66,7 +66,7 @@ export const fieldElement = (
       node.dataset.valueEditorViewId === field.viewId
       && node.dataset.valueEditorAppearanceId === field.appearanceId
       && node.dataset.valueEditorRecordId === field.recordId
-      && node.dataset.valueEditorPropertyId === field.propertyId
+      && node.dataset.valueEditorFieldId === field.fieldId
     ) {
       return node
     }

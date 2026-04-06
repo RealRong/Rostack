@@ -79,9 +79,49 @@ const pushPoint = (
   }
 }
 
+const normalizePolylinePoints = (
+  points: readonly Point[]
+) => {
+  const normalized: Point[] = []
+
+  for (let index = 0; index < points.length; index += 1) {
+    const point = points[index]!
+
+    if (!normalized.length) {
+      normalized.push(point)
+      continue
+    }
+
+    const last = normalized[normalized.length - 1]!
+    if (isSamePoint(last, point)) {
+      continue
+    }
+
+    normalized.push(point)
+
+    while (normalized.length >= 3) {
+      const right = normalized[normalized.length - 1]!
+      const middle = normalized[normalized.length - 2]!
+      const left = normalized[normalized.length - 3]!
+      const collinear =
+        (left.x === middle.x && middle.x === right.x)
+        || (left.y === middle.y && middle.y === right.y)
+
+      if (!collinear) {
+        break
+      }
+
+      normalized.splice(normalized.length - 2, 1)
+    }
+  }
+
+  return normalized
+}
+
 const createSegments = (
   points: readonly Point[],
-  insertIndex: number | ((segmentIndex: number) => number)
+  insertIndex: number | ((segmentIndex: number) => number),
+  role: EdgePathSegment['role'] | ((segmentIndex: number) => EdgePathSegment['role']) = 'insert'
 ): EdgePathSegment[] => {
   const segments: EdgePathSegment[] = []
 
@@ -95,6 +135,9 @@ const createSegments = (
     segments.push({
       from,
       to,
+      role: typeof role === 'function'
+        ? role(index)
+        : role,
       insertPoint: getMidPoint(from, to),
       insertIndex: typeof insertIndex === 'function'
         ? insertIndex(index)
@@ -423,6 +466,94 @@ const chooseStepCorner = (
   }
 }
 
+const pushStepPoint = (
+  points: Point[],
+  point: Point
+) => {
+  pushPoint(points, point)
+}
+
+const buildAutoStepPath = ({
+  source,
+  target
+}: Pick<EdgePathInput, 'source' | 'target'>): Pick<EdgePathResult, 'points' | 'segments' | 'svgPath' | 'label'> => {
+  const sourceSide = resolveSide(source.side, source.point, target.point)
+  const targetSide = resolveSide(target.side, target.point, source.point)
+  const sourceStart = source.side
+    ? getStepGapPoint(source.point, sourceSide, target.point)
+    : source.point
+  const targetEnd = target.side
+    ? getStepGapPoint(target.point, targetSide, source.point)
+    : target.point
+  const points: Point[] = []
+
+  pushStepPoint(points, source.point)
+  pushStepPoint(points, sourceStart)
+
+  if (sourceStart.x !== targetEnd.x && sourceStart.y !== targetEnd.y) {
+    const sourceHorizontal =
+      sourceSide === 'left'
+      || sourceSide === 'right'
+    const targetHorizontal =
+      targetSide === 'left'
+      || targetSide === 'right'
+
+    if (sourceHorizontal && targetHorizontal) {
+      const splitX =
+        sourceSide !== targetSide
+          ? (sourceStart.x + targetEnd.x) / 2
+          : sourceSide === 'right'
+            ? Math.max(sourceStart.x, targetEnd.x) + DEFAULT_STEP_ENDPOINT_OFFSET
+            : Math.min(sourceStart.x, targetEnd.x) - DEFAULT_STEP_ENDPOINT_OFFSET
+      pushStepPoint(points, {
+        x: splitX,
+        y: sourceStart.y
+      })
+      pushStepPoint(points, {
+        x: splitX,
+        y: targetEnd.y
+      })
+    } else if (!sourceHorizontal && !targetHorizontal) {
+      const splitY =
+        sourceSide !== targetSide
+          ? (sourceStart.y + targetEnd.y) / 2
+          : sourceSide === 'bottom'
+            ? Math.max(sourceStart.y, targetEnd.y) + DEFAULT_STEP_ENDPOINT_OFFSET
+            : Math.min(sourceStart.y, targetEnd.y) - DEFAULT_STEP_ENDPOINT_OFFSET
+      pushStepPoint(points, {
+        x: sourceStart.x,
+        y: splitY
+      })
+      pushStepPoint(points, {
+        x: targetEnd.x,
+        y: splitY
+      })
+    } else if (sourceHorizontal) {
+      pushStepPoint(points, {
+        x: targetEnd.x,
+        y: sourceStart.y
+      })
+    } else {
+      pushStepPoint(points, {
+        x: sourceStart.x,
+        y: targetEnd.y
+      })
+    }
+  }
+
+  pushStepPoint(points, targetEnd)
+  pushStepPoint(points, target.point)
+
+  const normalized = normalizePolylinePoints(points)
+
+  return {
+    points: normalized,
+    segments: createSegments(normalized, (index) => index),
+    svgPath: buildPolylinePath(normalized),
+    label: getPolylineLabel(normalized)
+  }
+}
+
 const getStepGapPoint = (
   point: Point,
   side: EdgeAnchor['side'],
@@ -586,6 +717,7 @@ const createCurveSegments = (
     segments.push({
       from,
       to,
+      role: 'insert',
       insertIndex: index,
       insertPoint: pointOnCubicBezier(from, control1, control2, to, 0.5),
       hitPoints
@@ -792,32 +924,32 @@ const linearRouter: EdgeRouter = (input) => {
 
 const stepRouter: EdgeRouter = ({ edge, source, target }) => {
   if (readEdgeRoutePoints(edge.route).length > 0) {
-    return buildStepPathThroughPoints({
+    const points = normalizePolylinePoints(getPathPoints({
       edge,
       source,
       target
-    })
+    }))
+
+    return {
+      points,
+      segments: createSegments(
+        points,
+        (index) => index,
+        (index) => (
+          index > 0 && index < points.length - 2
+            ? 'control'
+            : 'insert'
+        )
+      ),
+      svgPath: buildPolylinePath(points),
+      label: getPolylineLabel(points)
+    }
   }
 
-  const sourceSide = resolveSide(source.side, source.point, target.point)
-  const targetSide = resolveSide(target.side, target.point, source.point)
-  const [path, labelX, labelY, , , points] = getSmoothPolyPath({
-    sourceX: source.point.x,
-    sourceY: source.point.y,
-    sourcePosition: sourceSide,
-    targetX: target.point.x,
-    targetY: target.point.y,
-    targetPosition: targetSide,
-    borderRadius: 0,
-    offset: DEFAULT_ORTHO_OFFSET
+  return buildAutoStepPath({
+    source,
+    target
   })
-
-  return {
-    points,
-    segments: createSegments(points, 0),
-    svgPath: path,
-    label: { x: labelX, y: labelY }
-  }
 }
 
 const curveRouter: EdgeRouter = ({ edge, source, target }) => {
@@ -855,6 +987,7 @@ const curveRouter: EdgeRouter = ({ edge, source, target }) => {
       segments: [{
         from: source.point,
         to: target.point,
+        role: 'insert',
         insertIndex: 0,
         insertPoint: pointOnCubicBezier(source.point, sourceControl, targetControl, target.point, 0.5),
         hitPoints: sampleCubicBezier(source.point, sourceControl, targetControl, target.point)

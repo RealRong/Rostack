@@ -1,4 +1,4 @@
-import type { PropertyId, GroupDocument, GroupEntityTable, GroupProperty } from '../contracts/state'
+import type { CustomFieldId, DataDoc, EntityTable, CustomField } from '../contracts/state'
 import {
   getEntityTableById,
   getEntityTableIds,
@@ -9,43 +9,43 @@ import {
   removeEntityTableEntity
 } from './shared'
 
-const replaceDocumentPropertiesTable = (document: GroupDocument, properties: GroupEntityTable<PropertyId, GroupProperty>): GroupDocument => {
-  if (properties === document.properties) {
+const replaceDocumentFieldsTable = (document: DataDoc, fields: EntityTable<CustomFieldId, CustomField>): DataDoc => {
+  if (fields === document.fields) {
     return document
   }
 
   return {
     ...document,
-    properties
+    fields
   }
 }
 
-export const getDocumentProperties = (document: GroupDocument): GroupProperty[] => {
-  return listEntityTable(document.properties)
+export const getDocumentCustomFields = (document: DataDoc): CustomField[] => {
+  return listEntityTable(document.fields)
 }
 
-export const getDocumentPropertyIds = (document: GroupDocument): PropertyId[] => getEntityTableIds(document.properties)
-export const getDocumentPropertyById = (document: GroupDocument, propertyId: PropertyId) => getEntityTableById(document.properties, propertyId)
-export const hasDocumentProperty = (document: GroupDocument, propertyId: PropertyId) => hasEntityTableId(document.properties, propertyId)
+export const getDocumentCustomFieldIds = (document: DataDoc): CustomFieldId[] => getEntityTableIds(document.fields)
+export const getDocumentCustomFieldById = (document: DataDoc, fieldId: CustomFieldId) => getEntityTableById(document.fields, fieldId)
+export const hasDocumentCustomField = (document: DataDoc, fieldId: CustomFieldId) => hasEntityTableId(document.fields, fieldId)
 
-export const putDocumentProperty = (document: GroupDocument, property: GroupProperty): GroupDocument => {
-  return replaceDocumentPropertiesTable(document, putEntityTableEntity(document.properties, property))
+export const putDocumentCustomField = (document: DataDoc, field: CustomField): DataDoc => {
+  return replaceDocumentFieldsTable(document, putEntityTableEntity(document.fields, field))
 }
 
-export const patchDocumentProperty = (document: GroupDocument, propertyId: PropertyId, patch: Partial<Omit<GroupProperty, 'id'>>): GroupDocument => {
-  const nextProperties = patchEntityTableEntity(document.properties, propertyId, patch)
-  if (nextProperties === document.properties) {
+export const patchDocumentCustomField = (document: DataDoc, fieldId: CustomFieldId, patch: Partial<Omit<CustomField, 'id'>>): DataDoc => {
+  const nextFields = patchEntityTableEntity(document.fields, fieldId, patch)
+  if (nextFields === document.fields) {
     return document
   }
 
-  return replaceDocumentPropertiesTable(document, nextProperties)
+  return replaceDocumentFieldsTable(document, nextFields)
 }
 
-export const removeDocumentProperty = (document: GroupDocument, propertyId: PropertyId): GroupDocument => {
-  const nextProperties = removeEntityTableEntity(document.properties, propertyId)
-  if (nextProperties === document.properties) {
+export const removeDocumentCustomField = (document: DataDoc, fieldId: CustomFieldId): DataDoc => {
+  const nextFields = removeEntityTableEntity(document.fields, fieldId)
+  if (nextFields === document.fields) {
     return document
   }
 
-  return replaceDocumentPropertiesTable(document, nextProperties)
+  return replaceDocumentFieldsTable(document, nextFields)
 }

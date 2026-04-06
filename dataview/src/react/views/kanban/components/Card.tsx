@@ -5,9 +5,12 @@ import {
   useState,
   type CSSProperties
 } from 'react'
-import { resolveOptionCardStyle } from '@ui/color'
+import {
+  resolveNeutralCardStyle,
+  resolveOptionCardStyle
+} from '@ui/color'
 import type {
-  GroupRecord,
+  Row,
 } from '@dataview/core/contracts'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
@@ -29,8 +32,7 @@ import {
 
 export const Card = (props: {
   appearanceId: AppearanceId
-  record: GroupRecord
-  measureRef?: (node: HTMLElement | null) => void
+  record: Row
   className?: string
   style?: CSSProperties
 }) => {
@@ -38,7 +40,6 @@ export const Card = (props: {
   const dataView = useDataView()
   const engine = dataView.engine
   const record = useKeyedStoreValue(engine.read.record, props.record.id) ?? props.record
-  const titleProperty = controller.titleProperty
   const selected = controller.selection.selectedIdSet.has(props.appearanceId)
   const active = controller.drag.activeId === props.appearanceId
   const draggingSelected = controller.drag.activeId !== undefined
@@ -50,19 +51,15 @@ export const Card = (props: {
     appearanceId: props.appearanceId
   })
   const cardNodeRef = useRef<HTMLElement | null>(null)
-  const measureRefRef = useRef(props.measureRef)
-  measureRefRef.current = props.measureRef
   const marqueeActiveRef = useRef(controller.marqueeActive)
   marqueeActiveRef.current = controller.marqueeActive
   const sectionColorId = controller.readAppearanceColorId(props.appearanceId)
-  const surfaceStyle = resolveOptionCardStyle(
-    controller.fillColumnColor
-      ? sectionColorId
-      : undefined
-  )
+  const surfaceState = hovered && !editing ? 'hover' : 'default'
+  const surfaceStyle = controller.fillColumnColor
+    ? resolveOptionCardStyle(sectionColorId, surfaceState)
+    : resolveNeutralCardStyle(surfaceState, 'preview')
   const contentRef = useCallback((node: HTMLElement | null) => {
     cardNodeRef.current = node
-    measureRefRef.current?.(node)
   }, [])
 
   useLayoutEffect(() => {
@@ -160,8 +157,7 @@ export const Card = (props: {
       viewId={controller.currentView.view.id}
       appearanceId={props.appearanceId}
       record={record}
-      titleProperty={titleProperty}
-      properties={controller.properties}
+      fields={controller.fields}
       titlePlaceholder={record.id}
       showEditAction={hovered && !editing && !active}
       propertyDensity="compact"

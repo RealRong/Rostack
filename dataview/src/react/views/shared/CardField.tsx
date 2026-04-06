@@ -1,17 +1,17 @@
 import type { ReactNode } from 'react'
 import type {
-  GroupProperty,
+  CustomField,
   RecordId
 } from '@dataview/core/contracts'
 import {
-  resolvePropertyPrimaryAction
-} from '@dataview/core/property'
+  resolveCustomFieldPrimaryAction
+} from '@dataview/core/field'
 import {
   useDataView,
 } from '@dataview/react/dataview'
 import {
-  PropertyValueContent
-} from '@dataview/react/properties/value'
+  FieldValueContent
+} from '@dataview/react/field/value'
 import {
   fieldAttrs
 } from '@dataview/dom/field'
@@ -23,7 +23,7 @@ import { openCardField } from './openCardField'
 
 export interface CardFieldProps {
   field: ViewFieldRef
-  property?: GroupProperty
+  customField?: CustomField
   value: unknown
   emptyPlaceholder?: ReactNode
   className?: string
@@ -33,18 +33,18 @@ export interface CardFieldProps {
 }
 
 const applyRecordValue = (input: {
-  setValue: (recordId: RecordId, propertyId: string, value: unknown) => void
-  clearValue: (recordId: RecordId, propertyId: string) => void
+  setValue: (recordId: RecordId, fieldId: string, value: unknown) => void
+  clearValue: (recordId: RecordId, fieldId: string) => void
   recordId: RecordId
-  propertyId: string
+  fieldId: string
   value: unknown | undefined
 }) => {
   if (input.value === undefined) {
-    input.clearValue(input.recordId, input.propertyId)
+    input.clearValue(input.recordId, input.fieldId)
     return
   }
 
-  input.setValue(input.recordId, input.propertyId, input.value)
+  input.setValue(input.recordId, input.fieldId, input.value)
 }
 
 export const CardField = (props: CardFieldProps) => {
@@ -52,10 +52,10 @@ export const CardField = (props: CardFieldProps) => {
   const engine = dataView.engine
   const valueEditor = dataView.valueEditor
 
-  if (!props.property) {
+  if (!props.customField) {
     return (
-      <PropertyValueContent
-        property={props.property}
+      <FieldValueContent
+        property={props.customField}
         value={props.value}
         emptyPlaceholder={props.emptyPlaceholder}
         className={props.valueClassName}
@@ -63,12 +63,12 @@ export const CardField = (props: CardFieldProps) => {
       />
     )
   }
-  const property = props.property
+  const customField = props.customField
 
   const onQuickToggle = () => {
-    const action = resolvePropertyPrimaryAction({
+    const action = resolveCustomFieldPrimaryAction({
       exists: true,
-      property,
+      field: customField,
       value: props.value
     })
     if (action.kind !== 'quickToggle') {
@@ -80,14 +80,14 @@ export const CardField = (props: CardFieldProps) => {
       setValue: engine.records.setValue,
       clearValue: engine.records.clearValue,
       recordId: props.field.recordId,
-      propertyId: property.id,
+      fieldId: customField.id,
       value: action.value
     })
   }
 
-  const action = resolvePropertyPrimaryAction({
+  const action = resolveCustomFieldPrimaryAction({
     exists: true,
-    property,
+    field: customField,
     value: props.value
   })
 
@@ -105,8 +105,8 @@ export const CardField = (props: CardFieldProps) => {
   if (action.kind === 'quickToggle') {
     return (
       <div className={cn('min-w-0', props.className)}>
-        <PropertyValueContent
-          property={property}
+        <FieldValueContent
+          property={customField}
           value={props.value}
           emptyPlaceholder={props.emptyPlaceholder}
           className={props.valueClassName}
@@ -146,8 +146,8 @@ export const CardField = (props: CardFieldProps) => {
       }}
       className={cn('min-w-0 select-none text-left', props.className)}
     >
-      <PropertyValueContent
-        property={property}
+      <FieldValueContent
+        property={customField}
         value={props.value}
         emptyPlaceholder={props.emptyPlaceholder}
         className={props.valueClassName}

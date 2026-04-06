@@ -1,15 +1,15 @@
-import type { GroupProperty } from '@dataview/core/contracts'
+import type { CustomField } from '@dataview/core/contracts'
 import {
   getKind,
-  getPropertyKind
+  getFieldKind
 } from '../kind'
 import { normalizeSearchableValue } from '../kind/shared'
 
-export const getPropertySearchTokens = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+export const getFieldSearchTokens = (
+  field: CustomField | undefined,
   value: unknown
 ): string[] => (
-  (getPropertyKind(property) ?? getKind('text')).search(property, value)
+  (getFieldKind(field) ?? getKind('text')).search(field, value)
 )
 
 export {

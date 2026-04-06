@@ -1,18 +1,18 @@
 import type {
-  GroupProperty
+  CustomField
 } from '@dataview/core/contracts'
 import {
-  isEmptyPropertyValue
-} from '@dataview/core/property'
+  isEmptyFieldValue
+} from '@dataview/core/field'
 import type {
   ViewFieldRef
 } from '@dataview/engine/projection/view'
 import { CardField } from './CardField'
-import { AddCardPropertyTrigger } from './AddCardPropertyTrigger'
+import { AddCardFieldTrigger } from './AddCardFieldTrigger'
 
-export interface CardPropertySlotProps {
+export interface CardFieldSlotProps {
   field: ViewFieldRef
-  property: GroupProperty
+  customField: CustomField
   value: unknown
   mode: 'view' | 'edit'
   className?: string
@@ -21,14 +21,14 @@ export interface CardPropertySlotProps {
   openOnClick?: boolean
 }
 
-export const CardPropertySlot = (props: CardPropertySlotProps) => {
-  const empty = isEmptyPropertyValue(props.value)
+export const CardFieldSlot = (props: CardFieldSlotProps) => {
+  const empty = isEmptyFieldValue(props.value)
   if (empty) {
     return props.mode === 'edit'
       ? (
-        <AddCardPropertyTrigger
+        <AddCardFieldTrigger
           field={props.field}
-          property={props.property}
+          customField={props.customField}
           className={props.className}
           openOnClick={props.openOnClick}
         />
@@ -39,7 +39,7 @@ export const CardPropertySlot = (props: CardPropertySlotProps) => {
   return (
     <CardField
       field={props.field}
-      property={props.property}
+      customField={props.customField}
       value={props.value}
       className={props.className}
       valueClassName={props.valueClassName}

@@ -1,23 +1,23 @@
 import type {
-  GroupAggregateSpec,
-  GroupPropertyConfig,
-  GroupPropertyKind,
-  PropertyId,
-  GroupProperty,
-  GroupRecord,
-  GroupStatusCategory,
-  GroupView,
-  GroupViewQuery,
-  GroupViewType,
+  AggregateSpec,
+  FieldId,
+  CustomFieldKind,
+  CustomFieldId,
+  CustomField,
+  Row,
+  StatusCategory,
+  View,
+  ViewQuery,
+  ViewType,
   RecordId,
   ViewId
 } from './state'
-import type { GroupGalleryCardSize } from './gallery'
-import type { GroupKanbanNewRecordPosition } from './kanban'
-import type { GroupRecordInsertTarget } from './operations'
-import type { GroupTableOptions, GroupViewOptions } from './viewOptions'
+import type { GalleryCardSize } from './gallery'
+import type { KanbanNewRecordPosition } from './kanban'
+import type { RowInsertTarget } from './operations'
+import type { TableOptions, ViewOptions } from './viewOptions'
 
-export type GroupEditTarget =
+export type EditTarget =
   | {
       type: 'record'
       recordId: RecordId
@@ -27,10 +27,10 @@ export type GroupEditTarget =
       recordIds: RecordId[]
     }
 
-export type GroupValueApplyAction =
+export type ValueApplyAction =
   | {
       type: 'set'
-      property: PropertyId
+      field: CustomFieldId
       value: unknown
     }
   | {
@@ -39,51 +39,51 @@ export type GroupValueApplyAction =
     }
   | {
       type: 'clear'
-      property: PropertyId
+      field: CustomFieldId
     }
 
-export interface GroupRecordCreateInput {
+export interface RowCreateInput {
   id?: RecordId
+  title?: string
   type?: string
-  values?: Partial<Record<PropertyId, unknown>>
+  values?: Partial<Record<CustomFieldId, unknown>>
   meta?: Record<string, unknown>
 }
 
-export interface GroupPropertyCreateInput {
-  id?: PropertyId
+export interface CustomFieldCreateInput {
+  id?: CustomFieldId
   name: string
-  kind?: GroupPropertyKind
-  config?: GroupPropertyConfig
+  kind?: CustomFieldKind
   meta?: Record<string, unknown>
 }
 
-export interface GroupViewCreateInput {
+export interface ViewCreateInput {
   id?: ViewId
   name: string
-  type: GroupViewType
-  query?: GroupViewQuery
-  aggregates?: GroupAggregateSpec[]
-  options?: GroupViewOptions
+  type: ViewType
+  query?: ViewQuery
+  aggregates?: AggregateSpec[]
+  options?: ViewOptions
   orders?: RecordId[]
 }
 
-export type GroupCommand =
+export type Command =
   | {
       type: 'value.apply'
-      target: GroupEditTarget
-      action: GroupValueApplyAction
+      target: EditTarget
+      action: ValueApplyAction
     }
   | {
       type: 'record.create'
-      input: GroupRecordCreateInput
+      input: RowCreateInput
     }
   | {
-      type: 'property.create'
-      input: GroupPropertyCreateInput
+      type: 'customField.create'
+      input: CustomFieldCreateInput
     }
   | {
       type: 'view.create'
-      input: GroupViewCreateInput
+      input: ViewCreateInput
     }
   | {
       type: 'view.duplicate'
@@ -92,7 +92,7 @@ export type GroupCommand =
     }
   | {
       type: 'view.put'
-      view: GroupView
+      view: View
     }
   | {
       type: 'view.rename'
@@ -102,27 +102,27 @@ export type GroupCommand =
   | {
       type: 'view.type.set'
       viewId: ViewId
-      value: GroupViewType
+      value: ViewType
     }
   | {
       type: 'view.query.set'
       viewId: ViewId
-      query: GroupViewQuery
+      query: ViewQuery
     }
   | {
       type: 'view.aggregates.set'
       viewId: ViewId
-      aggregates: GroupAggregateSpec[]
+      aggregates: AggregateSpec[]
     }
   | {
-      type: 'view.display.setPropertyIds'
+      type: 'view.display.setFieldIds'
       viewId: ViewId
-      propertyIds: PropertyId[]
+      fieldIds: FieldId[]
     }
   | {
       type: 'view.table.setWidths'
       viewId: ViewId
-      widths: GroupTableOptions['widths']
+      widths: TableOptions['widths']
     }
   | {
       type: 'view.table.setShowVerticalLines'
@@ -137,12 +137,12 @@ export type GroupCommand =
   | {
       type: 'view.gallery.setCardSize'
       viewId: ViewId
-      value: GroupGalleryCardSize
+      value: GalleryCardSize
     }
   | {
       type: 'view.kanban.setNewRecordPosition'
       viewId: ViewId
-      value: GroupKanbanNewRecordPosition
+      value: KanbanNewRecordPosition
     }
   | {
       type: 'view.kanban.setFillColumnColor'
@@ -169,56 +169,60 @@ export type GroupCommand =
       viewId: ViewId
     }
   | {
-      type: 'property.put'
-      property: GroupProperty
+      type: 'customField.put'
+      field: CustomField
     }
   | {
-      type: 'property.convert'
-      propertyId: PropertyId
+      type: 'customField.convert'
+      fieldId: CustomFieldId
       input: {
-        kind: GroupPropertyKind
-        config?: GroupPropertyConfig
+        kind: CustomFieldKind
       }
     }
   | {
-      type: 'property.duplicate'
-      propertyId: PropertyId
+      type: 'customField.replaceSchema'
+      fieldId: CustomFieldId
+      schema: CustomField
     }
   | {
-      type: 'property.patch'
-      propertyId: PropertyId
-      patch: Partial<Omit<GroupProperty, 'id'>>
+      type: 'customField.duplicate'
+      fieldId: CustomFieldId
     }
   | {
-      type: 'property.option.remove'
-      propertyId: PropertyId
+      type: 'customField.patch'
+      fieldId: CustomFieldId
+      patch: Partial<Omit<CustomField, 'id'>>
+    }
+  | {
+      type: 'customField.option.remove'
+      fieldId: CustomFieldId
       optionId: string
     }
   | {
-      type: 'property.option.create'
-      propertyId: PropertyId
+      type: 'customField.option.create'
+      fieldId: CustomFieldId
       input?: {
         name?: string
       }
     }
   | {
-      type: 'property.option.reorder'
-      propertyId: PropertyId
+      type: 'customField.option.reorder'
+      fieldId: CustomFieldId
       optionIds: string[]
     }
   | {
-      type: 'property.option.update'
-      propertyId: PropertyId
+      type: 'customField.option.update'
+      fieldId: CustomFieldId
       optionId: string
       patch: {
         name?: string
         color?: string
-        category?: GroupStatusCategory
+        category?: StatusCategory
       }
     }
   | {
-      type: 'property.remove'
-      propertyId: PropertyId
+      type: 'customField.remove'
+      fieldId: CustomFieldId
     }
   | {
       type: 'external.bumpVersion'
@@ -226,19 +230,19 @@ export type GroupCommand =
     }
   | {
       type: 'record.insertAt'
-      records: GroupRecord[]
-      target?: GroupRecordInsertTarget
+      records: Row[]
+      target?: RowInsertTarget
     }
   | {
       type: 'record.apply'
-      target: GroupEditTarget
-      patch: Partial<Omit<GroupRecord, 'id'>>
+      target: EditTarget
+      patch: Partial<Omit<Row, 'id'>>
     }
   | {
       type: 'record.remove'
       recordIds: RecordId[]
     }
 
-export type GroupCommandType = GroupCommand['type']
+export type CommandType = Command['type']
 
-export type GroupCommandPayload<TType extends GroupCommandType> = Omit<Extract<GroupCommand, { type: TType }>, 'type'>
+export type CommandPayload<TType extends CommandType> = Omit<Extract<Command, { type: TType }>, 'type'>

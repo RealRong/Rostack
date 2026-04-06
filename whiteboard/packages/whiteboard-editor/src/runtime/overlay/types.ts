@@ -1,6 +1,8 @@
 import type { Guide, NodeProjectionPatch as CoreNodeProjectionPatch } from '@whiteboard/core/node'
+import type { ConnectResolution } from '@whiteboard/core/edge'
 import type { MindmapDragDropTarget } from '@whiteboard/core/mindmap'
 import type {
+  Edge,
   EdgeId,
   EdgePatch,
   MindmapNodeId,
@@ -48,12 +50,17 @@ export type EdgeOverlayProjection = {
   activeRouteIndex?: number
 }
 
+export type EdgeConnectFeedback = {
+  focusedNodeId?: NodeId
+  resolution: ConnectResolution
+}
+
 export type EdgeGuide = {
-  line?: {
-    from: Point
-    to: Point
+  path?: {
+    svgPath: string
+    style?: Edge['style']
   }
-  snap?: Point
+  connect?: EdgeConnectFeedback
 }
 
 export type EdgeOverlayState = {

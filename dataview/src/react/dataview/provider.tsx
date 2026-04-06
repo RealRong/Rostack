@@ -13,14 +13,14 @@ import {
   createDataViewRuntime
 } from './runtime'
 import type {
-  GroupEngine
+  Engine
 } from '@dataview/engine'
 import type {
   PageSessionInput
 } from '@dataview/react/page/session/types'
 
 export interface EngineProviderProps {
-  engine: GroupEngine
+  engine: Engine
   initialPage?: PageSessionInput
   children?: ReactNode
 }

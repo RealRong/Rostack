@@ -7,6 +7,7 @@ export {
   resolvePropertyOptionReorderCommand,
   resolvePropertyOptionUpdateCommand,
   resolvePropertyPatchCommand,
+  resolvePropertyReplaceSchemaCommand,
   resolvePropertyPutCommand,
   resolvePropertyRemoveCommand
 } from './resolve'

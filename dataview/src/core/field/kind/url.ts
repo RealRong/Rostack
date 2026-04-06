@@ -1,6 +1,6 @@
-import type { GroupProperty, GroupPropertyConfig } from '../../contracts/state'
+import type { CustomField, UrlField } from '../../contracts/state'
 
-export type UrlPropertyConfig = Extract<GroupPropertyConfig, { type: 'url' }>
+export type UrlPropertyConfig = Pick<UrlField, 'displayFullUrl'>
 export interface ResolvedUrlPropertyConfig extends UrlPropertyConfig {
   displayFullUrl: boolean
 }
@@ -39,23 +39,22 @@ const readCompactUrlDisplay = (value: string) => {
 }
 
 export const createDefaultUrlPropertyConfig = (): ResolvedUrlPropertyConfig => ({
-  type: 'url',
   displayFullUrl: false
 })
 
 export const getUrlPropertyConfig = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined
+  property: CustomField | undefined
 ): ResolvedUrlPropertyConfig => (
-  property?.kind === 'url' && property.config?.type === 'url'
+  property?.kind === 'url'
     ? {
         ...createDefaultUrlPropertyConfig(),
-        ...property.config
+        displayFullUrl: property.displayFullUrl === true
       }
     : createDefaultUrlPropertyConfig()
 )
 
 export const formatUrlDisplayValue = (
-  property: Pick<GroupProperty, 'kind' | 'config'> | undefined,
+  property: CustomField | undefined,
   value: unknown
 ) => {
   const raw = String(value)

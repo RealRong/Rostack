@@ -19,10 +19,19 @@ export type UiOptionColorTokenUsage =
   | 'badge-border'
   | 'column-bg'
   | 'column-border'
-  | 'card-bg'
+  | 'bg-card'
   | 'card-border'
-  | 'card-bg-hover'
-  | 'card-bg-pressed'
+  | 'bg-card-hover'
+  | 'bg-card-pressed'
   | 'dot-bg'
   | 'text'
   | 'text-muted'
+
+export type UiCardSurfaceState =
+  | 'default'
+  | 'hover'
+  | 'pressed'
+
+export type UiNeutralCardSurfaceTone =
+  | 'solid'
+  | 'preview'

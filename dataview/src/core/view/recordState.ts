@@ -1,17 +1,17 @@
 import type {
-  GroupDocument,
-  GroupRecord,
-  GroupView,
+  DataDoc,
+  Row,
+  View,
   RecordId,
   ViewId
 } from '@dataview/core/contracts'
 import {
-  getDocumentPropertyById,
+  getDocumentFieldById,
   getDocumentRecords,
   getDocumentViewById,
   getDocumentViews
 } from '@dataview/core/document'
-import { isFilterRuleEffective } from '@dataview/core/property'
+import { isFieldFilterEffective } from '@dataview/core/field'
 import { applyRecordOrder, normalizeRecordOrderIds } from '@dataview/core/view/order'
 import {
   compareGroupSort,
@@ -20,16 +20,16 @@ import {
 } from '@dataview/core/query/semantics'
 
 export interface ResolvedViewRecordState {
-  view?: GroupView
-  derivedRecords: readonly GroupRecord[]
-  orderedRecords: readonly GroupRecord[]
-  visibleRecords: readonly GroupRecord[]
+  view?: View
+  derivedRecords: readonly Row[]
+  orderedRecords: readonly Row[]
+  visibleRecords: readonly Row[]
 }
 
 const sortRecords = (
-  records: GroupRecord[],
-  document: GroupDocument,
-  view?: GroupView
+  records: Row[],
+  document: DataDoc,
+  view?: View
 ) => {
   const sorters = view?.query.sorters ?? []
   const recordOrderIndex = new Map(
@@ -49,8 +49,8 @@ const sortRecords = (
 }
 
 const applyViewOrders = (
-  records: readonly GroupRecord[],
-  view: GroupView | undefined
+  records: readonly Row[],
+  view: View | undefined
 ) => {
   if (!view || view.query.sorters.length > 0) {
     return [...records]
@@ -68,13 +68,13 @@ const applyViewOrders = (
     normalizedOrders
   )
     .map(recordId => recordById.get(recordId))
-    .filter((record): record is GroupRecord => Boolean(record))
+    .filter((record): record is Row => Boolean(record))
 }
 
 const filterViewRecords = (
-  records: readonly GroupRecord[],
-  document: GroupDocument,
-  view: GroupView | undefined
+  records: readonly Row[],
+  document: DataDoc,
+  view: View | undefined
 ) => {
   if (!view) {
     return [...records]
@@ -84,8 +84,8 @@ const filterViewRecords = (
   let nextRecords = [...records]
   const filterMode = query.filter.mode
   const effectiveFilterRules = query.filter.rules.filter(rule => (
-    isFilterRuleEffective(
-      getDocumentPropertyById(document, rule.property),
+    isFieldFilterEffective(
+      getDocumentFieldById(document, rule.field),
       rule.op,
       rule.value
     )
@@ -106,7 +106,7 @@ const filterViewRecords = (
 }
 
 export const currentView = (
-  document: GroupDocument,
+  document: DataDoc,
   viewId?: ViewId
 ) => {
   const targetViewId = viewId ?? getDocumentViews(document)[0]?.id
@@ -118,7 +118,7 @@ export const currentView = (
 }
 
 export const derivedViewRecords = (
-  document: GroupDocument,
+  document: DataDoc,
   viewId?: ViewId
 ) => {
   const view = currentView(document, viewId)
@@ -126,7 +126,7 @@ export const derivedViewRecords = (
 }
 
 export const orderedViewRecords = (
-  document: GroupDocument,
+  document: DataDoc,
   viewId?: ViewId
 ) => {
   const view = currentView(document, viewId)
@@ -134,7 +134,7 @@ export const orderedViewRecords = (
 }
 
 export const visibleViewRecords = (
-  document: GroupDocument,
+  document: DataDoc,
   viewId?: ViewId
 ) => {
   const view = currentView(document, viewId)
@@ -142,7 +142,7 @@ export const visibleViewRecords = (
 }
 
 export const resolveViewRecordState = (
-  document: GroupDocument,
+  document: DataDoc,
   viewId?: ViewId
 ): ResolvedViewRecordState => {
   const view = currentView(document, viewId)

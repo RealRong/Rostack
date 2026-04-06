@@ -2,7 +2,7 @@ import type {
   CurrentView,
 } from '@dataview/react/runtime/currentView'
 import type {
-  FieldId,
+  CellRef,
   ViewFieldRef
 } from '@dataview/engine/projection/view'
 import type {
@@ -18,7 +18,7 @@ import type { GridSelectionStore } from './gridSelection'
 import type { Dom } from './dom'
 
 export interface CellOpenInput {
-  cell: FieldId
+  cell: CellRef
   element?: Element | null
   seedDraft?: string
 }
@@ -54,7 +54,7 @@ export const resolveTableCloseAction = (trigger: 'enter' | 'tab-next' | 'tab-pre
 }
 
 const createTableSessionPolicy = (input: {
-  cell: FieldId
+  cell: CellRef
   gridSelection: GridSelectionStore
   revealSelection: () => void
   focus: () => void

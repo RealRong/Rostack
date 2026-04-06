@@ -1,2 +1,2 @@
-export { PropertySchemaEditor } from './PropertySchemaEditor'
-export type { PropertySchemaEditorProps } from './PropertySchemaEditor'
+export { FieldSchemaEditor } from './FieldSchemaEditor'
+export type { FieldSchemaEditorProps } from './FieldSchemaEditor'

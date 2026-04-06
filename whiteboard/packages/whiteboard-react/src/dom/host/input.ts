@@ -13,8 +13,7 @@ import {
   isContextMenuIgnoredTarget,
   isEditableTarget,
   isInputIgnoredTarget,
-  isSelectionIgnoredTarget,
-  readEditableFieldTarget
+  isSelectionIgnoredTarget
 } from './targets'
 
 type TargetEvent = Pick<MouseEvent | PointerEvent | WheelEvent, 'target' | 'clientX' | 'clientY'>
@@ -29,7 +28,6 @@ export type ResolvedPoint = {
   client: Point
   screen: Point
   world: Point
-  field?: ReturnType<typeof readEditableFieldTarget>
   editable: boolean
   ignoreInput: boolean
   ignoreSelection: boolean
@@ -101,7 +99,6 @@ export const resolvePoint = ({
     client: point.client,
     screen: point.screen,
     world: point.world,
-    field: readEditableFieldTarget(element),
     editable: isEditableTarget(element),
     ignoreInput: isInputIgnoredTarget(element),
     ignoreSelection: isSelectionIgnoredTarget(element),
@@ -149,7 +146,6 @@ export const resolvePointerInput = <Phase extends PointerPhase>({
       meta: event.metaKey
     },
     pick: resolved.pick,
-    field: resolved.field,
     editable: resolved.editable,
     ignoreInput: resolved.ignoreInput,
     ignoreSelection: resolved.ignoreSelection,

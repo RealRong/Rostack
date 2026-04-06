@@ -1,15 +1,15 @@
-import type { GroupPropertyKind } from '@dataview/core/contracts'
+import type { CustomFieldKind } from '@dataview/core/contracts'
 import { Menu, type MenuItem } from '@ui/menu'
 import { meta, renderMessage } from '@dataview/meta'
 
-export interface PropertyKindPickerProps {
-  kind?: GroupPropertyKind
+export interface FieldKindPickerProps {
+  kind?: CustomFieldKind
   isTitleProperty: boolean
-  onSelect: (kind: GroupPropertyKind) => void
+  onSelect: (kind: CustomFieldKind) => void
 }
 
-export const buildPropertyKindMenuItems = (props: PropertyKindPickerProps): readonly MenuItem[] => (
-  meta.property.kind.list.map(item => {
+export const buildFieldKindMenuItems = (props: FieldKindPickerProps): readonly MenuItem[] => (
+  meta.field.kind.list.map(item => {
     const Icon = item.Icon
 
     return {
@@ -19,13 +19,13 @@ export const buildPropertyKindMenuItems = (props: PropertyKindPickerProps): read
       leading: <Icon className="size-4" size={16} strokeWidth={1.8} />,
       checked: props.kind === item.id,
       disabled: props.isTitleProperty && item.id !== 'text',
-      onSelect: () => props.onSelect(item.id as GroupPropertyKind)
+      onSelect: () => props.onSelect(item.id as CustomFieldKind)
     }
   })
 )
 
-export const PropertyKindPicker = (props: PropertyKindPickerProps) => {
+export const FieldKindPicker = (props: FieldKindPickerProps) => {
   return <Menu
-    items={buildPropertyKindMenuItems(props)}
+    items={buildFieldKindMenuItems(props)}
   />
 }

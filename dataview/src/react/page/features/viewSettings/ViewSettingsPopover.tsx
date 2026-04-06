@@ -8,17 +8,17 @@ import {
   usePageValue
 } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
-import { PropertySchemaEditor } from '@dataview/react/properties/schema'
+import { FieldSchemaEditor } from '@dataview/react/field/schema'
 import {
   ViewSettingsContext,
 } from './context'
-import { GroupPanel } from './panels/GroupPanel'
+import { GroupingPanel } from './panels/GroupingPanel'
 import { LayoutPanel } from './panels/LayoutPanel'
-import { PropertyCreatePanel } from './panels/PropertyCreatePanel'
-import { PropertyListPanel } from './panels/PropertyListPanel'
+import { FieldCreatePanel } from './panels/FieldCreatePanel'
+import { FieldListPanel } from './panels/FieldListPanel'
 import { QueryFieldPickerPanel } from './panels/QueryFieldPickerPanel'
 import { RootPanel } from './panels/RootPanel'
-import { ViewPropertiesPanel } from './panels/ViewPropertiesPanel'
+import { ViewFieldsPanel } from './panels/ViewFieldsPanel'
 
 export const ViewSettingsPopover = () => {
   const dataView = useDataView()
@@ -42,15 +42,15 @@ export const ViewSettingsPopover = () => {
       case 'layout':
         return <LayoutPanel />
       case 'group':
-        return <GroupPanel />
+        return <GroupingPanel />
       case 'viewProperties':
-        return <ViewPropertiesPanel />
-      case 'propertyList':
-        return <PropertyListPanel />
-      case 'propertyCreate':
-        return <PropertyCreatePanel />
-      case 'propertySchema':
-        return <PropertySchemaEditor propertyId={resolvedRoute.propertyId} />
+        return <ViewFieldsPanel />
+      case 'fieldList':
+        return <FieldListPanel />
+      case 'fieldCreate':
+        return <FieldCreatePanel />
+      case 'fieldSchema':
+        return <FieldSchemaEditor fieldId={resolvedRoute.fieldId} />
       case 'filter':
         return <QueryFieldPickerPanel kind="filter" />
       case 'sort':

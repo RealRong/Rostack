@@ -1,5 +1,5 @@
 import type {
-  GroupProperty
+  CustomField
 } from '@dataview/core/contracts'
 import {
   useDataView
@@ -14,19 +14,19 @@ import {
 import { cn } from '@ui/utils'
 import { openCardField } from './openCardField'
 
-export interface AddCardPropertyTriggerProps {
+export interface AddCardFieldTriggerProps {
   field: ViewFieldRef
-  property: GroupProperty
+  customField: CustomField
   className?: string
   openOnClick?: boolean
 }
 
-export const AddCardPropertyTrigger = (props: AddCardPropertyTriggerProps) => {
+export const AddCardFieldTrigger = (props: AddCardFieldTriggerProps) => {
   const dataView = useDataView()
 
-  const kind = meta.property.kind.get(props.property.kind)
+  const kind = meta.field.kind.get(props.customField.kind)
   const Icon = kind.Icon
-  const label = props.property.name.trim() || renderMessage(kind.defaultName)
+  const label = props.customField.name.trim() || renderMessage(kind.defaultName)
 
   return (
     <button

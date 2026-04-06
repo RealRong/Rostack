@@ -1,5 +1,5 @@
 import type {
-  PropertyId
+  CustomFieldId
 } from '@dataview/core/contracts'
 import type { AppearanceId } from '@dataview/engine/projection/view'
 
@@ -32,10 +32,10 @@ const moveItem = <T>(
 }
 
 export const columnBeforeId = (input: {
-  columnIds: readonly PropertyId[]
-  sourceId: PropertyId
-  overId: PropertyId
-}): PropertyId | null | undefined => {
+  columnIds: readonly CustomFieldId[]
+  sourceId: CustomFieldId
+  overId: CustomFieldId
+}): CustomFieldId | null | undefined => {
   if (input.sourceId === input.overId) {
     return undefined
   }

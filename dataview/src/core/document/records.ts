@@ -1,4 +1,4 @@
-import type { IndexPath, PropertyId, GroupDocument, GroupEntityTable, GroupRecord, RecordId } from '../contracts/state'
+import type { IndexPath, CustomFieldId, DataDoc, EntityTable, Row, RecordId } from '../contracts/state'
 import {
   getEntityTableById,
   getEntityTableIds,
@@ -9,13 +9,13 @@ import {
 } from './shared'
 
 export interface RecordEntry {
-  record: GroupRecord
+  record: Row
   path: IndexPath
   index: number
 }
 
 export const enumerateRecords = (
-  records: readonly GroupRecord[],
+  records: readonly Row[],
   visitor: (entry: RecordEntry) => void
 ) => {
   records.forEach((record, index) => {
@@ -23,7 +23,7 @@ export const enumerateRecords = (
   })
 }
 
-const replaceDocumentRecordsTable = (document: GroupDocument, records: GroupEntityTable<RecordId, GroupRecord>): GroupDocument => {
+const replaceDocumentRecordsTable = (document: DataDoc, records: EntityTable<RecordId, Row>): DataDoc => {
   if (records === document.records) {
     return document
   }
@@ -34,29 +34,29 @@ const replaceDocumentRecordsTable = (document: GroupDocument, records: GroupEnti
   }
 }
 
-export const getDocumentRecords = (document: GroupDocument): GroupRecord[] => {
+export const getDocumentRecords = (document: DataDoc): Row[] => {
   return listEntityTable(document.records)
 }
 
-export const getDocumentRecordIds = (document: GroupDocument): RecordId[] => {
+export const getDocumentRecordIds = (document: DataDoc): RecordId[] => {
   return getEntityTableIds(document.records)
 }
 
-export const getDocumentRecordById = (document: GroupDocument, recordId: RecordId): GroupRecord | undefined => {
+export const getDocumentRecordById = (document: DataDoc, recordId: RecordId): Row | undefined => {
   return getEntityTableById(document.records, recordId)
 }
 
-export const hasDocumentRecord = (document: GroupDocument, recordId: RecordId) => hasEntityTableId(document.records, recordId)
+export const hasDocumentRecord = (document: DataDoc, recordId: RecordId) => hasEntityTableId(document.records, recordId)
 
-export const getDocumentRecordIndex = (document: GroupDocument, recordId: RecordId) => {
+export const getDocumentRecordIndex = (document: DataDoc, recordId: RecordId) => {
   return document.records.order.indexOf(recordId)
 }
 
-export const replaceDocumentRecords = (document: GroupDocument, records: readonly GroupRecord[]): GroupDocument => {
+export const replaceDocumentRecords = (document: DataDoc, records: readonly Row[]): DataDoc => {
   return replaceDocumentRecordsTable(document, normalizeRecordInput(records))
 }
 
-export const insertDocumentRecords = (document: GroupDocument, records: readonly GroupRecord[], index?: number): GroupDocument => {
+export const insertDocumentRecords = (document: DataDoc, records: readonly Row[], index?: number): DataDoc => {
   if (!records.length) {
     return document
   }
@@ -81,13 +81,13 @@ export const insertDocumentRecords = (document: GroupDocument, records: readonly
   })
 }
 
-export const patchDocumentRecord = (document: GroupDocument, recordId: RecordId, patch: Partial<Omit<GroupRecord, 'id'>>): GroupDocument => {
+export const patchDocumentRecord = (document: DataDoc, recordId: RecordId, patch: Partial<Omit<Row, 'id'>>): DataDoc => {
   const current = document.records.byId[recordId]
   if (!current) {
     return document
   }
 
-  const nextRecord = mergePatchedEntity(current, patch as Partial<GroupRecord>) as GroupRecord
+  const nextRecord = mergePatchedEntity(current, patch as Partial<Row>) as Row
   if (nextRecord === current) {
     return document
   }
@@ -101,7 +101,7 @@ export const patchDocumentRecord = (document: GroupDocument, recordId: RecordId,
   })
 }
 
-export const removeDocumentRecords = (document: GroupDocument, recordIds: readonly RecordId[]): GroupDocument => {
+export const removeDocumentRecords = (document: DataDoc, recordIds: readonly RecordId[]): DataDoc => {
   if (!recordIds.length) {
     return document
   }
@@ -129,10 +129,10 @@ export const removeDocumentRecords = (document: GroupDocument, recordIds: readon
 }
 
 const replaceDocumentRecord = (
-  document: GroupDocument,
+  document: DataDoc,
   recordId: RecordId,
-  record: GroupRecord
-): GroupDocument => replaceDocumentRecordsTable(document, {
+  record: Row
+): DataDoc => replaceDocumentRecordsTable(document, {
   byId: {
     ...document.records.byId,
     [recordId]: record
@@ -141,10 +141,10 @@ const replaceDocumentRecord = (
 })
 
 const updateDocumentRecord = (
-  document: GroupDocument,
+  document: DataDoc,
   recordId: RecordId,
-  updater: (record: GroupRecord) => GroupRecord
-): GroupDocument => {
+  updater: (record: Row) => Row
+): DataDoc => {
   const record = getDocumentRecordById(document, recordId)
   if (!record) {
     return document
@@ -156,21 +156,21 @@ const updateDocumentRecord = (
     : replaceDocumentRecord(document, recordId, nextRecord)
 }
 
-export const setDocumentValue = (document: GroupDocument, recordId: RecordId, propertyId: PropertyId, value: unknown): GroupDocument => {
+export const setDocumentValue = (document: DataDoc, recordId: RecordId, fieldId: CustomFieldId, value: unknown): DataDoc => {
   return updateDocumentRecord(document, recordId, record => (
-    Object.is(record.values[propertyId], value)
+    Object.is(record.values[fieldId], value)
       ? record
       : {
           ...record,
           values: {
             ...record.values,
-            [propertyId]: value
+            [fieldId]: value
           }
         }
   ))
 }
 
-export const patchDocumentValues = (document: GroupDocument, recordId: RecordId, patch: Partial<Record<PropertyId, unknown>>): GroupDocument => {
+export const patchDocumentValues = (document: DataDoc, recordId: RecordId, patch: Partial<Record<CustomFieldId, unknown>>): DataDoc => {
   if (!Object.keys(patch).length) {
     return document
   }
@@ -191,14 +191,14 @@ export const patchDocumentValues = (document: GroupDocument, recordId: RecordId,
   })
 }
 
-export const clearDocumentValue = (document: GroupDocument, recordId: RecordId, propertyId: PropertyId): GroupDocument => {
+export const clearDocumentValue = (document: DataDoc, recordId: RecordId, fieldId: CustomFieldId): DataDoc => {
   return updateDocumentRecord(document, recordId, record => {
-    if (!Object.prototype.hasOwnProperty.call(record.values, propertyId)) {
+    if (!Object.prototype.hasOwnProperty.call(record.values, fieldId)) {
       return record
     }
 
     const nextValues = { ...record.values }
-    delete nextValues[propertyId]
+    delete nextValues[fieldId]
 
     return {
       ...record,

@@ -1,5 +1,5 @@
 export { createValueEditorApi } from './api'
-export { PropertyValueEditorHost } from './host'
+export { FieldValueEditorHost } from './host'
 export type {
   CloseValueEditorOptions,
   OpenValueEditorInput,

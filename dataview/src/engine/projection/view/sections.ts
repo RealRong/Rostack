@@ -1,5 +1,5 @@
 import type {
-  GroupGroupBy
+  Grouping
 } from '@dataview/core/contracts'
 import type {
   Section,
@@ -13,7 +13,7 @@ const emptyIds = [] as const
 
 export const createSections = (
   source: readonly ProjectionSection[],
-  group: GroupGroupBy | undefined
+  group: Grouping | undefined
 ): readonly Section[] => {
   if (!group) {
     return source.map(section => ({

@@ -1,47 +1,47 @@
 import type {
-  PropertyId,
-  GroupProperty,
-  GroupPropertyOption
+  CustomFieldId,
+  CustomField,
+  FieldOption
 } from '@dataview/core/contracts'
 import {
-  findPropertyOptionByName,
-  hasPropertyOptions,
-  getPropertyOptions
-} from '@dataview/core/property'
+  findFieldOptionByName,
+  hasFieldOptions,
+  getFieldOptions
+} from '@dataview/core/field'
 import {
-  getDocumentPropertyById,
-  getDocumentProperties
+  getDocumentCustomFieldById,
+  getDocumentCustomFields
 } from '@dataview/core/document'
 import { createPropertyId } from '@dataview/engine/command/entityId'
 import type {
-  GroupEngine,
-  GroupPropertiesEngineApi
+  Engine,
+  FieldsEngineApi
 } from '../types'
 
 const getOptionProperty = (
-  property?: GroupProperty
-) => property && hasPropertyOptions(property)
-  ? property
+  field?: CustomField
+) => field && hasFieldOptions(field)
+  ? field
   : undefined
 
 const findAddedOption = (
-  previous: readonly GroupPropertyOption[],
-  next: readonly GroupPropertyOption[]
+  previous: readonly FieldOption[],
+  next: readonly FieldOption[]
 ) => {
   const previousIds = new Set(previous.map(option => option.id))
   return next.find(option => !previousIds.has(option.id))
 }
 
-export const createPropertiesEngineApi = (options: {
-  engine: Pick<GroupEngine, 'read' | 'command'>
-}): GroupPropertiesEngineApi => {
+export const createFieldsEngineApi = (options: {
+  engine: Pick<Engine, 'read' | 'command'>
+}): FieldsEngineApi => {
   const dispatch = (
-    command: Parameters<GroupEngine['command']>[0]
+    command: Parameters<Engine['command']>[0]
   ) => options.engine.command(command)
   const readDocument = () => options.engine.read.document.get()
-  const readProperties = () => getDocumentProperties(readDocument())
-  const getProperty = (propertyId: PropertyId) => options.engine.read.property.get(propertyId)
-  const getOptionPropertyById = (propertyId: PropertyId) => getOptionProperty(getDocumentPropertyById(readDocument(), propertyId))
+  const readProperties = () => getDocumentCustomFields(readDocument())
+  const getProperty = (fieldId: CustomFieldId) => options.engine.read.customField.get(fieldId)
+  const getOptionPropertyById = (fieldId: CustomFieldId) => getOptionProperty(getDocumentCustomFieldById(readDocument(), fieldId))
 
   return {
     list: readProperties,
@@ -52,105 +52,112 @@ export const createPropertiesEngineApi = (options: {
         return undefined
       }
 
-      const propertyId = createPropertyId()
+      const fieldId = createPropertyId()
       const result = dispatch({
-        type: 'property.create',
+        type: 'customField.create',
         input: {
-          id: propertyId,
+          id: fieldId,
           name,
           kind: input.kind ?? 'text'
         }
       })
 
       return result.applied
-        ? propertyId
+        ? fieldId
         : undefined
     },
-    rename: (propertyId, name) => {
+    rename: (fieldId, name) => {
       const nextName = name.trim()
       if (!nextName) {
         return
       }
 
       dispatch({
-        type: 'property.patch',
-        propertyId: propertyId,
+        type: 'customField.patch',
+        fieldId,
         patch: {
           name: nextName
         }
       })
     },
-    update: (propertyId, patch) => {
+    update: (fieldId, patch) => {
       if (!Object.keys(patch).length) {
         return
       }
 
       dispatch({
-        type: 'property.patch',
-        propertyId: propertyId,
+        type: 'customField.patch',
+        fieldId,
         patch
       })
     },
-    convert: (propertyId, input) => {
+    replaceSchema: (fieldId, schema) => {
       dispatch({
-        type: 'property.convert',
-        propertyId,
+        type: 'customField.replaceSchema',
+        fieldId,
+        schema
+      })
+    },
+    convert: (fieldId, input) => {
+      dispatch({
+        type: 'customField.convert',
+        fieldId,
         input
       })
     },
-    duplicate: propertyId => {
+    duplicate: fieldId => {
       const result = dispatch({
-        type: 'property.duplicate',
-        propertyId
+        type: 'customField.duplicate',
+        fieldId
       })
 
-      return result.created?.properties?.[0]
+      return result.created?.fields?.[0]
     },
-    remove: propertyId => {
+    remove: fieldId => {
       return dispatch({
-        type: 'property.remove',
-        propertyId
+        type: 'customField.remove',
+        fieldId
       }).applied
     },
     options: {
-      append: propertyId => {
-        const property = getOptionPropertyById(propertyId)
-        if (!property) {
+      append: fieldId => {
+        const field = getOptionPropertyById(fieldId)
+        if (!field) {
           return undefined
         }
 
-        const currentOptions = getPropertyOptions(property)
+        const currentOptions = getFieldOptions(field)
         const result = dispatch({
-          type: 'property.option.create',
-          propertyId
+          type: 'customField.option.create',
+          fieldId
         })
         if (!result.applied) {
           return undefined
         }
 
-        const nextProperty = getOptionPropertyById(propertyId)
+        const nextProperty = getOptionPropertyById(fieldId)
         if (!nextProperty) {
           return undefined
         }
 
-        return findAddedOption(currentOptions, getPropertyOptions(nextProperty))
+        return findAddedOption(currentOptions, getFieldOptions(nextProperty))
       },
-      create: (propertyId, name) => {
-        const property = getOptionPropertyById(propertyId)
+      create: (fieldId, name) => {
+        const field = getOptionPropertyById(fieldId)
         const nextName = name.trim()
-        if (!property || !nextName) {
+        if (!field || !nextName) {
           return undefined
         }
 
-        const currentOptions = getPropertyOptions(property)
-        const existing = findPropertyOptionByName(currentOptions, nextName)
+        const currentOptions = getFieldOptions(field)
+        const existing = findFieldOptionByName(currentOptions, nextName)
         if (existing) {
           return existing
         }
 
         const result = dispatch({
-          type: 'property.option.create',
-          propertyId,
+          type: 'customField.option.create',
+          fieldId,
           input: {
             name: nextName
           }
@@ -159,27 +166,27 @@ export const createPropertiesEngineApi = (options: {
           return undefined
         }
 
-        const nextProperty = getOptionPropertyById(propertyId)
+        const nextProperty = getOptionPropertyById(fieldId)
         if (!nextProperty) {
           return undefined
         }
 
-        return findAddedOption(currentOptions, getPropertyOptions(nextProperty))
+        return findAddedOption(currentOptions, getFieldOptions(nextProperty))
       },
-      reorder: (propertyId, optionIds) => {
+      reorder: (fieldId, optionIds) => {
         dispatch({
-          type: 'property.option.reorder',
-          propertyId,
+          type: 'customField.option.reorder',
+          fieldId,
           optionIds: [...optionIds]
         })
       },
-      update: (propertyId, optionId, patch) => {
-        const property = getOptionPropertyById(propertyId)
-        if (!property) {
+      update: (fieldId, optionId, patch) => {
+        const field = getOptionPropertyById(fieldId)
+        if (!field) {
           return undefined
         }
 
-        const currentOptions = getPropertyOptions(property)
+        const currentOptions = getFieldOptions(field)
         const target = currentOptions.find(option => option.id === optionId)
         if (!target) {
           return undefined
@@ -191,15 +198,15 @@ export const createPropertiesEngineApi = (options: {
             return undefined
           }
 
-          const conflicting = findPropertyOptionByName(currentOptions, nextName)
+          const conflicting = findFieldOptionByName(currentOptions, nextName)
           if (conflicting && conflicting.id !== optionId) {
             return undefined
           }
         }
 
         const result = dispatch({
-          type: 'property.option.update',
-          propertyId,
+          type: 'customField.option.update',
+          fieldId,
           optionId,
           patch: {
             ...(nextName ? { name: nextName } : {}),
@@ -213,15 +220,15 @@ export const createPropertiesEngineApi = (options: {
             : target
         }
 
-        const nextProperty = getOptionPropertyById(propertyId)
+        const nextProperty = getOptionPropertyById(fieldId)
         return nextProperty
-          ? getPropertyOptions(nextProperty).find(option => option.id === optionId)
+          ? getFieldOptions(nextProperty).find(option => option.id === optionId)
           : undefined
       },
-      remove: (propertyId, optionId) => {
+      remove: (fieldId, optionId) => {
         dispatch({
-          type: 'property.option.remove',
-          propertyId,
+          type: 'customField.option.remove',
+          fieldId,
           optionId
         })
       }

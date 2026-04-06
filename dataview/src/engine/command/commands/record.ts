@@ -1,5 +1,5 @@
-import type { GroupBaseOperation } from '@dataview/core/contracts/operations'
-import type { GroupDocument } from '@dataview/core/contracts/state'
+import type { BaseOperation } from '@dataview/core/contracts/operations'
+import type { DataDoc } from '@dataview/core/contracts/state'
 import { getDocumentRecordById, getDocumentRecords, getDocumentViews, normalizeViewOrders } from '@dataview/core/document'
 import type { IndexedCommand } from '../context'
 import { createRecordId } from '../entityId'
@@ -18,14 +18,14 @@ const sameRecordOrder = (left: readonly string[], right: readonly string[]) => (
   left.length === right.length && left.every((recordId, index) => recordId === right[index])
 )
 
-const resolveDefaultRecordType = (document: GroupDocument) => {
+const resolveDefaultRecordType = (document: DataDoc) => {
   return getDocumentRecords(document).find(record => (
     typeof record.type === 'string' && record.type.length
   ))?.type
 }
 
 export const resolveRecordCreateCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'record.create' }>
 ) => {
   const explicitRecordId = command.input.id?.trim()
@@ -44,6 +44,7 @@ export const resolveRecordCreateCommand = (
   const recordId = explicitRecordId || createRecordId()
   const record = {
     id: recordId,
+    title: command.input.title?.trim() ?? '',
     type: command.input.type ?? resolveDefaultRecordType(document),
     values: command.input.values ?? {},
     meta: command.input.meta
@@ -56,7 +57,7 @@ export const resolveRecordCreateCommand = (
 }
 
 export const resolveRecordInsertCommand = (
-  _document: GroupDocument,
+  _document: DataDoc,
   command: Extract<IndexedCommand, { type: 'record.insertAt' }>
 ) => {
   const issues = validateBatchItems(command, command.records, 'records')
@@ -84,7 +85,7 @@ export const resolveRecordInsertCommand = (
 }
 
 export const resolveRecordApplyCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'record.apply' }>
 ) => {
   const issues = validateEditTarget(document, command, command.target)
@@ -99,13 +100,13 @@ export const resolveRecordApplyCommand = (
     type: 'document.record.patch',
     recordId,
     patch: command.patch
-  }) satisfies GroupBaseOperation)
+  }) satisfies BaseOperation)
 
   return resolveCommandResult(issues, operations)
 }
 
 export const resolveRecordRemoveCommand = (
-  document: GroupDocument,
+  document: DataDoc,
   command: Extract<IndexedCommand, { type: 'record.remove' }>
 ) => {
   const issues = validateBatchItems(command, command.recordIds, 'recordIds')
@@ -126,7 +127,7 @@ export const resolveRecordRemoveCommand = (
             ...view,
             orders: nextOrders
           }
-        } satisfies GroupBaseOperation]
+        } satisfies BaseOperation]
   })
 
   return resolveCommandResult(issues, [

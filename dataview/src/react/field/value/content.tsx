@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
-import type { GroupProperty } from '@dataview/core/contracts'
+import type { Field } from '@dataview/core/contracts'
 import { cn } from '@ui/utils'
-import { PropertyValueRenderer } from './PropertyValueRenderer'
-import { getPropertyValueSpec } from './kinds'
+import { FieldValueRenderer } from './FieldValueRenderer'
+import { getFieldValueSpec } from './kinds'
 
-export interface PropertyValueContentProps {
-  property?: GroupProperty
+export interface FieldValueContentProps {
+  property?: Field
   value: unknown
   emptyPlaceholder?: ReactNode
   className?: string
@@ -17,7 +17,7 @@ const QuickToggleButton = (props: {
   checked: boolean
   onToggle: () => void
   className?: string
-  density: NonNullable<PropertyValueContentProps['density']>
+  density: NonNullable<FieldValueContentProps['density']>
 }) => (
   <button
     type="button"
@@ -46,8 +46,8 @@ const QuickToggleButton = (props: {
   </button>
 )
 
-export const PropertyValueContent = (props: PropertyValueContentProps) => {
-  const spec = getPropertyValueSpec(props.property)
+export const FieldValueContent = (props: FieldValueContentProps) => {
+  const spec = getFieldValueSpec(props.property)
   if (props.onQuickToggle && spec.capability.quickToggle && spec.toggle) {
     return (
       <QuickToggleButton
@@ -60,7 +60,7 @@ export const PropertyValueContent = (props: PropertyValueContentProps) => {
   }
 
   return (
-    <PropertyValueRenderer
+    <FieldValueRenderer
       property={props.property}
       value={props.value}
       emptyPlaceholder={props.emptyPlaceholder}

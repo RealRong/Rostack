@@ -1,65 +1,65 @@
 import type {
-  GroupProperty,
-  GroupViewOptions,
-  GroupViewType,
-  PropertyId
+  Field,
+  FieldId,
+  ViewOptions,
+  ViewType
 } from '../contracts'
-import { normalizeGroupGalleryOptions } from './gallery'
-import { normalizeGroupKanbanOptions } from './kanban'
-import { createDefaultGroupViewOptions } from './options'
+import { normalizeGalleryOptions } from './gallery'
+import { normalizeKanbanOptions } from './kanban'
+import { createDefaultViewOptions } from './options'
 import { isJsonObject, toTrimmedString } from './shared'
 
-export interface NormalizeGroupViewOptionsContext {
-  type?: GroupViewType
-  properties?: readonly GroupProperty[]
+export interface NormalizeViewOptionsContext {
+  type?: ViewType
+  fields?: readonly Field[]
 }
 
-const normalizePropertyIds = (
+const normalizeFieldIds = (
   values: unknown,
-  validPropertyIds?: ReadonlySet<PropertyId>
+  validFieldIds?: ReadonlySet<FieldId>
 ) => {
   if (!Array.isArray(values)) {
-    return [] as PropertyId[]
+    return [] as FieldId[]
   }
 
-  const next: PropertyId[] = []
-  const seen = new Set<PropertyId>()
+  const next: FieldId[] = []
+  const seen = new Set<FieldId>()
   values.forEach(value => {
-    const propertyId = toTrimmedString(value) as PropertyId | undefined
-    if (!propertyId || seen.has(propertyId)) {
+    const fieldId = toTrimmedString(value) as FieldId | undefined
+    if (!fieldId || seen.has(fieldId)) {
       return
     }
-    if (validPropertyIds && !validPropertyIds.has(propertyId)) {
+    if (validFieldIds && !validFieldIds.has(fieldId)) {
       return
     }
-    seen.add(propertyId)
-    next.push(propertyId)
+    seen.add(fieldId)
+    next.push(fieldId)
   })
   return next
 }
 
 const normalizeWidths = (
   value: unknown,
-  validPropertyIds?: ReadonlySet<PropertyId>
-): GroupViewOptions['table']['widths'] => {
+  validFieldIds?: ReadonlySet<FieldId>
+): ViewOptions['table']['widths'] => {
   if (!isJsonObject(value)) {
     return {}
   }
 
-  const next: Partial<Record<PropertyId, number>> = {}
+  const next: Partial<Record<FieldId, number>> = {}
   Object.entries(value).forEach(([key, width]) => {
-    const propertyId = toTrimmedString(key) as PropertyId | undefined
-    if (!propertyId) {
+    const fieldId = toTrimmedString(key) as FieldId | undefined
+    if (!fieldId) {
       return
     }
-    if (validPropertyIds && !validPropertyIds.has(propertyId)) {
+    if (validFieldIds && !validFieldIds.has(fieldId)) {
       return
     }
     if (typeof width !== 'number' || !Number.isFinite(width) || width <= 0) {
       return
     }
 
-    next[propertyId] = width
+    next[fieldId] = width
   })
 
   return next
@@ -71,29 +71,29 @@ const normalizeShowVerticalLines = (value: unknown) => (
     : true
 )
 
-export const normalizeGroupViewOptions = (
+export const normalizeViewOptions = (
   options: unknown,
-  context: NormalizeGroupViewOptionsContext = {}
-): GroupViewOptions => {
+  context: NormalizeViewOptionsContext = {}
+): ViewOptions => {
   const root = isJsonObject(options) ? options : undefined
-  const defaultOptions = createDefaultGroupViewOptions(context.type ?? 'table', context.properties ?? [])
-  const validPropertyIds = context.properties?.length
-    ? new Set(context.properties.map(property => property.id))
+  const defaultOptions = createDefaultViewOptions(context.type ?? 'table', context.fields ?? [])
+  const validFieldIds = context.fields?.length
+    ? new Set(context.fields.map(field => field.id))
     : undefined
   const display = isJsonObject(root?.display) ? root.display : undefined
   const table = isJsonObject(root?.table) ? root.table : undefined
 
   return {
     display: {
-      propertyIds: Array.isArray(display?.propertyIds)
-        ? normalizePropertyIds(display.propertyIds, validPropertyIds)
-        : defaultOptions.display.propertyIds
+      fieldIds: Array.isArray(display?.fieldIds)
+        ? normalizeFieldIds(display.fieldIds, validFieldIds)
+        : defaultOptions.display.fieldIds
     },
     table: {
-      widths: normalizeWidths(table?.widths, validPropertyIds),
+      widths: normalizeWidths(table?.widths, validFieldIds),
       showVerticalLines: normalizeShowVerticalLines(table?.showVerticalLines)
     },
-    gallery: normalizeGroupGalleryOptions(root?.gallery),
-    kanban: normalizeGroupKanbanOptions(root?.kanban)
+    gallery: normalizeGalleryOptions(root?.gallery),
+    kanban: normalizeKanbanOptions(root?.kanban)
   }
 }

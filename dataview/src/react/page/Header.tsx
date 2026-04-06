@@ -4,7 +4,7 @@ import {
   Table2
 } from 'lucide-react'
 import { type ComponentType } from 'react'
-import type { GroupViewType } from '@dataview/core/contracts'
+import type { ViewType } from '@dataview/core/contracts'
 import { useCurrentView } from '@dataview/react/dataview'
 
 interface IconProps {
@@ -13,7 +13,7 @@ interface IconProps {
   strokeWidth?: number
 }
 
-const viewIcon = (type?: GroupViewType): ComponentType<IconProps> => {
+const viewIcon = (type?: ViewType): ComponentType<IconProps> => {
   switch (type) {
     case 'table':
       return Table2
@@ -26,7 +26,7 @@ const viewIcon = (type?: GroupViewType): ComponentType<IconProps> => {
   }
 }
 
-const viewTypeLabel = (type?: GroupViewType) => type ?? 'unknown'
+const viewTypeLabel = (type?: ViewType) => type ?? 'unknown'
 
 export interface PageHeaderProps {
 }

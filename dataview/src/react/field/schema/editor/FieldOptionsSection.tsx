@@ -1,25 +1,25 @@
 import { Plus, Settings2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type {
-  GroupProperty,
-  GroupPropertyOption
+  CustomField,
+  FieldOption
 } from '@dataview/core/contracts'
-import { getPropertyOptions } from '@dataview/core/property'
+import { getFieldOptions } from '@dataview/core/field'
 import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import {
   OptionEditorPopover,
-  PropertyOptionTag
-} from '@dataview/react/properties/options'
+  FieldOptionTag
+} from '@dataview/react/field/options'
 import { Button } from '@ui/button'
-import { PropertyStatusOptionsSection } from './PropertyStatusOptionsSection'
+import { FieldStatusOptionsSection } from './FieldStatusOptionsSection'
 
-const PlainPropertyOptionsSection = (props: {
-  property: GroupProperty
+const PlainFieldOptionsSection = (props: {
+  property: CustomField
 }) => {
   const editor = useDataView().engine
   const [editingOptionId, setEditingOptionId] = useState<string>()
-  const options = getPropertyOptions(props.property)
+  const options = getFieldOptions(props.property)
 
   useEffect(() => {
     if (editingOptionId && !options.some(option => option.id === editingOptionId)) {
@@ -28,15 +28,19 @@ const PlainPropertyOptionsSection = (props: {
   }, [editingOptionId, options])
 
   const updateOption = (
-    option: GroupPropertyOption,
-    patch: Partial<GroupPropertyOption>
-  ) => editor.properties.options.update(props.property.id, option.id, patch)
+    option: FieldOption,
+    patch: Partial<FieldOption>
+  ) => editor.fields.options.update(props.property.id, option.id, {
+    ...(patch.name !== undefined ? { name: patch.name } : {}),
+    ...(patch.color !== undefined ? { color: patch.color ?? '' } : {}),
+    ...('category' in patch && patch.category !== undefined ? { category: patch.category } : {})
+  })
 
   return (
     <div className="space-y-1.5 pt-1">
       <div className="flex items-center justify-between gap-3">
         <div className="px-1.5 text-[11px] font-medium text-muted-foreground">
-          {renderMessage(meta.ui.property.options.title)}
+          {renderMessage(meta.ui.field.options.title)}
         </div>
       </div>
 
@@ -48,7 +52,10 @@ const PlainPropertyOptionsSection = (props: {
             return (
               <OptionEditorPopover
                 key={option.id}
-                option={option}
+                option={{
+                  ...option,
+                  color: option.color ?? undefined
+                }}
                 open={open}
                 onOpenChange={nextOpen => setEditingOptionId(nextOpen ? option.id : undefined)}
                 onRename={name => updateOption(option, { name }) !== undefined}
@@ -56,7 +63,7 @@ const PlainPropertyOptionsSection = (props: {
                   updateOption(option, { color })
                 }}
                 onDelete={() => {
-                  editor.properties.options.remove(props.property.id, option.id)
+                  editor.fields.options.remove(props.property.id, option.id)
                 }}
                 trigger={(
                   <Button
@@ -66,9 +73,9 @@ const PlainPropertyOptionsSection = (props: {
                     onClick={() => undefined}
                   >
                     <div className="min-w-0">
-                      <PropertyOptionTag
-                        label={option.name.trim() || renderMessage(meta.ui.property.options.untitled)}
-                        color={option.color}
+                      <FieldOptionTag
+                        label={option.name.trim() || renderMessage(meta.ui.field.options.untitled)}
+                        color={option.color ?? undefined}
                       />
                     </div>
                   </Button>
@@ -82,21 +89,21 @@ const PlainPropertyOptionsSection = (props: {
       <Button
         leading={<Plus className="size-4" size={14} strokeWidth={1.8} />}
         onClick={() => {
-          const option = editor.properties.options.append(props.property.id)
+          const option = editor.fields.options.append(props.property.id)
           if (option) {
             setEditingOptionId(option.id)
           }
         }}
         className="w-full"
       >
-        {renderMessage(meta.ui.property.options.add)}
+        {renderMessage(meta.ui.field.options.add)}
       </Button>
     </div>
   )
 }
 
-export const PropertyOptionsSection = (props: {
-  property: GroupProperty
+export const FieldOptionsSection = (props: {
+  property: CustomField
 }) => props.property.kind === 'status'
-  ? <PropertyStatusOptionsSection property={props.property} />
-  : <PlainPropertyOptionsSection property={props.property} />
+  ? <FieldStatusOptionsSection property={props.property} />
+  : <PlainFieldOptionsSection property={props.property} />

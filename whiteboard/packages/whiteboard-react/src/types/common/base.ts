@@ -20,6 +20,8 @@ export type NodeConfig = {
 
 export type EdgeConfig = {
   hitTestThresholdScreen?: number
-  anchorSnapMin?: number
-  anchorSnapRatio?: number
+  activationPaddingScreen?: number
+  outlineSnapMin?: number
+  outlineSnapRatio?: number
+  handleSnapScreen?: number
 }

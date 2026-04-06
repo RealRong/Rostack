@@ -1,16 +1,16 @@
 import type { ReactNode } from 'react'
-import type { GroupProperty } from '@dataview/core/contracts'
-import { getPropertyValueSpec } from './kinds'
+import type { Field } from '@dataview/core/contracts'
+import { getFieldValueSpec } from './kinds'
 
-export interface PropertyValueRendererProps {
-  property?: GroupProperty
+export interface FieldValueRendererProps {
+  property?: Field
   value: unknown
   emptyPlaceholder?: ReactNode
   className?: string
 }
 
-export const PropertyValueRenderer = (props: PropertyValueRendererProps) => (
-  <>{getPropertyValueSpec(props.property).render({
+export const FieldValueRenderer = (props: FieldValueRendererProps) => (
+  <>{getFieldValueSpec(props.property).render({
     value: props.value,
     emptyPlaceholder: props.emptyPlaceholder,
     className: props.className

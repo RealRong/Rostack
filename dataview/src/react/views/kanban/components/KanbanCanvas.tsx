@@ -3,8 +3,14 @@ import { useKanbanContext } from '../context'
 import { Column } from './Column'
 import { Overlay } from './Overlay'
 
+const PAGE_PADDING_BOTTOM = 180
+
 const contentInsetStyle = {
   paddingInline: PAGE_INLINE_INSET_CSS,
+  boxSizing: 'border-box' as const,
+  minWidth: '100%',
+  display: 'inline-block',
+  verticalAlign: 'top' as const,
   overflowAnchor: 'none'
 } as const
 
@@ -15,21 +21,25 @@ export const KanbanCanvas = () => {
     <div className="flex flex-col gap-6">
       <div
         ref={controller.scrollRef}
-        className="relative overflow-x-auto pb-4"
-        style={contentInsetStyle}
+        className="relative overflow-x-auto overflow-y-visible"
       >
         <div
-          className="flex min-w-max items-start gap-4"
-          style={{
-            overflowAnchor: 'none'
-          }}
+          style={contentInsetStyle}
         >
-          {controller.currentView.sections.map(section => (
-            <Column
-              key={section.key}
-              section={section}
-            />
-          ))}
+          <div
+            className="flex min-w-max items-start gap-4"
+            style={{
+              paddingBottom: PAGE_PADDING_BOTTOM,
+              overflowAnchor: 'none'
+            }}
+          >
+            {controller.currentView.sections.map(section => (
+              <Column
+                key={section.key}
+                section={section}
+              />
+            ))}
+          </div>
         </div>
       </div>
       <Overlay />

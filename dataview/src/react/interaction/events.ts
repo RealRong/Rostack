@@ -1,4 +1,4 @@
-import type { PropertyId, RecordId } from '@dataview/core/contracts'
+import type { CustomFieldId, RecordId } from '@dataview/core/contracts'
 
 export interface Modifiers {
   shiftKey: boolean
@@ -23,7 +23,7 @@ export type Hit =
   | {
       type: 'cell'
       recordId: RecordId
-      propertyId: PropertyId
+      fieldId: CustomFieldId
     }
   | {
       type: 'fill-handle'
@@ -37,7 +37,7 @@ export type Hit =
     }
   | {
       type: 'column-header'
-      propertyId: PropertyId
+      fieldId: CustomFieldId
     }
 
 export type InteractionEvent =
@@ -84,7 +84,7 @@ export type InteractionEvent =
       target?: {
         type: 'cell'
         recordId: RecordId
-        propertyId: PropertyId
+        fieldId: CustomFieldId
       } | {
         type: 'row'
         recordId: RecordId

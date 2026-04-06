@@ -1,12 +1,12 @@
-export { PropertyValueEditor } from './editor'
-export { PropertyValueContent } from './content'
-export { PropertyValueRenderer } from './PropertyValueRenderer'
+export { FieldValueEditor } from './editor'
+export { FieldValueContent } from './content'
+export { FieldValueRenderer } from './FieldValueRenderer'
 export { cancel, commit } from '@dataview/react/interaction'
-export { getPropertyValueSpec } from './kinds'
+export { getFieldValueSpec } from './kinds'
 export type {
-  PropertyValueEditorHandle,
-  PropertyValueDraftEditorProps,
-  PropertyValueEditorProps
+  FieldValueEditorHandle,
+  FieldValueDraftEditorProps,
+  FieldValueEditorProps
 } from './editor'
 export type { EditInput } from '@dataview/react/interaction'
-export type { PropertyValueRendererProps } from './PropertyValueRenderer'
+export type { FieldValueRendererProps } from './FieldValueRenderer'

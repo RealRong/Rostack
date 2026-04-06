@@ -1,21 +1,21 @@
-import type { GroupCommitChangeSet, GroupDocument } from '@dataview/core/contracts'
-import type { GroupEngineReadApi } from '../../types'
+import type { CommitChangeSet, DataDoc } from '@dataview/core/contracts'
+import type { EngineReadApi } from '../../types'
 import { createReadSource } from './source'
 
 export interface CreateReadOptions {
-  getDocument: () => GroupDocument
+  getDocument: () => DataDoc
 }
 
-export interface GroupRead extends GroupEngineReadApi {
+export interface ReadRuntime extends EngineReadApi {
   clear: () => void
-  syncDocument: (document: GroupDocument, changes?: GroupCommitChangeSet) => void
+  syncDocument: (document: DataDoc, changes?: CommitChangeSet) => void
 }
 
-export const read = (options: CreateReadOptions): GroupRead => {
+export const read = (options: CreateReadOptions): ReadRuntime => {
   const source = createReadSource(options.getDocument())
   const syncDocument = (
-    document: GroupDocument,
-    _changes?: GroupCommitChangeSet
+    document: DataDoc,
+    _changes?: CommitChangeSet
   ) => {
     source.setDocument(document)
   }
@@ -24,8 +24,8 @@ export const read = (options: CreateReadOptions): GroupRead => {
     document: source.document,
     recordIds: source.recordIds,
     record: source.record,
-    propertyIds: source.propertyIds,
-    property: source.property,
+    customFieldIds: source.customFieldIds,
+    customField: source.customField,
     viewIds: source.viewIds,
     view: source.view,
     viewProjection: source.viewProjection,

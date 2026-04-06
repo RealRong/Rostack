@@ -1,21 +1,21 @@
 import { Check } from 'lucide-react'
 import { useState } from 'react'
-import type { PropertyId, GroupProperty } from '@dataview/core/contracts'
+import type { Field, FieldId } from '@dataview/core/contracts'
 import { Button } from '@ui/button'
 import { Input } from '@ui/input'
 import { meta, renderMessage, type MessageSpec } from '@dataview/meta'
 
-export interface PropertyPickerProps {
-  properties: readonly GroupProperty[]
-  selectedPropertyId?: PropertyId
+export interface FieldPickerProps {
+  fields: readonly Field[]
+  selectedFieldId?: FieldId
   emptyMessage?: MessageSpec
-  onSelect: (propertyId: PropertyId) => void
+  onSelect: (fieldId: FieldId) => void
 }
 
-export const PropertyPicker = (props: PropertyPickerProps) => {
+export const FieldPicker = (props: FieldPickerProps) => {
   const [query, setQuery] = useState('')
   const normalizedQuery = query.trim().toLowerCase()
-  const visibleProperties = props.properties.filter(property => (
+  const visibleFields = props.fields.filter(property => (
     !normalizedQuery || property.name.toLowerCase().includes(normalizedQuery)
   ))
   const emptyMessage = normalizedQuery
@@ -34,10 +34,10 @@ export const PropertyPicker = (props: PropertyPickerProps) => {
 
       <div className="flex-1 overflow-y-auto px-2 py-2">
         <div className="flex flex-col gap-0.5">
-          {visibleProperties.length ? (
-            visibleProperties.map(property => {
-              const active = property.id === props.selectedPropertyId
-              const kind = meta.property.kind.get(property.kind)
+          {visibleFields.length ? (
+            visibleFields.map(property => {
+              const active = property.id === props.selectedFieldId
+              const kind = meta.field.kind.get(property.kind)
               const Icon = kind.Icon
 
               return (

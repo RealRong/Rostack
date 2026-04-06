@@ -1,15 +1,15 @@
 import type {
-  PropertyId,
+  FieldId,
 } from '@dataview/core/contracts'
 import type {
   AppearanceId,
   AppearanceList,
-  FieldId
+  CellRef
 } from '@dataview/engine/projection/view'
 
 export interface FieldScope {
   appearanceIds: readonly AppearanceId[]
-  propertyIds: readonly PropertyId[]
+  fieldIds: readonly FieldId[]
 }
 
 const stepIndex = (
@@ -29,19 +29,19 @@ const stepIndex = (
 }
 
 export const stepField = (input: {
-  field: FieldId
+  field: CellRef
   scope: FieldScope
   rowDelta: -1 | 0 | 1
   columnDelta: -1 | 0 | 1
-}): FieldId | null => {
+}): CellRef | null => {
   const rowIndex = stepIndex(
     input.scope.appearanceIds,
     input.field.appearanceId,
     input.rowDelta
   )
   const columnIndex = stepIndex(
-    input.scope.propertyIds,
-    input.field.propertyId,
+    input.scope.fieldIds,
+    input.field.fieldId,
     input.columnDelta
   )
   if (rowIndex === null || columnIndex === null) {
@@ -49,13 +49,13 @@ export const stepField = (input: {
   }
 
   const appearanceId = input.scope.appearanceIds[rowIndex]
-  const propertyId = input.scope.propertyIds[columnIndex]
-  if (!appearanceId || !propertyId) {
+  const fieldId = input.scope.fieldIds[columnIndex]
+  if (!appearanceId || !fieldId) {
     return null
   }
 
   return {
     appearanceId,
-    propertyId
+    fieldId
   }
 }

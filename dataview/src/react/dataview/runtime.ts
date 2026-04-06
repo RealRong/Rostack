@@ -1,4 +1,4 @@
-import type { GroupEngine } from '@dataview/engine'
+import type { Engine } from '@dataview/engine'
 import type {
   ReadStore
 } from '@dataview/runtime/store'
@@ -44,7 +44,7 @@ import {
 } from '@dataview/react/runtime/marquee'
 
 export interface DataViewContextValue {
-  engine: GroupEngine
+  engine: Engine
   currentView: ReadStore<CurrentView | undefined>
   page: PageSessionApi & {
     store: ReadStore<ResolvedPageState>
@@ -157,7 +157,7 @@ const bindMarqueeToCurrentView = (input: {
 }
 
 export const createDataViewRuntime = (input: {
-  engine: GroupEngine
+  engine: Engine
   initialPage?: PageSessionInput
 }): DataViewRuntime => {
   const page = createPageSessionApi(input.initialPage)

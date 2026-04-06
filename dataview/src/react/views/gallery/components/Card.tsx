@@ -8,12 +8,12 @@ import {
 } from 'react'
 import { FileText } from 'lucide-react'
 import type {
-  GroupRecord,
+  Row,
   RecordId
 } from '@dataview/core/contracts'
 import {
-  isEmptyPropertyValue
-} from '@dataview/core/property'
+  isEmptyFieldValue
+} from '@dataview/core/field'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
 } from '@dataview/dom/appearance'
@@ -27,6 +27,7 @@ import { useKeyedStoreValue } from '@dataview/react/store'
 import {
   CardContent
 } from '@dataview/react/views/shared'
+import { resolveNeutralCardStyle } from '@ui/color'
 import { cn } from '@ui/utils'
 import type { AppearanceId } from '@dataview/react/runtime/currentView'
 import { useGalleryContext } from '../context'
@@ -65,15 +66,14 @@ export const Card = (props: {
 
 const GalleryCardContent = (props: {
   appearanceId: AppearanceId
-  record: GroupRecord
+  record: Row
   measureRef?: (node: HTMLElement | null) => void
   className?: string
   style?: CSSProperties
 }) => {
   const controller = useGalleryContext()
   const viewId = controller.currentView.view.id
-  const titleProperty = controller.titleProperty
-  const properties = controller.properties
+  const fields = controller.fields
   const selected = controller.selectedIdSet.has(props.appearanceId)
   const active = controller.drag.activeId === props.appearanceId
   const draggingSelected = controller.drag.activeId !== undefined
@@ -89,13 +89,13 @@ const GalleryCardContent = (props: {
   measureRefRef.current = props.measureRef
   const marqueeActiveRef = useRef(controller.marqueeActive)
   marqueeActiveRef.current = controller.marqueeActive
-  const hasVisibleProperties = useMemo(() => properties.some(property => (
-    property.id !== titleProperty?.id
-    && (
-      editing
-        || !isEmptyPropertyValue(props.record.values[property.id])
-    )
-  )), [editing, properties, props.record, titleProperty?.id])
+  const hasVisibleProperties = useMemo(() => fields.some(property => (
+    editing
+      || !isEmptyFieldValue(props.record.values[property.id])
+  )), [editing, fields, props.record])
+  const surfaceStyle = !selected
+    ? resolveNeutralCardStyle(hovered && !editing ? 'hover' : 'default', 'preview')
+    : undefined
   const contentRef = useCallback((node: HTMLElement | null) => {
     cardNodeRef.current = node
     measureRefRef.current?.(node)
@@ -169,10 +169,13 @@ const GalleryCardContent = (props: {
         draggingSelected && !active && 'opacity-60',
         props.className
       )}
-      style={props.style}
+      style={{
+        ...surfaceStyle,
+        ...props.style
+      }}
       slots={{
         root: cn(
-          'relative h-full rounded-xl bg-card p-3 shadow-sm transition-colors',
+          'relative h-full rounded-xl p-3 transition-colors',
           selected && 'border-primary bg-primary/[0.05]'
         ),
         title: {
@@ -193,8 +196,7 @@ const GalleryCardContent = (props: {
       viewId={viewId}
       appearanceId={props.appearanceId}
       record={props.record}
-      titleProperty={titleProperty}
-      properties={properties}
+      fields={fields}
       titlePlaceholder={CARD_TITLE_PLACEHOLDER}
       showEditAction={hovered && !editing && !active}
     />

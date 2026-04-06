@@ -13,17 +13,42 @@ import type {
   SelectedEdgeView
 } from '../../../types/edge'
 import { useSelectedEdgeView } from '../hooks/useEdgeView'
+import {
+  EDGE_ARROW_END_ID,
+  EDGE_ARROW_START_ID,
+  EDGE_DASH_ANIMATION
+} from '../constants'
+
+const resolveMarker = (value: string | undefined, fallbackId: string) => {
+  if (!value) return undefined
+  if (value.startsWith('url(')) return value
+  if (value === 'arrow') return `url(#${fallbackId})`
+  return `url(#${value})`
+}
 
 const EdgeHintOverlay = () => {
   const editor = useEditorRuntime()
   const hint = useStoreValue(editor.read.overlay.feedback.edgeGuide)
   const zoom = useStoreValue(editor.state.viewport).zoom
-  const { line, snap } = hint
-  const pointRadius = 4 / Math.max(zoom, 0.0001)
+  const { path, connect } = hint
+  const snap = connect && (
+    connect.resolution.mode === 'outline'
+    || connect.resolution.mode === 'handle'
+  )
+    ? connect.resolution.pointWorld
+    : undefined
   const snapRadius = 6 / Math.max(zoom, 0.0001)
-  const strokeWidth = 2 / Math.max(zoom, 0.0001)
+  const stroke = path?.style?.stroke ?? 'var(--ui-text-primary)'
+  const strokeWidth = path?.style?.strokeWidth ?? 2
+  const dash = path?.style?.dash?.join(' ')
+  const animationDuration = Math.max(0.3, path?.style?.animationSpeed ?? 1.2)
+  const animation = path?.style?.animated
+    ? `${EDGE_DASH_ANIMATION} ${animationDuration}s linear infinite`
+    : undefined
+  const markerStart = resolveMarker(path?.style?.markerStart, EDGE_ARROW_START_ID)
+  const markerEnd = resolveMarker(path?.style?.markerEnd, EDGE_ARROW_END_ID)
 
-  if (!line && !snap) {
+  if (!path && !snap) {
     return null
   }
 
@@ -34,33 +59,21 @@ const EdgeHintOverlay = () => {
       overflow="visible"
       className="wb-edge-preview-layer"
     >
-      {line && (
-        <>
-          <line
-            x1={line.from.x}
-            y1={line.from.y}
-            x2={line.to.x}
-            y2={line.to.y}
-            stroke="var(--wb-preview-line)"
-            strokeWidth={strokeWidth}
-            strokeDasharray="6 4"
-            vectorEffect="non-scaling-stroke"
-          />
-          <circle
-            cx={line.from.x}
-            cy={line.from.y}
-            r={pointRadius}
-            fill="var(--wb-text-primary)"
-            className="wb-edge-preview-point"
-          />
-          <circle
-            cx={line.to.x}
-            cy={line.to.y}
-            r={pointRadius}
-            fill="var(--wb-text-primary)"
-            className="wb-edge-preview-point"
-          />
-        </>
+      {path && (
+        <path
+          d={path.svgPath}
+          fill="none"
+          stroke={stroke}
+          color={stroke}
+          strokeWidth={strokeWidth}
+          strokeDasharray={dash}
+          markerStart={markerStart}
+          markerEnd={markerEnd}
+          vectorEffect="non-scaling-stroke"
+          pointerEvents="none"
+          className="wb-edge-visible-path"
+          style={{ animation }}
+        />
       )}
       {snap && (
         <circle
@@ -69,7 +82,7 @@ const EdgeHintOverlay = () => {
           r={snapRadius}
           fill="var(--wb-selection-fill)"
           stroke="var(--wb-accent)"
-          strokeWidth={strokeWidth}
+          strokeWidth={2 / Math.max(zoom, 0.0001)}
           vectorEffect="non-scaling-stroke"
           className="wb-edge-preview-point"
         />
@@ -117,18 +130,19 @@ const EdgeRoutePointHandle = ({
 }) => {
   const editor = useEditorRuntime()
   const ref = usePickRef(
-    point.kind === 'anchor'
+    point.pick.kind === 'anchor'
       ? {
           kind: 'edge',
           id: point.edgeId,
           part: 'path',
-          index: point.index
+          index: point.pick.index
         }
       : {
           kind: 'edge',
           id: point.edgeId,
           part: 'path',
-          insert: point.insertIndex
+          insert: point.pick.insertIndex,
+          segment: point.pick.segmentIndex
         }
   )
 
@@ -139,13 +153,17 @@ const EdgeRoutePointHandle = ({
       className="wb-edge-control-point-handle"
       data-kind={point.kind}
       data-active={point.active ? 'true' : undefined}
-      onKeyDown={point.kind === 'anchor'
+      onKeyDown={point.deletable
         ? (event) => {
             if (event.key !== 'Backspace' && event.key !== 'Delete') {
               return
             }
 
-            editor.commands.edge.route.remove(point.edgeId, point.index)
+            if (point.pick.kind !== 'anchor') {
+              return
+            }
+
+            editor.commands.edge.route.remove(point.edgeId, point.pick.index)
             event.preventDefault()
             event.stopPropagation()
           }
@@ -155,7 +173,7 @@ const EdgeRoutePointHandle = ({
         '--wb-edge-control-point-y': point.point.y,
         '--wb-edge-control-point-scale': point.active ? 1.08 : 1
       } as CSSProperties}
-      tabIndex={0}
+      tabIndex={point.deletable ? 0 : -1}
     />
   )
 }
@@ -198,7 +216,8 @@ export const EdgeOverlayLayer = () => {
   const showEdgeControls =
     selectedEdgeView !== undefined
     && interaction.chrome
-    && tool.type !== 'hand'
+    && !interaction.editingEdge
+    && tool.type === 'select'
 
   return (
     <>

@@ -5,20 +5,19 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type RefObject
 } from 'react'
+import type { CustomField } from '@dataview/core/contracts'
 import {
   formatTimeZoneLabel,
   type DateDisplayFormat,
   type DateTimeFormat,
   getAvailableTimezones,
-  getDatePropertyConfig,
-  resolveDefaultDateTimezone
-} from '@dataview/core/property'
+} from '@dataview/core/field'
 import { Input } from '@ui/input'
 import { Menu, type MenuItem } from '@ui/menu'
 import { cn } from '@ui/utils'
 import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
-import type { PropertyValueDraftEditorProps } from '../../contracts'
+import type { FieldValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@dataview/dom/focus'
 import {
   isComposing,
@@ -82,21 +81,26 @@ const DateBoundarySection = (props: {
 }
 
 export const DateValueEditor = (
-  props: PropertyValueDraftEditorProps<DateValueDraft>
+  props: FieldValueDraftEditorProps<DateValueDraft>
 ) => {
   const editor = useDataView().engine
   const startDateRef = useRef<HTMLInputElement | null>(null)
   const property = props.property?.kind === 'date'
     ? props.property
     : undefined
-  const dateConfig = getDatePropertyConfig(property)
-  const displayDateFormat = meta.property.date.displayDateFormat.get(dateConfig.displayDateFormat)
-  const displayTimeFormat = meta.property.date.displayTimeFormat.get(dateConfig.displayTimeFormat)
+  const dateConfig = property ?? {
+    displayDateFormat: 'short' as const,
+    displayTimeFormat: '12h' as const,
+    defaultValueKind: 'date' as const,
+    defaultTimezone: null as string | null
+  }
+  const displayDateFormat = meta.field.date.displayDateFormat.get(dateConfig.displayDateFormat)
+  const displayTimeFormat = meta.field.date.displayTimeFormat.get(dateConfig.displayTimeFormat)
   const timezones = useMemo(
     () => getAvailableTimezones(),
     []
   )
-  const defaultTimezone = resolveDefaultDateTimezone(props.property)
+  const defaultTimezone = property?.defaultTimezone ?? null
   const { commitDraft } = useDraftCommit({
     onDraftChange: props.onDraftChange,
     onApply: props.onApply,
@@ -152,12 +156,9 @@ export const DateValueEditor = (
       return
     }
 
-    editor.properties.update(property.id, {
-      config: {
-        ...dateConfig,
-        ...patch
-      }
-    })
+    editor.fields.update(property.id, {
+      ...patch
+    } as Partial<Omit<CustomField, 'id'>>)
   }
 
   const settingsItems = useMemo<MenuItem[]>(() => {
@@ -192,7 +193,7 @@ export const DateValueEditor = (
         label: '日期格式',
         suffix: renderMessage(displayDateFormat.message),
         contentClassName: 'w-[220px] p-1.5',
-          items: meta.property.date.displayDateFormat.list.map(option => ({
+          items: meta.field.date.displayDateFormat.list.map(option => ({
             kind: 'toggle' as const,
             key: option.id,
             label: renderMessage(option.message),
@@ -212,7 +213,7 @@ export const DateValueEditor = (
           label: '时间格式',
           suffix: renderMessage(displayTimeFormat.message),
           contentClassName: 'w-[220px] p-1.5',
-          items: meta.property.date.displayTimeFormat.list.map(option => ({
+          items: meta.field.date.displayTimeFormat.list.map(option => ({
             kind: 'toggle' as const,
             key: option.id,
             label: renderMessage(option.message),

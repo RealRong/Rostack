@@ -15,7 +15,7 @@ export const sanitizeDocument = (
   let changed = false
   const entities: Record<string, Node> = {}
 
-  Object.entries(document.nodes.entities).forEach(([id, node]) => {
+  Object.entries(document.nodes).forEach(([id, node]) => {
     const nextNode = sanitizeGroupNode(node)
     entities[id] = nextNode
     if (nextNode !== node) {
@@ -26,10 +26,7 @@ export const sanitizeDocument = (
   return changed
     ? {
         ...document,
-        nodes: {
-          ...document.nodes,
-          entities
-        }
+        nodes: entities
       }
     : document
 }
@@ -59,11 +56,8 @@ export const sanitizeOperations = ({
         return
       }
       case 'node.update': {
-        const current = document.nodes.entities[operation.id]
-        const update = sanitizeGroupUpdate(
-          operation.update,
-          current?.type
-        )
+        const current = document.nodes[operation.id]
+        const update = sanitizeGroupUpdate(operation.update)
         if (update === operation.update) {
           next.push(operation)
           return

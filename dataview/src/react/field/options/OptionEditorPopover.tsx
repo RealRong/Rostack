@@ -1,6 +1,9 @@
 import type { ReactElement } from 'react'
-import { Popover } from '@ui/popover'
-import type { MenuItem } from '@ui/menu'
+import {
+  Popover,
+  type PopoverOffset
+} from '@ui/popover'
+import type { Placement } from '@floating-ui/react'
 import { OptionEditorPanel } from './OptionEditorPanel'
 
 export interface OptionLike {
@@ -10,13 +13,13 @@ export interface OptionLike {
 }
 
 export interface OptionEditorPopoverProps {
+  fieldId: string
   option: OptionLike
   open: boolean
   onOpenChange: (open: boolean) => void
-  onRename: (name: string) => boolean | void
-  onColorChange: (color: string) => void
-  onDelete?: () => void
-  extraItems?: readonly MenuItem[]
+  onDeleted?: () => void
+  placement?: Placement
+  offset?: PopoverOffset
   trigger: ReactElement
 }
 
@@ -26,18 +29,16 @@ export const OptionEditorPopover = (props: OptionEditorPopoverProps) => {
       open={props.open}
       onOpenChange={props.onOpenChange}
       trigger={props.trigger}
-      placement="bottom-start"
-      offset={10}
+      placement={props.placement ?? 'right'}
+      offset={props.offset ?? 10}
       initialFocus={-1}
       size="md"
       padding="panel"
     >
       <OptionEditorPanel
+        fieldId={props.fieldId}
         option={props.option}
-        onRename={props.onRename}
-        onColorChange={props.onColorChange}
-        onDelete={props.onDelete}
-        extraItems={props.extraItems}
+        onDeleted={props.onDeleted}
         onRequestClose={() => props.onOpenChange(false)}
       />
     </Popover>

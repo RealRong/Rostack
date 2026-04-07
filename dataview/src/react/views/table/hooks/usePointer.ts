@@ -402,7 +402,8 @@ const useHoverBinding = (input: {
 export const usePointer = (
   options: PointerOptions
 ): PointerBinding => {
-  const editor = useDataView().engine
+  const dataView = useDataView()
+  const editor = dataView.engine
   const table = useTableContext()
   const currentView = useCurrentView()
   if (!currentView) {
@@ -634,6 +635,7 @@ export const usePointer = (
         : current.cell
       const nextTarget = target ?? current.cell
 
+      dataView.selection.clear()
       stateRef.current = {
         type: 'drag',
         mode: 'pointer',
@@ -648,6 +650,7 @@ export const usePointer = (
 
     setDragTarget(target)
   }, [
+    dataView.selection,
     currentView.appearances,
     currentView.fields,
     readGridSelection,

@@ -15,10 +15,8 @@ type Scenario = {
   create: () => Document
 }
 
-const toCollection = <T extends { id: string }>(items: T[]) => ({
-  entities: Object.fromEntries(items.map((item) => [item.id, item])),
-  order: items.map((item) => item.id)
-})
+const toRecord = <T extends { id: string }>(items: T[]) =>
+  Object.fromEntries(items.map((item) => [item.id, item]))
 
 const toNodeEnd = (nodeId: string) => ({
   kind: 'node' as const,
@@ -51,24 +49,23 @@ const createShapeNode = (
 
 const createBaseDocument = (id: string, nodes: Node[], edges: Edge[]): Document => ({
   ...createDocument(id),
-  nodes: toCollection(nodes),
-  edges: toCollection(edges)
+  nodes: toRecord(nodes),
+  edges: toRecord(edges),
+  order: [
+    ...nodes.map((node) => ({ kind: 'node' as const, id: node.id })),
+    ...edges.map((edge) => ({ kind: 'edge' as const, id: edge.id }))
+  ]
 })
 
 const createBasicDocument = (): Document => {
   const groupId = 'group-1'
   const nodes: Node[] = [
     {
-      id: groupId,
-      type: 'group',
-      children: ['node-1', 'node-2', 'node-3'],
-      data: { title: '基础分组', collapsed: false, autoFit: 'expand-only', padding: 24 }
-    },
-    {
       id: 'node-1',
       type: 'shape',
       position: { x: -200, y: -80 },
       size: { width: 160, height: 100 },
+      groupId,
       data: { kind: 'rect', text: 'Start' }
     },
     {
@@ -76,6 +73,7 @@ const createBasicDocument = (): Document => {
       type: 'shape',
       position: { x: 140, y: -40 },
       size: { width: 180, height: 120 },
+      groupId,
       data: { kind: 'rect', text: 'Process' }
     },
     {
@@ -83,6 +81,7 @@ const createBasicDocument = (): Document => {
       type: 'text',
       position: { x: -120, y: 140 },
       size: { width: 200, height: 120 },
+      groupId,
       data: { text: '双击编辑文本' }
     },
     {
@@ -109,7 +108,15 @@ const createBasicDocument = (): Document => {
     }
   ]
 
-  return createBaseDocument('demo-basic', nodes, edges)
+  return {
+    ...createBaseDocument('demo-basic', nodes, edges),
+    groups: {
+      [groupId]: {
+        id: groupId,
+        name: '基础分组'
+      }
+    }
+  }
 }
 
 const createDenseDocument = (): Document => {

@@ -1,9 +1,11 @@
 import type {
+  CanvasItemRef,
   Document,
   EdgeEnd,
   EdgeId,
   EdgeInput,
   EdgePatch,
+  GroupId,
   MindmapId,
   MindmapNodeId,
   NodeId,
@@ -47,6 +49,13 @@ export type NodeUpdateManyOptions = {
   origin?: Origin
 }
 
+export type CanvasOrderMode =
+  | 'set'
+  | 'front'
+  | 'back'
+  | 'forward'
+  | 'backward'
+
 export type DocumentWriteCommand =
   | {
       type: 'insert'
@@ -56,6 +65,11 @@ export type DocumentWriteCommand =
   | {
       type: 'background'
       background?: Document['background']
+    }
+  | {
+      type: 'order'
+      mode: CanvasOrderMode
+      refs: CanvasItemRef[]
     }
 
 export type NodeWriteCommand =
@@ -96,7 +110,10 @@ export type NodeWriteCommand =
     }
   | {
       type: 'group.create'
-      ids: NodeId[]
+      target: {
+        nodeIds?: readonly NodeId[]
+        edgeIds?: readonly EdgeId[]
+      }
     }
   | {
       type: 'group.ungroup'
@@ -186,9 +203,12 @@ export type NodeWriteOutput<C extends NodeWriteCommand = NodeWriteCommand> =
           edgeIds: readonly EdgeId[]
         }
       : C extends { type: 'group.create' }
-        ? { groupId: NodeId }
+        ? { groupId: GroupId }
         : C extends ({ type: 'group.ungroup' } | { type: 'group.ungroupMany' })
-          ? { nodeIds: readonly NodeId[] }
+          ? {
+              nodeIds: readonly NodeId[]
+              edgeIds: readonly EdgeId[]
+            }
           : void
 
 export type EdgeWriteOutput<C extends EdgeWriteCommand = EdgeWriteCommand> =
@@ -263,6 +283,15 @@ export type EngineCommands = {
       set: (background?: Document['background']) => CommandResult
     }
   }
+  canvas: {
+    order: {
+      set: (refs: CanvasItemRef[]) => CommandResult
+      bringToFront: (refs: CanvasItemRef[]) => CommandResult
+      sendToBack: (refs: CanvasItemRef[]) => CommandResult
+      bringForward: (refs: CanvasItemRef[]) => CommandResult
+      sendBackward: (refs: CanvasItemRef[]) => CommandResult
+    }
+  }
   history: {
     get: () => HistoryState
     undo: () => CommandResult
@@ -317,9 +346,18 @@ export type EngineCommands = {
       edgeIds: readonly EdgeId[]
     }>
     group: {
-      create: (ids: NodeId[]) => CommandResult<{ groupId: NodeId }>
-      ungroup: (id: NodeId) => CommandResult<{ nodeIds: readonly NodeId[] }>
-      ungroupMany: (ids: NodeId[]) => CommandResult<{ nodeIds: readonly NodeId[] }>
+      create: (target: {
+        nodeIds?: readonly NodeId[]
+        edgeIds?: readonly EdgeId[]
+      }) => CommandResult<{ groupId: GroupId }>
+      ungroup: (id: NodeId) => CommandResult<{
+        nodeIds: readonly NodeId[]
+        edgeIds: readonly EdgeId[]
+      }>
+      ungroupMany: (ids: NodeId[]) => CommandResult<{
+        nodeIds: readonly NodeId[]
+        edgeIds: readonly EdgeId[]
+      }>
     }
     order: {
       set: (ids: NodeId[]) => CommandResult

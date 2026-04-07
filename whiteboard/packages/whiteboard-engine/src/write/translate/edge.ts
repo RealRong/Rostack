@@ -25,6 +25,7 @@ import {
   getEdge,
   getNode,
   isNodeEdgeEnd,
+  type CanvasItemRef,
   type Document,
   type Edge,
   type EdgeId,
@@ -38,11 +39,7 @@ type OrderCommand = Extract<EdgeCommand, { type: 'order' }>
 
 const readSpatialNode = (
   node: Node | undefined
-): SpatialNode | undefined => (
-  node && node.type !== 'group'
-    ? node
-    : undefined
-)
+): SpatialNode | undefined => node
 
 const toUpdateOperations = (
   updates: readonly UpdateManyCommand['updates'][number][]
@@ -108,6 +105,13 @@ export const translateEdge = <C extends EdgeCommand>(
   ctx: WriteTranslateContext
 ): TranslateResult<EdgeWriteOutput<C>> => {
   const doc = ctx.doc
+  const serializeRef = (ref: CanvasItemRef) => `${ref.kind}:${ref.id}`
+  const parseRef = (key: string): CanvasItemRef => {
+    const [kind, id] = key.split(':')
+    return kind === 'edge'
+      ? { kind: 'edge', id }
+      : { kind: 'node', id }
+  }
 
   const updateMany = (command: UpdateManyCommand): TranslateResult => {
     const operations = toUpdateOperations(command.updates)
@@ -129,9 +133,12 @@ export const translateEdge = <C extends EdgeCommand>(
   }
 
   const order = (command: OrderCommand): TranslateResult => {
-    const current = [...doc.edges.order]
-    const target = sanitizeOrderIds(command.ids) as EdgeId[]
-    let nextOrder: EdgeId[]
+    const current = doc.order.map(serializeRef)
+    const target = sanitizeOrderIds(command.ids).map((id) => serializeRef({
+      kind: 'edge',
+      id
+    }))
+    let nextOrder: string[]
     switch (command.mode) {
       case 'set':
         nextOrder = target
@@ -152,7 +159,10 @@ export const translateEdge = <C extends EdgeCommand>(
         nextOrder = target
         break
     }
-    return success([{ type: 'edge.order.set', ids: nextOrder }])
+    return success([{
+      type: 'canvas.order.set',
+      refs: nextOrder.map(parseRef)
+    }])
   }
 
   switch (command.type) {

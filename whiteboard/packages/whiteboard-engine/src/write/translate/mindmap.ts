@@ -42,11 +42,7 @@ type MindmapCommand = WriteCommandMap['mindmap']
 
 const readSpatialNode = (
   node: Node | undefined
-): SpatialNode | undefined => (
-  node && node.type !== 'group'
-    ? node
-    : undefined
-)
+): SpatialNode | undefined => node
 
 const readMindmap = (doc: Document, id: MindmapId): MindmapTree | undefined =>
   getMindmapTreeFromDocument(doc, id)

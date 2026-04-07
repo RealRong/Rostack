@@ -15,11 +15,7 @@ type Rebuild = 'none' | 'dirty' | 'full'
 
 const readNodeRotation = (
   node: Node
-) => (
-  node.type === 'group'
-    ? 0
-    : (typeof node.rotation === 'number' ? node.rotation : 0)
-)
+) => (typeof node.rotation === 'number' ? node.rotation : 0)
 
 const resolveRebuild = (impact: KernelReadImpact): Rebuild => {
   if (impact.reset || impact.node.list) {
@@ -160,69 +156,12 @@ export class NodeRectIndex {
 
   private resolveGroupEntry = (
     current: CanvasNode,
-    tree: Pick<TreeIndex, 'childrenOf'>,
-    affectedIds: ReadonlySet<NodeId>,
-    cache: Map<NodeId, CanvasNode>,
-    visited: Set<NodeId>,
-    resolveEntry: (nodeId: NodeId) => CanvasNode | undefined
-  ): CanvasNode => {
-    if (current.node.type !== 'group') {
-      return current
-    }
-
-    if (visited.has(current.node.id)) {
-      return current
-    }
-
-    visited.add(current.node.id)
-    const childRects = tree.childrenOf(current.node.id)
-      .map((childId) => (
-        affectedIds.has(childId)
-          ? resolveEntry(childId)
-          : this.entriesById.get(childId) ?? this.geometry.get(childId)
-      ))
-      .filter((entry): entry is CanvasNode => Boolean(entry))
-      .map((entry) => (
-        entry.geometry.bounds
-      ))
-    visited.delete(current.node.id)
-
-    if (!childRects.length) {
-      return current
-    }
-
-    let minX = Number.POSITIVE_INFINITY
-    let minY = Number.POSITIVE_INFINITY
-    let maxX = Number.NEGATIVE_INFINITY
-    let maxY = Number.NEGATIVE_INFINITY
-
-    childRects.forEach((rect) => {
-      minX = Math.min(minX, rect.x)
-      minY = Math.min(minY, rect.y)
-      maxX = Math.max(maxX, rect.x + rect.width)
-      maxY = Math.max(maxY, rect.y + rect.height)
-    })
-
-    const rect: Rect = {
-      x: minX,
-      y: minY,
-      width: Math.max(0, maxX - minX),
-      height: Math.max(0, maxY - minY)
-    }
-
-    return {
-      node: current.node,
-      geometry: {
-        rect,
-        outline: {
-          kind: 'rect',
-          rect,
-          rotation: 0
-        },
-        bounds: rect
-      }
-    }
-  }
+    _tree: Pick<TreeIndex, 'childrenOf'>,
+    _affectedIds: ReadonlySet<NodeId>,
+    _cache: Map<NodeId, CanvasNode>,
+    _visited: Set<NodeId>,
+    _resolveEntry: (nodeId: NodeId) => CanvasNode | undefined
+  ): CanvasNode => current
 
   private isSameEntry = (
     left: CanvasNode | undefined,

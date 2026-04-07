@@ -101,11 +101,7 @@ const emptyState = (): EdgeCacheState => ({
 
 const readNodeRotation = (
   node: CanvasNode['node']
-) => (
-  node.type === 'group'
-    ? 0
-    : (typeof node.rotation === 'number' ? node.rotation : 0)
-)
+) => (typeof node.rotation === 'number' ? node.rotation : 0)
 
 const isSameView = (
   prevIds: readonly EdgeId[],

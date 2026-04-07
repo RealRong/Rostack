@@ -29,7 +29,7 @@ export const applyNodeProjectionPatch = (
   node: Node,
   patch: NodeProjectionPatch | undefined
 ): Node => {
-  if (!patch || node.type === 'group') {
+  if (!patch) {
     return node
   }
 

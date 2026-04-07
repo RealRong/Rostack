@@ -153,6 +153,7 @@ export interface StatusField {
   name: string
   kind: 'status'
   options: StatusOption[]
+  defaultOptionId: string | null
   meta?: Record<string, unknown>
 }
 

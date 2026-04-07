@@ -3,9 +3,7 @@ export { OptionToken } from './OptionToken'
 export { OptionEditorPanel } from './OptionEditorPanel'
 export { OptionEditorPopover } from './OptionEditorPopover'
 export {
-  buildStatusIdsAfterCategoryMove,
-  buildStatusMoveMenuItems,
-  getStatusCategoryMeta
+  buildStatusIdsAfterCategoryMove
 } from './statusOptionMenu'
 export type {
   FieldOptionTagProps

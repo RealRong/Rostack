@@ -16,8 +16,7 @@ import {
   type PointerEvent
 } from 'react'
 import type { Field, FieldId, CustomField } from '@dataview/core/contracts'
-import { DropdownMenu } from '@ui/dropdown-menu'
-import { type MenuItem } from '@ui/menu'
+import { Menu, type MenuItem } from '@ui/menu'
 import { cn } from '@ui/utils'
 import { isCustomField } from '@dataview/core/field'
 import { getSorterFieldId } from '@dataview/react/page/features/sort'
@@ -374,7 +373,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
         zIndex: isDragging ? 1 : undefined
       }}
     >
-      <DropdownMenu
+      <Menu.Dropdown
         open={menuOpen}
         onOpenChange={setMenuOpen}
         initialFocus={-1}

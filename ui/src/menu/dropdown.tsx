@@ -1,18 +1,9 @@
 import { useCallback, useState } from 'react'
-import { Popover, type PopoverProps } from './popover'
-import {
-  Menu,
-  type MenuItem,
-  type MenuSubmenuOpenPolicy
-} from './menu'
+import { Popover } from '../popover'
+import { Base } from './base'
+import type { DropdownProps } from './types'
 
-export interface DropdownMenuProps extends Omit<PopoverProps, 'children' | 'padding'> {
-  items: readonly MenuItem[]
-  autoFocus?: boolean
-  submenuOpenPolicy?: MenuSubmenuOpenPolicy
-}
-
-export const DropdownMenu = (props: DropdownMenuProps) => {
+export const Dropdown = (props: DropdownProps) => {
   const {
     items,
     autoFocus,
@@ -41,7 +32,7 @@ export const DropdownMenu = (props: DropdownMenuProps) => {
       kind="menu"
       padding="menu"
     >
-      <Menu
+      <Base
         items={items}
         open={open}
         onClose={() => setOpen(false)}
@@ -51,3 +42,4 @@ export const DropdownMenu = (props: DropdownMenuProps) => {
     </Popover>
   )
 }
+

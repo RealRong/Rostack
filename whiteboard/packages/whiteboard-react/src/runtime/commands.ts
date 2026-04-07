@@ -67,16 +67,28 @@ export const duplicateNodesAndSelect = (
   return true
 }
 
-export const groupNodesAndSelect = (
+export const groupSelectionAndSelect = (
   editor: WhiteboardRuntime,
-  nodeIds: readonly string[]
+  target: {
+    nodeIds?: readonly string[]
+    edgeIds?: readonly string[]
+  }
 ) => {
-  const result = editor.commands.node.group.create([...nodeIds])
+  const result = editor.commands.node.group.create(target)
   if (!result.ok) {
     return false
   }
 
-  replaceNodeSelection(editor, [result.data.groupId])
+  const selection = editor.read.group.selection(result.data.groupId)
+  if (selection) {
+    editor.commands.selection.replace(selection)
+    return true
+  }
+
+  editor.commands.selection.replace({
+    nodeIds: target.nodeIds ?? [],
+    edgeIds: target.edgeIds ?? []
+  })
   return true
 }
 
@@ -84,11 +96,14 @@ export const ungroupNodesAndSelect = (
   editor: WhiteboardRuntime,
   groupIds: readonly string[]
 ) => {
-  const result = editor.commands.node.group.ungroupMany([...groupIds])
+  const result = editor.commands.node.group.ungroupMany([...new Set(groupIds)])
   if (!result.ok) {
     return false
   }
 
-  replaceNodeSelection(editor, result.data.nodeIds)
+  editor.commands.selection.replace({
+    nodeIds: result.data.nodeIds,
+    edgeIds: result.data.edgeIds
+  })
   return true
 }

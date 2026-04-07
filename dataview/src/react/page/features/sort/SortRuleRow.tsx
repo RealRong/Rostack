@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import type { Field, Sorter } from '@dataview/core/contracts'
 import { Button } from '@ui/button'
-import { DropdownMenu } from '@ui/dropdown-menu'
+import { Menu } from '@ui/menu'
 import { Popover } from '@ui/popover'
 import type { VerticalReorderItemState } from '@ui/vertical-reorder-list'
 import { cn } from '@ui/utils'
@@ -101,7 +101,7 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
         </div>
       </Popover>
 
-      <DropdownMenu
+      <Menu.Dropdown
         open={directionOpen}
         onOpenChange={setDirectionOpen}
         initialFocus={-1}

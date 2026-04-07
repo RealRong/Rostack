@@ -44,9 +44,11 @@ export const createNodeTextCommands = ({
 }: NodeTextHost): EditorNodeTextCommands => ({
   preview: ({
     nodeId,
+    position,
     size,
     fontSize,
-    mode
+    mode,
+    handle
   }) => {
     const item = read.node.item.get(nodeId)
     if (!item || item.node.type !== 'text') {
@@ -54,9 +56,11 @@ export const createNodeTextCommands = ({
     }
 
     preview.node.text.set(nodeId, {
+      position,
       size,
       fontSize,
-      mode
+      mode,
+      handle
     })
   },
   clearPreview: (nodeId) => {

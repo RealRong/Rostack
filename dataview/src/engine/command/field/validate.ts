@@ -135,6 +135,22 @@ const validatePropertyShape = (
         return issues
       }
       issues.push(...validateStatusOptions(command, property.options, `${path}.options`))
+      {
+        const defaultOptionId = property.defaultOptionId
+
+      if (
+        defaultOptionId !== null
+        && defaultOptionId !== undefined
+        && typeof defaultOptionId !== 'string'
+      ) {
+        issues.push(createIssue(command, 'error', 'field.invalid', 'Status field defaultOptionId must be null or a non-empty string', `${path}.defaultOptionId`))
+      } else if (
+        typeof defaultOptionId === 'string'
+        && (!defaultOptionId.trim() || !property.options.some(option => option.id === defaultOptionId.trim()))
+      ) {
+        issues.push(createIssue(command, 'error', 'field.invalid', 'Status field defaultOptionId must reference an existing option', `${path}.defaultOptionId`))
+      }
+      }
       return issues
     case 'date':
       if (!DATE_DISPLAY_FORMATS.includes(property.displayDateFormat)) {

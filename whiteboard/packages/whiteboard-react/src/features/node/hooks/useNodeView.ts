@@ -80,9 +80,7 @@ const resolveNodeOverlayViewState = (
   const node = item.node
   const rect = item.rect
   const transformRect = editor.read.node.rect(nodeId) ?? rect
-  const rotation = node.type === 'group'
-    ? 0
-    : (typeof node.rotation === 'number' ? node.rotation : 0)
+  const rotation = typeof node.rotation === 'number' ? node.rotation : 0
   const capability = editor.read.node.capability(node)
 
   return {
@@ -111,9 +109,7 @@ const resolveNodeViewState = (
   const frameRect = editor.read.node.rect(nodeId) ?? rect
   const hidden = state.hidden
   const resizing = state.resizing
-  const rotation = resolvedNode.type === 'group'
-    ? 0
-    : (typeof resolvedNode.rotation === 'number' ? resolvedNode.rotation : 0)
+  const rotation = typeof resolvedNode.rotation === 'number' ? resolvedNode.rotation : 0
   const definition = registry.get(resolvedNode.type)
   const write: NodeWrite = {
     update: (update) => {

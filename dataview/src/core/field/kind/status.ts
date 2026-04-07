@@ -78,6 +78,17 @@ const getStatusOptions = (
   ? field.options
   : []
 
+const getStatusExplicitDefaultOptionId = (
+  field: StatusFieldInput | undefined
+) => {
+  if (field?.kind !== 'status' || typeof field.defaultOptionId !== 'string') {
+    return null
+  }
+
+  const normalized = field.defaultOptionId.trim()
+  return normalized || null
+}
+
 const isGroupStatusCategory = (
   value: unknown
 ): value is StatusCategory => (
@@ -203,6 +214,20 @@ export const getStatusDefaultOption = (
 ) => getStatusSections(field)
   .find(section => section.category === category)
   ?.options[0]
+
+export const getStatusFieldDefaultOption = (
+  field: StatusFieldInput | undefined
+) => {
+  const explicitDefaultId = getStatusExplicitDefaultOptionId(field)
+  if (explicitDefaultId) {
+    const explicitDefault = getStatusOptionRecord(field, explicitDefaultId)
+    if (explicitDefault) {
+      return explicitDefault
+    }
+  }
+
+  return getStatusDefaultOption(field, 'todo') ?? getStatusOptions(field)[0]
+}
 
 export const createEmptyStatusFilterValue = (): StatusFilterValue => ({
   targets: []

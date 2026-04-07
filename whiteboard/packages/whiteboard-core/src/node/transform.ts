@@ -13,7 +13,6 @@ import {
   rotatePoint
 } from '../geometry'
 import {
-  getGroupDescendants,
   isContainerNode
 } from './group'
 import { filterRootIds } from './owner'
@@ -204,6 +203,28 @@ export type TransformStepResult<TNode extends Node> = {
   draft: TransformDraft
 }
 
+export type AnchoredRectInput = {
+  rect: Rect
+  handle: ResizeDirection
+  width: number
+  height: number
+}
+
+export type ResizeRectFromSizeInput = {
+  drag: Pick<
+    ResizeGestureSnapshot,
+    'handle' | 'startCenter' | 'startRotation' | 'startSize'
+  >
+  width: number
+  height: number
+  altKey: boolean
+}
+
+export type TextScaleProjection = {
+  width: number
+  fontSize: number
+}
+
 const ZOOM_EPSILON = 0.0001
 
 export const resizeHandleMap: Record<ResizeDirection, ResizeHandleMeta> = {
@@ -233,17 +254,137 @@ export const getResizeSourceEdges = (
   return { sourceX, sourceY }
 }
 
+export const isCornerResizeDirection = (
+  handle: ResizeDirection
+) => resizeHandleMap[handle].sx !== 0 && resizeHandleMap[handle].sy !== 0
+
 export const rotateVector = (vector: Point, rotation: number) =>
   rotatePoint(vector, { x: 0, y: 0 }, rotation)
+
+const resolveResizeLocalDelta = (
+  input: Pick<ResizeGestureInput, 'drag' | 'currentScreen' | 'zoom' | 'zoomEpsilon'>
+) => {
+  const safeZoom = Math.max(input.zoom, input.zoomEpsilon ?? ZOOM_EPSILON)
+  const deltaWorld = {
+    x: (input.currentScreen.x - input.drag.startScreen.x) / safeZoom,
+    y: (input.currentScreen.y - input.drag.startScreen.y) / safeZoom
+  }
+
+  return rotateVector(deltaWorld, -input.drag.startRotation)
+}
+
+export const resolveResizeRectFromSize = (
+  input: ResizeRectFromSizeInput
+): Rect => {
+  const {
+    drag,
+    altKey
+  } = input
+  const width = Math.max(1, input.width)
+  const height = Math.max(1, input.height)
+  const { sx, sy } = resizeHandleMap[drag.handle]
+
+  let centerOffset = { x: 0, y: 0 }
+  if (!altKey) {
+    if (sx !== 0) {
+      centerOffset.x = ((width - drag.startSize.width) * sx) / 2
+    }
+    if (sy !== 0) {
+      centerOffset.y = ((height - drag.startSize.height) * sy) / 2
+    }
+  }
+  const worldCenterOffset = rotateVector(centerOffset, drag.startRotation)
+  const nextCenter = {
+    x: drag.startCenter.x + worldCenterOffset.x,
+    y: drag.startCenter.y + worldCenterOffset.y
+  }
+
+  return {
+    x: nextCenter.x - width / 2,
+    y: nextCenter.y - height / 2,
+    width,
+    height
+  }
+}
+
+export const resolveAnchoredRect = (
+  input: AnchoredRectInput
+): Rect => {
+  const width = Math.max(1, input.width)
+  const height = Math.max(1, input.height)
+  const left = input.rect.x
+  const right = input.rect.x + input.rect.width
+  const top = input.rect.y
+  const bottom = input.rect.y + input.rect.height
+
+  switch (input.handle) {
+    case 'nw':
+      return {
+        x: right - width,
+        y: bottom - height,
+        width,
+        height
+      }
+    case 'n':
+      return {
+        x: left,
+        y: bottom - height,
+        width,
+        height
+      }
+    case 'ne':
+      return {
+        x: left,
+        y: bottom - height,
+        width,
+        height
+      }
+    case 'e':
+      return {
+        x: left,
+        y: top,
+        width,
+        height
+      }
+    case 'se':
+      return {
+        x: left,
+        y: top,
+        width,
+        height
+      }
+    case 's':
+      return {
+        x: left,
+        y: top,
+        width,
+        height
+      }
+    case 'sw':
+      return {
+        x: right - width,
+        y: top,
+        width,
+        height
+      }
+    case 'w':
+      return {
+        x: right - width,
+        y: top,
+        width,
+        height
+      }
+  }
+}
 
 export const toTransformCommitPatch = (
   node: Node,
   preview: Pick<TransformPreviewPatch, 'position' | 'size' | 'rotation'>
 ): NodeFieldPatch | undefined => {
   const patch: NodeFieldPatch = {}
-  const position = node.type === 'group' ? undefined : node.position
-  const size = node.type === 'group' ? undefined : node.size
-  const rotation = node.type === 'group' ? undefined : node.rotation
+  const position = node.position
+  const size = node.size
+  const rotation = node.rotation
 
   if (preview.position && !isPointEqual(preview.position, position)) {
     patch.position = preview.position
@@ -353,57 +494,98 @@ export const computeResizeRect = (options: ResizeGestureInput) => {
     startSize,
     startAspect
   } = drag
-  const safeZoom = Math.max(zoom, zoomEpsilon)
-  const deltaWorld = {
-    x: (currentScreen.x - startScreen.x) / safeZoom,
-    y: (currentScreen.y - startScreen.y) / safeZoom
-  }
-  const localDelta = rotateVector(deltaWorld, -startRotation)
+  const localDelta = resolveResizeLocalDelta({
+    drag,
+    currentScreen,
+    zoom,
+    zoomEpsilon
+  })
   const { sx, sy } = resizeHandleMap[handle]
 
   let width = startSize.width
   let height = startSize.height
-  if (sx !== 0) {
-    width += localDelta.x * sx * (altKey ? 2 : 1)
-  }
-  if (sy !== 0) {
-    height += localDelta.y * sy * (altKey ? 2 : 1)
-  }
-  if (shiftKey && sx !== 0 && sy !== 0) {
-    if (Math.abs(localDelta.x) > Math.abs(localDelta.y)) {
-      height = width / startAspect
-    } else {
-      width = height * startAspect
+  if (shiftKey && isCornerResizeDirection(handle)) {
+    const scaleVector = altKey
+      ? {
+          x: startSize.width / 2 + localDelta.x * sx,
+          y: startSize.height / 2 + localDelta.y * sy
+        }
+      : {
+          x: startSize.width + localDelta.x * sx,
+          y: startSize.height + localDelta.y * sy
+        }
+    const startVector = altKey
+      ? {
+          x: startSize.width / 2,
+          y: startSize.height / 2
+        }
+      : {
+          x: startSize.width,
+          y: startSize.height
+        }
+    const denominator = startVector.x * startVector.x + startVector.y * startVector.y
+    const projectedScale = denominator > ZOOM_EPSILON
+      ? (
+          scaleVector.x * startVector.x + scaleVector.y * startVector.y
+        ) / denominator
+      : 1
+
+    width = startSize.width * projectedScale
+    height = startSize.height * projectedScale
+  } else {
+    if (sx !== 0) {
+      width += localDelta.x * sx * (altKey ? 2 : 1)
+    }
+    if (sy !== 0) {
+      height += localDelta.y * sy * (altKey ? 2 : 1)
     }
   }
 
   width = Math.max(minSize.width, width)
   height = Math.max(minSize.height, height)
 
-  let centerOffset = { x: 0, y: 0 }
-  if (!altKey) {
-    if (sx !== 0) {
-      centerOffset.x = ((width - startSize.width) * sx) / 2
-    }
-    if (sy !== 0) {
-      centerOffset.y = ((height - startSize.height) * sy) / 2
-    }
-  }
-  const worldCenterOffset = rotateVector(centerOffset, startRotation)
-  const nextCenter = {
-    x: startCenter.x + worldCenterOffset.x,
-    y: startCenter.y + worldCenterOffset.y
-  }
+  const rect = resolveResizeRectFromSize({
+    drag: {
+      handle,
+      startCenter,
+      startRotation,
+      startSize
+    },
+    width,
+    height,
+    altKey
+  })
 
   return {
     width,
     height,
-    rect: {
-      x: nextCenter.x - width / 2,
-      y: nextCenter.y - height / 2,
-      width,
-      height
-    }
+    rect
+  }
+}
+
+export const projectTextScale = (input: {
+  drag: ResizeGestureSnapshot
+  currentScreen: Point
+  zoom: number
+  startFontSize: number
+  minWidth: number
+  altKey: boolean
+  zoomEpsilon?: number
+}): TextScaleProjection => {
+  const localDelta = resolveResizeLocalDelta({
+    drag: input.drag,
+    currentScreen: input.currentScreen,
+    zoom: input.zoom,
+    zoomEpsilon: input.zoomEpsilon
+  })
+  const { sx } = resizeHandleMap[input.drag.handle]
+  const nextWidth = input.drag.startSize.width + localDelta.x * sx * (input.altKey ? 2 : 1)
+  const width = Math.max(input.minWidth, nextWidth)
+  const ratio = width / Math.max(input.drag.startSize.width, ZOOM_EPSILON)
+
+  return {
+    width,
+    fontSize: Math.max(1, input.startFontSize * ratio)
   }
 }
 
@@ -593,24 +775,9 @@ export const resolveSelectionTransformTargets = <
     }
 
     memberIds.add(root.id)
-    if (root.type !== 'group') {
+    if (!isContainerNode(root)) {
       commitIds.add(root.id)
-      return
     }
-
-    getGroupDescendants(nodes, root.id).forEach((descendant) => {
-      if (descendant.type === 'group') {
-        memberIds.add(descendant.id)
-        return
-      }
-
-      if (isContainerNode(descendant)) {
-        return
-      }
-
-      memberIds.add(descendant.id)
-      commitIds.add(descendant.id)
-    })
   })
 
   if (!memberIds.size || !commitIds.size) {

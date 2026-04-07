@@ -11,7 +11,9 @@ const focusEditableSelection = (
   element: HTMLDivElement,
   range: Range
 ) => {
-  element.focus()
+  element.focus({
+    preventScroll: true
+  })
 
   const selection = window.getSelection()
   if (!selection) {

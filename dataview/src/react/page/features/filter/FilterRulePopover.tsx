@@ -13,8 +13,8 @@ import {
 } from '@dataview/core/field'
 import { isCustomField } from '@dataview/core/field'
 import { Button } from '@ui/button'
-import { DropdownMenu } from '@ui/dropdown-menu'
 import { Input } from '@ui/input'
+import { Menu } from '@ui/menu'
 import { Popover } from '@ui/popover'
 import { cn } from '@ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
@@ -157,7 +157,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
               {fieldLabel}
 
               {props.field && presentation.condition ? (
-                <DropdownMenu
+                <Menu.Dropdown
                   open={conditionOpen}
                   onOpenChange={setConditionOpen}
                   initialFocus={-1}

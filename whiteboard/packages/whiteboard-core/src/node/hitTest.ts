@@ -126,17 +126,6 @@ export const filterNodeIdsInRect = <TEntry extends NodeRectHitEntry>({
       return false
     }
 
-    if (entry.node.type === 'group' && getDescendants) {
-      const descendantIds = getDescendants(nodeId)
-      const matched = descendantIds.length > 0 && (
-        match === 'contain'
-          ? descendantIds.every((descendantId) => matchesCandidate(descendantId))
-          : descendantIds.some((descendantId) => matchesCandidate(descendantId))
-      )
-      matchCache.set(nodeId, matched)
-      return matched
-    }
-
     const matched = matchEntry(entry, rect, match, policy)
     matchCache.set(nodeId, matched)
     return matched

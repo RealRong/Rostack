@@ -6,7 +6,7 @@ import { selectTool } from '@whiteboard/editor'
 import type { WhiteboardRuntime as Editor } from '../types/runtime'
 import {
   duplicateNodesAndSelect,
-  groupNodesAndSelect,
+  groupSelectionAndSelect,
   ungroupNodesAndSelect
 } from '../runtime/commands'
 
@@ -32,10 +32,9 @@ const readShortcutState = (
 
   return {
     selection,
-    pureNode: selection.items.edgeCount === 0,
     hasSelection: selection.items.count > 0,
-    canGroup: selection.items.edgeCount === 0 && selection.target.nodeIds.length >= 2,
-    canUngroup: selection.items.edgeCount === 0 && selection.items.nodes.some((node) => node.type === 'group'),
+    canGroup: selection.items.count >= 2,
+    canUngroup: selection.groups.count > 0,
     canDuplicate: selection.items.edgeCount === 0 && selection.items.nodeCount > 0
   }
 }
@@ -107,13 +106,13 @@ export const runShortcut = (
       return duplicateNodesAndSelect(editor, selection.target.nodeIds)
     }
     case 'group.create': {
-      return groupNodesAndSelect(editor, selection.target.nodeIds)
+      return groupSelectionAndSelect(editor, {
+        nodeIds: selection.target.nodeIds,
+        edgeIds: selection.target.edgeIds
+      })
     }
     case 'group.ungroup': {
-      const groupIds = selection.target.nodeIds.filter((nodeId) =>
-        selection.items.nodes.some((node) => node.id === nodeId && node.type === 'group')
-      )
-      return ungroupNodesAndSelect(editor, groupIds)
+      return ungroupNodesAndSelect(editor, selection.groups.ids)
     }
     case 'history.undo':
       return editor.commands.history.undo().ok

@@ -69,6 +69,7 @@ export {
   getStatusCategoryLabel,
   getStatusCategoryOrder,
   getStatusDefaultOption,
+  getStatusFieldDefaultOption,
   getStatusOptionCategory,
   getStatusSections,
 } from './kind/status'

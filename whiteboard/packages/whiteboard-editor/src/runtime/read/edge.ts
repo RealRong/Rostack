@@ -44,9 +44,7 @@ const toNodeCanvasSnapshot = (
   geometry: getNodeGeometry(
     item.node,
     item.rect,
-    item.node.type === 'group'
-      ? 0
-      : (item.node.rotation ?? 0)
+    item.node.rotation ?? 0
   )
 })
 

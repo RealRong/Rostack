@@ -24,11 +24,19 @@ import {
   matchCanvasNodeRect
 } from '@whiteboard/core/node'
 import {
+  getTargetBounds,
+  isSelectionTargetEqual
+} from '@whiteboard/core/selection'
+import {
   type EdgeId,
   type Node,
   type NodeId,
   type Point,
-  type Rect
+  type Rect,
+  listGroupCanvasItemRefs,
+  listGroupEdgeIds,
+  listGroupNodeIds,
+  listGroups
 } from '@whiteboard/core/types'
 import { createValueStore } from '../../store'
 import { DEFAULT_TUNING } from '../../config'
@@ -55,11 +63,7 @@ export const createRead = ({
 } => {
   const readNodeRotation = (
     node: Node
-  ) => (
-    node.type === 'group'
-      ? 0
-      : (typeof node.rotation === 'number' ? node.rotation : 0)
-  )
+  ) => (typeof node.rotation === 'number' ? node.rotation : 0)
   const readDocument = document.get
   const readModel = createReadModel({ readDocument })
 
@@ -151,11 +155,7 @@ export const createRead = ({
   ): NodeId | undefined => resolveNodeFrame({
     nodes: readOrderedNodes(),
     nodeId,
-    getNodeRect: (node) => (
-      node.type === 'group'
-        ? undefined
-        : readProjectedNodeBounds(node.id)
-    ),
+    getNodeRect: (node) => readProjectedNodeBounds(node.id),
     getFrameRect: (node) => readFrameRect(node.id)
   })
 
@@ -168,11 +168,7 @@ export const createRead = ({
     nodes: readOrderedNodes(),
     frameId,
     deep: options?.deep,
-    getNodeRect: (node) => (
-      node.type === 'group'
-        ? undefined
-        : readProjectedNodeBounds(node.id)
-    ),
+    getNodeRect: (node) => readProjectedNodeBounds(node.id),
     getFrameRect: (node) => readFrameRect(node.id)
   })
 
@@ -216,6 +212,63 @@ export const createRead = ({
     })),
     nodeIds
   )
+
+  const readGroupList = () => listGroups(readDocument())
+    .map((group) => group.id)
+
+  const readGroupItem = (
+    groupId: string
+  ) => readDocument().groups[groupId]
+
+  const readNodeGroupId = (
+    nodeId: NodeId
+  ) => readDocument().nodes[nodeId]?.groupId
+
+  const readEdgeGroupId = (
+    edgeId: EdgeId
+  ) => readDocument().edges[edgeId]?.groupId
+
+  const readGroupMembers = (
+    groupId: string
+  ) => listGroupCanvasItemRefs(readDocument(), groupId)
+
+  const readGroupNodeIds = (
+    groupId: string
+  ) => listGroupNodeIds(readDocument(), groupId)
+
+  const readGroupEdgeIds = (
+    groupId: string
+  ) => listGroupEdgeIds(readDocument(), groupId)
+
+  const readGroupSelection = (
+    groupId: string
+  ) => {
+    if (!readGroupItem(groupId)) {
+      return undefined
+    }
+
+    const nodeIds = readGroupNodeIds(groupId)
+    const edgeIds = readGroupEdgeIds(groupId)
+    return nodeIds.length > 0 || edgeIds.length > 0
+      ? {
+          nodeIds,
+          edgeIds
+        }
+      : undefined
+  }
+
+  const isGroupSelected = (
+    groupId: string,
+    target: {
+      nodeIds: readonly NodeId[]
+      edgeIds: readonly EdgeId[]
+    }
+  ) => {
+    const groupSelection = readGroupSelection(groupId)
+    return groupSelection
+      ? isSelectionTargetEqual(groupSelection, target)
+      : false
+  }
 
   const readEdgeBounds = (edgeId: EdgeId): Rect | undefined => {
     const item = edgeProjection.item.get(edgeId)
@@ -305,6 +358,27 @@ export const createRead = ({
         members: readFrameMembers,
         contains: (frameId, nodeId, options) => readFrameMembers(frameId, options)
           .includes(nodeId)
+      },
+      group: {
+        list: readGroupList,
+        item: readGroupItem,
+        ofNode: readNodeGroupId,
+        ofEdge: readEdgeGroupId,
+        members: readGroupMembers,
+        nodeIds: readGroupNodeIds,
+        edgeIds: readGroupEdgeIds,
+        bounds: (groupId) => {
+          const selection = readGroupSelection(groupId)
+          return selection
+            ? getTargetBounds({
+                target: selection,
+                readNodeBounds: readProjectedNodeBounds,
+                readEdgeBounds
+              })
+            : undefined
+        },
+        selection: readGroupSelection,
+        isSelected: isGroupSelected
       },
       node: {
         list: nodeProjection.list,

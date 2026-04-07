@@ -154,7 +154,7 @@ export const readNodeSelectionCan = ({
     align: count >= 2,
     distribute: count >= 3,
     makeGroup: count >= 2,
-    ungroup: nodes.some((node) => node.type === 'group'),
+    ungroup: summary.groups.count > 0,
     order: true,
     filter: mixedTypes,
     lock: true,
@@ -175,7 +175,7 @@ export const readNodeSummary = ({
   const nodes = summary.items.nodes
   const ids = summary.target.nodeIds
   const count = ids.length
-  const hasGroup = nodes.some((node) => node.type === 'group')
+  const hasGroup = summary.groups.count > 0
   const lockedCount = nodes.reduce(
     (total, node) => total + (node.locked ? 1 : 0),
     0

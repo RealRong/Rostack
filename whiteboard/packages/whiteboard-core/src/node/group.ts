@@ -1,140 +1,64 @@
 import type {
-  GroupNode,
+  GroupId,
   Node,
   NodeId,
   NodePatch,
-  Point,
   Rect,
   Size,
   SpatialNode
 } from '../types'
-import {
-  findOwnerAncestor,
-  getOwnerDescendants
-} from './owner'
 import { getNodesBounds } from './bounds'
 
-type OwnedNode = Pick<Node, 'id' | 'type' | 'children'>
+type GroupableNode = Pick<Node, 'id' | 'groupId'>
 
 export const isContainerNode = <TNode extends Pick<Node, 'type'>>(
   node: TNode
 ): node is TNode & (SpatialNode & { type: 'frame' }) => node.type === 'frame'
 
-export const isOwnerNode = <TNode extends Pick<Node, 'type'>>(
-  node: TNode
-): node is TNode & GroupNode => node.type === 'group'
+export const isOwnerNode = () => false
 
 export const sanitizeGroupNode = (
   node: Node
-): Node => {
-  if (node.type !== 'group') {
-    return node
-  }
-
-  const rawNode = node as GroupNode & Partial<{
-    position: Point
-    size: Size
-    rotation: number
-  }>
-
-  if (
-    rawNode.position === undefined
-    && rawNode.size === undefined
-    && rawNode.rotation === undefined
-  ) {
-    return node
-  }
-
-  const {
-    position: _position,
-    size: _size,
-    rotation: _rotation,
-    ...nextNode
-  } = rawNode
-
-  return nextNode
-}
-
-const hasOwn = (target: object, key: keyof NodePatch) =>
-  Object.prototype.hasOwnProperty.call(target, key)
+): Node => node
 
 export const sanitizeGroupPatch = (
-  patch: NodePatch,
-  type?: string
-): NodePatch => {
-  if (type !== 'group') {
-    return patch
-  }
-
-  if (
-    !hasOwn(patch, 'position')
-    && !hasOwn(patch, 'size')
-    && !hasOwn(patch, 'rotation')
-  ) {
-    return patch
-  }
-
-  const {
-    position: _position,
-    size: _size,
-    rotation: _rotation,
-    ...nextPatch
-  } = patch
-
-  return nextPatch
-}
+  patch: NodePatch
+): NodePatch => patch
 
 export const getNodesBoundingRect = (
   nodes: readonly Node[],
   fallbackSize: Size
 ): Rect | undefined => getNodesBounds(nodes, fallbackSize)
 
-export const getGroupChildrenMap = <TNode extends OwnedNode>(
-  nodes: readonly TNode[]
-): Map<NodeId, TNode[]> => {
-  const nodesById = new Map(nodes.map((node) => [node.id, node] as const))
-  const map = new Map<NodeId, TNode[]>()
+export const getGroupChildrenMap = <TNode extends GroupableNode>(
+  _nodes: readonly TNode[]
+): Map<GroupId, TNode[]> => new Map()
 
-  nodes.forEach((node) => {
-    if (node.type !== 'group') {
-      return
-    }
-
-    const children = (node.children ?? [])
-      .map((childId) => nodesById.get(childId))
-      .filter((child): child is TNode => Boolean(child))
-
-    if (children.length > 0) {
-      map.set(node.id, children)
-    }
-  })
-
-  return map
-}
-
-export const getGroupDescendants = <TNode extends OwnedNode>(
+export const getGroupDescendants = <TNode extends GroupableNode>(
   nodes: readonly TNode[],
-  groupId: NodeId
-): TNode[] => getOwnerDescendants(nodes, groupId)
+  groupId: GroupId
+): TNode[] => nodes.filter((node) => node.groupId === groupId)
 
 export const findGroupAncestor = <
-  TNode extends Pick<Node, 'id' | 'type'>
+  TNode extends Pick<Node, 'id'> & Partial<Pick<Node, 'groupId'>>
 >(
   nodeId: NodeId,
   readNode: (nodeId: NodeId) => TNode | undefined,
-  readOwnerId: (nodeId: NodeId) => NodeId | undefined,
-  match?: (groupId: NodeId, group: TNode) => boolean
-): NodeId | undefined => findOwnerAncestor(
-  nodeId,
-  readNode,
-  readOwnerId,
-  (ownerId, owner) => (
-    owner.type === 'group'
-    && (!match || match(ownerId, owner))
-  )
-)
+  _readOwnerId: (nodeId: NodeId) => NodeId | undefined,
+  match?: (groupId: GroupId, group: TNode) => boolean
+): GroupId | undefined => {
+  const node = readNode(nodeId)
+  const groupId = node?.groupId
+  if (!node || !groupId) {
+    return undefined
+  }
 
-export const expandGroupMembers = <TNode extends OwnedNode>(
+  return !match || match(groupId, node)
+    ? groupId
+    : undefined
+}
+
+export const expandGroupMembers = <TNode extends GroupableNode>(
   nodes: readonly TNode[],
   rootIds: readonly NodeId[]
 ): TNode[] => {
@@ -142,26 +66,8 @@ export const expandGroupMembers = <TNode extends OwnedNode>(
     return []
   }
 
-  const nodesById = new Map(nodes.map((node) => [node.id, node]))
-  const memberIds = new Set<NodeId>()
-
-  rootIds.forEach((rootId) => {
-    const root = nodesById.get(rootId)
-    if (!root) {
-      return
-    }
-
-    memberIds.add(root.id)
-    if (root.type !== 'group') {
-      return
-    }
-
-    getOwnerDescendants(nodes, root.id).forEach((child) => {
-      memberIds.add(child.id)
-    })
-  })
-
-  return nodes.filter((node) => memberIds.has(node.id))
+  const rootIdSet = new Set(rootIds)
+  return nodes.filter((node) => rootIdSet.has(node.id))
 }
 
 export const rectEquals = (a: Rect, b: Rect, epsilon: number) => (

@@ -18,7 +18,7 @@ import {
 import type { ClipboardBridge } from '../../../runtime/bridge/clipboard'
 import {
   duplicateNodesAndSelect,
-  groupNodesAndSelect,
+  groupSelectionAndSelect,
   syncNodeSelection,
   syncSingleEdgeSelection,
   ungroupNodesAndSelect
@@ -29,6 +29,7 @@ import {
   SelectionTypeFilterStrip
 } from '../../node/components/SelectionSummaryHeader'
 import { CREATE_PRESETS } from '../../toolbox/presets'
+import { STROKE_COLOR_OPTIONS } from './menus/options'
 import type {
   NodeSelectionCan,
   NodeSelectionStyle,
@@ -90,24 +91,6 @@ type ContextMenuView =
 
 const MENU_SECTION_TITLE_CLASSNAME = 'px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.02em] text-fg-muted'
 
-const COLOR_OPTIONS = [
-  { label: 'Ink', value: 'var(--ui-text-primary)' },
-  { label: 'White', value: 'var(--ui-surface)' },
-  { label: 'Gray', value: 'var(--ui-surface-muted)' },
-  { label: 'Yellow', value: 'var(--ui-yellow-bg-strong)' },
-  { label: 'Red', value: 'var(--ui-red-bg-strong)' },
-  { label: 'Blue', value: 'var(--ui-blue-bg-strong)' },
-  { label: 'Green', value: 'var(--ui-green-bg-strong)' },
-  { label: 'Purple', value: 'var(--ui-purple-bg-strong)' },
-  { label: 'Pink', value: 'var(--ui-pink-bg-strong)' },
-  { label: 'Slate', value: 'var(--ui-text-secondary)' },
-  { label: 'Danger', value: 'var(--ui-danger)' },
-  { label: 'Orange', value: 'var(--ui-orange-text)' },
-  { label: 'Forest', value: 'var(--ui-green-text)' },
-  { label: 'Accent', value: 'var(--ui-accent)' },
-  { label: 'Violet', value: 'var(--ui-purple-text)' }
-] as const
-
 const STROKE_WIDTHS = [1, 2, 4, 6, 8, 12] as const
 const DRAW_STROKE_WIDTHS = [2, 4, 8, 12] as const
 const OPACITY_OPTIONS = [
@@ -139,6 +122,23 @@ const withCurrentLabel = (
   label: string,
   active: boolean
 ) => active ? `${label} (Current)` : label
+
+const toCanvasRefs = ({
+  nodeIds,
+  edgeIds
+}: {
+  nodeIds?: readonly string[]
+  edgeIds?: readonly string[]
+}) => [
+  ...(nodeIds ?? []).map((id) => ({
+    kind: 'node' as const,
+    id
+  })),
+  ...(edgeIds ?? []).map((id) => ({
+    kind: 'edge' as const,
+    id
+  }))
+]
 
 const buildContextMenuItems = (
   groups: readonly MenuGroup[]
@@ -205,13 +205,13 @@ const readSelectionContextView = (
   screen: Point
 ): Extract<ContextMenuView, { kind: 'selection' }> | undefined => {
   const selection = editor.read.selection.summary.get()
-  if (
-    selection.items.nodeCount === 0
-    || selection.items.edgeCount > 0
-  ) {
+  if (selection.items.count === 0) {
     return undefined
   }
 
+  const pureNodeSelection =
+    selection.items.nodeCount > 0
+    && selection.items.edgeCount === 0
   const summary = readNodeSummary({
     summary: selection,
     registry
@@ -232,10 +232,12 @@ const readSelectionContextView = (
             types: summary.types
           }
         : undefined,
-      style: readNodeSelectionStyle({
-        summary: selection,
-        registry
-      }) ?? undefined
+      style: pureNodeSelection
+        ? readNodeSelectionStyle({
+            summary: selection,
+            registry
+          }) ?? undefined
+        : undefined
     }
   }
 }
@@ -252,10 +254,7 @@ const readContextMenuView = ({
   switch (point.pick.kind) {
     case 'selection-box': {
       const selection = editor.read.selection.summary.get()
-      if (
-        selection.target.nodeIds.length > 0
-        && selection.target.edgeIds.length === 0
-      ) {
+      if (selection.items.count > 0) {
         return readSelectionContextView(editor, registry, point.screen) ?? null
       }
 
@@ -269,14 +268,27 @@ const readContextMenuView = ({
     }
     case 'node': {
       const selection = editor.read.selection.summary.get()
-      const reuseCurrentSelection =
-        selection.target.nodeSet.has(point.pick.id)
-        && selection.target.edgeIds.length === 0
-      const nodeIds = reuseCurrentSelection
-        ? selection.target.nodeIds
-        : [point.pick.id]
+      const reuseCurrentSelection = selection.target.nodeSet.has(point.pick.id)
+      if (reuseCurrentSelection) {
+        return readSelectionContextView(editor, registry, point.screen) ?? null
+      }
 
-      syncNodeSelection(editor, nodeIds)
+      syncNodeSelection(editor, [point.pick.id])
+      return readSelectionContextView(editor, registry, point.screen) ?? null
+    }
+    case 'group': {
+      const selection = editor.read.group.selection(point.pick.id)
+      if (!selection) {
+        return {
+          kind: 'canvas',
+          screen: point.screen,
+          canvas: {
+            world: point.world
+          }
+        }
+      }
+
+      editor.commands.selection.replace(selection)
       return readSelectionContextView(editor, registry, point.screen) ?? null
     }
     case 'edge':
@@ -326,7 +338,7 @@ const readSelectionStyleGroup = ({
       {
         key: 'style.stroke',
         label: 'Stroke',
-        children: COLOR_OPTIONS.map((option) => ({
+        children: STROKE_COLOR_OPTIONS.map((option) => ({
           key: `style.stroke.${option.label.toLowerCase()}`,
           label: withCurrentLabel(option.label, style.stroke === option.value),
           onSelect: bindMenuDismiss(() => {
@@ -442,6 +454,39 @@ const readEdgeGroups = ({
   dismiss: () => void
 }): readonly MenuGroup[] => [
   {
+    key: 'arrange',
+    title: 'Arrange',
+    items: [
+      {
+        key: 'arrange.order',
+        label: 'Layer',
+        children: ORDER_ITEMS.map((item) => ({
+          key: item.key,
+          label: item.label,
+          onSelect: bindMenuDismiss(() => {
+            const refs = toCanvasRefs({
+              edgeIds: [view.edge.id]
+            })
+            if (item.mode === 'front') {
+              editor.commands.canvas.order.bringToFront(refs)
+              return
+            }
+            if (item.mode === 'forward') {
+              editor.commands.canvas.order.bringForward(refs)
+              return
+            }
+            if (item.mode === 'backward') {
+              editor.commands.canvas.order.sendBackward(refs)
+              return
+            }
+
+            editor.commands.canvas.order.sendToBack(refs)
+          }, dismiss)
+        }))
+      }
+    ]
+  },
+  {
     key: 'edge.actions',
     items: [
       {
@@ -479,47 +524,66 @@ const readSelectionGroups = ({
   view: Extract<ContextMenuView, { kind: 'selection' }>
   dismiss: () => void
 }): readonly MenuGroup[] => {
+  const current = editor.read.selection.summary.get()
   const { summary, can, style } = view.selection
-  const nodeIds = summary.ids
+  const nodeIds = current.target.nodeIds
+  const edgeIds = current.target.edgeIds
+  const pureNodeSelection =
+    current.items.nodeCount > 0
+    && current.items.edgeCount === 0
+  const orderRefs = toCanvasRefs({
+    nodeIds,
+    edgeIds
+  })
+  const canOrderSelection =
+    orderRefs.length > 0
+    && (
+      can.order
+      || current.items.edgeCount > 0
+    )
   const groups: MenuGroup[] = []
 
-  const styleGroup = readSelectionStyleGroup({
-    editor,
-    style,
-    nodeIds,
-    dismiss
-  })
-  if (styleGroup) {
-    groups.push(styleGroup)
+  if (pureNodeSelection) {
+    const styleGroup = readSelectionStyleGroup({
+      editor,
+      style,
+      nodeIds,
+      dismiss
+    })
+    if (styleGroup) {
+      groups.push(styleGroup)
+    }
   }
 
   groups.push({
     key: 'edit',
     title: 'Edit',
     items: [
-      ...(can.copy
+      ...((nodeIds.length > 0 || edgeIds.length > 0)
         ? [
             {
               key: 'edit.copy',
               label: 'Copy',
               onSelect: bindMenuDismiss(() => clipboard.copy({
-                nodeIds
+                nodeIds,
+                edgeIds
               }), dismiss)
             }
           ]
         : []),
-      ...(can.cut
+      ...((nodeIds.length > 0 || edgeIds.length > 0)
         ? [
             {
               key: 'edit.cut',
               label: 'Cut',
               onSelect: bindMenuDismiss(() => clipboard.cut({
-                nodeIds
+                nodeIds,
+                edgeIds
               }), dismiss)
             }
           ]
         : []),
-      ...(can.duplicate
+      ...(pureNodeSelection && can.duplicate
         ? [
             {
               key: 'edit.duplicate',
@@ -530,20 +594,27 @@ const readSelectionGroups = ({
             }
           ]
         : []),
-      ...(can.delete
+      ...((nodeIds.length > 0 || edgeIds.length > 0)
         ? [
             {
               key: 'edit.delete',
               label: 'Delete',
               tone: 'danger' as const,
-              onSelect: bindMenuDismiss(() => editor.commands.node.deleteCascade([...nodeIds]), dismiss)
+              onSelect: bindMenuDismiss(() => {
+                if (edgeIds.length > 0) {
+                  editor.commands.edge.delete([...edgeIds])
+                }
+                if (nodeIds.length > 0) {
+                  editor.commands.node.deleteCascade([...nodeIds])
+                }
+              }, dismiss)
             }
           ]
         : [])
     ]
   })
 
-  if (can.order) {
+  if (canOrderSelection) {
     groups.push({
       key: 'arrange',
       title: 'Arrange',
@@ -556,42 +627,42 @@ const readSelectionGroups = ({
             label: item.label,
             onSelect: bindMenuDismiss(() => {
               if (item.mode === 'front') {
-                editor.commands.node.order.bringToFront([...nodeIds])
+                editor.commands.canvas.order.bringToFront(orderRefs)
                 return
               }
               if (item.mode === 'forward') {
-                editor.commands.node.order.bringForward([...nodeIds])
+                editor.commands.canvas.order.bringForward(orderRefs)
                 return
               }
               if (item.mode === 'backward') {
-                editor.commands.node.order.sendBackward([...nodeIds])
+                editor.commands.canvas.order.sendBackward(orderRefs)
                 return
               }
 
-              editor.commands.node.order.sendToBack([...nodeIds])
+              editor.commands.canvas.order.sendToBack(orderRefs)
             }, dismiss)
           }))
         },
-        ...(can.makeGroup
+        ...((current.items.count >= 2 && can.makeGroup)
           ? [
               {
                 key: 'arrange.group',
                 label: 'Group',
                 onSelect: bindMenuDismiss(() => {
-                  groupNodesAndSelect(editor, nodeIds)
+                  groupSelectionAndSelect(editor, {
+                    nodeIds
+                  })
                 }, dismiss)
               }
-            ]
+          ]
           : []),
-        ...(can.ungroup
+        ...(current.groups.count > 0
           ? [
               {
                 key: 'arrange.ungroup',
                 label: 'Ungroup',
                 onSelect: bindMenuDismiss(() => {
-                  const groupIds = editor.read.selection.summary.get().items.nodes
-                    .filter((node) => node.type === 'group')
-                    .map((node) => node.id)
+                  const groupIds = editor.read.selection.summary.get().groups.ids
                   if (!groupIds.length) {
                     return
                   }
@@ -614,9 +685,46 @@ const readSelectionGroups = ({
           : [])
       ]
     })
+  } else if (current.items.count >= 2 || current.groups.count > 0) {
+    groups.push({
+      key: 'structure',
+      title: 'Structure',
+      items: [
+        ...(current.items.count >= 2
+          ? [
+              {
+                key: 'structure.group',
+                label: 'Group',
+                onSelect: bindMenuDismiss(() => {
+                  groupSelectionAndSelect(editor, {
+                    nodeIds,
+                    edgeIds
+                  })
+                }, dismiss)
+              }
+            ]
+          : []),
+        ...(current.groups.count > 0
+          ? [
+              {
+                key: 'structure.ungroup',
+                label: 'Ungroup',
+                onSelect: bindMenuDismiss(() => {
+                  const groupIds = editor.read.selection.summary.get().groups.ids
+                  if (!groupIds.length) {
+                    return
+                  }
+
+                  ungroupNodesAndSelect(editor, groupIds)
+                }, dismiss)
+              }
+            ]
+          : [])
+      ]
+    })
   }
 
-  if (can.align || can.distribute) {
+  if (pureNodeSelection && (can.align || can.distribute)) {
     groups.push({
       key: 'layout',
       title: 'Layout',

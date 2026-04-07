@@ -75,7 +75,7 @@ export const createReadModel = ({
 
     const nodes = doc.nodes
 
-    if (!nodes.order.length) {
+    if (Object.keys(nodes).length === 0) {
       previousNodesRef = nodes
       visibleNodesCache = EMPTY_NODES
       canvasNodesCache = EMPTY_NODES
@@ -87,7 +87,7 @@ export const createReadModel = ({
       }
     } else if (nodes !== previousNodesRef) {
       const previousCanvasNodesCache = canvasNodesCache
-      const next = deriveNodeReadSlices(nodes)
+      const next = deriveNodeReadSlices(doc)
       const normalizedVisible = next.visible.length ? next.visible : EMPTY_NODES
       const normalizedCanvas = next.canvas.length ? next.canvas : EMPTY_NODES
       const normalizedCanvasNodeById = next.canvasNodeById.size
@@ -124,7 +124,7 @@ export const createReadModel = ({
     }
 
     let visibleEdgesCache: Edge[]
-    if (!doc.edges.order.length || !canvasNodesCache.length) {
+    if (!Object.keys(doc.edges).length || !canvasNodesCache.length) {
       visibleEdgesCache = EMPTY_EDGES
       edgeVisibleCache = {
         edgesRef: doc.edges,
@@ -139,7 +139,7 @@ export const createReadModel = ({
       visibleEdgesCache = edgeVisibleCache.visibleEdges
     } else {
       const nextVisibleEdges = deriveVisibleEdges(
-        doc.edges,
+        doc,
         canvasNodesCache
       )
       visibleEdgesCache = nextVisibleEdges.length ? nextVisibleEdges : EMPTY_EDGES

@@ -39,11 +39,7 @@ type ConnectNodeEntry = NonNullable<
 
 const readNodeRotation = (
   entry: ConnectNodeEntry
-) => (
-  entry.node.type === 'group'
-    ? 0
-    : (entry.node.rotation ?? 0)
-)
+) => (entry.node.rotation ?? 0)
 
 const EDGE_PRESET_TYPE = {
   'edge.straight': 'linear',

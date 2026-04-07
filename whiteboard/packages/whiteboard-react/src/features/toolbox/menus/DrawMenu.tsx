@@ -17,7 +17,7 @@ import type {
   DrawKind
 } from '@whiteboard/editor'
 import { isDrawBrushKind } from '@whiteboard/editor'
-import { COLORS } from '../../selection/chrome/menus/options'
+import { DRAW_COLOR_OPTIONS } from '../../selection/chrome/menus/options'
 import {
   TOOLBOX_PANEL_CLASSNAME,
   ToolboxButton,
@@ -174,12 +174,12 @@ export const DrawMenu = ({
             <div className="mt-4">
               <ToolboxMenuSection title="All colors">
                 <div className="grid grid-cols-5 gap-2.5">
-                  {COLORS.map((color) => (
+                  {DRAW_COLOR_OPTIONS.map((option) => (
                     <ToolboxColorSwatch
-                      key={color}
-                      color={color}
-                      active={style.color === color}
-                      onClick={() => onPatch({ color })}
+                      key={option.value}
+                      color={option.value}
+                      active={style.color === option.value}
+                      onClick={() => onPatch({ color: option.value })}
                     />
                   ))}
                 </div>

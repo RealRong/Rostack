@@ -1,6 +1,7 @@
 import type {
   Guide,
   NodeProjectionPatch as CoreNodeProjectionPatch,
+  ResizeDirection,
   TextWidthMode
 } from '@whiteboard/core/node'
 import type { ConnectResolution } from '@whiteboard/core/edge'
@@ -26,9 +27,11 @@ export type NodePatchEntry = {
 }
 
 export type TextPreviewPatch = {
+  position?: Point
   size?: Size
   fontSize?: number
   mode?: TextWidthMode
+  handle?: ResizeDirection
 }
 
 export type TextPreviewEntry = {

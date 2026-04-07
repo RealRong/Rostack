@@ -26,12 +26,20 @@ const mergeTextPreviewPatch = (
   }
 
   const next: TextPreviewPatch = {
+    position: patch?.position ?? current?.position,
     size: patch?.size ?? current?.size,
     fontSize: patch?.fontSize ?? current?.fontSize,
-    mode: patch?.mode ?? current?.mode
+    mode: patch?.mode ?? current?.mode,
+    handle: patch?.handle ?? current?.handle
   }
 
-  if (!next.size && next.fontSize === undefined && next.mode === undefined) {
+  if (
+    !next.position
+    && !next.size
+    && next.fontSize === undefined
+    && next.mode === undefined
+    && next.handle === undefined
+  ) {
     return undefined
   }
 
@@ -128,8 +136,10 @@ export const createPreviewWrite = ({
           }
 
           const nextPatch = {
+            position: patch.position,
             fontSize: patch.fontSize,
-            mode: patch.mode
+            mode: patch.mode,
+            handle: patch.handle
           }
 
           return {
@@ -140,7 +150,10 @@ export const createPreviewWrite = ({
                 patches: replaceTextPreviewEntry(
                   current.node.text.patches,
                   nodeId,
-                  nextPatch.fontSize === undefined && nextPatch.mode === undefined
+                  !nextPatch.position
+                  && nextPatch.fontSize === undefined
+                  && nextPatch.mode === undefined
+                  && nextPatch.handle === undefined
                     ? undefined
                     : nextPatch
                 )

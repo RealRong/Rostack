@@ -17,9 +17,8 @@ import {
   getDocumentViews
 } from '@dataview/core/document'
 import { Button } from '@ui/button'
-import { DropdownMenu } from '@ui/dropdown-menu'
 import { Input } from '@ui/input'
-import { type MenuItem } from '@ui/menu'
+import { Menu, type MenuItem } from '@ui/menu'
 import { Popover } from '@ui/popover'
 import { cn } from '@ui/utils'
 import { CreateViewPopover } from '@dataview/react/page/features/createView'
@@ -91,7 +90,7 @@ const ViewTab = (props: ViewTabProps) => {
 
   return (
     <div className="relative shrink-0">
-      <DropdownMenu
+      <Menu.Dropdown
         open={props.menuOpen}
         onOpenChange={open => {
           if (open) {

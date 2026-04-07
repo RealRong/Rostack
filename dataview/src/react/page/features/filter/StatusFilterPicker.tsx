@@ -155,6 +155,7 @@ export const StatusFilterPicker = (
                       <FieldOptionTag
                         label={option.name}
                         color={option.color ?? undefined}
+                        variant="status"
                       />
                     </Button>
                   </div>

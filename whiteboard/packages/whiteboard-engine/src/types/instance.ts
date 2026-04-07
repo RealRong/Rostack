@@ -17,7 +17,10 @@ import type {
   TransformSelectionTargets
 } from '@whiteboard/core/node'
 import type {
+  CanvasItemRef,
   CoreRegistries,
+  Group,
+  GroupId,
   Document,
   EdgeId,
   NodeGeometry,
@@ -35,6 +38,7 @@ import type {
 import type { EngineCommands } from './command'
 import type { Commit } from './commit'
 import type { CommandResult } from './result'
+import type { SelectionTarget } from '@whiteboard/core/selection'
 export type { BoardConfig } from '@whiteboard/core/config'
 
 export type ApplyOperationsOptions = {
@@ -86,6 +90,22 @@ export type FrameRead = {
   ) => boolean
 }
 
+export type GroupRead = {
+  list: () => readonly GroupId[]
+  item: (groupId: GroupId) => Group | undefined
+  ofNode: (nodeId: NodeId) => GroupId | undefined
+  ofEdge: (edgeId: EdgeId) => GroupId | undefined
+  members: (groupId: GroupId) => readonly CanvasItemRef[]
+  nodeIds: (groupId: GroupId) => readonly NodeId[]
+  edgeIds: (groupId: GroupId) => readonly EdgeId[]
+  bounds: (groupId: GroupId) => Rect | undefined
+  selection: (groupId: GroupId) => SelectionTarget | undefined
+  isSelected: (
+    groupId: GroupId,
+    target: SelectionTarget
+  ) => boolean
+}
+
 export type EdgeRead = {
   list: ReadStore<readonly EdgeId[]>
   item: KeyedReadStore<EdgeId, Readonly<EdgeItem> | undefined>
@@ -114,6 +134,7 @@ export type EngineRead = {
     bounds: () => Rect | undefined
   }
   frame: FrameRead
+  group: GroupRead
   node: NodeRead
   edge: EdgeRead
   mindmap: MindmapRead

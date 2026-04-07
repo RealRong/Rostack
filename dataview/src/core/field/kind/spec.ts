@@ -301,8 +301,26 @@ export const kindSpecs = {
     group: createOptionGroup(['option'], 'option')
   },
   status: {
-    create: input => ({ ...input, kind: 'status', options: createDefaultStatusOptions() }),
-    convert: field => ({ ...cloneBase(field), kind: 'status', options: cloneStatusOptions(field) }),
+    create: input => {
+      const options = createDefaultStatusOptions()
+
+      return {
+        ...input,
+        kind: 'status' as const,
+        options,
+        defaultOptionId: options[0]?.id ?? null
+      }
+    },
+    convert: field => {
+      const options = cloneStatusOptions(field)
+
+      return {
+        ...cloneBase(field),
+        kind: 'status' as const,
+        options,
+        defaultOptionId: options[0]?.id ?? null
+      }
+    },
     hasOptions: true,
     filter: {
       ops: ['eq', 'neq', 'in', 'exists'],

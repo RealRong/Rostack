@@ -494,7 +494,7 @@ export const Popover = (props: PopoverProps) => {
         ...floatingProps?.style,
         ...floating.floatingStyles
       }}
-      className={cn('z-50', floatingProps?.className, props.className)}
+      className={cn('z-50 outline-none', floatingProps?.className, props.className)}
       {...{
         [OVERLAY_LAYER_ATTR]: layer.id
       }}

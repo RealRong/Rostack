@@ -57,6 +57,11 @@ const resolveSelectionPressTargetInput = (
       return {
         kind: 'background'
       }
+    case 'group':
+      return {
+        kind: 'group',
+        groupId: input.pick.id
+      }
     case 'selection-box':
       return {
         kind: 'selection-box',
@@ -79,8 +84,8 @@ const resolveSelectionPressTargetInput = (
           nodeId: input.pick.id,
           part: 'shell',
           shell: node
-          ? ctx.read.node.capability(node).role
-          : 'content'
+            ? ctx.read.node.capability(node).role
+            : 'content'
         }
       }
 
@@ -133,7 +138,10 @@ const resolveSelectionPress = (
       return node
         ? ctx.read.node.capability(node).enter
         : false
-    }
+    },
+    getNodeGroupId: ctx.read.group.ofNode,
+    getGroupSelection: ctx.read.group.selection,
+    isGroupSelected: ctx.read.group.isSelected
   }, {
     modifiers: input.modifiers,
     selection: ctx.read.selection.summary.get(),

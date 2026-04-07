@@ -104,6 +104,24 @@ const normalizeStatusOption = (
   }
 }
 
+const normalizeStatusDefaultOptionId = (
+  options: readonly StatusOption[],
+  value: unknown
+) => {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const normalized = value.trim()
+  if (!normalized) {
+    return null
+  }
+
+  return options.some(option => option.id === normalized)
+    ? normalized
+    : null
+}
+
 export const createDefaultCustomField = (input: {
   id: CustomFieldId
   name: string
@@ -170,13 +188,15 @@ export const normalizeCustomField = (field: CustomField): CustomField => {
       const options = field.options
         .map(normalizeStatusOption)
         .filter((option): option is StatusOption => Boolean(option))
+      const nextOptions = options.length
+        ? options
+        : createDefaultStatusOptions()
 
       return {
         ...base,
         kind: 'status',
-        options: options.length
-          ? options
-          : createDefaultStatusOptions()
+        options: nextOptions,
+        defaultOptionId: normalizeStatusDefaultOptionId(nextOptions, field.defaultOptionId)
       }
     }
     case 'date': {

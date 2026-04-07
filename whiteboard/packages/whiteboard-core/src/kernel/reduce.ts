@@ -1,4 +1,5 @@
 import type {
+  CanvasItemRef,
   ChangeSet,
   Document,
   Edge,
@@ -58,8 +59,10 @@ type ReadImpactState = {
 type ReduceDraft = {
   next: Document
   copied: {
-    nodeEntities: boolean
-    edgeEntities: boolean
+    nodes: boolean
+    edges: boolean
+    groups: boolean
+    order: boolean
     meta: boolean
   }
   read: ReadImpactState
@@ -236,9 +239,12 @@ const trackReadImpact = (
       }
       return
     }
-    case 'node.order.set': {
+    case 'group.create':
+    case 'group.update':
+    case 'group.delete': {
+      state.document = true
       state.node.list = true
-      state.mindmap.view = true
+      state.edge.list = true
       return
     }
     case 'edge.create': {
@@ -262,8 +268,10 @@ const trackReadImpact = (
       }
       return
     }
-    case 'edge.order.set': {
+    case 'canvas.order.set': {
+      state.node.list = true
       state.edge.list = true
+      state.mindmap.view = true
       return
     }
   }
@@ -324,11 +332,24 @@ const finalizeReadImpact = (
     }
   }
 }
-const appendOrderId = <T extends string>(order: readonly T[], id: T): T[] =>
-  order.includes(id) ? Array.from(order) : [...order, id]
+const isSameCanvasRef = (
+  left: CanvasItemRef,
+  right: CanvasItemRef
+) => left.kind === right.kind && left.id === right.id
 
-const removeOrderId = <T extends string>(order: readonly T[], id: T): T[] => {
-  const index = order.indexOf(id)
+const appendOrderRef = (
+  order: readonly CanvasItemRef[],
+  ref: CanvasItemRef
+): CanvasItemRef[] =>
+  order.some((entry) => isSameCanvasRef(entry, ref))
+    ? Array.from(order)
+    : [...order, ref]
+
+const removeOrderRef = (
+  order: readonly CanvasItemRef[],
+  ref: CanvasItemRef
+): CanvasItemRef[] => {
+  const index = order.findIndex((entry) => isSameCanvasRef(entry, ref))
   if (index < 0) return Array.from(order)
   return [
     ...order.slice(0, index),
@@ -352,46 +373,36 @@ const touch = (draft: ReduceDraft) => {
   draft.next.meta.updatedAt = iso
 }
 
-const ensureNodeEntities = (draft: ReduceDraft): Document['nodes']['entities'] => {
-  if (!draft.copied.nodeEntities) {
-    draft.next.nodes = {
-      ...draft.next.nodes,
-      entities: { ...draft.next.nodes.entities }
-    }
-    draft.copied.nodeEntities = true
+const ensureNodes = (draft: ReduceDraft): Document['nodes'] => {
+  if (!draft.copied.nodes) {
+    draft.next.nodes = { ...draft.next.nodes }
+    draft.copied.nodes = true
   }
-  return draft.next.nodes.entities
+  return draft.next.nodes
 }
 
-const ensureEdgeEntities = (draft: ReduceDraft): Document['edges']['entities'] => {
-  if (!draft.copied.edgeEntities) {
-    draft.next.edges = {
-      ...draft.next.edges,
-      entities: { ...draft.next.edges.entities }
-    }
-    draft.copied.edgeEntities = true
+const ensureEdges = (draft: ReduceDraft): Document['edges'] => {
+  if (!draft.copied.edges) {
+    draft.next.edges = { ...draft.next.edges }
+    draft.copied.edges = true
   }
-  return draft.next.edges.entities
+  return draft.next.edges
 }
 
-const setNodeOrder = (
+const ensureGroups = (draft: ReduceDraft): Document['groups'] => {
+  if (!draft.copied.groups) {
+    draft.next.groups = { ...draft.next.groups }
+    draft.copied.groups = true
+  }
+  return draft.next.groups
+}
+
+const setCanvasOrder = (
   draft: ReduceDraft,
-  order: readonly NodeId[]
+  order: readonly CanvasItemRef[]
 ) => {
-  draft.next.nodes = {
-    ...draft.next.nodes,
-    order: Array.from(order)
-  }
-}
-
-const setEdgeOrder = (
-  draft: ReduceDraft,
-  order: readonly EdgeId[]
-) => {
-  draft.next.edges = {
-    ...draft.next.edges,
-    order: Array.from(order)
-  }
+  draft.next.order = Array.from(order)
+  draft.copied.order = true
 }
 
 const buildInverse = (
@@ -432,10 +443,30 @@ const buildInverse = (
         node: current
       }]
     }
-    case 'node.order.set': {
+    case 'group.create': {
       return [{
-        type: 'node.order.set',
-        ids: [...document.nodes.order]
+        type: 'group.delete',
+        id: operation.group.id
+      }]
+    }
+    case 'group.update': {
+      const current = document.groups[operation.id]
+      if (!current) return null
+      return [{
+        type: 'group.update',
+        id: operation.id,
+        patch: {
+          locked: current.locked,
+          name: current.name
+        }
+      }]
+    }
+    case 'group.delete': {
+      const current = document.groups[operation.id]
+      if (!current) return null
+      return [{
+        type: 'group.create',
+        group: current
       }]
     }
     case 'edge.create': {
@@ -461,10 +492,10 @@ const buildInverse = (
         edge: current
       }]
     }
-    case 'edge.order.set': {
+    case 'canvas.order.set': {
       return [{
-        type: 'edge.order.set',
-        ids: [...document.edges.order]
+        type: 'canvas.order.set',
+        refs: [...document.order]
       }]
     }
   }
@@ -483,9 +514,12 @@ const applyOperation = (
       return
     }
     case 'node.create': {
-      const entities = ensureNodeEntities(draft)
-      entities[operation.node.id] = operation.node
-      setNodeOrder(draft, appendOrderId(draft.next.nodes.order, operation.node.id))
+      const nodes = ensureNodes(draft)
+      nodes[operation.node.id] = operation.node
+      setCanvasOrder(draft, appendOrderRef(draft.next.order, {
+        kind: 'node',
+        id: operation.node.id
+      }))
       return
     }
     case 'node.update': {
@@ -493,32 +527,55 @@ const applyOperation = (
       if (!current) return
       const applied = applyNodeUpdate(current, operation.update)
       if (!applied.ok) return
-      const entities = ensureNodeEntities(draft)
-      entities[operation.id] = applied.next
+      const nodes = ensureNodes(draft)
+      nodes[operation.id] = applied.next
       return
     }
     case 'node.delete': {
       if (!getNode(draft.next, operation.id)) return
-      const entities = ensureNodeEntities(draft)
-      delete entities[operation.id]
-      setNodeOrder(draft, removeOrderId(draft.next.nodes.order, operation.id))
+      const nodes = ensureNodes(draft)
+      delete nodes[operation.id]
+      setCanvasOrder(draft, removeOrderRef(draft.next.order, {
+        kind: 'node',
+        id: operation.id
+      }))
       return
     }
-    case 'node.order.set': {
-      setNodeOrder(draft, operation.ids)
+    case 'group.create': {
+      const groups = ensureGroups(draft)
+      groups[operation.group.id] = operation.group
+      return
+    }
+    case 'group.update': {
+      const current = draft.next.groups[operation.id]
+      if (!current) return
+      const groups = ensureGroups(draft)
+      groups[operation.id] = {
+        ...current,
+        ...operation.patch
+      }
+      return
+    }
+    case 'group.delete': {
+      if (!draft.next.groups[operation.id]) return
+      const groups = ensureGroups(draft)
+      delete groups[operation.id]
       return
     }
     case 'edge.create': {
-      const entities = ensureEdgeEntities(draft)
-      entities[operation.edge.id] = operation.edge
-      setEdgeOrder(draft, appendOrderId(draft.next.edges.order, operation.edge.id))
+      const edges = ensureEdges(draft)
+      edges[operation.edge.id] = operation.edge
+      setCanvasOrder(draft, appendOrderRef(draft.next.order, {
+        kind: 'edge',
+        id: operation.edge.id
+      }))
       return
     }
     case 'edge.update': {
       const current = getEdge(draft.next, operation.id)
       if (!current) return
-      const entities = ensureEdgeEntities(draft)
-      entities[operation.id] = {
+      const edges = ensureEdges(draft)
+      edges[operation.id] = {
         ...current,
         ...operation.patch
       }
@@ -526,13 +583,16 @@ const applyOperation = (
     }
     case 'edge.delete': {
       if (!getEdge(draft.next, operation.id)) return
-      const entities = ensureEdgeEntities(draft)
-      delete entities[operation.id]
-      setEdgeOrder(draft, removeOrderId(draft.next.edges.order, operation.id))
+      const edges = ensureEdges(draft)
+      delete edges[operation.id]
+      setCanvasOrder(draft, removeOrderRef(draft.next.order, {
+        kind: 'edge',
+        id: operation.id
+      }))
       return
     }
-    case 'edge.order.set': {
-      setEdgeOrder(draft, operation.ids)
+    case 'canvas.order.set': {
+      setCanvasOrder(draft, operation.refs)
       return
     }
   }
@@ -572,8 +632,10 @@ export const reduceOperations = (
       background: document.background
     },
     copied: {
-      nodeEntities: false,
-      edgeEntities: false,
+      nodes: false,
+      edges: false,
+      groups: false,
+      order: false,
       meta: false
     },
     read: createReadImpactState(operations.length),

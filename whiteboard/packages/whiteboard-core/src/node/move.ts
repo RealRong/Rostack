@@ -14,8 +14,6 @@ import type {
 } from '../types'
 import {
   expandGroupMembers,
-  getGroupDescendants,
-  getNodesBoundingRect
 } from './group'
 import { expandFrameSelection } from './frame'
 import { filterRootIds } from './owner'
@@ -91,25 +89,9 @@ export const buildMoveSet = (options: {
     }
   }
 
-  const groupRectCache = new Map<NodeId, Rect | undefined>()
   const readNodeRect = (
     node: Node
-  ): Rect | undefined => {
-    if (node.type !== 'group') {
-      return getNodeBoundsByNode(node, nodeSize)
-    }
-
-    if (groupRectCache.has(node.id)) {
-      return groupRectCache.get(node.id)
-    }
-
-    const rect = getNodesBoundingRect(
-      getGroupDescendants(nodes, node.id),
-      nodeSize
-    )
-    groupRectCache.set(node.id, rect)
-    return rect
-  }
+  ): Rect | undefined => getNodeBoundsByNode(node, nodeSize)
 
   const expandedIds = expandFrameSelection({
     nodes,
@@ -122,7 +104,7 @@ export const buildMoveSet = (options: {
     )
   })
   const members = nodes.flatMap((node) => (
-    expandedIds.has(node.id) && node.type !== 'group'
+    expandedIds.has(node.id)
       ? [{
           id: node.id,
           position: node.position

@@ -56,9 +56,11 @@ export const isTextPreviewPatchEqual = (
   left: TextPreviewPatch | undefined,
   right: TextPreviewPatch | undefined
 ) => (
-  isSameSize(left?.size, right?.size)
+  isPointEqual(left?.position, right?.position)
+  && isSameSize(left?.size, right?.size)
   && left?.fontSize === right?.fontSize
   && left?.mode === right?.mode
+  && left?.handle === right?.handle
 )
 
 export const readNodePatchEntry = (

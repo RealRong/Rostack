@@ -51,7 +51,7 @@ const readNodeGeometry = (
   size?: Size
   rotation?: number
 } | undefined => (
-  node && node.type !== 'group'
+  node
     ? {
         position: node.position,
         size: node.size,
@@ -340,8 +340,8 @@ const diffChanges = ({
   const nodes = new Map<NodeId, NodeChange>()
   touched.nodeIds.forEach((nodeId) => {
     const change = diffNodeChange(
-      beforeDocument.nodes.entities[nodeId],
-      afterDocument.nodes.entities[nodeId]
+      beforeDocument.nodes[nodeId],
+      afterDocument.nodes[nodeId]
     )
     if (change) {
       nodes.set(nodeId, change)
@@ -351,8 +351,8 @@ const diffChanges = ({
   const edges = new Map<EdgeId, EdgeChange>()
   touched.edgeIds.forEach((edgeId) => {
     const change = diffEdgeChange(
-      beforeDocument.edges.entities[edgeId],
-      afterDocument.edges.entities[edgeId]
+      beforeDocument.edges[edgeId],
+      afterDocument.edges[edgeId]
     )
     if (change) {
       edges.set(edgeId, change)
@@ -414,7 +414,7 @@ const collectNodeDataOps = ({
       return
     }
 
-    const node = document.nodes.entities[nodeId]
+    const node = document.nodes[nodeId]
     if (!node) {
       return
     }

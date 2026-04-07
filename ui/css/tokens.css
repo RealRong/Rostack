@@ -49,8 +49,10 @@
 
   /* Default */
   --ui-default-text: #2c2c2b;
+  --ui-default-text-secondary: #7d7a75;
   --ui-default-text-muted: #7d7a75;
   --ui-default-icon: #383836;
+  --ui-default-icon-secondary: #8e8b86;
   --ui-default-icon-muted: #8e8b86;
   --ui-default-border: #e6e5e3;
   --ui-default-border-muted: #f0efed;
@@ -61,14 +63,19 @@
   --ui-default-bg-soft: #fff0;
   --ui-default-bg-muted: #42230308;
   --ui-default-bg-strong: #2a1c0012;
+  --ui-default-surface: #f9f8f7;
+  --ui-default-surface-hover: #f0efed;
+  --ui-default-surface-pressed: #e6e5e3;
   --ui-default-bg-card: #fff;
   --ui-default-bg-card-hover: #f9f8f7;
   --ui-default-bg-card-pressed: #f0efed;
 
   /* Blue */
   --ui-blue-text: #264a72;
+  --ui-blue-text-secondary: #387dc9;
   --ui-blue-text-muted: #83abe1;
   --ui-blue-icon: #264a72;
+  --ui-blue-icon-secondary: #387dc9;
   --ui-blue-icon-muted: #83abe1;
   --ui-blue-border: #cee3f7;
   --ui-blue-border-muted: #e5f2fc;
@@ -80,14 +87,19 @@
   --ui-blue-bg-muted: #007cd718;
   --ui-blue-bg-strong: #0076d934;
   --ui-blue-bg-tint: #007cd718;
+  --ui-blue-surface: #f3f9fd;
+  --ui-blue-surface-hover: #e5f2fc;
+  --ui-blue-surface-pressed: #cee3f7;
   --ui-blue-bg-card: #fff;
   --ui-blue-bg-card-hover: #e5f2fc;
   --ui-blue-bg-card-pressed: #cee3f7;
 
   /* Brown */
   --ui-brown-text: #584437;
+  --ui-brown-text-secondary: #9f765a;
   --ui-brown-text-muted: #bca290;
   --ui-brown-icon: #584437;
+  --ui-brown-icon-secondary: #9f765a;
   --ui-brown-icon-muted: #bca290;
   --ui-brown-border: #ebdfd7;
   --ui-brown-border-muted: #f5ede9;
@@ -98,14 +110,19 @@
   --ui-brown-bg-soft: #733b0309;
   --ui-brown-bg-muted: #8b2e0016;
   --ui-brown-bg-strong: #7f330028;
+  --ui-brown-surface: #faf8f6;
+  --ui-brown-surface-hover: #f5ede9;
+  --ui-brown-surface-pressed: #ebdfd7;
   --ui-brown-bg-card: #fff;
   --ui-brown-bg-card-hover: #f5ede9;
   --ui-brown-bg-card-pressed: #ebdfd7;
 
   /* Gray */
   --ui-gray-text: #494846;
+  --ui-gray-text-secondary: #7d7a75;
   --ui-gray-text-muted: #ada9a3;
   --ui-gray-icon: #494846;
+  --ui-gray-icon-secondary: #8e8b86;
   --ui-gray-icon-muted: #ada9a3;
   --ui-gray-border: #e6e5e3;
   --ui-gray-border-muted: #f0efed;
@@ -116,14 +133,19 @@
   --ui-gray-bg-soft: #42230308;
   --ui-gray-bg-muted: #2a1c0012;
   --ui-gray-bg-strong: #1c13011c;
+  --ui-gray-surface: #f9f8f7;
+  --ui-gray-surface-hover: #f0efed;
+  --ui-gray-surface-pressed: #e6e5e3;
   --ui-gray-bg-card: #fff;
   --ui-gray-bg-card-hover: #f0efed;
   --ui-gray-bg-card-pressed: #e6e5e3;
 
   /* Green */
   --ui-green-text: #2a533c;
+  --ui-green-text-secondary: #50946e;
   --ui-green-text-muted: #8bb79d;
   --ui-green-icon: #2a533c;
+  --ui-green-icon-secondary: #50946e;
   --ui-green-icon-muted: #8bb79d;
   --ui-green-border: #d7e6dd;
   --ui-green-border-muted: #e8f1ec;
@@ -134,14 +156,19 @@
   --ui-green-bg-soft: #03571f09;
   --ui-green-bg-muted: #00642d17;
   --ui-green-bg-strong: #00602628;
+  --ui-green-surface: #f6f9f7;
+  --ui-green-surface-hover: #e8f1ec;
+  --ui-green-surface-pressed: #d7e6dd;
   --ui-green-bg-card: #fff;
   --ui-green-bg-card-hover: #e8f1ec;
   --ui-green-bg-card-pressed: #d7e6dd;
 
   /* Orange */
   --ui-orange-text: #6a4222;
+  --ui-orange-text-secondary: #d27b2d;
   --ui-orange-text-muted: #cba27d;
   --ui-orange-icon: #6a4222;
+  --ui-orange-icon-secondary: #d27b2d;
   --ui-orange-icon-muted: #cba27d;
   --ui-orange-border: #f3ddcb;
   --ui-orange-border-muted: #fbebde;
@@ -152,14 +179,19 @@
   --ui-orange-bg-soft: #ba48030b;
   --ui-orange-bg-muted: #e0650121;
   --ui-orange-bg-strong: #c4580034;
+  --ui-orange-surface: #fcf7f4;
+  --ui-orange-surface-hover: #fbebde;
+  --ui-orange-surface-pressed: #f3ddcb;
   --ui-orange-bg-card: #fff;
   --ui-orange-bg-card-hover: #fbebde;
   --ui-orange-bg-card-pressed: #f3ddcb;
 
   /* Pink */
   --ui-pink-text: #68354e;
+  --ui-pink-text-secondary: #c14c8a;
   --ui-pink-text-muted: #c897ad;
   --ui-pink-icon: #68354e;
+  --ui-pink-icon-secondary: #c14c8a;
   --ui-pink-icon-muted: #c897ad;
   --ui-pink-border: #f4d8e4;
   --ui-pink-border-muted: #fae9f1;
@@ -170,14 +202,19 @@
   --ui-pink-bg-soft: #a1034208;
   --ui-pink-bg-muted: #c5005d16;
   --ui-pink-bg-strong: #b7004e27;
+  --ui-pink-surface: #fcf7f9;
+  --ui-pink-surface-hover: #fae9f1;
+  --ui-pink-surface-pressed: #f4d8e4;
   --ui-pink-bg-card: #fff;
   --ui-pink-bg-card-hover: #fae9f1;
   --ui-pink-bg-card-pressed: #f4d8e4;
 
   /* Purple */
   --ui-purple-text: #553b69;
+  --ui-purple-text-secondary: #9a6bb4;
   --ui-purple-text-muted: #b49cc6;
   --ui-purple-icon: #553b69;
+  --ui-purple-icon-secondary: #9a6bb4;
   --ui-purple-icon-muted: #b49cc6;
   --ui-purple-border: #e8dbf2;
   --ui-purple-border-muted: #f3ebf9;
@@ -188,14 +225,19 @@
   --ui-purple-bg-soft: #6203a108;
   --ui-purple-bg-muted: #6600b214;
   --ui-purple-bg-strong: #5c00a324;
+  --ui-purple-surface: #faf7fc;
+  --ui-purple-surface-hover: #f3ebf9;
+  --ui-purple-surface-pressed: #e8dbf2;
   --ui-purple-bg-card: #fff;
   --ui-purple-bg-card-hover: #f3ebf9;
   --ui-purple-bg-card-pressed: #e8dbf2;
 
   /* Red */
   --ui-red-text: #6d3531;
+  --ui-red-text-secondary: #cf5148;
   --ui-red-text-muted: #d0988d;
   --ui-red-icon: #6d3531;
+  --ui-red-icon-secondary: #cf5148;
   --ui-red-icon-muted: #d0988d;
   --ui-red-border: #f7d9d5;
   --ui-red-border-muted: #fce9e7;
@@ -206,14 +248,19 @@
   --ui-red-bg-soft: #c7030309;
   --ui-red-bg-muted: #df160018;
   --ui-red-bg-strong: #ce18002a;
+  --ui-red-surface: #fdf6f6;
+  --ui-red-surface-hover: #fce9e7;
+  --ui-red-surface-pressed: #f7d9d5;
   --ui-red-bg-card: #fff;
   --ui-red-bg-card-hover: #fce9e7;
   --ui-red-bg-card-pressed: #f7d9d5;
 
   /* Teal */
   --ui-teal-text: #18505b;
+  --ui-teal-text-secondary: #2c8b9e;
   --ui-teal-text-muted: #7eb6c2;
   --ui-teal-icon: #18505b;
+  --ui-teal-icon-secondary: #2c8b9e;
   --ui-teal-icon-muted: #7eb6c2;
   --ui-teal-border: #cae9f0;
   --ui-teal-border-muted: #e0f3f7;
@@ -224,14 +271,19 @@
   --ui-teal-bg-soft: #0396ab0c;
   --ui-teal-bg-muted: #019dbd1f;
   --ui-teal-bg-strong: #0095b735;
+  --ui-teal-surface: #f3fafb;
+  --ui-teal-surface-hover: #e0f3f7;
+  --ui-teal-surface-pressed: #cae9f0;
   --ui-teal-bg-card: #fff;
   --ui-teal-bg-card-hover: #e0f3f7;
   --ui-teal-bg-card-pressed: #cae9f0;
 
   /* Yellow */
   --ui-yellow-text: #655121;
+  --ui-yellow-text-secondary: #cb9434;
   --ui-yellow-text-muted: #d8c283;
   --ui-yellow-icon: #655121;
+  --ui-yellow-icon-secondary: #cb9434;
   --ui-yellow-icon-muted: #d8c283;
   --ui-yellow-border: #f2e3b7;
   --ui-yellow-border-muted: #f9f3dc;
@@ -242,6 +294,9 @@
   --ui-yellow-bg-soft: #cfaf0010;
   --ui-yellow-bg-muted: #d3a80023;
   --ui-yellow-bg-strong: #d19c0048;
+  --ui-yellow-surface: #fcfaef;
+  --ui-yellow-surface-hover: #f9f3dc;
+  --ui-yellow-surface-pressed: #f2e3b7;
   --ui-yellow-bg-card: #fff;
   --ui-yellow-bg-card-hover: #f9f3dc;
   --ui-yellow-bg-card-pressed: #f2e3b7;
@@ -287,8 +342,10 @@
 
     /* Default */
     --ui-default-text: #f0efed;
+    --ui-default-text-secondary: #ada9a3;
     --ui-default-text-muted: #ada9a3;
     --ui-default-icon: #e6e5e3;
+    --ui-default-icon-secondary: #ada9a3;
     --ui-default-icon-muted: #ada9a3;
     --ui-default-border: #383836;
     --ui-default-border-muted: #2c2c2b;
@@ -299,14 +356,19 @@
     --ui-default-bg-soft: #19191900;
     --ui-default-bg-muted: #fcfcfc08;
     --ui-default-bg-strong: #fffff315;
+    --ui-default-surface: #202020;
+    --ui-default-surface-hover: #2c2c2b;
+    --ui-default-surface-pressed: #383836;
     --ui-default-bg-card: #202020;
     --ui-default-bg-card-hover: #2c2c2b;
     --ui-default-bg-card-pressed: #383836;
 
     /* Blue */
     --ui-blue-text: #e5f2fc;
+    --ui-blue-text-secondary: #387dc9;
     --ui-blue-text-muted: #355f8b;
     --ui-blue-icon: #e5f2fc;
+    --ui-blue-icon-secondary: #387dc9;
     --ui-blue-icon-muted: #387dc9;
     --ui-blue-border: #233850;
     --ui-blue-border-muted: #213041;
@@ -318,14 +380,19 @@
     --ui-blue-bg-muted: #2383e212;
     --ui-blue-bg-strong: #51a6ff7e;
     --ui-blue-bg-tint: #439bff3d;
+    --ui-blue-surface: #213041;
+    --ui-blue-surface-hover: #233850;
+    --ui-blue-surface-pressed: #355f8b;
     --ui-blue-bg-card: #213041;
     --ui-blue-bg-card-hover: #233850;
     --ui-blue-bg-card-pressed: #355f8b;
 
     /* Brown */
     --ui-brown-text: #f5ede9;
+    --ui-brown-text-secondary: #9f765a;
     --ui-brown-text-muted: #6d5340;
     --ui-brown-icon: #f5ede9;
+    --ui-brown-icon-secondary: #9f765a;
     --ui-brown-icon-muted: #9f765a;
     --ui-brown-border: #45362d;
     --ui-brown-border-muted: #382d26;
@@ -336,14 +403,19 @@
     --ui-brown-bg-soft: #fd9e650d;
     --ui-brown-bg-muted: #ffb18131;
     --ui-brown-bg-strong: #ffb8845d;
+    --ui-brown-surface: #382d26;
+    --ui-brown-surface-hover: #45362d;
+    --ui-brown-surface-pressed: #6d5340;
     --ui-brown-bg-card: #382d26;
     --ui-brown-bg-card-hover: #45362d;
     --ui-brown-bg-card-pressed: #6d5340;
 
     /* Gray */
     --ui-gray-text: #f0efed;
+    --ui-gray-text-secondary: #ada9a3;
     --ui-gray-text-muted: #5f5e59;
     --ui-gray-icon: #f0efed;
+    --ui-gray-icon-secondary: #ada9a3;
     --ui-gray-icon-muted: #5f5e59;
     --ui-gray-border: #383836;
     --ui-gray-border-muted: #2c2c2b;
@@ -354,14 +426,19 @@
     --ui-gray-bg-soft: #fcfcfc08;
     --ui-gray-bg-muted: #ffffeb1a;
     --ui-gray-bg-strong: #fffceb4e;
+    --ui-gray-surface: #2c2c2b;
+    --ui-gray-surface-hover: #383836;
+    --ui-gray-surface-pressed: #5f5e59;
     --ui-gray-bg-card: #2c2c2b;
     --ui-gray-bg-card-hover: #383836;
     --ui-gray-bg-card-pressed: #5f5e59;
 
     /* Green */
     --ui-green-text: #e8f1ec;
+    --ui-green-text-secondary: #50946e;
     --ui-green-text-muted: #37674c;
     --ui-green-icon: #e8f1ec;
+    --ui-green-icon-secondary: #50946e;
     --ui-green-icon-muted: #50946e;
     --ui-green-border: #263d30;
     --ui-green-border-muted: #24342b;
@@ -372,14 +449,19 @@
     --ui-green-bg-soft: #53ff8c09;
     --ui-green-bg-muted: #6cffac28;
     --ui-green-bg-strong: #71ffaf56;
+    --ui-green-surface: #24342b;
+    --ui-green-surface-hover: #263d30;
+    --ui-green-surface-pressed: #37674c;
     --ui-green-bg-card: #24342b;
     --ui-green-bg-card-hover: #263d30;
     --ui-green-bg-card-pressed: #37674c;
 
     /* Orange */
     --ui-orange-text: #fbebde;
+    --ui-orange-text-secondary: #d27b2d;
     --ui-orange-text-muted: #88522f;
     --ui-orange-icon: #fbebde;
+    --ui-orange-icon-secondary: #d27b2d;
     --ui-orange-icon-muted: #d27b2d;
     --ui-orange-border: #53361f;
     --ui-orange-border-muted: #3d2a1d;
@@ -390,14 +472,19 @@
     --ui-orange-bg-soft: #fe8b470b;
     --ui-orange-bg-muted: #ff934b47;
     --ui-orange-bg-strong: #ff8f477b;
+    --ui-orange-surface: #3d2a1d;
+    --ui-orange-surface-hover: #53361f;
+    --ui-orange-surface-pressed: #88522f;
     --ui-orange-bg-card: #3d2a1d;
     --ui-orange-bg-card-hover: #53361f;
     --ui-orange-bg-card-pressed: #88522f;
 
     /* Pink */
     --ui-pink-text: #fae9f1;
+    --ui-pink-text-secondary: #c14c8a;
     --ui-pink-text-muted: #7b4760;
     --ui-pink-icon: #fae9f1;
+    --ui-pink-icon-secondary: #c14c8a;
     --ui-pink-icon-muted: #c14c8a;
     --ui-pink-border: #4e2b3c;
     --ui-pink-border-muted: #3f2631;
@@ -408,14 +495,19 @@
     --ui-pink-bg-soft: #ff4e950e;
     --ui-pink-bg-muted: #ff67b13b;
     --ui-pink-bg-strong: #ff85c06d;
+    --ui-pink-surface: #3f2631;
+    --ui-pink-surface-hover: #4e2b3c;
+    --ui-pink-surface-pressed: #7b4760;
     --ui-pink-bg-card: #3f2631;
     --ui-pink-bg-card-hover: #4e2b3c;
     --ui-pink-bg-card-pressed: #7b4760;
 
     /* Purple */
     --ui-purple-text: #f3ebf9;
+    --ui-purple-text-secondary: #9a6bb4;
     --ui-purple-text-muted: #674d7b;
     --ui-purple-icon: #f3ebf9;
+    --ui-purple-icon-secondary: #9a6bb4;
     --ui-purple-icon-muted: #9a6bb4;
     --ui-purple-border: #3c2d47;
     --ui-purple-border-muted: #36293f;
@@ -426,14 +518,19 @@
     --ui-purple-bg-soft: #c465fd0d;
     --ui-purple-bg-muted: #c87dff33;
     --ui-purple-bg-strong: #d093ff6d;
+    --ui-purple-surface: #36293f;
+    --ui-purple-surface-hover: #3c2d47;
+    --ui-purple-surface-pressed: #674d7b;
     --ui-purple-bg-card: #36293f;
     --ui-purple-bg-card-hover: #3c2d47;
     --ui-purple-bg-card-pressed: #674d7b;
 
     /* Red */
     --ui-red-text: #fce9e7;
+    --ui-red-text-secondary: #cf5148;
     --ui-red-text-muted: #924943;
     --ui-red-icon: #fce9e7;
+    --ui-red-icon-secondary: #cf5148;
     --ui-red-icon-muted: #cf5148;
     --ui-red-border: #502c29;
     --ui-red-border-muted: #412725;
@@ -444,14 +541,19 @@
     --ui-red-bg-soft: #fb6b6b0c;
     --ui-red-bg-muted: #ff685c3d;
     --ui-red-bg-strong: #ff746986;
+    --ui-red-surface: #412725;
+    --ui-red-surface-hover: #502c29;
+    --ui-red-surface-pressed: #924943;
     --ui-red-bg-card: #412725;
     --ui-red-bg-card-hover: #502c29;
     --ui-red-bg-card-pressed: #924943;
 
     /* Teal */
     --ui-teal-text: #e0f3f7;
+    --ui-teal-text-secondary: #2c8b9e;
     --ui-teal-text-muted: #226471;
     --ui-teal-icon: #e0f3f7;
+    --ui-teal-icon-secondary: #2c8b9e;
     --ui-teal-icon-muted: #2c8b9e;
     --ui-teal-border: #143d45;
     --ui-teal-border-muted: #193439;
@@ -462,14 +564,19 @@
     --ui-teal-bg-soft: #007ea414;
     --ui-teal-bg-muted: #00cdf533;
     --ui-teal-bg-strong: #31ddff61;
+    --ui-teal-surface: #193439;
+    --ui-teal-surface-hover: #143d45;
+    --ui-teal-surface-pressed: #226471;
     --ui-teal-bg-card: #193439;
     --ui-teal-bg-card-hover: #143d45;
     --ui-teal-bg-card-pressed: #226471;
 
     /* Yellow */
     --ui-yellow-text: #f9f3dc;
+    --ui-yellow-text-secondary: #cb9434;
     --ui-yellow-text-muted: #836426;
     --ui-yellow-icon: #f9f3dc;
+    --ui-yellow-icon-secondary: #cb9434;
     --ui-yellow-icon-muted: #cb9434;
     --ui-yellow-border: #504425;
     --ui-yellow-border-muted: #373325;
@@ -480,6 +587,9 @@
     --ui-yellow-bg-soft: #ffe8300b;
     --ui-yellow-bg-muted: #ffcd4b3d;
     --ui-yellow-bg-strong: #ffbc3575;
+    --ui-yellow-surface: #373325;
+    --ui-yellow-surface-hover: #504425;
+    --ui-yellow-surface-pressed: #836426;
     --ui-yellow-bg-card: #373325;
     --ui-yellow-bg-card-hover: #504425;
     --ui-yellow-bg-card-pressed: #836426;

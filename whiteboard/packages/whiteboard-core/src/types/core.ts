@@ -35,6 +35,7 @@ export type { MindmapInsertPayload } from './mindmap'
 export type DocumentId = string
 export type NodeId = string
 export type EdgeId = string
+export type GroupId = string
 
 export type Point = { x: number; y: number }
 export type Size = { width: number; height: number }
@@ -64,12 +65,11 @@ export const NODE_TYPES = [
   'shape',
   'draw',
   'frame',
-  'group',
   'mindmap'
 ] as const
 
 export type NodeType = typeof NODE_TYPES[number]
-export type SpatialNodeType = Exclude<NodeType, 'group'>
+export type SpatialNodeType = NodeType
 export type NodeLayer = 'background' | 'default' | 'overlay'
 export type NodeData = Record<string, unknown>
 export type NodeStyleValue =
@@ -84,6 +84,7 @@ export type BaseNode = {
   layer?: NodeLayer
   zIndex?: number
   children?: NodeId[]
+  groupId?: GroupId
   locked?: boolean
   data?: NodeData
   style?: NodeStyle
@@ -96,13 +97,7 @@ export type SpatialNode = BaseNode & {
   rotation?: number
 }
 
-export type GroupNode = BaseNode & {
-  type: 'group'
-}
-
-export type Node =
-  | SpatialNode
-  | GroupNode
+export type Node = SpatialNode
 
 export type EdgeAnchor = {
   side: 'top' | 'right' | 'bottom' | 'left'
@@ -213,129 +208,207 @@ export interface Edge {
   source: EdgeEnd
   target: EdgeEnd
   type: EdgeType
+  groupId?: GroupId
   route?: EdgeRoute
   style?: EdgeStyle
   label?: EdgeLabel
   data?: Record<string, unknown>
 }
 
-export type EntityCollection<TId extends string, T extends { id: TId }> = {
-  entities: Record<TId, T>
-  order: TId[]
+export type CanvasItemRef =
+  | {
+      kind: 'node'
+      id: NodeId
+    }
+  | {
+      kind: 'edge'
+      id: EdgeId
+    }
+
+export type Group = {
+  id: GroupId
+  locked?: boolean
+  name?: string
 }
 
 export interface Document {
   id: DocumentId
   name?: string
-  nodes: EntityCollection<NodeId, Node>
-  edges: EntityCollection<EdgeId, Edge>
+  nodes: Record<NodeId, Node>
+  edges: Record<EdgeId, Edge>
+  order: CanvasItemRef[]
+  groups: Record<GroupId, Group>
   background?: { type: 'dot' | 'line' | 'none'; color?: string }
   meta?: { createdAt?: string; updatedAt?: string }
 }
 
-const toOrderedItems = <TId extends string, T extends { id: TId }>(
-  collection: EntityCollection<TId, T>
-): T[] => {
-  if (!collection.order.length) {
-    return Object.values(collection.entities) as T[]
+const EMPTY_ORDER: CanvasItemRef[] = []
+
+const isCanvasItemRefEqual = (
+  left: CanvasItemRef,
+  right: CanvasItemRef
+) => left.kind === right.kind && left.id === right.id
+
+const appendMissingCanvasRefs = (
+  ordered: CanvasItemRef[],
+  visited: readonly CanvasItemRef[],
+  refs: readonly CanvasItemRef[]
+) => {
+  refs.forEach((ref) => {
+    if (visited.some((entry) => isCanvasItemRefEqual(entry, ref))) {
+      return
+    }
+    ordered.push(ref)
+  })
+}
+
+export const listCanvasItemRefs = (
+  document: Pick<Document, 'nodes' | 'edges' | 'order'>
+): CanvasItemRef[] => {
+  const order = document.order ?? EMPTY_ORDER
+  if (!order.length) {
+    return [
+      ...Object.keys(document.nodes).map((id) => ({ kind: 'node', id }) as const),
+      ...Object.keys(document.edges).map((id) => ({ kind: 'edge', id }) as const)
+    ]
   }
 
-  const ordered: T[] = []
-  const visited = new Set<TId>()
+  const ordered: CanvasItemRef[] = []
+  const visited: CanvasItemRef[] = []
 
-  collection.order.forEach((id) => {
-    const item = collection.entities[id]
-    if (!item) return
-    ordered.push(item)
-    visited.add(id)
+  order.forEach((ref) => {
+    if (ref.kind === 'node') {
+      if (!document.nodes[ref.id]) {
+        return
+      }
+    } else if (!document.edges[ref.id]) {
+      return
+    }
+
+    ordered.push(ref)
+    visited.push(ref)
   })
 
-  for (const item of Object.values(collection.entities) as T[]) {
-    if (visited.has(item.id)) continue
-    ordered.push(item)
-  }
+  appendMissingCanvasRefs(
+    ordered,
+    visited,
+    Object.keys(document.nodes).map((id) => ({ kind: 'node', id }) as const)
+  )
+  appendMissingCanvasRefs(
+    ordered,
+    visited,
+    Object.keys(document.edges).map((id) => ({ kind: 'edge', id }) as const)
+  )
 
   return ordered
 }
 
 export const createDocument = (id: DocumentId): Document => ({
   id,
-  nodes: {
-    entities: {},
-    order: []
-  },
-  edges: {
-    entities: {},
-    order: []
-  }
+  nodes: {},
+  edges: {},
+  order: [],
+  groups: {}
 })
 
 export const getNode = (
   document: Pick<Document, 'nodes'>,
   id: NodeId
-): Node | undefined => document.nodes.entities[id]
+): Node | undefined => document.nodes[id]
 
 export const getEdge = (
   document: Pick<Document, 'edges'>,
   id: EdgeId
-): Edge | undefined => document.edges.entities[id]
+): Edge | undefined => document.edges[id]
+
+export const getGroup = (
+  document: Pick<Document, 'groups'>,
+  id: GroupId
+): Group | undefined => document.groups[id]
 
 export const hasNode = (
   document: Pick<Document, 'nodes'>,
   id: NodeId
-): boolean => Boolean(document.nodes.entities[id])
+): boolean => Boolean(document.nodes[id])
 
 export const hasEdge = (
   document: Pick<Document, 'edges'>,
   id: EdgeId
-): boolean => Boolean(document.edges.entities[id])
+): boolean => Boolean(document.edges[id])
+
+export const hasGroup = (
+  document: Pick<Document, 'groups'>,
+  id: GroupId
+): boolean => Boolean(document.groups[id])
 
 export const listNodes = (
-  document: Pick<Document, 'nodes'>
-): Node[] => toOrderedItems(document.nodes)
+  document: Pick<Document, 'nodes' | 'edges' | 'order'>
+): Node[] => listCanvasItemRefs(document)
+  .filter((ref): ref is Extract<CanvasItemRef, { kind: 'node' }> => ref.kind === 'node')
+  .map((ref) => document.nodes[ref.id])
+  .filter((node): node is Node => Boolean(node))
 
 export const listEdges = (
-  document: Pick<Document, 'edges'>
-): Edge[] => toOrderedItems(document.edges)
+  document: Pick<Document, 'nodes' | 'edges' | 'order'>
+): Edge[] => listCanvasItemRefs(document)
+  .filter((ref): ref is Extract<CanvasItemRef, { kind: 'edge' }> => ref.kind === 'edge')
+  .map((ref) => document.edges[ref.id])
+  .filter((edge): edge is Edge => Boolean(edge))
+
+export const listGroups = (
+  document: Pick<Document, 'groups'>
+): Group[] => Object.values(document.groups)
+
+const readCanvasItemGroupId = (
+  document: Pick<Document, 'nodes' | 'edges'>,
+  ref: CanvasItemRef
+): GroupId | undefined => (
+  ref.kind === 'node'
+    ? document.nodes[ref.id]?.groupId
+    : document.edges[ref.id]?.groupId
+)
+
+export const listGroupCanvasItemRefs = (
+  document: Pick<Document, 'nodes' | 'edges' | 'order'>,
+  groupId: GroupId
+): CanvasItemRef[] => listCanvasItemRefs(document)
+  .filter((ref) => readCanvasItemGroupId(document, ref) === groupId)
+
+export const listGroupNodeIds = (
+  document: Pick<Document, 'nodes' | 'edges' | 'order'>,
+  groupId: GroupId
+): NodeId[] => listGroupCanvasItemRefs(document, groupId)
+  .filter((ref): ref is Extract<CanvasItemRef, { kind: 'node' }> => ref.kind === 'node')
+  .map((ref) => ref.id)
+
+export const listGroupEdgeIds = (
+  document: Pick<Document, 'nodes' | 'edges' | 'order'>,
+  groupId: GroupId
+): EdgeId[] => listGroupCanvasItemRefs(document, groupId)
+  .filter((ref): ref is Extract<CanvasItemRef, { kind: 'edge' }> => ref.kind === 'edge')
+  .map((ref) => ref.id)
 
 const hasOwn = (target: object, key: PropertyKey) =>
   Object.prototype.hasOwnProperty.call(target, key)
 
-const assertEntityCollection = <TId extends string, T extends { id: TId }>(
+const assertEntityRecord = <TId extends string, T extends { id: TId }>(
   name: string,
-  collection: EntityCollection<TId, T>
+  record: Record<TId, T>
 ) => {
-  if (!collection || typeof collection !== 'object' || Array.isArray(collection)) {
-    throw new Error(`Document ${name} must be an entity collection.`)
+  if (!record || typeof record !== 'object' || Array.isArray(record)) {
+    throw new Error(`Document ${name} must be a record.`)
   }
 
-  if (!collection.entities || typeof collection.entities !== 'object' || Array.isArray(collection.entities)) {
-    throw new Error(`Document ${name}.entities must be a record.`)
-  }
-
-  if (!Array.isArray(collection.order)) {
-    throw new Error(`Document ${name}.order must be an array.`)
-  }
-
-  for (const id of collection.order) {
-    if (typeof id !== 'string') {
-      throw new Error(`Document ${name}.order must contain string ids.`)
-    }
-    if (!hasOwn(collection.entities, id)) {
-      throw new Error(`Document ${name}.order contains missing entity ${id}.`)
-    }
-  }
-
-  for (const [id, entity] of Object.entries(collection.entities) as Array<[TId, T]>) {
+  for (const [id, entity] of Object.entries(record) as Array<[TId, T]>) {
     if (!entity || typeof entity !== 'object') {
-      throw new Error(`Document ${name}.entities.${id} must be an object.`)
+      throw new Error(`Document ${name}.${id} must be an object.`)
     }
     if (entity.id !== id) {
-      throw new Error(`Document ${name}.entities.${id} has mismatched entity id.`)
+      throw new Error(`Document ${name}.${id} has mismatched entity id.`)
     }
     const maybeChildren = (entity as { children?: unknown }).children
     if (maybeChildren !== undefined && !Array.isArray(maybeChildren)) {
-      throw new Error(`Document ${name}.entities.${id}.children must be an array.`)
+      throw new Error(`Document ${name}.${id}.children must be an array.`)
     }
   }
 }
@@ -349,8 +422,32 @@ export const assertDocument = (document: Document): Document => {
     throw new Error('Document id is required.')
   }
 
-  assertEntityCollection('nodes', document.nodes)
-  assertEntityCollection('edges', document.edges)
+  assertEntityRecord('nodes', document.nodes)
+  assertEntityRecord('edges', document.edges)
+  assertEntityRecord('groups', document.groups)
+
+  if (!Array.isArray(document.order)) {
+    throw new Error('Document order must be an array.')
+  }
+
+  document.order.forEach((ref, index) => {
+    if (!ref || typeof ref !== 'object') {
+      throw new Error(`Document order.${index} must be an object.`)
+    }
+    if (ref.kind === 'node') {
+      if (!hasOwn(document.nodes, ref.id)) {
+        throw new Error(`Document order.${index} contains missing node ${ref.id}.`)
+      }
+      return
+    }
+    if (ref.kind === 'edge') {
+      if (!hasOwn(document.edges, ref.id)) {
+        throw new Error(`Document order.${index} contains missing edge ${ref.id}.`)
+      }
+      return
+    }
+    throw new Error(`Document order.${index} has invalid kind.`)
+  })
 
   return document
 }
@@ -364,13 +461,7 @@ export type SpatialNodeInput = Omit<SpatialNode, 'id'> & {
   id?: NodeId
   ownerId?: NodeId
 }
-export type GroupNodeInput = Omit<GroupNode, 'id'> & {
-  id?: NodeId
-  ownerId?: NodeId
-}
-export type NodeInput =
-  | SpatialNodeInput
-  | GroupNodeInput
+export type NodeInput = SpatialNodeInput
 export type EdgeInput = Omit<Edge, 'id'> & { id?: EdgeId }
 export type NodeFieldPatch = {
   position?: Point
@@ -379,6 +470,7 @@ export type NodeFieldPatch = {
   layer?: NodeLayer
   zIndex?: number
   children?: NodeId[]
+  groupId?: GroupId
   locked?: boolean
 }
 export type NodePatch = NodeFieldPatch & {
@@ -402,6 +494,7 @@ export type NodeUpdateInput = {
   records?: readonly NodeRecordMutation[]
 }
 export type EdgePatch = Partial<Omit<Edge, 'id'>>
+export type GroupPatch = Partial<Omit<Group, 'id'>>
 
 export type MindmapCreateInput = {
   id?: MindmapId
@@ -433,11 +526,13 @@ export type Operation =
   | { readonly type: 'node.create'; readonly node: Node }
   | { readonly type: 'node.update'; readonly id: NodeId; readonly update: NodeUpdateInput }
   | { readonly type: 'node.delete'; readonly id: NodeId }
-  | { readonly type: 'node.order.set'; readonly ids: readonly NodeId[] }
+  | { readonly type: 'group.create'; readonly group: Group }
+  | { readonly type: 'group.update'; readonly id: GroupId; readonly patch: GroupPatch }
+  | { readonly type: 'group.delete'; readonly id: GroupId }
   | { readonly type: 'edge.create'; readonly edge: Edge }
   | { readonly type: 'edge.update'; readonly id: EdgeId; readonly patch: EdgePatch }
   | { readonly type: 'edge.delete'; readonly id: EdgeId }
-  | { readonly type: 'edge.order.set'; readonly ids: readonly EdgeId[] }
+  | { readonly type: 'canvas.order.set'; readonly refs: readonly CanvasItemRef[] }
 
 export interface ChangeSet {
   id: string

@@ -50,45 +50,6 @@ const FrameBodyItem = memo(({
 
 FrameBodyItem.displayName = 'FrameBodyItem'
 
-const GroupShellItem = memo(({
-  nodeId
-}: {
-  nodeId: NodeId
-}) => {
-  const view = useNodeView(nodeId)
-  if (!view) {
-    return null
-  }
-
-  if (view.node.type !== 'group') {
-    return null
-  }
-
-  const rootStyle: CSSProperties = {
-    width: view.rect.width,
-    height: view.rect.height,
-    ...view.transformStyle
-  }
-
-  return (
-    <div
-      className="wb-container-shell"
-      style={rootStyle}
-    >
-      {SHELL_HITS.map((hit) => (
-        <ShellHitItem
-          key={hit.key}
-          nodeId={nodeId}
-          side={hit.key}
-          style={hit.style}
-        />
-      ))}
-    </div>
-  )
-})
-
-GroupShellItem.displayName = 'GroupShellItem'
-
 const SHELL_HITS = [
   {
     key: 'top',
@@ -219,17 +180,8 @@ export const FrameLayer = () => {
   const editor = useEditor()
   const nodeIds = useStoreValue(editor.read.node.list)
   const frameIds = useMemo(() => editor.read.frame.list(), [editor, nodeIds])
-  const groupIds = useMemo(
-    () => nodeIds.filter((nodeId) => {
-      const node = editor.read.node.item.get(nodeId)?.node
-      return node
-        ? editor.read.node.capability(node).role === 'group'
-        : false
-    }),
-    [editor, nodeIds]
-  )
 
-  if (!frameIds.length && !groupIds.length) {
+  if (!frameIds.length) {
     return null
   }
 
@@ -237,12 +189,6 @@ export const FrameLayer = () => {
     <div className="wb-container-layer">
       {frameIds.map((nodeId) => (
         <FrameBodyItem
-          key={nodeId}
-          nodeId={nodeId}
-        />
-      ))}
-      {groupIds.map((nodeId) => (
-        <GroupShellItem
           key={nodeId}
           nodeId={nodeId}
         />

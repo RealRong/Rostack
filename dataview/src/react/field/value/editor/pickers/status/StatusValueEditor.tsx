@@ -6,8 +6,7 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
-  type KeyboardEvent as ReactKeyboardEvent
+  useState
 } from 'react'
 import {
   findFieldOption,
@@ -18,44 +17,42 @@ import {
   normalizeOptionToken
 } from '@dataview/core/field'
 import { Button } from '@ui/button'
-import { usePickerList } from '@ui/picker-list'
-import { cn } from '@ui/utils'
+import {
+  Menu,
+  type MenuHandle,
+  type MenuItem
+} from '@ui/menu'
 import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import {
-  buildStatusIdsAfterCategoryMove,
-  buildStatusMoveMenuItems,
   FieldOptionTag,
-  getStatusCategoryMeta,
   OptionEditorPopover,
   OptionToken
 } from '@dataview/react/field/options'
 import type { EditorSubmitTrigger } from '@dataview/react/interaction'
 import type { FieldValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@dataview/dom/focus'
-import {
-  isComposing,
-  keyAction
-} from '../../shared/keyboard'
 import { PickerInputBar } from '../../shared/PickerInputBar'
-import { PickerOptionRow } from '../../shared/PickerOptionRow'
 import { useDraftCommit } from '../../shared/useDraftCommit'
+import { usePickerKeydown } from '../../shared/usePickerKeydown'
 
 const optionLabel = (
   option: ReturnType<typeof getFieldOptions>[number]
 ) => option.name.trim() || renderMessage(meta.ui.field.options.untitled)
+type StatusPickerEntry = MenuItem
 
 export const StatusValueEditor = (
   props: FieldValueDraftEditorProps<string>
 ) => {
   const dataView = useDataView()
-  const editor = dataView.engine
   const page = dataView.page
   const valueEditor = dataView.valueEditor
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const menuRef = useRef<MenuHandle | null>(null)
   const [query, setQuery] = useState('')
   const [editingOptionId, setEditingOptionId] = useState<string>()
   const field = props.field
+  const fieldId = field?.id ?? ''
   const normalizedQuery = normalizeOptionToken(query)
   const selectedOption = getFieldOption(field, props.draft)
   const exactMatch = findFieldOption(field, query)
@@ -75,25 +72,10 @@ export const StatusValueEditor = (
       }))
       .filter(section => section.options.length > 0)
   }, [field, normalizedQuery])
-  const navigationItems = useMemo(
-    () => sections.flatMap(section => section.options.map(option => ({
-      key: option.id
-    }))),
+  const visibleSections = useMemo(
+    () => sections.filter(section => section.options.length > 0),
     [sections]
   )
-  const {
-    highlightedKey,
-    setHighlightedKey,
-    setItemRef,
-    moveNext,
-    movePrev,
-    moveFirst,
-    moveLast,
-    getItemId
-  } = usePickerList({
-    items: navigationItems,
-    preferredKey: props.draft || null
-  })
 
   useEffect(() => {
     if (!props.autoFocus) {
@@ -112,9 +94,6 @@ export const StatusValueEditor = (
     }
   }, [editingOptionId, sections])
 
-  if (!field) {
-    return null
-  }
   const { commitDraftDeferred } = useDraftCommit({
     onDraftChange: props.onDraftChange,
     onApply: props.onApply,
@@ -135,77 +114,123 @@ export const StatusValueEditor = (
     focusInputWithoutScroll(inputRef.current)
   }
 
-  const onKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (editingOptionId) {
-      event.stopPropagation()
-      return
+  const pickerItems = useMemo<StatusPickerEntry[]>(() => visibleSections.flatMap((section, index) => {
+    const sectionEntries: StatusPickerEntry[] = [
+      {
+        kind: 'label',
+        key: `${section.category}-label`,
+        label: getStatusCategoryLabel(section.category)
+      },
+      ...section.options.map(option => ({
+        kind: 'item' as const,
+        key: option.id,
+        className: editingOptionId === option.id
+          ? 'bg-hover text-fg'
+          : undefined,
+        label: (
+          <FieldOptionTag
+            label={optionLabel(option)}
+            color={option.color ?? undefined}
+            variant="status"
+            className="max-w-full"
+          />
+        ),
+        trailing: (
+          <OptionEditorPopover
+            fieldId={fieldId}
+            option={{
+              ...option,
+              color: option.color ?? undefined
+            }}
+            open={editingOptionId === option.id}
+            onOpenChange={open => {
+              setEditingOptionId(open ? option.id : undefined)
+            }}
+            onDeleted={() => {
+              if (props.draft === option.id) {
+                props.onDraftChange('')
+              }
+            }}
+            trigger={(
+              <Button
+                variant="plain"
+                size="iconBare"
+                aria-label={renderMessage(meta.ui.field.options.edit(optionLabel(option)))}
+                onClick={event => {
+                  event.stopPropagation()
+                }}
+              >
+                <MoreHorizontal className="size-4" size={16} strokeWidth={1.8} />
+              </Button>
+            )}
+          />
+        ),
+        onSelect: () => {
+          selectOption(option.id, 'programmatic')
+        }
+      }))
+    ]
+
+    if (index === 0) {
+      return sectionEntries
     }
 
-    const composing = isComposing(event.nativeEvent)
-    const action = keyAction({
-      key: event.key,
-      shiftKey: event.shiftKey,
-      composing
-    })
+    return [
+      {
+        kind: 'divider',
+        key: `${section.category}-divider`
+      },
+      ...sectionEntries
+    ]
+  }), [
+    editingOptionId,
+    fieldId,
+    props.draft,
+    props.onDraftChange,
+    visibleSections,
+    selectOption
+  ])
 
-    if (!composing && event.key === 'ArrowDown') {
-      event.preventDefault()
-      event.stopPropagation()
-      moveNext()
-      return
-    }
+  if (!field) {
+    return null
+  }
 
-    if (!composing && event.key === 'ArrowUp') {
-      event.preventDefault()
-      event.stopPropagation()
-      movePrev()
-      return
-    }
+  const onKeyDown = usePickerKeydown({
+    editingBlocked: Boolean(editingOptionId),
+    onMoveNext: () => {
+      menuRef.current?.moveNext()
+    },
+    onMovePrev: () => {
+      menuRef.current?.movePrev()
+    },
+    onMoveFirst: () => {
+      menuRef.current?.moveFirst()
+    },
+    onMoveLast: () => {
+      menuRef.current?.moveLast()
+    },
+    onCancel: props.onCancel,
+    onCommit: trigger => {
+      const activeKey = menuRef.current?.getActiveKey() ?? null
 
-    if (!composing && event.key === 'Home') {
-      event.preventDefault()
-      event.stopPropagation()
-      moveFirst()
-      return
-    }
-
-    if (!composing && event.key === 'End') {
-      event.preventDefault()
-      event.stopPropagation()
-      moveLast()
-      return
-    }
-
-    if (action.type === 'cancel') {
-      event.preventDefault()
-      props.onCancel()
-      return
-    }
-
-    if (action.type === 'commit') {
-      event.preventDefault()
-
-      if (highlightedKey) {
-        selectOption(highlightedKey, action.trigger)
+      if (activeKey) {
+        selectOption(activeKey, trigger)
         return
       }
 
       if (exactMatch) {
-        selectOption(exactMatch.id, action.trigger)
+        selectOption(exactMatch.id, trigger)
         return
       }
 
       if (sections.length === 1 && sections[0]?.options.length === 1) {
-        selectOption(sections[0].options[0].id, action.trigger)
+        selectOption(sections[0].options[0].id, trigger)
         return
       }
 
-      props.onCommit(action.trigger)
-      return
+      props.onCommit(trigger)
     }
-
-    event.stopPropagation()
-  }
+  })
 
   return (
     <div className="flex min-h-0 flex-col" onKeyDown={onKeyDown}>
@@ -215,7 +240,7 @@ export const StatusValueEditor = (
           value={query}
           onValueChange={value => {
             setQuery(value)
-            setHighlightedKey(null)
+            menuRef.current?.clearActive()
           }}
           placeholder={selectedOption
             ? ''
@@ -225,6 +250,7 @@ export const StatusValueEditor = (
             <OptionToken
               label={optionLabel(selectedOption)}
               color={selectedOption.color ?? undefined}
+              variant="status"
               onRemove={clearSelection}
             />
           ) : null}
@@ -232,124 +258,17 @@ export const StatusValueEditor = (
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col border-t border-divider">
-        <div className="px-3 py-2 text-[12px] font-medium text-muted-foreground">
-          {renderMessage(meta.ui.field.status.searchPlaceholder)}
-        </div>
-
-        <div className="max-h-72 overflow-y-auto px-3 pb-2">
-          <div className="flex flex-col">
-            {sections.map((section, index) => (
-              <div
-                key={section.category}
-                className={index === 0 ? 'pb-4' : 'border-t border-divider pb-4 pt-4'}
-              >
-                <div className="text-[12px] font-medium text-muted-foreground">
-                  {getStatusCategoryLabel(section.category)}
-                </div>
-                <div className="flex flex-col gap-0.5 pt-2">
-                  {section.options.map(option => (
-                    <PickerOptionRow
-                      key={option.id}
-                      id={getItemId(option.id)}
-                      rowRef={node => {
-                        setItemRef(option.id, node)
-                      }}
-                      highlighted={highlightedKey === option.id}
-                      open={editingOptionId === option.id}
-                      onHighlight={() => {
-                        setHighlightedKey(option.id)
-                      }}
-                      onSelect={() => {
-                        selectOption(option.id, 'programmatic')
-                      }}
-                      leading={(() => {
-                        const visual = getStatusCategoryMeta(section.category)
-                        const Icon = visual.Icon
-
-                        return (
-                          <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center">
-                            <Icon
-                              className={cn('size-4 shrink-0', visual.className)}
-                              size={16}
-                              strokeWidth={1.8}
-                            />
-                          </span>
-                        )
-                      })()}
-                      trailing={(
-                        <OptionEditorPopover
-                          option={{
-                            ...option,
-                            color: option.color ?? undefined
-                          }}
-                          open={editingOptionId === option.id}
-                          onOpenChange={open => {
-                            setEditingOptionId(open ? option.id : undefined)
-                            if (open) {
-                              setHighlightedKey(option.id)
-                            }
-                          }}
-                          onRename={name => editor.fields.options.update(field.id, option.id, { name }) !== undefined}
-                          onColorChange={color => {
-                            editor.fields.options.update(field.id, option.id, { color })
-                          }}
-                          onDelete={() => {
-                            editor.fields.options.remove(field.id, option.id)
-                            if (props.draft === option.id) {
-                              props.onDraftChange('')
-                            }
-                          }}
-                          extraItems={buildStatusMoveMenuItems({
-                            currentCategory: section.category,
-                            onMoveCategory: category => {
-                              if (category === section.category) {
-                                setEditingOptionId(undefined)
-                                return
-                              }
-
-                              editor.fields.options.reorder(
-                                field.id,
-                                buildStatusIdsAfterCategoryMove(
-                                  sections,
-                                  option.id,
-                                  section.category,
-                                  category
-                                )
-                              )
-                              editor.fields.options.update(field.id, option.id, { category })
-                              setEditingOptionId(undefined)
-                            }
-                          })}
-                          trigger={(
-                            <Button
-                              variant="plain"
-                              size="iconBare"
-                              aria-label={renderMessage(meta.ui.field.options.edit(optionLabel(option)))}
-                              onClick={event => {
-                                event.stopPropagation()
-                              }}
-                            >
-                              <MoreHorizontal className="size-4" size={16} strokeWidth={1.8} />
-                            </Button>
-                          )}
-                        />
-                      )}
-                    >
-                      <FieldOptionTag
-                        label={optionLabel(option)}
-                        color={option.color ?? undefined}
-                        className="max-w-full"
-                      />
-                    </PickerOptionRow>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="max-h-72 overflow-y-auto py-2">
+          <Menu
+            ref={menuRef}
+            items={pickerItems}
+            className="gap-0.5 px-1.5"
+            autoFocus={false}
+          />
         </div>
       </div>
 
-      <div className="border-t border-divider px-2 py-2">
+      <div className="border-t border-divider p-1.5">
         <Button
           layout="row"
           leading={<Settings2 className="size-4" size={16} strokeWidth={1.8} />}
@@ -361,7 +280,7 @@ export const StatusValueEditor = (
             window.requestAnimationFrame(() => {
               page.settings.open({
                 kind: 'fieldSchema',
-                fieldId: field.id
+                fieldId
               })
             })
           }}

@@ -27,15 +27,6 @@ const PlainFieldOptionsSection = (props: {
       setOpenOptionId(null)
     }
   }, [openOptionId, options])
-
-  const updateOption = (
-    option: FieldOption,
-    patch: Partial<FieldOption>
-  ) => editor.fields.options.update(props.field.id, option.id, {
-    ...(patch.name !== undefined ? { name: patch.name } : {}),
-    ...(patch.color !== undefined ? { color: patch.color ?? '' } : {}),
-    ...('category' in patch && patch.category !== undefined ? { category: patch.category } : {})
-  })
   const optionItems: readonly MenuItem[] = options.map(option => ({
     kind: 'submenu' as const,
     key: option.id,
@@ -51,16 +42,10 @@ const PlainFieldOptionsSection = (props: {
     ),
     content: () => (
       <OptionEditorPanel
+        fieldId={props.field.id}
         option={{
           ...option,
           color: option.color ?? undefined
-        }}
-        onRename={name => updateOption(option, { name }) !== undefined}
-        onColorChange={color => {
-          updateOption(option, { color })
-        }}
-        onDelete={() => {
-          editor.fields.options.remove(props.field.id, option.id)
         }}
         onRequestClose={() => setOpenOptionId(null)}
       />

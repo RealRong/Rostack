@@ -36,8 +36,8 @@ const toRectTuple = (rect: Rect): RectTuple => ({
 })
 
 const canIndexSnapCandidate = (
-  entry: CanvasNode
-) => entry.node.type !== 'group'
+  _entry: CanvasNode
+) => true
 
 const resolveSnapRect = (
   entry: CanvasNode

@@ -117,6 +117,8 @@ export const ui = {
       todo: message('meta.ui.field.status.todo', 'To do'),
       inProgress: message('meta.ui.field.status.inProgress', 'In progress'),
       complete: message('meta.ui.field.status.complete', 'Complete'),
+      setDefault: message('meta.ui.field.status.setDefault', 'Set as default'),
+      group: message('meta.ui.field.status.group', 'Group'),
       moveTo: message('meta.ui.field.status.moveTo', 'Move to'),
       searchPlaceholder: message('meta.ui.field.status.searchPlaceholder', 'Search options')
     }

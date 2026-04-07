@@ -11,6 +11,7 @@ import type {
   NodeDistributeMode
 } from '@whiteboard/core/node'
 import type {
+  EdgeId,
   NodeId,
   NodeInput,
   NodeUpdateInput,
@@ -88,8 +89,11 @@ export const node = ({
   const duplicate = (ids: NodeId[]) =>
     run({ type: 'duplicate', ids })
 
-  const createGroup = (ids: NodeId[]) =>
-    run({ type: 'group.create', ids })
+  const createGroup = (target: {
+    nodeIds?: readonly NodeId[]
+    edgeIds?: readonly EdgeId[]
+  }) =>
+    run({ type: 'group.create', target })
 
   const ungroup = (id: NodeId) =>
     run({ type: 'group.ungroup', id })

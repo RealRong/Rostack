@@ -6,10 +6,6 @@ export const getNodeBoundsByNode = (
   node: Node,
   fallbackSize: Size
 ): Rect | undefined => {
-  if (node.type === 'group') {
-    return undefined
-  }
-
   const rect = getNodeRect(node, fallbackSize)
   const rotation = typeof node.rotation === 'number' ? node.rotation : 0
 

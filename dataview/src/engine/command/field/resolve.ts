@@ -360,10 +360,17 @@ export const resolvePropertyOptionRemoveCommand = (
 
   const patchResult = resolvePropertyPatchCommand(document, deriveCommand(command, 'customField.patch', {
     fieldId: context.property.id,
-    patch: replaceFieldOptions(
-      context.property,
-      context.options.filter(option => option.id !== optionId)
-    ) as Partial<Omit<CustomField, 'id'>>
+    patch: {
+      ...replaceFieldOptions(
+        context.property,
+        context.options.filter(option => option.id !== optionId)
+      ),
+      ...(context.property.kind === 'status' && context.property.defaultOptionId === optionId
+        ? {
+            defaultOptionId: null
+          }
+        : {})
+    } as Partial<Omit<CustomField, 'id'>>
   }))
   if (hasValidationErrors(patchResult.issues)) {
     return resolveCommandResult([...context.issues, ...patchResult.issues])

@@ -14,10 +14,6 @@ import type {
   Result,
   Size
 } from '../types'
-import {
-  getGroupDescendants,
-  isOwnerNode
-} from './group'
 import { expandFrameSelection } from './frame'
 import { getNodeBoundsByNode } from './bounds'
 
@@ -28,14 +24,6 @@ export const expandNodeSelection = (
 ) => {
   const nodeById = new Map<NodeId, Node>(nodes.map((node) => [node.id, node]))
   const expandedIds = new Set<NodeId>(selectedIds)
-
-  selectedIds.forEach((id) => {
-    const node = nodeById.get(id)
-    if (!node || !isOwnerNode(node)) return
-    getGroupDescendants(Array.from(nodes), id).forEach((child) => {
-      expandedIds.add(child.id)
-    })
-  })
 
   const withFrames = expandFrameSelection({
     nodes,

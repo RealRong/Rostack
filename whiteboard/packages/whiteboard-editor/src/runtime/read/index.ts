@@ -1,4 +1,4 @@
-import type { EngineRead, ReadStore } from '@whiteboard/engine'
+import type { EngineRead, GroupRead, ReadStore } from '@whiteboard/engine'
 import type { HistoryState } from '@whiteboard/core/kernel'
 import type { NodeRegistry } from '../../types/node'
 import type { DrawPreferences } from '../../types/draw'
@@ -22,6 +22,7 @@ import { createTargetBoundsQuery } from '../query/targetBounds'
 
 export type RuntimeRead = Omit<EngineRead, 'node' | 'edge'> & {
   history: ReadStore<HistoryState>
+  group: GroupRead
   node: NodeRead
   edge: EdgeRead
   selection: SelectionRead
@@ -37,6 +38,7 @@ export type RuntimeRead = Omit<EngineRead, 'node' | 'edge'> & {
     size: EditorViewportRuntime['input']['size']
   }
   overlay: {
+    node: EditorOverlay['selectors']['node']
     feedback: EditorOverlay['selectors']['feedback']
   }
 }
@@ -84,6 +86,7 @@ export const createRead = ({
   return {
     document: engineRead.document,
     frame: engineRead.frame,
+    group: engineRead.group,
     history,
     node: nodeRead,
     edge: edgeRead,
@@ -104,6 +107,7 @@ export const createRead = ({
       size: viewport.input.size
     },
     overlay: {
+      node: overlay.selectors.node,
       feedback: overlay.selectors.feedback
     }
   }

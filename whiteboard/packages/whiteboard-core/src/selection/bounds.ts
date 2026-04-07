@@ -1,11 +1,9 @@
 import { getRectsBoundingRect } from '../geometry'
 import type {
   EdgeId,
-  Node,
   NodeId,
   Rect
 } from '../types'
-import { getGroupDescendants } from '../node/group'
 
 export type BoundsTarget = {
   nodeIds?: readonly NodeId[]
@@ -58,47 +56,7 @@ export const getTargetBounds = ({
 
 export const resolveSelectionBoxTarget = (
   target: BoundsTarget,
-  nodes: readonly Node[]
+  _nodes: readonly unknown[]
 ): BoundsTarget => {
-  const nodeIds = target.nodeIds ?? []
-  if (!nodeIds.length) {
-    return target
-  }
-
-  const nodeById = new Map(nodes.map((node) => [node.id, node] as const))
-  const expandedNodeIds: NodeId[] = []
-  const seen = new Set<NodeId>()
-
-  const pushNodeId = (nodeId: NodeId) => {
-    if (seen.has(nodeId)) {
-      return
-    }
-
-    seen.add(nodeId)
-    expandedNodeIds.push(nodeId)
-  }
-
-  nodeIds.forEach((nodeId) => {
-    const node = nodeById.get(nodeId)
-    if (!node || node.type !== 'group') {
-      pushNodeId(nodeId)
-      return
-    }
-
-    const content = getGroupDescendants(nodes, node.id)
-      .filter((descendant) => descendant.type !== 'group')
-    if (!content.length) {
-      pushNodeId(node.id)
-      return
-    }
-
-    content.forEach((descendant) => {
-      pushNodeId(descendant.id)
-    })
-  })
-
-  return {
-    nodeIds: expandedNodeIds,
-    edgeIds: target.edgeIds
-  }
+  return target
 }

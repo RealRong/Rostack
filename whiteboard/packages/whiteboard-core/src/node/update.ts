@@ -13,7 +13,6 @@ import {
   getValueByPath,
   isObjectContainer
 } from '../utils'
-import { sanitizeGroupPatch } from './group'
 
 export type NodeUpdateImpact = {
   geometry: boolean
@@ -29,6 +28,7 @@ const NODE_FIELD_KEYS: Array<keyof NodeFieldPatch> = [
   'layer',
   'zIndex',
   'children',
+  'groupId',
   'locked'
 ]
 
@@ -41,7 +41,8 @@ const NODE_GEOMETRY_KEYS = new Set<keyof NodeFieldPatch>([
 const NODE_LIST_KEYS = new Set<keyof NodeFieldPatch>([
   'layer',
   'zIndex',
-  'children'
+  'children',
+  'groupId'
 ])
 
 const NODE_VALUE_KEYS = new Set<keyof NodeFieldPatch>([
@@ -57,17 +58,6 @@ const isMindmapDataPath = (path?: string) =>
   !path
   || path === 'mindmap'
   || path.startsWith('mindmap.')
-
-const hasGroupGeometryFields = (
-  fields?: NodeFieldPatch
-) => Boolean(
-  fields
-  && (
-    hasOwn(fields, 'position')
-    || hasOwn(fields, 'size')
-    || hasOwn(fields, 'rotation')
-  )
-)
 
 const applyFieldPatch = (
   fields?: NodeFieldPatch
@@ -348,13 +338,6 @@ export const buildNodeUpdateInverse = (
   node: Node,
   update: NodeUpdateInput
 ): { ok: true; update: NodeUpdateInput } | { ok: false; message: string } => {
-  if (node.type === 'group' && hasGroupGeometryFields(update.fields)) {
-    return {
-      ok: false,
-      message: 'Group nodes cannot update position, size, or rotation.'
-    }
-  }
-
   const fields = buildFieldInverse(node, update.fields)
   const records: NodeRecordMutation[] = []
   let nextData = node.data
@@ -392,39 +375,13 @@ export const buildNodeUpdateInverse = (
 }
 
 export const sanitizeGroupUpdate = (
-  update: NodeUpdateInput,
-  type?: string
-): NodeUpdateInput => {
-  if (type !== 'group' || !update.fields) {
-    return update
-  }
-
-  const fields = sanitizeGroupPatch(update.fields, type)
-  if (fields === update.fields) {
-    return update
-  }
-
-  return {
-    ...compactNodeUpdateInput(update),
-    ...(
-      Object.keys(fields).length
-        ? { fields }
-        : {}
-    )
-  }
-}
+  update: NodeUpdateInput
+): NodeUpdateInput => update
 
 export const applyNodeUpdate = (
   node: Node,
   update: NodeUpdateInput
 ): { ok: true; patch: NodePatch; next: Node } | { ok: false; message: string } => {
-  if (node.type === 'group' && hasGroupGeometryFields(update.fields)) {
-    return {
-      ok: false,
-      message: 'Group nodes cannot update position, size, or rotation.'
-    }
-  }
-
   const patch = applyFieldPatch(update.fields)
   let nextData = node.data
   let nextStyle = node.style

@@ -32,7 +32,7 @@ import type { ClipboardBridge } from '../../runtime/bridge/clipboard'
 import { selectNodesByTypeKey } from './actions'
 import {
   duplicateNodesAndSelect,
-  groupNodesAndSelect,
+  groupSelectionAndSelect,
   ungroupNodesAndSelect
 } from '../../runtime/commands'
 
@@ -140,6 +140,13 @@ const bindAsyncClose = <Args extends unknown[]>(
   action: (...args: Args) => unknown
 ) => (...args: Args) => action(...args)
 
+const toCanvasNodeRefs = (
+  nodeIds: readonly string[]
+) => nodeIds.map((id) => ({
+  kind: 'node' as const,
+  id
+}))
+
 const readSelectionMenuView = ({
   editor,
   clipboard,
@@ -162,9 +169,7 @@ const readSelectionMenuView = ({
     return undefined
   }
 
-  const groupIds = nodes
-    .filter((node) => node.type === 'group')
-    .map((node) => node.id)
+  const groupIds = selection.summary.groups.ids
   const filter = can.filter
     ? {
         types: summary.types,
@@ -180,20 +185,21 @@ const readSelectionMenuView = ({
     : undefined
 
   const order = (mode: 'front' | 'forward' | 'backward' | 'back') => {
+    const refs = toCanvasNodeRefs(nodeIds)
     if (mode === 'front') {
-      editor.commands.node.order.bringToFront([...nodeIds])
+      editor.commands.canvas.order.bringToFront(refs)
       return
     }
     if (mode === 'forward') {
-      editor.commands.node.order.bringForward([...nodeIds])
+      editor.commands.canvas.order.bringForward(refs)
       return
     }
     if (mode === 'backward') {
-      editor.commands.node.order.sendBackward([...nodeIds])
+      editor.commands.canvas.order.sendBackward(refs)
       return
     }
 
-    editor.commands.node.order.sendToBack([...nodeIds])
+    editor.commands.canvas.order.sendToBack(refs)
   }
 
   return {
@@ -252,7 +258,9 @@ const readSelectionMenuView = ({
                 return
               }
 
-              groupNodesAndSelect(editor, nodeIds)
+              groupSelectionAndSelect(editor, {
+                nodeIds
+              })
             }
           },
           {

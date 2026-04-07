@@ -108,6 +108,7 @@ export type EditorState = {
 }
 
 export type EditorOverlayRead = {
+  node: EditorOverlay['selectors']['node']
   feedback: EditorOverlay['selectors']['feedback']
 }
 
@@ -136,9 +137,11 @@ export type EditorNodeLockCommands = {
 export type EditorNodeTextCommands = {
   preview: (input: {
     nodeId: NodeId
+    position?: Point
     size?: Size
     fontSize?: number
     mode?: TextWidthMode
+    handle?: import('@whiteboard/core/node').ResizeDirection
   }) => void
   clearPreview: (nodeId: NodeId) => void
   cancel: (input: {

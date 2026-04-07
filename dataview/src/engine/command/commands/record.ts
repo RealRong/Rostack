@@ -1,6 +1,13 @@
 import type { BaseOperation } from '@dataview/core/contracts/operations'
 import type { DataDoc } from '@dataview/core/contracts/state'
-import { getDocumentRecordById, getDocumentRecords, getDocumentViews, normalizeViewOrders } from '@dataview/core/document'
+import {
+  getDocumentCustomFields,
+  getDocumentRecordById,
+  getDocumentRecords,
+  getDocumentViews,
+  normalizeViewOrders
+} from '@dataview/core/document'
+import { getStatusFieldDefaultOption } from '@dataview/core/field'
 import type { IndexedCommand } from '../context'
 import { createRecordId } from '../entityId'
 import { createIssue, hasValidationErrors } from '../issues'
@@ -22,6 +29,34 @@ const resolveDefaultRecordType = (document: DataDoc) => {
   return getDocumentRecords(document).find(record => (
     typeof record.type === 'string' && record.type.length
   ))?.type
+}
+
+const resolveRecordCreateValues = (
+  document: DataDoc,
+  explicitValues: Extract<IndexedCommand, { type: 'record.create' }>['input']['values']
+) => {
+  const nextValues = {
+    ...(explicitValues ?? {})
+  }
+
+  getDocumentCustomFields(document).forEach(field => {
+    if (field.kind !== 'status') {
+      return
+    }
+
+    if (explicitValues && Object.prototype.hasOwnProperty.call(explicitValues, field.id)) {
+      return
+    }
+
+    const defaultOption = getStatusFieldDefaultOption(field)
+    if (!defaultOption) {
+      return
+    }
+
+    nextValues[field.id] = defaultOption.id
+  })
+
+  return nextValues
 }
 
 export const resolveRecordCreateCommand = (
@@ -46,7 +81,7 @@ export const resolveRecordCreateCommand = (
     id: recordId,
     title: command.input.title?.trim() ?? '',
     type: command.input.type ?? resolveDefaultRecordType(document),
-    values: command.input.values ?? {},
+    values: resolveRecordCreateValues(document, command.input.values),
     meta: command.input.meta
   }
 

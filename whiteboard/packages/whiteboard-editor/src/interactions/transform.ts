@@ -3,8 +3,10 @@ import {
   finishTransform,
   getResizeSourceEdges,
   getResizeUpdateRect,
+  projectTextScale,
   readTextWidthMode,
   resolveTextHandle,
+  resolveResizeRectFromSize,
   startTransform,
   stepTransform,
   TEXT_DEFAULT_FONT_SIZE,
@@ -46,11 +48,7 @@ type RuntimeTransformSpec =
 
 const readNodeRotation = (
   node: Node
-) => (
-  node.type === 'group'
-    ? 0
-    : (typeof node.rotation === 'number' ? node.rotation : 0)
-)
+) => (typeof node.rotation === 'number' ? node.rotation : 0)
 
 const RESIZE_MIN_SIZE = {
   width: 20,
@@ -309,14 +307,33 @@ const createSingleTextTransformSession = (
     input: Pick<PointerDownInput, 'screen' | 'modifiers'>
   ) => {
     modifiers = input.modifiers
-    const rawRect = computeResizeRect({
-      drag: baseState.drag,
-      currentScreen: input.screen,
-      zoom: ctx.read.viewport.get().zoom,
-      minSize: RESIZE_MIN_SIZE,
-      altKey: input.modifiers.alt,
-      shiftKey: spec.mode === 'scale' || input.modifiers.shift
-    }).rect
+    const zoom = ctx.read.viewport.get().zoom
+    const rawRect = spec.mode === 'reflow'
+      ? computeResizeRect({
+          drag: baseState.drag,
+          currentScreen: input.screen,
+          zoom,
+          minSize: RESIZE_MIN_SIZE,
+          altKey: false,
+          shiftKey: false
+        }).rect
+      : (() => {
+          const projected = projectTextScale({
+            drag: baseState.drag,
+            currentScreen: input.screen,
+            zoom,
+            startFontSize,
+            minWidth: RESIZE_MIN_SIZE.width,
+            altKey: false
+          })
+
+          return resolveResizeRectFromSize({
+            drag: baseState.drag,
+            width: projected.width,
+            height: spec.target.rect.height,
+            altKey: false
+          })
+        })()
     const { sourceX, sourceY } = getResizeSourceEdges(baseState.drag.handle)
     const snapped = ctx.snap.node.resize({
       rect: rawRect,
@@ -326,7 +343,7 @@ const createSingleTextTransformSession = (
       },
       minSize: RESIZE_MIN_SIZE,
       excludeIds: [spec.target.id],
-      disabled: input.modifiers.alt || baseState.drag.startRotation !== 0
+      disabled: baseState.drag.startRotation !== 0
     })
     const nextRect = getResizeUpdateRect(snapped.update)
     const nextFontSize = spec.mode === 'scale'
@@ -341,17 +358,7 @@ const createSingleTextTransformSession = (
     interaction!.gesture = createSelectionGesture(
       'selection-transform',
       {
-        nodePatches: toTransformNodePatches([{
-          id: spec.target.id,
-          position: {
-            x: nextRect.x,
-            y: nextRect.y
-          },
-          size: {
-            width: nextRect.width,
-            height: nextRect.height
-          }
-        }]),
+        nodePatches: [],
         edgePatches: [],
         frameHoverId: undefined,
         marquee: undefined,
@@ -361,14 +368,23 @@ const createSingleTextTransformSession = (
 
     ctx.write.preview.node.text.set(
       spec.target.id,
-      spec.mode === 'reflow'
-        ? {
-            mode: 'fixed'
-          }
-        : {
-            mode: 'fixed',
-            fontSize: nextFontSize
-          }
+      {
+        position: {
+          x: nextRect.x,
+          y: nextRect.y
+        },
+        size: {
+          width: nextRect.width,
+          height: nextRect.height
+        },
+        mode: 'fixed',
+        handle: spec.handle,
+        ...(spec.mode === 'scale'
+          ? {
+              fontSize: nextFontSize
+            }
+          : {})
+      }
     )
   }
 

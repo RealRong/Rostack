@@ -10,14 +10,21 @@ export { Label, type LabelProps } from './label'
 export {
   Menu,
   type MenuItem,
+  type MenuHandle,
+  type MenuDropdownProps,
   type MenuProps,
+  type MenuReorderItem,
+  type MenuReorderProps,
+  type MenuSelectionMode,
   type MenuSurfaceSize,
   type MenuSubmenuOpenPolicy
 } from './menu'
-export {
-  DropdownMenu,
-  type DropdownMenuProps
-} from './dropdown-menu'
+export type {
+  ListCustomItem,
+  ListDividerItem,
+  ListLabelItem,
+  ListStructuralItem
+} from './list-structure'
 export {
   Popover,
   type PopoverAnchor,
@@ -54,12 +61,18 @@ export {
 export { PanelHeader, type PanelHeaderProps } from './panel-header'
 export { Switch, type SwitchProps } from './switch'
 export {
+  UI_CONTENT_COLOR_FAMILIES,
+  UI_CONTENT_COLOR_IDS,
+  UI_OPTION_COLOR_FAMILIES,
+  UI_OPTION_COLOR_IDS,
   normalizeOptionColorId,
   resolveOptionBadgeStyle,
   resolveOptionCardStyle,
   resolveOptionColorToken,
   resolveOptionColumnStyle,
-  resolveOptionDotStyle
+  resolveOptionDotStyle,
+  resolveOptionStatusDotStyle,
+  resolveOptionSurfaceStyle
 } from './color'
 export {
   VerticalReorderList,
@@ -69,6 +82,7 @@ export {
 } from './vertical-reorder-list'
 export { cn } from './utils'
 export type {
+  UiOptionColorFamily,
   UiOptionColorId,
   UiOptionColorTokenUsage
 } from './color'

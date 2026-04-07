@@ -17,14 +17,18 @@ export const createEditorCommands = ({
   const nodeTextCommands = {
     preview: ({
       nodeId,
+      position,
       size,
       fontSize,
-      mode
+      mode,
+      handle
     }) => {
       write.preview.node.text.set(nodeId, {
+        position,
         size,
         fontSize,
-        mode
+        mode,
+        handle
       })
     },
     clearPreview: (nodeId) => {

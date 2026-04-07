@@ -1,4 +1,4 @@
-import type { Edge, EdgeId, Node, NodeId, Rect } from '../types'
+import type { Edge, EdgeId, GroupId, Node, NodeId, Rect } from '../types'
 import { isOrderedArrayEqual, isSameOptionalRectTuple } from '../utils'
 import type { SelectionTarget } from './target'
 
@@ -6,6 +6,8 @@ const EMPTY_NODE_IDS: readonly NodeId[] = []
 const EMPTY_NODE_SET: ReadonlySet<NodeId> = new Set<NodeId>()
 const EMPTY_EDGE_IDS: readonly EdgeId[] = []
 const EMPTY_EDGE_SET: ReadonlySet<EdgeId> = new Set<EdgeId>()
+const EMPTY_GROUP_IDS: readonly GroupId[] = []
+const EMPTY_GROUP_SET: ReadonlySet<GroupId> = new Set<GroupId>()
 const EMPTY_NODES: readonly Node[] = []
 const EMPTY_EDGES: readonly Edge[] = []
 
@@ -21,7 +23,10 @@ export type SelectionSummary = {
     nodeSet: ReadonlySet<NodeId>
     edgeIds: readonly EdgeId[]
     edgeSet: ReadonlySet<EdgeId>
+    groupIds: readonly GroupId[]
+    groupSet: ReadonlySet<GroupId>
     edgeId?: EdgeId
+    groupId?: GroupId
   }
   items: {
     nodes: readonly Node[]
@@ -31,6 +36,12 @@ export type SelectionSummary = {
     count: number
     nodeCount: number
     edgeCount: number
+  }
+  groups: {
+    ids: readonly GroupId[]
+    set: ReadonlySet<GroupId>
+    count: number
+    primaryId?: GroupId
   }
   transform: SelectionTransform
   box?: Rect
@@ -57,10 +68,13 @@ export const isSelectionSummaryEqual = (
   && left.items.count === right.items.count
   && left.items.nodeCount === right.items.nodeCount
   && left.items.edgeCount === right.items.edgeCount
+  && left.groups.count === right.groups.count
+  && left.groups.primaryId === right.groups.primaryId
   && left.transform.move === right.transform.move
   && left.transform.resize === right.transform.resize
   && isOrderedArrayEqual(left.target.nodeIds, right.target.nodeIds)
   && isOrderedArrayEqual(left.target.edgeIds, right.target.edgeIds)
+  && isOrderedArrayEqual(left.target.groupIds, right.target.groupIds)
   && isOrderedArrayEqual(left.items.nodes, right.items.nodes)
   && isOrderedArrayEqual(left.items.edges, right.items.edges)
   && isSameOptionalRectTuple(left.box, right.box)
@@ -96,6 +110,16 @@ export const deriveSelectionSummary = ({
   const edgeSet = edgeIds.length > 0
     ? new Set<EdgeId>(edgeIds)
     : EMPTY_EDGE_SET
+  const nextGroupIds = Array.from(new Set([
+    ...nodeItemsGroupIds(nodes),
+    ...edgeItemsGroupIds(edges)
+  ]))
+  const groupIds = nextGroupIds.length > 0
+    ? nextGroupIds
+    : EMPTY_GROUP_IDS
+  const groupSet = groupIds.length > 0
+    ? new Set<GroupId>(groupIds)
+    : EMPTY_GROUP_SET
   const nodeItems = nodes.length > 0 ? nodes : EMPTY_NODES
   const edgeItems = edges.length > 0 ? edges : EMPTY_EDGES
   const nodeCount = nodeItems.length
@@ -148,7 +172,10 @@ export const deriveSelectionSummary = ({
       nodeSet,
       edgeIds,
       edgeSet,
-      edgeId: edgeCount === 1 ? edgeIds[0] : undefined
+      groupIds,
+      groupSet,
+      edgeId: edgeCount === 1 ? edgeIds[0] : undefined,
+      groupId: groupIds.length === 1 ? groupIds[0] : undefined
     },
     items: {
       nodes: nodeItems,
@@ -159,10 +186,28 @@ export const deriveSelectionSummary = ({
       nodeCount,
       edgeCount
     },
+    groups: {
+      ids: groupIds,
+      set: groupSet,
+      count: groupIds.length,
+      primaryId: groupIds.length === 1 ? groupIds[0] : undefined
+    },
     transform,
     box
   } satisfies SelectionSummary
 }
+
+const nodeItemsGroupIds = (
+  nodes: readonly Node[]
+): GroupId[] => nodes
+  .map((node) => node.groupId)
+  .filter((groupId): groupId is GroupId => Boolean(groupId))
+
+const edgeItemsGroupIds = (
+  edges: readonly Edge[]
+): GroupId[] => edges
+  .map((edge) => edge.groupId)
+  .filter((groupId): groupId is GroupId => Boolean(groupId))
 
 export const resolveSelectionTransformBox = (
   selection: SelectionSummary,

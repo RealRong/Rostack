@@ -20,14 +20,26 @@ const OPTION_COLOR_TOKEN_SUFFIX: Record<UiOptionColorTokenUsage, string> = {
   'bg-card-hover': 'bg-card-hover',
   'bg-card-pressed': 'bg-card-pressed',
   'dot-bg': 'bg-strong',
+  'status-dot': 'text-secondary',
+  surface: 'surface',
+  'surface-hover': 'surface-hover',
+  'surface-pressed': 'surface-pressed',
   text: 'text',
-  'text-muted': 'text-muted'
+  'text-secondary': 'text-secondary',
+  'text-muted': 'text-muted',
+  'icon-secondary': 'icon-secondary'
 }
 
 const CARD_STATE_USAGE: Record<UiCardSurfaceState, UiOptionColorTokenUsage> = {
   default: 'bg-card',
   hover: 'bg-card-hover',
   pressed: 'bg-card-pressed'
+}
+
+const SURFACE_STATE_USAGE: Record<UiCardSurfaceState, UiOptionColorTokenUsage> = {
+  default: 'surface',
+  hover: 'surface-hover',
+  pressed: 'surface-pressed'
 }
 
 const NEUTRAL_CARD_BACKGROUND_TOKEN: Record<UiNeutralCardSurfaceTone, Record<UiCardSurfaceState, string>> = {
@@ -73,6 +85,12 @@ export const resolveOptionDotStyle = (
   backgroundColor: resolveOptionColorToken(color, 'dot-bg')
 })
 
+export const resolveOptionStatusDotStyle = (
+  color: string | null | undefined
+): CSSProperties => ({
+  backgroundColor: resolveOptionColorToken(color, 'status-dot')
+})
+
 export const resolveOptionColumnStyle = (
   color: string | null | undefined
 ): CSSProperties => ({
@@ -85,6 +103,13 @@ export const resolveOptionCardStyle = (
 ): CSSProperties => ({
   backgroundColor: resolveOptionColorToken(color, CARD_STATE_USAGE[state]),
   boxShadow: `var(--ui-shadow-sm), 0 0 0 1px ${resolveOptionColorToken(color, 'card-border')}`
+})
+
+export const resolveOptionSurfaceStyle = (
+  color: string | null | undefined,
+  state: UiCardSurfaceState = 'default'
+): CSSProperties => ({
+  backgroundColor: resolveOptionColorToken(color, SURFACE_STATE_USAGE[state])
 })
 
 export const resolveNeutralCardStyle = (

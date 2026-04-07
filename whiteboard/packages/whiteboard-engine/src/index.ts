@@ -48,6 +48,7 @@ export type {
   EngineRuntimeOptions,
   EngineRead,
   EngineReadIndex,
+  GroupRead,
   SliceRead,
   TreeRead,
   MindmapRead

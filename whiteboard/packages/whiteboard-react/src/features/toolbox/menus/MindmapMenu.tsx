@@ -29,7 +29,7 @@ const MindmapTemplatePreview = ({
         width="20"
         height="14"
         rx="7"
-        fill="var(--ui-yellow-bg-strong)"
+        fill="var(--ui-yellow-surface)"
         stroke="currentColor"
         strokeWidth="1"
       />

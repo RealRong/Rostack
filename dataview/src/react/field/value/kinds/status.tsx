@@ -30,6 +30,7 @@ export const createStatusFieldSpec = (
       <FieldOptionTag
         label={display}
         color={selected?.color ?? undefined}
+        variant="status"
         className={props.className}
       />
     )

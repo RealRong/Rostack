@@ -1,4 +1,8 @@
 import {
+  UI_CONTENT_COLOR_FAMILIES,
+  resolveOptionColorToken
+} from '@ui'
+import {
   createFrameNodeInput,
   createShapeNodeInput,
   createStickyNodeInput,
@@ -30,48 +34,32 @@ const firstPresetKey = <T extends {
   fallback: string
 ) => items[0]?.key ?? fallback
 
-const STICKY_TONES: readonly StickyTone[] = [
-  {
-    key: 'sticky.yellow',
-    label: 'Yellow',
-    fill: 'var(--ui-yellow-bg-strong)'
-  },
-  {
-    key: 'sticky.blue',
-    label: 'Blue',
-    fill: 'var(--ui-blue-bg-strong)'
-  },
-  {
-    key: 'sticky.green',
-    label: 'Green',
-    fill: 'var(--ui-green-bg-strong)'
-  },
-  {
-    key: 'sticky.pink',
-    label: 'Pink',
-    fill: 'var(--ui-pink-bg-strong)'
-  },
-  {
-    key: 'sticky.purple',
-    label: 'Purple',
-    fill: 'var(--ui-purple-bg-strong)'
-  },
-  {
-    key: 'sticky.red',
-    label: 'Red',
-    fill: 'var(--ui-red-bg-strong)'
-  },
-  {
-    key: 'sticky.orange',
-    label: 'Orange',
-    fill: 'var(--ui-orange-bg-strong)'
-  },
-  {
-    key: 'sticky.gray',
-    label: 'Gray',
-    fill: 'var(--ui-gray-bg-strong)'
-  }
+const STICKY_TONE_ORDER = [
+  'yellow',
+  'orange',
+  'red',
+  'pink',
+  'purple',
+  'blue',
+  'teal',
+  'green',
+  'brown',
+  'gray'
 ] as const
+
+const STICKY_TONES: readonly StickyTone[] = STICKY_TONE_ORDER.map((id) => {
+  const family = UI_CONTENT_COLOR_FAMILIES.find((value) => value.id === id)
+
+  if (!family) {
+    throw new Error(`Missing sticky tone family: ${id}`)
+  }
+
+  return {
+    key: `sticky.${family.id}`,
+    label: family.label,
+    fill: resolveOptionColorToken(family.id, 'surface')
+  }
+})
 
 export const STICKY_INSERT_OPTIONS = STICKY_TONES
 

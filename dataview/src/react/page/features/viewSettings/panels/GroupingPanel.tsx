@@ -14,8 +14,8 @@ import {
   useDocument
 } from '@dataview/react/dataview'
 import { Button } from '@ui/button'
-import { DropdownMenu } from '@ui/dropdown-menu'
 import { Input } from '@ui/input'
+import { Menu } from '@ui/menu'
 import { meta, renderMessage } from '@dataview/meta'
 
 const readGroupModeLabel = (
@@ -191,7 +191,7 @@ export const GroupingPanel = () => {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 py-2">
       <div className="flex flex-col gap-0.5">
-        <DropdownMenu
+        <Menu.Dropdown
           open={fieldOpen}
           onOpenChange={setFieldOpen}
           placement="right-start"
@@ -212,7 +212,7 @@ export const GroupingPanel = () => {
         />
 
         {groupField && availableModes.length > 1 ? (
-          <DropdownMenu
+          <Menu.Dropdown
             open={modeOpen}
             onOpenChange={setModeOpen}
             placement="right-start"
@@ -234,7 +234,7 @@ export const GroupingPanel = () => {
         ) : null}
 
         {groupField && bucketSortItems.length > 0 ? (
-          <DropdownMenu
+          <Menu.Dropdown
             open={sortOpen}
             onOpenChange={setSortOpen}
             placement="right-start"

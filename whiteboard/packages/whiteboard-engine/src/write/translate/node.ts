@@ -25,7 +25,9 @@ import {
   listNodes,
   getNode,
   isNodeEdgeEnd,
+  type CanvasItemRef,
   type EdgeId,
+  type GroupId,
   type Node,
   type NodeId,
 } from '@whiteboard/core/types'
@@ -56,6 +58,13 @@ export const translateNode = <C extends NodeCommand>(
   ctx: WriteTranslateContext
 ): TranslateResult<NodeWriteOutput<C>> => {
   const doc = ctx.doc
+  const serializeRef = (ref: CanvasItemRef) => `${ref.kind}:${ref.id}`
+  const parseRef = (key: string): CanvasItemRef => {
+    const [kind, id] = key.split(':')
+    return kind === 'edge'
+      ? { kind: 'edge', id }
+      : { kind: 'node', id }
+  }
 
   const create = (command: CreateCommand): TranslateResult<{ nodeId: NodeId }> => {
     const planned = buildNodeCreateOperation({
@@ -92,14 +101,16 @@ export const translateNode = <C extends NodeCommand>(
     )
   }
 
-  const group = (command: GroupCommand): TranslateResult<{ groupId: NodeId }> => {
-    if (command.ids.length < 2) {
-      return cancelled('At least two nodes are required.')
+  const group = (command: GroupCommand): TranslateResult<{ groupId: GroupId }> => {
+    const nodeCount = command.target.nodeIds?.length ?? 0
+    const edgeCount = command.target.edgeIds?.length ?? 0
+    if (nodeCount + edgeCount < 2) {
+      return cancelled('At least two items are required.')
     }
 
     return fromOps(
       buildNodeGroupOperations({
-        ids: command.ids,
+        target: command.target,
         doc,
         createGroupId: ctx.ids.group
       }),
@@ -107,20 +118,24 @@ export const translateNode = <C extends NodeCommand>(
     )
   }
 
-  const ungroup = (command: UngroupCommand): TranslateResult<{ nodeIds: NodeId[] }> =>
+  const ungroup = (
+    command: UngroupCommand
+  ): TranslateResult<{ nodeIds: NodeId[], edgeIds: EdgeId[] }> =>
     fromOps(
       buildNodeUngroupOperations(command.id, doc),
-      ({ nodeIds }) => ({ nodeIds })
+      ({ nodeIds, edgeIds }) => ({ nodeIds, edgeIds })
     )
 
-  const ungroupMany = (command: UngroupManyCommand): TranslateResult<{ nodeIds: NodeId[] }> => {
+  const ungroupMany = (
+    command: UngroupManyCommand
+  ): TranslateResult<{ nodeIds: NodeId[], edgeIds: EdgeId[] }> => {
     if (!command.ids.length) {
       return cancelled('No groups selected.')
     }
 
     return fromOps(
       buildNodeUngroupManyOperations(command.ids, doc),
-      ({ nodeIds }) => ({ nodeIds })
+      ({ nodeIds, edgeIds }) => ({ nodeIds, edgeIds })
     )
   }
 
@@ -245,9 +260,12 @@ export const translateNode = <C extends NodeCommand>(
   }
 
   const order = (command: OrderCommand): TranslateResult => {
-    const current = [...doc.nodes.order]
-    const target = sanitizeOrderIds(command.ids) as NodeId[]
-    let nextOrder: NodeId[]
+    const current = doc.order.map(serializeRef)
+    const target = sanitizeOrderIds(command.ids).map((id) => serializeRef({
+      kind: 'node',
+      id
+    }))
+    let nextOrder: string[]
     switch (command.mode) {
       case 'set':
         nextOrder = target
@@ -268,7 +286,10 @@ export const translateNode = <C extends NodeCommand>(
         nextOrder = target
         break
     }
-    return success([{ type: 'node.order.set', ids: nextOrder }])
+    return success([{
+      type: 'canvas.order.set',
+      refs: nextOrder.map(parseRef)
+    }])
   }
 
   const deleteCascade = (command: DeleteCascadeCommand): TranslateResult => {

@@ -1,17 +1,37 @@
-export const UI_OPTION_COLOR_IDS = [
-  'default',
-  'gray',
-  'brown',
-  'orange',
-  'yellow',
-  'green',
-  'blue',
-  'purple',
-  'pink',
-  'red'
-] as const
+import familyData from './families.json'
 
-export type UiOptionColorId = typeof UI_OPTION_COLOR_IDS[number]
+export type UiOptionColorId =
+  | 'default'
+  | 'gray'
+  | 'brown'
+  | 'yellow'
+  | 'orange'
+  | 'red'
+  | 'green'
+  | 'blue'
+  | 'teal'
+  | 'purple'
+  | 'pink'
+
+export type UiOptionColorFamily = {
+  id: UiOptionColorId
+  label: string
+  content: boolean
+}
+
+export const UI_OPTION_COLOR_FAMILIES = familyData as readonly UiOptionColorFamily[]
+
+export const UI_OPTION_COLOR_IDS = UI_OPTION_COLOR_FAMILIES.map(
+  (family) => family.id
+) as readonly UiOptionColorId[]
+
+export const UI_CONTENT_COLOR_FAMILIES = UI_OPTION_COLOR_FAMILIES.filter(
+  (family) => family.content
+) as readonly UiOptionColorFamily[]
+
+export const UI_CONTENT_COLOR_IDS = UI_CONTENT_COLOR_FAMILIES.map(
+  (family) => family.id
+) as readonly Exclude<UiOptionColorId, 'default'>[]
 
 export type UiOptionColorTokenUsage =
   | 'badge-bg'
@@ -24,8 +44,14 @@ export type UiOptionColorTokenUsage =
   | 'bg-card-hover'
   | 'bg-card-pressed'
   | 'dot-bg'
+  | 'status-dot'
+  | 'surface'
+  | 'surface-hover'
+  | 'surface-pressed'
   | 'text'
+  | 'text-secondary'
   | 'text-muted'
+  | 'icon-secondary'
 
 export type UiCardSurfaceState =
   | 'default'

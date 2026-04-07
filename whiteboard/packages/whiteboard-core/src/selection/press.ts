@@ -1,6 +1,10 @@
-import { EMPTY_SELECTION_TARGET, type SelectionTarget } from './target'
-import { applySelection, findGroupAncestor, type SelectionMode } from '../node'
-import type { EdgeId, Node, NodeId } from '../types'
+import {
+  EMPTY_SELECTION_TARGET,
+  applySelectionTarget,
+  type SelectionTarget
+} from './target'
+import { applySelection, type SelectionMode } from '../node'
+import type { EdgeId, GroupId, Node, NodeId } from '../types'
 import type { SelectionAffordance } from './affordance'
 import type { SelectionSummary } from './summary'
 
@@ -13,6 +17,10 @@ type ModifierEventLike = {
 
 export type SelectionPressTargetInput<TField extends string = string> =
   | { kind: 'background' }
+  | {
+      kind: 'group'
+      groupId: GroupId
+    }
   | {
       kind: 'selection-box'
       part: 'body' | 'transform'
@@ -27,12 +35,15 @@ export type SelectionPressTargetInput<TField extends string = string> =
 
 export type SelectionPressTarget<TField extends string = string> =
   | { kind: 'background' }
+  | {
+      kind: 'group'
+      groupId: GroupId
+    }
   | { kind: 'selection-box' }
   | {
       kind: 'node'
       nodeId: NodeId
       hitNodeId: NodeId
-      selectedGroupId?: NodeId
       field?: TField
     }
   | {
@@ -104,6 +115,12 @@ export type SelectionPressPolicyDeps = {
   getNode: (nodeId: NodeId) => Node | undefined
   getOwnerId: (nodeId: NodeId) => NodeId | undefined
   canEnter: (nodeId: NodeId) => boolean
+  getNodeGroupId: (nodeId: NodeId) => GroupId | undefined
+  getGroupSelection: (groupId: GroupId) => SelectionTarget | undefined
+  isGroupSelected: (
+    groupId: GroupId,
+    target: SelectionTarget
+  ) => boolean
 }
 
 const HOLD_TO_CONTAIN_MARQUEE: SelectionMarqueeDecision = {
@@ -188,77 +205,23 @@ const createTemporaryMoveSelection = (
   restoreSelection
 })
 
-const findSelectedGroupId = (
-  deps: Pick<SelectionPressPolicyDeps, 'getNode' | 'getOwnerId'>,
-  nodeId: NodeId,
-  selectedNodeIds: readonly NodeId[]
-) => findGroupAncestor(
-  nodeId,
-  deps.getNode,
-  deps.getOwnerId,
-  (groupId) => selectedNodeIds.includes(groupId)
-)
-
-const resolvePressNodeId = (
-  deps: Pick<SelectionPressPolicyDeps, 'getNode' | 'getOwnerId'>,
-  input: {
-    mode: SelectionMode
-    selectedNodeIds: readonly NodeId[]
-  },
-  nodeId: NodeId
-) => {
-  if (input.mode !== 'replace') {
-    return nodeId
-  }
-
-  const node = deps.getNode(nodeId)
-  if (!node || node.type === 'group') {
-    return nodeId
-  }
-
-  const groupId = findGroupAncestor(nodeId, deps.getNode, deps.getOwnerId)
-  if (!groupId) {
-    return nodeId
-  }
-
-  const selectedNodeIds = input.selectedNodeIds
-  if (
-    selectedNodeIds.includes(nodeId)
-    || selectedNodeIds.includes(groupId)
-  ) {
-    return nodeId
-  }
-
-  return selectedNodeIds.some((selectedNodeId) =>
-    Boolean(findGroupAncestor(
-      selectedNodeId,
-      deps.getNode,
-      deps.getOwnerId,
-      (currentId) => currentId === groupId
-    ))
-  )
-    ? nodeId
-    : groupId
-}
-
 const readPressNodeTarget = <TField extends string>(
-  deps: Pick<SelectionPressPolicyDeps, 'getNode' | 'getOwnerId'>,
+  _deps: Pick<SelectionPressPolicyDeps, 'getNode' | 'getOwnerId'>,
   input: {
     field?: TField
     mode: SelectionMode
     selectedNodeIds: readonly NodeId[]
   },
   nodeId: NodeId
-): SelectionPressTarget<TField> => ({
-  kind: 'node',
-  nodeId: resolvePressNodeId(deps, input, nodeId),
-  hitNodeId: nodeId,
-  selectedGroupId:
-    input.mode === 'replace'
-      ? findSelectedGroupId(deps, nodeId, input.selectedNodeIds)
-      : undefined,
-  field: input.field
-})
+): SelectionPressTarget<TField> => {
+  void input
+  return {
+    kind: 'node',
+    nodeId,
+    hitNodeId: nodeId,
+    field: input.field
+  }
+}
 
 export const resolveSelectionPressTarget = <TField extends string>(
   deps: SelectionPressPolicyDeps,
@@ -273,6 +236,11 @@ export const resolveSelectionPressTarget = <TField extends string>(
   switch (targetInput.kind) {
     case 'background':
       return { kind: 'background' }
+    case 'group':
+      return {
+        kind: 'group',
+        groupId: targetInput.groupId
+      }
     case 'selection-box':
       return targetInput.part === 'body'
         ? { kind: 'selection-box' }
@@ -342,7 +310,10 @@ const decideSelectionBoxPress = <TField extends string>(
 }
 
 const decideNodePress = <TField extends string>(
-  deps: Pick<SelectionPressPolicyDeps, 'getNode' | 'canEnter'>,
+  deps: Pick<
+    SelectionPressPolicyDeps,
+    'getNode' | 'canEnter' | 'getNodeGroupId' | 'getGroupSelection' | 'isGroupSelected'
+  >,
   selection: SelectionSummary,
   mode: SelectionMode,
   target: Extract<SelectionPressTarget<TField>, { kind: 'node' }>
@@ -359,33 +330,58 @@ const decideNodePress = <TField extends string>(
 
   const selectedNodeIds = selection.target.nodeIds
   const selectedEdgeIds = selection.target.edgeIds
+  const currentSelection = getCurrentSelection(selection)
+  const groupId = deps.getNodeGroupId(hitNodeId)
+  const groupSelection = mode === 'replace' && groupId
+    ? deps.getGroupSelection(groupId)
+    : undefined
+  const groupSelected = Boolean(
+    mode === 'replace'
+    && groupId
+    && deps.isGroupSelected(groupId, currentSelection)
+  )
+  const promoteToGroup = Boolean(groupSelection && !groupSelected)
   const selected = isSelectedNode(node.id, selectedNodeIds)
   const repeat = mode === 'replace' && isSingleSelectedNode(node.id, selectedNodeIds)
-  const dragCurrentSelection = Boolean(
-    mode === 'replace'
-    && target.selectedGroupId
-  )
-  const nextSelection = applyNodeTapSelection(
-    selectedNodeIds,
-    selectedEdgeIds,
-    node.id,
-    mode
-  )
+  const dragCurrentSelection = mode === 'replace' && groupSelected
+  const nextSelection = promoteToGroup
+    ? groupSelection!
+    : groupSelected
+      ? {
+          nodeIds: [node.id],
+          edgeIds: []
+        }
+      : applyNodeTapSelection(
+          selectedNodeIds,
+          selectedEdgeIds,
+          node.id,
+          mode
+        )
   const dragNodeIds = repeat
     ? selectedNodeIds
     : dragCurrentSelection
       ? selectedNodeIds
+      : promoteToGroup
+        ? nextSelection.nodeIds
       : selected
         ? selectedNodeIds
         : nextSelection.nodeIds
   const dragEdgeIds =
-    repeat || dragCurrentSelection || selected
+    repeat || dragCurrentSelection
       ? selectedEdgeIds
+      : promoteToGroup
+        ? nextSelection.edgeIds
+      : selected
+        ? selectedEdgeIds
       : []
-  const currentSelection = getCurrentSelection(selection)
   const dragSelection = toNodeSelection(dragNodeIds)
   const dragSelectionBehavior =
-    mode === 'replace' && !selected && !dragCurrentSelection
+    promoteToGroup
+      ? createTemporaryMoveSelection(
+          nextSelection,
+          currentSelection
+        )
+      : mode === 'replace' && !selected && !dragCurrentSelection
       ? createTemporaryMoveSelection(
           dragSelection,
           currentSelection
@@ -393,7 +389,11 @@ const decideNodePress = <TField extends string>(
       : createPersistMoveSelection(
           repeat || dragCurrentSelection || selected
             ? undefined
-            : dragSelection
+            : (
+                promoteToGroup
+                  ? nextSelection
+                  : dragSelection
+              )
         )
 
   const explicitFieldEdit =
@@ -401,6 +401,8 @@ const decideNodePress = <TField extends string>(
     && nodeId === hitNodeId
     && Boolean(field)
     && !node.locked
+    && !promoteToGroup
+    && !groupSelected
   const implicitEdit =
     repeat
     && nodeId === hitNodeId
@@ -498,6 +500,51 @@ const decideContainerShellPress = <TField extends string>(
   }
 }
 
+const decideGroupPress = <TField extends string>(
+  deps: Pick<SelectionPressPolicyDeps, 'getGroupSelection' | 'isGroupSelected'>,
+  selection: SelectionSummary,
+  mode: SelectionMode,
+  groupId: GroupId
+): SelectionPressDecision<TField> | undefined => {
+  const currentSelection = getCurrentSelection(selection)
+  const groupSelection = deps.getGroupSelection(groupId)
+  if (!groupSelection) {
+    return undefined
+  }
+
+  const selected = deps.isGroupSelected(groupId, currentSelection)
+  const nextSelection = mode === 'replace'
+    ? groupSelection
+    : applySelectionTarget(currentSelection, groupSelection, mode)
+  const dragCurrentSelection = mode === 'replace' && selected
+
+  return {
+    chrome: selected,
+    tap: {
+      kind: 'select',
+      target: nextSelection
+    },
+    drag: {
+      kind: 'move',
+      target: dragCurrentSelection
+        ? currentSelection
+        : nextSelection,
+      selection:
+        mode === 'replace' && !selected
+          ? createTemporaryMoveSelection(
+              nextSelection,
+              currentSelection
+            )
+          : createPersistMoveSelection(
+              dragCurrentSelection
+                ? undefined
+                : nextSelection
+            )
+    },
+    hold: HOLD_TO_CONTAIN_MARQUEE
+  }
+}
+
 export const resolveSelectionPressDecision = <TField extends string>(
   deps: SelectionPressPolicyDeps,
   input: {
@@ -520,6 +567,8 @@ export const resolveSelectionPressDecision = <TField extends string>(
   const decision =
     target.kind === 'background'
       ? decideBackgroundPress<TField>(input.selection, mode)
+      : target.kind === 'group'
+        ? decideGroupPress<TField>(deps, input.selection, mode, target.groupId)
       : target.kind === 'selection-box'
         ? decideSelectionBoxPress<TField>(input.selection, input.affordance)
         : target.kind === 'node'
@@ -545,6 +594,9 @@ export const matchSelectionTap = <TField extends string>(
   switch (target.kind) {
     case 'background':
       return targetInput.kind === 'background'
+    case 'group':
+      return targetInput.kind === 'group'
+        && targetInput.groupId === target.groupId
     case 'selection-box':
       return targetInput.kind === 'selection-box'
         && targetInput.part === 'body'

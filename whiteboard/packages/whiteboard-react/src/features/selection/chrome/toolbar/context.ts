@@ -205,9 +205,6 @@ const resolveSelectionKind = (
   if (nodes.every((node) => node.type === 'draw')) {
     return 'draw'
   }
-  if (nodes.every((node) => node.type === 'group')) {
-    return 'group'
-  }
 
   return summary.count > 0 ? 'mixed' : 'none'
 }

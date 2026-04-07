@@ -3,11 +3,7 @@ import { readEdgeRoutePoints } from '../edge/types'
 import { resolveEdgeEnds } from '../edge/endpoints'
 import { getAABBFromPoints, getNodeRect, getRectCenter } from '../geometry'
 import { getNodeGeometry } from '../node'
-import {
-  getGroupDescendants,
-  getNodesBoundingRect,
-  isOwnerNode
-} from '../node/group'
+import { getNodesBoundingRect } from '../node/group'
 import { expandFrameSelection } from '../node/frame'
 import {
   getNodeOwnerMap,
@@ -125,19 +121,6 @@ const cloneEdgeEnd = (end: EdgeEnd): EdgeEnd => (
 )
 
 const cloneNode = (node: Node): Node => {
-  if (node.type === 'group') {
-    return {
-      id: node.id,
-      type: node.type,
-      layer: node.layer,
-      zIndex: node.zIndex,
-      children: node.children ? [...node.children] : undefined,
-      locked: node.locked,
-      data: node.data ? cloneValue(node.data) : undefined,
-      style: node.style ? cloneValue(node.style) : undefined
-    }
-  }
-
   return {
     id: node.id,
     type: node.type,
@@ -194,22 +177,14 @@ const remapSliceNodeInput = ({
   delta: Point
 }): NodeInput => ({
   ...cloneNode(node),
-  ...(node.type === 'group'
-    ? {}
-    : {
-        position: offsetPoint(node.position, delta)
-      }),
+  position: offsetPoint(node.position, delta),
   id: nextNodeId,
   children: remapNodeChildren(node.children, nodeIdMap)
 })
 
 const readSpatialNode = (
   node: Node | undefined
-): SpatialNode | undefined => (
-  node && node.type !== 'group'
-    ? node
-    : undefined
-)
+): SpatialNode | undefined => node
 
 const remapEdgeEnd = ({
   end,
@@ -313,22 +288,12 @@ const collectExpandedNodeIds = (
     if (!node) continue
 
     expandedIds.add(nodeId)
-
-    if (!isOwnerNode(node)) continue
-
-    getGroupDescendants(nodes, nodeId).forEach((child) => {
-      stack.push(child.id)
-    })
   }
 
   return expandFrameSelection({
     nodes,
     ids: [...expandedIds],
-    getNodeRect: (node) => (
-      node.type === 'group'
-        ? undefined
-        : getNodeRect(node, nodeSize)
-    ),
+    getNodeRect: (node) => getNodeRect(node, nodeSize),
     getFrameRect: (node) => (
       node.type === 'frame'
         ? getNodeRect(node, nodeSize)
@@ -409,21 +374,10 @@ const mergeRects = (rects: readonly Rect[]): Rect | undefined => {
 const translateNode = (
   node: Node,
   delta: Point
-): Node => {
-  if (node.type === 'group') {
-    return cloneNode(node)
-  }
-
-  const cloned = cloneNode(node)
-  if (cloned.type === 'group') {
-    return cloned
-  }
-
-  return {
-    ...cloned,
-    position: offsetPoint(cloned.position, delta)
-  }
-}
+): Node => ({
+  ...cloneNode(node),
+  position: offsetPoint(node.position, delta)
+})
 
 const translateEdge = (
   edge: Edge,
@@ -606,29 +560,33 @@ const withCreatedNodes = (
   operations: readonly Extract<Operation, { type: 'node.create' }>[],
   operation?: Extract<Operation, { type: 'node.create' }>
 ): Document => {
-  const nodes = { ...doc.nodes.entities }
-  const order = [...doc.nodes.order]
+  const nodes = { ...doc.nodes }
+  const order = [...doc.order]
 
   operations.forEach(({ node }) => {
     nodes[node.id] = node
-    if (!order.includes(node.id)) {
-      order.push(node.id)
+    if (!order.some((ref) => ref.kind === 'node' && ref.id === node.id)) {
+      order.push({
+        kind: 'node',
+        id: node.id
+      })
     }
   })
 
   if (operation) {
     nodes[operation.node.id] = operation.node
-    if (!order.includes(operation.node.id)) {
-      order.push(operation.node.id)
+    if (!order.some((ref) => ref.kind === 'node' && ref.id === operation.node.id)) {
+      order.push({
+        kind: 'node',
+        id: operation.node.id
+      })
     }
   }
 
   return {
     ...doc,
-    nodes: {
-      entities: nodes,
-      order
-    }
+    nodes,
+    order
   }
 }
 
@@ -637,29 +595,33 @@ const withCreatedEdges = (
   operations: readonly Extract<Operation, { type: 'edge.create' }>[],
   operation?: Extract<Operation, { type: 'edge.create' }>
 ): Document => {
-  const edges = { ...doc.edges.entities }
-  const order = [...doc.edges.order]
+  const edges = { ...doc.edges }
+  const order = [...doc.order]
 
   operations.forEach(({ edge }) => {
     edges[edge.id] = edge
-    if (!order.includes(edge.id)) {
-      order.push(edge.id)
+    if (!order.some((ref) => ref.kind === 'edge' && ref.id === edge.id)) {
+      order.push({
+        kind: 'edge',
+        id: edge.id
+      })
     }
   })
 
   if (operation) {
     edges[operation.edge.id] = operation.edge
-    if (!order.includes(operation.edge.id)) {
-      order.push(operation.edge.id)
+    if (!order.some((ref) => ref.kind === 'edge' && ref.id === operation.edge.id)) {
+      order.push({
+        kind: 'edge',
+        id: operation.edge.id
+      })
     }
   }
 
   return {
     ...doc,
-    edges: {
-      entities: edges,
-      order
-    }
+    edges,
+    order
   }
 }
 
@@ -950,7 +912,7 @@ export const buildInsertSliceOperations = ({
     if (!owner) {
       return err('invalid', `Owner ${ownerId} not found.`)
     }
-    if (!isOwnerNode(owner)) {
+    if (owner.type !== 'frame') {
       return err('invalid', `Node ${ownerId} is not an owner.`)
     }
 

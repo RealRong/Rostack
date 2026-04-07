@@ -8,6 +8,12 @@ const toPickKey = (
   switch (pick.kind) {
     case 'background':
       return 'background'
+    case 'group':
+      return [
+        'group',
+        pick.id,
+        pick.part
+      ].join(':')
     case 'selection-box':
       return [
         'selection-box',

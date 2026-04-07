@@ -1,0 +1,13 @@
+[
+  { "id": "default", "label": "Default", "content": false },
+  { "id": "gray", "label": "Gray", "content": true },
+  { "id": "brown", "label": "Brown", "content": true },
+  { "id": "yellow", "label": "Yellow", "content": true },
+  { "id": "orange", "label": "Orange", "content": true },
+  { "id": "red", "label": "Red", "content": true },
+  { "id": "green", "label": "Green", "content": true },
+  { "id": "blue", "label": "Blue", "content": true },
+  { "id": "teal", "label": "Teal", "content": true },
+  { "id": "purple", "label": "Purple", "content": true },
+  { "id": "pink", "label": "Pink", "content": true }
+]

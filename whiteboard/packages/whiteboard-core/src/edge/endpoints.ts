@@ -20,11 +20,7 @@ type ResolveNodeEndInput = {
 
 const readNodeRotation = (
   node: Node
-) => (
-  node.type === 'group'
-    ? 0
-    : (typeof node.rotation === 'number' ? node.rotation : 0)
-)
+) => (typeof node.rotation === 'number' ? node.rotation : 0)
 
 const resolveNodeEnd = ({
   end,

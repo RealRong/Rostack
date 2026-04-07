@@ -1,8 +1,11 @@
+import { createPortal } from 'react-dom'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
+import { resolveAnchoredRect } from '@whiteboard/core/node'
 import type { NodeDefinition, NodeRenderProps } from '../../../../types/node'
 import { useEdit, useEditor } from '../../../../runtime/hooks/useEditor'
 import { useOptionalKeyedStoreValue } from '../../../../runtime/hooks/useStoreValue'
+import { useStoreValue } from '../../../../runtime/hooks/useStoreValue'
 import {
   focusEditableDraft,
   isEscapeEditingKey,
@@ -33,6 +36,12 @@ const EMPTY_NODE_STATE = {
   hidden: false,
   patched: false,
   resizing: false
+}
+
+const EMPTY_NODE_OVERLAY = {
+  hovered: false,
+  hidden: false,
+  text: undefined
 }
 
 const SIZE_EPSILON = 0.5
@@ -85,10 +94,24 @@ const TextNodeRenderer = ({
   const [draft, setDraft] = useState(text)
   const isSticky = variant === 'sticky'
   const sourceRef = useRef<HTMLDivElement | null>(null)
+  const anchorRef = useRef<HTMLDivElement | null>(null)
+  const [sourceElement, setSourceElement] = useState<HTMLDivElement | null>(null)
+  const viewport = useStoreValue(editor.state.viewport)
+  const [editorRect, setEditorRect] = useState<{
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null>(null)
   const nodeState = useOptionalKeyedStoreValue(
     editor.read.node.state,
     node.id,
     EMPTY_NODE_STATE
+  )
+  const nodeOverlay = useOptionalKeyedStoreValue(
+    editor.read.overlay.node,
+    node.id,
+    EMPTY_NODE_OVERLAY
   )
   const setSourceRef = (element: HTMLDivElement | null) => {
     bindNodeTextSource({
@@ -99,6 +122,10 @@ const TextNodeRenderer = ({
       next: element
     })
     sourceRef.current = element
+    setSourceElement((current) => current === element ? current : element)
+  }
+  const setAnchorRef = (element: HTMLDivElement | null) => {
+    anchorRef.current = element
   }
   const placeholder = isSticky ? STICKY_PLACEHOLDER : TEXT_PLACEHOLDER
   const stickyFontSize = useStickyFontSize({
@@ -120,26 +147,79 @@ const TextNodeRenderer = ({
       return
     }
 
-    const element = sourceRef.current
+    const element = sourceElement
     if (!element) {
       return
     }
 
     syncEditableDraft(element, draft)
-  }, [draft, editing])
+  }, [draft, editing, sourceElement])
 
   useEffect(() => {
     if (!editing) {
       return
     }
 
-    const element = sourceRef.current
+    const element = sourceElement
     if (!element) {
       return
     }
 
     return focusEditableDraft(element, editCaret)
-  }, [editCaret, editing])
+  }, [editCaret, editing, sourceElement])
+
+  useLayoutEffect(() => {
+    if (!editing) {
+      if (editorRect !== null) {
+        setEditorRect(null)
+      }
+      return
+    }
+
+    const updateRect = () => {
+      const element = anchorRef.current
+      if (!element) {
+        setEditorRect((current) => current === null ? current : null)
+        return
+      }
+
+      const next = element.getBoundingClientRect()
+      setEditorRect((current) => (
+        current
+        && Math.abs(current.left - next.left) < SIZE_EPSILON
+        && Math.abs(current.top - next.top) < SIZE_EPSILON
+        && Math.abs(current.width - next.width) < SIZE_EPSILON
+        && Math.abs(current.height - next.height) < SIZE_EPSILON
+          ? current
+          : {
+              left: next.left,
+              top: next.top,
+              width: next.width,
+              height: next.height
+            }
+      ))
+    }
+
+    updateRect()
+
+    window.addEventListener('resize', updateRect)
+    window.addEventListener('scroll', updateRect, true)
+
+    return () => {
+      window.removeEventListener('resize', updateRect)
+      window.removeEventListener('scroll', updateRect, true)
+    }
+  }, [
+    editing,
+    editorRect,
+    rect.height,
+    rect.width,
+    rect.x,
+    rect.y,
+    viewport.center.x,
+    viewport.center.y,
+    viewport.zoom
+  ])
 
   useLayoutEffect(() => {
     if (!editing || isSticky) {
@@ -196,19 +276,40 @@ const TextNodeRenderer = ({
     }
 
     if (nodeState.resizing) {
-      const nextSize = {
-        width: rect.width,
-        height: size.height
-      }
+      const handle = nodeOverlay.text?.handle
+      const nextRect = handle
+        ? resolveAnchoredRect({
+            rect,
+            handle,
+            width: rect.width,
+            height: size.height
+          })
+        : {
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: size.height
+          }
 
-      if (isSameSize(nextSize, rect)) {
-        editor.commands.node.text.clearPreview(node.id)
+      if (
+        Math.abs(nextRect.x - rect.x) < SIZE_EPSILON
+        && Math.abs(nextRect.y - rect.y) < SIZE_EPSILON
+        && isSameSize(nextRect, rect)
+      ) {
         return
       }
 
       editor.commands.node.text.preview({
         nodeId: node.id,
-        size: nextSize
+        position: {
+          x: nextRect.x,
+          y: nextRect.y
+        },
+        size: {
+          width: nextRect.width,
+          height: nextRect.height
+        },
+        handle
       })
       return
     }
@@ -230,6 +331,7 @@ const TextNodeRenderer = ({
     isSticky,
     node,
     node.id,
+    nodeOverlay.text?.handle,
     nodeState.resizing,
     placeholder,
     rect,
@@ -279,43 +381,65 @@ const TextNodeRenderer = ({
 
   if (editing) {
     return (
-      <div
-        data-selection-ignore
-        data-input-ignore
-        className={`wb-default-text-display wb-default-text-editor${isSticky ? ' wb-sticky-content' : ''}`}
-        contentEditable="plaintext-only"
-        suppressContentEditableWarning
-        role="textbox"
-        aria-multiline="true"
-        spellCheck={false}
-        ref={setSourceRef}
-        onPointerDown={stopEditingPointerDown}
-        onInput={(event) => {
-          setDraft(readEditableText(event.currentTarget))
-        }}
-        onKeyDown={onKeyDown}
-        onBlur={(event) => {
-          commit(readEditableText(event.currentTarget), event.currentTarget)
-        }}
-        style={{
-          fontSize,
-          color
-        } as CSSProperties}
-      />
+      <>
+        <div className="wb-text-node-viewport" ref={setAnchorRef} />
+        {editorRect && typeof document !== 'undefined'
+          ? createPortal(
+              <div
+                className="wb-text-edit-portal"
+                style={{
+                  left: editorRect.left,
+                  top: editorRect.top,
+                  width: rect.width,
+                  height: rect.height,
+                  transform: `scale(${viewport.zoom})`,
+                  transformOrigin: '0 0'
+                }}
+              >
+                <div
+                  data-selection-ignore
+                  data-input-ignore
+                  className={`wb-default-text-display wb-default-text-editor${isSticky ? ' wb-sticky-content' : ''}`}
+                  contentEditable="plaintext-only"
+                  suppressContentEditableWarning
+                  role="textbox"
+                  aria-multiline="true"
+                  spellCheck={false}
+                  ref={setSourceRef}
+                  onPointerDown={stopEditingPointerDown}
+                  onInput={(event) => {
+                    setDraft(readEditableText(event.currentTarget))
+                  }}
+                  onKeyDown={onKeyDown}
+                  onBlur={(event) => {
+                    commit(readEditableText(event.currentTarget), event.currentTarget)
+                  }}
+                  style={{
+                    fontSize,
+                    color
+                  } as CSSProperties}
+                />
+              </div>,
+              document.body
+            )
+          : null}
+      </>
     )
   }
 
   return (
+    <div className="wb-text-node-viewport" ref={setAnchorRef}>
       <div
         className={`wb-default-text-display${isSticky ? ' wb-sticky-content' : ''}`}
         ref={setSourceRef}
         style={{
           fontSize,
-        color,
-        opacity: selected ? 1 : 0.9
-      }}
-    >
-      {text || placeholder}
+          color,
+          opacity: selected ? 1 : 0.9
+        }}
+      >
+        {text || placeholder}
+      </div>
     </div>
   )
 }
@@ -330,7 +454,7 @@ const createTextStyle = (variant: 'text' | 'sticky') => (props: NodeRenderProps)
       boxShadow: 'none',
       boxSizing: 'border-box',
       display: 'block',
-      overflow: 'visible',
+      overflow: 'hidden',
       padding: 0,
       textAlign: 'left'
     }
@@ -339,7 +463,7 @@ const createTextStyle = (variant: 'text' | 'sticky') => (props: NodeRenderProps)
   return {
     '--wb-sticky-fill': readStickyFill(props.node),
     background:
-      'linear-gradient(180deg, rgb(from var(--wb-ui-surface) r g b / 0.16) 0%, rgb(from var(--wb-ui-surface) r g b / 0) 18%, rgb(from var(--wb-ui-text-primary) r g b / 0.04) 100%), var(--wb-sticky-fill, var(--ui-yellow-bg-strong))',
+      'linear-gradient(180deg, rgb(from var(--wb-ui-surface) r g b / 0.16) 0%, rgb(from var(--wb-ui-surface) r g b / 0) 18%, rgb(from var(--wb-ui-text-primary) r g b / 0.04) 100%), var(--wb-sticky-fill, var(--ui-yellow-surface))',
     border: 'none',
     boxSizing: 'border-box',
     borderRadius: 0,

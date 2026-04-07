@@ -1,5 +1,6 @@
 import type { EngineCommands } from '@engine-types/command'
 import type { Write } from '@engine-types/write'
+import { canvas } from './canvas'
 import { document } from './document'
 import { edge } from './edge'
 import { mindmap } from './mindmap'
@@ -12,6 +13,9 @@ export const createCommands = ({
 }): EngineCommands => {
   return {
     document: document({
+      write
+    }),
+    canvas: canvas({
       write
     }),
     history: write.history,

@@ -1,20 +1,10 @@
 const plugin = require('tailwindcss/plugin')
+const colorFamilies = require('../src/color/families.json')
 
 /** @type {import('tailwindcss').Config} */
 const alphaColor = variable => `rgb(from var(${variable}) r g b / calc(alpha * <alpha-value>))`
 
-const optionColors = [
-  'default',
-  'gray',
-  'brown',
-  'orange',
-  'yellow',
-  'green',
-  'blue',
-  'purple',
-  'pink',
-  'red'
-]
+const optionColors = colorFamilies.map(({ id }) => id)
 
 const borderUtilities = {
   '.border-default': {
@@ -52,6 +42,18 @@ const borderUtilities = {
 const optionUtilities = Object.fromEntries(
   optionColors.flatMap(color => ([
     [
+      `.bg-${color}-surface`,
+      { backgroundColor: `var(--ui-${color}-surface)` }
+    ],
+    [
+      `.bg-${color}-surface-hover`,
+      { backgroundColor: `var(--ui-${color}-surface-hover)` }
+    ],
+    [
+      `.bg-${color}-surface-pressed`,
+      { backgroundColor: `var(--ui-${color}-surface-pressed)` }
+    ],
+    [
       `.bg-${color}`,
       { backgroundColor: `var(--ui-${color}-bg-strong)` }
     ],
@@ -64,6 +66,10 @@ const optionUtilities = Object.fromEntries(
       { backgroundColor: `var(--ui-${color}-bg-soft)` }
     ],
     [
+      `.text-${color}-secondary`,
+      { color: `var(--ui-${color}-text-secondary)` }
+    ],
+    [
       `.text-${color}`,
       { color: `var(--ui-${color}-text)` }
     ],
@@ -72,8 +78,16 @@ const optionUtilities = Object.fromEntries(
       { color: `var(--ui-${color}-text-muted)` }
     ],
     [
+      `.icon-${color}-secondary`,
+      { color: `var(--ui-${color}-icon-secondary)` }
+    ],
+    [
       `.border-option-${color}`,
       { borderColor: `var(--ui-${color}-border)` }
+    ],
+    [
+      `.border-option-${color}-strong`,
+      { borderColor: `var(--ui-${color}-border-strong)` }
     ]
   ]))
 )

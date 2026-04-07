@@ -6,7 +6,7 @@ export const toLayerOrderedCanvasNodes = (nodes: Node[]) => {
   const overlay: Node[] = []
 
   nodes.forEach((node) => {
-    const layer = node.layer ?? (node.type === 'group' ? 'background' : 'default')
+    const layer = node.layer ?? 'default'
     if (layer === 'background') {
       background.push(node)
       return
@@ -27,7 +27,7 @@ export const toLayerOrderedCanvasNodeIds = (nodes: Node[]): NodeId[] => {
   const overlay: NodeId[] = []
 
   nodes.forEach((node) => {
-    const layer = node.layer ?? (node.type === 'group' ? 'background' : 'default')
+    const layer = node.layer ?? 'default'
     if (layer === 'background') {
       background.push(node.id)
       return

@@ -98,11 +98,7 @@ const isNodeStateEqual = (
 
 const readNodeRotation = (
   node: NodeItem['node']
-) => (
-  node.type === 'group'
-    ? 0
-    : (typeof node.rotation === 'number' ? node.rotation : 0)
-)
+) => (typeof node.rotation === 'number' ? node.rotation : 0)
 
 export const getNodeItemBounds = (
   item: NodeItem
@@ -121,8 +117,13 @@ const toNodeRuntimeState = (
 ): NodeRuntimeState => ({
   hovered: projection.hovered,
   hidden: projection.hidden,
-  patched: Boolean(projection.patch),
-  resizing: Boolean(projection.patch?.size)
+  patched: Boolean(projection.patch || projection.text),
+  resizing: Boolean(
+    projection.patch?.size
+    || projection.text?.handle
+    || projection.text?.size
+    || projection.text?.position
+  )
 })
 
 const applyNodeTextPreview = (
@@ -147,14 +148,12 @@ const applyNodeTextPreview = (
     ? item.node.data
     : setTextWidthMode(item.node, text.mode)
   const rect = text.size
-    && (
-      text.size.width !== item.rect.width
-      || text.size.height !== item.rect.height
-    )
+    || text.position
     ? {
-        ...item.rect,
-        width: text.size.width,
-        height: text.size.height
+        x: text.position?.x ?? item.rect.x,
+        y: text.position?.y ?? item.rect.y,
+        width: text.size?.width ?? item.rect.width,
+        height: text.size?.height ?? item.rect.height
       }
     : item.rect
 

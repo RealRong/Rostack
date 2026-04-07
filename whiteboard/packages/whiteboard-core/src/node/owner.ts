@@ -264,7 +264,7 @@ export type OwnerState = {
 
 const isOwnerNode = (
   node: Pick<Node, 'type'>
-) => node.type === 'group'
+) => node.type === 'frame'
 
 export const createOwnerState = (
   document: Document

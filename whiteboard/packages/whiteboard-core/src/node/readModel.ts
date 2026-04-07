@@ -1,7 +1,6 @@
-import type { Edge, EdgeId, EntityCollection, Node, NodeId } from '../types'
+import type { Document, Edge, Node, NodeId } from '../types'
 import { isNodeEdgeEnd, listEdges, listNodes } from '../types'
 
-const EMPTY_EDGE_IDS: EdgeId[] = []
 const EMPTY_NODES: Node[] = []
 const EMPTY_NODE_MAP = new Map<NodeId, Node>()
 
@@ -52,11 +51,10 @@ export const orderByIds = <T extends { id: string }>(
 }
 
 export const deriveVisibleEdges = (
-  edges: EntityCollection<EdgeId, Edge>,
-  canvasNodes: readonly Node[],
-  edgeOrder: readonly EdgeId[] = edges.order
+  document: Pick<Document, 'nodes' | 'edges' | 'order'>,
+  canvasNodes: readonly Node[]
 ): Edge[] => {
-  const orderedEdges = listEdges({ edges })
+  const orderedEdges = listEdges(document)
   if (!orderedEdges.length) return []
 
   const canvasNodeIds = new Set<NodeId>(canvasNodes.map((node) => node.id))
@@ -66,13 +64,13 @@ export const deriveVisibleEdges = (
       && (!isNodeEdgeEnd(edge.target) || canvasNodeIds.has(edge.target.nodeId))
   )
 
-  return orderByIds(visibleEdges, edgeOrder ?? EMPTY_EDGE_IDS)
+  return visibleEdges
 }
 
 export const deriveNodeReadSlices = (
-  nodes: EntityCollection<NodeId, Node>
+  document: Pick<Document, 'nodes' | 'edges' | 'order'>
 ): NodeReadSlices => {
-  const ordered = listNodes({ nodes })
+  const ordered = listNodes(document)
   if (!ordered.length) {
     return {
       ordered: EMPTY_NODES,

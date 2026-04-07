@@ -2,6 +2,7 @@ import type { TransformHandle } from '@whiteboard/core/node'
 import type {
   EdgeAnchor,
   EdgeId,
+  GroupId,
   MindmapNodeId,
   NodeId
 } from '@whiteboard/core/types'
@@ -14,6 +15,11 @@ export type TransformPickHandle = {
 
 export type EditorPick =
   | { kind: 'background' }
+  | {
+      kind: 'group'
+      id: GroupId
+      part: 'shell'
+    }
   | {
       kind: 'selection-box'
       part: 'body' | 'transform'

@@ -1,5 +1,5 @@
 import { Slider } from '@ui'
-import { COLOR_OPTIONS } from '../menus/options'
+import { FILL_COLOR_OPTIONS } from '../menus/options'
 import { Panel, PanelSection, SwatchButton } from './ShapeToolbarPrimitives'
 
 const formatPercent = (
@@ -38,7 +38,7 @@ export const FillPanel = ({
     ) : null}
     <PanelSection title="Color">
       <div className="grid grid-cols-5 gap-2">
-        {COLOR_OPTIONS.map((option) => (
+        {FILL_COLOR_OPTIONS.map((option) => (
           <SwatchButton
             key={option.value}
             color={option.value}

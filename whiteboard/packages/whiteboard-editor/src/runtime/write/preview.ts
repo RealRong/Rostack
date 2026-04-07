@@ -1,15 +1,15 @@
-import type { NodeId, Size } from '@whiteboard/core/types'
+import type { NodeId } from '@whiteboard/core/types'
 import {
-  isNodePatchEqual,
-  readNodePatchEntry,
-  replaceNodePatchEntry
+  isTextPreviewPatchEqual,
+  readTextPreviewEntry,
+  replaceTextPreviewEntry
 } from '../overlay/node'
 import type {
   EdgeGuide,
   EdgeOverlayEntry,
   EditorOverlay,
   MindmapDragFeedback,
-  NodePatch
+  TextPreviewPatch
 } from '../overlay/types'
 import type { DrawPreview } from '../../types/draw'
 import type { EditorPreviewWrite } from '../../types/editor'
@@ -18,20 +18,20 @@ const EMPTY_EDGE_PATCHES: readonly EdgeOverlayEntry[] = []
 const EMPTY_NODE_IDS: readonly NodeId[] = []
 
 const mergeTextPreviewPatch = (
-  patch: NodePatch | undefined,
-  size?: Size
-): NodePatch | undefined => {
-  if (!patch && !size) {
+  current: TextPreviewPatch | undefined,
+  patch: TextPreviewPatch | undefined
+): TextPreviewPatch | undefined => {
+  if (!current && !patch) {
     return undefined
   }
 
-  const next: NodePatch = {
-    position: patch?.position,
-    rotation: patch?.rotation,
-    size
+  const next: TextPreviewPatch = {
+    size: patch?.size ?? current?.size,
+    fontSize: patch?.fontSize ?? current?.fontSize,
+    mode: patch?.mode ?? current?.mode
   }
 
-  if (!next.position && next.rotation === undefined && !next.size) {
+  if (!next.size && next.fontSize === undefined && next.mode === undefined) {
     return undefined
   }
 
@@ -83,12 +83,12 @@ export const createPreviewWrite = ({
   },
   node: {
     text: {
-      setSize: (nodeId, size) => {
+      set: (nodeId, patch) => {
         overlay.set((current) => {
-          const patch = readNodePatchEntry(current.node.text.patches, nodeId)
-          const nextPatch = mergeTextPreviewPatch(patch, size)
+          const currentPatch = readTextPreviewEntry(current.node.text.patches, nodeId)
+          const nextPatch = mergeTextPreviewPatch(currentPatch, patch)
 
-          if (isNodePatchEqual(patch, nextPatch)) {
+          if (isTextPreviewPatchEqual(currentPatch, nextPatch)) {
             return current
           }
 
@@ -97,7 +97,24 @@ export const createPreviewWrite = ({
             node: {
               ...current.node,
               text: {
-                patches: replaceNodePatchEntry(current.node.text.patches, nodeId, nextPatch)
+                patches: replaceTextPreviewEntry(current.node.text.patches, nodeId, nextPatch)
+              }
+            }
+          }
+        })
+      },
+      clear: (nodeId) => {
+        overlay.set((current) => {
+          if (!readTextPreviewEntry(current.node.text.patches, nodeId)) {
+            return current
+          }
+
+          return {
+            ...current,
+            node: {
+              ...current.node,
+              text: {
+                patches: replaceTextPreviewEntry(current.node.text.patches, nodeId, undefined)
               }
             }
           }
@@ -105,9 +122,14 @@ export const createPreviewWrite = ({
       },
       clearSize: (nodeId) => {
         overlay.set((current) => {
-          const patch = readNodePatchEntry(current.node.text.patches, nodeId)
+          const patch = readTextPreviewEntry(current.node.text.patches, nodeId)
           if (!patch?.size) {
             return current
+          }
+
+          const nextPatch = {
+            fontSize: patch.fontSize,
+            mode: patch.mode
           }
 
           return {
@@ -115,10 +137,12 @@ export const createPreviewWrite = ({
             node: {
               ...current.node,
               text: {
-                patches: replaceNodePatchEntry(
+                patches: replaceTextPreviewEntry(
                   current.node.text.patches,
                   nodeId,
-                  mergeTextPreviewPatch(patch, undefined)
+                  nextPatch.fontSize === undefined && nextPatch.mode === undefined
+                    ? undefined
+                    : nextPatch
                 )
               }
             }

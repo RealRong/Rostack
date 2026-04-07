@@ -269,6 +269,7 @@ export const buildTransformHandles = (options: {
   rect: Rect
   rotation: number
   canResize: boolean
+  resizeDirections?: readonly ResizeDirection[]
   canRotate: boolean
   rotateHandleOffset: number
   zoom: number
@@ -278,6 +279,7 @@ export const buildTransformHandles = (options: {
     rect,
     rotation,
     canResize,
+    resizeDirections,
     canRotate,
     rotateHandleOffset,
     zoom,
@@ -303,7 +305,7 @@ export const buildTransformHandles = (options: {
     ])
   ) as Record<ResizeDirection, Point>
   const resizeHandles = canResize
-    ? (Object.keys(positions) as ResizeDirection[]).map((direction) => ({
+    ? (resizeDirections ?? (Object.keys(positions) as ResizeDirection[])).map((direction) => ({
         id: `resize-${direction}`,
         kind: 'resize' as const,
         direction,

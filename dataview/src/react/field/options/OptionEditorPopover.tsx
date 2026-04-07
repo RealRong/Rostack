@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { Popover } from '@ui/popover'
+import type { MenuItem } from '@ui/menu'
 import { OptionEditorPanel } from './OptionEditorPanel'
 
 export interface OptionLike {
@@ -15,6 +16,7 @@ export interface OptionEditorPopoverProps {
   onRename: (name: string) => boolean | void
   onColorChange: (color: string) => void
   onDelete?: () => void
+  extraItems?: readonly MenuItem[]
   trigger: ReactElement
 }
 
@@ -35,6 +37,7 @@ export const OptionEditorPopover = (props: OptionEditorPopoverProps) => {
         onRename={props.onRename}
         onColorChange={props.onColorChange}
         onDelete={props.onDelete}
+        extraItems={props.extraItems}
         onRequestClose={() => props.onOpenChange(false)}
       />
     </Popover>

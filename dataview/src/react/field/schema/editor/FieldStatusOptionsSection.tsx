@@ -1,13 +1,10 @@
 import {
-  Check,
-  CircleCheck,
-  CircleDashed,
-  CirclePlay,
   GripVertical,
+  MoreHorizontal,
   Plus,
   Settings2
 } from 'lucide-react'
-import { useEffect, useState, type ReactElement } from 'react'
+import { useEffect, useState } from 'react'
 import type {
   CustomField,
   FieldOption,
@@ -17,20 +14,19 @@ import { getFieldOptions, getStatusSections } from '@dataview/core/field'
 import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { Button } from '@ui/button'
-import { Input } from '@ui/input'
-import { Popover } from '@ui/popover'
-import {
-  resolveOptionColorToken,
-  resolveOptionDotStyle
-} from '@ui/color'
 import {
   VerticalReorderList,
   type VerticalReorderItemState
 } from '@ui/vertical-reorder-list'
 import { cn } from '@ui/utils'
 import {
-  FieldOptionTag
+  buildStatusIdsAfterCategoryMove,
+  buildStatusMoveMenuItems,
+  FieldOptionTag,
+  getStatusCategoryMeta,
+  OptionEditorPopover
 } from '@dataview/react/field/options'
+import { PickerOptionRow } from '../../value/editor/shared/PickerOptionRow'
 
 const moveItem = <Item,>(items: readonly Item[], from: number, to: number) => {
   const next = [...items]
@@ -52,176 +48,6 @@ const buildOrderedIds = (
     ? reordered.map(option => option.id)
     : section.options.map(option => option.id)
 ))
-
-const buildIdsAfterCategoryMove = (
-  sections: ReturnType<typeof getStatusSections>,
-  optionId: string,
-  from: StatusCategory,
-  to: StatusCategory
-) => sections.flatMap(section => {
-  const ids = section.options
-    .map(option => option.id)
-    .filter(id => id !== optionId)
-
-  if (section.category === to) {
-    return [...ids, optionId]
-  }
-
-  if (section.category === from) {
-    return ids
-  }
-
-  return ids
-})
-
-const StatusOptionEditorPopover = (props: {
-  option: FieldOption
-  open: boolean
-  currentCategory: StatusCategory
-  onOpenChange: (open: boolean) => void
-  onRename: (name: string) => boolean | void
-  onColorChange: (color: string) => void
-  onMoveCategory: (category: StatusCategory) => void
-  onDelete: () => void
-  trigger: ReactElement
-}) => {
-  const [draftName, setDraftName] = useState(props.option.name)
-
-  useEffect(() => {
-    setDraftName(props.option.name)
-  }, [props.option.id, props.option.name, props.open])
-
-  const commitName = () => {
-    const nextName = draftName.trim()
-    if (!nextName) {
-      setDraftName(props.option.name)
-      return
-    }
-
-    if (nextName === props.option.name) {
-      setDraftName(nextName)
-      return
-    }
-
-    const result = props.onRename(nextName)
-    if (result === false) {
-      setDraftName(props.option.name)
-      return
-    }
-
-    setDraftName(nextName)
-  }
-
-  return (
-    <Popover
-      open={props.open}
-      onOpenChange={props.onOpenChange}
-      trigger={props.trigger}
-      placement="bottom-start"
-      offset={10}
-      initialFocus={-1}
-      size="md"
-      padding="panel"
-    >
-      <div className="flex flex-col gap-2">
-        <Input
-          value={draftName}
-          onChange={event => setDraftName(event.target.value)}
-          onBlur={commitName}
-          onKeyDown={event => {
-            event.stopPropagation()
-
-            if (event.key !== 'Enter') {
-              return
-            }
-
-            event.preventDefault()
-            commitName()
-          }}
-          placeholder={renderMessage(meta.ui.field.options.namePlaceholder)}
-        />
-
-        <div>
-          <div className="flex flex-col gap-0.5">
-            {meta.option.color.list.map(color => {
-              const active = (props.option.color ?? '') === color.id
-              return (
-                <Button
-                  key={color.id || 'default'}
-                  onClick={() => props.onColorChange(color.id)}
-                  layout="row"
-                  leading={(
-                    <span
-                      className="inline-flex h-3 w-3 shrink-0 rounded-full border"
-                      style={{
-                        ...resolveOptionDotStyle(color.id),
-                        borderColor: resolveOptionColorToken(color.id, 'badge-border')
-                      }}
-                    />
-                  )}
-                  trailing={active
-                    ? <Check className="size-4 text-foreground" size={16} strokeWidth={1.8} />
-                    : undefined}
-                  pressed={active}
-                >
-                  {renderMessage(color.message)}
-                </Button>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="border-t border-divider pt-1.5">
-          <div className="px-1.5 pb-1 text-[11px] font-medium text-muted-foreground">
-            {renderMessage(meta.ui.field.status.moveTo)}
-          </div>
-
-          <div className="flex flex-col gap-0.5">
-            {(['todo', 'in_progress', 'complete'] as const).map(category => {
-              const categoryInfo = categoryMeta(category)
-              const active = props.currentCategory === category
-              const CategoryIcon = categoryInfo.Icon
-
-              return (
-                <Button
-                  key={category}
-                  layout="row"
-                  leading={(
-                    <CategoryIcon
-                      className={cn('size-4 shrink-0', categoryInfo.className)}
-                      size={16}
-                      strokeWidth={1.8}
-                    />
-                  )}
-                  trailing={active
-                    ? <Check className="size-4 text-foreground" size={16} strokeWidth={1.8} />
-                    : undefined}
-                  pressed={active}
-                  onClick={() => props.onMoveCategory(category)}
-                >
-                  {categoryInfo.label}
-                </Button>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="border-t border-divider pt-1.5">
-          <Button
-            variant="ghostDestructive"
-            layout="row"
-            onClick={() => {
-              props.onDelete()
-              props.onOpenChange(false)
-            }}
-          >
-            {renderMessage(meta.ui.field.options.remove)}
-          </Button>
-        </div>
-      </div>
-    </Popover>
-  )
-}
 
 const StatusOptionRow = (props: {
   option: FieldOption
@@ -252,60 +78,56 @@ const StatusOptionRow = (props: {
     </Button>
 
     <div className="min-w-0 flex-1">
-      <StatusOptionEditorPopover
-        option={props.option}
+      <PickerOptionRow
         open={props.open}
-        currentCategory={props.currentCategory}
-        onOpenChange={props.onOpenChange}
-        onRename={name => {
-          props.onRename(name)
-          return true
-        }}
-        onColorChange={props.onColorChange}
-        onMoveCategory={props.onMoveCategory}
-        onDelete={props.onDelete}
-        trigger={(
-          <Button
-            layout="row"
-            pressed={props.open}
-            leading={<Settings2 className="size-4 shrink-0 text-muted-foreground" size={16} strokeWidth={1.8} />}
-          >
-            <div className="min-w-0">
-              <FieldOptionTag
-                label={props.option.name.trim() || renderMessage(meta.ui.field.options.untitled)}
-                color={props.option.color ?? undefined}
-              />
-            </div>
-          </Button>
+        dragging={props.drag?.dragging}
+        leading={(
+          <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground">
+            <Settings2 className="size-4 text-muted-foreground" size={16} strokeWidth={1.8} />
+          </span>
         )}
-      />
+        trailing={(
+          <OptionEditorPopover
+            option={{
+              ...props.option,
+              color: props.option.color ?? undefined
+            }}
+            open={props.open}
+            onOpenChange={props.onOpenChange}
+            onRename={name => {
+              props.onRename(name)
+              return true
+            }}
+            onColorChange={props.onColorChange}
+            onDelete={props.onDelete}
+            extraItems={buildStatusMoveMenuItems({
+              currentCategory: props.currentCategory,
+              onMoveCategory: props.onMoveCategory
+            })}
+            trigger={(
+              <Button
+                variant="plain"
+                size="iconBare"
+                aria-label={renderMessage(meta.ui.field.options.edit(props.option.name))}
+                onClick={event => {
+                  event.stopPropagation()
+                }}
+              >
+                <MoreHorizontal className="size-4" size={16} strokeWidth={1.8} />
+              </Button>
+            )}
+          />
+        )}
+      >
+        <FieldOptionTag
+          label={props.option.name.trim() || renderMessage(meta.ui.field.options.untitled)}
+          color={props.option.color ?? undefined}
+          className="max-w-full"
+        />
+      </PickerOptionRow>
     </div>
   </div>
 )
-
-const categoryMeta = (category: StatusCategory) => {
-  switch (category) {
-    case 'todo':
-      return {
-        label: renderMessage(meta.ui.field.status.todo),
-        Icon: CircleDashed,
-        className: 'text-muted-foreground'
-      }
-    case 'in_progress':
-      return {
-        label: renderMessage(meta.ui.field.status.inProgress),
-        Icon: CirclePlay,
-        className: 'text-blue-500'
-      }
-    case 'complete':
-    default:
-      return {
-        label: renderMessage(meta.ui.field.status.complete),
-        Icon: CircleCheck,
-        className: 'text-green-500'
-      }
-  }
-}
 
 export const FieldStatusOptionsSection = (props: {
   field: CustomField
@@ -349,7 +171,7 @@ export const FieldStatusOptionsSection = (props: {
       </div>
 
       {sections.map(section => {
-        const visual = categoryMeta(section.category)
+        const visual = getStatusCategoryMeta(section.category)
         const Icon = visual.Icon
 
         return (
@@ -404,7 +226,7 @@ export const FieldStatusOptionsSection = (props: {
 
                         editor.fields.options.reorder(
                           props.field.id,
-                          buildIdsAfterCategoryMove(
+                          buildStatusIdsAfterCategoryMove(
                             sections,
                             option.id,
                             section.category,

@@ -3,10 +3,12 @@ import {
   applyNodeProjectionRect,
   getNodeBounds,
   getNodeGeometry,
+  readTextWidthMode,
   resolveNodeConnect,
   resolveNodeEnter,
   resolveNodeRole,
   resolveNodeTransform,
+  setTextWidthMode,
   type NodeRole,
   type NodeRectHitOptions,
   type TransformSelectionTargets
@@ -123,6 +125,53 @@ const toNodeRuntimeState = (
   resizing: Boolean(projection.patch?.size)
 })
 
+const applyNodeTextPreview = (
+  item: NodeItem,
+  projection: NodeOverlayProjection
+): NodeItem => {
+  const text = projection.text
+  if (!text || item.node.type !== 'text') {
+    return item
+  }
+
+  const currentFontSize = typeof item.node.style?.fontSize === 'number'
+    ? item.node.style.fontSize
+    : undefined
+  const style = text.fontSize === undefined || text.fontSize === currentFontSize
+    ? item.node.style
+    : {
+        ...(item.node.style ?? {}),
+        fontSize: text.fontSize
+      }
+  const data = text.mode === undefined || text.mode === readTextWidthMode(item.node)
+    ? item.node.data
+    : setTextWidthMode(item.node, text.mode)
+  const rect = text.size
+    && (
+      text.size.width !== item.rect.width
+      || text.size.height !== item.rect.height
+    )
+    ? {
+        ...item.rect,
+        width: text.size.width,
+        height: text.size.height
+      }
+    : item.rect
+
+  if (style === item.node.style && data === item.node.data && rect === item.rect) {
+    return item
+  }
+
+  return {
+    node: {
+      ...item.node,
+      style,
+      data
+    },
+    rect
+  }
+}
+
 const createNodeItemStore = ({
   read,
   overlay
@@ -134,18 +183,14 @@ const createNodeItemStore = ({
   overlay,
   project: (item, projection) => {
     const patch = projection.patch
-    if (!patch) {
-      return item
-    }
-
-    const node = applyNodeProjectionPatch(item.node, patch)
-    const rect = applyNodeProjectionRect(item.rect, patch)
-    return node === item.node && rect === item.rect
-      ? item
-      : {
-          node,
-          rect
+    const projected = patch
+      ? {
+          node: applyNodeProjectionPatch(item.node, patch),
+          rect: applyNodeProjectionRect(item.rect, patch)
         }
+      : item
+
+    return applyNodeTextPreview(projected, projection)
   },
   isEqual: isNodeItemEqual
 })

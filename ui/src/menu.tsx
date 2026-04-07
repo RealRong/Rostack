@@ -34,6 +34,7 @@ export interface MenuActionItem {
   label: ReactNode
   leading?: ReactNode
   suffix?: ReactNode
+  trailing?: ReactNode
   disabled?: boolean
   tone?: 'default' | 'destructive'
   closeOnSelect?: boolean
@@ -59,6 +60,7 @@ export interface MenuSubmenuItem {
   label: ReactNode
   leading?: ReactNode
   suffix?: ReactNode
+  trailing?: ReactNode
   disabled?: boolean
   items?: readonly MenuItem[]
   content?: ReactNode | (() => ReactNode)
@@ -74,6 +76,12 @@ export interface MenuDividerItem {
   key: string
 }
 
+export interface MenuLabelItem {
+  kind: 'label'
+  key: string
+  label: ReactNode
+}
+
 export interface MenuCustomItem {
   kind: 'custom'
   key: string
@@ -85,6 +93,7 @@ export type MenuItem =
   | MenuToggleItem
   | MenuSubmenuItem
   | MenuDividerItem
+  | MenuLabelItem
   | MenuCustomItem
 
 export type MenuSubmenuOpenPolicy = 'hover' | 'click'
@@ -484,6 +493,23 @@ const MenuLevel = (props: MenuLevelProps) => {
           )
         }
 
+        if (item.kind === 'label') {
+          return (
+            <div
+              key={item.key}
+              className="px-2.5 pb-1 pt-1 text-[11px] font-medium text-muted-foreground"
+              onMouseEnter={() => {
+                props.controller.trimExpandedPath(props.parentPath)
+                if (props.controller.activeSource === 'pointer') {
+                  props.controller.clearPointerActivePath()
+                }
+              }}
+            >
+              {item.label}
+            </div>
+          )
+        }
+
         if (item.kind === 'custom') {
           return (
             <div
@@ -516,6 +542,7 @@ const MenuLevel = (props: MenuLevelProps) => {
               variant={item.tone === 'destructive' ? 'ghostDestructive' : undefined}
               leading={item.leading}
               suffix={item.suffix}
+              trailing={item.trailing}
               disabled={item.disabled}
               className={resolveMenuItemActiveClassName({
                 active,
@@ -626,7 +653,14 @@ const MenuLevel = (props: MenuLevelProps) => {
                 className={resolveMenuItemActiveClassName({
                   active
                 })}
-                trailing={<ChevronRight className="size-4" size={16} strokeWidth={1.8} />}
+                trailing={item.trailing
+                  ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        {item.trailing}
+                        <ChevronRight className="size-4" size={16} strokeWidth={1.8} />
+                      </span>
+                    )
+                  : <ChevronRight className="size-4" size={16} strokeWidth={1.8} />}
                 onMouseEnter={() => {
                   props.controller.setActivePointerPath(itemPath)
                   if (!item.disabled && props.submenuOpenPolicy === 'hover') {

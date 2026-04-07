@@ -1,9 +1,16 @@
 import {
+  computeResizeRect,
   finishTransform,
+  getResizeSourceEdges,
   getResizeUpdateRect,
+  readTextWidthMode,
+  resolveTextHandle,
   startTransform,
   stepTransform,
+  TEXT_DEFAULT_FONT_SIZE,
+  toTransformCommitPatch,
   type TransformPreviewPatch,
+  type TransformState,
   type TransformSelectionMember,
   type TransformSpec
 } from '@whiteboard/core/node'
@@ -17,8 +24,25 @@ import type { InteractionContext } from './context'
 import { createSelectionGesture } from '../runtime/interaction/gesture'
 import type { PointerDownInput } from '../types/input'
 import type { TransformPickHandle } from '../types/pick'
+import {
+  dataUpdate,
+  mergeNodeUpdates,
+  styleUpdate
+} from '../runtime/commands/node/document'
 
 type TransformTarget = TransformSelectionMember<Node>
+type TextTransformMode = 'reflow' | 'scale'
+type RuntimeTransformSpec =
+  | TransformSpec<Node>
+  | {
+      kind: 'single-text'
+      mode: TextTransformMode
+      pointerId: number
+      target: TransformTarget
+      handle: NonNullable<TransformPickHandle['direction']>
+      rotation: number
+      startScreen: PointerDownInput['client']
+    }
 
 const readNodeRotation = (
   node: Node
@@ -32,6 +56,14 @@ const RESIZE_MIN_SIZE = {
   width: 20,
   height: 20
 }
+
+const readTextFontSize = (
+  node: Node
+) => (
+  typeof node.style?.fontSize === 'number'
+    ? node.style.fontSize
+    : TEXT_DEFAULT_FONT_SIZE
+)
 
 const toTransformNodePatches = (
   patches: readonly TransformPreviewPatch[]
@@ -69,7 +101,7 @@ const readNodeTransformSpec = (
   nodeId: NodeId,
   handle: TransformPickHandle,
   input: PointerDownInput
-): TransformSpec<Node> | undefined => {
+): RuntimeTransformSpec | undefined => {
   const entry = ctx.read.index.node.get(nodeId)
   if (!entry || entry.node.locked) {
     return undefined
@@ -84,6 +116,23 @@ const readNodeTransformSpec = (
   if (handle.kind === 'resize') {
     if (!handle.direction || !capability.resize) {
       return undefined
+    }
+
+    if (entry.node.type === 'text') {
+      const mode = resolveTextHandle(handle.direction)
+      if (mode === 'none') {
+        return undefined
+      }
+
+      return {
+        kind: 'single-text',
+        mode,
+        pointerId: input.pointerId,
+        target,
+        handle: handle.direction,
+        rotation: readNodeRotation(entry.node),
+        startScreen: input.client
+      }
     }
 
     return {
@@ -144,7 +193,7 @@ const readSelectionTransformSpec = (
 const resolveTransformSpec = (
   ctx: InteractionContext,
   input: PointerDownInput
-): TransformSpec<Node> | null => {
+): RuntimeTransformSpec | null => {
   const tool = ctx.read.tool.get()
   if (
     tool.type !== 'select'
@@ -239,6 +288,157 @@ const createTransformSession = (
   return interaction
 }
 
+const createSingleTextTransformSession = (
+  ctx: InteractionContext,
+  spec: Extract<RuntimeTransformSpec, { kind: 'single-text' }>,
+  start: Pick<PointerDownInput, 'modifiers'>
+): InteractionSession => {
+  const baseState = startTransform({
+    kind: 'single-resize',
+    pointerId: spec.pointerId,
+    target: spec.target,
+    handle: spec.handle,
+    rotation: spec.rotation,
+    startScreen: spec.startScreen
+  }) as Extract<TransformState<Node>, { kind: 'single-resize' }>
+  const startFontSize = readTextFontSize(spec.target.node)
+  let modifiers = start.modifiers
+  let interaction = null as InteractionSession | null
+
+  const project = (
+    input: Pick<PointerDownInput, 'screen' | 'modifiers'>
+  ) => {
+    modifiers = input.modifiers
+    const rawRect = computeResizeRect({
+      drag: baseState.drag,
+      currentScreen: input.screen,
+      zoom: ctx.read.viewport.get().zoom,
+      minSize: RESIZE_MIN_SIZE,
+      altKey: input.modifiers.alt,
+      shiftKey: spec.mode === 'scale' || input.modifiers.shift
+    }).rect
+    const { sourceX, sourceY } = getResizeSourceEdges(baseState.drag.handle)
+    const snapped = ctx.snap.node.resize({
+      rect: rawRect,
+      source: {
+        x: sourceX,
+        y: sourceY
+      },
+      minSize: RESIZE_MIN_SIZE,
+      excludeIds: [spec.target.id],
+      disabled: input.modifiers.alt || baseState.drag.startRotation !== 0
+    })
+    const nextRect = getResizeUpdateRect(snapped.update)
+    const nextFontSize = spec.mode === 'scale'
+      ? Math.max(
+          1,
+          startFontSize * (
+            nextRect.width / Math.max(spec.target.rect.width, 0.0001)
+          )
+        )
+      : undefined
+
+    interaction!.gesture = createSelectionGesture(
+      'selection-transform',
+      {
+        nodePatches: toTransformNodePatches([{
+          id: spec.target.id,
+          position: {
+            x: nextRect.x,
+            y: nextRect.y
+          },
+          size: {
+            width: nextRect.width,
+            height: nextRect.height
+          }
+        }]),
+        edgePatches: [],
+        frameHoverId: undefined,
+        marquee: undefined,
+        guides: snapped.guides
+      }
+    )
+
+    ctx.write.preview.node.text.set(
+      spec.target.id,
+      spec.mode === 'reflow'
+        ? {
+            mode: 'fixed'
+          }
+        : {
+            mode: 'fixed',
+            fontSize: nextFontSize
+          }
+    )
+  }
+
+  interaction = {
+    mode: 'node-transform',
+    pointerId: spec.pointerId,
+    chrome: false,
+    gesture: null,
+    autoPan: {
+      frame: (pointer) => {
+        project({
+          screen: ctx.read.viewport.screenPoint(pointer.clientX, pointer.clientY),
+          modifiers
+        })
+      }
+    },
+    move: (input) => {
+      project(input)
+    },
+    up: (input) => {
+      project(input)
+
+      const previewItem = ctx.read.node.item.get(spec.target.id)
+      ctx.write.preview.node.text.clear(spec.target.id)
+
+      if (!previewItem) {
+        return FINISH
+      }
+
+      const geometry = toTransformCommitPatch(spec.target.node, {
+        position: {
+          x: previewItem.rect.x,
+          y: previewItem.rect.y
+        },
+        size: {
+          width: previewItem.rect.width,
+          height: previewItem.rect.height
+        }
+      })
+      const nextFontSize = previewItem.node.type === 'text'
+        ? Math.max(1, Math.round(readTextFontSize(previewItem.node)))
+        : undefined
+      const update = mergeNodeUpdates(
+        geometry
+          ? {
+              fields: geometry
+            }
+          : undefined,
+        readTextWidthMode(spec.target.node) !== 'fixed'
+          ? dataUpdate('widthMode', 'fixed')
+          : undefined,
+        spec.mode === 'scale' && nextFontSize !== readTextFontSize(spec.target.node)
+          ? styleUpdate('fontSize', nextFontSize)
+          : undefined
+      )
+
+      if (update.fields || update.records?.length) {
+        ctx.write.document.node.document.update(spec.target.id, update)
+      }
+
+      return FINISH
+    },
+    cleanup: () => {
+      ctx.write.preview.node.text.clear(spec.target.id)
+    }
+  }
+
+  return interaction
+}
+
 export const startTransformInteraction = (
   ctx: InteractionContext,
   input: PointerDownInput
@@ -246,9 +446,13 @@ export const startTransformInteraction = (
   const spec = resolveTransformSpec(ctx, input)
 
   return spec
-    ? createTransformSession(ctx, spec, {
-      modifiers: input.modifiers
-    })
+    ? spec.kind === 'single-text'
+      ? createSingleTextTransformSession(ctx, spec, {
+          modifiers: input.modifiers
+        })
+      : createTransformSession(ctx, spec, {
+          modifiers: input.modifiers
+        })
     : null
 }
 

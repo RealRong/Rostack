@@ -1,7 +1,9 @@
 import type { Rect } from '../types'
+import type { ResizeDirection } from './transform'
 
 export type TextVariant = 'text' | 'sticky'
 export type TextWidthMode = 'auto' | 'fixed'
+export type TextHandleMode = 'none' | 'reflow' | 'scale'
 
 export type TextContentBox = {
   width: number
@@ -31,6 +33,7 @@ export const TEXT_DEFAULT_FONT_SIZE = 14
 export const TEXT_FIT_VERTICAL_MARGIN = 2
 export const TEXT_MIN_WIDTH = 24
 export const TEXT_AUTO_MAX_WIDTH = 360
+export const TEXT_RESIZE_HANDLES = ['nw', 'ne', 'e', 'se', 'sw', 'w'] as const satisfies readonly ResizeDirection[]
 
 const TEXT_WIDTH_MODE_KEY = 'widthMode'
 
@@ -131,6 +134,20 @@ export const resolveTextAutoFont = (
     max,
     initial: clampFontSize(estimated, min, max)
   }
+}
+
+export const resolveTextHandle = (
+  handle: ResizeDirection
+): TextHandleMode => {
+  if (handle === 'e' || handle === 'w') {
+    return 'reflow'
+  }
+
+  if (handle === 'n' || handle === 's') {
+    return 'none'
+  }
+
+  return 'scale'
 }
 
 export const estimateTextAutoFont = (

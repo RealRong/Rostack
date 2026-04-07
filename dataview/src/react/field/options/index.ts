@@ -2,6 +2,11 @@ export { FieldOptionTag } from './FieldOptionTag'
 export { OptionToken } from './OptionToken'
 export { OptionEditorPanel } from './OptionEditorPanel'
 export { OptionEditorPopover } from './OptionEditorPopover'
+export {
+  buildStatusIdsAfterCategoryMove,
+  buildStatusMoveMenuItems,
+  getStatusCategoryMeta
+} from './statusOptionMenu'
 export type {
   FieldOptionTagProps
 } from './FieldOptionTag'

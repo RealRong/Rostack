@@ -15,14 +15,23 @@ export const createEditorCommands = ({
   viewport: EditorViewportRuntime['read']
 }): Editor['commands'] => {
   const nodeTextCommands = {
-    preview: ({ nodeId, size }) => {
-      write.preview.node.text.setSize(nodeId, size)
+    preview: ({
+      nodeId,
+      size,
+      fontSize,
+      mode
+    }) => {
+      write.preview.node.text.set(nodeId, {
+        size,
+        fontSize,
+        mode
+      })
     },
     clearPreview: (nodeId) => {
       write.preview.node.text.clearSize(nodeId)
     },
     cancel: ({ nodeId }) => {
-      write.preview.node.text.clearSize(nodeId)
+      write.preview.node.text.clear(nodeId)
       write.session.edit.clear()
     },
     commit: write.document.node.text.commit,

@@ -1,6 +1,42 @@
+import type { NodeId, Size } from '@whiteboard/core/types'
 import { FontSizePanel } from '../../panels/FontSizePanel'
+import { measureBoundTextNodeSize } from '../../../../node/text'
 import { FontSizeControl } from './shared/FontSizeControl'
 import type { ToolbarItemSpec } from './types'
+
+const buildTextSizeById = ({
+  context,
+  editor,
+  value
+}: {
+  context: Parameters<NonNullable<ToolbarItemSpec['renderButton']>>[0]['context']
+  editor: Parameters<NonNullable<ToolbarItemSpec['renderButton']>>[0]['editor']
+  value?: number
+}) => {
+  const sizeById: Record<NodeId, Size> = {}
+
+  context.nodes.forEach((node) => {
+    if (node.type !== 'text') {
+      return
+    }
+
+    const nextSize = measureBoundTextNodeSize({
+      editor,
+      nodeId: node.id,
+      value: typeof node.data?.text === 'string' ? node.data.text : '',
+      fontSize: value
+    })
+    if (!nextSize) {
+      return
+    }
+
+    sizeById[node.id] = nextSize
+  })
+
+  return Object.keys(sizeById).length > 0
+    ? sizeById
+    : undefined
+}
 
 export const fontSizeItem: ToolbarItemSpec = {
   key: 'font-size',
@@ -23,7 +59,12 @@ export const fontSizeItem: ToolbarItemSpec = {
       onCommit={(value) => {
         editor.commands.node.text.setSize({
           nodeIds: context.nodeIds,
-          value
+          value,
+          sizeById: buildTextSizeById({
+            context,
+            editor,
+            value
+          })
         })
       }}
     />
@@ -39,7 +80,12 @@ export const fontSizeItem: ToolbarItemSpec = {
         closePanel()
         editor.commands.node.text.setSize({
           nodeIds: context.nodeIds,
-          value
+          value,
+          sizeById: buildTextSizeById({
+            context,
+            editor,
+            value
+          })
         })
       }}
     />

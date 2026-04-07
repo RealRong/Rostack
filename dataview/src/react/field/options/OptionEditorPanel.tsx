@@ -1,11 +1,11 @@
 import { Check } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { Button } from '@ui/button'
+import { useEffect, useMemo, useState } from 'react'
 import {
   resolveOptionDotStyle,
   resolveOptionColorToken
 } from '@ui/color'
 import { Input } from '@ui/input'
+import { Menu, type MenuItem } from '@ui/menu'
 import { meta, renderMessage } from '@dataview/meta'
 import type { OptionLike } from './OptionEditorPopover'
 
@@ -15,6 +15,7 @@ export interface OptionEditorPanelProps {
   onColorChange: (color: string) => void
   onDelete?: () => void
   onRequestClose?: () => void
+  extraItems?: readonly MenuItem[]
 }
 
 export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
@@ -45,6 +46,70 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
     setDraftName(nextName)
   }
 
+  const items = useMemo<MenuItem[]>(() => {
+    const colorItems: MenuItem[] = [
+      {
+        kind: 'label',
+        key: 'color-label',
+        label: renderMessage(meta.ui.field.options.color)
+      },
+      ...meta.option.color.list.map(color => {
+        const active = (props.option.color ?? '') === color.id
+
+        return {
+          kind: 'action' as const,
+          key: `color-${color.id || 'default'}`,
+          label: renderMessage(color.message),
+          leading: (
+            <span
+              className="inline-flex h-3 w-3 shrink-0 rounded-full border"
+              style={{
+                ...resolveOptionDotStyle(color.id),
+                borderColor: resolveOptionColorToken(color.id, 'badge-border')
+              }}
+            />
+          ),
+          trailing: active
+            ? <Check className="size-4 text-foreground" size={16} strokeWidth={1.8} />
+            : undefined,
+          closeOnSelect: false,
+          onSelect: () => {
+            props.onColorChange(color.id)
+          }
+        }
+      })
+    ]
+
+    const nextItems: MenuItem[] = [...colorItems]
+
+    if (props.extraItems?.length) {
+      nextItems.push({
+        kind: 'divider',
+        key: 'extra-divider'
+      })
+      nextItems.push(...props.extraItems)
+    }
+
+    if (props.onDelete) {
+      nextItems.push({
+        kind: 'divider',
+        key: 'delete-divider'
+      })
+      nextItems.push({
+        kind: 'action',
+        key: 'delete-option',
+        label: renderMessage(meta.ui.field.options.remove),
+        tone: 'destructive',
+        onSelect: () => {
+          props.onDelete?.()
+          props.onRequestClose?.()
+        }
+      })
+    }
+
+    return nextItems
+  }, [props.extraItems, props.onColorChange, props.onDelete, props.onRequestClose, props.option.color])
+
   return (
     <div className="flex flex-col gap-2">
       <Input
@@ -64,49 +129,12 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
         placeholder={renderMessage(meta.ui.field.options.namePlaceholder)}
       />
 
-      <div className="flex flex-col gap-0.5">
-        {meta.option.color.list.map(color => {
-          const active = (props.option.color ?? '') === color.id
-
-          return (
-            <Button
-              key={color.id || 'default'}
-              onClick={() => props.onColorChange(color.id)}
-              layout="row"
-              leading={(
-                <span
-                  className="inline-flex h-3 w-3 shrink-0 rounded-full border"
-                  style={{
-                    ...resolveOptionDotStyle(color.id),
-                    borderColor: resolveOptionColorToken(color.id, 'badge-border')
-                  }}
-                />
-              )}
-              trailing={active
-                ? <Check className="size-4 text-foreground" size={16} strokeWidth={1.8} />
-                : undefined}
-              pressed={active}
-            >
-              {renderMessage(color.message)}
-            </Button>
-          )
-        })}
-      </div>
-
-      {props.onDelete ? (
-        <div className="border-t border-divider pt-1.5">
-          <Button
-            variant="ghostDestructive"
-            layout="row"
-            onClick={() => {
-              props.onDelete?.()
-              props.onRequestClose?.()
-            }}
-          >
-            {renderMessage(meta.ui.field.options.remove)}
-          </Button>
-        </div>
-      ) : null}
+      <Menu
+        items={items}
+        onClose={props.onRequestClose}
+        autoFocus={false}
+        submenuOpenPolicy="click"
+      />
     </div>
   )
 }

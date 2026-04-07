@@ -2,7 +2,12 @@ import type {
   CSSProperties
 } from 'react'
 import { RotateCw } from 'lucide-react'
-import { buildTransformHandles, type TransformHandle } from '@whiteboard/core/node'
+import {
+  buildTransformHandles,
+  TEXT_RESIZE_HANDLES,
+  type ResizeDirection,
+  type TransformHandle
+} from '@whiteboard/core/node'
 import type { NodeItem } from '@whiteboard/engine'
 import { useEditor } from '../../../runtime/hooks/useEditor'
 import { usePickRef } from '../../../runtime/hooks/usePickRef'
@@ -16,6 +21,7 @@ type TransformHandlesProps = {
   rect: NodeViewRect
   rotation: number
   canResize: boolean
+  resizeDirections?: readonly ResizeDirection[]
   canRotate: boolean
 }
 
@@ -117,6 +123,7 @@ export const TransformHandles = ({
   rect,
   rotation,
   canResize,
+  resizeDirections,
   canRotate
 }: TransformHandlesProps) => {
   const editor = useEditor()
@@ -126,6 +133,7 @@ export const TransformHandles = ({
     rect,
     rotation,
     canResize,
+    resizeDirections,
     canRotate,
     rotateHandleOffset: NODE_ROTATE_HANDLE_OFFSET,
     zoom
@@ -157,6 +165,7 @@ export const NodeTransformHandles = ({
     rect={rect}
     rotation={rotation}
     canResize={canResize}
+    resizeDirections={node.type === 'text' ? TEXT_RESIZE_HANDLES : undefined}
     canRotate={canRotate}
   />
 )

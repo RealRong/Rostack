@@ -34,6 +34,8 @@ import {
   isComposing,
   keyAction
 } from '../../shared/keyboard'
+import { PickerInputBar } from '../../shared/PickerInputBar'
+import { PickerOptionRow } from '../../shared/PickerOptionRow'
 import { useDraftCommit } from '../../shared/useDraftCommit'
 
 const splitSelectedIds = (draft: string) => draft
@@ -125,27 +127,15 @@ const OptionRow = (props: {
   const label = optionLabel(props.option)
 
   return (
-    <div
+    <PickerOptionRow
       id={props.id}
-      ref={props.rowRef}
-      className={cn(
-        'group/option flex cursor-pointer h-8 items-center gap-1 rounded-lg px-1.5 py-1 transition-colors',
-        props.drag?.dragging && 'opacity-70',
-        props.open || props.highlighted
-          ? 'bg-[var(--ui-control-hover)]'
-          : ''
-      )}
-      onMouseDown={event => {
-        event.preventDefault()
-      }}
-      onMouseEnter={props.onHighlight}
-      onClick={event => {
-        event.preventDefault()
-        event.stopPropagation()
-        props.onSelect()
-      }}
-    >
-      {props.drag ? (
+      rowRef={props.rowRef}
+      highlighted={props.highlighted}
+      open={props.open}
+      dragging={props.drag?.dragging}
+      onHighlight={props.onHighlight}
+      onSelect={props.onSelect}
+      leading={props.drag ? (
         <Button
           variant="plain"
           size="iconBare"
@@ -164,18 +154,7 @@ const OptionRow = (props: {
           <GripVertical className="size-4" size={16} strokeWidth={1.8} />
         </span>
       )}
-
-      <div className="min-w-0 flex-1 flex items-center">
-        <FieldOptionTag
-          label={label}
-          color={props.option.color ?? undefined}
-          className="max-w-full"
-        />
-      </div>
-      <span className={cn(
-        'shrink-0 opacity-0 flex items-center transition-opacity',
-        (props.open || props.highlighted) && 'opacity-100'
-      )}>
+      trailing={(
         <OptionEditorPopover
           option={{
             ...props.option,
@@ -199,8 +178,14 @@ const OptionRow = (props: {
             </Button>
           )}
         />
-      </span>
-    </div>
+      )}
+    >
+      <FieldOptionTag
+        label={label}
+        color={props.option.color ?? undefined}
+        className="max-w-full"
+      />
+    </PickerOptionRow>
   )
 }
 
@@ -282,10 +267,16 @@ export const OptionPickerEditor = (
   }, [props.autoFocus])
 
   useEffect(() => {
-    if (editingOptionId && !options.some(option => option.id === editingOptionId)) {
+    if (
+      editingOptionId
+      && (
+        !options.some(option => option.id === editingOptionId)
+        || (normalized && !filteredOptions.some(option => option.id === editingOptionId))
+      )
+    ) {
       setEditingOptionId(undefined)
     }
-  }, [editingOptionId, options])
+  }, [editingOptionId, filteredOptions, normalized, options])
 
   if (!field) {
     return null
@@ -553,16 +544,16 @@ export const OptionPickerEditor = (
   return (
     <div className="flex min-h-0 min-w-0 flex-col" onKeyDown={onKeyDown}>
       <div>
-        <div
-          className={
-            'flex min-h-10 cursor-text flex-wrap items-center gap-1 p-2'
-          }
-          onMouseDown={event => {
-            if (event.target === event.currentTarget) {
-              event.preventDefault()
-              focusInputWithoutScroll(inputRef.current)
-            }
+        <PickerInputBar
+          inputRef={inputRef}
+          value={query}
+          onValueChange={value => {
+            setHighlightedKey(null)
+            setQuery(value)
           }}
+          placeholder={selectedOptions.length
+            ? ''
+            : renderMessage(meta.ui.field.options.selectOrCreate(props.mode === 'multi'))}
         >
           {selectedOptions.map(option => (
             <OptionToken
@@ -575,19 +566,7 @@ export const OptionPickerEditor = (
               }}
             />
           ))}
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={event => {
-              setHighlightedKey(null)
-              setQuery(event.target.value)
-            }}
-            placeholder={selectedOptions.length
-              ? ''
-              : renderMessage(meta.ui.field.options.selectOrCreate(props.mode === 'multi'))}
-            className="min-w-[4ch] flex-1 border-0 bg-transparent px-1 py-1 text-sm font-semibold text-foreground outline-none placeholder:text-muted-foreground"
-          />
-        </div>
+        </PickerInputBar>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col border-t border-divider">

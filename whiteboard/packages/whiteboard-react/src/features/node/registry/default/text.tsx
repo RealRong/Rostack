@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
 import type { NodeDefinition, NodeRenderProps } from '../../../../types/node'
 import { useEdit, useEditor } from '../../../../runtime/hooks/useEditor'
+import { useOptionalKeyedStoreValue } from '../../../../runtime/hooks/useStoreValue'
 import {
   focusEditableDraft,
   isEscapeEditingKey,
@@ -26,6 +27,23 @@ import {
   getStyleString,
   styleField
 } from './shared'
+
+const EMPTY_NODE_STATE = {
+  hovered: false,
+  hidden: false,
+  patched: false,
+  resizing: false
+}
+
+const SIZE_EPSILON = 0.5
+
+const isSameSize = (
+  left: { width: number; height: number } | undefined,
+  right: { width: number; height: number } | undefined
+) => (
+  Math.abs((left?.width ?? 0) - (right?.width ?? 0)) < SIZE_EPSILON
+  && Math.abs((left?.height ?? 0) - (right?.height ?? 0)) < SIZE_EPSILON
+)
 
 const textSchema = createSchema('text', 'Text', [
   createTextField('text'),
@@ -67,6 +85,11 @@ const TextNodeRenderer = ({
   const [draft, setDraft] = useState(text)
   const isSticky = variant === 'sticky'
   const sourceRef = useRef<HTMLDivElement | null>(null)
+  const nodeState = useOptionalKeyedStoreValue(
+    editor.read.node.state,
+    node.id,
+    EMPTY_NODE_STATE
+  )
   const setSourceRef = (element: HTMLDivElement | null) => {
     bindNodeTextSource({
       editor,
@@ -150,6 +173,68 @@ const TextNodeRenderer = ({
   useEffect(() => () => {
     editor.commands.node.text.clearPreview(node.id)
   }, [editor, node.id])
+
+  useLayoutEffect(() => {
+    if (editing || isSticky) {
+      return
+    }
+
+    const source = sourceRef.current
+    if (!source) {
+      return
+    }
+
+    const size = measureTextNodeSize({
+      node,
+      rect,
+      content: text,
+      placeholder,
+      source
+    })
+    if (!size) {
+      return
+    }
+
+    if (nodeState.resizing) {
+      const nextSize = {
+        width: rect.width,
+        height: size.height
+      }
+
+      if (isSameSize(nextSize, rect)) {
+        editor.commands.node.text.clearPreview(node.id)
+        return
+      }
+
+      editor.commands.node.text.preview({
+        nodeId: node.id,
+        size: nextSize
+      })
+      return
+    }
+
+    editor.commands.node.text.clearPreview(node.id)
+
+    if (isSameSize(size, rect)) {
+      return
+    }
+
+    editor.commands.node.document.update(node.id, {
+      fields: {
+        size
+      }
+    })
+  }, [
+    editing,
+    editor,
+    isSticky,
+    node,
+    node.id,
+    nodeState.resizing,
+    placeholder,
+    rect,
+    text
+  ])
 
   const commit = (
     nextDraft = draft,

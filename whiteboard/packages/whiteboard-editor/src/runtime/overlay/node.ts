@@ -7,10 +7,13 @@ import type {
   NodePatch,
   NodePatchEntry,
   NodeSelectionOverlayState,
-  NodeTextOverlayState
+  NodeTextOverlayState,
+  TextPreviewEntry,
+  TextPreviewPatch
 } from './types'
 
 export const EMPTY_NODE_PATCHES: readonly NodePatchEntry[] = []
+export const EMPTY_TEXT_PREVIEW_PATCHES: readonly TextPreviewEntry[] = []
 export const EMPTY_NODE_HIDDEN: readonly NodeId[] = []
 
 export const EMPTY_NODE_SELECTION_OVERLAY: NodeSelectionOverlayState = {
@@ -18,7 +21,7 @@ export const EMPTY_NODE_SELECTION_OVERLAY: NodeSelectionOverlayState = {
 }
 
 const EMPTY_NODE_TEXT_OVERLAY: NodeTextOverlayState = {
-  patches: EMPTY_NODE_PATCHES
+  patches: EMPTY_TEXT_PREVIEW_PATCHES
 }
 
 export const EMPTY_NODE_OVERLAY: NodeOverlayState = {
@@ -47,6 +50,15 @@ export const isNodePatchEqual = (
   isPointEqual(left?.position, right?.position)
   && isSameSize(left?.size, right?.size)
   && left?.rotation === right?.rotation
+)
+
+export const isTextPreviewPatchEqual = (
+  left: TextPreviewPatch | undefined,
+  right: TextPreviewPatch | undefined
+) => (
+  isSameSize(left?.size, right?.size)
+  && left?.fontSize === right?.fontSize
+  && left?.mode === right?.mode
 )
 
 export const readNodePatchEntry = (
@@ -117,6 +129,74 @@ export const replaceNodePatchEntry = (
   ]
 }
 
+export const readTextPreviewEntry = (
+  patches: readonly TextPreviewEntry[],
+  nodeId: NodeId
+): TextPreviewPatch | undefined => {
+  for (let index = 0; index < patches.length; index += 1) {
+    const entry = patches[index]!
+    if (entry.id === nodeId) {
+      return entry.patch
+    }
+  }
+
+  return undefined
+}
+
+export const replaceTextPreviewEntry = (
+  patches: readonly TextPreviewEntry[],
+  nodeId: NodeId,
+  patch: TextPreviewPatch | undefined
+): readonly TextPreviewEntry[] => {
+  let changed = false
+  const next: TextPreviewEntry[] = []
+
+  for (let index = 0; index < patches.length; index += 1) {
+    const entry = patches[index]!
+    if (entry.id !== nodeId) {
+      next.push(entry)
+      continue
+    }
+
+    if (!patch) {
+      changed = true
+      continue
+    }
+
+    if (isTextPreviewPatchEqual(entry.patch, patch)) {
+      next.push(entry)
+      continue
+    }
+
+    next.push({
+      id: nodeId,
+      patch
+    })
+    changed = true
+  }
+
+  if (!patch) {
+    return changed
+      ? next
+      : patches
+  }
+
+  const hasPatch = patches.some((entry) => entry.id === nodeId)
+  if (hasPatch) {
+    return changed
+      ? next
+      : patches
+  }
+
+  return [
+    ...patches,
+    {
+      id: nodeId,
+      patch
+    }
+  ]
+}
+
 export const isNodeOverlayStateEqual = (
   left: NodeOverlayState,
   right: NodeOverlayState
@@ -127,6 +207,7 @@ export const isNodeProjectionEqual = (
   right: NodeOverlayProjection
 ) => (
   isNodePatchEqual(left.patch, right.patch)
+  && isTextPreviewPatchEqual(left.text, right.text)
   && left.hovered === right.hovered
   && left.hidden === right.hidden
 )
@@ -136,15 +217,15 @@ export const normalizeNodeOverlayState = (
 ): NodeOverlayState => {
   const textPatches = state.text.patches.length > 0
     ? state.text.patches
-    : EMPTY_NODE_PATCHES
+    : EMPTY_TEXT_PREVIEW_PATCHES
 
-  if (textPatches === EMPTY_NODE_PATCHES) {
+  if (textPatches === EMPTY_TEXT_PREVIEW_PATCHES) {
     return EMPTY_NODE_OVERLAY
   }
 
   return {
     text:
-      textPatches === EMPTY_NODE_PATCHES
+      textPatches === EMPTY_TEXT_PREVIEW_PATCHES
         ? EMPTY_NODE_TEXT_OVERLAY
         : {
             patches: textPatches
@@ -170,7 +251,7 @@ export const toNodeOverlayMap = (
   for (let index = 0; index < state.node.text.patches.length; index += 1) {
     const entry = state.node.text.patches[index]!
     next.set(entry.id, {
-      patch: entry.patch,
+      text: entry.patch,
       hovered: false,
       hidden: hiddenSet.has(entry.id)
     })
@@ -186,6 +267,7 @@ export const toNodeOverlayMap = (
             ...entry.patch
           }
         : entry.patch,
+      text: current?.text,
       hovered: state.selection.node.frameHoverId === entry.id,
       hidden: hiddenSet.has(entry.id)
     })
@@ -195,6 +277,7 @@ export const toNodeOverlayMap = (
     const current = next.get(state.selection.node.frameHoverId)
     next.set(state.selection.node.frameHoverId, {
       patch: current?.patch,
+      text: current?.text,
       hovered: true,
       hidden: hiddenSet.has(state.selection.node.frameHoverId)
     })

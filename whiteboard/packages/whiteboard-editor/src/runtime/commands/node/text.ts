@@ -44,14 +44,20 @@ export const createNodeTextCommands = ({
 }: NodeTextHost): EditorNodeTextCommands => ({
   preview: ({
     nodeId,
-    size
+    size,
+    fontSize,
+    mode
   }) => {
     const item = read.node.item.get(nodeId)
     if (!item || item.node.type !== 'text') {
       return
     }
 
-    preview.node.text.setSize(nodeId, size)
+    preview.node.text.set(nodeId, {
+      size,
+      fontSize,
+      mode
+    })
   },
   clearPreview: (nodeId) => {
     preview.node.text.clearSize(nodeId)
@@ -59,7 +65,7 @@ export const createNodeTextCommands = ({
   cancel: ({
     nodeId
   }) => {
-    preview.node.text.clearSize(nodeId)
+    preview.node.text.clear(nodeId)
     session.edit.clear()
   },
   commit: ({
@@ -70,7 +76,7 @@ export const createNodeTextCommands = ({
   }) => {
     const committed = committedNode.get(nodeId)
     if (!committed) {
-      preview.node.text.clearSize(nodeId)
+      preview.node.text.clear(nodeId)
       session.edit.clear()
       return undefined
     }
@@ -94,7 +100,7 @@ export const createNodeTextCommands = ({
       ? nextMeasuredSize
       : undefined
 
-    preview.node.text.clearSize(nodeId)
+    preview.node.text.clear(nodeId)
     session.edit.clear()
 
     if (

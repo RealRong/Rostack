@@ -99,6 +99,7 @@ export const ui = {
     options: {
       title: message('meta.ui.field.options.title', 'Options'),
       add: message('meta.ui.field.options.add', 'Add option'),
+      color: message('meta.ui.field.options.color', 'Color'),
       untitled: message('meta.ui.field.options.untitled', 'Untitled'),
       namePlaceholder: message('meta.ui.field.options.namePlaceholder', 'Option name'),
       remove: message('meta.ui.field.options.remove', 'Delete option'),

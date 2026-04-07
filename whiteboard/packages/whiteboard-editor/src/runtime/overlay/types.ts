@@ -1,4 +1,8 @@
-import type { Guide, NodeProjectionPatch as CoreNodeProjectionPatch } from '@whiteboard/core/node'
+import type {
+  Guide,
+  NodeProjectionPatch as CoreNodeProjectionPatch,
+  TextWidthMode
+} from '@whiteboard/core/node'
 import type { ConnectResolution } from '@whiteboard/core/edge'
 import type { MindmapDragDropTarget } from '@whiteboard/core/mindmap'
 import type {
@@ -10,6 +14,7 @@ import type {
   Point,
   Rect
 } from '@whiteboard/core/types'
+import type { Size } from '@whiteboard/core/types'
 import type { KeyedReadStore, ReadStore } from '@whiteboard/engine'
 import type { DrawPreview } from '../../types/draw'
 
@@ -20,13 +25,24 @@ export type NodePatchEntry = {
   patch: NodePatch
 }
 
+export type TextPreviewPatch = {
+  size?: Size
+  fontSize?: number
+  mode?: TextWidthMode
+}
+
+export type TextPreviewEntry = {
+  id: NodeId
+  patch: TextPreviewPatch
+}
+
 export type NodeSelectionOverlayState = {
   patches: readonly NodePatchEntry[]
   frameHoverId?: NodeId
 }
 
 export type NodeTextOverlayState = {
-  patches: readonly NodePatchEntry[]
+  patches: readonly TextPreviewEntry[]
 }
 
 export type NodeOverlayState = {
@@ -35,6 +51,7 @@ export type NodeOverlayState = {
 
 export type NodeOverlayProjection = {
   patch?: NodePatch
+  text?: TextPreviewPatch
   hovered: boolean
   hidden: boolean
 }

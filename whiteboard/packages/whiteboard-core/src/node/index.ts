@@ -186,10 +186,12 @@ export {
   isTextContentEmpty,
   isTextNode,
   readTextWidthMode,
+  resolveTextHandle,
   setTextWidthMode,
   TEXT_AUTO_MAX_WIDTH,
   TEXT_FIT_VERTICAL_MARGIN,
   TEXT_MIN_WIDTH,
+  TEXT_RESIZE_HANDLES,
   resolveTextAutoFont,
   resolveTextBox,
   resolveTextContentBox,
@@ -199,6 +201,7 @@ export type {
   TextAutoFont,
   TextContentBox,
   TextFrameMetrics,
+  TextHandleMode,
   TextVariant,
   TextWidthMode
 } from './text'

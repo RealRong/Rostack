@@ -6,6 +6,7 @@ import type {
   ClipboardPacket,
 } from '@whiteboard/core/document'
 import type { HistoryConfig as KernelHistoryConfig } from '@whiteboard/core/kernel'
+import type { TextWidthMode } from '@whiteboard/core/node'
 import type { SelectionInput, SelectionTarget } from '@whiteboard/core/selection'
 import type { CommandResult, ReadStore } from '@whiteboard/engine'
 import type {
@@ -48,6 +49,7 @@ import type {
   EdgeOverlayEntry,
   MindmapDragFeedback
 } from '../runtime/overlay'
+import type { TextPreviewPatch } from '../runtime/overlay/types'
 
 type EngineCommands = import('@whiteboard/engine').EngineInstance['commands']
 type EngineNodeCommands = EngineCommands['node']
@@ -134,7 +136,9 @@ export type EditorNodeLockCommands = {
 export type EditorNodeTextCommands = {
   preview: (input: {
     nodeId: NodeId
-    size: Size
+    size?: Size
+    fontSize?: number
+    mode?: TextWidthMode
   }) => void
   clearPreview: (nodeId: NodeId) => void
   cancel: (input: {
@@ -310,7 +314,8 @@ export type EditorPreviewWrite = {
   }
   node: {
     text: {
-      setSize: (nodeId: NodeId, size?: Size) => void
+      set: (nodeId: NodeId, patch?: TextPreviewPatch) => void
+      clear: (nodeId: NodeId) => void
       clearSize: (nodeId: NodeId) => void
     }
   }

@@ -29,7 +29,6 @@ export interface SliderProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 
   step?: number
   disabled?: boolean
   marks?: readonly SliderMark[]
-  showValue?: boolean
   formatValue?: (value: number) => string
   size?: 'sm' | 'md'
   onValueChange?: (value: number) => void
@@ -45,7 +44,6 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
     step = 1,
     disabled = false,
     marks,
-    showValue = false,
     formatValue,
     size = 'md',
     className,
@@ -126,11 +124,6 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
         className={cn('flex flex-col gap-2', className)}
         {...props}
       >
-        {showValue ? (
-          <div className="flex items-center justify-end text-xs font-medium text-fg-muted">
-            {displayValue}
-          </div>
-        ) : null}
         <div
           ref={mergedRef}
           role="slider"

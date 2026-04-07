@@ -8,6 +8,10 @@ const STROKE_STYLE_OPTIONS = [
   { key: 'dotted', label: 'Dotted', dash: [2, 4] as const }
 ] as const
 
+const formatPercent = (
+  value: number
+) => `${Math.round(value * 100)}%`
+
 const isDashEqual = (
   left: readonly number[] | undefined,
   right: readonly number[] | undefined
@@ -93,8 +97,7 @@ export const BorderPanel = ({
           max={1}
           step={0.05}
           value={opacity ?? 1}
-          formatValue={(value) => `${Math.round(value * 100)}%`}
-          showValue
+          formatValue={formatPercent}
           onValueChange={onOpacityChange}
           onValueCommit={onOpacityChange}
         />

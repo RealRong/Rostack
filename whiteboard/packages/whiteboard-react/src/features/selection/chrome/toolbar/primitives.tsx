@@ -61,7 +61,7 @@ export const ToolbarStrokeIcon = ({
 }) => (
   <svg
     viewBox="0 0 24 24"
-    className="h-5 w-5"
+    className="size-6"
     fill="none"
   >
     <rect
@@ -85,11 +85,12 @@ export const ToolbarFillIcon = ({
   fill?: string
   opacity?: number
 }) => (
-  <span
-    className="inline-block h-4.5 w-4.5 rounded-md border border-default"
+  <div
+    className="size-5 rounded-md border border-default"
     style={{
-      background: fill ?? 'var(--ui-surface)',
+      background: fill ?? 'var(--ui-gray-bg-soft)',
       opacity: opacity ?? 1
     }}
-  />
+  >
+  </div>
 )

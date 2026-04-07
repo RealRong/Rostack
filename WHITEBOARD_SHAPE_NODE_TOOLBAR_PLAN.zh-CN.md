@@ -351,7 +351,6 @@ type SliderProps = {
   step?: number
   disabled?: boolean
   marks?: readonly SliderMark[]
-  showValue?: boolean
   formatValue?: (value: number) => string
   size?: 'sm' | 'md'
   onValueChange?: (value: number) => void

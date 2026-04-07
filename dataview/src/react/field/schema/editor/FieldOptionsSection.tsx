@@ -8,33 +8,64 @@ import { getFieldOptions } from '@dataview/core/field'
 import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import {
-  OptionEditorPopover,
+  OptionEditorPanel,
   FieldOptionTag
 } from '@dataview/react/field/options'
 import { Button } from '@ui/button'
+import { Menu, type MenuItem } from '@ui/menu'
 import { FieldStatusOptionsSection } from './FieldStatusOptionsSection'
 
 const PlainFieldOptionsSection = (props: {
-  property: CustomField
+  field: CustomField
 }) => {
   const editor = useDataView().engine
-  const [editingOptionId, setEditingOptionId] = useState<string>()
-  const options = getFieldOptions(props.property)
+  const [openOptionId, setOpenOptionId] = useState<string | null>(null)
+  const options = getFieldOptions(props.field)
 
   useEffect(() => {
-    if (editingOptionId && !options.some(option => option.id === editingOptionId)) {
-      setEditingOptionId(undefined)
+    if (openOptionId && !options.some(option => option.id === openOptionId)) {
+      setOpenOptionId(null)
     }
-  }, [editingOptionId, options])
+  }, [openOptionId, options])
 
   const updateOption = (
     option: FieldOption,
     patch: Partial<FieldOption>
-  ) => editor.fields.options.update(props.property.id, option.id, {
+  ) => editor.fields.options.update(props.field.id, option.id, {
     ...(patch.name !== undefined ? { name: patch.name } : {}),
     ...(patch.color !== undefined ? { color: patch.color ?? '' } : {}),
     ...('category' in patch && patch.category !== undefined ? { category: patch.category } : {})
   })
+  const optionItems: readonly MenuItem[] = options.map(option => ({
+    kind: 'submenu' as const,
+    key: option.id,
+    surface: 'panel' as const,
+    size: 'md' as const,
+    leading: <Settings2 className="size-4 shrink-0 text-muted-foreground" size={16} strokeWidth={1.8} />,
+    label: (
+      <FieldOptionTag
+        label={option.name.trim() || renderMessage(meta.ui.field.options.untitled)}
+        color={option.color ?? undefined}
+        className="max-w-full"
+      />
+    ),
+    content: () => (
+      <OptionEditorPanel
+        option={{
+          ...option,
+          color: option.color ?? undefined
+        }}
+        onRename={name => updateOption(option, { name }) !== undefined}
+        onColorChange={color => {
+          updateOption(option, { color })
+        }}
+        onDelete={() => {
+          editor.fields.options.remove(props.field.id, option.id)
+        }}
+        onRequestClose={() => setOpenOptionId(null)}
+      />
+    )
+  }))
 
   return (
     <div className="space-y-1.5 pt-1">
@@ -45,53 +76,21 @@ const PlainFieldOptionsSection = (props: {
       </div>
 
       {options.length ? (
-        <div className="flex flex-col gap-0.5">
-          {options.map(option => {
-            const open = editingOptionId === option.id
-
-            return (
-              <OptionEditorPopover
-                key={option.id}
-                option={{
-                  ...option,
-                  color: option.color ?? undefined
-                }}
-                open={open}
-                onOpenChange={nextOpen => setEditingOptionId(nextOpen ? option.id : undefined)}
-                onRename={name => updateOption(option, { name }) !== undefined}
-                onColorChange={color => {
-                  updateOption(option, { color })
-                }}
-                onDelete={() => {
-                  editor.fields.options.remove(props.property.id, option.id)
-                }}
-                trigger={(
-                  <Button
-                    layout="row"
-                    pressed={open}
-                    leading={<Settings2 className="size-4 shrink-0 text-muted-foreground" size={16} strokeWidth={1.8} />}
-                    onClick={() => undefined}
-                  >
-                    <div className="min-w-0">
-                      <FieldOptionTag
-                        label={option.name.trim() || renderMessage(meta.ui.field.options.untitled)}
-                        color={option.color ?? undefined}
-                      />
-                    </div>
-                  </Button>
-                )}
-              />
-            )
-          })}
-        </div>
+        <Menu
+          items={optionItems}
+          autoFocus={false}
+          submenuOpenPolicy="click"
+          openSubmenuKey={openOptionId}
+          onOpenSubmenuChange={setOpenOptionId}
+        />
       ) : null}
 
       <Button
         leading={<Plus className="size-4" size={14} strokeWidth={1.8} />}
         onClick={() => {
-          const option = editor.fields.options.append(props.property.id)
+          const option = editor.fields.options.append(props.field.id)
           if (option) {
-            setEditingOptionId(option.id)
+            setOpenOptionId(option.id)
           }
         }}
         className="w-full"
@@ -103,7 +102,7 @@ const PlainFieldOptionsSection = (props: {
 }
 
 export const FieldOptionsSection = (props: {
-  property: CustomField
-}) => props.property.kind === 'status'
-  ? <FieldStatusOptionsSection property={props.property} />
-  : <PlainFieldOptionsSection property={props.property} />
+  field: CustomField
+}) => props.field.kind === 'status'
+  ? <FieldStatusOptionsSection field={props.field} />
+  : <PlainFieldOptionsSection field={props.field} />

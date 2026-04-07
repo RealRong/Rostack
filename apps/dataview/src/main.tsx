@@ -8,6 +8,9 @@ import {
   type DataDoc,
   type CustomField
 } from '@dataview'
+import {
+  TITLE_FIELD_ID
+} from '@dataview/core/contracts'
 import { EngineProvider, Page } from '@dataview/react'
 
 const FIELD_STATUS = 'status'
@@ -73,6 +76,7 @@ const createFieldTable = (
 const createDefaultDocument = (): DataDoc => {
   const count = 180
   const fields = createFields()
+  const tableFieldIds = [TITLE_FIELD_ID, ...fields.map(field => field.id)]
   const fieldTable = createFieldTable(fields)
   const records: DataDoc['records'] = {
     byId: {},
@@ -113,7 +117,12 @@ const createDefaultDocument = (): DataDoc => {
             sorters: []
           },
           aggregates: [],
-          options: createDefaultViewOptions('table', fields),
+          options: {
+            ...createDefaultViewOptions('table', fields),
+            display: {
+              fieldIds: tableFieldIds
+            }
+          },
           orders: []
         },
         [VIEW_KANBAN]: {

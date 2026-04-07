@@ -8,11 +8,11 @@ import {
   useFieldById
 } from '@dataview/react/dataview'
 import { Input } from '@ui/input'
+import { Menu, type MenuItem } from '@ui/menu'
 import { meta, renderMessage } from '@dataview/meta'
-import { FieldKindPicker } from '../FieldKindPicker'
-import { FieldFormatSection } from './FieldFormatSection'
+import { buildFieldKindMenuItems } from '../FieldKindPicker'
+import { buildFieldFormatMenuItems } from './FieldFormatSection'
 import { FieldOptionsSection } from './FieldOptionsSection'
-import { FieldPopoverRow } from './FieldSchemaRows'
 
 export interface FieldSchemaEditorProps {
   fieldId: CustomFieldId
@@ -20,36 +20,54 @@ export interface FieldSchemaEditorProps {
 
 export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
   const editor = useDataView().engine
-  const property = useFieldById(props.fieldId)
+  const field = useFieldById(props.fieldId)
   const [nameDraft, setNameDraft] = useState('')
 
   useEffect(() => {
-    setNameDraft(property?.name ?? '')
-  }, [property?.id, property?.name])
+    setNameDraft(field?.name ?? '')
+  }, [field?.id, field?.name])
 
-  if (!property) {
+  if (!field) {
     return null
   }
 
-  const kind = meta.field.kind.get(property.kind)
+  const kind = meta.field.kind.get(field.kind)
   const KindIcon = kind.Icon
 
   const rename = (name: string) => {
-    editor.fields.rename(property.id, name)
+    editor.fields.rename(field.id, name)
   }
 
   const update = (patch: Partial<Omit<CustomField, 'id'>>) => {
-    editor.fields.update(property.id, patch)
+    editor.fields.update(field.id, patch)
   }
+  const typeItems: readonly MenuItem[] = [{
+    kind: 'submenu',
+    key: 'type',
+    label: renderMessage(meta.ui.field.editor.type),
+    suffix: renderMessage(kind.message),
+    size: 'lg',
+    items: buildFieldKindMenuItems({
+      kind: field.kind,
+      isTitleProperty: false,
+      onSelect: nextKind => {
+        editor.fields.convert(field.id, { kind: nextKind })
+      }
+    })
+  }]
+  const formatItems = buildFieldFormatMenuItems({
+    field,
+    update
+  })
 
   const commitName = () => {
     const nextName = nameDraft.trim()
     if (!nextName) {
-      setNameDraft(property.name)
+      setNameDraft(field.name)
       return
     }
 
-    if (nextName !== property.name) {
+    if (nextName !== field.name) {
       rename(nextName)
     }
   }
@@ -83,31 +101,23 @@ export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
 
       <div className="flex-1 overflow-y-auto px-2 pb-3">
         <div className="flex flex-col gap-0.5">
-          <FieldPopoverRow
-            label={renderMessage(meta.ui.field.editor.type)}
-            suffix={renderMessage(kind.message)}
-            widthClassName="w-[240px]"
-          >
-            {close => (
-              <FieldKindPicker
-                kind={property.kind}
-                isTitleProperty={false}
-                onSelect={kind => {
-                  editor.fields.convert(property.id, { kind })
-                  close()
-                }}
-              />
-            )}
-          </FieldPopoverRow>
+          <Menu
+            items={typeItems}
+            autoFocus={false}
+            submenuOpenPolicy="click"
+          />
 
           {kind.supports.options ? (
-            <FieldOptionsSection property={property} />
+            <FieldOptionsSection field={field} />
           ) : null}
 
-          <FieldFormatSection
-            property={property}
-            update={update}
-          />
+          {formatItems.length ? (
+            <Menu
+              items={formatItems}
+              autoFocus={false}
+              submenuOpenPolicy="click"
+            />
+          ) : null}
         </div>
       </div>
     </>

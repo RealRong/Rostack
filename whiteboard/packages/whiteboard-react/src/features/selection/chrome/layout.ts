@@ -2,24 +2,13 @@ import type { Node, NodeSchema, Point, Rect } from '@whiteboard/core/types'
 import type { CSSProperties } from 'react'
 import type {
   ContextMenuPlacement,
-  MenuOpenSnapshot,
-  ToolbarItem,
-  ToolbarItemKey,
-  ToolbarMenuAnchor,
   ToolbarPlacement
 } from '../../../types/selection'
-import type { NodeSelectionCan } from '../../node/summary'
 
 const SAFE_MARGIN = 12
 const MENU_WIDTH = 220
 const TOOLBAR_VERTICAL_GAP = 12
 const TOOLBAR_MIN_TOP_SPACE = 56
-const DEFAULT_IGNORE_DUPLICATE_MS = 300
-const DEFAULT_DUPLICATE_DISTANCE = 4
-
-const STATIC_ITEM_KEYS: readonly ToolbarItemKey[] = [
-  'more'
-]
 
 export const hasSchemaField = (
   schema: NodeSchema | undefined,
@@ -51,34 +40,6 @@ export const readTextValue = (
   const value = node.data?.[key]
   return typeof value === 'string' ? value : ''
 }
-
-export const resolveToolbarItemKeys = (
-  can: Pick<NodeSelectionCan, 'align' | 'fill' | 'stroke' | 'text'>,
-  count: number
-): ToolbarItemKey[] => [
-  ...(count > 1 && can.align ? ['layout'] as const : []),
-  ...(can.fill ? ['fill'] as const : []),
-  ...(can.stroke ? ['stroke'] as const : []),
-  ...(can.text ? ['text'] as const : []),
-  ...STATIC_ITEM_KEYS
-]
-
-export const buildToolbarItem = (
-  key: ToolbarItemKey
-): ToolbarItem => ({
-  key,
-  label:
-    key === 'fill'
-      ? 'Fill'
-      : key === 'stroke'
-        ? 'Stroke'
-        : key === 'text'
-          ? 'Text'
-          : key === 'layout'
-            ? 'Layout'
-            : 'More',
-  active: false
-})
 
 export const resolveToolbarPlacement = ({
   worldToScreen,
@@ -154,63 +115,6 @@ export const buildToolbarStyle = ({
       .filter(Boolean)
       .join(' ')
   }
-}
-
-export const buildToolbarMenuStyle = ({
-  anchor,
-  containerWidth,
-  containerHeight
-}: {
-  anchor: ToolbarMenuAnchor
-  containerWidth: number
-  containerHeight: number
-}): CSSProperties => {
-  const horizontal = resolveHorizontalPosition(anchor.centerX, containerWidth, MENU_WIDTH)
-  const placeBottom = containerHeight - anchor.bottom >= 240
-  return {
-    left: horizontal.left,
-    top: placeBottom ? anchor.bottom + 8 : anchor.top - 8,
-    transform: [horizontal.transform, placeBottom ? 'translateY(0)' : 'translateY(-100%)']
-      .filter(Boolean)
-      .join(' ')
-  }
-}
-
-export const readMenuAnchor = ({
-  container,
-  button
-}: {
-  container: HTMLDivElement | null
-  button: HTMLButtonElement | null | undefined
-}) => {
-  if (!container || !button) return undefined
-
-  const rect = button.getBoundingClientRect()
-  const containerRect = container.getBoundingClientRect()
-  return {
-    top: rect.top - containerRect.top,
-    bottom: rect.bottom - containerRect.top,
-    centerX: rect.left - containerRect.left + rect.width / 2
-  }
-}
-
-export const isDuplicateMenuOpen = (
-  prev: MenuOpenSnapshot | null,
-  next: MenuOpenSnapshot,
-  options?: {
-    maxDelayMs?: number
-    maxDistance?: number
-  }
-) => {
-  const maxDelayMs = options?.maxDelayMs ?? DEFAULT_IGNORE_DUPLICATE_MS
-  const maxDistance = options?.maxDistance ?? DEFAULT_DUPLICATE_DISTANCE
-
-  if (!prev) return false
-  if (next.time - prev.time > maxDelayMs) return false
-  return (
-    Math.abs(prev.x - next.x) <= maxDistance
-    && Math.abs(prev.y - next.y) <= maxDistance
-  )
 }
 
 export const readContextMenuPlacement = ({

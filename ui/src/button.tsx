@@ -50,7 +50,6 @@ export interface ButtonProps
   suffix?: React.ReactNode
   trailing?: React.ReactNode
   tone?: 'default' | 'subtle'
-  focusRing?: boolean
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -64,7 +63,6 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     suffix,
     trailing,
     tone = 'default',
-    focusRing = true,
     children,
     type,
     className,
@@ -94,7 +92,6 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         data-pressed={pressed ? 'true' : undefined}
         className={cn(
           buttonVariants({ variant: resolvedVariant, size: resolvedSize, layout: resolvedLayout, pressed }),
-          focusRing && 'focus-visible:outline-none focus-visible:[box-shadow:0_0_0_3px_rgb(from_var(--ui-focus-ring)_r_g_b_/_0.14)]',
           shouldStartAlign && 'justify-start text-left',
           isChip && tone === 'subtle' && 'bg-transparent text-fg-muted hover:bg-hover hover:text-fg',
           usesPressableSurface && pressed && 'bg-pressed text-fg hover:bg-pressed',

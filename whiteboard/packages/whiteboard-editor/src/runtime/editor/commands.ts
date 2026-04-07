@@ -27,7 +27,10 @@ export const createEditorCommands = ({
     },
     commit: write.document.node.text.commit,
     setColor: write.document.node.text.setColor,
-    setFontSize: write.document.node.text.setFontSize
+    setSize: write.document.node.text.setSize,
+    setWeight: write.document.node.text.setWeight,
+    setItalic: write.document.node.text.setItalic,
+    setAlign: write.document.node.text.setAlign
   } satisfies Editor['commands']['node']['text']
 
   const baseCommands = {

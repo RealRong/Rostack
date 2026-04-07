@@ -5,7 +5,7 @@ import type {
 } from '@dataview/react/interaction'
 
 export interface FieldValueEditorProps {
-  property?: Field
+  field?: Field
   value: unknown
   seedDraft?: string
   autoFocus?: boolean
@@ -14,7 +14,7 @@ export interface FieldValueEditorProps {
 }
 
 export interface FieldValueDraftEditorProps<TDraft = unknown> {
-  property?: CustomField
+  field?: CustomField
   draft: TDraft
   autoFocus?: boolean
   onDraftChange: (draft: TDraft) => void

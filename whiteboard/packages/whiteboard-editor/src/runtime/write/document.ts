@@ -9,6 +9,7 @@ import { createMindmapWrite } from '../commands/mindmap'
 import { createNodeAppearanceCommands } from '../commands/node/appearance'
 import { createNodeDocumentCommands } from '../commands/node/document'
 import { createNodeLockCommands } from '../commands/node/lock'
+import { createNodeShapeCommands } from '../commands/node/shape'
 import { createNodeTextCommands } from '../commands/node/text'
 
 export const createDocumentWrite = ({
@@ -28,6 +29,10 @@ export const createDocumentWrite = ({
     document: nodeDocument
   })
   const nodeLock = createNodeLockCommands({
+    engine,
+    document: nodeDocument
+  })
+  const nodeShape = createNodeShapeCommands({
     engine,
     document: nodeDocument
   })
@@ -53,11 +58,15 @@ export const createDocumentWrite = ({
     order: engine.commands.node.order,
     document: nodeDocument,
     lock: nodeLock,
+    shape: nodeShape,
     appearance: nodeAppearance,
     text: {
       commit: nodeText.commit,
       setColor: nodeText.setColor,
-      setFontSize: nodeText.setFontSize
+      setSize: nodeText.setSize,
+      setWeight: nodeText.setWeight,
+      setItalic: nodeText.setItalic,
+      setAlign: nodeText.setAlign
     }
   } satisfies EditorDocumentWrite['node']
 

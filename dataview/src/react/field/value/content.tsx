@@ -5,7 +5,7 @@ import { FieldValueRenderer } from './FieldValueRenderer'
 import { getFieldValueSpec } from './kinds'
 
 export interface FieldValueContentProps {
-  property?: Field
+  field?: Field
   value: unknown
   emptyPlaceholder?: ReactNode
   className?: string
@@ -47,7 +47,7 @@ const QuickToggleButton = (props: {
 )
 
 export const FieldValueContent = (props: FieldValueContentProps) => {
-  const spec = getFieldValueSpec(props.property)
+  const spec = getFieldValueSpec(props.field)
   if (props.onQuickToggle && spec.capability.quickToggle && spec.toggle) {
     return (
       <QuickToggleButton
@@ -61,7 +61,7 @@ export const FieldValueContent = (props: FieldValueContentProps) => {
 
   return (
     <FieldValueRenderer
-      property={props.property}
+      field={props.field}
       value={props.value}
       emptyPlaceholder={props.emptyPlaceholder}
       className={props.className}

@@ -1,11 +1,17 @@
 export { Button, type ButtonProps } from './button'
 export { Input, type InputProps } from './input'
+export {
+  Slider,
+  type SliderMark,
+  type SliderProps
+} from './slider'
 export { Select, type SelectProps } from './select'
 export { Label, type LabelProps } from './label'
 export {
   Menu,
   type MenuItem,
   type MenuProps,
+  type MenuSurfaceSize,
   type MenuSubmenuOpenPolicy
 } from './menu'
 export {
@@ -19,6 +25,8 @@ export {
   type PopoverAnchorRect,
   type PopoverAnchorReference,
   type PopoverOffset,
+  type PopoverSurfacePadding,
+  type PopoverSurfaceSize,
   type PopoverProps
 } from './popover'
 export {

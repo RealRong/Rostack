@@ -29,10 +29,10 @@ const getFilterFieldIds = (
   return fieldIds
 }
 
-export const getAvailableFilterProperties = (
+export const getAvailableFilterFields = (
   fields: readonly Field[],
   rules: readonly FilterRule[]
 ) => {
   const usedFieldIds = getFilterFieldIds(rules)
-  return fields.filter(property => !usedFieldIds.has(property.id))
+  return fields.filter(field => !usedFieldIds.has(field.id))
 }

@@ -23,7 +23,7 @@ import { QueryChip } from '../query'
 import { StatusFilterPicker } from './StatusFilterPicker'
 
 export interface FilterRulePopoverProps {
-  property?: Field
+  field?: Field
   rule: FilterRule
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -32,10 +32,10 @@ export interface FilterRulePopoverProps {
 }
 
 const readFilterDraft = (
-  property: Pick<Field, 'kind'> | undefined,
+  field: Pick<Field, 'kind'> | undefined,
   value: unknown
 ) => {
-  switch (property?.kind) {
+  switch (field?.kind) {
     case 'number':
       return typeof value === 'number' && Number.isFinite(value)
         ? String(value)
@@ -49,10 +49,10 @@ const readFilterDraft = (
 
 const applyFilterDraft = (
   rule: FilterRule,
-  property: Pick<Field, 'kind'> | undefined,
+  field: Pick<Field, 'kind'> | undefined,
   draft: string
 ): FilterRule | null => {
-  switch (property?.kind) {
+  switch (field?.kind) {
     case 'number': {
       const trimmed = draft.trim()
       if (!trimmed) {
@@ -97,25 +97,25 @@ const applyFilterDraft = (
 
 export const FilterRulePopover = (props: FilterRulePopoverProps) => {
   const [conditionOpen, setConditionOpen] = useState(false)
-  const committedDraft = readFilterDraft(props.property, props.rule.value)
+  const committedDraft = readFilterDraft(props.field, props.rule.value)
   const [draft, setDraft] = useState(() => committedDraft)
 
-  const presentation = meta.filter.present(props.property, props.rule)
-  const active = isFieldFilterEffective(props.property, props.rule.op, props.rule.value)
+  const presentation = meta.filter.present(props.field, props.rule)
+  const active = isFieldFilterEffective(props.field, props.rule.op, props.rule.value)
   const bodyLayout = presentation.bodyLayout
-  const fieldLabel = props.property?.name ?? renderMessage(meta.ui.filter.deletedField)
-  const propertyKind = props.property
-    ? meta.field.kind.get(props.property.kind)
+  const fieldLabel = props.field?.name ?? renderMessage(meta.ui.filter.deletedField)
+  const fieldKind = props.field
+    ? meta.field.kind.get(props.field.kind)
     : undefined
-  const FieldIcon = propertyKind?.Icon ?? Filter
-  const conditionItems = meta.filter.conditions(props.property)
+  const FieldIcon = fieldKind?.Icon ?? Filter
+  const conditionItems = meta.filter.conditions(props.field)
   const editorKind = presentation.value.editor
-  const propertyOptions = isCustomField(props.property)
-    ? getFieldOptions(props.property)
+  const fieldOptions = isCustomField(props.field)
+    ? getFieldOptions(props.field)
     : []
-  const selectedOption = !isCustomField(props.property) || props.property.kind === 'status'
+  const selectedOption = !isCustomField(props.field) || props.field.kind === 'status'
     ? undefined
-    : findFieldOption(props.property, props.rule.value)
+    : findFieldOption(props.field, props.rule.value)
 
   useEffect(() => {
     if (!props.open) {
@@ -125,7 +125,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
 
   useEffect(() => {
     setDraft(committedDraft)
-  }, [committedDraft, props.property?.id, props.rule.op])
+  }, [committedDraft, props.field?.id, props.rule.op])
 
   return (
     <Popover
@@ -135,6 +135,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
       closeOnInteractOutside={!conditionOpen}
       mode="blocking"
       backdrop="transparent"
+      padding="none"
       trigger={(
         <QueryChip
           state={active ? 'active' : props.open ? 'open' : 'idle'}
@@ -144,7 +145,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
           {fieldLabel}
         </QueryChip>
       )}
-      contentClassName="w-[320px] p-0"
+      contentClassName="w-[320px]"
     >
       <div className="flex max-h-[72vh] flex-col">
         <div className={cn(
@@ -155,20 +156,21 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
             <div className="min-w-0 flex-1 text-sm gap-1 flex items-end truncate font-medium text-foreground">
               {fieldLabel}
 
-              {props.property && presentation.condition ? (
+              {props.field && presentation.condition ? (
                 <DropdownMenu
                   open={conditionOpen}
                   onOpenChange={setConditionOpen}
                   initialFocus={-1}
                   placement="bottom-start"
                   offset={6}
+                  size="md"
                   items={conditionItems.map(item => ({
                     kind: 'toggle' as const,
                     key: item.id,
                     label: renderMessage(item.message),
                     checked: item.id === presentation.condition?.id,
                     onSelect: () => {
-                      props.onChange(applyFieldFilterPreset(props.rule, props.property, item))
+                      props.onChange(applyFieldFilterPreset(props.rule, props.field, item))
                       setConditionOpen(false)
                     }
                   }))}
@@ -178,7 +180,6 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
                       <ChevronDown className="opacity-70" size={12} strokeWidth={2} />
                     </div>
                   )}
-                  contentClassName="w-[220px] p-1.5"
                 />
               ) : null}
             </div>
@@ -204,14 +205,14 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
           )}>
             {editorKind === 'status' ? (
               <StatusFilterPicker
-                property={props.property}
+                field={props.field}
                 rule={props.rule}
                 onChange={props.onChange}
               />
             ) : editorKind === 'singleOption' ? (
               <div className="flex flex-col gap-0.5">
-                {propertyOptions.length ? (
-                  propertyOptions.map(option => {
+                {fieldOptions.length ? (
+                  fieldOptions.map(option => {
                     const selected = selectedOption?.id === option.id
 
                     return (
@@ -249,7 +250,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
                   const nextDraft = event.target.value
                   setDraft(nextDraft)
 
-                  const nextRule = applyFilterDraft(props.rule, props.property, nextDraft)
+                  const nextRule = applyFilterDraft(props.rule, props.field, nextDraft)
                   if (nextRule) {
                     props.onChange(nextRule)
                   }

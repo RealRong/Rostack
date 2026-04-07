@@ -1,8 +1,8 @@
 export { SortPopover } from './SortPopover'
 export type { SortPopoverProps } from './SortPopover'
 export {
-  getAvailableSorterProperties,
-  getAvailableSorterPropertiesForIndex,
+  getAvailableSorterFields,
+  getAvailableSorterFieldsForIndex,
   getSorterFieldId,
-  findSorterProperty
+  findSorterField
 } from './sortUi'

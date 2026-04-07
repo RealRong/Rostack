@@ -1,15 +1,15 @@
 import type { Field } from '@dataview/core/contracts'
 
 export const usesOptionGroupingColors = (
-  property?: Pick<Field, 'kind'>
+  field?: Pick<Field, 'kind'>
 ) => {
-  if (!property || property.kind === 'title') {
+  if (!field || field.kind === 'title') {
     return false
   }
 
   return (
-    property.kind === 'select'
-    || property.kind === 'multiSelect'
-    || property.kind === 'status'
+    field.kind === 'select'
+    || field.kind === 'multiSelect'
+    || field.kind === 'status'
   )
 }

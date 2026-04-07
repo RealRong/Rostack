@@ -6,7 +6,7 @@ import {
   type MenuSubmenuOpenPolicy
 } from './menu'
 
-export interface DropdownMenuProps extends Omit<PopoverProps, 'children'> {
+export interface DropdownMenuProps extends Omit<PopoverProps, 'children' | 'padding'> {
   items: readonly MenuItem[]
   autoFocus?: boolean
   submenuOpenPolicy?: MenuSubmenuOpenPolicy
@@ -39,6 +39,7 @@ export const DropdownMenu = (props: DropdownMenuProps) => {
       onOpenChange={setOpen}
       defaultOpen={undefined}
       kind="menu"
+      padding="menu"
     >
       <Menu
         items={items}

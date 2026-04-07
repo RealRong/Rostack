@@ -41,6 +41,12 @@ export const createNodeAppearanceCommands = ({
       }
     })
   ),
+  setFillOpacity: (nodeIds, opacity) => document.updateMany(
+    nodeIds.map((id) => ({
+      id,
+      update: styleUpdate('fillOpacity', opacity)
+    }))
+  ),
   setStroke: (nodeIds, stroke) => document.updateMany(
     nodeIds.map((id) => ({
       id,
@@ -51,6 +57,18 @@ export const createNodeAppearanceCommands = ({
     nodeIds.map((id) => ({
       id,
       update: styleUpdate('strokeWidth', width)
+    }))
+  ),
+  setStrokeOpacity: (nodeIds, opacity) => document.updateMany(
+    nodeIds.map((id) => ({
+      id,
+      update: styleUpdate('strokeOpacity', opacity)
+    }))
+  ),
+  setStrokeDash: (nodeIds, dash) => document.updateMany(
+    nodeIds.map((id) => ({
+      id,
+      update: styleUpdate('strokeDash', dash)
     }))
   ),
   setOpacity: (nodeIds, opacity) => document.updateMany(

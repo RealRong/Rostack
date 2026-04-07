@@ -89,9 +89,9 @@ const GalleryCardContent = (props: {
   measureRefRef.current = props.measureRef
   const marqueeActiveRef = useRef(controller.marqueeActive)
   marqueeActiveRef.current = controller.marqueeActive
-  const hasVisibleProperties = useMemo(() => fields.some(property => (
+  const hasVisibleFields = useMemo(() => fields.some(field => (
     editing
-      || !isEmptyFieldValue(props.record.values[property.id])
+      || !isEmptyFieldValue(props.record.values[field.id])
   )), [editing, fields, props.record])
   const surfaceStyle = !selected
     ? resolveNeutralCardStyle(hovered && !editing ? 'hover' : 'default', 'preview')
@@ -181,7 +181,7 @@ const GalleryCardContent = (props: {
         title: {
           row: cn(
             'flex min-w-0 items-start gap-2.5',
-            hasVisibleProperties && 'pb-2'
+            hasVisibleFields && 'pb-2'
           ),
           content: 'min-w-0 flex-1',
           text: 'text-base font-semibold leading-6',

@@ -55,7 +55,7 @@ export const CardField = (props: CardFieldProps) => {
   if (!props.customField) {
     return (
       <FieldValueContent
-        property={props.customField}
+        field={props.customField}
         value={props.value}
         emptyPlaceholder={props.emptyPlaceholder}
         className={props.valueClassName}
@@ -106,7 +106,7 @@ export const CardField = (props: CardFieldProps) => {
     return (
       <div className={cn('min-w-0', props.className)}>
         <FieldValueContent
-          property={customField}
+          field={customField}
           value={props.value}
           emptyPlaceholder={props.emptyPlaceholder}
           className={props.valueClassName}
@@ -147,7 +147,7 @@ export const CardField = (props: CardFieldProps) => {
       className={cn('min-w-0 select-none text-left', props.className)}
     >
       <FieldValueContent
-        property={customField}
+        field={customField}
         value={props.value}
         emptyPlaceholder={props.emptyPlaceholder}
         className={props.valueClassName}

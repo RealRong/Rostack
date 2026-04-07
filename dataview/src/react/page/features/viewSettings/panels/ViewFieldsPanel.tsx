@@ -21,26 +21,26 @@ import {
 import { meta, renderMessage } from '@dataview/meta'
 
 interface FieldRowProps {
-  property: Field
+  field: Field
   visible: boolean
   onToggle: (checked: boolean) => void
   drag?: VerticalReorderItemState
 }
 
 const FieldRow = (props: FieldRowProps) => {
-  const kind = meta.field.kind.get(props.property.kind)
+  const kind = meta.field.kind.get(props.field.kind)
   const Icon = kind.Icon
 
   return (
     <div
       className={cn(
-        'flex items-center gap-1.5 transition-opacity',
+        'flex items-center gap-1.5 h-7 transition-opacity',
         props.drag?.dragging && 'opacity-70'
       )}
     >
       <Button
         aria-label={props.drag
-          ? renderMessage(meta.ui.viewSettings.fieldsPanel.reorder(props.property.name))
+          ? renderMessage(meta.ui.viewSettings.fieldsPanel.reorder(props.field.name))
           : undefined}
         {...props.drag?.handle.attributes}
         {...props.drag?.handle.listeners}
@@ -56,14 +56,14 @@ const FieldRow = (props: FieldRowProps) => {
 
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <Icon className="size-4 shrink-0" size={16} strokeWidth={1.8} />
-        <span className="truncate">{props.property.name}</span>
+        <span className="truncate text-sm">{props.field.name}</span>
       </div>
 
       <Button
         aria-label={renderMessage(
           props.visible
-            ? meta.ui.viewSettings.fieldsPanel.hide(props.property.name)
-            : meta.ui.viewSettings.fieldsPanel.show(props.property.name)
+            ? meta.ui.viewSettings.fieldsPanel.hide(props.field.name)
+            : meta.ui.viewSettings.fieldsPanel.show(props.field.name)
         )}
         onClick={() => props.onToggle(!props.visible)}
         size="icon"
@@ -91,44 +91,44 @@ export const ViewFieldsPanel = () => {
   const [query, setQuery] = useState('')
   const normalizedQuery = query.trim().toLowerCase()
   const displayFieldIds = currentView?.options.display.fieldIds ?? []
-  const propertyMap = useMemo(
-    () => new Map(fields.map(property => [property.id, property] as const)),
+  const fieldMap = useMemo(
+    () => new Map(fields.map(field => [field.id, field] as const)),
     [fields]
   )
   const visibleFields = useMemo(
     () => displayFieldIds
-      .map(fieldId => propertyMap.get(fieldId))
-      .filter((property): property is Field => Boolean(property)),
-    [displayFieldIds, propertyMap]
+      .map(fieldId => fieldMap.get(fieldId))
+      .filter((field): field is Field => Boolean(field)),
+    [displayFieldIds, fieldMap]
   )
-  const hiddenProperties = useMemo(
-    () => fields.filter(property => !displayFieldIds.includes(property.id)),
+  const hiddenFields = useMemo(
+    () => fields.filter(field => !displayFieldIds.includes(field.id)),
     [displayFieldIds, fields]
   )
-  const filteredVisibleProperties = useMemo(
-    () => visibleFields.filter(property => {
+  const filteredVisibleFields = useMemo(
+    () => visibleFields.filter(field => {
       if (!normalizedQuery) {
         return true
       }
 
-      const kindLabel = renderMessage(meta.field.kind.get(property.kind).message).toLowerCase()
-      return property.name.toLowerCase().includes(normalizedQuery) || kindLabel.includes(normalizedQuery)
+      const kindLabel = renderMessage(meta.field.kind.get(field.kind).message).toLowerCase()
+      return field.name.toLowerCase().includes(normalizedQuery) || kindLabel.includes(normalizedQuery)
     }),
     [normalizedQuery, visibleFields]
   )
-  const filteredHiddenProperties = useMemo(
-    () => hiddenProperties.filter(property => {
+  const filteredHiddenFields = useMemo(
+    () => hiddenFields.filter(field => {
       if (!normalizedQuery) {
         return true
       }
 
-      const kindLabel = renderMessage(meta.field.kind.get(property.kind).message).toLowerCase()
-      return property.name.toLowerCase().includes(normalizedQuery) || kindLabel.includes(normalizedQuery)
+      const kindLabel = renderMessage(meta.field.kind.get(field.kind).message).toLowerCase()
+      return field.name.toLowerCase().includes(normalizedQuery) || kindLabel.includes(normalizedQuery)
     }),
-    [hiddenProperties, normalizedQuery]
+    [hiddenFields, normalizedQuery]
   )
   const hideableVisiblePropertyIds = displayFieldIds
-  const hasFilteredResults = filteredVisibleProperties.length > 0 || filteredHiddenProperties.length > 0
+  const hasFilteredResults = filteredVisibleFields.length > 0 || filteredHiddenFields.length > 0
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -141,7 +141,7 @@ export const ViewFieldsPanel = () => {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
-        <div className="mb-1 flex items-center gap-3 px-2 text-sm mb-3 font-medium text-muted-foreground">
+        <div className="mb-1 flex items-center gap-3 px-2 text-sm mb-2 font-medium text-muted-foreground">
           <div className="min-w-0 flex-1">
             {renderMessage(meta.ui.viewSettings.fieldsPanel.shownIn(currentView?.type))}
           </div>
@@ -158,10 +158,10 @@ export const ViewFieldsPanel = () => {
         </div>
 
         {hasFilteredResults ? (
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-1">
             <VerticalReorderList
-              items={filteredVisibleProperties}
-              getItemId={property => property.id}
+              items={filteredVisibleFields}
+              getItemId={field => field.id}
               onMove={(from, to) => {
                 const fieldId = displayFieldIds[from]
                 const beforeFieldId = displayFieldIds[to]
@@ -178,9 +178,9 @@ export const ViewFieldsPanel = () => {
                 )
               }}
               className='gap-1'
-              renderItem={(property, drag) => (
+              renderItem={(field, drag) => (
                 <FieldRow
-                  property={property}
+                  field={field}
                   visible
                   drag={normalizedQuery ? undefined : drag}
                   onToggle={checked => {
@@ -188,23 +188,23 @@ export const ViewFieldsPanel = () => {
                       return
                     }
 
-                    currentViewDomain?.display.hideField(property.id)
+                    currentViewDomain?.display.hideField(field.id)
                   }}
                 />
               )}
             />
 
-            {filteredHiddenProperties.map(property => (
+            {filteredHiddenFields.map(field => (
               <FieldRow
-                key={property.id}
-                property={property}
+                key={field.id}
+                field={field}
                 visible={false}
                 onToggle={checked => {
                   if (!checked) {
                     return
                   }
 
-                  currentViewDomain?.display.showField(property.id)
+                  currentViewDomain?.display.showField(field.id)
                 }}
               />
             ))}

@@ -63,7 +63,7 @@ export * from './schema'
 export * from './options'
 export {
   STATUS_CATEGORIES,
-  compareStatusPropertyValues,
+  compareStatusFieldValues,
   createDefaultStatusOptions,
   getStatusCategoryColor,
   getStatusCategoryLabel,
@@ -74,16 +74,16 @@ export {
 } from './kind/status'
 export {
   createDateGroupValue,
-  createDefaultDatePropertyConfig,
+  createDefaultDateFieldConfig,
   formatDateValue,
-  getDatePropertyConfig,
+  getDateFieldConfig,
   isValidDateTimeZone,
   parseDateGroupKey,
   parseDateInputDraft,
   readDateComparableTimestamp
 } from './kind/date'
 export {
-  createDefaultUrlPropertyConfig,
+  createDefaultUrlFieldConfig,
   formatUrlDisplayValue
 } from './kind/url'
 export {

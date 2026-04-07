@@ -267,6 +267,7 @@ type TitleField = SystemField & {
 
 - `field: Field`
 - `fields: readonly Field[]`
+- `customField?: CustomField`
 - `fieldId: FieldId`
 
 避免使用：

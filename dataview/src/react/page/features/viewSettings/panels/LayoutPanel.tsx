@@ -20,14 +20,14 @@ const LayoutTypeCard = (props: {
       type="button"
       onClick={props.onClick}
       className={cn(
-        'flex h-[84px] min-w-0 flex-col items-center justify-center gap-2 rounded-xl border bg-surface px-3 text-center text-fg-muted transition-colors',
+        'flex h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-xl border bg-surface px-3 text-center text-fg-muted transition-colors',
         props.selected
-          ? 'border-primary bg-accent-tint text-accent shadow-sm'
+          ? 'border-primary text-accent'
           : 'hover:bg-hover hover:text-fg'
       )}
     >
       <Icon className="size-5 shrink-0" size={18} strokeWidth={1.8} />
-      <span className="truncate text-sm font-semibold">
+      <span className="truncate text-xs font-medium">
         {renderMessage(meta.ui.viewSettings.layoutPanel.viewTypeOption(props.type))}
       </span>
     </button>
@@ -36,21 +36,15 @@ const LayoutTypeCard = (props: {
 
 const LayoutSwitchRow = (props: {
   label: string
-  description?: string
   checked: boolean
   disabled?: boolean
   onCheckedChange: (checked: boolean) => void
 }) => (
-  <div className="flex items-start gap-3 py-3">
+  <div className="flex items-start gap-3">
     <div className="min-w-0 flex-1">
       <div className="text-sm font-medium text-foreground">
         {props.label}
       </div>
-      {props.description ? (
-        <div className="mt-1 text-[12px] leading-5 text-fg-muted">
-          {props.description}
-        </div>
-      ) : null}
     </div>
     <Switch
       checked={props.checked}
@@ -81,36 +75,27 @@ export const LayoutPanel = () => {
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-      <div>
-        <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-fg-muted">
-          {renderMessage(meta.ui.viewSettings.layoutPanel.viewType)}
-        </div>
-        <div className="mt-1 text-[12px] leading-5 text-fg-muted">
-          {renderMessage(meta.ui.viewSettings.layoutPanel.viewTypeSectionDescription)}
-        </div>
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          {SUPPORTED_LAYOUT_TYPES.map(type => (
-            <LayoutTypeCard
-              key={type}
-              type={type}
-              selected={view.type === type}
-              onClick={() => {
-                if (view.type === type) {
-                  return
-                }
+      <div className="grid grid-cols-3 gap-2">
+        {SUPPORTED_LAYOUT_TYPES.map(type => (
+          <LayoutTypeCard
+            key={type}
+            type={type}
+            selected={view.type === type}
+            onClick={() => {
+              if (view.type === type) {
+                return
+              }
 
-                viewApi.setType(type)
-              }}
-            />
-          ))}
-        </div>
+              viewApi.setType(type)
+            }}
+          />
+        ))}
       </div>
 
       {view.type === 'table' ? (
-        <div className="mt-5 border-t border-divider">
+        <div className="mt-3">
           <LayoutSwitchRow
             label={renderMessage(meta.ui.viewSettings.layoutPanel.showVerticalLines)}
-            description={renderMessage(meta.ui.viewSettings.layoutPanel.showVerticalLinesDescription)}
             checked={view.options.table.showVerticalLines}
             onCheckedChange={checked => {
               viewApi.settings.table.setShowVerticalLines(checked)
@@ -120,14 +105,9 @@ export const LayoutPanel = () => {
       ) : null}
 
       {view.type === 'kanban' ? (
-        <div className="mt-5 border-t border-divider">
+        <div className="mt-3">
           <LayoutSwitchRow
             label={renderMessage(meta.ui.viewSettings.layoutPanel.fillColumnColor)}
-            description={renderMessage(
-              canFillKanbanColumns
-                ? meta.ui.viewSettings.layoutPanel.fillColumnColorDescription
-                : meta.ui.viewSettings.layoutPanel.fillColumnColorDisabledDescription
-            )}
             checked={view.options.kanban.fillColumnColor}
             disabled={!canFillKanbanColumns}
             onCheckedChange={checked => {

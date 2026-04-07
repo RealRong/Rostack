@@ -1,13 +1,6 @@
-import { Check } from 'lucide-react'
-import { useEffect, useState, type ReactElement } from 'react'
-import { Button } from '@ui/button'
-import {
-  resolveOptionDotStyle,
-  resolveOptionColorToken
-} from '@ui/color'
-import { Input } from '@ui/input'
+import type { ReactElement } from 'react'
 import { Popover } from '@ui/popover'
-import { meta, renderMessage } from '@dataview/meta'
+import { OptionEditorPanel } from './OptionEditorPanel'
 
 export interface OptionLike {
   id: string
@@ -26,33 +19,6 @@ export interface OptionEditorPopoverProps {
 }
 
 export const OptionEditorPopover = (props: OptionEditorPopoverProps) => {
-  const [draftName, setDraftName] = useState(props.option.name)
-
-  useEffect(() => {
-    setDraftName(props.option.name)
-  }, [props.option.id, props.option.name, props.open])
-
-  const commitName = () => {
-    const nextName = draftName.trim()
-    if (!nextName) {
-      setDraftName(props.option.name)
-      return
-    }
-
-    if (nextName === props.option.name) {
-      setDraftName(nextName)
-      return
-    }
-
-    const result = props.onRename(nextName)
-    if (result === false) {
-      setDraftName(props.option.name)
-      return
-    }
-
-    setDraftName(nextName)
-  }
-
   return (
     <Popover
       open={props.open}
@@ -61,70 +27,16 @@ export const OptionEditorPopover = (props: OptionEditorPopoverProps) => {
       placement="bottom-start"
       offset={10}
       initialFocus={-1}
-      contentClassName="w-[220px] p-1.5"
+      size="md"
+      padding="panel"
     >
-      <div className="flex flex-col gap-2">
-        <Input
-          value={draftName}
-          onChange={event => setDraftName(event.target.value)}
-          onBlur={commitName}
-          onKeyDown={event => {
-            event.stopPropagation()
-
-            if (event.key !== 'Enter') {
-              return
-            }
-
-            event.preventDefault()
-            commitName()
-          }}
-          placeholder={renderMessage(meta.ui.field.options.namePlaceholder)}
-        />
-
-        <div>
-          <div className="flex flex-col gap-0.5">
-            {meta.option.color.list.map(color => {
-              const active = (props.option.color ?? '') === color.id
-              return (
-                <Button
-                  key={color.id || 'default'}
-                  onClick={() => props.onColorChange(color.id)}
-                  layout="row"
-                  leading={(
-                    <span
-                      className="inline-flex h-3 w-3 shrink-0 rounded-full border"
-                      style={{
-                        ...resolveOptionDotStyle(color.id),
-                        borderColor: resolveOptionColorToken(color.id, 'badge-border')
-                      }}
-                    />
-                  )}
-                  trailing={active
-                    ? <Check className="size-4 text-foreground" size={16} strokeWidth={1.8} />
-                    : undefined}
-                  pressed={active}
-                >
-                  {renderMessage(color.message)}
-                </Button>
-              )
-            })}
-          </div>
-        </div>
-        {props.onDelete ? (
-          <div className="border-t border-divider pt-1.5">
-            <Button
-              variant="ghostDestructive"
-              layout="row"
-              onClick={() => {
-                props.onDelete?.()
-                props.onOpenChange(false)
-              }}
-            >
-              {renderMessage(meta.ui.field.options.remove)}
-            </Button>
-          </div>
-        ) : null}
-      </div>
+      <OptionEditorPanel
+        option={props.option}
+        onRename={props.onRename}
+        onColorChange={props.onColorChange}
+        onDelete={props.onDelete}
+        onRequestClose={() => props.onOpenChange(false)}
+      />
     </Popover>
   )
 }

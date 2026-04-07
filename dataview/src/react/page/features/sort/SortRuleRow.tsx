@@ -15,8 +15,8 @@ import { meta, renderMessage } from '@dataview/meta'
 import { FieldPicker } from '@dataview/react/page/features/viewQuery/FieldPicker'
 import {
   SORT_DIRECTIONS,
-  findSorterProperty,
-  getAvailableSorterPropertiesForIndex
+  findSorterField,
+  getAvailableSorterFieldsForIndex
 } from './sortUi'
 
 export interface SortRuleRowProps {
@@ -32,13 +32,13 @@ export interface SortRuleRowProps {
 export const SortRuleRow = (props: SortRuleRowProps) => {
   const [fieldOpen, setFieldOpen] = useState(false)
   const [directionOpen, setDirectionOpen] = useState(false)
-  const property = findSorterProperty(props.fields, props.sorter)
-  const availableFields = getAvailableSorterPropertiesForIndex(props.fields, props.sorters, props.index)
-  const fieldLabel = property?.name ?? renderMessage(meta.ui.sort.deletedField)
-  const propertyKind = property
-    ? meta.field.kind.get(property.kind)
+  const field = findSorterField(props.fields, props.sorter)
+  const availableFields = getAvailableSorterFieldsForIndex(props.fields, props.sorters, props.index)
+  const fieldLabel = field?.name ?? renderMessage(meta.ui.sort.deletedField)
+  const fieldKind = field
+    ? meta.field.kind.get(field.kind)
     : undefined
-  const FieldIcon = propertyKind?.Icon
+  const FieldIcon = fieldKind?.Icon
 
   return (
     <div
@@ -71,10 +71,12 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
         onOpenChange={setFieldOpen}
         initialFocus={-1}
         placement="bottom-start"
+        size="xl"
+        padding="none"
         trigger={(
           <Button
             layout="row"
-            leading={property && FieldIcon
+            leading={field && FieldIcon
               ? <FieldIcon className="size-4 shrink-0" size={16} strokeWidth={1.8} />
               : <ArrowUpDown className="size-4 shrink-0" size={16} strokeWidth={1.8} />}
             trailing={<ChevronDown className="size-4 shrink-0" size={16} strokeWidth={1.8} />}
@@ -82,12 +84,11 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
             {fieldLabel}
           </Button>
         )}
-        contentClassName="w-[280px] p-0"
       >
         <div className="flex max-h-[72vh] flex-col">
           <FieldPicker
             fields={availableFields}
-            selectedFieldId={property?.id}
+            selectedFieldId={field?.id}
             emptyMessage={meta.ui.fieldPicker.noAvailable}
             onSelect={fieldId => {
               props.onChange({
@@ -105,6 +106,7 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
         onOpenChange={setDirectionOpen}
         initialFocus={-1}
         placement="bottom-start"
+        size="sm"
         items={SORT_DIRECTIONS.map(direction => ({
           kind: 'toggle' as const,
           key: direction,
@@ -126,7 +128,6 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
             {renderMessage(meta.sort.direction.get(props.sorter.direction).message)}
           </Button>
         )}
-        contentClassName="min-w-0 w-[180px] p-1.5"
       />
 
       <Button

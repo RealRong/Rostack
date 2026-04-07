@@ -1,10 +1,25 @@
-import type { ReactNode } from 'react'
+import {
+  useId,
+  type ReactNode
+} from 'react'
 import type { ShapeKind } from '@whiteboard/core/node'
 
 type ShapeColors = {
   fill: string
+  fillOpacity?: number
   stroke: string
+  strokeOpacity?: number
+  strokeDash?: readonly number[]
   strokeWidth: number
+}
+
+type ShapePaint = {
+  fill?: string
+  fillOpacity?: number
+  stroke?: string
+  strokeOpacity?: number
+  strokeDash?: readonly number[]
+  strokeWidth?: number
 }
 
 const SHAPE_MIN = 3
@@ -15,17 +30,25 @@ const readShapeStrokeLinecap = (
   kind: ShapeKind
 ): 'round' | 'butt' => kind === 'cloud' || kind === 'highlight' ? 'round' : 'butt'
 
-const renderShapeGraphic = (
+const readShapePaintProps = (
   kind: ShapeKind,
-  colors: ShapeColors
+  paint: ShapePaint
+) => ({
+  fill: paint.fill,
+  fillOpacity: paint.fillOpacity,
+  stroke: paint.stroke,
+  strokeOpacity: paint.strokeOpacity,
+  strokeDasharray: paint.strokeDash?.join(' '),
+  strokeWidth: paint.strokeWidth,
+  strokeLinejoin: 'round' as const,
+  strokeLinecap: readShapeStrokeLinecap(kind)
+})
+
+const renderOuterShapeGraphic = (
+  kind: ShapeKind,
+  paint: ShapePaint = {}
 ): ReactNode => {
-  const common = {
-    fill: colors.fill,
-    stroke: colors.stroke,
-    strokeWidth: colors.strokeWidth,
-    strokeLinejoin: 'round' as const,
-    strokeLinecap: readShapeStrokeLinecap(kind)
-  }
+  const common = readShapePaintProps(kind, paint)
 
   switch (kind) {
     case 'rect':
@@ -46,20 +69,10 @@ const renderShapeGraphic = (
       return <polygon points={`20,${SHAPE_MIN} ${SHAPE_MAX},${SHAPE_MIN} 80,${SHAPE_MAX} ${SHAPE_MIN},${SHAPE_MAX}`} {...common} />
     case 'cylinder':
       return (
-        <>
-          <path
-            d="M10 14 C10 4 90 4 90 14 V86 C90 96 10 96 10 86 Z"
-            {...common}
-          />
-          <ellipse cx={SHAPE_MID} cy="14" rx="40" ry="10" {...common} />
-          <path
-            d="M10 86 C10 76 90 76 90 86"
-            fill="none"
-            stroke={colors.stroke}
-            strokeWidth={colors.strokeWidth}
-            strokeLinecap="round"
-          />
-        </>
+        <path
+          d="M10 14 C10 4 90 4 90 14 V86 C90 96 10 96 10 86 Z"
+          {...common}
+        />
       )
     case 'document':
       return (
@@ -70,15 +83,7 @@ const renderShapeGraphic = (
       )
     case 'predefined-process':
       return (
-        <>
-          <rect x={SHAPE_MIN} y={SHAPE_MIN} width={SHAPE_MAX - SHAPE_MIN} height={SHAPE_MAX - SHAPE_MIN} rx="2" {...common} />
-          <path
-            d={`M18 ${SHAPE_MIN} V${SHAPE_MAX} M82 ${SHAPE_MIN} V${SHAPE_MAX}`}
-            fill="none"
-            stroke={colors.stroke}
-            strokeWidth={colors.strokeWidth}
-          />
-        </>
+        <rect x={SHAPE_MIN} y={SHAPE_MIN} width={SHAPE_MAX - SHAPE_MIN} height={SHAPE_MAX - SHAPE_MIN} rx="2" {...common} />
       )
     case 'callout':
       return (
@@ -103,17 +108,67 @@ const renderShapeGraphic = (
       )
     case 'highlight':
       return (
+        <rect x="3" y="22" width="94" height="56" rx="18" {...common} />
+      )
+  }
+}
+
+const renderShapeDecorations = (
+  kind: ShapeKind,
+  colors: ShapeColors
+): ReactNode => {
+  switch (kind) {
+    case 'cylinder':
+      return (
         <>
-          <rect x="3" y="22" width="94" height="56" rx="18" {...common} />
-          <path
-            d="M8 79 C25 89 41 69 57 79 S83 89 96 78"
+          <ellipse
+            cx={SHAPE_MID}
+            cy="14"
+            rx="40"
+            ry="10"
             fill="none"
             stroke={colors.stroke}
-            strokeWidth={Math.max(1, colors.strokeWidth - 0.2)}
+            strokeOpacity={colors.strokeOpacity}
+            strokeDasharray={colors.strokeDash?.join(' ')}
+            strokeWidth={colors.strokeWidth}
+            strokeLinecap="round"
+          />
+          <path
+            d="M10 86 C10 76 90 76 90 86"
+            fill="none"
+            stroke={colors.stroke}
+            strokeOpacity={colors.strokeOpacity}
+            strokeDasharray={colors.strokeDash?.join(' ')}
+            strokeWidth={colors.strokeWidth}
             strokeLinecap="round"
           />
         </>
       )
+    case 'predefined-process':
+      return (
+        <path
+          d={`M18 ${SHAPE_MIN} V${SHAPE_MAX} M82 ${SHAPE_MIN} V${SHAPE_MAX}`}
+          fill="none"
+          stroke={colors.stroke}
+          strokeOpacity={colors.strokeOpacity}
+          strokeDasharray={colors.strokeDash?.join(' ')}
+          strokeWidth={colors.strokeWidth}
+        />
+      )
+    case 'highlight':
+      return (
+        <path
+          d="M8 79 C25 89 41 69 57 79 S83 89 96 78"
+          fill="none"
+          stroke={colors.stroke}
+          strokeOpacity={colors.strokeOpacity}
+          strokeDasharray={colors.strokeDash?.join(' ')}
+          strokeWidth={Math.max(1, colors.strokeWidth - 0.2)}
+          strokeLinecap="round"
+        />
+      )
+    default:
+      return null
   }
 }
 
@@ -125,6 +180,9 @@ export const ShapeGlyph = ({
   strokeWidth = 1.5,
   fill = 'none',
   stroke = 'currentColor',
+  fillOpacity,
+  strokeOpacity,
+  strokeDash,
   className
 }: {
   kind: ShapeKind
@@ -134,21 +192,54 @@ export const ShapeGlyph = ({
   strokeWidth?: number
   fill?: string
   stroke?: string
+  fillOpacity?: number
+  strokeOpacity?: number
+  strokeDash?: readonly number[]
   className?: string
-}) => (
-  <svg
-    viewBox="0 0 100 100"
-    width={width ?? size}
-    height={height ?? size ?? width}
-    preserveAspectRatio="none"
-    aria-hidden="true"
-    className={className}
-    fill="none"
-  >
-    {renderShapeGraphic(kind, {
-      fill,
-      stroke,
-      strokeWidth
-    })}
-  </svg>
-)
+}) => {
+  const clipId = useId().replace(/:/g, '_')
+  const visibleStrokeWidth = Math.max(0, strokeWidth)
+  const strokePaintWidth = visibleStrokeWidth * 2
+
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      width={width ?? size}
+      height={height ?? size ?? width}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      className={className}
+      fill="none"
+    >
+      <defs>
+        <clipPath id={clipId} clipPathUnits="userSpaceOnUse">
+          {renderOuterShapeGraphic(kind)}
+        </clipPath>
+      </defs>
+      {renderOuterShapeGraphic(kind, {
+        fill,
+        fillOpacity,
+        stroke: 'none'
+      })}
+      {strokePaintWidth > 0 ? (
+        <g clipPath={`url(#${clipId})`}>
+          {renderOuterShapeGraphic(kind, {
+            fill: 'none',
+            stroke,
+            strokeOpacity,
+            strokeDash,
+            strokeWidth: strokePaintWidth
+          })}
+        </g>
+      ) : null}
+      {renderShapeDecorations(kind, {
+        fill,
+        fillOpacity,
+        stroke,
+        strokeOpacity,
+        strokeDash,
+        strokeWidth: visibleStrokeWidth
+      })}
+    </svg>
+  )
+}

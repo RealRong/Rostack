@@ -75,6 +75,7 @@ export const ViewSettingsPopover = () => {
         initialFocus={-1}
         mode="blocking"
         backdrop="transparent"
+        padding="none"
         trigger={(
           <Button
             size="icon"
@@ -86,7 +87,7 @@ export const ViewSettingsPopover = () => {
             <Settings2 className="size-4" size={15} strokeWidth={1} />
           </Button>
         )}
-        contentClassName="w-[290px] p-0"
+        contentClassName="w-[290px]"
       >
         <div
           className="flex max-h-[80vh] flex-col"

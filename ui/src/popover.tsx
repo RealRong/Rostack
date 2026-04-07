@@ -51,6 +51,8 @@ import { cn } from './utils'
 const POPOVER_TRANSITION_MS = 200
 
 export type PopoverOffset = Parameters<typeof middlewareOffset>[0]
+export type PopoverSurfaceSize = 'sm' | 'md' | 'lg' | 'xl'
+export type PopoverSurfacePadding = 'none' | 'menu' | 'panel'
 
 export type PopoverAnchorPoint = {
   x: number
@@ -197,6 +199,33 @@ const getPopoverTransformOrigin = (placement: Placement): string => {
   return '50% 0%'
 }
 
+const POPOVER_SURFACE_SIZE_CLASS_NAMES: Record<PopoverSurfaceSize, string> = {
+  sm: 'w-[180px]',
+  md: 'w-[220px]',
+  lg: 'w-[240px]',
+  xl: 'w-[280px]'
+}
+
+const POPOVER_SURFACE_PADDING_CLASS_NAMES: Record<PopoverSurfacePadding, string> = {
+  none: 'p-0',
+  menu: 'p-1.5',
+  panel: 'p-1.5'
+}
+
+const EXPLICIT_POPOVER_WIDTH_CLASS_PATTERN = /\b(?:w-|min-w-|max-w-)/
+
+export const resolvePopoverSurfaceSizeClassName = (size: PopoverSurfaceSize) => (
+  POPOVER_SURFACE_SIZE_CLASS_NAMES[size]
+)
+
+export const resolvePopoverSurfacePaddingClassName = (padding: PopoverSurfacePadding) => (
+  POPOVER_SURFACE_PADDING_CLASS_NAMES[padding]
+)
+
+const hasExplicitPopoverWidthClassName = (className: string | undefined) => (
+  Boolean(className && EXPLICIT_POPOVER_WIDTH_CLASS_PATTERN.test(className))
+)
+
 const toTriggerRef = (trigger: ReactElement): Ref<Element> | undefined => {
   const value = trigger as ReactElement & {
     ref?: Ref<Element>
@@ -238,6 +267,8 @@ export interface PopoverProps {
   kind?: OverlayLayerKind
   matchTriggerWidth?: boolean
   initialFocus?: number | MutableRefObject<HTMLElement | null>
+  size?: PopoverSurfaceSize
+  padding?: PopoverSurfacePadding
   className?: string
   contentClassName?: string
   closeOnInteractOutside?: boolean
@@ -432,6 +463,15 @@ export const Popover = (props: PopoverProps) => {
   })
   const visible = props.animated === false ? open : transition.isMounted
   const transitionStyles = props.animated === false ? undefined : transition.styles
+  const hasExplicitWidthClassName = hasExplicitPopoverWidthClassName(
+    cn(contentProps?.className, props.contentClassName)
+  )
+  const surfaceSizeClassName = props.size
+    ? resolvePopoverSurfaceSizeClassName(props.size)
+    : hasExplicitWidthClassName
+      ? undefined
+      : 'min-w-[280px]'
+  const surfacePaddingClassName = resolvePopoverSurfacePaddingClassName(props.padding ?? 'none')
   const localBackdropVisible = !overlay
     && mode === 'blocking'
     && backdrop !== 'none'
@@ -498,9 +538,11 @@ export const Popover = (props: PopoverProps) => {
           ...transitionStyles
         }}
         className={cn(
-          'min-w-[280px] rounded-xl bg-floating p-4 text-fg shadow-popover transition-[opacity,transform] duration-200 ease-out will-change-[opacity,transform]',
+          'rounded-xl bg-floating text-fg shadow-popover transition-[opacity,transform] duration-200 ease-out will-change-[opacity,transform]',
           contentProps?.className,
-          props.contentClassName
+          props.contentClassName,
+          surfaceSizeClassName,
+          surfacePaddingClassName
         )}
       >
         <OverlayLayerProvider layerId={layer.id}>
@@ -521,7 +563,7 @@ export const Popover = (props: PopoverProps) => {
       {trigger}
       {visible ? (
         <FloatingPortal root={portalRoot}>
-          <FloatingFocusManager
+          {props.initialFocus ? <FloatingFocusManager
             context={floating.context}
             modal={mode !== 'floating'}
             initialFocus={props.initialFocus ?? 0}
@@ -541,6 +583,10 @@ export const Popover = (props: PopoverProps) => {
                   }}
                   onPointerDown={dismissLocalBackdrop}
                   onMouseDown={dismissLocalBackdrop}
+                  onContextMenu={event => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                  }}
                   onClick={event => {
                     event.preventDefault()
                     event.stopPropagation()
@@ -549,7 +595,32 @@ export const Popover = (props: PopoverProps) => {
               ) : null}
               {floatingContent}
             </>
-          </FloatingFocusManager>
+          </FloatingFocusManager> : <>
+            {localBackdropVisible ? (
+              <div
+                aria-hidden="true"
+                className={cn(
+                  'fixed inset-0 z-40',
+                  backdrop === 'dim' ? 'bg-overlay' : 'bg-transparent'
+                )}
+                {...{
+                  [OVERLAY_BLOCKING_ATTR]: '',
+                  [OVERLAY_BLOCKING_BACKDROP_ATTR]: ''
+                }}
+                onPointerDown={dismissLocalBackdrop}
+                onMouseDown={dismissLocalBackdrop}
+                onContextMenu={event => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                }}
+                onClick={event => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                }}
+              />
+            ) : null}
+            {floatingContent}
+          </>}
         </FloatingPortal>
       ) : null}
     </>

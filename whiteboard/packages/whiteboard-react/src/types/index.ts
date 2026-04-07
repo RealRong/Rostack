@@ -17,10 +17,5 @@ export type {
 } from './mindmap'
 export type {
   ContextMenuPlacement,
-  MenuOpenSnapshot,
-  ToolbarIconState,
-  ToolbarItem,
-  ToolbarItemKey,
-  ToolbarMenuAnchor,
   ToolbarPlacement
 } from './selection'

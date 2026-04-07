@@ -7,7 +7,7 @@ import type {
   CustomFieldId
 } from '../../contracts/state'
 import {
-  createDefaultDatePropertyConfig,
+  createDefaultDateFieldConfig,
   DATE_DISPLAY_FORMATS,
   DATE_TIME_FORMATS,
   DATE_VALUE_KINDS,
@@ -180,7 +180,7 @@ export const normalizeCustomField = (field: CustomField): CustomField => {
       }
     }
     case 'date': {
-      const defaults = createDefaultDatePropertyConfig()
+      const defaults = createDefaultDateFieldConfig()
 
       return {
         ...base,

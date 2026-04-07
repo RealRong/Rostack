@@ -27,6 +27,7 @@ export const CreateViewPopover = () => {
       initialFocus={-1}
       mode="blocking"
       backdrop="transparent"
+      padding="none"
       trigger={(
         <Button
           size="icon"
@@ -36,7 +37,7 @@ export const CreateViewPopover = () => {
           <Plus className="size-4" size={15} strokeWidth={1} />
         </Button>
       )}
-      contentClassName="w-[360px] p-0"
+      contentClassName="w-[360px]"
     >
       <div className="flex flex-col gap-5 p-4">
         <div className="space-y-1">

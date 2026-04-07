@@ -17,7 +17,7 @@ export const ColumnHeader = (props: {
 
       {canRenderBucket ? (
         <FieldValueContent
-          property={groupField}
+          field={groupField}
           value={bucket?.value}
           emptyPlaceholder={bucket?.title ?? props.section.title}
           className={cn(

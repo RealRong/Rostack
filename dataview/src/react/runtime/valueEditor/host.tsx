@@ -88,7 +88,7 @@ export const FieldValueEditorHost = () => {
   const session = useStoreValue(valueEditor.store)
   const document = useStoreValue(engine.read.document)
   const field = session?.field
-  const property = field
+  const valueField = field
     ? getDocumentFieldById(document, field.fieldId)
     : undefined
   const record = field
@@ -102,8 +102,8 @@ export const FieldValueEditorHost = () => {
     setContainer(prev => prev === node ? prev : node)
   }, [])
 
-  const spec = property
-    ? getFieldValueSpec(property)
+  const spec = valueField
+    ? getFieldValueSpec(valueField)
     : undefined
 
   const clearSession = useCallback((result?: ValueEditorResult) => {
@@ -126,12 +126,12 @@ export const FieldValueEditorHost = () => {
   }, [valueEditor])
 
   useEffect(() => {
-    if (!session || (property && record)) {
+    if (!session || (valueField && record)) {
       return
     }
 
     clearSession()
-  }, [clearSession, property, record, session])
+  }, [clearSession, valueField, record, session])
 
   const position = useMemo(() => {
     if (!session) {
@@ -199,14 +199,14 @@ export const FieldValueEditorHost = () => {
     }
   }, [valueEditor])
 
-  if (!session || !property || !record || !position) {
+  if (!session || !valueField || !record || !position) {
     return null
   }
 
   const applyInput = (input: EditInput) => {
     switch (input.type) {
       case 'edit.apply':
-        if (isTitleField(property)) {
+        if (isTitleField(valueField)) {
           engine.command({
             type: 'record.apply',
             target: {
@@ -223,13 +223,13 @@ export const FieldValueEditorHost = () => {
         }
 
         if (input.value === undefined) {
-          engine.records.clearValue(record.id, property.id)
+          engine.records.clearValue(record.id, valueField.id)
         } else {
-          engine.records.setValue(record.id, property.id, input.value)
+          engine.records.setValue(record.id, valueField.id, input.value)
         }
         return true
       case 'edit.commit':
-        if (isTitleField(property)) {
+        if (isTitleField(valueField)) {
           engine.command({
             type: 'record.apply',
             target: {
@@ -243,9 +243,9 @@ export const FieldValueEditorHost = () => {
             }
           })
         } else if (input.value === undefined) {
-          engine.records.clearValue(record.id, property.id)
+          engine.records.clearValue(record.id, valueField.id)
         } else {
-          engine.records.setValue(record.id, property.id, input.value)
+          engine.records.setValue(record.id, valueField.id, input.value)
         }
         const action = session.policy.resolveOnCommit(input.trigger)
         clearSession({
@@ -310,12 +310,12 @@ export const FieldValueEditorHost = () => {
             }}
           >
             <FieldValueEditor
-              key={`${session.field.viewId}\u0000${session.field.appearanceId}\u0000${session.field.fieldId}\u0000${property.kind}`}
+              key={`${session.field.viewId}\u0000${session.field.appearanceId}\u0000${session.field.fieldId}\u0000${valueField.kind}`}
               ref={editorRef}
-              property={property}
-              value={isTitleFieldId(property.id)
+              field={valueField}
+              value={isTitleFieldId(valueField.id)
                 ? record.title
-                : record.values[property.id]}
+                : record.values[valueField.id]}
               seedDraft={session.seedDraft}
               autoFocus
               onInput={applyInput}

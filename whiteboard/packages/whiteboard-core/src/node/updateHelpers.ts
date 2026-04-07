@@ -3,10 +3,10 @@ import {
   compileNodeFieldUpdates,
   type NodeSchemaFieldRef
 } from '../schema'
-import type { Node, NodeUpdateInput } from '../types'
+import type { Node, NodeStyleValue, NodeUpdateInput } from '../types'
 import { hasValueByPath } from '../utils'
 
-export type NodeStylePatch = Record<string, string | number>
+export type NodeStylePatch = Record<string, NodeStyleValue>
 export type NodeDataPatch = Record<string, unknown>
 
 const readFieldContainer = (

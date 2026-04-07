@@ -7,14 +7,14 @@ import type {
   CustomFieldId
 } from '../../contracts/state'
 import {
-  createDefaultDatePropertyConfig
+  createDefaultDateFieldConfig
 } from './date'
 import {
   createDefaultStatusOptions,
   getStatusOptionCategory
 } from './status'
 import {
-  createDefaultUrlPropertyConfig
+  createDefaultUrlFieldConfig
 } from './url'
 
 export type OptionKind = Extract<CustomFieldKind, 'select' | 'multiSelect' | 'status'>
@@ -311,8 +311,8 @@ export const kindSpecs = {
     group: createOptionGroup(['option', 'category'], 'option')
   },
   date: {
-    create: input => ({ ...input, kind: 'date', ...createDefaultDatePropertyConfig() }),
-    convert: field => ({ ...cloneBase(field), kind: 'date', ...createDefaultDatePropertyConfig() }),
+    create: input => ({ ...input, kind: 'date', ...createDefaultDateFieldConfig() }),
+    convert: field => ({ ...cloneBase(field), kind: 'date', ...createDefaultDateFieldConfig() }),
     hasOptions: false,
     filter: {
       ops: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'exists'],
@@ -335,8 +335,8 @@ export const kindSpecs = {
     group: createBooleanGroup()
   },
   url: {
-    create: input => ({ ...input, kind: 'url', ...createDefaultUrlPropertyConfig() }),
-    convert: field => ({ ...cloneBase(field), kind: 'url', ...createDefaultUrlPropertyConfig() }),
+    create: input => ({ ...input, kind: 'url', ...createDefaultUrlFieldConfig() }),
+    convert: field => ({ ...cloneBase(field), kind: 'url', ...createDefaultUrlFieldConfig() }),
     hasOptions: false,
     filter: {
       ops: ['contains', 'eq', 'neq', 'exists'],

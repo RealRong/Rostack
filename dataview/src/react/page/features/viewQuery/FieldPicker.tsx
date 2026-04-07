@@ -15,8 +15,8 @@ export interface FieldPickerProps {
 export const FieldPicker = (props: FieldPickerProps) => {
   const [query, setQuery] = useState('')
   const normalizedQuery = query.trim().toLowerCase()
-  const visibleFields = props.fields.filter(property => (
-    !normalizedQuery || property.name.toLowerCase().includes(normalizedQuery)
+  const visibleFields = props.fields.filter(field => (
+    !normalizedQuery || field.name.toLowerCase().includes(normalizedQuery)
   ))
   const emptyMessage = normalizedQuery
     ? meta.ui.fieldPicker.empty
@@ -35,24 +35,24 @@ export const FieldPicker = (props: FieldPickerProps) => {
       <div className="flex-1 overflow-y-auto px-2 py-2">
         <div className="flex flex-col gap-0.5">
           {visibleFields.length ? (
-            visibleFields.map(property => {
-              const active = property.id === props.selectedFieldId
-              const kind = meta.field.kind.get(property.kind)
+            visibleFields.map(field => {
+              const active = field.id === props.selectedFieldId
+              const kind = meta.field.kind.get(field.kind)
               const Icon = kind.Icon
 
               return (
                 <Button
-                  key={property.id}
+                  key={field.id}
                   layout="row"
                   leading={<Icon className="size-4" size={16} strokeWidth={1.8} />}
                   suffix={renderMessage(kind.message)}
                   trailing={active
                     ? <Check className="size-4 shrink-0 text-foreground" size={16} strokeWidth={1.8} />
                     : undefined}
-                  onClick={() => props.onSelect(property.id)}
+                  onClick={() => props.onSelect(field.id)}
                   pressed={active}
                 >
-                  {property.name}
+                  {field.name}
                 </Button>
               )
             })

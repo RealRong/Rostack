@@ -2,10 +2,10 @@ import { ChevronDown } from 'lucide-react'
 import { getDocumentFields } from '@dataview/core/document'
 import { FilterRulePopover } from '@dataview/react/page/features/filter'
 import {
-  getAvailableFilterProperties,
+  getAvailableFilterFields,
   getFilterFieldId
 } from '@dataview/react/page/features/filter/filterUi'
-import { SortPopover, getAvailableSorterProperties } from '@dataview/react/page/features/sort'
+import { SortPopover, getAvailableSorterFields } from '@dataview/react/page/features/sort'
 import {
   useCurrentView,
   useDataView,
@@ -33,8 +33,8 @@ export const ViewQueryBar = () => {
     : undefined
   const filters = currentView?.query.filter.rules ?? []
   const sorts = currentView?.query.sorters ?? []
-  const availableFilterProperties = getAvailableFilterProperties(fields, filters)
-  const availableSorterProperties = getAvailableSorterProperties(fields, sorts)
+  const availableFilterFields = getAvailableFilterFields(fields, filters)
+  const availableSorterFields = getAvailableSorterFields(fields, sorts)
 
   if (!currentView || !queryBar.visible || (!filters.length && !sorts.length)) {
     return null
@@ -61,8 +61,8 @@ export const ViewQueryBar = () => {
       {filters.map((rule, index) => (
         <FilterRulePopover
           key={`filter_${getFilterFieldId(rule) ?? index}`}
-          property={typeof rule.field === 'string'
-            ? fields.find(property => property.id === rule.field)
+          field={typeof rule.field === 'string'
+            ? fields.find(field => field.id === rule.field)
             : undefined}
           rule={rule}
           open={queryBar.route?.kind === 'filter' && queryBar.route.fieldId === getFilterFieldId(rule)}
@@ -88,7 +88,7 @@ export const ViewQueryBar = () => {
         />
       ))}
 
-      {availableFilterProperties.length ? (
+      {availableFilterFields.length ? (
         <Popover
           open={queryBar.route?.kind === 'addFilter'}
           onOpenChange={open => {
@@ -104,6 +104,8 @@ export const ViewQueryBar = () => {
           initialFocus={-1}
           mode="blocking"
           backdrop="transparent"
+          size="xl"
+          padding="none"
           trigger={(
             <QueryChip
               state={queryBar.route?.kind === 'addFilter' ? 'open' : 'add'}
@@ -112,11 +114,10 @@ export const ViewQueryBar = () => {
               {`+ ${renderMessage(meta.ui.filter.label)}`}
             </QueryChip>
           )}
-          contentClassName="w-[280px] p-0"
         >
           <div className="flex max-h-[72vh] flex-col">
             <FieldPicker
-              fields={availableFilterProperties}
+              fields={availableFilterFields}
               onSelect={fieldId => {
                 currentViewDomain?.filters.add(fieldId)
                 page.query.open({
@@ -129,7 +130,7 @@ export const ViewQueryBar = () => {
         </Popover>
       ) : null}
 
-      {!sorts.length && availableSorterProperties.length ? (
+      {!sorts.length && availableSorterFields.length ? (
         <Popover
           open={queryBar.route?.kind === 'addSort'}
           onOpenChange={open => {
@@ -145,6 +146,8 @@ export const ViewQueryBar = () => {
           initialFocus={-1}
           mode="blocking"
           backdrop="transparent"
+          size="xl"
+          padding="none"
           trigger={(
             <QueryChip
               state={queryBar.route?.kind === 'addSort' ? 'open' : 'add'}
@@ -153,11 +156,10 @@ export const ViewQueryBar = () => {
               {`+ ${renderMessage(meta.ui.sort.label)}`}
             </QueryChip>
           )}
-          contentClassName="w-[280px] p-0"
         >
           <div className="flex max-h-[72vh] flex-col">
             <FieldPicker
-              fields={availableSorterProperties}
+              fields={availableSorterFields}
               onSelect={fieldId => {
                 currentViewDomain?.sorters.add(fieldId)
                 page.query.open({

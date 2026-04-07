@@ -25,7 +25,7 @@ export interface StatusFilterValue {
   targets: StatusFilterTarget[]
 }
 
-type StatusProperty = CustomField | undefined
+type StatusFieldInput = CustomField | undefined
 
 const CATEGORY_LABELS: Record<StatusCategory, string> = {
   todo: 'To do',
@@ -71,11 +71,11 @@ const normalizeToken = (value: unknown) => String(value ?? '')
   .toLowerCase()
 
 const getStatusOptions = (
-  property?: StatusProperty
+  field?: StatusFieldInput
 ) => (
-  property?.kind === 'status' && Array.isArray(property.options)
+  field?.kind === 'status' && Array.isArray(field.options)
 )
-  ? property.options
+  ? field.options
   : []
 
 const isGroupStatusCategory = (
@@ -103,21 +103,21 @@ const inferCategoryFromText = (
 }
 
 const getStatusOptionRecord = (
-  property: StatusProperty | undefined,
+  field: StatusFieldInput | undefined,
   optionId: unknown
 ) => {
   if (typeof optionId !== 'string') {
     return undefined
   }
 
-  return getStatusOptions(property).find(option => option.id === optionId)
+  return getStatusOptions(field).find(option => option.id === optionId)
 }
 
 const sortOptionTargets = (
-  property: StatusProperty | undefined,
+  field: StatusFieldInput | undefined,
   targets: readonly StatusFilterTarget[]
 ) => {
-  const optionOrder = new Map(getStatusOptions(property).map((option, index) => [option.id, index]))
+  const optionOrder = new Map(getStatusOptions(field).map((option, index) => [option.id, index]))
 
   return [...targets].sort((left, right) => {
     if (left.kind === 'category' && right.kind === 'option') {
@@ -166,10 +166,10 @@ export const getStatusCategoryOrder = (
 }
 
 export const getStatusOptionCategory = (
-  property: StatusProperty | undefined,
+  field: StatusFieldInput | undefined,
   optionId: unknown
 ): StatusCategory | undefined => {
-  const option = getStatusOptionRecord(property, optionId)
+  const option = getStatusOptionRecord(field, optionId)
   if (!option) {
     return undefined
   }
@@ -187,20 +187,20 @@ export const getStatusOptionCategory = (
 }
 
 export const getStatusSections = (
-  property?: StatusProperty
+  field?: StatusFieldInput
 ): StatusSection[] => {
-  const options = getStatusOptions(property)
+  const options = getStatusOptions(field)
 
   return STATUS_CATEGORIES.map(category => ({
     category,
-    options: options.filter(option => getStatusOptionCategory(property, option.id) === category)
+    options: options.filter(option => getStatusOptionCategory(field, option.id) === category)
   }))
 }
 
 export const getStatusDefaultOption = (
-  property: StatusProperty | undefined,
+  field: StatusFieldInput | undefined,
   category: StatusCategory
-) => getStatusSections(property)
+) => getStatusSections(field)
   .find(section => section.category === category)
   ?.options[0]
 
@@ -235,7 +235,7 @@ export const isStatusFilterValue = (
 }
 
 export const normalizeStatusFilterTargets = (
-  property: StatusProperty | undefined,
+  field: StatusFieldInput | undefined,
   input: readonly StatusFilterTarget[]
 ): StatusFilterTarget[] => {
   const categorySet = new Set<StatusCategory>()
@@ -253,13 +253,13 @@ export const normalizeStatusFilterTargets = (
   })
 
   for (const optionId of [...optionSet]) {
-    const category = getStatusOptionCategory(property, optionId)
+    const category = getStatusOptionCategory(field, optionId)
     if (category && categorySet.has(category)) {
       optionSet.delete(optionId)
     }
   }
 
-  getStatusSections(property).forEach(section => {
+  getStatusSections(field).forEach(section => {
     if (categorySet.has(section.category) || section.options.length === 0) {
       return
     }
@@ -288,17 +288,17 @@ export const normalizeStatusFilterTargets = (
     }))
   ]
 
-  return sortOptionTargets(property, normalized)
+  return sortOptionTargets(field, normalized)
 }
 
 export const readStatusFilterValue = (
-  property: StatusProperty | undefined,
+  field: StatusFieldInput | undefined,
   value: unknown
 ): StatusFilterValue => {
   if (isStatusFilterValue(value)) {
     return {
       targets: normalizeStatusFilterTargets(
-        property,
+        field,
         value.targets.filter(isStatusFilterTarget)
       )
     }
@@ -307,7 +307,7 @@ export const readStatusFilterValue = (
   if (Array.isArray(value)) {
     return {
       targets: normalizeStatusFilterTargets(
-        property,
+        field,
         value
           .filter(item => typeof item === 'string')
           .map(item => ({
@@ -320,7 +320,7 @@ export const readStatusFilterValue = (
 
   if (typeof value === 'string' && value.trim()) {
     return {
-      targets: normalizeStatusFilterTargets(property, [{
+      targets: normalizeStatusFilterTargets(field, [{
         kind: 'option',
         value: value.trim()
       }])
@@ -331,25 +331,25 @@ export const readStatusFilterValue = (
 }
 
 export const isStatusFilterEffective = (
-  property: StatusProperty | undefined,
+  field: StatusFieldInput | undefined,
   value: unknown
-) => readStatusFilterValue(property, value).targets.length > 0
+) => readStatusFilterValue(field, value).targets.length > 0
 
 export const isStatusFilterCategorySelected = (
-  property: StatusProperty | undefined,
+  field: StatusFieldInput | undefined,
   value: unknown,
   category: StatusCategory
-) => readStatusFilterValue(property, value).targets.some(target => (
+) => readStatusFilterValue(field, value).targets.some(target => (
   target.kind === 'category' && target.value === category
 ))
 
 export const isStatusFilterOptionSelected = (
-  property: StatusProperty | undefined,
+  field: StatusFieldInput | undefined,
   value: unknown,
   optionId: string
 ) => {
-  const filterValue = readStatusFilterValue(property, value)
-  const category = getStatusOptionCategory(property, optionId)
+  const filterValue = readStatusFilterValue(field, value)
+  const category = getStatusOptionCategory(field, optionId)
 
   return filterValue.targets.some(target => (
     target.kind === 'option'
@@ -359,11 +359,11 @@ export const isStatusFilterOptionSelected = (
 }
 
 export const toggleStatusFilterCategory = (
-  property: StatusProperty | undefined,
+  field: StatusFieldInput | undefined,
   value: unknown,
   category: StatusCategory
 ): StatusFilterValue => {
-  const current = readStatusFilterValue(property, value).targets
+  const current = readStatusFilterValue(field, value).targets
   const hasCategory = current.some(target => (
     target.kind === 'category' && target.value === category
   ))
@@ -376,7 +376,7 @@ export const toggleStatusFilterCategory = (
             return true
           }
 
-          return getStatusOptionCategory(property, target.value) !== category
+          return getStatusOptionCategory(field, target.value) !== category
         }),
         {
           kind: 'category' as const,
@@ -385,20 +385,20 @@ export const toggleStatusFilterCategory = (
       ]
 
   return {
-    targets: normalizeStatusFilterTargets(property, nextTargets)
+    targets: normalizeStatusFilterTargets(field, nextTargets)
   }
 }
 
 export const toggleStatusFilterOption = (
-  property: StatusProperty | undefined,
+  field: StatusFieldInput | undefined,
   value: unknown,
   optionId: string
 ): StatusFilterValue => {
-  const current = readStatusFilterValue(property, value).targets
-  const category = getStatusOptionCategory(property, optionId)
+  const current = readStatusFilterValue(field, value).targets
+  const category = getStatusOptionCategory(field, optionId)
   if (!category) {
     return {
-      targets: normalizeStatusFilterTargets(property, current)
+      targets: normalizeStatusFilterTargets(field, current)
     }
   }
 
@@ -406,7 +406,7 @@ export const toggleStatusFilterOption = (
     target.kind === 'category' && target.value === category
   ))
   if (hasCategory) {
-    const section = getStatusSections(property).find(item => item.category === category)
+    const section = getStatusSections(field).find(item => item.category === category)
     const explicitTargets = section?.options
       .filter(option => option.id !== optionId)
       .map(option => ({
@@ -416,7 +416,7 @@ export const toggleStatusFilterOption = (
 
     return {
       targets: normalizeStatusFilterTargets(
-        property,
+        field,
         [
           ...current.filter(target => !(target.kind === 'category' && target.value === category)),
           ...explicitTargets
@@ -431,7 +431,7 @@ export const toggleStatusFilterOption = (
 
   return {
     targets: normalizeStatusFilterTargets(
-      property,
+      field,
       hasOption
         ? current.filter(target => !(target.kind === 'option' && target.value === optionId))
         : [
@@ -446,18 +446,18 @@ export const toggleStatusFilterOption = (
 }
 
 export const getStatusFilterTargetLabel = (
-  property: StatusProperty | undefined,
+  field: StatusFieldInput | undefined,
   target: StatusFilterTarget
 ) => {
   if (target.kind === 'category' && isGroupStatusCategory(target.value)) {
     return getStatusCategoryLabel(target.value)
   }
 
-  return getStatusOptionRecord(property, target.value)?.name ?? target.value
+  return getStatusOptionRecord(field, target.value)?.name ?? target.value
 }
 
 export const matchStatusFilter = (
-  property: StatusProperty | undefined,
+  field: StatusFieldInput | undefined,
   value: unknown,
   expected: unknown
 ) => {
@@ -465,12 +465,12 @@ export const matchStatusFilter = (
     return false
   }
 
-  const targets = readStatusFilterValue(property, expected).targets
+  const targets = readStatusFilterValue(field, expected).targets
   if (!targets.length) {
     return false
   }
 
-  const actualCategory = getStatusOptionCategory(property, value)
+  const actualCategory = getStatusOptionCategory(field, value)
   return targets.some(target => (
     target.kind === 'option'
       ? target.value === value
@@ -478,8 +478,8 @@ export const matchStatusFilter = (
   ))
 }
 
-export const compareStatusPropertyValues = (
-  property: StatusProperty | undefined,
+export const compareStatusFieldValues = (
+  field: StatusFieldInput | undefined,
   left: unknown,
   right: unknown
 ) => {
@@ -488,13 +488,13 @@ export const compareStatusPropertyValues = (
       return [1, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, String(value ?? '')] as const
     }
 
-    const option = getStatusOptionRecord(property, value)
+    const option = getStatusOptionRecord(field, value)
     if (!option) {
       return [1, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, value] as const
     }
 
-    const category = getStatusOptionCategory(property, option.id) ?? 'todo'
-    const optionOrder = getStatusOptions(property).findIndex(item => item.id === option.id)
+    const category = getStatusOptionCategory(field, option.id) ?? 'todo'
+    const optionOrder = getStatusOptions(field).findIndex(item => item.id === option.id)
     return [0, getStatusCategoryOrder(category), optionOrder, option.name] as const
   }
 

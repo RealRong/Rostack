@@ -17,16 +17,16 @@ const SingleSelectEditor = (props: FieldValueDraftEditorProps<string>) => (
 )
 
 export const createSingleSelectPropertySpec = (
-  property: CustomField | undefined
+  field: CustomField | undefined
 ): FieldValueSpec<string> => ({
   capability: {},
   panelWidth: 'picker',
   Editor: SingleSelectEditor,
   createDraft: (value, seedDraft) => seedDraft ?? (value === undefined || value === null ? '' : String(value)),
-  parseDraft: draft => parseFieldDraft(property, draft),
+  parseDraft: draft => parseFieldDraft(field, draft),
   render: props => {
-    const display = getFieldDisplayValue(property, props.value)
-    const selected = property ? getFieldOption(property, props.value) : undefined
+    const display = getFieldDisplayValue(field, props.value)
+    const selected = field ? getFieldOption(field, props.value) : undefined
     if (!display) {
       return renderEmpty(props)
     }

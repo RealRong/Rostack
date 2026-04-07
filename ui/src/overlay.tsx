@@ -704,6 +704,10 @@ export const OverlayProvider = (props: {
             event.preventDefault()
             event.stopPropagation()
           }}
+          onContextMenu={event => {
+            event.preventDefault()
+            event.stopPropagation()
+          }}
           onClick={event => {
             event.preventDefault()
             event.stopPropagation()

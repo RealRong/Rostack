@@ -6,7 +6,7 @@ import type { FieldValueSpec } from './contracts'
 import { renderEmpty } from './shared'
 
 export const createCheckboxPropertySpec = (
-  property: CustomField | undefined
+  field: CustomField | undefined
 ): FieldValueSpec<string> => ({
   capability: {
     quickToggle: true
@@ -22,7 +22,7 @@ export const createCheckboxPropertySpec = (
           ? ''
           : String(value)
   ),
-  parseDraft: draft => parseFieldDraft(property, draft),
+  parseDraft: draft => parseFieldDraft(field, draft),
   render: props => {
     if (props.value !== true && props.value !== false) {
       return renderEmpty(props)

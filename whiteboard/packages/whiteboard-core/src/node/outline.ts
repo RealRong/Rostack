@@ -9,7 +9,6 @@ import type {
 import {
   clamp,
   getAnchorPoint,
-  expandRect,
   getAABBFromPoints,
   getRectCenter,
   getRotatedCorners,
@@ -530,41 +529,6 @@ const readOutlinePoints = (
   return sides.flatMap((side) => toSidePoints(rect, node, side))
 }
 
-const readShapeStrokeWidth = (
-  node: Pick<Node, 'type' | 'style'>
-) => {
-  if (node.type !== 'shape') {
-    return 0
-  }
-
-  const raw = node.style?.strokeWidth
-  const value = typeof raw === 'string'
-    ? Number(raw)
-    : raw
-
-  return Number.isFinite(value)
-    ? Math.max(0, value as number)
-    : 1
-}
-
-const expandOutlineBounds = (
-  rect: Rect,
-  node: Pick<Node, 'type' | 'style'>,
-  bounds: Rect
-) => {
-  const strokeWidth = readShapeStrokeWidth(node)
-  if (strokeWidth <= 0) {
-    return bounds
-  }
-
-  const expansion = Math.max(
-    rect.width * (strokeWidth / OUTLINE_VIEWBOX) / 2,
-    rect.height * (strokeWidth / OUTLINE_VIEWBOX) / 2
-  )
-
-  return expandRect(bounds, expansion)
-}
-
 const distance = (
   left: Point,
   right: Point
@@ -827,11 +791,7 @@ const getNodeShapeBounds = (
       : point
   ))
 
-  return expandOutlineBounds(
-    rect,
-    node,
-    getAABBFromPoints(points)
-  )
+  return getAABBFromPoints(points)
 }
 
 export const getNodeBounds = (

@@ -1,37 +1,50 @@
 import {
+  Fragment,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type RefObject
 } from 'react'
 import type { Point } from '@whiteboard/core/types'
-import {
-  useEditorRuntime
-} from '../../../runtime/hooks/useEditor'
+import { useSelectionPresentation } from '../../node/selection'
+import { useEditorRuntime } from '../../../runtime/hooks/useEditor'
 import { useNodeRegistry } from '../../../runtime/hooks/useWhiteboard'
 import { useElementSize } from '../../../dom/observe/useElementSize'
 import { WhiteboardPopover } from '../../../runtime/overlay/chrome'
-import { useSelectionPresentation } from '../../node/selection'
-import {
-  measureBoundTextNodeSize,
-  TEXT_DEFAULT_FONT_SIZE
-} from '../../node/text'
-import {
-  buildToolbarStyle,
-} from './layout'
-import type { ToolbarItemKey } from '../../../types/selection'
-import { FillMenu } from './menus/FillMenu'
-import { LayoutMenu } from './menus/LayoutMenu'
-import { MoreMenu } from './menus/MoreMenu'
-import { DRAW_STROKE_WIDTHS } from './menus/options'
-import { StrokeMenu } from './menus/StrokeMenu'
-import { TextMenu } from './menus/TextMenu'
-import { ToolbarIcon } from './nodeToolbarIcon'
-import { resolveNodeToolbarModel } from './nodeToolbarModel'
-import { bindMenuDismiss } from './menuAction'
+import { buildToolbarStyle } from './layout'
+import { resolveToolbarSummaryContext } from './toolbar/context'
+import { readToolbarItemSpec, renderToolbarPanel } from './toolbar/items'
+import { ToolbarDivider } from './toolbar/primitives'
+import { resolveToolbarRecipe } from './toolbar/recipe'
+import type { ToolbarPanelKey } from './toolbar/types'
+import { cn } from '@ui'
 
-type ToolbarMenuKey = ToolbarItemKey
+type ToolbarPositionSession = {
+  selectionKey: string
+  placement: 'top' | 'bottom'
+  anchorWorld: Point
+}
+
+const resolveToolbarAnchorWorld = ({
+  placement,
+  x,
+  y,
+  width,
+  height
+}: {
+  placement: 'top' | 'bottom'
+  x: number
+  y: number
+  width: number
+  height: number
+}): Point => ({
+  x: x + width / 2,
+  y: placement === 'top'
+    ? y
+    : y + height
+})
 
 export const NodeToolbar = ({
   containerRef
@@ -42,243 +55,176 @@ export const NodeToolbar = ({
   const registry = useNodeRegistry()
   const surface = useElementSize(containerRef)
   const presentation = useSelectionPresentation()
+  const buttonRefByKey = useRef<Partial<Record<ToolbarPanelKey, HTMLElement | null>>>({})
+  const [activePanelKey, setActivePanelKey] = useState<ToolbarPanelKey | null>(null)
+  const [positionSession, setPositionSession] = useState<ToolbarPositionSession | null>(null)
   const selection = presentation.selection
   const worldToScreen = useCallback(
     (point: Point) => editor.read.viewport.worldToScreen(point),
     [editor]
   )
-  const buttonRefByKey = useRef<Partial<Record<ToolbarMenuKey, HTMLButtonElement | null>>>({})
-  const [activeMenuKey, setActiveMenuKey] = useState<ToolbarMenuKey | null>(null)
-  const closeMenu = useCallback(() => {
-    setActiveMenuKey(null)
-  }, [])
-  const toolbar = resolveNodeToolbarModel({
-    registry,
-    selection,
-    worldToScreen
-  })
+  const context = useMemo(
+    () => resolveToolbarSummaryContext({
+      selection,
+      registry,
+      worldToScreen
+    }),
+    [registry, selection, worldToScreen]
+  )
+  const recipe = useMemo(
+    () => resolveToolbarRecipe(context),
+    [context]
+  )
 
-  const showsNodeToolbar = presentation.showToolbar
+  const closePanel = useCallback(() => {
+    setActivePanelKey(null)
+  }, [])
+
+  const togglePanel = useCallback((key: ToolbarPanelKey) => {
+    setActivePanelKey((current) => current === key ? null : key)
+  }, [])
+
+  const selectionKey = context.selectionKey
+  const selectionBox = selection.boxState.box
+  const livePosition = context.visible && selectionBox && selectionKey && context.placement
+    ? {
+        selectionKey,
+        placement: context.placement,
+        anchorWorld: resolveToolbarAnchorWorld({
+          placement: context.placement,
+          x: selectionBox.x,
+          y: selectionBox.y,
+          width: selectionBox.width,
+          height: selectionBox.height
+        })
+      } satisfies ToolbarPositionSession
+    : null
 
   useEffect(() => {
-    closeMenu()
+    closePanel()
   }, [
-    closeMenu,
-    toolbar?.placement,
-    toolbar?.anchor.x,
-    toolbar?.anchor.y,
-    toolbar?.nodes
+    closePanel,
+    selectionKey
   ])
 
   useEffect(() => {
-    if (!showsNodeToolbar) {
-      closeMenu()
+    if (!presentation.showToolbar) {
+      closePanel()
     }
-  }, [closeMenu, showsNodeToolbar])
+  }, [closePanel, presentation.showToolbar])
 
-  if (!showsNodeToolbar || !toolbar) return null
+  useEffect(() => {
+    if (!presentation.showToolbar || !livePosition || !selectionKey || recipe.length === 0) {
+      setPositionSession(null)
+      return
+    }
 
-  const toolbarStyle = buildToolbarStyle({
-    placement: toolbar.placement,
-    x: toolbar.anchor.x,
-    y: toolbar.placement === 'top' ? toolbar.anchor.y - 12 : toolbar.anchor.y + 12,
-    containerWidth: surface.width,
-    itemCount: toolbar.items.length
-  })
-
-  const menu = selection.menu
-  const filter = menu?.filter
-    ? {
-        types: menu.filter.types,
-        onSelect: bindMenuDismiss(menu.filter.onSelect, closeMenu)
+    setPositionSession((current) => {
+      if (current?.selectionKey === selectionKey) {
+        return current
       }
-    : undefined
-  const moreSections = menu?.moreSections.map((section) => ({
-    ...section,
-    items: section.items.map((item) => ({
-      ...item,
-      onSelect: bindMenuDismiss(item.onSelect, closeMenu)
-    }))
-  })) ?? []
 
-  const renderMenu = () => {
-    if (!activeMenuKey) return null
+      return livePosition
+    })
+  }, [
+    livePosition,
+    presentation.showToolbar,
+    recipe.length,
+    selectionKey
+  ])
 
-    switch (activeMenuKey) {
-      case 'fill':
-        return (
-          <FillMenu
-            value={toolbar.fillValue}
-            onChange={(value) => {
-              editor.commands.node.appearance.setFill(
-                toolbar.nodes.map((node) => node.id),
-                value
-              )
-            }}
-          />
-        )
-      case 'stroke':
-        return (
-          <StrokeMenu
-            widths={toolbar.drawOnlyStrokeMenu ? DRAW_STROKE_WIDTHS : undefined}
-            stroke={toolbar.strokeValue}
-            strokeWidth={toolbar.strokeWidthValue}
-            opacity={toolbar.strokeOpacityValue}
-            onStrokeChange={(value) => {
-              editor.commands.node.appearance.setStroke(
-                toolbar.nodes.map((node) => node.id),
-                value
-              )
-            }}
-            onStrokeWidthChange={(value) => {
-              editor.commands.node.appearance.setStrokeWidth(
-                toolbar.nodes.map((node) => node.id),
-                value
-              )
-            }}
-            onOpacityChange={toolbar.showStrokeOpacitySection ? (value) => {
-              editor.commands.node.appearance.setOpacity(
-                toolbar.nodes.map((node) => node.id),
-                value
-              )
-            } : undefined}
-          />
-        )
-      case 'text':
-        return (
-          <TextMenu
-            value={toolbar.textValue}
-            color={toolbar.textColor}
-            fontSize={toolbar.textFontSize}
-            showText={toolbar.showTextSection}
-            showColor={toolbar.showTextColorSection}
-            showFontSize={toolbar.showTextFontSizeSection}
-            onTextCommit={toolbar.showTextSection ? (value) => {
-              const size = toolbar.primaryNode.type === 'text' && toolbar.textFieldKey === 'text'
-                ? measureBoundTextNodeSize({
-                    editor,
-                    nodeId: toolbar.primaryNode.id,
-                    value
-                  })
-                : undefined
-
-              editor.commands.node.text.commit({
-                nodeId: toolbar.primaryNode.id,
-                field: toolbar.textFieldKey,
-                value,
-                size
-              })
-            } : undefined}
-            onColorChange={toolbar.showTextColorSection ? (value) => {
-              editor.commands.node.text.setColor(
-                [toolbar.primaryNode.id],
-                value
-              )
-            } : undefined}
-            onFontSizeChange={toolbar.showTextFontSizeSection ? (value) => {
-              const size = toolbar.primaryNode.type === 'text' && toolbar.textFieldKey === 'text'
-                ? measureBoundTextNodeSize({
-                    editor,
-                    nodeId: toolbar.primaryNode.id,
-                    value: toolbar.textValue,
-                    fontSize: value ?? TEXT_DEFAULT_FONT_SIZE
-                  })
-                : undefined
-
-              editor.commands.node.text.setFontSize({
-                nodeIds: [toolbar.primaryNode.id],
-                value,
-                sizeById: size
-                  ? {
-                      [toolbar.primaryNode.id]: size
-                    }
-                  : undefined
-              })
-            } : undefined}
-          />
-        )
-      case 'layout':
-        return (
-          <LayoutMenu
-            canAlign={Boolean(menu?.layout.canAlign)}
-            canDistribute={Boolean(menu?.layout.canDistribute)}
-            onAlign={(mode) => {
-              menu?.layout && bindMenuDismiss(menu.layout.onAlign, closeMenu)(mode)
-            }}
-            onDistribute={(mode) => {
-              menu?.layout && bindMenuDismiss(menu.layout.onDistribute, closeMenu)(mode)
-            }}
-          />
-        )
-      case 'more':
-        return (
-          <MoreMenu
-            summary={toolbar.nodes.length > 1
-              ? toolbar.summary
-              : undefined}
-            filter={filter}
-            sections={moreSections}
-          />
-        )
-    }
+  if (!presentation.showToolbar || !context.visible || !recipe.length) {
+    return null
   }
 
-  const activeMenuButton = activeMenuKey
-    ? buttonRefByKey.current[activeMenuKey]
+  const resolvedPosition = positionSession?.selectionKey === selectionKey
+    ? positionSession
+    : livePosition
+  const toolbarAnchor = resolvedPosition
+    ? worldToScreen(resolvedPosition.anchorWorld)
+    : context.anchor
+  const toolbarUnits = recipe.reduce((total, entry) => (
+    total + (
+      entry.kind === 'divider'
+        ? 1
+        : (readToolbarItemSpec(entry.key).units ?? 1)
+    )
+  ), 0)
+
+  if (!toolbarAnchor) {
+    return null
+  }
+
+  const toolbarStyle = buildToolbarStyle({
+    placement: resolvedPosition?.placement ?? context.placement ?? 'top',
+    x: toolbarAnchor.x,
+    y: (resolvedPosition?.placement ?? context.placement ?? 'top') === 'top'
+      ? toolbarAnchor.y - 12
+      : toolbarAnchor.y + 12,
+    containerWidth: surface.width,
+    itemCount: Math.max(toolbarUnits, 1)
+  })
+
+  const activePanelButton = activePanelKey
+    ? buttonRefByKey.current[activePanelKey]
     : null
-  const menuContentClassName = activeMenuKey === 'more'
-    ? 'min-w-0 p-0'
-    : activeMenuKey === 'layout'
-      ? 'min-w-0 p-2'
-      : 'min-w-[220px] p-2'
+  const panelContent = renderToolbarPanel({
+    panelKey: activePanelKey,
+    context,
+    editor,
+    closePanel
+  })
 
   return (
-    <div className="wb-node-toolbar-layer">
+    <div className="pointer-events-none absolute inset-0 z-[var(--wb-z-toolbar)]">
       <div
-        className="wb-node-toolbar"
+        className="pointer-events-auto absolute inline-flex items-center gap-1 rounded-2xl bg-floating px-2 py-1.5 shadow-popover"
         style={toolbarStyle}
         onPointerDown={(event) => {
           event.stopPropagation()
         }}
       >
-        {toolbar.items.map((item) => {
-          const active = item.active || activeMenuKey === item.key
+        {recipe.map((entry, index) => {
+          if (entry.kind === 'divider') {
+            return <ToolbarDivider key={`divider:${index}`} />
+          }
+
+          const spec = readToolbarItemSpec(entry.key)
+
           return (
-            <button
-              key={item.key}
-              type="button"
-              className="wb-node-toolbar-button"
-              data-active={active ? 'true' : undefined}
-              title={item.label}
-              ref={(element) => {
-                buttonRefByKey.current[item.key] = element
-              }}
-              onPointerDown={(event) => {
-                event.stopPropagation()
-              }}
-              onClick={() => {
-                setActiveMenuKey((current) => current === item.key ? null : item.key)
-              }}
-            >
-              <ToolbarIcon itemKey={item.key} state={toolbar.iconState} />
-            </button>
+            <Fragment key={`${entry.key}:${index}`}>
+              {spec.renderButton({
+                context,
+                editor,
+                activePanelKey,
+                togglePanel,
+                registerPanelButton: (key, element) => {
+                  buttonRefByKey.current[key] = element
+                }
+              })}
+            </Fragment>
           )
         })}
       </div>
-      {activeMenuKey && activeMenuButton ? (
+      {activePanelKey && activePanelButton && panelContent ? (
         <WhiteboardPopover
           open
-          anchor={activeMenuButton}
+          anchor={activePanelButton}
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
-              closeMenu()
+              closePanel()
             }
           }}
           placement="bottom"
-          offset={8}
-          contentClassName={menuContentClassName}
+          offset={10}
+          surface="blocking"
+          backdrop="transparent"
+          contentClassName={cn(
+            'min-w-0 overflow-hidden p-0',
+            activePanelKey === 'more' ? 'w-[240px]' : 'w-auto'
+          )}
         >
-          {renderMenu()}
+          {panelContent}
         </WhiteboardPopover>
       ) : null}
     </div>

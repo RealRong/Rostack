@@ -14,13 +14,13 @@ const MultiSelectEditor = (props: FieldValueDraftEditorProps<string>) => (
 )
 
 export const createMultiSelectPropertySpec = (
-  property: CustomField | undefined
+  field: CustomField | undefined
 ): FieldValueSpec<string> => ({
   capability: {},
   panelWidth: 'picker',
   Editor: MultiSelectEditor,
   createDraft: (value, seedDraft) => seedDraft ?? (Array.isArray(value) ? value.join(', ') : ''),
-  parseDraft: draft => parseFieldDraft(property, draft),
+  parseDraft: draft => parseFieldDraft(field, draft),
   render: props => {
     if (!Array.isArray(props.value) || !props.value.length) {
       return renderEmpty(props)
@@ -28,8 +28,8 @@ export const createMultiSelectPropertySpec = (
 
     const values = props.value.map(item => ({
       id: item,
-      label: getFieldOption(property, item)?.name ?? String(item),
-      color: getFieldOption(property, item)?.color
+      label: getFieldOption(field, item)?.name ?? String(item),
+      color: getFieldOption(field, item)?.color
     }))
     const visible = values.slice(0, 2)
     const rest = values.length - visible.length

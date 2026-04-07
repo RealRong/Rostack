@@ -128,8 +128,8 @@ type GroupPropertyOption = {
 当前有三种不同层级的 config 读取策略：
 
 - `getPropertyConfig` 只做基本匹配修复
-- `getDatePropertyConfig` 会补默认值并校验格式
-- `getUrlPropertyConfig` 会合并默认值
+- `getDateFieldConfig` 会补默认值并校验格式
+- `getUrlFieldConfig` 会合并默认值
 
 也就是说，系统里没有统一的“normalized property schema”概念。
 
@@ -1278,8 +1278,8 @@ const propertyFamilyByKind = {
 
 不再有：
 
-- `replacePropertyOptions`
-- `convertPropertyKindConfig`
+- `replaceFieldOptions`
+- `convertFieldKindConfig`
 - `resolveOptionPropertyContext` 里先判断 supportsOptions 再读旧 config
 
 ---
@@ -1316,10 +1316,10 @@ type PropertyCommandResult =
 - `GroupPropertyOption.key`
 - `TITLE_PROPERTY_ID`
 - `getPropertyConfig`
-- `getDatePropertyConfig`
-- `getUrlPropertyConfig`
-- `replacePropertyOptions`
-- `convertPropertyKindConfig`
+- `getDateFieldConfig`
+- `getUrlFieldConfig`
+- `replaceFieldOptions`
+- `convertFieldKindConfig`
 - React `optionForValue`
 - `FieldStatusOptionsSection`
 - `StatusValueEditor`

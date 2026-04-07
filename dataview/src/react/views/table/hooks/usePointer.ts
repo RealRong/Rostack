@@ -24,6 +24,7 @@ import {
   type CellRef
 } from '@dataview/react/runtime/currentView'
 import {
+  getRecordFieldValue,
   isTitleFieldId,
   resolveFieldPrimaryAction
 } from '@dataview/core/field'
@@ -44,6 +45,10 @@ import {
   cellFromTarget,
   closestTableTargetElement
 } from '../dom/targets'
+import {
+  canFallbackToRowHover,
+  resolveHoverTargetFromPoint
+} from '../model/hoverResolver'
 
 export interface PointerOptions {
   enabled: boolean
@@ -191,48 +196,41 @@ const allowsRowHoverFallback = (
   }
 
   if (!element) {
-    return true
+    return canFallbackToRowHover({
+      withinContainer: true,
+      overBlockingOverlay: false,
+      overGroupRow: false,
+      overColumn: false
+    })
   }
 
-  if (isOverlayBlockingElement(element)) {
-    return false
-  }
-
-  if (
-    closestTableTargetElement(element, 'group-row')
-    || closestTableTargetElement(element, 'column')
-  ) {
-    return false
-  }
-
-  return container === element || container.contains(element)
+  return canFallbackToRowHover({
+    withinContainer: container === element || container.contains(element),
+    overBlockingOverlay: isOverlayBlockingElement(element),
+    overGroupRow: Boolean(closestTableTargetElement(element, 'group-row')),
+    overColumn: Boolean(closestTableTargetElement(element, 'column'))
+  })
 }
 
 const hoverTargetFromPoint = (
   point: Point | null,
   context?: RowHoverContext
 ): TableHoverTarget | null => {
-  if (!point || typeof document === 'undefined') {
+  if (!point || typeof document === 'undefined' || !context) {
     return null
   }
 
-  const element = document.elementFromPoint(point.x, point.y)
-  const target = context
-    ? hoverTargetFromElement(
-        element,
-        context.appearances,
-        context.fields
-      )
-    : null
-  if (target) {
-    return target
-  }
-
-  if (!context || !allowsRowHoverFallback(element, context.container)) {
-    return null
-  }
-
-  return rowHoverTargetFromPoint(point, context)
+  return resolveHoverTargetFromPoint({
+    point,
+    elementAtPoint: nextPoint => document.elementFromPoint(nextPoint.x, nextPoint.y),
+    targetFromElement: element => hoverTargetFromElement(
+      element,
+      context.appearances,
+      context.fields
+    ),
+    allowsRowFallback: element => allowsRowHoverFallback(element, context.container),
+    rowTargetFromPoint: nextPoint => rowHoverTargetFromPoint(nextPoint, context)
+  })
 }
 
 const useHoverBinding = (input: {
@@ -245,7 +243,6 @@ const useHoverBinding = (input: {
   const rowIdsRef = useRef(rowIds)
   const frameRef = useRef<number | undefined>(undefined)
   const pointRef = useRef<Point | null>(null)
-  const targetRef = useRef<EventTarget | null>(null)
   enabledRef.current = input.enabled
   rowIdsRef.current = rowIds
 
@@ -283,18 +280,11 @@ const useHoverBinding = (input: {
     }
 
     input.table.hover.set(
-      hoverTargetFromElement(
-        targetRef.current,
-        input.currentView.appearances,
-        input.currentView.fields
-      )
-      ?? rowHoverTargetFromPoint(point, rowContext()),
+      hoverTargetFromPoint(point, rowContext()),
       point
     )
   }, [
     clear,
-    input.currentView.appearances,
-    input.currentView.fields,
     input.table,
     rowContext
   ])
@@ -323,7 +313,6 @@ const useHoverBinding = (input: {
     }
 
     pointRef.current = resolvedPoint
-    targetRef.current = null
     input.table.hover.set(
       hoverTargetFromPoint(resolvedPoint ?? null, rowContext()),
       resolvedPoint
@@ -337,7 +326,6 @@ const useHoverBinding = (input: {
     }
 
     pointRef.current = point
-    targetRef.current = event.target
 
     if (!enabledRef.current) {
       cancelFrame()
@@ -358,14 +346,12 @@ const useHoverBinding = (input: {
 
     cancelFrame()
     pointRef.current = null
-    targetRef.current = null
     clear(null)
   }, [cancelFrame, clear])
 
   useEffect(() => () => {
     cancelFrame()
     pointRef.current = null
-    targetRef.current = null
   }, [cancelFrame])
 
   useEffect(() => {
@@ -446,7 +432,9 @@ export const usePointer = (
 
     return {
       exists: Boolean(record),
-      value: record?.values[cell.fieldId]
+      value: record
+        ? getRecordFieldValue(record, cell.fieldId)
+        : undefined
     }
   }, [currentView.appearances, editor])
 

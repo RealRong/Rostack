@@ -14,9 +14,9 @@ import type { FieldValueSpec } from './contracts'
 import { renderEmpty } from './shared'
 
 const resolveInputKind = (
-  property?: Field
+  field?: Field
 ): InputKind => {
-  switch (property?.kind) {
+  switch (field?.kind) {
     case 'number':
       return 'number'
     default:
@@ -49,18 +49,18 @@ const inputEditors: Record<InputKind, ComponentType<FieldValueDraftEditorProps<s
 }
 
 export const createTextPropertySpec = (
-  property: Field | undefined
+  field: Field | undefined
 ): FieldValueSpec<string> => {
-  const type = resolveInputKind(property)
+  const type = resolveInputKind(field)
 
   return {
     capability: {},
     panelWidth: 'default',
     Editor: inputEditors[type],
     createDraft: (value, seedDraft) => seedDraft ?? toInputDraft(type, value),
-    parseDraft: draft => parseFieldDraft(property, draft),
+    parseDraft: draft => parseFieldDraft(field, draft),
     render: props => {
-      const display = getFieldDisplayValue(property, props.value)
+      const display = getFieldDisplayValue(field, props.value)
       if (!display) {
         return renderEmpty(props)
       }

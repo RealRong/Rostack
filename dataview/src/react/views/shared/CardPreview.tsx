@@ -85,7 +85,7 @@ export const CardPreview = (props: CardPreviewProps) => {
           {visibleFields.map(property => (
             <div key={property.id} className={slots?.property?.item}>
               <FieldValueContent
-                property={property}
+                field={property}
                 value={record.values[property.id]}
                 className={slots?.property?.value}
                 emptyPlaceholder={emptyPlaceholder}

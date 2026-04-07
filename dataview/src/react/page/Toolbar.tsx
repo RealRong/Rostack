@@ -13,7 +13,7 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import {
-  getDocumentCustomFields,
+  getDocumentFields,
   getDocumentViews
 } from '@dataview/core/document'
 import { Button } from '@ui/button'
@@ -23,8 +23,8 @@ import { type MenuItem } from '@ui/menu'
 import { Popover } from '@ui/popover'
 import { cn } from '@ui/utils'
 import { CreateViewPopover } from '@dataview/react/page/features/createView'
-import { getAvailableFilterProperties } from '@dataview/react/page/features/filter/filterUi'
-import { getAvailableSorterProperties } from '@dataview/react/page/features/sort'
+import { getAvailableFilterFields } from '@dataview/react/page/features/filter/filterUi'
+import { getAvailableSorterFields } from '@dataview/react/page/features/sort'
 import { FieldPicker } from '@dataview/react/page/features/viewQuery/FieldPicker'
 import { ViewSettingsPopover } from '@dataview/react/page/features/viewSettings'
 import {
@@ -107,13 +107,13 @@ const ViewTab = (props: ViewTabProps) => {
         backdrop="transparent"
         items={items}
         autoFocus={false}
+        size="md"
         trigger={(
           <span
             aria-hidden="true"
             className="pointer-events-none absolute inset-0"
           />
         )}
-        contentClassName="w-[220px] p-1.5"
       />
       <button
         type="button"
@@ -143,7 +143,7 @@ export const PageToolbar = () => {
   const page = dataView.page
   const document = useDocument()
   const queryBar = usePageValue(state => state.query)
-  const fields = getDocumentCustomFields(document)
+  const fields = getDocumentFields(document)
   const views = getDocumentViews(document)
   const currentView = useCurrentView(view => view?.view)
   const currentViewDomain = currentView
@@ -153,8 +153,8 @@ export const PageToolbar = () => {
   const searchQuery = currentView?.query.search.query ?? ''
   const filterRules = currentView?.query.filter.rules ?? []
   const sorters = currentView?.query.sorters ?? []
-  const availableFilterProperties = getAvailableFilterProperties(fields, filterRules)
-  const availableSorterProperties = getAvailableSorterProperties(fields, sorters)
+  const availableFilterFields = getAvailableFilterFields(fields, filterRules)
+  const availableSorterFields = getAvailableSorterFields(fields, sorters)
   const filterCount = filterRules.length
   const sortCount = sorters.length
   const [searchExpanded, setSearchExpanded] = useState(() => Boolean(searchQuery.trim()))
@@ -300,6 +300,8 @@ export const PageToolbar = () => {
               initialFocus={-1}
               mode="blocking"
               backdrop="transparent"
+              size="xl"
+              padding="none"
               trigger={(
                 <Button
                   size="icon"
@@ -311,15 +313,18 @@ export const PageToolbar = () => {
                   <Filter className="size-4" size={15} strokeWidth={1} />
                 </Button>
               )}
-              contentClassName="w-[280px] p-0"
             >
               <div className="flex max-h-[72vh] flex-col">
                 <FieldPicker
-                  fields={availableFilterProperties}
+                  fields={availableFilterFields}
                   emptyMessage={meta.ui.fieldPicker.allFiltered}
                   onSelect={fieldId => {
                     currentViewDomain?.filters.add(fieldId)
                     setToolbarRoute(null)
+                    page.query.open({
+                      kind: 'filter',
+                      fieldId
+                    })
                   }}
                 />
               </div>
@@ -361,6 +366,8 @@ export const PageToolbar = () => {
               initialFocus={-1}
               mode="blocking"
               backdrop="transparent"
+              size="xl"
+              padding="none"
               trigger={(
                 <Button
                   size="icon"
@@ -372,15 +379,17 @@ export const PageToolbar = () => {
                   <ArrowUpDown className="size-4" size={15} strokeWidth={1} />
                 </Button>
               )}
-              contentClassName="w-[280px] p-0"
             >
               <div className="flex max-h-[72vh] flex-col">
                 <FieldPicker
-                  fields={availableSorterProperties}
+                  fields={availableSorterFields}
                   emptyMessage={meta.ui.fieldPicker.allSorted}
                   onSelect={fieldId => {
                     currentViewDomain?.sorters.add(fieldId)
                     setToolbarRoute(null)
+                    page.query.open({
+                      kind: 'sort'
+                    })
                   }}
                 />
               </div>

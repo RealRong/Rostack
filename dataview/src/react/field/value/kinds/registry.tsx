@@ -5,26 +5,26 @@ import { createCheckboxPropertySpec } from './checkbox'
 import { createDatePropertySpec } from './date'
 import { createMultiSelectPropertySpec } from './multiSelect'
 import { createSingleSelectPropertySpec } from './select'
-import { createStatusPropertySpec } from './status'
+import { createStatusFieldSpec } from './status'
 import { createTextPropertySpec } from './text'
 
-export const getFieldValueSpec = (property?: Field): FieldValueSpec<any> => {
-  switch (property?.kind) {
+export const getFieldValueSpec = (field?: Field): FieldValueSpec<any> => {
+  switch (field?.kind) {
     case 'title':
-      return createTextPropertySpec(property)
+      return createTextPropertySpec(field)
     case 'select':
-      return createSingleSelectPropertySpec(isCustomField(property) ? property : undefined)
+      return createSingleSelectPropertySpec(isCustomField(field) ? field : undefined)
     case 'status':
-      return createStatusPropertySpec(isCustomField(property) ? property : undefined)
+      return createStatusFieldSpec(isCustomField(field) ? field : undefined)
     case 'multiSelect':
-      return createMultiSelectPropertySpec(isCustomField(property) ? property : undefined)
+      return createMultiSelectPropertySpec(isCustomField(field) ? field : undefined)
     case 'boolean':
-      return createCheckboxPropertySpec(isCustomField(property) ? property : undefined)
+      return createCheckboxPropertySpec(isCustomField(field) ? field : undefined)
     case 'date':
-      return createDatePropertySpec(isCustomField(property) ? property : undefined)
+      return createDatePropertySpec(isCustomField(field) ? field : undefined)
     case 'asset':
-      return createTextPropertySpec(property)
+      return createTextPropertySpec(field)
     default:
-      return createTextPropertySpec(property)
+      return createTextPropertySpec(field)
   }
 }

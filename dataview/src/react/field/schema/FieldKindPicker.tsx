@@ -25,7 +25,12 @@ export const buildFieldKindMenuItems = (props: FieldKindPickerProps): readonly M
 )
 
 export const FieldKindPicker = (props: FieldKindPickerProps) => {
-  return <Menu
-    items={buildFieldKindMenuItems(props)}
-  />
+  return (
+    <div className="px-2 py-2">
+      <Menu
+        items={buildFieldKindMenuItems(props)}
+        autoFocus={false}
+      />
+    </div>
+  )
 }

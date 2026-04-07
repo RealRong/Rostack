@@ -18,7 +18,7 @@ import { meta, renderMessage } from '@dataview/meta'
 import { FieldPicker } from '@dataview/react/page/features/viewQuery/FieldPicker'
 import { SortRuleRow } from './SortRuleRow'
 import {
-  getAvailableSorterProperties,
+  getAvailableSorterFields,
   getSorterItemId
 } from './sortUi'
 import { QueryChip } from '../query'
@@ -39,7 +39,7 @@ export const SortPopover = (props: SortPopoverProps) => {
     : undefined
   const [addSortOpen, setAddSortOpen] = useState(false)
   const sorters = currentView?.query.sorters ?? []
-  const availableFields = getAvailableSorterProperties(fields, sorters)
+  const availableFields = getAvailableSorterFields(fields, sorters)
 
   if (!sorters.length) {
     return null
@@ -58,6 +58,7 @@ export const SortPopover = (props: SortPopoverProps) => {
       closeOnInteractOutside={false}
       mode="blocking"
       backdrop="transparent"
+      padding="none"
       trigger={(
         <QueryChip
           state={'active'}
@@ -67,7 +68,7 @@ export const SortPopover = (props: SortPopoverProps) => {
           {renderMessage(meta.sort.summary(sorters).message)}
         </QueryChip>
       )}
-      contentClassName="w-[360px] p-0"
+      contentClassName="w-[360px]"
     >
       <div className="flex max-h-[72vh] flex-col p-2">
         <VerticalReorderList
@@ -104,6 +105,8 @@ export const SortPopover = (props: SortPopoverProps) => {
               onOpenChange={setAddSortOpen}
               initialFocus={-1}
               placement="bottom-start"
+              size="xl"
+              padding="none"
               trigger={(
                 <Button
                   layout="row"
@@ -112,7 +115,6 @@ export const SortPopover = (props: SortPopoverProps) => {
                   {renderMessage(meta.ui.sort.add)}
                 </Button>
               )}
-              contentClassName="w-[280px] p-0"
             >
               <div className="flex max-h-[72vh] flex-col">
                 <FieldPicker

@@ -44,8 +44,8 @@ export const StatusValueEditor = (
   const valueEditor = dataView.valueEditor
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [query, setQuery] = useState('')
-  const property = props.property
-  const options = getFieldOptions(property)
+  const field = props.field
+  const options = getFieldOptions(field)
   const normalizedQuery = normalizeToken(query)
   const selectedOption = useMemo(
     () => options.find(option => option.id === props.draft),
@@ -62,7 +62,7 @@ export const StatusValueEditor = (
     ))
   }, [normalizedQuery, options])
   const sections = useMemo(() => {
-    const allSections = getStatusSections(property)
+    const allSections = getStatusSections(field)
     if (!normalizedQuery) {
       return allSections
     }
@@ -76,7 +76,7 @@ export const StatusValueEditor = (
         ))
       }))
       .filter(section => section.options.length > 0)
-  }, [property, normalizedQuery])
+  }, [field, normalizedQuery])
   const navigationItems = useMemo(
     () => sections.flatMap(section => section.options.map(option => ({
       key: option.id
@@ -105,7 +105,7 @@ export const StatusValueEditor = (
     })
   }, [props.autoFocus])
 
-  if (!property) {
+  if (!field) {
     return null
   }
   const { commitDraft, commitDraftDeferred } = useDraftCommit({
@@ -288,7 +288,7 @@ export const StatusValueEditor = (
             window.requestAnimationFrame(() => {
               page.settings.open({
                 kind: 'fieldSchema',
-                fieldId: property.id
+                fieldId: field.id
               })
             })
           }}

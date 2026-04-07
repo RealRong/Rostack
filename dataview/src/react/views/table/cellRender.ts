@@ -3,6 +3,9 @@ import type {
   Row
 } from '@dataview/core/contracts'
 import {
+  getRecordFieldValue
+} from '@dataview/core/field'
+import {
   createDerivedStore,
   createKeyedDerivedStore,
   type KeyedReadStore,
@@ -167,7 +170,9 @@ export const createCellRender = (options: {
 
       return {
         exists: Boolean(record),
-        value: record?.values[cell.fieldId],
+        value: record
+          ? getRecordFieldValue(record, cell.fieldId)
+          : undefined,
         selected: chrome.selection,
         chrome
       }

@@ -126,7 +126,7 @@ export const createNodeTextCommands = ({
   },
   setColor: (nodeIds, color) =>
     appearance.setTextColor(nodeIds, color),
-  setFontSize: ({
+  setSize: ({
     nodeIds,
     value,
     sizeById
@@ -151,8 +151,26 @@ export const createNodeTextCommands = ({
                 }
               }
             : undefined
-        )
+          )
       }
     })
+  ),
+  setWeight: (nodeIds, weight) => document.updateMany(
+    nodeIds.map((id) => ({
+      id,
+      update: styleUpdate('fontWeight', weight)
+    }))
+  ),
+  setItalic: (nodeIds, italic) => document.updateMany(
+    nodeIds.map((id) => ({
+      id,
+      update: styleUpdate('fontStyle', italic ? 'italic' : 'normal')
+    }))
+  ),
+  setAlign: (nodeIds, align) => document.updateMany(
+    nodeIds.map((id) => ({
+      id,
+      update: styleUpdate('textAlign', align)
+    }))
   )
 })

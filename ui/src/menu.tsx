@@ -2,7 +2,6 @@ import { Check, ChevronRight } from 'lucide-react'
 import {
   useCallback,
   useEffect,
-  useId,
   useMemo,
   useRef,
   useState,
@@ -12,7 +11,11 @@ import {
 import type { Placement } from '@floating-ui/react'
 import { Button } from './button'
 import { closestTarget } from './dom'
-import { Popover, type PopoverOffset } from './popover'
+import {
+  Popover,
+  type PopoverOffset,
+  type PopoverSurfaceSize
+} from './popover'
 import { Switch } from './switch'
 import { cn } from './utils'
 
@@ -20,8 +23,10 @@ const MENU_SUBMENU_OFFSET: PopoverOffset = {
   mainAxis: -8
 }
 
-const MENU_ROOT_ATTR = 'data-menu-root-id'
-const MENU_ITEM_KEY_ATTR = 'data-menu-item-key'
+const MENU_ITEM_PATH_ATTR = 'data-menu-item-path'
+
+type MenuPath = readonly string[]
+type MenuActiveSource = 'pointer' | 'keyboard' | null
 
 export interface MenuActionItem {
   kind: 'action'
@@ -57,6 +62,8 @@ export interface MenuSubmenuItem {
   disabled?: boolean
   items?: readonly MenuItem[]
   content?: ReactNode | (() => ReactNode)
+  size?: PopoverSurfaceSize
+  surface?: 'list' | 'panel'
   contentClassName?: string
   placement?: Placement
   offset?: PopoverOffset
@@ -81,36 +88,54 @@ export type MenuItem =
   | MenuCustomItem
 
 export type MenuSubmenuOpenPolicy = 'hover' | 'click'
+export type MenuSurfaceSize = PopoverSurfaceSize
 
 export interface MenuProps {
   items: readonly MenuItem[]
   onClose?: () => void
   autoFocus?: boolean
+  className?: string
   submenuOpenPolicy?: MenuSubmenuOpenPolicy
   open?: boolean
+  openSubmenuKey?: string | null
+  onOpenSubmenuChange?: (key: string | null) => void
 }
 
-interface MenuListProps {
+interface MenuLevelProps {
   items: readonly MenuItem[]
+  parentPath: MenuPath
+  open: boolean
+  autoFocus: boolean
   onClose?: () => void
-  open?: boolean
-  autoFocus?: boolean
   onRequestClose?: () => void
-  focusTrigger?: () => void
   submenuOpenPolicy: MenuSubmenuOpenPolicy
+  controller: MenuController
+}
+
+interface MenuController {
+  activePath: MenuPath
+  activeSource: MenuActiveSource
+  expandedPath: MenuPath
+  registerItemRef: (path: MenuPath, element: HTMLButtonElement | null) => void
+  setActivePointerPath: (path: MenuPath) => void
+  setActiveKeyboardPath: (path: MenuPath) => void
+  clearPointerActivePath: () => void
+  trimExpandedPath: (path: MenuPath) => void
+  dismissSubmenuPath: (path: MenuPath) => void
+  collapseSubmenuPathToTrigger: (path: MenuPath) => void
+  openSubmenuPath: (path: MenuPath, item: MenuSubmenuItem, source: 'pointer' | 'keyboard' | 'click') => void
 }
 
 const isInteractive = (item: MenuItem): item is MenuActionItem | MenuToggleItem | MenuSubmenuItem => (
   item.kind === 'action' || item.kind === 'toggle' || item.kind === 'submenu'
 )
 
-const getEnabledItemKeys = (items: readonly MenuItem[]) => items
-  .filter(isInteractive)
-  .filter(item => !item.disabled)
-  .map(item => item.key)
-
 const renderSubmenuContent = (content: MenuSubmenuItem['content']) => (
   typeof content === 'function' ? content() : content
+)
+
+const resolveSubmenuSurface = (item: MenuSubmenuItem): 'list' | 'panel' => (
+  item.surface ?? (item.items?.length ? 'list' : 'panel')
 )
 
 const resolveMenuItemActiveClassName = (input: {
@@ -128,145 +153,269 @@ const resolveMenuItemActiveClassName = (input: {
     : 'hover:bg-transparent hover:text-fg'
 }
 
-const MenuList = (props: MenuListProps) => {
-  const rootId = useId()
-  const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({})
-  const parentOpen = props.open ?? true
-  const enabledItemKeys = useMemo(
-    () => getEnabledItemKeys(props.items),
-    [props.items]
+const appendMenuPath = (parentPath: MenuPath, key: string): MenuPath => [
+  ...parentPath,
+  key
+]
+
+const parentMenuPath = (path: MenuPath): MenuPath => path.slice(0, -1)
+
+const areMenuPathsEqual = (left: MenuPath, right: MenuPath) => (
+  left.length === right.length
+  && left.every((segment, index) => segment === right[index])
+)
+
+const isMenuPathPrefix = (prefix: MenuPath, path: MenuPath) => (
+  prefix.length <= path.length
+  && prefix.every((segment, index) => segment === path[index])
+)
+
+const isMenuPathDirectChild = (path: MenuPath, parentPath: MenuPath) => (
+  path.length === parentPath.length + 1 && isMenuPathPrefix(parentPath, path)
+)
+
+const serializeMenuPath = (path: MenuPath) => JSON.stringify(path)
+
+const parseMenuPath = (value: string | null): MenuPath | null => {
+  if (!value) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) && parsed.every(segment => typeof segment === 'string')
+      ? parsed
+      : null
+  } catch {
+    return null
+  }
+}
+
+const findInteractiveItem = (
+  items: readonly MenuItem[],
+  key: string
+) => items.find(item => isInteractive(item) && item.key === key)
+
+const findMenuItemAtPath = (
+  items: readonly MenuItem[],
+  path: MenuPath
+): MenuItem | null => {
+  if (!path.length) {
+    return null
+  }
+
+  let currentItems = items
+  let currentItem: MenuItem | null = null
+
+  for (let index = 0; index < path.length; index += 1) {
+    const key = path[index]
+    currentItem = findInteractiveItem(currentItems, key) ?? null
+    if (!currentItem) {
+      return null
+    }
+
+    if (index === path.length - 1) {
+      return currentItem
+    }
+
+    if (currentItem.kind !== 'submenu' || !currentItem.items?.length) {
+      return null
+    }
+
+    currentItems = currentItem.items
+  }
+
+  return null
+}
+
+const getFirstEnabledPath = (
+  items: readonly MenuItem[],
+  parentPath: MenuPath
+): MenuPath | null => {
+  const firstInteractiveItem = items.find(item => isInteractive(item) && !item.disabled)
+  return firstInteractiveItem
+    ? appendMenuPath(parentPath, firstInteractiveItem.key)
+    : null
+}
+
+const normalizeExpandedPath = (
+  items: readonly MenuItem[],
+  expandedPath: MenuPath
+): MenuPath => {
+  if (!expandedPath.length) {
+    return []
+  }
+
+  let currentItems = items
+  const nextExpandedPath: string[] = []
+
+  for (const key of expandedPath) {
+    const item = currentItems.find(
+      (currentItem): currentItem is MenuSubmenuItem => (
+        currentItem.kind === 'submenu' && currentItem.key === key && !currentItem.disabled
+      )
+    )
+    if (!item) {
+      break
+    }
+
+    nextExpandedPath.push(key)
+    if (!item.items?.length) {
+      break
+    }
+
+    currentItems = item.items
+  }
+
+  return nextExpandedPath
+}
+
+const isVisibleMenuPath = (
+  items: readonly MenuItem[],
+  path: MenuPath,
+  expandedPath: MenuPath
+): boolean => {
+  if (!path.length) {
+    return false
+  }
+
+  let currentItems = items
+
+  for (let index = 0; index < path.length; index += 1) {
+    const key = path[index]
+    const item = findInteractiveItem(currentItems, key)
+    if (!item) {
+      return false
+    }
+
+    if (index === path.length - 1) {
+      return true
+    }
+
+    const currentPath = path.slice(0, index + 1)
+    if (item.kind !== 'submenu' || !isMenuPathPrefix(currentPath, expandedPath) || !item.items?.length) {
+      return false
+    }
+
+    currentItems = item.items
+  }
+
+  return false
+}
+
+const MenuLevel = (props: MenuLevelProps) => {
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const enabledPaths = useMemo(
+    () => props.items
+      .filter(item => isInteractive(item) && !item.disabled)
+      .map(item => appendMenuPath(props.parentPath, item.key)),
+    [props.items, props.parentPath]
   )
-  const enabledItemKey = enabledItemKeys.join('\0')
-  const itemMap = useMemo(
-    () => new Map(
-      props.items
-        .filter(isInteractive)
-        .map(item => [item.key, item] as const)
-    ),
-    [props.items]
-  )
-  const [focusKey, setFocusKey] = useState<string | null>(enabledItemKeys[0] ?? null)
-  const [openSubmenuKey, setOpenSubmenuKey] = useState<string | null>(null)
-  const requestClose = useCallback(() => {
-    setOpenSubmenuKey(null)
-    props.onRequestClose?.()
-    props.focusTrigger?.()
-  }, [props])
-  const focusItem = useCallback((nextKey: string | null) => {
-    if (!nextKey) {
+  const firstEnabledPath = enabledPaths[0] ?? null
+  const hasActiveDescendant = props.controller.activePath.length > props.parentPath.length
+    && isMenuPathPrefix(props.parentPath, props.controller.activePath)
+
+  useEffect(() => {
+    if (!props.open || !props.autoFocus || !firstEnabledPath) {
       return
     }
 
-    setFocusKey(nextKey)
-    itemRefs.current[nextKey]?.focus({ preventScroll: true })
-  }, [])
-
-  useEffect(() => {
-    if (!focusKey || !enabledItemKeys.includes(focusKey)) {
-      setFocusKey(enabledItemKeys[0] ?? null)
-    }
-  }, [enabledItemKey, enabledItemKeys, focusKey])
-
-  useEffect(() => {
-    if (openSubmenuKey && !props.items.some(item => item.kind === 'submenu' && item.key === openSubmenuKey)) {
-      setOpenSubmenuKey(null)
-    }
-  }, [openSubmenuKey, props.items])
-
-  useEffect(() => {
-    if (props.open === false && openSubmenuKey !== null) {
-      setOpenSubmenuKey(null)
-    }
-  }, [openSubmenuKey, props.open])
-
-  useEffect(() => {
-    if (!props.autoFocus) {
+    if (hasActiveDescendant) {
       return
     }
 
-    focusItem(enabledItemKeys[0] ?? null)
-  }, [enabledItemKey, enabledItemKeys, focusItem, props.autoFocus])
+    props.controller.setActiveKeyboardPath(firstEnabledPath)
+  }, [
+    firstEnabledPath,
+    hasActiveDescendant,
+    props.autoFocus,
+    props.controller,
+    props.open,
+    props.parentPath
+  ])
 
-  const moveFocus = useCallback((delta: number) => {
-    if (!enabledItemKeys.length) {
+  const moveKeyboardActive = useCallback((currentPath: MenuPath, delta: number) => {
+    if (!enabledPaths.length) {
       return
     }
 
-    const currentIndex = focusKey
-      ? enabledItemKeys.indexOf(focusKey)
-      : -1
+    const currentIndex = enabledPaths.findIndex(path => areMenuPathsEqual(path, currentPath))
     const baseIndex = currentIndex === -1
       ? (delta > 0 ? -1 : 0)
       : currentIndex
-    const nextIndex = (baseIndex + delta + enabledItemKeys.length) % enabledItemKeys.length
+    const nextIndex = (baseIndex + delta + enabledPaths.length) % enabledPaths.length
+    const nextPath = enabledPaths[nextIndex] ?? null
 
-    setOpenSubmenuKey(null)
-    focusItem(enabledItemKeys[nextIndex] ?? null)
-  }, [enabledItemKeys, focusItem, focusKey])
+    if (!nextPath) {
+      return
+    }
 
-  const collapseSubmenu = useCallback(() => {
-    setOpenSubmenuKey(null)
-  }, [])
+    props.controller.trimExpandedPath(props.parentPath)
+    props.controller.setActiveKeyboardPath(nextPath)
+  }, [enabledPaths, props.controller, props.parentPath])
 
   const handleKeyDownCapture = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
-    const menuRoot = closestTarget<HTMLElement>(event.target, `[${MENU_ROOT_ATTR}]`)
-    if (menuRoot?.getAttribute(MENU_ROOT_ATTR) !== rootId) {
+    if (!(event.target instanceof HTMLElement) || !rootRef.current?.contains(event.target)) {
       return
     }
 
-    const target = closestTarget<HTMLElement>(event.target, `[${MENU_ITEM_KEY_ATTR}]`)
-    if (!target) {
+    const target = closestTarget<HTMLElement>(event.target, `[${MENU_ITEM_PATH_ATTR}]`)
+    const currentPath = parseMenuPath(target?.getAttribute(MENU_ITEM_PATH_ATTR) ?? null)
+    if (!currentPath || !isMenuPathDirectChild(currentPath, props.parentPath)) {
       return
     }
 
-    const currentKey = target.getAttribute(MENU_ITEM_KEY_ATTR)
-    if (!currentKey) {
-      return
-    }
-
-    const currentItem = itemMap.get(currentKey)
+    const currentItem = findMenuItemAtPath(props.items, currentPath)
     switch (event.key) {
       case 'ArrowDown':
         event.preventDefault()
         event.stopPropagation()
-        moveFocus(1)
+        moveKeyboardActive(currentPath, 1)
         break
       case 'ArrowUp':
         event.preventDefault()
         event.stopPropagation()
-        moveFocus(-1)
+        moveKeyboardActive(currentPath, -1)
         break
       case 'Home':
         event.preventDefault()
         event.stopPropagation()
-        setOpenSubmenuKey(null)
-        focusItem(enabledItemKeys[0] ?? null)
+        props.controller.trimExpandedPath(props.parentPath)
+        if (firstEnabledPath) {
+          props.controller.setActiveKeyboardPath(firstEnabledPath)
+        }
         break
-      case 'End':
+      case 'End': {
         event.preventDefault()
         event.stopPropagation()
-        setOpenSubmenuKey(null)
-        focusItem(enabledItemKeys[enabledItemKeys.length - 1] ?? null)
+        props.controller.trimExpandedPath(props.parentPath)
+        const lastEnabledPath = enabledPaths[enabledPaths.length - 1] ?? null
+        if (lastEnabledPath) {
+          props.controller.setActiveKeyboardPath(lastEnabledPath)
+        }
         break
+      }
       case 'ArrowRight':
         event.preventDefault()
         event.stopPropagation()
         if (currentItem?.kind === 'submenu' && !currentItem.disabled) {
-          setOpenSubmenuKey(currentItem.key)
+          props.controller.openSubmenuPath(currentPath, currentItem, 'keyboard')
         }
         break
       case 'ArrowLeft':
+        if (!props.onRequestClose) {
+          return
+        }
+
         event.preventDefault()
         event.stopPropagation()
-        if (props.onRequestClose) {
-          requestClose()
-        }
+        props.onRequestClose()
         break
       case 'Escape':
         if (props.onRequestClose) {
           event.preventDefault()
           event.stopPropagation()
-          requestClose()
+          props.onRequestClose()
           return
         }
 
@@ -279,24 +428,58 @@ const MenuList = (props: MenuListProps) => {
       default:
         break
     }
-  }, [enabledItemKeys, focusItem, itemMap, moveFocus, props.onClose, props.onRequestClose, requestClose, rootId])
+  }, [
+    enabledPaths,
+    firstEnabledPath,
+    moveKeyboardActive,
+    props.controller,
+    props.items,
+    props.onClose,
+    props.onRequestClose,
+    props.parentPath
+  ])
+
+  const handleMouseLeave = useCallback(() => {
+    if (props.controller.activeSource !== 'pointer') {
+      return
+    }
+
+    if (props.controller.expandedPath.length > props.parentPath.length
+      && isMenuPathPrefix(props.parentPath, props.controller.expandedPath)) {
+      return
+    }
+
+    if (isMenuPathDirectChild(props.controller.activePath, props.parentPath)) {
+      props.controller.clearPointerActivePath()
+    }
+  }, [props.controller, props.parentPath])
 
   return (
     <div
+      ref={rootRef}
       role="menu"
-      {...{
-        [MENU_ROOT_ATTR]: rootId
-      }}
       className="flex flex-col gap-0.5"
       onKeyDownCapture={handleKeyDownCapture}
+      onMouseLeave={handleMouseLeave}
     >
       {props.items.map(item => {
+        const itemPath = appendMenuPath(props.parentPath, item.key)
+        const itemPathKey = serializeMenuPath(itemPath)
+        const registerRef = (element: HTMLButtonElement | null) => {
+          props.controller.registerItemRef(itemPath, element)
+        }
+
         if (item.kind === 'divider') {
           return (
             <div
               key={item.key}
               className="my-1 border-t border-divider"
-              onMouseEnter={collapseSubmenu}
+              onMouseEnter={() => {
+                props.controller.trimExpandedPath(props.parentPath)
+                if (props.controller.activeSource === 'pointer') {
+                  props.controller.clearPointerActivePath()
+                }
+              }}
             />
           )
         }
@@ -305,31 +488,32 @@ const MenuList = (props: MenuListProps) => {
           return (
             <div
               key={item.key}
-              onMouseEnter={collapseSubmenu}
+              onMouseEnter={() => {
+                props.controller.trimExpandedPath(props.parentPath)
+                if (props.controller.activeSource === 'pointer') {
+                  props.controller.clearPointerActivePath()
+                }
+              }}
             >
               {item.render()}
             </div>
           )
         }
 
-        const ref = (element: HTMLButtonElement | null) => {
-          itemRefs.current[item.key] = element
-        }
+        const active = areMenuPathsEqual(props.controller.activePath, itemPath)
 
         if (item.kind === 'action') {
-          const active = focusKey === item.key
           return (
             <Button
               key={item.key}
-              ref={ref}
+              ref={registerRef}
               {...{
-                [MENU_ITEM_KEY_ATTR]: item.key
+                [MENU_ITEM_PATH_ATTR]: itemPathKey
               }}
               role="menuitem"
-              tabIndex={focusKey === item.key ? 0 : -1}
+              tabIndex={active ? 0 : -1}
               layout="row"
               variant={item.tone === 'destructive' ? 'ghostDestructive' : undefined}
-              focusRing={false}
               leading={item.leading}
               suffix={item.suffix}
               disabled={item.disabled}
@@ -337,13 +521,9 @@ const MenuList = (props: MenuListProps) => {
                 active,
                 destructive: item.tone === 'destructive'
               })}
-              onFocus={() => {
-                setFocusKey(item.key)
-                collapseSubmenu()
-              }}
               onMouseEnter={() => {
-                focusItem(item.key)
-                collapseSubmenu()
+                props.controller.trimExpandedPath(props.parentPath)
+                props.controller.setActivePointerPath(itemPath)
               }}
               onClick={() => {
                 item.onSelect()
@@ -359,19 +539,17 @@ const MenuList = (props: MenuListProps) => {
 
         if (item.kind === 'toggle') {
           const indicator = item.indicator ?? 'check'
-          const active = focusKey === item.key
           return (
             <Button
               key={item.key}
-              ref={ref}
+              ref={registerRef}
               {...{
-                [MENU_ITEM_KEY_ATTR]: item.key
+                [MENU_ITEM_PATH_ATTR]: itemPathKey
               }}
               role="menuitemcheckbox"
               aria-checked={item.checked}
-              tabIndex={focusKey === item.key ? 0 : -1}
+              tabIndex={active ? 0 : -1}
               layout="row"
-              focusRing={false}
               leading={item.leading}
               suffix={item.suffix}
               disabled={item.disabled}
@@ -390,13 +568,9 @@ const MenuList = (props: MenuListProps) => {
                 : item.checked
                   ? <Check className="size-4 text-foreground" size={16} strokeWidth={1.8} />
                   : undefined}
-              onFocus={() => {
-                setFocusKey(item.key)
-                collapseSubmenu()
-              }}
               onMouseEnter={() => {
-                focusItem(item.key)
-                collapseSubmenu()
+                props.controller.trimExpandedPath(props.parentPath)
+                props.controller.setActivePointerPath(itemPath)
               }}
               onClick={() => {
                 item.onSelect()
@@ -410,34 +584,42 @@ const MenuList = (props: MenuListProps) => {
           )
         }
 
-        const open = parentOpen && openSubmenuKey === item.key
-        const active = focusKey === item.key || open
+        const submenuSurface = resolveSubmenuSurface(item)
+        const open = isMenuPathPrefix(itemPath, props.controller.expandedPath)
 
         return (
           <Popover
             key={item.key}
             open={open}
-            onOpenChange={nextOpen => setOpenSubmenuKey(nextOpen ? item.key : null)}
+            onOpenChange={nextOpen => {
+              if (nextOpen) {
+                props.controller.openSubmenuPath(itemPath, item, 'click')
+                return
+              }
+
+              props.controller.dismissSubmenuPath(itemPath)
+            }}
             kind="menu"
             placement={item.placement ?? 'right-start'}
             offset={item.offset ?? MENU_SUBMENU_OFFSET}
-            initialFocus={0}
+            initialFocus={submenuSurface === 'list' ? -1 : 0}
+            size={item.size ?? (submenuSurface === 'list' ? 'sm' : undefined)}
+            padding={submenuSurface === 'list' ? 'menu' : 'panel'}
             contentClassName={cn(
               'min-w-0',
-              item.contentClassName ?? (item.items ? 'w-[180px] p-1.5' : 'p-0')
+              item.contentClassName
             )}
             trigger={(
               <Button
-                ref={ref}
+                ref={registerRef}
                 {...{
-                  [MENU_ITEM_KEY_ATTR]: item.key
+                  [MENU_ITEM_PATH_ATTR]: itemPathKey
                 }}
                 role="menuitem"
                 aria-haspopup="menu"
                 aria-expanded={open}
-                tabIndex={focusKey === item.key ? 0 : -1}
+                tabIndex={active ? 0 : -1}
                 layout="row"
-                focusRing={false}
                 leading={item.leading}
                 suffix={item.suffix}
                 disabled={item.disabled}
@@ -445,13 +627,12 @@ const MenuList = (props: MenuListProps) => {
                   active
                 })}
                 trailing={<ChevronRight className="size-4" size={16} strokeWidth={1.8} />}
-                onFocus={() => {
-                  setFocusKey(item.key)
-                }}
                 onMouseEnter={() => {
-                  focusItem(item.key)
+                  props.controller.setActivePointerPath(itemPath)
                   if (!item.disabled && props.submenuOpenPolicy === 'hover') {
-                    setOpenSubmenuKey(item.key)
+                    props.controller.openSubmenuPath(itemPath, item, 'pointer')
+                  } else {
+                    props.controller.trimExpandedPath(props.parentPath)
                   }
                 }}
               >
@@ -461,17 +642,20 @@ const MenuList = (props: MenuListProps) => {
           >
             <div className="flex max-h-[72vh] flex-col">
               {item.items?.length ? (
-                <MenuList
+                <MenuLevel
                   items={item.items}
+                  parentPath={itemPath}
                   open={open}
                   onClose={() => {
-                    setOpenSubmenuKey(null)
+                    props.controller.dismissSubmenuPath(itemPath)
                     props.onClose?.()
                   }}
-                  autoFocus={false}
-                  onRequestClose={() => setOpenSubmenuKey(null)}
-                  focusTrigger={() => focusItem(item.key)}
+                  onRequestClose={() => {
+                    props.controller.collapseSubmenuPathToTrigger(itemPath)
+                  }}
+                  autoFocus={open && props.controller.activeSource !== 'pointer'}
                   submenuOpenPolicy={props.submenuOpenPolicy}
+                  controller={props.controller}
                 />
               ) : renderSubmenuContent(item.content)}
             </div>
@@ -484,15 +668,201 @@ const MenuList = (props: MenuListProps) => {
 
 export const Menu = (props: MenuProps) => {
   const submenuOpenPolicy = props.submenuOpenPolicy ?? 'hover'
+  const open = props.open ?? true
+  const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+  const [activePath, setActivePath] = useState<MenuPath>([])
+  const [activeSource, setActiveSource] = useState<MenuActiveSource>(null)
+  const [pendingFocusPath, setPendingFocusPath] = useState<MenuPath | null>(null)
+  const [uncontrolledExpandedRootKey, setUncontrolledExpandedRootKey] = useState<string | null>(
+    props.openSubmenuKey ?? null
+  )
+  const [expandedTail, setExpandedTail] = useState<string[]>([])
+  const rootExpandedKey = props.openSubmenuKey !== undefined
+    ? props.openSubmenuKey
+    : uncontrolledExpandedRootKey
+  const rawExpandedPath = useMemo<MenuPath>(() => (
+    rootExpandedKey
+      ? [rootExpandedKey, ...expandedTail]
+      : []
+  ), [expandedTail, rootExpandedKey])
+  const expandedPath = useMemo(
+    () => normalizeExpandedPath(props.items, rawExpandedPath),
+    [props.items, rawExpandedPath]
+  )
+
+  useEffect(() => {
+    if (props.openSubmenuKey !== undefined) {
+      setExpandedTail([])
+    }
+  }, [props.openSubmenuKey])
+
+  useEffect(() => {
+    if (props.openSubmenuKey !== undefined || areMenuPathsEqual(rawExpandedPath, expandedPath)) {
+      return
+    }
+
+    setUncontrolledExpandedRootKey(expandedPath[0] ?? null)
+    setExpandedTail(expandedPath.slice(1))
+  }, [expandedPath, props.openSubmenuKey, rawExpandedPath])
+
+  useEffect(() => {
+    if (!activePath.length) {
+      return
+    }
+
+    if (!isVisibleMenuPath(props.items, activePath, expandedPath)) {
+      setActivePath([])
+      setActiveSource(null)
+    }
+  }, [activePath, expandedPath, props.items])
+
+  useEffect(() => {
+    if (open) {
+      return
+    }
+
+    setActivePath([])
+    setActiveSource(null)
+    setPendingFocusPath(null)
+    if (props.openSubmenuKey === undefined) {
+      setUncontrolledExpandedRootKey(null)
+      setExpandedTail([])
+    }
+  }, [open, props.openSubmenuKey])
+
+  const setExpandedPath = useCallback((nextPath: MenuPath) => {
+    const nextRootKey = nextPath[0] ?? null
+    const nextTail = nextRootKey
+      ? nextPath.slice(1)
+      : []
+
+    if (props.openSubmenuKey === undefined) {
+      setUncontrolledExpandedRootKey(nextRootKey)
+    }
+    setExpandedTail(nextTail)
+    props.onOpenSubmenuChange?.(nextRootKey)
+  }, [props.onOpenSubmenuChange, props.openSubmenuKey])
+
+  const focusItemPath = useCallback((path: MenuPath) => {
+    const element = itemRefs.current[serializeMenuPath(path)]
+    if (!element) {
+      setPendingFocusPath(path)
+      return
+    }
+
+    setPendingFocusPath(null)
+    element.focus({ preventScroll: true })
+    element.scrollIntoView({
+      block: 'nearest'
+    })
+  }, [])
+
+  const registerItemRef = useCallback((path: MenuPath, element: HTMLButtonElement | null) => {
+    const pathKey = serializeMenuPath(path)
+    itemRefs.current[pathKey] = element
+
+    if (element && pendingFocusPath && areMenuPathsEqual(path, pendingFocusPath)) {
+      element.focus({ preventScroll: true })
+      element.scrollIntoView({
+        block: 'nearest'
+      })
+      setPendingFocusPath(null)
+    }
+  }, [pendingFocusPath])
+
+  const setActivePointerPath = useCallback((path: MenuPath) => {
+    setActivePath(path)
+    setActiveSource('pointer')
+  }, [])
+
+  const setActiveKeyboardPath = useCallback((path: MenuPath) => {
+    setActivePath(path)
+    setActiveSource('keyboard')
+    focusItemPath(path)
+  }, [focusItemPath])
+
+  const clearPointerActivePath = useCallback(() => {
+    if (activeSource !== 'pointer') {
+      return
+    }
+
+    setActivePath([])
+    setActiveSource(null)
+  }, [activeSource])
+
+  const trimExpandedPath = useCallback((path: MenuPath) => {
+    if (!isMenuPathPrefix(path, expandedPath) || areMenuPathsEqual(path, expandedPath)) {
+      return
+    }
+
+    setExpandedPath(path)
+  }, [expandedPath, setExpandedPath])
+
+  const dismissSubmenuPath = useCallback((path: MenuPath) => {
+    setExpandedPath(parentMenuPath(path))
+    setActiveKeyboardPath(path)
+  }, [setActiveKeyboardPath, setExpandedPath])
+
+  const collapseSubmenuPathToTrigger = useCallback((path: MenuPath) => {
+    setExpandedPath(parentMenuPath(path))
+    setActiveKeyboardPath(path)
+  }, [setActiveKeyboardPath, setExpandedPath])
+
+  const openSubmenuPath = useCallback((path: MenuPath, item: MenuSubmenuItem, source: 'pointer' | 'keyboard' | 'click') => {
+    setExpandedPath(path)
+
+    if (source === 'pointer') {
+      setActivePointerPath(path)
+      return
+    }
+
+    const firstChildPath = item.items?.length
+      ? getFirstEnabledPath(item.items, path)
+      : null
+    if (firstChildPath) {
+      setActiveKeyboardPath(firstChildPath)
+      return
+    }
+
+    setActivePointerPath(path)
+  }, [setActiveKeyboardPath, setActivePointerPath, setExpandedPath])
+
+  const controller = useMemo<MenuController>(() => ({
+    activePath,
+    activeSource,
+    expandedPath,
+    registerItemRef,
+    setActivePointerPath,
+    setActiveKeyboardPath,
+    clearPointerActivePath,
+    trimExpandedPath,
+    dismissSubmenuPath,
+    collapseSubmenuPathToTrigger,
+    openSubmenuPath
+  }), [
+    activePath,
+    activeSource,
+    expandedPath,
+    registerItemRef,
+    setActivePointerPath,
+    setActiveKeyboardPath,
+    clearPointerActivePath,
+    trimExpandedPath,
+    dismissSubmenuPath,
+    collapseSubmenuPathToTrigger,
+    openSubmenuPath
+  ])
 
   return (
-    <div className="flex max-h-[72vh] flex-col">
-      <MenuList
+    <div className={cn('flex max-h-[72vh] flex-col', props.className)}>
+      <MenuLevel
         items={props.items}
-        open={props.open ?? true}
+        parentPath={[]}
+        open={open}
         onClose={props.onClose}
         autoFocus={props.autoFocus ?? true}
         submenuOpenPolicy={submenuOpenPolicy}
+        controller={controller}
       />
     </div>
   )

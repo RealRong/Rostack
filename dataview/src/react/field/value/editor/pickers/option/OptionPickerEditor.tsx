@@ -211,8 +211,8 @@ export const OptionPickerEditor = (
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [query, setQuery] = useState('')
   const [editingOptionId, setEditingOptionId] = useState<string>()
-  const property = props.property
-  const options = getFieldOptions(property)
+  const field = props.field
+  const options = getFieldOptions(field)
   const filteredOptions = useMemo(
     () => filterOptionsByQuery(options, query),
     [options, query]
@@ -287,7 +287,7 @@ export const OptionPickerEditor = (
     }
   }, [editingOptionId, options])
 
-  if (!property) {
+  if (!field) {
     return null
   }
   const { applyDraft, commitDraft, commitDraftDeferred } = useDraftCommit({
@@ -345,7 +345,7 @@ export const OptionPickerEditor = (
       : 'apply',
     trigger: EditorSubmitTrigger = 'programmatic'
   ) => {
-    const created = editor.fields.options.create(property.id, query)
+    const created = editor.fields.options.create(field.id, query)
     if (!created) {
       return false
     }
@@ -504,7 +504,7 @@ export const OptionPickerEditor = (
 
   const reorderOptions = (from: number, to: number) => {
     editor.fields.options.reorder(
-      property.id,
+      field.id,
       moveItem(options, from, to).map(option => option.id)
     )
   }
@@ -539,12 +539,12 @@ export const OptionPickerEditor = (
           setHighlightedKey(option.id)
         }
       }}
-      onRename={name => editor.fields.options.update(property.id, option.id, { name }) !== undefined}
+      onRename={name => editor.fields.options.update(field.id, option.id, { name }) !== undefined}
       onColorChange={color => {
-        editor.fields.options.update(property.id, option.id, { color })
+        editor.fields.options.update(field.id, option.id, { color })
       }}
       onDelete={() => {
-        editor.fields.options.remove(property.id, option.id)
+        editor.fields.options.remove(field.id, option.id)
         removeOptionFromDraft(option.id)
       }}
     />
@@ -671,12 +671,12 @@ export const OptionPickerEditor = (
                         setHighlightedKey(option.id)
                       }
                     }}
-                    onRename={name => editor.fields.options.update(property.id, option.id, { name }) !== undefined}
+                    onRename={name => editor.fields.options.update(field.id, option.id, { name }) !== undefined}
                     onColorChange={color => {
-                      editor.fields.options.update(property.id, option.id, { color })
+                      editor.fields.options.update(field.id, option.id, { color })
                     }}
                     onDelete={() => {
-                      editor.fields.options.remove(property.id, option.id)
+                      editor.fields.options.remove(field.id, option.id)
                       removeOptionFromDraft(option.id)
                     }}
                   />

@@ -12,27 +12,48 @@ import {
   type FieldDisplayTimeFormatId,
   type FieldNumberFormatId
 } from '@dataview/meta'
-import { Menu } from '@ui/menu'
-import {
-  FieldChoiceList,
-  FieldPopoverRow,
-  FieldSwitchRow
-} from './FieldSchemaRows'
+import type { MenuItem, MenuSurfaceSize } from '@ui/menu'
 
 const FLOATING_TIMEZONE_ID = '__floating__'
 
-export const FieldFormatSection = (props: {
-  property: CustomField
+const buildChoiceSubmenuItem = <TValue extends string>(input: {
+  key: string
+  label: string
+  suffix?: string
+  size?: MenuSurfaceSize
+  value: TValue
+  options: readonly {
+    id: TValue
+    message: MessageSpec
+  }[]
+  onSelect: (value: TValue) => void
+}): MenuItem => ({
+  kind: 'submenu',
+  key: input.key,
+  label: input.label,
+  suffix: input.suffix,
+  size: input.size ?? 'md',
+  items: input.options.map(option => ({
+    kind: 'toggle' as const,
+    key: option.id,
+    label: renderMessage(option.message),
+    checked: input.value === option.id,
+    onSelect: () => input.onSelect(option.id)
+  }))
+})
+
+export const buildFieldFormatMenuItems = (props: {
+  field: CustomField
   update: (patch: Partial<Omit<CustomField, 'id'>>) => void
-}) => {
-  const numberFormat = props.property.kind === 'number'
-    ? meta.field.number.format.get(props.property.format)
+}): readonly MenuItem[] => {
+  const numberFormat = props.field.kind === 'number'
+    ? meta.field.number.format.get(props.field.format)
     : undefined
-  const dateConfig = props.property.kind === 'date'
-    ? props.property
+  const dateConfig = props.field.kind === 'date'
+    ? props.field
     : undefined
-  const urlConfig = props.property.kind === 'url'
-    ? props.property
+  const urlConfig = props.field.kind === 'url'
+    ? props.field
     : undefined
   const displayDateFormat = dateConfig
     ? meta.field.date.displayDateFormat.get(dateConfig.displayDateFormat)
@@ -46,7 +67,7 @@ export const FieldFormatSection = (props: {
   const timezoneOptions = getAvailableTimezones()
 
   const setNumberFormat = (value: FieldNumberFormatId) => {
-    if (props.property.kind !== 'number') {
+    if (props.field.kind !== 'number') {
       return
     }
 
@@ -80,151 +101,118 @@ export const FieldFormatSection = (props: {
   }
 
   if (numberFormat) {
-    return (
-      <FieldPopoverRow
-        label={renderMessage(meta.ui.field.editor.format)}
-        suffix={renderMessage(numberFormat.message)}
-        widthClassName="w-[220px]"
-      >
-        {close => (
-          <FieldChoiceList
-            value={numberFormat.id as FieldNumberFormatId}
-            options={meta.field.number.format.list as readonly {
-              id: FieldNumberFormatId
-              message: MessageSpec
-            }[]}
-            onSelect={value => {
-              setNumberFormat(value)
-              close()
-            }}
-          />
-        )}
-      </FieldPopoverRow>
-    )
+    return [
+      buildChoiceSubmenuItem({
+        key: 'number-format',
+        label: renderMessage(meta.ui.field.editor.format),
+        suffix: renderMessage(numberFormat.message),
+        value: numberFormat.id as FieldNumberFormatId,
+        options: meta.field.number.format.list as readonly {
+          id: FieldNumberFormatId
+          message: MessageSpec
+        }[],
+        onSelect: setNumberFormat
+      })
+    ]
   }
 
   if (urlConfig) {
-    return (
-      <FieldSwitchRow
-        label={renderMessage(meta.ui.field.editor.displayFullUrl)}
-        checked={urlConfig.displayFullUrl}
-        onToggle={() => setUrlConfig({
+    return [
+      {
+        kind: 'toggle',
+        key: 'display-full-url',
+        label: renderMessage(meta.ui.field.editor.displayFullUrl),
+        checked: urlConfig.displayFullUrl,
+        indicator: 'switch',
+        onSelect: () => setUrlConfig({
           displayFullUrl: !urlConfig.displayFullUrl
-        })}
-      />
-    )
+        })
+      }
+    ]
   }
 
   if (!dateConfig || !displayDateFormat || !displayTimeFormat || !defaultValueKind) {
-    return null
+    return []
   }
 
-  return (
-    <>
-      <FieldPopoverRow
-        label={renderMessage(meta.ui.field.editor.displayDateFormat)}
-        suffix={renderMessage(displayDateFormat.message)}
-        widthClassName="w-[220px]"
-      >
-        {close => (
-          <FieldChoiceList
-            value={displayDateFormat.id as FieldDisplayDateFormatId}
-            options={meta.field.date.displayDateFormat.list as readonly {
-              id: FieldDisplayDateFormatId
-              message: MessageSpec
-            }[]}
-            onSelect={value => {
-              setDateConfig({
-                displayDateFormat: value
-              })
-              close()
-            }}
-          />
-        )}
-      </FieldPopoverRow>
-
-      <FieldPopoverRow
-        label={renderMessage(meta.ui.field.editor.displayTimeFormat)}
-        suffix={renderMessage(displayTimeFormat.message)}
-        widthClassName="w-[220px]"
-      >
-        {close => (
-          <FieldChoiceList
-            value={displayTimeFormat.id as FieldDisplayTimeFormatId}
-            options={meta.field.date.displayTimeFormat.list as readonly {
-              id: FieldDisplayTimeFormatId
-              message: MessageSpec
-            }[]}
-            onSelect={value => {
-              setDateConfig({
-                displayTimeFormat: value
-              })
-              close()
-            }}
-          />
-        )}
-      </FieldPopoverRow>
-
-      <FieldPopoverRow
-        label={renderMessage(meta.ui.field.editor.defaultValueKind)}
-        suffix={renderMessage(defaultValueKind.message)}
-        widthClassName="w-[220px]"
-      >
-        {close => (
-          <FieldChoiceList
-            value={defaultValueKind.id as FieldDateValueKindId}
-            options={meta.field.date.defaultValueKind.list as readonly {
-              id: FieldDateValueKindId
-              message: MessageSpec
-            }[]}
-            onSelect={value => {
-              setDateConfig({
-                defaultValueKind: value
-              })
-              close()
-            }}
-          />
-        )}
-      </FieldPopoverRow>
-
-      {dateConfig.defaultValueKind === 'datetime' ? (
-        <FieldPopoverRow
-          label={renderMessage(meta.ui.field.editor.defaultTimezone)}
-          suffix={formatTimeZoneLabel(dateConfig.defaultTimezone ?? null)}
-          widthClassName="w-[240px]"
-        >
-          {close => (
-            <Menu
-              items={[
-                {
-                  kind: 'toggle' as const,
-                  key: FLOATING_TIMEZONE_ID,
-                  label: formatTimeZoneLabel(null),
-                  checked: dateConfig.defaultTimezone === null,
-                  onSelect: () => {
-                    setDateConfig({
-                      defaultTimezone: null
-                    })
-                    close()
-                  }
-                },
-                ...timezoneOptions.map(timeZone => ({
-                  kind: 'toggle' as const,
-                  key: timeZone,
-                  label: formatTimeZoneLabel(timeZone),
-                  checked: dateConfig.defaultTimezone === timeZone,
-                  onSelect: () => {
-                    setDateConfig({
-                      defaultTimezone: timeZone
-                    })
-                    close()
-                  }
-                }))
-              ]}
-            />
-          )}
-        </FieldPopoverRow>
-      ) : null}
-    </>
-  )
+  return [
+    buildChoiceSubmenuItem({
+      key: 'display-date-format',
+      label: renderMessage(meta.ui.field.editor.displayDateFormat),
+      suffix: renderMessage(displayDateFormat.message),
+      value: displayDateFormat.id as FieldDisplayDateFormatId,
+      options: meta.field.date.displayDateFormat.list as readonly {
+        id: FieldDisplayDateFormatId
+        message: MessageSpec
+      }[],
+      onSelect: value => {
+        setDateConfig({
+          displayDateFormat: value
+        })
+      }
+    }),
+    buildChoiceSubmenuItem({
+      key: 'display-time-format',
+      label: renderMessage(meta.ui.field.editor.displayTimeFormat),
+      suffix: renderMessage(displayTimeFormat.message),
+      value: displayTimeFormat.id as FieldDisplayTimeFormatId,
+      options: meta.field.date.displayTimeFormat.list as readonly {
+        id: FieldDisplayTimeFormatId
+        message: MessageSpec
+      }[],
+      onSelect: value => {
+        setDateConfig({
+          displayTimeFormat: value
+        })
+      }
+    }),
+    buildChoiceSubmenuItem({
+      key: 'default-value-kind',
+      label: renderMessage(meta.ui.field.editor.defaultValueKind),
+      suffix: renderMessage(defaultValueKind.message),
+      value: defaultValueKind.id as FieldDateValueKindId,
+      options: meta.field.date.defaultValueKind.list as readonly {
+        id: FieldDateValueKindId
+        message: MessageSpec
+      }[],
+      onSelect: value => {
+        setDateConfig({
+          defaultValueKind: value
+        })
+      }
+    }),
+    ...(dateConfig.defaultValueKind === 'datetime'
+      ? [{
+          kind: 'submenu' as const,
+          key: 'default-timezone',
+          label: renderMessage(meta.ui.field.editor.defaultTimezone),
+          suffix: formatTimeZoneLabel(dateConfig.defaultTimezone ?? null),
+          size: 'lg' as const,
+          items: [
+            {
+              kind: 'toggle' as const,
+              key: FLOATING_TIMEZONE_ID,
+              label: formatTimeZoneLabel(null),
+              checked: dateConfig.defaultTimezone === null,
+              onSelect: () => {
+                setDateConfig({
+                  defaultTimezone: null
+                })
+              }
+            },
+            ...timezoneOptions.map(timeZone => ({
+              kind: 'toggle' as const,
+              key: timeZone,
+              label: formatTimeZoneLabel(timeZone),
+              checked: dateConfig.defaultTimezone === timeZone,
+              onSelect: () => {
+                setDateConfig({
+                  defaultTimezone: timeZone
+                })
+              }
+            }))
+          ]
+        }]
+      : [])
+  ]
 }

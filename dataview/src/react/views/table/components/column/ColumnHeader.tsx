@@ -154,7 +154,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
         label: '更改类型',
         leading: <ArrowLeftRight className="size-4" size={16} strokeWidth={1.8} />,
         suffix: renderMessage(kind.message),
-        contentClassName: 'w-[240px] p-1.5',
+        size: 'lg' as const,
         items: buildFieldKindMenuItems({
           kind: customField.kind,
           isTitleProperty: false,
@@ -276,14 +276,14 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
         insertProperty('right')
       }
     },
-    ...(propertyField
+    ...(customField
       ? [{
           kind: 'action' as const,
           key: 'duplicate',
           label: '创建属性副本',
           leading: <Copy className="size-4" size={16} strokeWidth={1.8} />,
           onSelect: () => {
-            editor.fields.duplicate(propertyField.id)
+            editor.fields.duplicate(customField.id)
           }
         }, {
           kind: 'action' as const,
@@ -293,7 +293,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
           tone: 'destructive' as const,
           disabled: false,
           onSelect: () => {
-            editor.fields.remove(propertyField.id)
+            editor.fields.remove(customField.id)
           }
         }]
       : [])
@@ -381,8 +381,8 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
         mode="blocking"
         backdrop="transparent"
         items={items}
+        size="xl"
         trigger={trigger}
-        contentClassName="min-w-0 w-[280px] p-1"
       />
       <ResizeHandle
         fieldId={props.field.id}

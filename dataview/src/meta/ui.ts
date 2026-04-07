@@ -267,11 +267,6 @@ export const ui = {
       )
     },
     layoutPanel: {
-      viewType: message('meta.ui.viewSettings.layoutPanel.viewType', 'View type'),
-      viewTypeSectionDescription: message(
-        'meta.ui.viewSettings.layoutPanel.viewTypeSectionDescription',
-        'Switch how this database is presented.'
-      ),
       viewTypeFieldDescription: message(
         'meta.ui.viewSettings.layoutPanel.viewTypeFieldDescription',
         'Choose how this database is presented.'
@@ -295,10 +290,6 @@ export const ui = {
       showVerticalLines: message(
         'meta.ui.viewSettings.layoutPanel.showVerticalLines',
         'Show vertical lines'
-      ),
-      showVerticalLinesDescription: message(
-        'meta.ui.viewSettings.layoutPanel.showVerticalLinesDescription',
-        'Display separators between table columns.'
       ),
       tableInlineStatus: message(
         'meta.ui.viewSettings.layoutPanel.tableInlineStatus',
@@ -341,14 +332,6 @@ export const ui = {
       fillColumnColor: message(
         'meta.ui.viewSettings.layoutPanel.fillColumnColor',
         'Fill column color'
-      ),
-      fillColumnColorDescription: message(
-        'meta.ui.viewSettings.layoutPanel.fillColumnColorDescription',
-        'Tint each column with its option color while cards stay deeper.'
-      ),
-      fillColumnColorDisabledDescription: message(
-        'meta.ui.viewSettings.layoutPanel.fillColumnColorDisabledDescription',
-        'Available when grouped by status or select options.'
       ),
       newCardPosition: message(
         'meta.ui.viewSettings.layoutPanel.newCardPosition',

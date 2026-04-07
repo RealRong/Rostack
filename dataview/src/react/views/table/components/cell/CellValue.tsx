@@ -11,7 +11,7 @@ export interface CellValueProps {
 export const CellValue = (props: CellValueProps) => {
   return (
     <FieldValueContent
-      property={props.field}
+      field={props.field}
       value={props.value}
       onQuickToggle={props.canQuickToggle
         ? props.onQuickToggle

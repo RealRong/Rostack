@@ -15,10 +15,10 @@ import type {
   CustomField
 } from '../../contracts/state'
 
-export type DatePropertyConfig = Pick<DateField, 'displayDateFormat' | 'displayTimeFormat' | 'defaultValueKind' | 'defaultTimezone'>
+export type DateFieldConfig = Pick<DateField, 'displayDateFormat' | 'displayTimeFormat' | 'defaultValueKind' | 'defaultTimezone'>
 export type DateValueKind = DateValue['kind']
-export type DateDisplayFormat = NonNullable<DatePropertyConfig['displayDateFormat']>
-export type DateTimeFormat = NonNullable<DatePropertyConfig['displayTimeFormat']>
+export type DateDisplayFormat = NonNullable<DateFieldConfig['displayDateFormat']>
+export type DateTimeFormat = NonNullable<DateFieldConfig['displayTimeFormat']>
 export type DateGroupMode = 'day' | 'week' | 'month' | 'quarter' | 'year'
 
 export const DATE_VALUE_KINDS = ['date', 'datetime'] as const satisfies readonly DateValueKind[]
@@ -219,7 +219,7 @@ const readRelativeBase = (
 
 const formatSingleDateValue = (
   value: DateValue,
-  config: DatePropertyConfig
+  config: DateFieldConfig
 ) => {
   const relativeBase = readRelativeBase(value)
 
@@ -317,37 +317,37 @@ const toComparableTimestamp = (value: DateValue): number | undefined => {
     : undefined
 }
 
-export const createDefaultDatePropertyConfig = (): DatePropertyConfig => ({
+export const createDefaultDateFieldConfig = (): DateFieldConfig => ({
   displayDateFormat: 'short',
   displayTimeFormat: '12h',
   defaultValueKind: 'date',
   defaultTimezone: null
 })
 
-export const getDatePropertyConfig = (
-  property?: CustomField
-): DatePropertyConfig => {
-  const defaults = createDefaultDatePropertyConfig()
+export const getDateFieldConfig = (
+  field?: CustomField
+): DateFieldConfig => {
+  const defaults = createDefaultDateFieldConfig()
 
-  if (!property || property.kind !== 'date') {
+  if (!field || field.kind !== 'date') {
     return defaults
   }
 
   return {
-    displayDateFormat: DATE_DISPLAY_FORMATS.includes(property.displayDateFormat ?? 'short')
-      ? property.displayDateFormat ?? 'short'
+    displayDateFormat: DATE_DISPLAY_FORMATS.includes(field.displayDateFormat ?? 'short')
+      ? field.displayDateFormat ?? 'short'
       : defaults.displayDateFormat,
-    displayTimeFormat: DATE_TIME_FORMATS.includes(property.displayTimeFormat ?? '12h')
-      ? property.displayTimeFormat ?? '12h'
+    displayTimeFormat: DATE_TIME_FORMATS.includes(field.displayTimeFormat ?? '12h')
+      ? field.displayTimeFormat ?? '12h'
       : defaults.displayTimeFormat,
-    defaultValueKind: DATE_VALUE_KINDS.includes(property.defaultValueKind ?? 'date')
-      ? property.defaultValueKind ?? 'date'
+    defaultValueKind: DATE_VALUE_KINDS.includes(field.defaultValueKind ?? 'date')
+      ? field.defaultValueKind ?? 'date'
       : defaults.defaultValueKind,
-    defaultTimezone: typeof property.defaultTimezone === 'string'
-      ? isValidDateTimeZone(property.defaultTimezone)
-        ? property.defaultTimezone.trim()
+    defaultTimezone: typeof field.defaultTimezone === 'string'
+      ? isValidDateTimeZone(field.defaultTimezone)
+        ? field.defaultTimezone.trim()
         : defaults.defaultTimezone
-      : property.defaultTimezone === null
+      : field.defaultTimezone === null
         ? null
         : defaults.defaultTimezone
   }
@@ -592,7 +592,7 @@ export const formatDateGroupTitle = (
 }
 
 export const createDateGroupValue = (
-  property: CustomField | undefined,
+  field: CustomField | undefined,
   start: string,
   currentValue: unknown
 ): DateValue | undefined => {
@@ -601,7 +601,7 @@ export const createDateGroupValue = (
   }
 
   const current = resolveDateInput(currentValue)
-  const kind = current?.kind ?? resolveDefaultDateValueKind(property)
+  const kind = current?.kind ?? resolveDefaultDateValueKind(field)
 
   if (kind === 'date') {
     return {
@@ -615,12 +615,12 @@ export const createDateGroupValue = (
     start: `${start}T00:00`,
     timezone: current?.kind === 'datetime'
       ? current.timezone
-      : resolveDefaultDateTimezone(property)
+      : resolveDefaultDateTimezone(field)
   }
 }
 
 export const formatDateValue = (
-  property: CustomField | undefined,
+  field: CustomField | undefined,
   value: unknown
 ): string | undefined => {
   const resolved = resolveDateInput(value)
@@ -628,7 +628,7 @@ export const formatDateValue = (
     return undefined
   }
 
-  const config = getDatePropertyConfig(property)
+  const config = getDateFieldConfig(field)
 
   const startText = formatSingleDateValue(
     {
@@ -665,7 +665,7 @@ export const formatDateValue = (
 }
 
 export const getDateSearchTokens = (
-  property: CustomField | undefined,
+  field: CustomField | undefined,
   value: unknown
 ): string[] => {
   const resolved = resolveDateInput(value)
@@ -675,7 +675,7 @@ export const getDateSearchTokens = (
       : []
   }
 
-  const formatted = formatDateValue(property, resolved)
+  const formatted = formatDateValue(field, resolved)
   const values = [
     resolved.start,
     resolved.end,
@@ -688,12 +688,12 @@ export const getDateSearchTokens = (
 }
 
 export const resolveDefaultDateValueKind = (
-  property?: CustomField
-): DateValueKind => getDatePropertyConfig(property).defaultValueKind ?? 'date'
+  field?: CustomField
+): DateValueKind => getDateFieldConfig(field).defaultValueKind ?? 'date'
 
 export const resolveDefaultDateTimezone = (
-  property?: CustomField
-) => getDatePropertyConfig(property).defaultTimezone ?? null
+  field?: CustomField
+) => getDateFieldConfig(field).defaultTimezone ?? null
 
 export const getAvailableTimezones = () => {
   const local = Intl.DateTimeFormat().resolvedOptions().timeZone

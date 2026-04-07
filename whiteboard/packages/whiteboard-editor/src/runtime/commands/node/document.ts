@@ -29,7 +29,7 @@ export const mergeNodeUpdates = (
 
 export const styleUpdate = (
   path: string,
-  value: string | number | undefined
+  value: unknown
 ) => compileNodeFieldUpdate(
   {
     scope: 'style',

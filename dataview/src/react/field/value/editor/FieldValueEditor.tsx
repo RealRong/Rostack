@@ -21,9 +21,9 @@ export const FieldValueEditor = forwardRef<
   FieldValueEditorHandle,
   FieldValueEditorProps
 >((props, ref) => {
-  const spec = getFieldValueSpec(props.property)
-  const editorProperty = isCustomField(props.property)
-    ? props.property
+  const spec = getFieldValueSpec(props.field)
+  const editorProperty = isCustomField(props.field)
+    ? props.field
     : undefined
   const [draft, setDraftState] = useState(() => (
     spec.createDraft(props.value, props.seedDraft)
@@ -82,7 +82,7 @@ export const FieldValueEditor = forwardRef<
   return (
     <div>
       <spec.Editor
-        property={editorProperty}
+        field={editorProperty}
         draft={draft}
         autoFocus={props.autoFocus}
         onDraftChange={setDraft}

@@ -1,5 +1,5 @@
 import { ChevronRight } from 'lucide-react'
-import { forwardRef, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { BucketSort, Field } from '@dataview/core/contracts'
 import { getDocumentFields } from '@dataview/core/document'
 import {
@@ -18,35 +18,15 @@ import { DropdownMenu } from '@ui/dropdown-menu'
 import { Input } from '@ui/input'
 import { meta, renderMessage } from '@dataview/meta'
 
-const GroupingMenuRow = forwardRef<HTMLButtonElement, {
-  label: string
-  suffix?: string
-  pressed?: boolean
-  onClick: () => void
-}>((props, ref) => (
-  <Button
-    ref={ref}
-    onClick={props.onClick}
-    layout="row"
-    suffix={props.suffix}
-    pressed={props.pressed}
-    trailing={<ChevronRight className="size-4" size={16} strokeWidth={1.8} />}
-  >
-    {props.label}
-  </Button>
-))
-
-GroupingMenuRow.displayName = 'GroupingMenuRow'
-
 const readGroupModeLabel = (
-  property: Field | undefined,
+  field: Field | undefined,
   mode: string
 ) => {
-  if (!property) {
+  if (!field) {
     return undefined
   }
 
-  switch (property.kind) {
+  switch (field.kind) {
     case 'text':
     case 'title':
     case 'url':
@@ -154,7 +134,7 @@ export const GroupingPanel = () => {
     currentViewDomain?.grouping.setBucketInterval(nextValue)
   }
 
-  const propertyItems = [
+  const fieldItems = [
     {
       kind: 'toggle' as const,
       key: 'none',
@@ -165,14 +145,14 @@ export const GroupingPanel = () => {
         setFieldOpen(false)
       }
     },
-    ...fields.map(property => ({
+    ...fields.map(field => ({
       kind: 'toggle' as const,
-      key: property.id,
-      label: property.name,
-      suffix: renderMessage(meta.field.kind.get(property.kind).message),
-      checked: group.fieldId === property.id,
+      key: field.id,
+      label: field.name,
+      suffix: renderMessage(meta.field.kind.get(field.kind).message),
+      checked: group.fieldId === field.id,
       onSelect: () => {
-        currentViewDomain?.grouping.setField(property.id)
+        currentViewDomain?.grouping.setField(field.id)
         setFieldOpen(false)
       }
     }))
@@ -217,15 +197,17 @@ export const GroupingPanel = () => {
           placement="right-start"
           offset={10}
           initialFocus={-1}
-          items={propertyItems}
-          contentClassName="w-[240px] p-1.5"
+          items={fieldItems}
+          size="lg"
           trigger={(
-            <GroupingMenuRow
-              label={renderMessage(meta.ui.viewSettings.groupField)}
+            <Button
+              layout="row"
               suffix={groupField?.name ?? renderMessage(meta.ui.viewSettings.none)}
               pressed={fieldOpen}
-              onClick={() => undefined}
-            />
+              trailing={<ChevronRight className="size-4" size={16} strokeWidth={1.8} />}
+            >
+              {renderMessage(meta.ui.viewSettings.groupField)}
+            </Button>
           )}
         />
 
@@ -237,14 +219,16 @@ export const GroupingPanel = () => {
             offset={10}
             initialFocus={-1}
             items={modeItems}
-            contentClassName="w-[220px] p-1.5"
+            size="md"
             trigger={(
-              <GroupingMenuRow
-                label={renderMessage(meta.ui.viewSettings.groupMode)}
+              <Button
+                layout="row"
                 suffix={readGroupModeLabel(groupField, group.mode)}
                 pressed={modeOpen}
-                onClick={() => undefined}
-              />
+                trailing={<ChevronRight className="size-4" size={16} strokeWidth={1.8} />}
+              >
+                {renderMessage(meta.ui.viewSettings.groupMode)}
+              </Button>
             )}
           />
         ) : null}
@@ -257,14 +241,16 @@ export const GroupingPanel = () => {
             offset={10}
             initialFocus={-1}
             items={bucketSortItems}
-            contentClassName="w-[220px] p-1.5"
+            size="md"
             trigger={(
-              <GroupingMenuRow
-                label={renderMessage(meta.ui.viewSettings.bucketSort)}
+              <Button
+                layout="row"
                 suffix={readBucketSortLabel(group.bucketSort)}
                 pressed={sortOpen}
-                onClick={() => undefined}
-              />
+                trailing={<ChevronRight className="size-4" size={16} strokeWidth={1.8} />}
+              >
+                {renderMessage(meta.ui.viewSettings.bucketSort)}
+              </Button>
             )}
           />
         ) : null}

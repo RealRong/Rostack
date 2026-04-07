@@ -1,7 +1,7 @@
 import type { CustomField, UrlField } from '../../contracts/state'
 
-export type UrlPropertyConfig = Pick<UrlField, 'displayFullUrl'>
-export interface ResolvedUrlPropertyConfig extends UrlPropertyConfig {
+export type UrlFieldConfig = Pick<UrlField, 'displayFullUrl'>
+export interface ResolvedUrlFieldConfig extends UrlFieldConfig {
   displayFullUrl: boolean
 }
 
@@ -38,27 +38,27 @@ const readCompactUrlDisplay = (value: string) => {
   return undefined
 }
 
-export const createDefaultUrlPropertyConfig = (): ResolvedUrlPropertyConfig => ({
+export const createDefaultUrlFieldConfig = (): ResolvedUrlFieldConfig => ({
   displayFullUrl: false
 })
 
-export const getUrlPropertyConfig = (
-  property: CustomField | undefined
-): ResolvedUrlPropertyConfig => (
-  property?.kind === 'url'
+export const getUrlFieldConfig = (
+  field: CustomField | undefined
+): ResolvedUrlFieldConfig => (
+  field?.kind === 'url'
     ? {
-        ...createDefaultUrlPropertyConfig(),
-        displayFullUrl: property.displayFullUrl === true
+        ...createDefaultUrlFieldConfig(),
+        displayFullUrl: field.displayFullUrl === true
       }
-    : createDefaultUrlPropertyConfig()
+    : createDefaultUrlFieldConfig()
 )
 
 export const formatUrlDisplayValue = (
-  property: CustomField | undefined,
+  field: CustomField | undefined,
   value: unknown
 ) => {
   const raw = String(value)
-  const config = getUrlPropertyConfig(property)
+  const config = getUrlFieldConfig(field)
 
   if (config.displayFullUrl) {
     return raw

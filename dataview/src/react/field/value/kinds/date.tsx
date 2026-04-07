@@ -11,15 +11,15 @@ import type { FieldValueSpec } from './contracts'
 import { renderEmpty } from './shared'
 
 export const createDatePropertySpec = (
-  property: CustomField | undefined
+  field: CustomField | undefined
 ): FieldValueSpec<DateValueDraft> => ({
   capability: {},
   panelWidth: 'calendar',
   Editor: DateValueEditor,
-  createDraft: (value, seedDraft) => createDateValueDraft(property, value, seedDraft),
+  createDraft: (value, seedDraft) => createDateValueDraft(field, value, seedDraft),
   parseDraft: parseDateValueDraft,
   render: props => {
-    const display = formatDateValue(property, props.value)
+    const display = formatDateValue(field, props.value)
     if (!display) {
       return renderEmpty(props)
     }

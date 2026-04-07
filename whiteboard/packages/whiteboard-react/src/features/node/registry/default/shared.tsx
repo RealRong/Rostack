@@ -20,6 +20,13 @@ export const getStyleNumber = (node: Node, key: string) => {
   return typeof value === 'number' ? value : undefined
 }
 
+export const getStyleNumberArray = (node: Node, key: string) => {
+  const value = node.style && node.style[key]
+  return Array.isArray(value) && value.every((item) => typeof item === 'number')
+    ? value
+    : undefined
+}
+
 export const getNodeLabel = (node: Node, fallback: string) =>
   getDataString(node, 'title') || getDataString(node, 'text') || fallback
 

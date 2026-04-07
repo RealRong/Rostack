@@ -85,10 +85,10 @@ export const DateValueEditor = (
 ) => {
   const editor = useDataView().engine
   const startDateRef = useRef<HTMLInputElement | null>(null)
-  const property = props.property?.kind === 'date'
-    ? props.property
+  const field = props.field?.kind === 'date'
+    ? props.field
     : undefined
-  const dateConfig = property ?? {
+  const dateConfig = field ?? {
     displayDateFormat: 'short' as const,
     displayTimeFormat: '12h' as const,
     defaultValueKind: 'date' as const,
@@ -100,7 +100,7 @@ export const DateValueEditor = (
     () => getAvailableTimezones(),
     []
   )
-  const defaultTimezone = property?.defaultTimezone ?? null
+  const defaultTimezone = field?.defaultTimezone ?? null
   const { commitDraft } = useDraftCommit({
     onDraftChange: props.onDraftChange,
     onApply: props.onApply,
@@ -149,14 +149,14 @@ export const DateValueEditor = (
     props.onDraftChange(draft)
   }
 
-  const updatePropertyConfig = (
+  const updateFieldConfig = (
     patch: Partial<typeof dateConfig>
   ) => {
-    if (!property) {
+    if (!field) {
       return
     }
 
-    editor.fields.update(property.id, {
+    editor.fields.update(field.id, {
       ...patch
     } as Partial<Omit<CustomField, 'id'>>)
   }
@@ -192,16 +192,16 @@ export const DateValueEditor = (
         key: 'display-date-format',
         label: '日期格式',
         suffix: renderMessage(displayDateFormat.message),
-        contentClassName: 'w-[220px] p-1.5',
-          items: meta.field.date.displayDateFormat.list.map(option => ({
-            kind: 'toggle' as const,
-            key: option.id,
-            label: renderMessage(option.message),
-            checked: dateConfig.displayDateFormat === option.id,
-            onSelect: () => updatePropertyConfig({
-              displayDateFormat: option.id as DateDisplayFormat
-            })
-          }))
+        size: 'md',
+        items: meta.field.date.displayDateFormat.list.map(option => ({
+          kind: 'toggle' as const,
+          key: option.id,
+          label: renderMessage(option.message),
+          checked: dateConfig.displayDateFormat === option.id,
+          onSelect: () => updateFieldConfig({
+            displayDateFormat: option.id as DateDisplayFormat
+          })
+        }))
       }
     ]
 
@@ -212,13 +212,13 @@ export const DateValueEditor = (
           key: 'display-time-format',
           label: '时间格式',
           suffix: renderMessage(displayTimeFormat.message),
-          contentClassName: 'w-[220px] p-1.5',
+          size: 'md',
           items: meta.field.date.displayTimeFormat.list.map(option => ({
             kind: 'toggle' as const,
             key: option.id,
             label: renderMessage(option.message),
             checked: dateConfig.displayTimeFormat === option.id,
-            onSelect: () => updatePropertyConfig({
+            onSelect: () => updateFieldConfig({
               displayTimeFormat: option.id as DateTimeFormat
             })
           }))
@@ -228,7 +228,7 @@ export const DateValueEditor = (
           key: 'timezone',
           label: '时区',
           suffix: formatTimeZoneLabel(props.draft.timezone),
-          contentClassName: 'w-[240px] p-1.5',
+          size: 'lg',
           items: [
             {
               kind: 'toggle' as const,

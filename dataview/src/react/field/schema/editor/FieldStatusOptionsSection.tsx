@@ -120,7 +120,8 @@ const StatusOptionEditorPopover = (props: {
       placement="bottom-start"
       offset={10}
       initialFocus={-1}
-      contentClassName="w-[220px] p-1.5"
+      size="md"
+      padding="panel"
     >
       <div className="flex flex-col gap-2">
         <Input
@@ -268,7 +269,6 @@ const StatusOptionRow = (props: {
             layout="row"
             pressed={props.open}
             leading={<Settings2 className="size-4 shrink-0 text-muted-foreground" size={16} strokeWidth={1.8} />}
-            onClick={() => undefined}
           >
             <div className="min-w-0">
               <FieldOptionTag
@@ -308,12 +308,12 @@ const categoryMeta = (category: StatusCategory) => {
 }
 
 export const FieldStatusOptionsSection = (props: {
-  property: CustomField
+  field: CustomField
 }) => {
   const editor = useDataView().engine
   const [editingOptionId, setEditingOptionId] = useState<string>()
-  const options = getFieldOptions(props.property)
-  const sections = getStatusSections(props.property)
+  const options = getFieldOptions(props.field)
+  const sections = getStatusSections(props.field)
 
   useEffect(() => {
     if (editingOptionId && !options.some(option => option.id === editingOptionId)) {
@@ -324,14 +324,14 @@ export const FieldStatusOptionsSection = (props: {
   const updateOption = (
     option: FieldOption,
     patch: Partial<FieldOption>
-  ) => editor.fields.options.update(props.property.id, option.id, {
+  ) => editor.fields.options.update(props.field.id, option.id, {
     ...(patch.name !== undefined ? { name: patch.name } : {}),
     ...(patch.color !== undefined ? { color: patch.color ?? '' } : {}),
     ...('category' in patch && patch.category !== undefined ? { category: patch.category } : {})
   })
 
   const appendOption = (category: StatusCategory) => {
-    const option = editor.fields.options.append(props.property.id)
+    const option = editor.fields.options.append(props.field.id)
     if (!option) {
       return
     }
@@ -376,7 +376,7 @@ export const FieldStatusOptionsSection = (props: {
                 onMove={(from, to) => {
                   const reordered = moveItem(section.options, from, to)
                   editor.fields.options.reorder(
-                    props.property.id,
+                    props.field.id,
                     buildOrderedIds(sections, section.category, reordered)
                   )
                 }}
@@ -403,7 +403,7 @@ export const FieldStatusOptionsSection = (props: {
                         }
 
                         editor.fields.options.reorder(
-                          props.property.id,
+                          props.field.id,
                           buildIdsAfterCategoryMove(
                             sections,
                             option.id,
@@ -415,7 +415,7 @@ export const FieldStatusOptionsSection = (props: {
                         setEditingOptionId(undefined)
                       }}
                       onDelete={() => {
-                        editor.fields.options.remove(props.property.id, option.id)
+                        editor.fields.options.remove(props.field.id, option.id)
                       }}
                     />
                   )

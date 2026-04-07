@@ -11,17 +11,17 @@ import {
   renderEmpty
 } from './shared'
 
-export const createStatusPropertySpec = (
-  property: CustomField | undefined
+export const createStatusFieldSpec = (
+  field: CustomField | undefined
 ): FieldValueSpec<string> => ({
   capability: {},
   panelWidth: 'picker',
   Editor: StatusValueEditor,
   createDraft: (value, seedDraft) => seedDraft ?? (value === undefined || value === null ? '' : String(value)),
-  parseDraft: draft => parseFieldDraft(property, draft),
+  parseDraft: draft => parseFieldDraft(field, draft),
   render: props => {
-    const display = getFieldDisplayValue(property, props.value)
-    const selected = property ? getFieldOption(property, props.value) : undefined
+    const display = getFieldDisplayValue(field, props.value)
+    const selected = field ? getFieldOption(field, props.value) : undefined
     if (!display) {
       return renderEmpty(props)
     }

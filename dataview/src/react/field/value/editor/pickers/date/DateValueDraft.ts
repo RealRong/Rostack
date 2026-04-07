@@ -67,12 +67,12 @@ const markDirty = (draft: DateValueDraft): DateValueDraft => ({
 })
 
 const createBaseDraft = (
-  property: CustomField | undefined
+  field: CustomField | undefined
 ): DateValueDraft => {
   const now = new Date()
   const today = toLocalDateString(now)
   const roundedTime = toRoundedTimeString(now)
-  const kind = resolveDefaultDateValueKind(property)
+  const kind = resolveDefaultDateValueKind(field)
 
   return {
     kind,
@@ -83,7 +83,7 @@ const createBaseDraft = (
     endDate: today,
     endTime: roundedTime,
     timezone: kind === 'datetime'
-      ? resolveDefaultDateTimezone(property)
+      ? resolveDefaultDateTimezone(field)
       : null,
     hasValue: false,
     dirty: false
@@ -91,10 +91,10 @@ const createBaseDraft = (
 }
 
 const fromResolvedDateValue = (
-  property: CustomField | undefined,
+  field: CustomField | undefined,
   value: DateValue
 ): DateValueDraft => {
-  const base = createBaseDraft(property)
+  const base = createBaseDraft(field)
 
   if (value.kind === 'date') {
     return {
@@ -131,7 +131,7 @@ const fromResolvedDateValue = (
 }
 
 export const createDateValueDraft = (
-  property: CustomField | undefined,
+  field: CustomField | undefined,
   value: unknown,
   seedDraft?: string
 ): DateValueDraft => {
@@ -139,8 +139,8 @@ export const createDateValueDraft = (
     ?? (seedDraft ? parseDateInputDraft(seedDraft) : undefined)
 
   return resolved
-    ? fromResolvedDateValue(property, resolved)
-    : createBaseDraft(property)
+    ? fromResolvedDateValue(field, resolved)
+    : createBaseDraft(field)
 }
 
 export const readDateDraftBoundaryDate = (

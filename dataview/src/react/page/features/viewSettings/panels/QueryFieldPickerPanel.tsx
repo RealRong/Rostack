@@ -1,6 +1,6 @@
-import { getDocumentCustomFields } from '@dataview/core/document'
-import { getAvailableFilterProperties } from '@dataview/react/page/features/filter/filterUi'
-import { getAvailableSorterProperties } from '@dataview/react/page/features/sort'
+import { getDocumentFields } from '@dataview/core/document'
+import { getAvailableFilterFields } from '@dataview/react/page/features/filter/filterUi'
+import { getAvailableSorterFields } from '@dataview/react/page/features/sort'
 import { FieldPicker } from '@dataview/react/page/features/viewQuery/FieldPicker'
 import {
   useCurrentView,
@@ -21,15 +21,15 @@ export const QueryFieldPickerPanel = (props: {
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined
-  const fields = getDocumentCustomFields(document)
+  const fields = getDocumentFields(document)
   const router = useViewSettings()
 
   return (
     <div className="min-h-0 flex-1 overflow-hidden">
       <FieldPicker
         fields={props.kind === 'filter'
-          ? getAvailableFilterProperties(fields, currentView?.query.filter.rules ?? [])
-          : getAvailableSorterProperties(fields, currentView?.query.sorters ?? [])}
+          ? getAvailableFilterFields(fields, currentView?.query.filter.rules ?? [])
+          : getAvailableSorterFields(fields, currentView?.query.sorters ?? [])}
         emptyMessage={props.kind === 'filter'
           ? meta.ui.fieldPicker.allFiltered
           : meta.ui.fieldPicker.allSorted}

@@ -72,7 +72,11 @@ export type NodeType = typeof NODE_TYPES[number]
 export type SpatialNodeType = Exclude<NodeType, 'group'>
 export type NodeLayer = 'background' | 'default' | 'overlay'
 export type NodeData = Record<string, unknown>
-export type NodeStyle = Record<string, string | number>
+export type NodeStyleValue =
+  | string
+  | number
+  | readonly number[]
+export type NodeStyle = Record<string, NodeStyleValue>
 
 export type BaseNode = {
   id: NodeId

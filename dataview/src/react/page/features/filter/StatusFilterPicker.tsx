@@ -25,7 +25,7 @@ import { meta, renderMessage } from '@dataview/meta'
 import { FieldOptionTag } from '@dataview/react/field/options'
 
 export interface StatusFilterPickerProps {
-  property?: Field
+  field?: Field
   rule: FilterRule
   onChange: (rule: FilterRule) => void
 }
@@ -62,12 +62,12 @@ const SelectionIcon = (props: {
 export const StatusFilterPicker = (
   props: StatusFilterPickerProps
 ) => {
-  if (props.property?.kind !== 'status') {
+  if (props.field?.kind !== 'status') {
     return null
   }
 
-  const property = props.property
-  const sections = getStatusSections(property)
+  const field = props.field
+  const sections = getStatusSections(field)
   const hasOptions = sections.some(section => section.options.length > 0)
 
   if (!hasOptions) {
@@ -83,7 +83,7 @@ export const StatusFilterPicker = (
       <div className="flex flex-col gap-0.5 px-1.5 pb-2 pt-1">
         {sections.map(section => {
           const categorySelected = isStatusFilterCategorySelected(
-            property,
+            field,
             props.rule.value,
             section.category
           )
@@ -103,7 +103,7 @@ export const StatusFilterPicker = (
                   props.onChange({
                     ...props.rule,
                     value: toggleStatusFilterCategory(
-                      property,
+                      field,
                       props.rule.value,
                       section.category
                     )
@@ -127,7 +127,7 @@ export const StatusFilterPicker = (
 
               {section.options.map(option => {
                 const optionSelected = isStatusFilterOptionSelected(
-                  property,
+                  field,
                   props.rule.value,
                   option.id
                 )
@@ -145,7 +145,7 @@ export const StatusFilterPicker = (
                         props.onChange({
                           ...props.rule,
                           value: toggleStatusFilterOption(
-                            property,
+                            field,
                             props.rule.value,
                             option.id
                           )

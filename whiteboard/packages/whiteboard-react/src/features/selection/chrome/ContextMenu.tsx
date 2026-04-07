@@ -2,7 +2,7 @@ import {
   Menu,
   type MenuItem as UiMenuItem
 } from '@ui'
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useState, type RefObject } from 'react'
 import type { Point } from '@whiteboard/core/types'
 import { useEditorRuntime } from '../../../runtime/hooks/useEditor'
 import {
@@ -41,9 +41,6 @@ import {
   readNodeSelectionStyle,
   readNodeSummary
 } from '../../node/summary'
-import {
-  isDuplicateMenuOpen
-} from './layout'
 import { bindMenuDismiss } from './menuAction'
 
 type MenuItem = {
@@ -717,7 +714,6 @@ export const ContextMenu = ({
   const registry = useNodeRegistry()
   const whiteboard = useWhiteboardServices()
   const { clipboard, pointer } = whiteboard
-  const lastOpenRef = useRef<{ x: number; y: number; time: number } | null>(null)
   const [view, setView] = useState<ContextMenuView | null>(null)
 
   const dismiss = useCallback(() => {
@@ -750,22 +746,7 @@ export const ContextMenu = ({
       }
 
       setView(nextView)
-      lastOpenRef.current = {
-        x: event.clientX,
-        y: event.clientY,
-        time: Date.now()
-      }
       return true
-    }
-
-    const onPointerDown = (event: PointerEvent) => {
-      if (event.button !== 2) return
-      if (editor.state.interaction.get().busy) return
-      if (isContextMenuIgnoredTarget(event.target)) return
-
-      event.preventDefault()
-      event.stopPropagation()
-      openFromEvent(event)
     }
 
     const onContextMenu = (event: MouseEvent) => {
@@ -775,22 +756,12 @@ export const ContextMenu = ({
       event.preventDefault()
       event.stopPropagation()
 
-      if (isDuplicateMenuOpen(lastOpenRef.current, {
-        x: event.clientX,
-        y: event.clientY,
-        time: Date.now()
-      })) {
-        return
-      }
-
       openFromEvent(event)
     }
 
-    container.addEventListener('pointerdown', onPointerDown, true)
     container.addEventListener('contextmenu', onContextMenu)
 
     return () => {
-      container.removeEventListener('pointerdown', onPointerDown, true)
       container.removeEventListener('contextmenu', onContextMenu)
     }
   }, [containerRef, dismiss, editor, pointer, registry])

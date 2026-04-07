@@ -24,17 +24,17 @@ export const getSorterItemId = (
   index: number
 ) => getSorterFieldId(sorter) ?? `sorter_${index}`
 
-export const findSorterProperty = (
+export const findSorterField = (
   fields: readonly Field[],
   sorter: Pick<Sorter, 'field'>
 ) => {
   const fieldId = getSorterFieldId(sorter)
   return fieldId
-    ? fields.find(property => property.id === fieldId)
+    ? fields.find(field => field.id === fieldId)
     : undefined
 }
 
-export const getAvailableSorterProperties = (
+export const getAvailableSorterFields = (
   fields: readonly Field[],
   sorters: readonly Sorter[]
 ) => {
@@ -47,10 +47,10 @@ export const getAvailableSorterProperties = (
     }
   })
 
-  return fields.filter(property => !usedFieldIds.has(property.id))
+  return fields.filter(field => !usedFieldIds.has(field.id))
 }
 
-export const getAvailableSorterPropertiesForIndex = (
+export const getAvailableSorterFieldsForIndex = (
   fields: readonly Field[],
   sorters: readonly Sorter[],
   index: number
@@ -69,5 +69,5 @@ export const getAvailableSorterPropertiesForIndex = (
     }
   })
 
-  return fields.filter(property => property.id === currentFieldId || !usedFieldIds.has(property.id))
+  return fields.filter(field => field.id === currentFieldId || !usedFieldIds.has(field.id))
 }

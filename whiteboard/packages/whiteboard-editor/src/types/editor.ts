@@ -147,17 +147,36 @@ export type EditorNodeTextCommands = {
     size?: Size
   }) => CommandResult | undefined
   setColor: (nodeIds: readonly NodeId[], color: string) => CommandResult
-  setFontSize: (input: {
+  setSize: (input: {
     nodeIds: readonly NodeId[]
     value?: number
     sizeById?: Readonly<Record<NodeId, Size>>
   }) => CommandResult
+  setWeight: (
+    nodeIds: readonly NodeId[],
+    weight?: number
+  ) => CommandResult
+  setItalic: (
+    nodeIds: readonly NodeId[],
+    italic: boolean
+  ) => CommandResult
+  setAlign: (
+    nodeIds: readonly NodeId[],
+    align?: 'left' | 'center' | 'right'
+  ) => CommandResult
+}
+
+export type EditorNodeShapeCommands = {
+  setKind: (nodeIds: readonly NodeId[], kind: string) => CommandResult
 }
 
 export type EditorNodeAppearanceCommands = {
   setFill: (nodeIds: readonly NodeId[], fill: string) => CommandResult
+  setFillOpacity: (nodeIds: readonly NodeId[], opacity?: number) => CommandResult
   setStroke: (nodeIds: readonly NodeId[], stroke: string) => CommandResult
   setStrokeWidth: (nodeIds: readonly NodeId[], width: number) => CommandResult
+  setStrokeOpacity: (nodeIds: readonly NodeId[], opacity?: number) => CommandResult
+  setStrokeDash: (nodeIds: readonly NodeId[], dash?: readonly number[]) => CommandResult
   setOpacity: (nodeIds: readonly NodeId[], opacity: number) => CommandResult
   setTextColor: (nodeIds: readonly NodeId[], color: string) => CommandResult
 }
@@ -166,6 +185,7 @@ export type EditorNodeCommands = Omit<EngineNodeCommands, 'update' | 'updateMany
   document: EditorNodeDocumentCommands
   lock: EditorNodeLockCommands
   text: EditorNodeTextCommands
+  shape: EditorNodeShapeCommands
   appearance: EditorNodeAppearanceCommands
 }
 
@@ -247,7 +267,7 @@ export type EditorCommands = Omit<EngineCommands, 'tool' | 'selection' | 'intera
 
 export type EditorDocumentNodeTextWrite = Pick<
   EditorNodeTextCommands,
-  'commit' | 'setColor' | 'setFontSize'
+  'commit' | 'setColor' | 'setSize' | 'setWeight' | 'setItalic' | 'setAlign'
 >
 
 export type EditorDocumentNodeWrite = Omit<EditorNodeCommands, 'text'> & {

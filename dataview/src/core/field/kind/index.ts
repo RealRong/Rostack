@@ -20,7 +20,7 @@ import {
 } from './date'
 import {
   createEmptyStatusFilterValue,
-  compareStatusPropertyValues,
+  compareStatusFieldValues,
   getStatusCategoryColor,
   getStatusCategoryLabel,
   getStatusCategoryOrder,
@@ -1027,7 +1027,7 @@ const statusRuntime = {
   parseDraft: parseSingleOptionDraft,
   display: (field: FieldInput, value: unknown) => displayOptionValue(field, value),
   search: (field: FieldInput, value: unknown) => searchOptionValue(field, value),
-  compare: (field: FieldInput, left: unknown, right: unknown) => compareStatusPropertyValues(field, left, right),
+  compare: (field: FieldInput, left: unknown, right: unknown) => compareStatusFieldValues(field, left, right),
   createFilterValue: createStatusFilterValue,
   isFilterEffective: (field: FieldInput, op: FilterOperator, value: unknown) => {
     if (op === 'custom' || op === 'exists') {

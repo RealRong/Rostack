@@ -1,22 +1,30 @@
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { meta, renderMessage } from '@dataview/meta'
+import { useDataView } from '@dataview/react/dataview'
 import { Button } from '@ui/button'
 import { Popover } from '@ui/popover'
 import { CREATE_VIEW_ITEMS, type CreateViewItem } from './catalog'
-import { useCreateView } from './useCreateView'
 import { ViewTypeCard } from './ViewTypeCard'
 
 export const CreateViewPopover = () => {
+  const dataView = useDataView()
   const [open, setOpen] = useState(false)
-  const createView = useCreateView()
 
   const handleSelect = (item: CreateViewItem) => {
-    const viewId = createView(item)
+    if (!item.enabled) {
+      return
+    }
+
+    const viewId = dataView.engine.views.create({
+      name: renderMessage(item.label),
+      type: item.type
+    })
     if (!viewId) {
       return
     }
 
+    dataView.page.setViewId(viewId)
     setOpen(false)
   }
 

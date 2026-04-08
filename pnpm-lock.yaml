@@ -190,6 +190,9 @@ importers:
 
   shared/react:
     dependencies:
+      '@shared/dom':
+        specifier: workspace:*
+        version: link:../dom
       '@shared/store':
         specifier: workspace:*
         version: link:../store
@@ -292,6 +295,9 @@ importers:
 
   whiteboard/packages/whiteboard-editor:
     dependencies:
+      '@shared/dom':
+        specifier: workspace:*
+        version: link:../../../shared/dom
       '@shared/scheduler':
         specifier: workspace:*
         version: link:../../../shared/scheduler
@@ -316,6 +322,9 @@ importers:
 
   whiteboard/packages/whiteboard-react:
     dependencies:
+      '@shared/dom':
+        specifier: workspace:*
+        version: link:../../../shared/dom
       '@shared/react':
         specifier: workspace:*
         version: link:../../../shared/react

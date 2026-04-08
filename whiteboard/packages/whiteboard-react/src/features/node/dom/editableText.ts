@@ -2,12 +2,12 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent
 } from 'react'
-import type { EditCaret } from '@whiteboard/editor'
 import {
   focusEditableEnd,
   focusEditablePoint,
   readEditableText
-} from '#react/dom/editable/text'
+} from '@shared/dom'
+import type { EditCaret } from '@whiteboard/editor'
 
 export const syncEditableDraft = (
   element: HTMLDivElement,

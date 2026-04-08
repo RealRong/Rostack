@@ -1,4 +1,4 @@
-import type { Point } from '@whiteboard/core/types'
+import type { Point } from './geometry.ts'
 
 export const readEditableText = (
   element: HTMLDivElement

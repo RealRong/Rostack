@@ -1,9 +1,7 @@
 import {
   CircleCheck,
   CircleDashed,
-  CirclePlay,
-  Square,
-  SquareCheck
+  CirclePlay
 } from 'lucide-react'
 import type {
   Field,
@@ -19,6 +17,7 @@ import {
   toggleStatusFilterCategory,
   toggleStatusFilterOption
 } from '@dataview/core/field'
+import { Checkbox } from '@ui/checkbox'
 import { Menu, type MenuItem } from '@ui/menu'
 import { cn } from '@ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
@@ -53,12 +52,6 @@ const categoryVisual = (
   }
 }
 
-const SelectionIcon = (props: {
-  selected: boolean
-}) => props.selected
-  ? <SquareCheck className="size-4 text-primary" size={16} strokeWidth={1.9} />
-  : <Square className="size-4 text-muted-foreground" size={16} strokeWidth={1.8} />
-
 export const StatusFilterPicker = (
   props: StatusFilterPickerProps
 ) => {
@@ -85,27 +78,23 @@ export const StatusFilterPicker = (
       section.category
     )
     const visual = categoryVisual(section.category)
-    const CategoryIcon = visual.Icon
 
     const sectionItems: MenuItem[] = [
       {
         kind: 'toggle',
         key: `${section.category}:category`,
-        checked: categorySelected,
-        leading: <SelectionIcon selected={categorySelected} />,
+        checked: false,
+        leading: (
+          <Checkbox
+            checked={categorySelected}
+            interactive={false}
+          />
+        ),
         label: (
           <span className={cn(
-            'inline-flex items-center gap-2 font-medium',
-            categorySelected ? visual.className : 'text-foreground'
+            'inline-flex items-center gap-2 font-medium'
           )}>
-            <CategoryIcon
-              className={cn('size-4 shrink-0', visual.className)}
-              size={16}
-              strokeWidth={1.8}
-            />
-            <span className="truncate">
-              {getStatusCategoryLabel(section.category)}
-            </span>
+            {getStatusCategoryLabel(section.category)}
           </span>
         ),
         onSelect: () => {
@@ -129,9 +118,14 @@ export const StatusFilterPicker = (
         return {
           kind: 'toggle',
           key: option.id,
-          checked: optionSelected,
+          checked: false,
           className: 'pl-7',
-          leading: <SelectionIcon selected={optionSelected} />,
+          leading: (
+            <Checkbox
+              checked={optionSelected}
+              interactive={false}
+            />
+          ),
           label: buildOptionTagLabel(option, {
             variant: 'status'
           }),
@@ -166,7 +160,7 @@ export const StatusFilterPicker = (
         />
       </div>
 
-      <div className="border-t border-border px-1.5 py-1.5">
+      <div className="border-t p-1.5">
         <Menu
           autoFocus={false}
           items={[{

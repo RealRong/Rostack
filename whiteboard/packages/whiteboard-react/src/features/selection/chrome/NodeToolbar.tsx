@@ -8,9 +8,8 @@ import {
   type RefObject
 } from 'react'
 import type { Point } from '@whiteboard/core/types'
-import { useStoreValue } from '@shared/react'
+import { useElementSize, useStoreValue } from '@shared/react'
 import { useEditorRuntime } from '#react/runtime/hooks'
-import { useElementSize } from '#react/dom/observe'
 import { WhiteboardPopover } from '#react/runtime/overlay'
 import {
   buildToolbarStyle,

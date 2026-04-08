@@ -1,12 +1,10 @@
 import {
-  selectTool,
   type InsertPresetKey,
   type InsertPlacement,
   type InsertPreset,
   type InsertPresetCatalog,
   type MindmapInsertPreset,
-  type NodeInsertPreset,
-  type PointerDownInput
+  type NodeInsertPreset
 } from '@whiteboard/editor'
 import type { NodeId, Point, SpatialNodeInput } from '@whiteboard/core/types'
 import type { WhiteboardRuntime } from '#react/types/runtime'
@@ -44,7 +42,6 @@ export type InsertBridge = {
     templateKey?: string
     at: Point
   }) => InsertResult | undefined
-  pointerDown: (input: PointerDownInput) => boolean
 }
 
 const placeNodeInput = ({
@@ -256,34 +253,8 @@ export const createInsertBridge = ({
   editor: WhiteboardRuntime
   catalog: InsertPresetCatalog
 }): InsertBridge => {
-  const commands = createInsertCommands({
+  return createInsertCommands({
     editor,
     catalog
   })
-
-  return {
-    ...commands,
-    pointerDown: (input) => {
-      const tool = editor.state.tool.get()
-      if (
-        tool.type !== 'insert'
-        || input.pick.kind !== 'background'
-        || input.editable
-        || input.ignoreInput
-        || input.ignoreSelection
-      ) {
-        return false
-      }
-
-      const result = commands.preset(tool.preset, {
-        at: input.world
-      })
-      if (!result) {
-        return false
-      }
-
-      editor.commands.tool.set(selectTool())
-      return true
-    }
-  }
 }

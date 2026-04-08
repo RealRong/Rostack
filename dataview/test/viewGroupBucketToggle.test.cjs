@@ -132,6 +132,24 @@ const createDocument = () => {
   }
 }
 
+const createEmptyDocument = () => {
+  const fields = createFields()
+
+  return {
+    schemaVersion: 1,
+    fields: createFieldTable(fields),
+    views: {
+      byId: {},
+      order: []
+    },
+    records: {
+      byId: {},
+      order: []
+    },
+    meta: {}
+  }
+}
+
 test('view group bucket toggle clears the final collapsed bucket state', () => {
   const engine = createEngine({
     document: createDocument()
@@ -182,4 +200,55 @@ test('view group interval set clears back to the field default when value is und
   engine.view(VIEW_TABLE).group.setInterval(undefined)
   view = engine.read.view.get(VIEW_TABLE)
   assert.equal(view.group?.bucketInterval, 10)
+})
+
+test('view.create resolves duplicate names in the command layer', () => {
+  const engine = createEngine({
+    document: createDocument()
+  })
+
+  const result = engine.command({
+    type: 'view.create',
+    input: {
+      name: 'Tasks',
+      type: 'table'
+    }
+  })
+
+  const createdViewId = result.created?.views?.[0]
+  assert.ok(createdViewId)
+  assert.equal(engine.read.view.get(createdViewId)?.name, 'Tasks 2')
+})
+
+test('view.duplicate reuses the shared unique naming rule', () => {
+  const engine = createEngine({
+    document: createEmptyDocument()
+  })
+
+  const sourceViewId = engine.command({
+    type: 'view.create',
+    input: {
+      name: 'Tasks',
+      type: 'table'
+    }
+  }).created?.views?.[0]
+
+  assert.ok(sourceViewId)
+
+  engine.command({
+    type: 'view.create',
+    input: {
+      name: 'Tasks Copy',
+      type: 'table'
+    }
+  })
+
+  const result = engine.command({
+    type: 'view.duplicate',
+    viewId: sourceViewId
+  })
+
+  const createdViewId = result.created?.views?.[0]
+  assert.ok(createdViewId)
+  assert.equal(engine.read.view.get(createdViewId)?.name, 'Tasks Copy 2')
 })

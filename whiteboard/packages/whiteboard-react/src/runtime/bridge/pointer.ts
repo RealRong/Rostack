@@ -1,6 +1,9 @@
-import { createPointerSession, readModifierKeys } from '@shared/dom'
-import type { EditorPick } from '@whiteboard/editor'
-import type { ContextMenuIntent } from '@whiteboard/editor'
+import {
+  createDocumentSelectionLock,
+  createPointerSession,
+  readModifierKeys
+} from '@shared/dom'
+import type { ContextMenuIntent, EditorPick } from '@whiteboard/editor'
 import type { Point } from '@whiteboard/core/types'
 import type { WhiteboardRuntime } from '#react/types/runtime'
 import { consumeDomEvent } from '../../dom/host/event'
@@ -9,8 +12,6 @@ import {
   resolvePointerInput
 } from '../../dom/host/input'
 import { createPickRegistry } from '../../dom/host/pickRegistry'
-import { createDocumentSelectionLock } from '../../dom/host/selectionLock'
-import type { InsertBridge } from './insert'
 
 const isViewportPanStart = (
   event: PointerEvent,
@@ -28,26 +29,17 @@ const isViewportPanStart = (
   )
 }
 
-const createPointState = () => {
-  let current: Point | undefined
-
-  return {
-    get: () => current,
-    set: (point: Point) => {
-      current = {
-        x: point.x,
-        y: point.y
-      }
-    },
-    clear: () => {
-      current = undefined
-    }
-  }
+type PointerInputState = {
+  set: (point: Point) => void
+  clear: () => void
 }
+
+type PointerDownHandler = Parameters<
+  WhiteboardRuntime['input']['pointerDown']
+>[0]
 
 export type PointerBridge = {
   bindPick: (element: Element, pick: EditorPick) => () => void
-  getWorld: () => Point | undefined
   contextMenu: (input: {
     container: HTMLDivElement
     event: Pick<
@@ -76,15 +68,15 @@ export type PointerBridge = {
 
 export const createPointerBridge = ({
   editor,
-  insert
+  point,
+  onPointerDown
 }: {
   editor: WhiteboardRuntime
-  insert: InsertBridge
+  point: PointerInputState
+  onPointerDown?: (input: PointerDownHandler) => boolean
 }): PointerBridge => {
   const pick = createPickRegistry()
-  const point = createPointState()
   const pointerSession = createPointerSession()
-  const selectionLock = createDocumentSelectionLock()
   let releaseSession: (() => void) | null = null
   let releaseSelection: (() => void) | null = null
 
@@ -124,7 +116,6 @@ export const createPointerBridge = ({
 
   return {
     bindPick: (element, nextPick) => pick.bind(element, nextPick),
-    getWorld: () => point.get(),
     contextMenu: ({ container, event }) => {
       refreshContainerRect(container)
       const resolved = resolvePoint({
@@ -153,7 +144,7 @@ export const createPointerBridge = ({
       }
 
       const input = resolveCanvasPointerInput('down', container, event)
-      if (insert.pointerDown(input)) {
+      if (onPointerDown?.(input)) {
         consumeDomEvent(event)
         return true
       }
@@ -164,7 +155,9 @@ export const createPointerBridge = ({
       }
       if (result.continuePointer) {
         clearSession()
-        releaseSelection = selectionLock.lock()
+        releaseSelection = createDocumentSelectionLock(
+          container.ownerDocument
+        ).lock()
         releaseSession = pointerSession.start({
           container,
           pointerId: input.pointerId,

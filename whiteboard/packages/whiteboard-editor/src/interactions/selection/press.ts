@@ -1,4 +1,5 @@
 import {
+  isSelectionTargetEqual,
   matchSelectionTap,
   resolveSelectionPressDecision,
   type SelectionDragDecision,
@@ -46,6 +47,35 @@ const resolveImplicitEditField = (
     default:
       return undefined
   }
+}
+
+const readGroupSelection = (
+  ctx: InteractionContext,
+  groupId: string
+) => {
+  const nodeIds = ctx.read.group.nodeIds(groupId)
+  const edgeIds = ctx.read.group.edgeIds(groupId)
+
+  return nodeIds.length > 0 || edgeIds.length > 0
+    ? {
+        nodeIds,
+        edgeIds
+      }
+    : undefined
+}
+
+const isGroupSelectionCurrent = (
+  ctx: InteractionContext,
+  groupId: string,
+  target: {
+    nodeIds: readonly string[]
+    edgeIds: readonly string[]
+  }
+) => {
+  const selection = readGroupSelection(ctx, groupId)
+  return selection
+    ? isSelectionTargetEqual(selection, target)
+    : false
 }
 
 const resolveSelectionPressTargetInput = (
@@ -127,8 +157,9 @@ const resolveSelectionPress = (
         : false
     },
     getNodeGroupId: ctx.read.group.ofNode,
-    getGroupSelection: ctx.read.group.selection,
-    isGroupSelected: ctx.read.group.isSelected
+    getGroupSelection: (groupId) => readGroupSelection(ctx, groupId),
+    isGroupSelected: (groupId, target) =>
+      isGroupSelectionCurrent(ctx, groupId, target)
   }, {
     modifiers: input.modifiers,
     selection: ctx.read.selection.summary.get(),

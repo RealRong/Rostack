@@ -17,15 +17,15 @@ export const createViewsEngineApi = (options: {
     list: readViews,
     get: viewId => options.engine.read.view.get(viewId),
     create: input => {
-      const name = input.name.trim()
-      if (!name) {
+      const preferredName = input.name.trim()
+      if (!preferredName) {
         return undefined
       }
 
       const result = options.engine.command({
         type: 'view.create',
         input: {
-          name,
+          name: preferredName,
           type: input.type
         }
       })

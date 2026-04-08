@@ -5,6 +5,7 @@ import {
   type RowRailState,
   type RowRailStateInput
 } from '../../model/rowRail'
+import { Checkbox } from '@ui/checkbox'
 import { cn } from '@ui/utils'
 import {
   TABLE_REORDER_HANDLE_SIZE,
@@ -69,37 +70,27 @@ export interface RowSelectionButtonProps {
 
 export const RowSelectionButton = (props: RowSelectionButtonProps) => {
   return (
-    <div className='flex h-full pointer-events-auto cursor-pointer shrink-0 items-center justify-center' style={{
-      width: TABLE_SELECTION_SLOT_WIDTH + TABLE_SELECTION_INSET * 2
-    }} onPointerDown={event => {
+    <div onPointerDown={event => {
       if (props.disabled) {
         return
       }
       event.preventDefault()
       event.stopPropagation()
       props.onPointerStart(event)
+    }} className='flex h-full pointer-events-auto cursor-pointer shrink-0 items-center justify-center' style={{
+      width: TABLE_SELECTION_SLOT_WIDTH + TABLE_SELECTION_INSET * 2
     }}>
-      <button
-        aria-checked={props.indeterminate ? 'mixed' : props.selected}
+      <Checkbox
+        checked={props.selected}
+        indeterminate={props.indeterminate}
+        disabled={props.disabled}
         aria-label={props.label ?? 'Select row'}
         title={props.label ?? 'Select row'}
-        type="button"
-        disabled={props.disabled}
         className={cn(
-          'pointer-events-auto size-[16px] inline-flex items-center justify-center rounded border text-sm transition-colors',
+          'pointer-events-auto',
           props.className,
-          props.selected || props.indeterminate
-            ? 'border-primary bg-primary text-primary-foreground'
-            : 'text-transparent hover:bg-hover',
-          props.disabled && 'cursor-default border-border bg-muted text-transparent opacity-50 hover:border-border'
         )}
-      >
-        {props.indeterminate ? (
-          <span className="block h-px w-2 text-white rounded-full bg-current" />
-        ) : (
-          <span className={cn(props.selected ? 'opacity-100' : 'opacity-0', 'text-white')}>✓</span>
-        )}
-      </button>
+      />
     </div>
 
   )

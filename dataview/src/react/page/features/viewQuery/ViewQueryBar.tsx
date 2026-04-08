@@ -10,11 +10,11 @@ import {
   useDataView,
   useDataViewValue,
 } from '@dataview/react/dataview'
+import { FieldPicker } from '@dataview/react/field/picker'
 import { Popover } from '@ui/popover'
 import { meta, renderMessage } from '@dataview/meta'
 import type { QueryBarEntry } from '@dataview/react/page/session/types'
 import { QueryChip } from '../query'
-import { FieldPicker } from './FieldPicker'
 
 export type ViewQueryOpenEntry = QueryBarEntry
 

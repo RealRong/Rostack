@@ -1,9 +1,5 @@
 import type { SelectionSummary } from '@whiteboard/core/selection'
 import type { WhiteboardRuntime } from '#react/types/runtime'
-import {
-  readSelectionExactGroupIds,
-  readSelectionWholeGroupIds
-} from '#react/runtime/selection'
 
 export type SelectionCan = {
   order: boolean
@@ -15,7 +11,6 @@ export type SelectionCan = {
   delete: boolean
   align: boolean
   distribute: boolean
-  wholeGroupIds: readonly string[]
 }
 
 export const readSelectionCan = ({
@@ -28,21 +23,19 @@ export const readSelectionCan = ({
   const pureNodeSelection =
     summary.items.nodeCount > 0
     && summary.items.edgeCount === 0
-  const wholeGroupIds = readSelectionWholeGroupIds(editor, summary.target)
-  const exactGroupIds = readSelectionExactGroupIds(editor, summary.target)
+  const exactGroupIds = editor.read.group.exactIds(summary.target)
 
   return {
     order: summary.items.count > 0,
     makeGroup:
       summary.items.count >= 2
       && !(exactGroupIds.length === 1),
-    ungroup: wholeGroupIds.length > 0,
+    ungroup: exactGroupIds.length > 0,
     copy: summary.items.count > 0,
     cut: summary.items.count > 0,
     duplicate: summary.items.count > 0,
     delete: summary.items.count > 0,
     align: pureNodeSelection && summary.items.nodeCount >= 2,
-    distribute: pureNodeSelection && summary.items.nodeCount >= 3,
-    wholeGroupIds
+    distribute: pureNodeSelection && summary.items.nodeCount >= 3
   }
 }

@@ -1,4 +1,5 @@
 export { useExternalValue } from './useExternalValue'
+export { useElementSize } from './useElementSize'
 export {
   createLazySelectorSnapshot,
   useLazySelectorValue,

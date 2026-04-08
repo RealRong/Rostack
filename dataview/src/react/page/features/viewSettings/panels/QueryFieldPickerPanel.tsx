@@ -1,7 +1,7 @@
 import { getDocumentFields } from '@dataview/core/document'
+import { FieldPicker } from '@dataview/react/field/picker'
 import { getAvailableFilterFields } from '@dataview/react/page/features/filter/filterUi'
 import { getAvailableSorterFields } from '@dataview/react/page/features/sort'
-import { FieldPicker } from '@dataview/react/page/features/viewQuery/FieldPicker'
 import {
   useDataView,
   useDataViewValue

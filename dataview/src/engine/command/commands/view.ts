@@ -19,6 +19,7 @@ import type { IndexedCommand } from '../context'
 import {
   getDocumentFieldById,
   getDocumentFields,
+  getDocumentViews,
   getDocumentViewById
 } from '@dataview/core/document'
 import {
@@ -57,7 +58,11 @@ import {
   toggleViewGroupBucketCollapsed,
   type ViewQuery
 } from '@dataview/core/query'
-import { orderedViewRecords } from '@dataview/core/view'
+import {
+  createDuplicateViewPreferredName,
+  orderedViewRecords,
+  resolveUniqueViewName
+} from '@dataview/core/view'
 import { reorderRecordBlockIds } from '@dataview/core/view/order'
 import { createDefaultViewDisplay, createDefaultViewOptions } from '@dataview/core/view/options'
 import { cloneViewOptions } from '@dataview/core/view/shared'
@@ -71,8 +76,6 @@ import {
   validateBatchItems,
   validateViewExists
 } from './shared'
-
-const createDuplicateViewName = (name: string) => `${name} Copy`
 
 const sameRecordOrder = (left: readonly RecordId[], right: readonly RecordId[]) => (
   left.length === right.length && left.every((recordId, index) => recordId === right[index])
@@ -647,6 +650,7 @@ export const resolveViewCreateCommand = (
   command: Extract<IndexedCommand, { type: 'view.create' }>
 ) => {
   const explicitViewId = command.input.id?.trim()
+  const preferredName = command.input.name.trim()
   const issues: ValidationIssue[] = []
   if (command.input.id !== undefined && !explicitViewId) {
     issues.push(createIssue(command, 'error', 'view.invalid', 'View id must be a non-empty string', 'input.id'))
@@ -654,11 +658,18 @@ export const resolveViewCreateCommand = (
   if (explicitViewId && getDocumentViewById(document, explicitViewId)) {
     issues.push(createIssue(command, 'error', 'view.invalid', `View already exists: ${explicitViewId}`, 'input.id'))
   }
+  if (!preferredName) {
+    issues.push(createIssue(command, 'error', 'view.invalid', 'View name must be a non-empty string', 'input.name'))
+  }
   if (hasValidationErrors(issues)) {
     return resolveCommandResult(issues)
   }
 
   const fields = getDocumentFields(document)
+  const name = resolveUniqueViewName({
+    views: getDocumentViews(document),
+    preferredName
+  })
   const query = normalizeViewQuery({
     ...(command.input.search ? { search: command.input.search } : {}),
     ...(command.input.filter ? { filter: command.input.filter } : {}),
@@ -667,7 +678,7 @@ export const resolveViewCreateCommand = (
   })
   const view: View = {
     id: explicitViewId || createViewId(),
-    name: command.input.name,
+    name,
     type: command.input.type,
     search: query.search,
     filter: query.filter,
@@ -706,11 +717,16 @@ export const resolveViewDuplicateCommand = (
     return resolveCommandResult(issues)
   }
 
+  const name = resolveUniqueViewName({
+    views: getDocumentViews(document),
+    preferredName: command.name?.trim() || createDuplicateViewPreferredName(source.name)
+  })
+
   return resolveViewPutCommand(document, deriveCommand(command, 'view.put', {
     view: {
       ...structuredClone(source),
       id: createViewId(),
-      name: command.name?.trim() || createDuplicateViewName(source.name)
+      name
     }
   }))
 }

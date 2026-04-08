@@ -4,12 +4,6 @@ import type {
 } from '../types/common/shortcut'
 import { selectTool } from '@whiteboard/editor'
 import type { WhiteboardRuntime as Editor } from '#react/types/runtime'
-import {
-  deleteSelectionAndClear,
-  duplicateSelectionAndSelect,
-  mergeGroupSelectionAndSelect,
-  ungroupSelectionAndSelect
-} from '#react/runtime/commands'
 
 export const DefaultShortcutBindings: readonly ShortcutBinding[] = [
   { key: 'Mod+G', action: 'group.merge' },
@@ -35,7 +29,7 @@ const readShortcutState = (
     selection,
     hasSelection: selection.items.count > 0,
     canGroup: selection.items.count >= 2,
-    canUngroup: selection.groups.count > 0,
+    canUngroup: editor.read.group.exactIds(selection.target).length > 0,
     canDuplicate: selection.items.count > 0
   }
 }
@@ -88,24 +82,27 @@ export const runShortcut = (
       editor.commands.selection.clear()
       return true
     case 'selection.delete':
-      return deleteSelectionAndClear(editor, {
+      return editor.commands.nodes.delete({
         nodeIds: selection.target.nodeIds,
         edgeIds: selection.target.edgeIds
       })
     case 'selection.duplicate': {
-      return duplicateSelectionAndSelect(editor, {
+      return editor.commands.nodes.duplicate({
         nodeIds: selection.target.nodeIds,
         edgeIds: selection.target.edgeIds
       })
     }
     case 'group.merge': {
-      return mergeGroupSelectionAndSelect(editor, {
+      return editor.commands.group.merge({
         nodeIds: selection.target.nodeIds,
         edgeIds: selection.target.edgeIds
       })
     }
     case 'group.ungroup': {
-      return ungroupSelectionAndSelect(editor, selection.groups.ids)
+      return editor.commands.group.ungroup({
+        nodeIds: selection.target.nodeIds,
+        edgeIds: selection.target.edgeIds
+      })
     }
     case 'history.undo':
       return editor.commands.history.undo().ok

@@ -91,10 +91,10 @@
 - 后缀递增规则
 - 命名规范的纯函数化表达
 
-### engine 层负责
+### engine command 层负责
 
-- 在创建 view 时统一调用命名算法
-- 保证所有创建入口行为一致
+- 在 `view.create` / `view.duplicate` 落地前统一调用命名算法
+- 保证所有入口经过同一条最终约束链
 - 最终提交 document mutation
 
 ## 推荐结构
@@ -102,7 +102,7 @@
 推荐拆成两层：
 
 1. `core` 提供纯函数
-2. `engine.views.create()` 统一使用这个纯函数
+2. `engine command` 在真正写入前统一使用这个纯函数
 
 示意如下：
 
@@ -110,17 +110,22 @@
 // core
 resolveUniqueViewName(existingViews, preferredName): string
 
-// engine
+// engine service / UI
 engine.views.create({
   type,
   name: preferredName
 })
+
+// engine command
+resolveViewCreateCommand(...)
+resolveViewDuplicateCommand(...)
 ```
 
 其中：
 
 - UI 提供 `preferredName`
-- engine 在真正创建前调用 `resolveUniqueViewName`
+- service 只传递 `preferredName`
+- engine command 在真正写入前调用 `resolveUniqueViewName`
 - 返回的 `viewId` 对应的 view 名称由 engine 保证唯一
 
 ## 为什么算法应该先放 core
@@ -129,13 +134,14 @@ engine.views.create({
 
 ### 1. 保持 engine service 轻薄
 
-engine 负责 orchestration，core 负责纯规则。
+service 负责 orchestration，core 负责纯规则，command 负责最终约束。
 
 这样 engine 不需要承载过多细节逻辑，依旧保持：
 
-- 读取现有 views
-- 调用纯函数
-- 生成 command
+- service 只负责发 command
+- command 读取现有 views
+- command 调用纯函数
+- command 生成最终 mutation
 
 ### 2. 规则更容易测试
 
@@ -161,7 +167,7 @@ engine 负责 orchestration，core 负责纯规则。
 
 ## engine API 的长期最优形式
 
-长期最优我建议是：`engine.views.create()` 只暴露一个创建入口，但内部默认做名称唯一化。
+长期最优我建议是：`engine.views.create()` 只暴露一个创建入口，但唯一化不要留在 service，而是下沉到 command。
 
 也就是：
 
@@ -172,7 +178,7 @@ engine.views.create({
 })
 ```
 
-其语义不是：
+对外语义不是：
 
 - “按这个名字原样创建”
 
@@ -183,6 +189,12 @@ engine.views.create({
 这样 API 最简。
 
 调用方不需要知道是否发生过重名修正，只需要拿 `viewId`。
+
+真正的边界应该是：
+
+- `engine.views.create()` 只提供易用入口
+- `view.create` / `view.duplicate` command 负责最终唯一化
+- direct command caller 和 service caller 得到同一结果
 
 ## 不推荐的几种方案
 
@@ -273,7 +285,7 @@ resolveUniqueViewName({
 
 不依赖 engine，不依赖 UI。
 
-### 三. engine 在 create 时统一调用
+### 三. engine command 在写入前统一调用
 
 例如：
 
@@ -286,10 +298,10 @@ engine.views.create({
 
 内部逻辑为：
 
-1. 读取现有 view 名称
-2. 调用 `resolveUniqueViewName`
-3. 生成最终 command
-4. 创建 view
+1. service 透传 `preferredName`
+2. command 读取现有 view 名称
+3. command 调用 `resolveUniqueViewName`
+4. command 创建最终 view
 
 ### 四. UI 不再自行处理重名
 
@@ -336,11 +348,11 @@ engine.views.create({
 
 - UI 决定基础名称
 - core 提供唯一命名纯函数
-- engine 在 `views.create()` 内统一做最终唯一化保证
+- engine command 在 `view.create` / `view.duplicate` 内统一做最终唯一化保证
 
 用一句话概括就是：
 
-**“名字从 UI 来，唯一性由 engine 保证，算法沉到 core。”**
+**“名字从 UI 来，算法沉到 core，最终唯一性由 engine command 保证。”**
 
 这条边界最稳定，也最不容易在未来继续长歪。
 
@@ -349,8 +361,8 @@ engine.views.create({
 如果后面要真正改代码，建议顺序是：
 
 1. 先把 `createViewName()` 提炼成 `core` 纯函数
-2. 让 `engine.views.create()` 内部统一调用
-3. 再把 `useCreateView.ts` 里的本地重名逻辑删除
+2. 让 `view.create` / `view.duplicate` command 统一调用
+3. 再把 service / UI 里的本地重名逻辑删除
 4. 最后视需要决定是否补一个只用于 UI 预览的 `suggestName()`
 
 其中第 4 步不是必须项。

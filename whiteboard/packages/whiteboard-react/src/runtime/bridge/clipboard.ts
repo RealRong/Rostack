@@ -32,21 +32,12 @@ export type ClipboardBridge = {
 export const createClipboardBridge = ({
   editor,
   adapter,
-  readPointer
+  readDefaultOrigin
 }: {
   editor: WhiteboardRuntime
   adapter: ClipboardAdapter
-  readPointer: () => Point | undefined
+  readDefaultOrigin: () => Point
 }): ClipboardBridge => {
-  const readDefaultOrigin = () => {
-    const pointer = readPointer()
-    if (pointer) {
-      return clonePoint(pointer)
-    }
-
-    return clonePoint(editor.state.viewport.get().center)
-  }
-
   return {
     copy: async (target = 'selection', options) => {
       const packet = editor.commands.clipboard.export(target)
@@ -71,7 +62,7 @@ export const createClipboardBridge = ({
       }
 
       return editor.commands.clipboard.insert(packet, {
-        origin: options?.origin ?? readDefaultOrigin()
+        origin: options?.origin ?? clonePoint(readDefaultOrigin())
       })
     }
   }

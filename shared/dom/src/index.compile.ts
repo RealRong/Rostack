@@ -1,4 +1,5 @@
 export * from './autoPan'
+export * from './editable'
 export * from './focus'
 export * from './geometry'
 export * from './input'

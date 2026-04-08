@@ -25,7 +25,7 @@ import {
 } from '@whiteboard/core/node'
 import {
   getTargetBounds,
-  isSelectionTargetEqual
+  type SelectionTarget
 } from '@whiteboard/core/selection'
 import {
   type EdgeId,
@@ -47,6 +47,8 @@ import { createReadModel } from './model'
 import { createMindmapProjection } from './mindmap'
 import { createNodeProjection } from './node'
 import type { ReadSnapshot } from '@engine-types/internal/read'
+
+const EMPTY_GROUP_IDS: readonly string[] = []
 
 export const createRead = ({
   document,
@@ -233,34 +235,79 @@ export const createRead = ({
     groupId: string
   ) => listGroupEdgeIds(readDocument(), groupId)
 
-  const readGroupSelection = (
-    groupId: string
+  const readTargetGroupIds = (
+    target: SelectionTarget
   ) => {
-    if (!readGroupItem(groupId)) {
-      return undefined
-    }
+    const groupIds = new Set<string>()
 
-    const nodeIds = readGroupNodeIds(groupId)
-    const edgeIds = readGroupEdgeIds(groupId)
-    return nodeIds.length > 0 || edgeIds.length > 0
-      ? {
-          nodeIds,
-          edgeIds
-        }
-      : undefined
+    target.nodeIds.forEach((nodeId) => {
+      const groupId = readNodeGroupId(nodeId)
+      if (groupId) {
+        groupIds.add(groupId)
+      }
+    })
+
+    target.edgeIds.forEach((edgeId) => {
+      const groupId = readEdgeGroupId(edgeId)
+      if (groupId) {
+        groupIds.add(groupId)
+      }
+    })
+
+    return [...groupIds]
   }
 
-  const isGroupSelected = (
-    groupId: string,
-    target: {
-      nodeIds: readonly NodeId[]
-      edgeIds: readonly EdgeId[]
+  const readWholeGroupIds = (
+    target: SelectionTarget
+  ): readonly string[] => {
+    const selectedNodeIds = new Set(target.nodeIds)
+    const selectedEdgeIds = new Set(target.edgeIds)
+
+    return readTargetGroupIds(target).filter((groupId) => {
+      const nodeIds = readGroupNodeIds(groupId)
+      const edgeIds = readGroupEdgeIds(groupId)
+
+      return (
+        (nodeIds.length > 0 || edgeIds.length > 0)
+        && nodeIds.every((id) => selectedNodeIds.has(id))
+        && edgeIds.every((id) => selectedEdgeIds.has(id))
+      )
+    })
+  }
+
+  const readExactGroupIds = (
+    target: SelectionTarget
+  ): readonly string[] => {
+    const wholeGroupIds = readWholeGroupIds(target)
+    if (!wholeGroupIds.length) {
+      return EMPTY_GROUP_IDS
     }
-  ) => {
-    const groupSelection = readGroupSelection(groupId)
-    return groupSelection
-      ? isSelectionTargetEqual(groupSelection, target)
-      : false
+
+    const expectedNodeIds = new Set<string>()
+    const expectedEdgeIds = new Set<string>()
+
+    wholeGroupIds.forEach((groupId) => {
+      readGroupNodeIds(groupId).forEach((nodeId) => {
+        expectedNodeIds.add(nodeId)
+      })
+      readGroupEdgeIds(groupId).forEach((edgeId) => {
+        expectedEdgeIds.add(edgeId)
+      })
+    })
+
+    if (
+      target.nodeIds.length !== expectedNodeIds.size
+      || target.edgeIds.length !== expectedEdgeIds.size
+    ) {
+      return EMPTY_GROUP_IDS
+    }
+
+    return (
+      target.nodeIds.every((nodeId) => expectedNodeIds.has(nodeId))
+      && target.edgeIds.every((edgeId) => expectedEdgeIds.has(edgeId))
+    )
+      ? wholeGroupIds
+      : EMPTY_GROUP_IDS
   }
 
   const readEdgeBounds = (edgeId: EdgeId): Rect | undefined => {
@@ -360,17 +407,21 @@ export const createRead = ({
         nodeIds: readGroupNodeIds,
         edgeIds: readGroupEdgeIds,
         bounds: (groupId) => {
-          const selection = readGroupSelection(groupId)
-          return selection
+          const nodeIds = readGroupNodeIds(groupId)
+          const edgeIds = readGroupEdgeIds(groupId)
+          return nodeIds.length > 0 || edgeIds.length > 0
             ? getTargetBounds({
-                target: selection,
+                target: {
+                  nodeIds,
+                  edgeIds
+                },
                 readNodeBounds: readProjectedNodeBounds,
                 readEdgeBounds
               })
             : undefined
         },
-        selection: readGroupSelection,
-        isSelected: isGroupSelected
+        wholeIds: readWholeGroupIds,
+        exactIds: readExactGroupIds
       },
       node: {
         list: nodeProjection.list,

@@ -3,15 +3,6 @@ import { Menu } from '@ui'
 import { useEditorRuntime, useWhiteboardServices } from '#react/runtime/hooks'
 import { useSelection } from '#react/features/node'
 import { readSelectionCan } from '../../capability'
-import { readSelectionExactGroupIds } from '#react/runtime/selection'
-import {
-  createFrameAndSelect,
-  deleteSelectionAndClear,
-  duplicateSelectionAndSelect,
-  mergeGroupSelectionAndSelect,
-  orderSelection,
-  ungroupSelectionAndSelect
-} from '#react/runtime/commands'
 
 const ORDER_ITEMS = [
   { key: 'order.front', label: 'Bring to front', mode: 'front' as const },
@@ -75,7 +66,7 @@ export const SelectionActionMenu = ({
     editor,
     summary
   })
-  const exactGroupIds = readSelectionExactGroupIds(editor, {
+  const exactGroupIds = editor.read.group.exactIds({
     nodeIds,
     edgeIds
   })
@@ -123,7 +114,7 @@ export const SelectionActionMenu = ({
       key: 'edit.duplicate',
       label: 'Duplicate',
       onSelect: () => {
-        duplicateSelectionAndSelect(editor, {
+        editor.commands.nodes.duplicate({
           nodeIds,
           edgeIds
         })
@@ -142,7 +133,7 @@ export const SelectionActionMenu = ({
         key: item.key,
         label: item.label,
         onSelect: () => {
-          orderSelection(editor, {
+          editor.commands.nodes.order({
             nodeIds,
             edgeIds
           }, item.mode)
@@ -156,7 +147,7 @@ export const SelectionActionMenu = ({
             key: 'structure.group',
             label: 'Group',
             onSelect: () => {
-              mergeGroupSelectionAndSelect(editor, {
+              editor.commands.group.merge({
                 nodeIds,
                 edgeIds
               })
@@ -171,7 +162,10 @@ export const SelectionActionMenu = ({
             key: 'structure.ungroup',
             label: 'Ungroup',
             onSelect: () => {
-              ungroupSelectionAndSelect(editor, exactGroupIds)
+              editor.commands.group.ungroup({
+                nodeIds,
+                edgeIds
+              })
             }
           }
         ]
@@ -195,7 +189,7 @@ export const SelectionActionMenu = ({
             key: 'structure.frame',
             label: 'Create frame',
             onSelect: () => {
-              createFrameAndSelect(editor, box)
+              editor.commands.frame.createFromBounds(box)
             }
           }
         ]
@@ -222,7 +216,7 @@ export const SelectionActionMenu = ({
       label: 'Delete',
       tone: 'destructive' as const,
       onSelect: () => {
-        deleteSelectionAndClear(editor, {
+        editor.commands.nodes.delete({
           nodeIds,
           edgeIds
         })

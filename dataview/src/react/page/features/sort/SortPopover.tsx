@@ -13,8 +13,8 @@ import {
   useDataView,
   useDataViewValue
 } from '@dataview/react/dataview'
+import { FieldPicker } from '@dataview/react/field/picker'
 import { meta, renderMessage } from '@dataview/meta'
-import { FieldPicker } from '@dataview/react/page/features/viewQuery/FieldPicker'
 import { SortRuleRow } from './SortRuleRow'
 import {
   getAvailableSorterFields,

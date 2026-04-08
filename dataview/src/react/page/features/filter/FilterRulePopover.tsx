@@ -215,7 +215,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
 
           {bodyLayout !== 'none' ? (
             <div className={cn(
-              bodyLayout === 'inset' ? 'px-2.5 pb-2.5 pt-1' : 'px-1.5 pb-2 pt-1'
+              editorKind === 'status' ? '' : bodyLayout === 'inset' ? 'px-2.5 pb-2.5 pt-1' : 'px-1.5 pb-2 pt-1'
             )}>
               {editorKind === 'status' ? (
                 <StatusFilterPicker

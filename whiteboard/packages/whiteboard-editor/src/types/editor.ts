@@ -17,6 +17,7 @@ import type {
   MindmapTree,
   NodeId,
   Point,
+  Rect,
   Size,
   Viewport
 } from '@whiteboard/core/types'
@@ -241,7 +242,57 @@ export type EditorClipboardCommands = {
   ) => boolean
 }
 
-export type EditorCommands = Omit<EngineCommands, 'tool' | 'selection' | 'interaction' | 'edge' | 'viewport' | 'node' | 'mindmap'> & {
+export type EditorNodesOrderMode =
+  | 'front'
+  | 'back'
+  | 'forward'
+  | 'backward'
+
+export type EditorNodesCommands = {
+  duplicate: (
+    target: SelectionInput,
+    options?: {
+      selectInserted?: boolean
+    }
+  ) => boolean
+  delete: (
+    target: SelectionInput,
+    options?: {
+      clearSelection?: boolean
+    }
+  ) => boolean
+  order: (
+    target: SelectionInput,
+    mode: EditorNodesOrderMode
+  ) => boolean
+}
+
+export type EditorGroupCommands = {
+  merge: (
+    target: SelectionInput,
+    options?: {
+      selectResult?: boolean
+    }
+  ) => boolean
+  ungroup: (
+    target: SelectionInput,
+    options?: {
+      fallbackSelection?: 'members' | 'none'
+    }
+  ) => boolean
+  order: EngineCommands['group']['order']
+}
+
+export type EditorFrameCommands = {
+  createFromBounds: (
+    bounds: Rect,
+    options?: {
+      padding?: number
+    }
+  ) => boolean
+}
+
+export type EditorCommands = Omit<EngineCommands, 'tool' | 'selection' | 'interaction' | 'edge' | 'viewport' | 'node' | 'mindmap' | 'group'> & {
   tool: {
     set: (tool: Tool) => void
   }
@@ -271,6 +322,9 @@ export type EditorCommands = Omit<EngineCommands, 'tool' | 'selection' | 'intera
   viewport: EditorViewportCommands
   edge: EngineCommands['edge']
   node: EditorNodeCommands
+  nodes: EditorNodesCommands
+  group: EditorGroupCommands
+  frame: EditorFrameCommands
   mindmap: EditorMindmapCommands
   clipboard: EditorClipboardCommands
 }

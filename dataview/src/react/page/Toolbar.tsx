@@ -21,10 +21,10 @@ import { Input } from '@ui/input'
 import { Menu, type MenuItem } from '@ui/menu'
 import { Popover } from '@ui/popover'
 import { cn } from '@ui/utils'
+import { FieldPicker } from '@dataview/react/field/picker'
 import { CreateViewPopover } from '@dataview/react/page/features/createView'
 import { getAvailableFilterFields } from '@dataview/react/page/features/filter/filterUi'
 import { getAvailableSorterFields } from '@dataview/react/page/features/sort'
-import { FieldPicker } from '@dataview/react/page/features/viewQuery/FieldPicker'
 import { ViewSettingsPopover } from '@dataview/react/page/features/viewSettings'
 import {
   useDataView,

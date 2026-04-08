@@ -1,7 +1,10 @@
 import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react'
 import { OverlayProvider } from '@ui'
+import type { Document } from '@whiteboard/core/types'
+import { normalizeDocument } from '@whiteboard/engine'
 import type { WhiteboardProps } from './types/common/board'
 import { resolveConfig } from './config'
+import { createDefaultNodeRegistry } from './features/node'
 import {
   WhiteboardConfigProvider,
   WhiteboardServicesProvider
@@ -12,7 +15,7 @@ import { DocumentSync } from './runtime/whiteboard/DocumentSync'
 import { CollabLifecycle } from './runtime/whiteboard/CollabLifecycle'
 import { EditorLifecycle } from './runtime/whiteboard/EditorLifecycle'
 import { PresenceLifecycle } from './runtime/whiteboard/PresenceLifecycle'
-import { useWhiteboardRuntime } from './runtime/whiteboard/runtime'
+import { createWhiteboardServices } from './runtime/whiteboard/services'
 
 const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function WhiteboardInner(
   {
@@ -35,19 +38,32 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
     () => resolveConfig(options),
     [options]
   )
-  const {
-    services,
-    inputDocument,
-    lastOutboundDocumentRef,
-    onDocumentChangeRef
-  } = useWhiteboardRuntime({
-    document,
-    onDocumentChange,
-    coreRegistries,
-    nodeRegistry,
-    resolvedConfig,
-    boardConfig
-  })
+  const inputDocument = useMemo(
+    () => normalizeDocument(document, boardConfig),
+    [document, boardConfig]
+  )
+  const onDocumentChangeRef = useRef(onDocumentChange)
+  const lastOutboundDocumentRef = useRef<Document>(inputDocument)
+  const registryRef = useRef(nodeRegistry ?? createDefaultNodeRegistry())
+  const servicesRef = useRef<ReturnType<typeof createWhiteboardServices> | null>(null)
+
+  onDocumentChangeRef.current = onDocumentChange
+
+  if (!servicesRef.current) {
+    servicesRef.current = createWhiteboardServices({
+      document: inputDocument,
+      onDocumentChange: (nextDocument) => {
+        lastOutboundDocumentRef.current = nextDocument
+        onDocumentChangeRef.current(nextDocument)
+      },
+      coreRegistries,
+      registry: registryRef.current,
+      resolvedConfig,
+      boardConfig
+    })
+  }
+
+  const services = servicesRef.current
   const editor = services.editor
   const engine = services.engine
 

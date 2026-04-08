@@ -1,4 +1,5 @@
 export * from './autoPan.ts'
+export * from './editable.ts'
 export * from './focus.ts'
 export * from './geometry.ts'
 export * from './input.ts'

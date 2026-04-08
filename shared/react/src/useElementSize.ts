@@ -5,19 +5,19 @@ import {
 } from 'react'
 import {
   observeElementSize,
-  readElementClientSize
+  readElementClientSize,
+  type ElementSize
 } from '@shared/dom'
-import type { Size } from '../../types/common/base'
 
-const EmptySize: Size = {
+const EmptySize: ElementSize = {
   width: 0,
   height: 0
 }
 
-export const useElementSize = (
-  ref: RefObject<HTMLElement | null>
+export const useElementSize = <ElementType extends HTMLElement>(
+  ref: RefObject<ElementType | null>
 ) => {
-  const [size, setSize] = useState<Size>(EmptySize)
+  const [size, setSize] = useState<ElementSize>(EmptySize)
 
   useEffect(() => {
     const element = ref.current

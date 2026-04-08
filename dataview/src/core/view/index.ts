@@ -1,5 +1,6 @@
 export * from './gallery'
 export * from './kanban'
+export * from './naming'
 export * from './normalize'
 export * from './order'
 export * from './options'

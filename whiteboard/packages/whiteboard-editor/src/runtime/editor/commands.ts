@@ -2,6 +2,9 @@ import type { EngineInstance } from '@whiteboard/engine'
 import type { Editor, EditorRead, EditorWriteApi } from '../../types/editor'
 import type { EditorViewportRuntime } from './types'
 import { createClipboard } from '../commands/clipboard'
+import { createFrameCommands } from '../commands/frame'
+import { createGroupCommands } from '../commands/group'
+import { createNodesCommands } from '../commands/nodes'
 
 export const createEditorCommands = ({
   engine,
@@ -68,13 +71,40 @@ export const createEditorCommands = ({
       text: nodeTextCommands
     },
     mindmap: write.document.mindmap
+  } satisfies Omit<Editor['commands'], 'clipboard' | 'nodes' | 'group' | 'frame'>
+
+  const commandsWithoutClipboard = {
+    ...baseCommands,
+    nodes: createNodesCommands({
+      read,
+      commands: {
+        canvas: baseCommands.canvas,
+        group: {
+          order: engine.commands.group.order
+        },
+        selection: baseCommands.selection
+      }
+    }),
+    group: createGroupCommands({
+      read,
+      commands: {
+        group: write.document.group,
+        selection: baseCommands.selection
+      }
+    }),
+    frame: createFrameCommands({
+      commands: {
+        node: baseCommands.node,
+        selection: baseCommands.selection
+      }
+    })
   } satisfies Omit<Editor['commands'], 'clipboard'>
 
   return {
-    ...baseCommands,
+    ...commandsWithoutClipboard,
     clipboard: createClipboard({
       editor: {
-        commands: baseCommands,
+        commands: commandsWithoutClipboard,
         read,
         state: {
           viewport

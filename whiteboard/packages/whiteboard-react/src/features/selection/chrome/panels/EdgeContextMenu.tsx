@@ -1,11 +1,6 @@
 import type { MenuItem } from '@ui'
 import { Menu } from '@ui'
 import { useEditorRuntime, useWhiteboardServices } from '#react/runtime/hooks'
-import {
-  deleteSelectionAndClear,
-  duplicateSelectionAndSelect,
-  orderSelection
-} from '#react/runtime/commands'
 
 const ORDER_ITEMS = [
   { key: 'order.front', label: 'Bring to front', mode: 'front' as const },
@@ -101,17 +96,17 @@ export const EdgeContextMenu = ({
           })
         },
         () => {
-          duplicateSelectionAndSelect(editor, {
+          editor.commands.nodes.duplicate({
             edgeIds: [edgeId]
           })
         },
         () => {
-          deleteSelectionAndClear(editor, {
+          editor.commands.nodes.delete({
             edgeIds: [edgeId]
           })
         },
         (mode) => {
-          orderSelection(editor, {
+          editor.commands.nodes.order({
             edgeIds: [edgeId]
           }, mode)
         }

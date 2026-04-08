@@ -98,11 +98,8 @@ export type GroupRead = {
   nodeIds: (groupId: GroupId) => readonly NodeId[]
   edgeIds: (groupId: GroupId) => readonly EdgeId[]
   bounds: (groupId: GroupId) => Rect | undefined
-  selection: (groupId: GroupId) => SelectionTarget | undefined
-  isSelected: (
-    groupId: GroupId,
-    target: SelectionTarget
-  ) => boolean
+  wholeIds: (target: SelectionTarget) => readonly GroupId[]
+  exactIds: (target: SelectionTarget) => readonly GroupId[]
 }
 
 export type EdgeRead = {

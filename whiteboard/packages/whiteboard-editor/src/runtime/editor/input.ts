@@ -66,6 +66,21 @@ const syncSingleEdgeSelection = (
   })
 }
 
+const readGroupSelection = (
+  read: EditorRead,
+  groupId: string
+) => {
+  const nodeIds = read.group.nodeIds(groupId)
+  const edgeIds = read.group.edgeIds(groupId)
+
+  return nodeIds.length > 0 || edgeIds.length > 0
+    ? {
+        nodeIds,
+        edgeIds
+      }
+    : undefined
+}
+
 export const createEditorInput = ({
   interaction,
   edgeHover,
@@ -126,7 +141,7 @@ export const createEditorInput = ({
           return readSelectionIntent(read, input.screen)
         }
         case 'group': {
-          const selection = read.group.selection(input.pick.id)
+          const selection = readGroupSelection(read, input.pick.id)
           if (!selection) {
             return {
               kind: 'canvas',

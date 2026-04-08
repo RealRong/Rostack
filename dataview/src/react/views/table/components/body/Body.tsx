@@ -16,7 +16,7 @@ import {
   closestTarget,
   hasInteractiveTarget,
   interactiveSelector
-} from '@dataview/dom/interactive'
+} from '@shared/dom'
 import {
   useDataView,
   useDataViewValue
@@ -24,7 +24,7 @@ import {
 import {
   resolveDefaultAutoPanTargets
 } from '@dataview/react/interaction/autoPan'
-import { useStoreValue } from '@dataview/react/store'
+import { useStoreValue } from '@shared/react'
 import { type CellRef } from '@dataview/react/runtime/currentView'
 import { applyPaste, handleTableKey } from '../../input'
 import {

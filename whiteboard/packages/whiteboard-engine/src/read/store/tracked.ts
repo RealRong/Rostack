@@ -1,7 +1,7 @@
 import {
   createKeyedStore,
   type KeyedReadStore
-} from '../../store'
+} from '@shared/store'
 
 const isSameValue = <T,>(left: T, right: T) => Object.is(left, right)
 

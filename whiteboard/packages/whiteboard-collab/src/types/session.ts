@@ -1,4 +1,5 @@
-import type { EngineInstance, ReadStore } from '@whiteboard/engine'
+import type { ReadStore } from '@shared/store'
+import type { EngineInstance } from '@whiteboard/engine'
 import type * as Y from 'yjs'
 import type {
   CollabBootstrapMode,

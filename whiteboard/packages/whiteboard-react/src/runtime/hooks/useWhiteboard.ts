@@ -5,7 +5,7 @@ import type { WhiteboardRuntime } from '#react/types/runtime'
 import type { ClipboardBridge } from '../bridge/clipboard'
 import type { InsertBridge } from '../bridge/insert'
 import type { PointerBridge } from '../bridge/pointer'
-import { EngineInstance } from '@whiteboard/engine'
+import type { EngineInstance } from '@whiteboard/engine'
 
 export type WhiteboardServicesContextValue = {
   editor: WhiteboardRuntime

@@ -9,7 +9,7 @@ import {
 import {
   createValueStore,
   type ValueStore
-} from '@whiteboard/engine'
+} from '@shared/store'
 
 export type SelectionMutate = {
   replace: (input: SelectionInput) => void

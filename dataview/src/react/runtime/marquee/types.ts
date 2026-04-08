@@ -3,8 +3,8 @@ import type {
   Box,
   Point,
   RectItem
-} from '@dataview/dom/geometry'
-import type { ValueStore } from '@dataview/runtime/store'
+} from '@shared/dom'
+import type { ValueStore } from '@shared/store'
 import type { ViewId } from '@dataview/core/contracts'
 import type { AutoPanTargets } from '@dataview/react/interaction/autoPan'
 import type { Selection } from '@dataview/react/runtime/selection'

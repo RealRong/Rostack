@@ -16,6 +16,7 @@
     "dist"
   ],
   "dependencies": {
+    "@shared": "workspace:*",
     "@whiteboard/core": "workspace:*"
   },
   "scripts": {

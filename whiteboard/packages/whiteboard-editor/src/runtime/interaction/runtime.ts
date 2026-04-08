@@ -1,7 +1,7 @@
 import {
   createDerivedStore,
   createValueStore
-} from '@whiteboard/engine'
+} from '@shared/store'
 import type { ActiveGesture } from './gesture'
 import type {
   InteractionBinding,

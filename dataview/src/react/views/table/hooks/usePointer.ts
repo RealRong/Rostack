@@ -7,7 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type PointerEventHandler
 } from 'react'
-import type { Point } from '@dataview/dom/geometry'
+import type { Point } from '@shared/dom'
 import {
   fill,
   gridSelection
@@ -30,7 +30,7 @@ import { isOverlayBlockingElement } from '@ui/overlay'
 import {
   containsRelatedTarget,
   shouldCapturePointer
-} from '@dataview/dom/interactive'
+} from '@shared/dom'
 import { useDataView, useDataViewValue } from '@dataview/react/dataview'
 import {
   resolveDefaultAutoPanTargets,

@@ -351,26 +351,31 @@
 
 ## 推荐的根共享包形态
 
-如果目标是“像 `ui` 一样有一个根目录公共包”，建议不要做成一个巨型平铺入口，而是做成一个根包加子路径导出。
+如果目标是“像 `ui` 一样有一个根目录公共包”，建议直接使用：
 
-推荐形态：
+- 新包目录：`shared/`
+- 包名：`@shared`
 
-- 新包目录：`runtime/` 或 `foundation/`
-- 包名建议：`@rostack/runtime` 或 `@rostack/foundation`
+导入风格也建议和 `ui` 保持一致，不加 `rostack` 前缀。
+
+但即便包名叫 `@shared`，也不建议做成一个巨型平铺入口，而是做成一个根包加子路径导出。
 
 推荐子路径：
 
-- `@rostack/runtime/store`
-- `@rostack/runtime/react-store`
-- `@rostack/runtime/scheduler`
-- `@rostack/runtime/dom`
+- `@shared/store`
+- `@shared/react`
+- `@shared/scheduler`
+- `@shared/dom`
 
 这样做的好处：
 
+- 导入风格和 `ui` 保持一致，仓库观感更统一
 - React 依赖不会污染纯运行时包
 - DOM helpers 和 store helpers 可以分层演进
 - dataview / whiteboard 可以逐步迁移，不必一次性全量重写 import
-- 未来如果 `apps/*` 也需要直接消费这些能力，路径会比较稳定
+- `@shared` 这个名字本身很泛，用子路径能避免它退化成“什么都往里放”的杂物包
+
+其中 `@shared/react` 的定位建议明确为“共享 React 基础设施层”，优先承载 store bridge、外部状态绑定、少量跨包通用 hooks，不作为通用业务 hooks 的收纳箱。
 
 ## 推荐的收口原则
 
@@ -456,7 +461,7 @@
 不是把 dataview 或 whiteboard 的某一套原样上提，而是收敛出一个根共享 runtime 包，形成下面这个职责结构：
 
 - `ui` 负责通用 UI 组件和样式基础
-- 新的根共享 runtime 包负责 store / react-store / scheduler / low-level dom
+- 新的根共享 runtime 包负责 store / react / scheduler / low-level dom
 - `dataview` 保留数据视图领域协议和页面语义
 - `@whiteboard/core` 保留白板领域模型和几何
 - `@whiteboard/engine` / `@whiteboard/react` 退回到 whiteboard 特有能力，减少“顺带承载共享基础设施”的职责

@@ -1,10 +1,10 @@
 import type { Engine } from '@dataview/engine'
 import type {
   ReadStore
-} from '@dataview/runtime/store'
+} from '@shared/store'
 import {
   joinUnsubscribes
-} from '@dataview/runtime/store'
+} from '@shared/store'
 import {
   createCurrentViewStore
 } from '@dataview/react/runtime/currentView'

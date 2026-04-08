@@ -1,4 +1,4 @@
-import { createValueStore, type ValueStore } from '@whiteboard/engine'
+import { createValueStore, type ValueStore } from '@shared/store'
 import type { Tool } from '../../types/tool'
 import type { EditorRead, EditorState } from '../../types/editor'
 import type { PointerSample } from '../../types/input'

@@ -29,7 +29,7 @@ import {
   readOptionLabel
 } from '@dataview/react/menu-builders'
 import type { FieldValueDraftEditorProps } from '../../contracts'
-import { focusInputWithoutScroll } from '@dataview/dom/focus'
+import { focusInputWithoutScroll } from '@shared/dom'
 import { PickerInputBar } from '../../shared/PickerInputBar'
 import { useDraftCommit } from '../../shared/useDraftCommit'
 import { usePickerKeydown } from '../../shared/usePickerKeydown'

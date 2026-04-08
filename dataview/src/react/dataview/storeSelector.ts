@@ -4,10 +4,10 @@ import {
 import type {
   Equality,
   ReadStore
-} from '@dataview/runtime/store'
+} from '@shared/store'
 import {
   useExternalValue
-} from '@dataview/react/store'
+} from '@shared/react'
 
 export const useStoreSelector = <TState, TResult>(
   store: ReadStore<TState>,

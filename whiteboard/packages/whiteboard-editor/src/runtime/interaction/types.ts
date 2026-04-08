@@ -1,4 +1,4 @@
-import type { ReadStore } from '@whiteboard/engine'
+import type { ReadStore } from '@shared/store'
 import type { ActiveGesture } from './gesture'
 import type {
   KeyboardInput,

@@ -15,9 +15,9 @@ import {
 } from '@whiteboard/core/node'
 import type {
   EngineRead,
-  KeyedReadStore,
   NodeItem
 } from '@whiteboard/engine'
+import type { KeyedReadStore } from '@shared/store'
 import type {
   NodeGeometry,
   Node,

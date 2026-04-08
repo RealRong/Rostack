@@ -10,7 +10,7 @@ import {
 import {
   createDerivedStore,
   type ReadStore
-} from '@dataview/runtime/store'
+} from '@shared/store'
 import {
   cloneSettingsRoute,
   normalizeSettingsRoute

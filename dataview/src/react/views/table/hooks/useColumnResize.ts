@@ -7,9 +7,9 @@ import {
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import type { FieldId } from '@dataview/core/contracts'
-import { disableUserSelect } from '@dataview/dom/selection'
+import { disableUserSelect } from '@shared/dom'
 import { useDataView, useDataViewValue } from '@dataview/react/dataview'
-import { useStoreValue } from '@dataview/react/store'
+import { useStoreValue } from '@shared/react'
 import { closestTableTargetElement } from '../dom/targets'
 import { useTableContext } from '../context'
 import { MIN_COLUMN_WIDTH } from '../layout'

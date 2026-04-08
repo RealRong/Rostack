@@ -10,7 +10,7 @@ import {
   Menu,
   type MenuHandle
 } from '@ui/menu'
-import { focusInputWithoutScroll } from '@dataview/dom/focus'
+import { focusInputWithoutScroll } from '@shared/dom'
 import { PickerInputBar } from '../../shared/PickerInputBar'
 import { usePickerKeydown } from '../../shared/usePickerKeydown'
 import {

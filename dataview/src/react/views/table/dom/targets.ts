@@ -1,6 +1,6 @@
 import type { CustomFieldId } from '@dataview/core/contracts'
-import type { Point } from '@dataview/dom/geometry'
-import { targetElement } from '@dataview/dom/interactive'
+import type { Point } from '@shared/dom'
+import { targetElement } from '@shared/dom'
 import {
   type AppearanceList,
   type FieldList

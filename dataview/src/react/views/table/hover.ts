@@ -3,8 +3,8 @@ import {
   createValueStore,
   type KeyedReadStore,
   type ValueStore
-} from '@dataview/runtime/store'
-import type { Point } from '@dataview/dom/geometry'
+} from '@shared/store'
+import type { Point } from '@shared/dom'
 import type {
   AppearanceId,
   CellRef

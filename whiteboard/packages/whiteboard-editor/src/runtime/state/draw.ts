@@ -1,4 +1,4 @@
-import { createValueStore, type ValueStore } from '@whiteboard/engine'
+import { createValueStore, type ValueStore } from '@shared/store'
 import { DRAW_SLOTS } from '../../draw'
 import type {
   BrushStyle,

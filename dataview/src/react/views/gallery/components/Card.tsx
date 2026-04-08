@@ -19,11 +19,11 @@ import {
 } from '@dataview/dom/appearance'
 import {
   shouldCapturePointer
-} from '@dataview/dom/interactive'
+} from '@shared/dom'
 import {
   useDataView
 } from '@dataview/react/dataview'
-import { useKeyedStoreValue } from '@dataview/react/store'
+import { useKeyedStoreValue } from '@shared/react'
 import {
   CardContent
 } from '@dataview/react/views/shared'

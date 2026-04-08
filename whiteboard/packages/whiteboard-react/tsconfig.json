@@ -5,6 +5,8 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
+      "@shared": ["../../../shared/src/index.ts"],
+      "@shared/*": ["../../../shared/src/*/index.ts"],
       "#react": ["src/index.ts"],
       "#react/*": ["src/*"],
       "@ui": ["../../../ui/src/index.ts"],

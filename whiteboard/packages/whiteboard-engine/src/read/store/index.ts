@@ -38,7 +38,7 @@ import {
   listGroupNodeIds,
   listGroups
 } from '@whiteboard/core/types'
-import { createValueStore } from '../../store'
+import { createValueStore } from '@shared/store'
 import { DEFAULT_TUNING } from '../../config'
 import { RESET_READ_IMPACT } from '../impacts'
 import { NodeRectIndex, SnapIndex } from '../indexes'

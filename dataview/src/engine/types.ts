@@ -28,7 +28,7 @@ import type {
 } from '@dataview/core/contracts'
 import type { HistoryOptions, HistoryState } from './history'
 import type { ValidationIssue } from '@dataview/engine/command'
-import type { KeyedReadStore, ReadStore } from '@dataview/runtime/store'
+import type { KeyedReadStore, ReadStore } from '@shared/store'
 import type {
   AppearanceId,
   CellRef,

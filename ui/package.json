@@ -23,6 +23,7 @@
     "./css/base.css": "./css/base.css"
   },
   "dependencies": {
+    "@shared": "workspace:*",
     "@dnd-kit/core": "^6.1.0",
     "@dnd-kit/sortable": "^8.0.0",
     "@floating-ui/react": "^0.27.19",

@@ -19,7 +19,7 @@ import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { buildChoiceSubmenuItem } from '@dataview/react/menu-builders'
 import type { FieldValueDraftEditorProps } from '../../contracts'
-import { focusInputWithoutScroll } from '@dataview/dom/focus'
+import { focusInputWithoutScroll } from '@shared/dom'
 import {
   isComposing,
   keyAction

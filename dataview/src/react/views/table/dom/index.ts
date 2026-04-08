@@ -5,7 +5,7 @@ import {
 import {
   pageScrollNode,
   type ScrollNode
-} from '@dataview/dom/scroll'
+} from '@shared/dom'
 import type { Nodes } from './registry'
 import type { TableLayout } from '../layout'
 

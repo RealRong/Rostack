@@ -4,16 +4,16 @@ import {
   useRef
 } from 'react'
 import { createPortal } from 'react-dom'
-import type { Point } from '@dataview/dom/geometry'
+import type { Point } from '@shared/dom'
 import {
   idsInRect,
   rectFromPoints
-} from '@dataview/dom/geometry'
-import { disableUserSelect } from '@dataview/dom/selection'
+} from '@shared/dom'
+import { disableUserSelect } from '@shared/dom'
 import {
   scrollMetrics,
   type ScrollNode
-} from '@dataview/dom/scroll'
+} from '@shared/dom'
 import {
   type AutoPanTargets,
   useAutoPan
@@ -27,7 +27,7 @@ import {
   selection as selectionHelpers,
   type Selection
 } from '@dataview/react/runtime/selection'
-import { useStoreValue } from '@dataview/react/store'
+import { useStoreValue } from '@shared/react'
 import type {
   MarqueeAdapter,
   MarqueeMode,

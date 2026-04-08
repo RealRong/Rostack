@@ -10,7 +10,7 @@ export {
   useKeyedStoreValue,
   useOptionalKeyedStoreValue,
   useStoreValue
-} from './useStoreValue'
+} from '@shared/react'
 export {
   WhiteboardConfigProvider,
   WhiteboardServicesProvider,

@@ -11,7 +11,7 @@ import {
   createValueStore,
   type ReadStore,
   type ValueStore
-} from '@dataview/runtime/store'
+} from '@shared/store'
 
 export interface GridSelectionStore {
   store: ValueStore<GridSelection | null>

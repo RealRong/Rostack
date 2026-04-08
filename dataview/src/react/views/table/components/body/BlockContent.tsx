@@ -10,7 +10,7 @@ import type {
 } from '@dataview/react/runtime/currentView'
 import {
   useStoreValue
-} from '@dataview/react/store'
+} from '@shared/react'
 import { useTableContext } from '../../context'
 import { Row } from '../row/Row'
 import { ColumnFooterBlock } from './ColumnFooterBlock'

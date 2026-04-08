@@ -1,4 +1,4 @@
-import { createDerivedStore, createValueStore, type ReadStore } from '@whiteboard/engine'
+import { createDerivedStore, createValueStore, type ReadStore } from '@shared/store'
 import {
   readEdgeGestureOverlayState,
   readSelectionGesturePreview,

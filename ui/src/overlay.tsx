@@ -11,7 +11,7 @@ import {
   type ReactNode
 } from 'react'
 import { createPortal } from 'react-dom'
-import { closestTarget } from './dom'
+import { closestTarget } from '@shared/dom'
 import { cn } from './utils'
 
 export const OVERLAY_LAYER_ATTR = 'data-ui-overlay-layer'

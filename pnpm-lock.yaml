@@ -111,6 +111,9 @@ importers:
       '@radix-ui/react-slot':
         specifier: ^1.2.4
         version: 1.2.4(@types/react@19.2.14)(react@19.2.4)
+      '@shared':
+        specifier: workspace:*
+        version: link:../shared
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -173,6 +176,16 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.5.0)(jiti@1.21.7)
 
+  shared:
+    dependencies:
+      react:
+        specifier: ^19.1.1
+        version: 19.2.4
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.12
+        version: 19.2.14
+
   ui:
     dependencies:
       '@dnd-kit/core':
@@ -190,6 +203,9 @@ importers:
       '@radix-ui/react-slot':
         specifier: ^1.2.4
         version: 1.2.4(@types/react@19.2.14)(react@19.2.4)
+      '@shared':
+        specifier: workspace:*
+        version: link:../shared
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -236,6 +252,9 @@ importers:
 
   whiteboard/packages/whiteboard-collab:
     dependencies:
+      '@shared':
+        specifier: workspace:*
+        version: link:../../../shared
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core
@@ -250,6 +269,9 @@ importers:
 
   whiteboard/packages/whiteboard-editor:
     dependencies:
+      '@shared':
+        specifier: workspace:*
+        version: link:../../../shared
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core
@@ -259,12 +281,18 @@ importers:
 
   whiteboard/packages/whiteboard-engine:
     dependencies:
+      '@shared':
+        specifier: workspace:*
+        version: link:../../../shared
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core
 
   whiteboard/packages/whiteboard-react:
     dependencies:
+      '@shared':
+        specifier: workspace:*
+        version: link:../../../shared
       '@whiteboard/collab':
         specifier: workspace:*
         version: link:../whiteboard-collab

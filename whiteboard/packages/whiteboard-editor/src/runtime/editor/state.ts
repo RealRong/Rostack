@@ -1,6 +1,6 @@
 import {
   createDerivedStore
-} from '@whiteboard/engine'
+} from '@shared/store'
 import type { Editor, EditorInteractionState } from '../../types/editor'
 import type { InteractionRuntime } from '../interaction/types'
 import type { EditorViewportRuntime } from './types'

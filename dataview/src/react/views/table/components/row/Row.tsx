@@ -11,14 +11,14 @@ import type {
 import type {
   SelectionApi
 } from '@dataview/react/runtime/selection'
-import { shouldCapturePointer } from '@dataview/dom/interactive'
+import { shouldCapturePointer } from '@shared/dom'
 import {
   useDataView,
   useDataViewValue
 } from '@dataview/react/dataview'
 import { rowRailState } from '../../model/rowRail'
 import { useTableContext } from '../../context'
-import { useStoreValue } from '@dataview/react/store'
+import { useStoreValue } from '@shared/react'
 import { cn } from '@ui/utils'
 import { Cell } from '../cell/Cell'
 import { RowRail } from './RowRail'

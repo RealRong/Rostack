@@ -1,4 +1,5 @@
-import type { EngineRead, GroupRead, ReadStore } from '@whiteboard/engine'
+import type { ReadStore } from '@shared/store'
+import type { EngineRead, GroupRead } from '@whiteboard/engine'
 import type { HistoryState } from '@whiteboard/core/kernel'
 import type { NodeRegistry } from '../../types/node'
 import type { DrawPreferences } from '../../types/draw'

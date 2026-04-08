@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { RefObject } from 'react'
 import {
   scrollViewport
-} from '@dataview/dom/scroll'
+} from '@shared/dom'
 import {
   useViewportVersion
 } from '@dataview/react/dom/viewport'

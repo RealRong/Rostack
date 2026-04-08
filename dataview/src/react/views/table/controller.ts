@@ -2,7 +2,7 @@ import type { Engine } from '@dataview/engine'
 import {
   revealElement,
   revealY
-} from '@dataview/dom/scroll'
+} from '@shared/dom'
 import {
   createInteractionCoordinator,
   type InteractionApi
@@ -25,10 +25,10 @@ import {
   createDerivedStore,
   createValueStore,
   type ReadStore
-} from '@dataview/runtime/store'
+} from '@shared/store'
 import type {
   ValueStore
-} from '@dataview/runtime/store'
+} from '@shared/store'
 import type { ResolvedPageState } from '@dataview/react/page/session/types'
 import type { ValueEditorApi } from '@dataview/react/runtime/valueEditor'
 import {

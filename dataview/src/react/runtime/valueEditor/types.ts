@@ -1,6 +1,6 @@
 import type { EditorSubmitTrigger } from '@dataview/react/interaction'
 import type { ViewFieldRef } from '@dataview/engine/projection/view'
-import type { ReadStore, ValueStore } from '@dataview/runtime/store'
+import type { ReadStore, ValueStore } from '@shared/store'
 
 export type { ViewFieldRef } from '@dataview/engine/projection/view'
 

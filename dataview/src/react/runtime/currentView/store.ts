@@ -7,7 +7,7 @@ import type {
 import {
   createDerivedStore,
   type ReadStore
-} from '@dataview/runtime/store'
+} from '@shared/store'
 import type {
   CurrentView
 } from './types'

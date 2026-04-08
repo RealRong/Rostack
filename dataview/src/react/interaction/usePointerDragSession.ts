@@ -8,7 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject
 } from 'react'
-import { disableUserSelect } from '@dataview/dom/selection'
+import { disableUserSelect } from '@shared/dom'
 import {
   resolveDefaultAutoPanTargets,
   useAutoPan

@@ -34,7 +34,7 @@ import type {
 import type {
   KeyedReadStore,
   ReadStore
-} from './store'
+} from '@shared/store'
 import type { EngineCommands } from './command'
 import type { Commit } from './commit'
 import type { CommandResult } from './result'

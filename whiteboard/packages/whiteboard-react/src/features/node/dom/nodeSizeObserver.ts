@@ -3,7 +3,7 @@ import type { NodeId } from '@whiteboard/core/types'
 import {
   createRafTask,
   type RafTask
-} from '@whiteboard/engine'
+} from '@shared/scheduler'
 import { useEditor } from '#react/runtime/hooks'
 
 type Size = {

@@ -1,7 +1,7 @@
 import {
   createDerivedStore,
   createValueStore
-} from '@dataview/runtime/store'
+} from '@shared/store'
 import type {
   CloseValueEditorOptions,
   OpenValueEditorInput,

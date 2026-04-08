@@ -1,7 +1,7 @@
 import {
   elementRectIn,
   type Rect
-} from '@dataview/dom/geometry'
+} from '@shared/dom'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
 } from '@dataview/dom/appearance'

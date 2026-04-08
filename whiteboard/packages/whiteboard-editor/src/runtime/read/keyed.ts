@@ -1,7 +1,7 @@
 import {
   createKeyedDerivedStore,
   type KeyedReadStore
-} from '@whiteboard/engine'
+} from '@shared/store'
 
 export const createOverlayStateStore = <
   Id extends string,

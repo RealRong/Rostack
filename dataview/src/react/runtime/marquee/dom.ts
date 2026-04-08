@@ -1,4 +1,4 @@
-import type { Box } from '@dataview/dom/geometry'
+import type { Box } from '@shared/dom'
 import type { AppearanceId } from '@dataview/react/runtime/currentView'
 import type { SelectionTarget } from './types'
 

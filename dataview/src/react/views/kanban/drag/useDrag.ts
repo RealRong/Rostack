@@ -1,5 +1,5 @@
 import { useCallback, type RefObject } from 'react'
-import { pointIn } from '@dataview/dom/geometry'
+import { pointIn } from '@shared/dom'
 import {
   usePointerDragSession,
   type PointerPosition

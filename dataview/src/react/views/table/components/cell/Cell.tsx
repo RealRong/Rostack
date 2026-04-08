@@ -14,7 +14,7 @@ import {
 import { useDataView, useDataViewValue } from '@dataview/react/dataview'
 import { fieldAttrs } from '@dataview/dom/field'
 import { useTableContext } from '../../context'
-import { useKeyedStoreValue } from '@dataview/react/store'
+import { useKeyedStoreValue } from '@shared/react'
 import { cn } from '@ui/utils'
 import { CellValue } from './CellValue'
 

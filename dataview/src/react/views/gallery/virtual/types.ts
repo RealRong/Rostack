@@ -1,6 +1,6 @@
 import type {
   Rect
-} from '@dataview/dom/geometry'
+} from '@shared/dom'
 import type {
   AppearanceId,
   Section

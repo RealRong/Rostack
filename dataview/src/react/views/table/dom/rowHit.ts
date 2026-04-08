@@ -4,7 +4,7 @@ import {
   pointIn,
   type Point,
   type Rect
-} from '@dataview/dom/geometry'
+} from '@shared/dom'
 import type { AppearanceId } from '@dataview/react/runtime/currentView'
 import {
   rowGapHitAtPoint,

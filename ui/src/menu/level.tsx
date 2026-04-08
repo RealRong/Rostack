@@ -2,7 +2,7 @@ import type { KeyboardEvent } from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Popover } from '../popover'
 import { renderListStructuralItem } from '../list-structure'
-import { closestTarget } from '../dom'
+import { closestTarget } from '@shared/dom'
 import { cn } from '../utils'
 import {
   DROPDOWN_SUBMENU_OFFSET,

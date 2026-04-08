@@ -7,7 +7,7 @@ import {
   type SelectionPressTargetInput,
   type SelectionPressTarget
 } from '@whiteboard/core/selection'
-import { createTimeoutTask, type TimeoutTask } from '@whiteboard/engine'
+import { createTimeoutTask, type TimeoutTask } from '@shared/scheduler'
 import type { Node } from '@whiteboard/core/types'
 import type { EditField } from '../../runtime/state/edit'
 import {

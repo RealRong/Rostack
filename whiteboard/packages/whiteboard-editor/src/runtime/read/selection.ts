@@ -14,7 +14,7 @@ import {
   createDerivedStore,
   type ReadFn,
   type ReadStore
-} from '@whiteboard/engine'
+} from '@shared/store'
 import type { Edge, Node } from '@whiteboard/core/types'
 import type { EdgeRead } from './edge'
 import type { NodeRead } from './node'

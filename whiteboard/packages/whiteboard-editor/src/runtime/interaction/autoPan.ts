@@ -1,4 +1,4 @@
-import { createRafTask } from '@whiteboard/engine'
+import { createRafTask } from '@shared/scheduler'
 import type { Point } from '@whiteboard/core/types'
 import type { ViewportInputRuntime } from '../viewport'
 import type { InteractionSession } from './types'

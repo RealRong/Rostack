@@ -21,7 +21,7 @@ import type { Point, Rect, Viewport } from '@whiteboard/core/types'
 import {
   createValueStore,
   type ReadStore
-} from '@whiteboard/engine'
+} from '@shared/store'
 import { isSameBoxTuple } from '@whiteboard/core/utils'
 
 export const DEFAULT_VIEWPORT: Viewport = {

@@ -21,7 +21,7 @@ import {
 import {
   closestTarget,
   interactiveSelector
-} from '@dataview/dom/interactive'
+} from '@shared/dom'
 import {
   move as currentViewMove
 } from '@dataview/engine/projection/view'
@@ -37,7 +37,7 @@ import {
   createVisualTargetRegistry,
   type VisualTargetRegistry
 } from '@dataview/react/runtime/marquee'
-import { useStoreValue } from '@dataview/react/store'
+import { useStoreValue } from '@shared/react'
 import type { GalleryDropTarget } from './reorder'
 import {
   useCardReorder

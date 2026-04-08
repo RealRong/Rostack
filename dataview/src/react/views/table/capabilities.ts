@@ -1,4 +1,4 @@
-import { createDerivedStore, type ReadStore } from '@dataview/runtime/store'
+import { createDerivedStore, type ReadStore } from '@shared/store'
 import type { InteractionState } from '@dataview/react/interaction'
 import type { CurrentView } from '@dataview/react/runtime/currentView'
 

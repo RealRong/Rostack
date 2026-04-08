@@ -10,13 +10,13 @@ import {
   scrollMetrics,
   viewportRect,
   type ScrollNode
-} from '@dataview/dom/scroll'
+} from '@shared/dom'
 import {
   createDerivedStore,
   createValueStore,
   joinUnsubscribes,
   type ReadStore
-} from '@dataview/runtime/store'
+} from '@shared/store'
 import {
   findVirtualBlockEndIndex,
   findVirtualBlockStartIndex

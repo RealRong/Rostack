@@ -2,7 +2,7 @@ import type { AppearanceId } from '@dataview/react/runtime/currentView'
 import {
   scrollMetrics,
   type ScrollNode
-} from '@dataview/dom/scroll'
+} from '@shared/dom'
 import type {
   AutoPanTargets
 } from '@dataview/react/interaction/autoPan'

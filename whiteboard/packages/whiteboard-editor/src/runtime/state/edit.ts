@@ -1,6 +1,5 @@
 import type { NodeId, Point } from '@whiteboard/core/types'
-import { createValueStore } from '@whiteboard/engine'
-import type { ValueStore } from '@whiteboard/engine'
+import { createValueStore, type ValueStore } from '@shared/store'
 
 export type EditField = 'text' | 'title'
 

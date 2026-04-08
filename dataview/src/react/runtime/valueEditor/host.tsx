@@ -32,7 +32,7 @@ import {
   OVERLAY_BLOCKING_ATTR,
   OVERLAY_BLOCKING_BACKDROP_ATTR
 } from '@ui/overlay'
-import { useStoreValue } from '@dataview/react/store'
+import { useStoreValue } from '@shared/react'
 
 const PANEL_MIN_WIDTH = 180
 const PANEL_WIDTHS = {

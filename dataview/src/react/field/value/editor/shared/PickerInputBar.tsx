@@ -2,7 +2,7 @@ import type {
   InputHTMLAttributes,
   ReactNode
 } from 'react'
-import { focusInputWithoutScroll } from '@dataview/dom/focus'
+import { focusInputWithoutScroll } from '@shared/dom'
 import { cn } from '@ui/utils'
 
 export interface PickerInputBarProps extends Omit<

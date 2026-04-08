@@ -1,20 +1,6 @@
 export { createEngine } from './instance/engine'
 export { normalizeDocument } from './document/normalize'
 export {
-  createDerivedStore,
-  createKeyedDerivedStore,
-  createKeyedStore,
-  createProjectedKeyedStore,
-  createProjectedStore,
-  createRafKeyedStore,
-  createRafValueStore,
-  createStagedKeyedStore,
-  createStagedValueStore,
-  createValueStore
-} from './store'
-export { createRafTask } from './scheduler/raf'
-export { createTimeoutTask } from './scheduler/timeout'
-export {
   DEFAULT_BOARD_CONFIG
 } from './config'
 
@@ -27,19 +13,6 @@ export type {
   MindmapItem,
   NodeItem
 } from './types/projection'
-export type {
-  KeyedReadStore,
-  KeyedStore,
-  KeyedStorePatch,
-  ReadFn,
-  ReadStore,
-  StoreSchedule,
-  StagedKeyedStore,
-  StagedValueStore,
-  ValueStore
-} from './types/store'
-export type { RafTask } from './scheduler/raf'
-export type { TimeoutTask } from './scheduler/timeout'
 export type {
   CreateEngineOptions,
   EngineInstance,

@@ -8,7 +8,8 @@ import type {
 import type { HistoryConfig as KernelHistoryConfig } from '@whiteboard/core/kernel'
 import type { TextWidthMode } from '@whiteboard/core/node'
 import type { SelectionInput, SelectionTarget } from '@whiteboard/core/selection'
-import type { CommandResult, ReadStore } from '@whiteboard/engine'
+import type { ReadStore } from '@shared/store'
+import type { CommandResult } from '@whiteboard/engine'
 import type {
   EdgeId,
   MindmapNodeData,

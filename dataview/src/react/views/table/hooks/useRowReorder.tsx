@@ -18,7 +18,7 @@ import {
   useDataView,
   useDataViewValue
 } from '@dataview/react/dataview'
-import { useStoreValue } from '@dataview/react/store'
+import { useStoreValue } from '@shared/react'
 import { usePointerDragSession } from '@dataview/react/interaction/usePointerDragSession'
 import { useTableContext } from '../context'
 

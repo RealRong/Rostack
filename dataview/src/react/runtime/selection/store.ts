@@ -1,6 +1,6 @@
 import {
   createValueStore
-} from '@dataview/runtime/store'
+} from '@shared/store'
 import type {
   AppearanceId
 } from '@dataview/engine/projection/view'

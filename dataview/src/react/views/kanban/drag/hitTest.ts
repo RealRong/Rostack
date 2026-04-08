@@ -1,4 +1,4 @@
-import type { Rect } from '@dataview/dom/geometry'
+import type { Rect } from '@shared/dom'
 import type { DropTarget } from './ids'
 import type {
   BoardLayout

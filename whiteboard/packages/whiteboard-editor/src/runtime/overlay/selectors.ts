@@ -3,7 +3,7 @@ import {
   createProjectedKeyedStore,
   createProjectedStore,
   type ReadStore
-} from '@whiteboard/engine'
+} from '@shared/store'
 import type { Guide } from '@whiteboard/core/node'
 import type { EditorViewportRuntime } from '../editor/types'
 import {

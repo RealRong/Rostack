@@ -1,4 +1,4 @@
-import type { Point } from '@dataview/dom/geometry'
+import type { Point } from '@shared/dom'
 import type { TableHoverTarget } from './hover'
 
 export interface RowHoverFallbackPolicy {

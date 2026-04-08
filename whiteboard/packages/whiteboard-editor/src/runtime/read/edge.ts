@@ -11,12 +11,14 @@ import { getNodeGeometry } from '@whiteboard/core/node'
 import { isPointEdgeEnd } from '@whiteboard/core/types'
 import type { EdgeId, Node, NodeId, NodeType, Rect } from '@whiteboard/core/types'
 import {
-  createKeyedDerivedStore,
   type EdgeItem,
   type EngineRead,
-  type KeyedReadStore,
   type NodeItem
 } from '@whiteboard/engine'
+import {
+  createKeyedDerivedStore,
+  type KeyedReadStore
+} from '@shared/store'
 import type {
   EdgeOverlayProjection
 } from '../overlay/types'

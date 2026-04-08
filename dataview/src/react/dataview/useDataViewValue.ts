@@ -2,11 +2,11 @@ import type {
   Equality,
   KeyedReadStore,
   ReadStore
-} from '@dataview/runtime/store'
+} from '@shared/store'
 import {
   useKeyedStoreValue,
   useStoreValue
-} from '@dataview/react/store'
+} from '@shared/react'
 import { useStoreSelector } from './storeSelector'
 import type { DataViewContextValue } from './provider'
 import { useDataView } from './provider'

@@ -24,7 +24,7 @@ import {
 import {
   closestTarget,
   interactiveSelector
-} from '@dataview/dom/interactive'
+} from '@shared/dom'
 import {
   move as currentViewMove
 } from '@dataview/engine/projection/view'
@@ -43,7 +43,7 @@ import {
 import type {
   Selection
 } from '@dataview/react/runtime/selection'
-import { useStoreValue } from '@dataview/react/store'
+import { useStoreValue } from '@shared/react'
 import {
   readBoardLayout
 } from './drag'

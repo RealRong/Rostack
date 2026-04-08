@@ -6,7 +6,7 @@ import {
   type ReadStore,
   type ValueStore,
   type KeyedReadStore
-} from '@dataview/runtime/store'
+} from '@shared/store'
 import {
   getDocumentCustomFieldById,
   getDocumentRecordById,

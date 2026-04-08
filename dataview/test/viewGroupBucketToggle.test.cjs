@@ -164,3 +164,22 @@ test('view group bucket toggle clears the final collapsed bucket state', () => {
     false
   )
 })
+
+test('view group interval set clears back to the field default when value is undefined', () => {
+  const engine = createEngine({
+    document: createDocument()
+  })
+
+  engine.view(VIEW_TABLE).group.set(FIELD_POINTS)
+
+  let view = engine.read.view.get(VIEW_TABLE)
+  assert.equal(view.group?.bucketInterval, 10)
+
+  engine.view(VIEW_TABLE).group.setInterval(5)
+  view = engine.read.view.get(VIEW_TABLE)
+  assert.equal(view.group?.bucketInterval, 5)
+
+  engine.view(VIEW_TABLE).group.setInterval(undefined)
+  view = engine.read.view.get(VIEW_TABLE)
+  assert.equal(view.group?.bucketInterval, 10)
+})

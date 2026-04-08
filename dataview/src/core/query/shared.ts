@@ -44,20 +44,24 @@ export const cloneBuckets = (
 
 export const cloneGrouping = (group: ViewGroup | undefined): ViewGroup | undefined => (
   group
-    ? {
-        field: group.field,
-        mode: group.mode,
-        bucketSort: group.bucketSort,
-        ...(group.bucketInterval !== undefined
-          ? { bucketInterval: group.bucketInterval }
-          : {}),
-        ...(group.showEmpty !== undefined
-          ? { showEmpty: group.showEmpty }
-          : {}),
-        ...(cloneBuckets(group.buckets)
-          ? { buckets: cloneBuckets(group.buckets)! }
-          : {})
-      }
+    ? (() => {
+        const buckets = cloneBuckets(group.buckets)
+
+        return {
+          field: group.field,
+          mode: group.mode,
+          bucketSort: group.bucketSort,
+          ...(group.bucketInterval !== undefined
+            ? { bucketInterval: group.bucketInterval }
+            : {}),
+          ...(group.showEmpty !== undefined
+            ? { showEmpty: group.showEmpty }
+            : {}),
+          ...(buckets
+            ? { buckets }
+            : {})
+        }
+      })()
     : undefined
 )
 

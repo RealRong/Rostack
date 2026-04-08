@@ -548,7 +548,8 @@ export const ContextMenu = ({
       animated={false}
       mode="blocking"
       backdrop="transparent"
-      contentClassName="min-w-0 w-[240px] p-1.5"
+      padding='menu'
+      size='md'
     >
       {menuItems.length ? (
         <Menu

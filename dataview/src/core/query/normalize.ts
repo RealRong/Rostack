@@ -9,35 +9,39 @@ export const normalizeViewQuery = (
     sort: StoredGroupViewQuery['sorters']
     sorters: StoredGroupViewQuery['sorters']
   }>
-): ViewQuery => ({
-  search: query?.search
-    ? {
-        query: query.search.query,
-        fields: query.search.fields?.length
-          ? [...query.search.fields]
-          : undefined
-      }
-    : {
-        query: ''
-      },
-  filter: query?.filter
-    ? {
-        mode: query.filter.mode,
-        rules: query.filter.rules.map(rule => ({
-          field: rule.field,
-          op: rule.op,
-          value: structuredClone(rule.value)
+): ViewQuery => {
+  const sorters = query?.sort ?? query?.sorters
+
+  return {
+    search: query?.search
+      ? {
+          query: query.search.query,
+          fields: query.search.fields?.length
+            ? [...query.search.fields]
+            : undefined
+        }
+      : {
+          query: ''
+        },
+    filter: query?.filter
+      ? {
+          mode: query.filter.mode,
+          rules: query.filter.rules.map(rule => ({
+            field: rule.field,
+            op: rule.op,
+            value: structuredClone(rule.value)
+          }))
+        }
+      : {
+          mode: 'and',
+          rules: []
+        },
+    sort: sorters
+      ? sorters.map(sorter => ({
+          field: sorter.field,
+          direction: sorter.direction
         }))
-      }
-    : {
-        mode: 'and',
-        rules: []
-      },
-  sort: (query?.sort ?? query?.sorters)
-    ? (query.sort ?? query.sorters)!.map(sorter => ({
-        field: sorter.field,
-        direction: sorter.direction
-      }))
-    : [],
-  group: cloneGrouping(query?.group)
-})
+      : [],
+    group: cloneGrouping(query?.group)
+  }
+}

@@ -5,6 +5,7 @@ import {
 } from 'react'
 import {
   pageScrollNode,
+  resolveEdgePressure,
   scrollByClamped,
   viewportRect,
   type ScrollNode
@@ -30,13 +31,9 @@ export interface PointerLike {
 }
 
 export const resolveAutoPanStep = (
-  distance: number,
-  edge: number,
+  pressure: number,
   maxStep: number
-) => {
-  const ratio = Math.max(0, Math.min(1, 1 - distance / edge))
-  return Math.round(ratio * maxStep)
-}
+) => Math.round(Math.abs(pressure) * maxStep) * Math.sign(pressure)
 
 export const resolveAutoPanDelta = (input: {
   pointer: number
@@ -47,24 +44,12 @@ export const resolveAutoPanDelta = (input: {
 }) => {
   const edge = input.edge ?? DEFAULT_AUTO_PAN_EDGE
   const maxStep = input.maxStep ?? DEFAULT_AUTO_PAN_MAX_STEP
-
-  if (input.pointer < input.start + edge) {
-    return -resolveAutoPanStep(
-      input.pointer - input.start,
-      edge,
-      maxStep
-    )
-  }
-
-  if (input.pointer > input.end - edge) {
-    return resolveAutoPanStep(
-      input.end - input.pointer,
-      edge,
-      maxStep
-    )
-  }
-
-  return 0
+  return resolveAutoPanStep(resolveEdgePressure({
+    point: input.pointer,
+    start: input.start,
+    end: input.end,
+    threshold: edge
+  }), maxStep)
 }
 
 export const resolveDefaultAutoPanTargets = (

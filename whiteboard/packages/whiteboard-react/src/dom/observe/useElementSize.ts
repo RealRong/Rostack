@@ -3,19 +3,16 @@ import {
   useState,
   type RefObject
 } from 'react'
+import {
+  observeElementSize,
+  readElementClientSize
+} from '@shared/dom'
 import type { Size } from '../../types/common/base'
 
 const EmptySize: Size = {
   width: 0,
   height: 0
 }
-
-const readElementSize = (
-  element: HTMLElement | null
-): Size => ({
-  width: element?.clientWidth ?? 0,
-  height: element?.clientHeight ?? 0
-})
 
 export const useElementSize = (
   ref: RefObject<HTMLElement | null>
@@ -24,29 +21,23 @@ export const useElementSize = (
 
   useEffect(() => {
     const element = ref.current
-
-    const update = () => {
-      const next = readElementSize(element)
-      setSize((current) => (
-        current.width === next.width
-        && current.height === next.height
-          ? current
-          : next
-      ))
-    }
-
-    update()
-
-    if (!element || typeof ResizeObserver === 'undefined') {
+    if (!element) {
+      setSize(EmptySize)
       return
     }
 
-    const observer = new ResizeObserver(update)
-    observer.observe(element)
-
-    return () => {
-      observer.disconnect()
-    }
+    return observeElementSize(element, {
+      readInitialSize: readElementClientSize,
+      readEntrySize: (_entry, target) => readElementClientSize(target),
+      onChange: next => {
+        setSize(current => (
+          current.width === next.width
+          && current.height === next.height
+            ? current
+            : next
+        ))
+      }
+    })
   }, [ref])
 
   return size

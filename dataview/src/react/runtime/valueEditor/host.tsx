@@ -32,6 +32,7 @@ import {
   OVERLAY_BLOCKING_ATTR,
   OVERLAY_BLOCKING_BACKDROP_ATTR
 } from '@ui/overlay'
+import { observeElementSize } from '@shared/dom'
 import { useStoreValue } from '@shared/react'
 
 const PANEL_MIN_WIDTH = 180
@@ -169,22 +170,19 @@ export const FieldValueEditorHost = () => {
       return
     }
 
-    const measure = () => {
-      const next = panel.scrollHeight
-      setPanelHeight(prev => prev === next ? prev : next)
-    }
-
-    measure()
-
-    if (typeof ResizeObserver === 'undefined') {
-      return
-    }
-
-    const observer = new ResizeObserver(measure)
-    observer.observe(panel)
-    return () => {
-      observer.disconnect()
-    }
+    return observeElementSize(panel, {
+      readInitialSize: element => ({
+        width: element.clientWidth,
+        height: element.scrollHeight
+      }),
+      readEntrySize: (_entry, element) => ({
+        width: element.clientWidth,
+        height: element.scrollHeight
+      }),
+      onChange: next => {
+        setPanelHeight(prev => prev === next.height ? prev : next.height)
+      }
+    })
   }, [session, spec?.panelWidth])
 
   const closeFromBackdrop = useCallback(() => {

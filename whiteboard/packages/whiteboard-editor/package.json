@@ -21,6 +21,7 @@
     "dist"
   ],
   "dependencies": {
+    "@shared/dom": "workspace:*",
     "@shared/scheduler": "workspace:*",
     "@shared/store": "workspace:*",
     "@whiteboard/core": "workspace:*",

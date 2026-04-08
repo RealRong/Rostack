@@ -6,6 +6,7 @@ import type {
   MarqueeSessionState
 } from '@dataview/react/runtime/marquee'
 import {
+  observeElementSize,
   pageScrollNode,
   scrollMetrics,
   viewportRect,
@@ -513,16 +514,18 @@ export const createTableVirtualRuntime = (options: {
     boundContainer.addEventListener?.('scroll', handleChange, { passive: true })
     ownerWindow?.addEventListener('resize', handleChange, { passive: true })
 
-    if (typeof ResizeObserver !== 'undefined') {
-      const observer = new ResizeObserver(() => {
+    unsubscribes.push(observeElementSize(boundContainer, {
+      emitInitial: false,
+      onChange: () => {
         scheduleMeasure(false)
-      })
-      observer.observe(boundContainer)
-      observer.observe(boundCanvas)
-      unsubscribes.push(() => {
-        observer.disconnect()
-      })
-    }
+      }
+    }))
+    unsubscribes.push(observeElementSize(boundCanvas, {
+      emitInitial: false,
+      onChange: () => {
+        scheduleMeasure(false)
+      }
+    }))
 
     cleanupListeners = joinUnsubscribes(unsubscribes)
     measureViewport(scrollNodeChanged)

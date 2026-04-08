@@ -16,6 +16,7 @@
     "dist"
   ],
   "dependencies": {
+    "@shared/dom": "workspace:*",
     "@shared/react": "workspace:*",
     "@shared/scheduler": "workspace:*",
     "@whiteboard/collab": "workspace:*",

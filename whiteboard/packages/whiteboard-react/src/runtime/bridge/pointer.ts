@@ -1,3 +1,4 @@
+import { createPointerSession, readModifierKeys } from '@shared/dom'
 import type { EditorPick } from '@whiteboard/editor'
 import type { ContextMenuIntent } from '@whiteboard/editor'
 import type { Point } from '@whiteboard/core/types'
@@ -8,7 +9,6 @@ import {
   resolvePointerInput
 } from '../../dom/host/input'
 import { createPickRegistry } from '../../dom/host/pickRegistry'
-import { createPointerSession } from '../../dom/host/pointerSession'
 import { createDocumentSelectionLock } from '../../dom/host/selectionLock'
 import type { InsertBridge } from './insert'
 
@@ -136,12 +136,7 @@ export const createPointerBridge = ({
       point.set(resolved.world)
       return editor.input.contextMenu({
         ...resolved,
-        modifiers: {
-          alt: event.altKey,
-          shift: event.shiftKey,
-          ctrl: event.ctrlKey,
-          meta: event.metaKey
-        }
+        modifiers: readModifierKeys(event)
       })
     },
     down: ({

@@ -1,3 +1,4 @@
+import { resolveEdgePressureVector } from '@shared/dom'
 import { createRafTask } from '@shared/scheduler'
 import type { Point } from '@whiteboard/core/types'
 import type { ViewportInputRuntime } from '../viewport'
@@ -25,38 +26,9 @@ const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
 const resolveAxisSpeed = (
-  point: number,
-  size: number,
-  threshold: number,
+  pressure: number,
   maxSpeed: number
-) => {
-  if (!Number.isFinite(point) || !Number.isFinite(size) || size <= 0) {
-    return 0
-  }
-
-  const distanceToStart = point
-  const distanceToEnd = size - point
-
-  if (distanceToStart <= threshold) {
-    const strength = clamp(
-      (threshold - Math.max(distanceToStart, 0)) / threshold,
-      0,
-      1
-    )
-    return -(strength ** 2) * maxSpeed
-  }
-
-  if (distanceToEnd <= threshold) {
-    const strength = clamp(
-      (threshold - Math.max(distanceToEnd, 0)) / threshold,
-      0,
-      1
-    )
-    return (strength ** 2) * maxSpeed
-  }
-
-  return 0
-}
+) => Math.sign(pressure) * (Math.abs(pressure) ** 2) * maxSpeed
 
 const resolvePanVector = ({
   point,
@@ -74,10 +46,15 @@ const resolvePanVector = ({
 }): PanVector => {
   const safeThreshold = Math.max(1, threshold ?? DEFAULT_THRESHOLD)
   const safeMaxSpeed = Math.max(0, maxSpeed ?? DEFAULT_MAX_SPEED)
+  const pressure = resolveEdgePressureVector({
+    point,
+    size,
+    threshold: safeThreshold
+  })
 
   return {
-    x: resolveAxisSpeed(point.x, size.width, safeThreshold, safeMaxSpeed),
-    y: resolveAxisSpeed(point.y, size.height, safeThreshold, safeMaxSpeed)
+    x: resolveAxisSpeed(pressure.x, safeMaxSpeed),
+    y: resolveAxisSpeed(pressure.y, safeMaxSpeed)
   }
 }
 

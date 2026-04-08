@@ -2,6 +2,12 @@ import {
   createValueStore,
   type ValueStore
 } from '@shared/store'
+import {
+  eventCurrentTargetElement,
+  eventWindow,
+  releasePointerCaptureSafe,
+  setPointerCaptureSafe
+} from '@shared/dom'
 
 export type InteractionMode = 'idle' | 'pointer' | 'keyboard' | 'drag' | 'fill'
 export type InteractionGesture =
@@ -102,76 +108,10 @@ const equalState = (
   && left.gesture === right.gesture
 )
 
-const capturePointer = (
-  target: Element | null | undefined,
-  pointerId: number | undefined
-) => {
-  if (!target || pointerId === undefined) {
-    return
-  }
-
-  const capture = (target as Element & {
-    setPointerCapture?: (pointerId: number) => void
-  }).setPointerCapture
-  if (typeof capture !== 'function') {
-    return
-  }
-
-  try {
-    capture.call(target, pointerId)
-  } catch {
-    // Ignore pointer capture failures.
-  }
-}
-
-const releasePointer = (
-  target: Element | null | undefined,
-  pointerId: number | undefined
-) => {
-  if (!target || pointerId === undefined) {
-    return
-  }
-
-  const release = (target as Element & {
-    releasePointerCapture?: (pointerId: number) => void
-  }).releasePointerCapture
-  if (typeof release !== 'function') {
-    return
-  }
-
-  try {
-    release.call(target, pointerId)
-  } catch {
-    // Ignore pointer capture failures.
-  }
-}
-
 const samePointer = (
   current: ActiveInteraction,
   event: PointerEvent
 ) => current.pointerId === undefined || event.pointerId === current.pointerId
-
-const eventTarget = (
-  event: InteractionPointerLikeEvent | PointerEvent | undefined
-): Element | undefined => {
-  const target = event?.currentTarget
-  return target instanceof Element
-    ? target
-    : undefined
-}
-
-const eventWindow = (
-  event: InteractionPointerLikeEvent | PointerEvent | undefined
-) => {
-  const target = eventTarget(event)
-  if (target) {
-    return target.ownerDocument.defaultView
-  }
-
-  return typeof window !== 'undefined'
-    ? window
-    : null
-}
 
 export interface InteractionDomain {
   store: ValueStore<InteractionState>
@@ -202,7 +142,7 @@ export const createInteractionCoordinator = (): InteractionDomain => {
     }
 
     clearWindow()
-    releasePointer(current.capture, current.pointerId)
+    releasePointerCaptureSafe(current.capture, current.pointerId)
     active = null
     endCurrent = null
     store.update(state => (
@@ -225,7 +165,7 @@ export const createInteractionCoordinator = (): InteractionDomain => {
 
       const pointerId = input.event?.pointerId
       const capture = input.capture === undefined
-        ? eventTarget(input.event)
+        ? eventCurrentTargetElement(input.event)
         : input.capture || null
       const ownerWindow = eventWindow(input.event)
       const gesture = input.gesture ?? defaultActiveGesture(input.mode)
@@ -327,7 +267,7 @@ export const createInteractionCoordinator = (): InteractionDomain => {
         mode: input.mode,
         gesture
       })
-      capturePointer(capture, pointerId)
+      setPointerCaptureSafe(capture, pointerId)
 
       return session
     },

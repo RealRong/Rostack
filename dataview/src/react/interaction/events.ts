@@ -1,11 +1,11 @@
+import type { Point as SharedPoint } from '@shared/dom'
+import {
+  readDomModifierKeys,
+  type DomModifierKeys
+} from '@shared/dom'
 import type { CustomFieldId, RecordId } from '@dataview/core/contracts'
 
-export interface Modifiers {
-  shiftKey: boolean
-  metaKey: boolean
-  ctrlKey: boolean
-  altKey: boolean
-}
+export type Modifiers = DomModifierKeys
 
 export type EditorSubmitTrigger =
   | 'enter'
@@ -14,10 +14,7 @@ export type EditorSubmitTrigger =
   | 'outside'
   | 'programmatic'
 
-export interface Point {
-  x: number
-  y: number
-}
+export type Point = SharedPoint
 
 export type Hit =
   | {
@@ -108,12 +105,7 @@ export const modifiers = (input: {
   metaKey: boolean
   ctrlKey: boolean
   altKey: boolean
-}): Modifiers => ({
-  shiftKey: input.shiftKey,
-  metaKey: input.metaKey,
-  ctrlKey: input.ctrlKey,
-  altKey: input.altKey
-})
+}): Modifiers => readDomModifierKeys(input)
 
 export const keyDown = (input: {
   key: string

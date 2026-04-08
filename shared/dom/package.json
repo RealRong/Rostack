@@ -6,6 +6,9 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "dependencies": {
+    "@shared/scheduler": "workspace:*"
+  },
   "files": [
     "src"
   ]

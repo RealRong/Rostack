@@ -1,4 +1,5 @@
 import { useEffect, type RefObject } from 'react'
+import { observeElementSize } from '@shared/dom'
 import { createRafTask } from '@shared/scheduler'
 import type { WhiteboardRuntime as Editor } from '#react/types/runtime'
 import { resolveWheelInput } from '../../dom/host/input'
@@ -151,15 +152,12 @@ export const useBindViewportInput = ({
       clearWheelFrame()
     }
 
-    const observer = typeof ResizeObserver === 'undefined'
-      ? null
-      : new ResizeObserver(() => {
+    const stopObserving = observeElementSize(element, {
+      emitInitial: false,
+      onChange: () => {
         refreshContainerRect()
-      })
-
-    if (observer) {
-      observer.observe(element)
-    }
+      }
+    })
 
     element.addEventListener('wheel', onWheel, { passive: false })
     if (typeof window !== 'undefined') {
@@ -171,7 +169,7 @@ export const useBindViewportInput = ({
       if (typeof window !== 'undefined') {
         window.removeEventListener('blur', onBlur)
       }
-      observer?.disconnect()
+      stopObserving()
       clearWheelFrame()
     }
   }, [containerRef, editor, options])

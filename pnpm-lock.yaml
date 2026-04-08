@@ -182,7 +182,11 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.5.0)(jiti@1.21.7)
 
-  shared/dom: {}
+  shared/dom:
+    dependencies:
+      '@shared/scheduler':
+        specifier: workspace:*
+        version: link:../scheduler
 
   shared/react:
     dependencies:

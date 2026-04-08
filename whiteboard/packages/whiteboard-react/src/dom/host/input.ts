@@ -1,3 +1,11 @@
+import {
+  elementFromPointWithin,
+  elementsFromPointWithin,
+  readClientPoint,
+  readCoalescedPointerEvents,
+  readModifierKeys,
+  resolveContainedElement
+} from '@shared/dom'
 import type {
   KeyboardInput,
   EditorPick,
@@ -37,41 +45,17 @@ export type ResolvedPoint = {
 const resolveElement = (
   target: EventTarget | null,
   container: Element
-) => (
-  target instanceof Element && container.contains(target)
-    ? target
-    : null
-)
+) => resolveContainedElement(target, container)
 
 const resolveElementAtPoint = (
   container: Element,
   input: ClientPointInput
-) => {
-  const document = container.ownerDocument
-  if (!document?.elementFromPoint) {
-    return null
-  }
-
-  return resolveElement(
-    document.elementFromPoint(input.clientX, input.clientY),
-    container
-  )
-}
+) => elementFromPointWithin(container, input)
 
 const resolveElementsAtPoint = (
   container: Element,
   input: ClientPointInput
-) => {
-  const document = container.ownerDocument
-  if (!document?.elementsFromPoint) {
-    const element = resolveElementAtPoint(container, input)
-    return element ? [element] : []
-  }
-
-  return document.elementsFromPoint(input.clientX, input.clientY)
-    .map((element) => resolveElement(element, container))
-    .filter((element): element is Element => Boolean(element))
-}
+) => elementsFromPointWithin(container, input)
 
 const readPointerSnapshot = (
   editor: WhiteboardRuntime,
@@ -80,10 +64,7 @@ const readPointerSnapshot = (
   const point = editor.read.viewport.pointer(input)
 
   return {
-    client: {
-      x: input.clientX,
-      y: input.clientY
-    },
+    client: readClientPoint(input),
     screen: point.screen,
     world: point.world
   }
@@ -191,9 +172,7 @@ export const resolvePointerInput = <Phase extends PointerPhase>({
     event
   })
 
-  const coalesced = typeof event.getCoalescedEvents === 'function'
-    ? event.getCoalescedEvents()
-    : []
+  const coalesced = readCoalescedPointerEvents(event)
 
   return {
     phase,
@@ -204,12 +183,7 @@ export const resolvePointerInput = <Phase extends PointerPhase>({
     client: resolved.client,
     screen: resolved.screen,
     world: resolved.world,
-    modifiers: {
-      alt: event.altKey,
-      shift: event.shiftKey,
-      ctrl: event.ctrlKey,
-      meta: event.metaKey
-    },
+    modifiers: readModifierKeys(event),
     pick: resolved.pick,
     editable: resolved.editable,
     ignoreInput: resolved.ignoreInput,
@@ -240,12 +214,7 @@ export const resolveWheelInput = ({
     client: point.client,
     screen: point.screen,
     world: point.world,
-    modifiers: {
-      alt: event.altKey,
-      shift: event.shiftKey,
-      ctrl: event.ctrlKey,
-      meta: event.metaKey
-    }
+    modifiers: readModifierKeys(event)
   }
 }
 
@@ -255,10 +224,5 @@ export const resolveKeyboardInput = (
   key: event.key,
   code: event.code,
   repeat: event.repeat,
-  modifiers: {
-    alt: event.altKey,
-    shift: event.shiftKey,
-    ctrl: event.ctrlKey,
-    meta: event.metaKey
-  }
+  modifiers: readModifierKeys(event)
 })

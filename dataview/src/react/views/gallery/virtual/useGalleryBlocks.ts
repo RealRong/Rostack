@@ -4,6 +4,7 @@ import {
   useReducer,
   type RefObject
 } from 'react'
+import { observeElementSize } from '@shared/dom'
 import type {
   Section
 } from '@dataview/react/runtime/currentView'
@@ -52,17 +53,16 @@ export const useGalleryBlocks = (input: {
 
   useEffect(() => {
     const node = input.containerRef.current
-    if (!node || typeof ResizeObserver === 'undefined') {
+    if (!node) {
       return
     }
 
-    const observer = new ResizeObserver(() => {
-      bumpContainerVersion()
+    return observeElementSize(node, {
+      emitInitial: false,
+      onChange: () => {
+        bumpContainerVersion()
+      }
     })
-    observer.observe(node)
-    return () => {
-      observer.disconnect()
-    }
   }, [input.containerRef])
 
   const metrics = useMemo(() => {

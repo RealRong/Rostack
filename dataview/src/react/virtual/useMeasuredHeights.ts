@@ -5,6 +5,7 @@ import {
   useReducer,
   useRef
 } from 'react'
+import { createMeasuredElementObserver } from '@shared/dom'
 
 const DEFAULT_BUCKET_KEY = '__default__'
 const EMPTY_HEIGHT_MAP = new Map<never, number>()
@@ -26,88 +27,76 @@ export const useMeasuredHeights = <TId>(
   const bucketKey = input.bucketKey ?? DEFAULT_BUCKET_KEY
   const bucketKeyRef = useRef<string | number>(bucketKey)
   const heightMapByBucketRef = useRef<Map<string | number, Map<TId, number>>>(new Map())
-  const observerRef = useRef<ResizeObserver | null>(null)
-  const nodeByIdRef = useRef<Map<TId, HTMLElement>>(new Map())
-  const idByNodeRef = useRef<WeakMap<HTMLElement, TId>>(new WeakMap())
+  const observedIdsRef = useRef<Set<TId>>(new Set())
+  const observer = useMemo(() => createMeasuredElementObserver<TId, HTMLElement>({
+    schedule: 'microtask',
+    onChange: changes => {
+      const resolvedBucketKey = bucketKeyRef.current
+      const heightMap = heightMapByBucketRef.current.get(resolvedBucketKey) ?? new Map<TId, number>()
+      let changed = false
+
+      if (!heightMapByBucketRef.current.has(resolvedBucketKey)) {
+        heightMapByBucketRef.current.set(resolvedBucketKey, heightMap)
+      }
+
+      changes.forEach(({ key: id, size }) => {
+        const normalized = Math.max(1, Math.round(size.height))
+        if (heightMap.get(id) === normalized) {
+          return
+        }
+
+        heightMap.set(id, normalized)
+        changed = true
+      })
+
+      if (changed) {
+        bumpVersion()
+      }
+    }
+  }), [])
 
   bucketKeyRef.current = bucketKey
 
-  const updateHeight = useCallback((id: TId, height: number) => {
-    const resolvedBucketKey = bucketKeyRef.current
-    const normalized = Math.max(1, Math.round(height))
-    const heightMap = heightMapByBucketRef.current.get(resolvedBucketKey) ?? new Map<TId, number>()
-    if (!heightMapByBucketRef.current.has(resolvedBucketKey)) {
-      heightMapByBucketRef.current.set(resolvedBucketKey, heightMap)
-    }
-    if (heightMap.get(id) === normalized) {
-      return
-    }
-
-    heightMap.set(id, normalized)
-    bumpVersion()
-  }, [])
-
   useEffect(() => {
-    const idSet = new Set(input.ids)
+    const activeIds = new Set(input.ids)
 
-    Array.from(heightMapByBucketRef.current.values()).forEach(heightMap => {
+    heightMapByBucketRef.current.forEach(heightMap => {
       Array.from(heightMap.keys()).forEach(id => {
-        if (!idSet.has(id)) {
+        if (!activeIds.has(id)) {
           heightMap.delete(id)
         }
       })
     })
 
-    Array.from(nodeByIdRef.current.entries()).forEach(([id, node]) => {
-      if (idSet.has(id)) {
+    Array.from(observedIdsRef.current).forEach(id => {
+      if (activeIds.has(id)) {
         return
       }
 
-      observerRef.current?.unobserve(node)
-      nodeByIdRef.current.delete(id)
+      observedIdsRef.current.delete(id)
+      observer.unobserve(id)
     })
-  }, [input.ids])
+  }, [input.ids, observer])
 
   useEffect(() => {
-    if (typeof ResizeObserver !== 'undefined') {
-      observerRef.current = new ResizeObserver(entries => {
-        entries.forEach(entry => {
-          const id = idByNodeRef.current.get(entry.target as HTMLElement)
-          if (id === undefined) {
-            return
-          }
-
-          updateHeight(id, entry.contentRect.height)
-        })
-      })
-    }
-
     return () => {
-      observerRef.current?.disconnect()
-      observerRef.current = null
-      nodeByIdRef.current.clear()
-      idByNodeRef.current = new WeakMap()
+      observedIdsRef.current.clear()
+      observer.disconnect()
     }
-  }, [updateHeight])
+  }, [observer])
 
   const measure = useCallback((id: TId) => {
     return (node: HTMLElement | null) => {
-      const previousNode = nodeByIdRef.current.get(id)
-      if (previousNode) {
-        observerRef.current?.unobserve(previousNode)
-        nodeByIdRef.current.delete(id)
-      }
-
       if (!node) {
+        observedIdsRef.current.delete(id)
+        observer.unobserve(id)
         return
       }
 
-      updateHeight(id, node.getBoundingClientRect().height)
-      nodeByIdRef.current.set(id, node)
-      idByNodeRef.current.set(node, id)
-      observerRef.current?.observe(node)
+      observedIdsRef.current.add(id)
+      observer.observe(id, node)
     }
-  }, [updateHeight])
+  }, [observer])
 
   const heightById = useMemo<ReadonlyMap<TId, number>>(
     () => heightMapByBucketRef.current.get(bucketKey) ?? EMPTY_HEIGHT_MAP,

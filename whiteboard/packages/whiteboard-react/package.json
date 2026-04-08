@@ -16,7 +16,8 @@
     "dist"
   ],
   "dependencies": {
-    "@shared": "workspace:*",
+    "@shared/react": "workspace:*",
+    "@shared/scheduler": "workspace:*",
     "@whiteboard/collab": "workspace:*",
     "@whiteboard/core": "workspace:*",
     "@whiteboard/editor": "workspace:*",

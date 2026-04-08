@@ -2,11 +2,11 @@ import type { CSSProperties } from 'react'
 import { useMemo } from 'react'
 import type { NodeItem } from '@whiteboard/engine'
 import type { NodeId } from '@whiteboard/core/types'
+import { useOptionalKeyedStoreValue } from '@shared/react'
 import type { WhiteboardRuntime as Editor } from '#react/types/runtime'
 import {
   useEditorRuntime,
-  useNodeRegistry,
-  useOptionalKeyedStoreValue
+  useNodeRegistry
 } from '#react/runtime/hooks'
 import type { NodeDefinition, NodeRegistry, NodeRenderProps, NodeWrite } from '#react/types/node'
 

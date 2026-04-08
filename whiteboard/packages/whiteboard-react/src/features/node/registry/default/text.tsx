@@ -2,12 +2,11 @@ import { createPortal } from 'react-dom'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
 import { resolveAnchoredRect } from '@whiteboard/core/node'
+import { useOptionalKeyedStoreValue, useStoreValue } from '@shared/react'
 import type { NodeDefinition, NodeRenderProps } from '#react/types/node'
 import {
   useEdit,
-  useEditor,
-  useOptionalKeyedStoreValue,
-  useStoreValue
+  useEditor
 } from '#react/runtime/hooks'
 import {
   focusEditableDraft,

@@ -1,11 +1,11 @@
-export { useExternalValue } from './useExternalValue'
+export { useExternalValue } from './useExternalValue.ts'
 export {
   createLazySelectorSnapshot,
   useLazySelectorValue,
   type LazySelectorSource
-} from './useLazySelectorValue'
+} from './useLazySelectorValue.ts'
 export {
   useKeyedStoreValue,
   useOptionalKeyedStoreValue,
   useStoreValue
-} from './useStoreValue'
+} from './useStoreValue.ts'

@@ -37,7 +37,7 @@ test('engine-first bootstrap mirrors local commits into Y.Doc', () => {
   const snapshot = materializeYjsDocument(doc)
   assert.ok(snapshot)
   assert.equal(snapshot?.id, 'doc_engine_first')
-  assert.equal(Object.keys(snapshot?.nodes.entities ?? {}).length, 1)
+  assert.equal(Object.keys(snapshot?.nodes ?? {}).length, 1)
 
   session.destroy()
 })
@@ -74,7 +74,7 @@ test('shared Y.Doc sessions replay remote operations and keep remote history out
   assert.ok(nodeId)
 
   const snapshotAfterCreate = engineB.document.get()
-  assert.ok(snapshotAfterCreate.nodes.entities[nodeId])
+  assert.ok(snapshotAfterCreate.nodes[nodeId])
   assert.equal(
     engineB.commands.history.get().undoDepth,
     0
@@ -112,7 +112,7 @@ test('shared Y.Doc sessions replay remote operations and keep remote history out
   })
   assert.equal(spliceResult.ok, true)
 
-  const syncedNode = engineB.document.get().nodes.entities[nodeId]
+  const syncedNode = engineB.document.get().nodes[nodeId]
   assert.deepEqual(syncedNode?.data?.items, ['a', 'b'])
   assert.equal(syncedNode?.data?.nested?.value, 'synced')
   assert.equal(

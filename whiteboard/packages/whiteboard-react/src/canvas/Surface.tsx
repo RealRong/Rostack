@@ -1,7 +1,7 @@
 import { useMemo, type CSSProperties, type RefObject } from 'react'
+import { useStoreValue } from '@shared/react'
 import {
   useEditorRuntime,
-  useStoreValue,
   useTool
 } from '#react/runtime/hooks'
 import { useBindViewportInput } from '../runtime/viewport/useBindViewportInput'

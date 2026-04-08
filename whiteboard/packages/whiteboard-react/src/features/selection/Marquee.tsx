@@ -1,5 +1,5 @@
+import { useStoreValue } from '@shared/react'
 import { useEditorRuntime } from '#react/runtime/hooks'
-import { useStoreValue } from '#react/runtime/hooks'
 
 export const Marquee = () => {
   const editor = useEditorRuntime()

@@ -5,9 +5,9 @@ import {
   useRef,
   useState
 } from 'react'
+import { useStoreValue } from '@shared/react'
 import {
   useEditor,
-  useStoreValue,
   useTool
 } from '#react/runtime/hooks'
 import { WhiteboardPopover } from '#react/runtime/overlay'

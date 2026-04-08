@@ -1,11 +1,11 @@
 import type {
   CSSProperties
 } from 'react'
+import { useStoreValue } from '@shared/react'
 import {
   useEditorRuntime,
   useInteraction,
   usePickRef,
-  useStoreValue,
   useTool
 } from '#react/runtime/hooks'
 import type {

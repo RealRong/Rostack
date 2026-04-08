@@ -1,12 +1,31 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "baseUrl": "..",
     "rootDir": "..",
     "outDir": "./.tmp/group-test-build",
     "module": "CommonJS",
     "target": "ES2022",
     "noEmit": false,
-    "declaration": false
+    "declaration": false,
+    "allowImportingTsExtensions": false,
+    "paths": {
+      "@shared/*": ["shared/*/src/index.ts"],
+      "@shared/dom": ["shared/dom/src/index.compile.ts"],
+      "@shared/react": ["shared/react/src/index.compile.ts"],
+      "@shared/scheduler": ["shared/scheduler/src/index.compile.ts"],
+      "@shared/store": ["shared/store/src/index.ts"],
+      "@ui": ["ui/src/index.ts"],
+      "@ui/css/*": ["ui/css/*"],
+      "@ui/*": ["ui/src/*"],
+      "@dataview": ["dataview/src/index.ts"],
+      "@dataview/*": ["dataview/src/*"],
+      "@whiteboard": ["whiteboard/packages/whiteboard-react/src/index.ts"]
+    }
   },
-  "include": ["src", "../ui/src/**/*.ts", "../ui/src/**/*.tsx"]
+  "include": [
+    "src",
+    "../ui/src/**/*.ts",
+    "../ui/src/**/*.tsx"
+  ]
 }

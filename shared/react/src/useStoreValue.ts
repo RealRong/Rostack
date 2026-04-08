@@ -1,5 +1,5 @@
-import type { KeyedReadStore, ReadStore } from '../store'
-import { useExternalValue } from './useExternalValue'
+import type { KeyedReadStore, ReadStore } from '@shared/store'
+import { useExternalValue } from './useExternalValue.ts'
 
 export const useStoreValue = <T,>(
   store: ReadStore<T>

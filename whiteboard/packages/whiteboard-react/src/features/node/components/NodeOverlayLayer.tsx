@@ -4,10 +4,10 @@ import {
 import type { SelectionPresentation as EditorSelectionPresentation } from '@whiteboard/editor'
 import type { Guide } from '@whiteboard/core/node'
 import type { NodeId } from '@whiteboard/core/types'
+import { useStoreValue } from '@shared/react'
 import {
   useEditorRuntime,
-  usePickRef,
-  useStoreValue
+  usePickRef
 } from '#react/runtime/hooks'
 import { useNodeOverlayView } from '../hooks/useNodeView'
 import { NodeConnectHandles } from './NodeConnectHandles'

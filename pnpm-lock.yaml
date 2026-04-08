@@ -111,9 +111,15 @@ importers:
       '@radix-ui/react-slot':
         specifier: ^1.2.4
         version: 1.2.4(@types/react@19.2.14)(react@19.2.4)
-      '@shared':
+      '@shared/dom':
         specifier: workspace:*
-        version: link:../shared
+        version: link:../shared/dom
+      '@shared/react':
+        specifier: workspace:*
+        version: link:../shared/react
+      '@shared/store':
+        specifier: workspace:*
+        version: link:../shared/store
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -176,8 +182,13 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.5.0)(jiti@1.21.7)
 
-  shared:
+  shared/dom: {}
+
+  shared/react:
     dependencies:
+      '@shared/store':
+        specifier: workspace:*
+        version: link:../store
       react:
         specifier: ^19.1.1
         version: 19.2.4
@@ -185,6 +196,14 @@ importers:
       '@types/react':
         specifier: ^19.1.12
         version: 19.2.14
+
+  shared/scheduler: {}
+
+  shared/store:
+    dependencies:
+      '@shared/scheduler':
+        specifier: workspace:*
+        version: link:../scheduler
 
   ui:
     dependencies:
@@ -203,9 +222,9 @@ importers:
       '@radix-ui/react-slot':
         specifier: ^1.2.4
         version: 1.2.4(@types/react@19.2.14)(react@19.2.4)
-      '@shared':
+      '@shared/dom':
         specifier: workspace:*
-        version: link:../shared
+        version: link:../shared/dom
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -252,9 +271,9 @@ importers:
 
   whiteboard/packages/whiteboard-collab:
     dependencies:
-      '@shared':
+      '@shared/store':
         specifier: workspace:*
-        version: link:../../../shared
+        version: link:../../../shared/store
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core
@@ -269,9 +288,12 @@ importers:
 
   whiteboard/packages/whiteboard-editor:
     dependencies:
-      '@shared':
+      '@shared/scheduler':
         specifier: workspace:*
-        version: link:../../../shared
+        version: link:../../../shared/scheduler
+      '@shared/store':
+        specifier: workspace:*
+        version: link:../../../shared/store
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core
@@ -281,18 +303,21 @@ importers:
 
   whiteboard/packages/whiteboard-engine:
     dependencies:
-      '@shared':
+      '@shared/store':
         specifier: workspace:*
-        version: link:../../../shared
+        version: link:../../../shared/store
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core
 
   whiteboard/packages/whiteboard-react:
     dependencies:
-      '@shared':
+      '@shared/react':
         specifier: workspace:*
-        version: link:../../../shared
+        version: link:../../../shared/react
+      '@shared/scheduler':
+        specifier: workspace:*
+        version: link:../../../shared/scheduler
       '@whiteboard/collab':
         specifier: workspace:*
         version: link:../whiteboard-collab

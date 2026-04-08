@@ -1,10 +1,7 @@
 import { getEdgePathBounds } from '@whiteboard/core/edge'
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useKeyedStoreValue, useStoreValue } from '@shared/react'
 import { useEditorRuntime } from '#react/runtime/hooks'
-import {
-  useKeyedStoreValue,
-  useStoreValue
-} from '#react/runtime/hooks'
 import type {
   WhiteboardPresenceBinding,
   WhiteboardPresenceState

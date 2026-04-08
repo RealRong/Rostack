@@ -258,7 +258,7 @@ const main = () => {
 
     dragKernel.commit(draft)
     const resetDoc = cloneDoc(doc)
-    const resetNode = resetDoc.nodes.entities[movingNodeId]
+    const resetNode = resetDoc.nodes[movingNodeId]
     if (resetNode) {
       resetNode.position = basePosition
     }

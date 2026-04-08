@@ -5,8 +5,7 @@
     "baseUrl": "../..",
     "types": ["vite/client"],
     "paths": {
-      "@shared": ["shared/src/index.ts"],
-      "@shared/*": ["shared/src/*/index.ts"],
+      "@shared/*": ["shared/*/src/index.ts"],
       "@ui": ["ui/src/index.ts"],
       "@ui/*": ["ui/src/*"],
       "@whiteboard/collab": ["whiteboard/packages/whiteboard-collab/src/index.ts"],

@@ -6,9 +6,9 @@ import {
   Undo2,
   type LucideIcon
 } from 'lucide-react'
+import { useStoreValue } from '@shared/react'
 import { Button, cn } from '@ui'
 import { useEditor } from '#react/runtime/hooks'
-import { useStoreValue } from '#react/runtime/hooks'
 
 const ZOOM_FACTOR = 1.2
 const iconButtonClassName = cn(

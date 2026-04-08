@@ -5,8 +5,7 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "paths": {
-      "@shared": ["shared/src/index.ts"],
-      "@shared/*": ["shared/src/*/index.ts"],
+      "@shared/*": ["shared/*/src/index.ts"],
       "@whiteboard/core/selection": ["whiteboard/packages/whiteboard-core/src/selection/index.ts"]
     },
     "declaration": true,

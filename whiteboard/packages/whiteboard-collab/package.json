@@ -16,7 +16,7 @@
     "dist"
   ],
   "dependencies": {
-    "@shared": "workspace:*",
+    "@shared/store": "workspace:*",
     "@whiteboard/core": "workspace:*",
     "@whiteboard/engine": "workspace:*",
     "yjs": "^13.6.27"

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { useEditor, useStoreValue } from '#react/runtime/hooks'
+import { useStoreValue } from '@shared/react'
+import { useEditor } from '#react/runtime/hooks'
 import { useNodeSizeObserver } from '../dom/nodeSizeObserver'
 import { useSelection } from '../selection'
 import { NodeItem } from './NodeItem'

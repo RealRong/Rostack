@@ -7,11 +7,6 @@ export {
 } from './useEditor'
 export { usePickRef } from './usePickRef'
 export {
-  useKeyedStoreValue,
-  useOptionalKeyedStoreValue,
-  useStoreValue
-} from '@shared/react'
-export {
   WhiteboardConfigProvider,
   WhiteboardServicesProvider,
   useNodeRegistry,

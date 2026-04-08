@@ -1,5 +1,6 @@
 import { DrawPreview } from './DrawPreview'
-import { useEditorRuntime, useStoreValue } from '#react/runtime/hooks'
+import { useStoreValue } from '@shared/react'
+import { useEditorRuntime } from '#react/runtime/hooks'
 
 export const DrawLayer = () => {
   const editor = useEditorRuntime()

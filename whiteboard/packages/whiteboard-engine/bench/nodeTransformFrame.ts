@@ -285,7 +285,7 @@ const main = () => {
     transformKernel.commit(draft)
 
     const resetDoc = cloneDoc(doc)
-    const resetNode = resetDoc.nodes.entities[nodeId]
+    const resetNode = resetDoc.nodes[nodeId]
     if (resetNode) {
       resetNode.position = basePosition
       resetNode.size = baseSize

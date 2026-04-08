@@ -276,7 +276,7 @@ const main = () => {
     routing.commit(draft)
 
     const resetDoc = cloneDoc(doc)
-    const resetEdge = resetDoc.edges.entities[edgeId]
+    const resetEdge = resetDoc.edges[edgeId]
     if (resetEdge) {
       resetEdge.routing = {
         ...(resetEdge.routing ?? {}),

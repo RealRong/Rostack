@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { Rect } from '@whiteboard/core/types'
+import { useStoreValue } from '@shared/react'
 import {
   readSelectionNodeSummary,
   type SelectionNodeSummary
@@ -7,8 +8,7 @@ import {
 import type { SelectionAffordance } from '@whiteboard/core/selection'
 import {
   useEditor,
-  useNodeRegistry,
-  useStoreValue
+  useNodeRegistry
 } from '#react/runtime/hooks'
 import type { WhiteboardRuntime as Editor } from '#react/types/runtime'
 import type { NodeRegistry } from '#react/types/node'

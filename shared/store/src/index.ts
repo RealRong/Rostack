@@ -1,4 +1,4 @@
-import { createRafTask } from '../scheduler'
+import { createRafTask } from '@shared/scheduler'
 
 export type Listener = () => void
 export type Unsubscribe = () => void

@@ -10,6 +10,9 @@ export {
   findViewFilterIndex,
   addViewFilter,
   setViewFilter,
+  setViewFilterPreset,
+  setViewFilterValue,
+  setViewFilterMode,
   removeViewFilter
 } from './filter'
 export {

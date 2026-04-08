@@ -27,9 +27,11 @@ export const normalizeViewQuery = (
       ? {
           mode: query.filter.mode,
           rules: query.filter.rules.map(rule => ({
-            field: rule.field,
-            op: rule.op,
-            value: structuredClone(rule.value)
+            fieldId: rule.fieldId,
+            presetId: rule.presetId,
+            ...(Object.prototype.hasOwnProperty.call(rule, 'value')
+              ? { value: structuredClone(rule.value) }
+              : {})
           }))
         }
       : {

@@ -4,7 +4,6 @@ export {
   createNodeRegistry,
   resolveNodeMeta
 } from './registry'
-export { useSelection } from './selection'
 export { ShapeGlyph } from './shape'
 export {
   STICKY_DEFAULT_FILL,

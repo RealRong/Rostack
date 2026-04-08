@@ -497,12 +497,35 @@ export const createViewEngineApi = (options: {
         fieldId
       })
     },
-    replace: (index, rule) => {
+    set: (index, rule) => {
       commit({
-        type: 'view.filter.replace',
+        type: 'view.filter.set',
         viewId: options.viewId,
         index,
         rule
+      })
+    },
+    preset: (index, presetId) => {
+      commit({
+        type: 'view.filter.preset',
+        viewId: options.viewId,
+        index,
+        presetId
+      })
+    },
+    value: (index, value) => {
+      commit({
+        type: 'view.filter.value',
+        viewId: options.viewId,
+        index,
+        ...(value !== undefined ? { value } : {})
+      })
+    },
+    mode: value => {
+      commit({
+        type: 'view.filter.mode',
+        viewId: options.viewId,
+        value
       })
     },
     remove: index => {

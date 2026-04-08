@@ -53,7 +53,7 @@ export const createEditor = ({
     viewport: viewport.read,
     gesture: interaction.gesture
   })
-  const read = createRead({
+  const readBundle = createRead({
     engineRead: engine.read,
     registry,
     history: engine.history,
@@ -62,6 +62,7 @@ export const createEditor = ({
     overlay,
     viewport
   })
+  const read = readBundle.read
   const write = createEditorWrite({
     engine,
     read,
@@ -81,20 +82,22 @@ export const createEditor = ({
       query: read.edge.connectCandidates
     }
   })
-  const commands = createEditorCommands({
-    engine,
-    read,
-    write,
-    viewport: viewport.read
-  })
   const state = createEditorState({
     interaction,
     runtime,
     viewport: viewport.read
   })
+  const commands = createEditorCommands({
+    engine,
+    read,
+    write,
+    viewport: viewport.read,
+    selection: state.selection
+  })
 
   const interactionContext: InteractionContext = {
     read,
+    selection: readBundle.internal.selection,
     write,
     config: engine.config,
     snap
@@ -106,7 +109,8 @@ export const createEditor = ({
     interaction,
     edgeHover,
     read,
-    write
+    write,
+    selection: state.selection
   })
 
   const resetRuntimeState = () => {

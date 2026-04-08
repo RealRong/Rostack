@@ -53,7 +53,7 @@ export const NodeToolbar = ({
 }) => {
   const editor = useEditorRuntime()
   const surface = useElementSize(containerRef)
-  const presentation = useStoreValue(editor.read.selection.presentation)
+  const toolbar = useStoreValue(editor.read.selection.toolbar)
   const buttonRefByKey = useRef<Partial<Record<ToolbarPanelKey, HTMLElement | null>>>({})
   const [activePanelKey, setActivePanelKey] = useState<ToolbarPanelKey | null>(null)
   const [positionSession, setPositionSession] = useState<ToolbarPositionSession | null>(null)
@@ -61,9 +61,6 @@ export const NodeToolbar = ({
     (point: Point) => editor.read.viewport.worldToScreen(point),
     [editor]
   )
-  const toolbar = presentation.kind !== 'none'
-    ? presentation.toolbar
-    : undefined
   const recipe = useMemo(
     () => toolbar ? resolveToolbarRecipe(toolbar) : [],
     [toolbar]
@@ -78,9 +75,7 @@ export const NodeToolbar = ({
   }, [])
 
   const selectionKey = toolbar?.selectionKey ?? null
-  const selectionBox = presentation.kind !== 'none'
-    ? presentation.geometry.box
-    : undefined
+  const selectionBox = toolbar?.box
   const livePlacement = selectionBox
     ? resolveToolbarPlacement({
         worldToScreen,
@@ -134,7 +129,7 @@ export const NodeToolbar = ({
     selectionKey
   ])
 
-  if (presentation.kind === 'none' || !toolbar || !recipe.length) {
+  if (!toolbar || !recipe.length) {
     return null
   }
 

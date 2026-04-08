@@ -2,14 +2,12 @@ import { useMemo } from 'react'
 import { useStoreValue } from '@shared/react'
 import { useEditor } from '#react/runtime/hooks'
 import { useNodeSizeObserver } from '../dom/nodeSizeObserver'
-import { useSelection } from '../selection'
 import { NodeItem } from './NodeItem'
 
 export const NodeSceneLayer = () => {
   const editor = useEditor()
   const nodeIds = useStoreValue(editor.read.node.list)
-  const selection = useSelection()
-  const selectedSet = selection.summary.target.nodeSet
+  const selection = useStoreValue(editor.state.selection)
   const registerMeasuredElement = useNodeSizeObserver()
   const contentNodeIds = useMemo(
     () => nodeIds.filter((nodeId) => {
@@ -26,7 +24,7 @@ export const NodeSceneLayer = () => {
           key={nodeId}
           nodeId={nodeId}
           registerMeasuredElement={registerMeasuredElement}
-          selected={selectedSet.has(nodeId)}
+          selected={selection.nodeIds.includes(nodeId)}
         />
       ))}
     </div>

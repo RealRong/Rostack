@@ -1,4 +1,4 @@
-import type { SelectionSummary } from '@whiteboard/core/selection'
+import type { SelectionTarget } from '@whiteboard/core/selection'
 import type { WhiteboardRuntime } from '#react/types/runtime'
 
 export type SelectionCan = {
@@ -15,27 +15,28 @@ export type SelectionCan = {
 
 export const readSelectionCan = ({
   editor,
-  summary
+  target
 }: {
   editor: WhiteboardRuntime
-  summary: SelectionSummary
+  target: SelectionTarget
 }): SelectionCan => {
   const pureNodeSelection =
-    summary.items.nodeCount > 0
-    && summary.items.edgeCount === 0
-  const exactGroupIds = editor.read.group.exactIds(summary.target)
+    target.nodeIds.length > 0
+    && target.edgeIds.length === 0
+  const count = target.nodeIds.length + target.edgeIds.length
+  const exactGroupIds = editor.read.group.exactIds(target)
 
   return {
-    order: summary.items.count > 0,
+    order: count > 0,
     makeGroup:
-      summary.items.count >= 2
+      count >= 2
       && !(exactGroupIds.length === 1),
     ungroup: exactGroupIds.length > 0,
-    copy: summary.items.count > 0,
-    cut: summary.items.count > 0,
-    duplicate: summary.items.count > 0,
-    delete: summary.items.count > 0,
-    align: pureNodeSelection && summary.items.nodeCount >= 2,
-    distribute: pureNodeSelection && summary.items.nodeCount >= 3
+    copy: count > 0,
+    cut: count > 0,
+    duplicate: count > 0,
+    delete: count > 0,
+    align: pureNodeSelection && target.nodeIds.length >= 2,
+    distribute: pureNodeSelection && target.nodeIds.length >= 3
   }
 }

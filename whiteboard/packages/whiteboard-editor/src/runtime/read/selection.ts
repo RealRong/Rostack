@@ -4,18 +4,17 @@ import {
   isSelectionAffordanceEqual,
   isSelectionSummaryEqual,
   resolveSelectionTransformBox,
-  resolveSelectionBoxTarget,
   type SelectionAffordance,
   type SelectionSummary,
-  type SelectionTransformBox,
-  type SelectionTarget
+  type SelectionTarget,
+  type SelectionTransformBox
 } from '@whiteboard/core/selection'
+import type { Edge, Node, Rect } from '@whiteboard/core/types'
 import {
   createDerivedStore,
   type ReadFn,
   type ReadStore
 } from '@shared/store'
-import type { Edge, Node } from '@whiteboard/core/types'
 import type { EdgeRead } from './edge'
 import type { NodeRead } from './node'
 import type { TargetBoundsQuery } from '../query/targetBounds'
@@ -23,23 +22,33 @@ import type { NodeRegistry } from '../../types/node'
 import type { Tool } from '../../types/tool'
 import type { EditTarget } from '../state/edit'
 import type { InteractionRuntime } from '../interaction/types'
-import type { SelectionPresentation } from '../../types/selectionPresentation'
-import { resolveSelectionPresentation } from './selectionPresentation'
+import type {
+  SelectionNodeInfo,
+  SelectionOverlay,
+  SelectionToolbarContext
+} from '../../selection'
+import { readSelectionNodeInfo } from '../../selection/nodeSummary'
+import {
+  resolveSelectionOverlay,
+  resolveSelectionToolbar
+} from './selectionPresentation'
 
 export type SelectionRead = {
-  target: ReadStore<SelectionTarget>
-  summary: ReadStore<SelectionSummary>
-  transformBox: ReadStore<SelectionTransformBox>
-  affordance: ReadStore<SelectionAffordance>
-  presentation: ReadStore<SelectionPresentation>
+  box: ReadStore<Rect | undefined>
+  node: ReadStore<SelectionNodeInfo | undefined>
+  overlay: ReadStore<SelectionOverlay | undefined>
+  toolbar: ReadStore<SelectionToolbarContext | undefined>
 }
 
-const readRuntimeNodes = (input: {
-  node: Pick<NodeRead, 'item' | 'list'>
-  readStore: ReadFn
-}) => input.readStore(input.node.list)
-  .map((nodeId) => input.readStore(input.node.item, nodeId)?.node)
-  .filter((entry): entry is Node => Boolean(entry))
+export type SelectionModel = {
+  summary: SelectionSummary
+  transformBox: SelectionTransformBox
+  affordance: SelectionAffordance
+}
+
+export type SelectionInternalRead = {
+  model: ReadStore<SelectionModel>
+}
 
 const isSelectionTransformBoxEqual = (
   left: SelectionTransformBox,
@@ -51,6 +60,66 @@ const isSelectionTransformBoxEqual = (
   && left.box?.width === right.box?.width
   && left.box?.height === right.box?.height
 )
+
+const isSelectionModelEqual = (
+  left: SelectionModel,
+  right: SelectionModel
+) => (
+  isSelectionSummaryEqual(left.summary, right.summary)
+  && isSelectionTransformBoxEqual(left.transformBox, right.transformBox)
+  && isSelectionAffordanceEqual(left.affordance, right.affordance)
+)
+
+const isOptionalRectEqual = (
+  left: Rect | undefined,
+  right: Rect | undefined
+) => (
+  left?.x === right?.x
+  && left?.y === right?.y
+  && left?.width === right?.width
+  && left?.height === right?.height
+)
+
+const isSelectionNodeInfoEqual = (
+  left: SelectionNodeInfo | undefined,
+  right: SelectionNodeInfo | undefined
+) => {
+  if (!left || !right) {
+    return left === right
+  }
+
+  return (
+    left.lock === right.lock
+    && left.types.length === right.types.length
+    && left.types.every((entry, index) => {
+      const other = right.types[index]
+      return Boolean(other)
+        && entry.key === other.key
+        && entry.name === other.name
+        && entry.family === other.family
+        && entry.icon === other.icon
+        && entry.count === other.count
+        && entry.nodeIds.length === other.nodeIds.length
+        && entry.nodeIds.every((nodeId, nodeIndex) => nodeId === other.nodeIds[nodeIndex])
+    })
+  )
+}
+
+const readSelectedNodes = (
+  node: NodeRead,
+  target: SelectionTarget,
+  readStore: ReadFn
+) => target.nodeIds
+  .map((nodeId) => readStore(node.item, nodeId)?.node)
+  .filter((entry): entry is Node => Boolean(entry))
+
+const readSelectedEdges = (
+  edge: EdgeRead,
+  target: SelectionTarget,
+  readStore: ReadFn
+) => target.edgeIds
+  .map((edgeId) => readStore(edge.item, edgeId)?.edge)
+  .filter((entry): entry is Edge => Boolean(entry))
 
 export const createSelectionRead = ({
   source,
@@ -70,20 +139,15 @@ export const createSelectionRead = ({
   tool: ReadStore<Tool>
   edit: ReadStore<EditTarget>
   interaction: Pick<InteractionRuntime, 'mode' | 'chrome'>
-}): SelectionRead => {
+}): {
+  public: SelectionRead
+  internal: SelectionInternalRead
+} => {
   const summary = createDerivedStore<SelectionSummary>({
     get: (readStore) => {
       const selectionTarget = readStore(source)
-      const runtimeNodes = readRuntimeNodes({
-        node,
-        readStore
-      })
-      const nodes = selectionTarget.nodeIds
-        .map((nodeId) => readStore(node.item, nodeId)?.node)
-        .filter((entry): entry is Node => Boolean(entry))
-      const edges = selectionTarget.edgeIds
-        .map((edgeId) => readStore(edge.item, edgeId)?.edge)
-        .filter((entry): entry is Edge => Boolean(entry))
+      const nodes = readSelectedNodes(node, selectionTarget, readStore)
+      const edges = readSelectedEdges(edge, selectionTarget, readStore)
 
       return deriveSelectionSummary({
         target: selectionTarget,
@@ -91,7 +155,7 @@ export const createSelectionRead = ({
         edges,
         readBounds: (target) => targetBounds.track(
           readStore,
-          resolveSelectionBoxTarget(target, runtimeNodes)
+          target
         ),
         isNodeScalable: (entry) => (
           !entry.locked
@@ -112,14 +176,10 @@ export const createSelectionRead = ({
   const transformBox = createDerivedStore<SelectionTransformBox>({
     get: (readStore) => {
       const selectionTarget = readStore(source)
-      const runtimeNodes = readRuntimeNodes({
-        node,
-        readStore
-      })
       const box = selectionTarget.nodeIds.length > 0
-        ? targetBounds.track(readStore, resolveSelectionBoxTarget({
+        ? targetBounds.track(readStore, {
           nodeIds: selectionTarget.nodeIds
-        }, runtimeNodes))
+        })
         : undefined
 
       return resolveSelectionTransformBox(
@@ -131,11 +191,11 @@ export const createSelectionRead = ({
   })
   const affordance = createDerivedStore<SelectionAffordance>({
     get: (readStore) => {
-      const selection = readStore(summary)
+      const resolvedSummary = readStore(summary)
       const resolvedTransformBox = readStore(transformBox)
 
       return deriveSelectionAffordance({
-        selection,
+        selection: resolvedSummary,
         transformBox: resolvedTransformBox.box,
         resolveNodeRole: (entry) => node.capability(entry).role,
         resolveNodeTransformCapability: (entry) => {
@@ -150,24 +210,64 @@ export const createSelectionRead = ({
     },
     isEqual: isSelectionAffordanceEqual
   })
-  const presentation = createDerivedStore<SelectionPresentation>({
-    get: (readStore) => resolveSelectionPresentation({
+  const model = createDerivedStore<SelectionModel>({
+    get: (readStore) => ({
       summary: readStore(summary),
       transformBox: readStore(transformBox),
-      affordance: readStore(affordance),
-      registry,
-      tool: readStore(tool),
-      edit: readStore(edit),
-      interactionChrome: readStore(interaction.chrome),
-      transforming: readStore(interaction.mode) === 'node-transform'
-    })
+      affordance: readStore(affordance)
+    }),
+    isEqual: isSelectionModelEqual
+  })
+  const box = createDerivedStore<Rect | undefined>({
+    get: (readStore) => readStore(model).summary.box,
+    isEqual: isOptionalRectEqual
+  })
+  const nodeInfo = createDerivedStore<SelectionNodeInfo | undefined>({
+    get: (readStore) => readSelectionNodeInfo({
+      summary: readStore(model).summary,
+      registry
+    }),
+    isEqual: isSelectionNodeInfoEqual
+  })
+  const overlay = createDerivedStore<SelectionOverlay | undefined>({
+    get: (readStore) => {
+      const resolvedModel = readStore(model)
+
+      return resolveSelectionOverlay({
+        summary: resolvedModel.summary,
+        transformBox: resolvedModel.transformBox,
+        affordance: resolvedModel.affordance,
+        tool: readStore(tool),
+        edit: readStore(edit),
+        interactionChrome: readStore(interaction.chrome),
+        transforming: readStore(interaction.mode) === 'node-transform'
+      })
+    }
+  })
+  const toolbar = createDerivedStore<SelectionToolbarContext | undefined>({
+    get: (readStore) => {
+      const resolvedModel = readStore(model)
+
+      return resolveSelectionToolbar({
+        summary: resolvedModel.summary,
+        affordance: resolvedModel.affordance,
+        registry,
+        tool: readStore(tool),
+        edit: readStore(edit),
+        interactionChrome: readStore(interaction.chrome)
+      })
+    }
   })
 
   return {
-    target: source,
-    summary,
-    transformBox,
-    affordance,
-    presentation
+    public: {
+      box,
+      node: nodeInfo,
+      overlay,
+      toolbar
+    },
+    internal: {
+      model
+    }
   }
 }

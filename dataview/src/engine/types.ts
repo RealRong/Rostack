@@ -26,6 +26,7 @@ import type {
   CustomFieldId,
   ViewGroup
 } from '@dataview/core/contracts'
+import type { ViewFilterProjection } from '@dataview/core/filter'
 import type { HistoryOptions, HistoryState } from './history'
 import type { ValidationIssue } from '@dataview/engine/command'
 import type { KeyedReadStore, ReadStore } from '@shared/store'
@@ -67,6 +68,7 @@ export interface EngineReadApi {
   customField: KeyedReadStore<CustomFieldId, CustomField | undefined>
   viewIds: ReadStore<readonly ViewId[]>
   view: KeyedReadStore<ViewId, View | undefined>
+  filter: KeyedReadStore<ViewId, ViewFilterProjection | undefined>
   viewProjection: KeyedReadStore<ViewId, ViewProjection | undefined>
 }
 
@@ -214,7 +216,10 @@ export interface ViewEngineApi {
   }
   filter: {
     add: (fieldId: FieldId) => void
-    replace: (index: number, rule: FilterRule) => void
+    set: (index: number, rule: FilterRule) => void
+    preset: (index: number, presetId: string) => void
+    value: (index: number, value: FilterRule['value'] | undefined) => void
+    mode: (value: Filter['mode']) => void
     remove: (index: number) => void
     clear: () => void
   }

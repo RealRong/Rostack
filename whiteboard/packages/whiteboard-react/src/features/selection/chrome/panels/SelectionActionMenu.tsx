@@ -1,7 +1,7 @@
 import type { MenuItem } from '@ui'
 import { Menu } from '@ui'
+import { useStoreValue } from '@shared/react'
 import { useEditorRuntime, useWhiteboardServices } from '#react/runtime/hooks'
-import { useSelection } from '#react/features/node'
 import { readSelectionCan } from '../../capability'
 
 const ORDER_ITEMS = [
@@ -56,23 +56,20 @@ export const SelectionActionMenu = ({
 }) => {
   const editor = useEditorRuntime()
   const { clipboard } = useWhiteboardServices()
-  const selection = useSelection()
-  const summary = selection.summary
-  const target = summary.target
+  const target = useStoreValue(editor.state.selection)
+  const nodeInfo = useStoreValue(editor.read.selection.node)
+  const box = useStoreValue(editor.read.selection.box)
   const nodeIds = target.nodeIds
   const edgeIds = target.edgeIds
-  const box = selection.boxState.box
+  const count = nodeIds.length + edgeIds.length
   const selectionCan = readSelectionCan({
     editor,
-    summary
+    target
   })
-  const exactGroupIds = editor.read.group.exactIds({
-    nodeIds,
-    edgeIds
-  })
+  const exactGroupIds = editor.read.group.exactIds(target)
   const pureNodeSelection =
-    summary.items.nodeCount > 0
-    && summary.items.edgeCount === 0
+    nodeIds.length > 0
+    && edgeIds.length === 0
 
   const items = normalizeMenuItems([
     {
@@ -175,9 +172,9 @@ export const SelectionActionMenu = ({
           {
             kind: 'action' as const,
             key: 'state.lock',
-            label: readLockLabel(selection.nodeSummary.lock),
+            label: readLockLabel(nodeInfo?.lock ?? 'none'),
             onSelect: () => {
-              editor.commands.node.lock.set([...nodeIds], selection.nodeSummary.lock !== 'all')
+              editor.commands.node.lock.set([...nodeIds], (nodeInfo?.lock ?? 'none') !== 'all')
             }
           }
         ]
@@ -224,7 +221,7 @@ export const SelectionActionMenu = ({
     }
   ])
 
-  if (!summary.items.count || !items.length) {
+  if (!count || !items.length) {
     return null
   }
 

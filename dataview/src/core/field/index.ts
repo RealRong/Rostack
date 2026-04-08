@@ -1,8 +1,6 @@
 import type {
   Field,
   FieldId,
-  FilterOperator,
-  FilterRule,
   CustomField,
   Row,
   ViewGroup
@@ -11,14 +9,8 @@ import {
   TITLE_FIELD_ID
 } from '../contracts/state'
 import {
-  applyFieldFilterPreset as applyCustomFieldFilterPreset,
-  createDefaultFieldFilterRule as createDefaultCustomFieldFilterRule,
   getKind,
-  getFieldFilterPreset as getCustomFieldFilterPreset,
-  getFieldFilterOps as getCustomFieldFilterOps,
-  getFieldFilterPresets as getCustomFieldFilterPresets,
   getFieldGroupMeta as getCustomFieldGroupMeta,
-  matchFieldFilter as matchCustomFieldFilter,
   resolveGroupBucketDomain,
   resolveGroupBucketEntries,
   type Bucket,
@@ -47,9 +39,6 @@ import {
 import {
   compareFieldValues as compareCustomFieldValues
 } from './value/sort'
-import type {
-  KindFilterPreset
-} from './kind/spec'
 export * from './kind'
 export * from './kind/spec'
 export * from './kind/date'
@@ -165,27 +154,6 @@ export const getFieldSearchTokens = (
     : getCustomFieldSearchTokens(field, value)
 )
 
-export const matchFieldFilter = (
-  field: Field | undefined,
-  value: unknown,
-  op: FilterOperator,
-  expected: unknown
-): boolean => (
-  isTitleField(field)
-    ? getKind('text').match(undefined, value, op, expected)
-    : matchCustomFieldFilter(field, value, op, expected)
-)
-
-export const isFieldFilterEffective = (
-  field: Field | undefined,
-  op: FilterOperator,
-  value: unknown
-): boolean => (
-  isTitleField(field)
-    ? getKind('text').isFilterEffective(undefined, op, value)
-    : getKind(field?.kind ?? 'text').isFilterEffective(field, op, value)
-)
-
 export const resolveFieldGroupBucketEntries = (
   field: Field | undefined,
   value: unknown,
@@ -220,57 +188,6 @@ export const getFieldGroupMeta = (
     ? resolveTitleGroupMeta(group)
     : getCustomFieldGroupMeta(field, group)
 )
-
-export const getFieldFilterOps = (
-  field?: Pick<Field, 'kind'>
-): readonly FilterOperator[] => (
-  isTitleField(field)
-    ? getKind('text').filter.ops
-    : getCustomFieldFilterOps(field as Pick<CustomField, 'kind'> | undefined)
-)
-
-export const getFieldFilterPresets = (
-  field?: Pick<Field, 'kind'>
-): readonly KindFilterPreset[] => (
-  isTitleField(field)
-    ? getKind('text').filter.presets
-    : getCustomFieldFilterPresets(field as Pick<CustomField, 'kind'> | undefined)
-)
-
-export const getFieldFilterPreset = (
-  field?: Field,
-  rule?: FilterRule
-): KindFilterPreset | undefined => {
-  const presets = getFieldFilterPresets(field)
-  if (!rule) {
-    return presets[0]
-  }
-
-  return presets.find(preset => (
-    preset.operator === rule.op
-    && JSON.stringify(preset.value) === JSON.stringify(rule.value)
-  )) ?? presets[0]
-}
-
-export const createDefaultFieldFilterRule = (
-  field: Field
-): FilterRule => {
-  if (!isTitleField(field)) {
-    return createDefaultCustomFieldFilterRule(field)
-  }
-
-  const kind = getKind('text')
-  const preset = kind.filter.presets[0]
-  const op = preset?.operator ?? kind.filter.ops[0] ?? 'contains'
-
-  return {
-    field: field.id,
-    op,
-    value: preset?.value !== undefined
-      ? preset.value
-      : kind.createFilterValue(undefined, op)
-  }
-}
 
 export const getFieldDisplayValue = (
   field: Field | undefined,
@@ -332,28 +249,3 @@ export const resolveFieldPrimaryAction = (input: {
         value: input.value
       })
 )
-
-export const applyFieldFilterPreset = (
-  rule: FilterRule,
-  field: Field | undefined,
-  preset: Pick<KindFilterPreset, 'operator' | 'value'>
-): FilterRule => {
-  if (!isTitleField(field)) {
-    return applyCustomFieldFilterPreset(rule, field, preset)
-  }
-
-  const currentPreset = getKind('text').filter.presets.find(candidate => (
-    candidate.operator === rule.op
-    && JSON.stringify(candidate.value) === JSON.stringify(rule.value)
-  )) ?? getKind('text').filter.presets[0]
-
-  return {
-    field: rule.field,
-    op: preset.operator,
-    value: preset.value !== undefined
-      ? preset.value
-      : currentPreset?.value === undefined
-        ? rule.value
-        : getKind('text').createFilterValue(undefined, preset.operator)
-  }
-}

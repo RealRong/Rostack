@@ -1,7 +1,7 @@
 import {
   memo
 } from 'react'
-import type { SelectionPresentation as EditorSelectionPresentation } from '@whiteboard/editor'
+import type { SelectionOverlay as EditorSelectionOverlay } from '@whiteboard/editor'
 import type { Guide } from '@whiteboard/core/node'
 import type { NodeId } from '@whiteboard/core/types'
 import { useStoreValue } from '@shared/react'
@@ -15,8 +15,6 @@ import {
   NodeTransformHandles,
   TransformHandles
 } from './NodeTransformHandles'
-
-type ActiveSelectionPresentation = Exclude<EditorSelectionPresentation, { kind: 'none' }>
 
 const NodeInteractionGuidesLayer = ({
   guides
@@ -103,20 +101,20 @@ const EdgeConnectOverlay = () => {
 }
 
 const SelectionFrameOverlay = ({
-  presentation
+  overlay
 }: {
-  presentation: ActiveSelectionPresentation
+  overlay: Extract<EditorSelectionOverlay, { kind: 'selection' }>
 }) => {
-  if (presentation.overlay.kind !== 'selection' || !presentation.overlay.frame) {
+  if (!overlay.frame) {
     return null
   }
 
-  const interactive = presentation.overlay.interactive
+  const interactive = overlay.interactive
   const ref = usePickRef({
     kind: 'selection-box',
     part: 'body'
   })
-  const box = presentation.geometry.box
+  const box = overlay.box
 
   return (
     <div
@@ -133,14 +131,14 @@ const SelectionFrameOverlay = ({
 }
 
 const SelectionHandlesOverlay = ({
-  presentation
+  overlay
 }: {
-  presentation: ActiveSelectionPresentation
+  overlay: Extract<EditorSelectionOverlay, { kind: 'selection' }>
 }) => {
-  if (presentation.overlay.kind !== 'selection' || !presentation.overlay.handles) {
+  if (!overlay.handles) {
     return null
   }
-  const transformBox = presentation.geometry.transformBox
+  const transformBox = overlay.transformBox
   if (!transformBox) {
     return null
   }
@@ -149,7 +147,7 @@ const SelectionHandlesOverlay = ({
     <TransformHandles
       rect={transformBox}
       rotation={0}
-      canResize={presentation.overlay.canResize}
+      canResize={overlay.canResize}
       canRotate={false}
     />
   )
@@ -158,25 +156,25 @@ const SelectionHandlesOverlay = ({
 export const NodeOverlayLayer = () => {
   const editor = useEditorRuntime()
   const guides = useStoreValue(editor.read.overlay.feedback.snap)
-  const presentation = useStoreValue(editor.read.selection.presentation)
+  const overlay = useStoreValue(editor.read.selection.overlay)
 
   return (
     <>
       <div className="wb-node-overlay-layer">
-        {presentation.kind !== 'none' && presentation.overlay.kind === 'node' ? (
+        {overlay?.kind === 'node' ? (
           <NodeTransformOverlayItem
-            nodeId={presentation.overlay.nodeId}
-            showHandles={presentation.overlay.handles}
+            nodeId={overlay.nodeId}
+            showHandles={overlay.handles}
           />
         ) : null}
-        {presentation.kind !== 'none' && presentation.overlay.kind === 'selection' && presentation.overlay.frame ? (
+        {overlay?.kind === 'selection' && overlay.frame ? (
           <SelectionFrameOverlay
-            presentation={presentation}
+            overlay={overlay}
           />
         ) : null}
-        {presentation.kind !== 'none' && presentation.overlay.kind === 'selection' && presentation.overlay.handles ? (
+        {overlay?.kind === 'selection' && overlay.handles ? (
           <SelectionHandlesOverlay
-            presentation={presentation}
+            overlay={overlay}
           />
         ) : null}
         <EdgeConnectOverlay />

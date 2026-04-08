@@ -51,8 +51,11 @@ import {
   resolveViewKanbanSetNewRecordPositionCommand,
   resolveViewFilterAddCommand,
   resolveViewFilterClearCommand,
+  resolveViewFilterModeCommand,
+  resolveViewFilterPresetCommand,
   resolveViewFilterRemoveCommand,
-  resolveViewFilterReplaceCommand,
+  resolveViewFilterSetCommand,
+  resolveViewFilterValueCommand,
   resolveViewOrderClearCommand,
   resolveViewOrderMoveCommand,
   resolveViewOrderSetCommand,
@@ -124,8 +127,14 @@ export const resolveCommand = (document: DataDoc, command: IndexedCommand): Reso
       return resolveViewSearchSetCommand(document, command)
     case 'view.filter.add':
       return resolveViewFilterAddCommand(document, command)
-    case 'view.filter.replace':
-      return resolveViewFilterReplaceCommand(document, command)
+    case 'view.filter.set':
+      return resolveViewFilterSetCommand(document, command)
+    case 'view.filter.preset':
+      return resolveViewFilterPresetCommand(document, command)
+    case 'view.filter.value':
+      return resolveViewFilterValueCommand(document, command)
+    case 'view.filter.mode':
+      return resolveViewFilterModeCommand(document, command)
     case 'view.filter.remove':
       return resolveViewFilterRemoveCommand(document, command)
     case 'view.filter.clear':

@@ -5,13 +5,13 @@ import type {
 } from '@dataview/core/contracts'
 
 export const getFilterFieldId = (
-  rule: Pick<FilterRule, 'field'>
+  rule: Pick<FilterRule, 'fieldId'>
 ): FieldId | undefined => {
-  if (typeof rule.field !== 'string') {
+  if (typeof rule.fieldId !== 'string') {
     return undefined
   }
 
-  return rule.field
+  return rule.fieldId
 }
 
 const getFilterFieldIds = (

@@ -17,14 +17,14 @@ import type {
 } from '@whiteboard/core/selection'
 import type { Node, NodeSchema, Rect } from '@whiteboard/core/types'
 import type {
-  SelectionPresentation,
+  SelectionOverlay,
   SelectionToolbarContext,
   ToolbarSelectionKind
 } from '../../selection'
 import type { NodeRegistry } from '../../types/node'
 import type { Tool } from '../../types/tool'
 import type { EditTarget } from '../state/edit'
-import { readSelectionNodeSummary } from '../../selection'
+import { readSelectionNodeStats } from '../../selection/nodeSummary'
 
 type StyleFieldKind = 'string' | 'number' | 'numberArray'
 
@@ -119,7 +119,7 @@ const supportsStyleField = (
 
 const resolveToolbarSelectionKind = (
   nodes: readonly Node[],
-  summary: ReturnType<typeof readSelectionNodeSummary>
+  summary: ReturnType<typeof readSelectionNodeStats>
 ): ToolbarSelectionKind => {
   if (nodes.every((node) => node.type === 'shape')) {
     return 'shape'
@@ -282,29 +282,6 @@ const readTextAlign = (
   return node.type === 'shape' ? 'center' : 'left'
 }
 
-const resolvePresentationKind = ({
-  summary,
-  nodeSummary
-}: {
-  summary: SelectionSummary
-  nodeSummary: ReturnType<typeof readSelectionNodeSummary>
-}): Exclude<SelectionPresentation, { kind: 'none' }>['kind'] => {
-  if (
-    nodeSummary.count === 1
-    && nodeSummary.types.length === 1
-    && nodeSummary.types[0]?.key === 'group'
-    && summary.items.edgeCount === 0
-  ) {
-    return 'group'
-  }
-
-  if (summary.items.edgeCount > 0) {
-    return 'mixed'
-  }
-
-  return summary.items.nodeCount === 1 ? 'node' : 'nodes'
-}
-
 const resolveToolbarContext = ({
   summary,
   box,
@@ -319,7 +296,7 @@ const resolveToolbarContext = ({
     return undefined
   }
 
-  const nodeSummary = readSelectionNodeSummary({
+  const nodeSummary = readSelectionNodeStats({
     summary,
     registry
   })
@@ -330,11 +307,11 @@ const resolveToolbarContext = ({
     && supportsStyleField(nodes, registry, 'color', 'string')
 
   return {
+    box,
     selectionKey: nodes.map((node) => node.id).join('\0'),
     selectionKind,
     nodeIds: nodeSummary.ids,
     nodes,
-    nodeSummary,
     primaryNode: summary.items.primaryNode,
     filter:
       nodeSummary.count > 1 && nodeSummary.types.length > 1
@@ -415,11 +392,10 @@ const resolveToolbarContext = ({
   }
 }
 
-export const resolveSelectionPresentation = ({
+export const resolveSelectionOverlay = ({
   summary,
   transformBox,
   affordance,
-  registry,
   tool,
   edit,
   interactionChrome,
@@ -428,78 +404,85 @@ export const resolveSelectionPresentation = ({
   summary: SelectionSummary
   transformBox: SelectionTransformBox
   affordance: SelectionAffordance
-  registry: Pick<NodeRegistry, 'get'>
   tool: Tool
   edit: EditTarget
   interactionChrome: boolean
   transforming: boolean
-}): SelectionPresentation => {
+}): SelectionOverlay | undefined => {
   if (summary.items.count === 0 || summary.items.nodeCount === 0) {
-    return {
-      kind: 'none'
-    }
+    return undefined
   }
 
   const box = affordance.displayBox
   if (!box) {
-    return {
-      kind: 'none'
-    }
+    return undefined
   }
 
   const editing = edit !== null
-  const pureNodeSelection =
-    summary.items.nodeCount > 0
-    && summary.items.edgeCount === 0
-  const nodeSummary = readSelectionNodeSummary({
-    summary,
-    registry
-  })
   const hasTransformChrome = affordance.canResize || affordance.canRotate
   const showTransformHandles =
     tool.type === 'select'
     && !editing
     && hasTransformChrome
     && (transforming || interactionChrome)
-  const toolbar = pureNodeSelection
-    && tool.type === 'select'
-    && !editing
-    && interactionChrome
-      ? resolveToolbarContext({
-          summary,
-          box,
-          registry
-        })
-      : undefined
 
-  return {
-    kind: resolvePresentationKind({
-      summary,
-      nodeSummary
-    }),
-    geometry: {
-      box,
-      transformBox: affordance.transformBox ?? transformBox.box
-    },
-    overlay:
-      affordance.showSingleNodeOverlay && affordance.ownerNodeId
-        ? {
-            kind: 'node',
-            nodeId: affordance.ownerNodeId,
-            handles: showTransformHandles
-          }
-        : {
-            kind: 'selection',
-            interactive:
-              affordance.canMove
-              && affordance.moveHit === 'body',
-            frame: affordance.owner !== 'none',
-            handles:
-              showTransformHandles
-              && Boolean(affordance.transformBox ?? transformBox.box)
-              && affordance.canResize,
-            canResize: affordance.canResize
-          },
-    toolbar
+  return affordance.showSingleNodeOverlay && affordance.ownerNodeId
+    ? {
+        kind: 'node',
+        nodeId: affordance.ownerNodeId,
+        handles: showTransformHandles
+      }
+    : {
+        kind: 'selection',
+        box,
+        transformBox: affordance.transformBox ?? transformBox.box,
+        interactive:
+          affordance.canMove
+          && affordance.moveHit === 'body',
+        frame: affordance.owner !== 'none',
+        handles:
+          showTransformHandles
+          && Boolean(affordance.transformBox ?? transformBox.box)
+          && affordance.canResize,
+        canResize: affordance.canResize
+      }
+}
+
+export const resolveSelectionToolbar = ({
+  summary,
+  affordance,
+  registry,
+  tool,
+  edit,
+  interactionChrome
+}: {
+  summary: SelectionSummary
+  affordance: SelectionAffordance
+  registry: Pick<NodeRegistry, 'get'>
+  tool: Tool
+  edit: EditTarget
+  interactionChrome: boolean
+}): SelectionToolbarContext | undefined => {
+  const box = affordance.displayBox
+  if (!box) {
+    return undefined
   }
+
+  const pureNodeSelection =
+    summary.items.nodeCount > 0
+    && summary.items.edgeCount === 0
+  if (
+    !pureNodeSelection
+    || tool.type !== 'select'
+    || edit !== null
+    || !interactionChrome
+  ) {
+    return undefined
+  }
+
+  return resolveToolbarContext({
+    summary,
+    box,
+    registry
+  })
 }

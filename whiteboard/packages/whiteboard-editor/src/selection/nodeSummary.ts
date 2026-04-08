@@ -7,7 +7,7 @@ import type {
   NodeRegistry
 } from '../types/node'
 
-export type SelectionNodeTypeSummary = {
+export type SelectionNodeTypeInfo = {
   key: string
   name: string
   family: NodeFamily
@@ -16,12 +16,17 @@ export type SelectionNodeTypeSummary = {
   nodeIds: readonly NodeId[]
 }
 
-export type SelectionNodeSummary = {
+export type SelectionNodeInfo = {
+  lock: 'none' | 'mixed' | 'all'
+  types: readonly SelectionNodeTypeInfo[]
+}
+
+export type SelectionNodeStats = {
   ids: readonly NodeId[]
   count: number
   hasGroup: boolean
-  lock: 'none' | 'mixed' | 'all'
-  types: readonly SelectionNodeTypeSummary[]
+  lock: SelectionNodeInfo['lock']
+  types: readonly SelectionNodeTypeInfo[]
   mixed: boolean
 }
 
@@ -47,13 +52,13 @@ const readNodeMeta = (
   }
 }
 
-export const readSelectionNodeSummary = ({
+export const readSelectionNodeStats = ({
   summary,
   registry
 }: {
   summary: SelectionSummary
   registry: Pick<NodeRegistry, 'get'>
-}): SelectionNodeSummary => {
+}): SelectionNodeStats => {
   const nodes = summary.items.nodes
   const ids = summary.target.nodeIds
   const count = ids.length
@@ -118,5 +123,27 @@ export const readSelectionNodeSummary = ({
             : 'mixed',
     types,
     mixed: types.length > 1
+  }
+}
+
+export const readSelectionNodeInfo = ({
+  summary,
+  registry
+}: {
+  summary: SelectionSummary
+  registry: Pick<NodeRegistry, 'get'>
+}): SelectionNodeInfo | undefined => {
+  if (summary.items.nodeCount === 0 || summary.items.edgeCount > 0) {
+    return undefined
+  }
+
+  const stats = readSelectionNodeStats({
+    summary,
+    registry
+  })
+
+  return {
+    lock: stats.lock,
+    types: stats.types
   }
 }

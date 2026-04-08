@@ -11,7 +11,7 @@ import type {
 
 type ClipboardEditor = Pick<Editor, 'read'> & {
   commands: Omit<Editor['commands'], 'clipboard'>
-  state: Pick<Editor['state'], 'viewport'>
+  state: Pick<Editor['state'], 'viewport' | 'selection'>
 }
 
 const applyInsertedRoots = (input: {
@@ -43,10 +43,9 @@ const applyInsertedRoots = (input: {
 const readSelectionTarget = (
   editor: ClipboardEditor
 ): Exclude<EditorClipboardTarget, 'selection'> | undefined => {
-  const summary = editor.read.selection.summary.get()
-  const target = editor.read.selection.target.get()
+  const target = editor.state.selection.get()
 
-  if (summary.items.count > 0) {
+  if (target.nodeIds.length > 0 || target.edgeIds.length > 0) {
     return {
       nodeIds: target.nodeIds,
       edgeIds: target.edgeIds

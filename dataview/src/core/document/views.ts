@@ -3,7 +3,6 @@ import type {
   BucketSort,
   DataDoc,
   EntityTable,
-  FilterOperator,
   Filter,
   Search,
   Sorter,
@@ -39,12 +38,6 @@ export const normalizeViewOrders = (
   document: DataDoc,
   orders: readonly RecordId[] | undefined
 ) => normalizeRecordOrderIds(orders, createValidRecordIdSet(document))
-
-const normalizeFilterOperator = (value: unknown): FilterOperator => (
-  typeof value === 'string'
-    ? value as FilterOperator
-    : 'custom'
-)
 
 const normalizeBucketSort = (value: unknown): BucketSort => (
   typeof value === 'string'
@@ -127,15 +120,15 @@ const normalizeDocumentViewFilter = (filter: unknown): Filter => {
           .filter(rule => typeof rule === 'object' && rule !== null)
           .map(rule => {
             const currentRule = rule as {
-              field?: unknown
-              op?: unknown
+              fieldId?: unknown
+              presetId?: unknown
               value?: unknown
             }
             return {
-              field: typeof currentRule.field === 'string' ? currentRule.field : '',
-              op: normalizeFilterOperator(currentRule.op),
+              fieldId: typeof currentRule.fieldId === 'string' ? currentRule.fieldId : '',
+              presetId: typeof currentRule.presetId === 'string' ? currentRule.presetId : '',
               ...(Object.prototype.hasOwnProperty.call(currentRule, 'value')
-                ? { value: structuredClone(currentRule.value) }
+                ? { value: structuredClone(currentRule.value) as Filter['rules'][number]['value'] }
                 : {})
             }
           })

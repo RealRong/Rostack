@@ -4,13 +4,10 @@ import type {
   ViewGroup,
   Sorter
 } from '@dataview/core/contracts'
+import { cloneFilterRule as cloneRule } from '@dataview/core/filter'
 import type { ViewQuery } from './contracts'
 
-export const cloneFilterRule = (rule: FilterRule): FilterRule => ({
-  field: rule.field,
-  op: rule.op,
-  value: structuredClone(rule.value)
-})
+export const cloneFilterRule = (rule: FilterRule): FilterRule => cloneRule(rule)
 
 export const cloneSorter = (sorter: Sorter): Sorter => ({
   field: sorter.field,
@@ -97,8 +94,8 @@ export const sameFilterRule = (
   left: FilterRule,
   right: FilterRule
 ) => (
-  left.field === right.field
-  && left.op === right.op
+  left.fieldId === right.fieldId
+  && left.presetId === right.presetId
   && JSON.stringify(left.value) === JSON.stringify(right.value)
 )
 

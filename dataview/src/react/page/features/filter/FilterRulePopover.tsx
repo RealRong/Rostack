@@ -1,41 +1,35 @@
 import { ChevronDown, Filter, Trash } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import type { Field, FilterRule } from '@dataview/core/contracts'
-import {
-  applyFieldFilterPreset,
-  isFieldFilterEffective,
-} from '@dataview/core/field'
-import {
-  findFieldOption,
-  getFieldOptions,
-  parseDateInputDraft,
-  readDatePrimaryString
-} from '@dataview/core/field'
-import { isCustomField } from '@dataview/core/field'
+import { useEffect, useState } from 'react'
+import type { FilterRule } from '@dataview/core/contracts'
+import { parseDateInputDraft, readDatePrimaryString } from '@dataview/core/field'
+import type { FilterRuleProjection } from '@dataview/core/filter'
 import { Button } from '@ui/button'
 import { Input } from '@ui/input'
 import { Menu } from '@ui/menu'
 import { Popover } from '@ui/popover'
 import { cn } from '@ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
-import { buildOptionTagLabel } from '@dataview/react/menu-builders'
 import { QueryChip } from '../query'
-import { StatusFilterPicker } from './StatusFilterPicker'
+import { FilterOptionSetEditor } from './FilterOptionSetEditor'
+import {
+  getFilterPresetLabel,
+  getFilterValuePlaceholder
+} from './filterText'
 
 export interface FilterRulePopoverProps {
-  field?: Field
-  rule: FilterRule
+  entry: FilterRuleProjection
   open: boolean
   onOpenChange: (open: boolean) => void
-  onChange: (rule: FilterRule) => void
+  onPresetChange: (presetId: string) => void
+  onValueChange: (value: FilterRule['value'] | undefined) => void
   onRemove?: () => void
 }
 
 const readFilterDraft = (
-  field: Pick<Field, 'kind'> | undefined,
+  entry: Pick<FilterRuleProjection, 'editorKind' | 'rule' | 'field'>,
   value: unknown
 ) => {
-  switch (field?.kind) {
+  switch (entry.editorKind) {
     case 'number':
       return typeof value === 'number' && Number.isFinite(value)
         ? String(value)
@@ -48,86 +42,48 @@ const readFilterDraft = (
 }
 
 const applyFilterDraft = (
-  rule: FilterRule,
-  field: Pick<Field, 'kind'> | undefined,
+  entry: Pick<FilterRuleProjection, 'editorKind' | 'rule'>,
   draft: string
-): FilterRule | null => {
-  switch (field?.kind) {
+): FilterRule['value'] | null => {
+  switch (entry.editorKind) {
     case 'number': {
       const trimmed = draft.trim()
       if (!trimmed) {
-        return {
-          ...rule,
-          value: undefined
-        }
+        return undefined
       }
 
       const numeric = Number(trimmed)
       return Number.isFinite(numeric)
-        ? {
-            ...rule,
-            value: numeric
-          }
+        ? numeric
         : null
     }
     case 'date': {
       const trimmed = draft.trim()
       if (!trimmed) {
-        return {
-          ...rule,
-          value: undefined
-        }
+        return undefined
       }
 
-      const parsed = parseDateInputDraft(trimmed)
-      return parsed
-        ? {
-            ...rule,
-            value: parsed
-          }
-        : null
+      return parseDateInputDraft(trimmed) ?? null
     }
     default:
-      return {
-        ...rule,
-        value: draft
-      }
+      return draft
   }
 }
 
 export const FilterRulePopover = (props: FilterRulePopoverProps) => {
   const [conditionOpen, setConditionOpen] = useState(false)
-  const committedDraft = readFilterDraft(props.field, props.rule.value)
+  const committedDraft = readFilterDraft(props.entry, props.entry.rule.value)
   const [draft, setDraft] = useState(() => committedDraft)
 
-  const presentation = meta.filter.present(props.field, props.rule)
-  const active = isFieldFilterEffective(props.field, props.rule.op, props.rule.value)
-  const bodyLayout = presentation.bodyLayout
-  const fieldLabel = props.field?.name ?? renderMessage(meta.ui.filter.deletedField)
-  const fieldKind = props.field
-    ? meta.field.kind.get(props.field.kind)
+  const field = props.entry.field
+  const active = props.entry.effective
+  const bodyLayout = props.entry.bodyLayout
+  const fieldLabel = props.entry.fieldLabel || renderMessage(meta.ui.filter.deletedField)
+  const fieldKind = field
+    ? meta.field.kind.get(field.kind)
     : undefined
   const FieldIcon = fieldKind?.Icon ?? Filter
-  const conditionItems = meta.filter.conditions(props.field)
-  const editorKind = presentation.value.editor
-  const fieldOptions = isCustomField(props.field)
-    ? getFieldOptions(props.field)
-    : []
-  const selectedOption = !isCustomField(props.field) || props.field.kind === 'status'
-    ? undefined
-    : findFieldOption(props.field, props.rule.value)
-  const optionItems = useMemo(() => fieldOptions.map(option => ({
-    kind: 'toggle' as const,
-    key: option.id,
-    label: buildOptionTagLabel(option),
-    checked: selectedOption?.id === option.id,
-    onSelect: () => {
-      props.onChange({
-        ...props.rule,
-        value: option.id
-      })
-    }
-  })), [fieldOptions, props.onChange, props.rule, selectedOption?.id])
+  const editorKind = props.entry.editorKind
 
   useEffect(() => {
     if (!props.open) {
@@ -137,7 +93,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
 
   useEffect(() => {
     setDraft(committedDraft)
-  }, [committedDraft, props.field?.id, props.rule.op])
+  }, [committedDraft, field?.id, props.entry.rule.presetId])
 
   return (
     <Popover
@@ -170,7 +126,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
               <div className="min-w-0 flex-1 text-sm gap-1 flex items-end truncate font-medium text-foreground">
                 {fieldLabel}
 
-                {props.field && presentation.condition ? (
+                {field ? (
                   <Menu.Dropdown
                     open={conditionOpen}
                     onOpenChange={setConditionOpen}
@@ -178,19 +134,19 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
                     placement="bottom-start"
                     offset={6}
                     size="md"
-                    items={conditionItems.map(item => ({
+                    items={props.entry.conditions.map(item => ({
                       kind: 'toggle' as const,
                       key: item.id,
-                      label: renderMessage(item.message),
-                      checked: item.id === presentation.condition?.id,
+                      label: getFilterPresetLabel(field, item.id),
+                      checked: item.id === props.entry.activePresetId,
                       onSelect: () => {
-                        props.onChange(applyFieldFilterPreset(props.rule, props.field, item))
+                        props.onPresetChange(item.id)
                         setConditionOpen(false)
                       }
                     }))}
                     trigger={(
                       <div className="flex h-5 text-sm cursor-pointer items-center gap-1 rounded-md px-1 font-semibold text-muted-foreground transition-[background-color,color] hover:bg-hover hover:text-foreground">
-                        {renderMessage(presentation.condition.message)}
+                        {getFilterPresetLabel(field, props.entry.activePresetId)}
                         <ChevronDown className="opacity-70" size={12} strokeWidth={2} />
                       </div>
                     )}
@@ -214,26 +170,15 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
           </div>
 
           {bodyLayout !== 'none' ? (
-            <div className={cn(
-              editorKind === 'status' ? '' : bodyLayout === 'inset' ? 'px-2.5 pb-2.5 pt-1' : 'px-1.5 pb-2 pt-1'
+          <div className={cn(
+              bodyLayout === 'inset' ? 'px-2.5 pb-2.5 pt-1' : 'px-1.5 pb-2 pt-1'
             )}>
-              {editorKind === 'status' ? (
-                <StatusFilterPicker
-                  field={props.field}
-                  rule={props.rule}
-                  onChange={props.onChange}
+              {editorKind === 'option-set' ? (
+                <FilterOptionSetEditor
+                  field={field}
+                  value={props.entry.rule.value}
+                  onChange={props.onValueChange}
                 />
-              ) : editorKind === 'singleOption' ? (
-                fieldOptions.length ? (
-                  <Menu
-                    items={optionItems}
-                    autoFocus={false}
-                  />
-                ) : (
-                  <div className="px-1.5 py-2 text-[12px] text-muted-foreground">
-                    {renderMessage(meta.ui.filter.noOptions)}
-                  </div>
-                )
               ) : (
                 <Input
                   value={draft}
@@ -241,24 +186,22 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
                     const nextDraft = event.target.value
                     setDraft(nextDraft)
 
-                    const nextRule = applyFilterDraft(props.rule, props.field, nextDraft)
-                    if (nextRule) {
-                      props.onChange(nextRule)
+                    const nextValue = applyFilterDraft(props.entry, nextDraft)
+                    if (nextValue !== null) {
+                      props.onValueChange(nextValue)
                     }
                   }}
                   onBlur={() => {
                     setDraft(committedDraft)
                   }}
-                type={editorKind === 'date' ? 'date' : 'text'}
-                inputMode={editorKind === 'number' ? 'decimal' : undefined}
-                placeholder={presentation.value.placeholder
-                  ? renderMessage(presentation.value.placeholder)
-                  : undefined}
-              />
-            )}
-          </div>
-        ) : null}
-      </div>
+                  type={editorKind === 'date' ? 'date' : 'text'}
+                  inputMode={editorKind === 'number' ? 'decimal' : undefined}
+                  placeholder={getFilterValuePlaceholder(field)}
+                />
+              )}
+            </div>
+          ) : null}
+        </div>
       </Popover.Content>
     </Popover>
   )

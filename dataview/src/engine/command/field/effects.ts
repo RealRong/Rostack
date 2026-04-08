@@ -9,9 +9,12 @@ import {
   getDocumentViews
 } from '@dataview/core/document'
 import {
-  getFieldFilterOps,
   getFieldGroupMeta
 } from '@dataview/core/field'
+import {
+  getFilterPresetIds,
+  hasFilterPreset
+} from '@dataview/core/filter'
 import {
   supportsFieldCalculationMetric
 } from '@dataview/core/calculation'
@@ -44,7 +47,7 @@ const cleanupViewForRemovedField = (
   fieldId: CustomFieldId
 ) => {
   const nextOptions = pruneFieldFromViewOptions(view.options, fieldId)
-  const nextFilterRules = view.filter.rules.filter(rule => rule.field !== fieldId)
+  const nextFilterRules = view.filter.rules.filter(rule => rule.fieldId !== fieldId)
   const nextSorters = view.sort.filter(sorter => sorter.field !== fieldId)
   const nextSearchFields = cleanupSearchFields(view.search.fields, fieldId)
   const nextGroup = view.group?.field === fieldId
@@ -89,9 +92,9 @@ const cleanupViewForConvertedField = (
   view: View,
   field: CustomField
 ) => {
-  const validFilterOps = new Set(getFieldFilterOps(field))
+  const validPresetIds = new Set(getFilterPresetIds(field))
   const nextFilterRules = view.filter.rules.filter(rule => (
-    rule.field !== field.id || validFilterOps.has(rule.op)
+    rule.fieldId !== field.id || validPresetIds.has(rule.presetId)
   ))
 
   let nextGroup = view.group

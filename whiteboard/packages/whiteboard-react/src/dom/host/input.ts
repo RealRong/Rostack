@@ -79,7 +79,7 @@ const isSelectedItemPick = (
   editor: WhiteboardRuntime,
   pick: EditorPick
 ) => {
-  const selection = editor.read.selection.target.get()
+  const selection = editor.state.selection.get()
 
   if (pick.kind === 'node') {
     return selection.nodeIds.includes(pick.id)

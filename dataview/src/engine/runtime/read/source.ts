@@ -16,6 +16,10 @@ import {
   resolveViewProjection,
   type ViewProjection
 } from '@dataview/engine/projection/view'
+import {
+  resolveViewFilterProjection,
+  type ViewFilterProjection
+} from '@dataview/core/filter'
 
 export const equalIds = <T extends string>(left: readonly T[], right: readonly T[]) => (
   left.length === right.length && left.every((value, index) => value === right[index])
@@ -29,6 +33,7 @@ export interface ReadSource {
   customField: KeyedReadStore<CustomFieldId, CustomField | undefined>
   viewIds: ReadStore<readonly ViewId[]>
   view: KeyedReadStore<ViewId, View | undefined>
+  filter: KeyedReadStore<ViewId, ViewFilterProjection | undefined>
   viewProjection: KeyedReadStore<ViewId, ViewProjection | undefined>
   setDocument: (document: DataDoc) => void
 }
@@ -64,6 +69,12 @@ export const createReadSource = (document: DataDoc): ReadSource => {
   const viewById: KeyedReadStore<ViewId, View | undefined> = createKeyedDerivedStore<ViewId, View | undefined>({
     get: (read, viewId) => getDocumentViewById(read(documentStore), viewId)
   })
+  const filterByViewId: KeyedReadStore<ViewId, ViewFilterProjection | undefined> = createKeyedDerivedStore<ViewId, ViewFilterProjection | undefined>({
+    get: (read, viewId) => resolveViewFilterProjection(
+      read(documentStore),
+      viewId
+    )
+  })
   const viewProjectionById: KeyedReadStore<ViewId, ViewProjection | undefined> = createKeyedDerivedStore<ViewId, ViewProjection | undefined>({
     get: (read, viewId) => resolveViewProjection(
       read(documentStore),
@@ -79,6 +90,7 @@ export const createReadSource = (document: DataDoc): ReadSource => {
     customField: customFieldById,
     viewIds,
     view: viewById,
+    filter: filterByViewId,
     viewProjection: viewProjectionById,
     setDocument: nextDocument => {
       documentStore.set(nextDocument)

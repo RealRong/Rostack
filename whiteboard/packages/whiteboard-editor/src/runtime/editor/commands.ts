@@ -10,12 +10,14 @@ export const createEditorCommands = ({
   engine,
   read,
   write,
-  viewport
+  viewport,
+  selection
 }: {
   engine: EngineInstance
   read: EditorRead
   write: EditorWriteApi
   viewport: EditorViewportRuntime['read']
+  selection: Editor['state']['selection']
 }): Editor['commands'] => {
   const nodeTextCommands = {
     preview: ({
@@ -107,7 +109,8 @@ export const createEditorCommands = ({
         commands: commandsWithoutClipboard,
         read,
         state: {
-          viewport
+          viewport,
+          selection
         }
       }
     })

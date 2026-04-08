@@ -161,8 +161,9 @@ const readSelectionTransformSpec = (
   handle: TransformPickHandle,
   input: PointerDownInput
 ): TransformSpec<Node> | undefined => {
-  const selection = ctx.read.selection.summary.get()
-  const affordance = ctx.read.selection.affordance.get()
+  const selectionModel = ctx.selection.model.get()
+  const selection = selectionModel.summary
+  const affordance = selectionModel.affordance
   if (
     !affordance.transformBox
     || handle.kind !== 'resize'

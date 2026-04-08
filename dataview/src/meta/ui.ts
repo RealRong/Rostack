@@ -188,7 +188,7 @@ export const ui = {
         )
       }
 
-      const field = findField(fields, rules[0]?.field)
+      const field = findField(fields, rules[0]?.fieldId)
       return field
         ? message('meta.ui.viewSettings.filterSummary.field', '{field}', { field: field.name })
         : message('meta.ui.viewSettings.filterSummary.single', '1 filter')

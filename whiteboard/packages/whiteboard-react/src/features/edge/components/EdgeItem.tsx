@@ -23,11 +23,11 @@ const EdgeItemBase = ({
   selected
 }: EdgeItemProps) => {
   const edge = entry.edge
-  const ref = usePickRef({
-    kind: 'edge',
-    id: edge.id,
-    part: 'body'
-  })
+  // const ref = usePickRef({
+  //   kind: 'edge',
+  //   id: edge.id,
+  //   part: 'body'
+  // })
   const svgPath = entry.path.svgPath
 
   const { stroke, strokeWidth, dash, markerStart, markerEnd, hitWidth, animation } = useMemo(() => {
@@ -65,7 +65,7 @@ const EdgeItemBase = ({
       style={{ '--wb-edge-hover-stroke-width': `${hoverStrokeWidth}` } as CSSProperties}
     >
       <path
-        ref={ref}
+        // ref={ref}
         d={svgPath}
         fill="none"
         stroke="transparent"

@@ -1,13 +1,9 @@
-export {
-  readSelectionNodeSummary
-} from './nodeSummary'
 export type {
-  SelectionNodeSummary,
-  SelectionNodeTypeSummary
+  SelectionNodeInfo,
+  SelectionNodeTypeInfo
 } from './nodeSummary'
 export type {
   SelectionOverlay,
-  SelectionPresentation,
   SelectionToolbarContext,
   SelectionToolbarFilter,
   ToolbarSelectionKind

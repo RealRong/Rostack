@@ -11,7 +11,7 @@ import {
   getDocumentViewById,
   getDocumentViews
 } from '@dataview/core/document'
-import { isFieldFilterEffective } from '@dataview/core/field'
+import { isFilterRuleEffective } from '@dataview/core/filter'
 import { applyRecordOrder, normalizeRecordOrderIds } from '@dataview/core/view/order'
 import {
   compareGroupSort,
@@ -85,11 +85,7 @@ const filterViewRecords = (
   let nextRecords = [...records]
   const filterMode = filter.mode
   const effectiveFilterRules = filter.rules.filter(rule => (
-    isFieldFilterEffective(
-      getDocumentFieldById(document, rule.field),
-      rule.op,
-      rule.value
-    )
+    isFilterRuleEffective(getDocumentFieldById(document, rule.fieldId), rule)
   ))
 
   if (effectiveFilterRules.length) {

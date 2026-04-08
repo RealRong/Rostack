@@ -1,6 +1,7 @@
 import type {
   Editor,
   EditorRead,
+  EditorState,
   EditorWriteApi
 } from '../../types/editor'
 import type { ContextMenuIntent } from '../../types/input'
@@ -16,15 +17,15 @@ const isSameIds = (
 )
 
 const readSelectionIntent = (
-  read: EditorRead,
+  selection: EditorState['selection'],
   screen: {
     x: number
     y: number
   }
 ): Extract<ContextMenuIntent, { kind: 'selection' }> | null => {
-  const selection = read.selection.summary.get()
+  const target = selection.get()
 
-  return selection.items.count > 0
+  return target.nodeIds.length > 0 || target.edgeIds.length > 0
     ? {
         kind: 'selection',
         screen
@@ -33,11 +34,11 @@ const readSelectionIntent = (
 }
 
 const syncNodeSelection = (
-  read: EditorRead,
+  selection: EditorState['selection'],
   write: EditorWriteApi,
   nodeIds: readonly string[]
 ) => {
-  const current = read.selection.target.get()
+  const current = selection.get()
   if (isSameIds(current.nodeIds, nodeIds) && current.edgeIds.length === 0) {
     return
   }
@@ -48,11 +49,11 @@ const syncNodeSelection = (
 }
 
 const syncSingleEdgeSelection = (
-  read: EditorRead,
+  selection: EditorState['selection'],
   write: EditorWriteApi,
   edgeId: string
 ) => {
-  const current = read.selection.target.get()
+  const current = selection.get()
   if (
     current.nodeIds.length === 0
     && current.edgeIds.length === 1
@@ -85,12 +86,14 @@ export const createEditorInput = ({
   interaction,
   edgeHover,
   read,
-  write
+  write,
+  selection
 }: {
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
   read: EditorRead
   write: EditorWriteApi
+  selection: EditorState['selection']
 }): Editor['input'] => {
   const writePointer = (input: {
     client: { x: number, y: number }
@@ -124,25 +127,25 @@ export const createEditorInput = ({
 
       switch (input.pick.kind) {
         case 'selection-box': {
-          return readSelectionIntent(read, input.screen) ?? {
+          return readSelectionIntent(selection, input.screen) ?? {
             kind: 'canvas',
             screen: input.screen,
             world: input.world
           }
         }
         case 'node': {
-          const selection = read.selection.summary.get()
-          const reuseCurrentSelection = selection.target.nodeSet.has(input.pick.id)
+          const current = selection.get()
+          const reuseCurrentSelection = current.nodeIds.includes(input.pick.id)
           if (reuseCurrentSelection) {
-            return readSelectionIntent(read, input.screen)
+            return readSelectionIntent(selection, input.screen)
           }
 
-          syncNodeSelection(read, write, [input.pick.id])
-          return readSelectionIntent(read, input.screen)
+          syncNodeSelection(selection, write, [input.pick.id])
+          return readSelectionIntent(selection, input.screen)
         }
         case 'group': {
-          const selection = readGroupSelection(read, input.pick.id)
-          if (!selection) {
+          const target = readGroupSelection(read, input.pick.id)
+          if (!target) {
             return {
               kind: 'canvas',
               screen: input.screen,
@@ -150,11 +153,11 @@ export const createEditorInput = ({
             }
           }
 
-          write.session.selection.replace(selection)
-          return readSelectionIntent(read, input.screen)
+          write.session.selection.replace(target)
+          return readSelectionIntent(selection, input.screen)
         }
         case 'edge':
-          syncSingleEdgeSelection(read, write, input.pick.id)
+          syncSingleEdgeSelection(selection, write, input.pick.id)
           return {
             kind: 'edge',
             screen: input.screen,

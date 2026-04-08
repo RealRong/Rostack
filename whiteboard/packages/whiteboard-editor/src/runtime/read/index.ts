@@ -17,6 +17,7 @@ import {
 } from './edge'
 import {
   createSelectionRead,
+  type SelectionInternalRead,
   type SelectionRead
 } from './selection'
 import { createToolRead, type ToolRead } from './tool'
@@ -45,6 +46,13 @@ export type RuntimeRead = Omit<EngineRead, 'node' | 'edge'> & {
   }
 }
 
+export type RuntimeReadBundle = {
+  read: RuntimeRead
+  internal: {
+    selection: SelectionInternalRead
+  }
+}
+
 export const createRead = ({
   engineRead,
   registry,
@@ -61,7 +69,7 @@ export const createRead = ({
   interaction: Pick<InteractionRuntime, 'mode' | 'chrome'>
   overlay: Pick<EditorOverlay, 'selectors'>
   viewport: EditorViewportRuntime
-}): RuntimeRead => {
+}): RuntimeReadBundle => {
   const nodeRead: NodeRead = createNodeRead({
     read: engineRead,
     registry,
@@ -92,30 +100,35 @@ export const createRead = ({
   })
 
   return {
-    document: engineRead.document,
-    frame: engineRead.frame,
-    group: engineRead.group,
-    history,
-    node: nodeRead,
-    edge: edgeRead,
-    mindmap: engineRead.mindmap,
-    selection: selectionRead,
-    slice: engineRead.slice,
-    index: engineRead.index,
-    tool: toolRead,
-    draw: runtime.state.draw.store,
-    space: runtime.state.space,
-    viewport: {
-      get: viewport.read.get,
-      subscribe: viewport.read.subscribe,
-      pointer: viewport.read.pointer,
-      worldToScreen: viewport.read.worldToScreen,
-      screenPoint: viewport.input.screenPoint,
-      size: viewport.input.size
+    read: {
+      document: engineRead.document,
+      frame: engineRead.frame,
+      group: engineRead.group,
+      history,
+      node: nodeRead,
+      edge: edgeRead,
+      mindmap: engineRead.mindmap,
+      selection: selectionRead.public,
+      slice: engineRead.slice,
+      index: engineRead.index,
+      tool: toolRead,
+      draw: runtime.state.draw.store,
+      space: runtime.state.space,
+      viewport: {
+        get: viewport.read.get,
+        subscribe: viewport.read.subscribe,
+        pointer: viewport.read.pointer,
+        worldToScreen: viewport.read.worldToScreen,
+        screenPoint: viewport.input.screenPoint,
+        size: viewport.input.size
+      },
+      overlay: {
+        node: overlay.selectors.node,
+        feedback: overlay.selectors.feedback
+      }
     },
-    overlay: {
-      node: overlay.selectors.node,
-      feedback: overlay.selectors.feedback
+    internal: {
+      selection: selectionRead.internal
     }
   }
 }

@@ -3,7 +3,6 @@ import { useStoreValue } from '@shared/react'
 import { memo } from 'react'
 import { useEditor } from '#react/runtime/hooks'
 import { useResolvedConfig } from '#react/runtime/hooks'
-import { useSelection } from '#react/features/node'
 import { useEdgeView } from '../hooks/useEdgeView'
 import { EdgeItem } from './EdgeItem'
 import { EDGE_ARROW_END_ID, EDGE_ARROW_START_ID } from '../constants'
@@ -37,7 +36,7 @@ export const EdgeLayer = () => {
   const editor = useEditor()
   const config = useResolvedConfig()
   const edgeIds = useStoreValue(editor.read.edge.list)
-  const selectedEdgeIds = useSelection().summary.target.edgeSet
+  const selection = useStoreValue(editor.state.selection)
   const hitTestThresholdScreen = config.edge.hitTestThresholdScreen
 
   return (
@@ -78,7 +77,7 @@ export const EdgeLayer = () => {
           key={edgeId}
           edgeId={edgeId}
           hitTestThresholdScreen={hitTestThresholdScreen}
-          selected={selectedEdgeIds.has(edgeId)}
+          selected={selection.edgeIds.includes(edgeId)}
         />
       ))}
     </svg>

@@ -57,8 +57,7 @@ const resolveQueryBarEntry = (
   }
 
   return view.filter.rules.some(rule => (
-    typeof rule.field === 'string'
-    && rule.field === entry.fieldId
+    rule.fieldId === entry.fieldId
   ))
     ? {
         kind: 'filter',

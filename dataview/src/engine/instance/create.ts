@@ -38,6 +38,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       customField: read.customField,
       viewIds: read.viewIds,
       view: read.view,
+      filter: read.filter,
       viewProjection: read.viewProjection
     },
     command: command => {

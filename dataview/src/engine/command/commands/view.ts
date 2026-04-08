@@ -28,10 +28,13 @@ import {
   supportsFieldCalculationMetric
 } from '@dataview/core/calculation'
 import {
-  getFieldFilterOps,
   getFieldGroupMeta,
   isGroupBucketSort
 } from '@dataview/core/field'
+import {
+  hasFilterPreset,
+  normalizeFilterRule
+} from '@dataview/core/filter'
 import {
   addViewFilter,
   addViewSorter,
@@ -45,6 +48,9 @@ import {
   replaceViewSorter,
   setOnlyViewSorter,
   setViewFilter,
+  setViewFilterMode,
+  setViewFilterPreset,
+  setViewFilterValue,
   setViewGroup,
   setViewGroupBucketCollapsed,
   setViewGroupBucketHidden,
@@ -202,27 +208,56 @@ const validateFilter = (
 
   const issues: ValidationIssue[] = []
   filter.rules.forEach((rule, index) => {
-    if (!isNonEmptyString(rule.field)) {
-      issues.push(createIssue(command, 'error', 'view.invalidProjection', 'Filter field must be a non-empty string', `${path}.rules.${index}.field`))
+    if (!isNonEmptyString(rule.fieldId)) {
+      issues.push(createIssue(command, 'error', 'view.invalidProjection', 'Filter field id must be a non-empty string', `${path}.rules.${index}.fieldId`))
       return
     }
-    if (!isNonEmptyString(rule.op)) {
-      issues.push(createIssue(command, 'error', 'view.invalidProjection', 'Filter operator must be a non-empty string', `${path}.rules.${index}.op`))
+    if (!isNonEmptyString(rule.presetId)) {
+      issues.push(createIssue(command, 'error', 'view.invalidProjection', 'Filter preset id must be a non-empty string', `${path}.rules.${index}.presetId`))
       return
     }
 
-    const field = getDocumentFieldById(document, rule.field)
+    const field = getDocumentFieldById(document, rule.fieldId)
     if (!field) {
-      issues.push(createIssue(command, 'error', 'field.notFound', `Unknown field: ${rule.field}`, `${path}.rules.${index}.field`))
+      issues.push(createIssue(command, 'error', 'field.notFound', `Unknown field: ${rule.fieldId}`, `${path}.rules.${index}.fieldId`))
       return
     }
 
-    if (!getFieldFilterOps(field).includes(rule.op)) {
-      issues.push(createIssue(command, 'error', 'view.invalidProjection', `Filter operator ${rule.op} is invalid for ${field.kind} fields`, `${path}.rules.${index}.op`))
+    if (!hasFilterPreset(field, rule.presetId)) {
+      issues.push(createIssue(command, 'error', 'view.invalidProjection', `Filter preset ${rule.presetId} is invalid for ${field.kind} fields`, `${path}.rules.${index}.presetId`))
     }
   })
 
   return issues
+}
+
+const validateFilterIndex = (
+  command: IndexedCommand,
+  issues: ValidationIssue[],
+  index: number,
+  path = 'index'
+) => {
+  if (typeof index !== 'number' || !Number.isInteger(index) || index < 0) {
+    issues.push(createIssue(command, 'error', 'view.invalidProjection', 'filter index must be a non-negative integer', path))
+  }
+}
+
+const getIndexedFilterContext = (
+  document: DataDoc,
+  viewId: string,
+  index: number
+) => {
+  const view = getDocumentViewById(document, viewId)
+  const rule = view?.filter.rules[index]
+  const field = rule
+    ? getDocumentFieldById(document, rule.fieldId)
+    : undefined
+
+  return {
+    view,
+    rule,
+    field
+  }
 }
 
 const validateSearch = (
@@ -810,9 +845,9 @@ export const resolveViewFilterAddCommand = (
   )))
 }
 
-export const resolveViewFilterReplaceCommand = (
+export const resolveViewFilterSetCommand = (
   document: DataDoc,
-  command: Extract<IndexedCommand, { type: 'view.filter.replace' }>
+  command: Extract<IndexedCommand, { type: 'view.filter.set' }>
 ) => {
   const issues = [
     ...validateViewExists(document, command, command.viewId),
@@ -821,15 +856,88 @@ export const resolveViewFilterReplaceCommand = (
       rules: [command.rule]
     }, 'rule')
   ]
-  if (typeof command.index !== 'number' || !Number.isInteger(command.index) || command.index < 0) {
-    issues.push(createIssue(command, 'error', 'view.invalidProjection', 'filter index must be a non-negative integer', 'index'))
+  validateFilterIndex(command, issues, command.index)
+  if (hasValidationErrors(issues)) {
+    return resolveCommandResult(issues)
+  }
+
+  const field = getDocumentFieldById(document, command.rule.fieldId)
+  const nextRule = normalizeFilterRule(field, command.rule)
+
+  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
+    setViewFilter(query, command.index, nextRule)
+  )))
+}
+
+export const resolveViewFilterPresetCommand = (
+  document: DataDoc,
+  command: Extract<IndexedCommand, { type: 'view.filter.preset' }>
+) => {
+  const issues = validateViewExists(document, command, command.viewId)
+  validateFilterIndex(command, issues, command.index)
+  if (!isNonEmptyString(command.presetId)) {
+    issues.push(createIssue(command, 'error', 'view.invalidProjection', 'filter preset id must be a non-empty string', 'presetId'))
+  }
+  if (hasValidationErrors(issues)) {
+    return resolveCommandResult(issues)
+  }
+
+  const { rule, field } = getIndexedFilterContext(document, command.viewId, command.index)
+  if (!rule) {
+    issues.push(createIssue(command, 'error', 'view.invalidProjection', `Unknown filter index: ${command.index}`, 'index'))
+  } else if (!field) {
+    issues.push(createIssue(command, 'error', 'field.notFound', `Unknown field: ${rule.fieldId}`, 'index'))
+  } else if (!hasFilterPreset(field, command.presetId)) {
+    issues.push(createIssue(command, 'error', 'view.invalidProjection', `Filter preset ${command.presetId} is invalid for ${field.kind} fields`, 'presetId'))
   }
   if (hasValidationErrors(issues)) {
     return resolveCommandResult(issues)
   }
 
   return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
-    setViewFilter(query, command.index, command.rule)
+    setViewFilterPreset(query, command.index, field, command.presetId)
+  )))
+}
+
+export const resolveViewFilterValueCommand = (
+  document: DataDoc,
+  command: Extract<IndexedCommand, { type: 'view.filter.value' }>
+) => {
+  const issues = validateViewExists(document, command, command.viewId)
+  validateFilterIndex(command, issues, command.index)
+  if (hasValidationErrors(issues)) {
+    return resolveCommandResult(issues)
+  }
+
+  const { rule, field } = getIndexedFilterContext(document, command.viewId, command.index)
+  if (!rule) {
+    issues.push(createIssue(command, 'error', 'view.invalidProjection', `Unknown filter index: ${command.index}`, 'index'))
+  } else if (!field) {
+    issues.push(createIssue(command, 'error', 'field.notFound', `Unknown field: ${rule.fieldId}`, 'index'))
+  }
+  if (hasValidationErrors(issues)) {
+    return resolveCommandResult(issues)
+  }
+
+  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
+    setViewFilterValue(query, command.index, field, command.value)
+  )))
+}
+
+export const resolveViewFilterModeCommand = (
+  document: DataDoc,
+  command: Extract<IndexedCommand, { type: 'view.filter.mode' }>
+) => {
+  const issues = validateViewExists(document, command, command.viewId)
+  if (command.value !== 'and' && command.value !== 'or') {
+    issues.push(createIssue(command, 'error', 'view.invalidProjection', 'filter mode must be "and" or "or"', 'value'))
+  }
+  if (hasValidationErrors(issues)) {
+    return resolveCommandResult(issues)
+  }
+
+  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
+    setViewFilterMode(query, command.value)
   )))
 }
 
@@ -838,9 +946,7 @@ export const resolveViewFilterRemoveCommand = (
   command: Extract<IndexedCommand, { type: 'view.filter.remove' }>
 ) => {
   const issues = validateViewExists(document, command, command.viewId)
-  if (typeof command.index !== 'number' || !Number.isInteger(command.index) || command.index < 0) {
-    issues.push(createIssue(command, 'error', 'view.invalidProjection', 'filter index must be a non-negative integer', 'index'))
-  }
+  validateFilterIndex(command, issues, command.index)
   if (hasValidationErrors(issues)) {
     return resolveCommandResult(issues)
   }

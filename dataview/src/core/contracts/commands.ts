@@ -4,6 +4,7 @@ import type {
   CustomFieldKind,
   CustomFieldId,
   CustomField,
+  FilterPresetId,
   Row,
   StatusCategory,
   Filter,
@@ -124,10 +125,27 @@ export type Command =
       fieldId: FieldId
     }
   | {
-      type: 'view.filter.replace'
+      type: 'view.filter.set'
       viewId: ViewId
       index: number
       rule: Filter['rules'][number]
+    }
+  | {
+      type: 'view.filter.preset'
+      viewId: ViewId
+      index: number
+      presetId: FilterPresetId
+    }
+  | {
+      type: 'view.filter.value'
+      viewId: ViewId
+      index: number
+      value?: Filter['rules'][number]['value']
+    }
+  | {
+      type: 'view.filter.mode'
+      viewId: ViewId
+      value: Filter['mode']
     }
   | {
       type: 'view.filter.remove'

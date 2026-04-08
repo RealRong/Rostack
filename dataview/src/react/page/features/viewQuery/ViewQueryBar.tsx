@@ -8,6 +8,7 @@ import {
 import { SortPopover, getAvailableSorterFields } from '@dataview/react/page/features/sort'
 import {
   useDataView,
+  useDataViewKeyedValue,
   useDataViewValue,
 } from '@dataview/react/dataview'
 import { FieldPicker } from '@dataview/react/field/picker'
@@ -32,12 +33,19 @@ export const ViewQueryBar = () => {
     dataView => dataView.currentView,
     view => view?.view
   )
+  const filterProjection = useDataViewKeyedValue(
+    dataView => dataView.engine.read.filter,
+    currentView?.id ?? ''
+  )
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined
-  const filters = currentView?.filter.rules ?? []
+  const filters = filterProjection?.rules ?? []
   const sorts = currentView?.sort ?? []
-  const availableFilterFields = getAvailableFilterFields(fields, filters)
+  const availableFilterFields = getAvailableFilterFields(
+    fields,
+    filters.map(entry => entry.rule)
+  )
   const availableSorterFields = getAvailableSorterFields(fields, sorts)
 
   if (!currentView || !queryBar.visible || (!filters.length && !sorts.length)) {
@@ -62,16 +70,13 @@ export const ViewQueryBar = () => {
         />
       ) : null}
 
-      {filters.map((rule: typeof filters[number], index: number) => (
+      {filters.map((entry, index) => (
         <FilterRulePopover
-          key={`filter_${getFilterFieldId(rule) ?? index}`}
-          field={typeof rule.field === 'string'
-            ? fields.find(field => field.id === rule.field)
-            : undefined}
-          rule={rule}
-          open={queryBar.route?.kind === 'filter' && queryBar.route.fieldId === getFilterFieldId(rule)}
+          key={`filter_${entry.fieldId}_${index}`}
+          entry={entry}
+          open={queryBar.route?.kind === 'filter' && queryBar.route.fieldId === getFilterFieldId(entry.rule)}
           onOpenChange={open => {
-            const fieldId = getFilterFieldId(rule)
+            const fieldId = getFilterFieldId(entry.rule)
             if (open && fieldId) {
               page.query.open({
                 kind: 'filter',
@@ -82,8 +87,11 @@ export const ViewQueryBar = () => {
 
             page.query.close()
           }}
-          onChange={nextRule => {
-            currentViewDomain?.filter.replace(index, nextRule)
+          onPresetChange={presetId => {
+            currentViewDomain?.filter.preset(index, presetId)
+          }}
+          onValueChange={value => {
+            currentViewDomain?.filter.value(index, value)
           }}
           onRemove={() => {
             currentViewDomain?.filter.remove(index)

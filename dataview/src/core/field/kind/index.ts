@@ -1,7 +1,5 @@
 import type {
   BucketSort,
-  FilterOperator,
-  FilterRule,
   CustomField,
   CustomFieldKind,
   ViewGroup
@@ -19,24 +17,19 @@ import {
   type DateGroupMode
 } from './date'
 import {
-  createEmptyStatusFilterValue,
   compareStatusFieldValues,
   getStatusCategoryColor,
   getStatusCategoryLabel,
   getStatusCategoryOrder,
   getStatusDefaultOption,
   getStatusOptionCategory,
-  STATUS_CATEGORIES,
-  isStatusFilterEffective,
-  matchStatusFilter
+  STATUS_CATEGORIES
 } from './status'
 import {
-  containsFieldOptionToken,
   getFieldOption,
   getFieldOptions,
   getFieldOptionOrder,
-  getFieldOptionTokens,
-  matchesFieldOptionValue
+  getFieldOptionTokens
 } from '../options'
 import {
   formatUrlDisplayValue
@@ -51,7 +44,6 @@ import {
 } from './group'
 import {
   kindSpecs,
-  type KindFilterPreset,
   type KindSpec
 } from './spec'
 import {
@@ -70,9 +62,6 @@ export interface Kind extends KindSpec {
   display: (field: FieldInput, value: unknown) => string | undefined
   search: (field: FieldInput, value: unknown) => string[]
   compare: (field: FieldInput, left: unknown, right: unknown) => number
-  createFilterValue: (field: FieldInput, op: FilterOperator) => unknown
-  isFilterEffective: (field: FieldInput, op: FilterOperator, value: unknown) => boolean
-  match: (field: FieldInput, value: unknown, op: FilterOperator, expected: unknown) => boolean
   groupDomain: (field: FieldInput, mode: string) => readonly Bucket[]
   groupEntries: (
     field: FieldInput,
@@ -569,10 +558,6 @@ const createStatusCategoryBucket = (
   sortValue: getStatusCategoryLabel(category)
 })
 
-const hasNonEmptyArrayValue = (value: unknown) => (
-  Array.isArray(value) && value.some(item => !isEmptyFieldValue(item))
-)
-
 const BUCKET_SORTS = new Set<BucketSort>([
   'manual',
   'labelAsc',
@@ -590,192 +575,6 @@ const normalizeGroupBucketInterval = (
 
   return value
 }
-
-const createEmptyFilterValue = (
-  _field: FieldInput,
-  _op: FilterOperator
-) => undefined
-
-const createTextFilterValue = (
-  _field: FieldInput,
-  _op: FilterOperator
-) => ''
-
-const createStatusFilterValue = (
-  _field: FieldInput,
-  _op: FilterOperator
-) => createEmptyStatusFilterValue()
-
-const isBaseFilterEffective = (
-  op: FilterOperator,
-  value: unknown
-): boolean => {
-  if (op === 'custom') {
-    return false
-  }
-
-  if (op === 'exists') {
-    return true
-  }
-
-  if (op === 'in') {
-    return hasNonEmptyArrayValue(value)
-  }
-
-  return !isEmptyFieldValue(value)
-}
-
-const isNumberFilterEffective = (
-  op: FilterOperator,
-  value: unknown
-) => {
-  if (op === 'custom') {
-    return false
-  }
-
-  if (op === 'exists') {
-    return true
-  }
-
-  if (op === 'in') {
-    return hasNonEmptyArrayValue(value)
-  }
-
-  return readNumberValue(value) !== undefined
-}
-
-const isDateFilterEffective = (
-  op: FilterOperator,
-  value: unknown
-) => {
-  if (op === 'custom') {
-    return false
-  }
-
-  if (op === 'exists') {
-    return true
-  }
-
-  if (op === 'in') {
-    return hasNonEmptyArrayValue(value)
-  }
-
-  return readDateComparableTimestamp(value) !== undefined
-}
-
-const isBooleanFilterEffective = (
-  op: FilterOperator,
-  value: unknown
-) => {
-  if (op === 'custom') {
-    return false
-  }
-
-  if (op === 'exists') {
-    return true
-  }
-
-  if (op === 'in') {
-    return hasNonEmptyArrayValue(value)
-  }
-
-  return readBooleanValue(value) !== undefined
-}
-
-const isMultiSelectFilterEffective = (
-  op: FilterOperator,
-  value: unknown
-) => {
-  if (op === 'custom' || op === 'exists' || op === 'in') {
-    return isBaseFilterEffective(op, value)
-  }
-
-  return hasNonEmptyArrayValue(value) || !isEmptyFieldValue(value)
-}
-
-const containsText = (
-  value: unknown,
-  expected: unknown
-): boolean => {
-  if (Array.isArray(value)) {
-    return value.some(item => containsText(item, expected))
-  }
-
-  const query = String(expected ?? '').trim().toLowerCase()
-  if (!query) {
-    return false
-  }
-
-  return normalizeSearchableValue(value).some(token => (
-    token.toLowerCase().includes(query)
-  ))
-}
-
-const matchDefaultEq = (
-  value: unknown,
-  expected: unknown
-) => value === expected
-
-const matchNumberEq = (
-  value: unknown,
-  expected: unknown
-) => {
-  const leftNumber = readNumberValue(value)
-  const rightNumber = readNumberValue(expected)
-  if (leftNumber !== undefined && rightNumber !== undefined) {
-    return leftNumber === rightNumber
-  }
-
-  return value === expected
-}
-
-const matchDateEq = (
-  value: unknown,
-  expected: unknown
-) => {
-  const leftTimestamp = readDateComparableTimestamp(value)
-  const rightTimestamp = readDateComparableTimestamp(expected)
-  if (leftTimestamp !== undefined && rightTimestamp !== undefined) {
-    return leftTimestamp === rightTimestamp
-  }
-
-  return value === expected
-}
-
-const matchBooleanEq = (
-  value: unknown,
-  expected: unknown
-) => {
-  const leftBoolean = readBooleanValue(value)
-  const rightBoolean = readBooleanValue(expected)
-  if (leftBoolean !== undefined && rightBoolean !== undefined) {
-    return leftBoolean === rightBoolean
-  }
-
-  return value === expected
-}
-
-const matchMultiSelectEq = (
-  field: FieldInput,
-  value: unknown,
-  expected: unknown
-) => Array.isArray(value) && Array.isArray(expected)
-  ? value.length === expected.length
-    && value.every((item, index) => matchesFieldOptionValue(field, item, expected[index]))
-  : false
-
-const matchDefaultContains = (
-  value: unknown,
-  expected: unknown
-) => containsText(value, expected)
-
-const matchMultiSelectContains = (
-  field: FieldInput,
-  value: unknown,
-  expected: unknown
-) => Array.isArray(value)
-  ? value.some(item => matchesFieldOptionValue(field, item, expected))
-  : false
 
 const defaultGroupDomain = (
   _field: FieldInput,
@@ -963,10 +762,6 @@ const textRuntime = {
   display: (_field: FieldInput, value: unknown) => displayPlainValue(value),
   search: (_field: FieldInput, value: unknown) => normalizeSearchableValue(value),
   compare: compareTextValues,
-  createFilterValue: createTextFilterValue,
-  isFilterEffective: (_field: FieldInput, op: FilterOperator, value: unknown) => isBaseFilterEffective(op, value),
-  matchEq: (_field: FieldInput, value: unknown, expected: unknown) => matchDefaultEq(value, expected),
-  matchContains: (_field: FieldInput, value: unknown, expected: unknown) => matchDefaultContains(value, expected),
   groupDomain: defaultGroupDomain,
   groupEntries: defaultGroupEntries
 }
@@ -976,10 +771,6 @@ const numberRuntime = {
   display: (_field: FieldInput, value: unknown) => displayPlainValue(value),
   search: (_field: FieldInput, value: unknown) => normalizeSearchableValue(value),
   compare: (_field: FieldInput, left: unknown, right: unknown) => compareNumberValues(left, right),
-  createFilterValue: createEmptyFilterValue,
-  isFilterEffective: (_field: FieldInput, op: FilterOperator, value: unknown) => isNumberFilterEffective(op, value),
-  matchEq: (_field: FieldInput, value: unknown, expected: unknown) => matchNumberEq(value, expected),
-  matchContains: (_field: FieldInput, value: unknown, expected: unknown) => matchDefaultContains(value, expected),
   groupDomain: defaultGroupDomain,
   groupEntries: numberGroupEntries
 }
@@ -989,10 +780,6 @@ const dateRuntime = {
   display: (field: FieldInput, value: unknown) => formatDateValue(field, value),
   search: (field: FieldInput, value: unknown) => getDateSearchTokens(field, value),
   compare: (_field: FieldInput, left: unknown, right: unknown) => compareDateValues(left, right),
-  createFilterValue: createEmptyFilterValue,
-  isFilterEffective: (_field: FieldInput, op: FilterOperator, value: unknown) => isDateFilterEffective(op, value),
-  matchEq: (_field: FieldInput, value: unknown, expected: unknown) => matchDateEq(value, expected),
-  matchContains: (_field: FieldInput, value: unknown, expected: unknown) => matchDefaultContains(value, expected),
   groupDomain: defaultGroupDomain,
   groupEntries: dateGroupEntries
 }
@@ -1002,10 +789,6 @@ const singleOptionRuntime = {
   display: (field: FieldInput, value: unknown) => displayOptionValue(field, value),
   search: (field: FieldInput, value: unknown) => searchOptionValue(field, value),
   compare: (field: FieldInput, left: unknown, right: unknown) => compareOptionValues(field, left, right),
-  createFilterValue: createEmptyFilterValue,
-  isFilterEffective: (_field: FieldInput, op: FilterOperator, value: unknown) => isBaseFilterEffective(op, value),
-  matchEq: (field: FieldInput, value: unknown, expected: unknown) => matchesFieldOptionValue(field, value, expected),
-  matchContains: (field: FieldInput, value: unknown, expected: unknown) => containsFieldOptionToken(field, value, expected),
   groupDomain: selectGroupDomain,
   groupEntries: selectGroupEntries
 }
@@ -1015,10 +798,6 @@ const multiOptionRuntime = {
   display: (field: FieldInput, value: unknown) => displayMultiOptionValue(field, value),
   search: (field: FieldInput, value: unknown) => searchMultiOptionValue(field, value),
   compare: (field: FieldInput, left: unknown, right: unknown) => compareDisplayText(field, left, right),
-  createFilterValue: createEmptyFilterValue,
-  isFilterEffective: (_field: FieldInput, op: FilterOperator, value: unknown) => isMultiSelectFilterEffective(op, value),
-  matchEq: (field: FieldInput, value: unknown, expected: unknown) => matchMultiSelectEq(field, value, expected),
-  matchContains: (field: FieldInput, value: unknown, expected: unknown) => matchMultiSelectContains(field, value, expected),
   groupDomain: multiSelectGroupDomain,
   groupEntries: multiSelectGroupEntries
 }
@@ -1028,20 +807,6 @@ const statusRuntime = {
   display: (field: FieldInput, value: unknown) => displayOptionValue(field, value),
   search: (field: FieldInput, value: unknown) => searchOptionValue(field, value),
   compare: (field: FieldInput, left: unknown, right: unknown) => compareStatusFieldValues(field, left, right),
-  createFilterValue: createStatusFilterValue,
-  isFilterEffective: (field: FieldInput, op: FilterOperator, value: unknown) => {
-    if (op === 'custom' || op === 'exists') {
-      return isBaseFilterEffective(op, value)
-    }
-
-    if (op === 'in') {
-      return hasNonEmptyArrayValue(value)
-    }
-
-    return isStatusFilterEffective(field, value)
-  },
-  matchEq: (field: FieldInput, value: unknown, expected: unknown) => matchStatusFilter(field, value, expected),
-  matchContains: (field: FieldInput, value: unknown, expected: unknown) => containsFieldOptionToken(field, value, expected),
   groupDomain: statusGroupDomain,
   groupEntries: statusGroupEntries
 }
@@ -1051,10 +816,6 @@ const booleanRuntime = {
   display: (_field: FieldInput, value: unknown) => displayBooleanValue(value),
   search: (_field: FieldInput, value: unknown) => normalizeSearchableValue(value),
   compare: (_field: FieldInput, left: unknown, right: unknown) => compareBooleanValues(left, right),
-  createFilterValue: createEmptyFilterValue,
-  isFilterEffective: (_field: FieldInput, op: FilterOperator, value: unknown) => isBooleanFilterEffective(op, value),
-  matchEq: (_field: FieldInput, value: unknown, expected: unknown) => matchBooleanEq(value, expected),
-  matchContains: (_field: FieldInput, value: unknown, expected: unknown) => matchDefaultContains(value, expected),
   groupDomain: booleanGroupDomain,
   groupEntries: booleanGroupEntries
 }
@@ -1070,10 +831,6 @@ const urlRuntime = {
   },
   search: (_field: FieldInput, value: unknown) => normalizeSearchableValue(value),
   compare: compareTextValues,
-  createFilterValue: createTextFilterValue,
-  isFilterEffective: (_field: FieldInput, op: FilterOperator, value: unknown) => isBaseFilterEffective(op, value),
-  matchEq: (_field: FieldInput, value: unknown, expected: unknown) => matchDefaultEq(value, expected),
-  matchContains: (_field: FieldInput, value: unknown, expected: unknown) => matchDefaultContains(value, expected),
   groupDomain: defaultGroupDomain,
   groupEntries: defaultGroupEntries
 }
@@ -1083,10 +840,6 @@ const binaryRuntime = {
   display: (_field: FieldInput, value: unknown) => displayPlainValue(value),
   search: (_field: FieldInput, value: unknown) => normalizeSearchableValue(value),
   compare: compareTextValues,
-  createFilterValue: createEmptyFilterValue,
-  isFilterEffective: (_field: FieldInput, op: FilterOperator, value: unknown) => isBaseFilterEffective(op, value),
-  matchEq: (_field: FieldInput, value: unknown, expected: unknown) => matchDefaultEq(value, expected),
-  matchContains: (_field: FieldInput, value: unknown, expected: unknown) => matchDefaultContains(value, expected),
   groupDomain: presenceGroupDomain,
   groupEntries: presenceGroupEntries
 }
@@ -1096,10 +849,6 @@ interface KindRuntimeCore {
   display: (field: FieldInput, value: unknown) => string | undefined
   search: (field: FieldInput, value: unknown) => string[]
   compare: (field: FieldInput, left: unknown, right: unknown) => number
-  createFilterValue: (field: FieldInput, op: FilterOperator) => unknown
-  isFilterEffective: (field: FieldInput, op: FilterOperator, value: unknown) => boolean
-  matchEq: (field: FieldInput, value: unknown, expected: unknown) => boolean
-  matchContains: (field: FieldInput, value: unknown, expected: unknown) => boolean
   groupDomain: (field: FieldInput, mode: string) => readonly Bucket[]
   groupEntries: (
     field: FieldInput,
@@ -1123,51 +872,6 @@ const kindRuntime = {
   asset: binaryRuntime
 } as const satisfies Record<CustomFieldKind, KindRuntimeCore>
 
-const createMatch = (runtime: KindRuntimeCore): Kind['match'] => (
-  field: FieldInput,
-  value: unknown,
-  op: FilterOperator,
-  expected: unknown
-) => {
-  if (op === 'custom') {
-    return false
-  }
-
-  if (op === 'exists') {
-    return expected === false
-      ? isEmptyFieldValue(value)
-      : !isEmptyFieldValue(value)
-  }
-
-  if (op === 'eq') {
-    return runtime.matchEq(field, value, expected)
-  }
-
-  if (op === 'neq') {
-    return !runtime.matchEq(field, value, expected)
-  }
-
-  if (op === 'contains') {
-    return runtime.matchContains(field, value, expected)
-  }
-
-  if (op === 'in') {
-    return Array.isArray(expected)
-      ? expected.some(item => runtime.matchEq(field, value, item))
-      : false
-  }
-
-  if (isEmptyFieldValue(value) || isEmptyFieldValue(expected)) {
-    return false
-  }
-
-  const result = runtime.compare(field, value, expected)
-  if (op === 'gt') return result > 0
-  if (op === 'gte') return result >= 0
-  if (op === 'lt') return result < 0
-  return result <= 0
-}
-
 const createKind = (
   kind: CustomFieldKind,
   runtime: KindRuntimeCore
@@ -1177,9 +881,6 @@ const createKind = (
   display: runtime.display,
   search: runtime.search,
   compare: runtime.compare,
-  createFilterValue: runtime.createFilterValue,
-  isFilterEffective: runtime.isFilterEffective,
-  match: createMatch(runtime),
   groupDomain: runtime.groupDomain,
   groupEntries: runtime.groupEntries
 })
@@ -1326,86 +1027,5 @@ export const compareGroupBuckets = (
     case 'manual':
     default:
       return leftOrder - rightOrder || compareLabels(left.title, right.title)
-  }
-}
-
-const matchesFilterPreset = (
-  preset: KindFilterPreset,
-  rule: FilterRule
-) => (
-  preset.operator === rule.op
-  && (preset.value === undefined || Object.is(preset.value, rule.value))
-)
-
-export const isFilterRuleEffective = (
-  field: CustomField | undefined,
-  op: FilterOperator,
-  value: unknown
-): boolean => getRuntimeKind(field).isFilterEffective(field, op, value)
-
-export const matchFieldFilter = (
-  field: CustomField | undefined,
-  value: unknown,
-  op: FilterOperator,
-  expected: unknown
-): boolean => {
-  const kind = getRuntimeKind(field)
-  if (op !== 'custom' && !kind.isFilterEffective(field, op, expected)) {
-    return true
-  }
-
-  return kind.match(field, value, op, expected)
-}
-
-export const getFieldFilterOps = (
-  field?: Pick<CustomField, 'kind'>
-): readonly FilterOperator[] => getRuntimeKind(field).filter.ops
-
-export const getFieldFilterPresets = (
-  field?: Pick<CustomField, 'kind'>
-): readonly KindFilterPreset[] => getRuntimeKind(field).filter.presets
-
-export const getFieldFilterPreset = (
-  field?: CustomField,
-  rule?: FilterRule
-): KindFilterPreset | undefined => {
-  const presets = getRuntimeKind(field).filter.presets
-  return rule
-    ? presets.find(preset => matchesFilterPreset(preset, rule)) ?? presets[0]
-    : presets[0]
-}
-
-export const createDefaultFieldFilterRule = (
-  field: CustomField
-): FilterRule => {
-  const kind = getRuntimeKind(field)
-  const preset = kind.filter.presets[0]
-  const op = preset?.operator ?? kind.filter.ops[0] ?? 'contains'
-
-  return {
-    field: field.id,
-    op,
-    value: preset?.value !== undefined
-      ? preset.value
-      : kind.createFilterValue(field, op)
-  }
-}
-
-export const applyFieldFilterPreset = (
-  rule: FilterRule,
-  field: CustomField | undefined,
-  preset: Pick<KindFilterPreset, 'operator' | 'value'>
-): FilterRule => {
-  const kind = getRuntimeKind(field)
-  const currentPreset = getFieldFilterPreset(field, rule)
-
-  return {
-    field: rule.field,
-    op: preset.operator,
-    value: preset.value !== undefined
-      ? preset.value
-      : currentPreset?.value === undefined
-        ? rule.value
-        : kind.createFilterValue(field, preset.operator)
   }
 }

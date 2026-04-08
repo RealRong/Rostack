@@ -1,13 +1,13 @@
 import type { ShapeKind } from '@whiteboard/core/node'
 import type { Node, NodeId, Rect } from '@whiteboard/core/types'
 import type {
-  SelectionNodeSummary,
-  SelectionNodeTypeSummary
-} from '../selection'
+  SelectionNodeInfo,
+  SelectionNodeTypeInfo
+} from '../selection/nodeSummary'
 export type {
-  SelectionNodeSummary,
-  SelectionNodeTypeSummary
-} from '../selection'
+  SelectionNodeInfo,
+  SelectionNodeTypeInfo
+} from '../selection/nodeSummary'
 
 export type ToolbarSelectionKind =
   | 'shape'
@@ -20,15 +20,15 @@ export type ToolbarSelectionKind =
 
 export type SelectionToolbarFilter = {
   label: string
-  types: readonly SelectionNodeTypeSummary[]
+  types: readonly SelectionNodeTypeInfo[]
 }
 
 export type SelectionToolbarContext = {
+  box: Rect
   selectionKey: string
   selectionKind: ToolbarSelectionKind
   nodeIds: readonly NodeId[]
   nodes: readonly Node[]
-  nodeSummary: SelectionNodeSummary
   primaryNode?: Node
   filter?: SelectionToolbarFilter
   canChangeShapeKind: boolean
@@ -57,33 +57,21 @@ export type SelectionToolbarContext = {
   strokeOpacity?: number
   strokeDash?: readonly number[]
   opacity?: number
-  locked: SelectionNodeSummary['lock']
+  locked: SelectionNodeInfo['lock']
 }
 
 export type SelectionOverlay =
-  | {
-      kind: 'selection'
-      interactive: boolean
-      frame: boolean
-      handles: boolean
-      canResize: boolean
-    }
   | {
       kind: 'node'
       nodeId: NodeId
       handles: boolean
     }
-
-export type SelectionPresentation =
   | {
-      kind: 'none'
-    }
-  | {
-      kind: 'node' | 'nodes' | 'group' | 'mixed'
-      geometry: {
-        box: Rect
-        transformBox?: Rect
-      }
-      overlay: SelectionOverlay
-      toolbar?: SelectionToolbarContext
+      kind: 'selection'
+      box: Rect
+      transformBox?: Rect
+      interactive: boolean
+      frame: boolean
+      handles: boolean
+      canResize: boolean
     }

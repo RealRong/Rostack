@@ -4,6 +4,7 @@ export type CustomFieldId = string
 export const TITLE_FIELD_ID = 'title'
 export type TitleFieldId = typeof TITLE_FIELD_ID
 export type FieldId = CustomFieldId | TitleFieldId
+export type FilterPresetId = string
 export type NodeId = string
 export type ViewType = 'table' | 'gallery' | 'list' | 'kanban' | 'calendar' | (string & {})
 export type SortDirection = 'asc' | 'desc'
@@ -211,15 +212,27 @@ export type Field =
   | CustomField
 
 export interface FilterRule {
-  field: FieldId
-  op: FilterOperator
-  value?: unknown
+  fieldId: FieldId
+  presetId: FilterPresetId
+  value?: FilterValue
 }
 
 export interface Filter {
   mode: 'and' | 'or'
   rules: FilterRule[]
 }
+
+export interface FilterOptionSetValue {
+  kind: 'option-set'
+  optionIds: string[]
+}
+
+export type FilterValue =
+  | string
+  | number
+  | boolean
+  | DateValue
+  | FilterOptionSetValue
 
 export interface Search {
   query: string

@@ -1,6 +1,5 @@
 import type {
   BucketSort,
-  FilterOperator,
   CustomField,
   CustomFieldKind,
   FieldOption,
@@ -19,13 +18,6 @@ import {
 
 export type OptionKind = Extract<CustomFieldKind, 'select' | 'multiSelect' | 'status'>
 
-export interface KindFilterPreset {
-  id: string
-  operator: FilterOperator
-  value?: unknown
-  hidesValue?: boolean
-}
-
 export interface KindSpec {
   create: (input: {
     id: CustomFieldId
@@ -34,10 +26,6 @@ export interface KindSpec {
   }) => CustomField
   convert: (field: CustomField) => CustomField
   hasOptions: boolean
-  filter: {
-    ops: readonly FilterOperator[]
-    presets: readonly KindFilterPreset[]
-  }
   group: {
     modes: readonly string[]
     mode: string
@@ -50,106 +38,6 @@ export interface KindSpec {
 }
 
 const DEFAULT_GROUP_BUCKET_INTERVAL = 10
-
-const createFilterPreset = (
-  id: string,
-  operator: FilterOperator,
-  options?: {
-    value?: unknown
-    hidesValue?: boolean
-  }
-): KindFilterPreset => ({
-  id,
-  operator,
-  value: options?.value,
-  hidesValue: options?.hidesValue
-})
-
-const NUMBER_DATE_PRESETS = [
-  createFilterPreset('eq', 'eq'),
-  createFilterPreset('neq', 'neq'),
-  createFilterPreset('gt', 'gt'),
-  createFilterPreset('gte', 'gte'),
-  createFilterPreset('lt', 'lt'),
-  createFilterPreset('lte', 'lte'),
-  createFilterPreset('exists_true', 'exists', {
-    value: true,
-    hidesValue: true
-  }),
-  createFilterPreset('exists_false', 'exists', {
-    value: false,
-    hidesValue: true
-  })
-] as const satisfies readonly KindFilterPreset[]
-
-const SCALAR_OPTION_PRESETS = [
-  createFilterPreset('eq', 'eq'),
-  createFilterPreset('neq', 'neq'),
-  createFilterPreset('exists_true', 'exists', {
-    value: true,
-    hidesValue: true
-  }),
-  createFilterPreset('exists_false', 'exists', {
-    value: false,
-    hidesValue: true
-  })
-] as const satisfies readonly KindFilterPreset[]
-
-const MULTI_SELECT_PRESETS = [
-  createFilterPreset('contains', 'contains'),
-  createFilterPreset('exists_true', 'exists', {
-    value: true,
-    hidesValue: true
-  }),
-  createFilterPreset('exists_false', 'exists', {
-    value: false,
-    hidesValue: true
-  })
-] as const satisfies readonly KindFilterPreset[]
-
-const BOOLEAN_PRESETS = [
-  createFilterPreset('checked', 'eq', {
-    value: true,
-    hidesValue: true
-  }),
-  createFilterPreset('unchecked', 'eq', {
-    value: false,
-    hidesValue: true
-  }),
-  createFilterPreset('exists_true', 'exists', {
-    value: true,
-    hidesValue: true
-  }),
-  createFilterPreset('exists_false', 'exists', {
-    value: false,
-    hidesValue: true
-  })
-] as const satisfies readonly KindFilterPreset[]
-
-const ASSET_PRESETS = [
-  createFilterPreset('exists_true', 'exists', {
-    value: true,
-    hidesValue: true
-  }),
-  createFilterPreset('exists_false', 'exists', {
-    value: false,
-    hidesValue: true
-  })
-] as const satisfies readonly KindFilterPreset[]
-
-const TEXT_PRESETS = [
-  createFilterPreset('contains', 'contains'),
-  createFilterPreset('eq', 'eq'),
-  createFilterPreset('neq', 'neq'),
-  createFilterPreset('exists_true', 'exists', {
-    value: true,
-    hidesValue: true
-  }),
-  createFilterPreset('exists_false', 'exists', {
-    value: false,
-    hidesValue: true
-  })
-] as const satisfies readonly KindFilterPreset[]
 
 const cloneBase = (field: CustomField) => ({
   id: field.id,
@@ -258,20 +146,12 @@ export const kindSpecs = {
     create: input => ({ ...input, kind: 'text' }),
     convert: field => ({ ...cloneBase(field), kind: 'text' }),
     hasOptions: false,
-    filter: {
-      ops: ['contains', 'eq', 'neq', 'exists'],
-      presets: TEXT_PRESETS
-    },
     group: createLabelGroup('labelAsc', false)
   },
   number: {
     create: input => ({ ...input, kind: 'number', format: 'number', precision: null, currency: null, useThousandsSeparator: false }),
     convert: field => ({ ...cloneBase(field), kind: 'number', format: 'number', precision: null, currency: null, useThousandsSeparator: false }),
     hasOptions: false,
-    filter: {
-      ops: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'exists'],
-      presets: NUMBER_DATE_PRESETS
-    },
     group: {
       ...createValueGroup('valueAsc', false),
       modes: ['range'],
@@ -284,20 +164,12 @@ export const kindSpecs = {
     create: input => ({ ...input, kind: 'select', options: [] }),
     convert: field => ({ ...cloneBase(field), kind: 'select', options: cloneFlatOptions(field) }),
     hasOptions: true,
-    filter: {
-      ops: ['eq', 'neq', 'in', 'exists'],
-      presets: SCALAR_OPTION_PRESETS
-    },
     group: createOptionGroup(['option'], 'option')
   },
   multiSelect: {
     create: input => ({ ...input, kind: 'multiSelect', options: [] }),
     convert: field => ({ ...cloneBase(field), kind: 'multiSelect', options: cloneFlatOptions(field) }),
     hasOptions: true,
-    filter: {
-      ops: ['contains', 'in', 'exists'],
-      presets: MULTI_SELECT_PRESETS
-    },
     group: createOptionGroup(['option'], 'option')
   },
   status: {
@@ -322,20 +194,12 @@ export const kindSpecs = {
       }
     },
     hasOptions: true,
-    filter: {
-      ops: ['eq', 'neq', 'in', 'exists'],
-      presets: SCALAR_OPTION_PRESETS
-    },
     group: createOptionGroup(['option', 'category'], 'option')
   },
   date: {
     create: input => ({ ...input, kind: 'date', ...createDefaultDateFieldConfig() }),
     convert: field => ({ ...cloneBase(field), kind: 'date', ...createDefaultDateFieldConfig() }),
     hasOptions: false,
-    filter: {
-      ops: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'exists'],
-      presets: NUMBER_DATE_PRESETS
-    },
     group: {
       ...createValueGroup('valueAsc', false),
       modes: ['day', 'week', 'month', 'quarter', 'year'],
@@ -346,50 +210,30 @@ export const kindSpecs = {
     create: input => ({ ...input, kind: 'boolean' }),
     convert: field => ({ ...cloneBase(field), kind: 'boolean' }),
     hasOptions: false,
-    filter: {
-      ops: ['eq', 'neq', 'exists'],
-      presets: BOOLEAN_PRESETS
-    },
     group: createBooleanGroup()
   },
   url: {
     create: input => ({ ...input, kind: 'url', ...createDefaultUrlFieldConfig() }),
     convert: field => ({ ...cloneBase(field), kind: 'url', ...createDefaultUrlFieldConfig() }),
     hasOptions: false,
-    filter: {
-      ops: ['contains', 'eq', 'neq', 'exists'],
-      presets: TEXT_PRESETS
-    },
     group: createLabelGroup('labelAsc', false)
   },
   email: {
     create: input => ({ ...input, kind: 'email' }),
     convert: field => ({ ...cloneBase(field), kind: 'email' }),
     hasOptions: false,
-    filter: {
-      ops: ['contains', 'eq', 'neq', 'exists'],
-      presets: TEXT_PRESETS
-    },
     group: createLabelGroup('labelAsc', false)
   },
   phone: {
     create: input => ({ ...input, kind: 'phone' }),
     convert: field => ({ ...cloneBase(field), kind: 'phone' }),
     hasOptions: false,
-    filter: {
-      ops: ['contains', 'eq', 'neq', 'exists'],
-      presets: TEXT_PRESETS
-    },
     group: createLabelGroup('labelAsc', false)
   },
   asset: {
     create: input => ({ ...input, kind: 'asset', multiple: true, accept: 'any' }),
     convert: field => ({ ...cloneBase(field), kind: 'asset', multiple: true, accept: 'any' }),
     hasOptions: false,
-    filter: {
-      ops: ['contains', 'exists'],
-      presets: ASSET_PRESETS
-    },
     group: createPresenceGroup()
   }
 } as const satisfies Record<CustomFieldKind, KindSpec>

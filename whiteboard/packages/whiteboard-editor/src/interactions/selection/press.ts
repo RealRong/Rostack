@@ -147,6 +147,7 @@ const resolveSelectionPress = (
   if (!targetInput) {
     return null
   }
+  const selectionModel = ctx.selection.model.get()
 
   const resolved = resolveSelectionPressDecision({
     getNode: (nodeId) => ctx.read.node.item.get(nodeId)?.node,
@@ -162,8 +163,8 @@ const resolveSelectionPress = (
       isGroupSelectionCurrent(ctx, groupId, target)
   }, {
     modifiers: input.modifiers,
-    selection: ctx.read.selection.summary.get(),
-    affordance: ctx.read.selection.affordance.get(),
+    selection: selectionModel.summary,
+    affordance: selectionModel.affordance,
     targetInput
   })
   if (!resolved) {

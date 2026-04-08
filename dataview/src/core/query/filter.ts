@@ -2,16 +2,18 @@ import type {
   Field,
   FilterRule
 } from '@dataview/core/contracts'
-import { createDefaultFieldFilterRule } from '@dataview/core/field'
+import {
+  applyFilterPreset,
+  createDefaultFilterRule,
+  setFilterRuleValue
+} from '@dataview/core/filter'
 import type { ViewQuery } from './contracts'
 import { cloneFilterRule, cloneViewQuery } from './shared'
 
 export const findViewFilterIndex = (
   query: ViewQuery,
   fieldId: string
-) => query.filter.rules.findIndex(rule => (
-  typeof rule.field === 'string' && rule.field === fieldId
-))
+) => query.filter.rules.findIndex(rule => rule.fieldId === fieldId)
 
 export const addViewFilter = (
   query: ViewQuery,
@@ -22,7 +24,7 @@ export const addViewFilter = (
   }
 
   const next = cloneViewQuery(query)
-  next.filter.rules.push(createDefaultFieldFilterRule(field))
+  next.filter.rules.push(createDefaultFilterRule(field))
   return next
 }
 
@@ -37,6 +39,51 @@ export const setViewFilter = (
 
   const next = cloneViewQuery(query)
   next.filter.rules[index] = cloneFilterRule(rule)
+  return next
+}
+
+export const setViewFilterPreset = (
+  query: ViewQuery,
+  index: number,
+  field: Field | undefined,
+  presetId: string
+): ViewQuery => {
+  const currentRule = query.filter.rules[index]
+  if (!currentRule) {
+    return query
+  }
+
+  const next = cloneViewQuery(query)
+  next.filter.rules[index] = applyFilterPreset(field, currentRule, presetId)
+  return next
+}
+
+export const setViewFilterValue = (
+  query: ViewQuery,
+  index: number,
+  field: Field | undefined,
+  value: FilterRule['value']
+): ViewQuery => {
+  const currentRule = query.filter.rules[index]
+  if (!currentRule) {
+    return query
+  }
+
+  const next = cloneViewQuery(query)
+  next.filter.rules[index] = setFilterRuleValue(field, currentRule, value)
+  return next
+}
+
+export const setViewFilterMode = (
+  query: ViewQuery,
+  mode: ViewQuery['filter']['mode']
+): ViewQuery => {
+  if (query.filter.mode === mode) {
+    return query
+  }
+
+  const next = cloneViewQuery(query)
+  next.filter.mode = mode
   return next
 }
 

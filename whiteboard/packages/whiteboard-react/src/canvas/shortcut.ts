@@ -23,14 +23,15 @@ type ShortcutState = ReturnType<typeof readShortcutState>
 const readShortcutState = (
   editor: Editor
 ) => {
-  const selection = editor.read.selection.summary.get()
+  const selection = editor.state.selection.get()
+  const count = selection.nodeIds.length + selection.edgeIds.length
 
   return {
     selection,
-    hasSelection: selection.items.count > 0,
-    canGroup: selection.items.count >= 2,
-    canUngroup: editor.read.group.exactIds(selection.target).length > 0,
-    canDuplicate: selection.items.count > 0
+    hasSelection: count > 0,
+    canGroup: count >= 2,
+    canUngroup: editor.read.group.exactIds(selection).length > 0,
+    canDuplicate: count > 0
   }
 }
 
@@ -83,25 +84,25 @@ export const runShortcut = (
       return true
     case 'selection.delete':
       return editor.commands.nodes.delete({
-        nodeIds: selection.target.nodeIds,
-        edgeIds: selection.target.edgeIds
+        nodeIds: selection.nodeIds,
+        edgeIds: selection.edgeIds
       })
     case 'selection.duplicate': {
       return editor.commands.nodes.duplicate({
-        nodeIds: selection.target.nodeIds,
-        edgeIds: selection.target.edgeIds
+        nodeIds: selection.nodeIds,
+        edgeIds: selection.edgeIds
       })
     }
     case 'group.merge': {
       return editor.commands.group.merge({
-        nodeIds: selection.target.nodeIds,
-        edgeIds: selection.target.edgeIds
+        nodeIds: selection.nodeIds,
+        edgeIds: selection.edgeIds
       })
     }
     case 'group.ungroup': {
       return editor.commands.group.ungroup({
-        nodeIds: selection.target.nodeIds,
-        edgeIds: selection.target.edgeIds
+        nodeIds: selection.nodeIds,
+        edgeIds: selection.edgeIds
       })
     }
     case 'history.undo':

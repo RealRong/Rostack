@@ -15,10 +15,10 @@ import {
   compareFieldValues,
   getFieldSearchTokens,
   getRecordFieldValue,
-  matchFieldFilter,
   normalizeSearchableValue,
   resolveFieldGroupBucketEntries
 } from '../field'
+import { matchFilterRule } from '@dataview/core/filter'
 export {
   normalizeSearchableValue
 } from '../field'
@@ -28,13 +28,9 @@ export const matchGroupFilter = (
   rule: FilterRule,
   document: DataDoc
 ): boolean => {
-  if (rule.op === 'custom') {
-    return false
-  }
-
-  const field = getDocumentFieldById(document, rule.field)
-  const value = getRecordFieldValue(record, rule.field)
-  return matchFieldFilter(field, value, rule.op, rule.value)
+  const field = getDocumentFieldById(document, rule.fieldId)
+  const value = getRecordFieldValue(record, rule.fieldId)
+  return matchFilterRule(field, value, rule)
 }
 
 export const matchGroupSearch = (

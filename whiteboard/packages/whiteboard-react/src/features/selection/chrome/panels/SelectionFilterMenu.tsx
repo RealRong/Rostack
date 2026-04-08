@@ -51,6 +51,6 @@ export const SelectionFilterMenu = ({
   <Menu
     items={toMenuItems(editor, filter, onClose)}
     onClose={onClose}
-    autoFocus
+    autoFocus={false}
   />
 )

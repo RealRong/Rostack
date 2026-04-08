@@ -117,7 +117,7 @@ export const EdgeContextMenu = ({
         }
       )}
       onClose={onClose}
-      autoFocus
+      autoFocus={false}
     />
   )
 }

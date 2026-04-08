@@ -238,7 +238,7 @@ export const SelectionActionMenu = ({
     <Menu
       items={items}
       onClose={onClose}
-      autoFocus
+      autoFocus={false}
     />
   )
 }

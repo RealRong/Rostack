@@ -87,7 +87,7 @@ export const CanvasContextMenu = ({
         }
       )}
       onClose={onClose}
-      autoFocus
+      autoFocus={false}
     />
   )
 }

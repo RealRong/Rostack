@@ -102,7 +102,7 @@ const resolveCreateFromNode = (
     })
   }
 
-  if (pick.part !== 'body' && pick.part !== 'shell') {
+  if (pick.part !== 'body') {
     return undefined
   }
 

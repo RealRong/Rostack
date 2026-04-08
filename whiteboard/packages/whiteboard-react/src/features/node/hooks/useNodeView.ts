@@ -3,9 +3,11 @@ import { useMemo } from 'react'
 import type { NodeItem } from '@whiteboard/engine'
 import type { NodeId } from '@whiteboard/core/types'
 import type { WhiteboardRuntime as Editor } from '#react/types/runtime'
-import { useEditorRuntime } from '#react/runtime/hooks'
-import { useNodeRegistry } from '#react/runtime/hooks'
-import { useOptionalKeyedStoreValue } from '#react/runtime/hooks'
+import {
+  useEditorRuntime,
+  useNodeRegistry,
+  useOptionalKeyedStoreValue
+} from '#react/runtime/hooks'
 import type { NodeDefinition, NodeRegistry, NodeRenderProps, NodeWrite } from '#react/types/node'
 
 const buildNodeTransformStyle = (

@@ -9,7 +9,7 @@ import {
   buildGroupMergeOperations,
   buildGroupUngroupManyOperations,
   buildGroupUngroupOperations
-} from '@whiteboard/core/node'
+} from '@whiteboard/core/group'
 import type {
   CanvasItemRef,
   EdgeId,

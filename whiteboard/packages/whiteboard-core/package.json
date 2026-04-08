@@ -23,6 +23,11 @@
       "import": "./dist/node/index.js",
       "require": "./dist/node/index.cjs"
     },
+    "./group": {
+      "types": "./dist/group/index.d.ts",
+      "import": "./dist/group/index.js",
+      "require": "./dist/group/index.cjs"
+    },
     "./mindmap": {
       "types": "./dist/mindmap/index.d.ts",
       "import": "./dist/mindmap/index.js",

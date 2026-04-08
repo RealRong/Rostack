@@ -5,8 +5,8 @@ import type {
   NodeType
 } from '@whiteboard/core/types'
 
-export type NodeHit = 'box' | 'path'
-export type NodeFamily = 'text' | 'shape' | 'container' | 'draw'
+export type NodeHit = 'box' | 'path' | 'none'
+export type NodeFamily = 'text' | 'shape' | 'frame' | 'draw'
 export type ControlId = 'fill' | 'stroke' | 'text' | 'group'
 
 export type NodeMeta = {

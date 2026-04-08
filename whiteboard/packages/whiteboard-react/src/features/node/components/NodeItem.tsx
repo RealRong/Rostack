@@ -33,7 +33,7 @@ export const NodeItem = memo(({
   } = view
   const shouldAutoMeasure = Boolean(definition?.autoMeasure) && !resizing
   const hit = definition?.hit ?? 'box'
-  const setPickElement = usePickRef({
+  const bindPickElement = usePickRef({
     kind: 'node',
     id: nodeId,
     part: 'body'
@@ -42,11 +42,15 @@ export const NodeItem = memo(({
     registerMeasuredElement(nodeId, element, shouldAutoMeasure)
   }, [nodeId, registerMeasuredElement, shouldAutoMeasure])
   const setRootElement = useCallback((element: HTMLDivElement | null) => {
-    setPickElement(element)
+    if (hit !== 'none') {
+      bindPickElement(element)
+    } else {
+      bindPickElement(null)
+    }
     if (definition?.autoMeasure) {
       setMeasuredElement(element)
     }
-  }, [definition?.autoMeasure, setMeasuredElement, setPickElement])
+  }, [bindPickElement, definition?.autoMeasure, hit, setMeasuredElement])
 
   const rootStyle: CSSProperties = {
     ...nodeStyle,

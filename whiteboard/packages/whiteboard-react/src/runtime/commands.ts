@@ -183,7 +183,7 @@ export const ungroupSelectionAndSelect = (
   return true
 }
 
-export const createContainerFrameAndSelect = (
+export const createFrameAndSelect = (
   editor: WhiteboardRuntime,
   bounds: Rect,
   padding = 32

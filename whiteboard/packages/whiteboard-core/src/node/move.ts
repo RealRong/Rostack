@@ -12,11 +12,7 @@ import type {
   Rect,
   Size
 } from '../types'
-import {
-  expandGroupMembers,
-} from './group'
 import { expandFrameSelection } from './frame'
-import { filterRootIds } from './owner'
 import { getNodeBoundsByNode } from './bounds'
 
 export type MoveMember = {
@@ -80,7 +76,7 @@ export const buildMoveSet = (options: {
     ids,
     nodeSize
   } = options
-  const rootIds = filterRootIds(nodes, ids)
+  const rootIds = Array.from(new Set(ids))
   if (!rootIds.length) {
     return {
       rootIds: EMPTY_ROOT_IDS,
@@ -95,7 +91,7 @@ export const buildMoveSet = (options: {
 
   const expandedIds = expandFrameSelection({
     nodes,
-    ids: expandGroupMembers(nodes, rootIds).map((node) => node.id),
+    ids: rootIds,
     getNodeRect: readNodeRect,
     getFrameRect: (node) => (
       node.type === 'frame'

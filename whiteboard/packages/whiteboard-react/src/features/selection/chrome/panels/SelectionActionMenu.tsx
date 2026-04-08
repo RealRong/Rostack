@@ -1,12 +1,11 @@
 import type { MenuItem } from '@ui'
 import { Menu } from '@ui'
-import { useEditorRuntime } from '#react/runtime/hooks'
-import { useWhiteboardServices } from '#react/runtime/hooks'
+import { useEditorRuntime, useWhiteboardServices } from '#react/runtime/hooks'
 import { useSelection } from '#react/features/node'
 import { readSelectionCan } from '../../capability'
 import { readSelectionExactGroupIds } from '#react/runtime/selection'
 import {
-  createContainerFrameAndSelect,
+  createFrameAndSelect,
   deleteSelectionAndClear,
   duplicateSelectionAndSelect,
   mergeGroupSelectionAndSelect,
@@ -193,10 +192,10 @@ export const SelectionActionMenu = ({
       ? [
           {
             kind: 'action' as const,
-            key: 'structure.container',
-            label: 'Create container',
+            key: 'structure.frame',
+            label: 'Create frame',
             onSelect: () => {
-              createContainerFrameAndSelect(editor, box)
+              createFrameAndSelect(editor, box)
             }
           }
         ]

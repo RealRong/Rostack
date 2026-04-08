@@ -4,7 +4,6 @@ import type { WriteTranslateContext } from './index'
 import { cancelled, invalid, fromOps, success } from './result'
 import {
   applyNodeUpdate,
-  buildDeleteOwnerOps,
   buildNodeAlignOperations,
   buildNodeCreateOperation,
   buildNodeDistributeOperations,
@@ -12,7 +11,6 @@ import {
   createNodeFieldsUpdateOperation,
   createNodeUpdateOperation,
   buildMoveSet,
-  buildOwnerOps,
   expandNodeSelection,
   isNodeUpdateEmpty,
   resolveMoveEffect
@@ -54,23 +52,9 @@ export const translateNode = <C extends NodeCommand>(
       return invalid(planned.error.message, planned.error.details)
     }
 
-    const owner = buildOwnerOps({
-      document: doc,
-      changes: command.payload.ownerId
-        ? [{
-            id: planned.data.nodeId,
-            ownerId: command.payload.ownerId
-          }]
-        : []
-    })
-    if (!owner.ok) {
-      return invalid(owner.error.message, owner.error.details)
-    }
-
     return success(
       [
-        planned.data.operation,
-        ...owner.data
+        planned.data.operation
       ],
       {
         nodeId: planned.data.nodeId
@@ -220,17 +204,8 @@ export const translateNode = <C extends NodeCommand>(
           || (isNodeEdgeEnd(edge.target) && expandedIds.has(edge.target.nodeId))
       )
       .map((edge) => edge.id)
-    const detach = buildDeleteOwnerOps({
-      document: doc,
-      ids: nodeIds
-    })
-    if (!detach.ok) {
-      return invalid(detach.error.message, detach.error.details)
-    }
-
     return success([
       ...edgeIds.map((id) => ({ type: 'edge.delete' as const, id })),
-      ...detach.data,
       ...nodeIds.map((id) => ({ type: 'node.delete' as const, id }))
     ])
   }
@@ -267,23 +242,9 @@ export const translateNode = <C extends NodeCommand>(
         return cancelled('No nodes selected.') as TranslateResult<NodeWriteOutput<C>>
       }
 
-      {
-        const detach = buildDeleteOwnerOps({
-          document: doc,
-          ids: command.ids
-        })
-        if (!detach.ok) {
-          return invalid(
-            detach.error.message,
-            detach.error.details
-          ) as TranslateResult<NodeWriteOutput<C>>
-        }
-
-        return success([
-          ...detach.data,
-          ...command.ids.map((id) => ({ type: 'node.delete' as const, id }))
-        ]) as TranslateResult<NodeWriteOutput<C>>
-      }
+      return success([
+        ...command.ids.map((id) => ({ type: 'node.delete' as const, id }))
+      ]) as TranslateResult<NodeWriteOutput<C>>
     case 'deleteCascade':
       return deleteCascade(command) as TranslateResult<NodeWriteOutput<C>>
     case 'duplicate':

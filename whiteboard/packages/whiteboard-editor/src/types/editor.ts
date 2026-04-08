@@ -66,7 +66,6 @@ export type EditorClipboardTarget =
 
 export type EditorClipboardOptions = {
   origin?: Point
-  ownerId?: NodeId
 }
 
 export type EditorPointerDispatchResult = {

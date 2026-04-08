@@ -6,10 +6,9 @@ import type { SelectionSummary } from './summary'
 export type SelectionAffordanceOwner =
   | 'none'
   | 'single-node'
-  | 'single-container'
   | 'multi-selection'
 
-export type SelectionAffordanceMoveHit = 'none' | 'body' | 'shell'
+export type SelectionAffordanceMoveHit = 'none' | 'body'
 
 export type SelectionAffordance = {
   owner: SelectionAffordanceOwner
@@ -20,7 +19,6 @@ export type SelectionAffordance = {
   canMove: boolean
   canResize: boolean
   canRotate: boolean
-  passThroughContent: boolean
   showSingleNodeOverlay: boolean
 }
 
@@ -30,24 +28,8 @@ const EMPTY_AFFORDANCE: SelectionAffordance = {
   canMove: false,
   canResize: false,
   canRotate: false,
-  passThroughContent: false,
   showSingleNodeOverlay: false
 }
-
-const toSingleContainerResize = (
-  node: Node,
-  role: NodeRole,
-  capability: NodeTransform,
-  transformBox: Rect | undefined
-) => (
-  !node.locked
-  && Boolean(transformBox)
-  && (
-    role === 'group'
-      ? true
-      : capability.resize
-  )
-)
 
 export const deriveSelectionAffordance = ({
   selection,
@@ -77,25 +59,19 @@ export const deriveSelectionAffordance = ({
   const capability = resolveNodeTransformCapability(primaryNode)
 
   if (nodeCount === 1 && edgeCount === 0) {
-    if (role === 'group' || role === 'frame') {
+    if (role === 'frame') {
       return {
-        owner: 'single-container',
+        owner: 'single-node',
         ownerNodeId: primaryNode.id,
         displayBox,
         transformBox: transformBox ?? displayBox,
         moveHit:
           selection.transform.move && Boolean(displayBox)
-            ? 'shell'
+            ? 'body'
             : 'none',
         canMove: selection.transform.move && Boolean(displayBox),
-        canResize: toSingleContainerResize(
-          primaryNode,
-          role,
-          capability,
-          transformBox ?? displayBox
-        ),
+        canResize: !primaryNode.locked && capability.resize,
         canRotate: false,
-        passThroughContent: true,
         showSingleNodeOverlay: false
       }
     }
@@ -112,7 +88,6 @@ export const deriveSelectionAffordance = ({
       canMove: selection.transform.move && Boolean(displayBox),
       canResize: !primaryNode.locked && capability.resize,
       canRotate: !primaryNode.locked && capability.rotate,
-      passThroughContent: false,
       showSingleNodeOverlay: true
     }
   }
@@ -135,7 +110,6 @@ export const deriveSelectionAffordance = ({
       Boolean(transformBox)
       && selection.transform.resize !== 'none',
     canRotate: false,
-    passThroughContent: false,
     showSingleNodeOverlay: false
   }
 }
@@ -150,7 +124,6 @@ export const isSelectionAffordanceEqual = (
   && left.canMove === right.canMove
   && left.canResize === right.canResize
   && left.canRotate === right.canRotate
-  && left.passThroughContent === right.passThroughContent
   && left.showSingleNodeOverlay === right.showSingleNodeOverlay
   && isSameOptionalRectTuple(left.displayBox, right.displayBox)
   && isSameOptionalRectTuple(left.transformBox, right.transformBox)

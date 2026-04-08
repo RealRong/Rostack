@@ -9,7 +9,6 @@ import type { ReadModel } from '@engine-types/read'
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import { isSameRefOrder } from '@whiteboard/core/utils'
 import { NodeGeometryCache } from '../../geometry/nodeGeometry'
-import { TreeIndex } from './tree'
 
 type Rebuild = 'none' | 'dirty' | 'full'
 
@@ -42,8 +41,7 @@ export class NodeRectIndex {
 
   applyChange = (
     impact: KernelReadImpact,
-    model: ReadModel,
-    tree: Pick<TreeIndex, 'ancestors' | 'childrenOf'>
+    model: ReadModel
   ): boolean => {
     this.dirtyIds = []
     const rebuild = resolveRebuild(impact)
@@ -51,12 +49,11 @@ export class NodeRectIndex {
       case 'none':
         return false
       case 'full':
-        return this.syncFull(model.nodes.canvas, tree)
+        return this.syncFull(model.nodes.canvas)
       case 'dirty':
         return this.syncByNodeIds(
           impact.node.ids,
-          model.canvas.nodeById,
-          tree
+          model.canvas.nodeById
         )
       default:
         return false
@@ -64,8 +61,7 @@ export class NodeRectIndex {
   }
 
   private syncFull = (
-    nodes: Node[],
-    tree: Pick<TreeIndex, 'ancestors' | 'childrenOf'>
+    nodes: Node[]
   ): boolean => {
     const nextOrderedIds: NodeId[] = []
     let changed = this.geometry.syncFull(nodes)
@@ -85,17 +81,13 @@ export class NodeRectIndex {
       this.orderDirty = true
     }
 
-    this.syncProjectedEntries(
-      new Set(nextOrderedIds),
-      tree
-    )
+    this.syncProjectedEntries(new Set(nextOrderedIds))
     return changed
   }
 
   private syncByNodeIds = (
     nodeIds: Iterable<NodeId>,
-    nodeById: ReadonlyMap<NodeId, Node>,
-    tree: Pick<TreeIndex, 'ancestors' | 'childrenOf'>
+    nodeById: ReadonlyMap<NodeId, Node>
   ): boolean => {
     const removed = new Set<NodeId>()
     let changed = false
@@ -123,16 +115,6 @@ export class NodeRectIndex {
         this.orderedIdSet.add(nodeId)
         this.orderDirty = true
       }
-
-      tree.ancestors(nodeId).forEach((ownerId) => {
-        affectedIds.add(ownerId)
-      })
-    }
-
-    for (const nodeId of affectedIds) {
-      tree.ancestors(nodeId).forEach((ownerId) => {
-        affectedIds.add(ownerId)
-      })
     }
 
     if (removed.size) {
@@ -149,14 +131,13 @@ export class NodeRectIndex {
       this.orderDirty = true
     }
 
-    return this.syncProjectedEntries(affectedIds, tree) || changed
+    return this.syncProjectedEntries(affectedIds) || changed
   }
 
   changedIds = (): readonly NodeId[] => this.dirtyIds
 
   private resolveGroupEntry = (
     current: CanvasNode,
-    _tree: Pick<TreeIndex, 'childrenOf'>,
     _affectedIds: ReadonlySet<NodeId>,
     _cache: Map<NodeId, CanvasNode>,
     _visited: Set<NodeId>,
@@ -182,8 +163,7 @@ export class NodeRectIndex {
   )
 
   private syncProjectedEntries = (
-    affectedIds: ReadonlySet<NodeId>,
-    tree: Pick<TreeIndex, 'childrenOf'>
+    affectedIds: ReadonlySet<NodeId>
   ): boolean => {
     if (!affectedIds.size) {
       this.dirtyIds = []
@@ -208,7 +188,6 @@ export class NodeRectIndex {
 
       const next = this.resolveGroupEntry(
         current,
-        tree,
         affectedIds,
         cache,
         visited,

@@ -1,5 +1,25 @@
 # Whiteboard Frame Node Model Refactor Plan
 
+## 当前实现状态（2026-04-08）
+
+本方案已经按“不要兼容层、不要双轨实现”的要求直接落地，当前仓库状态与本文目标一致：
+
+- `frame` 已回归普通 node，`children / ownerId / tree owner` 整套模型已删除
+- `group` 已从 node 角色语义中清出，group command 已迁到独立 `core/group/*`
+- frame 空白区域不再命中 frame，自然退化为 background 语义；从空白区域拖动直接进入 marquee
+- frame 的 marquee 命中继续按 `contain` 生效，`touch` 不会把 frame 选中
+- 选中后的 frame 通过 selection overlay 进入 move / resize，不再走 container-shell 或 owner-tree 分支
+- `FrameLayer / ContainerChromeLayer / node/owner.ts / engine tree index` 已删除
+- 插入、粘贴、slice remap 已不再暴露或处理 `ownerId`
+- UI 术语已从 `container` 收敛回 `frame`
+
+已完成校验：
+
+- `@whiteboard/core` build / lint / test 通过
+- `@whiteboard/engine` build / lint 通过
+- `@whiteboard/editor` build / lint 通过
+- `@whiteboard/react` build / lint 通过
+
 ## 背景
 
 当前 whiteboard 里的 `frame` 语义是混乱的，代码里同时存在两套互相冲突的模型：

@@ -41,12 +41,11 @@ import {
 import { createValueStore } from '../../store'
 import { DEFAULT_TUNING } from '../../config'
 import { RESET_READ_IMPACT } from '../impacts'
-import { NodeRectIndex, SnapIndex, TreeIndex } from '../indexes'
+import { NodeRectIndex, SnapIndex } from '../indexes'
 import { createEdgeProjection } from './edge'
 import { createReadModel } from './model'
 import { createMindmapProjection } from './mindmap'
 import { createNodeProjection } from './node'
-import { createTreeProjection } from './tree'
 import type { ReadSnapshot } from '@engine-types/internal/read'
 
 export const createRead = ({
@@ -74,7 +73,6 @@ export const createRead = ({
       config.node.groupPadding * DEFAULT_TUNING.query.snapGridPaddingFactor
     )
   )
-  const treeIndex = new TreeIndex()
   const index: EngineReadIndex = {
     node: {
       all: nodeRectIndex.all,
@@ -94,8 +92,7 @@ export const createRead = ({
   const background = createValueStore(readDocument().background)
 
   const syncIndexes = (impact: KernelReadImpact, model: ReadModel) => {
-    treeIndex.applyChange(model)
-    nodeRectIndex.applyChange(impact, model, treeIndex)
+    nodeRectIndex.applyChange(impact, model)
     snapIndex.applyChange(impact, {
       all: nodeRectIndex.all,
       get: nodeRectIndex.byId
@@ -111,9 +108,6 @@ export const createRead = ({
   const mindmapProjection = createMindmapProjection(initialSnapshot, {
     config,
     mindmapLayout
-  })
-  const treeProjection = createTreeProjection({
-    readIds: treeIndex.ids
   })
 
   const readCanvasNode = (
@@ -197,7 +191,6 @@ export const createRead = ({
             }
           : undefined
       },
-      getDescendants: treeIndex.ids,
       matchEntry: matchCanvasNodeRect
     })
   }
@@ -339,7 +332,6 @@ export const createRead = ({
     nodeProjection.applyChange(impact, snapshot, nodeRectIndex.changedIds())
     edgeProjection.applyChange(impact, snapshot)
     mindmapProjection.applyChange(impact, snapshot)
-    treeProjection.applyChange()
   }
 
   return {
@@ -383,7 +375,6 @@ export const createRead = ({
       node: {
         list: nodeProjection.list,
         item: nodeProjection.item,
-        owner: treeIndex.owner,
         geometry: readProjectedNodeGeometry,
         rect: readProjectedNodeRect,
         bounds: readProjectedNodeBounds,
@@ -399,7 +390,6 @@ export const createRead = ({
         list: mindmapProjection.list,
         item: mindmapProjection.item
       },
-      tree: treeProjection.item,
       slice: {
         fromNodes: (nodeIds) => {
           const exported = exportSliceFromNodes({

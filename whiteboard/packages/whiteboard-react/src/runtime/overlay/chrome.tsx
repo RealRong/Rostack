@@ -54,7 +54,7 @@ export const WhiteboardPopover = (
           ...floatingProps,
           onContextMenu: event => {
             floatingProps?.onContextMenu?.(event)
-            WHITEBOARD_CHROME_FLOATING_PROPS.onContextMenu?.(event)
+            // WHITEBOARD_CHROME_FLOATING_PROPS.onContextMenu?.(event)
           }
         }}
       >

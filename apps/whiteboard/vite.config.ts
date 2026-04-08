@@ -49,6 +49,14 @@ export default defineConfig({
         replacement: path.join(reactSrc, 'index.ts')
       },
       {
+        find: /^#react$/,
+        replacement: path.join(reactSrc, 'index.ts')
+      },
+      {
+        find: /^#react\/(.+)$/,
+        replacement: `${reactSrc}/$1`
+      },
+      {
         find: /^@whiteboard\/collab$/,
         replacement: path.join(collabSrc, 'index.ts')
       },

@@ -20,7 +20,6 @@ type InsertPresetBase = {
   group: InsertPresetGroup
   label: string
   description?: string
-  canNest?: boolean
 }
 
 export type NodeInsertPreset = InsertPresetBase & {
@@ -45,7 +44,6 @@ export type MindmapInsertPreset = InsertPresetBase & {
   kind: 'mindmap'
   group: 'mindmap'
   description: string
-  canNest: false
   template: MindmapTemplate
 }
 

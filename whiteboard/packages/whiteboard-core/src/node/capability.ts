@@ -1,4 +1,4 @@
-export type NodeRole = 'content' | 'frame' | 'group'
+export type NodeRole = 'content' | 'frame'
 
 export type NodeTransform = {
   resize: boolean

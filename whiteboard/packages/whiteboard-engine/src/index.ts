@@ -50,6 +50,5 @@ export type {
   EngineReadIndex,
   GroupRead,
   SliceRead,
-  TreeRead,
   MindmapRead
 } from './types/instance'

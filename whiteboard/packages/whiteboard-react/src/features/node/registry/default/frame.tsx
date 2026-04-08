@@ -9,8 +9,7 @@ import {
   FRAME_DEFAULT_TITLE
 } from '@whiteboard/core/node'
 import type { NodeDefinition, NodeWrite } from '#react/types/node'
-import { useEdit, useEditor } from '#react/runtime/hooks'
-import { usePickRef } from '#react/runtime/hooks'
+import { useEdit, useEditor, usePickRef } from '#react/runtime/hooks'
 import {
   isEscapeEditingKey,
   stopEditingPointerDown
@@ -60,7 +59,7 @@ export const FrameNodeChrome = ({
   const headerRef = usePickRef({
     kind: 'node',
     id: node.id,
-    part: 'shell'
+    part: 'body'
   })
   const titleRef = usePickRef({
     kind: 'node',
@@ -145,17 +144,23 @@ export const FrameNodeDefinition: NodeDefinition = {
   type: 'frame',
   meta: {
     name: 'Frame',
-    family: 'container',
+    family: 'frame',
     icon: 'frame',
     controls: ['fill', 'stroke', 'text']
   },
   role: 'frame',
   geometry: 'rect',
+  hit: 'none',
   schema: frameSchema,
   defaultData: {
     title: FRAME_DEFAULT_TITLE
   },
-  render: () => null,
+  render: ({ node, write }) => (
+    <FrameNodeChrome
+      node={node}
+      write={write}
+    />
+  ),
   style: (props) => frameStyle(props.node),
   canRotate: false
 }

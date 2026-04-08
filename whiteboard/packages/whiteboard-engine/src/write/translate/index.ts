@@ -6,7 +6,6 @@ import {
   exportSliceFromSelection
 } from '@whiteboard/core/document'
 import {
-  buildDeleteOwnerOps,
   expandNodeSelection
 } from '@whiteboard/core/node'
 import type {
@@ -113,17 +112,8 @@ const translateDocument = <C extends DocumentCommand>(
       return cancelled('No items selected.')
     }
 
-    const detach = buildDeleteOwnerOps({
-      document: ctx.doc,
-      ids: nodeIds
-    })
-    if (!detach.ok) {
-      return invalid(detach.error.message, detach.error.details)
-    }
-
     return success([
       ...Array.from(edgeIdSet).map((id) => ({ type: 'edge.delete' as const, id })),
-      ...detach.data,
       ...nodeIds.map((id) => ({ type: 'node.delete' as const, id }))
     ])
   }
@@ -200,7 +190,6 @@ const translateDocument = <C extends DocumentCommand>(
         createEdgeId: ctx.ids.edge,
         origin: command.options?.origin,
         delta: command.options?.delta,
-        ownerId: command.options?.ownerId,
         roots: command.options?.roots
       })
       if (!planned.ok) {

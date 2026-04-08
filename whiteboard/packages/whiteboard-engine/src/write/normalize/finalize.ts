@@ -263,8 +263,7 @@ const diffNodeChange = (
     || !isRotationEqual(beforeGeometry?.rotation, afterGeometry?.rotation)
   )
   const relation = (
-    !isArrayEqual(before.children, after.children)
-    || before.type !== after.type
+    before.type !== after.type
   )
   const value = (
     before.layer !== after.layer

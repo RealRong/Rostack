@@ -12,10 +12,6 @@ import {
   isSizeEqual,
   rotatePoint
 } from '../geometry'
-import {
-  isContainerNode
-} from './group'
-import { filterRootIds } from './owner'
 import type { Guide } from './snap'
 
 type ResizeHandleMeta = {
@@ -85,13 +81,13 @@ export type TransformProjectionMember = {
   rect: Rect
 }
 
-export type TransformSelectionMember<TNode extends Pick<Node, 'id' | 'type' | 'children'>> = {
+export type TransformSelectionMember<TNode extends Pick<Node, 'id' | 'type'>> = {
   id: NodeId
   node: TNode
   rect: Rect
 }
 
-export type TransformSelectionTargets<TNode extends Pick<Node, 'id' | 'type' | 'children'>> = {
+export type TransformSelectionTargets<TNode extends Pick<Node, 'id' | 'type'>> = {
   targets: readonly TransformSelectionMember<TNode>[]
   commitIds: ReadonlySet<NodeId>
 }
@@ -749,7 +745,7 @@ export const startTransform = <
 }
 
 export const resolveSelectionTransformTargets = <
-  TNode extends Pick<Node, 'id' | 'type' | 'children'>
+  TNode extends Pick<Node, 'id' | 'type'>
 >(
   members: readonly TransformSelectionMember<TNode>[],
   selectedIds: readonly NodeId[]
@@ -758,40 +754,19 @@ export const resolveSelectionTransformTargets = <
     return undefined
   }
 
-  const nodes = members.map((member) => member.node)
-  const rootIds = filterRootIds(nodes, selectedIds)
-  if (!rootIds.length) {
+  const targetIdSet = new Set(selectedIds)
+  if (!targetIdSet.size) {
     return undefined
   }
 
-  const memberIds = new Set<NodeId>()
-  const commitIds = new Set<NodeId>()
-  const nodeById = new Map(members.map((member) => [member.id, member.node] as const))
-
-  rootIds.forEach((rootId) => {
-    const root = nodeById.get(rootId)
-    if (!root) {
-      return
-    }
-
-    memberIds.add(root.id)
-    if (!isContainerNode(root)) {
-      commitIds.add(root.id)
-    }
-  })
-
-  if (!memberIds.size || !commitIds.size) {
-    return undefined
-  }
-
-  const targets = members.filter((member) => memberIds.has(member.id))
+  const targets = members.filter((member) => targetIdSet.has(member.id))
   if (!targets.length) {
     return undefined
   }
 
   return {
     targets,
-    commitIds
+    commitIds: new Set(targets.map((member) => member.id))
   }
 }
 

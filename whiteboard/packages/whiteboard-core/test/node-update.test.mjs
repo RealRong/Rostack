@@ -19,8 +19,11 @@ const createDocWithNode = (node) => {
     createdAt: FIXED_ISO,
     updatedAt: FIXED_ISO
   }
-  doc.nodes.entities[node.id] = node
-  doc.nodes.order = [node.id]
+  doc.nodes[node.id] = node
+  doc.order = [{
+    kind: 'node',
+    id: node.id
+  }]
   return doc
 }
 
@@ -211,18 +214,19 @@ test('node.update 会为 mindmap data mutation 标记 mindmap.view', () => {
   assert.deepEqual(result.data.read.mindmap.ids, ['mind_1'])
 })
 
-test('applyNodeUpdate 拒绝 group 几何写入与穿透 primitive 容器的 path set', () => {
-  const groupResult = applyNodeUpdate({
-    id: 'group_1',
-    type: 'group',
-    children: []
+test('applyNodeUpdate 允许 frame 几何写入，并拒绝穿透 primitive 容器的 path set', () => {
+  const frameResult = applyNodeUpdate({
+    id: 'frame_1',
+    type: 'frame',
+    position: { x: 0, y: 0 },
+    size: { width: 240, height: 160 }
   }, {
     fields: {
       position: { x: 10, y: 20 }
     }
   })
-  assert.equal(groupResult.ok, false)
-  assert.match(groupResult.message, /Group nodes cannot update position/)
+  assert.equal(frameResult.ok, true)
+  assert.deepEqual(frameResult.next.position, { x: 10, y: 20 })
 
   const primitivePathResult = applyNodeUpdate(createTextNode(), {
     records: [{

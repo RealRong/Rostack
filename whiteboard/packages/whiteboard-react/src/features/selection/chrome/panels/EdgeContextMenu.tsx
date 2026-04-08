@@ -1,7 +1,6 @@
 import type { MenuItem } from '@ui'
 import { Menu } from '@ui'
-import { useEditorRuntime } from '#react/runtime/hooks'
-import { useWhiteboardServices } from '#react/runtime/hooks'
+import { useEditorRuntime, useWhiteboardServices } from '#react/runtime/hooks'
 import {
   deleteSelectionAndClear,
   duplicateSelectionAndSelect,

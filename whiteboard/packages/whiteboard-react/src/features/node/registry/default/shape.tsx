@@ -11,8 +11,7 @@ import {
   type KeyboardEvent
 } from 'react'
 import type { NodeDefinition, NodeRenderProps } from '#react/types/node'
-import { useEdit, useEditor } from '#react/runtime/hooks'
-import { usePickRef } from '#react/runtime/hooks'
+import { useEdit, useEditor, usePickRef } from '#react/runtime/hooks'
 import {
   focusEditableDraft,
   isEscapeEditingKey,

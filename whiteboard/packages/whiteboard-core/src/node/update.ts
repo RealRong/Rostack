@@ -27,7 +27,6 @@ const NODE_FIELD_KEYS: Array<keyof NodeFieldPatch> = [
   'rotation',
   'layer',
   'zIndex',
-  'children',
   'groupId',
   'locked'
 ]
@@ -41,7 +40,6 @@ const NODE_GEOMETRY_KEYS = new Set<keyof NodeFieldPatch>([
 const NODE_LIST_KEYS = new Set<keyof NodeFieldPatch>([
   'layer',
   'zIndex',
-  'children',
   'groupId'
 ])
 
@@ -373,10 +371,6 @@ export const buildNodeUpdateInverse = (
     })
   }
 }
-
-export const sanitizeGroupUpdate = (
-  update: NodeUpdateInput
-): NodeUpdateInput => update
 
 export const applyNodeUpdate = (
   node: Node,

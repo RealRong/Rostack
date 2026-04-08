@@ -3,9 +3,12 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
 import { resolveAnchoredRect } from '@whiteboard/core/node'
 import type { NodeDefinition, NodeRenderProps } from '#react/types/node'
-import { useEdit, useEditor } from '#react/runtime/hooks'
-import { useOptionalKeyedStoreValue } from '#react/runtime/hooks'
-import { useStoreValue } from '#react/runtime/hooks'
+import {
+  useEdit,
+  useEditor,
+  useOptionalKeyedStoreValue,
+  useStoreValue
+} from '#react/runtime/hooks'
 import {
   focusEditableDraft,
   isEscapeEditingKey,

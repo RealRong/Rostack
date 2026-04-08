@@ -1,7 +1,5 @@
 import {
   isNodeUpdateEmpty,
-  sanitizeGroupNode,
-  sanitizeGroupUpdate
 } from '@whiteboard/core/node'
 import type {
   Document,
@@ -16,11 +14,7 @@ export const sanitizeDocument = (
   const entities: Record<string, Node> = {}
 
   Object.entries(document.nodes).forEach(([id, node]) => {
-    const nextNode = sanitizeGroupNode(node)
-    entities[id] = nextNode
-    if (nextNode !== node) {
-      changed = true
-    }
+    entities[id] = node
   })
 
   return changed
@@ -43,33 +37,14 @@ export const sanitizeOperations = ({
   operations.forEach((operation) => {
     switch (operation.type) {
       case 'node.create': {
-        const node = sanitizeGroupNode(operation.node)
-        if (node === operation.node) {
-          next.push(operation)
-          return
-        }
-
-        next.push({
-          ...operation,
-          node
-        })
+        next.push(operation)
         return
       }
       case 'node.update': {
-        const current = document.nodes[operation.id]
-        const update = sanitizeGroupUpdate(operation.update)
-        if (update === operation.update) {
-          next.push(operation)
+        if (isNodeUpdateEmpty(operation.update)) {
           return
         }
-
-        if (isNodeUpdateEmpty(update)) {
-          return
-        }
-        next.push({
-          ...operation,
-          update
-        })
+        next.push(operation)
         return
       }
       default:

@@ -60,7 +60,6 @@ export type EngineReadIndex = {
 export type NodeRead = {
   list: ReadStore<readonly NodeId[]>
   item: KeyedReadStore<NodeId, Readonly<NodeItem> | undefined>
-  owner: (nodeId: NodeId) => NodeId | undefined
   geometry: (nodeId: NodeId) => NodeGeometry | undefined
   rect: (nodeId: NodeId) => Rect | undefined
   bounds: (nodeId: NodeId) => Rect | undefined
@@ -117,8 +116,6 @@ export type MindmapRead = {
   item: KeyedReadStore<NodeId, Readonly<MindmapItem> | undefined>
 }
 
-export type TreeRead = KeyedReadStore<NodeId, readonly NodeId[]>
-
 export type SliceRead = {
   fromNodes: (nodeIds: readonly NodeId[]) => SliceExportResult | undefined
   fromEdge: (edgeId: EdgeId) => SliceExportResult | undefined
@@ -138,7 +135,6 @@ export type EngineRead = {
   node: NodeRead
   edge: EdgeRead
   mindmap: MindmapRead
-  tree: TreeRead
   slice: SliceRead
   index: EngineReadIndex
 }

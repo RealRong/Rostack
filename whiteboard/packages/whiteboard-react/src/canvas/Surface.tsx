@@ -1,9 +1,9 @@
 import { useMemo, type CSSProperties, type RefObject } from 'react'
 import {
   useEditorRuntime,
+  useStoreValue,
   useTool
 } from '#react/runtime/hooks'
-import { useStoreValue } from '#react/runtime/hooks'
 import { useBindViewportInput } from '../runtime/viewport/useBindViewportInput'
 import { Background } from './Background'
 import { Chrome } from './Chrome'
@@ -14,10 +14,6 @@ import { DrawLayer } from '../features/draw/DrawLayer'
 import { EdgeLayer } from '../features/edge/components/EdgeLayer'
 import { EdgeOverlayLayer } from '../features/edge/components/EdgeOverlayLayer'
 import { MindmapSceneLayer } from '../features/mindmap/components/MindmapSceneLayer'
-import {
-  ContainerChromeLayer,
-  FrameLayer
-} from '../features/node/components/FrameLayer'
 import { NodeOverlayLayer } from '../features/node/components/NodeOverlayLayer'
 import { NodeSceneLayer } from '../features/node/components/NodeSceneLayer'
 import { Marquee } from '../features/selection/Marquee'
@@ -91,11 +87,9 @@ export const Surface = ({
       >
         <Background />
         <div className="wb-root-viewport" style={transformStyle}>
-          <FrameLayer />
           <EdgeLayer />
           <NodeSceneLayer />
           <MindmapSceneLayer />
-          <ContainerChromeLayer />
           <NodeOverlayLayer />
           <EdgeOverlayLayer />
           <DrawLayer />

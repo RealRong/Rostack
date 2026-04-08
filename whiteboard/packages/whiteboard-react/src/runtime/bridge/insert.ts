@@ -24,26 +24,21 @@ export type InsertBridge = {
     preset: InsertPresetKey,
     options: {
       at: Point
-      ownerId?: NodeId
     }
   ) => InsertResult | undefined
   text: (options: {
     at: Point
-    ownerId?: NodeId
   }) => InsertResult | undefined
   frame: (options: {
     at: Point
-    ownerId?: NodeId
   }) => InsertResult | undefined
   sticky: (options: {
     toneKey?: string
     at: Point
-    ownerId?: NodeId
   }) => InsertResult | undefined
   shape: (options: {
     kind: Parameters<InsertPresetCatalog['defaults']['shape']>[0]
     at: Point
-    ownerId?: NodeId
   }) => InsertResult | undefined
   mindmap: (options: {
     templateKey?: string
@@ -94,21 +89,16 @@ const toInsertResult = ({
 const insertNodePreset = ({
   editor,
   preset,
-  world,
-  ownerId
+  world
 }: {
   editor: WhiteboardRuntime
   preset: NodeInsertPreset
   world: Point
-  ownerId?: NodeId
 }): InsertResult | undefined => {
   const result = editor.commands.node.create(
     placeNodeInput({
       world,
-      input: {
-        ...preset.input(world),
-        ownerId: preset.canNest === false ? undefined : ownerId
-      },
+      input: preset.input(world),
       placement: preset.placement
     })
   )
@@ -170,21 +160,18 @@ const insertMindmapPreset = ({
 const runInsertPreset = ({
   editor,
   preset,
-  at,
-  ownerId
+  at
 }: {
   editor: WhiteboardRuntime
   preset: InsertPreset
   at: Point
-  ownerId?: NodeId
 }): InsertResult | undefined => {
   const result = preset.kind === 'node'
     ? insertNodePreset({
-        editor,
-        preset,
-        world: at,
-        ownerId
-      })
+      editor,
+      preset,
+      world: at
+    })
     : insertMindmapPreset({
         editor,
         preset,
@@ -217,7 +204,6 @@ const createInsertCommands = ({
     presetKey: string
     options: {
       at: Point
-      ownerId?: NodeId
     }
   }) => {
     const preset = catalog.get(input.presetKey)
@@ -228,8 +214,7 @@ const createInsertCommands = ({
     return runInsertPreset({
       editor,
       preset,
-      at: input.options.at,
-      ownerId: input.options.ownerId
+      at: input.options.at
     })
   }
 
@@ -246,15 +231,15 @@ const createInsertCommands = ({
       presetKey: catalog.defaults.frame,
       options
     }),
-    sticky: ({ toneKey = catalog.defaults.sticky, at, ownerId }) =>
+    sticky: ({ toneKey = catalog.defaults.sticky, at }) =>
       insertPresetByKey({
         presetKey: toneKey,
-        options: { at, ownerId }
+        options: { at }
       }),
-    shape: ({ kind, at, ownerId }) =>
+    shape: ({ kind, at }) =>
       insertPresetByKey({
         presetKey: catalog.defaults.shape(kind),
-        options: { at, ownerId }
+        options: { at }
       }),
     mindmap: ({ templateKey = catalog.defaults.mindmap, at }) =>
       insertPresetByKey({

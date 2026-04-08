@@ -4,10 +4,10 @@ import {
 import type { Guide } from '@whiteboard/core/node'
 import type { NodeId } from '@whiteboard/core/types'
 import {
-  useEditorRuntime
+  useEditorRuntime,
+  usePickRef,
+  useStoreValue
 } from '#react/runtime/hooks'
-import { usePickRef } from '#react/runtime/hooks'
-import { useStoreValue } from '#react/runtime/hooks'
 import { useNodeOverlayView } from '../hooks/useNodeView'
 import { useSelectionPresentation } from '../selection'
 import { NodeConnectHandles } from './NodeConnectHandles'

@@ -1,16 +1,14 @@
 .wb-container {
-  --wb-z-container: 0;
   --wb-z-edge: 1;
   --wb-z-node: 2;
-  --wb-z-container-chrome: 3;
-  --wb-z-guides: 4;
-  --wb-z-node-overlay: 5;
-  --wb-z-edge-overlay: 6;
-  --wb-z-preview: 7;
-  --wb-z-selection: 8;
-  --wb-z-toolbar: 9;
-  --wb-z-context-menu: 10;
-  --wb-z-presence: 11;
+  --wb-z-guides: 3;
+  --wb-z-node-overlay: 4;
+  --wb-z-edge-overlay: 5;
+  --wb-z-preview: 6;
+  --wb-z-selection: 7;
+  --wb-z-toolbar: 8;
+  --wb-z-context-menu: 9;
+  --wb-z-presence: 10;
   --wb-ui-canvas: var(--ui-canvas, #fff);
   --wb-ui-surface: var(--ui-surface, #fff);
   --wb-ui-surface-muted: var(--ui-surface-muted, #f9f8f7);
@@ -140,62 +138,6 @@
   box-shadow: inset 0 0 0 calc(1px / var(--wb-zoom, 1)) var(--wb-selection-border);
 }
 
-.wb-container-layer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: var(--wb-z-container);
-}
-
-.wb-container-block {
-  position: absolute;
-  left: 0;
-  top: 0;
-  pointer-events: auto;
-}
-
-.wb-container-fill {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.wb-container-chrome-layer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: var(--wb-z-container-chrome);
-}
-
-.wb-container-shell {
-  position: absolute;
-  left: 0;
-  top: 0;
-  pointer-events: none;
-}
-
-.wb-container-shell-frame {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.wb-node-shell-hit {
-  position: absolute;
-  pointer-events: auto;
-  background: transparent;
-}
-
-.wb-container-shell-frame::after {
-  content: '';
-  position: absolute;
-  inset: calc(-1px / var(--wb-zoom, 1));
-  border-radius: inherit;
-  border: calc(1px / var(--wb-zoom, 1)) solid transparent;
-  box-shadow: 0 0 0 calc(1px / var(--wb-zoom, 1)) transparent;
-  pointer-events: none;
-}
-
 .wb-drag-guides-layer {
   position: absolute;
   inset: 0;
@@ -298,34 +240,6 @@
   line-height: 1.15;
 }
 
-.wb-container-scope-outline {
-  position: absolute;
-  left: 0;
-  top: 0;
-  border-radius: 12px;
-  box-shadow: inset 0 0 0 2px var(--wb-selection-border), 0 0 0 9999px rgb(from var(--wb-ui-accent) r g b / 0.03);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.wb-container-scope-badge {
-  position: absolute;
-  left: 10px;
-  top: 10px;
-  height: 24px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: var(--wb-surface-elevated);
-  border: 1px solid var(--wb-accent-outline-soft);
-  color: var(--wb-accent);
-  display: inline-flex;
-  align-items: center;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  box-shadow: none;
-  white-space: nowrap;
-}
 
 .wb-node-toolbar-layer {
   position: absolute;

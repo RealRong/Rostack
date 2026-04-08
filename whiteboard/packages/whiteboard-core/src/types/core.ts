@@ -83,7 +83,6 @@ export type BaseNode = {
   type: NodeType
   layer?: NodeLayer
   zIndex?: number
-  children?: NodeId[]
   groupId?: GroupId
   locked?: boolean
   data?: NodeData
@@ -406,10 +405,6 @@ const assertEntityRecord = <TId extends string, T extends { id: TId }>(
     if (entity.id !== id) {
       throw new Error(`Document ${name}.${id} has mismatched entity id.`)
     }
-    const maybeChildren = (entity as { children?: unknown }).children
-    if (maybeChildren !== undefined && !Array.isArray(maybeChildren)) {
-      throw new Error(`Document ${name}.${id}.children must be an array.`)
-    }
   }
 }
 
@@ -459,7 +454,6 @@ export interface Snapshot {
 
 export type SpatialNodeInput = Omit<SpatialNode, 'id'> & {
   id?: NodeId
-  ownerId?: NodeId
 }
 export type NodeInput = SpatialNodeInput
 export type EdgeInput = Omit<Edge, 'id'> & { id?: EdgeId }
@@ -469,7 +463,6 @@ export type NodeFieldPatch = {
   rotation?: number
   layer?: NodeLayer
   zIndex?: number
-  children?: NodeId[]
   groupId?: GroupId
   locked?: boolean
 }

@@ -28,7 +28,6 @@ export type SliceExportResult = {
 export type SliceInsertOptions = {
   origin?: Point
   delta?: Point
-  ownerId?: NodeId
   roots?: SliceRoots
 }
 

@@ -45,23 +45,7 @@ const toMoveEdgePatches = (
 const findParentFrameId = (
   ctx: InteractionContext,
   nodeId: string
-) => {
-  let currentOwnerId = ctx.read.node.owner(nodeId)
-
-  while (currentOwnerId) {
-    const owner = ctx.read.index.node.get(currentOwnerId)?.node
-    if (!owner) {
-      return undefined
-    }
-    if (owner.type === 'frame') {
-      return owner.id
-    }
-
-    currentOwnerId = ctx.read.node.owner(owner.id)
-  }
-
-  return undefined
-}
+) => ctx.read.frame.of(nodeId)
 
 const resolveFrameHoverId = (
   ctx: InteractionContext,

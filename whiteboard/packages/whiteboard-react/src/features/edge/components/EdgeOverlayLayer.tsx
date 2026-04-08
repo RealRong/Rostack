@@ -2,12 +2,12 @@ import type {
   CSSProperties
 } from 'react'
 import {
+  useEditorRuntime,
   useInteraction,
+  usePickRef,
+  useStoreValue,
   useTool
 } from '#react/runtime/hooks'
-import { useEditorRuntime } from '#react/runtime/hooks'
-import { usePickRef } from '#react/runtime/hooks'
-import { useStoreValue } from '#react/runtime/hooks'
 import type {
   SelectedEdgeRoutePointView,
   SelectedEdgeView

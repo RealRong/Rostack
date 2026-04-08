@@ -155,7 +155,6 @@ const createMindmapPreset = (
   group: 'mindmap',
   label: template.label,
   description: template.description,
-  canNest: false,
   template
 })
 
@@ -175,7 +174,7 @@ export const FRAME_INSERT_PRESET = createNodePreset({
   key: 'frame',
   group: 'frame',
   label: 'Frame',
-  description: 'Manual container area',
+  description: 'Manual frame area',
   focus: 'title',
   input: () => ({
     ...createFrameNodeInput()

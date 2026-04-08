@@ -28,8 +28,7 @@ export type SelectionPressTargetInput<TField extends string = string> =
   | {
       kind: 'node'
       nodeId: NodeId
-      part: 'body' | 'shell' | 'field'
-      shell?: 'content' | 'frame' | 'group'
+      part: 'body' | 'field'
       field?: TField
     }
 
@@ -45,10 +44,6 @@ export type SelectionPressTarget<TField extends string = string> =
       nodeId: NodeId
       hitNodeId: NodeId
       field?: TField
-    }
-  | {
-      kind: 'container-shell'
-      nodeId: NodeId
     }
 
 export type SelectionTapAction<TField extends string = string> =
@@ -113,7 +108,6 @@ export type SelectionPressResolution<TField extends string = string> = {
 
 export type SelectionPressPolicyDeps = {
   getNode: (nodeId: NodeId) => Node | undefined
-  getOwnerId: (nodeId: NodeId) => NodeId | undefined
   canEnter: (nodeId: NodeId) => boolean
   getNodeGroupId: (nodeId: NodeId) => GroupId | undefined
   getGroupSelection: (groupId: GroupId) => SelectionTarget | undefined
@@ -206,7 +200,7 @@ const createTemporaryMoveSelection = (
 })
 
 const readPressNodeTarget = <TField extends string>(
-  _deps: Pick<SelectionPressPolicyDeps, 'getNode' | 'getOwnerId'>,
+  _deps: Pick<SelectionPressPolicyDeps, 'getNode'>,
   input: {
     field?: TField
     mode: SelectionMode
@@ -246,17 +240,7 @@ export const resolveSelectionPressTarget = <TField extends string>(
         ? { kind: 'selection-box' }
         : undefined
     case 'node':
-      if (targetInput.part === 'body' || targetInput.part === 'field') {
-        return readPressNodeTarget(deps, input, targetInput.nodeId)
-      }
-
-      if (targetInput.shell === 'frame' || targetInput.shell === 'group') {
-        return {
-          kind: 'container-shell',
-          nodeId: targetInput.nodeId
-        }
-      }
-      return undefined
+      return readPressNodeTarget(deps, input, targetInput.nodeId)
   }
 }
 
@@ -443,63 +427,6 @@ const decideNodePress = <TField extends string>(
   }
 }
 
-const decideContainerShellPress = <TField extends string>(
-  deps: Pick<SelectionPressPolicyDeps, 'getNode'>,
-  selection: SelectionSummary,
-  mode: SelectionMode,
-  nodeId: NodeId
-): SelectionPressDecision<TField> | undefined => {
-  const node = deps.getNode(nodeId)
-  if (!node) {
-    return undefined
-  }
-
-  const selected = isSelectedNode(node.id, selection.target.nodeIds)
-  const nextSelection = applyNodeTapSelection(
-    selection.target.nodeIds,
-    selection.target.edgeIds,
-    node.id,
-    mode
-  )
-  const dragCurrentSelection = mode === 'replace' && selected
-  const dragNodeIds = dragCurrentSelection
-    ? selection.target.nodeIds
-    : nextSelection.nodeIds
-  const dragEdgeIds = dragCurrentSelection
-    ? selection.target.edgeIds
-    : []
-  const currentSelection = getCurrentSelection(selection)
-  const dragSelection = toNodeSelection(dragNodeIds)
-  const dragSelectionBehavior =
-    mode === 'replace' && !selected
-      ? createTemporaryMoveSelection(
-          dragSelection,
-          currentSelection
-        )
-      : createPersistMoveSelection(
-          dragCurrentSelection
-            ? undefined
-            : dragSelection
-        )
-
-  return {
-    chrome: selected,
-    tap: {
-      kind: 'select',
-      target: nextSelection
-    },
-    drag: {
-      kind: 'move',
-      target: {
-        nodeIds: dragNodeIds,
-        edgeIds: dragEdgeIds
-      },
-      selection: dragSelectionBehavior
-    },
-    hold: HOLD_TO_CONTAIN_MARQUEE
-  }
-}
-
 const decideGroupPress = <TField extends string>(
   deps: Pick<SelectionPressPolicyDeps, 'getGroupSelection' | 'isGroupSelected'>,
   selection: SelectionSummary,
@@ -571,9 +498,7 @@ export const resolveSelectionPressDecision = <TField extends string>(
         ? decideGroupPress<TField>(deps, input.selection, mode, target.groupId)
       : target.kind === 'selection-box'
         ? decideSelectionBoxPress<TField>(input.selection, input.affordance)
-        : target.kind === 'node'
-          ? decideNodePress(deps, input.selection, mode, target)
-          : decideContainerShellPress<TField>(deps, input.selection, mode, target.nodeId)
+        : decideNodePress(deps, input.selection, mode, target)
 
   return decision
     ? {
@@ -600,16 +525,6 @@ export const matchSelectionTap = <TField extends string>(
     case 'selection-box':
       return targetInput.kind === 'selection-box'
         && targetInput.part === 'body'
-    case 'container-shell':
-      return (
-        targetInput.kind === 'node'
-        && targetInput.part === 'shell'
-        && (
-          targetInput.shell === 'group'
-          || targetInput.shell === 'frame'
-        )
-        && targetInput.nodeId === target.nodeId
-      )
     case 'node':
       return (
         targetInput.kind === 'node'

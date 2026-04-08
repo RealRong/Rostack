@@ -92,7 +92,6 @@ export const createRead = ({
     edge: edgeRead,
     mindmap: engineRead.mindmap,
     selection: selectionRead,
-    tree: engineRead.tree,
     slice: engineRead.slice,
     index: engineRead.index,
     tool: toolRead,

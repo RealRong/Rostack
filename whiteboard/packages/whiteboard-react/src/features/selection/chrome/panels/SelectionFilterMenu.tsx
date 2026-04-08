@@ -1,7 +1,6 @@
 import type { MenuItem } from '@ui'
 import { Menu } from '@ui'
-import { NodeTypeIcon } from '#react/features/node'
-import type { SelectionToolbarFilterView } from '#react/features/node'
+import { NodeTypeIcon, type SelectionToolbarFilterView } from '#react/features/node'
 
 const toMenuItems = (
   filter: SelectionToolbarFilterView,

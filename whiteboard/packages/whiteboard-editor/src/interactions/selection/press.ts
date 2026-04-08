@@ -77,18 +77,6 @@ const resolveSelectionPressTargetInput = (
         }
       }
 
-      if (input.pick.part === 'shell') {
-        const node = ctx.read.node.item.get(input.pick.id)?.node
-        return {
-          kind: 'node',
-          nodeId: input.pick.id,
-          part: 'shell',
-          shell: node
-            ? ctx.read.node.capability(node).role
-            : 'content'
-        }
-      }
-
       if (input.pick.part === 'body') {
         return {
           kind: 'node',
@@ -132,7 +120,6 @@ const resolveSelectionPress = (
 
   const resolved = resolveSelectionPressDecision({
     getNode: (nodeId) => ctx.read.node.item.get(nodeId)?.node,
-    getOwnerId: ctx.read.node.owner,
     canEnter: (nodeId) => {
       const node = ctx.read.node.item.get(nodeId)?.node
       return node

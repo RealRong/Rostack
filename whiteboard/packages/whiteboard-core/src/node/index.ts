@@ -4,8 +4,7 @@ export {
   classifyNodeUpdate,
   createNodeFieldsUpdateOperation,
   createNodeUpdateOperation,
-  isNodeUpdateEmpty,
-  sanitizeGroupUpdate
+  isNodeUpdateEmpty
 } from './update'
 export {
   buildNodeDuplicateOperations,
@@ -32,34 +31,8 @@ export {
   type ResolvedDrawStroke
 } from './draw'
 export {
-  buildDeleteOwnerOps,
-  buildOwnerOps,
-  createOwnerDepthResolver,
-  createOwnerState,
-  equalChildren,
-  filterRootIds,
-  findOwnerAncestor,
-  getNodeOwnerMap,
-  getOwnerChildrenMap,
-  getOwnerDescendants,
-  patchChildren,
-  readChildren,
-  replaceChildren
-} from './owner'
-export type {
-  OwnerState
-} from './owner'
-export {
-  findGroupAncestor,
-  expandGroupMembers,
-  getGroupChildrenMap,
-  getGroupDescendants,
   getNodesBoundingRect,
-  isContainerNode,
-  isOwnerNode,
-  rectEquals,
-  sanitizeGroupNode,
-  sanitizeGroupPatch
+  rectEquals
 } from './group'
 export {
   collectFrameMembers,
@@ -179,10 +152,7 @@ export { toLayerOrderedCanvasNodes, toLayerOrderedCanvasNodeIds } from './layer'
 export {
   buildNodeCreateOperation,
   buildNodeAlignOperations,
-  buildNodeDistributeOperations,
-  buildGroupMergeOperations,
-  buildGroupUngroupOperations,
-  buildGroupUngroupManyOperations
+  buildNodeDistributeOperations
 } from './commands'
 export {
   alignNodes,

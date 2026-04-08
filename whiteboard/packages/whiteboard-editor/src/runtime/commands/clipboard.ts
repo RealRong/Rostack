@@ -131,13 +131,11 @@ export const createClipboard = ({
     packet,
     options?: {
       origin?: Point
-      ownerId?: string
     }
   ) => {
     const origin = options?.origin ?? { ...editor.state.viewport.get().center }
     const inserted = editor.commands.document.insert(packet.slice, {
       origin,
-      ownerId: options?.ownerId,
       roots: packet.roots
     })
     if (!inserted.ok) {

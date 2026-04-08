@@ -28,7 +28,7 @@ export type EditorPick =
   | {
       kind: 'node'
       id: NodeId
-      part: 'body' | 'shell' | 'transform' | 'connect'
+      part: 'body' | 'transform' | 'connect'
       handle?: TransformPickHandle
       side?: EdgeAnchor['side']
     }

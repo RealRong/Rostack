@@ -12,12 +12,10 @@ import {
   useEdit,
   useEditor,
   useInteraction,
+  useNodeRegistry,
+  useStoreValue,
   useTool
 } from '#react/runtime/hooks'
-import {
-  useNodeRegistry
-} from '#react/runtime/hooks'
-import { useStoreValue } from '#react/runtime/hooks'
 import type { WhiteboardRuntime as Editor } from '#react/types/runtime'
 import type { NodeRegistry } from '#react/types/node'
 import { selectNodesByTypeKey } from './actions'

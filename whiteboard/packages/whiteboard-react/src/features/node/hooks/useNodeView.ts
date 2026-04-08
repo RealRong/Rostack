@@ -2,11 +2,11 @@ import type { CSSProperties } from 'react'
 import { useMemo } from 'react'
 import type { NodeItem } from '@whiteboard/engine'
 import type { NodeId } from '@whiteboard/core/types'
-import type { WhiteboardRuntime as Editor } from '../../../types/runtime'
-import { useEditorRuntime } from '../../../runtime/hooks/useEditor'
-import { useNodeRegistry } from '../../../runtime/hooks/useWhiteboard'
-import { useOptionalKeyedStoreValue } from '../../../runtime/hooks/useStoreValue'
-import type { NodeDefinition, NodeRegistry, NodeRenderProps, NodeWrite } from '../../../types/node'
+import type { WhiteboardRuntime as Editor } from '#react/types/runtime'
+import { useEditorRuntime } from '#react/runtime/hooks'
+import { useNodeRegistry } from '#react/runtime/hooks'
+import { useOptionalKeyedStoreValue } from '#react/runtime/hooks'
+import type { NodeDefinition, NodeRegistry, NodeRenderProps, NodeWrite } from '#react/types/node'
 
 const buildNodeTransformStyle = (
   rect: NodeItem['rect'],

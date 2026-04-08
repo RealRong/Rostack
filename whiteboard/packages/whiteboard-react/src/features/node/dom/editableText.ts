@@ -7,7 +7,7 @@ import {
   focusEditableEnd,
   focusEditablePoint,
   readEditableText
-} from '../../../dom/editable/text'
+} from '#react/dom/editable/text'
 
 export const syncEditableDraft = (
   element: HTMLDivElement,

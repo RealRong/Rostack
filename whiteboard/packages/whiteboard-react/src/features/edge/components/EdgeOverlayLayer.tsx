@@ -4,14 +4,14 @@ import type {
 import {
   useInteraction,
   useTool
-} from '../../../runtime/hooks/useEditor'
-import { useEditorRuntime } from '../../../runtime/hooks/useEditor'
-import { usePickRef } from '../../../runtime/hooks/usePickRef'
-import { useStoreValue } from '../../../runtime/hooks/useStoreValue'
+} from '#react/runtime/hooks'
+import { useEditorRuntime } from '#react/runtime/hooks'
+import { usePickRef } from '#react/runtime/hooks'
+import { useStoreValue } from '#react/runtime/hooks'
 import type {
   SelectedEdgeRoutePointView,
   SelectedEdgeView
-} from '../../../types/edge'
+} from '#react/types/edge'
 import { useSelectedEdgeView } from '../hooks/useEdgeView'
 import {
   EDGE_ARROW_END_ID,

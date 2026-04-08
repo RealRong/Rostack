@@ -1,4 +1,4 @@
-import type { Point } from '@whiteboard/core/types'
+import type { EdgeId, Point } from '@whiteboard/core/types'
 import type { ValueStore } from '@whiteboard/engine'
 import type { EditorPick } from './pick'
 
@@ -45,6 +45,34 @@ export type PointerInput<
 export type PointerDownInput = PointerInput<'down'>
 export type PointerMoveInput = PointerInput<'move'>
 export type PointerUpInput = PointerInput<'up'>
+
+export type ContextMenuInput = {
+  client: Point
+  screen: Point
+  world: Point
+  modifiers: ModifierKeys
+  pick: EditorPick
+  editable: boolean
+  ignoreInput: boolean
+  ignoreSelection: boolean
+  ignoreContextMenu: boolean
+}
+
+export type ContextMenuIntent =
+  | {
+      kind: 'canvas'
+      screen: Point
+      world: Point
+    }
+  | {
+      kind: 'selection'
+      screen: Point
+    }
+  | {
+      kind: 'edge'
+      screen: Point
+      edgeId: EdgeId
+    }
 
 export type WheelInput = {
   deltaX: number

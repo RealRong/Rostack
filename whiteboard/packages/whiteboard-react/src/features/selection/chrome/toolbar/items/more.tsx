@@ -1,6 +1,6 @@
 import { Button } from '@ui'
 import { MoreHorizontal } from 'lucide-react'
-import { ShapeMoreMenu } from '../../panels/ShapeMoreMenu'
+import { SelectionActionMenu } from '../../panels/SelectionActionMenu'
 import type { ToolbarItemSpec } from './types'
 
 export const moreItem: ToolbarItemSpec = {
@@ -28,11 +28,9 @@ export const moreItem: ToolbarItemSpec = {
     </Button>
   ),
   renderPanel: ({
-    context,
     closePanel
   }) => (
-    <ShapeMoreMenu
-      sections={context.menuSections}
+    <SelectionActionMenu
       onClose={closePanel}
     />
   )

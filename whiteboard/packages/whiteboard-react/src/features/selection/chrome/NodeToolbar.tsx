@@ -8,11 +8,11 @@ import {
   type RefObject
 } from 'react'
 import type { Point } from '@whiteboard/core/types'
-import { useSelectionPresentation } from '../../node/selection'
-import { useEditorRuntime } from '../../../runtime/hooks/useEditor'
-import { useNodeRegistry } from '../../../runtime/hooks/useWhiteboard'
-import { useElementSize } from '../../../dom/observe/useElementSize'
-import { WhiteboardPopover } from '../../../runtime/overlay/chrome'
+import { useSelectionPresentation } from '#react/features/node'
+import { useEditorRuntime } from '#react/runtime/hooks'
+import { useNodeRegistry } from '#react/runtime/hooks'
+import { useElementSize } from '#react/dom/observe'
+import { WhiteboardPopover } from '#react/runtime/overlay'
 import { buildToolbarStyle } from './layout'
 import { resolveToolbarSummaryContext } from './toolbar/context'
 import { readToolbarItemSpec, renderToolbarPanel } from './toolbar/items'
@@ -219,6 +219,8 @@ export const NodeToolbar = ({
           offset={10}
           surface="blocking"
           backdrop="transparent"
+          padding="menu"
+          size="md"
           contentClassName={cn(
             'min-w-0 overflow-hidden p-0',
             activePanelKey === 'more' || activePanelKey === 'filter'

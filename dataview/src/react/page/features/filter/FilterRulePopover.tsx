@@ -1,5 +1,5 @@
-import { Check, ChevronDown, Filter, Trash } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { ChevronDown, Filter, Trash } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Field, FilterRule } from '@dataview/core/contracts'
 import {
   applyFieldFilterPreset,
@@ -18,7 +18,7 @@ import { Menu } from '@ui/menu'
 import { Popover } from '@ui/popover'
 import { cn } from '@ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
-import { FieldOptionTag } from '@dataview/react/field/options'
+import { buildOptionTagLabel } from '@dataview/react/menu-builders'
 import { QueryChip } from '../query'
 import { StatusFilterPicker } from './StatusFilterPicker'
 
@@ -116,6 +116,18 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
   const selectedOption = !isCustomField(props.field) || props.field.kind === 'status'
     ? undefined
     : findFieldOption(props.field, props.rule.value)
+  const optionItems = useMemo(() => fieldOptions.map(option => ({
+    kind: 'toggle' as const,
+    key: option.id,
+    label: buildOptionTagLabel(option),
+    checked: selectedOption?.id === option.id,
+    onSelect: () => {
+      props.onChange({
+        ...props.rule,
+        value: option.id
+      })
+    }
+  })), [fieldOptions, props.onChange, props.rule, selectedOption?.id])
 
   useEffect(() => {
     if (!props.open) {
@@ -212,39 +224,16 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
                   onChange={props.onChange}
                 />
               ) : editorKind === 'singleOption' ? (
-                <div className="flex flex-col gap-0.5">
-                  {fieldOptions.length ? (
-                    fieldOptions.map(option => {
-                      const selected = selectedOption?.id === option.id
-
-                      return (
-                        <Button
-                          key={option.id}
-                          onClick={() => {
-                            props.onChange({
-                              ...props.rule,
-                              value: option.id
-                            })
-                          }}
-                          layout="row"
-                          trailing={selected
-                            ? <Check className="size-4 text-foreground" size={16} strokeWidth={1.8} />
-                            : undefined}
-                          pressed={selected}
-                        >
-                          <FieldOptionTag
-                            label={option.name}
-                            color={option.color ?? undefined}
-                          />
-                        </Button>
-                      )
-                    })
-                  ) : (
-                    <div className="px-1.5 py-2 text-[12px] text-muted-foreground">
-                      {renderMessage(meta.ui.filter.noOptions)}
-                    </div>
-                  )}
-                </div>
+                fieldOptions.length ? (
+                  <Menu
+                    items={optionItems}
+                    autoFocus={false}
+                  />
+                ) : (
+                  <div className="px-1.5 py-2 text-[12px] text-muted-foreground">
+                    {renderMessage(meta.ui.filter.noOptions)}
+                  </div>
+                )
               ) : (
                 <Input
                   value={draft}

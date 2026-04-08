@@ -7,7 +7,7 @@ import type {
   WheelInput
 } from '@whiteboard/editor'
 import type { Point } from '@whiteboard/core/types'
-import type { WhiteboardRuntime } from '../../types/runtime'
+import type { WhiteboardRuntime } from '#react/types/runtime'
 import type { PickRegistry } from './pickRegistry'
 import {
   isContextMenuIgnoredTarget,

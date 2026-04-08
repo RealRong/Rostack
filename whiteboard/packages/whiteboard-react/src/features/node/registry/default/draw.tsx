@@ -2,12 +2,12 @@ import {
   readDrawBaseSize,
   readDrawPoints
 } from '@whiteboard/core/node'
-import type { NodeDefinition } from '../../../../types/node'
+import type { NodeDefinition } from '#react/types/node'
 import {
   DrawStrokeHitShape,
   DrawStrokeSelectionShape,
   DrawStrokeShape
-} from '../../../draw/stroke'
+} from '#react/features/draw/stroke'
 import { createSchema, getStyleNumber, getStyleString, styleField } from './shared'
 
 const drawSchema = createSchema('draw', 'Draw', [

@@ -6,7 +6,7 @@ import {
   Trash2
 } from 'lucide-react'
 import { getDocumentFields } from '@dataview/core/document'
-import { Button } from '@ui/button'
+import { Menu, type MenuItem } from '@ui/menu'
 import { Popover } from '@ui/popover'
 import { VerticalReorderList } from '@ui/vertical-reorder-list'
 import {
@@ -40,6 +40,43 @@ export const SortPopover = (props: SortPopoverProps) => {
   const [addSortOpen, setAddSortOpen] = useState(false)
   const sorters = currentView?.sort ?? []
   const availableFields = getAvailableSorterFields(fields, sorters)
+  const footerItems: MenuItem[] = [
+    ...(availableFields.length
+      ? [{
+          kind: 'submenu' as const,
+          key: 'add',
+          label: renderMessage(meta.ui.sort.add),
+          leading: <Plus className="size-4 shrink-0" size={16} strokeWidth={1.8} />,
+          presentation: 'dropdown' as const,
+          placement: 'bottom-start' as const,
+          surface: 'panel' as const,
+          size: 'xl' as const,
+          content: () => (
+            <div className="flex max-h-[72vh] flex-col">
+              <FieldPicker
+                fields={availableFields}
+                emptyMessage={meta.ui.fieldPicker.allSorted}
+                onSelect={fieldId => {
+                  currentViewDomain?.sort.add(fieldId)
+                  setAddSortOpen(false)
+                }}
+              />
+            </div>
+          )
+        }]
+      : []),
+    {
+      kind: 'action',
+      key: 'clear',
+      label: renderMessage(meta.ui.sort.clear),
+      leading: <Trash2 className="size-4 shrink-0" size={16} strokeWidth={1.8} />,
+      tone: 'destructive',
+      onSelect: () => {
+        currentViewDomain?.sort.clear()
+        props.onOpenChange(false)
+      }
+    }
+  ]
 
   if (!sorters.length) {
     return null
@@ -101,50 +138,15 @@ export const SortPopover = (props: SortPopoverProps) => {
           />
 
           <div className="mt-2 flex flex-col gap-0.5 border-t border-divider pt-1">
-            {availableFields.length ? (
-              <Popover
-                open={addSortOpen}
-                onOpenChange={setAddSortOpen}
-                placement="bottom-start"
-              >
-                <Popover.Trigger>
-                  <Button
-                    layout="row"
-                    leading={<Plus className="size-4 shrink-0" size={16} strokeWidth={1.8} />}
-                  >
-                    {renderMessage(meta.ui.sort.add)}
-                  </Button>
-                </Popover.Trigger>
-                <Popover.Content
-                  initialFocus={-1}
-                  size="xl"
-                  padding="none"
-                >
-                  <div className="flex max-h-[72vh] flex-col">
-                    <FieldPicker
-                      fields={availableFields}
-                      emptyMessage={meta.ui.fieldPicker.allSorted}
-                      onSelect={fieldId => {
-                        currentViewDomain?.sort.add(fieldId)
-                        setAddSortOpen(false)
-                      }}
-                    />
-                  </div>
-                </Popover.Content>
-              </Popover>
-            ) : null}
-
-            <Button
-              variant="ghostDestructive"
-              layout="row"
-              leading={<Trash2 className="size-4 shrink-0" size={16} strokeWidth={1.8} />}
-              onClick={() => {
-                currentViewDomain?.sort.clear()
-                props.onOpenChange(false)
+            <Menu
+              items={footerItems}
+              autoFocus={false}
+              submenuOpenPolicy="click"
+              openSubmenuKey={addSortOpen ? 'add' : null}
+              onOpenSubmenuChange={key => {
+                setAddSortOpen(key === 'add')
               }}
-            >
-              {renderMessage(meta.ui.sort.clear)}
-            </Button>
+            />
           </div>
         </div>
       </Popover.Content>

@@ -19,10 +19,10 @@ import {
   toggleStatusFilterCategory,
   toggleStatusFilterOption
 } from '@dataview/core/field'
-import { Button } from '@ui/button'
+import { Menu, type MenuItem } from '@ui/menu'
 import { cn } from '@ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
-import { FieldOptionTag } from '@dataview/react/field/options'
+import { buildOptionTagLabel } from '@dataview/react/menu-builders'
 
 export interface StatusFilterPickerProps {
   field?: Field
@@ -78,106 +78,109 @@ export const StatusFilterPicker = (
     )
   }
 
+  const items: MenuItem[] = sections.flatMap((section, index) => {
+    const categorySelected = isStatusFilterCategorySelected(
+      field,
+      props.rule.value,
+      section.category
+    )
+    const visual = categoryVisual(section.category)
+    const CategoryIcon = visual.Icon
+
+    const sectionItems: MenuItem[] = [
+      {
+        kind: 'toggle',
+        key: `${section.category}:category`,
+        checked: categorySelected,
+        leading: <SelectionIcon selected={categorySelected} />,
+        label: (
+          <span className={cn(
+            'inline-flex items-center gap-2 font-medium',
+            categorySelected ? visual.className : 'text-foreground'
+          )}>
+            <CategoryIcon
+              className={cn('size-4 shrink-0', visual.className)}
+              size={16}
+              strokeWidth={1.8}
+            />
+            <span className="truncate">
+              {getStatusCategoryLabel(section.category)}
+            </span>
+          </span>
+        ),
+        onSelect: () => {
+          props.onChange({
+            ...props.rule,
+            value: toggleStatusFilterCategory(
+              field,
+              props.rule.value,
+              section.category
+            )
+          })
+        }
+      },
+      ...section.options.map<MenuItem>(option => {
+        const optionSelected = isStatusFilterOptionSelected(
+          field,
+          props.rule.value,
+          option.id
+        )
+
+        return {
+          kind: 'toggle',
+          key: option.id,
+          checked: optionSelected,
+          className: 'pl-7',
+          leading: <SelectionIcon selected={optionSelected} />,
+          label: buildOptionTagLabel(option, {
+            variant: 'status'
+          }),
+          onSelect: () => {
+            props.onChange({
+              ...props.rule,
+              value: toggleStatusFilterOption(
+                field,
+                props.rule.value,
+                option.id
+              )
+            })
+          }
+        }
+      })
+    ]
+
+    return index === 0
+      ? sectionItems
+      : [{
+          kind: 'divider',
+          key: `${section.category}:divider`
+        }, ...sectionItems]
+  })
+
   return (
     <div className="flex flex-col">
-      <div className="flex flex-col gap-0.5 px-1.5 pb-2 pt-1">
-        {sections.map(section => {
-          const categorySelected = isStatusFilterCategorySelected(
-            field,
-            props.rule.value,
-            section.category
-          )
-          const visual = categoryVisual(section.category)
-          const CategoryIcon = visual.Icon
-
-          return (
-            <div
-              key={section.category}
-              className="flex flex-col gap-0.5"
-            >
-              <Button
-                layout="row"
-                pressed={categorySelected}
-                leading={<SelectionIcon selected={categorySelected} />}
-                onClick={() => {
-                  props.onChange({
-                    ...props.rule,
-                    value: toggleStatusFilterCategory(
-                      field,
-                      props.rule.value,
-                      section.category
-                    )
-                  })
-                }}
-              >
-                <span className={cn(
-                  'inline-flex items-center gap-2 font-medium',
-                  categorySelected ? visual.className : 'text-foreground'
-                )}>
-                  <CategoryIcon
-                    className={cn('size-4 shrink-0', visual.className)}
-                    size={16}
-                    strokeWidth={1.8}
-                  />
-                  <span className="truncate">
-                    {getStatusCategoryLabel(section.category)}
-                  </span>
-                </span>
-              </Button>
-
-              {section.options.map(option => {
-                const optionSelected = isStatusFilterOptionSelected(
-                  field,
-                  props.rule.value,
-                  option.id
-                )
-
-                return (
-                  <div
-                    key={option.id}
-                    className="pl-7"
-                  >
-                    <Button
-                      layout="row"
-                      pressed={optionSelected}
-                      leading={<SelectionIcon selected={optionSelected} />}
-                      onClick={() => {
-                        props.onChange({
-                          ...props.rule,
-                          value: toggleStatusFilterOption(
-                            field,
-                            props.rule.value,
-                            option.id
-                          )
-                        })
-                      }}
-                    >
-                      <FieldOptionTag
-                        label={option.name}
-                        color={option.color ?? undefined}
-                        variant="status"
-                      />
-                    </Button>
-                  </div>
-                )
-              })}
-            </div>
-          )
-        })}
+      <div className="px-1.5 pb-2 pt-1">
+        <Menu
+          items={items}
+          autoFocus={false}
+        />
       </div>
 
       <div className="border-t border-border px-1.5 py-1.5">
-        <Button
-          layout="row"
-          onClick={() => {
-            props.onChange({
-              ...props.rule,
-              value: createEmptyStatusFilterValue()
-            })
-          }}
-        >
-          {renderMessage(meta.ui.filter.clearSelection)}
-        </Button>
+        <Menu
+          autoFocus={false}
+          items={[{
+            kind: 'action',
+            key: 'clear',
+            label: renderMessage(meta.ui.filter.clearSelection),
+            onSelect: () => {
+              props.onChange({
+                ...props.rule,
+                value: createEmptyStatusFilterValue()
+              })
+            }
+          }]}
+        />
       </div>
     </div>
   )

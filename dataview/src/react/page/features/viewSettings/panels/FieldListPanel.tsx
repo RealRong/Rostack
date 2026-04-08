@@ -1,7 +1,7 @@
 import { Plus } from 'lucide-react'
 import { getDocumentCustomFields } from '@dataview/core/document'
 import { FieldPicker } from '@dataview/react/page/features/viewQuery/FieldPicker'
-import { Button } from '@ui/button'
+import { Menu } from '@ui/menu'
 import { useDocument } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { useViewSettings } from '../context'
@@ -22,13 +22,16 @@ export const FieldListPanel = () => {
         }}
       />
       <div className="border-t border-divider px-2 py-2">
-        <Button
-          className='w-full'
-          leading={<Plus className="size-4 shrink-0" size={16} strokeWidth={1.8} />}
-          onClick={() => router.push({ kind: 'fieldCreate' })}
-        >
-          {renderMessage(meta.ui.viewSettings.fieldsPanel.add)}
-        </Button>
+        <Menu
+          autoFocus={false}
+          items={[{
+            kind: 'action',
+            key: 'create',
+            label: renderMessage(meta.ui.viewSettings.fieldsPanel.add),
+            leading: <Plus className="size-4 shrink-0" size={16} strokeWidth={1.8} />,
+            onSelect: () => router.push({ kind: 'fieldCreate' })
+          }]}
+        />
       </div>
     </div>
   )

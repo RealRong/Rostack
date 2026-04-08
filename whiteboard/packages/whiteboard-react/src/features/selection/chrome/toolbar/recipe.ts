@@ -110,7 +110,7 @@ const isItemVisible = (
     case 'lock':
       return context.nodeIds.length > 0
     case 'more':
-      return context.menuSections.length > 0
+      return context.nodeIds.length > 0
   }
 }
 

@@ -2,9 +2,9 @@ import { useEffect, type RefObject } from 'react'
 import {
   isEditableTarget,
   isInputIgnoredTarget
-} from '../dom/host/targets'
+} from '#react/dom/host/targets'
 import { consumeDomEvent } from '../dom/host/event'
-import { useWhiteboardServices } from '../runtime/hooks/useWhiteboard'
+import { useWhiteboardServices } from '#react/runtime/hooks'
 
 export const useClipboard = ({
   containerRef

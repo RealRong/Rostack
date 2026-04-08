@@ -1,9 +1,9 @@
 import type { SelectionSummary } from '@whiteboard/core/selection'
-import type { WhiteboardRuntime } from '../../types/runtime'
+import type { WhiteboardRuntime } from '#react/types/runtime'
 import {
   readSelectionExactGroupIds,
   readSelectionWholeGroupIds
-} from '../../runtime/selection'
+} from '#react/runtime/selection'
 
 export type SelectionCan = {
   order: boolean

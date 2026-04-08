@@ -7,8 +7,8 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import { Button, cn } from '@ui'
-import { useEditor } from '../../runtime/hooks/useEditor'
-import { useStoreValue } from '../../runtime/hooks/useStoreValue'
+import { useEditor } from '#react/runtime/hooks'
+import { useStoreValue } from '#react/runtime/hooks'
 
 const ZOOM_FACTOR = 1.2
 const iconButtonClassName = cn(

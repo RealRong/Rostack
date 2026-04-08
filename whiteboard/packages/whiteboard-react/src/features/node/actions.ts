@@ -1,7 +1,7 @@
 import type { Node } from '@whiteboard/core/types'
-import type { WhiteboardRuntime } from '../../types/runtime'
-import type { NodeRegistry } from '../../types/node'
-import { replaceNodeSelection } from '../../runtime/commands'
+import type { WhiteboardRuntime } from '#react/types/runtime'
+import type { NodeRegistry } from '#react/types/node'
+import { replaceNodeSelection } from '#react/runtime/commands'
 
 const readNodeMetaKey = (
   registry: Pick<NodeRegistry, 'get'>,

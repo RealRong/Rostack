@@ -26,6 +26,8 @@ import type {
   DrawSlot
 } from './draw'
 import type {
+  ContextMenuInput,
+  ContextMenuIntent,
   KeyboardInput,
   PointerDownInput,
   PointerMoveInput,
@@ -73,6 +75,7 @@ export type EditorPointerDispatchResult = {
 }
 
 export type EditorInput = {
+  contextMenu: (input: ContextMenuInput) => ContextMenuIntent | null
   pointerDown: (input: PointerDownInput) => EditorPointerDispatchResult
   pointerMove: (input: PointerMoveInput) => boolean
   pointerUp: (input: PointerUpInput) => boolean

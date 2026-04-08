@@ -8,20 +8,19 @@ import {
   type ShapeKind
 } from '@whiteboard/core/node'
 import type { Node, NodeSchema, Point } from '@whiteboard/core/types'
-import type { NodeSummary } from '../../../node/summary'
+import type { NodeSummary } from '#react/features/node'
 import {
   STICKY_DEFAULT_FILL,
   STICKY_DEFAULT_TEXT_COLOR,
   TEXT_DEFAULT_FONT_SIZE
-} from '../../../node/text'
+} from '#react/features/node'
 import type {
-  SelectionMoreMenuSectionView,
   SelectionToolbarFilterView
-} from '../../../node/selection'
+} from '#react/features/node'
 import type {
   NodeMeta,
   NodeRegistry
-} from '../../../../types/node'
+} from '#react/types/node'
 import { resolveToolbarPlacement } from '../layout'
 import type {
   ToolbarSelectionKind
@@ -46,7 +45,6 @@ type ToolbarSelectionState = {
   nodeSummary: NodeSummary
   toolbar?: {
     filter?: SelectionToolbarFilterView
-    moreSections: readonly SelectionMoreMenuSectionView[]
   }
 }
 
@@ -63,7 +61,6 @@ export type ToolbarSummaryContext = {
   placement?: 'top' | 'bottom'
   anchor?: Point
   filter?: SelectionToolbarFilterView
-  menuSections: readonly SelectionMoreMenuSectionView[]
   canChangeShapeKind: boolean
   canEditFontSize: boolean
   canEditFontWeight: boolean
@@ -92,8 +89,6 @@ export type ToolbarSummaryContext = {
   opacity?: number
   locked: NodeSummary['lock']
 }
-
-const EMPTY_SECTIONS: readonly SelectionMoreMenuSectionView[] = []
 
 const readString = (
   node: Node,
@@ -376,7 +371,6 @@ export const resolveToolbarSummaryContext = ({
   const canEditTextColor = hasControl(nodes, registry, 'text')
     && supportsStyleField(nodes, registry, 'color', 'string')
   const filter = selection.toolbar?.filter
-  const menuSections = selection.toolbar?.moreSections ?? EMPTY_SECTIONS
   const placement = rect
     ? resolveToolbarPlacement({
         worldToScreen,
@@ -398,7 +392,6 @@ export const resolveToolbarSummaryContext = ({
     placement: placement?.placement,
     anchor: placement?.anchor,
     filter,
-    menuSections,
     canChangeShapeKind: selectionKind === 'shape',
     canEditFontSize: supportsStyleField(nodes, registry, 'fontSize', 'number'),
     canEditFontWeight: supportsStyleField(nodes, registry, 'fontWeight', 'number'),

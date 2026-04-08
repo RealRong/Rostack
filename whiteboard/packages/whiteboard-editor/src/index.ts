@@ -18,6 +18,8 @@ export type {
   EditorInput
 } from './types/editor'
 export type {
+  ContextMenuInput,
+  ContextMenuIntent,
   KeyboardInput,
   ModifierKeys,
   PointerDownInput,

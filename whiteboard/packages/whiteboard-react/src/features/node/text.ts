@@ -22,7 +22,7 @@ export type {
 export {
   focusEditableEnd,
   readEditableText
-} from '../../dom/editable/text'
+} from '#react/dom/editable/text'
 export { bindNodeTextSource } from './dom/textSourceRegistry'
 export {
   measureBoundTextNodeSize,

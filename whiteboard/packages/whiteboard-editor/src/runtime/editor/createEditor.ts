@@ -104,6 +104,7 @@ export const createEditor = ({
   const input = createEditorInput({
     interaction,
     edgeHover,
+    read,
     write
   })
 

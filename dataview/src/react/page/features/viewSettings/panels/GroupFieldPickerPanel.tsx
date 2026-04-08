@@ -6,6 +6,7 @@ import {
 } from '@dataview/react/dataview'
 import { Menu, type MenuItem } from '@ui/menu'
 import { meta, renderMessage } from '@dataview/meta'
+import { buildFieldToggleItem } from '@dataview/react/menu-builders'
 import { useViewSettings } from '../context'
 
 export const GroupFieldPickerPanel = () => {
@@ -29,22 +30,15 @@ export const GroupFieldPickerPanel = () => {
         router.back()
       }
     },
-    ...fields.map(field => {
-      const fieldMeta = meta.field.kind.get(field.kind)
-      const Icon = fieldMeta.Icon
-
-      return {
-        kind: 'toggle' as const,
-        key: field.id,
-        label: field.name,
-        leading: <Icon className="size-4" size={16} strokeWidth={1.8} />,
+    ...fields.map(field => (
+      buildFieldToggleItem(field, {
         checked: currentView?.group?.field === field.id,
         onSelect: () => {
           currentViewDomain?.group.set(field.id)
           router.back()
         }
-      }
-    })
+      })
+    ))
   ]
 
   return (

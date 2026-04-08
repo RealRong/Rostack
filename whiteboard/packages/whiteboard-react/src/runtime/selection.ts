@@ -1,4 +1,4 @@
-import type { WhiteboardRuntime } from '../types/runtime'
+import type { WhiteboardRuntime } from '#react/types/runtime'
 
 export type SelectionTargetLike = {
   nodeIds?: readonly string[]

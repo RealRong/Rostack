@@ -6,9 +6,9 @@ import {
   resolveShortcutBindings
 } from '../dom/host/shortcut'
 import type { ShortcutOverrides } from '../types/common/shortcut'
-import { useEditorRuntime } from '../runtime/hooks/useEditor'
+import { useEditorRuntime } from '#react/runtime/hooks'
 import { consumeDomEvent } from '../dom/host/event'
-import { isKeyboardIgnoredTarget } from '../dom/host/targets'
+import { isKeyboardIgnoredTarget } from '#react/dom/host/targets'
 import {
   DefaultShortcutBindings,
   runShortcut

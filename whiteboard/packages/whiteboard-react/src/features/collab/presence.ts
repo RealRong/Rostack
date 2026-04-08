@@ -1,5 +1,5 @@
 import type { Tool } from '@whiteboard/editor'
-import type { WhiteboardRuntime } from '../../types/runtime'
+import type { WhiteboardRuntime } from '#react/types/runtime'
 import type {
   WhiteboardPresenceActivity,
   WhiteboardPresenceState,

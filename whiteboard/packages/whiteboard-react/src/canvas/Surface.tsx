@@ -2,8 +2,8 @@ import { useMemo, type CSSProperties, type RefObject } from 'react'
 import {
   useEditorRuntime,
   useTool
-} from '../runtime/hooks/useEditor'
-import { useStoreValue } from '../runtime/hooks/useStoreValue'
+} from '#react/runtime/hooks'
+import { useStoreValue } from '#react/runtime/hooks'
 import { useBindViewportInput } from '../runtime/viewport/useBindViewportInput'
 import { Background } from './Background'
 import { Chrome } from './Chrome'

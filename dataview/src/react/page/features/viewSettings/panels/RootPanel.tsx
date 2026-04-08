@@ -1,6 +1,5 @@
 import {
   ArrowUpDown,
-  ChevronRight,
   Copy,
   Eye,
   Filter,
@@ -10,7 +9,7 @@ import {
   Trash2,
   type LucideIcon
 } from 'lucide-react'
-import { forwardRef, useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { BucketSort, Field, View } from '@dataview/core/contracts'
 import {
   getDocumentFields,
@@ -22,9 +21,10 @@ import {
   useDataView,
   useDocument
 } from '@dataview/react/dataview'
-import { Button } from '@ui/button'
 import { Input } from '@ui/input'
+import { Menu, type MenuItem } from '@ui/menu'
 import { meta, renderMessage } from '@dataview/meta'
+import { buildNavigationItem } from '@dataview/react/menu-builders'
 import { useViewSettings } from '../context'
 import { supportsGroupSettings } from '@dataview/react/page/session/settings'
 
@@ -37,26 +37,6 @@ interface RootMenuItemConfig {
   panel: RootRouteKind
   visible?: boolean
 }
-
-const ViewSettingsMenuButton = forwardRef<HTMLButtonElement, RootMenuItemConfig & {
-  onClick: () => void
-}>((props, ref) => {
-  const Icon = props.icon
-
-  return (
-    <Button
-      ref={ref}
-      layout="row"
-      leading={<Icon size={16} strokeWidth={1.5} />}
-      suffix={props.suffix}
-      trailing={<ChevronRight className="size-3.5 shrink-0 text-muted-foreground" size={14} strokeWidth={2} />}
-      onClick={props.onClick}
-    >
-      {props.label}
-    </Button>
-  )
-})
-ViewSettingsMenuButton.displayName = 'ViewSettingsMenuButton'
 
 const ViewSettingsIdentitySection = (props: {
   currentView?: View
@@ -133,25 +113,32 @@ const ViewSettingsActionsSection = (props: {
   onDuplicate: () => void
   onRemove: () => void
 }) => {
+  const items: readonly MenuItem[] = [
+    {
+      kind: 'action',
+      key: 'duplicate',
+      label: renderMessage(meta.ui.viewSettings.duplicate),
+      leading: <Copy className="size-4" size={14} strokeWidth={1.8} />,
+      disabled: props.disabled,
+      onSelect: props.onDuplicate
+    },
+    {
+      kind: 'action',
+      key: 'remove',
+      label: renderMessage(meta.ui.viewSettings.remove),
+      leading: <Trash2 className="size-4" size={14} strokeWidth={1.8} />,
+      tone: 'destructive',
+      disabled: props.disabled || !props.canRemove,
+      onSelect: props.onRemove
+    }
+  ]
+
   return (
     <div className="flex flex-col gap-0.5 border-t border-divider p-1.5">
-      <Button
-        layout="row"
-        leading={<Copy className="size-4" size={14} strokeWidth={1.8} />}
-        disabled={props.disabled}
-        onClick={props.onDuplicate}
-      >
-        {renderMessage(meta.ui.viewSettings.duplicate)}
-      </Button>
-      <Button
-        variant="ghostDestructive"
-        layout="row"
-        leading={<Trash2 className="size-4" size={14} strokeWidth={1.8} />}
-        disabled={props.disabled || !props.canRemove}
-        onClick={props.onRemove}
-      >
-        {renderMessage(meta.ui.viewSettings.remove)}
-      </Button>
+      <Menu
+        items={items}
+        autoFocus={false}
+      />
     </div>
   )
 }
@@ -270,6 +257,19 @@ export const RootPanel = () => {
         : false
     }
   ]
+  const navigationItems = useMemo<readonly MenuItem[]>(() => menuItems
+    .filter(item => item.visible !== false)
+    .map(item => {
+      const Icon = item.icon
+
+      return buildNavigationItem({
+        key: item.panel,
+        label: item.label,
+        leading: <Icon size={16} strokeWidth={1.5} />,
+        suffix: item.suffix,
+        onSelect: () => router.push({ kind: item.panel })
+      })
+    }), [menuItems, router])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -290,19 +290,10 @@ export const RootPanel = () => {
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         <div className="flex flex-col gap-0.5 p-1.5">
-          {menuItems.map(item => {
-            if (item.visible === false) {
-              return null
-            }
-
-            return (
-              <ViewSettingsMenuButton
-                key={item.panel}
-                {...item}
-                onClick={() => router.push({ kind: item.panel })}
-              />
-            )
-          })}
+          <Menu
+            items={navigationItems}
+            autoFocus={false}
+          />
         </div>
 
         <ViewSettingsActionsSection

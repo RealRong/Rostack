@@ -1,6 +1,6 @@
 import { memo, useCallback, type CSSProperties } from 'react'
 import type { NodeId } from '@whiteboard/core/types'
-import { usePickRef } from '../../../runtime/hooks/usePickRef'
+import { usePickRef } from '#react/runtime/hooks'
 import { useNodeView } from '../hooks/useNodeView'
 
 type NodeItemProps = {

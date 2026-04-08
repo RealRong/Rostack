@@ -1,4 +1,3 @@
-import { ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { BucketSort, Field } from '@dataview/core/contracts'
 import { getDocumentFields } from '@dataview/core/document'
@@ -16,6 +15,10 @@ import {
 import { Input } from '@ui/input'
 import { Menu, type MenuItem } from '@ui/menu'
 import { meta, renderMessage } from '@dataview/meta'
+import {
+  buildChoiceSubmenuItem,
+  buildNavigationItem
+} from '@dataview/react/menu-builders'
 import { useViewSettings } from '../context'
 
 const readGroupModeLabel = (
@@ -137,66 +140,56 @@ export const GroupingPanel = () => {
     currentViewDomain?.group.setInterval(nextValue)
   }
 
-  const modeItems: MenuItem[] = availableModes.map(mode => ({
-    kind: 'toggle' as const,
-    key: mode,
-    label: readGroupModeLabel(groupField, mode) ?? mode,
-    checked: group.mode === mode,
-    onSelect: () => {
-      if (!groupField) {
-        return
-      }
-
-      currentViewDomain?.group.setMode(mode)
-    }
-  }))
-
-  const bucketSortItems: MenuItem[] = availableBucketSorts.map(bucketSort => ({
-    kind: 'toggle' as const,
-    key: bucketSort,
-    label: readBucketSortLabel(bucketSort) ?? bucketSort,
-    checked: group.bucketSort === bucketSort,
-    onSelect: () => {
-      if (!groupField) {
-        return
-      }
-
-      currentViewDomain?.group.setSort(bucketSort)
-    }
-  }))
-
   const settingItems: MenuItem[] = [
-    {
-      kind: 'action',
+    buildNavigationItem({
       key: 'field',
       label: renderMessage(meta.ui.viewSettings.groupField),
       suffix: groupField?.name ?? renderMessage(meta.ui.viewSettings.none),
-      trailing: <ChevronRight className="size-4" size={16} strokeWidth={1.8} />,
       onSelect: () => {
         router.push({ kind: 'groupField' })
       }
-    },
+    }),
     ...(groupField && availableModes.length > 1
-      ? [{
-          kind: 'submenu' as const,
+      ? [buildChoiceSubmenuItem({
           key: 'mode',
           label: renderMessage(meta.ui.viewSettings.groupMode),
           suffix: readGroupModeLabel(groupField, group.mode),
-          items: modeItems,
-          presentation: 'dropdown' as const,
-          placement: 'bottom-end' as const
-        }]
+          value: group.mode,
+          options: availableModes.map(mode => ({
+            id: mode,
+            label: readGroupModeLabel(groupField, mode) ?? mode
+          })),
+          onSelect: mode => {
+            if (!groupField) {
+              return
+            }
+
+            currentViewDomain?.group.setMode(mode)
+          },
+          presentation: 'dropdown',
+          placement: 'bottom-end'
+        })]
       : []),
-    ...(groupField && bucketSortItems.length > 0
-      ? [{
-          kind: 'submenu' as const,
+    ...(groupField && availableBucketSorts.length > 0
+      ? [buildChoiceSubmenuItem({
           key: 'sort',
           label: renderMessage(meta.ui.viewSettings.bucketSort),
           suffix: readBucketSortLabel(group.bucketSort),
-          items: bucketSortItems,
-          presentation: 'dropdown' as const,
-          placement: 'bottom-end' as const
-        }]
+          value: group.bucketSort,
+          options: availableBucketSorts.map(bucketSort => ({
+            id: bucketSort,
+            label: readBucketSortLabel(bucketSort) ?? bucketSort
+          })),
+          onSelect: bucketSort => {
+            if (!groupField) {
+              return
+            }
+
+            currentViewDomain?.group.setSort(bucketSort)
+          },
+          presentation: 'dropdown',
+          placement: 'bottom-end'
+        })]
       : [])
   ]
 

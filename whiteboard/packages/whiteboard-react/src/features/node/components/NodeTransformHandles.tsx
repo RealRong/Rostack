@@ -9,9 +9,9 @@ import {
   type TransformHandle
 } from '@whiteboard/core/node'
 import type { NodeItem } from '@whiteboard/engine'
-import { useEditor } from '../../../runtime/hooks/useEditor'
-import { usePickRef } from '../../../runtime/hooks/usePickRef'
-import { useStoreValue } from '../../../runtime/hooks/useStoreValue'
+import { useEditor } from '#react/runtime/hooks'
+import { usePickRef } from '#react/runtime/hooks'
+import { useStoreValue } from '#react/runtime/hooks'
 
 type NodeViewNode = NodeItem['node']
 type NodeViewRect = NodeItem['rect']

@@ -1,6 +1,6 @@
 import type { NodeId } from '@whiteboard/core/types'
-import { useEditor } from '../../../runtime/hooks/useEditor'
-import { useStoreValue } from '../../../runtime/hooks/useStoreValue'
+import { useEditor } from '#react/runtime/hooks'
+import { useStoreValue } from '#react/runtime/hooks'
 import { useMindmapTreeView } from '../hooks/useMindmapTreeView'
 import { MindmapTreeView } from './MindmapTreeView'
 

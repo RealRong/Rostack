@@ -16,10 +16,6 @@ import {
   getStatusOptionCategory,
   getStatusSections
 } from '@dataview/core/field'
-import {
-  resolveOptionDotStyle,
-  resolveOptionColorToken
-} from '@ui/color'
 import { Input } from '@ui/input'
 import { Menu, type MenuItem } from '@ui/menu'
 import {
@@ -27,6 +23,10 @@ import {
   useFieldById
 } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
+import {
+  buildChoiceSubmenuItem,
+  buildOptionColorItems
+} from '@dataview/react/menu-builders'
 import { FIELD_DROPDOWN_MENU_PROPS } from '../dropdown'
 import type { OptionLike } from './OptionEditorPopover'
 import { buildStatusIdsAfterCategoryMove } from './statusOptionMenu'
@@ -101,65 +101,18 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
     editor.fields.options.update(props.fieldId, props.option.id, { category })
   }
 
-  const colorItems = useMemo<MenuItem[]>(() => [
-    {
-      kind: 'label',
-      key: 'color-label',
-      label: renderMessage(meta.ui.field.options.color)
-    },
-    ...meta.option.color.list.map(color => {
-      const active = (optionColor ?? '') === color.id
-
-      return {
-        kind: 'action' as const,
-        key: `color-${color.id || 'default'}`,
-        label: renderMessage(color.message),
-        leading: (
-          <span
-            className="inline-flex h-3 w-3 shrink-0 rounded-full border"
-            style={{
-              ...resolveOptionDotStyle(color.id),
-              borderColor: resolveOptionColorToken(color.id, 'badge-border')
-            }}
-          />
-        ),
-        trailing: active
-          ? <Check className="size-4 text-foreground" size={16} strokeWidth={1.8} />
-          : undefined,
-        closeOnSelect: false,
-        onSelect: () => {
-          editor.fields.options.update(props.fieldId, props.option.id, {
-            color: color.id
-          })
-        }
-      }
-    })
-  ], [
+  const colorItems = useMemo<MenuItem[]>(() => buildOptionColorItems({
+    selectedColor: optionColor ?? '',
+    onSelect: colorId => {
+      editor.fields.options.update(props.fieldId, props.option.id, {
+        color: colorId
+      })
+    }
+  }), [
     editor.fields.options,
     optionColor,
     props.fieldId,
     props.option.id
-  ])
-
-  const groupItems = useMemo<MenuItem[]>(() => {
-    if (field?.kind !== 'status' || !statusCategory) {
-      return []
-    }
-
-    return ([
-      ...(['todo', 'in_progress', 'complete'] as const).map(category => ({
-        kind: 'toggle' as const,
-        key: `status-group-${category}`,
-        label: getStatusCategoryLabel(category),
-        checked: statusCategory === category,
-        onSelect: () => {
-          moveStatusOption(category)
-        }
-      }))
-    ])
-  }, [
-    field?.kind,
-    statusCategory
   ])
 
   const actionItems = useMemo<MenuItem[]>(() => {
@@ -183,15 +136,21 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
       })
 
       if (statusCategory) {
-        items.push({
-          kind: 'submenu',
+        items.push(buildChoiceSubmenuItem({
           key: 'status-group',
           label: renderMessage(meta.ui.field.status.group),
           leading: <Settings2 className="size-4" size={16} strokeWidth={1.8} />,
           suffix: getStatusCategoryLabel(statusCategory),
-          items: groupItems,
+          value: statusCategory,
+          options: (['todo', 'in_progress', 'complete'] as const).map(category => ({
+            id: category,
+            label: getStatusCategoryLabel(category)
+          })),
+          onSelect: category => {
+            moveStatusOption(category)
+          },
           ...FIELD_DROPDOWN_MENU_PROPS
-        })
+        }))
       }
     }
 
@@ -212,7 +171,6 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
   }, [
     editor.fields,
     field?.kind,
-    groupItems,
     isDefaultStatusOption,
     props.fieldId,
     props.onDeleted,

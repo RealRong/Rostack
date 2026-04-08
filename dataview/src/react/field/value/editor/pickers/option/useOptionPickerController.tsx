@@ -1,4 +1,3 @@
-import { MoreHorizontal } from 'lucide-react'
 import {
   useCallback,
   useEffect,
@@ -9,16 +8,15 @@ import { flushSync } from 'react-dom'
 import { getFieldOptions } from '@dataview/core/field'
 import { meta, renderMessage } from '@dataview/meta'
 import {
-  FieldOptionTag,
-  OptionEditorPopover
-} from '@dataview/react/field/options'
-import { Button } from '@ui/button'
-import {
   type MenuItem,
   type MenuReorderItem
 } from '@ui/menu'
 import { useDataView } from '@dataview/react/dataview'
 import type { EditorSubmitTrigger } from '@dataview/react/interaction'
+import {
+  buildEditableOptionItem,
+  readOptionLabel
+} from '@dataview/react/menu-builders'
 import type { FieldValueDraftEditorProps } from '../../contracts'
 
 const CREATE_OPTION_KEY = '__create-option__'
@@ -43,7 +41,7 @@ const moveItem = <Item,>(items: readonly Item[], from: number, to: number) => {
 
 const optionLabel = (
   option: ReturnType<typeof getFieldOptions>[number]
-) => option.name.trim() || renderMessage(meta.ui.field.options.untitled)
+) => readOptionLabel(option)
 
 const filterOptionsByQuery = (
   options: ReturnType<typeof getFieldOptions>,
@@ -251,64 +249,38 @@ export const useOptionPickerController = (
 
   const buildOptionItem = useCallback((
     option: ReturnType<typeof getFieldOptions>[number]
-  ) => ({
-    kind: 'item' as const,
-    key: option.id,
-    label: (
-      <FieldOptionTag
-        label={optionLabel(option)}
-        color={option.color ?? undefined}
-        className="max-w-full"
-      />
-    ),
-    className: editingOptionId === option.id
-      ? 'bg-hover text-fg'
-      : undefined,
-    accessory: (
-      <OptionEditorPopover
-        fieldId={fieldId}
-        option={{
-          ...option,
-          color: option.color ?? undefined
-        }}
-        open={editingOptionId === option.id}
-        onOpenChange={open => {
-          setEditingOptionId(open ? option.id : undefined)
-        }}
-        onDeleted={() => {
-          if (input.mode === 'single') {
-            if (input.draft === option.id) {
-              input.onDraftChange('')
-            }
-            return
-          }
+  ) => buildEditableOptionItem({
+    fieldId,
+    option,
+    open: editingOptionId === option.id,
+    editing: editingOptionId === option.id,
+    onOpenChange: open => {
+      setEditingOptionId(open ? option.id : undefined)
+    },
+    onDeleted: () => {
+      if (input.mode === 'single') {
+        if (input.draft === option.id) {
+          input.onDraftChange('')
+        }
+        return
+      }
 
-          if (!selectedKeySet.has(option.id)) {
-            return
-          }
+      if (!selectedKeySet.has(option.id)) {
+        return
+      }
 
-          input.onDraftChange(joinDraftKeys(
-            selectedKeys.filter(selectedKey => selectedKey !== option.id)
-          ))
-        }}
-        trigger={(
-          <Button
-            variant="plain"
-            size="iconBare"
-            aria-label={renderMessage(meta.ui.field.options.edit(optionLabel(option)))}
-          >
-            <MoreHorizontal className="size-4" size={16} strokeWidth={1.8} />
-          </Button>
-        )}
-      />
-    ),
+      input.onDraftChange(joinDraftKeys(
+        selectedKeys.filter(selectedKey => selectedKey !== option.id)
+      ))
+    },
     onSelect: () => {
       selectOption(
         option.id,
         input.mode === 'single' ? 'commit' : 'apply',
         'programmatic'
       )
-    }
+    },
+    closeOnSelect: input.mode !== 'single'
   }), [
     editingOptionId,
     fieldId,

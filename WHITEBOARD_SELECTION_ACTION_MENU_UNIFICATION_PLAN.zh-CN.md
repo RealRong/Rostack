@@ -19,205 +19,196 @@
 
 ## 核心目标
 
-- 让 `ContextMenu` 和 `NodeToolbar more` 共用同一份 selection action 数据源。
-- 避免两个入口分别维护 `Copy / Cut / Duplicate / Delete / Group / Ungroup / Align / Distribute / Layer`。
-- 保留“同一数据源、不同展示密度”的能力，而不是强制两个入口视觉完全一致。
+- 让 `ContextMenu` 和 `NodeToolbar more` 直接复用同一个 selection action menu 组件。
+- 明确该共享组件基于 `ui/src/menu` 组织，而不是 whiteboard 自己再包一层平行菜单体系。
+- 避免两个入口分别维护 `Copy / Cut / Paste / Duplicate / Layer / Group / Ungroup / Lock / Create container / Zoom in / Delete`。
+- 明确菜单从上到下的固定顺序、divider 位置、submenu 位置和条件显示规则。
 - 统一 whiteboard chrome 菜单的 `Menu` 尺寸和内边距。
 
 ## 结论
 
-### 1. 统一的不是组件，而是 action model
+### 1. 统一的不只是 action model，而是最终菜单组件
 
-不要只抽一个共同的菜单组件。
+这里已经不再停留在“共享 action model”。
 
-更合理的方案是：
+明确方案是：
 
-- 先统一 selection actions 的数据模型
-- 再让不同入口消费同一份模型
-- 最后按入口决定展示哪些 section
+- 共享一份 selection action data
+- 共享一份 `MenuItem[]` 组织逻辑
+- 共享同一个最终菜单组件
 
-也就是说，真正应该复用的是：
+也就是说，`ContextMenu` 和 `NodeToolbar more` 在 selection 场景下最终看到的是同一个 menu component，只是挂载位置不同。
 
-- section 列表
-- action 列表
-- section 顺序
-- 是否显示某 section 的规则
+### 2. 共享菜单组件必须直接基于 `ui/src/menu`
 
-而不是先去抽一个“看起来一样的 Menu 组件”。
+明确要求：
 
-### 2. `NodeToolbar more` 和 `ContextMenu` 应共用同一份 selection sections
+- selection action menu 使用 `ui/src/menu`
+- 不再在 whiteboard 内部额外维护一套平行菜单抽象
+- whiteboard 侧只负责把 selection state 转成 `ui/src/menu` 需要的 menu items
 
-推荐把 selection 的动作统一组织成以下几类 section：
+推荐形态：
 
-- `layer`
-- `structure`
-- `layout`
-- `edit`
-- `danger`
+- 新增一个共享组件，例如 `SelectionActionMenu`
+- 该组件内部直接使用 `@ui` 暴露出来的 `Menu`
+- menu item、divider、submenu 都遵循 `ui/src/menu` 的组织方式
 
-每个 section 下包含对应 action：
+这样做的目的很明确：
 
-- `layer`
-  - Bring to front
-  - Bring forward
-  - Send backward
-  - Send to back
-- `structure`
-  - Group
-  - Ungroup
-- `layout`
-  - Align top / left / right / bottom / horizontal center / vertical center
-  - Distribute horizontally / vertically
-- `edit`
-  - Copy
-  - Cut
-  - Duplicate
-- `danger`
-  - Delete
+- 和 UI 系统保持一致
+- 以后菜单行高、submenu 行为、焦点管理、键盘行为都只跟着 `ui/src/menu`
+- whiteboard 不再重复发明 selection menu 的内部组织模型
 
-这份 section 数据应该成为 selection actions 的唯一 source of truth。
+### 3. 采用策略 A：两个入口显示同一份完整 section
 
-### 3. 两个入口可以共源，但不一定完全同内容
+这里不再保留双策略。
 
-有两种产品策略：
+明确采用：
 
-#### 策略 A：完全对齐 Miro
+- `ContextMenu` 和 `NodeToolbar more` 显示同一份完整菜单
+- 菜单顺序一致
+- 菜单内容一致
+- 两个入口直接使用同一个菜单组件
 
-- `ContextMenu` 和 `NodeToolbar more` 显示同一份完整 section
-- 顺序一致
-- 内容一致
+这意味着产品上要完全对齐 Miro 的心智模型：
 
-好处：
+- selection actions 无论从右键还是 toolbar more 打开，看到的都是同一份菜单
+- 用户不需要记忆“这个动作只在右键里”还是“只在 toolbar more 里”
+- 后续新增或删减 selection actions 时，只维护一份菜单结构
 
-- 用户认知最统一
-- 所有 selection actions 无论从右键还是 toolbar 都能找到
-
-代价：
+这里的代价也是明确接受的：
 
 - `ContextMenu` 会变长
-- 会削弱“ContextMenu 只做轻量上下文命令层”的收敛方向
+- `ContextMenu` 不再保持 selection 场景下的极简版本
 
-#### 策略 B：同源，但分密度展示
+但在当前目标下，这个代价是可接受的，因为我们优先追求 selection actions 的一致性，而不是右键菜单的最小化。
 
-- `NodeToolbar more` 显示完整 section
-- `ContextMenu` 只显示其中一部分 section
+## 菜单定义
 
-推荐默认裁剪为：
+### 1. 共享菜单必须使用固定顺序
 
-- `edit`
-- `danger`
+selection action menu 从上到下固定为：
 
-如果后续确认用户确实强依赖右键结构操作，再逐步放出：
+1. `Copy`
+2. `Cut`
+3. `Paste`
+4. `Duplicate`
+5. `divider`
+6. `Layer`
+7. `Group`
+8. `Ungroup`
+9. `Lock`
+10. `Create container`
+11. `divider`
+12. `Zoom in`
+13. `Delete`
 
-- `structure`
-- `layer`
-- `layout`
+这个顺序应当成为唯一标准，`ContextMenu` 和 `NodeToolbar more` 都不允许再各自调整排序。
 
-这是我更推荐的策略。
+### 2. `Layer` 使用 submenu
 
-原因是：
+`Layer` 不是展开成一组平铺 action，而是一个 submenu。
 
-- 数据源完全统一
-- 不会重复实现
-- 仍然保留 `ContextMenu` 的轻量和快速
-- `NodeToolbar more` 可以承担完整 selection editing 角色
+submenu 内固定为：
+
+- `Bring to front`
+- `Bring forward`
+- `Send backward`
+- `Send to back`
+
+也就是说，顶层菜单里只有一个 `Layer` 项，具体 order 调整通过 submenu 完成。
+
+### 3. 条件显示规则
+
+共享菜单需要支持以下条件：
+
+- `Group`
+  - 仅在多选时显示
+- `Ungroup`
+  - 仅在当前 selection 选中了 group 时显示
+- `Lock`
+  - 在 node selection 场景下显示
+- `Create container`
+  - 在 node selection 场景下显示
+
+其余项默认作为 selection action menu 的标准项存在。
+
+### 4. `Create container` 的明确语义
+
+`Create container` 的行为明确为：
+
+- 新建一个 `frame`
+- frame 的尺寸基于当前 selection 的最外围 rect
+- 在该 rect 外再加一圈固定 padding
+
+也就是：
+
+- 读取当前 selection 的外接 bounds
+- 在 bounds 基础上扩张 padding
+- 以这个结果创建新的 frame
+
+这不是“把已有节点变成 container”，而是“围绕当前 selection 新建一个 frame 容器”。
 
 ## 推荐架构
 
-### 1. `selection.ts` 只负责生成共享 action sections
+### 1. `selection.ts` 只负责生成共享菜单所需的 selection action state
 
-当前 selection 层已经在生成 toolbar `moreSections`，长期应该把它改造成更中性的共享模型。
-
-推荐命名：
-
-- `actionSections`
-
-而不是继续使用：
-
-- `moreSections`
-
-因为这份数据已经不只是服务 toolbar more，而是 selection actions 的共享模型。
+selection 层不再维护面向不同入口的分叉结构，而是统一产出共享菜单所需状态。
 
 推荐结构：
 
 - `filter`
-- `actionSections`
+- `actionMenu`
 
 其中：
 
 - `filter` 服务 toolbar 首位 filter 入口
-- `actionSections` 服务 `NodeToolbar more` 和 `ContextMenu`
+- `actionMenu` 服务共享 selection action menu 组件
 
-### 2. 抽一个共享的 section -> `MenuItem[]` 转换层
+`actionMenu` 至少需要包含：
 
-建议新增一个共享转换函数，把 action sections 转成 `@ui Menu` 能消费的 items。
+- 菜单项是否显示
+- 菜单项是否禁用
+- action 回调
+- `Layer` submenu items
 
-输入：
+### 2. 抽一个共享的 selection action menu 组件
 
-- `actionSections`
-- 可选 section 过滤规则
+推荐做法：
 
-输出：
+- 将现有 `ShapeMoreMenu` 升级或重命名为更中性的组件，例如 `SelectionActionMenu`
+- `NodeToolbar more` 和 `ContextMenu` 的 selection 分支都直接渲染这个组件
 
-- `MenuItem[]`
+这个共享组件负责：
 
-这个层负责统一：
-
-- section label
-- divider 插入
-- action tone / disabled
-- action 回调透传
-
-这样可以避免：
-
-- `ShapeMoreMenu` 自己拼一遍
-- `ContextMenu` 自己再拼一遍
-
-### 3. `ShapeMoreMenu` 变成纯渲染层
-
-`ShapeMoreMenu` 不应该再承载 selection action 的业务语义。
-
-它应该只负责：
-
-- 接受共享 section 或共享 menu items
-- 渲染 `Menu`
+- 接受共享 `actionMenu` 数据
+- 在组件内部转换成 `ui/src/menu` 所需结构
+- 渲染统一的 `Menu`
 - 处理 `onClose`
 
-这样它就只是一个 whiteboard chrome menu shell，而不是 selection 逻辑的承载点。
+### 3. `ContextMenu` 和 `NodeToolbar more` 只负责挂载，不负责拼菜单
 
-### 4. `ContextMenu` 的 selection 分支只消费共享模型
+`ContextMenu` 的 selection 分支应该只做：
 
-`ContextMenu` 不再自己维护 selection actions。
+- 读取当前 selection 的 `actionMenu`
+- 渲染共享 `SelectionActionMenu`
 
-它应该做的只有：
+`NodeToolbar more` 也应该只做：
 
-- 读取当前 selection 的共享 `actionSections`
-- 按当前策略筛选 section
-- 渲染为 `Menu`
+- 读取当前 selection 的 `actionMenu`
+- 渲染同一个共享 `SelectionActionMenu`
 
-这样 selection context menu 的逻辑就会变成：
+两处都不再自己构造 menu items。
 
-- 数据来源统一
-- 入口呈现独立
-- 不再有第二套动作定义
+## 明确的产品策略
 
-## 建议的产品策略
+明确采用策略 A：
 
-我推荐：
+- `NodeToolbar more` 使用完整共享菜单
+- `ContextMenu` 的 selection 分支使用同一个完整共享菜单
+- 两个入口直接复用同一个共享菜单组件
 
-- `NodeToolbar more` 使用完整 `actionSections`
-- `ContextMenu` 默认只显示 `edit` 和 `danger`
-
-这是最平衡的方案。
-
-理由：
-
-- 用户在 toolbar more 里可以找到完整 selection actions
-- 右键菜单仍然保持短和快
-- 代码层只有一份 actions 定义
-- 将来如果要把 `layer / structure / layout` 放回右键，只需要改 section filter，不需要重写业务逻辑
-
-如果未来你们决定完全对齐 Miro，再把 `ContextMenu` 的 section filter 放开即可。
+不再保留 section filter，也不再保留“ContextMenu 精简版”方案。
 
 ## Menu 视觉统一
 
@@ -242,17 +233,17 @@ whiteboard chrome 里的操作菜单建议统一使用：
 
 ### Phase 1
 
-先收敛数据源：
+先收敛 selection action state：
 
-- 把 selection 层的 `moreSections` 改成更中性的 `actionSections`
-- 保证 `NodeToolbar more` 和 `ContextMenu` 都从这份数据读取
+- 把 selection 层改成统一产出共享 `actionMenu`
+- 明确菜单顺序、条件项、submenu 和回调都在这一层确定
 
 ### Phase 2
 
-抽共享转换函数：
+抽共享菜单组件：
 
-- `actionSections -> MenuItem[]`
-- 支持 section 过滤
+- 组件内部完成 `actionMenu -> ui/src/menu`
+- `NodeToolbar more` 和 `ContextMenu` selection 分支都直接使用该组件
 
 ### Phase 3
 
@@ -263,10 +254,7 @@ whiteboard chrome 里的操作菜单建议统一使用：
 
 ### Phase 4
 
-根据产品选择最终形态：
-
-- 保持 `ContextMenu` 精简版
-- 或完全对齐 Miro，显示完整 sections
+把原有入口中的重复 menu 拼装逻辑彻底删除，只保留共享组件。
 
 ## 最终形态
 
@@ -274,20 +262,48 @@ whiteboard chrome 里的操作菜单建议统一使用：
 
 - selection 数据层产出：
   - `filter`
-  - `actionSections`
+  - `actionMenu`
 - `NodeToolbar`
   - 首位 `filter`
-  - `more` 使用完整 `actionSections`
+  - `more` 直接使用共享 selection action menu 组件
 - `ContextMenu`
-  - selection 分支消费同一份 `actionSections`
-  - 默认只显示 `edit + danger`
+  - selection 分支直接使用同一个共享 selection action menu 组件
 - 所有 whiteboard chrome 操作菜单统一：
   - `padding="menu"`
   - `size="md"`
 
 这样可以同时满足：
 
-- 产品结构一致
+- 产品结构完全一致
 - 代码只有一份 action model
-- 入口职责清晰
-- 后续扩展成本低
+- 菜单组件也只有一份
+- 后续扩展成本最低
+
+## 最终固定菜单顺序
+
+最后再次明确，selection action menu 的固定顺序为：
+
+1. `Copy`
+2. `Cut`
+3. `Paste`
+4. `Duplicate`
+5. `divider`
+6. `Layer`
+7. `Group`
+8. `Ungroup`
+9. `Lock`
+10. `Create container`
+11. `divider`
+12. `Zoom in`
+13. `Delete`
+
+补充规则：
+
+- `Layer` 使用 submenu
+- `Group` 仅多选显示
+- `Ungroup` 仅选中了 group 时显示
+- `Create container` = 新建一个 frame，尺寸为当前 selection 最外层 rect + padding
+- 共享菜单组件内部统一使用 `ui/src/menu`
+- 统一传入：
+  - `padding="menu"`
+  - `size="md"`

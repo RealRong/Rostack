@@ -10,9 +10,9 @@ import {
   type CSSProperties,
   type KeyboardEvent
 } from 'react'
-import type { NodeDefinition, NodeRenderProps } from '../../../../types/node'
-import { useEdit, useEditor } from '../../../../runtime/hooks/useEditor'
-import { usePickRef } from '../../../../runtime/hooks/usePickRef'
+import type { NodeDefinition, NodeRenderProps } from '#react/types/node'
+import { useEdit, useEditor } from '#react/runtime/hooks'
+import { usePickRef } from '#react/runtime/hooks'
 import {
   focusEditableDraft,
   isEscapeEditingKey,

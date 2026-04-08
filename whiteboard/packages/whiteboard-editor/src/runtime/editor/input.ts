@@ -1,14 +1,80 @@
-import type { Editor, EditorWriteApi } from '../../types/editor'
+import type {
+  Editor,
+  EditorRead,
+  EditorWriteApi
+} from '../../types/editor'
+import type { ContextMenuIntent } from '../../types/input'
 import type { InteractionRuntime } from '../interaction/types'
 import type { EdgeHoverService } from '../../interactions/edge/hover'
+
+const isSameIds = (
+  left: readonly string[],
+  right: readonly string[]
+) => (
+  left.length === right.length
+  && left.every((value, index) => value === right[index])
+)
+
+const readSelectionIntent = (
+  read: EditorRead,
+  screen: {
+    x: number
+    y: number
+  }
+): Extract<ContextMenuIntent, { kind: 'selection' }> | null => {
+  const selection = read.selection.summary.get()
+
+  return selection.items.count > 0
+    ? {
+        kind: 'selection',
+        screen
+      }
+    : null
+}
+
+const syncNodeSelection = (
+  read: EditorRead,
+  write: EditorWriteApi,
+  nodeIds: readonly string[]
+) => {
+  const current = read.selection.target.get()
+  if (isSameIds(current.nodeIds, nodeIds) && current.edgeIds.length === 0) {
+    return
+  }
+
+  write.session.selection.replace({
+    nodeIds
+  })
+}
+
+const syncSingleEdgeSelection = (
+  read: EditorRead,
+  write: EditorWriteApi,
+  edgeId: string
+) => {
+  const current = read.selection.target.get()
+  if (
+    current.nodeIds.length === 0
+    && current.edgeIds.length === 1
+    && current.edgeIds[0] === edgeId
+  ) {
+    return
+  }
+
+  write.session.selection.replace({
+    edgeIds: [edgeId]
+  })
+}
 
 export const createEditorInput = ({
   interaction,
   edgeHover,
+  read,
   write
 }: {
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
+  read: EditorRead
   write: EditorWriteApi
 }): Editor['input'] => {
   const writePointer = (input: {
@@ -32,6 +98,61 @@ export const createEditorInput = ({
       clearPointer()
       edgeHover.clear()
       interaction.cancel()
+    },
+    contextMenu: (input) => {
+      writePointer(input)
+      edgeHover.clear()
+
+      if (interaction.busy.get() || input.ignoreContextMenu) {
+        return null
+      }
+
+      switch (input.pick.kind) {
+        case 'selection-box': {
+          return readSelectionIntent(read, input.screen) ?? {
+            kind: 'canvas',
+            screen: input.screen,
+            world: input.world
+          }
+        }
+        case 'node': {
+          const selection = read.selection.summary.get()
+          const reuseCurrentSelection = selection.target.nodeSet.has(input.pick.id)
+          if (reuseCurrentSelection) {
+            return readSelectionIntent(read, input.screen)
+          }
+
+          syncNodeSelection(read, write, [input.pick.id])
+          return readSelectionIntent(read, input.screen)
+        }
+        case 'group': {
+          const selection = read.group.selection(input.pick.id)
+          if (!selection) {
+            return {
+              kind: 'canvas',
+              screen: input.screen,
+              world: input.world
+            }
+          }
+
+          write.session.selection.replace(selection)
+          return readSelectionIntent(read, input.screen)
+        }
+        case 'edge':
+          syncSingleEdgeSelection(read, write, input.pick.id)
+          return {
+            kind: 'edge',
+            screen: input.screen,
+            edgeId: input.pick.id
+          }
+        case 'background':
+        case 'mindmap':
+          return {
+            kind: 'canvas',
+            screen: input.screen,
+            world: input.world
+          }
+      }
     },
     pointerDown: (input) => {
       writePointer(input)

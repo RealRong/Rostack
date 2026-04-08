@@ -5,7 +5,7 @@ import {
 import { cn } from '@ui'
 import {
   ShapeGlyph
-} from '../../node/shape'
+} from '#react/features/node'
 import { readShapePresetKind } from '../presets'
 import {
   TOOLBOX_GRID_BUTTON_CLASSNAME,

@@ -9,7 +9,7 @@ import {
   type PointerDownInput
 } from '@whiteboard/editor'
 import type { NodeId, Point, SpatialNodeInput } from '@whiteboard/core/types'
-import type { WhiteboardRuntime } from '../../types/runtime'
+import type { WhiteboardRuntime } from '#react/types/runtime'
 
 type InsertResult = {
   nodeId: NodeId

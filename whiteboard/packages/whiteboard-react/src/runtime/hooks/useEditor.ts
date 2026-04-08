@@ -1,7 +1,7 @@
 import type {
   WhiteboardInstance,
   WhiteboardRuntime
-} from '../../types/runtime'
+} from '#react/types/runtime'
 import { useWhiteboardServices } from './useWhiteboard'
 import { useStoreValue } from './useStoreValue'
 

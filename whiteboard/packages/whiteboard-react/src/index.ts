@@ -1,9 +1,9 @@
 import './styles/whiteboard-react.css'
 
 export { Whiteboard } from './Whiteboard'
-export { useEditor } from './runtime/hooks/useEditor'
-export { useWhiteboard } from './runtime/hooks/useWhiteboard'
-export { createNodeRegistry, createDefaultNodeRegistry } from './features/node/registry'
+export { useEditor } from './runtime/hooks'
+export { useWhiteboard } from './runtime/hooks'
+export { createNodeRegistry, createDefaultNodeRegistry } from './features/node'
 
 export type {
   WhiteboardOptions,

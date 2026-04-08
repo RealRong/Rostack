@@ -11,7 +11,7 @@ import type {
   Rect,
   Size
 } from '@whiteboard/core/types'
-import type { WhiteboardRuntime as Editor } from '../../../types/runtime'
+import type { WhiteboardRuntime as Editor } from '#react/types/runtime'
 import { resolveNodeTextSource } from './textSourceRegistry'
 
 type TextMeasureElements = {

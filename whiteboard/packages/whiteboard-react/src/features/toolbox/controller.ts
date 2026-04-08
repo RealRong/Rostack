@@ -12,7 +12,7 @@ import type {
   DrawSlot
 } from '@whiteboard/editor/draw'
 import type { Dispatch, SetStateAction } from 'react'
-import type { WhiteboardRuntime as Editor } from '../../types/runtime'
+import type { WhiteboardRuntime as Editor } from '#react/types/runtime'
 import type {
   ToolPaletteMenuKey,
   ToolPaletteView

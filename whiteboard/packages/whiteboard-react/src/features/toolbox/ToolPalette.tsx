@@ -8,9 +8,9 @@ import {
 import {
   useEditor,
   useTool
-} from '../../runtime/hooks/useEditor'
-import { useStoreValue } from '../../runtime/hooks/useStoreValue'
-import { WhiteboardPopover } from '../../runtime/overlay/chrome'
+} from '#react/runtime/hooks'
+import { useStoreValue } from '#react/runtime/hooks'
+import { WhiteboardPopover } from '#react/runtime/overlay'
 import { ToolPaletteButtons } from './ToolPaletteButtons'
 import { ToolPaletteMenu } from './ToolPaletteMenu'
 import { createToolPaletteController } from './controller'

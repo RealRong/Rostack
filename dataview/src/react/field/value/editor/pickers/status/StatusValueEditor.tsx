@@ -1,7 +1,4 @@
-import {
-  MoreHorizontal,
-  Settings2
-} from 'lucide-react'
+import { Settings2 } from 'lucide-react'
 import {
   useEffect,
   useMemo,
@@ -16,7 +13,6 @@ import {
   getStatusSections,
   normalizeOptionToken
 } from '@dataview/core/field'
-import { Button } from '@ui/button'
 import {
   Menu,
   type MenuHandle,
@@ -25,11 +21,13 @@ import {
 import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import {
-  FieldOptionTag,
-  OptionEditorPopover,
   OptionToken
 } from '@dataview/react/field/options'
 import type { EditorSubmitTrigger } from '@dataview/react/interaction'
+import {
+  buildEditableOptionItem,
+  readOptionLabel
+} from '@dataview/react/menu-builders'
 import type { FieldValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@dataview/dom/focus'
 import { PickerInputBar } from '../../shared/PickerInputBar'
@@ -38,7 +36,7 @@ import { usePickerKeydown } from '../../shared/usePickerKeydown'
 
 const optionLabel = (
   option: ReturnType<typeof getFieldOptions>[number]
-) => option.name.trim() || renderMessage(meta.ui.field.options.untitled)
+) => readOptionLabel(option)
 type StatusPickerEntry = MenuItem
 
 export const StatusValueEditor = (
@@ -121,47 +119,20 @@ export const StatusValueEditor = (
         key: `${section.category}-label`,
         label: getStatusCategoryLabel(section.category)
       },
-      ...section.options.map(option => ({
-        kind: 'item' as const,
-        key: option.id,
-        className: editingOptionId === option.id
-          ? 'bg-hover text-fg'
-          : undefined,
-        label: (
-          <FieldOptionTag
-            label={optionLabel(option)}
-            color={option.color ?? undefined}
-            variant="status"
-            className="max-w-full"
-          />
-        ),
-        accessory: (
-          <OptionEditorPopover
-            fieldId={fieldId}
-            option={{
-              ...option,
-              color: option.color ?? undefined
-            }}
-            open={editingOptionId === option.id}
-            onOpenChange={open => {
-              setEditingOptionId(open ? option.id : undefined)
-            }}
-            onDeleted={() => {
-              if (props.draft === option.id) {
-                props.onDraftChange('')
-              }
-            }}
-            trigger={(
-              <Button
-                variant="plain"
-                size="iconBare"
-                aria-label={renderMessage(meta.ui.field.options.edit(optionLabel(option)))}
-              >
-                <MoreHorizontal className="size-4" size={16} strokeWidth={1.8} />
-              </Button>
-            )}
-          />
-        ),
+      ...section.options.map(option => buildEditableOptionItem({
+        fieldId,
+        option,
+        variant: 'status',
+        open: editingOptionId === option.id,
+        editing: editingOptionId === option.id,
+        onOpenChange: open => {
+          setEditingOptionId(open ? option.id : undefined)
+        },
+        onDeleted: () => {
+          if (props.draft === option.id) {
+            props.onDraftChange('')
+          }
+        },
         onSelect: () => {
           selectOption(option.id, 'programmatic')
         }
@@ -266,24 +237,26 @@ export const StatusValueEditor = (
       </div>
 
       <div className="border-t border-divider p-1.5">
-        <Button
-          layout="row"
-          leading={<Settings2 className="size-4" size={16} strokeWidth={1.8} />}
-          onMouseDown={event => event.preventDefault()}
-          onClick={() => {
-            valueEditor.close({
-              silent: true
-            })
-            window.requestAnimationFrame(() => {
-              page.settings.open({
-                kind: 'fieldSchema',
-                fieldId
+        <Menu
+          autoFocus={false}
+          items={[{
+            kind: 'action',
+            key: 'fieldSchema',
+            label: renderMessage(meta.ui.viewSettings.routeTitle('fieldSchema')),
+            leading: <Settings2 className="size-4" size={16} strokeWidth={1.8} />,
+            onSelect: () => {
+              valueEditor.close({
+                silent: true
               })
-            })
-          }}
-        >
-          {renderMessage(meta.ui.viewSettings.routeTitle('fieldSchema'))}
-        </Button>
+              window.requestAnimationFrame(() => {
+                page.settings.open({
+                  kind: 'fieldSchema',
+                  fieldId
+                })
+              })
+            }
+          }]}
+        />
       </div>
     </div>
   )

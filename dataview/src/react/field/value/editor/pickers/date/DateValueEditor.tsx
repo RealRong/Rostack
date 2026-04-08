@@ -17,6 +17,7 @@ import { Menu, type MenuItem } from '@ui/menu'
 import { cn } from '@ui/utils'
 import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
+import { buildChoiceSubmenuItem } from '@dataview/react/menu-builders'
 import type { FieldValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@dataview/dom/focus'
 import {
@@ -188,68 +189,62 @@ export const DateValueEditor = (
         )
       },
       {
-        kind: 'submenu',
-        key: 'display-date-format',
-        label: '日期格式',
-        suffix: renderMessage(displayDateFormat.message),
-        size: 'md',
-        items: meta.field.date.displayDateFormat.list.map(option => ({
-          kind: 'toggle' as const,
-          key: option.id,
-          label: renderMessage(option.message),
-          checked: dateConfig.displayDateFormat === option.id,
-          onSelect: () => updateFieldConfig({
-            displayDateFormat: option.id as DateDisplayFormat
+        ...buildChoiceSubmenuItem({
+          key: 'display-date-format',
+          label: '日期格式',
+          suffix: renderMessage(displayDateFormat.message),
+          size: 'md',
+          value: dateConfig.displayDateFormat,
+          options: meta.field.date.displayDateFormat.list.map(option => ({
+            id: option.id as DateDisplayFormat,
+            label: renderMessage(option.message)
+          })),
+          onSelect: value => updateFieldConfig({
+            displayDateFormat: value
           })
-        }))
+        })
       }
     ]
 
     if (props.draft.kind === 'datetime') {
       items.push(
-        {
-          kind: 'submenu',
+        buildChoiceSubmenuItem({
           key: 'display-time-format',
           label: '时间格式',
           suffix: renderMessage(displayTimeFormat.message),
           size: 'md',
-          items: meta.field.date.displayTimeFormat.list.map(option => ({
-            kind: 'toggle' as const,
-            key: option.id,
-            label: renderMessage(option.message),
-            checked: dateConfig.displayTimeFormat === option.id,
-            onSelect: () => updateFieldConfig({
-              displayTimeFormat: option.id as DateTimeFormat
-            })
-          }))
-        },
-        {
-          kind: 'submenu',
+          value: dateConfig.displayTimeFormat,
+          options: meta.field.date.displayTimeFormat.list.map(option => ({
+            id: option.id as DateTimeFormat,
+            label: renderMessage(option.message)
+          })),
+          onSelect: value => updateFieldConfig({
+            displayTimeFormat: value
+          })
+        }),
+        buildChoiceSubmenuItem({
           key: 'timezone',
           label: '时区',
           suffix: formatTimeZoneLabel(props.draft.timezone),
           size: 'lg',
-          items: [
+          value: (props.draft.timezone ?? FLOATING_TIMEZONE_ID) as string,
+          options: [
             {
-              kind: 'toggle' as const,
-              key: FLOATING_TIMEZONE_ID,
-              label: formatTimeZoneLabel(null),
-              checked: props.draft.timezone === null,
-              onSelect: () => setDraft(
-                setDateDraftTimezone(props.draft, null)
-              )
+              id: FLOATING_TIMEZONE_ID,
+              label: formatTimeZoneLabel(null)
             },
             ...timezones.map(timeZone => ({
-              kind: 'toggle' as const,
-              key: timeZone,
-              label: formatTimeZoneLabel(timeZone),
-              checked: props.draft.timezone === timeZone,
-              onSelect: () => setDraft(
-                setDateDraftTimezone(props.draft, timeZone)
-              )
+              id: timeZone,
+              label: formatTimeZoneLabel(timeZone)
             }))
-          ]
-        }
+          ],
+          onSelect: value => setDraft(
+            setDateDraftTimezone(
+              props.draft,
+              value === FLOATING_TIMEZONE_ID ? null : value
+            )
+          )
+        })
       )
     }
 

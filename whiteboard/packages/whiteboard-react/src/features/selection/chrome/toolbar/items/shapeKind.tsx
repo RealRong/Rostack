@@ -1,5 +1,5 @@
 import { Button } from '@ui'
-import { ShapeGlyph } from '../../../../node/shape'
+import { ShapeGlyph } from '#react/features/node'
 import { ShapePickerPanel } from '../../panels/ShapePickerPanel'
 import type { ToolbarItemSpec } from './types'
 

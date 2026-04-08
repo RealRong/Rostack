@@ -3,13 +3,13 @@ import type {
   ShortcutBinding
 } from '../types/common/shortcut'
 import { selectTool } from '@whiteboard/editor'
-import type { WhiteboardRuntime as Editor } from '../types/runtime'
+import type { WhiteboardRuntime as Editor } from '#react/types/runtime'
 import {
   deleteSelectionAndClear,
   duplicateSelectionAndSelect,
   mergeGroupSelectionAndSelect,
   ungroupSelectionAndSelect
-} from '../runtime/commands'
+} from '#react/runtime/commands'
 
 export const DefaultShortcutBindings: readonly ShortcutBinding[] = [
   { key: 'Mod+G', action: 'group.merge' },

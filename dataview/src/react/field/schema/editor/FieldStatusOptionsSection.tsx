@@ -19,8 +19,11 @@ import {
 import { cn } from '@ui/utils'
 import {
   OptionEditorPanel,
-  FieldOptionTag,
 } from '@dataview/react/field/options'
+import {
+  buildOptionPanelReorderItem,
+  readOptionLabel
+} from '@dataview/react/menu-builders'
 import { getStatusCategoryLabel } from '@dataview/core/field'
 import { FIELD_DROPDOWN_MENU_PROPS } from '../../dropdown'
 
@@ -96,24 +99,17 @@ export const FieldStatusOptionsSection = (props: {
 
             {section.options.length ? (
               <Menu.Reorder
-                items={section.options.map<StatusSectionItem>(option => ({
-                  key: option.id,
+                items={section.options.map<StatusSectionItem>(option => buildOptionPanelReorderItem({
+                  option,
                   className: editingOptionId === option.id
                     ? 'bg-hover text-fg'
                     : undefined,
                   ...FIELD_DROPDOWN_MENU_PROPS,
                   offset: 8,
                   handleAriaLabel: renderMessage(meta.ui.field.options.reorder(
-                    option.name.trim() || renderMessage(meta.ui.field.options.untitled)
+                    readOptionLabel(option)
                   )),
-                  label: (
-                    <FieldOptionTag
-                      label={option.name.trim() || renderMessage(meta.ui.field.options.untitled)}
-                      color={option.color ?? undefined}
-                      variant="status"
-                      className="max-w-full"
-                    />
-                  ),
+                  variant: 'status',
                   content: () => (
                     <OptionEditorPanel
                       fieldId={props.field.id}

@@ -1,16 +1,13 @@
 import { Plus, Settings2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import type {
-  CustomField,
-  FieldOption
-} from '@dataview/core/contracts'
+import type { CustomField } from '@dataview/core/contracts'
 import { getFieldOptions } from '@dataview/core/field'
 import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import {
   OptionEditorPanel,
-  FieldOptionTag
 } from '@dataview/react/field/options'
+import { buildOptionPanelItem } from '@dataview/react/menu-builders'
 import { FIELD_DROPDOWN_MENU_PROPS } from '../../dropdown'
 import { Button } from '@ui/button'
 import { Menu, type MenuItem } from '@ui/menu'
@@ -28,20 +25,12 @@ const PlainFieldOptionsSection = (props: {
       setOpenOptionId(null)
     }
   }, [openOptionId, options])
-  const optionItems: readonly MenuItem[] = options.map(option => ({
-    kind: 'submenu' as const,
-    key: option.id,
-    surface: 'panel' as const,
-    size: 'md' as const,
+  const optionItems: readonly MenuItem[] = options.map(option => buildOptionPanelItem({
+    option,
+    surface: 'panel',
+    size: 'md',
     ...FIELD_DROPDOWN_MENU_PROPS,
     leading: <Settings2 className="size-4 shrink-0 text-muted-foreground" size={16} strokeWidth={1.8} />,
-    label: (
-      <FieldOptionTag
-        label={option.name.trim() || renderMessage(meta.ui.field.options.untitled)}
-        color={option.color ?? undefined}
-        className="max-w-full"
-      />
-    ),
     content: () => (
       <OptionEditorPanel
         fieldId={props.field.id}

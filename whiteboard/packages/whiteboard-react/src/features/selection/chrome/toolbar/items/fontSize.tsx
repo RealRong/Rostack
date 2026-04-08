@@ -1,6 +1,6 @@
 import type { NodeId, Size } from '@whiteboard/core/types'
 import { FontSizePanel } from '../../panels/FontSizePanel'
-import { measureBoundTextNodeSize } from '../../../../node/text'
+import { measureBoundTextNodeSize } from '#react/features/node'
 import { FontSizeControl } from './shared/FontSizeControl'
 import type { ToolbarItemSpec } from './types'
 

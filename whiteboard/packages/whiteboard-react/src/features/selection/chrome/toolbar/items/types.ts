@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { WhiteboardRuntime } from '../../../../../types/runtime'
+import type { WhiteboardRuntime } from '#react/types/runtime'
 import type { ToolbarSummaryContext } from '../context'
 import type { ToolbarItemKey, ToolbarPanelKey } from '../types'
 

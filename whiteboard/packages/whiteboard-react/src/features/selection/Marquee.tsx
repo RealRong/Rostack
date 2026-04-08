@@ -1,5 +1,5 @@
-import { useEditorRuntime } from '../../runtime/hooks/useEditor'
-import { useStoreValue } from '../../runtime/hooks/useStoreValue'
+import { useEditorRuntime } from '#react/runtime/hooks'
+import { useStoreValue } from '#react/runtime/hooks'
 
 export const Marquee = () => {
   const editor = useEditorRuntime()

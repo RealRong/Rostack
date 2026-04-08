@@ -1,5 +1,5 @@
 import { MindmapNodeItem } from './MindmapNodeItem'
-import type { MindmapTreeViewData } from '../../../types/mindmap'
+import type { MindmapTreeViewData } from '#react/types/mindmap'
 
 type MindmapTreeViewProps = {
   view: MindmapTreeViewData

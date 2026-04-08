@@ -8,9 +8,9 @@ import {
   FRAME_DEFAULT_TEXT_COLOR,
   FRAME_DEFAULT_TITLE
 } from '@whiteboard/core/node'
-import type { NodeDefinition, NodeWrite } from '../../../../types/node'
-import { useEdit, useEditor } from '../../../../runtime/hooks/useEditor'
-import { usePickRef } from '../../../../runtime/hooks/usePickRef'
+import type { NodeDefinition, NodeWrite } from '#react/types/node'
+import { useEdit, useEditor } from '#react/runtime/hooks'
+import { usePickRef } from '#react/runtime/hooks'
 import {
   isEscapeEditingKey,
   stopEditingPointerDown

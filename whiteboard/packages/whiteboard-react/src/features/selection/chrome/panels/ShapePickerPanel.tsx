@@ -4,7 +4,7 @@ import {
   type ShapeKind
 } from '@whiteboard/core/node'
 import { Button, cn } from '@ui'
-import { ShapeGlyph } from '../../../node/shape'
+import { ShapeGlyph } from '#react/features/node'
 import { Panel, PanelSection } from './ShapeToolbarPrimitives'
 
 export const ShapePickerPanel = ({

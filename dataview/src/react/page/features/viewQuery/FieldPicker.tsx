@@ -1,9 +1,9 @@
-import { Check } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { Field, FieldId } from '@dataview/core/contracts'
-import { Button } from '@ui/button'
 import { Input } from '@ui/input'
+import { Menu, type MenuItem } from '@ui/menu'
 import { meta, renderMessage, type MessageSpec } from '@dataview/meta'
+import { buildFieldToggleItem } from '@dataview/react/menu-builders'
 
 export interface FieldPickerProps {
   fields: readonly Field[]
@@ -18,6 +18,15 @@ export const FieldPicker = (props: FieldPickerProps) => {
   const visibleFields = props.fields.filter(field => (
     !normalizedQuery || field.name.toLowerCase().includes(normalizedQuery)
   ))
+  const items = useMemo<readonly MenuItem[]>(() => visibleFields.map(field => {
+    const kind = meta.field.kind.get(field.kind)
+
+    return buildFieldToggleItem(field, {
+      suffix: renderMessage(kind.message),
+      checked: field.id === props.selectedFieldId,
+      onSelect: () => props.onSelect(field.id)
+    })
+  }), [props.onSelect, props.selectedFieldId, visibleFields])
   const emptyMessage = normalizedQuery
     ? meta.ui.fieldPicker.empty
     : (props.emptyMessage ?? meta.ui.fieldPicker.empty)
@@ -33,35 +42,16 @@ export const FieldPicker = (props: FieldPickerProps) => {
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 py-2">
-        <div className="flex flex-col gap-0.5">
-          {visibleFields.length ? (
-            visibleFields.map(field => {
-              const active = field.id === props.selectedFieldId
-              const kind = meta.field.kind.get(field.kind)
-              const Icon = kind.Icon
-
-              return (
-                <Button
-                  key={field.id}
-                  layout="row"
-                  leading={<Icon className="size-4" size={16} strokeWidth={1.8} />}
-                  suffix={renderMessage(kind.message)}
-                  trailing={active
-                    ? <Check className="size-4 shrink-0 text-foreground" size={16} strokeWidth={1.8} />
-                    : undefined}
-                  onClick={() => props.onSelect(field.id)}
-                  pressed={active}
-                >
-                  {field.name}
-                </Button>
-              )
-            })
-          ) : (
-            <div className="px-1.5 py-2 text-[12px] text-muted-foreground">
-              {renderMessage(emptyMessage)}
-            </div>
-          )}
-        </div>
+        {items.length ? (
+          <Menu
+            items={items}
+            autoFocus={false}
+          />
+        ) : (
+          <div className="px-1.5 py-2 text-[12px] text-muted-foreground">
+            {renderMessage(emptyMessage)}
+          </div>
+        )}
       </div>
     </div>
   )

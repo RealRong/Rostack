@@ -5,6 +5,8 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
+      "#react": ["src/index.ts"],
+      "#react/*": ["src/*"],
       "@ui": ["../../../ui/src/index.ts"],
       "@ui/*": ["../../../ui/src/*"],
       "@whiteboard/core/*": ["../whiteboard-core/src/*/index.ts"],

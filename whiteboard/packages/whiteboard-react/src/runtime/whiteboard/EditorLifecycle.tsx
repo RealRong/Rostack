@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import type { WhiteboardInstance as Editor } from '../../types/runtime'
+import type { WhiteboardInstance as Editor } from '#react/types/runtime'
 
 export const EditorLifecycle = ({
   editor,

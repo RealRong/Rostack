@@ -1,14 +1,14 @@
 import type { EdgeId } from '@whiteboard/core/types'
 import { useMemo } from 'react'
-import { useEditorRuntime } from '../../../runtime/hooks/useEditor'
-import { useOptionalKeyedStoreValue } from '../../../runtime/hooks/useStoreValue'
+import { useEditorRuntime } from '#react/runtime/hooks'
+import { useOptionalKeyedStoreValue } from '#react/runtime/hooks'
 import type {
   EdgeState,
   EdgeView,
   SelectedEdgeRoutePointView,
   SelectedEdgeView
-} from '../../../types/edge'
-import { useSelection } from '../../node/selection'
+} from '#react/types/edge'
+import { useSelection } from '#react/features/node'
 
 const EMPTY_EDGE_STATE: EdgeState = {
   patched: false,
@@ -117,4 +117,4 @@ export type {
   EdgeView,
   SelectedEdgeRoutePointView,
   SelectedEdgeView
-} from '../../../types/edge'
+} from '#react/types/edge'

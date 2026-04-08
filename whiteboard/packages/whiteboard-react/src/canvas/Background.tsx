@@ -1,6 +1,6 @@
 import { useMemo, type CSSProperties } from 'react'
-import { useEditor } from '../runtime/hooks/useEditor'
-import { useStoreValue } from '../runtime/hooks/useStoreValue'
+import { useEditor } from '#react/runtime/hooks'
+import { useStoreValue } from '#react/runtime/hooks'
 
 const BASE_STEP = 24
 const MIN_STEP = 14

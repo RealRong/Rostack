@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { MindmapNodeId, NodeId, Rect } from '@whiteboard/core/types'
-import { usePickRef } from '../../../runtime/hooks/usePickRef'
+import { usePickRef } from '#react/runtime/hooks'
 
 const MINDMAP_NODE_DEFAULT_BORDER = 1
 const MINDMAP_NODE_ACTIVE_BORDER = 2

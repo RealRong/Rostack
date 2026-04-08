@@ -1,16 +1,12 @@
-import type { WhiteboardRuntime } from '../types/runtime'
+import {
+  createFrameNodeInput
+} from '@whiteboard/core/node'
+import type { Rect } from '@whiteboard/core/types'
+import type { WhiteboardRuntime } from '#react/types/runtime'
 import {
   readSelectionExactGroupIds,
   type SelectionTargetLike
 } from './selection'
-
-const isSameIds = (
-  left: readonly string[],
-  right: readonly string[]
-) => (
-  left.length === right.length
-  && left.every((value, index) => value === right[index])
-)
 
 const toCanvasRefs = (target: {
   nodeIds?: readonly string[]
@@ -64,34 +60,6 @@ export const replaceEdgeSelection = (
   editor.commands.selection.replace({
     edgeIds
   })
-}
-
-export const syncNodeSelection = (
-  editor: WhiteboardRuntime,
-  nodeIds: readonly string[]
-) => {
-  const current = editor.read.selection.target.get()
-  if (isSameIds(current.nodeIds, nodeIds) && current.edgeIds.length === 0) {
-    return
-  }
-
-  replaceNodeSelection(editor, nodeIds)
-}
-
-export const syncSingleEdgeSelection = (
-  editor: WhiteboardRuntime,
-  edgeId: string
-) => {
-  const current = editor.read.selection.target.get()
-  if (
-    current.nodeIds.length === 0
-    && current.edgeIds.length === 1
-    && current.edgeIds[0] === edgeId
-  ) {
-    return
-  }
-
-  replaceEdgeSelection(editor, [edgeId])
 }
 
 export const duplicateSelectionAndSelect = (
@@ -211,6 +179,33 @@ export const ungroupSelectionAndSelect = (
   editor.commands.selection.replace({
     nodeIds: result.data.nodeIds,
     edgeIds: result.data.edgeIds
+  })
+  return true
+}
+
+export const createContainerFrameAndSelect = (
+  editor: WhiteboardRuntime,
+  bounds: Rect,
+  padding = 32
+) => {
+  const frame = createFrameNodeInput()
+  const result = editor.commands.node.create({
+    ...frame,
+    position: {
+      x: bounds.x - padding,
+      y: bounds.y - padding
+    },
+    size: {
+      width: bounds.width + padding * 2,
+      height: bounds.height + padding * 2
+    }
+  })
+  if (!result.ok) {
+    return false
+  }
+
+  editor.commands.selection.replace({
+    nodeIds: [result.data.nodeId]
   })
   return true
 }

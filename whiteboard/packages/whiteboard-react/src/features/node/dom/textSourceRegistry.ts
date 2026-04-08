@@ -1,5 +1,5 @@
 import type { NodeId } from '@whiteboard/core/types'
-import type { WhiteboardRuntime as Editor } from '../../../types/runtime'
+import type { WhiteboardRuntime as Editor } from '#react/types/runtime'
 
 type TextField = 'text' | 'title'
 

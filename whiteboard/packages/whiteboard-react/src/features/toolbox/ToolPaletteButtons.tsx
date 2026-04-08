@@ -19,7 +19,7 @@ import type {
 } from '../../types/toolbox'
 import {
   ShapeGlyph
-} from '../node/shape'
+} from '#react/features/node'
 import { EdgePresetGlyph } from './menus/EdgeMenu'
 import { TEXT_INSERT_PRESET } from './presets'
 import type { ToolPaletteController } from './controller'

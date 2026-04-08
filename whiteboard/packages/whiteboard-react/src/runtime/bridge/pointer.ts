@@ -1,11 +1,11 @@
 import type { EditorPick } from '@whiteboard/editor'
+import type { ContextMenuIntent } from '@whiteboard/editor'
 import type { Point } from '@whiteboard/core/types'
-import type { WhiteboardRuntime } from '../../types/runtime'
+import type { WhiteboardRuntime } from '#react/types/runtime'
 import { consumeDomEvent } from '../../dom/host/event'
 import {
   resolvePoint,
-  resolvePointerInput,
-  type ResolvedPoint
+  resolvePointerInput
 } from '../../dom/host/input'
 import { createPickRegistry } from '../../dom/host/pickRegistry'
 import { createPointerSession } from '../../dom/host/pointerSession'
@@ -48,10 +48,19 @@ const createPointState = () => {
 export type PointerBridge = {
   bindPick: (element: Element, pick: EditorPick) => () => void
   getWorld: () => Point | undefined
-  resolvePoint: (input: {
-    container: Element
-    event: Pick<MouseEvent | PointerEvent, 'target' | 'clientX' | 'clientY'>
-  }) => ResolvedPoint
+  contextMenu: (input: {
+    container: HTMLDivElement
+    event: Pick<
+      MouseEvent,
+      'target'
+      | 'clientX'
+      | 'clientY'
+      | 'altKey'
+      | 'shiftKey'
+      | 'ctrlKey'
+      | 'metaKey'
+    >
+  }) => ContextMenuIntent | null
   down: (input: {
     container: HTMLDivElement
     event: PointerEvent
@@ -116,7 +125,8 @@ export const createPointerBridge = ({
   return {
     bindPick: (element, nextPick) => pick.bind(element, nextPick),
     getWorld: () => point.get(),
-    resolvePoint: ({ container, event }) => {
+    contextMenu: ({ container, event }) => {
+      refreshContainerRect(container)
       const resolved = resolvePoint({
         editor,
         pick,
@@ -124,7 +134,15 @@ export const createPointerBridge = ({
         event
       })
       point.set(resolved.world)
-      return resolved
+      return editor.input.contextMenu({
+        ...resolved,
+        modifiers: {
+          alt: event.altKey,
+          shift: event.shiftKey,
+          ctrl: event.ctrlKey,
+          meta: event.metaKey
+        }
+      })
     },
     down: ({
       container,

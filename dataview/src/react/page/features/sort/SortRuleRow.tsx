@@ -12,6 +12,7 @@ import { Popover } from '@ui/popover'
 import type { VerticalReorderItemState } from '@ui/vertical-reorder-list'
 import { cn } from '@ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
+import { buildChoiceToggleItems } from '@dataview/react/menu-builders'
 import { FieldPicker } from '@dataview/react/page/features/viewQuery/FieldPicker'
 import {
   SORT_DIRECTIONS,
@@ -110,18 +111,19 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
         initialFocus={-1}
         placement="bottom-start"
         size="sm"
-        items={SORT_DIRECTIONS.map(direction => ({
-          kind: 'toggle' as const,
-          key: direction,
-          label: renderMessage(meta.sort.direction.get(direction).message),
-          checked: props.sorter.direction === direction,
-          onSelect: () => {
+        items={buildChoiceToggleItems({
+          options: SORT_DIRECTIONS.map(direction => ({
+            id: direction,
+            label: renderMessage(meta.sort.direction.get(direction).message)
+          })),
+          value: props.sorter.direction,
+          onSelect: direction => {
             props.onChange({
               ...props.sorter,
               direction
             })
           }
-        }))}
+        })}
         trigger={(
           <Button
             layout="row"

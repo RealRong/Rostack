@@ -5,7 +5,7 @@ import type {
   NodeFamily,
   NodeMeta,
   NodeRegistry
-} from '../../types/node'
+} from '#react/types/node'
 
 export type NodeTypeSummary = {
   key: string

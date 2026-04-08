@@ -1,4 +1,4 @@
-import type { NodeDefinition } from '../../../../types/node'
+import type { NodeDefinition } from '#react/types/node'
 import { createNodeRegistry } from '../nodeRegistry'
 import { DrawNodeDefinition } from './draw'
 import { FrameNodeDefinition } from './frame'

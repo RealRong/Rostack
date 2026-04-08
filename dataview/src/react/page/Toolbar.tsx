@@ -27,10 +27,8 @@ import { getAvailableSorterFields } from '@dataview/react/page/features/sort'
 import { FieldPicker } from '@dataview/react/page/features/viewQuery/FieldPicker'
 import { ViewSettingsPopover } from '@dataview/react/page/features/viewSettings'
 import {
-  useCurrentView,
   useDataView,
-  useDocument,
-  usePageValue,
+  useDataViewValue,
 } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 
@@ -140,11 +138,17 @@ export const PageToolbar = () => {
   const dataView = useDataView()
   const engine = dataView.engine
   const page = dataView.page
-  const document = useDocument()
-  const queryBar = usePageValue(state => state.query)
+  const document = useDataViewValue(dataView => dataView.engine.read.document)
+  const queryBar = useDataViewValue(
+    dataView => dataView.page.store,
+    state => state.query
+  )
   const fields = getDocumentFields(document)
   const views = getDocumentViews(document)
-  const currentView = useCurrentView(view => view?.view)
+  const currentView = useDataViewValue(
+    dataView => dataView.currentView,
+    view => view?.view
+  )
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined
@@ -185,7 +189,7 @@ export const PageToolbar = () => {
               active={view.id === currentView?.id}
               menuOpen={tabMenuViewId === view.id}
               canRemove={views.length > 1}
-              onClick={() => page.setActiveViewId(view.id)}
+              onClick={() => page.setViewId(view.id)}
               onOpenMenu={() => setTabMenuViewId(view.id)}
               onCloseMenu={() => {
                 setTabMenuViewId(current => (
@@ -196,7 +200,7 @@ export const PageToolbar = () => {
               }}
               onRename={() => {
                 setTabMenuViewId(null)
-                page.setActiveViewId(view.id)
+                page.setViewId(view.id)
                 page.settings.open({
                   kind: 'root',
                   focusTarget: 'viewName'
@@ -204,7 +208,7 @@ export const PageToolbar = () => {
               }}
               onEdit={() => {
                 setTabMenuViewId(null)
-                page.setActiveViewId(view.id)
+                page.setViewId(view.id)
                 page.settings.open({
                   kind: 'root'
                 })

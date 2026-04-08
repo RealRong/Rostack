@@ -15,8 +15,7 @@ import {
 import {
   type AppearanceList,
   type FieldList,
-  sameCellRef,
-  toRecordField
+  sameCellRef
 } from '@dataview/engine/projection/view'
 import {
   type AppearanceId,
@@ -25,7 +24,6 @@ import {
 } from '@dataview/react/runtime/currentView'
 import {
   getRecordFieldValue,
-  isTitleFieldId,
   resolveFieldPrimaryAction
 } from '@dataview/core/field'
 import { isOverlayBlockingElement } from '@ui/overlay'
@@ -33,7 +31,7 @@ import {
   containsRelatedTarget,
   shouldCapturePointer
 } from '@dataview/dom/interactive'
-import { useCurrentView, useDataView } from '@dataview/react/dataview'
+import { useDataView, useDataViewValue } from '@dataview/react/dataview'
 import {
   resolveDefaultAutoPanTargets,
   useAutoPan
@@ -405,7 +403,7 @@ export const usePointer = (
   const dataView = useDataView()
   const editor = dataView.engine
   const table = useTableContext()
-  const currentView = useCurrentView()
+  const currentView = useDataViewValue(dataView => dataView.currentView)
   if (!currentView) {
     throw new Error('Table pointer interactions require an active current view.')
   }
@@ -497,49 +495,8 @@ export const usePointer = (
     cell: CellRef,
     value: unknown | undefined
   ) => {
-    const target = toRecordField({
-      appearanceId: cell.appearanceId,
-      fieldId: cell.fieldId
-    }, currentView.appearances)
-    if (!target) {
-      return
-    }
-
-    if (value === undefined) {
-      if (isTitleFieldId(target.fieldId)) {
-        editor.command({
-          type: 'record.apply',
-          target: {
-            type: 'record',
-            recordId: target.recordId
-          },
-          patch: {
-            title: ''
-          }
-        })
-        return
-      }
-
-      editor.records.clearValue(target.recordId, target.fieldId)
-      return
-    }
-
-    if (isTitleFieldId(target.fieldId)) {
-      editor.command({
-        type: 'record.apply',
-        target: {
-          type: 'record',
-          recordId: target.recordId
-        },
-        patch: {
-          title: String(value ?? '')
-        }
-      })
-      return
-    }
-
-    editor.records.setValue(target.recordId, target.fieldId, value)
-  }, [currentView.appearances, editor])
+    editor.view(currentView.view.id).items.writeCell(cell, value)
+  }, [currentView.view.id, editor])
 
   const runPrimary = useCallback((
     cell: CellRef,

@@ -10,7 +10,7 @@ import type {
 } from '@dataview/core/contracts'
 import {
   useDataView,
-  useInlineSessionValue
+  useDataViewValue
 } from '@dataview/react/dataview'
 import type { AppearanceId } from '@dataview/react/runtime/currentView'
 import {
@@ -23,10 +23,13 @@ import {
 export const useCardEditingState = (input: {
   viewId: ViewId
   appearanceId: AppearanceId
-}) => useInlineSessionValue(target => (
-  target?.viewId === input.viewId
-    && target.appearanceId === input.appearanceId
-))
+}) => useDataViewValue(
+  dataView => dataView.inlineSession.store,
+  target => (
+    target?.viewId === input.viewId
+      && target.appearanceId === input.appearanceId
+  )
+)
 
 export const useCardTitleEditing = (input: {
   viewId: ViewId

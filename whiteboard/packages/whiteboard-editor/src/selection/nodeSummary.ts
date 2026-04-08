@@ -5,9 +5,9 @@ import type {
   NodeFamily,
   NodeMeta,
   NodeRegistry
-} from '#react/types/node'
+} from '../types/node'
 
-export type NodeTypeSummary = {
+export type SelectionNodeTypeSummary = {
   key: string
   name: string
   family: NodeFamily
@@ -16,12 +16,12 @@ export type NodeTypeSummary = {
   nodeIds: readonly NodeId[]
 }
 
-export type NodeSummary = {
+export type SelectionNodeSummary = {
   ids: readonly NodeId[]
   count: number
   hasGroup: boolean
   lock: 'none' | 'mixed' | 'all'
-  types: readonly NodeTypeSummary[]
+  types: readonly SelectionNodeTypeSummary[]
   mixed: boolean
 }
 
@@ -47,13 +47,13 @@ const readNodeMeta = (
   }
 }
 
-export const readNodeSummary = ({
+export const readSelectionNodeSummary = ({
   summary,
   registry
 }: {
   summary: SelectionSummary
   registry: Pick<NodeRegistry, 'get'>
-}): NodeSummary => {
+}): SelectionNodeSummary => {
   const nodes = summary.items.nodes
   const ids = summary.target.nodeIds
   const count = ids.length

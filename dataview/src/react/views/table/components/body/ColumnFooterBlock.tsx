@@ -2,7 +2,7 @@ import type {
   Field
 } from '@dataview/core/contracts'
 import {
-  useCurrentView
+  useDataViewValue
 } from '@dataview/react/dataview'
 
 export interface ColumnFooterBlockProps {
@@ -12,7 +12,7 @@ export interface ColumnFooterBlockProps {
 }
 
 export const ColumnFooterBlock = (props: ColumnFooterBlockProps) => {
-  const currentView = useCurrentView()
+  const currentView = useDataViewValue(dataView => dataView.currentView)
   if (!currentView) {
     throw new Error('Table footer requires an active current view.')
   }

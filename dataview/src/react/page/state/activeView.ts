@@ -8,14 +8,14 @@ import {
 
 export const resolveActiveViewId = (
   document: DataDoc,
-  activeViewId?: ViewId
+  viewId?: ViewId
 ) => {
   const views = getDocumentViews(document)
-  if (!activeViewId) {
+  if (!viewId) {
     return views[0]?.id
   }
 
-  return views.some(view => view.id === activeViewId)
-    ? activeViewId
+  return views.some(view => view.id === viewId)
+    ? viewId
     : views[0]?.id
 }

@@ -55,7 +55,7 @@ export interface DataViewContextValue {
   valueEditor: ValueEditorController
 }
 
-export interface DataViewRuntime extends DataViewContextValue {
+export interface DataViewSession extends DataViewContextValue {
   dispose(): void
 }
 
@@ -156,10 +156,10 @@ const bindMarqueeToCurrentView = (input: {
   return input.currentView.subscribe(sync)
 }
 
-export const createDataViewRuntime = (input: {
+export const createDataViewSession = (input: {
   engine: Engine
   initialPage?: PageSessionInput
-}): DataViewRuntime => {
+}): DataViewSession => {
   const page = createPageSessionApi(input.initialPage)
   const selectionStore = createSelectionStore()
   const marquee = createMarqueeApi()
@@ -167,8 +167,7 @@ export const createDataViewRuntime = (input: {
   const valueEditor = createValueEditorApi()
   const currentView = createCurrentViewStore({
     engine: input.engine,
-    pageStore: page.store,
-    selection: selectionStore
+    pageStore: page.store
   })
   const selection = createSelectionApi({
     store: selectionStore,

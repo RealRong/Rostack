@@ -19,12 +19,19 @@ import type { Edge, Node } from '@whiteboard/core/types'
 import type { EdgeRead } from './edge'
 import type { NodeRead } from './node'
 import type { TargetBoundsQuery } from '../query/targetBounds'
+import type { NodeRegistry } from '../../types/node'
+import type { Tool } from '../../types/tool'
+import type { EditTarget } from '../state/edit'
+import type { InteractionRuntime } from '../interaction/types'
+import type { SelectionPresentation } from '../../types/selectionPresentation'
+import { resolveSelectionPresentation } from './selectionPresentation'
 
 export type SelectionRead = {
   target: ReadStore<SelectionTarget>
   summary: ReadStore<SelectionSummary>
   transformBox: ReadStore<SelectionTransformBox>
   affordance: ReadStore<SelectionAffordance>
+  presentation: ReadStore<SelectionPresentation>
 }
 
 const readRuntimeNodes = (input: {
@@ -49,12 +56,20 @@ export const createSelectionRead = ({
   source,
   node,
   edge,
-  targetBounds
+  targetBounds,
+  registry,
+  tool,
+  edit,
+  interaction
 }: {
   source: ReadStore<SelectionTarget>
   node: NodeRead
   edge: EdgeRead
   targetBounds: TargetBoundsQuery
+  registry: Pick<NodeRegistry, 'get'>
+  tool: ReadStore<Tool>
+  edit: ReadStore<EditTarget>
+  interaction: Pick<InteractionRuntime, 'mode' | 'chrome'>
 }): SelectionRead => {
   const summary = createDerivedStore<SelectionSummary>({
     get: (readStore) => {
@@ -135,11 +150,24 @@ export const createSelectionRead = ({
     },
     isEqual: isSelectionAffordanceEqual
   })
+  const presentation = createDerivedStore<SelectionPresentation>({
+    get: (readStore) => resolveSelectionPresentation({
+      summary: readStore(summary),
+      transformBox: readStore(transformBox),
+      affordance: readStore(affordance),
+      registry,
+      tool: readStore(tool),
+      edit: readStore(edit),
+      interactionChrome: readStore(interaction.chrome),
+      transforming: readStore(interaction.mode) === 'node-transform'
+    })
+  })
 
   return {
     target: source,
     summary,
     transformBox,
-    affordance
+    affordance,
+    presentation
   }
 }

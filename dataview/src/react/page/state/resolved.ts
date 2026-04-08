@@ -28,10 +28,10 @@ import {
 
 const resolveQueryBarEntry = (
   document: DataDoc,
-  activeViewId: ViewId | undefined,
+  viewId: ViewId | undefined,
   entry: QueryBarEntry | null
 ): QueryBarEntry | null => {
-  if (!entry || !activeViewId) {
+  if (!entry || !viewId) {
     return null
   }
 
@@ -39,7 +39,7 @@ const resolveQueryBarEntry = (
     return entry
   }
 
-  const activeView = document.views.byId[activeViewId]
+  const activeView = document.views.byId[viewId]
   if (!activeView) {
     return null
   }
@@ -69,15 +69,15 @@ const resolveQueryBarEntry = (
 
 export const resolveQueryBarState = (
   document: DataDoc,
-  activeViewId: ViewId | undefined,
+  viewId: ViewId | undefined,
   queryState: QueryBarState
 ): QueryBarState => {
-  const activeView = activeViewId
-    ? document.views.byId[activeViewId]
+  const activeView = viewId
+    ? document.views.byId[viewId]
     : undefined
   const view = activeView
   const hasEntries = Boolean(view && (view.filter.rules.length > 0 || view.sort.length > 0))
-  const route = resolveQueryBarEntry(document, activeViewId, queryState.route)
+  const route = resolveQueryBarEntry(document, viewId, queryState.route)
 
   return {
     visible: queryState.visible && hasEntries,
@@ -87,16 +87,16 @@ export const resolveQueryBarState = (
 
 export const resolveSettingsState = (
   document: DataDoc,
-  activeViewId: ViewId | undefined,
+  viewId: ViewId | undefined,
   settings: SettingsState
 ): SettingsState => ({
-  visible: Boolean(activeViewId) && settings.visible,
-  route: activeViewId
+  visible: Boolean(viewId) && settings.visible,
+  route: viewId
     ? normalizeSettingsRoute(
         settings.route,
         getDocumentCustomFields(document),
         true,
-        getDocumentViewById(document, activeViewId)?.type
+        getDocumentViewById(document, viewId)?.type
       )
     : cloneSettingsRoute(settings.route)
 })
@@ -106,15 +106,15 @@ export const resolvePageState = (
   page: PageSessionState,
   valueEditorOpen: boolean
 ): ResolvedPageState => {
-  const activeViewId = resolveActiveViewId(document, page.activeViewId)
+  const viewId = resolveActiveViewId(document, page.viewId)
   const lock = valueEditorOpen
     ? 'value-editor'
     : null
 
   return {
-    activeViewId,
-    query: resolveQueryBarState(document, activeViewId, page.query),
-    settings: resolveSettingsState(document, activeViewId, page.settings),
+    viewId,
+    query: resolveQueryBarState(document, viewId, page.query),
+    settings: resolveSettingsState(document, viewId, page.settings),
     valueEditorOpen,
     lock
   }

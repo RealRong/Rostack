@@ -4,15 +4,10 @@ export {
   type EngineProviderProps,
   useDataView
 } from './provider'
-export { useCurrentView } from './useCurrentView'
-export { useInlineSession, useInlineSessionValue } from './useInlineSession'
-export { useSelection, useSelectionValue } from './useSelection'
-export { usePage, usePageValue } from './usePage'
 export {
-  useDocument,
-  useFieldById,
-  useViewById
-} from './useDocument'
+  useDataViewKeyedValue,
+  useDataViewValue
+} from './useDataViewValue'
 
 export type {
   Engine

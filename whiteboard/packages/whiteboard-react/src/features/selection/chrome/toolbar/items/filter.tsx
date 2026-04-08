@@ -31,12 +31,14 @@ export const filterItem: ToolbarItemSpec = {
     </Button>
   ),
   renderPanel: ({
+    editor,
     context,
     closePanel
   }) => (
     context.filter
       ? (
         <SelectionFilterMenu
+          editor={editor}
           filter={context.filter}
           onClose={closePanel}
         />

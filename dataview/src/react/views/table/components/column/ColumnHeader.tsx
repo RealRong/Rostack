@@ -22,7 +22,7 @@ import { cn } from '@ui/utils'
 import { isCustomField } from '@dataview/core/field'
 import { getFieldCalculationMetrics } from '@dataview/core/calculation'
 import { getSorterFieldId } from '@dataview/react/page/features/sort'
-import { useCurrentView, useDataView } from '@dataview/react/dataview'
+import { useDataView, useDataViewValue } from '@dataview/react/dataview'
 import { useTableContext } from '../../context'
 import { meta, renderMessage } from '@dataview/meta'
 import { buildFieldKindMenuItems } from '@dataview/react/field/schema'
@@ -98,7 +98,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   } | null>(null)
   const suppressClickRef = useRef(false)
   const table = useTableContext()
-  const currentView = useCurrentView()
+  const currentView = useDataViewValue(dataView => dataView.currentView)
   if (!currentView) {
     throw new Error('Table column header requires an active current view.')
   }

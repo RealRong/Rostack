@@ -1,6 +1,6 @@
 import { useOverlayKey } from '@ui/overlay'
 import { keyDown } from '@dataview/react/interaction'
-import { useCurrentView, useDataView, usePageValue } from '@dataview/react/dataview'
+import { useDataView, useDataViewValue } from '@dataview/react/dataview'
 import { closestTarget } from '@dataview/dom/interactive'
 import { pageShortcutAction } from '@dataview/react/page/keyboard'
 
@@ -14,8 +14,11 @@ const editingTargetSelector = [
 export const PageKeyboardHost = () => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const currentView = useCurrentView()
-  const valueEditorOpen = usePageValue(state => state.valueEditorOpen)
+  const currentView = useDataViewValue(dataView => dataView.currentView)
+  const valueEditorOpen = useDataViewValue(
+    dataView => dataView.page.store,
+    state => state.valueEditorOpen
+  )
 
   useOverlayKey({
     order: -100,
@@ -79,7 +82,11 @@ export const PageKeyboardHost = () => {
             return
           }
 
-          currentView?.commands.mutation.remove()
+          if (currentView) {
+            engine.view(currentView.view.id).items.removeAppearances(
+              dataView.selection.get().ids
+            )
+          }
           event.preventDefault()
           return true
       }

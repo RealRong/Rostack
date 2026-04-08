@@ -3,8 +3,6 @@ export type {
   Appearance,
   AppearanceId,
   AppearanceList,
-  Commands,
-  CreateInSectionInput,
   CurrentView,
   CellRef,
   Plan,

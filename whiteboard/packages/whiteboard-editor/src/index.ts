@@ -75,3 +75,15 @@ export type {
   NodeMeta,
   NodeFamily
 } from './types/node/index'
+export {
+  readSelectionNodeSummary
+} from './selection'
+export type {
+  SelectionPresentation,
+  SelectionOverlay,
+  SelectionToolbarContext,
+  SelectionToolbarFilter,
+  SelectionNodeSummary,
+  SelectionNodeTypeSummary,
+  ToolbarSelectionKind
+} from './selection'

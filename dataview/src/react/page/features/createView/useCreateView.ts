@@ -1,7 +1,7 @@
 import { getDocumentViews } from '@dataview/core/document'
 import {
   useDataView,
-  useDocument
+  useDataViewValue
 } from '@dataview/react/dataview'
 import { renderMessage } from '@dataview/meta'
 import type { CreateViewItem } from './catalog'
@@ -26,7 +26,7 @@ const createViewName = (
 
 export const useCreateView = () => {
   const dataView = useDataView()
-  const document = useDocument()
+  const document = useDataViewValue(dataView => dataView.engine.read.document)
   const views = getDocumentViews(document)
 
   return (item: CreateViewItem) => {
@@ -45,7 +45,7 @@ export const useCreateView = () => {
       return undefined
     }
 
-    dataView.page.setActiveViewId(viewId)
+    dataView.page.setViewId(viewId)
     return viewId
   }
 }

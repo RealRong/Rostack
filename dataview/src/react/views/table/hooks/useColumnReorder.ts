@@ -10,7 +10,7 @@ import {
 } from '@dnd-kit/core'
 import type { FieldId } from '@dataview/core/contracts'
 import { columnBeforeId } from '@dataview/table'
-import { useCurrentView, useDataView } from '@dataview/react/dataview'
+import { useDataView, useDataViewValue } from '@dataview/react/dataview'
 import { useTableContext } from '../context'
 
 const COLUMN_SORT_SCOPE_SEPARATOR = '\u0000'
@@ -43,7 +43,7 @@ export interface ColumnReorderApi {
 export const useColumnReorder = (): ColumnReorderApi => {
   const editor = useDataView().engine
   const table = useTableContext()
-  const currentView = useCurrentView()
+  const currentView = useDataViewValue(dataView => dataView.currentView)
   if (!currentView) {
     throw new Error('Table column reorder requires an active current view.')
   }

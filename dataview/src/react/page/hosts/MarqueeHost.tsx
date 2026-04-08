@@ -19,9 +19,8 @@ import {
   useAutoPan
 } from '@dataview/react/interaction/autoPan'
 import {
-  useCurrentView,
   useDataView,
-  usePageValue
+  useDataViewValue
 } from '@dataview/react/dataview'
 import { useOverlay } from '@ui/overlay'
 import {
@@ -129,9 +128,12 @@ const resolveScrolledAnchor = (
 
 export const PageMarqueeHost = () => {
   const dataView = useDataView()
-  const currentView = useCurrentView()
+  const currentView = useDataViewValue(dataView => dataView.currentView)
   const overlay = useOverlay()
-  const valueEditorOpen = usePageValue(state => state.valueEditorOpen)
+  const valueEditorOpen = useDataViewValue(
+    dataView => dataView.page.store,
+    state => state.valueEditorOpen
+  )
   const session = useStoreValue(dataView.marquee.store)
   const pointerRef = useRef<Point | null>(null)
   const anchorRef = useRef<Point | null>(null)

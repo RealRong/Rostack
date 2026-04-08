@@ -15,8 +15,7 @@ import type {
 import { isCustomField } from '@dataview/core/field'
 import {
   useDataView,
-  useCurrentView,
-  useSelection as useDataViewSelection,
+  useDataViewValue,
 } from '@dataview/react/dataview'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR,
@@ -41,6 +40,9 @@ import {
   createVisualTargetRegistry,
   type VisualTargetRegistry
 } from '@dataview/react/runtime/marquee'
+import type {
+  Selection
+} from '@dataview/react/runtime/selection'
 import { useStoreValue } from '@dataview/react/store'
 import {
   readBoardLayout
@@ -51,7 +53,7 @@ import {
 import { usesOptionGroupingColors } from '@dataview/react/views/shared/optionGrouping'
 
 interface KanbanSelectionState {
-  selection: ReturnType<typeof useDataViewSelection>
+  selection: Selection
   selectedIds: readonly AppearanceId[]
   selectedIdSet: ReadonlySet<AppearanceId>
   select: (id: AppearanceId, mode?: 'replace' | 'toggle') => void
@@ -85,7 +87,7 @@ export const useKanbanController = (input: {
 }): KanbanController => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const currentView = useCurrentView(view => (
+  const currentView = useDataViewValue(dataView => dataView.currentView, view => (
     view?.view.id === input.viewId
       ? view
       : undefined
@@ -130,7 +132,9 @@ export const useKanbanController = (input: {
     currentView.sections.map(section => [section.key, section.color] as const)
   ), [currentView.sections])
 
-  const selectionValue = useDataViewSelection()
+  const selectionValue = useDataViewValue(
+    dataView => dataView.selection.store
+  )
   const marqueeSession = useStoreValue(dataView.marquee.store)
   const marqueeActive = marqueeSession?.ownerViewId === currentView.view.id
   const selectedIdSet = useMemo(
@@ -208,7 +212,7 @@ export const useKanbanController = (input: {
     ),
     onDraggingChange: setDragging,
     onDrop: (cardIds, target) => {
-      currentView.commands.move.ids(cardIds, {
+      dataView.engine.view(currentView.view.id).items.moveAppearances(cardIds, {
         section: target.sectionKey,
         ...(target.beforeAppearanceId ? { before: target.beforeAppearanceId } : {})
       })

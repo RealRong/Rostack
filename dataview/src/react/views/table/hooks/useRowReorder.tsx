@@ -15,9 +15,8 @@ import {
   type TableRowReorderHint
 } from '@dataview/table'
 import {
-  useCurrentView,
   useDataView,
-  useSelection
+  useDataViewValue
 } from '@dataview/react/dataview'
 import { useStoreValue } from '@dataview/react/store'
 import { usePointerDragSession } from '@dataview/react/interaction/usePointerDragSession'
@@ -45,14 +44,16 @@ export interface RowReorderApi {
 export const useRowReorder = (): RowReorderApi => {
   const table = useTableContext()
   const dataView = useDataView()
-  const currentView = useCurrentView()
+  const currentView = useDataViewValue(dataView => dataView.currentView)
   if (!currentView) {
     throw new Error('Table row reorder requires an active current view.')
   }
 
   const layout = table.layout
   const capabilities = useStoreValue(table.capabilities)
-  const currentSelection = useSelection()
+  const currentSelection = useDataViewValue(
+    dataView => dataView.selection.store
+  )
   const rowIds = currentView.appearances.ids
   const rowIdSet = useMemo(
     () => new Set(rowIds),
@@ -131,7 +132,7 @@ export const useRowReorder = (): RowReorderApi => {
         return
       }
 
-      currentView.commands.move.ids(dragIds, {
+      dataView.engine.view(currentView.view.id).items.moveAppearances(dragIds, {
         section,
         ...(beforeId ? { before: beforeId } : {})
       })

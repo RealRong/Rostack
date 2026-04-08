@@ -7,10 +7,8 @@ import {
 } from '@dataview/react/page/features/filter/filterUi'
 import { SortPopover, getAvailableSorterFields } from '@dataview/react/page/features/sort'
 import {
-  useCurrentView,
   useDataView,
-  useDocument,
-  usePageValue,
+  useDataViewValue,
 } from '@dataview/react/dataview'
 import { Popover } from '@ui/popover'
 import { meta, renderMessage } from '@dataview/meta'
@@ -24,10 +22,16 @@ export const ViewQueryBar = () => {
   const dataView = useDataView()
   const engine = dataView.engine
   const page = dataView.page
-  const document = useDocument()
+  const document = useDataViewValue(dataView => dataView.engine.read.document)
   const fields = getDocumentFields(document)
-  const queryBar = usePageValue(state => state.query)
-  const currentView = useCurrentView(view => view?.view)
+  const queryBar = useDataViewValue(
+    dataView => dataView.page.store,
+    state => state.query
+  )
+  const currentView = useDataViewValue(
+    dataView => dataView.currentView,
+    view => view?.view
+  )
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined

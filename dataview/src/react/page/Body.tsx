@@ -1,5 +1,5 @@
 import { GalleryView } from '@dataview/react/views/gallery'
-import { useCurrentView } from '@dataview/react/dataview'
+import { useDataViewValue } from '@dataview/react/dataview'
 import type { KanbanViewProps } from '@dataview/react/views/kanban'
 import { KanbanView } from '@dataview/react/views/kanban'
 import type { TableViewProps } from '@dataview/react/views/table'
@@ -11,7 +11,7 @@ export interface PageBodyProps {
 }
 
 export const PageBody = (props: PageBodyProps) => {
-  const currentView = useCurrentView()
+  const currentView = useDataViewValue(dataView => dataView.currentView)
   const view = currentView?.view
 
   if (!view) {

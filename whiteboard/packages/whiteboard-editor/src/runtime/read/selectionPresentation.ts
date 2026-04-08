@@ -3,92 +3,34 @@ import {
   FRAME_DEFAULT_STROKE,
   FRAME_DEFAULT_STROKE_WIDTH,
   FRAME_DEFAULT_TEXT_COLOR,
+  STICKY_DEFAULT_FILL,
+  STICKY_DEFAULT_TEXT_COLOR,
+  TEXT_DEFAULT_FONT_SIZE,
   readShapeKind,
   readShapeSpec,
   type ShapeKind
 } from '@whiteboard/core/node'
-import type { Node, NodeSchema, Point } from '@whiteboard/core/types'
-import type { NodeSummary } from '#react/features/node'
-import {
-  STICKY_DEFAULT_FILL,
-  STICKY_DEFAULT_TEXT_COLOR,
-  TEXT_DEFAULT_FONT_SIZE
-} from '#react/features/node'
 import type {
-  SelectionToolbarFilterView
-} from '#react/features/node'
+  SelectionAffordance,
+  SelectionSummary,
+  SelectionTransformBox
+} from '@whiteboard/core/selection'
+import type { Node, NodeSchema, Rect } from '@whiteboard/core/types'
 import type {
-  NodeMeta,
-  NodeRegistry
-} from '#react/types/node'
-import { resolveToolbarPlacement } from '../layout'
-import type {
+  SelectionPresentation,
+  SelectionToolbarContext,
   ToolbarSelectionKind
-} from './types'
-
-type ToolbarSelectionState = {
-  boxState: {
-    box?: {
-      x: number
-      y: number
-      width: number
-      height: number
-    }
-  }
-  summary: {
-    items: {
-      nodes: readonly Node[]
-      edges: readonly unknown[]
-      primaryNode?: Node
-    }
-  }
-  nodeSummary: NodeSummary
-  toolbar?: {
-    filter?: SelectionToolbarFilterView
-  }
-}
+} from '../../selection'
+import type { NodeRegistry } from '../../types/node'
+import type { Tool } from '../../types/tool'
+import type { EditTarget } from '../state/edit'
+import { readSelectionNodeSummary } from '../../selection'
 
 type StyleFieldKind = 'string' | 'number' | 'numberArray'
 
-export type ToolbarSummaryContext = {
-  visible: boolean
-  selectionKind: ToolbarSelectionKind
-  selectionKey: string | null
-  nodeIds: readonly string[]
-  nodes: readonly Node[]
-  nodeSummary: NodeSummary
-  primaryNode?: Node
-  placement?: 'top' | 'bottom'
-  anchor?: Point
-  filter?: SelectionToolbarFilterView
-  canChangeShapeKind: boolean
-  canEditFontSize: boolean
-  canEditFontWeight: boolean
-  canEditFontStyle: boolean
-  canEditTextAlign: boolean
-  canEditTextColor: boolean
-  canEditFill: boolean
-  canEditFillOpacity: boolean
-  canEditStroke: boolean
-  canEditStrokeOpacity: boolean
-  canEditStrokeDash: boolean
-  canEditNodeOpacity: boolean
-  shapeKind?: ShapeKind
-  shapeKindValue?: ShapeKind
-  fontSize?: number
-  fontWeight?: number
-  fontStyle?: 'normal' | 'italic'
-  textAlign?: 'left' | 'center' | 'right'
-  textColor?: string
-  fill?: string
-  fillOpacity?: number
-  stroke?: string
-  strokeWidth?: number
-  strokeOpacity?: number
-  strokeDash?: readonly number[]
-  opacity?: number
-  locked: NodeSummary['lock']
-}
+const readObjectCountLabel = (
+  count: number
+) => count === 1 ? '1 object' : `${count} objects`
 
 const readString = (
   node: Node,
@@ -148,14 +90,6 @@ const readUniformValue = <TValue,>(
     : undefined
 }
 
-const readNodeMeta = (
-  registry: Pick<NodeRegistry, 'get'>,
-  node: Node
-): NodeMeta | undefined => {
-  const definition = registry.get(node.type)
-  return definition?.describe?.(node) ?? definition?.meta
-}
-
 const hasStyleField = (
   schema: NodeSchema | undefined,
   path: string
@@ -183,13 +117,10 @@ const supportsStyleField = (
   return Array.isArray(value) && value.every((entry) => typeof entry === 'number')
 })
 
-const resolveSelectionKind = (
+const resolveToolbarSelectionKind = (
   nodes: readonly Node[],
-  summary: NodeSummary
+  summary: ReturnType<typeof readSelectionNodeSummary>
 ): ToolbarSelectionKind => {
-  if (!nodes.length) {
-    return 'none'
-  }
   if (nodes.every((node) => node.type === 'shape')) {
     return 'shape'
   }
@@ -213,7 +144,7 @@ const resolveSelectionKind = (
     return 'draw'
   }
 
-  return summary.count > 0 ? 'mixed' : 'none'
+  return 'mixed'
 }
 
 const hasControl = (
@@ -221,7 +152,8 @@ const hasControl = (
   registry: Pick<NodeRegistry, 'get'>,
   control: 'fill' | 'stroke' | 'text'
 ) => nodes.every((node) => {
-  const meta = readNodeMeta(registry, node)
+  const definition = registry.get(node.type)
+  const meta = definition?.describe?.(node) ?? definition?.meta
   return meta?.controls.includes(control) ?? false
 })
 
@@ -350,48 +282,67 @@ const readTextAlign = (
   return node.type === 'shape' ? 'center' : 'left'
 }
 
-export const resolveToolbarSummaryContext = ({
-  selection,
-  registry,
-  worldToScreen
+const resolvePresentationKind = ({
+  summary,
+  nodeSummary
 }: {
-  selection: ToolbarSelectionState
+  summary: SelectionSummary
+  nodeSummary: ReturnType<typeof readSelectionNodeSummary>
+}): Exclude<SelectionPresentation, { kind: 'none' }>['kind'] => {
+  if (
+    nodeSummary.count === 1
+    && nodeSummary.types.length === 1
+    && nodeSummary.types[0]?.key === 'group'
+    && summary.items.edgeCount === 0
+  ) {
+    return 'group'
+  }
+
+  if (summary.items.edgeCount > 0) {
+    return 'mixed'
+  }
+
+  return summary.items.nodeCount === 1 ? 'node' : 'nodes'
+}
+
+const resolveToolbarContext = ({
+  summary,
+  box,
+  registry
+}: {
+  summary: SelectionSummary
+  box: Rect
   registry: Pick<NodeRegistry, 'get'>
-  worldToScreen: (point: Point) => Point
-}): ToolbarSummaryContext => {
-  const rect = selection.boxState.box
-  const nodes = selection.summary.items.nodes
-  const edges = selection.summary.items.edges
-  const nodeIds = nodes.map((node) => node.id)
-  const selectionKey = nodeIds.length > 0 ? nodeIds.join('\0') : null
-  const selectionKind = resolveSelectionKind(nodes, selection.nodeSummary)
-  const primaryNode = selection.summary.items.primaryNode
+}): SelectionToolbarContext | undefined => {
+  const nodes = summary.items.nodes
+  if (!nodes.length || summary.items.edgeCount > 0) {
+    return undefined
+  }
+
+  const nodeSummary = readSelectionNodeSummary({
+    summary,
+    registry
+  })
+  const selectionKind = resolveToolbarSelectionKind(nodes, nodeSummary)
   const canEditFill = hasControl(nodes, registry, 'fill')
   const canEditStroke = hasControl(nodes, registry, 'stroke')
   const canEditTextColor = hasControl(nodes, registry, 'text')
     && supportsStyleField(nodes, registry, 'color', 'string')
-  const filter = selection.toolbar?.filter
-  const placement = rect
-    ? resolveToolbarPlacement({
-        worldToScreen,
-        rect
-      })
-    : undefined
 
   return {
-    visible:
-      Boolean(rect)
-      && nodes.length > 0
-      && edges.length === 0,
+    selectionKey: nodes.map((node) => node.id).join('\0'),
     selectionKind,
-    selectionKey,
-    nodeIds,
+    nodeIds: nodeSummary.ids,
     nodes,
-    nodeSummary: selection.nodeSummary,
-    primaryNode,
-    placement: placement?.placement,
-    anchor: placement?.anchor,
-    filter,
+    nodeSummary,
+    primaryNode: summary.items.primaryNode,
+    filter:
+      nodeSummary.count > 1 && nodeSummary.types.length > 1
+        ? {
+            label: readObjectCountLabel(nodeSummary.count),
+            types: nodeSummary.types
+          }
+        : undefined,
     canChangeShapeKind: selectionKind === 'shape',
     canEditFontSize: supportsStyleField(nodes, registry, 'fontSize', 'number'),
     canEditFontWeight: supportsStyleField(nodes, registry, 'fontWeight', 'number'),
@@ -411,8 +362,8 @@ export const resolveToolbarSummaryContext = ({
       && supportsStyleField(nodes, registry, 'strokeDash', 'numberArray'),
     canEditNodeOpacity: supportsStyleField(nodes, registry, 'opacity', 'number'),
     shapeKind:
-      selectionKind === 'shape' && primaryNode
-        ? readShapeKind(primaryNode)
+      selectionKind === 'shape' && summary.items.primaryNode
+        ? readShapeKind(summary.items.primaryNode)
         : undefined,
     shapeKindValue:
       selectionKind === 'shape'
@@ -460,6 +411,95 @@ export const resolveToolbarSummaryContext = ({
     opacity: supportsStyleField(nodes, registry, 'opacity', 'number')
       ? readUniformValue(nodes, readOpacity)
       : undefined,
-    locked: selection.nodeSummary.lock
+    locked: nodeSummary.lock
+  }
+}
+
+export const resolveSelectionPresentation = ({
+  summary,
+  transformBox,
+  affordance,
+  registry,
+  tool,
+  edit,
+  interactionChrome,
+  transforming
+}: {
+  summary: SelectionSummary
+  transformBox: SelectionTransformBox
+  affordance: SelectionAffordance
+  registry: Pick<NodeRegistry, 'get'>
+  tool: Tool
+  edit: EditTarget
+  interactionChrome: boolean
+  transforming: boolean
+}): SelectionPresentation => {
+  if (summary.items.count === 0 || summary.items.nodeCount === 0) {
+    return {
+      kind: 'none'
+    }
+  }
+
+  const box = affordance.displayBox
+  if (!box) {
+    return {
+      kind: 'none'
+    }
+  }
+
+  const editing = edit !== null
+  const pureNodeSelection =
+    summary.items.nodeCount > 0
+    && summary.items.edgeCount === 0
+  const nodeSummary = readSelectionNodeSummary({
+    summary,
+    registry
+  })
+  const hasTransformChrome = affordance.canResize || affordance.canRotate
+  const showTransformHandles =
+    tool.type === 'select'
+    && !editing
+    && hasTransformChrome
+    && (transforming || interactionChrome)
+  const toolbar = pureNodeSelection
+    && tool.type === 'select'
+    && !editing
+    && interactionChrome
+      ? resolveToolbarContext({
+          summary,
+          box,
+          registry
+        })
+      : undefined
+
+  return {
+    kind: resolvePresentationKind({
+      summary,
+      nodeSummary
+    }),
+    geometry: {
+      box,
+      transformBox: affordance.transformBox ?? transformBox.box
+    },
+    overlay:
+      affordance.showSingleNodeOverlay && affordance.ownerNodeId
+        ? {
+            kind: 'node',
+            nodeId: affordance.ownerNodeId,
+            handles: showTransformHandles
+          }
+        : {
+            kind: 'selection',
+            interactive:
+              affordance.canMove
+              && affordance.moveHit === 'body',
+            frame: affordance.owner !== 'none',
+            handles:
+              showTransformHandles
+              && Boolean(affordance.transformBox ?? transformBox.box)
+              && affordance.canResize,
+            canResize: affordance.canResize
+          },
+    toolbar
   }
 }

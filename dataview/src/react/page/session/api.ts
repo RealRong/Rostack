@@ -33,10 +33,10 @@ export const createPageSessionApi = (
   })
 
   const api: PageSessionApi = {
-    setActiveViewId: viewId => {
+    setViewId: viewId => {
       const current = store.get()
       if (
-        current.activeViewId === viewId
+        current.viewId === viewId
         && !current.query.route
       ) {
         return
@@ -44,7 +44,7 @@ export const createPageSessionApi = (
 
       store.update(prev => ({
         ...prev,
-        activeViewId: viewId,
+        viewId,
         query: prev.query.route
           ? {
               ...prev.query,
@@ -153,4 +153,3 @@ export const createPageSessionApi = (
     dispose: () => {}
   }
 }
-

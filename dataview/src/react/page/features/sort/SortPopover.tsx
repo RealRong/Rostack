@@ -10,9 +10,8 @@ import { Menu, type MenuItem } from '@ui/menu'
 import { Popover } from '@ui/popover'
 import { VerticalReorderList } from '@ui/vertical-reorder-list'
 import {
-  useCurrentView,
   useDataView,
-  useDocument
+  useDataViewValue
 } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { FieldPicker } from '@dataview/react/page/features/viewQuery/FieldPicker'
@@ -31,9 +30,12 @@ export interface SortPopoverProps {
 export const SortPopover = (props: SortPopoverProps) => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const document = useDocument()
+  const document = useDataViewValue(dataView => dataView.engine.read.document)
   const fields = getDocumentFields(document)
-  const currentView = useCurrentView(view => view?.view)
+  const currentView = useDataViewValue(
+    dataView => dataView.currentView,
+    view => view?.view
+  )
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined

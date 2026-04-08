@@ -1,5 +1,5 @@
 import type { ViewType } from '@dataview/core/contracts'
-import { useCurrentView, useDataView } from '@dataview/react/dataview'
+import { useDataView, useDataViewValue } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { usesOptionGroupingColors } from '@dataview/react/views/shared/optionGrouping'
 import { Switch } from '@ui/switch'
@@ -59,7 +59,7 @@ const LayoutSwitchRow = (props: {
 export const LayoutPanel = () => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const currentView = useCurrentView()
+  const currentView = useDataViewValue(dataView => dataView.currentView)
   const view = currentView?.view
   const viewApi = view
     ? engine.view(view.id)

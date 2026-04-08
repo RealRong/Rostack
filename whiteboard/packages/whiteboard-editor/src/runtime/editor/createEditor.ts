@@ -58,6 +58,7 @@ export const createEditor = ({
     registry,
     history: engine.history,
     runtime,
+    interaction,
     overlay,
     viewport
   })

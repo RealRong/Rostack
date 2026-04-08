@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
+import type { SelectionToolbarContext } from '@whiteboard/editor'
 import type { WhiteboardRuntime } from '#react/types/runtime'
-import type { ToolbarSummaryContext } from '../context'
 import type { ToolbarItemKey, ToolbarPanelKey } from '../types'
 
 export type ToolbarButtonRendererProps = {
-  context: ToolbarSummaryContext
+  context: SelectionToolbarContext
   editor: WhiteboardRuntime
   activePanelKey: ToolbarPanelKey | null
   togglePanel: (key: ToolbarPanelKey) => void
@@ -12,7 +12,7 @@ export type ToolbarButtonRendererProps = {
 }
 
 export type ToolbarPanelRendererProps = {
-  context: ToolbarSummaryContext
+  context: SelectionToolbarContext
   editor: WhiteboardRuntime
   closePanel: () => void
 }

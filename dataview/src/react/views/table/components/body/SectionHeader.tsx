@@ -2,8 +2,8 @@ import {
   ChevronRight
 } from 'lucide-react'
 import {
-  useCurrentView,
-  useDataView
+  useDataView,
+  useDataViewValue
 } from '@dataview/react/dataview'
 import type {
   Section
@@ -18,7 +18,7 @@ export interface SectionHeaderProps {
 
 export const SectionHeader = (props: SectionHeaderProps) => {
   const { engine } = useDataView()
-  const currentView = useCurrentView()
+  const currentView = useDataViewValue(dataView => dataView.currentView)
   const table = useTableContext()
   if (!currentView) {
     throw new Error('Table section header requires an active current view.')

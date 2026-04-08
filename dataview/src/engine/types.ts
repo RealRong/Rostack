@@ -29,7 +29,13 @@ import type {
 import type { HistoryOptions, HistoryState } from './history'
 import type { ValidationIssue } from '@dataview/engine/command'
 import type { KeyedReadStore, ReadStore } from '@dataview/runtime/store'
-import type { ViewProjection } from '@dataview/engine/projection/view'
+import type {
+  AppearanceId,
+  CellRef,
+  Placement,
+  SectionKey,
+  ViewProjection
+} from '@dataview/engine/projection/view'
 
 export interface CreateEngineOptions {
   document: DataDoc
@@ -167,6 +173,22 @@ export interface ViewOrderApi {
   clear: () => void
 }
 
+export interface ViewItemsApi {
+  moveAppearances: (
+    appearanceIds: readonly AppearanceId[],
+    target: Placement
+  ) => void
+  createInSection: (
+    sectionKey: SectionKey,
+    input?: {
+      title?: string
+      values?: Partial<Record<CustomFieldId, unknown>>
+    }
+  ) => RecordId | undefined
+  removeAppearances: (appearanceIds: readonly AppearanceId[]) => void
+  writeCell: (cell: CellRef, value: unknown | undefined) => void
+}
+
 export interface KanbanCreateCardInput {
   groupKey: string
   title: string
@@ -256,6 +278,7 @@ export interface ViewEngineApi {
   gallery: ViewGalleryApi
   kanban: ViewKanbanApi
   order: ViewOrderApi
+  items: ViewItemsApi
   cards: KanbanApi
 }
 

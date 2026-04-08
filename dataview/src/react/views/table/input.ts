@@ -220,7 +220,9 @@ export const handleTableKey = (input: {
     }
     case 'Backspace':
     case 'Delete':
-      input.currentView.commands.mutation.remove()
+      input.editor.view(input.currentView.view.id).items.removeAppearances(
+        currentSelection.ids
+      )
       input.setKeyboardMode()
       input.reveal()
       return true

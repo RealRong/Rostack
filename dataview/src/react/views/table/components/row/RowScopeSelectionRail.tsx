@@ -10,12 +10,12 @@ import type {
   AppearanceId
 } from '@dataview/react/runtime/currentView'
 import {
-  useCurrentView,
   useDataView,
+  useDataViewValue,
 } from '@dataview/react/dataview'
 import { useTableContext } from '../../context'
 import { RowSelectionButton, TableLeadingRail } from './RowRail'
-import { useEffectiveRowSelection } from '../../hooks/useEffectiveRowSelection'
+import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
 export interface RowScopeSelectionRailProps {
   rowIds: readonly AppearanceId[]
   label?: string
@@ -24,12 +24,19 @@ export interface RowScopeSelectionRailProps {
 const View = (props: RowScopeSelectionRailProps) => {
   const table = useTableContext()
   const dataView = useDataView()
-  const currentView = useCurrentView()
+  const currentView = useDataViewValue(dataView => dataView.currentView)
   if (!currentView) {
     throw new Error('Table row scope selection requires an active current view.')
   }
 
-  const currentSelection = useEffectiveRowSelection(table)
+  const previewSelection = useStoreSelector(
+    table.marqueeSelection,
+    selection => selection
+  )
+  const committedSelection = useDataViewValue(
+    dataView => dataView.selection.store
+  )
+  const currentSelection = previewSelection ?? committedSelection
   const selectedRowIds = currentSelection.ids
   const selectedRowIdSet = new Set(selectedRowIds)
   const rowCount = props.rowIds.length

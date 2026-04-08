@@ -13,8 +13,8 @@ import type {
 } from '@dataview/react/runtime/selection'
 import { shouldCapturePointer } from '@dataview/dom/interactive'
 import {
-  useCurrentView,
-  useDataView
+  useDataView,
+  useDataViewValue
 } from '@dataview/react/dataview'
 import { rowRailState } from '../../model/rowRail'
 import { useTableContext } from '../../context'
@@ -22,7 +22,7 @@ import { useStoreValue } from '@dataview/react/store'
 import { cn } from '@ui/utils'
 import { Cell } from '../cell/Cell'
 import { RowRail } from './RowRail'
-import { useEffectiveRowSelected } from '../../hooks/useEffectiveRowSelection'
+import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
 
 export interface RowProps {
   appearanceId: AppearanceId
@@ -63,7 +63,7 @@ export const applyRowCheckboxSelection = (input: {
 const View = (props: RowProps) => {
   const table = useTableContext()
   const dataView = useDataView()
-  const currentView = useCurrentView()
+  const currentView = useDataViewValue(dataView => dataView.currentView)
   if (!currentView) {
     throw new Error('Table row requires an active current view.')
   }
@@ -89,7 +89,17 @@ const View = (props: RowProps) => {
   const capabilities = useStoreValue(table.capabilities)
   const rowRail = useStoreValue(table.rowRail)
   const exposed = rowRail === props.appearanceId
-  const selected = useEffectiveRowSelected(table, props.appearanceId)
+  const previewSelected = useStoreSelector(
+    table.marqueeSelection,
+    selection => selection
+      ? selection.ids.includes(props.appearanceId)
+      : null
+  )
+  const committedSelected = useDataViewValue(
+    dataView => dataView.selection.store,
+    selection => selection.ids.includes(props.appearanceId)
+  )
+  const selected = previewSelected ?? committedSelected
   const rail = rowRailState({
     dragActive: props.dragActive,
     dragDisabled: !capabilities.canRowDrag,

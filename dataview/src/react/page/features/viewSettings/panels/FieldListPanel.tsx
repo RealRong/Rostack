@@ -2,13 +2,14 @@ import { Plus } from 'lucide-react'
 import { getDocumentCustomFields } from '@dataview/core/document'
 import { FieldPicker } from '@dataview/react/page/features/viewQuery/FieldPicker'
 import { Menu } from '@ui/menu'
-import { useDocument } from '@dataview/react/dataview'
+import { useDataViewValue } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { useViewSettings } from '../context'
 
 export const FieldListPanel = () => {
   const router = useViewSettings()
-  const fields = getDocumentCustomFields(useDocument())
+  const document = useDataViewValue(dataView => dataView.engine.read.document)
+  const fields = getDocumentCustomFields(document)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

@@ -9,9 +9,8 @@ import { Button } from '@ui/button'
 import { Input } from '@ui/input'
 import { Menu, type MenuItem, type MenuReorderItem } from '@ui/menu'
 import {
-  useCurrentView,
   useDataView,
-  useDocument
+  useDataViewValue
 } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import {
@@ -22,8 +21,11 @@ import {
 export const ViewFieldsPanel = () => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const document = useDocument()
-  const currentView = useCurrentView(view => view?.view)
+  const document = useDataViewValue(dataView => dataView.engine.read.document)
+  const currentView = useDataViewValue(
+    dataView => dataView.currentView,
+    view => view?.view
+  )
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined

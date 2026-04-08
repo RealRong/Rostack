@@ -16,8 +16,7 @@ import {
 } from '@dataview/dom/appearance'
 import {
   useDataView,
-  useCurrentView,
-  useSelection
+  useDataViewValue
 } from '@dataview/react/dataview'
 import {
   closestTarget,
@@ -75,7 +74,7 @@ export const useGalleryController = (input: {
   containerRef: RefObject<HTMLDivElement | null>
 }): GalleryController => {
   const dataView = useDataView()
-  const currentView = useCurrentView(view => (
+  const currentView = useDataViewValue(dataView => dataView.currentView, view => (
     view?.view.id === input.viewId
       ? view
       : undefined
@@ -124,7 +123,9 @@ export const useGalleryController = (input: {
     overscan: dragging ? 1200 : 640
   })
 
-  const selectionState = useSelection()
+  const selectionState = useDataViewValue(
+    dataView => dataView.selection.store
+  )
   const marqueeSession = useStoreValue(dataView.marquee.store)
   const marqueeActive = marqueeSession?.ownerViewId === currentView.view.id
   const selectedIdSet = useMemo(
@@ -185,7 +186,7 @@ export const useGalleryController = (input: {
         return
       }
 
-      currentView.commands.move.ids(ids, {
+      dataView.engine.view(currentView.view.id).items.moveAppearances(ids, {
         section,
         ...(target.beforeAppearanceId ? { before: target.beforeAppearanceId } : {})
       })

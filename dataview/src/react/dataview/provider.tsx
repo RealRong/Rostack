@@ -7,10 +7,10 @@ import {
 } from 'react'
 import type {
   DataViewContextValue,
-  DataViewRuntime
+  DataViewSession
 } from './runtime'
 import {
-  createDataViewRuntime
+  createDataViewSession
 } from './runtime'
 import type {
   Engine
@@ -32,7 +32,7 @@ export const EngineProvider = (props: EngineProviderProps) => (
 )
 
 const EngineProviderInner = (props: EngineProviderProps) => {
-  const runtime = useMemo<DataViewRuntime>(() => createDataViewRuntime({
+  const runtime = useMemo<DataViewSession>(() => createDataViewSession({
     engine: props.engine,
     initialPage: props.initialPage
   }), [props.engine])

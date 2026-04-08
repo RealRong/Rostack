@@ -13,8 +13,21 @@ import { getDocumentViewById } from '@dataview/core/document'
 import { isTitleFieldId } from '@dataview/core/field'
 import { createUniqueFieldName } from '@dataview/core/field'
 import {
+  createGrouping,
+  move,
+  readSectionRecordIds,
+  recordIdsOfAppearances,
   resolveGrouping,
-  resolveSectionRecordIds
+  resolveSectionRecordIds,
+  toRecordField,
+  type AppearanceId,
+  type AppearanceList,
+  type CellRef,
+  type Grouping,
+  type GroupingNextValue,
+  type Placement,
+  type SectionKey,
+  type ViewProjection
 } from '@dataview/engine/projection/view'
 import { createRecordId } from '@dataview/engine/command/entityId'
 import { meta, renderMessage } from '@dataview/meta'
@@ -25,12 +38,158 @@ import type {
   KanbanApi,
   KanbanCreateCardInput,
   KanbanMoveCardsInput,
+  ViewItemsApi,
   ViewOrderApi,
   ViewEngineApi,
   ViewTableApi
 } from '../types'
 
 const uniqueIds = <T,>(ids: readonly T[]) => Array.from(new Set(ids))
+
+const sameValue = (
+  left: unknown,
+  right: unknown
+): boolean => {
+  if (Object.is(left, right)) {
+    return true
+  }
+
+  if (Array.isArray(left) && Array.isArray(right)) {
+    return left.length === right.length
+      && left.every((value, index) => sameValue(value, right[index]))
+  }
+
+  if (
+    left
+    && right
+    && typeof left === 'object'
+    && typeof right === 'object'
+  ) {
+    try {
+      return JSON.stringify(left) === JSON.stringify(right)
+    } catch {
+      return false
+    }
+  }
+
+  return false
+}
+
+const toValueCommand = (
+  recordId: RecordId,
+  fieldId: FieldId,
+  next: GroupingNextValue
+): Command => (
+  isTitleFieldId(fieldId)
+    ? {
+        type: 'record.apply',
+        target: {
+          type: 'record',
+          recordId
+        },
+        patch: {
+          title: 'clear' in next
+            ? ''
+            : String(next.value ?? '')
+        }
+      }
+    : 'clear' in next
+      ? {
+          type: 'value.apply',
+          target: {
+            type: 'record',
+            recordId
+          },
+          action: {
+            type: 'clear',
+            field: fieldId
+          }
+        }
+      : {
+          type: 'value.apply',
+          target: {
+            type: 'record',
+            recordId
+          },
+          action: {
+            type: 'set',
+            field: fieldId,
+            value: next.value
+          }
+        }
+)
+
+const createGroupWriteCommands = (input: {
+  engine: Pick<Engine, 'read'>
+  view: ViewProjection['view']
+  appearances: AppearanceList
+  ids: readonly AppearanceId[]
+  targetSection: string
+  grouping: Grouping
+}): readonly Command[] | undefined => {
+  const fieldId = input.view.group?.field
+  if (!fieldId) {
+    return []
+  }
+
+  const appearanceIdsByRecordId = new Map<RecordId, AppearanceId[]>()
+
+  input.ids.forEach(id => {
+    const recordId = input.appearances.get(id)?.recordId
+    if (!recordId) {
+      return
+    }
+
+    const current = appearanceIdsByRecordId.get(recordId)
+    if (current) {
+      current.push(id)
+      return
+    }
+
+    appearanceIdsByRecordId.set(recordId, [id])
+  })
+
+  const commands: Command[] = []
+
+  for (const [recordId, appearanceIds] of appearanceIdsByRecordId) {
+    const record = input.engine.read.record.get(recordId)
+    const initialValue = isTitleFieldId(fieldId)
+      ? record?.title
+      : record?.values[fieldId]
+    let currentValue = initialValue
+
+    for (const appearanceId of appearanceIds) {
+      const next = input.grouping.next(
+        currentValue,
+        input.appearances.sectionOf(appearanceId),
+        input.targetSection
+      )
+      if (!next) {
+        return undefined
+      }
+
+      currentValue = 'clear' in next
+        ? undefined
+        : next.value
+    }
+
+    if (sameValue(initialValue, currentValue)) {
+      continue
+    }
+
+    commands.push(
+      toValueCommand(
+        recordId,
+        fieldId,
+        currentValue === undefined
+          ? { clear: true }
+          : { value: currentValue }
+      )
+    )
+  }
+
+  return commands
+}
 
 export const createViewEngineApi = (options: {
   engine: Pick<Engine, 'read' | 'command' | 'fields'>
@@ -41,6 +200,7 @@ export const createViewEngineApi = (options: {
   ) => options.engine.command(command)
   const readDocument = () => options.engine.read.document.get()
   const readCurrentView = () => getDocumentViewById(readDocument(), options.viewId)
+  const readCurrentProjection = () => options.engine.read.viewProjection.get(options.viewId)
 
   const commit = (command: Command | readonly Command[]) => dispatch(command).applied
 
@@ -73,6 +233,239 @@ export const createViewEngineApi = (options: {
         type: 'view.order.clear',
         viewId: options.viewId
       })
+    }
+  }
+
+  const items: ViewItemsApi = {
+    moveAppearances: (appearanceIds, target) => {
+      const currentView = readCurrentProjection()
+      if (!currentView) {
+        return
+      }
+
+      const grouping = createGrouping({
+        document: readDocument(),
+        view: currentView.view,
+        sections: currentView.sections
+      })
+      const plan = move.plan(currentView.appearances, appearanceIds, target)
+      if (!plan.changed || !plan.ids.length) {
+        return
+      }
+
+      const recordIds = recordIdsOfAppearances(currentView.appearances, plan.ids)
+      if (!recordIds.length) {
+        return
+      }
+
+      const sectionChanged = plan.ids.some(id => currentView.appearances.sectionOf(id) !== plan.target.section)
+      if (sectionChanged && currentView.view.group && !grouping) {
+        return
+      }
+
+      const sectionRecordIds = readSectionRecordIds(
+        {
+          sections: currentView.sections,
+          appearances: currentView.appearances
+        },
+        plan.target.section
+      )
+      const rawBeforeRecordId = plan.target.before
+        ? currentView.appearances.get(plan.target.before)?.recordId
+        : undefined
+      const beforeRecordId = rawBeforeRecordId
+        ? move.before(
+            sectionRecordIds,
+            sectionRecordIds.indexOf(rawBeforeRecordId),
+            recordIds
+          )
+        : undefined
+      const commands: Command[] = []
+
+      if (sectionChanged && grouping) {
+        const valueCommands = createGroupWriteCommands({
+          engine: options.engine,
+          view: currentView.view,
+          appearances: currentView.appearances,
+          ids: plan.ids,
+          targetSection: plan.target.section,
+          grouping
+        })
+        if (!valueCommands) {
+          return
+        }
+
+        commands.push(...valueCommands)
+      }
+
+      if (!currentView.view.sort.length) {
+        const moveCommand = createMoveOrderCommand(recordIds, beforeRecordId)
+        if (moveCommand) {
+          commands.push(moveCommand)
+        }
+      }
+
+      if (commands.length) {
+        dispatch(commands)
+      }
+    },
+    createInSection: (sectionKey, input) => {
+      const currentView = readCurrentProjection()
+      if (!currentView) {
+        return undefined
+      }
+
+      const fieldId = currentView.view.group?.field
+      const grouping = createGrouping({
+        document: readDocument(),
+        view: currentView.view,
+        sections: currentView.sections
+      })
+      if (currentView.view.group && !grouping) {
+        return undefined
+      }
+
+      const values: Partial<Record<string, unknown>> = {
+        ...(input?.values ?? {})
+      }
+      let title = input?.title?.trim()
+
+      if (fieldId && grouping) {
+        const next = grouping.next(
+          isTitleFieldId(fieldId)
+            ? title
+            : values[fieldId],
+          undefined,
+          sectionKey
+        )
+        if (!next) {
+          return undefined
+        }
+
+        if (isTitleFieldId(fieldId)) {
+          if (!('clear' in next)) {
+            title = String(next.value ?? '')
+          }
+        } else if ('clear' in next) {
+          delete values[fieldId]
+        } else {
+          values[fieldId] = next.value
+        }
+      }
+
+      const recordId = createRecordId()
+      const commands: Command[] = [{
+        type: 'record.create',
+        input: {
+          id: recordId,
+          ...(title ? { title } : {}),
+          values
+        }
+      }]
+
+      if (
+        currentView.view.type === 'kanban'
+        && currentView.view.options.kanban.newRecordPosition === 'start'
+        && !currentView.view.sort.length
+      ) {
+        const beforeRecordId = readSectionRecordIds(
+          {
+            sections: currentView.sections,
+            appearances: currentView.appearances
+          },
+          sectionKey
+        )[0]
+        const moveCommand = createMoveOrderCommand([recordId], beforeRecordId)
+        if (moveCommand) {
+          commands.push(moveCommand)
+        }
+      }
+
+      const result = dispatch(commands)
+      return result.applied
+        ? recordId
+        : undefined
+    },
+    removeAppearances: appearanceIds => {
+      const currentView = readCurrentProjection()
+      if (!currentView) {
+        return
+      }
+
+      const recordIds = recordIdsOfAppearances(currentView.appearances, appearanceIds)
+      if (!recordIds.length) {
+        return
+      }
+
+      dispatch({
+        type: 'record.remove',
+        recordIds: [...recordIds]
+      })
+    },
+    writeCell: (cell, value) => {
+      const currentView = readCurrentProjection()
+      if (!currentView) {
+        return
+      }
+
+      const target = toRecordField(cell, currentView.appearances)
+      if (!target) {
+        return
+      }
+
+      if (value === undefined) {
+        dispatch(
+          isTitleFieldId(target.fieldId)
+            ? {
+                type: 'record.apply',
+                target: {
+                  type: 'record',
+                  recordId: target.recordId
+                },
+                patch: {
+                  title: ''
+                }
+              }
+            : {
+                type: 'value.apply',
+                target: {
+                  type: 'record',
+                  recordId: target.recordId
+                },
+                action: {
+                  type: 'clear',
+                  field: target.fieldId
+                }
+              }
+        )
+        return
+      }
+
+      dispatch(
+        isTitleFieldId(target.fieldId)
+          ? {
+              type: 'record.apply',
+              target: {
+                type: 'record',
+                recordId: target.recordId
+              },
+              patch: {
+                title: String(value ?? '')
+              }
+            }
+          : {
+              type: 'value.apply',
+              target: {
+                type: 'record',
+                recordId: target.recordId
+              },
+              action: {
+                type: 'set',
+                field: target.fieldId,
+                value
+              }
+            }
+      )
     }
   }
 
@@ -599,6 +992,7 @@ export const createViewEngineApi = (options: {
     gallery,
     kanban,
     order,
+    items,
     cards
   }
 }

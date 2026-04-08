@@ -8,9 +8,6 @@ import {
   createDerivedStore,
   type ReadStore
 } from '@dataview/runtime/store'
-import {
-  createCommands
-} from './commands'
 import type {
   CurrentView
 } from './types'
@@ -20,25 +17,15 @@ import {
 import type {
   PageSessionState
 } from '@dataview/react/page/session/types'
-import type {
-  SelectionStore
-} from '@dataview/react/runtime/selection'
 
 export const createCurrentViewStore = (input: {
   engine: Engine
   pageStore: ReadStore<PageSessionState>
-  selection: SelectionStore
 }): ReadStore<CurrentView | undefined> => {
-  const commands = createCommands({
-    engine: input.engine,
-    selection: input.selection,
-    currentView: () => resolveProjection()
-  })
-
   const resolveCurrentViewId = (): ViewId | undefined => (
     resolveActiveViewId(
       input.engine.read.document.get(),
-      input.pageStore.get().activeViewId
+      input.pageStore.get().viewId
     )
   )
 
@@ -53,17 +40,12 @@ export const createCurrentViewStore = (input: {
 
   let cachedProjection = resolveProjection()
   let cachedCurrentView = cachedProjection
-    ? {
-        ...cachedProjection,
-        commands
-      }
-    : undefined
 
   return createDerivedStore<CurrentView | undefined>({
     get: read => {
       const document = read(input.engine.read.document)
       const page = read(input.pageStore)
-      const viewId = resolveActiveViewId(document, page.activeViewId)
+      const viewId = resolveActiveViewId(document, page.viewId)
       const projection = viewId
         ? read(input.engine.read.viewProjection, viewId)
         : undefined
@@ -74,11 +56,6 @@ export const createCurrentViewStore = (input: {
 
       cachedProjection = projection
       cachedCurrentView = projection
-        ? {
-            ...projection,
-            commands
-          }
-        : undefined
       return cachedCurrentView
     }
   })

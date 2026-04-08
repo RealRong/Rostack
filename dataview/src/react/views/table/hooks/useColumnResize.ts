@@ -8,7 +8,7 @@ import {
 } from 'react'
 import type { FieldId } from '@dataview/core/contracts'
 import { disableUserSelect } from '@dataview/dom/selection'
-import { useCurrentView, useDataView } from '@dataview/react/dataview'
+import { useDataView, useDataViewValue } from '@dataview/react/dataview'
 import { useStoreValue } from '@dataview/react/store'
 import { closestTableTargetElement } from '../dom/targets'
 import { useTableContext } from '../context'
@@ -41,7 +41,7 @@ const samePreview = (
 export const useColumnResize = () => {
   const editor = useDataView().engine
   const table = useTableContext()
-  const currentView = useCurrentView()
+  const currentView = useDataViewValue(dataView => dataView.currentView)
   if (!currentView) {
     throw new Error('Table column resize requires an active current view.')
   }

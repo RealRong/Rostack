@@ -20,7 +20,7 @@ import { Input } from '@ui/input'
 import { Menu, type MenuItem } from '@ui/menu'
 import {
   useDataView,
-  useFieldById
+  useDataViewKeyedValue
 } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import {
@@ -40,7 +40,10 @@ export interface OptionEditorPanelProps {
 
 export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
   const editor = useDataView().engine
-  const field = useFieldById(props.fieldId)
+  const field = useDataViewKeyedValue(
+    dataView => dataView.engine.read.customField,
+    props.fieldId
+  )
   const currentOption = getFieldOption(field, props.option.id)
   const optionName = currentOption?.name ?? props.option.name
   const optionColor = currentOption?.color ?? props.option.color ?? undefined

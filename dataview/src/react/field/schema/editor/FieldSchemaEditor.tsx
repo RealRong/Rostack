@@ -5,7 +5,7 @@ import type {
 } from '@dataview/core/contracts'
 import {
   useDataView,
-  useFieldById
+  useDataViewKeyedValue
 } from '@dataview/react/dataview'
 import { Input } from '@ui/input'
 import { Menu, type MenuItem } from '@ui/menu'
@@ -21,7 +21,10 @@ export interface FieldSchemaEditorProps {
 
 export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
   const editor = useDataView().engine
-  const field = useFieldById(props.fieldId)
+  const field = useDataViewKeyedValue(
+    dataView => dataView.engine.read.customField,
+    props.fieldId
+  )
   const [nameDraft, setNameDraft] = useState('')
 
   useEffect(() => {

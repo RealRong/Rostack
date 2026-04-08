@@ -2,6 +2,7 @@ import type { EngineRead, GroupRead, ReadStore } from '@whiteboard/engine'
 import type { HistoryState } from '@whiteboard/core/kernel'
 import type { NodeRegistry } from '../../types/node'
 import type { DrawPreferences } from '../../types/draw'
+import type { InteractionRuntime } from '../interaction/types'
 import type { EditorOverlay } from '../overlay'
 import type { EditorViewportRuntime } from '../editor/types'
 import type { RuntimeStateController } from '../state'
@@ -48,6 +49,7 @@ export const createRead = ({
   registry,
   history,
   runtime,
+  interaction,
   overlay,
   viewport
 }: {
@@ -55,6 +57,7 @@ export const createRead = ({
   registry: NodeRegistry
   history: ReadStore<HistoryState>
   runtime: Pick<RuntimeStateController, 'state'>
+  interaction: Pick<InteractionRuntime, 'mode' | 'chrome'>
   overlay: Pick<EditorOverlay, 'selectors'>
   viewport: EditorViewportRuntime
 }): RuntimeRead => {
@@ -77,7 +80,11 @@ export const createRead = ({
     source: runtime.state.selection.source,
     node: nodeRead,
     edge: edgeRead,
-    targetBounds
+    targetBounds,
+    registry,
+    tool: runtime.state.tool,
+    edit: runtime.state.edit.source,
+    interaction
   })
   const toolRead = createToolRead({
     tool: runtime.state.tool

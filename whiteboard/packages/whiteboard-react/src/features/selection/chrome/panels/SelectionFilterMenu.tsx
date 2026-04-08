@@ -1,9 +1,12 @@
+import type { SelectionToolbarFilter } from '@whiteboard/editor'
 import type { MenuItem } from '@ui'
 import { Menu } from '@ui'
-import { NodeTypeIcon, type SelectionToolbarFilterView } from '#react/features/node'
+import { NodeTypeIcon } from '#react/features/node'
+import type { WhiteboardRuntime } from '#react/types/runtime'
 
 const toMenuItems = (
-  filter: SelectionToolbarFilterView,
+  editor: WhiteboardRuntime,
+  filter: SelectionToolbarFilter,
   onClose: () => void
 ): MenuItem[] => [
   {
@@ -29,20 +32,24 @@ const toMenuItems = (
     ),
     onSelect: () => {
       onClose()
-      filter.onSelect(item.key)
+      editor.commands.selection.replace({
+        nodeIds: item.nodeIds
+      })
     }
   }))
 ]
 
 export const SelectionFilterMenu = ({
+  editor,
   filter,
   onClose
 }: {
-  filter: SelectionToolbarFilterView
+  editor: WhiteboardRuntime
+  filter: SelectionToolbarFilter
   onClose: () => void
 }) => (
   <Menu
-    items={toMenuItems(filter, onClose)}
+    items={toMenuItems(editor, filter, onClose)}
     onClose={onClose}
     autoFocus
   />

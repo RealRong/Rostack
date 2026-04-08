@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import { type ComponentType } from 'react'
 import type { ViewType } from '@dataview/core/contracts'
-import { useCurrentView } from '@dataview/react/dataview'
+import { useDataViewValue } from '@dataview/react/dataview'
 
 interface IconProps {
   className?: string
@@ -32,7 +32,10 @@ export interface PageHeaderProps {
 }
 
 export const PageHeader = (_props: PageHeaderProps) => {
-  const currentView = useCurrentView(view => view?.view)
+  const currentView = useDataViewValue(
+    dataView => dataView.currentView,
+    view => view?.view
+  )
   const CurrentIcon = viewIcon(currentView?.type)
 
   return (

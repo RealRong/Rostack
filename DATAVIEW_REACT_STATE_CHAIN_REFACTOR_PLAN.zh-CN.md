@@ -308,7 +308,7 @@ hook 只负责：
 - 它们不是轻量订阅层
 - 它们最直接放大了中轴复杂度
 
-### 可以合并但优先级不高的 hooks
+### 明确要压缩的 selector hooks
 
 - `usePage`
 - `usePageValue`
@@ -323,7 +323,9 @@ hook 只负责：
 
 这些本质上都只是 store selector 包装。
 
-如果要压缩 API 面，可以统一抽成：
+目标不是保留一组平行的语义糖，而是把读取入口尽量压缩到少数统一 selector API。
+
+建议最终只保留少量统一入口，例如：
 
 ```ts
 useDataViewSelector(selector)
@@ -331,7 +333,22 @@ useSessionSelector(selector)
 useEngineReadSelector(store, selector)
 ```
 
-但这一步只是 API 收口，不会显著降低核心复杂度，因此应排在 engine / session / controller 收敛之后。
+其中：
+
+- `usePage`
+- `usePageValue`
+- `useSelection`
+- `useSelectionValue`
+- `useInlineSession`
+- `useInlineSessionValue`
+- `useDocument`
+- `useViewById`
+- `useFieldById`
+- `useCurrentView`
+
+都应视为待收口 API，而不是长期保留的稳定扩展面。
+
+这一步属于明确的收敛目标，但不会先于 engine / session / controller 的边界重构执行。
 
 ### 不建议为了“减 hook 数量”而删掉的 hooks
 
@@ -344,12 +361,12 @@ useEngineReadSelector(store, selector)
 
 它们的问题不在于存在，而在于上层没有稳定中轴，导致这些原语被大型 controller hooks 反复拼装。
 
-### 可以评估内收或删除的 hooks
+### 明确删除或内联的 hooks
 
 - `useEffectiveRowSelection`
-  - 更适合作为 table controller 的派生 selector，而不是单独 hook。
+  - 直接内联到 table 行相关组件或 table controller selector，不再保留独立 hook。
 - `useMarquee`
-  - 当前仓库内部未看到实际使用；如果不是对外公共 API，可以考虑移除或内收。
+  - 直接删除。当前仓库内部未见实际使用，不作为后续架构轴心保留。
 
 ## 目标架构草图
 
@@ -457,12 +474,26 @@ const boardController = createBoardController({
 
 具体动作：
 
-- 统一 `usePage/useSelection/useInlineSession/...`
-- 保留必要的语义 alias，减少重复心智负担
+- 压缩 `usePage`
+- 压缩 `usePageValue`
+- 压缩 `useSelection`
+- 压缩 `useSelectionValue`
+- 压缩 `useInlineSession`
+- 压缩 `useInlineSessionValue`
+- 压缩 `useDocument`
+- 压缩 `useViewById`
+- 压缩 `useFieldById`
+- 压缩 `useCurrentView`
+- 将这些读取入口统一到少量 selector API
+- `useEffectiveRowSelection` 内联
+- `useMarquee` 删除
 
 完成标志：
 
 - 组件侧读取状态主要通过统一 selector 接口完成
+- 上述零碎 selector hooks 不再作为主要对外读取入口
+- table 行选择相关逻辑不再依赖 `useEffectiveRowSelection`
+- 仓库中不再保留 `useMarquee`
 
 ## 风险与注意事项
 

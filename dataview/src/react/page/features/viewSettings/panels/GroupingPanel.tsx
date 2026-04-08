@@ -8,9 +8,8 @@ import {
   resolveViewGroupState
 } from '@dataview/core/query'
 import {
-  useCurrentView,
   useDataView,
-  useDocument
+  useDataViewValue
 } from '@dataview/react/dataview'
 import { Input } from '@ui/input'
 import { Menu, type MenuItem } from '@ui/menu'
@@ -85,9 +84,12 @@ const readBucketSortLabel = (bucketSort: BucketSort | undefined) => {
 export const GroupingPanel = () => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const document = useDocument()
+  const document = useDataViewValue(dataView => dataView.engine.read.document)
   const router = useViewSettings()
-  const currentView = useCurrentView(view => view?.view)
+  const currentView = useDataViewValue(
+    dataView => dataView.currentView,
+    view => view?.view
+  )
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined

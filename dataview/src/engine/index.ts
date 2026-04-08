@@ -13,6 +13,7 @@ export type {
   KanbanApi,
   KanbanCreateCardInput,
   KanbanMoveCardsInput,
+  ViewItemsApi,
   ViewGalleryApi,
   ViewKanbanApi,
   FieldsEngineApi,

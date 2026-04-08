@@ -64,7 +64,7 @@ export const equalPageSessionState = (
   left: PageSessionState,
   right: PageSessionState
 ) => (
-  left.activeViewId === right.activeViewId
+  left.viewId === right.viewId
   && left.query.visible === right.query.visible
   && equalQueryBarEntry(left.query.route, right.query.route)
   && equalSettingsState(left.settings, right.settings)
@@ -73,7 +73,7 @@ export const equalPageSessionState = (
 export const createDefaultPageSessionState = (
   input?: PageSessionInput
 ): PageSessionState => ({
-  activeViewId: input?.activeViewId,
+  viewId: input?.viewId,
   query: {
     visible: input?.query?.visible ?? true,
     route: cloneQueryBarEntry(input?.query?.route)

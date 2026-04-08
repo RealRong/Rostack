@@ -46,7 +46,7 @@ export interface PageSessionInput extends Partial<Omit<PageSessionState, 'query'
 }
 
 export interface PageSessionState {
-  activeViewId?: ViewId
+  viewId?: ViewId
   query: QueryBarState
   settings: SettingsState
 }
@@ -61,7 +61,7 @@ export interface ResolvedPageState extends PageSessionState {
 }
 
 export interface PageSessionApi {
-  setActiveViewId(viewId?: ViewId): void
+  setViewId(viewId?: ViewId): void
   query: {
     show(): void
     hide(): void

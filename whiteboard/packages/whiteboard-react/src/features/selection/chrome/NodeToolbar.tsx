@@ -8,12 +8,13 @@ import {
   type RefObject
 } from 'react'
 import type { Point } from '@whiteboard/core/types'
-import { useSelectionPresentation } from '#react/features/node'
-import { useEditorRuntime, useNodeRegistry } from '#react/runtime/hooks'
+import { useEditorRuntime, useStoreValue } from '#react/runtime/hooks'
 import { useElementSize } from '#react/dom/observe'
 import { WhiteboardPopover } from '#react/runtime/overlay'
-import { buildToolbarStyle } from './layout'
-import { resolveToolbarSummaryContext } from './toolbar/context'
+import {
+  buildToolbarStyle,
+  resolveToolbarPlacement
+} from './layout'
 import { readToolbarItemSpec, renderToolbarPanel } from './toolbar/items'
 import { ToolbarDivider } from './toolbar/primitives'
 import { resolveToolbarRecipe } from './toolbar/recipe'
@@ -51,28 +52,21 @@ export const NodeToolbar = ({
   containerRef: RefObject<HTMLDivElement | null>
 }) => {
   const editor = useEditorRuntime()
-  const registry = useNodeRegistry()
   const surface = useElementSize(containerRef)
-  const presentation = useSelectionPresentation()
+  const presentation = useStoreValue(editor.read.selection.presentation)
   const buttonRefByKey = useRef<Partial<Record<ToolbarPanelKey, HTMLElement | null>>>({})
   const [activePanelKey, setActivePanelKey] = useState<ToolbarPanelKey | null>(null)
   const [positionSession, setPositionSession] = useState<ToolbarPositionSession | null>(null)
-  const selection = presentation.selection
   const worldToScreen = useCallback(
     (point: Point) => editor.read.viewport.worldToScreen(point),
     [editor]
   )
-  const context = useMemo(
-    () => resolveToolbarSummaryContext({
-      selection,
-      registry,
-      worldToScreen
-    }),
-    [registry, selection, worldToScreen]
-  )
+  const toolbar = presentation.kind !== 'none'
+    ? presentation.toolbar
+    : undefined
   const recipe = useMemo(
-    () => resolveToolbarRecipe(context),
-    [context]
+    () => toolbar ? resolveToolbarRecipe(toolbar) : [],
+    [toolbar]
   )
 
   const closePanel = useCallback(() => {
@@ -83,14 +77,22 @@ export const NodeToolbar = ({
     setActivePanelKey((current) => current === key ? null : key)
   }, [])
 
-  const selectionKey = context.selectionKey
-  const selectionBox = selection.boxState.box
-  const livePosition = context.visible && selectionBox && selectionKey && context.placement
+  const selectionKey = toolbar?.selectionKey ?? null
+  const selectionBox = presentation.kind !== 'none'
+    ? presentation.geometry.box
+    : undefined
+  const livePlacement = selectionBox
+    ? resolveToolbarPlacement({
+        worldToScreen,
+        rect: selectionBox
+      })
+    : undefined
+  const livePosition = toolbar && selectionBox && selectionKey && livePlacement
     ? {
         selectionKey,
-        placement: context.placement,
+        placement: livePlacement.placement,
         anchorWorld: resolveToolbarAnchorWorld({
-          placement: context.placement,
+          placement: livePlacement.placement,
           x: selectionBox.x,
           y: selectionBox.y,
           width: selectionBox.width,
@@ -107,13 +109,13 @@ export const NodeToolbar = ({
   ])
 
   useEffect(() => {
-    if (!presentation.showToolbar) {
+    if (!toolbar) {
       closePanel()
     }
-  }, [closePanel, presentation.showToolbar])
+  }, [closePanel, toolbar])
 
   useEffect(() => {
-    if (!presentation.showToolbar || !livePosition || !selectionKey || recipe.length === 0) {
+    if (!toolbar || !livePosition || !selectionKey || recipe.length === 0) {
       setPositionSession(null)
       return
     }
@@ -126,13 +128,13 @@ export const NodeToolbar = ({
       return livePosition
     })
   }, [
+    toolbar,
     livePosition,
-    presentation.showToolbar,
     recipe.length,
     selectionKey
   ])
 
-  if (!presentation.showToolbar || !context.visible || !recipe.length) {
+  if (presentation.kind === 'none' || !toolbar || !recipe.length) {
     return null
   }
 
@@ -141,7 +143,7 @@ export const NodeToolbar = ({
     : livePosition
   const toolbarAnchor = resolvedPosition
     ? worldToScreen(resolvedPosition.anchorWorld)
-    : context.anchor
+    : livePlacement?.anchor
   const toolbarUnits = recipe.reduce((total, entry) => (
     total + (
       entry.kind === 'divider'
@@ -155,9 +157,9 @@ export const NodeToolbar = ({
   }
 
   const toolbarStyle = buildToolbarStyle({
-    placement: resolvedPosition?.placement ?? context.placement ?? 'top',
+    placement: resolvedPosition?.placement ?? livePlacement?.placement ?? 'top',
     x: toolbarAnchor.x,
-    y: (resolvedPosition?.placement ?? context.placement ?? 'top') === 'top'
+    y: (resolvedPosition?.placement ?? livePlacement?.placement ?? 'top') === 'top'
       ? toolbarAnchor.y - 12
       : toolbarAnchor.y + 12,
     containerWidth: surface.width,
@@ -169,7 +171,7 @@ export const NodeToolbar = ({
     : null
   const panelContent = renderToolbarPanel({
     panelKey: activePanelKey,
-    context,
+    context: toolbar,
     editor,
     closePanel
   })
@@ -193,7 +195,7 @@ export const NodeToolbar = ({
           return (
             <Fragment key={`${entry.key}:${index}`}>
               {spec.renderButton({
-                context,
+                context: toolbar,
                 editor,
                 activePanelKey,
                 togglePanel,

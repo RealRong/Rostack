@@ -17,9 +17,8 @@ import {
 } from '@dataview/core/document'
 import { resolveViewGroupState } from '@dataview/core/query'
 import {
-  useCurrentView,
   useDataView,
-  useDocument
+  useDataViewValue
 } from '@dataview/react/dataview'
 import { Input } from '@ui/input'
 import { Menu, type MenuItem } from '@ui/menu'
@@ -210,9 +209,12 @@ const readGroupSummary = (
 export const RootPanel = () => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const document = useDocument()
+  const document = useDataViewValue(dataView => dataView.engine.read.document)
   const router = useViewSettings()
-  const currentView = useCurrentView(view => view?.view)
+  const currentView = useDataViewValue(
+    dataView => dataView.currentView,
+    view => view?.view
+  )
   const fields = getDocumentFields(document)
   const viewsCount = getDocumentViews(document).length
   const propertyCount = currentView?.display.fields.length ?? 0

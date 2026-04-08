@@ -1,6 +1,7 @@
 import {
   memo
 } from 'react'
+import type { SelectionPresentation as EditorSelectionPresentation } from '@whiteboard/editor'
 import type { Guide } from '@whiteboard/core/node'
 import type { NodeId } from '@whiteboard/core/types'
 import {
@@ -9,12 +10,13 @@ import {
   useStoreValue
 } from '#react/runtime/hooks'
 import { useNodeOverlayView } from '../hooks/useNodeView'
-import { useSelectionPresentation } from '../selection'
 import { NodeConnectHandles } from './NodeConnectHandles'
 import {
   NodeTransformHandles,
   TransformHandles
 } from './NodeTransformHandles'
+
+type ActiveSelectionPresentation = Exclude<EditorSelectionPresentation, { kind: 'none' }>
 
 const NodeInteractionGuidesLayer = ({
   guides
@@ -103,20 +105,18 @@ const EdgeConnectOverlay = () => {
 const SelectionFrameOverlay = ({
   presentation
 }: {
-  presentation: ReturnType<typeof useSelectionPresentation>
+  presentation: ActiveSelectionPresentation
 }) => {
-  const interactive = presentation.selection.boxState.interactive
+  if (presentation.overlay.kind !== 'selection' || !presentation.overlay.frame) {
+    return null
+  }
+
+  const interactive = presentation.overlay.interactive
   const ref = usePickRef({
     kind: 'selection-box',
     part: 'body'
   })
-
-  if (
-    !presentation.selection.boxState.frame
-    || !presentation.selection.boxState.box
-  ) {
-    return null
-  }
+  const box = presentation.geometry.box
 
   return (
     <div
@@ -124,9 +124,9 @@ const SelectionFrameOverlay = ({
       className="wb-selection-transform-box"
       style={{
         pointerEvents: interactive ? 'auto' : 'none',
-        transform: `translate(${presentation.selection.boxState.box.x}px, ${presentation.selection.boxState.box.y}px)`,
-        width: presentation.selection.boxState.box.width,
-        height: presentation.selection.boxState.box.height
+        transform: `translate(${box.x}px, ${box.y}px)`,
+        width: box.width,
+        height: box.height
       }}
     />
   )
@@ -135,20 +135,21 @@ const SelectionFrameOverlay = ({
 const SelectionHandlesOverlay = ({
   presentation
 }: {
-  presentation: ReturnType<typeof useSelectionPresentation>
+  presentation: ActiveSelectionPresentation
 }) => {
-  if (
-    !presentation.selection.boxState.handles
-    || !presentation.selection.boxState.transformBox
-  ) {
+  if (presentation.overlay.kind !== 'selection' || !presentation.overlay.handles) {
+    return null
+  }
+  const transformBox = presentation.geometry.transformBox
+  if (!transformBox) {
     return null
   }
 
   return (
     <TransformHandles
-      rect={presentation.selection.boxState.transformBox}
+      rect={transformBox}
       rotation={0}
-      canResize={presentation.selection.boxState.canResize}
+      canResize={presentation.overlay.canResize}
       canRotate={false}
     />
   )
@@ -157,23 +158,23 @@ const SelectionHandlesOverlay = ({
 export const NodeOverlayLayer = () => {
   const editor = useEditorRuntime()
   const guides = useStoreValue(editor.read.overlay.feedback.snap)
-  const presentation = useSelectionPresentation()
+  const presentation = useStoreValue(editor.read.selection.presentation)
 
   return (
     <>
       <div className="wb-node-overlay-layer">
-        {presentation.singleTransformNodeId ? (
+        {presentation.kind !== 'none' && presentation.overlay.kind === 'node' ? (
           <NodeTransformOverlayItem
-            nodeId={presentation.singleTransformNodeId}
-            showHandles={presentation.chrome.transform}
+            nodeId={presentation.overlay.nodeId}
+            showHandles={presentation.overlay.handles}
           />
         ) : null}
-        {presentation.showSelectionFrame ? (
+        {presentation.kind !== 'none' && presentation.overlay.kind === 'selection' && presentation.overlay.frame ? (
           <SelectionFrameOverlay
             presentation={presentation}
           />
         ) : null}
-        {presentation.showSelectionHandles ? (
+        {presentation.kind !== 'none' && presentation.overlay.kind === 'selection' && presentation.overlay.handles ? (
           <SelectionHandlesOverlay
             presentation={presentation}
           />

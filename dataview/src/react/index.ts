@@ -38,17 +38,9 @@ export {
 export type { TableViewProps } from './views/table'
 export {
   EngineProvider,
-  useCurrentView,
   useDataView,
-  useInlineSession,
-  useInlineSessionValue,
-  useSelection,
-  useSelectionValue,
-  usePage,
-  usePageValue,
-  useDocument,
-  useViewById,
-  useFieldById
+  useDataViewKeyedValue,
+  useDataViewValue
 } from './dataview'
 export { meta, renderMessage } from '@dataview/meta'
 export type {

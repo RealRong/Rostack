@@ -10,7 +10,6 @@ import {
   SUBMENU_OFFSET,
   appendPath,
   findAtPath,
-  firstEnabledPath,
   isDirectChildPath,
   isPathPrefix,
   isSamePath,
@@ -19,11 +18,16 @@ import {
   resolvePresentation,
   resolveSurface
 } from './shared'
-import { submenuArrow, ButtonRow, checkTrailing, switchTrailing } from './row'
-import type { Item, LevelProps } from './types'
+import { submenuArrow, Row, checkTrailing, handleActivationKey, switchTrailing } from './row'
+import type { Item, LevelProps, SelectionAppearance } from './types'
 
-const itemTrailing = (item: Item, selected: boolean) => {
+const itemTrailing = (
+  item: Item,
+  selected: boolean,
+  selectionAppearance: SelectionAppearance
+) => {
   const indicator = item.indicator ?? 'none'
+  const selectedVisible = selected && selectionAppearance !== 'none'
 
   if (indicator === 'switch') {
     return switchTrailing(selected, item.disabled)
@@ -33,18 +37,19 @@ const itemTrailing = (item: Item, selected: boolean) => {
     return (
       <span className="inline-flex items-center gap-1.5">
         {item.trailing}
-        {selected && indicator === 'check' ? checkTrailing() : null}
+        {selectedVisible && indicator === 'check' ? checkTrailing() : null}
       </span>
     )
   }
 
-  return selected && indicator === 'check'
+  return selectedVisible && indicator === 'check'
     ? checkTrailing()
     : undefined
 }
 
 export const Level = (props: LevelProps) => {
   const rootRef = useRef<HTMLDivElement | null>(null)
+  const didAutoFocusRef = useRef(false)
   const enabledPaths = useMemo(
     () => props.items
       .filter(item => item.kind !== 'divider' && item.kind !== 'label' && item.kind !== 'custom' && !item.disabled)
@@ -54,18 +59,28 @@ export const Level = (props: LevelProps) => {
   const firstPath = enabledPaths[0] ?? null
   const hasActiveDescendant = props.controller.activePath.length > props.parentPath.length
     && isPathPrefix(props.parentPath, props.controller.activePath)
+  const setActiveKeyboardPath = props.controller.setActiveKeyboardPath
 
   useEffect(() => {
-    if (!props.open || !props.autoFocus || !firstPath || hasActiveDescendant) {
+    if (props.open) {
       return
     }
 
-    props.controller.setActiveKeyboardPath(firstPath)
+    didAutoFocusRef.current = false
+  }, [props.open])
+
+  useEffect(() => {
+    if (!props.open || !props.autoFocus || !firstPath || hasActiveDescendant || didAutoFocusRef.current) {
+      return
+    }
+
+    didAutoFocusRef.current = true
+    setActiveKeyboardPath(firstPath)
   }, [
     firstPath,
     hasActiveDescendant,
     props.autoFocus,
-    props.controller,
+    setActiveKeyboardPath,
     props.open
   ])
 
@@ -84,7 +99,7 @@ export const Level = (props: LevelProps) => {
       return
     }
 
-    props.controller.trimExpandedPath(props.parentPath)
+    props.controller.trimOpenPath(props.parentPath)
     props.controller.setActiveKeyboardPath(nextPath)
   }, [enabledPaths, props.controller, props.parentPath])
 
@@ -114,7 +129,7 @@ export const Level = (props: LevelProps) => {
       case 'Home':
         event.preventDefault()
         event.stopPropagation()
-        props.controller.trimExpandedPath(props.parentPath)
+        props.controller.trimOpenPath(props.parentPath)
         if (firstPath) {
           props.controller.setActiveKeyboardPath(firstPath)
         }
@@ -122,7 +137,7 @@ export const Level = (props: LevelProps) => {
       case 'End': {
         event.preventDefault()
         event.stopPropagation()
-        props.controller.trimExpandedPath(props.parentPath)
+        props.controller.trimOpenPath(props.parentPath)
         const lastPath = enabledPaths[enabledPaths.length - 1] ?? null
         if (lastPath) {
           props.controller.setActiveKeyboardPath(lastPath)
@@ -179,8 +194,8 @@ export const Level = (props: LevelProps) => {
     }
 
     if (
-      props.controller.expandedPath.length > props.parentPath.length
-      && isPathPrefix(props.parentPath, props.controller.expandedPath)
+      props.controller.openPath.length > props.parentPath.length
+      && isPathPrefix(props.parentPath, props.controller.openPath)
     ) {
       return
     }
@@ -201,14 +216,14 @@ export const Level = (props: LevelProps) => {
       {props.items.map(item => {
         const path = appendPath(props.parentPath, item.key)
         const pathKey = JSON.stringify(path)
-        const registerRef = (element: HTMLButtonElement | null) => {
+        const registerRef = (element: HTMLDivElement | null) => {
           props.controller.registerItemRef(path, element)
         }
 
         if (item.kind === 'divider' || item.kind === 'label' || item.kind === 'custom') {
           return renderListStructuralItem(item, () => {
             if (props.submenuOpenPolicy === 'hover') {
-              props.controller.trimExpandedPath(props.parentPath)
+              props.controller.trimOpenPath(props.parentPath)
             }
             if (props.submenuOpenPolicy === 'hover' && props.controller.activeSource === 'pointer') {
               props.controller.clearPointerActivePath()
@@ -223,7 +238,7 @@ export const Level = (props: LevelProps) => {
           const selected = selectionEnabled && props.selectedKeys.includes(item.key)
 
           return (
-            <ButtonRow
+            <Row
               key={item.key}
               ref={registerRef}
               {...{
@@ -239,19 +254,36 @@ export const Level = (props: LevelProps) => {
               label={item.label}
               leading={item.leading}
               suffix={item.suffix}
-              trailing={itemTrailing(item, selected)}
+              trailing={itemTrailing(item, selected, props.selectionAppearance)}
+              accessory={item.accessory}
               tone={item.tone}
               disabled={item.disabled}
-              active={active || selected}
+              active={active}
+              activeSource={active ? props.controller.activeSource : null}
+              selected={selected}
+              selectionAppearance={props.selectionAppearance}
               className={item.className}
               highlightedClassName={item.highlightedClassName}
               onMouseEnter={() => {
                 if (props.submenuOpenPolicy === 'hover') {
-                  props.controller.trimExpandedPath(props.parentPath)
+                  props.controller.trimOpenPath(props.parentPath)
                 }
                 props.controller.setActivePointerPath(path)
               }}
               onClick={() => {
+                props.onItemValueToggle(item.key)
+                item.onSelect?.()
+                if (item.closeOnSelect !== false) {
+                  props.onClose?.()
+                }
+              }}
+              onKeyDown={event => {
+                if (item.disabled || !handleActivationKey(event)) {
+                  return
+                }
+
+                event.preventDefault()
+                event.stopPropagation()
                 props.onItemValueToggle(item.key)
                 item.onSelect?.()
                 if (item.closeOnSelect !== false) {
@@ -264,7 +296,7 @@ export const Level = (props: LevelProps) => {
 
         if (item.kind === 'action') {
           return (
-            <ButtonRow
+            <Row
               key={item.key}
               ref={registerRef}
               {...{
@@ -276,16 +308,33 @@ export const Level = (props: LevelProps) => {
               leading={item.leading}
               suffix={item.suffix}
               trailing={item.trailing}
+              accessory={item.accessory}
               tone={item.tone}
               disabled={item.disabled}
               active={active}
+              activeSource={active ? props.controller.activeSource : null}
+              selectionAppearance={props.selectionAppearance}
+              className={item.className}
+              highlightedClassName={item.highlightedClassName}
               onMouseEnter={() => {
                 if (props.submenuOpenPolicy === 'hover') {
-                  props.controller.trimExpandedPath(props.parentPath)
+                  props.controller.trimOpenPath(props.parentPath)
                 }
                 props.controller.setActivePointerPath(path)
               }}
               onClick={() => {
+                item.onSelect()
+                if (item.closeOnSelect !== false) {
+                  props.onClose?.()
+                }
+              }}
+              onKeyDown={event => {
+                if (item.disabled || !handleActivationKey(event)) {
+                  return
+                }
+
+                event.preventDefault()
+                event.stopPropagation()
                 item.onSelect()
                 if (item.closeOnSelect !== false) {
                   props.onClose?.()
@@ -297,7 +346,7 @@ export const Level = (props: LevelProps) => {
 
         if (item.kind === 'toggle') {
           return (
-            <ButtonRow
+            <Row
               key={item.key}
               ref={registerRef}
               {...{
@@ -314,15 +363,32 @@ export const Level = (props: LevelProps) => {
                 : item.checked
                   ? checkTrailing()
                   : undefined}
+              accessory={item.accessory}
               disabled={item.disabled}
               active={active}
+              activeSource={active ? props.controller.activeSource : null}
+              selectionAppearance={props.selectionAppearance}
+              className={item.className}
+              highlightedClassName={item.highlightedClassName}
               onMouseEnter={() => {
                 if (props.submenuOpenPolicy === 'hover') {
-                  props.controller.trimExpandedPath(props.parentPath)
+                  props.controller.trimOpenPath(props.parentPath)
                 }
                 props.controller.setActivePointerPath(path)
               }}
               onClick={() => {
+                item.onSelect()
+                if (item.closeOnSelect !== false) {
+                  props.onClose?.()
+                }
+              }}
+              onKeyDown={event => {
+                if (item.disabled || !handleActivationKey(event)) {
+                  return
+                }
+
+                event.preventDefault()
+                event.stopPropagation()
                 item.onSelect()
                 if (item.closeOnSelect !== false) {
                   props.onClose?.()
@@ -334,7 +400,7 @@ export const Level = (props: LevelProps) => {
 
         const surface = resolveSurface(item)
         const presentation = resolvePresentation(item)
-        const open = isPathPrefix(path, props.controller.expandedPath)
+        const open = isPathPrefix(path, props.controller.openPath)
         const arrow = submenuArrow({
           presentation,
           open
@@ -346,21 +412,23 @@ export const Level = (props: LevelProps) => {
             open={open}
             onOpenChange={nextOpen => {
               if (nextOpen) {
-                props.controller.openSubmenuPath(path, item, 'click')
+                props.controller.openSubmenuPath(path, item, 'pointer')
                 return
               }
 
-              props.controller.dismissSubmenuPath(path)
+              props.controller.closeSubmenuPath(
+                path,
+                props.controller.consumeTriggerPress(path)
+                  ? 'trigger'
+                  : 'outside'
+              )
             }}
             kind="menu"
             placement={item.placement ?? (presentation === 'dropdown' ? 'bottom-end' : 'right-start')}
             offset={item.offset ?? (presentation === 'dropdown' ? DROPDOWN_SUBMENU_OFFSET : SUBMENU_OFFSET)}
-            initialFocus={surface === 'list' ? -1 : 0}
-            size={item.size ?? (surface === 'list' ? 'sm' : undefined)}
-            padding={surface === 'list' ? 'menu' : 'panel'}
-            contentClassName={cn('min-w-0', item.contentClassName)}
-            trigger={(
-              <ButtonRow
+          >
+            <Popover.Trigger>
+              <Row
                 ref={registerRef}
                 {...{
                   [ITEM_PATH_ATTR]: pathKey
@@ -380,8 +448,22 @@ export const Level = (props: LevelProps) => {
                       </span>
                     )
                   : arrow}
+                accessory={item.accessory}
+                tone={item.tone}
                 disabled={item.disabled}
                 active={active}
+                activeSource={active ? props.controller.activeSource : null}
+                selectionAppearance={props.selectionAppearance}
+                open={open}
+                className={item.className}
+                highlightedClassName={item.highlightedClassName}
+                onPointerDown={event => {
+                  if (event.button !== 0 || !open) {
+                    return
+                  }
+
+                  props.controller.markTriggerPress(path)
+                }}
                 onMouseEnter={() => {
                   props.controller.setActivePointerPath(path)
                   if (
@@ -394,38 +476,64 @@ export const Level = (props: LevelProps) => {
                     props.submenuOpenPolicy === 'hover'
                     && !(presentation === 'dropdown' && open)
                   ) {
-                    props.controller.trimExpandedPath(props.parentPath)
+                    props.controller.trimOpenPath(props.parentPath)
                   }
                 }}
+                onKeyDown={event => {
+                  if (item.disabled || !handleActivationKey(event)) {
+                    return
+                  }
+
+                  event.preventDefault()
+                  event.stopPropagation()
+
+                  if (open) {
+                    props.controller.closeSubmenuPath(path, 'keyboard')
+                    return
+                  }
+
+                  props.controller.openSubmenuPath(path, item, 'keyboard')
+                }}
               />
-            )}
-          >
-            <div className="flex max-h-[72vh] flex-col">
-              {item.items?.length ? (
-                <Level
-                  items={item.items}
-                  parentPath={path}
-                  open={open}
-                  selectedKeys={props.selectedKeys}
-                  selectionMode={props.selectionMode}
-                  onItemValueToggle={props.onItemValueToggle}
-                  onClose={() => {
-                    props.controller.dismissSubmenuPath(path)
-                    props.onClose?.()
-                  }}
-                  onRequestClose={() => {
-                    props.controller.collapseSubmenuPathToTrigger(path)
-                  }}
-                  autoFocus={open && props.controller.activeSource !== 'pointer'}
-                  submenuOpenPolicy={props.submenuOpenPolicy}
-                  controller={props.controller}
-                />
-              ) : renderContent(item.content)}
-            </div>
+            </Popover.Trigger>
+            <Popover.Content
+              initialFocus={surface === 'list' ? -1 : 0}
+              size={item.size ?? (surface === 'list' ? 'sm' : undefined)}
+              padding={surface === 'list' ? 'menu' : 'panel'}
+              contentClassName={cn('min-w-0', item.contentClassName)}
+            >
+              <div className="flex max-h-[72vh] flex-col">
+                {item.items?.length ? (
+                  <Level
+                    items={item.items}
+                    parentPath={path}
+                    open={open}
+                    selectedKeys={props.selectedKeys}
+                    selectionMode={props.selectionMode}
+                    selectionAppearance={props.selectionAppearance}
+                    onItemValueToggle={props.onItemValueToggle}
+                    onClose={() => {
+                      props.controller.closeSubmenuPath(
+                        path,
+                        props.controller.activeSource === 'keyboard'
+                          ? 'keyboard'
+                          : 'outside'
+                      )
+                      props.onClose?.()
+                    }}
+                    onRequestClose={() => {
+                      props.controller.closeSubmenuPath(path, 'keyboard')
+                    }}
+                    autoFocus={open && props.controller.activeSource !== 'pointer'}
+                    submenuOpenPolicy={props.submenuOpenPolicy}
+                    controller={props.controller}
+                  />
+                ) : renderContent(item.content)}
+              </div>
+            </Popover.Content>
           </Popover>
         )
       })}
     </div>
   )
 }
-

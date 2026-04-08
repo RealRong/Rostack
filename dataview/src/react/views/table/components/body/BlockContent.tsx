@@ -1,101 +1,21 @@
 import type {
   PointerEvent as ReactPointerEvent
 } from 'react'
-import {
-  ChevronRight
-} from 'lucide-react'
 import type {
   Field,
   FieldId
 } from '@dataview/core/contracts'
-import {
-  useCurrentView,
-  useDataView
-} from '@dataview/react/dataview'
 import type {
-  AppearanceId,
-  Section
+  AppearanceId
 } from '@dataview/react/runtime/currentView'
 import {
   useStoreValue
 } from '@dataview/react/store'
 import { useTableContext } from '../../context'
 import { Row } from '../row/Row'
-import { RowScopeSelectionRail } from '../row/RowScopeSelectionRail'
-import { ColumnHeaderRow } from '../column/ColumnHeaderRow'
-import { Button } from '@ui/button'
-import { cn } from '@ui/utils'
-
-const SectionHeader = (props: {
-  section: Section
-}) => {
-  const { engine } = useDataView()
-  const currentView = useCurrentView()
-  const table = useTableContext()
-  if (!currentView) {
-    throw new Error('Table section header requires an active current view.')
-  }
-
-  return (
-    <div
-      data-table-target="group-row"
-      data-group-key={props.section.key}
-      className="flex h-full items-center border-b border-divider"
-    >
-      <Button
-        variant="plain"
-        layout="row"
-        leading={(
-          <ChevronRight
-            className={cn(
-              'size-4 transition-transform',
-              !props.section.collapsed && 'rotate-90'
-            )}
-            size={16}
-            strokeWidth={1.8}
-          />
-        )}
-        aria-expanded={!props.section.collapsed}
-        onPointerDown={event => {
-          event.stopPropagation()
-        }}
-        onClick={() => {
-          engine.view(currentView.view.id).grouping.toggleBucketCollapsed(props.section.key)
-          table.focus()
-        }}
-      >
-        {props.section.title}
-      </Button>
-    </div>
-  )
-}
-
-const ColumnHeaderBlock = (props: {
-  scopeId: string
-  rowIds: readonly AppearanceId[]
-  label?: string
-  columns: readonly Field[]
-  template: string
-  resizingPropertyId?: FieldId
-  onResizeStart: (
-    fieldId: FieldId,
-    event: ReactPointerEvent<HTMLButtonElement>
-  ) => void
-}) => (
-  <div className="relative h-full border-b border-divider bg-transparent text-muted-foreground">
-    <RowScopeSelectionRail
-      rowIds={props.rowIds}
-      label={props.label}
-    />
-    <ColumnHeaderRow
-      scopeId={props.scopeId}
-      columns={props.columns}
-      template={props.template}
-      resizingPropertyId={props.resizingPropertyId}
-      onResizeStart={props.onResizeStart}
-    />
-  </div>
-)
+import { ColumnFooterBlock } from './ColumnFooterBlock'
+import { ColumnHeaderBlock } from './ColumnHeaderBlock'
+import { SectionHeader } from './SectionHeader'
 
 export interface BlockContentProps {
   columns: readonly Field[]
@@ -185,6 +105,21 @@ export const BlockContent = (props: BlockContentProps) => {
                       dragActive={props.dragActive}
                       isDragging={props.dragIdSet.has(block.rowId)}
                       onDragStart={props.onDragStart}
+                    />
+                  </div>
+                )
+              case 'column-footer':
+                return (
+                  <div
+                    key={block.key}
+                    style={{
+                      height: block.height
+                    }}
+                  >
+                    <ColumnFooterBlock
+                      scopeId={block.scopeId}
+                      columns={props.columns}
+                      template={props.template}
                     />
                   </div>
                 )

@@ -21,7 +21,7 @@ export const isSameViewQuery = (
   if (left.filter.rules.length !== right.filter.rules.length) {
     return false
   }
-  if (left.sorters.length !== right.sorters.length) {
+  if (left.sort.length !== right.sort.length) {
     return false
   }
   if (!sameGroup(left.group, right.group)) {
@@ -36,9 +36,9 @@ export const isSameViewQuery = (
     }
   }
 
-  for (let index = 0; index < left.sorters.length; index += 1) {
-    const leftSorter = left.sorters[index]
-    const rightSorter = right.sorters[index]
+  for (let index = 0; index < left.sort.length; index += 1) {
+    const leftSorter = left.sort[index]
+    const rightSorter = right.sort[index]
     if (
       !leftSorter
       || !rightSorter

@@ -9,6 +9,7 @@ export type ToolbarSelectionKind =
   | 'none'
 
 export type ToolbarItemKey =
+  | 'filter'
   | 'shape-kind'
   | 'font-size'
   | 'bold'
@@ -17,10 +18,6 @@ export type ToolbarItemKey =
   | 'text-color'
   | 'stroke'
   | 'fill'
-  | 'align'
-  | 'distribute'
-  | 'order'
-  | 'group'
   | 'lock'
   | 'more'
 
@@ -29,6 +26,7 @@ export type ToolbarRecipeItem =
   | { kind: 'divider' }
 
 export type ToolbarPanelKey =
+  | 'filter'
   | 'shape-kind'
   | 'font-size'
   | 'text-align'

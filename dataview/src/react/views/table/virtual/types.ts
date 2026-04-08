@@ -18,6 +18,11 @@ export interface TableSectionHeaderBlock extends VirtualBlock {
   section: Section
 }
 
+export interface TableColumnFooterBlock extends VirtualBlock {
+  kind: 'column-footer'
+  scopeId: string
+}
+
 export interface TableRowBlock extends VirtualBlock {
   kind: 'row'
   rowId: AppearanceId
@@ -25,5 +30,6 @@ export interface TableRowBlock extends VirtualBlock {
 
 export type TableBlock =
   | TableColumnHeaderBlock
+  | TableColumnFooterBlock
   | TableSectionHeaderBlock
   | TableRowBlock

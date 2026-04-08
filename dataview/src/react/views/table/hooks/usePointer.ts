@@ -39,6 +39,7 @@ import {
   useAutoPan
 } from '@dataview/react/interaction/autoPan'
 import type { TableHoverTarget } from '../model/hover'
+import { hoveredRowIdOf } from '../model/hover'
 import { useTableContext } from '../context'
 import {
   cellFromPoint,
@@ -279,10 +280,9 @@ const useHoverBinding = (input: {
       return
     }
 
-    input.table.hover.set(
-      hoverTargetFromPoint(point, rowContext()),
-      point
-    )
+    const target = hoverTargetFromPoint(point, rowContext())
+    input.table.hover.set(target, point)
+    input.table.rowRail.set(hoveredRowIdOf(target))
   }, [
     clear,
     input.table,
@@ -313,10 +313,9 @@ const useHoverBinding = (input: {
     }
 
     pointRef.current = resolvedPoint
-    input.table.hover.set(
-      hoverTargetFromPoint(resolvedPoint ?? null, rowContext()),
-      resolvedPoint
-    )
+    const target = hoverTargetFromPoint(resolvedPoint ?? null, rowContext())
+    input.table.hover.set(target, resolvedPoint)
+    input.table.rowRail.set(hoveredRowIdOf(target))
   }, [clear, input.table, rowContext])
 
   const onPointerMove = useCallback<PointerEventHandler<HTMLDivElement>>(event => {
@@ -346,8 +345,9 @@ const useHoverBinding = (input: {
 
     cancelFrame()
     pointRef.current = null
+    input.table.rowRail.set(null)
     clear(null)
-  }, [cancelFrame, clear])
+  }, [cancelFrame, clear, input.table.rowRail])
 
   useEffect(() => () => {
     cancelFrame()
@@ -703,6 +703,7 @@ export const usePointer = (
     }
 
     dragPointerRef.current = toPoint(event)
+    table.rowRail.set(null)
     table.hover.clear(dragPointerRef.current)
     const session = table.interaction.start({
       mode: 'pointer',
@@ -735,6 +736,7 @@ export const usePointer = (
 
     dragPointerRef.current = toPoint(event)
     setDragActive(true)
+    table.rowRail.set(null)
     table.hover.clear(dragPointerRef.current)
     const session = table.interaction.start({
       mode: 'fill',

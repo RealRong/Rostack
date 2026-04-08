@@ -180,9 +180,9 @@ export {
   buildNodeCreateOperation,
   buildNodeAlignOperations,
   buildNodeDistributeOperations,
-  buildNodeGroupOperations,
-  buildNodeUngroupOperations,
-  buildNodeUngroupManyOperations
+  buildGroupMergeOperations,
+  buildGroupUngroupOperations,
+  buildGroupUngroupManyOperations
 } from './commands'
 export {
   alignNodes,

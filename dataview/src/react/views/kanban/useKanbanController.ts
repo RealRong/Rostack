@@ -106,15 +106,15 @@ export const useKanbanController = (input: {
     currentView.fields.all
   ])
   const groupField = useMemo(() => {
-    const groupFieldId = currentView.view.query.group?.field
+    const groupFieldId = currentView.view.group?.field
     return groupFieldId
       ? currentView.schema.fields.get(groupFieldId)
       : undefined
-  }, [currentView.schema.fields, currentView.view.query.group?.field])
+  }, [currentView.schema.fields, currentView.view.group?.field])
   const groupUsesOptionColors = usesOptionGroupingColors(groupField)
   const fillColumnColor = groupUsesOptionColors
     && currentView.view.options.kanban.fillColumnColor
-  const canReorder = Boolean(currentView.view.query.group) && !currentView.view.query.sorters.length
+  const canReorder = Boolean(currentView.view.group) && !currentView.view.sort.length
 
   const readRecord = useCallback((id: AppearanceId) => {
     const recordId = currentView.appearances.get(id)?.recordId

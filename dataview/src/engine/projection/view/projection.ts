@@ -7,6 +7,9 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import {
+  computeCalculationsForFields
+} from '@dataview/core/calculation'
+import {
   getDocumentFields
 } from '@dataview/core/document'
 import {
@@ -98,7 +101,7 @@ const createGroupedProjection = (input: {
   const sections = resolveGroupedRecords(
     input.document,
     input.visibleRecords,
-    input.view.query.group
+    input.view.group
   ).map(group => ({
     key: group.key,
     title: group.title,
@@ -147,6 +150,27 @@ const createFlatProjection = (
   }
 }
 
+const createCalculationsBySection = (input: {
+  view: View
+  schema: Schema
+  sections: readonly ProjectionSection[]
+  appearances: ReadonlyMap<AppearanceId, Appearance>
+  rowsById: ReadonlyMap<RecordId, Row>
+}) => new Map(
+  input.sections.map(section => {
+    const rows = section.ids
+      .map(appearanceId => input.appearances.get(appearanceId)?.recordId)
+      .map(recordId => (recordId ? input.rowsById.get(recordId) : undefined))
+      .filter((row): row is Row => Boolean(row))
+
+    return [section.key, computeCalculationsForFields({
+      calculations: input.view.calc,
+      fields: input.schema.fields,
+      rows
+    })] as const
+  })
+)
+
 export const resolveProjection = (
   document: DataDoc,
   viewId?: ViewId
@@ -165,7 +189,7 @@ export const resolveProjection = (
   return {
     view,
     schema: createSchema(fields),
-    ...(view.query.group
+    ...(view.group
       ? createGroupedProjection({
           document,
           view,
@@ -192,20 +216,31 @@ export const resolveViewProjection = (
   })
   const sections = grouping?.sections ?? createSections(
     resolved.sections,
-    resolved.view.query.group
+    resolved.view.group
+  )
+  const appearances = createAppearances({
+    byId: resolved.appearances,
+    sections
+  })
+  const rowsById = new Map(
+    resolveViewRecordState(document, viewId).visibleRecords.map(record => [record.id, record] as const)
   )
 
   return {
     view: resolved.view,
     schema: resolved.schema,
-    appearances: createAppearances({
-      byId: resolved.appearances,
-      sections
-    }),
+    appearances,
     sections,
     fields: createFields({
-      fieldIds: resolved.view.options.display.fieldIds,
+      fieldIds: resolved.view.display.fields,
       byId: resolved.schema.fields
+    }),
+    calculationsBySection: createCalculationsBySection({
+      view: resolved.view,
+      schema: resolved.schema,
+      sections,
+      appearances: resolved.appearances,
+      rowsById
     })
   }
 }

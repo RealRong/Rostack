@@ -6,6 +6,7 @@ import {
   type CoreRegistries,
   type Document,
   type EdgeId,
+  type GroupId,
   type MindmapId,
   type MindmapNodeId,
   type NodeId,
@@ -45,7 +46,7 @@ export const createWrite = ({
   const ids = {
     node: (): NodeId => createId('node'),
     edge: (): EdgeId => createId('edge'),
-    group: (): NodeId => createId('group'),
+    group: (): GroupId => createId('group'),
     mindmap: (): MindmapId => createId('mindmap'),
     mindmapNode: (): MindmapNodeId => createId('mnode')
   }

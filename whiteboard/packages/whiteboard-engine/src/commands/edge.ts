@@ -98,14 +98,6 @@ export const edge = ({
       edgeId
     })
 
-  const order = {
-    set: (ids: EdgeId[]) => run({ type: 'order', mode: 'set', ids }),
-    bringToFront: (ids: EdgeId[]) => run({ type: 'order', mode: 'front', ids }),
-    sendToBack: (ids: EdgeId[]) => run({ type: 'order', mode: 'back', ids }),
-    bringForward: (ids: EdgeId[]) => run({ type: 'order', mode: 'forward', ids }),
-    sendBackward: (ids: EdgeId[]) => run({ type: 'order', mode: 'backward', ids })
-  }
-
   return {
     create,
     move,
@@ -118,7 +110,6 @@ export const edge = ({
       move: movePath,
       remove: removeAt,
       clear
-    },
-    order
+    }
   }
 }

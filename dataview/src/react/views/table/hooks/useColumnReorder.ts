@@ -98,7 +98,7 @@ export const useColumnReorder = (): ColumnReorderApi => {
       return
     }
 
-    editor.view(currentView.view.id).display.moveVisibleFields(
+    editor.view(currentView.view.id).display.move(
       [sourcePropertyId],
       beforeId
     )

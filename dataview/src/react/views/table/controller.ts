@@ -63,6 +63,7 @@ import {
 export interface TableController {
   gridSelection: GridSelectionStore
   marqueeSelection: ValueStore<Selection | null>
+  rowRail: ValueStore<AppearanceId | null>
   layout: TableLayout
   virtual: TableVirtualRuntime
   nodes: Nodes
@@ -161,7 +162,7 @@ const rowTarget = (input: {
   rowId: AppearanceId
   top: number
   bottom: number
-} | null => input.currentView.view.query.group
+} | null => input.currentView.view.group
     ? groupedRowTarget(input)
     : flatRowTarget(input)
 
@@ -221,6 +222,10 @@ export const createTableController = (options: {
 
       return selectionHelpers.equal(left, right)
     }
+  })
+  const rowRail = createValueStore<AppearanceId | null>({
+    initial: null,
+    isEqual: Object.is
   })
   const lockedStore = createDerivedStore<boolean>({
     get: read => read(options.pageStore).lock !== null
@@ -334,6 +339,7 @@ export const createTableController = (options: {
   return {
     gridSelection,
     marqueeSelection,
+    rowRail,
     layout: options.layout,
     virtual,
     nodes: options.nodes,
@@ -351,6 +357,7 @@ export const createTableController = (options: {
       interaction.api.cancel()
       gridSelection.dispose()
       marqueeSelection.set(null)
+      rowRail.set(null)
       virtual.dispose()
     }
   }

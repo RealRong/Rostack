@@ -149,9 +149,9 @@ export const PageToolbar = () => {
     ? engine.view(currentView.id)
     : undefined
   const searchInputRef = useRef<HTMLInputElement | null>(null)
-  const searchQuery = currentView?.query.search.query ?? ''
-  const filterRules = currentView?.query.filter.rules ?? []
-  const sorters = currentView?.query.sorters ?? []
+  const searchQuery = currentView?.search.query ?? ''
+  const filterRules = currentView?.filter.rules ?? []
+  const sorters = currentView?.sort ?? []
   const availableFilterFields = getAvailableFilterFields(fields, filterRules)
   const availableSorterFields = getAvailableSorterFields(fields, sorters)
   const filterCount = filterRules.length
@@ -161,8 +161,8 @@ export const PageToolbar = () => {
   const [tabMenuViewId, setTabMenuViewId] = useState<ViewId | null>(null)
 
   useEffect(() => {
-    setSearchExpanded(Boolean(currentView?.query.search.query.trim()))
-  }, [currentView?.id, currentView?.query.search.query])
+    setSearchExpanded(Boolean(currentView?.search.query.trim()))
+  }, [currentView?.id, currentView?.search.query])
 
   useEffect(() => {
     setToolbarRoute(null)
@@ -251,7 +251,7 @@ export const PageToolbar = () => {
                 ref={searchInputRef}
                 value={searchQuery}
                 onChange={event => {
-                  currentViewDomain?.search.setQuery(event.target.value)
+                  currentViewDomain?.search.set(event.target.value)
                 }}
                 onBlur={() => {
                   if (!searchQuery.trim()) {
@@ -296,12 +296,10 @@ export const PageToolbar = () => {
                     : current
                 ))
               }}
-              initialFocus={-1}
               mode="blocking"
               backdrop="transparent"
-              size="xl"
-              padding="none"
-              trigger={(
+            >
+              <Popover.Trigger>
                 <Button
                   size="icon"
                   pressed={toolbarRoute === 'addFilter'}
@@ -311,22 +309,27 @@ export const PageToolbar = () => {
                 >
                   <Filter className="size-4" size={15} strokeWidth={1} />
                 </Button>
-              )}
-            >
-              <div className="flex max-h-[72vh] flex-col">
-                <FieldPicker
-                  fields={availableFilterFields}
-                  emptyMessage={meta.ui.fieldPicker.allFiltered}
-                  onSelect={fieldId => {
-                    currentViewDomain?.filters.add(fieldId)
-                    setToolbarRoute(null)
-                    page.query.open({
-                      kind: 'filter',
-                      fieldId
-                    })
-                  }}
-                />
-              </div>
+              </Popover.Trigger>
+              <Popover.Content
+                initialFocus={-1}
+                size="xl"
+                padding="none"
+              >
+                <div className="flex max-h-[72vh] flex-col">
+                  <FieldPicker
+                    fields={availableFilterFields}
+                    emptyMessage={meta.ui.fieldPicker.allFiltered}
+                    onSelect={fieldId => {
+                      currentViewDomain?.filter.add(fieldId)
+                      setToolbarRoute(null)
+                      page.query.open({
+                        kind: 'filter',
+                        fieldId
+                      })
+                    }}
+                  />
+                </div>
+              </Popover.Content>
             </Popover>
           )}
           {sortCount ? (
@@ -362,12 +365,10 @@ export const PageToolbar = () => {
                     : current
                 ))
               }}
-              initialFocus={-1}
               mode="blocking"
               backdrop="transparent"
-              size="xl"
-              padding="none"
-              trigger={(
+            >
+              <Popover.Trigger>
                 <Button
                   size="icon"
                   pressed={toolbarRoute === 'addSort'}
@@ -377,21 +378,26 @@ export const PageToolbar = () => {
                 >
                   <ArrowUpDown className="size-4" size={15} strokeWidth={1} />
                 </Button>
-              )}
-            >
-              <div className="flex max-h-[72vh] flex-col">
-                <FieldPicker
-                  fields={availableSorterFields}
-                  emptyMessage={meta.ui.fieldPicker.allSorted}
-                  onSelect={fieldId => {
-                    currentViewDomain?.sorters.add(fieldId)
-                    setToolbarRoute(null)
-                    page.query.open({
-                      kind: 'sort'
-                    })
-                  }}
-                />
-              </div>
+              </Popover.Trigger>
+              <Popover.Content
+                initialFocus={-1}
+                size="xl"
+                padding="none"
+              >
+                <div className="flex max-h-[72vh] flex-col">
+                  <FieldPicker
+                    fields={availableSorterFields}
+                    emptyMessage={meta.ui.fieldPicker.allSorted}
+                    onSelect={fieldId => {
+                      currentViewDomain?.sort.add(fieldId)
+                      setToolbarRoute(null)
+                      page.query.open({
+                        kind: 'sort'
+                      })
+                    }}
+                  />
+                </div>
+              </Popover.Content>
             </Popover>
           )}
           <ViewSettingsPopover />

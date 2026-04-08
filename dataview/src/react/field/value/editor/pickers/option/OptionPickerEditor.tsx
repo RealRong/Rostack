@@ -100,6 +100,7 @@ export const OptionPickerEditor = (
               ref={menuRef}
               items={controller.pickerItems}
               selectionMode={props.mode === 'single' ? 'single' : 'multiple'}
+              selectionAppearance="none"
               value={props.mode === 'single'
                 ? props.draft
                 : controller.selectedOptions.map(option => option.id)}
@@ -110,6 +111,7 @@ export const OptionPickerEditor = (
             <Menu.Reorder
               items={controller.reorderableItems}
               selectionMode={props.mode === 'single' ? 'single' : 'multiple'}
+              selectionAppearance="none"
               value={props.mode === 'single'
                 ? props.draft
                 : controller.selectedOptions.map(option => option.id)}

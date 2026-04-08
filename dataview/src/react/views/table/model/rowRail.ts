@@ -2,7 +2,7 @@ export interface RowRailStateInput {
   dragActive: boolean
   dragDisabled: boolean
   marqueeActive: boolean
-  hovered: boolean
+  exposed: boolean
   selected: boolean
 }
 
@@ -31,11 +31,11 @@ export const rowRailState = (
   return {
     selection: (
       input.selected
-      || input.hovered
+      || input.exposed
     )
       ? 'visible'
       : 'ghost',
-    drag: input.hovered && !input.dragDisabled
+    drag: input.exposed && !input.dragDisabled
       ? 'visible'
       : 'hidden'
   }

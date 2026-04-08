@@ -18,7 +18,6 @@ import {
   ContainerChromeLayer,
   FrameLayer
 } from '../features/node/components/FrameLayer'
-import { GroupLayer } from '../features/node/components/GroupLayer'
 import { NodeOverlayLayer } from '../features/node/components/NodeOverlayLayer'
 import { NodeSceneLayer } from '../features/node/components/NodeSceneLayer'
 import { Marquee } from '../features/selection/Marquee'
@@ -97,7 +96,6 @@ export const Surface = ({
           <NodeSceneLayer />
           <MindmapSceneLayer />
           <ContainerChromeLayer />
-          <GroupLayer />
           <NodeOverlayLayer />
           <EdgeOverlayLayer />
           <DrawLayer />

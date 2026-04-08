@@ -44,10 +44,10 @@ const resolveQueryBarEntry = (
     return null
   }
 
-  const query = activeView.query
+  const view = activeView
 
   if (entry.kind === 'sort') {
-    return query.sorters.length
+    return view.sort.length
       ? { kind: 'sort' }
       : null
   }
@@ -56,7 +56,7 @@ const resolveQueryBarEntry = (
     return null
   }
 
-  return query.filter.rules.some(rule => (
+  return view.filter.rules.some(rule => (
     typeof rule.field === 'string'
     && rule.field === entry.fieldId
   ))
@@ -75,8 +75,8 @@ export const resolveQueryBarState = (
   const activeView = activeViewId
     ? document.views.byId[activeViewId]
     : undefined
-  const query = activeView?.query
-  const hasEntries = Boolean(query && (query.filter.rules.length > 0 || query.sorters.length > 0))
+  const view = activeView
+  const hasEntries = Boolean(view && (view.filter.rules.length > 0 || view.sort.length > 0))
   const route = resolveQueryBarEntry(document, activeViewId, queryState.route)
 
   return {

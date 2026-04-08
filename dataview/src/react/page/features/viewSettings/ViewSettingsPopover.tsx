@@ -13,6 +13,7 @@ import {
   ViewSettingsContext,
 } from './context'
 import { GroupingPanel } from './panels/GroupingPanel'
+import { GroupFieldPickerPanel } from './panels/GroupFieldPickerPanel'
 import { LayoutPanel } from './panels/LayoutPanel'
 import { FieldCreatePanel } from './panels/FieldCreatePanel'
 import { FieldListPanel } from './panels/FieldListPanel'
@@ -43,6 +44,8 @@ export const ViewSettingsPopover = () => {
         return <LayoutPanel />
       case 'group':
         return <GroupingPanel />
+      case 'groupField':
+        return <GroupFieldPickerPanel />
       case 'viewProperties':
         return <ViewFieldsPanel />
       case 'fieldList':
@@ -72,11 +75,10 @@ export const ViewSettingsPopover = () => {
 
           page.settings.close()
         }}
-        initialFocus={-1}
         mode="blocking"
         backdrop="transparent"
-        padding="none"
-        trigger={(
+      >
+        <Popover.Trigger>
           <Button
             size="icon"
             pressed={open}
@@ -86,33 +88,37 @@ export const ViewSettingsPopover = () => {
           >
             <Settings2 className="size-4" size={15} strokeWidth={1} />
           </Button>
-        )}
-        contentClassName="w-[290px]"
-      >
-        <div
-          className="flex max-h-[80vh] flex-col"
-          onKeyDown={event => {
-            if (event.defaultPrevented) {
-              return
-            }
-
-            if (event.key === 'Escape' && resolvedRoute.kind !== 'root') {
-              event.preventDefault()
-              event.stopPropagation()
-              router.back()
-            }
-          }}
+        </Popover.Trigger>
+        <Popover.Content
+          initialFocus={-1}
+          padding="none"
+          contentClassName="w-[290px]"
         >
-          {resolvedRoute.kind === 'root' ? null : (
-            <PanelHeader
-              title={renderMessage(meta.ui.viewSettings.routeTitle(resolvedRoute.kind))}
-              onBack={router.back}
-            />
-          )}
-          <div className="flex min-h-0 flex-1 flex-col">
-            {content}
+          <div
+            className="flex max-h-[80vh] flex-col"
+            onKeyDown={event => {
+              if (event.defaultPrevented) {
+                return
+              }
+
+              if (event.key === 'Escape' && resolvedRoute.kind !== 'root') {
+                event.preventDefault()
+                event.stopPropagation()
+                router.back()
+              }
+            }}
+          >
+            {resolvedRoute.kind === 'root' ? null : (
+              <PanelHeader
+                title={renderMessage(meta.ui.viewSettings.routeTitle(resolvedRoute.kind))}
+                onBack={router.back}
+              />
+            )}
+            <div className="flex min-h-0 flex-1 flex-col">
+              {content}
+            </div>
           </div>
-        </div>
+        </Popover.Content>
       </Popover>
     </ViewSettingsContext.Provider>
   )

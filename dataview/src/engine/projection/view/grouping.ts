@@ -283,10 +283,10 @@ const createNext = (
 
 export const createGrouping = (input: {
   document: DataDoc
-  view: Pick<View, 'query'>
+  view: Pick<View, 'group'>
   sections: readonly ProjectionSection[]
 }): Grouping | undefined => {
-  const group = input.view.query.group
+  const group = input.view.group
   if (!group) {
     return undefined
   }
@@ -349,7 +349,7 @@ export const resolveSectionRecordIds = (
   })
   const sections = grouping?.sections ?? createSections(
     resolved.sections,
-    resolved.view.query.group
+    resolved.view.group
   )
 
   return readSectionRecordIds(

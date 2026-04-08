@@ -1,11 +1,11 @@
 import type {
   DataDoc,
   FilterRule,
-  Grouping,
   Row,
   ResolvedGroupKey,
   Search,
-  Sorter
+  Sorter,
+  ViewGroup
 } from '../contracts/state'
 import {
   getDocumentFieldById,
@@ -83,7 +83,7 @@ export const compareGroupSort = (
 
 export const resolveGroupKey = (
   record: Row,
-  groupBy: Grouping,
+  groupBy: ViewGroup,
   document: DataDoc
 ): ResolvedGroupKey | ResolvedGroupKey[] => {
   const entries = resolveFieldGroupBucketEntries(

@@ -4,6 +4,7 @@ import type {
   View,
   RecordId
 } from '@dataview/core/contracts'
+import type { CalculationCollection } from '@dataview/core/calculation'
 import type { Bucket } from '@dataview/core/field'
 
 export type AppearanceId = string
@@ -71,6 +72,7 @@ export interface ViewProjection {
   appearances: AppearanceList
   sections: readonly Section[]
   fields: FieldList
+  calculationsBySection: ReadonlyMap<SectionKey, CalculationCollection>
 }
 
 export type {

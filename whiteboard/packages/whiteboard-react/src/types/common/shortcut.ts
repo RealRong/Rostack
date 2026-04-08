@@ -1,5 +1,5 @@
 export type ShortcutAction =
-  | 'group.create'
+  | 'group.merge'
   | 'group.ungroup'
   | 'selection.selectAll'
   | 'selection.clear'

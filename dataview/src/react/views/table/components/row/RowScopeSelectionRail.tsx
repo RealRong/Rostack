@@ -16,7 +16,6 @@ import {
 import { useTableContext } from '../../context'
 import { RowSelectionButton, TableLeadingRail } from './RowRail'
 import { useEffectiveRowSelection } from '../../hooks/useEffectiveRowSelection'
-
 export interface RowScopeSelectionRailProps {
   rowIds: readonly AppearanceId[]
   label?: string
@@ -43,11 +42,12 @@ const View = (props: RowScopeSelectionRailProps) => {
   const someSelected = selectedRowCount > 0 && !allSelected
   const disabled = rowCount === 0
 
-  const onPointerStart = useCallback((event: PointerEvent<HTMLButtonElement>) => {
+  const onPointerStart = useCallback((event: PointerEvent<HTMLElement>) => {
     table.interaction.start({
       mode: 'pointer',
       gesture: 'row-select',
       event,
+      capture: false,
       up: () => {
         if (allSelected) {
           const scopeSet = new Set(props.rowIds)
@@ -89,8 +89,8 @@ const View = (props: RowScopeSelectionRailProps) => {
           selected={allSelected}
           indeterminate={someSelected}
           disabled={disabled}
-          label={props.label ?? 'Select rows'}
           onPointerStart={onPointerStart}
+          label={props.label ?? 'Select rows'}
         />
       )}
     />

@@ -73,7 +73,7 @@ type BuildNodeGroupOperationsInput = {
     edgeIds?: readonly EdgeId[]
   }
   doc: Document
-  createGroupId: () => NodeId
+  createGroupId: () => GroupId
 }
 
 type BuildNodeLayoutOperationsInput = {
@@ -254,7 +254,7 @@ export const buildNodeCreateOperation = ({
   })
 }
 
-export const buildNodeGroupOperations = ({
+export const buildGroupMergeOperations = ({
   target,
   doc,
   createGroupId
@@ -396,15 +396,15 @@ export const buildNodeDistributeOperations = ({
   return ok(buildLayoutOperations(doc, nodeSize, updates))
 }
 
-export const buildNodeUngroupOperations = (
-  id: NodeId,
+export const buildGroupUngroupOperations = (
+  id: GroupId,
   doc: Document
 ): NodeUngroupOperationResult => {
-  return buildNodeUngroupManyOperations([id], doc)
+  return buildGroupUngroupManyOperations([id], doc)
 }
 
-export const buildNodeUngroupManyOperations = (
-  ids: readonly NodeId[],
+export const buildGroupUngroupManyOperations = (
+  ids: readonly GroupId[],
   doc: Document
 ): NodeUngroupOperationResult => {
   const orderedNodes = listNodes(doc)

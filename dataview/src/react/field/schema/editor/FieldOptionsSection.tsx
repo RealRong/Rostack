@@ -11,6 +11,7 @@ import {
   OptionEditorPanel,
   FieldOptionTag
 } from '@dataview/react/field/options'
+import { FIELD_DROPDOWN_MENU_PROPS } from '../../dropdown'
 import { Button } from '@ui/button'
 import { Menu, type MenuItem } from '@ui/menu'
 import { FieldStatusOptionsSection } from './FieldStatusOptionsSection'
@@ -32,6 +33,7 @@ const PlainFieldOptionsSection = (props: {
     key: option.id,
     surface: 'panel' as const,
     size: 'md' as const,
+    ...FIELD_DROPDOWN_MENU_PROPS,
     leading: <Settings2 className="size-4 shrink-0 text-muted-foreground" size={16} strokeWidth={1.8} />,
     label: (
       <FieldOptionTag

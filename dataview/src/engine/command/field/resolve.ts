@@ -232,7 +232,7 @@ export const resolvePropertyDuplicateCommand = (
 
   const viewOperations: BaseOperation[] = getDocumentViews(document)
     .flatMap(view => {
-      const sourceFieldIds = view.options.display.fieldIds
+      const sourceFieldIds = view.display.fields
       const currentFieldIds = (
         view.type === 'table' && !sourceFieldIds.includes(nextPropertyId)
           ? [...sourceFieldIds, nextPropertyId]
@@ -250,11 +250,8 @@ export const resolvePropertyDuplicateCommand = (
           type: 'document.view.put' as const,
           view: {
             ...view,
-            options: {
-              ...cloneViewOptions(view.options),
-              display: {
-                fieldIds: currentFieldIds.filter(id => id !== nextPropertyId)
-              }
+            display: {
+              fields: currentFieldIds.filter((id): id is typeof sourceFieldIds[number] => id !== nextPropertyId)
             }
           }
         }]
@@ -269,13 +266,10 @@ export const resolvePropertyDuplicateCommand = (
         type: 'document.view.put' as const,
         view: {
           ...view,
-          options: {
-              ...cloneViewOptions(view.options),
-              display: {
-                fieldIds: nextFieldIds
-              }
-            }
+          display: {
+            fields: nextFieldIds
           }
+        }
       }]
     })
 

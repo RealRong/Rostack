@@ -14,30 +14,6 @@ export interface NormalizeViewOptionsContext {
   fields?: readonly Field[]
 }
 
-const normalizeFieldIds = (
-  values: unknown,
-  validFieldIds?: ReadonlySet<FieldId>
-) => {
-  if (!Array.isArray(values)) {
-    return [] as FieldId[]
-  }
-
-  const next: FieldId[] = []
-  const seen = new Set<FieldId>()
-  values.forEach(value => {
-    const fieldId = toTrimmedString(value) as FieldId | undefined
-    if (!fieldId || seen.has(fieldId)) {
-      return
-    }
-    if (validFieldIds && !validFieldIds.has(fieldId)) {
-      return
-    }
-    seen.add(fieldId)
-    next.push(fieldId)
-  })
-  return next
-}
-
 const normalizeWidths = (
   value: unknown,
   validFieldIds?: ReadonlySet<FieldId>
@@ -80,15 +56,9 @@ export const normalizeViewOptions = (
   const validFieldIds = context.fields?.length
     ? new Set(context.fields.map(field => field.id))
     : undefined
-  const display = isJsonObject(root?.display) ? root.display : undefined
   const table = isJsonObject(root?.table) ? root.table : undefined
 
   return {
-    display: {
-      fieldIds: Array.isArray(display?.fieldIds)
-        ? normalizeFieldIds(display.fieldIds, validFieldIds)
-        : defaultOptions.display.fieldIds
-    },
     table: {
       widths: normalizeWidths(table?.widths, validFieldIds),
       showVerticalLines: normalizeShowVerticalLines(table?.showVerticalLines)

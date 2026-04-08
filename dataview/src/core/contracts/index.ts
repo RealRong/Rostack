@@ -21,8 +21,7 @@ export type {
 } from './gallery'
 export type {
   TableOptions,
-  ViewOptions,
-  ViewDisplayOptions
+  ViewOptions
 } from './viewOptions'
 export { KANBAN_EMPTY_BUCKET_KEY } from './kanban'
 export type {
@@ -41,9 +40,7 @@ export type {
   Field,
   FieldId,
   FieldKind,
-  AggregateOperator,
-  AggregateScope,
-  AggregateSpec,
+  CalculationMetric,
   AssetAccept,
   BucketSort,
   BucketState,
@@ -65,7 +62,7 @@ export type {
   Filter,
   FilterOperator,
   FilterRule,
-  Grouping,
+  ViewGroup,
   NodeId,
   Row,
   ResolvedGroupKey,
@@ -86,7 +83,8 @@ export type {
   UrlField,
   AssetField,
   View,
-  ViewQuery,
+  ViewCalc,
+  ViewDisplay,
   ViewType,
   IndexPath,
   RecordId,

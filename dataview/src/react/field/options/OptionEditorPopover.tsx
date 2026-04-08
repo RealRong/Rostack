@@ -28,19 +28,24 @@ export const OptionEditorPopover = (props: OptionEditorPopoverProps) => {
     <Popover
       open={props.open}
       onOpenChange={props.onOpenChange}
-      trigger={props.trigger}
       placement={props.placement ?? 'right'}
       offset={props.offset ?? 10}
-      initialFocus={-1}
-      size="md"
-      padding="panel"
     >
-      <OptionEditorPanel
-        fieldId={props.fieldId}
-        option={props.option}
-        onDeleted={props.onDeleted}
-        onRequestClose={() => props.onOpenChange(false)}
-      />
+      <Popover.Trigger>
+        {props.trigger}
+      </Popover.Trigger>
+      <Popover.Content
+        initialFocus={-1}
+        size="md"
+        padding="panel"
+      >
+        <OptionEditorPanel
+          fieldId={props.fieldId}
+          option={props.option}
+          onDeleted={props.onDeleted}
+          onRequestClose={() => props.onOpenChange(false)}
+        />
+      </Popover.Content>
     </Popover>
   )
 }

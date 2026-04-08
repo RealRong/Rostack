@@ -6,6 +6,22 @@ export const canvas = ({
 }: {
   write: Write
 }): EngineCommands['canvas'] => ({
+  delete: (refs) => write.apply({
+    domain: 'document',
+    command: {
+      type: 'delete',
+      refs
+    },
+    origin: 'user'
+  }),
+  duplicate: (refs) => write.apply({
+    domain: 'document',
+    command: {
+      type: 'duplicate',
+      refs
+    },
+    origin: 'user'
+  }),
   order: {
     set: (refs) => write.apply({
       domain: 'document',

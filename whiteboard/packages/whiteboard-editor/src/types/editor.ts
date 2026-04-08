@@ -284,6 +284,7 @@ export type EditorDocumentNodeWrite = Omit<EditorNodeCommands, 'text'> & {
 export type EditorDocumentWrite = {
   doc: EngineCommands['document']
   history: Pick<EditorCommands, 'history'>['history']
+  group: EngineCommands['group']
   edge: EngineCommands['edge']
   node: EditorDocumentNodeWrite
   mindmap: EditorMindmapCommands

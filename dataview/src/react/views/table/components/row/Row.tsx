@@ -18,7 +18,7 @@ import {
 } from '@dataview/react/dataview'
 import { rowRailState } from '../../model/rowRail'
 import { useTableContext } from '../../context'
-import { useKeyedStoreValue, useStoreValue } from '@dataview/react/store'
+import { useStoreValue } from '@dataview/react/store'
 import { cn } from '@ui/utils'
 import { Cell } from '../cell/Cell'
 import { RowRail } from './RowRail'
@@ -87,14 +87,14 @@ const View = (props: RowProps) => {
     }
   }, [props.appearanceId, table.nodes])
   const capabilities = useStoreValue(table.capabilities)
-  const rawHovered = useKeyedStoreValue(table.hover.row, props.appearanceId)
-  const hovered = capabilities.canHover && rawHovered
+  const rowRail = useStoreValue(table.rowRail)
+  const exposed = rowRail === props.appearanceId
   const selected = useEffectiveRowSelected(table, props.appearanceId)
   const rail = rowRailState({
     dragActive: props.dragActive,
     dragDisabled: !capabilities.canRowDrag,
     marqueeActive: props.marqueeActive,
-    hovered,
+    exposed,
     selected
   })
   const rowTone = cn(
@@ -110,11 +110,12 @@ const View = (props: RowProps) => {
     event.preventDefault()
   }, [])
 
-  const onSelectionPointerStart = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
+  const onSelectionPointerStart = useCallback((event: ReactPointerEvent<HTMLElement>) => {
     table.interaction.start({
       mode: 'pointer',
       gesture: 'row-select',
       event,
+      capture: false,
       up: () => {
         applyRowCheckboxSelection({
           selection: dataView.selection,
@@ -122,6 +123,7 @@ const View = (props: RowProps) => {
           shiftKey: event.shiftKey
         })
         table.gridSelection.clear()
+        table.rowRail.set(props.appearanceId)
         table.focus()
       }
     })
@@ -148,6 +150,7 @@ const View = (props: RowProps) => {
         marqueeActive={props.marqueeActive}
         onSelectionPointerStart={onSelectionPointerStart}
         onDragPointerStart={event => {
+          table.rowRail.set(null)
           props.onDragStart({
             rowId: props.appearanceId,
             event

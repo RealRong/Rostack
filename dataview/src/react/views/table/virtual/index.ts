@@ -6,6 +6,7 @@ export {
 } from './runtime'
 export type {
   TableBlock,
+  TableColumnFooterBlock,
   TableColumnHeaderBlock,
   TableRowBlock,
   TableSectionHeaderBlock

@@ -167,36 +167,6 @@
   z-index: var(--wb-z-container-chrome);
 }
 
-.wb-group-layer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: var(--wb-z-container-chrome);
-}
-
-.wb-group-shell {
-  position: absolute;
-  left: 0;
-  top: 0;
-  pointer-events: none;
-}
-
-.wb-group-shell-hit {
-  position: absolute;
-  inset: 0;
-  pointer-events: auto;
-  background: transparent;
-}
-
-.wb-group-shell-frame {
-  position: absolute;
-  inset: calc(-1px / var(--wb-zoom, 1));
-  pointer-events: none;
-  border: calc(1px / var(--wb-zoom, 1)) solid var(--wb-selection-border);
-  border-radius: calc(10px / var(--wb-zoom, 1));
-  box-shadow: 0 0 0 calc(1px / var(--wb-zoom, 1)) rgb(from var(--wb-ui-accent) r g b / 0.12);
-}
-
 .wb-container-shell {
   position: absolute;
   left: 0;

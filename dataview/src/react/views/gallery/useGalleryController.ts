@@ -88,18 +88,18 @@ export const useGalleryController = (input: {
     () => currentView.fields.all.filter(isCustomField),
     [currentView.fields.all]
   )
-  const canReorder = !currentView.view.query.group && !currentView.view.query.sorters.length
+  const canReorder = !currentView.view.group && !currentView.view.sort.length
   const [dragging, setDragging] = useState(false)
   const visualTargets = useRef(createVisualTargetRegistry({
     resolveScrollTargets: () => resolveDefaultAutoPanTargets(input.containerRef.current)
   })).current
-  const grouped = Boolean(currentView.view.query.group)
+  const grouped = Boolean(currentView.view.group)
   const groupField = useMemo(() => {
-    const groupFieldId = currentView.view.query.group?.field
+    const groupFieldId = currentView.view.group?.field
     return groupFieldId
       ? currentView.schema.fields.get(groupFieldId)
       : undefined
-  }, [currentView.schema.fields, currentView.view.query.group?.field])
+  }, [currentView.schema.fields, currentView.view.group?.field])
   const groupUsesOptionColors = grouped && usesOptionGroupingColors(groupField)
   const sections = useMemo<readonly Section[]>(() => (
     grouped

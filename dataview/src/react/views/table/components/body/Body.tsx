@@ -65,7 +65,9 @@ const View = () => {
   const columnReorder = useColumnReorder()
   const rowReorder = useRowReorder()
   const marqueeDisabled = rowReorder.active || columnResize.active
-  const onBlankPointerDown = useCallback(() => {}, [])
+  const onBlankPointerDown = useCallback(() => {
+    table.rowRail.set(null)
+  }, [table.rowRail])
 
   useEffect(() => dataView.marquee.registerAdapter({
     viewId: currentView.view.id,
@@ -93,6 +95,7 @@ const View = () => {
       table.nodes.startRowMarquee(currentView.appearances.ids)
       table.marqueeSelection.set(null)
       table.gridSelection.clear()
+      table.rowRail.set(null)
       table.hover.clear()
     },
     onEnd: () => {

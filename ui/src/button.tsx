@@ -4,14 +4,14 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from './utils'
 
 const buttonVariants = cva(
-  'inline-flex shrink-0 items-center justify-center gap-2.5 whitespace-nowrap rounded-lg border border-transparent text-sm font-medium transition-[background-color,border-color,color,opacity,box-shadow] duration-150 outline-none focus:outline-none focus-visible:outline-none focus:[box-shadow:none] focus-visible:[box-shadow:none] disabled:pointer-events-none disabled:opacity-40',
+  'inline-flex shrink-0 items-center justify-center gap-2.5 whitespace-nowrap rounded-lg text-sm font-medium transition-[background-color,border-color,color,opacity,box-shadow] duration-150 outline-none focus:outline-none focus-visible:outline-none focus:[box-shadow:none] focus-visible:[box-shadow:none] disabled:pointer-events-none disabled:opacity-40',
   {
     variants: {
       variant: {
-        default: 'bg-fg text-background hover:opacity-95',
+        default: 'hover:opacity-95',
         destructive: 'bg-destructive text-destructive-foreground hover:opacity-95',
         secondary: 'bg-transparent text-fg hover:bg-hover',
-        outline: 'border-default bg-surface text-fg hover:border-strong hover:bg-hover',
+        outline: 'border-default border bg-surface text-fg hover:border-strong hover:bg-hover',
         ghost: 'bg-transparent text-fg hover:bg-hover',
         plain: 'bg-transparent text-foreground hover:bg-transparent',
         ghostDestructive: 'bg-transparent text-destructive hover:bg-destructive/10 hover:text-destructive',

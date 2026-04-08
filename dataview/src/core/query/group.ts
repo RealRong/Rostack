@@ -1,7 +1,7 @@
 import type {
   BucketState,
   Field,
-  Grouping
+  ViewGroup
 } from '@dataview/core/contracts'
 import {
   getFieldGroupMeta
@@ -18,6 +18,11 @@ import {
 } from './shared'
 
 type GroupableField = Field
+
+const hasOwn = <T extends object>(
+  value: T | undefined,
+  key: PropertyKey
+) => Boolean(value && Object.prototype.hasOwnProperty.call(value, key))
 
 const findProperty = (
   fields: readonly Field[],
@@ -67,8 +72,8 @@ const patchBuckets = (
 
 const buildStoredGroup = (input: {
   field: GroupableField
-  patch?: Partial<ViewGroupPatch> & Pick<Grouping, 'showEmpty' | 'buckets'>
-}): Grouping => {
+  patch?: Partial<ViewGroupPatch> & Pick<ViewGroup, 'showEmpty' | 'buckets'>
+}): ViewGroup => {
   const normalized = getFieldGroupMeta(
     input.field,
     input.patch
@@ -94,7 +99,7 @@ const buildStoredGroup = (input: {
 const patchViewGroup = (
   query: ViewQuery,
   field: GroupableField,
-  patch?: Partial<ViewGroupPatch> & Pick<Grouping, 'showEmpty' | 'buckets'>
+  patch?: Partial<ViewGroupPatch> & Pick<ViewGroup, 'showEmpty' | 'buckets'>
 ): ViewQuery => {
   const currentMeta = getFieldGroupMeta(field)
   if (!currentMeta.modes.length || !currentMeta.sorts.length) {
@@ -102,23 +107,35 @@ const patchViewGroup = (
   }
 
   const currentGroup = query.group
-  const nextMode = patch?.mode ?? currentGroup?.mode
-  const nextBucketInterval = patch?.bucketInterval ?? currentGroup?.bucketInterval
+  const nextMode = hasOwn(patch, 'mode')
+    ? patch!.mode
+    : currentGroup?.mode
+  const nextBucketSort = hasOwn(patch, 'bucketSort')
+    ? patch!.bucketSort
+    : currentGroup?.bucketSort
+  const nextBucketInterval = hasOwn(patch, 'bucketInterval')
+    ? patch!.bucketInterval
+    : currentGroup?.bucketInterval
+  const nextShowEmpty = hasOwn(patch, 'showEmpty')
+    ? patch!.showEmpty
+    : currentGroup?.showEmpty
   const buckets = (
     currentGroup?.field === field.id
     && currentGroup?.mode === nextMode
     && currentGroup?.bucketInterval === nextBucketInterval
   )
-    ? (patch?.buckets ?? currentGroup?.buckets)
+    ? (hasOwn(patch, 'buckets')
+        ? patch!.buckets
+        : currentGroup?.buckets)
     : undefined
 
   const nextGroup = buildStoredGroup({
     field,
     patch: {
       mode: nextMode,
-      bucketSort: patch?.bucketSort ?? currentGroup?.bucketSort,
+      bucketSort: nextBucketSort,
       bucketInterval: nextBucketInterval,
-      showEmpty: patch?.showEmpty ?? currentGroup?.showEmpty,
+      showEmpty: nextShowEmpty,
       buckets
     }
   })
@@ -143,7 +160,7 @@ const resolveGroupProperty = (
 
 export const resolveViewGroupState = (
   fields: readonly Field[],
-  group: Grouping | undefined
+  group: ViewGroup | undefined
 ): ResolvedViewGroupState => {
   const fieldId = typeof group?.field === 'string'
     ? group.field
@@ -224,13 +241,13 @@ export const setViewGroupMode = (
 export const setViewGroupBucketSort = (
   query: ViewQuery,
   field: Field,
-  bucketSort: Grouping['bucketSort']
+  bucketSort: ViewGroup['bucketSort']
 ): ViewQuery => patchViewGroup(query, field, { bucketSort })
 
 export const setViewGroupBucketInterval = (
   query: ViewQuery,
   field: Field,
-  bucketInterval: Grouping['bucketInterval']
+  bucketInterval: ViewGroup['bucketInterval']
 ): ViewQuery => patchViewGroup(query, field, { bucketInterval })
 
 export const setViewGroupShowEmpty = (

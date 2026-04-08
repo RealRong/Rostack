@@ -25,22 +25,49 @@ import {
   resolveValueApplyCommand
 } from './value'
 import {
-  resolveViewAggregatesSetCommand,
+  resolveViewCalcSetCommand,
   resolveViewCreateCommand,
-  resolveViewDisplaySetFieldIdsCommand,
+  resolveViewDisplayClearCommand,
+  resolveViewDisplayHideCommand,
+  resolveViewDisplayMoveCommand,
+  resolveViewDisplayReplaceCommand,
+  resolveViewDisplayShowCommand,
   resolveViewDuplicateCommand,
   resolveViewGallerySetCardSizeCommand,
-  resolveViewGallerySetShowPropertyLabelsCommand,
-  resolveViewKanbanSetFillColumnColorCommand,
+  resolveViewGalleryLabelsSetCommand,
+  resolveViewGroupBucketCollapseCommand,
+  resolveViewGroupBucketExpandCommand,
+  resolveViewGroupBucketHideCommand,
+  resolveViewGroupBucketShowCommand,
+  resolveViewGroupBucketToggleCollapseCommand,
+  resolveViewGroupClearCommand,
+  resolveViewGroupEmptySetCommand,
+  resolveViewGroupIntervalSetCommand,
+  resolveViewGroupModeSetCommand,
+  resolveViewGroupSetCommand,
+  resolveViewGroupSortSetCommand,
+  resolveViewGroupToggleCommand,
+  resolveViewKanbanFillColorSetCommand,
   resolveViewKanbanSetNewRecordPositionCommand,
+  resolveViewFilterAddCommand,
+  resolveViewFilterClearCommand,
+  resolveViewFilterRemoveCommand,
+  resolveViewFilterReplaceCommand,
   resolveViewOrderClearCommand,
   resolveViewOrderMoveCommand,
   resolveViewOrderSetCommand,
   resolveViewPutCommand,
-  resolveViewQuerySetCommand,
   resolveViewRenameCommand,
   resolveViewRemoveCommand,
-  resolveViewTableSetShowVerticalLinesCommand,
+  resolveViewSearchSetCommand,
+  resolveViewSortAddCommand,
+  resolveViewSortClearCommand,
+  resolveViewSortMoveCommand,
+  resolveViewSortOnlyCommand,
+  resolveViewSortRemoveCommand,
+  resolveViewSortReplaceCommand,
+  resolveViewSortSetCommand,
+  resolveViewTableVerticalLinesSetCommand,
   resolveViewTableSetWidthsCommand,
   resolveViewTypeSetCommand
 } from './view'
@@ -93,24 +120,78 @@ export const resolveCommand = (document: DataDoc, command: IndexedCommand): Reso
       return resolveViewRenameCommand(document, command)
     case 'view.type.set':
       return resolveViewTypeSetCommand(document, command)
-    case 'view.query.set':
-      return resolveViewQuerySetCommand(document, command)
-    case 'view.aggregates.set':
-      return resolveViewAggregatesSetCommand(document, command)
-    case 'view.display.setFieldIds':
-      return resolveViewDisplaySetFieldIdsCommand(document, command)
+    case 'view.search.set':
+      return resolveViewSearchSetCommand(document, command)
+    case 'view.filter.add':
+      return resolveViewFilterAddCommand(document, command)
+    case 'view.filter.replace':
+      return resolveViewFilterReplaceCommand(document, command)
+    case 'view.filter.remove':
+      return resolveViewFilterRemoveCommand(document, command)
+    case 'view.filter.clear':
+      return resolveViewFilterClearCommand(document, command)
+    case 'view.sort.add':
+      return resolveViewSortAddCommand(document, command)
+    case 'view.sort.set':
+      return resolveViewSortSetCommand(document, command)
+    case 'view.sort.only':
+      return resolveViewSortOnlyCommand(document, command)
+    case 'view.sort.replace':
+      return resolveViewSortReplaceCommand(document, command)
+    case 'view.sort.remove':
+      return resolveViewSortRemoveCommand(document, command)
+    case 'view.sort.move':
+      return resolveViewSortMoveCommand(document, command)
+    case 'view.sort.clear':
+      return resolveViewSortClearCommand(document, command)
+    case 'view.group.set':
+      return resolveViewGroupSetCommand(document, command)
+    case 'view.group.clear':
+      return resolveViewGroupClearCommand(document, command)
+    case 'view.group.toggle':
+      return resolveViewGroupToggleCommand(document, command)
+    case 'view.group.mode.set':
+      return resolveViewGroupModeSetCommand(document, command)
+    case 'view.group.sort.set':
+      return resolveViewGroupSortSetCommand(document, command)
+    case 'view.group.interval.set':
+      return resolveViewGroupIntervalSetCommand(document, command)
+    case 'view.group.empty.set':
+      return resolveViewGroupEmptySetCommand(document, command)
+    case 'view.group.bucket.show':
+      return resolveViewGroupBucketShowCommand(document, command)
+    case 'view.group.bucket.hide':
+      return resolveViewGroupBucketHideCommand(document, command)
+    case 'view.group.bucket.collapse':
+      return resolveViewGroupBucketCollapseCommand(document, command)
+    case 'view.group.bucket.expand':
+      return resolveViewGroupBucketExpandCommand(document, command)
+    case 'view.group.bucket.toggleCollapse':
+      return resolveViewGroupBucketToggleCollapseCommand(document, command)
+    case 'view.calc.set':
+      return resolveViewCalcSetCommand(document, command)
+    case 'view.display.replace':
+      return resolveViewDisplayReplaceCommand(document, command)
+    case 'view.display.move':
+      return resolveViewDisplayMoveCommand(document, command)
+    case 'view.display.show':
+      return resolveViewDisplayShowCommand(document, command)
+    case 'view.display.hide':
+      return resolveViewDisplayHideCommand(document, command)
+    case 'view.display.clear':
+      return resolveViewDisplayClearCommand(document, command)
     case 'view.table.setWidths':
       return resolveViewTableSetWidthsCommand(document, command)
-    case 'view.table.setShowVerticalLines':
-      return resolveViewTableSetShowVerticalLinesCommand(document, command)
-    case 'view.gallery.setShowPropertyLabels':
-      return resolveViewGallerySetShowPropertyLabelsCommand(document, command)
+    case 'view.table.verticalLines.set':
+      return resolveViewTableVerticalLinesSetCommand(document, command)
+    case 'view.gallery.labels.set':
+      return resolveViewGalleryLabelsSetCommand(document, command)
     case 'view.gallery.setCardSize':
       return resolveViewGallerySetCardSizeCommand(document, command)
     case 'view.kanban.setNewRecordPosition':
       return resolveViewKanbanSetNewRecordPositionCommand(document, command)
-    case 'view.kanban.setFillColumnColor':
-      return resolveViewKanbanSetFillColumnColorCommand(document, command)
+    case 'view.kanban.fillColor.set':
+      return resolveViewKanbanFillColorSetCommand(document, command)
     case 'view.order.move':
       return resolveViewOrderMoveCommand(document, command)
     case 'view.order.clear':

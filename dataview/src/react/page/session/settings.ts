@@ -71,6 +71,8 @@ export const parentSettingsRoute = (
     case 'fieldCreate':
     case 'fieldSchema':
       return { kind: 'fieldList' }
+    case 'groupField':
+      return { kind: 'group' }
     case 'layout':
     case 'group':
     case 'viewProperties':
@@ -103,6 +105,7 @@ export const normalizeSettingsRoute = (
     case 'sort':
       return route
     case 'group':
+    case 'groupField':
       return supportsGroupSettings(viewType)
         ? route
         : ROOT_SETTINGS_ROUTE

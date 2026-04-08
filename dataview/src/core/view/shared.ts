@@ -18,9 +18,6 @@ export const toTrimmedString = (value: unknown) => {
 export const cloneViewOptions = (
   options: ViewOptions
 ): ViewOptions => ({
-  display: {
-    fieldIds: [...options.display.fieldIds]
-  },
   table: {
     widths: {
       ...options.table.widths

@@ -135,7 +135,7 @@ export const StatusValueEditor = (
             className="max-w-full"
           />
         ),
-        trailing: (
+        accessory: (
           <OptionEditorPopover
             fieldId={fieldId}
             option={{
@@ -156,9 +156,6 @@ export const StatusValueEditor = (
                 variant="plain"
                 size="iconBare"
                 aria-label={renderMessage(meta.ui.field.options.edit(optionLabel(option)))}
-                onClick={event => {
-                  event.stopPropagation()
-                }}
               >
                 <MoreHorizontal className="size-4" size={16} strokeWidth={1.8} />
               </Button>

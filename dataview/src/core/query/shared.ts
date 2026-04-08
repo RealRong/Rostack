@@ -1,7 +1,7 @@
 import type {
   BucketState,
   FilterRule,
-  Grouping,
+  ViewGroup,
   Sorter
 } from '@dataview/core/contracts'
 import type { ViewQuery } from './contracts'
@@ -42,7 +42,7 @@ export const cloneBuckets = (
     : undefined
 }
 
-export const cloneGrouping = (group: Grouping | undefined): Grouping | undefined => (
+export const cloneGrouping = (group: ViewGroup | undefined): ViewGroup | undefined => (
   group
     ? {
         field: group.field,
@@ -72,7 +72,7 @@ export const cloneViewQuery = (query: ViewQuery): ViewQuery => ({
     mode: query.filter.mode,
     rules: query.filter.rules.map(cloneFilterRule)
   },
-  sorters: query.sorters.map(cloneSorter),
+  sort: query.sort.map(cloneSorter),
   group: cloneGrouping(query.group)
 })
 
@@ -99,8 +99,8 @@ export const sameFilterRule = (
 )
 
 export const sameGroup = (
-  left: Grouping | undefined,
-  right: Grouping | undefined
+  left: ViewGroup | undefined,
+  right: ViewGroup | undefined
 ) => (
   left?.field === right?.field
   && left?.mode === right?.mode

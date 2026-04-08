@@ -64,8 +64,8 @@ export const LayoutPanel = () => {
   const viewApi = view
     ? engine.view(view.id)
     : undefined
-  const groupField = view?.query.group?.field
-    ? currentView?.schema.fields.get(view.query.group.field)
+  const groupField = view?.group?.field
+    ? currentView?.schema.fields.get(view.group.field)
     : undefined
   const canFillKanbanColumns = usesOptionGroupingColors(groupField)
 
@@ -86,7 +86,7 @@ export const LayoutPanel = () => {
                 return
               }
 
-              viewApi.setType(type)
+              viewApi.type.set(type)
             }}
           />
         ))}
@@ -98,7 +98,7 @@ export const LayoutPanel = () => {
             label={renderMessage(meta.ui.viewSettings.layoutPanel.showVerticalLines)}
             checked={view.options.table.showVerticalLines}
             onCheckedChange={checked => {
-              viewApi.settings.table.setShowVerticalLines(checked)
+              viewApi.table.setVerticalLines(checked)
             }}
           />
         </div>
@@ -111,7 +111,7 @@ export const LayoutPanel = () => {
             checked={view.options.kanban.fillColumnColor}
             disabled={!canFillKanbanColumns}
             onCheckedChange={checked => {
-              viewApi.settings.kanban.setFillColumnColor(checked)
+              viewApi.kanban.setFillColor(checked)
             }}
           />
         </div>

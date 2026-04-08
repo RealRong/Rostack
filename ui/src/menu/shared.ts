@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
 import type {
-  Controller,
+  ActiveSource,
   MenuItem,
   MenuPopoverContent,
   Path,
+  SelectionAppearance,
   SelectionMode,
   SubmenuItem
 } from './types'
@@ -56,8 +57,12 @@ export const toValueResult = (
   ? (selectedKeys[0] ?? '')
   : [...selectedKeys]
 
-export const resolveItemClassName = (input: {
+export const resolveRowAppearance = (input: {
   active: boolean
+  activeSource: ActiveSource
+  selected?: boolean
+  open?: boolean
+  selectionAppearance: SelectionAppearance
   destructive?: boolean
 }) => {
   if (input.active) {
@@ -66,19 +71,22 @@ export const resolveItemClassName = (input: {
       : 'bg-hover text-fg'
   }
 
-  return input.destructive
-    ? 'hover:bg-transparent'
-    : 'hover:bg-transparent hover:text-fg'
-}
+  if (input.open) {
+    return input.destructive
+      ? 'bg-destructive/[0.07] text-destructive'
+      : 'bg-overlay-subtle text-fg'
+  }
 
-export const resolveSurfaceClassName = (input: {
-  active: boolean
-  destructive?: boolean
-}) => {
-  if (input.active) {
+  if (input.selected && input.selectionAppearance === 'row') {
     return input.destructive
       ? 'bg-destructive/10 text-destructive'
-      : 'bg-hover text-fg'
+      : 'bg-pressed text-fg'
+  }
+
+  if (input.selected && input.selectionAppearance !== 'none') {
+    return input.destructive
+      ? 'text-destructive'
+      : 'text-fg'
   }
 
   return input.destructive
@@ -253,4 +261,3 @@ export const toggleSelection = (
     ? selectedKeys.filter(key => key !== itemKey)
     : [...selectedKeys, itemKey]
 }
-

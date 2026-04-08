@@ -12,6 +12,7 @@ type SettingsRouteKind =
   | 'root'
   | 'layout'
   | 'group'
+  | 'groupField'
   | 'viewProperties'
   | 'fieldList'
   | 'fieldCreate'
@@ -226,6 +227,8 @@ export const ui = {
           return message('meta.ui.viewSettings.route.layout', 'Layout')
         case 'group':
           return message('meta.ui.viewSettings.route.group', 'Group')
+        case 'groupField':
+          return message('meta.ui.viewSettings.route.groupField', 'Field')
         case 'viewProperties':
           return message('meta.ui.viewSettings.route.viewProperties', 'Visible fields')
         case 'fieldList':

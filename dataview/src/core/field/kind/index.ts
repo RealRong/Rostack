@@ -2,9 +2,9 @@ import type {
   BucketSort,
   FilterOperator,
   FilterRule,
-  Grouping,
   CustomField,
-  CustomFieldKind
+  CustomFieldKind,
+  ViewGroup
 } from '../../contracts/state'
 import { KANBAN_EMPTY_BUCKET_KEY } from '../../contracts/kanban'
 import {
@@ -1218,7 +1218,7 @@ export const isGroupBucketSort = (
 
 export const getFieldGroupMeta = (
   field: CustomField | undefined,
-  group?: Partial<Pick<Grouping, 'mode' | 'bucketSort' | 'bucketInterval'>>
+  group?: Partial<Pick<ViewGroup, 'mode' | 'bucketSort' | 'bucketInterval'>>
 ): FieldGroupMeta => {
   const kind = getFieldKind(field)
   if (!kind) {
@@ -1272,7 +1272,7 @@ const getRuntimeKind = (
 
 export const resolveGroupBucketDomain = (
   field: CustomField | undefined,
-  group?: Partial<Pick<Grouping, 'mode'>>
+  group?: Partial<Pick<ViewGroup, 'mode'>>
 ): readonly Bucket[] => {
   if (!field) {
     return []
@@ -1285,7 +1285,7 @@ export const resolveGroupBucketDomain = (
 export const resolveGroupBucketEntries = (
   field: CustomField | undefined,
   value: unknown,
-  group?: Partial<Pick<Grouping, 'mode' | 'bucketInterval'>>
+  group?: Partial<Pick<ViewGroup, 'mode' | 'bucketInterval'>>
 ): readonly Bucket[] => {
   const meta = getFieldGroupMeta(field, group)
   return getRuntimeKind(field).groupEntries(
@@ -1300,7 +1300,7 @@ export const compareGroupBuckets = (
   left: Bucket,
   right: Bucket,
   field: CustomField | undefined,
-  group?: Partial<Pick<Grouping, 'bucketSort' | 'mode'>>
+  group?: Partial<Pick<ViewGroup, 'bucketSort' | 'mode'>>
 ): number => {
   if (left.empty !== right.empty) {
     return left.empty ? 1 : -1

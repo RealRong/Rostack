@@ -14,7 +14,10 @@ import {
   STICKY_DEFAULT_TEXT_COLOR,
   TEXT_DEFAULT_FONT_SIZE
 } from '../../../node/text'
-import type { SelectionMoreMenuSectionView } from '../../../node/selection'
+import type {
+  SelectionMoreMenuSectionView,
+  SelectionToolbarFilterView
+} from '../../../node/selection'
 import type {
   NodeMeta,
   NodeRegistry
@@ -41,7 +44,8 @@ type ToolbarSelectionState = {
     }
   }
   nodeSummary: NodeSummary
-  menu?: {
+  toolbar?: {
+    filter?: SelectionToolbarFilterView
     moreSections: readonly SelectionMoreMenuSectionView[]
   }
 }
@@ -58,6 +62,7 @@ export type ToolbarSummaryContext = {
   primaryNode?: Node
   placement?: 'top' | 'bottom'
   anchor?: Point
+  filter?: SelectionToolbarFilterView
   menuSections: readonly SelectionMoreMenuSectionView[]
   canChangeShapeKind: boolean
   canEditFontSize: boolean
@@ -198,6 +203,13 @@ const resolveSelectionKind = (
   }
   if (nodes.every((node) => node.type === 'sticky')) {
     return 'sticky'
+  }
+  if (
+    summary.count === 1
+    && summary.types.length === 1
+    && summary.types[0]?.key === 'group'
+  ) {
+    return 'group'
   }
   if (nodes.every((node) => node.type === 'frame')) {
     return 'frame'
@@ -363,8 +375,8 @@ export const resolveToolbarSummaryContext = ({
   const canEditStroke = hasControl(nodes, registry, 'stroke')
   const canEditTextColor = hasControl(nodes, registry, 'text')
     && supportsStyleField(nodes, registry, 'color', 'string')
-  const menuSections = (selection.menu?.moreSections ?? EMPTY_SECTIONS)
-    .filter((section) => section.key !== 'state')
+  const filter = selection.toolbar?.filter
+  const menuSections = selection.toolbar?.moreSections ?? EMPTY_SECTIONS
   const placement = rect
     ? resolveToolbarPlacement({
         worldToScreen,
@@ -385,6 +397,7 @@ export const resolveToolbarSummaryContext = ({
     primaryNode,
     placement: placement?.placement,
     anchor: placement?.anchor,
+    filter,
     menuSections,
     canChangeShapeKind: selectionKind === 'shape',
     canEditFontSize: supportsStyleField(nodes, registry, 'fontSize', 'number'),

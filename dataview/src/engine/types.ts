@@ -1,19 +1,21 @@
 import type {
   FieldId,
   BucketSort,
+  CalculationMetric,
   Command,
   CommitChangeSet,
   DataDoc,
   EditTarget,
   FilterRule,
+  Filter,
   GalleryCardSize,
-  Grouping,
   CustomField,
   CustomFieldKind,
   FieldOption,
   KanbanNewRecordPosition,
   StatusCategory,
   Row,
+  Search,
   SortDirection,
   Sorter,
   ValueApplyAction,
@@ -21,7 +23,8 @@ import type {
   ViewType,
   RecordId,
   ViewId,
-  CustomFieldId
+  CustomFieldId,
+  ViewGroup
 } from '@dataview/core/contracts'
 import type { HistoryOptions, HistoryState } from './history'
 import type { ValidationIssue } from '@dataview/engine/command'
@@ -144,63 +147,19 @@ export interface RecordsEngineApi {
   }) => void
 }
 
-export interface ViewQueryApi {
-  setSearchQuery: (value: string) => void
-  addFilter: (fieldId: FieldId) => void
-  setFilter: (index: number, rule: FilterRule) => void
-  removeFilter: (index: number) => void
-  addSorter: (fieldId: FieldId, direction?: SortDirection) => void
-  setSorter: (fieldId: FieldId, direction: SortDirection) => void
-  setOnlySorter: (fieldId: FieldId, direction: SortDirection) => void
-  replaceSorter: (index: number, sorter: Sorter) => void
-  removeSorter: (index: number) => void
-  moveSorter: (from: number, to: number) => void
-  clearSorters: () => void
-  setGroup: (fieldId: FieldId) => void
-  clearGroup: () => void
-  toggleGroup: (fieldId: FieldId) => void
-  setGroupMode: (mode: string) => void
-  setGroupBucketSort: (bucketSort: BucketSort) => void
-  setGroupBucketInterval: (bucketInterval: Grouping['bucketInterval']) => void
-  setGroupShowEmpty: (showEmpty: boolean) => void
-  setGroupBucketHidden: (key: string, hidden: boolean) => void
-  setGroupBucketCollapsed: (key: string, collapsed: boolean) => void
-  toggleGroupBucketCollapsed: (key: string) => void
-}
-
-export interface ViewDisplayApi {
-  setFieldIds: (fieldIds: readonly FieldId[]) => void
-  moveFieldIds: (
-    fieldIds: readonly FieldId[],
-    beforeFieldId?: FieldId | null
-  ) => void
-  showField: (
-    fieldId: FieldId,
-    beforeFieldId?: FieldId | null
-  ) => void
-  hideField: (fieldId: FieldId) => void
-}
-
 export interface ViewTableApi {
   setColumnWidths: (widths: Partial<Record<FieldId, number>>) => void
-  setShowVerticalLines: (checked: boolean) => void
+  setVerticalLines: (value: boolean) => void
 }
 
 export interface ViewGalleryApi {
-  setShowPropertyLabels: (checked: boolean) => void
+  setLabels: (value: boolean) => void
   setCardSize: (value: GalleryCardSize) => void
 }
 
 export interface ViewKanbanApi {
   setNewRecordPosition: (value: KanbanNewRecordPosition) => void
-  setFillColumnColor: (checked: boolean) => void
-}
-
-export interface ViewSettingsApi {
-  display: ViewDisplayApi
-  table: ViewTableApi
-  gallery: ViewGalleryApi
-  kanban: ViewKanbanApi
+  setFillColor: (value: boolean) => void
 }
 
 export interface ViewOrderApi {
@@ -225,57 +184,68 @@ export interface KanbanApi {
 }
 
 export interface ViewEngineApi {
-  setType: (type: ViewType) => void
-  search: {
-    setQuery: (value: string) => void
+  type: {
+    set: (type: ViewType) => void
   }
-  filters: {
+  search: {
+    set: (value: string) => void
+  }
+  filter: {
     add: (fieldId: FieldId) => void
-    update: (index: number, rule: FilterRule) => void
+    replace: (index: number, rule: FilterRule) => void
     remove: (index: number) => void
     clear: () => void
   }
-  sorters: {
+  sort: {
     add: (fieldId: FieldId, direction?: SortDirection) => void
+    set: (fieldId: FieldId, direction: SortDirection) => void
+    only: (fieldId: FieldId, direction: SortDirection) => void
     move: (from: number, to: number) => void
     replace: (index: number, sorter: Sorter) => void
     remove: (index: number) => void
     clear: () => void
-    setOnly: (fieldId: FieldId, direction: SortDirection) => void
   }
-  grouping: {
-    setField: (fieldId: FieldId) => void
+  group: {
+    set: (fieldId: FieldId) => void
     clear: () => void
+    toggle: (fieldId: FieldId) => void
     setMode: (mode: string) => void
-    setBucketSort: (bucketSort: BucketSort) => void
-    setBucketInterval: (bucketInterval: Grouping['bucketInterval']) => void
-    setShowEmpty: (showEmpty: boolean) => void
-    setBucketHidden: (key: string, hidden: boolean) => void
-    setBucketCollapsed: (key: string, collapsed: boolean) => void
-    toggleBucketCollapsed: (key: string) => void
+    setSort: (sort: BucketSort) => void
+    setInterval: (interval: ViewGroup['bucketInterval']) => void
+    setShowEmpty: (value: boolean) => void
+    show: (key: string) => void
+    hide: (key: string) => void
+    collapse: (key: string) => void
+    expand: (key: string) => void
+    toggleCollapse: (key: string) => void
+  }
+  calc: {
+    set: (fieldId: FieldId, metric: CalculationMetric | null) => void
   }
   display: {
-    setVisibleFields: (fieldIds: readonly FieldId[]) => void
-    moveVisibleFields: (
+    replace: (fieldIds: readonly FieldId[]) => void
+    move: (
       fieldIds: readonly FieldId[],
       beforeFieldId?: FieldId | null
     ) => void
-    showField: (
+    show: (
       fieldId: FieldId,
       beforeFieldId?: FieldId | null
     ) => void
-    hideField: (fieldId: FieldId) => void
+    hide: (fieldId: FieldId) => void
+    clear: () => void
   }
   table: {
-    setColumnWidths: (widths: Partial<Record<FieldId, number>>) => void
-    insertColumnLeftOf: (
+    setWidths: (widths: Partial<Record<FieldId, number>>) => void
+    setVerticalLines: (value: boolean) => void
+    insertLeft: (
       anchorFieldId: FieldId,
       input?: {
         name?: string
         kind?: CustomFieldKind
       }
     ) => CustomFieldId | undefined
-    insertColumnRightOf: (
+    insertRight: (
       anchorFieldId: FieldId,
       input?: {
         name?: string
@@ -283,10 +253,10 @@ export interface ViewEngineApi {
       }
     ) => CustomFieldId | undefined
   }
-  query: ViewQueryApi
-  settings: ViewSettingsApi
+  gallery: ViewGalleryApi
+  kanban: ViewKanbanApi
   order: ViewOrderApi
-  kanban: KanbanApi
+  cards: KanbanApi
 }
 
 export interface Engine {

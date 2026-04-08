@@ -31,8 +31,8 @@ export const ViewQueryBar = () => {
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined
-  const filters = currentView?.query.filter.rules ?? []
-  const sorts = currentView?.query.sorters ?? []
+  const filters = currentView?.filter.rules ?? []
+  const sorts = currentView?.sort ?? []
   const availableFilterFields = getAvailableFilterFields(fields, filters)
   const availableSorterFields = getAvailableSorterFields(fields, sorts)
 
@@ -58,7 +58,7 @@ export const ViewQueryBar = () => {
         />
       ) : null}
 
-      {filters.map((rule, index) => (
+      {filters.map((rule: typeof filters[number], index: number) => (
         <FilterRulePopover
           key={`filter_${getFilterFieldId(rule) ?? index}`}
           field={typeof rule.field === 'string'
@@ -79,10 +79,10 @@ export const ViewQueryBar = () => {
             page.query.close()
           }}
           onChange={nextRule => {
-            currentViewDomain?.filters.update(index, nextRule)
+            currentViewDomain?.filter.replace(index, nextRule)
           }}
           onRemove={() => {
-            currentViewDomain?.filters.remove(index)
+            currentViewDomain?.filter.remove(index)
             page.query.close()
           }}
         />
@@ -101,32 +101,35 @@ export const ViewQueryBar = () => {
 
             page.query.close()
           }}
-          initialFocus={-1}
           mode="blocking"
           backdrop="transparent"
-          size="xl"
-          padding="none"
-          trigger={(
+        >
+          <Popover.Trigger>
             <QueryChip
               state={queryBar.route?.kind === 'addFilter' ? 'open' : 'add'}
               trailing={<ChevronDown className="size-[14px] shrink-0" size={14} strokeWidth={1.8} />}
             >
               {`+ ${renderMessage(meta.ui.filter.label)}`}
             </QueryChip>
-          )}
-        >
-          <div className="flex max-h-[72vh] flex-col">
-            <FieldPicker
-              fields={availableFilterFields}
-              onSelect={fieldId => {
-                currentViewDomain?.filters.add(fieldId)
-                page.query.open({
-                  kind: 'filter',
-                  fieldId
-                })
-              }}
-            />
-          </div>
+          </Popover.Trigger>
+          <Popover.Content
+            initialFocus={-1}
+            size="xl"
+            padding="none"
+          >
+            <div className="flex max-h-[72vh] flex-col">
+              <FieldPicker
+                fields={availableFilterFields}
+                onSelect={fieldId => {
+                  currentViewDomain?.filter.add(fieldId)
+                  page.query.open({
+                    kind: 'filter',
+                    fieldId
+                  })
+                }}
+              />
+            </div>
+          </Popover.Content>
         </Popover>
       ) : null}
 
@@ -143,31 +146,34 @@ export const ViewQueryBar = () => {
 
             page.query.close()
           }}
-          initialFocus={-1}
           mode="blocking"
           backdrop="transparent"
-          size="xl"
-          padding="none"
-          trigger={(
+        >
+          <Popover.Trigger>
             <QueryChip
               state={queryBar.route?.kind === 'addSort' ? 'open' : 'add'}
               trailing={<ChevronDown className="size-[14px] shrink-0" size={14} strokeWidth={1.8} />}
             >
               {`+ ${renderMessage(meta.ui.sort.label)}`}
             </QueryChip>
-          )}
-        >
-          <div className="flex max-h-[72vh] flex-col">
-            <FieldPicker
-              fields={availableSorterFields}
-              onSelect={fieldId => {
-                currentViewDomain?.sorters.add(fieldId)
-                page.query.open({
-                  kind: 'sort'
-                })
-              }}
-            />
-          </div>
+          </Popover.Trigger>
+          <Popover.Content
+            initialFocus={-1}
+            size="xl"
+            padding="none"
+          >
+            <div className="flex max-h-[72vh] flex-col">
+              <FieldPicker
+                fields={availableSorterFields}
+                onSelect={fieldId => {
+                  currentViewDomain?.sort.add(fieldId)
+                  page.query.open({
+                    kind: 'sort'
+                  })
+                }}
+              />
+            </div>
+          </Popover.Content>
         </Popover>
       ) : null}
     </section>

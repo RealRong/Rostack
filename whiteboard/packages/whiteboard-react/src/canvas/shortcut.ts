@@ -5,13 +5,14 @@ import type {
 import { selectTool } from '@whiteboard/editor'
 import type { WhiteboardRuntime as Editor } from '../types/runtime'
 import {
-  duplicateNodesAndSelect,
-  groupSelectionAndSelect,
-  ungroupNodesAndSelect
+  deleteSelectionAndClear,
+  duplicateSelectionAndSelect,
+  mergeGroupSelectionAndSelect,
+  ungroupSelectionAndSelect
 } from '../runtime/commands'
 
 export const DefaultShortcutBindings: readonly ShortcutBinding[] = [
-  { key: 'Mod+G', action: 'group.create' },
+  { key: 'Mod+G', action: 'group.merge' },
   { key: 'Shift+Mod+G', action: 'group.ungroup' },
   { key: 'Mod+A', action: 'selection.selectAll' },
   { key: 'Escape', action: 'selection.clear' },
@@ -35,7 +36,7 @@ const readShortcutState = (
     hasSelection: selection.items.count > 0,
     canGroup: selection.items.count >= 2,
     canUngroup: selection.groups.count > 0,
-    canDuplicate: selection.items.edgeCount === 0 && selection.items.nodeCount > 0
+    canDuplicate: selection.items.count > 0
   }
 }
 
@@ -45,7 +46,7 @@ const canRunShortcut = (
   state: ShortcutState
 ) => {
   switch (action) {
-    case 'group.create':
+    case 'group.merge':
       return state.canGroup
     case 'group.ungroup':
       return state.canUngroup
@@ -87,32 +88,24 @@ export const runShortcut = (
       editor.commands.selection.clear()
       return true
     case 'selection.delete':
-      if (selection.target.edgeIds.length > 0) {
-        const result = editor.commands.edge.delete([...selection.target.edgeIds])
-        if (!result.ok) {
-          return false
-        }
-      }
-
-      if (selection.target.nodeIds.length > 0) {
-        const result = editor.commands.node.deleteCascade([...selection.target.nodeIds])
-        if (!result.ok) {
-          return false
-        }
-      }
-
-      return true
+      return deleteSelectionAndClear(editor, {
+        nodeIds: selection.target.nodeIds,
+        edgeIds: selection.target.edgeIds
+      })
     case 'selection.duplicate': {
-      return duplicateNodesAndSelect(editor, selection.target.nodeIds)
+      return duplicateSelectionAndSelect(editor, {
+        nodeIds: selection.target.nodeIds,
+        edgeIds: selection.target.edgeIds
+      })
     }
-    case 'group.create': {
-      return groupSelectionAndSelect(editor, {
+    case 'group.merge': {
+      return mergeGroupSelectionAndSelect(editor, {
         nodeIds: selection.target.nodeIds,
         edgeIds: selection.target.edgeIds
       })
     }
     case 'group.ungroup': {
-      return ungroupNodesAndSelect(editor, selection.groups.ids)
+      return ungroupSelectionAndSelect(editor, selection.groups.ids)
     }
     case 'history.undo':
       return editor.commands.history.undo().ok

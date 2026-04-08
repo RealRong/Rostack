@@ -13,6 +13,7 @@ import {
   type FieldNumberFormatId
 } from '@dataview/meta'
 import type { MenuItem, MenuSurfaceSize } from '@ui/menu'
+import { FIELD_DROPDOWN_MENU_PROPS } from '../../dropdown'
 
 const FLOATING_TIMEZONE_ID = '__floating__'
 
@@ -33,6 +34,7 @@ const buildChoiceSubmenuItem = <TValue extends string>(input: {
   label: input.label,
   suffix: input.suffix,
   size: input.size ?? 'md',
+  ...FIELD_DROPDOWN_MENU_PROPS,
   items: input.options.map(option => ({
     kind: 'toggle' as const,
     key: option.id,
@@ -183,14 +185,15 @@ export const buildFieldFormatMenuItems = (props: {
     }),
     ...(dateConfig.defaultValueKind === 'datetime'
       ? [{
-          kind: 'submenu' as const,
-          key: 'default-timezone',
-          label: renderMessage(meta.ui.field.editor.defaultTimezone),
-          suffix: formatTimeZoneLabel(dateConfig.defaultTimezone ?? null),
-          size: 'lg' as const,
-          items: [
-            {
-              kind: 'toggle' as const,
+        kind: 'submenu' as const,
+        key: 'default-timezone',
+        label: renderMessage(meta.ui.field.editor.defaultTimezone),
+        suffix: formatTimeZoneLabel(dateConfig.defaultTimezone ?? null),
+        size: 'lg' as const,
+        ...FIELD_DROPDOWN_MENU_PROPS,
+        items: [
+          {
+            kind: 'toggle' as const,
               key: FLOATING_TIMEZONE_ID,
               label: formatTimeZoneLabel(null),
               checked: dateConfig.defaultTimezone === null,

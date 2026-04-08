@@ -1,7 +1,8 @@
 import type { Placement } from '@floating-ui/react'
-import type { ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import type {
   PopoverOffset,
+  PopoverContentProps,
   PopoverProps,
   PopoverSurfacePadding,
   PopoverSurfaceSize
@@ -22,9 +23,12 @@ export interface ActionItem {
   leading?: ReactNode
   suffix?: ReactNode
   trailing?: ReactNode
+  accessory?: ReactNode
   disabled?: boolean
   tone?: 'default' | 'destructive'
   closeOnSelect?: boolean
+  className?: string
+  highlightedClassName?: string
   onSelect: () => void
 }
 
@@ -35,6 +39,7 @@ export interface Item {
   leading?: ReactNode
   suffix?: ReactNode
   trailing?: ReactNode
+  accessory?: ReactNode
   disabled?: boolean
   tone?: 'default' | 'destructive'
   indicator?: 'none' | 'check' | 'switch'
@@ -50,10 +55,13 @@ export interface ToggleItem {
   label: ReactNode
   leading?: ReactNode
   suffix?: ReactNode
+  accessory?: ReactNode
   checked: boolean
   indicator?: 'check' | 'switch'
   disabled?: boolean
   closeOnSelect?: boolean
+  className?: string
+  highlightedClassName?: string
   onSelect: () => void
 }
 
@@ -64,12 +72,16 @@ export interface SubmenuItem {
   leading?: ReactNode
   suffix?: ReactNode
   trailing?: ReactNode
+  accessory?: ReactNode
   disabled?: boolean
+  tone?: 'default' | 'destructive'
   items?: readonly MenuItem[]
   content?: MenuPopoverContent
   size?: PopoverSurfaceSize
   surface?: 'list' | 'panel'
   contentClassName?: string
+  className?: string
+  highlightedClassName?: string
   presentation?: MenuPresentation
   placement?: Placement
   offset?: PopoverOffset
@@ -103,6 +115,9 @@ export interface ReorderItem extends Omit<Item, 'kind'> {
 export type SubmenuOpenPolicy = 'hover' | 'click'
 export type SurfaceSize = PopoverSurfaceSize
 export type SelectionMode = 'none' | 'single' | 'multiple'
+export type SelectionAppearance = 'none' | 'content' | 'row'
+export type SubmenuOpenSource = 'pointer' | 'keyboard'
+export type SubmenuCloseReason = 'trigger' | 'outside' | 'keyboard'
 
 export interface Handle {
   moveNext: () => void
@@ -113,10 +128,12 @@ export interface Handle {
   getActiveKey: () => string | null
 }
 
-export interface DropdownProps extends Omit<PopoverProps, 'children' | 'padding'> {
+export interface DropdownProps extends Omit<PopoverProps, 'children'>, Omit<PopoverContentProps, 'children' | 'padding'> {
   items: readonly MenuItem[]
   autoFocus?: boolean
+  selectionAppearance?: SelectionAppearance
   submenuOpenPolicy?: SubmenuOpenPolicy
+  trigger: ReactElement
 }
 
 export interface Props {
@@ -125,6 +142,7 @@ export interface Props {
   defaultValue?: string | readonly string[]
   onValueChange?: (value: string | readonly string[]) => void
   selectionMode?: SelectionMode
+  selectionAppearance?: SelectionAppearance
   onClose?: () => void
   autoFocus?: boolean
   className?: string
@@ -140,6 +158,7 @@ export interface ReorderProps {
   defaultValue?: string | readonly string[]
   onValueChange?: (value: string | readonly string[]) => void
   selectionMode?: SelectionMode
+  selectionAppearance?: SelectionAppearance
   onMove: (from: number, to: number) => void
   onClose?: () => void
   className?: string
@@ -153,15 +172,17 @@ export type ActiveSource = 'pointer' | 'keyboard' | null
 export interface Controller {
   activePath: Path
   activeSource: ActiveSource
-  expandedPath: Path
-  registerItemRef: (path: Path, element: HTMLButtonElement | null) => void
+  openPath: Path
+  registerItemRef: (path: Path, element: HTMLElement | null) => void
   setActivePointerPath: (path: Path) => void
   setActiveKeyboardPath: (path: Path) => void
+  clearActivePath: () => void
   clearPointerActivePath: () => void
-  trimExpandedPath: (path: Path) => void
-  dismissSubmenuPath: (path: Path) => void
-  collapseSubmenuPathToTrigger: (path: Path) => void
-  openSubmenuPath: (path: Path, item: SubmenuItem, source: 'pointer' | 'keyboard' | 'click') => void
+  trimOpenPath: (path: Path) => void
+  markTriggerPress: (path: Path) => void
+  consumeTriggerPress: (path: Path) => boolean
+  closeSubmenuPath: (path: Path, reason: SubmenuCloseReason) => void
+  openSubmenuPath: (path: Path, item: SubmenuItem, source: SubmenuOpenSource) => void
 }
 
 export interface LevelProps {
@@ -171,10 +192,10 @@ export interface LevelProps {
   autoFocus: boolean
   selectedKeys: readonly string[]
   selectionMode: SelectionMode
+  selectionAppearance: SelectionAppearance
   onItemValueToggle: (itemKey: string) => void
   onClose?: () => void
   onRequestClose?: () => void
   submenuOpenPolicy: SubmenuOpenPolicy
   controller: Controller
 }
-

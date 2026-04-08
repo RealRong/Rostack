@@ -22,6 +22,7 @@ export type SettingsRoute =
   | { kind: 'root', focusTarget?: 'viewName' }
   | { kind: 'layout' }
   | { kind: 'group' }
+  | { kind: 'groupField' }
   | { kind: 'viewProperties' }
   | { kind: 'fieldList' }
   | { kind: 'fieldCreate' }

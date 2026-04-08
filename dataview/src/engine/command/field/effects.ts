@@ -13,6 +13,9 @@ import {
   getFieldGroupMeta
 } from '@dataview/core/field'
 import {
+  supportsFieldCalculationMetric
+} from '@dataview/core/calculation'
+import {
   cloneViewOptions,
   pruneFieldFromViewOptions
 } from '@dataview/core/view'
@@ -41,40 +44,42 @@ const cleanupViewForRemovedField = (
   fieldId: CustomFieldId
 ) => {
   const nextOptions = pruneFieldFromViewOptions(view.options, fieldId)
-  const nextFilterRules = view.query.filter.rules.filter(rule => rule.field !== fieldId)
-  const nextSorters = view.query.sorters.filter(sorter => sorter.field !== fieldId)
-  const nextSearchFields = cleanupSearchFields(view.query.search.fields, fieldId)
-  const nextGroup = view.query.group?.field === fieldId
+  const nextFilterRules = view.filter.rules.filter(rule => rule.field !== fieldId)
+  const nextSorters = view.sort.filter(sorter => sorter.field !== fieldId)
+  const nextSearchFields = cleanupSearchFields(view.search.fields, fieldId)
+  const nextGroup = view.group?.field === fieldId
     ? undefined
-    : view.query.group
-  const nextAggregates = view.aggregates.filter(spec => spec.property !== fieldId)
+    : view.group
+  const nextCalc = { ...view.calc }
+  const nextDisplayFields = view.display.fields.filter(currentFieldId => currentFieldId !== fieldId)
+  delete nextCalc[fieldId]
 
   const nextView: View = {
     ...view,
-    query: {
-      ...view.query,
-      filter: {
-        ...view.query.filter,
-        rules: nextFilterRules
-      },
-      search: {
-        ...view.query.search,
-        ...(nextSearchFields !== undefined
-          ? { fields: nextSearchFields }
-          : {})
-      },
-      sorters: nextSorters,
-      ...(nextGroup ? { group: nextGroup } : {})
+    filter: {
+      ...view.filter,
+      rules: nextFilterRules
     },
-    aggregates: nextAggregates,
+    search: {
+      ...view.search,
+      ...(nextSearchFields !== undefined
+        ? { fields: nextSearchFields }
+        : {})
+    },
+    sort: nextSorters,
+    ...(nextGroup ? { group: nextGroup } : {}),
+    calc: nextCalc,
+    display: {
+      fields: nextDisplayFields
+    },
     options: nextOptions
   }
 
-  if (nextSearchFields === undefined && Object.prototype.hasOwnProperty.call(nextView.query.search, 'fields')) {
-    delete (nextView.query.search as { fields?: readonly string[] }).fields
+  if (nextSearchFields === undefined && Object.prototype.hasOwnProperty.call(nextView.search, 'fields')) {
+    delete (nextView.search as { fields?: readonly string[] }).fields
   }
-  if (!nextGroup && Object.prototype.hasOwnProperty.call(nextView.query, 'group')) {
-    delete (nextView.query as { group?: View['query']['group'] }).group
+  if (!nextGroup && Object.prototype.hasOwnProperty.call(nextView, 'group')) {
+    delete (nextView as { group?: View['group'] }).group
   }
 
   return sameJson(nextView, view) ? view : nextView
@@ -85,17 +90,17 @@ const cleanupViewForConvertedField = (
   field: CustomField
 ) => {
   const validFilterOps = new Set(getFieldFilterOps(field))
-  const nextFilterRules = view.query.filter.rules.filter(rule => (
+  const nextFilterRules = view.filter.rules.filter(rule => (
     rule.field !== field.id || validFilterOps.has(rule.op)
   ))
 
-  let nextGroup = view.query.group
-  if (view.query.group?.field === field.id) {
+  let nextGroup = view.group
+  if (view.group?.field === field.id) {
     const defaultMeta = getFieldGroupMeta(field)
     if (!defaultMeta.modes.length || !defaultMeta.sorts.length) {
       nextGroup = undefined
     } else {
-      const modeMeta = getFieldGroupMeta(field, { mode: view.query.group.mode })
+      const modeMeta = getFieldGroupMeta(field, { mode: view.group.mode })
       nextGroup = {
         field: field.id,
         mode: modeMeta.mode,
@@ -107,20 +112,24 @@ const cleanupViewForConvertedField = (
     }
   }
 
-  const nextView: View = {
-    ...view,
-    query: {
-      ...view.query,
-      filter: {
-        ...view.query.filter,
-        rules: nextFilterRules
-      },
-      ...(nextGroup ? { group: nextGroup } : {})
-    }
+  const nextCalc = { ...view.calc }
+  const currentMetric = nextCalc[field.id]
+  if (currentMetric && !supportsFieldCalculationMetric(field, currentMetric)) {
+    delete nextCalc[field.id]
   }
 
-  if (!nextGroup && Object.prototype.hasOwnProperty.call(nextView.query, 'group')) {
-    delete (nextView.query as { group?: View['query']['group'] }).group
+  const nextView: View = {
+    ...view,
+    filter: {
+      ...view.filter,
+      rules: nextFilterRules
+    },
+    ...(nextGroup ? { group: nextGroup } : {}),
+    calc: nextCalc
+  }
+
+  if (!nextGroup && Object.prototype.hasOwnProperty.call(nextView, 'group')) {
+    delete (nextView as { group?: View['group'] }).group
   }
 
   return sameJson(nextView, view) ? view : nextView
@@ -133,17 +142,14 @@ export const resolvePropertyCreateViewOperations = (
   return getDocumentViews(document)
     .filter(view => view.type === 'table')
     .flatMap(view => {
-      if (view.options.display.fieldIds.includes(field.id)) {
+      if (view.display.fields.includes(field.id)) {
         return []
       }
 
       return [buildViewPutOperation({
         ...view,
-        options: {
-          ...cloneViewOptions(view.options),
-          display: {
-            fieldIds: [...view.options.display.fieldIds, field.id]
-          }
+        display: {
+          fields: [...view.display.fields, field.id]
         }
       })]
     })

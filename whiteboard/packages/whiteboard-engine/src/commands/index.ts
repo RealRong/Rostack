@@ -3,6 +3,7 @@ import type { Write } from '@engine-types/write'
 import { canvas } from './canvas'
 import { document } from './document'
 import { edge } from './edge'
+import { group } from './group'
 import { mindmap } from './mindmap'
 import { node } from './node'
 
@@ -17,6 +18,9 @@ export const createCommands = ({
     }),
     canvas: canvas({
       write
+    }),
+    group: group({
+      apply: write.apply
     }),
     history: write.history,
     edge: edge({

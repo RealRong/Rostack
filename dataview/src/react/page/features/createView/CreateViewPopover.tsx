@@ -24,11 +24,10 @@ export const CreateViewPopover = () => {
     <Popover
       open={open}
       onOpenChange={setOpen}
-      initialFocus={-1}
       mode="blocking"
       backdrop="transparent"
-      padding="none"
-      trigger={(
+    >
+      <Popover.Trigger>
         <Button
           size="icon"
           pressed={open}
@@ -36,26 +35,30 @@ export const CreateViewPopover = () => {
         >
           <Plus className="size-4" size={15} strokeWidth={1} />
         </Button>
-      )}
-      contentClassName="w-[360px]"
-    >
-      <div className="flex flex-col gap-5 p-4">
-        <div className="space-y-1">
-          <h3 className="text-sm text-muted-foreground">
-            {renderMessage(meta.ui.toolbar.createView.title)}
-          </h3>
-        </div>
+      </Popover.Trigger>
+      <Popover.Content
+        initialFocus={-1}
+        padding="none"
+        contentClassName="w-[360px]"
+      >
+        <div className="flex flex-col gap-5 p-4">
+          <div className="space-y-1">
+            <h3 className="text-sm text-muted-foreground">
+              {renderMessage(meta.ui.toolbar.createView.title)}
+            </h3>
+          </div>
 
-        <div className="grid grid-cols-4 gap-2">
-          {CREATE_VIEW_ITEMS.map(item => (
-            <ViewTypeCard
-              key={item.id}
-              item={item}
-              onSelect={handleSelect}
-            />
-          ))}
+          <div className="grid grid-cols-4 gap-2">
+            {CREATE_VIEW_ITEMS.map(item => (
+              <ViewTypeCard
+                key={item.id}
+                item={item}
+                onSelect={handleSelect}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      </Popover.Content>
     </Popover>
   )
 }

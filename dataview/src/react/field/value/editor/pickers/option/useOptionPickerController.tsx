@@ -264,7 +264,7 @@ export const useOptionPickerController = (
     className: editingOptionId === option.id
       ? 'bg-hover text-fg'
       : undefined,
-    trailing: (
+    accessory: (
       <OptionEditorPopover
         fieldId={fieldId}
         option={{
@@ -296,9 +296,6 @@ export const useOptionPickerController = (
             variant="plain"
             size="iconBare"
             aria-label={renderMessage(meta.ui.field.options.edit(optionLabel(option)))}
-            onClick={event => {
-              event.stopPropagation()
-            }}
           >
             <MoreHorizontal className="size-4" size={16} strokeWidth={1.8} />
           </Button>

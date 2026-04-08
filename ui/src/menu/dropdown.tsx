@@ -7,11 +7,19 @@ export const Dropdown = (props: DropdownProps) => {
   const {
     items,
     autoFocus,
+    selectionAppearance,
     submenuOpenPolicy,
     open: controlledOpen,
     onOpenChange,
     defaultOpen,
-    ...popoverProps
+    trigger,
+    initialFocus,
+    size,
+    className,
+    contentClassName,
+    floatingProps,
+    contentProps,
+    ...rootProps
   } = props
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen ?? false)
   const open = controlledOpen ?? uncontrolledOpen
@@ -25,21 +33,33 @@ export const Dropdown = (props: DropdownProps) => {
 
   return (
     <Popover
-      {...popoverProps}
+      {...rootProps}
       open={open}
       onOpenChange={setOpen}
       defaultOpen={undefined}
       kind="menu"
-      padding="menu"
     >
-      <Base
-        items={items}
-        open={open}
-        onClose={() => setOpen(false)}
-        autoFocus={autoFocus}
-        submenuOpenPolicy={submenuOpenPolicy}
-      />
+      <Popover.Trigger>
+        {trigger}
+      </Popover.Trigger>
+      <Popover.Content
+        initialFocus={initialFocus}
+        size={size}
+        className={className}
+        contentClassName={contentClassName}
+        floatingProps={floatingProps}
+        contentProps={contentProps}
+        padding="menu"
+      >
+        <Base
+          items={items}
+          open={open}
+          onClose={() => setOpen(false)}
+          autoFocus={autoFocus}
+          selectionAppearance={selectionAppearance}
+          submenuOpenPolicy={submenuOpenPolicy}
+        />
+      </Popover.Content>
     </Popover>
   )
 }
-

@@ -129,7 +129,7 @@ const createGroupWriteCommands = (input: {
   targetSection: string
   grouping: Grouping
 }): readonly Command[] | undefined => {
-  const fieldId = input.view.query.group?.field
+  const fieldId = input.view.group?.field
   if (!fieldId) {
     return []
   }
@@ -213,7 +213,7 @@ const moveIds = (input: {
   }
 
   const sectionChanged = plan.ids.some(id => input.appearances.sectionOf(id) !== plan.target.section)
-  if (sectionChanged && input.view.query.group && !input.grouping) {
+  if (sectionChanged && input.view.group && !input.grouping) {
     return
   }
 
@@ -252,7 +252,7 @@ const moveIds = (input: {
     commands.push(...valueCommands)
   }
 
-  if (!input.view.query.sorters.length) {
+  if (!input.view.sort.length) {
     const orderCommand = createMoveOrderCommand(
       input.view.id,
       recordIds,
@@ -279,8 +279,8 @@ const createInSection = (input: {
   section: string
   createInput?: CreateInSectionInput
 }) => {
-  const fieldId = input.view.query.group?.field
-  if (input.view.query.group && !input.grouping) {
+  const fieldId = input.view.group?.field
+  if (input.view.group && !input.grouping) {
     return undefined
   }
 
@@ -326,7 +326,7 @@ const createInSection = (input: {
   if (
     input.view.type === 'kanban'
     && input.view.options.kanban.newRecordPosition === 'start'
-    && !input.view.query.sorters.length
+    && !input.view.sort.length
   ) {
     const beforeRecordId = readSectionRecordIds(
       {

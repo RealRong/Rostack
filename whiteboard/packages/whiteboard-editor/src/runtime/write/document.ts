@@ -54,8 +54,6 @@ export const createDocumentWrite = ({
     delete: engine.commands.node.delete,
     deleteCascade: engine.commands.node.deleteCascade,
     duplicate: engine.commands.node.duplicate,
-    group: engine.commands.node.group,
-    order: engine.commands.node.order,
     document: nodeDocument,
     lock: nodeLock,
     shape: nodeShape,
@@ -86,6 +84,7 @@ export const createDocumentWrite = ({
   return {
     doc: engine.commands.document,
     history: engine.commands.history,
+    group: engine.commands.group,
     edge: engine.commands.edge,
     node,
     mindmap

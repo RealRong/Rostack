@@ -4,14 +4,19 @@ import type {
   DataDoc,
   EntityTable,
   FilterOperator,
+  Filter,
+  Search,
+  Sorter,
   View,
   RecordId,
+  ViewDisplay,
+  ViewGroup,
   ViewId
 } from '../contracts/state'
+import { normalizeViewCalculations } from '@dataview/core/calculation'
 import { getDocumentFields } from './fields'
 import { normalizeRecordOrderIds } from '../view/order'
 import { normalizeViewOptions } from '../view/normalize'
-import { normalizeViewQuery } from '../query'
 import {
   cloneEntityInput,
   normalizeEntityTable
@@ -85,91 +90,117 @@ const normalizeBuckets = (value: unknown): Readonly<Record<string, BucketState>>
     : undefined
 }
 
-const normalizeDocumentViewQuery = (query: unknown) => {
-  const source = typeof query === 'object' && query !== null
-    ? query as {
-        search?: {
-          query?: unknown
-          fields?: unknown
-        }
-        filter?: {
-          mode?: unknown
-          rules?: unknown
-        }
-        sorters?: unknown
-        group?: {
-          field?: unknown
-          mode?: unknown
-          bucketSort?: unknown
-          bucketInterval?: unknown
-          showEmpty?: unknown
-          buckets?: unknown
-        } | undefined
+const normalizeFieldIdList = (value: unknown): string[] => (
+  Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : []
+)
+
+const normalizeDocumentViewSearch = (search: unknown): Search => {
+  const source = typeof search === 'object' && search !== null
+    ? search as {
+        query?: unknown
+        fields?: unknown
       }
     : undefined
 
-  const buckets = normalizeBuckets(source?.group?.buckets)
-  const nextGroup = source?.group && typeof source.group.field === 'string'
+  return {
+    query: typeof source?.query === 'string' ? source.query : '',
+    ...(Array.isArray(source?.fields)
+      ? { fields: normalizeFieldIdList(source.fields) }
+      : {})
+  }
+}
+
+const normalizeDocumentViewFilter = (filter: unknown): Filter => {
+  const source = typeof filter === 'object' && filter !== null
+    ? filter as {
+        mode?: unknown
+        rules?: unknown
+      }
+    : undefined
+
+  return {
+    mode: source?.mode === 'or' ? 'or' : 'and',
+    rules: Array.isArray(source?.rules)
+      ? source.rules
+          .filter(rule => typeof rule === 'object' && rule !== null)
+          .map(rule => {
+            const currentRule = rule as {
+              field?: unknown
+              op?: unknown
+              value?: unknown
+            }
+            return {
+              field: typeof currentRule.field === 'string' ? currentRule.field : '',
+              op: normalizeFilterOperator(currentRule.op),
+              ...(Object.prototype.hasOwnProperty.call(currentRule, 'value')
+                ? { value: structuredClone(currentRule.value) }
+                : {})
+            }
+          })
+      : []
+  }
+}
+
+const normalizeDocumentViewSort = (sort: unknown): Sorter[] => (
+  Array.isArray(sort)
+    ? sort
+        .filter(sorter => typeof sorter === 'object' && sorter !== null)
+        .map(sorter => {
+          const currentSorter = sorter as {
+            field?: unknown
+            direction?: unknown
+          }
+          return {
+            field: typeof currentSorter.field === 'string' ? currentSorter.field : '',
+            direction: currentSorter.direction === 'desc' ? 'desc' : 'asc'
+          }
+        })
+    : []
+)
+
+const normalizeDocumentViewGroup = (group: unknown): ViewGroup | undefined => {
+  const source = typeof group === 'object' && group !== null
+    ? group as {
+        field?: unknown
+        mode?: unknown
+        bucketSort?: unknown
+        bucketInterval?: unknown
+        showEmpty?: unknown
+        buckets?: unknown
+      }
+    : undefined
+
+  const buckets = normalizeBuckets(source?.buckets)
+  return source && typeof source.field === 'string'
     ? {
-        field: source.group.field,
-        mode: typeof source.group.mode === 'string' ? source.group.mode : '',
-        bucketSort: normalizeBucketSort(source.group.bucketSort),
-        ...(typeof source.group.bucketInterval === 'number'
-          ? { bucketInterval: source.group.bucketInterval }
+        field: source.field,
+        mode: typeof source.mode === 'string' ? source.mode : '',
+        bucketSort: normalizeBucketSort(source.bucketSort),
+        ...(typeof source.bucketInterval === 'number'
+          ? { bucketInterval: source.bucketInterval }
           : {}),
-        ...(typeof source.group.showEmpty === 'boolean'
-          ? { showEmpty: source.group.showEmpty }
+        ...(typeof source.showEmpty === 'boolean'
+          ? { showEmpty: source.showEmpty }
           : {}),
         ...(buckets
           ? { buckets }
           : {})
       }
     : undefined
+}
+
+const normalizeDocumentViewDisplay = (display: unknown): ViewDisplay => {
+  const source = typeof display === 'object' && display !== null
+    ? display as {
+        fields?: unknown
+      }
+    : undefined
 
   return {
-    search: {
-      query: typeof source?.search?.query === 'string' ? source.search.query : '',
-      ...(Array.isArray(source?.search?.fields)
-        ? { fields: source.search.fields.filter(value => typeof value === 'string') }
-        : {})
-    },
-    filter: {
-      mode: source?.filter?.mode === 'or' ? 'or' : 'and',
-      rules: Array.isArray(source?.filter?.rules)
-        ? source.filter.rules
-            .filter(rule => typeof rule === 'object' && rule !== null)
-            .map(rule => {
-              const currentRule = rule as {
-                field?: unknown
-                op?: unknown
-                value?: unknown
-              }
-              return {
-                field: typeof currentRule.field === 'string' ? currentRule.field : '',
-                op: normalizeFilterOperator(currentRule.op),
-                ...(Object.prototype.hasOwnProperty.call(currentRule, 'value')
-                  ? { value: structuredClone(currentRule.value) }
-                  : {})
-              }
-            })
-        : []
-    },
-    sorters: Array.isArray(source?.sorters)
-      ? source.sorters
-          .filter(sorter => typeof sorter === 'object' && sorter !== null)
-          .map(sorter => {
-            const currentSorter = sorter as {
-              field?: unknown
-              direction?: unknown
-            }
-            return {
-              field: typeof currentSorter.field === 'string' ? currentSorter.field : '',
-              direction: currentSorter.direction === 'desc' ? 'desc' : 'asc'
-            }
-          })
-      : [],
-    ...(nextGroup ? { group: nextGroup } : {})
-  } satisfies View['query']
+    fields: normalizeFieldIdList(source?.fields)
+  }
 }
 
 const normalizeDocumentView = (
@@ -181,13 +212,20 @@ const normalizeDocumentView = (
     type: view.type,
     fields
   })
+  const group = normalizeDocumentViewGroup(view.group)
 
   return {
     ...cloneEntityInput(view),
-    query: normalizeDocumentViewQuery(view.query),
-    aggregates: Array.isArray(view.aggregates)
-      ? structuredClone(view.aggregates)
-      : [],
+    search: normalizeDocumentViewSearch(view.search),
+    filter: normalizeDocumentViewFilter(view.filter),
+    sort: normalizeDocumentViewSort(view.sort),
+    ...(group
+      ? { group }
+      : {}),
+    calc: normalizeViewCalculations(view.calc, {
+      fields: new Map(fields.map(field => [field.id, field] as const))
+    }),
+    display: normalizeDocumentViewDisplay(view.display),
     options: normalizedOptions,
     orders: normalizeViewOrders(document, view.orders)
   }

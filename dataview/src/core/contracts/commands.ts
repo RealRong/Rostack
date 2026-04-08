@@ -1,13 +1,18 @@
 import type {
-  AggregateSpec,
+  CalculationMetric,
   FieldId,
   CustomFieldKind,
   CustomFieldId,
   CustomField,
   Row,
   StatusCategory,
+  Filter,
+  Search,
+  Sorter,
   View,
-  ViewQuery,
+  ViewCalc,
+  ViewDisplay,
+  ViewGroup,
   ViewType,
   RecordId,
   ViewId
@@ -61,8 +66,12 @@ export interface ViewCreateInput {
   id?: ViewId
   name: string
   type: ViewType
-  query?: ViewQuery
-  aggregates?: AggregateSpec[]
+  search?: Search
+  filter?: Filter
+  sort?: Sorter[]
+  group?: ViewGroup
+  calc?: ViewCalc
+  display?: ViewDisplay
   options?: ViewOptions
   orders?: RecordId[]
 }
@@ -105,19 +114,159 @@ export type Command =
       value: ViewType
     }
   | {
-      type: 'view.query.set'
+      type: 'view.search.set'
       viewId: ViewId
-      query: ViewQuery
+      value: string
     }
   | {
-      type: 'view.aggregates.set'
+      type: 'view.filter.add'
       viewId: ViewId
-      aggregates: AggregateSpec[]
+      fieldId: FieldId
     }
   | {
-      type: 'view.display.setFieldIds'
+      type: 'view.filter.replace'
+      viewId: ViewId
+      index: number
+      rule: Filter['rules'][number]
+    }
+  | {
+      type: 'view.filter.remove'
+      viewId: ViewId
+      index: number
+    }
+  | {
+      type: 'view.filter.clear'
+      viewId: ViewId
+    }
+  | {
+      type: 'view.sort.add'
+      viewId: ViewId
+      fieldId: FieldId
+      direction?: Sorter['direction']
+    }
+  | {
+      type: 'view.sort.set'
+      viewId: ViewId
+      fieldId: FieldId
+      direction: Sorter['direction']
+    }
+  | {
+      type: 'view.sort.only'
+      viewId: ViewId
+      fieldId: FieldId
+      direction: Sorter['direction']
+    }
+  | {
+      type: 'view.sort.replace'
+      viewId: ViewId
+      index: number
+      sorter: Sorter
+    }
+  | {
+      type: 'view.sort.remove'
+      viewId: ViewId
+      index: number
+    }
+  | {
+      type: 'view.sort.move'
+      viewId: ViewId
+      from: number
+      to: number
+    }
+  | {
+      type: 'view.sort.clear'
+      viewId: ViewId
+    }
+  | {
+      type: 'view.group.set'
+      viewId: ViewId
+      fieldId: FieldId
+    }
+  | {
+      type: 'view.group.clear'
+      viewId: ViewId
+    }
+  | {
+      type: 'view.group.toggle'
+      viewId: ViewId
+      fieldId: FieldId
+    }
+  | {
+      type: 'view.group.mode.set'
+      viewId: ViewId
+      value: string
+    }
+  | {
+      type: 'view.group.sort.set'
+      viewId: ViewId
+      value: ViewGroup['bucketSort']
+    }
+  | {
+      type: 'view.group.interval.set'
+      viewId: ViewId
+      value?: ViewGroup['bucketInterval']
+    }
+  | {
+      type: 'view.group.empty.set'
+      viewId: ViewId
+      value: boolean
+    }
+  | {
+      type: 'view.group.bucket.show'
+      viewId: ViewId
+      key: string
+    }
+  | {
+      type: 'view.group.bucket.hide'
+      viewId: ViewId
+      key: string
+    }
+  | {
+      type: 'view.group.bucket.collapse'
+      viewId: ViewId
+      key: string
+    }
+  | {
+      type: 'view.group.bucket.expand'
+      viewId: ViewId
+      key: string
+    }
+  | {
+      type: 'view.group.bucket.toggleCollapse'
+      viewId: ViewId
+      key: string
+    }
+  | {
+      type: 'view.calc.set'
+      viewId: ViewId
+      fieldId: FieldId
+      metric: CalculationMetric | null
+    }
+  | {
+      type: 'view.display.replace'
       viewId: ViewId
       fieldIds: FieldId[]
+    }
+  | {
+      type: 'view.display.move'
+      viewId: ViewId
+      fieldIds: FieldId[]
+      beforeFieldId?: FieldId | null
+    }
+  | {
+      type: 'view.display.show'
+      viewId: ViewId
+      fieldId: FieldId
+      beforeFieldId?: FieldId | null
+    }
+  | {
+      type: 'view.display.hide'
+      viewId: ViewId
+      fieldId: FieldId
+    }
+  | {
+      type: 'view.display.clear'
+      viewId: ViewId
     }
   | {
       type: 'view.table.setWidths'
@@ -125,12 +274,12 @@ export type Command =
       widths: TableOptions['widths']
     }
   | {
-      type: 'view.table.setShowVerticalLines'
+      type: 'view.table.verticalLines.set'
       viewId: ViewId
       value: boolean
     }
   | {
-      type: 'view.gallery.setShowPropertyLabels'
+      type: 'view.gallery.labels.set'
       viewId: ViewId
       value: boolean
     }
@@ -145,7 +294,7 @@ export type Command =
       value: KanbanNewRecordPosition
     }
   | {
-      type: 'view.kanban.setFillColumnColor'
+      type: 'view.kanban.fillColor.set'
       viewId: ViewId
       value: boolean
     }

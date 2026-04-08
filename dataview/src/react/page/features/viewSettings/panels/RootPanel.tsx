@@ -228,8 +228,8 @@ export const RootPanel = () => {
   const currentView = useCurrentView(view => view?.view)
   const fields = getDocumentFields(document)
   const viewsCount = getDocumentViews(document).length
-  const propertyCount = currentView?.options.display.fieldIds.length ?? 0
-  const group = resolveViewGroupState(fields, currentView?.query.group)
+  const propertyCount = currentView?.display.fields.length ?? 0
+  const group = resolveViewGroupState(fields, currentView?.group)
   const menuItems: RootMenuItemConfig[] = [
     {
       icon: Settings2,
@@ -251,13 +251,13 @@ export const RootPanel = () => {
     {
       icon: Filter,
       label: renderMessage(meta.ui.viewSettings.filter),
-      suffix: renderMessage(meta.ui.viewSettings.filterSummary(currentView?.query.filter.rules ?? [], fields)),
+      suffix: renderMessage(meta.ui.viewSettings.filterSummary(currentView?.filter.rules ?? [], fields)),
       panel: 'filter'
     },
     {
       icon: ArrowUpDown,
       label: renderMessage(meta.ui.viewSettings.sort),
-      suffix: renderMessage(meta.ui.viewSettings.sortSummary(currentView?.query.sorters ?? [], fields)),
+      suffix: renderMessage(meta.ui.viewSettings.sortSummary(currentView?.sort ?? [], fields)),
       panel: 'sort'
     },
     {

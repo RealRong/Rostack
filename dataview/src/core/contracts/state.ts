@@ -11,8 +11,22 @@ export type BucketSort = 'manual' | 'labelAsc' | 'labelDesc' | 'valueAsc' | 'val
 export type FilterOperator = 'eq' | 'neq' | 'contains' | 'in' | 'gt' | 'gte' | 'lt' | 'lte' | 'exists' | 'custom'
 export type ResolvedGroupKey = string | number | boolean | null | undefined
 export type IndexPath = number[]
-export type AggregateOperator = 'count' | 'sum' | 'avg' | 'min' | 'max'
-export type AggregateScope = 'all' | 'visible'
+export type CalculationMetric =
+  | 'countAll'
+  | 'countValues'
+  | 'countUniqueValues'
+  | 'countEmpty'
+  | 'countNonEmpty'
+  | 'percentEmpty'
+  | 'percentNonEmpty'
+  | 'sum'
+  | 'average'
+  | 'median'
+  | 'min'
+  | 'max'
+  | 'range'
+  | 'countByOption'
+  | 'percentByOption'
 export type StatusCategory = 'todo' | 'in_progress' | 'complete'
 export type NumberFormat = 'number' | 'integer' | 'percent' | 'currency'
 export type DateDisplayFormat = 'full' | 'short' | 'mdy' | 'dmy' | 'ymd' | 'relative'
@@ -69,12 +83,7 @@ export interface FileValue {
   meta?: Record<string, unknown>
 }
 
-export interface AggregateSpec {
-  key: string
-  op: AggregateOperator
-  property?: CustomFieldId
-  scope?: AggregateScope
-}
+export type ViewCalc = Partial<Record<FieldId, CalculationMetric>>
 
 export interface Row {
   id: RecordId
@@ -227,7 +236,7 @@ export interface BucketState {
   collapsed?: boolean
 }
 
-export interface Grouping {
+export interface ViewGroup {
   field: FieldId
   mode: string
   bucketSort: BucketSort
@@ -236,19 +245,27 @@ export interface Grouping {
   buckets?: Readonly<Record<string, BucketState>>
 }
 
+export interface ViewDisplay {
+  fields: readonly FieldId[]
+}
+
 export interface ViewQuery {
   filter: Filter
   search: Search
   sorters: Sorter[]
-  group?: Grouping
+  group?: ViewGroup
 }
 
 export interface View {
   id: ViewId
   type: ViewType
   name: string
-  query: ViewQuery
-  aggregates: AggregateSpec[]
+  search: Search
+  filter: Filter
+  sort: Sorter[]
+  group?: ViewGroup
+  calc: ViewCalc
+  display: ViewDisplay
   options: import('./viewOptions').ViewOptions
   orders: RecordId[]
 }

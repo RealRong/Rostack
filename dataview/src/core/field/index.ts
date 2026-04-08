@@ -3,9 +3,9 @@ import type {
   FieldId,
   FilterOperator,
   FilterRule,
-  Grouping,
   CustomField,
-  Row
+  Row,
+  ViewGroup
 } from '../contracts/state'
 import {
   TITLE_FIELD_ID
@@ -106,7 +106,7 @@ export const isCustomField = (
 ): field is CustomField => Boolean(field && field.kind !== 'title')
 
 const resolveTitleGroupMeta = (
-  group?: Partial<Pick<Grouping, 'mode' | 'bucketSort' | 'bucketInterval'>>
+  group?: Partial<Pick<ViewGroup, 'mode' | 'bucketSort' | 'bucketInterval'>>
 ): FieldGroupMeta => {
   const kind = getKind('text')
   const mode = group?.mode && kind.group.modes.includes(group.mode)
@@ -189,7 +189,7 @@ export const isFieldFilterEffective = (
 export const resolveFieldGroupBucketEntries = (
   field: Field | undefined,
   value: unknown,
-  group?: Partial<Pick<Grouping, 'mode' | 'bucketSort' | 'bucketInterval'>>
+  group?: Partial<Pick<ViewGroup, 'mode' | 'bucketSort' | 'bucketInterval'>>
 ): readonly Bucket[] => {
   if (!isTitleField(field)) {
     return resolveGroupBucketEntries(field, value, group)
@@ -202,7 +202,7 @@ export const resolveFieldGroupBucketEntries = (
 
 export const resolveFieldGroupBucketDomain = (
   field: Field | undefined,
-  group?: Partial<Pick<Grouping, 'mode'>>
+  group?: Partial<Pick<ViewGroup, 'mode'>>
 ): readonly Bucket[] => {
   if (!isTitleField(field)) {
     return resolveGroupBucketDomain(field, group)
@@ -214,7 +214,7 @@ export const resolveFieldGroupBucketDomain = (
 
 export const getFieldGroupMeta = (
   field: Field | undefined,
-  group?: Partial<Pick<Grouping, 'mode' | 'bucketSort' | 'bucketInterval'>>
+  group?: Partial<Pick<ViewGroup, 'mode' | 'bucketSort' | 'bucketInterval'>>
 ): FieldGroupMeta => (
   isTitleField(field)
     ? resolveTitleGroupMeta(group)

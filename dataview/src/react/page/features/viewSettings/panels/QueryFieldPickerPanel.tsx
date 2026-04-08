@@ -28,14 +28,14 @@ export const QueryFieldPickerPanel = (props: {
     <div className="min-h-0 flex-1 overflow-hidden">
       <FieldPicker
         fields={props.kind === 'filter'
-          ? getAvailableFilterFields(fields, currentView?.query.filter.rules ?? [])
-          : getAvailableSorterFields(fields, currentView?.query.sorters ?? [])}
+          ? getAvailableFilterFields(fields, currentView?.filter.rules ?? [])
+          : getAvailableSorterFields(fields, currentView?.sort ?? [])}
         emptyMessage={props.kind === 'filter'
           ? meta.ui.fieldPicker.allFiltered
           : meta.ui.fieldPicker.allSorted}
         onSelect={fieldId => {
           if (props.kind === 'filter') {
-            currentViewDomain?.filters.add(fieldId)
+            currentViewDomain?.filter.add(fieldId)
             page.query.open({
               kind: 'filter',
               fieldId
@@ -44,7 +44,7 @@ export const QueryFieldPickerPanel = (props: {
             return
           }
 
-          currentViewDomain?.sorters.add(fieldId)
+          currentViewDomain?.sort.add(fieldId)
           page.query.open({
             kind: 'sort'
           })

@@ -141,6 +141,7 @@ export const useRowReorder = (): RowReorderApi => {
     },
     onFinish: input => {
       table.hover.clear()
+      table.rowRail.set(null)
       previewNodeRef.current = null
       if (!input.cancelled && selectionTargetRef.current) {
         dataView.selection.set([selectionTargetRef.current], {
@@ -177,8 +178,9 @@ export const useRowReorder = (): RowReorderApi => {
       x: input.event.clientX,
       y: input.event.clientY
     })
+    table.rowRail.set(null)
     drag.onPointerDown(input.rowId, input.event)
-  }, [capabilities.canRowDrag, currentSelection.ids, drag, resolveDragIds, table.dom, table.hover])
+  }, [capabilities.canRowDrag, currentSelection.ids, drag, resolveDragIds, table.dom, table.hover, table.rowRail])
 
   return useMemo(() => ({
     active: drag.dragIds.length > 0,

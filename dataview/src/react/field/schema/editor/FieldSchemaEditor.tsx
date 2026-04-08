@@ -10,6 +10,7 @@ import {
 import { Input } from '@ui/input'
 import { Menu, type MenuItem } from '@ui/menu'
 import { meta, renderMessage } from '@dataview/meta'
+import { FIELD_DROPDOWN_MENU_PROPS } from '../../dropdown'
 import { buildFieldKindMenuItems } from '../FieldKindPicker'
 import { buildFieldFormatMenuItems } from './FieldFormatSection'
 import { FieldOptionsSection } from './FieldOptionsSection'
@@ -47,6 +48,7 @@ export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
     label: renderMessage(meta.ui.field.editor.type),
     suffix: renderMessage(kind.message),
     size: 'lg',
+    ...FIELD_DROPDOWN_MENU_PROPS,
     items: buildFieldKindMenuItems({
       kind: field.kind,
       isTitleProperty: false,
@@ -75,8 +77,8 @@ export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
   return (
     <>
       <div className="px-2 pb-3 pt-3">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground">
+        <div className="flex items-center gap-3">
+          <div className="inline-flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground">
             <KindIcon className="size-4" size={16} strokeWidth={1.8} />
           </div>
           <div className="min-w-0 flex-1">

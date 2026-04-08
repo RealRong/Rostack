@@ -131,12 +131,11 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
     <Popover
       open={props.open}
       onOpenChange={props.onOpenChange}
-      initialFocus={-1}
       closeOnInteractOutside={!conditionOpen}
       mode="blocking"
       backdrop="transparent"
-      padding="none"
-      trigger={(
+    >
+      <Popover.Trigger>
         <QueryChip
           state={active ? 'active' : props.open ? 'open' : 'idle'}
           leading={<FieldIcon className="size-[14px] shrink-0" size={14} strokeWidth={1.8} />}
@@ -144,120 +143,123 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
         >
           {fieldLabel}
         </QueryChip>
-      )}
-      contentClassName="w-[320px]"
-    >
-      <div className="flex max-h-[72vh] flex-col">
-        <div className={cn(
-          'px-2.5 pt-2',
-          bodyLayout === 'none' ? 'pb-2' : 'pb-1'
-        )}>
-          <div className="flex items-center gap-1">
-            <div className="min-w-0 flex-1 text-sm gap-1 flex items-end truncate font-medium text-foreground">
-              {fieldLabel}
+      </Popover.Trigger>
+      <Popover.Content
+        initialFocus={-1}
+        padding="none"
+        contentClassName="w-[320px]"
+      >
+        <div className="flex max-h-[72vh] flex-col">
+          <div className={cn(
+            'px-2.5 pt-2',
+            bodyLayout === 'none' ? 'pb-2' : 'pb-1'
+          )}>
+            <div className="flex items-center gap-1">
+              <div className="min-w-0 flex-1 text-sm gap-1 flex items-end truncate font-medium text-foreground">
+                {fieldLabel}
 
-              {props.field && presentation.condition ? (
-                <Menu.Dropdown
-                  open={conditionOpen}
-                  onOpenChange={setConditionOpen}
-                  initialFocus={-1}
-                  placement="bottom-start"
-                  offset={6}
-                  size="md"
-                  items={conditionItems.map(item => ({
-                    kind: 'toggle' as const,
-                    key: item.id,
-                    label: renderMessage(item.message),
-                    checked: item.id === presentation.condition?.id,
-                    onSelect: () => {
-                      props.onChange(applyFieldFilterPreset(props.rule, props.field, item))
-                      setConditionOpen(false)
-                    }
-                  }))}
-                  trigger={(
-                    <div className="flex h-5 text-sm cursor-pointer items-center gap-1 rounded-md px-1 font-semibold text-muted-foreground transition-[background-color,color] hover:bg-hover hover:text-foreground">
-                      {renderMessage(presentation.condition.message)}
-                      <ChevronDown className="opacity-70" size={12} strokeWidth={2} />
-                    </div>
-                  )}
-                />
+                {props.field && presentation.condition ? (
+                  <Menu.Dropdown
+                    open={conditionOpen}
+                    onOpenChange={setConditionOpen}
+                    initialFocus={-1}
+                    placement="bottom-start"
+                    offset={6}
+                    size="md"
+                    items={conditionItems.map(item => ({
+                      kind: 'toggle' as const,
+                      key: item.id,
+                      label: renderMessage(item.message),
+                      checked: item.id === presentation.condition?.id,
+                      onSelect: () => {
+                        props.onChange(applyFieldFilterPreset(props.rule, props.field, item))
+                        setConditionOpen(false)
+                      }
+                    }))}
+                    trigger={(
+                      <div className="flex h-5 text-sm cursor-pointer items-center gap-1 rounded-md px-1 font-semibold text-muted-foreground transition-[background-color,color] hover:bg-hover hover:text-foreground">
+                        {renderMessage(presentation.condition.message)}
+                        <ChevronDown className="opacity-70" size={12} strokeWidth={2} />
+                      </div>
+                    )}
+                  />
+                ) : null}
+              </div>
+
+              {props.onRemove ? (
+                <Button
+                  size="icon"
+                  aria-label={renderMessage(meta.ui.filter.remove)}
+                  onClick={() => {
+                    props.onRemove?.()
+                    props.onOpenChange(false)
+                  }}
+                >
+                  <Trash size={14} strokeWidth={1.8} />
+                </Button>
               ) : null}
             </div>
-
-            {props.onRemove ? (
-              <Button
-                size="icon"
-                aria-label={renderMessage(meta.ui.filter.remove)}
-                onClick={() => {
-                  props.onRemove?.()
-                  props.onOpenChange(false)
-                }}
-              >
-                <Trash size={14} strokeWidth={1.8} />
-              </Button>
-            ) : null}
           </div>
-        </div>
 
-        {bodyLayout !== 'none' ? (
-          <div className={cn(
-            bodyLayout === 'inset' ? 'px-2.5 pb-2.5 pt-1' : 'px-1.5 pb-2 pt-1'
-          )}>
-            {editorKind === 'status' ? (
-              <StatusFilterPicker
-                field={props.field}
-                rule={props.rule}
-                onChange={props.onChange}
-              />
-            ) : editorKind === 'singleOption' ? (
-              <div className="flex flex-col gap-0.5">
-                {fieldOptions.length ? (
-                  fieldOptions.map(option => {
-                    const selected = selectedOption?.id === option.id
+          {bodyLayout !== 'none' ? (
+            <div className={cn(
+              bodyLayout === 'inset' ? 'px-2.5 pb-2.5 pt-1' : 'px-1.5 pb-2 pt-1'
+            )}>
+              {editorKind === 'status' ? (
+                <StatusFilterPicker
+                  field={props.field}
+                  rule={props.rule}
+                  onChange={props.onChange}
+                />
+              ) : editorKind === 'singleOption' ? (
+                <div className="flex flex-col gap-0.5">
+                  {fieldOptions.length ? (
+                    fieldOptions.map(option => {
+                      const selected = selectedOption?.id === option.id
 
-                    return (
-                      <Button
-                        key={option.id}
-                        onClick={() => {
-                          props.onChange({
-                            ...props.rule,
-                            value: option.id
-                          })
-                        }}
-                        layout="row"
-                        trailing={selected
-                          ? <Check className="size-4 text-foreground" size={16} strokeWidth={1.8} />
-                          : undefined}
-                        pressed={selected}
-                      >
-                        <FieldOptionTag
-                          label={option.name}
-                          color={option.color ?? undefined}
-                        />
-                      </Button>
-                    )
-                  })
-                ) : (
-                  <div className="px-1.5 py-2 text-[12px] text-muted-foreground">
-                    {renderMessage(meta.ui.filter.noOptions)}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <Input
-                value={draft}
-                onChange={event => {
-                  const nextDraft = event.target.value
-                  setDraft(nextDraft)
+                      return (
+                        <Button
+                          key={option.id}
+                          onClick={() => {
+                            props.onChange({
+                              ...props.rule,
+                              value: option.id
+                            })
+                          }}
+                          layout="row"
+                          trailing={selected
+                            ? <Check className="size-4 text-foreground" size={16} strokeWidth={1.8} />
+                            : undefined}
+                          pressed={selected}
+                        >
+                          <FieldOptionTag
+                            label={option.name}
+                            color={option.color ?? undefined}
+                          />
+                        </Button>
+                      )
+                    })
+                  ) : (
+                    <div className="px-1.5 py-2 text-[12px] text-muted-foreground">
+                      {renderMessage(meta.ui.filter.noOptions)}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Input
+                  value={draft}
+                  onChange={event => {
+                    const nextDraft = event.target.value
+                    setDraft(nextDraft)
 
-                  const nextRule = applyFilterDraft(props.rule, props.field, nextDraft)
-                  if (nextRule) {
-                    props.onChange(nextRule)
-                  }
-                }}
-                onBlur={() => {
-                  setDraft(committedDraft)
-                }}
+                    const nextRule = applyFilterDraft(props.rule, props.field, nextDraft)
+                    if (nextRule) {
+                      props.onChange(nextRule)
+                    }
+                  }}
+                  onBlur={() => {
+                    setDraft(committedDraft)
+                  }}
                 type={editorKind === 'date' ? 'date' : 'text'}
                 inputMode={editorKind === 'number' ? 'decimal' : undefined}
                 placeholder={presentation.value.placeholder
@@ -268,6 +270,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
           </div>
         ) : null}
       </div>
+      </Popover.Content>
     </Popover>
   )
 }

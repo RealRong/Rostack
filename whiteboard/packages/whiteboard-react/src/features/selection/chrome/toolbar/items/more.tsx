@@ -1,12 +1,7 @@
 import { Button } from '@ui'
 import { MoreHorizontal } from 'lucide-react'
-import type { SelectionMoreMenuSectionView } from '../../../../node/selection'
 import { ShapeMoreMenu } from '../../panels/ShapeMoreMenu'
 import type { ToolbarItemSpec } from './types'
-
-const filterStateSections = (
-  sections: readonly SelectionMoreMenuSectionView[]
-) => sections.filter((section) => section.key !== 'state')
 
 export const moreItem: ToolbarItemSpec = {
   key: 'more',
@@ -37,7 +32,7 @@ export const moreItem: ToolbarItemSpec = {
     closePanel
   }) => (
     <ShapeMoreMenu
-      sections={filterStateSections(context.menuSections)}
+      sections={context.menuSections}
       onClose={closePanel}
     />
   )

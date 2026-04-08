@@ -1,7 +1,7 @@
 import type {
   DataDoc,
-  Grouping,
   Field,
+  ViewGroup,
   Row,
   RecordId
 } from '../contracts'
@@ -27,7 +27,7 @@ const compareResolvedGroupBuckets = (
   left: Bucket,
   right: Bucket,
   field: Field | undefined,
-  group?: Partial<Pick<Grouping, 'bucketSort' | 'mode'>>
+  group?: Partial<Pick<ViewGroup, 'bucketSort' | 'mode'>>
 ) => {
   if (field?.kind === 'title') {
     const bucketSort = getFieldGroupMeta(field, group).sort || 'manual'
@@ -65,7 +65,7 @@ interface ObservedGroup {
 export const resolveGroupedRecords = (
   document: DataDoc,
   records: readonly Row[],
-  group: Grouping | undefined
+  group: ViewGroup | undefined
 ): ResolvedGroup[] => {
   if (!group) {
     return []

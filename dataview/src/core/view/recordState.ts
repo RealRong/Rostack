@@ -31,7 +31,7 @@ const sortRecords = (
   document: DataDoc,
   view?: View
 ) => {
-  const sorters = view?.query.sorters ?? []
+  const sorters = view?.sort ?? []
   const recordOrderIndex = new Map(
     getDocumentRecords(document).map((record, index) => [record.id, index] as const)
   )
@@ -52,7 +52,7 @@ const applyViewOrders = (
   records: readonly Row[],
   view: View | undefined
 ) => {
-  if (!view || view.query.sorters.length > 0) {
+  if (!view || view.sort.length > 0) {
     return [...records]
   }
 
@@ -80,10 +80,11 @@ const filterViewRecords = (
     return [...records]
   }
 
-  const query = view.query
+  const filter = view.filter
+  const search = view.search
   let nextRecords = [...records]
-  const filterMode = query.filter.mode
-  const effectiveFilterRules = query.filter.rules.filter(rule => (
+  const filterMode = filter.mode
+  const effectiveFilterRules = filter.rules.filter(rule => (
     isFieldFilterEffective(
       getDocumentFieldById(document, rule.field),
       rule.op,
@@ -98,8 +99,8 @@ const filterViewRecords = (
     })
   }
 
-  if (query.search.query.trim()) {
-    nextRecords = nextRecords.filter(record => matchGroupSearch(record, query.search, document))
+  if (search.query.trim()) {
+    nextRecords = nextRecords.filter(record => matchGroupSearch(record, search, document))
   }
 
   return nextRecords

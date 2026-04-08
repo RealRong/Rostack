@@ -12,12 +12,12 @@ const toMenuItems = (
       }]
     : []),
   {
-    kind: 'custom' as const,
+    kind: 'label' as const,
     key: `${section.key}:title`,
-    render: () => (
-      <div className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.02em] text-fg-muted">
+    label: (
+      <span className="block px-1.5 text-[11px] font-semibold uppercase tracking-[0.02em] text-fg-muted">
         {section.title}
-      </div>
+      </span>
     )
   },
   ...section.items.map((item) => ({

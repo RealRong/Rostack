@@ -22,6 +22,7 @@ import {
   FieldOptionTag,
 } from '@dataview/react/field/options'
 import { getStatusCategoryLabel } from '@dataview/core/field'
+import { FIELD_DROPDOWN_MENU_PROPS } from '../../dropdown'
 
 const moveItem = <Item,>(items: readonly Item[], from: number, to: number) => {
   const next = [...items]
@@ -100,8 +101,7 @@ export const FieldStatusOptionsSection = (props: {
                   className: editingOptionId === option.id
                     ? 'bg-hover text-fg'
                     : undefined,
-                  presentation: 'dropdown',
-                  placement: 'bottom-end',
+                  ...FIELD_DROPDOWN_MENU_PROPS,
                   offset: 8,
                   handleAriaLabel: renderMessage(meta.ui.field.options.reorder(
                     option.name.trim() || renderMessage(meta.ui.field.options.untitled)

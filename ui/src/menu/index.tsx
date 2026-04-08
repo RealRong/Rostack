@@ -22,6 +22,7 @@ export type {
   Props as MenuProps,
   ReorderItem as MenuReorderItem,
   ReorderProps as MenuReorderProps,
+  SelectionAppearance as MenuSelectionAppearance,
   SelectionMode as MenuSelectionMode,
   SubmenuItem as MenuSubmenuItem,
   SubmenuOpenPolicy as MenuSubmenuOpenPolicy,

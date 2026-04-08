@@ -25,7 +25,7 @@ export const KanbanView = (props: KanbanViewProps) => {
     columnMinHeight
   })
 
-  if (!controller.currentView.view.query.group) {
+  if (!controller.currentView.view.group) {
     return (
       <div style={contentInsetStyle}>
         <Empty />

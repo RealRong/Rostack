@@ -1,4 +1,5 @@
 import type { Slice, SliceInsertOptions } from '@whiteboard/core/document'
+import type { CanvasItemRef } from '@whiteboard/core/types'
 import type { Write } from '@engine-types/write'
 import type { EngineCommands } from '@engine-types/command'
 
@@ -15,6 +16,22 @@ export const document = ({
         type: 'insert',
         slice,
         options
+      },
+      origin: 'user'
+    }),
+    delete: (refs: CanvasItemRef[]) => write.apply({
+      domain: 'document',
+      command: {
+        type: 'delete',
+        refs
+      },
+      origin: 'user'
+    }),
+    duplicate: (refs: CanvasItemRef[]) => write.apply({
+      domain: 'document',
+      command: {
+        type: 'duplicate',
+        refs
       },
       origin: 'user'
     }),

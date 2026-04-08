@@ -13,15 +13,12 @@ export type {
   KanbanApi,
   KanbanCreateCardInput,
   KanbanMoveCardsInput,
-  ViewDisplayApi,
   ViewGalleryApi,
   ViewKanbanApi,
   FieldsEngineApi,
   RecordsEngineApi,
   ViewEngineApi,
   ViewOrderApi,
-  ViewQueryApi,
-  ViewSettingsApi,
   ViewTableApi,
   ViewsEngineApi
 } from './types'

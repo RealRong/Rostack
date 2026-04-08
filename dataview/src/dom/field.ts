@@ -22,9 +22,9 @@ export const fieldAnchor = (
 
   const rect = element.getBoundingClientRect()
   return {
-    x: Math.round(rect.left) - 2.5,
-    y: Math.round(rect.top) - 2,
-    width: Math.round(rect.width) + 5
+    x: Math.round(rect.left) - 2,
+    y: Math.round(rect.top),
+    width: Math.round(rect.width) + 4
   }
 }
 

@@ -11,10 +11,7 @@ import {
   buildNodeDuplicateOperations,
   createNodeFieldsUpdateOperation,
   createNodeUpdateOperation,
-  buildNodeGroupOperations,
   buildMoveSet,
-  buildNodeUngroupManyOperations,
-  buildNodeUngroupOperations,
   buildOwnerOps,
   expandNodeSelection,
   isNodeUpdateEmpty,
@@ -25,31 +22,18 @@ import {
   listNodes,
   getNode,
   isNodeEdgeEnd,
-  type CanvasItemRef,
   type EdgeId,
-  type GroupId,
   type Node,
   type NodeId,
 } from '@whiteboard/core/types'
-import {
-  bringOrderForward,
-  bringOrderToFront,
-  sanitizeOrderIds,
-  sendOrderToBack,
-  sendOrderBackward
-} from '@whiteboard/core/utils'
 import { DEFAULT_TUNING } from '../../config'
 
 type NodeCommand = WriteCommandMap['node']
 type CreateCommand = Extract<NodeCommand, { type: 'create' }>
-type GroupCommand = Extract<NodeCommand, { type: 'group.create' }>
-type UngroupCommand = Extract<NodeCommand, { type: 'group.ungroup' }>
-type UngroupManyCommand = Extract<NodeCommand, { type: 'group.ungroupMany' }>
 type MoveCommand = Extract<NodeCommand, { type: 'move' }>
 type UpdateManyCommand = Extract<NodeCommand, { type: 'updateMany' }>
 type DeleteCascadeCommand = Extract<NodeCommand, { type: 'deleteCascade' }>
 type DuplicateCommand = Extract<NodeCommand, { type: 'duplicate' }>
-type OrderCommand = Extract<NodeCommand, { type: 'order' }>
 type AlignCommand = Extract<NodeCommand, { type: 'align' }>
 type DistributeCommand = Extract<NodeCommand, { type: 'distribute' }>
 
@@ -58,13 +42,6 @@ export const translateNode = <C extends NodeCommand>(
   ctx: WriteTranslateContext
 ): TranslateResult<NodeWriteOutput<C>> => {
   const doc = ctx.doc
-  const serializeRef = (ref: CanvasItemRef) => `${ref.kind}:${ref.id}`
-  const parseRef = (key: string): CanvasItemRef => {
-    const [kind, id] = key.split(':')
-    return kind === 'edge'
-      ? { kind: 'edge', id }
-      : { kind: 'node', id }
-  }
 
   const create = (command: CreateCommand): TranslateResult<{ nodeId: NodeId }> => {
     const planned = buildNodeCreateOperation({
@@ -98,44 +75,6 @@ export const translateNode = <C extends NodeCommand>(
       {
         nodeId: planned.data.nodeId
       }
-    )
-  }
-
-  const group = (command: GroupCommand): TranslateResult<{ groupId: GroupId }> => {
-    const nodeCount = command.target.nodeIds?.length ?? 0
-    const edgeCount = command.target.edgeIds?.length ?? 0
-    if (nodeCount + edgeCount < 2) {
-      return cancelled('At least two items are required.')
-    }
-
-    return fromOps(
-      buildNodeGroupOperations({
-        target: command.target,
-        doc,
-        createGroupId: ctx.ids.group
-      }),
-      ({ groupId }) => ({ groupId })
-    )
-  }
-
-  const ungroup = (
-    command: UngroupCommand
-  ): TranslateResult<{ nodeIds: NodeId[], edgeIds: EdgeId[] }> =>
-    fromOps(
-      buildNodeUngroupOperations(command.id, doc),
-      ({ nodeIds, edgeIds }) => ({ nodeIds, edgeIds })
-    )
-
-  const ungroupMany = (
-    command: UngroupManyCommand
-  ): TranslateResult<{ nodeIds: NodeId[], edgeIds: EdgeId[] }> => {
-    if (!command.ids.length) {
-      return cancelled('No groups selected.')
-    }
-
-    return fromOps(
-      buildNodeUngroupManyOperations(command.ids, doc),
-      ({ nodeIds, edgeIds }) => ({ nodeIds, edgeIds })
     )
   }
 
@@ -259,39 +198,6 @@ export const translateNode = <C extends NodeCommand>(
     return fromOps(result)
   }
 
-  const order = (command: OrderCommand): TranslateResult => {
-    const current = doc.order.map(serializeRef)
-    const target = sanitizeOrderIds(command.ids).map((id) => serializeRef({
-      kind: 'node',
-      id
-    }))
-    let nextOrder: string[]
-    switch (command.mode) {
-      case 'set':
-        nextOrder = target
-        break
-      case 'front':
-        nextOrder = bringOrderToFront(current, target) as NodeId[]
-        break
-      case 'back':
-        nextOrder = sendOrderToBack(current, target) as NodeId[]
-        break
-      case 'forward':
-        nextOrder = bringOrderForward(current, target) as NodeId[]
-        break
-      case 'backward':
-        nextOrder = sendOrderBackward(current, target) as NodeId[]
-        break
-      default:
-        nextOrder = target
-        break
-    }
-    return success([{
-      type: 'canvas.order.set',
-      refs: nextOrder.map(parseRef)
-    }])
-  }
-
   const deleteCascade = (command: DeleteCascadeCommand): TranslateResult => {
     if (!command.ids.length) {
       return cancelled('No nodes selected.')
@@ -382,14 +288,6 @@ export const translateNode = <C extends NodeCommand>(
       return deleteCascade(command) as TranslateResult<NodeWriteOutput<C>>
     case 'duplicate':
       return duplicate(command) as TranslateResult<NodeWriteOutput<C>>
-    case 'group.create':
-      return group(command) as TranslateResult<NodeWriteOutput<C>>
-    case 'group.ungroup':
-      return ungroup(command) as TranslateResult<NodeWriteOutput<C>>
-    case 'group.ungroupMany':
-      return ungroupMany(command) as TranslateResult<NodeWriteOutput<C>>
-    case 'order':
-      return order(command) as TranslateResult<NodeWriteOutput<C>>
     default:
       return invalid('Unsupported node action.') as TranslateResult<NodeWriteOutput<C>>
   }

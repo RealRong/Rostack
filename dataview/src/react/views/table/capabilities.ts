@@ -42,8 +42,8 @@ export const createCapabilities = (options: {
       canHover,
       canRowDrag: !locked && Boolean(
         currentView
-        && !currentView.view.query.sorters.length
-        && !currentView.view.query.group
+        && !currentView.view.sort.length
+        && !currentView.view.group
       ),
       canColumnResize: !locked,
       showFillHandle

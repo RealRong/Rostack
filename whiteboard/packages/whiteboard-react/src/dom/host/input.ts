@@ -58,6 +58,21 @@ const resolveElementAtPoint = (
   )
 }
 
+const resolveElementsAtPoint = (
+  container: Element,
+  input: ClientPointInput
+) => {
+  const document = container.ownerDocument
+  if (!document?.elementsFromPoint) {
+    const element = resolveElementAtPoint(container, input)
+    return element ? [element] : []
+  }
+
+  return document.elementsFromPoint(input.clientX, input.clientY)
+    .map((element) => resolveElement(element, container))
+    .filter((element): element is Element => Boolean(element))
+}
+
 const readPointerSnapshot = (
   editor: WhiteboardRuntime,
   input: ClientPointInput
@@ -79,6 +94,43 @@ const toPointerSample = (
   input: ClientPointInput
 ): PointerSample => readPointerSnapshot(editor, input)
 
+const isSelectedItemPick = (
+  editor: WhiteboardRuntime,
+  pick: EditorPick
+) => {
+  const selection = editor.read.selection.target.get()
+
+  if (pick.kind === 'node') {
+    return selection.nodeIds.includes(pick.id)
+  }
+
+  if (pick.kind === 'edge') {
+    return selection.edgeIds.includes(pick.id)
+  }
+
+  return false
+}
+
+const resolveSelectionBoxUnderlyingPick = (
+  editor: WhiteboardRuntime,
+  pick: PickRegistry,
+  container: Element,
+  elements: readonly Element[]
+) => {
+  for (const element of elements) {
+    const nextPick = pick.element(element, container)
+    if (!nextPick || nextPick.kind === 'selection-box') {
+      continue
+    }
+
+    if (isSelectedItemPick(editor, nextPick)) {
+      return nextPick
+    }
+  }
+
+  return undefined
+}
+
 export const resolvePoint = ({
   editor,
   pick,
@@ -90,12 +142,25 @@ export const resolvePoint = ({
   container: Element
   event: TargetEvent
 }): ResolvedPoint => {
-  const element = resolveElementAtPoint(container, event)
+  const elements = resolveElementsAtPoint(container, event)
+  const element = elements[0]
+    ?? resolveElementAtPoint(container, event)
     ?? resolveElement(event.target, container)
   const point = readPointerSnapshot(editor, event)
+  const primaryPick = pick.element(element, container) ?? BackgroundPick
+  const resolvedPick =
+    primaryPick.kind === 'selection-box'
+    && primaryPick.part === 'body'
+      ? resolveSelectionBoxUnderlyingPick(
+          editor,
+          pick,
+          container,
+          elements.slice(1)
+        ) ?? primaryPick
+      : primaryPick
 
   return {
-    pick: pick.element(element, container) ?? BackgroundPick,
+    pick: resolvedPick,
     client: point.client,
     screen: point.screen,
     world: point.world,

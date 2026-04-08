@@ -15,17 +15,9 @@ import {
 import { getNodeRect } from '@whiteboard/core/geometry'
 import { getNodeGeometry } from '@whiteboard/core/node'
 import {
-  bringOrderForward,
-  bringOrderToFront,
-  sanitizeOrderIds,
-  sendOrderBackward,
-  sendOrderToBack
-} from '@whiteboard/core/utils'
-import {
   getEdge,
   getNode,
   isNodeEdgeEnd,
-  type CanvasItemRef,
   type Document,
   type Edge,
   type EdgeId,
@@ -35,7 +27,6 @@ import {
 
 type EdgeCommand = WriteCommandMap['edge']
 type UpdateManyCommand = Extract<EdgeCommand, { type: 'updateMany' }>
-type OrderCommand = Extract<EdgeCommand, { type: 'order' }>
 
 const readSpatialNode = (
   node: Node | undefined
@@ -105,13 +96,6 @@ export const translateEdge = <C extends EdgeCommand>(
   ctx: WriteTranslateContext
 ): TranslateResult<EdgeWriteOutput<C>> => {
   const doc = ctx.doc
-  const serializeRef = (ref: CanvasItemRef) => `${ref.kind}:${ref.id}`
-  const parseRef = (key: string): CanvasItemRef => {
-    const [kind, id] = key.split(':')
-    return kind === 'edge'
-      ? { kind: 'edge', id }
-      : { kind: 'node', id }
-  }
 
   const updateMany = (command: UpdateManyCommand): TranslateResult => {
     const operations = toUpdateOperations(command.updates)
@@ -130,39 +114,6 @@ export const translateEdge = <C extends EdgeCommand>(
     const patch = buildPatch(edge)
     if (!patch) return cancelled('No route patch generated.')
     return success([{ type: 'edge.update', id: edgeId, patch }])
-  }
-
-  const order = (command: OrderCommand): TranslateResult => {
-    const current = doc.order.map(serializeRef)
-    const target = sanitizeOrderIds(command.ids).map((id) => serializeRef({
-      kind: 'edge',
-      id
-    }))
-    let nextOrder: string[]
-    switch (command.mode) {
-      case 'set':
-        nextOrder = target
-        break
-      case 'front':
-        nextOrder = bringOrderToFront(current, target) as EdgeId[]
-        break
-      case 'back':
-        nextOrder = sendOrderToBack(current, target) as EdgeId[]
-        break
-      case 'forward':
-        nextOrder = bringOrderForward(current, target) as EdgeId[]
-        break
-      case 'backward':
-        nextOrder = sendOrderBackward(current, target) as EdgeId[]
-        break
-      default:
-        nextOrder = target
-        break
-    }
-    return success([{
-      type: 'canvas.order.set',
-      refs: nextOrder.map(parseRef)
-    }])
   }
 
   switch (command.type) {
@@ -184,8 +135,6 @@ export const translateEdge = <C extends EdgeCommand>(
       return updateMany(command) as TranslateResult<EdgeWriteOutput<C>>
     case 'delete':
       return success(command.ids.map((id) => ({ type: 'edge.delete' as const, id }))) as TranslateResult<EdgeWriteOutput<C>>
-    case 'order':
-      return order(command) as TranslateResult<EdgeWriteOutput<C>>
     case 'route': {
       switch (command.mode) {
         case 'insert': {

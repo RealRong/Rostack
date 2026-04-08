@@ -7,6 +7,8 @@ import type {
 const DIVIDER = { kind: 'divider' } as const
 
 const shapeRecipe = [
+  { kind: 'item', key: 'filter' },
+  DIVIDER,
   { kind: 'item', key: 'shape-kind' },
   DIVIDER,
   { kind: 'item', key: 'font-size' },
@@ -24,6 +26,8 @@ const shapeRecipe = [
 ] satisfies readonly ToolbarRecipeItem[]
 
 const textRecipe = [
+  { kind: 'item', key: 'filter' },
+  DIVIDER,
   { kind: 'item', key: 'font-size' },
   DIVIDER,
   { kind: 'item', key: 'bold' },
@@ -36,6 +40,8 @@ const textRecipe = [
 ] satisfies readonly ToolbarRecipeItem[]
 
 const stickyRecipe = [
+  { kind: 'item', key: 'filter' },
+  DIVIDER,
   { kind: 'item', key: 'text-color' },
   { kind: 'item', key: 'fill' },
   DIVIDER,
@@ -44,6 +50,8 @@ const stickyRecipe = [
 ] satisfies readonly ToolbarRecipeItem[]
 
 const frameRecipe = [
+  { kind: 'item', key: 'filter' },
+  DIVIDER,
   { kind: 'item', key: 'text-color' },
   DIVIDER,
   { kind: 'item', key: 'stroke' },
@@ -54,6 +62,8 @@ const frameRecipe = [
 ] satisfies readonly ToolbarRecipeItem[]
 
 const drawRecipe = [
+  { kind: 'item', key: 'filter' },
+  DIVIDER,
   { kind: 'item', key: 'stroke' },
   DIVIDER,
   { kind: 'item', key: 'lock' },
@@ -61,11 +71,15 @@ const drawRecipe = [
 ] satisfies readonly ToolbarRecipeItem[]
 
 const groupRecipe = [
+  { kind: 'item', key: 'filter' },
+  DIVIDER,
   { kind: 'item', key: 'lock' },
   { kind: 'item', key: 'more' }
 ] satisfies readonly ToolbarRecipeItem[]
 
 const mixedRecipe = [
+  { kind: 'item', key: 'filter' },
+  DIVIDER,
   { kind: 'item', key: 'lock' },
   { kind: 'item', key: 'more' }
 ] satisfies readonly ToolbarRecipeItem[]
@@ -75,6 +89,8 @@ const isItemVisible = (
   key: ToolbarItemKey
 ) => {
   switch (key) {
+    case 'filter':
+      return Boolean(context.filter)
     case 'shape-kind':
       return context.canChangeShapeKind
     case 'font-size':
@@ -95,14 +111,6 @@ const isItemVisible = (
       return context.nodeIds.length > 0
     case 'more':
       return context.menuSections.length > 0
-    case 'align':
-      return false
-    case 'distribute':
-      return false
-    case 'order':
-      return false
-    case 'group':
-      return false
   }
 }
 

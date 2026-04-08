@@ -63,6 +63,14 @@ export type DocumentWriteCommand =
       options?: SliceInsertOptions
     }
   | {
+      type: 'delete'
+      refs: CanvasItemRef[]
+    }
+  | {
+      type: 'duplicate'
+      refs: CanvasItemRef[]
+    }
+  | {
       type: 'background'
       background?: Document['background']
     }
@@ -108,25 +116,27 @@ export type NodeWriteCommand =
       type: 'duplicate'
       ids: NodeId[]
     }
+
+export type GroupWriteCommand =
   | {
-      type: 'group.create'
+      type: 'merge'
       target: {
         nodeIds?: readonly NodeId[]
         edgeIds?: readonly EdgeId[]
       }
     }
   | {
-      type: 'group.ungroup'
-      id: NodeId
-    }
-  | {
-      type: 'group.ungroupMany'
-      ids: NodeId[]
-    }
-  | {
       type: 'order'
-      mode: 'set' | 'front' | 'back' | 'forward' | 'backward'
-      ids: NodeId[]
+      mode: CanvasOrderMode
+      ids: GroupId[]
+    }
+  | {
+      type: 'ungroup'
+      id: GroupId
+    }
+  | {
+      type: 'ungroupMany'
+      ids: GroupId[]
     }
 
 export type EdgeBatchUpdate = {
@@ -153,11 +163,6 @@ export type EdgeWriteCommand =
       ids: EdgeId[]
     }
   | {
-      type: 'order'
-      mode: 'set' | 'front' | 'back' | 'forward' | 'backward'
-      ids: EdgeId[]
-    }
-  | {
       type: 'route'
       mode: 'insert' | 'move' | 'remove' | 'clear'
       edgeId: EdgeId
@@ -170,12 +175,14 @@ export type MindmapWriteCommand = MindmapApplyCommand
 export type WriteDomain =
   | 'document'
   | 'node'
+  | 'group'
   | 'edge'
   | 'mindmap'
 
 export type WriteCommandMap = {
   document: DocumentWriteCommand
   node: NodeWriteCommand
+  group: GroupWriteCommand
   edge: EdgeWriteCommand
   mindmap: MindmapWriteCommand
 }
@@ -192,6 +199,8 @@ export type WriteInput<
 export type DocumentWriteOutput<C extends DocumentWriteCommand = DocumentWriteCommand> =
   C extends { type: 'insert' }
     ? Omit<SliceInsertResult, 'operations'>
+    : C extends { type: 'duplicate' }
+      ? Omit<SliceInsertResult, 'operations'>
     : void
 
 export type NodeWriteOutput<C extends NodeWriteCommand = NodeWriteCommand> =
@@ -202,14 +211,17 @@ export type NodeWriteOutput<C extends NodeWriteCommand = NodeWriteCommand> =
           nodeIds: readonly NodeId[]
           edgeIds: readonly EdgeId[]
         }
-      : C extends { type: 'group.create' }
-        ? { groupId: GroupId }
-        : C extends ({ type: 'group.ungroup' } | { type: 'group.ungroupMany' })
-          ? {
-              nodeIds: readonly NodeId[]
-              edgeIds: readonly EdgeId[]
-            }
-          : void
+      : void
+
+export type GroupWriteOutput<C extends GroupWriteCommand = GroupWriteCommand> =
+  C extends { type: 'merge' }
+    ? { groupId: GroupId }
+    : C extends ({ type: 'ungroup' } | { type: 'ungroupMany' })
+      ? {
+          nodeIds: readonly NodeId[]
+          edgeIds: readonly EdgeId[]
+        }
+      : void
 
 export type EdgeWriteOutput<C extends EdgeWriteCommand = EdgeWriteCommand> =
   C extends { type: 'create' }
@@ -241,6 +253,8 @@ export type WriteOutput<
     ? DocumentWriteOutput<Extract<C, DocumentWriteCommand>>
     : D extends 'node'
       ? NodeWriteOutput<Extract<C, NodeWriteCommand>>
+      : D extends 'group'
+        ? GroupWriteOutput<Extract<C, GroupWriteCommand>>
       : D extends 'edge'
       ? EdgeWriteOutput<Extract<C, EdgeWriteCommand>>
       : D extends 'mindmap'
@@ -279,11 +293,15 @@ export type EngineCommands = {
       slice: Slice,
       options?: SliceInsertOptions
     ) => CommandResult<Omit<SliceInsertResult, 'operations'>>
+    delete: (refs: CanvasItemRef[]) => CommandResult
+    duplicate: (refs: CanvasItemRef[]) => CommandResult<Omit<SliceInsertResult, 'operations'>>
     background: {
       set: (background?: Document['background']) => CommandResult
     }
   }
   canvas: {
+    delete: (refs: CanvasItemRef[]) => CommandResult
+    duplicate: (refs: CanvasItemRef[]) => CommandResult<Omit<SliceInsertResult, 'operations'>>
     order: {
       set: (refs: CanvasItemRef[]) => CommandResult
       bringToFront: (refs: CanvasItemRef[]) => CommandResult
@@ -291,6 +309,27 @@ export type EngineCommands = {
       bringForward: (refs: CanvasItemRef[]) => CommandResult
       sendBackward: (refs: CanvasItemRef[]) => CommandResult
     }
+  }
+  group: {
+    merge: (target: {
+      nodeIds?: readonly NodeId[]
+      edgeIds?: readonly EdgeId[]
+    }) => CommandResult<{ groupId: GroupId }>
+    order: {
+      set: (ids: GroupId[]) => CommandResult
+      bringToFront: (ids: GroupId[]) => CommandResult
+      sendToBack: (ids: GroupId[]) => CommandResult
+      bringForward: (ids: GroupId[]) => CommandResult
+      sendBackward: (ids: GroupId[]) => CommandResult
+    }
+    ungroup: (id: GroupId) => CommandResult<{
+      nodeIds: readonly NodeId[]
+      edgeIds: readonly EdgeId[]
+    }>
+    ungroupMany: (ids: GroupId[]) => CommandResult<{
+      nodeIds: readonly NodeId[]
+      edgeIds: readonly EdgeId[]
+    }>
   }
   history: {
     get: () => HistoryState
@@ -315,13 +354,6 @@ export type EngineCommands = {
       remove: (edgeId: EdgeId, index: number) => CommandResult
       clear: (edgeId: EdgeId) => CommandResult
     }
-    order: {
-      set: (ids: EdgeId[]) => CommandResult
-      bringToFront: (ids: EdgeId[]) => CommandResult
-      sendToBack: (ids: EdgeId[]) => CommandResult
-      bringForward: (ids: EdgeId[]) => CommandResult
-      sendBackward: (ids: EdgeId[]) => CommandResult
-    }
   }
   node: {
     create: (payload: NodeInput) => CommandResult<{ nodeId: NodeId }>
@@ -345,27 +377,6 @@ export type EngineCommands = {
       nodeIds: readonly NodeId[]
       edgeIds: readonly EdgeId[]
     }>
-    group: {
-      create: (target: {
-        nodeIds?: readonly NodeId[]
-        edgeIds?: readonly EdgeId[]
-      }) => CommandResult<{ groupId: GroupId }>
-      ungroup: (id: NodeId) => CommandResult<{
-        nodeIds: readonly NodeId[]
-        edgeIds: readonly EdgeId[]
-      }>
-      ungroupMany: (ids: NodeId[]) => CommandResult<{
-        nodeIds: readonly NodeId[]
-        edgeIds: readonly EdgeId[]
-      }>
-    }
-    order: {
-      set: (ids: NodeId[]) => CommandResult
-      bringToFront: (ids: NodeId[]) => CommandResult
-      sendToBack: (ids: NodeId[]) => CommandResult
-      bringForward: (ids: NodeId[]) => CommandResult
-      sendBackward: (ids: NodeId[]) => CommandResult
-    }
   }
   mindmap: MindmapCommands
 }

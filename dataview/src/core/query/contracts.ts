@@ -1,11 +1,21 @@
 import type {
   BucketSort,
   Field,
-  Grouping,
+  Filter,
+  Search,
+  Sorter,
+  ViewGroup,
   ViewQuery as StoredGroupViewQuery
-} from '@dataview/core/contracts'
+} from '@dataview/core/contracts/state'
 
-export type ViewQuery = StoredGroupViewQuery
+export interface ViewQuery {
+  search: Search
+  filter: Filter
+  sort: Sorter[]
+  group?: ViewGroup
+}
+
+export type StoredViewQuery = StoredGroupViewQuery
 
 export interface ResolvedViewGroupState {
   field?: Field
@@ -16,4 +26,4 @@ export interface ResolvedViewGroupState {
   showEmpty?: boolean
 }
 
-export type ViewGroupPatch = Pick<Grouping, 'mode' | 'bucketSort' | 'bucketInterval' | 'showEmpty'>
+export type ViewGroupPatch = Pick<ViewGroup, 'mode' | 'bucketSort' | 'bucketInterval' | 'showEmpty'>

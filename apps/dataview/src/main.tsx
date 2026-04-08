@@ -45,6 +45,7 @@ const createFields = (): CustomField[] => ([
     id: FIELD_STATUS,
     name: 'Status',
     kind: 'status',
+    defaultOptionId: 'todo',
     options: STATUS_OPTIONS.map(option => ({ ...option }))
   },
   {
@@ -106,22 +107,20 @@ const createDefaultDocument = (): DataDoc => {
           id: VIEW_TABLE,
           type: 'table',
           name: 'Tasks',
-          query: {
-            filter: {
-              mode: 'and',
-              rules: []
-            },
-            search: {
-              query: ''
-            },
-            sorters: []
+          filter: {
+            mode: 'and',
+            rules: []
           },
-          aggregates: [],
+          search: {
+            query: ''
+          },
+          sort: [],
+          calc: {},
+          display: {
+            fields: tableFieldIds
+          },
           options: {
-            ...createDefaultViewOptions('table', fields),
-            display: {
-              fieldIds: tableFieldIds
-            }
+            ...createDefaultViewOptions('table', fields)
           },
           orders: []
         },
@@ -129,27 +128,25 @@ const createDefaultDocument = (): DataDoc => {
           id: VIEW_KANBAN,
           type: 'kanban',
           name: 'Board',
-          query: {
-            filter: {
-              mode: 'and',
-              rules: []
-            },
-            search: {
-              query: ''
-            },
-            sorters: [],
-            group: {
-              field: FIELD_STATUS,
-              mode: 'option',
-              bucketSort: 'manual'
-            }
+          filter: {
+            mode: 'and',
+            rules: []
           },
-          aggregates: [],
+          search: {
+            query: ''
+          },
+          sort: [],
+          group: {
+            field: FIELD_STATUS,
+            mode: 'option',
+            bucketSort: 'manual'
+          },
+          calc: {},
+          display: {
+            fields: [FIELD_POINTS]
+          },
           options: {
-            ...createDefaultViewOptions('kanban', fields),
-            display: {
-              fieldIds: [FIELD_POINTS]
-            }
+            ...createDefaultViewOptions('kanban', fields)
           },
           orders: []
         }

@@ -6,15 +6,16 @@ import type {
 import type { Rect } from '@whiteboard/core/types'
 import type { SelectionAffordance } from '@whiteboard/core/selection'
 import type {
-  NodeSelectionCan,
   NodeSummary,
   NodeTypeSummary
 } from './summary'
 import {
-  readNodeLockLabel,
-  readNodeSelectionCan,
   readNodeSummary
 } from './summary'
+import {
+  type SelectionCan,
+  readSelectionCan
+} from '../selection/capability'
 import {
   useEdit,
   useEditor,
@@ -31,9 +32,11 @@ import type { NodeRegistry } from '../../types/node'
 import type { ClipboardBridge } from '../../runtime/bridge/clipboard'
 import { selectNodesByTypeKey } from './actions'
 import {
-  duplicateNodesAndSelect,
-  groupSelectionAndSelect,
-  ungroupNodesAndSelect
+  deleteSelectionAndClear,
+  duplicateSelectionAndSelect,
+  mergeGroupSelectionAndSelect,
+  orderSelection,
+  ungroupSelectionAndSelect
 } from '../../runtime/commands'
 
 type EditTarget = ReturnType<Editor['state']['edit']['get']>
@@ -45,7 +48,8 @@ type BaseSelection = {
 }
 type Tool = ReturnType<Editor['state']['tool']['get']>
 
-export type SelectionFilterView = {
+export type SelectionToolbarFilterView = {
+  label: string
   types: readonly NodeTypeSummary[]
   onSelect: (key: string) => unknown
 }
@@ -64,25 +68,14 @@ export type SelectionMoreMenuSectionView = {
   items: readonly SelectionMoreMenuItemView[]
 }
 
-export type SelectionLayoutView = {
-  canAlign: boolean
-  canDistribute: boolean
-  onAlign: (mode: NodeAlignMode) => unknown
-  onDistribute: (mode: NodeDistributeMode) => unknown
-}
-
-export type SelectionMenuView = {
-  summary: NodeSummary
-  can: NodeSelectionCan
-  filter?: SelectionFilterView
+export type SelectionToolbarView = {
+  filter?: SelectionToolbarFilterView
   moreSections: readonly SelectionMoreMenuSectionView[]
-  layout: SelectionLayoutView
 }
 
 type SelectionView = BaseSelection & {
-  menu?: SelectionMenuView
+  toolbar?: SelectionToolbarView
   nodeSummary: NodeSummary
-  nodeCan: NodeSelectionCan
   boxState: SelectionBoxState
 }
 
@@ -118,50 +111,71 @@ const EMPTY_SUMMARY: NodeSummary = {
   mixed: false
 }
 
-const EMPTY_CAN: NodeSelectionCan = {
-  fill: false,
-  stroke: false,
-  text: false,
-  group: false,
-  align: false,
-  distribute: false,
+const EMPTY_SELECTION_CAN: SelectionCan = {
+  order: false,
   makeGroup: false,
   ungroup: false,
-  order: false,
-  filter: false,
-  lock: false,
   copy: false,
   cut: false,
   duplicate: false,
-  delete: false
+  delete: false,
+  align: false,
+  distribute: false,
+  wholeGroupIds: []
 }
+
+const ORDER_ITEMS = [
+  { key: 'order.front', label: 'Bring to front', mode: 'front' as const },
+  { key: 'order.forward', label: 'Bring forward', mode: 'forward' as const },
+  { key: 'order.backward', label: 'Send backward', mode: 'backward' as const },
+  { key: 'order.back', label: 'Send to back', mode: 'back' as const }
+] as const
+
+const ALIGN_ITEMS = [
+  { key: 'layout.align.top', label: 'Align top', mode: 'top' as const },
+  { key: 'layout.align.left', label: 'Align left', mode: 'left' as const },
+  { key: 'layout.align.right', label: 'Align right', mode: 'right' as const },
+  { key: 'layout.align.bottom', label: 'Align bottom', mode: 'bottom' as const },
+  { key: 'layout.align.horizontal', label: 'Align horizontal center', mode: 'horizontal' as const },
+  { key: 'layout.align.vertical', label: 'Align vertical center', mode: 'vertical' as const }
+] as const
+
+const DISTRIBUTE_ITEMS = [
+  {
+    key: 'layout.distribute.horizontal',
+    label: 'Distribute horizontally',
+    mode: 'horizontal' as const
+  },
+  {
+    key: 'layout.distribute.vertical',
+    label: 'Distribute vertically',
+    mode: 'vertical' as const
+  }
+] as const
 
 const bindAsyncClose = <Args extends unknown[]>(
   action: (...args: Args) => unknown
 ) => (...args: Args) => action(...args)
 
-const toCanvasNodeRefs = (
-  nodeIds: readonly string[]
-) => nodeIds.map((id) => ({
-  kind: 'node' as const,
-  id
-}))
+const readObjectCountLabel = (
+  count: number
+) => count === 1 ? '1 object' : `${count} objects`
 
-const readSelectionMenuView = ({
+const readSelectionToolbarView = ({
   editor,
   clipboard,
   selection,
   summary,
-  can,
+  selectionCan,
   registry
 }: {
   editor: Editor
   clipboard: ClipboardBridge
   selection: BaseSelection
   summary: NodeSummary
-  can: NodeSelectionCan
+  selectionCan: SelectionCan
   registry: Pick<NodeRegistry, 'get'>
-}): SelectionMenuView | undefined => {
+}): SelectionToolbarView | undefined => {
   const nodes = selection.summary.items.nodes
   const nodeIds = summary.ids
 
@@ -169,9 +183,9 @@ const readSelectionMenuView = ({
     return undefined
   }
 
-  const groupIds = selection.summary.groups.ids
-  const filter = can.filter
+  const filter = summary.count > 1 && summary.types.length > 1
     ? {
+        label: readObjectCountLabel(summary.count),
         types: summary.types,
         onSelect: bindAsyncClose((key: string) => {
           selectNodesByTypeKey({
@@ -181,115 +195,104 @@ const readSelectionMenuView = ({
             key
           })
         })
-      } satisfies SelectionFilterView
+      } satisfies SelectionToolbarFilterView
     : undefined
 
   const order = (mode: 'front' | 'forward' | 'backward' | 'back') => {
-    const refs = toCanvasNodeRefs(nodeIds)
-    if (mode === 'front') {
-      editor.commands.canvas.order.bringToFront(refs)
-      return
-    }
-    if (mode === 'forward') {
-      editor.commands.canvas.order.bringForward(refs)
-      return
-    }
-    if (mode === 'backward') {
-      editor.commands.canvas.order.sendBackward(refs)
-      return
-    }
-
-    editor.commands.canvas.order.sendToBack(refs)
+    orderSelection(editor, {
+      nodeIds
+    }, mode === 'back' ? 'back' : mode)
   }
 
   return {
-    summary,
-    can,
     filter,
     moreSections: [
-      ...(can.order
+      ...(selectionCan.order
         ? [
             {
               key: 'layer',
               title: 'Layer',
+              items: ORDER_ITEMS.map((item) => ({
+                key: item.key,
+                label: item.label,
+                onSelect: () => {
+                  order(item.mode)
+                }
+              }))
+            } satisfies SelectionMoreMenuSectionView
+          ]
+        : []),
+      ...((selectionCan.makeGroup || selectionCan.ungroup)
+        ? [
+            {
+              key: 'structure',
+              title: 'Structure',
               items: [
                 {
-                  key: 'order.front',
-                  label: 'Bring to front',
+                  key: 'structure.group',
+                  label: 'Group',
+                  disabled: !selectionCan.makeGroup,
                   onSelect: () => {
-                    order('front')
+                    if (nodeIds.length < 2) {
+                      return
+                    }
+
+                    mergeGroupSelectionAndSelect(editor, {
+                      nodeIds
+                    })
                   }
                 },
                 {
-                  key: 'order.forward',
-                  label: 'Bring forward',
+                  key: 'structure.ungroup',
+                  label: 'Ungroup',
+                  disabled: !selectionCan.ungroup,
                   onSelect: () => {
-                    order('forward')
-                  }
-                },
-                {
-                  key: 'order.backward',
-                  label: 'Send backward',
-                  onSelect: () => {
-                    order('backward')
-                  }
-                },
-                {
-                  key: 'order.back',
-                  label: 'Send to back',
-                  onSelect: () => {
-                    order('back')
+                    if (!selectionCan.wholeGroupIds.length) {
+                      return
+                    }
+
+                    ungroupSelectionAndSelect(editor, selectionCan.wholeGroupIds)
                   }
                 }
               ]
             } satisfies SelectionMoreMenuSectionView
           ]
         : []),
-      {
-        key: 'structure',
-        title: 'Structure',
-        items: [
-          {
-            key: 'structure.group',
-            label: 'Group',
-            disabled: !can.makeGroup,
-            onSelect: () => {
-              if (nodeIds.length < 2) {
-                return
-              }
-
-              groupSelectionAndSelect(editor, {
-                nodeIds
-              })
-            }
-          },
-          {
-            key: 'structure.ungroup',
-            label: 'Ungroup',
-            disabled: !can.ungroup,
-            onSelect: () => {
-              if (!groupIds.length) {
-                return
-              }
-
-              ungroupNodesAndSelect(editor, groupIds)
-            }
-          }
-        ]
-      },
-      ...(can.lock
+      ...((selectionCan.align || selectionCan.distribute)
         ? [
             {
-              key: 'state',
-              title: 'State',
+              key: 'layout',
+              title: 'Layout',
               items: [
-                {
-                  key: 'state.lock',
-                  label: readNodeLockLabel(summary),
-                  onSelect: () => {
-                    editor.commands.node.lock.set([...nodeIds], summary.lock !== 'all')
-                  }
-                }
+                ...(selectionCan.align
+                  ? ALIGN_ITEMS.map((item) => ({
+                      key: item.key,
+                      label: item.label,
+                      onSelect: () => {
+                        if (nodeIds.length < 2) {
+                          return
+                        }
+
+                        editor.commands.node.align([...nodeIds], item.mode as NodeAlignMode)
+                      }
+                    }))
+                  : []),
+                ...(selectionCan.distribute
+                  ? DISTRIBUTE_ITEMS.map((item) => ({
+                      key: item.key,
+                      label: item.label,
+                      onSelect: () => {
+                        if (nodeIds.length < 3) {
+                          return
+                        }
+
+                        editor.commands.node.distribute(
+                          [...nodeIds],
+                          item.mode as NodeDistributeMode
+                        )
+                      }
+                    }))
+                  : [])
               ]
             } satisfies SelectionMoreMenuSectionView
           ]
@@ -301,7 +304,7 @@ const readSelectionMenuView = ({
           {
             key: 'edit.copy',
             label: 'Copy',
-            disabled: !can.copy,
+            disabled: !selectionCan.copy,
             onSelect: () => {
               if (!nodeIds.length) {
                 return
@@ -315,7 +318,7 @@ const readSelectionMenuView = ({
           {
             key: 'edit.cut',
             label: 'Cut',
-            disabled: !can.cut,
+            disabled: !selectionCan.cut,
             onSelect: () => {
               if (!nodeIds.length) {
                 return
@@ -329,18 +332,20 @@ const readSelectionMenuView = ({
           {
             key: 'edit.duplicate',
             label: 'Duplicate',
-            disabled: !can.duplicate,
+            disabled: !selectionCan.duplicate,
             onSelect: () => {
               if (!nodeIds.length) {
                 return
               }
 
-              duplicateNodesAndSelect(editor, nodeIds)
+              duplicateSelectionAndSelect(editor, {
+                nodeIds
+              })
             }
           }
         ]
       },
-      ...(can.delete
+      ...(selectionCan.delete
         ? [
             {
               key: 'danger',
@@ -351,32 +356,16 @@ const readSelectionMenuView = ({
                   label: 'Delete',
                   tone: 'danger' as const,
                   onSelect: () => {
-                    editor.commands.node.deleteCascade([...nodeIds])
+                    deleteSelectionAndClear(editor, {
+                      nodeIds
+                    })
                   }
                 }
               ]
             } satisfies SelectionMoreMenuSectionView
           ]
         : [])
-    ],
-    layout: {
-      canAlign: can.align,
-      canDistribute: can.distribute,
-      onAlign: bindAsyncClose((mode) => {
-        if (nodeIds.length < 2) {
-          return
-        }
-
-        editor.commands.node.align([...nodeIds], mode)
-      }),
-      onDistribute: bindAsyncClose((mode) => {
-        if (nodeIds.length < 3) {
-          return
-        }
-
-        editor.commands.node.distribute([...nodeIds], mode)
-      })
-    }
+    ]
   }
 }
 
@@ -473,31 +462,30 @@ const resolveSelectionView = (
     && selection.summary.items.edgeCount === 0
   const nodeSummary = pureNodeSelection
     ? readNodeSummary({
-      summary: selection.summary,
-        registry
-      })
-    : EMPTY_SUMMARY
-  const nodeCan = pureNodeSelection
-    ? readNodeSelectionCan({
         summary: selection.summary,
         registry
       })
-    : EMPTY_CAN
+    : EMPTY_SUMMARY
+  const selectionCan = pureNodeSelection
+    ? readSelectionCan({
+        editor,
+        summary: selection.summary
+      })
+    : EMPTY_SELECTION_CAN
 
   return {
     ...selection,
-    menu: pureNodeSelection
-      ? readSelectionMenuView({
+    toolbar: pureNodeSelection
+      ? readSelectionToolbarView({
           editor,
           clipboard,
           selection,
           summary: nodeSummary,
-          can: nodeCan,
+          selectionCan,
           registry
         })
       : undefined,
     nodeSummary,
-    nodeCan,
     boxState
   }
 }

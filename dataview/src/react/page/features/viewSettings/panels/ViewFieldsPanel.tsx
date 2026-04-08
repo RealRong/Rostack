@@ -90,7 +90,7 @@ export const ViewFieldsPanel = () => {
   const fields = getDocumentFields(document)
   const [query, setQuery] = useState('')
   const normalizedQuery = query.trim().toLowerCase()
-  const displayFieldIds = currentView?.options.display.fieldIds ?? []
+  const displayFieldIds = currentView?.display.fields ?? []
   const fieldMap = useMemo(
     () => new Map(fields.map(field => [field.id, field] as const)),
     [fields]
@@ -147,7 +147,7 @@ export const ViewFieldsPanel = () => {
           </div>
           {hideableVisiblePropertyIds.length !== 0 && <div
             onClick={() => {
-              currentViewDomain?.display.setVisibleFields(
+              currentViewDomain?.display.replace(
                 []
               )
             }}
@@ -172,7 +172,7 @@ export const ViewFieldsPanel = () => {
                 const nextBeforeFieldId = from < to
                   ? displayFieldIds[to + 1] ?? null
                   : beforeFieldId
-                currentViewDomain?.display.moveVisibleFields(
+                currentViewDomain?.display.move(
                   [fieldId],
                   nextBeforeFieldId
                 )
@@ -188,7 +188,7 @@ export const ViewFieldsPanel = () => {
                       return
                     }
 
-                    currentViewDomain?.display.hideField(field.id)
+                    currentViewDomain?.display.hide(field.id)
                   }}
                 />
               )}
@@ -204,7 +204,7 @@ export const ViewFieldsPanel = () => {
                     return
                   }
 
-                  currentViewDomain?.display.showField(field.id)
+                  currentViewDomain?.display.show(field.id)
                 }}
               />
             ))}

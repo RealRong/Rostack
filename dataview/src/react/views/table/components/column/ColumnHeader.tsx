@@ -6,6 +6,7 @@ import {
   Filter,
   PanelsTopLeft,
   Settings2,
+  Sigma,
   Trash2
 } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
@@ -15,16 +16,16 @@ import {
   useState,
   type PointerEvent
 } from 'react'
-import type { Field, FieldId, CustomField } from '@dataview/core/contracts'
+import type { CalculationMetric, Field, FieldId, CustomField } from '@dataview/core/contracts'
 import { Menu, type MenuItem } from '@ui/menu'
 import { cn } from '@ui/utils'
 import { isCustomField } from '@dataview/core/field'
+import { getFieldCalculationMetrics } from '@dataview/core/calculation'
 import { getSorterFieldId } from '@dataview/react/page/features/sort'
 import { useCurrentView, useDataView } from '@dataview/react/dataview'
 import { useTableContext } from '../../context'
 import { meta, renderMessage } from '@dataview/meta'
 import { buildFieldKindMenuItems } from '@dataview/react/field/schema'
-import { useStoreValue } from '@dataview/react/store'
 
 export interface ColumnHeaderProps {
   field: Field
@@ -34,6 +35,24 @@ export interface ColumnHeaderProps {
     fieldId: FieldId,
     event: PointerEvent<HTMLButtonElement>
   ) => void
+}
+
+const CALCULATION_LABELS: Record<CalculationMetric, string> = {
+  countAll: '总数',
+  countValues: '值的总数',
+  countUniqueValues: '唯一值总数',
+  countEmpty: '空单元格总数',
+  countNonEmpty: '非空单元格总数',
+  percentEmpty: '空单元格百分比',
+  percentNonEmpty: '非空单元格百分比',
+  sum: '总和',
+  average: '平均数',
+  median: '中位数',
+  min: '最小值',
+  max: '最大值',
+  range: '范围',
+  countByOption: '每个分组总数',
+  percentByOption: '每个分组百分比'
 }
 
 interface ResizeHandleProps {
@@ -97,10 +116,12 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
     ? `translate3d(${Math.round(sortable.transform.x)}px, 0, 0)`
     : undefined
   const isDragging = sortable.isDragging
-  const grouped = view.query.group?.field === props.field.id
-  const sortDirection = view.query.sorters.find(
+  const grouped = view.group?.field === props.field.id
+  const sortDirection = view.sort.find(
     sorter => getSorterFieldId(sorter) === props.field.id
   )?.direction
+  const calculationMetric = view.calc[props.field.id]
+  const calculationMetrics = getFieldCalculationMetrics(props.field)
   const kind = meta.field.kind.get(props.field.kind)
   const sortDirectionMeta = sortDirection
     ? meta.sort.direction.get(sortDirection)
@@ -119,13 +140,13 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
 
   const insertProperty = (side: 'left' | 'right') => {
     if (side === 'left') {
-      viewApi.table.insertColumnLeftOf(props.field.id, {
+      viewApi.table.insertLeft(props.field.id, {
         kind: 'text'
       })
       return
     }
 
-    viewApi.table.insertColumnRightOf(props.field.id, {
+    viewApi.table.insertRight(props.field.id, {
       kind: 'text'
     })
   }
@@ -188,11 +209,11 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       leading: <PanelsTopLeft className="size-4" size={16} strokeWidth={1.8} />,
       onSelect: () => {
         if (grouped) {
-          viewApi.grouping.clear()
+          viewApi.group.clear()
           return
         }
 
-        viewApi.grouping.setField(props.field.id)
+        viewApi.group.set(props.field.id)
       }
     },
     {
@@ -201,7 +222,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       label: '筛选',
       leading: <Filter className="size-4" size={16} strokeWidth={1.8} />,
       onSelect: () => {
-        viewApi.filters.add(props.field.id)
+        viewApi.filter.add(props.field.id)
         page.query.open({
           kind: 'filter',
           fieldId: props.field.id
@@ -223,7 +244,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
           label: renderMessage(meta.sort.direction.get('asc').message),
           checked: sortDirection === 'asc',
           onSelect: () => {
-            viewApi.sorters.setOnly(props.field.id, 'asc')
+            viewApi.sort.only(props.field.id, 'asc')
           }
         },
         {
@@ -232,9 +253,38 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
           label: renderMessage(meta.sort.direction.get('desc').message),
           checked: sortDirection === 'desc',
           onSelect: () => {
-            viewApi.sorters.setOnly(props.field.id, 'desc')
+            viewApi.sort.only(props.field.id, 'desc')
           }
         }
+      ]
+    },
+    {
+      kind: 'submenu' as const,
+      key: 'calculation',
+      label: '计算',
+      leading: <Sigma className="size-4" size={16} strokeWidth={1.8} />,
+      suffix: calculationMetric
+        ? CALCULATION_LABELS[calculationMetric]
+        : '无',
+      items: [
+        {
+          kind: 'toggle' as const,
+          key: 'calculation:none',
+          label: '无',
+          checked: !calculationMetric,
+          onSelect: () => {
+            viewApi.calc.set(props.field.id, null)
+          }
+        },
+        ...calculationMetrics.map(metric => ({
+          kind: 'toggle' as const,
+          key: `calculation:${metric}`,
+          label: CALCULATION_LABELS[metric],
+          checked: calculationMetric === metric,
+          onSelect: () => {
+            viewApi.calc.set(props.field.id, metric)
+          }
+        }))
       ]
     },
     {
@@ -244,7 +294,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       leading: <EyeOff className="size-4" size={16} strokeWidth={1.8} />,
       disabled: false,
       onSelect: () => {
-        viewApi.display.hideField(props.field.id)
+        viewApi.display.hide(props.field.id)
       }
     },
     {

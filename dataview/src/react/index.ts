@@ -3,7 +3,7 @@ export {
   GalleryView,
   useGalleryContext
 } from './views/gallery'
-export type { TableOptions, ViewDisplayOptions } from '@dataview/core/contracts'
+export type { TableOptions, ViewDisplay } from '@dataview/core/contracts'
 export type {
   Gallery,
   GalleryViewProps,

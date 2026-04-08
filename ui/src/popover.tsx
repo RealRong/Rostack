@@ -77,9 +77,26 @@ export type PopoverAnchor =
 
 const PopoverEnvironmentContext = createContext<{
   container?: Element | null
-  floatingProps?: HTMLAttributes<HTMLDivElement>
-  contentProps?: HTMLAttributes<HTMLDivElement>
 } | null>(null)
+
+interface PopoverContextValue {
+  open: boolean
+  setOpen: (open: boolean) => void
+  layer: ReturnType<typeof useLayer>
+  floating: ReturnType<typeof useFloating>
+  getReferenceProps: ReturnType<typeof useInteractions>['getReferenceProps']
+  getFloatingProps: ReturnType<typeof useInteractions>['getFloatingProps']
+  setReference: (node: Element | null) => void
+  mode: OverlayLayerMode
+  backdrop: OverlayBackdrop
+  container: Element | null
+  portalRoot?: HTMLElement
+  animated: boolean
+  dismissOnBackdropPress: boolean
+  overlay: ReturnType<typeof useOptionalOverlay>
+}
+
+const PopoverContext = createContext<PopoverContextValue | null>(null)
 
 const resolvePopoverPortalRoot = (container: Element | null | undefined) => (
   typeof HTMLElement !== 'undefined' && container instanceof HTMLElement
@@ -226,13 +243,6 @@ const hasExplicitPopoverWidthClassName = (className: string | undefined) => (
   Boolean(className && EXPLICIT_POPOVER_WIDTH_CLASS_PATTERN.test(className))
 )
 
-const toTriggerRef = (trigger: ReactElement): Ref<Element> | undefined => {
-  const value = trigger as ReactElement & {
-    ref?: Ref<Element>
-  }
-  return value.ref
-}
-
 const resolvePopoverMode = (props: {
   mode?: OverlayLayerMode
   modal?: boolean
@@ -257,7 +267,6 @@ export interface PopoverProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   defaultOpen?: boolean
-  trigger?: ReactElement
   anchor?: PopoverAnchor
   children?: ReactNode
   placement?: Placement
@@ -266,11 +275,6 @@ export interface PopoverProps {
   mode?: OverlayLayerMode
   kind?: OverlayLayerKind
   matchTriggerWidth?: boolean
-  initialFocus?: number | MutableRefObject<HTMLElement | null>
-  size?: PopoverSurfaceSize
-  padding?: PopoverSurfacePadding
-  className?: string
-  contentClassName?: string
   closeOnInteractOutside?: boolean
   closeOnEscape?: boolean
   surface?: 'passive' | 'scoped' | 'blocking'
@@ -278,11 +282,33 @@ export interface PopoverProps {
   dismissOnBackdropPress?: boolean
   animated?: boolean
   container?: Element | null
+}
+
+export interface PopoverTriggerProps {
+  children: ReactElement
+}
+
+export interface PopoverContentProps {
+  children?: ReactNode
+  initialFocus?: number | MutableRefObject<HTMLElement | null>
+  size?: PopoverSurfaceSize
+  padding?: PopoverSurfacePadding
+  className?: string
+  contentClassName?: string
   floatingProps?: HTMLAttributes<HTMLDivElement>
   contentProps?: HTMLAttributes<HTMLDivElement>
 }
 
-export const Popover = (props: PopoverProps) => {
+const usePopoverContext = (consumer: string) => {
+  const context = useContext(PopoverContext)
+  if (!context) {
+    throw new Error(`Popover.${consumer} must be used within Popover.`)
+  }
+
+  return context
+}
+
+const Root = (props: PopoverProps) => {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(props.defaultOpen ?? false)
   const inheritedEnvironment = useContext(PopoverEnvironmentContext)
   const overlay = useOptionalOverlay()
@@ -296,8 +322,6 @@ export const Popover = (props: PopoverProps) => {
   const container = props.container === undefined
     ? (inheritedEnvironment?.container ?? overlay?.portalRoot ?? null)
     : props.container
-  const floatingProps = props.floatingProps ?? inheritedEnvironment?.floatingProps
-  const contentProps = props.contentProps ?? inheritedEnvironment?.contentProps
   const portalRoot = resolvePopoverPortalRoot(container)
   const setOpen = useCallback((nextOpen: boolean) => {
     if (props.open === undefined) {
@@ -388,7 +412,7 @@ export const Popover = (props: PopoverProps) => {
   }, [anchorReference, layer.id, open])
 
   const click = useClick(floating.context, {
-    enabled: Boolean(props.trigger)
+    enabled: true
   })
   const dismiss = useDismiss(floating.context, {
     outsidePress: overlay
@@ -407,38 +431,70 @@ export const Popover = (props: PopoverProps) => {
     role
   ])
 
-  if (!props.trigger && !props.anchor) {
-    throw new Error('Popover requires either a trigger or an anchor.')
+  return (
+    <PopoverContext.Provider value={{
+      open,
+      setOpen,
+      layer,
+      floating,
+      getReferenceProps,
+      getFloatingProps,
+      setReference,
+      mode,
+      backdrop,
+      container,
+      portalRoot,
+      animated: props.animated !== false,
+      dismissOnBackdropPress: props.dismissOnBackdropPress ?? true,
+      overlay
+    }}>
+      {props.children}
+    </PopoverContext.Provider>
+  )
+}
+
+const Trigger = (props: PopoverTriggerProps) => {
+  const context = usePopoverContext('Trigger')
+  if (!isValidElement(props.children)) {
+    throw new Error('Popover.Trigger requires a valid React element child.')
   }
 
-  const trigger = (() => {
-    if (!props.trigger) {
-      return null
-    }
+  const childProps = props.children.props as Record<string, unknown> & {
+    ref?: Ref<Element>
+  }
+  const referenceRef = useMergeRefs([
+    context.setReference,
+    childProps.ref
+  ])
 
-    if (!isValidElement(props.trigger)) {
-      throw new Error('Popover trigger must be a valid React element.')
-    }
+  return cloneElement(
+    props.children,
+    context.getReferenceProps({
+      ...childProps,
+      ...(context.open
+        ? { [OVERLAY_LAYER_ATTR]: context.layer.id }
+        : {}),
+      ref: referenceRef
+    })
+  )
+}
 
-    const triggerRef = toTriggerRef(props.trigger)
-    const referenceRef = useMergeRefs([
-      setReference,
-      triggerRef
-    ])
-    const triggerProps = props.trigger.props as Record<string, unknown>
-
-    return cloneElement(
-      props.trigger,
-      getReferenceProps({
-        ...triggerProps,
-        ...(open
-          ? { [OVERLAY_LAYER_ATTR]: layer.id }
-          : {}),
-        ref: referenceRef
-      })
-    )
-  })()
-
+const Content = (props: PopoverContentProps) => {
+  const context = usePopoverContext('Content')
+  const {
+    open,
+    setOpen,
+    layer,
+    floating,
+    getFloatingProps,
+    mode,
+    backdrop,
+    container,
+    portalRoot,
+    animated,
+    dismissOnBackdropPress,
+    overlay
+  } = context
   const [side, align = 'center'] = floating.placement.split('-') as [string, string?]
   const transition = useTransitionStyles(floating.context, {
     duration: POPOVER_TRANSITION_MS,
@@ -461,10 +517,10 @@ export const Popover = (props: PopoverProps) => {
       transformOrigin: getPopoverTransformOrigin(placement)
     })
   })
-  const visible = props.animated === false ? open : transition.isMounted
-  const transitionStyles = props.animated === false ? undefined : transition.styles
+  const visible = animated ? transition.isMounted : open
+  const transitionStyles = animated ? transition.styles : undefined
   const hasExplicitWidthClassName = hasExplicitPopoverWidthClassName(
-    cn(contentProps?.className, props.contentClassName)
+    cn(props.contentProps?.className, props.contentClassName)
   )
   const surfaceSizeClassName = props.size
     ? resolvePopoverSurfaceSizeClassName(props.size)
@@ -481,20 +537,24 @@ export const Popover = (props: PopoverProps) => {
   ) => {
     event.preventDefault()
     event.stopPropagation()
-    if (props.dismissOnBackdropPress ?? true) {
+    if (dismissOnBackdropPress) {
       setOpen(false)
     }
+  }
+
+  if (!visible) {
+    return null
   }
 
   const floatingContent = (
     <div
       ref={floating.refs.setFloating}
-      {...floatingProps}
+      {...props.floatingProps}
       style={{
-        ...floatingProps?.style,
+        ...props.floatingProps?.style,
         ...floating.floatingStyles
       }}
-      className={cn('z-50 outline-none', floatingProps?.className, props.className)}
+      className={cn('z-50 outline-none', props.floatingProps?.className, props.className)}
       {...{
         [OVERLAY_LAYER_ATTR]: layer.id
       }}
@@ -505,7 +565,7 @@ export const Popover = (props: PopoverProps) => {
       {...getFloatingProps({
         onPointerDown: event => {
           callAll(
-            floatingProps?.onPointerDown,
+            props.floatingProps?.onPointerDown,
             () => {
               event.stopPropagation()
             }
@@ -513,7 +573,7 @@ export const Popover = (props: PopoverProps) => {
         },
         onMouseDown: event => {
           callAll(
-            floatingProps?.onMouseDown,
+            props.floatingProps?.onMouseDown,
             () => {
               event.stopPropagation()
             }
@@ -521,7 +581,7 @@ export const Popover = (props: PopoverProps) => {
         },
         onClick: event => {
           callAll(
-            floatingProps?.onClick,
+            props.floatingProps?.onClick,
             () => {
               event.stopPropagation()
             }
@@ -530,16 +590,16 @@ export const Popover = (props: PopoverProps) => {
       })}
     >
       <div
-        {...contentProps}
+        {...props.contentProps}
         data-align={align}
         data-side={side}
         style={{
-          ...contentProps?.style,
+          ...props.contentProps?.style,
           ...transitionStyles
         }}
         className={cn(
           'rounded-xl bg-floating text-fg shadow-popover transition-[opacity,transform] duration-200 ease-out will-change-[opacity,transform]',
-          contentProps?.className,
+          props.contentProps?.className,
           props.contentClassName,
           surfaceSizeClassName,
           surfacePaddingClassName
@@ -547,9 +607,7 @@ export const Popover = (props: PopoverProps) => {
       >
         <OverlayLayerProvider layerId={layer.id}>
           <PopoverEnvironmentContext.Provider value={{
-            container,
-            floatingProps,
-            contentProps
+            container
           }}>
             {props.children}
           </PopoverEnvironmentContext.Provider>
@@ -559,43 +617,15 @@ export const Popover = (props: PopoverProps) => {
   )
 
   return (
-    <>
-      {trigger}
-      {visible ? (
-        <FloatingPortal root={portalRoot}>
-          {props.initialFocus ? <FloatingFocusManager
-            context={floating.context}
-            modal={mode !== 'floating'}
-            initialFocus={props.initialFocus ?? 0}
-            disabled={!open}
-          >
-            <>
-              {localBackdropVisible ? (
-                <div
-                  aria-hidden="true"
-                  className={cn(
-                    'fixed inset-0 z-40',
-                    backdrop === 'dim' ? 'bg-overlay' : 'bg-transparent'
-                  )}
-                  {...{
-                    [OVERLAY_BLOCKING_ATTR]: '',
-                    [OVERLAY_BLOCKING_BACKDROP_ATTR]: ''
-                  }}
-                  onPointerDown={dismissLocalBackdrop}
-                  onMouseDown={dismissLocalBackdrop}
-                  onContextMenu={event => {
-                    event.preventDefault()
-                    event.stopPropagation()
-                  }}
-                  onClick={event => {
-                    event.preventDefault()
-                    event.stopPropagation()
-                  }}
-                />
-              ) : null}
-              {floatingContent}
-            </>
-          </FloatingFocusManager> : <>
+    <FloatingPortal root={portalRoot}>
+      {props.initialFocus !== undefined ? (
+        <FloatingFocusManager
+          context={floating.context}
+          modal={mode !== 'floating'}
+          initialFocus={props.initialFocus}
+          disabled={!open}
+        >
+          <>
             {localBackdropVisible ? (
               <div
                 aria-hidden="true"
@@ -620,9 +650,41 @@ export const Popover = (props: PopoverProps) => {
               />
             ) : null}
             {floatingContent}
-          </>}
-        </FloatingPortal>
-      ) : null}
-    </>
+          </>
+        </FloatingFocusManager>
+      ) : (
+        <>
+          {localBackdropVisible ? (
+            <div
+              aria-hidden="true"
+              className={cn(
+                'fixed inset-0 z-40',
+                backdrop === 'dim' ? 'bg-overlay' : 'bg-transparent'
+              )}
+              {...{
+                [OVERLAY_BLOCKING_ATTR]: '',
+                [OVERLAY_BLOCKING_BACKDROP_ATTR]: ''
+              }}
+              onPointerDown={dismissLocalBackdrop}
+              onMouseDown={dismissLocalBackdrop}
+              onContextMenu={event => {
+                event.preventDefault()
+                event.stopPropagation()
+              }}
+              onClick={event => {
+                event.preventDefault()
+                event.stopPropagation()
+              }}
+            />
+          ) : null}
+          {floatingContent}
+        </>
+      )}
+    </FloatingPortal>
   )
 }
+
+export const Popover = Object.assign(Root, {
+  Trigger,
+  Content
+})

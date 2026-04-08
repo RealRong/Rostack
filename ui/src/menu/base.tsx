@@ -27,6 +27,7 @@ import type {
   Handle,
   Path,
   Props,
+  SubmenuCloseReason,
   SubmenuItem
 } from './types'
 
@@ -34,6 +35,7 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
   const submenuOpenPolicy = props.submenuOpenPolicy ?? 'hover'
   const open = props.open ?? true
   const selectionMode = props.selectionMode ?? 'none'
+  const selectionAppearance = props.selectionAppearance ?? 'row'
   const [uncontrolledValue, setUncontrolledValue] = useState<string | readonly string[]>(
     props.defaultValue ?? (selectionMode === 'multiple' ? [] : '')
   )
@@ -41,52 +43,53 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
     () => normalizeValue(props.value ?? uncontrolledValue),
     [props.value, uncontrolledValue]
   )
-  const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+  const itemRefs = useRef<Record<string, HTMLElement | null>>({})
+  const pendingTriggerPressPathRef = useRef<string | null>(null)
   const [activePath, setActivePath] = useState<Path>([])
   const [activeSource, setActiveSource] = useState<'pointer' | 'keyboard' | null>(null)
   const [pendingFocusPath, setPendingFocusPath] = useState<Path | null>(null)
-  const [uncontrolledExpandedRootKey, setUncontrolledExpandedRootKey] = useState<string | null>(
+  const [uncontrolledOpenRootKey, setUncontrolledOpenRootKey] = useState<string | null>(
     props.openSubmenuKey ?? null
   )
-  const [expandedTail, setExpandedTail] = useState<string[]>([])
-  const rootExpandedKey = props.openSubmenuKey !== undefined
+  const [openTail, setOpenTail] = useState<string[]>([])
+  const rootOpenKey = props.openSubmenuKey !== undefined
     ? props.openSubmenuKey
-    : uncontrolledExpandedRootKey
-  const rawExpandedPath = useMemo<Path>(() => (
-    rootExpandedKey
-      ? [rootExpandedKey, ...expandedTail]
+    : uncontrolledOpenRootKey
+  const rawOpenPath = useMemo<Path>(() => (
+    rootOpenKey
+      ? [rootOpenKey, ...openTail]
       : []
-  ), [expandedTail, rootExpandedKey])
-  const expandedPath = useMemo(
-    () => normalizeExpandedPath(props.items, rawExpandedPath),
-    [props.items, rawExpandedPath]
+  ), [openTail, rootOpenKey])
+  const openPath = useMemo(
+    () => normalizeExpandedPath(props.items, rawOpenPath),
+    [props.items, rawOpenPath]
   )
 
   useEffect(() => {
     if (props.openSubmenuKey !== undefined) {
-      setExpandedTail([])
+      setOpenTail([])
     }
   }, [props.openSubmenuKey])
 
   useEffect(() => {
-    if (props.openSubmenuKey !== undefined || isSamePath(rawExpandedPath, expandedPath)) {
+    if (props.openSubmenuKey !== undefined || isSamePath(rawOpenPath, openPath)) {
       return
     }
 
-    setUncontrolledExpandedRootKey(expandedPath[0] ?? null)
-    setExpandedTail(expandedPath.slice(1))
-  }, [expandedPath, props.openSubmenuKey, rawExpandedPath])
+    setUncontrolledOpenRootKey(openPath[0] ?? null)
+    setOpenTail(openPath.slice(1))
+  }, [openPath, props.openSubmenuKey, rawOpenPath])
 
   useEffect(() => {
     if (!activePath.length) {
       return
     }
 
-    if (!isVisiblePath(props.items, activePath, expandedPath)) {
+    if (!isVisiblePath(props.items, activePath, openPath)) {
       setActivePath([])
       setActiveSource(null)
     }
-  }, [activePath, expandedPath, props.items])
+  }, [activePath, openPath, props.items])
 
   useEffect(() => {
     if (open) {
@@ -97,8 +100,8 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
     setActiveSource(null)
     setPendingFocusPath(null)
     if (props.openSubmenuKey === undefined) {
-      setUncontrolledExpandedRootKey(null)
-      setExpandedTail([])
+      setUncontrolledOpenRootKey(null)
+      setOpenTail([])
     }
   }, [open, props.openSubmenuKey])
 
@@ -109,16 +112,16 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
     [props.items]
   )
 
-  const setExpandedPath = useCallback((nextPath: Path) => {
+  const setOpenPath = useCallback((nextPath: Path) => {
     const nextRootKey = nextPath[0] ?? null
     const nextTail = nextRootKey
       ? nextPath.slice(1)
       : []
 
     if (props.openSubmenuKey === undefined) {
-      setUncontrolledExpandedRootKey(nextRootKey)
+      setUncontrolledOpenRootKey(nextRootKey)
     }
-    setExpandedTail(nextTail)
+    setOpenTail(nextTail)
     props.onOpenSubmenuChange?.(nextRootKey)
   }, [props.onOpenSubmenuChange, props.openSubmenuKey])
 
@@ -136,7 +139,7 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
     })
   }, [])
 
-  const registerItemRef = useCallback((path: Path, element: HTMLButtonElement | null) => {
+  const registerItemRef = useCallback((path: Path, element: HTMLElement | null) => {
     const pathKey = serializePath(path)
     itemRefs.current[pathKey] = element
 
@@ -160,14 +163,18 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
     focusPath(path)
   }, [focusPath])
 
+  const clearActivePath = useCallback(() => {
+    setActivePath([])
+    setActiveSource(null)
+  }, [])
+
   const clearPointerActivePath = useCallback(() => {
     if (activeSource !== 'pointer') {
       return
     }
 
-    setActivePath([])
-    setActiveSource(null)
-  }, [activeSource])
+    clearActivePath()
+  }, [activeSource, clearActivePath])
 
   const onItemValueToggle = useCallback((itemKey: string) => {
     if (selectionMode === 'none') {
@@ -182,13 +189,13 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
     props.onValueChange?.(nextValue)
   }, [props.onValueChange, props.value, selectedKeys, selectionMode])
 
-  const trimExpandedPath = useCallback((path: Path) => {
-    if (!isPathPrefix(path, expandedPath) || isSamePath(path, expandedPath)) {
+  const trimOpenPath = useCallback((path: Path) => {
+    if (!isPathPrefix(path, openPath) || isSamePath(path, openPath)) {
       return
     }
 
-    setExpandedPath(path)
-  }, [expandedPath, setExpandedPath])
+    setOpenPath(path)
+  }, [openPath, setOpenPath])
 
   const moveRootActive = useCallback((delta: number) => {
     if (!rootEnabledPaths.length) {
@@ -205,9 +212,9 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
       return
     }
 
-    trimExpandedPath([])
+    trimOpenPath([])
     setActiveKeyboardPath(nextPath)
-  }, [activePath, rootEnabledPaths, setActiveKeyboardPath, trimExpandedPath])
+  }, [activePath, rootEnabledPaths, setActiveKeyboardPath, trimOpenPath])
 
   const moveRootFirst = useCallback(() => {
     const nextPath = rootEnabledPaths[0] ?? null
@@ -215,9 +222,9 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
       return
     }
 
-    trimExpandedPath([])
+    trimOpenPath([])
     setActiveKeyboardPath(nextPath)
-  }, [rootEnabledPaths, setActiveKeyboardPath, trimExpandedPath])
+  }, [rootEnabledPaths, setActiveKeyboardPath, trimOpenPath])
 
   const moveRootLast = useCallback(() => {
     const nextPath = rootEnabledPaths[rootEnabledPaths.length - 1] ?? null
@@ -225,9 +232,9 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
       return
     }
 
-    trimExpandedPath([])
+    trimOpenPath([])
     setActiveKeyboardPath(nextPath)
-  }, [rootEnabledPaths, setActiveKeyboardPath, trimExpandedPath])
+  }, [rootEnabledPaths, setActiveKeyboardPath, trimOpenPath])
 
   useImperativeHandle(ref, () => ({
     moveNext: () => {
@@ -239,28 +246,44 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
     moveFirst: moveRootFirst,
     moveLast: moveRootLast,
     clearActive: () => {
-      setActivePath([])
-      setActiveSource(null)
+      clearActivePath()
     },
     getActiveKey: () => activePath.length === 1
       ? activePath[0] ?? null
       : null
-  }), [activePath, moveRootActive, moveRootFirst, moveRootLast])
+  }), [activePath, clearActivePath, moveRootActive, moveRootFirst, moveRootLast])
 
-  const dismissSubmenuPath = useCallback((path: Path) => {
-    setExpandedPath(parentPath(path))
-    setActiveKeyboardPath(path)
-  }, [setActiveKeyboardPath, setExpandedPath])
+  const markTriggerPress = useCallback((path: Path) => {
+    pendingTriggerPressPathRef.current = serializePath(path)
+  }, [])
 
-  const collapseSubmenuPathToTrigger = useCallback((path: Path) => {
-    setExpandedPath(parentPath(path))
-    setActiveKeyboardPath(path)
-  }, [setActiveKeyboardPath, setExpandedPath])
+  const consumeTriggerPress = useCallback((path: Path) => {
+    const match = pendingTriggerPressPathRef.current === serializePath(path)
+    pendingTriggerPressPathRef.current = null
+    return match
+  }, [])
 
-  const openSubmenuPath = useCallback((path: Path, item: SubmenuItem, source: 'pointer' | 'keyboard' | 'click') => {
-    setExpandedPath(path)
+  const closeSubmenuPath = useCallback((path: Path, reason: SubmenuCloseReason) => {
+    pendingTriggerPressPathRef.current = null
+    setOpenPath(parentPath(path))
+    switch (reason) {
+      case 'trigger':
+        setActivePointerPath(path)
+        return
+      case 'keyboard':
+        setActiveKeyboardPath(path)
+        return
+      case 'outside':
+      default:
+        clearActivePath()
+    }
+  }, [clearActivePath, setActiveKeyboardPath, setActivePointerPath, setOpenPath])
 
-    if (source === 'pointer') {
+  const openSubmenuPath = useCallback((path: Path, item: SubmenuItem, source: 'pointer' | 'keyboard') => {
+    pendingTriggerPressPathRef.current = null
+    setOpenPath(path)
+
+    if (source !== 'keyboard') {
       setActivePointerPath(path)
       return
     }
@@ -274,31 +297,35 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
     }
 
     setActivePointerPath(path)
-  }, [setActiveKeyboardPath, setActivePointerPath, setExpandedPath])
+  }, [setActiveKeyboardPath, setActivePointerPath, setOpenPath])
 
   const controller = useMemo<Controller>(() => ({
     activePath,
     activeSource,
-    expandedPath,
+    openPath,
     registerItemRef,
     setActivePointerPath,
     setActiveKeyboardPath,
+    clearActivePath,
     clearPointerActivePath,
-    trimExpandedPath,
-    dismissSubmenuPath,
-    collapseSubmenuPathToTrigger,
+    trimOpenPath,
+    markTriggerPress,
+    consumeTriggerPress,
+    closeSubmenuPath,
     openSubmenuPath
   }), [
     activePath,
     activeSource,
-    expandedPath,
+    openPath,
     registerItemRef,
     setActivePointerPath,
     setActiveKeyboardPath,
+    clearActivePath,
     clearPointerActivePath,
-    trimExpandedPath,
-    dismissSubmenuPath,
-    collapseSubmenuPathToTrigger,
+    trimOpenPath,
+    markTriggerPress,
+    consumeTriggerPress,
+    closeSubmenuPath,
     openSubmenuPath
   ])
 
@@ -310,6 +337,7 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
         open={open}
         selectedKeys={selectedKeys}
         selectionMode={selectionMode}
+        selectionAppearance={selectionAppearance}
         onItemValueToggle={onItemValueToggle}
         onClose={props.onClose}
         autoFocus={props.autoFocus ?? true}
@@ -321,4 +349,3 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
 })
 
 Base.displayName = 'Menu'
-

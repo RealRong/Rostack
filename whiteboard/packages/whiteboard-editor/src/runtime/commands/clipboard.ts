@@ -107,18 +107,22 @@ export const createClipboard = ({
       return undefined
     }
 
-    if (resolved.edgeIds?.length) {
-      const result = editor.commands.edge.delete([...resolved.edgeIds])
+    if (resolved.nodeIds?.length || resolved.edgeIds?.length) {
+      const result = editor.commands.canvas.delete([
+        ...(resolved.nodeIds ?? []).map((id) => ({
+          kind: 'node' as const,
+          id
+        })),
+        ...(resolved.edgeIds ?? []).map((id) => ({
+          kind: 'edge' as const,
+          id
+        }))
+      ])
       if (!result.ok) {
         return undefined
       }
-    }
 
-    if (resolved.nodeIds?.length) {
-      const result = editor.commands.node.deleteCascade([...resolved.nodeIds])
-      if (!result.ok) {
-        return undefined
-      }
+      editor.commands.selection.clear()
     }
 
     return packet

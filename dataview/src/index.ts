@@ -1,8 +1,6 @@
 export type {
   CustomFieldId,
-  AggregateOperator,
-  AggregateScope,
-  AggregateSpec,
+  CalculationMetric,
   AssetAccept,
   BaseOperation,
   BucketSort,
@@ -28,7 +26,6 @@ export type {
   FilterOperator,
   FilterRule,
   BucketState,
-  Grouping,
   KanbanNewRecordPosition,
   KanbanOptions,
   NodeId,
@@ -50,7 +47,7 @@ export type {
   ValuePatch,
   View,
   ViewCreateInput,
-  ViewDisplayOptions,
+  ViewDisplay,
   ViewType,
   IndexPath,
   RecordId,
@@ -61,10 +58,9 @@ export type { ValidationIssue } from './engine/command'
 export {
   cloneGalleryOptions,
   cloneKanbanOptions,
-  cloneViewDisplayOptions,
   cloneViewOptions,
   cloneTableOptions,
-  createDefaultViewDisplayOptions,
+  createDefaultViewDisplay,
   createDefaultViewOptions,
   pruneFieldFromViewOptions
 } from './core/view'
@@ -86,13 +82,10 @@ export type {
   HistoryState,
   FieldsEngineApi,
   RecordsEngineApi,
-  ViewDisplayApi,
   ViewEngineApi,
   ViewGalleryApi,
   ViewKanbanApi,
   ViewOrderApi,
-  ViewQueryApi,
-  ViewSettingsApi,
   ViewTableApi,
   ViewsEngineApi
 } from './engine/index'

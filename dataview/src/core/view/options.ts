@@ -1,18 +1,12 @@
 import type {
   Field,
   FieldId,
+  ViewDisplay,
   TableOptions,
   ViewOptions,
-  ViewDisplayOptions,
   ViewType
 } from '../contracts'
 import { cloneViewOptions } from './shared'
-
-export const cloneViewDisplayOptions = (
-  display: ViewDisplayOptions
-): ViewDisplayOptions => ({
-  fieldIds: [...display.fieldIds]
-})
 
 export const cloneTableOptions = (
   table: TableOptions
@@ -23,11 +17,11 @@ export const cloneTableOptions = (
   showVerticalLines: table.showVerticalLines
 })
 
-export const createDefaultViewDisplayOptions = (
+export const createDefaultViewDisplay = (
   type: ViewType,
   fields: readonly Field[]
-): ViewDisplayOptions => ({
-  fieldIds: !fields.length
+): ViewDisplay => ({
+  fields: !fields.length
     ? []
     : type === 'table'
       ? fields.map(field => field.id)
@@ -35,10 +29,9 @@ export const createDefaultViewDisplayOptions = (
 })
 
 export const createDefaultViewOptions = (
-  type: ViewType,
-  fields: readonly Field[]
+  _type: ViewType,
+  _fields: readonly Field[]
 ): ViewOptions => ({
-  display: createDefaultViewDisplayOptions(type, fields),
   table: {
     widths: {},
     showVerticalLines: true
@@ -58,17 +51,10 @@ export const pruneFieldFromViewOptions = (
   fieldId: FieldId
 ): ViewOptions => {
   const current = cloneViewOptions(options)
-  const hasDisplay = current.display.fieldIds.some(id => id === fieldId)
   const hasWidth = Object.prototype.hasOwnProperty.call(current.table.widths, fieldId)
 
-  if (!hasDisplay && !hasWidth) {
+  if (!hasWidth) {
     return options
-  }
-
-  if (hasDisplay) {
-    current.display = {
-      fieldIds: current.display.fieldIds.filter(id => id !== fieldId)
-    }
   }
 
   if (hasWidth) {

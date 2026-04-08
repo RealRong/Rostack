@@ -166,6 +166,9 @@ const sameBlock = (
         && left.scopeId === right.scopeId
         && left.label === right.label
         && sameIds(left.rowIds, right.rowIds)
+    case 'column-footer':
+      return right.kind === 'column-footer'
+        && left.scopeId === right.scopeId
     case 'section-header':
       return right.kind === 'section-header'
         && left.section.key === right.section.key
@@ -298,7 +301,7 @@ const resolveLayoutSnapshot = (input: {
     return EMPTY_LAYOUT_SNAPSHOT
   }
 
-  const grouped = Boolean(input.currentView.view.query.group)
+  const grouped = Boolean(input.currentView.view.group)
   const blocks = buildTableBlocks({
     grouped,
     rowIds: input.currentView.appearances.ids,

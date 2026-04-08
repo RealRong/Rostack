@@ -221,7 +221,9 @@ export const NodeToolbar = ({
           backdrop="transparent"
           contentClassName={cn(
             'min-w-0 overflow-hidden p-0',
-            activePanelKey === 'more' ? 'w-[240px]' : 'w-auto'
+            activePanelKey === 'more' || activePanelKey === 'filter'
+              ? 'w-[240px]'
+              : 'w-auto'
           )}
         >
           {panelContent}

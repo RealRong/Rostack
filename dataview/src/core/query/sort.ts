@@ -8,7 +8,7 @@ import { cloneSorter, cloneViewQuery } from './shared'
 export const findViewSorterIndex = (
   query: ViewQuery,
   fieldId: string
-) => query.sorters.findIndex(sorter => (
+) => query.sort.findIndex(sorter => (
   typeof sorter.field === 'string' && sorter.field === fieldId
 ))
 
@@ -22,7 +22,7 @@ export const addViewSorter = (
   }
 
   const next = cloneViewQuery(query)
-  next.sorters.push({
+  next.sort.push({
     field: fieldId,
     direction
   })
@@ -38,14 +38,14 @@ export const setViewSorter = (
   const existingIndex = findViewSorterIndex(next, fieldId)
 
   if (existingIndex === -1) {
-    next.sorters.push({
+    next.sort.push({
       field: fieldId,
       direction
     })
     return next
   }
 
-  next.sorters[existingIndex] = {
+  next.sort[existingIndex] = {
     field: fieldId,
     direction
   }
@@ -58,15 +58,15 @@ export const setOnlyViewSorter = (
   direction: SortDirection
 ): ViewQuery => {
   if (
-    query.sorters.length === 1
-    && query.sorters[0]?.field === fieldId
-    && query.sorters[0]?.direction === direction
+    query.sort.length === 1
+    && query.sort[0]?.field === fieldId
+    && query.sort[0]?.direction === direction
   ) {
     return query
   }
 
   const next = cloneViewQuery(query)
-  next.sorters = [{
+  next.sort = [{
     field: fieldId,
     direction
   }]
@@ -78,12 +78,12 @@ export const replaceViewSorter = (
   index: number,
   sorter: Sorter
 ): ViewQuery => {
-  if (!query.sorters[index]) {
+  if (!query.sort[index]) {
     return query
   }
 
   const next = cloneViewQuery(query)
-  next.sorters[index] = cloneSorter(sorter)
+  next.sort[index] = cloneSorter(sorter)
   return next
 }
 
@@ -91,12 +91,12 @@ export const removeViewSorter = (
   query: ViewQuery,
   index: number
 ): ViewQuery => {
-  if (index < 0 || index >= query.sorters.length) {
+  if (index < 0 || index >= query.sort.length) {
     return query
   }
 
   const next = cloneViewQuery(query)
-  next.sorters.splice(index, 1)
+  next.sort.splice(index, 1)
   return next
 }
 
@@ -107,32 +107,32 @@ export const moveViewSorter = (
 ): ViewQuery => {
   if (
     from < 0
-    || from >= query.sorters.length
+    || from >= query.sort.length
     || to < 0
-    || to >= query.sorters.length
+    || to >= query.sort.length
     || from === to
   ) {
     return query
   }
 
   const next = cloneViewQuery(query)
-  const [sorter] = next.sorters.splice(from, 1)
+  const [sorter] = next.sort.splice(from, 1)
   if (!sorter) {
     return query
   }
 
-  next.sorters.splice(to, 0, sorter)
+  next.sort.splice(to, 0, sorter)
   return next
 }
 
 export const clearViewSorters = (
   query: ViewQuery
 ): ViewQuery => {
-  if (!query.sorters.length) {
+  if (!query.sort.length) {
     return query
   }
 
   const next = cloneViewQuery(query)
-  next.sorters = []
+  next.sort = []
   return next
 }

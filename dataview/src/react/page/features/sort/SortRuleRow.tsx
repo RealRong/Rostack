@@ -69,11 +69,9 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
       <Popover
         open={fieldOpen}
         onOpenChange={setFieldOpen}
-        initialFocus={-1}
         placement="bottom-start"
-        size="xl"
-        padding="none"
-        trigger={(
+      >
+        <Popover.Trigger>
           <Button
             layout="row"
             leading={field && FieldIcon
@@ -83,22 +81,27 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
           >
             {fieldLabel}
           </Button>
-        )}
-      >
-        <div className="flex max-h-[72vh] flex-col">
-          <FieldPicker
-            fields={availableFields}
-            selectedFieldId={field?.id}
-            emptyMessage={meta.ui.fieldPicker.noAvailable}
-            onSelect={fieldId => {
-              props.onChange({
-                field: fieldId,
-                direction: props.sorter.direction
-              })
-              setFieldOpen(false)
-            }}
-          />
-        </div>
+        </Popover.Trigger>
+        <Popover.Content
+          initialFocus={-1}
+          size="xl"
+          padding="none"
+        >
+          <div className="flex max-h-[72vh] flex-col">
+            <FieldPicker
+              fields={availableFields}
+              selectedFieldId={field?.id}
+              emptyMessage={meta.ui.fieldPicker.noAvailable}
+              onSelect={fieldId => {
+                props.onChange({
+                  field: fieldId,
+                  direction: props.sorter.direction
+                })
+                setFieldOpen(false)
+              }}
+            />
+          </div>
+        </Popover.Content>
       </Popover>
 
       <Menu.Dropdown

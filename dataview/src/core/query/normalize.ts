@@ -1,13 +1,16 @@
 import type {
   ViewQuery as StoredGroupViewQuery
-} from '@dataview/core/contracts'
+} from '@dataview/core/contracts/state'
 import type { ViewQuery } from './contracts'
 import { cloneGrouping } from './shared'
 
 export const normalizeViewQuery = (
-  query?: StoredGroupViewQuery
+  query?: Partial<Pick<StoredGroupViewQuery, 'search' | 'filter' | 'group'> & {
+    sort: StoredGroupViewQuery['sorters']
+    sorters: StoredGroupViewQuery['sorters']
+  }>
 ): ViewQuery => ({
-  search: query
+  search: query?.search
     ? {
         query: query.search.query,
         fields: query.search.fields?.length
@@ -17,7 +20,7 @@ export const normalizeViewQuery = (
     : {
         query: ''
       },
-  filter: query
+  filter: query?.filter
     ? {
         mode: query.filter.mode,
         rules: query.filter.rules.map(rule => ({
@@ -30,8 +33,8 @@ export const normalizeViewQuery = (
         mode: 'and',
         rules: []
       },
-  sorters: query
-    ? query.sorters.map(sorter => ({
+  sort: (query?.sort ?? query?.sorters)
+    ? (query.sort ?? query.sorters)!.map(sorter => ({
         field: sorter.field,
         direction: sorter.direction
       }))

@@ -4,6 +4,7 @@ import type {
 } from '@dataview/react/runtime/currentView'
 import type {
   TableBlock,
+  TableColumnFooterBlock,
   TableColumnHeaderBlock,
   TableRowBlock,
   TableSectionHeaderBlock
@@ -41,22 +42,31 @@ export const buildTableBlocks = (input: {
   let top = 0
 
   if (!input.grouped) {
+    const scopeId = input.sections[0]?.key ?? 'root'
     const headerBlock: TableColumnHeaderBlock = {
       key: 'column-header:flat',
       kind: 'column-header',
       top,
       height: input.headerHeight,
-      scopeId: 'flat',
+      scopeId,
       rowIds: input.rowIds
     }
     blocks.push(headerBlock)
     top += input.headerHeight
-    pushRowBlocks({
+    top = pushRowBlocks({
       blocks,
       rowIds: input.rowIds,
       top,
       rowHeight: input.rowHeight
     })
+    const footerBlock: TableColumnFooterBlock = {
+      key: 'column-footer:flat',
+      kind: 'column-footer',
+      top,
+      height: input.headerHeight,
+      scopeId
+    }
+    blocks.push(footerBlock)
     return blocks
   }
 
@@ -92,6 +102,15 @@ export const buildTableBlocks = (input: {
       top,
       rowHeight: input.rowHeight
     })
+    const footerBlock: TableColumnFooterBlock = {
+      key: `column-footer:${section.key}`,
+      kind: 'column-footer',
+      top,
+      height: input.headerHeight,
+      scopeId: section.key
+    }
+    blocks.push(footerBlock)
+    top += input.headerHeight
   })
 
   return blocks

@@ -14,7 +14,7 @@ import {
   TABLE_SURFACE_LEADING_OFFSET
 } from '../../layout'
 
-const TABLE_SELECTION_INSET = (
+export const TABLE_SELECTION_INSET = (
   TABLE_SURFACE_LEADING_OFFSET
   - TABLE_REORDER_RAIL_WIDTH
   - TABLE_REORDER_RAIL_GAP
@@ -28,7 +28,7 @@ export interface RowRailProps {
   selected: boolean
   state: RowRailState
   marqueeActive: boolean
-  onSelectionPointerStart: (event: PointerEvent<HTMLButtonElement>) => void
+  onSelectionPointerStart: (event: PointerEvent<HTMLElement>) => void
   onDragPointerStart: (event: PointerEvent<HTMLButtonElement>) => void
 }
 
@@ -45,15 +45,15 @@ export const DragHandle = (props: DragHandleProps) => {
         event.stopPropagation()
         props.onPointerStart(event)
       }}
-      className="pointer-events-auto inline-flex cursor-grab items-center justify-center rounded-md border-0 bg-transparent text-muted-foreground transition-[background-color,color] hover:bg-hover hover:text-foreground active:cursor-grabbing"
+      className="pointer-events-auto inline-flex cursor-grab items-center justify-center rounded-md border-0 bg-transparent text-muted-foreground transition-all hover:bg-hover active:cursor-grabbing"
       style={{
         width: TABLE_REORDER_HANDLE_SIZE,
-        height: TABLE_REORDER_HANDLE_SIZE
+        height: TABLE_REORDER_HANDLE_SIZE + 4
       }}
       aria-label="Drag row"
       title="Drag row"
     >
-      <GripVertical size={16} strokeWidth={1.8} />
+      <GripVertical size={18} strokeWidth={1.8} />
     </button>
   )
 }
@@ -64,40 +64,44 @@ export interface RowSelectionButtonProps {
   disabled?: boolean
   label?: string
   className?: string
-  onPointerStart: (event: PointerEvent<HTMLButtonElement>) => void
+  onPointerStart: (event: PointerEvent<HTMLElement>) => void
 }
 
 export const RowSelectionButton = (props: RowSelectionButtonProps) => {
   return (
-    <button
-      type="button"
-      disabled={props.disabled}
-      onPointerDown={event => {
-        if (props.disabled) {
-          return
-        }
-        event.preventDefault()
-        event.stopPropagation()
-        props.onPointerStart(event)
-      }}
-      className={cn(
-        'pointer-events-auto inline-flex h-4 w-4 items-center justify-center rounded-[3px] border text-[10px] transition-colors',
-        props.className,
-        props.selected || props.indeterminate
-          ? 'border-primary bg-primary text-primary-foreground'
-          : 'border-[rgb(196,196,196)] bg-background text-transparent hover:border-muted-foreground/60',
-        props.disabled && 'cursor-default border-border bg-muted text-transparent opacity-50 hover:border-border'
-      )}
-      aria-checked={props.indeterminate ? 'mixed' : props.selected}
-      aria-label={props.label ?? 'Select row'}
-      title={props.label ?? 'Select row'}
-    >
-      {props.indeterminate ? (
-        <span className="block h-px w-2 rounded-full bg-current" />
-      ) : (
-        <span className={cn(props.selected ? 'opacity-100' : 'opacity-0')}>✓</span>
-      )}
-    </button>
+    <div className='flex h-full pointer-events-auto cursor-pointer shrink-0 items-center justify-center' style={{
+      width: TABLE_SELECTION_SLOT_WIDTH + TABLE_SELECTION_INSET * 2
+    }} onPointerDown={event => {
+      if (props.disabled) {
+        return
+      }
+      event.preventDefault()
+      event.stopPropagation()
+      props.onPointerStart(event)
+    }}>
+      <button
+        aria-checked={props.indeterminate ? 'mixed' : props.selected}
+        aria-label={props.label ?? 'Select row'}
+        title={props.label ?? 'Select row'}
+        type="button"
+        disabled={props.disabled}
+        className={cn(
+          'pointer-events-auto size-[16px] inline-flex items-center justify-center rounded border text-sm transition-colors',
+          props.className,
+          props.selected || props.indeterminate
+            ? 'border-primary bg-primary text-primary-foreground'
+            : 'text-transparent hover:bg-hover',
+          props.disabled && 'cursor-default border-border bg-muted text-transparent opacity-50 hover:border-border'
+        )}
+      >
+        {props.indeterminate ? (
+          <span className="block h-px w-2 text-white rounded-full bg-current" />
+        ) : (
+          <span className={cn(props.selected ? 'opacity-100' : 'opacity-0', 'text-white')}>✓</span>
+        )}
+      </button>
+    </div>
+
   )
 }
 
@@ -128,10 +132,7 @@ export const TableLeadingRail = (props: TableLeadingRailProps) => {
         <div
           className="flex h-full items-center justify-end"
           style={{
-            width: TABLE_SURFACE_LEADING_OFFSET,
-            marginLeft: -TABLE_SURFACE_LEADING_OFFSET,
-            gap: TABLE_REORDER_RAIL_GAP,
-            paddingRight: TABLE_SELECTION_INSET
+            marginLeft: -TABLE_SURFACE_LEADING_OFFSET
           }}
         >
           {props.leading ? (
@@ -144,16 +145,7 @@ export const TableLeadingRail = (props: TableLeadingRailProps) => {
               {props.leading}
             </div>
           ) : null}
-          {props.selection ? (
-            <div
-              className="flex shrink-0 items-center justify-center"
-              style={{
-                width: TABLE_SELECTION_SLOT_WIDTH
-              }}
-            >
-              {props.selection}
-            </div>
-          ) : null}
+          {props.selection}
         </div>
       </div>
     </div>
@@ -166,22 +158,22 @@ export const RowRail = (props: RowRailProps) => {
       rowId={props.rowId}
       leading={props.state.drag === 'visible'
         ? (
-            <DragHandle onPointerStart={props.onDragPointerStart} />
-          )
+          <DragHandle onPointerStart={props.onDragPointerStart} />
+        )
         : undefined}
       selection={props.state.selection !== 'hidden'
         ? (
-            <RowSelectionButton
-              selected={props.selected}
-              onPointerStart={props.onSelectionPointerStart}
-              className={cn(
-                props.state.selection === 'visible'
-                  ? 'opacity-100'
-                  : 'opacity-0',
-                props.marqueeActive && 'pointer-events-none'
-              )}
-            />
-          )
+          <RowSelectionButton
+            selected={props.selected}
+            onPointerStart={props.onSelectionPointerStart}
+            className={cn(
+              props.state.selection === 'visible'
+                ? 'opacity-100'
+                : 'opacity-0',
+              props.marqueeActive && 'pointer-events-none'
+            )}
+          />
+        )
         : undefined}
     />
   )

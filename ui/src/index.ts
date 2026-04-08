@@ -15,6 +15,7 @@ export {
   type MenuProps,
   type MenuReorderItem,
   type MenuReorderProps,
+  type MenuSelectionAppearance,
   type MenuSelectionMode,
   type MenuSurfaceSize,
   type MenuSubmenuOpenPolicy
@@ -31,10 +32,12 @@ export {
   type PopoverAnchorPoint,
   type PopoverAnchorRect,
   type PopoverAnchorReference,
+  type PopoverContentProps,
   type PopoverOffset,
   type PopoverSurfacePadding,
   type PopoverSurfaceSize,
-  type PopoverProps
+  type PopoverProps,
+  type PopoverTriggerProps
 } from './popover'
 export {
   OverlayProvider,

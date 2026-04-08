@@ -5,14 +5,11 @@ import {
   type KeyboardEvent,
   type ReactNode
 } from 'react'
-import { Button } from '../button'
 import { Switch } from '../switch'
 import { cn } from '../utils'
 import type { VerticalReorderHandleProps } from '../vertical-reorder-list'
-import {
-  resolveItemClassName,
-  resolveSurfaceClassName
-} from './shared'
+import { resolveRowAppearance } from './shared'
+import type { ActiveSource, SelectionAppearance } from './types'
 
 type Tone = 'default' | 'destructive'
 
@@ -22,6 +19,12 @@ interface ContentProps {
   suffix?: ReactNode
   trailing?: ReactNode
   tone?: Tone
+}
+
+const stopPropagation = (event: {
+  stopPropagation: () => void
+}) => {
+  event.stopPropagation()
 }
 
 export const Content = (props: ContentProps) => {
@@ -39,7 +42,7 @@ export const Content = (props: ContentProps) => {
       ) : null}
 
       <span className={cn(
-        'min-w-0 truncate flex-1',
+        'min-w-0 flex-1 truncate',
         destructive ? 'text-[13px] text-destructive' : 'text-[13px] text-foreground'
       )}>
         {props.label}
@@ -66,98 +69,95 @@ export const Content = (props: ContentProps) => {
   )
 }
 
-interface ButtonRowProps extends Omit<React.ComponentProps<typeof Button>, 'children' | 'leading' | 'suffix' | 'trailing' | 'layout' | 'tone'> {
+interface RowProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
   label: ReactNode
   leading?: ReactNode
   suffix?: ReactNode
   trailing?: ReactNode
+  accessory?: ReactNode
+  start?: ReactNode
   tone?: Tone
   active: boolean
+  activeSource?: ActiveSource
+  selected?: boolean
+  selectionAppearance?: SelectionAppearance
+  open?: boolean
+  dragging?: boolean
+  disabled?: boolean
   highlightedClassName?: string
-  surface?: 'filled' | 'ghost'
 }
 
-export const ButtonRow = forwardRef<HTMLButtonElement, ButtonRowProps>((props, ref) => {
+export const Row = forwardRef<HTMLDivElement, RowProps>((props, ref) => {
   const {
     label,
     leading,
     suffix,
     trailing,
+    accessory,
+    start,
     tone,
     active,
-    highlightedClassName,
-    surface = 'filled',
-    className,
-    ...buttonProps
-  } = props
-  const destructive = tone === 'destructive'
-
-  return (
-    <Button
-      ref={ref}
-      layout="row"
-      variant={destructive ? 'ghostDestructive' : undefined}
-      className={cn(
-        surface === 'filled'
-          ? resolveItemClassName({
-              active,
-              destructive
-            })
-          : 'bg-transparent px-1.5 hover:bg-transparent',
-        className,
-        active && highlightedClassName
-      )}
-      {...buttonProps}
-    >
-      <Content
-        label={label}
-        leading={leading}
-        suffix={suffix}
-        trailing={trailing}
-        tone={tone}
-      />
-    </Button>
-  )
-})
-
-ButtonRow.displayName = 'ButtonRow'
-
-interface SurfaceRowProps extends HTMLAttributes<HTMLDivElement> {
-  active: boolean
-  tone?: Tone
-  dragging?: boolean
-  disabled?: boolean
-}
-
-export const SurfaceRow = (props: SurfaceRowProps) => {
-  const {
-    active,
-    tone,
+    activeSource,
+    selected,
+    selectionAppearance,
+    open,
     dragging,
     disabled,
+    highlightedClassName,
     className,
-    children,
     ...domProps
   } = props
 
   return (
     <div
+      ref={ref}
       className={cn(
-        'flex items-center gap-1 rounded-lg px-1.5 py-0.5 transition-colors',
-        resolveSurfaceClassName({
+        'flex h-8 w-full max-w-full cursor-pointer items-center gap-1 rounded-lg px-1.5 text-left text-sm font-medium outline-none transition-[background-color,color,opacity] duration-150 focus:outline-none',
+        resolveRowAppearance({
           active,
+          activeSource: activeSource ?? null,
+          selected,
+          selectionAppearance: selectionAppearance ?? 'row',
+          open,
           destructive: tone === 'destructive'
         }),
         disabled && 'pointer-events-none opacity-40',
         dragging && 'opacity-70',
-        className
+        className,
+        (active || open) && highlightedClassName
       )}
+      aria-disabled={disabled || undefined}
       {...domProps}
     >
-      {children}
+      {start !== undefined && start !== null ? start : null}
+
+      <div className="flex min-w-0 flex-1 items-center gap-2.5 self-stretch">
+        <Content
+          label={label}
+          leading={leading}
+          suffix={suffix}
+          trailing={trailing}
+          tone={tone}
+        />
+      </div>
+
+      {accessory !== undefined && accessory !== null ? (
+        <div
+          className="flex h-8 shrink-0 items-center justify-center"
+          onKeyDownCapture={stopPropagation}
+          onPointerDown={stopPropagation}
+          onMouseDown={stopPropagation}
+          onClick={stopPropagation}
+          onKeyDown={stopPropagation}
+        >
+          {accessory}
+        </div>
+      ) : null}
     </div>
   )
-}
+})
+
+Row.displayName = 'Row'
 
 interface HandleProps {
   ariaLabel: string
@@ -169,26 +169,27 @@ interface HandleProps {
 }
 
 export const Handle = (props: HandleProps) => (
-  <Button
-    variant="plain"
-    size="iconBare"
+  <button
+    type="button"
+    className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-transparent text-muted-foreground outline-none focus:outline-none"
     aria-label={props.ariaLabel}
     {...props.attributes}
     {...props.listeners}
     ref={props.setActivatorNodeRef}
     style={{ touchAction: 'none' }}
     onMouseEnter={props.onActive}
-    onMouseDown={event => {
-      event.stopPropagation()
+    onPointerDown={event => {
+      stopPropagation(event)
+      props.listeners?.onPointerDown?.(event)
     }}
-    onClick={event => {
-      event.stopPropagation()
-    }}
+    onMouseDown={stopPropagation}
+    onClick={stopPropagation}
+    onKeyDownCapture={stopPropagation}
   >
     {props.icon ?? (
       <GripVertical className="size-4 cursor-grab text-muted-foreground" size={16} strokeWidth={1.8} />
     )}
-  </Button>
+  </button>
 )
 
 export const checkTrailing = () => (

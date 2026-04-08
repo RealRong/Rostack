@@ -27,6 +27,7 @@ import {
   useFieldById
 } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
+import { FIELD_DROPDOWN_MENU_PROPS } from '../dropdown'
 import type { OptionLike } from './OptionEditorPopover'
 import { buildStatusIdsAfterCategoryMove } from './statusOptionMenu'
 
@@ -189,7 +190,7 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
           leading: <Settings2 className="size-4" size={16} strokeWidth={1.8} />,
           suffix: getStatusCategoryLabel(statusCategory),
           items: groupItems,
-          presentation: 'dropdown'
+          ...FIELD_DROPDOWN_MENU_PROPS
         })
       }
     }

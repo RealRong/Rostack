@@ -39,7 +39,7 @@ export interface InteractionStartInput {
   mode: Exclude<InteractionMode, 'idle' | 'keyboard'>
   gesture?: ActiveInteractionGesture
   event?: InteractionPointerLikeEvent | PointerEvent
-  capture?: Element | null
+  capture?: Element | null | false
   move?: (event: PointerEvent, session: InteractionSession) => void
   up?: (event: PointerEvent, session: InteractionSession) => void
   cancel?: (session: InteractionSession) => void
@@ -224,7 +224,9 @@ export const createInteractionCoordinator = (): InteractionDomain => {
       }
 
       const pointerId = input.event?.pointerId
-      const capture = input.capture ?? eventTarget(input.event)
+      const capture = input.capture === undefined
+        ? eventTarget(input.event)
+        : input.capture || null
       const ownerWindow = eventWindow(input.event)
       const gesture = input.gesture ?? defaultActiveGesture(input.mode)
       const current: ActiveInteraction = {

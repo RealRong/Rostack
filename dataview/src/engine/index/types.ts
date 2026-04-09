@@ -50,11 +50,20 @@ export interface AggregateState {
   min?: number | string | null
   max?: number | string | null
   distribution: ReadonlyMap<string, number>
+  entries: ReadonlyMap<RecordId, AggregateEntry>
+}
+
+export interface AggregateEntry {
+  empty: boolean
+  label?: string
+  number?: number
+  comparable?: number | string
 }
 
 export interface FieldCalcIndex {
   global: AggregateState
   buckets?: ReadonlyMap<BucketKey, AggregateState>
+  recordBuckets?: ReadonlyMap<RecordId, readonly BucketKey[]>
 }
 
 export interface CalculationIndex {

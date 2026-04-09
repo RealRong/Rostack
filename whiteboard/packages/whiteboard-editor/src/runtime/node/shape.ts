@@ -3,7 +3,7 @@ import type {
   NodePatchWriter,
   NodeShapeMutations
 } from './types'
-import { dataUpdate } from './document'
+import { dataUpdate } from './patch'
 
 export const createNodeShapeMutations = ({
   engine,

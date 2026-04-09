@@ -35,13 +35,14 @@ const buildIndexState = (
   document: DataDoc
 ): IndexState => {
   const records = buildRecordIndex(document)
+  const group = buildGroupIndex(document, records)
 
   return {
     records,
     search: buildSearchIndex(document, records),
-    group: buildGroupIndex(document, records),
+    group,
     sort: buildSortIndex(document, records),
-    calculations: buildCalculationIndex(document, records)
+    calculations: buildCalculationIndex(document, records, group)
   }
 }
 
@@ -54,12 +55,13 @@ export const createEngineIndex = (
     state: () => current,
     sync: (nextDocument, delta) => {
       const records = syncRecordIndex(current.records, nextDocument, delta)
+      const group = syncGroupIndex(current.group, nextDocument, records, delta)
       current = {
         records,
         search: syncSearchIndex(current.search, nextDocument, records, delta),
-        group: syncGroupIndex(current.group, nextDocument, records, delta),
+        group,
         sort: syncSortIndex(current.sort, nextDocument, records, delta),
-        calculations: syncCalculationIndex(current.calculations, nextDocument, records, delta)
+        calculations: syncCalculationIndex(current.calculations, nextDocument, records, group, delta)
       }
       return current
     }

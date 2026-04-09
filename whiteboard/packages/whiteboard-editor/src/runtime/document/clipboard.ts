@@ -5,12 +5,12 @@ import type {
 import { createClipboardPacket } from '@whiteboard/core/document'
 import type { Point } from '@whiteboard/core/types'
 import type {
+  EditorClipboardApi,
   EditorClipboardTarget
 } from '../../types/editor'
 import type {
-  ClipboardActions,
   ClipboardRuntime
-} from '../editor/runtimeTypes'
+} from './types'
 
 const applyInsertedRoots = (input: {
   editor: ClipboardRuntime
@@ -81,13 +81,13 @@ export const createClipboardActions = ({
   editor
 }: {
   editor: ClipboardRuntime
-}): ClipboardActions => ({
-  export: (target = 'selection') =>
+}): EditorClipboardApi => ({
+  copy: (target: EditorClipboardTarget = 'selection') =>
     readClipboardPacket({
       editor,
       target
     }),
-  cut: (target = 'selection') => {
+  cut: (target: EditorClipboardTarget = 'selection') => {
     const resolved = resolveClipboardTarget({
       editor,
       target
@@ -105,7 +105,7 @@ export const createClipboardActions = ({
     }
 
     if (resolved.nodeIds?.length || resolved.edgeIds?.length) {
-      const removed = editor.canvas.delete(resolved, {
+      const removed = editor.selection.delete(resolved, {
         clearSelection: true
       })
       if (!removed) {
@@ -115,8 +115,8 @@ export const createClipboardActions = ({
 
     return packet
   },
-  insert: (
-    packet,
+  paste: (
+    packet: ClipboardPacket,
     options?: {
       origin?: Point
     }

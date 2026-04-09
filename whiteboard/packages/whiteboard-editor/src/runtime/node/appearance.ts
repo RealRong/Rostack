@@ -4,7 +4,7 @@ import type {
   NodeAppearanceMutations,
   NodePatchWriter
 } from './types'
-import { styleUpdate } from './document'
+import { styleUpdate } from './patch'
 
 export const createNodeAppearanceMutations = ({
   engine,

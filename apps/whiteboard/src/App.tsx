@@ -53,11 +53,6 @@ export const App = () => {
     }
   }, [collabBinding])
 
-  useEffect(() => {
-    instanceRef.current?.commands.viewport.reset()
-    instanceRef.current?.commands.selection.clear()
-  }, [doc.id])
-
   const handleInstanceRef = useCallback((next: WhiteboardInstance | null) => {
     instanceRef.current = next
   }, [])

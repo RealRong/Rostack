@@ -9,14 +9,14 @@ import type {
 } from './types'
 import type {
   PreviewRuntime,
-  SessionRuntime
-} from '../editor/runtimeTypes'
+} from '../preview/types'
+import type { SessionRuntime } from '../session/types'
 import type { EditorRead } from '../../types/editor'
 import {
   dataUpdate,
   mergeNodeUpdates,
   styleUpdate
-} from './document'
+} from './patch'
 
 type NodeTextHost = {
   read: EditorRead

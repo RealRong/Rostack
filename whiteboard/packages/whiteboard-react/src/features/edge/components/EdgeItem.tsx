@@ -77,6 +77,17 @@ const EdgeItemBase = ({
         color={stroke}
         strokeWidth={strokeWidth}
         strokeDasharray={dash}
+        vectorEffect="non-scaling-stroke"
+        pointerEvents="none"
+        className="wb-edge-hover-path"
+      />
+      <path
+        d={svgPath}
+        fill="none"
+        stroke={stroke}
+        color={stroke}
+        strokeWidth={strokeWidth}
+        strokeDasharray={dash}
         markerStart={markerStart}
         markerEnd={markerEnd}
         vectorEffect="non-scaling-stroke"

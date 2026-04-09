@@ -32,10 +32,10 @@ import {
   type ViewSortProjection
 } from '@dataview/core/sort'
 import {
-  getDocumentFields
+  getDocumentFields,
+  getDocumentViewById
 } from '@dataview/core/document'
 import {
-  resolveViewRecordState,
   type ResolvedViewRecordState
 } from '@dataview/core/view'
 import {
@@ -76,6 +76,9 @@ import {
 import {
   recordsStage
 } from './records'
+import {
+  resolveIndexedViewRecordState
+} from './recordState'
 import {
   searchStage
 } from './search'
@@ -271,7 +274,7 @@ const resolveRuntimeView = (
   }
 
   cache.view = next.activeViewId
-    ? resolveViewRecordState(next.document, next.activeViewId).view
+    ? getDocumentViewById(next.document, next.activeViewId)
     : undefined
   return cache.view
 }
@@ -298,7 +301,11 @@ const resolveRuntimeRecordState = (
     return cache.recordState
   }
 
-  cache.recordState = resolveViewRecordState(next.document, next.activeViewId)
+  cache.recordState = resolveIndexedViewRecordState({
+    document: next.document,
+    activeViewId: next.activeViewId,
+    index: next.index
+  })
   return cache.recordState
 }
 

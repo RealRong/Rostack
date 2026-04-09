@@ -2,38 +2,16 @@ import { createId } from '@whiteboard/core/utils'
 import type { Edge, EdgeId } from '@whiteboard/core/types'
 import type {
   Editor,
-} from '../../types/editor'
-import type { EditorRead } from '../../types/editor'
-import type {
-  DocumentRuntime,
-  EdgeActions,
-  EdgesPatch,
-  EdgeStylePatch,
   EditorEdgeLabelPatch,
-  SessionRuntime
-} from '../editor/runtimeTypes'
+  EditorRead
+} from '../../types/editor'
+import type { DocumentRuntime } from './types'
+import type { SessionRuntime } from '../session/types'
 
 const DEFAULT_EDGE_LABEL = {
   t: 0.5,
   offset: 0
 } as const
-
-const mergeEdgePatch = (
-  patch: EdgesPatch
-) => ({
-  ...(patch.type !== undefined ? { type: patch.type } : {}),
-  ...(patch.textMode !== undefined ? { textMode: patch.textMode } : {})
-})
-
-const mergeEdgeStylePatch = (
-  edge: Edge,
-  patch: EdgeStylePatch
-) => ({
-  style: {
-    ...(edge.style ?? {}),
-    ...patch
-  }
-})
 
 const mergeEdgeLabelPatch = (
   edge: Edge,
@@ -76,7 +54,7 @@ const readEdge = (
   edgeId: EdgeId
 ) => read.edge.item.get(edgeId)?.edge
 
-export const createEdgesActions = ({
+export const createEdgeLabelActions = ({
   read,
   edit,
   session,
@@ -86,138 +64,78 @@ export const createEdgesActions = ({
   edit: Editor['state']['edit']
   session: Pick<SessionRuntime, 'edit' | 'selection'>
   document: Pick<DocumentRuntime, 'edge'>
-}): EdgeActions => ({
-  create: document.edge.create,
-  move: document.edge.move,
-  reconnect: document.edge.reconnect,
-  delete: document.edge.delete,
-  route: document.edge.route,
-  set: (edgeIds, patch) => {
-    const updates = edgeIds.flatMap((edgeId) => {
-      const edge = readEdge(read, edgeId)
-      if (!edge) {
-        return []
-      }
-
-      const nextPatch = mergeEdgePatch(patch)
-      return Object.keys(nextPatch).length > 0
-        ? [{
-            id: edgeId,
-            patch: nextPatch
-          }]
-        : []
-    })
-
-    if (updates.length === 0) {
+}): Editor['document']['edges']['labels'] => ({
+  add: (edgeId: EdgeId) => {
+    const edge = readEdge(read, edgeId)
+    if (!edge) {
       return undefined
     }
 
-    return document.edge.updateMany(updates)
-  },
-  style: {
-    set: (edgeIds, patch) => {
-      const updates = edgeIds.flatMap((edgeId) => {
-        const edge = readEdge(read, edgeId)
-        if (!edge) {
-          return []
-        }
-
-        return [{
-          id: edgeId,
-          patch: mergeEdgeStylePatch(edge, patch)
-        }]
-      })
-
-      if (updates.length === 0) {
-        return undefined
-      }
-
-      return document.edge.updateMany(updates)
-    },
-    swapMarkers: (edgeId) => {
-      const edge = readEdge(read, edgeId)
-      if (!edge) {
-        return undefined
-      }
-
-      return document.edge.update(edgeId, {
-        style: {
-          ...(edge.style ?? {}),
-          start: edge.style?.end ?? 'none',
-          end: edge.style?.start ?? 'none'
-        }
-      })
+    const currentEdit = edit.get()
+    if (
+      currentEdit
+      && currentEdit.kind === 'edge-label'
+      && currentEdit.edgeId === edgeId
+    ) {
+      return undefined
     }
+
+    const labelId = createId('edge_label')
+    const nextLabels = [
+      ...(edge.labels ?? []),
+      {
+        id: labelId,
+        ...DEFAULT_EDGE_LABEL
+      }
+    ]
+
+    document.edge.update(edgeId, {
+      labels: nextLabels
+    })
+    session.selection.replace({
+      edgeIds: [edgeId]
+    })
+    session.edit.startEdgeLabel(edgeId, labelId)
+    return labelId
   },
-  labels: {
-    add: (edgeId) => {
-      const edge = readEdge(read, edgeId)
-      if (!edge) {
-        return undefined
-      }
-
-      const currentEdit = edit.get()
-      if (
-        currentEdit
-        && currentEdit.kind === 'edge-label'
-        && currentEdit.edgeId === edgeId
-      ) {
-        return undefined
-      }
-
-      const labelId = createId('edge_label')
-      const nextLabels = [
-        ...(edge.labels ?? []),
-        {
-          id: labelId,
-          ...DEFAULT_EDGE_LABEL
-        }
-      ]
-
-      document.edge.update(edgeId, {
-        labels: nextLabels
-      })
-      session.selection.replace({
-        edgeIds: [edgeId]
-      })
-      session.edit.startEdgeLabel(edgeId, labelId)
-      return labelId
-    },
-    update: (edgeId, labelId, patch) => {
-      const edge = readEdge(read, edgeId)
-      if (!edge) {
-        return undefined
-      }
-
-      const nextLabels = mergeEdgeLabelPatch(edge, labelId, patch)
-      if (!nextLabels) {
-        return undefined
-      }
-
-      return document.edge.update(edgeId, {
-        labels: nextLabels
-      })
-    },
-    remove: (edgeId, labelId) => {
-      const edge = readEdge(read, edgeId)
-      if (!edge?.labels?.some((label) => label.id === labelId)) {
-        return undefined
-      }
-
-      const nextLabels = edge.labels.filter((label) => label.id !== labelId)
-      const currentEdit = edit.get()
-      if (
-        currentEdit
-        && currentEdit.kind === 'edge-label'
-        && currentEdit.edgeId === edgeId
-        && currentEdit.labelId === labelId
-      ) {
-        session.edit.clear()
-      }
-
-      return document.edge.update(edgeId, {
-        labels: nextLabels.length > 0 ? nextLabels : []
-      })
+  patch: (
+    edgeId: EdgeId,
+    labelId: string,
+    patch: EditorEdgeLabelPatch
+  ) => {
+    const edge = readEdge(read, edgeId)
+    if (!edge) {
+      return undefined
     }
+
+    const nextLabels = mergeEdgeLabelPatch(edge, labelId, patch)
+    if (!nextLabels) {
+      return undefined
+    }
+
+    return document.edge.update(edgeId, {
+      labels: nextLabels
+    })
+  },
+  remove: (edgeId: EdgeId, labelId: string) => {
+    const edge = readEdge(read, edgeId)
+    if (!edge?.labels?.some((label) => label.id === labelId)) {
+      return undefined
+    }
+
+    const nextLabels = edge.labels.filter((label) => label.id !== labelId)
+    const currentEdit = edit.get()
+    if (
+      currentEdit
+      && currentEdit.kind === 'edge-label'
+      && currentEdit.edgeId === edgeId
+      && currentEdit.labelId === labelId
+    ) {
+      session.edit.clear()
+    }
+
+    return document.edge.update(edgeId, {
+      labels: nextLabels.length > 0 ? nextLabels : []
+    })
   }
 })

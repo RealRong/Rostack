@@ -3,7 +3,7 @@ import type {
   EditorRead,
   EditorState
 } from '../../types/editor'
-import type { EditorRuntime } from './runtimeTypes'
+import type { EditorRuntime } from './runtime'
 import type { ContextMenuIntent } from '../../types/input'
 import type { InteractionRuntime } from '../interaction/types'
 import type { EdgeHoverService } from '../../interactions/edge/hover'

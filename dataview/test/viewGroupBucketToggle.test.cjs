@@ -332,6 +332,57 @@ test('engine.project exposes body projections for the active view', () => {
   assert.ok(calculations?.get('todo'))
 })
 
+test('engine.project records honor search filter sort and manual order', () => {
+  const engine = createEngine({
+    document: createDocument()
+  })
+
+  assert.deepEqual(
+    engine.project.records.get()?.visibleIds,
+    ['rec_1', 'rec_2', 'rec_3']
+  )
+
+  engine.view(VIEW_TABLE).search.set('task 2')
+  assert.deepEqual(
+    engine.project.records.get()?.visibleIds,
+    ['rec_2']
+  )
+
+  engine.view(VIEW_TABLE).search.set('')
+  engine.view(VIEW_TABLE).filter.add(FIELD_STATUS)
+  engine.view(VIEW_TABLE).filter.set(0, {
+    fieldId: FIELD_STATUS,
+    presetId: 'eq',
+    value: 'done'
+  })
+  assert.deepEqual(
+    engine.project.records.get()?.visibleIds,
+    ['rec_3']
+  )
+
+  engine.view(VIEW_TABLE).filter.clear()
+  engine.view(VIEW_TABLE).sort.only(FIELD_POINTS, 'desc')
+  assert.deepEqual(
+    engine.project.records.get()?.derivedIds,
+    ['rec_3', 'rec_2', 'rec_1']
+  )
+  assert.deepEqual(
+    engine.project.records.get()?.orderedIds,
+    ['rec_3', 'rec_2', 'rec_1']
+  )
+
+  engine.view(VIEW_TABLE).sort.clear()
+  engine.view(VIEW_TABLE).order.move(['rec_3'], 'rec_1')
+  assert.deepEqual(
+    engine.project.records.get()?.orderedIds,
+    ['rec_3', 'rec_1', 'rec_2']
+  )
+  assert.deepEqual(
+    engine.project.records.get()?.visibleIds,
+    ['rec_3', 'rec_1', 'rec_2']
+  )
+})
+
 test('view.create resolves duplicate names in the command layer', () => {
   const engine = createEngine({
     document: createDocument()

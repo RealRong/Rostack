@@ -9,7 +9,7 @@ import {
   dataUpdate,
   mergeNodeUpdates,
   styleUpdate
-} from '../node/document'
+} from '../node/patch'
 
 const isSameSize = (
   left: Size | null | undefined,

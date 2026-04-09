@@ -11,10 +11,18 @@ import {
   getFieldSearchTokens,
   normalizeSearchableValue
 } from '@dataview/core/field'
+import {
+  collectSchemaFieldIds,
+  collectTouchedRecordIds,
+  createOrderIndex,
+  insertOrderedId,
+  removeOrderedId
+} from './shared'
 import type {
   RecordIndex,
   RecordTokens,
-  SearchIndex
+  SearchIndex,
+  SortedIdSet
 } from './types'
 
 const unique = (
@@ -106,32 +114,91 @@ const buildTokensMap = (
   })
 )
 
-const collectTouchedRecordIds = (
-  delta: CommitDelta
+const removeTokensFromPostings = (
+  postings: Map<string, SortedIdSet<RecordId>>,
+  tokens: readonly string[],
+  recordId: RecordId
 ) => {
-  if (
-    delta.entities.records?.update === 'all'
-    || delta.entities.values?.records === 'all'
-  ) {
-    return 'all' as const
-  }
-
-  const ids = new Set<RecordId>()
-  delta.entities.records?.add?.forEach(id => ids.add(id))
-  if (Array.isArray(delta.entities.records?.update)) {
-    delta.entities.records.update.forEach(id => ids.add(id))
-  }
-  delta.entities.records?.remove?.forEach(id => ids.add(id))
-  if (Array.isArray(delta.entities.values?.records)) {
-    delta.entities.values.records.forEach(id => ids.add(id))
-  }
-
-  for (const item of delta.semantics) {
-    if (item.kind === 'record.patch') {
-      item.ids.forEach(id => ids.add(id))
+  tokens.forEach(token => {
+    const ids = postings.get(token)
+    if (!ids) {
+      return
     }
+
+    const nextIds = removeOrderedId(ids, recordId)
+    if (nextIds.length) {
+      postings.set(token, nextIds)
+      return
+    }
+
+    postings.delete(token)
+  })
+}
+
+const addTokensToPostings = (
+  postings: Map<string, SortedIdSet<RecordId>>,
+  tokens: readonly string[],
+  recordId: RecordId,
+  order: ReadonlyMap<RecordId, number>
+) => {
+  tokens.forEach(token => {
+    postings.set(
+      token,
+      insertOrderedId(postings.get(token) ?? [], recordId, order)
+    )
+  })
+}
+
+const removeRecordPostings = (
+  fields: Map<FieldId, Map<string, SortedIdSet<RecordId>>>,
+  record: RecordTokens,
+  recordId: RecordId
+) => {
+  record.fields.forEach((tokens, fieldId) => {
+    const postings = fields.get(fieldId)
+    if (!postings) {
+      return
+    }
+
+    removeTokensFromPostings(postings, tokens, recordId)
+    if (!postings.size) {
+      fields.delete(fieldId)
+    }
+  })
+}
+
+const addRecordPostings = (
+  fields: Map<FieldId, Map<string, SortedIdSet<RecordId>>>,
+  record: RecordTokens,
+  recordId: RecordId,
+  order: ReadonlyMap<RecordId, number>
+) => {
+  record.fields.forEach((tokens, fieldId) => {
+    const postings = fields.get(fieldId) ?? new Map<string, SortedIdSet<RecordId>>()
+    if (!fields.has(fieldId)) {
+      fields.set(fieldId, postings)
+    }
+
+    addTokensToPostings(postings, tokens, recordId, order)
+  })
+}
+
+const collectRecordsToSync = (input: {
+  previous: SearchIndex
+  records: RecordIndex
+  delta: CommitDelta
+}): ReadonlySet<RecordId> => {
+  const ids = new Set<RecordId>()
+  const touched = collectTouchedRecordIds(input.delta)
+  const schemaFields = collectSchemaFieldIds(input.delta)
+
+  if (touched === 'all' || schemaFields.size > 0) {
+    input.previous.records.forEach((_tokens, recordId) => ids.add(recordId))
+    input.records.ids.forEach(recordId => ids.add(recordId))
+    return ids
   }
 
+  touched.forEach(recordId => ids.add(recordId))
   return ids
 }
 
@@ -161,38 +228,46 @@ export const syncSearchIndex = (
     return previous
   }
 
-  if (
-    delta.entities.fields?.add?.length
-    || delta.entities.fields?.update?.length
-    || delta.entities.fields?.remove?.length
-  ) {
-    return buildSearchIndex(document, records, previous.rev + 1)
-  }
-
-  const touched = collectTouchedRecordIds(delta)
-  if (touched === 'all') {
-    return buildSearchIndex(document, records, previous.rev + 1)
-  }
-
+  const touched = collectRecordsToSync({
+    previous,
+    records,
+    delta
+  })
   if (!touched.size) {
     return previous
   }
 
+  const order = createOrderIndex(records.ids)
   const nextRecords = new Map(previous.records)
+  const nextAll = new Map(previous.all)
+  const nextFields = new Map(
+    Array.from(previous.fields.entries(), ([fieldId, postings]) => [
+      fieldId,
+      new Map(postings)
+    ] as const)
+  )
+
   touched.forEach(recordId => {
-    const tokens = buildRecordTokens(document, recordId)
-    if (tokens) {
-      nextRecords.set(recordId, tokens)
+    const previousTokens = nextRecords.get(recordId)
+    if (previousTokens) {
+      removeTokensFromPostings(nextAll, previousTokens.all, recordId)
+      removeRecordPostings(nextFields, previousTokens, recordId)
+      nextRecords.delete(recordId)
+    }
+
+    const nextTokens = buildRecordTokens(document, recordId)
+    if (!nextTokens) {
       return
     }
 
-    nextRecords.delete(recordId)
+    addTokensToPostings(nextAll, nextTokens.all, recordId, order)
+    addRecordPostings(nextFields, nextTokens, recordId, order)
+    nextRecords.set(recordId, nextTokens)
   })
 
-  const postings = buildPostings(records.ids, nextRecords)
   return {
-    all: postings.all,
-    fields: postings.fields,
+    all: nextAll,
+    fields: nextFields,
     records: nextRecords,
     rev: previous.rev + 1
   }

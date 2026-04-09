@@ -5,12 +5,19 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import {
-  getDocumentFieldById,
   getDocumentFieldIds
 } from '@dataview/core/document'
 import {
   getRecordFieldValue
 } from '@dataview/core/field'
+import {
+  allFieldIdsOf,
+  collectSchemaFieldIds,
+  collectTouchedRecordIds,
+  collectValueFieldIds,
+  hasField,
+  hasRecordSetChange
+} from './shared'
 import type {
   RecordIndex,
   SortIndex,
@@ -30,36 +37,40 @@ const buildFieldSortIndex = (
   })
 )
 
-const collectTouchedFieldIds = (
+const collectTouchedFieldIds = (input: {
+  previous: SortIndex
+  document: DataDoc
   delta: CommitDelta
-) => {
+}): ReadonlySet<FieldId> => {
   if (
-    delta.entities.fields?.update === 'all'
-    || delta.entities.values?.fields === 'all'
-    || delta.entities.records?.update === 'all'
-    || delta.entities.records?.add?.length
-    || delta.entities.records?.remove?.length
+    input.delta.entities.fields?.update === 'all'
+    || input.delta.entities.values?.fields === 'all'
+    || input.delta.entities.records?.update === 'all'
+    || hasRecordSetChange(input.delta)
   ) {
-    return 'all' as const
+    return new Set(allFieldIdsOf(input.document, input.previous.fields))
   }
 
-  const fields = new Set<FieldId>()
-  delta.entities.fields?.add?.forEach(fieldId => fields.add(fieldId))
-  if (Array.isArray(delta.entities.fields?.update)) {
-    delta.entities.fields.update.forEach(fieldId => fields.add(fieldId))
-  }
-  delta.entities.fields?.remove?.forEach(fieldId => fields.add(fieldId))
-  if (Array.isArray(delta.entities.values?.fields)) {
-    delta.entities.values.fields.forEach(fieldId => fields.add(fieldId))
+  return new Set<FieldId>([
+    ...collectSchemaFieldIds(input.delta),
+    ...collectValueFieldIds(input.delta, { includeTitlePatch: true })
+  ])
+}
+
+const collectRecordIdsForField = (input: {
+  previous: ReadonlyMap<RecordId, SortKey> | undefined
+  records: RecordIndex
+  delta: CommitDelta
+}): ReadonlySet<RecordId> => {
+  const touched = collectTouchedRecordIds(input.delta)
+  if (touched !== 'all') {
+    return touched
   }
 
-  for (const item of delta.semantics) {
-    if (item.kind === 'record.patch' && item.aspects.includes('title')) {
-      fields.add('title')
-    }
-  }
-
-  return fields
+  const ids = new Set<RecordId>()
+  input.previous?.forEach((_value, recordId) => ids.add(recordId))
+  input.records.ids.forEach(recordId => ids.add(recordId))
+  return ids
 }
 
 export const buildSortIndex = (
@@ -86,23 +97,51 @@ export const syncSortIndex = (
     return previous
   }
 
-  const touched = collectTouchedFieldIds(delta)
-  if (touched === 'all') {
-    return buildSortIndex(document, records, previous.rev + 1)
-  }
-
-  if (!touched.size) {
+  const schemaFields = collectSchemaFieldIds(delta)
+  const touchedFields = collectTouchedFieldIds({
+    previous,
+    document,
+    delta
+  })
+  if (!touchedFields.size) {
     return previous
   }
 
   const nextFields = new Map(previous.fields)
-  touched.forEach(fieldId => {
-    if (!getDocumentFieldById(document, fieldId)) {
+  touchedFields.forEach(fieldId => {
+    if (!hasField(document, fieldId)) {
       nextFields.delete(fieldId)
       return
     }
 
-    nextFields.set(fieldId, buildFieldSortIndex(document, records, fieldId))
+    if (schemaFields.has(fieldId) || !previous.fields.has(fieldId)) {
+      nextFields.set(fieldId, buildFieldSortIndex(document, records, fieldId))
+      return
+    }
+
+    const previousField = previous.fields.get(fieldId)
+    const recordIds = collectRecordIdsForField({
+      previous: previousField,
+      records,
+      delta
+    })
+
+    if (!recordIds.size || !previousField) {
+      return
+    }
+
+    const nextField = new Map(previousField)
+    recordIds.forEach(recordId => {
+      const row = records.rows.get(recordId)
+      if (!row) {
+        nextField.delete(recordId)
+        return
+      }
+
+      nextField.set(recordId, getRecordFieldValue(row, fieldId))
+    })
+
+    nextFields.set(fieldId, nextField)
   })
 
   return {

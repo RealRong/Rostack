@@ -36,7 +36,7 @@ import {
   toRecordField,
   type CellRef,
   type Placement,
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import { createRecordId } from '@dataview/engine/command/entityId'
 import { meta, renderMessage } from '@dataview/meta'
 import type {

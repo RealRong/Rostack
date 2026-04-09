@@ -24,7 +24,7 @@ import {
   CardContent
 } from '@dataview/react/views/shared'
 import { cn } from '@ui/utils'
-import type { AppearanceId } from '@dataview/engine/projection/view'
+import type { AppearanceId } from '@dataview/engine/project'
 import { useKanbanContext } from '../context'
 import {
   useCardEditingState

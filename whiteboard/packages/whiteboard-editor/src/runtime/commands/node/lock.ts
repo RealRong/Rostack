@@ -1,17 +1,17 @@
 import type { EngineInstance } from '@engine-types/instance'
 import type {
-  EditorNodeDocumentCommands,
-  EditorNodeLockCommands
-} from '../../../types/editor'
+  NodeLockMutations,
+  NodePatchWriter
+} from '../../../internal/types'
 
-export const createNodeLockCommands = ({
+export const createNodeLockMutations = ({
   engine,
   document
 }: {
   engine: EngineInstance
-  document: EditorNodeDocumentCommands
-}): EditorNodeLockCommands => {
-  const set: EditorNodeLockCommands['set'] = (nodeIds, locked) => document.updateMany(
+  document: NodePatchWriter
+}): NodeLockMutations => {
+  const set: NodeLockMutations['set'] = (nodeIds, locked) => document.updateMany(
     nodeIds.map((id) => ({
       id,
       update: {

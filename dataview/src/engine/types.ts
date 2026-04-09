@@ -44,7 +44,7 @@ import type {
 } from '@dataview/engine/project/types'
 import type {
   CellRef
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 
 export interface CreateEngineOptions {
   document: DataDoc

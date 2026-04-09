@@ -1,8 +1,8 @@
 import type { EditorSubmitTrigger } from '@dataview/react/interaction'
-import type { ViewFieldRef } from '@dataview/engine/projection/view'
+import type { ViewFieldRef } from '@dataview/engine/project'
 import type { ReadStore, ValueStore } from '@shared/store'
 
-export type { ViewFieldRef } from '@dataview/engine/projection/view'
+export type { ViewFieldRef } from '@dataview/engine/project'
 
 export interface ValueEditorAnchor {
   x: number

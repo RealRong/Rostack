@@ -6,7 +6,7 @@ import {
 } from '@dataview/core/field'
 import type {
   ViewFieldRef
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import { CardField } from './CardField'
 import { AddCardFieldTrigger } from './AddCardFieldTrigger'
 

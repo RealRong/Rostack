@@ -1,17 +1,17 @@
 import type { EngineInstance } from '@engine-types/instance'
 import type {
-  EditorNodeDocumentCommands,
-  EditorNodeShapeCommands
-} from '../../../types/editor'
+  NodePatchWriter,
+  NodeShapeMutations
+} from '../../../internal/types'
 import { dataUpdate } from './document'
 
-export const createNodeShapeCommands = ({
+export const createNodeShapeMutations = ({
   engine,
   document
 }: {
   engine: EngineInstance
-  document: EditorNodeDocumentCommands
-}): EditorNodeShapeCommands => ({
+  document: NodePatchWriter
+}): NodeShapeMutations => ({
   setKind: (nodeIds, kind) => document.updateMany(
     nodeIds.flatMap((id) => {
       const node = engine.read.node.item.get(id)?.node

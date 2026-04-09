@@ -8,7 +8,7 @@ import {
 } from '@dataview/react/runtime/selection'
 import type {
   AppearanceId
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import {
   useDataView,
   useDataViewValue,

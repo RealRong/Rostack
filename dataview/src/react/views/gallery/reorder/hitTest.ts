@@ -2,7 +2,7 @@ import type { Rect } from '@shared/dom'
 import type {
   AppearanceId,
   SectionKey
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import type {
   GalleryLayoutCache
 } from '../virtual'

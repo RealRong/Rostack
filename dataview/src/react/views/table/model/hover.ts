@@ -1,7 +1,7 @@
 import type {
   AppearanceId,
   CellRef
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 
 export type TableHoverTarget =
   | {

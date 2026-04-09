@@ -2,14 +2,16 @@ import { createId } from '@whiteboard/core/utils'
 import type { Edge, EdgeId } from '@whiteboard/core/types'
 import type {
   Editor,
-  EditorDocumentWrite,
-  EditorEdgeLabelPatch,
-  EditorEdgesActions,
-  EditorEdgesPatch,
-  EditorEdgesStylePatch,
-  EditorRead,
-  EditorSessionWrite
 } from '../../types/editor'
+import type { EditorRead } from '../../types/editor'
+import type {
+  DocumentRuntime,
+  EdgeActions,
+  EdgesPatch,
+  EdgeStylePatch,
+  EditorEdgeLabelPatch,
+  SessionRuntime
+} from '../../internal/types'
 
 const DEFAULT_EDGE_LABEL = {
   t: 0.5,
@@ -17,7 +19,7 @@ const DEFAULT_EDGE_LABEL = {
 } as const
 
 const mergeEdgePatch = (
-  patch: EditorEdgesPatch
+  patch: EdgesPatch
 ) => ({
   ...(patch.type !== undefined ? { type: patch.type } : {}),
   ...(patch.textMode !== undefined ? { textMode: patch.textMode } : {})
@@ -25,7 +27,7 @@ const mergeEdgePatch = (
 
 const mergeEdgeStylePatch = (
   edge: Edge,
-  patch: EditorEdgesStylePatch
+  patch: EdgeStylePatch
 ) => ({
   style: {
     ...(edge.style ?? {}),
@@ -82,9 +84,9 @@ export const createEdgesActions = ({
 }: {
   read: EditorRead
   edit: Editor['state']['edit']
-  session: Pick<EditorSessionWrite, 'edit' | 'selection'>
-  document: Pick<EditorDocumentWrite, 'edge'>
-}): EditorEdgesActions => ({
+  session: Pick<SessionRuntime, 'edit' | 'selection'>
+  document: Pick<DocumentRuntime, 'edge'>
+}): EdgeActions => ({
   create: document.edge.create,
   move: document.edge.move,
   reconnect: document.edge.reconnect,

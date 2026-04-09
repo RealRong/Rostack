@@ -6,7 +6,6 @@ import type {
   ClipboardPacket,
 } from '@whiteboard/core/document'
 import type { HistoryConfig as KernelHistoryConfig } from '@whiteboard/core/kernel'
-import type { ResizeDirection, TextWidthMode } from '@whiteboard/core/node'
 import type { SelectionInput, SelectionTarget } from '@whiteboard/core/selection'
 import type { ReadStore } from '@shared/store'
 import type { EngineInstance } from '@engine-types/instance'
@@ -55,12 +54,6 @@ import type {
   ViewportRead
 } from '../runtime/viewport'
 import type { EditCaret, EditField, EditTarget } from '../runtime/state/edit'
-import type { EditorOverlay } from '../runtime/overlay'
-import type {
-  EdgeOverlayEntry,
-  EdgeGuide,
-  MindmapDragFeedback
-} from '../runtime/overlay'
 import type { TextPreviewPatch } from '../runtime/overlay/types'
 
 type EngineCommands = EngineInstance['commands']
@@ -119,93 +112,11 @@ export type EditorState = {
   viewport: ReadStore<Viewport>
 }
 
-export type EditorOverlayRead = {
-  node: EditorOverlay['selectors']['node']
-  feedback: EditorOverlay['selectors']['feedback']
-}
-
-export type EditorViewportRead = ViewportRead & Pick<
-  ViewportInputRuntime,
-  'screenPoint' | 'size'
->
-
 export type EditorRead = RuntimeRead
 
 export type EditorViewportActions = ViewportCommands & {
   setRect: (rect: ContainerRect) => void
   setLimits: (limits: ViewportLimits) => void
-}
-
-export type EditorNodeDocumentCommands = {
-  update: EngineNodeCommands['update']
-  updateMany: EngineNodeCommands['updateMany']
-}
-
-export type EditorNodeLockCommands = {
-  set: (nodeIds: readonly NodeId[], locked: boolean) => CommandResult
-  toggle: (nodeIds: readonly NodeId[]) => CommandResult
-}
-
-export type EditorNodeTextCommands = {
-  preview: (input: {
-    nodeId: NodeId
-    position?: Point
-    size?: Size
-    fontSize?: number
-    mode?: TextWidthMode
-    handle?: ResizeDirection
-  }) => void
-  clearPreview: (nodeId: NodeId) => void
-  cancel: (input: {
-    nodeId: NodeId
-  }) => void
-  commit: (input: {
-    nodeId: NodeId
-    field: 'text' | 'title'
-    value: string
-    size?: Size
-  }) => CommandResult | undefined
-  setColor: (nodeIds: readonly NodeId[], color: string) => CommandResult
-  setSize: (input: {
-    nodeIds: readonly NodeId[]
-    value?: number
-    sizeById?: Readonly<Record<NodeId, Size>>
-  }) => CommandResult
-  setWeight: (
-    nodeIds: readonly NodeId[],
-    weight?: number
-  ) => CommandResult
-  setItalic: (
-    nodeIds: readonly NodeId[],
-    italic: boolean
-  ) => CommandResult
-  setAlign: (
-    nodeIds: readonly NodeId[],
-    align?: 'left' | 'center' | 'right'
-  ) => CommandResult
-}
-
-export type EditorNodeShapeCommands = {
-  setKind: (nodeIds: readonly NodeId[], kind: string) => CommandResult
-}
-
-export type EditorNodeAppearanceCommands = {
-  setFill: (nodeIds: readonly NodeId[], fill: string) => CommandResult
-  setFillOpacity: (nodeIds: readonly NodeId[], opacity?: number) => CommandResult
-  setStroke: (nodeIds: readonly NodeId[], stroke: string) => CommandResult
-  setStrokeWidth: (nodeIds: readonly NodeId[], width: number) => CommandResult
-  setStrokeOpacity: (nodeIds: readonly NodeId[], opacity?: number) => CommandResult
-  setStrokeDash: (nodeIds: readonly NodeId[], dash?: readonly number[]) => CommandResult
-  setOpacity: (nodeIds: readonly NodeId[], opacity: number) => CommandResult
-  setTextColor: (nodeIds: readonly NodeId[], color: string) => CommandResult
-}
-
-export type EditorNodeCommands = Omit<EngineNodeCommands, 'update' | 'updateMany'> & {
-  document: EditorNodeDocumentCommands
-  lock: EditorNodeLockCommands
-  text: EditorNodeTextCommands
-  shape: EditorNodeShapeCommands
-  appearance: EditorNodeAppearanceCommands
 }
 
 export type EditorMindmapCommands = EngineMindmapCommands & {
@@ -241,142 +152,11 @@ export type EditorMindmapCommands = EngineMindmapCommands & {
   }) => CommandResult | undefined
 }
 
-export type EditorClipboardCommands = {
-  export: (target?: EditorClipboardTarget) => ClipboardPacket | undefined
-  cut: (target?: EditorClipboardTarget) => ClipboardPacket | undefined
-  insert: (
-    packet: ClipboardPacket,
-    options?: EditorClipboardOptions
-  ) => boolean
-}
-
 export type EditorCanvasOrderMode =
   | 'front'
   | 'back'
   | 'forward'
   | 'backward'
-
-export type EditorCanvasActions = {
-  duplicate: (
-    target: SelectionInput,
-    options?: {
-      selectInserted?: boolean
-    }
-  ) => boolean
-  delete: (
-    target: SelectionInput,
-    options?: {
-      clearSelection?: boolean
-    }
-  ) => boolean
-  order: (
-    target: SelectionInput,
-    mode: EditorCanvasOrderMode
-  ) => boolean
-}
-
-export type EditorGroupsActions = {
-  merge: (
-    target: SelectionInput,
-    options?: {
-      selectResult?: boolean
-    }
-  ) => boolean
-  ungroup: (
-    target: SelectionInput,
-    options?: {
-      fallbackSelection?: 'members' | 'none'
-    }
-  ) => boolean
-  order: (
-    groupIds: readonly string[],
-    mode: EditorCanvasOrderMode
-  ) => boolean
-}
-
-export type EditorNodesFramesActions = {
-  createFromBounds: (
-    bounds: Rect,
-    options?: {
-      padding?: number
-    }
-  ) => boolean
-}
-
-export type EditorNodesTextPatch = {
-  color?: string
-  size?: number
-  weight?: number
-  italic?: boolean
-  align?: 'left' | 'center' | 'right'
-}
-
-export type EditorNodesTextActions = {
-  set: (input: {
-    nodeIds: readonly NodeId[]
-    patch: EditorNodesTextPatch
-    sizeById?: Readonly<Record<NodeId, Size>>
-  }) => CommandResult | undefined
-  commit: EditorNodeTextCommands['commit']
-}
-
-export type EditorNodesStylePatch = {
-  fill?: string
-  fillOpacity?: number
-  stroke?: string
-  strokeWidth?: number
-  strokeOpacity?: number
-  strokeDash?: readonly number[]
-  opacity?: number
-}
-
-export type EditorNodesStyleActions = {
-  set: (
-    nodeIds: readonly NodeId[],
-    patch: EditorNodesStylePatch
-  ) => CommandResult | undefined
-}
-
-export type EditorNodesShapePatch = {
-  kind?: string
-}
-
-export type EditorNodesShapeActions = {
-  set: (
-    nodeIds: readonly NodeId[],
-    patch: EditorNodesShapePatch
-  ) => CommandResult | undefined
-}
-
-export type EditorNodesActions = {
-  create: EngineNodeCommands['create']
-  move: EngineNodeCommands['move']
-  align: EngineNodeCommands['align']
-  distribute: EngineNodeCommands['distribute']
-  delete: EngineNodeCommands['delete']
-  deleteCascade: EngineNodeCommands['deleteCascade']
-  duplicate: EngineNodeCommands['duplicate']
-  update: EditorNodeDocumentCommands['update']
-  updateMany: EditorNodeDocumentCommands['updateMany']
-  text: EditorNodesTextActions
-  style: EditorNodesStyleActions
-  shape: EditorNodesShapeActions
-  lock: EditorNodeLockCommands
-  frames: EditorNodesFramesActions
-}
-
-export type EditorEdgesPatch = {
-  type?: EdgeType
-  textMode?: EdgeTextMode
-}
-
-export type EditorEdgesStylePatch = {
-  color?: string
-  width?: number
-  dash?: EdgeDash
-  start?: EdgeMarker
-  end?: EdgeMarker
-}
 
 export type EditorEdgeLabelPatch = NonNullable<Edge['labels']>[number] extends infer Label
   ? Label extends {
@@ -394,52 +174,9 @@ export type EditorEdgeLabelPatch = NonNullable<Edge['labels']>[number] extends i
     : never
   : never
 
-export type EditorEdgesStyleActions = {
-  set: (
-    edgeIds: readonly EdgeId[],
-    patch: EditorEdgesStylePatch
-  ) => CommandResult | undefined
-  swapMarkers: (edgeId: EdgeId) => CommandResult | undefined
-}
-
-export type EditorEdgesLabelsActions = {
-  add: (edgeId: EdgeId) => string | undefined
-  update: (
-    edgeId: EdgeId,
-    labelId: string,
-    patch: EditorEdgeLabelPatch
-  ) => CommandResult | undefined
-  remove: (edgeId: EdgeId, labelId: string) => CommandResult | undefined
-}
-
-export type EditorEdgesActions = {
-  create: EngineCommands['edge']['create']
-  move: EngineCommands['edge']['move']
-  reconnect: EngineCommands['edge']['reconnect']
-  delete: EngineCommands['edge']['delete']
-  route: EngineCommands['edge']['route']
-  set: (
-    edgeIds: readonly EdgeId[],
-    patch: EditorEdgesPatch
-  ) => CommandResult | undefined
-  style: EditorEdgesStyleActions
-  labels: EditorEdgesLabelsActions
-}
-
 export type EditorBoardActions = Pick<EngineCommands['document'], 'replace'>
 
 export type EditorHistoryActions = EngineCommands['history']
-
-export type EditorDocumentActions = {
-  board: EditorBoardActions
-  history: EditorHistoryActions
-  canvas: EditorCanvasActions
-  nodes: EditorNodesActions
-  edges: EditorEdgesActions
-  groups: EditorGroupsActions
-  mindmaps: EditorMindmapCommands
-  clipboard: EditorClipboardCommands
-}
 
 export type EditorClipboardApi = {
   copy: (target?: EditorClipboardTarget) => ClipboardPacket | undefined
@@ -635,12 +372,6 @@ export type EditorViewActions = {
   preview: EditorViewPreviewActions
 }
 
-export type EditorActions = {
-  session: EditorSessionActions
-  view: EditorViewActions
-  document: EditorDocumentActions
-}
-
 export type EditorDocumentApi = {
   replace: EditorBoardActions['replace']
   history: EditorHistoryActions
@@ -658,72 +389,6 @@ export type EditorViewApi = EditorViewActions
 export type EditorConfig = {
   mindmapLayout: MindmapLayoutConfig
   history?: KernelHistoryConfig
-}
-
-export type EditorDocumentNodeTextWrite = Pick<
-  EditorNodeTextCommands,
-  'commit' | 'setColor' | 'setSize' | 'setWeight' | 'setItalic' | 'setAlign'
->
-
-export type EditorDocumentNodeWrite = Omit<EditorNodeCommands, 'text'> & {
-  text: EditorDocumentNodeTextWrite
-}
-
-export type EditorDocumentWrite = {
-  doc: EngineCommands['document']
-  history: EditorHistoryActions
-  group: EngineCommands['group']
-  edge: EngineCommands['edge']
-  node: EditorDocumentNodeWrite
-  mindmap: EditorMindmapCommands
-}
-
-export type EditorSessionWrite = EditorSessionActions
-
-export type EditorViewWrite = {
-  viewport: EditorViewportActions & Pick<ViewportInputRuntime, 'panScreenBy' | 'wheel'> & {
-    set: (next: Viewport) => void
-  }
-  pointer: EditorViewActions['pointer']
-  space: EditorViewActions['space']
-  draw: EditorDrawActions
-}
-
-export type EditorPreviewWrite = {
-  draw: {
-    setPreview: (preview: import('./draw').DrawPreview | null) => void
-    setHidden: (nodeIds: readonly NodeId[]) => void
-    clear: () => void
-  }
-  node: {
-    text: {
-      set: (nodeId: NodeId, patch?: TextPreviewPatch) => void
-      clear: (nodeId: NodeId) => void
-      clearSize: (nodeId: NodeId) => void
-    }
-  }
-  edge: {
-    setInteraction: (entries: readonly EdgeOverlayEntry[]) => void
-    setGuide: (guide?: EdgeGuide) => void
-    clearPatches: () => void
-    clearGuide: () => void
-    clear: () => void
-  }
-  mindmap: {
-    setDrag: (drag?: MindmapDragFeedback) => void
-    clear: () => void
-  }
-}
-
-export type EditorWriteTransaction = {
-  document: EditorDocumentWrite
-  session: EditorSessionWrite
-  view: EditorViewWrite
-  preview: EditorPreviewWrite
-}
-
-export type EditorWriteApi = EditorWriteTransaction & {
-  batch: <T>(recipe: (tx: EditorWriteTransaction) => T) => T
 }
 
 export type Editor = {

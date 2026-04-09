@@ -1,7 +1,7 @@
 import type {
   CustomFieldId
 } from '@dataview/core/contracts'
-import type { AppearanceId } from '@dataview/engine/projection/view'
+import type { AppearanceId } from '@dataview/engine/project'
 
 export interface TableRowReorderHint {
   beforeId: AppearanceId | null

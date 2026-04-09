@@ -1,5 +1,5 @@
 import type { ViewId } from '@dataview/core/contracts'
-import type { AppearanceId } from '@dataview/engine/projection/view'
+import type { AppearanceId } from '@dataview/engine/project'
 import type { ValueStore } from '@shared/store'
 
 export interface InlineSessionTarget {

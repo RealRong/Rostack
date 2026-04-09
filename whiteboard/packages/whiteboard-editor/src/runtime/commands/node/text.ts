@@ -2,13 +2,13 @@ import { isTextContentEmpty } from '@whiteboard/core/node'
 import type { NodeId, Size } from '@whiteboard/core/types'
 import type { EngineInstance } from '@engine-types/instance'
 import type {
-  EditorPreviewWrite,
-  EditorNodeAppearanceCommands,
-  EditorNodeDocumentCommands,
-  EditorRead,
-  EditorSessionWrite,
-  EditorNodeTextCommands
-} from '../../../types/editor'
+  NodeAppearanceMutations,
+  NodePatchWriter,
+  NodeTextMutations,
+  PreviewRuntime,
+  SessionRuntime
+} from '../../../internal/types'
+import type { EditorRead } from '../../../types/editor'
 import {
   dataUpdate,
   mergeNodeUpdates,
@@ -18,11 +18,11 @@ import {
 type NodeTextHost = {
   read: EditorRead
   committedNode: EngineInstance['read']['node']['item']
-  preview: Pick<EditorPreviewWrite, 'node'>
-  session: Pick<EditorSessionWrite, 'edit' | 'selection'>
+  preview: Pick<PreviewRuntime, 'node'>
+  session: Pick<SessionRuntime, 'edit' | 'selection'>
   deleteCascade: EngineInstance['commands']['node']['deleteCascade']
-  document: EditorNodeDocumentCommands
-  appearance: EditorNodeAppearanceCommands
+  document: NodePatchWriter
+  appearance: NodeAppearanceMutations
 }
 
 const isSameSize = (
@@ -33,7 +33,7 @@ const isSameSize = (
   && left?.height === right?.height
 )
 
-export const createNodeTextCommands = ({
+export const createNodeTextMutations = ({
   read,
   committedNode,
   preview,
@@ -41,7 +41,7 @@ export const createNodeTextCommands = ({
   deleteCascade,
   document,
   appearance
-}: NodeTextHost): EditorNodeTextCommands => ({
+}: NodeTextHost): NodeTextMutations => ({
   preview: ({
     nodeId,
     position,

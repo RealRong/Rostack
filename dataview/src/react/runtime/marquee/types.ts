@@ -1,4 +1,4 @@
-import type { AppearanceId } from '@dataview/engine/projection/view'
+import type { AppearanceId } from '@dataview/engine/project'
 import type {
   Box,
   Point,

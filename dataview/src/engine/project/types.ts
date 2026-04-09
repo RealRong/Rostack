@@ -59,4 +59,10 @@ export interface Placement {
   before?: AppearanceId
 }
 
+export interface Plan {
+  ids: readonly AppearanceId[]
+  target: Placement
+  changed: boolean
+}
+
 export interface CalculationsBySection extends ReadonlyMap<SectionKey, CalculationCollection> {}

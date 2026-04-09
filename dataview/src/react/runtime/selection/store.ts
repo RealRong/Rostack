@@ -3,7 +3,7 @@ import {
 } from '@shared/store'
 import type {
   AppearanceId
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import type {
   Selection,
   SelectionStore

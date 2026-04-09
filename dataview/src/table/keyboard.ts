@@ -5,7 +5,7 @@ import type {
   AppearanceList,
   CellRef,
   FieldList
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import type { GridSelection } from './gridSelection'
 import { range } from './range'
 

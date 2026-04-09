@@ -1,4 +1,4 @@
-import type { Section } from '@dataview/engine/projection/view'
+import type { Section } from '@dataview/engine/project'
 import { FieldValueContent } from '@dataview/react/field/value'
 import { cn } from '@ui/utils'
 import { useKanbanContext } from '../context'

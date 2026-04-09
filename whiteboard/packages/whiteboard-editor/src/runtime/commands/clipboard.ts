@@ -5,32 +5,15 @@ import type {
 import { createClipboardPacket } from '@whiteboard/core/document'
 import type { Point } from '@whiteboard/core/types'
 import type {
-  Editor,
-  EditorClipboardCommands,
-  EditorClipboardTarget,
-  EditorDocumentWrite,
-  EditorSessionWrite
+  EditorClipboardTarget
 } from '../../types/editor'
-
-type ClipboardActionHost = Pick<Editor, 'read'> & {
-  document: Pick<EditorDocumentWrite, 'doc'>
-  session: Pick<EditorSessionWrite, 'selection'>
-  canvas: {
-    delete: (
-      target: {
-        nodeIds?: readonly string[]
-        edgeIds?: readonly string[]
-      },
-      options?: {
-        clearSelection?: boolean
-      }
-    ) => boolean
-  }
-  state: Pick<Editor['state'], 'viewport' | 'selection'>
-}
+import type {
+  ClipboardActions,
+  ClipboardRuntime
+} from '../../internal/types'
 
 const applyInsertedRoots = (input: {
-  editor: ClipboardActionHost
+  editor: ClipboardRuntime
   inserted: {
     roots: SliceRoots
     allNodeIds: readonly string[]
@@ -56,7 +39,7 @@ const applyInsertedRoots = (input: {
 }
 
 const readSelectionTarget = (
-  editor: ClipboardActionHost
+  editor: ClipboardRuntime
 ): Exclude<EditorClipboardTarget, 'selection'> | undefined => {
   const target = editor.state.selection.get()
 
@@ -71,7 +54,7 @@ const readSelectionTarget = (
 }
 
 const resolveClipboardTarget = (input: {
-  editor: ClipboardActionHost
+  editor: ClipboardRuntime
   target: EditorClipboardTarget
 }): Exclude<EditorClipboardTarget, 'selection'> | undefined => (
   input.target === 'selection'
@@ -80,7 +63,7 @@ const resolveClipboardTarget = (input: {
 )
 
 const readClipboardPacket = (input: {
-  editor: ClipboardActionHost
+  editor: ClipboardRuntime
   target: EditorClipboardTarget
 }): ClipboardPacket | undefined => {
   const resolved = resolveClipboardTarget(input)
@@ -97,8 +80,8 @@ const readClipboardPacket = (input: {
 export const createClipboardActions = ({
   editor
 }: {
-  editor: ClipboardActionHost
-}): EditorClipboardCommands => ({
+  editor: ClipboardRuntime
+}): ClipboardActions => ({
   export: (target = 'selection') =>
     readClipboardPacket({
       editor,
@@ -139,7 +122,7 @@ export const createClipboardActions = ({
     }
   ) => {
     const origin = options?.origin ?? { ...editor.state.viewport.get().center }
-    const inserted = editor.document.doc.insert(packet.slice, {
+    const inserted = editor.document.insert(packet.slice, {
       origin,
       roots: packet.roots
     })

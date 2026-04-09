@@ -3,7 +3,7 @@ import {
 } from '@whiteboard/core/node'
 import type { NodeInput } from '@whiteboard/core/types'
 import type { CommandResult } from '@engine-types/result'
-import type { EditorNodesFramesActions } from '../../types/editor'
+import type { FrameActions } from '../../internal/types'
 
 const DEFAULT_FRAME_PADDING = 32
 
@@ -23,7 +23,7 @@ type FrameActionHost = {
 
 export const createFramesActions = ({
   commands
-}: FrameActionHost): EditorNodesFramesActions => ({
+}: FrameActionHost): FrameActions => ({
   createFromBounds: (bounds, options) => {
     const padding = options?.padding ?? DEFAULT_FRAME_PADDING
     const frame = createFrameNodeInput()

@@ -5,7 +5,7 @@ import {
   type Point,
   type Rect
 } from '@shared/dom'
-import type { AppearanceId } from '@dataview/engine/projection/view'
+import type { AppearanceId } from '@dataview/engine/project'
 
 export interface TableRowRect {
   rowId: AppearanceId

@@ -3,7 +3,7 @@ import { isTitleFieldId } from '@dataview/core/field'
 import type { FieldId } from '@dataview/core/contracts'
 import {
   type CellRef,
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import type {
   TableCurrentView as CurrentView
 } from './currentView'
@@ -16,7 +16,7 @@ import type {
 } from '@dataview/engine'
 import {
   toRecordField
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import {
   selection as rowSelection
 } from '@dataview/react/runtime/selection'

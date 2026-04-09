@@ -7,7 +7,7 @@ import {
 } from 'react'
 import type {
   AppearanceId
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import type {
   SelectionApi
 } from '@dataview/react/runtime/selection'

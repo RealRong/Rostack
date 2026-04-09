@@ -1,7 +1,7 @@
 import { compileNodeFieldUpdate } from '@whiteboard/core/schema'
 import type { NodeUpdateInput } from '@whiteboard/core/types'
 import type { EngineInstance } from '@engine-types/instance'
-import type { EditorNodeDocumentCommands } from '../../../types/editor'
+import type { NodePatchWriter } from '../../../internal/types'
 
 export const mergeNodeUpdates = (
   ...updates: Array<NodeUpdateInput | undefined>
@@ -49,9 +49,9 @@ export const dataUpdate = (
   value
 )
 
-export const createNodeDocumentCommands = (
+export const createNodePatchWriter = (
   engine: EngineInstance
-): EditorNodeDocumentCommands => ({
+): NodePatchWriter => ({
   update: (id, update) => engine.execute({
     type: 'node.patch',
     updates: [{

@@ -18,11 +18,11 @@ import type {
 } from '@whiteboard/core/types'
 import type {
   EditorMindmapCommands,
-  EditorNodeDocumentCommands,
   EditorRead
 } from '../../types/editor'
+import type { NodePatchWriter } from '../../internal/types'
 
-type MindmapWriteHost = {
+type MindmapRuntimeHost = {
   read: EditorRead
   document: {
     mindmap: {
@@ -35,7 +35,7 @@ type MindmapWriteHost = {
       updateNode: EditorMindmapCommands['updateNode']
     }
     node: {
-      document: EditorNodeDocumentCommands
+      update: NodePatchWriter['update']
     }
   }
 }
@@ -60,7 +60,7 @@ const readNodePosition = ({
   editor,
   nodeId
 }: {
-  editor: MindmapWriteHost
+  editor: MindmapRuntimeHost
   nodeId: NodeId
 }) => {
   const node = editor.read.index.node.get(nodeId)?.node
@@ -79,7 +79,7 @@ export const insertMindmapByPlacement = ({
   layout,
   payload
 }: {
-  editor: MindmapWriteHost
+  editor: MindmapRuntimeHost
   id: NodeId
   tree: MindmapTree
   targetNodeId: MindmapNodeId
@@ -153,7 +153,7 @@ export const moveMindmapByDrop = ({
   nodeSize,
   layout
 }: {
-  editor: MindmapWriteHost
+  editor: MindmapRuntimeHost
   id: NodeId
   nodeId: MindmapNodeId
   drop: {
@@ -195,7 +195,7 @@ export const moveMindmapRoot = ({
   origin,
   threshold = DEFAULT_ROOT_MOVE_THRESHOLD
 }: {
-  editor: MindmapWriteHost
+  editor: MindmapRuntimeHost
   nodeId: NodeId
   position: Point
   origin?: Point
@@ -213,7 +213,7 @@ export const moveMindmapRoot = ({
     return undefined
   }
 
-  return editor.document.node.document.update(nodeId, {
+  return editor.document.node.update(nodeId, {
     fields: {
       position: {
         x: position.x,
@@ -223,12 +223,12 @@ export const moveMindmapRoot = ({
   })
 }
 
-export const createMindmapWrite = ({
+export const createMindmapRuntime = ({
   engine,
-  writerHost
+  runtimeHost
 }: {
   engine: EngineInstance
-  writerHost: MindmapWriteHost
+  runtimeHost: MindmapRuntimeHost
 }): EditorMindmapCommands => ({
   create: (payload) => engine.execute({
     type: 'mindmap.create',
@@ -264,15 +264,15 @@ export const createMindmapWrite = ({
     input
   }),
   insertByPlacement: (input) => insertMindmapByPlacement({
-    editor: writerHost,
+    editor: runtimeHost,
     ...input
   }),
   moveByDrop: (input) => moveMindmapByDrop({
-    editor: writerHost,
+    editor: runtimeHost,
     ...input
   }),
   moveRoot: (input) => moveMindmapRoot({
-    editor: writerHost,
+    editor: runtimeHost,
     ...input
   })
 })

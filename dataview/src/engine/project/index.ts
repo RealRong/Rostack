@@ -2,17 +2,19 @@ export type {
   AppearanceId,
   Appearance,
   AppearanceList,
-  CellRef,
-  Plan,
-  Placement,
   FieldList,
-  RecordFieldRef,
+  Placement,
+  Plan,
   Schema,
   Section,
   SectionBucket,
-  SectionKey,
-  ViewFieldRef
+  SectionKey
 } from './types'
+export type {
+  CellRef,
+  RecordFieldRef,
+  ViewFieldRef
+} from './field'
 export {
   recordIdsOfAppearances
 } from './appearances'
@@ -25,11 +27,8 @@ export {
   toRecordField
 } from './field'
 export {
-  readSectionRecordIds,
+  readSectionRecordIds
 } from './sections'
 export {
   move
 } from './move'
-export {
-  sections
-} from './sections'

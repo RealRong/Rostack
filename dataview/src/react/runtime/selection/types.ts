@@ -1,7 +1,7 @@
 import type {
   AppearanceId,
   AppearanceList
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import type {
   ValueStore
 } from '@shared/store'

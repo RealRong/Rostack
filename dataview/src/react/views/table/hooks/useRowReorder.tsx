@@ -5,7 +5,7 @@ import {
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import { cloneDragGhostNode } from '@dataview/react/dom/dragGhost'
-import type { AppearanceId } from '@dataview/engine/projection/view'
+import type { AppearanceId } from '@dataview/engine/project'
 import {
   rowDragIds,
   rowSelectionTarget,

@@ -4,14 +4,14 @@ import { targetElement } from '@shared/dom'
 import {
   type AppearanceList,
   type FieldList
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import {
   grid,
 } from '@dataview/table'
 import type {
   AppearanceId,
   CellRef
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 
 export type TableTargetKind =
   | 'cell'

@@ -6,7 +6,7 @@ import {
 } from '@dataview/react/dataview'
 import type {
   Section
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import { useStoreValue } from '@shared/react'
 import { useTableContext } from '../../context'
 import { Button } from '@ui/button'

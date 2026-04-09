@@ -1,7 +1,7 @@
 import {
   type AppearanceId,
   type CellRef
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import {
   pageScrollNode,
   type ScrollNode

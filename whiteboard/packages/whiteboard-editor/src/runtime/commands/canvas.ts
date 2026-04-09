@@ -5,10 +5,10 @@ import {
 import type { CommandResult } from '@engine-types/result'
 import type { CanvasItemRef } from '@whiteboard/core/types'
 import type {
-  EditorCanvasActions,
-  EditorCanvasOrderMode,
-  EditorRead
-} from '../../types/editor'
+  CanvasActions,
+  CanvasOrderMode
+} from '../../internal/types'
+import type { EditorRead } from '../../types/editor'
 import {
   resolveInsertedSelection,
   toCanvasRefs
@@ -17,15 +17,10 @@ import {
 type CanvasActionHost = {
   read: Pick<EditorRead, 'group'>
   commands: {
-    canvas: {
+    document: {
       delete: (refs: CanvasItemRef[]) => CommandResult
       duplicate: (refs: CanvasItemRef[]) => CommandResult<any>
-      order: {
-        bringToFront: (refs: CanvasItemRef[]) => CommandResult
-        sendToBack: (refs: CanvasItemRef[]) => CommandResult
-        bringForward: (refs: CanvasItemRef[]) => CommandResult
-        sendBackward: (refs: CanvasItemRef[]) => CommandResult
-      }
+      order: (refs: CanvasItemRef[], mode: CanvasOrderMode) => CommandResult
     }
     group: {
       bringToFront: (ids: string[]) => CommandResult
@@ -43,25 +38,13 @@ type CanvasActionHost = {
 const orderTarget = (
   commands: CanvasActionHost['commands'],
   refs: ReturnType<typeof toCanvasRefs>,
-  mode: EditorCanvasOrderMode
-) => {
-  if (mode === 'front') {
-    return commands.canvas.order.bringToFront(refs)
-  }
-  if (mode === 'forward') {
-    return commands.canvas.order.bringForward(refs)
-  }
-  if (mode === 'backward') {
-    return commands.canvas.order.sendBackward(refs)
-  }
-
-  return commands.canvas.order.sendToBack(refs)
-}
+  mode: CanvasOrderMode
+) => commands.document.order(refs, mode)
 
 const orderGroups = (
   commands: CanvasActionHost['commands'],
   groupIds: readonly string[],
-  mode: EditorCanvasOrderMode
+  mode: CanvasOrderMode
 ) => {
   const ids = [...groupIds]
   if (mode === 'front') {
@@ -80,7 +63,7 @@ const orderGroups = (
 export const createCanvasActions = ({
   read,
   commands
-}: CanvasActionHost): EditorCanvasActions => ({
+}: CanvasActionHost): CanvasActions => ({
   duplicate: (input, options) => {
     const target = normalizeSelectionTarget(input)
     const refs = toCanvasRefs(target)
@@ -88,7 +71,7 @@ export const createCanvasActions = ({
       return false
     }
 
-    const result = commands.canvas.duplicate(refs)
+    const result = commands.document.duplicate(refs)
     if (!result.ok) {
       return false
     }
@@ -106,7 +89,7 @@ export const createCanvasActions = ({
       return false
     }
 
-    const result = commands.canvas.delete(refs)
+    const result = commands.document.delete(refs)
     if (!result.ok) {
       return false
     }

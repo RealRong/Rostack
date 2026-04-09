@@ -3,10 +3,10 @@ import {
 } from '@whiteboard/core/selection'
 import type { CommandResult } from '@engine-types/result'
 import type {
-  EditorCanvasOrderMode,
-  EditorGroupsActions,
-  EditorRead
-} from '../../types/editor'
+  CanvasOrderMode,
+  GroupActions
+} from '../../internal/types'
+import type { EditorRead } from '../../types/editor'
 import {
   readGroupTarget
 } from './target'
@@ -47,7 +47,7 @@ type GroupActionHost = {
 const orderGroups = (
   order: GroupActionHost['commands']['group']['order'],
   groupIds: readonly string[],
-  mode: EditorCanvasOrderMode
+  mode: CanvasOrderMode
 ) => {
   const ids = [...groupIds]
   if (mode === 'front') {
@@ -66,7 +66,7 @@ const orderGroups = (
 export const createGroupsActions = ({
   read,
   commands
-}: GroupActionHost): EditorGroupsActions => ({
+}: GroupActionHost): GroupActions => ({
   merge: (input, options) => {
     const target = normalizeSelectionTarget(input)
     const result = commands.group.merge(target)

@@ -17,7 +17,7 @@ import {
 } from '@dataview/dom/field'
 import type {
   ViewFieldRef
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import { cn } from '@ui/utils'
 import { openCardField } from './openCardField'
 

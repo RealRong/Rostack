@@ -38,7 +38,7 @@ import {
 } from '@dataview/react/runtime/marquee'
 import type {
   AppearanceList
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import type {
   View
 } from '@dataview/core/contracts'

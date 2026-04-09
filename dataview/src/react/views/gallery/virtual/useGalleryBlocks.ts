@@ -7,7 +7,7 @@ import {
 import { observeElementSize } from '@shared/dom'
 import type {
   Section
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import {
   readInlineInsets,
   useMeasuredHeights,

@@ -1,5 +1,5 @@
 import type { Box } from '@shared/dom'
-import type { AppearanceId } from '@dataview/engine/projection/view'
+import type { AppearanceId } from '@dataview/engine/project'
 import type { SelectionTarget } from './types'
 
 export const boxFromDomRect = (

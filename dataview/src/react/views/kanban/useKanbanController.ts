@@ -28,14 +28,14 @@ import {
 } from '@shared/dom'
 import {
   move as currentViewMove
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import {
   type AppearanceId,
   type AppearanceList,
   type FieldList,
   type Section,
   type SectionKey
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import {
   resolveDefaultAutoPanTargets
 } from '@dataview/react/interaction/autoPan'

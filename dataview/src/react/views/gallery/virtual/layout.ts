@@ -1,7 +1,7 @@
 import type {
   AppearanceId,
   Section
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import {
   resolveAutoFillGridMetrics
 } from '@dataview/react/virtual'

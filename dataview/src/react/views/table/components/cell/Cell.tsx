@@ -7,10 +7,10 @@ import {
 } from '@dataview/core/field'
 import {
   toRecordField
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import {
   type AppearanceId
-} from '@dataview/engine/projection/view'
+} from '@dataview/engine/project'
 import { useDataView } from '@dataview/react/dataview'
 import { fieldAttrs } from '@dataview/dom/field'
 import { useTableContext } from '../../context'

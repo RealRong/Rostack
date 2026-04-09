@@ -19,12 +19,16 @@ import { createEdgeHoverService } from '../../interactions/edge/hover'
 import { createOverlay } from '../overlay'
 import { createRead } from '../read'
 import { createRuntimeState } from '../state'
-import { createEditorActions } from './actions'
 import { createEditorInput } from './input'
 import { createEditorState } from './state'
-import { createEditorWrite } from '../write'
 import { compileNodePatch } from '../compile/nodePatch'
 import { compileEdgePatch } from '../compile/edgePatch'
+import { createEditorRuntime } from './host'
+import { createCanvasActions } from '../commands/canvas'
+import { createGroupsActions } from '../commands/group'
+import { createFramesActions } from '../commands/frame'
+import { createEdgesActions } from '../commands/edge'
+import { createClipboardActions } from '../commands/clipboard'
 
 export const createEditor = ({
   engine,
@@ -67,7 +71,7 @@ export const createEditor = ({
     viewport
   })
   const read = readBundle.read
-  const write = createEditorWrite({
+  const write = createEditorRuntime({
     engine: internalEngine,
     read,
     runtime,
@@ -91,13 +95,50 @@ export const createEditor = ({
     runtime,
     viewport: viewport.read
   })
-  const actions = createEditorActions({
-    engine: internalEngine,
+  const selectionActions = createCanvasActions({
     read,
-    write,
-    viewport: viewport.read,
-    selection: state.selection,
-    edit: state.edit
+    commands: {
+      document: {
+        delete: write.document.delete,
+        duplicate: write.document.duplicate,
+        order: write.document.order
+      },
+      group: write.document.group.order,
+      selection: write.session.selection
+    }
+  })
+  const groupActions = createGroupsActions({
+    read,
+    commands: {
+      group: write.document.group,
+      selection: write.session.selection
+    }
+  })
+  const frameActions = createFramesActions({
+    commands: {
+      node: {
+        create: write.document.node.create
+      },
+      selection: write.session.selection
+    }
+  })
+  const edgeActions = createEdgesActions({
+    read,
+    edit: state.edit,
+    session: write.session,
+    document: write.document
+  })
+  const clipboardActions = createClipboardActions({
+    editor: {
+      read,
+      document: write.document,
+      session: write.session,
+      canvas: selectionActions,
+      state: {
+        viewport: viewport.read,
+        selection: state.selection
+      }
+    }
   })
 
   const interactionContext: InteractionContext = {
@@ -153,7 +194,7 @@ export const createEditor = ({
       return undefined
     }
 
-    return write.document.node.document.updateMany(updates, {
+    return write.document.node.updateMany(updates, {
       origin: options?.origin
     })
   }
@@ -173,20 +214,23 @@ export const createEditor = ({
 
     return write.document.edge.updateMany(updates)
   }
+  const {
+    replace: replaceDocument
+  } = write.document
 
   const editor = {
     read,
     state,
     document: {
-      replace: write.document.doc.replace,
+      replace: replaceDocument,
       history: write.document.history,
       selection: {
-        duplicate: actions.document.canvas.duplicate,
-        delete: actions.document.canvas.delete,
-        order: actions.document.canvas.order,
-        group: actions.document.groups.merge,
-        ungroup: actions.document.groups.ungroup,
-        frame: actions.document.nodes.frames.createFromBounds
+        duplicate: selectionActions.duplicate,
+        delete: selectionActions.delete,
+        order: selectionActions.order,
+        group: groupActions.merge,
+        ungroup: groupActions.ungroup,
+        frame: frameActions.createFromBounds
       },
       nodes: {
         create: write.document.node.create,
@@ -205,20 +249,36 @@ export const createEditor = ({
         remove: write.document.edge.delete,
         route: write.document.edge.route,
         labels: {
-          add: actions.document.edges.labels.add,
-          patch: actions.document.edges.labels.update,
-          remove: actions.document.edges.labels.remove
+          add: edgeActions.labels.add,
+          patch: edgeActions.labels.update,
+          remove: edgeActions.labels.remove
         }
       },
-      mindmaps: actions.document.mindmaps,
+      mindmaps: write.document.mindmap,
       clipboard: {
-        copy: actions.document.clipboard.export,
-        cut: actions.document.clipboard.cut,
-        paste: actions.document.clipboard.insert
+        copy: clipboardActions.export,
+        cut: clipboardActions.cut,
+        paste: clipboardActions.insert
       }
     },
-    session: actions.session,
-    view: actions.view,
+    session: write.session,
+    view: {
+      viewport: {
+        set: write.view.viewport.set,
+        panBy: write.view.viewport.panBy,
+        zoomTo: write.view.viewport.zoomTo,
+        fit: write.view.viewport.fit,
+        reset: write.view.viewport.reset,
+        setRect: write.view.viewport.setRect,
+        setLimits: write.view.viewport.setLimits
+      },
+      pointer: write.view.pointer,
+      space: write.view.space,
+      draw: write.view.draw,
+      preview: {
+        nodeText: write.preview.node.text
+      }
+    },
     input,
     configure: (config) => {
       engine.configure({

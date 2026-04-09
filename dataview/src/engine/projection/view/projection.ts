@@ -14,7 +14,7 @@ import {
 } from '@dataview/core/document'
 import {
   resolveGroupedRecords
-} from '@dataview/core/query/grouping'
+} from '@dataview/core/group'
 import {
   resolveViewRecordState
 } from '@dataview/core/view'
@@ -27,7 +27,6 @@ import type {
   ViewProjection
 } from './types'
 import { createAppearances } from './appearances'
-import { createGrouping } from './grouping'
 import { createFields } from './fields'
 import { createSections } from './sections'
 
@@ -209,12 +208,7 @@ export const resolveViewProjection = (
     return undefined
   }
 
-  const grouping = createGrouping({
-    document,
-    view: resolved.view,
-    sections: resolved.sections
-  })
-  const sections = grouping?.sections ?? createSections(
+  const sections = createSections(
     resolved.sections,
     resolved.view.group
   )

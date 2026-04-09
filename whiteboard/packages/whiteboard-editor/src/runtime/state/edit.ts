@@ -1,4 +1,4 @@
-import type { NodeId, Point } from '@whiteboard/core/types'
+import type { EdgeId, NodeId, Point } from '@whiteboard/core/types'
 import { createValueStore, type ValueStore } from '@shared/store'
 
 export type EditField = 'text' | 'title'
@@ -12,18 +12,38 @@ export type EditCaret =
       client: Point
     }
 
-export type EditTarget = {
+export type NodeEditTarget = {
+  kind: 'node'
   nodeId: NodeId
   field: EditField
   caret: EditCaret
-} | null
+}
+
+export type EdgeLabelEditTarget = {
+  kind: 'edge-label'
+  edgeId: EdgeId
+  labelId: string
+  caret: EditCaret
+}
+
+export type EditTarget =
+  | NodeEditTarget
+  | EdgeLabelEditTarget
+  | null
 
 export type EditStore = ValueStore<EditTarget>
 
 export type EditMutate = {
-  start: (
+  startNode: (
     nodeId: NodeId,
     field: EditField,
+    options?: {
+      caret?: EditCaret
+    }
+  ) => void
+  startEdgeLabel: (
+    edgeId: EdgeId,
+    labelId: string,
     options?: {
       caret?: EditCaret
     }
@@ -42,10 +62,19 @@ export const createEditState = (): EditState => {
   return {
     source,
     mutate: {
-      start: (nodeId, field, options) => {
+      startNode: (nodeId, field, options) => {
         source.set({
+          kind: 'node',
           nodeId,
           field,
+          caret: options?.caret ?? { kind: 'end' }
+        })
+      },
+      startEdgeLabel: (edgeId, labelId, options) => {
+        source.set({
+          kind: 'edge-label',
+          edgeId,
+          labelId,
           caret: options?.caret ?? { kind: 'end' }
         })
       },

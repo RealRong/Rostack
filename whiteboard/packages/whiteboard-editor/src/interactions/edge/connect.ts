@@ -42,8 +42,8 @@ const readNodeRotation = (
 ) => (entry.node.rotation ?? 0)
 
 const EDGE_PRESET_TYPE = {
-  'edge.straight': 'linear',
-  'edge.elbow': 'step',
+  'edge.straight': 'straight',
+  'edge.elbow': 'elbow',
   'edge.curve': 'curve'
 } as const satisfies Record<EdgePresetKey, EdgeType>
 

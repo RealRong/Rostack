@@ -106,7 +106,7 @@ export const applyNodeDefaults = (input: NodeInput, registries: CoreRegistries):
 }
 
 export const applyEdgeDefaults = (input: EdgeInput, registries: CoreRegistries): EdgeInput => {
-  const type = input.type ?? 'linear'
+  const type = input.type ?? 'straight'
   const next = cloneTarget({
     ...input,
     type,
@@ -153,7 +153,7 @@ export const getMissingNodeFields = (input: NodeInput, registries: CoreRegistrie
 }
 
 export const getMissingEdgeFields = (input: EdgeInput, registries: CoreRegistries): string[] => {
-  const type = input.type ?? 'linear'
+  const type = input.type ?? 'straight'
   const schema = resolveEdgeSchema(registries, type)
   if (!schema?.fields?.length) return []
   const missing: string[] = []
@@ -164,7 +164,6 @@ export const getMissingEdgeFields = (input: EdgeInput, registries: CoreRegistrie
       return
     }
     if (scope === 'label') {
-      if (isMissingRequired(input.label, field)) missing.push(field.id)
       return
     }
     if (isMissingRequired(input.data, field)) missing.push(field.id)

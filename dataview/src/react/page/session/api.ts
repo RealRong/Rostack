@@ -33,26 +33,6 @@ export const createPageSessionApi = (
   })
 
   const api: PageSessionApi = {
-    setViewId: viewId => {
-      const current = store.get()
-      if (
-        current.viewId === viewId
-        && !current.query.route
-      ) {
-        return
-      }
-
-      store.update(prev => ({
-        ...prev,
-        viewId,
-        query: prev.query.route
-          ? {
-              ...prev.query,
-              route: null
-            }
-          : prev.query
-      }))
-    },
     query: {
       show: () => {
         store.update(prev => (

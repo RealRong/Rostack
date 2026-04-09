@@ -184,7 +184,7 @@ const runInsertPreset = ({
   })
   const edit = result.edit
   if (edit) {
-    editor.commands.edit.start(edit.nodeId, edit.field)
+    editor.commands.edit.startNode(edit.nodeId, edit.field)
   }
 
   return result

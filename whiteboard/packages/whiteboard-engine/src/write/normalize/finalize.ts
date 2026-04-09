@@ -232,10 +232,36 @@ const isEdgeLabelEqual = (
   left?: EdgeLabel,
   right?: EdgeLabel
 ) => (
-  left?.text === right?.text
-  && left?.position === right?.position
-  && isPointOptionalEqual(left?.offset, right?.offset)
+  left?.id === right?.id
+  && left?.text === right?.text
+  && left?.t === right?.t
+  && left?.offset === right?.offset
+  && left?.style?.size === right?.style?.size
+  && left?.style?.weight === right?.style?.weight
+  && left?.style?.italic === right?.style?.italic
+  && left?.style?.color === right?.style?.color
+  && left?.style?.bg === right?.style?.bg
 )
+
+const isEdgeLabelsEqual = (
+  left?: readonly EdgeLabel[],
+  right?: readonly EdgeLabel[]
+) => {
+  if (left === right) {
+    return true
+  }
+  if (!left || !right || left.length !== right.length) {
+    return false
+  }
+
+  for (let index = 0; index < left.length; index += 1) {
+    if (!isEdgeLabelEqual(left[index], right[index])) {
+      return false
+    }
+  }
+
+  return true
+}
 
 const diffNodeChange = (
   before: Node | undefined,
@@ -311,7 +337,8 @@ const diffEdgeChange = (
   )
   const value = (
     !isShallowEqual(before.style, after.style)
-    || !isEdgeLabelEqual(before.label, after.label)
+    || before.textMode !== after.textMode
+    || !isEdgeLabelsEqual(before.labels, after.labels)
     || !isShallowEqual(before.data, after.data)
   )
 

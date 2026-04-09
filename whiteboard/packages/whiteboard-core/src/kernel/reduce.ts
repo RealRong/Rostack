@@ -91,7 +91,8 @@ const EDGE_GEOMETRY_KEYS = new Set<keyof EdgePatch>([
 
 const EDGE_VALUE_KEYS = new Set<keyof EdgePatch>([
   'style',
-  'label',
+  'textMode',
+  'labels',
   'data'
 ])
 
@@ -125,7 +126,8 @@ const toEdgeSnapshotPatch = (
   type: edge.type,
   route: edge.route,
   style: edge.style,
-  label: edge.label,
+  textMode: edge.textMode,
+  labels: edge.labels,
   data: edge.data
 })
 

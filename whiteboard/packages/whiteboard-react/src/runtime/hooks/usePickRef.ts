@@ -43,6 +43,7 @@ const toPickKey = (
         'edge',
         pick.id,
         pick.part,
+        pick.labelId ?? '',
         pick.end ?? '',
         pick.index ?? '',
         pick.insert ?? '',

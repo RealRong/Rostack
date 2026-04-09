@@ -7,6 +7,7 @@ import {
   patchDocumentRecord,
   patchDocumentValues,
   putDocumentCustomField,
+  setDocumentActiveViewId,
   putDocumentView,
   removeDocumentCustomField,
   removeDocumentRecords,
@@ -33,6 +34,8 @@ export const reduceOperation = (
       return clearDocumentValue(document, operation.recordId, operation.field)
     case 'document.view.put':
       return putDocumentView(document, operation.view)
+    case 'document.activeView.set':
+      return setDocumentActiveViewId(document, operation.viewId)
     case 'document.view.remove':
       return removeDocumentView(document, operation.viewId)
     case 'document.customField.put':

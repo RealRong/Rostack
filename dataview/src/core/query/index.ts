@@ -1,40 +1,5 @@
 export type {
-  ViewQuery,
-  ResolvedViewGroupState,
-  ViewGroupPatch
-} from './contracts'
+  ViewQuery
+} from '@dataview/core/contracts'
 export { normalizeViewQuery } from './normalize'
 export { isSameViewQuery } from './equality'
-export { setViewSearchQuery } from './search'
-export {
-  findViewFilterIndex,
-  addViewFilter,
-  setViewFilter,
-  setViewFilterPreset,
-  setViewFilterValue,
-  setViewFilterMode,
-  removeViewFilter
-} from './filter'
-export {
-  findViewSorterIndex,
-  addViewSorter,
-  setViewSorter,
-  setOnlyViewSorter,
-  replaceViewSorter,
-  removeViewSorter,
-  moveViewSorter,
-  clearViewSorters
-} from './sort'
-export {
-  resolveViewGroupState,
-  setViewGroup,
-  clearViewGroup,
-  toggleViewGroup,
-  setViewGroupMode,
-  setViewGroupBucketSort,
-  setViewGroupBucketInterval,
-  setViewGroupShowEmpty,
-  setViewGroupBucketHidden,
-  setViewGroupBucketCollapsed,
-  toggleViewGroupBucketCollapsed
-} from './group'

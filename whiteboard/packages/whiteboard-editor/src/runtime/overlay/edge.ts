@@ -61,39 +61,16 @@ const isEdgeConnectFeedbackEqual = (
   return true
 }
 
-const isDashEqual = (
-  left: readonly number[] | undefined,
-  right: readonly number[] | undefined
-) => {
-  if (left === right) {
-    return true
-  }
-
-  if (!left || !right || left.length !== right.length) {
-    return false
-  }
-
-  for (let index = 0; index < left.length; index += 1) {
-    if (left[index] !== right[index]) {
-      return false
-    }
-  }
-
-  return true
-}
-
 const isEdgeGuidePathEqual = (
   left: EdgeGuide['path'],
   right: EdgeGuide['path']
 ) => (
   left?.svgPath === right?.svgPath
-  && left?.style?.stroke === right?.style?.stroke
-  && left?.style?.strokeWidth === right?.style?.strokeWidth
-  && left?.style?.animated === right?.style?.animated
-  && left?.style?.animationSpeed === right?.style?.animationSpeed
-  && left?.style?.markerStart === right?.style?.markerStart
-  && left?.style?.markerEnd === right?.style?.markerEnd
-  && isDashEqual(left?.style?.dash, right?.style?.dash)
+  && left?.style?.color === right?.style?.color
+  && left?.style?.width === right?.style?.width
+  && left?.style?.dash === right?.style?.dash
+  && left?.style?.start === right?.style?.start
+  && left?.style?.end === right?.style?.end
 )
 
 export const isEdgeGuideEqual = (

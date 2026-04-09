@@ -34,6 +34,7 @@ const textRecipe = [
   { kind: 'item', key: 'italic' },
   { kind: 'item', key: 'text-align' },
   { kind: 'item', key: 'text-color' },
+  { kind: 'item', key: 'fill' },
   DIVIDER,
   { kind: 'item', key: 'lock' },
   { kind: 'item', key: 'more' }

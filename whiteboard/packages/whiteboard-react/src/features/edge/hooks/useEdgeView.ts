@@ -60,7 +60,7 @@ export const useSelectedEdgeView = (): SelectedEdgeView | undefined => {
     }
 
     const isStepManual =
-      entry.edge.type === 'step'
+      entry.edge.type === 'elbow'
       && entry.edge.route?.kind === 'manual'
     const routePoints: SelectedEdgeRoutePointView[] = entry.handles.flatMap<SelectedEdgeRoutePointView>((handle) => {
       if (handle.kind === 'anchor') {

@@ -13,10 +13,11 @@ import type {
   SelectedEdgeView
 } from '#react/types/edge'
 import { useSelectedEdgeView } from '../hooks/useEdgeView'
+import { EdgeLabelLayer } from './EdgeLabelLayer'
 import {
   EDGE_ARROW_END_ID,
   EDGE_ARROW_START_ID,
-  EDGE_DASH_ANIMATION
+  resolveEdgeDash
 } from '../constants'
 
 const resolveMarker = (value: string | undefined, fallbackId: string) => {
@@ -38,15 +39,11 @@ const EdgeHintOverlay = () => {
     ? connect.resolution.pointWorld
     : undefined
   const snapRadius = 6 / Math.max(zoom, 0.0001)
-  const stroke = path?.style?.stroke ?? 'var(--ui-text-primary)'
-  const strokeWidth = path?.style?.strokeWidth ?? 2
-  const dash = path?.style?.dash?.join(' ')
-  const animationDuration = Math.max(0.3, path?.style?.animationSpeed ?? 1.2)
-  const animation = path?.style?.animated
-    ? `${EDGE_DASH_ANIMATION} ${animationDuration}s linear infinite`
-    : undefined
-  const markerStart = resolveMarker(path?.style?.markerStart, EDGE_ARROW_START_ID)
-  const markerEnd = resolveMarker(path?.style?.markerEnd, EDGE_ARROW_END_ID)
+  const stroke = path?.style?.color ?? 'var(--ui-text-primary)'
+  const strokeWidth = path?.style?.width ?? 2
+  const dash = resolveEdgeDash(path?.style?.dash)
+  const markerStart = resolveMarker(path?.style?.start, EDGE_ARROW_START_ID)
+  const markerEnd = resolveMarker(path?.style?.end, EDGE_ARROW_END_ID)
 
   if (!path && !snap) {
     return null
@@ -72,7 +69,6 @@ const EdgeHintOverlay = () => {
           vectorEffect="non-scaling-stroke"
           pointerEvents="none"
           className="wb-edge-visible-path"
-          style={{ animation }}
         />
       )}
       {snap && (
@@ -163,7 +159,7 @@ const EdgeRoutePointHandle = ({
               return
             }
 
-            editor.commands.edge.route.remove(point.edgeId, point.pick.index)
+            editor.write.document.edge.route.remove(point.edgeId, point.pick.index)
             event.preventDefault()
             event.stopPropagation()
           }
@@ -221,6 +217,7 @@ export const EdgeOverlayLayer = () => {
 
   return (
     <>
+      <EdgeLabelLayer />
       {showEdgeControls && selectedEdgeView ? (
         <EdgeSelectedOverlay
           view={selectedEdgeView}

@@ -1,7 +1,4 @@
 import type {
-  ViewId
-} from '@dataview/core/contracts'
-import type {
   Engine
 } from '@dataview/engine'
 import {
@@ -11,26 +8,12 @@ import {
 import type {
   CurrentView
 } from './types'
-import {
-  resolveActiveViewId
-} from '@dataview/react/page/state'
-import type {
-  PageSessionState
-} from '@dataview/react/page/session/types'
 
 export const createCurrentViewStore = (input: {
   engine: Engine
-  pageStore: ReadStore<PageSessionState>
 }): ReadStore<CurrentView | undefined> => {
-  const resolveCurrentViewId = (): ViewId | undefined => (
-    resolveActiveViewId(
-      input.engine.read.document.get(),
-      input.pageStore.get().viewId
-    )
-  )
-
   function resolveProjection() {
-    const viewId = resolveCurrentViewId()
+    const viewId = input.engine.read.activeViewId.get()
     if (!viewId) {
       return undefined
     }
@@ -43,9 +26,7 @@ export const createCurrentViewStore = (input: {
 
   return createDerivedStore<CurrentView | undefined>({
     get: read => {
-      const document = read(input.engine.read.document)
-      const page = read(input.pageStore)
-      const viewId = resolveActiveViewId(document, page.viewId)
+      const viewId = read(input.engine.read.activeViewId)
       const projection = viewId
         ? read(input.engine.read.viewProjection, viewId)
         : undefined

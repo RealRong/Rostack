@@ -1,18 +1,22 @@
-import type { ViewQuery } from './contracts'
 import {
-  sameFilterRule,
-  sameGroup,
-  sameStringArray
-} from './shared'
+  sameFilterRule
+} from '@dataview/core/filter'
+import {
+  sameGroup
+} from '@dataview/core/group'
+import {
+  sameSearch
+} from '@dataview/core/search'
+import {
+  sameSorters
+} from '@dataview/core/sort'
+import type { ViewQuery } from '@dataview/core/contracts'
 
 export const isSameViewQuery = (
   left: ViewQuery,
   right: ViewQuery
 ) => {
-  if (left.search.query !== right.search.query) {
-    return false
-  }
-  if (!sameStringArray(left.search.fields, right.search.fields)) {
+  if (!sameSearch(left.search, right.search)) {
     return false
   }
   if (left.filter.mode !== right.filter.mode) {
@@ -21,7 +25,7 @@ export const isSameViewQuery = (
   if (left.filter.rules.length !== right.filter.rules.length) {
     return false
   }
-  if (left.sort.length !== right.sort.length) {
+  if (!sameSorters(left.sort, right.sort)) {
     return false
   }
   if (!sameGroup(left.group, right.group)) {
@@ -32,19 +36,6 @@ export const isSameViewQuery = (
     const leftRule = left.filter.rules[index]
     const rightRule = right.filter.rules[index]
     if (!leftRule || !rightRule || !sameFilterRule(leftRule, rightRule)) {
-      return false
-    }
-  }
-
-  for (let index = 0; index < left.sort.length; index += 1) {
-    const leftSorter = left.sort[index]
-    const rightSorter = right.sort[index]
-    if (
-      !leftSorter
-      || !rightSorter
-      || leftSorter.field !== rightSorter.field
-      || leftSorter.direction !== rightSorter.direction
-    ) {
       return false
     }
   }

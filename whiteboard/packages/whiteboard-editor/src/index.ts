@@ -76,6 +76,9 @@ export type {
   NodeFamily
 } from './types/node/index'
 export type {
+  EdgeToolbarContext
+} from './types/edgePresentation'
+export type {
   SelectionOverlay,
   SelectionToolbarContext,
   SelectionToolbarFilter,

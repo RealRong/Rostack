@@ -32,6 +32,8 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   const engine = {
     read: {
       document: read.document,
+      activeViewId: read.activeViewId,
+      activeView: read.activeView,
       recordIds: read.recordIds,
       record: read.record,
       customFieldIds: read.customFieldIds,
@@ -39,6 +41,9 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       viewIds: read.viewIds,
       view: read.view,
       filter: read.filter,
+      group: read.group,
+      search: read.search,
+      sort: read.sort,
       viewProjection: read.viewProjection
     },
     command: command => {
@@ -74,10 +79,20 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   engine.records = createRecordsEngineApi({
     engine
   })
-  engine.view = viewId => createViewEngineApi({
-    engine,
-    viewId
-  })
+  engine.view = Object.assign(
+    (viewId: string) => createViewEngineApi({
+      engine,
+      viewId
+    }),
+    {
+      open: (viewId: string) => {
+        engine.command({
+          type: 'view.open',
+          viewId
+        })
+      }
+    }
+  )
 
   return engine
 }

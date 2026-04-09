@@ -1,6 +1,7 @@
 import { getDocumentFields } from '@dataview/core/document'
 import {
   useDataView,
+  useDataViewKeyedValue,
   useDataViewValue
 } from '@dataview/react/dataview'
 import { Menu, type MenuItem } from '@ui/menu'
@@ -16,6 +17,10 @@ export const GroupFieldPickerPanel = () => {
     dataView => dataView.currentView,
     view => view?.view
   )
+  const groupProjection = useDataViewKeyedValue(
+    dataView => dataView.engine.read.group,
+    currentView?.id ?? ''
+  )
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined
@@ -26,7 +31,7 @@ export const GroupFieldPickerPanel = () => {
       kind: 'toggle',
       key: 'none',
       label: renderMessage(meta.ui.viewSettings.none),
-      checked: !currentView?.group?.field,
+      checked: !groupProjection?.active,
       onSelect: () => {
         currentViewDomain?.group.clear()
         router.back()
@@ -34,7 +39,7 @@ export const GroupFieldPickerPanel = () => {
     },
     ...fields.map(field => (
       buildFieldToggleItem(field, {
-        checked: currentView?.group?.field === field.id,
+        checked: groupProjection?.fieldId === field.id,
         onSelect: () => {
           currentViewDomain?.group.set(field.id)
           router.back()

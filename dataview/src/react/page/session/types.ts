@@ -1,7 +1,4 @@
-import type {
-  CustomFieldId,
-  ViewId
-} from '@dataview/core/contracts'
+import type { CustomFieldId } from '@dataview/core/contracts'
 
 export type QueryBarEntry =
   | {
@@ -40,13 +37,12 @@ export interface SettingsState {
   route: SettingsRoute
 }
 
-export interface PageSessionInput extends Partial<Omit<PageSessionState, 'query' | 'settings'>> {
+export interface PageSessionInput {
   query?: Partial<QueryBarState>
   settings?: Partial<SettingsState>
 }
 
 export interface PageSessionState {
-  viewId?: ViewId
   query: QueryBarState
   settings: SettingsState
 }
@@ -61,7 +57,6 @@ export interface ResolvedPageState extends PageSessionState {
 }
 
 export interface PageSessionApi {
-  setViewId(viewId?: ViewId): void
   query: {
     show(): void
     hide(): void

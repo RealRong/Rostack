@@ -1,14 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { BucketSort, Field } from '@dataview/core/contracts'
-import { getDocumentFields } from '@dataview/core/document'
-import {
-  getFieldGroupMeta
-} from '@dataview/core/field'
-import {
-  resolveViewGroupState
-} from '@dataview/core/query'
+import type { ViewGroupProjection } from '@dataview/core/group'
 import {
   useDataView,
+  useDataViewKeyedValue,
   useDataViewValue
 } from '@dataview/react/dataview'
 import { Input } from '@ui/input'
@@ -81,37 +76,48 @@ const readBucketSortLabel = (bucketSort: BucketSort | undefined) => {
   }
 }
 
+const EMPTY_GROUP: ViewGroupProjection = {
+  viewId: '',
+  active: false,
+  fieldId: '',
+  field: undefined,
+  fieldLabel: '',
+  mode: '',
+  bucketSort: undefined,
+  bucketInterval: undefined,
+  showEmpty: true,
+  availableModes: [],
+  availableBucketSorts: [],
+  supportsInterval: false
+}
+
 export const GroupingPanel = () => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const document = useDataViewValue(dataView => dataView.engine.read.document)
   const router = useViewSettings()
   const currentView = useDataViewValue(
     dataView => dataView.currentView,
     view => view?.view
   )
+  const group = useDataViewKeyedValue(
+    dataView => dataView.engine.read.group,
+    currentView?.id ?? ''
+  ) ?? EMPTY_GROUP
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined
-  const fields = getDocumentFields(document)
-  const group = resolveViewGroupState(fields, currentView?.group)
   const groupField = group.field
   const [intervalDraft, setIntervalDraft] = useState(
     group.bucketInterval !== undefined
       ? String(group.bucketInterval)
       : ''
   )
-  const groupMeta = getFieldGroupMeta(groupField, {
-    ...(group.mode ? { mode: group.mode } : {}),
-    ...(group.bucketSort ? { bucketSort: group.bucketSort } : {}),
-    ...(group.bucketInterval !== undefined ? { bucketInterval: group.bucketInterval } : {})
-  })
-  const availableModes = groupMeta.modes
-  const availableBucketSorts = groupMeta.sorts
-  const showBucketInterval = groupMeta.supportsInterval
+  const availableModes = group.availableModes
+  const availableBucketSorts = group.availableBucketSorts
+  const showBucketInterval = group.supportsInterval
 
   useEffect(() => {
-    if (!groupField) {
+    if (!group.active || !groupField) {
       router.push({ kind: 'groupField' })
       return
     }
@@ -121,7 +127,7 @@ export const GroupingPanel = () => {
         ? String(group.bucketInterval)
         : ''
     )
-  }, [group.bucketInterval, group.fieldId, group.mode, groupField, router])
+  }, [group.active, group.bucketInterval, group.fieldId, group.mode, groupField, router])
 
   const commitInterval = () => {
     if (!groupField) {
@@ -195,7 +201,7 @@ export const GroupingPanel = () => {
       : [])
   ]
 
-  if (!groupField) {
+  if (!group.active || !groupField) {
     return null
   }
 

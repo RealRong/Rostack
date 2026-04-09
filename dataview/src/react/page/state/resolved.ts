@@ -3,6 +3,7 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import {
+  getDocumentActiveViewId,
   getDocumentFieldById,
   getDocumentCustomFields,
   getDocumentViewById
@@ -22,10 +23,6 @@ import type {
   ResolvedPageState,
   SettingsState
 } from '@dataview/react/page/session/types'
-import {
-  resolveActiveViewId
-} from './activeView'
-
 const resolveQueryBarEntry = (
   document: DataDoc,
   viewId: ViewId | undefined,
@@ -105,13 +102,12 @@ export const resolvePageState = (
   page: PageSessionState,
   valueEditorOpen: boolean
 ): ResolvedPageState => {
-  const viewId = resolveActiveViewId(document, page.viewId)
+  const viewId = getDocumentActiveViewId(document)
   const lock = valueEditorOpen
     ? 'value-editor'
     : null
 
   return {
-    viewId,
     query: resolveQueryBarState(document, viewId, page.query),
     settings: resolveSettingsState(document, viewId, page.settings),
     valueEditorOpen,

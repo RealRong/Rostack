@@ -114,7 +114,7 @@ export const buildEdgeCreateOperation = ({
       edge: {
         ...normalized,
         id,
-        type: normalized.type ?? 'linear'
+        type: normalized.type ?? 'straight'
       }
     }
   })

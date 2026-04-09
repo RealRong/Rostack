@@ -1008,8 +1008,8 @@ const curveRouter: EdgeRouter = ({ edge, source, target }) => {
 const customRouter: EdgeRouter = (input) => linearRouter(input)
 
 const EDGE_ROUTERS: Record<string, EdgeRouter> = {
-  linear: linearRouter,
-  step: stepRouter,
+  straight: linearRouter,
+  elbow: stepRouter,
   curve: curveRouter,
   custom: customRouter
 }

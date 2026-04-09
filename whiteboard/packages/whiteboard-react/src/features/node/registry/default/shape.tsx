@@ -91,7 +91,7 @@ const ShapeLabel = ({
 }) => {
   const editor = useEditor()
   const edit = useEdit()
-  const editing = edit?.nodeId === node.id && edit.field === 'text'
+  const editing = edit?.kind === 'node' && edit.nodeId === node.id && edit.field === 'text'
   const editCaret = editing ? edit.caret : undefined
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
   const [draft, setDraft] = useState(text)

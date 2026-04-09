@@ -8,16 +8,18 @@ import type {
 import {
   getDocumentFieldById,
   getDocumentRecords,
+  getDocumentActiveViewId,
   getDocumentViewById,
-  getDocumentViews
 } from '@dataview/core/document'
+import { matchFilterRule } from '@dataview/core/filter'
+import {
+  matchSearchRecord
+} from '@dataview/core/search'
+import {
+  compareSortedRecords
+} from '@dataview/core/sort'
 import { isFilterRuleEffective } from '@dataview/core/filter'
 import { applyRecordOrder, normalizeRecordOrderIds } from '@dataview/core/view/order'
-import {
-  compareGroupSort,
-  matchGroupFilter,
-  matchGroupSearch
-} from '@dataview/core/query/semantics'
 
 export interface ResolvedViewRecordState {
   view?: View
@@ -38,7 +40,7 @@ const sortRecords = (
 
   return [...records].sort((left, right) => {
     for (const sorter of sorters) {
-      const result = compareGroupSort(left, right, sorter, document)
+      const result = compareSortedRecords(left, right, sorter, document)
       if (result !== 0) {
         return result
       }
@@ -90,13 +92,23 @@ const filterViewRecords = (
 
   if (effectiveFilterRules.length) {
     nextRecords = nextRecords.filter(record => {
-      const results = effectiveFilterRules.map(rule => matchGroupFilter(record, rule, document))
+      const results = effectiveFilterRules.map(rule => {
+        const field = getDocumentFieldById(document, rule.fieldId)
+        const value = record.values[rule.fieldId as keyof typeof record.values]
+        return matchFilterRule(
+          field,
+          rule.fieldId === 'title'
+            ? record.title
+            : value,
+          rule
+        )
+      })
       return filterMode === 'or' ? results.some(Boolean) : results.every(Boolean)
     })
   }
 
   if (search.query.trim()) {
-    nextRecords = nextRecords.filter(record => matchGroupSearch(record, search, document))
+    nextRecords = nextRecords.filter(record => matchSearchRecord(record, search, document))
   }
 
   return nextRecords
@@ -106,7 +118,7 @@ export const currentView = (
   document: DataDoc,
   viewId?: ViewId
 ) => {
-  const targetViewId = viewId ?? getDocumentViews(document)[0]?.id
+  const targetViewId = viewId ?? getDocumentActiveViewId(document)
   if (!targetViewId) {
     return undefined
   }

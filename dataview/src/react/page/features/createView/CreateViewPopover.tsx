@@ -24,7 +24,7 @@ export const CreateViewPopover = () => {
       return
     }
 
-    dataView.page.setViewId(viewId)
+    dataView.engine.view.open(viewId)
     setOpen(false)
   }
 

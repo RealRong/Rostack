@@ -240,7 +240,7 @@ export const startEdgeRouteHandleInteraction = (
   if (target.kind === 'segment') {
     const item = ctx.read.edge.item.get(target.edgeId)
     const view = readEditableRouteView(ctx, target.edgeId)
-    if (item?.edge.type === 'step' && view) {
+    if (item?.edge.type === 'elbow' && view) {
       let state = startStepSegmentRouteHandleState({
         edgeId: target.edgeId,
         index: target.index,

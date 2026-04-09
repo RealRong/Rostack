@@ -23,6 +23,18 @@ export {
   setFilterRuleValue
 } from './spec'
 export {
+  addFilterRule,
+  cloneFilter,
+  findFilterIndex,
+  removeFilterRule,
+  replaceFilterRule,
+  sameFilter,
+  sameFilterRule,
+  setFilterMode,
+  setFilterPreset,
+  setFilterValue
+} from './state'
+export {
   resolveFilterRuleProjection,
   resolveViewFilterProjection
 } from './projection'

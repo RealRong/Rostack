@@ -56,7 +56,7 @@ export type {
   RecordId,
   ViewId
 } from './core/contracts'
-export { normalizeSearchableValue } from './core/query/semantics'
+export { normalizeSearchableValue } from './core/field'
 export type { ValidationIssue } from './engine/command'
 export {
   cloneGalleryOptions,
@@ -78,6 +78,7 @@ export type {
   EngineHistoryApi,
   EngineReadApi,
   HistoryActionResult,
+  ViewAccessorApi,
   KanbanApi,
   KanbanCreateCardInput,
   KanbanMoveCardsInput,

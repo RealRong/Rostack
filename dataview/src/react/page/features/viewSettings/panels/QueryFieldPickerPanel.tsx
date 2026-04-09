@@ -4,6 +4,7 @@ import { getAvailableFilterFields } from '@dataview/react/page/features/filter/f
 import { getAvailableSorterFields } from '@dataview/react/page/features/sort'
 import {
   useDataView,
+  useDataViewKeyedValue,
   useDataViewValue
 } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
@@ -20,6 +21,14 @@ export const QueryFieldPickerPanel = (props: {
     dataView => dataView.currentView,
     view => view?.view
   )
+  const filterProjection = useDataViewKeyedValue(
+    dataView => dataView.engine.read.filter,
+    currentView?.id ?? ''
+  )
+  const sortProjection = useDataViewKeyedValue(
+    dataView => dataView.engine.read.sort,
+    currentView?.id ?? ''
+  )
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined
@@ -30,8 +39,8 @@ export const QueryFieldPickerPanel = (props: {
     <div className="min-h-0 flex-1 overflow-hidden">
       <FieldPicker
         fields={props.kind === 'filter'
-          ? getAvailableFilterFields(fields, currentView?.filter.rules ?? [])
-          : getAvailableSorterFields(fields, currentView?.sort ?? [])}
+          ? getAvailableFilterFields(fields, filterProjection?.rules.map(entry => entry.rule) ?? [])
+          : getAvailableSorterFields(fields, sortProjection?.rules.map(entry => entry.sorter) ?? [])}
         emptyMessage={props.kind === 'filter'
           ? meta.ui.fieldPicker.allFiltered
           : meta.ui.fieldPicker.allSorted}

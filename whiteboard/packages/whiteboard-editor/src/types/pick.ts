@@ -41,7 +41,8 @@ export type EditorPick =
   | {
       kind: 'edge'
       id: EdgeId
-      part: 'body' | 'end' | 'path'
+      part: 'body' | 'end' | 'path' | 'label'
+      labelId?: string
       end?: 'source' | 'target'
       index?: number
       insert?: number

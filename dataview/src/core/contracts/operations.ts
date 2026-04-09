@@ -42,6 +42,10 @@ export type BaseOperation =
       view: View
     }
   | {
+      type: 'document.activeView.set'
+      viewId?: ViewId
+    }
+  | {
       type: 'document.view.remove'
       viewId: ViewId
     }

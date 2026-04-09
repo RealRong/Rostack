@@ -58,6 +58,7 @@ const isSameSize = (
 
 const textSchema = createSchema('text', 'Text', [
   createTextField('text'),
+  styleField('fill', 'Background', 'color'),
   styleField('color', 'Text color', 'color'),
   styleField('fontSize', 'Font size', 'number', { min: 8, step: 1 })
 ])
@@ -90,7 +91,7 @@ const TextNodeRenderer = ({
 }: NodeRenderProps & { variant: 'text' | 'sticky' }) => {
   const editor = useEditor()
   const edit = useEdit()
-  const editing = edit?.nodeId === node.id && edit.field === 'text'
+  const editing = edit?.kind === 'node' && edit.nodeId === node.id && edit.field === 'text'
   const editCaret = editing ? edit.caret : undefined
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
   const [draft, setDraft] = useState(text)
@@ -450,7 +451,7 @@ const createTextStyle = (variant: 'text' | 'sticky') => (props: NodeRenderProps)
   const isSticky = variant === 'sticky'
   if (!isSticky) {
     return {
-      background: 'transparent',
+      background: getStyleString(props.node, 'fill') ?? 'transparent',
       border: 'none',
       borderRadius: 0,
       boxShadow: 'none',
@@ -484,7 +485,7 @@ export const TextNodeDefinition: NodeDefinition = {
     name: 'Text',
     family: 'text',
     icon: 'text',
-    controls: ['text']
+    controls: ['text', 'fill']
   },
   role: 'content',
   geometry: 'rect',

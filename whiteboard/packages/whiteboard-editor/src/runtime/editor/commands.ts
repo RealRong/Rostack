@@ -2,6 +2,7 @@ import type { EngineInstance } from '@whiteboard/engine'
 import type { Editor, EditorRead, EditorWriteApi } from '../../types/editor'
 import type { EditorViewportRuntime } from './types'
 import { createClipboard } from '../commands/clipboard'
+import { createEdgeCommands } from '../commands/edge'
 import { createFrameCommands } from '../commands/frame'
 import { createGroupCommands } from '../commands/group'
 import { createNodesCommands } from '../commands/nodes'
@@ -11,13 +12,15 @@ export const createEditorCommands = ({
   read,
   write,
   viewport,
-  selection
+  selection,
+  edit
 }: {
   engine: EngineInstance
   read: EditorRead
   write: EditorWriteApi
   viewport: EditorViewportRuntime['read']
   selection: Editor['state']['selection']
+  edit: Editor['state']['edit']
 }): Editor['commands'] => {
   const nodeTextCommands = {
     preview: ({
@@ -67,7 +70,12 @@ export const createEditorCommands = ({
       setRect: write.view.viewport.setRect,
       setLimits: write.view.viewport.setLimits
     },
-    edge: write.document.edge,
+    edge: createEdgeCommands({
+      read,
+      edit,
+      session: write.session,
+      document: write.document
+    }),
     node: {
       ...write.document.node,
       text: nodeTextCommands

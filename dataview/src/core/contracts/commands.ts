@@ -110,6 +110,10 @@ export type Command =
       name: string
     }
   | {
+      type: 'view.open'
+      viewId: ViewId
+    }
+  | {
       type: 'view.type.set'
       viewId: ViewId
       value: ViewType

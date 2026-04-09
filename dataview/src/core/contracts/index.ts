@@ -88,6 +88,7 @@ export type {
   View,
   ViewCalc,
   ViewDisplay,
+  ViewQuery,
   ViewType,
   IndexPath,
   RecordId,

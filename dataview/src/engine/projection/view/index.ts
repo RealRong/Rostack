@@ -27,13 +27,8 @@ export {
   toRecordField
 } from './field'
 export {
-  createGrouping,
   readSectionRecordIds,
-  resolveGrouping,
-  resolveSectionRecordIds,
-  type GroupingNextValue,
-  type Grouping
-} from './grouping'
+} from './sections'
 export {
   move
 } from './move'

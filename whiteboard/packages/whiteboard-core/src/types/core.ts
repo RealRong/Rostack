@@ -103,8 +103,11 @@ export type EdgeAnchor = {
   offset: number
 }
 
-export type EdgeBaseType = 'linear' | 'step' | 'curve' | 'custom'
+export type EdgeBaseType = 'straight' | 'elbow' | 'curve' | 'custom'
 export type EdgeType = EdgeBaseType | (string & {})
+export type EdgeMarker = 'none' | 'arrow'
+export type EdgeDash = 'solid' | 'dashed' | 'dotted'
+export type EdgeTextMode = 'horizontal' | 'tangent'
 
 export type SchemaFieldType = 'string' | 'number' | 'boolean' | 'color' | 'enum' | 'text'
 export type SchemaFieldScope = 'data' | 'style' | 'label'
@@ -187,19 +190,27 @@ export const isManualEdgeRoute = (
   route?.kind === 'manual'
 
 export type EdgeStyle = {
-  stroke?: string
-  strokeWidth?: number
-  dash?: number[]
-  animated?: boolean
-  animationSpeed?: number
-  markerStart?: string
-  markerEnd?: string
+  color?: string
+  width?: number
+  dash?: EdgeDash
+  start?: EdgeMarker
+  end?: EdgeMarker
+}
+
+export type EdgeLabelStyle = {
+  size?: number
+  weight?: number
+  italic?: boolean
+  color?: string
+  bg?: string
 }
 
 export type EdgeLabel = {
+  id: string
   text?: string
-  position?: 'center' | 'start' | 'end'
-  offset?: Point
+  t?: number
+  offset?: number
+  style?: EdgeLabelStyle
 }
 
 export interface Edge {
@@ -210,7 +221,8 @@ export interface Edge {
   groupId?: GroupId
   route?: EdgeRoute
   style?: EdgeStyle
-  label?: EdgeLabel
+  textMode?: EdgeTextMode
+  labels?: EdgeLabel[]
   data?: Record<string, unknown>
 }
 

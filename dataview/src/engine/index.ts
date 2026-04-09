@@ -7,7 +7,8 @@ export type {
   EngineDocumentApi,
   EngineHistoryApi,
   EngineReadApi,
-  HistoryActionResult
+  HistoryActionResult,
+  ViewAccessorApi
 } from './types'
 export type {
   KanbanApi,

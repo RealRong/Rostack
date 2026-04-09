@@ -1,30 +1,30 @@
 import type {
   CalculationMetric,
+  Field,
   FieldId,
   Command,
   CustomFieldId,
   CustomFieldKind,
-  View,
+  ViewGroup,
   ViewType,
   RecordId,
   ViewId
 } from '@dataview/core/contracts'
+import {
+  group as groupCore,
+  type GroupWriteResult
+} from '@dataview/core/group'
 import { getDocumentViewById } from '@dataview/core/document'
 import { isTitleFieldId } from '@dataview/core/field'
 import { createUniqueFieldName } from '@dataview/core/field'
 import {
-  createGrouping,
   move,
   readSectionRecordIds,
   recordIdsOfAppearances,
-  resolveGrouping,
-  resolveSectionRecordIds,
   toRecordField,
   type AppearanceId,
   type AppearanceList,
   type CellRef,
-  type Grouping,
-  type GroupingNextValue,
   type Placement,
   type SectionKey,
   type ViewProjection
@@ -78,7 +78,7 @@ const sameValue = (
 const toValueCommand = (
   recordId: RecordId,
   fieldId: FieldId,
-  next: GroupingNextValue
+  next: Exclude<GroupWriteResult, { kind: 'invalid' }>
 ): Command => (
   isTitleFieldId(fieldId)
     ? {
@@ -88,12 +88,12 @@ const toValueCommand = (
           recordId
         },
         patch: {
-          title: 'clear' in next
+          title: next.kind === 'clear'
             ? ''
             : String(next.value ?? '')
         }
       }
-    : 'clear' in next
+    : next.kind === 'clear'
       ? {
           type: 'value.apply',
           target: {
@@ -121,16 +121,13 @@ const toValueCommand = (
 
 const createGroupWriteCommands = (input: {
   engine: Pick<Engine, 'read'>
-  view: ViewProjection['view']
+  group: ViewGroup
+  field: Field
   appearances: AppearanceList
   ids: readonly AppearanceId[]
   targetSection: string
-  grouping: Grouping
 }): readonly Command[] | undefined => {
-  const fieldId = input.view.group?.field
-  if (!fieldId) {
-    return []
-  }
+  const fieldId = input.group.field
 
   const appearanceIdsByRecordId = new Map<RecordId, AppearanceId[]>()
 
@@ -159,16 +156,18 @@ const createGroupWriteCommands = (input: {
     let currentValue = initialValue
 
     for (const appearanceId of appearanceIds) {
-      const next = input.grouping.next(
+      const next = groupCore.write.next({
+        field: input.field,
+        group: input.group,
         currentValue,
-        input.appearances.sectionOf(appearanceId),
-        input.targetSection
-      )
-      if (!next) {
+        fromKey: input.appearances.sectionOf(appearanceId),
+        toKey: input.targetSection
+      })
+      if (next.kind === 'invalid') {
         return undefined
       }
 
-      currentValue = 'clear' in next
+      currentValue = next.kind === 'clear'
         ? undefined
         : next.value
     }
@@ -182,13 +181,33 @@ const createGroupWriteCommands = (input: {
         recordId,
         fieldId,
         currentValue === undefined
-          ? { clear: true }
-          : { value: currentValue }
+          ? { kind: 'clear' }
+          : { kind: 'set', value: currentValue }
       )
     )
   }
 
   return commands
+}
+
+const readGroupWriteContext = (
+  projection: Pick<ViewProjection, 'view' | 'schema'>
+): {
+  group: ViewGroup
+  field: Field
+} | undefined => {
+  const group = projection.view.group
+  if (!group) {
+    return undefined
+  }
+
+  const field = projection.schema.fields.get(group.field)
+  return field
+    ? {
+        group,
+        field
+      }
+    : undefined
 }
 
 export const createViewEngineApi = (options: {
@@ -243,11 +262,7 @@ export const createViewEngineApi = (options: {
         return
       }
 
-      const grouping = createGrouping({
-        document: readDocument(),
-        view: currentView.view,
-        sections: currentView.sections
-      })
+      const groupWrite = readGroupWriteContext(currentView)
       const plan = move.plan(currentView.appearances, appearanceIds, target)
       if (!plan.changed || !plan.ids.length) {
         return
@@ -259,7 +274,7 @@ export const createViewEngineApi = (options: {
       }
 
       const sectionChanged = plan.ids.some(id => currentView.appearances.sectionOf(id) !== plan.target.section)
-      if (sectionChanged && currentView.view.group && !grouping) {
+      if (sectionChanged && currentView.view.group && !groupWrite) {
         return
       }
 
@@ -282,14 +297,14 @@ export const createViewEngineApi = (options: {
         : undefined
       const commands: Command[] = []
 
-      if (sectionChanged && grouping) {
+      if (sectionChanged && groupWrite) {
         const valueCommands = createGroupWriteCommands({
           engine: options.engine,
-          view: currentView.view,
+          group: groupWrite.group,
+          field: groupWrite.field,
           appearances: currentView.appearances,
           ids: plan.ids,
-          targetSection: plan.target.section,
-          grouping
+          targetSection: plan.target.section
         })
         if (!valueCommands) {
           return
@@ -315,13 +330,8 @@ export const createViewEngineApi = (options: {
         return undefined
       }
 
-      const fieldId = currentView.view.group?.field
-      const grouping = createGrouping({
-        document: readDocument(),
-        view: currentView.view,
-        sections: currentView.sections
-      })
-      if (currentView.view.group && !grouping) {
+      const groupWrite = readGroupWriteContext(currentView)
+      if (currentView.view.group && !groupWrite) {
         return undefined
       }
 
@@ -330,23 +340,25 @@ export const createViewEngineApi = (options: {
       }
       let title = input?.title?.trim()
 
-      if (fieldId && grouping) {
-        const next = grouping.next(
-          isTitleFieldId(fieldId)
+      if (groupWrite) {
+        const fieldId = groupWrite.group.field
+        const next = groupCore.write.next({
+          field: groupWrite.field,
+          group: groupWrite.group,
+          currentValue: isTitleFieldId(fieldId)
             ? title
             : values[fieldId],
-          undefined,
-          sectionKey
-        )
-        if (!next) {
+          toKey: sectionKey
+        })
+        if (next.kind === 'invalid') {
           return undefined
         }
 
         if (isTitleFieldId(fieldId)) {
-          if (!('clear' in next)) {
-            title = String(next.value ?? '')
-          }
-        } else if ('clear' in next) {
+          title = next.kind === 'clear'
+            ? ''
+            : String(next.value ?? '')
+        } else if (next.kind === 'clear') {
           delete values[fieldId]
         } else {
           values[fieldId] = next.value
@@ -855,41 +867,41 @@ export const createViewEngineApi = (options: {
 
   const cards: KanbanApi = {
     createCard: (input: KanbanCreateCardInput) => {
-      const document = readDocument()
-      const view = readCurrentView()
+      const currentView = readCurrentProjection()
       let title = input.title.trim()
-      if (!view || !title) {
+      if (!currentView || !title) {
         return undefined
       }
 
-      const grouping = resolveGrouping(document, options.viewId)
-      const groupFieldId = view.group?.field
-      if (view.group && !grouping) {
+      const groupWrite = readGroupWriteContext(currentView)
+      if (currentView.view.group && !groupWrite) {
         return undefined
       }
 
       const values: Partial<Record<CustomFieldId, unknown>> = {}
 
-      if (groupFieldId && grouping) {
-        const next = grouping.next(
-          isTitleFieldId(groupFieldId)
+      if (groupWrite) {
+        const fieldId = groupWrite.group.field
+        const next = groupCore.write.next({
+          field: groupWrite.field,
+          group: groupWrite.group,
+          currentValue: isTitleFieldId(fieldId)
             ? title
-            : values[groupFieldId],
-          undefined,
-          input.groupKey
-        )
-        if (!next) {
+            : values[fieldId],
+          toKey: input.groupKey
+        })
+        if (next.kind === 'invalid') {
           return undefined
         }
 
-        if (isTitleFieldId(groupFieldId)) {
-          if (!('clear' in next)) {
-            title = String(next.value ?? '')
-          }
-        } else if ('clear' in next) {
-          delete values[groupFieldId]
+        if (isTitleFieldId(fieldId)) {
+          title = next.kind === 'clear'
+            ? ''
+            : String(next.value ?? '')
+        } else if (next.kind === 'clear') {
+          delete values[fieldId]
         } else {
-          values[groupFieldId] = next.value
+          values[fieldId] = next.value
         }
       }
 
@@ -904,11 +916,17 @@ export const createViewEngineApi = (options: {
       }]
 
       const beforeRecordId = (
-        view.type === 'kanban'
-        && view.options.kanban.newRecordPosition === 'start'
-        && !view.sort.length
+        currentView.view.type === 'kanban'
+        && currentView.view.options.kanban.newRecordPosition === 'start'
+        && !currentView.view.sort.length
       )
-        ? resolveSectionRecordIds(document, options.viewId, input.groupKey)[0]
+        ? readSectionRecordIds(
+            {
+              sections: currentView.sections,
+              appearances: currentView.appearances
+            },
+            input.groupKey
+          )[0]
         : undefined
       const insertOrderCommand = beforeRecordId
         ? createMoveOrderCommand([recordId], beforeRecordId)
@@ -923,17 +941,15 @@ export const createViewEngineApi = (options: {
         : undefined
     },
     moveCards: (input: KanbanMoveCardsInput) => {
-      const document = readDocument()
-      const view = readCurrentView()
+      const currentView = readCurrentProjection()
       const recordIds = uniqueIds(input.recordIds)
 
-      if (!view || !recordIds.length) {
+      if (!currentView || !recordIds.length) {
         return
       }
 
-      const grouping = resolveGrouping(document, options.viewId)
-      const fieldId = view.group?.field
-      if (!grouping || !fieldId) {
+      const groupWrite = readGroupWriteContext(currentView)
+      if (!groupWrite) {
         return
       }
 
@@ -943,60 +959,24 @@ export const createViewEngineApi = (options: {
       }
 
       const valueCommands: Command[] = []
+      const fieldId = groupWrite.group.field
 
       for (const recordId of recordIds) {
         const record = options.engine.read.record.get(recordId)
         const currentValue = isTitleFieldId(fieldId)
           ? record?.title
           : record?.values[fieldId]
-        const next = grouping.next(
+        const next = groupCore.write.next({
+          field: groupWrite.field,
+          group: groupWrite.group,
           currentValue,
-          undefined,
-          input.groupKey
-        )
-        if (!next) {
+          toKey: input.groupKey
+        })
+        if (next.kind === 'invalid') {
           return
         }
 
-        valueCommands.push(
-          isTitleFieldId(fieldId)
-            ? {
-                type: 'record.apply',
-                target: {
-                  type: 'record',
-                  recordId
-                },
-                patch: {
-                  title: 'clear' in next
-                    ? ''
-                    : String(next.value ?? '')
-                }
-              }
-            : 'clear' in next
-              ? {
-                  type: 'value.apply',
-                  target: {
-                    type: 'record',
-                    recordId
-                  },
-                  action: {
-                    type: 'clear',
-                    field: fieldId
-                  }
-                }
-              : {
-                  type: 'value.apply',
-                  target: {
-                    type: 'record',
-                    recordId
-                  },
-                  action: {
-                    type: 'set',
-                    field: fieldId,
-                    value: next.value
-                  }
-                }
-        )
+        valueCommands.push(toValueCommand(recordId, fieldId, next))
       }
 
       dispatch([...valueCommands, moveCommand])

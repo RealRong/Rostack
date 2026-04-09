@@ -17,6 +17,7 @@ import type { TableOptions } from '@dataview/core/contracts/viewOptions'
 import type { BaseOperation } from '@dataview/core/contracts/operations'
 import type { IndexedCommand } from '../context'
 import {
+  getDocumentActiveViewId,
   getDocumentFieldById,
   getDocumentFields,
   getDocumentViews,
@@ -32,37 +33,45 @@ import {
   isGroupBucketSort
 } from '@dataview/core/field'
 import {
+  addFilterRule,
   hasFilterPreset,
-  normalizeFilterRule
+  normalizeFilterRule,
+  removeFilterRule,
+  replaceFilterRule,
+  sameFilter,
+  setFilterMode,
+  setFilterPreset,
+  setFilterValue
 } from '@dataview/core/filter'
 import {
-  addViewFilter,
-  addViewSorter,
-  clearViewGroup,
-  clearViewSorters,
-  isSameViewQuery,
-  moveViewSorter,
-  normalizeViewQuery,
-  removeViewFilter,
-  removeViewSorter,
-  replaceViewSorter,
-  setOnlyViewSorter,
-  setViewFilter,
-  setViewFilterMode,
-  setViewFilterPreset,
-  setViewFilterValue,
-  setViewGroup,
-  setViewGroupBucketCollapsed,
-  setViewGroupBucketHidden,
-  setViewGroupBucketInterval,
-  setViewGroupBucketSort,
-  setViewGroupMode,
-  setViewGroupShowEmpty,
-  setViewSearchQuery,
-  setViewSorter,
-  toggleViewGroup,
-  toggleViewGroupBucketCollapsed,
-  type ViewQuery
+  clearGroup,
+  sameGroup,
+  setGroup,
+  setGroupBucketCollapsed,
+  setGroupBucketHidden,
+  setGroupBucketInterval,
+  setGroupBucketSort,
+  setGroupMode,
+  setGroupShowEmpty,
+  toggleGroup,
+  toggleGroupBucketCollapsed
+} from '@dataview/core/group'
+import {
+  sameSearch,
+  setSearchQuery
+} from '@dataview/core/search'
+import {
+  addSorter,
+  clearSorters,
+  moveSorter,
+  removeSorter,
+  replaceSorter,
+  sameSorters,
+  setOnlySorter,
+  setSorter
+} from '@dataview/core/sort'
+import {
+  normalizeViewQuery
 } from '@dataview/core/query'
 import {
   createDuplicateViewPreferredName,
@@ -120,25 +129,26 @@ const sameDisplay = (
   right: ViewDisplay
 ) => sameFieldIds(left.fields, right.fields)
 
-const toViewQuery = (
-  view: View
-): ViewQuery => ({
-  search: view.search,
-  filter: view.filter,
-  sort: view.sort,
-  ...(view.group ? { group: view.group } : {})
-})
-
-const applyViewQuery = (
+const applyViewGroup = (
   view: View,
-  query: ViewQuery
-): View => ({
-  ...view,
-  search: query.search,
-  filter: query.filter,
-  sort: query.sort,
-  ...(query.group ? { group: query.group } : {})
-})
+  group: ViewGroup | undefined
+): View => {
+  if (sameGroup(view.group, group)) {
+    return view
+  }
+
+  const nextView = {
+    ...view
+  }
+
+  if (group) {
+    nextView.group = group
+  } else if (Object.prototype.hasOwnProperty.call(nextView, 'group')) {
+    delete (nextView as { group?: ViewGroup }).group
+  }
+
+  return nextView
+}
 
 const moveIds = <T,>(
   current: readonly T[],
@@ -563,21 +573,6 @@ const resolveViewUpdate = (
   return nextView === view ? [] : [buildViewPutOperation(nextView)]
 }
 
-const resolveViewQueryUpdate = (
-  document: DataDoc,
-  viewId: string,
-  updater: (query: ViewQuery, view: View) => ViewQuery
-) => resolveViewUpdate(document, viewId, view => {
-  const currentQuery = toViewQuery(view)
-  const nextQuery = updater(currentQuery, view)
-
-  if (isSameViewQuery(currentQuery, nextQuery)) {
-    return view
-  }
-
-  return applyViewQuery(view, nextQuery)
-})
-
 const validateOrderMove = (
   document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.order.move' }>
@@ -788,6 +783,26 @@ export const resolveViewRenameCommand = (
   )))
 }
 
+export const resolveViewOpenCommand = (
+  document: DataDoc,
+  command: Extract<IndexedCommand, { type: 'view.open' }>
+) => {
+  const issues = validateViewExists(document, command, command.viewId)
+  if (hasValidationErrors(issues)) {
+    return resolveCommandResult(issues)
+  }
+
+  return resolveCommandResult(
+    issues,
+    getDocumentActiveViewId(document) === command.viewId
+      ? []
+      : [{
+          type: 'document.activeView.set',
+          viewId: command.viewId
+        }]
+  )
+}
+
 export const resolveViewTypeSetCommand = (
   document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.type.set' }>
@@ -822,9 +837,16 @@ export const resolveViewSearchSetCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
-    setViewSearchQuery(query, command.value)
-  )))
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
+    const nextSearch = setSearchQuery(view.search, command.value)
+
+    return sameSearch(view.search, nextSearch)
+      ? view
+      : {
+          ...view,
+          search: nextSearch
+        }
+  }))
 }
 
 export const resolveViewFilterAddCommand = (
@@ -840,9 +862,16 @@ export const resolveViewFilterAddCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
-    addViewFilter(query, field!)
-  )))
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
+    const nextFilter = addFilterRule(view.filter, field!)
+
+    return sameFilter(view.filter, nextFilter)
+      ? view
+      : {
+          ...view,
+          filter: nextFilter
+        }
+  }))
 }
 
 export const resolveViewFilterSetCommand = (
@@ -864,9 +893,16 @@ export const resolveViewFilterSetCommand = (
   const field = getDocumentFieldById(document, command.rule.fieldId)
   const nextRule = normalizeFilterRule(field, command.rule)
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
-    setViewFilter(query, command.index, nextRule)
-  )))
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
+    const nextFilter = replaceFilterRule(view.filter, command.index, nextRule)
+
+    return sameFilter(view.filter, nextFilter)
+      ? view
+      : {
+          ...view,
+          filter: nextFilter
+        }
+  }))
 }
 
 export const resolveViewFilterPresetCommand = (
@@ -894,9 +930,21 @@ export const resolveViewFilterPresetCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
-    setViewFilterPreset(query, command.index, field, command.presetId)
-  )))
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
+    const nextFilter = setFilterPreset(
+      view.filter,
+      command.index,
+      field,
+      command.presetId
+    )
+
+    return sameFilter(view.filter, nextFilter)
+      ? view
+      : {
+          ...view,
+          filter: nextFilter
+        }
+  }))
 }
 
 export const resolveViewFilterValueCommand = (
@@ -919,9 +967,21 @@ export const resolveViewFilterValueCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
-    setViewFilterValue(query, command.index, field, command.value)
-  )))
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
+    const nextFilter = setFilterValue(
+      view.filter,
+      command.index,
+      field,
+      command.value
+    )
+
+    return sameFilter(view.filter, nextFilter)
+      ? view
+      : {
+          ...view,
+          filter: nextFilter
+        }
+  }))
 }
 
 export const resolveViewFilterModeCommand = (
@@ -936,9 +996,16 @@ export const resolveViewFilterModeCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
-    setViewFilterMode(query, command.value)
-  )))
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
+    const nextFilter = setFilterMode(view.filter, command.value)
+
+    return sameFilter(view.filter, nextFilter)
+      ? view
+      : {
+          ...view,
+          filter: nextFilter
+        }
+  }))
 }
 
 export const resolveViewFilterRemoveCommand = (
@@ -951,9 +1018,16 @@ export const resolveViewFilterRemoveCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
-    removeViewFilter(query, command.index)
-  )))
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
+    const nextFilter = removeFilterRule(view.filter, command.index)
+
+    return sameFilter(view.filter, nextFilter)
+      ? view
+      : {
+          ...view,
+          filter: nextFilter
+        }
+  }))
 }
 
 export const resolveViewFilterClearCommand = (
@@ -994,9 +1068,16 @@ export const resolveViewSortAddCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
-    addViewSorter(query, command.fieldId, command.direction)
-  )))
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
+    const nextSort = addSorter(view.sort, command.fieldId, command.direction)
+
+    return sameSorters(view.sort, nextSort)
+      ? view
+      : {
+          ...view,
+          sort: nextSort
+        }
+  }))
 }
 
 export const resolveViewSortSetCommand = (
@@ -1014,9 +1095,16 @@ export const resolveViewSortSetCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
-    setViewSorter(query, command.fieldId, command.direction)
-  )))
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
+    const nextSort = setSorter(view.sort, command.fieldId, command.direction)
+
+    return sameSorters(view.sort, nextSort)
+      ? view
+      : {
+          ...view,
+          sort: nextSort
+        }
+  }))
 }
 
 export const resolveViewSortOnlyCommand = (
@@ -1034,9 +1122,16 @@ export const resolveViewSortOnlyCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
-    setOnlyViewSorter(query, command.fieldId, command.direction)
-  )))
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
+    const nextSort = setOnlySorter(view.sort, command.fieldId, command.direction)
+
+    return sameSorters(view.sort, nextSort)
+      ? view
+      : {
+          ...view,
+          sort: nextSort
+        }
+  }))
 }
 
 export const resolveViewSortReplaceCommand = (
@@ -1054,9 +1149,16 @@ export const resolveViewSortReplaceCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
-    replaceViewSorter(query, command.index, command.sorter)
-  )))
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
+    const nextSort = replaceSorter(view.sort, command.index, command.sorter)
+
+    return sameSorters(view.sort, nextSort)
+      ? view
+      : {
+          ...view,
+          sort: nextSort
+        }
+  }))
 }
 
 export const resolveViewSortRemoveCommand = (
@@ -1071,9 +1173,16 @@ export const resolveViewSortRemoveCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
-    removeViewSorter(query, command.index)
-  )))
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
+    const nextSort = removeSorter(view.sort, command.index)
+
+    return sameSorters(view.sort, nextSort)
+      ? view
+      : {
+          ...view,
+          sort: nextSort
+        }
+  }))
 }
 
 export const resolveViewSortMoveCommand = (
@@ -1091,9 +1200,16 @@ export const resolveViewSortMoveCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
-    moveViewSorter(query, command.from, command.to)
-  )))
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
+    const nextSort = moveSorter(view.sort, command.from, command.to)
+
+    return sameSorters(view.sort, nextSort)
+      ? view
+      : {
+          ...view,
+          sort: nextSort
+        }
+  }))
 }
 
 export const resolveViewSortClearCommand = (
@@ -1105,9 +1221,16 @@ export const resolveViewSortClearCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
-    clearViewSorters(query)
-  )))
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
+    const nextSort = clearSorters(view.sort)
+
+    return sameSorters(view.sort, nextSort)
+      ? view
+      : {
+          ...view,
+          sort: nextSort
+        }
+  }))
 }
 
 export const resolveViewGroupSetCommand = (
@@ -1123,8 +1246,8 @@ export const resolveViewGroupSetCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
-    setViewGroup(query, field!)
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => (
+    applyViewGroup(view, setGroup(view.group, field!))
   )))
 }
 
@@ -1137,8 +1260,8 @@ export const resolveViewGroupClearCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
-    clearViewGroup(query)
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => (
+    applyViewGroup(view, clearGroup(view.group))
   )))
 }
 
@@ -1155,8 +1278,8 @@ export const resolveViewGroupToggleCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, query => (
-    toggleViewGroup(query, field!)
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => (
+    applyViewGroup(view, toggleGroup(view.group, field!))
   )))
 }
 
@@ -1172,11 +1295,11 @@ export const resolveViewGroupModeSetCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, (query, view) => {
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
     const field = resolveGroupField(document, view)
     return field
-      ? setViewGroupMode(query, field, command.value)
-      : query
+      ? applyViewGroup(view, setGroupMode(view.group, field, command.value))
+      : view
   }))
 }
 
@@ -1192,11 +1315,11 @@ export const resolveViewGroupSortSetCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, (query, view) => {
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
     const field = resolveGroupField(document, view)
     return field
-      ? setViewGroupBucketSort(query, field, command.value)
-      : query
+      ? applyViewGroup(view, setGroupBucketSort(view.group, field, command.value))
+      : view
   }))
 }
 
@@ -1215,11 +1338,11 @@ export const resolveViewGroupIntervalSetCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, (query, view) => {
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
     const field = resolveGroupField(document, view)
     return field
-      ? setViewGroupBucketInterval(query, field, command.value)
-      : query
+      ? applyViewGroup(view, setGroupBucketInterval(view.group, field, command.value))
+      : view
   }))
 }
 
@@ -1235,11 +1358,11 @@ export const resolveViewGroupEmptySetCommand = (
     return resolveCommandResult(issues)
   }
 
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, (query, view) => {
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
     const field = resolveGroupField(document, view)
     return field
-      ? setViewGroupShowEmpty(query, field, command.value)
-      : query
+      ? applyViewGroup(view, setGroupShowEmpty(view.group, field, command.value))
+      : view
   }))
 }
 
@@ -1265,11 +1388,11 @@ export const resolveViewGroupBucketShowCommand = (
   if (hasValidationErrors(issues)) {
     return resolveCommandResult(issues)
   }
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, (query, view) => {
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
     const field = resolveGroupField(document, view)
     return field
-      ? setViewGroupBucketHidden(query, field, command.key, false)
-      : query
+      ? applyViewGroup(view, setGroupBucketHidden(view.group, field, command.key, false))
+      : view
   }))
 }
 
@@ -1284,11 +1407,11 @@ export const resolveViewGroupBucketHideCommand = (
   if (hasValidationErrors(issues)) {
     return resolveCommandResult(issues)
   }
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, (query, view) => {
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
     const field = resolveGroupField(document, view)
     return field
-      ? setViewGroupBucketHidden(query, field, command.key, true)
-      : query
+      ? applyViewGroup(view, setGroupBucketHidden(view.group, field, command.key, true))
+      : view
   }))
 }
 
@@ -1303,11 +1426,11 @@ export const resolveViewGroupBucketCollapseCommand = (
   if (hasValidationErrors(issues)) {
     return resolveCommandResult(issues)
   }
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, (query, view) => {
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
     const field = resolveGroupField(document, view)
     return field
-      ? setViewGroupBucketCollapsed(query, field, command.key, true)
-      : query
+      ? applyViewGroup(view, setGroupBucketCollapsed(view.group, field, command.key, true))
+      : view
   }))
 }
 
@@ -1322,11 +1445,11 @@ export const resolveViewGroupBucketExpandCommand = (
   if (hasValidationErrors(issues)) {
     return resolveCommandResult(issues)
   }
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, (query, view) => {
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
     const field = resolveGroupField(document, view)
     return field
-      ? setViewGroupBucketCollapsed(query, field, command.key, false)
-      : query
+      ? applyViewGroup(view, setGroupBucketCollapsed(view.group, field, command.key, false))
+      : view
   }))
 }
 
@@ -1341,11 +1464,11 @@ export const resolveViewGroupBucketToggleCollapseCommand = (
   if (hasValidationErrors(issues)) {
     return resolveCommandResult(issues)
   }
-  return resolveCommandResult(issues, resolveViewQueryUpdate(document, command.viewId, (query, view) => {
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => {
     const field = resolveGroupField(document, view)
     return field
-      ? toggleViewGroupBucketCollapsed(query, field, command.key)
-      : query
+      ? applyViewGroup(view, toggleGroupBucketCollapsed(view.group, field, command.key))
+      : view
   }))
 }
 

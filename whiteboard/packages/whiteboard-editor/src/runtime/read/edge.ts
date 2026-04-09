@@ -9,6 +9,10 @@ import {
 } from '@whiteboard/core/edge'
 import { getNodeGeometry } from '@whiteboard/core/node'
 import { isPointEdgeEnd } from '@whiteboard/core/types'
+import {
+  isOrderedArrayEqual,
+  isSamePointArray
+} from '@whiteboard/core/utils'
 import type { EdgeId, Node, NodeId, NodeType, Rect } from '@whiteboard/core/types'
 import {
   type EdgeItem,
@@ -65,6 +69,120 @@ const isEdgeItemEqual = (
     && left?.ends.target.anchor?.offset === right?.ends.target.anchor?.offset
     && isPointEqual(left?.ends.source.point, right?.ends.source.point)
     && isPointEqual(left?.ends.target.point, right?.ends.target.point)
+  )
+)
+
+const isEdgeAnchorEqual = (
+  left: EdgeItem['ends']['source']['anchor'],
+  right: EdgeItem['ends']['source']['anchor']
+) => (
+  left === right
+  || (
+    left?.side === right?.side
+    && left?.offset === right?.offset
+  )
+)
+
+const isEdgeEndEqual = (
+  left: CoreEdgeView['ends']['source']['end'],
+  right: CoreEdgeView['ends']['source']['end']
+) => {
+  if (left === right) {
+    return true
+  }
+  if (left.kind !== right.kind) {
+    return false
+  }
+  if (left.kind === 'point' && right.kind === 'point') {
+    return isPointEqual(left.point, right.point)
+  }
+  if (left.kind === 'node' && right.kind === 'node') {
+    return left.nodeId === right.nodeId
+  }
+  return false
+}
+
+const isResolvedEdgeEndEqual = (
+  left: CoreEdgeView['ends']['source'],
+  right: CoreEdgeView['ends']['source']
+) => (
+  isEdgeEndEqual(left.end, right.end)
+  && isPointEqual(left.point, right.point)
+  && isEdgeAnchorEqual(left.anchor, right.anchor)
+)
+
+const isEdgePathSegmentEqual = (
+  left: CoreEdgeView['path']['segments'][number],
+  right: CoreEdgeView['path']['segments'][number]
+) => (
+  left === right
+  || (
+    left.role === right.role
+    && left.insertIndex === right.insertIndex
+    && isPointEqual(left.from, right.from)
+    && isPointEqual(left.to, right.to)
+    && isPointEqual(left.insertPoint, right.insertPoint)
+    && isSamePointArray(left.hitPoints, right.hitPoints)
+  )
+)
+
+const isEdgeHandleEqual = (
+  left: CoreEdgeView['handles'][number],
+  right: CoreEdgeView['handles'][number]
+) => {
+  if (left === right) {
+    return true
+  }
+  if (left.kind !== right.kind) {
+    return false
+  }
+  if (!isPointEqual(left.point, right.point)) {
+    return false
+  }
+
+  switch (left.kind) {
+    case 'end':
+      return right.kind === 'end' && left.end === right.end
+    case 'anchor':
+      return (
+        right.kind === 'anchor'
+        && left.index === right.index
+        && left.mode === right.mode
+      )
+    case 'segment':
+      return (
+        right.kind === 'segment'
+        && left.role === right.role
+        && left.insertIndex === right.insertIndex
+        && left.segmentIndex === right.segmentIndex
+        && left.axis === right.axis
+      )
+  }
+}
+
+const isEdgeViewEqual = (
+  left: CoreEdgeView | undefined,
+  right: CoreEdgeView | undefined
+) => (
+  left === right
+  || (
+    left !== undefined
+    && right !== undefined
+    && isResolvedEdgeEndEqual(left.ends.source, right.ends.source)
+    && isResolvedEdgeEndEqual(left.ends.target, right.ends.target)
+    && left.path.svgPath === right.path.svgPath
+    && isSamePointArray(left.path.points, right.path.points)
+    && isPointEqual(left.path.label, right.path.label)
+    && isOrderedArrayEqual(
+      left.path.segments,
+      right.path.segments,
+      isEdgePathSegmentEqual
+    )
+    && isOrderedArrayEqual(
+      left.handles,
+      right.handles,
+      isEdgeHandleEqual
+    )
   )
 )
 
@@ -143,6 +261,7 @@ const createEdgeResolvedStore = ({
   item: EdgeRead['item']
   nodeItem: KeyedReadStore<string, NodeItem | undefined>
 }): EdgeRead['resolved'] => createKeyedDerivedStore({
+  isEqual: isEdgeViewEqual,
   get: (readStore, edgeId: EdgeId) => {
     const entry = readStore(item, edgeId)
     if (!entry) {

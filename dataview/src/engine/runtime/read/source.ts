@@ -8,6 +8,8 @@ import {
   type KeyedReadStore
 } from '@shared/store'
 import {
+  getDocumentActiveView,
+  getDocumentActiveViewId,
   getDocumentCustomFieldById,
   getDocumentRecordById,
   getDocumentViewById
@@ -20,6 +22,18 @@ import {
   resolveViewFilterProjection,
   type ViewFilterProjection
 } from '@dataview/core/filter'
+import {
+  resolveViewGroupProjection,
+  type ViewGroupProjection
+} from '@dataview/core/group'
+import {
+  resolveViewSearchProjection,
+  type ViewSearchProjection
+} from '@dataview/core/search'
+import {
+  resolveViewSortProjection,
+  type ViewSortProjection
+} from '@dataview/core/sort'
 
 export const equalIds = <T extends string>(left: readonly T[], right: readonly T[]) => (
   left.length === right.length && left.every((value, index) => value === right[index])
@@ -27,6 +41,8 @@ export const equalIds = <T extends string>(left: readonly T[], right: readonly T
 
 export interface ReadSource {
   document: ValueStore<DataDoc>
+  activeViewId: ReadStore<ViewId | undefined>
+  activeView: ReadStore<View | undefined>
   recordIds: ReadStore<readonly RecordId[]>
   record: KeyedReadStore<RecordId, Row | undefined>
   customFieldIds: ReadStore<readonly CustomFieldId[]>
@@ -34,6 +50,9 @@ export interface ReadSource {
   viewIds: ReadStore<readonly ViewId[]>
   view: KeyedReadStore<ViewId, View | undefined>
   filter: KeyedReadStore<ViewId, ViewFilterProjection | undefined>
+  group: KeyedReadStore<ViewId, ViewGroupProjection | undefined>
+  search: KeyedReadStore<ViewId, ViewSearchProjection | undefined>
+  sort: KeyedReadStore<ViewId, ViewSortProjection | undefined>
   viewProjection: KeyedReadStore<ViewId, ViewProjection | undefined>
   setDocument: (document: DataDoc) => void
 }
@@ -46,6 +65,14 @@ export const createReadSource = (document: DataDoc): ReadSource => {
   const recordIds: ReadStore<readonly RecordId[]> = createDerivedStore<readonly RecordId[]>({
     get: read => read(documentStore).records.order,
     isEqual: equalIds
+  })
+
+  const activeViewId: ReadStore<ViewId | undefined> = createDerivedStore<ViewId | undefined>({
+    get: read => getDocumentActiveViewId(read(documentStore))
+  })
+
+  const activeView: ReadStore<View | undefined> = createDerivedStore<View | undefined>({
+    get: read => getDocumentActiveView(read(documentStore))
   })
 
   const customFieldIds: ReadStore<readonly CustomFieldId[]> = createDerivedStore<readonly CustomFieldId[]>({
@@ -75,6 +102,24 @@ export const createReadSource = (document: DataDoc): ReadSource => {
       viewId
     )
   })
+  const groupByViewId: KeyedReadStore<ViewId, ViewGroupProjection | undefined> = createKeyedDerivedStore<ViewId, ViewGroupProjection | undefined>({
+    get: (read, viewId) => resolveViewGroupProjection(
+      read(documentStore),
+      viewId
+    )
+  })
+  const searchByViewId: KeyedReadStore<ViewId, ViewSearchProjection | undefined> = createKeyedDerivedStore<ViewId, ViewSearchProjection | undefined>({
+    get: (read, viewId) => resolveViewSearchProjection(
+      read(documentStore),
+      viewId
+    )
+  })
+  const sortByViewId: KeyedReadStore<ViewId, ViewSortProjection | undefined> = createKeyedDerivedStore<ViewId, ViewSortProjection | undefined>({
+    get: (read, viewId) => resolveViewSortProjection(
+      read(documentStore),
+      viewId
+    )
+  })
   const viewProjectionById: KeyedReadStore<ViewId, ViewProjection | undefined> = createKeyedDerivedStore<ViewId, ViewProjection | undefined>({
     get: (read, viewId) => resolveViewProjection(
       read(documentStore),
@@ -84,6 +129,8 @@ export const createReadSource = (document: DataDoc): ReadSource => {
 
   return {
     document: documentStore,
+    activeViewId,
+    activeView,
     recordIds,
     record: recordById,
     customFieldIds,
@@ -91,6 +138,9 @@ export const createReadSource = (document: DataDoc): ReadSource => {
     viewIds,
     view: viewById,
     filter: filterByViewId,
+    group: groupByViewId,
+    search: searchByViewId,
+    sort: sortByViewId,
     viewProjection: viewProjectionById,
     setDocument: nextDocument => {
       documentStore.set(nextDocument)

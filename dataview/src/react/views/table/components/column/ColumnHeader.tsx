@@ -22,7 +22,11 @@ import { cn } from '@ui/utils'
 import { isCustomField } from '@dataview/core/field'
 import { getFieldCalculationMetrics } from '@dataview/core/calculation'
 import { getSorterFieldId } from '@dataview/react/page/features/sort'
-import { useDataView, useDataViewValue } from '@dataview/react/dataview'
+import {
+  useDataView,
+  useDataViewKeyedValue,
+  useDataViewValue
+} from '@dataview/react/dataview'
 import { useTableContext } from '../../context'
 import { meta, renderMessage } from '@dataview/meta'
 import { buildFieldKindMenuItems } from '@dataview/react/field/schema'
@@ -104,6 +108,14 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   }
 
   const view = currentView.view
+  const groupProjection = useDataViewKeyedValue(
+    dataView => dataView.engine.read.group,
+    view.id
+  )
+  const sortProjection = useDataViewKeyedValue(
+    dataView => dataView.engine.read.sort,
+    view.id
+  )
   const showVerticalLines = view.options.table.showVerticalLines
   const sortable = useSortable({
     id: props.sortId,
@@ -116,10 +128,11 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
     ? `translate3d(${Math.round(sortable.transform.x)}px, 0, 0)`
     : undefined
   const isDragging = sortable.isDragging
-  const grouped = view.group?.field === props.field.id
-  const sortDirection = view.sort.find(
-    sorter => getSorterFieldId(sorter) === props.field.id
-  )?.direction
+  const grouped = groupProjection?.active === true
+    && groupProjection.fieldId === props.field.id
+  const sortDirection = sortProjection?.rules.find(
+    entry => getSorterFieldId(entry.sorter) === props.field.id
+  )?.sorter.direction
   const calculationMetric = view.calc[props.field.id]
   const calculationMetrics = getFieldCalculationMetrics(props.field)
   const kind = meta.field.kind.get(props.field.kind)

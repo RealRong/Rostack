@@ -16,6 +16,7 @@ import {
 } from '@dataview/dom/appearance'
 import {
   useDataView,
+  useDataViewKeyedValue,
   useDataViewValue
 } from '@dataview/react/dataview'
 import {
@@ -82,23 +83,26 @@ export const useGalleryController = (input: {
   if (!currentView) {
     throw new Error('Gallery view requires an active current view.')
   }
+  const groupProjection = useDataViewKeyedValue(
+    dataView => dataView.engine.read.group,
+    currentView.view.id
+  )
+  const sortProjection = useDataViewKeyedValue(
+    dataView => dataView.engine.read.sort,
+    currentView.view.id
+  )
 
   const fields = useMemo(
     () => currentView.fields.all.filter(isCustomField),
     [currentView.fields.all]
   )
-  const canReorder = !currentView.view.group && !currentView.view.sort.length
+  const canReorder = !(groupProjection?.active ?? false) && !(sortProjection?.active ?? false)
   const [dragging, setDragging] = useState(false)
   const visualTargets = useRef(createVisualTargetRegistry({
     resolveScrollTargets: () => resolveDefaultAutoPanTargets(input.containerRef.current)
   })).current
-  const grouped = Boolean(currentView.view.group)
-  const groupField = useMemo(() => {
-    const groupFieldId = currentView.view.group?.field
-    return groupFieldId
-      ? currentView.schema.fields.get(groupFieldId)
-      : undefined
-  }, [currentView.schema.fields, currentView.view.group?.field])
+  const grouped = groupProjection?.active === true
+  const groupField = groupProjection?.field
   const groupUsesOptionColors = grouped && usesOptionGroupingColors(groupField)
   const sections = useMemo<readonly Section[]>(() => (
     grouped

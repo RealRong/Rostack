@@ -92,7 +92,8 @@ export const createEditor = ({
     read,
     write,
     viewport: viewport.read,
-    selection: state.selection
+    selection: state.selection,
+    edit: state.edit
   })
 
   const interactionContext: InteractionContext = {

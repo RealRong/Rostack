@@ -142,7 +142,13 @@ export const createRuntimeState = ({
       }
 
       const currentEdit = edit.source.get()
-      if (currentEdit && !read.node.item.get(currentEdit.nodeId)) {
+      if (
+        currentEdit
+        && (
+          (currentEdit.kind === 'node' && !read.node.item.get(currentEdit.nodeId))
+          || (currentEdit.kind === 'edge-label' && !read.edge.item.get(currentEdit.edgeId))
+        )
+      ) {
         edit.mutate.clear()
       }
     }

@@ -53,7 +53,7 @@ export const FrameNodeChrome = ({
   const editor = useEditor()
   const edit = useEdit()
   const title = getDataString(node, 'title') || FRAME_DEFAULT_TITLE
-  const editing = edit?.nodeId === node.id && edit.field === 'title'
+  const editing = edit?.kind === 'node' && edit.nodeId === node.id && edit.field === 'title'
   const [draft, setDraft] = useState(title)
   const color = getStyleString(node, 'color') ?? FRAME_DEFAULT_TEXT_COLOR
   const headerRef = usePickRef({

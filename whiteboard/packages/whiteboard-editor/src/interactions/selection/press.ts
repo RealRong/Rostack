@@ -273,7 +273,7 @@ const createPressSession = (
           if (!field) {
             break
           }
-          ctx.write.session.edit.start(tap.nodeId, field, {
+          ctx.write.session.edit.startNode(tap.nodeId, field, {
             caret: {
               kind: 'point',
               client: input.client
@@ -285,7 +285,7 @@ const createPressSession = (
           if (tap.selection) {
             ctx.write.session.selection.replace(tap.selection)
           }
-          ctx.write.session.edit.start(tap.nodeId, tap.field, {
+          ctx.write.session.edit.startNode(tap.nodeId, tap.field, {
             caret: {
               kind: 'point',
               client: input.client

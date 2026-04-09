@@ -1,27 +1,32 @@
 import type {
   DataDoc,
   Field,
-  ViewGroup,
   Row,
-  RecordId
-} from '../contracts'
-import { getDocumentFieldById } from '../document'
+  ViewGroup,
+  ViewId
+} from '@dataview/core/contracts'
+import {
+  getDocumentFieldById,
+  getDocumentViewById
+} from '@dataview/core/document'
 import {
   compareGroupBuckets,
+  getFieldGroupMeta,
+  getRecordFieldValue,
+  resolveFieldGroupBucketDomain,
+  resolveFieldGroupBucketEntries,
   type Bucket
-} from '../field'
+} from '@dataview/core/field'
 import {
   compareGroupSortValues,
   compareLabels,
   readBucketOrder,
   readBucketSortValue
-} from '../field/kind/group'
-import {
-  getFieldGroupMeta,
-  getRecordFieldValue,
-  resolveFieldGroupBucketDomain,
-  resolveFieldGroupBucketEntries
-} from '../field'
+} from '@dataview/core/field/kind/group'
+import type {
+  ResolvedGroup,
+  ViewGroupProjection
+} from './types'
 
 const compareResolvedGroupBuckets = (
   left: Bucket,
@@ -53,13 +58,9 @@ const compareResolvedGroupBuckets = (
   return compareGroupBuckets(left, right, field, group)
 }
 
-export interface ResolvedGroup extends Bucket {
-  records: RecordId[]
-}
-
 interface ObservedGroup {
   descriptor: Bucket
-  records: RecordId[]
+  records: string[]
 }
 
 export const resolveGroupedRecords = (
@@ -75,6 +76,7 @@ export const resolveGroupedRecords = (
   if (!field) {
     return []
   }
+
   const observed = new Map<string, ObservedGroup>()
 
   records.forEach(record => {
@@ -116,9 +118,90 @@ export const resolveGroupedRecords = (
   })
 
   return Array.from(resolved.values())
-    .sort((left, right) => compareResolvedGroupBuckets(left.descriptor, right.descriptor, field, group))
+    .sort((left, right) => (
+      compareResolvedGroupBuckets(
+        left.descriptor,
+        right.descriptor,
+        field,
+        group
+      )
+    ))
     .map(entry => ({
       ...entry.descriptor,
       records: [...entry.records]
     }))
+}
+
+export const resolveViewGroupProjection = (
+  document: DataDoc,
+  viewId: ViewId
+): ViewGroupProjection | undefined => {
+  const view = getDocumentViewById(document, viewId)
+  if (!view) {
+    return undefined
+  }
+
+  const group = view.group
+  const field = group
+    ? getDocumentFieldById(document, group.field)
+    : undefined
+
+  if (!group) {
+    return {
+      viewId,
+      active: false,
+      fieldId: '',
+      field: undefined,
+      fieldLabel: '',
+      mode: '',
+      bucketSort: undefined,
+      bucketInterval: undefined,
+      showEmpty: true,
+      availableModes: [],
+      availableBucketSorts: [],
+      supportsInterval: false
+    }
+  }
+
+  if (!field) {
+    return {
+      viewId,
+      group,
+      active: true,
+      fieldId: group.field,
+      field: undefined,
+      fieldLabel: 'Deleted field',
+      mode: group.mode,
+      bucketSort: group.bucketSort,
+      bucketInterval: group.bucketInterval,
+      showEmpty: group.showEmpty !== false,
+      availableModes: [],
+      availableBucketSorts: [],
+      supportsInterval: false
+    }
+  }
+
+  const meta = getFieldGroupMeta(field, {
+    mode: group.mode,
+    bucketSort: group.bucketSort,
+    ...(group.bucketInterval !== undefined
+      ? { bucketInterval: group.bucketInterval }
+      : {})
+  })
+
+  return {
+    viewId,
+    group,
+    active: true,
+    fieldId: field.id,
+    field,
+    fieldLabel: field.name,
+    mode: meta.mode,
+    bucketSort: meta.sort || undefined,
+    bucketInterval: meta.bucketInterval,
+    showEmpty: meta.showEmpty !== false,
+    availableModes: meta.modes,
+    availableBucketSorts: meta.sorts,
+    supportsInterval: meta.supportsInterval
+  }
 }

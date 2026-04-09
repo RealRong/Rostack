@@ -15,6 +15,7 @@ export const getOperationChangedSlices = (operation: { type: OperationType }): S
       return ['documentRecords']
     case 'document.view.put':
     case 'document.view.remove':
+    case 'document.activeView.set':
       return ['documentViews']
     case 'document.customField.put':
     case 'document.customField.patch':

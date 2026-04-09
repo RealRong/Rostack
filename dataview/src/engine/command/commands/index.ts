@@ -59,6 +59,7 @@ import {
   resolveViewOrderClearCommand,
   resolveViewOrderMoveCommand,
   resolveViewOrderSetCommand,
+  resolveViewOpenCommand,
   resolveViewPutCommand,
   resolveViewRenameCommand,
   resolveViewRemoveCommand,
@@ -121,6 +122,8 @@ export const resolveCommand = (document: DataDoc, command: IndexedCommand): Reso
       return resolveViewPutCommand(document, command)
     case 'view.rename':
       return resolveViewRenameCommand(document, command)
+    case 'view.open':
+      return resolveViewOpenCommand(document, command)
     case 'view.type.set':
       return resolveViewTypeSetCommand(document, command)
     case 'view.search.set':

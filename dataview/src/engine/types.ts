@@ -27,6 +27,9 @@ import type {
   ViewGroup
 } from '@dataview/core/contracts'
 import type { ViewFilterProjection } from '@dataview/core/filter'
+import type { ViewGroupProjection } from '@dataview/core/group'
+import type { ViewSearchProjection } from '@dataview/core/search'
+import type { ViewSortProjection } from '@dataview/core/sort'
 import type { HistoryOptions, HistoryState } from './history'
 import type { ValidationIssue } from '@dataview/engine/command'
 import type { KeyedReadStore, ReadStore } from '@shared/store'
@@ -62,6 +65,8 @@ export interface HistoryActionResult extends CommitResult {}
 
 export interface EngineReadApi {
   document: ReadStore<DataDoc>
+  activeViewId: ReadStore<ViewId | undefined>
+  activeView: ReadStore<View | undefined>
   recordIds: ReadStore<readonly RecordId[]>
   record: KeyedReadStore<RecordId, Row | undefined>
   customFieldIds: ReadStore<readonly CustomFieldId[]>
@@ -69,6 +74,9 @@ export interface EngineReadApi {
   viewIds: ReadStore<readonly ViewId[]>
   view: KeyedReadStore<ViewId, View | undefined>
   filter: KeyedReadStore<ViewId, ViewFilterProjection | undefined>
+  group: KeyedReadStore<ViewId, ViewGroupProjection | undefined>
+  search: KeyedReadStore<ViewId, ViewSearchProjection | undefined>
+  sort: KeyedReadStore<ViewId, ViewSortProjection | undefined>
   viewProjection: KeyedReadStore<ViewId, ViewProjection | undefined>
 }
 
@@ -96,6 +104,11 @@ export interface ViewsEngineApi {
   rename: (viewId: ViewId, name: string) => void
   duplicate: (viewId: ViewId) => ViewId | undefined
   remove: (viewId: ViewId) => void
+}
+
+export interface ViewAccessorApi {
+  (viewId: ViewId): ViewEngineApi
+  open: (viewId: ViewId) => void
 }
 
 export interface FieldsEngineApi {
@@ -295,5 +308,5 @@ export interface Engine {
   views: ViewsEngineApi
   fields: FieldsEngineApi
   records: RecordsEngineApi
-  view: (viewId: ViewId) => ViewEngineApi
+  view: ViewAccessorApi
 }

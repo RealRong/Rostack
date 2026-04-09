@@ -15,6 +15,7 @@ import type {
 import { isCustomField } from '@dataview/core/field'
 import {
   useDataView,
+  useDataViewKeyedValue,
   useDataViewValue,
 } from '@dataview/react/dataview'
 import {
@@ -101,22 +102,25 @@ export const useKanbanController = (input: {
   if (!currentView) {
     throw new Error('Kanban view requires an active current view.')
   }
+  const groupProjection = useDataViewKeyedValue(
+    dataView => dataView.engine.read.group,
+    currentView.view.id
+  )
+  const sortProjection = useDataViewKeyedValue(
+    dataView => dataView.engine.read.sort,
+    currentView.view.id
+  )
 
   const fields = useMemo(() => {
     return currentView.fields.all.filter(isCustomField)
   }, [
     currentView.fields.all
   ])
-  const groupField = useMemo(() => {
-    const groupFieldId = currentView.view.group?.field
-    return groupFieldId
-      ? currentView.schema.fields.get(groupFieldId)
-      : undefined
-  }, [currentView.schema.fields, currentView.view.group?.field])
+  const groupField = groupProjection?.field
   const groupUsesOptionColors = usesOptionGroupingColors(groupField)
   const fillColumnColor = groupUsesOptionColors
     && currentView.view.options.kanban.fillColumnColor
-  const canReorder = Boolean(currentView.view.group) && !currentView.view.sort.length
+  const canReorder = (groupProjection?.active ?? false) && !(sortProjection?.active ?? false)
 
   const readRecord = useCallback((id: AppearanceId) => {
     const recordId = currentView.appearances.get(id)?.recordId

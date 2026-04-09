@@ -1,7 +1,10 @@
 import type { DataDoc } from '../contracts/state'
 import { normalizeCustomFields } from '../field'
 import { cloneEntityTable, cloneRecordTable, normalizeEntityTable, normalizeRecordTable } from './shared'
-import { normalizeDocumentViews } from './views'
+import {
+  normalizeDocumentViews,
+  resolveDocumentActiveViewId
+} from './views'
 
 export const normalizeDocument = (document: DataDoc): DataDoc => {
   const records = normalizeRecordTable(document.records)
@@ -14,6 +17,7 @@ export const normalizeDocument = (document: DataDoc): DataDoc => {
       ...document,
       records
     }),
+    activeViewId: resolveDocumentActiveViewId(document),
     meta: document.meta ? structuredClone(document.meta) : undefined
   }
 }
@@ -23,6 +27,7 @@ export const cloneDocument = (document: DataDoc): DataDoc => ({
   records: cloneRecordTable(document.records),
   fields: cloneEntityTable(document.fields),
   views: cloneEntityTable(document.views),
+  activeViewId: resolveDocumentActiveViewId(document),
   ...(Object.prototype.hasOwnProperty.call(document, 'meta')
     ? {
         meta: document.meta ? structuredClone(document.meta) : document.meta

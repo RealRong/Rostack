@@ -15,6 +15,7 @@ import {
   createEdgeRead,
   type EdgeRead
 } from './edge'
+import { createEdgeToolbarRead } from './edgeToolbar'
 import {
   createSelectionRead,
   type SelectionInternalRead,
@@ -22,12 +23,15 @@ import {
 } from './selection'
 import { createToolRead, type ToolRead } from './tool'
 import { createTargetBoundsQuery } from '../query/targetBounds'
+import type { EdgeToolbarContext } from '../../types/edgePresentation'
 
 export type RuntimeRead = Omit<EngineRead, 'node' | 'edge'> & {
   history: ReadStore<HistoryState>
   group: GroupRead
   node: NodeRead
-  edge: EdgeRead
+  edge: EdgeRead & {
+    toolbar: ReadStore<EdgeToolbarContext | undefined>
+  }
   selection: SelectionRead
   tool: ToolRead
   draw: ReadStore<DrawPreferences>
@@ -85,6 +89,14 @@ export const createRead = ({
     node: nodeRead,
     edge: edgeRead
   })
+  const edgeToolbar = createEdgeToolbarRead({
+    selection: runtime.state.selection.source,
+    edge: edgeRead,
+    targetBounds,
+    tool: runtime.state.tool,
+    edit: runtime.state.edit.source,
+    interaction
+  })
   const selectionRead = createSelectionRead({
     source: runtime.state.selection.source,
     node: nodeRead,
@@ -106,7 +118,10 @@ export const createRead = ({
       group: engineRead.group,
       history,
       node: nodeRead,
-      edge: edgeRead,
+      edge: {
+        ...edgeRead,
+        toolbar: edgeToolbar
+      },
       mindmap: engineRead.mindmap,
       selection: selectionRead.public,
       slice: engineRead.slice,

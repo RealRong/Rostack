@@ -1,18 +1,16 @@
 import type {
-  BucketState,
-  BucketSort,
   DataDoc,
   EntityTable,
   Filter,
-  Search,
-  Sorter,
   View,
   RecordId,
   ViewDisplay,
-  ViewGroup,
   ViewId
 } from '../contracts/state'
 import { normalizeViewCalculations } from '@dataview/core/calculation'
+import { normalizeGroup } from '@dataview/core/group'
+import { normalizeSearch } from '@dataview/core/search'
+import { normalizeSorters } from '@dataview/core/sort'
 import { getDocumentFields } from './fields'
 import { normalizeRecordOrderIds } from '../view/order'
 import { normalizeViewOptions } from '../view/normalize'
@@ -39,71 +37,11 @@ export const normalizeViewOrders = (
   orders: readonly RecordId[] | undefined
 ) => normalizeRecordOrderIds(orders, createValidRecordIdSet(document))
 
-const normalizeBucketSort = (value: unknown): BucketSort => (
-  typeof value === 'string'
-    ? value as BucketSort
-    : 'manual'
-)
-
-const normalizeBucketState = (
-  value: unknown
-): BucketState | undefined => {
-  if (typeof value !== 'object' || value === null) {
-    return undefined
-  }
-
-  const next: BucketState = {
-    ...((value as { hidden?: unknown }).hidden === true ? { hidden: true } : {}),
-    ...((value as { collapsed?: unknown }).collapsed === true ? { collapsed: true } : {})
-  }
-
-  return Object.keys(next).length
-    ? next
-    : undefined
-}
-
-const normalizeBuckets = (value: unknown): Readonly<Record<string, BucketState>> | undefined => {
-  if (typeof value !== 'object' || value === null) {
-    return undefined
-  }
-
-  const next = Object.fromEntries(
-    Object.entries(value)
-      .flatMap(([key, state]) => {
-        const normalizedKey = typeof key === 'string' ? key.trim() : ''
-        const normalizedState = normalizeBucketState(state)
-        return normalizedKey && normalizedState
-          ? [[normalizedKey, normalizedState] as const]
-          : []
-      })
-  )
-
-  return Object.keys(next).length
-    ? next
-    : undefined
-}
-
 const normalizeFieldIdList = (value: unknown): string[] => (
   Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string')
     : []
 )
-
-const normalizeDocumentViewSearch = (search: unknown): Search => {
-  const source = typeof search === 'object' && search !== null
-    ? search as {
-        query?: unknown
-        fields?: unknown
-      }
-    : undefined
-
-  return {
-    query: typeof source?.query === 'string' ? source.query : '',
-    ...(Array.isArray(source?.fields)
-      ? { fields: normalizeFieldIdList(source.fields) }
-      : {})
-  }
-}
 
 const normalizeDocumentViewFilter = (filter: unknown): Filter => {
   const source = typeof filter === 'object' && filter !== null
@@ -136,54 +74,6 @@ const normalizeDocumentViewFilter = (filter: unknown): Filter => {
   }
 }
 
-const normalizeDocumentViewSort = (sort: unknown): Sorter[] => (
-  Array.isArray(sort)
-    ? sort
-        .filter(sorter => typeof sorter === 'object' && sorter !== null)
-        .map(sorter => {
-          const currentSorter = sorter as {
-            field?: unknown
-            direction?: unknown
-          }
-          return {
-            field: typeof currentSorter.field === 'string' ? currentSorter.field : '',
-            direction: currentSorter.direction === 'desc' ? 'desc' : 'asc'
-          }
-        })
-    : []
-)
-
-const normalizeDocumentViewGroup = (group: unknown): ViewGroup | undefined => {
-  const source = typeof group === 'object' && group !== null
-    ? group as {
-        field?: unknown
-        mode?: unknown
-        bucketSort?: unknown
-        bucketInterval?: unknown
-        showEmpty?: unknown
-        buckets?: unknown
-      }
-    : undefined
-
-  const buckets = normalizeBuckets(source?.buckets)
-  return source && typeof source.field === 'string'
-    ? {
-        field: source.field,
-        mode: typeof source.mode === 'string' ? source.mode : '',
-        bucketSort: normalizeBucketSort(source.bucketSort),
-        ...(typeof source.bucketInterval === 'number'
-          ? { bucketInterval: source.bucketInterval }
-          : {}),
-        ...(typeof source.showEmpty === 'boolean'
-          ? { showEmpty: source.showEmpty }
-          : {}),
-        ...(buckets
-          ? { buckets }
-          : {})
-      }
-    : undefined
-}
-
 const normalizeDocumentViewDisplay = (display: unknown): ViewDisplay => {
   const source = typeof display === 'object' && display !== null
     ? display as {
@@ -205,13 +95,13 @@ const normalizeDocumentView = (
     type: view.type,
     fields
   })
-  const group = normalizeDocumentViewGroup(view.group)
+  const group = normalizeGroup(view.group)
 
   return {
     ...cloneEntityInput(view),
-    search: normalizeDocumentViewSearch(view.search),
+    search: normalizeSearch(view.search),
     filter: normalizeDocumentViewFilter(view.filter),
-    sort: normalizeDocumentViewSort(view.sort),
+    sort: normalizeSorters(view.sort),
     ...(group
       ? { group }
       : {}),
@@ -253,17 +143,62 @@ export const getDocumentViewIds = (document: DataDoc): ViewId[] => document.view
 export const getDocumentViewById = (document: DataDoc, viewId: ViewId) => document.views.byId[viewId]
 export const hasDocumentView = (document: DataDoc, viewId: ViewId) => Boolean(document.views.byId[viewId])
 
+export const resolveDocumentActiveViewId = (
+  document: DataDoc,
+  preferredViewId?: ViewId
+): ViewId | undefined => {
+  const candidate = preferredViewId ?? document.activeViewId
+  if (candidate && hasDocumentView(document, candidate)) {
+    return candidate
+  }
+
+  return document.views.order[0]
+}
+
+export const getDocumentActiveViewId = (
+  document: DataDoc
+): ViewId | undefined => resolveDocumentActiveViewId(document)
+
+export const getDocumentActiveView = (
+  document: DataDoc
+): View | undefined => {
+  const viewId = getDocumentActiveViewId(document)
+  return viewId
+    ? getDocumentViewById(document, viewId)
+    : undefined
+}
+
+export const setDocumentActiveViewId = (
+  document: DataDoc,
+  viewId?: ViewId
+): DataDoc => {
+  const nextViewId = resolveDocumentActiveViewId(document, viewId)
+  if (document.activeViewId === nextViewId) {
+    return document
+  }
+
+  return {
+    ...document,
+    activeViewId: nextViewId
+  }
+}
+
 export const putDocumentView = (document: DataDoc, view: View): DataDoc => {
   const exists = Boolean(document.views.byId[view.id])
   const nextView = cloneEntityInput(view)
 
-  return replaceDocumentViewsTable(document, {
+  const nextDocument = replaceDocumentViewsTable(document, {
     byId: {
       ...document.views.byId,
       [view.id]: nextView
     },
     order: exists ? document.views.order : [...document.views.order, view.id]
   })
+
+  return setDocumentActiveViewId(
+    nextDocument,
+    nextDocument.activeViewId ?? view.id
+  )
 }
 
 export const removeDocumentView = (document: DataDoc, viewId: ViewId): DataDoc => {
@@ -274,8 +209,15 @@ export const removeDocumentView = (document: DataDoc, viewId: ViewId): DataDoc =
   const nextById = { ...document.views.byId }
   delete nextById[viewId]
 
-  return replaceDocumentViewsTable(document, {
+  const nextDocument = replaceDocumentViewsTable(document, {
     byId: nextById,
     order: document.views.order.filter(id => id !== viewId)
   })
+
+  return setDocumentActiveViewId(
+    nextDocument,
+    document.activeViewId === viewId
+      ? undefined
+      : document.activeViewId
+  )
 }

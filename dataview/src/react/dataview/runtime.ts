@@ -166,8 +166,7 @@ export const createDataViewSession = (input: {
   const inlineSession = createInlineSessionApi()
   const valueEditor = createValueEditorApi()
   const currentView = createCurrentViewStore({
-    engine: input.engine,
-    pageStore: page.store
+    engine: input.engine
   })
   const selection = createSelectionApi({
     store: selectionStore,

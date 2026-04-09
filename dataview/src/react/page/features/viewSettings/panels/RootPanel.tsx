@@ -15,9 +15,9 @@ import {
   getDocumentFields,
   getDocumentViews
 } from '@dataview/core/document'
-import { resolveViewGroupState } from '@dataview/core/query'
 import {
   useDataView,
+  useDataViewKeyedValue,
   useDataViewValue
 } from '@dataview/react/dataview'
 import { Input } from '@ui/input'
@@ -183,9 +183,15 @@ const readBucketSortLabel = (bucketSort: BucketSort | undefined) => {
 }
 
 const readGroupSummary = (
-  group: ReturnType<typeof resolveViewGroupState>
+  group?: {
+    active: boolean
+    field?: Field
+    mode: string
+    bucketSort?: BucketSort
+    bucketInterval?: number
+  }
 ) => {
-  if (!group.field) {
+  if (!group?.active || !group.field) {
     return renderMessage(meta.ui.viewSettings.none)
   }
 
@@ -216,9 +222,20 @@ export const RootPanel = () => {
     view => view?.view
   )
   const fields = getDocumentFields(document)
+  const filterProjection = useDataViewKeyedValue(
+    dataView => dataView.engine.read.filter,
+    currentView?.id ?? ''
+  )
+  const sortProjection = useDataViewKeyedValue(
+    dataView => dataView.engine.read.sort,
+    currentView?.id ?? ''
+  )
+  const groupProjection = useDataViewKeyedValue(
+    dataView => dataView.engine.read.group,
+    currentView?.id ?? ''
+  )
   const viewsCount = getDocumentViews(document).length
   const propertyCount = currentView?.display.fields.length ?? 0
-  const group = resolveViewGroupState(fields, currentView?.group)
   const menuItems: RootMenuItemConfig[] = [
     {
       icon: Settings2,
@@ -240,19 +257,19 @@ export const RootPanel = () => {
     {
       icon: Filter,
       label: renderMessage(meta.ui.viewSettings.filter),
-      suffix: renderMessage(meta.ui.viewSettings.filterSummary(currentView?.filter.rules ?? [], fields)),
+      suffix: renderMessage(meta.ui.viewSettings.filterSummary(filterProjection?.rules.map(entry => entry.rule) ?? [], fields)),
       panel: 'filter'
     },
     {
       icon: ArrowUpDown,
       label: renderMessage(meta.ui.viewSettings.sort),
-      suffix: renderMessage(meta.ui.viewSettings.sortSummary(currentView?.sort ?? [], fields)),
+      suffix: renderMessage(meta.ui.viewSettings.sortSummary(sortProjection?.rules.map(entry => entry.sorter) ?? [], fields)),
       panel: 'sort'
     },
     {
       icon: PanelsTopLeft,
       label: renderMessage(meta.ui.viewSettings.group),
-      suffix: readGroupSummary(group),
+      suffix: readGroupSummary(groupProjection),
       panel: 'group',
       visible: currentView
         ? supportsGroupSettings(currentView.type)

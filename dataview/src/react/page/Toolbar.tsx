@@ -28,6 +28,7 @@ import { getAvailableSorterFields } from '@dataview/react/page/features/sort'
 import { ViewSettingsPopover } from '@dataview/react/page/features/viewSettings'
 import {
   useDataView,
+  useDataViewKeyedValue,
   useDataViewValue,
 } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
@@ -149,15 +150,33 @@ export const PageToolbar = () => {
     dataView => dataView.currentView,
     view => view?.view
   )
+  const searchProjection = useDataViewKeyedValue(
+    dataView => dataView.engine.read.search,
+    currentView?.id ?? ''
+  )
+  const filterProjection = useDataViewKeyedValue(
+    dataView => dataView.engine.read.filter,
+    currentView?.id ?? ''
+  )
+  const sortProjection = useDataViewKeyedValue(
+    dataView => dataView.engine.read.sort,
+    currentView?.id ?? ''
+  )
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined
   const searchInputRef = useRef<HTMLInputElement | null>(null)
-  const searchQuery = currentView?.search.query ?? ''
-  const filterRules = currentView?.filter.rules ?? []
-  const sorters = currentView?.sort ?? []
-  const availableFilterFields = getAvailableFilterFields(fields, filterRules)
-  const availableSorterFields = getAvailableSorterFields(fields, sorters)
+  const searchQuery = searchProjection?.query ?? ''
+  const filterRules = filterProjection?.rules ?? []
+  const sorters = sortProjection?.rules ?? []
+  const availableFilterFields = getAvailableFilterFields(
+    fields,
+    filterRules.map(entry => entry.rule)
+  )
+  const availableSorterFields = getAvailableSorterFields(
+    fields,
+    sorters.map(entry => entry.sorter)
+  )
   const filterCount = filterRules.length
   const sortCount = sorters.length
   const [searchExpanded, setSearchExpanded] = useState(() => Boolean(searchQuery.trim()))
@@ -165,8 +184,8 @@ export const PageToolbar = () => {
   const [tabMenuViewId, setTabMenuViewId] = useState<ViewId | null>(null)
 
   useEffect(() => {
-    setSearchExpanded(Boolean(currentView?.search.query.trim()))
-  }, [currentView?.id, currentView?.search.query])
+    setSearchExpanded(Boolean(searchQuery.trim()))
+  }, [currentView?.id, searchQuery])
 
   useEffect(() => {
     setToolbarRoute(null)
@@ -189,7 +208,7 @@ export const PageToolbar = () => {
               active={view.id === currentView?.id}
               menuOpen={tabMenuViewId === view.id}
               canRemove={views.length > 1}
-              onClick={() => page.setViewId(view.id)}
+              onClick={() => engine.view.open(view.id)}
               onOpenMenu={() => setTabMenuViewId(view.id)}
               onCloseMenu={() => {
                 setTabMenuViewId(current => (
@@ -200,7 +219,7 @@ export const PageToolbar = () => {
               }}
               onRename={() => {
                 setTabMenuViewId(null)
-                page.setViewId(view.id)
+                engine.view.open(view.id)
                 page.settings.open({
                   kind: 'root',
                   focusTarget: 'viewName'
@@ -208,7 +227,7 @@ export const PageToolbar = () => {
               }}
               onEdit={() => {
                 setTabMenuViewId(null)
-                page.setViewId(view.id)
+                engine.view.open(view.id)
                 page.settings.open({
                   kind: 'root'
                 })

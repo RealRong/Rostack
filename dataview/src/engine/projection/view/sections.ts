@@ -1,7 +1,12 @@
 import type {
+  RecordId,
   ViewGroup
 } from '@dataview/core/contracts'
+import {
+  recordIdsOfAppearances
+} from './appearances'
 import type {
+  AppearanceList,
   Section,
   SectionKey
 } from './types'
@@ -46,7 +51,21 @@ export const sectionIds = (
   sectionKey: SectionKey
 ) => source.find(section => section.key === sectionKey)?.ids ?? emptyIds
 
+export const readSectionRecordIds = (
+  input: {
+    sections: readonly Pick<Section, 'key' | 'ids'>[]
+    appearances: Pick<AppearanceList, 'get'>
+  },
+  sectionKey: SectionKey
+): readonly RecordId[] => {
+  const ids = sectionIds(input.sections, sectionKey)
+  return ids.length
+    ? recordIdsOfAppearances(input.appearances, ids)
+    : emptyIds
+}
+
 export const sections = {
   create: createSections,
-  ids: sectionIds
+  ids: sectionIds,
+  recordIds: readSectionRecordIds
 } as const

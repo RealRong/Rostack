@@ -54,6 +54,8 @@ const collectOperationChanges = (
       collector.addViewPut(operation.view.id)
       return
     }
+    case 'document.activeView.set':
+      return
     case 'document.view.remove': {
       collector.addViewRemoved(operation.viewId)
       return

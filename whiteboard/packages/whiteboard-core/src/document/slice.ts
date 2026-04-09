@@ -136,7 +136,8 @@ const cloneEdge = (edge: Edge): Edge => ({
   target: cloneEdgeEnd(edge.target),
   route: edge.route ? cloneValue(edge.route) : undefined,
   style: edge.style ? cloneValue(edge.style) : undefined,
-  label: edge.label ? cloneValue(edge.label) : undefined,
+  textMode: edge.textMode,
+  labels: edge.labels ? cloneValue(edge.labels) : undefined,
   data: edge.data ? cloneValue(edge.data) : undefined
 })
 
@@ -230,18 +231,7 @@ const remapSliceEdgeInput = ({
     id: nextEdgeId,
     source,
     target,
-    route: remapEdgeRoute(edge.route, delta),
-    label: edge.label
-      ? {
-          ...cloneValue(edge.label),
-          offset: edge.label.offset
-            ? {
-                x: edge.label.offset.x,
-                y: edge.label.offset.y
-              }
-            : undefined
-        }
-      : undefined
+    route: remapEdgeRoute(edge.route, delta)
   }
 }
 
@@ -370,18 +360,7 @@ const translateEdge = (
         kind: 'point',
         point: offsetPoint(edge.target.point, delta)
       },
-  route: remapEdgeRoute(edge.route, delta),
-  label: edge.label
-    ? {
-        ...cloneValue(edge.label),
-        offset: edge.label.offset
-          ? {
-              x: edge.label.offset.x,
-              y: edge.label.offset.y
-            }
-          : undefined
-      }
-    : undefined
+  route: remapEdgeRoute(edge.route, delta)
 })
 
 export const getSliceBounds = (

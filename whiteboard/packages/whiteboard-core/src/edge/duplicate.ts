@@ -27,11 +27,15 @@ export const createEdgeDuplicateInput = (
       }
     : undefined,
   style: edge.style ? { ...edge.style } : undefined,
-  label: edge.label
-    ? {
-        ...edge.label,
-        offset: edge.label.offset ? clonePoint(edge.label.offset) : undefined
-      }
+  textMode: edge.textMode,
+  labels: edge.labels
+    ? edge.labels.map((label) => ({
+        id: label.id,
+        text: label.text,
+        t: label.t,
+        offset: label.offset,
+        style: label.style ? { ...label.style } : undefined
+      }))
     : undefined,
   data: edge.data ? { ...edge.data } : undefined
 })

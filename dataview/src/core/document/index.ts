@@ -31,6 +31,8 @@ export {
   removeDocumentCustomField
 } from './customFields'
 export {
+  getDocumentActiveView,
+  getDocumentActiveViewId,
   getDocumentViewById,
   getDocumentViewIds,
   getDocumentViews,
@@ -38,5 +40,7 @@ export {
   normalizeDocumentViews,
   normalizeViewOrders,
   putDocumentView,
-  removeDocumentView
+  resolveDocumentActiveViewId,
+  removeDocumentView,
+  setDocumentActiveViewId
 } from './views'

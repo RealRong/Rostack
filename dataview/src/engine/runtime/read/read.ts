@@ -22,6 +22,8 @@ export const read = (options: CreateReadOptions): ReadRuntime => {
 
   return {
     document: source.document,
+    activeViewId: source.activeViewId,
+    activeView: source.activeView,
     recordIds: source.recordIds,
     record: source.record,
     customFieldIds: source.customFieldIds,
@@ -29,6 +31,9 @@ export const read = (options: CreateReadOptions): ReadRuntime => {
     viewIds: source.viewIds,
     view: source.view,
     filter: source.filter,
+    group: source.group,
+    search: source.search,
+    sort: source.sort,
     viewProjection: source.viewProjection,
     clear: () => {},
     syncDocument

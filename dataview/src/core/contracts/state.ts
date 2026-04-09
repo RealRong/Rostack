@@ -265,7 +265,7 @@ export interface ViewDisplay {
 export interface ViewQuery {
   filter: Filter
   search: Search
-  sorters: Sorter[]
+  sort: Sorter[]
   group?: ViewGroup
 }
 
@@ -293,6 +293,7 @@ export interface DataDoc {
   records: EntityTable<RecordId, Row>
   fields: EntityTable<CustomFieldId, CustomField>
   views: EntityTable<ViewId, View>
+  activeViewId?: ViewId
   meta?: Record<string, unknown>
 }
 

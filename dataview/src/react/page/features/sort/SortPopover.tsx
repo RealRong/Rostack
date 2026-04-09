@@ -11,6 +11,7 @@ import { Popover } from '@ui/popover'
 import { VerticalReorderList } from '@ui/vertical-reorder-list'
 import {
   useDataView,
+  useDataViewKeyedValue,
   useDataViewValue
 } from '@dataview/react/dataview'
 import { FieldPicker } from '@dataview/react/field/picker'
@@ -36,11 +37,15 @@ export const SortPopover = (props: SortPopoverProps) => {
     dataView => dataView.currentView,
     view => view?.view
   )
+  const sortProjection = useDataViewKeyedValue(
+    dataView => dataView.engine.read.sort,
+    currentView?.id ?? ''
+  )
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined
   const [addSortOpen, setAddSortOpen] = useState(false)
-  const sorters = currentView?.sort ?? []
+  const sorters = sortProjection?.rules.map(entry => entry.sorter) ?? []
   const availableFields = getAvailableSorterFields(fields, sorters)
   const footerItems: MenuItem[] = [
     ...(availableFields.length

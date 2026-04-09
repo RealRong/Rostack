@@ -33,20 +33,30 @@ export const ViewQueryBar = () => {
     dataView => dataView.currentView,
     view => view?.view
   )
+  
   const filterProjection = useDataViewKeyedValue(
     dataView => dataView.engine.read.filter,
     currentView?.id ?? ''
   )
+  
+  const sortProjection = useDataViewKeyedValue(
+    dataView => dataView.engine.read.sort,
+    currentView?.id ?? ''
+  )
+  
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined
   const filters = filterProjection?.rules ?? []
-  const sorts = currentView?.sort ?? []
+  const sorts = sortProjection?.rules ?? []
   const availableFilterFields = getAvailableFilterFields(
     fields,
     filters.map(entry => entry.rule)
   )
-  const availableSorterFields = getAvailableSorterFields(fields, sorts)
+  const availableSorterFields = getAvailableSorterFields(
+    fields,
+    sorts.map(entry => entry.sorter)
+  )
 
   if (!currentView || !queryBar.visible || (!filters.length && !sorts.length)) {
     return null

@@ -6,12 +6,17 @@ import type {
   ClipboardPacket,
 } from '@whiteboard/core/document'
 import type { HistoryConfig as KernelHistoryConfig } from '@whiteboard/core/kernel'
-import type { TextWidthMode } from '@whiteboard/core/node'
+import type { ResizeDirection, TextWidthMode } from '@whiteboard/core/node'
 import type { SelectionInput, SelectionTarget } from '@whiteboard/core/selection'
 import type { ReadStore } from '@shared/store'
 import type { CommandResult } from '@whiteboard/engine'
 import type {
+  Edge,
+  EdgeDash,
   EdgeId,
+  EdgeMarker,
+  EdgeTextMode,
+  EdgeType,
   MindmapNodeData,
   MindmapNodeId,
   MindmapTree,
@@ -49,8 +54,8 @@ import type {
 import type { EditCaret, EditField, EditTarget } from '../runtime/state/edit'
 import type { EditorOverlay } from '../runtime/overlay'
 import type {
-  EdgeGuide,
   EdgeOverlayEntry,
+  EdgeGuide,
   MindmapDragFeedback
 } from '../runtime/overlay'
 import type { TextPreviewPatch } from '../runtime/overlay/types'
@@ -145,7 +150,7 @@ export type EditorNodeTextCommands = {
     size?: Size
     fontSize?: number
     mode?: TextWidthMode
-    handle?: import('@whiteboard/core/node').ResizeDirection
+    handle?: ResizeDirection
   }) => void
   clearPreview: (nodeId: NodeId) => void
   cancel: (input: {
@@ -292,6 +297,54 @@ export type EditorFrameCommands = {
   ) => boolean
 }
 
+export type EditorEdgePatch = {
+  type?: EdgeType
+  textMode?: EdgeTextMode
+  style?: {
+    color?: string
+    width?: number
+    dash?: EdgeDash
+    start?: EdgeMarker
+    end?: EdgeMarker
+  }
+}
+
+export type EditorEdgeLabelPatch = NonNullable<Edge['labels']>[number] extends infer Label
+  ? Label extends {
+      text?: string
+      t?: number
+      offset?: number
+      style?: infer Style
+    }
+    ? {
+        text?: string
+        t?: number
+        offset?: number
+        style?: Partial<NonNullable<Style>>
+      }
+    : never
+  : never
+
+export type EditorEdgeCommands = {
+  patch: (
+    edgeIds: readonly EdgeId[],
+    patch: EditorEdgePatch
+  ) => CommandResult | undefined
+  swapMarkers: (edgeId: EdgeId) => CommandResult | undefined
+  labels: {
+    add: (edgeId: EdgeId) => string | undefined
+    edit: (edgeId: EdgeId, labelId: string, options?: {
+      caret?: EditCaret
+    }) => boolean
+    patch: (
+      edgeId: EdgeId,
+      labelId: string,
+      patch: EditorEdgeLabelPatch
+    ) => CommandResult | undefined
+    remove: (edgeId: EdgeId, labelId: string) => CommandResult | undefined
+  }
+}
+
 export type EditorCommands = Omit<EngineCommands, 'tool' | 'selection' | 'interaction' | 'edge' | 'viewport' | 'node' | 'mindmap' | 'group'> & {
   tool: {
     set: (tool: Tool) => void
@@ -302,9 +355,16 @@ export type EditorCommands = Omit<EngineCommands, 'tool' | 'selection' | 'intera
     patch: (patch: BrushStylePatch) => void
   }
   edit: {
-    start: (
+    startNode: (
       nodeId: NodeId,
       field: EditField,
+      options?: {
+        caret?: EditCaret
+      }
+    ) => void
+    startEdgeLabel: (
+      edgeId: EdgeId,
+      labelId: string,
       options?: {
         caret?: EditCaret
       }
@@ -320,7 +380,7 @@ export type EditorCommands = Omit<EngineCommands, 'tool' | 'selection' | 'intera
     clear: () => void
   }
   viewport: EditorViewportCommands
-  edge: EngineCommands['edge']
+  edge: EditorEdgeCommands
   node: EditorNodeCommands
   nodes: EditorNodesCommands
   group: EditorGroupCommands

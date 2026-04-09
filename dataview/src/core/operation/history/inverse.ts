@@ -2,6 +2,7 @@ import type { BaseOperation } from '../../contracts/operations'
 import type { DataDoc, CustomField, Row, View } from '../../contracts/state'
 import {
   enumerateRecords,
+  getDocumentActiveViewId,
   getDocumentCustomFieldById,
   getDocumentRecordById,
   getDocumentRecordIndex,
@@ -134,6 +135,7 @@ const buildSchemaInverse = (
   operation: Extract<BaseOperation, {
     type:
       | 'document.view.put'
+      | 'document.activeView.set'
       | 'document.view.remove'
       | 'document.customField.put'
       | 'document.customField.patch'
@@ -147,6 +149,11 @@ const buildSchemaInverse = (
         ? [{ type: 'document.view.put', view: cloneValue(previousView) }]
         : [{ type: 'document.view.remove', viewId: operation.view.id }]
     }
+    case 'document.activeView.set':
+      return [{
+        type: 'document.activeView.set',
+        viewId: getDocumentActiveViewId(before)
+      }]
     case 'document.view.remove': {
       const previousView = getDocumentViewById(before, operation.viewId)
       return previousView ? [{ type: 'document.view.put', view: cloneValue(previousView) }] : []
@@ -177,6 +184,7 @@ export const buildInverseOperations = (before: DataDoc, operation: BaseOperation
     case 'document.value.clear':
       return buildValueInverse(before, operation)
     case 'document.view.put':
+    case 'document.activeView.set':
     case 'document.view.remove':
     case 'document.customField.put':
     case 'document.customField.patch':

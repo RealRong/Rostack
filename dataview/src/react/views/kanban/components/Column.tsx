@@ -1,6 +1,6 @@
 import { resolveOptionColumnStyle } from '@ui/color'
 import { cn } from '@ui/utils'
-import type { Section } from '@dataview/react/runtime/currentView'
+import type { Section } from '@dataview/engine/projection/view'
 import { useKanbanContext } from '../context'
 import { ColumnBody } from './ColumnBody'
 import { ColumnHeader } from './ColumnHeader'

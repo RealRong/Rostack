@@ -12,7 +12,7 @@ import {
   useDataView,
   useDataViewValue
 } from '@dataview/react/dataview'
-import type { AppearanceId } from '@dataview/react/runtime/currentView'
+import type { AppearanceId } from '@dataview/engine/projection/view'
 import {
   resolveInlineSessionExitEffect
 } from '@dataview/react/runtime/inlineSession'

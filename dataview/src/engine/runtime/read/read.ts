@@ -30,11 +30,6 @@ export const read = (options: CreateReadOptions): ReadRuntime => {
     customField: source.customField,
     viewIds: source.viewIds,
     view: source.view,
-    filter: source.filter,
-    group: source.group,
-    search: source.search,
-    sort: source.sort,
-    viewProjection: source.viewProjection,
     clear: () => {},
     syncDocument
   }

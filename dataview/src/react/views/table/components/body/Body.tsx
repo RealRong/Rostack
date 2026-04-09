@@ -25,7 +25,7 @@ import {
   resolveDefaultAutoPanTargets
 } from '@dataview/react/interaction/autoPan'
 import { useStoreValue } from '@shared/react'
-import { type CellRef } from '@dataview/react/runtime/currentView'
+import { type CellRef } from '@dataview/engine/projection/view'
 import { applyPaste, handleTableKey } from '../../input'
 import {
   gridContentBounds,
@@ -46,7 +46,7 @@ const View = () => {
   const engine = dataView.engine
   const selection = dataView.selection
   const table = useTableContext()
-  const currentView = useDataViewValue(dataView => dataView.currentView)
+  const currentView = useStoreValue(table.currentView)
   if (!currentView) {
     throw new Error('Table body requires an active current view.')
   }

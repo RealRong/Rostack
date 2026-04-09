@@ -1,9 +1,8 @@
 import type {
   Field
 } from '@dataview/core/contracts'
-import {
-  useDataViewValue
-} from '@dataview/react/dataview'
+import { useStoreValue } from '@shared/react'
+import { useTableContext } from '../../context'
 
 export interface ColumnFooterBlockProps {
   scopeId: string
@@ -12,7 +11,8 @@ export interface ColumnFooterBlockProps {
 }
 
 export const ColumnFooterBlock = (props: ColumnFooterBlockProps) => {
-  const currentView = useDataViewValue(dataView => dataView.currentView)
+  const table = useTableContext()
+  const currentView = useStoreValue(table.currentView)
   if (!currentView) {
     throw new Error('Table footer requires an active current view.')
   }

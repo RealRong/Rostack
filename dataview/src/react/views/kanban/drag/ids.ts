@@ -1,4 +1,4 @@
-import type { AppearanceId, SectionKey } from '@dataview/react/runtime/currentView'
+import type { AppearanceId, SectionKey } from '@dataview/engine/projection/view'
 
 export interface DropTarget {
   sectionKey: SectionKey

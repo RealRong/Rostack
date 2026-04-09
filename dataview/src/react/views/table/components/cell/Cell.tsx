@@ -10,11 +10,11 @@ import {
 } from '@dataview/engine/projection/view'
 import {
   type AppearanceId
-} from '@dataview/react/runtime/currentView'
-import { useDataView, useDataViewValue } from '@dataview/react/dataview'
+} from '@dataview/engine/projection/view'
+import { useDataView } from '@dataview/react/dataview'
 import { fieldAttrs } from '@dataview/dom/field'
 import { useTableContext } from '../../context'
-import { useKeyedStoreValue } from '@shared/react'
+import { useKeyedStoreValue, useStoreValue } from '@shared/react'
 import { cn } from '@ui/utils'
 import { CellValue } from './CellValue'
 
@@ -31,7 +31,7 @@ const same = (left: CellProps, right: CellProps) => (
 const View = (props: CellProps) => {
   const engine = useDataView().engine
   const table = useTableContext()
-  const currentView = useDataViewValue(dataView => dataView.currentView)
+  const currentView = useStoreValue(table.currentView)
   if (!currentView) {
     throw new Error('Table cell requires an active current view.')
   }

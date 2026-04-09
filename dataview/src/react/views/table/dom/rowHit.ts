@@ -5,7 +5,7 @@ import {
   type Point,
   type Rect
 } from '@shared/dom'
-import type { AppearanceId } from '@dataview/react/runtime/currentView'
+import type { AppearanceId } from '@dataview/engine/projection/view'
 import {
   rowGapHitAtPoint,
   rowIdAtPoint,

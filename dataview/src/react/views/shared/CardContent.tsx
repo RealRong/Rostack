@@ -13,7 +13,7 @@ import type {
 import type {
   AppearanceId,
   ViewFieldRef
-} from '@dataview/react/runtime/currentView'
+} from '@dataview/engine/projection/view'
 import { isEmptyFieldValue } from '@dataview/core/field'
 import { Button } from '@ui/button'
 import { cn } from '@ui/utils'

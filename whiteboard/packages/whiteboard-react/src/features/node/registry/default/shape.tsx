@@ -134,13 +134,12 @@ const ShapeLabel = ({
 
   const cancel = () => {
     setDraft(text)
-    editor.commands.node.text.cancel({
-      nodeId: node.id
-    })
+    editor.actions.view.preview.nodeText.clear(node.id)
+    editor.actions.session.edit.clear()
   }
 
   const commit = (value = draft) => {
-    editor.commands.node.text.commit({
+    editor.actions.document.nodes.text.commit({
       nodeId: node.id,
       field: 'text',
       value

@@ -1,4 +1,5 @@
 export type {
+  ActiveViewProjection,
   CreateEngineOptions,
   CommitResult,
   CreatedEntities,
@@ -6,8 +7,10 @@ export type {
   Engine,
   EngineDocumentApi,
   EngineHistoryApi,
+  EngineProjectApi,
   EngineReadApi,
   HistoryActionResult,
+  ViewRecordSetProjection,
   ViewAccessorApi
 } from './types'
 export type {

@@ -1,6 +1,6 @@
 import { GripVertical } from 'lucide-react'
 import type { PointerEvent, ReactNode } from 'react'
-import type { AppearanceId } from '@dataview/react/runtime/currentView'
+import type { AppearanceId } from '@dataview/engine/projection/view'
 import {
   type RowRailState,
   type RowRailStateInput

@@ -18,7 +18,7 @@ import { createEdgeHoverService } from '../../interactions/edge/hover'
 import { createOverlay } from '../overlay'
 import { createRead } from '../read'
 import { createRuntimeState } from '../state'
-import { createEditorCommands } from './commands'
+import { createEditorActions } from './actions'
 import { createEditorInput } from './input'
 import { createEditorState } from './state'
 import { createEditorWrite } from '../write'
@@ -87,7 +87,7 @@ export const createEditor = ({
     runtime,
     viewport: viewport.read
   })
-  const commands = createEditorCommands({
+  const actions = createEditorActions({
     engine,
     read,
     write,
@@ -137,8 +137,7 @@ export const createEditor = ({
   const editor = {
     read,
     state,
-    write,
-    commands,
+    actions,
     input,
     configure: (config) => {
       engine.configure({

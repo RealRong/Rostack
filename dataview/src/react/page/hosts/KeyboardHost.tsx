@@ -14,7 +14,7 @@ const editingTargetSelector = [
 export const PageKeyboardHost = () => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const currentView = useDataViewValue(dataView => dataView.currentView)
+  const currentView = useDataViewValue(dataView => dataView.engine.read.activeView)
   const valueEditorOpen = useDataViewValue(
     dataView => dataView.page.store,
     state => state.valueEditorOpen
@@ -62,7 +62,7 @@ export const PageKeyboardHost = () => {
           event.preventDefault()
           return true
         case 'select-all':
-          if (currentView?.view.type === 'table') {
+          if (currentView?.type === 'table') {
             return
           }
 
@@ -70,7 +70,7 @@ export const PageKeyboardHost = () => {
           event.preventDefault()
           return true
         case 'clear-selection':
-          if (currentView?.view.type === 'table') {
+          if (currentView?.type === 'table') {
             return
           }
 
@@ -78,12 +78,12 @@ export const PageKeyboardHost = () => {
           event.preventDefault()
           return true
         case 'remove-selection':
-          if (currentView?.view.type === 'table') {
+          if (currentView?.type === 'table') {
             return
           }
 
           if (currentView) {
-            engine.view(currentView.view.id).items.removeAppearances(
+            engine.view(currentView.id).items.removeAppearances(
               dataView.selection.get().ids
             )
           }

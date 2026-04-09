@@ -35,7 +35,12 @@ export const textColorItem: ToolbarItemSpec = {
     <TextColorPanel
       value={context.textColor}
       onChange={(value) => {
-        editor.commands.node.text.setColor(context.nodeIds, value)
+        editor.actions.document.nodes.text.set({
+          nodeIds: context.nodeIds,
+          patch: {
+            color: value
+          }
+        })
       }}
     />
   )

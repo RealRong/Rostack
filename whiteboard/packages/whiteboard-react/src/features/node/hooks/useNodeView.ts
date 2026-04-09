@@ -99,7 +99,7 @@ const resolveNodeOverlayViewState = (
 }
 
 const resolveNodeViewState = (
-  editor: Pick<Editor, 'commands' | 'read'>,
+  editor: Pick<Editor, 'actions' | 'read'>,
   registry: Pick<NodeRegistry, 'get'>,
   nodeId: NodeId,
   item: NodeItem,
@@ -115,7 +115,7 @@ const resolveNodeViewState = (
   const definition = registry.get(resolvedNode.type)
   const write: NodeWrite = {
     update: (update) => {
-      editor.commands.node.document.update(nodeId, update)
+      editor.actions.document.nodes.update(nodeId, update)
     }
   }
   const renderProps: NodeRenderProps = {

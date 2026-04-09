@@ -23,8 +23,7 @@ export const ViewFieldsPanel = () => {
   const engine = dataView.engine
   const document = useDataViewValue(dataView => dataView.engine.read.document)
   const currentView = useDataViewValue(
-    dataView => dataView.currentView,
-    view => view?.view
+    dataView => dataView.engine.read.activeView
   )
   const currentViewDomain = currentView
     ? engine.view(currentView.id)

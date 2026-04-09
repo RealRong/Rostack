@@ -6,10 +6,14 @@ const {
   createEngine,
   TITLE_FIELD_ID
 } = require('../.tmp/group-test-dist')
+const {
+  resolveViewProjection
+} = require('../.tmp/group-test-dist/engine/projection/view')
 
 const FIELD_STATUS = 'status'
 const FIELD_POINTS = 'points'
 const VIEW_TABLE = 'view_table'
+const VIEW_BOARD = 'view_board'
 
 const STATUS_OPTIONS = [
   {
@@ -132,6 +136,77 @@ const createDocument = () => {
   }
 }
 
+const createView = (input = {}) => {
+  const fields = createFields()
+
+  return {
+    id: input.id ?? VIEW_TABLE,
+    type: input.type ?? 'table',
+    name: input.name ?? 'Tasks',
+    filter: {
+      mode: 'and',
+      rules: []
+    },
+    search: {
+      query: ''
+    },
+    sort: [],
+    calc: {},
+    display: {
+      fields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS]
+    },
+    options: {
+      ...createDefaultViewOptions(input.type ?? 'table', fields)
+    },
+    orders: [],
+    ...(input.group ? { group: input.group } : {})
+  }
+}
+
+const createMultiViewDocument = () => {
+  const fields = createFields()
+
+  return {
+    schemaVersion: 1,
+    fields: createFieldTable(fields),
+    views: {
+      byId: {
+        [VIEW_TABLE]: createView({
+          id: VIEW_TABLE,
+          name: 'Table'
+        }),
+        [VIEW_BOARD]: createView({
+          id: VIEW_BOARD,
+          name: 'Board',
+          group: {
+            field: FIELD_STATUS,
+            mode: 'option',
+            bucketSort: 'manual',
+            showEmpty: true
+          }
+        })
+      },
+      order: [VIEW_TABLE, VIEW_BOARD]
+    },
+    activeViewId: VIEW_TABLE,
+    records: {
+      byId: {
+        rec_1: {
+          id: 'rec_1',
+          title: 'Task 1',
+          type: 'task',
+          values: {
+            [FIELD_STATUS]: 'todo',
+            [FIELD_POINTS]: 1
+          }
+        }
+      },
+      order: ['rec_1']
+    },
+    meta: {}
+  }
+}
+
 const createEmptyDocument = () => {
   const fields = createFields()
 
@@ -159,7 +234,10 @@ test('view group bucket toggle clears the final collapsed bucket state', () => {
   engine.view(VIEW_TABLE).group.toggleCollapse('todo')
 
   let view = engine.read.view.get(VIEW_TABLE)
-  let projection = engine.read.viewProjection.get(VIEW_TABLE)
+  let projection = resolveViewProjection(
+    engine.document.export(),
+    VIEW_TABLE
+  )
 
   assert.deepEqual(view.group.buckets, {
     todo: {
@@ -174,7 +252,10 @@ test('view group bucket toggle clears the final collapsed bucket state', () => {
   engine.view(VIEW_TABLE).group.toggleCollapse('todo')
 
   view = engine.read.view.get(VIEW_TABLE)
-  projection = engine.read.viewProjection.get(VIEW_TABLE)
+  projection = resolveViewProjection(
+    engine.document.export(),
+    VIEW_TABLE
+  )
 
   assert.equal(view.group?.buckets, undefined)
   assert.equal(
@@ -200,6 +281,63 @@ test('view group interval set clears back to the field default when value is und
   engine.view(VIEW_TABLE).group.setInterval(undefined)
   view = engine.read.view.get(VIEW_TABLE)
   assert.equal(view.group?.bucketInterval, 10)
+})
+
+test('engine.project rebuilds from one active pipeline while keeping projection boundaries', () => {
+  const engine = createEngine({
+    document: createMultiViewDocument()
+  })
+
+  let viewEvents = 0
+  let sortEvents = 0
+  const unsubscribeView = engine.project.view.subscribe(() => {
+    viewEvents += 1
+  })
+  const unsubscribeSort = engine.project.sort.subscribe(() => {
+    sortEvents += 1
+  })
+
+  assert.equal(engine.project.view.get()?.id, VIEW_TABLE)
+  assert.equal(engine.project.group.get()?.active, false)
+  assert.equal(engine.project.sort.get()?.active, false)
+
+  engine.view(VIEW_TABLE).sort.add(FIELD_POINTS)
+
+  assert.equal(engine.project.view.get()?.id, VIEW_TABLE)
+  assert.equal(engine.project.sort.get()?.active, true)
+  assert.equal(engine.project.sort.get()?.rules[0]?.sorter.field, FIELD_POINTS)
+  assert.equal(viewEvents, 0)
+  assert.equal(sortEvents, 1)
+
+  engine.view.open(VIEW_BOARD)
+
+  assert.equal(engine.project.view.get()?.id, VIEW_BOARD)
+  assert.equal(engine.project.group.get()?.active, true)
+  assert.equal(engine.project.group.get()?.fieldId, FIELD_STATUS)
+  assert.equal(viewEvents, 1)
+
+  unsubscribeView()
+  unsubscribeSort()
+})
+
+test('engine.project exposes body projections for the active view', () => {
+  const engine = createEngine({
+    document: createDocument()
+  })
+
+  engine.view(VIEW_TABLE).group.set(FIELD_STATUS)
+
+  const records = engine.project.records.get()
+  const sections = engine.project.sections.get()
+  const appearances = engine.project.appearances.get()
+  const fields = engine.project.fields.get()
+  const calculations = engine.project.calculations.get()
+
+  assert.deepEqual(records?.visibleIds, ['rec_1', 'rec_2', 'rec_3'])
+  assert.deepEqual(sections?.map(section => section.key), ['todo', 'doing', 'done', '(empty)'])
+  assert.equal(appearances?.ids.length, 3)
+  assert.deepEqual(fields?.ids, [FIELD_STATUS, FIELD_POINTS])
+  assert.ok(calculations?.get('todo'))
 })
 
 test('view.create resolves duplicate names in the command layer', () => {

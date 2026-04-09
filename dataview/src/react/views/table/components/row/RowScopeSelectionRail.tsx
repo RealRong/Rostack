@@ -8,11 +8,12 @@ import {
 } from '@dataview/react/runtime/selection'
 import type {
   AppearanceId
-} from '@dataview/react/runtime/currentView'
+} from '@dataview/engine/projection/view'
 import {
   useDataView,
   useDataViewValue,
 } from '@dataview/react/dataview'
+import { useStoreValue } from '@shared/react'
 import { useTableContext } from '../../context'
 import { RowSelectionButton, TableLeadingRail } from './RowRail'
 import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
@@ -24,7 +25,7 @@ export interface RowScopeSelectionRailProps {
 const View = (props: RowScopeSelectionRailProps) => {
   const table = useTableContext()
   const dataView = useDataView()
-  const currentView = useDataViewValue(dataView => dataView.currentView)
+  const currentView = useStoreValue(table.currentView)
   if (!currentView) {
     throw new Error('Table row scope selection requires an active current view.')
   }

@@ -74,7 +74,7 @@ export const FrameNodeChrome = ({
 
   const commit = () => {
     const nextTitle = draft.trim() || FRAME_DEFAULT_TITLE
-    editor.commands.node.text.commit({
+    editor.actions.document.nodes.text.commit({
       nodeId: node.id,
       field: 'title',
       value: nextTitle
@@ -105,9 +105,8 @@ export const FrameNodeChrome = ({
             if (isEscapeEditingKey(event)) {
               event.preventDefault()
               setDraft(title)
-              editor.commands.node.text.cancel({
-                nodeId: node.id
-              })
+              editor.actions.view.preview.nodeText.clear(node.id)
+              editor.actions.session.edit.clear()
             }
           }}
           className="wb-frame-input"

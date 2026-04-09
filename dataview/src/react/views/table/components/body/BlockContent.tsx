@@ -7,7 +7,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   AppearanceId
-} from '@dataview/react/runtime/currentView'
+} from '@dataview/engine/projection/view'
 import {
   useStoreValue
 } from '@shared/react'

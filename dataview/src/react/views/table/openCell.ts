@@ -1,9 +1,7 @@
 import type {
-  CurrentView,
-} from '@dataview/react/runtime/currentView'
-import type {
   CellRef,
-  ViewFieldRef
+  ViewFieldRef,
+  ViewProjection as CurrentView
 } from '@dataview/engine/projection/view'
 import type {
   ValueEditorApi,

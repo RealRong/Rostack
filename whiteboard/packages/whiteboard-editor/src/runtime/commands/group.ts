@@ -1,27 +1,53 @@
 import {
   normalizeSelectionTarget
 } from '@whiteboard/core/selection'
+import type { EngineCommands } from '@whiteboard/engine'
 import type {
-  Editor,
-  EditorGroupCommands,
+  EditorCanvasOrderMode,
+  EditorGroupsActions,
   EditorRead
 } from '../../types/editor'
 import {
   readGroupTarget
 } from './target'
 
-type GroupCommandHost = {
+type GroupActionHost = {
   read: Pick<EditorRead, 'group'>
   commands: {
-    group: Pick<Editor['write']['document']['group'], 'merge' | 'order' | 'ungroup' | 'ungroupMany'>
-    selection: Editor['commands']['selection']
+    group: Pick<EngineCommands['group'], 'merge' | 'order' | 'ungroup' | 'ungroupMany'>
+    selection: {
+      replace: (input: {
+        nodeIds?: readonly string[]
+        edgeIds?: readonly string[]
+      }) => void
+      clear: () => void
+    }
   }
 }
 
-export const createGroupCommands = ({
+const orderGroups = (
+  order: EngineCommands['group']['order'],
+  groupIds: readonly string[],
+  mode: EditorCanvasOrderMode
+) => {
+  const ids = [...groupIds]
+  if (mode === 'front') {
+    return order.bringToFront(ids)
+  }
+  if (mode === 'forward') {
+    return order.bringForward(ids)
+  }
+  if (mode === 'backward') {
+    return order.sendBackward(ids)
+  }
+
+  return order.sendToBack(ids)
+}
+
+export const createGroupsActions = ({
   read,
   commands
-}: GroupCommandHost): EditorGroupCommands => ({
+}: GroupActionHost): EditorGroupsActions => ({
   merge: (input, options) => {
     const target = normalizeSelectionTarget(input)
     const result = commands.group.merge(target)
@@ -62,5 +88,11 @@ export const createGroupCommands = ({
     })
     return true
   },
-  order: commands.group.order
+  order: (groupIds, mode) => {
+    if (!groupIds.length) {
+      return false
+    }
+
+    return orderGroups(commands.group.order, groupIds, mode).ok
+  }
 })

@@ -191,9 +191,11 @@ const createContextWriter = (
     }
 
     if (context.kind === 'node') {
-      editor.commands.node.text.setSize({
+      editor.actions.document.nodes.text.set({
         nodeIds: [context.nodeId],
-        value,
+        patch: {
+          size: value
+        },
         sizeById: buildTextNodeSizeById({
           context,
           editor,
@@ -203,7 +205,7 @@ const createContextWriter = (
       return
     }
 
-    editor.commands.edge.labels.patch(context.edgeId, context.labelId, {
+    editor.actions.document.edges.labels.update(context.edgeId, context.labelId, {
       style: {
         size: value
       }
@@ -215,11 +217,16 @@ const createContextWriter = (
     }
 
     if (context.kind === 'node') {
-      editor.commands.node.text.setWeight([context.nodeId], weight)
+      editor.actions.document.nodes.text.set({
+        nodeIds: [context.nodeId],
+        patch: {
+          weight
+        }
+      })
       return
     }
 
-    editor.commands.edge.labels.patch(context.edgeId, context.labelId, {
+    editor.actions.document.edges.labels.update(context.edgeId, context.labelId, {
       style: {
         weight
       }
@@ -231,11 +238,16 @@ const createContextWriter = (
     }
 
     if (context.kind === 'node') {
-      editor.commands.node.text.setItalic([context.nodeId], italic)
+      editor.actions.document.nodes.text.set({
+        nodeIds: [context.nodeId],
+        patch: {
+          italic
+        }
+      })
       return
     }
 
-    editor.commands.edge.labels.patch(context.edgeId, context.labelId, {
+    editor.actions.document.edges.labels.update(context.edgeId, context.labelId, {
       style: {
         italic
       }
@@ -243,11 +255,16 @@ const createContextWriter = (
   },
   setColor: (value: string) => {
     if (context.kind === 'node') {
-      editor.commands.node.text.setColor([context.nodeId], value)
+      editor.actions.document.nodes.text.set({
+        nodeIds: [context.nodeId],
+        patch: {
+          color: value
+        }
+      })
       return
     }
 
-    editor.commands.edge.labels.patch(context.edgeId, context.labelId, {
+    editor.actions.document.edges.labels.update(context.edgeId, context.labelId, {
       style: {
         color: value
       }
@@ -259,11 +276,13 @@ const createContextWriter = (
     }
 
     if (context.kind === 'node') {
-      editor.commands.node.appearance.setFill([context.nodeId], value)
+      editor.actions.document.nodes.style.set([context.nodeId], {
+        fill: value
+      })
       return
     }
 
-    editor.commands.edge.labels.patch(context.edgeId, context.labelId, {
+    editor.actions.document.edges.labels.update(context.edgeId, context.labelId, {
       style: {
         bg: value
       }

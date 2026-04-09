@@ -24,8 +24,7 @@ export const ViewSettingsPopover = () => {
   const dataView = useDataView()
   const page = dataView.page
   const currentView = useDataViewValue(
-    dataView => dataView.currentView,
-    view => view?.view
+    dataView => dataView.engine.read.activeView
   )
   const viewSettings = useDataViewValue(
     dataView => dataView.page.store,

@@ -14,26 +14,6 @@ import {
   getDocumentRecordById,
   getDocumentViewById
 } from '@dataview/core/document'
-import {
-  resolveViewProjection,
-  type ViewProjection
-} from '@dataview/engine/projection/view'
-import {
-  resolveViewFilterProjection,
-  type ViewFilterProjection
-} from '@dataview/core/filter'
-import {
-  resolveViewGroupProjection,
-  type ViewGroupProjection
-} from '@dataview/core/group'
-import {
-  resolveViewSearchProjection,
-  type ViewSearchProjection
-} from '@dataview/core/search'
-import {
-  resolveViewSortProjection,
-  type ViewSortProjection
-} from '@dataview/core/sort'
 
 export const equalIds = <T extends string>(left: readonly T[], right: readonly T[]) => (
   left.length === right.length && left.every((value, index) => value === right[index])
@@ -49,11 +29,6 @@ export interface ReadSource {
   customField: KeyedReadStore<CustomFieldId, CustomField | undefined>
   viewIds: ReadStore<readonly ViewId[]>
   view: KeyedReadStore<ViewId, View | undefined>
-  filter: KeyedReadStore<ViewId, ViewFilterProjection | undefined>
-  group: KeyedReadStore<ViewId, ViewGroupProjection | undefined>
-  search: KeyedReadStore<ViewId, ViewSearchProjection | undefined>
-  sort: KeyedReadStore<ViewId, ViewSortProjection | undefined>
-  viewProjection: KeyedReadStore<ViewId, ViewProjection | undefined>
   setDocument: (document: DataDoc) => void
 }
 
@@ -96,36 +71,6 @@ export const createReadSource = (document: DataDoc): ReadSource => {
   const viewById: KeyedReadStore<ViewId, View | undefined> = createKeyedDerivedStore<ViewId, View | undefined>({
     get: (read, viewId) => getDocumentViewById(read(documentStore), viewId)
   })
-  const filterByViewId: KeyedReadStore<ViewId, ViewFilterProjection | undefined> = createKeyedDerivedStore<ViewId, ViewFilterProjection | undefined>({
-    get: (read, viewId) => resolveViewFilterProjection(
-      read(documentStore),
-      viewId
-    )
-  })
-  const groupByViewId: KeyedReadStore<ViewId, ViewGroupProjection | undefined> = createKeyedDerivedStore<ViewId, ViewGroupProjection | undefined>({
-    get: (read, viewId) => resolveViewGroupProjection(
-      read(documentStore),
-      viewId
-    )
-  })
-  const searchByViewId: KeyedReadStore<ViewId, ViewSearchProjection | undefined> = createKeyedDerivedStore<ViewId, ViewSearchProjection | undefined>({
-    get: (read, viewId) => resolveViewSearchProjection(
-      read(documentStore),
-      viewId
-    )
-  })
-  const sortByViewId: KeyedReadStore<ViewId, ViewSortProjection | undefined> = createKeyedDerivedStore<ViewId, ViewSortProjection | undefined>({
-    get: (read, viewId) => resolveViewSortProjection(
-      read(documentStore),
-      viewId
-    )
-  })
-  const viewProjectionById: KeyedReadStore<ViewId, ViewProjection | undefined> = createKeyedDerivedStore<ViewId, ViewProjection | undefined>({
-    get: (read, viewId) => resolveViewProjection(
-      read(documentStore),
-      viewId
-    )
-  })
 
   return {
     document: documentStore,
@@ -137,11 +82,6 @@ export const createReadSource = (document: DataDoc): ReadSource => {
     customField: customFieldById,
     viewIds,
     view: viewById,
-    filter: filterByViewId,
-    group: groupByViewId,
-    search: searchByViewId,
-    sort: sortByViewId,
-    viewProjection: viewProjectionById,
     setDocument: nextDocument => {
       documentStore.set(nextDocument)
     }

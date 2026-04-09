@@ -1,6 +1,6 @@
 import type {
   AppearanceId,
-  ViewProjection
+  AppearanceList
 } from '@dataview/engine/projection/view'
 import type {
   ValueStore
@@ -31,5 +31,5 @@ export interface SelectionApi {
 }
 
 export interface SelectionScope {
-  currentView: () => Pick<ViewProjection, 'appearances'> | undefined
+  appearances: () => AppearanceList | undefined
 }

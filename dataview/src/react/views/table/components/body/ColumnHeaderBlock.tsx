@@ -7,7 +7,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   AppearanceId
-} from '@dataview/react/runtime/currentView'
+} from '@dataview/engine/projection/view'
 import { RowScopeSelectionRail } from '../row/RowScopeSelectionRail'
 import { ColumnHeaderRow } from '../column/ColumnHeaderRow'
 

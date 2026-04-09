@@ -28,7 +28,6 @@ import { getAvailableSorterFields } from '@dataview/react/page/features/sort'
 import { ViewSettingsPopover } from '@dataview/react/page/features/viewSettings'
 import {
   useDataView,
-  useDataViewKeyedValue,
   useDataViewValue,
 } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
@@ -147,21 +146,11 @@ export const PageToolbar = () => {
   const fields = getDocumentFields(document)
   const views = getDocumentViews(document)
   const currentView = useDataViewValue(
-    dataView => dataView.currentView,
-    view => view?.view
+    dataView => dataView.engine.read.activeView
   )
-  const searchProjection = useDataViewKeyedValue(
-    dataView => dataView.engine.read.search,
-    currentView?.id ?? ''
-  )
-  const filterProjection = useDataViewKeyedValue(
-    dataView => dataView.engine.read.filter,
-    currentView?.id ?? ''
-  )
-  const sortProjection = useDataViewKeyedValue(
-    dataView => dataView.engine.read.sort,
-    currentView?.id ?? ''
-  )
+  const searchProjection = useDataViewValue(dataView => dataView.engine.project.search)
+  const filterProjection = useDataViewValue(dataView => dataView.engine.project.filter)
+  const sortProjection = useDataViewValue(dataView => dataView.engine.project.sort)
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined

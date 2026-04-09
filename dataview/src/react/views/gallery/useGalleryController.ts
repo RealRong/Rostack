@@ -16,7 +16,6 @@ import {
 } from '@dataview/dom/appearance'
 import {
   useDataView,
-  useDataViewKeyedValue,
   useDataViewValue
 } from '@dataview/react/dataview'
 import {
@@ -28,9 +27,11 @@ import {
 } from '@dataview/engine/projection/view'
 import {
   type AppearanceId,
-  type CurrentView,
-  type Section
-} from '@dataview/react/runtime/currentView'
+  type AppearanceList,
+  type FieldList,
+  type Section,
+  type ViewProjection
+} from '@dataview/engine/projection/view'
 import {
   resolveDefaultAutoPanTargets
 } from '@dataview/react/interaction/autoPan'
@@ -51,8 +52,10 @@ import {
 } from './virtual'
 import { usesOptionGroupingColors } from '@dataview/react/views/shared/optionGrouping'
 
+type GalleryCurrentView = Pick<ViewProjection, 'view' | 'appearances' | 'sections' | 'fields'>
+
 export interface GalleryController {
-  currentView: CurrentView
+  currentView: GalleryCurrentView
   sections: readonly Section[]
   fields: readonly CustomField[]
   canReorder: boolean
@@ -75,22 +78,29 @@ export const useGalleryController = (input: {
   containerRef: RefObject<HTMLDivElement | null>
 }): GalleryController => {
   const dataView = useDataView()
-  const currentView = useDataViewValue(dataView => dataView.currentView, view => (
-    view?.view.id === input.viewId
+  const activeView = useDataViewValue(dataView => dataView.engine.read.activeView, view => (
+    view?.id === input.viewId
       ? view
       : undefined
   ))
+  const appearances = useDataViewValue(dataView => dataView.engine.project.appearances)
+  const sectionsProjection = useDataViewValue(dataView => dataView.engine.project.sections)
+  const fieldsProjection = useDataViewValue(dataView => dataView.engine.project.fields)
+  const currentView = useMemo<GalleryCurrentView | undefined>(() => (
+    activeView && appearances && sectionsProjection && fieldsProjection
+      ? {
+          view: activeView,
+          appearances,
+          sections: sectionsProjection,
+          fields: fieldsProjection
+        }
+      : undefined
+  ), [activeView, appearances, fieldsProjection, sectionsProjection])
   if (!currentView) {
     throw new Error('Gallery view requires an active current view.')
   }
-  const groupProjection = useDataViewKeyedValue(
-    dataView => dataView.engine.read.group,
-    currentView.view.id
-  )
-  const sortProjection = useDataViewKeyedValue(
-    dataView => dataView.engine.read.sort,
-    currentView.view.id
-  )
+  const groupProjection = useDataViewValue(dataView => dataView.engine.project.group)
+  const sortProjection = useDataViewValue(dataView => dataView.engine.project.sort)
 
   const fields = useMemo(
     () => currentView.fields.all.filter(isCustomField),

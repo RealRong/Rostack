@@ -22,7 +22,7 @@ export const EditorLifecycle = ({
   }, [editor, editorConfig])
 
   useEffect(() => {
-    editor.commands.viewport.setLimits(viewportLimits)
+    editor.actions.view.viewport.setLimits(viewportLimits)
   }, [editor, viewportLimits])
 
   return null

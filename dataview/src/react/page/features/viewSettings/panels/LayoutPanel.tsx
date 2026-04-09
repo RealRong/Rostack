@@ -1,4 +1,5 @@
 import type { ViewType } from '@dataview/core/contracts'
+import { getDocumentFields } from '@dataview/core/document'
 import { useDataView, useDataViewValue } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { usesOptionGroupingColors } from '@dataview/react/views/shared/optionGrouping'
@@ -59,13 +60,14 @@ const LayoutSwitchRow = (props: {
 export const LayoutPanel = () => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const currentView = useDataViewValue(dataView => dataView.currentView)
-  const view = currentView?.view
+  const document = useDataViewValue(dataView => dataView.engine.read.document)
+  const view = useDataViewValue(dataView => dataView.engine.read.activeView)
   const viewApi = view
     ? engine.view(view.id)
     : undefined
+  const fieldMap = new Map(getDocumentFields(document).map(field => [field.id, field] as const))
   const groupField = view?.group?.field
-    ? currentView?.schema.fields.get(view.group.field)
+    ? fieldMap.get(view.group.field)
     : undefined
   const canFillKanbanColumns = usesOptionGroupingColors(groupField)
 

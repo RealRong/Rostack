@@ -1,5 +1,5 @@
 import { useCallback, type RefObject } from 'react'
-import type { AppearanceId } from '@dataview/react/runtime/currentView'
+import type { AppearanceId } from '@dataview/engine/projection/view'
 import { pointIn } from '@shared/dom'
 import {
   usePointerDragSession,

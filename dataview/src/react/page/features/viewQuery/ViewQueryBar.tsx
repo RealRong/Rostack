@@ -8,7 +8,6 @@ import {
 import { SortPopover, getAvailableSorterFields } from '@dataview/react/page/features/sort'
 import {
   useDataView,
-  useDataViewKeyedValue,
   useDataViewValue,
 } from '@dataview/react/dataview'
 import { FieldPicker } from '@dataview/react/field/picker'
@@ -30,20 +29,12 @@ export const ViewQueryBar = () => {
     state => state.query
   )
   const currentView = useDataViewValue(
-    dataView => dataView.currentView,
-    view => view?.view
+    dataView => dataView.engine.read.activeView
   )
-  
-  const filterProjection = useDataViewKeyedValue(
-    dataView => dataView.engine.read.filter,
-    currentView?.id ?? ''
-  )
-  
-  const sortProjection = useDataViewKeyedValue(
-    dataView => dataView.engine.read.sort,
-    currentView?.id ?? ''
-  )
-  
+
+  const filterProjection = useDataViewValue(dataView => dataView.engine.project.filter)
+  const sortProjection = useDataViewValue(dataView => dataView.engine.project.sort)
+
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined

@@ -2,10 +2,10 @@ import { isTextContentEmpty } from '@whiteboard/core/node'
 import type { NodeId, Size } from '@whiteboard/core/types'
 import type { EngineInstance } from '@whiteboard/engine'
 import type {
-  Editor,
   EditorPreviewWrite,
   EditorNodeAppearanceCommands,
   EditorNodeDocumentCommands,
+  EditorRead,
   EditorSessionWrite,
   EditorNodeTextCommands
 } from '../../../types/editor'
@@ -16,11 +16,11 @@ import {
 } from './document'
 
 type NodeTextHost = {
-  read: Editor['read']
+  read: EditorRead
   committedNode: EngineInstance['read']['node']['item']
   preview: Pick<EditorPreviewWrite, 'node'>
   session: Pick<EditorSessionWrite, 'edit' | 'selection'>
-  deleteCascade: Editor['commands']['node']['deleteCascade']
+  deleteCascade: EngineInstance['commands']['node']['deleteCascade']
   document: EditorNodeDocumentCommands
   appearance: EditorNodeAppearanceCommands
 }

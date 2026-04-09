@@ -128,7 +128,7 @@ const resolveScrolledAnchor = (
 
 export const PageMarqueeHost = () => {
   const dataView = useDataView()
-  const currentView = useDataViewValue(dataView => dataView.currentView)
+  const currentView = useDataViewValue(dataView => dataView.engine.read.activeView)
   const overlay = useOverlay()
   const valueEditorOpen = useDataViewValue(
     dataView => dataView.page.store,
@@ -361,7 +361,7 @@ export const PageMarqueeHost = () => {
         return
       }
 
-      const adapter = resolveAdapter(currentView.view.id)
+      const adapter = resolveAdapter(currentView.id)
       if (
         !adapter
         || adapter.disabled
@@ -389,7 +389,7 @@ export const PageMarqueeHost = () => {
       )
 
       const nextSession: MarqueeSessionState = {
-        ownerViewId: currentView.view.id,
+        ownerViewId: currentView.id,
         mode: resolveMarqueeMode({
           shiftKey: event.shiftKey,
           metaKey: event.metaKey,

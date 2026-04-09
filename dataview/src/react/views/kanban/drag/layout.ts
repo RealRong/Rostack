@@ -8,7 +8,7 @@ import {
 import type {
   AppearanceId,
   SectionKey
-} from '@dataview/react/runtime/currentView'
+} from '@dataview/engine/projection/view'
 
 export interface CardLayout {
   id: AppearanceId

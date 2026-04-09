@@ -15,13 +15,11 @@ import {
 import {
   type AppearanceList,
   type FieldList,
+  type AppearanceId,
+  type CellRef,
+  type ViewProjection as CurrentView,
   sameCellRef
 } from '@dataview/engine/projection/view'
-import {
-  type AppearanceId,
-  type CurrentView,
-  type CellRef
-} from '@dataview/react/runtime/currentView'
 import {
   getRecordFieldValue,
   resolveFieldPrimaryAction
@@ -31,11 +29,12 @@ import {
   containsRelatedTarget,
   shouldCapturePointer
 } from '@shared/dom'
-import { useDataView, useDataViewValue } from '@dataview/react/dataview'
+import { useDataView } from '@dataview/react/dataview'
 import {
   resolveDefaultAutoPanTargets,
   useAutoPan
 } from '@dataview/react/interaction/autoPan'
+import { useStoreValue } from '@shared/react'
 import type { TableHoverTarget } from '../model/hover'
 import { hoveredRowIdOf } from '../model/hover'
 import { useTableContext } from '../context'
@@ -403,7 +402,7 @@ export const usePointer = (
   const dataView = useDataView()
   const editor = dataView.engine
   const table = useTableContext()
-  const currentView = useDataViewValue(dataView => dataView.currentView)
+  const currentView = useStoreValue(table.currentView)
   if (!currentView) {
     throw new Error('Table pointer interactions require an active current view.')
   }
@@ -421,7 +420,7 @@ export const usePointer = (
 
   const readGridSelection = useCallback(() => table.gridSelection.get(), [table])
   const readColumn = useCallback((fieldId: string) => (
-    currentView.fields.all.find(field => field.id === fieldId)
+    currentView.fields.all.find((field: { id: string }) => field.id === fieldId)
   ), [currentView.fields.all])
   const readCell = useCallback((cell: CellRef) => {
     const recordId = currentView.appearances.get(cell.appearanceId)?.recordId

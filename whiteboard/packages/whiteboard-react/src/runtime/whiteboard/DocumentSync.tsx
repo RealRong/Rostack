@@ -35,7 +35,7 @@ export const DocumentSync = ({
       return
     }
     lastOutboundDocumentRef.current = inputDocument
-    editor.commands.document.replace(inputDocument)
+    editor.actions.document.board.replace(inputDocument)
   }, [editor, inputDocument, lastOutboundDocumentRef])
 
   return null

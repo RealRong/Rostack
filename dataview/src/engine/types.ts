@@ -33,12 +33,15 @@ import type { ViewSortProjection } from '@dataview/core/sort'
 import type { HistoryOptions, HistoryState } from './history'
 import type { ValidationIssue } from '@dataview/engine/command'
 import type { KeyedReadStore, ReadStore } from '@shared/store'
+import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
   AppearanceId,
+  AppearanceList,
   CellRef,
+  FieldList,
   Placement,
-  SectionKey,
-  ViewProjection
+  Section,
+  SectionKey
 } from '@dataview/engine/projection/view'
 
 export interface CreateEngineOptions {
@@ -73,11 +76,32 @@ export interface EngineReadApi {
   customField: KeyedReadStore<CustomFieldId, CustomField | undefined>
   viewIds: ReadStore<readonly ViewId[]>
   view: KeyedReadStore<ViewId, View | undefined>
-  filter: KeyedReadStore<ViewId, ViewFilterProjection | undefined>
-  group: KeyedReadStore<ViewId, ViewGroupProjection | undefined>
-  search: KeyedReadStore<ViewId, ViewSearchProjection | undefined>
-  sort: KeyedReadStore<ViewId, ViewSortProjection | undefined>
-  viewProjection: KeyedReadStore<ViewId, ViewProjection | undefined>
+}
+
+export interface ActiveViewProjection {
+  id: ViewId
+  name: string
+  type: ViewType
+}
+
+export interface ViewRecordSetProjection {
+  viewId: ViewId
+  derivedIds: readonly RecordId[]
+  orderedIds: readonly RecordId[]
+  visibleIds: readonly RecordId[]
+}
+
+export interface EngineProjectApi {
+  view: ReadStore<ActiveViewProjection | undefined>
+  filter: ReadStore<ViewFilterProjection | undefined>
+  group: ReadStore<ViewGroupProjection | undefined>
+  search: ReadStore<ViewSearchProjection | undefined>
+  sort: ReadStore<ViewSortProjection | undefined>
+  records: ReadStore<ViewRecordSetProjection | undefined>
+  sections: ReadStore<readonly Section[] | undefined>
+  appearances: ReadStore<AppearanceList | undefined>
+  fields: ReadStore<FieldList | undefined>
+  calculations: ReadStore<ReadonlyMap<SectionKey, CalculationCollection> | undefined>
 }
 
 export interface EngineHistoryApi {
@@ -302,6 +326,7 @@ export interface ViewEngineApi {
 
 export interface Engine {
   read: EngineReadApi
+  project: EngineProjectApi
   command: (command: Command | readonly Command[]) => CommandResult
   history: EngineHistoryApi
   document: EngineDocumentApi

@@ -4,7 +4,7 @@ import type {
 import type {
   AppearanceId,
   Section
-} from '@dataview/react/runtime/currentView'
+} from '@dataview/engine/projection/view'
 import type {
   VirtualBlock
 } from '@dataview/react/virtual'

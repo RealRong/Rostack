@@ -21,6 +21,7 @@ import {
   move,
   readSectionRecordIds,
   recordIdsOfAppearances,
+  resolveViewProjection,
   toRecordField,
   type AppearanceId,
   type AppearanceList,
@@ -219,7 +220,7 @@ export const createViewEngineApi = (options: {
   ) => options.engine.command(command)
   const readDocument = () => options.engine.read.document.get()
   const readCurrentView = () => getDocumentViewById(readDocument(), options.viewId)
-  const readCurrentProjection = () => options.engine.read.viewProjection.get(options.viewId)
+  const readCurrentProjection = () => resolveViewProjection(readDocument(), options.viewId)
 
   const commit = (command: Command | readonly Command[]) => dispatch(command).applied
 

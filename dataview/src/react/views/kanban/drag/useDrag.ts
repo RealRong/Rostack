@@ -4,7 +4,7 @@ import {
   usePointerDragSession,
   type PointerPosition
 } from '@dataview/react/interaction/usePointerDragSession'
-import type { AppearanceId } from '@dataview/react/runtime/currentView'
+import type { AppearanceId } from '@dataview/engine/projection/view'
 import type { DropTarget } from './ids'
 import { dropTargetFromPoint } from './hitTest'
 import type { BoardLayout } from './layout'

@@ -18,10 +18,12 @@ export const boldItem: ToolbarItemSpec = {
         active={active}
         title="Bold"
         onClick={() => {
-          editor.commands.node.text.setWeight(
-            context.nodeIds,
-            active ? 400 : 700
-          )
+          editor.actions.document.nodes.text.set({
+            nodeIds: context.nodeIds,
+            patch: {
+              weight: active ? 400 : 700
+            }
+          })
         }}
       >
         <Bold size={18} strokeWidth={1.9} />
@@ -43,10 +45,12 @@ export const italicItem: ToolbarItemSpec = {
         active={active}
         title="Italic"
         onClick={() => {
-          editor.commands.node.text.setItalic(
-            context.nodeIds,
-            !active
-          )
+          editor.actions.document.nodes.text.set({
+            nodeIds: context.nodeIds,
+            patch: {
+              italic: !active
+            }
+          })
         }}
       >
         <Italic size={18} strokeWidth={1.9} />

@@ -3,9 +3,10 @@ import type { Edge, EdgeId } from '@whiteboard/core/types'
 import type {
   Editor,
   EditorDocumentWrite,
-  EditorEdgeCommands,
   EditorEdgeLabelPatch,
-  EditorEdgePatch,
+  EditorEdgesActions,
+  EditorEdgesPatch,
+  EditorEdgesStylePatch,
   EditorRead,
   EditorSessionWrite
 } from '../../types/editor'
@@ -16,19 +17,20 @@ const DEFAULT_EDGE_LABEL = {
 } as const
 
 const mergeEdgePatch = (
-  edge: Edge,
-  patch: EditorEdgePatch
+  patch: EditorEdgesPatch
 ) => ({
   ...(patch.type !== undefined ? { type: patch.type } : {}),
-  ...(patch.textMode !== undefined ? { textMode: patch.textMode } : {}),
-  ...(patch.style
-    ? {
-        style: {
-          ...(edge.style ?? {}),
-          ...patch.style
-        }
-      }
-    : {})
+  ...(patch.textMode !== undefined ? { textMode: patch.textMode } : {})
+})
+
+const mergeEdgeStylePatch = (
+  edge: Edge,
+  patch: EditorEdgesStylePatch
+) => ({
+  style: {
+    ...(edge.style ?? {}),
+    ...patch
+  }
 })
 
 const mergeEdgeLabelPatch = (
@@ -72,7 +74,7 @@ const readEdge = (
   edgeId: EdgeId
 ) => read.edge.item.get(edgeId)?.edge
 
-export const createEdgeCommands = ({
+export const createEdgesActions = ({
   read,
   edit,
   session,
@@ -82,15 +84,20 @@ export const createEdgeCommands = ({
   edit: Editor['state']['edit']
   session: Pick<EditorSessionWrite, 'edit' | 'selection'>
   document: Pick<EditorDocumentWrite, 'edge'>
-}): EditorEdgeCommands => ({
-  patch: (edgeIds, patch) => {
+}): EditorEdgesActions => ({
+  create: document.edge.create,
+  move: document.edge.move,
+  reconnect: document.edge.reconnect,
+  delete: document.edge.delete,
+  route: document.edge.route,
+  set: (edgeIds, patch) => {
     const updates = edgeIds.flatMap((edgeId) => {
       const edge = readEdge(read, edgeId)
       if (!edge) {
         return []
       }
 
-      const nextPatch = mergeEdgePatch(edge, patch)
+      const nextPatch = mergeEdgePatch(patch)
       return Object.keys(nextPatch).length > 0
         ? [{
             id: edgeId,
@@ -105,19 +112,40 @@ export const createEdgeCommands = ({
 
     return document.edge.updateMany(updates)
   },
-  swapMarkers: (edgeId) => {
-    const edge = readEdge(read, edgeId)
-    if (!edge) {
-      return undefined
-    }
+  style: {
+    set: (edgeIds, patch) => {
+      const updates = edgeIds.flatMap((edgeId) => {
+        const edge = readEdge(read, edgeId)
+        if (!edge) {
+          return []
+        }
 
-    return document.edge.update(edgeId, {
-      style: {
-        ...(edge.style ?? {}),
-        start: edge.style?.end ?? 'none',
-        end: edge.style?.start ?? 'none'
+        return [{
+          id: edgeId,
+          patch: mergeEdgeStylePatch(edge, patch)
+        }]
+      })
+
+      if (updates.length === 0) {
+        return undefined
       }
-    })
+
+      return document.edge.updateMany(updates)
+    },
+    swapMarkers: (edgeId) => {
+      const edge = readEdge(read, edgeId)
+      if (!edge) {
+        return undefined
+      }
+
+      return document.edge.update(edgeId, {
+        style: {
+          ...(edge.style ?? {}),
+          start: edge.style?.end ?? 'none',
+          end: edge.style?.start ?? 'none'
+        }
+      })
+    }
   },
   labels: {
     add: (edgeId) => {
@@ -153,20 +181,7 @@ export const createEdgeCommands = ({
       session.edit.startEdgeLabel(edgeId, labelId)
       return labelId
     },
-    edit: (edgeId, labelId, options) => {
-      const edge = readEdge(read, edgeId)
-      const label = edge?.labels?.find((entry) => entry.id === labelId)
-      if (!edge || !label) {
-        return false
-      }
-
-      session.selection.replace({
-        edgeIds: [edgeId]
-      })
-      session.edit.startEdgeLabel(edgeId, labelId, options)
-      return true
-    },
-    patch: (edgeId, labelId, patch) => {
+    update: (edgeId, labelId, patch) => {
       const edge = readEdge(read, edgeId)
       if (!edge) {
         return undefined

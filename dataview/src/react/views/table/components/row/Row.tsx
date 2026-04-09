@@ -7,7 +7,7 @@ import {
 } from 'react'
 import type {
   AppearanceId
-} from '@dataview/react/runtime/currentView'
+} from '@dataview/engine/projection/view'
 import type {
   SelectionApi
 } from '@dataview/react/runtime/selection'
@@ -63,7 +63,7 @@ export const applyRowCheckboxSelection = (input: {
 const View = (props: RowProps) => {
   const table = useTableContext()
   const dataView = useDataView()
-  const currentView = useDataViewValue(dataView => dataView.currentView)
+  const currentView = useStoreValue(table.currentView)
   if (!currentView) {
     throw new Error('Table row requires an active current view.')
   }

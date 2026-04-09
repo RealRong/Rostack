@@ -1,20 +1,26 @@
 import {
   createFrameNodeInput
 } from '@whiteboard/core/node'
-import type { Editor, EditorFrameCommands } from '../../types/editor'
+import type { EngineCommands } from '@whiteboard/engine'
+import type { EditorNodesFramesActions } from '../../types/editor'
 
 const DEFAULT_FRAME_PADDING = 32
 
-type FrameCommandHost = {
+type FrameActionHost = {
   commands: {
-    node: Pick<Editor['commands']['node'], 'create'>
-    selection: Editor['commands']['selection']
+    node: Pick<EngineCommands['node'], 'create'>
+    selection: {
+      replace: (input: {
+        nodeIds?: readonly string[]
+        edgeIds?: readonly string[]
+      }) => void
+    }
   }
 }
 
-export const createFrameCommands = ({
+export const createFramesActions = ({
   commands
-}: FrameCommandHost): EditorFrameCommands => ({
+}: FrameActionHost): EditorNodesFramesActions => ({
   createFromBounds: (bounds, options) => {
     const padding = options?.padding ?? DEFAULT_FRAME_PADDING
     const frame = createFrameNodeInput()

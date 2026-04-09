@@ -9,9 +9,9 @@ import {
 } from '@dataview/react/interaction'
 import {
   type AppearanceId,
-  type CurrentView,
-  type Section
-} from '@dataview/react/runtime/currentView'
+  type Section,
+  type ViewProjection as CurrentView
+} from '@dataview/engine/projection/view'
 import type {
   Selection
 } from '@dataview/react/runtime/selection'
@@ -61,6 +61,7 @@ import {
 } from './virtual/runtime'
 
 export interface TableController {
+  currentView: ReadStore<CurrentView | undefined>
   gridSelection: GridSelectionStore
   marqueeSelection: ValueStore<Selection | null>
   rowRail: ValueStore<AppearanceId | null>
@@ -337,6 +338,7 @@ export const createTableController = (options: {
   })
 
   return {
+    currentView,
     gridSelection,
     marqueeSelection,
     rowRail,

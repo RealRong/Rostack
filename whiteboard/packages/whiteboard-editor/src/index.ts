@@ -8,13 +8,13 @@ export type {
 } from './runtime/state/edit'
 export type {
   Editor,
+  EditorActions,
   EditorOverlayRead,
   EditorRead,
   EditorState,
   EditorViewportRead,
   EditorClipboardOptions,
   EditorClipboardTarget,
-  EditorCommands,
   EditorInput
 } from './types/editor'
 export type {

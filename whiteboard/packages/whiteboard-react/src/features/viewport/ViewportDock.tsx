@@ -42,7 +42,7 @@ export const ViewportDock = () => {
     if (!bounds) {
       return
     }
-    editor.commands.viewport.fit(bounds)
+    editor.actions.view.viewport.fit(bounds)
   }
 
   return (
@@ -56,7 +56,7 @@ export const ViewportDock = () => {
             variant="ghost"
             className={iconButtonClassName}
             onClick={() => {
-              editor.commands.history.undo()
+              editor.actions.document.history.undo()
             }}
             disabled={!history.canUndo || history.isApplying}
             title="Undo"
@@ -68,7 +68,7 @@ export const ViewportDock = () => {
             variant="ghost"
             className={iconButtonClassName}
             onClick={() => {
-              editor.commands.history.redo()
+              editor.actions.document.history.redo()
             }}
             disabled={!history.canRedo || history.isApplying}
             title="Redo"
@@ -95,7 +95,7 @@ export const ViewportDock = () => {
             variant="ghost"
             className={iconButtonClassName}
             onClick={() => {
-              editor.commands.viewport.zoomTo(viewport.zoom / ZOOM_FACTOR)
+              editor.actions.view.viewport.zoomTo(viewport.zoom / ZOOM_FACTOR)
             }}
             title="Zoom out"
           >
@@ -106,7 +106,7 @@ export const ViewportDock = () => {
             variant="ghost"
             className={zoomButtonClassName}
             onClick={() => {
-              editor.commands.viewport.zoomTo(1)
+              editor.actions.view.viewport.zoomTo(1)
             }}
             title="Reset zoom"
           >
@@ -117,7 +117,7 @@ export const ViewportDock = () => {
             variant="ghost"
             className={iconButtonClassName}
             onClick={() => {
-              editor.commands.viewport.zoomTo(viewport.zoom * ZOOM_FACTOR)
+              editor.actions.view.viewport.zoomTo(viewport.zoom * ZOOM_FACTOR)
             }}
             title="Zoom in"
           >

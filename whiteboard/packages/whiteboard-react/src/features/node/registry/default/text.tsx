@@ -226,7 +226,7 @@ const TextNodeRenderer = ({
 
   useLayoutEffect(() => {
     if (!editing || isSticky) {
-      editor.commands.node.text.clearPreview(node.id)
+      editor.actions.view.preview.nodeText.clearSize(node.id)
       return
     }
 
@@ -247,14 +247,13 @@ const TextNodeRenderer = ({
       return
     }
 
-    editor.commands.node.text.preview({
-      nodeId: node.id,
+    editor.actions.view.preview.nodeText.set(node.id, {
       size
     })
   }, [draft, editing, editor, isSticky, node.id])
 
   useEffect(() => () => {
-    editor.commands.node.text.clearPreview(node.id)
+    editor.actions.view.preview.nodeText.clearSize(node.id)
   }, [editor, node.id])
 
   useLayoutEffect(() => {
@@ -302,8 +301,7 @@ const TextNodeRenderer = ({
         return
       }
 
-      editor.commands.node.text.preview({
-        nodeId: node.id,
+      editor.actions.view.preview.nodeText.set(node.id, {
         position: {
           x: nextRect.x,
           y: nextRect.y
@@ -317,13 +315,13 @@ const TextNodeRenderer = ({
       return
     }
 
-    editor.commands.node.text.clearPreview(node.id)
+    editor.actions.view.preview.nodeText.clearSize(node.id)
 
     if (isSameSize(size, rect)) {
       return
     }
 
-    editor.commands.node.document.update(node.id, {
+    editor.actions.document.nodes.update(node.id, {
       fields: {
         size
       }
@@ -355,7 +353,7 @@ const TextNodeRenderer = ({
         })
       : undefined
 
-    editor.commands.node.text.commit({
+    editor.actions.document.nodes.text.commit({
       nodeId: node.id,
       field: 'text',
       value: nextDraft,
@@ -365,9 +363,8 @@ const TextNodeRenderer = ({
 
   const cancel = () => {
     setDraft(text)
-    editor.commands.node.text.cancel({
-      nodeId: node.id
-    })
+    editor.actions.view.preview.nodeText.clear(node.id)
+    editor.actions.session.edit.clear()
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {

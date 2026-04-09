@@ -1,7 +1,7 @@
 import {
   type AppearanceId,
   type CellRef
-} from '@dataview/react/runtime/currentView'
+} from '@dataview/engine/projection/view'
 import {
   pageScrollNode,
   type ScrollNode

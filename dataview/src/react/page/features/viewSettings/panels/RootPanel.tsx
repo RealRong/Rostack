@@ -17,7 +17,6 @@ import {
 } from '@dataview/core/document'
 import {
   useDataView,
-  useDataViewKeyedValue,
   useDataViewValue
 } from '@dataview/react/dataview'
 import { Input } from '@ui/input'
@@ -218,22 +217,12 @@ export const RootPanel = () => {
   const document = useDataViewValue(dataView => dataView.engine.read.document)
   const router = useViewSettings()
   const currentView = useDataViewValue(
-    dataView => dataView.currentView,
-    view => view?.view
+    dataView => dataView.engine.read.activeView
   )
   const fields = getDocumentFields(document)
-  const filterProjection = useDataViewKeyedValue(
-    dataView => dataView.engine.read.filter,
-    currentView?.id ?? ''
-  )
-  const sortProjection = useDataViewKeyedValue(
-    dataView => dataView.engine.read.sort,
-    currentView?.id ?? ''
-  )
-  const groupProjection = useDataViewKeyedValue(
-    dataView => dataView.engine.read.group,
-    currentView?.id ?? ''
-  )
+  const filterProjection = useDataViewValue(dataView => dataView.engine.project.filter)
+  const sortProjection = useDataViewValue(dataView => dataView.engine.project.sort)
+  const groupProjection = useDataViewValue(dataView => dataView.engine.project.group)
   const viewsCount = getDocumentViews(document).length
   const propertyCount = currentView?.display.fields.length ?? 0
   const menuItems: RootMenuItemConfig[] = [

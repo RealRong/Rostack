@@ -2,6 +2,7 @@ import type { CreateEngineOptions, Engine } from '../types'
 import { cloneDocument } from '@dataview/core/document'
 import { resolveWriteBatch } from '@dataview/engine/command'
 import { read as createRead } from '../runtime/read/read'
+import { createProjectSource } from '../runtime/project/source'
 import { commitRuntime } from '../runtime/commit/runtime'
 import { document } from './document'
 import {
@@ -22,6 +23,10 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   const read = createRead({
     getDocument: instanceDocument.peekDocument
   })
+  const project = createProjectSource({
+    document: read.document,
+    activeViewId: read.activeViewId
+  })
 
   const commit = commitRuntime({
     document: instanceDocument,
@@ -39,13 +44,9 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       customFieldIds: read.customFieldIds,
       customField: read.customField,
       viewIds: read.viewIds,
-      view: read.view,
-      filter: read.filter,
-      group: read.group,
-      search: read.search,
-      sort: read.sort,
-      viewProjection: read.viewProjection
+      view: read.view
     },
+    project,
     command: command => {
       const batch = resolveWriteBatch({
         document: instanceDocument.peekDocument(),

@@ -1,7 +1,6 @@
 import { getDocumentFields } from '@dataview/core/document'
 import {
   useDataView,
-  useDataViewKeyedValue,
   useDataViewValue
 } from '@dataview/react/dataview'
 import { Menu, type MenuItem } from '@ui/menu'
@@ -14,13 +13,9 @@ export const GroupFieldPickerPanel = () => {
   const engine = dataView.engine
   const document = useDataViewValue(dataView => dataView.engine.read.document)
   const currentView = useDataViewValue(
-    dataView => dataView.currentView,
-    view => view?.view
+    dataView => dataView.engine.read.activeView
   )
-  const groupProjection = useDataViewKeyedValue(
-    dataView => dataView.engine.read.group,
-    currentView?.id ?? ''
-  )
+  const groupProjection = useDataViewValue(dataView => dataView.engine.project.group)
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined

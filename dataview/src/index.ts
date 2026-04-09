@@ -69,6 +69,7 @@ export {
 } from './core/view'
 export { createEngine } from './engine/index'
 export type {
+  ActiveViewProjection,
   CreateEngineOptions,
   CommitResult,
   CreatedEntities,
@@ -76,8 +77,10 @@ export type {
   Engine,
   EngineDocumentApi,
   EngineHistoryApi,
+  EngineProjectApi,
   EngineReadApi,
   HistoryActionResult,
+  ViewRecordSetProjection,
   ViewAccessorApi,
   KanbanApi,
   KanbanCreateCardInput,

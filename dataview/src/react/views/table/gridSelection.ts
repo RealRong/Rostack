@@ -1,8 +1,8 @@
 import type {
   AppearanceId,
-  CurrentView,
-  CellRef
-} from '@dataview/react/runtime/currentView'
+  CellRef,
+  ViewProjection as CurrentView
+} from '@dataview/engine/projection/view'
 import {
   gridSelection,
   type GridSelection

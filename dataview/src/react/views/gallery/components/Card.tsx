@@ -29,7 +29,7 @@ import {
 } from '@dataview/react/views/shared'
 import { resolveNeutralCardStyle } from '@ui/color'
 import { cn } from '@ui/utils'
-import type { AppearanceId } from '@dataview/react/runtime/currentView'
+import type { AppearanceId } from '@dataview/engine/projection/view'
 import { useGalleryContext } from '../context'
 import {
   CARD_TITLE_PLACEHOLDER

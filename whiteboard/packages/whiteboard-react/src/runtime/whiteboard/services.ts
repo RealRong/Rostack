@@ -103,7 +103,7 @@ export const createWhiteboardServices = ({
         return false
       }
 
-      editor.commands.tool.set(selectTool())
+      editor.actions.session.tool.set(selectTool())
       return true
     }
   })

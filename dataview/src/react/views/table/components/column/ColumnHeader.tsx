@@ -24,9 +24,9 @@ import { getFieldCalculationMetrics } from '@dataview/core/calculation'
 import { getSorterFieldId } from '@dataview/react/page/features/sort'
 import {
   useDataView,
-  useDataViewKeyedValue,
   useDataViewValue
 } from '@dataview/react/dataview'
+import { useStoreValue } from '@shared/react'
 import { useTableContext } from '../../context'
 import { meta, renderMessage } from '@dataview/meta'
 import { buildFieldKindMenuItems } from '@dataview/react/field/schema'
@@ -102,20 +102,14 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   } | null>(null)
   const suppressClickRef = useRef(false)
   const table = useTableContext()
-  const currentView = useDataViewValue(dataView => dataView.currentView)
+  const currentView = useStoreValue(table.currentView)
   if (!currentView) {
     throw new Error('Table column header requires an active current view.')
   }
 
   const view = currentView.view
-  const groupProjection = useDataViewKeyedValue(
-    dataView => dataView.engine.read.group,
-    view.id
-  )
-  const sortProjection = useDataViewKeyedValue(
-    dataView => dataView.engine.read.sort,
-    view.id
-  )
+  const groupProjection = useDataViewValue(dataView => dataView.engine.project.group)
+  const sortProjection = useDataViewValue(dataView => dataView.engine.project.sort)
   const showVerticalLines = view.options.table.showVerticalLines
   const sortable = useSortable({
     id: props.sortId,
@@ -133,7 +127,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   const sortDirection = sortProjection?.rules.find(
     entry => getSorterFieldId(entry.sorter) === props.field.id
   )?.sorter.direction
-  const calculationMetric = view.calc[props.field.id]
+  const calculationMetric = view.calc[props.field.id] as CalculationMetric | undefined
   const calculationMetrics = getFieldCalculationMetrics(props.field)
   const kind = meta.field.kind.get(props.field.kind)
   const sortDirectionMeta = sortDirection

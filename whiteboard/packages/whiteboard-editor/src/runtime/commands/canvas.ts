@@ -4,9 +4,8 @@ import {
 } from '@whiteboard/core/selection'
 import type { EngineCommands } from '@whiteboard/engine'
 import type {
-  Editor,
-  EditorNodesCommands,
-  EditorNodesOrderMode,
+  EditorCanvasActions,
+  EditorCanvasOrderMode,
   EditorRead
 } from '../../types/editor'
 import {
@@ -14,19 +13,22 @@ import {
   toCanvasRefs
 } from './target'
 
-type NodesCommandHost = {
+type CanvasActionHost = {
   read: Pick<EditorRead, 'group'>
   commands: {
     canvas: EngineCommands['canvas']
-    group: Pick<Editor['commands']['group'], 'order'>
-    selection: Editor['commands']['selection']
+    group: EngineCommands['group']['order']
+    selection: {
+      replace: (input: SelectionInput) => void
+      clear: () => void
+    }
   }
 }
 
 const orderTarget = (
-  commands: NodesCommandHost['commands'],
+  commands: CanvasActionHost['commands'],
   refs: ReturnType<typeof toCanvasRefs>,
-  mode: EditorNodesOrderMode
+  mode: EditorCanvasOrderMode
 ) => {
   if (mode === 'front') {
     return commands.canvas.order.bringToFront(refs)
@@ -42,28 +44,28 @@ const orderTarget = (
 }
 
 const orderGroups = (
-  commands: NodesCommandHost['commands'],
+  commands: CanvasActionHost['commands'],
   groupIds: readonly string[],
-  mode: EditorNodesOrderMode
+  mode: EditorCanvasOrderMode
 ) => {
   const ids = [...groupIds]
   if (mode === 'front') {
-    return commands.group.order.bringToFront(ids)
+    return commands.group.bringToFront(ids)
   }
   if (mode === 'forward') {
-    return commands.group.order.bringForward(ids)
+    return commands.group.bringForward(ids)
   }
   if (mode === 'backward') {
-    return commands.group.order.sendBackward(ids)
+    return commands.group.sendBackward(ids)
   }
 
-  return commands.group.order.sendToBack(ids)
+  return commands.group.sendToBack(ids)
 }
 
-export const createNodesCommands = ({
+export const createCanvasActions = ({
   read,
   commands
-}: NodesCommandHost): EditorNodesCommands => ({
+}: CanvasActionHost): EditorCanvasActions => ({
   duplicate: (input, options) => {
     const target = normalizeSelectionTarget(input)
     const refs = toCanvasRefs(target)

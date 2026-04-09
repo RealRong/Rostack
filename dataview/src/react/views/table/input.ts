@@ -2,9 +2,9 @@ import type { KeyInput } from '@dataview/react/interaction'
 import { isTitleFieldId } from '@dataview/core/field'
 import type { FieldId } from '@dataview/core/contracts'
 import {
-  type CurrentView,
-  type CellRef
-} from '@dataview/react/runtime/currentView'
+  type CellRef,
+  type ViewProjection as CurrentView
+} from '@dataview/engine/projection/view'
 import type {
   Selection,
   SelectionApi

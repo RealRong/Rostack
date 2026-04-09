@@ -48,7 +48,12 @@ export const textAlignItem: ToolbarItemSpec = {
     <TextAlignPanel
       value={context.textAlign}
       onChange={(value) => {
-        editor.commands.node.text.setAlign(context.nodeIds, value)
+        editor.actions.document.nodes.text.set({
+          nodeIds: context.nodeIds,
+          patch: {
+            align: value
+          }
+        })
       }}
     />
   )

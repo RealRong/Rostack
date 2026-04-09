@@ -4,7 +4,6 @@ import { getAvailableFilterFields } from '@dataview/react/page/features/filter/f
 import { getAvailableSorterFields } from '@dataview/react/page/features/sort'
 import {
   useDataView,
-  useDataViewKeyedValue,
   useDataViewValue
 } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
@@ -18,17 +17,10 @@ export const QueryFieldPickerPanel = (props: {
   const page = dataView.page
   const document = useDataViewValue(dataView => dataView.engine.read.document)
   const currentView = useDataViewValue(
-    dataView => dataView.currentView,
-    view => view?.view
+    dataView => dataView.engine.read.activeView
   )
-  const filterProjection = useDataViewKeyedValue(
-    dataView => dataView.engine.read.filter,
-    currentView?.id ?? ''
-  )
-  const sortProjection = useDataViewKeyedValue(
-    dataView => dataView.engine.read.sort,
-    currentView?.id ?? ''
-  )
+  const filterProjection = useDataViewValue(dataView => dataView.engine.project.filter)
+  const sortProjection = useDataViewValue(dataView => dataView.engine.project.sort)
   const currentViewDomain = currentView
     ? engine.view(currentView.id)
     : undefined

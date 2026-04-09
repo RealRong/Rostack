@@ -96,17 +96,17 @@ export const EdgeContextMenu = ({
           })
         },
         () => {
-          editor.commands.nodes.duplicate({
+          editor.actions.document.canvas.duplicate({
             edgeIds: [edgeId]
           })
         },
         () => {
-          editor.commands.nodes.delete({
+          editor.actions.document.canvas.delete({
             edgeIds: [edgeId]
           })
         },
         (mode) => {
-          editor.commands.nodes.order({
+          editor.actions.document.canvas.order({
             edgeIds: [edgeId]
           }, mode)
         }

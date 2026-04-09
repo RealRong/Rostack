@@ -6,16 +6,31 @@ import { createClipboardPacket } from '@whiteboard/core/document'
 import type { Point } from '@whiteboard/core/types'
 import type {
   Editor,
-  EditorClipboardTarget
+  EditorClipboardCommands,
+  EditorClipboardTarget,
+  EditorDocumentWrite,
+  EditorSessionWrite
 } from '../../types/editor'
 
-type ClipboardEditor = Pick<Editor, 'read'> & {
-  commands: Omit<Editor['commands'], 'clipboard'>
+type ClipboardActionHost = Pick<Editor, 'read'> & {
+  document: Pick<EditorDocumentWrite, 'doc'>
+  session: Pick<EditorSessionWrite, 'selection'>
+  canvas: {
+    delete: (
+      target: {
+        nodeIds?: readonly string[]
+        edgeIds?: readonly string[]
+      },
+      options?: {
+        clearSelection?: boolean
+      }
+    ) => boolean
+  }
   state: Pick<Editor['state'], 'viewport' | 'selection'>
 }
 
 const applyInsertedRoots = (input: {
-  editor: ClipboardEditor
+  editor: ClipboardActionHost
   inserted: {
     roots: SliceRoots
     allNodeIds: readonly string[]
@@ -30,18 +45,18 @@ const applyInsertedRoots = (input: {
     : input.inserted.allEdgeIds
 
   if (nodeIds.length > 0 || edgeIds.length > 0) {
-    input.editor.commands.selection.replace({
+    input.editor.session.selection.replace({
       nodeIds,
       edgeIds
     })
     return
   }
 
-  input.editor.commands.selection.clear()
+  input.editor.session.selection.clear()
 }
 
 const readSelectionTarget = (
-  editor: ClipboardEditor
+  editor: ClipboardActionHost
 ): Exclude<EditorClipboardTarget, 'selection'> | undefined => {
   const target = editor.state.selection.get()
 
@@ -56,7 +71,7 @@ const readSelectionTarget = (
 }
 
 const resolveClipboardTarget = (input: {
-  editor: ClipboardEditor
+  editor: ClipboardActionHost
   target: EditorClipboardTarget
 }): Exclude<EditorClipboardTarget, 'selection'> | undefined => (
   input.target === 'selection'
@@ -65,7 +80,7 @@ const resolveClipboardTarget = (input: {
 )
 
 const readClipboardPacket = (input: {
-  editor: ClipboardEditor
+  editor: ClipboardActionHost
   target: EditorClipboardTarget
 }): ClipboardPacket | undefined => {
   const resolved = resolveClipboardTarget(input)
@@ -79,11 +94,11 @@ const readClipboardPacket = (input: {
     : undefined
 }
 
-export const createClipboard = ({
+export const createClipboardActions = ({
   editor
 }: {
-  editor: ClipboardEditor
-}): Editor['commands']['clipboard'] => ({
+  editor: ClipboardActionHost
+}): EditorClipboardCommands => ({
   export: (target = 'selection') =>
     readClipboardPacket({
       editor,
@@ -107,21 +122,12 @@ export const createClipboard = ({
     }
 
     if (resolved.nodeIds?.length || resolved.edgeIds?.length) {
-      const result = editor.commands.canvas.delete([
-        ...(resolved.nodeIds ?? []).map((id) => ({
-          kind: 'node' as const,
-          id
-        })),
-        ...(resolved.edgeIds ?? []).map((id) => ({
-          kind: 'edge' as const,
-          id
-        }))
-      ])
-      if (!result.ok) {
+      const removed = editor.canvas.delete(resolved, {
+        clearSelection: true
+      })
+      if (!removed) {
         return undefined
       }
-
-      editor.commands.selection.clear()
     }
 
     return packet
@@ -133,7 +139,7 @@ export const createClipboard = ({
     }
   ) => {
     const origin = options?.origin ?? { ...editor.state.viewport.get().center }
-    const inserted = editor.commands.document.insert(packet.slice, {
+    const inserted = editor.document.doc.insert(packet.slice, {
       origin,
       roots: packet.roots
     })

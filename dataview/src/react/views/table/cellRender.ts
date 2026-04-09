@@ -15,9 +15,9 @@ import {
   sameCellRef
 } from '@dataview/engine/projection/view'
 import type {
-  CurrentView,
-  CellRef
-} from '@dataview/react/runtime/currentView'
+  CellRef,
+  ViewProjection as CurrentView
+} from '@dataview/engine/projection/view'
 import {
   fill,
   grid,

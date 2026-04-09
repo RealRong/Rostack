@@ -50,7 +50,7 @@ export const useNodeSizeObserver = () => {
       })
 
       if (!updates.length) return
-      editor.commands.node.document.updateMany(updates, { origin: 'system' })
+      editor.actions.document.nodes.updateMany(updates, { origin: 'system' })
     }
   }), [editor])
 

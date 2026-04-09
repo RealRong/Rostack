@@ -11,7 +11,7 @@ import {
 import type {
   AppearanceId,
   CellRef
-} from '@dataview/react/runtime/currentView'
+} from '@dataview/engine/projection/view'
 
 export type TableTargetKind =
   | 'cell'

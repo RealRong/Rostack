@@ -33,6 +33,14 @@ export {
   move
 } from './move'
 export {
+  sameAppearanceList,
+  sameCalculationsBySection,
+  sameFieldList,
+  sameSections,
+  sameViewProjection,
+  viewProjection
+} from './equality'
+export {
   resolveProjection,
   resolveViewProjection,
   type ProjectionResult,

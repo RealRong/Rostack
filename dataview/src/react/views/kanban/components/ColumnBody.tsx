@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { DATAVIEW_APPEARANCE_ID_ATTR } from '@dataview/dom/appearance'
 import { cn } from '@ui/utils'
-import type { Section } from '@dataview/react/runtime/currentView'
+import type { Section } from '@dataview/engine/projection/view'
 import { useKanbanContext } from '../context'
 import { Card } from './Card'
 import { ColumnDropIndicator } from './ColumnDropIndicator'

@@ -5,7 +5,7 @@ import {
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import { cloneDragGhostNode } from '@dataview/react/dom/dragGhost'
-import type { AppearanceId } from '@dataview/react/runtime/currentView'
+import type { AppearanceId } from '@dataview/engine/projection/view'
 import {
   rowDragIds,
   rowSelectionTarget,
@@ -44,7 +44,7 @@ export interface RowReorderApi {
 export const useRowReorder = (): RowReorderApi => {
   const table = useTableContext()
   const dataView = useDataView()
-  const currentView = useDataViewValue(dataView => dataView.currentView)
+  const currentView = useStoreValue(table.currentView)
   if (!currentView) {
     throw new Error('Table row reorder requires an active current view.')
   }

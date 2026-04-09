@@ -3,7 +3,7 @@ import {
 } from '@whiteboard/core/node'
 import type { NodeInput } from '@whiteboard/core/types'
 import type { CommandResult } from '@engine-types/result'
-import type { FrameActions } from '../../internal/types'
+import type { FrameActions } from '../editor/runtimeTypes'
 
 const DEFAULT_FRAME_PADDING = 32
 

@@ -26,6 +26,14 @@ export interface Section {
   collapsed: boolean
 }
 
+export interface ProjectionSection {
+  key: SectionKey
+  title: string
+  color?: string
+  bucket?: SectionBucket
+  ids: readonly AppearanceId[]
+}
+
 export interface AppearanceList {
   byId: ReadonlyMap<AppearanceId, Appearance>
   ids: readonly AppearanceId[]

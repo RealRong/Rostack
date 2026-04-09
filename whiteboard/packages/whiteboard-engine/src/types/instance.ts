@@ -36,7 +36,6 @@ import type {
   ReadStore
 } from '@shared/store'
 import type {
-  EngineCommands,
   EngineCommand,
   ExecuteOptions,
   ExecuteResult
@@ -170,10 +169,6 @@ export type Engine = {
   ) => CommandResult
   configure: (config: EngineRuntimeOptions) => void
   dispose: () => void
-}
-
-export type EngineInstance = Engine & {
-  commands: EngineCommands
 }
 
 export type EngineDocument = {

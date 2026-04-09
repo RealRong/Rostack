@@ -5,23 +5,37 @@ import type {
 import type {
   ClipboardPacket,
 } from '@whiteboard/core/document'
-import type { HistoryConfig as KernelHistoryConfig } from '@whiteboard/core/kernel'
+import type {
+  HistoryConfig as KernelHistoryConfig,
+  HistoryState
+} from '@whiteboard/core/kernel'
 import type { SelectionInput, SelectionTarget } from '@whiteboard/core/selection'
 import type { ReadStore } from '@shared/store'
-import type { EngineInstance } from '@engine-types/instance'
+import type {
+  MindmapCloneSubtreeInput,
+  MindmapCreateOptions,
+  MindmapInsertOptions,
+  MindmapMoveSubtreeInput,
+  MindmapRemoveSubtreeInput,
+  MindmapUpdateNodeInput
+} from '@whiteboard/engine'
 import type { CommandResult } from '@engine-types/result'
 import type {
+  Document,
   Edge,
   EdgeEnd,
   EdgeDash,
   EdgeId,
+  EdgeInput,
   EdgeMarker,
   EdgeTextMode,
   EdgeType,
+  MindmapId,
   MindmapNodeData,
   MindmapNodeId,
   MindmapTree,
   NodeId,
+  NodeInput,
   Origin,
   Point,
   Rect,
@@ -29,6 +43,10 @@ import type {
   Viewport
 } from '@whiteboard/core/types'
 import type { MindmapLayoutConfig } from './mindmap'
+import type {
+  NodeAlignMode,
+  NodeDistributeMode
+} from '@whiteboard/core/node'
 import type {
   DrawPreferences,
   BrushStylePatch,
@@ -55,10 +73,6 @@ import type {
 } from '../runtime/viewport'
 import type { EditCaret, EditField, EditTarget } from '../runtime/state/edit'
 import type { TextPreviewPatch } from '../runtime/overlay/types'
-
-type EngineCommands = EngineInstance['commands']
-type EngineNodeCommands = EngineCommands['node']
-type EngineMindmapCommands = EngineCommands['mindmap']
 
 export type EditorClipboardTarget =
   | 'selection'
@@ -119,7 +133,35 @@ export type EditorViewportActions = ViewportCommands & {
   setLimits: (limits: ViewportLimits) => void
 }
 
-export type EditorMindmapCommands = EngineMindmapCommands & {
+export type EditorMindmapCommands = {
+  create: (payload?: MindmapCreateOptions) => CommandResult<{
+    mindmapId: MindmapId
+    rootId: MindmapNodeId
+  }>
+  delete: (ids: MindmapId[]) => CommandResult
+  insert: (
+    id: MindmapId,
+    input: MindmapInsertOptions
+  ) => CommandResult<{ nodeId: MindmapNodeId }>
+  moveSubtree: (
+    id: MindmapId,
+    input: MindmapMoveSubtreeInput
+  ) => CommandResult
+  removeSubtree: (
+    id: MindmapId,
+    input: MindmapRemoveSubtreeInput
+  ) => CommandResult
+  cloneSubtree: (
+    id: MindmapId,
+    input: MindmapCloneSubtreeInput
+  ) => CommandResult<{
+    nodeId: MindmapNodeId
+    map: Record<MindmapNodeId, MindmapNodeId>
+  }>
+  updateNode: (
+    id: MindmapId,
+    input: MindmapUpdateNodeInput
+  ) => CommandResult
   insertByPlacement: (input: {
     id: NodeId
     tree: MindmapTree
@@ -128,7 +170,7 @@ export type EditorMindmapCommands = EngineMindmapCommands & {
     nodeSize: Size
     layout: MindmapLayoutConfig
     payload?: MindmapNodeData
-  }) => ReturnType<EngineMindmapCommands['insert']> | undefined
+  }) => CommandResult<{ nodeId: MindmapNodeId }> | undefined
   moveByDrop: (input: {
     id: NodeId
     nodeId: MindmapNodeId
@@ -143,7 +185,7 @@ export type EditorMindmapCommands = EngineMindmapCommands & {
     }
     nodeSize: Size
     layout: MindmapLayoutConfig
-  }) => ReturnType<EngineMindmapCommands['moveSubtree']> | undefined
+  }) => CommandResult | undefined
   moveRoot: (input: {
     nodeId: NodeId
     position: Point
@@ -152,7 +194,7 @@ export type EditorMindmapCommands = EngineMindmapCommands & {
   }) => CommandResult | undefined
 }
 
-export type EditorCanvasOrderMode =
+export type EditorOrderMode =
   | 'front'
   | 'back'
   | 'forward'
@@ -173,10 +215,6 @@ export type EditorEdgeLabelPatch = NonNullable<Edge['labels']>[number] extends i
       }
     : never
   : never
-
-export type EditorBoardActions = Pick<EngineCommands['document'], 'replace'>
-
-export type EditorHistoryActions = EngineCommands['history']
 
 export type EditorClipboardApi = {
   copy: (target?: EditorClipboardTarget) => ClipboardPacket | undefined
@@ -202,7 +240,7 @@ export type EditorSelectionApi = {
   ) => boolean
   order: (
     target: SelectionInput,
-    mode: EditorCanvasOrderMode
+    mode: EditorOrderMode
   ) => boolean
   group: (
     target: SelectionInput,
@@ -253,7 +291,7 @@ export type EditorNodePatch = {
 }
 
 export type EditorNodesApi = {
-  create: EngineNodeCommands['create']
+  create: (payload: NodeInput) => CommandResult<{ nodeId: NodeId }>
   patch: (
     ids: readonly NodeId[],
     patch: EditorNodePatch,
@@ -262,11 +300,17 @@ export type EditorNodesApi = {
       origin?: Origin
     }
   ) => CommandResult | undefined
-  move: EngineNodeCommands['move']
-  align: EngineNodeCommands['align']
-  distribute: EngineNodeCommands['distribute']
-  remove: EngineNodeCommands['deleteCascade']
-  duplicate: EngineNodeCommands['duplicate']
+  move: (input: {
+    ids: readonly NodeId[]
+    delta: Point
+  }) => CommandResult
+  align: (ids: readonly NodeId[], mode: NodeAlignMode) => CommandResult
+  distribute: (ids: readonly NodeId[], mode: NodeDistributeMode) => CommandResult
+  remove: (ids: NodeId[]) => CommandResult
+  duplicate: (ids: NodeId[]) => CommandResult<{
+    nodeIds: readonly NodeId[]
+    edgeIds: readonly EdgeId[]
+  }>
 }
 
 export type EditorEdgePatch = {
@@ -288,15 +332,24 @@ export type EditorEdgePatch = {
 export type MindmapNodePatch = Parameters<EditorMindmapCommands['updateNode']>[1]
 
 export type EditorEdgesApi = {
-  create: EngineCommands['edge']['create']
+  create: (payload: EdgeInput) => CommandResult<{ edgeId: EdgeId }>
   patch: (
     edgeIds: readonly EdgeId[],
     patch: EditorEdgePatch
   ) => CommandResult | undefined
-  move: EngineCommands['edge']['move']
-  reconnect: EngineCommands['edge']['reconnect']
-  remove: EngineCommands['edge']['delete']
-  route: EngineCommands['edge']['route']
+  move: (edgeId: EdgeId, delta: Point) => CommandResult
+  reconnect: (
+    edgeId: EdgeId,
+    end: 'source' | 'target',
+    target: EdgeEnd
+  ) => CommandResult
+  remove: (ids: EdgeId[]) => CommandResult
+  route: {
+    insert: (edgeId: EdgeId, point: Point) => CommandResult<{ index: number }>
+    move: (edgeId: EdgeId, index: number, point: Point) => CommandResult
+    remove: (edgeId: EdgeId, index: number) => CommandResult
+    clear: (edgeId: EdgeId) => CommandResult
+  }
   labels: {
     add: (edgeId: EdgeId) => string | undefined
     patch: (
@@ -345,6 +398,13 @@ export type EditorSessionActions = {
   edit: EditorSessionEditActions
 }
 
+export type EditorHistoryApi = {
+  get: () => HistoryState
+  undo: () => CommandResult
+  redo: () => CommandResult
+  clear: () => void
+}
+
 export type EditorDrawActions = {
   set: (preferences: DrawPreferences) => void
   slot: (slot: DrawSlot) => void
@@ -373,8 +433,8 @@ export type EditorViewActions = {
 }
 
 export type EditorDocumentApi = {
-  replace: EditorBoardActions['replace']
-  history: EditorHistoryActions
+  replace: (document: Document) => CommandResult
+  history: EditorHistoryApi
   selection: EditorSelectionApi
   nodes: EditorNodesApi
   edges: EditorEdgesApi

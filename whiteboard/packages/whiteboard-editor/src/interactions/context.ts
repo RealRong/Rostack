@@ -1,6 +1,6 @@
 import type { BoardConfig } from '@whiteboard/core/config'
 import type { Editor } from '../types/editor'
-import type { EditorRuntime } from '../internal/types'
+import type { EditorRuntime } from '../runtime/editor/runtimeTypes'
 import type { SnapRuntime } from '../runtime/interaction/snap'
 import type { SelectionInternalRead } from '../runtime/read/selection'
 

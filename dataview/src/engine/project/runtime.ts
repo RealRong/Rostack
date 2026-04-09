@@ -1,57 +1,62 @@
 import type {
   BucketSort,
+  CommitDelta,
   DataDoc,
+  Field,
+  FieldId,
+  RecordId,
+  Row,
+  View,
   ViewId
 } from '@dataview/core/contracts'
+import {
+  createResetDelta
+} from '@dataview/core/commit/delta'
 import type {
   CalculationCollection
 } from '@dataview/core/calculation'
 import {
-  resolveViewFilterProjection,
   sameFilterRule,
   type FilterConditionProjection,
   type FilterRuleProjection,
   type ViewFilterProjection
 } from '@dataview/core/filter'
 import {
-  resolveViewGroupProjection,
   type ViewGroupProjection
 } from '@dataview/core/group'
 import {
-  resolveViewSearchProjection,
   type ViewSearchProjection
 } from '@dataview/core/search'
 import {
-  resolveViewSortProjection,
   type SortRuleProjection,
   type ViewSortProjection
 } from '@dataview/core/sort'
 import {
-  resolveViewRecordState
-} from '@dataview/core/view'
-import {
   getDocumentFields
 } from '@dataview/core/document'
 import {
-  createDerivedStore,
-  type ReadStore
+  resolveViewRecordState,
+  type ResolvedViewRecordState
+} from '@dataview/core/view'
+import {
+  createValueStore
 } from '@shared/store'
+import {
+  createEngineIndex
+} from '../index/runtime'
+import type {
+  IndexState
+} from '../index/types'
 import type {
   ActiveView,
   EngineProjectApi,
   RecordSet
 } from '../types'
-import type {
-  AppearanceList,
-  FieldList,
-  Section,
-  SectionKey
-} from './types'
 import {
-  createAppearances
+  appearancesStage
 } from './appearances'
 import {
-  createCalculationsBySection
+  calculationsStage
 } from './calculations'
 import {
   sameAppearanceList,
@@ -60,18 +65,49 @@ import {
   sameSections
 } from './equality'
 import {
-  createFields
+  fieldsStage
 } from './fields'
 import {
-  createRecordSet
+  filterStage
+} from './filter'
+import {
+  groupStage
+} from './group'
+import {
+  recordsStage
 } from './records'
 import {
+  searchStage
+} from './search'
+import {
+  sortStage
+} from './sort'
+import type {
+  StageNext,
+  StageRead
+} from './stage'
+import {
+  buildProjectPlan,
+  type ProjectPlan
+} from './planner'
+import {
   buildSectionProjection,
-  createSections
+  sectionsStage
 } from './sections'
 import {
-  resolveActiveView
-} from './view'
+  emptyProjectState,
+  type ProjectState
+} from './state'
+import type {
+  Appearance,
+  AppearanceId,
+  AppearanceList,
+  FieldList,
+  ProjectionSection,
+  Section,
+  SectionKey
+} from './types'
+import { viewStage } from './view'
 
 const equalList = <T,>(
   left: readonly T[],
@@ -198,168 +234,280 @@ const equalGroupProjection = (
   && equalBucketSorts(current.availableBucketSorts, next.availableBucketSorts)
 ))
 
-interface ProjectSnapshot {
-  view: ActiveView | undefined
-  filter: ViewFilterProjection | undefined
-  group: ViewGroupProjection | undefined
-  search: ViewSearchProjection | undefined
-  sort: ViewSortProjection | undefined
-  records: RecordSet | undefined
-  sections: readonly Section[] | undefined
-  appearances: AppearanceList | undefined
-  fields: FieldList | undefined
-  calculations: ReadonlyMap<SectionKey, CalculationCollection> | undefined
-}
-
 const equalIds = (
   left: readonly string[],
   right: readonly string[]
 ) => equalList(left, right, Object.is)
 
-const equalOptionalProjection = <T,>(
-  left: T | undefined,
-  right: T | undefined,
-  equal: (left: T, right: T) => boolean
-) => {
-  if (!left || !right) {
-    return left === right
-  }
-
-  return equal(left, right)
-}
-
 const equalRecordSet = (
   left: RecordSet | undefined,
   right: RecordSet | undefined
-) => equalOptionalProjection(left, right, (current, next) => (
+) => equalProjection(left, right, (current, next) => (
   current.viewId === next.viewId
   && equalIds(current.derivedIds, next.derivedIds)
   && equalIds(current.orderedIds, next.orderedIds)
   && equalIds(current.visibleIds, next.visibleIds)
 ))
 
-const equalProjectSnapshot = (
-  left: ProjectSnapshot,
-  right: ProjectSnapshot
-) => (
-  equalActiveView(left.view, right.view)
-  && equalFilterProjection(left.filter, right.filter)
-  && equalGroupProjection(left.group, right.group)
-  && equalSearchProjection(left.search, right.search)
-  && equalSortProjection(left.sort, right.sort)
-  && equalRecordSet(left.records, right.records)
-  && equalOptionalProjection(left.sections, right.sections, sameSections)
-  && equalOptionalProjection(left.appearances, right.appearances, sameAppearanceList)
-  && equalOptionalProjection(left.fields, right.fields, sameFieldList)
-  && equalOptionalProjection(left.calculations, right.calculations, sameCalculationsBySection)
-)
-
-const emptySnapshot = (): ProjectSnapshot => ({
-  view: undefined,
-  filter: undefined,
-  group: undefined,
-  search: undefined,
-  sort: undefined,
-  records: undefined,
-  sections: undefined,
-  appearances: undefined,
-  fields: undefined,
-  calculations: undefined
-})
-
-const resolveProjectSnapshot = (input: {
-  document: DataDoc
-  activeViewId: ViewId | undefined
-}): ProjectSnapshot => {
-  const {
-    document,
-    activeViewId
-  } = input
-
-  if (!activeViewId) {
-    return emptySnapshot()
+interface RuntimeCache {
+  view?: View
+  fieldsById?: ReadonlyMap<FieldId, Field>
+  recordState?: ResolvedViewRecordState
+  sectionProjection?: {
+    appearances: ReadonlyMap<AppearanceId, Appearance>
+    sections: readonly ProjectionSection[]
   }
-
-  const recordState = resolveViewRecordState(document, activeViewId)
-  const view = recordState.view
-  if (!view) {
-    return emptySnapshot()
-  }
-
-  const fieldMap = new Map(
-    getDocumentFields(document).map(field => [field.id, field] as const)
-  )
-  const sectionProjection = buildSectionProjection({
-    document,
-    view,
-    visibleRecords: recordState.visibleRecords
-  })
-  const sections = createSections(
-    sectionProjection.sections,
-    view.group
-  )
-  const appearances = createAppearances({
-    byId: sectionProjection.appearances,
-    sections
-  })
-  const rowsById = new Map(
-    recordState.visibleRecords.map(record => [record.id, record] as const)
-  )
-
-  return {
-    view: resolveActiveView(document, activeViewId),
-    filter: resolveViewFilterProjection(document, activeViewId),
-    group: resolveViewGroupProjection(document, activeViewId),
-    search: resolveViewSearchProjection(document, activeViewId),
-    sort: resolveViewSortProjection(document, activeViewId),
-    records: createRecordSet(activeViewId, recordState),
-    sections,
-    appearances,
-    fields: createFields({
-      fieldIds: view.display.fields,
-      byId: fieldMap
-    }),
-    calculations: createCalculationsBySection({
-      view,
-      fieldsById: fieldMap,
-      sections,
-      appearances: sectionProjection.appearances,
-      rowsById
-    })
-  }
+  rowsById?: ReadonlyMap<RecordId, Row>
 }
 
-const createProjectionStore = <T,>(
-  snapshot: ReadStore<ProjectSnapshot>,
-  select: (snapshot: ProjectSnapshot) => T,
-  isEqual: (left: T, right: T) => boolean
-): ReadStore<T> => createDerivedStore<T>({
-  get: read => select(read(snapshot)),
-  isEqual
+const createRuntimeCache = (): RuntimeCache => ({})
+
+const resolveRuntimeView = (
+  next: StageNext,
+  cache: RuntimeCache
+): View | undefined => {
+  if (cache.view !== undefined) {
+    return cache.view
+  }
+
+  cache.view = next.activeViewId
+    ? resolveViewRecordState(next.document, next.activeViewId).view
+    : undefined
+  return cache.view
+}
+
+const resolveFieldsById = (
+  next: StageNext,
+  cache: RuntimeCache
+): ReadonlyMap<FieldId, Field> => {
+  if (cache.fieldsById) {
+    return cache.fieldsById
+  }
+
+  cache.fieldsById = new Map(
+    getDocumentFields(next.document).map(field => [field.id, field] as const)
+  )
+  return cache.fieldsById
+}
+
+const resolveRuntimeRecordState = (
+  next: StageNext,
+  cache: RuntimeCache
+): ResolvedViewRecordState => {
+  if (cache.recordState) {
+    return cache.recordState
+  }
+
+  cache.recordState = resolveViewRecordState(next.document, next.activeViewId)
+  return cache.recordState
+}
+
+const resolveRuntimeSectionProjection = (
+  next: StageNext,
+  cache: RuntimeCache
+) => {
+  if (cache.sectionProjection) {
+    return cache.sectionProjection
+  }
+
+  const recordState = resolveRuntimeRecordState(next, cache)
+  if (!recordState.view) {
+    cache.sectionProjection = {
+      appearances: new Map(),
+      sections: []
+    }
+    return cache.sectionProjection
+  }
+
+  cache.sectionProjection = buildSectionProjection({
+    document: next.document,
+    view: recordState.view,
+    visibleRecords: recordState.visibleRecords
+  })
+  return cache.sectionProjection
+}
+
+const resolveRowsById = (
+  next: StageNext,
+  cache: RuntimeCache
+): ReadonlyMap<RecordId, Row> => {
+  if (cache.rowsById) {
+    return cache.rowsById
+  }
+
+  const recordState = resolveRuntimeRecordState(next, cache)
+  cache.rowsById = new Map(
+    recordState.visibleRecords.map(record => [record.id, record] as const)
+  )
+  return cache.rowsById
+}
+
+const createStageRead = (
+  next: StageNext,
+  cache: RuntimeCache
+): StageRead => ({
+  view: () => resolveRuntimeView(next, cache),
+  fieldsById: () => resolveFieldsById(next, cache),
+  recordState: () => resolveRuntimeRecordState(next, cache),
+  sectionProjection: () => resolveRuntimeSectionProjection(next, cache),
+  rowsById: () => resolveRowsById(next, cache)
 })
 
-export const createProjectRuntime = (options: {
-  document: ReadStore<DataDoc>
-  activeViewId: ReadStore<ViewId | undefined>
-}): EngineProjectApi => {
-  const snapshot = createDerivedStore<ProjectSnapshot>({
-    get: read => resolveProjectSnapshot({
-      document: read(options.document),
-      activeViewId: read(options.activeViewId)
-    }),
-    isEqual: equalProjectSnapshot
+const runStages = (input: {
+  document: DataDoc
+  activeViewId?: ViewId
+  delta: CommitDelta
+  index: IndexState
+  plan: ProjectPlan
+  prev: ProjectState
+}): ProjectState => {
+  const cache = createRuntimeCache()
+  const next: StageNext = {
+    document: input.document,
+    activeViewId: input.activeViewId,
+    delta: input.delta,
+    index: input.index,
+    read: undefined as unknown as StageRead
+  }
+  next.read = createStageRead(next, cache)
+
+  const run = <T,>(
+    project: ProjectState,
+    key: keyof ProjectState,
+    action: ProjectPlan[keyof ProjectPlan],
+    stage: {
+      run: (input: {
+        action: ProjectPlan[keyof ProjectPlan]
+        prev?: T
+        project: ProjectState
+        next: StageNext
+      }) => T | undefined
+    }
+  ): ProjectState => ({
+    ...project,
+    [key]: stage.run({
+      action,
+      prev: project[key] as T | undefined,
+      project,
+      next
+    })
   })
 
-  return {
-    view: createProjectionStore(snapshot, current => current.view, equalActiveView),
-    filter: createProjectionStore(snapshot, current => current.filter, equalFilterProjection),
-    group: createProjectionStore(snapshot, current => current.group, equalGroupProjection),
-    search: createProjectionStore(snapshot, current => current.search, equalSearchProjection),
-    sort: createProjectionStore(snapshot, current => current.sort, equalSortProjection),
-    records: createProjectionStore(snapshot, current => current.records, equalRecordSet),
-    sections: createProjectionStore(snapshot, current => current.sections, (left, right) => equalOptionalProjection(left, right, sameSections)),
-    appearances: createProjectionStore(snapshot, current => current.appearances, (left, right) => equalOptionalProjection(left, right, sameAppearanceList)),
-    fields: createProjectionStore(snapshot, current => current.fields, (left, right) => equalOptionalProjection(left, right, sameFieldList)),
-    calculations: createProjectionStore(snapshot, current => current.calculations, (left, right) => equalOptionalProjection(left, right, sameCalculationsBySection))
+  let project = {
+    ...emptyProjectState(),
+    ...input.prev
   }
+
+  project = run(project, 'view', input.plan.view, viewStage)
+  project = run(project, 'search', input.plan.search, searchStage)
+  project = run(project, 'filter', input.plan.filter, filterStage)
+  project = run(project, 'sort', input.plan.sort, sortStage)
+  project = run(project, 'group', input.plan.group, groupStage)
+  project = run(project, 'records', input.plan.records, recordsStage)
+  project = run(project, 'sections', input.plan.sections, sectionsStage)
+  project = run(project, 'appearances', input.plan.appearances, appearancesStage)
+  project = run(project, 'fields', input.plan.fields, fieldsStage)
+  project = run(project, 'calculations', input.plan.calculations, calculationsStage)
+
+  return project
+}
+
+export interface ProjectRuntime extends EngineProjectApi {
+  clear: () => void
+  state: () => ProjectState
+  syncDocument: (document: DataDoc, delta?: CommitDelta) => ProjectState
+}
+
+export const createProjectRuntime = (input: {
+  document: DataDoc
+}): ProjectRuntime => {
+  const stores = {
+    view: createValueStore<ActiveView | undefined>({ initial: undefined, isEqual: equalActiveView }),
+    filter: createValueStore<ViewFilterProjection | undefined>({ initial: undefined, isEqual: equalFilterProjection }),
+    group: createValueStore<ViewGroupProjection | undefined>({ initial: undefined, isEqual: equalGroupProjection }),
+    search: createValueStore<ViewSearchProjection | undefined>({ initial: undefined, isEqual: equalSearchProjection }),
+    sort: createValueStore<ViewSortProjection | undefined>({ initial: undefined, isEqual: equalSortProjection }),
+    records: createValueStore<RecordSet | undefined>({ initial: undefined, isEqual: equalRecordSet }),
+    sections: createValueStore<readonly Section[] | undefined>({ initial: undefined, isEqual: (left, right) => equalProjection(left, right, sameSections) }),
+    appearances: createValueStore<AppearanceList | undefined>({ initial: undefined, isEqual: (left, right) => equalProjection(left, right, sameAppearanceList) }),
+    fields: createValueStore<FieldList | undefined>({ initial: undefined, isEqual: (left, right) => equalProjection(left, right, sameFieldList) }),
+    calculations: createValueStore<ReadonlyMap<SectionKey, CalculationCollection> | undefined>({ initial: undefined, isEqual: (left, right) => equalProjection(left, right, sameCalculationsBySection) })
+  }
+  let current = emptyProjectState()
+  const index = createEngineIndex(input.document)
+
+  const commitState = (
+    next: ProjectState
+  ) => {
+    current = next
+    stores.view.set(next.view)
+    stores.filter.set(next.filter)
+    stores.group.set(next.group)
+    stores.search.set(next.search)
+    stores.sort.set(next.sort)
+    stores.records.set(next.records)
+    stores.sections.set(next.sections)
+    stores.appearances.set(next.appearances)
+    stores.fields.set(next.fields)
+    stores.calculations.set(next.calculations)
+  }
+
+  const runtime: ProjectRuntime = {
+    ...stores,
+    clear: () => {
+      commitState(emptyProjectState())
+    },
+    state: () => current,
+    syncDocument: (document, delta) => {
+      const nextDelta = delta ?? {
+        summary: {
+          records: true,
+          fields: true,
+          views: true,
+          values: true,
+          activeView: true,
+          indexes: true
+        },
+        entities: {
+          records: { update: 'all' },
+          fields: { update: 'all' },
+          views: { update: 'all' },
+          values: {
+            records: 'all',
+            fields: 'all'
+          }
+        },
+        semantics: [{
+          kind: 'activeView.set',
+          before: current.view?.id,
+          after: document.activeViewId
+        }]
+      } satisfies CommitDelta
+      const nextIndex = index.sync(document, nextDelta)
+      const plan = buildProjectPlan({
+        document,
+        activeViewId: document.activeViewId,
+        delta: nextDelta,
+        project: current,
+        index: nextIndex
+      })
+      const next = runStages({
+        document,
+        activeViewId: document.activeViewId,
+        delta: nextDelta,
+        index: nextIndex,
+        plan,
+        prev: current
+      })
+      commitState(next)
+      return current
+    }
+  }
+
+  runtime.syncDocument(
+    input.document,
+    createResetDelta(undefined, input.document)
+  )
+
+  return runtime
 }

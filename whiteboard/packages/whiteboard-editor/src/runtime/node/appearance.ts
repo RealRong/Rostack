@@ -1,16 +1,16 @@
 import { compileNodeFieldUpdates } from '@whiteboard/core/schema'
-import type { EngineInstance } from '@engine-types/instance'
+import type { Engine } from '@whiteboard/engine'
 import type {
   NodeAppearanceMutations,
   NodePatchWriter
-} from '../../internal/types'
+} from './types'
 import { styleUpdate } from './document'
 
 export const createNodeAppearanceMutations = ({
   engine,
   document
 }: {
-  engine: EngineInstance
+  engine: Engine
   document: NodePatchWriter
 }): NodeAppearanceMutations => ({
   setFill: (nodeIds, fill) => document.updateMany(

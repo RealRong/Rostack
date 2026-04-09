@@ -8,6 +8,13 @@ import type {
   Section,
   SectionKey
 } from './types'
+import type {
+  Stage
+} from './stage'
+import {
+  reuse,
+  shouldRun
+} from './stage'
 
 const emptyIds = [] as readonly AppearanceId[]
 
@@ -92,4 +99,23 @@ export const recordIdsOfAppearances = (
   })
 
   return next
+}
+
+export const appearancesStage: Stage<AppearanceList> = {
+  run: input => {
+    if (!shouldRun(input.action)) {
+      return reuse(input)
+    }
+
+    const sections = input.project.sections
+    if (!sections) {
+      return undefined
+    }
+
+    const sectionProjection = input.next.read.sectionProjection()
+    return createAppearances({
+      byId: sectionProjection.appearances,
+      sections
+    })
+  }
 }

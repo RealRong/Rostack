@@ -6,8 +6,8 @@ import type { CommandResult } from '@engine-types/result'
 import type { CanvasItemRef } from '@whiteboard/core/types'
 import type {
   CanvasActions,
-  CanvasOrderMode
-} from '../../internal/types'
+  OrderMode
+} from '../editor/runtimeTypes'
 import type { EditorRead } from '../../types/editor'
 import {
   resolveInsertedSelection,
@@ -20,7 +20,7 @@ type CanvasActionHost = {
     document: {
       delete: (refs: CanvasItemRef[]) => CommandResult
       duplicate: (refs: CanvasItemRef[]) => CommandResult<any>
-      order: (refs: CanvasItemRef[], mode: CanvasOrderMode) => CommandResult
+      order: (refs: CanvasItemRef[], mode: OrderMode) => CommandResult
     }
     group: {
       bringToFront: (ids: string[]) => CommandResult
@@ -38,13 +38,13 @@ type CanvasActionHost = {
 const orderTarget = (
   commands: CanvasActionHost['commands'],
   refs: ReturnType<typeof toCanvasRefs>,
-  mode: CanvasOrderMode
+  mode: OrderMode
 ) => commands.document.order(refs, mode)
 
 const orderGroups = (
   commands: CanvasActionHost['commands'],
   groupIds: readonly string[],
-  mode: CanvasOrderMode
+  mode: OrderMode
 ) => {
   const ids = [...groupIds]
   if (mode === 'front') {

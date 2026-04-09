@@ -11,7 +11,7 @@ import type {
   EdgeStylePatch,
   EditorEdgeLabelPatch,
   SessionRuntime
-} from '../../internal/types'
+} from '../editor/runtimeTypes'
 
 const DEFAULT_EDGE_LABEL = {
   t: 0.5,

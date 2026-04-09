@@ -1,14 +1,14 @@
-import type { EngineInstance } from '@engine-types/instance'
+import type { Engine } from '@whiteboard/engine'
 import type {
   NodeLockMutations,
   NodePatchWriter
-} from '../../internal/types'
+} from './types'
 
 export const createNodeLockMutations = ({
   engine,
   document
 }: {
-  engine: EngineInstance
+  engine: Engine
   document: NodePatchWriter
 }): NodeLockMutations => {
   const set: NodeLockMutations['set'] = (nodeIds, locked) => document.updateMany(

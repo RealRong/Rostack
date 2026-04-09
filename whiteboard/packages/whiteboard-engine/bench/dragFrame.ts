@@ -190,7 +190,10 @@ const main = () => {
   })
   const syncDoc = (next: Document) => {
     doc = next
-    void instance.commands.document.replace(next)
+    void instance.execute({
+      type: 'document.replace',
+      document: next
+    })
   }
 
   const movingNodeId = `n_${Math.floor(NODE_COUNT / 2)}`

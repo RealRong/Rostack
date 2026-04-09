@@ -260,14 +260,15 @@ interface ChangedEntities {
 
 ```ts
 type SemanticDelta =
-  | { kind: 'activeView.changed'; before?: ViewId; after?: ViewId }
-  | { kind: 'view.query.changed'; viewId: ViewId; aspects: readonly QueryAspect[] }
-  | { kind: 'view.layout.changed'; viewId: ViewId; aspects: readonly LayoutAspect[] }
-  | { kind: 'view.calc.changed'; viewId: ViewId; fieldIds?: readonly FieldId[] | 'all' }
-  | { kind: 'field.schema.changed'; fieldId: FieldId; aspects: readonly FieldSchemaAspect[] }
-  | { kind: 'record.added'; recordIds: readonly RecordId[] }
-  | { kind: 'record.removed'; recordIds: readonly RecordId[] }
-  | { kind: 'record.values.changed'; recordIds: readonly RecordId[] | 'all'; fieldIds: readonly FieldId[] | 'all' }
+  | { kind: 'activeView.set'; before?: ViewId; after?: ViewId }
+  | { kind: 'view.query'; viewId: ViewId; aspects: readonly QueryAspect[] }
+  | { kind: 'view.layout'; viewId: ViewId; aspects: readonly LayoutAspect[] }
+  | { kind: 'view.calculations'; viewId: ViewId; fieldIds?: readonly FieldId[] | 'all' }
+  | { kind: 'field.schema'; fieldId: FieldId; aspects: readonly FieldSchemaAspect[] }
+  | { kind: 'record.add'; ids: readonly RecordId[] }
+  | { kind: 'record.remove'; ids: readonly RecordId[] }
+  | { kind: 'record.patch'; ids: readonly RecordId[]; aspects: readonly RecordPatchAspect[] }
+  | { kind: 'record.values'; records: readonly RecordId[] | 'all'; fields: readonly FieldId[] | 'all' }
 ```
 
 这样 runtime 才能真正知道：
@@ -476,10 +477,11 @@ interface FieldAggregateIndex {
 
 建议规则：
 
-- `record.added` -> 增量写入 search/group/sort/calc indexes
-- `record.removed` -> 增量删除对应 record entries
-- `record.values.changed` -> 只更新命中的 recordId + fieldId
-- `field.schema.changed` -> 只重建该 field 对应 index，必要时连带 dependent indexes
+- `record.add` -> 增量写入 search/group/sort/calc indexes
+- `record.remove` -> 增量删除对应 record entries
+- `record.patch` -> 只更新受影响 record 的 title / type / meta 派生数据
+- `record.values` -> 只更新命中的 recordId + fieldId
+- `field.schema` -> 只重建该 field 对应 index，必要时连带 dependent indexes
 - `view.*.changed` -> raw indexes 通常不动，交给 projection runtime 消费
 
 
@@ -612,7 +614,7 @@ planner 的责任不是执行 projection，而是决定：
 
 如果有：
 
-- `activeView.changed`
+- `activeView.set`
 
 则：
 
@@ -654,7 +656,7 @@ planner 的责任不是执行 projection，而是决定：
 
 如果：
 
-- `record.values.changed`
+- `record.values`
 
 则先由 planner 判断命中 field 是否影响 active view：
 
@@ -996,26 +998,28 @@ interface DeltaIds<T extends string> {
 
 ```ts
 type DeltaItem =
-  | { kind: 'activeView'; before?: ViewId; after?: ViewId }
-  | { kind: 'viewQuery'; viewId: ViewId; aspects: readonly QueryAspect[] }
-  | { kind: 'viewLayout'; viewId: ViewId; aspects: readonly LayoutAspect[] }
-  | { kind: 'viewCalc'; viewId: ViewId; fields?: readonly FieldId[] | 'all' }
-  | { kind: 'fieldSchema'; fieldId: FieldId; aspects: readonly FieldSchemaAspect[] }
-  | { kind: 'recordAdd'; ids: readonly RecordId[] }
-  | { kind: 'recordRemove'; ids: readonly RecordId[] }
-  | { kind: 'value'; records: readonly RecordId[] | 'all'; fields: readonly FieldId[] | 'all' }
+  | { kind: 'activeView.set'; before?: ViewId; after?: ViewId }
+  | { kind: 'view.query'; viewId: ViewId; aspects: readonly QueryAspect[] }
+  | { kind: 'view.layout'; viewId: ViewId; aspects: readonly LayoutAspect[] }
+  | { kind: 'view.calculations'; viewId: ViewId; fields?: readonly FieldId[] | 'all' }
+  | { kind: 'field.schema'; fieldId: FieldId; aspects: readonly FieldSchemaAspect[] }
+  | { kind: 'record.add'; ids: readonly RecordId[] }
+  | { kind: 'record.remove'; ids: readonly RecordId[] }
+  | { kind: 'record.patch'; ids: readonly RecordId[]; aspects: readonly RecordPatchAspect[] }
+  | { kind: 'record.values'; records: readonly RecordId[] | 'all'; fields: readonly FieldId[] | 'all' }
 ```
 
 这里继续坚持简短命名：
 
-- `activeView`
-- `viewQuery`
-- `viewLayout`
-- `viewCalc`
-- `fieldSchema`
-- `recordAdd`
-- `recordRemove`
-- `value`
+- `activeView.set`
+- `view.query`
+- `view.layout`
+- `view.calculations`
+- `field.schema`
+- `record.add`
+- `record.remove`
+- `record.patch`
+- `record.values`
 
 不需要把 `changed`、`delta`、`semantic` 重复写进每个 kind。
 
@@ -1365,14 +1369,15 @@ React 不知道：
 
 验收标准：
 
-- `activeView`
-- `viewQuery`
-- `viewLayout`
-- `viewCalc`
-- `fieldSchema`
-- `recordAdd`
-- `recordRemove`
-- `value`
+- `activeView.set`
+- `view.query`
+- `view.layout`
+- `view.calculations`
+- `field.schema`
+- `record.add`
+- `record.remove`
+- `record.patch`
+- `record.values`
 
 这几类 delta 都可以稳定产出
 

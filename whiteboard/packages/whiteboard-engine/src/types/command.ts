@@ -32,7 +32,6 @@ import type {
   MindmapRemoveSubtreeInput,
   MindmapUpdateNodeInput
 } from './mindmap'
-import type { HistoryState } from '@whiteboard/core/kernel'
 import type { CommandResult } from './result'
 
 export type NodeBatchUpdate = {
@@ -49,7 +48,7 @@ export type NodeUpdateManyOptions = {
   origin?: Origin
 }
 
-export type CanvasOrderMode =
+export type OrderMode =
   | 'set'
   | 'front'
   | 'back'
@@ -76,7 +75,7 @@ export type DocumentWriteCommand =
     }
   | {
       type: 'order'
-      mode: CanvasOrderMode
+      mode: OrderMode
       refs: CanvasItemRef[]
     }
 
@@ -127,7 +126,7 @@ export type GroupWriteCommand =
     }
   | {
       type: 'order'
-      mode: CanvasOrderMode
+      mode: OrderMode
       ids: GroupId[]
     }
   | {
@@ -261,31 +260,6 @@ export type WriteOutput<
         ? MindmapWriteOutput<Extract<C, MindmapWriteCommand>>
         : never
 
-export type MindmapCommands = {
-  create: (payload?: MindmapCreateOptions) => CommandResult<{
-    mindmapId: MindmapId
-    rootId: MindmapNodeId
-  }>
-  delete: (ids: MindmapId[]) => CommandResult
-  insert: (
-    id: MindmapId,
-    input: MindmapInsertOptions
-  ) => CommandResult<{ nodeId: MindmapNodeId }>
-  moveSubtree: (
-    id: MindmapId,
-    input: MindmapMoveSubtreeInput
-  ) => CommandResult
-  removeSubtree: (id: MindmapId, input: MindmapRemoveSubtreeInput) => CommandResult
-  cloneSubtree: (
-    id: MindmapId,
-    input: MindmapCloneSubtreeInput
-  ) => CommandResult<{
-    nodeId: MindmapNodeId
-    map: Record<MindmapNodeId, MindmapNodeId>
-  }>
-  updateNode: (id: MindmapId, input: MindmapUpdateNodeInput) => CommandResult
-}
-
 export type EngineCommand =
   | {
       type: 'document.replace'
@@ -310,7 +284,7 @@ export type EngineCommand =
     }
   | {
       type: 'document.order'
-      mode: CanvasOrderMode
+      mode: OrderMode
       refs: CanvasItemRef[]
     }
   | {
@@ -358,7 +332,7 @@ export type EngineCommand =
     }
   | {
       type: 'group.order'
-      mode: CanvasOrderMode
+      mode: OrderMode
       ids: GroupId[]
     }
   | {
@@ -487,98 +461,3 @@ export type ExecuteResult<
                         }
                       : void
 >
-
-export type EngineCommands = {
-  document: {
-    replace: (document: Document) => CommandResult
-    insert: (
-      slice: Slice,
-      options?: SliceInsertOptions
-    ) => CommandResult<Omit<SliceInsertResult, 'operations'>>
-    delete: (refs: CanvasItemRef[]) => CommandResult
-    duplicate: (refs: CanvasItemRef[]) => CommandResult<Omit<SliceInsertResult, 'operations'>>
-    background: {
-      set: (background?: Document['background']) => CommandResult
-    }
-  }
-  canvas: {
-    delete: (refs: CanvasItemRef[]) => CommandResult
-    duplicate: (refs: CanvasItemRef[]) => CommandResult<Omit<SliceInsertResult, 'operations'>>
-    order: {
-      set: (refs: CanvasItemRef[]) => CommandResult
-      bringToFront: (refs: CanvasItemRef[]) => CommandResult
-      sendToBack: (refs: CanvasItemRef[]) => CommandResult
-      bringForward: (refs: CanvasItemRef[]) => CommandResult
-      sendBackward: (refs: CanvasItemRef[]) => CommandResult
-    }
-  }
-  group: {
-    merge: (target: {
-      nodeIds?: readonly NodeId[]
-      edgeIds?: readonly EdgeId[]
-    }) => CommandResult<{ groupId: GroupId }>
-    order: {
-      set: (ids: GroupId[]) => CommandResult
-      bringToFront: (ids: GroupId[]) => CommandResult
-      sendToBack: (ids: GroupId[]) => CommandResult
-      bringForward: (ids: GroupId[]) => CommandResult
-      sendBackward: (ids: GroupId[]) => CommandResult
-    }
-    ungroup: (id: GroupId) => CommandResult<{
-      nodeIds: readonly NodeId[]
-      edgeIds: readonly EdgeId[]
-    }>
-    ungroupMany: (ids: GroupId[]) => CommandResult<{
-      nodeIds: readonly NodeId[]
-      edgeIds: readonly EdgeId[]
-    }>
-  }
-  history: {
-    get: () => HistoryState
-    undo: () => CommandResult
-    redo: () => CommandResult
-    clear: () => void
-  }
-  edge: {
-    create: (payload: EdgeInput) => CommandResult<{ edgeId: EdgeId }>
-    move: (edgeId: EdgeId, delta: Point) => CommandResult
-    reconnect: (
-      edgeId: EdgeId,
-      end: 'source' | 'target',
-      target: EdgeEnd
-    ) => CommandResult
-    update: (id: EdgeId, patch: EdgePatch) => CommandResult
-    updateMany: (updates: readonly EdgeBatchUpdate[]) => CommandResult
-    delete: (ids: EdgeId[]) => CommandResult
-    route: {
-      insert: (edgeId: EdgeId, point: Point) => CommandResult<{ index: number }>
-      move: (edgeId: EdgeId, index: number, point: Point) => CommandResult
-      remove: (edgeId: EdgeId, index: number) => CommandResult
-      clear: (edgeId: EdgeId) => CommandResult
-    }
-  }
-  node: {
-    create: (payload: NodeInput) => CommandResult<{ nodeId: NodeId }>
-    move: (input: NodeMoveInput) => CommandResult
-    update: (id: NodeId, update: NodeUpdateInput) => CommandResult
-    updateMany: (
-      updates: readonly NodeBatchUpdate[],
-      options?: NodeUpdateManyOptions
-    ) => CommandResult
-    align: (
-      ids: readonly NodeId[],
-      mode: NodeAlignMode
-    ) => CommandResult
-    distribute: (
-      ids: readonly NodeId[],
-      mode: NodeDistributeMode
-    ) => CommandResult
-    delete: (ids: NodeId[]) => CommandResult
-    deleteCascade: (ids: NodeId[]) => CommandResult
-    duplicate: (ids: NodeId[]) => CommandResult<{
-      nodeIds: readonly NodeId[]
-      edgeIds: readonly EdgeId[]
-    }>
-  }
-  mindmap: MindmapCommands
-}

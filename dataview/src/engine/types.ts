@@ -3,7 +3,7 @@ import type {
   BucketSort,
   CalculationMetric,
   Command,
-  CommitChangeSet,
+  CommitDelta,
   DataDoc,
   EditTarget,
   FilterRule,
@@ -54,7 +54,7 @@ export interface CreateEngineOptions {
 export interface CommitResult {
   issues: ValidationIssue[]
   applied: boolean
-  changes?: CommitChangeSet
+  changes?: CommitDelta
 }
 
 export interface CreatedEntities {

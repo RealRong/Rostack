@@ -1,13 +1,16 @@
 import { isTextContentEmpty } from '@whiteboard/core/node'
 import type { NodeId, Size } from '@whiteboard/core/types'
-import type { EngineInstance } from '@engine-types/instance'
+import type { Engine } from '@whiteboard/engine'
+import type { CommandResult } from '@engine-types/result'
 import type {
   NodeAppearanceMutations,
   NodePatchWriter,
-  NodeTextMutations,
+  NodeTextMutations
+} from './types'
+import type {
   PreviewRuntime,
   SessionRuntime
-} from '../../internal/types'
+} from '../editor/runtimeTypes'
 import type { EditorRead } from '../../types/editor'
 import {
   dataUpdate,
@@ -17,10 +20,10 @@ import {
 
 type NodeTextHost = {
   read: EditorRead
-  committedNode: EngineInstance['read']['node']['item']
+  committedNode: Engine['read']['node']['item']
   preview: Pick<PreviewRuntime, 'node'>
   session: Pick<SessionRuntime, 'edit' | 'selection'>
-  deleteCascade: EngineInstance['commands']['node']['deleteCascade']
+  deleteCascade: (ids: NodeId[]) => CommandResult
   document: NodePatchWriter
   appearance: NodeAppearanceMutations
 }

@@ -1,5 +1,4 @@
 import type { Engine } from '@whiteboard/engine'
-import type { EngineInstance } from '@engine-types/instance'
 import type { Viewport } from '@whiteboard/core/types'
 import type { NodeRegistry } from '../../types/node'
 import type { Tool } from '../../types/tool'
@@ -43,7 +42,6 @@ export const createEditor = ({
   initialViewport: Viewport
   registry: NodeRegistry
 }): Editor => {
-  const internalEngine = engine as EngineInstance
   const runtime = createRuntimeState({
     initialTool,
     initialDrawPreferences
@@ -62,9 +60,9 @@ export const createEditor = ({
     gesture: interaction.gesture
   })
   const readBundle = createRead({
-    engineRead: internalEngine.read,
+    engineRead: engine.read,
     registry,
-    history: internalEngine.history,
+    history: engine.history,
     runtime,
     interaction,
     overlay,
@@ -72,7 +70,7 @@ export const createEditor = ({
   })
   const read = readBundle.read
   const write = createEditorRuntime({
-    engine: internalEngine,
+    engine,
     read,
     runtime,
     overlay,
@@ -81,12 +79,12 @@ export const createEditor = ({
   const snap = createSnapRuntime({
     readZoom: () => viewport.read.get().zoom,
     node: {
-      config: internalEngine.config.node,
-      query: internalEngine.read.index.snap.inRect
+      config: engine.config.node,
+      query: engine.read.index.snap.inRect
     },
     edge: {
-      config: internalEngine.config.edge,
-      nodeSize: internalEngine.config.nodeSize,
+      config: engine.config.edge,
+      nodeSize: engine.config.nodeSize,
       query: read.edge.connectCandidates
     }
   })
@@ -145,7 +143,7 @@ export const createEditor = ({
     read,
     selection: readBundle.internal.selection,
     write,
-    config: internalEngine.config,
+    config: engine.config,
     snap
   }
   const edgeHover = createEdgeHoverService(interactionContext)
@@ -165,8 +163,8 @@ export const createEditor = ({
     runtime.resetLocal()
   }
 
-  const unsubscribeCommit = internalEngine.commit.subscribe(() => {
-    const commit = internalEngine.commit.get()
+  const unsubscribeCommit = engine.commit.subscribe(() => {
+    const commit = engine.commit.get()
     if (!commit) {
       return
     }
@@ -188,7 +186,7 @@ export const createEditor = ({
       ids,
       patch,
       measuredSizeById: options?.measuredSizeById,
-      readNode: internalEngine.read.node.item.get
+      readNode: engine.read.node.item.get
     })
     if (!updates.length) {
       return undefined
@@ -206,7 +204,7 @@ export const createEditor = ({
     const updates = compileEdgePatch({
       edgeIds,
       patch,
-      readEdge: (id) => internalEngine.read.edge.item.get(id)?.edge
+      readEdge: (id) => engine.read.edge.item.get(id)?.edge
     })
     if (!updates.length) {
       return undefined
@@ -289,7 +287,7 @@ export const createEditor = ({
     dispose: () => {
       unsubscribeCommit()
       resetRuntimeState()
-      internalEngine.dispose()
+      engine.dispose()
     }
   } satisfies Editor
 

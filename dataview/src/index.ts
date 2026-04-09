@@ -67,7 +67,7 @@ export {
   createDefaultViewOptions,
   pruneFieldFromViewOptions
 } from './core/view'
-export { createEngine } from './engine/index'
+export { createEngine } from './engine/api'
 export type {
   ActiveView,
   CreateEngineOptions,
@@ -99,4 +99,4 @@ export type {
   ViewOrderApi,
   ViewTableApi,
   ViewsEngineApi
-} from './engine/index'
+} from './engine/api'

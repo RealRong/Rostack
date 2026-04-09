@@ -9,10 +9,21 @@ import {
   computeCalculationsForFields
 } from '@dataview/core/calculation'
 import type {
+  CalculationCollection
+} from '@dataview/core/calculation'
+import type {
   Appearance,
   AppearanceId,
-  Section
+  Section,
+  SectionKey
 } from './types'
+import type {
+  Stage
+} from './stage'
+import {
+  reuse,
+  shouldRun
+} from './stage'
 
 export const createCalculationsBySection = (input: {
   view: View
@@ -34,3 +45,26 @@ export const createCalculationsBySection = (input: {
     })] as const
   })
 )
+
+export const calculationsStage: Stage<ReadonlyMap<SectionKey, CalculationCollection>> = {
+  run: input => {
+    if (!shouldRun(input.action)) {
+      return reuse(input)
+    }
+
+    const view = input.next.read.view()
+    const sections = input.project.sections
+    if (!view || !sections) {
+      return undefined
+    }
+
+    const sectionProjection = input.next.read.sectionProjection()
+    return createCalculationsBySection({
+      view,
+      fieldsById: input.next.read.fieldsById(),
+      sections,
+      appearances: sectionProjection.appearances,
+      rowsById: input.next.read.rowsById()
+    })
+  }
+}

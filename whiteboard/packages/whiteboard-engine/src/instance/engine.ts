@@ -1,7 +1,6 @@
 import type {
   CreateEngineOptions,
   Engine,
-  EngineInstance,
   EngineRuntimeOptions
 } from '@engine-types/instance'
 import type {
@@ -16,7 +15,6 @@ import type {
 import type { MindmapLayoutConfig } from '@whiteboard/core/mindmap'
 import type { Write, WriteResult } from '@engine-types/write'
 import { createRegistries } from '@whiteboard/core/kernel'
-import { createCommands } from '../commands'
 import { resolveBoardConfig } from '../config'
 import { createRead } from '../read'
 import { MINDMAP_LAYOUT_READ_IMPACT, RESET_READ_IMPACT } from '../read/impacts'
@@ -138,10 +136,6 @@ export const createEngine = ({
     ),
     'apply'
   )
-
-  const commands = createCommands({
-    write
-  })
 
   const execute = <C extends EngineCommand>(
     command: C,
@@ -505,9 +499,8 @@ export const createEngine = ({
     execute,
     applyOperations,
     configure,
-    dispose,
-    commands
-  } as EngineInstance
+    dispose
+  } satisfies Engine
 
   return engine
 }

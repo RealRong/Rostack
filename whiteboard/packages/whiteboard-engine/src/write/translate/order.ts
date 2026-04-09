@@ -1,4 +1,4 @@
-import type { CanvasOrderMode } from '@engine-types/command'
+import type { OrderMode } from '@engine-types/command'
 import type {
   CanvasItemRef,
   Document
@@ -39,7 +39,7 @@ const parseRef = (key: string): CanvasItemRef => {
 const reorderRefs = (
   currentRefs: readonly CanvasItemRef[],
   targetRefs: readonly CanvasItemRef[],
-  mode: CanvasOrderMode
+  mode: OrderMode
 ): CanvasItemRef[] => {
   if (mode === 'set') {
     return Array.from(targetRefs)
@@ -95,7 +95,7 @@ export const normalizeCanvasOrderTargets = ({
 }: {
   doc: Pick<Document, 'nodes' | 'edges' | 'order'>
   refs: readonly CanvasItemRef[]
-  mode: CanvasOrderMode
+  mode: OrderMode
 }) => {
   const current = listCanvasItemRefs(doc)
   const keySet = new Set(refs.map(serializeRef))

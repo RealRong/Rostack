@@ -1,12 +1,15 @@
 import type { HistoryState } from '@dataview/engine/history'
 import type { DataDoc } from '@dataview/core/contracts'
 import { cloneDocument } from '@dataview/core/document'
+import { createResetDelta } from '@dataview/core/commit/delta'
+import { createDeltaCollector } from '@dataview/core/commit/collector'
 import { applyOperations } from '@dataview/core/operation'
 import type { ResolvedWriteBatch } from '@dataview/engine/command'
 import type { CommitResult, CreatedEntities, CommandResult } from '../../types'
 import type { ReadRuntime } from '../read/read'
 import type { HistoryReplay } from './history'
 import { historyStacks } from './history'
+import type { ProjectRuntime } from '../../project/source'
 
 interface CommitDocumentStore {
   peekDocument: () => DataDoc
@@ -16,6 +19,7 @@ interface CommitDocumentStore {
 export interface CommitRuntimeOptions {
   document: CommitDocumentStore
   read: Pick<ReadRuntime, 'clear' | 'syncDocument'>
+  project: Pick<ProjectRuntime, 'clear' | 'syncDocument'>
   historyCapacity: number
 }
 
@@ -38,9 +42,9 @@ const createdFromChanges = (changes?: CommitResult['changes']): CreatedEntities 
   }
 
   const created: CreatedEntities = {
-    records: changes.records?.added,
-    fields: changes.fields?.added,
-    views: changes.views?.added
+    records: changes.entities.records?.add,
+    fields: changes.entities.fields?.add,
+    views: changes.entities.views?.add
   }
 
   return created.records?.length || created.fields?.length || created.views?.length
@@ -56,6 +60,7 @@ export const commitRuntime = (options: CommitRuntimeOptions): CommitRuntime => {
   const finalize = <TResult extends CommitResult>(result: TResult, shouldSyncDocument: boolean): TResult => {
     if (shouldSyncDocument) {
       options.read.syncDocument(store.peekDocument(), result.changes)
+      options.project.syncDocument(store.peekDocument(), result.changes)
     }
     return result
   }
@@ -82,8 +87,12 @@ export const commitRuntime = (options: CommitRuntimeOptions): CommitRuntime => {
     }
 
     const beforeDocument = store.peekDocument()
-    const applied = applyOperations(beforeDocument, writeBatch.operations)
-    const { undo, redo, document: afterDocument, changeSet } = applied
+    const applied = applyOperations(
+      beforeDocument,
+      writeBatch.operations,
+      createDeltaCollector(beforeDocument, writeBatch.deltaDraft)
+    )
+    const { undo, redo, document: afterDocument, delta } = applied
     store.installDocument(afterDocument)
 
     history.clearRedo()
@@ -95,8 +104,8 @@ export const commitRuntime = (options: CommitRuntimeOptions): CommitRuntime => {
       {
         issues: writeBatch.issues,
         applied: true,
-        changes: changeSet,
-        created: createdFromChanges(changeSet)
+        changes: delta,
+        created: createdFromChanges(delta)
       },
       true
     )
@@ -116,14 +125,14 @@ export const commitRuntime = (options: CommitRuntimeOptions): CommitRuntime => {
       )
     }
 
-    const { document: afterDocument, changeSet } = applyOperations(beforeDocument, entry.operations)
+    const { document: afterDocument, delta } = applyOperations(beforeDocument, entry.operations)
     store.installDocument(afterDocument)
 
     return finalize(
       {
         issues: [],
         applied: true,
-        changes: changeSet
+        changes: delta
       },
       true
     )
@@ -144,12 +153,16 @@ export const commitRuntime = (options: CommitRuntimeOptions): CommitRuntime => {
     history: historyApi,
     dispatch,
     replace: document => {
+      const beforeDocument = store.peekDocument()
       const nextDocument = cloneDocument(document)
+      const delta = createResetDelta(beforeDocument, nextDocument)
 
       history.clear()
       options.read.clear()
+      options.project.clear()
       store.installDocument(nextDocument)
-      options.read.syncDocument(nextDocument)
+      options.read.syncDocument(nextDocument, delta)
+      options.project.syncDocument(nextDocument, delta)
     }
   }
 }

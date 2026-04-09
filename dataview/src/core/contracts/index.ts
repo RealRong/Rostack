@@ -1,10 +1,16 @@
 export type {
-  CommitChangeSet,
-  CommitChangeSummary,
-  CommitChangedIds,
-  CommitEntityChange,
-  CommitValueChange
-} from './changeSet'
+  CommitDelta,
+  DeltaEntities,
+  DeltaEntityIds,
+  DeltaIds,
+  DeltaItem,
+  DeltaSummary,
+  DeltaValueIds,
+  FieldSchemaAspect,
+  RecordPatchAspect,
+  ViewLayoutAspect,
+  ViewQueryAspect
+} from './delta'
 export type {
   Command,
   CommandPayload,

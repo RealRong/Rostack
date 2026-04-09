@@ -15,18 +15,18 @@ import type {
   Appearance,
   AppearanceId,
   AppearanceList,
+  ProjectionSection,
   Section,
   SectionBucket,
   SectionKey
 } from './types'
-
-export interface ProjectionSection {
-  key: SectionKey
-  title: string
-  color?: string
-  bucket?: SectionBucket
-  ids: readonly AppearanceId[]
-}
+import type {
+  Stage
+} from './stage'
+import {
+  reuse,
+  shouldRun
+} from './stage'
 
 const ROOT_SECTION_KEY = 'root' as SectionKey
 const emptyIds = [] as const
@@ -178,4 +178,23 @@ export const readSectionRecordIds = (input: {
   return ids.length
     ? recordIdsOfAppearances(input.appearances, ids)
     : emptyIds
+}
+
+export const sectionsStage: Stage<readonly Section[]> = {
+  run: input => {
+    if (!shouldRun(input.action)) {
+      return reuse(input)
+    }
+
+    const view = input.next.read.view()
+    if (!view) {
+      return undefined
+    }
+
+    const sectionProjection = input.next.read.sectionProjection()
+    return createSections(
+      sectionProjection.sections,
+      view.group
+    )
+  }
 }

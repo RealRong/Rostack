@@ -1,4 +1,5 @@
 import type { CreateEngineOptions, Engine } from '../types'
+import type { DataDoc } from '@dataview/core/contracts'
 import { cloneDocument } from '@dataview/core/document'
 import { resolveWriteBatch } from '@dataview/engine/command'
 import { createProjectSource } from '../project/source'
@@ -24,13 +25,13 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     getDocument: instanceDocument.peekDocument
   })
   const project = createProjectSource({
-    document: read.document,
-    activeViewId: read.activeViewId
+    document: instanceDocument.peekDocument()
   })
 
   const commit = commitRuntime({
     document: instanceDocument,
     read,
+    project,
     historyCapacity
   })
 
@@ -47,7 +48,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       view: read.view
     },
     project,
-    command: command => {
+    command: (command: Parameters<Engine['command']>[0]) => {
       const batch = resolveWriteBatch({
         document: instanceDocument.peekDocument(),
         commands: Array.isArray(command) ? command : [command]
@@ -64,12 +65,12 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     },
     document: {
       export: () => cloneDocument(instanceDocument.peekDocument()),
-      replace: document => {
+      replace: (document: DataDoc) => {
         commit.replace(document)
         return cloneDocument(instanceDocument.peekDocument())
       }
     }
-  } as Engine
+  } as unknown as Engine
 
   engine.views = createViewsEngineApi({
     engine

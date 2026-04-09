@@ -4,10 +4,9 @@ import type {
   Operation,
   Origin,
 } from '@whiteboard/core/types'
-import type { HistoryConfig } from '@whiteboard/core/kernel'
+import type { HistoryConfig, HistoryState } from '@whiteboard/core/kernel'
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import type {
-  EngineCommands,
   WriteCommandMap,
   WriteDomain,
   WriteInput,
@@ -20,10 +19,17 @@ export type Apply = <
   C extends WriteCommandMap[D]
 >(input: WriteInput<D, C>) => CommandResult<WriteOutput<D, C>>
 
+export type WriteHistory = {
+  get: () => HistoryState
+  clear: () => void
+  undo: () => CommandResult
+  redo: () => CommandResult
+}
+
 export type Write = {
   apply: Apply
-  replace: EngineCommands['document']['replace']
-  history: EngineCommands['history']
+  replace: (document: Document) => CommandResult
+  history: WriteHistory
 }
 
 type SuccessfulWriteBase = {
@@ -58,9 +64,9 @@ export type WriteControl = {
   replace: (document: Document) => WriteResult
   history: {
     configure: (config: Partial<HistoryConfig>) => void
-    get: EngineCommands['history']['get']
+    get: () => HistoryState
     subscribe: (listener: () => void) => () => void
-    clear: EngineCommands['history']['clear']
+    clear: () => void
     undo: () => WriteResult | false
     redo: () => WriteResult | false
   }

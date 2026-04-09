@@ -10,7 +10,7 @@ import type {
 import type {
   ClipboardActions,
   ClipboardRuntime
-} from '../../internal/types'
+} from '../editor/runtimeTypes'
 
 const applyInsertedRoots = (input: {
   editor: ClipboardRuntime

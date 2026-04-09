@@ -1,15 +1,15 @@
-import type { EngineInstance } from '@engine-types/instance'
+import type { Engine } from '@whiteboard/engine'
 import type {
   NodePatchWriter,
   NodeShapeMutations
-} from '../../internal/types'
+} from './types'
 import { dataUpdate } from './document'
 
 export const createNodeShapeMutations = ({
   engine,
   document
 }: {
-  engine: EngineInstance
+  engine: Engine
   document: NodePatchWriter
 }): NodeShapeMutations => ({
   setKind: (nodeIds, kind) => document.updateMany(

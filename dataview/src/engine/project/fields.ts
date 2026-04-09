@@ -5,6 +5,13 @@ import type {
 import type {
   FieldList
 } from './types'
+import type {
+  Stage
+} from './stage'
+import {
+  reuse,
+  shouldRun
+} from './stage'
 
 const emptyIds = [] as readonly FieldId[]
 
@@ -40,5 +47,23 @@ export const createFields = (input: {
       const end = Math.max(anchorIndex, focusIndex)
       return ids.slice(start, end + 1)
     }
+  }
+}
+
+export const fieldsStage: Stage<FieldList> = {
+  run: input => {
+    if (!shouldRun(input.action)) {
+      return reuse(input)
+    }
+
+    const view = input.next.read.view()
+    if (!view) {
+      return undefined
+    }
+
+    return createFields({
+      fieldIds: view.display.fields,
+      byId: input.next.read.fieldsById()
+    })
   }
 }

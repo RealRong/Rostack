@@ -1,4 +1,4 @@
-import type { EngineInstance } from '@engine-types/instance'
+import type { Engine } from '@whiteboard/engine'
 import {
   DEFAULT_ROOT_MOVE_THRESHOLD,
   resolveInsertPlan,
@@ -20,14 +20,14 @@ import type {
   EditorMindmapCommands,
   EditorRead
 } from '../../types/editor'
-import type { NodePatchWriter } from '../../internal/types'
+import type { NodePatchWriter } from '../node/types'
 
 type MindmapRuntimeHost = {
   read: EditorRead
   document: {
     mindmap: {
-      create: (payload?: Parameters<EngineInstance['execute']>[0] extends never ? never : any) => ReturnType<EngineInstance['execute']>
-      delete: (ids: string[]) => ReturnType<EngineInstance['execute']>
+      create: EditorMindmapCommands['create']
+      delete: EditorMindmapCommands['delete']
       insert: EditorMindmapCommands['insert']
       moveSubtree: EditorMindmapCommands['moveSubtree']
       removeSubtree: EditorMindmapCommands['removeSubtree']
@@ -227,7 +227,7 @@ export const createMindmapRuntime = ({
   engine,
   runtimeHost
 }: {
-  engine: EngineInstance
+  engine: Engine
   runtimeHost: MindmapRuntimeHost
 }): EditorMindmapCommands => ({
   create: (payload) => engine.execute({

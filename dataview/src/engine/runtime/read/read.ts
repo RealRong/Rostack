@@ -1,4 +1,4 @@
-import type { CommitChangeSet, DataDoc } from '@dataview/core/contracts'
+import type { CommitDelta, DataDoc } from '@dataview/core/contracts'
 import type { EngineReadApi } from '../../types'
 import { createReadSource } from './source'
 
@@ -8,14 +8,14 @@ export interface CreateReadOptions {
 
 export interface ReadRuntime extends EngineReadApi {
   clear: () => void
-  syncDocument: (document: DataDoc, changes?: CommitChangeSet) => void
+  syncDocument: (document: DataDoc, changes?: CommitDelta) => void
 }
 
 export const read = (options: CreateReadOptions): ReadRuntime => {
   const source = createReadSource(options.getDocument())
   const syncDocument = (
     document: DataDoc,
-    _changes?: CommitChangeSet
+    _changes?: CommitDelta
   ) => {
     source.setDocument(document)
   }

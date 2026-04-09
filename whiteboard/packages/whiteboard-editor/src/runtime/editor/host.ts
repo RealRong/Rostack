@@ -1,4 +1,4 @@
-import type { EngineInstance } from '@engine-types/instance'
+import type { Engine } from '@whiteboard/engine'
 import {
   applySelectionTarget,
   isSelectionTargetEqual,
@@ -15,7 +15,7 @@ import type {
   EditorRuntime,
   SessionRuntime,
   ViewRuntime
-} from '../../internal/types'
+} from './runtimeTypes'
 import type { EditorViewportRuntime } from './types'
 import type { RuntimeStateController } from '../state'
 import type { EditorOverlay } from '../overlay'
@@ -277,7 +277,7 @@ const createSessionHost = ({
   engine,
   runtime
 }: {
-  engine: EngineInstance
+  engine: Engine
   runtime: Pick<RuntimeStateController, 'state'>
 }): SessionRuntime => {
   const writeSelection = (input: {
@@ -417,7 +417,7 @@ const createDocumentHost = ({
   session,
   preview
 }: {
-  engine: EngineInstance
+  engine: Engine
   read: EditorRead
   session: Pick<SessionRuntime, 'edit' | 'selection'>
   preview: Pick<PreviewRuntime, 'node'>
@@ -684,7 +684,7 @@ export const createEditorRuntime = ({
   overlay,
   viewport
 }: {
-  engine: EngineInstance
+  engine: Engine
   read: EditorRead
   runtime: RuntimeStateController
   overlay: Pick<EditorOverlay, 'set'>

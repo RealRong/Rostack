@@ -4,12 +4,14 @@ export interface CommitHistoryDepth {
 }
 
 export type {
-  CommitChangedIds,
-  CommitEntityChange,
-  CommitValueChange,
-  CommitChangeSet,
-  CommitChangeSummary
-} from '@dataview/core/contracts/changeSet'
+  CommitDelta,
+  DeltaEntities,
+  DeltaEntityIds,
+  DeltaIds,
+  DeltaItem,
+  DeltaSummary,
+  DeltaValueIds
+} from '@dataview/core/contracts/delta'
 
 export interface HistoryState extends CommitHistoryDepth {
   capacity: number

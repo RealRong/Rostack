@@ -3,9 +3,9 @@ import {
 } from '@whiteboard/core/selection'
 import type { CommandResult } from '@engine-types/result'
 import type {
-  CanvasOrderMode,
+  OrderMode,
   GroupActions
-} from '../../internal/types'
+} from '../editor/runtimeTypes'
 import type { EditorRead } from '../../types/editor'
 import {
   readGroupTarget
@@ -47,7 +47,7 @@ type GroupActionHost = {
 const orderGroups = (
   order: GroupActionHost['commands']['group']['order'],
   groupIds: readonly string[],
-  mode: CanvasOrderMode
+  mode: OrderMode
 ) => {
   const ids = [...groupIds]
   if (mode === 'front') {

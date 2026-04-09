@@ -8,6 +8,13 @@ import {
 import type {
   ActiveView
 } from '../types'
+import type {
+  Stage
+} from './stage'
+import {
+  reuse,
+  shouldRun
+} from './stage'
 
 export const resolveActiveView = (
   document: DataDoc,
@@ -26,5 +33,18 @@ export const resolveActiveView = (
     id: view.id,
     name: view.name,
     type: view.type
+  }
+}
+
+export const viewStage: Stage<ActiveView> = {
+  run: input => {
+    if (!shouldRun(input.action)) {
+      return reuse(input)
+    }
+
+    return resolveActiveView(
+      input.next.document,
+      input.next.activeViewId
+    )
   }
 }

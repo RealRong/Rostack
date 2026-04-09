@@ -8,6 +8,13 @@ import type {
 import type {
   RecordSet
 } from '../types'
+import type {
+  Stage
+} from './stage'
+import {
+  reuse,
+  shouldRun
+} from './stage'
 
 const toRecordIds = (records: readonly { id: RecordId }[]) => records.map(record => record.id)
 
@@ -22,3 +29,16 @@ export const createRecordSet = (
       visibleIds: toRecordIds(recordState.visibleRecords)
     }
   : undefined
+
+export const recordsStage: Stage<RecordSet> = {
+  run: input => {
+    if (!shouldRun(input.action)) {
+      return reuse(input)
+    }
+
+    const recordState = input.next.read.recordState()
+    return input.next.activeViewId
+      ? createRecordSet(input.next.activeViewId, recordState)
+      : undefined
+  }
+}

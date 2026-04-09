@@ -1,103 +1,51 @@
-import type { ClipboardPacket } from '@whiteboard/core/document'
-import type { ResizeDirection, TextWidthMode } from '@whiteboard/core/node'
+import type {
+  ClipboardPacket,
+  Slice,
+  SliceInsertOptions,
+  SliceInsertResult
+} from '@whiteboard/core/document'
 import type { Viewport } from '@whiteboard/core/types'
 import type {
   CanvasItemRef,
+  Document,
   EdgeDash,
   EdgeId,
   EdgeMarker,
+  EdgePatch,
   EdgeTextMode,
   EdgeType,
+  GroupId,
   NodeId
 } from '@whiteboard/core/types'
 import type { SelectionInput } from '@whiteboard/core/selection'
-import type { EngineInstance } from '@engine-types/instance'
 import type { CommandResult } from '@engine-types/result'
-import type { ViewportInputRuntime } from '../runtime/viewport'
-import type { EdgeOverlayEntry, EdgeGuide, MindmapDragFeedback } from '../runtime/overlay'
-import type { TextPreviewPatch } from '../runtime/overlay/types'
-import type { DrawPreview } from '../types/draw'
+import type { ViewportInputRuntime } from '../viewport'
+import type { EdgeOverlayEntry, EdgeGuide, MindmapDragFeedback } from '../overlay'
+import type { TextPreviewPatch } from '../overlay/types'
+import type { DrawPreview } from '../../types/draw'
 import type {
   Editor,
   EditorClipboardOptions,
   EditorClipboardTarget,
+  EditorDocumentApi,
   EditorDrawActions,
   EditorEdgeLabelPatch,
+  EditorEdgesApi,
+  EditorHistoryApi,
   EditorMindmapCommands,
+  EditorNodesApi,
+  EditorOrderMode,
   EditorSessionActions,
   EditorViewActions,
   EditorViewportActions
-} from '../types/editor'
-
-type EngineApi = EngineInstance['commands']
-type EngineNodeApi = EngineApi['node']
-
-export type NodePatchWriter = {
-  update: EngineNodeApi['update']
-  updateMany: EngineNodeApi['updateMany']
-}
-
-export type NodeLockMutations = {
-  set: (nodeIds: readonly NodeId[], locked: boolean) => CommandResult
-  toggle: (nodeIds: readonly NodeId[]) => CommandResult
-}
-
-export type NodeTextMutations = {
-  preview: (input: {
-    nodeId: NodeId
-    position?: {
-      x: number
-      y: number
-    }
-    size?: {
-      width: number
-      height: number
-    }
-    fontSize?: number
-    mode?: TextWidthMode
-    handle?: ResizeDirection
-  }) => void
-  clearPreview: (nodeId: NodeId) => void
-  cancel: (input: {
-    nodeId: NodeId
-  }) => void
-  commit: (input: {
-    nodeId: NodeId
-    field: 'text' | 'title'
-    value: string
-    size?: {
-      width: number
-      height: number
-    }
-  }) => CommandResult | undefined
-  setColor: (nodeIds: readonly NodeId[], color: string) => CommandResult
-  setSize: (input: {
-    nodeIds: readonly NodeId[]
-    value?: number
-    sizeById?: Readonly<Record<NodeId, { width: number; height: number }>>
-  }) => CommandResult
-  setWeight: (nodeIds: readonly NodeId[], weight?: number) => CommandResult
-  setItalic: (nodeIds: readonly NodeId[], italic: boolean) => CommandResult
-  setAlign: (
-    nodeIds: readonly NodeId[],
-    align?: 'left' | 'center' | 'right'
-  ) => CommandResult
-}
-
-export type NodeShapeMutations = {
-  setKind: (nodeIds: readonly NodeId[], kind: string) => CommandResult
-}
-
-export type NodeAppearanceMutations = {
-  setFill: (nodeIds: readonly NodeId[], fill: string) => CommandResult
-  setFillOpacity: (nodeIds: readonly NodeId[], opacity?: number) => CommandResult
-  setStroke: (nodeIds: readonly NodeId[], stroke: string) => CommandResult
-  setStrokeWidth: (nodeIds: readonly NodeId[], width: number) => CommandResult
-  setStrokeOpacity: (nodeIds: readonly NodeId[], opacity?: number) => CommandResult
-  setStrokeDash: (nodeIds: readonly NodeId[], dash?: readonly number[]) => CommandResult
-  setOpacity: (nodeIds: readonly NodeId[], opacity: number) => CommandResult
-  setTextColor: (nodeIds: readonly NodeId[], color: string) => CommandResult
-}
+} from '../../types/editor'
+import type {
+  NodeAppearanceMutations,
+  NodeLockMutations,
+  NodePatchWriter,
+  NodeShapeMutations,
+  NodeTextMutations
+} from '../node/types'
 
 export type ClipboardActions = {
   export: (target?: EditorClipboardTarget) => ClipboardPacket | undefined
@@ -108,11 +56,7 @@ export type ClipboardActions = {
   ) => boolean
 }
 
-export type CanvasOrderMode =
-  | 'front'
-  | 'back'
-  | 'forward'
-  | 'backward'
+export type OrderMode = EditorOrderMode
 
 export type CanvasActions = {
   duplicate: (
@@ -129,7 +73,7 @@ export type CanvasActions = {
   ) => boolean
   order: (
     target: SelectionInput,
-    mode: CanvasOrderMode
+    mode: OrderMode
   ) => boolean
 }
 
@@ -148,7 +92,7 @@ export type GroupActions = {
   ) => boolean
   order: (
     groupIds: readonly string[],
-    mode: CanvasOrderMode
+    mode: OrderMode
   ) => boolean
 }
 
@@ -198,11 +142,11 @@ export type EdgeLabelActions = {
 }
 
 export type EdgeActions = {
-  create: EngineApi['edge']['create']
-  move: EngineApi['edge']['move']
-  reconnect: EngineApi['edge']['reconnect']
-  delete: EngineApi['edge']['delete']
-  route: EngineApi['edge']['route']
+  create: EditorEdgesApi['create']
+  move: EditorEdgesApi['move']
+  reconnect: EditorEdgesApi['reconnect']
+  delete: EditorEdgesApi['remove']
+  route: EditorEdgesApi['route']
   set: (
     edgeIds: readonly EdgeId[],
     patch: EdgesPatch
@@ -213,14 +157,21 @@ export type EdgeActions = {
 
 export type {
   EditorEdgeLabelPatch
-} from '../types/editor'
+} from '../../types/editor'
 
 export type DocumentNodeTextApi = Pick<
   NodeTextMutations,
   'commit' | 'setColor' | 'setSize' | 'setWeight' | 'setItalic' | 'setAlign'
 >
 
-export type DocumentNodeApi = Omit<EngineNodeApi, 'update' | 'updateMany'> & {
+export type DocumentNodeApi = {
+  create: EditorNodesApi['create']
+  move: EditorNodesApi['move']
+  align: EditorNodesApi['align']
+  distribute: EditorNodesApi['distribute']
+  delete: (ids: NodeId[]) => CommandResult
+  deleteCascade: EditorNodesApi['remove']
+  duplicate: EditorNodesApi['duplicate']
   update: NodePatchWriter['update']
   updateMany: NodePatchWriter['updateMany']
   lock: NodeLockMutations
@@ -230,15 +181,53 @@ export type DocumentNodeApi = Omit<EngineNodeApi, 'update' | 'updateMany'> & {
 }
 
 export type DocumentRuntime = {
-  replace: EngineApi['document']['replace']
-  insert: EngineApi['document']['insert']
-  delete: EngineApi['document']['delete']
-  duplicate: EngineApi['document']['duplicate']
-  order: (refs: CanvasItemRef[], mode: CanvasOrderMode) => CommandResult
-  background: EngineApi['document']['background']
-  history: EngineApi['history']
-  group: EngineApi['group']
-  edge: EngineApi['edge']
+  replace: EditorDocumentApi['replace']
+  insert: (
+    slice: Slice,
+    options?: SliceInsertOptions
+  ) => CommandResult<Omit<SliceInsertResult, 'operations'>>
+  delete: (refs: CanvasItemRef[]) => CommandResult
+  duplicate: (refs: CanvasItemRef[]) => CommandResult<Omit<SliceInsertResult, 'operations'>>
+  order: (refs: CanvasItemRef[], mode: OrderMode) => CommandResult
+  background: {
+    set: (background?: Document['background']) => CommandResult
+  }
+  history: EditorHistoryApi
+  group: {
+    merge: (target: {
+      nodeIds?: readonly NodeId[]
+      edgeIds?: readonly EdgeId[]
+    }) => CommandResult<{ groupId: GroupId }>
+    order: {
+      set: (ids: GroupId[]) => CommandResult
+      bringToFront: (ids: GroupId[]) => CommandResult
+      sendToBack: (ids: GroupId[]) => CommandResult
+      bringForward: (ids: GroupId[]) => CommandResult
+      sendBackward: (ids: GroupId[]) => CommandResult
+    }
+    ungroup: (id: GroupId) => CommandResult<{
+      nodeIds: readonly NodeId[]
+      edgeIds: readonly EdgeId[]
+    }>
+    ungroupMany: (ids: GroupId[]) => CommandResult<{
+      nodeIds: readonly NodeId[]
+      edgeIds: readonly EdgeId[]
+    }>
+  }
+  edge: {
+    create: EditorEdgesApi['create']
+    move: EditorEdgesApi['move']
+    reconnect: EditorEdgesApi['reconnect']
+    update: (id: EdgeId, patch: EdgePatch) => CommandResult
+    updateMany: (
+      updates: readonly {
+        id: EdgeId
+        patch: EdgePatch
+      }[]
+    ) => CommandResult
+    delete: (ids: EdgeId[]) => CommandResult
+    route: EditorEdgesApi['route']
+  }
   node: DocumentNodeApi
   mindmap: EditorMindmapCommands
 }

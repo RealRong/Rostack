@@ -3,6 +3,7 @@ import {
   createYjsSession,
   type CollabSession
 } from '@whiteboard/collab'
+import type { Engine } from '@whiteboard/engine'
 import type { WhiteboardCollabOptions } from '../../types/common/collab'
 
 export const CollabLifecycle = ({
@@ -10,7 +11,7 @@ export const CollabLifecycle = ({
   engine
 }: {
   collab?: WhiteboardCollabOptions
-  engine: Parameters<typeof createYjsSession>[0]['engine']
+  engine: Engine
 }) => {
   const collabSessionRef = useRef<CollabSession | null>(null)
   const onCollabSessionRef = useRef(collab?.onSession)

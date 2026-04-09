@@ -3,33 +3,16 @@ import type {
   CalculationDistributionItem,
   CalculationResult
 } from '@dataview/core/calculation'
-import {
-  sameFilterRule
-} from '@dataview/core/filter'
-import {
-  sameGroup
-} from '@dataview/core/group'
-import {
-  sameSearch
-} from '@dataview/core/search'
-import {
-  sameSorters
-} from '@dataview/core/sort'
 import type {
   Field,
-  FieldId,
-  Filter,
-  View,
-  ViewCalc,
-  ViewDisplay
 } from '@dataview/core/contracts'
 import type {
   Appearance,
   AppearanceList,
+  FieldList,
   Schema,
   Section,
-  SectionKey,
-  ViewProjection
+  SectionKey
 } from './types'
 
 const equalList = <T,>(
@@ -45,18 +28,6 @@ const equalIds = <T extends string>(
   left: readonly T[],
   right: readonly T[]
 ) => equalList(left, right, Object.is)
-
-const equalOptional = <T,>(
-  left: T | undefined,
-  right: T | undefined,
-  equal: (left: T, right: T) => boolean
-) => {
-  if (!left || !right) {
-    return left === right
-  }
-
-  return equal(left, right)
-}
 
 const stableSerialize = (value: unknown): string => {
   if (value === undefined) {
@@ -111,56 +82,10 @@ const equalMap = <K, V>(
   return true
 }
 
-const equalDisplay = (
-  left: ViewDisplay,
-  right: ViewDisplay
-) => equalIds(left.fields, right.fields)
-
-const calcEntries = (
-  calc: ViewCalc
-) => Object.entries(calc)
-  .sort(([left], [right]) => left.localeCompare(right))
-
-const equalCalc = (
-  left: ViewCalc,
-  right: ViewCalc
-) => stableSerialize(calcEntries(left)) === stableSerialize(calcEntries(right))
-
-const equalFilter = (
-  left: Filter,
-  right: Filter
-) => (
-  left.mode === right.mode
-  && left.rules.length === right.rules.length
-  && left.rules.every((rule, index) => sameFilterRule(rule, right.rules[index]!))
-)
-
-const equalView = (
-  left: View,
-  right: View
-) => (
-  left.id === right.id
-  && left.type === right.type
-  && left.name === right.name
-  && sameSearch(left.search, right.search)
-  && equalFilter(left.filter, right.filter)
-  && sameSorters(left.sort, right.sort)
-  && sameGroup(left.group, right.group)
-  && equalCalc(left.calc, right.calc)
-  && equalDisplay(left.display, right.display)
-  && equalStableValue(left.options, right.options)
-  && equalIds(left.orders, right.orders)
-)
-
 const equalField = (
   left: Field,
   right: Field
 ) => equalStableValue(left, right)
-
-const equalSchema = (
-  left: Schema,
-  right: Schema
-) => equalMap(left.fields, right.fields, equalField)
 
 const equalAppearance = (
   left: Appearance,
@@ -169,14 +94,6 @@ const equalAppearance = (
   left.id === right.id
   && left.recordId === right.recordId
   && left.section === right.section
-)
-
-export const sameAppearanceList = (
-  left: AppearanceList,
-  right: AppearanceList
-) => (
-  equalIds(left.ids, right.ids)
-  && equalMap(left.byId, right.byId, equalAppearance)
 )
 
 const equalSection = (
@@ -189,19 +106,6 @@ const equalSection = (
   && left.collapsed === right.collapsed
   && equalIds(left.ids, right.ids)
   && equalStableValue(left.bucket, right.bucket)
-)
-
-export const sameSections = (
-  left: readonly Section[],
-  right: readonly Section[]
-) => equalList(left, right, equalSection)
-
-export const sameFieldList = (
-  left: Pick<ViewProjection['fields'], 'ids' | 'all'>,
-  right: Pick<ViewProjection['fields'], 'ids' | 'all'>
-) => (
-  equalIds(left.ids, right.ids)
-  && equalList(left.all, right.all, equalField)
 )
 
 const equalCalculationDistributionItem = (
@@ -247,23 +151,33 @@ const equalCalculationCollection = (
   right: CalculationCollection
 ) => equalMap(left.byField, right.byField, equalCalculationResult)
 
+export const sameSchema = (
+  left: Schema,
+  right: Schema
+) => equalMap(left.fields, right.fields, equalField)
+
+export const sameAppearanceList = (
+  left: AppearanceList,
+  right: AppearanceList
+) => (
+  equalIds(left.ids, right.ids)
+  && equalMap(left.byId, right.byId, equalAppearance)
+)
+
+export const sameSections = (
+  left: readonly Section[],
+  right: readonly Section[]
+) => equalList(left, right, equalSection)
+
+export const sameFieldList = (
+  left: Pick<FieldList, 'ids' | 'all'>,
+  right: Pick<FieldList, 'ids' | 'all'>
+) => (
+  equalIds(left.ids, right.ids)
+  && equalList(left.all, right.all, equalField)
+)
+
 export const sameCalculationsBySection = (
   left: ReadonlyMap<SectionKey, CalculationCollection>,
   right: ReadonlyMap<SectionKey, CalculationCollection>
 ) => equalMap(left, right, equalCalculationCollection)
-
-export const sameViewProjection = (
-  left: ViewProjection | undefined,
-  right: ViewProjection | undefined
-) => equalOptional(left, right, (current, next) => (
-  equalView(current.view, next.view)
-  && equalSchema(current.schema, next.schema)
-  && sameAppearanceList(current.appearances, next.appearances)
-  && sameSections(current.sections, next.sections)
-  && sameFieldList(current.fields, next.fields)
-  && sameCalculationsBySection(current.calculationsBySection, next.calculationsBySection)
-))
-
-export const viewProjection = {
-  equal: sameViewProjection
-} as const

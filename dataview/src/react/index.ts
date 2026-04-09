@@ -64,9 +64,9 @@ export type {
 } from './dataview'
 export type {
   PageLock,
+  PageState,
   PageSessionApi,
   PageSessionInput,
   PageSessionState,
-  ResolvedPageState,
   SettingsRoute
 } from './page/session/types'

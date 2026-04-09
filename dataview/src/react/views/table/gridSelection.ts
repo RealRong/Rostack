@@ -1,8 +1,10 @@
 import type {
   AppearanceId,
-  CellRef,
-  ViewProjection as CurrentView
+  CellRef
 } from '@dataview/engine/projection/view'
+import type {
+  TableCurrentView as CurrentView
+} from './currentView'
 import {
   gridSelection,
   type GridSelection

@@ -1,6 +1,6 @@
 import { createDerivedStore, type ReadStore } from '@shared/store'
 import type { InteractionState } from '@dataview/react/interaction'
-import type { ViewProjection as CurrentView } from '@dataview/engine/projection/view'
+import type { TableCurrentView as CurrentView } from './currentView'
 
 export interface Capabilities {
   canHover: boolean

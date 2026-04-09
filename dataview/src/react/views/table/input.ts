@@ -3,8 +3,10 @@ import { isTitleFieldId } from '@dataview/core/field'
 import type { FieldId } from '@dataview/core/contracts'
 import {
   type CellRef,
-  type ViewProjection as CurrentView
 } from '@dataview/engine/projection/view'
+import type {
+  TableCurrentView as CurrentView
+} from './currentView'
 import type {
   Selection,
   SelectionApi

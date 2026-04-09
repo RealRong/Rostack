@@ -62,19 +62,19 @@ export const createToolPaletteController = ({
   togglePrimaryTool: () => {
     closeMenu()
     if (tool.type === 'hand') {
-      editor.actions.session.tool.set(selectTool())
+      editor.session.tool.set(selectTool())
       return
     }
     if (tool.type !== 'select') {
-      editor.actions.session.tool.set(selectTool())
+      editor.session.tool.set(selectTool())
       return
     }
 
-    editor.actions.session.tool.set(handTool())
+    editor.session.tool.set(handTool())
   },
   toggleEdgeMenu: () => {
     if (tool.type !== 'edge') {
-      editor.actions.session.tool.set(edgeTool(palette.edgePreset))
+      editor.session.tool.set(edgeTool(palette.edgePreset))
       setOpenMenu('edge')
       return
     }
@@ -86,11 +86,11 @@ export const createToolPaletteController = ({
   },
   activateTextTool: () => {
     closeMenu()
-    editor.actions.session.tool.set(insertTool(TEXT_INSERT_PRESET.key))
+    editor.session.tool.set(insertTool(TEXT_INSERT_PRESET.key))
   },
   toggleDrawMenu: () => {
     if (tool.type !== 'draw') {
-      editor.actions.session.tool.set(drawTool(palette.drawKind))
+      editor.session.tool.set(drawTool(palette.drawKind))
       setDrawPanelOpen(false)
       setOpenMenu('draw')
       return
@@ -106,7 +106,7 @@ export const createToolPaletteController = ({
   },
   selectDrawKind: (value) => {
     setDrawPanelOpen(false)
-    editor.actions.session.tool.set(drawTool(value))
+    editor.session.tool.set(drawTool(value))
   },
   selectDrawSlot: (value) => {
     if (value === palette.drawBrush.slot) {
@@ -114,18 +114,18 @@ export const createToolPaletteController = ({
       return
     }
 
-    editor.actions.view.draw.slot(value)
+    editor.view.draw.slot(value)
     setDrawPanelOpen(true)
   },
   patchDrawStyle: (patch) => {
-    editor.actions.view.draw.patch(patch)
+    editor.view.draw.patch(patch)
   },
   selectEdgePreset: (value) => {
     closeMenu()
-    editor.actions.session.tool.set(edgeTool(value))
+    editor.session.tool.set(edgeTool(value))
   },
   selectInsertPreset: (value) => {
     closeMenu()
-    editor.actions.session.tool.set(insertTool(value))
+    editor.session.tool.set(insertTool(value))
   }
 })

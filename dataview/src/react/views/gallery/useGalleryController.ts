@@ -8,7 +8,8 @@ import {
 } from 'react'
 import type { ViewId } from '@dataview/core/contracts'
 import type {
-  CustomField
+  CustomField,
+  View
 } from '@dataview/core/contracts'
 import { isCustomField } from '@dataview/core/field'
 import {
@@ -29,8 +30,7 @@ import {
   type AppearanceId,
   type AppearanceList,
   type FieldList,
-  type Section,
-  type ViewProjection
+  type Section
 } from '@dataview/engine/projection/view'
 import {
   resolveDefaultAutoPanTargets
@@ -52,7 +52,12 @@ import {
 } from './virtual'
 import { usesOptionGroupingColors } from '@dataview/react/views/shared/optionGrouping'
 
-type GalleryCurrentView = Pick<ViewProjection, 'view' | 'appearances' | 'sections' | 'fields'>
+type GalleryCurrentView = {
+  view: View
+  appearances: AppearanceList
+  sections: readonly Section[]
+  fields: FieldList
+}
 
 export interface GalleryController {
   currentView: GalleryCurrentView

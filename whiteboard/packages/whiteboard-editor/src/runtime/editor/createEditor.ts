@@ -1,4 +1,5 @@
-import type { EngineInstance } from '@whiteboard/engine'
+import type { Engine } from '@whiteboard/engine'
+import type { EngineInstance } from '@engine-types/instance'
 import type { Viewport } from '@whiteboard/core/types'
 import type { NodeRegistry } from '../../types/node'
 import type { Tool } from '../../types/tool'
@@ -22,6 +23,8 @@ import { createEditorActions } from './actions'
 import { createEditorInput } from './input'
 import { createEditorState } from './state'
 import { createEditorWrite } from '../write'
+import { compileNodePatch } from '../compile/nodePatch'
+import { compileEdgePatch } from '../compile/edgePatch'
 
 export const createEditor = ({
   engine,
@@ -30,12 +33,13 @@ export const createEditor = ({
   initialViewport,
   registry,
 }: {
-  engine: EngineInstance
+  engine: Engine
   initialTool: Tool
   initialDrawPreferences: DrawPreferences
   initialViewport: Viewport
   registry: NodeRegistry
 }): Editor => {
+  const internalEngine = engine as EngineInstance
   const runtime = createRuntimeState({
     initialTool,
     initialDrawPreferences
@@ -54,9 +58,9 @@ export const createEditor = ({
     gesture: interaction.gesture
   })
   const readBundle = createRead({
-    engineRead: engine.read,
+    engineRead: internalEngine.read,
     registry,
-    history: engine.history,
+    history: internalEngine.history,
     runtime,
     interaction,
     overlay,
@@ -64,7 +68,7 @@ export const createEditor = ({
   })
   const read = readBundle.read
   const write = createEditorWrite({
-    engine,
+    engine: internalEngine,
     read,
     runtime,
     overlay,
@@ -73,12 +77,12 @@ export const createEditor = ({
   const snap = createSnapRuntime({
     readZoom: () => viewport.read.get().zoom,
     node: {
-      config: engine.config.node,
-      query: engine.read.index.snap.inRect
+      config: internalEngine.config.node,
+      query: internalEngine.read.index.snap.inRect
     },
     edge: {
-      config: engine.config.edge,
-      nodeSize: engine.config.nodeSize,
+      config: internalEngine.config.edge,
+      nodeSize: internalEngine.config.nodeSize,
       query: read.edge.connectCandidates
     }
   })
@@ -88,7 +92,7 @@ export const createEditor = ({
     viewport: viewport.read
   })
   const actions = createEditorActions({
-    engine,
+    engine: internalEngine,
     read,
     write,
     viewport: viewport.read,
@@ -100,7 +104,7 @@ export const createEditor = ({
     read,
     selection: readBundle.internal.selection,
     write,
-    config: engine.config,
+    config: internalEngine.config,
     snap
   }
   const edgeHover = createEdgeHoverService(interactionContext)
@@ -120,8 +124,8 @@ export const createEditor = ({
     runtime.resetLocal()
   }
 
-  const unsubscribeCommit = engine.commit.subscribe(() => {
-    const commit = engine.commit.get()
+  const unsubscribeCommit = internalEngine.commit.subscribe(() => {
+    const commit = internalEngine.commit.get()
     if (!commit) {
       return
     }
@@ -134,10 +138,87 @@ export const createEditor = ({
     runtime.reconcileAfterCommit(read)
   })
 
+  const patchNodes: Editor['document']['nodes']['patch'] = (
+    ids,
+    patch,
+    options
+  ) => {
+    const updates = compileNodePatch({
+      ids,
+      patch,
+      measuredSizeById: options?.measuredSizeById,
+      readNode: internalEngine.read.node.item.get
+    })
+    if (!updates.length) {
+      return undefined
+    }
+
+    return write.document.node.document.updateMany(updates, {
+      origin: options?.origin
+    })
+  }
+
+  const patchEdges: Editor['document']['edges']['patch'] = (
+    edgeIds,
+    patch
+  ) => {
+    const updates = compileEdgePatch({
+      edgeIds,
+      patch,
+      readEdge: (id) => internalEngine.read.edge.item.get(id)?.edge
+    })
+    if (!updates.length) {
+      return undefined
+    }
+
+    return write.document.edge.updateMany(updates)
+  }
+
   const editor = {
     read,
     state,
-    actions,
+    document: {
+      replace: write.document.doc.replace,
+      history: write.document.history,
+      selection: {
+        duplicate: actions.document.canvas.duplicate,
+        delete: actions.document.canvas.delete,
+        order: actions.document.canvas.order,
+        group: actions.document.groups.merge,
+        ungroup: actions.document.groups.ungroup,
+        frame: actions.document.nodes.frames.createFromBounds
+      },
+      nodes: {
+        create: write.document.node.create,
+        patch: patchNodes,
+        move: write.document.node.move,
+        align: write.document.node.align,
+        distribute: write.document.node.distribute,
+        remove: write.document.node.deleteCascade,
+        duplicate: write.document.node.duplicate
+      },
+      edges: {
+        create: write.document.edge.create,
+        patch: patchEdges,
+        move: write.document.edge.move,
+        reconnect: write.document.edge.reconnect,
+        remove: write.document.edge.delete,
+        route: write.document.edge.route,
+        labels: {
+          add: actions.document.edges.labels.add,
+          patch: actions.document.edges.labels.update,
+          remove: actions.document.edges.labels.remove
+        }
+      },
+      mindmaps: actions.document.mindmaps,
+      clipboard: {
+        copy: actions.document.clipboard.export,
+        cut: actions.document.clipboard.cut,
+        paste: actions.document.clipboard.insert
+      }
+    },
+    session: actions.session,
+    view: actions.view,
     input,
     configure: (config) => {
       engine.configure({
@@ -148,7 +229,7 @@ export const createEditor = ({
     dispose: () => {
       unsubscribeCommit()
       resetRuntimeState()
-      engine.dispose()
+      internalEngine.dispose()
     }
   } satisfies Editor
 

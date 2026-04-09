@@ -1,6 +1,6 @@
 export {
-  createResolvedPageStateStore,
-  resolvePageState,
-  resolveQueryBarState,
-  resolveSettingsState
-} from './resolved'
+  createPageStateStore,
+  pageState,
+  queryBarState,
+  settingsState
+} from './page'

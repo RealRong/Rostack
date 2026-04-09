@@ -5,10 +5,12 @@ import {
   createDerivedStore,
   type ReadStore
 } from '@shared/store'
+import type {
+  TableCurrentView
+} from './currentView'
 import {
-  sameViewProjection,
-  type ViewProjection
-} from '@dataview/engine/projection/view'
+  sameTableCurrentView
+} from './currentView'
 
 const createSchema = (fields: readonly Field[]) => ({
   fields: new Map<FieldId, Field>(
@@ -16,7 +18,7 @@ const createSchema = (fields: readonly Field[]) => ({
   )
 })
 
-export type TableViewProjection = ViewProjection
+export type TableViewProjection = TableCurrentView
 
 export const createTableViewStore = (input: {
   engine: Engine
@@ -47,5 +49,5 @@ export const createTableViewStore = (input: {
       calculationsBySection
     }
   },
-  isEqual: sameViewProjection
+  isEqual: sameTableCurrentView
 })

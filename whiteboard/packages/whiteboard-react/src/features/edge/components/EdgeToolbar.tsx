@@ -411,7 +411,12 @@ export const EdgeToolbar = ({
               if (!toolbar.primaryEdgeId) {
                 return
               }
-              editor.actions.document.edges.style.swapMarkers(toolbar.primaryEdgeId)
+              editor.document.edges.patch([toolbar.primaryEdgeId], {
+                style: {
+                  start: toolbar.end ?? 'none',
+                  end: toolbar.start ?? 'none'
+                }
+              })
             }}
           >
             <ArrowLeftRight size={18} strokeWidth={1.9} />
@@ -477,7 +482,7 @@ export const EdgeToolbar = ({
                 if (!toolbar.primaryEdgeId) {
                   return
                 }
-                editor.actions.document.edges.labels.add(toolbar.primaryEdgeId)
+                editor.document.edges.labels.add(toolbar.primaryEdgeId)
               }}
             >
               <Type size={18} strokeWidth={1.9} />
@@ -521,8 +526,10 @@ export const EdgeToolbar = ({
             <MarkerPanel
               value={toolbar.start}
               onChange={(value) => {
-                editor.actions.document.edges.style.set(toolbar.edgeIds, {
-                  start: value
+                editor.document.edges.patch(toolbar.edgeIds, {
+                  style: {
+                    start: value
+                  }
                 })
               }}
             />
@@ -530,8 +537,10 @@ export const EdgeToolbar = ({
             <MarkerPanel
               value={toolbar.end}
               onChange={(value) => {
-                editor.actions.document.edges.style.set(toolbar.edgeIds, {
-                  end: value
+                editor.document.edges.patch(toolbar.edgeIds, {
+                  style: {
+                    end: value
+                  }
                 })
               }}
             />
@@ -541,18 +550,24 @@ export const EdgeToolbar = ({
               dash={toolbar.dash}
               width={toolbar.width}
               onTypeChange={(value) => {
-                editor.actions.document.edges.set(toolbar.edgeIds, {
-                  type: value
+                editor.document.edges.patch(toolbar.edgeIds, {
+                  fields: {
+                    type: value
+                  }
                 })
               }}
               onDashChange={(value) => {
-                editor.actions.document.edges.style.set(toolbar.edgeIds, {
-                  dash: value
+                editor.document.edges.patch(toolbar.edgeIds, {
+                  style: {
+                    dash: value
+                  }
                 })
               }}
               onWidthChange={(value) => {
-                editor.actions.document.edges.style.set(toolbar.edgeIds, {
-                  width: value
+                editor.document.edges.patch(toolbar.edgeIds, {
+                  style: {
+                    width: value
+                  }
                 })
               }}
             />
@@ -560,8 +575,10 @@ export const EdgeToolbar = ({
             <ColorPanel
               value={toolbar.color}
               onChange={(value) => {
-                editor.actions.document.edges.style.set(toolbar.edgeIds, {
-                  color: value
+                editor.document.edges.patch(toolbar.edgeIds, {
+                  style: {
+                    color: value
+                  }
                 })
               }}
             />
@@ -569,8 +586,10 @@ export const EdgeToolbar = ({
             <TextModePanel
               value={toolbar.textMode}
               onChange={(value) => {
-                editor.actions.document.edges.set(toolbar.edgeIds, {
-                  textMode: value
+                editor.document.edges.patch(toolbar.edgeIds, {
+                  fields: {
+                    textMode: value
+                  }
                 })
               }}
             />

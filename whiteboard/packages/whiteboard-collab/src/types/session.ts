@@ -1,5 +1,5 @@
 import type { ReadStore } from '@shared/store'
-import type { EngineInstance } from '@whiteboard/engine'
+import type { Engine } from '@whiteboard/engine'
 import type * as Y from 'yjs'
 import type {
   CollabBootstrapMode,
@@ -8,7 +8,7 @@ import type {
 } from './provider'
 
 export type CreateYjsSessionOptions = {
-  engine: EngineInstance
+  engine: Engine
   doc: Y.Doc
   provider?: CollabProvider
   bootstrap?: CollabBootstrapMode

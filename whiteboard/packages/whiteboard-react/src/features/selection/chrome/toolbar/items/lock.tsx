@@ -12,7 +12,11 @@ export const lockItem: ToolbarItemSpec = {
       active={context.locked === 'all'}
       title={context.locked === 'all' ? 'Unlock' : 'Lock'}
       onClick={() => {
-        editor.actions.document.nodes.lock.set(context.nodeIds, context.locked !== 'all')
+        editor.document.nodes.patch(context.nodeIds, {
+          fields: {
+            locked: context.locked !== 'all'
+          }
+        })
       }}
     >
       <Lock size={18} strokeWidth={1.9} />

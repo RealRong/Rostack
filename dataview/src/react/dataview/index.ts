@@ -30,12 +30,12 @@ export type {
 } from '@dataview/react/runtime/selection'
 export type {
   PageLock,
+  PageState,
   PageSessionApi,
   PageSessionInput,
   PageSessionState,
   QueryBarEntry,
   QueryBarState,
-  ResolvedPageState,
   SettingsRoute,
   SettingsState
 } from '@dataview/react/page/session/types'

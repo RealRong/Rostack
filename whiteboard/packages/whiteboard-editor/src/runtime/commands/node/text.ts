@@ -1,6 +1,6 @@
 import { isTextContentEmpty } from '@whiteboard/core/node'
 import type { NodeId, Size } from '@whiteboard/core/types'
-import type { EngineInstance } from '@whiteboard/engine'
+import type { EngineInstance } from '@engine-types/instance'
 import type {
   EditorPreviewWrite,
   EditorNodeAppearanceCommands,

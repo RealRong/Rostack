@@ -82,7 +82,10 @@ export const createYjsSession = ({
     if (change.kind === 'replace') {
       suppressLocalMirror = true
       try {
-        engine.commands.document.replace(change.document)
+        engine.execute({
+          type: 'document.replace',
+          document: change.document
+        })
       } finally {
         suppressLocalMirror = false
       }
@@ -152,7 +155,10 @@ export const createYjsSession = ({
 
     suppressLocalMirror = true
     try {
-      engine.commands.document.replace(snapshot)
+      engine.execute({
+        type: 'document.replace',
+        document: snapshot
+      })
     } finally {
       suppressLocalMirror = false
     }

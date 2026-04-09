@@ -35,7 +35,12 @@ import type {
   KeyedReadStore,
   ReadStore
 } from '@shared/store'
-import type { EngineCommands } from './command'
+import type {
+  EngineCommands,
+  EngineCommand,
+  ExecuteOptions,
+  ExecuteResult
+} from './command'
 import type { Commit } from './commit'
 import type { CommandResult } from './result'
 import type { SelectionTarget } from '@whiteboard/core/selection'
@@ -141,21 +146,34 @@ export type EngineRuntimeOptions = {
   history?: Partial<HistoryConfig>
 }
 
-export type EngineInstance = {
+export type EngineHistory = ReadStore<HistoryState> & {
+  undo: () => CommandResult
+  redo: () => CommandResult
+  clear: () => void
+}
+
+export type Engine = {
   config: Readonly<BoardConfig>
   document: {
     get: () => Document
   }
   read: EngineRead
-  history: ReadStore<HistoryState>
+  history: EngineHistory
   commit: ReadStore<Commit | null>
-  commands: EngineCommands
+  execute: <C extends EngineCommand>(
+    command: C,
+    options?: ExecuteOptions
+  ) => ExecuteResult<C>
   applyOperations: (
     operations: readonly Operation[],
     options?: ApplyOperationsOptions
   ) => CommandResult
   configure: (config: EngineRuntimeOptions) => void
   dispose: () => void
+}
+
+export type EngineInstance = Engine & {
+  commands: EngineCommands
 }
 
 export type EngineDocument = {

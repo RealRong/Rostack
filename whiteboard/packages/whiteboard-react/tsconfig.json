@@ -10,6 +10,7 @@
       "#react/*": ["src/*"],
       "@ui": ["../../../ui/src/index.ts"],
       "@ui/*": ["../../../ui/src/*"],
+      "@whiteboard/collab": ["../whiteboard-collab/src/index.ts"],
       "@whiteboard/core/*": ["../whiteboard-core/src/*/index.ts"],
       "@whiteboard/editor": ["../whiteboard-editor/src/index.ts"],
       "@whiteboard/editor/draw": ["../whiteboard-editor/src/draw.ts"],

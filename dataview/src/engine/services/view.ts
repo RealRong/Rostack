@@ -5,6 +5,7 @@ import type {
   Command,
   CustomFieldId,
   CustomFieldKind,
+  View,
   ViewGroup,
   ViewType,
   RecordId,
@@ -12,23 +13,29 @@ import type {
 } from '@dataview/core/contracts'
 import {
   group as groupCore,
+  type ViewGroupProjection,
   type GroupWriteResult
 } from '@dataview/core/group'
 import { getDocumentViewById } from '@dataview/core/document'
 import { isTitleFieldId } from '@dataview/core/field'
 import { createUniqueFieldName } from '@dataview/core/field'
 import {
-  move,
-  readSectionRecordIds,
   recordIdsOfAppearances,
-  resolveViewProjection,
+} from '@dataview/engine/project/appearances'
+import {
+  readSectionRecordIds,
+} from '@dataview/engine/project/sections'
+import type {
+  AppearanceId,
+  AppearanceList,
+  Section,
+  SectionKey
+} from '@dataview/engine/project/types'
+import {
+  move,
   toRecordField,
-  type AppearanceId,
-  type AppearanceList,
   type CellRef,
   type Placement,
-  type SectionKey,
-  type ViewProjection
 } from '@dataview/engine/projection/view'
 import { createRecordId } from '@dataview/engine/command/entityId'
 import { meta, renderMessage } from '@dataview/meta'
@@ -192,18 +199,14 @@ const createGroupWriteCommands = (input: {
 }
 
 const readGroupWriteContext = (
-  projection: Pick<ViewProjection, 'view' | 'schema'>
+  groupProjection: ViewGroupProjection | undefined
 ): {
   group: ViewGroup
   field: Field
 } | undefined => {
-  const group = projection.view.group
-  if (!group) {
-    return undefined
-  }
-
-  const field = projection.schema.fields.get(group.field)
-  return field
+  const group = groupProjection?.group
+  const field = groupProjection?.field
+  return group && field
     ? {
         group,
         field
@@ -211,8 +214,15 @@ const readGroupWriteContext = (
     : undefined
 }
 
+interface ActiveViewContext {
+  view: View
+  groupProjection: ViewGroupProjection | undefined
+  appearances: AppearanceList
+  sections: readonly Section[]
+}
+
 export const createViewEngineApi = (options: {
-  engine: Pick<Engine, 'read' | 'command' | 'fields'>
+  engine: Pick<Engine, 'read' | 'project' | 'command' | 'fields'>
   viewId: ViewId
 }): ViewEngineApi => {
   const dispatch = (
@@ -220,7 +230,25 @@ export const createViewEngineApi = (options: {
   ) => options.engine.command(command)
   const readDocument = () => options.engine.read.document.get()
   const readCurrentView = () => getDocumentViewById(readDocument(), options.viewId)
-  const readCurrentProjection = () => resolveViewProjection(readDocument(), options.viewId)
+  const readCurrentProjection = (): ActiveViewContext | undefined => {
+    const view = options.engine.read.activeView.get()
+    if (!view || view.id !== options.viewId) {
+      return undefined
+    }
+
+    const appearances = options.engine.project.appearances.get()
+    const sections = options.engine.project.sections.get()
+    if (!appearances || !sections) {
+      return undefined
+    }
+
+    return {
+      view,
+      groupProjection: options.engine.project.group.get(),
+      appearances,
+      sections
+    }
+  }
 
   const commit = (command: Command | readonly Command[]) => dispatch(command).applied
 
@@ -263,7 +291,7 @@ export const createViewEngineApi = (options: {
         return
       }
 
-      const groupWrite = readGroupWriteContext(currentView)
+      const groupWrite = readGroupWriteContext(currentView.groupProjection)
       const plan = move.plan(currentView.appearances, appearanceIds, target)
       if (!plan.changed || !plan.ids.length) {
         return
@@ -331,7 +359,7 @@ export const createViewEngineApi = (options: {
         return undefined
       }
 
-      const groupWrite = readGroupWriteContext(currentView)
+      const groupWrite = readGroupWriteContext(currentView.groupProjection)
       if (currentView.view.group && !groupWrite) {
         return undefined
       }
@@ -874,7 +902,7 @@ export const createViewEngineApi = (options: {
         return undefined
       }
 
-      const groupWrite = readGroupWriteContext(currentView)
+      const groupWrite = readGroupWriteContext(currentView.groupProjection)
       if (currentView.view.group && !groupWrite) {
         return undefined
       }
@@ -949,7 +977,7 @@ export const createViewEngineApi = (options: {
         return
       }
 
-      const groupWrite = readGroupWriteContext(currentView)
+      const groupWrite = readGroupWriteContext(currentView.groupProjection)
       if (!groupWrite) {
         return
       }

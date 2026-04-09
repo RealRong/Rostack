@@ -17,9 +17,11 @@ import {
   type FieldList,
   type AppearanceId,
   type CellRef,
-  type ViewProjection as CurrentView,
   sameCellRef
 } from '@dataview/engine/projection/view'
+import type {
+  TableCurrentView as CurrentView
+} from '../currentView'
 import {
   getRecordFieldValue,
   resolveFieldPrimaryAction

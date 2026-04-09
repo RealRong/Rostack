@@ -39,14 +39,18 @@ export const fillItem: ToolbarItemSpec = {
       fill={context.fill}
       fillOpacity={context.fillOpacity}
       onFillChange={(value) => {
-        editor.actions.document.nodes.style.set(context.nodeIds, {
-          fill: value
+        editor.document.nodes.patch(context.nodeIds, {
+          style: {
+            fill: value
+          }
         })
       }}
       onFillOpacityChange={context.canEditFillOpacity
         ? (value) => {
-            editor.actions.document.nodes.style.set(context.nodeIds, {
-              fillOpacity: value
+            editor.document.nodes.patch(context.nodeIds, {
+              style: {
+                fillOpacity: value
+              }
             })
           }
         : undefined}

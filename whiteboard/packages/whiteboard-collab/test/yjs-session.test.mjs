@@ -24,11 +24,14 @@ test('engine-first bootstrap mirrors local commits into Y.Doc', () => {
 
   session.connect()
 
-  const result = engine.commands.node.create({
-    type: 'text',
-    position: { x: 10, y: 20 },
-    data: {
-      text: 'hello'
+  const result = engine.execute({
+    type: 'node.create',
+    payload: {
+      type: 'text',
+      position: { x: 10, y: 20 },
+      data: {
+        text: 'hello'
+      }
     }
   })
 
@@ -61,11 +64,14 @@ test('shared Y.Doc sessions replay remote operations and keep remote history out
   })
   sessionB.connect()
 
-  const createResult = engineA.commands.node.create({
-    type: 'text',
-    position: { x: 0, y: 0 },
-    data: {
-      text: 'remote seed'
+  const createResult = engineA.execute({
+    type: 'node.create',
+    payload: {
+      type: 'text',
+      position: { x: 0, y: 0 },
+      data: {
+        text: 'remote seed'
+      }
     }
   })
 
@@ -76,39 +82,51 @@ test('shared Y.Doc sessions replay remote operations and keep remote history out
   const snapshotAfterCreate = engineB.document.get()
   assert.ok(snapshotAfterCreate.nodes[nodeId])
   assert.equal(
-    engineB.commands.history.get().undoDepth,
+    engineB.history.get().undoDepth,
     0
   )
 
-  const setResult = engineA.commands.node.update(nodeId, {
-    records: [
-      {
-        scope: 'data',
-        op: 'set',
-        path: 'items',
-        value: ['a']
+  const setResult = engineA.execute({
+    type: 'node.patch',
+    updates: [{
+      id: nodeId,
+      update: {
+        records: [
+          {
+            scope: 'data',
+            op: 'set',
+            path: 'items',
+            value: ['a']
+          }
+        ]
       }
-    ]
+    }]
   })
   assert.equal(setResult.ok, true)
 
-  const spliceResult = engineA.commands.node.update(nodeId, {
-    records: [
-      {
-        scope: 'data',
-        op: 'splice',
-        path: 'items',
-        index: 1,
-        deleteCount: 0,
-        values: ['b']
-      },
-      {
-        scope: 'data',
-        op: 'set',
-        path: 'nested.value',
-        value: 'synced'
+  const spliceResult = engineA.execute({
+    type: 'node.patch',
+    updates: [{
+      id: nodeId,
+      update: {
+        records: [
+          {
+            scope: 'data',
+            op: 'splice',
+            path: 'items',
+            index: 1,
+            deleteCount: 0,
+            values: ['b']
+          },
+          {
+            scope: 'data',
+            op: 'set',
+            path: 'nested.value',
+            value: 'synced'
+          }
+        ]
       }
-    ]
+    }]
   })
   assert.equal(spliceResult.ok, true)
 
@@ -116,7 +134,7 @@ test('shared Y.Doc sessions replay remote operations and keep remote history out
   assert.deepEqual(syncedNode?.data?.items, ['a', 'b'])
   assert.equal(syncedNode?.data?.nested?.value, 'synced')
   assert.equal(
-    engineB.commands.history.get().undoDepth,
+    engineB.history.get().undoDepth,
     0
   )
 

@@ -8,11 +8,15 @@ export type {
 } from './runtime/state/edit'
 export type {
   Editor,
-  EditorActions,
-  EditorOverlayRead,
+  EditorConfig,
+  EditorDocumentApi,
   EditorRead,
+  EditorSessionApi,
   EditorState,
-  EditorViewportRead,
+  EditorViewApi,
+  EditorNodePatch,
+  EditorEdgePatch,
+  MindmapNodePatch,
   EditorClipboardOptions,
   EditorClipboardTarget,
   EditorInput

@@ -1,12 +1,11 @@
 import type {
   DataDoc,
+  View,
   ViewId
 } from '@dataview/core/contracts'
 import {
-  getDocumentActiveViewId,
   getDocumentFieldById,
-  getDocumentCustomFields,
-  getDocumentViewById
+  getDocumentCustomFields
 } from '@dataview/core/document'
 import {
   createDerivedStore,
@@ -17,18 +16,19 @@ import {
   normalizeSettingsRoute
 } from '@dataview/react/page/session/settings'
 import type {
+  PageState,
   PageSessionState,
   QueryBarEntry,
   QueryBarState,
-  ResolvedPageState,
   SettingsState
 } from '@dataview/react/page/session/types'
+
 const resolveQueryBarEntry = (
   document: DataDoc,
-  viewId: ViewId | undefined,
+  activeViewId: ViewId | undefined,
   entry: QueryBarEntry | null
 ): QueryBarEntry | null => {
-  if (!entry || !viewId) {
+  if (!entry || !activeViewId) {
     return null
   }
 
@@ -36,7 +36,7 @@ const resolveQueryBarEntry = (
     return entry
   }
 
-  const activeView = document.views.byId[viewId]
+  const activeView = document.views.byId[activeViewId]
   if (!activeView) {
     return null
   }
@@ -63,17 +63,17 @@ const resolveQueryBarEntry = (
     : null
 }
 
-export const resolveQueryBarState = (
+export const queryBarState = (
   document: DataDoc,
-  viewId: ViewId | undefined,
+  activeViewId: ViewId | undefined,
   queryState: QueryBarState
 ): QueryBarState => {
-  const activeView = viewId
-    ? document.views.byId[viewId]
+  const activeView = activeViewId
+    ? document.views.byId[activeViewId]
     : undefined
   const view = activeView
   const hasEntries = Boolean(view && (view.filter.rules.length > 0 || view.sort.length > 0))
-  const route = resolveQueryBarEntry(document, viewId, queryState.route)
+  const route = resolveQueryBarEntry(document, activeViewId, queryState.route)
 
   return {
     visible: queryState.visible && hasEntries,
@@ -81,48 +81,59 @@ export const resolveQueryBarState = (
   }
 }
 
-export const resolveSettingsState = (
-  document: DataDoc,
-  viewId: ViewId | undefined,
+export const settingsState = (input: {
+  document: DataDoc
+  activeViewId: ViewId | undefined
+  activeViewType: View['type'] | undefined
   settings: SettingsState
-): SettingsState => ({
-  visible: Boolean(viewId) && settings.visible,
-  route: viewId
+}): SettingsState => ({
+  visible: Boolean(input.activeViewId) && input.settings.visible,
+  route: input.activeViewId
     ? normalizeSettingsRoute(
-        settings.route,
-        getDocumentCustomFields(document),
+        input.settings.route,
+        getDocumentCustomFields(input.document),
         true,
-        getDocumentViewById(document, viewId)?.type
+        input.activeViewType
       )
-    : cloneSettingsRoute(settings.route)
+    : cloneSettingsRoute(input.settings.route)
 })
 
-export const resolvePageState = (
-  document: DataDoc,
-  page: PageSessionState,
+export const pageState = (input: {
+  document: DataDoc
+  activeViewId: ViewId | undefined
+  activeViewType: View['type'] | undefined
+  page: PageSessionState
   valueEditorOpen: boolean
-): ResolvedPageState => {
-  const viewId = getDocumentActiveViewId(document)
-  const lock = valueEditorOpen
+}): PageState => {
+  const lock = input.valueEditorOpen
     ? 'value-editor'
     : null
 
   return {
-    query: resolveQueryBarState(document, viewId, page.query),
-    settings: resolveSettingsState(document, viewId, page.settings),
-    valueEditorOpen,
+    query: queryBarState(input.document, input.activeViewId, input.page.query),
+    settings: settingsState({
+      document: input.document,
+      activeViewId: input.activeViewId,
+      activeViewType: input.activeViewType,
+      settings: input.page.settings
+    }),
+    valueEditorOpen: input.valueEditorOpen,
     lock
   }
 }
 
-export const createResolvedPageStateStore = (options: {
+export const createPageStateStore = (options: {
   document: ReadStore<DataDoc>
+  activeViewId: ReadStore<ViewId | undefined>
+  activeView: ReadStore<View | undefined>
   page: ReadStore<PageSessionState>
   valueEditorOpen: ReadStore<boolean>
-}) => createDerivedStore<ResolvedPageState>({
-  get: read => resolvePageState(
-    read(options.document),
-    read(options.page),
-    read(options.valueEditorOpen)
-  )
+}) => createDerivedStore<PageState>({
+  get: read => pageState({
+    document: read(options.document),
+    activeViewId: read(options.activeViewId),
+    activeViewType: read(options.activeView)?.type,
+    page: read(options.page),
+    valueEditorOpen: read(options.valueEditorOpen)
+  })
 })

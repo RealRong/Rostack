@@ -11,11 +11,9 @@ export type {
   Section,
   SectionBucket,
   SectionKey,
-  ViewFieldRef,
-  ViewProjection
+  ViewFieldRef
 } from './types'
 export {
-  createAppearances,
   recordIdsOfAppearances
 } from './appearances'
 export {
@@ -33,23 +31,5 @@ export {
   move
 } from './move'
 export {
-  sameAppearanceList,
-  sameCalculationsBySection,
-  sameFieldList,
-  sameSections,
-  sameViewProjection,
-  viewProjection
-} from './equality'
-export {
-  resolveProjection,
-  resolveViewProjection,
-  type ProjectionResult,
-  type ProjectionSection
-} from './projection'
-export {
-  createFields
-} from './fields'
-export {
-  createSections,
   sections
 } from './sections'

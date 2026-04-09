@@ -1,9 +1,13 @@
 import type {
   CreateEngineOptions,
+  Engine,
   EngineInstance,
   EngineRuntimeOptions
 } from '@engine-types/instance'
 import type {
+  EngineCommand,
+  ExecuteOptions,
+  ExecuteResult,
   WriteCommandMap,
   WriteDomain,
   WriteInput,
@@ -31,7 +35,7 @@ export const createEngine = ({
   document,
   onDocumentChange,
   config: overrides
-}: CreateEngineOptions): EngineInstance => {
+}: CreateEngineOptions): Engine => {
   const config = resolveBoardConfig(overrides)
   const resolvedRegistries = registries ?? createRegistries()
   const documentSource = createDocumentSource(normalizeDocument(document, config))
@@ -118,10 +122,13 @@ export const createEngine = ({
     get: writer.history.get,
     subscribe: (listener: () => void) => writer.history.subscribe(() => {
       listener()
-    })
+    }),
+    undo: replay(writer.history.undo, 'undo'),
+    redo: replay(writer.history.redo, 'redo'),
+    clear: writer.history.clear
   }
 
-  const applyOperations: EngineInstance['applyOperations'] = (
+  const applyOperations: Engine['applyOperations'] = (
     operations,
     options
   ) => publish(
@@ -135,6 +142,342 @@ export const createEngine = ({
   const commands = createCommands({
     write
   })
+
+  const execute = <C extends EngineCommand>(
+    command: C,
+    options?: ExecuteOptions
+  ): ExecuteResult<C> => {
+    const origin = options?.origin ?? ('origin' in command ? command.origin : undefined) ?? 'user'
+
+    switch (command.type) {
+      case 'document.replace':
+        return publish(writer.replace(command.document), 'replace') as ExecuteResult<C>
+      case 'document.insert':
+        return write.apply({
+          domain: 'document',
+          command: {
+            type: 'insert',
+            slice: command.slice,
+            options: command.options
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'document.delete':
+        return write.apply({
+          domain: 'document',
+          command: {
+            type: 'delete',
+            refs: command.refs
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'document.duplicate':
+        return write.apply({
+          domain: 'document',
+          command: {
+            type: 'duplicate',
+            refs: command.refs
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'document.background.set':
+        return write.apply({
+          domain: 'document',
+          command: {
+            type: 'background',
+            background: command.background
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'document.order':
+        return write.apply({
+          domain: 'document',
+          command: {
+            type: 'order',
+            mode: command.mode,
+            refs: command.refs
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'node.create':
+        return write.apply({
+          domain: 'node',
+          command: {
+            type: 'create',
+            payload: command.payload
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'node.move':
+        return write.apply({
+          domain: 'node',
+          command: {
+            type: 'move',
+            ids: command.ids,
+            delta: command.delta
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'node.patch':
+        return write.apply({
+          domain: 'node',
+          command: {
+            type: 'updateMany',
+            updates: command.updates
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'node.align':
+        return write.apply({
+          domain: 'node',
+          command: {
+            type: 'align',
+            ids: command.ids,
+            mode: command.mode
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'node.distribute':
+        return write.apply({
+          domain: 'node',
+          command: {
+            type: 'distribute',
+            ids: command.ids,
+            mode: command.mode
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'node.delete':
+        return write.apply({
+          domain: 'node',
+          command: {
+            type: 'delete',
+            ids: command.ids
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'node.deleteCascade':
+        return write.apply({
+          domain: 'node',
+          command: {
+            type: 'deleteCascade',
+            ids: command.ids
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'node.duplicate':
+        return write.apply({
+          domain: 'node',
+          command: {
+            type: 'duplicate',
+            ids: command.ids
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'group.merge':
+        return write.apply({
+          domain: 'group',
+          command: {
+            type: 'merge',
+            target: command.target
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'group.order':
+        return write.apply({
+          domain: 'group',
+          command: {
+            type: 'order',
+            mode: command.mode,
+            ids: command.ids
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'group.ungroup':
+        return write.apply({
+          domain: 'group',
+          command: {
+            type: 'ungroup',
+            id: command.id
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'group.ungroupMany':
+        return write.apply({
+          domain: 'group',
+          command: {
+            type: 'ungroupMany',
+            ids: command.ids
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'edge.create':
+        return write.apply({
+          domain: 'edge',
+          command: {
+            type: 'create',
+            payload: command.payload
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'edge.move':
+        return write.apply({
+          domain: 'edge',
+          command: {
+            type: 'move',
+            edgeId: command.edgeId,
+            delta: command.delta
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'edge.reconnect':
+        return write.apply({
+          domain: 'edge',
+          command: {
+            type: 'updateMany',
+            updates: [{
+              id: command.edgeId,
+              patch: command.end === 'source'
+                ? { source: command.target }
+                : { target: command.target }
+            }]
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'edge.patch':
+        return write.apply({
+          domain: 'edge',
+          command: {
+            type: 'updateMany',
+            updates: command.updates
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'edge.delete':
+        return write.apply({
+          domain: 'edge',
+          command: {
+            type: 'delete',
+            ids: command.ids
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'edge.route.insert':
+        return write.apply({
+          domain: 'edge',
+          command: {
+            type: 'route',
+            mode: 'insert',
+            edgeId: command.edgeId,
+            point: command.point
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'edge.route.move':
+        return write.apply({
+          domain: 'edge',
+          command: {
+            type: 'route',
+            mode: 'move',
+            edgeId: command.edgeId,
+            index: command.index,
+            point: command.point
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'edge.route.remove':
+        return write.apply({
+          domain: 'edge',
+          command: {
+            type: 'route',
+            mode: 'remove',
+            edgeId: command.edgeId,
+            index: command.index
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'edge.route.clear':
+        return write.apply({
+          domain: 'edge',
+          command: {
+            type: 'route',
+            mode: 'clear',
+            edgeId: command.edgeId
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'mindmap.create':
+        return write.apply({
+          domain: 'mindmap',
+          command: {
+            type: 'create',
+            payload: command.payload
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'mindmap.delete':
+        return write.apply({
+          domain: 'mindmap',
+          command: {
+            type: 'delete',
+            ids: command.ids
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'mindmap.insert':
+        return write.apply({
+          domain: 'mindmap',
+          command: {
+            type: 'insert',
+            id: command.id,
+            input: command.input
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'mindmap.move':
+        return write.apply({
+          domain: 'mindmap',
+          command: {
+            type: 'move.subtree',
+            id: command.id,
+            input: command.input
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'mindmap.remove':
+        return write.apply({
+          domain: 'mindmap',
+          command: {
+            type: 'remove',
+            id: command.id,
+            input: command.input
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'mindmap.clone':
+        return write.apply({
+          domain: 'mindmap',
+          command: {
+            type: 'clone.subtree',
+            id: command.id,
+            input: command.input
+          },
+          origin
+        }) as ExecuteResult<C>
+      case 'mindmap.patchNode':
+        return write.apply({
+          domain: 'mindmap',
+          command: {
+            type: 'update.node',
+            id: command.id,
+            input: command.input
+          },
+          origin
+        }) as ExecuteResult<C>
+    }
+
+    throw new Error(`Unsupported command: ${(command as EngineCommand).type}`)
+  }
 
   const configure = ({
     history,
@@ -151,7 +494,7 @@ export const createEngine = ({
 
   const dispose = () => {}
 
-  return {
+  const engine = {
     config,
     document: {
       get: documentSource.get
@@ -159,9 +502,12 @@ export const createEngine = ({
     read: readControl.read,
     history,
     commit,
-    commands,
+    execute,
     applyOperations,
     configure,
-    dispose
-  }
+    dispose,
+    commands
+  } as EngineInstance
+
+  return engine
 }

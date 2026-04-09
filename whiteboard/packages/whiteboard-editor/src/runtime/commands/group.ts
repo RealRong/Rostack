@@ -1,7 +1,7 @@
 import {
   normalizeSelectionTarget
 } from '@whiteboard/core/selection'
-import type { EngineCommands } from '@whiteboard/engine'
+import type { CommandResult } from '@engine-types/result'
 import type {
   EditorCanvasOrderMode,
   EditorGroupsActions,
@@ -14,7 +14,26 @@ import {
 type GroupActionHost = {
   read: Pick<EditorRead, 'group'>
   commands: {
-    group: Pick<EngineCommands['group'], 'merge' | 'order' | 'ungroup' | 'ungroupMany'>
+    group: {
+      merge: (target: {
+        nodeIds?: readonly string[]
+        edgeIds?: readonly string[]
+      }) => CommandResult<{ groupId: string }>
+      order: {
+        bringToFront: (ids: string[]) => CommandResult
+        sendToBack: (ids: string[]) => CommandResult
+        bringForward: (ids: string[]) => CommandResult
+        sendBackward: (ids: string[]) => CommandResult
+      }
+      ungroup: (id: string) => CommandResult<{
+        nodeIds: readonly string[]
+        edgeIds: readonly string[]
+      }>
+      ungroupMany: (ids: string[]) => CommandResult<{
+        nodeIds: readonly string[]
+        edgeIds: readonly string[]
+      }>
+    }
     selection: {
       replace: (input: {
         nodeIds?: readonly string[]
@@ -26,7 +45,7 @@ type GroupActionHost = {
 }
 
 const orderGroups = (
-  order: EngineCommands['group']['order'],
+  order: GroupActionHost['commands']['group']['order'],
   groupIds: readonly string[],
   mode: EditorCanvasOrderMode
 ) => {

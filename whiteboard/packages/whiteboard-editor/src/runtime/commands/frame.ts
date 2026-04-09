@@ -1,14 +1,17 @@
 import {
   createFrameNodeInput
 } from '@whiteboard/core/node'
-import type { EngineCommands } from '@whiteboard/engine'
+import type { NodeInput } from '@whiteboard/core/types'
+import type { CommandResult } from '@engine-types/result'
 import type { EditorNodesFramesActions } from '../../types/editor'
 
 const DEFAULT_FRAME_PADDING = 32
 
 type FrameActionHost = {
   commands: {
-    node: Pick<EngineCommands['node'], 'create'>
+    node: {
+      create: (input: NodeInput) => CommandResult<{ nodeId: string }>
+    }
     selection: {
       replace: (input: {
         nodeIds?: readonly string[]

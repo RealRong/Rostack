@@ -1,4 +1,4 @@
-import type { EngineInstance } from '@whiteboard/engine'
+import type { EngineInstance } from '@engine-types/instance'
 import {
   applySelectionTarget,
   isSelectionTargetEqual,

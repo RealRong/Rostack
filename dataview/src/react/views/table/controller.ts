@@ -9,9 +9,11 @@ import {
 } from '@dataview/react/interaction'
 import {
   type AppearanceId,
-  type Section,
-  type ViewProjection as CurrentView
+  type Section
 } from '@dataview/engine/projection/view'
+import type {
+  TableCurrentView as CurrentView
+} from './currentView'
 import type {
   Selection
 } from '@dataview/react/runtime/selection'
@@ -29,7 +31,7 @@ import {
 import type {
   ValueStore
 } from '@shared/store'
-import type { ResolvedPageState } from '@dataview/react/page/session/types'
+import type { PageState } from '@dataview/react/page/session/types'
 import type { ValueEditorApi } from '@dataview/react/runtime/valueEditor'
 import {
   createCapabilities,
@@ -200,7 +202,7 @@ const selectionRow = (input: {
 
 export const createTableController = (options: {
   engine: Engine
-  pageStore: ReadStore<ResolvedPageState>
+  pageStore: ReadStore<PageState>
   currentViewStore: ReadStore<CurrentView | undefined>
   selectionStore: ReadStore<Selection>
   marqueeStore: ReadStore<MarqueeSessionState | null>

@@ -51,7 +51,7 @@ export type PageLock =
   | null
   | 'value-editor'
 
-export interface ResolvedPageState extends PageSessionState {
+export interface PageState extends PageSessionState {
   valueEditorOpen: boolean
   lock: PageLock
 }

@@ -9,9 +9,11 @@ import type { HistoryConfig as KernelHistoryConfig } from '@whiteboard/core/kern
 import type { ResizeDirection, TextWidthMode } from '@whiteboard/core/node'
 import type { SelectionInput, SelectionTarget } from '@whiteboard/core/selection'
 import type { ReadStore } from '@shared/store'
-import type { CommandResult, EngineInstance } from '@whiteboard/engine'
+import type { EngineInstance } from '@engine-types/instance'
+import type { CommandResult } from '@engine-types/result'
 import type {
   Edge,
+  EdgeEnd,
   EdgeDash,
   EdgeId,
   EdgeMarker,
@@ -21,6 +23,7 @@ import type {
   MindmapNodeId,
   MindmapTree,
   NodeId,
+  Origin,
   Point,
   Rect,
   Size,
@@ -438,6 +441,136 @@ export type EditorDocumentActions = {
   clipboard: EditorClipboardCommands
 }
 
+export type EditorClipboardApi = {
+  copy: (target?: EditorClipboardTarget) => ClipboardPacket | undefined
+  cut: (target?: EditorClipboardTarget) => ClipboardPacket | undefined
+  paste: (
+    packet: ClipboardPacket,
+    options?: EditorClipboardOptions
+  ) => boolean
+}
+
+export type EditorSelectionApi = {
+  duplicate: (
+    target: SelectionInput,
+    options?: {
+      selectInserted?: boolean
+    }
+  ) => boolean
+  delete: (
+    target: SelectionInput,
+    options?: {
+      clearSelection?: boolean
+    }
+  ) => boolean
+  order: (
+    target: SelectionInput,
+    mode: EditorCanvasOrderMode
+  ) => boolean
+  group: (
+    target: SelectionInput,
+    options?: {
+      selectResult?: boolean
+    }
+  ) => boolean
+  ungroup: (
+    target: SelectionInput,
+    options?: {
+      fallbackSelection?: 'members' | 'none'
+    }
+  ) => boolean
+  frame: (
+    bounds: Rect,
+    options?: {
+      padding?: number
+    }
+  ) => boolean
+}
+
+export type EditorNodePatch = {
+  fields?: Partial<{
+    position: Point
+    size: Size
+    locked: boolean
+  }>
+  style?: Partial<{
+    fill: string
+    fillOpacity: number
+    stroke: string
+    strokeWidth: number
+    strokeOpacity: number
+    strokeDash: readonly number[]
+    opacity: number
+    color: string
+    fontSize: number
+    fontWeight: number
+    fontStyle: 'normal' | 'italic'
+    textAlign: 'left' | 'center' | 'right'
+  }>
+  data?: Partial<{
+    text: string
+    title: string
+    kind: string
+    background: string
+  }>
+}
+
+export type EditorNodesApi = {
+  create: EngineNodeCommands['create']
+  patch: (
+    ids: readonly NodeId[],
+    patch: EditorNodePatch,
+    options?: {
+      measuredSizeById?: Readonly<Record<NodeId, Size>>
+      origin?: Origin
+    }
+  ) => CommandResult | undefined
+  move: EngineNodeCommands['move']
+  align: EngineNodeCommands['align']
+  distribute: EngineNodeCommands['distribute']
+  remove: EngineNodeCommands['deleteCascade']
+  duplicate: EngineNodeCommands['duplicate']
+}
+
+export type EditorEdgePatch = {
+  fields?: Partial<{
+    source: EdgeEnd
+    target: EdgeEnd
+    type: EdgeType
+    textMode: EdgeTextMode
+  }>
+  style?: Partial<{
+    color: string
+    width: number
+    dash: EdgeDash
+    start: EdgeMarker
+    end: EdgeMarker
+  }>
+}
+
+export type MindmapNodePatch = Parameters<EditorMindmapCommands['updateNode']>[1]
+
+export type EditorEdgesApi = {
+  create: EngineCommands['edge']['create']
+  patch: (
+    edgeIds: readonly EdgeId[],
+    patch: EditorEdgePatch
+  ) => CommandResult | undefined
+  move: EngineCommands['edge']['move']
+  reconnect: EngineCommands['edge']['reconnect']
+  remove: EngineCommands['edge']['delete']
+  route: EngineCommands['edge']['route']
+  labels: {
+    add: (edgeId: EdgeId) => string | undefined
+    patch: (
+      edgeId: EdgeId,
+      labelId: string,
+      patch: EditorEdgeLabelPatch
+    ) => CommandResult | undefined
+    remove: (edgeId: EdgeId, labelId: string) => CommandResult | undefined
+  }
+}
+
 export type EditorSessionToolActions = {
   set: (tool: Tool) => void
 }
@@ -506,6 +639,25 @@ export type EditorActions = {
   session: EditorSessionActions
   view: EditorViewActions
   document: EditorDocumentActions
+}
+
+export type EditorDocumentApi = {
+  replace: EditorBoardActions['replace']
+  history: EditorHistoryActions
+  selection: EditorSelectionApi
+  nodes: EditorNodesApi
+  edges: EditorEdgesApi
+  mindmaps: EditorMindmapCommands
+  clipboard: EditorClipboardApi
+}
+
+export type EditorSessionApi = EditorSessionActions
+
+export type EditorViewApi = EditorViewActions
+
+export type EditorConfig = {
+  mindmapLayout: MindmapLayoutConfig
+  history?: KernelHistoryConfig
 }
 
 export type EditorDocumentNodeTextWrite = Pick<
@@ -577,11 +729,10 @@ export type EditorWriteApi = EditorWriteTransaction & {
 export type Editor = {
   read: EditorRead
   state: EditorState
-  actions: EditorActions
+  document: EditorDocumentApi
+  session: EditorSessionApi
+  view: EditorViewApi
   input: EditorInput
-  configure: (config: {
-    mindmapLayout: MindmapLayoutConfig
-    history?: KernelHistoryConfig
-  }) => void
+  configure: (config: EditorConfig) => void
   dispose: () => void
 }

@@ -1,8 +1,8 @@
 import type { CreateEngineOptions, Engine } from '../types'
 import { cloneDocument } from '@dataview/core/document'
 import { resolveWriteBatch } from '@dataview/engine/command'
+import { createProjectSource } from '../project/source'
 import { read as createRead } from '../runtime/read/read'
-import { createProjectSource } from '../runtime/project/source'
 import { commitRuntime } from '../runtime/commit/runtime'
 import { document } from './document'
 import {

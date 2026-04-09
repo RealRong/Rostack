@@ -7,7 +7,7 @@ import type {
 } from '@shared/store'
 import type {
   EngineProjectApi
-} from '../../types'
+} from '../types'
 import {
   createProjectRuntime
 } from './runtime'

@@ -8,7 +8,7 @@ import {
   FRAME_DEFAULT_TEXT_COLOR,
   FRAME_DEFAULT_TITLE
 } from '@whiteboard/core/node'
-import type { NodeDefinition, NodeWrite } from '#react/types/node'
+import type { NodeDefinition } from '#react/types/node'
 import { useEdit, useEditor, usePickRef } from '#react/runtime/hooks'
 import {
   isEscapeEditingKey,
@@ -43,12 +43,10 @@ const frameSchema = createSchema('frame', 'Frame', [
 
 type FrameNodeChromeProps = {
   node: Node
-  write: Pick<NodeWrite, 'update'>
 }
 
 export const FrameNodeChrome = ({
-  node,
-  write
+  node
 }: FrameNodeChromeProps) => {
   const editor = useEditor()
   const edit = useEdit()
@@ -74,10 +72,12 @@ export const FrameNodeChrome = ({
 
   const commit = () => {
     const nextTitle = draft.trim() || FRAME_DEFAULT_TITLE
-    editor.actions.document.nodes.text.commit({
-      nodeId: node.id,
-      field: 'title',
-      value: nextTitle
+    editor.view.preview.nodeText.clear(node.id)
+    editor.session.edit.clear()
+    editor.document.nodes.patch([node.id], {
+      data: {
+        title: nextTitle
+      }
     })
   }
 
@@ -105,8 +105,8 @@ export const FrameNodeChrome = ({
             if (isEscapeEditingKey(event)) {
               event.preventDefault()
               setDraft(title)
-              editor.actions.view.preview.nodeText.clear(node.id)
-              editor.actions.session.edit.clear()
+              editor.view.preview.nodeText.clear(node.id)
+              editor.session.edit.clear()
             }
           }}
           className="wb-frame-input"
@@ -154,10 +154,9 @@ export const FrameNodeDefinition: NodeDefinition = {
   defaultData: {
     title: FRAME_DEFAULT_TITLE
   },
-  render: ({ node, write }) => (
+  render: ({ node }) => (
     <FrameNodeChrome
       node={node}
-      write={write}
     />
   ),
   style: (props) => frameStyle(props.node),

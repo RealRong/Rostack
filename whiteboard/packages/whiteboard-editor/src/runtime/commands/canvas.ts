@@ -2,7 +2,8 @@ import {
   normalizeSelectionTarget,
   type SelectionInput
 } from '@whiteboard/core/selection'
-import type { EngineCommands } from '@whiteboard/engine'
+import type { CommandResult } from '@engine-types/result'
+import type { CanvasItemRef } from '@whiteboard/core/types'
 import type {
   EditorCanvasActions,
   EditorCanvasOrderMode,
@@ -16,8 +17,22 @@ import {
 type CanvasActionHost = {
   read: Pick<EditorRead, 'group'>
   commands: {
-    canvas: EngineCommands['canvas']
-    group: EngineCommands['group']['order']
+    canvas: {
+      delete: (refs: CanvasItemRef[]) => CommandResult
+      duplicate: (refs: CanvasItemRef[]) => CommandResult<any>
+      order: {
+        bringToFront: (refs: CanvasItemRef[]) => CommandResult
+        sendToBack: (refs: CanvasItemRef[]) => CommandResult
+        bringForward: (refs: CanvasItemRef[]) => CommandResult
+        sendBackward: (refs: CanvasItemRef[]) => CommandResult
+      }
+    }
+    group: {
+      bringToFront: (ids: string[]) => CommandResult
+      sendToBack: (ids: string[]) => CommandResult
+      bringForward: (ids: string[]) => CommandResult
+      sendBackward: (ids: string[]) => CommandResult
+    }
     selection: {
       replace: (input: SelectionInput) => void
       clear: () => void

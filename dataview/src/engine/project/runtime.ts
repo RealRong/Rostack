@@ -1,20 +1,16 @@
 import type {
   BucketSort,
   DataDoc,
-  RecordId,
   ViewId
 } from '@dataview/core/contracts'
-import {
-  getDocumentViewById
-} from '@dataview/core/document'
 import type {
   CalculationCollection
 } from '@dataview/core/calculation'
 import {
+  resolveViewFilterProjection,
   sameFilterRule,
   type FilterConditionProjection,
   type FilterRuleProjection,
-  resolveViewFilterProjection,
   type ViewFilterProjection
 } from '@dataview/core/filter'
 import {
@@ -34,29 +30,48 @@ import {
   resolveViewRecordState
 } from '@dataview/core/view'
 import {
+  getDocumentFields
+} from '@dataview/core/document'
+import {
   createDerivedStore,
   type ReadStore
 } from '@shared/store'
 import type {
-  ActiveViewProjection,
-  EngineProjectApi
-} from '../../types'
-import type {
-  ViewRecordSetProjection
-} from '../../types'
+  ActiveView,
+  EngineProjectApi,
+  RecordSet
+} from '../types'
 import type {
   AppearanceList,
   FieldList,
   Section,
   SectionKey
-} from '@dataview/engine/projection/view'
+} from './types'
 import {
-  resolveViewProjection,
+  createAppearances
+} from './appearances'
+import {
+  createCalculationsBySection
+} from './calculations'
+import {
   sameAppearanceList,
   sameCalculationsBySection,
   sameFieldList,
   sameSections
-} from '@dataview/engine/projection/view'
+} from './equality'
+import {
+  createFields
+} from './fields'
+import {
+  createRecordSet
+} from './records'
+import {
+  buildSectionProjection,
+  createSections
+} from './sections'
+import {
+  resolveActiveView
+} from './view'
 
 const equalList = <T,>(
   left: readonly T[],
@@ -91,9 +106,9 @@ const equalProjection = <T,>(
   return equal(left, right)
 }
 
-const equalActiveViewProjection = (
-  left: ActiveViewProjection | undefined,
-  right: ActiveViewProjection | undefined
+const equalActiveView = (
+  left: ActiveView | undefined,
+  right: ActiveView | undefined
 ) => equalProjection(left, right, (current, next) => (
   current.id === next.id
   && current.name === next.name
@@ -184,28 +199,55 @@ const equalGroupProjection = (
 ))
 
 interface ProjectSnapshot {
-  view: ActiveViewProjection | undefined
+  view: ActiveView | undefined
   filter: ViewFilterProjection | undefined
   group: ViewGroupProjection | undefined
   search: ViewSearchProjection | undefined
   sort: ViewSortProjection | undefined
-  records: ViewRecordSetProjection | undefined
+  records: RecordSet | undefined
   sections: readonly Section[] | undefined
   appearances: AppearanceList | undefined
   fields: FieldList | undefined
   calculations: ReadonlyMap<SectionKey, CalculationCollection> | undefined
 }
 
+const equalIds = (
+  left: readonly string[],
+  right: readonly string[]
+) => equalList(left, right, Object.is)
+
+const equalOptionalProjection = <T,>(
+  left: T | undefined,
+  right: T | undefined,
+  equal: (left: T, right: T) => boolean
+) => {
+  if (!left || !right) {
+    return left === right
+  }
+
+  return equal(left, right)
+}
+
+const equalRecordSet = (
+  left: RecordSet | undefined,
+  right: RecordSet | undefined
+) => equalOptionalProjection(left, right, (current, next) => (
+  current.viewId === next.viewId
+  && equalIds(current.derivedIds, next.derivedIds)
+  && equalIds(current.orderedIds, next.orderedIds)
+  && equalIds(current.visibleIds, next.visibleIds)
+))
+
 const equalProjectSnapshot = (
   left: ProjectSnapshot,
   right: ProjectSnapshot
 ) => (
-  equalActiveViewProjection(left.view, right.view)
+  equalActiveView(left.view, right.view)
   && equalFilterProjection(left.filter, right.filter)
   && equalGroupProjection(left.group, right.group)
   && equalSearchProjection(left.search, right.search)
   && equalSortProjection(left.sort, right.sort)
-  && equalRecordSetProjection(left.records, right.records)
+  && equalRecordSet(left.records, right.records)
   && equalOptionalProjection(left.sections, right.sections, sameSections)
   && equalOptionalProjection(left.appearances, right.appearances, sameAppearanceList)
   && equalOptionalProjection(left.fields, right.fields, sameFieldList)
@@ -225,53 +267,6 @@ const emptySnapshot = (): ProjectSnapshot => ({
   calculations: undefined
 })
 
-const equalIds = (
-  left: readonly string[],
-  right: readonly string[]
-) => equalList(left, right, Object.is)
-
-const equalOptionalProjection = <T,>(
-  left: T | undefined,
-  right: T | undefined,
-  equal: (left: T, right: T) => boolean
-) => {
-  if (!left || !right) {
-    return left === right
-  }
-
-  return equal(left, right)
-}
-
-const equalRecordSetProjection = (
-  left: ViewRecordSetProjection | undefined,
-  right: ViewRecordSetProjection | undefined
-) => equalOptionalProjection(left, right, (current, next) => (
-  current.viewId === next.viewId
-  && equalIds(current.derivedIds, next.derivedIds)
-  && equalIds(current.orderedIds, next.orderedIds)
-  && equalIds(current.visibleIds, next.visibleIds)
-))
-
-const resolveActiveViewProjection = (
-  document: DataDoc,
-  activeViewId: ViewId | undefined
-): ActiveViewProjection | undefined => {
-  if (!activeViewId) {
-    return undefined
-  }
-
-  const view = getDocumentViewById(document, activeViewId)
-  if (!view) {
-    return undefined
-  }
-
-  return {
-    id: view.id,
-    name: view.name,
-    type: view.type
-  }
-}
-
 const resolveProjectSnapshot = (input: {
   document: DataDoc
   activeViewId: ViewId | undefined
@@ -286,27 +281,51 @@ const resolveProjectSnapshot = (input: {
   }
 
   const recordState = resolveViewRecordState(document, activeViewId)
-  const viewProjection = resolveViewProjection(document, activeViewId)
-  const toRecordIds = (recordIds: readonly { id: RecordId }[]) => recordIds.map(record => record.id)
+  const view = recordState.view
+  if (!view) {
+    return emptySnapshot()
+  }
+
+  const fieldMap = new Map(
+    getDocumentFields(document).map(field => [field.id, field] as const)
+  )
+  const sectionProjection = buildSectionProjection({
+    document,
+    view,
+    visibleRecords: recordState.visibleRecords
+  })
+  const sections = createSections(
+    sectionProjection.sections,
+    view.group
+  )
+  const appearances = createAppearances({
+    byId: sectionProjection.appearances,
+    sections
+  })
+  const rowsById = new Map(
+    recordState.visibleRecords.map(record => [record.id, record] as const)
+  )
 
   return {
-    view: resolveActiveViewProjection(document, activeViewId),
+    view: resolveActiveView(document, activeViewId),
     filter: resolveViewFilterProjection(document, activeViewId),
     group: resolveViewGroupProjection(document, activeViewId),
     search: resolveViewSearchProjection(document, activeViewId),
     sort: resolveViewSortProjection(document, activeViewId),
-    records: recordState.view
-      ? {
-          viewId: activeViewId,
-          derivedIds: toRecordIds(recordState.derivedRecords),
-          orderedIds: toRecordIds(recordState.orderedRecords),
-          visibleIds: toRecordIds(recordState.visibleRecords)
-        }
-      : undefined,
-    sections: viewProjection?.sections,
-    appearances: viewProjection?.appearances,
-    fields: viewProjection?.fields,
-    calculations: viewProjection?.calculationsBySection
+    records: createRecordSet(activeViewId, recordState),
+    sections,
+    appearances,
+    fields: createFields({
+      fieldIds: view.display.fields,
+      byId: fieldMap
+    }),
+    calculations: createCalculationsBySection({
+      view,
+      fieldsById: fieldMap,
+      sections,
+      appearances: sectionProjection.appearances,
+      rowsById
+    })
   }
 }
 
@@ -332,12 +351,12 @@ export const createProjectRuntime = (options: {
   })
 
   return {
-    view: createProjectionStore(snapshot, current => current.view, equalActiveViewProjection),
+    view: createProjectionStore(snapshot, current => current.view, equalActiveView),
     filter: createProjectionStore(snapshot, current => current.filter, equalFilterProjection),
     group: createProjectionStore(snapshot, current => current.group, equalGroupProjection),
     search: createProjectionStore(snapshot, current => current.search, equalSearchProjection),
     sort: createProjectionStore(snapshot, current => current.sort, equalSortProjection),
-    records: createProjectionStore(snapshot, current => current.records, equalRecordSetProjection),
+    records: createProjectionStore(snapshot, current => current.records, equalRecordSet),
     sections: createProjectionStore(snapshot, current => current.sections, (left, right) => equalOptionalProjection(left, right, sameSections)),
     appearances: createProjectionStore(snapshot, current => current.appearances, (left, right) => equalOptionalProjection(left, right, sameAppearanceList)),
     fields: createProjectionStore(snapshot, current => current.fields, (left, right) => equalOptionalProjection(left, right, sameFieldList)),

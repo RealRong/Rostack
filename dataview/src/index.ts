@@ -69,7 +69,7 @@ export {
 } from './core/view'
 export { createEngine } from './engine/index'
 export type {
-  ActiveViewProjection,
+  ActiveView,
   CreateEngineOptions,
   CommitResult,
   CreatedEntities,
@@ -79,8 +79,12 @@ export type {
   EngineHistoryApi,
   EngineProjectApi,
   EngineReadApi,
+  FilterView,
+  GroupView,
   HistoryActionResult,
-  ViewRecordSetProjection,
+  RecordSet,
+  SearchView,
+  SortView,
   ViewAccessorApi,
   KanbanApi,
   KanbanCreateCardInput,

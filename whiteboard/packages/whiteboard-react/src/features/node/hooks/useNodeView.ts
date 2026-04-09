@@ -99,7 +99,7 @@ const resolveNodeOverlayViewState = (
 }
 
 const resolveNodeViewState = (
-  editor: Pick<Editor, 'actions' | 'read'>,
+  editor: Pick<Editor, 'document' | 'read'>,
   registry: Pick<NodeRegistry, 'get'>,
   nodeId: NodeId,
   item: NodeItem,
@@ -114,8 +114,8 @@ const resolveNodeViewState = (
   const rotation = typeof resolvedNode.rotation === 'number' ? resolvedNode.rotation : 0
   const definition = registry.get(resolvedNode.type)
   const write: NodeWrite = {
-    update: (update) => {
-      editor.actions.document.nodes.update(nodeId, update)
+    patch: (patch) => {
+      editor.document.nodes.patch([nodeId], patch)
     }
   }
   const renderProps: NodeRenderProps = {

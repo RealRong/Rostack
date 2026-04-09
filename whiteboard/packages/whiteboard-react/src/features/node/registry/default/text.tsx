@@ -1,7 +1,10 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
-import { resolveAnchoredRect } from '@whiteboard/core/node'
+import {
+  isTextContentEmpty,
+  resolveAnchoredRect
+} from '@whiteboard/core/node'
 import { useOptionalKeyedStoreValue, useStoreValue } from '@shared/react'
 import type { NodeDefinition, NodeRenderProps } from '#react/types/node'
 import {
@@ -226,7 +229,7 @@ const TextNodeRenderer = ({
 
   useLayoutEffect(() => {
     if (!editing || isSticky) {
-      editor.actions.view.preview.nodeText.clearSize(node.id)
+      editor.view.preview.nodeText.clearSize(node.id)
       return
     }
 
@@ -247,13 +250,13 @@ const TextNodeRenderer = ({
       return
     }
 
-    editor.actions.view.preview.nodeText.set(node.id, {
+    editor.view.preview.nodeText.set(node.id, {
       size
     })
   }, [draft, editing, editor, isSticky, node.id])
 
   useEffect(() => () => {
-    editor.actions.view.preview.nodeText.clearSize(node.id)
+    editor.view.preview.nodeText.clearSize(node.id)
   }, [editor, node.id])
 
   useLayoutEffect(() => {
@@ -301,7 +304,7 @@ const TextNodeRenderer = ({
         return
       }
 
-      editor.actions.view.preview.nodeText.set(node.id, {
+      editor.view.preview.nodeText.set(node.id, {
         position: {
           x: nextRect.x,
           y: nextRect.y
@@ -315,13 +318,13 @@ const TextNodeRenderer = ({
       return
     }
 
-    editor.actions.view.preview.nodeText.clearSize(node.id)
+    editor.view.preview.nodeText.clearSize(node.id)
 
     if (isSameSize(size, rect)) {
       return
     }
 
-    editor.actions.document.nodes.update(node.id, {
+    editor.document.nodes.patch([node.id], {
       fields: {
         size
       }
@@ -353,18 +356,36 @@ const TextNodeRenderer = ({
         })
       : undefined
 
-    editor.actions.document.nodes.text.commit({
-      nodeId: node.id,
-      field: 'text',
-      value: nextDraft,
+    editor.view.preview.nodeText.clear(node.id)
+    editor.session.edit.clear()
+
+    if (node.type === 'text' && isTextContentEmpty(nextDraft)) {
+      editor.session.selection.clear()
+      editor.document.nodes.remove([node.id])
+      return
+    }
+
+    editor.document.nodes.patch(
+      [node.id],
+      {
+        data: {
+          text: nextDraft
+        }
+      },
       size
-    })
+        ? {
+            measuredSizeById: {
+              [node.id]: size
+            }
+          }
+        : undefined
+    )
   }
 
   const cancel = () => {
     setDraft(text)
-    editor.actions.view.preview.nodeText.clear(node.id)
-    editor.actions.session.edit.clear()
+    editor.view.preview.nodeText.clear(node.id)
+    editor.session.edit.clear()
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {

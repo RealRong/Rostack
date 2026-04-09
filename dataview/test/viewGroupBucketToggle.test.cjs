@@ -6,9 +6,6 @@ const {
   createEngine,
   TITLE_FIELD_ID
 } = require('../.tmp/group-test-dist')
-const {
-  resolveViewProjection
-} = require('../.tmp/group-test-dist/engine/projection/view')
 
 const FIELD_STATUS = 'status'
 const FIELD_POINTS = 'points'
@@ -230,14 +227,12 @@ test('view group bucket toggle clears the final collapsed bucket state', () => {
     document: createDocument()
   })
 
+  engine.view.open(VIEW_TABLE)
   engine.view(VIEW_TABLE).group.set(FIELD_STATUS)
   engine.view(VIEW_TABLE).group.toggleCollapse('todo')
 
   let view = engine.read.view.get(VIEW_TABLE)
-  let projection = resolveViewProjection(
-    engine.document.export(),
-    VIEW_TABLE
-  )
+  let sections = engine.project.sections.get()
 
   assert.deepEqual(view.group.buckets, {
     todo: {
@@ -245,21 +240,18 @@ test('view group bucket toggle clears the final collapsed bucket state', () => {
     }
   })
   assert.equal(
-    projection.sections.find(section => section.key === 'todo')?.collapsed,
+    sections.find(section => section.key === 'todo')?.collapsed,
     true
   )
 
   engine.view(VIEW_TABLE).group.toggleCollapse('todo')
 
   view = engine.read.view.get(VIEW_TABLE)
-  projection = resolveViewProjection(
-    engine.document.export(),
-    VIEW_TABLE
-  )
+  sections = engine.project.sections.get()
 
   assert.equal(view.group?.buckets, undefined)
   assert.equal(
-    projection.sections.find(section => section.key === 'todo')?.collapsed,
+    sections.find(section => section.key === 'todo')?.collapsed,
     false
   )
 })

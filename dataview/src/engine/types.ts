@@ -37,11 +37,13 @@ import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
   AppearanceId,
   AppearanceList,
-  CellRef,
   FieldList,
   Placement,
   Section,
   SectionKey
+} from '@dataview/engine/project/types'
+import type {
+  CellRef
 } from '@dataview/engine/projection/view'
 
 export interface CreateEngineOptions {
@@ -78,13 +80,18 @@ export interface EngineReadApi {
   view: KeyedReadStore<ViewId, View | undefined>
 }
 
-export interface ActiveViewProjection {
+export interface ActiveView {
   id: ViewId
   name: string
   type: ViewType
 }
 
-export interface ViewRecordSetProjection {
+export type FilterView = ViewFilterProjection
+export type GroupView = ViewGroupProjection
+export type SearchView = ViewSearchProjection
+export type SortView = ViewSortProjection
+
+export interface RecordSet {
   viewId: ViewId
   derivedIds: readonly RecordId[]
   orderedIds: readonly RecordId[]
@@ -92,12 +99,12 @@ export interface ViewRecordSetProjection {
 }
 
 export interface EngineProjectApi {
-  view: ReadStore<ActiveViewProjection | undefined>
-  filter: ReadStore<ViewFilterProjection | undefined>
-  group: ReadStore<ViewGroupProjection | undefined>
-  search: ReadStore<ViewSearchProjection | undefined>
-  sort: ReadStore<ViewSortProjection | undefined>
-  records: ReadStore<ViewRecordSetProjection | undefined>
+  view: ReadStore<ActiveView | undefined>
+  filter: ReadStore<FilterView | undefined>
+  group: ReadStore<GroupView | undefined>
+  search: ReadStore<SearchView | undefined>
+  sort: ReadStore<SortView | undefined>
+  records: ReadStore<RecordSet | undefined>
   sections: ReadStore<readonly Section[] | undefined>
   appearances: ReadStore<AppearanceList | undefined>
   fields: ReadStore<FieldList | undefined>

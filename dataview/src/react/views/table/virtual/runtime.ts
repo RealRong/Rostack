@@ -1,7 +1,9 @@
 import type {
-  AppearanceId,
-  ViewProjection as CurrentView
+  AppearanceId
 } from '@dataview/engine/projection/view'
+import type {
+  TableCurrentView as CurrentView
+} from '../currentView'
 import type {
   MarqueeSessionState
 } from '@dataview/react/runtime/marquee'

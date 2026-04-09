@@ -10,6 +10,7 @@ import type {
   Field,
   CustomField,
   Row,
+  View,
   ViewId
 } from '@dataview/core/contracts'
 import { isCustomField } from '@dataview/core/field'
@@ -35,9 +36,6 @@ import {
   type Section,
   type SectionKey
 } from '@dataview/engine/projection/view'
-import type {
-  ViewProjection
-} from '@dataview/engine/projection/view'
 import {
   resolveDefaultAutoPanTargets
 } from '@dataview/react/interaction/autoPan'
@@ -58,7 +56,7 @@ import {
 import { usesOptionGroupingColors } from '@dataview/react/views/shared/optionGrouping'
 
 interface KanbanCurrentView {
-  view: ViewProjection['view']
+  view: View
   appearances: AppearanceList
   sections: readonly Section[]
   fields: FieldList

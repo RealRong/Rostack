@@ -9,12 +9,12 @@ import {
   createPageSessionApi
 } from '@dataview/react/page/session/api'
 import type {
+  PageState,
   PageSessionApi,
-  PageSessionInput,
-  ResolvedPageState
+  PageSessionInput
 } from '@dataview/react/page/session/types'
 import {
-  createResolvedPageStateStore
+  createPageStateStore
 } from '@dataview/react/page/state'
 import {
   createSelectionApi,
@@ -46,7 +46,7 @@ import type {
 export interface DataViewContextValue {
   engine: Engine
   page: PageSessionApi & {
-    store: ReadStore<ResolvedPageState>
+    store: ReadStore<PageState>
   }
   selection: SelectionApi
   marquee: MarqueeApi
@@ -175,8 +175,10 @@ export const createDataViewSession = (input: {
       appearances: () => input.engine.project.appearances.get()
     }
   })
-  const pageStateStore = createResolvedPageStateStore({
+  const pageStateStore = createPageStateStore({
     document: input.engine.read.document,
+    activeViewId: input.engine.read.activeViewId,
+    activeView: input.engine.read.activeView,
     page: page.store,
     valueEditorOpen: valueEditor.openStore
   })

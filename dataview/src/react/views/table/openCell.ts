@@ -1,8 +1,10 @@
 import type {
   CellRef,
-  ViewFieldRef,
-  ViewProjection as CurrentView
+  ViewFieldRef
 } from '@dataview/engine/projection/view'
+import type {
+  TableCurrentView as CurrentView
+} from './currentView'
 import type {
   ValueEditorApi,
   ValueEditorCloseAction,

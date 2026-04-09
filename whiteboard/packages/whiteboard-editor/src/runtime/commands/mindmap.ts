@@ -1,4 +1,4 @@
-import type { EngineInstance } from '@whiteboard/engine'
+import type { EngineInstance } from '@engine-types/instance'
 import {
   DEFAULT_ROOT_MOVE_THRESHOLD,
   resolveInsertPlan,
@@ -25,7 +25,15 @@ import type {
 type MindmapWriteHost = {
   read: EditorRead
   document: {
-    mindmap: EngineInstance['commands']['mindmap']
+    mindmap: {
+      create: (payload?: Parameters<EngineInstance['execute']>[0] extends never ? never : any) => ReturnType<EngineInstance['execute']>
+      delete: (ids: string[]) => ReturnType<EngineInstance['execute']>
+      insert: EditorMindmapCommands['insert']
+      moveSubtree: EditorMindmapCommands['moveSubtree']
+      removeSubtree: EditorMindmapCommands['removeSubtree']
+      cloneSubtree: EditorMindmapCommands['cloneSubtree']
+      updateNode: EditorMindmapCommands['updateNode']
+    }
     node: {
       document: EditorNodeDocumentCommands
     }
@@ -222,7 +230,39 @@ export const createMindmapWrite = ({
   engine: EngineInstance
   writerHost: MindmapWriteHost
 }): EditorMindmapCommands => ({
-  ...engine.commands.mindmap,
+  create: (payload) => engine.execute({
+    type: 'mindmap.create',
+    payload
+  }),
+  delete: (ids) => engine.execute({
+    type: 'mindmap.delete',
+    ids
+  }),
+  insert: (id, input) => engine.execute({
+    type: 'mindmap.insert',
+    id,
+    input
+  }),
+  moveSubtree: (id, input) => engine.execute({
+    type: 'mindmap.move',
+    id,
+    input
+  }),
+  removeSubtree: (id, input) => engine.execute({
+    type: 'mindmap.remove',
+    id,
+    input
+  }),
+  cloneSubtree: (id, input) => engine.execute({
+    type: 'mindmap.clone',
+    id,
+    input
+  }),
+  updateNode: (id, input) => engine.execute({
+    type: 'mindmap.patchNode',
+    id,
+    input
+  }),
   insertByPlacement: (input) => insertMindmapByPlacement({
     editor: writerHost,
     ...input

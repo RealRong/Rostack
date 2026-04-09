@@ -111,7 +111,7 @@ export const SelectionActionMenu = ({
       key: 'edit.duplicate',
       label: 'Duplicate',
       onSelect: () => {
-        editor.actions.document.canvas.duplicate({
+        editor.document.selection.duplicate({
           nodeIds,
           edgeIds
         })
@@ -130,7 +130,7 @@ export const SelectionActionMenu = ({
         key: item.key,
         label: item.label,
         onSelect: () => {
-          editor.actions.document.canvas.order({
+          editor.document.selection.order({
             nodeIds,
             edgeIds
           }, item.mode)
@@ -144,7 +144,7 @@ export const SelectionActionMenu = ({
             key: 'structure.group',
             label: 'Group',
             onSelect: () => {
-              editor.actions.document.groups.merge({
+              editor.document.selection.group({
                 nodeIds,
                 edgeIds
               })
@@ -159,7 +159,7 @@ export const SelectionActionMenu = ({
             key: 'structure.ungroup',
             label: 'Ungroup',
             onSelect: () => {
-              editor.actions.document.groups.ungroup({
+              editor.document.selection.ungroup({
                 nodeIds,
                 edgeIds
               })
@@ -174,7 +174,11 @@ export const SelectionActionMenu = ({
             key: 'state.lock',
             label: readLockLabel(nodeInfo?.lock ?? 'none'),
             onSelect: () => {
-              editor.actions.document.nodes.lock.set([...nodeIds], (nodeInfo?.lock ?? 'none') !== 'all')
+              editor.document.nodes.patch([...nodeIds], {
+                fields: {
+                  locked: (nodeInfo?.lock ?? 'none') !== 'all'
+                }
+              })
             }
           }
         ]
@@ -186,7 +190,7 @@ export const SelectionActionMenu = ({
             key: 'structure.frame',
             label: 'Create frame',
             onSelect: () => {
-              editor.actions.document.nodes.frames.createFromBounds(box)
+              editor.document.selection.frame(box)
             }
           }
         ]
@@ -202,7 +206,7 @@ export const SelectionActionMenu = ({
             key: 'viewport.zoom-in',
             label: 'Zoom in',
             onSelect: () => {
-              editor.actions.view.viewport.fit(box)
+              editor.view.viewport.fit(box)
             }
           }
         ]
@@ -213,7 +217,7 @@ export const SelectionActionMenu = ({
       label: 'Delete',
       tone: 'destructive' as const,
       onSelect: () => {
-        editor.actions.document.canvas.delete({
+        editor.document.selection.delete({
           nodeIds,
           edgeIds
         })

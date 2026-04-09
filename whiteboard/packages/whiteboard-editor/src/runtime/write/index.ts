@@ -1,4 +1,4 @@
-import type { EngineInstance } from '@whiteboard/engine'
+import type { EngineInstance } from '@engine-types/instance'
 import type { EditorRead, EditorWriteApi } from '../../types/editor'
 import type { EditorViewportRuntime } from '../editor/types'
 import type { RuntimeStateController } from '../state'

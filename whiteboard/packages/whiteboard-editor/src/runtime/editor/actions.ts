@@ -1,6 +1,11 @@
 import { compileNodeFieldUpdates } from '@whiteboard/core/schema'
-import type { EngineInstance } from '@whiteboard/engine'
-import type { Editor, EditorRead, EditorWriteApi } from '../../types/editor'
+import type { EngineInstance } from '@engine-types/instance'
+import type {
+  Editor,
+  EditorActions,
+  EditorRead,
+  EditorWriteApi
+} from '../../types/editor'
 import type { EditorViewportRuntime } from './types'
 import { createCanvasActions } from '../commands/canvas'
 import { createClipboardActions } from '../commands/clipboard'
@@ -41,7 +46,7 @@ export const createEditorActions = ({
   viewport: EditorViewportRuntime['read']
   selection: Editor['state']['selection']
   edit: Editor['state']['edit']
-}): Editor['actions'] => {
+}): EditorActions => {
   const canvas = createCanvasActions({
     read,
     commands: {
@@ -233,7 +238,7 @@ export const createEditorActions = ({
         selection: write.session.selection
       }
     })
-  } satisfies Editor['actions']['document']['nodes']
+  } satisfies EditorActions['document']['nodes']
 
   const documentActionsWithoutClipboard = {
     board: {
@@ -250,7 +255,7 @@ export const createEditorActions = ({
     }),
     groups,
     mindmaps: write.document.mindmap
-  } satisfies Omit<Editor['actions']['document'], 'clipboard'>
+  } satisfies Omit<EditorActions['document'], 'clipboard'>
 
   return {
     session: write.session,
@@ -286,5 +291,5 @@ export const createEditorActions = ({
         }
       })
     }
-  } satisfies Editor['actions']
+  } satisfies EditorActions
 }

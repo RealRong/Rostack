@@ -57,17 +57,21 @@ export const fontSizeItem: ToolbarItemSpec = {
         togglePanel('font-size')
       }}
       onCommit={(value) => {
-        editor.actions.document.nodes.text.set({
-          nodeIds: context.nodeIds,
-          patch: {
-            size: value
+        editor.document.nodes.patch(
+          context.nodeIds,
+          {
+            style: {
+              fontSize: value
+            }
           },
-          sizeById: buildTextSizeById({
-            context,
-            editor,
-            value
-          })
-        })
+          {
+            measuredSizeById: buildTextSizeById({
+              context,
+              editor,
+              value
+            })
+          }
+        )
       }}
     />
   ),
@@ -80,17 +84,21 @@ export const fontSizeItem: ToolbarItemSpec = {
       value={context.fontSize}
       onChange={(value) => {
         closePanel()
-        editor.actions.document.nodes.text.set({
-          nodeIds: context.nodeIds,
-          patch: {
-            size: value
+        editor.document.nodes.patch(
+          context.nodeIds,
+          {
+            style: {
+              fontSize: value
+            }
           },
-          sizeById: buildTextSizeById({
-            context,
-            editor,
-            value
-          })
-        })
+          {
+            measuredSizeById: buildTextSizeById({
+              context,
+              editor,
+              value
+            })
+          }
+        )
       }}
     />
   )

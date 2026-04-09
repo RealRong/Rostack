@@ -74,41 +74,41 @@ export const runShortcut = (
 
   switch (action) {
     case 'selection.selectAll':
-      editor.actions.session.selection.selectAll()
+      editor.session.selection.selectAll()
       return true
     case 'selection.clear':
       if (!editor.read.tool.is('select')) {
-        editor.actions.session.tool.set(selectTool())
+        editor.session.tool.set(selectTool())
       }
-      editor.actions.session.selection.clear()
+      editor.session.selection.clear()
       return true
     case 'selection.delete':
-      return editor.actions.document.canvas.delete({
+      return editor.document.selection.delete({
         nodeIds: selection.nodeIds,
         edgeIds: selection.edgeIds
       })
     case 'selection.duplicate': {
-      return editor.actions.document.canvas.duplicate({
+      return editor.document.selection.duplicate({
         nodeIds: selection.nodeIds,
         edgeIds: selection.edgeIds
       })
     }
     case 'group.merge': {
-      return editor.actions.document.groups.merge({
+      return editor.document.selection.group({
         nodeIds: selection.nodeIds,
         edgeIds: selection.edgeIds
       })
     }
     case 'group.ungroup': {
-      return editor.actions.document.groups.ungroup({
+      return editor.document.selection.ungroup({
         nodeIds: selection.nodeIds,
         edgeIds: selection.edgeIds
       })
     }
     case 'history.undo':
-      return editor.actions.document.history.undo().ok
+      return editor.document.history.undo().ok
     case 'history.redo':
-      return editor.actions.document.history.redo().ok
+      return editor.document.history.redo().ok
     default:
       return false
   }

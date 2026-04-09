@@ -158,24 +158,24 @@ const EdgeLabelItem = ({
   const commit = (value = draft) => {
     const nextText = value.trim()
     if (!nextText) {
-      editor.actions.document.edges.labels.remove(edgeId, labelId)
-      editor.actions.session.edit.clear()
+      editor.document.edges.labels.remove(edgeId, labelId)
+      editor.session.edit.clear()
       return
     }
 
-    editor.actions.document.edges.labels.update(edgeId, labelId, {
+    editor.document.edges.labels.patch(edgeId, labelId, {
       text: nextText
     })
-    editor.actions.session.edit.clear()
+    editor.session.edit.clear()
   }
 
   const cancel = () => {
     setDraft(text)
     if (!text.trim()) {
-      editor.actions.document.edges.labels.remove(edgeId, labelId)
+      editor.document.edges.labels.remove(edgeId, labelId)
       return
     }
-    editor.actions.session.edit.clear()
+    editor.session.edit.clear()
   }
 
   const onPointerDown = (
@@ -188,7 +188,7 @@ const EdgeLabelItem = ({
     event.stopPropagation()
 
     if (!singleSelected) {
-      editor.actions.session.selection.replace({
+      editor.session.selection.replace({
         edgeIds: [edgeId]
       })
       return
@@ -252,16 +252,16 @@ const EdgeLabelItem = ({
     event.currentTarget.releasePointerCapture(event.pointerId)
 
     if (drag.draft) {
-      editor.actions.document.edges.labels.update(edgeId, labelId, drag.draft)
+      editor.document.edges.labels.patch(edgeId, labelId, drag.draft)
       setDrag(null)
       return
     }
 
     setDrag(null)
-    editor.actions.session.selection.replace({
+    editor.session.selection.replace({
       edgeIds: [edgeId]
     })
-    editor.actions.session.edit.startEdgeLabel(edgeId, labelId, {
+    editor.session.edit.startEdgeLabel(edgeId, labelId, {
       caret: {
         kind: 'point',
         client: {

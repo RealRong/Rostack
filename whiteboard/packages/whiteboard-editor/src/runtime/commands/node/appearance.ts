@@ -1,5 +1,5 @@
 import { compileNodeFieldUpdates } from '@whiteboard/core/schema'
-import type { EngineInstance } from '@whiteboard/engine'
+import type { EngineInstance } from '@engine-types/instance'
 import type {
   EditorNodeAppearanceCommands,
   EditorNodeDocumentCommands

@@ -12,7 +12,7 @@ import type {
 } from './types'
 import type {
   ProjectionSection
-} from './projection'
+} from '../../project/sections'
 
 const emptyIds = [] as const
 

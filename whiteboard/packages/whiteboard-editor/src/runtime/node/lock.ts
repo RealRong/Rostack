@@ -2,7 +2,7 @@ import type { EngineInstance } from '@engine-types/instance'
 import type {
   NodeLockMutations,
   NodePatchWriter
-} from '../../../internal/types'
+} from '../../internal/types'
 
 export const createNodeLockMutations = ({
   engine,

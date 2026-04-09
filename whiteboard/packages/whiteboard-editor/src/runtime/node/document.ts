@@ -1,7 +1,7 @@
 import { compileNodeFieldUpdate } from '@whiteboard/core/schema'
 import type { NodeUpdateInput } from '@whiteboard/core/types'
 import type { EngineInstance } from '@engine-types/instance'
-import type { NodePatchWriter } from '../../../internal/types'
+import type { NodePatchWriter } from '../../internal/types'
 
 export const mergeNodeUpdates = (
   ...updates: Array<NodeUpdateInput | undefined>

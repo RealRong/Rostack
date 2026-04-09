@@ -30,7 +30,7 @@ import {
   dataUpdate,
   mergeNodeUpdates,
   styleUpdate
-} from '../runtime/commands/node/document'
+} from '../runtime/node/document'
 
 type TransformTarget = TransformSelectionMember<Node>
 type TextTransformMode = 'reflow' | 'scale'

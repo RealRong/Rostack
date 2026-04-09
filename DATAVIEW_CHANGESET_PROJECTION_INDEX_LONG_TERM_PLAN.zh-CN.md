@@ -606,8 +606,6 @@ planner 的责任不是执行 projection，而是决定：
 - 下游 stage 能否消费上游的旧结果，还是必须等待上游新结果
 
 
-## 7.4 dirty 规则示例
-
 ## 7.4 stage action 规则示例
 
 ### 7.4.1 active view 切换
@@ -774,14 +772,769 @@ dataview/src/
 
 - `core/commit/*` 负责产出 richer delta
 - `engine/index/*` 负责 raw index runtime
-- `engine/project/planner.ts` 负责 delta -> dirty plan
 - `engine/project/planner.ts` 负责 delta -> stage action plan
 - `engine/project/runtime.ts` 负责统一调度和发布
-- `engine/project/*.ts` 负责各 projection stage 的纯构建
-  或在 runtime 调用下执行 stage-local reconcile
+- `engine/project/*.ts` 负责各 projection stage 的纯构建，或在 runtime 调用下执行 stage-local reconcile
 
 
-## 9. 从零重构时应该直接删掉的旧思路
+## 9. 命名原则
+
+长期最优里，命名必须同时满足：
+
+- 短
+- 直白
+- 不重复上下文
+- 不把实现细节泄漏进公开接口
+
+推荐遵守下面这些规则。
+
+### 9.1 对外命名
+
+对外优先使用：
+
+- `read`
+- `project`
+- `view`
+- `search`
+- `filter`
+- `sort`
+- `group`
+- `records`
+- `sections`
+- `appearances`
+- `fields`
+- `calculations`
+
+避免对外使用：
+
+- `runtime`
+- `registry`
+- `family`
+- `resolved`
+- `derived`
+- `currentView`
+- `projection` 作为字段后缀
+- `patch` 作为公开能力名
+
+
+### 9.2 内部命名
+
+内部可以出现：
+
+- `delta`
+- `index`
+- `plan`
+- `stage`
+- `runtime`
+- `reconcile`
+
+但命名仍然应尽量短。
+
+推荐：
+
+- `delta`
+- `plan`
+- `sync`
+- `stage`
+- `action`
+
+不推荐：
+
+- `semanticChangeDescriptor`
+- `projectionInvalidationRegistry`
+- `activeViewProjectionCoordinator`
+
+
+## 10. 详细 API 设计
+
+这一节只区分两类 API：
+
+- 公开 API
+- engine 内部正式 API
+
+其中公开 API 必须极简，内部 API 允许更丰富。
+
+
+## 10.1 公开 API
+
+长期公开面保持最小，不因为内部引入 delta / index / planner 而复杂化。
+
+### 10.1.1 Read
+
+```ts
+engine.read.document
+engine.read.activeViewId
+engine.read.activeView
+engine.read.record
+engine.read.field
+engine.read.view
+```
+
+可选列表读取：
+
+```ts
+engine.read.recordIds
+engine.read.fieldIds
+engine.read.viewIds
+```
+
+
+### 10.1.2 Project
+
+```ts
+engine.project.view
+engine.project.search
+engine.project.filter
+engine.project.sort
+engine.project.group
+engine.project.records
+engine.project.sections
+engine.project.appearances
+engine.project.fields
+engine.project.calculations
+```
+
+统一协议：
+
+```ts
+type ReadProjection<T> = {
+  get(): T
+  subscribe(listener: () => void): () => void
+}
+```
+
+
+### 10.1.3 Write
+
+```ts
+engine.view.open(viewId)
+```
+
+公开层不额外暴露：
+
+- `delta`
+- `index`
+- `planner`
+- `reconcile`
+- `sync`
+
+这些都应留在 engine 内部。
+
+
+## 10.2 Commit Delta API
+
+长期建议把当前粗粒度 `CommitChangeSet` 升级成：
+
+```ts
+interface CommitDelta {
+  summary: DeltaSummary
+  entities: DeltaEntities
+  semantics: readonly DeltaItem[]
+}
+```
+
+命名尽量短，直接用 `delta`，不要再加 `changeSet`、`descriptor` 之类后缀。
+
+
+### 10.2.1 Summary
+
+```ts
+interface DeltaSummary {
+  records: boolean
+  fields: boolean
+  views: boolean
+  values: boolean
+  activeView: boolean
+  indexes: boolean
+}
+```
+
+语义：
+
+- `records`: record entity 结构变了
+- `fields`: field entity 结构变了
+- `views`: view entity 结构变了
+- `values`: record values 变了
+- `activeView`: active view 可能变了
+- `indexes`: raw indexes 需要更新
+
+
+### 10.2.2 Entities
+
+```ts
+interface DeltaEntities {
+  records?: DeltaIds<RecordId>
+  fields?: DeltaIds<FieldId>
+  views?: DeltaIds<ViewId>
+  values?: {
+    records?: readonly RecordId[] | 'all'
+    fields?: readonly FieldId[] | 'all'
+  }
+}
+
+interface DeltaIds<T extends string> {
+  add?: readonly T[]
+  update?: readonly T[] | 'all'
+  remove?: readonly T[]
+}
+```
+
+命名上用：
+
+- `add`
+- `update`
+- `remove`
+
+不要用：
+
+- `addedIds`
+- `updatedEntityIds`
+- `removedProjectionTargets`
+
+
+### 10.2.3 Semantics
+
+```ts
+type DeltaItem =
+  | { kind: 'activeView'; before?: ViewId; after?: ViewId }
+  | { kind: 'viewQuery'; viewId: ViewId; aspects: readonly QueryAspect[] }
+  | { kind: 'viewLayout'; viewId: ViewId; aspects: readonly LayoutAspect[] }
+  | { kind: 'viewCalc'; viewId: ViewId; fields?: readonly FieldId[] | 'all' }
+  | { kind: 'fieldSchema'; fieldId: FieldId; aspects: readonly FieldSchemaAspect[] }
+  | { kind: 'recordAdd'; ids: readonly RecordId[] }
+  | { kind: 'recordRemove'; ids: readonly RecordId[] }
+  | { kind: 'value'; records: readonly RecordId[] | 'all'; fields: readonly FieldId[] | 'all' }
+```
+
+这里继续坚持简短命名：
+
+- `activeView`
+- `viewQuery`
+- `viewLayout`
+- `viewCalc`
+- `fieldSchema`
+- `recordAdd`
+- `recordRemove`
+- `value`
+
+不需要把 `changed`、`delta`、`semantic` 重复写进每个 kind。
+
+
+## 10.3 Index Runtime API
+
+index 是 engine 内部正式层，但不对外公开给 React。
+
+推荐入口：
+
+```ts
+interface EngineIndex {
+  state(): IndexState
+  sync(document: DataDoc, delta: CommitDelta): IndexState
+}
+```
+
+这里：
+
+- `state()` 返回当前 index 快照
+- `sync(...)` 用新 document 和 delta 更新 index
+
+不建议把 index runtime 设计成十几个零散的 `applyXxx` 入口。
+
+
+### 10.3.1 总状态
+
+```ts
+interface IndexState {
+  records: RecordIndex
+  search: SearchIndex
+  group: GroupIndex
+  sort: SortIndex
+  calculations: CalculationIndex
+}
+```
+
+
+### 10.3.2 record index
+
+```ts
+interface RecordIndex {
+  ids: readonly RecordId[]
+  rows: ReadonlyMap<RecordId, Row>
+  values: ReadonlyMap<FieldId, ReadonlyMap<RecordId, unknown>>
+  rev: number
+}
+```
+
+`rev` 用作统一版本戳，方便 planner 和 stage 做 cheap equality / cache key。
+
+
+### 10.3.3 search index
+
+```ts
+interface SearchIndex {
+  all: ReadonlyMap<string, SortedIdSet<RecordId>>
+  fields: ReadonlyMap<FieldId, ReadonlyMap<string, SortedIdSet<RecordId>>>
+  records: ReadonlyMap<RecordId, RecordTokens>
+  rev: number
+}
+```
+
+
+### 10.3.4 group index
+
+```ts
+interface GroupIndex {
+  fields: ReadonlyMap<FieldId, GroupFieldIndex>
+  rev: number
+}
+
+interface GroupFieldIndex {
+  recordBuckets: ReadonlyMap<RecordId, readonly BucketKey[]>
+  bucketRecords: ReadonlyMap<BucketKey, SortedIdSet<RecordId>>
+}
+```
+
+
+### 10.3.5 sort index
+
+```ts
+interface SortIndex {
+  fields: ReadonlyMap<FieldId, ReadonlyMap<RecordId, SortKey>>
+  rev: number
+}
+```
+
+
+### 10.3.6 calculation index
+
+```ts
+interface CalculationIndex {
+  fields: ReadonlyMap<FieldId, FieldCalcIndex>
+  rev: number
+}
+
+interface FieldCalcIndex {
+  global: AggregateState
+  buckets?: ReadonlyMap<BucketKey, AggregateState>
+}
+```
+
+
+## 10.4 Projection Runtime API
+
+projection runtime 仍然只有一个中心入口。
+
+```ts
+interface ProjectRuntime {
+  state(): ProjectState
+  sync(input: {
+    document: DataDoc
+    activeViewId?: ViewId
+    delta: CommitDelta
+    index: IndexState
+  }): ProjectState
+}
+```
+
+这里继续坚持一个词：
+
+- `sync`
+
+不要拆成：
+
+- `applyDelta`
+- `patchProjection`
+- `updateFromChanges`
+
+
+### 10.4.1 ProjectState
+
+```ts
+interface ProjectState {
+  view?: ActiveView
+  search?: SearchView
+  filter?: FilterView
+  sort?: SortView
+  group?: GroupView
+  records?: RecordSet
+  sections?: readonly Section[]
+  appearances?: AppearanceList
+  fields?: FieldList
+  calculations?: ReadonlyMap<SectionKey, CalculationCollection>
+}
+```
+
+这个结构对应 `engine.project.*`，但它属于内部快照，不直接暴露给 React。
+
+
+## 10.5 Planner API
+
+planner 是这套体系的核心调度点。
+
+```ts
+type StageAction =
+  | 'reuse'
+  | 'recompute'
+  | 'reconcile'
+  | 'rebuild'
+```
+
+```ts
+interface ProjectPlan {
+  view: StageAction
+  search: StageAction
+  filter: StageAction
+  sort: StageAction
+  group: StageAction
+  records: StageAction
+  sections: StageAction
+  appearances: StageAction
+  fields: StageAction
+  calculations: StageAction
+}
+```
+
+```ts
+interface Planner {
+  build(input: {
+    delta: CommitDelta
+    activeViewId?: ViewId
+    project: ProjectState
+    index: IndexState
+  }): ProjectPlan
+}
+```
+
+命名建议：
+
+- `build`
+- `plan`
+- `sync`
+- `state`
+
+不建议：
+
+- `computeProjectionInvalidationGraph`
+- `deriveProjectionExecutionPlan`
+
+
+## 10.6 Stage API
+
+长期最优里，每个 projection stage 都应是 runtime 调用下的一个独立单元。
+
+推荐统一接口：
+
+```ts
+interface Stage<T> {
+  run(input: StageInput<T>): T
+}
+```
+
+```ts
+interface StageInput<T> {
+  action: StageAction
+  prev?: T
+  project: ProjectState
+  next: {
+    document: DataDoc
+    activeViewId?: ViewId
+    delta: CommitDelta
+    index: IndexState
+  }
+}
+```
+
+这里的约束是：
+
+- `run(...)` 是 stage 唯一入口
+- `action` 由 planner 决定
+- stage 不能自己订阅 changes
+- stage 不能自己发布结果
+
+
+### 10.6.1 推荐行为规范
+
+对每个 stage 来说：
+
+- `reuse`：直接返回 `prev`
+- `recompute`：只基于 `next` 重新计算
+- `reconcile`：允许读 `prev` 做局部协调
+- `rebuild`：忽略 `prev`，按边界重建
+
+最重要的一条正确性要求：
+
+- `reconcile` 的结果必须语义等价于对应场景下的完整 `recompute`
+
+
+### 10.6.2 哪些 stage 值得长期支持 reconcile
+
+优先级建议如下：
+
+- `records`
+- `sections`
+- `appearances`
+- `calculations`
+
+这些 stage 数据量随 record 数量增长，最值得做 stage-local reconcile。
+
+下列 stage 长期通常只需要 `reuse / recompute`：
+
+- `view`
+- `search`
+- `filter`
+- `sort`
+- `group`
+- `fields`
+
+
+## 10.7 Runtime 内部执行协议
+
+建议 runtime 内部执行顺序固定：
+
+1. `index.sync(document, delta)`
+2. `planner.build(...)`
+3. 按 stage 顺序执行 `run(...)`
+4. 统一比较输出
+5. 统一 publish stores
+
+其中第 3 步建议固定顺序：
+
+```txt
+view
+search
+filter
+sort
+group
+records
+sections
+appearances
+fields
+calculations
+```
+
+不允许各 stage 自己触发下游 stage 执行。
+
+
+## 10.8 React 消费协议
+
+React 继续只读 store：
+
+```ts
+engine.project.view
+engine.project.search
+engine.project.filter
+engine.project.sort
+engine.project.group
+engine.project.records
+engine.project.sections
+engine.project.appearances
+engine.project.fields
+engine.project.calculations
+```
+
+React 不知道：
+
+- `delta`
+- `index`
+- `plan`
+- `action`
+- `reconcile`
+
+这些概念都必须留在 engine 内部。
+
+
+## 11. 分阶段实施方案
+
+这里的分阶段不是兼容迁移计划，而是工程执行顺序。
+
+每一阶段都应以“最终体系的一部分”落地，不允许引入长期保留的双轨实现。
+
+
+## 11.1 Phase 1: Delta 重构
+
+目标：
+
+- 用新的 `CommitDelta` 模型替代当前粗粒度 `CommitChangeSet`
+
+要做的事：
+
+- 在 `core/commit/` 建立新的 delta types
+- command / operation builder 同时产出 semantic delta draft
+- apply/reducer 阶段补足 entity ids
+- commit runtime 改为输出 `CommitDelta`
+
+验收标准：
+
+- `activeView`
+- `viewQuery`
+- `viewLayout`
+- `viewCalc`
+- `fieldSchema`
+- `recordAdd`
+- `recordRemove`
+- `value`
+
+这几类 delta 都可以稳定产出
+
+
+## 11.2 Phase 2: Record Base Index
+
+目标：
+
+- 建立统一 `RecordIndex`
+
+要做的事：
+
+- 提供 `ids / rows / values / rev`
+- 用 `delta` 支持增量更新
+- 让 search/group/sort/calc index 不再直接读 raw document
+
+验收标准：
+
+- record 增删改都能局部更新 `RecordIndex`
+- `RecordIndex` 成为所有其他 index 的唯一原始输入
+
+
+## 11.3 Phase 3: Search / Group / Sort Index
+
+目标：
+
+- 建立三类正式索引
+
+要做的事：
+
+- 实现 `SearchIndex`
+- 实现 `GroupIndex`
+- 实现 `SortIndex`
+- 让它们都吃 `CommitDelta`
+
+验收标准：
+
+- value 变化只更新受影响 records / fields
+- active projection 不再需要为 search/group/sort 全量扫 document
+
+
+## 11.4 Phase 4: Calculation Index
+
+目标：
+
+- 把 calculation 从“按 section 扫 rows”升级成 aggregate runtime
+
+要做的事：
+
+- 设计 `AggregateState`
+- 为数值、非空计数、distribution 等 metric 建统一聚合协议
+- 允许按 bucket 维护聚合
+
+验收标准：
+
+- calculation 不再依赖每次重扫 visible rows 才能出结果
+- section/footer 结果可以从 aggregate state materialize
+
+
+## 11.5 Phase 5: Planner
+
+目标：
+
+- 用 `ProjectPlan` 取代当前“整条 pipeline 重算”
+
+要做的事：
+
+- 引入 `StageAction`
+- planner 根据 `delta + activeViewId + index` 产出 action plan
+- 先只支持 `reuse / recompute / rebuild`
+
+验收标准：
+
+- active view 无关的 value 变化可使全部 stage `reuse`
+- display 变化只影响 `view / fields`
+- active view 切换触发全 stage `rebuild`
+
+
+## 11.6 Phase 6: Stage Runtime
+
+目标：
+
+- 让 project runtime 真正按 plan 驱动 stages
+
+要做的事：
+
+- 给每个 stage 落 `run(...)`
+- runtime 按固定顺序执行 stage
+- runtime 统一 publish
+
+验收标准：
+
+- runtime 不再整条 active pipeline 无条件全量计算
+- stage 执行顺序和 publish 边界统一收敛到 runtime
+
+
+## 11.7 Phase 7: Stage-local Reconcile
+
+目标：
+
+- 在中央调度不变的前提下，为高收益 stage 增加 `reconcile`
+
+推荐顺序：
+
+1. `records`
+2. `sections`
+3. `appearances`
+4. `calculations`
+
+要做的事：
+
+- 为每个 stage 定义 `reconcile` 的输入和正确性约束
+- 保证 `reconcile` 结果等价于完整 `recompute`
+- 加强测试覆盖连续 delta、undo/redo、merge/split delta 场景
+
+验收标准：
+
+- `reconcile` 只存在于高收益 stage
+- 任何 reconcile 路径都可回退到 recompute 语义
+
+
+## 11.8 Phase 8: 删除旧实现
+
+目标：
+
+- 清掉旧 changes、旧 projection 整体重算路径、旧临时 helper
+
+要做的事：
+
+- 删除粗粒度旧 change types
+- 删除不再需要的全量 projection build 路径
+- 删除直接全量扫 document 的旧 query/group/calc 热路径
+- 清理测试和内部命名
+
+验收标准：
+
+- 代码库里只剩一套 delta
+- 只剩一套 index runtime
+- 只剩一套 project runtime
+- 不存在双轨执行路径
+
+
+## 11.9 Phase 9: 收口与压缩
+
+目标：
+
+- 压缩 API 和命名，确保终态足够简单
+
+要做的事：
+
+- 审查公开 API 是否泄漏内部概念
+- 删除冗余 helper
+- 清理过长命名
+- 用文档固化 stage/action/index 边界
+
+验收标准：
+
+- 对外仍然只有 `engine.read.*` / `engine.project.*` / `engine.view.open(viewId)`
+- 内部边界清楚，但公开面没有长出 planner/index/delta 术语
+
+
+## 12. 从零重构时应该直接删掉的旧思路
 
 下面这些模式，长期不应继续保留：
 
@@ -794,7 +1547,7 @@ dataview/src/
 - current-view adapter runtime
 
 
-## 10. 最终推荐方案
+## 13. 最终推荐方案
 
 如果只用一句话概括长期最优，我的建议是：
 
@@ -819,18 +1572,18 @@ dataview/src/
 - 一张 stage action graph
 
 
-## 11. 验收标准
+## 14. 验收标准
 
 长期重构完成后，应该满足下面这些标准。
 
-### 11.1 `changes`
+### 14.1 `changes`
 
 - commit 输出包含 semantic delta
 - runtime 不再只看到粗粒度 entity summary
 - active view 相关变更可直接被 planner 识别
 
 
-### 11.2 indexes
+### 14.2 indexes
 
 - search 有正式 inverted index
 - group 有正式 bucket index
@@ -839,7 +1592,7 @@ dataview/src/
 - index 都支持增量更新
 
 
-### 11.3 projection
+### 14.3 projection
 
 - projection runtime 只维护一个 active pipeline
 - runtime 根据 delta 做 stage-level `reuse / recompute / reconcile / rebuild`
@@ -847,7 +1600,7 @@ dataview/src/
 - React 继续只消费稳定的 `engine.project.*`
 
 
-## 12. 一句话结论
+## 15. 一句话结论
 
 Dataview 的长期最优，不是单独优化 `changes`、单独优化 projection、单独优化 indexes。
 

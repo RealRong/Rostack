@@ -3,7 +3,7 @@ import type { EngineInstance } from '@engine-types/instance'
 import type {
   NodeAppearanceMutations,
   NodePatchWriter
-} from '../../../internal/types'
+} from '../../internal/types'
 import { styleUpdate } from './document'
 
 export const createNodeAppearanceMutations = ({

@@ -26,12 +26,12 @@ import {
 } from '../overlay/node'
 import {
   createMindmapRuntime
-} from '../commands/mindmap'
-import { createNodeAppearanceMutations } from '../commands/node/appearance'
-import { createNodePatchWriter } from '../commands/node/document'
-import { createNodeLockMutations } from '../commands/node/lock'
-import { createNodeShapeMutations } from '../commands/node/shape'
-import { createNodeTextMutations } from '../commands/node/text'
+} from '../actions/mindmap'
+import { createNodeAppearanceMutations } from '../node/appearance'
+import { createNodePatchWriter } from '../node/document'
+import { createNodeLockMutations } from '../node/lock'
+import { createNodeShapeMutations } from '../node/shape'
+import { createNodeTextMutations } from '../node/text'
 import { isSameTool } from '../../tool/model'
 
 const EMPTY_EDGE_PATCHES = [] as const

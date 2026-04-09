@@ -24,11 +24,11 @@ import { createEditorState } from './state'
 import { compileNodePatch } from '../compile/nodePatch'
 import { compileEdgePatch } from '../compile/edgePatch'
 import { createEditorRuntime } from './host'
-import { createCanvasActions } from '../commands/canvas'
-import { createGroupsActions } from '../commands/group'
-import { createFramesActions } from '../commands/frame'
-import { createEdgesActions } from '../commands/edge'
-import { createClipboardActions } from '../commands/clipboard'
+import { createCanvasActions } from '../actions/canvas'
+import { createGroupsActions } from '../actions/group'
+import { createFramesActions } from '../actions/frame'
+import { createEdgesActions } from '../actions/edge'
+import { createClipboardActions } from '../actions/clipboard'
 
 export const createEditor = ({
   engine,

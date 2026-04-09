@@ -2,7 +2,7 @@ import type { EngineInstance } from '@engine-types/instance'
 import type {
   NodePatchWriter,
   NodeShapeMutations
-} from '../../../internal/types'
+} from '../../internal/types'
 import { dataUpdate } from './document'
 
 export const createNodeShapeMutations = ({

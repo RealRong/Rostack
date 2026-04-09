@@ -7,8 +7,8 @@ import type {
   NodeTextMutations,
   PreviewRuntime,
   SessionRuntime
-} from '../../../internal/types'
-import type { EditorRead } from '../../../types/editor'
+} from '../../internal/types'
+import type { EditorRead } from '../../types/editor'
 import {
   dataUpdate,
   mergeNodeUpdates,

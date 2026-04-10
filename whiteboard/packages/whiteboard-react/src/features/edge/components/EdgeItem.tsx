@@ -1,13 +1,10 @@
 import type {
   CSSProperties,
-  KeyboardEvent,
   PointerEvent
 } from 'react'
 import {
   memo,
-  useEffect,
   useMemo,
-  useRef,
   useState
 } from 'react'
 import { useStoreValue } from '@shared/react'
@@ -24,14 +21,6 @@ import {
 } from '#react/runtime/hooks'
 import { useEdgeView } from '../hooks/useEdgeView'
 import { EDGE_ARROW_END_ID, EDGE_ARROW_START_ID, resolveEdgeDash } from '../constants'
-import {
-  focusEditableDraft,
-  isEscapeEditingKey,
-  isSubmitEditingKey,
-  stopEditingPointerDown,
-  syncEditableDraft
-} from '#react/features/node/dom/editableText'
-import { readEditableText } from '#react/features/node/text'
 import type { EdgeView } from '#react/types/edge'
 
 const EDGE_LABEL_DRAG_DISTANCE = 3
@@ -122,8 +111,6 @@ const EdgeLabelItem = ({
     labelId
   })
   const [drag, setDrag] = useState<DragState | null>(null)
-  const [draft, setDraft] = useState('')
-  const contentRef = useRef<HTMLDivElement | null>(null)
 
   const text = readLabelText(label.text)
   const editing =
@@ -135,36 +122,6 @@ const EdgeLabelItem = ({
     && selection.edgeIds.length === 1
     && selection.edgeIds[0] === edgeId
 
-  useEffect(() => {
-    setDraft(text)
-  }, [text])
-
-  useEffect(() => {
-    if (!editing) {
-      return
-    }
-
-    const element = contentRef.current
-    if (!element) {
-      return
-    }
-
-    syncEditableDraft(element, draft)
-  }, [draft, editing])
-
-  useEffect(() => {
-    if (!editing) {
-      return
-    }
-
-    const element = contentRef.current
-    if (!element) {
-      return
-    }
-
-    return focusEditableDraft(element, edit.caret)
-  }, [edit, editing])
-
   const placement = useMemo(() => resolveEdgeLabelPlacement({
     path,
     t: drag?.draft?.t ?? label.t ?? 0.5,
@@ -175,31 +132,9 @@ const EdgeLabelItem = ({
     return null
   }
 
-  if (!editing && !text.trim()) {
+  const displayText = text || (editing ? 'Label' : '')
+  if (!displayText.trim()) {
     return null
-  }
-
-  const commit = (value = draft) => {
-    const nextText = value.trim()
-    if (!nextText) {
-      editor.actions.edge.label.remove(edgeId, labelId)
-      editor.actions.edit.clear()
-      return
-    }
-
-    editor.actions.edge.label.patch(edgeId, labelId, {
-      text: nextText
-    })
-    editor.actions.edit.clear()
-  }
-
-  const cancel = () => {
-    setDraft(text)
-    if (!text.trim()) {
-      editor.actions.edge.label.remove(edgeId, labelId)
-      return
-    }
-    editor.actions.edit.clear()
   }
 
   const onPointerDown = (
@@ -307,21 +242,6 @@ const EdgeLabelItem = ({
     setDrag(null)
   }
 
-  const onKeyDown = (
-    event: KeyboardEvent<HTMLDivElement>
-  ) => {
-    if (isEscapeEditingKey(event)) {
-      event.preventDefault()
-      cancel()
-      return
-    }
-
-    if (isSubmitEditingKey(event)) {
-      event.preventDefault()
-      commit(readEditableText(event.currentTarget))
-    }
-  }
-
   const angle = textMode === 'tangent'
     ? placement.angle
     : 0
@@ -337,7 +257,6 @@ const EdgeLabelItem = ({
 
   return (
     <div
-      ref={ref}
       data-selection-ignore
       className="wb-edge-label"
       data-selected={selected ? 'true' : undefined}
@@ -350,31 +269,18 @@ const EdgeLabelItem = ({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
     >
-      {editing ? (
-        <div
-          ref={contentRef}
-          data-input-ignore
-          contentEditable
-          suppressContentEditableWarning
-          className="wb-edge-label-content wb-edge-label-content-editing"
-          style={style}
-          onPointerDown={stopEditingPointerDown}
-          onInput={(event) => {
-            setDraft(readEditableText(event.currentTarget))
-          }}
-          onBlur={(event) => {
-            commit(readEditableText(event.currentTarget))
-          }}
-          onKeyDown={onKeyDown}
-        />
-      ) : (
-        <div
-          className="wb-edge-label-content"
-          style={style}
-        >
-          {text}
-        </div>
-      )}
+      <div
+        ref={ref}
+        data-edit-edge-id={edgeId}
+        data-edit-label-id={labelId}
+        className={`wb-edge-label-content${editing ? ' wb-edge-label-content-editing' : ''}`}
+        style={{
+          ...style,
+          opacity: text ? 1 : 0.48
+        }}
+      >
+        {displayText}
+      </div>
     </div>
   )
 }

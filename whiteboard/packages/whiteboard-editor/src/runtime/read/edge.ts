@@ -22,7 +22,8 @@ import {
 } from '@whiteboard/engine'
 import {
   createKeyedDerivedStore,
-  type KeyedReadStore
+  type KeyedReadStore,
+  type ReadStore
 } from '@shared/store'
 import type {
   EdgeOverlayProjection
@@ -31,6 +32,10 @@ import {
   createOverlayStateStore,
   createPatchedItemStore
 } from './keyed'
+import {
+  applyEdgeLabelEditStyle,
+  type EditSession
+} from '../state/edit'
 
 export type EdgeRuntimeState = {
   patched: boolean
@@ -278,21 +283,48 @@ const isEdgeViewStateEqual = (
 
 const createEdgeItemStore = ({
   read,
-  overlay
+  overlay,
+  edit
 }: {
   read: Pick<EngineRead, 'edge'>
   overlay: KeyedReadStore<EdgeId, EdgeOverlayProjection>
+  edit: ReadStore<EditSession>
 }): EdgeRead['item'] => createPatchedItemStore({
   source: read.edge.item,
   overlay,
-  project: (entry, projection) => {
+  project: (entry, projection, readStore) => {
     const nextEdge = applyEdgePatch(entry.edge, projection.patch)
-    return nextEdge === entry.edge
-      ? entry
-      : {
-          ...entry,
-          edge: nextEdge
-        }
+    const session = readStore(edit)
+    if (
+      !session
+      || session.kind !== 'edge-label'
+      || session.edgeId !== entry.edge.id
+    ) {
+      return nextEdge === entry.edge
+        ? entry
+        : {
+            ...entry,
+            edge: nextEdge
+          }
+    }
+
+    const nextLabels = nextEdge.labels?.map((label) => (
+      label.id !== session.labelId
+        ? label
+        : {
+            ...label,
+            text: session.draft.text,
+            style: applyEdgeLabelEditStyle(label.style, session.draft.style)
+          }
+    ))
+
+    return {
+      ...entry,
+      edge: {
+        ...nextEdge,
+        ...(nextLabels ? { labels: nextLabels } : {})
+      }
+    }
   },
   isEqual: isEdgeItemEqual
 })
@@ -330,11 +362,22 @@ const createEdgeResolvedStore = ({
         ? readStore(nodeItem, entry.edge.target.nodeId)
         : undefined
 
-    return resolveEdgeView({
-      edge: entry.edge,
-      source: source ? toNodeCanvasSnapshot(source) : undefined,
-      target: target ? toNodeCanvasSnapshot(target) : undefined
-    })
+    if (
+      (entry.edge.source.kind === 'node' && !source)
+      || (entry.edge.target.kind === 'node' && !target)
+    ) {
+      return undefined
+    }
+
+    try {
+      return resolveEdgeView({
+        edge: entry.edge,
+        source: source ? toNodeCanvasSnapshot(source) : undefined,
+        target: target ? toNodeCanvasSnapshot(target) : undefined
+      })
+    } catch {
+      return undefined
+    }
   }
 })
 
@@ -370,18 +413,21 @@ export const createEdgeRead = ({
   read,
   nodeItem,
   overlay,
+  edit,
   capability
 }: {
   read: Pick<EngineRead, 'edge' | 'index'>
   nodeItem: KeyedReadStore<string, NodeItem | undefined>
   overlay: KeyedReadStore<EdgeId, EdgeOverlayProjection>
+  edit: ReadStore<EditSession>
   capability: (node: Pick<Node, 'type'> | NodeType) => {
     connect: boolean
   }
 }): EdgeRead => {
   const item = createEdgeItemStore({
     read,
-    overlay
+    overlay,
+    edit
   })
   const state = createEdgeStateStore({
     overlay

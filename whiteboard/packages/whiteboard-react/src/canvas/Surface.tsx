@@ -7,6 +7,7 @@ import {
 import { useBindViewportInput } from '../runtime/viewport/useBindViewportInput'
 import { Background } from './Background'
 import { Chrome } from './Chrome'
+import { EditingHost } from './EditingHost'
 import { useClipboard } from './useClipboard'
 import { useKeyboard } from './useKeyboard'
 import { usePointer } from './usePointer'
@@ -93,6 +94,7 @@ export const Surface = ({
         <Marquee />
       </div>
       <div className="wb-overlay">
+        <EditingHost />
         <Chrome
           containerRef={containerRef}
           presenceBinding={presenceBinding}

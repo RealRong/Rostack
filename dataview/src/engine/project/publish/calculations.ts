@@ -9,16 +9,16 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   SectionKey
-} from '../../types'
+} from '../types'
 import type {
   CalcState
-} from '../state'
+} from '../runtime/state'
 import {
   computeCalculationFromState
-} from './compute'
+} from '../runtime/calc/compute'
 import {
   readCalcFields
-} from './state'
+} from '../runtime/calc/state'
 
 const createCollection = (
   byField: ReadonlyMap<FieldId, CalculationResult>
@@ -29,7 +29,7 @@ const createCollection = (
 
 const EMPTY_COLLECTION = createCollection(new Map())
 
-export const toPublishedCalculations = (input: {
+export const publishCalculations = (input: {
   calc: CalcState
   previousCalc?: CalcState
   previous?: ReadonlyMap<SectionKey, CalculationCollection>

@@ -34,9 +34,6 @@ import type {
   SectionKey
 } from '../types'
 import {
-  createProjectionDelta
-} from './delta'
-import {
   resolveIndexDemand
 } from './demand'
 import {
@@ -144,17 +141,10 @@ export const createProjectRuntime = (input: {
       nextDelta,
       resolveIndexDemand(document, document.activeViewId)
     )
-    const projectionDelta = createProjectionDelta({
-      document,
-      activeViewId: document.activeViewId,
-      delta: nextDelta,
-      project: currentPublished
-    })
     const runResult = runProjection({
       document,
       activeViewId: document.activeViewId as ViewId | undefined,
       delta: nextDelta,
-      projectionDelta,
       index: indexResult.state,
       previousProjection: currentProjection,
       previousPublished: currentPublished,

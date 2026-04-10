@@ -8,7 +8,7 @@ import type {
 } from './types'
 import {
   recordIdsOfAppearances
-} from './nav'
+} from './publish/sections'
 
 const emptyIds = [] as const
 

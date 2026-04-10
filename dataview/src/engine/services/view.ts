@@ -1,5 +1,4 @@
 import type {
-  CalculationMetric,
   Field,
   FieldId,
   Command,
@@ -51,8 +50,9 @@ import type {
   ViewEngineApi,
   ViewTableApi
 } from '../types'
-
-const uniqueIds = <T,>(ids: readonly T[]) => Array.from(new Set(ids))
+import {
+  createViewCommandNamespaces
+} from './viewCommands'
 
 const sameValue = (
   left: unknown,
@@ -251,37 +251,19 @@ export const createViewEngineApi = (options: {
   }
 
   const commit = (command: Command | readonly Command[]) => dispatch(command).applied
-
-  const createMoveOrderCommand = (
-    recordIds: readonly RecordId[],
-    beforeRecordId?: RecordId
-  ): Command | undefined => {
-    const nextRecordIds = uniqueIds(recordIds)
-    if (!nextRecordIds.length) {
-      return undefined
-    }
-
-    return {
-      type: 'view.order.move',
-      viewId: options.viewId,
-      recordIds: nextRecordIds,
-      ...(beforeRecordId ? { beforeRecordId } : {})
-    }
-  }
+  const commands = createViewCommandNamespaces({
+    viewId: options.viewId,
+    commit
+  })
 
   const order: ViewOrderApi = {
     move: (recordIds, beforeRecordId) => {
-      const command = createMoveOrderCommand(recordIds, beforeRecordId)
+      const command = commands.createMoveOrderCommand(recordIds, beforeRecordId)
       if (command) {
         commit(command)
       }
     },
-    clear: () => {
-      commit({
-        type: 'view.order.clear',
-        viewId: options.viewId
-      })
-    }
+    clear: commands.clearOrder
   }
 
   const items: ViewItemsApi = {
@@ -324,7 +306,7 @@ export const createViewEngineApi = (options: {
             recordIds
           )
         : undefined
-      const commands: Command[] = []
+      const nextCommands: Command[] = []
 
       if (sectionChanged && groupWrite) {
         const valueCommands = createGroupWriteCommands({
@@ -339,18 +321,18 @@ export const createViewEngineApi = (options: {
           return
         }
 
-        commands.push(...valueCommands)
+        nextCommands.push(...valueCommands)
       }
 
       if (!currentView.view.sort.length) {
-        const moveCommand = createMoveOrderCommand(recordIds, beforeRecordId)
+        const moveCommand = commands.createMoveOrderCommand(recordIds, beforeRecordId)
         if (moveCommand) {
-          commands.push(moveCommand)
+          nextCommands.push(moveCommand)
         }
       }
 
-      if (commands.length) {
-        dispatch(commands)
+      if (nextCommands.length) {
+        dispatch(nextCommands)
       }
     },
     createInSection: (sectionKey, input) => {
@@ -395,7 +377,7 @@ export const createViewEngineApi = (options: {
       }
 
       const recordId = createRecordId()
-      const commands: Command[] = [{
+      const nextCommands: Command[] = [{
         type: 'record.create',
         input: {
           id: recordId,
@@ -416,13 +398,13 @@ export const createViewEngineApi = (options: {
           },
           sectionKey
         )[0]
-        const moveCommand = createMoveOrderCommand([recordId], beforeRecordId)
+        const moveCommand = commands.createMoveOrderCommand([recordId], beforeRecordId)
         if (moveCommand) {
-          commands.push(moveCommand)
+          nextCommands.push(moveCommand)
         }
       }
 
-      const result = dispatch(commands)
+      const result = dispatch(nextCommands)
       return result.applied
         ? recordId
         : undefined
@@ -510,289 +492,6 @@ export const createViewEngineApi = (options: {
     }
   }
 
-  const type: ViewEngineApi['type'] = {
-    set: value => {
-      commit({
-        type: 'view.type.set',
-        viewId: options.viewId,
-        value
-      })
-    }
-  }
-
-  const search: ViewEngineApi['search'] = {
-    set: value => {
-      commit({
-        type: 'view.search.set',
-        viewId: options.viewId,
-        value
-      })
-    }
-  }
-
-  const filter: ViewEngineApi['filter'] = {
-    add: fieldId => {
-      commit({
-        type: 'view.filter.add',
-        viewId: options.viewId,
-        fieldId
-      })
-    },
-    set: (index, rule) => {
-      commit({
-        type: 'view.filter.set',
-        viewId: options.viewId,
-        index,
-        rule
-      })
-    },
-    preset: (index, presetId) => {
-      commit({
-        type: 'view.filter.preset',
-        viewId: options.viewId,
-        index,
-        presetId
-      })
-    },
-    value: (index, value) => {
-      commit({
-        type: 'view.filter.value',
-        viewId: options.viewId,
-        index,
-        ...(value !== undefined ? { value } : {})
-      })
-    },
-    mode: value => {
-      commit({
-        type: 'view.filter.mode',
-        viewId: options.viewId,
-        value
-      })
-    },
-    remove: index => {
-      commit({
-        type: 'view.filter.remove',
-        viewId: options.viewId,
-        index
-      })
-    },
-    clear: () => {
-      commit({
-        type: 'view.filter.clear',
-        viewId: options.viewId
-      })
-    }
-  }
-
-  const sort: ViewEngineApi['sort'] = {
-    add: (fieldId, direction) => {
-      commit({
-        type: 'view.sort.add',
-        viewId: options.viewId,
-        fieldId,
-        ...(direction ? { direction } : {})
-      })
-    },
-    set: (fieldId, direction) => {
-      commit({
-        type: 'view.sort.set',
-        viewId: options.viewId,
-        fieldId,
-        direction
-      })
-    },
-    only: (fieldId, direction) => {
-      commit({
-        type: 'view.sort.only',
-        viewId: options.viewId,
-        fieldId,
-        direction
-      })
-    },
-    replace: (index, sorter) => {
-      commit({
-        type: 'view.sort.replace',
-        viewId: options.viewId,
-        index,
-        sorter
-      })
-    },
-    remove: index => {
-      commit({
-        type: 'view.sort.remove',
-        viewId: options.viewId,
-        index
-      })
-    },
-    move: (from, to) => {
-      commit({
-        type: 'view.sort.move',
-        viewId: options.viewId,
-        from,
-        to
-      })
-    },
-    clear: () => {
-      commit({
-        type: 'view.sort.clear',
-        viewId: options.viewId
-      })
-    }
-  }
-
-  const group: ViewEngineApi['group'] = {
-    set: fieldId => {
-      commit({
-        type: 'view.group.set',
-        viewId: options.viewId,
-        fieldId
-      })
-    },
-    clear: () => {
-      commit({
-        type: 'view.group.clear',
-        viewId: options.viewId
-      })
-    },
-    toggle: fieldId => {
-      commit({
-        type: 'view.group.toggle',
-        viewId: options.viewId,
-        fieldId
-      })
-    },
-    setMode: value => {
-      commit({
-        type: 'view.group.mode.set',
-        viewId: options.viewId,
-        value
-      })
-    },
-    setSort: value => {
-      commit({
-        type: 'view.group.sort.set',
-        viewId: options.viewId,
-        value
-      })
-    },
-    setInterval: value => {
-      commit({
-        type: 'view.group.interval.set',
-        viewId: options.viewId,
-        ...(value !== undefined ? { value } : {})
-      })
-    },
-    setShowEmpty: value => {
-      commit({
-        type: 'view.group.empty.set',
-        viewId: options.viewId,
-        value
-      })
-    },
-    show: key => {
-      commit({
-        type: 'view.group.bucket.show',
-        viewId: options.viewId,
-        key
-      })
-    },
-    hide: key => {
-      commit({
-        type: 'view.group.bucket.hide',
-        viewId: options.viewId,
-        key
-      })
-    },
-    collapse: key => {
-      commit({
-        type: 'view.group.bucket.collapse',
-        viewId: options.viewId,
-        key
-      })
-    },
-    expand: key => {
-      commit({
-        type: 'view.group.bucket.expand',
-        viewId: options.viewId,
-        key
-      })
-    },
-    toggleCollapse: key => {
-      commit({
-        type: 'view.group.bucket.toggleCollapse',
-        viewId: options.viewId,
-        key
-      })
-    }
-  }
-
-  const calc: ViewEngineApi['calc'] = {
-    set: (fieldId, metric) => {
-      commit({
-        type: 'view.calc.set',
-        viewId: options.viewId,
-        fieldId,
-        metric
-      })
-    }
-  }
-
-  const display: ViewEngineApi['display'] = {
-    replace: fieldIds => {
-      commit({
-        type: 'view.display.replace',
-        viewId: options.viewId,
-        fieldIds: [...fieldIds]
-      })
-    },
-    move: (fieldIds, beforeFieldId) => {
-      commit({
-        type: 'view.display.move',
-        viewId: options.viewId,
-        fieldIds: [...fieldIds],
-        ...(beforeFieldId !== undefined ? { beforeFieldId } : {})
-      })
-    },
-    show: (fieldId, beforeFieldId) => {
-      commit({
-        type: 'view.display.show',
-        viewId: options.viewId,
-        fieldId,
-        ...(beforeFieldId !== undefined ? { beforeFieldId } : {})
-      })
-    },
-    hide: fieldId => {
-      commit({
-        type: 'view.display.hide',
-        viewId: options.viewId,
-        fieldId
-      })
-    },
-    clear: () => {
-      commit({
-        type: 'view.display.clear',
-        viewId: options.viewId
-      })
-    }
-  }
-
-  const tableSettings: ViewTableApi = {
-    setColumnWidths: widths => {
-      commit({
-        type: 'view.table.setWidths',
-        viewId: options.viewId,
-        widths
-      })
-    },
-    setVerticalLines: value => {
-      commit({
-        type: 'view.table.verticalLines.set',
-        viewId: options.viewId,
-        value
-      })
-    }
-  }
-
   const readVisibleFieldIds = () => (
     readCurrentView()?.display.fields ?? []
   )
@@ -835,10 +534,10 @@ export const createViewEngineApi = (options: {
 
   const table: ViewEngineApi['table'] = {
     setWidths: widths => {
-      tableSettings.setColumnWidths(widths)
+      commands.tableSettings.setColumnWidths(widths)
     },
     setVerticalLines: value => {
-      tableSettings.setVerticalLines(value)
+      commands.tableSettings.setVerticalLines(value)
     },
     insertLeft: (anchorFieldId, input) => {
       const fieldId = createField(input)
@@ -846,7 +545,7 @@ export const createViewEngineApi = (options: {
         return undefined
       }
 
-      display.show(fieldId, resolveInsertBeforeId(anchorFieldId, 'left'))
+      commands.display.show(fieldId, resolveInsertBeforeId(anchorFieldId, 'left'))
       return fieldId
     },
     insertRight: (anchorFieldId, input) => {
@@ -855,49 +554,8 @@ export const createViewEngineApi = (options: {
         return undefined
       }
 
-      display.show(fieldId, resolveInsertBeforeId(anchorFieldId, 'right'))
+      commands.display.show(fieldId, resolveInsertBeforeId(anchorFieldId, 'right'))
       return fieldId
-    }
-  }
-
-  const gallery: ViewGalleryApi = {
-    setLabels: value => {
-      commit({
-        type: 'view.gallery.labels.set',
-        viewId: options.viewId,
-        value
-      })
-    },
-    setCardSize: value => {
-      commit({
-        type: 'view.gallery.setCardSize',
-        viewId: options.viewId,
-        value
-      })
-    }
-  }
-
-  const kanban: ViewKanbanApi = {
-    setNewRecordPosition: value => {
-      commit({
-        type: 'view.kanban.setNewRecordPosition',
-        viewId: options.viewId,
-        value
-      })
-    },
-    setFillColor: value => {
-      commit({
-        type: 'view.kanban.fillColor.set',
-        viewId: options.viewId,
-        value
-      })
-    },
-    setCardsPerColumn: value => {
-      commit({
-        type: 'view.kanban.cardsPerColumn.set',
-        viewId: options.viewId,
-        value
-      })
     }
   }
 
@@ -942,7 +600,7 @@ export const createViewEngineApi = (options: {
       }
 
       const recordId = createRecordId()
-      const commands: Command[] = [{
+      const nextCommands: Command[] = [{
         type: 'record.create',
         input: {
           id: recordId,
@@ -965,20 +623,20 @@ export const createViewEngineApi = (options: {
           )[0]
         : undefined
       const insertOrderCommand = beforeRecordId
-        ? createMoveOrderCommand([recordId], beforeRecordId)
+        ? commands.createMoveOrderCommand([recordId], beforeRecordId)
         : undefined
       if (insertOrderCommand) {
-        commands.push(insertOrderCommand)
+        nextCommands.push(insertOrderCommand)
       }
 
-      const result = dispatch(commands)
+      const result = dispatch(nextCommands)
       return result.applied
         ? recordId
         : undefined
     },
     moveCards: (input: KanbanMoveCardsInput) => {
       const currentView = readCurrentProjection()
-      const recordIds = uniqueIds(input.recordIds)
+      const recordIds = Array.from(new Set(input.recordIds))
 
       if (!currentView || !recordIds.length) {
         return
@@ -989,7 +647,7 @@ export const createViewEngineApi = (options: {
         return
       }
 
-      const moveCommand = createMoveOrderCommand(recordIds, input.beforeRecordId)
+      const moveCommand = commands.createMoveOrderCommand(recordIds, input.beforeRecordId)
       if (!moveCommand) {
         return
       }
@@ -1020,16 +678,16 @@ export const createViewEngineApi = (options: {
   }
 
   return {
-    type,
-    search,
-    filter,
-    sort,
-    group,
-    calc,
-    display,
+    type: commands.type,
+    search: commands.search,
+    filter: commands.filter,
+    sort: commands.sort,
+    group: commands.group,
+    calc: commands.calc,
+    display: commands.display,
     table,
-    gallery,
-    kanban,
+    gallery: commands.gallery,
+    kanban: commands.kanban,
     order,
     items,
     cards

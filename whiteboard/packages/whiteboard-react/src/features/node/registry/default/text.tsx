@@ -1,29 +1,14 @@
-import { createPortal } from 'react-dom'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { CSSProperties, KeyboardEvent } from 'react'
+import { useCallback, useRef, type CSSProperties } from 'react'
 import {
-  estimateTextAutoFont,
-  isTextContentEmpty
+  estimateTextAutoFont
 } from '@whiteboard/core/node'
-import { useStoreValue } from '@shared/react'
 import type { NodeDefinition, NodeRenderProps } from '#react/types/node'
 import {
-  useEdit,
   useEditor
 } from '#react/runtime/hooks'
-import {
-  focusEditableDraft,
-  isEscapeEditingKey,
-  isSubmitEditingKey,
-  stopEditingPointerDown,
-  syncEditableDraft
-} from '../../dom/editableText'
 import { useStickyFontSize } from '../../hooks/useStickyFontSize'
-import { toNodeDataPatch } from '../../update'
 import {
   bindNodeTextSource,
-  measureTextNodeSize,
-  readEditableText,
   STICKY_DEFAULT_FILL,
   STICKY_PLACEHOLDER,
   TEXT_DEFAULT_FONT_SIZE,
@@ -37,19 +22,22 @@ import {
   styleField
 } from './shared'
 
-const SIZE_EPSILON = 0.5
-
 const textSchema = createSchema('text', 'Text', [
   createTextField('text'),
   styleField('fill', 'Background', 'color'),
   styleField('color', 'Text color', 'color'),
-  styleField('fontSize', 'Font size', 'number', { min: 8, step: 1 })
+  styleField('fontSize', 'Font size', 'number', { min: 8, step: 1 }),
+  styleField('fontWeight', 'Font weight', 'number', { min: 100, max: 900, step: 100 }),
+  styleField('fontStyle', 'Font style', 'string')
 ])
 
 const stickySchema = createSchema('sticky', 'Sticky', [
   createTextField('text'),
   styleField('fill', 'Fill', 'color'),
   styleField('color', 'Text color', 'color'),
+  styleField('fontSize', 'Font size', 'number', { min: 8, step: 1 }),
+  styleField('fontWeight', 'Font weight', 'number', { min: 100, max: 900, step: 100 }),
+  styleField('fontStyle', 'Font style', 'string'),
   styleField('stroke', 'Stroke', 'color'),
   styleField('strokeWidth', 'Stroke width', 'number', { min: 0, step: 1 })
 ])
@@ -64,13 +52,13 @@ type TextNodeRendererProps = NodeRenderProps & {
   variant: 'text' | 'sticky'
 }
 
-const useNodeTextSourceRef = (
-  editor: ReturnType<typeof useEditor>,
+const useNodeTextSourceBinding = (
   nodeId: NodeRenderProps['node']['id']
 ) => {
+  const editor = useEditor()
   const sourceRef = useRef<HTMLDivElement | null>(null)
 
-  const setSourceRef = useCallback((element: HTMLDivElement | null) => {
+  const bindRef = useCallback((element: HTMLDivElement | null) => {
     bindNodeTextSource({
       editor,
       nodeId,
@@ -83,11 +71,11 @@ const useNodeTextSourceRef = (
 
   return {
     sourceRef,
-    setSourceRef
+    bindRef
   }
 }
 
-const TextNodeDisplay = ({
+const TextNodeRenderer = ({
   node,
   rect,
   selected,
@@ -96,17 +84,35 @@ const TextNodeDisplay = ({
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
   const isSticky = variant === 'sticky'
   const placeholder = isSticky ? STICKY_PLACEHOLDER : TEXT_PLACEHOLDER
-  const fontSize = isSticky
-    ? estimateTextAutoFont('sticky', rect)
-    : (getStyleNumber(node, 'fontSize') ?? TEXT_DEFAULT_FONT_SIZE)
+  const {
+    sourceRef,
+    bindRef
+  } = useNodeTextSourceBinding(node.id)
+  const stickyFontSize = useStickyFontSize({
+    text,
+    rect,
+    sourceRef
+  })
+  const fontSize = getStyleNumber(node, 'fontSize') ?? (
+    isSticky
+      ? stickyFontSize
+      : TEXT_DEFAULT_FONT_SIZE
+  )
+  const fontWeight = getStyleNumber(node, 'fontWeight') ?? 400
+  const fontStyle = getStyleString(node, 'fontStyle') ?? 'normal'
   const color = getStyleString(node, 'color') ?? 'var(--ui-text-primary)'
 
   return (
     <div className="wb-text-node-viewport">
       <div
+        ref={bindRef}
+        data-edit-node-id={node.id}
+        data-edit-field="text"
         className={`wb-default-text-display${isSticky ? ' wb-sticky-content' : ''}`}
         style={{
           fontSize,
+          fontWeight,
+          fontStyle,
           color,
           opacity: selected ? 1 : 0.9
         }}
@@ -115,246 +121,6 @@ const TextNodeDisplay = ({
       </div>
     </div>
   )
-}
-
-const TextNodeEditor = ({
-  node,
-  rect,
-  variant
-}: TextNodeRendererProps) => {
-  const editor = useEditor()
-  const edit = useEdit()
-  const editing = edit?.kind === 'node' && edit.nodeId === node.id && edit.field === 'text'
-  const editCaret = editing ? edit.caret : undefined
-  const text = typeof node.data?.text === 'string' ? node.data.text : ''
-  const [draft, setDraft] = useState(text)
-  const isSticky = variant === 'sticky'
-  const { sourceRef, setSourceRef } = useNodeTextSourceRef(editor, node.id)
-  const anchorRef = useRef<HTMLDivElement | null>(null)
-  const viewport = useStoreValue(editor.select.viewport())
-  const [editorRect, setEditorRect] = useState<{
-    left: number
-    top: number
-    width: number
-    height: number
-  } | null>(null)
-  const placeholder = isSticky ? STICKY_PLACEHOLDER : TEXT_PLACEHOLDER
-  const stickyFontSize = useStickyFontSize({
-    text: draft,
-    rect,
-    sourceRef
-  })
-  const fontSize = isSticky
-    ? stickyFontSize
-    : (getStyleNumber(node, 'fontSize') ?? TEXT_DEFAULT_FONT_SIZE)
-  const color = getStyleString(node, 'color') ?? 'var(--ui-text-primary)'
-  const setAnchorRef = useCallback((element: HTMLDivElement | null) => {
-    anchorRef.current = element
-  }, [])
-
-  useEffect(() => {
-    setDraft((current) => current === text ? current : text)
-  }, [text])
-
-  useEffect(() => {
-    if (!editing) {
-      return
-    }
-
-    const element = sourceRef.current
-    if (!element) {
-      return
-    }
-
-    syncEditableDraft(element, draft)
-  }, [draft, editing, sourceRef])
-
-  useEffect(() => {
-    if (!editing) {
-      return
-    }
-
-    const element = sourceRef.current
-    if (!element) {
-      return
-    }
-
-    return focusEditableDraft(element, editCaret)
-  }, [editCaret, editing, sourceRef])
-
-  useLayoutEffect(() => {
-    if (!editing) {
-      setEditorRect((current) => current === null ? current : null)
-      return
-    }
-
-    const updateRect = () => {
-      const element = anchorRef.current
-      if (!element) {
-        setEditorRect((current) => current === null ? current : null)
-        return
-      }
-
-      const next = element.getBoundingClientRect()
-      setEditorRect((current) => (
-        current
-        && Math.abs(current.left - next.left) < SIZE_EPSILON
-        && Math.abs(current.top - next.top) < SIZE_EPSILON
-        && Math.abs(current.width - next.width) < SIZE_EPSILON
-        && Math.abs(current.height - next.height) < SIZE_EPSILON
-          ? current
-          : {
-              left: next.left,
-              top: next.top,
-              width: next.width,
-              height: next.height
-            }
-      ))
-    }
-
-    updateRect()
-
-    window.addEventListener('resize', updateRect)
-    window.addEventListener('scroll', updateRect, true)
-
-    return () => {
-      window.removeEventListener('resize', updateRect)
-      window.removeEventListener('scroll', updateRect, true)
-    }
-  }, [
-    editing,
-    rect.height,
-    rect.width,
-    rect.x,
-    rect.y,
-    viewport.center.x,
-    viewport.center.y,
-    viewport.zoom
-  ])
-
-  useLayoutEffect(() => {
-    if (!editing || isSticky) {
-      editor.actions.edit.nodeText.clearSize(node.id)
-      return
-    }
-
-    const source = sourceRef.current
-    if (!source) {
-      return
-    }
-
-    const size = measureTextNodeSize({
-      node,
-      rect,
-      content: draft,
-      placeholder,
-      source,
-      minWidth: rect.width
-    })
-    if (!size) {
-      return
-    }
-
-    editor.actions.edit.nodeText.set(node.id, {
-      size
-    })
-  }, [draft, editing, editor, isSticky, node, placeholder, rect, sourceRef])
-
-  useEffect(() => () => {
-    editor.actions.edit.nodeText.clearSize(node.id)
-  }, [editor, node.id])
-
-  const commit = (
-    nextDraft = draft
-  ) => {
-    editor.actions.edit.nodeText.clear(node.id)
-    editor.actions.edit.clear()
-
-    if (node.type === 'text' && isTextContentEmpty(nextDraft)) {
-      editor.actions.selection.clear()
-      editor.actions.node.remove([node.id])
-      return
-    }
-
-    editor.actions.node.patch([node.id], toNodeDataPatch(node, {
-      text: nextDraft
-    }))
-  }
-
-  const cancel = () => {
-    setDraft(text)
-    editor.actions.edit.nodeText.clear(node.id)
-    editor.actions.edit.clear()
-  }
-
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (isEscapeEditingKey(event)) {
-      event.preventDefault()
-      cancel()
-      return
-    }
-    if (isSubmitEditingKey(event)) {
-      event.preventDefault()
-      commit(readEditableText(event.currentTarget))
-    }
-  }
-
-  return (
-    <>
-      <div className="wb-text-node-viewport" ref={setAnchorRef} />
-      {editorRect && typeof document !== 'undefined'
-        ? createPortal(
-            <div
-              className="wb-text-edit-portal"
-              style={{
-                left: editorRect.left,
-                top: editorRect.top,
-                width: rect.width,
-                height: rect.height,
-                transform: `scale(${viewport.zoom})`,
-                transformOrigin: '0 0'
-              }}
-            >
-              <div
-                data-selection-ignore
-                data-input-ignore
-                className={`wb-default-text-display wb-default-text-editor${isSticky ? ' wb-sticky-content' : ''}`}
-                contentEditable="plaintext-only"
-                suppressContentEditableWarning
-                role="textbox"
-                aria-multiline="true"
-                spellCheck={false}
-                ref={setSourceRef}
-                onPointerDown={stopEditingPointerDown}
-                onInput={(event) => {
-                  setDraft(readEditableText(event.currentTarget))
-                }}
-                onKeyDown={onKeyDown}
-                onBlur={(event) => {
-                  commit(readEditableText(event.currentTarget))
-                }}
-                style={{
-                  fontSize,
-                  color
-                } as CSSProperties}
-              />
-            </div>,
-            document.body
-          )
-        : null}
-    </>
-  )
-}
-
-const TextNodeRenderer = (
-  props: TextNodeRendererProps
-) => {
-  const edit = useEdit()
-  const editing = edit?.kind === 'node' && edit.nodeId === props.node.id && edit.field === 'text'
-
-  return editing
-    ? <TextNodeEditor {...props} />
-    : <TextNodeDisplay {...props} />
 }
 
 const createTextStyle = (variant: 'text' | 'sticky') => (props: NodeRenderProps): CSSProperties => {
@@ -402,6 +168,17 @@ export const TextNodeDefinition: NodeDefinition = {
   schema: textSchema,
   defaultData: { text: '' },
   enter: true,
+  edit: {
+    fields: {
+      text: {
+        tools: ['size', 'weight', 'italic', 'color', 'background'],
+        placeholder: TEXT_PLACEHOLDER,
+        multiline: true,
+        empty: 'keep',
+        measure: 'text'
+      }
+    }
+  },
   render: (props) => <TextNodeRenderer {...props} variant="text" />,
   style: createTextStyle('text')
 }
@@ -419,6 +196,17 @@ export const StickyNodeDefinition: NodeDefinition = {
   schema: stickySchema,
   defaultData: { text: '' },
   enter: true,
+  edit: {
+    fields: {
+      text: {
+        tools: ['size', 'weight', 'italic', 'color', 'background'],
+        placeholder: STICKY_PLACEHOLDER,
+        multiline: true,
+        empty: 'keep',
+        measure: 'none'
+      }
+    }
+  },
   render: (props) => <TextNodeRenderer {...props} variant="sticky" />,
   style: createTextStyle('sticky')
 }

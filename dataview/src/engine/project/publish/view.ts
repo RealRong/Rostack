@@ -7,11 +7,11 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import {
-  getDocumentFieldById,
   getDocumentFields,
   getDocumentViewById
 } from '@dataview/core/document'
 import type {
+  FilterConditionProjection,
   FilterRuleProjection,
   ViewFilterProjection
 } from '@dataview/core/filter'
@@ -22,23 +22,83 @@ import {
   isFilterRuleEffective,
   sameFilterRule
 } from '@dataview/core/filter'
-import type { ViewGroupProjection } from '@dataview/core/group'
-import { getFieldGroupMeta } from '@dataview/core/field'
-import type { ViewSearchProjection } from '@dataview/core/search'
+import {
+  getFieldGroupMeta
+} from '@dataview/core/field'
+import type {
+  ViewGroupProjection
+} from '@dataview/core/group'
+import type {
+  ViewSearchProjection
+} from '@dataview/core/search'
 import type {
   SortRuleProjection,
   ViewSortProjection
 } from '@dataview/core/sort'
 import type {
-  ActiveView
-} from '../types'
+  ActiveView,
+  FilterView,
+  GroupView,
+  SearchView,
+  SortView
+} from '../../types'
 import type {
   FieldList
-} from './types'
+} from '../types'
+import {
+  sameFieldList
+} from '../runtime/equality'
 
 const emptyIds = [] as readonly FieldId[]
 
-export const resolveActiveView = (
+const equalList = <T,>(
+  left: readonly T[],
+  right: readonly T[],
+  equal: (left: T, right: T) => boolean
+) => (
+  left.length === right.length
+  && left.every((value, index) => equal(value, right[index] as T))
+)
+
+const equalOptionalList = <T,>(
+  left: readonly T[] | undefined,
+  right: readonly T[] | undefined,
+  equal: (left: T, right: T) => boolean
+) => {
+  if (!left || !right) {
+    return left === right
+  }
+
+  return equalList(left, right, equal)
+}
+
+const equalProjection = <T,>(
+  left: T | undefined,
+  right: T | undefined,
+  equal: (left: T, right: T) => boolean
+) => {
+  if (!left || !right) {
+    return left === right
+  }
+
+  return equal(left, right)
+}
+
+const reuseProjection = <T,>(
+  previous: T | undefined,
+  next: T | undefined,
+  equal: (left: T, right: T) => boolean
+) => {
+  if (!previous || !next) {
+    return next
+  }
+
+  return equal(previous, next)
+    ? previous
+    : next
+}
+
+const resolveActiveView = (
   document: DataDoc,
   activeViewId: ViewId | undefined
 ): ActiveView | undefined => {
@@ -58,13 +118,13 @@ export const resolveActiveView = (
   }
 }
 
-export const resolveFieldsById = (
+const resolveFieldsById = (
   document: DataDoc
 ): ReadonlyMap<FieldId, Field> => new Map(
   getDocumentFields(document).map(field => [field.id, field] as const)
 )
 
-export const createFields = (input: {
+const createFields = (input: {
   fieldIds: readonly FieldId[]
   byId: ReadonlyMap<FieldId, Field>
 }): FieldList => {
@@ -99,7 +159,7 @@ export const createFields = (input: {
   }
 }
 
-export const createSearchProjection = (
+const createSearchProjection = (
   viewId: string,
   search: ViewSearchProjection['search']
 ): ViewSearchProjection => ({
@@ -139,7 +199,7 @@ const createFilterRuleProjection = (
   }
 }
 
-export const createFilterProjection = (input: {
+const createFilterProjection = (input: {
   viewId: string
   view: View
   fieldsById: ReadonlyMap<FieldId, Field>
@@ -168,7 +228,7 @@ const createSortRuleProjection = (input: {
   }
 }
 
-export const createSortProjection = (input: {
+const createSortProjection = (input: {
   viewId: string
   view: View
   fieldsById: ReadonlyMap<FieldId, Field>
@@ -198,7 +258,7 @@ const createInactiveGroupProjection = (
   supportsInterval: false
 })
 
-export const createGroupProjection = (input: {
+const createGroupProjection = (input: {
   viewId: string
   view: View
   fieldsById: ReadonlyMap<FieldId, Field>
@@ -252,51 +312,155 @@ export const createGroupProjection = (input: {
   }
 }
 
-export const buildPublishedViewState = (input: {
+const equalActiveView = (
+  left: ActiveView | undefined,
+  right: ActiveView | undefined
+) => equalProjection(left, right, (current, next) => (
+  current.id === next.id
+  && current.name === next.name
+  && current.type === next.type
+))
+
+const equalFilterCondition = (
+  left: FilterConditionProjection,
+  right: FilterConditionProjection
+) => (
+  left.id === right.id
+  && left.selected === right.selected
+)
+
+const equalFilterRuleProjection = (
+  left: FilterRuleProjection,
+  right: FilterRuleProjection
+) => (
+  sameFilterRule(left.rule, right.rule)
+  && left.fieldId === right.fieldId
+  && left.fieldLabel === right.fieldLabel
+  && left.activePresetId === right.activePresetId
+  && left.effective === right.effective
+  && left.editorKind === right.editorKind
+  && left.valueText === right.valueText
+  && left.bodyLayout === right.bodyLayout
+  && equalList(left.conditions, right.conditions, equalFilterCondition)
+)
+
+const equalFilterProjection = (
+  left: FilterView | undefined,
+  right: FilterView | undefined
+) => equalProjection(left, right, (current, next) => (
+  current.viewId === next.viewId
+  && current.mode === next.mode
+  && equalList(current.rules, next.rules, equalFilterRuleProjection)
+))
+
+const equalSearchProjection = (
+  left: SearchView | undefined,
+  right: SearchView | undefined
+) => equalProjection(left, right, (current, next) => (
+  current.viewId === next.viewId
+  && current.query === next.query
+  && current.active === next.active
+  && equalOptionalList(current.fields, next.fields, Object.is)
+))
+
+const equalSortRuleProjection = (
+  left: SortRuleProjection,
+  right: SortRuleProjection
+) => (
+  left.fieldId === right.fieldId
+  && left.fieldLabel === right.fieldLabel
+  && left.sorter.field === right.sorter.field
+  && left.sorter.direction === right.sorter.direction
+)
+
+const equalSortProjection = (
+  left: SortView | undefined,
+  right: SortView | undefined
+) => equalProjection(left, right, (current, next) => (
+  current.viewId === next.viewId
+  && current.active === next.active
+  && equalList(current.rules, next.rules, equalSortRuleProjection)
+))
+
+const equalGroupProjection = (
+  left: GroupView | undefined,
+  right: GroupView | undefined
+) => equalProjection(left, right, (current, next) => (
+  current.viewId === next.viewId
+  && current.active === next.active
+  && current.fieldId === next.fieldId
+  && current.fieldLabel === next.fieldLabel
+  && current.mode === next.mode
+  && current.bucketSort === next.bucketSort
+  && current.bucketInterval === next.bucketInterval
+  && current.showEmpty === next.showEmpty
+  && current.supportsInterval === next.supportsInterval
+  && equalList(current.availableModes, next.availableModes, Object.is)
+  && equalList(current.availableBucketSorts, next.availableBucketSorts, Object.is)
+))
+
+export const publishViewState = (input: {
   document: DataDoc
   viewId?: ViewId
+  previous: {
+    view?: ActiveView
+    filter?: FilterView
+    group?: GroupView
+    search?: SearchView
+    sort?: SortView
+    fields?: FieldList
+  }
 }): {
   view?: ActiveView
-  search?: ViewSearchProjection
-  filter?: ViewFilterProjection
-  sort?: ViewSortProjection
-  group?: ViewGroupProjection
+  filter?: FilterView
+  group?: GroupView
+  search?: SearchView
+  sort?: SortView
   fields?: FieldList
 } => {
   const view = input.viewId
     ? getDocumentViewById(input.document, input.viewId)
     : undefined
   if (!view || !input.viewId) {
-    return {}
+    return {
+      view: undefined,
+      filter: undefined,
+      group: undefined,
+      search: undefined,
+      sort: undefined,
+      fields: undefined
+    }
   }
 
   const fieldsById = resolveFieldsById(input.document)
+  const nextView = resolveActiveView(input.document, input.viewId)
+  const nextSearch = createSearchProjection(input.viewId, view.search)
+  const nextFilter = createFilterProjection({
+    viewId: input.viewId,
+    view,
+    fieldsById
+  })
+  const nextSort = createSortProjection({
+    viewId: input.viewId,
+    view,
+    fieldsById
+  })
+  const nextGroup = createGroupProjection({
+    viewId: input.viewId,
+    view,
+    fieldsById
+  })
+  const nextFields = createFields({
+    fieldIds: view.display.fields,
+    byId: fieldsById
+  })
 
   return {
-    view: resolveActiveView(input.document, input.viewId),
-    search: createSearchProjection(input.viewId, view.search),
-    filter: createFilterProjection({
-      viewId: input.viewId,
-      view,
-      fieldsById
-    }),
-    sort: createSortProjection({
-      viewId: input.viewId,
-      view,
-      fieldsById
-    }),
-    group: createGroupProjection({
-      viewId: input.viewId,
-      view,
-      fieldsById
-    }),
-    fields: createFields({
-      fieldIds: view.display.fields,
-      byId: fieldsById
-    })
+    view: reuseProjection(input.previous.view, nextView, equalActiveView),
+    filter: reuseProjection(input.previous.filter, nextFilter, equalFilterProjection),
+    group: reuseProjection(input.previous.group, nextGroup, equalGroupProjection),
+    search: reuseProjection(input.previous.search, nextSearch, equalSearchProjection),
+    sort: reuseProjection(input.previous.sort, nextSort, equalSortProjection),
+    fields: reuseProjection(input.previous.fields, nextFields, sameFieldList)
   }
-}
-
-export {
-  sameFilterRule
 }

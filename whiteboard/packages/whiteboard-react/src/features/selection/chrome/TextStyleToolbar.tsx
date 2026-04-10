@@ -1,17 +1,14 @@
 import {
-  Fragment,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type RefObject
 } from 'react'
 import { Button, cn } from '@ui'
-import type { NodeId, Point } from '@whiteboard/core/types'
-import { useElementSize, useOptionalKeyedStoreValue, useStoreValue } from '@shared/react'
-import { useEdit, useEditorRuntime } from '#react/runtime/hooks'
-import { toNodeFieldUpdate, toNodeStylePatch } from '#react/features/node/update'
+import type { Point } from '@whiteboard/core/types'
+import { useElementSize, useStoreValue } from '@shared/react'
+import { useEditorRuntime } from '#react/runtime/hooks'
 import { WhiteboardPopover } from '#react/runtime/overlay'
 import {
   buildToolbarStyle,
@@ -29,36 +26,6 @@ import {
 import { Bold, Italic } from 'lucide-react'
 
 type PanelKey = 'font-size' | 'text-color' | 'background'
-
-type TextToolbarContext =
-  | {
-      kind: 'node'
-      nodeId: NodeId
-      nodeType: string
-      fontSize?: number
-      fontWeight?: number
-      italic: boolean
-      color?: string
-      background?: string
-      canSize: boolean
-      canWeight: boolean
-      canItalic: boolean
-      canBackground: boolean
-    }
-  | {
-      kind: 'edge-label'
-      edgeId: string
-      labelId: string
-      fontSize?: number
-      fontWeight?: number
-      italic: boolean
-      color?: string
-      background?: string
-      canSize: true
-      canWeight: true
-      canItalic: true
-      canBackground: true
-    }
 
 type ToolbarPositionSession = {
   key: string
@@ -85,230 +52,25 @@ const resolveToolbarAnchorWorld = ({
     : y + height
 })
 
-const resolveContext = (
-  edit: ReturnType<typeof useEdit>,
-  nodeItem: ReturnType<ReturnType<ReturnType<typeof useEditorRuntime>['select']['node']['item']>['get']>,
-  edgeItem: ReturnType<ReturnType<ReturnType<typeof useEditorRuntime>['select']['edge']['item']>['get']>
-): TextToolbarContext | undefined => {
-  if (!edit) {
-    return undefined
-  }
-
-  if (edit.kind === 'node') {
-    const node = nodeItem?.node
-    if (!node) {
-      return undefined
-    }
-
-    const type = node.type
-    const fontSize = typeof node.style?.fontSize === 'number'
-      ? node.style.fontSize
-      : undefined
-    const fontWeight = typeof node.style?.fontWeight === 'number'
-      ? node.style.fontWeight
-      : undefined
-    const fontStyle = typeof node.style?.fontStyle === 'string'
-      ? node.style.fontStyle
-      : undefined
-    const color = typeof node.style?.color === 'string'
-      ? node.style.color
-      : undefined
-
-    return {
-      kind: 'node',
-      nodeId: edit.nodeId,
-      nodeType: type,
-      fontSize,
-      fontWeight,
-      italic: fontStyle === 'italic',
-      color,
-      background: typeof node.style?.fill === 'string' ? node.style.fill : undefined,
-      canSize: type === 'text' || type === 'shape',
-      canWeight: type === 'text' || type === 'shape',
-      canItalic: type === 'text' || type === 'shape',
-      canBackground: type === 'text'
-    }
-  }
-
-  const edge = edgeItem?.edge
-  const label = edge?.labels?.find((entry: NonNullable<typeof edge.labels>[number]) => entry.id === edit.labelId)
-  if (!edge || !label) {
-    return undefined
-  }
-
-  return {
-    kind: 'edge-label',
-    edgeId: edit.edgeId,
-    labelId: edit.labelId,
-    fontSize: label.style?.size,
-    fontWeight: label.style?.weight,
-    italic: Boolean(label.style?.italic),
-    color: label.style?.color,
-    background: label.style?.bg,
-    canSize: true,
-    canWeight: true,
-    canItalic: true,
-    canBackground: true
-  }
-}
-
-const createContextWriter = (
-  editor: ReturnType<typeof useEditorRuntime>,
-  context: TextToolbarContext
-) => ({
-  setFontSize: (value?: number) => {
-    if (!context.canSize) {
-      return
-    }
-
-    if (context.kind === 'node') {
-      const node = editor.select.node.item().get(context.nodeId)?.node
-      if (!node) {
-        return
-      }
-
-      editor.actions.node.patch([context.nodeId], toNodeFieldUpdate({
-        scope: 'style',
-        path: 'fontSize'
-      }, value))
-      return
-    }
-
-    editor.actions.edge.label.patch(context.edgeId, context.labelId, {
-      style: {
-        size: value
-      }
-    })
-  },
-  setWeight: (weight?: number) => {
-    if (!context.canWeight) {
-      return
-    }
-
-    if (context.kind === 'node') {
-      const node = editor.select.node.item().get(context.nodeId)?.node
-      if (!node) {
-        return
-      }
-
-      editor.actions.node.patch([context.nodeId], toNodeFieldUpdate({
-        scope: 'style',
-        path: 'fontWeight'
-      }, weight))
-      return
-    }
-
-    editor.actions.edge.label.patch(context.edgeId, context.labelId, {
-      style: {
-        weight
-      }
-    })
-  },
-  setItalic: (italic: boolean) => {
-    if (!context.canItalic) {
-      return
-    }
-
-    if (context.kind === 'node') {
-      const node = editor.select.node.item().get(context.nodeId)?.node
-      if (!node) {
-        return
-      }
-
-      editor.actions.node.patch([context.nodeId], toNodeStylePatch(node, {
-        fontStyle: italic ? 'italic' : 'normal'
-      }))
-      return
-    }
-
-    editor.actions.edge.label.patch(context.edgeId, context.labelId, {
-      style: {
-        italic
-      }
-    })
-  },
-  setColor: (value: string) => {
-    if (context.kind === 'node') {
-      const node = editor.select.node.item().get(context.nodeId)?.node
-      if (!node) {
-        return
-      }
-
-      editor.actions.node.patch([context.nodeId], toNodeStylePatch(node, {
-        color: value
-      }))
-      return
-    }
-
-    editor.actions.edge.label.patch(context.edgeId, context.labelId, {
-      style: {
-        color: value
-      }
-    })
-  },
-  setBackground: (value: string) => {
-    if (!context.canBackground) {
-      return
-    }
-
-    if (context.kind === 'node') {
-      const node = editor.select.node.item().get(context.nodeId)?.node
-      if (!node) {
-        return
-      }
-
-      editor.actions.node.patch([context.nodeId], toNodeStylePatch(node, {
-        fill: value
-      }))
-      return
-    }
-
-    editor.actions.edge.label.patch(context.edgeId, context.labelId, {
-      style: {
-        bg: value
-      }
-    })
-  }
-})
-
 export const TextStyleToolbar = ({
   containerRef
 }: {
   containerRef: RefObject<HTMLDivElement | null>
 }) => {
   const editor = useEditorRuntime()
-  const edit = useEdit()
   const surface = useElementSize(containerRef)
   const box = useStoreValue(editor.select.selection.box())
-  const nodeItem = useOptionalKeyedStoreValue(
-    editor.select.node.item(),
-    edit?.kind === 'node'
-      ? edit.nodeId
-      : undefined,
-    undefined
-  )
-  const edgeItem = useOptionalKeyedStoreValue(
-    editor.select.edge.item(),
-    edit?.kind === 'edge-label'
-      ? edit.edgeId
-      : undefined,
-    undefined
-  )
+  const panel = useStoreValue(editor.select.panel())
+  const context = panel.textToolbar
   const buttonRefByKey = useRef<Partial<Record<PanelKey, HTMLElement | null>>>({})
   const [activePanelKey, setActivePanelKey] = useState<PanelKey | null>(null)
   const [positionSession, setPositionSession] = useState<ToolbarPositionSession | null>(null)
-  const context = useMemo(
-    () => resolveContext(edit, nodeItem, edgeItem),
-    [edit, edgeItem, nodeItem]
-  )
-  const writer = useMemo(
-    () => context ? createContextWriter(editor, context) : undefined,
-    [context, editor]
-  )
-  const key = edit
-    ? edit.kind === 'node'
-      ? `node:${edit.nodeId}:${edit.field}`
-      : `edge-label:${edit.edgeId}:${edit.labelId}`
+  const key = context
+    ? (
+        context.session.kind === 'node'
+          ? `node:${context.session.nodeId}:${context.session.field}`
+          : `edge-label:${context.session.edgeId}:${context.session.labelId}`
+      )
     : null
   const worldToScreen = useCallback(
     (point: Point) => editor.select.viewport.worldToScreen(point),
@@ -362,7 +124,7 @@ export const TextStyleToolbar = ({
     })
   }, [context, key, livePosition])
 
-  if (!context || !box || !writer) {
+  if (!context || !box) {
     return null
   }
 
@@ -377,12 +139,12 @@ export const TextStyleToolbar = ({
   }
 
   const items = [
-    context.canSize ? 'font-size' : null,
+    context.tools.includes('size') ? 'font-size' : null,
     'divider',
-    context.canWeight ? 'bold' : null,
-    context.canItalic ? 'italic' : null,
+    context.tools.includes('weight') ? 'bold' : null,
+    context.tools.includes('italic') ? 'italic' : null,
     'text-color',
-    context.canBackground ? 'background' : null
+    context.tools.includes('background') ? 'background' : null
   ].filter(Boolean)
   const itemUnits = items.reduce((total, item) => total + (item === 'font-size' ? 2 : item === 'divider' ? 1 : 1), 0)
   const toolbarStyle = buildToolbarStyle({
@@ -398,7 +160,7 @@ export const TextStyleToolbar = ({
   const activePanelButton = activePanelKey
     ? buttonRefByKey.current[activePanelKey]
     : null
-  const activeWeight = (context.fontWeight ?? 400) >= 600
+  const activeWeight = (context.values.weight ?? 400) >= 600
 
   return (
     <div className="pointer-events-none absolute inset-0 z-[var(--wb-z-toolbar)]">
@@ -423,46 +185,47 @@ export const TextStyleToolbar = ({
                   buttonRefByKey.current['font-size'] = element
                 }}
                 variant="ghost"
-                className="h-9 min-w-[56px] rounded-xl px-3 font-medium text-fg"
-                pressed={activePanelKey === 'font-size'}
+                className={cn('min-w-12 justify-center px-2', activePanelKey === 'font-size' && 'bg-pressed')}
                 onClick={() => {
                   togglePanel('font-size')
                 }}
               >
-                {context.fontSize ?? 14}
+                {context.values.size ?? 14}
               </Button>
             )
           }
 
           if (item === 'bold') {
             return (
-              <Fragment key={item}>
-                <ToolbarIconButton
-                  active={activeWeight}
-                  title="Bold"
-                  onClick={() => {
-                    writer.setWeight(activeWeight ? 400 : 700)
-                  }}
-                >
-                  <Bold size={18} strokeWidth={1.9} />
-                </ToolbarIconButton>
-              </Fragment>
+              <ToolbarIconButton
+                key={item}
+                active={activeWeight}
+                title="Bold"
+                onClick={() => {
+                  editor.actions.edit.style({
+                    weight: activeWeight ? 400 : 700
+                  })
+                }}
+              >
+                <Bold className="h-4 w-4" />
+              </ToolbarIconButton>
             )
           }
 
           if (item === 'italic') {
             return (
-              <Fragment key={item}>
-                <ToolbarIconButton
-                  active={context.italic}
-                  title="Italic"
-                  onClick={() => {
-                    writer.setItalic(!context.italic)
-                  }}
-                >
-                  <Italic size={18} strokeWidth={1.9} />
-                </ToolbarIconButton>
-              </Fragment>
+              <ToolbarIconButton
+                key={item}
+                active={context.values.italic}
+                title="Italic"
+                onClick={() => {
+                  editor.actions.edit.style({
+                    italic: !context.values.italic
+                  })
+                }}
+              >
+                <Italic className="h-4 w-4" />
+              </ToolbarIconButton>
             )
           }
 
@@ -474,15 +237,18 @@ export const TextStyleToolbar = ({
                   buttonRefByKey.current['text-color'] = element
                 }}
                 variant="ghost"
-                pressed={activePanelKey === 'text-color'}
-                className="h-9 w-9 rounded-xl p-0"
+                size="icon"
+                className={cn(
+                  'h-9 w-9 rounded-xl text-fg',
+                  activePanelKey === 'text-color' && 'bg-pressed text-fg'
+                )}
+                title="Text color"
+                aria-label="Text color"
                 onClick={() => {
                   togglePanel('text-color')
                 }}
-                title="Text color"
-                aria-label="Text color"
               >
-                <ToolbarTextColorIcon color={context.color} />
+                <ToolbarTextColorIcon color={context.values.color} />
               </Button>
             )
           }
@@ -494,15 +260,18 @@ export const TextStyleToolbar = ({
                 buttonRefByKey.current.background = element
               }}
               variant="ghost"
-              pressed={activePanelKey === 'background'}
-              className="h-9 w-9 rounded-xl p-0"
+              size="icon"
+              className={cn(
+                'h-9 w-9 rounded-xl text-fg',
+                activePanelKey === 'background' && 'bg-pressed text-fg'
+              )}
+              title="Background"
+              aria-label="Background"
               onClick={() => {
                 togglePanel('background')
               }}
-              title="Background color"
-              aria-label="Background color"
             >
-              <ToolbarFillIcon fill={context.background} />
+              <ToolbarFillIcon fill={context.values.background} />
             </Button>
           )
         })}
@@ -511,52 +280,42 @@ export const TextStyleToolbar = ({
         <WhiteboardPopover
           open
           anchor={activePanelButton}
+          placement="bottom-start"
+          offset={8}
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
               closePanel()
             }
           }}
-          placement="bottom"
-          offset={10}
-          surface="blocking"
-          backdrop="transparent"
-          padding="menu"
-          size="md"
-          contentProps={{
-            onPointerDown: (event) => {
-              event.preventDefault()
-              event.stopPropagation()
-            }
-          }}
-          contentClassName={cn(
-            'min-w-0 overflow-hidden p-0',
-            activePanelKey === 'font-size'
-              ? 'w-[80px]'
-              : 'w-auto'
-          )}
         >
           {activePanelKey === 'font-size' ? (
             <FontSizePanel
-              value={context.fontSize}
+              value={context.values.size}
               onChange={(value) => {
-                writer.setFontSize(value)
+                editor.actions.edit.style({
+                  size: value
+                })
               }}
             />
           ) : activePanelKey === 'text-color' ? (
             <TextColorPanel
-              value={context.color}
+              value={context.values.color}
               onChange={(value) => {
-                writer.setColor(value)
+                editor.actions.edit.style({
+                  color: value
+                })
               }}
             />
-          ) : context.canBackground ? (
+          ) : (
             <FillPanel
-              fill={context.background}
+              fill={context.values.background}
               onFillChange={(value) => {
-                writer.setBackground(value)
+                editor.actions.edit.style({
+                  background: value
+                })
               }}
             />
-          ) : null}
+          )}
         </WhiteboardPopover>
       ) : null}
     </div>

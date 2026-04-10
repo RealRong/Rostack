@@ -7,11 +7,10 @@ import type {
   AppearanceList,
   Section,
   SectionKey
-} from './types'
+} from '../types'
 import type {
-  NavState,
   SectionState
-} from './runtime/state'
+} from '../runtime/state'
 
 const emptyIds = [] as readonly AppearanceId[]
 const SEPARATOR = '\u0000'
@@ -150,35 +149,33 @@ export const createAppearanceList = (input: {
   }
 }
 
-export const buildAppearanceList = (
-  sections: SectionState,
-  previous?: AppearanceList,
+export const buildAppearanceList = (input: {
+  sections: SectionState
+  previous?: AppearanceList
   previousSections?: SectionState
-): AppearanceList => {
+}): AppearanceList => {
+  const previous = input.previous
   const ids: AppearanceId[] = []
   const nextIdsBySection = new Map<SectionKey, readonly AppearanceId[]>()
   let totalIdCount = 0
 
-  sections.order.forEach(sectionKey => {
-    const section = sections.byKey.get(sectionKey)
+  input.sections.order.forEach(sectionKey => {
+    const section = input.sections.byKey.get(sectionKey)
     if (!section || !section.visible) {
       return
     }
 
     const canReuseSectionIds = (
       previous
-      && previousSections?.byKey.get(sectionKey) === section
+      && input.previousSections?.byKey.get(sectionKey) === section
     )
     const previousSectionIds = canReuseSectionIds
       ? previous.idsIn(sectionKey)
       : undefined
-    const sectionIds = previousSectionIds ?? section.ids.map(recordId => {
-      const id = createAppearanceId({
-        section: sectionKey,
-        recordId
-      })
-      return id
-    })
+    const sectionIds = previousSectionIds ?? section.ids.map(recordId => createAppearanceId({
+      section: sectionKey,
+      recordId
+    }))
 
     nextIdsBySection.set(
       sectionKey,
@@ -259,16 +256,22 @@ export const buildPublishedSections = (input: {
     : next
 }
 
-export const buildNavState = (input: {
+export const publishSectionsState = (input: {
   sections: SectionState
-  previous?: NavState
   previousSections?: SectionState
-}): NavState => {
-  const appearances = buildAppearanceList(
-    input.sections,
-    input.previous?.appearances,
-    input.previousSections
-  )
+  previous?: {
+    appearances?: AppearanceList
+    sections?: readonly Section[]
+  }
+}): {
+  appearances: AppearanceList
+  sections: readonly Section[]
+} => {
+  const appearances = buildAppearanceList({
+    sections: input.sections,
+    previous: input.previous?.appearances,
+    previousSections: input.previousSections
+  })
   const sections = buildPublishedSections({
     sections: input.sections,
     appearances,
@@ -276,14 +279,10 @@ export const buildNavState = (input: {
     previousSections: input.previousSections
   })
 
-  return input.previous
-    && input.previous.appearances === appearances
-    && input.previous.sections === sections
-    ? input.previous
-    : {
-        appearances,
-        sections
-      }
+  return {
+    appearances,
+    sections
+  }
 }
 
 export const recordIdsOfAppearances = (

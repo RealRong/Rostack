@@ -129,8 +129,6 @@ export type ProjectStageName =
   | 'query'
   | 'sections'
   | 'calc'
-  | 'nav'
-  | 'adapters'
 
 export interface TraceDeltaSummary {
   summary: {
@@ -201,8 +199,6 @@ export interface ProjectPlanTrace {
   query: ProjectStageAction
   sections: ProjectStageAction
   calc: ProjectStageAction
-  nav: ProjectStageAction
-  adapters: ProjectStageAction
 }
 
 export interface ProjectTrace {

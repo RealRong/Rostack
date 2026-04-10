@@ -3,6 +3,10 @@ import type {
   NodeSchema,
   NodeType
 } from '@whiteboard/core/types'
+import type {
+  EditCapability,
+  EditField
+} from '../../runtime/state/edit'
 
 export type NodeHit = 'box' | 'path' | 'none'
 export type NodeFamily = 'text' | 'shape' | 'frame' | 'draw'
@@ -31,6 +35,9 @@ export type NodeDefinition = {
   canResize?: boolean
   autoMeasure?: boolean
   enter?: boolean
+  edit?: {
+    fields?: Partial<Record<EditField, EditCapability>>
+  }
 }
 
 export type NodeRegistry = {

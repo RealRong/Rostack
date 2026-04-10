@@ -72,7 +72,15 @@ import type {
   ViewportInputRuntime,
   ViewportRead
 } from '../runtime/viewport'
-import type { EditCaret, EditField, EditTarget } from '../runtime/state/edit'
+import type {
+  EditCapability,
+  EditCaret,
+  EditField,
+  EditMeasureMode,
+  EditSession,
+  EditStyleDraft,
+  EditTool
+} from '../runtime/state/edit'
 import type { TextPreviewPatch } from '../runtime/overlay/types'
 import type { ClipboardPacket } from '../clipboard/packet'
 import type { Commit } from '@engine-types/commit'
@@ -123,7 +131,7 @@ export type EditorInteractionState = Readonly<{
 export type EditorState = {
   tool: ReadStore<Tool>
   draw: ReadStore<DrawPreferences>
-  edit: ReadStore<EditTarget>
+  edit: ReadStore<EditSession>
   selection: ReadStore<SelectionTarget>
   interaction: ReadStore<EditorInteractionState>
   viewport: ReadStore<Viewport>
@@ -347,6 +355,10 @@ export type EditorSessionEditActions = {
       caret?: EditCaret
     }
   ) => void
+  input: (text: string) => void
+  caret: (caret: EditCaret) => void
+  style: (patch: EditStyleDraft) => void
+  measure: (size?: Size) => void
   clear: () => void
 }
 
@@ -369,14 +381,6 @@ export type EditorDrawActions = {
   patch: (patch: BrushStylePatch) => void
 }
 
-export type EditorViewPreviewActions = {
-  nodeText: {
-    set: (nodeId: NodeId, patch?: TextPreviewPatch) => void
-    clear: (nodeId: NodeId) => void
-    clearSize: (nodeId: NodeId) => void
-  }
-}
-
 export type EditorViewActions = {
   viewport: EditorViewportActions
   pointer: {
@@ -387,7 +391,13 @@ export type EditorViewActions = {
     set: (value: boolean) => void
   }
   draw: EditorDrawActions
-  preview: EditorViewPreviewActions
+  preview: {
+    nodeText: {
+      set: (nodeId: NodeId, patch?: TextPreviewPatch) => void
+      clear: (nodeId: NodeId) => void
+      clearSize: (nodeId: NodeId) => void
+    }
+  }
 }
 
 export type EditorDocumentApi = {
@@ -422,8 +432,32 @@ export type EditorChromePresentation = {
 export type EditorPanelPresentation = {
   selectionToolbar: ReturnType<RuntimeRead['selection']['toolbar']['get']>
   edgeToolbar: ReturnType<RuntimeRead['edge']['toolbar']['get']>
+  textToolbar: EditorTextToolbarPresentation | undefined
   history: HistoryState
   draw: DrawPreferences
+}
+
+export type EditorTextToolbarPresentation = {
+  session: NonNullable<EditSession>
+  tools: readonly EditTool[]
+  values: {
+    size?: number
+    weight?: number
+    italic: boolean
+    color?: string
+    background?: string
+    align?: 'left' | 'center' | 'right'
+  }
+}
+
+export type EditorEditHostPresentation = {
+  key: string
+  session: NonNullable<EditSession>
+  text: string
+  placeholder?: string
+  multiline: boolean
+  measure: EditMeasureMode
+  capabilities: EditCapability
 }
 
 export type EditorAppActions = {
@@ -472,11 +506,6 @@ export type EditorSelectionActions = {
 export type EditorEditActions = EditorSessionEditActions & {
   cancel: () => void
   commit: () => void
-  nodeText: {
-    set: (nodeId: NodeId, patch?: TextPreviewPatch) => void
-    clear: (nodeId: NodeId) => void
-    clearSize: (nodeId: NodeId) => void
-  }
 }
 
 export type EditorInteractionActions = EditorInput
@@ -626,6 +655,7 @@ export type EditorSelect = {
   tool: EditorToolSelect
   viewport: EditorViewportSelect
   edit: () => EditorStore['edit']
+  editHost: () => ReadStore<EditorEditHostPresentation | undefined>
   interaction: () => EditorStore['interaction']
   selection: EditorSelectionSelect
   group: Pick<RuntimeRead['group'], 'exactIds' | 'nodeIds' | 'edgeIds'>

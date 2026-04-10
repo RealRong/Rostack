@@ -3,30 +3,13 @@ import {
   readShapeMeta,
   readShapeSpec
 } from '@whiteboard/core/node'
-import {
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type KeyboardEvent
-} from 'react'
+import { useCallback, useRef, type CSSProperties } from 'react'
 import type { NodeDefinition, NodeRenderProps } from '#react/types/node'
-import { useEdit, useEditor, usePickRef } from '#react/runtime/hooks'
-import { toNodeDataPatch } from '../../update'
-import {
-  focusEditableDraft,
-  isEscapeEditingKey,
-  isSubmitEditingKey,
-  stopEditingPointerDown,
-  syncEditableDraft
-} from '../../dom/editableText'
+import { useEditor } from '#react/runtime/hooks'
 import {
   ShapeGlyph
 } from '../../shape'
-import {
-  readEditableText,
-  TEXT_DEFAULT_FONT_SIZE
-} from '../../text'
+import { bindNodeTextSource, TEXT_DEFAULT_FONT_SIZE } from '../../text'
 import {
   createSchema,
   createTextField,
@@ -80,8 +63,7 @@ const ShapeLabel = ({
   fontWeight,
   fontStyle,
   textAlign,
-  kind,
-  write
+  kind
 }: NodeRenderProps & {
   kind: ReturnType<typeof readShapeKind>
   color: string
@@ -91,74 +73,18 @@ const ShapeLabel = ({
   textAlign: string
 }) => {
   const editor = useEditor()
-  const edit = useEdit()
-  const editing = edit?.kind === 'node' && edit.nodeId === node.id && edit.field === 'text'
-  const editCaret = editing ? edit.caret : undefined
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
-  const [draft, setDraft] = useState(text)
-  const editorRef = useRef<HTMLDivElement | null>(null)
-  const labelRef = usePickRef({
-    kind: 'node',
-    id: node.id,
-    part: 'body'
-  })
-
-  useEffect(() => {
-    setDraft((current) => current === text ? current : text)
-  }, [text])
-
-  useEffect(() => {
-    if (!editing) {
-      return
-    }
-
-    const element = editorRef.current
-    if (!element) {
-      return
-    }
-
-    syncEditableDraft(element, draft)
-  }, [draft, editing])
-
-  useEffect(() => {
-    if (!editing) {
-      return
-    }
-
-    const element = editorRef.current
-    if (!element) {
-      return
-    }
-
-    return focusEditableDraft(element, editCaret)
-  }, [editCaret, editing])
-
-  const cancel = () => {
-    setDraft(text)
-    editor.actions.edit.nodeText.clear(node.id)
-    editor.actions.edit.clear()
-  }
-
-  const commit = (value = draft) => {
-    editor.actions.edit.nodeText.clear(node.id)
-    editor.actions.edit.clear()
-    editor.actions.node.patch([node.id], toNodeDataPatch(node, {
-      text: value
-    }))
-  }
-
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (isEscapeEditingKey(event)) {
-      event.preventDefault()
-      cancel()
-      return
-    }
-
-    if (isSubmitEditingKey(event)) {
-      event.preventDefault()
-      commit(readEditableText(event.currentTarget))
-    }
-  }
+  const labelRef = useRef<HTMLDivElement | null>(null)
+  const bindRef = useCallback((element: HTMLDivElement | null) => {
+    bindNodeTextSource({
+      editor,
+      nodeId: node.id,
+      field: 'text',
+      current: labelRef.current,
+      next: element
+    })
+    labelRef.current = element
+  }, [editor, node.id])
 
   const style: CSSProperties = {
     ...readShapeSpec(kind).labelInset,
@@ -173,37 +99,14 @@ const ShapeLabel = ({
         : textAlign === 'right'
           ? 'flex-end'
           : 'center',
-    opacity: editing || text ? 1 : 0.48
-  }
-
-  if (editing) {
-    return (
-      <div
-        ref={editorRef}
-        className="wb-shape-node-label wb-shape-node-editor"
-        data-selection-ignore
-        data-input-ignore
-        contentEditable="plaintext-only"
-        suppressContentEditableWarning
-        role="textbox"
-        aria-multiline="true"
-        spellCheck={false}
-        onPointerDown={stopEditingPointerDown}
-        onInput={(event) => {
-          setDraft(readEditableText(event.currentTarget))
-        }}
-        onKeyDown={onKeyDown}
-        onBlur={(event) => {
-          commit(readEditableText(event.currentTarget))
-        }}
-        style={style}
-      />
-    )
+    opacity: text ? 1 : 0.48
   }
 
   return (
     <div
-      ref={labelRef}
+      ref={bindRef}
+      data-edit-node-id={node.id}
+      data-edit-field="text"
       className="wb-shape-node-label"
       style={style}
     >
@@ -274,6 +177,16 @@ export const ShapeNodeDefinition: NodeDefinition = {
   geometry: 'shape',
   schema: shapeSchema,
   enter: true,
+  edit: {
+    fields: {
+      text: {
+        tools: ['size', 'weight', 'italic', 'color', 'align'],
+        multiline: true,
+        empty: 'keep',
+        measure: 'none'
+      }
+    }
+  },
   render: (props) => <ShapeNodeRenderer {...props} />,
   style: () => ({
     border: 'none',

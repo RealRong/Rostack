@@ -21,7 +21,7 @@ import type { NodeRead } from './node'
 import type { TargetBoundsQuery } from '../query/targetBounds'
 import type { NodeRegistry } from '../../types/node'
 import type { Tool } from '../../types/tool'
-import type { EditTarget } from '../state/edit'
+import type { EditSession } from '../state/edit'
 import type { InteractionRuntime } from '../interaction/types'
 import type {
   SelectionNodeInfo,
@@ -125,7 +125,7 @@ export const createSelectionRead = ({
   targetBounds: TargetBoundsQuery
   registry: Pick<NodeRegistry, 'get'>
   tool: ReadStore<Tool>
-  edit: ReadStore<EditTarget>
+  edit: ReadStore<EditSession>
   interaction: Pick<InteractionRuntime, 'mode' | 'chrome'>
 }): {
   public: SelectionRead

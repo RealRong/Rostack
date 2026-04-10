@@ -7,9 +7,14 @@ export {
   serializeClipboardPacket
 } from './clipboard/packet'
 export type {
+  EditCapability,
   EditCaret,
+  EditSession,
+  EditStyleDraft,
+  EditTool,
   EditField,
-  EditTarget
+  EditMeasureMode,
+  EditEmptyBehavior
 } from './runtime/state/edit'
 export type {
   Editor,

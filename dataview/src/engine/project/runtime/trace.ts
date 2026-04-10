@@ -2,7 +2,6 @@ import type {
   CalculationCollection
 } from '@dataview/core/calculation'
 import type {
-  AppearanceList,
   Section,
   SectionKey
 } from '../types'
@@ -60,20 +59,6 @@ const countChangedSections = (
   ), 0)
 }
 
-const countReusedAppearances = (
-  previous: AppearanceList | undefined,
-  next: AppearanceList | undefined
-) => {
-  if (!previous || !next) {
-    return 0
-  }
-
-  return previous.ids === next.ids
-    && previous.idsBySection === next.idsBySection
-    ? next.count
-    : 0
-}
-
 const countReusedCalculations = (
   previous: ReadonlyMap<SectionKey, CalculationCollection> | undefined,
   next: ReadonlyMap<SectionKey, CalculationCollection> | undefined
@@ -88,7 +73,7 @@ const countReusedCalculations = (
 }
 
 export const buildStageMetrics = (
-  stage: 'query' | 'sections' | 'calc' | 'nav',
+  stage: 'query' | 'sections' | 'calc',
   previous: ProjectState[keyof ProjectState],
   next: ProjectState[keyof ProjectState]
 ): ProjectStageMetrics | undefined => {
@@ -145,23 +130,6 @@ export const buildStageMetrics = (
         reusedNodeCount,
         rebuiltNodeCount: nextCalculations.size - reusedNodeCount,
         changedSectionCount: nextCalculations.size - reusedNodeCount
-      }
-    }
-    case 'nav': {
-      const previousAppearances = previous as ProjectState['appearances']
-      const nextAppearances = next as ProjectState['appearances']
-      if (!nextAppearances) {
-        return undefined
-      }
-
-      const reusedNodeCount = countReusedAppearances(previousAppearances, nextAppearances)
-      const changedRecordCount = countChangedIds(previousAppearances?.ids, nextAppearances.ids)
-      return {
-        inputCount: previousAppearances?.ids.length,
-        outputCount: nextAppearances.ids.length,
-        reusedNodeCount,
-        rebuiltNodeCount: nextAppearances.count - reusedNodeCount,
-        ...(changedRecordCount === undefined ? {} : { changedRecordCount })
       }
     }
   }

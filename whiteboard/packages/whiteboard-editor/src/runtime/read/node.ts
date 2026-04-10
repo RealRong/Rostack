@@ -10,7 +10,11 @@ import type {
   EngineRead,
   NodeItem
 } from '@whiteboard/engine'
-import { createKeyedDerivedStore, type KeyedReadStore } from '@shared/store'
+import {
+  createKeyedDerivedStore,
+  type KeyedReadStore,
+  type ReadStore
+} from '@shared/store'
 import type {
   NodeGeometry,
   Node,
@@ -37,6 +41,10 @@ import {
   createOverlayStateStore,
   createPatchedItemStore
 } from './keyed'
+import {
+  applyNodeEditStyle,
+  type EditSession
+} from '../state/edit'
 
 export type NodeRuntimeState = {
   hovered: boolean
@@ -246,16 +254,48 @@ const applyNodeTextPreview = (
   }
 }
 
+const applyEditSession = (
+  item: NodeItem,
+  edit: EditSession
+): NodeItem => {
+  if (!edit || edit.kind !== 'node' || edit.nodeId !== item.node.id) {
+    return item
+  }
+
+  return {
+    node: {
+      ...item.node,
+      data: {
+        ...(item.node.data ?? {}),
+        [edit.field]: edit.draft.text
+      },
+      style: applyNodeEditStyle(item.node.style, edit.draft.style)
+    },
+    rect:
+      edit.field === 'text'
+      && item.node.type === 'text'
+      && edit.draft.measure
+        ? {
+            ...item.rect,
+            width: edit.draft.measure.width,
+            height: edit.draft.measure.height
+          }
+        : item.rect
+  }
+}
+
 const createNodeItemStore = ({
   read,
-  overlay
+  overlay,
+  edit
 }: {
   read: Pick<EngineRead, 'node'>
   overlay: KeyedReadStore<NodeId, NodeOverlayProjection>
+  edit: ReadStore<EditSession>
 }): NodeRead['item'] => createPatchedItemStore({
   source: read.node.item,
   overlay,
-  project: (item, projection) => {
+  project: (item, projection, readStore) => {
     const patch = projection.patch
     const projected = patch
       ? {
@@ -264,7 +304,10 @@ const createNodeItemStore = ({
         }
       : item
 
-    return applyNodeTextPreview(projected, projection)
+    return applyEditSession(
+      applyNodeTextPreview(projected, projection),
+      readStore(edit)
+    )
   },
   isEqual: isNodeItemEqual
 })
@@ -325,15 +368,18 @@ const createNodeCapabilityResolver = (
 export const createNodeRead = ({
   read,
   registry,
-  overlay
+  overlay,
+  edit
 }: {
   read: EngineRead
   registry: NodeRegistry
   overlay: KeyedReadStore<NodeId, NodeOverlayProjection>
+  edit: ReadStore<EditSession>
 }): NodeRead => {
   const item = createNodeItemStore({
     read,
-    overlay
+    overlay,
+    edit
   })
   const state = createNodeStateStore({
     overlay

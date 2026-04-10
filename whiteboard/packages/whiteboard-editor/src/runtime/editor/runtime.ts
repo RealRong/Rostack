@@ -1,5 +1,6 @@
 import type { Engine } from '@whiteboard/engine'
 import type { EditorRead } from '../../types/editor'
+import type { NodeRegistry } from '../../types/node'
 import type { RuntimeStateController } from '../state'
 import type { EditorOverlay } from '../overlay'
 import type { EditorViewportRuntime } from './types'
@@ -26,12 +27,14 @@ export type EditorRuntime = EditorRuntimeChannels & {
 export const createEditorRuntime = ({
   engine,
   read,
+  registry,
   runtime,
   overlay,
   viewport
 }: {
   engine: Engine
   read: EditorRead
+  registry: NodeRegistry
   runtime: RuntimeStateController
   overlay: Pick<EditorOverlay, 'set'>
   viewport: EditorViewportRuntime
@@ -41,7 +44,9 @@ export const createEditorRuntime = ({
   })
   const session = createSessionRuntime({
     engine,
-    runtime
+    runtime,
+    read,
+    registry
   })
   const view = createViewRuntime({
     runtime,

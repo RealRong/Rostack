@@ -37,16 +37,9 @@
         "calculations": "sync"
       },
       "plan": {
-        "view": "reuse",
-        "search": "reuse",
-        "filter": "reuse",
-        "sort": "reuse",
-        "group": "reuse",
-        "records": "reuse",
+        "query": "reuse",
         "sections": "reuse",
-        "appearances": "reuse",
-        "fields": "reuse",
-        "calculations": "reuse"
+        "calc": "reuse"
       }
     },
     {
@@ -77,18 +70,10 @@
         "calculations": "sync"
       },
       "plan": {
-        "view": "reuse",
-        "search": "reuse",
-        "filter": "reuse",
-        "sort": "reuse",
-        "group": "reuse",
-        "records": "reuse",
-        "sections": "reconcile",
-        "appearances": "reconcile",
-        "fields": "reuse",
-        "calculations": "reconcile"
+        "query": "reuse",
+        "sections": "sync",
+        "calc": "sync"
       }
     }
   ]
 }
-

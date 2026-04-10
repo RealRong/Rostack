@@ -24,7 +24,7 @@ import type {
 } from '../../selection'
 import type { NodeRegistry } from '../../types/node'
 import type { Tool } from '../../types/tool'
-import type { EditTarget } from '../state/edit'
+import type { EditSession } from '../state/edit'
 import { readSelectionNodeStats } from '../../selection/nodeSummary'
 
 type StyleFieldKind = 'string' | 'number' | 'numberArray'
@@ -395,7 +395,7 @@ export const resolveSelectionOverlay = ({
   transformBox: SelectionTransformBox
   affordance: SelectionAffordance
   tool: Tool
-  edit: EditTarget
+  edit: EditSession
   interactionChrome: boolean
   transforming: boolean
 }): SelectionOverlay | undefined => {
@@ -450,7 +450,7 @@ export const resolveSelectionToolbar = ({
   affordance: SelectionAffordance
   registry: Pick<NodeRegistry, 'get'>
   tool: Tool
-  edit: EditTarget
+  edit: EditSession
   interactionChrome: boolean
 }): SelectionToolbarContext | undefined => {
   const box = affordance.displayBox

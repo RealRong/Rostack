@@ -1037,14 +1037,14 @@
   overflow: hidden;
 }
 
-.wb-text-edit-portal {
+.wb-edit-host-portal {
   position: fixed;
   box-sizing: border-box;
   pointer-events: none;
   z-index: calc(var(--wb-z-toolbar) + 1);
 }
 
-.wb-text-edit-portal > .wb-default-text-editor {
+.wb-edit-host-input {
   pointer-events: auto;
 }
 
@@ -1089,12 +1089,6 @@
   overflow: hidden;
 }
 
-.wb-sticky-content.wb-default-text-editor {
-  min-height: 0;
-  height: 100%;
-  overflow: auto;
-}
-
 .wb-shape-node {
   position: relative;
   display: flex;
@@ -1134,11 +1128,6 @@
   pointer-events: auto;
 }
 
-.wb-shape-node-editor {
-  outline: none;
-  user-select: text;
-}
-
 .wb-frame-header {
   position: absolute;
   left: 10px;
@@ -1157,16 +1146,6 @@
   box-shadow: none;
   pointer-events: auto;
   user-select: none;
-}
-
-.wb-frame-input {
-  width: 100%;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 14px;
-  line-height: 1;
-  box-shadow: none;
 }
 
 .wb-frame-title {

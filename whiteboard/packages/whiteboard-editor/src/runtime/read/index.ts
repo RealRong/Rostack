@@ -86,12 +86,14 @@ export const createRead = ({
   const nodeRead: NodeRead = createNodeRead({
     read: engineRead,
     registry,
-    overlay: overlay.selectors.node
+    overlay: overlay.selectors.node,
+    edit: runtime.state.edit.source
   })
   const edgeRead = createEdgeRead({
     read: engineRead,
     nodeItem: nodeRead.item,
     overlay: overlay.selectors.edge,
+    edit: runtime.state.edit.source,
     capability: nodeRead.capability
   })
   const mindmapView = createMindmapViewStore({

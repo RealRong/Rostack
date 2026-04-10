@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import type { Node } from '@whiteboard/core/types'
 import {
@@ -9,12 +9,8 @@ import {
   FRAME_DEFAULT_TITLE
 } from '@whiteboard/core/node'
 import type { NodeDefinition } from '#react/types/node'
-import { useEdit, useEditor, usePickRef } from '#react/runtime/hooks'
-import { toNodeDataPatch } from '../../update'
-import {
-  isEscapeEditingKey,
-  stopEditingPointerDown
-} from '../../dom/editableText'
+import { useEditor, usePickRef } from '#react/runtime/hooks'
+import { bindNodeTextSource } from '../../text'
 import {
   createSchema,
   createTextField,
@@ -50,76 +46,40 @@ export const FrameNodeChrome = ({
   node
 }: FrameNodeChromeProps) => {
   const editor = useEditor()
-  const edit = useEdit()
-  const title = getDataString(node, 'title') || FRAME_DEFAULT_TITLE
-  const editing = edit?.kind === 'node' && edit.nodeId === node.id && edit.field === 'title'
-  const [draft, setDraft] = useState(title)
-  const color = getStyleString(node, 'color') ?? FRAME_DEFAULT_TEXT_COLOR
-  const headerRef = usePickRef({
-    kind: 'node',
-    id: node.id,
-    part: 'body'
-  })
-  const titleRef = usePickRef({
+  const titleRef = useRef<HTMLDivElement | null>(null)
+  const bindTitleRef = useCallback((element: HTMLDivElement | null) => {
+    bindNodeTextSource({
+      editor,
+      nodeId: node.id,
+      field: 'title',
+      current: titleRef.current,
+      next: element
+    })
+    titleRef.current = element
+  }, [editor, node.id])
+  const pickTitleRef = usePickRef({
     kind: 'node',
     id: node.id,
     part: 'field',
     field: 'title'
   })
-
-  useEffect(() => {
-    setDraft((current) => current === title ? current : title)
-  }, [title])
-
-  const commit = () => {
-    const nextTitle = draft.trim() || FRAME_DEFAULT_TITLE
-    editor.actions.edit.nodeText.clear(node.id)
-    editor.actions.edit.clear()
-    editor.actions.node.patch([node.id], toNodeDataPatch(node, {
-      title: nextTitle
-    }))
-  }
+  const title = getDataString(node, 'title') || FRAME_DEFAULT_TITLE
+  const color = getStyleString(node, 'color') ?? FRAME_DEFAULT_TEXT_COLOR
 
   return (
-    <div
-      ref={headerRef}
-      className="wb-frame-header"
-    >
-      {editing ? (
-        <input
-          data-selection-ignore
-          data-input-ignore
-          value={draft}
-          autoFocus
-          onPointerDown={stopEditingPointerDown}
-          onChange={(event) => {
-            setDraft(event.target.value)
-          }}
-          onBlur={commit}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault()
-              commit()
-            }
-            if (isEscapeEditingKey(event)) {
-              event.preventDefault()
-              setDraft(title)
-              editor.actions.edit.nodeText.clear(node.id)
-              editor.actions.edit.clear()
-            }
-          }}
-          className="wb-frame-input"
-          style={{ color }}
-        />
-      ) : (
-        <div
-          ref={titleRef}
-          className="wb-frame-title"
-          style={{ color }}
-        >
-          {title}
-        </div>
-      )}
+    <div className="wb-frame-header">
+      <div
+        ref={(element) => {
+          bindTitleRef(element)
+          pickTitleRef(element)
+        }}
+        data-edit-node-id={node.id}
+        data-edit-field="title"
+        className="wb-frame-title"
+        style={{ color }}
+      >
+        {title}
+      </div>
     </div>
   )
 }
@@ -152,6 +112,18 @@ export const FrameNodeDefinition: NodeDefinition = {
   schema: frameSchema,
   defaultData: {
     title: FRAME_DEFAULT_TITLE
+  },
+  enter: true,
+  edit: {
+    fields: {
+      title: {
+        tools: ['color'],
+        multiline: false,
+        empty: 'default',
+        defaultText: FRAME_DEFAULT_TITLE,
+        measure: 'none'
+      }
+    }
   },
   render: ({ node }) => (
     <FrameNodeChrome

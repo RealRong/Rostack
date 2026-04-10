@@ -1,14 +1,24 @@
 import { createDerivedStore } from '@shared/store'
 import { isNodeUpdateEmpty } from '@whiteboard/core/node'
+import { isSizeEqual } from '@whiteboard/core/geometry'
 import type { Engine } from '@whiteboard/engine'
-import type { EdgePatch, Viewport } from '@whiteboard/core/types'
+import type {
+  CommandResult
+} from '@engine-types/result'
+import type {
+  Edge,
+  EdgePatch,
+  Viewport
+} from '@whiteboard/core/types'
 import type { NodeRegistry } from '../../types/node'
 import type { Tool } from '../../types/tool'
 import type { DrawPreferences } from '../../types/draw'
 import type {
   Editor,
+  EditorEditHostPresentation,
   EditorEdgesApi,
-  EditorNodesApi
+  EditorNodesApi,
+  EditorTextToolbarPresentation
 } from '../../types/editor'
 import {
   drawTool,
@@ -35,10 +45,90 @@ import { createEditorRuntime } from './runtime'
 import { createSelectionActions } from '../document/selection'
 import { createEdgeLabelActions } from '../document/edge'
 import { createClipboardActions } from '../document/clipboard'
+import {
+  dataUpdate,
+  mergeNodeUpdates,
+  styleUpdate
+} from '../node/patch'
+import {
+  applyEdgeLabelEditStyle,
+  isEditStyleDraftEqual,
+  readEdgeLabelEditStyle,
+  readNodeEditStyle,
+  type EditSession,
+  type EditStyleDraft
+} from '../state/edit'
 
 const hasEdgePatchContent = (
   patch: EdgePatch
 ) => Object.keys(patch).length > 0
+
+const toNodeStyleUpdates = (
+  current: EditStyleDraft | undefined,
+  draft: EditStyleDraft | undefined
+) => [
+  current?.size !== draft?.size
+    ? styleUpdate('fontSize', draft?.size)
+    : undefined,
+  current?.weight !== draft?.weight
+    ? styleUpdate('fontWeight', draft?.weight)
+    : undefined,
+  current?.italic !== draft?.italic
+    ? styleUpdate('fontStyle', draft?.italic ? 'italic' : 'normal')
+    : undefined,
+  current?.color !== draft?.color
+    ? styleUpdate('color', draft?.color)
+    : undefined,
+  current?.background !== draft?.background
+    ? styleUpdate('fill', draft?.background)
+    : undefined,
+  current?.align !== draft?.align
+    ? styleUpdate('textAlign', draft?.align)
+    : undefined
+].filter(Boolean)
+
+const mergeEdgeLabel = ({
+  edge,
+  labelId,
+  text,
+  style
+}: {
+  edge: Edge
+  labelId: string
+  text: string
+  style: EditStyleDraft | undefined
+}) => {
+  let changed = false
+
+  const labels = edge.labels?.map((label) => {
+    if (label.id !== labelId) {
+      return label
+    }
+
+    changed = true
+
+    return {
+      ...label,
+      text,
+      style: applyEdgeLabelEditStyle(label.style, style)
+    }
+  })
+
+  return changed
+    ? labels
+    : undefined
+}
+
+const readTextToolbarValues = (
+  style: EditStyleDraft | undefined
+) => ({
+  size: style?.size,
+  weight: style?.weight,
+  italic: Boolean(style?.italic),
+  color: style?.color,
+  background: style?.background,
+  align: style?.align
+})
 
 export const createEditor = ({
   engine,
@@ -83,6 +173,7 @@ export const createEditor = ({
   const write = createEditorRuntime({
     engine,
     read,
+    registry,
     runtime,
     overlay,
     viewport
@@ -210,6 +301,218 @@ export const createEditor = ({
 
     return write.document.edge.updateMany(updates)
   }
+
+  const cancelEdit = (): CommandResult | undefined => {
+    const currentEdit = state.edit.get()
+    if (!currentEdit) {
+      return undefined
+    }
+
+    if (
+      currentEdit.kind === 'edge-label'
+      && currentEdit.capabilities.empty === 'remove'
+      && !currentEdit.initial.text.trim()
+    ) {
+      const edge = engine.read.edge.item.get(currentEdit.edgeId)?.edge
+      if (!edge?.labels?.some((label) => label.id === currentEdit.labelId)) {
+        write.session.edit.clear()
+        return undefined
+      }
+
+      const nextLabels = edge.labels.filter((label) => label.id !== currentEdit.labelId)
+      const result = write.document.edge.update(currentEdit.edgeId, {
+        labels: nextLabels
+      })
+      write.session.edit.clear()
+      return result
+    }
+
+    write.session.edit.clear()
+    return undefined
+  }
+
+  const commitEdit = (): CommandResult | undefined => {
+    const currentEdit = state.edit.get()
+    if (!currentEdit) {
+      return undefined
+    }
+
+    runtime.state.edit.mutate.status('committing')
+
+    if (currentEdit.kind === 'node') {
+      const committed = engine.read.node.item.get(currentEdit.nodeId)
+      if (!committed) {
+        write.session.edit.clear()
+        return undefined
+      }
+
+      const nextText = (
+        currentEdit.capabilities.empty === 'default'
+        && !currentEdit.draft.text.trim()
+      )
+        ? (currentEdit.capabilities.defaultText ?? '')
+        : currentEdit.draft.text
+      const currentText = typeof committed.node.data?.[currentEdit.field] === 'string'
+        ? committed.node.data[currentEdit.field] as string
+        : ''
+      const currentStyle = readNodeEditStyle(committed.node)
+      const nextMeasure = (
+        committed.node.type === 'text'
+        && currentEdit.field === 'text'
+        && currentEdit.draft.measure
+        && !isSizeEqual(currentEdit.draft.measure, committed.rect)
+      )
+        ? currentEdit.draft.measure
+        : undefined
+      const update = mergeNodeUpdates(
+        currentText !== nextText
+          ? dataUpdate(currentEdit.field, nextText)
+          : undefined,
+        ...toNodeStyleUpdates(currentStyle, currentEdit.draft.style),
+        nextMeasure
+          ? {
+              fields: {
+                size: nextMeasure
+              }
+            }
+          : undefined
+      )
+
+      write.session.edit.clear()
+      return isNodeUpdateEmpty(update)
+        ? undefined
+        : write.document.node.update(currentEdit.nodeId, update)
+    }
+
+    const edge = engine.read.edge.item.get(currentEdit.edgeId)?.edge
+    if (!edge) {
+      write.session.edit.clear()
+      return undefined
+    }
+
+    if (
+      currentEdit.capabilities.empty === 'remove'
+      && !currentEdit.draft.text.trim()
+    ) {
+      const nextLabels = edge.labels?.filter((label) => label.id !== currentEdit.labelId) ?? []
+      write.session.edit.clear()
+      return write.document.edge.update(currentEdit.edgeId, {
+        labels: nextLabels
+      })
+    }
+
+    const nextLabels = mergeEdgeLabel({
+      edge,
+      labelId: currentEdit.labelId,
+      text: currentEdit.draft.text,
+      style: currentEdit.draft.style
+    })
+    const currentLabel = edge.labels?.find((label) => label.id === currentEdit.labelId)
+    const currentStyle = currentLabel
+      ? readEdgeLabelEditStyle(currentLabel)
+      : undefined
+
+    write.session.edit.clear()
+    if (
+      !nextLabels
+      || (
+        currentLabel
+        && currentLabel.text === currentEdit.draft.text
+        && isEditStyleDraftEqual(currentStyle, currentEdit.draft.style)
+      )
+    ) {
+      return undefined
+    }
+
+    return write.document.edge.update(currentEdit.edgeId, {
+      labels: nextLabels
+    })
+  }
+
+  const textToolbar = createDerivedStore<EditorTextToolbarPresentation | undefined>({
+    get: (readStore) => {
+      const edit = readStore(state.edit)
+      if (!edit) {
+        return undefined
+      }
+
+      if (edit.kind === 'node') {
+        const item = readStore(read.node.item, edit.nodeId)
+        if (!item) {
+          return undefined
+        }
+
+        return {
+          session: edit,
+          tools: edit.capabilities.tools,
+          values: readTextToolbarValues(readNodeEditStyle(item.node))
+        }
+      }
+
+      const edge = readStore(read.edge.item, edit.edgeId)?.edge
+      const label = edge?.labels?.find((entry) => entry.id === edit.labelId)
+      if (!label) {
+        return undefined
+      }
+
+      return {
+        session: edit,
+        tools: edit.capabilities.tools,
+        values: readTextToolbarValues(readEdgeLabelEditStyle(label))
+      }
+    },
+    isEqual: (left, right) => (
+      left === right
+      || (
+        left !== undefined
+        && right !== undefined
+        && left.session === right.session
+        && left.tools === right.tools
+        && left.values.size === right.values.size
+        && left.values.weight === right.values.weight
+        && left.values.italic === right.values.italic
+        && left.values.color === right.values.color
+        && left.values.background === right.values.background
+        && left.values.align === right.values.align
+      )
+    )
+  })
+
+  const editHost = createDerivedStore<EditorEditHostPresentation | undefined>({
+    get: (readStore) => {
+      const edit = readStore(state.edit)
+      if (!edit) {
+        return undefined
+      }
+
+      return {
+        key:
+          edit.kind === 'node'
+            ? `node:${edit.nodeId}:${edit.field}`
+            : `edge:${edit.edgeId}:${edit.labelId}`,
+        session: edit,
+        text: edit.draft.text,
+        placeholder: edit.capabilities.placeholder,
+        multiline: edit.capabilities.multiline,
+        measure: edit.capabilities.measure,
+        capabilities: edit.capabilities
+      }
+    },
+    isEqual: (left, right) => (
+      left === right
+      || (
+        left !== undefined
+        && right !== undefined
+        && left.key === right.key
+        && left.text === right.text
+        && left.placeholder === right.placeholder
+        && left.multiline === right.multiline
+        && left.measure === right.measure
+        && left.session === right.session
+      )
+    )
+  })
+
   const {
     replace: replaceDocument
   } = write.document
@@ -233,12 +536,14 @@ export const createEditor = ({
     get: readStore => ({
       selectionToolbar: readStore(read.selection.toolbar),
       edgeToolbar: readStore(read.edge.toolbar),
+      textToolbar: readStore(textToolbar),
       history: readStore(read.history),
       draw: readStore(read.draw)
     }),
     isEqual: (left, right) => (
       left.selectionToolbar === right.selectionToolbar
       && left.edgeToolbar === right.edgeToolbar
+      && left.textToolbar === right.textToolbar
       && left.history === right.history
       && left.draw === right.draw
     )
@@ -347,9 +652,8 @@ export const createEditor = ({
       },
       edit: {
         ...write.session.edit,
-        cancel: write.session.edit.clear,
-        commit: write.session.edit.clear,
-        nodeText: write.preview.node.text
+        cancel: cancelEdit,
+        commit: commitEdit
       },
       interaction: input,
       node: {
@@ -418,6 +722,7 @@ export const createEditor = ({
       tool: toolSelect,
       viewport: viewportSelect,
       edit: () => state.edit,
+      editHost: () => editHost,
       interaction: () => state.interaction,
       selection: selectionSelect,
       group: {

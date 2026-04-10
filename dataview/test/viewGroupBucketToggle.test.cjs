@@ -635,8 +635,6 @@ test('engine.perf traces project and publish behavior for incremental updates', 
   assert.equal(trace.project.plan.query, 'reuse')
   assert.equal(trace.project.plan.sections, 'sync')
   assert.equal(trace.project.plan.calc, 'sync')
-  assert.equal(trace.project.plan.nav, 'sync')
-  assert.equal(trace.project.plan.adapters, 'sync')
   assert.equal(trace.index.group.action, 'sync')
   assert.ok(trace.publish.changedStores.includes('sections'))
   assert.ok(trace.publish.changedStores.includes('appearances'))

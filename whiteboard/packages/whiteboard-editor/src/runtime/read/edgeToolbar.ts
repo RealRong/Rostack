@@ -13,7 +13,7 @@ import {
 import { createDerivedStore, type ReadStore } from '@shared/store'
 import type { TargetBoundsQuery } from '../query/targetBounds'
 import type { Tool } from '../../types/tool'
-import type { EditTarget } from '../state/edit'
+import type { EditSession } from '../state/edit'
 import type { InteractionRuntime } from '../interaction/types'
 import type { EdgeRead } from './edge'
 import type { EdgeToolbarContext } from '../../types/edgePresentation'
@@ -79,7 +79,7 @@ export const createEdgeToolbarRead = ({
   edge: Pick<EdgeRead, 'item'>
   targetBounds: TargetBoundsQuery
   tool: ReadStore<Tool>
-  edit: ReadStore<EditTarget>
+  edit: ReadStore<EditSession>
   interaction: Pick<InteractionRuntime, 'mode' | 'chrome'>
 }): ReadStore<EdgeToolbarContext | undefined> => createDerivedStore({
   get: (readStore): EdgeToolbarContext | undefined => {

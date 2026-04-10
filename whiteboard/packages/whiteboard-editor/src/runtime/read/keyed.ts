@@ -1,6 +1,7 @@
 import {
   createKeyedDerivedStore,
-  type KeyedReadStore
+  type KeyedReadStore,
+  type ReadFn
 } from '@shared/store'
 
 export const createOverlayStateStore = <
@@ -35,7 +36,7 @@ export const createPatchedItemStore = <
 }: {
   source: KeyedReadStore<Id, Source | undefined>
   overlay: KeyedReadStore<Id, Overlay>
-  project: (source: Source, overlay: Overlay) => Item
+  project: (source: Source, overlay: Overlay, readStore: ReadFn) => Item
   isEqual: (left: Item | undefined, right: Item | undefined) => boolean
 }) => createKeyedDerivedStore({
   get: (readStore, id: Id) => {
@@ -44,7 +45,7 @@ export const createPatchedItemStore = <
       return undefined
     }
 
-    return project(entry, readStore(overlay, id))
+    return project(entry, readStore(overlay, id), readStore)
   },
   isEqual
 })

@@ -67,37 +67,10 @@ export interface CalcState {
   bySection: ReadonlyMap<SectionKey, ReadonlyMap<FieldId, import('../../index/types').AggregateState>>
 }
 
-export interface NavState {
-  appearances: AppearanceList
-  sections: readonly Section[]
-}
-
 export interface ProjectionState {
   query: QueryState
   sections: SectionState
   calc: CalcState
-  nav?: NavState
-}
-
-export interface ProjectionDelta {
-  query: {
-    action: ProjectionAction
-  }
-  sections: {
-    action: ProjectionAction
-    touchedRecords: ReadonlySet<RecordId> | 'all'
-  }
-  calc: {
-    action: ProjectionAction
-    touchedRecords: ReadonlySet<RecordId> | 'all'
-    touchedFields: ReadonlySet<FieldId> | 'all'
-  }
-  nav: {
-    action: ProjectionAction
-  }
-  adapters: {
-    action: ProjectionAction
-  }
 }
 
 const EMPTY_CALC_BY_SECTION = new Map<SectionKey, ReadonlyMap<FieldId, import('../../index/types').AggregateState>>()

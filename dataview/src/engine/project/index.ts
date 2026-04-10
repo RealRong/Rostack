@@ -17,7 +17,7 @@ export type {
 } from './field'
 export {
   recordIdsOfAppearances
-} from './nav'
+} from './publish/sections'
 export {
   fieldId,
   fieldOf,

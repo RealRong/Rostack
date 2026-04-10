@@ -49,6 +49,13 @@ export type EdgeBox = {
   pad: number
 }
 
+export type EdgeView = CoreEdgeView & {
+  edgeId: EdgeId
+  edge: EdgeItem['edge']
+  patched: boolean
+  activeRouteIndex: number | undefined
+}
+
 const toNodeCanvasSnapshot = (
   item: NodeItem
 ): EdgeNodeCanvasSnapshot => ({
@@ -228,6 +235,7 @@ export type EdgeRead = {
   item: KeyedReadStore<EdgeId, EdgeItem | undefined>
   state: KeyedReadStore<EdgeId, EdgeRuntimeState>
   resolved: KeyedReadStore<EdgeId, CoreEdgeView | undefined>
+  view: KeyedReadStore<EdgeId, EdgeView | undefined>
   box: (edgeId: EdgeId) => EdgeBox | undefined
   capability: (edge: EdgeItem['edge']) => EdgeCapability
   related: (nodeIds: Iterable<NodeId>) => readonly EdgeId[]
@@ -251,6 +259,22 @@ const toEdgeRuntimeState = (
   patched: Boolean(projection.patch),
   activeRouteIndex: projection.activeRouteIndex
 })
+
+const isEdgeViewStateEqual = (
+  left: EdgeView | undefined,
+  right: EdgeView | undefined
+) => (
+  left === right
+  || (
+    left !== undefined
+    && right !== undefined
+    && left.edgeId === right.edgeId
+    && left.edge === right.edge
+    && left.patched === right.patched
+    && left.activeRouteIndex === right.activeRouteIndex
+    && isEdgeViewEqual(left, right)
+  )
+)
 
 const createEdgeItemStore = ({
   read,
@@ -314,6 +338,34 @@ const createEdgeResolvedStore = ({
   }
 })
 
+const createEdgeViewStore = ({
+  item,
+  state,
+  resolved
+}: {
+  item: EdgeRead['item']
+  state: EdgeRead['state']
+  resolved: EdgeRead['resolved']
+}): EdgeRead['view'] => createKeyedDerivedStore({
+  get: (readStore, edgeId: EdgeId) => {
+    const resolvedItem = readStore(item, edgeId)
+    const resolvedView = readStore(resolved, edgeId)
+    if (!resolvedItem || !resolvedView) {
+      return undefined
+    }
+
+    const resolvedState = readStore(state, edgeId)
+    return {
+      edgeId,
+      edge: resolvedItem.edge,
+      patched: resolvedState.patched,
+      activeRouteIndex: resolvedState.activeRouteIndex,
+      ...resolvedView
+    }
+  },
+  isEqual: isEdgeViewStateEqual
+})
+
 export const createEdgeRead = ({
   read,
   nodeItem,
@@ -337,6 +389,11 @@ export const createEdgeRead = ({
   const resolved = createEdgeResolvedStore({
     item,
     nodeItem
+  })
+  const view = createEdgeViewStore({
+    item,
+    state,
+    resolved
   })
 
   const readResolved = (edgeId: EdgeId) => resolved.get(edgeId)
@@ -367,6 +424,7 @@ export const createEdgeRead = ({
     item,
     state,
     resolved,
+    view,
     box: (edgeId) => readEdgeBox(
       readResolved(edgeId),
       item.get(edgeId)?.edge

@@ -113,7 +113,7 @@ const EdgeLabelItem = ({
   label: NonNullable<EdgeView['edge']['labels']>[number]
 }) => {
   const editor = useEditorRuntime()
-  const selection = useStoreValue(editor.state.selection)
+  const selection = useStoreValue(editor.select.selection())
   const edit = useEdit()
   const ref = usePickRef({
     kind: 'edge',
@@ -182,24 +182,24 @@ const EdgeLabelItem = ({
   const commit = (value = draft) => {
     const nextText = value.trim()
     if (!nextText) {
-      editor.document.edges.labels.remove(edgeId, labelId)
-      editor.session.edit.clear()
+      editor.actions.edge.label.remove(edgeId, labelId)
+      editor.actions.edit.clear()
       return
     }
 
-    editor.document.edges.labels.patch(edgeId, labelId, {
+    editor.actions.edge.label.patch(edgeId, labelId, {
       text: nextText
     })
-    editor.session.edit.clear()
+    editor.actions.edit.clear()
   }
 
   const cancel = () => {
     setDraft(text)
     if (!text.trim()) {
-      editor.document.edges.labels.remove(edgeId, labelId)
+      editor.actions.edge.label.remove(edgeId, labelId)
       return
     }
-    editor.session.edit.clear()
+    editor.actions.edit.clear()
   }
 
   const onPointerDown = (
@@ -212,7 +212,7 @@ const EdgeLabelItem = ({
     event.stopPropagation()
 
     if (!singleSelected) {
-      editor.session.selection.replace({
+      editor.actions.selection.set({
         edgeIds: [edgeId]
       })
       return
@@ -243,7 +243,7 @@ const EdgeLabelItem = ({
       return
     }
 
-    const world = editor.read.viewport.pointer({
+    const world = editor.select.viewport.pointer({
       clientX: event.clientX,
       clientY: event.clientY
     }).world
@@ -276,16 +276,16 @@ const EdgeLabelItem = ({
     event.currentTarget.releasePointerCapture(event.pointerId)
 
     if (drag.draft) {
-      editor.document.edges.labels.patch(edgeId, labelId, drag.draft)
+      editor.actions.edge.label.patch(edgeId, labelId, drag.draft)
       setDrag(null)
       return
     }
 
     setDrag(null)
-    editor.session.selection.replace({
+    editor.actions.selection.set({
       edgeIds: [edgeId]
     })
-    editor.session.edit.startEdgeLabel(edgeId, labelId, {
+    editor.actions.edit.startEdgeLabel(edgeId, labelId, {
       caret: {
         kind: 'point',
         client: {
@@ -387,7 +387,7 @@ const EdgeItemBase = ({
   const config = useResolvedConfig()
   const entry = useEdgeView(edgeId)
   const hitTestThresholdScreen = config.edge.hitTestThresholdScreen
-  const box = editor.read.edge.box(edgeId)
+  const box = editor.select.edge.box(edgeId)
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)
 
@@ -517,7 +517,7 @@ const EdgeItemBase = ({
           />
         </g>
       </svg>
-      {labels.map((label) => (
+      {labels.map((label: NonNullable<typeof edge.labels>[number]) => (
         <EdgeLabelItem
           key={`${edge.id}:${label.id}`}
           edgeId={edge.id}

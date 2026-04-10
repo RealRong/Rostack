@@ -13,13 +13,14 @@ import type {
 } from '@whiteboard/core/types'
 import type { CommandResult } from '@engine-types/result'
 import type {
-  Editor,
+  EditorRead,
   EditorDocumentApi,
   EditorEdgesApi,
   EditorHistoryApi,
   EditorMindmapCommands,
   EditorNodesApi,
   EditorOrderMode,
+  EditorStore,
   EditorSelectionApi
 } from '../../types/editor'
 import type {
@@ -38,11 +39,12 @@ export type DocumentSelectionActions = Pick<
   'duplicate' | 'delete' | 'order' | 'group' | 'ungroup' | 'frame'
 >
 
-export type ClipboardRuntime = Pick<Editor, 'read'> & {
+export type ClipboardRuntime = {
+  read: EditorRead
   document: Pick<DocumentRuntime, 'insert'>
   session: Pick<SessionRuntime, 'selection'>
   selection: Pick<EditorSelectionApi, 'delete'>
-  state: Pick<Editor['state'], 'viewport' | 'selection'>
+  state: Pick<EditorStore, 'viewport' | 'selection'>
 }
 
 export type DocumentNodeTextApi = Pick<

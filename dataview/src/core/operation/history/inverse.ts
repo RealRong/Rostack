@@ -10,7 +10,6 @@ import {
 } from '../../document'
 
 const hasOwn = (record: Record<string, unknown>, key: string) => Object.prototype.hasOwnProperty.call(record, key)
-const cloneValue = <T>(value: T): T => structuredClone(value)
 const readObjectValue = (value: unknown, key: string) => (value as Record<string, unknown>)[key]
 
 const collectInsertedRecordIds = (records: readonly Row[]) => {
@@ -30,7 +29,7 @@ const captureRecordEntries = (document: DataDoc, recordIds: readonly string[]) =
         return undefined
       }
       return {
-        record: cloneValue(record),
+        record,
         index
       }
     })
@@ -52,7 +51,7 @@ const buildRecordInverse = (
       }
 
       const patch = Object.fromEntries(
-        Object.keys(operation.patch).map(key => [key, cloneValue(readObjectValue(record, key))])
+        Object.keys(operation.patch).map(key => [key, readObjectValue(record, key)])
       ) as Partial<Omit<Row, 'id'>>
 
       return [{ type: 'document.record.patch', recordId: operation.recordId, patch }]
@@ -81,7 +80,7 @@ const buildValueInverse = (
     case 'document.value.set': {
       const fieldId = String(operation.field)
       if (hasOwn(record.values, fieldId)) {
-        return [{ type: 'document.value.set', recordId: operation.recordId, field: fieldId, value: cloneValue(record.values[fieldId]) }]
+        return [{ type: 'document.value.set', recordId: operation.recordId, field: fieldId, value: record.values[fieldId] }]
       }
 
       return [{ type: 'document.value.clear', recordId: operation.recordId, field: fieldId }]
@@ -93,7 +92,7 @@ const buildValueInverse = (
             type: 'document.value.set',
             recordId: operation.recordId,
             field: fieldId,
-            value: cloneValue(record.values[fieldId])
+            value: record.values[fieldId]
           } satisfies BaseOperation
         }
 
@@ -109,7 +108,7 @@ const buildValueInverse = (
         return []
       }
 
-      return [{ type: 'document.value.set', recordId: operation.recordId, field: fieldId, value: cloneValue(record.values[fieldId]) }]
+      return [{ type: 'document.value.set', recordId: operation.recordId, field: fieldId, value: record.values[fieldId] }]
     }
   }
 }
@@ -124,7 +123,7 @@ const buildPropertyPatchInverse = (
   }
 
   const patch = Object.fromEntries(
-    Object.keys(operation.patch).map(key => [key, cloneValue(readObjectValue(field, key))])
+    Object.keys(operation.patch).map(key => [key, readObjectValue(field, key)])
   ) as Partial<Omit<CustomField, 'id'>>
 
   return [{ type: 'document.customField.patch', fieldId: operation.fieldId, patch }]
@@ -146,7 +145,7 @@ const buildSchemaInverse = (
     case 'document.view.put': {
       const previousView = getDocumentViewById(before, operation.view.id)
       return previousView
-        ? [{ type: 'document.view.put', view: cloneValue(previousView) }]
+        ? [{ type: 'document.view.put', view: previousView }]
         : [{ type: 'document.view.remove', viewId: operation.view.id }]
     }
     case 'document.activeView.set':
@@ -156,19 +155,19 @@ const buildSchemaInverse = (
       }]
     case 'document.view.remove': {
       const previousView = getDocumentViewById(before, operation.viewId)
-      return previousView ? [{ type: 'document.view.put', view: cloneValue(previousView) }] : []
+      return previousView ? [{ type: 'document.view.put', view: previousView }] : []
     }
     case 'document.customField.put': {
       const previousField = getDocumentCustomFieldById(before, operation.field.id)
       return previousField
-        ? [{ type: 'document.customField.put', field: cloneValue(previousField) }]
+        ? [{ type: 'document.customField.put', field: previousField }]
         : [{ type: 'document.customField.remove', fieldId: operation.field.id }]
     }
     case 'document.customField.patch':
       return buildPropertyPatchInverse(before, operation)
     case 'document.customField.remove': {
       const previousField = getDocumentCustomFieldById(before, operation.fieldId)
-      return previousField ? [{ type: 'document.customField.put', field: cloneValue(previousField) }] : []
+      return previousField ? [{ type: 'document.customField.put', field: previousField }] : []
     }
   }
 }

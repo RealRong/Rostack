@@ -42,7 +42,8 @@ export const createDefaultViewOptions = (
   },
   kanban: {
     newRecordPosition: 'end',
-    fillColumnColor: true
+    fillColumnColor: true,
+    cardsPerColumn: 'all'
   }
 })
 

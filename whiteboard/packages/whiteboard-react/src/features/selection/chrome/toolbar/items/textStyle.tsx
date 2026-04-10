@@ -24,7 +24,7 @@ export const boldItem: ToolbarItemSpec = {
             return
           }
 
-          editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+          editor.actions.node.patch(context.nodeIds, toNodeStylePatch(node, {
             fontWeight: active ? 400 : 700
           }))
         }}
@@ -53,7 +53,7 @@ export const italicItem: ToolbarItemSpec = {
             return
           }
 
-          editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+          editor.actions.node.patch(context.nodeIds, toNodeStylePatch(node, {
             fontStyle: !active ? 'italic' : 'normal'
           }))
         }}

@@ -4,7 +4,8 @@ import { useEditorRuntime } from '#react/runtime/hooks'
 
 export const DrawLayer = () => {
   const editor = useEditorRuntime()
-  const preview = useStoreValue(editor.read.overlay.feedback.draw)
+  const chrome = useStoreValue(editor.select.chrome())
+  const preview = chrome.draw
 
   return <DrawPreview preview={preview} />
 }

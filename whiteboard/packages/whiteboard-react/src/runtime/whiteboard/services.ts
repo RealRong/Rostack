@@ -5,7 +5,7 @@ import type {
   Point
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
-import { createEditor, selectTool } from '@whiteboard/editor'
+import { createEditor } from '@whiteboard/editor'
 import { DEFAULT_DRAW_PREFERENCES } from '../../features/toolbox/drawPreferences'
 import { INSERT_PRESET_CATALOG } from '../../features/toolbox/presets'
 import type { ResolvedConfig } from '../../types/common/config'
@@ -85,7 +85,7 @@ export const createWhiteboardServices = ({
     editor,
     point,
     onPointerDown: input => {
-      const tool = editor.state.tool.get()
+      const tool = editor.select.tool().get()
       if (
         tool.type !== 'insert'
         || input.pick.kind !== 'background'
@@ -103,7 +103,7 @@ export const createWhiteboardServices = ({
         return false
       }
 
-      editor.session.tool.set(selectTool())
+      editor.actions.tool.select()
       return true
     }
   })
@@ -112,7 +112,7 @@ export const createWhiteboardServices = ({
     adapter: createClipboardHostAdapter(),
     readDefaultOrigin: () => {
       const current = point.get()
-      return clonePoint(current ?? editor.state.viewport.get().center)
+      return clonePoint(current ?? editor.select.viewport().get().center)
     }
   })
 

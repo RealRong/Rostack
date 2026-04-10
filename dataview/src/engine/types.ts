@@ -12,6 +12,7 @@ import type {
   CustomField,
   CustomFieldKind,
   FieldOption,
+  KanbanCardsPerColumn,
   KanbanNewRecordPosition,
   StatusCategory,
   Row,
@@ -386,6 +387,7 @@ export interface ViewGalleryApi {
 export interface ViewKanbanApi {
   setNewRecordPosition: (value: KanbanNewRecordPosition) => void
   setFillColor: (value: boolean) => void
+  setCardsPerColumn: (value: KanbanCardsPerColumn) => void
 }
 
 export interface ViewOrderApi {

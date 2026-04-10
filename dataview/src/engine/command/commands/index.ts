@@ -48,6 +48,7 @@ import {
   resolveViewGroupSortSetCommand,
   resolveViewGroupToggleCommand,
   resolveViewKanbanFillColorSetCommand,
+  resolveViewKanbanCardsPerColumnSetCommand,
   resolveViewKanbanSetNewRecordPositionCommand,
   resolveViewFilterAddCommand,
   resolveViewFilterClearCommand,
@@ -204,6 +205,8 @@ export const resolveCommand = (document: DataDoc, command: IndexedCommand): Reso
       return resolveViewKanbanSetNewRecordPositionCommand(document, command)
     case 'view.kanban.fillColor.set':
       return resolveViewKanbanFillColorSetCommand(document, command)
+    case 'view.kanban.cardsPerColumn.set':
+      return resolveViewKanbanCardsPerColumnSetCommand(document, command)
     case 'view.order.move':
       return resolveViewOrderMoveCommand(document, command)
     case 'view.order.clear':

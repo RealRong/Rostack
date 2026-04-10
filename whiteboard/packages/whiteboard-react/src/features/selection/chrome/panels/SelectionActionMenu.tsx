@@ -56,9 +56,9 @@ export const SelectionActionMenu = ({
 }) => {
   const editor = useEditorRuntime()
   const { clipboard } = useWhiteboardServices()
-  const target = useStoreValue(editor.state.selection)
-  const nodeInfo = useStoreValue(editor.read.selection.node)
-  const box = useStoreValue(editor.read.selection.box)
+  const target = useStoreValue(editor.select.selection())
+  const nodeInfo = useStoreValue(editor.select.selection.node())
+  const box = useStoreValue(editor.select.selection.box())
   const nodeIds = target.nodeIds
   const edgeIds = target.edgeIds
   const count = nodeIds.length + edgeIds.length
@@ -66,7 +66,7 @@ export const SelectionActionMenu = ({
     editor,
     target
   })
-  const exactGroupIds = editor.read.group.exactIds(target)
+  const exactGroupIds = editor.select.group.exactIds(target)
   const pureNodeSelection =
     nodeIds.length > 0
     && edgeIds.length === 0
@@ -111,10 +111,7 @@ export const SelectionActionMenu = ({
       key: 'edit.duplicate',
       label: 'Duplicate',
       onSelect: () => {
-        editor.document.selection.duplicate({
-          nodeIds,
-          edgeIds
-        })
+        editor.actions.selection.duplicate()
       }
     },
     {
@@ -130,10 +127,7 @@ export const SelectionActionMenu = ({
         key: item.key,
         label: item.label,
         onSelect: () => {
-          editor.document.selection.order({
-            nodeIds,
-            edgeIds
-          }, item.mode)
+          editor.actions.selection.order(item.mode)
         }
       }))
     },
@@ -144,10 +138,7 @@ export const SelectionActionMenu = ({
             key: 'structure.group',
             label: 'Group',
             onSelect: () => {
-              editor.document.selection.group({
-                nodeIds,
-                edgeIds
-              })
+              editor.actions.selection.group()
             }
           }
         ]
@@ -159,10 +150,7 @@ export const SelectionActionMenu = ({
             key: 'structure.ungroup',
             label: 'Ungroup',
             onSelect: () => {
-              editor.document.selection.ungroup({
-                nodeIds,
-                edgeIds
-              })
+              editor.actions.selection.ungroup()
             }
           }
         ]
@@ -174,7 +162,7 @@ export const SelectionActionMenu = ({
             key: 'state.lock',
             label: readLockLabel(nodeInfo?.lock ?? 'none'),
             onSelect: () => {
-              editor.document.nodes.patch([...nodeIds], {
+              editor.actions.node.patch([...nodeIds], {
                 fields: {
                   locked: (nodeInfo?.lock ?? 'none') !== 'all'
                 }
@@ -190,7 +178,7 @@ export const SelectionActionMenu = ({
             key: 'structure.frame',
             label: 'Create frame',
             onSelect: () => {
-              editor.document.selection.frame(box)
+              editor.actions.selection.frame(box)
             }
           }
         ]
@@ -206,7 +194,7 @@ export const SelectionActionMenu = ({
             key: 'viewport.zoom-in',
             label: 'Zoom in',
             onSelect: () => {
-              editor.view.viewport.fit(box)
+              editor.actions.viewport.fit(box)
             }
           }
         ]
@@ -217,10 +205,7 @@ export const SelectionActionMenu = ({
       label: 'Delete',
       tone: 'destructive' as const,
       onSelect: () => {
-        editor.document.selection.delete({
-          nodeIds,
-          edgeIds
-        })
+        editor.actions.selection.delete()
       }
     }
   ])

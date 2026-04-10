@@ -68,14 +68,14 @@ export const FrameNodeChrome = ({
   })
 
   useEffect(() => {
-    setDraft(title)
+    setDraft((current) => current === title ? current : title)
   }, [title])
 
   const commit = () => {
     const nextTitle = draft.trim() || FRAME_DEFAULT_TITLE
-    editor.view.preview.nodeText.clear(node.id)
-    editor.session.edit.clear()
-    editor.document.nodes.patch([node.id], toNodeDataPatch(node, {
+    editor.actions.edit.nodeText.clear(node.id)
+    editor.actions.edit.clear()
+    editor.actions.node.patch([node.id], toNodeDataPatch(node, {
       title: nextTitle
     }))
   }
@@ -104,8 +104,8 @@ export const FrameNodeChrome = ({
             if (isEscapeEditingKey(event)) {
               event.preventDefault()
               setDraft(title)
-              editor.view.preview.nodeText.clear(node.id)
-              editor.session.edit.clear()
+              editor.actions.edit.nodeText.clear(node.id)
+              editor.actions.edit.clear()
             }
           }}
           className="wb-frame-input"

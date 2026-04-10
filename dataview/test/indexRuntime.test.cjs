@@ -128,7 +128,9 @@ test('engine.index sync patches search/group/sort/calculation on record value ch
     search: {
       fields: [TITLE_FIELD_ID]
     },
-    groupFields: [FIELD_STATUS],
+    groups: [{
+      fieldId: FIELD_STATUS
+    }],
     sortFields: [FIELD_POINTS],
     calculationFields: [FIELD_STATUS, FIELD_POINTS]
   })
@@ -173,7 +175,8 @@ test('engine.index sync patches search/group/sort/calculation on record value ch
   assert.equal(titleSearch.get('rec_2'), 'renamed 2')
   assert.equal(titleSearch.get('rec_1'), 'task 1')
 
-  const statusGroup = state.group.fields.get(FIELD_STATUS)
+  const statusGroup = Array.from(state.group.groups.values())
+    .find(group => group.fieldId === FIELD_STATUS)
   assert.equal(statusGroup.bucketRecords.get('doing'), undefined)
   assert.deepEqual(statusGroup.bucketRecords.get('done'), ['rec_2', 'rec_3'])
 

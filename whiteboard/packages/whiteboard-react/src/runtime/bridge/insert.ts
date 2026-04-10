@@ -92,7 +92,7 @@ const insertNodePreset = ({
   preset: NodeInsertPreset
   world: Point
 }): InsertResult | undefined => {
-  const result = editor.document.nodes.create(
+  const result = editor.actions.node.create(
     placeNodeInput({
       world,
       input: preset.input(world),
@@ -118,7 +118,7 @@ const insertMindmapPreset = ({
   preset: MindmapInsertPreset
   world: Point
 }): InsertResult | undefined => {
-  const result = editor.document.mindmaps.create({
+  const result = editor.actions.mindmap.create({
     rootData: preset.template.root
   })
   if (!result.ok) {
@@ -126,7 +126,7 @@ const insertMindmapPreset = ({
   }
 
   preset.template.children?.forEach((child) => {
-    editor.document.mindmaps.insert(result.data.mindmapId, {
+    editor.actions.mindmap.insert(result.data.mindmapId, {
       kind: 'child',
       parentId: result.data.rootId,
       payload: child.data,
@@ -136,11 +136,11 @@ const insertMindmapPreset = ({
     })
   })
 
-  const rect = editor.read.index.node.get(result.data.mindmapId)?.geometry.rect
+  const rect = editor.select.node.item().get(result.data.mindmapId)?.rect
   const width = rect?.width ?? 260
   const height = rect?.height ?? 180
 
-  editor.document.mindmaps.moveRoot({
+  editor.actions.mindmap.moveRoot({
     nodeId: result.data.mindmapId,
     position: {
       x: world.x - width / 2,
@@ -179,12 +179,12 @@ const runInsertPreset = ({
     return undefined
   }
 
-  editor.session.selection.replace({
+  editor.actions.selection.set({
     nodeIds: [result.nodeId]
   })
   const edit = result.edit
   if (edit) {
-    editor.session.edit.startNode(edit.nodeId, edit.field)
+    editor.actions.edit.startNode(edit.nodeId, edit.field)
   }
 
   return result

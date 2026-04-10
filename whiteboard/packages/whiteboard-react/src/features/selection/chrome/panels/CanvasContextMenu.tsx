@@ -72,10 +72,10 @@ export const CanvasContextMenu = ({
     <Menu
       items={toMenuItems(
         () => {
-          editor.document.history.undo()
+          editor.actions.history.undo()
         },
         () => {
-          editor.document.history.redo()
+          editor.actions.history.redo()
         },
         () => {
           void clipboard.paste({
@@ -83,7 +83,7 @@ export const CanvasContextMenu = ({
           })
         },
         () => {
-          editor.session.selection.selectAll()
+          editor.actions.selection.all()
         }
       )}
       onClose={onClose}

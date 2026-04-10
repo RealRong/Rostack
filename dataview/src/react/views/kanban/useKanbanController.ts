@@ -8,6 +8,7 @@ import {
 } from 'react'
 import type {
   Field,
+  KanbanCardsPerColumn,
   CustomField,
   Row,
   View,
@@ -69,6 +70,17 @@ interface KanbanSelectionState {
   select: (id: AppearanceId, mode?: 'replace' | 'toggle') => void
 }
 
+const emptyIds = [] as const
+
+const resolveInitialVisibleCount = (
+  limit: KanbanCardsPerColumn,
+  total: number
+) => (
+  limit === 'all'
+    ? total
+    : Math.min(total, limit)
+)
+
 export interface KanbanController {
   currentView: KanbanCurrentView
   fields: readonly CustomField[]
@@ -76,6 +88,7 @@ export interface KanbanController {
   canReorder: boolean
   groupUsesOptionColors: boolean
   fillColumnColor: boolean
+  cardsPerColumn: KanbanCardsPerColumn
   layout: {
     columnWidth: number
     columnMinHeight: number
@@ -86,6 +99,11 @@ export interface KanbanController {
   readSectionColorId: (sectionKey: SectionKey) => string | undefined
   readAppearanceColorId: (id: AppearanceId) => string | undefined
   readRecord: (id: AppearanceId) => Row | undefined
+  readVisibleIds: (sectionKey: SectionKey) => readonly AppearanceId[]
+  readVisibleCount: (sectionKey: SectionKey) => number
+  hiddenCount: (sectionKey: SectionKey) => number
+  canShowMore: (sectionKey: SectionKey) => boolean
+  showMore: (sectionKey: SectionKey) => void
   marqueeActive: boolean
   visualTargets: VisualTargetRegistry
 }
@@ -136,7 +154,10 @@ export const useKanbanController = (input: {
   const groupUsesOptionColors = usesOptionGroupingColors(groupField)
   const fillColumnColor = groupUsesOptionColors
     && currentView.view.options.kanban.fillColumnColor
+  const cardsPerColumn = currentView.view.options.kanban.cardsPerColumn
   const canReorder = (groupProjection?.active ?? false) && !(sortProjection?.active ?? false)
+  const [expandedCountBySectionKey, setExpandedCountBySectionKey] = useState<Partial<Record<SectionKey, number>>>({})
+  const previousSectionLengthsRef = useRef(new Map<SectionKey, number>())
 
   const readRecord = useCallback((id: AppearanceId) => {
     const recordId = currentView.appearances.get(id)?.recordId
@@ -161,6 +182,157 @@ export const useKanbanController = (input: {
     () => new Set(selectionValue.ids),
     [selectionValue.ids]
   )
+
+  useEffect(() => {
+    setExpandedCountBySectionKey({})
+    previousSectionLengthsRef.current = new Map(
+      currentView.sections.map(section => [section.key, section.ids.length] as const)
+    )
+  }, [currentView.view.id, cardsPerColumn])
+
+  useEffect(() => {
+    if (cardsPerColumn === 'all') {
+      previousSectionLengthsRef.current = new Map(
+        currentView.sections.map(section => [section.key, section.ids.length] as const)
+      )
+      return
+    }
+
+    setExpandedCountBySectionKey(previous => {
+      let changed = false
+      const next = {
+        ...previous
+      }
+      const previousLengths = previousSectionLengthsRef.current
+      const sectionKeys = new Set(currentView.sections.map(section => section.key))
+
+      Object.keys(next).forEach(sectionKey => {
+        if (!sectionKeys.has(sectionKey)) {
+          delete next[sectionKey]
+          changed = true
+        }
+      })
+
+      currentView.sections.forEach(section => {
+        const previousLength = previousLengths.get(section.key)
+        if (previousLength === undefined) {
+          return
+        }
+
+        const previousInitialVisibleCount = resolveInitialVisibleCount(
+          cardsPerColumn,
+          previousLength
+        )
+        const previousExpandedCount = previous[section.key]
+        const previousVisibleCount = previousExpandedCount === undefined
+          ? previousInitialVisibleCount
+          : Math.min(
+              previousLength,
+              Math.max(previousInitialVisibleCount, previousExpandedCount)
+            )
+        const currentVisibleCount = next[section.key] === undefined
+          ? resolveInitialVisibleCount(cardsPerColumn, section.ids.length)
+          : Math.min(
+              section.ids.length,
+              Math.max(
+                resolveInitialVisibleCount(cardsPerColumn, section.ids.length),
+                next[section.key]!
+              )
+            )
+
+        if (
+          section.ids.length > previousLength
+          && previousVisibleCount >= previousLength
+          && currentVisibleCount < section.ids.length
+        ) {
+          next[section.key] = section.ids.length
+          changed = true
+        }
+      })
+
+      return changed
+        ? next
+        : previous
+    })
+
+    previousSectionLengthsRef.current = new Map(
+      currentView.sections.map(section => [section.key, section.ids.length] as const)
+    )
+  }, [currentView.sections, cardsPerColumn])
+
+  const sectionIdsByKey = useMemo(() => new Map(
+    currentView.sections.map(section => [section.key, section.ids] as const)
+  ), [currentView.sections])
+  const visibleCountBySectionKey = useMemo(() => new Map(
+    currentView.sections.map(section => {
+      const initialVisibleCount = resolveInitialVisibleCount(
+        cardsPerColumn,
+        section.ids.length
+      )
+      const expandedCount = expandedCountBySectionKey[section.key]
+      const visibleCount = expandedCount === undefined
+        ? initialVisibleCount
+        : Math.min(section.ids.length, Math.max(initialVisibleCount, expandedCount))
+
+      return [section.key, visibleCount] as const
+    })
+  ), [currentView.sections, expandedCountBySectionKey, cardsPerColumn])
+  const visibleIdsBySectionKey = useMemo(() => new Map(
+    currentView.sections.map(section => [
+      section.key,
+      section.ids.slice(0, visibleCountBySectionKey.get(section.key) ?? 0)
+    ] as const)
+  ), [currentView.sections, visibleCountBySectionKey])
+  const readVisibleIds = useCallback((sectionKey: SectionKey) => (
+    visibleIdsBySectionKey.get(sectionKey) ?? emptyIds
+  ), [visibleIdsBySectionKey])
+  const readVisibleCount = useCallback((sectionKey: SectionKey) => (
+    visibleCountBySectionKey.get(sectionKey) ?? 0
+  ), [visibleCountBySectionKey])
+  const hiddenCount = useCallback((sectionKey: SectionKey) => {
+    const sectionIds = sectionIdsByKey.get(sectionKey)
+    if (!sectionIds) {
+      return 0
+    }
+
+    return Math.max(0, sectionIds.length - readVisibleCount(sectionKey))
+  }, [readVisibleCount, sectionIdsByKey])
+  const canShowMore = useCallback((sectionKey: SectionKey) => (
+    hiddenCount(sectionKey) > 0
+  ), [hiddenCount])
+  const showMore = useCallback((sectionKey: SectionKey) => {
+    if (cardsPerColumn === 'all') {
+      return
+    }
+
+    setExpandedCountBySectionKey(previous => {
+      const sectionIds = sectionIdsByKey.get(sectionKey)
+      if (!sectionIds?.length) {
+        return previous
+      }
+
+      const initialVisibleCount = resolveInitialVisibleCount(
+        cardsPerColumn,
+        sectionIds.length
+      )
+      const currentVisibleCount = previous[sectionKey] === undefined
+        ? initialVisibleCount
+        : Math.min(sectionIds.length, Math.max(initialVisibleCount, previous[sectionKey]!))
+      const nextVisibleCount = Math.min(
+        sectionIds.length,
+        currentVisibleCount + cardsPerColumn
+      )
+
+      if (nextVisibleCount <= currentVisibleCount) {
+        return previous
+      }
+
+      return {
+        ...previous,
+        [sectionKey]: nextVisibleCount
+      }
+    })
+  }, [cardsPerColumn, sectionIdsByKey])
 
   useEffect(() => {
     return dataView.marquee.registerAdapter({
@@ -246,6 +418,7 @@ export const useKanbanController = (input: {
     canReorder,
     groupUsesOptionColors,
     fillColumnColor,
+    cardsPerColumn,
     layout: {
       columnWidth: input.columnWidth,
       columnMinHeight: input.columnMinHeight
@@ -256,23 +429,34 @@ export const useKanbanController = (input: {
     readSectionColorId,
     readAppearanceColorId,
     readRecord,
+    readVisibleIds,
+    readVisibleCount,
+    hiddenCount,
+    canShowMore,
+    showMore,
     marqueeActive,
     visualTargets
   }), [
     canReorder,
+    canShowMore,
     currentView,
     fillColumnColor,
     drag,
     groupUsesOptionColors,
     groupField,
+    hiddenCount,
     input.columnMinHeight,
     input.columnWidth,
+    cardsPerColumn,
     marqueeActive,
     fields,
     readAppearanceColorId,
     readRecord,
     readSectionColorId,
+    readVisibleCount,
+    readVisibleIds,
     selection,
+    showMore,
     visualTargets
   ])
 }

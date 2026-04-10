@@ -10,7 +10,7 @@ import type {
   EngineRead,
   NodeItem
 } from '@whiteboard/engine'
-import type { KeyedReadStore } from '@shared/store'
+import { createKeyedDerivedStore, type KeyedReadStore } from '@shared/store'
 import type {
   NodeGeometry,
   Node,
@@ -53,10 +53,26 @@ export type NodeCapability = {
   rotate: boolean
 }
 
+export type NodeView = {
+  nodeId: NodeId
+  node: NodeItem['node']
+  rect: NodeItem['rect']
+  frameRect: NodeItem['rect']
+  rotation: number
+  hovered: boolean
+  hidden: boolean
+  resizing: boolean
+  patched: boolean
+  canConnect: boolean
+  canResize: boolean
+  canRotate: boolean
+}
+
 export type NodeRead = {
   list: EngineRead['node']['list']
   item: KeyedReadStore<NodeId, NodeItem | undefined>
   state: KeyedReadStore<NodeId, NodeRuntimeState>
+  view: KeyedReadStore<NodeId, NodeView | undefined>
   geometry: (nodeId: NodeId) => NodeGeometry | undefined
   rect: (nodeId: NodeId) => Rect | undefined
   bounds: (nodeId: NodeId) => Rect | undefined
@@ -99,9 +115,65 @@ const isNodeStateEqual = (
   && left.resizing === right.resizing
 )
 
+const isRectEqual = (
+  left: Rect,
+  right: Rect
+) => (
+  left.x === right.x
+  && left.y === right.y
+  && left.width === right.width
+  && left.height === right.height
+)
+
+const isNodeViewEqual = (
+  left: NodeView | undefined,
+  right: NodeView | undefined
+) => (
+  left === right
+  || (
+    left !== undefined
+    && right !== undefined
+    && left.node === right.node
+    && isRectEqual(left.rect, right.rect)
+    && isRectEqual(left.frameRect, right.frameRect)
+    && left.rotation === right.rotation
+    && left.hovered === right.hovered
+    && left.hidden === right.hidden
+    && left.resizing === right.resizing
+    && left.patched === right.patched
+    && left.canConnect === right.canConnect
+    && left.canResize === right.canResize
+    && left.canRotate === right.canRotate
+  )
+)
+
 const readNodeRotation = (
   node: NodeItem['node']
 ) => (typeof node.rotation === 'number' ? node.rotation : 0)
+
+const toNodeView = (
+  nodeId: NodeId,
+  item: NodeItem,
+  state: NodeRuntimeState,
+  capability: NodeCapability
+): NodeView => {
+  const rotation = readNodeRotation(item.node)
+
+  return {
+    nodeId,
+    node: item.node,
+    rect: item.rect,
+    frameRect: item.rect,
+    rotation,
+    hovered: state.hovered,
+    hidden: state.hidden,
+    resizing: state.resizing,
+    patched: state.patched,
+    canConnect: capability.connect,
+    canResize: capability.resize,
+    canRotate: capability.rotate
+  }
+}
 
 export const getNodeItemBounds = (
   item: NodeItem
@@ -207,6 +279,32 @@ const createNodeStateStore = ({
   isEqual: isNodeStateEqual
 })
 
+const createNodeViewStore = ({
+  item,
+  state,
+  capability
+}: {
+  item: NodeRead['item']
+  state: NodeRead['state']
+  capability: NodeRead['capability']
+}): NodeRead['view'] => createKeyedDerivedStore({
+  get: (readStore, nodeId: NodeId) => {
+    const resolvedItem = readStore(item, nodeId)
+    if (!resolvedItem) {
+      return undefined
+    }
+
+    const resolvedState = readStore(state, nodeId)
+    return toNodeView(
+      nodeId,
+      resolvedItem,
+      resolvedState,
+      capability(resolvedItem.node)
+    )
+  },
+  isEqual: isNodeViewEqual
+})
+
 const createNodeCapabilityResolver = (
   registry: NodeRegistry
 ): NodeRead['capability'] => (
@@ -241,11 +339,17 @@ export const createNodeRead = ({
     overlay
   })
   const capability = createNodeCapabilityResolver(registry)
+  const view = createNodeViewStore({
+    item,
+    state,
+    capability
+  })
 
   return {
     list: read.node.list,
     item,
     state,
+    view,
     geometry: (nodeId) => {
       const nextItem = item.get(nodeId)
       return nextItem

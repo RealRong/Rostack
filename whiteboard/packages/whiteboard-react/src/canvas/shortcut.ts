@@ -2,7 +2,6 @@ import type {
   ShortcutAction,
   ShortcutBinding
 } from '../types/common/shortcut'
-import { selectTool } from '@whiteboard/editor'
 import type { WhiteboardRuntime as Editor } from '#react/types/runtime'
 
 export const DefaultShortcutBindings: readonly ShortcutBinding[] = [
@@ -23,14 +22,14 @@ type ShortcutState = ReturnType<typeof readShortcutState>
 const readShortcutState = (
   editor: Editor
 ) => {
-  const selection = editor.state.selection.get()
+  const selection = editor.select.selection().get()
   const count = selection.nodeIds.length + selection.edgeIds.length
 
   return {
     selection,
     hasSelection: count > 0,
     canGroup: count >= 2,
-    canUngroup: editor.read.group.exactIds(selection).length > 0,
+    canUngroup: editor.select.group.exactIds(selection).length > 0,
     canDuplicate: count > 0
   }
 }
@@ -48,7 +47,7 @@ const canRunShortcut = (
     case 'selection.selectAll':
       return true
     case 'selection.clear':
-      return state.hasSelection || !editor.read.tool.is('select')
+      return state.hasSelection || !editor.select.tool.is('select')
     case 'selection.delete':
       return state.hasSelection
     case 'selection.duplicate':
@@ -74,41 +73,29 @@ export const runShortcut = (
 
   switch (action) {
     case 'selection.selectAll':
-      editor.session.selection.selectAll()
+      editor.actions.selection.all()
       return true
     case 'selection.clear':
-      if (!editor.read.tool.is('select')) {
-        editor.session.tool.set(selectTool())
+      if (!editor.select.tool.is('select')) {
+        editor.actions.tool.select()
       }
-      editor.session.selection.clear()
+      editor.actions.selection.clear()
       return true
     case 'selection.delete':
-      return editor.document.selection.delete({
-        nodeIds: selection.nodeIds,
-        edgeIds: selection.edgeIds
-      })
+      return editor.actions.selection.delete()
     case 'selection.duplicate': {
-      return editor.document.selection.duplicate({
-        nodeIds: selection.nodeIds,
-        edgeIds: selection.edgeIds
-      })
+      return editor.actions.selection.duplicate()
     }
     case 'group.merge': {
-      return editor.document.selection.group({
-        nodeIds: selection.nodeIds,
-        edgeIds: selection.edgeIds
-      })
+      return editor.actions.selection.group()
     }
     case 'group.ungroup': {
-      return editor.document.selection.ungroup({
-        nodeIds: selection.nodeIds,
-        edgeIds: selection.edgeIds
-      })
+      return editor.actions.selection.ungroup()
     }
     case 'history.undo':
-      return editor.document.history.undo().ok
+      return editor.actions.history.undo().ok
     case 'history.redo':
-      return editor.document.history.redo().ok
+      return editor.actions.history.redo().ok
     default:
       return false
   }

@@ -891,6 +891,13 @@ export const createViewEngineApi = (options: {
         viewId: options.viewId,
         value
       })
+    },
+    setCardsPerColumn: value => {
+      commit({
+        type: 'view.kanban.cardsPerColumn.set',
+        viewId: options.viewId,
+        value
+      })
     }
   }
 

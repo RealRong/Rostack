@@ -1,12 +1,34 @@
-import type { ViewType } from '@dataview/core/contracts'
+import {
+  KANBAN_CARDS_PER_COLUMN_OPTIONS,
+  type KanbanCardsPerColumn,
+  type ViewType
+} from '@dataview/core/contracts'
 import { getDocumentFields } from '@dataview/core/document'
 import { useDataView, useDataViewValue } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
+import { buildChoiceSubmenuItem } from '@dataview/react/menu-builders'
 import { usesOptionGroupingColors } from '@dataview/react/views/shared/optionGrouping'
+import { Menu, type MenuItem } from '@ui/menu'
 import { Switch } from '@ui/switch'
 import { cn } from '@ui/utils'
 
 const SUPPORTED_LAYOUT_TYPES = ['table', 'kanban', 'gallery'] as const satisfies readonly ViewType[]
+
+const parseCardsPerColumn = (
+  value: string
+): KanbanCardsPerColumn => {
+  switch (value) {
+    case '25':
+      return 25
+    case '50':
+      return 50
+    case '100':
+      return 100
+    case 'all':
+    default:
+      return 'all'
+  }
+}
 
 const LayoutTypeCard = (props: {
   type: (typeof SUPPORTED_LAYOUT_TYPES)[number]
@@ -37,6 +59,7 @@ const LayoutTypeCard = (props: {
 
 const LayoutSwitchRow = (props: {
   label: string
+  description?: string
   checked: boolean
   disabled?: boolean
   onCheckedChange: (checked: boolean) => void
@@ -46,6 +69,11 @@ const LayoutSwitchRow = (props: {
       <div className="text-sm font-medium text-foreground">
         {props.label}
       </div>
+      {props.description ? (
+        <div className="mt-0.5 text-xs text-muted-foreground">
+          {props.description}
+        </div>
+      ) : null}
     </div>
     <Switch
       checked={props.checked}
@@ -70,10 +98,51 @@ export const LayoutPanel = () => {
     ? fieldMap.get(view.group.field)
     : undefined
   const canFillKanbanColumns = usesOptionGroupingColors(groupField)
+  const cardsPerColumnOptions = KANBAN_CARDS_PER_COLUMN_OPTIONS.map(value => ({
+    value: String(value),
+    label: renderMessage(meta.ui.viewSettings.layoutPanel.cardsPerColumnOption(value))
+  }))
 
   if (!view || !viewApi) {
     return <div className="min-h-0 flex-1 overflow-y-auto" />
   }
+
+  const kanbanItems: readonly MenuItem[] = view.type === 'kanban'
+    ? [
+        buildChoiceSubmenuItem({
+          key: 'cardsPerColumn',
+          label: renderMessage(meta.ui.viewSettings.layoutPanel.cardsPerColumn),
+          suffix: renderMessage(
+            meta.ui.viewSettings.layoutPanel.cardsPerColumnOption(
+              view.options.kanban.cardsPerColumn
+            )
+          ),
+          value: String(view.options.kanban.cardsPerColumn),
+          options: cardsPerColumnOptions.map(option => ({
+            id: option.value,
+            label: option.label
+          })),
+          onSelect: value => {
+            viewApi.kanban.setCardsPerColumn(
+              parseCardsPerColumn(value)
+            )
+          },
+          presentation: 'dropdown',
+          placement: 'bottom-end'
+        }),
+        {
+          kind: 'toggle',
+          key: 'fillColumnColor',
+          label: renderMessage(meta.ui.viewSettings.layoutPanel.fillColumnColor),
+          checked: view.options.kanban.fillColumnColor,
+          disabled: !canFillKanbanColumns,
+          indicator: 'switch',
+          onSelect: () => {
+            viewApi.kanban.setFillColor(!view.options.kanban.fillColumnColor)
+          }
+        }
+      ]
+    : []
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
@@ -108,13 +177,10 @@ export const LayoutPanel = () => {
 
       {view.type === 'kanban' ? (
         <div className="mt-3">
-          <LayoutSwitchRow
-            label={renderMessage(meta.ui.viewSettings.layoutPanel.fillColumnColor)}
-            checked={view.options.kanban.fillColumnColor}
-            disabled={!canFillKanbanColumns}
-            onCheckedChange={checked => {
-              viewApi.kanban.setFillColor(checked)
-            }}
+          <Menu
+            items={kanbanItems}
+            autoFocus={false}
+            submenuOpenPolicy="click"
           />
         </div>
       ) : null}

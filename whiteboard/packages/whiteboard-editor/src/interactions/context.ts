@@ -1,11 +1,11 @@
 import type { BoardConfig } from '@whiteboard/core/config'
-import type { Editor } from '../types/editor'
+import type { EditorRead } from '../types/editor'
 import type { EditorRuntime } from '../runtime/editor/runtime'
 import type { SnapRuntime } from '../runtime/interaction/snap'
 import type { SelectionInternalRead } from '../runtime/read/selection'
 
 export type InteractionContext = {
-  read: Editor['read']
+  read: EditorRead
   selection: SelectionInternalRead
   write: EditorRuntime
   config: Readonly<BoardConfig>

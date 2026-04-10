@@ -32,7 +32,7 @@ const toMenuItems = (
     ),
     onSelect: () => {
       onClose()
-      editor.session.selection.replace({
+      editor.actions.selection.set({
         nodeIds: item.nodeIds
       })
     }

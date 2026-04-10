@@ -1,4 +1,5 @@
 import type {
+  KanbanCardsPerColumn,
   Field,
   FilterRule,
   Sorter,
@@ -22,6 +23,7 @@ type SettingsRouteKind =
 
 type CardSizeId = 'sm' | 'md' | 'lg'
 type NewRecordPositionId = 'start' | 'end'
+type CardsPerColumnId = KanbanCardsPerColumn
 type LayoutTypeId = 'table' | 'kanban' | 'gallery'
 
 const findField = (
@@ -339,6 +341,23 @@ export const ui = {
         'meta.ui.viewSettings.layoutPanel.fillColumnColor',
         'Fill column color'
       ),
+      cardsPerColumn: message(
+        'meta.ui.viewSettings.layoutPanel.cardsPerColumn',
+        'Cards per column'
+      ),
+      cardsPerColumnOption: (value: CardsPerColumnId) => {
+        switch (value) {
+          case 25:
+            return message('meta.ui.viewSettings.layoutPanel.cardsPerColumnOption.25', '25')
+          case 50:
+            return message('meta.ui.viewSettings.layoutPanel.cardsPerColumnOption.50', '50')
+          case 100:
+            return message('meta.ui.viewSettings.layoutPanel.cardsPerColumnOption.100', '100')
+          case 'all':
+          default:
+            return message('meta.ui.viewSettings.layoutPanel.cardsPerColumnOption.all', 'All')
+        }
+      },
       newCardPosition: message(
         'meta.ui.viewSettings.layoutPanel.newCardPosition',
         'New card position'

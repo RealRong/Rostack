@@ -20,6 +20,31 @@ const readNumber = (
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+const readPx = (
+  value: string,
+  fallback: number
+) => {
+  const parsed = Number.parseFloat(value)
+  return Number.isFinite(parsed) && parsed > 0
+    ? parsed
+    : fallback
+}
+
+const readLineHeightPx = (
+  lineHeight: string,
+  sourceFontSize: number,
+  fontSize: number
+) => {
+  if (lineHeight === 'normal') {
+    return fontSize * 1.4
+  }
+
+  const parsed = Number.parseFloat(lineHeight)
+  return Number.isFinite(parsed) && parsed > 0
+    ? parsed * (sourceFontSize > 0 ? fontSize / sourceFontSize : 1)
+    : fontSize * 1.4
+}
+
 const ensureStickyFitElements = (): StickyFitElements | null => {
   if (typeof document === 'undefined') {
     return null
@@ -126,6 +151,7 @@ export const measureStickyFontSize = ({
 
   const frameStyle = window.getComputedStyle(frame)
   const sourceStyle = window.getComputedStyle(source)
+  const sourceFontSize = readPx(sourceStyle.fontSize, TEXT_DEFAULT_FONT_SIZE)
   const contentBox = resolveTextContentBox({
     width: frameRect.width,
     height: frameRect.height,
@@ -156,7 +182,6 @@ export const measureStickyFontSize = ({
   elements.content.style.fontFamily = sourceStyle.fontFamily
   elements.content.style.fontStyle = sourceStyle.fontStyle
   elements.content.style.fontWeight = sourceStyle.fontWeight
-  elements.content.style.lineHeight = sourceStyle.lineHeight
   elements.content.style.letterSpacing = sourceStyle.letterSpacing
   elements.content.style.textTransform = sourceStyle.textTransform
   elements.content.style.whiteSpace = sourceStyle.whiteSpace
@@ -171,6 +196,11 @@ export const measureStickyFontSize = ({
   while (low <= high) {
     const mid = Math.floor((low + high) / 2)
     elements.content.style.fontSize = `${mid}px`
+    elements.content.style.lineHeight = `${readLineHeightPx(
+      sourceStyle.lineHeight,
+      sourceFontSize,
+      mid
+    )}px`
 
     const fits = (
       elements.frame.scrollWidth <= contentBox.width

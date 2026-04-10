@@ -13,6 +13,13 @@ import {
   syncCalculationIndex
 } from './calculations'
 import {
+  normalizeIndexDemand,
+  sameFieldIdList,
+  sameGroupDemand,
+  sameSearchDemand,
+  type NormalizedIndexDemand
+} from './demand'
+import {
   buildGroupIndex,
   ensureGroupIndex,
   syncGroupIndex
@@ -32,27 +39,20 @@ import {
   syncSortIndex
 } from './sort'
 import type {
+  GroupDemand,
   IndexDemand,
   IndexState
 } from './types'
 import {
-  collectSchemaFieldIds,
-  collectTouchedRecordIds,
-  collectValueFieldIds
-} from './shared'
+  createIndexStageTrace,
+  fullRebuildFrom,
+  searchEntryCountOf,
+  touchedFieldCountOf,
+  touchedRecordCountOf
+} from './trace'
 import {
   now
 } from '../perf/shared'
-
-interface NormalizedIndexDemand {
-  search: {
-    all: boolean
-    fields: readonly FieldId[]
-  }
-  groupFields: readonly FieldId[]
-  sortFields: readonly FieldId[]
-  calculationFields: readonly FieldId[]
-}
 
 export interface EngineIndex {
   state: () => IndexState
@@ -64,119 +64,17 @@ export interface IndexSyncResult {
   trace?: IndexTrace
 }
 
-const fullRebuildFrom = (
-  delta: CommitDelta
-) => (
-  delta.entities.records?.update === 'all'
-  || delta.entities.fields?.update === 'all'
-  || delta.entities.values?.records === 'all'
-  || delta.entities.values?.fields === 'all'
-)
-
-const touchedRecordCountOf = (
-  delta: CommitDelta
-): number | 'all' | undefined => {
-  const touched = collectTouchedRecordIds(delta)
-  return touched === 'all'
-    ? 'all'
-    : touched.size || undefined
-}
-
-const touchedFieldCountOf = (
-  delta: CommitDelta
-): number | 'all' | undefined => {
-  if (
-    delta.entities.fields?.update === 'all'
-    || delta.entities.values?.fields === 'all'
-  ) {
-    return 'all'
-  }
-
-  const touched = new Set([
-    ...collectSchemaFieldIds(delta),
-    ...collectValueFieldIds(delta, { includeTitlePatch: true })
-  ])
-  return touched.size || undefined
-}
-
-const searchEntryCountOf = (
-  search: IndexState['search']
-): number => (
-  (search.all?.size ?? 0)
-  + Array.from(search.fields.values()).reduce((count, field) => count + field.size, 0)
-)
-
-const createIndexStageTrace = (input: {
-  previous: unknown
-  next: unknown
-  rebuild: boolean
-  durationMs: number
-  inputSize?: number
-  outputSize?: number
-  touchedRecordCount?: number | 'all'
-  touchedFieldCount?: number | 'all'
-}): IndexStageTrace => ({
-  action: input.previous === input.next
-    ? 'reuse'
-    : input.rebuild
-      ? 'rebuild'
-      : 'sync',
-  changed: input.previous !== input.next,
-  ...(input.inputSize === undefined ? {} : { inputSize: input.inputSize }),
-  ...(input.outputSize === undefined ? {} : { outputSize: input.outputSize }),
-  ...(input.touchedRecordCount === undefined ? {} : { touchedRecordCount: input.touchedRecordCount }),
-  ...(input.touchedFieldCount === undefined ? {} : { touchedFieldCount: input.touchedFieldCount }),
-  durationMs: input.durationMs
-})
-
-const uniqueSorted = (
-  values: readonly FieldId[] = []
-): readonly FieldId[] => Array.from(new Set(values)).sort()
-
-const normalizeDemand = (
-  demand?: IndexDemand
-): NormalizedIndexDemand => ({
-  search: {
-    all: demand?.search?.all === true,
-    fields: uniqueSorted(demand?.search?.fields)
-  },
-  groupFields: uniqueSorted(demand?.groupFields),
-  sortFields: uniqueSorted(demand?.sortFields),
-  calculationFields: uniqueSorted(demand?.calculationFields)
-})
-
-const sameList = (
-  left: readonly FieldId[],
-  right: readonly FieldId[]
-) => left.length === right.length
-  && left.every((value, index) => value === right[index])
-
-const sameDemand = (
-  left: NormalizedIndexDemand,
-  right: NormalizedIndexDemand
-) => left.search.all === right.search.all
-  && sameList(left.search.fields, right.search.fields)
-  && sameList(left.groupFields, right.groupFields)
-  && sameList(left.sortFields, right.sortFields)
-  && sameList(left.calculationFields, right.calculationFields)
-
-const sameSearchDemand = (
-  left: NormalizedIndexDemand['search'],
-  right: NormalizedIndexDemand['search']
-) => left.all === right.all
-  && sameList(left.fields, right.fields)
-
 const buildIndexState = (
   document: DataDoc,
   demand?: IndexDemand
 ): IndexState => {
-  const normalized = normalizeDemand(demand)
+  const normalized = normalizeIndexDemand(demand)
   const records = buildRecordIndex(document)
 
   return {
     records,
     search: buildSearchIndex(document, records, normalized.search),
-    group: buildGroupIndex(document, records, normalized.groupFields),
+    group: buildGroupIndex(document, records, normalized.groups),
     sort: buildSortIndex(document, records, normalized.sortFields),
     calculations: buildCalculationIndex(document, records, normalized.calculationFields)
   }
@@ -187,14 +85,14 @@ export const createEngineIndex = (
   demand?: IndexDemand
 ): EngineIndex => {
   let current = buildIndexState(document, demand)
-  let currentDemand = normalizeDemand(demand)
+  let currentDemand = normalizeIndexDemand(demand)
 
   return {
     state: () => current,
     sync: (nextDocument, delta, demandForSync) => {
       const previous = current
       const nextDemand = demandForSync
-        ? normalizeDemand(demandForSync)
+        ? normalizeIndexDemand(demandForSync)
         : currentDemand
       const totalStart = now()
       const touchedRecordCount = touchedRecordCountOf(delta)
@@ -217,18 +115,18 @@ export const createEngineIndex = (
       const searchMs = now() - searchStart
 
       const groupStart = now()
-      const group = sameList(currentDemand.groupFields, nextDemand.groupFields)
+      const group = sameGroupDemand(currentDemand.groups, nextDemand.groups)
         ? ensureGroupIndex(
             syncGroupIndex(previous.group, nextDocument, records, delta),
             nextDocument,
             records,
-            nextDemand.groupFields
+            nextDemand.groups
           )
-        : buildGroupIndex(nextDocument, records, nextDemand.groupFields, previous.group.rev + 1)
+        : buildGroupIndex(nextDocument, records, nextDemand.groups, previous.group.rev + 1)
       const groupMs = now() - groupStart
 
       const sortStart = now()
-      const sort = sameList(currentDemand.sortFields, nextDemand.sortFields)
+      const sort = sameFieldIdList(currentDemand.sortFields, nextDemand.sortFields)
         ? ensureSortIndex(
             syncSortIndex(previous.sort, nextDocument, records, delta),
             nextDocument,
@@ -239,7 +137,7 @@ export const createEngineIndex = (
       const sortMs = now() - sortStart
 
       const calculationsStart = now()
-      const calculations = sameList(currentDemand.calculationFields, nextDemand.calculationFields)
+      const calculations = sameFieldIdList(currentDemand.calculationFields, nextDemand.calculationFields)
         ? ensureCalculationIndex(
             syncCalculationIndex(previous.calculations, nextDocument, records, delta),
             nextDocument,
@@ -306,8 +204,8 @@ export const createEngineIndex = (
             next: group,
             rebuild,
             durationMs: groupMs,
-            inputSize: previous.group.fields.size,
-            outputSize: group.fields.size,
+            inputSize: previous.group.groups.size,
+            outputSize: group.groups.size,
             touchedRecordCount,
             touchedFieldCount
           }),

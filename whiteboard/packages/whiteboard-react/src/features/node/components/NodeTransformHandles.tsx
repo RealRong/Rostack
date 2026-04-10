@@ -126,7 +126,7 @@ export const TransformHandles = ({
   canRotate
 }: TransformHandlesProps) => {
   const editor = useEditor()
-  const zoom = useStoreValue(editor.state.viewport).zoom
+  const zoom = useStoreValue(editor.select.viewport()).zoom
 
   const handles = buildTransformHandles({
     rect,

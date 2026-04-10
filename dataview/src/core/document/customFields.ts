@@ -7,7 +7,7 @@ import {
   patchEntityTableEntity,
   putEntityTableEntity,
   removeEntityTableEntity
-} from './shared'
+} from './table'
 
 const replaceDocumentFieldsTable = (document: DataDoc, fields: EntityTable<CustomFieldId, CustomField>): DataDoc => {
   if (fields === document.fields) {

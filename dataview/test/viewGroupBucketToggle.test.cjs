@@ -310,6 +310,48 @@ test('view group interval set clears back to the field default when value is und
   assert.equal(view.group?.bucketInterval, 10)
 })
 
+test('kanban cards per column defaults to all and persists through the view api', () => {
+  const fields = createFields()
+
+  assert.equal(
+    createDefaultViewOptions('kanban', fields).kanban.cardsPerColumn,
+    'all'
+  )
+
+  const document = createDocument()
+  document.views.byId[VIEW_BOARD] = createView({
+    id: VIEW_BOARD,
+    type: 'kanban',
+    name: 'Board',
+    group: {
+      field: FIELD_STATUS,
+      mode: 'option',
+      bucketSort: 'manual',
+      showEmpty: true
+    }
+  })
+  document.views.order.push(VIEW_BOARD)
+
+  const engine = createEngine({
+    document
+  })
+
+  let board = engine.read.view.get(VIEW_BOARD)
+  assert.equal(board.options.kanban.cardsPerColumn, 'all')
+
+  engine.view(VIEW_BOARD).kanban.setCardsPerColumn(25)
+  board = engine.read.view.get(VIEW_BOARD)
+  assert.equal(board.options.kanban.cardsPerColumn, 25)
+
+  engine.view(VIEW_BOARD).kanban.setCardsPerColumn(100)
+  board = engine.read.view.get(VIEW_BOARD)
+  assert.equal(board.options.kanban.cardsPerColumn, 100)
+
+  engine.view(VIEW_BOARD).kanban.setCardsPerColumn('all')
+  board = engine.read.view.get(VIEW_BOARD)
+  assert.equal(board.options.kanban.cardsPerColumn, 'all')
+})
+
 test('engine.project rebuilds from one active pipeline while keeping projection boundaries', () => {
   const engine = createEngine({
     document: createMultiViewDocument()

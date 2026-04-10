@@ -61,7 +61,7 @@ const readPointerSnapshot = (
   editor: WhiteboardRuntime,
   input: ClientPointInput
 ) => {
-  const point = editor.read.viewport.pointer(input)
+  const point = editor.select.viewport.pointer(input)
 
   return {
     client: readClientPoint(input),
@@ -79,7 +79,7 @@ const isSelectedItemPick = (
   editor: WhiteboardRuntime,
   pick: EditorPick
 ) => {
-  const selection = editor.state.selection.get()
+  const selection = editor.select.selection().get()
 
   if (pick.kind === 'node') {
     return selection.nodeIds.includes(pick.id)

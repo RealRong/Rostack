@@ -60,7 +60,7 @@ export const useKeyboard = ({
 
       const input = resolveKeyboardInput(event)
 
-      if (editor.input.keyDown(input)) {
+      if (editor.actions.interaction.keyDown(input)) {
         consumeDomEvent(event)
         return
       }
@@ -79,13 +79,13 @@ export const useKeyboard = ({
         event.defaultPrevented
         || isKeyboardIgnoredTarget(event.target)
       ) {
-        if (event.code === 'Space' && editor.state.interaction.get().space) {
-          editor.input.keyUp(resolveKeyboardInput(event))
+        if (event.code === 'Space' && editor.select.interaction().get().space) {
+          editor.actions.interaction.keyUp(resolveKeyboardInput(event))
         }
         return
       }
 
-      if (!editor.input.keyUp(resolveKeyboardInput(event))) {
+      if (!editor.actions.interaction.keyUp(resolveKeyboardInput(event))) {
         return
       }
 
@@ -93,7 +93,7 @@ export const useKeyboard = ({
     }
 
     const onBlur = () => {
-      editor.input.blur()
+      editor.actions.interaction.blur()
     }
 
     container.addEventListener('pointerdown', onPointerDown, true)

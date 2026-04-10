@@ -69,6 +69,7 @@ export interface CalcState {
 
 export interface NavState {
   appearances: AppearanceList
+  sections: readonly Section[]
 }
 
 export interface ProjectionState {
@@ -99,6 +100,11 @@ export interface ProjectionDelta {
   }
 }
 
+const EMPTY_CALC_BY_SECTION = new Map<SectionKey, ReadonlyMap<FieldId, import('../../index/types').AggregateState>>()
+const EMPTY_CALC_STATE: CalcState = {
+  bySection: EMPTY_CALC_BY_SECTION
+}
+
 export const emptyQueryState = (): QueryState => ({
   derived: [],
   ordered: [],
@@ -113,9 +119,7 @@ export const emptySectionState = (): SectionState => ({
   byRecord: new Map()
 })
 
-export const emptyCalcState = (): CalcState => ({
-  bySection: new Map()
-})
+export const emptyCalcState = (): CalcState => EMPTY_CALC_STATE
 
 export const emptyProjectionState = (): ProjectionState => ({
   query: emptyQueryState(),

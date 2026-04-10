@@ -29,7 +29,7 @@ export const fontSizeItem: ToolbarItemSpec = {
           return
         }
 
-        editor.document.nodes.patch(context.nodeIds, toNodeFieldUpdate({
+        editor.actions.node.patch(context.nodeIds, toNodeFieldUpdate({
           scope: 'style',
           path: 'fontSize'
         }, value))
@@ -53,7 +53,7 @@ export const fontSizeItem: ToolbarItemSpec = {
           return
         }
 
-        editor.document.nodes.patch(context.nodeIds, toNodeFieldUpdate({
+        editor.actions.node.patch(context.nodeIds, toNodeFieldUpdate({
           scope: 'style',
           path: 'fontSize'
         }, value))

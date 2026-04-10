@@ -34,15 +34,15 @@ const formatZoom = (zoom: number) => `${Math.round(zoom * 100)}%`
 
 export const ViewportDock = () => {
   const editor = useEditor()
-  const viewport = useStoreValue(editor.state.viewport)
-  const history = useStoreValue(editor.read.history)
+  const viewport = useStoreValue(editor.select.viewport())
+  const history = useStoreValue(editor.select.history())
 
   const fitToScreen = () => {
-    const bounds = editor.read.document.bounds()
+    const bounds = editor.select.doc.bounds()
     if (!bounds) {
       return
     }
-    editor.view.viewport.fit(bounds)
+    editor.actions.viewport.fit(bounds)
   }
 
   return (
@@ -56,7 +56,7 @@ export const ViewportDock = () => {
             variant="ghost"
             className={iconButtonClassName}
             onClick={() => {
-              editor.document.history.undo()
+              editor.actions.history.undo()
             }}
             disabled={!history.canUndo || history.isApplying}
             title="Undo"
@@ -68,7 +68,7 @@ export const ViewportDock = () => {
             variant="ghost"
             className={iconButtonClassName}
             onClick={() => {
-              editor.document.history.redo()
+              editor.actions.history.redo()
             }}
             disabled={!history.canRedo || history.isApplying}
             title="Redo"
@@ -95,7 +95,7 @@ export const ViewportDock = () => {
             variant="ghost"
             className={iconButtonClassName}
             onClick={() => {
-              editor.view.viewport.zoomTo(viewport.zoom / ZOOM_FACTOR)
+              editor.actions.viewport.zoom(viewport.zoom / ZOOM_FACTOR)
             }}
             title="Zoom out"
           >
@@ -106,7 +106,7 @@ export const ViewportDock = () => {
             variant="ghost"
             className={zoomButtonClassName}
             onClick={() => {
-              editor.view.viewport.zoomTo(1)
+              editor.actions.viewport.zoom(1)
             }}
             title="Reset zoom"
           >
@@ -117,7 +117,7 @@ export const ViewportDock = () => {
             variant="ghost"
             className={iconButtonClassName}
             onClick={() => {
-              editor.view.viewport.zoomTo(viewport.zoom * ZOOM_FACTOR)
+              editor.actions.viewport.zoom(viewport.zoom * ZOOM_FACTOR)
             }}
             title="Zoom in"
           >

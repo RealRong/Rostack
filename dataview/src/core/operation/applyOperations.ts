@@ -12,13 +12,11 @@ export interface ApplyOperationsResult {
   redo: BaseOperation[]
 }
 
-const cloneValue = <T>(value: T): T => structuredClone(value)
-
 export const applyOperations = (document: DataDoc, operations: readonly BaseOperation[], collector?: DeltaCollector): ApplyOperationsResult => {
   const deltaCollector = collector ?? createDeltaCollector(document)
   let nextDocument = document
   const undoBatches: BaseOperation[][] = []
-  const redo = operations.map(operation => cloneValue(operation))
+  const redo = [...operations]
 
   for (const operation of operations) {
     undoBatches.unshift(buildInverseOperations(nextDocument, operation))

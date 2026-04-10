@@ -1,9 +1,10 @@
 import { createId } from '@whiteboard/core/id'
 import type { Edge, EdgeId } from '@whiteboard/core/types'
 import type {
-  Editor,
+  EditorEdgeActions,
   EditorEdgeLabelPatch,
-  EditorRead
+  EditorRead,
+  EditorStore
 } from '../../types/editor'
 import type { DocumentRuntime } from './types'
 import type { SessionRuntime } from '../session/types'
@@ -61,10 +62,10 @@ export const createEdgeLabelActions = ({
   document
 }: {
   read: EditorRead
-  edit: Editor['state']['edit']
+  edit: EditorStore['edit']
   session: Pick<SessionRuntime, 'edit' | 'selection'>
   document: Pick<DocumentRuntime, 'edge'>
-}): Editor['document']['edges']['labels'] => ({
+}): Pick<EditorEdgeActions['label'], 'add' | 'patch' | 'remove'> => ({
   add: (edgeId: EdgeId) => {
     const edge = readEdge(read, edgeId)
     if (!edge) {

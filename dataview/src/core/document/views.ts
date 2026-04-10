@@ -16,8 +16,10 @@ import { normalizeRecordOrderIds } from '../view/order'
 import { normalizeViewOptions } from '../view/normalize'
 import {
   cloneEntityInput,
-  normalizeEntityTable
-} from './shared'
+  normalizeEntityTable,
+  putEntityTableEntity,
+  removeEntityTableEntity
+} from './table'
 
 const replaceDocumentViewsTable = (document: DataDoc, views: EntityTable<ViewId, View>): DataDoc => {
   if (views === document.views) {
@@ -184,16 +186,10 @@ export const setDocumentActiveViewId = (
 }
 
 export const putDocumentView = (document: DataDoc, view: View): DataDoc => {
-  const exists = Boolean(document.views.byId[view.id])
-  const nextView = cloneEntityInput(view)
-
-  const nextDocument = replaceDocumentViewsTable(document, {
-    byId: {
-      ...document.views.byId,
-      [view.id]: nextView
-    },
-    order: exists ? document.views.order : [...document.views.order, view.id]
-  })
+  const nextDocument = replaceDocumentViewsTable(
+    document,
+    putEntityTableEntity(document.views, view)
+  )
 
   return setDocumentActiveViewId(
     nextDocument,
@@ -206,13 +202,10 @@ export const removeDocumentView = (document: DataDoc, viewId: ViewId): DataDoc =
     return document
   }
 
-  const nextById = { ...document.views.byId }
-  delete nextById[viewId]
-
-  const nextDocument = replaceDocumentViewsTable(document, {
-    byId: nextById,
-    order: document.views.order.filter(id => id !== viewId)
-  })
+  const nextDocument = replaceDocumentViewsTable(
+    document,
+    removeEntityTableEntity(document.views, viewId)
+  )
 
   return setDocumentActiveViewId(
     nextDocument,

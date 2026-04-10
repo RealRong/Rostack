@@ -29,6 +29,7 @@ export type {
   FilterRule,
   FilterValue,
   BucketState,
+  KanbanCardsPerColumn,
   KanbanNewRecordPosition,
   KanbanOptions,
   NodeId,
@@ -67,6 +68,7 @@ export {
   createDefaultViewOptions,
   pruneFieldFromViewOptions
 } from './core/view'
+export { KANBAN_CARDS_PER_COLUMN_OPTIONS } from './core/contracts'
 export { createEngine } from './engine/api'
 export type {
   ActiveView,

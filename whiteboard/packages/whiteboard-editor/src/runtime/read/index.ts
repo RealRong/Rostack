@@ -1,7 +1,8 @@
-import type { ReadStore } from '@shared/store'
+import type { KeyedReadStore, ReadStore } from '@shared/store'
 import type { EngineRead } from '@whiteboard/engine'
 import type { GroupRead } from '@engine-types/instance'
 import type { HistoryState } from '@whiteboard/core/kernel'
+import type { NodeId } from '@whiteboard/core/types'
 import type { NodeRegistry } from '../../types/node'
 import type { DrawPreferences } from '../../types/draw'
 import type { InteractionRuntime } from '../interaction/types'
@@ -16,6 +17,10 @@ import {
   createEdgeRead,
   type EdgeRead
 } from './edge'
+import {
+  createMindmapViewStore,
+  type MindmapView
+} from './mindmap'
 import { createEdgeToolbarRead } from './edgeToolbar'
 import {
   createSelectionRead,
@@ -32,6 +37,9 @@ export type RuntimeRead = Omit<EngineRead, 'node' | 'edge'> & {
   node: NodeRead
   edge: EdgeRead & {
     toolbar: ReadStore<EdgeToolbarContext | undefined>
+  }
+  mindmap: EngineRead['mindmap'] & {
+    view: KeyedReadStore<NodeId, MindmapView | undefined>
   }
   selection: SelectionRead
   tool: ToolRead
@@ -86,6 +94,10 @@ export const createRead = ({
     overlay: overlay.selectors.edge,
     capability: nodeRead.capability
   })
+  const mindmapView = createMindmapViewStore({
+    item: engineRead.mindmap.item,
+    drag: overlay.selectors.feedback.mindmapDrag
+  })
   const targetBounds = createTargetBoundsQuery({
     node: nodeRead,
     edge: edgeRead
@@ -123,7 +135,10 @@ export const createRead = ({
         ...edgeRead,
         toolbar: edgeToolbar
       },
-      mindmap: engineRead.mindmap,
+      mindmap: {
+        ...engineRead.mindmap,
+        view: mindmapView
+      },
       scene: engineRead.scene,
       selection: selectionRead.public,
       slice: engineRead.slice,

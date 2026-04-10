@@ -12,7 +12,10 @@ import type {
   ViewGroup
 } from '@dataview/core/contracts/state'
 import type { GalleryOptions } from '@dataview/core/contracts/gallery'
-import type { KanbanOptions } from '@dataview/core/contracts/kanban'
+import {
+  KANBAN_CARDS_PER_COLUMN_OPTIONS,
+  type KanbanOptions
+} from '@dataview/core/contracts/kanban'
 import type { TableOptions } from '@dataview/core/contracts/viewOptions'
 import type { BaseOperation } from '@dataview/core/contracts/operations'
 import type { IndexedCommand } from '../context'
@@ -450,6 +453,10 @@ const validateKanbanOptions = (
 
   if (typeof kanban.fillColumnColor !== 'boolean') {
     issues.push(createIssue(command, 'error', 'view.invalidProjection', 'kanban.fillColumnColor must be boolean', `${path}.fillColumnColor`))
+  }
+
+  if (!KANBAN_CARDS_PER_COLUMN_OPTIONS.includes(kanban.cardsPerColumn)) {
+    issues.push(createIssue(command, 'error', 'view.invalidProjection', 'kanban.cardsPerColumn is invalid', `${path}.cardsPerColumn`))
   }
 
   return issues
@@ -1837,6 +1844,33 @@ export const resolveViewKanbanFillColorSetCommand = (
             kanban: {
               ...view.options.kanban,
               fillColumnColor: command.value
+            }
+          }
+        }
+  )))
+}
+
+export const resolveViewKanbanCardsPerColumnSetCommand = (
+  document: DataDoc,
+  command: Extract<IndexedCommand, { type: 'view.kanban.cardsPerColumn.set' }>
+) => {
+  const issues = validateViewExists(document, command, command.viewId)
+  if (!KANBAN_CARDS_PER_COLUMN_OPTIONS.includes(command.value)) {
+    issues.push(createIssue(command, 'error', 'view.invalidProjection', 'kanban.cardsPerColumn is invalid', 'value'))
+  }
+  if (hasValidationErrors(issues)) {
+    return resolveCommandResult(issues)
+  }
+  return resolveCommandResult(issues, resolveViewUpdate(document, command.viewId, view => (
+    view.options.kanban.cardsPerColumn === command.value
+      ? view
+      : {
+          ...view,
+          options: {
+            ...cloneViewOptions(view.options),
+            kanban: {
+              ...view.options.kanban,
+              cardsPerColumn: command.value
             }
           }
         }

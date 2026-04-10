@@ -62,19 +62,19 @@ export const createToolPaletteController = ({
   togglePrimaryTool: () => {
     closeMenu()
     if (tool.type === 'hand') {
-      editor.session.tool.set(selectTool())
+      editor.actions.tool.select()
       return
     }
     if (tool.type !== 'select') {
-      editor.session.tool.set(selectTool())
+      editor.actions.tool.select()
       return
     }
 
-    editor.session.tool.set(handTool())
+    editor.actions.tool.hand()
   },
   toggleEdgeMenu: () => {
     if (tool.type !== 'edge') {
-      editor.session.tool.set(edgeTool(palette.edgePreset))
+      editor.actions.tool.edge(palette.edgePreset)
       setOpenMenu('edge')
       return
     }
@@ -86,11 +86,11 @@ export const createToolPaletteController = ({
   },
   activateTextTool: () => {
     closeMenu()
-    editor.session.tool.set(insertTool(TEXT_INSERT_PRESET.key))
+    editor.actions.tool.insert(TEXT_INSERT_PRESET.key)
   },
   toggleDrawMenu: () => {
     if (tool.type !== 'draw') {
-      editor.session.tool.set(drawTool(palette.drawKind))
+      editor.actions.tool.draw(palette.drawKind)
       setDrawPanelOpen(false)
       setOpenMenu('draw')
       return
@@ -106,7 +106,7 @@ export const createToolPaletteController = ({
   },
   selectDrawKind: (value) => {
     setDrawPanelOpen(false)
-    editor.session.tool.set(drawTool(value))
+    editor.actions.tool.draw(value)
   },
   selectDrawSlot: (value) => {
     if (value === palette.drawBrush.slot) {
@@ -114,18 +114,18 @@ export const createToolPaletteController = ({
       return
     }
 
-    editor.view.draw.slot(value)
+    editor.actions.draw.slot(value)
     setDrawPanelOpen(true)
   },
   patchDrawStyle: (patch) => {
-    editor.view.draw.patch(patch)
+    editor.actions.draw.patch(patch)
   },
   selectEdgePreset: (value) => {
     closeMenu()
-    editor.session.tool.set(edgeTool(value))
+    editor.actions.tool.edge(value)
   },
   selectInsertPreset: (value) => {
     closeMenu()
-    editor.session.tool.set(insertTool(value))
+    editor.actions.tool.insert(value)
   }
 })

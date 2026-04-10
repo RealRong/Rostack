@@ -1,4 +1,5 @@
 export { cloneDocument, normalizeDocument } from './normalize'
+export * from './table'
 export {
   getDocumentFieldById,
   getDocumentFieldIds,

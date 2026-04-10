@@ -1,5 +1,5 @@
 import type {
-  Editor,
+  EditorInput,
   EditorRead,
   EditorState
 } from '../../types/editor'
@@ -94,7 +94,7 @@ export const createEditorInput = ({
   read: EditorRead
   write: EditorRuntime
   selection: EditorState['selection']
-}): Editor['input'] => {
+}): EditorInput => {
   const writePointer = (input: {
     client: { x: number, y: number }
     screen: { x: number, y: number }

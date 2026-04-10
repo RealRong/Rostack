@@ -28,18 +28,18 @@ export const useNodeSizeObserver = () => {
     schedule: 'raf',
     onChange: changes => {
       changes.forEach(({ key: nodeId, size }) => {
-        const current = editor.read.index.node.get(nodeId)
+        const current = editor.select.node.item().get(nodeId)
         if (!current || !isValidSize(size)) return
 
         const committedSize = {
-          width: current.geometry.rect.width,
-          height: current.geometry.rect.height
+          width: current.rect.width,
+          height: current.rect.height
         }
         if (isSameSize(committedSize, size)) {
           return
         }
 
-        editor.document.nodes.patch([nodeId], {
+        editor.actions.node.patch([nodeId], {
           fields: {
             size
           }

@@ -7,7 +7,7 @@ import type {
   HistoryState
 } from '@whiteboard/core/kernel'
 import type { SelectionInput, SelectionTarget } from '@whiteboard/core/selection'
-import type { ReadStore } from '@shared/store'
+import type { ReadStore, Unsubscribe } from '@shared/store'
 import type {
   MindmapCloneSubtreeInput,
   MindmapCreateOptions,
@@ -60,7 +60,13 @@ import type {
 import type {
   Tool
 } from './tool'
+import type {
+  DrawKind,
+  EdgePresetKey,
+  InsertPresetKey
+} from './tool'
 import type { RuntimeRead } from '../runtime/read'
+import type { SelectionInternalRead } from '../runtime/read/selection'
 import type {
   ViewportCommands,
   ViewportInputRuntime,
@@ -69,6 +75,7 @@ import type {
 import type { EditCaret, EditField, EditTarget } from '../runtime/state/edit'
 import type { TextPreviewPatch } from '../runtime/overlay/types'
 import type { ClipboardPacket } from '../clipboard/packet'
+import type { Commit } from '@engine-types/commit'
 
 export type EditorClipboardTarget =
   | 'selection'
@@ -402,13 +409,241 @@ export type EditorConfig = {
   history?: KernelHistoryConfig
 }
 
-export type Editor = {
-  read: EditorRead
-  state: EditorState
-  document: EditorDocumentApi
-  session: EditorSessionApi
-  view: EditorViewApi
-  input: EditorInput
+export type EditorStore = EditorState
+
+export type EditorChromePresentation = {
+  marquee: ReturnType<RuntimeRead['overlay']['feedback']['marquee']['get']>
+  draw: ReturnType<RuntimeRead['overlay']['feedback']['draw']['get']>
+  edgeGuide: ReturnType<RuntimeRead['overlay']['feedback']['edgeGuide']['get']>
+  snap: ReturnType<RuntimeRead['overlay']['feedback']['snap']['get']>
+  selection: ReturnType<RuntimeRead['selection']['overlay']['get']>
+}
+
+export type EditorPanelPresentation = {
+  selectionToolbar: ReturnType<RuntimeRead['selection']['toolbar']['get']>
+  edgeToolbar: ReturnType<RuntimeRead['edge']['toolbar']['get']>
+  history: HistoryState
+  draw: DrawPreferences
+}
+
+export type EditorAppActions = {
+  reset: () => void
+  load: EditorDocumentApi['replace']
+  export: () => Document
   configure: (config: EditorConfig) => void
   dispose: () => void
+}
+
+export type EditorToolActions = {
+  set: EditorSessionToolActions['set']
+  select: () => void
+  draw: (kind: DrawKind) => void
+  edge: (preset: EdgePresetKey) => void
+  insert: (preset: InsertPresetKey) => void
+  hand: () => void
+}
+
+export type EditorSelectionActions = {
+  set: EditorSessionSelectionActions['replace']
+  add: EditorSessionSelectionActions['add']
+  remove: EditorSessionSelectionActions['remove']
+  toggle: EditorSessionSelectionActions['toggle']
+  all: EditorSessionSelectionActions['selectAll']
+  clear: EditorSessionSelectionActions['clear']
+  frame: EditorSelectionApi['frame']
+  order: (
+    mode: EditorOrderMode,
+    target?: SelectionInput
+  ) => boolean
+  group: (
+    options?: Parameters<EditorSelectionApi['group']>[1]
+  ) => boolean
+  ungroup: (
+    options?: Parameters<EditorSelectionApi['ungroup']>[1]
+  ) => boolean
+  delete: (
+    options?: Parameters<EditorSelectionApi['delete']>[1]
+  ) => boolean
+  duplicate: (
+    options?: Parameters<EditorSelectionApi['duplicate']>[1]
+  ) => boolean
+}
+
+export type EditorEditActions = EditorSessionEditActions & {
+  cancel: () => void
+  commit: () => void
+  nodeText: {
+    set: (nodeId: NodeId, patch?: TextPreviewPatch) => void
+    clear: (nodeId: NodeId) => void
+    clearSize: (nodeId: NodeId) => void
+  }
+}
+
+export type EditorInteractionActions = EditorInput
+
+export type EditorNodeActions = {
+  create: EditorNodesApi['create']
+  patch: EditorNodesApi['patch']
+  move: EditorNodesApi['move']
+  align: EditorNodesApi['align']
+  distribute: EditorNodesApi['distribute']
+  remove: EditorNodesApi['remove']
+  duplicate: EditorNodesApi['duplicate']
+  lock: (ids: readonly NodeId[], value: boolean) => CommandResult
+  text: {
+    commit: (input: {
+      nodeId: NodeId
+      field: EditField
+      value: string
+      size?: Size
+    }) => CommandResult | undefined
+    color: (ids: readonly NodeId[], color: string) => CommandResult
+    size: (input: {
+      nodeIds: readonly NodeId[]
+      value?: number
+      sizeById?: Readonly<Record<NodeId, Size>>
+    }) => CommandResult
+    weight: (ids: readonly NodeId[], value?: number) => CommandResult
+    italic: (ids: readonly NodeId[], value: boolean) => CommandResult
+    align: (
+      ids: readonly NodeId[],
+      value?: 'left' | 'center' | 'right'
+    ) => CommandResult
+  }
+  style: {
+    fill: (ids: readonly NodeId[], value: string) => CommandResult
+    stroke: (ids: readonly NodeId[], value: string) => CommandResult
+  }
+  shape: {
+    set: (ids: readonly NodeId[], kind: string) => CommandResult
+  }
+}
+
+export type EditorEdgeActions = {
+  create: EditorEdgesApi['create']
+  patch: EditorEdgesApi['patch']
+  move: EditorEdgesApi['move']
+  reconnect: EditorEdgesApi['reconnect']
+  remove: EditorEdgesApi['remove']
+  route: EditorEdgesApi['route']
+  label: {
+    add: EditorEdgesApi['labels']['add']
+    patch: EditorEdgesApi['labels']['patch']
+    remove: EditorEdgesApi['labels']['remove']
+    setText: (
+      edgeId: EdgeId,
+      labelId: string,
+      text: string
+    ) => CommandResult | undefined
+  }
+}
+
+export type EditorActions = {
+  app: EditorAppActions
+  tool: EditorToolActions
+  viewport: {
+    set: ViewportCommands['set']
+    pan: ViewportCommands['panBy']
+    zoom: ViewportCommands['zoomTo']
+    fit: ViewportCommands['fit']
+    reset: ViewportCommands['reset']
+    rect: (rect: ContainerRect) => void
+    limits: (limits: ViewportLimits) => void
+  }
+  draw: EditorDrawActions
+  selection: EditorSelectionActions
+  edit: EditorEditActions
+  interaction: EditorInteractionActions
+  node: EditorNodeActions
+  edge: EditorEdgeActions
+  mindmap: {
+    create: EditorMindmapCommands['create']
+    remove: EditorMindmapCommands['delete']
+    insert: EditorMindmapCommands['insert']
+    move: EditorMindmapCommands['moveSubtree']
+    removeNode: EditorMindmapCommands['removeSubtree']
+    clone: EditorMindmapCommands['cloneSubtree']
+    patchNode: EditorMindmapCommands['updateNode']
+    insertByPlace: EditorMindmapCommands['insertByPlacement']
+    moveByDrop: EditorMindmapCommands['moveByDrop']
+    moveRoot: EditorMindmapCommands['moveRoot']
+  }
+  clipboard: EditorClipboardApi
+  history: EditorHistoryApi
+}
+
+export type EditorDocSelect = (() => RuntimeRead['document']) & {
+  bounds: RuntimeRead['document']['bounds']
+  background: () => RuntimeRead['document']['background']
+}
+
+export type EditorToolSelect = (() => EditorStore['tool']) & {
+  is: RuntimeRead['tool']['is']
+}
+
+export type EditorViewportSelect = (() => EditorStore['viewport']) & {
+  pointer: RuntimeRead['viewport']['pointer']
+  worldToScreen: RuntimeRead['viewport']['worldToScreen']
+  screenPoint: RuntimeRead['viewport']['screenPoint']
+  size: RuntimeRead['viewport']['size']
+}
+
+export type EditorSelectionSelect = (() => EditorStore['selection']) & {
+  box: () => RuntimeRead['selection']['box']
+  summary: () => SelectionInternalRead['model']
+  overlay: () => RuntimeRead['selection']['overlay']
+  toolbar: () => RuntimeRead['selection']['toolbar']
+  node: () => RuntimeRead['selection']['node']
+}
+
+export type EditorNodeSelect = {
+  item: () => RuntimeRead['node']['item']
+  view: () => RuntimeRead['node']['view']
+  capability: () => RuntimeRead['node']['capability']
+  bounds: RuntimeRead['node']['bounds']
+}
+
+export type EditorEdgeSelect = {
+  item: () => RuntimeRead['edge']['item']
+  resolved: () => RuntimeRead['edge']['resolved']
+  view: () => RuntimeRead['edge']['view']
+  toolbar: () => RuntimeRead['edge']['toolbar']
+  box: RuntimeRead['edge']['box']
+}
+
+export type EditorMindmapSelect = {
+  item: () => RuntimeRead['mindmap']['item']
+  view: () => RuntimeRead['mindmap']['view']
+}
+
+export type EditorSelect = {
+  scene: () => RuntimeRead['scene']['list']
+  chrome: () => ReadStore<EditorChromePresentation>
+  panel: () => ReadStore<EditorPanelPresentation>
+  doc: EditorDocSelect
+  history: () => RuntimeRead['history']
+  draw: () => EditorStore['draw']
+  tool: EditorToolSelect
+  viewport: EditorViewportSelect
+  edit: () => EditorStore['edit']
+  interaction: () => EditorStore['interaction']
+  selection: EditorSelectionSelect
+  group: Pick<RuntimeRead['group'], 'exactIds' | 'nodeIds' | 'edgeIds'>
+  node: EditorNodeSelect
+  edge: EditorEdgeSelect
+  mindmap: EditorMindmapSelect
+}
+
+export type EditorEvents = {
+  change: (listener: (document: Document, commit: Commit) => void) => Unsubscribe
+  history: (listener: (state: HistoryState) => void) => Unsubscribe
+  selection: (listener: (selection: SelectionTarget) => void) => Unsubscribe
+  dispose: (listener: () => void) => Unsubscribe
+}
+
+export type Editor = {
+  store: EditorStore
+  actions: EditorActions
+  select: EditorSelect
+  events: EditorEvents
 }

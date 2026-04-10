@@ -5,9 +5,11 @@ import type {
   Appearance,
   AppearanceId,
   AppearanceList,
+  Section,
   SectionKey
 } from './types'
 import type {
+  NavState,
   SectionState
 } from './runtime/state'
 
@@ -193,13 +195,95 @@ export const buildAppearanceList = (
   const publishedIds = previous && sameIds(previous.ids, ids)
     ? previous.ids
     : ids
+  const idsBySection = previous && previous.idsBySection.size === nextIdsBySection.size
+    && Array.from(nextIdsBySection.entries()).every(([key, value]) => previous.idsBySection.get(key) === value)
+    ? previous.idsBySection
+    : nextIdsBySection
+
+  if (
+    previous
+    && previous.ids === publishedIds
+    && previous.idsBySection === idsBySection
+    && previous.count === totalIdCount
+  ) {
+    return previous
+  }
 
   return createAppearanceList({
     ids: publishedIds,
-    idsBySection: nextIdsBySection,
+    idsBySection,
     count: totalIdCount,
     previous
   })
+}
+
+export const buildPublishedSections = (input: {
+  sections: SectionState
+  appearances: AppearanceList
+  previous?: readonly Section[]
+  previousSections?: SectionState
+}): readonly Section[] => {
+  const previousByKey = new Map(
+    (input.previous ?? []).map(section => [section.key, section] as const)
+  )
+  const next: Section[] = []
+
+  input.sections.order.forEach(key => {
+    const node = input.sections.byKey.get(key)
+    if (!node || !node.visible) {
+      return
+    }
+
+    const ids = input.appearances.idsIn(node.key)
+    const previousSection = previousByKey.get(node.key)
+    const canReuse = previousSection
+      && input.previousSections?.byKey.get(node.key) === node
+      && previousSection.ids === ids
+
+    next.push(canReuse
+      ? previousSection
+      : {
+          key: node.key,
+          title: node.title,
+          color: node.color,
+          bucket: node.bucket,
+          ids,
+          collapsed: node.collapsed
+        })
+  })
+
+  return input.previous
+    && input.previous.length === next.length
+    && input.previous.every((section, index) => section === next[index])
+    ? input.previous
+    : next
+}
+
+export const buildNavState = (input: {
+  sections: SectionState
+  previous?: NavState
+  previousSections?: SectionState
+}): NavState => {
+  const appearances = buildAppearanceList(
+    input.sections,
+    input.previous?.appearances,
+    input.previousSections
+  )
+  const sections = buildPublishedSections({
+    sections: input.sections,
+    appearances,
+    previous: input.previous?.sections,
+    previousSections: input.previousSections
+  })
+
+  return input.previous
+    && input.previous.appearances === appearances
+    && input.previous.sections === sections
+    ? input.previous
+    : {
+        appearances,
+        sections
+      }
 }
 
 export const recordIdsOfAppearances = (

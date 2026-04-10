@@ -1,0 +1,79 @@
+import type {
+  CommitDelta
+} from '@dataview/core/contracts'
+import type {
+  IndexStageTrace
+} from '../types'
+import type {
+  SearchIndex
+} from './types'
+import {
+  collectSchemaFieldIds,
+  collectTouchedRecordIds,
+  collectValueFieldIds
+} from './shared'
+
+export const fullRebuildFrom = (
+  delta: CommitDelta
+) => (
+  delta.entities.records?.update === 'all'
+  || delta.entities.fields?.update === 'all'
+  || delta.entities.values?.records === 'all'
+  || delta.entities.values?.fields === 'all'
+)
+
+export const touchedRecordCountOf = (
+  delta: CommitDelta
+): number | 'all' | undefined => {
+  const touched = collectTouchedRecordIds(delta)
+  return touched === 'all'
+    ? 'all'
+    : touched.size || undefined
+}
+
+export const touchedFieldCountOf = (
+  delta: CommitDelta
+): number | 'all' | undefined => {
+  if (
+    delta.entities.fields?.update === 'all'
+    || delta.entities.values?.fields === 'all'
+  ) {
+    return 'all'
+  }
+
+  const touched = new Set([
+    ...collectSchemaFieldIds(delta),
+    ...collectValueFieldIds(delta, { includeTitlePatch: true })
+  ])
+  return touched.size || undefined
+}
+
+export const searchEntryCountOf = (
+  search: SearchIndex
+): number => (
+  (search.all?.size ?? 0)
+  + Array.from(search.fields.values()).reduce((count, field) => count + field.size, 0)
+)
+
+export const createIndexStageTrace = (input: {
+  previous: unknown
+  next: unknown
+  rebuild: boolean
+  durationMs: number
+  inputSize?: number
+  outputSize?: number
+  touchedRecordCount?: number | 'all'
+  touchedFieldCount?: number | 'all'
+}): IndexStageTrace => ({
+  action: input.previous === input.next
+    ? 'reuse'
+    : input.rebuild
+      ? 'rebuild'
+      : 'sync',
+  changed: input.previous !== input.next,
+  ...(input.inputSize === undefined ? {} : { inputSize: input.inputSize }),
+  ...(input.outputSize === undefined ? {} : { outputSize: input.outputSize }),
+  ...(input.touchedRecordCount === undefined ? {} : { touchedRecordCount: input.touchedRecordCount }),
+  ...(input.touchedFieldCount === undefined ? {} : { touchedFieldCount: input.touchedFieldCount }),
+  durationMs: input.durationMs
+})

@@ -1,6 +1,6 @@
 import type { DataDoc } from '../contracts/state'
 import { normalizeCustomFields } from '../field'
-import { cloneEntityTable, cloneRecordTable, normalizeEntityTable, normalizeRecordTable } from './shared'
+import { cloneEntityTable, cloneRecordTable, normalizeEntityTable, normalizeRecordTable } from './table'
 import {
   normalizeDocumentViews,
   resolveDocumentActiveViewId

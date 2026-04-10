@@ -3,56 +3,29 @@ import { useMemo } from 'react'
 import { useOptionalKeyedStoreValue, useStoreValue } from '@shared/react'
 import { useEditorRuntime } from '#react/runtime/hooks'
 import type {
-  EdgeState,
   EdgeView,
   SelectedEdgeRoutePointView,
   SelectedEdgeView
 } from '#react/types/edge'
 
-const EMPTY_EDGE_STATE: EdgeState = {
-  patched: false,
-  activeRouteIndex: undefined
-}
-
 export const useEdgeView = (
   edgeId: EdgeId | undefined
 ): EdgeView | undefined => {
   const editor = useEditorRuntime()
-  const item = useOptionalKeyedStoreValue(
-    editor.read.edge.item,
+  return useOptionalKeyedStoreValue(
+    editor.select.edge.view(),
     edgeId,
     undefined
   )
-  const resolved = useOptionalKeyedStoreValue(
-    editor.read.edge.resolved,
-    edgeId,
-    undefined
-  )
-
-  return useMemo(() => {
-    if (!item || !resolved) {
-      return undefined
-    }
-
-    return {
-      edge: item.edge,
-      ...resolved
-    }
-  }, [item, resolved])
 }
 
 export const useSelectedEdgeView = (): SelectedEdgeView | undefined => {
   const editor = useEditorRuntime()
-  const selection = useStoreValue(editor.state.selection)
+  const selection = useStoreValue(editor.select.selection())
   const edgeId = selection.nodeIds.length === 0 && selection.edgeIds.length === 1
     ? selection.edgeIds[0]
     : undefined
   const entry = useEdgeView(edgeId)
-  const state = useOptionalKeyedStoreValue(
-    editor.read.edge.state,
-    edgeId,
-    EMPTY_EDGE_STATE
-  )
 
   return useMemo(() => {
     if (!edgeId || !entry) {
@@ -62,7 +35,7 @@ export const useSelectedEdgeView = (): SelectedEdgeView | undefined => {
     const isStepManual =
       entry.edge.type === 'elbow'
       && entry.edge.route?.kind === 'manual'
-    const routePoints: SelectedEdgeRoutePointView[] = entry.handles.flatMap<SelectedEdgeRoutePointView>((handle) => {
+    const routePoints: SelectedEdgeRoutePointView[] = entry.handles.flatMap<SelectedEdgeRoutePointView>((handle: EdgeView['handles'][number]) => {
       if (handle.kind === 'anchor') {
         if (isStepManual) {
           return []
@@ -73,7 +46,7 @@ export const useSelectedEdgeView = (): SelectedEdgeView | undefined => {
           kind: 'anchor',
           edgeId,
           point: handle.point,
-          active: state.activeRouteIndex === handle.index,
+          active: entry.activeRouteIndex === handle.index,
           deletable: true,
           pick: {
             kind: 'anchor',
@@ -88,7 +61,7 @@ export const useSelectedEdgeView = (): SelectedEdgeView | undefined => {
           kind: handle.role,
           edgeId,
           point: handle.point,
-          active: state.activeRouteIndex === handle.insertIndex,
+          active: entry.activeRouteIndex === handle.insertIndex,
           deletable: false,
           pick: {
             kind: 'segment',
@@ -107,7 +80,7 @@ export const useSelectedEdgeView = (): SelectedEdgeView | undefined => {
       ends: entry.ends,
       routePoints
     }
-  }, [edgeId, entry, state.activeRouteIndex])
+  }, [edgeId, entry])
 }
 
 export type {

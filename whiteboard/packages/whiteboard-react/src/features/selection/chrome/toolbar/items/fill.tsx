@@ -47,7 +47,7 @@ export const fillItem: ToolbarItemSpec = {
           return
         }
 
-        editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+        editor.actions.node.patch(context.nodeIds, toNodeStylePatch(node, {
           fill: value
         }))
       }}
@@ -57,7 +57,7 @@ export const fillItem: ToolbarItemSpec = {
               return
             }
 
-            editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+            editor.actions.node.patch(context.nodeIds, toNodeStylePatch(node, {
               fillOpacity: value
             }))
           }

@@ -30,6 +30,7 @@ export const cloneViewOptions = (
   },
   kanban: {
     newRecordPosition: options.kanban.newRecordPosition,
-    fillColumnColor: options.kanban.fillColumnColor
+    fillColumnColor: options.kanban.fillColumnColor,
+    cardsPerColumn: options.kanban.cardsPerColumn
   }
 })

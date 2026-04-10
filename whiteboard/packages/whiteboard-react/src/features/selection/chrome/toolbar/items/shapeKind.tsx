@@ -51,7 +51,7 @@ export const shapeKindItem: ToolbarItemSpec = {
           return
         }
 
-        editor.document.nodes.patch(context.nodeIds, toNodeDataPatch(node, {
+        editor.actions.node.patch(context.nodeIds, toNodeDataPatch(node, {
           kind: value
         }))
       }}

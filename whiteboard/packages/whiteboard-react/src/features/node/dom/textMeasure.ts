@@ -275,7 +275,7 @@ export const measureBoundTextNodeSize = ({
   minWidth?: number
   maxWidth?: number
 }) => {
-  const item = editor.read.node.item.get(nodeId)
+  const item = editor.select.node.item().get(nodeId)
   if (!item || item.node.type !== 'text') {
     return undefined
   }

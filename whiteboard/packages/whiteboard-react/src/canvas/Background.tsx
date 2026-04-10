@@ -18,8 +18,8 @@ const resolveStep = (zoom: number) => {
 
 export const Background = () => {
   const editor = useEditor()
-  const background = useStoreValue(editor.read.document.background)
-  const viewport = useStoreValue(editor.state.viewport)
+  const background = useStoreValue(editor.select.doc.background())
+  const viewport = useStoreValue(editor.select.viewport())
   const mode = background?.type ?? 'none'
 
   const style = useMemo<CSSProperties>(() => {

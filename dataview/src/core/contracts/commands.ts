@@ -19,7 +19,10 @@ import type {
   ViewId
 } from './state'
 import type { GalleryCardSize } from './gallery'
-import type { KanbanNewRecordPosition } from './kanban'
+import type {
+  KanbanCardsPerColumn,
+  KanbanNewRecordPosition
+} from './kanban'
 import type { RowInsertTarget } from './operations'
 import type { TableOptions, ViewOptions } from './viewOptions'
 
@@ -319,6 +322,11 @@ export type Command =
       type: 'view.kanban.fillColor.set'
       viewId: ViewId
       value: boolean
+    }
+  | {
+      type: 'view.kanban.cardsPerColumn.set'
+      viewId: ViewId
+      value: KanbanCardsPerColumn
     }
   | {
       type: 'view.order.move'

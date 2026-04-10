@@ -57,7 +57,7 @@ export const strokeItem: ToolbarItemSpec = {
           return
         }
 
-        editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+        editor.actions.node.patch(context.nodeIds, toNodeStylePatch(node, {
           stroke: value
         }))
       }}
@@ -66,7 +66,7 @@ export const strokeItem: ToolbarItemSpec = {
           return
         }
 
-        editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+        editor.actions.node.patch(context.nodeIds, toNodeStylePatch(node, {
           strokeWidth: value
         }))
       }}
@@ -76,7 +76,7 @@ export const strokeItem: ToolbarItemSpec = {
             return
           }
 
-          editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+          editor.actions.node.patch(context.nodeIds, toNodeStylePatch(node, {
             strokeOpacity: value
           }))
           return
@@ -87,7 +87,7 @@ export const strokeItem: ToolbarItemSpec = {
             return
           }
 
-          editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+          editor.actions.node.patch(context.nodeIds, toNodeStylePatch(node, {
             opacity: value
           }))
         }
@@ -98,7 +98,7 @@ export const strokeItem: ToolbarItemSpec = {
               return
             }
 
-            editor.document.nodes.patch(context.nodeIds, toNodeFieldUpdate({
+            editor.actions.node.patch(context.nodeIds, toNodeFieldUpdate({
               scope: 'style',
               path: 'strokeDash'
             }, value))

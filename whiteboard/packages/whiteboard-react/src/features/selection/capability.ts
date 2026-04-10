@@ -24,7 +24,7 @@ export const readSelectionCan = ({
     target.nodeIds.length > 0
     && target.edgeIds.length === 0
   const count = target.nodeIds.length + target.edgeIds.length
-  const exactGroupIds = editor.read.group.exactIds(target)
+  const exactGroupIds = editor.select.group.exactIds(target)
 
   return {
     order: count > 0,

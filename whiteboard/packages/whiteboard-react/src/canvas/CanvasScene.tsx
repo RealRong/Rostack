@@ -1,73 +1,20 @@
 import type { NodeId } from '@whiteboard/core/types'
 import {
-  useOptionalKeyedStoreValue,
   useStoreValue
 } from '@shared/react'
 import { useEditorRuntime } from '#react/runtime/hooks'
 import { useNodeSizeObserver } from '#react/features/node/dom/nodeSizeObserver'
 import { NodeItem } from '#react/features/node/components/NodeItem'
 import { EdgeItem } from '#react/features/edge/components/EdgeItem'
-import { useMindmapTreeView } from '#react/features/mindmap/hooks/useMindmapTreeView'
-import { MindmapTreeView } from '#react/features/mindmap/components/MindmapTreeView'
 import {
   EDGE_ARROW_END_ID,
   EDGE_ARROW_START_ID
 } from '#react/features/edge/constants'
 
-const MindmapTreeById = ({
-  treeId
-}: {
-  treeId: NodeId
-}) => {
-  const view = useMindmapTreeView(treeId)
-
-  if (!view) {
-    return null
-  }
-
-  return <MindmapTreeView view={view} />
-}
-
-const SceneNodeById = ({
-  nodeId,
-  registerMeasuredElement,
-  selected
-}: {
-  nodeId: NodeId
-  registerMeasuredElement: (
-    nodeId: NodeId,
-    element: HTMLDivElement | null,
-    enabled: boolean
-  ) => void
-  selected: boolean
-}) => {
-  const editor = useEditorRuntime()
-  const entry = useOptionalKeyedStoreValue(
-    editor.read.node.item,
-    nodeId,
-    undefined
-  )
-  const node = entry?.node
-
-  if (!node) {
-    return null
-  }
-
-  return node.type === 'mindmap'
-    ? <MindmapTreeById treeId={nodeId} />
-    : (
-        <NodeItem
-          nodeId={nodeId}
-          registerMeasuredElement={registerMeasuredElement}
-          selected={selected}
-        />
-      )
-}
-
 export const CanvasScene = () => {
   const editor = useEditorRuntime()
-  const scene = useStoreValue(editor.read.scene.list)
-  const selection = useStoreValue(editor.state.selection)
+  const scene = useStoreValue(editor.select.scene())
+  const selection = useStoreValue(editor.select.selection())
   const registerMeasuredElement = useNodeSizeObserver()
 
   return (
@@ -110,7 +57,7 @@ export const CanvasScene = () => {
               />
             )
           : (
-              <SceneNodeById
+              <NodeItem
                 key={`node:${ref.id}`}
                 nodeId={ref.id}
                 registerMeasuredElement={registerMeasuredElement}

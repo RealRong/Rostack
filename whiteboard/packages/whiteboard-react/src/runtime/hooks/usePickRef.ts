@@ -64,7 +64,12 @@ export const usePickRef = (
   const { pointer } = useWhiteboardServices()
   const elementRef = useRef<Element | null>(null)
   const releaseRef = useRef<(() => void) | null>(null)
+  const pickRef = useRef(pick)
   const key = toPickKey(pick)
+
+  useEffect(() => {
+    pickRef.current = pick
+  }, [key, pick])
 
   const bind = useCallback((element: Element | null) => {
     if (elementRef.current === element) {
@@ -76,9 +81,9 @@ export const usePickRef = (
     elementRef.current = element
 
     if (element) {
-      releaseRef.current = pointer.bindPick(element, pick)
+      releaseRef.current = pointer.bindPick(element, pickRef.current)
     }
-  }, [key, pick, pointer])
+  }, [key, pointer])
 
   useEffect(() => {
     const element = elementRef.current
@@ -87,13 +92,13 @@ export const usePickRef = (
     }
 
     releaseRef.current?.()
-    releaseRef.current = pointer.bindPick(element, pick)
+    releaseRef.current = pointer.bindPick(element, pickRef.current)
 
     return () => {
       releaseRef.current?.()
       releaseRef.current = null
     }
-  }, [key, pick, pointer])
+  }, [key, pointer])
 
   return bind
 }

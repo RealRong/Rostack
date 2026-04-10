@@ -43,7 +43,7 @@ export const textColorItem: ToolbarItemSpec = {
           return
         }
 
-        editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+        editor.actions.node.patch(context.nodeIds, toNodeStylePatch(node, {
           color: value
         }))
       }}

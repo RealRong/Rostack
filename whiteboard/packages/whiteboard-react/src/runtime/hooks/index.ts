@@ -1,6 +1,7 @@
 export {
   useEdit,
   useEditor,
+  useEditorSelect,
   useEditorRuntime,
   useInteraction,
   useTool

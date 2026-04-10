@@ -29,8 +29,12 @@ export type {
   TableOptions,
   ViewOptions
 } from './viewOptions'
-export { KANBAN_EMPTY_BUCKET_KEY } from './kanban'
+export {
+  KANBAN_EMPTY_BUCKET_KEY,
+  KANBAN_CARDS_PER_COLUMN_OPTIONS
+} from './kanban'
 export type {
+  KanbanCardsPerColumn,
   KanbanNewRecordPosition,
   KanbanOptions
 } from './kanban'

@@ -29,8 +29,9 @@ const resolveMarker = (value: string | undefined, fallbackId: string) => {
 
 const EdgeHintOverlay = () => {
   const editor = useEditorRuntime()
-  const hint = useStoreValue(editor.read.overlay.feedback.edgeGuide)
-  const zoom = useStoreValue(editor.state.viewport).zoom
+  const chrome = useStoreValue(editor.select.chrome())
+  const hint = chrome.edgeGuide
+  const zoom = useStoreValue(editor.select.viewport()).zoom
   const { path, connect } = hint
   const snap = connect && (
     connect.resolution.mode === 'outline'
@@ -159,7 +160,7 @@ const EdgeRoutePointHandle = ({
               return
             }
 
-            editor.document.edges.route.remove(point.edgeId, point.pick.index)
+            editor.actions.edge.route.remove(point.edgeId, point.pick.index)
             event.preventDefault()
             event.stopPropagation()
           }

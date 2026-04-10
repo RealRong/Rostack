@@ -2,8 +2,12 @@ import type {
   Field,
   FieldId,
   RecordId,
-  Row
+  Row,
+  ViewGroup
 } from '@dataview/core/contracts'
+import type {
+  Bucket
+} from '@dataview/core/field'
 
 export type SortedIdSet<T extends string> = readonly T[]
 export type BucketKey = string
@@ -24,9 +28,16 @@ export interface SearchDemand {
 
 export interface IndexDemand {
   search?: SearchDemand
-  groupFields?: readonly FieldId[]
+  groups?: readonly GroupDemand[]
   sortFields?: readonly FieldId[]
   calculationFields?: readonly FieldId[]
+}
+
+export interface GroupDemand {
+  fieldId: FieldId
+  mode?: ViewGroup['mode']
+  bucketSort?: ViewGroup['bucketSort']
+  bucketInterval?: ViewGroup['bucketInterval']
 }
 
 export interface SearchIndex {
@@ -36,12 +47,18 @@ export interface SearchIndex {
 }
 
 export interface GroupFieldIndex {
+  fieldId: FieldId
+  mode?: ViewGroup['mode']
+  bucketSort?: ViewGroup['bucketSort']
+  bucketInterval?: ViewGroup['bucketInterval']
   recordBuckets: ReadonlyMap<RecordId, readonly BucketKey[]>
   bucketRecords: ReadonlyMap<BucketKey, SortedIdSet<RecordId>>
+  buckets: ReadonlyMap<BucketKey, Bucket>
+  order: readonly BucketKey[]
 }
 
 export interface GroupIndex {
-  fields: ReadonlyMap<FieldId, GroupFieldIndex>
+  groups: ReadonlyMap<string, GroupFieldIndex>
   rev: number
 }
 

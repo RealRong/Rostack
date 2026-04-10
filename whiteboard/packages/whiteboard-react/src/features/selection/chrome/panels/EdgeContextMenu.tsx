@@ -96,19 +96,21 @@ export const EdgeContextMenu = ({
           })
         },
         () => {
-          editor.document.selection.duplicate({
+          editor.actions.selection.set({
             edgeIds: [edgeId]
           })
+          editor.actions.selection.duplicate()
         },
         () => {
-          editor.document.selection.delete({
+          editor.actions.selection.set({
             edgeIds: [edgeId]
           })
+          editor.actions.selection.delete()
         },
         (mode) => {
-          editor.document.selection.order({
+          editor.actions.selection.order(mode, {
             edgeIds: [edgeId]
-          }, mode)
+          })
         }
       )}
       onClose={onClose}

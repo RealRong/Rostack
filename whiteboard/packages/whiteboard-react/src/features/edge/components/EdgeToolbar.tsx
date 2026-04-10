@@ -300,12 +300,13 @@ export const EdgeToolbar = ({
 }) => {
   const editor = useEditorRuntime()
   const surface = useElementSize(containerRef)
-  const toolbar = useStoreValue(editor.read.edge.toolbar)
+  const panel = useStoreValue(editor.select.panel())
+  const toolbar = panel.edgeToolbar
   const buttonRefByKey = useRef<Partial<Record<PanelKey, HTMLElement | null>>>({})
   const [activePanelKey, setActivePanelKey] = useState<PanelKey | null>(null)
   const [positionSession, setPositionSession] = useState<ToolbarPositionSession | null>(null)
   const worldToScreen = useCallback(
-    (point: Point) => editor.read.viewport.worldToScreen(point),
+    (point: Point) => editor.select.viewport.worldToScreen(point),
     [editor]
   )
 
@@ -321,12 +322,12 @@ export const EdgeToolbar = ({
     buildStyle: (style: Edge['style'] | undefined) => NonNullable<EdgePatch['style']>
   ) => {
     edgeIds.forEach((edgeId) => {
-      const edge = editor.read.edge.item.get(edgeId)?.edge
+      const edge = editor.select.edge.item().get(edgeId)?.edge
       if (!edge) {
         return
       }
 
-      editor.document.edges.patch([edgeId], {
+      editor.actions.edge.patch([edgeId], {
         style: buildStyle(edge.style)
       })
     })
@@ -498,7 +499,7 @@ export const EdgeToolbar = ({
                 if (!toolbar.primaryEdgeId) {
                   return
                 }
-                editor.document.edges.labels.add(toolbar.primaryEdgeId)
+                editor.actions.edge.label.add(toolbar.primaryEdgeId)
               }}
             >
               <Type size={18} strokeWidth={1.9} />
@@ -564,7 +565,7 @@ export const EdgeToolbar = ({
               dash={toolbar.dash}
               width={toolbar.width}
               onTypeChange={(value) => {
-                editor.document.edges.patch(toolbar.edgeIds, {
+                editor.actions.edge.patch(toolbar.edgeIds, {
                   type: value
                 })
               }}
@@ -595,7 +596,7 @@ export const EdgeToolbar = ({
             <TextModePanel
               value={toolbar.textMode}
               onChange={(value) => {
-                editor.document.edges.patch(toolbar.edgeIds, {
+                editor.actions.edge.patch(toolbar.edgeIds, {
                   textMode: value
                 })
               }}

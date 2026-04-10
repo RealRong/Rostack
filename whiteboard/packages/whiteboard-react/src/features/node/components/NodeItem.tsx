@@ -1,7 +1,9 @@
-import { memo, useCallback, type CSSProperties } from 'react'
+import { memo, useEffect, useRef, type CSSProperties } from 'react'
 import type { NodeId } from '@whiteboard/core/types'
 import { usePickRef } from '#react/runtime/hooks'
 import { useNodeView } from '../hooks/useNodeView'
+import { useMindmapTreeView } from '#react/features/mindmap/hooks/useMindmapTreeView'
+import { MindmapTreeView } from '#react/features/mindmap/components/MindmapTreeView'
 
 type NodeItemProps = {
   nodeId: NodeId
@@ -12,6 +14,21 @@ type NodeItemProps = {
   ) => void
   selected: boolean
 }
+
+const MindmapSceneItem = ({
+  treeId
+}: {
+  treeId: NodeId
+}) => {
+  const view = useMindmapTreeView(treeId)
+
+  if (!view) {
+    return null
+  }
+
+  return <MindmapTreeView view={view} />
+}
+
 export const NodeItem = memo(({
   nodeId,
   registerMeasuredElement,
@@ -21,6 +38,9 @@ export const NodeItem = memo(({
 
   if (!view) return null
   if (view.hidden) return null
+  if (view.node.type === 'mindmap') {
+    return <MindmapSceneItem treeId={nodeId} />
+  }
 
   const {
     node: resolvedNode,
@@ -38,19 +58,25 @@ export const NodeItem = memo(({
     id: nodeId,
     part: 'body'
   })
-  const setMeasuredElement = useCallback((element: HTMLDivElement | null) => {
-    registerMeasuredElement(nodeId, element, shouldAutoMeasure)
-  }, [nodeId, registerMeasuredElement, shouldAutoMeasure])
-  const setRootElement = useCallback((element: HTMLDivElement | null) => {
-    if (hit !== 'none') {
-      bindPickElement(element)
-    } else {
+  const rootRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const element = rootRef.current
+    bindPickElement(hit !== 'none' ? element : null)
+
+    return () => {
       bindPickElement(null)
     }
-    if (definition?.autoMeasure) {
-      setMeasuredElement(element)
+  }, [bindPickElement, hit])
+
+  useEffect(() => {
+    const element = rootRef.current
+    registerMeasuredElement(nodeId, element, shouldAutoMeasure)
+
+    return () => {
+      registerMeasuredElement(nodeId, null, false)
     }
-  }, [bindPickElement, definition?.autoMeasure, hit, setMeasuredElement])
+  }, [nodeId, registerMeasuredElement, shouldAutoMeasure])
 
   const rootStyle: CSSProperties = {
     ...nodeStyle,
@@ -61,7 +87,7 @@ export const NodeItem = memo(({
 
   return (
     <div
-      ref={setRootElement}
+      ref={rootRef}
       className="wb-node-block"
       data-node-id={nodeId}
       data-node-type={resolvedNode.type}

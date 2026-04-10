@@ -104,7 +104,7 @@ const ShapeLabel = ({
   })
 
   useEffect(() => {
-    setDraft(text)
+    setDraft((current) => current === text ? current : text)
   }, [text])
 
   useEffect(() => {
@@ -135,14 +135,14 @@ const ShapeLabel = ({
 
   const cancel = () => {
     setDraft(text)
-    editor.view.preview.nodeText.clear(node.id)
-    editor.session.edit.clear()
+    editor.actions.edit.nodeText.clear(node.id)
+    editor.actions.edit.clear()
   }
 
   const commit = (value = draft) => {
-    editor.view.preview.nodeText.clear(node.id)
-    editor.session.edit.clear()
-    editor.document.nodes.patch([node.id], toNodeDataPatch(node, {
+    editor.actions.edit.nodeText.clear(node.id)
+    editor.actions.edit.clear()
+    editor.actions.node.patch([node.id], toNodeDataPatch(node, {
       text: value
     }))
   }

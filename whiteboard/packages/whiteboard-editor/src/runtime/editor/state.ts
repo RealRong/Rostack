@@ -14,7 +14,7 @@ export const createEditorState = ({
   interaction: InteractionRuntime
   runtime: RuntimeStateController
   viewport: EditorViewportRuntime['read']
-}): Editor['state'] => {
+}): Editor['store'] => {
   const interactionState = createDerivedStore<EditorInteractionState>({
     get: (readStore) => {
       const mode = readStore(interaction.mode)
@@ -57,5 +57,5 @@ export const createEditorState = ({
     ...runtime.public.state,
     viewport,
     interaction: interactionState
-  } satisfies Editor['state']
+  } satisfies Editor['store']
 }

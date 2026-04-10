@@ -17,7 +17,6 @@ import {
   getDocumentViews
 } from '@dataview/core/document'
 import { Button } from '@ui/button'
-import { Input } from '@ui/input'
 import { Menu, type MenuItem } from '@ui/menu'
 import { Popover } from '@ui/popover'
 import { cn } from '@ui/utils'
@@ -174,7 +173,7 @@ export const PageToolbar = () => {
 
   useEffect(() => {
     setSearchExpanded(Boolean(searchQuery.trim()))
-  }, [currentView?.id, searchQuery])
+  }, [currentView?.id])
 
   useEffect(() => {
     setToolbarRoute(null)
@@ -259,19 +258,27 @@ export const PageToolbar = () => {
                 searchExpanded ? 'ml-1 w-[180px] opacity-100' : 'pointer-events-none w-0 opacity-0'
               )}
             >
-              <Input
+              <input
                 ref={searchInputRef}
                 value={searchQuery}
                 onChange={event => {
                   currentViewDomain?.search.set(event.target.value)
                 }}
-                onBlur={() => {
-                  if (!searchQuery.trim()) {
-                    setSearchExpanded(false)
+                onKeyDown={event => {
+                  if (event.key !== 'Escape') {
+                    return
                   }
+
+                  event.preventDefault()
+                  event.stopPropagation()
+                  setSearchExpanded(false)
+                  event.currentTarget.blur()
+                }}
+                onBlur={() => {
+                  setSearchExpanded(false)
                 }}
                 placeholder={renderMessage(meta.ui.toolbar.search)}
-                className="h-9 w-full border-0 bg-transparent px-0 shadow-none"
+                className="h-9 w-full outline-none border-0 bg-transparent px-0 shadow-none"
               />
             </div>
           </div>

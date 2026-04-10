@@ -1,13 +1,28 @@
 import type {
+  KanbanCardsPerColumn,
   KanbanNewRecordPosition,
   KanbanOptions
 } from '../contracts/kanban'
 import {
   isJsonObject
 } from './shared'
+import {
+  KANBAN_CARDS_PER_COLUMN_OPTIONS
+} from '../contracts/kanban'
 
 const DEFAULT_NEW_RECORD_POSITION: KanbanNewRecordPosition = 'end'
 const DEFAULT_FILL_COLUMN_COLOR = true
+const DEFAULT_CARDS_PER_COLUMN: KanbanCardsPerColumn = 'all'
+
+const normalizeCardsPerColumn = (
+  value: unknown
+): KanbanCardsPerColumn => (
+  KANBAN_CARDS_PER_COLUMN_OPTIONS.includes(
+    value as KanbanCardsPerColumn
+  )
+    ? value as KanbanCardsPerColumn
+    : DEFAULT_CARDS_PER_COLUMN
+)
 
 export const normalizeKanbanOptions = (
   value: unknown
@@ -20,7 +35,8 @@ export const normalizeKanbanOptions = (
       : DEFAULT_NEW_RECORD_POSITION,
     fillColumnColor: typeof kanban?.fillColumnColor === 'boolean'
       ? kanban.fillColumnColor
-      : DEFAULT_FILL_COLUMN_COLOR
+      : DEFAULT_FILL_COLUMN_COLOR,
+    cardsPerColumn: normalizeCardsPerColumn(kanban?.cardsPerColumn)
   }
 }
 
@@ -28,5 +44,6 @@ export const cloneKanbanOptions = (
   options: KanbanOptions
 ): KanbanOptions => ({
   newRecordPosition: options.newRecordPosition,
-  fillColumnColor: options.fillColumnColor
+  fillColumnColor: options.fillColumnColor,
+  cardsPerColumn: options.cardsPerColumn
 })

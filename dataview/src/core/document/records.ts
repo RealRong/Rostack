@@ -6,7 +6,7 @@ import {
   listEntityTable,
   mergePatchedEntity,
   normalizeRecordInput
-} from './shared'
+} from './table'
 
 export interface RecordEntry {
   record: Row
@@ -33,6 +33,10 @@ const replaceDocumentRecordsTable = (document: DataDoc, records: EntityTable<Rec
     records
   }
 }
+
+const createRecordOverlay = (
+  document: DataDoc
+): Record<RecordId, Row> => Object.create(document.records.byId) as Record<RecordId, Row>
 
 export const getDocumentRecords = (document: DataDoc): Row[] => {
   return listEntityTable(document.records)
@@ -71,12 +75,16 @@ export const insertDocumentRecords = (document: DataDoc, records: readonly Row[]
   const remainingOrder = document.records.order.filter(recordId => !insertedIdSet.has(recordId))
   const safeIndex = Math.max(0, Math.min(index ?? remainingOrder.length, remainingOrder.length))
   const nextOrder = [...remainingOrder.slice(0, safeIndex), ...insertedIds, ...remainingOrder.slice(safeIndex)]
+  const byId = createRecordOverlay(document)
+  insertedIds.forEach(recordId => {
+    const record = nextRecords.byId[recordId]
+    if (record) {
+      byId[recordId] = record
+    }
+  })
 
   return replaceDocumentRecordsTable(document, {
-    byId: {
-      ...document.records.byId,
-      ...nextRecords.byId
-    },
+    byId,
     order: nextOrder
   })
 }
@@ -93,10 +101,11 @@ export const patchDocumentRecord = (document: DataDoc, recordId: RecordId, patch
   }
 
   return replaceDocumentRecordsTable(document, {
-    byId: {
-      ...document.records.byId,
-      [recordId]: nextRecord
-    },
+    byId: (() => {
+      const byId = createRecordOverlay(document)
+      byId[recordId] = nextRecord
+      return byId
+    })(),
     order: document.records.order
   })
 }
@@ -108,14 +117,14 @@ export const removeDocumentRecords = (document: DataDoc, recordIds: readonly Rec
 
   const removed = new Set(recordIds)
   let removedCount = 0
-  const nextById = { ...document.records.byId }
+  const nextById = createRecordOverlay(document)
 
   recordIds.forEach(recordId => {
-    if (!Object.prototype.hasOwnProperty.call(nextById, recordId)) {
+    if (!document.records.byId[recordId]) {
       return
     }
     removedCount += 1
-    delete nextById[recordId]
+    nextById[recordId] = undefined as unknown as Row
   })
 
   if (!removedCount) {
@@ -132,13 +141,14 @@ const replaceDocumentRecord = (
   document: DataDoc,
   recordId: RecordId,
   record: Row
-): DataDoc => replaceDocumentRecordsTable(document, {
-  byId: {
-    ...document.records.byId,
-    [recordId]: record
-  },
-  order: document.records.order
-})
+): DataDoc => {
+  const byId = createRecordOverlay(document)
+  byId[recordId] = record
+  return replaceDocumentRecordsTable(document, {
+    byId,
+    order: document.records.order
+  })
+}
 
 const updateDocumentRecord = (
   document: DataDoc,

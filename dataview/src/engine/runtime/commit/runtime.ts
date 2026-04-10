@@ -1,18 +1,15 @@
 import type { HistoryState } from '@dataview/engine/history'
 import type {
-  CommitDelta,
   DataDoc
 } from '@dataview/core/contracts'
-import { createResetDelta } from '@dataview/core/commit/delta'
-import { createDeltaCollector } from '@dataview/core/commit/collector'
-import { applyOperations } from '@dataview/core/operation'
+import {
+  createResetDelta
+} from '@dataview/core/commit/delta'
 import type { ResolvedWriteBatch } from '@dataview/engine/command'
 import type {
   CommitResult,
-  CommitTrace,
-  CreatedEntities,
   CommandResult,
-  TraceDeltaSummary
+  CommitTrace
 } from '../../types'
 import type { ReadRuntime } from '../read/read'
 import type { HistoryReplay } from './history'
@@ -21,6 +18,20 @@ import type { ProjectRuntime } from '../../project/source'
 import {
   now
 } from '../../perf/shared'
+import {
+  applyHistoryReplay,
+  applyWriteBatch,
+  createEmptyCommitResult,
+  createRejectedCommandResult,
+  createdFromChanges
+} from './apply'
+import {
+  finalizeCommitResult
+} from './sync'
+import {
+  createTraceDeltaSummary,
+  type CommitTraceKind
+} from './trace'
 
 interface CommitDocumentStore {
   peekDocument: () => DataDoc
@@ -51,150 +62,72 @@ export interface CommitRuntime {
   replace: (document: DataDoc) => void
 }
 
-const createdFromChanges = (changes?: CommitResult['changes']): CreatedEntities | undefined => {
-  if (!changes) {
-    return undefined
+const finalize = <TResult extends CommitResult>(input: {
+  result: TResult
+  shouldSyncDocument: boolean
+  store: CommitDocumentStore
+  read: Pick<ReadRuntime, 'syncDocument'>
+  project: Pick<ProjectRuntime, 'syncDocument'>
+  perf?: CommitRuntimeOptions['perf']
+  trace?: {
+    kind: CommitTraceKind
+    delta: TResult['changes']
+    startedAt: number
+    commitMs?: number
   }
-
-  const created: CreatedEntities = {
-    records: changes.entities.records?.add,
-    fields: changes.entities.fields?.add,
-    views: changes.entities.views?.add
-  }
-
-  return created.records?.length || created.fields?.length || created.views?.length
-    ? created
-    : undefined
-}
-
-const createTraceDeltaSummary = (
-  delta: CommitDelta
-): TraceDeltaSummary => {
-  const semantics = new Map<string, number>()
-  delta.semantics.forEach((item: CommitDelta['semantics'][number]) => {
-    semantics.set(item.kind, (semantics.get(item.kind) ?? 0) + 1)
-  })
-
-  return {
-    summary: {
-      ...delta.summary
-    },
-    semantics: Array.from(semantics.entries()).map(([kind, count]) => ({
-      kind,
-      ...(count > 1 ? { count } : {})
-    })),
-    entities: {
-      touchedRecordCount: (
-        delta.entities.records?.update === 'all'
-        || delta.entities.values?.records === 'all'
-      )
-        ? 'all'
-        : new Set([
-            ...(delta.entities.records?.add ?? []),
-            ...(Array.isArray(delta.entities.records?.update) ? delta.entities.records.update : []),
-            ...(delta.entities.records?.remove ?? []),
-            ...(Array.isArray(delta.entities.values?.records) ? delta.entities.values.records : [])
-          ]).size || undefined,
-      touchedFieldCount: (
-        delta.entities.fields?.update === 'all'
-        || delta.entities.values?.fields === 'all'
-      )
-        ? 'all'
-        : new Set([
-            ...(delta.entities.fields?.add ?? []),
-            ...(Array.isArray(delta.entities.fields?.update) ? delta.entities.fields.update : []),
-            ...(delta.entities.fields?.remove ?? []),
-            ...(Array.isArray(delta.entities.values?.fields) ? delta.entities.values.fields : [])
-          ]).size || undefined,
-      touchedViewCount: (
-        delta.entities.views?.update === 'all'
-          ? 'all'
-          : new Set([
-              ...(delta.entities.views?.add ?? []),
-              ...(Array.isArray(delta.entities.views?.update) ? delta.entities.views.update : []),
-              ...(delta.entities.views?.remove ?? [])
-            ]).size || undefined
-      )
-    }
-  }
-}
+}): TResult => finalizeCommitResult({
+  result: input.result,
+  shouldSyncDocument: input.shouldSyncDocument,
+  store: input.store,
+  read: input.read,
+  project: input.project,
+  perf: input.perf,
+  ...(input.trace?.delta
+    ? {
+        trace: {
+          kind: input.trace.kind,
+          delta: input.trace.delta,
+          deltaSummary: createTraceDeltaSummary(input.trace.delta),
+          startedAt: input.trace.startedAt,
+          commitMs: input.trace.commitMs
+        }
+      }
+    : {})
+})
 
 export const commitRuntime = (options: CommitRuntimeOptions): CommitRuntime => {
   const store = options.document
   const history = historyStacks({
     capacity: options.historyCapacity
   })
-  const finalize = <TResult extends CommitResult>(input: {
-    result: TResult
-    shouldSyncDocument: boolean
-    kind?: Omit<CommitTrace, 'id' | 'timings' | 'delta' | 'index' | 'project' | 'publish'>['kind']
-    delta?: CommitDelta
-    startedAt?: number
-    commitMs?: number
-  }): TResult => {
-    const { result, shouldSyncDocument } = input
-    if (shouldSyncDocument) {
-      options.read.syncDocument(store.peekDocument(), result.changes)
-      const projectResult = options.project.syncDocument(store.peekDocument(), result.changes)
-      if (
-        options.perf?.enabled
-        && input.kind
-        && input.delta
-        && input.startedAt !== undefined
-        && projectResult.trace
-      ) {
-        options.perf.recordCommit({
-          kind: input.kind,
-          timings: {
-            totalMs: now() - input.startedAt,
-            commitMs: input.commitMs,
-            indexMs: projectResult.trace.timings.indexMs,
-            projectMs: projectResult.trace.timings.projectMs,
-            publishMs: projectResult.trace.timings.publishMs
-          },
-          delta: createTraceDeltaSummary(input.delta),
-          index: projectResult.trace.index,
-          project: projectResult.trace.project,
-          publish: projectResult.trace.publish
-        })
-      }
-    }
-    return result
-  }
 
   const dispatch = (writeBatch: ResolvedWriteBatch): CommandResult => {
     if (!writeBatch.canApply) {
-      return finalize(
-        {
-          result: {
-            issues: writeBatch.issues,
-            applied: false
-          },
-          shouldSyncDocument: false
-        }
-      )
+      return finalize({
+        result: createRejectedCommandResult(writeBatch.issues),
+        shouldSyncDocument: false,
+        store,
+        read: options.read,
+        project: options.project,
+        perf: options.perf
+      })
     }
 
     if (!writeBatch.operations.length) {
-      return finalize(
-        {
-          result: {
-            issues: writeBatch.issues,
-            applied: false
-          },
-          shouldSyncDocument: false
-        }
-      )
+      return finalize({
+        result: createRejectedCommandResult(writeBatch.issues),
+        shouldSyncDocument: false,
+        store,
+        read: options.read,
+        project: options.project,
+        perf: options.perf
+      })
     }
 
     const startedAt = now()
     const beforeDocument = store.peekDocument()
     const commitStart = now()
-    const applied = applyOperations(
-      beforeDocument,
-      writeBatch.operations,
-      createDeltaCollector(beforeDocument, writeBatch.deltaDraft)
-    )
+    const applied = applyWriteBatch(beforeDocument, writeBatch)
     const { undo, redo, document: afterDocument, delta } = applied
     store.installDocument(afterDocument)
 
@@ -203,76 +136,79 @@ export const commitRuntime = (options: CommitRuntimeOptions): CommitRuntime => {
       history.pushUndo({ undo, redo })
     }
 
-    return finalize(
-      {
-        result: {
-          issues: writeBatch.issues,
-          applied: true,
-          changes: delta,
-          created: createdFromChanges(delta)
-        },
-        shouldSyncDocument: true,
+    return finalize({
+      result: {
+        issues: writeBatch.issues,
+        applied: true,
+        changes: delta,
+        created: createdFromChanges(delta)
+      },
+      shouldSyncDocument: true,
+      store,
+      read: options.read,
+      project: options.project,
+      perf: options.perf,
+      trace: {
         kind: 'dispatch',
         delta,
         startedAt,
         commitMs: now() - commitStart
       }
-    )
+    })
   }
 
   const replay = (
-    replay?: HistoryReplay,
+    replayEntry?: HistoryReplay,
     kind: 'undo' | 'redo' = 'undo'
   ): CommitResult => {
-    const entry = replay
-    const beforeDocument = store.peekDocument()
-
-    if (!entry) {
-      return finalize(
-        {
-          result: {
-            issues: [],
-            applied: false
-          },
-          shouldSyncDocument: false
-        }
-      )
+    if (!replayEntry) {
+      return finalize({
+        result: createEmptyCommitResult(),
+        shouldSyncDocument: false,
+        store,
+        read: options.read,
+        project: options.project,
+        perf: options.perf
+      })
     }
 
     const startedAt = now()
+    const beforeDocument = store.peekDocument()
     const commitStart = now()
-    const { document: afterDocument, delta } = applyOperations(beforeDocument, entry.operations)
+    const { document: afterDocument, delta } = applyHistoryReplay(beforeDocument, replayEntry)
     store.installDocument(afterDocument)
 
-    return finalize(
-      {
-        result: {
-          issues: [],
-          applied: true,
-          changes: delta
-        },
-        shouldSyncDocument: true,
+    return finalize({
+      result: {
+        issues: [],
+        applied: true,
+        changes: delta
+      },
+      shouldSyncDocument: true,
+      store,
+      read: options.read,
+      project: options.project,
+      perf: options.perf,
+      trace: {
         kind,
         delta,
         startedAt,
         commitMs: now() - commitStart
       }
-    )
-  }
-
-  const historyApi = {
-    state: () => history.getState(),
-    canUndo: () => history.canUndo(),
-    canRedo: () => history.canRedo(),
-    clear: () => {
-      history.clear()
-    },
-    undo: () => replay(history.undo(), 'undo'),
-    redo: () => replay(history.redo(), 'redo')
+    })
   }
 
   return {
-    history: historyApi,
+    history: {
+      state: () => history.getState(),
+      canUndo: () => history.canUndo(),
+      canRedo: () => history.canRedo(),
+      clear: () => {
+        history.clear()
+      },
+      undo: () => replay(history.undo(), 'undo'),
+      redo: () => replay(history.redo(), 'redo')
+    },
     dispatch,
     replace: document => {
       const startedAt = now()

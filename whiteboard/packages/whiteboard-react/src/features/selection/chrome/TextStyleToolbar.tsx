@@ -87,8 +87,8 @@ const resolveToolbarAnchorWorld = ({
 
 const resolveContext = (
   edit: ReturnType<typeof useEdit>,
-  nodeItem: ReturnType<ReturnType<typeof useEditorRuntime>['read']['node']['item']['get']>,
-  edgeItem: ReturnType<ReturnType<typeof useEditorRuntime>['read']['edge']['item']['get']>
+  nodeItem: ReturnType<ReturnType<ReturnType<typeof useEditorRuntime>['select']['node']['item']>['get']>,
+  edgeItem: ReturnType<ReturnType<ReturnType<typeof useEditorRuntime>['select']['edge']['item']>['get']>
 ): TextToolbarContext | undefined => {
   if (!edit) {
     return undefined
@@ -131,7 +131,7 @@ const resolveContext = (
   }
 
   const edge = edgeItem?.edge
-  const label = edge?.labels?.find((entry) => entry.id === edit.labelId)
+  const label = edge?.labels?.find((entry: NonNullable<typeof edge.labels>[number]) => entry.id === edit.labelId)
   if (!edge || !label) {
     return undefined
   }
@@ -162,19 +162,19 @@ const createContextWriter = (
     }
 
     if (context.kind === 'node') {
-      const node = editor.read.node.item.get(context.nodeId)?.node
+      const node = editor.select.node.item().get(context.nodeId)?.node
       if (!node) {
         return
       }
 
-      editor.document.nodes.patch([context.nodeId], toNodeFieldUpdate({
+      editor.actions.node.patch([context.nodeId], toNodeFieldUpdate({
         scope: 'style',
         path: 'fontSize'
       }, value))
       return
     }
 
-    editor.document.edges.labels.patch(context.edgeId, context.labelId, {
+    editor.actions.edge.label.patch(context.edgeId, context.labelId, {
       style: {
         size: value
       }
@@ -186,19 +186,19 @@ const createContextWriter = (
     }
 
     if (context.kind === 'node') {
-      const node = editor.read.node.item.get(context.nodeId)?.node
+      const node = editor.select.node.item().get(context.nodeId)?.node
       if (!node) {
         return
       }
 
-      editor.document.nodes.patch([context.nodeId], toNodeFieldUpdate({
+      editor.actions.node.patch([context.nodeId], toNodeFieldUpdate({
         scope: 'style',
         path: 'fontWeight'
       }, weight))
       return
     }
 
-    editor.document.edges.labels.patch(context.edgeId, context.labelId, {
+    editor.actions.edge.label.patch(context.edgeId, context.labelId, {
       style: {
         weight
       }
@@ -210,18 +210,18 @@ const createContextWriter = (
     }
 
     if (context.kind === 'node') {
-      const node = editor.read.node.item.get(context.nodeId)?.node
+      const node = editor.select.node.item().get(context.nodeId)?.node
       if (!node) {
         return
       }
 
-      editor.document.nodes.patch([context.nodeId], toNodeStylePatch(node, {
+      editor.actions.node.patch([context.nodeId], toNodeStylePatch(node, {
         fontStyle: italic ? 'italic' : 'normal'
       }))
       return
     }
 
-    editor.document.edges.labels.patch(context.edgeId, context.labelId, {
+    editor.actions.edge.label.patch(context.edgeId, context.labelId, {
       style: {
         italic
       }
@@ -229,18 +229,18 @@ const createContextWriter = (
   },
   setColor: (value: string) => {
     if (context.kind === 'node') {
-      const node = editor.read.node.item.get(context.nodeId)?.node
+      const node = editor.select.node.item().get(context.nodeId)?.node
       if (!node) {
         return
       }
 
-      editor.document.nodes.patch([context.nodeId], toNodeStylePatch(node, {
+      editor.actions.node.patch([context.nodeId], toNodeStylePatch(node, {
         color: value
       }))
       return
     }
 
-    editor.document.edges.labels.patch(context.edgeId, context.labelId, {
+    editor.actions.edge.label.patch(context.edgeId, context.labelId, {
       style: {
         color: value
       }
@@ -252,18 +252,18 @@ const createContextWriter = (
     }
 
     if (context.kind === 'node') {
-      const node = editor.read.node.item.get(context.nodeId)?.node
+      const node = editor.select.node.item().get(context.nodeId)?.node
       if (!node) {
         return
       }
 
-      editor.document.nodes.patch([context.nodeId], toNodeStylePatch(node, {
+      editor.actions.node.patch([context.nodeId], toNodeStylePatch(node, {
         fill: value
       }))
       return
     }
 
-    editor.document.edges.labels.patch(context.edgeId, context.labelId, {
+    editor.actions.edge.label.patch(context.edgeId, context.labelId, {
       style: {
         bg: value
       }
@@ -279,16 +279,16 @@ export const TextStyleToolbar = ({
   const editor = useEditorRuntime()
   const edit = useEdit()
   const surface = useElementSize(containerRef)
-  const box = useStoreValue(editor.read.selection.box)
+  const box = useStoreValue(editor.select.selection.box())
   const nodeItem = useOptionalKeyedStoreValue(
-    editor.read.node.item,
+    editor.select.node.item(),
     edit?.kind === 'node'
       ? edit.nodeId
       : undefined,
     undefined
   )
   const edgeItem = useOptionalKeyedStoreValue(
-    editor.read.edge.item,
+    editor.select.edge.item(),
     edit?.kind === 'edge-label'
       ? edit.edgeId
       : undefined,
@@ -311,7 +311,7 @@ export const TextStyleToolbar = ({
       : `edge-label:${edit.edgeId}:${edit.labelId}`
     : null
   const worldToScreen = useCallback(
-    (point: Point) => editor.read.viewport.worldToScreen(point),
+    (point: Point) => editor.select.viewport.worldToScreen(point),
     [editor]
   )
 

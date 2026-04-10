@@ -2,6 +2,7 @@ import {
   Bold,
   Italic
 } from 'lucide-react'
+import { toNodeStylePatch } from '@whiteboard/core/node'
 import { ToolbarIconButton } from '../primitives'
 import type { ToolbarItemSpec } from './types'
 
@@ -12,17 +13,20 @@ export const boldItem: ToolbarItemSpec = {
     editor
   }) => {
     const active = (context.fontWeight ?? 400) >= 600
+    const node = context.primaryNode ?? context.nodes[0]
 
     return (
       <ToolbarIconButton
         active={active}
         title="Bold"
         onClick={() => {
-          editor.document.nodes.patch(context.nodeIds, {
-            style: {
-              fontWeight: active ? 400 : 700
-            }
-          })
+          if (!node) {
+            return
+          }
+
+          editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+            fontWeight: active ? 400 : 700
+          }))
         }}
       >
         <Bold size={18} strokeWidth={1.9} />
@@ -38,17 +42,20 @@ export const italicItem: ToolbarItemSpec = {
     editor
   }) => {
     const active = context.fontStyle === 'italic'
+    const node = context.primaryNode ?? context.nodes[0]
 
     return (
       <ToolbarIconButton
         active={active}
         title="Italic"
         onClick={() => {
-          editor.document.nodes.patch(context.nodeIds, {
-            style: {
-              fontStyle: !active ? 'italic' : 'normal'
-            }
-          })
+          if (!node) {
+            return
+          }
+
+          editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+            fontStyle: !active ? 'italic' : 'normal'
+          }))
         }}
       >
         <Italic size={18} strokeWidth={1.9} />

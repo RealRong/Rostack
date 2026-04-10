@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { useMemo } from 'react'
 import type { NodeItem } from '@whiteboard/engine'
-import type { NodeId } from '@whiteboard/core/types'
+import type { NodeId, NodeUpdateInput } from '@whiteboard/core/types'
 import { useOptionalKeyedStoreValue } from '@shared/react'
 import type { WhiteboardRuntime as Editor } from '#react/types/runtime'
 import {
@@ -114,8 +114,8 @@ const resolveNodeViewState = (
   const rotation = typeof resolvedNode.rotation === 'number' ? resolvedNode.rotation : 0
   const definition = registry.get(resolvedNode.type)
   const write: NodeWrite = {
-    patch: (patch) => {
-      editor.document.nodes.patch([nodeId], patch)
+    patch: (update: NodeUpdateInput) => {
+      editor.document.nodes.patch([nodeId], update)
     }
   }
   const renderProps: NodeRenderProps = {

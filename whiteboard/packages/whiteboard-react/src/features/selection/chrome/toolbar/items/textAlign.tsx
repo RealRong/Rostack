@@ -1,4 +1,5 @@
 import { Button } from '@ui'
+import { toNodeStylePatch } from '@whiteboard/core/node'
 import {
   AlignCenter,
   AlignLeft,
@@ -44,16 +45,22 @@ export const textAlignItem: ToolbarItemSpec = {
   renderPanel: ({
     context,
     editor
-  }) => (
-    <TextAlignPanel
+  }) => {
+    const node = context.primaryNode ?? context.nodes[0]
+
+    return (
+      <TextAlignPanel
       value={context.textAlign}
       onChange={(value) => {
-        editor.document.nodes.patch(context.nodeIds, {
-          style: {
-            textAlign: value
-          }
-        })
+        if (!node) {
+          return
+        }
+
+        editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+          textAlign: value
+        }))
       }}
-    />
-  )
+      />
+    )
+  }
 }

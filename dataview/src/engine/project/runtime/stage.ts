@@ -3,17 +3,12 @@ import type {
   DataDoc,
   Field,
   FieldId,
-  RecordId,
-  Row,
   View,
   ViewId
 } from '@dataview/core/contracts'
 import type {
-  ResolvedViewRecordState
-} from '@dataview/core/view'
-import type {
   IndexState
-} from '../index/types'
+} from '../../index/types'
 import type {
   StageAction
 } from './planner'
@@ -23,10 +18,13 @@ import type {
 import type {
   Appearance,
   AppearanceId,
-} from './types'
+} from '../types'
 import type {
   ProjectionSection
-} from './types'
+} from '../types'
+import type {
+  ResolvedViewRecordState
+} from './recordState'
 
 export interface StageRead {
   view: () => View | undefined
@@ -36,7 +34,6 @@ export interface StageRead {
     appearances: ReadonlyMap<AppearanceId, Appearance>
     sections: readonly ProjectionSection[]
   }
-  rowsById: () => ReadonlyMap<RecordId, Row>
 }
 
 export interface StageNext {
@@ -51,6 +48,7 @@ export interface StageInput<T> {
   action: StageAction
   prev?: T
   project: ProjectState
+  previous: ProjectState
   next: StageNext
 }
 
@@ -65,3 +63,7 @@ export const reuse = <T,>(
 export const shouldRun = (
   action: StageAction
 ) => action !== 'reuse'
+
+export const isReconcile = (
+  action: StageAction
+) => action === 'reconcile'

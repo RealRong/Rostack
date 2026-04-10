@@ -1,4 +1,5 @@
 import { Button } from '@ui'
+import { toNodeStylePatch } from '@whiteboard/core/node'
 import { TextColorPanel } from '../../panels/TextColorPanel'
 import { ToolbarTextColorIcon } from '../primitives'
 import type { ToolbarItemSpec } from './types'
@@ -31,16 +32,22 @@ export const textColorItem: ToolbarItemSpec = {
   renderPanel: ({
     context,
     editor
-  }) => (
-    <TextColorPanel
+  }) => {
+    const node = context.primaryNode ?? context.nodes[0]
+
+    return (
+      <TextColorPanel
       value={context.textColor}
       onChange={(value) => {
-        editor.document.nodes.patch(context.nodeIds, {
-          style: {
-            color: value
-          }
-        })
+        if (!node) {
+          return
+        }
+
+        editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+          color: value
+        }))
       }}
-    />
-  )
+      />
+    )
+  }
 }

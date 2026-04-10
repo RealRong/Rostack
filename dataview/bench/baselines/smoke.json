@@ -1,0 +1,94 @@
+{
+  "generatedAt": "2026-04-10T00:00:00.000Z",
+  "config": {
+    "sizes": [
+      "small"
+    ],
+    "iterations": 1,
+    "warmup": 0,
+    "scenarios": [
+      "record.value.points.single",
+      "record.value.status.grouped"
+    ]
+  },
+  "results": [
+    {
+      "size": "small",
+      "records": 1000,
+      "scenario": {
+        "id": "record.value.points.single",
+        "title": "Single numeric value update"
+      },
+      "iterations": 1,
+      "avg": {
+        "elapsedMs": 5.6,
+        "totalMs": 3.3,
+        "commitMs": 0.6,
+        "indexMs": 1.8,
+        "projectMs": 0.6,
+        "publishMs": 0.4
+      },
+      "changedStores": [],
+      "indexActions": {
+        "records": "sync",
+        "search": "sync",
+        "group": "sync",
+        "sort": "sync",
+        "calculations": "sync"
+      },
+      "plan": {
+        "view": "reuse",
+        "search": "reuse",
+        "filter": "reuse",
+        "sort": "reuse",
+        "group": "reuse",
+        "records": "reuse",
+        "sections": "reuse",
+        "appearances": "reuse",
+        "fields": "reuse",
+        "calculations": "reuse"
+      }
+    },
+    {
+      "size": "small",
+      "records": 1000,
+      "scenario": {
+        "id": "record.value.status.grouped",
+        "title": "Single group field update in grouped view"
+      },
+      "iterations": 1,
+      "avg": {
+        "elapsedMs": 3.0,
+        "totalMs": 3.0,
+        "commitMs": 0.1,
+        "indexMs": 1.0,
+        "projectMs": 2.0,
+        "publishMs": 0.2
+      },
+      "changedStores": [
+        "sections",
+        "appearances"
+      ],
+      "indexActions": {
+        "records": "sync",
+        "search": "sync",
+        "group": "sync",
+        "sort": "sync",
+        "calculations": "sync"
+      },
+      "plan": {
+        "view": "reuse",
+        "search": "reuse",
+        "filter": "reuse",
+        "sort": "reuse",
+        "group": "reuse",
+        "records": "reuse",
+        "sections": "reconcile",
+        "appearances": "reconcile",
+        "fields": "reuse",
+        "calculations": "reconcile"
+      }
+    }
+  ]
+}
+

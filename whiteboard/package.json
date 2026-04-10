@@ -10,12 +10,29 @@
     "typescript": "^5.4.5"
   },
   "scripts": {
-    "build": "pnpm --filter @whiteboard/core --filter @whiteboard/engine --filter @whiteboard/editor --filter @whiteboard/react --filter @whiteboard/collab -r build",
+    "build": "pnpm run build:core && pnpm run build:engine && pnpm run build:editor && pnpm run build:react && pnpm run build:collab",
+    "build:core": "pnpm exec sh -lc 'cd packages/whiteboard-core && tsup --config tsup.config.ts'",
+    "build:engine": "pnpm exec sh -lc 'cd packages/whiteboard-engine && tsup --config tsup.config.ts'",
+    "build:editor": "pnpm exec sh -lc 'cd packages/whiteboard-editor && tsup --config tsup.config.ts'",
+    "build:react": "pnpm exec sh -lc 'cd packages/whiteboard-react && tsup --config tsup.config.ts'",
+    "build:collab": "pnpm exec sh -lc 'cd packages/whiteboard-collab && tsup --config tsup.config.ts'",
     "bench": "pnpm --filter @whiteboard/engine run bench:check",
-    "lint": "pnpm --filter @whiteboard/core --filter @whiteboard/engine --filter @whiteboard/editor --filter @whiteboard/react --filter @whiteboard/collab -r lint",
+    "lint": "pnpm run typecheck",
+    "typecheck": "pnpm run typecheck:core && pnpm run typecheck:engine && pnpm run typecheck:editor && pnpm run typecheck:react && pnpm run typecheck:collab",
+    "typecheck:core": "pnpm exec tsc -p packages/whiteboard-core/tsconfig.json --noEmit",
+    "typecheck:engine": "pnpm exec tsc -p packages/whiteboard-engine/tsconfig.json --noEmit",
+    "typecheck:editor": "pnpm exec tsc -p packages/whiteboard-editor/tsconfig.json --noEmit",
+    "typecheck:react": "pnpm exec tsc -p packages/whiteboard-react/tsconfig.json --noEmit",
+    "typecheck:collab": "pnpm exec tsc -p packages/whiteboard-collab/tsconfig.json --noEmit",
     "demo:dev": "pnpm --dir ../apps/whiteboard dev",
     "demo:build": "pnpm --dir ../apps/whiteboard build",
     "demo:preview": "pnpm --dir ../apps/whiteboard preview",
-    "test": "pnpm --filter @whiteboard/core --filter @whiteboard/engine --filter @whiteboard/editor --filter @whiteboard/react --filter @whiteboard/collab -r test"
+    "test": "pnpm run test:core && pnpm run test:engine && pnpm run test:editor && pnpm run test:react && pnpm run test:collab",
+    "test:core": "pnpm --filter @whiteboard/core run test",
+    "test:engine": "pnpm --filter @whiteboard/engine run test",
+    "test:editor": "pnpm --filter @whiteboard/editor run test",
+    "test:react": "pnpm --filter @whiteboard/react run test",
+    "test:collab": "pnpm --filter @whiteboard/collab run test",
+    "verify": "pnpm run typecheck && pnpm run test"
   }
 }

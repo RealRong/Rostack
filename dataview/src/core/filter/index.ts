@@ -34,7 +34,3 @@ export {
   setFilterPreset,
   setFilterValue
 } from './state'
-export {
-  resolveFilterRuleProjection,
-  resolveViewFilterProjection
-} from './projection'

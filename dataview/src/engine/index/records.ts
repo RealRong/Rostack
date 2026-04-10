@@ -44,10 +44,17 @@ const collectUpdatedRecordIds = (
   if (Array.isArray(updated)) {
     updated.forEach(id => ids.add(id))
   }
+  const valueRecords = delta.entities.values?.records
+  if (Array.isArray(valueRecords)) {
+    valueRecords.forEach(id => ids.add(id))
+  }
 
   for (const item of delta.semantics) {
     if (item.kind === 'record.patch') {
       item.ids.forEach(id => ids.add(id))
+    }
+    if (item.kind === 'record.values' && Array.isArray(item.records)) {
+      item.records.forEach(id => ids.add(id))
     }
   }
 

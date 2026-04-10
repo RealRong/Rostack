@@ -160,7 +160,7 @@ test('engine.index sync patches search/group/sort/calculation on record value ch
         fields: [FIELD_STATUS, FIELD_POINTS]
       }
     ]
-  }))
+  })).state
 
   const titlePostings = state.search.fields.get(TITLE_FIELD_ID)
   assert.equal(titlePostings.get('task 2'), undefined)
@@ -215,7 +215,7 @@ test('engine.index sync rebuilds only touched field semantics on schema changes'
         aspects: ['options']
       }
     ]
-  }))
+  })).state
 
   assert.equal(state.sort.fields.get(FIELD_POINTS), before.sort.fields.get(FIELD_POINTS))
 

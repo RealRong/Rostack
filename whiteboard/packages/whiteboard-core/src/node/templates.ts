@@ -40,8 +40,7 @@ export const createStickyNodeInput = (
   type: 'sticky',
   size: { ...STICKY_START_SIZE },
   data: {
-    text: '',
-    background: fill
+    text: ''
   },
   style: {
     fill,

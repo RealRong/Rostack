@@ -4,14 +4,14 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   FieldList
-} from './types'
+} from '../types'
 import type {
   Stage
-} from './stage'
+} from '../runtime/stage'
 import {
   reuse,
   shouldRun
-} from './stage'
+} from '../runtime/stage'
 
 const emptyIds = [] as readonly FieldId[]
 

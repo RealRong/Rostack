@@ -1,4 +1,5 @@
 import { Button } from '@ui'
+import { toNodeFieldUpdate, toNodeStylePatch } from '@whiteboard/core/node'
 import { BorderPanel } from '../../panels/BorderPanel'
 import { ToolbarStrokeIcon } from '../primitives'
 import type { ToolbarItemSpec } from './types'
@@ -38,8 +39,11 @@ export const strokeItem: ToolbarItemSpec = {
   renderPanel: ({
     context,
     editor
-  }) => (
-    <BorderPanel
+  }) => {
+    const node = context.primaryNode ?? context.nodes[0]
+
+    return (
+      <BorderPanel
       stroke={context.stroke}
       strokeWidth={context.strokeWidth}
       opacity={context.canEditStrokeOpacity
@@ -49,46 +53,58 @@ export const strokeItem: ToolbarItemSpec = {
       showStyle={context.canEditStrokeDash}
       showOpacity={context.canEditStrokeOpacity || context.canEditNodeOpacity}
       onStrokeChange={(value) => {
-        editor.document.nodes.patch(context.nodeIds, {
-          style: {
-            stroke: value
-          }
-        })
+        if (!node) {
+          return
+        }
+
+        editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+          stroke: value
+        }))
       }}
       onStrokeWidthChange={(value) => {
-        editor.document.nodes.patch(context.nodeIds, {
-          style: {
-            strokeWidth: value
-          }
-        })
+        if (!node) {
+          return
+        }
+
+        editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+          strokeWidth: value
+        }))
       }}
       onOpacityChange={(value) => {
         if (context.canEditStrokeOpacity) {
-          editor.document.nodes.patch(context.nodeIds, {
-            style: {
-              strokeOpacity: value
-            }
-          })
+          if (!node) {
+            return
+          }
+
+          editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+            strokeOpacity: value
+          }))
           return
         }
 
         if (context.canEditNodeOpacity) {
-          editor.document.nodes.patch(context.nodeIds, {
-            style: {
-              opacity: value
-            }
-          })
+          if (!node) {
+            return
+          }
+
+          editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+            opacity: value
+          }))
         }
       }}
       onStrokeDashChange={context.canEditStrokeDash
         ? (value) => {
-            editor.document.nodes.patch(context.nodeIds, {
-              style: {
-                strokeDash: value
-              }
-            })
+            if (!node) {
+              return
+            }
+
+            editor.document.nodes.patch(context.nodeIds, toNodeFieldUpdate({
+              scope: 'style',
+              path: 'strokeDash'
+            }, value))
           }
         : undefined}
-    />
-  )
+      />
+    )
+  }
 }

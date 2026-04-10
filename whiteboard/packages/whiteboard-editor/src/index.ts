@@ -14,8 +14,6 @@ export type {
   EditorSessionApi,
   EditorState,
   EditorViewApi,
-  EditorNodePatch,
-  EditorEdgePatch,
   MindmapNodePatch,
   EditorClipboardOptions,
   EditorClipboardTarget,

@@ -23,7 +23,6 @@ export const createDocumentRuntime = ({
 }): DocumentRuntime => {
   const nodePatch = createNodePatchWriter(engine)
   const nodeAppearance = createNodeAppearanceMutations({
-    engine,
     document: nodePatch
   })
   const nodeLock = createNodeLockMutations({

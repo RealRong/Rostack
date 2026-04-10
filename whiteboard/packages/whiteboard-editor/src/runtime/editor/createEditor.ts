@@ -1,5 +1,6 @@
+import { isNodeUpdateEmpty } from '@whiteboard/core/node'
 import type { Engine } from '@whiteboard/engine'
-import type { Viewport } from '@whiteboard/core/types'
+import type { EdgePatch, Viewport } from '@whiteboard/core/types'
 import type { NodeRegistry } from '../../types/node'
 import type { Tool } from '../../types/tool'
 import type { DrawPreferences } from '../../types/draw'
@@ -20,12 +21,14 @@ import { createRead } from '../read'
 import { createRuntimeState } from '../state'
 import { createEditorInput } from './input'
 import { createEditorState } from './state'
-import { compileNodePatch } from '../compile/nodePatch'
-import { compileEdgePatch } from '../compile/edgePatch'
 import { createEditorRuntime } from './runtime'
 import { createSelectionActions } from '../document/selection'
 import { createEdgeLabelActions } from '../document/edge'
 import { createClipboardActions } from '../document/clipboard'
+
+const hasEdgePatchContent = (
+  patch: EdgePatch
+) => Object.keys(patch).length > 0
 
 export const createEditor = ({
   engine,
@@ -155,15 +158,19 @@ export const createEditor = ({
 
   const patchNodes: Editor['document']['nodes']['patch'] = (
     ids,
-    patch,
+    update,
     options
   ) => {
-    const updates = compileNodePatch({
-      ids,
-      patch,
-      measuredSizeById: options?.measuredSizeById,
-      readNode: engine.read.node.item.get
-    })
+    if (isNodeUpdateEmpty(update)) {
+      return undefined
+    }
+
+    const updates = ids.flatMap((id) => engine.read.node.item.get(id)
+      ? [{
+          id,
+          update
+        }]
+      : [])
     if (!updates.length) {
       return undefined
     }
@@ -177,11 +184,16 @@ export const createEditor = ({
     edgeIds,
     patch
   ) => {
-    const updates = compileEdgePatch({
-      edgeIds,
-      patch,
-      readEdge: (id) => engine.read.edge.item.get(id)?.edge
-    })
+    if (!hasEdgePatchContent(patch)) {
+      return undefined
+    }
+
+    const updates = edgeIds.flatMap((id) => engine.read.edge.item.get(id)
+      ? [{
+          id,
+          patch
+        }]
+      : [])
     if (!updates.length) {
       return undefined
     }

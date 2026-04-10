@@ -30,8 +30,8 @@
     "react": ">=18"
   },
   "scripts": {
-    "build": "tsup",
-    "lint": "tsc -p tsconfig.json --noEmit",
+    "build": "pnpm -C ../.. build:react",
+    "lint": "pnpm -C ../.. typecheck:react",
     "test": "echo \"No tests\""
   }
 }

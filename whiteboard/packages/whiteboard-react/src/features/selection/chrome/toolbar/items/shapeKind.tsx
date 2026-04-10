@@ -1,4 +1,5 @@
 import { Button } from '@ui'
+import { toNodeDataPatch } from '@whiteboard/core/node'
 import { ShapeGlyph } from '#react/features/node'
 import { ShapePickerPanel } from '../../panels/ShapePickerPanel'
 import type { ToolbarItemSpec } from './types'
@@ -39,16 +40,22 @@ export const shapeKindItem: ToolbarItemSpec = {
   renderPanel: ({
     context,
     editor
-  }) => (
-    <ShapePickerPanel
+  }) => {
+    const node = context.primaryNode ?? context.nodes[0]
+
+    return (
+      <ShapePickerPanel
       value={context.shapeKindValue ?? context.shapeKind}
       onChange={(value) => {
-        editor.document.nodes.patch(context.nodeIds, {
-          data: {
-            kind: value
-          }
-        })
+        if (!node) {
+          return
+        }
+
+        editor.document.nodes.patch(context.nodeIds, toNodeDataPatch(node, {
+          kind: value
+        }))
       }}
-    />
-  )
+      />
+    )
+  }
 }

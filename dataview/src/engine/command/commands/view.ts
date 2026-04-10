@@ -20,6 +20,7 @@ import {
   getDocumentActiveViewId,
   getDocumentFieldById,
   getDocumentFields,
+  getDocumentRecords,
   getDocumentViews,
   getDocumentViewById
 } from '@dataview/core/document'
@@ -61,6 +62,7 @@ import {
   setSearchQuery
 } from '@dataview/core/search'
 import {
+  compareSortedRecords,
   addSorter,
   clearSorters,
   moveSorter,
@@ -75,10 +77,13 @@ import {
 } from '@dataview/core/query'
 import {
   createDuplicateViewPreferredName,
-  orderedViewRecords,
   resolveUniqueViewName
 } from '@dataview/core/view'
-import { reorderRecordBlockIds } from '@dataview/core/view/order'
+import {
+  applyRecordOrder,
+  normalizeRecordOrderIds,
+  reorderRecordBlockIds
+} from '@dataview/core/view/order'
 import { createDefaultViewDisplay, createDefaultViewOptions } from '@dataview/core/view/options'
 import { cloneViewOptions } from '@dataview/core/view/shared'
 import { createViewId } from '../entityId'
@@ -605,11 +610,43 @@ const validateOrderSet = (document: DataDoc, command: Extract<IndexedCommand, { 
   return validateOrders(document, command, command.orders, 'orders')
 }
 
+const orderedRecordIdsOf = (
+  document: DataDoc,
+  view: View
+) => {
+  const records = getDocumentRecords(document)
+
+  if (view.sort.length > 0) {
+    const recordOrderIndex = new Map(
+      records.map((record, index) => [record.id, index] as const)
+    )
+
+    return [...records]
+      .sort((left, right) => {
+        for (const sorter of view.sort) {
+          const result = compareSortedRecords(left, right, sorter, document)
+          if (result !== 0) {
+            return result
+          }
+        }
+
+        return (recordOrderIndex.get(left.id) ?? Number.MAX_SAFE_INTEGER)
+          - (recordOrderIndex.get(right.id) ?? Number.MAX_SAFE_INTEGER)
+      })
+      .map(record => record.id)
+  }
+
+  return applyRecordOrder(
+    records.map(record => record.id),
+    normalizeRecordOrderIds(view.orders, new Set(records.map(record => record.id)))
+  )
+}
+
 const planOrderMove = (
   document: DataDoc,
   command: Extract<IndexedCommand, { type: 'view.order.move' }>
 ) => resolveViewUpdate(document, command.viewId, view => {
-  const currentOrder = orderedViewRecords(document, view.id).map(record => record.id)
+  const currentOrder = orderedRecordIdsOf(document, view)
   const movingRecordIds = Array.from(new Set(command.recordIds))
     .filter(recordId => currentOrder.includes(recordId))
 

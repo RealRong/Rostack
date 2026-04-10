@@ -14,7 +14,7 @@ import {
 } from '@dataview/core/document'
 import type {
   IndexState
-} from '../index/types'
+} from '../../index/types'
 import type {
   ProjectState
 } from './state'
@@ -40,8 +40,8 @@ export interface ProjectPlan {
 
 const ACTION_PRIORITY: Record<StageAction, number> = {
   reuse: 0,
-  recompute: 1,
-  reconcile: 2,
+  reconcile: 1,
+  recompute: 2,
   rebuild: 3
 }
 
@@ -79,12 +79,29 @@ const bumpRecords = (
   setAction(plan, 'calculations', 'recompute')
 }
 
+const reconcileRecords = (
+  plan: ProjectPlan
+) => {
+  setAction(plan, 'records', 'reconcile')
+  setAction(plan, 'sections', 'reconcile')
+  setAction(plan, 'appearances', 'reconcile')
+  setAction(plan, 'calculations', 'reconcile')
+}
+
 const bumpSections = (
   plan: ProjectPlan
 ) => {
   setAction(plan, 'sections', 'recompute')
   setAction(plan, 'appearances', 'recompute')
   setAction(plan, 'calculations', 'recompute')
+}
+
+const reconcileSections = (
+  plan: ProjectPlan
+) => {
+  setAction(plan, 'sections', 'reconcile')
+  setAction(plan, 'appearances', 'reconcile')
+  setAction(plan, 'calculations', 'reconcile')
 }
 
 const rebuildAll = (): ProjectPlan => ({
@@ -153,21 +170,11 @@ const queryUsesRecordPatch = (
   }
 
   const searchFields = viewSearchFields(view)
-  if (searchFields === 'all') {
-    return aspects.length > 0
-  }
-
-  return aspects.includes('title') && searchFields.has(TITLE_FIELD_ID)
-}
-
-const valueFieldsOf = (
-  delta: CommitDelta
-): ReadonlySet<FieldId> | 'all' => {
-  if (delta.entities.values?.fields === 'all') {
-    return 'all'
-  }
-
-  return new Set(delta.entities.values?.fields ?? [])
+  return aspects.includes('title')
+    && (
+      searchFields === 'all'
+      || searchFields.has(TITLE_FIELD_ID)
+    )
 }
 
 export const buildProjectPlan = (input: {
@@ -277,7 +284,7 @@ export const buildProjectPlan = (input: {
       }
       case 'record.add':
       case 'record.remove':
-        bumpRecords(plan)
+        reconcileRecords(plan)
         break
       case 'record.patch': {
         const changedFields = new Set<FieldId>(
@@ -287,19 +294,19 @@ export const buildProjectPlan = (input: {
         )
 
         if (queryUsesRecordPatch(activeView, item.aspects)) {
-          bumpRecords(plan)
+          reconcileRecords(plan)
         }
         if (hasIntersection(filterFields, changedFields)) {
-          bumpRecords(plan)
+          reconcileRecords(plan)
         }
         if (hasIntersection(sortFields, changedFields)) {
-          bumpRecords(plan)
+          reconcileRecords(plan)
         }
         if (groupField && changedFields.has(groupField)) {
-          bumpSections(plan)
+          reconcileSections(plan)
         }
         if (hasIntersection(calcFields, changedFields)) {
-          setAction(plan, 'calculations', 'recompute')
+          setAction(plan, 'calculations', 'reconcile')
         }
         break
       }
@@ -315,19 +322,19 @@ export const buildProjectPlan = (input: {
             || queryUsesChangedFields(searchFields, changedFields)
           )
         ) {
-          bumpRecords(plan)
+          reconcileRecords(plan)
         }
         if (
           changedFields === 'all'
           || hasIntersection(filterFields, changedFields)
         ) {
-          bumpRecords(plan)
+          reconcileRecords(plan)
         }
         if (
           changedFields === 'all'
           || hasIntersection(sortFields, changedFields)
         ) {
-          bumpRecords(plan)
+          reconcileRecords(plan)
         }
         if (
           groupField
@@ -336,13 +343,13 @@ export const buildProjectPlan = (input: {
             || changedFields.has(groupField)
           )
         ) {
-          bumpSections(plan)
+          reconcileSections(plan)
         }
         if (
           changedFields === 'all'
           || hasIntersection(calcFields, changedFields)
         ) {
-          setAction(plan, 'calculations', 'recompute')
+          setAction(plan, 'calculations', 'reconcile')
         }
         break
       }

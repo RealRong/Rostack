@@ -53,6 +53,7 @@ type EdgeStructureTuple = {
   type: string
   sourceKind: Edge['source']['kind']
   targetKind: Edge['target']['kind']
+  groupId?: string
   sourceNodeId?: NodeId
   targetNodeId?: NodeId
   sourcePoint?: Point
@@ -61,6 +62,10 @@ type EdgeStructureTuple = {
   sourceAnchorOffset?: number
   targetAnchorSide?: string
   targetAnchorOffset?: number
+  textMode?: Edge['textMode']
+  styleRef?: Edge['style']
+  labelsRef?: Edge['labels']
+  dataRef?: Edge['data']
   routePointsRef?: readonly { x: number; y: number }[]
 }
 
@@ -76,6 +81,7 @@ const EDGE_STRUCTURE_SCALAR_KEYS = [
   'type',
   'sourceKind',
   'targetKind',
+  'groupId',
   'sourceNodeId',
   'targetNodeId',
   'sourcePoint',
@@ -83,7 +89,11 @@ const EDGE_STRUCTURE_SCALAR_KEYS = [
   'sourceAnchorSide',
   'sourceAnchorOffset',
   'targetAnchorSide',
-  'targetAnchorOffset'
+  'targetAnchorOffset',
+  'textMode',
+  'styleRef',
+  'labelsRef',
+  'dataRef'
 ] as const satisfies readonly (Exclude<keyof EdgeStructureTuple, 'routePointsRef'>)[]
 
 const emptyRelations = (): EdgeRelations => ({
@@ -160,6 +170,7 @@ const toEdgeStructureTuple = (edge: EdgeItem['edge']): EdgeStructureTuple => ({
   type: edge.type,
   sourceKind: edge.source.kind,
   targetKind: edge.target.kind,
+  groupId: edge.groupId,
   sourceNodeId: edge.source.kind === 'node' ? edge.source.nodeId : undefined,
   targetNodeId: edge.target.kind === 'node' ? edge.target.nodeId : undefined,
   sourcePoint: edge.source.kind === 'point' ? edge.source.point : undefined,
@@ -168,6 +179,10 @@ const toEdgeStructureTuple = (edge: EdgeItem['edge']): EdgeStructureTuple => ({
   sourceAnchorOffset: edge.source.kind === 'node' ? edge.source.anchor?.offset : undefined,
   targetAnchorSide: edge.target.kind === 'node' ? edge.target.anchor?.side : undefined,
   targetAnchorOffset: edge.target.kind === 'node' ? edge.target.anchor?.offset : undefined,
+  textMode: edge.textMode,
+  styleRef: edge.style,
+  labelsRef: edge.labels,
+  dataRef: edge.data,
   routePointsRef: edge.route?.kind === 'manual'
     ? edge.route.points
     : undefined

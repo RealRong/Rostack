@@ -9,7 +9,9 @@ import {
 import { Button, Slider, cn } from '@ui'
 import { ArrowLeftRight, Type } from 'lucide-react'
 import type {
+  Edge,
   EdgeDash,
+  EdgePatch,
   EdgeMarker,
   EdgeTextMode,
   EdgeType,
@@ -314,6 +316,21 @@ export const EdgeToolbar = ({
   const togglePanel = useCallback((key: PanelKey) => {
     setActivePanelKey((current) => current === key ? null : key)
   }, [])
+  const patchEdgeStyles = useCallback((
+    edgeIds: readonly string[],
+    buildStyle: (style: Edge['style'] | undefined) => NonNullable<EdgePatch['style']>
+  ) => {
+    edgeIds.forEach((edgeId) => {
+      const edge = editor.read.edge.item.get(edgeId)?.edge
+      if (!edge) {
+        return
+      }
+
+      editor.document.edges.patch([edgeId], {
+        style: buildStyle(edge.style)
+      })
+    })
+  }, [editor])
 
   const key = toolbar?.selectionKey ?? null
   const livePlacement = toolbar
@@ -411,12 +428,11 @@ export const EdgeToolbar = ({
               if (!toolbar.primaryEdgeId) {
                 return
               }
-              editor.document.edges.patch([toolbar.primaryEdgeId], {
-                style: {
-                  start: toolbar.end ?? 'none',
-                  end: toolbar.start ?? 'none'
-                }
-              })
+              patchEdgeStyles([toolbar.primaryEdgeId], (style) => ({
+                ...(style ?? {}),
+                start: style?.end ?? toolbar.end ?? 'none',
+                end: style?.start ?? toolbar.start ?? 'none'
+              }))
             }}
           >
             <ArrowLeftRight size={18} strokeWidth={1.9} />
@@ -526,22 +542,20 @@ export const EdgeToolbar = ({
             <MarkerPanel
               value={toolbar.start}
               onChange={(value) => {
-                editor.document.edges.patch(toolbar.edgeIds, {
-                  style: {
-                    start: value
-                  }
-                })
+                patchEdgeStyles(toolbar.edgeIds, (style) => ({
+                  ...(style ?? {}),
+                  start: value
+                }))
               }}
             />
           ) : activePanelKey === 'end' ? (
             <MarkerPanel
               value={toolbar.end}
               onChange={(value) => {
-                editor.document.edges.patch(toolbar.edgeIds, {
-                  style: {
-                    end: value
-                  }
-                })
+                patchEdgeStyles(toolbar.edgeIds, (style) => ({
+                  ...(style ?? {}),
+                  end: value
+                }))
               }}
             />
           ) : activePanelKey === 'line' ? (
@@ -551,35 +565,30 @@ export const EdgeToolbar = ({
               width={toolbar.width}
               onTypeChange={(value) => {
                 editor.document.edges.patch(toolbar.edgeIds, {
-                  fields: {
-                    type: value
-                  }
+                  type: value
                 })
               }}
               onDashChange={(value) => {
-                editor.document.edges.patch(toolbar.edgeIds, {
-                  style: {
-                    dash: value
-                  }
-                })
+                patchEdgeStyles(toolbar.edgeIds, (style) => ({
+                  ...(style ?? {}),
+                  dash: value
+                }))
               }}
               onWidthChange={(value) => {
-                editor.document.edges.patch(toolbar.edgeIds, {
-                  style: {
-                    width: value
-                  }
-                })
+                patchEdgeStyles(toolbar.edgeIds, (style) => ({
+                  ...(style ?? {}),
+                  width: value
+                }))
               }}
             />
           ) : activePanelKey === 'color' ? (
             <ColorPanel
               value={toolbar.color}
               onChange={(value) => {
-                editor.document.edges.patch(toolbar.edgeIds, {
-                  style: {
-                    color: value
-                  }
-                })
+                patchEdgeStyles(toolbar.edgeIds, (style) => ({
+                  ...(style ?? {}),
+                  color: value
+                }))
               }}
             />
           ) : single ? (
@@ -587,9 +596,7 @@ export const EdgeToolbar = ({
               value={toolbar.textMode}
               onChange={(value) => {
                 editor.document.edges.patch(toolbar.edgeIds, {
-                  fields: {
-                    textMode: value
-                  }
+                  textMode: value
                 })
               }}
             />

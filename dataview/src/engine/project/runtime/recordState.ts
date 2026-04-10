@@ -17,9 +17,6 @@ import {
   isFilterRuleEffective,
   matchFilterRule
 } from '@dataview/core/filter'
-import type {
-  ResolvedViewRecordState
-} from '@dataview/core/view'
 import {
   applyRecordOrder,
   normalizeRecordOrderIds
@@ -28,7 +25,14 @@ import type {
   IndexState,
   SearchIndex,
   SortedIdSet
-} from '../index/types'
+} from '../../index/types'
+
+export interface ResolvedViewRecordState {
+  view?: View
+  derivedRecords: readonly Row[]
+  orderedRecords: readonly Row[]
+  visibleRecords: readonly Row[]
+}
 
 const createOrderIndex = (
   ids: readonly RecordId[]

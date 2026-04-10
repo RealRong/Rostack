@@ -164,12 +164,7 @@ const readFill = (
     return readString(node, 'fill') ?? readShapeSpec(readShapeKind(node)).defaults.fill
   }
   if (node.type === 'sticky') {
-    return readString(node, 'fill')
-      ?? (
-        node.data && typeof node.data.background === 'string'
-          ? node.data.background
-          : STICKY_DEFAULT_FILL
-      )
+    return readString(node, 'fill') ?? STICKY_DEFAULT_FILL
   }
   if (node.type === 'frame') {
     return readString(node, 'fill') ?? FRAME_DEFAULT_FILL

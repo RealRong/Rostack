@@ -6,10 +6,6 @@ export {
   compareSortedRecords
 } from './compare'
 export {
-  resolveSortRuleProjection,
-  resolveViewSortProjection
-} from './projection'
-export {
   addSorter,
   clearSorters,
   cloneSorter,

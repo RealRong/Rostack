@@ -9,7 +9,3 @@ export {
   normalizeViewCalculations,
   supportsFieldCalculationMetric
 } from './capability'
-export {
-  computeCalculation,
-  computeCalculationsForFields
-} from './compute'

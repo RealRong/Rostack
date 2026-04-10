@@ -27,9 +27,6 @@ export const useNodeSizeObserver = () => {
     isEqual: isSameSize,
     schedule: 'raf',
     onChange: changes => {
-      const measuredSizeById: Record<NodeId, Size> = {}
-      const nodeIds: NodeId[] = []
-
       changes.forEach(({ key: nodeId, size }) => {
         const current = editor.read.index.node.get(nodeId)
         if (!current || !isValidSize(size)) return
@@ -42,14 +39,13 @@ export const useNodeSizeObserver = () => {
           return
         }
 
-        nodeIds.push(nodeId)
-        measuredSizeById[nodeId] = size
-      })
-
-      if (!nodeIds.length) return
-      editor.document.nodes.patch(nodeIds, {}, {
-        measuredSizeById,
-        origin: 'system'
+        editor.document.nodes.patch([nodeId], {
+          fields: {
+            size
+          }
+        }, {
+          origin: 'system'
+        })
       })
     }
   }), [editor])

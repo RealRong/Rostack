@@ -7,23 +7,36 @@ import type {
   AppearanceList,
   Section,
   SectionKey
-} from './types'
+} from '../types'
 import type {
   Stage
-} from './stage'
+} from '../runtime/stage'
 import {
+  isReconcile,
   reuse,
   shouldRun
-} from './stage'
+} from '../runtime/stage'
 
 const emptyIds = [] as readonly AppearanceId[]
 
-export const createAppearances = (input: {
+const sameIds = (
+  left: readonly AppearanceId[],
+  right: readonly AppearanceId[]
+) => left.length === right.length
+  && left.every((value, index) => value === right[index])
+
+const sameAppearance = (
+  left: Appearance,
+  right: Appearance
+) => left.id === right.id
+  && left.recordId === right.recordId
+  && left.section === right.section
+
+const createAppearanceList = (input: {
   byId: ReadonlyMap<AppearanceId, Appearance>
+  ids: readonly AppearanceId[]
   sections: readonly Section[]
 }): AppearanceList => {
-  const byId = new Map<AppearanceId, Appearance>()
-  const ids: AppearanceId[] = []
   const visibleIndex = new Map<AppearanceId, number>()
   const sectionById = new Map<AppearanceId, SectionKey>()
   const idsBySection = new Map<SectionKey, readonly AppearanceId[]>()
@@ -32,38 +45,36 @@ export const createAppearances = (input: {
     idsBySection.set(section.key, section.ids)
 
     section.ids.forEach(id => {
-      const appearance = input.byId.get(id)
-      if (!appearance) {
+      if (!input.byId.has(id)) {
         return
       }
 
-      byId.set(id, appearance)
       sectionById.set(id, section.key)
-      if (!section.collapsed) {
-        visibleIndex.set(id, ids.length)
-        ids.push(id)
-      }
     })
   })
 
+  input.ids.forEach((id, index) => {
+    visibleIndex.set(id, index)
+  })
+
   return {
-    byId,
-    ids,
-    get: id => byId.get(id),
+    byId: input.byId,
+    ids: input.ids,
+    get: id => input.byId.get(id),
     has: id => visibleIndex.has(id),
     indexOf: id => visibleIndex.get(id),
-    at: index => ids[index],
+    at: index => input.ids[index],
     prev: id => {
       const index = visibleIndex.get(id)
       return index === undefined || index <= 0
         ? undefined
-        : ids[index - 1]
+        : input.ids[index - 1]
     },
     next: id => {
       const index = visibleIndex.get(id)
-      return index === undefined || index >= ids.length - 1
+      return index === undefined || index >= input.ids.length - 1
         ? undefined
-        : ids[index + 1]
+        : input.ids[index + 1]
     },
     range: (anchor, focus) => {
       const anchorIndex = visibleIndex.get(anchor)
@@ -74,11 +85,93 @@ export const createAppearances = (input: {
 
       const start = Math.min(anchorIndex, focusIndex)
       const end = Math.max(anchorIndex, focusIndex)
-      return ids.slice(start, end + 1)
+      return input.ids.slice(start, end + 1)
     },
     sectionOf: id => sectionById.get(id),
     idsIn: section => idsBySection.get(section) ?? emptyIds
   }
+}
+
+export const createAppearances = (input: {
+  byId: ReadonlyMap<AppearanceId, Appearance>
+  sections: readonly Section[]
+}): AppearanceList => {
+  const byId = new Map<AppearanceId, Appearance>()
+  const ids: AppearanceId[] = []
+
+  input.sections.forEach(section => {
+    section.ids.forEach(id => {
+      const appearance = input.byId.get(id)
+      if (!appearance) {
+        return
+      }
+
+      byId.set(id, appearance)
+      if (!section.collapsed) {
+        ids.push(id)
+      }
+    })
+  })
+
+  return createAppearanceList({
+    byId,
+    ids,
+    sections: input.sections
+  })
+}
+
+const reconcileAppearances = (input: {
+  previous: AppearanceList | undefined
+  byId: ReadonlyMap<AppearanceId, Appearance>
+  sections: readonly Section[]
+}): AppearanceList => {
+  if (!input.previous) {
+    return createAppearances({
+      byId: input.byId,
+      sections: input.sections
+    })
+  }
+
+  const byId = new Map<AppearanceId, Appearance>()
+  const visibleIds: AppearanceId[] = []
+
+  input.sections.forEach(section => {
+    section.ids.forEach(id => {
+      const nextAppearance = input.byId.get(id)
+      if (!nextAppearance) {
+        return
+      }
+
+      const previousAppearance = input.previous?.byId.get(id)
+      byId.set(
+        id,
+        previousAppearance && sameAppearance(previousAppearance, nextAppearance)
+          ? previousAppearance
+          : nextAppearance
+      )
+
+      if (!section.collapsed) {
+        visibleIds.push(id)
+      }
+    })
+  })
+
+  const ids = sameIds(input.previous.ids, visibleIds)
+    ? input.previous.ids
+    : visibleIds
+
+  const reusedEntries = byId.size === input.previous.byId.size
+    && Array.from(byId.entries()).every(([id, appearance]) => input.previous?.byId.get(id) === appearance)
+
+  if (ids === input.previous.ids && reusedEntries) {
+    return input.previous
+  }
+
+  return createAppearanceList({
+    byId,
+    ids,
+    sections: input.sections
+  })
 }
 
 export const recordIdsOfAppearances = (
@@ -113,9 +206,15 @@ export const appearancesStage: Stage<AppearanceList> = {
     }
 
     const sectionProjection = input.next.read.sectionProjection()
-    return createAppearances({
-      byId: sectionProjection.appearances,
-      sections
-    })
+    return isReconcile(input.action)
+      ? reconcileAppearances({
+          previous: input.prev,
+          byId: sectionProjection.appearances,
+          sections
+        })
+      : createAppearances({
+          byId: sectionProjection.appearances,
+          sections
+        })
   }
 }

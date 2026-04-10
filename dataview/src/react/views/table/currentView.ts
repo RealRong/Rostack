@@ -25,7 +25,7 @@ import {
   sameFieldList,
   sameSchema,
   sameSections
-} from '@dataview/engine/project/equality'
+} from '@dataview/engine/project/runtime/equality'
 import type {
   AppearanceList,
   FieldList,

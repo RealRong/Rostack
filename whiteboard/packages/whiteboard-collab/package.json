@@ -22,8 +22,8 @@
     "yjs": "^13.6.27"
   },
   "scripts": {
-    "build": "tsup",
-    "lint": "tsc -p tsconfig.json --noEmit",
+    "build": "pnpm -C ../.. build:collab",
+    "lint": "pnpm -C ../.. typecheck:collab",
     "test": "pnpm -C ../whiteboard-core build && pnpm -C ../whiteboard-engine build && pnpm run build && node --test test/*.test.mjs"
   }
 }

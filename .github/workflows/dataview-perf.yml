@@ -1,0 +1,37 @@
+name: dataview-perf
+
+on:
+  pull_request:
+    paths:
+      - 'dataview/**'
+      - '.github/workflows/dataview-perf.yml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'dataview/**'
+      - '.github/workflows/dataview-perf.yml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+
+jobs:
+  perf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --dir dataview bench -- --sizes=small --scenarios=record.value.points.single,record.value.status.grouped --iterations=3 --warmup=1 --json=.tmp/dataview-bench-ci.json
+      - run: node dataview/bench/runner/compare.cjs --baseline=dataview/bench/baselines/smoke.json --current=dataview/.tmp/dataview-bench-ci.json --threshold=0.3 --min-delta-ms=2 --mode=warn
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dataview-bench-results
+          path: dataview/.tmp/dataview-bench-ci.json

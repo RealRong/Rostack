@@ -1,4 +1,5 @@
 import { Button } from '@ui'
+import { toNodeStylePatch } from '@whiteboard/core/node'
 import { FillPanel } from '../../panels/FillPanel'
 import { ToolbarFillIcon } from '../primitives'
 import type { ToolbarItemSpec } from './types'
@@ -34,26 +35,34 @@ export const fillItem: ToolbarItemSpec = {
   renderPanel: ({
     context,
     editor
-  }) => (
-    <FillPanel
+  }) => {
+    const node = context.primaryNode ?? context.nodes[0]
+
+    return (
+      <FillPanel
       fill={context.fill}
       fillOpacity={context.fillOpacity}
       onFillChange={(value) => {
-        editor.document.nodes.patch(context.nodeIds, {
-          style: {
-            fill: value
-          }
-        })
+        if (!node) {
+          return
+        }
+
+        editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+          fill: value
+        }))
       }}
       onFillOpacityChange={context.canEditFillOpacity
         ? (value) => {
-            editor.document.nodes.patch(context.nodeIds, {
-              style: {
-                fillOpacity: value
-              }
-            })
+            if (!node) {
+              return
+            }
+
+            editor.document.nodes.patch(context.nodeIds, toNodeStylePatch(node, {
+              fillOpacity: value
+            }))
           }
         : undefined}
-    />
-  )
+      />
+    )
+  }
 }

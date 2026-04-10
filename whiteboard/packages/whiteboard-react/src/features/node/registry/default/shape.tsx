@@ -1,7 +1,8 @@
 import {
   readShapeKind,
   readShapeMeta,
-  readShapeSpec
+  readShapeSpec,
+  toNodeDataPatch
 } from '@whiteboard/core/node'
 import {
   useEffect,
@@ -141,11 +142,9 @@ const ShapeLabel = ({
   const commit = (value = draft) => {
     editor.view.preview.nodeText.clear(node.id)
     editor.session.edit.clear()
-    editor.document.nodes.patch([node.id], {
-      data: {
-        text: value
-      }
-    })
+    editor.document.nodes.patch([node.id], toNodeDataPatch(node, {
+      text: value
+    }))
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {

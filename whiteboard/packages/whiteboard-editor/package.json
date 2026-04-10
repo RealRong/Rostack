@@ -28,8 +28,8 @@
     "@whiteboard/engine": "workspace:*"
   },
   "scripts": {
-    "build": "tsup",
-    "lint": "tsc -p tsconfig.json --noEmit",
+    "build": "pnpm -C ../.. build:editor",
+    "lint": "pnpm -C ../.. typecheck:editor",
     "test": "echo \"No tests\""
   }
 }

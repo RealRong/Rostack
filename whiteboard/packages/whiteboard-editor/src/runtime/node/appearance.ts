@@ -1,5 +1,3 @@
-import { compileNodeFieldUpdates } from '@whiteboard/core/schema'
-import type { Engine } from '@whiteboard/engine'
 import type {
   NodeAppearanceMutations,
   NodePatchWriter
@@ -7,39 +5,15 @@ import type {
 import { styleUpdate } from './patch'
 
 export const createNodeAppearanceMutations = ({
-  engine,
   document
 }: {
-  engine: Engine
   document: NodePatchWriter
 }): NodeAppearanceMutations => ({
   setFill: (nodeIds, fill) => document.updateMany(
-    nodeIds.map((id) => {
-      const node = engine.read.node.item.get(id)?.node
-
-      return {
-        id,
-        update:
-          node?.type === 'sticky'
-            ? compileNodeFieldUpdates([
-                {
-                  field: {
-                    scope: 'style',
-                    path: 'fill'
-                  },
-                  value: fill
-                },
-                {
-                  field: {
-                    scope: 'data',
-                    path: 'background'
-                  },
-                  value: fill
-                }
-              ])
-            : styleUpdate('fill', fill)
-      }
-    })
+    nodeIds.map((id) => ({
+      id,
+      update: styleUpdate('fill', fill)
+    }))
   ),
   setFillOpacity: (nodeIds, opacity) => document.updateMany(
     nodeIds.map((id) => ({

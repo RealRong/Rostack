@@ -2,7 +2,6 @@ import type {
   BucketSort,
   Field,
   FieldId,
-  RecordId,
   ViewGroup,
   ViewId
 } from '@dataview/core/contracts'
@@ -24,8 +23,4 @@ export interface ViewGroupProjection {
   availableModes: readonly string[]
   availableBucketSorts: readonly BucketSort[]
   supportsInterval: boolean
-}
-
-export interface ResolvedGroup extends Bucket {
-  records: RecordId[]
 }

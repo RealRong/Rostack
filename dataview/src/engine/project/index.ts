@@ -17,7 +17,7 @@ export type {
 } from './field'
 export {
   recordIdsOfAppearances
-} from './appearances'
+} from './stages/appearances'
 export {
   fieldId,
   fieldOf,
@@ -28,7 +28,7 @@ export {
 } from './field'
 export {
   readSectionRecordIds
-} from './sections'
+} from './stages/sections'
 export {
   move
 } from './move'

@@ -60,7 +60,10 @@ const isEdgeItemEqual = (
 ) => (
   left === right
   || (
-    left?.edge === right?.edge
+    left !== undefined
+    && right !== undefined
+    && left.id === right.id
+    && left.edge === right.edge
     && left?.ends.source.end.kind === right?.ends.source.end.kind
     && left?.ends.target.end.kind === right?.ends.target.end.kind
     && left?.ends.source.anchor?.side === right?.ends.source.anchor?.side

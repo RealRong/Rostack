@@ -7,6 +7,9 @@ import { read as createRead } from '../runtime/read/read'
 import { commitRuntime } from '../runtime/commit/runtime'
 import { document } from './document'
 import {
+  createPerfRuntime
+} from '../perf/runtime'
+import {
   createFieldsEngineApi,
   createRecordsEngineApi,
   createViewEngineApi,
@@ -16,6 +19,7 @@ import {
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const historyCapacity = Math.max(0, options.history?.capacity ?? 100)
   const initialDocument = cloneDocument(options.document)
+  const perf = createPerfRuntime(options.perf)
 
   const instanceDocument = document({
     initialDocument
@@ -25,14 +29,16 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     getDocument: instanceDocument.peekDocument
   })
   const project = createProjectSource({
-    document: instanceDocument.peekDocument()
+    document: instanceDocument.peekDocument(),
+    perf: options.perf
   })
 
   const commit = commitRuntime({
     document: instanceDocument,
     read,
     project,
-    historyCapacity
+    historyCapacity,
+    perf
   })
 
   const engine = {
@@ -48,6 +54,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       view: read.view
     },
     project,
+    perf: perf.api,
     command: (command: Parameters<Engine['command']>[0]) => {
       const batch = resolveWriteBatch({
         document: instanceDocument.peekDocument(),

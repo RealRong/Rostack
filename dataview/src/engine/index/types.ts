@@ -50,6 +50,9 @@ export interface AggregateState {
   min?: number | string | null
   max?: number | string | null
   distribution: ReadonlyMap<string, number>
+  uniqueCounts: ReadonlyMap<string, number>
+  numberCounts: ReadonlyMap<number, number>
+  optionCounts: ReadonlyMap<string, number>
   entries: ReadonlyMap<RecordId, AggregateEntry>
 }
 
@@ -58,6 +61,8 @@ export interface AggregateEntry {
   label?: string
   number?: number
   comparable?: number | string
+  uniqueKey?: string
+  optionId?: string
 }
 
 export interface FieldCalcIndex {

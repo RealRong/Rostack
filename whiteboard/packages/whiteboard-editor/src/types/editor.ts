@@ -24,18 +24,16 @@ import type {
   Document,
   Edge,
   EdgeEnd,
-  EdgeDash,
   EdgeId,
   EdgeInput,
-  EdgeMarker,
-  EdgeTextMode,
-  EdgeType,
+  EdgePatch,
   MindmapId,
   MindmapNodeData,
   MindmapNodeId,
   MindmapTree,
   NodeId,
   NodeInput,
+  NodeUpdateInput,
   Origin,
   Point,
   Rect,
@@ -262,41 +260,12 @@ export type EditorSelectionApi = {
   ) => boolean
 }
 
-export type EditorNodePatch = {
-  fields?: Partial<{
-    position: Point
-    size: Size
-    locked: boolean
-  }>
-  style?: Partial<{
-    fill: string
-    fillOpacity: number
-    stroke: string
-    strokeWidth: number
-    strokeOpacity: number
-    strokeDash: readonly number[]
-    opacity: number
-    color: string
-    fontSize: number
-    fontWeight: number
-    fontStyle: 'normal' | 'italic'
-    textAlign: 'left' | 'center' | 'right'
-  }>
-  data?: Partial<{
-    text: string
-    title: string
-    kind: string
-    background: string
-  }>
-}
-
 export type EditorNodesApi = {
   create: (payload: NodeInput) => CommandResult<{ nodeId: NodeId }>
   patch: (
     ids: readonly NodeId[],
-    patch: EditorNodePatch,
+    update: NodeUpdateInput,
     options?: {
-      measuredSizeById?: Readonly<Record<NodeId, Size>>
       origin?: Origin
     }
   ) => CommandResult | undefined
@@ -313,29 +282,13 @@ export type EditorNodesApi = {
   }>
 }
 
-export type EditorEdgePatch = {
-  fields?: Partial<{
-    source: EdgeEnd
-    target: EdgeEnd
-    type: EdgeType
-    textMode: EdgeTextMode
-  }>
-  style?: Partial<{
-    color: string
-    width: number
-    dash: EdgeDash
-    start: EdgeMarker
-    end: EdgeMarker
-  }>
-}
-
 export type MindmapNodePatch = Parameters<EditorMindmapCommands['updateNode']>[1]
 
 export type EditorEdgesApi = {
   create: (payload: EdgeInput) => CommandResult<{ edgeId: EdgeId }>
   patch: (
     edgeIds: readonly EdgeId[],
-    patch: EditorEdgePatch
+    patch: EdgePatch
   ) => CommandResult | undefined
   move: (edgeId: EdgeId, delta: Point) => CommandResult
   reconnect: (

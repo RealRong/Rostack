@@ -222,6 +222,41 @@ const createEmptyDocument = () => {
   }
 }
 
+const projectSectionRecordIds = (engine, sectionKey) => {
+  const sections = engine.project.sections.get() ?? []
+  const appearances = engine.project.appearances.get()
+
+  return (
+    sections.find(section => section.key === sectionKey)?.ids
+      .map(id => appearances?.get(id)?.recordId)
+      .filter(Boolean)
+    ?? []
+  )
+}
+
+const projectSnapshot = engine => {
+  const calculations = engine.project.calculations.get()
+
+  return {
+    records: {
+      derivedIds: [...(engine.project.records.get()?.derivedIds ?? [])],
+      orderedIds: [...(engine.project.records.get()?.orderedIds ?? [])],
+      visibleIds: [...(engine.project.records.get()?.visibleIds ?? [])]
+    },
+    sections: (engine.project.sections.get() ?? []).map(section => ({
+      key: section.key,
+      collapsed: section.collapsed,
+      recordIds: projectSectionRecordIds(engine, section.key)
+    })),
+    calculations: Object.fromEntries(
+      Array.from(calculations?.entries() ?? []).map(([sectionKey, collection]) => [
+        sectionKey,
+        Object.fromEntries(Array.from(collection.byField.entries()))
+      ])
+    )
+  }
+}
+
 test('view group bucket toggle clears the final collapsed bucket state', () => {
   const engine = createEngine({
     document: createDocument()
@@ -381,6 +416,195 @@ test('engine.project records honor search filter sort and manual order', () => {
     engine.project.records.get()?.visibleIds,
     ['rec_3', 'rec_1', 'rec_2']
   )
+})
+
+test('engine.project grouped sections keep visible record order inside each bucket', () => {
+  const document = createDocument()
+  document.records.byId.rec_4 = {
+    id: 'rec_4',
+    title: 'Task 4',
+    type: 'task',
+    values: {
+      [FIELD_STATUS]: 'todo',
+      [FIELD_POINTS]: 4
+    }
+  }
+  document.records.order = ['rec_1', 'rec_2', 'rec_3', 'rec_4']
+
+  const engine = createEngine({
+    document
+  })
+
+  engine.view(VIEW_TABLE).sort.only(FIELD_POINTS, 'desc')
+  engine.view(VIEW_TABLE).group.set(FIELD_STATUS)
+
+  const sections = engine.project.sections.get()
+  const appearances = engine.project.appearances.get()
+  const todoIds = sections
+    ?.find(section => section.key === 'todo')
+    ?.ids
+    .map(id => appearances?.get(id)?.recordId)
+
+  assert.deepEqual(todoIds, ['rec_4', 'rec_1'])
+})
+
+test('engine.project calculations are derived from index aggregates', () => {
+  const document = createDocument()
+  document.records.byId.rec_4 = {
+    id: 'rec_4',
+    title: 'Task 4',
+    type: 'task',
+    values: {
+      [FIELD_STATUS]: 'todo',
+      [FIELD_POINTS]: 4
+    }
+  }
+  document.records.order = ['rec_1', 'rec_2', 'rec_3', 'rec_4']
+
+  const engine = createEngine({
+    document
+  })
+
+  engine.view(VIEW_TABLE).calc.set(FIELD_POINTS, 'median')
+  engine.view(VIEW_TABLE).calc.set(FIELD_STATUS, 'countUniqueValues')
+
+  let calculations = engine.project.calculations.get()
+  let root = calculations?.get('root')
+
+  assert.equal(root?.get(FIELD_POINTS)?.kind, 'scalar')
+  assert.equal(root?.get(FIELD_POINTS)?.value, 2.5)
+  assert.equal(root?.get(FIELD_STATUS)?.kind, 'scalar')
+  assert.equal(root?.get(FIELD_STATUS)?.value, 3)
+
+  engine.view(VIEW_TABLE).group.set(FIELD_STATUS)
+  engine.view(VIEW_TABLE).calc.set(FIELD_STATUS, 'percentByOption')
+
+  calculations = engine.project.calculations.get()
+  const todo = calculations?.get('todo')
+  const todoMedian = todo?.get(FIELD_POINTS)
+  const todoStatus = todo?.get(FIELD_STATUS)
+
+  assert.equal(todoMedian?.kind, 'scalar')
+  assert.equal(todoMedian?.value, 2.5)
+  assert.equal(todoStatus?.kind, 'distribution')
+  assert.equal(todoStatus?.items[0]?.key, 'todo')
+  assert.equal(todoStatus?.items[0]?.percent, 1)
+})
+
+test('engine.project reconcile reuses unaffected grouped sections and calculations on data changes', () => {
+  const engine = createEngine({
+    document: createDocument()
+  })
+
+  engine.view(VIEW_TABLE).group.set(FIELD_STATUS)
+  engine.view(VIEW_TABLE).calc.set(FIELD_POINTS, 'sum')
+
+  const recordsBefore = engine.project.records.get()
+  const sectionsBefore = engine.project.sections.get()
+  const appearancesBefore = engine.project.appearances.get()
+  const calculationsBefore = engine.project.calculations.get()
+  const doingSectionBefore = sectionsBefore?.find(section => section.key === 'doing')
+  const doneSectionBefore = sectionsBefore?.find(section => section.key === 'done')
+  const doingCalculationBefore = calculationsBefore?.get('doing')
+  const doneCalculationBefore = calculationsBefore?.get('done')
+  const doingAppearanceBefore = doingSectionBefore?.ids[0]
+    ? appearancesBefore?.get(doingSectionBefore.ids[0])
+    : undefined
+
+  engine.records.setValue('rec_1', FIELD_STATUS, 'done')
+
+  const recordsAfter = engine.project.records.get()
+  const sectionsAfter = engine.project.sections.get()
+  const appearancesAfter = engine.project.appearances.get()
+  const calculationsAfter = engine.project.calculations.get()
+  const doingSectionAfter = sectionsAfter?.find(section => section.key === 'doing')
+  const doneSectionAfter = sectionsAfter?.find(section => section.key === 'done')
+  const doingAppearanceAfter = doingSectionAfter?.ids[0]
+    ? appearancesAfter?.get(doingSectionAfter.ids[0])
+    : undefined
+
+  assert.equal(recordsAfter, recordsBefore)
+  assert.equal(doingSectionAfter, doingSectionBefore)
+  assert.notEqual(doneSectionAfter, doneSectionBefore)
+  assert.equal(doingAppearanceAfter, doingAppearanceBefore)
+  assert.equal(calculationsAfter?.get('doing'), doingCalculationBefore)
+  assert.notEqual(calculationsAfter?.get('done'), doneCalculationBefore)
+  assert.deepEqual(projectSectionRecordIds(engine, 'todo'), [])
+  assert.deepEqual(projectSectionRecordIds(engine, 'done'), ['rec_1', 'rec_3'])
+})
+
+test('engine.project reconcile keeps undo redo equivalent across sequential deltas', () => {
+  const engine = createEngine({
+    document: createDocument()
+  })
+
+  engine.view(VIEW_TABLE).group.set(FIELD_STATUS)
+  engine.view(VIEW_TABLE).calc.set(FIELD_POINTS, 'sum')
+
+  const initial = projectSnapshot(engine)
+
+  engine.records.setValue('rec_1', FIELD_POINTS, 10)
+  const afterPoints = projectSnapshot(engine)
+
+  engine.records.setValue('rec_1', FIELD_STATUS, 'doing')
+  const afterGroupMove = projectSnapshot(engine)
+
+  assert.equal(engine.history.canUndo(), true)
+  assert.equal(engine.history.canRedo(), false)
+
+  engine.history.undo()
+  assert.deepEqual(projectSnapshot(engine), afterPoints)
+
+  engine.history.undo()
+  assert.deepEqual(projectSnapshot(engine), initial)
+  assert.equal(engine.history.canRedo(), true)
+
+  engine.history.redo()
+  assert.deepEqual(projectSnapshot(engine), afterPoints)
+
+  engine.history.redo()
+  assert.deepEqual(projectSnapshot(engine), afterGroupMove)
+})
+
+test('engine.perf traces project and publish behavior for incremental updates', () => {
+  const engine = createEngine({
+    document: createDocument(),
+    perf: {
+      trace: true,
+      stats: true
+    }
+  })
+
+  engine.view(VIEW_TABLE).group.set(FIELD_STATUS)
+  engine.view(VIEW_TABLE).calc.set(FIELD_POINTS, 'sum')
+  engine.perf.trace.clear()
+  engine.perf.stats.clear()
+
+  engine.records.setValue('rec_1', FIELD_STATUS, 'done')
+
+  const trace = engine.perf.trace.last()
+  const stats = engine.perf.stats.snapshot()
+  const sectionsStage = trace?.project.stages.find(stage => stage.stage === 'sections')
+  const calculationsStage = trace?.project.stages.find(stage => stage.stage === 'calculations')
+
+  assert.ok(trace)
+  assert.equal(trace.kind, 'dispatch')
+  assert.equal(trace.delta.summary.values, true)
+  assert.equal(trace.project.plan.sections, 'reconcile')
+  assert.equal(trace.project.plan.appearances, 'reconcile')
+  assert.equal(trace.project.plan.calculations, 'reconcile')
+  assert.equal(trace.index.group.action, 'sync')
+  assert.ok(trace.publish.changedStores.includes('sections'))
+  assert.ok(trace.publish.changedStores.includes('appearances'))
+  assert.ok(trace.publish.changedStores.includes('calculations'))
+  assert.equal(sectionsStage?.action, 'reconcile')
+  assert.equal(calculationsStage?.action, 'reconcile')
+  assert.ok((sectionsStage?.metrics?.reusedNodeCount ?? 0) >= 2)
+  assert.ok((calculationsStage?.metrics?.reusedNodeCount ?? 0) >= 1)
+  assert.equal(stats.commits.total, 1)
+  assert.equal(stats.commits.dispatch, 1)
+  assert.equal(stats.stages.sections.reconcile, 1)
+  assert.equal(stats.indexes.group.changed, 1)
 })
 
 test('view.create resolves duplicate names in the command layer', () => {

@@ -6,7 +6,8 @@ import {
   FRAME_DEFAULT_STROKE,
   FRAME_DEFAULT_STROKE_WIDTH,
   FRAME_DEFAULT_TEXT_COLOR,
-  FRAME_DEFAULT_TITLE
+  FRAME_DEFAULT_TITLE,
+  toNodeDataPatch
 } from '@whiteboard/core/node'
 import type { NodeDefinition } from '#react/types/node'
 import { useEdit, useEditor, usePickRef } from '#react/runtime/hooks'
@@ -74,11 +75,9 @@ export const FrameNodeChrome = ({
     const nextTitle = draft.trim() || FRAME_DEFAULT_TITLE
     editor.view.preview.nodeText.clear(node.id)
     editor.session.edit.clear()
-    editor.document.nodes.patch([node.id], {
-      data: {
-        title: nextTitle
-      }
-    })
+    editor.document.nodes.patch([node.id], toNodeDataPatch(node, {
+      title: nextTitle
+    }))
   }
 
   return (

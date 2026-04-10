@@ -3,7 +3,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
 import {
   isTextContentEmpty,
-  resolveAnchoredRect
+  resolveAnchoredRect,
+  toNodeDataPatch
 } from '@whiteboard/core/node'
 import { useOptionalKeyedStoreValue, useStoreValue } from '@shared/react'
 import type { NodeDefinition, NodeRenderProps } from '#react/types/node'
@@ -76,15 +77,9 @@ const stickySchema = createSchema('sticky', 'Sticky', [
 
 const readStickyFill = (
   node: NodeRenderProps['node']
-) => (
-  typeof node.style?.fill === 'string'
-    ? node.style.fill
-    : (
-        node.data && typeof node.data.background === 'string'
-          ? node.data.background
-          : STICKY_DEFAULT_FILL
-      )
-)
+) => typeof node.style?.fill === 'string'
+  ? node.style.fill
+  : STICKY_DEFAULT_FILL
 
 const TextNodeRenderer = ({
   node,
@@ -343,19 +338,8 @@ const TextNodeRenderer = ({
   ])
 
   const commit = (
-    nextDraft = draft,
-    source: HTMLElement | null = sourceRef.current
+    nextDraft = draft
   ) => {
-    const size = !isSticky && source
-      ? measureTextNodeSize({
-          node,
-          rect,
-          content: nextDraft,
-          placeholder,
-          source
-        })
-      : undefined
-
     editor.view.preview.nodeText.clear(node.id)
     editor.session.edit.clear()
 
@@ -365,21 +349,9 @@ const TextNodeRenderer = ({
       return
     }
 
-    editor.document.nodes.patch(
-      [node.id],
-      {
-        data: {
-          text: nextDraft
-        }
-      },
-      size
-        ? {
-            measuredSizeById: {
-              [node.id]: size
-            }
-          }
-        : undefined
-    )
+    editor.document.nodes.patch([node.id], toNodeDataPatch(node, {
+      text: nextDraft
+    }))
   }
 
   const cancel = () => {
@@ -433,7 +405,7 @@ const TextNodeRenderer = ({
                   }}
                   onKeyDown={onKeyDown}
                   onBlur={(event) => {
-                    commit(readEditableText(event.currentTarget), event.currentTarget)
+                    commit(readEditableText(event.currentTarget))
                   }}
                   style={{
                     fontSize,

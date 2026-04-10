@@ -21,10 +21,10 @@ import { isTitleFieldId } from '@dataview/core/field'
 import { createUniqueFieldName } from '@dataview/core/field'
 import {
   recordIdsOfAppearances,
-} from '@dataview/engine/project/appearances'
+} from '@dataview/engine/project/stages/appearances'
 import {
   readSectionRecordIds,
-} from '@dataview/engine/project/sections'
+} from '@dataview/engine/project/stages/sections'
 import type {
   AppearanceId,
   AppearanceList,

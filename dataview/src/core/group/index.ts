@@ -1,11 +1,6 @@
 export type {
-  ResolvedGroup,
   ViewGroupProjection
 } from './types'
-export {
-  resolveGroupedRecords,
-  resolveViewGroupProjection
-} from './projection'
 export {
   clearGroup,
   cloneBucketState,

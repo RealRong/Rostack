@@ -22,6 +22,7 @@ import {
 
 const resolveMarker = (value: string | undefined, fallbackId: string) => {
   if (!value) return undefined
+  if (value === 'none') return undefined
   if (value.startsWith('url(')) return value
   if (value === 'arrow') return `url(#${fallbackId})`
   return `url(#${value})`

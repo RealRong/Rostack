@@ -8,9 +8,9 @@ import {
   type RefObject
 } from 'react'
 import { Button, cn } from '@ui'
-import type { NodeId, Point, Size } from '@whiteboard/core/types'
+import { toNodeFieldUpdate, toNodeStylePatch } from '@whiteboard/core/node'
+import type { NodeId, Point } from '@whiteboard/core/types'
 import { useElementSize, useOptionalKeyedStoreValue, useStoreValue } from '@shared/react'
-import { measureBoundTextNodeSize } from '#react/features/node'
 import { useEdit, useEditorRuntime } from '#react/runtime/hooks'
 import { WhiteboardPopover } from '#react/runtime/overlay'
 import {
@@ -84,35 +84,6 @@ const resolveToolbarAnchorWorld = ({
     ? y
     : y + height
 })
-
-const buildTextNodeSizeById = ({
-  context,
-  editor,
-  value
-}: {
-  context: Extract<TextToolbarContext, { kind: 'node' }>
-  editor: ReturnType<typeof useEditorRuntime>
-  value?: number
-}) => {
-  const item = editor.read.node.item.get(context.nodeId)
-  if (!item?.node || item.node.type !== 'text') {
-    return undefined
-  }
-
-  const size = measureBoundTextNodeSize({
-    editor,
-    nodeId: context.nodeId,
-    value: typeof item.node.data?.text === 'string' ? item.node.data.text : '',
-    fontSize: value
-  })
-  if (!size) {
-    return undefined
-  }
-
-  return {
-    [context.nodeId]: size
-  } satisfies Record<NodeId, Size>
-}
 
 const resolveContext = (
   edit: ReturnType<typeof useEdit>,
@@ -191,21 +162,15 @@ const createContextWriter = (
     }
 
     if (context.kind === 'node') {
-      editor.document.nodes.patch(
-        [context.nodeId],
-        {
-          style: {
-            fontSize: value
-          }
-        },
-        {
-          measuredSizeById: buildTextNodeSizeById({
-            context,
-            editor,
-            value
-          })
-        }
-      )
+      const node = editor.read.node.item.get(context.nodeId)?.node
+      if (!node) {
+        return
+      }
+
+      editor.document.nodes.patch([context.nodeId], toNodeFieldUpdate({
+        scope: 'style',
+        path: 'fontSize'
+      }, value))
       return
     }
 
@@ -221,11 +186,15 @@ const createContextWriter = (
     }
 
     if (context.kind === 'node') {
-      editor.document.nodes.patch([context.nodeId], {
-        style: {
-          fontWeight: weight
-        }
-      })
+      const node = editor.read.node.item.get(context.nodeId)?.node
+      if (!node) {
+        return
+      }
+
+      editor.document.nodes.patch([context.nodeId], toNodeFieldUpdate({
+        scope: 'style',
+        path: 'fontWeight'
+      }, weight))
       return
     }
 
@@ -241,11 +210,14 @@ const createContextWriter = (
     }
 
     if (context.kind === 'node') {
-      editor.document.nodes.patch([context.nodeId], {
-        style: {
-          fontStyle: italic ? 'italic' : 'normal'
-        }
-      })
+      const node = editor.read.node.item.get(context.nodeId)?.node
+      if (!node) {
+        return
+      }
+
+      editor.document.nodes.patch([context.nodeId], toNodeStylePatch(node, {
+        fontStyle: italic ? 'italic' : 'normal'
+      }))
       return
     }
 
@@ -257,11 +229,14 @@ const createContextWriter = (
   },
   setColor: (value: string) => {
     if (context.kind === 'node') {
-      editor.document.nodes.patch([context.nodeId], {
-        style: {
-          color: value
-        }
-      })
+      const node = editor.read.node.item.get(context.nodeId)?.node
+      if (!node) {
+        return
+      }
+
+      editor.document.nodes.patch([context.nodeId], toNodeStylePatch(node, {
+        color: value
+      }))
       return
     }
 
@@ -277,11 +252,14 @@ const createContextWriter = (
     }
 
     if (context.kind === 'node') {
-      editor.document.nodes.patch([context.nodeId], {
-        style: {
-          fill: value
-        }
-      })
+      const node = editor.read.node.item.get(context.nodeId)?.node
+      if (!node) {
+        return
+      }
+
+      editor.document.nodes.patch([context.nodeId], toNodeStylePatch(node, {
+        fill: value
+      }))
       return
     }
 

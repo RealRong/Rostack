@@ -1,11 +1,11 @@
 import type {
   Node,
+  NodeUpdateInput,
   NodeType,
   Rect
 } from '@whiteboard/core/types'
 import type {
   ControlId,
-  EditorNodePatch,
   NodeDefinition as EditorNodeDefinition,
   NodeFamily,
   NodeHit,
@@ -23,7 +23,7 @@ export type {
 }
 
 export type NodeWrite = {
-  patch: (patch: EditorNodePatch) => void
+  patch: (update: NodeUpdateInput) => void
 }
 
 export type NodeRenderProps = {

@@ -13,7 +13,7 @@ import type {
   Schema,
   Section,
   SectionKey
-} from './types'
+} from '../types'
 
 const equalList = <T,>(
   left: readonly T[],

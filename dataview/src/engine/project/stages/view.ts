@@ -7,14 +7,14 @@ import {
 } from '@dataview/core/document'
 import type {
   ActiveView
-} from '../types'
+} from '../../types'
 import type {
   Stage
-} from './stage'
+} from '../runtime/stage'
 import {
   reuse,
   shouldRun
-} from './stage'
+} from '../runtime/stage'
 
 export const resolveActiveView = (
   document: DataDoc,

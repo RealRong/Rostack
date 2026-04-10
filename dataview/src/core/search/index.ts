@@ -5,9 +5,6 @@ export {
   matchSearchRecord
 } from './execute'
 export {
-  resolveViewSearchProjection
-} from './projection'
-export {
   cloneSearch,
   normalizeSearch,
   sameSearch,

@@ -6,7 +6,7 @@ import type {
   FieldList,
   Section,
   SectionKey
-} from './types'
+} from '../types'
 import type {
   ActiveView,
   FilterView,
@@ -14,7 +14,7 @@ import type {
   RecordSet,
   SearchView,
   SortView
-} from '../types'
+} from '../../types'
 
 export interface ProjectState {
   view?: ActiveView

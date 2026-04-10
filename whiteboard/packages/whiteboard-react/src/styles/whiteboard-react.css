@@ -81,6 +81,22 @@
   pointer-events: none;
 }
 
+.wb-scene {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: var(--wb-z-node);
+}
+
+.wb-scene-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .wb-root-viewport {
   position: absolute;
   inset: 0;
@@ -105,13 +121,6 @@
 .wb-root-container[data-tool='draw'] .wb-node-block,
 .wb-root-container[data-tool='draw'] .wb-edge-item {
   cursor: crosshair;
-}
-
-.wb-node-layer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: var(--wb-z-node);
 }
 
 .wb-node-overlay-layer {
@@ -698,26 +707,23 @@
   pointer-events: none;
 }
 
-.wb-edge-layer {
+.wb-edge-item {
   position: absolute;
-  inset: 0;
+  left: 0;
+  top: 0;
   overflow: visible;
   pointer-events: none;
-  z-index: var(--wb-z-edge);
 }
 
-.wb-edge-item .wb-edge-selection-path,
-.wb-edge-item .wb-edge-hover-path,
+.wb-edge-svg {
+  display: block;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.wb-edge-item .wb-edge-accent-path,
 .wb-edge-item .wb-edge-visible-path {
   transition: stroke 120ms ease, stroke-width 120ms ease, opacity 120ms ease;
-}
-
-.wb-edge-selection-path {
-  opacity: 0.22;
-}
-
-.wb-edge-hover-path {
-  opacity: 0;
 }
 
 .wb-edge-hit-path {
@@ -726,12 +732,6 @@
 
 .wb-edge-hit-path:focus-visible {
   outline: none;
-}
-
-.wb-edge-item[data-selected='false'] .wb-edge-hit-path:hover + .wb-edge-hover-path,
-.wb-edge-item[data-selected='false'] .wb-edge-hit-path:focus-visible + .wb-edge-hover-path {
-  opacity: 1;
-  stroke-width: var(--wb-edge-hover-stroke-width, 3);
 }
 
 .wb-edge-endpoint-layer {
@@ -822,14 +822,6 @@
   overflow: visible;
   pointer-events: none;
   z-index: var(--wb-z-preview);
-}
-
-.wb-edge-label-layer {
-  position: absolute;
-  inset: 0;
-  overflow: visible;
-  pointer-events: none;
-  z-index: var(--wb-z-edge-overlay);
 }
 
 .wb-edge-label {

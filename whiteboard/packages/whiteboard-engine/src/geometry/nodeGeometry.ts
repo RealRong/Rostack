@@ -1,6 +1,5 @@
 import type { Node, NodeGeometry, NodeId, Rect, Size } from '@whiteboard/core/types'
-import { getNodeRect } from '@whiteboard/core/geometry'
-import { getNodeGeometry } from '@whiteboard/core/node'
+import { getNodeGeometry, getNodeRect } from '@whiteboard/core/node'
 import { isSameRectWithRotationTuple, toFiniteOrUndefined } from '@whiteboard/core/equality'
 
 type NodeGeometryStateTuple = {

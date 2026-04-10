@@ -35,8 +35,9 @@ export interface ProjectionSection {
 }
 
 export interface AppearanceList {
-  byId: ReadonlyMap<AppearanceId, Appearance>
   ids: readonly AppearanceId[]
+  idsBySection: ReadonlyMap<SectionKey, readonly AppearanceId[]>
+  count: number
   get: (id: AppearanceId) => Appearance | undefined
   has: (id: AppearanceId) => boolean
   indexOf: (id: AppearanceId) => number | undefined

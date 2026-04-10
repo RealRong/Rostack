@@ -319,11 +319,9 @@ const resolveIndexDemand = (
     return {}
   }
 
-  const search = view.search.query.trim()
-    ? view.search.fields?.length
-      ? { fields: view.search.fields }
-      : { all: true }
-    : undefined
+  const search = view.search.fields?.length
+    ? { fields: view.search.fields }
+    : { all: true }
 
   return {
     ...(search ? { search } : {}),
@@ -580,13 +578,18 @@ const createRecordSet = (
 const countChangedIds = (
   previous: readonly string[] | undefined,
   next: readonly string[] | undefined
-) => {
-  const left = new Set(previous ?? [])
-  const right = new Set(next ?? [])
-  return new Set([
-    ...Array.from(left).filter(value => !right.has(value)),
-    ...Array.from(right).filter(value => !left.has(value))
-  ]).size
+): number | undefined => {
+  if (!previous || !next) {
+    return next?.length
+  }
+
+  if (previous === next) {
+    return 0
+  }
+
+  return previous.length !== next.length
+    ? Math.max(previous.length, next.length)
+    : undefined
 }
 
 const countReusedSections = (
@@ -627,9 +630,10 @@ const countReusedAppearances = (
     return 0
   }
 
-  return next.ids.reduce((count, id) => count + (
-    previous.byId.get(id) === next.byId.get(id) ? 1 : 0
-  ), 0)
+  return previous.ids === next.ids
+    && previous.idsBySection === next.idsBySection
+    ? next.count
+    : 0
 }
 
 const countReusedCalculations = (
@@ -663,13 +667,14 @@ const buildStageMetrics = (
         + (previousRecords?.orderedIds === nextRecords.orderedIds ? 1 : 0)
         + (previousRecords?.visibleIds === nextRecords.visibleIds ? 1 : 0)
       )
+      const changedRecordCount = countChangedIds(previousRecords?.visibleIds, nextRecords.visibleIds)
 
       return {
         inputCount: previousRecords?.visibleIds.length,
         outputCount: nextRecords.visibleIds.length,
         reusedNodeCount,
         rebuiltNodeCount: 3 - reusedNodeCount,
-        changedRecordCount: countChangedIds(previousRecords?.visibleIds, nextRecords.visibleIds)
+        ...(changedRecordCount === undefined ? {} : { changedRecordCount })
       }
     }
     case 'sections': {
@@ -712,12 +717,13 @@ const buildStageMetrics = (
       }
 
       const reusedNodeCount = countReusedAppearances(previousAppearances, nextAppearances)
+      const changedRecordCount = countChangedIds(previousAppearances?.ids, nextAppearances.ids)
       return {
         inputCount: previousAppearances?.ids.length,
         outputCount: nextAppearances.ids.length,
         reusedNodeCount,
-        rebuiltNodeCount: nextAppearances.byId.size - reusedNodeCount,
-        changedRecordCount: countChangedIds(previousAppearances?.ids, nextAppearances.ids)
+        rebuiltNodeCount: nextAppearances.count - reusedNodeCount,
+        ...(changedRecordCount === undefined ? {} : { changedRecordCount })
       }
     }
     default:

@@ -14,31 +14,39 @@ import {
 } from '@dataview/core/field'
 import {
   collectSchemaFieldIds,
-  collectTouchedRecordIds
+  collectTouchedRecordIds,
+  hasRecordSetChange
 } from './shared'
 import type {
   RecordIndex,
-  RecordTokens,
   SearchDemand,
   SearchIndex
 } from './types'
 
-const unique = (
+const normalizeTokens = (
   values: readonly string[]
-): readonly string[] => Array.from(new Set(values.filter(Boolean).map(value => value.toLowerCase())))
+): string | undefined => {
+  const tokens = Array.from(new Set(
+    values
+      .filter(Boolean)
+      .map(value => value.trim().toLowerCase())
+      .filter(Boolean)
+  ))
+
+  return tokens.length
+    ? tokens.join('\u0000')
+    : undefined
+}
 
 const buildFieldTokens = (
   record: Row,
   fieldId: FieldId,
   field?: ReturnType<typeof getDocumentFieldById>
-): readonly string[] | undefined => {
-  return fieldId === 'title'
-    ? unique(getFieldSearchTokens(field, record.title))
-    : unique(getFieldSearchTokens(
-        field,
-        record.values[fieldId]
-      ))
-}
+): string | undefined => normalizeTokens(
+  fieldId === 'title'
+    ? getFieldSearchTokens(field, record.title)
+    : getFieldSearchTokens(field, record.values[fieldId])
+)
 
 const buildAllTokens = (
   record: Row,
@@ -46,10 +54,14 @@ const buildAllTokens = (
     id: FieldId
     field: ReturnType<typeof getDocumentFieldById>
   }[]
-): readonly string[] | undefined => {
+): string | undefined => {
   const tokens = new Set<string>()
-  const addTokens = (nextTokens: readonly string[] | undefined) => {
-    nextTokens?.forEach(token => {
+  const addTokens = (nextTokens: readonly string[] | string | undefined) => {
+    const values = typeof nextTokens === 'string'
+      ? nextTokens.split('\u0000')
+      : nextTokens
+
+    values?.forEach(token => {
       if (token) {
         tokens.add(token.toLowerCase())
       }
@@ -63,144 +75,19 @@ const buildAllTokens = (
     addTokens(buildFieldTokens(record, id, field))
   })
 
-  return tokens.size
-    ? Array.from(tokens)
-    : undefined
+  return normalizeTokens(Array.from(tokens))
 }
 
-const cloneRecordTokens = (
-  record: RecordTokens
-): {
-  all?: readonly string[]
-  fields: Map<FieldId, readonly string[]>
-} => ({
-  ...(record.all ? { all: record.all } : {}),
-  fields: new Map(record.fields)
-})
-
-const addTokensToPostings = (
-  postings: Map<string, Set<RecordId>>,
-  tokens: readonly string[],
-  recordId: RecordId
-) => {
-  tokens.forEach(token => {
-    const ids = postings.get(token)
-    if (ids) {
-      ids.add(recordId)
-      return
-    }
-
-    postings.set(token, new Set([recordId]))
-  })
-}
-
-const removeTokensFromPostings = (
-  postings: Map<string, Set<RecordId>>,
-  tokens: readonly string[],
-  recordId: RecordId
-) => {
-  tokens.forEach(token => {
-    const ids = postings.get(token)
-    if (!ids) {
-      return
-    }
-
-    ids.delete(recordId)
-    if (ids.size) {
-      return
-    }
-
-    postings.delete(token)
-  })
-}
-
-const clonePostings = (
-  source: ReadonlyMap<string, ReadonlySet<RecordId>>
-): Map<string, Set<RecordId>> => new Map(
-  Array.from(source.entries(), ([token, ids]) => [
-    token,
-    new Set(ids)
-  ] as const)
-)
-
-const setRecordFieldTokens = (input: {
-  records: Map<RecordId, RecordTokens>
-  recordId: RecordId
-  fieldId: FieldId
-  tokens?: readonly string[]
-}) => {
-  const current = input.records.get(input.recordId)
-  if (!current && !input.tokens?.length) {
-    return
-  }
-
-  const next = current
-    ? cloneRecordTokens(current)
-    : {
-        fields: new Map<FieldId, readonly string[]>()
-      }
-
-  if (input.tokens?.length) {
-    next.fields.set(input.fieldId, input.tokens)
-  } else {
-    next.fields.delete(input.fieldId)
-  }
-
-  if (!next.all && !next.fields.size) {
-    input.records.delete(input.recordId)
-    return
-  }
-
-  input.records.set(input.recordId, next)
-}
-
-const setRecordAllTokens = (input: {
-  records: Map<RecordId, RecordTokens>
-  recordId: RecordId
-  tokens?: readonly string[]
-}) => {
-  const current = input.records.get(input.recordId)
-  if (!current && !input.tokens?.length) {
-    return
-  }
-
-  const next = current
-    ? cloneRecordTokens(current)
-    : {
-        fields: new Map<FieldId, readonly string[]>()
-      }
-
-  if (input.tokens?.length) {
-    next.all = input.tokens
-  } else {
-    delete next.all
-  }
-
-  if (!next.all && !next.fields.size) {
-    input.records.delete(input.recordId)
-    return
-  }
-
-  input.records.set(input.recordId, next)
-}
-
-const buildFieldPostings = (
+const buildFieldTexts = (
   document: DataDoc,
   records: RecordIndex,
   fieldId: FieldId
-): {
-  postings: ReadonlyMap<string, ReadonlySet<RecordId>>
-  recordTokens: ReadonlyMap<RecordId, readonly string[]>
-} => {
-  const postings = new Map<string, Set<RecordId>>()
-  const recordTokens = new Map<RecordId, readonly string[]>()
+): ReadonlyMap<RecordId, string> => {
+  const texts = new Map<RecordId, string>()
   const field = getDocumentFieldById(document, fieldId)
 
   if (!field && fieldId !== 'title') {
-    return {
-      postings,
-      recordTokens
-    }
+    return texts
   }
 
   records.ids.forEach(recordId => {
@@ -210,29 +97,21 @@ const buildFieldPostings = (
     }
 
     const tokens = buildFieldTokens(record, fieldId, field)
-    if (!tokens?.length) {
+    if (!tokens) {
       return
     }
 
-    recordTokens.set(recordId, tokens)
-    addTokensToPostings(postings, tokens, recordId)
+    texts.set(recordId, tokens)
   })
 
-  return {
-    postings,
-    recordTokens
-  }
+  return texts
 }
 
-const buildAllPostings = (
+const buildAllTexts = (
   document: DataDoc,
   records: RecordIndex
-): {
-  postings: ReadonlyMap<string, ReadonlySet<RecordId>>
-  recordTokens: ReadonlyMap<RecordId, readonly string[]>
-} => {
-  const postings = new Map<string, Set<RecordId>>()
-  const recordTokens = new Map<RecordId, readonly string[]>()
+): ReadonlyMap<RecordId, string> => {
+  const texts = new Map<RecordId, string>()
   const fields = document.fields.order.map(fieldId => ({
     id: fieldId,
     field: getDocumentFieldById(document, fieldId)
@@ -245,18 +124,14 @@ const buildAllPostings = (
     }
 
     const tokens = buildAllTokens(record, fields)
-    if (!tokens?.length) {
+    if (!tokens) {
       return
     }
 
-    recordTokens.set(recordId, tokens)
-    addTokensToPostings(postings, tokens, recordId)
+    texts.set(recordId, tokens)
   })
 
-  return {
-    postings,
-    recordTokens
-  }
+  return texts
 }
 
 const normalizeDemand = (
@@ -269,27 +144,6 @@ const normalizeDemand = (
   fields: new Set(demand?.fields ?? [])
 })
 
-const removeFieldTokens = (
-  records: Map<RecordId, RecordTokens>,
-  fieldId: FieldId
-) => {
-  Array.from(records.entries()).forEach(([recordId, tokens]) => {
-    if (!tokens.fields.has(fieldId)) {
-      return
-    }
-
-    const next = cloneRecordTokens(tokens)
-    next.fields.delete(fieldId)
-
-    if (!next.all && !next.fields.size) {
-      records.delete(recordId)
-      return
-    }
-
-    records.set(recordId, next)
-  })
-}
-
 export const buildSearchIndex = (
   document: DataDoc,
   records: RecordIndex,
@@ -298,7 +152,6 @@ export const buildSearchIndex = (
 ): SearchIndex => {
   const base: SearchIndex = {
     fields: new Map(),
-    records: new Map(),
     rev
   }
   const built = ensureSearchIndex(base, document, records, demand)
@@ -321,18 +174,9 @@ export const ensureSearchIndex = (
   let changed = false
   let nextAll = previous.all
   const nextFields = new Map(previous.fields)
-  const nextRecords = new Map(previous.records)
 
   if (normalized.all && !previous.all) {
-    const built = buildAllPostings(document, records)
-    nextAll = built.postings
-    built.recordTokens.forEach((tokens, recordId) => {
-      setRecordAllTokens({
-        records: nextRecords,
-        recordId,
-        tokens
-      })
-    })
+    nextAll = buildAllTexts(document, records)
     changed = true
   }
 
@@ -341,16 +185,7 @@ export const ensureSearchIndex = (
       return
     }
 
-    const built = buildFieldPostings(document, records, fieldId)
-    nextFields.set(fieldId, built.postings)
-    built.recordTokens.forEach((tokens, recordId) => {
-      setRecordFieldTokens({
-        records: nextRecords,
-        recordId,
-        fieldId,
-        tokens
-      })
-    })
+    nextFields.set(fieldId, buildFieldTexts(document, records, fieldId))
     changed = true
   })
 
@@ -358,7 +193,6 @@ export const ensureSearchIndex = (
     ? {
         ...(nextAll ? { all: nextAll } : {}),
         fields: nextFields,
-        records: nextRecords,
         rev: previous.rev + 1
       }
     : previous
@@ -409,124 +243,85 @@ export const syncSearchIndex = (
   let changed = false
   let nextAll = previous.all
   const nextFields = new Map(previous.fields)
-  const nextRecords = new Map(previous.records)
   const allFields = document.fields.order.map(fieldId => ({
     id: fieldId,
     field: getDocumentFieldById(document, fieldId)
   }))
+  const recordSetChanged = hasRecordSetChange(delta)
 
   if (rebuildAll) {
-    const built = buildAllPostings(document, records)
-    nextAll = built.postings
-    Array.from(nextRecords.keys()).forEach(recordId => {
-      setRecordAllTokens({
-        records: nextRecords,
-        recordId
-      })
-    })
-    built.recordTokens.forEach((tokens, recordId) => {
-      setRecordAllTokens({
-        records: nextRecords,
-        recordId,
-        tokens
-      })
-    })
+    nextAll = buildAllTexts(document, records)
     changed = true
   } else if (hasLoadedAll && touchedRecords !== 'all' && touchedRecords.size) {
-    const postings = clonePostings(previous.all!)
+    const texts = new Map(previous.all!)
 
     touchedRecords.forEach(recordId => {
-      const previousTokens = nextRecords.get(recordId)?.all
-      if (previousTokens?.length) {
-        removeTokensFromPostings(postings, previousTokens, recordId)
-      }
-
       const record = records.rows.get(recordId)
-      const nextTokens = record
+      const nextText = record
         ? buildAllTokens(record, allFields)
         : undefined
-      setRecordAllTokens({
-        records: nextRecords,
-        recordId,
-        tokens: nextTokens
-      })
-
-      if (nextTokens?.length) {
-        addTokensToPostings(postings, nextTokens, recordId)
+      if (nextText) {
+        texts.set(recordId, nextText)
+        return
       }
+
+      texts.delete(recordId)
     })
 
-    nextAll = postings
+    nextAll = texts
     changed = true
   }
 
   Array.from(loadedFieldIds).forEach(fieldId => {
     if (schemaFields.has(fieldId) && !getDocumentFieldById(document, fieldId)) {
       nextFields.delete(fieldId)
-      removeFieldTokens(nextRecords, fieldId)
       changed = true
       return
     }
 
     if (rebuildFieldIds.has(fieldId)) {
-      const built = buildFieldPostings(document, records, fieldId)
-      nextFields.set(fieldId, built.postings)
-      removeFieldTokens(nextRecords, fieldId)
-      built.recordTokens.forEach((tokens, recordId) => {
-        setRecordFieldTokens({
-          records: nextRecords,
-          recordId,
-          fieldId,
-          tokens
-        })
-      })
+      nextFields.set(fieldId, buildFieldTexts(document, records, fieldId))
       changed = true
       return
     }
 
-    if (touchedRecords === 'all' || !touchedRecords.size || !valueFields.has(fieldId)) {
+    if (
+      touchedRecords === 'all'
+      || !touchedRecords.size
+      || (!recordSetChanged && !valueFields.has(fieldId))
+    ) {
       return
     }
 
-    const previousPostings = previous.fields.get(fieldId)
-    if (!previousPostings) {
+    const previousTexts = previous.fields.get(fieldId)
+    if (!previousTexts) {
       return
     }
 
-    const postings = clonePostings(previousPostings)
+    const texts = new Map(previousTexts)
 
     touchedRecords.forEach(recordId => {
-      const previousTokens = nextRecords.get(recordId)?.fields.get(fieldId)
-      if (previousTokens?.length) {
-        removeTokensFromPostings(postings, previousTokens, recordId)
-      }
-
       const row = records.rows.get(recordId)
-      const nextTokens = row
+      const nextText = row
         ? buildFieldTokens(row, fieldId, getDocumentFieldById(document, fieldId))
         : undefined
-      setRecordFieldTokens({
-        records: nextRecords,
-        recordId,
-        fieldId,
-        tokens: nextTokens
-      })
-
-      if (nextTokens?.length) {
-        addTokensToPostings(postings, nextTokens, recordId)
+      if (nextText) {
+        texts.set(recordId, nextText)
+        return
       }
+
+      texts.delete(recordId)
     })
 
-    nextFields.set(fieldId, postings)
+    nextFields.set(fieldId, texts)
     changed = true
   })
 
   return changed
     ? {
-        ...(nextAll ? { all: nextAll } : {}),
-        fields: nextFields,
-        records: nextRecords,
-        rev: previous.rev + 1
-      }
+      ...(nextAll ? { all: nextAll } : {}),
+      fields: nextFields,
+      rev: previous.rev + 1
+    }
     : previous
 }

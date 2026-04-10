@@ -182,9 +182,8 @@ const resolveSectionKeys = (input: {
 const buildGroupedDescriptors = (input: {
   document: DataDoc
   view: View
-  query: QueryState
   index: IndexState
-  keys: ReadonlySet<SectionKey>
+  idsByKey: ReadonlyMap<SectionKey, readonly RecordId[]>
 }): {
   order: readonly SectionKey[]
   byKey: ReadonlyMap<SectionKey, Bucket>
@@ -203,14 +202,32 @@ const buildGroupedDescriptors = (input: {
       .map(bucket => [bucket.key as SectionKey, { ...bucket }] as const)
   )
 
-  input.query.visible.forEach(recordId => {
-    const bucketKeys = input.index.group.fields.get(group.field)?.recordBuckets.get(recordId) ?? []
-    if (!bucketKeys.length) {
+  input.idsByKey.forEach((ids, key) => {
+    if (descriptors.has(key)) {
+      return
+    }
+
+    const recordId = ids[0]
+    if (!recordId) {
+      descriptors.set(key, {
+        key,
+        title: key,
+        value: key,
+        clearValue: false,
+        empty: false
+      })
       return
     }
 
     const record = input.index.records.rows.get(recordId)
     if (!record) {
+      descriptors.set(key, {
+        key,
+        title: key,
+        value: key,
+        clearValue: false,
+        empty: false
+      })
       return
     }
 
@@ -219,31 +236,16 @@ const buildGroupedDescriptors = (input: {
       getRecordFieldValue(record, group.field),
       group
     )
-
-    bucketKeys.forEach(bucketKey => {
-      if (descriptors.has(bucketKey)) {
-        return
-      }
-
-      const descriptor = entries.find(entry => entry.key === bucketKey)
-      if (descriptor) {
-        descriptors.set(bucketKey, { ...descriptor })
-      }
-    })
-  })
-
-  input.keys.forEach(key => {
-    if (descriptors.has(key)) {
-      return
-    }
-
-    descriptors.set(key, {
-      key,
-      title: key,
-      value: key,
-      clearValue: false,
-      empty: false
-    })
+    const descriptor = entries.find(entry => entry.key === key)
+    descriptors.set(key, descriptor
+      ? { ...descriptor }
+      : {
+          key,
+          title: key,
+          value: key,
+          clearValue: false,
+          empty: false
+        })
   })
 
   const order = Array.from(descriptors.values())
@@ -303,9 +305,8 @@ const buildFromScratch = (input: {
   const descriptors = buildGroupedDescriptors({
     document: input.document,
     view: input.view,
-    query: input.query,
     index: input.index,
-    keys: new Set(idsByKey.keys())
+    idsByKey
   })
 
   const byKey = new Map<SectionKey, SectionNodeState>()
@@ -429,9 +430,8 @@ export const syncSectionState = (input: {
   const descriptors = buildGroupedDescriptors({
     document: input.document,
     view: input.view,
-    query: input.query,
     index: input.index,
-    keys: new Set(idsByKey.keys())
+    idsByKey
   })
 
   const byKey = new Map<SectionKey, SectionNodeState>()

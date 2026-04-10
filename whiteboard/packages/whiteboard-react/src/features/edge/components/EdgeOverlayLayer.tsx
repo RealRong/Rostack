@@ -13,7 +13,6 @@ import type {
   SelectedEdgeView
 } from '#react/types/edge'
 import { useSelectedEdgeView } from '../hooks/useEdgeView'
-import { EdgeLabelLayer } from './EdgeLabelLayer'
 import {
   EDGE_ARROW_END_ID,
   EDGE_ARROW_START_ID,
@@ -218,7 +217,6 @@ export const EdgeOverlayLayer = () => {
 
   return (
     <>
-      <EdgeLabelLayer />
       {showEdgeControls && selectedEdgeView ? (
         <EdgeSelectedOverlay
           view={selectedEdgeView}

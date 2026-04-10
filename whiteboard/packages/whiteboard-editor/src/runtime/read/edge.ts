@@ -1,6 +1,7 @@
 import { isPointEqual } from '@whiteboard/core/geometry'
 import {
   applyEdgePatch,
+  getEdgePathBounds,
   isPointEdgeEnd,
   type EdgeConnectCandidate,
   type EdgeNodeCanvasSnapshot,
@@ -41,6 +42,11 @@ export type EdgeCapability = {
   reconnectSource: boolean
   reconnectTarget: boolean
   editRoute: boolean
+}
+
+export type EdgeBox = {
+  rect: Rect
+  pad: number
 }
 
 const toNodeCanvasSnapshot = (
@@ -198,11 +204,31 @@ const resolveEdgeCan = (
   editRoute: true
 })
 
+const readEdgeBox = (
+  entry: CoreEdgeView | undefined,
+  edge: EdgeItem['edge'] | undefined
+): EdgeBox | undefined => {
+  if (!entry || !edge) {
+    return undefined
+  }
+
+  const rect = getEdgePathBounds(entry.path)
+  if (!rect) {
+    return undefined
+  }
+
+  return {
+    rect,
+    pad: Math.max(24, (edge.style?.width ?? 2) + 16)
+  }
+}
+
 export type EdgeRead = {
   list: EngineRead['edge']['list']
   item: KeyedReadStore<EdgeId, EdgeItem | undefined>
   state: KeyedReadStore<EdgeId, EdgeRuntimeState>
   resolved: KeyedReadStore<EdgeId, CoreEdgeView | undefined>
+  box: (edgeId: EdgeId) => EdgeBox | undefined
   capability: (edge: EdgeItem['edge']) => EdgeCapability
   related: (nodeIds: Iterable<NodeId>) => readonly EdgeId[]
   idsInRect: (rect: Rect, options?: {
@@ -341,6 +367,10 @@ export const createEdgeRead = ({
     item,
     state,
     resolved,
+    box: (edgeId) => readEdgeBox(
+      readResolved(edgeId),
+      item.get(edgeId)?.edge
+    ),
     capability: resolveEdgeCan,
     related: read.edge.related,
     idsInRect: (rect, options) => read.edge.list.get().filter((edgeId) => {

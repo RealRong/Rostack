@@ -7,7 +7,6 @@ import type {
   Field,
 } from '@dataview/core/contracts'
 import type {
-  Appearance,
   AppearanceList,
   FieldList,
   Schema,
@@ -87,15 +86,6 @@ const equalField = (
   right: Field
 ) => equalStableValue(left, right)
 
-const equalAppearance = (
-  left: Appearance,
-  right: Appearance
-) => (
-  left.id === right.id
-  && left.recordId === right.recordId
-  && left.section === right.section
-)
-
 const equalSection = (
   left: Section,
   right: Section
@@ -161,7 +151,8 @@ export const sameAppearanceList = (
   right: AppearanceList
 ) => (
   equalIds(left.ids, right.ids)
-  && equalMap(left.byId, right.byId, equalAppearance)
+  && left.count === right.count
+  && equalMap(left.idsBySection, right.idsBySection, equalIds)
 )
 
 export const sameSections = (

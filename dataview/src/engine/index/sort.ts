@@ -8,7 +8,7 @@ import {
   getDocumentFieldById
 } from '@dataview/core/document'
 import {
-  getRecordFieldValue
+  compareFieldValues
 } from '@dataview/core/field'
 import {
   collectSchemaFieldIds,
@@ -17,22 +17,49 @@ import {
 } from './shared'
 import type {
   RecordIndex,
-  SortIndex,
-  SortKey
+  SortFieldIndex,
+  SortIndex
 } from './types'
+
+const compareSortValues = (
+  field: ReturnType<typeof getDocumentFieldById>,
+  left: unknown,
+  right: unknown
+): number => {
+  if (field?.kind === 'number' && typeof left === 'number' && typeof right === 'number') {
+    return left - right
+  }
+
+  return compareFieldValues(field, left, right)
+}
 
 const buildFieldSortIndex = (
   document: DataDoc,
   records: RecordIndex,
   fieldId: FieldId
-): ReadonlyMap<RecordId, SortKey> => new Map(
-  records.ids.flatMap(recordId => {
-    const row = records.rows.get(recordId)
-    return row
-      ? [[recordId, getRecordFieldValue(row, fieldId)] as const]
-      : []
+): SortFieldIndex => {
+  const field = getDocumentFieldById(document, fieldId)
+  const values = records.values.get(fieldId) ?? new Map<RecordId, unknown>()
+  const asc = records.ids.slice().sort((leftId, rightId) => {
+    const result = compareSortValues(
+      field,
+      values.get(leftId),
+      values.get(rightId)
+    )
+
+    if (result !== 0) {
+      return result
+    }
+
+    return (records.order.get(leftId) ?? Number.MAX_SAFE_INTEGER)
+      - (records.order.get(rightId) ?? Number.MAX_SAFE_INTEGER)
   })
-)
+
+  return {
+    asc,
+    desc: asc.slice().reverse()
+  }
+}
 
 export const buildSortIndex = (
   document: DataDoc,
@@ -117,23 +144,7 @@ export const syncSortIndex = (
       return
     }
 
-    const previousField = previous.fields.get(fieldId)
-    if (!previousField) {
-      return
-    }
-
-    const nextField = new Map(previousField)
-    touchedRecords.forEach(recordId => {
-      const row = records.rows.get(recordId)
-      if (!row) {
-        nextField.delete(recordId)
-        return
-      }
-
-      nextField.set(recordId, getRecordFieldValue(row, fieldId))
-    })
-
-    nextFields.set(fieldId, nextField)
+    nextFields.set(fieldId, buildFieldSortIndex(document, records, fieldId))
     changed = true
   })
 

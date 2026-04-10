@@ -124,6 +124,7 @@ export const createRead = ({
         toolbar: edgeToolbar
       },
       mindmap: engineRead.mindmap,
+      scene: engineRead.scene,
       selection: selectionRead.public,
       slice: engineRead.slice,
       index: engineRead.index,

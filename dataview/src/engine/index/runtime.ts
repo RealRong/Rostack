@@ -99,6 +99,13 @@ const touchedFieldCountOf = (
   return touched.size || undefined
 }
 
+const searchEntryCountOf = (
+  search: IndexState['search']
+): number => (
+  (search.all?.size ?? 0)
+  + Array.from(search.fields.values()).reduce((count, field) => count + field.size, 0)
+)
+
 const createIndexStageTrace = (input: {
   previous: unknown
   next: unknown
@@ -289,8 +296,8 @@ export const createEngineIndex = (
             next: search,
             rebuild,
             durationMs: searchMs,
-            inputSize: previous.search.records.size,
-            outputSize: search.records.size,
+            inputSize: searchEntryCountOf(previous.search),
+            outputSize: searchEntryCountOf(search),
             touchedRecordCount,
             touchedFieldCount
           }),

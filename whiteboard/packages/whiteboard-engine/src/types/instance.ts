@@ -117,6 +117,10 @@ export type MindmapRead = {
   item: KeyedReadStore<NodeId, Readonly<MindmapItem> | undefined>
 }
 
+export type SceneRead = {
+  list: ReadStore<readonly CanvasItemRef[]>
+}
+
 export type SliceRead = {
   fromNodes: (nodeIds: readonly NodeId[]) => SliceExportResult | undefined
   fromEdge: (edgeId: EdgeId) => SliceExportResult | undefined
@@ -136,6 +140,7 @@ export type EngineRead = {
   node: NodeRead
   edge: EdgeRead
   mindmap: MindmapRead
+  scene: SceneRead
   slice: SliceRead
   index: EngineReadIndex
 }

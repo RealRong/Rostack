@@ -31,11 +31,6 @@ export {
 } from './segment'
 
 export {
-  getNodeRect,
-  getNodeAABB
-} from './node'
-
-export {
   isPointEqual,
   isSizeEqual
 } from './equality'

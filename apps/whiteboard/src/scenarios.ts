@@ -5,7 +5,7 @@ import type {
   Node,
   SpatialNode
 } from '@whiteboard/core/types'
-import { createDocument } from '@whiteboard/core/types'
+import { createDocument } from '@whiteboard/core/document'
 
 type Scenario = {
   id: string

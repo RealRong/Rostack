@@ -12,6 +12,15 @@ import type {
 import type {
   RecordIndex
 } from './types'
+import {
+  createOrderIndex
+} from './shared'
+
+const sameIds = (
+  left: readonly RecordId[],
+  right: readonly RecordId[]
+) => left.length === right.length
+  && left.every((value, index) => value === right[index])
 
 const toValueMap = (
   document: DataDoc,
@@ -31,6 +40,15 @@ const toValueMap = (
     entries.filter((entry): entry is readonly [RecordId, unknown] => entry[1] !== undefined)
   )
 }
+
+const readFieldValue = (
+  row: DataDoc['records']['byId'][RecordId] | undefined,
+  fieldId: FieldId
+): unknown => (
+  fieldId === TITLE_FIELD_ID
+    ? row?.title
+    : row?.values[fieldId]
+)
 
 const collectUpdatedRecordIds = (
   delta: CommitDelta
@@ -65,8 +83,9 @@ export const buildRecordIndex = (
   document: DataDoc,
   rev = 1
 ): RecordIndex => {
+  const ids = [...document.records.order]
   const rows = new Map(
-    document.records.order.flatMap(recordId => {
+    ids.flatMap(recordId => {
       const row = document.records.byId[recordId]
       return row
         ? [[recordId, row] as const]
@@ -81,7 +100,8 @@ export const buildRecordIndex = (
   })
 
   return {
-    ids: [...document.records.order],
+    ids,
+    order: createOrderIndex(ids),
     rows,
     values,
     rev
@@ -109,6 +129,10 @@ export const syncRecordIndex = (
   const nextRows = new Map(previous.rows)
   const nextValues = new Map(previous.values)
   let changed = false
+  const recordSetChanged = Boolean(
+    delta.entities.records?.add?.length
+    || delta.entities.records?.remove?.length
+  )
 
   const updatedRecordIds = collectUpdatedRecordIds(delta)
   if (updatedRecordIds === 'all') {
@@ -174,16 +198,48 @@ export const syncRecordIndex = (
       return
     }
 
-    nextValues.set(fieldId, toValueMap(document, fieldId))
+    if (recordSetChanged || !updatedRecordIds.size) {
+      nextValues.set(fieldId, toValueMap(document, fieldId))
+      changed = true
+      return
+    }
+
+    const previousValueMap = previous.values.get(fieldId)
+    if (!previousValueMap) {
+      nextValues.set(fieldId, toValueMap(document, fieldId))
+      changed = true
+      return
+    }
+
+    const nextValueMap = new Map(previousValueMap)
+    updatedRecordIds.forEach(recordId => {
+      const nextValue = readFieldValue(document.records.byId[recordId], fieldId)
+      if (nextValue === undefined) {
+        nextValueMap.delete(recordId)
+        return
+      }
+
+      nextValueMap.set(recordId, nextValue)
+    })
+
+    nextValues.set(fieldId, nextValueMap)
     changed = true
   })
 
-  if (!changed && previous.ids === document.records.order) {
+  const orderChanged = !sameIds(previous.ids, document.records.order)
+  if (!changed && !orderChanged) {
     return previous
   }
 
+  const ids = orderChanged
+    ? [...document.records.order]
+    : previous.ids
+
   return {
-    ids: [...document.records.order],
+    ids,
+    order: orderChanged
+      ? createOrderIndex(ids)
+      : previous.order,
     rows: nextRows,
     values: nextValues,
     rev: previous.rev + 1

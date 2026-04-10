@@ -7,6 +7,12 @@ export {
   isNodeUpdateEmpty
 } from './update'
 export {
+  getNodeAABB,
+  getNodeBoundsByNode,
+  getNodeRect,
+  getNodesBounds
+} from './geometry'
+export {
   containsPointInNodeOutline,
   distanceToNodeOutline,
   getAutoNodeAnchor,

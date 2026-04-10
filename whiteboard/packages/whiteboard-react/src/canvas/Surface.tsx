@@ -10,12 +10,10 @@ import { Chrome } from './Chrome'
 import { useClipboard } from './useClipboard'
 import { useKeyboard } from './useKeyboard'
 import { usePointer } from './usePointer'
+import { CanvasScene } from './CanvasScene'
 import { DrawLayer } from '../features/draw/DrawLayer'
-import { EdgeLayer } from '../features/edge/components/EdgeLayer'
 import { EdgeOverlayLayer } from '../features/edge/components/EdgeOverlayLayer'
-import { MindmapSceneLayer } from '../features/mindmap/components/MindmapSceneLayer'
 import { NodeOverlayLayer } from '../features/node/components/NodeOverlayLayer'
-import { NodeSceneLayer } from '../features/node/components/NodeSceneLayer'
 import { Marquee } from '../features/selection/Marquee'
 import type { ResolvedConfig } from '../types/common/config'
 import type { WhiteboardPresenceBinding } from '../types/common/presence'
@@ -87,9 +85,7 @@ export const Surface = ({
       >
         <Background />
         <div className="wb-root-viewport" style={transformStyle}>
-          <EdgeLayer />
-          <NodeSceneLayer />
-          <MindmapSceneLayer />
+          <CanvasScene />
           <NodeOverlayLayer />
           <EdgeOverlayLayer />
           <DrawLayer />

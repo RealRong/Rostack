@@ -12,6 +12,9 @@ import type {
 } from './runtime/state'
 
 const emptyIds = [] as readonly AppearanceId[]
+const SEPARATOR = '\u0000'
+const SECTION_PREFIX = 'section:'
+const RECORD_PREFIX = 'record:'
 
 const sameIds = (
   left: readonly string[],
@@ -24,48 +27,108 @@ export const createAppearanceId = (input: {
   recordId: RecordId
 }): AppearanceId => `section:${input.section}\u0000record:${input.recordId}`
 
-export const createAppearanceList = (input: {
-  byId: ReadonlyMap<AppearanceId, Appearance>
-  ids: readonly AppearanceId[]
-  idsBySection: ReadonlyMap<SectionKey, readonly AppearanceId[]>
-}): AppearanceList => {
-  const visibleIndex = new Map<AppearanceId, number>()
-  const sectionById = new Map<AppearanceId, SectionKey>()
+const parseAppearanceId = (
+  id: AppearanceId
+): Appearance | undefined => {
+  const split = id.indexOf(SEPARATOR)
+  if (split < 0 || !id.startsWith(SECTION_PREFIX)) {
+    return undefined
+  }
 
-  input.ids.forEach((id, index) => {
-    visibleIndex.set(id, index)
-  })
-
-  input.idsBySection.forEach((ids, section) => {
-    ids.forEach(id => {
-      if (input.byId.has(id)) {
-        sectionById.set(id, section)
-      }
-    })
-  })
+  const section = id.slice(SECTION_PREFIX.length, split)
+  const record = id.slice(split + SEPARATOR.length)
+  if (!record.startsWith(RECORD_PREFIX)) {
+    return undefined
+  }
 
   return {
-    byId: input.byId,
+    id,
+    section,
+    recordId: record.slice(RECORD_PREFIX.length) as RecordId
+  }
+}
+
+export const createAppearanceList = (input: {
+  ids: readonly AppearanceId[]
+  idsBySection: ReadonlyMap<SectionKey, readonly AppearanceId[]>
+  count: number
+  previous?: AppearanceList
+}): AppearanceList => {
+  let visibleIndex: ReadonlyMap<AppearanceId, number> | undefined
+  let allIds: ReadonlySet<AppearanceId> | undefined
+  const cache = new Map<AppearanceId, Appearance>()
+
+  const ensureVisibleIndex = () => {
+    if (visibleIndex) {
+      return visibleIndex
+    }
+
+    visibleIndex = new Map(
+      input.ids.map((id, index) => [id, index] as const)
+    )
+    return visibleIndex
+  }
+
+  const ensureAllIds = () => {
+    if (allIds) {
+      return allIds
+    }
+
+    const next = new Set<AppearanceId>()
+    input.idsBySection.forEach((ids, section) => {
+      ids.forEach(id => {
+        if (parseAppearanceId(id)?.section === section) {
+          next.add(id)
+        }
+      })
+    })
+    allIds = next
+    return allIds
+  }
+
+  return {
     ids: input.ids,
-    get: id => input.byId.get(id),
-    has: id => visibleIndex.has(id),
-    indexOf: id => visibleIndex.get(id),
+    idsBySection: input.idsBySection,
+    count: input.count,
+    get: id => {
+      const cached = cache.get(id)
+      if (cached) {
+        return cached
+      }
+
+      if (!ensureAllIds().has(id)) {
+        return undefined
+      }
+
+      const parsed = parseAppearanceId(id)
+      if (!parsed) {
+        return undefined
+      }
+
+      const reused = input.previous?.get(id)
+      const next = reused ?? parsed
+      cache.set(id, next)
+      return next
+    },
+    has: id => ensureVisibleIndex().has(id),
+    indexOf: id => ensureVisibleIndex().get(id),
     at: index => input.ids[index],
     prev: id => {
-      const index = visibleIndex.get(id)
+      const index = ensureVisibleIndex().get(id)
       return index === undefined || index <= 0
         ? undefined
         : input.ids[index - 1]
     },
     next: id => {
-      const index = visibleIndex.get(id)
+      const index = ensureVisibleIndex().get(id)
       return index === undefined || index >= input.ids.length - 1
         ? undefined
         : input.ids[index + 1]
     },
     range: (anchor, focus) => {
-      const anchorIndex = visibleIndex.get(anchor)
-      const focusIndex = visibleIndex.get(focus)
+      const index = ensureVisibleIndex()
+      const anchorIndex = index.get(anchor)
+      const focusIndex = index.get(focus)
       if (anchorIndex === undefined || focusIndex === undefined) {
         return emptyIds
       }
@@ -74,7 +137,13 @@ export const createAppearanceList = (input: {
       const end = Math.max(anchorIndex, focusIndex)
       return input.ids.slice(start, end + 1)
     },
-    sectionOf: id => sectionById.get(id),
+    sectionOf: id => {
+      if (!ensureAllIds().has(id)) {
+        return undefined
+      }
+
+      return parseAppearanceId(id)?.section
+    },
     idsIn: section => input.idsBySection.get(section) ?? emptyIds
   }
 }
@@ -84,9 +153,9 @@ export const buildAppearanceList = (
   previous?: AppearanceList,
   previousSections?: SectionState
 ): AppearanceList => {
-  const byId = new Map<AppearanceId, Appearance>()
   const ids: AppearanceId[] = []
   const nextIdsBySection = new Map<SectionKey, readonly AppearanceId[]>()
+  let totalIdCount = 0
 
   sections.order.forEach(sectionKey => {
     const section = sections.byKey.get(sectionKey)
@@ -106,25 +175,8 @@ export const buildAppearanceList = (
         section: sectionKey,
         recordId
       })
-      byId.set(
-        id,
-        previous?.get(id) ?? {
-          id,
-          recordId,
-          section: sectionKey
-        }
-      )
       return id
     })
-
-    if (previousSectionIds) {
-      previousSectionIds.forEach(id => {
-        const appearance = previous?.get(id)
-        if (appearance) {
-          byId.set(id, appearance)
-        }
-      })
-    }
 
     nextIdsBySection.set(
       sectionKey,
@@ -132,6 +184,7 @@ export const buildAppearanceList = (
         ? previousSectionIds
         : sectionIds
     )
+    totalIdCount += sectionIds.length
     if (!section.collapsed) {
       ids.push(...sectionIds)
     }
@@ -142,9 +195,10 @@ export const buildAppearanceList = (
     : ids
 
   return createAppearanceList({
-    byId,
     ids: publishedIds,
-    idsBySection: nextIdsBySection
+    idsBySection: nextIdsBySection,
+    count: totalIdCount,
+    previous
   })
 }
 

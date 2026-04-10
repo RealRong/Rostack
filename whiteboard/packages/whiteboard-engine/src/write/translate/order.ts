@@ -28,6 +28,58 @@ const parseRef = (key: string): CanvasItemRef => {
     : { kind: 'node', id }
 }
 
+type CanvasOrderRole = 'frame' | 'content-node' | 'edge'
+
+const readRefRole = (
+  doc: Pick<Document, 'nodes' | 'edges'>,
+  ref: CanvasItemRef
+): CanvasOrderRole => {
+  if (ref.kind === 'edge') {
+    return 'edge'
+  }
+
+  return doc.nodes[ref.id]?.type === 'frame'
+    ? 'frame'
+    : 'content-node'
+}
+
+const normalizeFrameBarrierOrder = (
+  doc: Pick<Document, 'nodes' | 'edges'>,
+  refs: readonly CanvasItemRef[]
+): CanvasItemRef[] => {
+  const nodeIndexes: number[] = []
+  const frames: CanvasItemRef[] = []
+  const contentNodes: CanvasItemRef[] = []
+
+  refs.forEach((ref, index) => {
+    const role = readRefRole(doc, ref)
+    if (role === 'edge') {
+      return
+    }
+
+    nodeIndexes.push(index)
+    if (role === 'frame') {
+      frames.push(ref)
+      return
+    }
+
+    contentNodes.push(ref)
+  })
+
+  if (!frames.length || !contentNodes.length) {
+    return Array.from(refs)
+  }
+
+  const next = Array.from(refs)
+  const orderedNodes = [...frames, ...contentNodes]
+
+  nodeIndexes.forEach((index, slot) => {
+    next[index] = orderedNodes[slot] ?? next[index]!
+  })
+
+  return next
+}
+
 const bringOrderToFront = <T extends string>(order: T[], ids: T[]) => {
   const set = new Set(ids)
   const kept = order.filter((id) => !set.has(id))
@@ -71,12 +123,13 @@ const sendOrderBackward = <T extends string>(order: T[], ids: T[]) => {
 }
 
 const reorderRefs = (
+  doc: Pick<Document, 'nodes' | 'edges'>,
   currentRefs: readonly CanvasItemRef[],
   targetRefs: readonly CanvasItemRef[],
   mode: OrderMode
 ): CanvasItemRef[] => {
   if (mode === 'set') {
-    return Array.from(targetRefs)
+    return normalizeFrameBarrierOrder(doc, targetRefs)
   }
 
   const current = currentRefs.map(serializeRef)
@@ -101,7 +154,10 @@ const reorderRefs = (
       break
   }
 
-  return nextOrder.map(parseRef)
+  return normalizeFrameBarrierOrder(
+    doc,
+    nextOrder.map(parseRef)
+  )
 }
 
 const replaceGroupSlice = (
@@ -140,7 +196,7 @@ export const normalizeCanvasOrderTargets = ({
   if (mode === 'set' || selected.length <= 1) {
     return {
       current,
-      next: reorderRefs(current, selected, mode)
+      next: reorderRefs(doc, current, selected, mode)
     }
   }
 
@@ -181,13 +237,13 @@ export const normalizeCanvasOrderTargets = ({
       return
     }
 
-    const nextSlice = reorderRefs(groupSlice, selectedRefs, mode)
+    const nextSlice = reorderRefs(doc, groupSlice, selectedRefs, mode)
     nextCurrent = replaceGroupSlice(doc, nextCurrent, groupId, nextSlice)
   })
 
   const globalRefs = nextCurrent.filter((ref) => globalKeySet.has(serializeRef(ref)))
   return {
     current,
-    next: reorderRefs(nextCurrent, globalRefs, mode)
+    next: reorderRefs(doc, nextCurrent, globalRefs, mode)
   }
 }

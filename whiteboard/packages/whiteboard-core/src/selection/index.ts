@@ -3,26 +3,20 @@ export {
   EMPTY_SELECTION_TARGET,
   isSelectionTargetEqual,
   normalizeSelectionTarget,
-  type SelectionInput,
-  type SelectionTarget
-} from './target'
-export {
-  deriveSelectionSummary,
-  isSelectionSummaryEqual,
-  resolveSelectionTransformBox,
-  type SelectionSummary,
-  type SelectionTransformBox,
-  type SelectionTransform
-} from './summary'
-export {
   deriveSelectionAffordance,
+  deriveSelectionSummary,
+  getTargetBounds,
   isSelectionAffordanceEqual,
+  isSelectionSummaryEqual,
+  resolveSelectionBoxTarget,
+  resolveSelectionTransformBox,
+  type SelectionInput,
+  type BoundsTarget,
   type SelectionAffordance,
   type SelectionAffordanceMoveHit,
-  type SelectionAffordanceOwner
-} from './affordance'
-export {
-  getTargetBounds,
-  resolveSelectionBoxTarget,
-  type BoundsTarget
-} from './bounds'
+  type SelectionAffordanceOwner,
+  type SelectionSummary,
+  type SelectionTarget,
+  type SelectionTransform,
+  type SelectionTransformBox,
+} from './model'

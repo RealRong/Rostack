@@ -14,8 +14,7 @@ import {
   resolveEdgePathFromRects
 } from '@whiteboard/core/edge'
 import { getEdge, getNode } from '@whiteboard/core/document'
-import { getNodeRect } from '@whiteboard/core/geometry'
-import { getNodeGeometry } from '@whiteboard/core/node'
+import { getNodeGeometry, getNodeRect } from '@whiteboard/core/node'
 import type {
   Document,
   Edge,

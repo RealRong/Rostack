@@ -2,6 +2,59 @@
 
 更新时间：2026-04-10
 
+## 已落地状态
+
+本轮收敛已经按“不留兼容、不保留过渡层”的原则直接落地，当前状态如下：
+
+- `whiteboard-core` 已移除 editor-only 模块：
+  - `src/edge/routeHandle.ts`
+  - `src/selection/marquee.ts`
+  - `src/selection/press.ts`
+  - `src/node/projection.ts`
+  - `src/node/capability.ts`
+- `whiteboard-core` 已移除 engine-only 模块：
+  - `src/node/readModel.ts`
+  - `src/node/duplicate.ts`
+  - `src/group/index.ts`
+  - `src/group/commands.ts`
+- `whiteboard-core` 已移除 react-only 模块：
+  - `src/node/updateHelpers.ts`
+- `whiteboard-core` 已移除 clipboard transport：
+  - `src/document/clipboard.ts`
+- `whiteboard-core` 已进一步完成内部合并：
+  - `selection` 纯模型已合并为 `src/selection/model.ts`
+  - node 几何已合并为 `src/node/geometry.ts`
+  - `src/geometry/node.ts`
+  - `src/node/bounds.ts`
+    已删除
+
+对应的新归属：
+
+- editor 本地承接：
+  - `src/interactions/edge/routeHandle.ts`
+  - `src/interactions/selection/marqueeState.ts`
+  - `src/interactions/selection/pressPolicy.ts`
+  - `src/runtime/read/nodeProjection.ts`
+  - `src/runtime/read/nodeCapability.ts`
+  - `src/clipboard/packet.ts`
+- engine 本地承接：
+  - `src/read/store/nodeReadModel.ts`
+  - `src/write/translate/nodeSelection.ts`
+  - `src/write/translate/groupCommands.ts`
+- react 本地承接：
+  - `src/features/node/update.ts`
+
+验证结果：
+
+- `pnpm --dir whiteboard typecheck:core`
+- `pnpm --dir whiteboard typecheck:engine`
+- `pnpm --dir whiteboard typecheck:editor`
+- `pnpm --dir whiteboard typecheck:react`
+- `pnpm --dir whiteboard typecheck:collab`
+- `pnpm --dir whiteboard verify`
+
+以上均已通过。
+
 ## 结论
 
 `whiteboard-core` 上一轮已经把最明显的对外 surface 混杂问题清掉了，但内部还有一轮非常值得做的收敛，重点不是继续拆更多文件，而是把 `core` 里实际上属于 `engine`、`editor`、`react` 的单消费者能力移走，并把仍然留在 core 的几个重叠子域继续合并。

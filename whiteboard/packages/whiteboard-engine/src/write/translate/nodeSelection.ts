@@ -2,9 +2,8 @@ import {
   buildInsertSliceOperations,
   exportSliceFromNodes
 } from '@whiteboard/core/document'
-import { getNodeRect } from '@whiteboard/core/geometry'
 import { expandFrameSelection } from '@whiteboard/core/node'
-import { getNodeBounds } from '@whiteboard/core/node'
+import { getNodeBounds, getNodeRect } from '@whiteboard/core/node'
 import { ok } from '@whiteboard/core/result'
 import type {
   CoreRegistries,
@@ -18,15 +17,12 @@ import type {
   Size
 } from '@whiteboard/core/types'
 
-const getNodeBoundsByNode = (
-  node: Node,
-  fallbackSize: Size
-) => {
-  const rect = getNodeRect(node, fallbackSize)
-  const rotation = typeof node.rotation === 'number' ? node.rotation : 0
-
-  return getNodeBounds(node, rect, rotation)
-}
+const getNodeBoundsByNode = (node: Node, fallbackSize: Size) =>
+  getNodeBounds(
+    node,
+    getNodeRect(node, fallbackSize),
+    typeof node.rotation === 'number' ? node.rotation : 0
+  )
 
 export const expandNodeSelection = (
   nodes: readonly Node[],

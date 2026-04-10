@@ -19,7 +19,7 @@ import {
   type NodeLayoutEntry,
   type NodeLayoutUpdate
 } from './layout'
-import { getNodeBoundsByNode } from './bounds'
+import { getNodeBoundsByNode } from './geometry'
 import { createNodeFieldsUpdateOperation } from './update'
 
 type NodeCreateOperationResult =

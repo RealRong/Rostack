@@ -2,7 +2,11 @@ import type {
   CommitDelta,
   DataDoc,
   FieldId,
+  Field,
   RecordId
+} from '@dataview/core/contracts'
+import {
+  KANBAN_EMPTY_BUCKET_KEY
 } from '@dataview/core/contracts'
 import {
   getDocumentFieldById
@@ -15,7 +19,6 @@ import {
   collectSchemaFieldIds,
   collectTouchedRecordIds,
   collectValueFieldIds,
-  createOrderIndex,
   insertOrderedId,
   removeOrderedId
 } from './shared'
@@ -27,6 +30,62 @@ import type {
   SortedIdSet
 } from './types'
 
+const toScalarBucketKey = (
+  value: unknown
+): BucketKey => {
+  if (value === undefined || value === null) {
+    return KANBAN_EMPTY_BUCKET_KEY
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim()
+    return normalized.length
+      ? normalized
+      : KANBAN_EMPTY_BUCKET_KEY
+  }
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value)
+      ? String(value)
+      : KANBAN_EMPTY_BUCKET_KEY
+  }
+
+  if (typeof value === 'boolean') {
+    return value
+      ? 'true'
+      : 'false'
+  }
+
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
+  }
+}
+
+const resolveFastBucketKeys = (
+  field: Field | undefined,
+  value: unknown
+): readonly BucketKey[] | undefined => {
+  switch (field?.kind) {
+    case 'status':
+    case 'select':
+      return [toScalarBucketKey(value)]
+    case 'multiSelect':
+      return Array.isArray(value) && value.length
+        ? value.map(item => toScalarBucketKey(item))
+        : [KANBAN_EMPTY_BUCKET_KEY]
+    case 'boolean':
+      return value === true
+        ? ['true']
+        : value === false
+          ? ['false']
+          : [KANBAN_EMPTY_BUCKET_KEY]
+    default:
+      return undefined
+  }
+}
+
 const buildFieldGroupIndex = (
   document: DataDoc,
   records: RecordIndex,
@@ -35,6 +94,7 @@ const buildFieldGroupIndex = (
   const field = getDocumentFieldById(document, fieldId)
   const recordBuckets = new Map<RecordId, readonly BucketKey[]>()
   const bucketRecords = new Map<BucketKey, RecordId[]>()
+  const values = records.values.get(fieldId)
 
   if (!field) {
     return {
@@ -44,15 +104,12 @@ const buildFieldGroupIndex = (
   }
 
   records.ids.forEach(recordId => {
-    const record = records.rows.get(recordId)
-    if (!record) {
-      return
-    }
-
-    const buckets = resolveFieldGroupBucketEntries(
-      field,
-      getRecordFieldValue(record, fieldId)
-    ).map(bucket => String(bucket.key))
+    const fieldValue = values?.get(recordId)
+    const buckets = resolveFastBucketKeys(field, fieldValue)
+      ?? resolveFieldGroupBucketEntries(
+        field,
+        fieldValue
+      ).map(bucket => String(bucket.key))
 
     recordBuckets.set(recordId, buckets)
     buckets.forEach(bucketKey => {
@@ -76,16 +133,17 @@ const resolveRecordBuckets = (
   fieldId: FieldId,
   recordId: RecordId
 ): readonly BucketKey[] | undefined => {
-  const record = records.rows.get(recordId)
   const field = getDocumentFieldById(document, fieldId)
-  if (!record || !field) {
+  if (!field) {
     return undefined
   }
 
-  return resolveFieldGroupBucketEntries(
-    field,
-    getRecordFieldValue(record, fieldId)
-  ).map(bucket => String(bucket.key))
+  const fieldValue = records.values.get(fieldId)?.get(recordId)
+  return resolveFastBucketKeys(field, fieldValue)
+    ?? resolveFieldGroupBucketEntries(
+      field,
+      fieldValue
+    ).map(bucket => String(bucket.key))
 }
 
 const removeBucketMemberships = (
@@ -211,7 +269,6 @@ export const syncGroupIndex = (
       return
     }
 
-    const order = createOrderIndex(records.ids)
     const nextRecordBuckets = new Map(previousField.recordBuckets)
     const nextBucketRecords = new Map(previousField.bucketRecords)
 
@@ -228,7 +285,7 @@ export const syncGroupIndex = (
       }
 
       nextRecordBuckets.set(recordId, nextBuckets)
-      addBucketMemberships(nextBucketRecords, nextBuckets, recordId, order)
+      addBucketMemberships(nextBucketRecords, nextBuckets, recordId, records.order)
     })
 
     nextFields.set(fieldId, {

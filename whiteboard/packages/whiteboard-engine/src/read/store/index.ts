@@ -14,6 +14,7 @@ import {
   exportSliceFromSelection,
   exportSliceFromEdge,
   exportSliceFromNodes,
+  listCanvasItemRefs,
   listGroupCanvasItemRefs,
   listGroupEdgeIds,
   listGroupNodeIds,
@@ -32,6 +33,7 @@ import {
   type SelectionTarget
 } from '@whiteboard/core/selection'
 import {
+  type CanvasItemRef,
   type EdgeId,
   type Node,
   type NodeId,
@@ -92,6 +94,9 @@ export const createRead = ({
     index
   })
   const background = createValueStore(readDocument().background)
+  const scene = createValueStore(
+    listCanvasItemRefs(readDocument()) as readonly CanvasItemRef[]
+  )
 
   const syncIndexes = (impact: KernelReadImpact, model: ReadModel) => {
     nodeRectIndex.applyChange(impact, model)
@@ -372,6 +377,9 @@ export const createRead = ({
     if (impact.reset || impact.document) {
       background.set(readDocument().background)
     }
+    if (impact.reset || impact.document || impact.node.list || impact.edge.list) {
+      scene.set(listCanvasItemRefs(readDocument()) as readonly CanvasItemRef[])
+    }
 
     const model = readModel()
     syncIndexes(impact, model)
@@ -440,6 +448,9 @@ export const createRead = ({
       mindmap: {
         list: mindmapProjection.list,
         item: mindmapProjection.item
+      },
+      scene: {
+        list: scene
       },
       slice: {
         fromNodes: (nodeIds) => {

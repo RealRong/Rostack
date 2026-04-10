@@ -13,7 +13,7 @@ import type {
   Size
 } from '../types'
 import { expandFrameSelection } from './frame'
-import { getNodeBoundsByNode } from './bounds'
+import { getNodeBoundsByNode } from './geometry'
 
 export type MoveMember = {
   id: NodeId

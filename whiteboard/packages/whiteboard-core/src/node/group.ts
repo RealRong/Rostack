@@ -3,7 +3,7 @@ import type {
   Rect,
   Size
 } from '../types'
-import { getNodesBounds } from './bounds'
+import { getNodesBounds } from './geometry'
 
 export const getNodesBoundingRect = (
   nodes: readonly Node[],

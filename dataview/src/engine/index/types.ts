@@ -11,14 +11,10 @@ export type SortKey = unknown
 
 export interface RecordIndex {
   ids: readonly RecordId[]
+  order: ReadonlyMap<RecordId, number>
   rows: ReadonlyMap<RecordId, Row>
   values: ReadonlyMap<FieldId, ReadonlyMap<RecordId, unknown>>
   rev: number
-}
-
-export interface RecordTokens {
-  all?: readonly string[]
-  fields: ReadonlyMap<FieldId, readonly string[]>
 }
 
 export interface SearchDemand {
@@ -34,9 +30,8 @@ export interface IndexDemand {
 }
 
 export interface SearchIndex {
-  all?: ReadonlyMap<string, ReadonlySet<RecordId>>
-  fields: ReadonlyMap<FieldId, ReadonlyMap<string, ReadonlySet<RecordId>>>
-  records: ReadonlyMap<RecordId, RecordTokens>
+  all?: ReadonlyMap<RecordId, string>
+  fields: ReadonlyMap<FieldId, ReadonlyMap<RecordId, string>>
   rev: number
 }
 
@@ -50,8 +45,13 @@ export interface GroupIndex {
   rev: number
 }
 
+export interface SortFieldIndex {
+  asc: readonly RecordId[]
+  desc: readonly RecordId[]
+}
+
 export interface SortIndex {
-  fields: ReadonlyMap<FieldId, ReadonlyMap<RecordId, SortKey>>
+  fields: ReadonlyMap<FieldId, SortFieldIndex>
   rev: number
 }
 

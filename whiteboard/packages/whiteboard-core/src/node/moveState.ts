@@ -17,7 +17,7 @@ import {
   type MoveEffect,
   type MoveSet
 } from './move'
-import { getNodeBoundsByNode } from './bounds'
+import { getNodeBoundsByNode } from './geometry'
 
 export type MoveState = {
   nodes: readonly Node[]

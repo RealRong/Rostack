@@ -5,9 +5,11 @@ import type {
   Field,
   FieldId,
   RecordId,
-  Row,
   View,
   ViewId
+} from '@dataview/core/contracts'
+import {
+  TITLE_FIELD_ID
 } from '@dataview/core/contracts'
 import {
   createResetDelta
@@ -21,18 +23,17 @@ import {
   type FilterRuleProjection,
   type ViewFilterProjection
 } from '@dataview/core/filter'
-import {
-  type ViewGroupProjection
+import type {
+  ViewGroupProjection
 } from '@dataview/core/group'
-import {
-  type ViewSearchProjection
+import type {
+  ViewSearchProjection
 } from '@dataview/core/search'
-import {
-  type SortRuleProjection,
-  type ViewSortProjection
+import type {
+  SortRuleProjection,
+  ViewSortProjection
 } from '@dataview/core/sort'
 import {
-  getDocumentFields,
   getDocumentViewById
 } from '@dataview/core/document'
 import {
@@ -42,22 +43,42 @@ import {
   createEngineIndex
 } from '../../index/runtime'
 import type {
+  IndexDemand,
   IndexState
 } from '../../index/types'
+import {
+  collectSchemaFieldIds,
+  collectTouchedRecordIds,
+  collectValueFieldIds
+} from '../../index/shared'
 import type {
   ActiveView,
   EngineProjectApi,
+  EnginePerfOptions,
+  IndexTrace,
+  ProjectStageMetrics,
+  ProjectStageName,
+  ProjectStageTrace,
+  ProjectTrace,
+  PublishTrace,
   RecordSet
 } from '../../types'
 import {
   now
 } from '../../perf/shared'
 import {
-  appearancesStage
-} from '../stages/appearances'
+  buildPublishedViewState,
+  resolveFieldsById
+} from '../publish'
 import {
-  calculationsStage
-} from '../stages/calculations'
+  buildAppearanceList
+} from '../nav'
+import type {
+  AppearanceList,
+  FieldList,
+  Section,
+  SectionKey
+} from '../types'
 import {
   sameAppearanceList,
   sameCalculationsBySection,
@@ -65,65 +86,31 @@ import {
   sameSections
 } from './equality'
 import {
-  fieldsStage
-} from '../stages/fields'
+  buildQueryState
+} from './query'
 import {
-  filterStage
-} from '../stages/filter'
+  syncSectionState,
+  toPublishedSections
+} from './sections'
 import {
-  groupStage
-} from '../stages/group'
+  syncCalcState,
+  toPublishedCalculations
+} from './calc'
 import {
-  recordsStage
-} from '../stages/records'
-import {
-  resolveIndexedViewRecordState,
-  type ResolvedViewRecordState
-} from './recordState'
-import {
-  searchStage
-} from '../stages/search'
-import {
-  sortStage
-} from '../stages/sort'
-import type {
-  StageNext,
-  StageRead
-} from './stage'
-import {
-  buildProjectPlan,
-  type ProjectPlan
-} from './planner'
-import {
-  shouldRun
-} from './stage'
-import {
-  buildSectionProjection,
-  sectionsStage
-} from '../stages/sections'
-import {
+  emptyCalcState,
+  emptyProjectionState,
   emptyProjectState,
+  type ProjectionAction,
+  type ProjectionDelta,
+  type ProjectionState,
   type ProjectState
 } from './state'
-import type {
-  Appearance,
-  AppearanceId,
-  AppearanceList,
-  FieldList,
-  ProjectionSection,
-  Section,
-  SectionKey
-} from '../types'
-import { viewStage } from '../stages/view'
-import type {
-  EnginePerfOptions,
-  IndexTrace,
-  ProjectStageMetrics,
-  ProjectStageName,
-  ProjectStageTrace,
-  ProjectTrace,
-  PublishTrace
-} from '../../types'
+
+const ACTION_PRIORITY: Record<ProjectionAction, number> = {
+  reuse: 0,
+  sync: 1,
+  rebuild: 2
+}
 
 const equalList = <T,>(
   left: readonly T[],
@@ -265,118 +252,329 @@ const equalRecordSet = (
   && equalIds(current.visibleIds, next.visibleIds)
 ))
 
-interface RuntimeCache {
-  view?: View
-  fieldsById?: ReadonlyMap<FieldId, Field>
-  recordState?: ResolvedViewRecordState
-  sectionProjection?: {
-    appearances: ReadonlyMap<AppearanceId, Appearance>
-    sections: readonly ProjectionSection[]
-  }
-}
+const setAction = (
+  action: ProjectionAction,
+  next: ProjectionAction
+): ProjectionAction => (
+  ACTION_PRIORITY[next] > ACTION_PRIORITY[action]
+    ? next
+    : action
+)
 
-export interface ProjectSyncTrace {
-  timings: {
-    totalMs: number
-    indexMs?: number
-    projectMs?: number
-    publishMs?: number
-  }
-  index: IndexTrace
-  project: ProjectTrace
-  publish: PublishTrace
-}
-
-export interface ProjectSyncResult {
-  state: ProjectState
-  trace?: ProjectSyncTrace
-}
-
-interface ProjectRunResult {
-  state: ProjectState
-  trace?: ProjectTrace
-}
-
-const createRuntimeCache = (): RuntimeCache => ({})
-
-const resolveRuntimeView = (
-  next: StageNext,
-  cache: RuntimeCache
-): View | undefined => {
-  if (cache.view !== undefined) {
-    return cache.view
-  }
-
-  cache.view = next.activeViewId
-    ? getDocumentViewById(next.document, next.activeViewId)
-    : undefined
-  return cache.view
-}
-
-const resolveFieldsById = (
-  next: StageNext,
-  cache: RuntimeCache
-): ReadonlyMap<FieldId, Field> => {
-  if (cache.fieldsById) {
-    return cache.fieldsById
-  }
-
-  cache.fieldsById = new Map(
-    getDocumentFields(next.document).map(field => [field.id, field] as const)
-  )
-  return cache.fieldsById
-}
-
-const resolveRuntimeRecordState = (
-  next: StageNext,
-  cache: RuntimeCache
-): ResolvedViewRecordState => {
-  if (cache.recordState) {
-    return cache.recordState
-  }
-
-  cache.recordState = resolveIndexedViewRecordState({
-    document: next.document,
-    activeViewId: next.activeViewId,
-    index: next.index
-  })
-  return cache.recordState
-}
-
-const resolveRuntimeSectionProjection = (
-  next: StageNext,
-  cache: RuntimeCache
+const hasIntersection = (
+  left: ReadonlySet<FieldId>,
+  right: ReadonlySet<FieldId>
 ) => {
-  if (cache.sectionProjection) {
-    return cache.sectionProjection
-  }
-
-  const recordState = resolveRuntimeRecordState(next, cache)
-  if (!recordState.view) {
-    cache.sectionProjection = {
-      appearances: new Map(),
-      sections: []
+  for (const value of left) {
+    if (right.has(value)) {
+      return true
     }
-    return cache.sectionProjection
   }
 
-  cache.sectionProjection = buildSectionProjection({
-    document: next.document,
-    view: recordState.view,
-    visibleRecords: recordState.visibleRecords,
-    index: next.index
-  })
-  return cache.sectionProjection
+  return false
 }
 
-const createStageRead = (
-  next: StageNext,
-  cache: RuntimeCache
-): StageRead => ({
-  view: () => resolveRuntimeView(next, cache),
-  fieldsById: () => resolveFieldsById(next, cache),
-  recordState: () => resolveRuntimeRecordState(next, cache),
-  sectionProjection: () => resolveRuntimeSectionProjection(next, cache),
+const viewSearchFields = (
+  view: View
+): ReadonlySet<FieldId> | 'all' => (
+  view.search.fields?.length
+    ? new Set(view.search.fields)
+    : 'all'
+)
+
+const viewFilterFields = (
+  view: View
+): ReadonlySet<FieldId> => new Set(view.filter.rules.map(rule => rule.fieldId))
+
+const viewSortFields = (
+  view: View
+): ReadonlySet<FieldId> => new Set(view.sort.map(sorter => sorter.field))
+
+const viewCalcFields = (
+  view: View
+): ReadonlySet<FieldId> => new Set(
+  Object.entries(view.calc)
+    .flatMap(([fieldId, metric]) => metric ? [fieldId as FieldId] : [])
+)
+
+const viewDisplayFields = (
+  view: View
+): ReadonlySet<FieldId> => new Set(view.display.fields)
+
+const queryUsesChangedFields = (
+  fields: ReadonlySet<FieldId> | 'all',
+  changedFields: ReadonlySet<FieldId>
+) => fields === 'all'
+  ? changedFields.size > 0
+  : hasIntersection(fields, changedFields)
+
+const resolveIndexDemand = (
+  document: DataDoc,
+  activeViewId?: ViewId
+): IndexDemand => {
+  const view = activeViewId
+    ? getDocumentViewById(document, activeViewId)
+    : undefined
+  if (!view) {
+    return {}
+  }
+
+  const search = view.search.query.trim()
+    ? view.search.fields?.length
+      ? { fields: view.search.fields }
+      : { all: true }
+    : undefined
+
+  return {
+    ...(search ? { search } : {}),
+    ...(view.group?.field ? { groupFields: [view.group.field] } : {}),
+    ...(view.sort.length ? { sortFields: view.sort.map(sorter => sorter.field) } : {}),
+    ...(Object.entries(view.calc).some(([, metric]) => Boolean(metric))
+      ? {
+          calculationFields: Object.entries(view.calc)
+            .flatMap(([fieldId, metric]) => metric ? [fieldId as FieldId] : [])
+        }
+      : {})
+  }
+}
+
+const collectTouchedFields = (
+  delta: CommitDelta
+): ReadonlySet<FieldId> | 'all' => {
+  if (
+    delta.entities.fields?.update === 'all'
+    || delta.entities.values?.fields === 'all'
+  ) {
+    return 'all'
+  }
+
+  return new Set([
+    ...collectSchemaFieldIds(delta),
+    ...collectValueFieldIds(delta, { includeTitlePatch: true })
+  ])
+}
+
+const createProjectionDelta = (input: {
+  document: DataDoc
+  activeViewId?: ViewId
+  delta: CommitDelta
+  project: ProjectState
+}): ProjectionDelta => {
+  const touchedRecords = collectTouchedRecordIds(input.delta)
+  const touchedFields = collectTouchedFields(input.delta)
+  const all: ProjectionDelta = {
+    query: { action: 'rebuild' },
+    sections: { action: 'rebuild', touchedRecords },
+    calc: { action: 'rebuild', touchedRecords, touchedFields },
+    nav: { action: 'rebuild' },
+    adapters: { action: 'sync' }
+  }
+
+  if (
+    input.delta.semantics.some(item => item.kind === 'activeView.set')
+    || input.project.view?.id !== input.activeViewId
+  ) {
+    return all
+  }
+
+  const activeView = input.activeViewId
+    ? getDocumentViewById(input.document, input.activeViewId)
+    : undefined
+  if (!activeView) {
+    return all
+  }
+
+  const queryFields = {
+    search: viewSearchFields(activeView),
+    filter: viewFilterFields(activeView),
+    sort: viewSortFields(activeView)
+  }
+  const calcFields = viewCalcFields(activeView)
+  const displayFields = viewDisplayFields(activeView)
+  const groupField = activeView.group?.field
+
+  let queryAction: ProjectionAction = 'reuse'
+  let sectionsAction: ProjectionAction = 'reuse'
+  let calcAction: ProjectionAction = 'reuse'
+  let navAction: ProjectionAction = 'reuse'
+  let adaptersAction: ProjectionAction = 'sync'
+
+  for (const item of input.delta.semantics) {
+    switch (item.kind) {
+      case 'view.query':
+        if (item.viewId !== input.activeViewId) {
+          break
+        }
+        if (
+          item.aspects.includes('search')
+          || item.aspects.includes('filter')
+          || item.aspects.includes('sort')
+          || item.aspects.includes('order')
+        ) {
+          queryAction = setAction(queryAction, 'sync')
+        }
+        if (item.aspects.includes('group')) {
+          sectionsAction = setAction(sectionsAction, 'rebuild')
+          calcAction = setAction(calcAction, 'rebuild')
+          navAction = setAction(navAction, 'rebuild')
+        }
+        break
+      case 'view.layout':
+        if (item.viewId !== input.activeViewId) {
+          break
+        }
+        if (item.aspects.includes('display')) {
+          adaptersAction = setAction(adaptersAction, 'sync')
+        }
+        if (item.aspects.includes('name') || item.aspects.includes('type')) {
+          adaptersAction = setAction(adaptersAction, 'sync')
+        }
+        break
+      case 'view.calculations':
+        if (item.viewId !== input.activeViewId) {
+          break
+        }
+        calcAction = setAction(calcAction, 'rebuild')
+        break
+      case 'field.schema': {
+        const changedField = item.fieldId
+        if (displayFields.has(changedField)) {
+          adaptersAction = setAction(adaptersAction, 'sync')
+        }
+        if (
+          activeView.search.query.trim()
+          && touchedFields !== 'all'
+          && queryUsesChangedFields(queryFields.search, new Set([changedField]))
+        ) {
+          queryAction = setAction(queryAction, 'sync')
+        }
+        if (queryFields.filter.has(changedField) || queryFields.sort.has(changedField)) {
+          queryAction = setAction(queryAction, 'sync')
+        }
+        if (groupField === changedField) {
+          sectionsAction = setAction(sectionsAction, 'rebuild')
+          calcAction = setAction(calcAction, 'rebuild')
+          navAction = setAction(navAction, 'rebuild')
+        }
+        if (calcFields.has(changedField)) {
+          calcAction = setAction(calcAction, 'rebuild')
+        }
+        break
+      }
+      case 'record.add':
+      case 'record.remove':
+        queryAction = setAction(queryAction, 'sync')
+        sectionsAction = setAction(sectionsAction, 'rebuild')
+        calcAction = setAction(calcAction, 'rebuild')
+        navAction = setAction(navAction, 'rebuild')
+        break
+      case 'record.patch': {
+        const changedFields = new Set<FieldId>(
+          item.aspects.includes('title')
+            ? [TITLE_FIELD_ID]
+            : []
+        )
+        if (
+          activeView.search.query.trim()
+          && queryUsesChangedFields(queryFields.search, changedFields)
+        ) {
+          queryAction = setAction(queryAction, 'sync')
+        }
+        if (
+          hasIntersection(queryFields.filter, changedFields)
+          || hasIntersection(queryFields.sort, changedFields)
+        ) {
+          queryAction = setAction(queryAction, 'sync')
+        }
+        if (groupField && changedFields.has(groupField)) {
+          sectionsAction = setAction(sectionsAction, 'sync')
+          navAction = setAction(navAction, 'sync')
+        }
+        if (hasIntersection(calcFields, changedFields)) {
+          calcAction = setAction(calcAction, 'sync')
+        }
+        break
+      }
+      case 'record.values': {
+        const changedFields = item.fields === 'all'
+          ? 'all'
+          : new Set(item.fields)
+        if (
+          activeView.search.query.trim()
+          && (
+            changedFields === 'all'
+            || queryUsesChangedFields(queryFields.search, changedFields)
+          )
+        ) {
+          queryAction = setAction(queryAction, 'sync')
+        }
+        if (
+          changedFields === 'all'
+          || hasIntersection(queryFields.filter, changedFields)
+          || hasIntersection(queryFields.sort, changedFields)
+        ) {
+          queryAction = setAction(queryAction, 'sync')
+        }
+        if (
+          groupField
+          && (
+            changedFields === 'all'
+            || changedFields.has(groupField)
+          )
+        ) {
+          sectionsAction = setAction(sectionsAction, 'sync')
+          navAction = setAction(navAction, 'sync')
+        }
+        if (
+          changedFields === 'all'
+          || hasIntersection(calcFields, changedFields)
+        ) {
+          calcAction = setAction(calcAction, 'sync')
+        }
+        break
+      }
+    }
+  }
+
+  if (queryAction !== 'reuse') {
+    sectionsAction = setAction(sectionsAction, 'rebuild')
+    calcAction = setAction(calcAction, 'rebuild')
+    navAction = setAction(navAction, 'rebuild')
+  }
+
+  if (sectionsAction === 'sync') {
+    calcAction = setAction(calcAction, 'sync')
+    navAction = setAction(navAction, 'sync')
+  }
+
+  if (calcAction !== 'reuse' && sectionsAction === 'reuse') {
+    navAction = setAction(navAction, 'reuse')
+  }
+
+  return {
+    query: { action: queryAction },
+    sections: {
+      action: sectionsAction,
+      touchedRecords
+    },
+    calc: {
+      action: calcAction,
+      touchedRecords,
+      touchedFields
+    },
+    nav: { action: navAction },
+    adapters: { action: adaptersAction }
+  }
+}
+
+const createRecordSet = (
+  activeViewId: ViewId,
+  projection: ProjectionState['query']
+): RecordSet => ({
+  viewId: activeViewId,
+  derivedIds: projection.derived,
+  orderedIds: projection.ordered,
+  visibleIds: projection.visible
 })
 
 const countChangedIds = (
@@ -453,54 +651,7 @@ const buildStageMetrics = (
   next: ProjectState[keyof ProjectState]
 ): ProjectStageMetrics | undefined => {
   switch (stage) {
-    case 'view':
-      return (next as ActiveView | undefined)
-        ? {
-            outputCount: 1
-          }
-        : undefined
-    case 'search': {
-      const nextSearch = next as ViewSearchProjection | undefined
-      return nextSearch
-        ? {
-            outputCount: nextSearch.active ? 1 : 0,
-            inputCount: nextSearch.fields?.length
-          }
-        : undefined
-    }
-    case 'filter': {
-      const nextFilter = next as ViewFilterProjection | undefined
-      return nextFilter
-        ? {
-            outputCount: nextFilter.rules.length
-          }
-        : undefined
-    }
-    case 'sort': {
-      const nextSort = next as ViewSortProjection | undefined
-      return nextSort
-        ? {
-            outputCount: nextSort.rules.length
-          }
-        : undefined
-    }
-    case 'group': {
-      const nextGroup = next as ViewGroupProjection | undefined
-      return nextGroup
-        ? {
-            outputCount: nextGroup.active ? 1 : 0
-          }
-        : undefined
-    }
-    case 'fields': {
-      const nextFields = next as FieldList | undefined
-      return nextFields
-        ? {
-            outputCount: nextFields.ids.length
-          }
-        : undefined
-    }
-    case 'records': {
+    case 'query': {
       const previousRecords = previous as RecordSet | undefined
       const nextRecords = next as RecordSet | undefined
       if (!nextRecords) {
@@ -537,23 +688,7 @@ const buildStageMetrics = (
         changedSectionCount: countChangedSections(previousSections, nextSections)
       }
     }
-    case 'appearances': {
-      const previousAppearances = previous as AppearanceList | undefined
-      const nextAppearances = next as AppearanceList | undefined
-      if (!nextAppearances) {
-        return undefined
-      }
-
-      const reusedNodeCount = countReusedAppearances(previousAppearances, nextAppearances)
-      return {
-        inputCount: previousAppearances?.ids.length,
-        outputCount: nextAppearances.ids.length,
-        reusedNodeCount,
-        rebuiltNodeCount: nextAppearances.byId.size - reusedNodeCount,
-        changedRecordCount: countChangedIds(previousAppearances?.ids, nextAppearances.ids)
-      }
-    }
-    case 'calculations': {
+    case 'calc': {
       const previousCalculations = previous as ReadonlyMap<SectionKey, CalculationCollection> | undefined
       const nextCalculations = next as ReadonlyMap<SectionKey, CalculationCollection> | undefined
       if (!nextCalculations) {
@@ -567,6 +702,22 @@ const buildStageMetrics = (
         reusedNodeCount,
         rebuiltNodeCount: nextCalculations.size - reusedNodeCount,
         changedSectionCount: nextCalculations.size - reusedNodeCount
+      }
+    }
+    case 'nav': {
+      const previousAppearances = previous as AppearanceList | undefined
+      const nextAppearances = next as AppearanceList | undefined
+      if (!nextAppearances) {
+        return undefined
+      }
+
+      const reusedNodeCount = countReusedAppearances(previousAppearances, nextAppearances)
+      return {
+        inputCount: previousAppearances?.ids.length,
+        outputCount: nextAppearances.ids.length,
+        reusedNodeCount,
+        rebuiltNodeCount: nextAppearances.byId.size - reusedNodeCount,
+        changedRecordCount: countChangedIds(previousAppearances?.ids, nextAppearances.ids)
       }
     }
     default:
@@ -609,108 +760,272 @@ const equalProjectValue = (
   }
 }
 
-const runStages = (input: {
+interface ProjectSyncTrace {
+  timings: {
+    totalMs: number
+    indexMs?: number
+    projectMs?: number
+    publishMs?: number
+  }
+  index: IndexTrace
+  project: ProjectTrace
+  publish: PublishTrace
+}
+
+export interface ProjectSyncResult {
+  state: ProjectState
+  trace?: ProjectSyncTrace
+}
+
+interface ProjectRunResult {
+  projection: ProjectionState
+  published: ProjectState
+  trace?: ProjectTrace
+}
+
+const runProjection = (input: {
   document: DataDoc
   activeViewId?: ViewId
   delta: CommitDelta
+  projectionDelta: ProjectionDelta
   index: IndexState
-  indexTrace?: IndexTrace
-  plan: ProjectPlan
-  prev: ProjectState
+  previousProjection: ProjectionState
+  previousPublished: ProjectState
   capturePerf: boolean
 }): ProjectRunResult => {
   const totalStart = now()
-  const cache = createRuntimeCache()
-  const next: StageNext = {
-    document: input.document,
-    activeViewId: input.activeViewId,
-    delta: input.delta,
-    index: input.index,
-    read: undefined as unknown as StageRead
-  }
-  next.read = createStageRead(next, cache)
   const stageTraces: ProjectStageTrace[] = []
+  const view = input.activeViewId
+    ? getDocumentViewById(input.document, input.activeViewId)
+    : undefined
+  const fieldsById = resolveFieldsById(input.document)
 
-  const run = <T,>(
-    project: ProjectState,
-    key: keyof ProjectState,
-    action: ProjectPlan[keyof ProjectPlan],
-    stage: {
-      run: (input: {
-        action: ProjectPlan[keyof ProjectPlan]
-        prev?: T
-        project: ProjectState
-        previous: ProjectState
-        next: StageNext
-      }) => T | undefined
+  const traceStage = <T,>(
+    stage: ProjectStageName,
+    action: ProjectionAction,
+    previousValue: T,
+    nextValue: T,
+    metrics?: ProjectStageMetrics
+  ) => {
+    if (!input.capturePerf) {
+      return
     }
-  ): ProjectState => ({
-    ...project,
-    [key]: (() => {
-      const previousValue = project[key] as T | undefined
-      const executed = shouldRun(action)
-      const stageStart = input.capturePerf ? now() : 0
-      const nextValue = stage.run({
-        action,
-        prev: previousValue,
-        project,
-        previous: input.prev,
-        next
-      })
-      if (input.capturePerf) {
-        const durationMs = now() - stageStart
-        const changed = !equalProjectValue(
-          key,
-          previousValue as ProjectState[keyof ProjectState],
-          nextValue as ProjectState[keyof ProjectState]
-        )
-        stageTraces.push({
-          stage: key as ProjectStageName,
-          action,
-          executed,
-          changed,
-          durationMs,
-          ...(executed
-            ? {
-                metrics: buildStageMetrics(
-                  key as ProjectStageName,
-                  previousValue as ProjectState[keyof ProjectState],
-                  nextValue as ProjectState[keyof ProjectState]
-                )
-              }
-            : {})
-        })
-      }
-      return nextValue
-    })()
-  })
 
-  let project = {
-    ...emptyProjectState(),
-    ...input.prev
+    stageTraces.push({
+      stage,
+      action,
+      executed: action !== 'reuse',
+      changed: !Object.is(previousValue, nextValue),
+      durationMs: 0,
+      ...(metrics ? { metrics } : {})
+    })
   }
 
-  project = run(project, 'view', input.plan.view, viewStage)
-  project = run(project, 'search', input.plan.search, searchStage)
-  project = run(project, 'filter', input.plan.filter, filterStage)
-  project = run(project, 'sort', input.plan.sort, sortStage)
-  project = run(project, 'group', input.plan.group, groupStage)
-  project = run(project, 'records', input.plan.records, recordsStage)
-  project = run(project, 'sections', input.plan.sections, sectionsStage)
-  project = run(project, 'appearances', input.plan.appearances, appearancesStage)
-  project = run(project, 'fields', input.plan.fields, fieldsStage)
-  project = run(project, 'calculations', input.plan.calculations, calculationsStage)
+  const timeStage = <T,>(
+    stage: ProjectStageName,
+    action: ProjectionAction,
+    run: () => T,
+    previousValue: T,
+    buildMetrics?: (nextValue: T) => ProjectStageMetrics | undefined
+  ): T => {
+    if (action === 'reuse') {
+      traceStage(
+        stage,
+        action,
+        previousValue,
+        previousValue,
+        buildMetrics?.(previousValue)
+      )
+      return previousValue
+    }
+
+    const start = input.capturePerf ? now() : 0
+    const nextValue = run()
+    if (input.capturePerf) {
+      stageTraces.push({
+        stage,
+        action,
+        executed: true,
+        changed: !Object.is(previousValue, nextValue),
+        durationMs: now() - start,
+        ...(buildMetrics
+          ? {
+              metrics: buildMetrics(nextValue)
+            }
+          : {})
+      })
+    }
+    return nextValue
+  }
+
+  const query = view
+    ? timeStage(
+        'query',
+        input.projectionDelta.query.action,
+        () => buildQueryState({
+          document: input.document,
+          view,
+          index: input.index,
+          previous: input.previousProjection.query
+        }),
+        input.previousProjection.query,
+        nextValue => buildStageMetrics(
+          'query',
+          input.previousPublished.records,
+          input.activeViewId
+            ? createRecordSet(input.activeViewId, nextValue)
+            : undefined
+        )
+      )
+    : input.previousProjection.query
+
+  const sections = view
+    ? timeStage(
+        'sections',
+        input.projectionDelta.sections.action,
+        () => syncSectionState({
+          previous: input.previousProjection.sections,
+          previousQuery: input.previousProjection.query,
+          document: input.document,
+          view,
+          query,
+          index: input.index,
+          touchedRecords: input.projectionDelta.sections.touchedRecords,
+          action: input.projectionDelta.sections.action
+        }),
+        input.previousProjection.sections
+      )
+    : input.previousProjection.sections
+
+  const calc = view
+    ? timeStage(
+        'calc',
+        input.projectionDelta.calc.action,
+        () => syncCalcState({
+          previous: input.previousProjection.calc,
+          previousSections: input.previousProjection.sections,
+          sections,
+          view,
+          index: input.index,
+          action: input.projectionDelta.calc.action,
+          touchedRecords: input.projectionDelta.calc.touchedRecords,
+          touchedFields: input.projectionDelta.calc.touchedFields
+        }),
+        input.previousProjection.calc
+      )
+    : emptyCalcState()
+
+  const nav = view
+    ? timeStage(
+        'nav',
+        input.projectionDelta.nav.action,
+        () => ({
+          appearances: buildAppearanceList(sections)
+        }),
+        input.previousProjection.nav ?? { appearances: buildAppearanceList(input.previousProjection.sections) },
+        nextValue => buildStageMetrics(
+          'nav',
+          input.previousPublished.appearances,
+          nextValue.appearances
+        )
+      )
+    : undefined
+
+  const published = timeStage(
+    'adapters',
+    input.projectionDelta.adapters.action,
+    () => {
+      const thin = buildPublishedViewState({
+        document: input.document,
+        viewId: input.activeViewId
+      })
+
+      const records = view && input.activeViewId
+        ? createRecordSet(input.activeViewId, query)
+        : undefined
+      const appearances = nav?.appearances
+      const sectionsView = appearances
+        ? toPublishedSections({
+            sections,
+            appearances
+          })
+        : undefined
+      const calculations = view
+        ? toPublishedCalculations({
+            calc,
+            fieldsById,
+            view
+          })
+        : undefined
+
+      return {
+        view: thin.view,
+        filter: thin.filter,
+        group: thin.group,
+        search: thin.search,
+        sort: thin.sort,
+        records,
+        sections: sectionsView,
+        appearances,
+        fields: thin.fields,
+        calculations
+      } satisfies ProjectState
+    },
+    input.previousPublished
+  )
+
+  if (input.capturePerf) {
+    const adaptersTrace = stageTraces.find(stage => stage.stage === 'adapters')
+    if (adaptersTrace) {
+      adaptersTrace.metrics = {
+        changedSectionCount: 0,
+        outputCount: Object.values(published).filter(Boolean).length
+      }
+    }
+    const sectionsTrace = stageTraces.find(stage => stage.stage === 'sections')
+    if (sectionsTrace) {
+      sectionsTrace.metrics = buildStageMetrics(
+        'sections',
+        input.previousPublished.sections,
+        published.sections
+      )
+      sectionsTrace.changed = !equalProjectValue('sections', input.previousPublished.sections, published.sections)
+    }
+    const calcTrace = stageTraces.find(stage => stage.stage === 'calc')
+    if (calcTrace) {
+      calcTrace.metrics = buildStageMetrics(
+        'calc',
+        input.previousPublished.calculations,
+        published.calculations
+      )
+      calcTrace.changed = !equalProjectValue('calculations', input.previousPublished.calculations, published.calculations)
+    }
+    const navTrace = stageTraces.find(stage => stage.stage === 'nav')
+    if (navTrace) {
+      navTrace.changed = !equalProjectValue('appearances', input.previousPublished.appearances, published.appearances)
+    }
+  }
 
   return {
-    state: project,
+    projection: {
+      query,
+      sections,
+      calc,
+      ...(nav ? { nav } : {})
+    },
+    published,
     ...(input.capturePerf
       ? {
           trace: {
+            plan: {
+              query: input.projectionDelta.query.action,
+              sections: input.projectionDelta.sections.action,
+              calc: input.projectionDelta.calc.action,
+              nav: input.projectionDelta.nav.action,
+              adapters: input.projectionDelta.adapters.action
+            },
             timings: {
               totalMs: now() - totalStart
-            },
-            plan: {
-              ...input.plan
             },
             stages: stageTraces
           } satisfies ProjectTrace
@@ -741,10 +1056,14 @@ export const createProjectRuntime = (input: {
     fields: createValueStore<FieldList | undefined>({ initial: undefined, isEqual: (left, right) => equalProjection(left, right, sameFieldList) }),
     calculations: createValueStore<ReadonlyMap<SectionKey, CalculationCollection> | undefined>({ initial: undefined, isEqual: (left, right) => equalProjection(left, right, sameCalculationsBySection) })
   }
-  let current = emptyProjectState()
-  const index = createEngineIndex(input.document)
   const capturePerf = Boolean(input.perf?.trace || input.perf?.stats)
   const storeKeys = Object.keys(stores) as (keyof typeof stores)[]
+  const index = createEngineIndex(
+    input.document,
+    resolveIndexDemand(input.document, input.document.activeViewId)
+  )
+  let currentProjection = emptyProjectionState()
+  let currentPublished = emptyProjectState()
 
   const commitState = (
     next: ProjectState
@@ -752,14 +1071,14 @@ export const createProjectRuntime = (input: {
     const changedStores = capturePerf
       ? storeKeys.flatMap(key => equalProjectValue(
           key,
-          current[key],
+          currentPublished[key],
           next[key]
         )
           ? []
           : [key])
       : []
 
-    current = next
+    currentPublished = next
     stores.view.set(next.view)
     stores.filter.set(next.filter)
     stores.group.set(next.group)
@@ -779,83 +1098,68 @@ export const createProjectRuntime = (input: {
       : undefined
   }
 
-  const runtime: ProjectRuntime = {
-    ...stores,
-    clear: () => {
-      commitState(emptyProjectState())
-    },
-    state: () => current,
-    syncDocument: (document, delta) => {
-      const totalStart = capturePerf ? now() : 0
-      const nextDelta = delta ?? {
-        summary: {
-          records: true,
-          fields: true,
-          views: true,
-          values: true,
-          activeView: true,
-          indexes: true
-        },
-        entities: {
-          records: { update: 'all' },
-          fields: { update: 'all' },
-          views: { update: 'all' },
-          values: {
-            records: 'all',
-            fields: 'all'
-          }
-        },
-        semantics: [{
-          kind: 'activeView.set',
-          before: current.view?.id,
-          after: document.activeViewId
-        }]
-      } satisfies CommitDelta
-      const indexResult = index.sync(document, nextDelta)
-      const plan = buildProjectPlan({
-        document,
-        activeViewId: document.activeViewId,
-        delta: nextDelta,
-        project: current,
-        index: indexResult.state
-      })
-      const stageResult = runStages({
-        document,
-        activeViewId: document.activeViewId,
-        delta: nextDelta,
-        index: indexResult.state,
-        plan,
-        prev: current,
-        capturePerf
-      })
-      const publishStart = capturePerf ? now() : 0
-      const publish = commitState(stageResult.state)
+  const sync = (
+    document: DataDoc,
+    delta?: CommitDelta
+  ): ProjectSyncResult => {
+    const totalStart = capturePerf ? now() : 0
+    const nextDelta = delta ?? createResetDelta(undefined, document)
+    const indexResult = index.sync(
+      document,
+      nextDelta,
+      resolveIndexDemand(document, document.activeViewId)
+    )
+    const projectionDelta = createProjectionDelta({
+      document,
+      activeViewId: document.activeViewId,
+      delta: nextDelta,
+      project: currentPublished
+    })
+    const runResult = runProjection({
+      document,
+      activeViewId: document.activeViewId,
+      delta: nextDelta,
+      projectionDelta,
+      index: indexResult.state,
+      previousProjection: currentProjection,
+      previousPublished: currentPublished,
+      capturePerf
+    })
+    currentProjection = runResult.projection
+    const publishStart = capturePerf ? now() : 0
+    const publish = commitState(runResult.published)
 
-      return {
-        state: current,
-        ...(capturePerf && indexResult.trace && stageResult.trace && publish
-          ? {
-              trace: {
-                timings: {
-                  totalMs: now() - totalStart,
-                  indexMs: indexResult.trace.timings.totalMs,
-                  projectMs: stageResult.trace.timings.totalMs,
-                  publishMs: now() - publishStart
-                },
-                index: indexResult.trace,
-                project: stageResult.trace,
-                publish
-              }
+    return {
+      state: currentPublished,
+      ...(capturePerf && indexResult.trace && runResult.trace && publish
+        ? {
+            trace: {
+              timings: {
+                totalMs: now() - totalStart,
+                indexMs: indexResult.trace.timings.totalMs,
+                projectMs: runResult.trace.timings.totalMs,
+                publishMs: now() - publishStart
+              },
+              index: indexResult.trace,
+              project: runResult.trace,
+              publish
             }
-          : {})
-      }
+          }
+        : {})
     }
   }
 
-  runtime.syncDocument(
-    input.document,
-    createResetDelta(undefined, input.document)
-  )
+  const runtime: ProjectRuntime = {
+    ...stores,
+    clear: () => {
+      currentProjection = emptyProjectionState()
+      commitState(emptyProjectState())
+    },
+    state: () => currentPublished,
+    syncDocument: sync
+  }
+
+  sync(input.document, createResetDelta(undefined, input.document))
 
   return runtime
 }

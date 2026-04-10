@@ -6,6 +6,10 @@ import type {
   EdgeTextMode,
   EdgeType
 } from '@whiteboard/core/types'
+import {
+  isOrderedArrayEqual,
+  isSameOptionalBoxTuple
+} from '@whiteboard/core/utils'
 import { createDerivedStore, type ReadStore } from '@shared/store'
 import type { TargetBoundsQuery } from '../query/targetBounds'
 import type { Tool } from '../../types/tool'
@@ -13,24 +17,6 @@ import type { EditTarget } from '../state/edit'
 import type { InteractionRuntime } from '../interaction/types'
 import type { EdgeRead } from './edge'
 import type { EdgeToolbarContext } from '../../types/edgePresentation'
-
-const isOrderedEqual = (
-  left: readonly string[],
-  right: readonly string[]
-) => (
-  left.length === right.length
-  && left.every((value, index) => value === right[index])
-)
-
-const isOptionalBoxEqual = (
-  left: EdgeToolbarContext['box'] | undefined,
-  right: EdgeToolbarContext['box'] | undefined
-) => (
-  left?.x === right?.x
-  && left?.y === right?.y
-  && left?.width === right?.width
-  && left?.height === right?.height
-)
 
 const isEdgeToolbarEqual = (
   left: EdgeToolbarContext | undefined,
@@ -42,7 +28,7 @@ const isEdgeToolbarEqual = (
 
   return (
     left.selectionKey === right.selectionKey
-    && isOrderedEqual(left.edgeIds, right.edgeIds)
+    && isOrderedArrayEqual(left.edgeIds, right.edgeIds)
     && left.primaryEdgeId === right.primaryEdgeId
     && left.type === right.type
     && left.color === right.color
@@ -52,7 +38,7 @@ const isEdgeToolbarEqual = (
     && left.end === right.end
     && left.textMode === right.textMode
     && left.labelCount === right.labelCount
-    && isOptionalBoxEqual(left.box, right.box)
+    && isSameOptionalBoxTuple(left.box, right.box)
   )
 }
 

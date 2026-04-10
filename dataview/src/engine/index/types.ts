@@ -17,12 +17,24 @@ export interface RecordIndex {
 }
 
 export interface RecordTokens {
-  all: readonly string[]
+  all?: readonly string[]
   fields: ReadonlyMap<FieldId, readonly string[]>
 }
 
+export interface SearchDemand {
+  all?: boolean
+  fields?: readonly FieldId[]
+}
+
+export interface IndexDemand {
+  search?: SearchDemand
+  groupFields?: readonly FieldId[]
+  sortFields?: readonly FieldId[]
+  calculationFields?: readonly FieldId[]
+}
+
 export interface SearchIndex {
-  all: ReadonlyMap<string, SortedIdSet<RecordId>>
+  all?: ReadonlyMap<string, SortedIdSet<RecordId>>
   fields: ReadonlyMap<FieldId, ReadonlyMap<string, SortedIdSet<RecordId>>>
   records: ReadonlyMap<RecordId, RecordTokens>
   rev: number
@@ -67,8 +79,6 @@ export interface AggregateEntry {
 
 export interface FieldCalcIndex {
   global: AggregateState
-  buckets?: ReadonlyMap<BucketKey, AggregateState>
-  recordBuckets?: ReadonlyMap<RecordId, readonly BucketKey[]>
 }
 
 export interface CalculationIndex {

@@ -121,21 +121,15 @@ export interface EnginePerfOptions {
 
 export type ProjectStageAction =
   | 'reuse'
-  | 'reconcile'
-  | 'recompute'
+  | 'sync'
   | 'rebuild'
 
 export type ProjectStageName =
-  | 'view'
-  | 'search'
-  | 'filter'
-  | 'sort'
-  | 'group'
-  | 'records'
+  | 'query'
   | 'sections'
-  | 'appearances'
-  | 'fields'
-  | 'calculations'
+  | 'calc'
+  | 'nav'
+  | 'adapters'
 
 export interface TraceDeltaSummary {
   summary: {
@@ -203,16 +197,11 @@ export interface ProjectStageTrace {
 }
 
 export interface ProjectPlanTrace {
-  view: ProjectStageAction
-  search: ProjectStageAction
-  filter: ProjectStageAction
-  sort: ProjectStageAction
-  group: ProjectStageAction
-  records: ProjectStageAction
+  query: ProjectStageAction
   sections: ProjectStageAction
-  appearances: ProjectStageAction
-  fields: ProjectStageAction
-  calculations: ProjectStageAction
+  calc: ProjectStageAction
+  nav: ProjectStageAction
+  adapters: ProjectStageAction
 }
 
 export interface ProjectTrace {
@@ -261,8 +250,7 @@ export interface PerfCounter {
 export interface StagePerfStats {
   total: number
   reuse: number
-  reconcile: number
-  recompute: number
+  sync: number
   rebuild: number
   changed: number
   duration: RunningStat

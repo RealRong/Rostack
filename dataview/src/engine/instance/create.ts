@@ -73,7 +73,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     document: {
       export: () => cloneDocument(instanceDocument.peekDocument()),
       replace: (document: DataDoc) => {
-        commit.replace(document)
+        commit.replace(cloneDocument(document))
         return cloneDocument(instanceDocument.peekDocument())
       }
     }

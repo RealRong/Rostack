@@ -12,16 +12,11 @@ import type {
 type PendingCommitTrace = Omit<CommitTrace, 'id'>
 
 const PROJECT_STAGE_NAMES: readonly ProjectStageName[] = [
-  'view',
-  'search',
-  'filter',
-  'sort',
-  'group',
-  'records',
+  'query',
   'sections',
-  'appearances',
-  'fields',
-  'calculations'
+  'calc',
+  'nav',
+  'adapters'
 ]
 
 const cloneRunningStat = (
@@ -50,8 +45,7 @@ const createPerfCounter = (): PerfCounter => ({
 const createStagePerfStats = (): StagePerfStats => ({
   total: 0,
   reuse: 0,
-  reconcile: 0,
-  recompute: 0,
+  sync: 0,
   rebuild: 0,
   changed: 0,
   duration: createRunningStat()

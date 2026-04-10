@@ -456,10 +456,16 @@ export const calculationsStage: Stage<ReadonlyMap<SectionKey, CalculationCollect
 
     const sectionProjection = input.next.read.sectionProjection()
     const entriesByField = new Map(
-      Array.from(input.next.index.calculations.fields.entries(), ([fieldId, field]) => [
-        fieldId,
-        field.global.entries
-      ] as const)
+      Object.entries(view.calc).flatMap(([fieldId, metric]) => {
+        if (!metric) {
+          return []
+        }
+
+        const field = input.next.index.calculations.fields.get(fieldId as FieldId)
+        return field
+          ? [[fieldId as FieldId, field.global.entries] as const]
+          : []
+      })
     )
 
     return isReconcile(input.action)

@@ -10,6 +10,7 @@ import {
   readShapeSpec,
   type ShapeKind
 } from '@whiteboard/core/node'
+import { isSameOptionalNumberArray } from '@whiteboard/core/utils'
 import type {
   SelectionAffordance,
   SelectionSummary,
@@ -58,22 +59,9 @@ const readNumberArray = (
     : undefined
 }
 
-const isDashEqual = (
-  left: readonly number[] | undefined,
-  right: readonly number[] | undefined
-) => {
-  const normalizedLeft = left?.length ? left : undefined
-  const normalizedRight = right?.length ? right : undefined
-
-  if (!normalizedLeft && !normalizedRight) {
-    return true
-  }
-  if (!normalizedLeft || !normalizedRight || normalizedLeft.length !== normalizedRight.length) {
-    return false
-  }
-
-  return normalizedLeft.every((value, index) => value === normalizedRight[index])
-}
+const normalizeDash = (
+  value: readonly number[] | undefined
+) => value?.length ? value : undefined
 
 const readUniformValue = <TValue,>(
   nodes: readonly Node[],
@@ -378,7 +366,14 @@ const resolveToolbarContext = ({
     strokeDash:
       canEditStroke
       && supportsStyleField(nodes, registry, 'strokeDash', 'numberArray')
-        ? readUniformValue(nodes, readStrokeDash, isDashEqual)
+        ? readUniformValue(
+            nodes,
+            readStrokeDash,
+            (left, right) => isSameOptionalNumberArray(
+              normalizeDash(left),
+              normalizeDash(right)
+            )
+          )
         : undefined,
     opacity: supportsStyleField(nodes, registry, 'opacity', 'number')
       ? readUniformValue(nodes, readOpacity)

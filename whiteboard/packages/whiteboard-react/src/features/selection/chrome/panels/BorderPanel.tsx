@@ -1,4 +1,5 @@
 import { Slider } from '@ui'
+import { isSameOptionalNumberArray } from '@whiteboard/core/utils'
 import { STROKE_COLOR_OPTIONS } from '../menus/options'
 import { Panel, PanelSection, SegmentedButton, SwatchButton } from './ShapeToolbarPrimitives'
 
@@ -12,22 +13,9 @@ const formatPercent = (
   value: number
 ) => `${Math.round(value * 100)}%`
 
-const isDashEqual = (
-  left: readonly number[] | undefined,
-  right: readonly number[] | undefined
-) => {
-  const normalizedLeft = left?.length ? left : undefined
-  const normalizedRight = right?.length ? right : undefined
-
-  if (!normalizedLeft && !normalizedRight) {
-    return true
-  }
-  if (!normalizedLeft || !normalizedRight || normalizedLeft.length !== normalizedRight.length) {
-    return false
-  }
-
-  return normalizedLeft.every((value, index) => value === normalizedRight[index])
-}
+const normalizeDash = (
+  value: readonly number[] | undefined
+) => value?.length ? value : undefined
 
 export const BorderPanel = ({
   stroke,
@@ -59,7 +47,10 @@ export const BorderPanel = ({
           {STROKE_STYLE_OPTIONS.map((option) => (
             <SegmentedButton
               key={option.key}
-              active={isDashEqual(strokeDash, option.dash)}
+              active={isSameOptionalNumberArray(
+                normalizeDash(strokeDash),
+                normalizeDash(option.dash)
+              )}
               onClick={() => onStrokeDashChange?.(option.dash)}
             >
               <svg

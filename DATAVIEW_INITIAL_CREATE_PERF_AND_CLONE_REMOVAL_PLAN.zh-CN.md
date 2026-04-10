@@ -31,6 +31,166 @@
 - clone 边界
 
 
+## 2.1 已落地实现
+
+截至 2026-04-10，这份方案对应的四个阶段已经直接落地，没有保留兼容过渡路径：
+
+1. 启动双重构建已经删除
+2. clone 已经收口到 engine 输入 / 输出边界
+3. index 初建已经改成按 active view demand 物化
+4. index cache 生命周期已经改成“exact demand”，不再保留历史 view 遗留字段缓存
+
+当前真实路径变成：
+
+```txt
+createEngine
+  -> cloneDocument(options.document)
+  -> createProjectRuntime(document)
+    -> resolveIndexDemand(activeView)
+    -> createEngineIndex(document, demand)
+      -> buildRecordIndex(document)
+      -> build only demanded search/group/sort/calculation indexes
+    -> run project stages once
+    -> publish initial project state
+```
+
+增量更新路径变成：
+
+```txt
+project.syncDocument(document, delta)
+  -> resolveIndexDemand(activeView)
+  -> index.sync(document, delta, demand)
+    -> sync records eagerly
+    -> if demand unchanged:
+         sync only already-loaded derived indexes
+       else:
+         rebuild derived indexes to exact current demand
+  -> run project stages
+  -> publish changed stores
+```
+
+这意味着：
+
+- boot 不再通过 `reset delta` 再跑第二遍 index
+- derived index 不再对所有字段全建
+- active view demand 变动时，旧 demand 的缓存会被直接丢弃
+- engine 内部不再额外 clone replace document
+
+
+## 2.2 落地后的关键语义
+
+### 2.2.1 records 仍然 eager
+
+`records` index 仍然是唯一长期 eager 的 index：
+
+- `ids`
+- `rows`
+- `values`
+
+原因很简单：
+
+- 所有 projection 都会读 record 集
+- 绝大多数增量更新都需要 touched row / value
+- 这层本身是后续所有 lazy index 的输入基座
+
+
+### 2.2.2 search / group / sort / calculations 全部 demand-driven
+
+当前 derived index 的 demand 只来自 active view：
+
+- `search`
+  - query 为空时不建
+  - 指定 fields 时只建这些 fields
+  - 未指定 fields 时才建 `all postings`
+- `group`
+  - 只建 active group field
+- `sort`
+  - 只建 active sort fields
+- `calculations`
+  - 只建 active calc fields
+
+
+### 2.2.3 calculations 去掉了冗余 bucket aggregate 常驻结构
+
+当前 calculation index 只维护每个 demanded field 的：
+
+- `global.entries`
+- `global aggregate`
+
+不再长期维护：
+
+- 每个 field 自己的 bucket aggregates
+- 每个 field 自己的 `recordBuckets`
+
+原因：
+
+- 当前系统真正消费的是 field entry 集，再由 section membership 派生 section calculation
+- 旧 bucket aggregate 既重，又没有成为当前 projection 主路径的必要输入
+
+
+### 2.2.4 demand changed 时直接重建 exact cache
+
+当前没有做复杂 eviction 网络，也没有做跨 demand 的缓存保留。
+
+长期语义很直接：
+
+- 如果 demand 不变，则对当前已加载 index 做增量 sync
+- 如果 demand 变化，则按新 demand 直接重建 derived index
+
+这样做的好处是：
+
+- 生命周期简单
+- 没有“历史字段缓存忘记清”的问题
+- 没有第二套 cache 管理协议
+- active view 是单活前提时，这比全局缓存更符合长期最优
+
+
+## 2.3 当前 clone 边界
+
+当前 clone 只保留在边界：
+
+- `createEngine(options.document)` 输入 clone
+- `engine.document.replace(document)` 输入 clone
+- `engine.document.export()` 导出 clone
+- `engine.document.replace()` 返回值 clone
+
+当前已经删除的内部 clone：
+
+- `commitRuntime.replace()` 内部 clone
+
+长期原则保持不变：
+
+- engine 内部 document 默认按不可变快照处理
+- reducer 产出新 document
+- runtime 之间传递引用，不再做 defensive clone
+
+
+## 2.4 实测结果
+
+同一台机器、同一份 bench fixture 下，问题最大的 `initial create` 已经从“不可接受”降到“可用”：
+
+- 旧数据
+  - `medium / 10k`: `~2.3s - 2.5s`
+  - `large / 50k`: `~112s - 113s`
+- 新数据
+  - `medium / 10k`: `~31.2ms`
+  - `large / 50k`: `~152.8ms`
+
+同一次实测里的增量操作：
+
+- `medium / 10k`
+  - 普通 points update: `trace total ~7.1ms`
+  - grouped status update: `trace total ~19.7ms`
+- `large / 50k`
+  - 普通 points update: `trace total ~35.7ms`
+  - grouped status update: `trace total ~101.8ms`
+
+这组数据说明：
+
+- 之前最大的灾难确实是 boot 路径和 eager index，不是普通增量 sync
+- 去掉双重构建并把 derived index 改成 demand-driven 之后，startup 已经不再是系统主瓶颈
+
+
 ## 3. 当前启动路径的问题
 
 ## 3.1 index 被构建了两遍

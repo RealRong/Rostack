@@ -1,4 +1,4 @@
-import { isPointEqual } from '@whiteboard/core/geometry'
+import { isPointEqual, isSizeEqual } from '@whiteboard/core/geometry'
 import type { NodeId } from '@whiteboard/core/types'
 import type {
   EditorOverlayState,
@@ -35,20 +35,12 @@ export const EMPTY_NODE_OVERLAY_PROJECTION: NodeOverlayProjection = {
 
 const EMPTY_NODE_OVERLAY_MAP = new Map<NodeId, NodeOverlayProjection>()
 
-const isSameSize = (
-  left: { width: number, height: number } | undefined,
-  right: { width: number, height: number } | undefined
-) => (
-  left?.width === right?.width
-  && left?.height === right?.height
-)
-
 export const isNodePatchEqual = (
   left: NodePatch | undefined,
   right: NodePatch | undefined
 ) => (
   isPointEqual(left?.position, right?.position)
-  && isSameSize(left?.size, right?.size)
+  && isSizeEqual(left?.size, right?.size)
   && left?.rotation === right?.rotation
 )
 
@@ -57,7 +49,7 @@ export const isTextPreviewPatchEqual = (
   right: TextPreviewPatch | undefined
 ) => (
   isPointEqual(left?.position, right?.position)
-  && isSameSize(left?.size, right?.size)
+  && isSizeEqual(left?.size, right?.size)
   && left?.fontSize === right?.fontSize
   && left?.mode === right?.mode
   && left?.handle === right?.handle

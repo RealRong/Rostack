@@ -3,7 +3,6 @@ import type {
   CommitDelta,
   DataDoc
 } from '@dataview/core/contracts'
-import { cloneDocument } from '@dataview/core/document'
 import { createResetDelta } from '@dataview/core/commit/delta'
 import { createDeltaCollector } from '@dataview/core/commit/collector'
 import { applyOperations } from '@dataview/core/operation'
@@ -278,7 +277,7 @@ export const commitRuntime = (options: CommitRuntimeOptions): CommitRuntime => {
     replace: document => {
       const startedAt = now()
       const beforeDocument = store.peekDocument()
-      const nextDocument = cloneDocument(document)
+      const nextDocument = document
       const delta = createResetDelta(beforeDocument, nextDocument)
 
       history.clear()

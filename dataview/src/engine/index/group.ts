@@ -5,21 +5,17 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import {
-  getDocumentFieldById,
-  getDocumentFieldIds
+  getDocumentFieldById
 } from '@dataview/core/document'
 import {
   getRecordFieldValue,
   resolveFieldGroupBucketEntries
 } from '@dataview/core/field'
 import {
-  allFieldIdsOf,
   collectSchemaFieldIds,
   collectTouchedRecordIds,
   collectValueFieldIds,
   createOrderIndex,
-  hasField,
-  hasRecordSetChange,
   insertOrderedId,
   removeOrderedId
 } from './shared'
@@ -39,6 +35,13 @@ const buildFieldGroupIndex = (
   const field = getDocumentFieldById(document, fieldId)
   const recordBuckets = new Map<RecordId, readonly BucketKey[]>()
   const bucketRecords = new Map<BucketKey, RecordId[]>()
+
+  if (!field) {
+    return {
+      recordBuckets,
+      bucketRecords
+    }
+  }
 
   records.ids.forEach(recordId => {
     const record = records.rows.get(recordId)
@@ -74,12 +77,13 @@ const resolveRecordBuckets = (
   recordId: RecordId
 ): readonly BucketKey[] | undefined => {
   const record = records.rows.get(recordId)
-  if (!record) {
+  const field = getDocumentFieldById(document, fieldId)
+  if (!record || !field) {
     return undefined
   }
 
   return resolveFieldGroupBucketEntries(
-    getDocumentFieldById(document, fieldId),
+    field,
     getRecordFieldValue(record, fieldId)
   ).map(bucket => String(bucket.key))
 }
@@ -119,58 +123,50 @@ const addBucketMemberships = (
   })
 }
 
-const collectTouchedFieldIds = (input: {
-  previous: GroupIndex
-  document: DataDoc
-  delta: CommitDelta
-}): ReadonlySet<FieldId> => {
-  if (
-    input.delta.entities.fields?.update === 'all'
-    || input.delta.entities.values?.fields === 'all'
-    || input.delta.entities.records?.update === 'all'
-    || hasRecordSetChange(input.delta)
-  ) {
-    return new Set(allFieldIdsOf(input.document, input.previous.fields))
-  }
-
-  return new Set<FieldId>([
-    ...collectSchemaFieldIds(input.delta),
-    ...collectValueFieldIds(input.delta, { includeTitlePatch: true })
-  ])
-}
-
-const collectRecordIdsForField = (input: {
-  previous: GroupFieldIndex | undefined
-  records: RecordIndex
-  delta: CommitDelta
-}): ReadonlySet<RecordId> => {
-  const touched = collectTouchedRecordIds(input.delta)
-  if (touched !== 'all') {
-    return touched
-  }
-
-  const ids = new Set<RecordId>()
-  input.previous?.recordBuckets.forEach((_bucketKeys, recordId) => ids.add(recordId))
-  input.records.ids.forEach(recordId => ids.add(recordId))
-  return ids
-}
-
 export const buildGroupIndex = (
   document: DataDoc,
   records: RecordIndex,
+  fieldIds: readonly FieldId[] = [],
   rev = 1
 ): GroupIndex => {
-  const fields = new Map(
-    getDocumentFieldIds(document).map(fieldId => [
-      fieldId,
-      buildFieldGroupIndex(document, records, fieldId)
-    ] as const)
-  )
-
-  return {
-    fields,
+  const base: GroupIndex = {
+    fields: new Map(),
     rev
   }
+  const built = ensureGroupIndex(base, document, records, fieldIds)
+
+  return built === base
+    ? base
+    : {
+        ...built,
+        rev
+      }
+}
+
+export const ensureGroupIndex = (
+  previous: GroupIndex,
+  document: DataDoc,
+  records: RecordIndex,
+  fieldIds: readonly FieldId[] = []
+): GroupIndex => {
+  let changed = false
+  const nextFields = new Map(previous.fields)
+
+  fieldIds.forEach(fieldId => {
+    if (nextFields.has(fieldId) || !getDocumentFieldById(document, fieldId)) {
+      return
+    }
+
+    nextFields.set(fieldId, buildFieldGroupIndex(document, records, fieldId))
+    changed = true
+  })
+
+  return changed
+    ? {
+        fields: nextFields,
+        rev: previous.rev + 1
+      }
+    : previous
 }
 
 export const syncGroupIndex = (
@@ -179,49 +175,47 @@ export const syncGroupIndex = (
   records: RecordIndex,
   delta: CommitDelta
 ): GroupIndex => {
-  if (!delta.summary.indexes) {
+  if (!delta.summary.indexes || !previous.fields.size) {
     return previous
   }
 
+  const loadedFieldIds = new Set(previous.fields.keys())
   const schemaFields = collectSchemaFieldIds(delta)
-  const touchedFields = collectTouchedFieldIds({
-    previous,
-    document,
-    delta
-  })
-  if (!touchedFields.size) {
-    return previous
-  }
-
-  const order = createOrderIndex(records.ids)
+  const valueFields = collectValueFieldIds(delta, { includeTitlePatch: true })
+  const touchedRecords = collectTouchedRecordIds(delta)
+  let changed = false
   const nextFields = new Map(previous.fields)
 
-  touchedFields.forEach(fieldId => {
-    if (!hasField(document, fieldId)) {
+  Array.from(loadedFieldIds).forEach(fieldId => {
+    if (schemaFields.has(fieldId) && !getDocumentFieldById(document, fieldId)) {
       nextFields.delete(fieldId)
+      changed = true
       return
     }
 
-    if (schemaFields.has(fieldId) || !previous.fields.has(fieldId)) {
+    if (
+      schemaFields.has(fieldId)
+      || touchedRecords === 'all'
+    ) {
       nextFields.set(fieldId, buildFieldGroupIndex(document, records, fieldId))
+      changed = true
+      return
+    }
+
+    if (!touchedRecords.size || !valueFields.has(fieldId)) {
       return
     }
 
     const previousField = previous.fields.get(fieldId)
-    const recordIds = collectRecordIdsForField({
-      previous: previousField,
-      records,
-      delta
-    })
-
-    if (!recordIds.size || !previousField) {
+    if (!previousField) {
       return
     }
 
+    const order = createOrderIndex(records.ids)
     const nextRecordBuckets = new Map(previousField.recordBuckets)
     const nextBucketRecords = new Map(previousField.bucketRecords)
 
-    recordIds.forEach(recordId => {
+    touchedRecords.forEach(recordId => {
       const previousBuckets = nextRecordBuckets.get(recordId) ?? []
       if (previousBuckets.length) {
         removeBucketMemberships(nextBucketRecords, previousBuckets, recordId)
@@ -241,10 +235,13 @@ export const syncGroupIndex = (
       recordBuckets: nextRecordBuckets,
       bucketRecords: nextBucketRecords
     })
+    changed = true
   })
 
-  return {
-    fields: nextFields,
-    rev: previous.rev + 1
-  }
+  return changed
+    ? {
+        fields: nextFields,
+        rev: previous.rev + 1
+      }
+    : previous
 }

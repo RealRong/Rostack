@@ -10,6 +10,7 @@ import {
   type SelectionTransformBox
 } from '@whiteboard/core/selection'
 import type { Edge, Node, Rect } from '@whiteboard/core/types'
+import { isSameOptionalRectTuple } from '@whiteboard/core/utils'
 import {
   createDerivedStore,
   type ReadFn,
@@ -55,10 +56,7 @@ const isSelectionTransformBoxEqual = (
   right: SelectionTransformBox
 ) => (
   left.canResize === right.canResize
-  && left.box?.x === right.box?.x
-  && left.box?.y === right.box?.y
-  && left.box?.width === right.box?.width
-  && left.box?.height === right.box?.height
+  && isSameOptionalRectTuple(left.box, right.box)
 )
 
 const isSelectionModelEqual = (
@@ -68,16 +66,6 @@ const isSelectionModelEqual = (
   isSelectionSummaryEqual(left.summary, right.summary)
   && isSelectionTransformBoxEqual(left.transformBox, right.transformBox)
   && isSelectionAffordanceEqual(left.affordance, right.affordance)
-)
-
-const isOptionalRectEqual = (
-  left: Rect | undefined,
-  right: Rect | undefined
-) => (
-  left?.x === right?.x
-  && left?.y === right?.y
-  && left?.width === right?.width
-  && left?.height === right?.height
 )
 
 const isSelectionNodeInfoEqual = (
@@ -220,7 +208,7 @@ export const createSelectionRead = ({
   })
   const box = createDerivedStore<Rect | undefined>({
     get: (readStore) => readStore(model).summary.box,
-    isEqual: isOptionalRectEqual
+    isEqual: isSameOptionalRectTuple
   })
   const nodeInfo = createDerivedStore<SelectionNodeInfo | undefined>({
     get: (readStore) => readSelectionNodeInfo({

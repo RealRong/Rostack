@@ -1,5 +1,6 @@
 import { isTextContentEmpty } from '@whiteboard/core/node'
-import type { NodeId, Size } from '@whiteboard/core/types'
+import { isSizeEqual } from '@whiteboard/core/geometry'
+import type { NodeId } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { CommandResult } from '@engine-types/result'
 import type {
@@ -27,14 +28,6 @@ type NodeTextHost = {
   document: NodePatchWriter
   appearance: NodeAppearanceMutations
 }
-
-const isSameSize = (
-  left: Size | null | undefined,
-  right: Size | null | undefined
-) => (
-  left?.width === right?.width
-  && left?.height === right?.height
-)
 
 export const createNodeTextMutations = ({
   read,
@@ -103,7 +96,7 @@ export const createNodeTextMutations = ({
             : undefined
         )
       : undefined
-    const sizeUpdate = nextMeasuredSize && !isSameSize(nextMeasuredSize, committed.rect)
+    const sizeUpdate = nextMeasuredSize && !isSizeEqual(nextMeasuredSize, committed.rect)
       ? nextMeasuredSize
       : undefined
 
@@ -149,7 +142,7 @@ export const createNodeTextMutations = ({
       const nextMeasuredSize = committed?.node.type === 'text'
         ? sizeById?.[id]
         : undefined
-      const sizeUpdate = committed && nextMeasuredSize && !isSameSize(nextMeasuredSize, committed.rect)
+      const sizeUpdate = committed && nextMeasuredSize && !isSizeEqual(nextMeasuredSize, committed.rect)
         ? nextMeasuredSize
         : undefined
 

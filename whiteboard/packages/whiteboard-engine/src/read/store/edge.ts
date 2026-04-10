@@ -352,16 +352,17 @@ export const createEdgeProjection = (initialSnapshot: ReadSnapshot) => {
     state = nextState
   }
 
-  const reconcileEdges = (
-    current: EdgeCacheState,
-    edgeIds: ReadonlySet<EdgeId>
-  ): EdgeProjectionUpdate => {
-    const previous = current.cacheById
-    const nextCacheById = new Map(previous)
-    const changedEdgeIds = new Set<EdgeId>()
+const reconcileEdges = (
+  current: EdgeCacheState,
+  relations: EdgeRelations,
+  edgeIds: ReadonlySet<EdgeId>
+): EdgeProjectionUpdate => {
+  const previous = current.cacheById
+  const nextCacheById = new Map(previous)
+  const changedEdgeIds = new Set<EdgeId>()
 
-    edgeIds.forEach((edgeId) => {
-      const edge = current.relations.edgeById.get(edgeId)
+  edgeIds.forEach((edgeId) => {
+      const edge = relations.edgeById.get(edgeId)
       if (!edge) {
         nextCacheById.delete(edgeId)
         changedEdgeIds.add(edgeId)
@@ -397,7 +398,7 @@ export const createEdgeProjection = (initialSnapshot: ReadSnapshot) => {
     })
 
     const nextView = buildView({
-      relations: current.relations,
+      relations,
       cacheById: nextCacheById,
       prevIds: current.ids,
       prevById: current.byId
@@ -405,7 +406,7 @@ export const createEdgeProjection = (initialSnapshot: ReadSnapshot) => {
 
     return {
       nextState: {
-        relations: current.relations,
+        relations,
         cacheById: nextCacheById,
         ids: nextView.ids,
         byId: nextView.byId
@@ -506,10 +507,11 @@ export const createEdgeProjection = (initialSnapshot: ReadSnapshot) => {
       idsChanged = next.idsChanged
       changedEdgeIds = next.changedEdgeIds
     } else {
+      const nextRelations = createEdgeRelations(visibleEdges)
       const affectedEdgeIds = new Set<EdgeId>()
       if (impact.edge.nodeIds.length) {
         const fromNodes = collectRelatedEdgeIds(
-          state.relations.nodeToEdgeIds,
+          nextRelations.nodeToEdgeIds,
           new Set(impact.edge.nodeIds)
         )
         fromNodes.forEach((edgeId) => {
@@ -519,7 +521,7 @@ export const createEdgeProjection = (initialSnapshot: ReadSnapshot) => {
       impact.edge.ids.forEach((edgeId) => {
         affectedEdgeIds.add(edgeId)
       })
-      const next = reconcileEdges(state, affectedEdgeIds)
+      const next = reconcileEdges(state, nextRelations, affectedEdgeIds)
       commitState(next.nextState)
       idsChanged = next.idsChanged
       changedEdgeIds = next.changedEdgeIds

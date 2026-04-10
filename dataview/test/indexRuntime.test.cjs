@@ -124,7 +124,14 @@ const createDelta = (input = {}) => ({
 
 test('engine.index sync patches search/group/sort/calculation on record value changes', () => {
   const document = createDocument()
-  const index = createEngineIndex(document)
+  const index = createEngineIndex(document, {
+    search: {
+      fields: [TITLE_FIELD_ID]
+    },
+    groupFields: [FIELD_STATUS],
+    sortFields: [FIELD_POINTS],
+    calculationFields: [FIELD_STATUS, FIELD_POINTS]
+  })
 
   const updatedDocument = createDocument()
   updatedDocument.records.byId.rec_2 = {
@@ -178,13 +185,17 @@ test('engine.index sync patches search/group/sort/calculation on record value ch
 
   const statusCalc = state.calculations.fields.get(FIELD_STATUS)
   assert.deepEqual(statusCalc.global.distribution.get('Done'), 2)
-  assert.equal(statusCalc.buckets.get('doing'), undefined)
-  assert.equal(statusCalc.buckets.get('done').count, 2)
 })
 
 test('engine.index sync rebuilds only touched field semantics on schema changes', () => {
   const document = createDocument()
-  const index = createEngineIndex(document)
+  const index = createEngineIndex(document, {
+    search: {
+      fields: [FIELD_STATUS]
+    },
+    sortFields: [FIELD_STATUS, FIELD_POINTS],
+    calculationFields: [FIELD_STATUS]
+  })
   const before = index.state()
 
   const renamedFields = createFields([

@@ -86,6 +86,18 @@ export const isSameBoxTuple = (
   left.width === right.width &&
   left.height === right.height
 
+export const isSameOptionalBoxTuple = (
+  left: BoxTupleLike | undefined,
+  right: BoxTupleLike | undefined
+) => (
+  left === right
+  || (
+    left !== undefined
+    && right !== undefined
+    && isSameBoxTuple(left, right)
+  )
+)
+
 export const isSameIdOrder = <T extends { id: unknown },>(
   left: readonly (T | undefined)[],
   right: readonly (T | undefined)[]
@@ -134,3 +146,15 @@ export const isSamePointArray = <TPoint extends XYPointLike,>(
   }
   return true
 }
+
+export const isSameOptionalNumberArray = (
+  left?: readonly number[],
+  right?: readonly number[]
+) => (
+  left === right
+  || (
+    left !== undefined
+    && right !== undefined
+    && isOrderedArrayEqual(left, right)
+  )
+)

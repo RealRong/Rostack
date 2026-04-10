@@ -1,4 +1,5 @@
 import { createValueStore, type ValueStore } from '@shared/store'
+import { isOrderedArrayEqual } from '@whiteboard/core/utils'
 import type { Tool } from '../../types/tool'
 import type { EditorRead, EditorState } from '../../types/editor'
 import type { PointerSample } from '../../types/input'
@@ -48,14 +49,6 @@ const uniqueEdgeIds = (
 
   return next
 }
-
-const isOrderedEqual = (
-  left: readonly string[],
-  right: readonly string[]
-) => (
-  left.length === right.length
-  && left.every((value, index) => value === right[index])
-)
 
 export type EditorRuntimeState = {
   tool: ValueStore<Tool>
@@ -128,8 +121,8 @@ export const createRuntimeState = ({
       )
 
       if (
-        !isOrderedEqual(nextNodeIds, currentSelection.nodeIds)
-        || !isOrderedEqual(nextEdgeIds, currentSelection.edgeIds)
+        !isOrderedArrayEqual(nextNodeIds, currentSelection.nodeIds)
+        || !isOrderedArrayEqual(nextEdgeIds, currentSelection.edgeIds)
       ) {
         if (nextNodeIds.length > 0 || nextEdgeIds.length > 0) {
           selection.mutate.replace({

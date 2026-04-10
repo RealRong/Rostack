@@ -2,13 +2,10 @@ import type {
   DataDoc,
   Field,
   RecordId,
-  Row,
-  View,
-  ViewId
+  View
 } from '@dataview/core/contracts'
 import {
-  getDocumentFieldById,
-  getDocumentViewById
+  getDocumentFieldById
 } from '@dataview/core/document'
 import {
   compareFieldValues
@@ -26,13 +23,15 @@ import type {
   SearchIndex,
   SortedIdSet
 } from '../../index/types'
+import type {
+  QueryState
+} from './state'
 
-export interface ResolvedViewRecordState {
-  view?: View
-  derivedRecords: readonly Row[]
-  orderedRecords: readonly Row[]
-  visibleRecords: readonly Row[]
-}
+const sameIds = (
+  left: readonly RecordId[],
+  right: readonly RecordId[]
+) => left.length === right.length
+  && left.every((value, index) => value === right[index])
 
 const createOrderIndex = (
   ids: readonly RecordId[]
@@ -124,11 +123,7 @@ const resolveSearchMatches = (input: {
 
       addMatchedPostings(matches, postings, query)
     })
-  } else {
-    if (!input.index.all) {
-      return matches
-    }
-
+  } else if (input.index.all) {
     addMatchedPostings(matches, input.index.all, query)
   }
 
@@ -154,24 +149,30 @@ const resolveEffectiveFilterRules = (
 })
 
 const matchesFilter = (input: {
-  row: Row
+  recordId: RecordId
   mode: View['filter']['mode']
   rules: readonly {
     fieldId: string
     field: Field | undefined
     rule: View['filter']['rules'][number]
   }[]
+  index: IndexState
 }) => {
   if (!input.rules.length) {
     return true
+  }
+
+  const row = input.index.records.rows.get(input.recordId)
+  if (!row) {
+    return false
   }
 
   const results = input.rules.map(({ fieldId, field, rule }) => (
     matchFilterRule(
       field,
       fieldId === 'title'
-        ? input.row.title
-        : input.row.values[fieldId],
+        ? row.title
+        : row.values[fieldId],
       rule
     )
   ))
@@ -183,7 +184,6 @@ const matchesFilter = (input: {
 
 const filterVisibleIds = (input: {
   ids: readonly RecordId[]
-  rows: ReadonlyMap<RecordId, Row>
   view: View
   document: DataDoc
   index: IndexState
@@ -199,64 +199,61 @@ const filterVisibleIds = (input: {
       return false
     }
 
-    const row = input.rows.get(recordId)
-    if (!row) {
-      return false
-    }
-
     return matchesFilter({
-      row,
+      recordId,
       mode: input.view.filter.mode,
-      rules: effectiveRules
+      rules: effectiveRules,
+      index: input.index
     })
   })
 }
 
-const materializeRows = (
-  ids: readonly RecordId[],
-  rows: ReadonlyMap<RecordId, Row>
-): readonly Row[] => ids
-  .map(recordId => rows.get(recordId))
-  .filter((row): row is Row => Boolean(row))
+const buildOrderMap = (
+  ids: readonly RecordId[]
+): ReadonlyMap<RecordId, number> => new Map(
+  ids.map((id, index) => [id, index] as const)
+)
 
-export const resolveIndexedViewRecordState = (input: {
+export const buildQueryState = (input: {
   document: DataDoc
-  activeViewId?: ViewId
+  view: View
   index: IndexState
-}): ResolvedViewRecordState => {
-  const view = input.activeViewId
-    ? getDocumentViewById(input.document, input.activeViewId)
-    : undefined
-
-  if (!view) {
-    return {
-      view: undefined,
-      derivedRecords: [],
-      orderedRecords: [],
-      visibleRecords: []
-    }
-  }
-
-  const baseIds = input.index.records.ids
-  const derivedIds = sortRecordIds({
-    ids: baseIds,
+  previous?: QueryState
+}): QueryState => {
+  const derived = sortRecordIds({
+    ids: input.index.records.ids,
     document: input.document,
     index: input.index,
-    view
+    view: input.view
   })
-  const orderedIds = applyViewOrders(derivedIds, view)
-  const visibleIds = filterVisibleIds({
-    ids: orderedIds,
-    rows: input.index.records.rows,
-    view,
+  const ordered = applyViewOrders(derived, input.view)
+  const visible = filterVisibleIds({
+    ids: ordered,
+    view: input.view,
     document: input.document,
     index: input.index
   })
 
+  const previous = input.previous
+  const nextDerived = previous && sameIds(previous.derived, derived)
+    ? previous.derived
+    : derived
+  const nextOrdered = previous && sameIds(previous.ordered, ordered)
+    ? previous.ordered
+    : ordered
+  const nextVisible = previous && sameIds(previous.visible, visible)
+    ? previous.visible
+    : visible
+
   return {
-    view,
-    derivedRecords: materializeRows(derivedIds, input.index.records.rows),
-    orderedRecords: materializeRows(orderedIds, input.index.records.rows),
-    visibleRecords: materializeRows(visibleIds, input.index.records.rows)
+    derived: nextDerived,
+    ordered: nextOrdered,
+    visible: nextVisible,
+    visibleSet: previous && nextVisible === previous.visible
+      ? previous.visibleSet
+      : new Set(nextVisible),
+    order: previous && nextOrdered === previous.ordered
+      ? previous.order
+      : buildOrderMap(nextOrdered)
   }
 }

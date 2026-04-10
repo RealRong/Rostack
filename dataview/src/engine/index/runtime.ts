@@ -1,6 +1,7 @@
 import type {
   CommitDelta,
-  DataDoc
+  DataDoc,
+  FieldId
 } from '@dataview/core/contracts'
 import type {
   IndexStageTrace,
@@ -8,10 +9,12 @@ import type {
 } from '../types'
 import {
   buildCalculationIndex,
+  ensureCalculationIndex,
   syncCalculationIndex
 } from './calculations'
 import {
   buildGroupIndex,
+  ensureGroupIndex,
   syncGroupIndex
 } from './group'
 import {
@@ -20,13 +23,16 @@ import {
 } from './records'
 import {
   buildSearchIndex,
+  ensureSearchIndex,
   syncSearchIndex
 } from './search'
 import {
   buildSortIndex,
+  ensureSortIndex,
   syncSortIndex
 } from './sort'
 import type {
+  IndexDemand,
   IndexState
 } from './types'
 import {
@@ -38,9 +44,19 @@ import {
   now
 } from '../perf/shared'
 
+interface NormalizedIndexDemand {
+  search: {
+    all: boolean
+    fields: readonly FieldId[]
+  }
+  groupFields: readonly FieldId[]
+  sortFields: readonly FieldId[]
+  calculationFields: readonly FieldId[]
+}
+
 export interface EngineIndex {
   state: () => IndexState
-  sync: (document: DataDoc, delta: CommitDelta) => IndexSyncResult
+  sync: (document: DataDoc, delta: CommitDelta, demand?: IndexDemand) => IndexSyncResult
 }
 
 export interface IndexSyncResult {
@@ -106,30 +122,67 @@ const createIndexStageTrace = (input: {
   durationMs: input.durationMs
 })
 
+const uniqueSorted = (
+  values: readonly FieldId[] = []
+): readonly FieldId[] => Array.from(new Set(values)).sort()
+
+const normalizeDemand = (
+  demand?: IndexDemand
+): NormalizedIndexDemand => ({
+  search: {
+    all: demand?.search?.all === true,
+    fields: uniqueSorted(demand?.search?.fields)
+  },
+  groupFields: uniqueSorted(demand?.groupFields),
+  sortFields: uniqueSorted(demand?.sortFields),
+  calculationFields: uniqueSorted(demand?.calculationFields)
+})
+
+const sameList = (
+  left: readonly FieldId[],
+  right: readonly FieldId[]
+) => left.length === right.length
+  && left.every((value, index) => value === right[index])
+
+const sameDemand = (
+  left: NormalizedIndexDemand,
+  right: NormalizedIndexDemand
+) => left.search.all === right.search.all
+  && sameList(left.search.fields, right.search.fields)
+  && sameList(left.groupFields, right.groupFields)
+  && sameList(left.sortFields, right.sortFields)
+  && sameList(left.calculationFields, right.calculationFields)
+
 const buildIndexState = (
-  document: DataDoc
+  document: DataDoc,
+  demand?: IndexDemand
 ): IndexState => {
+  const normalized = normalizeDemand(demand)
   const records = buildRecordIndex(document)
-  const group = buildGroupIndex(document, records)
 
   return {
     records,
-    search: buildSearchIndex(document, records),
-    group,
-    sort: buildSortIndex(document, records),
-    calculations: buildCalculationIndex(document, records, group)
+    search: buildSearchIndex(document, records, normalized.search),
+    group: buildGroupIndex(document, records, normalized.groupFields),
+    sort: buildSortIndex(document, records, normalized.sortFields),
+    calculations: buildCalculationIndex(document, records, normalized.calculationFields)
   }
 }
 
 export const createEngineIndex = (
-  document: DataDoc
+  document: DataDoc,
+  demand?: IndexDemand
 ): EngineIndex => {
-  let current = buildIndexState(document)
+  let current = buildIndexState(document, demand)
+  let currentDemand = normalizeDemand(demand)
 
   return {
     state: () => current,
-    sync: (nextDocument, delta) => {
+    sync: (nextDocument, delta, demandForSync) => {
       const previous = current
+      const nextDemand = demandForSync
+        ? normalizeDemand(demandForSync)
+        : currentDemand
       const totalStart = now()
       const touchedRecordCount = touchedRecordCountOf(delta)
       const touchedFieldCount = touchedFieldCountOf(delta)
@@ -139,22 +192,56 @@ export const createEngineIndex = (
       const records = syncRecordIndex(previous.records, nextDocument, delta)
       const recordsMs = now() - recordsStart
 
-      const groupStart = now()
-      const group = syncGroupIndex(previous.group, nextDocument, records, delta)
-      const groupMs = now() - groupStart
-
       const searchStart = now()
-      const search = syncSearchIndex(previous.search, nextDocument, records, delta)
+      const search = sameDemand(currentDemand, nextDemand)
+        ? ensureSearchIndex(
+            syncSearchIndex(previous.search, nextDocument, records, delta),
+            nextDocument,
+            records,
+            nextDemand.search
+          )
+        : buildSearchIndex(nextDocument, records, nextDemand.search, previous.search.rev + 1)
       const searchMs = now() - searchStart
 
+      const groupStart = now()
+      const group = sameDemand(currentDemand, nextDemand)
+        ? ensureGroupIndex(
+            syncGroupIndex(previous.group, nextDocument, records, delta),
+            nextDocument,
+            records,
+            nextDemand.groupFields
+          )
+        : buildGroupIndex(nextDocument, records, nextDemand.groupFields, previous.group.rev + 1)
+      const groupMs = now() - groupStart
+
       const sortStart = now()
-      const sort = syncSortIndex(previous.sort, nextDocument, records, delta)
+      const sort = sameDemand(currentDemand, nextDemand)
+        ? ensureSortIndex(
+            syncSortIndex(previous.sort, nextDocument, records, delta),
+            nextDocument,
+            records,
+            nextDemand.sortFields
+          )
+        : buildSortIndex(nextDocument, records, nextDemand.sortFields, previous.sort.rev + 1)
       const sortMs = now() - sortStart
 
       const calculationsStart = now()
-      const calculations = syncCalculationIndex(previous.calculations, nextDocument, records, group, delta)
+      const calculations = sameDemand(currentDemand, nextDemand)
+        ? ensureCalculationIndex(
+            syncCalculationIndex(previous.calculations, nextDocument, records, delta),
+            nextDocument,
+            records,
+            nextDemand.calculationFields
+          )
+        : buildCalculationIndex(
+            nextDocument,
+            records,
+            nextDemand.calculationFields,
+            previous.calculations.rev + 1
+          )
       const calculationsMs = now() - calculationsStart
 
+      currentDemand = nextDemand
       current = {
         records,
         search,

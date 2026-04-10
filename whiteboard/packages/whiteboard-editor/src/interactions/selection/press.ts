@@ -1,12 +1,5 @@
 import {
   isSelectionTargetEqual,
-  matchSelectionTap,
-  resolveSelectionPressDecision,
-  type SelectionDragDecision,
-  type SelectionMarqueeDecision,
-  type SelectionPressDecision,
-  type SelectionPressTargetInput,
-  type SelectionPressTarget
 } from '@whiteboard/core/selection'
 import { createTimeoutTask, type TimeoutTask } from '@shared/scheduler'
 import type { Node } from '@whiteboard/core/types'
@@ -28,6 +21,15 @@ import type {
 } from '../../types/input'
 import { createMarqueeInteraction } from './marquee'
 import { createMoveInteraction } from './move'
+import {
+  matchSelectionTap,
+  resolveSelectionPressDecision,
+  type SelectionDragDecision,
+  type SelectionMarqueeDecision,
+  type SelectionPressDecision,
+  type SelectionPressTarget,
+  type SelectionPressTargetInput
+} from './pressPolicy'
 
 type SelectionPressField = EditField
 type SelectionSubjectInput = Pick<PointerDownInput, 'pick'>

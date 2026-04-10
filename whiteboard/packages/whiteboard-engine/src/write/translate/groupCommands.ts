@@ -5,8 +5,9 @@ import {
   listGroupEdgeIds,
   listGroupNodeIds,
   listNodes
-} from '../document'
-import { err, ok } from '../result'
+} from '@whiteboard/core/document'
+import { createNodeFieldsUpdateOperation } from '@whiteboard/core/node'
+import { err, ok } from '@whiteboard/core/result'
 import type {
   CanvasItemRef,
   Document,
@@ -15,8 +16,7 @@ import type {
   NodeId,
   Operation,
   Result
-} from '../types'
-import { createNodeFieldsUpdateOperation } from '../node/update'
+} from '@whiteboard/core/types'
 
 type GroupOperationsResult = Result<{
   operations: Operation[]

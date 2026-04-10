@@ -1,14 +1,14 @@
-import { rectFromPoints } from '../geometry'
+import { rectFromPoints } from '@whiteboard/core/geometry'
 import type {
   Point,
   Rect
-} from '../types'
+} from '@whiteboard/core/types'
 import {
   applySelectionTarget,
   isSelectionTargetEqual,
   type SelectionTarget
-} from './target'
-import type { SelectionMode } from '../node/selection'
+} from '@whiteboard/core/selection'
+import type { SelectionMode } from '@whiteboard/core/node'
 
 export type MarqueeMatch = 'touch' | 'contain'
 
@@ -132,10 +132,10 @@ export const stepMarqueeSelection = (
 export const finishMarqueeSelection = (
   state: MarqueeSelectionState
 ): MarqueeSelectionDraft => ({
-    active: state.active,
-    worldRect: state.worldRect,
-    selection: state.active
-      ? state.selection
-      : undefined,
-    changed: false
-  })
+  active: state.active,
+  worldRect: state.worldRect,
+  selection: state.active
+    ? state.selection
+    : undefined,
+  changed: false
+})

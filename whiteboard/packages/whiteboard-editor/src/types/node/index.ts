@@ -2,10 +2,8 @@ export type {
   ControlId,
   NodeDefinition,
   NodeRegistry,
+  NodeRole,
   NodeHit,
   NodeMeta,
   NodeFamily
 } from './registry'
-export type {
-  NodeRole
-} from '@whiteboard/core/node'

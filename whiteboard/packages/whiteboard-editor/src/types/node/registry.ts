@@ -1,4 +1,3 @@
-import type { NodeRole } from '@whiteboard/core/node'
 import type {
   Node,
   NodeSchema,
@@ -8,6 +7,7 @@ import type {
 export type NodeHit = 'box' | 'path' | 'none'
 export type NodeFamily = 'text' | 'shape' | 'frame' | 'draw'
 export type ControlId = 'fill' | 'stroke' | 'text' | 'group'
+export type NodeRole = 'content' | 'frame'
 
 export type NodeMeta = {
   key?: string

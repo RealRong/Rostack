@@ -1,6 +1,11 @@
 export {
   createEditor
 } from './runtime/editor/createEditor'
+export {
+  createClipboardPacket,
+  parseClipboardPacket,
+  serializeClipboardPacket
+} from './clipboard/packet'
 export type {
   EditCaret,
   EditField,
@@ -19,6 +24,9 @@ export type {
   EditorClipboardTarget,
   EditorInput
 } from './types/editor'
+export type {
+  ClipboardPacket
+} from './clipboard/packet'
 export type {
   ContextMenuInput,
   ContextMenuIntent,

@@ -1,8 +1,7 @@
 import {
   readShapeKind,
   readShapeMeta,
-  readShapeSpec,
-  toNodeDataPatch
+  readShapeSpec
 } from '@whiteboard/core/node'
 import {
   useEffect,
@@ -13,6 +12,7 @@ import {
 } from 'react'
 import type { NodeDefinition, NodeRenderProps } from '#react/types/node'
 import { useEdit, useEditor, usePickRef } from '#react/runtime/hooks'
+import { toNodeDataPatch } from '../../update'
 import {
   focusEditableDraft,
   isEscapeEditingKey,

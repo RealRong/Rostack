@@ -3,9 +3,6 @@ import type {
   ViewportLimits
 } from '@whiteboard/core/geometry'
 import type {
-  ClipboardPacket,
-} from '@whiteboard/core/document'
-import type {
   HistoryConfig as KernelHistoryConfig,
   HistoryState
 } from '@whiteboard/core/kernel'
@@ -71,6 +68,7 @@ import type {
 } from '../runtime/viewport'
 import type { EditCaret, EditField, EditTarget } from '../runtime/state/edit'
 import type { TextPreviewPatch } from '../runtime/overlay/types'
+import type { ClipboardPacket } from '../clipboard/packet'
 
 export type EditorClipboardTarget =
   | 'selection'

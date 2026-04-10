@@ -5,10 +5,7 @@ import {
   startMoveState,
   stepMoveState
 } from '@whiteboard/core/node'
-import type {
-  SelectionMoveSelectionBehavior,
-  SelectionTarget
-} from '@whiteboard/core/selection'
+import type { SelectionTarget } from '@whiteboard/core/selection'
 import type { Edge } from '@whiteboard/core/types'
 import {
   FINISH
@@ -21,6 +18,7 @@ import { createSelectionGesture } from '../../runtime/interaction/gesture'
 import type {
   PointerDownInput
 } from '../../types/input'
+import type { SelectionMoveSelectionBehavior } from './pressPolicy'
 
 const toMoveNodePatches = (
   result: MoveStepResult

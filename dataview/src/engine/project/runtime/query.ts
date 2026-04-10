@@ -20,8 +20,7 @@ import {
 } from '@dataview/core/view/order'
 import type {
   IndexState,
-  SearchIndex,
-  SortedIdSet
+  SearchIndex
 } from '../../index/types'
 import type {
   QueryState
@@ -92,7 +91,7 @@ const applyViewOrders = (
 
 const addMatchedPostings = (
   target: Set<RecordId>,
-  postings: ReadonlyMap<string, SortedIdSet<RecordId>>,
+  postings: ReadonlyMap<string, ReadonlySet<RecordId>>,
   query: string
 ) => {
   postings.forEach((ids, token) => {

@@ -1,7 +1,7 @@
-import { isPointEqual } from '../geometry'
-import type { EdgeHandle } from '../types/edge'
-import type { Edge, EdgeId, EdgePatch, Point } from '../types'
-import { moveRoutePoint, clearRoute, setRoutePoints } from './commands'
+import { isPointEqual } from '@whiteboard/core/geometry'
+import type { EdgeHandle } from '@whiteboard/core/edge'
+import type { Edge, EdgeId, EdgePatch, Point } from '@whiteboard/core/types'
+import { clearRoute, moveRoutePoint, setRoutePoints } from '@whiteboard/core/edge'
 
 export type RouteHandleTarget =
   | {
@@ -114,14 +114,14 @@ export const startRouteHandleState = (input: {
   point?: Point
   kind?: 'anchor'
 }): RouteHandleState => ({
-    kind: input.kind ?? 'anchor',
-    edgeId: input.edgeId,
-    index: input.index,
-    pointerId: input.pointerId,
-    startWorld: input.startWorld,
-    origin: input.origin,
-    point: input.point ?? input.origin
-  })
+  kind: input.kind ?? 'anchor',
+  edgeId: input.edgeId,
+  index: input.index,
+  pointerId: input.pointerId,
+  startWorld: input.startWorld,
+  origin: input.origin,
+  point: input.point ?? input.origin
+})
 
 const normalizePolylinePoints = (
   points: readonly Point[]
@@ -251,18 +251,18 @@ export const startStepSegmentRouteHandleState = (input: {
   pathPoints: readonly Point[]
   baseRoutePoints: readonly Point[]
 }): RouteHandleState => ({
-    kind: 'segment',
-    edgeId: input.edgeId,
-    index: input.index,
-    segmentIndex: input.segmentIndex,
-    axis: input.axis,
-    pointerId: input.pointerId,
-    startWorld: input.startWorld,
-    origin: input.origin,
-    pathPoints: input.pathPoints,
-    baseRoutePoints: input.baseRoutePoints,
-    routePoints: input.baseRoutePoints
-  })
+  kind: 'segment',
+  edgeId: input.edgeId,
+  index: input.index,
+  segmentIndex: input.segmentIndex,
+  axis: input.axis,
+  pointerId: input.pointerId,
+  startWorld: input.startWorld,
+  origin: input.origin,
+  pathPoints: input.pathPoints,
+  baseRoutePoints: input.baseRoutePoints,
+  routePoints: input.baseRoutePoints
+})
 
 export const stepRouteHandleState = (input: {
   state: RouteHandleState
@@ -332,32 +332,32 @@ export const stepRouteHandleState = (input: {
 export const finishRouteHandleState = (
   state: RouteHandleState
 ): RouteHandleCommit => ({
-    edgeId: state.edgeId,
-    index: state.index,
-    point:
-      state.kind === 'anchor'
-        ? (
-            isPointEqual(state.point, state.origin)
-              ? undefined
-              : state.point
-          )
-        : undefined,
-    route:
-      state.kind === 'segment'
-        ? (
-            state.routePoints.length === state.baseRoutePoints.length
-            && state.routePoints.every((point, index) => isPointEqual(point, state.baseRoutePoints[index]!))
-              ? undefined
-              : (
-                  state.routePoints.length > 0
-                    ? {
-                        kind: 'manual',
-                        points: [...state.routePoints]
-                      }
-                    : {
-                        kind: 'auto'
-                      }
-                )
-          )
-        : undefined
-  })
+  edgeId: state.edgeId,
+  index: state.index,
+  point:
+    state.kind === 'anchor'
+      ? (
+          isPointEqual(state.point, state.origin)
+            ? undefined
+            : state.point
+        )
+      : undefined,
+  route:
+    state.kind === 'segment'
+      ? (
+          state.routePoints.length === state.baseRoutePoints.length
+          && state.routePoints.every((point, index) => isPointEqual(point, state.baseRoutePoints[index]!))
+            ? undefined
+            : (
+                state.routePoints.length > 0
+                  ? {
+                      kind: 'manual',
+                      points: [...state.routePoints]
+                    }
+                  : {
+                      kind: 'auto'
+                    }
+              )
+        )
+      : undefined
+})

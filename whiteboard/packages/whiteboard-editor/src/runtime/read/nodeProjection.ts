@@ -2,7 +2,7 @@ import type {
   Node,
   NodeFieldPatch,
   Rect
-} from '../types'
+} from '@whiteboard/core/types'
 
 export type NodeProjectionPatch = Pick<
   NodeFieldPatch,

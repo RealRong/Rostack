@@ -1,7 +1,7 @@
-import { toNodeFieldUpdate } from '@whiteboard/core/node'
 import { FontSizePanel } from '../../panels/FontSizePanel'
 import { FontSizeControl } from './shared/FontSizeControl'
 import type { ToolbarItemSpec } from './types'
+import { toNodeFieldUpdate } from '#react/features/node/update'
 
 export const fontSizeItem: ToolbarItemSpec = {
   key: 'font-size',

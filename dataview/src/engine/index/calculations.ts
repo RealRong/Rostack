@@ -12,7 +12,8 @@ import {
 } from '@dataview/core/field'
 import {
   buildAggregateState,
-  createAggregateEntry
+  createAggregateEntry,
+  patchAggregateState
 } from './aggregate'
 import {
   collectSchemaFieldIds,
@@ -151,19 +152,38 @@ export const syncCalculationIndex = (
     }
 
     const nextEntries = new Map(previousField.global.entries)
+    let nextGlobal = previousField.global
 
     touchedRecords.forEach(recordId => {
+      const previousEntry = nextEntries.get(recordId)
       const row = records.rows.get(recordId)
       if (!row) {
         nextEntries.delete(recordId)
+        nextGlobal = patchAggregateState({
+          state: nextGlobal,
+          recordId,
+          previous: previousEntry
+        })
         return
       }
 
-      nextEntries.set(recordId, createAggregateEntry(field, getRecordFieldValue(row, fieldId)))
+      const nextEntry = createAggregateEntry(field, getRecordFieldValue(row, fieldId))
+      nextEntries.set(recordId, nextEntry)
+      nextGlobal = patchAggregateState({
+        state: nextGlobal,
+        recordId,
+        previous: previousEntry,
+        next: nextEntry
+      })
     })
 
     nextFields.set(fieldId, {
-      global: buildAggregateState(nextEntries)
+      global: nextGlobal.entries === nextEntries
+        ? nextGlobal
+        : {
+            ...nextGlobal,
+            entries: nextEntries
+          }
     })
     changed = true
   })

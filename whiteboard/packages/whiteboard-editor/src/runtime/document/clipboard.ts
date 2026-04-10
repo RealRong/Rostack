@@ -1,8 +1,6 @@
 import type {
-  ClipboardPacket,
   SliceRoots
 } from '@whiteboard/core/document'
-import { createClipboardPacket } from '@whiteboard/core/document'
 import type { Point } from '@whiteboard/core/types'
 import type {
   EditorClipboardApi,
@@ -11,6 +9,10 @@ import type {
 import type {
   ClipboardRuntime
 } from './types'
+import {
+  createClipboardPacket,
+  type ClipboardPacket
+} from '../../clipboard/packet'
 
 const applyInsertedRoots = (input: {
   editor: ClipboardRuntime

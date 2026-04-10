@@ -2,12 +2,25 @@ import {
   compileNodeFieldUpdate,
   compileNodeFieldUpdates,
   type NodeSchemaFieldRef
-} from '../schema'
-import type { Node, NodeStyleValue, NodeUpdateInput } from '../types'
-import { hasValueByPath } from '../utils/objectPath'
+} from '@whiteboard/core/schema'
+import type { Node, NodeStyleValue, NodeUpdateInput } from '@whiteboard/core/types'
 
 export type NodeStylePatch = Record<string, NodeStyleValue>
 export type NodeDataPatch = Record<string, unknown>
+
+const getValueByPath = (value: unknown, path: string): unknown => {
+  if (!path) return value
+  const parts = path.split('.').filter(Boolean)
+  let current: any = value
+  for (const part of parts) {
+    if (current == null || typeof current !== 'object') return undefined
+    current = current[part]
+  }
+  return current
+}
+
+const hasValueByPath = (value: unknown, path: string): boolean =>
+  getValueByPath(value, path) !== undefined
 
 const readFieldContainer = (
   node: Pick<Node, 'data' | 'style'>,

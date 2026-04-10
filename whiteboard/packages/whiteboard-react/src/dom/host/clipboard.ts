@@ -1,8 +1,8 @@
-import type { ClipboardPacket } from '@whiteboard/core/document'
 import {
   parseClipboardPacket,
   serializeClipboardPacket
-} from '@whiteboard/core/document'
+} from '@whiteboard/editor'
+import type { ClipboardPacket } from '@whiteboard/editor'
 
 const CLIPBOARD_MIME = 'application/x-whiteboard-slice'
 

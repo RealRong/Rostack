@@ -3,8 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
 import {
   isTextContentEmpty,
-  resolveAnchoredRect,
-  toNodeDataPatch
+  resolveAnchoredRect
 } from '@whiteboard/core/node'
 import { useOptionalKeyedStoreValue, useStoreValue } from '@shared/react'
 import type { NodeDefinition, NodeRenderProps } from '#react/types/node'
@@ -20,6 +19,7 @@ import {
   syncEditableDraft
 } from '../../dom/editableText'
 import { useStickyFontSize } from '../../hooks/useStickyFontSize'
+import { toNodeDataPatch } from '../../update'
 import {
   bindNodeTextSource,
   measureTextNodeSize,

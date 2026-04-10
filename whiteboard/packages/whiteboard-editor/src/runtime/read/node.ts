@@ -1,15 +1,8 @@
 import {
-  applyNodeProjectionPatch,
-  applyNodeProjectionRect,
   getNodeBounds,
   getNodeGeometry,
   readTextWidthMode,
-  resolveNodeConnect,
-  resolveNodeEnter,
-  resolveNodeRole,
-  resolveNodeTransform,
   setTextWidthMode,
-  type NodeRole,
   type NodeRectHitOptions,
   type TransformSelectionTargets
 } from '@whiteboard/core/node'
@@ -29,6 +22,17 @@ import type { NodeRegistry } from '../../types/node'
 import type {
   NodeOverlayProjection
 } from '../overlay/types'
+import {
+  applyNodeProjectionPatch,
+  applyNodeProjectionRect
+} from './nodeProjection'
+import {
+  resolveNodeConnect,
+  resolveNodeEnter,
+  resolveNodeRole,
+  resolveNodeTransform,
+  type NodeRole
+} from './nodeCapability'
 import {
   createOverlayStateStore,
   createPatchedItemStore

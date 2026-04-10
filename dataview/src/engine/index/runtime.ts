@@ -153,6 +153,12 @@ const sameDemand = (
   && sameList(left.sortFields, right.sortFields)
   && sameList(left.calculationFields, right.calculationFields)
 
+const sameSearchDemand = (
+  left: NormalizedIndexDemand['search'],
+  right: NormalizedIndexDemand['search']
+) => left.all === right.all
+  && sameList(left.fields, right.fields)
+
 const buildIndexState = (
   document: DataDoc,
   demand?: IndexDemand
@@ -193,7 +199,7 @@ export const createEngineIndex = (
       const recordsMs = now() - recordsStart
 
       const searchStart = now()
-      const search = sameDemand(currentDemand, nextDemand)
+      const search = sameSearchDemand(currentDemand.search, nextDemand.search)
         ? ensureSearchIndex(
             syncSearchIndex(previous.search, nextDocument, records, delta),
             nextDocument,
@@ -204,7 +210,7 @@ export const createEngineIndex = (
       const searchMs = now() - searchStart
 
       const groupStart = now()
-      const group = sameDemand(currentDemand, nextDemand)
+      const group = sameList(currentDemand.groupFields, nextDemand.groupFields)
         ? ensureGroupIndex(
             syncGroupIndex(previous.group, nextDocument, records, delta),
             nextDocument,
@@ -215,7 +221,7 @@ export const createEngineIndex = (
       const groupMs = now() - groupStart
 
       const sortStart = now()
-      const sort = sameDemand(currentDemand, nextDemand)
+      const sort = sameList(currentDemand.sortFields, nextDemand.sortFields)
         ? ensureSortIndex(
             syncSortIndex(previous.sort, nextDocument, records, delta),
             nextDocument,
@@ -226,7 +232,7 @@ export const createEngineIndex = (
       const sortMs = now() - sortStart
 
       const calculationsStart = now()
-      const calculations = sameDemand(currentDemand, nextDemand)
+      const calculations = sameList(currentDemand.calculationFields, nextDemand.calculationFields)
         ? ensureCalculationIndex(
             syncCalculationIndex(previous.calculations, nextDocument, records, delta),
             nextDocument,

@@ -10,9 +10,6 @@ import {
   listNodes
 } from '@whiteboard/core/document'
 import { isNodeEdgeEnd } from '@whiteboard/core/edge'
-import {
-  expandNodeSelection
-} from '@whiteboard/core/node'
 import type {
   CanvasItemRef,
   CoreRegistries,
@@ -33,6 +30,7 @@ import { translateGroup } from './group'
 import { translateEdge } from './edge'
 import { translateMindmap } from './mindmap'
 import { DEFAULT_TUNING } from '../../config'
+import { expandNodeSelection } from './nodeSelection'
 
 type DocumentCommand = WriteCommandMap['document']
 type DeleteCommand = Extract<DocumentCommand, { type: 'delete' }>

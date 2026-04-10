@@ -1,8 +1,6 @@
 import type { ReadModel } from '@engine-types/read'
 import type { Document, Edge, Node, NodeId } from '@whiteboard/core/types'
 import {
-  deriveNodeReadSlices,
-  deriveVisibleEdges,
   toLayerOrderedCanvasNodeIds
 } from '@whiteboard/core/node'
 import {
@@ -10,6 +8,10 @@ import {
   isSameMapValueRefs,
   isSameRefOrder
 } from '@whiteboard/core/equality'
+import {
+  deriveNodeReadSlices,
+  deriveVisibleEdges
+} from './nodeReadModel'
 
 const isSameModelRefs = (
   cache: ReadModel | undefined,

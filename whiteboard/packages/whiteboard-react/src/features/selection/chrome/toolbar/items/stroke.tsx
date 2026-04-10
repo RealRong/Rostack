@@ -1,8 +1,8 @@
 import { Button } from '@ui'
-import { toNodeFieldUpdate, toNodeStylePatch } from '@whiteboard/core/node'
 import { BorderPanel } from '../../panels/BorderPanel'
 import { ToolbarStrokeIcon } from '../primitives'
 import type { ToolbarItemSpec } from './types'
+import { toNodeFieldUpdate, toNodeStylePatch } from '#react/features/node/update'
 
 export const strokeItem: ToolbarItemSpec = {
   key: 'stroke',

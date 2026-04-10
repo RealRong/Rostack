@@ -2,8 +2,8 @@ import type {
   Slice,
   SliceExportResult,
   SliceRoots
-} from '../types/document'
-import { translateSlice } from './slice'
+} from '@whiteboard/core/document'
+import { translateSlice } from '@whiteboard/core/document'
 
 const CLIPBOARD_PACKET_TYPE = 'whiteboard/slice'
 const CLIPBOARD_PACKET_VERSION = 1

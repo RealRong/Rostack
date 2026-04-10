@@ -922,7 +922,8 @@ const runProjection = (input: {
         () => ({
           appearances: buildAppearanceList(
             sections,
-            input.previousProjection.nav?.appearances
+            input.previousProjection.nav?.appearances,
+            input.previousProjection.sections
           )
         }),
         input.previousProjection.nav ?? {

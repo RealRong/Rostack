@@ -1,6 +1,6 @@
 import { Button } from '@ui'
-import { toNodeDataPatch } from '@whiteboard/core/node'
 import { ShapeGlyph } from '#react/features/node'
+import { toNodeDataPatch } from '#react/features/node/update'
 import { ShapePickerPanel } from '../../panels/ShapePickerPanel'
 import type { ToolbarItemSpec } from './types'
 

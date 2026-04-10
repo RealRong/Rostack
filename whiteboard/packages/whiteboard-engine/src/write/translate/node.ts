@@ -7,11 +7,9 @@ import {
   buildNodeAlignOperations,
   buildNodeCreateOperation,
   buildNodeDistributeOperations,
-  buildNodeDuplicateOperations,
   createNodeFieldsUpdateOperation,
   createNodeUpdateOperation,
   buildMoveSet,
-  expandNodeSelection,
   isNodeUpdateEmpty,
   resolveMoveEffect
 } from '@whiteboard/core/node'
@@ -27,6 +25,10 @@ import {
   type NodeId
 } from '@whiteboard/core/types'
 import { DEFAULT_TUNING } from '../../config'
+import {
+  buildNodeDuplicateOperations,
+  expandNodeSelection
+} from './nodeSelection'
 
 type NodeCommand = WriteCommandMap['node']
 type CreateCommand = Extract<NodeCommand, { type: 'create' }>

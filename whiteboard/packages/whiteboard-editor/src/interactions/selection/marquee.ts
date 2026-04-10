@@ -1,9 +1,4 @@
 import {
-  createMarqueeRect,
-  finishMarqueeSelection,
-  startMarqueeSelection,
-  stepMarqueeSelection,
-  type SelectionMarqueeDecision,
   type SelectionTarget
 } from '@whiteboard/core/selection'
 import type { Rect } from '@whiteboard/core/types'
@@ -19,6 +14,13 @@ import type {
   InteractionSession
 } from '../../runtime/interaction/types'
 import type { PointerDownInput } from '../../types/input'
+import {
+  createMarqueeRect,
+  finishMarqueeSelection,
+  startMarqueeSelection,
+  stepMarqueeSelection
+} from './marqueeState'
+import type { SelectionMarqueeDecision } from './pressPolicy'
 
 type MarqueePointer = Pick<PointerDownInput, 'screen' | 'world'>
 

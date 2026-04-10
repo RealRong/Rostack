@@ -1,9 +1,4 @@
 import {
-  finishRouteHandleState,
-  resolveRouteHandleTarget,
-  startRouteHandleState,
-  startStepSegmentRouteHandleState,
-  stepRouteHandleState,
   type EdgeView
 } from '@whiteboard/core/edge'
 import type { EdgeId } from '@whiteboard/core/types'
@@ -19,6 +14,13 @@ import {
 import { createEdgeGesture } from '../../runtime/interaction/gesture'
 import type { PointerDownInput } from '../../types/input'
 import type { InteractionContext } from '../context'
+import {
+  finishRouteHandleState,
+  resolveRouteHandleTarget,
+  startRouteHandleState,
+  startStepSegmentRouteHandleState,
+  stepRouteHandleState
+} from './routeHandle'
 
 type EdgeRoutePick = Extract<PointerDownInput['pick'], {
   kind: 'edge'

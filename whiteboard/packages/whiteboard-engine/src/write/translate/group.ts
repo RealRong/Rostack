@@ -9,7 +9,7 @@ import {
   buildGroupMergeOperations,
   buildGroupUngroupManyOperations,
   buildGroupUngroupOperations
-} from '@whiteboard/core/group'
+} from './groupCommands'
 import { listCanvasItemRefs } from '@whiteboard/core/document'
 import type {
   CanvasItemRef,

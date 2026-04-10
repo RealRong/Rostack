@@ -187,17 +187,154 @@ export const buildAggregateState = (
   }
 }
 
+const decrementMapCount = <T,>(
+  map: Map<T, number>,
+  key: T | undefined
+) => {
+  if (key === undefined) {
+    return
+  }
+
+  const current = map.get(key)
+  if (current === undefined) {
+    return
+  }
+  if (current <= 1) {
+    map.delete(key)
+    return
+  }
+
+  map.set(key, current - 1)
+}
+
+const incrementMapCount = <T,>(
+  map: Map<T, number>,
+  key: T | undefined
+) => {
+  if (key === undefined) {
+    return
+  }
+
+  map.set(key, (map.get(key) ?? 0) + 1)
+}
+
+const sameEntry = (
+  left: AggregateEntry | undefined,
+  right: AggregateEntry | undefined
+) => JSON.stringify(left) === JSON.stringify(right)
+
+export const patchAggregateState = (input: {
+  state: AggregateState
+  recordId: RecordId
+  previous?: AggregateEntry
+  next?: AggregateEntry
+}): AggregateState => {
+  const previousEntry = input.previous ?? input.state.entries.get(input.recordId)
+  if (sameEntry(previousEntry, input.next)) {
+    return input.state
+  }
+
+  const entries = new Map(input.state.entries)
+  const distribution = new Map(input.state.distribution)
+  const uniqueCounts = new Map(input.state.uniqueCounts)
+  const numberCounts = new Map(input.state.numberCounts)
+  const optionCounts = new Map(input.state.optionCounts)
+  let count = input.state.count
+  let nonEmpty = input.state.nonEmpty
+  let sum = input.state.sum ?? 0
+  let hasNumber = input.state.sum !== undefined
+  let mustRecomputeRange = false
+
+  if (previousEntry) {
+    entries.delete(input.recordId)
+    count -= 1
+    if (!previousEntry.empty) {
+      nonEmpty -= 1
+      decrementMapCount(distribution, previousEntry.label)
+      decrementMapCount(uniqueCounts, previousEntry.uniqueKey)
+      decrementMapCount(numberCounts, previousEntry.number)
+      decrementMapCount(optionCounts, previousEntry.optionId)
+      if (previousEntry.number !== undefined) {
+        sum -= previousEntry.number
+        hasNumber = numberCounts.size > 0
+      }
+      if (
+        previousEntry.comparable !== undefined
+        && (
+          previousEntry.comparable === input.state.min
+          || previousEntry.comparable === input.state.max
+        )
+      ) {
+        mustRecomputeRange = true
+      }
+    }
+  }
+
+  if (input.next) {
+    entries.set(input.recordId, input.next)
+    count += 1
+    if (!input.next.empty) {
+      nonEmpty += 1
+      incrementMapCount(distribution, input.next.label)
+      incrementMapCount(uniqueCounts, input.next.uniqueKey)
+      incrementMapCount(numberCounts, input.next.number)
+      incrementMapCount(optionCounts, input.next.optionId)
+      if (input.next.number !== undefined) {
+        sum += input.next.number
+        hasNumber = true
+      }
+    }
+  }
+
+  const nextRange = mustRecomputeRange
+    ? readRange(entries)
+    : {
+        ...(input.state.min !== undefined ? { min: input.state.min } : {}),
+        ...(input.state.max !== undefined ? { max: input.state.max } : {})
+      }
+
+  if (
+    input.next
+    && !input.next.empty
+    && input.next.comparable !== undefined
+  ) {
+    if (typeof input.next.comparable === 'number') {
+      nextRange.min = nextRange.min === undefined
+        ? input.next.comparable
+        : Math.min(nextRange.min as number, input.next.comparable)
+      nextRange.max = nextRange.max === undefined
+        ? input.next.comparable
+        : Math.max(nextRange.max as number, input.next.comparable)
+    } else {
+      nextRange.min = nextRange.min === undefined
+        ? input.next.comparable
+        : String(nextRange.min) < input.next.comparable ? nextRange.min : input.next.comparable
+      nextRange.max = nextRange.max === undefined
+        ? input.next.comparable
+        : String(nextRange.max) > input.next.comparable ? nextRange.max : input.next.comparable
+    }
+  }
+
+  return {
+    count,
+    nonEmpty,
+    ...(hasNumber ? { sum } : {}),
+    ...(nextRange.min !== undefined ? { min: nextRange.min } : {}),
+    ...(nextRange.max !== undefined ? { max: nextRange.max } : {}),
+    distribution,
+    uniqueCounts,
+    numberCounts,
+    optionCounts,
+    entries
+  }
+}
+
 export const applyAggregateEntry = (input: {
   state: AggregateState
   recordId: RecordId
   next?: AggregateEntry
-}): AggregateState => {
-  const entries = new Map(input.state.entries)
-  if (input.next) {
-    entries.set(input.recordId, input.next)
-  } else {
-    entries.delete(input.recordId)
-  }
-
-  return buildAggregateState(entries)
-}
+}): AggregateState => patchAggregateState({
+  state: input.state,
+  recordId: input.recordId,
+  next: input.next
+})

@@ -1,8 +1,8 @@
 import { Button } from '@ui'
-import { toNodeStylePatch } from '@whiteboard/core/node'
 import { TextColorPanel } from '../../panels/TextColorPanel'
 import { ToolbarTextColorIcon } from '../primitives'
 import type { ToolbarItemSpec } from './types'
+import { toNodeStylePatch } from '#react/features/node/update'
 
 export const textColorItem: ToolbarItemSpec = {
   key: 'text-color',

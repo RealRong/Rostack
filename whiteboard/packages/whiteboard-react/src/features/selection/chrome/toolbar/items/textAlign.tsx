@@ -1,5 +1,4 @@
 import { Button } from '@ui'
-import { toNodeStylePatch } from '@whiteboard/core/node'
 import {
   AlignCenter,
   AlignLeft,
@@ -7,6 +6,7 @@ import {
 } from 'lucide-react'
 import { TextAlignPanel } from '../../panels/TextAlignPanel'
 import type { ToolbarItemSpec } from './types'
+import { toNodeStylePatch } from '#react/features/node/update'
 
 const TEXT_ALIGN_OPTIONS = [
   { key: 'left' as const, icon: AlignLeft },

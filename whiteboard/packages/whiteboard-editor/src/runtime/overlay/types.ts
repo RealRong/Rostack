@@ -1,6 +1,5 @@
 import type {
   Guide,
-  NodeProjectionPatch as CoreNodeProjectionPatch,
   ResizeDirection,
   TextWidthMode
 } from '@whiteboard/core/node'
@@ -18,8 +17,10 @@ import type {
 import type { Size } from '@whiteboard/core/types'
 import type { KeyedReadStore, ReadStore } from '@shared/store'
 import type { DrawPreview } from '../../types/draw'
+import type { NodeProjectionPatch } from '../read/nodeProjection'
+import type { MarqueeMatch } from '../../interactions/selection/marqueeState'
 
-export type NodePatch = CoreNodeProjectionPatch
+export type NodePatch = NodeProjectionPatch
 
 export type NodePatchEntry = {
   id: NodeId
@@ -90,12 +91,12 @@ export type EdgeOverlayState = {
 
 export type MarqueeOverlayState = {
   worldRect: Rect
-  match: import('@whiteboard/core/selection').MarqueeMatch
+  match: MarqueeMatch
 }
 
 export type MarqueeFeedback = {
   rect: Rect
-  match: import('@whiteboard/core/selection').MarqueeMatch
+  match: MarqueeMatch
 }
 
 type MindmapDragPreview = {

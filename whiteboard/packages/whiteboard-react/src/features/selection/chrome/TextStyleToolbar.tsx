@@ -8,10 +8,10 @@ import {
   type RefObject
 } from 'react'
 import { Button, cn } from '@ui'
-import { toNodeFieldUpdate, toNodeStylePatch } from '@whiteboard/core/node'
 import type { NodeId, Point } from '@whiteboard/core/types'
 import { useElementSize, useOptionalKeyedStoreValue, useStoreValue } from '@shared/react'
 import { useEdit, useEditorRuntime } from '#react/runtime/hooks'
+import { toNodeFieldUpdate, toNodeStylePatch } from '#react/features/node/update'
 import { WhiteboardPopover } from '#react/runtime/overlay'
 import {
   buildToolbarStyle,

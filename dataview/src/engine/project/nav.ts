@@ -81,7 +81,8 @@ export const createAppearanceList = (input: {
 
 export const buildAppearanceList = (
   sections: SectionState,
-  previous?: AppearanceList
+  previous?: AppearanceList,
+  previousSections?: SectionState
 ): AppearanceList => {
   const byId = new Map<AppearanceId, Appearance>()
   const ids: AppearanceId[] = []
@@ -93,7 +94,14 @@ export const buildAppearanceList = (
       return
     }
 
-    const sectionIds = section.ids.map(recordId => {
+    const canReuseSectionIds = (
+      previous
+      && previousSections?.byKey.get(sectionKey) === section
+    )
+    const previousSectionIds = canReuseSectionIds
+      ? previous.idsIn(sectionKey)
+      : undefined
+    const sectionIds = previousSectionIds ?? section.ids.map(recordId => {
       const id = createAppearanceId({
         section: sectionKey,
         recordId
@@ -109,7 +117,15 @@ export const buildAppearanceList = (
       return id
     })
 
-    const previousSectionIds = previous?.idsIn(sectionKey)
+    if (previousSectionIds) {
+      previousSectionIds.forEach(id => {
+        const appearance = previous?.get(id)
+        if (appearance) {
+          byId.set(id, appearance)
+        }
+      })
+    }
+
     nextIdsBySection.set(
       sectionKey,
       previousSectionIds && sameIds(previousSectionIds, sectionIds)

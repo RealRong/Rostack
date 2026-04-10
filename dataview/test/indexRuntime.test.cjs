@@ -171,7 +171,7 @@ test('engine.index sync patches search/group/sort/calculation on record value ch
 
   const titlePostings = state.search.fields.get(TITLE_FIELD_ID)
   assert.equal(titlePostings.get('task 2'), undefined)
-  assert.deepEqual(titlePostings.get('renamed 2'), ['rec_2'])
+  assert.deepEqual(Array.from(titlePostings.get('renamed 2') ?? []), ['rec_2'])
 
   const statusGroup = state.group.fields.get(FIELD_STATUS)
   assert.equal(statusGroup.bucketRecords.get('doing'), undefined)
@@ -231,8 +231,8 @@ test('engine.index sync rebuilds only touched field semantics on schema changes'
   assert.equal(state.sort.fields.get(FIELD_POINTS), before.sort.fields.get(FIELD_POINTS))
 
   const statusSearch = state.search.fields.get(FIELD_STATUS)
-  assert.deepEqual(statusSearch.get('done'), ['rec_3'])
-  assert.deepEqual(statusSearch.get('finished'), ['rec_3'])
+  assert.deepEqual(Array.from(statusSearch.get('done') ?? []), ['rec_3'])
+  assert.deepEqual(Array.from(statusSearch.get('finished') ?? []), ['rec_3'])
 
   const statusCalc = state.calculations.fields.get(FIELD_STATUS)
   assert.equal(statusCalc.global.distribution.get('Done'), undefined)

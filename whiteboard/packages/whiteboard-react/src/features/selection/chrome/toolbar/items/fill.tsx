@@ -1,8 +1,8 @@
 import { Button } from '@ui'
-import { toNodeStylePatch } from '@whiteboard/core/node'
 import { FillPanel } from '../../panels/FillPanel'
 import { ToolbarFillIcon } from '../primitives'
 import type { ToolbarItemSpec } from './types'
+import { toNodeStylePatch } from '#react/features/node/update'
 
 export const fillItem: ToolbarItemSpec = {
   key: 'fill',

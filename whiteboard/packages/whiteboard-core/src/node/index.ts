@@ -7,10 +7,6 @@ export {
   isNodeUpdateEmpty
 } from './update'
 export {
-  buildNodeDuplicateOperations,
-  expandNodeSelection
-} from './duplicate'
-export {
   containsPointInNodeOutline,
   distanceToNodeOutline,
   getAutoNodeAnchor,
@@ -67,13 +63,6 @@ export type {
   MoveStepResult
 } from './moveState'
 export { deriveCanvasNodes, deriveVisibleNodes } from './visibility'
-export {
-  deriveNodeReadSlices,
-  deriveMindmapRoots,
-  deriveVisibleEdges,
-  orderByIds
-} from './readModel'
-export type { NodeReadSlices } from './readModel'
 export {
   buildTransformCommitUpdates,
   buildTransformHandles,
@@ -185,29 +174,6 @@ export type {
 export {
   applySelection
 } from './selection'
-export {
-  applyNodeProjectionPatch,
-  applyNodeProjectionRect,
-  type NodeProjectionPatch
-} from './projection'
-export {
-  resolveNodeConnect,
-  resolveNodeEnter,
-  resolveNodeRole,
-  resolveNodeTransform,
-  type NodeRole,
-  type NodeTransform
-} from './capability'
-export {
-  toNodeDataPatch,
-  toNodeFieldRemovalPatch,
-  toNodeFieldUpdate,
-  toNodeStylePatch,
-  toNodeStyleRemovalPatch,
-  toNodeStyleUpdates,
-  type NodeDataPatch,
-  type NodeStylePatch
-} from './updateHelpers'
 export {
   SHAPE_MENU_SECTIONS,
   SHAPE_SPECS,

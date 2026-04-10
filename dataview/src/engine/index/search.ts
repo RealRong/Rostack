@@ -2,7 +2,8 @@ import type {
   CommitDelta,
   DataDoc,
   FieldId,
-  RecordId
+  RecordId,
+  Row
 } from '@dataview/core/contracts'
 import {
   getDocumentFieldById
@@ -13,17 +14,13 @@ import {
 } from '@dataview/core/field'
 import {
   collectSchemaFieldIds,
-  collectTouchedRecordIds,
-  createOrderIndex,
-  insertOrderedId,
-  removeOrderedId
+  collectTouchedRecordIds
 } from './shared'
 import type {
   RecordIndex,
   RecordTokens,
   SearchDemand,
-  SearchIndex,
-  SortedIdSet
+  SearchIndex
 } from './types'
 
 const unique = (
@@ -31,38 +28,44 @@ const unique = (
 ): readonly string[] => Array.from(new Set(values.filter(Boolean).map(value => value.toLowerCase())))
 
 const buildFieldTokens = (
-  document: DataDoc,
-  recordId: RecordId,
-  fieldId: FieldId
+  record: Row,
+  fieldId: FieldId,
+  field?: ReturnType<typeof getDocumentFieldById>
 ): readonly string[] | undefined => {
-  const record = document.records.byId[recordId]
-  if (!record) {
-    return undefined
-  }
-
   return fieldId === 'title'
-    ? unique(getFieldSearchTokens(getDocumentFieldById(document, 'title'), record.title))
+    ? unique(getFieldSearchTokens(field, record.title))
     : unique(getFieldSearchTokens(
-        getDocumentFieldById(document, fieldId),
+        field,
         record.values[fieldId]
       ))
 }
 
 const buildAllTokens = (
-  document: DataDoc,
-  recordId: RecordId
+  record: Row,
+  fields: readonly {
+    id: FieldId
+    field: ReturnType<typeof getDocumentFieldById>
+  }[]
 ): readonly string[] | undefined => {
-  const record = document.records.byId[recordId]
-  if (!record) {
-    return undefined
+  const tokens = new Set<string>()
+  const addTokens = (nextTokens: readonly string[] | undefined) => {
+    nextTokens?.forEach(token => {
+      if (token) {
+        tokens.add(token.toLowerCase())
+      }
+    })
   }
 
-  return unique([
-    ...(buildFieldTokens(document, recordId, 'title') ?? []),
-    ...normalizeSearchableValue(record.type),
-    ...normalizeSearchableValue(record.meta),
-    ...document.fields.order.flatMap(fieldId => buildFieldTokens(document, recordId, fieldId) ?? [])
-  ])
+  addTokens(getFieldSearchTokens(undefined, record.title))
+  addTokens(normalizeSearchableValue(record.type))
+  addTokens(normalizeSearchableValue(record.meta))
+  fields.forEach(({ id, field }) => {
+    addTokens(buildFieldTokens(record, id, field))
+  })
+
+  return tokens.size
+    ? Array.from(tokens)
+    : undefined
 }
 
 const cloneRecordTokens = (
@@ -76,21 +79,23 @@ const cloneRecordTokens = (
 })
 
 const addTokensToPostings = (
-  postings: Map<string, SortedIdSet<RecordId>>,
+  postings: Map<string, Set<RecordId>>,
   tokens: readonly string[],
-  recordId: RecordId,
-  order: ReadonlyMap<RecordId, number>
+  recordId: RecordId
 ) => {
   tokens.forEach(token => {
-    postings.set(
-      token,
-      insertOrderedId(postings.get(token) ?? [], recordId, order)
-    )
+    const ids = postings.get(token)
+    if (ids) {
+      ids.add(recordId)
+      return
+    }
+
+    postings.set(token, new Set([recordId]))
   })
 }
 
 const removeTokensFromPostings = (
-  postings: Map<string, SortedIdSet<RecordId>>,
+  postings: Map<string, Set<RecordId>>,
   tokens: readonly string[],
   recordId: RecordId
 ) => {
@@ -100,15 +105,23 @@ const removeTokensFromPostings = (
       return
     }
 
-    const nextIds = removeOrderedId(ids, recordId)
-    if (nextIds.length) {
-      postings.set(token, nextIds)
+    ids.delete(recordId)
+    if (ids.size) {
       return
     }
 
     postings.delete(token)
   })
 }
+
+const clonePostings = (
+  source: ReadonlyMap<string, ReadonlySet<RecordId>>
+): Map<string, Set<RecordId>> => new Map(
+  Array.from(source.entries(), ([token, ids]) => [
+    token,
+    new Set(ids)
+  ] as const)
+)
 
 const setRecordFieldTokens = (input: {
   records: Map<RecordId, RecordTokens>
@@ -176,21 +189,33 @@ const buildFieldPostings = (
   records: RecordIndex,
   fieldId: FieldId
 ): {
-  postings: ReadonlyMap<string, SortedIdSet<RecordId>>
+  postings: ReadonlyMap<string, ReadonlySet<RecordId>>
   recordTokens: ReadonlyMap<RecordId, readonly string[]>
 } => {
-  const postings = new Map<string, SortedIdSet<RecordId>>()
+  const postings = new Map<string, Set<RecordId>>()
   const recordTokens = new Map<RecordId, readonly string[]>()
-  const order = createOrderIndex(records.ids)
+  const field = getDocumentFieldById(document, fieldId)
+
+  if (!field && fieldId !== 'title') {
+    return {
+      postings,
+      recordTokens
+    }
+  }
 
   records.ids.forEach(recordId => {
-    const tokens = buildFieldTokens(document, recordId, fieldId)
+    const record = records.rows.get(recordId)
+    if (!record) {
+      return
+    }
+
+    const tokens = buildFieldTokens(record, fieldId, field)
     if (!tokens?.length) {
       return
     }
 
     recordTokens.set(recordId, tokens)
-    addTokensToPostings(postings, tokens, recordId, order)
+    addTokensToPostings(postings, tokens, recordId)
   })
 
   return {
@@ -203,21 +228,29 @@ const buildAllPostings = (
   document: DataDoc,
   records: RecordIndex
 ): {
-  postings: ReadonlyMap<string, SortedIdSet<RecordId>>
+  postings: ReadonlyMap<string, ReadonlySet<RecordId>>
   recordTokens: ReadonlyMap<RecordId, readonly string[]>
 } => {
-  const postings = new Map<string, SortedIdSet<RecordId>>()
+  const postings = new Map<string, Set<RecordId>>()
   const recordTokens = new Map<RecordId, readonly string[]>()
-  const order = createOrderIndex(records.ids)
+  const fields = document.fields.order.map(fieldId => ({
+    id: fieldId,
+    field: getDocumentFieldById(document, fieldId)
+  }))
 
   records.ids.forEach(recordId => {
-    const tokens = buildAllTokens(document, recordId)
+    const record = records.rows.get(recordId)
+    if (!record) {
+      return
+    }
+
+    const tokens = buildAllTokens(record, fields)
     if (!tokens?.length) {
       return
     }
 
     recordTokens.set(recordId, tokens)
-    addTokensToPostings(postings, tokens, recordId, order)
+    addTokensToPostings(postings, tokens, recordId)
   })
 
   return {
@@ -377,6 +410,10 @@ export const syncSearchIndex = (
   let nextAll = previous.all
   const nextFields = new Map(previous.fields)
   const nextRecords = new Map(previous.records)
+  const allFields = document.fields.order.map(fieldId => ({
+    id: fieldId,
+    field: getDocumentFieldById(document, fieldId)
+  }))
 
   if (rebuildAll) {
     const built = buildAllPostings(document, records)
@@ -396,8 +433,7 @@ export const syncSearchIndex = (
     })
     changed = true
   } else if (hasLoadedAll && touchedRecords !== 'all' && touchedRecords.size) {
-    const postings = new Map(previous.all)
-    const order = createOrderIndex(records.ids)
+    const postings = clonePostings(previous.all!)
 
     touchedRecords.forEach(recordId => {
       const previousTokens = nextRecords.get(recordId)?.all
@@ -405,7 +441,10 @@ export const syncSearchIndex = (
         removeTokensFromPostings(postings, previousTokens, recordId)
       }
 
-      const nextTokens = buildAllTokens(document, recordId)
+      const record = records.rows.get(recordId)
+      const nextTokens = record
+        ? buildAllTokens(record, allFields)
+        : undefined
       setRecordAllTokens({
         records: nextRecords,
         recordId,
@@ -413,7 +452,7 @@ export const syncSearchIndex = (
       })
 
       if (nextTokens?.length) {
-        addTokensToPostings(postings, nextTokens, recordId, order)
+        addTokensToPostings(postings, nextTokens, recordId)
       }
     })
 
@@ -454,8 +493,7 @@ export const syncSearchIndex = (
       return
     }
 
-    const postings = new Map(previousPostings)
-    const order = createOrderIndex(records.ids)
+    const postings = clonePostings(previousPostings)
 
     touchedRecords.forEach(recordId => {
       const previousTokens = nextRecords.get(recordId)?.fields.get(fieldId)
@@ -463,7 +501,10 @@ export const syncSearchIndex = (
         removeTokensFromPostings(postings, previousTokens, recordId)
       }
 
-      const nextTokens = buildFieldTokens(document, recordId, fieldId)
+      const row = records.rows.get(recordId)
+      const nextTokens = row
+        ? buildFieldTokens(row, fieldId, getDocumentFieldById(document, fieldId))
+        : undefined
       setRecordFieldTokens({
         records: nextRecords,
         recordId,
@@ -472,7 +513,7 @@ export const syncSearchIndex = (
       })
 
       if (nextTokens?.length) {
-        addTokensToPostings(postings, nextTokens, recordId, order)
+        addTokensToPostings(postings, nextTokens, recordId)
       }
     })
 

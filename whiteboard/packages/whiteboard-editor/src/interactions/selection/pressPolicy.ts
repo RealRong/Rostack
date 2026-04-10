@@ -1,12 +1,12 @@
 import {
   EMPTY_SELECTION_TARGET,
   applySelectionTarget,
+  type SelectionAffordance,
+  type SelectionSummary,
   type SelectionTarget
-} from './target'
-import { applySelection, type SelectionMode } from '../node'
-import type { EdgeId, GroupId, Node, NodeId } from '../types'
-import type { SelectionAffordance } from './affordance'
-import type { SelectionSummary } from './summary'
+} from '@whiteboard/core/selection'
+import { applySelection, type SelectionMode } from '@whiteboard/core/node'
+import type { EdgeId, GroupId, Node, NodeId } from '@whiteboard/core/types'
 
 type ModifierEventLike = {
   alt: boolean
@@ -357,8 +357,7 @@ const decideNodePress = <TField extends string>(
         ? nextSelection.edgeIds
       : selected
         ? selectedEdgeIds
-      : []
-  const dragSelection = toNodeSelection(dragNodeIds)
+        : []
   const dragSelectionBehavior =
     promoteToGroup
       ? createTemporaryMoveSelection(
@@ -366,19 +365,19 @@ const decideNodePress = <TField extends string>(
           currentSelection
         )
       : mode === 'replace' && !selected && !dragCurrentSelection
-      ? createTemporaryMoveSelection(
-          dragSelection,
-          currentSelection
-        )
-      : createPersistMoveSelection(
-          repeat || dragCurrentSelection || selected
-            ? undefined
-            : (
-                promoteToGroup
-                  ? nextSelection
-                  : dragSelection
-              )
-        )
+        ? createTemporaryMoveSelection(
+            toNodeSelection(dragNodeIds),
+            currentSelection
+          )
+        : createPersistMoveSelection(
+            repeat || dragCurrentSelection || selected
+              ? undefined
+              : (
+                  promoteToGroup
+                    ? nextSelection
+                    : toNodeSelection(dragNodeIds)
+                )
+          )
 
   const explicitFieldEdit =
     mode === 'replace'
@@ -411,10 +410,10 @@ const decideNodePress = <TField extends string>(
               kind: 'edit-node',
               nodeId: node.id
             }
-        : {
-            kind: 'select',
-            target: nextSelection
-          },
+          : {
+              kind: 'select',
+              target: nextSelection
+            },
     drag: {
       kind: 'move',
       target: {
@@ -496,9 +495,9 @@ export const resolveSelectionPressDecision = <TField extends string>(
       ? decideBackgroundPress<TField>(input.selection, mode)
       : target.kind === 'group'
         ? decideGroupPress<TField>(deps, input.selection, mode, target.groupId)
-      : target.kind === 'selection-box'
-        ? decideSelectionBoxPress<TField>(input.selection, input.affordance)
-        : decideNodePress(deps, input.selection, mode, target)
+        : target.kind === 'selection-box'
+          ? decideSelectionBoxPress<TField>(input.selection, input.affordance)
+          : decideNodePress(deps, input.selection, mode, target)
 
   return decision
     ? {
@@ -520,18 +519,20 @@ export const matchSelectionTap = <TField extends string>(
     case 'background':
       return targetInput.kind === 'background'
     case 'group':
-      return targetInput.kind === 'group'
+      return (
+        targetInput.kind === 'group'
         && targetInput.groupId === target.groupId
+      )
     case 'selection-box':
-      return targetInput.kind === 'selection-box'
+      return (
+        targetInput.kind === 'selection-box'
         && targetInput.part === 'body'
+      )
     case 'node':
       return (
         targetInput.kind === 'node'
-        && (
-          targetInput.nodeId === target.nodeId
-          || targetInput.nodeId === target.hitNodeId
-        )
+        && targetInput.nodeId === target.nodeId
+        && targetInput.field === target.field
       )
   }
 }

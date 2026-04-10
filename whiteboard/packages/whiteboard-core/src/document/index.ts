@@ -1,5 +1,4 @@
 export { assertDocument } from './assert'
-export * from './clipboard'
 export { createDocument } from './model'
 export {
   getEdge,

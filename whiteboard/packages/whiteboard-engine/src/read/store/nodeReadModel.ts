@@ -1,6 +1,6 @@
-import type { Document, Edge, Node, NodeId } from '../types'
-import { listEdges, listNodes } from '../document'
-import { isNodeEdgeEnd } from '../edge'
+import { listEdges, listNodes } from '@whiteboard/core/document'
+import { isNodeEdgeEnd } from '@whiteboard/core/edge'
+import type { Document, Edge, Node, NodeId } from '@whiteboard/core/types'
 
 const EMPTY_NODES: Node[] = []
 const EMPTY_NODE_MAP = new Map<NodeId, Node>()
@@ -10,45 +10,6 @@ export type NodeReadSlices = {
   visible: Node[]
   canvas: Node[]
   canvasNodeById: Map<NodeId, Node>
-}
-
-export const orderByIds = <T extends { id: string }>(
-  items: T[],
-  ids?: readonly string[]
-) => {
-  if (!ids?.length) return items
-
-  if (items.length === ids.length) {
-    let sameOrder = true
-    for (let index = 0; index < items.length; index += 1) {
-      if (items[index]?.id !== ids[index]) {
-        sameOrder = false
-        break
-      }
-    }
-    if (sameOrder) return items
-  }
-
-  const byId = new Map(items.map((item) => [item.id, item]))
-  const idSet = new Set(ids)
-  const ordered: T[] = []
-
-  ids.forEach((id) => {
-    const item = byId.get(id)
-    if (item) {
-      ordered.push(item)
-    }
-  })
-
-  if (ordered.length === items.length) return ordered
-
-  items.forEach((item) => {
-    if (!idSet.has(item.id)) {
-      ordered.push(item)
-    }
-  })
-
-  return ordered
 }
 
 export const deriveVisibleEdges = (
@@ -99,11 +60,4 @@ export const deriveNodeReadSlices = (
     canvas,
     canvasNodeById
   }
-}
-
-export const deriveMindmapRoots = (visibleNodes: readonly Node[]): NodeId[] => {
-  if (!visibleNodes.length) return []
-  return visibleNodes
-    .filter((node) => node.type === 'mindmap')
-    .map((node) => node.id)
 }

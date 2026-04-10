@@ -2,9 +2,9 @@ import {
   Bold,
   Italic
 } from 'lucide-react'
-import { toNodeStylePatch } from '@whiteboard/core/node'
 import { ToolbarIconButton } from '../primitives'
 import type { ToolbarItemSpec } from './types'
+import { toNodeStylePatch } from '#react/features/node/update'
 
 export const boldItem: ToolbarItemSpec = {
   key: 'bold',

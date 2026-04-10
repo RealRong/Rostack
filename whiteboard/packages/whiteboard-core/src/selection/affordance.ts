@@ -1,4 +1,3 @@
-import type { NodeRole, NodeTransform } from '../node'
 import type { Node, NodeId, Rect } from '../types'
 import { isSameOptionalRectTuple } from '../equality'
 import type { SelectionSummary } from './summary'
@@ -39,8 +38,11 @@ export const deriveSelectionAffordance = ({
 }: {
   selection: SelectionSummary
   transformBox?: Rect
-  resolveNodeRole: (node: Node) => NodeRole
-  resolveNodeTransformCapability: (node: Node) => NodeTransform
+  resolveNodeRole: (node: Node) => 'content' | 'frame'
+  resolveNodeTransformCapability: (node: Node) => {
+    resize: boolean
+    rotate: boolean
+  }
 }): SelectionAffordance => {
   const displayBox = selection.box
   const primaryNode = selection.items.primaryNode

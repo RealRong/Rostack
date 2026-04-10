@@ -34,8 +34,8 @@ export interface IndexDemand {
 }
 
 export interface SearchIndex {
-  all?: ReadonlyMap<string, SortedIdSet<RecordId>>
-  fields: ReadonlyMap<FieldId, ReadonlyMap<string, SortedIdSet<RecordId>>>
+  all?: ReadonlyMap<string, ReadonlySet<RecordId>>
+  fields: ReadonlyMap<FieldId, ReadonlyMap<string, ReadonlySet<RecordId>>>
   records: ReadonlyMap<RecordId, RecordTokens>
   rev: number
 }

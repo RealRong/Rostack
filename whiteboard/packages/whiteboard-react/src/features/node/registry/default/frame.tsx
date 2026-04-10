@@ -6,11 +6,11 @@ import {
   FRAME_DEFAULT_STROKE,
   FRAME_DEFAULT_STROKE_WIDTH,
   FRAME_DEFAULT_TEXT_COLOR,
-  FRAME_DEFAULT_TITLE,
-  toNodeDataPatch
+  FRAME_DEFAULT_TITLE
 } from '@whiteboard/core/node'
 import type { NodeDefinition } from '#react/types/node'
 import { useEdit, useEditor, usePickRef } from '#react/runtime/hooks'
+import { toNodeDataPatch } from '../../update'
 import {
   isEscapeEditingKey,
   stopEditingPointerDown

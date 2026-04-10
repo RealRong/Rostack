@@ -1,5 +1,5 @@
 import type { Document } from '@whiteboard/core/types'
-import { assertDocument } from '@whiteboard/core/types'
+import { assertDocument } from '@whiteboard/core/document'
 import * as Y from 'yjs'
 
 export const COLLAB_ROOT_KEY = 'whiteboard'

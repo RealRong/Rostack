@@ -1,11 +1,11 @@
-import type { EdgeAnchor, Point } from '../types/core'
+import type { EdgeAnchor, Point } from '../types'
 import type {
   EdgePathInput,
   EdgePathResult,
   EdgePathSegment,
   EdgeRouter
 } from '../types/edge'
-import { readEdgeRoutePoints } from './types'
+import { readEdgeRoutePoints } from './route'
 
 const DEFAULT_ORTHO_OFFSET = 50
 const DEFAULT_CURVE_CURVATURE = 0.35

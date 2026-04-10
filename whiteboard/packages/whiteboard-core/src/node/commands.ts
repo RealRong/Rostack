@@ -1,5 +1,6 @@
 import { applyNodeDefaults, getMissingNodeFields } from '../schema'
-import { err, ok } from '../types'
+import { getNode, hasNode, listNodes } from '../document'
+import { err, ok } from '../result'
 import type {
   CoreRegistries,
   Document,
@@ -9,11 +10,6 @@ import type {
   Operation,
   Result,
   Size
-} from '../types'
-import {
-  getNode,
-  hasNode,
-  listNodes
 } from '../types'
 import {
   alignNodes,

@@ -1,5 +1,5 @@
 import { Slider } from '@ui'
-import { isSameOptionalNumberArray } from '@whiteboard/core/utils'
+import { isSameOptionalNumberArray } from '@whiteboard/core/equality'
 import { STROKE_COLOR_OPTIONS } from '../menus/options'
 import { Panel, PanelSection, SegmentedButton, SwatchButton } from './ShapeToolbarPrimitives'
 

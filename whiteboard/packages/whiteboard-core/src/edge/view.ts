@@ -1,6 +1,6 @@
 import { getEdgePath } from './path'
 import { resolveEdgeEnds } from './endpoints'
-import { readEdgeRoutePoints } from './types'
+import { readEdgeRoutePoints } from './route'
 import type { EdgeHandle, EdgeView, ResolveEdgeEndsInput } from '../types/edge'
 
 const buildEdgeHandles = (

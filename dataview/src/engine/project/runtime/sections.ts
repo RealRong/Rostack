@@ -476,18 +476,41 @@ export const syncSectionState = (input: {
 export const toPublishedSections = (input: {
   sections: SectionState
   appearances: AppearanceList
-}): readonly Section[] => input.sections.order.flatMap(key => {
+  previous?: readonly Section[]
+}): readonly Section[] => {
+  const previousByKey = new Map(
+    (input.previous ?? []).map(section => [section.key, section] as const)
+  )
+
+  return input.sections.order.flatMap(key => {
   const node = input.sections.byKey.get(key)
   if (!node || !node.visible) {
     return []
   }
 
-  return [{
+  const ids = input.appearances.idsIn(node.key)
+  const nextSection = {
     key: node.key,
     title: node.title,
     color: node.color,
     bucket: node.bucket,
-    ids: input.appearances.idsIn(node.key),
+    ids,
     collapsed: node.collapsed
-  } satisfies Section]
-})
+  } satisfies Section
+  const previousSection = previousByKey.get(node.key)
+
+  return previousSection
+    && previousSection.title === nextSection.title
+    && previousSection.color === nextSection.color
+    && previousSection.collapsed === nextSection.collapsed
+    && previousSection.bucket?.key === nextSection.bucket?.key
+    && previousSection.bucket?.title === nextSection.bucket?.title
+    && previousSection.bucket?.value === nextSection.bucket?.value
+    && previousSection.bucket?.clearValue === nextSection.bucket?.clearValue
+    && previousSection.bucket?.empty === nextSection.bucket?.empty
+    && previousSection.bucket?.color === nextSection.bucket?.color
+    && sameIds(previousSection.ids, ids)
+    ? [previousSection]
+    : [nextSection]
+  })
+}

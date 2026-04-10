@@ -3,7 +3,10 @@ import { defineConfig } from 'tsup'
 export default defineConfig({
   entry: {
     'types/index': 'src/types/index.ts',
-    'utils/index': 'src/utils/index.ts',
+    'result/index': 'src/result/index.ts',
+    'id/index': 'src/id/index.ts',
+    'value/index': 'src/value/index.ts',
+    'equality/index': 'src/equality/index.ts',
     'geometry/index': 'src/geometry/index.ts',
     'node/index': 'src/node/index.ts',
     'group/index': 'src/group/index.ts',

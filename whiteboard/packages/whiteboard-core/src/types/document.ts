@@ -3,10 +3,10 @@ import type {
   EdgeId,
   Node,
   NodeId,
-  Operation,
   Point,
   Rect
-} from './core'
+} from './model'
+import type { Operation } from './operations'
 
 export type Slice = {
   version: 1

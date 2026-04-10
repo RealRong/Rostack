@@ -1,13 +1,10 @@
 import type {
-  ChangeSet,
   Document,
   EdgeId,
-  NodeId,
-  Operation,
-  Origin,
-  Result,
-  ResultCode
-} from './core'
+  NodeId
+} from './model'
+import type { ChangeSet, Operation, Origin } from './operations'
+import type { Result, ResultCode } from './result'
 
 export type HistoryState = {
   canUndo: boolean

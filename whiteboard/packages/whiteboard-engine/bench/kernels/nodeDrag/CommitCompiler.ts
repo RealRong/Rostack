@@ -1,13 +1,7 @@
 import type { BoardConfig } from '@engine-types/instance/config'
 import type { NodeDragDraft } from '@engine-types/node/drag'
-import {
-  getNode,
-  type Document,
-  type Node,
-  type NodeId,
-  type Operation,
-  type Point
-} from '@whiteboard/core/types'
+import { getNode } from '@whiteboard/core/document'
+import type { Document, Node, NodeId, Operation, Point } from '@whiteboard/core/types'
 import { getNodeAABB, isPointEqual, isSizeEqual, rectContains } from '@whiteboard/core/geometry'
 import {
   expandGroupRect,

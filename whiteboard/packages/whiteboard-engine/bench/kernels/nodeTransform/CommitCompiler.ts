@@ -1,5 +1,6 @@
 import { createNodeFieldsUpdateOperation } from '@whiteboard/core/node'
-import { getNode, type Document, type NodeId, type Operation } from '@whiteboard/core/types'
+import { getNode } from '@whiteboard/core/document'
+import type { Document, NodeId, Operation } from '@whiteboard/core/types'
 import type { Size } from '@engine-types/common/base'
 import type { Point } from '@whiteboard/core/types'
 import { isPointEqual, isSizeEqual } from '@whiteboard/core/geometry'

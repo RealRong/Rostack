@@ -311,20 +311,6 @@ const buildState = (input: {
   }
 }
 
-const sameRecordMembership = (
-  left: SectionState,
-  right: SectionState
-) => left.order.length === right.order.length
-  && left.order.every((key, index) => {
-    if (key !== right.order[index]) {
-      return false
-    }
-
-    const leftNode = left.byKey.get(key)
-    const rightNode = right.byKey.get(key)
-    return Boolean(leftNode && rightNode && sameIds(leftNode.ids, rightNode.ids))
-  })
-
 const sameEntry = (
   left: AggregateEntry | undefined,
   right: AggregateEntry | undefined
@@ -354,7 +340,6 @@ export const syncCalcState = (input: {
     || input.action === 'rebuild'
     || input.touchedRecords === 'all'
     || input.touchedFields === 'all'
-    || !sameRecordMembership(input.previousSections, input.sections)
   ) {
     return buildState({
       sections: input.sections,
@@ -366,7 +351,7 @@ export const syncCalcState = (input: {
   const previous = input.previous!
   const previousSections = input.previousSections!
   const touchedRecords = input.touchedRecords as ReadonlySet<string>
-  const bySection = new Map(previous.bySection)
+  const bySection = new Map<SectionKey, ReadonlyMap<FieldId, AggregateState>>()
 
   input.sections.order.forEach(sectionKey => {
     const currentSection = input.sections.byKey.get(sectionKey)
@@ -435,9 +420,7 @@ export const syncCalcState = (input: {
       }
     })
 
-    if (changed) {
-      bySection.set(sectionKey, nextByField)
-    }
+    bySection.set(sectionKey, changed ? nextByField : previousByField)
   })
 
   return {
@@ -447,12 +430,18 @@ export const syncCalcState = (input: {
 
 export const toPublishedCalculations = (input: {
   calc: CalcState
+  previousCalc?: CalcState
+  previous?: ReadonlyMap<SectionKey, CalculationCollection>
   fieldsById: ReadonlyMap<FieldId, Field>
   view: View
 }): ReadonlyMap<SectionKey, CalculationCollection> => new Map(
   Array.from(input.calc.bySection.entries()).map(([sectionKey, states]) => [
     sectionKey,
-    createCollection(new Map(
+    (
+      input.previousCalc?.bySection.get(sectionKey) === states
+        ? input.previous?.get(sectionKey)
+        : undefined
+    ) ?? createCollection(new Map(
       Object.entries(input.view.calc).flatMap(([fieldId, metric]) => {
         if (!metric) {
           return []

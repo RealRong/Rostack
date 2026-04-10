@@ -1,4 +1,4 @@
-import { mergeValue } from '@whiteboard/core/utils'
+import { mergeValue } from '@whiteboard/core/value'
 import {
   DEFAULT_BOARD_CONFIG,
   type BoardConfig as EngineBoardConfig

@@ -1,5 +1,5 @@
 import { createRafTask } from '@shared/scheduler'
-import { Point } from '@whiteboard/core/types'
+import type { Point } from '@whiteboard/core/types'
 import type { InteractionContext } from '../context'
 
 export type EdgeHoverService = {

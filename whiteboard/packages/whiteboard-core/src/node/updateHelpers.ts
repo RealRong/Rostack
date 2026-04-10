@@ -4,7 +4,7 @@ import {
   type NodeSchemaFieldRef
 } from '../schema'
 import type { Node, NodeStyleValue, NodeUpdateInput } from '../types'
-import { hasValueByPath } from '../utils'
+import { hasValueByPath } from '../utils/objectPath'
 
 export type NodeStylePatch = Record<string, NodeStyleValue>
 export type NodeDataPatch = Record<string, unknown>

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import * as Y from 'yjs'
-import { createDocument } from '@whiteboard/core/types'
+import { createDocument } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
 import {
   createYjsSession,

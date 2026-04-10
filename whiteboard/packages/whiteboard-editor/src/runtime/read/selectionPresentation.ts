@@ -10,7 +10,7 @@ import {
   readShapeSpec,
   type ShapeKind
 } from '@whiteboard/core/node'
-import { isSameOptionalNumberArray } from '@whiteboard/core/utils'
+import { isSameOptionalNumberArray } from '@whiteboard/core/equality'
 import type {
   SelectionAffordance,
   SelectionSummary,

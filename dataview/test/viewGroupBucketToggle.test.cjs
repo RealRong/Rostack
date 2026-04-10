@@ -491,7 +491,7 @@ test('engine.project calculations are derived from index aggregates', () => {
   assert.equal(todoStatus?.items[0]?.percent, 1)
 })
 
-test('engine.project reconcile reuses unaffected grouped sections and calculations on data changes', () => {
+test('engine.project sync reuses unaffected grouped sections and calculations on data changes', () => {
   const engine = createEngine({
     document: createDocument()
   })
@@ -585,25 +585,27 @@ test('engine.perf traces project and publish behavior for incremental updates', 
   const trace = engine.perf.trace.last()
   const stats = engine.perf.stats.snapshot()
   const sectionsStage = trace?.project.stages.find(stage => stage.stage === 'sections')
-  const calculationsStage = trace?.project.stages.find(stage => stage.stage === 'calculations')
+  const calculationsStage = trace?.project.stages.find(stage => stage.stage === 'calc')
 
   assert.ok(trace)
   assert.equal(trace.kind, 'dispatch')
   assert.equal(trace.delta.summary.values, true)
-  assert.equal(trace.project.plan.sections, 'reconcile')
-  assert.equal(trace.project.plan.appearances, 'reconcile')
-  assert.equal(trace.project.plan.calculations, 'reconcile')
+  assert.equal(trace.project.plan.query, 'reuse')
+  assert.equal(trace.project.plan.sections, 'sync')
+  assert.equal(trace.project.plan.calc, 'sync')
+  assert.equal(trace.project.plan.nav, 'sync')
+  assert.equal(trace.project.plan.adapters, 'sync')
   assert.equal(trace.index.group.action, 'sync')
   assert.ok(trace.publish.changedStores.includes('sections'))
   assert.ok(trace.publish.changedStores.includes('appearances'))
   assert.ok(trace.publish.changedStores.includes('calculations'))
-  assert.equal(sectionsStage?.action, 'reconcile')
-  assert.equal(calculationsStage?.action, 'reconcile')
+  assert.equal(sectionsStage?.action, 'sync')
+  assert.equal(calculationsStage?.action, 'sync')
   assert.ok((sectionsStage?.metrics?.reusedNodeCount ?? 0) >= 2)
   assert.ok((calculationsStage?.metrics?.reusedNodeCount ?? 0) >= 1)
   assert.equal(stats.commits.total, 1)
   assert.equal(stats.commits.dispatch, 1)
-  assert.equal(stats.stages.sections.reconcile, 1)
+  assert.equal(stats.stages.sections.sync, 1)
   assert.equal(stats.indexes.group.changed, 1)
 })
 

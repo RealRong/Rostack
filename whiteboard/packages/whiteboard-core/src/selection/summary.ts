@@ -1,5 +1,5 @@
 import type { Edge, EdgeId, GroupId, Node, NodeId, Rect } from '../types'
-import { isOrderedArrayEqual, isSameOptionalRectTuple } from '../utils'
+import { isOrderedArrayEqual, isSameOptionalRectTuple } from '../equality'
 import type { SelectionTarget } from './target'
 
 const EMPTY_NODE_IDS: readonly NodeId[] = []

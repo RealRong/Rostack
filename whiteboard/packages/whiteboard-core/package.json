@@ -8,10 +8,25 @@
       "import": "./dist/types/index.js",
       "require": "./dist/types/index.cjs"
     },
-    "./utils": {
-      "types": "./dist/utils/index.d.ts",
-      "import": "./dist/utils/index.js",
-      "require": "./dist/utils/index.cjs"
+    "./result": {
+      "types": "./dist/result/index.d.ts",
+      "import": "./dist/result/index.js",
+      "require": "./dist/result/index.cjs"
+    },
+    "./id": {
+      "types": "./dist/id/index.d.ts",
+      "import": "./dist/id/index.js",
+      "require": "./dist/id/index.cjs"
+    },
+    "./value": {
+      "types": "./dist/value/index.d.ts",
+      "import": "./dist/value/index.js",
+      "require": "./dist/value/index.cjs"
+    },
+    "./equality": {
+      "types": "./dist/equality/index.d.ts",
+      "import": "./dist/equality/index.js",
+      "require": "./dist/equality/index.cjs"
     },
     "./geometry": {
       "types": "./dist/geometry/index.d.ts",

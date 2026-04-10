@@ -1,14 +1,13 @@
 import { buildEdgeCreateOperation } from '../edge/commands'
-import { readEdgeRoutePoints } from '../edge/types'
+import { isNodeEdgeEnd, readEdgeRoutePoints } from '../edge'
 import { resolveEdgeEnds } from '../edge/endpoints'
 import { getAABBFromPoints, getNodeRect, getRectCenter } from '../geometry'
 import { getNodeGeometry } from '../node'
 import { getNodesBoundingRect } from '../node/group'
 import { expandFrameSelection } from '../node/frame'
 import { buildNodeCreateOperation } from '../node/commands'
-import { createId } from '../utils/id'
-import { cloneValue } from '../utils/merge'
-import { err, ok } from '../types'
+import { createId } from '../id'
+import { err, ok } from '../result'
 import type {
   CoreRegistries,
   Document,
@@ -33,13 +32,8 @@ import type {
   SliceInsertResult,
   SliceRoots
 } from '../types/document'
-import {
-  getEdge,
-  getNode,
-  isNodeEdgeEnd,
-  listEdges,
-  listNodes
-} from '../types'
+import { getEdge, getNode, listEdges, listNodes } from '../document'
+import { cloneValue } from '../value'
 
 type ExportNodesInput = {
   doc: Document

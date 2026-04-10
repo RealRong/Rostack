@@ -13,7 +13,7 @@ import type {
 import type { TranslateResult } from '@engine-types/internal/translate'
 import type { WriteTranslateContext } from './index'
 import { invalid, success } from './result'
-import { getNode } from '@whiteboard/core/types'
+import { getNode } from '@whiteboard/core/document'
 import type {
   Document,
   MindmapCommandOptions,

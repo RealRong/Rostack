@@ -920,9 +920,14 @@ const runProjection = (input: {
         'nav',
         input.projectionDelta.nav.action,
         () => ({
-          appearances: buildAppearanceList(sections)
+          appearances: buildAppearanceList(
+            sections,
+            input.previousProjection.nav?.appearances
+          )
         }),
-        input.previousProjection.nav ?? { appearances: buildAppearanceList(input.previousProjection.sections) },
+        input.previousProjection.nav ?? {
+          appearances: buildAppearanceList(input.previousProjection.sections)
+        },
         nextValue => buildStageMetrics(
           'nav',
           input.previousPublished.appearances,
@@ -947,12 +952,15 @@ const runProjection = (input: {
       const sectionsView = appearances
         ? toPublishedSections({
             sections,
-            appearances
+            appearances,
+            previous: input.previousPublished.sections
           })
         : undefined
       const calculations = view
         ? toPublishedCalculations({
             calc,
+            previousCalc: input.previousProjection.calc,
+            previous: input.previousPublished.calculations,
             fieldsById,
             view
           })

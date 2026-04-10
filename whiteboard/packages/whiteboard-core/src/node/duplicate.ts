@@ -2,7 +2,7 @@ import {
   buildInsertSliceOperations,
   exportSliceFromNodes
 } from '../document'
-import { ok } from '../types'
+import { ok } from '../result'
 import type {
   CoreRegistries,
   Document,

@@ -5,7 +5,7 @@ import type {
   MindmapNodeId,
   MindmapTree
 } from '../mindmap/types'
-import type { NodeId, Point, Rect } from './core'
+import type { NodeId, Point, Rect } from './model'
 
 export type MindmapConnectionLine = {
   id: string

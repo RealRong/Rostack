@@ -12,19 +12,20 @@ import type {
   MindmapInsertPlan
 } from '../types/mindmap'
 import { layoutMindmap, layoutMindmapTidy } from './layout'
-import { getMindmapTreeFromNode } from './helpers'
 import {
   createNodeFieldsUpdateOperation,
   createNodeUpdateOperation
 } from '../node/update'
 import { compileNodeFieldUpdate } from '../schema'
-import { cloneValue } from '../utils/merge'
+import { getNode } from '../document'
 import type {
+  Document,
   MindmapLayoutHint,
   Operation,
   Size,
   SpatialNode
-} from '../types/core'
+} from '../types'
+import { cloneValue } from '../value'
 
 const computeConnectionLine = (
   parent: { x: number; y: number; width: number; height: number },
@@ -150,6 +151,28 @@ export const resolveInsertPlan = ({
     mode: 'child',
     parentId: targetNodeId
   }
+}
+
+const isMindmapTree = (value: unknown): value is MindmapTree => {
+  if (!value || typeof value !== 'object') return false
+  const tree = value as MindmapTree
+  return typeof tree.rootId === 'string' && typeof tree.nodes === 'object' && typeof tree.children === 'object'
+}
+
+export const getMindmapTreeFromNode = (node: SpatialNode | undefined): MindmapTree | undefined => {
+  if (!node || node.type !== 'mindmap') return
+  const data = node.data as Record<string, unknown> | undefined
+  if (!data || typeof data !== 'object') return
+  const tree = data.mindmap
+  return isMindmapTree(tree) ? tree : undefined
+}
+
+export const getMindmapTreeFromDocument = (
+  document: Pick<Document, 'nodes'>,
+  id: MindmapId
+): MindmapTree | undefined => {
+  const node = getNode(document, id)
+  return node?.type === 'mindmap' ? getMindmapTreeFromNode(node) : undefined
 }
 
 export const getMindmapTree = getMindmapTreeFromNode

@@ -1,4 +1,4 @@
-import type { Result } from '../types'
+import type { Result } from '../types/result'
 import type { MindmapInsertPayload } from '../types/mindmap'
 
 export type { MindmapInsertPayload } from '../types/mindmap'

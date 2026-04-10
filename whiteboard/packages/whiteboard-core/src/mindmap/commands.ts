@@ -1,5 +1,6 @@
-import { err, ok } from '../types'
-import { applyPathMutation } from '../utils'
+import { createId } from '../id'
+import { err, ok } from '../result'
+import { applyPathMutation } from '../utils/recordMutation'
 import type {
   MindmapCommandResult,
   MindmapCloneSubtreeInput,
@@ -16,7 +17,6 @@ import type {
   MindmapUpdateNodeInput
 } from './types'
 import type { MindmapInsertPayload } from '../types/mindmap'
-import { createId } from '../utils/id'
 
 type TreeDraft = MindmapTree
 

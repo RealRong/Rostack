@@ -4,14 +4,13 @@ import type {
   EdgeAnchor,
   EdgeEnd,
   EdgeId,
-  NodeGeometry,
-  EdgePatch,
   Node,
   NodeId,
-  Operation,
-  Point,
-  Result
-} from './core'
+  NodeGeometry,
+  Point
+} from './model'
+import type { EdgePatch, Operation } from './operations'
+import type { Result } from './result'
 
 export type AnchorSnapOptions = NodeOutlineAnchorOptions
 

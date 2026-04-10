@@ -5,7 +5,6 @@ import type {
   Appearance,
   AppearanceId,
   AppearanceList,
-  Section,
   SectionKey
 } from './types'
 import type {
@@ -13,6 +12,12 @@ import type {
 } from './runtime/state'
 
 const emptyIds = [] as readonly AppearanceId[]
+
+const sameIds = (
+  left: readonly string[],
+  right: readonly string[]
+) => left.length === right.length
+  && left.every((value, index) => value === right[index])
 
 export const createAppearanceId = (input: {
   section: SectionKey
@@ -75,11 +80,12 @@ export const createAppearanceList = (input: {
 }
 
 export const buildAppearanceList = (
-  sections: SectionState
+  sections: SectionState,
+  previous?: AppearanceList
 ): AppearanceList => {
   const byId = new Map<AppearanceId, Appearance>()
   const ids: AppearanceId[] = []
-  const idsBySection = new Map<SectionKey, readonly AppearanceId[]>()
+  const nextIdsBySection = new Map<SectionKey, readonly AppearanceId[]>()
 
   sections.order.forEach(sectionKey => {
     const section = sections.byKey.get(sectionKey)
@@ -92,24 +98,37 @@ export const buildAppearanceList = (
         section: sectionKey,
         recordId
       })
-      byId.set(id, {
+      byId.set(
         id,
-        recordId,
-        section: sectionKey
-      })
+        previous?.get(id) ?? {
+          id,
+          recordId,
+          section: sectionKey
+        }
+      )
       return id
     })
 
-    idsBySection.set(sectionKey, sectionIds)
+    const previousSectionIds = previous?.idsIn(sectionKey)
+    nextIdsBySection.set(
+      sectionKey,
+      previousSectionIds && sameIds(previousSectionIds, sectionIds)
+        ? previousSectionIds
+        : sectionIds
+    )
     if (!section.collapsed) {
       ids.push(...sectionIds)
     }
   })
 
+  const publishedIds = previous && sameIds(previous.ids, ids)
+    ? previous.ids
+    : ids
+
   return createAppearanceList({
     byId,
-    ids,
-    idsBySection
+    ids: publishedIds,
+    idsBySection: nextIdsBySection
   })
 }
 

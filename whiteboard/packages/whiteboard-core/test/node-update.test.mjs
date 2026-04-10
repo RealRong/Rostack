@@ -7,7 +7,7 @@ import {
   createNodeFieldsUpdateOperation,
   createNodeUpdateOperation
 } from '../dist/node/index.js'
-import { createDocument } from '../dist/types/index.js'
+import { createDocument } from '../dist/document/index.js'
 
 const FIXED_TIMESTAMP = Date.parse('2024-01-01T00:00:00.000Z')
 const FIXED_ISO = new Date(FIXED_TIMESTAMP).toISOString()

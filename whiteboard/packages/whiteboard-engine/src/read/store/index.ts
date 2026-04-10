@@ -13,7 +13,11 @@ import {
 import {
   exportSliceFromSelection,
   exportSliceFromEdge,
-  exportSliceFromNodes
+  exportSliceFromNodes,
+  listGroupCanvasItemRefs,
+  listGroupEdgeIds,
+  listGroupNodeIds,
+  listGroups
 } from '@whiteboard/core/document'
 import {
   collectFrameMembers,
@@ -32,11 +36,7 @@ import {
   type Node,
   type NodeId,
   type Point,
-  type Rect,
-  listGroupCanvasItemRefs,
-  listGroupEdgeIds,
-  listGroupNodeIds,
-  listGroups
+  type Rect
 } from '@whiteboard/core/types'
 import { createValueStore } from '@shared/store'
 import { DEFAULT_TUNING } from '../../config'

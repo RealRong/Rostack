@@ -5,6 +5,7 @@ import { cancelled, invalid, fromOp, success } from './result'
 import {
   buildEdgeCreateOperation,
   getNearestEdgeInsertIndex,
+  isNodeEdgeEnd,
   insertRoutePoint as insertRoutePointPatch,
   moveEdge as moveEdgePatch,
   moveRoutePoint as moveRoutePointPatch,
@@ -12,17 +13,15 @@ import {
   clearRoute as clearRoutePatch,
   resolveEdgePathFromRects
 } from '@whiteboard/core/edge'
+import { getEdge, getNode } from '@whiteboard/core/document'
 import { getNodeRect } from '@whiteboard/core/geometry'
 import { getNodeGeometry } from '@whiteboard/core/node'
-import {
-  getEdge,
-  getNode,
-  isNodeEdgeEnd,
-  type Document,
-  type Edge,
-  type EdgeId,
-  type Node,
-  type SpatialNode
+import type {
+  Document,
+  Edge,
+  EdgeId,
+  Node,
+  SpatialNode
 } from '@whiteboard/core/types'
 
 type EdgeCommand = WriteCommandMap['edge']

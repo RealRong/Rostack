@@ -126,13 +126,6 @@ export const toFiniteOrUndefined = (
   value: number | undefined | null
 ) => value === undefined || value === null || !Number.isFinite(value) ? undefined : value
 
-export const isSameNumberish = (
-  left: number | undefined | null,
-  right: number | undefined | null
-) =>
-  left === right
-  || (Number.isNaN(left) && Number.isNaN(right))
-
 export const isSamePointArray = <TPoint extends XYPointLike,>(
   left?: readonly TPoint[],
   right?: readonly TPoint[]

@@ -217,10 +217,6 @@
 
 - `editor.read.scene.list`
 
-或者更进一步：
-
-- `editor.read.scene.items`
-
 ### 推荐数据结构：扁平 scene item list
 
 形式大致类似：
@@ -244,7 +240,7 @@ type SceneItemRef =
 - 每个内容项都会多一个 wrapper 容器
 - edge 需要从共享全局 svg 迁到局部 svg wrapper
 
-## 2. React 主场景改成单入口 `CanvasSceneLayer`
+## 2. React 主场景改成单入口 `CanvasScene`
 
 当前固定并列的：
 
@@ -254,19 +250,32 @@ type SceneItemRef =
 
 建议收敛成：
 
-- `CanvasSceneLayer`
+- `CanvasScene`
 
 这个组件只负责一件事：
 
 - 按统一 scene order 渲染 canvas content
 
-内部可以根据 item 类型分别调用：
+内部直接根据 item 类型渲染现有内容组件：
 
-- edge shape renderer
-- node shape renderer
-- mindmap shape renderer
+- `EdgeItem`
+- `NodeItem`
+- `MindmapTreeView`
 
-但这些 renderer 不应该再在顶层形成固定 sibling layer，而应该统一落到 shape wrapper 列表中。
+不建议为了表达 shape-wrapper 再额外引入一层纯转发组件。  
+也就是说：
+
+- 不要为了名字好看而新增 `NodeShape`
+- 不要为了抽象对称而新增 `EdgeShape`
+- 不要为了统一结构而新增 `MindmapShape`
+
+如果一个组件只是：
+
+- 收一个 id
+- 读一点数据
+- 再把同样的东西转发给下层
+
+那这个组件就不应该存在。
 
 ## 3. 保留现有 overlay 结构
 
@@ -337,8 +346,8 @@ type SceneItemRef =
 
 换句话说，shape-wrapper 方案里：
 
-- frame 是 `node` shape 的一个具体类型
-- frame wrapper 和 edge wrapper 一样参与统一 scene
+- frame 是 `node` 的一个具体类型
+- frame 和 edge 一样进入统一 scene
 - 但 reorder 时必须额外考虑 frame barrier 规则
 
 ## 6. 排序策略必须从“自由 reorder”改成“受约束 reorder”
@@ -469,7 +478,7 @@ scene projection 的职责应该只包括：
 
 ## React 层建议怎么改
 
-## 1. Scene renderer 应该只解决 stacking，不改现有 item renderer 语义
+## 1. Scene renderer 只负责顺序，不新增纯转发组件
 
 例如：
 
@@ -481,9 +490,32 @@ scene projection 的职责应该只包括：
 
 - 它们如何被排布到 DOM 中
 
-而不是重写每一类 item 自身的渲染逻辑。
+而不是额外插入一层只负责“包一下再传下去”的组件。
 
-## 2. Edge renderer 应采用局部 svg wrapper，而不是共享全局 svg
+推荐关系应当是：
+
+```ts
+CanvasScene
+  -> NodeItem
+  -> EdgeItem
+  -> MindmapTreeView
+```
+
+而不是：
+
+```ts
+CanvasScene
+  -> NodeShape
+      -> NodeItem
+  -> EdgeShape
+      -> EdgeItem
+  -> MindmapShape
+      -> MindmapTreeView
+```
+
+除非中间层真的承载了独立职责，否则不应该为了结构对称保留它。
+
+## 2. EdgeItem 直接升级为局部 svg wrapper renderer，而不是新增 `EdgeShape`
 
 这里明确选择 shape-wrapper，因此 edge 不再维持单个全局 `EdgeLayer`。
 
@@ -494,6 +526,15 @@ scene projection 的职责应该只包括：
 3. wrapper 内部渲染局部 svg
 4. path、hit path、selection path、marker 都在局部坐标系内完成
 
+这里推荐直接改造现有 `EdgeItem`：
+
+- 让 `EdgeItem` 自己接收 edgeId
+- 自己读取 `edge.item` / `edge.resolved` / `edge.box`
+- 自己渲染局部 bbox svg
+- 自己收纳 label
+
+而不是再新增一个只包住 `EdgeItem` 的 `EdgeShape`。
+
 这里要避免的不是“每个 edge 一个 svg”，而是：
 
 - 每个 edge 一个全屏 svg
@@ -503,7 +544,7 @@ scene projection 的职责应该只包括：
 
 - 每个 edge 一个局部 bbox svg wrapper
 
-## 3. Edge label 明确收回到 edge shape-wrapper 内部
+## 3. Edge label 明确收回到 `EdgeItem` 内部
 
 这里也需要明确一个边界：
 
@@ -516,7 +557,7 @@ scene projection 的职责应该只包括：
 2. edge 在 node 上方时，label 也应一起在上方
 3. edge 被 send to back 时，label 也应一起下沉
 
-因此在 shape-wrapper 方案里，edge 的渲染单元应当包含：
+因此在 shape-wrapper 方案里，`EdgeItem` 的渲染单元应当包含：
 
 - visible path
 - hit path
@@ -525,7 +566,13 @@ scene projection 的职责应该只包括：
 
 overlay 层只保留交互性 handles，不保留 edge 内容本体。
 
-## 4. Node shape 仍可复用绝对定位 div
+如果 label 编辑逻辑太大，可以保留一个内部辅助组件：
+
+- `EdgeLabel`
+
+但它应当只作为 `EdgeItem` 的内部实现细节存在，不应再作为独立 scene / layer 入口。
+
+## 4. NodeItem 直接承担 node 的 shape-wrapper 职责
 
 node 这边通常不需要像 edge 那样改坐标模型。
 
@@ -533,9 +580,26 @@ node 这边通常不需要像 edge 那样改坐标模型。
 
 1. 每个 node 仍对应一个独立 wrapper
 2. wrapper 继续采用绝对定位 html 容器
-3. `NodeItem` 在 wrapper 内继续渲染自身内容
+3. `NodeItem` 直接渲染这个 wrapper 和内部内容
 
-因此 node 的主要改动不在内容渲染，而在于进入统一 scene wrapper 列表。
+因此 node 这边也不建议再额外新增 `NodeShape`。
+
+更推荐的是直接升级现有 `NodeItem`：
+
+- 继续读取 `useNodeView`
+- 继续负责 auto measure
+- 继续负责 definition.render
+- 同时直接成为 scene 中的 node shape 单元
+
+## 5. Mindmap 也不建议额外新增 `MindmapShape`
+
+mindmap 这边同样遵守“组件尽量少”的原则。
+
+推荐做法是：
+
+- `CanvasScene` 直接按 scene item 渲染 `MindmapTreeView`
+
+如果后面需要一个很薄的适配层，也应优先内联在 `CanvasScene` 里，而不是专门再建一个 `MindmapShape`。
 
 ## 5. Shared defs 采用“全局 defs + 局部 defs”双层模型
 
@@ -564,6 +628,314 @@ shape-wrapper 方案下，defs 不需要二选一。
 - 可以保留一个全局 shared svg context
 - 每个 edge wrapper 的局部 svg 仍然可以有自己的 `<defs>`
 
+## 6. 命名建议
+
+这次改造涉及 read、render、order 三层。  
+命名上建议尽量短，不要引入一串近义词。
+
+建议统一采用以下短名：
+
+- `scene`
+  表示内容层顺序模型
+- `item`
+  表示一个可排序内容项
+- `shape`
+  表示一个 wrapper 渲染单元
+- `frameRole`
+  表示 frame barrier 角色
+- `orderPolicy`
+  表示排序约束策略
+
+不建议再引入这些长名：
+
+- `canvasContentSceneProjection`
+- `globalCanvasItemOrderingModel`
+- `shapeWrapperRenderCoordinator`
+
+它们太长，而且语义重叠。
+
+推荐命名如下：
+
+### read / projection
+
+- `read.scene.list`
+- `createSceneProjection`
+- `SceneItem`
+
+### render
+
+- `CanvasScene`
+- `NodeItem`
+- `EdgeItem`
+- `MindmapTreeView`
+
+### order
+
+- `normalizeOrder`
+- `applyOrder`
+- `orderPolicy`
+- `frameRole`
+
+### edge 局部结构
+
+- `EdgeBox`
+- `EdgeDefs`
+
+总原则是：
+
+- 一个概念一个词
+- `scene` 只表示内容顺序
+- `overlay` 只表示交互层
+- 不为转发而新增组件
+
+## 7. 新 API 设计
+
+建议新增的 API 尽量少，且只暴露真正需要的新边界。
+
+### read API
+
+新增：
+
+```ts
+type SceneItem =
+  | { kind: 'node'; id: NodeId }
+  | { kind: 'edge'; id: EdgeId }
+  | { kind: 'mindmap'; id: NodeId }
+
+editor.read.scene.list: ReadStore<readonly SceneItem[]>
+```
+
+说明：
+
+- `scene.list` 是内容层唯一顺序入口
+- `node.item` / `edge.item` / `mindmap.item` 继续保留，不做替换
+
+### edge shape API
+
+建议新增一个局部 bbox 视图，而不是让 React 自己拼装：
+
+```ts
+type EdgeBox = {
+  rect: Rect
+  path: string
+  pad: number
+}
+
+editor.read.edge.box(edgeId): EdgeBox | undefined
+```
+
+这个 API 的职责是：
+
+- 返回 edge wrapper 的局部包围盒
+- 返回已转换到局部坐标的 path
+- 提供 stroke / marker / label 所需 padding
+
+这样 React 层就不必重复写一套 bbox 和局部坐标换算。
+
+### order API
+
+现有 document order 命令不需要推翻，但内部策略要收敛。
+
+建议保留外部调用面：
+
+```ts
+editor.document.order(refs, mode)
+```
+
+内部新增短名策略函数：
+
+```ts
+normalizeOrder(doc, refs, mode, orderPolicy)
+```
+
+其中：
+
+```ts
+type OrderPolicy = {
+  canCrossFrame(ref: CanvasItemRef): boolean
+  isFrame(ref: CanvasItemRef): boolean
+}
+```
+
+默认 whiteboard policy：
+
+- node / mindmap 不能跨 frame
+- edge 可以跨 frame
+
+这样 API 面不需要大改，只改内部语义。
+
+## 8. 旧实现删除清单
+
+这次改造完成后，建议明确删除以下旧实现，不保留双轨。
+
+### React 内容层
+
+应删除：
+
+- `EdgeLayer`
+- `NodeSceneLayer`
+- `MindmapSceneLayer`
+
+这些组件的“内容层入口”职责会被 `CanvasScene` 取代。
+
+应保留并直接升级为 scene item renderer 的：
+
+- `NodeItem`
+- `EdgeItem`
+- `MindmapTreeView`
+
+它们可以继续存在，但不再直接挂在 `Surface` 顶层，而是由 `CanvasScene` 直接渲染。
+
+### edge label 旧路径
+
+应删除旧的“edge label 作为独立内容层”的实现路径。
+
+具体来说：
+
+- `EdgeLabelLayer` 不再作为独立内容渲染入口
+- 与之绑定的内容层接线应删除
+
+如果其中一小部分编辑态逻辑还能复用，可以下沉到内部 `EdgeLabel` 组件，但：
+
+- 旧 layer 本身不应保留
+
+### 旧列表消费点
+
+应删除这些直接驱动内容层渲染的入口：
+
+- `editor.read.edge.list` 在 React 主场景中的直接消费
+- `editor.read.node.list` 在 React 主场景中的直接消费
+- `editor.read.mindmap.list` 在 React 主场景中的直接消费
+
+注意：
+
+- 这些 store 本身可以保留
+- 但不应再作为内容层 stacking 的直接来源
+
+### 旧排序假设
+
+应删除这些隐含假设：
+
+- edge 整体低于 node
+- frame 整体固定在单一底层
+- edge label 永远属于 overlay
+
+如果这些假设还残留在：
+
+- CSS `z-index`
+- pick 规则
+- selection 规则
+- toolbar 定位
+
+都应该一起清理。
+
+## 最终分阶段实施方案
+
+建议拆成四个阶段，每个阶段都有明确完成标准，避免半旧半新状态拖太久。
+
+## Phase 1: Scene
+
+目标：
+
+- 建立统一内容顺序入口
+- 不动现有内容层渲染
+
+实施项：
+
+1. 新增 `SceneItem`
+2. 新增 `createSceneProjection`
+3. 新增 `editor.read.scene.list`
+4. 让 `scene.list` 直接基于 `Document.order`
+5. 保留 `node.item` / `edge.item` / `mindmap.item`
+
+完成标准：
+
+- 能稳定读到完整内容顺序
+- 不再需要在 React 层自己拼 node / edge / mindmap 的顺序
+
+本阶段不删除：
+
+- `EdgeLayer`
+- `NodeSceneLayer`
+- `MindmapSceneLayer`
+
+## Phase 2: Edge Shape
+
+目标：
+
+- 把 edge 从共享全局 svg 迁到局部 wrapper
+- 让 edge 真正能和 node 混排
+
+实施项：
+
+1. 新增 `editor.read.edge.box(edgeId)`
+2. 升级 `EdgeItem`
+3. 将 label 收回 `EdgeItem`
+4. 仅在必要时保留内部 `EdgeLabel`
+5. 保留 shared defs，同时允许局部 defs
+
+完成标准：
+
+- 单条 edge 能以局部 bbox svg 渲染
+- edge label 与 edge 一起移动和排序
+- edge 能真实压过 node，也能退到 frame 下方
+
+本阶段删除：
+
+- `EdgeLayer`
+- `EdgeLabelLayer` 的内容层职责
+
+## Phase 3: Canvas Scene
+
+目标：
+
+- 用统一内容层替换三个旧 scene layer
+
+实施项：
+
+1. 新增 `CanvasScene`
+2. 升级 `NodeItem`
+3. 让 `CanvasScene` 直接渲染 `MindmapTreeView`
+4. `Surface` 只挂一个 `CanvasScene`
+5. `CanvasScene` 只消费 `editor.read.scene.list`
+
+完成标准：
+
+- `Surface` 顶层不再并列挂 `EdgeLayer / NodeSceneLayer / MindmapSceneLayer`
+- 所有内容项都通过 shape wrapper 进入同一 scene
+
+本阶段删除：
+
+- `NodeSceneLayer`
+- `MindmapSceneLayer`
+- React 顶层对 `read.node.list` / `read.edge.list` / `read.mindmap.list` 的直接消费
+
+## Phase 4: Order Policy
+
+目标：
+
+- 将排序语义切换到 frame barrier policy
+
+实施项：
+
+1. 新增 `orderPolicy`
+2. 重写 `normalizeOrder`
+3. 区分 `frame / content-node / edge`
+4. 处理混合选择 reorder
+5. 清理旧的固定 layer 假设
+
+完成标准：
+
+- `node send to back` 停在 frame 上方
+- `edge send to back` 可跌到 frame 下方
+- 混合选择 reorder 行为稳定
+
+本阶段删除：
+
+- “自由 reorder” 的旧假设
+- frame 固定底层的旧逻辑
+- edge 整体低于 node 的旧逻辑
+
 ## 迁移顺序建议
 
 建议分三步落地，而不是一口气全量替换。
@@ -580,11 +952,11 @@ shape-wrapper 方案下，defs 不需要二选一。
 
 - 先把“全局顺序可读”这件事建立起来
 
-## 第二步：React 主场景切换到 `CanvasSceneLayer`
+## 第二步：React 主场景切换到 `CanvasScene`
 
 再做：
 
-1. 用 `CanvasSceneLayer` 替换 `EdgeLayer + NodeSceneLayer + MindmapSceneLayer`
+1. 用 `CanvasScene` 替换 `EdgeLayer + NodeSceneLayer + MindmapSceneLayer`
 2. 将 edge 改成局部 svg wrapper
 3. 将 edge label 收回到 edge wrapper
 4. overlay 层保持不动
@@ -669,7 +1041,7 @@ node transform handles、edge route handles、selection frame 这些必须继续
 
 1. 保留 `Document.order` 作为唯一内容顺序来源
 2. 新增 scene projection
-3. 主场景改为 `CanvasSceneLayer`
+3. 主场景改为 `CanvasScene`
 4. 内容层明确采用 shape-wrapper
 5. edge 使用局部 bbox svg wrapper
 6. edge label 收回到 edge wrapper
@@ -681,7 +1053,7 @@ node transform handles、edge route handles、selection frame 这些必须继续
 最稳、最符合现有架构边界的方案是：
 
 - 用 `CanvasItemRef` 驱动一个新的 scene projection
-- React 使用统一 `CanvasSceneLayer` 按顺序渲染内容层
+- React 使用统一 `CanvasScene` 按顺序渲染内容层
 - 内容层采用统一 shape-wrapper
 - edge/node/mindmap/frame 不再以固定 sibling layer 的方式决定上下关系
 - edge label 与 edge 内容本体一起进入 wrapper

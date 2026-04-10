@@ -1,8 +1,8 @@
 import type { WriteControl, WriteResult } from '@engine-types/write'
 import type { WriteCommandMap, WriteDomain, WriteInput, WriteOutput } from '@engine-types/command'
 import type { BoardConfig, EngineDocument } from '@engine-types/instance'
+import { assertDocument } from '@whiteboard/core/document'
 import {
-  assertDocument,
   type CoreRegistries,
   type Document,
   type EdgeId,
@@ -18,7 +18,7 @@ import {
   reduceOperations,
   type KernelReduceResult
 } from '@whiteboard/core/kernel'
-import { createId } from '@whiteboard/core/utils'
+import { createId } from '@whiteboard/core/id'
 import { DEFAULT_HISTORY_CONFIG } from '../config'
 import { failure } from '../result'
 import { translateWrite } from './translate'

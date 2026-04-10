@@ -91,7 +91,7 @@ test('bench compare reports plan drift even without timing regression', () => {
         publishMs: 1
       },
       plan: {
-        sections: 'reconcile'
+        sections: 'sync'
       },
       indexActions: {
         group: 'sync'
@@ -111,7 +111,7 @@ test('bench compare reports plan drift even without timing regression', () => {
         publishMs: 1.1
       },
       plan: {
-        sections: 'recompute'
+        sections: 'rebuild'
       },
       indexActions: {
         group: 'sync'

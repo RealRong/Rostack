@@ -1,5 +1,6 @@
 import { applyEdgeDefaults, getMissingEdgeFields } from '../schema'
-import { err, ok } from '../types'
+import { hasEdge, hasNode } from '../document'
+import { err, ok } from '../result'
 import type {
   CoreRegistries,
   Document,
@@ -13,13 +14,7 @@ import type {
   EdgeCreateOperationResult,
   InsertRoutePointResult
 } from '../types/edge'
-import {
-  hasEdge,
-  hasNode,
-  isManualEdgeRoute,
-  isNodeEdgeEnd,
-  isPointEdgeEnd
-} from '../types'
+import { isManualEdgeRoute, isNodeEdgeEnd, isPointEdgeEnd } from './guards'
 
 type BuildEdgeCreateOperationInput = {
   payload: EdgeInput

@@ -1,6 +1,7 @@
 import { isPointEqual } from '@whiteboard/core/geometry'
 import {
   applyEdgePatch,
+  isPointEdgeEnd,
   type EdgeConnectCandidate,
   type EdgeNodeCanvasSnapshot,
   matchEdgeRect,
@@ -8,11 +9,10 @@ import {
   type EdgeView as CoreEdgeView
 } from '@whiteboard/core/edge'
 import { getNodeGeometry } from '@whiteboard/core/node'
-import { isPointEdgeEnd } from '@whiteboard/core/types'
 import {
   isOrderedArrayEqual,
   isSamePointArray
-} from '@whiteboard/core/utils'
+} from '@whiteboard/core/equality'
 import type { EdgeId, Node, NodeId, NodeType, Rect } from '@whiteboard/core/types'
 import {
   type EdgeItem,

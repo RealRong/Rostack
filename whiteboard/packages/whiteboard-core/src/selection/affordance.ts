@@ -1,6 +1,6 @@
 import type { NodeRole, NodeTransform } from '../node'
 import type { Node, NodeId, Rect } from '../types'
-import { isSameOptionalRectTuple } from '../utils'
+import { isSameOptionalRectTuple } from '../equality'
 import type { SelectionSummary } from './summary'
 
 export type SelectionAffordanceOwner =

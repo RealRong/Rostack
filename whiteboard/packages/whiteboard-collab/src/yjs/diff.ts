@@ -1,5 +1,5 @@
 import type { Document } from '@whiteboard/core/types'
-import { assertDocument } from '@whiteboard/core/types'
+import { assertDocument } from '@whiteboard/core/document'
 import type { RemoteDocumentChange } from '../types/internal'
 import {
   cloneJsonValue,

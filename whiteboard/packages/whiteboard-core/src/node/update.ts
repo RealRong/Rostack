@@ -9,10 +9,10 @@ import type {
 } from '../types'
 import {
   applyPathMutation,
-  cloneValue,
-  getValueByPath,
   isObjectContainer
-} from '../utils'
+} from '../utils/recordMutation'
+import { getValueByPath } from '../utils/objectPath'
+import { cloneValue } from '../value'
 
 export type NodeUpdateImpact = {
   geometry: boolean

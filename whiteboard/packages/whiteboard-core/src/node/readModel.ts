@@ -1,5 +1,6 @@
 import type { Document, Edge, Node, NodeId } from '../types'
-import { isNodeEdgeEnd, listEdges, listNodes } from '../types'
+import { listEdges, listNodes } from '../document'
+import { isNodeEdgeEnd } from '../edge'
 
 const EMPTY_NODES: Node[] = []
 const EMPTY_NODE_MAP = new Map<NodeId, Node>()

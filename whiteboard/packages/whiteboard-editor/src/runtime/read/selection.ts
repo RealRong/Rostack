@@ -10,7 +10,7 @@ import {
   type SelectionTransformBox
 } from '@whiteboard/core/selection'
 import type { Edge, Node, Rect } from '@whiteboard/core/types'
-import { isSameOptionalRectTuple } from '@whiteboard/core/utils'
+import { isSameOptionalRectTuple } from '@whiteboard/core/equality'
 import {
   createDerivedStore,
   type ReadFn,

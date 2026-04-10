@@ -16,13 +16,15 @@ import {
   resolveMoveEffect
 } from '@whiteboard/core/node'
 import {
-  listEdges,
-  listNodes,
   getNode,
-  isNodeEdgeEnd,
+  listEdges,
+  listNodes
+} from '@whiteboard/core/document'
+import { isNodeEdgeEnd } from '@whiteboard/core/edge'
+import {
   type EdgeId,
   type Node,
-  type NodeId,
+  type NodeId
 } from '@whiteboard/core/types'
 import { DEFAULT_TUNING } from '../../config'
 

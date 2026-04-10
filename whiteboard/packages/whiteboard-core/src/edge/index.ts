@@ -1,4 +1,36 @@
-export * from './types'
+export type {
+  AnchorSnapOptions,
+  ConnectMode,
+  ConnectResolution,
+  EdgeConnectCandidate,
+  EdgeConnectConfig,
+  EdgeConnectEvaluation,
+  EdgeConnectResult,
+  EdgeConnectTarget,
+  EdgeCreateOperationResult,
+  EdgeHandle,
+  EdgeNodeCanvasSnapshot,
+  EdgePathEnd,
+  EdgePathInput,
+  EdgePathResult,
+  EdgePathSegment,
+  EdgeRectHitMode,
+  EdgeRelations,
+  EdgeRouter,
+  EdgeView,
+  InsertRoutePointResult,
+  ResolveEdgeEndsInput,
+  ResolveEdgePathFromRectsInput,
+  ResolvedEdgeEnd,
+  ResolvedEdgeEnds,
+  ResolvedEdgePathFromRects
+} from '../types/edge'
+export {
+  isManualEdgeRoute,
+  isNodeEdgeEnd,
+  isPointEdgeEnd
+} from './guards'
+export { readEdgeRoutePoints } from './route'
 export * from './path'
 export * from './anchor'
 export * from './endpoints'

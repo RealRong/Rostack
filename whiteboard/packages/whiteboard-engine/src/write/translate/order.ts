@@ -3,15 +3,7 @@ import type {
   CanvasItemRef,
   Document
 } from '@whiteboard/core/types'
-import {
-  listCanvasItemRefs
-} from '@whiteboard/core/types'
-import {
-  bringOrderForward,
-  bringOrderToFront,
-  sendOrderBackward,
-  sendOrderToBack
-} from '@whiteboard/core/utils'
+import { listCanvasItemRefs } from '@whiteboard/core/document'
 
 const readRefGroupId = (
   doc: Pick<Document, 'nodes' | 'edges'>,
@@ -34,6 +26,48 @@ const parseRef = (key: string): CanvasItemRef => {
   return kind === 'edge'
     ? { kind: 'edge', id }
     : { kind: 'node', id }
+}
+
+const bringOrderToFront = <T extends string>(order: T[], ids: T[]) => {
+  const set = new Set(ids)
+  const kept = order.filter((id) => !set.has(id))
+  const moved = order.filter((id) => set.has(id))
+  return [...kept, ...moved]
+}
+
+const sendOrderToBack = <T extends string>(order: T[], ids: T[]) => {
+  const set = new Set(ids)
+  const kept = order.filter((id) => !set.has(id))
+  const moved = order.filter((id) => set.has(id))
+  return [...moved, ...kept]
+}
+
+const bringOrderForward = <T extends string>(order: T[], ids: T[]) => {
+  const set = new Set(ids)
+  const next = [...order]
+  for (let index = next.length - 2; index >= 0; index -= 1) {
+    const current = next[index]
+    const after = next[index + 1]
+    if (set.has(current) && !set.has(after)) {
+      next[index] = after
+      next[index + 1] = current
+    }
+  }
+  return next
+}
+
+const sendOrderBackward = <T extends string>(order: T[], ids: T[]) => {
+  const set = new Set(ids)
+  const next = [...order]
+  for (let index = 1; index < next.length; index += 1) {
+    const current = next[index]
+    const before = next[index - 1]
+    if (set.has(current) && !set.has(before)) {
+      next[index - 1] = current
+      next[index] = before
+    }
+  }
+  return next
 }
 
 const reorderRefs = (

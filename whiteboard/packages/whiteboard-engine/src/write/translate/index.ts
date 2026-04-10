@@ -6,6 +6,11 @@ import {
   exportSliceFromSelection
 } from '@whiteboard/core/document'
 import {
+  listEdges,
+  listNodes
+} from '@whiteboard/core/document'
+import { isNodeEdgeEnd } from '@whiteboard/core/edge'
+import {
   expandNodeSelection
 } from '@whiteboard/core/node'
 import type {
@@ -17,11 +22,6 @@ import type {
   MindmapId,
   MindmapNodeId,
   NodeId
-} from '@whiteboard/core/types'
-import {
-  isNodeEdgeEnd,
-  listEdges,
-  listNodes
 } from '@whiteboard/core/types'
 import { cancelled, invalid, success } from './result'
 import {

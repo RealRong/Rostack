@@ -14,7 +14,7 @@ import {
 import {
   isSamePointArray,
   isSameRectWithRotationTuple
-} from '@whiteboard/core/utils'
+} from '@whiteboard/core/equality'
 import { createValueStore } from '@shared/store'
 import type { ReadSnapshot } from '@engine-types/internal/read'
 import { createTrackedRead } from './tracked'

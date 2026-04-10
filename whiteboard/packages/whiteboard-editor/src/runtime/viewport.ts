@@ -22,7 +22,7 @@ import {
   createValueStore,
   type ReadStore
 } from '@shared/store'
-import { isSameBoxTuple } from '@whiteboard/core/utils'
+import { isSameBoxTuple } from '@whiteboard/core/equality'
 
 export const DEFAULT_VIEWPORT: Viewport = {
   center: { x: 0, y: 0 },

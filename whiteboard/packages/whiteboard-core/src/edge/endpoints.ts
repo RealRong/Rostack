@@ -1,13 +1,13 @@
 import { getRectCenter } from '../geometry'
 import { getNodeAnchor } from '../node/outline'
-import type { EdgeAnchor, EdgeEnd, Node, NodeGeometry, Point } from '../types/core'
-import { isNodeEdgeEnd } from '../types/core'
+import type { EdgeAnchor, EdgeEnd, Node, NodeGeometry, Point } from '../types'
 import type {
   ResolveEdgeEndsInput,
   ResolvedEdgeEnd,
   ResolvedEdgeEnds
 } from '../types/edge'
 import { getAutoAnchorFromRect } from './anchor'
+import { isNodeEdgeEnd } from './guards'
 
 type ResolveNodeEndInput = {
   end: Extract<EdgeEnd, { kind: 'node' }>

@@ -24,6 +24,6 @@ test('bench runner produces structured output for smoke scenarios', () => {
   assert.equal(typeof suite.avg.indexMs, 'number')
   assert.equal(typeof suite.avg.projectMs, 'number')
   assert.ok(Array.isArray(suite.changedStores))
-  assert.equal(typeof suite.plan.records, 'string')
+  assert.equal(typeof suite.plan.query, 'string')
   assert.equal(typeof suite.indexActions.records, 'string')
 })

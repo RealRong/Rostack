@@ -10,13 +10,13 @@ import {
   buildGroupUngroupManyOperations,
   buildGroupUngroupOperations
 } from '@whiteboard/core/group'
+import { listCanvasItemRefs } from '@whiteboard/core/document'
 import type {
   CanvasItemRef,
   EdgeId,
   GroupId,
   NodeId
 } from '@whiteboard/core/types'
-import { listCanvasItemRefs } from '@whiteboard/core/types'
 import {
   isSameCanvasRef,
   normalizeCanvasOrderTargets

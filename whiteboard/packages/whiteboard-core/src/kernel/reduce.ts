@@ -11,17 +11,13 @@ import type {
   Origin
 } from '../types'
 import {
-  err,
-  getEdge,
-  getNode,
-  ok
-} from '../types'
-import {
   applyNodeUpdate,
   buildNodeUpdateInverse,
   classifyNodeUpdate
 } from '../node'
-import { createId } from '../utils/id'
+import { getEdge, getNode } from '../document'
+import { createId } from '../id'
+import { err, ok } from '../result'
 import type {
   KernelContext,
   KernelReadImpact,

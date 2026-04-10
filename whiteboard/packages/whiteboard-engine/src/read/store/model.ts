@@ -9,7 +9,7 @@ import {
   isSameIdOrder,
   isSameMapValueRefs,
   isSameRefOrder
-} from '@whiteboard/core/utils'
+} from '@whiteboard/core/equality'
 
 const isSameModelRefs = (
   cache: ReadModel | undefined,

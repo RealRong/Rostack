@@ -1,4 +1,4 @@
-import { createId } from '@whiteboard/core/utils'
+import { createId } from '@whiteboard/core/id'
 import type { Edge, EdgeId } from '@whiteboard/core/types'
 import type {
   Editor,

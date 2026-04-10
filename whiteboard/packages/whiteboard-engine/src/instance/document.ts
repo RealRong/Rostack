@@ -1,8 +1,6 @@
 import type { EngineDocument } from '@engine-types/instance'
-import {
-  assertDocument,
-  type Document
-} from '@whiteboard/core/types'
+import { assertDocument } from '@whiteboard/core/document'
+import type { Document } from '@whiteboard/core/types'
 
 const assertImmutableDocumentInput = (
   currentDocument: Document,

@@ -1,4 +1,12 @@
-import { err, ok } from '../types'
+import {
+  getNode,
+  listCanvasItemRefs,
+  listEdges,
+  listGroupEdgeIds,
+  listGroupNodeIds,
+  listNodes
+} from '../document'
+import { err, ok } from '../result'
 import type {
   CanvasItemRef,
   Document,
@@ -7,14 +15,6 @@ import type {
   NodeId,
   Operation,
   Result
-} from '../types'
-import {
-  getNode,
-  listCanvasItemRefs,
-  listEdges,
-  listGroupEdgeIds,
-  listGroupNodeIds,
-  listNodes
 } from '../types'
 import { createNodeFieldsUpdateOperation } from '../node/update'
 

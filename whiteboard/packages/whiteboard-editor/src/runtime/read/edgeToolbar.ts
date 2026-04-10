@@ -9,7 +9,7 @@ import type {
 import {
   isOrderedArrayEqual,
   isSameOptionalBoxTuple
-} from '@whiteboard/core/utils'
+} from '@whiteboard/core/equality'
 import { createDerivedStore, type ReadStore } from '@shared/store'
 import type { TargetBoundsQuery } from '../query/targetBounds'
 import type { Tool } from '../../types/tool'

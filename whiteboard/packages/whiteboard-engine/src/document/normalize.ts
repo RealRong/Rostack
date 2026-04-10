@@ -1,8 +1,6 @@
 import type { BoardConfig } from '@whiteboard/core/config'
-import {
-  assertDocument,
-  type Document
-} from '@whiteboard/core/types'
+import { assertDocument } from '@whiteboard/core/document'
+import type { Document } from '@whiteboard/core/types'
 import { sanitizeDocument } from './normalize/sanitize'
 
 export const normalizeDocument = (

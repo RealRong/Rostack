@@ -1,4 +1,4 @@
-import type { Point } from '../types/core'
+import type { Point } from '../types'
 import type { EdgePathResult } from '../types/edge'
 
 type EdgePolylinePoint = Point

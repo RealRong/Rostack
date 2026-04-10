@@ -1,4 +1,4 @@
-import { cloneValue } from './merge'
+import { cloneValue } from '../value'
 import { getValueByPath, setValueByPath } from './objectPath'
 
 type SetPathMutation = {

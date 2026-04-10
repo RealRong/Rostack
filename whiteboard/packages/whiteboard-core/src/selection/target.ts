@@ -1,6 +1,6 @@
 import { applySelection, type SelectionMode } from '../node/selection'
 import type { EdgeId, NodeId } from '../types'
-import { isOrderedArrayEqual } from '../utils'
+import { isOrderedArrayEqual } from '../equality'
 
 const EMPTY_NODE_IDS: readonly NodeId[] = []
 const EMPTY_EDGE_IDS: readonly EdgeId[] = []

@@ -7,7 +7,7 @@ import {
   isSameRectTuple,
   isSameRefOrder,
   toFiniteOrUndefined
-} from '@whiteboard/core/utils'
+} from '@whiteboard/core/equality'
 
 type Rebuild = 'none' | 'dirty' | 'full'
 

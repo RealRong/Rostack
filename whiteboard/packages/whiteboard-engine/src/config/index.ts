@@ -1,5 +1,5 @@
 import type { BoardConfig } from '@whiteboard/core/config'
-import { mergeValue } from '@whiteboard/core/utils'
+import { mergeValue } from '@whiteboard/core/value'
 import {
   DEFAULT_HISTORY_CONFIG,
   DEFAULT_BOARD_CONFIG

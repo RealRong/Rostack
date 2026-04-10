@@ -1,5 +1,5 @@
 import { createValueStore, type ValueStore } from '@shared/store'
-import { isOrderedArrayEqual } from '@whiteboard/core/utils'
+import { isOrderedArrayEqual } from '@whiteboard/core/equality'
 import type { Tool } from '../../types/tool'
 import type { EditorRead, EditorState } from '../../types/editor'
 import type { PointerSample } from '../../types/input'

@@ -389,6 +389,30 @@ test('engine.project rebuilds from one active pipeline while keeping projection 
   unsubscribeSort()
 })
 
+test('engine.document.replace publishes coherent read and project state in one step', () => {
+  const engine = createEngine({
+    document: createDocument()
+  })
+  const nextDocument = createMultiViewDocument()
+  let documentEvents = 0
+
+  const unsubscribe = engine.read.document.subscribe(() => {
+    documentEvents += 1
+    assert.equal(engine.read.document.get().activeViewId, VIEW_TABLE)
+    assert.equal(engine.read.activeViewId.get(), VIEW_TABLE)
+    assert.equal(engine.project.view.get()?.id, VIEW_TABLE)
+    assert.deepEqual(engine.project.records.get()?.visibleIds, ['rec_1'])
+  })
+
+  engine.document.replace(nextDocument)
+
+  assert.equal(documentEvents, 1)
+  assert.equal(engine.project.view.get()?.id, VIEW_TABLE)
+  assert.deepEqual(engine.project.records.get()?.visibleIds, ['rec_1'])
+
+  unsubscribe()
+})
+
 test('engine.project exposes body projections for the active view', () => {
   const engine = createEngine({
     document: createDocument()

@@ -248,7 +248,7 @@ const applyNodeTextPreview = (
       }
     : item.rect
 
-  if (style === item.node.style && data === item.node.data && rect === item.rect) {
+  if (style === item.node.style && dataWithWrapWidth === item.node.data && rect === item.rect) {
     return item
   }
 

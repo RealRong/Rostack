@@ -52,6 +52,7 @@ export const isTextPreviewPatchEqual = (
   && isSizeEqual(left?.size, right?.size)
   && left?.fontSize === right?.fontSize
   && left?.mode === right?.mode
+  && left?.wrapWidth === right?.wrapWidth
   && left?.handle === right?.handle
 )
 

@@ -3,11 +3,9 @@ import {
   finishTransform,
   getResizeSourceEdges,
   getResizeUpdateRect,
-  projectTextScale,
   readTextWrapWidth,
   readTextWidthMode,
   resolveTextHandle,
-  resolveResizeRectFromSize,
   startTransform,
   stepTransform,
   TEXT_DEFAULT_FONT_SIZE,
@@ -63,6 +61,19 @@ const readTextFontSize = (
     ? node.style.fontSize
     : TEXT_DEFAULT_FONT_SIZE
 )
+
+const readTextScaleMinSize = (
+  rect: TransformTarget['rect']
+) => {
+  const widthRatio = RESIZE_MIN_SIZE.width / Math.max(rect.width, 0.0001)
+  const heightRatio = RESIZE_MIN_SIZE.height / Math.max(rect.height, 0.0001)
+  const ratio = Math.max(widthRatio, heightRatio)
+
+  return {
+    width: rect.width * ratio,
+    height: rect.height * ratio
+  }
+}
 
 const toTransformNodePatches = (
   patches: readonly TransformPreviewPatch[]
@@ -302,6 +313,7 @@ const createSingleTextTransformSession = (
     startScreen: spec.startScreen
   }) as Extract<TransformState<Node>, { kind: 'single-resize' }>
   const startFontSize = readTextFontSize(spec.target.node)
+  const startWidthMode = readTextWidthMode(spec.target.node)
   let modifiers = start.modifiers
   let interaction = null as InteractionSession | null
 
@@ -319,23 +331,14 @@ const createSingleTextTransformSession = (
           altKey: false,
           shiftKey: false
         }).rect
-      : (() => {
-          const projected = projectTextScale({
-            drag: baseState.drag,
-            currentScreen: input.screen,
-            zoom,
-            startFontSize,
-            minWidth: RESIZE_MIN_SIZE.width,
-            altKey: false
-          })
-
-          return resolveResizeRectFromSize({
-            drag: baseState.drag,
-            width: projected.width,
-            height: spec.target.rect.height,
-            altKey: false
-          })
-        })()
+      : computeResizeRect({
+          drag: baseState.drag,
+          currentScreen: input.screen,
+          zoom,
+          minSize: readTextScaleMinSize(spec.target.rect),
+          altKey: false,
+          shiftKey: true
+        }).rect
     const { sourceX, sourceY } = getResizeSourceEdges(baseState.drag.handle)
     const snapped = ctx.snap.node.resize({
       rect: rawRect,
@@ -379,8 +382,12 @@ const createSingleTextTransformSession = (
           width: nextRect.width,
           height: nextRect.height
         },
-        mode: 'wrap',
-        wrapWidth: nextRect.width,
+        mode: spec.mode === 'reflow'
+          ? 'wrap'
+          : startWidthMode,
+        wrapWidth: spec.mode === 'reflow' || startWidthMode === 'wrap'
+          ? nextRect.width
+          : undefined,
         handle: spec.handle,
         ...(spec.mode === 'scale'
           ? {
@@ -436,11 +443,16 @@ const createSingleTextTransformSession = (
               fields: geometry
             }
           : undefined,
-        readTextWidthMode(spec.target.node) !== 'wrap'
+        spec.mode === 'reflow' && readTextWidthMode(spec.target.node) !== 'wrap'
           ? dataUpdate('widthMode', 'wrap')
           : undefined,
-        readTextWrapWidth(spec.target.node) !== previewItem.rect.width
+        readTextWidthMode(previewItem.node) === 'wrap'
+        && readTextWrapWidth(spec.target.node) !== previewItem.rect.width
           ? dataUpdate('wrapWidth', previewItem.rect.width)
+          : spec.mode === 'scale'
+            && readTextWidthMode(previewItem.node) === 'auto'
+            && readTextWrapWidth(spec.target.node) !== undefined
+              ? dataUpdate('wrapWidth', undefined)
           : undefined,
         spec.mode === 'scale' && nextFontSize !== readTextFontSize(spec.target.node)
           ? styleUpdate('fontSize', nextFontSize)

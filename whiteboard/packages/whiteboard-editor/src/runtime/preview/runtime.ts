@@ -23,6 +23,7 @@ const mergeTextPreviewPatch = (
     size: patch?.size ?? current?.size,
     fontSize: patch?.fontSize ?? current?.fontSize,
     mode: patch?.mode ?? current?.mode,
+    wrapWidth: patch?.wrapWidth ?? current?.wrapWidth,
     handle: patch?.handle ?? current?.handle
   }
 
@@ -31,6 +32,7 @@ const mergeTextPreviewPatch = (
     && !next.size
     && next.fontSize === undefined
     && next.mode === undefined
+    && next.wrapWidth === undefined
     && next.handle === undefined
   ) {
     return undefined
@@ -132,6 +134,7 @@ export const createPreviewRuntime = ({
             position: patch.position,
             fontSize: patch.fontSize,
             mode: patch.mode,
+            wrapWidth: patch.wrapWidth,
             handle: patch.handle
           }
 
@@ -146,6 +149,7 @@ export const createPreviewRuntime = ({
                   !nextPatch.position
                   && nextPatch.fontSize === undefined
                   && nextPatch.mode === undefined
+                  && nextPatch.wrapWidth === undefined
                   && nextPatch.handle === undefined
                     ? undefined
                     : nextPatch

@@ -1,11 +1,13 @@
-import type { CreateEngineOptions, Engine } from '../types'
-import type { DataDoc } from '@dataview/core/contracts'
-import { cloneDocument } from '@dataview/core/document'
-import { resolveWriteBatch } from '@dataview/engine/command'
-import { createProjectSource } from '../project/source'
-import { read as createRead } from '../runtime/read/read'
-import { commitRuntime } from '../runtime/commit/runtime'
-import { document } from './document'
+import type {
+  DataDoc
+} from '@dataview/core/contracts'
+import {
+  cloneDocument
+} from '@dataview/core/document'
+import type {
+  CreateEngineOptions,
+  Engine
+} from '../types'
 import {
   createPerfRuntime
 } from '../perf/runtime'
@@ -15,30 +17,39 @@ import {
   createViewEngineApi,
   createViewsEngineApi
 } from '../services'
+import {
+  createInitialState
+} from '../state'
+import {
+  createProjectApi,
+  createReadApi
+} from '../state/select'
+import {
+  createStore
+} from '../state/store'
+import {
+  translateCommands
+} from '../write/translate'
+import {
+  createWriteControl
+} from '../write'
 
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const historyCapacity = Math.max(0, options.history?.capacity ?? 100)
   const initialDocument = cloneDocument(options.document)
   const perf = createPerfRuntime(options.perf)
-
-  const instanceDocument = document({
-    initialDocument
-  })
-
-  const read = createRead({
-    getDocument: instanceDocument.peekDocument
-  })
-  const project = createProjectSource({
-    document: instanceDocument.peekDocument(),
-    perf: options.perf
-  })
-
-  const commit = commitRuntime({
-    document: instanceDocument,
-    read,
-    project,
-    historyCapacity,
-    perf
+  const capturePerf = Boolean(options.perf?.trace || options.perf?.stats)
+  const store = createStore(createInitialState({
+    doc: initialDocument,
+    historyCap: historyCapacity,
+    capturePerf
+  }))
+  const read = createReadApi(store)
+  const project = createProjectApi(store)
+  const write = createWriteControl({
+    store,
+    perf,
+    capturePerf
   })
 
   const engine = {
@@ -57,26 +68,22 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     },
     project,
     perf: perf.api,
-    command: (command: Parameters<Engine['command']>[0]) => {
-      const batch = resolveWriteBatch({
-        document: instanceDocument.peekDocument(),
-        commands: Array.isArray(command) ? command : [command]
-      })
-      return commit.dispatch(batch)
-    },
+    command: (command: Parameters<Engine['command']>[0]) => write.run(
+      translateCommands(store.get().doc, command)
+    ),
     history: {
-      state: commit.history.state,
-      canUndo: commit.history.canUndo,
-      canRedo: commit.history.canRedo,
-      undo: commit.history.undo,
-      redo: commit.history.redo,
-      clear: commit.history.clear
+      state: write.history.state,
+      canUndo: write.history.canUndo,
+      canRedo: write.history.canRedo,
+      undo: write.undo,
+      redo: write.redo,
+      clear: write.history.clear
     },
     document: {
-      export: () => cloneDocument(instanceDocument.peekDocument()),
+      export: () => cloneDocument(store.get().doc),
       replace: (document: DataDoc) => {
-        commit.replace(cloneDocument(document))
-        return cloneDocument(instanceDocument.peekDocument())
+        write.load(cloneDocument(document))
+        return cloneDocument(store.get().doc)
       }
     }
   } as unknown as Engine
@@ -108,4 +115,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   return engine
 }
 
-export type { CreateEngineOptions, Engine } from '../types'
+export type {
+  CreateEngineOptions,
+  Engine
+} from '../types'

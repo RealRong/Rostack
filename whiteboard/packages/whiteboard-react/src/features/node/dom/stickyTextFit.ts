@@ -5,6 +5,11 @@ import {
   TEXT_DEFAULT_FONT_SIZE
 } from '@whiteboard/core/node'
 import type { Rect } from '@whiteboard/core/types'
+import {
+  readLineHeightPx,
+  readNumber,
+  readPx
+} from './textTypography'
 
 type StickyFitElements = {
   frame: HTMLDivElement
@@ -12,38 +17,6 @@ type StickyFitElements = {
 }
 
 let stickyFitElements: StickyFitElements | null = null
-
-const readNumber = (
-  value: string
-) => {
-  const parsed = Number.parseFloat(value)
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
-const readPx = (
-  value: string,
-  fallback: number
-) => {
-  const parsed = Number.parseFloat(value)
-  return Number.isFinite(parsed) && parsed > 0
-    ? parsed
-    : fallback
-}
-
-const readLineHeightPx = (
-  lineHeight: string,
-  sourceFontSize: number,
-  fontSize: number
-) => {
-  if (lineHeight === 'normal') {
-    return fontSize * 1.4
-  }
-
-  const parsed = Number.parseFloat(lineHeight)
-  return Number.isFinite(parsed) && parsed > 0
-    ? parsed * (sourceFontSize > 0 ? fontSize / sourceFontSize : 1)
-    : fontSize * 1.4
-}
 
 const ensureStickyFitElements = (): StickyFitElements | null => {
   if (typeof document === 'undefined') {

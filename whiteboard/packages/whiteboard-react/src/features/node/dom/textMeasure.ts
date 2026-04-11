@@ -11,80 +11,19 @@ import type {
   Rect,
   Size
 } from '@whiteboard/core/types'
+import {
+  applyTypography,
+  normalizeMeasureContent,
+  readLineHeightPx,
+  readPx
+} from './textTypography'
 
 type TextMeasureElements = {
   line: HTMLDivElement
   block: HTMLDivElement
 }
 
-const TEXT_DEFAULT_LINE_HEIGHT_RATIO = 1.4
-const EMPTY_LINE = '\u00A0'
-
 let textMeasureElements: TextMeasureElements | null = null
-
-const readNumber = (
-  value: string
-) => {
-  const parsed = Number.parseFloat(value)
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
-const readPx = (
-  value: string,
-  fallback: number
-) => {
-  const parsed = Number.parseFloat(value)
-  return Number.isFinite(parsed) && parsed > 0
-    ? parsed
-    : fallback
-}
-
-const readLineHeightPx = (
-  lineHeight: string,
-  sourceFontSize: number,
-  fontSize: number
-) => {
-  if (lineHeight === 'normal') {
-    return fontSize * TEXT_DEFAULT_LINE_HEIGHT_RATIO
-  }
-
-  const parsed = Number.parseFloat(lineHeight)
-  return Number.isFinite(parsed) && parsed > 0
-    ? parsed * (sourceFontSize > 0 ? fontSize / sourceFontSize : 1)
-    : fontSize * TEXT_DEFAULT_LINE_HEIGHT_RATIO
-}
-
-const normalizeMeasureContent = (
-  value: string
-) => {
-  if (!value) {
-    return EMPTY_LINE
-  }
-
-  return value.endsWith('\n')
-    ? `${value}${EMPTY_LINE}`
-    : value
-}
-
-const applyTypography = (
-  element: HTMLDivElement,
-  style: CSSStyleDeclaration,
-  {
-    fontSize,
-    lineHeight
-  }: {
-    fontSize: number
-    lineHeight: number
-  }
-) => {
-  element.style.fontFamily = style.fontFamily
-  element.style.fontSize = `${fontSize}px`
-  element.style.fontStyle = style.fontStyle
-  element.style.fontWeight = style.fontWeight
-  element.style.lineHeight = `${lineHeight}px`
-  element.style.letterSpacing = style.letterSpacing
-  element.style.textTransform = style.textTransform
-}
 
 const ensureTextMeasureElements = (): TextMeasureElements | null => {
   if (typeof document === 'undefined') {

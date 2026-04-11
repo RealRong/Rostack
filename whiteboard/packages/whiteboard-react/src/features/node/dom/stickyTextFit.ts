@@ -96,25 +96,30 @@ const fontSizeCache = new Map<string, number>()
 export const measureStickyFontSize = ({
   text,
   rect,
-  source
+  source,
+  frame,
+  maxFontSize
 }: {
   text: string
   rect: Rect
   source: HTMLElement
+  frame: HTMLElement
+  maxFontSize?: number
 }) => {
   const resolvedText = text.trim()
+  const fallback = estimateTextAutoFont('sticky', rect)
   if (!resolvedText) {
-    return estimateTextAutoFont('sticky', rect)
+    return fallback
   }
 
   const elements = ensureStickyFitElements()
   if (!elements) {
-    return estimateTextAutoFont('sticky', rect)
+    return fallback
   }
 
-  const frameRect = source.getBoundingClientRect()
+  const frameRect = frame.getBoundingClientRect()
   if (frameRect.width <= 0 || frameRect.height <= 0) {
-    return estimateTextAutoFont('sticky', rect)
+    return fallback
   }
 
   const sourceStyle = window.getComputedStyle(source)
@@ -132,12 +137,19 @@ export const measureStickyFontSize = ({
     borderLeft: readNumber(sourceStyle.borderLeftWidth)
   })
   const range = resolveTextAutoFont('sticky', contentBox)
+  const resolvedMaxFontSize = Math.max(
+    range.min,
+    Math.min(
+      range.max,
+      Math.floor(maxFontSize ?? range.initial)
+    )
+  )
   const signature = readStickyFitSignature({
     text: resolvedText,
     width: contentBox.width,
     height: contentBox.height,
     style: sourceStyle
-  })
+  }) + `|${resolvedMaxFontSize}`
   const cached = fontSizeCache.get(signature)
   if (cached !== undefined) {
     return cached
@@ -157,8 +169,8 @@ export const measureStickyFontSize = ({
   elements.content.textContent = resolvedText
 
   let low = range.min
-  let high = range.max
-  let best = Math.min(range.max, Math.max(range.min, TEXT_DEFAULT_FONT_SIZE))
+  let high = resolvedMaxFontSize
+  let best = resolvedMaxFontSize
 
   while (low <= high) {
     const mid = Math.floor((low + high) / 2)

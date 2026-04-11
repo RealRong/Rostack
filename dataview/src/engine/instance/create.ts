@@ -25,14 +25,14 @@ import {
   createReadApi
 } from '../state/select'
 import {
-  createStore
-} from '../state/store'
-import {
   translateCommands
 } from '../write/translate'
 import {
+  createStore
+} from '../state'
+import {
   createWriteControl
-} from '../write'
+} from '../write/commit'
 
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const historyCapacity = Math.max(0, options.history?.capacity ?? 100)

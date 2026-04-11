@@ -1,4 +1,9 @@
-import { useCallback, useRef, type CSSProperties } from 'react'
+import {
+  useCallback,
+  useRef,
+  useState,
+  type CSSProperties
+} from 'react'
 import type { NodeDefinition, NodeRenderProps } from '#react/types/node'
 import {
   useEdit,
@@ -49,15 +54,37 @@ const readStickyFill = (
   ? node.style.fill
   : STICKY_DEFAULT_FILL
 
-type TextNodeRendererProps = NodeRenderProps & {
-  variant: 'text' | 'sticky'
+const useElementBinding = <
+  TElement extends HTMLDivElement
+>() => {
+  const ref = useRef<TElement | null>(null)
+  const [element, setElement] = useState<TElement | null>(null)
+
+  const bind = useCallback((next: TElement | null) => {
+    if (ref.current === next) {
+      return
+    }
+
+    ref.current = next
+    setElement(next)
+  }, [])
+
+  return {
+    ref,
+    element,
+    bind
+  }
 }
 
 const useNodeTextSourceBinding = (
   nodeId: NodeRenderProps['node']['id']
 ) => {
   const editor = useEditor()
-  const sourceRef = useRef<HTMLDivElement | null>(null)
+  const {
+    ref: sourceRef,
+    element: sourceElement,
+    bind: bindElement
+  } = useElementBinding<HTMLDivElement>()
 
   const bindRef = useCallback((element: HTMLDivElement | null) => {
     bindNodeTextSource({
@@ -67,11 +94,12 @@ const useNodeTextSourceBinding = (
       current: sourceRef.current,
       next: element
     })
-    sourceRef.current = element
-  }, [editor, nodeId])
+    bindElement(element)
+  }, [bindElement, editor, nodeId])
 
   return {
     sourceRef,
+    sourceElement,
     bindRef
   }
 }
@@ -79,27 +107,15 @@ const useNodeTextSourceBinding = (
 const TextNodeRenderer = ({
   node,
   rect,
-  selected,
-  variant
-}: TextNodeRendererProps) => {
+  selected
+}: NodeRenderProps) => {
   const edit = useEdit()
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
-  const isSticky = variant === 'sticky'
-  const placeholder = isSticky ? STICKY_PLACEHOLDER : TEXT_PLACEHOLDER
+  const placeholder = TEXT_PLACEHOLDER
   const {
-    sourceRef,
     bindRef
   } = useNodeTextSourceBinding(node.id)
-  const stickyFontSize = useStickyFontSize({
-    text,
-    rect,
-    sourceRef
-  })
-  const fontSize = getStyleNumber(node, 'fontSize') ?? (
-    isSticky
-      ? stickyFontSize
-      : TEXT_DEFAULT_FONT_SIZE
-  )
+  const fontSize = getStyleNumber(node, 'fontSize') ?? TEXT_DEFAULT_FONT_SIZE
   const fontWeight = getStyleNumber(node, 'fontWeight') ?? 400
   const fontStyle = getStyleString(node, 'fontStyle') ?? 'normal'
   const color = getStyleString(node, 'color') ?? 'var(--ui-text-primary)'
@@ -119,7 +135,7 @@ const TextNodeRenderer = ({
 
   return (
     <div className="wb-text-node-viewport">
-      <div className={`wb-text-node-content${isSticky ? ' wb-sticky-content' : ''}`}>
+      <div className="wb-text-node-content">
         {editing ? (
           <EditableSlot
             bindRef={bindRef}
@@ -128,33 +144,98 @@ const TextNodeRenderer = ({
             multiline
             className="wb-default-text-editor"
             style={textStyle}
-            measure={
-              variant === 'text'
-                ? {
-                    node,
-                    baseWidth: widthMode === 'wrap'
-                      ? (wrapWidth ?? rect.width)
-                      : rect.width,
-                    placeholder,
-                    maxWidth: widthMode === 'wrap'
-                      ? (wrapWidth ?? rect.width)
-                      : undefined,
-                    fontSize
-                  }
-                : undefined
-            }
+            measure={{
+              node,
+              baseWidth: widthMode === 'wrap'
+                ? (wrapWidth ?? rect.width)
+                : rect.width,
+              placeholder,
+              maxWidth: widthMode === 'wrap'
+                ? (wrapWidth ?? rect.width)
+                : undefined,
+              fontSize
+            }}
           />
         ) : (
-            <div
-              ref={bindRef}
-              data-edit-node-id={node.id}
-              data-edit-field="text"
-              className="wb-default-text-display"
-              style={textStyle}
-            >
-              {text || placeholder}
-            </div>
-          )}
+          <div
+            ref={bindRef}
+            data-edit-node-id={node.id}
+            data-edit-field="text"
+            className="wb-default-text-display"
+            style={textStyle}
+          >
+            {text || placeholder}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+const StickyNodeRenderer = ({
+  node,
+  rect,
+  selected
+}: NodeRenderProps) => {
+  const edit = useEdit()
+  const text = typeof node.data?.text === 'string' ? node.data.text : ''
+  const placeholder = STICKY_PLACEHOLDER
+  const {
+    sourceElement,
+    bindRef
+  } = useNodeTextSourceBinding(node.id)
+  const {
+    element: frameElement,
+    bind: bindFrame
+  } = useElementBinding<HTMLDivElement>()
+  const autoFontSize = useStickyFontSize({
+    text,
+    rect,
+    source: sourceElement,
+    frame: frameElement
+  })
+  const fontSize = getStyleNumber(node, 'fontSize') ?? autoFontSize
+  const fontWeight = getStyleNumber(node, 'fontWeight') ?? 400
+  const fontStyle = getStyleString(node, 'fontStyle') ?? 'normal'
+  const color = getStyleString(node, 'color') ?? 'var(--ui-text-primary)'
+  const editing =
+    edit?.kind === 'node'
+    && edit.nodeId === node.id
+    && edit.field === 'text'
+  const textStyle: CSSProperties = {
+    fontSize,
+    fontWeight,
+    fontStyle,
+    color,
+    opacity: text ? 1 : selected ? 1 : 0.72
+  }
+
+  return (
+    <div className="wb-sticky-node">
+      <div
+        ref={bindFrame}
+        className="wb-sticky-node-shell"
+      >
+        {editing ? (
+          <EditableSlot
+            bindRef={bindRef}
+            value={text}
+            caret={edit.caret}
+            multiline
+            className="wb-sticky-node-text wb-default-text-editor"
+            style={textStyle}
+          />
+        ) : (
+          <div
+            ref={bindRef}
+            data-edit-node-id={node.id}
+            data-edit-field="text"
+            className="wb-sticky-node-text"
+            style={textStyle}
+          >
+            {text || placeholder}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -216,7 +297,7 @@ export const TextNodeDefinition: NodeDefinition = {
       }
     }
   },
-  render: (props) => <TextNodeRenderer {...props} variant="text" />,
+  render: (props) => <TextNodeRenderer {...props} />,
   style: createTextStyle('text')
 }
 
@@ -244,6 +325,6 @@ export const StickyNodeDefinition: NodeDefinition = {
       }
     }
   },
-  render: (props) => <TextNodeRenderer {...props} variant="sticky" />,
+  render: (props) => <StickyNodeRenderer {...props} />,
   style: createTextStyle('sticky')
 }

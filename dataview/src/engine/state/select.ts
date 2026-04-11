@@ -36,11 +36,9 @@ import type {
   SectionKey
 } from '../project/model'
 import type {
-  State
-} from './index'
-import type {
+  State,
   Store
-} from './store'
+} from './index'
 
 const sameValue = <T,>(
   left: T,

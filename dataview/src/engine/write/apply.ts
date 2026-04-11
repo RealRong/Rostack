@@ -1,19 +1,23 @@
 import {
   createDeltaCollector
 } from '@dataview/core/commit/collector'
+import type {
+  DataDoc
+} from '@dataview/core/contracts'
+import type {
+  BaseOperation
+} from '@dataview/core/contracts/operations'
 import {
   applyOperations
 } from '@dataview/core/operation'
 import type {
-  DataDoc
-} from '@dataview/core/contracts'
-import type { ResolvedWriteBatch } from '@dataview/engine/command'
+  ResolvedWriteBatch
+} from '../command'
 import type {
-  CreatedEntities,
+  CommandResult,
   CommitResult,
-  CommandResult
-} from '../../types'
-import type { HistoryReplay } from './history'
+  CreatedEntities
+} from '../types'
 
 export const createdFromChanges = (
   changes?: CommitResult['changes']
@@ -42,19 +46,19 @@ export const applyWriteBatch = (
   createDeltaCollector(beforeDocument, writeBatch.deltaDraft)
 )
 
-export const createRejectedCommandResult = (
+export const applyReplay = (
+  beforeDocument: DataDoc,
+  operations: readonly BaseOperation[]
+) => applyOperations(beforeDocument, operations)
+
+export const rejectedResult = (
   issues: CommandResult['issues']
 ): CommandResult => ({
   issues,
   applied: false
 })
 
-export const createEmptyCommitResult = (): CommitResult => ({
+export const emptyResult = (): CommitResult => ({
   issues: [],
   applied: false
 })
-
-export const applyHistoryReplay = (
-  beforeDocument: DataDoc,
-  replay: HistoryReplay
-) => applyOperations(beforeDocument, replay.operations)

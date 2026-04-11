@@ -1,4 +1,9 @@
-import { useMemo, type RefObject } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState
+} from 'react'
 import type { Rect } from '@whiteboard/core/types'
 import { estimateTextAutoFont } from '@whiteboard/core/node'
 import { measureStickyFontSize } from '../dom/stickyTextFit'
@@ -6,28 +11,85 @@ import { measureStickyFontSize } from '../dom/stickyTextFit'
 export const useStickyFontSize = ({
   text,
   rect,
-  sourceRef
+  source,
+  frame
 }: {
   text: string
   rect: Rect
-  sourceRef: RefObject<HTMLElement | null>
+  source: HTMLElement | null
+  frame: HTMLElement | null
 }) => {
-  return useMemo(() => {
-    const fallback = estimateTextAutoFont('sticky', rect)
-    const source = sourceRef.current
-    if (!source) {
-      return fallback
+  const fallback = useMemo(() => estimateTextAutoFont('sticky', rect), [
+    rect.height,
+    rect.width
+  ])
+  const [fontSize, setFontSize] = useState(fallback)
+
+  useLayoutEffect(() => {
+    if (!text.trim()) {
+      setFontSize((current) => current === fallback ? current : fallback)
+      return
     }
 
-    return measureStickyFontSize({
+    if (!source || !frame) {
+      return
+    }
+
+    const next = measureStickyFontSize({
       text,
       rect,
-      source
+      source,
+      frame,
+      maxFontSize: fallback
     })
+
+    setFontSize((current) => current === next ? current : next)
   }, [
-    rect.height,
-    rect.width,
-    sourceRef,
+    fallback,
+    frame,
+    rect,
+    source,
     text
   ])
+
+  useEffect(() => {
+    if (
+      typeof ResizeObserver === 'undefined'
+      || !source
+      || !frame
+    ) {
+      return
+    }
+
+    const update = () => {
+      const next = measureStickyFontSize({
+        text,
+        rect,
+        source,
+        frame,
+        maxFontSize: fallback
+      })
+      setFontSize((current) => current === next ? current : next)
+    }
+    const observer = new ResizeObserver(() => {
+      update()
+    })
+
+    observer.observe(source)
+    if (frame !== source) {
+      observer.observe(frame)
+    }
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [
+    fallback,
+    frame,
+    rect,
+    source,
+    text
+  ])
+
+  return fontSize
 }

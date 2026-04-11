@@ -248,7 +248,7 @@
 `whiteboard/packages/whiteboard-engine/src/write` 这条线有明确参考价值，尤其是两点：
 
 - `translate` 只负责把用户动作翻译成 operations 和 output，不直接提交状态
-- `write/index.ts` 把真正写入收敛成一条线，而不是把提交逻辑分散到多个 runtime
+- `write` 主入口把真正写入收敛成一条线，而不是把提交逻辑分散到多个 runtime
 
 对 dataview，这意味着应该借鉴：
 
@@ -779,15 +779,11 @@ dataview/src/engine/
     create.ts
   state/
     index.ts
-    store.ts
     select.ts
   write/
-    index.ts
+    apply.ts
     commit.ts
-    plan.ts
     translate.ts
-    history.ts
-    trace.ts
   derive/
     index.ts
     project.ts
@@ -795,8 +791,8 @@ dataview/src/engine/
 
 说明：
 
-- `state/` 只负责 `state` 和 selector
-- `write/` 只负责写入
+- `state/` 只负责 `state`、`store` 和 selector
+- `write/` 只负责写入，且主线尽量集中在 `commit.ts`
 - `derive/` 只负责从旧状态算新状态
 
 这样“读、写、派生”三件事会非常清楚。
@@ -819,27 +815,34 @@ dataview/src/engine/
 - 组装 read runtime / commit runtime / project runtime 三段式协议
 
 
-## 11.2 `write/plan.ts`
+## 11.2 `write/commit.ts`
 
-负责把外部动作转换为 `plan`：
+作为写入主入口，内部同时承载：
 
 - `write(batch)`
 - `undo()`
 - `redo()`
 - `load(doc)`
+- history push/pop/clear
+- commit trace summary
 
-它只改：
+它前半段只改：
 
 - `doc`
 - `history`
 - delta
 - result metadata
 
-不做：
+它后半段负责：
 
-- project 同步
-- read 同步
-- store 发布
+- `derive.index`
+- `derive.project`
+- 组装 `next state`
+- 一次性 `store.set(next)`
+
+也就是说，`plan/history/trace` 这些如果只是 commit 私有细节，就不再拆成零碎文件。
+
+这是唯一允许写 `Store` 的地方。
 
 
 ## 11.3 `write/translate.ts`
@@ -852,24 +855,9 @@ dataview/src/engine/
 - `translate` 只产出 operations / output / delta draft
 - `translate` 不直接提交状态
 
-它的目标不是再造一个 runtime，而是让 `run -> plan -> commit` 这条线更短。
+它的目标不是再造一个 runtime，而是让 `translate -> commit` 这条线更短。
 
-
-## 11.4 `write/commit.ts`
-
-负责：
-
-- 读取 `base state`
-- 跑 `plan`
-- 调 `derive.index`
-- 调 `derive.project`
-- 组装 `next state`
-- 一次性 `store.set(next)`
-
-这是唯一允许写 `Store` 的地方。
-
-
-## 11.5 `derive/index.ts`
+## 11.4 `derive/index.ts`
 
 负责：
 

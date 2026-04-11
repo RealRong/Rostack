@@ -33,6 +33,7 @@ export type DocumentNodeTextApi = Pick<
 
 export type DocumentNodeApi = {
   create: EditorNodesApi['create']
+  patch: EditorNodesApi['patch']
   move: EditorNodesApi['move']
   align: EditorNodesApi['align']
   distribute: EditorNodesApi['distribute']
@@ -83,6 +84,7 @@ export type DocumentRuntime = {
   }
   edge: {
     create: EditorEdgesApi['create']
+    patch: EditorEdgesApi['patch']
     move: EditorEdgesApi['move']
     reconnect: EditorEdgesApi['reconnect']
     update: (id: EdgeId, patch: EdgePatch) => CommandResult

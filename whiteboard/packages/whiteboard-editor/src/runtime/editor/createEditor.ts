@@ -1,23 +1,10 @@
 import { createDerivedStore } from '@shared/core'
-import { isNodeUpdateEmpty } from '@whiteboard/core/node'
-import { isSizeEqual } from '@whiteboard/core/geometry'
 import type { Engine } from '@whiteboard/engine'
-import type {
-  CommandResult
-} from '@engine-types/result'
-import type {
-  Edge,
-  EdgePatch,
-  Viewport
-} from '@whiteboard/core/types'
+import type { Viewport } from '@whiteboard/core/types'
 import type { NodeRegistry } from '../../types/node'
 import type { Tool } from '../../types/tool'
 import type { DrawPreferences } from '../../types/draw'
-import type {
-  Editor,
-  EditorEdgesApi,
-  EditorNodesApi
-} from '../../types/editor'
+import type { Editor } from '../../types/editor'
 import {
   drawTool,
   edgeTool,
@@ -38,50 +25,12 @@ import { createOverlay } from '../overlay'
 import { createRead } from '../read'
 import { createRuntimeState } from '../state'
 import { createEditorInput } from './input'
+import { createEditorEditActions } from './edit'
 import { createEditorState } from './state'
 import { createEditorRuntime } from './runtime'
 import { createSelectionActions } from '../document/selection'
 import { createEdgeLabelActions } from '../document/edgeLabel'
 import { createClipboardActions } from '../document/clipboard'
-import {
-  dataUpdate,
-  mergeNodeUpdates
-} from '../node/patch'
-import {
-} from '../state/edit'
-
-const hasEdgePatchContent = (
-  patch: EdgePatch
-) => Object.keys(patch).length > 0
-
-const mergeEdgeLabel = ({
-  edge,
-  labelId,
-  text
-}: {
-  edge: Edge
-  labelId: string
-  text: string
-}) => {
-  let changed = false
-
-  const labels = edge.labels?.map((label) => {
-    if (label.id !== labelId) {
-      return label
-    }
-
-    changed = true
-
-    return {
-      ...label,
-      text
-    }
-  })
-
-  return changed
-    ? labels
-    : undefined
-}
 
 export const createEditor = ({
   engine,
@@ -209,166 +158,14 @@ export const createEditor = ({
 
     runtime.reconcileAfterCommit(read)
   })
-
-  const patchNodes: EditorNodesApi['patch'] = (
-    ids,
-    update,
-    options
-  ) => {
-    if (isNodeUpdateEmpty(update)) {
-      return undefined
-    }
-
-    const updates = ids.flatMap((id) => engine.read.node.item.get(id)
-      ? [{
-          id,
-          update
-        }]
-      : [])
-    if (!updates.length) {
-      return undefined
-    }
-
-    return write.document.node.updateMany(updates, {
-      origin: options?.origin
-    })
-  }
-
-  const patchEdges: EditorEdgesApi['patch'] = (
-    edgeIds,
-    patch
-  ) => {
-    if (!hasEdgePatchContent(patch)) {
-      return undefined
-    }
-
-    const updates = edgeIds.flatMap((id) => engine.read.edge.item.get(id)
-      ? [{
-          id,
-          patch
-        }]
-      : [])
-    if (!updates.length) {
-      return undefined
-    }
-
-    return write.document.edge.updateMany(updates)
-  }
-
-  const cancelEdit = (): CommandResult | undefined => {
-    const currentEdit = state.edit.get()
-    if (!currentEdit) {
-      return undefined
-    }
-
-    if (
-      currentEdit.kind === 'edge-label'
-      && currentEdit.capabilities.empty === 'remove'
-      && !currentEdit.initial.text.trim()
-    ) {
-      const edge = engine.read.edge.item.get(currentEdit.edgeId)?.edge
-      if (!edge?.labels?.some((label) => label.id === currentEdit.labelId)) {
-        write.session.edit.clear()
-        return undefined
-      }
-
-      const nextLabels = edge.labels.filter((label) => label.id !== currentEdit.labelId)
-      const result = write.document.edge.update(currentEdit.edgeId, {
-        labels: nextLabels
-      })
-      write.session.edit.clear()
-      return result
-    }
-
-    write.session.edit.clear()
-    return undefined
-  }
-
-  const commitEdit = (): CommandResult | undefined => {
-    const currentEdit = state.edit.get()
-    if (!currentEdit) {
-      return undefined
-    }
-
-    runtime.state.edit.mutate.status('committing')
-
-    if (currentEdit.kind === 'node') {
-      const committed = engine.read.node.item.get(currentEdit.nodeId)
-      if (!committed) {
-        write.session.edit.clear()
-        return undefined
-      }
-
-      const nextText = (
-        currentEdit.capabilities.empty === 'default'
-        && !currentEdit.draft.text.trim()
-      )
-        ? (currentEdit.capabilities.defaultText ?? '')
-        : currentEdit.draft.text
-      const currentText = typeof committed.node.data?.[currentEdit.field] === 'string'
-        ? committed.node.data[currentEdit.field] as string
-        : ''
-      const nextMeasure = (
-        committed.node.type === 'text'
-        && currentEdit.field === 'text'
-        && currentEdit.layout.liveSize
-        && !isSizeEqual(currentEdit.layout.liveSize, committed.rect)
-      )
-        ? currentEdit.layout.liveSize
-        : undefined
-      const update = mergeNodeUpdates(
-        currentText !== nextText
-          ? dataUpdate(currentEdit.field, nextText)
-          : undefined,
-        nextMeasure
-          ? {
-              fields: {
-                size: nextMeasure
-              }
-            }
-          : undefined
-      )
-
-      write.session.edit.clear()
-      return isNodeUpdateEmpty(update)
-        ? undefined
-        : write.document.node.update(currentEdit.nodeId, update)
-    }
-
-    const edge = engine.read.edge.item.get(currentEdit.edgeId)?.edge
-    if (!edge) {
-      write.session.edit.clear()
-      return undefined
-    }
-
-    if (
-      currentEdit.capabilities.empty === 'remove'
-      && !currentEdit.draft.text.trim()
-    ) {
-      const nextLabels = edge.labels?.filter((label) => label.id !== currentEdit.labelId) ?? []
-      write.session.edit.clear()
-      return write.document.edge.update(currentEdit.edgeId, {
-        labels: nextLabels
-      })
-    }
-
-    const nextLabels = mergeEdgeLabel({
-      edge,
-      labelId: currentEdit.labelId,
-      text: currentEdit.draft.text
-    })
-
-    write.session.edit.clear()
-    if (
-      !nextLabels
-    ) {
-      return undefined
-    }
-
-    return write.document.edge.update(currentEdit.edgeId, {
-      labels: nextLabels
-    })
-  }
+  const editActions = createEditorEditActions({
+    engine,
+    edit: state.edit,
+    runtime,
+    session: write.session,
+    document: write.document,
+    edgeLabel: edgeLabelActions
+  })
 
   const {
     replace: replaceDocument
@@ -507,13 +304,13 @@ export const createEditor = ({
       },
       edit: {
         ...write.session.edit,
-        cancel: cancelEdit,
-        commit: commitEdit
+        cancel: editActions.cancel,
+        commit: editActions.commit
       },
       interaction: input,
       node: {
         create: write.document.node.create,
-        patch: patchNodes,
+        patch: write.document.node.patch,
         move: write.document.node.move,
         align: write.document.node.align,
         distribute: write.document.node.distribute,
@@ -538,7 +335,7 @@ export const createEditor = ({
       },
       edge: {
         create: write.document.edge.create,
-        patch: patchEdges,
+        patch: write.document.edge.patch,
         move: write.document.edge.move,
         reconnect: write.document.edge.reconnect,
         remove: write.document.edge.delete,
@@ -547,9 +344,7 @@ export const createEditor = ({
           add: edgeLabelActions.add,
           patch: edgeLabelActions.patch,
           remove: edgeLabelActions.remove,
-          setText: (edgeId, labelId, text) => edgeLabelActions.patch(edgeId, labelId, {
-            text
-          })
+          setText: edgeLabelActions.setText
         }
       },
       mindmap: {

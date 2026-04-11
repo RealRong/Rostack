@@ -65,7 +65,7 @@ export const createEdgeLabelActions = ({
   edit: EditorStore['edit']
   session: Pick<SessionRuntime, 'edit' | 'selection'>
   document: Pick<DocumentRuntime, 'edge'>
-}): Pick<EditorEdgeActions['label'], 'add' | 'patch' | 'remove'> => ({
+}): EditorEdgeActions['label'] => ({
   add: (edgeId: EdgeId) => {
     const edge = readEdge(read, edgeId)
     if (!edge) {
@@ -110,6 +110,23 @@ export const createEdgeLabelActions = ({
     }
 
     const nextLabels = mergeEdgeLabelPatch(edge, labelId, patch)
+    if (!nextLabels) {
+      return undefined
+    }
+
+    return document.edge.update(edgeId, {
+      labels: nextLabels
+    })
+  },
+  setText: (edgeId: EdgeId, labelId: string, text: string) => {
+    const edge = readEdge(read, edgeId)
+    if (!edge) {
+      return undefined
+    }
+
+    const nextLabels = mergeEdgeLabelPatch(edge, labelId, {
+      text
+    })
     if (!nextLabels) {
       return undefined
     }

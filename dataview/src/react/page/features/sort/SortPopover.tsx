@@ -33,11 +33,14 @@ export const SortPopover = (props: SortPopoverProps) => {
   const document = useDataViewValue(dataView => dataView.engine.read.document)
   const fields = getDocumentFields(document)
   const currentView = useDataViewValue(
-    dataView => dataView.engine.read.activeView
+    dataView => dataView.engine.active.view
   )
-  const sortProjection = useDataViewValue(dataView => dataView.engine.project.sort)
+  const sortProjection = useDataViewValue(
+    dataView => dataView.engine.active.state,
+    state => state?.sort
+  )
   const currentViewDomain = currentView
-    ? engine.view(currentView.id)
+    ? engine.active
     : undefined
   const [addSortOpen, setAddSortOpen] = useState(false)
   const sorters = sortProjection?.rules.map(entry => entry.sorter) ?? []

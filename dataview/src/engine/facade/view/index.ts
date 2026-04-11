@@ -4,17 +4,15 @@ import type {
   FieldId,
   CustomFieldId,
   CustomFieldKind,
+  DataDoc,
   View,
   ViewGroup,
-  ViewType,
   RecordId,
   ViewId
 } from '@dataview/core/contracts'
 import {
-  group as groupCore,
-  type GroupWriteResult
+  group as groupCore
 } from '@dataview/core/group'
-import { getDocumentViewById } from '@dataview/core/document'
 import { isTitleFieldId } from '@dataview/core/field'
 import { createUniqueFieldName } from '@dataview/core/field'
 import {
@@ -27,13 +25,15 @@ import {
 import type {
   AppearanceId,
   AppearanceList,
-  Section,
-  ViewGroupProjection
+  Section
 } from '@dataview/engine/project'
 import { createRecordId } from '@dataview/engine/command/entityId'
 import { meta, renderMessage } from '@dataview/meta'
 import type {
-  Engine,
+  ActiveEngineApi,
+  ActiveViewState,
+  FieldsEngineApi,
+  RecordsEngineApi,
   ViewCellsApi,
   ViewGalleryApi,
   ViewKanbanApi,
@@ -113,20 +113,8 @@ const toRecordFieldAction = (
         }
 )
 
-const toValueCommand = (
-  recordId: RecordId,
-  fieldId: FieldId,
-  next: Exclude<GroupWriteResult, { kind: 'invalid' }>
-): Action => toRecordFieldAction(
-  recordId,
-  fieldId,
-  next.kind === 'clear'
-    ? undefined
-    : next.value
-)
-
 const createGroupWriteCommands = (input: {
-  engine: Pick<Engine, 'read'>
+  readRecord: (recordId: RecordId) => ReturnType<ActiveEngineApi['read']['getRecord']>
   group: ViewGroup
   field: Field
   appearances: AppearanceList
@@ -155,7 +143,7 @@ const createGroupWriteCommands = (input: {
   const commands: Action[] = []
 
   for (const [recordId, appearanceIds] of appearanceIdsByRecordId) {
-    const record = input.engine.read.record.get(recordId)
+    const record = input.readRecord(recordId)
     const initialValue = isTitleFieldId(fieldId)
       ? record?.title
       : record?.values[fieldId]
@@ -183,12 +171,10 @@ const createGroupWriteCommands = (input: {
     }
 
     commands.push(
-      toValueCommand(
+      toRecordFieldAction(
         recordId,
         fieldId,
-        currentValue === undefined
-          ? { kind: 'clear' }
-          : { kind: 'set', value: currentValue }
+        currentValue
       )
     )
   }
@@ -196,61 +182,59 @@ const createGroupWriteCommands = (input: {
   return commands
 }
 
-const readGroupWriteContext = (
-  groupProjection: ViewGroupProjection | undefined
-): {
-  group: ViewGroup
-  field: Field
-} | undefined => {
-  const group = groupProjection?.group
-  const field = groupProjection?.field
-  return group && field
-    ? {
-        group,
-        field
-      }
-    : undefined
-}
-
 interface ActiveViewContext {
   view: View
-  groupProjection: ViewGroupProjection | undefined
   appearances: AppearanceList
   sections: readonly Section[]
+  groupWrite?: {
+    group: ViewGroup
+    field: Field
+  }
 }
 
 export const createViewEngineApi = (options: {
-  engine: Pick<Engine, 'read' | 'project' | 'action' | 'fields'>
-  viewId: ViewId
+  resolveViewId: () => ViewId | undefined
+  readDocument: () => DataDoc
+  readView: () => View | undefined
+  readState: () => ActiveViewState | undefined
+  readRecord: ActiveEngineApi['read']['getRecord']
+  dispatch: (action: Action | readonly Action[]) => {
+    applied: boolean
+  }
+  fields: Pick<FieldsEngineApi, 'list' | 'create'>
+  records: Pick<RecordsEngineApi, 'field'>
 }): ViewEngineApi => {
-  const dispatch = (
-    action: Parameters<Engine['action']>[0]
-  ) => options.engine.action(action)
-  const readDocument = () => options.engine.read.document.get()
-  const readCurrentView = () => getDocumentViewById(readDocument(), options.viewId)
+  const readDocument = options.readDocument
+  const readCurrentView = options.readView
   const readCurrentProjection = (): ActiveViewContext | undefined => {
-    const view = options.engine.read.activeView.get()
-    if (!view || view.id !== options.viewId) {
+    const viewId = options.resolveViewId()
+    const state = options.readState()
+    if (!viewId || !state || state.view.id !== viewId) {
       return undefined
     }
 
-    const appearances = options.engine.project.appearances.get()
-    const sections = options.engine.project.sections.get()
+    const appearances = state.appearances
+    const sections = state.sections
     if (!appearances || !sections) {
       return undefined
     }
 
     return {
-      view,
-      groupProjection: options.engine.project.group.get(),
+      view: state.view,
       appearances,
-      sections
+      sections,
+      groupWrite: state.group?.group && state.group?.field
+        ? {
+            group: state.group.group,
+            field: state.group.field
+          }
+        : undefined
     }
   }
 
-  const commit = (action: Action | readonly Action[]) => dispatch(action).applied
+  const commit = (action: Action | readonly Action[]) => options.dispatch(action).applied
   const commands = createViewCommandNamespaces({
-    viewId: options.viewId,
+    resolveViewId: options.resolveViewId,
     commit,
     readDocument,
     readView: readCurrentView
@@ -273,7 +257,7 @@ export const createViewEngineApi = (options: {
         return
       }
 
-      const groupWrite = readGroupWriteContext(currentView.groupProjection)
+      const groupWrite = currentView.groupWrite
       const plan = move.plan(currentView.appearances, appearanceIds, target)
       if (!plan.changed || !plan.ids.length) {
         return
@@ -310,7 +294,7 @@ export const createViewEngineApi = (options: {
 
       if (sectionChanged && groupWrite) {
         const valueCommands = createGroupWriteCommands({
-          engine: options.engine,
+          readRecord: options.readRecord,
           group: groupWrite.group,
           field: groupWrite.field,
           appearances: currentView.appearances,
@@ -332,7 +316,7 @@ export const createViewEngineApi = (options: {
       }
 
       if (nextCommands.length) {
-        dispatch(nextCommands)
+        options.dispatch(nextCommands)
       }
     },
     create: input => {
@@ -341,7 +325,7 @@ export const createViewEngineApi = (options: {
         return undefined
       }
 
-      const groupWrite = readGroupWriteContext(currentView.groupProjection)
+      const groupWrite = currentView.groupWrite
       if (currentView.view.group && !groupWrite) {
         return undefined
       }
@@ -404,7 +388,7 @@ export const createViewEngineApi = (options: {
         }
       }
 
-      const result = dispatch(nextCommands)
+      const result = options.dispatch(nextCommands)
       return result.applied
         ? recordId
         : undefined
@@ -420,7 +404,7 @@ export const createViewEngineApi = (options: {
         return
       }
 
-      dispatch({
+      options.dispatch({
         type: 'record.remove',
         recordIds: [...recordIds]
       })
@@ -437,7 +421,12 @@ export const createViewEngineApi = (options: {
       return
     }
 
-    dispatch(toRecordFieldAction(target.recordId, target.fieldId, value))
+    if (value === undefined) {
+      options.records.field.clear(target.recordId, target.fieldId)
+      return
+    }
+
+    options.records.field.set(target.recordId, target.fieldId, value)
   }
 
   const cells: ViewCellsApi = {
@@ -486,14 +475,14 @@ export const createViewEngineApi = (options: {
     const explicitName = input?.name?.trim()
     const name = explicitName || createUniqueFieldName(
       renderMessage(meta.field.kind.get(kind).defaultName),
-      options.engine.fields.list()
+      options.fields.list()
     )
 
     if (!name) {
       return undefined
     }
 
-    return options.engine.fields.create({
+    return options.fields.create({
       name,
       kind
     })

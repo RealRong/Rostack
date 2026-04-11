@@ -13,33 +13,32 @@ import type {
   EditorRead,
   EditorSelectionApi
 } from '../../types/editor'
-import type { SessionRuntime } from '../session/types'
-import type { DocumentRuntime } from './types'
+import type { DocumentCommands } from '../document/types'
+import type { NodeCommands } from '../node/types'
+import type { SessionCommands } from '../session/types'
 
 const DEFAULT_FRAME_PADDING = 32
 
-type DocumentSelectionActions = Pick<
+export type SelectionCommands = Pick<
   EditorSelectionApi,
   'duplicate' | 'delete' | 'order' | 'group' | 'ungroup' | 'frame'
 >
 
-type SelectionActionHost = {
+type SelectionCommandsHost = {
   read: Pick<EditorRead, 'group'>
-  document: Pick<DocumentRuntime, 'delete' | 'duplicate' | 'order' | 'group'>
-    & {
-      node: Pick<DocumentRuntime['node'], 'create'>
-    }
-  session: Pick<SessionRuntime, 'selection'>
+  document: Pick<DocumentCommands, 'delete' | 'duplicate' | 'order' | 'group'>
+  node: Pick<NodeCommands, 'create'>
+  session: Pick<SessionCommands, 'selection'>
 }
 
 const orderRefs = (
-  document: Pick<DocumentRuntime, 'order'>,
+  document: Pick<DocumentCommands, 'order'>,
   refs: CanvasItemRef[],
   mode: EditorOrderMode
 ) => document.order(refs, mode)
 
 const orderGroups = (
-  order: DocumentRuntime['group']['order'],
+  order: DocumentCommands['group']['order'],
   groupIds: readonly string[],
   mode: EditorOrderMode
 ) => {
@@ -86,8 +85,8 @@ const readGroupTarget = (
 }
 
 const createFrame = (
-  node: Pick<DocumentRuntime['node'], 'create'>,
-  session: Pick<SessionRuntime, 'selection'>,
+  node: Pick<NodeCommands, 'create'>,
+  session: Pick<SessionCommands, 'selection'>,
   bounds: {
     x: number
     y: number
@@ -118,11 +117,12 @@ const createFrame = (
   return true
 }
 
-export const createSelectionActions = ({
+export const createSelectionCommands = ({
   read,
   document,
+  node,
   session
-}: SelectionActionHost): DocumentSelectionActions => ({
+}: SelectionCommandsHost): SelectionCommands => ({
   duplicate: (input, options) => {
     const target = normalizeSelectionTarget(input)
     const refs = toCanvasRefs(target)
@@ -221,7 +221,7 @@ export const createSelectionActions = ({
     return true
   },
   frame: (bounds, options) => createFrame(
-    document.node,
+    node,
     session,
     bounds,
     options?.padding ?? DEFAULT_FRAME_PADDING

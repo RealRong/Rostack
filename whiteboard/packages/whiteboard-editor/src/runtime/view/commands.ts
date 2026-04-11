@@ -1,15 +1,15 @@
 import type { PointerSample } from '../../types/input'
-import type { RuntimeStateController } from '../state'
+import type { EditorStateController } from '../state'
 import type { EditorViewportRuntime } from '../editor/types'
-import type { ViewRuntime } from './types'
+import type { ViewCommands } from './types'
 
-export const createViewRuntime = ({
+export const createViewCommands = ({
   runtime,
   viewport
 }: {
-  runtime: RuntimeStateController
+  runtime: EditorStateController
   viewport: EditorViewportRuntime
-}): ViewRuntime => ({
+}): ViewCommands => ({
   viewport: {
     ...viewport.commands,
     ...viewport.input,

@@ -3,29 +3,29 @@ import type {
 } from '@whiteboard/core/document'
 import type { Point } from '@whiteboard/core/types'
 import type {
-  EditorRead,
   EditorClipboardApi,
   EditorClipboardTarget,
-  EditorSelectionApi,
+  EditorRead,
   EditorStore
 } from '../../types/editor'
-import type { DocumentRuntime } from './types'
-import type { SessionRuntime } from '../session/types'
 import {
   createClipboardPacket,
   type ClipboardPacket
 } from '../../clipboard/packet'
+import type { DocumentCommands } from '../document/types'
+import type { SessionCommands } from '../session/types'
+import type { SelectionCommands } from '../selection/commands'
 
-type ClipboardRuntime = {
+type ClipboardCommandsHost = {
   read: EditorRead
-  document: Pick<DocumentRuntime, 'insert'>
-  session: Pick<SessionRuntime, 'selection'>
-  selection: Pick<EditorSelectionApi, 'delete'>
+  document: Pick<DocumentCommands, 'insert'>
+  session: Pick<SessionCommands, 'selection'>
+  selection: Pick<SelectionCommands, 'delete'>
   state: Pick<EditorStore, 'viewport' | 'selection'>
 }
 
 const applyInsertedRoots = (input: {
-  editor: ClipboardRuntime
+  editor: ClipboardCommandsHost
   inserted: {
     roots: SliceRoots
     allNodeIds: readonly string[]
@@ -51,7 +51,7 @@ const applyInsertedRoots = (input: {
 }
 
 const readSelectionTarget = (
-  editor: ClipboardRuntime
+  editor: ClipboardCommandsHost
 ): Exclude<EditorClipboardTarget, 'selection'> | undefined => {
   const target = editor.state.selection.get()
 
@@ -66,7 +66,7 @@ const readSelectionTarget = (
 }
 
 const resolveClipboardTarget = (input: {
-  editor: ClipboardRuntime
+  editor: ClipboardCommandsHost
   target: EditorClipboardTarget
 }): Exclude<EditorClipboardTarget, 'selection'> | undefined => (
   input.target === 'selection'
@@ -75,7 +75,7 @@ const resolveClipboardTarget = (input: {
 )
 
 const readClipboardPacket = (input: {
-  editor: ClipboardRuntime
+  editor: ClipboardCommandsHost
   target: EditorClipboardTarget
 }): ClipboardPacket | undefined => {
   const resolved = resolveClipboardTarget(input)
@@ -89,10 +89,10 @@ const readClipboardPacket = (input: {
     : undefined
 }
 
-export const createClipboardActions = ({
+export const createClipboardCommands = ({
   editor
 }: {
-  editor: ClipboardRuntime
+  editor: ClipboardCommandsHost
 }): EditorClipboardApi => ({
   copy: (target: EditorClipboardTarget = 'selection') =>
     readClipboardPacket({

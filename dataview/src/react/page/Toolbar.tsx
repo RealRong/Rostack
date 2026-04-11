@@ -145,13 +145,22 @@ export const PageToolbar = () => {
   const fields = getDocumentFields(document)
   const views = getDocumentViews(document)
   const currentView = useDataViewValue(
-    dataView => dataView.engine.read.activeView
+    dataView => dataView.engine.active.view
   )
-  const searchProjection = useDataViewValue(dataView => dataView.engine.project.search)
-  const filterProjection = useDataViewValue(dataView => dataView.engine.project.filter)
-  const sortProjection = useDataViewValue(dataView => dataView.engine.project.sort)
+  const searchProjection = useDataViewValue(
+    dataView => dataView.engine.active.state,
+    state => state?.search
+  )
+  const filterProjection = useDataViewValue(
+    dataView => dataView.engine.active.state,
+    state => state?.filter
+  )
+  const sortProjection = useDataViewValue(
+    dataView => dataView.engine.active.state,
+    state => state?.sort
+  )
   const currentViewDomain = currentView
-    ? engine.view(currentView.id)
+    ? engine.active
     : undefined
   const searchInputRef = useRef<HTMLInputElement | null>(null)
   const searchQuery = searchProjection?.query ?? ''
@@ -196,7 +205,7 @@ export const PageToolbar = () => {
               active={view.id === currentView?.id}
               menuOpen={tabMenuViewId === view.id}
               canRemove={views.length > 1}
-              onClick={() => engine.view.open(view.id)}
+              onClick={() => engine.views.open(view.id)}
               onOpenMenu={() => setTabMenuViewId(view.id)}
               onCloseMenu={() => {
                 setTabMenuViewId(current => (
@@ -207,7 +216,7 @@ export const PageToolbar = () => {
               }}
               onRename={() => {
                 setTabMenuViewId(null)
-                engine.view.open(view.id)
+                engine.views.open(view.id)
                 page.settings.open({
                   kind: 'root',
                   focusTarget: 'viewName'
@@ -215,7 +224,7 @@ export const PageToolbar = () => {
               }}
               onEdit={() => {
                 setTabMenuViewId(null)
-                engine.view.open(view.id)
+                engine.views.open(view.id)
                 page.settings.open({
                   kind: 'root'
                 })

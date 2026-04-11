@@ -56,13 +56,12 @@ const View = (props: CellProps) => {
 
     table.gridSelection.set(cell)
     table.focus()
-    const view = engine.view(currentView.view.id)
     if (action.value === undefined) {
-      view.cells.clear(cell)
+      engine.active.cells.clear(cell)
       return
     }
 
-    view.cells.set(cell, action.value)
+    engine.active.cells.set(cell, action.value)
   }
 
   if (!cellRender.exists || !recordId) {

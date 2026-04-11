@@ -20,7 +20,7 @@ import type {
   EditorMindmapCommands,
   EditorRead
 } from '../../types/editor'
-import type { NodePatchWriter } from '../node/types'
+import type { NodeCommands } from '../node/types'
 
 type MindmapHost = {
   read: EditorRead
@@ -28,14 +28,13 @@ type MindmapHost = {
     EditorMindmapCommands,
     'create' | 'delete' | 'insert' | 'moveSubtree' | 'removeSubtree' | 'cloneSubtree' | 'updateNode'
   >
-  node: {
-    update: NodePatchWriter['update']
-  }
+  node: Pick<NodeCommands, 'update'>
 }
 
 type MindmapExecute = Engine['execute']
 
 const DEFAULT_MINDMAP_SIDE: 'left' | 'right' = 'right'
+
 const createLayoutHint = ({
   anchorId,
   nodeSize,
@@ -218,7 +217,7 @@ export const moveMindmapRoot = ({
   })
 }
 
-const createMindmapCommands = (
+const createMindmapCoreCommands = (
   execute: MindmapExecute
 ): Pick<
   EditorMindmapCommands,
@@ -259,44 +258,42 @@ const createMindmapCommands = (
   })
 })
 
-export const createMindmapRuntime = ({
+export const createMindmapCommands = ({
   execute,
   read,
   node
 }: {
   execute: MindmapExecute
   read: EditorRead
-  node: {
-    update: NodePatchWriter['update']
-  }
+  node: Pick<NodeCommands, 'update'>
 }): EditorMindmapCommands => {
-  const commands = createMindmapCommands(execute)
+  const commands = createMindmapCoreCommands(execute)
 
   return {
     ...commands,
-  insertByPlacement: (input) => insertMindmapByPlacement({
-    editor: {
-      read,
-      commands,
-      node
-    },
-    ...input
-  }),
-  moveByDrop: (input) => moveMindmapByDrop({
-    editor: {
-      read,
-      commands,
-      node
-    },
-    ...input
-  }),
-  moveRoot: (input) => moveMindmapRoot({
-    editor: {
-      read,
-      commands,
-      node
-    },
-    ...input
-  })
+    insertByPlacement: (input) => insertMindmapByPlacement({
+      editor: {
+        read,
+        commands,
+        node
+      },
+      ...input
+    }),
+    moveByDrop: (input) => moveMindmapByDrop({
+      editor: {
+        read,
+        commands,
+        node
+      },
+      ...input
+    }),
+    moveRoot: (input) => moveMindmapRoot({
+      editor: {
+        read,
+        commands,
+        node
+      },
+      ...input
+    })
   }
 }

@@ -1,5 +1,9 @@
 export type {
+  ActiveEngineApi,
+  ActiveSelectApi,
   ActiveView,
+  ActiveViewReadApi,
+  ActiveViewState,
   CreateEngineOptions,
   CommitResult,
   CreatedEntities,
@@ -10,7 +14,6 @@ export type {
   EngineHistoryApi,
   EnginePerfApi,
   EnginePerfOptions,
-  EngineProjectApi,
   EngineReadApi,
   HistoryActionResult,
   IndexStageTrace,
@@ -26,8 +29,7 @@ export type {
   PublishTrace,
   RecordSet,
   RunningStat,
-  TraceDeltaSummary,
-  ViewAccessorApi
+  TraceDeltaSummary
 } from './public'
 export type {
   ViewCellsApi,

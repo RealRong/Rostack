@@ -31,8 +31,11 @@ export type {
   CommitTrace
 } from './perf'
 export type {
+  ActiveEngineApi,
+  ActiveSelectApi,
   ActiveView,
-  EngineProjectApi,
+  ActiveViewReadApi,
+  ActiveViewState,
   EngineReadApi,
   RecordSet
 } from './project'
@@ -42,7 +45,6 @@ export type {
 export type {
   FieldsEngineApi,
   RecordsEngineApi,
-  ViewAccessorApi,
   ViewCellsApi,
   ViewEngineApi,
   ViewGalleryApi,

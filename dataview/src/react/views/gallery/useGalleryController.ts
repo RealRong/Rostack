@@ -83,29 +83,34 @@ export const useGalleryController = (input: {
   containerRef: RefObject<HTMLDivElement | null>
 }): GalleryController => {
   const dataView = useDataView()
-  const activeView = useDataViewValue(dataView => dataView.engine.read.activeView, view => (
-    view?.id === input.viewId
-      ? view
-      : undefined
-  ))
-  const appearances = useDataViewValue(dataView => dataView.engine.project.appearances)
-  const sectionsProjection = useDataViewValue(dataView => dataView.engine.project.sections)
-  const fieldsProjection = useDataViewValue(dataView => dataView.engine.project.fields)
+  const activeState = useDataViewValue(
+    dataView => dataView.engine.active.state,
+    state => (
+      state
+      && state.view.id === input.viewId
+      && state.view.type === 'gallery'
+      && state.appearances
+      && state.sections
+      && state.fields
+        ? state
+        : undefined
+    )
+  )
   const currentView = useMemo<GalleryCurrentView | undefined>(() => (
-    activeView && appearances && sectionsProjection && fieldsProjection
+    activeState
       ? {
-        view: activeView,
-        appearances,
-        sections: sectionsProjection,
-        fields: fieldsProjection
-      }
+          view: activeState.view,
+          appearances: activeState.appearances!,
+          sections: activeState.sections!,
+          fields: activeState.fields!
+        }
       : undefined
-  ), [activeView, appearances, fieldsProjection, sectionsProjection])
+  ), [activeState])
   if (!currentView) {
     throw new Error('Gallery view requires an active current view.')
   }
-  const groupProjection = useDataViewValue(dataView => dataView.engine.project.group)
-  const sortProjection = useDataViewValue(dataView => dataView.engine.project.sort)
+  const groupProjection = activeState?.group
+  const sortProjection = activeState?.sort
 
   const fields = useMemo(
     () => currentView.fields.all.filter(isCustomField),
@@ -205,7 +210,7 @@ export const useGalleryController = (input: {
         return
       }
 
-      dataView.engine.view(currentView.view.id).items.move(ids, {
+      dataView.engine.active.items.move(ids, {
         section,
         ...(target.beforeAppearanceId ? { before: target.beforeAppearanceId } : {})
       })

@@ -288,7 +288,7 @@ const createTransformSession = (
 
       const updates = finishTransform(state)
       if (updates.length > 0) {
-        ctx.write.document.node.updateMany(updates)
+        ctx.write.node.updateMany(updates)
       }
 
       return FINISH
@@ -460,7 +460,7 @@ const createSingleTextTransformSession = (
       )
 
       if (update.fields || update.records?.length) {
-        ctx.write.document.node.update(spec.target.id, update)
+        ctx.write.node.update(spec.target.id, update)
       }
 
       return FINISH

@@ -10,12 +10,12 @@ import type { EditorRead } from '../../types/editor'
 import type { NodeRegistry } from '../../types/node'
 import type { Tool } from '../../types/tool'
 import { isSameTool } from '../../tool/model'
-import type { RuntimeStateController } from '../state'
+import type { EditorStateController } from '../state'
 import {
   type EditCapability,
   type EditField
 } from '../state/edit'
-import type { SessionRuntime } from './types'
+import type { SessionCommands } from './types'
 
 const DEFAULT_EDGE_LABEL_CAPABILITY: EditCapability = {
   placeholder: 'Label',
@@ -34,17 +34,17 @@ const resolveNodeCapability = ({
   field: EditField
 }) => registry.get(nodeType)?.edit?.fields?.[field]
 
-export const createSessionRuntime = ({
+export const createSessionCommands = ({
   engine,
   runtime,
   read,
   registry
 }: {
   engine: Engine
-  runtime: Pick<RuntimeStateController, 'state'>
+  runtime: Pick<EditorStateController, 'state'>
   read: EditorRead
   registry: Pick<NodeRegistry, 'get'>
-}): SessionRuntime => {
+}): SessionCommands => {
   const writeSelection = (input: {
     next: SelectionTarget
     apply: () => void
@@ -57,7 +57,7 @@ export const createSessionRuntime = ({
     input.apply()
   }
 
-  const startNode: SessionRuntime['edit']['startNode'] = (
+  const startNode: SessionCommands['edit']['startNode'] = (
     nodeId,
     field,
     options
@@ -105,7 +105,7 @@ export const createSessionRuntime = ({
     })
   }
 
-  const startEdgeLabel: SessionRuntime['edit']['startEdgeLabel'] = (
+  const startEdgeLabel: SessionCommands['edit']['startEdgeLabel'] = (
     edgeId,
     labelId,
     options

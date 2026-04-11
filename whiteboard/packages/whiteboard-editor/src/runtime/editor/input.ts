@@ -3,7 +3,7 @@ import type {
   EditorRead,
   EditorState
 } from '../../types/editor'
-import type { EditorRuntime } from './runtime'
+import type { EditorServices } from './services'
 import type { ContextMenuIntent } from '../../types/input'
 import type { InteractionRuntime } from '../interaction/types'
 import type { EdgeHoverService } from '../../interactions/edge/hover'
@@ -30,7 +30,7 @@ const readSelectionIntent = (
 
 const syncNodeSelection = (
   selection: EditorState['selection'],
-  write: EditorRuntime,
+  write: EditorServices,
   nodeIds: readonly string[]
 ) => {
   const current = selection.get()
@@ -45,7 +45,7 @@ const syncNodeSelection = (
 
 const syncSingleEdgeSelection = (
   selection: EditorState['selection'],
-  write: EditorRuntime,
+  write: EditorServices,
   edgeId: string
 ) => {
   const current = selection.get()
@@ -87,7 +87,7 @@ export const createEditorInput = ({
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
   read: EditorRead
-  write: EditorRuntime
+  write: EditorServices
   selection: EditorState['selection']
 }): EditorInput => {
   const writePointer = (input: {

@@ -1,3 +1,3 @@
 import type { EditorSessionActions } from '../../types/editor'
 
-export type SessionRuntime = EditorSessionActions
+export type SessionCommands = EditorSessionActions

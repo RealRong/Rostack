@@ -112,10 +112,9 @@ export const handleTableKey = (input: {
         })
         return true
       case 'clear-cells': {
-        const view = input.editor.view(input.currentView.view.id)
         action.appearanceIds.forEach(appearanceId => {
           action.fieldIds.forEach(fieldId => {
-            view.cells.clear({
+            input.editor.active.cells.clear({
               appearanceId,
               fieldId
             })
@@ -169,7 +168,7 @@ export const handleTableKey = (input: {
     }
     case 'Backspace':
     case 'Delete':
-      input.editor.view(input.currentView.view.id).items.remove(
+      input.editor.active.items.remove(
         currentSelection.ids
       )
       input.setKeyboardMode()
@@ -206,14 +205,13 @@ export const applyPaste = (input: {
     return false
   }
 
-  const view = input.editor.view(currentView.view.id)
   entries.forEach(entry => {
     if (entry.value === undefined) {
-      view.cells.clear(entry.cell)
+      input.editor.active.cells.clear(entry.cell)
       return
     }
 
-    view.cells.set(entry.cell, entry.value)
+    input.editor.active.cells.set(entry.cell, entry.value)
   })
 
   return true

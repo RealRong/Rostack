@@ -177,7 +177,7 @@ const commitStrokeState = (
     return
   }
 
-  ctx.write.document.node.create({
+  ctx.write.node.create({
     type: 'draw',
     position: stroke.position,
     size: stroke.size,

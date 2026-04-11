@@ -217,12 +217,21 @@ export const RootPanel = () => {
   const document = useDataViewValue(dataView => dataView.engine.read.document)
   const router = useViewSettings()
   const currentView = useDataViewValue(
-    dataView => dataView.engine.read.activeView
+    dataView => dataView.engine.active.view
   )
   const fields = getDocumentFields(document)
-  const filterProjection = useDataViewValue(dataView => dataView.engine.project.filter)
-  const sortProjection = useDataViewValue(dataView => dataView.engine.project.sort)
-  const groupProjection = useDataViewValue(dataView => dataView.engine.project.group)
+  const filterProjection = useDataViewValue(
+    dataView => dataView.engine.active.state,
+    state => state?.filter
+  )
+  const sortProjection = useDataViewValue(
+    dataView => dataView.engine.active.state,
+    state => state?.sort
+  )
+  const groupProjection = useDataViewValue(
+    dataView => dataView.engine.active.state,
+    state => state?.group
+  )
   const viewsCount = getDocumentViews(document).length
   const propertyCount = currentView?.display.fields.length ?? 0
   const menuItems: RootMenuItemConfig[] = [

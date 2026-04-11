@@ -115,24 +115,29 @@ export const useKanbanController = (input: {
 }): KanbanController => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const activeView = useDataViewValue(dataView => dataView.engine.read.activeView, view => (
-    view?.id === input.viewId
-      ? view
-      : undefined
-  ))
-  const appearances = useDataViewValue(dataView => dataView.engine.project.appearances)
-  const sectionsProjection = useDataViewValue(dataView => dataView.engine.project.sections)
-  const fieldsProjection = useDataViewValue(dataView => dataView.engine.project.fields)
+  const activeState = useDataViewValue(
+    dataView => dataView.engine.active.state,
+    state => (
+      state
+      && state.view.id === input.viewId
+      && state.view.type === 'kanban'
+      && state.appearances
+      && state.sections
+      && state.fields
+        ? state
+        : undefined
+    )
+  )
   const currentView = useMemo<KanbanCurrentView | undefined>(() => (
-    activeView && appearances && sectionsProjection && fieldsProjection
+    activeState
       ? {
-        view: activeView,
-        appearances,
-        sections: sectionsProjection,
-        fields: fieldsProjection
-      }
+          view: activeState.view,
+          appearances: activeState.appearances!,
+          sections: activeState.sections!,
+          fields: activeState.fields!
+        }
       : undefined
-  ), [activeView, appearances, fieldsProjection, sectionsProjection])
+  ), [activeState])
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [dragging, setDragging] = useState(false)
   const visualTargets = useRef(createVisualTargetRegistry({
@@ -142,8 +147,8 @@ export const useKanbanController = (input: {
   if (!currentView) {
     throw new Error('Kanban view requires an active current view.')
   }
-  const groupProjection = useDataViewValue(dataView => dataView.engine.project.group)
-  const sortProjection = useDataViewValue(dataView => dataView.engine.project.sort)
+  const groupProjection = activeState?.group
+  const sortProjection = activeState?.sort
 
   const fields = useMemo(() => {
     return currentView.fields.all.filter(isCustomField)
@@ -404,7 +409,7 @@ export const useKanbanController = (input: {
     ),
     onDraggingChange: setDragging,
     onDrop: (cardIds, target) => {
-      dataView.engine.view(currentView.view.id).items.move(cardIds, {
+      dataView.engine.active.items.move(cardIds, {
         section: target.sectionKey,
         ...(target.beforeAppearanceId ? { before: target.beforeAppearanceId } : {})
       })

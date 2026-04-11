@@ -115,7 +115,7 @@ const commitEraseState = (
   state: EraseState
 ) => {
   if (state.ids.length > 0) {
-    ctx.write.document.node.delete([...state.ids])
+    ctx.write.node.delete([...state.ids])
   }
 }
 

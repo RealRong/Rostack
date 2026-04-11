@@ -8,7 +8,7 @@ import type { DrawPreferences } from '../../types/draw'
 import type { InteractionRuntime } from '../interaction/types'
 import type { EditorOverlay } from '../overlay'
 import type { EditorViewportRuntime } from '../editor/types'
-import type { RuntimeStateController } from '../state'
+import type { EditorStateController } from '../state'
 import {
   createNodeRead,
   type NodeRead
@@ -116,7 +116,7 @@ export const createRead = ({
   engineRead: EngineRead
   registry: NodeRegistry
   history: ReadStore<HistoryState>
-  runtime: Pick<RuntimeStateController, 'state'>
+  runtime: Pick<EditorStateController, 'state'>
   interaction: Pick<InteractionRuntime, 'mode' | 'chrome'>
   overlay: Pick<EditorOverlay, 'selectors'>
   viewport: EditorViewportRuntime

@@ -1,29 +1,41 @@
 import type {
+  Action,
   ViewId
 } from '@dataview/core/contracts'
 import {
   createDuplicateViewPreferredName
 } from '@dataview/core/view'
 import type {
-  Engine,
+  EngineReadApi,
+  ViewEngineApi,
   ViewsEngineApi
 } from '../api/public'
+import type { ActionResult } from '../api/public/command'
 
 export const createViewsEngineApi = (options: {
-  engine: Pick<Engine, 'read' | 'action'>
+  read: EngineReadApi
+  dispatch: (action: Action | readonly Action[]) => ActionResult
+  api: (viewId: ViewId) => ViewEngineApi
 }): ViewsEngineApi => {
-  const readViews = () => options.engine.read.views.get()
+  const readViews = () => options.read.views.get()
 
   return {
     list: readViews,
-    get: viewId => options.engine.read.view.get(viewId),
+    get: viewId => options.read.view.get(viewId),
+    open: viewId => {
+      options.dispatch({
+        type: 'view.open',
+        viewId
+      })
+    },
+    api: options.api,
     create: input => {
       const preferredName = input.name.trim()
       if (!preferredName) {
         return undefined
       }
 
-      const result = options.engine.action({
+      const result = options.dispatch({
         type: 'view.create',
         input: {
           name: preferredName,
@@ -38,7 +50,7 @@ export const createViewsEngineApi = (options: {
         return
       }
 
-      options.engine.action({
+      options.dispatch({
         type: 'view.patch',
         viewId,
         patch: {
@@ -47,12 +59,12 @@ export const createViewsEngineApi = (options: {
       })
     },
     duplicate: viewId => {
-      const sourceView = options.engine.read.view.get(viewId)
+      const sourceView = options.read.view.get(viewId)
       if (!sourceView) {
         return undefined
       }
 
-      const result = options.engine.action({
+      const result = options.dispatch({
         type: 'view.create',
         input: {
           name: createDuplicateViewPreferredName(sourceView.name),
@@ -72,7 +84,7 @@ export const createViewsEngineApi = (options: {
       return result.created?.views?.[0]
     },
     remove: viewId => {
-      options.engine.action({
+      options.dispatch({
         type: 'view.remove',
         viewId
       })

@@ -1,4 +1,5 @@
 import type {
+  Action,
   DataDoc
 } from '@dataview/core/contracts'
 import {
@@ -22,7 +23,7 @@ import {
   createStore
 } from '../store/state'
 import {
-  createProjectApi,
+  createActiveBaseApi,
   createReadApi
 } from '../store/selectors'
 import {
@@ -41,37 +42,77 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     capturePerf
   }))
   const read = createReadApi(store)
-  const project = createProjectApi(store)
   const write = createWriteControl({
     store,
     perf,
     capturePerf
   })
-
-  const engine = {
-    read: {
-      document: read.document,
-      activeViewId: read.activeViewId,
-      activeView: read.activeView,
-      recordIds: read.recordIds,
-      record: read.record,
-      customFieldIds: read.customFieldIds,
-      customFields: read.customFields,
-      customField: read.customField,
-      viewIds: read.viewIds,
-      views: read.views,
-      view: read.view
+  const dispatch = (action: Action | readonly Action[]) => write.run(
+    resolveActionBatch({
+      document: store.get().doc,
+      actions: Array.isArray(action)
+        ? action
+        : [action]
+    })
+  )
+  const activeBase = createActiveBaseApi({
+    store,
+    read
+  })
+  const fields = createFieldsEngineApi({
+    read,
+    dispatch
+  })
+  const records = createRecordsEngineApi({
+    read,
+    dispatch
+  })
+  const createScopedViewApi = (viewId: string) => createViewEngineApi({
+    resolveViewId: () => viewId,
+    readDocument: read.document.get,
+    readView: () => read.view.get(viewId),
+    readState: () => {
+      const state = activeBase.state.get()
+      return state?.view.id === viewId
+        ? state
+        : undefined
     },
-    project,
-    perf: perf.api,
-    action: (action: Parameters<Engine['action']>[0]) => write.run(
-      resolveActionBatch({
-        document: store.get().doc,
-        actions: Array.isArray(action)
-          ? action
-          : [action]
-      })
-    ),
+    readRecord: activeBase.read.getRecord,
+    dispatch,
+    fields,
+    records
+  })
+  const active = Object.assign(
+    createViewEngineApi({
+      resolveViewId: activeBase.id.get,
+      readDocument: read.document.get,
+      readView: activeBase.view.get,
+      readState: activeBase.state.get,
+      readRecord: activeBase.read.getRecord,
+      dispatch,
+      fields,
+      records
+    }),
+    activeBase
+  )
+  const views = createViewsEngineApi({
+    read,
+    dispatch,
+    api: createScopedViewApi
+  })
+
+  const engine: Engine = {
+    active,
+    views,
+    fields,
+    records,
+    document: {
+      export: () => cloneDocument(store.get().doc),
+      replace: (document: DataDoc) => {
+        write.load(cloneDocument(document))
+        return cloneDocument(store.get().doc)
+      }
+    },
     history: {
       state: write.history.state,
       canUndo: write.history.canUndo,
@@ -80,38 +121,9 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       redo: write.history.redo,
       clear: write.history.clear
     },
-    document: {
-      export: () => cloneDocument(store.get().doc),
-      replace: (document: DataDoc) => {
-        write.load(cloneDocument(document))
-        return cloneDocument(store.get().doc)
-      }
-    }
-  } as unknown as Engine
-
-  engine.views = createViewsEngineApi({
-    engine
-  })
-  engine.fields = createFieldsEngineApi({
-    engine
-  })
-  engine.records = createRecordsEngineApi({
-    engine
-  })
-  engine.view = Object.assign(
-    (viewId: string) => createViewEngineApi({
-      engine,
-      viewId
-    }),
-    {
-      open: (viewId: string) => {
-        engine.action({
-          type: 'view.open',
-          viewId
-        })
-      }
-    }
-  )
+    perf: perf.api,
+    read
+  }
 
   return engine
 }

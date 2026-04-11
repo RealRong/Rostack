@@ -5,14 +5,14 @@ import {
   readTextPreviewEntry,
   replaceTextPreviewEntry
 } from '../overlay/node'
-import type { PreviewRuntime } from './types'
+import type { PreviewCommands } from './types'
 
 const EMPTY_EDGE_PATCHES = [] as const
 const EMPTY_NODE_IDS: readonly NodeId[] = []
 
 const mergeTextPreviewPatch = (
-  current: Parameters<PreviewRuntime['node']['text']['set']>[1],
-  patch: Parameters<PreviewRuntime['node']['text']['set']>[1]
+  current: Parameters<PreviewCommands['node']['text']['set']>[1],
+  patch: Parameters<PreviewCommands['node']['text']['set']>[1]
 ) => {
   if (!current && !patch) {
     return undefined
@@ -41,11 +41,11 @@ const mergeTextPreviewPatch = (
   return next
 }
 
-export const createPreviewRuntime = ({
+export const createPreviewCommands = ({
   overlay
 }: {
   overlay: Pick<EditorOverlay, 'set'>
-}): PreviewRuntime => ({
+}): PreviewCommands => ({
   draw: {
     setPreview: (preview) => {
       overlay.set((current) => (

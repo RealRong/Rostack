@@ -22,11 +22,12 @@ export const createTableViewStore = (input: {
   engine: Engine
 }): ReadStore<TableViewProjection | undefined> => createDerivedStore<TableViewProjection | undefined>({
   get: read => {
-    const view = read(input.engine.read.activeView)
-    const appearances = read(input.engine.project.appearances)
-    const sections = read(input.engine.project.sections)
-    const fields = read(input.engine.project.fields)
-    const calculationsBySection = read(input.engine.project.calculations)
+    const view = read(input.engine.active.view)
+    const state = read(input.engine.active.state)
+    const appearances = state?.appearances
+    const sections = state?.sections
+    const fields = state?.fields
+    const calculationsBySection = state?.calculations
     if (
       !view
       || view.type !== 'table'

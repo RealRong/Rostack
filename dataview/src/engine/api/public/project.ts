@@ -3,6 +3,8 @@ import type {
   CustomField,
   CustomFieldId,
   DataDoc,
+  Field,
+  FieldId,
   RecordId,
   Row,
   View,
@@ -21,12 +23,21 @@ import type {
   ViewSearchProjection,
   ViewSortProjection
 } from '../../project/viewProjections'
-import type { KeyedReadStore, ReadStore } from '@shared/core'
+import type {
+  KeyedReadStore,
+  ReadStore,
+  Equality
+} from '@shared/core'
+import type {
+  CellRef,
+  RecordFieldRef
+} from '../../project/refs'
+import type {
+  ViewEngineApi
+} from './services'
 
 export interface EngineReadApi {
   document: ReadStore<DataDoc>
-  activeViewId: ReadStore<ViewId | undefined>
-  activeView: ReadStore<View | undefined>
   recordIds: ReadStore<readonly RecordId[]>
   record: KeyedReadStore<RecordId, Row | undefined>
   customFieldIds: ReadStore<readonly CustomFieldId[]>
@@ -50,15 +61,39 @@ export interface RecordSet {
   visibleIds: readonly RecordId[]
 }
 
-export interface EngineProjectApi {
-  view: ReadStore<ActiveView | undefined>
-  filter: ReadStore<ViewFilterProjection | undefined>
-  group: ReadStore<ViewGroupProjection | undefined>
-  search: ReadStore<ViewSearchProjection | undefined>
-  sort: ReadStore<ViewSortProjection | undefined>
-  records: ReadStore<RecordSet | undefined>
-  sections: ReadStore<readonly Section[] | undefined>
-  appearances: ReadStore<AppearanceList | undefined>
-  fields: ReadStore<FieldList | undefined>
-  calculations: ReadStore<ReadonlyMap<SectionKey, CalculationCollection> | undefined>
+export interface ActiveViewState {
+  view: View
+  filter: ViewFilterProjection | undefined
+  group: ViewGroupProjection | undefined
+  search: ViewSearchProjection | undefined
+  sort: ViewSortProjection | undefined
+  records: RecordSet | undefined
+  sections: readonly Section[] | undefined
+  appearances: AppearanceList | undefined
+  fields: FieldList | undefined
+  calculations: ReadonlyMap<SectionKey, CalculationCollection> | undefined
+}
+
+export interface ActiveViewReadApi {
+  getRecord: (recordId: RecordId) => Row | undefined
+  getField: (fieldId: FieldId) => Field | undefined
+  getGroupField: () => Field | undefined
+  getFilterField: (index: number) => Field | undefined
+  getRecordField: (cell: CellRef) => RecordFieldRef | undefined
+  getSectionRecordIds: (section: SectionKey) => readonly RecordId[]
+}
+
+export interface ActiveSelectApi {
+  <T>(
+    selector: (state: ActiveViewState | undefined) => T,
+    isEqual?: Equality<T>
+  ): ReadStore<T>
+}
+
+export interface ActiveEngineApi extends ViewEngineApi {
+  id: ReadStore<ViewId | undefined>
+  view: ReadStore<View | undefined>
+  state: ReadStore<ActiveViewState | undefined>
+  select: ActiveSelectApi
+  read: ActiveViewReadApi
 }

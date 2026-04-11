@@ -2,9 +2,11 @@ import type {
   CalculationCollection
 } from '@dataview/core/calculation'
 import type {
+  DataDoc,
   CustomField,
   CustomFieldId,
-  DataDoc,
+  Field,
+  FieldId,
   RecordId,
   Row,
   View,
@@ -15,11 +17,13 @@ import {
   getDocumentActiveViewId,
   getDocumentCustomFieldById,
   getDocumentCustomFields,
+  getDocumentFieldById,
   getDocumentRecordById,
   getDocumentViewById,
   getDocumentViews
 } from '@dataview/core/document'
 import {
+  createDerivedStore,
   createKeyedReadStore,
   createReadStore,
   type Equality,
@@ -31,7 +35,10 @@ import {
   sameValue
 } from '@shared/core'
 import type {
-  EngineProjectApi,
+  ActiveEngineApi,
+  ActiveSelectApi,
+  ActiveViewReadApi,
+  ActiveViewState,
   EngineReadApi
 } from '../api/public'
 import type {
@@ -39,6 +46,10 @@ import type {
   FieldList,
   SectionKey
 } from '../project/readModels'
+import {
+  readSectionRecordIds,
+  toRecordField
+} from '../project'
 import type {
   State,
   Store
@@ -141,15 +152,23 @@ const selectDocById = <K, T>(input: {
   ...(input.keyOf ? { keyOf: input.keyOf } : {})
 })
 
-const selectProject = <T,>(input: {
-  store: Store
-  read: (project: State['project']) => T
-  isEqual?: Equality<T>
-}) => createSelector({
-  store: input.store,
-  read: state => input.read(state.project),
-  ...(input.isEqual ? { isEqual: input.isEqual } : {})
-})
+const sameActiveState = (
+  left: ActiveViewState | undefined,
+  right: ActiveViewState | undefined
+) => left === right || (
+  !!left
+  && !!right
+  && left.view === right.view
+  && left.filter === right.filter
+  && left.group === right.group
+  && left.search === right.search
+  && left.sort === right.sort
+  && left.records === right.records
+  && left.sections === right.sections
+  && left.appearances === right.appearances
+  && left.fields === right.fields
+  && left.calculations === right.calculations
+)
 
 export const createReadApi = (
   store: Store
@@ -157,14 +176,6 @@ export const createReadApi = (
   document: selectDoc({
     store,
     read: document => document
-  }),
-  activeViewId: selectDoc({
-    store,
-    read: getDocumentActiveViewId
-  }),
-  activeView: selectDoc({
-    store,
-    read: getDocumentActiveView
   }),
   recordIds: selectDoc<readonly RecordId[]>({
     store,
@@ -205,47 +216,110 @@ export const createReadApi = (
   })
 })
 
-export const createProjectApi = (
-  store: Store
-): EngineProjectApi => ({
-  view: selectProject({
-    store,
-    read: project => project.view
-  }),
-  filter: selectProject({
-    store,
-    read: project => project.filter
-  }),
-  group: selectProject({
-    store,
-    read: project => project.group
-  }),
-  search: selectProject({
-    store,
-    read: project => project.search
-  }),
-  sort: selectProject({
-    store,
-    read: project => project.sort
-  }),
-  records: selectProject({
-    store,
-    read: project => project.records
-  }),
-  sections: selectProject({
-    store,
-    read: project => project.sections
-  }),
-  appearances: selectProject({
-    store,
-    read: project => project.appearances
-  }),
-  fields: selectProject({
-    store,
-    read: project => project.fields
-  }),
-  calculations: selectProject({
-    store,
-    read: project => project.calculations as ReadonlyMap<SectionKey, CalculationCollection> | undefined
-  })
+const createActiveSelectApi = (
+  state: ReadStore<ActiveViewState | undefined>
+): ActiveSelectApi => (
+  selector,
+  isEqual
+) => createDerivedStore({
+  get: read => selector(read(state)),
+  ...(isEqual ? { isEqual } : {})
 })
+
+const createActiveReadApi = (input: {
+  read: EngineReadApi
+  state: ReadStore<ActiveViewState | undefined>
+}): ActiveViewReadApi => {
+  const readDocument = () => input.read.document.get()
+  const readState = () => input.state.get()
+
+  const getField = (fieldId: FieldId): Field | undefined => (
+    getDocumentFieldById(readDocument(), fieldId)
+  )
+
+  return {
+    getRecord: recordId => input.read.record.get(recordId),
+    getField,
+    getGroupField: () => {
+      const state = readState()
+      if (!state?.group?.active) {
+        return undefined
+      }
+
+      return state.group.field
+        ?? (state.group.fieldId
+          ? getField(state.group.fieldId)
+          : undefined)
+    },
+    getFilterField: index => {
+      const rule = readState()?.filter?.rules[index]
+      return rule?.field
+        ?? (rule?.fieldId
+          ? getField(rule.fieldId)
+          : undefined)
+    },
+    getRecordField: cell => {
+      const appearances = readState()?.appearances
+      return appearances
+        ? toRecordField(cell, appearances) ?? undefined
+        : undefined
+    },
+    getSectionRecordIds: section => {
+      const state = readState()
+      return state?.sections && state.appearances
+        ? readSectionRecordIds({
+            sections: state.sections,
+            appearances: state.appearances
+          }, section)
+        : []
+    }
+  }
+}
+
+export const createActiveBaseApi = (input: {
+  store: Store
+  read: EngineReadApi
+}): Pick<ActiveEngineApi, 'id' | 'view' | 'state' | 'select' | 'read'> => {
+  const id = selectDoc({
+    store: input.store,
+    read: getDocumentActiveViewId
+  })
+  const view = selectDoc({
+    store: input.store,
+    read: getDocumentActiveView
+  })
+  const state = createSelector<ActiveViewState | undefined>({
+    store: input.store,
+    read: current => {
+      const activeView = getDocumentActiveView(current.doc)
+      if (!activeView) {
+        return undefined
+      }
+
+      return {
+        view: activeView,
+        filter: current.project.filter,
+        group: current.project.group,
+        search: current.project.search,
+        sort: current.project.sort,
+        records: current.project.records,
+        sections: current.project.sections,
+        appearances: current.project.appearances,
+        fields: current.project.fields,
+        calculations: current.project.calculations as ReadonlyMap<SectionKey, CalculationCollection> | undefined
+      }
+    },
+    isEqual: sameActiveState
+  })
+
+  return {
+    id,
+    view,
+    state,
+    select: createActiveSelectApi(state),
+    read: createActiveReadApi({
+      read: input.read,
+      state
+    })
+  }
+}

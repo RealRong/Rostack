@@ -82,7 +82,7 @@ import type {
 type ViewPatchAction = Extract<Action, { type: 'view.patch' }>
 
 interface CreateViewCommandNamespacesOptions {
-  viewId: ViewId
+  resolveViewId: () => ViewId | undefined
   commit: (action: Action) => boolean
   readDocument: () => DataDoc
   readView: () => View | undefined
@@ -106,18 +106,16 @@ export interface ViewCommandNamespaces {
   clearOrder: ViewOrderApi['clear']
 }
 
-interface ViewPatchContext {
-  viewId: ViewId
+interface CommandContext {
   readDocument: () => DataDoc
-  readView: () => View | undefined
   commitPatch: (patch: ViewPatch) => boolean
-  createPatchCommand: (patch: ViewPatch) => ViewPatchAction
-  withCurrentView: <T>(fn: (view: View, document: DataDoc) => T) => T | undefined
+  createPatchCommand: (patch: ViewPatch) => ViewPatchAction | undefined
+  withView: <T>(fn: (view: View, document: DataDoc) => T) => T | undefined
   withField: <T>(
     fieldId: FieldId,
     fn: (view: View, document: DataDoc, field: Field) => T
   ) => T | undefined
-  withFilterRuleField: <T>(
+  withFilterField: <T>(
     index: number,
     fn: (view: View, document: DataDoc, field: Field | undefined) => T
   ) => T | undefined
@@ -127,36 +125,56 @@ interface ViewPatchContext {
 }
 
 const createPatchCommand = (
-  viewId: ViewId,
+  viewId: ViewId | undefined,
   patch: ViewPatch
-): ViewPatchAction => ({
+): ViewPatchAction | undefined => viewId
+  ? ({
   type: 'view.patch',
   viewId,
   patch
-})
+  })
+  : undefined
 
-const createViewPatchContext = (
+const createCommandContext = (
   options: CreateViewCommandNamespacesOptions
-): ViewPatchContext => {
-  const commitPatch = (patch: ViewPatch) => options.commit(
-    createPatchCommand(options.viewId, patch)
-  )
-
-  const withCurrentView = <T,>(
-    fn: (view: View, document: DataDoc) => T
-  ): T | undefined => {
+): CommandContext => {
+  const readContext = (): {
+    view: View
+    document: DataDoc
+  } | undefined => {
     const view = options.readView()
     if (!view) {
       return undefined
     }
 
-    return fn(view, options.readDocument())
+    return {
+      view,
+      document: options.readDocument()
+    }
+  }
+
+  const commitPatch = (patch: ViewPatch) => {
+    const action = createPatchCommand(options.resolveViewId(), patch)
+    return action
+      ? options.commit(action)
+      : false
+  }
+
+  const withView = <T,>(
+    fn: (view: View, document: DataDoc) => T
+  ): T | undefined => {
+    const context = readContext()
+    if (!context) {
+      return undefined
+    }
+
+    return fn(context.view, context.document)
   }
 
   const withField = <T,>(
     fieldId: FieldId,
     fn: (view: View, document: DataDoc, field: Field) => T
-  ): T | undefined => withCurrentView((view, document) => {
+  ): T | undefined => withView((view, document) => {
     const field = getDocumentFieldById(document, fieldId)
     if (!field) {
       return undefined
@@ -165,10 +183,10 @@ const createViewPatchContext = (
     return fn(view, document, field)
   })
 
-  const withFilterRuleField = <T,>(
+  const withFilterField = <T,>(
     index: number,
     fn: (view: View, document: DataDoc, field: Field | undefined) => T
-  ): T | undefined => withCurrentView((view, document) => {
+  ): T | undefined => withView((view, document) => {
     const fieldId = view.filter.rules[index]?.fieldId
     return fn(
       view,
@@ -181,7 +199,7 @@ const createViewPatchContext = (
 
   const withGroupField = <T,>(
     fn: (view: View, document: DataDoc, field: Field) => T
-  ): T | undefined => withCurrentView((view, document) => {
+  ): T | undefined => withView((view, document) => {
     if (!view.group) {
       return undefined
     }
@@ -195,20 +213,18 @@ const createViewPatchContext = (
   })
 
   return {
-    viewId: options.viewId,
     readDocument: options.readDocument,
-    readView: options.readView,
     commitPatch,
-    createPatchCommand: patch => createPatchCommand(options.viewId, patch),
-    withCurrentView,
+    createPatchCommand: patch => createPatchCommand(options.resolveViewId(), patch),
+    withView,
     withField,
-    withFilterRuleField,
+    withFilterField,
     withGroupField
   }
 }
 
 const createTypeCommands = (
-  context: ViewPatchContext
+  context: CommandContext
 ): ViewCommandNamespaces['type'] => ({
   set: (value: ViewType) => {
     context.commitPatch({
@@ -218,10 +234,10 @@ const createTypeCommands = (
 })
 
 const createSearchCommands = (
-  context: ViewPatchContext
+  context: CommandContext
 ): ViewCommandNamespaces['search'] => ({
   set: (value: string) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         search: setSearchQuery(view.search, value)
       })
@@ -230,7 +246,7 @@ const createSearchCommands = (
 })
 
 const createFilterCommands = (
-  context: ViewPatchContext
+  context: CommandContext
 ): ViewCommandNamespaces['filter'] => ({
   add: (fieldId: FieldId) => {
     context.withField(fieldId, (view, _document, field) => {
@@ -240,42 +256,42 @@ const createFilterCommands = (
     })
   },
   set: (index: number, rule: FilterRule) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         filter: replaceFilterRule(view.filter, index, rule)
       })
     })
   },
   preset: (index: number, presetId: string) => {
-    context.withFilterRuleField(index, (view, _document, field) => {
+    context.withFilterField(index, (view, _document, field) => {
       context.commitPatch({
         filter: setFilterPreset(view.filter, index, field, presetId)
       })
     })
   },
   value: (index: number, value: FilterRule['value'] | undefined) => {
-    context.withFilterRuleField(index, (view, _document, field) => {
+    context.withFilterField(index, (view, _document, field) => {
       context.commitPatch({
         filter: setFilterValue(view.filter, index, field, value)
       })
     })
   },
   mode: (value: Filter['mode']) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         filter: setFilterMode(view.filter, value)
       })
     })
   },
   remove: (index: number) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         filter: removeFilterRule(view.filter, index)
       })
     })
   },
   clear: () => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         filter: cloneFilter({
           ...view.filter,
@@ -287,52 +303,52 @@ const createFilterCommands = (
 })
 
 const createSortCommands = (
-  context: ViewPatchContext
+  context: CommandContext
 ): ViewCommandNamespaces['sort'] => ({
   add: (fieldId: FieldId, direction?: SortDirection) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         sort: addSorter(view.sort, fieldId, direction)
       })
     })
   },
   set: (fieldId: FieldId, direction: SortDirection) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         sort: setSorter(view.sort, fieldId, direction)
       })
     })
   },
   only: (fieldId: FieldId, direction: SortDirection) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         sort: setOnlySorter(view.sort, fieldId, direction)
       })
     })
   },
   replace: (index: number, sorter: Sorter) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         sort: replaceSorter(view.sort, index, sorter)
       })
     })
   },
   remove: (index: number) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         sort: removeSorter(view.sort, index)
       })
     })
   },
   move: (from: number, to: number) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         sort: moveSorter(view.sort, from, to)
       })
     })
   },
   clear: () => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         sort: clearSorters(view.sort)
       })
@@ -341,7 +357,7 @@ const createSortCommands = (
 })
 
 const createGroupCommands = (
-  context: ViewPatchContext
+  context: CommandContext
 ): ViewCommandNamespaces['group'] => ({
   set: (fieldId: FieldId) => {
     context.withField(fieldId, (view, _document, field) => {
@@ -351,7 +367,7 @@ const createGroupCommands = (
     })
   },
   clear: () => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         group: clearGroup(view.group) ?? null
       })
@@ -430,10 +446,10 @@ const createGroupCommands = (
 })
 
 const createCalcCommands = (
-  context: ViewPatchContext
+  context: CommandContext
 ): ViewCommandNamespaces['calc'] => ({
   set: (fieldId: FieldId, metric: CalculationMetric | null) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         calc: setViewCalcMetric(view.calc, fieldId, metric)
       })
@@ -442,38 +458,38 @@ const createCalcCommands = (
 })
 
 const createDisplayCommands = (
-  context: ViewPatchContext
+  context: CommandContext
 ): ViewCommandNamespaces['display'] => ({
   replace: (fieldIds: readonly FieldId[]) => {
-    context.withCurrentView(() => {
+    context.withView(() => {
       context.commitPatch({
         display: replaceDisplayFields(fieldIds)
       })
     })
   },
   move: (fieldIds: readonly FieldId[], beforeFieldId?: FieldId | null) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         display: moveDisplayFields(view.display, fieldIds, beforeFieldId)
       })
     })
   },
   show: (fieldId: FieldId, beforeFieldId?: FieldId | null) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         display: showDisplayField(view.display, fieldId, beforeFieldId)
       })
     })
   },
   hide: (fieldId: FieldId) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         display: hideDisplayField(view.display, fieldId)
       })
     })
   },
   clear: () => {
-    context.withCurrentView(() => {
+    context.withView(() => {
       context.commitPatch({
         display: clearDisplayFields()
       })
@@ -482,17 +498,17 @@ const createDisplayCommands = (
 })
 
 const createTableSettingsCommands = (
-  context: ViewPatchContext
+  context: CommandContext
 ): ViewTableApi => ({
   setColumnWidths: widths => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         options: setTableColumnWidths(view.options, widths)
       })
     })
   },
   setVerticalLines: value => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         options: setTableVerticalLines(view.options, value)
       })
@@ -501,17 +517,17 @@ const createTableSettingsCommands = (
 })
 
 const createGalleryCommands = (
-  context: ViewPatchContext
+  context: CommandContext
 ): ViewGalleryApi => ({
   setLabels: (value: boolean) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         options: setGalleryShowFieldLabels(view.options, value)
       })
     })
   },
   setCardSize: (value: GalleryCardSize) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         options: setGalleryCardSize(view.options, value)
       })
@@ -520,24 +536,24 @@ const createGalleryCommands = (
 })
 
 const createKanbanCommands = (
-  context: ViewPatchContext
+  context: CommandContext
 ): ViewKanbanApi => ({
   setNewRecordPosition: (value: KanbanNewRecordPosition) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         options: setKanbanNewRecordPosition(view.options, value)
       })
     })
   },
   setFillColor: (value: boolean) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         options: setKanbanFillColumnColor(view.options, value)
       })
     })
   },
   setCardsPerColumn: (value: KanbanCardsPerColumn) => {
-    context.withCurrentView(view => {
+    context.withView(view => {
       context.commitPatch({
         options: setKanbanCardsPerColumn(view.options, value)
       })
@@ -546,10 +562,10 @@ const createKanbanCommands = (
 })
 
 const createMoveOrderCommand = (
-  context: ViewPatchContext,
+  context: CommandContext,
   recordIds: readonly RecordId[],
   beforeRecordId?: RecordId
-): ViewPatchAction | undefined => context.withCurrentView(view => {
+): ViewPatchAction | undefined => context.withView(view => {
   if (!recordIds.length) {
     return undefined
   }
@@ -567,7 +583,7 @@ const createMoveOrderCommand = (
 export const createViewCommandNamespaces = (
   options: CreateViewCommandNamespacesOptions
 ): ViewCommandNamespaces => {
-  const context = createViewPatchContext(options)
+  const context = createCommandContext(options)
 
   return {
     type: createTypeCommands(context),

@@ -169,27 +169,30 @@ export const createDataViewSession = (input: {
   const marquee = createMarqueeApi()
   const inlineSession = createInlineSessionApi()
   const valueEditor = createValueEditorApi()
+  const activeAppearances = input.engine.active.select(
+    state => state?.appearances
+  )
   const selection = createSelectionApi({
     store: selectionStore,
     scope: {
-      appearances: () => input.engine.project.appearances.get()
+      appearances: () => activeAppearances.get()
     }
   })
   const pageStateStore = createPageStateStore({
     document: input.engine.read.document,
-    activeViewId: input.engine.read.activeViewId,
-    activeView: input.engine.read.activeView,
+    activeViewId: input.engine.active.id,
+    activeView: input.engine.active.view,
     page: page.store,
     valueEditorOpen: valueEditor.openStore
   })
 
   const disposeBindings = joinUnsubscribes([
     bindSelectionToAppearances({
-      appearances: input.engine.project.appearances,
+      appearances: activeAppearances,
       selection
     }),
     bindMarqueeToView({
-      activeView: input.engine.read.activeView,
+      activeView: input.engine.active.view,
       marquee
     }),
     bindInlineSessionToSelection({
@@ -197,8 +200,8 @@ export const createDataViewSession = (input: {
       inlineSession
     }),
     bindInlineSessionToView({
-      activeView: input.engine.read.activeView,
-      appearances: input.engine.project.appearances,
+      activeView: input.engine.active.view,
+      appearances: activeAppearances,
       inlineSession
     })
   ])

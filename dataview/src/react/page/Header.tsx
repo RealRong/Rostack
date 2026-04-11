@@ -33,7 +33,7 @@ export interface PageHeaderProps {
 
 export const PageHeader = (_props: PageHeaderProps) => {
   const currentView = useDataViewValue(
-    dataView => dataView.engine.read.activeView
+    dataView => dataView.engine.active.view
   )
   const CurrentIcon = viewIcon(currentView?.type)
 

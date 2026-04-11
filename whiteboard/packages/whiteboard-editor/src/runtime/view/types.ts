@@ -6,7 +6,7 @@ import type {
   EditorViewportActions
 } from '../../types/editor'
 
-export type ViewRuntime = {
+export type ViewCommands = {
   viewport: EditorViewportActions
     & Pick<ViewportInputRuntime, 'panScreenBy' | 'wheel'>
     & {

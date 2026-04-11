@@ -1,43 +1,16 @@
 import { isTextContentEmpty } from '@whiteboard/core/node'
 import { isSizeEqual } from '@whiteboard/core/geometry'
-import type { NodeId } from '@whiteboard/core/types'
-import type { Engine } from '@whiteboard/engine'
-import type { CommandResult } from '@engine-types/result'
-import type {
-  NodePatchWriter,
-  NodeTextMutations
-} from './types'
-import type { NodeAppearanceMutations } from './mutations'
-import type {
-  PreviewRuntime,
-} from '../preview/types'
-import type { SessionRuntime } from '../session/types'
-import type { EditorRead } from '../../types/editor'
+import type { NodeContext } from './context'
+import type { NodeTextCommands } from './types'
 import {
   dataUpdate,
   mergeNodeUpdates,
   styleUpdate
 } from './patch'
 
-type NodeTextHost = {
-  read: EditorRead
-  committedNode: Engine['read']['node']['item']
-  preview: Pick<PreviewRuntime, 'node'>
-  session: Pick<SessionRuntime, 'edit' | 'selection'>
-  deleteCascade: (ids: NodeId[]) => CommandResult
-  document: NodePatchWriter
-  appearance: NodeAppearanceMutations
-}
-
-export const createNodeTextMutations = ({
-  read,
-  committedNode,
-  preview,
-  session,
-  deleteCascade,
-  document,
-  appearance
-}: NodeTextHost): NodeTextMutations => ({
+export const createNodeTextCommands = (
+  ctx: NodeContext
+): NodeTextCommands => ({
   preview: ({
     nodeId,
     position,
@@ -47,12 +20,12 @@ export const createNodeTextMutations = ({
     wrapWidth,
     handle
   }) => {
-    const item = read.node.item.get(nodeId)
+    const item = ctx.read.live(nodeId)
     if (!item || item.node.type !== 'text') {
       return
     }
 
-    preview.node.text.set(nodeId, {
+    ctx.preview.text.set(nodeId, {
       position,
       size,
       fontSize,
@@ -62,13 +35,13 @@ export const createNodeTextMutations = ({
     })
   },
   clearPreview: (nodeId) => {
-    preview.node.text.clearSize(nodeId)
+    ctx.preview.text.clearSize(nodeId)
   },
   cancel: ({
     nodeId
   }) => {
-    preview.node.text.clear(nodeId)
-    session.edit.clear()
+    ctx.preview.text.clear(nodeId)
+    ctx.edit.clear()
   },
   commit: ({
     nodeId,
@@ -76,18 +49,17 @@ export const createNodeTextMutations = ({
     value,
     size
   }) => {
-    const committed = committedNode.get(nodeId)
+    const committed = ctx.read.committed(nodeId)
     if (!committed) {
-      preview.node.text.clear(nodeId)
-      session.edit.clear()
+      ctx.preview.text.clear(nodeId)
+      ctx.edit.clear()
       return undefined
     }
 
-    const nextValue = value
     const currentValue = typeof committed.node.data?.[field] === 'string'
       ? committed.node.data[field] as string
       : ''
-    const previewItem = read.node.item.get(nodeId)
+    const previewItem = ctx.read.live(nodeId)
     const nextMeasuredSize = committed.node.type === 'text' && field === 'text'
       ? size ?? (
           previewItem
@@ -102,26 +74,26 @@ export const createNodeTextMutations = ({
       ? nextMeasuredSize
       : undefined
 
-    preview.node.text.clear(nodeId)
-    session.edit.clear()
+    ctx.preview.text.clear(nodeId)
+    ctx.edit.clear()
 
     if (
       committed.node.type === 'text'
       && field === 'text'
-      && isTextContentEmpty(nextValue)
+      && isTextContentEmpty(value)
     ) {
-      session.selection.clear()
-      return deleteCascade([nodeId])
+      ctx.selection.clear()
+      return ctx.write.deleteCascade([nodeId])
     }
 
-    if (nextValue === currentValue && !sizeUpdate) {
+    if (value === currentValue && !sizeUpdate) {
       return undefined
     }
 
-    return document.update(
+    return ctx.write.update(
       nodeId,
       mergeNodeUpdates(
-        dataUpdate(field, nextValue),
+        dataUpdate(field, value),
         sizeUpdate
           ? {
               fields: {
@@ -132,15 +104,19 @@ export const createNodeTextMutations = ({
       )
     )
   },
-  setColor: (nodeIds, color) =>
-    appearance.setTextColor(nodeIds, color),
-  setSize: ({
+  color: (nodeIds, color) => ctx.write.updateMany(
+    nodeIds.map((id) => ({
+      id,
+      update: styleUpdate('color', color)
+    }))
+  ),
+  size: ({
     nodeIds,
     value,
     sizeById
-  }) => document.updateMany(
+  }) => ctx.write.updateMany(
     nodeIds.map((id) => {
-      const committed = committedNode.get(id)
+      const committed = ctx.read.committed(id)
       const nextMeasuredSize = committed?.node.type === 'text'
         ? sizeById?.[id]
         : undefined
@@ -159,23 +135,23 @@ export const createNodeTextMutations = ({
                 }
               }
             : undefined
-          )
+        )
       }
     })
   ),
-  setWeight: (nodeIds, weight) => document.updateMany(
+  weight: (nodeIds, weight) => ctx.write.updateMany(
     nodeIds.map((id) => ({
       id,
       update: styleUpdate('fontWeight', weight)
     }))
   ),
-  setItalic: (nodeIds, italic) => document.updateMany(
+  italic: (nodeIds, italic) => ctx.write.updateMany(
     nodeIds.map((id) => ({
       id,
       update: styleUpdate('fontStyle', italic ? 'italic' : 'normal')
     }))
   ),
-  setAlign: (nodeIds, align) => document.updateMany(
+  align: (nodeIds, align) => ctx.write.updateMany(
     nodeIds.map((id) => ({
       id,
       update: styleUpdate('textAlign', align)

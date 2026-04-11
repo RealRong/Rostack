@@ -74,7 +74,11 @@ export {
 } from './core/contracts'
 export { createEngine } from './engine/api'
 export type {
+  ActiveEngineApi,
+  ActiveSelectApi,
   ActiveView,
+  ActiveViewReadApi,
+  ActiveViewState,
   CreateEngineOptions,
   CommitResult,
   CreatedEntities,
@@ -85,7 +89,6 @@ export type {
   EngineHistoryApi,
   EnginePerfApi,
   EnginePerfOptions,
-  EngineProjectApi,
   EngineReadApi,
   HistoryActionResult,
   IndexStageTrace,
@@ -102,7 +105,6 @@ export type {
   PublishTrace,
   RunningStat,
   TraceDeltaSummary,
-  ViewAccessorApi,
   HistoryOptions,
   HistoryState,
   FieldsEngineApi,

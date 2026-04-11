@@ -5,6 +5,7 @@ import {
   useState
 } from 'react'
 import type {
+  TitleFieldId,
   Row,
   ViewId
 } from '@dataview/core/contracts'
@@ -94,16 +95,7 @@ export const useCardTitleEditing = (input: {
     }
 
     committedTitleRef.current = nextValue
-    engine.action({
-      type: 'record.patch',
-      target: {
-        type: 'record',
-        recordId: input.record.id
-      },
-      patch: {
-        title: nextValue
-      }
-    })
+    engine.records.field.set(input.record.id, 'title' as TitleFieldId, nextValue)
   }, [
     engine,
     input.record.id

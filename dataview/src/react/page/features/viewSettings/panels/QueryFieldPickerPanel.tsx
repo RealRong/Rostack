@@ -17,12 +17,18 @@ export const QueryFieldPickerPanel = (props: {
   const page = dataView.page
   const document = useDataViewValue(dataView => dataView.engine.read.document)
   const currentView = useDataViewValue(
-    dataView => dataView.engine.read.activeView
+    dataView => dataView.engine.active.view
   )
-  const filterProjection = useDataViewValue(dataView => dataView.engine.project.filter)
-  const sortProjection = useDataViewValue(dataView => dataView.engine.project.sort)
+  const filterProjection = useDataViewValue(
+    dataView => dataView.engine.active.state,
+    state => state?.filter
+  )
+  const sortProjection = useDataViewValue(
+    dataView => dataView.engine.active.state,
+    state => state?.sort
+  )
   const currentViewDomain = currentView
-    ? engine.view(currentView.id)
+    ? engine.active
     : undefined
   const fields = getDocumentFields(document)
   const router = useViewSettings()

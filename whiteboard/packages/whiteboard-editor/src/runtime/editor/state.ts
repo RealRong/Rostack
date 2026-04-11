@@ -4,7 +4,7 @@ import {
 import type { Editor, EditorInteractionState } from '../../types/editor'
 import type { InteractionRuntime } from '../interaction/types'
 import type { EditorViewportRuntime } from './types'
-import type { RuntimeStateController } from '../state'
+import type { EditorStateController } from '../state'
 
 export const createEditorState = ({
   interaction,
@@ -12,7 +12,7 @@ export const createEditorState = ({
   viewport
 }: {
   interaction: InteractionRuntime
-  runtime: RuntimeStateController
+  runtime: EditorStateController
   viewport: EditorViewportRuntime['read']
 }): Editor['store'] => {
   const interactionState = createDerivedStore<EditorInteractionState>({

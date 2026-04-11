@@ -50,7 +50,7 @@ const uniqueEdgeIds = (
   return next
 }
 
-export type EditorRuntimeState = {
+export type EditorLocalState = {
   tool: ValueStore<Tool>
   draw: DrawPreferencesState
   selection: SelectionState
@@ -59,8 +59,8 @@ export type EditorRuntimeState = {
   space: ValueStore<boolean>
 }
 
-export type RuntimeStateController = {
-  state: EditorRuntimeState
+export type EditorStateController = {
+  state: EditorLocalState
   public: {
     state: Pick<EditorState, 'tool' | 'draw' | 'edit' | 'selection'>
   }
@@ -68,13 +68,13 @@ export type RuntimeStateController = {
   reconcileAfterCommit: (read: ReadNodeEdge) => void
 }
 
-export const createRuntimeState = ({
+export const createEditorStateController = ({
   initialTool,
   initialDrawPreferences
 }: {
   initialTool: Tool
   initialDrawPreferences: DrawPreferences
-}): RuntimeStateController => {
+}): EditorStateController => {
   const tool = createValueStore<Tool>(initialTool)
   const draw = createDrawPreferencesState(initialDrawPreferences)
   const selection = createSelectionState()

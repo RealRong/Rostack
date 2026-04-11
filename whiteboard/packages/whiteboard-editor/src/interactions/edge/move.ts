@@ -103,7 +103,7 @@ export const createEdgeBodyMoveSession = (
       }
 
       if (!isPointEqual(state.delta, { x: 0, y: 0 })) {
-        ctx.write.document.edge.move(state.edgeId, state.delta)
+        ctx.write.edge.move(state.edgeId, state.delta)
       }
 
       return FINISH

@@ -1,5 +1,4 @@
 import type {
-  Action,
   BucketSort,
   CalculationMetric,
   CustomField,
@@ -34,6 +33,8 @@ import type {
 export interface ViewsEngineApi {
   list: () => readonly View[]
   get: (viewId: ViewId) => View | undefined
+  open: (viewId: ViewId) => void
+  api: (viewId: ViewId) => ViewEngineApi
   create: (input: {
     name: string
     type: ViewType
@@ -41,11 +42,6 @@ export interface ViewsEngineApi {
   rename: (viewId: ViewId, name: string) => void
   duplicate: (viewId: ViewId) => ViewId | undefined
   remove: (viewId: ViewId) => void
-}
-
-export interface ViewAccessorApi {
-  (viewId: ViewId): ViewEngineApi
-  open: (viewId: ViewId) => void
 }
 
 export interface FieldsEngineApi {
@@ -93,13 +89,10 @@ export interface RecordsEngineApi {
   }) => RecordId | undefined
   remove: (recordId: RecordId) => void
   removeMany: (recordIds: readonly RecordId[]) => void
-  setValue: (recordId: RecordId, fieldId: CustomFieldId, value: unknown) => void
-  clearValue: (recordId: RecordId, fieldId: CustomFieldId) => void
-  clearValues: (input: {
-    recordIds: readonly RecordId[]
-    fieldIds: readonly CustomFieldId[]
-  }) => void
-  apply: (action: Extract<Action, { type: 'value.set' | 'value.patch' | 'value.clear' }>) => void
+  field: {
+    set: (recordId: RecordId, fieldId: FieldId, value: unknown) => void
+    clear: (recordId: RecordId, fieldId: FieldId) => void
+  }
 }
 
 export interface ViewTableApi {

@@ -5,16 +5,16 @@ import type {
   EditorEdgeActions,
   EditorStore
 } from '../../types/editor'
-import type { DocumentRuntime } from '../document/types'
-import type { SessionRuntime } from '../session/types'
-import type { RuntimeStateController } from '../state'
+import type { NodeCommands } from '../node/types'
+import type { SessionCommands } from '../session/types'
+import type { EditorStateController } from '../state'
 
-type EditorEditActionsHost = {
+type EditCommandsHost = {
   engine: Engine
   edit: EditorStore['edit']
-  runtime: Pick<RuntimeStateController, 'state'>
-  session: Pick<SessionRuntime, 'edit'>
-  document: Pick<DocumentRuntime, 'node'>
+  runtime: Pick<EditorStateController, 'state'>
+  session: Pick<SessionCommands, 'edit'>
+  node: Pick<NodeCommands, 'text'>
   edgeLabel: Pick<EditorEdgeActions['label'], 'remove' | 'setText'>
 }
 
@@ -28,14 +28,14 @@ const resolveNodeCommitValue = (input: {
     : input.text
 )
 
-export const createEditorEditActions = ({
+export const createEditCommands = ({
   engine,
   edit,
   runtime,
   session,
-  document,
+  node,
   edgeLabel
-}: EditorEditActionsHost): {
+}: EditCommandsHost): {
   cancel: () => CommandResult | undefined
   commit: () => CommandResult | undefined
 } => ({
@@ -87,7 +87,7 @@ export const createEditorEditActions = ({
         ? currentEdit.layout.liveSize
         : undefined
 
-      return document.node.text.commit({
+      return node.text.commit({
         nodeId: currentEdit.nodeId,
         field: currentEdit.field,
         value: resolveNodeCommitValue({

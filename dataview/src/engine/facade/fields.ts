@@ -10,9 +10,11 @@ import {
 } from '@dataview/core/field'
 import { createPropertyId } from '@dataview/engine/command/entityId'
 import type {
-  Engine,
+  EngineReadApi,
   FieldsEngineApi
 } from '../api/public'
+import type { ActionResult } from '../api/public/command'
+import type { Action } from '@dataview/core/contracts'
 
 const getOptionProperty = (
   field?: CustomField
@@ -29,13 +31,12 @@ const findAddedOption = (
 }
 
 export const createFieldsEngineApi = (options: {
-  engine: Pick<Engine, 'read' | 'action'>
+  read: EngineReadApi
+  dispatch: (action: Action | readonly Action[]) => ActionResult
 }): FieldsEngineApi => {
-  const dispatch = (
-    action: Parameters<Engine['action']>[0]
-  ) => options.engine.action(action)
-  const readProperties = () => options.engine.read.customFields.get()
-  const getProperty = (fieldId: CustomFieldId) => options.engine.read.customField.get(fieldId)
+  const dispatch = options.dispatch
+  const readProperties = () => options.read.customFields.get()
+  const getProperty = (fieldId: CustomFieldId) => options.read.customField.get(fieldId)
   const getOptionPropertyById = (fieldId: CustomFieldId) => getOptionProperty(getProperty(fieldId))
 
   return {

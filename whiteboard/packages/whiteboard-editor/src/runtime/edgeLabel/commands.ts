@@ -6,8 +6,8 @@ import type {
   EditorRead,
   EditorStore
 } from '../../types/editor'
-import type { DocumentRuntime } from './types'
-import type { SessionRuntime } from '../session/types'
+import type { SessionCommands } from '../session/types'
+import type { EdgeCommands } from '../edge/commands'
 
 const DEFAULT_EDGE_LABEL = {
   t: 0.5,
@@ -55,20 +55,20 @@ const readEdge = (
   edgeId: EdgeId
 ) => read.edge.item.get(edgeId)?.edge
 
-export const createEdgeLabelActions = ({
+export const createEdgeLabelCommands = ({
   read,
   edit,
   session,
-  document
+  edge
 }: {
   read: EditorRead
   edit: EditorStore['edit']
-  session: Pick<SessionRuntime, 'edit' | 'selection'>
-  document: Pick<DocumentRuntime, 'edge'>
+  session: Pick<SessionCommands, 'edit' | 'selection'>
+  edge: Pick<EdgeCommands, 'update'>
 }): EditorEdgeActions['label'] => ({
   add: (edgeId: EdgeId) => {
-    const edge = readEdge(read, edgeId)
-    if (!edge) {
+    const currentEdge = readEdge(read, edgeId)
+    if (!currentEdge) {
       return undefined
     }
 
@@ -83,14 +83,14 @@ export const createEdgeLabelActions = ({
 
     const labelId = createId('edge_label')
     const nextLabels = [
-      ...(edge.labels ?? []),
+      ...(currentEdge.labels ?? []),
       {
         id: labelId,
         ...DEFAULT_EDGE_LABEL
       }
     ]
 
-    document.edge.update(edgeId, {
+    edge.update(edgeId, {
       labels: nextLabels
     })
     session.selection.replace({
@@ -104,44 +104,44 @@ export const createEdgeLabelActions = ({
     labelId: string,
     patch: EditorEdgeLabelPatch
   ) => {
-    const edge = readEdge(read, edgeId)
-    if (!edge) {
+    const currentEdge = readEdge(read, edgeId)
+    if (!currentEdge) {
       return undefined
     }
 
-    const nextLabels = mergeEdgeLabelPatch(edge, labelId, patch)
+    const nextLabels = mergeEdgeLabelPatch(currentEdge, labelId, patch)
     if (!nextLabels) {
       return undefined
     }
 
-    return document.edge.update(edgeId, {
+    return edge.update(edgeId, {
       labels: nextLabels
     })
   },
   setText: (edgeId: EdgeId, labelId: string, text: string) => {
-    const edge = readEdge(read, edgeId)
-    if (!edge) {
+    const currentEdge = readEdge(read, edgeId)
+    if (!currentEdge) {
       return undefined
     }
 
-    const nextLabels = mergeEdgeLabelPatch(edge, labelId, {
+    const nextLabels = mergeEdgeLabelPatch(currentEdge, labelId, {
       text
     })
     if (!nextLabels) {
       return undefined
     }
 
-    return document.edge.update(edgeId, {
+    return edge.update(edgeId, {
       labels: nextLabels
     })
   },
   remove: (edgeId: EdgeId, labelId: string) => {
-    const edge = readEdge(read, edgeId)
-    if (!edge?.labels?.some((label) => label.id === labelId)) {
+    const currentEdge = readEdge(read, edgeId)
+    if (!currentEdge?.labels?.some((label) => label.id === labelId)) {
       return undefined
     }
 
-    const nextLabels = edge.labels.filter((label) => label.id !== labelId)
+    const nextLabels = currentEdge.labels.filter((label) => label.id !== labelId)
     const currentEdit = edit.get()
     if (
       currentEdit
@@ -152,7 +152,7 @@ export const createEdgeLabelActions = ({
       session.edit.clear()
     }
 
-    return document.edge.update(edgeId, {
+    return edge.update(edgeId, {
       labels: nextLabels.length > 0 ? nextLabels : []
     })
   }

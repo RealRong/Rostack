@@ -78,7 +78,6 @@ import type {
   EditLayout,
   EditSession
 } from '../runtime/state/edit'
-import type { TextPreviewPatch } from '../runtime/overlay/types'
 import type { ClipboardPacket } from '../clipboard/packet'
 import type { Commit } from '@engine-types/commit'
 
@@ -387,28 +386,7 @@ export type EditorViewActions = {
     set: (value: boolean) => void
   }
   draw: EditorDrawActions
-  preview: {
-    nodeText: {
-      set: (nodeId: NodeId, patch?: TextPreviewPatch) => void
-      clear: (nodeId: NodeId) => void
-      clearSize: (nodeId: NodeId) => void
-    }
-  }
 }
-
-export type EditorDocumentApi = {
-  replace: (document: Document) => CommandResult
-  history: EditorHistoryApi
-  selection: EditorSelectionApi
-  nodes: EditorNodesApi
-  edges: EditorEdgesApi
-  mindmaps: EditorMindmapCommands
-  clipboard: EditorClipboardApi
-}
-
-export type EditorSessionApi = EditorSessionActions
-
-export type EditorViewApi = EditorViewActions
 
 export type EditorConfig = {
   mindmapLayout: MindmapLayoutConfig
@@ -434,7 +412,7 @@ export type EditorPanelPresentation = {
 
 export type EditorAppActions = {
   reset: () => void
-  load: EditorDocumentApi['replace']
+  load: (document: Document) => CommandResult
   export: () => Document
   configure: (config: EditorConfig) => void
   dispose: () => void

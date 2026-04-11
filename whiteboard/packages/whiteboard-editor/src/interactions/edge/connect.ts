@@ -221,11 +221,11 @@ const commitConnectState = (
   }
 
   if (commit.kind === 'reconnect') {
-    ctx.write.document.edge.reconnect(commit.edgeId, commit.end, commit.target)
+    ctx.write.edge.reconnect(commit.edgeId, commit.end, commit.target)
     return
   }
 
-  ctx.write.document.edge.create(commit.input)
+  ctx.write.edge.create(commit.input)
 }
 
 const toPreviewEdgeEnd = (

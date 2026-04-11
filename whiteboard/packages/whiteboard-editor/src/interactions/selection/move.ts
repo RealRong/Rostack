@@ -157,14 +157,14 @@ export const createMoveInteraction = (
       const commit = finishMoveState(state)
 
       if (commit.delta) {
-        ctx.write.document.node.move({
+        ctx.write.node.move({
           ids: state.move.rootIds,
           delta: commit.delta
         })
       }
 
       if (commit.edges.length > 0) {
-        ctx.write.document.edge.updateMany(commit.edges)
+        ctx.write.edge.updateMany(commit.edges)
       }
 
       return FINISH

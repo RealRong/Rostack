@@ -33,18 +33,18 @@ export interface CardFieldProps {
 }
 
 const applyRecordValue = (input: {
-  setValue: (recordId: RecordId, fieldId: string, value: unknown) => void
-  clearValue: (recordId: RecordId, fieldId: string) => void
+  set: (recordId: RecordId, fieldId: string, value: unknown) => void
+  clear: (recordId: RecordId, fieldId: string) => void
   recordId: RecordId
   fieldId: string
   value: unknown | undefined
 }) => {
   if (input.value === undefined) {
-    input.clearValue(input.recordId, input.fieldId)
+    input.clear(input.recordId, input.fieldId)
     return
   }
 
-  input.setValue(input.recordId, input.fieldId, input.value)
+  input.set(input.recordId, input.fieldId, input.value)
 }
 
 export const CardField = (props: CardFieldProps) => {
@@ -77,8 +77,8 @@ export const CardField = (props: CardFieldProps) => {
 
     dataView.selection.set([props.field.appearanceId])
     applyRecordValue({
-      setValue: engine.records.setValue,
-      clearValue: engine.records.clearValue,
+      set: engine.records.field.set,
+      clear: engine.records.field.clear,
       recordId: props.field.recordId,
       fieldId: customField.id,
       value: action.value

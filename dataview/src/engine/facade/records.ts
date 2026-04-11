@@ -1,24 +1,64 @@
 import type {
   Action,
-  CustomFieldId,
+  FieldId,
   RecordId
 } from '@dataview/core/contracts'
+import { isTitleFieldId } from '@dataview/core/field'
 import type {
-  Engine,
+  EngineReadApi,
   RecordsEngineApi
 } from '../api/public'
+import type { ActionResult } from '../api/public/command'
 
 export const createRecordsEngineApi = (options: {
-  engine: Pick<Engine, 'read' | 'action'>
+  read: EngineReadApi
+  dispatch: (action: Action | readonly Action[]) => ActionResult
 }): RecordsEngineApi => {
-  const apply = (action: Extract<Action, { type: 'value.set' | 'value.patch' | 'value.clear' }>) => {
-    options.engine.action(action)
+  const writeField = (
+    recordId: RecordId,
+    fieldId: FieldId,
+    value: unknown | undefined
+  ) => {
+    if (isTitleFieldId(fieldId)) {
+      options.dispatch({
+        type: 'record.patch',
+        target: {
+          type: 'record',
+          recordId
+        },
+        patch: {
+          title: value === undefined
+            ? ''
+            : String(value ?? '')
+        }
+      })
+      return
+    }
+
+    options.dispatch(value === undefined
+      ? {
+          type: 'value.clear',
+          target: {
+            type: 'record',
+            recordId
+          },
+          field: fieldId
+        }
+      : {
+          type: 'value.set',
+          target: {
+            type: 'record',
+            recordId
+          },
+          field: fieldId,
+          value
+        })
   }
 
   return {
-    get: recordId => options.engine.read.record.get(recordId),
+    get: recordId => options.read.record.get(recordId),
     create: input => {
-      const result = options.engine.action({
+      const result = options.dispatch({
         type: 'record.create',
         input: {
           values: input?.values
@@ -28,7 +68,7 @@ export const createRecordsEngineApi = (options: {
       return result.created?.records?.[0]
     },
     remove: (recordId: RecordId) => {
-      options.engine.action({
+      options.dispatch({
         type: 'record.remove',
         recordIds: [recordId]
       })
@@ -39,48 +79,18 @@ export const createRecordsEngineApi = (options: {
         return
       }
 
-      options.engine.action({
+      options.dispatch({
         type: 'record.remove',
         recordIds: nextRecordIds
       })
     },
-    setValue: (recordId: RecordId, fieldId: CustomFieldId, value: unknown) => {
-      apply({
-        target: {
-          type: 'record',
-          recordId
-        },
-        type: 'value.set',
-        field: fieldId,
-        value
-      })
-    },
-    clearValue: (recordId: RecordId, fieldId: CustomFieldId) => {
-      apply({
-        target: {
-          type: 'record',
-          recordId
-        },
-        type: 'value.clear',
-        field: fieldId
-      })
-    },
-    clearValues: input => {
-      const recordIds = Array.from(new Set(input.recordIds))
-      const fieldIds = Array.from(new Set(input.fieldIds))
-      if (!recordIds.length || !fieldIds.length) {
-        return
+    field: {
+      set: (recordId, fieldId, value) => {
+        writeField(recordId, fieldId, value)
+      },
+      clear: (recordId, fieldId) => {
+        writeField(recordId, fieldId, undefined)
       }
-
-      options.engine.action(fieldIds.map(fieldId => ({
-        type: 'value.clear' as const,
-        target: {
-          type: 'records' as const,
-          recordIds: [...recordIds]
-        },
-        field: fieldId
-      })))
-    },
-    apply
+    }
   }
 }

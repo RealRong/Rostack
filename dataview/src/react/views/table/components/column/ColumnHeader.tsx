@@ -108,8 +108,14 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   }
 
   const view = currentView.view
-  const groupProjection = useDataViewValue(dataView => dataView.engine.project.group)
-  const sortProjection = useDataViewValue(dataView => dataView.engine.project.sort)
+  const activeState = useDataViewValue(
+    dataView => dataView.engine.active.state,
+    state => state?.view.id === view.id
+      ? state
+      : undefined
+  )
+  const groupProjection = activeState?.group
+  const sortProjection = activeState?.sort
   const showVerticalLines = view.options.table.showVerticalLines
   const sortable = useSortable({
     id: props.sortId,
@@ -143,7 +149,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   const urlConfig = customField?.kind === 'url'
     ? customField
     : undefined
-  const viewApi = editor.view(view.id)
+  const viewApi = editor.active
 
   const insertProperty = (side: 'left' | 'right') => {
     if (side === 'left') {

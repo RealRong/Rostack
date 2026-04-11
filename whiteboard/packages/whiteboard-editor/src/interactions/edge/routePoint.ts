@@ -192,11 +192,11 @@ export const createEdgeRoutePointSession = (
       }
 
       if (commit.route) {
-        ctx.write.document.edge.update(commit.edgeId, {
+        ctx.write.edge.update(commit.edgeId, {
           route: commit.route
         })
       } else if (commit.point) {
-        ctx.write.document.edge.route.move(commit.edgeId, commit.index, commit.point)
+        ctx.write.edge.route.move(commit.edgeId, commit.index, commit.point)
       }
 
       return FINISH
@@ -222,7 +222,7 @@ export const startEdgeRouteHandleInteraction = (
   }
 
   if (target.kind === 'anchor' && start.detail >= 2) {
-    ctx.write.document.edge.route.remove(target.edgeId, target.index)
+    ctx.write.edge.route.remove(target.edgeId, target.index)
     ctx.write.preview.edge.clearPatches()
     return HANDLED
   }
@@ -320,7 +320,7 @@ export const startEdgeRouteHandleInteraction = (
 
           const commit = finishRouteHandleState(state)
           if (commit.route) {
-            ctx.write.document.edge.update(commit.edgeId, {
+            ctx.write.edge.update(commit.edgeId, {
               route: commit.route
             })
           }
@@ -334,7 +334,7 @@ export const startEdgeRouteHandleInteraction = (
     }
   }
 
-  const result = ctx.write.document.edge.route.insert(
+  const result = ctx.write.edge.route.insert(
     target.edgeId,
     start.world
   )

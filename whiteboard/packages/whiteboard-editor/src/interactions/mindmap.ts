@@ -103,7 +103,7 @@ const commitMindmapDrag = (
   state: CoreMindmapDragState
 ) => {
   if (state.kind === 'root') {
-    ctx.write.document.mindmap.moveRoot({
+    ctx.write.mindmap.moveRoot({
       nodeId: state.treeId,
       position: state.position,
       origin: state.origin
@@ -115,7 +115,7 @@ const commitMindmapDrag = (
     return
   }
 
-  ctx.write.document.mindmap.moveByDrop({
+  ctx.write.mindmap.moveByDrop({
     id: state.treeId,
     nodeId: state.nodeId,
     drop: {

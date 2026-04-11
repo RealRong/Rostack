@@ -23,14 +23,10 @@ import { createEditorInteractions } from '../../interactions'
 import { createEdgeHoverService } from '../../interactions/edge/hover'
 import { createOverlay } from '../overlay'
 import { createRead } from '../read'
-import { createRuntimeState } from '../state'
+import { createEditorStateController } from '../state'
 import { createEditorInput } from './input'
-import { createEditorEditActions } from './edit'
 import { createEditorState } from './state'
-import { createEditorRuntime } from './runtime'
-import { createSelectionActions } from '../document/selection'
-import { createEdgeLabelActions } from '../document/edgeLabel'
-import { createClipboardActions } from '../document/clipboard'
+import { createEditorServices } from './services'
 
 export const createEditor = ({
   engine,
@@ -45,7 +41,7 @@ export const createEditor = ({
   initialViewport: Viewport
   registry: NodeRegistry
 }): Editor => {
-  const runtime = createRuntimeState({
+  const runtime = createEditorStateController({
     initialTool,
     initialDrawPreferences
   })
@@ -72,13 +68,19 @@ export const createEditor = ({
     viewport
   })
   const read = readBundle.read
-  const write = createEditorRuntime({
+  const state = createEditorState({
+    interaction,
+    runtime,
+    viewport: viewport.read
+  })
+  const write = createEditorServices({
     engine,
     read,
     registry,
     runtime,
     overlay,
-    viewport
+    viewport,
+    state
   })
   const snap = createSnapRuntime({
     readZoom: () => viewport.read.get().zoom,
@@ -90,34 +92,6 @@ export const createEditor = ({
       config: engine.config.edge,
       nodeSize: engine.config.nodeSize,
       query: read.edge.connectCandidates
-    }
-  })
-  const state = createEditorState({
-    interaction,
-    runtime,
-    viewport: viewport.read
-  })
-  const selectionCommands = createSelectionActions({
-    read,
-    document: write.document,
-    session: write.session
-  })
-  const edgeLabelActions = createEdgeLabelActions({
-    read,
-    edit: state.edit,
-    session: write.session,
-    document: write.document
-  })
-  const clipboardActions = createClipboardActions({
-    editor: {
-      read,
-      document: write.document,
-      session: write.session,
-      selection: selectionCommands,
-      state: {
-        viewport: viewport.read,
-        selection: state.selection
-      }
     }
   })
 
@@ -157,14 +131,6 @@ export const createEditor = ({
     }
 
     runtime.reconcileAfterCommit(read)
-  })
-  const editActions = createEditorEditActions({
-    engine,
-    edit: state.edit,
-    runtime,
-    session: write.session,
-    document: write.document,
-    edgeLabel: edgeLabelActions
   })
 
   const {
@@ -293,73 +259,73 @@ export const createEditor = ({
         toggle: write.session.selection.toggle,
         all: write.session.selection.selectAll,
         clear: write.session.selection.clear,
-        frame: selectionCommands.frame,
+        frame: write.selection.frame,
         order: (mode, target = currentSelection()) => (
-          selectionCommands.order(target, mode)
+          write.selection.order(target, mode)
         ),
-        group: (options) => selectionCommands.group(currentSelection(), options),
-        ungroup: (options) => selectionCommands.ungroup(currentSelection(), options),
-        delete: (options) => selectionCommands.delete(currentSelection(), options),
-        duplicate: (options) => selectionCommands.duplicate(currentSelection(), options)
+        group: (options) => write.selection.group(currentSelection(), options),
+        ungroup: (options) => write.selection.ungroup(currentSelection(), options),
+        delete: (options) => write.selection.delete(currentSelection(), options),
+        duplicate: (options) => write.selection.duplicate(currentSelection(), options)
       },
       edit: {
         ...write.session.edit,
-        cancel: editActions.cancel,
-        commit: editActions.commit
+        cancel: write.edit.cancel,
+        commit: write.edit.commit
       },
       interaction: input,
       node: {
-        create: write.document.node.create,
-        patch: write.document.node.patch,
-        move: write.document.node.move,
-        align: write.document.node.align,
-        distribute: write.document.node.distribute,
-        remove: write.document.node.deleteCascade,
-        duplicate: write.document.node.duplicate,
-        lock: write.document.node.lock.set,
+        create: write.node.create,
+        patch: write.node.patch,
+        move: write.node.move,
+        align: write.node.align,
+        distribute: write.node.distribute,
+        remove: write.node.deleteCascade,
+        duplicate: write.node.duplicate,
+        lock: write.node.lock.set,
         text: {
-          commit: write.document.node.text.commit,
-          color: write.document.node.text.setColor,
-          size: write.document.node.text.setSize,
-          weight: write.document.node.text.setWeight,
-          italic: write.document.node.text.setItalic,
-          align: write.document.node.text.setAlign
+          commit: write.node.text.commit,
+          color: write.node.text.color,
+          size: write.node.text.size,
+          weight: write.node.text.weight,
+          italic: write.node.text.italic,
+          align: write.node.text.align
         },
         style: {
-          fill: write.document.node.appearance.setFill,
-          stroke: write.document.node.appearance.setStroke
+          fill: write.node.style.fill,
+          stroke: write.node.style.stroke
         },
         shape: {
-          set: write.document.node.shape.setKind
+          set: write.node.shape.set
         }
       },
       edge: {
-        create: write.document.edge.create,
-        patch: write.document.edge.patch,
-        move: write.document.edge.move,
-        reconnect: write.document.edge.reconnect,
-        remove: write.document.edge.delete,
-        route: write.document.edge.route,
+        create: write.edge.create,
+        patch: write.edge.patch,
+        move: write.edge.move,
+        reconnect: write.edge.reconnect,
+        remove: write.edge.delete,
+        route: write.edge.route,
         label: {
-          add: edgeLabelActions.add,
-          patch: edgeLabelActions.patch,
-          remove: edgeLabelActions.remove,
-          setText: edgeLabelActions.setText
+          add: write.edgeLabel.add,
+          patch: write.edgeLabel.patch,
+          remove: write.edgeLabel.remove,
+          setText: write.edgeLabel.setText
         }
       },
       mindmap: {
-        create: write.document.mindmap.create,
-        remove: write.document.mindmap.delete,
-        insert: write.document.mindmap.insert,
-        move: write.document.mindmap.moveSubtree,
-        removeNode: write.document.mindmap.removeSubtree,
-        clone: write.document.mindmap.cloneSubtree,
-        patchNode: write.document.mindmap.updateNode,
-        insertByPlace: write.document.mindmap.insertByPlacement,
-        moveByDrop: write.document.mindmap.moveByDrop,
-        moveRoot: write.document.mindmap.moveRoot
+        create: write.mindmap.create,
+        remove: write.mindmap.delete,
+        insert: write.mindmap.insert,
+        move: write.mindmap.moveSubtree,
+        removeNode: write.mindmap.removeSubtree,
+        clone: write.mindmap.cloneSubtree,
+        patchNode: write.mindmap.updateNode,
+        insertByPlace: write.mindmap.insertByPlacement,
+        moveByDrop: write.mindmap.moveByDrop,
+        moveRoot: write.mindmap.moveRoot
       },
-      clipboard: clipboardActions,
+      clipboard: write.clipboard,
       history: write.document.history
     },
     select: {

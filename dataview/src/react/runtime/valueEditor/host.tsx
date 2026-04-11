@@ -11,7 +11,6 @@ import {
   getDocumentRecordById
 } from '@dataview/core/document'
 import {
-  isTitleField,
   isTitleFieldId
 } from '@dataview/core/field'
 import {
@@ -201,50 +200,22 @@ export const FieldValueEditorHost = () => {
     return null
   }
 
+  const writeValue = (value: unknown | undefined) => {
+    if (value === undefined) {
+      engine.records.field.clear(record.id, valueField.id)
+      return
+    }
+
+    engine.records.field.set(record.id, valueField.id, value)
+  }
+
   const applyInput = (input: EditInput) => {
     switch (input.type) {
       case 'edit.apply':
-        if (isTitleField(valueField)) {
-          engine.action({
-            type: 'record.patch',
-            target: {
-              type: 'record',
-              recordId: record.id
-            },
-            patch: {
-              title: input.value === undefined
-                ? ''
-                : String(input.value ?? '')
-            }
-          })
-          return true
-        }
-
-        if (input.value === undefined) {
-          engine.records.clearValue(record.id, valueField.id)
-        } else {
-          engine.records.setValue(record.id, valueField.id, input.value)
-        }
+        writeValue(input.value)
         return true
       case 'edit.commit':
-        if (isTitleField(valueField)) {
-          engine.action({
-            type: 'record.patch',
-            target: {
-              type: 'record',
-              recordId: record.id
-            },
-            patch: {
-              title: input.value === undefined
-                ? ''
-                : String(input.value ?? '')
-            }
-          })
-        } else if (input.value === undefined) {
-          engine.records.clearValue(record.id, valueField.id)
-        } else {
-          engine.records.setValue(record.id, valueField.id, input.value)
-        }
+        writeValue(input.value)
         const action = session.policy.resolveOnCommit(input.trigger)
         clearSession({
           kind: 'commit',

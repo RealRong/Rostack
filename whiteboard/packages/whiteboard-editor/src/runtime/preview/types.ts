@@ -7,7 +7,7 @@ import type {
 } from '../overlay'
 import type { TextPreviewPatch } from '../overlay/types'
 
-export type PreviewRuntime = {
+export type PreviewCommands = {
   draw: {
     setPreview: (preview: DrawPreview | null) => void
     setHidden: (nodeIds: readonly NodeId[]) => void

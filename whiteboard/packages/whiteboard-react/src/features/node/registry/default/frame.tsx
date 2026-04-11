@@ -146,7 +146,6 @@ export const FrameNodeDefinition: NodeDefinition = {
   edit: {
     fields: {
       title: {
-        tools: ['color'],
         multiline: false,
         empty: 'default',
         defaultText: FRAME_DEFAULT_TITLE,

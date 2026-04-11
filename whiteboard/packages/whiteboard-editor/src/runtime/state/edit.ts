@@ -1,7 +1,5 @@
 import type {
-  Edge,
   EdgeId,
-  Node,
   NodeId,
   Point,
   Rect,
@@ -10,28 +8,11 @@ import type {
 import { createValueStore, type ValueStore } from '@shared/store'
 
 export type EditField = 'text' | 'title'
-export type EditTool =
-  | 'size'
-  | 'weight'
-  | 'italic'
-  | 'color'
-  | 'background'
-  | 'align'
 export type EditEmptyBehavior = 'keep' | 'remove' | 'default'
 export type EditMeasureMode = 'none' | 'text'
 export type EditStatus = 'active' | 'committing'
 
-export type EditStyleDraft = {
-  size?: number
-  weight?: number
-  italic?: boolean
-  color?: string
-  background?: string
-  align?: 'left' | 'center' | 'right'
-}
-
 export type EditCapability = {
-  tools: readonly EditTool[]
   placeholder?: string
   multiline: boolean
   empty: EditEmptyBehavior
@@ -50,7 +31,6 @@ export type EditCaret =
 
 export type EditSnapshot = {
   text: string
-  style?: EditStyleDraft
 }
 
 export type EditLayout = {
@@ -92,7 +72,6 @@ export type EditMutate = {
   set: (session: NonNullable<EditSession>) => void
   input: (text: string) => void
   caret: (caret: EditCaret) => void
-  style: (patch: EditStyleDraft) => void
   measure: (patch: Partial<EditLayout>) => void
   status: (status: EditStatus) => void
   clear: () => void
@@ -153,24 +132,6 @@ export const createEditState = (): EditState => {
                 caret
               }
         ))
-      },
-      style: (patch) => {
-        update((current) => {
-          const nextStyle = {
-            ...(current.draft.style ?? {}),
-            ...patch
-          }
-
-          return isEditStyleDraftEqual(current.draft.style, nextStyle)
-            ? current
-            : {
-                ...current,
-                draft: {
-                  ...current.draft,
-                  style: nextStyle
-                }
-              }
-        })
       },
       measure: (patch) => {
         update((current) => {
@@ -234,119 +195,4 @@ export const isEditLayoutEqual = (
   && isEditMeasureEqual(left.liveSize, right.liveSize)
   && left.wrapWidth === right.wrapWidth
   && left.composing === right.composing
-)
-
-export const isEditStyleDraftEqual = (
-  left: EditStyleDraft | undefined,
-  right: EditStyleDraft | undefined
-) => (
-  left?.size === right?.size
-  && left?.weight === right?.weight
-  && left?.italic === right?.italic
-  && left?.color === right?.color
-  && left?.background === right?.background
-  && left?.align === right?.align
-)
-
-export const readNodeEditStyle = (
-  node: Pick<Node, 'style'>
-): EditStyleDraft | undefined => {
-  const style = {
-    size:
-      typeof node.style?.fontSize === 'number'
-        ? node.style.fontSize
-        : undefined,
-    weight:
-      typeof node.style?.fontWeight === 'number'
-        ? node.style.fontWeight
-        : undefined,
-    italic:
-      typeof node.style?.fontStyle === 'string'
-        ? node.style.fontStyle === 'italic'
-        : undefined,
-    color:
-      typeof node.style?.color === 'string'
-        ? node.style.color
-        : undefined,
-    background:
-      typeof node.style?.fill === 'string'
-        ? node.style.fill
-        : undefined,
-    align:
-      node.style?.textAlign === 'left'
-      || node.style?.textAlign === 'center'
-      || node.style?.textAlign === 'right'
-        ? node.style.textAlign
-        : undefined
-  } satisfies EditStyleDraft
-
-  return isEditStyleDraftEmpty(style)
-    ? undefined
-    : style
-}
-
-export const readEdgeLabelEditStyle = (
-  label: NonNullable<Edge['labels']>[number]
-): EditStyleDraft | undefined => {
-  const style = {
-    size: label.style?.size,
-    weight: label.style?.weight,
-    italic: label.style?.italic,
-    color: label.style?.color,
-    background: label.style?.bg
-  } satisfies EditStyleDraft
-
-  return isEditStyleDraftEmpty(style)
-    ? undefined
-    : style
-}
-
-export const applyNodeEditStyle = (
-  current: Node['style'] | undefined,
-  draft: EditStyleDraft | undefined
-): Node['style'] | undefined => {
-  if (!draft) {
-    return current
-  }
-
-  const next = {
-    ...(current ?? {}),
-    ...(draft.size !== undefined ? { fontSize: draft.size } : {}),
-    ...(draft.weight !== undefined ? { fontWeight: draft.weight } : {}),
-    ...(draft.italic !== undefined ? { fontStyle: draft.italic ? 'italic' : 'normal' } : {}),
-    ...(draft.color !== undefined ? { color: draft.color } : {}),
-    ...(draft.background !== undefined ? { fill: draft.background } : {}),
-    ...(draft.align !== undefined ? { textAlign: draft.align } : {})
-  }
-
-  return next
-}
-
-export const applyEdgeLabelEditStyle = (
-  current: NonNullable<Edge['labels']>[number]['style'] | undefined,
-  draft: EditStyleDraft | undefined
-): NonNullable<Edge['labels']>[number]['style'] | undefined => {
-  if (!draft) {
-    return current
-  }
-
-  return {
-    ...(current ?? {}),
-    ...(draft.size !== undefined ? { size: draft.size } : {}),
-    ...(draft.weight !== undefined ? { weight: draft.weight } : {}),
-    ...(draft.italic !== undefined ? { italic: draft.italic } : {}),
-    ...(draft.color !== undefined ? { color: draft.color } : {}),
-    ...(draft.background !== undefined ? { bg: draft.background } : {})
-  }
-}
-
-const isEditStyleDraftEmpty = (
-  style: EditStyleDraft
-) => (
-  style.size === undefined
-  && style.weight === undefined
-  && style.italic === undefined
-  && style.color === undefined
-  && style.background === undefined
-  && style.align === undefined
 )

@@ -2,8 +2,9 @@ import {
   createKeyedStore,
   type KeyedReadStore
 } from '@shared/store'
-
-const isSameValue = <T,>(left: T, right: T) => Object.is(left, right)
+import {
+  sameValue as isSameValue
+} from '@shared/equality'
 
 export const createTrackedRead = <Key, Value,>({
   emptyValue,

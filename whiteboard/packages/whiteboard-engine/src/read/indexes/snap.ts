@@ -4,10 +4,10 @@ import type { SnapCandidate } from '@whiteboard/core/node'
 import type { EngineReadIndex } from '@engine-types/instance'
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import {
-  isSameRectTuple,
-  isSameRefOrder,
+  sameOrder as isSameRefOrder,
+  sameRect as isSameRectTuple,
   toFiniteOrUndefined
-} from '@whiteboard/core/equality'
+} from '@shared/equality'
 
 type Rebuild = 'none' | 'dirty' | 'full'
 

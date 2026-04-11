@@ -17,6 +17,7 @@
   ],
   "dependencies": {
     "@shared/dom": "workspace:*",
+    "@shared/equality": "workspace:*",
     "@shared/react": "workspace:*",
     "@shared/scheduler": "workspace:*",
     "@whiteboard/collab": "workspace:*",

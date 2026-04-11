@@ -1,4 +1,4 @@
-import type { Point } from './geometry.ts'
+import type { Point } from './geometry'
 
 export const readEditableText = (
   element: HTMLDivElement

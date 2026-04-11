@@ -20,6 +20,7 @@
     "demo:typecheck": "pnpm --dir ../apps/dataview typecheck"
   },
   "dependencies": {
+    "@shared/equality": "workspace:*",
     "@shared/dom": "workspace:*",
     "@shared/react": "workspace:*",
     "@shared/store": "workspace:*",

@@ -1,20 +1,15 @@
 import type {
   CustomFieldId
 } from '@dataview/core/contracts'
+import {
+  sameOrder
+} from '@shared/equality'
 import type { AppearanceId } from '@dataview/engine/project'
 
 export interface TableRowReorderHint {
   beforeId: AppearanceId | null
   top: number
 }
-
-const sameIds = (
-  left: readonly AppearanceId[],
-  right: readonly AppearanceId[]
-) => (
-  left.length === right.length
-  && left.every((value, index) => value === right[index])
-)
 
 const moveItem = <T>(
   items: readonly T[],
@@ -135,5 +130,5 @@ export const showRowHint = (
     rowBeforeId(hint)
   )
 
-  return !sameIds(nextRowIds, rowIds)
+  return !sameOrder(nextRowIds, rowIds)
 }

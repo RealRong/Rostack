@@ -3,6 +3,9 @@ import type {
   View
 } from '@dataview/core/contracts'
 import {
+  sameOrder
+} from '@shared/equality'
+import {
   buildAggregateState
 } from '../../../index/aggregate'
 import type {
@@ -28,8 +31,7 @@ export const readCalcFields = (
 export const sameIds = (
   left: readonly string[],
   right: readonly string[]
-) => left.length === right.length
-  && left.every((value, index) => value === right[index])
+) => sameOrder(left, right)
 
 export const buildSectionFieldState = (input: {
   sectionIds: readonly string[]

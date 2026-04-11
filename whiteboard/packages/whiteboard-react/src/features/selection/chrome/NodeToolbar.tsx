@@ -54,7 +54,7 @@ export const NodeToolbar = ({
   const editor = useEditorRuntime()
   const surface = useElementSize(containerRef)
   const panel = useStoreValue(editor.select.panel())
-  const toolbar = panel.selectionToolbar
+  const toolbar = panel.nodeToolbar
   const buttonRefByKey = useRef<Partial<Record<ToolbarPanelKey, HTMLElement | null>>>({})
   const [activePanelKey, setActivePanelKey] = useState<ToolbarPanelKey | null>(null)
   const [positionSession, setPositionSession] = useState<ToolbarPositionSession | null>(null)
@@ -75,7 +75,7 @@ export const NodeToolbar = ({
     setActivePanelKey((current) => current === key ? null : key)
   }, [])
 
-  const selectionKey = toolbar?.selectionKey ?? null
+  const selectionKey = toolbar?.key ?? null
   const selectionBox = toolbar?.box
   const livePlacement = selectionBox
     ? resolveToolbarPlacement({

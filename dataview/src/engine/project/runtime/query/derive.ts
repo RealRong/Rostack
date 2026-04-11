@@ -5,6 +5,9 @@ import type {
   View
 } from '@dataview/core/contracts'
 import {
+  sameOrder
+} from '@shared/equality'
+import {
   getDocumentFieldById
 } from '@dataview/core/document'
 import {
@@ -26,11 +29,7 @@ import type {
   QueryState
 } from '../state'
 
-const sameIds = (
-  left: readonly RecordId[],
-  right: readonly RecordId[]
-) => left.length === right.length
-  && left.every((value, index) => value === right[index])
+const sameIds = sameOrder<RecordId>
 
 const sortRecordIds = (input: {
   ids: readonly RecordId[]

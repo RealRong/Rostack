@@ -16,8 +16,7 @@ import type { DrawPreferences } from '../../types/draw'
 import type {
   Editor,
   EditorEdgesApi,
-  EditorNodesApi,
-  EditorTextToolbarPresentation
+  EditorNodesApi
 } from '../../types/editor'
 import {
   drawTool,
@@ -46,56 +45,23 @@ import { createEdgeLabelActions } from '../document/edge'
 import { createClipboardActions } from '../document/clipboard'
 import {
   dataUpdate,
-  mergeNodeUpdates,
-  styleUpdate
+  mergeNodeUpdates
 } from '../node/patch'
 import {
-  applyEdgeLabelEditStyle,
-  isEditStyleDraftEqual,
-  readEdgeLabelEditStyle,
-  readNodeEditStyle,
-  type EditSession,
-  type EditStyleDraft
 } from '../state/edit'
 
 const hasEdgePatchContent = (
   patch: EdgePatch
 ) => Object.keys(patch).length > 0
 
-const toNodeStyleUpdates = (
-  current: EditStyleDraft | undefined,
-  draft: EditStyleDraft | undefined
-) => [
-  current?.size !== draft?.size
-    ? styleUpdate('fontSize', draft?.size)
-    : undefined,
-  current?.weight !== draft?.weight
-    ? styleUpdate('fontWeight', draft?.weight)
-    : undefined,
-  current?.italic !== draft?.italic
-    ? styleUpdate('fontStyle', draft?.italic ? 'italic' : 'normal')
-    : undefined,
-  current?.color !== draft?.color
-    ? styleUpdate('color', draft?.color)
-    : undefined,
-  current?.background !== draft?.background
-    ? styleUpdate('fill', draft?.background)
-    : undefined,
-  current?.align !== draft?.align
-    ? styleUpdate('textAlign', draft?.align)
-    : undefined
-].filter(Boolean)
-
 const mergeEdgeLabel = ({
   edge,
   labelId,
-  text,
-  style
+  text
 }: {
   edge: Edge
   labelId: string
   text: string
-  style: EditStyleDraft | undefined
 }) => {
   let changed = false
 
@@ -108,8 +74,7 @@ const mergeEdgeLabel = ({
 
     return {
       ...label,
-      text,
-      style: applyEdgeLabelEditStyle(label.style, style)
+      text
     }
   })
 
@@ -117,17 +82,6 @@ const mergeEdgeLabel = ({
     ? labels
     : undefined
 }
-
-const readTextToolbarValues = (
-  style: EditStyleDraft | undefined
-) => ({
-  size: style?.size,
-  weight: style?.weight,
-  italic: Boolean(style?.italic),
-  color: style?.color,
-  background: style?.background,
-  align: style?.align
-})
 
 export const createEditor = ({
   engine,
@@ -354,7 +308,6 @@ export const createEditor = ({
       const currentText = typeof committed.node.data?.[currentEdit.field] === 'string'
         ? committed.node.data[currentEdit.field] as string
         : ''
-      const currentStyle = readNodeEditStyle(committed.node)
       const nextMeasure = (
         committed.node.type === 'text'
         && currentEdit.field === 'text'
@@ -367,7 +320,6 @@ export const createEditor = ({
         currentText !== nextText
           ? dataUpdate(currentEdit.field, nextText)
           : undefined,
-        ...toNodeStyleUpdates(currentStyle, currentEdit.draft.style),
         nextMeasure
           ? {
               fields: {
@@ -403,22 +355,12 @@ export const createEditor = ({
     const nextLabels = mergeEdgeLabel({
       edge,
       labelId: currentEdit.labelId,
-      text: currentEdit.draft.text,
-      style: currentEdit.draft.style
+      text: currentEdit.draft.text
     })
-    const currentLabel = edge.labels?.find((label) => label.id === currentEdit.labelId)
-    const currentStyle = currentLabel
-      ? readEdgeLabelEditStyle(currentLabel)
-      : undefined
 
     write.session.edit.clear()
     if (
       !nextLabels
-      || (
-        currentLabel
-        && currentLabel.text === currentEdit.draft.text
-        && isEditStyleDraftEqual(currentStyle, currentEdit.draft.style)
-      )
     ) {
       return undefined
     }
@@ -427,55 +369,6 @@ export const createEditor = ({
       labels: nextLabels
     })
   }
-
-  const textToolbar = createDerivedStore<EditorTextToolbarPresentation | undefined>({
-    get: (readStore) => {
-      const edit = readStore(state.edit)
-      if (!edit) {
-        return undefined
-      }
-
-      if (edit.kind === 'node') {
-        const item = readStore(read.node.item, edit.nodeId)
-        if (!item) {
-          return undefined
-        }
-
-        return {
-          session: edit,
-          tools: edit.capabilities.tools,
-          values: readTextToolbarValues(readNodeEditStyle(item.node))
-        }
-      }
-
-      const edge = readStore(read.edge.item, edit.edgeId)?.edge
-      const label = edge?.labels?.find((entry) => entry.id === edit.labelId)
-      if (!label) {
-        return undefined
-      }
-
-      return {
-        session: edit,
-        tools: edit.capabilities.tools,
-        values: readTextToolbarValues(readEdgeLabelEditStyle(label))
-      }
-    },
-    isEqual: (left, right) => (
-      left === right
-      || (
-        left !== undefined
-        && right !== undefined
-        && left.session === right.session
-        && left.tools === right.tools
-        && left.values.size === right.values.size
-        && left.values.weight === right.values.weight
-        && left.values.italic === right.values.italic
-        && left.values.color === right.values.color
-        && left.values.background === right.values.background
-        && left.values.align === right.values.align
-      )
-    )
-  })
 
   const {
     replace: replaceDocument
@@ -498,16 +391,14 @@ export const createEditor = ({
   })
   const panel = createDerivedStore({
     get: readStore => ({
-      selectionToolbar: readStore(read.selection.toolbar),
+      nodeToolbar: readStore(read.selection.nodeToolbar),
       edgeToolbar: readStore(read.edge.toolbar),
-      textToolbar: readStore(textToolbar),
       history: readStore(read.history),
       draw: readStore(read.draw)
     }),
     isEqual: (left, right) => (
-      left.selectionToolbar === right.selectionToolbar
+      left.nodeToolbar === right.nodeToolbar
       && left.edgeToolbar === right.edgeToolbar
-      && left.textToolbar === right.textToolbar
       && left.history === right.history
       && left.draw === right.draw
     )
@@ -541,7 +432,7 @@ export const createEditor = ({
       box: () => read.selection.box,
       summary: () => readBundle.internal.selection.model,
       overlay: () => read.selection.overlay,
-      toolbar: () => read.selection.toolbar,
+      nodeToolbar: () => read.selection.nodeToolbar,
       node: () => read.selection.node
     }
   )

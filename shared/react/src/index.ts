@@ -1,12 +1,12 @@
-export { useExternalValue } from './useExternalValue.ts'
-export { useElementSize } from './useElementSize.ts'
+export { useExternalValue } from './useExternalValue'
+export { useElementSize } from './useElementSize'
 export {
   createLazySelectorSnapshot,
   useLazySelectorValue,
   type LazySelectorSource
-} from './useLazySelectorValue.ts'
+} from './useLazySelectorValue'
 export {
   useKeyedStoreValue,
   useOptionalKeyedStoreValue,
   useStoreValue
-} from './useStoreValue.ts'
+} from './useStoreValue'

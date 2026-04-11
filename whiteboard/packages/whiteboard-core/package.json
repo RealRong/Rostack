@@ -23,11 +23,6 @@
       "import": "./dist/value/index.js",
       "require": "./dist/value/index.cjs"
     },
-    "./equality": {
-      "types": "./dist/equality/index.d.ts",
-      "import": "./dist/equality/index.js",
-      "require": "./dist/equality/index.cjs"
-    },
     "./geometry": {
       "types": "./dist/geometry/index.d.ts",
       "import": "./dist/geometry/index.js",
@@ -77,6 +72,9 @@
   "files": [
     "dist"
   ],
+  "dependencies": {
+    "@shared/equality": "workspace:*"
+  },
   "scripts": {
     "build": "pnpm -C ../.. build:core",
     "lint": "pnpm -C ../.. typecheck:core",

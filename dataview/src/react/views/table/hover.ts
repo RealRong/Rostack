@@ -5,6 +5,9 @@ import {
   type ValueStore
 } from '@shared/store'
 import type { Point } from '@shared/dom'
+import {
+  sameOptionalPoint
+} from '@shared/equality'
 import type {
   AppearanceId
 } from '@dataview/engine/project'
@@ -37,17 +40,6 @@ interface HoverState {
 
 const cellKey = (cell: CellRef) => `${cell.appearanceId}\u0000${cell.fieldId}`
 
-const samePoint = (
-  left: Point | null,
-  right: Point | null
-) => {
-  if (!left || !right) {
-    return left === right
-  }
-
-  return left.x === right.x && left.y === right.y
-}
-
 export const createHover = (): Hover => {
   const state: ValueStore<HoverState> = createValueStore<HoverState>({
     initial: {
@@ -56,7 +48,7 @@ export const createHover = (): Hover => {
     },
     isEqual: (left, right) => (
       sameHoverTarget(left.target, right.target)
-      && samePoint(left.pointer, right.pointer)
+      && sameOptionalPoint(left.pointer, right.pointer)
     )
   })
 

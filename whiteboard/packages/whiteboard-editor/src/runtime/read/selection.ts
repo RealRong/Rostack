@@ -10,7 +10,7 @@ import {
   type SelectionTransformBox
 } from '@whiteboard/core/selection'
 import type { Edge, Node, Rect } from '@whiteboard/core/types'
-import { isSameOptionalRectTuple } from '@whiteboard/core/equality'
+import { sameOptionalRect as isSameOptionalRectTuple } from '@shared/equality'
 import {
   createDerivedStore,
   type ReadFn,
@@ -26,7 +26,7 @@ import type { InteractionRuntime } from '../interaction/types'
 import type {
   SelectionNodeInfo,
   SelectionOverlay,
-  SelectionToolbarContext
+  NodeToolbarContext
 } from '../../selection'
 import { readSelectionNodeInfo } from '../../selection/nodeSummary'
 import {
@@ -38,7 +38,7 @@ export type SelectionRead = {
   box: ReadStore<Rect | undefined>
   node: ReadStore<SelectionNodeInfo | undefined>
   overlay: ReadStore<SelectionOverlay | undefined>
-  toolbar: ReadStore<SelectionToolbarContext | undefined>
+  nodeToolbar: ReadStore<NodeToolbarContext | undefined>
 }
 
 export type SelectionModel = {
@@ -232,7 +232,7 @@ export const createSelectionRead = ({
       })
     }
   })
-  const toolbar = createDerivedStore<SelectionToolbarContext | undefined>({
+  const nodeToolbar = createDerivedStore<NodeToolbarContext | undefined>({
     get: (readStore) => {
       const resolvedModel = readStore(model)
 
@@ -252,7 +252,7 @@ export const createSelectionRead = ({
       box,
       node: nodeInfo,
       overlay,
-      toolbar
+      nodeToolbar
     },
     internal: {
       model

@@ -44,7 +44,6 @@ import {
   createPatchedItemStore
 } from './keyed'
 import {
-  applyNodeEditStyle,
   type EditSession
 } from '../state/edit'
 
@@ -276,8 +275,7 @@ const applyEditSession = (
       data: {
         ...(item.node.data ?? {}),
         [edit.field]: edit.draft.text
-      },
-      style: applyNodeEditStyle(item.node.style, edit.draft.style)
+      }
     },
     rect:
       edit.field === 'text'

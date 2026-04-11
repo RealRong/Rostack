@@ -1,6 +1,9 @@
 import type { BaseOperation } from '@dataview/core/contracts/operations'
 import type { DataDoc } from '@dataview/core/contracts/state'
 import {
+  sameOrder
+} from '@shared/equality'
+import {
   getDocumentCustomFields,
   getDocumentRecordById,
   getDocumentRecords,
@@ -21,9 +24,7 @@ import {
   validateEditTarget
 } from './shared'
 
-const sameRecordOrder = (left: readonly string[], right: readonly string[]) => (
-  left.length === right.length && left.every((recordId, index) => recordId === right[index])
-)
+const sameRecordOrder = sameOrder<string>
 
 const resolveDefaultRecordType = (document: DataDoc) => {
   return getDocumentRecords(document).find(record => (

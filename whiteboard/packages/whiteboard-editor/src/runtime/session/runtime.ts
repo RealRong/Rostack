@@ -12,15 +12,12 @@ import type { Tool } from '../../types/tool'
 import { isSameTool } from '../../tool/model'
 import type { RuntimeStateController } from '../state'
 import {
-  readEdgeLabelEditStyle,
-  readNodeEditStyle,
   type EditCapability,
   type EditField
 } from '../state/edit'
 import type { SessionRuntime } from './types'
 
 const DEFAULT_EDGE_LABEL_CAPABILITY: EditCapability = {
-  tools: ['size', 'weight', 'italic', 'color', 'background'],
   placeholder: 'Label',
   multiline: true,
   empty: 'remove',
@@ -82,19 +79,16 @@ export const createSessionRuntime = ({
     const text = typeof item.node.data?.[field] === 'string'
       ? item.node.data[field] as string
       : ''
-    const style = readNodeEditStyle(item.node)
 
     runtime.state.edit.mutate.set({
       kind: 'node',
       nodeId,
       field,
       initial: {
-        text,
-        style
+        text
       },
       draft: {
-        text,
-        style
+        text
       },
       layout: {
         baseRect: item.rect,
@@ -123,19 +117,16 @@ export const createSessionRuntime = ({
     }
 
     const text = typeof label.text === 'string' ? label.text : ''
-    const style = readEdgeLabelEditStyle(label)
 
     runtime.state.edit.mutate.set({
       kind: 'edge-label',
       edgeId,
       labelId,
       initial: {
-        text,
-        style
+        text
       },
       draft: {
-        text,
-        style
+        text
       },
       layout: {
         composing: false
@@ -218,7 +209,6 @@ export const createSessionRuntime = ({
       startEdgeLabel,
       input: runtime.state.edit.mutate.input,
       caret: runtime.state.edit.mutate.caret,
-      style: runtime.state.edit.mutate.style,
       measure: runtime.state.edit.mutate.measure,
       clear: runtime.state.edit.mutate.clear
     }

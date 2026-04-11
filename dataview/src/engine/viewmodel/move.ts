@@ -2,20 +2,15 @@ import type {
   AppearanceList,
   AppearanceId,
 } from '../project/model'
+import {
+  sameOrder
+} from '@shared/equality'
 import type {
   Placement,
   Plan
 } from './types'
 
 const emptyIds = [] as readonly AppearanceId[]
-
-const sameIds = (
-  left: readonly AppearanceId[],
-  right: readonly AppearanceId[]
-) => (
-  left.length === right.length
-  && left.every((id, index) => id === right[index])
-)
 
 const normalize = (
   order: readonly AppearanceId[],
@@ -114,7 +109,7 @@ const plan = (
       section: target.section,
       ...(nextBefore ? { before: nextBefore } : {})
     },
-    changed: !sameSection || !sameIds(
+    changed: !sameSection || !sameOrder(
       sectionIds,
       apply(sectionIds, nextIds, nextBefore)
     )

@@ -22,6 +22,7 @@
   ],
   "dependencies": {
     "@shared/dom": "workspace:*",
+    "@shared/equality": "workspace:*",
     "@shared/scheduler": "workspace:*",
     "@shared/store": "workspace:*",
     "@whiteboard/core": "workspace:*",

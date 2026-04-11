@@ -2,6 +2,10 @@ import type {
   CalculationCollection
 } from '@dataview/core/calculation'
 import {
+  sameJsonValue,
+  sameOrder
+} from '@shared/equality'
+import {
   sameFilterRule
 } from '@dataview/core/filter'
 import {
@@ -47,44 +51,10 @@ export interface TableCurrentView {
   calculationsBySection: ReadonlyMap<SectionKey, CalculationCollection>
 }
 
-const stableSerialize = (value: unknown): string => {
-  if (value === undefined) {
-    return 'undefined'
-  }
-  if (value === null) {
-    return 'null'
-  }
-  if (typeof value === 'string') {
-    return JSON.stringify(value)
-  }
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return String(value)
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(item => stableSerialize(item)).join(',')}]`
-  }
-  if (typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, nestedValue]) => `${JSON.stringify(key)}:${stableSerialize(nestedValue)}`)
-    return `{${entries.join(',')}}`
-  }
-
-  return String(value)
-}
-
-const equalStableValue = (
-  left: unknown,
-  right: unknown
-) => stableSerialize(left) === stableSerialize(right)
-
 const equalIds = <T extends string>(
   left: readonly T[],
   right: readonly T[]
-) => (
-  left.length === right.length
-  && left.every((value, index) => value === right[index])
-)
+) => sameOrder(left, right)
 
 const calcEntries = (
   calc: ViewCalc
@@ -94,7 +64,7 @@ const calcEntries = (
 const equalCalc = (
   left: ViewCalc,
   right: ViewCalc
-) => stableSerialize(calcEntries(left)) === stableSerialize(calcEntries(right))
+) => sameJsonValue(calcEntries(left), calcEntries(right))
 
 const equalFilter = (
   left: Filter,
@@ -123,7 +93,7 @@ const equalView = (
   && sameGroup(left.group, right.group)
   && equalCalc(left.calc, right.calc)
   && equalDisplay(left.display, right.display)
-  && equalStableValue(left.options, right.options)
+  && sameJsonValue(left.options, right.options)
   && equalIds(left.orders, right.orders)
 )
 

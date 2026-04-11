@@ -1,4 +1,4 @@
-import type { SelectionToolbarContext } from '@whiteboard/editor'
+import type { NodeToolbarContext } from '@whiteboard/editor'
 import type { WhiteboardRuntime } from '#react/types/runtime'
 import type { ToolbarItemKey, ToolbarPanelKey } from '../types'
 import { boldItem, italicItem } from './textStyle'
@@ -38,7 +38,7 @@ export const renderToolbarPanel = ({
   closePanel
 }: {
   panelKey: ToolbarPanelKey | null
-  context: SelectionToolbarContext
+  context: NodeToolbarContext
   editor: WhiteboardRuntime
   closePanel: () => void
 }) => {

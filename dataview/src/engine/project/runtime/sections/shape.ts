@@ -2,6 +2,9 @@ import type {
   RecordId,
   ViewGroup
 } from '@dataview/core/contracts'
+import {
+  sameOrder
+} from '@shared/equality'
 import type {
   IndexState
 } from '../../../index/types'
@@ -21,8 +24,7 @@ export const ROOT_SECTION_KEY = 'root' as SectionKey
 export const sameRecordIds = (
   left: readonly RecordId[],
   right: readonly RecordId[]
-) => left.length === right.length
-  && left.every((value, index) => value === right[index])
+) => sameOrder(left, right)
 
 const sameBucket = (
   left: SectionNodeState['bucket'],

@@ -11,9 +11,9 @@ import {
 } from '@whiteboard/core/edge'
 import { getNodeGeometry } from '@whiteboard/core/node'
 import {
-  isOrderedArrayEqual,
-  isSamePointArray
-} from '@whiteboard/core/equality'
+  sameOrder as isOrderedArrayEqual,
+  samePointArray as isSamePointArray
+} from '@shared/equality'
 import type { EdgeId, Node, NodeId, NodeType, Rect } from '@whiteboard/core/types'
 import {
   type EdgeItem,
@@ -33,7 +33,6 @@ import {
   createPatchedItemStore
 } from './keyed'
 import {
-  applyEdgeLabelEditStyle,
   type EditSession
 } from '../state/edit'
 
@@ -313,8 +312,7 @@ const createEdgeItemStore = ({
         ? label
         : {
             ...label,
-            text: session.draft.text,
-            style: applyEdgeLabelEditStyle(label.style, session.draft.style)
+            text: session.draft.text
           }
     ))
 

@@ -4,10 +4,10 @@ import {
   toLayerOrderedCanvasNodeIds
 } from '@whiteboard/core/node'
 import {
-  isSameIdOrder,
-  isSameMapValueRefs,
-  isSameRefOrder
-} from '@whiteboard/core/equality'
+  sameIdOrder as isSameIdOrder,
+  sameMapRefs as isSameMapValueRefs,
+  sameOrder as isSameRefOrder
+} from '@shared/equality'
 import {
   deriveNodeReadSlices,
   deriveVisibleEdges

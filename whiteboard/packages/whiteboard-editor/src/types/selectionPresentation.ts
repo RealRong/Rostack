@@ -18,19 +18,19 @@ export type ToolbarSelectionKind =
   | 'group'
   | 'mixed'
 
-export type SelectionToolbarFilter = {
+export type NodeToolbarFilter = {
   label: string
   types: readonly SelectionNodeTypeInfo[]
 }
 
-export type SelectionToolbarContext = {
+export type NodeToolbarContext = {
   box: Rect
-  selectionKey: string
-  selectionKind: ToolbarSelectionKind
+  key: string
+  kind: ToolbarSelectionKind
   nodeIds: readonly NodeId[]
   nodes: readonly Node[]
   primaryNode?: Node
-  filter?: SelectionToolbarFilter
+  filter?: NodeToolbarFilter
   canChangeShapeKind: boolean
   canEditFontSize: boolean
   canEditFontWeight: boolean

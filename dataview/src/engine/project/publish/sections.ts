@@ -1,6 +1,9 @@
 import type {
   RecordId
 } from '@dataview/core/contracts'
+import {
+  sameOrder
+} from '@shared/equality'
 import type {
   Appearance,
   AppearanceId,
@@ -16,12 +19,6 @@ const emptyIds = [] as readonly AppearanceId[]
 const SEPARATOR = '\u0000'
 const SECTION_PREFIX = 'section:'
 const RECORD_PREFIX = 'record:'
-
-const sameIds = (
-  left: readonly string[],
-  right: readonly string[]
-) => left.length === right.length
-  && left.every((value, index) => value === right[index])
 
 export const createAppearanceId = (input: {
   section: SectionKey
@@ -179,7 +176,7 @@ export const buildAppearanceList = (input: {
 
     nextIdsBySection.set(
       sectionKey,
-      previousSectionIds && sameIds(previousSectionIds, sectionIds)
+      previousSectionIds && sameOrder(previousSectionIds, sectionIds)
         ? previousSectionIds
         : sectionIds
     )
@@ -189,7 +186,7 @@ export const buildAppearanceList = (input: {
     }
   })
 
-  const publishedIds = previous && sameIds(previous.ids, ids)
+  const publishedIds = previous && sameOrder(previous.ids, ids)
     ? previous.ids
     : ids
   const idsBySection = previous && previous.idsBySection.size === nextIdsBySection.size

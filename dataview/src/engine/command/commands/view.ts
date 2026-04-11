@@ -17,6 +17,11 @@ import {
 } from '@dataview/core/contracts/kanban'
 import type { TableOptions } from '@dataview/core/contracts/viewOptions'
 import type { BaseOperation } from '@dataview/core/contracts/operations'
+import {
+  sameJsonValue,
+  sameOrder,
+  sameShallowRecord
+} from '@shared/equality'
 import type { IndexedCommand } from '../context'
 import {
   getDocumentActiveViewId,
@@ -59,31 +64,14 @@ import {
   validateViewExists
 } from './shared'
 
-const sameRecordOrder = (
-  left: readonly string[],
-  right: readonly string[]
-) => left.length === right.length
-  && left.every((recordId, index) => recordId === right[index])
+const sameRecordOrder = sameOrder<string>
 
-const sameFieldIds = (
-  left: readonly string[],
-  right: readonly string[]
-) => left.length === right.length
-  && left.every((fieldId, index) => fieldId === right[index])
+const sameFieldIds = sameOrder<string>
 
 const sameWidths = (
   left: TableOptions['widths'],
   right: TableOptions['widths']
-) => {
-  const leftKeys = Object.keys(left)
-  const rightKeys = Object.keys(right)
-
-  if (leftKeys.length !== rightKeys.length) {
-    return false
-  }
-
-  return leftKeys.every(key => left[key] === right[key])
-}
+) => sameShallowRecord(left, right)
 
 const calculationEntries = (
   calc: ViewCalc
@@ -93,7 +81,7 @@ const calculationEntries = (
 const sameCalc = (
   left: ViewCalc,
   right: ViewCalc
-) => JSON.stringify(calculationEntries(left)) === JSON.stringify(calculationEntries(right))
+) => sameJsonValue(calculationEntries(left), calculationEntries(right))
 
 const sameDisplay = (
   left: ViewDisplay,
@@ -111,7 +99,7 @@ const sameSearch = (
 const sameFilterRule = (
   left: Filter['rules'][number],
   right: Filter['rules'][number]
-) => JSON.stringify(left) === JSON.stringify(right)
+) => sameJsonValue(left, right)
 
 const sameFilter = (
   left: Filter,
@@ -136,7 +124,7 @@ const sameSorters = (
 const sameGroup = (
   left: ViewGroup | undefined,
   right: ViewGroup | undefined
-) => JSON.stringify(left) === JSON.stringify(right)
+) => sameJsonValue(left, right)
 
 const sameViewOptions = (
   left: View['options'],

@@ -26,6 +26,10 @@ import {
   type KeyedReadStore,
   type ReadStore
 } from '@shared/store'
+import {
+  sameOrder,
+  sameValue
+} from '@shared/equality'
 import type {
   EngineProjectApi,
   EngineReadApi
@@ -39,23 +43,6 @@ import type {
   State,
   Store
 } from './index'
-
-const sameValue = <T,>(
-  left: T,
-  right: T
-) => Object.is(left, right)
-
-const equalIds = <T extends string>(
-  left: readonly T[],
-  right: readonly T[]
-) => left.length === right.length
-  && left.every((value, index) => value === right[index])
-
-const equalItems = <T,>(
-  left: readonly T[],
-  right: readonly T[]
-) => left.length === right.length
-  && left.every((value, index) => Object.is(value, right[index]))
 
 const notify = (
   listeners: ReadonlySet<() => void>
@@ -156,7 +143,7 @@ export const createReadApi = (
   recordIds: createSelector<readonly RecordId[]>({
     store,
     read: state => state.doc.records.order,
-    isEqual: equalIds
+    isEqual: sameOrder
   }),
   record: createKeyedSelector({
     store,
@@ -165,12 +152,12 @@ export const createReadApi = (
   customFieldIds: createSelector<readonly CustomFieldId[]>({
     store,
     read: state => state.doc.fields.order,
-    isEqual: equalIds
+    isEqual: sameOrder
   }),
   customFields: createSelector<readonly CustomField[]>({
     store,
     read: state => getDocumentCustomFields(state.doc),
-    isEqual: equalItems
+    isEqual: sameOrder
   }),
   customField: createKeyedSelector({
     store,
@@ -179,12 +166,12 @@ export const createReadApi = (
   viewIds: createSelector<readonly ViewId[]>({
     store,
     read: state => state.doc.views.order,
-    isEqual: equalIds
+    isEqual: sameOrder
   }),
   views: createSelector<readonly View[]>({
     store,
     read: state => getDocumentViews(state.doc),
-    isEqual: equalItems
+    isEqual: sameOrder
   }),
   view: createKeyedSelector<ViewId, View | undefined>({
     store,

@@ -76,9 +76,7 @@ import type {
   EditCaret,
   EditField,
   EditLayout,
-  EditSession,
-  EditStyleDraft,
-  EditTool
+  EditSession
 } from '../runtime/state/edit'
 import type { TextPreviewPatch } from '../runtime/overlay/types'
 import type { ClipboardPacket } from '../clipboard/packet'
@@ -356,7 +354,6 @@ export type EditorSessionEditActions = {
   ) => void
   input: (text: string) => void
   caret: (caret: EditCaret) => void
-  style: (patch: EditStyleDraft) => void
   measure: (patch: Partial<EditLayout>) => void
   clear: () => void
 }
@@ -429,24 +426,10 @@ export type EditorChromePresentation = {
 }
 
 export type EditorPanelPresentation = {
-  selectionToolbar: ReturnType<RuntimeRead['selection']['toolbar']['get']>
+  nodeToolbar: ReturnType<RuntimeRead['selection']['nodeToolbar']['get']>
   edgeToolbar: ReturnType<RuntimeRead['edge']['toolbar']['get']>
-  textToolbar: EditorTextToolbarPresentation | undefined
   history: HistoryState
   draw: DrawPreferences
-}
-
-export type EditorTextToolbarPresentation = {
-  session: NonNullable<EditSession>
-  tools: readonly EditTool[]
-  values: {
-    size?: number
-    weight?: number
-    italic: boolean
-    color?: string
-    background?: string
-    align?: 'left' | 'center' | 'right'
-  }
 }
 
 export type EditorAppActions = {
@@ -610,7 +593,7 @@ export type EditorSelectionSelect = (() => EditorStore['selection']) & {
   box: () => RuntimeRead['selection']['box']
   summary: () => SelectionInternalRead['model']
   overlay: () => RuntimeRead['selection']['overlay']
-  toolbar: () => RuntimeRead['selection']['toolbar']
+  nodeToolbar: () => RuntimeRead['selection']['nodeToolbar']
   node: () => RuntimeRead['selection']['node']
 }
 

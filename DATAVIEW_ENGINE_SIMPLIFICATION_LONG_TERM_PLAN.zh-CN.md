@@ -460,15 +460,15 @@
 
 不是所有地方都要重写。有几块已经写对了，应该复用，而不是再发明一套新抽象。
 
-## 7.1 `index/runtime.ts` 可以保留 orchestration 角色
+## 7.1 `derive/index.ts` 更适合作为长期唯一入口
 
-[runtime.ts](/Users/realrong/Rostack/dataview/src/engine/index/runtime.ts) 现在已经比较像薄壳。
+[index.ts](/Users/realrong/Rostack/dataview/src/engine/derive/index.ts) 现在已经承接了 index 的真实主线。
 
-它的问题不是层级过多，而是：
+长期更合理的方向是：
 
-- 仍有少量 demand/trace 装配
-
-但整体方向已经合理，不应大动。
+- 不再保留额外的 index runtime 包装器
+- 直接让 `createIndexState/deriveIndex` 成为唯一入口
+- 把 demand/trace 装配留在这条纯派生线上
 
 
 ## 7.2 `query/sections/calc` 的局部模块边界可以复用

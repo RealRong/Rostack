@@ -1,6 +1,9 @@
 import type {
   FieldId
 } from '@dataview/core/contracts'
+import {
+  sameOrder
+} from '@shared/equality'
 import type {
   GroupDemand,
   IndexDemand
@@ -52,8 +55,7 @@ export const normalizeIndexDemand = (
 export const sameFieldIdList = (
   left: readonly FieldId[],
   right: readonly FieldId[]
-) => left.length === right.length
-  && left.every((value, index) => value === right[index])
+) => sameOrder(left, right)
 
 export const sameSearchDemand = (
   left: NormalizedIndexDemand['search'],

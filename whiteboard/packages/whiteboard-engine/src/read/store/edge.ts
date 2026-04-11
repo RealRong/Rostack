@@ -12,9 +12,9 @@ import {
   type EdgeRelations
 } from '@whiteboard/core/edge'
 import {
-  isSamePointArray,
-  isSameRectWithRotationTuple
-} from '@whiteboard/core/equality'
+  samePointArray as isSamePointArray,
+  sameRectWithRotation as isSameRectWithRotationTuple
+} from '@shared/equality'
 import { createValueStore } from '@shared/store'
 import type { ReadSnapshot } from '@engine-types/internal/read'
 import { createTrackedRead } from './tracked'

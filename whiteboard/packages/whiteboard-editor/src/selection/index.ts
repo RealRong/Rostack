@@ -4,7 +4,7 @@ export type {
 } from './nodeSummary'
 export type {
   SelectionOverlay,
-  SelectionToolbarContext,
-  SelectionToolbarFilter,
+  NodeToolbarContext,
+  NodeToolbarFilter,
   ToolbarSelectionKind
 } from '../types/selectionPresentation'

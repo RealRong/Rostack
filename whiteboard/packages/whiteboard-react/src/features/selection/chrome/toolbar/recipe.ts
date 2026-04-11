@@ -1,4 +1,4 @@
-import type { SelectionToolbarContext } from '@whiteboard/editor'
+import type { NodeToolbarContext } from '@whiteboard/editor'
 import type {
   ToolbarItemKey,
   ToolbarRecipeItem
@@ -86,7 +86,7 @@ const mixedRecipe = [
 ] satisfies readonly ToolbarRecipeItem[]
 
 const isItemVisible = (
-  context: SelectionToolbarContext,
+  context: NodeToolbarContext,
   key: ToolbarItemKey
 ) => {
   switch (key) {
@@ -117,7 +117,7 @@ const isItemVisible = (
 
 const normalizeRecipe = (
   recipe: readonly ToolbarRecipeItem[],
-  context: SelectionToolbarContext
+  context: NodeToolbarContext
 ) => {
   const normalized: ToolbarRecipeItem[] = []
 
@@ -144,9 +144,9 @@ const normalizeRecipe = (
 }
 
 const resolveTemplate = (
-  context: SelectionToolbarContext
+  context: NodeToolbarContext
 ) => {
-  switch (context.selectionKind) {
+  switch (context.kind) {
     case 'shape':
       return shapeRecipe
     case 'text':
@@ -165,5 +165,5 @@ const resolveTemplate = (
 }
 
 export const resolveToolbarRecipe = (
-  context: SelectionToolbarContext
+  context: NodeToolbarContext
 ): readonly ToolbarRecipeItem[] => normalizeRecipe(resolveTemplate(context), context)

@@ -7,14 +7,9 @@ import type { EditorRuntime } from './runtime'
 import type { ContextMenuIntent } from '../../types/input'
 import type { InteractionRuntime } from '../interaction/types'
 import type { EdgeHoverService } from '../../interactions/edge/hover'
-
-const isSameIds = (
-  left: readonly string[],
-  right: readonly string[]
-) => (
-  left.length === right.length
-  && left.every((value, index) => value === right[index])
-)
+import {
+  sameOrder as isSameIds
+} from '@shared/equality'
 
 const readSelectionIntent = (
   selection: EditorState['selection'],

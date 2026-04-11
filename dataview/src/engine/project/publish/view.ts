@@ -23,6 +23,9 @@ import {
   sameFilterRule
 } from '@dataview/core/filter'
 import {
+  sameOrder
+} from '@shared/equality'
+import {
   isTitleFieldId,
   getFieldGroupMeta
 } from '@dataview/core/field'
@@ -56,10 +59,7 @@ const equalList = <T,>(
   left: readonly T[],
   right: readonly T[],
   equal: (left: T, right: T) => boolean
-) => (
-  left.length === right.length
-  && left.every((value, index) => equal(value, right[index] as T))
-)
+) => sameOrder(left, right, equal)
 
 const equalOptionalList = <T,>(
   left: readonly T[] | undefined,

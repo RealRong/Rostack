@@ -10,7 +10,7 @@ import {
   readShapeSpec,
   type ShapeKind
 } from '@whiteboard/core/node'
-import { isSameOptionalNumberArray } from '@whiteboard/core/equality'
+import { sameOptionalNumberArray as isSameOptionalNumberArray } from '@shared/equality'
 import type {
   SelectionAffordance,
   SelectionSummary,
@@ -19,7 +19,7 @@ import type {
 import type { Node, NodeSchema, Rect } from '@whiteboard/core/types'
 import type {
   SelectionOverlay,
-  SelectionToolbarContext,
+  NodeToolbarContext,
   ToolbarSelectionKind
 } from '../../selection'
 import type { NodeRegistry } from '../../types/node'
@@ -273,7 +273,7 @@ const resolveToolbarContext = ({
   summary: SelectionSummary
   box: Rect
   registry: Pick<NodeRegistry, 'get'>
-}): SelectionToolbarContext | undefined => {
+}): NodeToolbarContext | undefined => {
   const nodes = summary.items.nodes
   if (!nodes.length || summary.items.edgeCount > 0) {
     return undefined
@@ -291,8 +291,8 @@ const resolveToolbarContext = ({
 
   return {
     box,
-    selectionKey: nodes.map((node) => node.id).join('\0'),
-    selectionKind,
+    key: nodes.map((node) => node.id).join('\0'),
+    kind: selectionKind,
     nodeIds: nodeSummary.ids,
     nodes,
     primaryNode: summary.items.primaryNode,
@@ -452,7 +452,7 @@ export const resolveSelectionToolbar = ({
   tool: Tool
   edit: EditSession
   interactionChrome: boolean
-}): SelectionToolbarContext | undefined => {
+}): NodeToolbarContext | undefined => {
   const box = affordance.displayBox
   if (!box) {
     return undefined
@@ -464,7 +464,6 @@ export const resolveSelectionToolbar = ({
   if (
     !pureNodeSelection
     || tool.type !== 'select'
-    || edit !== null
     || !interactionChrome
   ) {
     return undefined

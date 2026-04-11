@@ -2,8 +2,9 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 
 const {
-  createEngineIndex
-} = require('../.tmp/group-test-dist/engine/index/runtime.js')
+  createIndexState,
+  deriveIndex
+} = require('../.tmp/group-test-dist/engine/derive/index.js')
 
 const TITLE_FIELD_ID = 'title'
 const FIELD_STATUS = 'status'
@@ -122,9 +123,27 @@ const createDelta = (input = {}) => ({
   semantics: input.semantics ?? []
 })
 
+const createIndexHarness = (document, demand) => {
+  let current = createIndexState(document, demand)
+
+  return {
+    state: () => current.state,
+    sync: (nextDocument, delta, nextDemand) => {
+      current = deriveIndex({
+        previous: current.state,
+        previousDemand: current.demand,
+        document: nextDocument,
+        delta,
+        ...(nextDemand ? { demand: nextDemand } : {})
+      })
+      return current
+    }
+  }
+}
+
 test('engine.index sync patches search/group/sort/calculation on record value changes', () => {
   const document = createDocument()
-  const index = createEngineIndex(document, {
+  const index = createIndexHarness(document, {
     search: {
       fields: [TITLE_FIELD_ID]
     },
@@ -193,7 +212,7 @@ test('engine.index sync patches search/group/sort/calculation on record value ch
 
 test('engine.index sync rebuilds only touched field semantics on schema changes', () => {
   const document = createDocument()
-  const index = createEngineIndex(document, {
+  const index = createIndexHarness(document, {
     search: {
       fields: [FIELD_STATUS]
     },

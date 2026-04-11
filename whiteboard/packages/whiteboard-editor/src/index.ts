@@ -11,8 +11,6 @@ export type {
   EditCaret,
   EditLayout,
   EditSession,
-  EditStyleDraft,
-  EditTool,
   EditField,
   EditMeasureMode,
   EditEmptyBehavior
@@ -99,8 +97,8 @@ export type {
 } from './types/edgePresentation'
 export type {
   SelectionOverlay,
-  SelectionToolbarContext,
-  SelectionToolbarFilter,
+  NodeToolbarContext,
+  NodeToolbarFilter,
   SelectionNodeInfo,
   SelectionNodeTypeInfo,
   ToolbarSelectionKind

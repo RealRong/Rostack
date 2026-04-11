@@ -6,6 +6,9 @@ import type {
 import {
   TITLE_FIELD_ID
 } from '@dataview/core/contracts'
+import {
+  sameOrder as sameIds
+} from '@shared/equality'
 import type {
   DataDoc
 } from '@dataview/core/contracts'
@@ -15,12 +18,6 @@ import type {
 import {
   createOrderIndex
 } from '../shared'
-
-const sameIds = (
-  left: readonly RecordId[],
-  right: readonly RecordId[]
-) => left.length === right.length
-  && left.every((value, index) => value === right[index])
 
 const toValueMap = (
   document: DataDoc,

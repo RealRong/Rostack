@@ -16,6 +16,7 @@
     "dist"
   ],
   "dependencies": {
+    "@shared/equality": "workspace:*",
     "@shared/store": "workspace:*",
     "@whiteboard/core": "workspace:*",
     "@whiteboard/engine": "workspace:*",

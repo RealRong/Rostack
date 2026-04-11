@@ -1,7 +1,10 @@
 import { applySelection, type SelectionMode } from '../node/selection'
 import { getRectsBoundingRect } from '../geometry'
 import type { Edge, EdgeId, GroupId, Node, NodeId, Rect } from '../types'
-import { isOrderedArrayEqual, isSameOptionalRectTuple } from '../equality'
+import {
+  sameOptionalRect as isSameOptionalRectTuple,
+  sameOrder as isOrderedArrayEqual
+} from '@shared/equality'
 
 const EMPTY_NODE_IDS: readonly NodeId[] = []
 const EMPTY_EDGE_IDS: readonly EdgeId[] = []

@@ -21,6 +21,9 @@ import {
   type ReadStore
 } from '@shared/store'
 import {
+  sameOrder
+} from '@shared/equality'
+import {
   findVirtualBlockEndIndex,
   findVirtualBlockStartIndex
 } from '../../../virtual/math'
@@ -141,12 +144,6 @@ const totalHeightOf = (
     : 0
 }
 
-const sameIds = (
-  left: readonly AppearanceId[],
-  right: readonly AppearanceId[]
-) => left.length === right.length
-  && left.every((id, index) => id === right[index])
-
 const sameBlock = (
   left: TableBlock,
   right: TableBlock
@@ -168,7 +165,7 @@ const sameBlock = (
       return right.kind === 'column-header'
         && left.scopeId === right.scopeId
         && left.label === right.label
-        && sameIds(left.rowIds, right.rowIds)
+        && sameOrder(left.rowIds, right.rowIds)
     case 'column-footer':
       return right.kind === 'column-footer'
         && left.scopeId === right.scopeId
@@ -177,18 +174,14 @@ const sameBlock = (
         && left.section.key === right.section.key
         && left.section.title === right.section.title
         && left.section.collapsed === right.section.collapsed
-        && sameIds(left.section.ids, right.section.ids)
+        && sameOrder(left.section.ids, right.section.ids)
   }
 }
 
 const sameBlocks = (
   left: readonly TableBlock[],
   right: readonly TableBlock[]
-) => left.length === right.length
-  && left.every((block, index) => {
-    const candidate = right[index]
-    return candidate !== undefined && sameBlock(block, candidate)
-  })
+) => sameOrder(left, right, sameBlock)
 
 const sameLayoutSnapshot = (
   left: TableVirtualLayoutSnapshot,

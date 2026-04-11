@@ -1,6 +1,9 @@
 import {
   createValueStore
 } from '@shared/store'
+import {
+  sameOrder
+} from '@shared/equality'
 import type {
   AppearanceId
 } from '@dataview/engine/project'
@@ -16,14 +19,6 @@ export const emptySelection: Selection = {
 }
 
 type SelectMode = 'replace' | 'toggle' | 'range'
-
-const sameIds = (
-  left: readonly AppearanceId[],
-  right: readonly AppearanceId[]
-) => (
-  left.length === right.length
-  && left.every((id, index) => id === right[index])
-)
 
 const includesId = (
   ids: readonly AppearanceId[],
@@ -102,7 +97,7 @@ export const selection = {
   ) => (
     left.anchor === right.anchor
     && left.focus === right.focus
-    && sameIds(left.ids, right.ids)
+    && sameOrder(left.ids, right.ids)
   ),
   normalize: (
     order: readonly AppearanceId[],

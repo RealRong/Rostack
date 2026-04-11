@@ -7,7 +7,7 @@ import {
 import type { BoardConfig } from '@engine-types/instance'
 import type { ReadModel } from '@engine-types/read'
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
-import { isSameRefOrder } from '@whiteboard/core/equality'
+import { sameOrder as isSameRefOrder } from '@shared/equality'
 import { NodeGeometryCache } from '../../geometry/nodeGeometry'
 
 type Rebuild = 'none' | 'dirty' | 'full'

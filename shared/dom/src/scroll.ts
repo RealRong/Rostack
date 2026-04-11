@@ -1,4 +1,4 @@
-import type { Rect } from './geometry.ts'
+import type { Rect } from './geometry'
 
 export type ScrollNode = HTMLElement | Window
 

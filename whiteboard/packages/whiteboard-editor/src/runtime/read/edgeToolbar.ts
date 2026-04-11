@@ -7,9 +7,9 @@ import type {
   EdgeType
 } from '@whiteboard/core/types'
 import {
-  isOrderedArrayEqual,
-  isSameOptionalBoxTuple
-} from '@whiteboard/core/equality'
+  sameOptionalBox as isSameOptionalBoxTuple,
+  sameOrder as isOrderedArrayEqual
+} from '@shared/equality'
 import { createDerivedStore, type ReadStore } from '@shared/store'
 import type { TargetBoundsQuery } from '../query/targetBounds'
 import type { Tool } from '../../types/tool'

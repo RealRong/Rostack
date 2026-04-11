@@ -1,6 +1,12 @@
 import {
   isPointEqual
 } from '@whiteboard/core/geometry'
+import {
+  sameOptionalPoint,
+  sameOrder,
+  samePointArray,
+  sameShallowRecord
+} from '@shared/equality'
 import { createNodeUpdateOperation } from '@whiteboard/core/node'
 import { compileNodeFieldUpdate } from '@whiteboard/core/schema'
 import type {
@@ -106,86 +112,22 @@ const isRotationEqual = (
   right?: number
 ) => (left ?? 0) === (right ?? 0)
 
-const isArrayEqual = (
-  left: readonly unknown[] | undefined,
-  right: readonly unknown[] | undefined
-) => {
-  if (left === right) {
-    return true
-  }
-  if (!left || !right) {
-    return false
-  }
-  if (left.length !== right.length) {
-    return false
-  }
-
-  return left.every((value, index) => value === right[index])
-}
+const isArrayEqual = sameOrder
 
 const isPointOptionalEqual = (
   left?: Point,
   right?: Point
-) => {
-  if (left === right) {
-    return true
-  }
-  if (!left || !right) {
-    return false
-  }
-  return isPointEqual(left, right)
-}
+) => sameOptionalPoint(left, right)
 
 const isPointArrayEqual = (
   left: readonly Point[] | undefined,
   right: readonly Point[] | undefined
-) => {
-  if (left === right) {
-    return true
-  }
-  if (!left || !right) {
-    return false
-  }
-  if (left.length !== right.length) {
-    return false
-  }
-
-  return left.every((point, index) =>
-    isPointEqual(point, right[index]!)
-  )
-}
+) => samePointArray(left, right)
 
 const isShallowEqual = (
   left: object | undefined,
   right: object | undefined
-) => {
-  if (left === right) {
-    return true
-  }
-  if (!left || !right) {
-    return false
-  }
-
-  const leftRecord = left as Record<string, unknown>
-  const rightRecord = right as Record<string, unknown>
-  const leftKeys = Object.keys(leftRecord)
-  const rightKeys = Object.keys(rightRecord)
-  if (leftKeys.length !== rightKeys.length) {
-    return false
-  }
-
-  return leftKeys.every((key) => {
-    const leftValue = leftRecord[key]
-    const rightValue = rightRecord[key]
-    if (leftValue === rightValue) {
-      return true
-    }
-    if (Array.isArray(leftValue) && Array.isArray(rightValue)) {
-      return isArrayEqual(leftValue, rightValue)
-    }
-    return false
-  })
-}
+) => sameShallowRecord(left, right)
 
 const isEdgeAnchorEqual = (
   left: NodeEdgeEnd['anchor'],

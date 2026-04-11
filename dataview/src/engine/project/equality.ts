@@ -3,6 +3,11 @@ import type {
   CalculationDistributionItem,
   CalculationResult
 } from '@dataview/core/calculation'
+import {
+  sameJsonValue,
+  sameMap,
+  sameOrder
+} from '@shared/equality'
 import type {
   Field,
 } from '@dataview/core/contracts'
@@ -17,73 +22,17 @@ const equalList = <T,>(
   left: readonly T[],
   right: readonly T[],
   equal: (left: T, right: T) => boolean
-) => (
-  left.length === right.length
-  && left.every((value, index) => equal(value, right[index] as T))
-)
+) => sameOrder(left, right, equal)
 
 const equalIds = <T extends string>(
   left: readonly T[],
   right: readonly T[]
-) => equalList(left, right, Object.is)
-
-const stableSerialize = (value: unknown): string => {
-  if (value === undefined) {
-    return 'undefined'
-  }
-  if (value === null) {
-    return 'null'
-  }
-  if (typeof value === 'string') {
-    return JSON.stringify(value)
-  }
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return String(value)
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(item => stableSerialize(item)).join(',')}]`
-  }
-  if (typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, nestedValue]) => `${JSON.stringify(key)}:${stableSerialize(nestedValue)}`)
-    return `{${entries.join(',')}}`
-  }
-
-  return String(value)
-}
-
-const equalStableValue = (
-  left: unknown,
-  right: unknown
-) => stableSerialize(left) === stableSerialize(right)
-
-const equalMap = <K, V>(
-  left: ReadonlyMap<K, V>,
-  right: ReadonlyMap<K, V>,
-  equal: (left: V, right: V) => boolean
-) => {
-  if (left.size !== right.size) {
-    return false
-  }
-
-  for (const [key, value] of left) {
-    const next = right.get(key)
-    if (next === undefined && !right.has(key)) {
-      return false
-    }
-    if (!equal(value, next as V)) {
-      return false
-    }
-  }
-
-  return true
-}
+) => sameOrder(left, right)
 
 const equalField = (
   left: Field,
   right: Field
-) => equalStableValue(left, right)
+) => sameJsonValue(left, right)
 
 const equalSection = (
   left: Section,
@@ -94,7 +43,7 @@ const equalSection = (
   && left.color === right.color
   && left.collapsed === right.collapsed
   && equalIds(left.ids, right.ids)
-  && equalStableValue(left.bucket, right.bucket)
+  && sameJsonValue(left.bucket, right.bucket)
 )
 
 const equalCalculationDistributionItem = (
@@ -127,7 +76,7 @@ const equalCalculationResult = (
     case 'distribution':
       return right.kind === 'distribution'
         && left.denominator === right.denominator
-        && equalList(left.items, right.items, equalCalculationDistributionItem)
+        && sameOrder(left.items, right.items, equalCalculationDistributionItem)
     case 'empty':
       return right.kind === 'empty'
     default:
@@ -138,7 +87,7 @@ const equalCalculationResult = (
 const equalCalculationCollection = (
   left: CalculationCollection,
   right: CalculationCollection
-) => equalMap(left.byField, right.byField, equalCalculationResult)
+) => sameMap(left.byField, right.byField, equalCalculationResult)
 
 export const sameAppearanceList = (
   left: AppearanceList,
@@ -146,7 +95,7 @@ export const sameAppearanceList = (
 ) => (
   equalIds(left.ids, right.ids)
   && left.count === right.count
-  && equalMap(left.idsBySection, right.idsBySection, equalIds)
+  && sameMap(left.idsBySection, right.idsBySection, equalIds)
 )
 
 export const sameSections = (
@@ -165,4 +114,4 @@ export const sameFieldList = (
 export const sameCalculationsBySection = (
   left: ReadonlyMap<SectionKey, CalculationCollection>,
   right: ReadonlyMap<SectionKey, CalculationCollection>
-) => equalMap(left, right, equalCalculationCollection)
+) => sameMap(left, right, equalCalculationCollection)

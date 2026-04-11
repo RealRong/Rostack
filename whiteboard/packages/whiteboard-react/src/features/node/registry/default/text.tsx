@@ -289,7 +289,6 @@ export const TextNodeDefinition: NodeDefinition = {
   edit: {
     fields: {
       text: {
-        tools: ['size', 'weight', 'italic', 'color', 'background'],
         placeholder: TEXT_PLACEHOLDER,
         multiline: true,
         empty: 'keep',
@@ -317,7 +316,6 @@ export const StickyNodeDefinition: NodeDefinition = {
   edit: {
     fields: {
       text: {
-        tools: ['size', 'weight', 'italic', 'color', 'background'],
         placeholder: STICKY_PLACEHOLDER,
         multiline: true,
         empty: 'keep',

@@ -1,4 +1,4 @@
-import type { SelectionToolbarFilter } from '@whiteboard/editor'
+import type { NodeToolbarFilter } from '@whiteboard/editor'
 import type { MenuItem } from '@ui'
 import { Menu } from '@ui'
 import { NodeTypeIcon } from '#react/features/node'
@@ -6,7 +6,7 @@ import type { WhiteboardRuntime } from '#react/types/runtime'
 
 const toMenuItems = (
   editor: WhiteboardRuntime,
-  filter: SelectionToolbarFilter,
+  filter: NodeToolbarFilter,
   onClose: () => void
 ): MenuItem[] => [
   {
@@ -45,7 +45,7 @@ export const SelectionFilterMenu = ({
   onClose
 }: {
   editor: WhiteboardRuntime
-  filter: SelectionToolbarFilter
+  filter: NodeToolbarFilter
   onClose: () => void
 }) => (
   <Menu

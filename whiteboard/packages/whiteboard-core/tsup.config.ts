@@ -6,7 +6,6 @@ export default defineConfig({
     'result/index': 'src/result/index.ts',
     'id/index': 'src/id/index.ts',
     'value/index': 'src/value/index.ts',
-    'equality/index': 'src/equality/index.ts',
     'geometry/index': 'src/geometry/index.ts',
     'node/index': 'src/node/index.ts',
     'mindmap/index': 'src/mindmap/index.ts',

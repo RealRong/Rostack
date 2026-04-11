@@ -4,7 +4,7 @@ import {
   type Equality,
   type StoreRead
 } from '@shared/store'
-import { useStoreValue } from './useStoreValue.ts'
+import { useStoreValue } from './useStoreValue'
 
 type LazySelectorLeaf<T> = (read: StoreRead) => T
 

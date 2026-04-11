@@ -19,6 +19,10 @@ import {
   TITLE_FIELD_ID
 } from '../contracts/state'
 import {
+  sameJsonValue,
+  sameOptionalOrder
+} from '@shared/equality'
+import {
   getDocumentCustomFieldById,
   getDocumentRecordById,
   getDocumentViewById
@@ -39,48 +43,10 @@ import {
 const sameIdList = <T extends string>(
   left: readonly T[] | undefined,
   right: readonly T[] | undefined
-) => {
-  if (!left?.length && !right?.length) {
-    return true
-  }
-
-  if (!left || !right || left.length !== right.length) {
-    return false
-  }
-
-  return left.every((value, index) => value === right[index])
-}
-
-const stableSerialize = (value: unknown): string => {
-  if (value === undefined) {
-    return 'undefined'
-  }
-  if (value === null) {
-    return 'null'
-  }
-  if (typeof value === 'string') {
-    return JSON.stringify(value)
-  }
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return String(value)
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(item => stableSerialize(item)).join(',')}]`
-  }
-  if (typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, nestedValue]) => `${JSON.stringify(key)}:${stableSerialize(nestedValue)}`)
-    return `{${entries.join(',')}}`
-  }
-
-  return String(value)
-}
-
-const sameStableValue = (
-  left: unknown,
-  right: unknown
-) => stableSerialize(left) === stableSerialize(right)
+) => sameOptionalOrder(
+  left?.length ? left : undefined,
+  right?.length ? right : undefined
+)
 
 export const collectViewQueryAspects = (
   previousView: View,
@@ -122,7 +88,7 @@ export const collectViewLayoutAspects = (
   if (!sameIdList(previousView.display.fields, nextView.display.fields)) {
     aspects.add('display')
   }
-  if (!sameStableValue(previousView.options, nextView.options)) {
+  if (!sameJsonValue(previousView.options, nextView.options)) {
     aspects.add('options')
   }
 
@@ -133,7 +99,7 @@ export const collectCalculationFields = (
   previousView: View,
   nextView: View
 ): readonly FieldId[] | undefined => {
-  if (sameStableValue(previousView.calc, nextView.calc)) {
+  if (sameJsonValue(previousView.calc, nextView.calc)) {
     return undefined
   }
 
@@ -164,14 +130,14 @@ export const collectFieldSchemaAspects = (
     aspects.add('kind')
   }
   if ('options' in previousField || 'options' in nextField) {
-    if (!sameStableValue(
+    if (!sameJsonValue(
       'options' in previousField ? previousField.options : undefined,
       'options' in nextField ? nextField.options : undefined
     )) {
       aspects.add('options')
     }
   }
-  if (!sameStableValue(previousField.meta, nextField.meta)) {
+  if (!sameJsonValue(previousField.meta, nextField.meta)) {
     aspects.add('meta')
   }
 
@@ -190,7 +156,7 @@ export const collectFieldSchemaAspects = (
     ...('options' in nextField ? { options: undefined } : {})
   }
 
-  if (!sameStableValue(previousConfig, nextConfig)) {
+  if (!sameJsonValue(previousConfig, nextConfig)) {
     aspects.add('config')
   }
 
@@ -215,7 +181,7 @@ export const collectRecordPatchAspects = (
   if (previousRecord.type !== nextRecord.type) {
     aspects.add('type')
   }
-  if (!sameStableValue(previousRecord.meta, nextRecord.meta)) {
+  if (!sameJsonValue(previousRecord.meta, nextRecord.meta)) {
     aspects.add('meta')
   }
 

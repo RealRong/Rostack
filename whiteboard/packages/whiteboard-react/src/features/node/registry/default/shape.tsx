@@ -204,7 +204,6 @@ export const ShapeNodeDefinition: NodeDefinition = {
   edit: {
     fields: {
       text: {
-        tools: ['size', 'weight', 'italic', 'color', 'align'],
         multiline: true,
         empty: 'keep',
         measure: 'none'

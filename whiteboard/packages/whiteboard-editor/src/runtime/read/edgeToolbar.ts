@@ -1,3 +1,4 @@
+import { getTargetBounds } from '@whiteboard/core/selection'
 import type {
   Edge,
   EdgeDash,
@@ -11,10 +12,10 @@ import {
   sameOrder as isOrderedArrayEqual
 } from '@shared/core'
 import { createDerivedStore, type ReadStore } from '@shared/core'
-import type { TargetBoundsQuery } from '../query/targetBounds'
 import type { Tool } from '../../types/tool'
 import type { EditSession } from '../state/edit'
 import type { InteractionRuntime } from '../interaction/types'
+import type { NodeRead } from './node'
 import type { EdgeRead } from './edge'
 import type { EdgeToolbarContext } from '../../types/edgePresentation'
 
@@ -66,8 +67,8 @@ const isEdgeEditingInteraction = (
 
 export const createEdgeToolbarRead = ({
   selection,
+  node,
   edge,
-  targetBounds,
   tool,
   edit,
   interaction
@@ -76,8 +77,8 @@ export const createEdgeToolbarRead = ({
     nodeIds: readonly string[]
     edgeIds: readonly string[]
   }>
-  edge: Pick<EdgeRead, 'item'>
-  targetBounds: TargetBoundsQuery
+  node: Pick<NodeRead, 'bounds'>
+  edge: Pick<EdgeRead, 'item' | 'bounds'>
   tool: ReadStore<Tool>
   edit: ReadStore<EditSession>
   interaction: Pick<InteractionRuntime, 'mode' | 'chrome'>
@@ -105,8 +106,12 @@ export const createEdgeToolbarRead = ({
       return undefined
     }
 
-    const box = targetBounds.track(readStore, {
-      edgeIds: edges.map((entry) => entry.id)
+    const box = getTargetBounds({
+      target: {
+        edgeIds: edges.map((entry) => entry.id)
+      },
+      readNodeBounds: (nodeId) => readStore(node.bounds, nodeId),
+      readEdgeBounds: (edgeId) => readStore(edge.bounds, edgeId)
     })
     if (!box) {
       return undefined

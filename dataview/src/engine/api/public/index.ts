@@ -7,7 +7,9 @@ export type {
 } from './command'
 export type {
   EngineDocumentApi,
-  EngineHistoryApi
+  EngineHistoryApi,
+  HistoryOptions,
+  HistoryState
 } from './history'
 export type {
   EnginePerfApi,

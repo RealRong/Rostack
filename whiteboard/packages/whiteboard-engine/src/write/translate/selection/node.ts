@@ -13,14 +13,14 @@ import type {
   Size
 } from '@whiteboard/core/types'
 
-const getNodeBoundsByNode = (node: Node, fallbackSize: Size) =>
+const boundsOf = (node: Node, fallbackSize: Size) =>
   getNodeBounds(
     node,
     getNodeRect(node, fallbackSize),
     typeof node.rotation === 'number' ? node.rotation : 0
   )
 
-export const expandNodeSelection = (
+export const expand = (
   nodes: readonly Node[],
   selectedIds: readonly NodeId[],
   nodeSize: Size
@@ -30,16 +30,16 @@ export const expandNodeSelection = (
   return expandFrameSelection({
     nodes,
     ids: [...expandedIds],
-    getNodeRect: (node) => getNodeBoundsByNode(node, nodeSize),
+    getNodeRect: (node) => boundsOf(node, nodeSize),
     getFrameRect: (node) => (
       node.type === 'frame'
-        ? getNodeBoundsByNode(node, nodeSize)
+        ? boundsOf(node, nodeSize)
         : undefined
     )
   })
 }
 
-export const collectCascadeNodeDeleteTargets = ({
+export const cascadeDeleteTargets = ({
   doc,
   ids,
   nodeSize
@@ -48,7 +48,7 @@ export const collectCascadeNodeDeleteTargets = ({
   ids: readonly NodeId[]
   nodeSize: Size
 }) => {
-  const expandedIds = expandNodeSelection(
+  const expandedIds = expand(
     listNodes(doc),
     ids,
     nodeSize

@@ -588,13 +588,14 @@ export const createEditor = ({
         item: () => read.node.item,
         view: () => read.node.view,
         capability: () => read.node.capability,
-        bounds: read.node.bounds
+        bounds: read.node.bounds.get
       },
       edge: {
         item: () => read.edge.item,
         resolved: () => read.edge.resolved,
         view: () => read.edge.view,
         toolbar: () => read.edge.toolbar,
+        bounds: read.edge.bounds.get,
         box: read.edge.box
       },
       mindmap: {

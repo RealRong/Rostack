@@ -1,6 +1,7 @@
 import {
   deriveSelectionAffordance,
   deriveSelectionSummary,
+  getTargetBounds,
   isSelectionAffordanceEqual,
   isSelectionSummaryEqual,
   resolveSelectionTransformBox,
@@ -18,7 +19,6 @@ import {
 } from '@shared/core'
 import type { EdgeRead } from './edge'
 import type { NodeRead } from './node'
-import type { TargetBoundsQuery } from '../query/targetBounds'
 import type { NodeRegistry } from '../../types/node'
 import type { Tool } from '../../types/tool'
 import type { EditSession } from '../state/edit'
@@ -109,11 +109,21 @@ const readSelectedEdges = (
   .map((edgeId) => readStore(edge.item, edgeId)?.edge)
   .filter((entry): entry is Edge => Boolean(entry))
 
+const readTrackedTargetBounds = (
+  readStore: ReadFn,
+  node: Pick<NodeRead, 'bounds'>,
+  edge: Pick<EdgeRead, 'bounds'>,
+  target: SelectionTarget
+) => getTargetBounds({
+  target,
+  readNodeBounds: (nodeId) => readStore(node.bounds, nodeId),
+  readEdgeBounds: (edgeId) => readStore(edge.bounds, edgeId)
+})
+
 export const createSelectionRead = ({
   source,
   node,
   edge,
-  targetBounds,
   registry,
   tool,
   edit,
@@ -122,7 +132,6 @@ export const createSelectionRead = ({
   source: ReadStore<SelectionTarget>
   node: NodeRead
   edge: EdgeRead
-  targetBounds: TargetBoundsQuery
   registry: Pick<NodeRegistry, 'get'>
   tool: ReadStore<Tool>
   edit: ReadStore<EditSession>
@@ -141,8 +150,10 @@ export const createSelectionRead = ({
         target: selectionTarget,
         nodes,
         edges,
-        readBounds: (target) => targetBounds.track(
+        readBounds: (target) => readTrackedTargetBounds(
           readStore,
+          node,
+          edge,
           target
         ),
         isNodeScalable: (entry) => (
@@ -165,8 +176,9 @@ export const createSelectionRead = ({
     get: (readStore) => {
       const selectionTarget = readStore(source)
       const box = selectionTarget.nodeIds.length > 0
-        ? targetBounds.track(readStore, {
-          nodeIds: selectionTarget.nodeIds
+        ? readTrackedTargetBounds(readStore, node, edge, {
+          nodeIds: selectionTarget.nodeIds,
+          edgeIds: []
         })
         : undefined
 

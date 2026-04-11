@@ -601,7 +601,7 @@ export type EditorNodeSelect = {
   item: () => RuntimeRead['node']['item']
   view: () => RuntimeRead['node']['view']
   capability: () => RuntimeRead['node']['capability']
-  bounds: RuntimeRead['node']['bounds']
+  bounds: RuntimeRead['node']['bounds']['get']
 }
 
 export type EditorEdgeSelect = {
@@ -609,6 +609,7 @@ export type EditorEdgeSelect = {
   resolved: () => RuntimeRead['edge']['resolved']
   view: () => RuntimeRead['edge']['view']
   toolbar: () => RuntimeRead['edge']['toolbar']
+  bounds: RuntimeRead['edge']['bounds']['get']
   box: RuntimeRead['edge']['box']
 }
 

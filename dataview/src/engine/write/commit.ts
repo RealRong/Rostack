@@ -1,4 +1,7 @@
 import {
+  createDeltaCollector
+} from '@dataview/core/commit/collector'
+import {
   createResetDelta
 } from '@dataview/core/commit/delta'
 import type {
@@ -8,6 +11,9 @@ import type {
   BaseOperation
 } from '@dataview/core/contracts/operations'
 import {
+  applyOperations
+} from '@dataview/core/operation'
+import {
   deriveIndex
 } from '../index/runtime'
 import {
@@ -16,9 +22,6 @@ import {
 import type {
   ResolvedWriteBatch
 } from '../command'
-import type {
-  HistoryState
-} from '../history'
 import type {
   PerfRuntime
 } from '../perf/runtime'
@@ -35,15 +38,22 @@ import type {
 import type {
   ActionResult,
   CommitResult,
+  CreatedEntities,
   TraceDeltaSummary
 } from '../api/public'
 import {
-  applyReplay,
-  applyWriteBatch,
-  createdFromChanges,
-  emptyResult,
-  rejectedResult
-} from './apply'
+  HistoryState
+} from '../api/public/history'
+import {
+  canRedo,
+  canUndo,
+  clearHistory,
+  clearRedo,
+  historyState,
+  pushUndo,
+  takeRedo,
+  takeUndo
+} from './history'
 
 type Kind =
   | 'write'
@@ -70,103 +80,23 @@ type Plan<TResult extends CommitResult = CommitResult> = (
   base: State
 ) => Draft<TResult>
 
-const trimUndo = (
-  entries: State['history']['undo'],
-  cap: number
-) => {
-  if (!cap) {
-    return []
+const createdFromChanges = (
+  changes?: CommitResult['changes']
+): CreatedEntities | undefined => {
+  if (!changes) {
+    return undefined
   }
-  if (entries.length <= cap) {
-    return entries
+
+  const created = {
+    records: changes.entities.records?.add,
+    fields: changes.entities.fields?.add,
+    views: changes.entities.views?.add
   }
-  return entries.slice(entries.length - cap)
+
+  return created.records?.length || created.fields?.length || created.views?.length
+    ? created
+    : undefined
 }
-
-const clearHistory = (
-  history: State['history']
-): State['history'] => ({
-  ...history,
-  undo: [],
-  redo: []
-})
-
-const clearRedo = (
-  history: State['history']
-): State['history'] => (
-  history.redo.length
-    ? {
-        ...history,
-        redo: []
-      }
-    : history
-)
-
-const pushUndo = (
-  history: State['history'],
-  entry: State['history']['undo'][number]
-): State['history'] => ({
-  ...history,
-  undo: trimUndo([...history.undo, entry], history.cap)
-})
-
-const takeUndo = (history: State['history']): {
-  history: State['history']
-  operations?: BaseOperation[]
-} => {
-  const entry = history.undo.at(-1)
-  if (!entry) {
-    return {
-      history
-    }
-  }
-
-  return {
-    history: {
-      ...history,
-      undo: history.undo.slice(0, -1),
-      redo: [...history.redo, entry]
-    },
-    operations: entry.undo
-  }
-}
-
-const takeRedo = (history: State['history']): {
-  history: State['history']
-  operations?: BaseOperation[]
-} => {
-  const entry = history.redo.at(-1)
-  if (!entry) {
-    return {
-      history
-    }
-  }
-
-  return {
-    history: {
-      ...history,
-      undo: trimUndo([...history.undo, entry], history.cap),
-      redo: history.redo.slice(0, -1)
-    },
-    operations: entry.redo
-  }
-}
-
-const historyState = (
-  history: State['history']
-): HistoryState => ({
-  capacity: history.cap,
-  undoDepth: history.undo.length,
-  redoDepth: history.redo.length
-})
-
-const canUndo = (
-  history: State['history']
-) => history.undo.length > 0
-
-const canRedo = (
-  history: State['history']
-) => history.redo.length > 0
 
 const touchedCount = (
   all: boolean,
@@ -251,7 +181,7 @@ const replayResult = (
   history: State['history']
 ): Draft<CommitResult> => {
   const startedAt = now()
-  const applied = applyReplay(base.doc, operations)
+  const applied = applyOperations(base.doc, operations)
 
   return {
     ok: true,
@@ -274,12 +204,19 @@ const writePlan = (
   if (!batch.canApply || !batch.operations.length) {
     return {
       ok: false,
-      result: rejectedResult(batch.issues)
+      result: {
+        issues: batch.issues,
+        applied: false
+      }
     }
   }
 
   const startedAt = now()
-  const applied = applyWriteBatch(base.doc, batch)
+  const applied = applyOperations(
+    base.doc,
+    batch.operations,
+    createDeltaCollector(base.doc, batch.deltaDraft)
+  )
   const history = clearRedo(base.history)
   const nextHistory = base.history.cap > 0
     ? pushUndo(history, {
@@ -309,7 +246,10 @@ const undoPlan = (): Plan<CommitResult> => base => {
   if (!replay.operations) {
     return {
       ok: false,
-      result: emptyResult()
+      result: {
+        issues: [],
+        applied: false
+      }
     }
   }
 
@@ -321,7 +261,10 @@ const redoPlan = (): Plan<CommitResult> => base => {
   if (!replay.operations) {
     return {
       ok: false,
-      result: emptyResult()
+      result: {
+        issues: [],
+        applied: false
+      }
     }
   }
 

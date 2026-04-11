@@ -7,20 +7,20 @@ import type {
   Document
 } from '@whiteboard/core/types'
 import {
-  groupIdOfRef,
-  parseRefKey,
-  refKey,
+  fromKey,
+  groupOf,
+  key,
   sameOrder,
-  sameRef
+  same
 } from './refs'
 
-type RefDoc = Pick<Document, 'nodes' | 'edges'>
-type OrderDoc = Pick<Document, 'nodes' | 'edges' | 'order'>
+type Doc = Pick<Document, 'nodes' | 'edges'>
+type OrderedDoc = Pick<Document, 'nodes' | 'edges' | 'order'>
 
 type CanvasOrderRole = 'frame' | 'content-node' | 'edge'
 
-const readRole = (
-  doc: RefDoc,
+const roleOf = (
+  doc: Doc,
   ref: CanvasItemRef
 ): CanvasOrderRole => {
   if (ref.kind === 'edge') {
@@ -32,8 +32,8 @@ const readRole = (
     : 'content-node'
 }
 
-const normalizeFrameBarrier = (
-  doc: RefDoc,
+const withFrameBarrier = (
+  doc: Doc,
   refs: readonly CanvasItemRef[]
 ): CanvasItemRef[] => {
   const nodeIndexes: number[] = []
@@ -41,7 +41,7 @@ const normalizeFrameBarrier = (
   const contentNodes: CanvasItemRef[] = []
 
   refs.forEach((ref, index) => {
-    const role = readRole(doc, ref)
+    const role = roleOf(doc, ref)
     if (role === 'edge') {
       return
     }
@@ -115,18 +115,18 @@ const backward = <T extends string>(order: T[], ids: T[]) => {
   return next
 }
 
-const reorder = (
-  doc: RefDoc,
+const applyMode = (
+  doc: Doc,
   currentRefs: readonly CanvasItemRef[],
   targetRefs: readonly CanvasItemRef[],
   mode: OrderMode
 ): CanvasItemRef[] => {
   if (mode === 'set') {
-    return normalizeFrameBarrier(doc, targetRefs)
+    return withFrameBarrier(doc, targetRefs)
   }
 
-  const current = currentRefs.map(refKey)
-  const target = targetRefs.map(refKey)
+  const current = currentRefs.map(key)
+  const target = targetRefs.map(key)
   let next: string[]
 
   switch (mode) {
@@ -147,14 +147,14 @@ const reorder = (
       break
   }
 
-  return normalizeFrameBarrier(
+  return withFrameBarrier(
     doc,
-    next.map(parseRefKey)
+    next.map(fromKey)
   )
 }
 
 const replaceGroupSlice = (
-  doc: RefDoc,
+  doc: Doc,
   orderRefs: readonly CanvasItemRef[],
   groupId: string,
   nextSlice: readonly CanvasItemRef[]
@@ -162,7 +162,7 @@ const replaceGroupSlice = (
   let sliceIndex = 0
 
   return orderRefs.map((ref) => {
-    if (groupIdOfRef(doc, ref) !== groupId) {
+    if (groupOf(doc, ref) !== groupId) {
       return ref
     }
 
@@ -172,7 +172,7 @@ const replaceGroupSlice = (
   })
 }
 
-export const moveIntoBlock = (
+export const block = (
   current: readonly CanvasItemRef[],
   refs: readonly CanvasItemRef[]
 ): CanvasItemRef[] | undefined => {
@@ -181,14 +181,14 @@ export const moveIntoBlock = (
   }
 
   const firstIndex = current.findIndex((entry) => (
-    refs.some((ref) => sameRef(entry, ref))
+    refs.some((ref) => same(entry, ref))
   ))
   if (firstIndex < 0) {
     return undefined
   }
 
   const kept = current.filter((entry) => (
-    !refs.some((ref) => sameRef(entry, ref))
+    !refs.some((ref) => same(entry, ref))
   ))
   const next = [
     ...kept.slice(0, firstIndex),
@@ -206,20 +206,20 @@ export const normalizeOrder = ({
   refs,
   mode
 }: {
-  doc: OrderDoc
+  doc: OrderedDoc
   refs: readonly CanvasItemRef[]
   mode: OrderMode
 }) => {
   const current = listCanvasItemRefs(doc)
-  const keySet = new Set(refs.map(refKey))
+  const keySet = new Set(refs.map(key))
   const selected = mode === 'set'
-    ? Array.from(new Set(refs.map(refKey))).map(parseRefKey)
-    : current.filter((ref) => keySet.has(refKey(ref)))
+    ? Array.from(new Set(refs.map(key))).map(fromKey)
+    : current.filter((ref) => keySet.has(key(ref)))
 
   if (mode === 'set' || selected.length <= 1) {
     return {
       current,
-      next: reorder(doc, current, selected, mode)
+      next: applyMode(doc, current, selected, mode)
     }
   }
 
@@ -228,9 +228,9 @@ export const normalizeOrder = ({
   const groupedSelection = new Map<string, CanvasItemRef[]>()
 
   selected.forEach((ref) => {
-    const groupId = groupIdOfRef(doc, ref)
+    const groupId = groupOf(doc, ref)
     if (!groupId) {
-      globalKeySet.add(refKey(ref))
+      globalKeySet.add(key(ref))
       return
     }
 
@@ -244,7 +244,7 @@ export const normalizeOrder = ({
   })
 
   groupedSelection.forEach((selectedRefs, groupId) => {
-    const groupSlice = nextCurrent.filter((ref) => groupIdOfRef(doc, ref) === groupId)
+    const groupSlice = nextCurrent.filter((ref) => groupOf(doc, ref) === groupId)
     if (!groupSlice.length) {
       return
     }
@@ -255,18 +255,18 @@ export const normalizeOrder = ({
     )
     if (fullGroupSelected) {
       groupSlice.forEach((ref) => {
-        globalKeySet.add(refKey(ref))
+        globalKeySet.add(key(ref))
       })
       return
     }
 
-    const nextSlice = reorder(doc, groupSlice, selectedRefs, mode)
+    const nextSlice = applyMode(doc, groupSlice, selectedRefs, mode)
     nextCurrent = replaceGroupSlice(doc, nextCurrent, groupId, nextSlice)
   })
 
-  const globalRefs = nextCurrent.filter((ref) => globalKeySet.has(refKey(ref)))
+  const globalRefs = nextCurrent.filter((ref) => globalKeySet.has(key(ref)))
   return {
     current,
-    next: reorder(doc, nextCurrent, globalRefs, mode)
+    next: applyMode(doc, nextCurrent, globalRefs, mode)
   }
 }

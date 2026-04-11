@@ -95,7 +95,7 @@ const readTransformTarget = (
   ctx: InteractionContext,
   nodeId: NodeId
 ): TransformTarget | undefined => {
-  const entry = ctx.read.index.node.get(nodeId)
+  const entry = ctx.read.node.canvas.get(nodeId)
 
   return entry
     ? {
@@ -112,7 +112,7 @@ const readNodeTransformSpec = (
   handle: TransformPickHandle,
   input: PointerDownInput
 ): RuntimeTransformSpec | undefined => {
-  const entry = ctx.read.index.node.get(nodeId)
+  const entry = ctx.read.node.canvas.get(nodeId)
   if (!entry || entry.node.locked) {
     return undefined
   }

@@ -21,7 +21,7 @@ import { err, ok } from '@whiteboard/core/result'
 import type { EdgeId, Node, NodeId } from '@whiteboard/core/types'
 import { DEFAULT_TUNING } from '../../../config'
 import type { WriteTranslateContext } from '../index'
-import { collectCascadeNodeDeleteTargets } from '../selection/node'
+import { cascadeDeleteTargets } from '../selection/node'
 import type { Step } from './shared'
 
 type Command = WriteCommandMap['node']
@@ -230,7 +230,7 @@ export const removeCascade = (
     return err('cancelled', 'No nodes selected.')
   }
 
-  const next = collectCascadeNodeDeleteTargets({
+  const next = cascadeDeleteTargets({
     doc: ctx.doc,
     ids: command.ids,
     nodeSize: ctx.config.nodeSize

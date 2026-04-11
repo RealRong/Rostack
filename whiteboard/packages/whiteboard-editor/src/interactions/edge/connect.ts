@@ -2,7 +2,6 @@ import {
   DEFAULT_EDGE_ANCHOR_OFFSET,
   type EdgeConnectEvaluation,
   type EdgeConnectPreview,
-  type EdgeNodeCanvasSnapshot,
   resolveAnchorFromPoint,
   resolveEdgeView,
   resolveEdgeConnectPreview,
@@ -29,12 +28,13 @@ import type {
 } from '../../runtime/interaction/types'
 import { FINISH } from '../../runtime/interaction/result'
 import { createEdgeGesture } from '../../runtime/interaction/gesture'
+import type { NodeCanvasSnapshot } from '../../runtime/read/node'
 import type { EdgePresetKey } from '../../types/tool'
 import type { PointerDownInput } from '../../types/input'
 import type { InteractionContext } from '../context'
 
 type ConnectNodeEntry = NonNullable<
-  ReturnType<InteractionContext['read']['index']['node']['get']>
+  ReturnType<InteractionContext['read']['node']['canvas']['get']>
 >
 
 const readNodeRotation = (
@@ -55,7 +55,7 @@ const readConnectNode = (
   ctx: InteractionContext,
   nodeId: NodeId
 ): ConnectNodeEntry | undefined => {
-  const entry = ctx.read.index.node.get(nodeId)
+  const entry = ctx.read.node.canvas.get(nodeId)
   if (!entry || !ctx.read.node.capability(entry.node).connect) {
     return undefined
   }
@@ -246,17 +246,7 @@ const toPreviewEdgeEnd = (
 const readNodeSnapshot = (
   ctx: InteractionContext,
   nodeId: NodeId
-): EdgeNodeCanvasSnapshot | undefined => {
-  const entry = ctx.read.index.node.get(nodeId)
-  if (!entry) {
-    return undefined
-  }
-
-  return {
-    node: entry.node,
-    geometry: entry.geometry
-  }
-}
+): NodeCanvasSnapshot | undefined => ctx.read.node.canvas.get(nodeId)
 
 const resolveCreatePreviewPath = (
   ctx: InteractionContext,

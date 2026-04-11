@@ -11,12 +11,12 @@ import { createNodeFieldsUpdateOperation } from '@whiteboard/core/node'
 import { err, ok } from '@whiteboard/core/result'
 import type { Document, EdgeId, GroupId, NodeId, Operation } from '@whiteboard/core/types'
 import {
-  moveIntoBlock,
+  block,
   normalizeOrder
 } from '../order/policy'
 import {
-  groupRefs,
-  orderedRefs,
+  groups,
+  pick,
   sameOrder
 } from '../order/refs'
 import type { Step } from './shared'
@@ -97,9 +97,9 @@ export const merge = ({
     })
   })
 
-  const order = moveIntoBlock(
+  const order = block(
     listCanvasItemRefs(doc),
-    orderedRefs(doc, { nodeIds, edgeIds })
+    pick(doc, { nodeIds, edgeIds })
   )
   if (order) {
     operations.push({
@@ -193,7 +193,7 @@ export const order = ({
   mode: OrderMode
   doc: Pick<Document, 'nodes' | 'edges' | 'order' | 'groups'>
 }): Step => {
-  const refs = groupRefs({ doc, ids })
+  const refs = groups({ doc, ids })
   if (!refs.length) {
     return err('cancelled', 'No groups selected.')
   }

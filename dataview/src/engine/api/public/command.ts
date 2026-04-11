@@ -6,8 +6,8 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import type { ValidationIssue } from '@dataview/engine/command'
-import type { HistoryOptions } from '../../history'
 import type { EnginePerfOptions } from './perf'
+import type { HistoryOptions } from './history'
 
 export interface CreateEngineOptions {
   document: DataDoc

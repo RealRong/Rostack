@@ -63,7 +63,7 @@ const readNodePosition = ({
   editor: MindmapRuntimeHost
   nodeId: NodeId
 }) => {
-  const node = editor.read.index.node.get(nodeId)?.node
+  const node = editor.read.node.item.get(nodeId)?.node
   return node && 'position' in node
     ? node.position
     : undefined

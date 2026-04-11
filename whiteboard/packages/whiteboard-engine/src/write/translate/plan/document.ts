@@ -12,7 +12,7 @@ import { DEFAULT_TUNING } from '../../../config'
 import type { WriteTranslateContext } from '../index'
 import { normalizeOrder } from '../order/policy'
 import { sameOrder } from '../order/refs'
-import { collectCascadeNodeDeleteTargets } from '../selection/node'
+import { cascadeDeleteTargets } from '../selection/node'
 import type { Step } from './shared'
 
 type Command = WriteCommandMap['document']
@@ -88,7 +88,7 @@ export const remove = (
   }
 
   const cascade = nodeIds.length > 0
-    ? collectCascadeNodeDeleteTargets({
+    ? cascadeDeleteTargets({
         doc: ctx.doc,
         ids: nodeIds,
         nodeSize: ctx.config.nodeSize

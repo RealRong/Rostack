@@ -4,16 +4,16 @@ import type {
   Document
 } from '@whiteboard/core/types'
 
-export const refKey = (ref: CanvasItemRef) => `${ref.kind}:${ref.id}`
+export const key = (ref: CanvasItemRef) => `${ref.kind}:${ref.id}`
 
-export const parseRefKey = (key: string): CanvasItemRef => {
-  const [kind, id] = key.split(':')
+export const fromKey = (value: string): CanvasItemRef => {
+  const [kind, id] = value.split(':')
   return kind === 'edge'
     ? { kind: 'edge', id }
     : { kind: 'node', id }
 }
 
-export const sameRef = (
+export const same = (
   left: CanvasItemRef,
   right: CanvasItemRef
 ) => left.kind === right.kind && left.id === right.id
@@ -23,10 +23,10 @@ export const sameOrder = (
   right: readonly CanvasItemRef[]
 ) => (
   left.length === right.length
-  && left.every((ref, index) => sameRef(ref, right[index]!))
+  && left.every((ref, index) => same(ref, right[index]!))
 )
 
-export const groupIdOfRef = (
+export const groupOf = (
   doc: Pick<Document, 'nodes' | 'edges'>,
   ref: CanvasItemRef
 ) => (
@@ -35,7 +35,7 @@ export const groupIdOfRef = (
     : doc.edges[ref.id]?.groupId
 )
 
-export const orderedRefs = (
+export const pick = (
   doc: Pick<Document, 'nodes' | 'edges' | 'order'>,
   target: {
     nodeIds?: readonly string[]
@@ -48,10 +48,10 @@ export const orderedRefs = (
   ])
 
   return listCanvasItemRefs(doc)
-    .filter((ref) => keys.has(refKey(ref)))
+    .filter((ref) => keys.has(key(ref)))
 }
 
-export const groupRefs = ({
+export const groups = ({
   doc,
   ids
 }: {
@@ -67,17 +67,17 @@ export const groupRefs = ({
   const seen = new Set<string>()
 
   for (const ref of listCanvasItemRefs(doc)) {
-    const groupId = groupIdOfRef(doc, ref)
+    const groupId = groupOf(doc, ref)
     if (!groupId || !groupIdSet.has(groupId)) {
       continue
     }
 
-    const key = refKey(ref)
-    if (seen.has(key)) {
+    const refId = key(ref)
+    if (seen.has(refId)) {
       continue
     }
 
-    seen.add(key)
+    seen.add(refId)
     refs.push(ref)
   }
 

@@ -1,4 +1,3 @@
-import { getEdgePathBounds } from '@whiteboard/core/edge'
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useKeyedStoreValue, useStoreValue } from '@shared/react'
 import { useEditorRuntime } from '#react/runtime/hooks'
@@ -7,11 +6,6 @@ import type {
   WhiteboardPresenceState
 } from '../../types/common/presence'
 import { formatPresenceToolLabel } from './presence'
-
-const EMPTY_EDGE_PATH = {
-  points: [],
-  segments: []
-} as const
 
 const toScreenRect = (
   editor: ReturnType<typeof useEditorRuntime>,
@@ -87,7 +81,7 @@ const PresenceEdgeSelection = ({
 
   void viewport
 
-  const bounds = getEdgePathBounds(edge.path ?? EMPTY_EDGE_PATH)
+  const bounds = editor.select.edge.bounds(edgeId)
   if (!bounds) {
     return null
   }

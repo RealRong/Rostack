@@ -4,21 +4,19 @@ import {
   getEdgePathBounds,
   isPointEdgeEnd,
   type EdgeConnectCandidate,
-  type EdgeNodeCanvasSnapshot,
   matchEdgeRect,
   resolveEdgeView,
   type EdgeView as CoreEdgeView
 } from '@whiteboard/core/edge'
-import { getNodeGeometry } from '@whiteboard/core/node'
 import {
+  sameOptionalRect as isSameOptionalRectTuple,
   sameOrder as isOrderedArrayEqual,
   samePointArray as isSamePointArray
 } from '@shared/core'
 import type { EdgeId, Node, NodeId, NodeType, Rect } from '@whiteboard/core/types'
 import {
   type EdgeItem,
-  type EngineRead,
-  type NodeItem
+  type EngineRead
 } from '@whiteboard/engine'
 import {
   createKeyedDerivedStore,
@@ -32,6 +30,7 @@ import {
   createOverlayStateStore,
   createPatchedItemStore
 } from './keyed'
+import type { NodeCanvasSnapshot, NodeRead } from './node'
 import {
   type EditSession
 } from '../state/edit'
@@ -59,17 +58,6 @@ export type EdgeView = CoreEdgeView & {
   patched: boolean
   activeRouteIndex: number | undefined
 }
-
-const toNodeCanvasSnapshot = (
-  item: NodeItem
-): EdgeNodeCanvasSnapshot => ({
-  node: item.node,
-  geometry: getNodeGeometry(
-    item.node,
-    item.rect,
-    item.node.rotation ?? 0
-  )
-})
 
 const isEdgeItemEqual = (
   left: EdgeItem | undefined,
@@ -215,31 +203,13 @@ const resolveEdgeCan = (
   editRoute: true
 })
 
-const readEdgeBox = (
-  entry: CoreEdgeView | undefined,
-  edge: EdgeItem['edge'] | undefined
-): EdgeBox | undefined => {
-  if (!entry || !edge) {
-    return undefined
-  }
-
-  const rect = getEdgePathBounds(entry.path)
-  if (!rect) {
-    return undefined
-  }
-
-  return {
-    rect,
-    pad: Math.max(24, (edge.style?.width ?? 2) + 16)
-  }
-}
-
 export type EdgeRead = {
   list: EngineRead['edge']['list']
   item: KeyedReadStore<EdgeId, EdgeItem | undefined>
   state: KeyedReadStore<EdgeId, EdgeRuntimeState>
   resolved: KeyedReadStore<EdgeId, CoreEdgeView | undefined>
   view: KeyedReadStore<EdgeId, EdgeView | undefined>
+  bounds: KeyedReadStore<EdgeId, Rect | undefined>
   box: (edgeId: EdgeId) => EdgeBox | undefined
   capability: (edge: EdgeItem['edge']) => EdgeCapability
   related: (nodeIds: Iterable<NodeId>) => readonly EdgeId[]
@@ -339,10 +309,10 @@ const createEdgeStateStore = ({
 
 const createEdgeResolvedStore = ({
   item,
-  nodeItem
+  nodeCanvas
 }: {
   item: EdgeRead['item']
-  nodeItem: KeyedReadStore<string, NodeItem | undefined>
+  nodeCanvas: KeyedReadStore<NodeId, NodeCanvasSnapshot | undefined>
 }): EdgeRead['resolved'] => createKeyedDerivedStore({
   isEqual: isEdgeViewEqual,
   get: (readStore, edgeId: EdgeId) => {
@@ -353,11 +323,11 @@ const createEdgeResolvedStore = ({
 
     const source =
       entry.edge.source.kind === 'node'
-        ? readStore(nodeItem, entry.edge.source.nodeId)
+        ? readStore(nodeCanvas, entry.edge.source.nodeId)
         : undefined
     const target =
       entry.edge.target.kind === 'node'
-        ? readStore(nodeItem, entry.edge.target.nodeId)
+        ? readStore(nodeCanvas, entry.edge.target.nodeId)
         : undefined
 
     if (
@@ -370,8 +340,8 @@ const createEdgeResolvedStore = ({
     try {
       return resolveEdgeView({
         edge: entry.edge,
-        source: source ? toNodeCanvasSnapshot(source) : undefined,
-        target: target ? toNodeCanvasSnapshot(target) : undefined
+        source,
+        target
       })
     } catch {
       return undefined
@@ -407,15 +377,29 @@ const createEdgeViewStore = ({
   isEqual: isEdgeViewStateEqual
 })
 
+const createEdgeBoundsStore = ({
+  resolved
+}: {
+  resolved: EdgeRead['resolved']
+}): EdgeRead['bounds'] => createKeyedDerivedStore({
+  get: (readStore, edgeId: EdgeId) => {
+    const resolvedEntry = readStore(resolved, edgeId)
+    return resolvedEntry
+      ? getEdgePathBounds(resolvedEntry.path)
+      : undefined
+  },
+  isEqual: isSameOptionalRectTuple
+})
+
 export const createEdgeRead = ({
   read,
-  nodeItem,
+  node,
   overlay,
   edit,
   capability
 }: {
-  read: Pick<EngineRead, 'edge' | 'index'>
-  nodeItem: KeyedReadStore<string, NodeItem | undefined>
+  read: Pick<EngineRead, 'edge'>
+  node: Pick<NodeRead, 'canvas' | 'idsInRect'>
   overlay: KeyedReadStore<EdgeId, EdgeOverlayProjection>
   edit: ReadStore<EditSession>
   capability: (node: Pick<Node, 'type'> | NodeType) => {
@@ -432,31 +416,33 @@ export const createEdgeRead = ({
   })
   const resolved = createEdgeResolvedStore({
     item,
-    nodeItem
+    nodeCanvas: node.canvas
   })
   const view = createEdgeViewStore({
     item,
     state,
     resolved
   })
+  const bounds = createEdgeBoundsStore({
+    resolved
+  })
 
-  const readResolved = (edgeId: EdgeId) => resolved.get(edgeId)
   const connectCandidates: EdgeRead['connectCandidates'] = (
     rect
   ) => {
-    const nodeIds = read.index.node.idsInRect(rect)
+    const nodeIds = node.idsInRect(rect)
     const candidates: EdgeConnectCandidate[] = []
 
     for (let index = 0; index < nodeIds.length; index += 1) {
-      const entry = read.index.node.get(nodeIds[index])
-      if (!entry || !capability(entry.node).connect) {
+      const snapshot = node.canvas.get(nodeIds[index])
+      if (!snapshot || !capability(snapshot.node).connect) {
         continue
       }
 
       candidates.push({
-        nodeId: entry.node.id,
-        node: entry.node,
-        geometry: entry.geometry
+        nodeId: snapshot.node.id,
+        node: snapshot.node,
+        geometry: snapshot.geometry
       })
     }
 
@@ -469,14 +455,23 @@ export const createEdgeRead = ({
     state,
     resolved,
     view,
-    box: (edgeId) => readEdgeBox(
-      readResolved(edgeId),
-      item.get(edgeId)?.edge
-    ),
+    bounds,
+    box: (edgeId) => {
+      const rect = bounds.get(edgeId)
+      const edgeItem = item.get(edgeId)?.edge
+      if (!rect || !edgeItem) {
+        return undefined
+      }
+
+      return {
+        rect,
+        pad: Math.max(24, (edgeItem.style?.width ?? 2) + 16)
+      }
+    },
     capability: resolveEdgeCan,
     related: read.edge.related,
     idsInRect: (rect, options) => read.edge.list.get().filter((edgeId) => {
-      const nextResolved = readResolved(edgeId)
+      const nextResolved = resolved.get(edgeId)
       if (!nextResolved) {
         return false
       }

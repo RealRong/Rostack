@@ -74,7 +74,7 @@ export const createMoveInteraction = (
   input: MoveInteractionInput
 ): InteractionSession | null => {
   const initialState = startMoveState({
-    nodes: ctx.read.index.node.all().map((entry) => entry.node),
+    nodes: ctx.read.node.ordered(),
     edges: ctx.read.edge.list.get()
       .map((edgeId) => ctx.read.edge.item.get(edgeId)?.edge)
       .filter((edge): edge is Edge => Boolean(edge)),

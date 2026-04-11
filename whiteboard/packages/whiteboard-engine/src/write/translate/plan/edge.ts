@@ -221,22 +221,27 @@ export function route(
         }
       })
     }
-    case 'move':
+    case 'move': {
       if (command.index === undefined || !command.point) {
         return err('invalid', 'Route index and point required.')
       }
 
+      const moveIndex = command.index
+      const movePoint = command.point
       return routePatch(command.edgeId, ctx, (edge) =>
-        moveRoutePoint(edge, command.index, command.point)
+        moveRoutePoint(edge, moveIndex, movePoint)
       )
-    case 'remove':
+    }
+    case 'remove': {
       if (command.index === undefined) {
         return err('invalid', 'Route index required.')
       }
 
+      const removeIndex = command.index
       return routePatch(command.edgeId, ctx, (edge) =>
-        removeRoutePoint(edge, command.index)
+        removeRoutePoint(edge, removeIndex)
       )
+    }
     case 'clear':
       return routePatch(command.edgeId, ctx, (edge) => clearRoute(edge))
     default:

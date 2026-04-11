@@ -15,6 +15,8 @@ import type {
 import {
   createKeyedDerivedStore,
   type KeyedReadStore,
+  sameOptionalRect as isSameOptionalRectTuple,
+  samePointArray as isSamePointArray,
   type ReadStore
 } from '@shared/core'
 import type {
@@ -77,19 +79,25 @@ export type NodeView = {
   canRotate: boolean
 }
 
+export type NodeCanvasSnapshot = {
+  node: Node
+  geometry: NodeGeometry
+}
+
 export type NodeRead = {
   list: EngineRead['node']['list']
   item: KeyedReadStore<NodeId, NodeItem | undefined>
   state: KeyedReadStore<NodeId, NodeRuntimeState>
   view: KeyedReadStore<NodeId, NodeView | undefined>
-  geometry: (nodeId: NodeId) => NodeGeometry | undefined
-  rect: (nodeId: NodeId) => Rect | undefined
-  bounds: (nodeId: NodeId) => Rect | undefined
+  canvas: KeyedReadStore<NodeId, NodeCanvasSnapshot | undefined>
+  rect: KeyedReadStore<NodeId, Rect | undefined>
+  bounds: KeyedReadStore<NodeId, Rect | undefined>
   capability: (node: Pick<Node, 'type'> | NodeType) => NodeCapability
   idsInRect: (rect: Rect, options?: NodeRectHitOptions) => NodeId[]
   transformTargets: (
     nodeIds: readonly NodeId[]
   ) => TransformSelectionTargets<Node> | undefined
+  ordered: () => readonly Node[]
 }
 
 const readNodeType = (
@@ -156,6 +164,38 @@ const isNodeViewEqual = (
   )
 )
 
+const isNodeGeometryEqual = (
+  left: NodeGeometry,
+  right: NodeGeometry
+) => (
+  isRectEqual(left.rect, right.rect)
+  && isRectEqual(left.bounds, right.bounds)
+  && left.outline.kind === right.outline.kind
+  && (
+    left.outline.kind === 'rect' && right.outline.kind === 'rect'
+      ? (
+          isRectEqual(left.outline.rect, right.outline.rect)
+          && left.outline.rotation === right.outline.rotation
+        )
+      : left.outline.kind === 'polygon' && right.outline.kind === 'polygon'
+        ? isSamePointArray(left.outline.points, right.outline.points)
+        : false
+  )
+)
+
+const isNodeCanvasSnapshotEqual = (
+  left: NodeCanvasSnapshot | undefined,
+  right: NodeCanvasSnapshot | undefined
+) => (
+  left === right
+  || (
+    left !== undefined
+    && right !== undefined
+    && left.node === right.node
+    && isNodeGeometryEqual(left.geometry, right.geometry)
+  )
+)
+
 const readNodeRotation = (
   node: NodeItem['node']
 ) => (typeof node.rotation === 'number' ? node.rotation : 0)
@@ -184,7 +224,7 @@ const toNodeView = (
   }
 }
 
-export const getNodeItemBounds = (
+const getNodeItemBounds = (
   item: NodeItem
 ): Rect => getNodeBounds(item.node, item.rect, readNodeRotation(item.node))
 
@@ -354,6 +394,48 @@ const createNodeViewStore = ({
   isEqual: isNodeViewEqual
 })
 
+const createNodeCanvasStore = ({
+  item
+}: {
+  item: NodeRead['item']
+}): NodeRead['canvas'] => createKeyedDerivedStore({
+  get: (readStore, nodeId: NodeId) => {
+    const resolvedItem = readStore(item, nodeId)
+    if (!resolvedItem) {
+      return undefined
+    }
+
+    return {
+      node: resolvedItem.node,
+      geometry: readNodeItemGeometry(resolvedItem)
+    }
+  },
+  isEqual: isNodeCanvasSnapshotEqual
+})
+
+const createNodeRectStore = ({
+  item
+}: {
+  item: NodeRead['item']
+}): NodeRead['rect'] => createKeyedDerivedStore({
+  get: (readStore, nodeId: NodeId) => readStore(item, nodeId)?.rect,
+  isEqual: isSameOptionalRectTuple
+})
+
+const createNodeBoundsStore = ({
+  item
+}: {
+  item: NodeRead['item']
+}): NodeRead['bounds'] => createKeyedDerivedStore({
+  get: (readStore, nodeId: NodeId) => {
+    const resolvedItem = readStore(item, nodeId)
+    return resolvedItem
+      ? getNodeItemBounds(resolvedItem)
+      : undefined
+  },
+  isEqual: isSameOptionalRectTuple
+})
+
 const createNodeCapabilityResolver = (
   registry: NodeRegistry
 ): NodeRead['capability'] => (
@@ -396,27 +478,29 @@ export const createNodeRead = ({
     state,
     capability
   })
+  const canvas = createNodeCanvasStore({
+    item
+  })
+  const rect = createNodeRectStore({
+    item
+  })
+  const bounds = createNodeBoundsStore({
+    item
+  })
 
   return {
     list: read.node.list,
     item,
     state,
     view,
-    geometry: (nodeId) => {
-      const nextItem = item.get(nodeId)
-      return nextItem
-        ? readNodeItemGeometry(nextItem)
-        : undefined
-    },
-    rect: (nodeId) => item.get(nodeId)?.rect,
-    bounds: (nodeId) => {
-      const nextItem = item.get(nodeId)
-      return nextItem
-        ? getNodeItemBounds(nextItem)
-        : undefined
-    },
+    canvas,
+    rect,
+    bounds,
     capability,
     idsInRect: read.node.idsInRect,
-    transformTargets: read.node.transformTargets
+    transformTargets: read.node.transformTargets,
+    ordered: () => read.node.list.get()
+      .map((nodeId) => item.get(nodeId)?.node)
+      .filter((node): node is Node => Boolean(node))
   }
 }

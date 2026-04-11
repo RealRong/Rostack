@@ -1,6 +1,15 @@
 import type { DataDoc } from '@dataview/core/contracts'
 import type { HistoryActionResult } from './command'
-import type { HistoryState } from '../../history'
+
+export interface HistoryState {
+  capacity: number
+  undoDepth: number
+  redoDepth: number
+}
+
+export interface HistoryOptions {
+  capacity?: number
+}
 
 export interface EngineHistoryApi {
   state: () => HistoryState

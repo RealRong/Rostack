@@ -47,4 +47,4 @@ export { createEngine } from './createEngine'
 export type {
   HistoryOptions,
   HistoryState
-} from '../history'
+} from './public'

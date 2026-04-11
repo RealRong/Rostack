@@ -6,7 +6,7 @@ import type {
 } from '@dataview/engine/project'
 import type {
   CellRef
-} from '@dataview/engine/viewmodel'
+} from '@dataview/engine/project'
 
 const emptyAppearanceIds = [] as readonly AppearanceId[]
 const emptyFieldIds = [] as readonly CustomFieldId[]

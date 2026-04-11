@@ -244,7 +244,7 @@ export const createDeltaCollector = (
           views.markRemove(operation.viewId)
           return
         }
-        case 'document.customField.put': {
+        case 'document.field.put': {
           const previousField = getDocumentCustomFieldById(beforeDocument, operation.field.id)
           const nextField = getDocumentCustomFieldById(afterDocument, operation.field.id)
 
@@ -261,7 +261,7 @@ export const createDeltaCollector = (
           )
           return
         }
-        case 'document.customField.patch': {
+        case 'document.field.patch': {
           fields.markUpdate(operation.fieldId)
           addMapAspects(
             fieldSchema as Map<string, Set<FieldSchemaAspect>>,
@@ -273,7 +273,7 @@ export const createDeltaCollector = (
           )
           return
         }
-        case 'document.customField.remove': {
+        case 'document.field.remove': {
           fields.markRemove(operation.fieldId)
           addMapAspects(
             fieldSchema as Map<string, Set<FieldSchemaAspect>>,

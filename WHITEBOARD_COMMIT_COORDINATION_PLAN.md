@@ -82,9 +82,9 @@ whiteboard 当前没有必要直接重构成 dataview 那种：
 
 1. translate command
 2. reduce / normalize / finalize
-3. 得到 `WriteDraft`
-4. engine `commitDraft(draft, kind)`
-5. 在 `commitDraft(...)` 内一次性完成：
+3. 得到 `Draft`
+4. engine `commit(draft)`
+5. 在 `commit(...)` 内一次性完成：
    - `documentSource.commit(nextDoc)`
    - `readControl.invalidate(impact)`
    - `commit.set(nextCommit)`
@@ -101,26 +101,26 @@ whiteboard 当前没有必要直接重构成 dataview 那种：
 例如概念上收敛成：
 
 ```ts
-type WriteDraft<T = void> =
+type Draft<T = void> =
   | {
       ok: false
       error: ...
     }
   | {
       ok: true
-      kind: 'operations' | 'replace'
+      kind: 'apply' | 'replace' | 'undo' | 'redo'
       doc: Document
       changes: ChangeSet
       impact?: KernelReadImpact
       inverse?: readonly Operation[]
-      data: T
+      value: T
     }
 ```
 
 然后：
 
 - `createWrite()` 只返回 draft
-- `createEngine()` 负责唯一的 `commitDraft(...)`
+- `createEngine()` 负责唯一的 `commit(...)`
 
 ### 为什么这是正确的收敛方向
 
@@ -152,7 +152,7 @@ type WriteDraft<T = void> =
 先做这件事：
 
 - `write` 不再调用 `documentSource.commit(...)`
-- `engine.publish(...)` 改成真正的 `commitDraft(...)`
+- `engine.publish(...)` 收敛成唯一的 `commit(...)`
 
 保持不变：
 
@@ -364,7 +364,7 @@ whiteboard 如果硬改单 store，通常只会出现两种结果：
 
 ### 建议做
 
-- 把 whiteboard 收敛成单一 `commitDraft(...)` 协调点
+- 把 whiteboard 收敛成单一 `commit(...)` 协调点
 - 让 `write` 只算 draft，不直接提交 document
 - 保留 `impact -> invalidate -> projection sync` 这条 read 更新机制
 - 保留现有 node/edge/mindmap/tracked 的细粒度设计
@@ -374,6 +374,460 @@ whiteboard 如果硬改单 store，通常只会出现两种结果：
 - 不要为了形式统一而把 whiteboard 硬改成 dataview 的单 `State`
 - 不要把 read/index/projection 全部塞进一个大 store 再假装“原子提交”
 - 不要在没有 worker/time-travel/snapshot/debug 等强需求前，重写 read 体系
+
+## 推荐的最终 API 设计
+
+目标不是改变 whiteboard 对外能力，而是把“纯计算”和“真正提交”拆清楚。
+
+最终推荐收敛成两个内部动作：
+
+1. `writer` 算 `Draft`
+2. `engine.commit(...)` 统一提交
+
+对外公开面尽量保持不变：
+
+- `write.apply(...)`
+- `write.replace(...)`
+- `history.undo()`
+- `history.redo()`
+- `engine.commit`
+- `engine.read`
+
+### 一、命名最终收敛
+
+这一轮不再保留“长版”和“短版”双轨建议，直接以更短版本为最终目标。
+
+建议保留的名字：
+
+| 保留 | 用途 |
+| --- | --- |
+| `Draft` | write 计算结果，尚未提交 |
+| `Writer` | 纯计算控制器 |
+| `commit(...)` | engine 内唯一提交入口 |
+| `Commit` | 对外发布的提交对象 |
+| `rev` | 提交版本号 |
+| `at` | 提交时间戳 |
+| `doc` | 文档引用 |
+| `value` | 业务返回值 |
+
+建议删除的名字：
+
+| 删除 | 原因 |
+| --- | --- |
+| `WriteDraft` | 比 `Draft` 多余 |
+| `WritePlanner` | 比 `Writer` 更长，且不增加语义 |
+| `commitDraft(...)` | 既然唯一提交入口就是 commit，不需要 `Draft` 后缀 |
+| `CommitDraftOptions` | `Draft.kind` 自己就能表达提交类型 |
+| `PublishedCommit` | `Commit` 直接就是最终发布对象 |
+| `toCommit(...)` | 可以内联进 `commit(...)` |
+| `replay(...)` | `undo/redo` 直接产出 `Draft` 即可 |
+| `plan(...)` / `planReplace(...)` / `undoDraft(...)` / `redoDraft(...)` | 中间动作过多，直接收敛成 `run/replace/undo/redo` |
+
+命名收敛后的核心心智模型只有一句话：
+
+- `writer` 负责算 `Draft`
+- `engine` 只负责 `commit(Draft)`
+
+### 二、内部结果类型
+
+最终推荐直接采用这组内部类型：
+
+```ts
+type Draft<T = void> =
+  | {
+      ok: false
+      code: string
+      message: string
+    }
+  | {
+      ok: true
+      kind: 'apply' | 'replace' | 'undo' | 'redo'
+      doc: Document
+      changes: ChangeSet
+      value: T
+      impact?: KernelReadImpact
+      inverse?: readonly Operation[]
+    }
+
+type Commit = {
+  kind: 'apply' | 'replace' | 'undo' | 'redo'
+  rev: number
+  at: number
+  doc: Document
+  changes: ChangeSet
+  impact?: KernelReadImpact
+}
+```
+
+这组类型里最关键的是：
+
+- `Draft` 自己带 `kind`
+- `Commit` 直接就是最终发布对象
+- 不再需要任何“draft commit meta”的中间类型
+
+### 三、Writer API
+
+最终推荐把 write 层收敛成下面这组最薄 API：
+
+```ts
+type Writer = {
+  run: <D extends WriteDomain, C extends WriteCommandMap[D]>(
+    input: WriteInput<D, C>
+  ) => Draft<WriteOutput<D, C>>
+  ops: (
+    operations: readonly Operation[],
+    origin?: Origin
+  ) => Draft<void>
+  replace: (
+    doc: Document
+  ) => Draft<void>
+  undo: () => Draft<void>
+  redo: () => Draft<void>
+  history: {
+    get: () => HistoryState
+    clear: () => void
+    configure: (config: Partial<HistoryConfig>) => void
+  }
+}
+```
+
+这里的关键约束是：
+
+- `writer` 可以读当前 `doc`
+- `writer` 不能提交当前 `doc`
+
+也就是说，保留：
+
+- translate
+- normalize
+- reduce
+- inverse/history 计算
+
+删除：
+
+- `documentSource.commit(...)`
+
+### 四、Engine API
+
+engine 内只保留一个真正的事务入口：
+
+```ts
+function commit<T>(
+  draft: Draft<T>
+): CommandResult<T>
+```
+
+所有内部调用统一成：
+
+- `commit(writer.run(input))`
+- `commit(writer.ops(operations, origin))`
+- `commit(writer.replace(doc))`
+- `commit(writer.undo())`
+- `commit(writer.redo())`
+
+`commit(...)` 内部统一负责：
+
+1. 处理失败 draft
+2. 生成 `rev` / `at`
+3. `documentSource.commit(draft.doc)`
+4. `readControl.invalidate(...)`
+5. 同步 history side effect
+6. `commit.set(nextCommit)`
+7. `onDocumentChange?.(draft.doc)`
+8. 返回 `success(nextCommit, draft.value)`
+
+### 五、Read API 保持不变
+
+read 层不建议跟着一起改名或改单模型。
+
+继续保留：
+
+- `engine.read.node.list`
+- `engine.read.node.item`
+- `engine.read.edge.item`
+- `engine.read.mindmap.item`
+
+不要改成：
+
+- `store.get().read.node`
+- `store.get().project.edge`
+
+因为 whiteboard 的 read 侧本质上还是 projection/index/tracked store 体系，不是单 immutable state 的扁平字段。
+
+### 六、最终推荐的极简内部轮廓
+
+最终建议文档只认这套内部轮廓：
+
+```ts
+type Draft<T = void> =
+  | Fail
+  | {
+      ok: true
+      kind: 'apply' | 'replace' | 'undo' | 'redo'
+      doc: Document
+      changes: ChangeSet
+      value: T
+      impact?: KernelReadImpact
+      inverse?: readonly Operation[]
+    }
+
+type Writer = {
+  run(input): Draft
+  ops(operations, origin?): Draft
+  replace(doc): Draft
+  undo(): Draft
+  redo(): Draft
+  history: {
+    get()
+    clear()
+    configure(...)
+  }
+}
+
+function commit(draft): CommandResult
+```
+
+整个内部流程只保留两步：
+
+1. `writer` 算 draft
+2. `engine.commit(...)` 统一提交
+
+这样做的收益是：
+
+- 名字短
+- 中间对象少
+- 心智路径短
+- 职责边界仍然清楚
+- 不会把 whiteboard 强行改成单 store
+
+## 分阶段实施方案
+
+这里按“先收边界，再补语义，最后才考虑深改”的顺序来做。
+
+### 阶段 0：建立保护性测试
+
+先补测试，不改生产逻辑。
+
+目标：
+
+- 固定当前外部语义
+- 防止提交边界重构时出现行为回归
+
+建议覆盖：
+
+1. `apply()` 成功后：
+- `engine.document.get()` 已经是新文档
+- `engine.read` 已经追平
+- `engine.commit` 订阅回调能读到追平后的 read
+
+2. `replace()` 成功后：
+- read 走 reset invalidate
+- `commit.kind === 'replace'`
+
+3. `undo()` / `redo()`：
+- 提交顺序正确
+- history 行为不变
+
+4. editor / collab 侧契约：
+- editor 的 commit 监听仍然在 read 追平后执行
+- collab 的 commit mirror 仍然只在 publish 后执行
+
+这一步的意义是：
+
+- 先把“外部观察到的提交语义”钉住
+
+### 阶段 1：把 write 改成只产出 draft
+
+这是第一阶段的核心。
+
+改动目标：
+
+- 删除 `write/index.ts` 中对 `documentSource.commit(...)` 的直接调用
+- 让 `runOperations(...)` / `runReplace(...)` 返回 draft
+- 暂时保留 `WriteResult` 名字也可以，但语义必须变成“未发布”
+
+建议调整点：
+
+1. `createWrite()` 入参去掉 `document: EngineDocument`
+- 或至少不再暴露 `commit`
+- 最终只需要 `get()` 或直接传当前 `Document`
+
+2. `runOperations(...)`
+- 只返回 `{ ok, kind, doc, changes, inverse, impact, data }`
+- 不做 side effect
+
+3. `runReplace(...)`
+- 只返回 `{ ok, kind: 'replace', doc, changes }`
+- 不做 side effect
+
+4. `history.replay`
+- 仍然可以通过“当前文档 -> operations -> draft”的方式工作
+- 只是 replay 结果改成 draft，再交给 engine 提交
+
+这一阶段结束后，whiteboard 的结构会变成：
+
+- `write` 纯计算
+- `engine` 仍然 publish
+
+但 `publish` 此时已经是唯一的 side effect 入口。
+
+如果按更极简的目标推进，阶段 1 里就建议顺手完成命名收敛：
+
+- `WriteResult` 语义改成 `Draft`
+- `runOperations(...)` 收敛成 `ops(...)`
+- `runReplace(...)` 收敛成 `replace(...)`
+- `history.replay(...)` 对外不再暴露成独立中间概念
+
+### 阶段 2：把 `publish(...)` 收敛成 `commit(...)`
+
+第二阶段不再只是“发布结果”，而是明确事务语义。
+
+建议做法：
+
+1. 把 `publish(...)` 直接重命名为 `commit(...)`
+2. 在内部统一处理：
+- revision
+- timestamp
+- history capture/clear
+- document commit
+- read invalidate
+- commit publish
+- `onDocumentChange`
+
+3. 让所有入口都走这里：
+- `write.apply(...)`
+- `replace(...)`
+- `applyOperations(...)`
+- `undo()`
+- `redo()`
+- `execute(...)`
+
+这一阶段的目标不是新增功能，而是让代码结构表达真实语义：
+
+- 这是 commit
+- 不是单纯 publish
+
+阶段 2 结束时建议直接到位：
+
+- `publish(...)` 改成 `commit(...)`
+- 不引入 `commitDraft(...)` 这种过渡命名
+
+原因是：
+
+- 在最终结构里，它就是唯一提交入口
+- 再加 `Draft` 后缀只是重复信息
+
+### 阶段 3：收敛 history 职责边界
+
+当前 history 逻辑一部分在 write，一部分在 engine 使用。
+
+第三阶段建议明确分工：
+
+1. write/history 负责：
+- capture inverse 素材
+- 生成 undo draft
+- 生成 redo draft
+- 提供 history state
+
+2. engine/commit 负责：
+- 决定本次成功提交后是否 capture
+- 决定 replace 成功后是否 clear
+- 保证 history 变更和 commit publish 属于同一事务边界
+
+如果要进一步统一，可以考虑把 history 的 side effect 也放到 `commit(...)` 里，但这一步不是第一优先级。
+
+如果阶段 2 已经直接采用 `commit(...)` 命名，这里对应就是：
+
+- 把 history side effect 尽量收进 `commit(...)`
+
+而不是再保留：
+
+- `capture(...) -> publish(...)`
+- `clear(...) -> publish(...)`
+
+### 阶段 4：给 commit 增加 revision 和 meta
+
+当事务入口稳定后，再给 commit store 补强。
+
+建议新增：
+
+- `revision`
+- `timestamp`
+- 可选 `origin`
+- 可选 perf meta
+
+这样做的收益：
+
+- collab 更容易去重
+- editor 更容易做调试
+- 以后要做日志或 devtools 更稳定
+
+### 阶段 5：只在明确收益下，评估更深层状态统一
+
+只有在以下情况之一发生时，才建议继续推进：
+
+1. 需要 worker 化 derive/read pipeline
+2. 需要完整事务快照调试
+3. 需要 engine 内统一 revisioned snapshot
+4. 当前 read fanout 出现明确 tearing 问题
+
+如果没有这些证据，阶段 5 可以不做。
+
+## 实施时的注意事项
+
+### 1. 不要同时改 read 结构
+
+这次重构的收益来自：
+
+- 事务边界单点化
+
+而不是来自：
+
+- read API 统一
+- projection 模型改写
+
+如果把两件事绑在一起，风险会大很多。
+
+### 2. 不要先上单 `State`
+
+如果一开始就引入：
+
+- `EngineState`
+- `EngineStore`
+- `revisioned snapshot`
+
+大概率会把这次简单的边界收敛，做成一次无必要的大重写。
+
+### 3. 对外兼容面应尽量保持
+
+建议尽量保持以下 API 不变：
+
+- `engine.execute(...)`
+- `engine.applyOperations(...)`
+- `engine.commit`
+- `engine.read`
+- `engine.document.get()`
+
+内部重构完成后，上层 editor / collab 最好不需要同步改协议。
+
+### 4. 先保证“顺序语义不变”，再做命名优化
+
+最重要的顺序是：
+
+1. commit document
+2. invalidate read
+3. publish commit
+4. 回调 `onDocumentChange`
+
+只要这个顺序稳定，对外契约就基本稳定。
+
+命名是否叫：
+
+- `publish`
+- `commit`
+- `finalize`
+
+是第二优先级。
 
 ## 一句话总结
 

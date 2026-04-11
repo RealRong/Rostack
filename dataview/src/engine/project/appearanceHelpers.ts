@@ -4,7 +4,7 @@ import type {
 import type {
   AppearanceId,
   AppearanceList
-} from '../project/model'
+} from './readModels'
 
 export const recordIdsOfAppearances = (
   appearances: Pick<AppearanceList, 'get'>,

@@ -15,7 +15,7 @@ import type {
 } from '../../../index/types'
 import type {
   SectionKey
-} from '../../model'
+} from '../../readModels'
 import type {
   CalcState,
   SectionState

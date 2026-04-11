@@ -20,7 +20,7 @@ import {
 import {
   type CellRef,
   sameCellRef
-} from '@dataview/engine/viewmodel'
+} from '@dataview/engine/project'
 import type {
   TableCurrentView as CurrentView
 } from '../currentView'

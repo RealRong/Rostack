@@ -7,7 +7,7 @@ import {
 } from '@dataview/core/field'
 import {
   toRecordField
-} from '@dataview/engine/viewmodel'
+} from '@dataview/engine/project'
 import {
   type AppearanceId
 } from '@dataview/engine/project'
@@ -70,8 +70,8 @@ const View = (props: CellProps) => {
     table.focus()
     if (action.value === undefined) {
       if (isTitleFieldId(target.fieldId)) {
-        engine.command({
-          type: 'record.apply',
+        engine.action({
+          type: 'record.patch',
           target: {
             type: 'record',
             recordId: target.recordId
@@ -88,8 +88,8 @@ const View = (props: CellProps) => {
     }
 
     if (isTitleFieldId(target.fieldId)) {
-      engine.command({
-        type: 'record.apply',
+      engine.action({
+        type: 'record.patch',
         target: {
           type: 'record',
           recordId: target.recordId

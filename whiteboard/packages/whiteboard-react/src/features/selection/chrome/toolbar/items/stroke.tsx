@@ -1,6 +1,6 @@
 import { Button } from '@ui'
 import { BorderPanel } from '../../panels/BorderPanel'
-import { ToolbarStrokeIcon } from '../primitives'
+import { preventToolbarPointerDown, ToolbarStrokeIcon } from '../primitives'
 import type { ToolbarItemSpec } from './types'
 import { toNodeFieldUpdate, toNodeStylePatch } from '#react/features/node/update'
 
@@ -20,6 +20,7 @@ export const strokeItem: ToolbarItemSpec = {
       variant="ghost"
       pressed={activePanelKey === 'stroke'}
       className="h-9 w-9 rounded-xl p-0"
+      onPointerDown={preventToolbarPointerDown}
       onClick={() => {
         togglePanel('stroke')
       }}

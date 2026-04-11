@@ -3,7 +3,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   IndexStageTrace
-} from '../types'
+} from '../api/public'
 import type {
   SearchIndex
 } from './types'

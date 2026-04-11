@@ -1,4 +1,13 @@
 export type {
+  Action,
+  ActionType,
+  EditTarget,
+  FieldCreateInput,
+  RowCreateInput,
+  ViewCreateInput,
+  ViewPatch
+} from './actions'
+export type {
   CommitDelta,
   DeltaEntities,
   DeltaEntityIds,
@@ -13,14 +22,7 @@ export type {
 } from './delta'
 export type {
   Command,
-  CommandPayload,
   CommandType,
-  EditTarget,
-  CustomFieldCreateInput,
-  RowCreateInput,
-  ValueApplyAction,
-  ViewCreateInput,
-  ViewPatch
 } from './commands'
 export type {
   GalleryCardSize,

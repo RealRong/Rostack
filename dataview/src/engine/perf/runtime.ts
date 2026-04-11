@@ -7,7 +7,7 @@ import type {
   ProjectStageName,
   RunningStat,
   StagePerfStats
-} from '../types'
+} from '../api/public'
 
 type PendingCommitTrace = Omit<CommitTrace, 'id'>
 

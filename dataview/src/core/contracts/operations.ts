@@ -50,16 +50,16 @@ export type BaseOperation =
       viewId: ViewId
     }
   | {
-      type: 'document.customField.put'
+      type: 'document.field.put'
       field: CustomField
     }
   | {
-      type: 'document.customField.patch'
+      type: 'document.field.patch'
       fieldId: CustomFieldId
       patch: Partial<Omit<CustomField, 'id'>>
     }
   | {
-      type: 'document.customField.remove'
+      type: 'document.field.remove'
       fieldId: CustomFieldId
     }
   | {

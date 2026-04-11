@@ -1,14 +1,21 @@
 import type {
   AppearanceList,
   AppearanceId,
-} from '../project/model'
+} from './readModels'
 import {
   sameOrder
 } from '@shared/core'
-import type {
-  Placement,
-  Plan
-} from './types'
+
+export interface Placement {
+  section: import('./readModels').SectionKey
+  before?: AppearanceId
+}
+
+interface Plan {
+  ids: readonly AppearanceId[]
+  target: Placement
+  changed: boolean
+}
 
 const emptyIds = [] as readonly AppearanceId[]
 

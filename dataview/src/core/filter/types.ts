@@ -21,30 +21,6 @@ export type FilterEditorKind =
   | 'date'
   | 'option-set'
 
-export interface FilterConditionProjection {
-  id: FilterPresetId
-  selected: boolean
-}
-
-export interface FilterRuleProjection {
-  rule: FilterRule
-  fieldId: FieldId
-  field?: Field
-  fieldLabel: string
-  activePresetId: FilterPresetId
-  effective: boolean
-  editorKind: FilterEditorKind
-  valueText: string
-  bodyLayout: 'none' | 'inset' | 'flush'
-  conditions: readonly FilterConditionProjection[]
-}
-
-export interface ViewFilterProjection {
-  viewId: ViewId
-  mode: 'and' | 'or'
-  rules: readonly FilterRuleProjection[]
-}
-
 export interface FilterSpec {
   presets: readonly FilterPreset[]
   getDefaultRule: (field: Field) => FilterRule

@@ -6,14 +6,9 @@ import type {
 import type {
   EngineCommand,
   ExecuteOptions,
-  ExecuteResult,
-  WriteCommandMap,
-  WriteDomain,
-  WriteInput,
-  WriteOutput
+  ExecuteResult
 } from '@engine-types/command'
 import type { MindmapLayoutConfig } from '@whiteboard/core/mindmap'
-import type { Write, WriteResult } from '@engine-types/write'
 import { createRegistries } from '@whiteboard/core/kernel'
 import { resolveBoardConfig } from '../config'
 import { createRead } from '../read'
@@ -23,10 +18,12 @@ import { createDocumentSource } from './document'
 import { normalizeDocument } from '../document/normalize'
 import type { Commit } from '@engine-types/commit'
 import type { CommandResult } from '@engine-types/result'
-import { cancelled, success } from '../result'
+import type { Draft } from '@engine-types/write'
+import { success } from '../result'
 import { createValueStore } from '@shared/core'
 
 const EMPTY_MINDMAP_LAYOUT: MindmapLayoutConfig = {}
+const readCommitAt = (): number => Date.now()
 
 export const createEngine = ({
   registries,
@@ -37,7 +34,7 @@ export const createEngine = ({
   const config = resolveBoardConfig(overrides)
   const resolvedRegistries = registries ?? createRegistries()
   const documentSource = createDocumentSource(normalizeDocument(document, config))
-  const commit = createValueStore<Commit | null>(null)
+  const commitStore = createValueStore<Commit | null>(null)
   let mindmapLayout = EMPTY_MINDMAP_LAYOUT
 
   const readControl = createRead({
@@ -52,89 +49,76 @@ export const createEngine = ({
     registries: resolvedRegistries
   })
 
-  const toCommit = (
-    committed: Extract<WriteResult<unknown>, { ok: true }>,
-    kind: Commit['kind']
-  ): Commit => (
-    committed.kind === 'operations'
-      ? {
-          kind,
-          document: committed.doc,
-          changes: committed.changes,
-          impact: committed.impact
-        }
-      : {
-          kind,
-          document: committed.doc,
-          changes: committed.changes
-        }
-  )
-
-  const publish = <T>(
-    committed: WriteResult<T>,
-    kind: Commit['kind']
+  const commit = <T,>(
+    draft: Draft<T>
   ): CommandResult<T> => {
-    if (!committed.ok) return committed
-
-    if (committed.kind === 'replace') {
-      readControl.invalidate(RESET_READ_IMPACT)
-    } else {
-      readControl.invalidate(committed.impact)
+    if (!draft.ok) {
+      return draft
     }
 
-    const nextCommit = toCommit(committed, kind)
-    commit.set(nextCommit)
-    onDocumentChange?.(committed.doc)
-    return success(nextCommit, committed.data)
+    documentSource.commit(draft.doc)
+    readControl.invalidate(
+      draft.kind === 'replace'
+        ? RESET_READ_IMPACT
+        : draft.impact
+    )
+
+    if (draft.kind === 'replace') {
+      writer.history.clear()
+    } else if (draft.kind === 'apply' && draft.inverse) {
+      writer.history.capture(draft)
+    }
+
+    const nextCommit: Commit = (
+      draft.kind === 'replace'
+        ? {
+            kind: draft.kind,
+            rev: (commitStore.get()?.rev ?? 0) + 1,
+            at: readCommitAt(),
+            doc: draft.doc,
+            changes: draft.changes
+          }
+        : {
+            kind: draft.kind,
+            rev: (commitStore.get()?.rev ?? 0) + 1,
+            at: readCommitAt(),
+            doc: draft.doc,
+            changes: draft.changes,
+            impact: draft.impact
+          }
+    )
+    commitStore.set(nextCommit)
+    onDocumentChange?.(draft.doc)
+    return success(nextCommit, draft.value)
   }
 
-  const replay = (
-    run: () => WriteResult<void> | false,
-    kind: Extract<Commit['kind'], 'undo' | 'redo'>
-  ): (() => CommandResult) => () => {
-    const committed = run()
-    if (!committed) {
-      return cancelled(
-        kind === 'undo' ? 'Nothing to undo.' : 'Nothing to redo.'
-      )
-    }
-    return publish(committed, kind)
-  }
+  const apply = (input: Parameters<typeof writer.run>[0]) =>
+    commit(writer.run(input))
 
-  const write: Write = {
-    apply: <
-      D extends WriteDomain,
-      C extends WriteCommandMap[D]
-    >(payload: WriteInput<D, C>): CommandResult<WriteOutput<D, C>> =>
-      publish(writer.apply(payload), 'apply'),
-    replace: (document) => publish(writer.replace(document), 'replace'),
-    history: {
-      get: writer.history.get,
-      clear: writer.history.clear,
-      undo: replay(writer.history.undo, 'undo'),
-      redo: replay(writer.history.redo, 'redo')
-    }
-  }
+  const replace = (nextDocument: Parameters<typeof writer.replace>[0]) =>
+    commit(writer.replace(nextDocument))
+
+  const undo = () => commit(writer.undo())
+  const redo = () => commit(writer.redo())
 
   const history = {
     get: writer.history.get,
     subscribe: (listener: () => void) => writer.history.subscribe(() => {
       listener()
     }),
-    undo: replay(writer.history.undo, 'undo'),
-    redo: replay(writer.history.redo, 'redo'),
+    undo,
+    redo,
     clear: writer.history.clear
   }
 
   const applyOperations: Engine['applyOperations'] = (
     operations,
     options
-  ) => publish(
-    writer.applyOperations(
+  ) => commit(
+    writer.ops(
       operations,
       options?.origin ?? 'user'
-    ),
-    'apply'
+    )
   )
 
   const execute = <C extends EngineCommand>(
@@ -145,9 +129,9 @@ export const createEngine = ({
 
     switch (command.type) {
       case 'document.replace':
-        return publish(writer.replace(command.document), 'replace') as ExecuteResult<C>
+        return replace(command.document) as ExecuteResult<C>
       case 'document.insert':
-        return write.apply({
+        return apply({
           domain: 'document',
           command: {
             type: 'insert',
@@ -157,7 +141,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'document.delete':
-        return write.apply({
+        return apply({
           domain: 'document',
           command: {
             type: 'delete',
@@ -166,7 +150,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'document.duplicate':
-        return write.apply({
+        return apply({
           domain: 'document',
           command: {
             type: 'duplicate',
@@ -175,7 +159,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'document.background.set':
-        return write.apply({
+        return apply({
           domain: 'document',
           command: {
             type: 'background',
@@ -184,7 +168,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'document.order':
-        return write.apply({
+        return apply({
           domain: 'document',
           command: {
             type: 'order',
@@ -194,7 +178,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'node.create':
-        return write.apply({
+        return apply({
           domain: 'node',
           command: {
             type: 'create',
@@ -203,7 +187,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'node.move':
-        return write.apply({
+        return apply({
           domain: 'node',
           command: {
             type: 'move',
@@ -213,7 +197,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'node.patch':
-        return write.apply({
+        return apply({
           domain: 'node',
           command: {
             type: 'updateMany',
@@ -222,7 +206,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'node.align':
-        return write.apply({
+        return apply({
           domain: 'node',
           command: {
             type: 'align',
@@ -232,7 +216,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'node.distribute':
-        return write.apply({
+        return apply({
           domain: 'node',
           command: {
             type: 'distribute',
@@ -242,7 +226,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'node.delete':
-        return write.apply({
+        return apply({
           domain: 'node',
           command: {
             type: 'delete',
@@ -251,7 +235,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'node.deleteCascade':
-        return write.apply({
+        return apply({
           domain: 'node',
           command: {
             type: 'deleteCascade',
@@ -260,7 +244,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'node.duplicate':
-        return write.apply({
+        return apply({
           domain: 'node',
           command: {
             type: 'duplicate',
@@ -269,7 +253,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'group.merge':
-        return write.apply({
+        return apply({
           domain: 'group',
           command: {
             type: 'merge',
@@ -278,7 +262,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'group.order':
-        return write.apply({
+        return apply({
           domain: 'group',
           command: {
             type: 'order',
@@ -288,7 +272,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'group.ungroup':
-        return write.apply({
+        return apply({
           domain: 'group',
           command: {
             type: 'ungroup',
@@ -297,7 +281,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'group.ungroupMany':
-        return write.apply({
+        return apply({
           domain: 'group',
           command: {
             type: 'ungroupMany',
@@ -306,7 +290,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'edge.create':
-        return write.apply({
+        return apply({
           domain: 'edge',
           command: {
             type: 'create',
@@ -315,7 +299,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'edge.move':
-        return write.apply({
+        return apply({
           domain: 'edge',
           command: {
             type: 'move',
@@ -325,7 +309,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'edge.reconnect':
-        return write.apply({
+        return apply({
           domain: 'edge',
           command: {
             type: 'updateMany',
@@ -339,7 +323,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'edge.patch':
-        return write.apply({
+        return apply({
           domain: 'edge',
           command: {
             type: 'updateMany',
@@ -348,7 +332,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'edge.delete':
-        return write.apply({
+        return apply({
           domain: 'edge',
           command: {
             type: 'delete',
@@ -357,7 +341,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'edge.route.insert':
-        return write.apply({
+        return apply({
           domain: 'edge',
           command: {
             type: 'route',
@@ -368,7 +352,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'edge.route.move':
-        return write.apply({
+        return apply({
           domain: 'edge',
           command: {
             type: 'route',
@@ -380,7 +364,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'edge.route.remove':
-        return write.apply({
+        return apply({
           domain: 'edge',
           command: {
             type: 'route',
@@ -391,7 +375,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'edge.route.clear':
-        return write.apply({
+        return apply({
           domain: 'edge',
           command: {
             type: 'route',
@@ -401,7 +385,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'mindmap.create':
-        return write.apply({
+        return apply({
           domain: 'mindmap',
           command: {
             type: 'create',
@@ -410,7 +394,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'mindmap.delete':
-        return write.apply({
+        return apply({
           domain: 'mindmap',
           command: {
             type: 'delete',
@@ -419,7 +403,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'mindmap.insert':
-        return write.apply({
+        return apply({
           domain: 'mindmap',
           command: {
             type: 'insert',
@@ -429,7 +413,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'mindmap.move':
-        return write.apply({
+        return apply({
           domain: 'mindmap',
           command: {
             type: 'move.subtree',
@@ -439,7 +423,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'mindmap.remove':
-        return write.apply({
+        return apply({
           domain: 'mindmap',
           command: {
             type: 'remove',
@@ -449,7 +433,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'mindmap.clone':
-        return write.apply({
+        return apply({
           domain: 'mindmap',
           command: {
             type: 'clone.subtree',
@@ -459,7 +443,7 @@ export const createEngine = ({
           origin
         }) as ExecuteResult<C>
       case 'mindmap.patchNode':
-        return write.apply({
+        return apply({
           domain: 'mindmap',
           command: {
             type: 'update.node',
@@ -495,7 +479,7 @@ export const createEngine = ({
     },
     read: readControl.read,
     history,
-    commit,
+    commit: commitStore,
     execute,
     applyOperations,
     configure,

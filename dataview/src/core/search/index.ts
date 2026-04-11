@@ -1,6 +1,3 @@
-export type {
-  ViewSearchProjection
-} from './types'
 export {
   matchSearchRecord
 } from './execute'

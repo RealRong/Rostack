@@ -5,6 +5,7 @@ import {
   AlignRight
 } from 'lucide-react'
 import { TextAlignPanel } from '../../panels/TextAlignPanel'
+import { preventToolbarPointerDown } from '../primitives'
 import type { ToolbarItemSpec } from './types'
 import { toNodeStylePatch } from '#react/features/node/update'
 
@@ -30,6 +31,7 @@ export const textAlignItem: ToolbarItemSpec = {
       variant="ghost"
       pressed={activePanelKey === 'text-align'}
       className="h-9 w-9 rounded-xl p-0"
+      onPointerDown={preventToolbarPointerDown}
       onClick={() => {
         togglePanel('text-align')
       }}

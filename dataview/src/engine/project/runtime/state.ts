@@ -11,22 +11,24 @@ import type {
   Section,
   SectionBucket,
   SectionKey
-} from '../model'
+} from '../readModels'
 import type {
   ActiveView,
-  FilterView,
-  GroupView,
   RecordSet,
-  SearchView,
-  SortView
-} from '../../types'
+} from '../../api/public'
+import type {
+  ViewFilterProjection,
+  ViewGroupProjection,
+  ViewSearchProjection,
+  ViewSortProjection
+} from '../viewProjections'
 
 export interface ProjectState {
   view?: ActiveView
-  filter?: FilterView
-  group?: GroupView
-  search?: SearchView
-  sort?: SortView
+  filter?: ViewFilterProjection
+  group?: ViewGroupProjection
+  search?: ViewSearchProjection
+  sort?: ViewSortProjection
   records?: RecordSet
   sections?: readonly Section[]
   appearances?: AppearanceList

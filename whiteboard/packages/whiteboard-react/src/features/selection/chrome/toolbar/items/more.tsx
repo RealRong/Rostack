@@ -1,6 +1,7 @@
 import { Button } from '@ui'
 import { MoreHorizontal } from 'lucide-react'
 import { SelectionActionMenu } from '../../panels/SelectionActionMenu'
+import { preventToolbarPointerDown } from '../primitives'
 import type { ToolbarItemSpec } from './types'
 
 export const moreItem: ToolbarItemSpec = {
@@ -18,6 +19,7 @@ export const moreItem: ToolbarItemSpec = {
       variant="ghost"
       pressed={activePanelKey === 'more'}
       className="h-9 w-9 rounded-xl p-0"
+      onPointerDown={preventToolbarPointerDown}
       onClick={() => {
         togglePanel('more')
       }}

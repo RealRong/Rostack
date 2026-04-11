@@ -2,9 +2,12 @@ import type {
   ChangeSet,
   Document,
   Operation,
-  Origin,
+  Origin
 } from '@whiteboard/core/types'
-import type { HistoryConfig, HistoryState } from '@whiteboard/core/kernel'
+import type {
+  HistoryConfig,
+  HistoryState
+} from '@whiteboard/core/kernel'
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import type {
   WriteCommandMap,
@@ -12,62 +15,49 @@ import type {
   WriteInput,
   WriteOutput
 } from './command'
-import type { CommandFailure, CommandResult } from './result'
+import type { CommandFailure } from './result'
 
-export type Apply = <
-  D extends WriteDomain,
-  C extends WriteCommandMap[D]
->(input: WriteInput<D, C>) => CommandResult<WriteOutput<D, C>>
+export type DraftKind = 'apply' | 'replace' | 'undo' | 'redo'
 
-export type WriteHistory = {
-  get: () => HistoryState
-  clear: () => void
-  undo: () => CommandResult
-  redo: () => CommandResult
-}
-
-export type Write = {
-  apply: Apply
-  replace: (document: Document) => CommandResult
-  history: WriteHistory
-}
-
-type SuccessfulWriteBase = {
+type SuccessDraftBase<T> = {
   ok: true
-  data: unknown
+  kind: DraftKind
   doc: Document
   changes: ChangeSet
+  value: T
 }
 
-export type WriteResult<T = void> =
+export type Draft<T = void> =
   | CommandFailure
-  | (SuccessfulWriteBase & {
-      data: T
-      kind: 'operations'
+  | (SuccessDraftBase<T> & {
+      kind: 'replace'
+    })
+  | (SuccessDraftBase<T> & {
+      kind: Exclude<DraftKind, 'replace'>
       inverse?: readonly Operation[]
       impact: KernelReadImpact
     })
-  | (SuccessfulWriteBase & {
-      data: T
-      kind: 'replace'
-    })
 
-export type WriteControl = {
-  apply: <
+export type Writer = {
+  run: <
     D extends WriteDomain,
     C extends WriteCommandMap[D]
-  >(input: WriteInput<D, C>) => WriteResult<WriteOutput<D, C>>
-  applyOperations: (
+  >(input: WriteInput<D, C>) => Draft<WriteOutput<D, C>>
+  ops: (
     operations: readonly Operation[],
     origin?: Origin
-  ) => WriteResult
-  replace: (document: Document) => WriteResult
+  ) => Draft
+  replace: (document: Document) => Draft
+  undo: () => Draft
+  redo: () => Draft
   history: {
+    capture: (input: {
+      changes: ChangeSet
+      inverse?: readonly Operation[]
+    }) => void
     configure: (config: Partial<HistoryConfig>) => void
     get: () => HistoryState
     subscribe: (listener: () => void) => () => void
     clear: () => void
-    undo: () => WriteResult | false
-    redo: () => WriteResult | false
   }
 }

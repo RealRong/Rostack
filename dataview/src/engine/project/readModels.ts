@@ -8,7 +8,7 @@ import type { Bucket } from '@dataview/core/field'
 export type AppearanceId = string
 export type SectionKey = string
 
-export interface SectionBucket extends Pick<Bucket, 'key' | 'title' | 'value' | 'clearValue' | 'empty' | 'color'> {}
+export type SectionBucket = Pick<Bucket, 'key' | 'title' | 'value' | 'clearValue' | 'empty' | 'color'>
 
 export interface Appearance {
   id: AppearanceId

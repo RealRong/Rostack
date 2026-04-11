@@ -94,8 +94,8 @@ export const useCardTitleEditing = (input: {
     }
 
     committedTitleRef.current = nextValue
-    engine.command({
-      type: 'record.apply',
+    engine.action({
+      type: 'record.patch',
       target: {
         type: 'record',
         recordId: input.record.id

@@ -4,10 +4,10 @@ import type {
 import type {
   Section,
   SectionKey
-} from '../model'
+} from '../readModels'
 import type {
   ProjectStageMetrics
-} from '../../types'
+} from '../../api/public'
 import type {
   ProjectState
 } from './state'

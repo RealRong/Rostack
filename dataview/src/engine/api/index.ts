@@ -3,7 +3,7 @@ export type {
   CreateEngineOptions,
   CommitResult,
   CreatedEntities,
-  CommandResult,
+  ActionResult,
   CommitTrace,
   Engine,
   EngineDocumentApi,
@@ -12,8 +12,6 @@ export type {
   EnginePerfOptions,
   EngineProjectApi,
   EngineReadApi,
-  FilterView,
-  GroupView,
   HistoryActionResult,
   IndexStageTrace,
   IndexTrace,
@@ -28,11 +26,9 @@ export type {
   PublishTrace,
   RecordSet,
   RunningStat,
-  SearchView,
-  SortView,
   TraceDeltaSummary,
   ViewAccessorApi
-} from './types'
+} from './public'
 export type {
   KanbanApi,
   KanbanCreateCardInput,
@@ -46,9 +42,9 @@ export type {
   ViewOrderApi,
   ViewTableApi,
   ViewsEngineApi
-} from './types'
-export { createEngine } from './instance/create'
+} from './public'
+export { createEngine } from './createEngine'
 export type {
   HistoryOptions,
   HistoryState
-} from './history'
+} from '../history'

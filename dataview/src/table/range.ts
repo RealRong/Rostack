@@ -4,8 +4,8 @@ import type {
 } from '@dataview/engine/project'
 import type {
   CellRef
-} from '@dataview/engine/viewmodel'
-import { sameCellRef } from '@dataview/engine/viewmodel'
+} from '@dataview/engine/project'
+import { sameCellRef } from '@dataview/engine/project'
 import {
   grid
 } from './grid'

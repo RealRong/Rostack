@@ -20,6 +20,7 @@ import {
   useResolvedConfig
 } from '#react/runtime/hooks'
 import { EditableSlot } from '#react/features/edit/EditableSlot'
+import { matchEdgeLabelEdit } from '#react/features/edit/session'
 import { useEdgeView } from '../hooks/useEdgeView'
 import { EDGE_ARROW_END_ID, EDGE_ARROW_START_ID, resolveEdgeDash } from '../constants'
 import type { EdgeView } from '#react/types/edge'
@@ -114,10 +115,8 @@ const EdgeLabelItem = ({
   const [drag, setDrag] = useState<DragState | null>(null)
 
   const text = readLabelText(label.text)
-  const editing =
-    edit?.kind === 'edge-label'
-    && edit.edgeId === edgeId
-    && edit.labelId === labelId
+  const labelEdit = matchEdgeLabelEdit(edit, edgeId, labelId)
+  const editing = labelEdit !== null
   const singleSelected =
     selection.nodeIds.length === 0
     && selection.edgeIds.length === 1
@@ -273,8 +272,8 @@ const EdgeLabelItem = ({
       {editing ? (
         <EditableSlot
           bindRef={ref}
-          value={text}
-          caret={edit.caret}
+          value={labelEdit.draft.text}
+          caret={labelEdit.caret}
           multiline
           className="wb-edge-label-content wb-edge-label-content-editing wb-default-text-editor"
           style={style}

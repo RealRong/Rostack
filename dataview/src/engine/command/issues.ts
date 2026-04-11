@@ -1,5 +1,5 @@
+import type { ActionType } from '@dataview/core/contracts/actions'
 import type { CommandType } from '@dataview/core/contracts/commands'
-import type { IndexedCommand } from './context'
 
 export type ValidationSeverity = 'error' | 'warning'
 
@@ -8,7 +8,6 @@ export type ValidationCode =
   | 'record.notFound'
   | 'record.duplicateId'
   | 'record.invalidId'
-  | 'record.emptyCollection'
   | 'record.hierarchyUnsupported'
   | 'record.invalidIndex'
   | 'record.emptyPatch'
@@ -18,8 +17,6 @@ export type ValidationCode =
   | 'view.invalidOrder'
   | 'field.notFound'
   | 'field.invalid'
-  | 'value.emptyMatrix'
-  | 'value.invalidAnchor'
   | 'value.invalidField'
   | 'value.emptyPatch'
   | 'external.invalidSource'
@@ -29,12 +26,17 @@ export interface ValidationIssue {
   code: ValidationCode
   message: string
   commandIndex: number
-  commandType: CommandType
+  commandType: ActionType | CommandType
   path?: string
 }
 
+export interface IssueSource {
+  index: number
+  type: ActionType | CommandType
+}
+
 export const createIssue = (
-  command: IndexedCommand,
+  source: IssueSource,
   severity: ValidationSeverity,
   code: ValidationCode,
   message: string,
@@ -43,8 +45,8 @@ export const createIssue = (
   severity,
   code,
   message,
-  commandIndex: command.commandIndex,
-  commandType: command.type,
+  commandIndex: source.index,
+  commandType: source.type,
   path
 })
 

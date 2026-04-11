@@ -9,10 +9,10 @@ import type {
 } from '@dataview/core/contracts/operations'
 import {
   deriveIndex
-} from '../derive/index'
+} from '../index/runtime'
 import {
   deriveProject
-} from '../derive/project'
+} from '../project/runtime'
 import type {
   ResolvedWriteBatch
 } from '../command'
@@ -31,12 +31,12 @@ import {
 import type {
   State,
   Store
-} from '../state'
+} from '../store/state'
 import type {
-  CommandResult,
+  ActionResult,
   CommitResult,
   TraceDeltaSummary
-} from '../types'
+} from '../api/public'
 import {
   applyReplay,
   applyWriteBatch,
@@ -270,7 +270,7 @@ const replayResult = (
 
 const writePlan = (
   batch: ResolvedWriteBatch
-): Plan<CommandResult> => base => {
+): Plan<ActionResult> => base => {
   if (!batch.canApply || !batch.operations.length) {
     return {
       ok: false,
@@ -419,7 +419,7 @@ export const createWriteControl = (input: {
   perf: PerfRuntime
   capturePerf: boolean
 }) => ({
-  run: (batch: ResolvedWriteBatch): CommandResult => commit({
+  run: (batch: ResolvedWriteBatch): ActionResult => commit({
     store: input.store,
     perf: input.perf,
     capturePerf: input.capturePerf,

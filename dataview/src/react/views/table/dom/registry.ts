@@ -10,7 +10,7 @@ import type {
 } from '@dataview/engine/project'
 import type {
   CellRef
-} from '@dataview/engine/viewmodel'
+} from '@dataview/engine/project'
 
 const cellKey = (cell: {
   appearanceId: AppearanceId

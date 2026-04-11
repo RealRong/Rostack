@@ -14,10 +14,10 @@ import type {
   ResolvedWriteBatch
 } from '../command'
 import type {
-  CommandResult,
+  ActionResult,
   CommitResult,
   CreatedEntities
-} from '../types'
+} from '../api/public'
 
 export const createdFromChanges = (
   changes?: CommitResult['changes']
@@ -52,8 +52,8 @@ export const applyReplay = (
 ) => applyOperations(beforeDocument, operations)
 
 export const rejectedResult = (
-  issues: CommandResult['issues']
-): CommandResult => ({
+  issues: ActionResult['issues']
+): ActionResult => ({
   issues,
   applied: false
 })

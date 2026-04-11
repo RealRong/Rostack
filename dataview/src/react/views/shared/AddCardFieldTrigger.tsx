@@ -6,7 +6,7 @@ import {
 } from '@dataview/react/dataview'
 import type {
   ViewFieldRef
-} from '@dataview/engine/viewmodel'
+} from '@dataview/engine/project'
 import {
   meta,
   renderMessage

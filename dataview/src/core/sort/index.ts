@@ -1,7 +1,3 @@
-export type {
-  SortRuleProjection,
-  ViewSortProjection
-} from './types'
 export {
   compareSortedRecords
 } from './compare'

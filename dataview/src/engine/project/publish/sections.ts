@@ -10,7 +10,7 @@ import type {
   AppearanceList,
   Section,
   SectionKey
-} from '../model'
+} from '../readModels'
 import type {
   SectionState
 } from '../runtime/state'

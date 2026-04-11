@@ -15,7 +15,7 @@ import type {
   ProjectStageName,
   ProjectStageTrace,
   ProjectTrace
-} from '../../types'
+} from '../../api/public'
 import {
   now
 } from '../../perf/shared'

@@ -38,11 +38,11 @@ export const reduceOperation = (
       return setDocumentActiveViewId(document, operation.viewId)
     case 'document.view.remove':
       return removeDocumentView(document, operation.viewId)
-    case 'document.customField.put':
+    case 'document.field.put':
       return putDocumentCustomField(document, operation.field)
-    case 'document.customField.patch':
+    case 'document.field.patch':
       return patchDocumentCustomField(document, operation.fieldId, operation.patch)
-    case 'document.customField.remove':
+    case 'document.field.remove':
       return removeDocumentCustomField(document, operation.fieldId)
     case 'external.version.bump':
       return document

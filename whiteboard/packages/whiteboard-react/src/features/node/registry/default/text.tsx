@@ -10,6 +10,7 @@ import {
   useEditor
 } from '#react/runtime/hooks'
 import { EditableSlot } from '#react/features/edit/EditableSlot'
+import { matchNodeEdit } from '#react/features/edit/session'
 import { useStickyFontSize } from '../../hooks/useStickyFontSize'
 import {
   bindNodeTextSource,
@@ -119,10 +120,8 @@ const TextNodeRenderer = ({
   const fontWeight = getStyleNumber(node, 'fontWeight') ?? 400
   const fontStyle = getStyleString(node, 'fontStyle') ?? 'normal'
   const color = getStyleString(node, 'color') ?? 'var(--ui-text-primary)'
-  const editing =
-    edit?.kind === 'node'
-    && edit.nodeId === node.id
-    && edit.field === 'text'
+  const nodeEdit = matchNodeEdit(edit, node.id, 'text')
+  const editing = nodeEdit !== null
   const widthMode = readTextWidthMode(node)
   const wrapWidth = readTextWrapWidth(node)
   const textStyle: CSSProperties = {
@@ -139,8 +138,8 @@ const TextNodeRenderer = ({
         {editing ? (
           <EditableSlot
             bindRef={bindRef}
-            value={text}
-            caret={edit.caret}
+            value={nodeEdit.draft.text}
+            caret={nodeEdit.caret}
             multiline
             className="wb-default-text-editor"
             style={textStyle}
@@ -198,10 +197,8 @@ const StickyNodeRenderer = ({
   const fontWeight = getStyleNumber(node, 'fontWeight') ?? 400
   const fontStyle = getStyleString(node, 'fontStyle') ?? 'normal'
   const color = getStyleString(node, 'color') ?? 'var(--ui-text-primary)'
-  const editing =
-    edit?.kind === 'node'
-    && edit.nodeId === node.id
-    && edit.field === 'text'
+  const nodeEdit = matchNodeEdit(edit, node.id, 'text')
+  const editing = nodeEdit !== null
   const textStyle: CSSProperties = {
     fontSize,
     fontWeight,
@@ -219,8 +216,8 @@ const StickyNodeRenderer = ({
         {editing ? (
           <EditableSlot
             bindRef={bindRef}
-            value={text}
-            caret={edit.caret}
+            value={nodeEdit.draft.text}
+            caret={nodeEdit.caret}
             multiline
             className="wb-sticky-node-text wb-default-text-editor"
             style={textStyle}

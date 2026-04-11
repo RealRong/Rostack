@@ -32,19 +32,17 @@ import {
 import type {
   AppearanceList,
   FieldList,
+  FieldLookup,
   Section,
   SectionKey
-} from '@dataview/engine/project/model'
+} from '@dataview/engine/project'
 import {
-  sameSchema
-} from '@dataview/engine/viewmodel/equality'
-import type {
-  Schema
-} from '@dataview/engine/viewmodel/types'
+  sameFieldLookup
+} from '@dataview/engine/project'
 
 export interface TableCurrentView {
   view: View
-  schema: Schema
+  fieldLookup: FieldLookup
   appearances: AppearanceList
   sections: readonly Section[]
   fields: FieldList
@@ -107,7 +105,7 @@ export const sameTableCurrentView = (
 
   return (
     equalView(left.view, right.view)
-    && sameSchema(left.schema, right.schema)
+    && sameFieldLookup(left.fieldLookup, right.fieldLookup)
     && sameAppearanceList(left.appearances, right.appearances)
     && sameSections(left.sections, right.sections)
     && sameFieldList(left.fields, right.fields)

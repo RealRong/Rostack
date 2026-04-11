@@ -1,8 +1,14 @@
-import type { WriteControl, WriteResult } from '@engine-types/write'
-import type { WriteCommandMap, WriteDomain, WriteInput, WriteOutput } from '@engine-types/command'
-import type { BoardConfig, EngineDocument } from '@engine-types/instance'
+import type { Draft, DraftKind, Writer } from '@engine-types/write'
+import type {
+  WriteCommandMap,
+  WriteDomain,
+  WriteInput,
+  WriteOutput
+} from '@engine-types/command'
+import type { BoardConfig } from '@engine-types/instance'
 import { assertDocument } from '@whiteboard/core/document'
 import {
+  type ChangeSet,
   type CoreRegistries,
   type Document,
   type EdgeId,
@@ -20,10 +26,10 @@ import {
 } from '@whiteboard/core/kernel'
 import { createId } from '@whiteboard/core/id'
 import { DEFAULT_HISTORY_CONFIG } from '../config'
-import { failure } from '../result'
-import { translateWrite } from './translate'
-import { createWritePipeline } from './normalize'
+import { cancelled, failure } from '../result'
 import { normalizeDocument } from '../document/normalize'
+import { createWritePipeline } from './normalize'
+import { translateWrite } from './translate'
 
 const now = (): number => {
   if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
@@ -32,17 +38,32 @@ const now = (): number => {
   return Date.now()
 }
 
+const withKind = <T>(
+  draft: Draft<T>,
+  kind: Exclude<DraftKind, 'replace'>
+): Draft<T> => {
+  if (!draft.ok || draft.kind === 'replace') {
+    return draft
+  }
+
+  return {
+    ...draft,
+    kind
+  }
+}
+
 export const createWrite = ({
-  document: documentSource,
+  document,
   config,
   registries
 }: {
-  document: EngineDocument
+  document: {
+    get: () => Document
+  }
   config: BoardConfig
   registries: CoreRegistries
-}): WriteControl => {
+}): Writer => {
   const readNow = now
-  const commitDocument = documentSource.commit
   const ids = {
     node: (): NodeId => createId('node'),
     edge: (): EdgeId => createId('edge'),
@@ -52,10 +73,10 @@ export const createWrite = ({
   }
 
   const reduce = (
-    document: Document,
+    doc: Document,
     operations: readonly Operation[],
     origin: Origin
-  ): KernelReduceResult => reduceOperations(document, operations, {
+  ): KernelReduceResult => reduceOperations(doc, operations, {
     now: readNow,
     origin
   })
@@ -65,26 +86,27 @@ export const createWrite = ({
     nodeSize: config.nodeSize
   })
 
-  const toOperationResult = <T>(
+  const toOperationsDraft = <T>(
     reduced: Extract<KernelReduceResult, { ok: true }>,
-    data: T
-  ): WriteResult<T> => ({
+    kind: Exclude<DraftKind, 'replace'>,
+    value: T
+  ): Draft<T> => ({
     ok: true,
-    data,
-    kind: 'operations',
+    kind,
     doc: reduced.data.doc,
     changes: reduced.data.changes,
+    value,
     inverse: reduced.data.inverse,
     impact: reduced.data.read
   })
 
-  const toReplaceResult = (
-    document: Document
-  ): WriteResult => ({
+  const toReplaceDraft = (
+    doc: Document
+  ): Draft => ({
     ok: true,
-    data: undefined,
     kind: 'replace',
-    doc: document,
+    doc,
+    value: undefined,
     changes: {
       id: createId('change'),
       timestamp: readNow(),
@@ -93,14 +115,15 @@ export const createWrite = ({
     }
   })
 
-  const runOperations = <T>(
-    document: Document,
+  const reduceToDraft = <T>(
+    doc: Document,
     operations: readonly Operation[],
     origin: Origin,
-    data: T
-  ): WriteResult<T> => {
+    kind: Exclude<DraftKind, 'replace'>,
+    value: T
+  ): Draft<T> => {
     const reduced = pipeline.run(
-      document,
+      doc,
       operations,
       origin
     )
@@ -111,64 +134,36 @@ export const createWrite = ({
       )
     }
 
-    commitDocument(reduced.data.doc)
-    return toOperationResult(reduced, data)
+    return toOperationsDraft(reduced, kind, value)
   }
 
-  const runReplace = (
-    document: Document
-  ): WriteResult => {
-    const nextDocument = normalizeDocument(
-      assertDocument(document),
+  const replace = (
+    doc: Document
+  ): Draft => toReplaceDraft(
+    normalizeDocument(
+      assertDocument(doc),
       config
     )
-    commitDocument(nextDocument)
-    return toReplaceResult(nextDocument)
-  }
+  )
 
-  const history = createHistory<Operation, Origin, WriteResult>({
+  const history = createHistory<Operation, Origin, Draft>({
     now: readNow,
     config: DEFAULT_HISTORY_CONFIG,
-    replay: (operations) => {
-      const result = runOperations(
-        documentSource.get(),
-        operations,
-        'system',
-        undefined
-      )
-      return result.ok ? result : false
-    }
+    replay: (operations) => reduceToDraft(
+      document.get(),
+      operations,
+      'system',
+      'apply',
+      undefined
+    )
   })
 
-  const clearOnSuccess = <T>(result: WriteResult<T>): WriteResult<T> => {
-    if (result.ok) {
-      history.clear()
-    }
-    return result
-  }
-
-  const capture = <T>(result: WriteResult<T>): WriteResult<T> => {
-    if (
-      result.ok
-      && result.kind === 'operations'
-      && result.inverse
-    ) {
-      history.capture({
-        forward: result.changes.operations,
-        inverse: result.inverse,
-        origin: result.changes.origin
-      })
-    }
-
-    return result
-  }
-
-  const apply = <
+  const run = <
     D extends WriteDomain,
     C extends WriteCommandMap[D]
-  >(payload: WriteInput<D, C>): WriteResult<WriteOutput<D, C>> => {
-    const doc = documentSource.get()
-    const translated = translateWrite(payload, {
+  >(input: WriteInput<D, C>): Draft<WriteOutput<D, C>> => {
+    const doc = document.get()
+    const translated = translateWrite(input, {
       doc,
       config,
       registries,
@@ -176,45 +171,71 @@ export const createWrite = ({
     })
     if (!translated.ok) return translated
 
-    return capture(
-      runOperations(
-        doc,
-        translated.operations,
-        payload.origin ?? 'user',
-        translated.output
-      )
+    return reduceToDraft(
+      doc,
+      translated.operations,
+      input.origin ?? 'user',
+      'apply',
+      translated.output
     )
   }
 
-  const applyOperations = (
+  const ops = (
     operations: readonly Operation[],
     origin: Origin = 'user'
-  ): WriteResult =>
-    capture(
-      runOperations(
-        documentSource.get(),
-        operations,
-        origin,
-        undefined
-      )
-    )
+  ): Draft => reduceToDraft(
+    document.get(),
+    operations,
+    origin,
+    'apply',
+    undefined
+  )
 
-  const replace = (document: Document) =>
-    clearOnSuccess(runReplace(document))
+  const capture = (input: {
+    changes: ChangeSet
+    inverse?: readonly Operation[]
+  }) => {
+    if (!input.inverse) {
+      return
+    }
+
+    history.capture({
+      forward: input.changes.operations,
+      inverse: input.inverse,
+      origin: input.changes.origin
+    })
+  }
+
+  const undo = (): Draft => {
+    const draft = history.undo()
+    if (!draft) {
+      return cancelled('Nothing to undo.')
+    }
+    return withKind(draft, 'undo')
+  }
+
+  const redo = (): Draft => {
+    const draft = history.redo()
+    if (!draft) {
+      return cancelled('Nothing to redo.')
+    }
+    return withKind(draft, 'redo')
+  }
 
   return {
-    apply,
-    applyOperations,
+    run,
+    ops,
     replace,
+    undo,
+    redo,
     history: {
+      capture,
+      configure: history.configure,
       get: history.get,
       subscribe: (listener) => history.subscribe(() => {
         listener()
       }),
-      configure: history.configure,
-      clear: history.clear,
-      undo: history.undo,
-      redo: history.redo
+      clear: history.clear
     }
   }
 }

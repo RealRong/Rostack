@@ -13,10 +13,10 @@ import {
 } from '@shared/core'
 import {
   sameCellRef
-} from '@dataview/engine/viewmodel'
+} from '@dataview/engine/project'
 import type {
   CellRef
-} from '@dataview/engine/viewmodel'
+} from '@dataview/engine/project'
 import type {
   TableCurrentView as CurrentView
 } from './currentView'

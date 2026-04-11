@@ -2,6 +2,7 @@ import { Button } from '@ui'
 import { ShapeGlyph } from '#react/features/node'
 import { toNodeDataPatch } from '#react/features/node/update'
 import { ShapePickerPanel } from '../../panels/ShapePickerPanel'
+import { preventToolbarPointerDown } from '../primitives'
 import type { ToolbarItemSpec } from './types'
 
 export const shapeKindItem: ToolbarItemSpec = {
@@ -21,6 +22,7 @@ export const shapeKindItem: ToolbarItemSpec = {
       variant="ghost"
       pressed={activePanelKey === 'shape-kind'}
       className="h-9 rounded-xl px-2.5"
+      onPointerDown={preventToolbarPointerDown}
       onClick={() => {
         togglePanel('shape-kind')
       }}

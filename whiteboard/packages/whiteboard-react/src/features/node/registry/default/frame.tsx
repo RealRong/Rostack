@@ -10,6 +10,7 @@ import {
 } from '@whiteboard/core/node'
 import type { NodeDefinition } from '#react/types/node'
 import { EditableSlot } from '#react/features/edit/EditableSlot'
+import { matchNodeEdit } from '#react/features/edit/session'
 import { useEdit, useEditor, usePickRef } from '#react/runtime/hooks'
 import { bindNodeTextSource } from '../../text'
 import {
@@ -68,10 +69,8 @@ export const FrameNodeChrome = ({
   const rawTitle = getDataString(node, 'title') ?? ''
   const title = rawTitle || FRAME_DEFAULT_TITLE
   const color = getStyleString(node, 'color') ?? FRAME_DEFAULT_TEXT_COLOR
-  const editing =
-    edit?.kind === 'node'
-    && edit.nodeId === node.id
-    && edit.field === 'title'
+  const nodeEdit = matchNodeEdit(edit, node.id, 'title')
+  const editing = nodeEdit !== null
   const bindFieldRef = useCallback((element: HTMLDivElement | null) => {
     bindTitleRef(element)
     pickTitleRef(element)
@@ -82,8 +81,8 @@ export const FrameNodeChrome = ({
       {editing ? (
         <EditableSlot
           bindRef={bindFieldRef}
-          value={rawTitle}
-          caret={edit.caret}
+          value={nodeEdit.draft.text}
+          caret={nodeEdit.caret}
           multiline={false}
           className="wb-frame-title wb-default-text-editor"
           style={{

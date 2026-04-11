@@ -608,7 +608,7 @@ export const createEditor = ({
         if (!commit) {
           return
         }
-        listener(commit.document, commit)
+        listener(commit.doc, commit)
       }),
       history: (listener) => read.history.subscribe(() => {
         listener(read.history.get())

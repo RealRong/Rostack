@@ -25,7 +25,7 @@ import {
 } from '@shared/dom'
 import {
   move as currentViewMove
-} from '@dataview/engine/viewmodel'
+} from '@dataview/engine/project'
 import {
   type AppearanceId,
   type AppearanceList,

@@ -1,7 +1,7 @@
 import type {
+  Action,
   Field,
   FieldId,
-  Command,
   CustomFieldId,
   CustomFieldKind,
   View,
@@ -12,7 +12,6 @@ import type {
 } from '@dataview/core/contracts'
 import {
   group as groupCore,
-  type ViewGroupProjection,
   type GroupWriteResult
 } from '@dataview/core/group'
 import { getDocumentViewById } from '@dataview/core/document'
@@ -24,16 +23,17 @@ import {
   move,
   toRecordField,
   type CellRef,
-} from '@dataview/engine/viewmodel'
+} from '@dataview/engine/project'
 import type {
   AppearanceId,
   AppearanceList,
   Section,
-  SectionKey
-} from '@dataview/engine/project/model'
+  SectionKey,
+  ViewGroupProjection
+} from '@dataview/engine/project'
 import type {
   Placement
-} from '@dataview/engine/viewmodel/types'
+} from '@dataview/engine/project'
 import { createRecordId } from '@dataview/engine/command/entityId'
 import { meta, renderMessage } from '@dataview/meta'
 import type {
@@ -47,10 +47,10 @@ import type {
   ViewOrderApi,
   ViewEngineApi,
   ViewTableApi
-} from '../types'
+} from '../../api/public'
 import {
   createViewCommandNamespaces
-} from './viewCommands'
+} from './commands'
 
 const sameValue = (
   left: unknown,
@@ -85,10 +85,10 @@ const toValueCommand = (
   recordId: RecordId,
   fieldId: FieldId,
   next: Exclude<GroupWriteResult, { kind: 'invalid' }>
-): Command => (
+): Action => (
   isTitleFieldId(fieldId)
     ? {
-        type: 'record.apply',
+        type: 'record.patch',
         target: {
           type: 'record',
           recordId
@@ -101,27 +101,21 @@ const toValueCommand = (
       }
     : next.kind === 'clear'
       ? {
-          type: 'value.apply',
+          type: 'value.clear',
           target: {
             type: 'record',
             recordId
           },
-          action: {
-            type: 'clear',
-            field: fieldId
-          }
+          field: fieldId
         }
       : {
-          type: 'value.apply',
+          type: 'value.set',
           target: {
             type: 'record',
             recordId
           },
-          action: {
-            type: 'set',
-            field: fieldId,
-            value: next.value
-          }
+          field: fieldId,
+          value: next.value
         }
 )
 
@@ -132,7 +126,7 @@ const createGroupWriteCommands = (input: {
   appearances: AppearanceList
   ids: readonly AppearanceId[]
   targetSection: string
-}): readonly Command[] | undefined => {
+}): readonly Action[] | undefined => {
   const fieldId = input.group.field
 
   const appearanceIdsByRecordId = new Map<RecordId, AppearanceId[]>()
@@ -152,7 +146,7 @@ const createGroupWriteCommands = (input: {
     appearanceIdsByRecordId.set(recordId, [id])
   })
 
-  const commands: Command[] = []
+  const commands: Action[] = []
 
   for (const [recordId, appearanceIds] of appearanceIdsByRecordId) {
     const record = input.engine.read.record.get(recordId)
@@ -220,12 +214,12 @@ interface ActiveViewContext {
 }
 
 export const createViewEngineApi = (options: {
-  engine: Pick<Engine, 'read' | 'project' | 'command' | 'fields'>
+  engine: Pick<Engine, 'read' | 'project' | 'action' | 'fields'>
   viewId: ViewId
 }): ViewEngineApi => {
   const dispatch = (
-    command: Parameters<Engine['command']>[0]
-  ) => options.engine.command(command)
+    action: Parameters<Engine['action']>[0]
+  ) => options.engine.action(action)
   const readDocument = () => options.engine.read.document.get()
   const readCurrentView = () => getDocumentViewById(readDocument(), options.viewId)
   const readCurrentProjection = (): ActiveViewContext | undefined => {
@@ -248,7 +242,7 @@ export const createViewEngineApi = (options: {
     }
   }
 
-  const commit = (command: Command | readonly Command[]) => dispatch(command).applied
+  const commit = (action: Action | readonly Action[]) => dispatch(action).applied
   const commands = createViewCommandNamespaces({
     viewId: options.viewId,
     commit,
@@ -306,7 +300,7 @@ export const createViewEngineApi = (options: {
             recordIds
           )
         : undefined
-      const nextCommands: Command[] = []
+      const nextCommands: Action[] = []
 
       if (sectionChanged && groupWrite) {
         const valueCommands = createGroupWriteCommands({
@@ -377,7 +371,7 @@ export const createViewEngineApi = (options: {
       }
 
       const recordId = createRecordId()
-      const nextCommands: Command[] = [{
+      const nextCommands: Action[] = [{
         type: 'record.create',
         input: {
           id: recordId,
@@ -440,7 +434,7 @@ export const createViewEngineApi = (options: {
         dispatch(
           isTitleFieldId(target.fieldId)
             ? {
-                type: 'record.apply',
+                type: 'record.patch',
                 target: {
                   type: 'record',
                   recordId: target.recordId
@@ -450,15 +444,12 @@ export const createViewEngineApi = (options: {
                 }
               }
             : {
-                type: 'value.apply',
+                type: 'value.clear',
                 target: {
                   type: 'record',
                   recordId: target.recordId
                 },
-                action: {
-                  type: 'clear',
-                  field: target.fieldId
-                }
+                field: target.fieldId
               }
         )
         return
@@ -467,7 +458,7 @@ export const createViewEngineApi = (options: {
       dispatch(
         isTitleFieldId(target.fieldId)
           ? {
-              type: 'record.apply',
+              type: 'record.patch',
               target: {
                 type: 'record',
                 recordId: target.recordId
@@ -477,16 +468,13 @@ export const createViewEngineApi = (options: {
               }
             }
           : {
-              type: 'value.apply',
+              type: 'value.set',
               target: {
                 type: 'record',
                 recordId: target.recordId
               },
-              action: {
-                type: 'set',
-                field: target.fieldId,
-                value
-              }
+              field: target.fieldId,
+              value
             }
       )
     }
@@ -600,7 +588,7 @@ export const createViewEngineApi = (options: {
       }
 
       const recordId = createRecordId()
-      const nextCommands: Command[] = [{
+      const nextCommands: Action[] = [{
         type: 'record.create',
         input: {
           id: recordId,
@@ -652,7 +640,7 @@ export const createViewEngineApi = (options: {
         return
       }
 
-      const valueCommands: Command[] = []
+      const valueCommands: Action[] = []
       const fieldId = groupWrite.group.field
 
       for (const recordId of recordIds) {

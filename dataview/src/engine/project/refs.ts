@@ -1,4 +1,5 @@
 import type {
+  Field,
   FieldId,
   RecordId,
   ViewId
@@ -6,7 +7,13 @@ import type {
 import type {
   AppearanceList,
   AppearanceId,
-} from '../project/model'
+} from './readModels'
+import {
+  sameJsonValue,
+  sameMap
+} from '@shared/core'
+
+export type FieldLookup = ReadonlyMap<FieldId, Field>
 
 export interface CellRef {
   appearanceId: AppearanceId
@@ -21,6 +28,11 @@ export interface ViewFieldRef extends CellRef {
 export interface RecordFieldRef {
   recordId: RecordId
   fieldId: FieldId
+}
+
+export interface Placement {
+  section: import('./readModels').SectionKey
+  before?: AppearanceId
 }
 
 export const sameCellRef = (
@@ -87,3 +99,13 @@ export const toRecordField = (
       }
     : null
 }
+
+const equalField = (
+  left: Field,
+  right: Field
+) => sameJsonValue(left, right)
+
+export const sameFieldLookup = (
+  left: FieldLookup,
+  right: FieldLookup
+) => sameMap(left, right, equalField)

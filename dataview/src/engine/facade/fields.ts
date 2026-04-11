@@ -12,7 +12,7 @@ import { createPropertyId } from '@dataview/engine/command/entityId'
 import type {
   Engine,
   FieldsEngineApi
-} from '../types'
+} from '../api/public'
 
 const getOptionProperty = (
   field?: CustomField
@@ -29,11 +29,11 @@ const findAddedOption = (
 }
 
 export const createFieldsEngineApi = (options: {
-  engine: Pick<Engine, 'read' | 'command'>
+  engine: Pick<Engine, 'read' | 'action'>
 }): FieldsEngineApi => {
   const dispatch = (
-    command: Parameters<Engine['command']>[0]
-  ) => options.engine.command(command)
+    action: Parameters<Engine['action']>[0]
+  ) => options.engine.action(action)
   const readProperties = () => options.engine.read.customFields.get()
   const getProperty = (fieldId: CustomFieldId) => options.engine.read.customField.get(fieldId)
   const getOptionPropertyById = (fieldId: CustomFieldId) => getOptionProperty(getProperty(fieldId))
@@ -49,7 +49,7 @@ export const createFieldsEngineApi = (options: {
 
       const fieldId = createPropertyId()
       const result = dispatch({
-        type: 'customField.create',
+        type: 'field.create',
         input: {
           id: fieldId,
           name,
@@ -68,7 +68,7 @@ export const createFieldsEngineApi = (options: {
       }
 
       dispatch({
-        type: 'customField.patch',
+        type: 'field.patch',
         fieldId,
         patch: {
           name: nextName
@@ -81,28 +81,28 @@ export const createFieldsEngineApi = (options: {
       }
 
       dispatch({
-        type: 'customField.patch',
+        type: 'field.patch',
         fieldId,
         patch
       })
     },
     replaceSchema: (fieldId, schema) => {
       dispatch({
-        type: 'customField.replaceSchema',
+        type: 'field.replace',
         fieldId,
-        schema
+        field: schema
       })
     },
     convert: (fieldId, input) => {
       dispatch({
-        type: 'customField.convert',
+        type: 'field.convert',
         fieldId,
         input
       })
     },
     duplicate: fieldId => {
       const result = dispatch({
-        type: 'customField.duplicate',
+        type: 'field.duplicate',
         fieldId
       })
 
@@ -110,7 +110,7 @@ export const createFieldsEngineApi = (options: {
     },
     remove: fieldId => {
       return dispatch({
-        type: 'customField.remove',
+        type: 'field.remove',
         fieldId
       }).applied
     },
@@ -123,7 +123,7 @@ export const createFieldsEngineApi = (options: {
 
         const currentOptions = getFieldOptions(field)
         const result = dispatch({
-          type: 'customField.option.create',
+          type: 'field.option.create',
           fieldId
         })
         if (!result.applied) {
@@ -151,7 +151,7 @@ export const createFieldsEngineApi = (options: {
         }
 
         const result = dispatch({
-          type: 'customField.option.create',
+          type: 'field.option.create',
           fieldId,
           input: {
             name: nextName
@@ -170,7 +170,7 @@ export const createFieldsEngineApi = (options: {
       },
       reorder: (fieldId, optionIds) => {
         dispatch({
-          type: 'customField.option.reorder',
+          type: 'field.option.reorder',
           fieldId,
           optionIds: [...optionIds]
         })
@@ -200,7 +200,7 @@ export const createFieldsEngineApi = (options: {
         }
 
         const result = dispatch({
-          type: 'customField.option.update',
+          type: 'field.option.update',
           fieldId,
           optionId,
           patch: {
@@ -222,7 +222,7 @@ export const createFieldsEngineApi = (options: {
       },
       remove: (fieldId, optionId) => {
         dispatch({
-          type: 'customField.option.remove',
+          type: 'field.option.remove',
           fieldId,
           optionId
         })

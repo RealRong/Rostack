@@ -7,7 +7,7 @@ import {
 import type {
   CreateEngineOptions,
   Engine
-} from '../types'
+} from './public'
 import {
   createPerfRuntime
 } from '../perf/runtime'
@@ -16,23 +16,19 @@ import {
   createRecordsEngineApi,
   createViewEngineApi,
   createViewsEngineApi
-} from '../services'
+} from '../facade'
 import {
-  createInitialState
-} from '../state'
+  createInitialState,
+  createStore
+} from '../store/state'
 import {
   createProjectApi,
   createReadApi
-} from '../state/select'
+} from '../store/selectors'
 import {
-  translateCommands
-} from '../write/translate'
-import {
-  createStore
-} from '../state'
-import {
-  createWriteControl
-} from '../write/commit'
+  resolveActionBatch
+} from '../command'
+import { createWriteControl } from '../write/commit'
 
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const historyCapacity = Math.max(0, options.history?.capacity ?? 100)
@@ -68,8 +64,13 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     },
     project,
     perf: perf.api,
-    command: (command: Parameters<Engine['command']>[0]) => write.run(
-      translateCommands(store.get().doc, command)
+    action: (action: Parameters<Engine['action']>[0]) => write.run(
+      resolveActionBatch({
+        document: store.get().doc,
+        actions: Array.isArray(action)
+          ? action
+          : [action]
+      })
     ),
     history: {
       state: write.history.state,
@@ -104,7 +105,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     }),
     {
       open: (viewId: string) => {
-        engine.command({
+        engine.action({
           type: 'view.open',
           viewId
         })
@@ -118,4 +119,4 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
 export type {
   CreateEngineOptions,
   Engine
-} from '../types'
+} from './public'

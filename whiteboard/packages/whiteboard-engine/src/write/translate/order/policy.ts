@@ -1,37 +1,26 @@
 import type { OrderMode } from '@engine-types/command'
+import {
+  listCanvasItemRefs
+} from '@whiteboard/core/document'
 import type {
   CanvasItemRef,
   Document
 } from '@whiteboard/core/types'
-import { listCanvasItemRefs } from '@whiteboard/core/document'
+import {
+  groupIdOfRef,
+  parseRefKey,
+  refKey,
+  sameOrder,
+  sameRef
+} from './refs'
 
-const readRefGroupId = (
-  doc: Pick<Document, 'nodes' | 'edges'>,
-  ref: CanvasItemRef
-) => (
-  ref.kind === 'node'
-    ? doc.nodes[ref.id]?.groupId
-    : doc.edges[ref.id]?.groupId
-)
-
-export const isSameCanvasRef = (
-  left: CanvasItemRef,
-  right: CanvasItemRef
-) => left.kind === right.kind && left.id === right.id
-
-const serializeRef = (ref: CanvasItemRef) => `${ref.kind}:${ref.id}`
-
-const parseRef = (key: string): CanvasItemRef => {
-  const [kind, id] = key.split(':')
-  return kind === 'edge'
-    ? { kind: 'edge', id }
-    : { kind: 'node', id }
-}
+type RefDoc = Pick<Document, 'nodes' | 'edges'>
+type OrderDoc = Pick<Document, 'nodes' | 'edges' | 'order'>
 
 type CanvasOrderRole = 'frame' | 'content-node' | 'edge'
 
-const readRefRole = (
-  doc: Pick<Document, 'nodes' | 'edges'>,
+const readRole = (
+  doc: RefDoc,
   ref: CanvasItemRef
 ): CanvasOrderRole => {
   if (ref.kind === 'edge') {
@@ -43,8 +32,8 @@ const readRefRole = (
     : 'content-node'
 }
 
-const normalizeFrameBarrierOrder = (
-  doc: Pick<Document, 'nodes' | 'edges'>,
+const normalizeFrameBarrier = (
+  doc: RefDoc,
   refs: readonly CanvasItemRef[]
 ): CanvasItemRef[] => {
   const nodeIndexes: number[] = []
@@ -52,7 +41,7 @@ const normalizeFrameBarrierOrder = (
   const contentNodes: CanvasItemRef[] = []
 
   refs.forEach((ref, index) => {
-    const role = readRefRole(doc, ref)
+    const role = readRole(doc, ref)
     if (role === 'edge') {
       return
     }
@@ -80,23 +69,24 @@ const normalizeFrameBarrierOrder = (
   return next
 }
 
-const bringOrderToFront = <T extends string>(order: T[], ids: T[]) => {
+const toFront = <T extends string>(order: T[], ids: T[]) => {
   const set = new Set(ids)
   const kept = order.filter((id) => !set.has(id))
   const moved = order.filter((id) => set.has(id))
   return [...kept, ...moved]
 }
 
-const sendOrderToBack = <T extends string>(order: T[], ids: T[]) => {
+const toBack = <T extends string>(order: T[], ids: T[]) => {
   const set = new Set(ids)
   const kept = order.filter((id) => !set.has(id))
   const moved = order.filter((id) => set.has(id))
   return [...moved, ...kept]
 }
 
-const bringOrderForward = <T extends string>(order: T[], ids: T[]) => {
+const forward = <T extends string>(order: T[], ids: T[]) => {
   const set = new Set(ids)
   const next = [...order]
+
   for (let index = next.length - 2; index >= 0; index -= 1) {
     const current = next[index]
     const after = next[index + 1]
@@ -105,12 +95,14 @@ const bringOrderForward = <T extends string>(order: T[], ids: T[]) => {
       next[index + 1] = current
     }
   }
+
   return next
 }
 
-const sendOrderBackward = <T extends string>(order: T[], ids: T[]) => {
+const backward = <T extends string>(order: T[], ids: T[]) => {
   const set = new Set(ids)
   const next = [...order]
+
   for (let index = 1; index < next.length; index += 1) {
     const current = next[index]
     const before = next[index - 1]
@@ -119,56 +111,58 @@ const sendOrderBackward = <T extends string>(order: T[], ids: T[]) => {
       next[index] = before
     }
   }
+
   return next
 }
 
-const reorderRefs = (
-  doc: Pick<Document, 'nodes' | 'edges'>,
+const reorder = (
+  doc: RefDoc,
   currentRefs: readonly CanvasItemRef[],
   targetRefs: readonly CanvasItemRef[],
   mode: OrderMode
 ): CanvasItemRef[] => {
   if (mode === 'set') {
-    return normalizeFrameBarrierOrder(doc, targetRefs)
+    return normalizeFrameBarrier(doc, targetRefs)
   }
 
-  const current = currentRefs.map(serializeRef)
-  const target = targetRefs.map(serializeRef)
-  let nextOrder: string[]
+  const current = currentRefs.map(refKey)
+  const target = targetRefs.map(refKey)
+  let next: string[]
 
   switch (mode) {
     case 'front':
-      nextOrder = bringOrderToFront(current, target)
+      next = toFront(current, target)
       break
     case 'back':
-      nextOrder = sendOrderToBack(current, target)
+      next = toBack(current, target)
       break
     case 'forward':
-      nextOrder = bringOrderForward(current, target)
+      next = forward(current, target)
       break
     case 'backward':
-      nextOrder = sendOrderBackward(current, target)
+      next = backward(current, target)
       break
     default:
-      nextOrder = target
+      next = target
       break
   }
 
-  return normalizeFrameBarrierOrder(
+  return normalizeFrameBarrier(
     doc,
-    nextOrder.map(parseRef)
+    next.map(parseRefKey)
   )
 }
 
 const replaceGroupSlice = (
-  doc: Pick<Document, 'nodes' | 'edges'>,
+  doc: RefDoc,
   orderRefs: readonly CanvasItemRef[],
   groupId: string,
   nextSlice: readonly CanvasItemRef[]
 ): CanvasItemRef[] => {
   let sliceIndex = 0
+
   return orderRefs.map((ref) => {
-    if (readRefGroupId(doc, ref) !== groupId) {
+    if (groupIdOfRef(doc, ref) !== groupId) {
       return ref
     }
 
@@ -178,25 +172,54 @@ const replaceGroupSlice = (
   })
 }
 
-export const normalizeCanvasOrderTargets = ({
+export const moveIntoBlock = (
+  current: readonly CanvasItemRef[],
+  refs: readonly CanvasItemRef[]
+): CanvasItemRef[] | undefined => {
+  if (!refs.length) {
+    return undefined
+  }
+
+  const firstIndex = current.findIndex((entry) => (
+    refs.some((ref) => sameRef(entry, ref))
+  ))
+  if (firstIndex < 0) {
+    return undefined
+  }
+
+  const kept = current.filter((entry) => (
+    !refs.some((ref) => sameRef(entry, ref))
+  ))
+  const next = [
+    ...kept.slice(0, firstIndex),
+    ...refs,
+    ...kept.slice(firstIndex)
+  ]
+
+  return sameOrder(next, current)
+    ? undefined
+    : next
+}
+
+export const normalizeOrder = ({
   doc,
   refs,
   mode
 }: {
-  doc: Pick<Document, 'nodes' | 'edges' | 'order'>
+  doc: OrderDoc
   refs: readonly CanvasItemRef[]
   mode: OrderMode
 }) => {
   const current = listCanvasItemRefs(doc)
-  const keySet = new Set(refs.map(serializeRef))
+  const keySet = new Set(refs.map(refKey))
   const selected = mode === 'set'
-    ? Array.from(new Set(refs.map(serializeRef))).map(parseRef)
-    : current.filter((ref) => keySet.has(serializeRef(ref)))
+    ? Array.from(new Set(refs.map(refKey))).map(parseRefKey)
+    : current.filter((ref) => keySet.has(refKey(ref)))
 
   if (mode === 'set' || selected.length <= 1) {
     return {
       current,
-      next: reorderRefs(doc, current, selected, mode)
+      next: reorder(doc, current, selected, mode)
     }
   }
 
@@ -205,9 +228,9 @@ export const normalizeCanvasOrderTargets = ({
   const groupedSelection = new Map<string, CanvasItemRef[]>()
 
   selected.forEach((ref) => {
-    const groupId = readRefGroupId(doc, ref)
+    const groupId = groupIdOfRef(doc, ref)
     if (!groupId) {
-      globalKeySet.add(serializeRef(ref))
+      globalKeySet.add(refKey(ref))
       return
     }
 
@@ -221,29 +244,29 @@ export const normalizeCanvasOrderTargets = ({
   })
 
   groupedSelection.forEach((selectedRefs, groupId) => {
-    const groupSlice = nextCurrent.filter((ref) => readRefGroupId(doc, ref) === groupId)
+    const groupSlice = nextCurrent.filter((ref) => groupIdOfRef(doc, ref) === groupId)
     if (!groupSlice.length) {
       return
     }
 
     const fullGroupSelected = (
       selectedRefs.length === groupSlice.length
-      && selectedRefs.every((ref, index) => isSameCanvasRef(ref, groupSlice[index]!))
+      && sameOrder(selectedRefs, groupSlice)
     )
     if (fullGroupSelected) {
       groupSlice.forEach((ref) => {
-        globalKeySet.add(serializeRef(ref))
+        globalKeySet.add(refKey(ref))
       })
       return
     }
 
-    const nextSlice = reorderRefs(doc, groupSlice, selectedRefs, mode)
+    const nextSlice = reorder(doc, groupSlice, selectedRefs, mode)
     nextCurrent = replaceGroupSlice(doc, nextCurrent, groupId, nextSlice)
   })
 
-  const globalRefs = nextCurrent.filter((ref) => globalKeySet.has(serializeRef(ref)))
+  const globalRefs = nextCurrent.filter((ref) => globalKeySet.has(refKey(ref)))
   return {
     current,
-    next: reorderRefs(doc, nextCurrent, globalRefs, mode)
+    next: reorder(doc, nextCurrent, globalRefs, mode)
   }
 }

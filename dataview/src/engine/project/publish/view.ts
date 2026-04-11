@@ -13,8 +13,12 @@ import {
 import type {
   FilterConditionProjection,
   FilterRuleProjection,
-  ViewFilterProjection
-} from '@dataview/core/filter'
+  SortRuleProjection,
+  ViewFilterProjection,
+  ViewGroupProjection,
+  ViewSearchProjection,
+  ViewSortProjection
+} from '../viewProjections'
 import {
   formatFilterRuleValueText,
   getFilterEditorKind,
@@ -30,25 +34,11 @@ import {
   getFieldGroupMeta
 } from '@dataview/core/field'
 import type {
-  ViewGroupProjection
-} from '@dataview/core/group'
-import type {
-  ViewSearchProjection
-} from '@dataview/core/search'
-import type {
-  SortRuleProjection,
-  ViewSortProjection
-} from '@dataview/core/sort'
-import type {
-  ActiveView,
-  FilterView,
-  GroupView,
-  SearchView,
-  SortView
-} from '../../types'
+  ActiveView
+} from '../../api/public'
 import type {
   FieldList
-} from '../model'
+} from '../readModels'
 import {
   sameFieldList
 } from '../equality'
@@ -350,8 +340,8 @@ const equalFilterRuleProjection = (
 )
 
 const equalFilterProjection = (
-  left: FilterView | undefined,
-  right: FilterView | undefined
+  left: ViewFilterProjection | undefined,
+  right: ViewFilterProjection | undefined
 ) => equalProjection(left, right, (current, next) => (
   current.viewId === next.viewId
   && current.mode === next.mode
@@ -359,8 +349,8 @@ const equalFilterProjection = (
 ))
 
 const equalSearchProjection = (
-  left: SearchView | undefined,
-  right: SearchView | undefined
+  left: ViewSearchProjection | undefined,
+  right: ViewSearchProjection | undefined
 ) => equalProjection(left, right, (current, next) => (
   current.viewId === next.viewId
   && current.query === next.query
@@ -379,8 +369,8 @@ const equalSortRuleProjection = (
 )
 
 const equalSortProjection = (
-  left: SortView | undefined,
-  right: SortView | undefined
+  left: ViewSortProjection | undefined,
+  right: ViewSortProjection | undefined
 ) => equalProjection(left, right, (current, next) => (
   current.viewId === next.viewId
   && current.active === next.active
@@ -388,8 +378,8 @@ const equalSortProjection = (
 ))
 
 const equalGroupProjection = (
-  left: GroupView | undefined,
-  right: GroupView | undefined
+  left: ViewGroupProjection | undefined,
+  right: ViewGroupProjection | undefined
 ) => equalProjection(left, right, (current, next) => (
   current.viewId === next.viewId
   && current.active === next.active
@@ -409,18 +399,18 @@ export const publishViewState = (input: {
   viewId?: ViewId
   previous: {
     view?: ActiveView
-    filter?: FilterView
-    group?: GroupView
-    search?: SearchView
-    sort?: SortView
+    filter?: ViewFilterProjection
+    group?: ViewGroupProjection
+    search?: ViewSearchProjection
+    sort?: ViewSortProjection
     fields?: FieldList
   }
 }): {
   view?: ActiveView
-  filter?: FilterView
-  group?: GroupView
-  search?: SearchView
-  sort?: SortView
+  filter?: ViewFilterProjection
+  group?: ViewGroupProjection
+  search?: ViewSearchProjection
+  sort?: ViewSortProjection
   fields?: FieldList
 } => {
   const view = input.viewId

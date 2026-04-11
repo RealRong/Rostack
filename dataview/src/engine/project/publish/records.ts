@@ -3,7 +3,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   RecordSet
-} from '../../types'
+} from '../../api/public'
 import type {
   QueryState
 } from '../runtime/state'

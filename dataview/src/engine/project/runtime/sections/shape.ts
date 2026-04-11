@@ -13,7 +13,7 @@ import {
 } from '../../../index/group'
 import type {
   SectionKey
-} from '../../model'
+} from '../../readModels'
 import type {
   SectionNodeState,
   SectionState

@@ -1,6 +1,6 @@
 import { Button } from '@ui'
 import { FillPanel } from '../../panels/FillPanel'
-import { ToolbarFillIcon } from '../primitives'
+import { preventToolbarPointerDown, ToolbarFillIcon } from '../primitives'
 import type { ToolbarItemSpec } from './types'
 import { toNodeStylePatch } from '#react/features/node/update'
 
@@ -20,6 +20,7 @@ export const fillItem: ToolbarItemSpec = {
       variant="ghost"
       pressed={activePanelKey === 'fill'}
       className="h-9 w-9 rounded-xl p-0"
+      onPointerDown={preventToolbarPointerDown}
       onClick={() => {
         togglePanel('fill')
       }}

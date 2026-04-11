@@ -33,16 +33,16 @@ import {
 import type {
   EngineProjectApi,
   EngineReadApi
-} from '../types'
+} from '../api/public'
 import type {
   AppearanceList,
   FieldList,
   SectionKey
-} from '../project/model'
+} from '../project/readModels'
 import type {
   State,
   Store
-} from './index'
+} from './state'
 
 const notify = (
   listeners: ReadonlySet<() => void>

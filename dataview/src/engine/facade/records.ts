@@ -1,32 +1,24 @@
 import type {
+  Action,
   CustomFieldId,
-  EditTarget,
-  ValueApplyAction,
   RecordId
 } from '@dataview/core/contracts'
 import type {
   Engine,
   RecordsEngineApi
-} from '../types'
+} from '../api/public'
 
 export const createRecordsEngineApi = (options: {
-  engine: Pick<Engine, 'read' | 'command'>
+  engine: Pick<Engine, 'read' | 'action'>
 }): RecordsEngineApi => {
-  const apply = (command: {
-    target: EditTarget
-    action: ValueApplyAction
-  }) => {
-    options.engine.command({
-      type: 'value.apply',
-      target: command.target,
-      action: command.action
-    })
+  const apply = (action: Extract<Action, { type: 'value.set' | 'value.patch' | 'value.clear' }>) => {
+    options.engine.action(action)
   }
 
   return {
     get: recordId => options.engine.read.record.get(recordId),
     create: input => {
-      const result = options.engine.command({
+      const result = options.engine.action({
         type: 'record.create',
         input: {
           values: input?.values
@@ -36,7 +28,7 @@ export const createRecordsEngineApi = (options: {
       return result.created?.records?.[0]
     },
     remove: (recordId: RecordId) => {
-      options.engine.command({
+      options.engine.action({
         type: 'record.remove',
         recordIds: [recordId]
       })
@@ -47,7 +39,7 @@ export const createRecordsEngineApi = (options: {
         return
       }
 
-      options.engine.command({
+      options.engine.action({
         type: 'record.remove',
         recordIds: nextRecordIds
       })
@@ -58,11 +50,9 @@ export const createRecordsEngineApi = (options: {
           type: 'record',
           recordId
         },
-        action: {
-          type: 'set',
-          field: fieldId,
-          value
-        }
+        type: 'value.set',
+        field: fieldId,
+        value
       })
     },
     clearValue: (recordId: RecordId, fieldId: CustomFieldId) => {
@@ -71,10 +61,8 @@ export const createRecordsEngineApi = (options: {
           type: 'record',
           recordId
         },
-        action: {
-          type: 'clear',
-          field: fieldId
-        }
+        type: 'value.clear',
+        field: fieldId
       })
     },
     clearValues: input => {
@@ -84,16 +72,13 @@ export const createRecordsEngineApi = (options: {
         return
       }
 
-      options.engine.command(fieldIds.map(fieldId => ({
-        type: 'value.apply' as const,
+      options.engine.action(fieldIds.map(fieldId => ({
+        type: 'value.clear' as const,
         target: {
           type: 'records' as const,
           recordIds: [...recordIds]
         },
-        action: {
-          type: 'clear' as const,
-          field: fieldId
-        }
+        field: fieldId
       })))
     },
     apply

@@ -16,7 +16,7 @@ import type {
   FieldList,
   Section,
   SectionKey
-} from './model'
+} from './readModels'
 
 const equalList = <T,>(
   left: readonly T[],

@@ -7,10 +7,10 @@ import {
 import type {
   Engine,
   ViewsEngineApi
-} from '../types'
+} from '../api/public'
 
 export const createViewsEngineApi = (options: {
-  engine: Pick<Engine, 'read' | 'command'>
+  engine: Pick<Engine, 'read' | 'action'>
 }): ViewsEngineApi => {
   const readViews = () => options.engine.read.views.get()
 
@@ -23,7 +23,7 @@ export const createViewsEngineApi = (options: {
         return undefined
       }
 
-      const result = options.engine.command({
+      const result = options.engine.action({
         type: 'view.create',
         input: {
           name: preferredName,
@@ -38,7 +38,7 @@ export const createViewsEngineApi = (options: {
         return
       }
 
-      options.engine.command({
+      options.engine.action({
         type: 'view.patch',
         viewId,
         patch: {
@@ -52,7 +52,7 @@ export const createViewsEngineApi = (options: {
         return undefined
       }
 
-      const result = options.engine.command({
+      const result = options.engine.action({
         type: 'view.create',
         input: {
           name: createDuplicateViewPreferredName(sourceView.name),
@@ -72,7 +72,7 @@ export const createViewsEngineApi = (options: {
       return result.created?.views?.[0]
     },
     remove: viewId => {
-      options.engine.command({
+      options.engine.action({
         type: 'view.remove',
         viewId
       })

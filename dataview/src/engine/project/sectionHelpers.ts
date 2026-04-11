@@ -5,10 +5,10 @@ import type {
   AppearanceList,
   Section,
   SectionKey
-} from '../project/model'
+} from './readModels'
 import {
   recordIdsOfAppearances
-} from './appearances'
+} from './appearanceHelpers'
 
 const emptyIds = [] as const
 

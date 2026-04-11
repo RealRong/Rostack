@@ -1,4 +1,5 @@
 import { Button, cn } from '@ui'
+import { preventToolbarPointerDown } from '../toolbar/primitives'
 
 const FONT_SIZE_PRESETS = [10, 12, 14, 18, 24, 36, 48, 64, 80, 144, 288] as const
 
@@ -19,6 +20,7 @@ export const FontSizePanel = ({
             'font-medium text-fg transition-colors',
             value === preset && 'bg-pressed'
           )}
+          onPointerDown={preventToolbarPointerDown}
           onClick={() => onChange(preset)}
         >
           {preset}

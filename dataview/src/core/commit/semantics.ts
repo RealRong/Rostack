@@ -267,11 +267,11 @@ export const buildSemanticDraft = (input: {
         return
       case 'document.activeView.set':
         return
-      case 'document.customField.put':
+      case 'document.field.put':
         touchedFieldIds.add(operation.field.id)
         return
-      case 'document.customField.patch':
-      case 'document.customField.remove':
+      case 'document.field.patch':
+      case 'document.field.remove':
         touchedFieldIds.add(operation.fieldId)
         return
       case 'external.version.bump':

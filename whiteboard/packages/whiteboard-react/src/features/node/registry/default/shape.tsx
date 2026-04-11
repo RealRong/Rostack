@@ -6,6 +6,7 @@ import {
 import { useCallback, useRef, type CSSProperties } from 'react'
 import type { NodeDefinition, NodeRenderProps } from '#react/types/node'
 import { EditableSlot } from '#react/features/edit/EditableSlot'
+import { matchNodeEdit } from '#react/features/edit/session'
 import { useEdit, useEditor } from '#react/runtime/hooks'
 import {
   ShapeGlyph
@@ -105,10 +106,8 @@ const ShapeLabel = ({
     textAlign: textAlign as CSSProperties['textAlign'],
     opacity: text ? 1 : 0.48
   }
-  const editing =
-    edit?.kind === 'node'
-    && edit.nodeId === node.id
-    && edit.field === 'text'
+  const nodeEdit = matchNodeEdit(edit, node.id, 'text')
+  const editing = nodeEdit !== null
 
   return (
     <div
@@ -118,8 +117,8 @@ const ShapeLabel = ({
       {editing ? (
         <EditableSlot
           bindRef={bindRef}
-          value={text}
-          caret={edit.caret}
+          value={nodeEdit.draft.text}
+          caret={nodeEdit.caret}
           multiline
           className="wb-shape-node-label-content wb-default-text-editor"
           style={contentStyle}

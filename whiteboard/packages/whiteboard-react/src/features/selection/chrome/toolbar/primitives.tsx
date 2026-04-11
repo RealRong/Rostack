@@ -1,5 +1,12 @@
-import type { ReactNode } from 'react'
+import type { PointerEventHandler, ReactNode } from 'react'
 import { Button, cn } from '@ui'
+
+export const preventToolbarPointerDown: PointerEventHandler<HTMLElement> = (
+  event
+) => {
+  event.preventDefault()
+  event.stopPropagation()
+}
 
 export const ToolbarDivider = () => (
   <div className="mx-1 h-6 w-0 shrink-0 border-r" />
@@ -24,6 +31,7 @@ export const ToolbarIconButton = ({
       'h-9 w-9 rounded-xl text-fg',
       active && 'bg-pressed text-fg'
     )}
+    onPointerDown={preventToolbarPointerDown}
     onClick={onClick}
     title={title}
     aria-label={title}

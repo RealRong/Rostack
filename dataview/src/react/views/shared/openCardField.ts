@@ -5,7 +5,7 @@ import {
 } from '@dataview/react/dom/field'
 import type {
   ViewFieldRef
-} from '@dataview/engine/viewmodel'
+} from '@dataview/engine/project'
 import type {
   ValueEditorApi,
   ValueEditorSessionPolicy

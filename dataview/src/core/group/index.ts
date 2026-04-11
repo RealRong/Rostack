@@ -1,6 +1,3 @@
-export type {
-  ViewGroupProjection
-} from './types'
 export {
   clearGroup,
   cloneBucketState,

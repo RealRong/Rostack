@@ -5,23 +5,23 @@ import type {
 } from '@dataview/core/contracts'
 import {
   now
-} from '../perf/shared'
+} from '../../perf/shared'
 import {
   runProjection
-} from '../project/runtime/run'
+} from './run'
 import {
   emptyProjectionState,
   emptyProjectState,
   type ProjectionState,
   type ProjectState
-} from '../project/runtime/state'
+} from './state'
 import type {
   IndexState
-} from '../index/types'
+} from '../../index/types'
 import type {
   ProjectTrace,
   PublishTrace
-} from '../types'
+} from '../../api/public'
 
 const PROJECT_STORE_KEYS = [
   'view',

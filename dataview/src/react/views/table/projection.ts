@@ -12,11 +12,9 @@ import {
   sameTableCurrentView
 } from './currentView'
 
-const createSchema = (fields: readonly Field[]) => ({
-  fields: new Map<FieldId, Field>(
-    fields.map(field => [field.id, field] as const)
-  )
-})
+const createFieldLookup = (fields: readonly Field[]) => new Map<FieldId, Field>(
+  fields.map(field => [field.id, field] as const)
+)
 
 export type TableViewProjection = TableCurrentView
 
@@ -42,7 +40,7 @@ export const createTableViewStore = (input: {
 
     return {
       view,
-      schema: createSchema(getDocumentFields(read(input.engine.read.document))),
+      fieldLookup: createFieldLookup(getDocumentFields(read(input.engine.read.document))),
       appearances,
       sections,
       fields,

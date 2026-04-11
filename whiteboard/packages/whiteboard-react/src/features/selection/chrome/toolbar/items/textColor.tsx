@@ -1,6 +1,6 @@
 import { Button } from '@ui'
 import { TextColorPanel } from '../../panels/TextColorPanel'
-import { ToolbarTextColorIcon } from '../primitives'
+import { preventToolbarPointerDown, ToolbarTextColorIcon } from '../primitives'
 import type { ToolbarItemSpec } from './types'
 import { toNodeStylePatch } from '#react/features/node/update'
 
@@ -20,6 +20,7 @@ export const textColorItem: ToolbarItemSpec = {
       variant="ghost"
       pressed={activePanelKey === 'text-color'}
       className="h-9 w-9 rounded-xl p-0"
+      onPointerDown={preventToolbarPointerDown}
       onClick={() => {
         togglePanel('text-color')
       }}

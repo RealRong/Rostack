@@ -178,6 +178,7 @@ export const NodeToolbar = ({
         className="pointer-events-auto absolute inline-flex items-center gap-1 rounded-2xl bg-floating px-2 py-1.5 shadow-popover"
         style={toolbarStyle}
         onPointerDown={(event) => {
+          event.preventDefault()
           event.stopPropagation()
         }}
       >

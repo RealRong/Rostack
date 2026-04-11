@@ -12,10 +12,10 @@ import {
 } from '@shared/core'
 import {
   createIndexState
-} from '../derive/index'
+} from '../index/runtime'
 import {
   createProjectState
-} from '../derive/project'
+} from '../project/runtime'
 import {
   type NormalizedIndexDemand
 } from '../index/demand'

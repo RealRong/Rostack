@@ -205,8 +205,8 @@ export const FieldValueEditorHost = () => {
     switch (input.type) {
       case 'edit.apply':
         if (isTitleField(valueField)) {
-          engine.command({
-            type: 'record.apply',
+          engine.action({
+            type: 'record.patch',
             target: {
               type: 'record',
               recordId: record.id
@@ -228,8 +228,8 @@ export const FieldValueEditorHost = () => {
         return true
       case 'edit.commit':
         if (isTitleField(valueField)) {
-          engine.command({
-            type: 'record.apply',
+          engine.action({
+            type: 'record.patch',
             target: {
               type: 'record',
               recordId: record.id

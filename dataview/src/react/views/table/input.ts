@@ -4,7 +4,7 @@ import type { FieldId } from '@dataview/core/contracts'
 import {
   type CellRef,
   toRecordField
-} from '@dataview/engine/viewmodel'
+} from '@dataview/engine/project'
 import type {
   TableCurrentView as CurrentView
 } from './currentView'
@@ -35,8 +35,8 @@ const clearRecordField = (input: {
   fieldId: string
 }) => {
   if (isTitleFieldId(input.fieldId)) {
-    input.editor.command({
-      type: 'record.apply',
+    input.editor.action({
+      type: 'record.patch',
       target: {
         type: 'record',
         recordId: input.recordId
@@ -58,8 +58,8 @@ const setRecordField = (input: {
   value: unknown
 }) => {
   if (isTitleFieldId(input.fieldId)) {
-    input.editor.command({
-      type: 'record.apply',
+    input.editor.action({
+      type: 'record.patch',
       target: {
         type: 'record',
         recordId: input.recordId

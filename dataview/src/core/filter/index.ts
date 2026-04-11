@@ -1,10 +1,7 @@
 export type {
-  FilterConditionProjection,
   FilterEditorKind,
   FilterPreset,
-  FilterRuleProjection,
-  FilterSpec,
-  ViewFilterProjection
+  FilterSpec
 } from './types'
 export {
   applyFilterPreset,

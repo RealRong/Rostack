@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Button, cn } from '@ui'
+import { preventToolbarPointerDown } from '../toolbar/primitives'
 
 export const PANEL_SECTION_TITLE_CLASSNAME = 'text-xs font-semibold uppercase text-fg-muted'
 
@@ -46,6 +47,7 @@ export const SwatchButton = ({
     style={{
       background: color
     }}
+    onPointerDown={preventToolbarPointerDown}
     onClick={onClick}
     aria-label={color}
   />
@@ -68,6 +70,7 @@ export const SegmentedButton = ({
       'h-8 min-w-0 flex-1 rounded-lg px-2.5',
       active && 'border-accent bg-pressed text-fg'
     )}
+    onPointerDown={preventToolbarPointerDown}
     onClick={onClick}
   >
     {children}

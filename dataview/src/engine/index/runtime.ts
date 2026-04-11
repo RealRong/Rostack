@@ -5,7 +5,7 @@ import type {
 import type {
   IndexStageTrace,
   IndexTrace
-} from '../types'
+} from '../api/public'
 import {
   buildCalculationIndex,
   ensureCalculationIndex,

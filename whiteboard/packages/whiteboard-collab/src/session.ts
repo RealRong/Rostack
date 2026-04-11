@@ -59,14 +59,14 @@ export const createYjsSession = ({
 
     doc.transact(() => {
       if (commit.kind === 'replace') {
-        replaceYjsDocument(doc, commit.document)
+        replaceYjsDocument(doc, commit.doc)
         return
       }
 
       applyOperationsToYjsDocument({
         doc,
         operations: commit.changes.operations,
-        snapshot: commit.document
+        snapshot: commit.doc
       })
     }, localOrigin)
   }

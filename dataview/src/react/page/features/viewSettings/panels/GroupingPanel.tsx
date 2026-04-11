@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { BucketSort, Field, ViewGroup } from '@dataview/core/contracts'
-import type { ViewGroupProjection } from '@dataview/core/group'
+import type { ViewGroupProjection } from '@dataview/engine/project'
 import {
   useDataView,
   useDataViewValue

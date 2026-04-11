@@ -1,6 +1,6 @@
 import type {
+  Action,
   CalculationMetric,
-  Command,
   DataDoc,
   Field,
   FieldId,
@@ -77,13 +77,13 @@ import type {
   ViewKanbanApi,
   ViewOrderApi,
   ViewTableApi
-} from '../types'
+} from '../../api/public'
 
-type ViewPatchCommand = Extract<Command, { type: 'view.patch' }>
+type ViewPatchAction = Extract<Action, { type: 'view.patch' }>
 
 interface CreateViewCommandNamespacesOptions {
   viewId: ViewId
-  commit: (command: Command) => boolean
+  commit: (action: Action) => boolean
   readDocument: () => DataDoc
   readView: () => View | undefined
 }
@@ -102,7 +102,7 @@ export interface ViewCommandNamespaces {
   createMoveOrderCommand: (
     recordIds: readonly RecordId[],
     beforeRecordId?: RecordId
-  ) => ViewPatchCommand | undefined
+  ) => ViewPatchAction | undefined
   clearOrder: ViewOrderApi['clear']
 }
 
@@ -111,7 +111,7 @@ interface ViewPatchContext {
   readDocument: () => DataDoc
   readView: () => View | undefined
   commitPatch: (patch: ViewPatch) => boolean
-  createPatchCommand: (patch: ViewPatch) => ViewPatchCommand
+  createPatchCommand: (patch: ViewPatch) => ViewPatchAction
   withCurrentView: <T>(fn: (view: View, document: DataDoc) => T) => T | undefined
   withField: <T>(
     fieldId: FieldId,
@@ -129,7 +129,7 @@ interface ViewPatchContext {
 const createPatchCommand = (
   viewId: ViewId,
   patch: ViewPatch
-): ViewPatchCommand => ({
+): ViewPatchAction => ({
   type: 'view.patch',
   viewId,
   patch
@@ -549,7 +549,7 @@ const createMoveOrderCommand = (
   context: ViewPatchContext,
   recordIds: readonly RecordId[],
   beforeRecordId?: RecordId
-): ViewPatchCommand | undefined => context.withCurrentView(view => {
+): ViewPatchAction | undefined => context.withCurrentView(view => {
   if (!recordIds.length) {
     return undefined
   }

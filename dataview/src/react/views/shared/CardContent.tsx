@@ -15,7 +15,7 @@ import type {
 } from '@dataview/engine/project'
 import type {
   ViewFieldRef
-} from '@dataview/engine/viewmodel'
+} from '@dataview/engine/project'
 import { isEmptyFieldValue } from '@dataview/core/field'
 import { Button } from '@ui/button'
 import { cn } from '@ui/utils'

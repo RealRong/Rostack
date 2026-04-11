@@ -115,7 +115,7 @@ const buildValueInverse = (
 
 const buildPropertyPatchInverse = (
   before: DataDoc,
-  operation: Extract<BaseOperation, { type: 'document.customField.patch' }>
+  operation: Extract<BaseOperation, { type: 'document.field.patch' }>
 ): BaseOperation[] => {
   const field = getDocumentCustomFieldById(before, operation.fieldId)
   if (!field) {
@@ -126,7 +126,7 @@ const buildPropertyPatchInverse = (
     Object.keys(operation.patch).map(key => [key, readObjectValue(field, key)])
   ) as Partial<Omit<CustomField, 'id'>>
 
-  return [{ type: 'document.customField.patch', fieldId: operation.fieldId, patch }]
+  return [{ type: 'document.field.patch', fieldId: operation.fieldId, patch }]
 }
 
 const buildSchemaInverse = (
@@ -136,9 +136,9 @@ const buildSchemaInverse = (
       | 'document.view.put'
       | 'document.activeView.set'
       | 'document.view.remove'
-      | 'document.customField.put'
-      | 'document.customField.patch'
-      | 'document.customField.remove'
+      | 'document.field.put'
+      | 'document.field.patch'
+      | 'document.field.remove'
   }>
 ): BaseOperation[] => {
   switch (operation.type) {
@@ -157,17 +157,17 @@ const buildSchemaInverse = (
       const previousView = getDocumentViewById(before, operation.viewId)
       return previousView ? [{ type: 'document.view.put', view: previousView }] : []
     }
-    case 'document.customField.put': {
+    case 'document.field.put': {
       const previousField = getDocumentCustomFieldById(before, operation.field.id)
       return previousField
-        ? [{ type: 'document.customField.put', field: previousField }]
-        : [{ type: 'document.customField.remove', fieldId: operation.field.id }]
+        ? [{ type: 'document.field.put', field: previousField }]
+        : [{ type: 'document.field.remove', fieldId: operation.field.id }]
     }
-    case 'document.customField.patch':
+    case 'document.field.patch':
       return buildPropertyPatchInverse(before, operation)
-    case 'document.customField.remove': {
+    case 'document.field.remove': {
       const previousField = getDocumentCustomFieldById(before, operation.fieldId)
-      return previousField ? [{ type: 'document.customField.put', field: previousField }] : []
+      return previousField ? [{ type: 'document.field.put', field: previousField }] : []
     }
   }
 }
@@ -185,9 +185,9 @@ export const buildInverseOperations = (before: DataDoc, operation: BaseOperation
     case 'document.view.put':
     case 'document.activeView.set':
     case 'document.view.remove':
-    case 'document.customField.put':
-    case 'document.customField.patch':
-    case 'document.customField.remove':
+    case 'document.field.put':
+    case 'document.field.patch':
+    case 'document.field.remove':
       return buildSchemaInverse(before, operation)
     case 'external.version.bump':
       return [{ type: 'external.version.bump', source: operation.source }]

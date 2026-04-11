@@ -32,6 +32,7 @@ export type TextPreviewPatch = {
   size?: Size
   fontSize?: number
   mode?: TextWidthMode
+  wrapWidth?: number
   handle?: ResizeDirection
 }
 

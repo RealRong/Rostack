@@ -8,6 +8,8 @@ import { EditableSlot } from '#react/features/edit/EditableSlot'
 import { useStickyFontSize } from '../../hooks/useStickyFontSize'
 import {
   bindNodeTextSource,
+  readTextWidthMode,
+  readTextWrapWidth,
   STICKY_DEFAULT_FILL,
   STICKY_PLACEHOLDER,
   TEXT_DEFAULT_FONT_SIZE,
@@ -105,9 +107,8 @@ const TextNodeRenderer = ({
     edit?.kind === 'node'
     && edit.nodeId === node.id
     && edit.field === 'text'
-  const baseWidth = editing
-    ? (edit.layout.baseRect?.width ?? rect.width)
-    : rect.width
+  const widthMode = readTextWidthMode(node)
+  const wrapWidth = readTextWrapWidth(node)
   const textStyle: CSSProperties = {
     fontSize,
     fontWeight,
@@ -131,9 +132,13 @@ const TextNodeRenderer = ({
               variant === 'text'
                 ? {
                     node,
-                    baseWidth,
+                    baseWidth: widthMode === 'wrap'
+                      ? (wrapWidth ?? rect.width)
+                      : rect.width,
                     placeholder,
-                    minWidth: edit.layout.baseRect?.width ?? rect.width,
+                    maxWidth: widthMode === 'wrap'
+                      ? (wrapWidth ?? rect.width)
+                      : undefined,
                     fontSize
                   }
                 : undefined

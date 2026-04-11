@@ -1,7 +1,9 @@
 import {
+  readTextWrapWidth,
   getNodeBounds,
   getNodeGeometry,
   readTextWidthMode,
+  setTextWrapWidth,
   setTextWidthMode,
   type NodeRectHitOptions,
   type TransformSelectionTargets
@@ -230,6 +232,12 @@ const applyNodeTextPreview = (
   const data = text.mode === undefined || text.mode === readTextWidthMode(item.node)
     ? item.node.data
     : setTextWidthMode(item.node, text.mode)
+  const nextWrapWidth = text.mode === 'auto'
+    ? undefined
+    : text.wrapWidth
+  const dataWithWrapWidth = nextWrapWidth === readTextWrapWidth(item.node)
+    ? data
+    : setTextWrapWidth({ data }, nextWrapWidth)
   const rect = text.size
     || text.position
     ? {
@@ -248,7 +256,7 @@ const applyNodeTextPreview = (
     node: {
       ...item.node,
       style,
-      data
+      data: dataWithWrapWidth
     },
     rect
   }

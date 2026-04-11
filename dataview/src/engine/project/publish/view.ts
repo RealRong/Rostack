@@ -23,6 +23,7 @@ import {
   sameFilterRule
 } from '@dataview/core/filter'
 import {
+  isTitleFieldId,
   getFieldGroupMeta
 } from '@dataview/core/field'
 import type {
@@ -129,6 +130,10 @@ const createFields = (input: {
   byId: ReadonlyMap<FieldId, Field>
 }): FieldList => {
   const all = input.fieldIds.flatMap(fieldId => {
+    if (isTitleFieldId(fieldId)) {
+      return []
+    }
+
     const field = input.byId.get(fieldId)
     return field
       ? [field]

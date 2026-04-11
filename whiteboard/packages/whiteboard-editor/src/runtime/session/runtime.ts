@@ -5,6 +5,7 @@ import {
   normalizeSelectionTarget,
   type SelectionTarget
 } from '@whiteboard/core/selection'
+import { readTextWrapWidth } from '@whiteboard/core/node'
 import type { EditorRead } from '../../types/editor'
 import type { NodeRegistry } from '../../types/node'
 import type { Tool } from '../../types/tool'
@@ -101,7 +102,7 @@ export const createSessionRuntime = ({
           width: item.rect.width,
           height: item.rect.height
         },
-        wrapWidth: item.rect.width,
+        wrapWidth: readTextWrapWidth(item.node),
         composing: false
       },
       caret: options?.caret ?? { kind: 'end' },

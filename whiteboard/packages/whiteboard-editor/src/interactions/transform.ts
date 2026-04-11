@@ -4,6 +4,7 @@ import {
   getResizeSourceEdges,
   getResizeUpdateRect,
   projectTextScale,
+  readTextWrapWidth,
   readTextWidthMode,
   resolveTextHandle,
   resolveResizeRectFromSize,
@@ -378,7 +379,8 @@ const createSingleTextTransformSession = (
           width: nextRect.width,
           height: nextRect.height
         },
-        mode: 'fixed',
+        mode: 'wrap',
+        wrapWidth: nextRect.width,
         handle: spec.handle,
         ...(spec.mode === 'scale'
           ? {
@@ -434,8 +436,11 @@ const createSingleTextTransformSession = (
               fields: geometry
             }
           : undefined,
-        readTextWidthMode(spec.target.node) !== 'fixed'
-          ? dataUpdate('widthMode', 'fixed')
+        readTextWidthMode(spec.target.node) !== 'wrap'
+          ? dataUpdate('widthMode', 'wrap')
+          : undefined,
+        readTextWrapWidth(spec.target.node) !== previewItem.rect.width
+          ? dataUpdate('wrapWidth', previewItem.rect.width)
           : undefined,
         spec.mode === 'scale' && nextFontSize !== readTextFontSize(spec.target.node)
           ? styleUpdate('fontSize', nextFontSize)

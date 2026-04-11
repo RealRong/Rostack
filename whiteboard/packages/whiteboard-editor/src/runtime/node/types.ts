@@ -33,6 +33,7 @@ export type NodeTextMutations = {
     }
     fontSize?: number
     mode?: TextWidthMode
+    wrapWidth?: number
     handle?: ResizeDirection
   }) => void
   clearPreview: (nodeId: NodeId) => void

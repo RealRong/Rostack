@@ -44,6 +44,7 @@ export const createNodeTextMutations = ({
     size,
     fontSize,
     mode,
+    wrapWidth,
     handle
   }) => {
     const item = read.node.item.get(nodeId)
@@ -56,6 +57,7 @@ export const createNodeTextMutations = ({
       size,
       fontSize,
       mode,
+      wrapWidth,
       handle
     })
   },

@@ -667,7 +667,7 @@ test('view.create resolves duplicate names in the command layer', () => {
   assert.equal(engine.read.view.get(createdViewId)?.name, 'Tasks 2')
 })
 
-test('view.duplicate reuses the shared unique naming rule', () => {
+test('engine.views.duplicate reuses the shared unique naming rule', () => {
   const engine = createEngine({
     document: createEmptyDocument()
   })
@@ -690,12 +690,7 @@ test('view.duplicate reuses the shared unique naming rule', () => {
     }
   })
 
-  const result = engine.command({
-    type: 'view.duplicate',
-    viewId: sourceViewId
-  })
-
-  const createdViewId = result.created?.views?.[0]
+  const createdViewId = engine.views.duplicate(sourceViewId)
   assert.ok(createdViewId)
   assert.equal(engine.read.view.get(createdViewId)?.name, 'Tasks Copy 2')
 })

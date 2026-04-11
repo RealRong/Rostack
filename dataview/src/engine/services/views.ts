@@ -1,7 +1,9 @@
 import type {
-  ViewType,
   ViewId
 } from '@dataview/core/contracts'
+import {
+  createDuplicateViewPreferredName
+} from '@dataview/core/view'
 import type {
   Engine,
   ViewsEngineApi
@@ -37,15 +39,35 @@ export const createViewsEngineApi = (options: {
       }
 
       options.engine.command({
-        type: 'view.rename',
+        type: 'view.patch',
         viewId,
-        name: nextName
+        patch: {
+          name: nextName
+        }
       })
     },
     duplicate: viewId => {
+      const sourceView = options.engine.read.view.get(viewId)
+      if (!sourceView) {
+        return undefined
+      }
+
       const result = options.engine.command({
-        type: 'view.duplicate',
-        viewId
+        type: 'view.create',
+        input: {
+          name: createDuplicateViewPreferredName(sourceView.name),
+          type: sourceView.type,
+          search: sourceView.search,
+          filter: sourceView.filter,
+          sort: sourceView.sort,
+          ...(sourceView.group
+            ? { group: sourceView.group }
+            : {}),
+          calc: sourceView.calc,
+          display: sourceView.display,
+          options: sourceView.options,
+          orders: sourceView.orders
+        }
       })
       return result.created?.views?.[0]
     },

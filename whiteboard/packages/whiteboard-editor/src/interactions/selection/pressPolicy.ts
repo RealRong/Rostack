@@ -316,6 +316,13 @@ const decideNodePress = <TField extends string>(
   const selectedEdgeIds = selection.target.edgeIds
   const currentSelection = getCurrentSelection(selection)
   const groupId = deps.getNodeGroupId(hitNodeId)
+  const currentGroupId = (
+    mode === 'replace'
+    && selectedNodeIds.length === 1
+    && selectedEdgeIds.length === 0
+  )
+    ? deps.getNodeGroupId(selectedNodeIds[0]!)
+    : undefined
   const groupSelection = mode === 'replace' && groupId
     ? deps.getGroupSelection(groupId)
     : undefined
@@ -324,7 +331,17 @@ const decideNodePress = <TField extends string>(
     && groupId
     && deps.isGroupSelected(groupId, currentSelection)
   )
-  const promoteToGroup = Boolean(groupSelection && !groupSelected)
+  const drilledWithinGroup = Boolean(
+    mode === 'replace'
+    && groupId
+    && currentGroupId === groupId
+    && !groupSelected
+  )
+  const promoteToGroup = Boolean(
+    groupSelection
+    && !groupSelected
+    && !drilledWithinGroup
+  )
   const selected = isSelectedNode(node.id, selectedNodeIds)
   const repeat = mode === 'replace' && isSingleSelectedNode(node.id, selectedNodeIds)
   const dragCurrentSelection = mode === 'replace' && groupSelected

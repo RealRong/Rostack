@@ -68,7 +68,10 @@ export {
   createDefaultViewOptions,
   pruneFieldFromViewOptions
 } from './core/view'
-export { KANBAN_CARDS_PER_COLUMN_OPTIONS } from './core/contracts'
+export {
+  KANBAN_CARDS_PER_COLUMN_OPTIONS,
+  TITLE_FIELD_ID
+} from './core/contracts'
 export { createEngine } from './engine/api'
 export type {
   ActiveView,

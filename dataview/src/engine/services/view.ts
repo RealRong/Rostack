@@ -251,7 +251,9 @@ export const createViewEngineApi = (options: {
   const commit = (command: Command | readonly Command[]) => dispatch(command).applied
   const commands = createViewCommandNamespaces({
     viewId: options.viewId,
-    commit
+    commit,
+    readDocument,
+    readView: readCurrentView
   })
 
   const order: ViewOrderApi = {

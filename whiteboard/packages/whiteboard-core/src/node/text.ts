@@ -2,7 +2,7 @@ import type { Rect } from '../types'
 import type { ResizeDirection } from './transform'
 
 export type TextVariant = 'text' | 'sticky'
-export type TextWidthMode = 'auto' | 'fixed'
+export type TextWidthMode = 'auto' | 'wrap'
 export type TextHandleMode = 'none' | 'reflow' | 'scale'
 
 export type TextContentBox = {
@@ -31,11 +31,13 @@ export type TextAutoFont = {
 
 export const TEXT_DEFAULT_FONT_SIZE = 14
 export const TEXT_FIT_VERTICAL_MARGIN = 2
-export const TEXT_MIN_WIDTH = 24
+export const TEXT_LAYOUT_MIN_WIDTH = 24
+export const TEXT_AUTO_MIN_WIDTH = 56
 export const TEXT_AUTO_MAX_WIDTH = 360
 export const TEXT_RESIZE_HANDLES = ['nw', 'ne', 'e', 'se', 'sw', 'w'] as const satisfies readonly ResizeDirection[]
 
 const TEXT_WIDTH_MODE_KEY = 'widthMode'
+const TEXT_WRAP_WIDTH_KEY = 'wrapWidth'
 
 const clampBoxSize = (
   size: number
@@ -69,8 +71,8 @@ export const readTextWidthMode = (
     data?: Record<string, unknown>
   }
 ): TextWidthMode => (
-  isTextNode(node) && node.data?.[TEXT_WIDTH_MODE_KEY] === 'fixed'
-    ? 'fixed'
+  isTextNode(node) && node.data?.[TEXT_WIDTH_MODE_KEY] === 'wrap'
+    ? 'wrap'
     : 'auto'
 )
 
@@ -84,6 +86,29 @@ export const setTextWidthMode = <
 ) => ({
   ...(node.data ?? {}),
   [TEXT_WIDTH_MODE_KEY]: mode
+})
+
+export const readTextWrapWidth = (
+  node: {
+    type: string
+    data?: Record<string, unknown>
+  }
+) => (
+  isTextNode(node) && typeof node.data?.[TEXT_WRAP_WIDTH_KEY] === 'number'
+    ? node.data[TEXT_WRAP_WIDTH_KEY] as number
+    : undefined
+)
+
+export const setTextWrapWidth = <
+  TData extends Record<string, unknown> | undefined
+>(
+  node: {
+    data?: TData
+  },
+  width?: number
+) => ({
+  ...(node.data ?? {}),
+  [TEXT_WRAP_WIDTH_KEY]: width
 })
 
 export const isTextContentEmpty = (

@@ -1,7 +1,7 @@
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import type { MindmapLayoutConfig } from '@whiteboard/core/mindmap'
 import type { MindmapItem } from '@engine-types/projection'
-import type { ReadStore } from '@shared/store'
+import type { ReadStore } from '@shared/core'
 import type { Node, NodeId, SpatialNode } from '@whiteboard/core/types'
 import type { BoardConfig } from '@engine-types/instance'
 import { DEFAULT_TUNING } from '../../config'
@@ -11,7 +11,7 @@ import {
   getMindmapLabel,
   getMindmapTree
 } from '@whiteboard/core/mindmap'
-import { createValueStore } from '@shared/store'
+import { createValueStore } from '@shared/core'
 import type { ReadSnapshot } from '@engine-types/internal/read'
 import { createTrackedRead } from './tracked'
 

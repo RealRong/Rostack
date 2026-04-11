@@ -10,7 +10,7 @@ import type {
   ValueEditorCloseAction,
   ValueEditorSessionPolicy
 } from '@dataview/react/runtime/valueEditor'
-import { ownerDocumentOf, resolveFieldAnchor } from '@dataview/dom/field'
+import { ownerDocumentOf, resolveFieldAnchor } from '@dataview/react/dom/field'
 import {
   fieldOf
 } from '@dataview/engine/viewmodel'

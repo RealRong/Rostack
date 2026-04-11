@@ -24,7 +24,7 @@ import { normalizeDocument } from '../document/normalize'
 import type { Commit } from '@engine-types/commit'
 import type { CommandResult } from '@engine-types/result'
 import { cancelled, success } from '../result'
-import { createValueStore } from '@shared/store'
+import { createValueStore } from '@shared/core'
 
 const EMPTY_MINDMAP_LAYOUT: MindmapLayoutConfig = {}
 

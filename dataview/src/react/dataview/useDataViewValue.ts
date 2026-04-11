@@ -2,7 +2,7 @@ import type {
   Equality,
   KeyedReadStore,
   ReadStore
-} from '@shared/store'
+} from '@shared/core'
 import {
   useKeyedStoreValue,
   useStoreValue

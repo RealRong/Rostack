@@ -1,8 +1,8 @@
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import type { NodeItem } from '@engine-types/projection'
-import type { ReadStore } from '@shared/store'
+import type { ReadStore } from '@shared/core'
 import type { NodeId } from '@whiteboard/core/types'
-import { createValueStore } from '@shared/store'
+import { createValueStore } from '@shared/core'
 import type { ReadSnapshot } from '@engine-types/internal/read'
 import { createTrackedRead } from './tracked'
 

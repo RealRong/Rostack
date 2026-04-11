@@ -1,9 +1,9 @@
 import {
   createValueStore
-} from '@shared/store'
+} from '@shared/core'
 import {
   sameOrder
-} from '@shared/equality'
+} from '@shared/core'
 import type {
   AppearanceId
 } from '@dataview/engine/project'

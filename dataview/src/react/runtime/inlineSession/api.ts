@@ -1,6 +1,6 @@
 import {
   createValueStore
-} from '@shared/store'
+} from '@shared/core'
 import type {
   InlineSessionApi,
   InlineSessionExitEvent,

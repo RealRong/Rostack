@@ -7,7 +7,7 @@ import type {
   HistoryState
 } from '@whiteboard/core/kernel'
 import type { SelectionInput, SelectionTarget } from '@whiteboard/core/selection'
-import type { ReadStore, Unsubscribe } from '@shared/store'
+import type { ReadStore, Unsubscribe } from '@shared/core'
 import type {
   MindmapCloneSubtreeInput,
   MindmapCreateOptions,

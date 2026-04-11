@@ -8,7 +8,7 @@ import {
 } from '@dataview/core/contracts'
 import {
   sameOrder as sameIds
-} from '@shared/equality'
+} from '@shared/core'
 import type {
   DataDoc
 } from '@dataview/core/contracts'

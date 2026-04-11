@@ -4,7 +4,7 @@ import type {
 } from '../project/model'
 import {
   sameOrder
-} from '@shared/equality'
+} from '@shared/core'
 import type {
   Placement,
   Plan

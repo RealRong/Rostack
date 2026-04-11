@@ -2,7 +2,7 @@ import {
   belowFieldAnchor,
   ownerDocumentOf,
   resolveFieldAnchor
-} from '@dataview/dom/field'
+} from '@dataview/react/dom/field'
 import type {
   ViewFieldRef
 } from '@dataview/engine/viewmodel'
@@ -34,10 +34,10 @@ export const openCardField = (input: {
     ownerDocumentOf(input.element),
     input.field
   ) ?? (
-    input.element instanceof HTMLElement
-      ? belowFieldAnchor(input.element)
-      : undefined
-  )
+      input.element instanceof HTMLElement
+        ? belowFieldAnchor(input.element)
+        : undefined
+    )
 
   if (!anchor) {
     return false

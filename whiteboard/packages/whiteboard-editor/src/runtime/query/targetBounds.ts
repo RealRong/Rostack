@@ -4,7 +4,7 @@ import {
   type BoundsTarget
 } from '@whiteboard/core/selection'
 import type { Rect } from '@whiteboard/core/types'
-import type { ReadFn } from '@shared/store'
+import type { ReadFn } from '@shared/core'
 import type { EdgeRead } from '../read/edge'
 import {
   getNodeItemBounds,

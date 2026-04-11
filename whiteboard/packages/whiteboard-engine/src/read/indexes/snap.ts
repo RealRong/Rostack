@@ -7,7 +7,7 @@ import {
   sameOrder as isSameRefOrder,
   sameRect as isSameRectTuple,
   toFiniteOrUndefined
-} from '@shared/equality'
+} from '@shared/core'
 
 type Rebuild = 'none' | 'dirty' | 'full'
 

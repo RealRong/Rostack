@@ -1,4 +1,4 @@
-import { createValueStore, type ValueStore } from '@shared/store'
+import { createValueStore, type ValueStore } from '@shared/core'
 import { DRAW_SLOTS } from '../../draw'
 import type {
   BrushStyle,

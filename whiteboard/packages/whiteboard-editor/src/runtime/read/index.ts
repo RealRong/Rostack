@@ -1,4 +1,4 @@
-import type { KeyedReadStore, ReadStore } from '@shared/store'
+import type { KeyedReadStore, ReadStore } from '@shared/core'
 import type { EngineRead } from '@whiteboard/engine'
 import type { GroupRead } from '@engine-types/instance'
 import type { HistoryState } from '@whiteboard/core/kernel'

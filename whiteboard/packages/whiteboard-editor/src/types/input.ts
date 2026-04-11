@@ -1,5 +1,5 @@
 import type { EdgeId, Point } from '@whiteboard/core/types'
-import type { ValueStore } from '@shared/store'
+import type { ValueStore } from '@shared/core'
 import type { EditorPick } from './pick'
 
 export type ModifierKeys = {

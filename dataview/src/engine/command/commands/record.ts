@@ -2,7 +2,7 @@ import type { BaseOperation } from '@dataview/core/contracts/operations'
 import type { DataDoc } from '@dataview/core/contracts/state'
 import {
   sameOrder
-} from '@shared/equality'
+} from '@shared/core'
 import {
   getDocumentCustomFields,
   getDocumentRecordById,

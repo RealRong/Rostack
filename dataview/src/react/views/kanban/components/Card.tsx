@@ -14,7 +14,7 @@ import type {
 } from '@dataview/core/contracts'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
-} from '@dataview/dom/appearance'
+} from '@dataview/react/dom/appearance'
 import { shouldCapturePointer } from '@shared/dom'
 import {
   useDataView
@@ -134,8 +134,8 @@ export const Card = (props: {
         ...surfaceStyle,
         ...(selected
           ? {
-              boxShadow: 'var(--ui-shadow-sm), 0 0 0 2px var(--ui-accent-frame-border)'
-            }
+            boxShadow: 'var(--ui-shadow-sm), 0 0 0 2px var(--ui-accent-frame-border)'
+          }
           : undefined),
         ...props.style
       }}

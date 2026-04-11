@@ -7,7 +7,7 @@ import {
   sameJsonValue,
   sameMap,
   sameOrder
-} from '@shared/equality'
+} from '@shared/core'
 import type {
   Field,
 } from '@dataview/core/contracts'

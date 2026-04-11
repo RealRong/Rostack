@@ -1,11 +1,11 @@
 import {
   createValueStore
-} from '@shared/store'
+} from '@shared/core'
 import {
   sameBox,
   sameOrder,
   samePoint
-} from '@shared/equality'
+} from '@shared/core'
 import type {
   MarqueeAdapter,
   MarqueeApi,

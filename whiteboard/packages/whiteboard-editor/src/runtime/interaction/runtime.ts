@@ -1,7 +1,7 @@
 import {
   createDerivedStore,
   createValueStore
-} from '@shared/store'
+} from '@shared/core'
 import type { ActiveGesture } from './gesture'
 import type {
   InteractionBinding,

@@ -1,5 +1,5 @@
 import { Slider } from '@ui'
-import { sameOptionalNumberArray as isSameOptionalNumberArray } from '@shared/equality'
+import { sameOptionalNumberArray as isSameOptionalNumberArray } from '@shared/core'
 import { STROKE_COLOR_OPTIONS } from '../menus/options'
 import { Panel, PanelSection, SegmentedButton, SwatchButton } from './ShapeToolbarPrimitives'
 

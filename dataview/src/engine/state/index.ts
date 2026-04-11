@@ -9,7 +9,7 @@ import type {
 } from '@dataview/core/contracts/operations'
 import {
   createValueStore
-} from '@shared/store'
+} from '@shared/core'
 import {
   createIndexState
 } from '../derive/index'

@@ -1,4 +1,4 @@
-import { createDerivedStore, createValueStore, type ReadStore } from '@shared/store'
+import { createDerivedStore, createValueStore, type ReadStore } from '@shared/core'
 import {
   readEdgeGestureOverlayState,
   readSelectionGesturePreview,

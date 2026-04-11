@@ -20,10 +20,9 @@
     "demo:typecheck": "pnpm --dir ../apps/dataview typecheck"
   },
   "dependencies": {
-    "@shared/equality": "workspace:*",
+    "@shared/core": "workspace:*",
     "@shared/dom": "workspace:*",
     "@shared/react": "workspace:*",
-    "@shared/store": "workspace:*",
     "@date-fns/tz": "^1.4.1",
     "@floating-ui/react": "^0.27.19",
     "@radix-ui/react-label": "^2.1.8",

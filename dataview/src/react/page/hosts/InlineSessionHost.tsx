@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import {
   closestDataviewAppearanceId
-} from '@dataview/dom/appearance'
+} from '@dataview/react/dom/appearance'
 import {
   useDataView
 } from '@dataview/react/dataview'

@@ -9,8 +9,8 @@ import type {
 import {
   sameOptionalBox as isSameOptionalBoxTuple,
   sameOrder as isOrderedArrayEqual
-} from '@shared/equality'
-import { createDerivedStore, type ReadStore } from '@shared/store'
+} from '@shared/core'
+import { createDerivedStore, type ReadStore } from '@shared/core'
 import type { TargetBoundsQuery } from '../query/targetBounds'
 import type { Tool } from '../../types/tool'
 import type { EditSession } from '../state/edit'

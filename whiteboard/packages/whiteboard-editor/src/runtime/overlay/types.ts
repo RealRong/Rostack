@@ -15,7 +15,7 @@ import type {
   Rect
 } from '@whiteboard/core/types'
 import type { Size } from '@whiteboard/core/types'
-import type { KeyedReadStore, ReadStore } from '@shared/store'
+import type { KeyedReadStore, ReadStore } from '@shared/core'
 import type { DrawPreview } from '../../types/draw'
 import type { NodeProjectionPatch } from '../read/nodeProjection'
 import type { MarqueeMatch } from '../../interactions/selection/marqueeState'

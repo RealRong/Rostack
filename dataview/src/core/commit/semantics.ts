@@ -21,7 +21,7 @@ import {
 import {
   sameJsonValue,
   sameOptionalOrder
-} from '@shared/equality'
+} from '@shared/core'
 import {
   getDocumentCustomFieldById,
   getDocumentRecordById,

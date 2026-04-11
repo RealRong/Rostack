@@ -22,7 +22,7 @@ import {
 import {
   DATAVIEW_APPEARANCE_ID_ATTR,
   dataviewAppearanceSelector
-} from '@dataview/dom/appearance'
+} from '@dataview/react/dom/appearance'
 import {
   closestTarget,
   interactiveSelector
@@ -126,11 +126,11 @@ export const useKanbanController = (input: {
   const currentView = useMemo<KanbanCurrentView | undefined>(() => (
     activeView && appearances && sectionsProjection && fieldsProjection
       ? {
-          view: activeView,
-          appearances,
-          sections: sectionsProjection,
-          fields: fieldsProjection
-        }
+        view: activeView,
+        appearances,
+        sections: sectionsProjection,
+        fields: fieldsProjection
+      }
       : undefined
   ), [activeView, appearances, fieldsProjection, sectionsProjection])
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -227,18 +227,18 @@ export const useKanbanController = (input: {
         const previousVisibleCount = previousExpandedCount === undefined
           ? previousInitialVisibleCount
           : Math.min(
-              previousLength,
-              Math.max(previousInitialVisibleCount, previousExpandedCount)
-            )
+            previousLength,
+            Math.max(previousInitialVisibleCount, previousExpandedCount)
+          )
         const currentVisibleCount = next[section.key] === undefined
           ? resolveInitialVisibleCount(cardsPerColumn, section.ids.length)
           : Math.min(
-              section.ids.length,
-              Math.max(
-                resolveInitialVisibleCount(cardsPerColumn, section.ids.length),
-                next[section.key]!
-              )
+            section.ids.length,
+            Math.max(
+              resolveInitialVisibleCount(cardsPerColumn, section.ids.length),
+              next[section.key]!
             )
+          )
 
         if (
           section.ids.length > previousLength

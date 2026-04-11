@@ -14,7 +14,7 @@ import {
 } from '@dataview/react/field/value'
 import {
   fieldAttrs
-} from '@dataview/dom/field'
+} from '@dataview/react/dom/field'
 import type {
   ViewFieldRef
 } from '@dataview/engine/viewmodel'

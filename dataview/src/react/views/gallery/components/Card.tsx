@@ -16,7 +16,7 @@ import {
 } from '@dataview/core/field'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
-} from '@dataview/dom/appearance'
+} from '@dataview/react/dom/appearance'
 import {
   shouldCapturePointer
 } from '@shared/dom'
@@ -91,7 +91,7 @@ const GalleryCardContent = (props: {
   marqueeActiveRef.current = controller.marqueeActive
   const hasVisibleFields = useMemo(() => fields.some(field => (
     editing
-      || !isEmptyFieldValue(props.record.values[field.id])
+    || !isEmptyFieldValue(props.record.values[field.id])
   )), [editing, fields, props.record])
   const surfaceStyle = !selected
     ? resolveNeutralCardStyle(hovered && !editing ? 'hover' : 'default', 'preview')

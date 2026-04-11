@@ -4,7 +4,7 @@ import type { Edge, EdgeId, GroupId, Node, NodeId, Rect } from '../types'
 import {
   sameOptionalRect as isSameOptionalRectTuple,
   sameOrder as isOrderedArrayEqual
-} from '@shared/equality'
+} from '@shared/core'
 
 const EMPTY_NODE_IDS: readonly NodeId[] = []
 const EMPTY_EDGE_IDS: readonly EdgeId[] = []

@@ -1,10 +1,10 @@
 import {
   createKeyedStore,
   type KeyedReadStore
-} from '@shared/store'
+} from '@shared/core'
 import {
   sameValue as isSameValue
-} from '@shared/equality'
+} from '@shared/core'
 
 export const createTrackedRead = <Key, Value,>({
   emptyValue,

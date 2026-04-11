@@ -27,10 +27,10 @@ import {
   createDerivedStore,
   createValueStore,
   type ReadStore
-} from '@shared/store'
+} from '@shared/core'
 import type {
   ValueStore
-} from '@shared/store'
+} from '@shared/core'
 import type { PageState } from '@dataview/react/page/session/types'
 import type { ValueEditorApi } from '@dataview/react/runtime/valueEditor'
 import {

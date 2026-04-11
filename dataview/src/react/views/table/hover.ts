@@ -3,11 +3,11 @@ import {
   createValueStore,
   type KeyedReadStore,
   type ValueStore
-} from '@shared/store'
+} from '@shared/core'
 import type { Point } from '@shared/dom'
 import {
   sameOptionalPoint
-} from '@shared/equality'
+} from '@shared/core'
 import type {
   AppearanceId
 } from '@dataview/engine/project'

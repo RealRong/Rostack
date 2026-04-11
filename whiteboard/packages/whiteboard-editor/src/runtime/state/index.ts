@@ -1,5 +1,5 @@
-import { createValueStore, type ValueStore } from '@shared/store'
-import { sameOrder as isOrderedArrayEqual } from '@shared/equality'
+import { createValueStore, type ValueStore } from '@shared/core'
+import { sameOrder as isOrderedArrayEqual } from '@shared/core'
 import type { Tool } from '../../types/tool'
 import type { EditorRead, EditorState } from '../../types/editor'
 import type { PointerSample } from '../../types/input'

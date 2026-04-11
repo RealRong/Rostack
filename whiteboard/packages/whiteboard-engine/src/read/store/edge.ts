@@ -3,7 +3,7 @@ import type {
   CanvasNode,
   EdgeItem
 } from '@engine-types/projection'
-import type { ReadStore } from '@shared/store'
+import type { ReadStore } from '@shared/core'
 import type { Edge, EdgeId, NodeId, Point } from '@whiteboard/core/types'
 import {
   collectRelatedEdgeIds,
@@ -14,8 +14,8 @@ import {
 import {
   samePointArray as isSamePointArray,
   sameRectWithRotation as isSameRectWithRotationTuple
-} from '@shared/equality'
-import { createValueStore } from '@shared/store'
+} from '@shared/core'
+import { createValueStore } from '@shared/core'
 import type { ReadSnapshot } from '@engine-types/internal/read'
 import { createTrackedRead } from './tracked'
 

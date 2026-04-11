@@ -16,7 +16,7 @@ import {
   createKeyedDerivedStore,
   type KeyedReadStore,
   type ReadStore
-} from '@shared/store'
+} from '@shared/core'
 import type {
   NodeGeometry,
   Node,

@@ -1,6 +1,6 @@
 import { useEffect, type RefObject } from 'react'
 import { observeElementSize } from '@shared/dom'
-import { createRafTask } from '@shared/scheduler'
+import { createRafTask } from '@shared/core'
 import type { WhiteboardRuntime as Editor } from '#react/types/runtime'
 import { resolveWheelInput } from '../../dom/host/input'
 

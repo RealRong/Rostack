@@ -14,7 +14,7 @@ import type {
 import { isCustomField } from '@dataview/core/field'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
-} from '@dataview/dom/appearance'
+} from '@dataview/react/dom/appearance'
 import {
   useDataView,
   useDataViewValue
@@ -94,11 +94,11 @@ export const useGalleryController = (input: {
   const currentView = useMemo<GalleryCurrentView | undefined>(() => (
     activeView && appearances && sectionsProjection && fieldsProjection
       ? {
-          view: activeView,
-          appearances,
-          sections: sectionsProjection,
-          fields: fieldsProjection
-        }
+        view: activeView,
+        appearances,
+        sections: sectionsProjection,
+        fields: fieldsProjection
+      }
       : undefined
   ), [activeView, appearances, fieldsProjection, sectionsProjection])
   if (!currentView) {
@@ -123,12 +123,12 @@ export const useGalleryController = (input: {
     grouped
       ? currentView.sections
       : [{
-          key: 'all',
-          title: '',
-          color: undefined,
-          collapsed: false,
-          ids: currentView.appearances.ids
-        }]
+        key: 'all',
+        title: '',
+        color: undefined,
+        collapsed: false,
+        ids: currentView.appearances.ids
+      }]
   ), [currentView.appearances.ids, currentView.sections, grouped])
   const sectionColorByKey = useMemo(() => new Map(
     sections.map(section => [section.key, section.color] as const)

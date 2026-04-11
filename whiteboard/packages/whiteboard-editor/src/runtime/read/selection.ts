@@ -10,12 +10,12 @@ import {
   type SelectionTransformBox
 } from '@whiteboard/core/selection'
 import type { Edge, Node, Rect } from '@whiteboard/core/types'
-import { sameOptionalRect as isSameOptionalRectTuple } from '@shared/equality'
+import { sameOptionalRect as isSameOptionalRectTuple } from '@shared/core'
 import {
   createDerivedStore,
   type ReadFn,
   type ReadStore
-} from '@shared/store'
+} from '@shared/core'
 import type { EdgeRead } from './edge'
 import type { NodeRead } from './node'
 import type { TargetBoundsQuery } from '../query/targetBounds'

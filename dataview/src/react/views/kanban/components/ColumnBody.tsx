@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { DATAVIEW_APPEARANCE_ID_ATTR } from '@dataview/dom/appearance'
+import { DATAVIEW_APPEARANCE_ID_ATTR } from '@dataview/react/dom/appearance'
 import { Button } from '@ui/button'
 import { cn } from '@ui/utils'
 import type { Section } from '@dataview/engine/project'

@@ -1,5 +1,5 @@
 import { resolveEdgePressureVector } from '@shared/dom'
-import { createRafTask } from '@shared/scheduler'
+import { createRafTask } from '@shared/core'
 import type { Point } from '@whiteboard/core/types'
 import type { ViewportInputRuntime } from '../viewport'
 import type { InteractionSession } from './types'

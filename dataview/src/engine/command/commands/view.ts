@@ -21,7 +21,7 @@ import {
   sameJsonValue,
   sameOrder,
   sameShallowRecord
-} from '@shared/equality'
+} from '@shared/core'
 import type { IndexedCommand } from '../context'
 import {
   getDocumentActiveViewId,

@@ -10,7 +10,7 @@ import {
   createKeyedDerivedStore,
   type KeyedReadStore,
   type ReadStore
-} from '@shared/store'
+} from '@shared/core'
 import {
   sameCellRef
 } from '@dataview/engine/viewmodel'

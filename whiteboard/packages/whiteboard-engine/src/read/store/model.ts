@@ -7,7 +7,7 @@ import {
   sameIdOrder as isSameIdOrder,
   sameMapRefs as isSameMapValueRefs,
   sameOrder as isSameRefOrder
-} from '@shared/equality'
+} from '@shared/core'
 import {
   deriveNodeReadSlices,
   deriveVisibleEdges

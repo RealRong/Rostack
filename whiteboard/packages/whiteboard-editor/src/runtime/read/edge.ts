@@ -13,7 +13,7 @@ import { getNodeGeometry } from '@whiteboard/core/node'
 import {
   sameOrder as isOrderedArrayEqual,
   samePointArray as isSamePointArray
-} from '@shared/equality'
+} from '@shared/core'
 import type { EdgeId, Node, NodeId, NodeType, Rect } from '@whiteboard/core/types'
 import {
   type EdgeItem,
@@ -24,7 +24,7 @@ import {
   createKeyedDerivedStore,
   type KeyedReadStore,
   type ReadStore
-} from '@shared/store'
+} from '@shared/core'
 import type {
   EdgeOverlayProjection
 } from '../overlay/types'

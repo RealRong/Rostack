@@ -7,7 +7,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@shared/scheduler": "workspace:*"
+    "@shared/core": "workspace:*"
   },
   "files": [
     "src"

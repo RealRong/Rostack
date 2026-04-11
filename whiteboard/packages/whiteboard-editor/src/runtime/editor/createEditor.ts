@@ -1,4 +1,4 @@
-import { createDerivedStore } from '@shared/store'
+import { createDerivedStore } from '@shared/core'
 import { isNodeUpdateEmpty } from '@whiteboard/core/node'
 import { isSizeEqual } from '@whiteboard/core/geometry'
 import type { Engine } from '@whiteboard/engine'

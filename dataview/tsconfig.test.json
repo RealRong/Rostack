@@ -11,10 +11,9 @@
     "allowImportingTsExtensions": false,
     "paths": {
       "@shared/*": ["shared/*/src/index.ts"],
+      "@shared/core": ["shared/core/src/index.ts"],
       "@shared/dom": ["shared/dom/src/index.ts"],
       "@shared/react": ["shared/react/src/index.ts"],
-      "@shared/scheduler": ["shared/scheduler/src/index.ts"],
-      "@shared/store": ["shared/store/src/index.ts"],
       "@ui": ["ui/src/index.ts"],
       "@ui/css/*": ["ui/css/*"],
       "@ui/*": ["ui/src/*"],

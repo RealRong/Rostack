@@ -1,7 +1,7 @@
 import {
   isSelectionTargetEqual,
 } from '@whiteboard/core/selection'
-import { createTimeoutTask, type TimeoutTask } from '@shared/scheduler'
+import { createTimeoutTask, type TimeoutTask } from '@shared/core'
 import type { Node } from '@whiteboard/core/types'
 import type { EditField } from '../../runtime/state/edit'
 import {

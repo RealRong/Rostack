@@ -5,7 +5,7 @@ import type {
   Rect,
   Size
 } from '@whiteboard/core/types'
-import { createValueStore, type ValueStore } from '@shared/store'
+import { createValueStore, type ValueStore } from '@shared/core'
 
 export type EditField = 'text' | 'title'
 export type EditEmptyBehavior = 'keep' | 'remove' | 'default'

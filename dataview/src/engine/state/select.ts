@@ -25,11 +25,11 @@ import {
   type Equality,
   type KeyedReadStore,
   type ReadStore
-} from '@shared/store'
+} from '@shared/core'
 import {
   sameOrder,
   sameValue
-} from '@shared/equality'
+} from '@shared/core'
 import type {
   EngineProjectApi,
   EngineReadApi

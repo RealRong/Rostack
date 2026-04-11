@@ -34,7 +34,7 @@ import type {
 import type {
   KeyedReadStore,
   ReadStore
-} from '@shared/store'
+} from '@shared/core'
 import type {
   EngineCommand,
   ExecuteOptions,

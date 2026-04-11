@@ -40,7 +40,7 @@ import {
   type Point,
   type Rect
 } from '@whiteboard/core/types'
-import { createValueStore } from '@shared/store'
+import { createValueStore } from '@shared/core'
 import { DEFAULT_TUNING } from '../../config'
 import { RESET_READ_IMPACT } from '../impacts'
 import { NodeRectIndex, SnapIndex } from '../indexes'

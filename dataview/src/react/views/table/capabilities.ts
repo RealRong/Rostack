@@ -1,4 +1,4 @@
-import { createDerivedStore, type ReadStore } from '@shared/store'
+import { createDerivedStore, type ReadStore } from '@shared/core'
 import type { InteractionState } from '@dataview/react/interaction'
 import type { TableCurrentView as CurrentView } from './currentView'
 

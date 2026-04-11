@@ -1,6 +1,6 @@
 import type { Document } from '@whiteboard/core/types'
 import { assertDocument } from '@whiteboard/core/document'
-export { sameJsonValue as isDeepEqual } from '@shared/equality'
+export { sameJsonValue as isDeepEqual } from '@shared/core'
 import * as Y from 'yjs'
 
 export const COLLAB_ROOT_KEY = 'whiteboard'

@@ -3,7 +3,7 @@ import type {
 } from '@dataview/core/contracts'
 import {
   sameOptionalOrder
-} from '@shared/equality'
+} from '@shared/core'
 
 const normalizeFieldIds = (
   value: unknown

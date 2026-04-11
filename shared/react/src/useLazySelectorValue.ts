@@ -3,7 +3,7 @@ import {
   createDerivedStore,
   type Equality,
   type StoreRead
-} from '@shared/store'
+} from '@shared/core'
 import { useStoreValue } from './useStoreValue'
 
 type LazySelectorLeaf<T> = (read: StoreRead) => T

@@ -9,7 +9,7 @@ import {
 import {
   createValueStore,
   type ValueStore
-} from '@shared/store'
+} from '@shared/core'
 
 export type SelectionMutate = {
   replace: (input: SelectionInput) => void

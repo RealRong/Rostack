@@ -10,7 +10,7 @@ import {
 import {
   createDerivedStore,
   type ReadStore
-} from '@shared/store'
+} from '@shared/core'
 import {
   cloneSettingsRoute,
   normalizeSettingsRoute

@@ -2,7 +2,7 @@ import {
   createKeyedDerivedStore,
   type KeyedReadStore,
   type ReadFn
-} from '@shared/store'
+} from '@shared/core'
 
 export const createOverlayStateStore = <
   Id extends string,

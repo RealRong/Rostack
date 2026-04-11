@@ -3,7 +3,7 @@ import { getNodeGeometry, getNodeRect } from '@whiteboard/core/node'
 import {
   sameRectWithRotation as isSameRectWithRotationTuple,
   toFiniteOrUndefined
-} from '@shared/equality'
+} from '@shared/core'
 
 type NodeGeometryStateTuple = {
   x?: number

@@ -24,7 +24,7 @@ import {
 } from '@dataview/core/filter'
 import {
   sameOrder
-} from '@shared/equality'
+} from '@shared/core'
 import {
   isTitleFieldId,
   getFieldGroupMeta

@@ -4,7 +4,7 @@ import {
 import type {
   Equality,
   ReadStore
-} from '@shared/store'
+} from '@shared/core'
 import {
   useExternalValue
 } from '@shared/react'

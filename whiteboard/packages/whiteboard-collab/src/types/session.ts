@@ -1,4 +1,4 @@
-import type { ReadStore } from '@shared/store'
+import type { ReadStore } from '@shared/core'
 import type { Engine } from '@whiteboard/engine'
 import type * as Y from 'yjs'
 import type {

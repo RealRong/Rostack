@@ -1,4 +1,4 @@
-import { createValueStore } from '@shared/store'
+import { createValueStore } from '@shared/core'
 import type { Commit } from '@whiteboard/engine'
 import * as Y from 'yjs'
 import type {

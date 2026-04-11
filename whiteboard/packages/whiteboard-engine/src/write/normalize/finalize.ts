@@ -6,7 +6,7 @@ import {
   sameOrder,
   samePointArray,
   sameShallowRecord
-} from '@shared/equality'
+} from '@shared/core'
 import { createNodeUpdateOperation } from '@whiteboard/core/node'
 import { compileNodeFieldUpdate } from '@whiteboard/core/schema'
 import type {

@@ -4,7 +4,7 @@ import { getDocumentFields } from '@dataview/core/document'
 import {
   createDerivedStore,
   type ReadStore
-} from '@shared/store'
+} from '@shared/core'
 import type {
   TableCurrentView
 } from './currentView'

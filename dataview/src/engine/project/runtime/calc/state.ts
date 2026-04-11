@@ -4,7 +4,7 @@ import type {
 } from '@dataview/core/contracts'
 import {
   sameOrder
-} from '@shared/equality'
+} from '@shared/core'
 import {
   buildAggregateState
 } from '../../../index/aggregate'

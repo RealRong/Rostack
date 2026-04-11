@@ -1,4 +1,4 @@
-import { createRafTask } from '@shared/scheduler'
+import { createRafTask } from '@shared/core'
 
 export interface ElementSize {
   width: number

@@ -1,10 +1,10 @@
 import type { Engine } from '@dataview/engine'
 import type {
   ReadStore
-} from '@shared/store'
+} from '@shared/core'
 import {
   joinUnsubscribes
-} from '@shared/store'
+} from '@shared/core'
 import {
   createPageSessionApi
 } from '@dataview/react/page/session/api'

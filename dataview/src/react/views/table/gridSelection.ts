@@ -15,7 +15,7 @@ import {
   createValueStore,
   type ReadStore,
   type ValueStore
-} from '@shared/store'
+} from '@shared/core'
 
 export interface GridSelectionStore {
   store: ValueStore<GridSelection | null>

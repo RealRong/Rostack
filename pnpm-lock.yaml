@@ -114,12 +114,12 @@ importers:
       '@shared/dom':
         specifier: workspace:*
         version: link:../shared/dom
+      '@shared/core':
+        specifier: workspace:*
+        version: link:../shared/core
       '@shared/react':
         specifier: workspace:*
         version: link:../shared/react
-      '@shared/store':
-        specifier: workspace:*
-        version: link:../shared/store
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -184,18 +184,20 @@ importers:
 
   shared/dom:
     dependencies:
-      '@shared/scheduler':
+      '@shared/core':
         specifier: workspace:*
-        version: link:../scheduler
+        version: link:../core
+
+  shared/core: {}
 
   shared/react:
     dependencies:
+      '@shared/core':
+        specifier: workspace:*
+        version: link:../core
       '@shared/dom':
         specifier: workspace:*
         version: link:../dom
-      '@shared/store':
-        specifier: workspace:*
-        version: link:../store
       react:
         specifier: ^19.1.1
         version: 19.2.4
@@ -203,14 +205,6 @@ importers:
       '@types/react':
         specifier: ^19.1.12
         version: 19.2.14
-
-  shared/scheduler: {}
-
-  shared/store:
-    dependencies:
-      '@shared/scheduler':
-        specifier: workspace:*
-        version: link:../scheduler
 
   ui:
     dependencies:
@@ -278,9 +272,9 @@ importers:
 
   whiteboard/packages/whiteboard-collab:
     dependencies:
-      '@shared/store':
+      '@shared/core':
         specifier: workspace:*
-        version: link:../../../shared/store
+        version: link:../../../shared/core
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core
@@ -291,19 +285,20 @@ importers:
         specifier: ^13.6.27
         version: 13.6.30
 
-  whiteboard/packages/whiteboard-core: {}
+  whiteboard/packages/whiteboard-core:
+    dependencies:
+      '@shared/core':
+        specifier: workspace:*
+        version: link:../../../shared/core
 
   whiteboard/packages/whiteboard-editor:
     dependencies:
+      '@shared/core':
+        specifier: workspace:*
+        version: link:../../../shared/core
       '@shared/dom':
         specifier: workspace:*
         version: link:../../../shared/dom
-      '@shared/scheduler':
-        specifier: workspace:*
-        version: link:../../../shared/scheduler
-      '@shared/store':
-        specifier: workspace:*
-        version: link:../../../shared/store
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core
@@ -313,24 +308,24 @@ importers:
 
   whiteboard/packages/whiteboard-engine:
     dependencies:
-      '@shared/store':
+      '@shared/core':
         specifier: workspace:*
-        version: link:../../../shared/store
+        version: link:../../../shared/core
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core
 
   whiteboard/packages/whiteboard-react:
     dependencies:
+      '@shared/core':
+        specifier: workspace:*
+        version: link:../../../shared/core
       '@shared/dom':
         specifier: workspace:*
         version: link:../../../shared/dom
       '@shared/react':
         specifier: workspace:*
         version: link:../../../shared/react
-      '@shared/scheduler':
-        specifier: workspace:*
-        version: link:../../../shared/scheduler
       '@whiteboard/collab':
         specifier: workspace:*
         version: link:../whiteboard-collab

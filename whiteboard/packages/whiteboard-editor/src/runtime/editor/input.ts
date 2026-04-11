@@ -9,7 +9,7 @@ import type { InteractionRuntime } from '../interaction/types'
 import type { EdgeHoverService } from '../../interactions/edge/hover'
 import {
   sameOrder as isSameIds
-} from '@shared/equality'
+} from '@shared/core'
 
 const readSelectionIntent = (
   selection: EditorState['selection'],

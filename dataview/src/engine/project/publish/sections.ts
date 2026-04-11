@@ -3,7 +3,7 @@ import type {
 } from '@dataview/core/contracts'
 import {
   sameOrder
-} from '@shared/equality'
+} from '@shared/core'
 import type {
   Appearance,
   AppearanceId,

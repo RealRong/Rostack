@@ -4,7 +4,7 @@ import type {
 } from '@dataview/engine/project'
 import type {
   ValueStore
-} from '@shared/store'
+} from '@shared/core'
 
 export interface Selection {
   ids: readonly AppearanceId[]

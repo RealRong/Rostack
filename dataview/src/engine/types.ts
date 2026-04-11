@@ -33,7 +33,7 @@ import type { ViewSearchProjection } from '@dataview/core/search'
 import type { ViewSortProjection } from '@dataview/core/sort'
 import type { HistoryOptions, HistoryState } from './history'
 import type { ValidationIssue } from '@dataview/engine/command'
-import type { KeyedReadStore, ReadStore } from '@shared/store'
+import type { KeyedReadStore, ReadStore } from '@shared/core'
 import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
   AppearanceId,

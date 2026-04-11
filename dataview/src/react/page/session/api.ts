@@ -1,7 +1,7 @@
 import {
   createValueStore,
   type ValueStore
-} from '@shared/store'
+} from '@shared/core'
 import {
   ROOT_SETTINGS_ROUTE,
   cloneSettingsRoute,

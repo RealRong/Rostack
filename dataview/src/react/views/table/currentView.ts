@@ -4,7 +4,7 @@ import type {
 import {
   sameJsonValue,
   sameOrder
-} from '@shared/equality'
+} from '@shared/core'
 import {
   sameFilterRule
 } from '@dataview/core/filter'

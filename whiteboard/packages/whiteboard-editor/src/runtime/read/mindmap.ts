@@ -1,4 +1,4 @@
-import { createKeyedDerivedStore, type KeyedReadStore, type ReadStore } from '@shared/store'
+import { createKeyedDerivedStore, type KeyedReadStore, type ReadStore } from '@shared/core'
 import type { NodeId, Rect } from '@whiteboard/core/types'
 import type { MindmapNodeId } from '@whiteboard/core/mindmap'
 import type { EngineRead, MindmapItem } from '@whiteboard/engine'

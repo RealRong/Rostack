@@ -12,7 +12,7 @@ import {
   type AppearanceId
 } from '@dataview/engine/project'
 import { useDataView } from '@dataview/react/dataview'
-import { fieldAttrs } from '@dataview/dom/field'
+import { fieldAttrs } from '@dataview/react/dom/field'
 import { useTableContext } from '../../context'
 import { useKeyedStoreValue, useStoreValue } from '@shared/react'
 import { cn } from '@ui/utils'

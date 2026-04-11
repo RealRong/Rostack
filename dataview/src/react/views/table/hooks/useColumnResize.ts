@@ -9,7 +9,7 @@ import {
 import type { FieldId } from '@dataview/core/contracts'
 import {
   sameMap
-} from '@shared/equality'
+} from '@shared/core'
 import { disableUserSelect } from '@shared/dom'
 import { useDataView } from '@dataview/react/dataview'
 import { useStoreValue } from '@shared/react'

@@ -1,4 +1,4 @@
-import type { ReadStore } from '@shared/store'
+import type { ReadStore } from '@shared/core'
 import type { EditorViewportRuntime } from '../editor/types'
 import { type ActiveGesture } from '../interaction/gesture'
 import { createOverlaySelectors } from './selectors'

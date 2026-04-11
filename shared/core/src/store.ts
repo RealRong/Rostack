@@ -1,9 +1,8 @@
-import { createRafTask } from '@shared/scheduler'
+import type { Equality } from './equality'
+import { createRafTask } from './scheduler'
 
 export type Listener = () => void
 export type Unsubscribe = () => void
-
-export type Equality<T> = (left: T, right: T) => boolean
 
 export interface ReadStore<T> {
   get(): T

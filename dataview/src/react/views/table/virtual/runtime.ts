@@ -19,10 +19,10 @@ import {
   createValueStore,
   joinUnsubscribes,
   type ReadStore
-} from '@shared/store'
+} from '@shared/core'
 import {
   sameOrder
-} from '@shared/equality'
+} from '@shared/core'
 import {
   findVirtualBlockEndIndex,
   findVirtualBlockStartIndex

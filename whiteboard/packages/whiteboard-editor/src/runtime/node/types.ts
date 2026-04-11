@@ -12,7 +12,7 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import type { CommandResult } from '@engine-types/result'
-import type { EditorNodesApi } from '../../types/editor'
+import type { NodeApi } from '../../types/commands'
 
 export type NodePatchWriter = {
   update: (id: NodeId, update: NodeUpdateInput) => CommandResult
@@ -82,8 +82,8 @@ export type NodeStyleCommands = {
 }
 
 export type NodeCommands = {
-  create: EditorNodesApi['create']
-  patch: EditorNodesApi['patch']
+  create: NodeApi['create']
+  patch: NodeApi['patch']
   move: (input: {
     ids: readonly NodeId[]
     delta: Point
@@ -92,7 +92,7 @@ export type NodeCommands = {
   distribute: (ids: readonly NodeId[], mode: NodeDistributeMode) => CommandResult
   delete: (ids: NodeId[]) => CommandResult
   deleteCascade: (ids: NodeId[]) => CommandResult
-  duplicate: EditorNodesApi['duplicate']
+  duplicate: NodeApi['duplicate']
   update: NodePatchWriter['update']
   updateMany: NodePatchWriter['updateMany']
   lock: NodeLockCommands

@@ -12,9 +12,9 @@ import type {
 } from '@whiteboard/core/types'
 import type { CommandResult } from '@engine-types/result'
 import type {
-  EditorHistoryApi,
-  EditorOrderMode
-} from '../../types/editor'
+  HistoryCommands,
+  OrderMode
+} from '../../types/commands'
 
 export type DocumentCommands = {
   replace: (document: Document) => CommandResult
@@ -24,11 +24,11 @@ export type DocumentCommands = {
   ) => CommandResult<Omit<SliceInsertResult, 'operations'>>
   delete: (refs: CanvasItemRef[]) => CommandResult
   duplicate: (refs: CanvasItemRef[]) => CommandResult<Omit<SliceInsertResult, 'operations'>>
-  order: (refs: CanvasItemRef[], mode: EditorOrderMode) => CommandResult
+  order: (refs: CanvasItemRef[], mode: OrderMode) => CommandResult
   background: {
     set: (background?: Document['background']) => CommandResult
   }
-  history: EditorHistoryApi
+  history: HistoryCommands
   group: {
     merge: (target: {
       nodeIds?: readonly NodeId[]

@@ -96,13 +96,13 @@ export const EdgeContextMenu = ({
           })
         },
         () => {
-          editor.actions.selection.set({
+          editor.actions.selection.replace({
             edgeIds: [edgeId]
           })
           editor.actions.selection.duplicate()
         },
         () => {
-          editor.actions.selection.set({
+          editor.actions.selection.replace({
             edgeIds: [edgeId]
           })
           editor.actions.selection.delete()

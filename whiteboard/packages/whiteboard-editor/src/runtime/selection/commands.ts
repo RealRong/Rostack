@@ -9,10 +9,12 @@ import type {
   NodeInput
 } from '@whiteboard/core/types'
 import type {
-  EditorOrderMode,
   EditorRead,
-  EditorSelectionApi
 } from '../../types/editor'
+import type {
+  OrderMode,
+  SelectionApi
+} from '../../types/commands'
 import type { DocumentCommands } from '../document/types'
 import type { NodeCommands } from '../node/types'
 import type { SessionCommands } from '../session/types'
@@ -20,7 +22,7 @@ import type { SessionCommands } from '../session/types'
 const DEFAULT_FRAME_PADDING = 32
 
 export type SelectionCommands = Pick<
-  EditorSelectionApi,
+  SelectionApi,
   'duplicate' | 'delete' | 'order' | 'group' | 'ungroup' | 'frame'
 >
 
@@ -34,13 +36,13 @@ type SelectionCommandsHost = {
 const orderRefs = (
   document: Pick<DocumentCommands, 'order'>,
   refs: CanvasItemRef[],
-  mode: EditorOrderMode
+  mode: OrderMode
 ) => document.order(refs, mode)
 
 const orderGroups = (
   order: DocumentCommands['group']['order'],
   groupIds: readonly string[],
-  mode: EditorOrderMode
+  mode: OrderMode
 ) => {
   const ids = [...groupIds]
   if (mode === 'front') {

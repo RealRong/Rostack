@@ -3,11 +3,13 @@ import type {
 } from '@whiteboard/core/document'
 import type { Point } from '@whiteboard/core/types'
 import type {
-  EditorClipboardApi,
-  EditorClipboardTarget,
   EditorRead,
   EditorStore
 } from '../../types/editor'
+import type {
+  ClipboardCommands,
+  ClipboardTarget
+} from '../../types/commands'
 import {
   createClipboardPacket,
   type ClipboardPacket
@@ -52,7 +54,7 @@ const applyInsertedRoots = (input: {
 
 const readSelectionTarget = (
   editor: ClipboardCommandsHost
-): Exclude<EditorClipboardTarget, 'selection'> | undefined => {
+): Exclude<ClipboardTarget, 'selection'> | undefined => {
   const target = editor.state.selection.get()
 
   if (target.nodeIds.length > 0 || target.edgeIds.length > 0) {
@@ -67,8 +69,8 @@ const readSelectionTarget = (
 
 const resolveClipboardTarget = (input: {
   editor: ClipboardCommandsHost
-  target: EditorClipboardTarget
-}): Exclude<EditorClipboardTarget, 'selection'> | undefined => (
+  target: ClipboardTarget
+}): Exclude<ClipboardTarget, 'selection'> | undefined => (
   input.target === 'selection'
     ? readSelectionTarget(input.editor)
     : input.target
@@ -76,7 +78,7 @@ const resolveClipboardTarget = (input: {
 
 const readClipboardPacket = (input: {
   editor: ClipboardCommandsHost
-  target: EditorClipboardTarget
+  target: ClipboardTarget
 }): ClipboardPacket | undefined => {
   const resolved = resolveClipboardTarget(input)
   if (!resolved) {
@@ -93,13 +95,13 @@ export const createClipboardCommands = ({
   editor
 }: {
   editor: ClipboardCommandsHost
-}): EditorClipboardApi => ({
-  copy: (target: EditorClipboardTarget = 'selection') =>
+}): ClipboardCommands => ({
+  copy: (target: ClipboardTarget = 'selection') =>
     readClipboardPacket({
       editor,
       target
     }),
-  cut: (target: EditorClipboardTarget = 'selection') => {
+  cut: (target: ClipboardTarget = 'selection') => {
     const resolved = resolveClipboardTarget({
       editor,
       target

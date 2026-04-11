@@ -17,15 +17,15 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import type {
-  EditorMindmapCommands,
   EditorRead
 } from '../../types/editor'
+import type { MindmapCommands } from '../../types/commands'
 import type { NodeCommands } from '../node/types'
 
 type MindmapHost = {
   read: EditorRead
   commands: Pick<
-    EditorMindmapCommands,
+    MindmapCommands,
     'create' | 'delete' | 'insert' | 'moveSubtree' | 'removeSubtree' | 'cloneSubtree' | 'updateNode'
   >
   node: Pick<NodeCommands, 'update'>
@@ -220,7 +220,7 @@ export const moveMindmapRoot = ({
 const createMindmapCoreCommands = (
   execute: MindmapExecute
 ): Pick<
-  EditorMindmapCommands,
+  MindmapCommands,
   'create' | 'delete' | 'insert' | 'moveSubtree' | 'removeSubtree' | 'cloneSubtree' | 'updateNode'
 > => ({
   create: (payload) => execute({
@@ -266,7 +266,7 @@ export const createMindmapCommands = ({
   execute: MindmapExecute
   read: EditorRead
   node: Pick<NodeCommands, 'update'>
-}): EditorMindmapCommands => {
+}): MindmapCommands => {
   const commands = createMindmapCoreCommands(execute)
 
   return {

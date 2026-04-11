@@ -1,0 +1,355 @@
+import type {
+  ContainerRect,
+  ViewportLimits
+} from '@whiteboard/core/geometry'
+import type { HistoryState } from '@whiteboard/core/kernel'
+import type { SelectionInput } from '@whiteboard/core/selection'
+import type {
+  NodeAlignMode,
+  NodeDistributeMode
+} from '@whiteboard/core/node'
+import type { CommandResult } from '@engine-types/result'
+import type {
+  Document,
+  Edge,
+  EdgeEnd,
+  EdgeId,
+  EdgeInput,
+  EdgePatch,
+  MindmapId,
+  MindmapNodeData,
+  MindmapNodeId,
+  MindmapTree,
+  NodeId,
+  NodeInput,
+  NodeUpdateInput,
+  Origin,
+  Point,
+  Rect,
+  Size
+} from '@whiteboard/core/types'
+import type {
+  MindmapCloneSubtreeInput,
+  MindmapCreateOptions,
+  MindmapInsertOptions,
+  MindmapMoveSubtreeInput,
+  MindmapRemoveSubtreeInput,
+  MindmapUpdateNodeInput
+} from '@whiteboard/engine'
+import type { ClipboardPacket } from '../clipboard/packet'
+import type {
+  BrushStylePatch,
+  DrawPreferences,
+  DrawSlot
+} from './draw'
+import type { MindmapLayoutConfig } from './mindmap'
+import type { PointerSample } from './input'
+import type {
+  DrawKind,
+  EdgePresetKey,
+  InsertPresetKey,
+  Tool
+} from './tool'
+import type {
+  EditCaret,
+  EditField,
+  EditLayout
+} from '../runtime/state/edit'
+import type { ViewportCommands } from '../runtime/viewport'
+
+export type OrderMode =
+  | 'front'
+  | 'back'
+  | 'forward'
+  | 'backward'
+
+export type EdgeLabelPatch = NonNullable<Edge['labels']>[number] extends infer Label
+  ? Label extends {
+      text?: string
+      t?: number
+      offset?: number
+      style?: infer Style
+    }
+    ? {
+        text?: string
+        t?: number
+        offset?: number
+        style?: Partial<NonNullable<Style>>
+      }
+    : never
+  : never
+
+export type ClipboardTarget =
+  | 'selection'
+  | {
+      nodeIds?: readonly NodeId[]
+      edgeIds?: readonly EdgeId[]
+    }
+
+export type ClipboardOptions = {
+  origin?: Point
+}
+
+export type ClipboardCommands = {
+  copy: (target?: ClipboardTarget) => ClipboardPacket | undefined
+  cut: (target?: ClipboardTarget) => ClipboardPacket | undefined
+  paste: (
+    packet: ClipboardPacket,
+    options?: ClipboardOptions
+  ) => boolean
+}
+
+export type SelectionApi = {
+  duplicate: (
+    target: SelectionInput,
+    options?: {
+      selectInserted?: boolean
+    }
+  ) => boolean
+  delete: (
+    target: SelectionInput,
+    options?: {
+      clearSelection?: boolean
+    }
+  ) => boolean
+  order: (
+    target: SelectionInput,
+    mode: OrderMode
+  ) => boolean
+  group: (
+    target: SelectionInput,
+    options?: {
+      selectResult?: boolean
+    }
+  ) => boolean
+  ungroup: (
+    target: SelectionInput,
+    options?: {
+      fallbackSelection?: 'members' | 'none'
+    }
+  ) => boolean
+  frame: (
+    bounds: Rect,
+    options?: {
+      padding?: number
+    }
+  ) => boolean
+}
+
+export type NodeApi = {
+  create: (payload: NodeInput) => CommandResult<{ nodeId: NodeId }>
+  patch: (
+    ids: readonly NodeId[],
+    update: NodeUpdateInput,
+    options?: {
+      origin?: Origin
+    }
+  ) => CommandResult | undefined
+  move: (input: {
+    ids: readonly NodeId[]
+    delta: Point
+  }) => CommandResult
+  align: (ids: readonly NodeId[], mode: NodeAlignMode) => CommandResult
+  distribute: (ids: readonly NodeId[], mode: NodeDistributeMode) => CommandResult
+  remove: (ids: NodeId[]) => CommandResult
+  duplicate: (ids: NodeId[]) => CommandResult<{
+    nodeIds: readonly NodeId[]
+    edgeIds: readonly EdgeId[]
+  }>
+}
+
+export type EdgeApi = {
+  create: (payload: EdgeInput) => CommandResult<{ edgeId: EdgeId }>
+  patch: (
+    edgeIds: readonly EdgeId[],
+    patch: EdgePatch
+  ) => CommandResult | undefined
+  move: (edgeId: EdgeId, delta: Point) => CommandResult
+  reconnect: (
+    edgeId: EdgeId,
+    end: 'source' | 'target',
+    target: EdgeEnd
+  ) => CommandResult
+  remove: (ids: EdgeId[]) => CommandResult
+  route: {
+    insert: (edgeId: EdgeId, point: Point) => CommandResult<{ index: number }>
+    move: (edgeId: EdgeId, index: number, point: Point) => CommandResult
+    remove: (edgeId: EdgeId, index: number) => CommandResult
+    clear: (edgeId: EdgeId) => CommandResult
+  }
+  labels: {
+    add: (edgeId: EdgeId) => string | undefined
+    patch: (
+      edgeId: EdgeId,
+      labelId: string,
+      patch: EdgeLabelPatch
+    ) => CommandResult | undefined
+    remove: (edgeId: EdgeId, labelId: string) => CommandResult | undefined
+  }
+}
+
+export type EdgeLabelActions = {
+  add: EdgeApi['labels']['add']
+  patch: EdgeApi['labels']['patch']
+  remove: EdgeApi['labels']['remove']
+  setText: (
+    edgeId: EdgeId,
+    labelId: string,
+    text: string
+  ) => CommandResult | undefined
+}
+
+export type MindmapCommands = {
+  create: (payload?: MindmapCreateOptions) => CommandResult<{
+    mindmapId: MindmapId
+    rootId: MindmapNodeId
+  }>
+  delete: (ids: MindmapId[]) => CommandResult
+  insert: (
+    id: MindmapId,
+    input: MindmapInsertOptions
+  ) => CommandResult<{ nodeId: MindmapNodeId }>
+  moveSubtree: (
+    id: MindmapId,
+    input: MindmapMoveSubtreeInput
+  ) => CommandResult
+  removeSubtree: (
+    id: MindmapId,
+    input: MindmapRemoveSubtreeInput
+  ) => CommandResult
+  cloneSubtree: (
+    id: MindmapId,
+    input: MindmapCloneSubtreeInput
+  ) => CommandResult<{
+    nodeId: MindmapNodeId
+    map: Record<MindmapNodeId, MindmapNodeId>
+  }>
+  updateNode: (
+    id: MindmapId,
+    input: MindmapUpdateNodeInput
+  ) => CommandResult
+  insertByPlacement: (input: {
+    id: NodeId
+    tree: MindmapTree
+    targetNodeId: MindmapNodeId
+    placement: 'left' | 'right' | 'up' | 'down'
+    nodeSize: Size
+    layout: MindmapLayoutConfig
+    payload?: MindmapNodeData
+  }) => CommandResult<{ nodeId: MindmapNodeId }> | undefined
+  moveByDrop: (input: {
+    id: NodeId
+    nodeId: MindmapNodeId
+    drop: {
+      parentId: MindmapNodeId
+      index: number
+      side?: 'left' | 'right'
+    }
+    origin?: {
+      parentId?: MindmapNodeId
+      index?: number
+    }
+    nodeSize: Size
+    layout: MindmapLayoutConfig
+  }) => CommandResult | undefined
+  moveRoot: (input: {
+    nodeId: NodeId
+    position: Point
+    origin?: Point
+    threshold?: number
+  }) => CommandResult | undefined
+}
+
+export type SessionToolActions = {
+  set: (tool: Tool) => void
+}
+
+export type SessionSelectionActions = {
+  replace: (input: SelectionInput) => void
+  add: (input: SelectionInput) => void
+  remove: (input: SelectionInput) => void
+  toggle: (input: SelectionInput) => void
+  selectAll: () => void
+  clear: () => void
+}
+
+export type SessionEditActions = {
+  startNode: (
+    nodeId: NodeId,
+    field: EditField,
+    options?: {
+      caret?: EditCaret
+    }
+  ) => void
+  startEdgeLabel: (
+    edgeId: EdgeId,
+    labelId: string,
+    options?: {
+      caret?: EditCaret
+    }
+  ) => void
+  input: (text: string) => void
+  caret: (caret: EditCaret) => void
+  measure: (patch: Partial<EditLayout>) => void
+  clear: () => void
+}
+
+export type SessionActions = {
+  tool: SessionToolActions
+  selection: SessionSelectionActions
+  edit: SessionEditActions
+}
+
+export type HistoryCommands = {
+  get: () => HistoryState
+  undo: () => CommandResult
+  redo: () => CommandResult
+  clear: () => void
+}
+
+export type DrawCommands = {
+  set: (preferences: DrawPreferences) => void
+  slot: (slot: DrawSlot) => void
+  patch: (patch: BrushStylePatch) => void
+}
+
+export type ViewportActions = ViewportCommands & {
+  setRect: (rect: ContainerRect) => void
+  setLimits: (limits: ViewportLimits) => void
+}
+
+export type ViewPointerActions = {
+  set: (sample: PointerSample) => void
+  clear: () => void
+}
+
+export type ViewSpaceActions = {
+  set: (value: boolean) => void
+}
+
+export type ViewActions = {
+  viewport: ViewportActions
+  pointer: ViewPointerActions
+  space: ViewSpaceActions
+  draw: DrawCommands
+}
+
+export type ToolActions = {
+  set: SessionToolActions['set']
+  select: () => void
+  draw: (kind: DrawKind) => void
+  edge: (preset: EdgePresetKey) => void
+  insert: (preset: InsertPresetKey) => void
+  hand: () => void
+}
+
+export type AppActions = {
+  reset: () => void
+  replace: (document: Document) => CommandResult
+  export: () => Document
+  configure: (config: {
+    mindmapLayout: MindmapLayoutConfig
+    history?: unknown
+  }) => void
+  dispose: () => void
+}

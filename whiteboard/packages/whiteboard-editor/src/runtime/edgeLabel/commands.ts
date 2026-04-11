@@ -1,11 +1,13 @@
 import { createId } from '@whiteboard/core/id'
 import type { Edge, EdgeId } from '@whiteboard/core/types'
 import type {
-  EditorEdgeActions,
-  EditorEdgeLabelPatch,
   EditorRead,
   EditorStore
 } from '../../types/editor'
+import type {
+  EdgeLabelActions,
+  EdgeLabelPatch
+} from '../../types/commands'
 import type { SessionCommands } from '../session/types'
 import type { EdgeCommands } from '../edge/commands'
 
@@ -17,7 +19,7 @@ const DEFAULT_EDGE_LABEL = {
 const mergeEdgeLabelPatch = (
   edge: Edge,
   labelId: string,
-  patch: EditorEdgeLabelPatch
+  patch: EdgeLabelPatch
 ) => {
   const labels = edge.labels ?? []
   let changed = false
@@ -65,7 +67,7 @@ export const createEdgeLabelCommands = ({
   edit: EditorStore['edit']
   session: Pick<SessionCommands, 'edit' | 'selection'>
   edge: Pick<EdgeCommands, 'update'>
-}): EditorEdgeActions['label'] => ({
+}): EdgeLabelActions => ({
   add: (edgeId: EdgeId) => {
     const currentEdge = readEdge(read, edgeId)
     if (!currentEdge) {
@@ -102,7 +104,7 @@ export const createEdgeLabelCommands = ({
   patch: (
     edgeId: EdgeId,
     labelId: string,
-    patch: EditorEdgeLabelPatch
+    patch: EdgeLabelPatch
   ) => {
     const currentEdge = readEdge(read, edgeId)
     if (!currentEdge) {

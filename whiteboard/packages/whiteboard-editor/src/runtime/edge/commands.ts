@@ -1,13 +1,13 @@
 import type { EdgeId, EdgePatch } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
-import type { EditorEdgesApi } from '../../types/editor'
 import type { CommandResult } from '@engine-types/result'
+import type { EdgeApi } from '../../types/commands'
 
 export type EdgeCommands = {
-  create: EditorEdgesApi['create']
-  patch: EditorEdgesApi['patch']
-  move: EditorEdgesApi['move']
-  reconnect: EditorEdgesApi['reconnect']
+  create: EdgeApi['create']
+  patch: EdgeApi['patch']
+  move: EdgeApi['move']
+  reconnect: EdgeApi['reconnect']
   update: (id: EdgeId, patch: EdgePatch) => CommandResult
   updateMany: (
     updates: readonly {
@@ -16,7 +16,7 @@ export type EdgeCommands = {
     }[]
   ) => CommandResult
   delete: (ids: EdgeId[]) => CommandResult
-  route: EditorEdgesApi['route']
+  route: EdgeApi['route']
 }
 
 const hasEdgePatchContent = (

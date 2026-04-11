@@ -83,7 +83,7 @@ export const CanvasContextMenu = ({
           })
         },
         () => {
-          editor.actions.selection.all()
+          editor.actions.selection.selectAll()
         }
       )}
       onClose={onClose}

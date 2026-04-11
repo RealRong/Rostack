@@ -179,7 +179,7 @@ const runInsertPreset = ({
     return undefined
   }
 
-  editor.actions.selection.set({
+  editor.actions.selection.replace({
     nodeIds: [result.nodeId]
   })
   const edit = result.edit

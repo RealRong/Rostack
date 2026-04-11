@@ -182,16 +182,10 @@ const createGroupWriteCommands = (input: {
   return commands
 }
 
-interface ActiveViewContext {
-  view: View
+type ProjectedViewState = ActiveViewState & {
   appearances: AppearanceList
   sections: readonly Section[]
-  groupWrite?: {
-    group: ViewGroup
-    field: Field
-  }
 }
-
 export const createViewEngineApi = (options: {
   resolveViewId: () => ViewId | undefined
   readDocument: () => DataDoc
@@ -206,30 +200,18 @@ export const createViewEngineApi = (options: {
 }): ViewEngineApi => {
   const readDocument = options.readDocument
   const readCurrentView = options.readView
-  const readCurrentProjection = (): ActiveViewContext | undefined => {
+  const readProjectedState = (): ProjectedViewState | undefined => {
     const viewId = options.resolveViewId()
     const state = options.readState()
     if (!viewId || !state || state.view.id !== viewId) {
       return undefined
     }
 
-    const appearances = state.appearances
-    const sections = state.sections
-    if (!appearances || !sections) {
+    if (!state.appearances || !state.sections) {
       return undefined
     }
 
-    return {
-      view: state.view,
-      appearances,
-      sections,
-      groupWrite: state.group?.group && state.group?.field
-        ? {
-            group: state.group.group,
-            field: state.group.field
-          }
-        : undefined
-    }
+    return state as ProjectedViewState
   }
 
   const commit = (action: Action | readonly Action[]) => options.dispatch(action).applied
@@ -252,36 +234,41 @@ export const createViewEngineApi = (options: {
 
   const items: ViewItemsApi = {
     move: (appearanceIds, target) => {
-      const currentView = readCurrentProjection()
-      if (!currentView) {
+      const state = readProjectedState()
+      if (!state) {
         return
       }
 
-      const groupWrite = currentView.groupWrite
-      const plan = move.plan(currentView.appearances, appearanceIds, target)
+      const groupWrite = state.group?.group && state.group.field
+        ? {
+            group: state.group.group,
+            field: state.group.field
+          }
+        : undefined
+      const plan = move.plan(state.appearances, appearanceIds, target)
       if (!plan.changed || !plan.ids.length) {
         return
       }
 
-      const recordIds = recordIdsOfAppearances(currentView.appearances, plan.ids)
+      const recordIds = recordIdsOfAppearances(state.appearances, plan.ids)
       if (!recordIds.length) {
         return
       }
 
-      const sectionChanged = plan.ids.some(id => currentView.appearances.sectionOf(id) !== plan.target.section)
-      if (sectionChanged && currentView.view.group && !groupWrite) {
+      const sectionChanged = plan.ids.some(id => state.appearances.sectionOf(id) !== plan.target.section)
+      if (sectionChanged && state.view.group && !groupWrite) {
         return
       }
 
       const sectionRecordIds = readSectionRecordIds(
         {
-          sections: currentView.sections,
-          appearances: currentView.appearances
+          sections: state.sections,
+          appearances: state.appearances
         },
         plan.target.section
       )
       const rawBeforeRecordId = plan.target.before
-        ? currentView.appearances.get(plan.target.before)?.recordId
+        ? state.appearances.get(plan.target.before)?.recordId
         : undefined
       const beforeRecordId = rawBeforeRecordId
         ? move.before(
@@ -297,7 +284,7 @@ export const createViewEngineApi = (options: {
           readRecord: options.readRecord,
           group: groupWrite.group,
           field: groupWrite.field,
-          appearances: currentView.appearances,
+          appearances: state.appearances,
           ids: plan.ids,
           targetSection: plan.target.section
         })
@@ -308,7 +295,7 @@ export const createViewEngineApi = (options: {
         nextCommands.push(...valueCommands)
       }
 
-      if (!currentView.view.sort.length) {
+      if (!state.view.sort.length) {
         const moveCommand = commands.createMoveOrderCommand(recordIds, beforeRecordId)
         if (moveCommand) {
           nextCommands.push(moveCommand)
@@ -320,13 +307,18 @@ export const createViewEngineApi = (options: {
       }
     },
     create: input => {
-      const currentView = readCurrentProjection()
-      if (!currentView) {
+      const state = readProjectedState()
+      if (!state) {
         return undefined
       }
 
-      const groupWrite = currentView.groupWrite
-      if (currentView.view.group && !groupWrite) {
+      const groupWrite = state.group?.group && state.group.field
+        ? {
+            group: state.group.group,
+            field: state.group.field
+          }
+        : undefined
+      if (state.view.group && !groupWrite) {
         return undefined
       }
 
@@ -371,14 +363,14 @@ export const createViewEngineApi = (options: {
       }]
 
       if (
-        currentView.view.type === 'kanban'
-        && currentView.view.options.kanban.newRecordPosition === 'start'
-        && !currentView.view.sort.length
+        state.view.type === 'kanban'
+        && state.view.options.kanban.newRecordPosition === 'start'
+        && !state.view.sort.length
       ) {
         const beforeRecordId = readSectionRecordIds(
           {
-            sections: currentView.sections,
-            appearances: currentView.appearances
+            sections: state.sections,
+            appearances: state.appearances
           },
           input.section
         )[0]
@@ -394,12 +386,12 @@ export const createViewEngineApi = (options: {
         : undefined
     },
     remove: appearanceIds => {
-      const currentView = readCurrentProjection()
-      if (!currentView) {
+      const state = readProjectedState()
+      if (!state) {
         return
       }
 
-      const recordIds = recordIdsOfAppearances(currentView.appearances, appearanceIds)
+      const recordIds = recordIdsOfAppearances(state.appearances, appearanceIds)
       if (!recordIds.length) {
         return
       }
@@ -412,11 +404,11 @@ export const createViewEngineApi = (options: {
   }
 
   const writeCell = (
-    currentView: ActiveViewContext,
+    state: ProjectedViewState,
     cell: CellRef,
     value: unknown | undefined
   ) => {
-    const target = toRecordField(cell, currentView.appearances)
+    const target = toRecordField(cell, state.appearances)
     if (!target) {
       return
     }
@@ -431,20 +423,20 @@ export const createViewEngineApi = (options: {
 
   const cells: ViewCellsApi = {
     set: (cell, value) => {
-      const currentView = readCurrentProjection()
-      if (!currentView) {
+      const state = readProjectedState()
+      if (!state) {
         return
       }
 
-      writeCell(currentView, cell, value)
+      writeCell(state, cell, value)
     },
     clear: cell => {
-      const currentView = readCurrentProjection()
-      if (!currentView) {
+      const state = readProjectedState()
+      if (!state) {
         return
       }
 
-      writeCell(currentView, cell, undefined)
+      writeCell(state, cell, undefined)
     }
   }
 

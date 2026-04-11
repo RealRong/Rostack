@@ -95,7 +95,7 @@ export const ViewportDock = () => {
             variant="ghost"
             className={iconButtonClassName}
             onClick={() => {
-              editor.actions.viewport.zoom(viewport.zoom / ZOOM_FACTOR)
+              editor.actions.viewport.zoomTo(viewport.zoom / ZOOM_FACTOR)
             }}
             title="Zoom out"
           >
@@ -106,7 +106,7 @@ export const ViewportDock = () => {
             variant="ghost"
             className={zoomButtonClassName}
             onClick={() => {
-              editor.actions.viewport.zoom(1)
+              editor.actions.viewport.zoomTo(1)
             }}
             title="Reset zoom"
           >
@@ -117,7 +117,7 @@ export const ViewportDock = () => {
             variant="ghost"
             className={iconButtonClassName}
             onClick={() => {
-              editor.actions.viewport.zoom(viewport.zoom * ZOOM_FACTOR)
+              editor.actions.viewport.zoomTo(viewport.zoom * ZOOM_FACTOR)
             }}
             title="Zoom in"
           >

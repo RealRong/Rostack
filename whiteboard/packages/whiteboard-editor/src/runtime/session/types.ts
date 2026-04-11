@@ -1,3 +1,3 @@
-import type { EditorSessionActions } from '../../types/editor'
+import type { SessionActions } from '../../types/commands'
 
-export type SessionCommands = EditorSessionActions
+export type SessionCommands = SessionActions

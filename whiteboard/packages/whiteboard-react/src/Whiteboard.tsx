@@ -106,7 +106,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
   }, [editor, editorConfig])
 
   useEffect(() => {
-    editor.actions.viewport.limits(viewportLimits)
+    editor.actions.viewport.setLimits(viewportLimits)
   }, [editor, viewportLimits])
 
   useEffect(() => {
@@ -124,7 +124,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
       return
     }
     lastOutboundDocumentRef.current = inputDocument
-    editor.actions.app.load(inputDocument)
+    editor.actions.app.replace(inputDocument)
   }, [editor, inputDocument])
 
   useEffect(() => {

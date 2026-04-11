@@ -147,7 +147,7 @@ const EdgeLabelItem = ({
     event.stopPropagation()
 
     if (!singleSelected) {
-      editor.actions.selection.set({
+      editor.actions.selection.replace({
         edgeIds: [edgeId]
       })
       return
@@ -217,7 +217,7 @@ const EdgeLabelItem = ({
     }
 
     setDrag(null)
-    editor.actions.selection.set({
+    editor.actions.selection.replace({
       edgeIds: [edgeId]
     })
     editor.actions.edit.startEdgeLabel(edgeId, labelId, {

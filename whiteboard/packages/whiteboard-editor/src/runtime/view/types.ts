@@ -1,18 +1,19 @@
 import type { Viewport } from '@whiteboard/core/types'
 import type { ViewportInputRuntime } from '../viewport'
 import type {
-  EditorDrawActions,
-  EditorViewActions,
-  EditorViewportActions
-} from '../../types/editor'
+  DrawCommands,
+  ViewPointerActions,
+  ViewSpaceActions,
+  ViewportActions
+} from '../../types/commands'
 
 export type ViewCommands = {
-  viewport: EditorViewportActions
+  viewport: ViewportActions
     & Pick<ViewportInputRuntime, 'panScreenBy' | 'wheel'>
     & {
       set: (next: Viewport) => void
     }
-  pointer: EditorViewActions['pointer']
-  space: EditorViewActions['space']
-  draw: EditorDrawActions
+  pointer: ViewPointerActions
+  space: ViewSpaceActions
+  draw: DrawCommands
 }

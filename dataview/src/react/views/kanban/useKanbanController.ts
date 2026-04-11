@@ -14,6 +14,9 @@ import type {
   View,
   ViewId
 } from '@dataview/core/contracts'
+import type {
+  ActiveViewState
+} from '@dataview/engine'
 import { isCustomField } from '@dataview/core/field'
 import {
   useDataView,
@@ -56,8 +59,10 @@ import {
 } from './drag'
 import { usesOptionGroupingColors } from '@dataview/react/views/shared/optionGrouping'
 
-interface KanbanCurrentView {
-  view: View
+type KanbanCurrentView = ActiveViewState & {
+  view: View & {
+    type: 'kanban'
+  }
   appearances: AppearanceList
   sections: readonly Section[]
   fields: FieldList
@@ -79,6 +84,26 @@ const resolveInitialVisibleCount = (
   limit === 'all'
     ? total
     : Math.min(total, limit)
+)
+
+const readKanbanCurrentView = (
+  state: ActiveViewState | undefined,
+  viewId: ViewId
+): KanbanCurrentView | undefined => (
+  state
+  && state.view.id === viewId
+  && state.view.type === 'kanban'
+  && state.appearances
+  && state.sections
+  && state.fields
+    ? state as KanbanCurrentView
+    : undefined
+)
+
+const readSectionLengths = (
+  sections: readonly Section[]
+) => new Map(
+  sections.map(section => [section.key, section.ids.length] as const)
 )
 
 export interface KanbanController {
@@ -114,30 +139,10 @@ export const useKanbanController = (input: {
   columnMinHeight: number
 }): KanbanController => {
   const dataView = useDataView()
-  const engine = dataView.engine
-  const activeState = useDataViewValue(
+  const currentView = useDataViewValue(
     dataView => dataView.engine.active.state,
-    state => (
-      state
-      && state.view.id === input.viewId
-      && state.view.type === 'kanban'
-      && state.appearances
-      && state.sections
-      && state.fields
-        ? state
-        : undefined
-    )
+    state => readKanbanCurrentView(state, input.viewId)
   )
-  const currentView = useMemo<KanbanCurrentView | undefined>(() => (
-    activeState
-      ? {
-          view: activeState.view,
-          appearances: activeState.appearances!,
-          sections: activeState.sections!,
-          fields: activeState.fields!
-        }
-      : undefined
-  ), [activeState])
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [dragging, setDragging] = useState(false)
   const visualTargets = useRef(createVisualTargetRegistry({
@@ -147,29 +152,44 @@ export const useKanbanController = (input: {
   if (!currentView) {
     throw new Error('Kanban view requires an active current view.')
   }
-  const groupProjection = activeState?.group
-  const sortProjection = activeState?.sort
+  const group = currentView.group
+  const sort = currentView.sort
 
-  const fields = useMemo(() => {
-    return currentView.fields.all.filter(isCustomField)
-  }, [
-    currentView.fields.all
-  ])
-  const groupField = groupProjection?.field
+  const fields = useMemo(
+    () => currentView.fields.all.filter(isCustomField),
+    [currentView.fields.all]
+  )
+  const groupField = group?.field
   const groupUsesOptionColors = usesOptionGroupingColors(groupField)
   const fillColumnColor = groupUsesOptionColors
     && currentView.view.options.kanban.fillColumnColor
   const cardsPerColumn = currentView.view.options.kanban.cardsPerColumn
-  const canReorder = (groupProjection?.active ?? false) && !(sortProjection?.active ?? false)
+  const canReorder = (group?.active ?? false) && !(sort?.active ?? false)
   const [expandedCountBySectionKey, setExpandedCountBySectionKey] = useState<Partial<Record<SectionKey, number>>>({})
   const previousSectionLengthsRef = useRef(new Map<SectionKey, number>())
+  const selectionValue = useDataViewValue(
+    dataView => dataView.selection.store
+  )
+  const selectedIds = selectionValue.ids
+  const selectedIdSet = useMemo(
+    () => new Set(selectedIds),
+    [selectedIds]
+  )
+  const select = useCallback((id: AppearanceId, mode: 'replace' | 'toggle' = 'replace') => {
+    if (mode === 'toggle') {
+      dataView.selection.toggle([id])
+      return
+    }
+
+    dataView.selection.set([id])
+  }, [dataView.selection])
 
   const readRecord = useCallback((id: AppearanceId) => {
     const recordId = currentView.appearances.get(id)?.recordId
     return recordId
-      ? engine.read.record.get(recordId)
+      ? dataView.engine.read.record.get(recordId)
       : undefined
-  }, [currentView, engine.read.record])
+  }, [currentView.appearances, dataView.engine.read.record])
 
   const sectionKeyById = useMemo(() => new Map(
     currentView.sections.flatMap(section => section.ids.map(id => [id, section.key] as const))
@@ -177,29 +197,17 @@ export const useKanbanController = (input: {
   const sectionColorByKey = useMemo(() => new Map(
     currentView.sections.map(section => [section.key, section.color] as const)
   ), [currentView.sections])
-
-  const selectionValue = useDataViewValue(
-    dataView => dataView.selection.store
-  )
   const marqueeSession = useStoreValue(dataView.marquee.store)
   const marqueeActive = marqueeSession?.ownerViewId === currentView.view.id
-  const selectedIdSet = useMemo(
-    () => new Set(selectionValue.ids),
-    [selectionValue.ids]
-  )
 
   useEffect(() => {
     setExpandedCountBySectionKey({})
-    previousSectionLengthsRef.current = new Map(
-      currentView.sections.map(section => [section.key, section.ids.length] as const)
-    )
+    previousSectionLengthsRef.current = readSectionLengths(currentView.sections)
   }, [currentView.view.id, cardsPerColumn])
 
   useEffect(() => {
     if (cardsPerColumn === 'all') {
-      previousSectionLengthsRef.current = new Map(
-        currentView.sections.map(section => [section.key, section.ids.length] as const)
-      )
+      previousSectionLengthsRef.current = readSectionLengths(currentView.sections)
       return
     }
 
@@ -260,9 +268,7 @@ export const useKanbanController = (input: {
         : previous
     })
 
-    previousSectionLengthsRef.current = new Map(
-      currentView.sections.map(section => [section.key, section.ids.length] as const)
-    )
+    previousSectionLengthsRef.current = readSectionLengths(currentView.sections)
   }, [currentView.sections, cardsPerColumn])
 
   const sectionIdsByKey = useMemo(() => new Map(
@@ -370,18 +376,12 @@ export const useKanbanController = (input: {
 
   const selection = useMemo<KanbanSelectionState>(() => ({
     selection: selectionValue,
-    selectedIds: selectionValue.ids,
+    selectedIds,
     selectedIdSet,
-    select: (id, mode = 'replace') => {
-      if (mode === 'toggle') {
-        dataView.selection.toggle([id])
-        return
-      }
-
-      dataView.selection.set([id])
-    }
+    select
   }), [
-    dataView.selection,
+    select,
+    selectedIds,
     selectedIdSet,
     selectionValue
   ])
@@ -404,7 +404,7 @@ export const useKanbanController = (input: {
     getLayout: () => readBoardLayout(scrollRef.current),
     getDragIds: activeId => currentViewMove.drag(
       currentView.appearances.ids,
-      selection.selectedIds,
+      selectedIds,
       activeId
     ),
     onDraggingChange: setDragging,
@@ -461,6 +461,7 @@ export const useKanbanController = (input: {
     readVisibleCount,
     readVisibleIds,
     selection,
+    selectedIds,
     showMore,
     visualTargets
   ])

@@ -214,7 +214,7 @@ export const createEditor = ({
     actions: {
       app: {
         reset: resetRuntimeState,
-        load: replaceDocument,
+        replace: replaceDocument,
         export: () => engine.document.get(),
         configure: (config) => {
           engine.configure({
@@ -244,20 +244,20 @@ export const createEditor = ({
       },
       viewport: {
         set: write.view.viewport.set,
-        pan: write.view.viewport.panBy,
-        zoom: write.view.viewport.zoomTo,
+        panBy: write.view.viewport.panBy,
+        zoomTo: write.view.viewport.zoomTo,
         fit: write.view.viewport.fit,
         reset: write.view.viewport.reset,
-        rect: write.view.viewport.setRect,
-        limits: write.view.viewport.setLimits
+        setRect: write.view.viewport.setRect,
+        setLimits: write.view.viewport.setLimits
       },
       draw: write.view.draw,
       selection: {
-        set: write.session.selection.replace,
+        replace: write.session.selection.replace,
         add: write.session.selection.add,
         remove: write.session.selection.remove,
         toggle: write.session.selection.toggle,
-        all: write.session.selection.selectAll,
+        selectAll: write.session.selection.selectAll,
         clear: write.session.selection.clear,
         frame: write.selection.frame,
         order: (mode, target = currentSelection()) => (
@@ -280,7 +280,8 @@ export const createEditor = ({
         move: write.node.move,
         align: write.node.align,
         distribute: write.node.distribute,
-        remove: write.node.deleteCascade,
+        delete: write.node.delete,
+        deleteCascade: write.node.deleteCascade,
         duplicate: write.node.duplicate,
         lock: write.node.lock.set,
         text: {
@@ -304,7 +305,7 @@ export const createEditor = ({
         patch: write.edge.patch,
         move: write.edge.move,
         reconnect: write.edge.reconnect,
-        remove: write.edge.delete,
+        delete: write.edge.delete,
         route: write.edge.route,
         label: {
           add: write.edgeLabel.add,
@@ -315,13 +316,13 @@ export const createEditor = ({
       },
       mindmap: {
         create: write.mindmap.create,
-        remove: write.mindmap.delete,
+        delete: write.mindmap.delete,
         insert: write.mindmap.insert,
-        move: write.mindmap.moveSubtree,
-        removeNode: write.mindmap.removeSubtree,
+        moveSubtree: write.mindmap.moveSubtree,
+        removeSubtree: write.mindmap.removeSubtree,
         clone: write.mindmap.cloneSubtree,
-        patchNode: write.mindmap.updateNode,
-        insertByPlace: write.mindmap.insertByPlacement,
+        updateNode: write.mindmap.updateNode,
+        insertByPlacement: write.mindmap.insertByPlacement,
         moveByDrop: write.mindmap.moveByDrop,
         moveRoot: write.mindmap.moveRoot
       },

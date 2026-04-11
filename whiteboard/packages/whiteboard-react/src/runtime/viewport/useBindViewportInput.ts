@@ -4,7 +4,7 @@ import { createRafTask } from '@shared/core'
 import type { WhiteboardRuntime as Editor } from '#react/types/runtime'
 import { resolveWheelInput } from '../../dom/host/input'
 
-type ContainerRect = Parameters<Editor['actions']['viewport']['rect']>[0]
+type ContainerRect = Parameters<Editor['actions']['viewport']['setRect']>[0]
 type WheelInput = Parameters<Editor['actions']['interaction']['wheel']>[0]
 
 type ViewportInputOptions = {
@@ -78,7 +78,7 @@ export const useBindViewportInput = ({
     let pendingWheelInput: WheelInput | null = null
 
     const refreshContainerRect = () => {
-      editor.actions.viewport.rect(readContainerRect(element))
+      editor.actions.viewport.setRect(readContainerRect(element))
     }
 
     refreshContainerRect()

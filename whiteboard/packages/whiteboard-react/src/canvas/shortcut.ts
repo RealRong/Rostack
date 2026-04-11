@@ -73,7 +73,7 @@ export const runShortcut = (
 
   switch (action) {
     case 'selection.selectAll':
-      editor.actions.selection.all()
+      editor.actions.selection.selectAll()
       return true
     case 'selection.clear':
       if (!editor.select.tool.is('select')) {

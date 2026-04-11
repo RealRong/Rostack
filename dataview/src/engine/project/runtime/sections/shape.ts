@@ -10,7 +10,7 @@ import {
 } from '../../../index/group'
 import type {
   SectionKey
-} from '../../types'
+} from '../../model'
 import type {
   SectionNodeState,
   SectionState

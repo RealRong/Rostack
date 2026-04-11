@@ -3,7 +3,6 @@ import type {
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
-import type { CalculationCollection } from '@dataview/core/calculation'
 import type { Bucket } from '@dataview/core/field'
 
 export type AppearanceId = string
@@ -26,14 +25,6 @@ export interface Section {
   collapsed: boolean
 }
 
-export interface ProjectionSection {
-  key: SectionKey
-  title: string
-  color?: string
-  bucket?: SectionBucket
-  ids: readonly AppearanceId[]
-}
-
 export interface AppearanceList {
   ids: readonly AppearanceId[]
   idsBySection: ReadonlyMap<SectionKey, readonly AppearanceId[]>
@@ -49,10 +40,6 @@ export interface AppearanceList {
   idsIn: (section: SectionKey) => readonly AppearanceId[]
 }
 
-export interface Schema {
-  fields: ReadonlyMap<FieldId, Field>
-}
-
 export interface FieldList {
   ids: readonly FieldId[]
   all: readonly Field[]
@@ -62,16 +49,3 @@ export interface FieldList {
   at: (index: number) => FieldId | undefined
   range: (anchor: FieldId, focus: FieldId) => readonly FieldId[]
 }
-
-export interface Placement {
-  section: SectionKey
-  before?: AppearanceId
-}
-
-export interface Plan {
-  ids: readonly AppearanceId[]
-  target: Placement
-  changed: boolean
-}
-
-export interface CalculationsBySection extends ReadonlyMap<SectionKey, CalculationCollection> {}

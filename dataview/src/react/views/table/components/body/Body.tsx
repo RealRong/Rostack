@@ -25,7 +25,7 @@ import {
   resolveDefaultAutoPanTargets
 } from '@dataview/react/interaction/autoPan'
 import { useStoreValue } from '@shared/react'
-import { type CellRef } from '@dataview/engine/project'
+import { type CellRef } from '@dataview/engine/viewmodel'
 import { applyPaste, handleTableKey } from '../../input'
 import {
   gridContentBounds,

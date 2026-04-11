@@ -11,12 +11,18 @@ import {
   getDocumentActiveView,
   getDocumentActiveViewId,
   getDocumentCustomFieldById,
+  getDocumentCustomFields,
   getDocumentRecordById,
-  getDocumentViewById
+  getDocumentViewById,
+  getDocumentViews
 } from '@dataview/core/document'
 
 export const equalIds = <T extends string>(left: readonly T[], right: readonly T[]) => (
   left.length === right.length && left.every((value, index) => value === right[index])
+)
+
+const equalItems = <T>(left: readonly T[], right: readonly T[]) => (
+  left.length === right.length && left.every((value, index) => Object.is(value, right[index]))
 )
 
 export interface ReadSource {
@@ -26,8 +32,10 @@ export interface ReadSource {
   recordIds: ReadStore<readonly RecordId[]>
   record: KeyedReadStore<RecordId, Row | undefined>
   customFieldIds: ReadStore<readonly CustomFieldId[]>
+  customFields: ReadStore<readonly CustomField[]>
   customField: KeyedReadStore<CustomFieldId, CustomField | undefined>
   viewIds: ReadStore<readonly ViewId[]>
+  views: ReadStore<readonly View[]>
   view: KeyedReadStore<ViewId, View | undefined>
   setDocument: (document: DataDoc) => void
 }
@@ -55,9 +63,19 @@ export const createReadSource = (document: DataDoc): ReadSource => {
     isEqual: equalIds
   })
 
+  const customFields: ReadStore<readonly CustomField[]> = createDerivedStore<readonly CustomField[]>({
+    get: read => getDocumentCustomFields(read(documentStore)),
+    isEqual: equalItems
+  })
+
   const viewIds: ReadStore<readonly ViewId[]> = createDerivedStore<readonly ViewId[]>({
     get: read => read(documentStore).views.order,
     isEqual: equalIds
+  })
+
+  const views: ReadStore<readonly View[]> = createDerivedStore<readonly View[]>({
+    get: read => getDocumentViews(read(documentStore)),
+    isEqual: equalItems
   })
 
   const recordById: KeyedReadStore<RecordId, Row | undefined> = createKeyedDerivedStore<RecordId, Row | undefined>({
@@ -79,8 +97,10 @@ export const createReadSource = (document: DataDoc): ReadSource => {
     recordIds,
     record: recordById,
     customFieldIds,
+    customFields,
     customField: customFieldById,
     viewIds,
+    views,
     view: viewById,
     setDocument: nextDocument => {
       documentStore.set(nextDocument)

@@ -4,7 +4,7 @@ import type {
 import type {
   Section,
   SectionKey
-} from '../types'
+} from '../model'
 import type {
   ProjectStageMetrics
 } from '../../types'

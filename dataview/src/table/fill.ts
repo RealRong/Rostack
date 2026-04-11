@@ -1,8 +1,10 @@
 import type {
   AppearanceList,
-  CellRef,
   FieldList
 } from '@dataview/engine/project'
+import type {
+  CellRef
+} from '@dataview/engine/viewmodel'
 import {
   range
 } from './range'

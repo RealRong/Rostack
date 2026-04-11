@@ -13,7 +13,7 @@ import type {
 } from '../../../index/types'
 import type {
   SectionKey
-} from '../../types'
+} from '../../model'
 import type {
   CalcState,
   SectionState

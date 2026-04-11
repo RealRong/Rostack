@@ -95,6 +95,15 @@ export const createSessionRuntime = ({
         text,
         style
       },
+      layout: {
+        baseRect: item.rect,
+        liveSize: {
+          width: item.rect.width,
+          height: item.rect.height
+        },
+        wrapWidth: item.rect.width,
+        composing: false
+      },
       caret: options?.caret ?? { kind: 'end' },
       status: 'active',
       capabilities
@@ -126,6 +135,9 @@ export const createSessionRuntime = ({
       draft: {
         text,
         style
+      },
+      layout: {
+        composing: false
       },
       caret: options?.caret ?? { kind: 'end' },
       status: 'active',

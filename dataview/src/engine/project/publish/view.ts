@@ -44,10 +44,10 @@ import type {
 } from '../../types'
 import type {
   FieldList
-} from '../types'
+} from '../model'
 import {
   sameFieldList
-} from '../runtime/equality'
+} from '../equality'
 
 const emptyIds = [] as readonly FieldId[]
 

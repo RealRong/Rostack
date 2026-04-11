@@ -27,8 +27,10 @@ export const read = (options: CreateReadOptions): ReadRuntime => {
     recordIds: source.recordIds,
     record: source.record,
     customFieldIds: source.customFieldIds,
+    customFields: source.customFields,
     customField: source.customField,
     viewIds: source.viewIds,
+    views: source.views,
     view: source.view,
     clear: () => {},
     syncDocument

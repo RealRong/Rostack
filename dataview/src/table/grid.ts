@@ -2,9 +2,11 @@ import type { CustomFieldId } from '@dataview/core/contracts'
 import type {
   AppearanceId,
   AppearanceList,
-  CellRef,
   FieldList
 } from '@dataview/engine/project'
+import type {
+  CellRef
+} from '@dataview/engine/viewmodel'
 
 const emptyAppearanceIds = [] as readonly AppearanceId[]
 const emptyFieldIds = [] as readonly CustomFieldId[]

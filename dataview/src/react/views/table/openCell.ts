@@ -1,7 +1,7 @@
 import type {
   CellRef,
   ViewFieldRef
-} from '@dataview/engine/project'
+} from '@dataview/engine/viewmodel'
 import type {
   TableCurrentView as CurrentView
 } from './currentView'
@@ -13,7 +13,7 @@ import type {
 import { ownerDocumentOf, resolveFieldAnchor } from '@dataview/dom/field'
 import {
   fieldOf
-} from '@dataview/engine/project'
+} from '@dataview/engine/viewmodel'
 import type { GridSelectionStore } from './gridSelection'
 import type { Dom } from './dom'
 

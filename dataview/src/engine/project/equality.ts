@@ -9,10 +9,9 @@ import type {
 import type {
   AppearanceList,
   FieldList,
-  Schema,
   Section,
   SectionKey
-} from '../types'
+} from './model'
 
 const equalList = <T,>(
   left: readonly T[],
@@ -140,11 +139,6 @@ const equalCalculationCollection = (
   left: CalculationCollection,
   right: CalculationCollection
 ) => equalMap(left.byField, right.byField, equalCalculationResult)
-
-export const sameSchema = (
-  left: Schema,
-  right: Schema
-) => equalMap(left.fields, right.fields, equalField)
 
 export const sameAppearanceList = (
   left: AppearanceList,

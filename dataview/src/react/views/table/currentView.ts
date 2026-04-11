@@ -23,16 +23,20 @@ import {
   sameAppearanceList,
   sameCalculationsBySection,
   sameFieldList,
-  sameSchema,
   sameSections
-} from '@dataview/engine/project/runtime/equality'
+} from '@dataview/engine/project/equality'
 import type {
   AppearanceList,
   FieldList,
-  Schema,
   Section,
   SectionKey
-} from '@dataview/engine/project/types'
+} from '@dataview/engine/project/model'
+import {
+  sameSchema
+} from '@dataview/engine/viewmodel/equality'
+import type {
+  Schema
+} from '@dataview/engine/viewmodel/types'
 
 export interface TableCurrentView {
   view: View

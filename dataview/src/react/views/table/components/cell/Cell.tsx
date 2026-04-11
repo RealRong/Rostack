@@ -7,7 +7,7 @@ import {
 } from '@dataview/core/field'
 import {
   toRecordField
-} from '@dataview/engine/project'
+} from '@dataview/engine/viewmodel'
 import {
   type AppearanceId
 } from '@dataview/engine/project'

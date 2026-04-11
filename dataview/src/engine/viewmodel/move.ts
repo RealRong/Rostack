@@ -1,6 +1,8 @@
 import type {
   AppearanceList,
   AppearanceId,
+} from '../project/model'
+import type {
   Placement,
   Plan
 } from './types'

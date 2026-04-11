@@ -274,11 +274,11 @@ const applyEditSession = (
     rect:
       edit.field === 'text'
       && item.node.type === 'text'
-      && edit.draft.measure
+      && edit.layout.liveSize
         ? {
             ...item.rect,
-            width: edit.draft.measure.width,
-            height: edit.draft.measure.height
+            width: edit.layout.liveSize.width,
+            height: edit.layout.liveSize.height
           }
         : item.rect
   }

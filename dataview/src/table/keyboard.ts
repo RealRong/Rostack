@@ -3,9 +3,11 @@ import { resolveFieldValueBehavior } from '@dataview/core/field'
 import type {
   AppearanceId,
   AppearanceList,
-  CellRef,
   FieldList
 } from '@dataview/engine/project'
+import type {
+  CellRef
+} from '@dataview/engine/viewmodel'
 import type { GridSelection } from './gridSelection'
 import { range } from './range'
 

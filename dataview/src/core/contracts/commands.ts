@@ -80,6 +80,19 @@ export interface ViewCreateInput {
   orders?: RecordId[]
 }
 
+export interface ViewPatch {
+  name?: string
+  type?: ViewType
+  search?: Search
+  filter?: Filter
+  sort?: Sorter[]
+  group?: ViewGroup | null
+  calc?: ViewCalc
+  display?: ViewDisplay
+  options?: ViewOptions
+  orders?: RecordId[]
+}
+
 export type Command =
   | {
       type: 'value.apply'
@@ -99,249 +112,17 @@ export type Command =
       input: ViewCreateInput
     }
   | {
-      type: 'view.duplicate'
-      viewId: ViewId
-      name?: string
-    }
-  | {
       type: 'view.put'
       view: View
     }
   | {
-      type: 'view.rename'
+      type: 'view.patch'
       viewId: ViewId
-      name: string
+      patch: ViewPatch
     }
   | {
       type: 'view.open'
       viewId: ViewId
-    }
-  | {
-      type: 'view.type.set'
-      viewId: ViewId
-      value: ViewType
-    }
-  | {
-      type: 'view.search.set'
-      viewId: ViewId
-      value: string
-    }
-  | {
-      type: 'view.filter.add'
-      viewId: ViewId
-      fieldId: FieldId
-    }
-  | {
-      type: 'view.filter.set'
-      viewId: ViewId
-      index: number
-      rule: Filter['rules'][number]
-    }
-  | {
-      type: 'view.filter.preset'
-      viewId: ViewId
-      index: number
-      presetId: FilterPresetId
-    }
-  | {
-      type: 'view.filter.value'
-      viewId: ViewId
-      index: number
-      value?: Filter['rules'][number]['value']
-    }
-  | {
-      type: 'view.filter.mode'
-      viewId: ViewId
-      value: Filter['mode']
-    }
-  | {
-      type: 'view.filter.remove'
-      viewId: ViewId
-      index: number
-    }
-  | {
-      type: 'view.filter.clear'
-      viewId: ViewId
-    }
-  | {
-      type: 'view.sort.add'
-      viewId: ViewId
-      fieldId: FieldId
-      direction?: Sorter['direction']
-    }
-  | {
-      type: 'view.sort.set'
-      viewId: ViewId
-      fieldId: FieldId
-      direction: Sorter['direction']
-    }
-  | {
-      type: 'view.sort.only'
-      viewId: ViewId
-      fieldId: FieldId
-      direction: Sorter['direction']
-    }
-  | {
-      type: 'view.sort.replace'
-      viewId: ViewId
-      index: number
-      sorter: Sorter
-    }
-  | {
-      type: 'view.sort.remove'
-      viewId: ViewId
-      index: number
-    }
-  | {
-      type: 'view.sort.move'
-      viewId: ViewId
-      from: number
-      to: number
-    }
-  | {
-      type: 'view.sort.clear'
-      viewId: ViewId
-    }
-  | {
-      type: 'view.group.set'
-      viewId: ViewId
-      fieldId: FieldId
-    }
-  | {
-      type: 'view.group.clear'
-      viewId: ViewId
-    }
-  | {
-      type: 'view.group.toggle'
-      viewId: ViewId
-      fieldId: FieldId
-    }
-  | {
-      type: 'view.group.mode.set'
-      viewId: ViewId
-      value: string
-    }
-  | {
-      type: 'view.group.sort.set'
-      viewId: ViewId
-      value: ViewGroup['bucketSort']
-    }
-  | {
-      type: 'view.group.interval.set'
-      viewId: ViewId
-      value?: ViewGroup['bucketInterval']
-    }
-  | {
-      type: 'view.group.empty.set'
-      viewId: ViewId
-      value: boolean
-    }
-  | {
-      type: 'view.group.bucket.show'
-      viewId: ViewId
-      key: string
-    }
-  | {
-      type: 'view.group.bucket.hide'
-      viewId: ViewId
-      key: string
-    }
-  | {
-      type: 'view.group.bucket.collapse'
-      viewId: ViewId
-      key: string
-    }
-  | {
-      type: 'view.group.bucket.expand'
-      viewId: ViewId
-      key: string
-    }
-  | {
-      type: 'view.group.bucket.toggleCollapse'
-      viewId: ViewId
-      key: string
-    }
-  | {
-      type: 'view.calc.set'
-      viewId: ViewId
-      fieldId: FieldId
-      metric: CalculationMetric | null
-    }
-  | {
-      type: 'view.display.replace'
-      viewId: ViewId
-      fieldIds: FieldId[]
-    }
-  | {
-      type: 'view.display.move'
-      viewId: ViewId
-      fieldIds: FieldId[]
-      beforeFieldId?: FieldId | null
-    }
-  | {
-      type: 'view.display.show'
-      viewId: ViewId
-      fieldId: FieldId
-      beforeFieldId?: FieldId | null
-    }
-  | {
-      type: 'view.display.hide'
-      viewId: ViewId
-      fieldId: FieldId
-    }
-  | {
-      type: 'view.display.clear'
-      viewId: ViewId
-    }
-  | {
-      type: 'view.table.setWidths'
-      viewId: ViewId
-      widths: TableOptions['widths']
-    }
-  | {
-      type: 'view.table.verticalLines.set'
-      viewId: ViewId
-      value: boolean
-    }
-  | {
-      type: 'view.gallery.labels.set'
-      viewId: ViewId
-      value: boolean
-    }
-  | {
-      type: 'view.gallery.setCardSize'
-      viewId: ViewId
-      value: GalleryCardSize
-    }
-  | {
-      type: 'view.kanban.setNewRecordPosition'
-      viewId: ViewId
-      value: KanbanNewRecordPosition
-    }
-  | {
-      type: 'view.kanban.fillColor.set'
-      viewId: ViewId
-      value: boolean
-    }
-  | {
-      type: 'view.kanban.cardsPerColumn.set'
-      viewId: ViewId
-      value: KanbanCardsPerColumn
-    }
-  | {
-      type: 'view.order.move'
-      viewId: ViewId
-      recordIds: RecordId[]
-      beforeRecordId?: RecordId
-    }
-  | {
-      type: 'view.order.clear'
-      viewId: ViewId
-    }
-  | {
-      type: 'view.order.set'
-      viewId: ViewId
-      orders: RecordId[]
     }
   | {
       type: 'view.remove'

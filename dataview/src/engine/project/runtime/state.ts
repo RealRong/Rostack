@@ -11,7 +11,7 @@ import type {
   Section,
   SectionBucket,
   SectionKey
-} from '../types'
+} from '../model'
 import type {
   ActiveView,
   FilterView,

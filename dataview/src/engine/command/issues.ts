@@ -16,7 +16,6 @@ export type ValidationCode =
   | 'view.invalid'
   | 'view.invalidProjection'
   | 'view.invalidOrder'
-  | 'view.manualOrderUnavailable'
   | 'field.notFound'
   | 'field.invalid'
   | 'value.emptyMatrix'

@@ -29,7 +29,7 @@ import {
 } from '@shared/dom'
 import {
   move as currentViewMove
-} from '@dataview/engine/project'
+} from '@dataview/engine/viewmodel'
 import {
   type AppearanceId,
   type AppearanceList,

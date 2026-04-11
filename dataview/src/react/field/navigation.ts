@@ -3,9 +3,11 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   AppearanceId,
-  AppearanceList,
-  CellRef
+  AppearanceList
 } from '@dataview/engine/project'
+import type {
+  CellRef
+} from '@dataview/engine/viewmodel'
 
 export interface FieldScope {
   appearanceIds: readonly AppearanceId[]

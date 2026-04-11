@@ -11,9 +11,11 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import type {
-  AppearanceId,
-  ViewFieldRef
+  AppearanceId
 } from '@dataview/engine/project'
+import type {
+  ViewFieldRef
+} from '@dataview/engine/viewmodel'
 import { isEmptyFieldValue } from '@dataview/core/field'
 import { Button } from '@ui/button'
 import { cn } from '@ui/utils'

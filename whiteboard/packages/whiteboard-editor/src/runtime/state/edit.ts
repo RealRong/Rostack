@@ -4,6 +4,7 @@ import type {
   Node,
   NodeId,
   Point,
+  Rect,
   Size
 } from '@whiteboard/core/types'
 import { createValueStore, type ValueStore } from '@shared/store'
@@ -50,12 +51,19 @@ export type EditCaret =
 export type EditSnapshot = {
   text: string
   style?: EditStyleDraft
-  measure?: Size
+}
+
+export type EditLayout = {
+  baseRect?: Rect
+  liveSize?: Size
+  wrapWidth?: number
+  composing: boolean
 }
 
 type EditSessionBase = {
   initial: EditSnapshot
   draft: EditSnapshot
+  layout: EditLayout
   caret: EditCaret
   status: EditStatus
   capabilities: EditCapability
@@ -85,7 +93,7 @@ export type EditMutate = {
   input: (text: string) => void
   caret: (caret: EditCaret) => void
   style: (patch: EditStyleDraft) => void
-  measure: (size?: Size) => void
+  measure: (patch: Partial<EditLayout>) => void
   status: (status: EditStatus) => void
   clear: () => void
 }
@@ -164,18 +172,20 @@ export const createEditState = (): EditState => {
               }
         })
       },
-      measure: (size) => {
-        update((current) => (
-          isEditMeasureEqual(current.draft.measure, size)
+      measure: (patch) => {
+        update((current) => {
+          const nextLayout = {
+            ...current.layout,
+            ...patch
+          }
+
+          return isEditLayoutEqual(current.layout, nextLayout)
             ? current
             : {
                 ...current,
-                draft: {
-                  ...current.draft,
-                  measure: size
-                }
+                layout: nextLayout
               }
-        ))
+        })
       },
       status: (status) => {
         update((current) => (
@@ -198,12 +208,32 @@ export const createEditState = (): EditState => {
   }
 }
 
+export const isEditRectEqual = (
+  left: Rect | undefined,
+  right: Rect | undefined
+) => (
+  left?.x === right?.x
+  && left?.y === right?.y
+  && left?.width === right?.width
+  && left?.height === right?.height
+)
+
 export const isEditMeasureEqual = (
   left: Size | undefined,
   right: Size | undefined
 ) => (
   left?.width === right?.width
   && left?.height === right?.height
+)
+
+export const isEditLayoutEqual = (
+  left: EditLayout,
+  right: EditLayout
+) => (
+  isEditRectEqual(left.baseRect, right.baseRect)
+  && isEditMeasureEqual(left.liveSize, right.liveSize)
+  && left.wrapWidth === right.wrapWidth
+  && left.composing === right.composing
 )
 
 export const isEditStyleDraftEqual = (

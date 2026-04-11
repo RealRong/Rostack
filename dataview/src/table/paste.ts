@@ -2,9 +2,11 @@ import type { Field } from '@dataview/core/contracts'
 import { parseFieldDraft } from '@dataview/core/field'
 import type {
   AppearanceList,
-  CellRef,
   FieldList
 } from '@dataview/engine/project'
+import type {
+  CellRef
+} from '@dataview/engine/viewmodel'
 import {
   grid
 } from './grid'

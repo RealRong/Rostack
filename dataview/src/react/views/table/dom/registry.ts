@@ -6,9 +6,11 @@ import {
   type Rect
 } from '@shared/dom'
 import type {
-  AppearanceId,
-  CellRef
+  AppearanceId
 } from '@dataview/engine/project'
+import type {
+  CellRef
+} from '@dataview/engine/viewmodel'
 
 const cellKey = (cell: {
   appearanceId: AppearanceId

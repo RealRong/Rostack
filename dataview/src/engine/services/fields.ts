@@ -8,10 +8,6 @@ import {
   hasFieldOptions,
   getFieldOptions
 } from '@dataview/core/field'
-import {
-  getDocumentCustomFieldById,
-  getDocumentCustomFields
-} from '@dataview/core/document'
 import { createPropertyId } from '@dataview/engine/command/entityId'
 import type {
   Engine,
@@ -38,10 +34,9 @@ export const createFieldsEngineApi = (options: {
   const dispatch = (
     command: Parameters<Engine['command']>[0]
   ) => options.engine.command(command)
-  const readDocument = () => options.engine.read.document.get()
-  const readProperties = () => getDocumentCustomFields(readDocument())
+  const readProperties = () => options.engine.read.customFields.get()
   const getProperty = (fieldId: CustomFieldId) => options.engine.read.customField.get(fieldId)
-  const getOptionPropertyById = (fieldId: CustomFieldId) => getOptionProperty(getDocumentCustomFieldById(readDocument(), fieldId))
+  const getOptionPropertyById = (fieldId: CustomFieldId) => getOptionProperty(getProperty(fieldId))
 
   return {
     list: readProperties,

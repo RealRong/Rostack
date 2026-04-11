@@ -2,17 +2,13 @@ import {
   readTextWidthMode,
   TEXT_AUTO_MAX_WIDTH,
   TEXT_DEFAULT_FONT_SIZE,
-  TEXT_MIN_WIDTH,
-  TEXT_PLACEHOLDER
+  TEXT_MIN_WIDTH
 } from '@whiteboard/core/node'
 import type {
   Node,
-  NodeId,
   Rect,
   Size
 } from '@whiteboard/core/types'
-import type { WhiteboardRuntime as Editor } from '#react/types/runtime'
-import { resolveNodeTextSource } from './textSourceRegistry'
 
 type TextMeasureElements = {
   line: HTMLDivElement
@@ -256,43 +252,6 @@ export const measureTextNodeSize = ({
     source,
     minWidth: resolvedMinWidth,
     maxWidth: resolvedMaxWidth,
-    fontSize
-  })
-}
-
-export const measureBoundTextNodeSize = ({
-  editor,
-  nodeId,
-  value,
-  fontSize,
-  minWidth,
-  maxWidth
-}: {
-  editor: Editor
-  nodeId: NodeId
-  value: string
-  fontSize?: number
-  minWidth?: number
-  maxWidth?: number
-}) => {
-  const item = editor.select.node.item().get(nodeId)
-  if (!item || item.node.type !== 'text') {
-    return undefined
-  }
-
-  const source = resolveNodeTextSource(editor, nodeId, 'text')
-  if (!source) {
-    return undefined
-  }
-
-  return measureTextNodeSize({
-    node: item.node,
-    rect: item.rect,
-    content: value,
-    placeholder: TEXT_PLACEHOLDER,
-    source,
-    minWidth,
-    maxWidth,
     fontSize
   })
 }

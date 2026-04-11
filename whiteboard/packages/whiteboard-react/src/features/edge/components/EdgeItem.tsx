@@ -19,6 +19,7 @@ import {
   usePickRef,
   useResolvedConfig
 } from '#react/runtime/hooks'
+import { EditableSlot } from '#react/features/edit/EditableSlot'
 import { useEdgeView } from '../hooks/useEdgeView'
 import { EDGE_ARROW_END_ID, EDGE_ARROW_START_ID, resolveEdgeDash } from '../constants'
 import type { EdgeView } from '#react/types/edge'
@@ -269,18 +270,29 @@ const EdgeLabelItem = ({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
     >
-      <div
-        ref={ref}
-        data-edit-edge-id={edgeId}
-        data-edit-label-id={labelId}
-        className={`wb-edge-label-content${editing ? ' wb-edge-label-content-editing' : ''}`}
-        style={{
-          ...style,
-          opacity: text ? 1 : 0.48
-        }}
-      >
-        {displayText}
-      </div>
+      {editing ? (
+        <EditableSlot
+          bindRef={ref}
+          value={text}
+          caret={edit.caret}
+          multiline
+          className="wb-edge-label-content wb-edge-label-content-editing wb-default-text-editor"
+          style={style}
+        />
+      ) : (
+          <div
+            ref={ref}
+            data-edit-edge-id={edgeId}
+            data-edit-label-id={labelId}
+            className="wb-edge-label-content"
+            style={{
+              ...style,
+              opacity: text ? 1 : 0.48
+            }}
+          >
+            {displayText}
+          </div>
+        )}
     </div>
   )
 }

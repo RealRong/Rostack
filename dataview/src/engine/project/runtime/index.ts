@@ -32,7 +32,7 @@ import type {
   FieldList,
   Section,
   SectionKey
-} from '../types'
+} from '../model'
 import {
   resolveIndexDemand
 } from './demand'

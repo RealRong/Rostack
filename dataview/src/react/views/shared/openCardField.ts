@@ -5,7 +5,7 @@ import {
 } from '@dataview/dom/field'
 import type {
   ViewFieldRef
-} from '@dataview/engine/project'
+} from '@dataview/engine/viewmodel'
 import type {
   ValueEditorApi,
   ValueEditorSessionPolicy

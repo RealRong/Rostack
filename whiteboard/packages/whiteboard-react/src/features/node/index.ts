@@ -11,7 +11,6 @@ export {
   TEXT_DEFAULT_FONT_SIZE,
   bindNodeTextSource,
   focusEditableEnd,
-  measureBoundTextNodeSize,
   measureTextNodeSize,
   readEditableText
 } from './text'

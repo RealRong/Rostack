@@ -1020,8 +1020,7 @@
   white-space: pre-wrap;
   word-break: break-word;
   overflow-wrap: break-word;
-  overflow: auto;
-  overscroll-behavior: contain;
+  overflow: hidden;
   caret-color: currentColor;
   user-select: text;
 }
@@ -1037,15 +1036,12 @@
   overflow: hidden;
 }
 
-.wb-edit-host-portal {
-  position: fixed;
+.wb-text-node-content {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   box-sizing: border-box;
-  pointer-events: none;
-  z-index: calc(var(--wb-z-toolbar) + 1);
-}
-
-.wb-edit-host-input {
-  pointer-events: auto;
 }
 
 .wb-default-text-display {
@@ -1107,7 +1103,7 @@
   pointer-events: none;
 }
 
-.wb-shape-node-label {
+.wb-shape-node-label-shell {
   position: absolute;
   inset: 0;
   z-index: 1;
@@ -1118,6 +1114,14 @@
   justify-content: center;
   box-sizing: border-box;
   overflow: hidden;
+  pointer-events: none;
+}
+
+.wb-shape-node-label-content {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   font-size: 14px;
   line-height: 1.35;
   text-align: center;
@@ -1126,6 +1130,11 @@
   word-break: break-word;
   user-select: none;
   pointer-events: auto;
+}
+
+.wb-shape-node-label-content.wb-default-text-editor {
+  height: auto;
+  min-height: 0;
 }
 
 .wb-frame-header {

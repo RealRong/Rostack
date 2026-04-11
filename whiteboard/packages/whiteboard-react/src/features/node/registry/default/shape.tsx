@@ -5,7 +5,8 @@ import {
 } from '@whiteboard/core/node'
 import { useCallback, useRef, type CSSProperties } from 'react'
 import type { NodeDefinition, NodeRenderProps } from '#react/types/node'
-import { useEditor } from '#react/runtime/hooks'
+import { EditableSlot } from '#react/features/edit/EditableSlot'
+import { useEdit, useEditor } from '#react/runtime/hooks'
 import {
   ShapeGlyph
 } from '../../shape'
@@ -72,6 +73,7 @@ const ShapeLabel = ({
   fontStyle: string
   textAlign: string
 }) => {
+  const edit = useEdit()
   const editor = useEditor()
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
   const labelRef = useRef<HTMLDivElement | null>(null)
@@ -86,31 +88,53 @@ const ShapeLabel = ({
     labelRef.current = element
   }, [editor, node.id])
 
-  const style: CSSProperties = {
+  const shellStyle: CSSProperties = {
     ...readShapeSpec(kind).labelInset,
-    color,
-    fontSize,
-    fontWeight,
-    fontStyle,
-    textAlign: textAlign as CSSProperties['textAlign'],
     justifyContent:
       textAlign === 'left'
         ? 'flex-start'
         : textAlign === 'right'
           ? 'flex-end'
-          : 'center',
+          : 'center'
+  }
+  const contentStyle: CSSProperties = {
+    color,
+    fontSize,
+    fontWeight,
+    fontStyle,
+    textAlign: textAlign as CSSProperties['textAlign'],
     opacity: text ? 1 : 0.48
   }
+  const editing =
+    edit?.kind === 'node'
+    && edit.nodeId === node.id
+    && edit.field === 'text'
 
   return (
     <div
-      ref={bindRef}
-      data-edit-node-id={node.id}
-      data-edit-field="text"
-      className="wb-shape-node-label"
-      style={style}
+      className="wb-shape-node-label-shell"
+      style={shellStyle}
     >
-      {text}
+      {editing ? (
+        <EditableSlot
+          bindRef={bindRef}
+          value={text}
+          caret={edit.caret}
+          multiline
+          className="wb-shape-node-label-content wb-default-text-editor"
+          style={contentStyle}
+        />
+      ) : (
+          <div
+            ref={bindRef}
+            data-edit-node-id={node.id}
+            data-edit-field="text"
+            className="wb-shape-node-label-content"
+            style={contentStyle}
+          >
+            {text}
+          </div>
+        )}
     </div>
   )
 }

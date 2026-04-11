@@ -19,7 +19,8 @@ export type {
   CustomFieldCreateInput,
   RowCreateInput,
   ValueApplyAction,
-  ViewCreateInput
+  ViewCreateInput,
+  ViewPatch
 } from './commands'
 export type {
   GalleryCardSize,

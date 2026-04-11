@@ -15,7 +15,6 @@ import type { Tool } from '../../types/tool'
 import type { DrawPreferences } from '../../types/draw'
 import type {
   Editor,
-  EditorEditHostPresentation,
   EditorEdgesApi,
   EditorNodesApi,
   EditorTextToolbarPresentation
@@ -359,10 +358,10 @@ export const createEditor = ({
       const nextMeasure = (
         committed.node.type === 'text'
         && currentEdit.field === 'text'
-        && currentEdit.draft.measure
-        && !isSizeEqual(currentEdit.draft.measure, committed.rect)
+        && currentEdit.layout.liveSize
+        && !isSizeEqual(currentEdit.layout.liveSize, committed.rect)
       )
-        ? currentEdit.draft.measure
+        ? currentEdit.layout.liveSize
         : undefined
       const update = mergeNodeUpdates(
         currentText !== nextText
@@ -474,41 +473,6 @@ export const createEditor = ({
         && left.values.color === right.values.color
         && left.values.background === right.values.background
         && left.values.align === right.values.align
-      )
-    )
-  })
-
-  const editHost = createDerivedStore<EditorEditHostPresentation | undefined>({
-    get: (readStore) => {
-      const edit = readStore(state.edit)
-      if (!edit) {
-        return undefined
-      }
-
-      return {
-        key:
-          edit.kind === 'node'
-            ? `node:${edit.nodeId}:${edit.field}`
-            : `edge:${edit.edgeId}:${edit.labelId}`,
-        session: edit,
-        text: edit.draft.text,
-        placeholder: edit.capabilities.placeholder,
-        multiline: edit.capabilities.multiline,
-        measure: edit.capabilities.measure,
-        capabilities: edit.capabilities
-      }
-    },
-    isEqual: (left, right) => (
-      left === right
-      || (
-        left !== undefined
-        && right !== undefined
-        && left.key === right.key
-        && left.text === right.text
-        && left.placeholder === right.placeholder
-        && left.multiline === right.multiline
-        && left.measure === right.measure
-        && left.session === right.session
       )
     )
   })
@@ -722,7 +686,6 @@ export const createEditor = ({
       tool: toolSelect,
       viewport: viewportSelect,
       edit: () => state.edit,
-      editHost: () => editHost,
       interaction: () => state.interaction,
       selection: selectionSelect,
       group: {

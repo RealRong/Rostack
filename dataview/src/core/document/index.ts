@@ -1,11 +1,18 @@
 export { cloneDocument, normalizeDocument } from './normalize'
 export * from './table'
 export {
+  getDocumentCustomFieldById,
+  getDocumentCustomFieldIds,
+  getDocumentCustomFields,
   getDocumentFieldById,
   getDocumentFieldIds,
   getDocumentFields,
   getDocumentTitleField,
-  isDocumentTitleFieldId
+  hasDocumentCustomField,
+  isDocumentTitleFieldId,
+  patchDocumentCustomField,
+  putDocumentCustomField,
+  removeDocumentCustomField
 } from './fields'
 export {
   clearDocumentValue,
@@ -22,15 +29,6 @@ export {
   replaceDocumentRecords,
   setDocumentValue
 } from './records'
-export {
-  getDocumentCustomFields,
-  getDocumentCustomFieldById,
-  getDocumentCustomFieldIds,
-  hasDocumentCustomField,
-  patchDocumentCustomField,
-  putDocumentCustomField,
-  removeDocumentCustomField
-} from './customFields'
 export {
   getDocumentActiveView,
   getDocumentActiveViewId,

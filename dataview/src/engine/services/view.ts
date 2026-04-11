@@ -20,22 +20,20 @@ import { isTitleFieldId } from '@dataview/core/field'
 import { createUniqueFieldName } from '@dataview/core/field'
 import {
   recordIdsOfAppearances,
-} from '@dataview/engine/project'
-import {
   readSectionRecordIds,
-} from '@dataview/engine/project'
+  move,
+  toRecordField,
+  type CellRef,
+} from '@dataview/engine/viewmodel'
 import type {
   AppearanceId,
   AppearanceList,
   Section,
   SectionKey
-} from '@dataview/engine/project/types'
-import {
-  move,
-  toRecordField,
-  type CellRef,
-  type Placement,
-} from '@dataview/engine/project'
+} from '@dataview/engine/project/model'
+import type {
+  Placement
+} from '@dataview/engine/viewmodel/types'
 import { createRecordId } from '@dataview/engine/command/entityId'
 import { meta, renderMessage } from '@dataview/meta'
 import type {

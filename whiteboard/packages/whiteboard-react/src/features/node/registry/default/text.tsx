@@ -1,11 +1,10 @@
 import { useCallback, useRef, type CSSProperties } from 'react'
-import {
-  estimateTextAutoFont
-} from '@whiteboard/core/node'
 import type { NodeDefinition, NodeRenderProps } from '#react/types/node'
 import {
+  useEdit,
   useEditor
 } from '#react/runtime/hooks'
+import { EditableSlot } from '#react/features/edit/EditableSlot'
 import { useStickyFontSize } from '../../hooks/useStickyFontSize'
 import {
   bindNodeTextSource,
@@ -81,6 +80,7 @@ const TextNodeRenderer = ({
   selected,
   variant
 }: TextNodeRendererProps) => {
+  const edit = useEdit()
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
   const isSticky = variant === 'sticky'
   const placeholder = isSticky ? STICKY_PLACEHOLDER : TEXT_PLACEHOLDER
@@ -101,23 +101,55 @@ const TextNodeRenderer = ({
   const fontWeight = getStyleNumber(node, 'fontWeight') ?? 400
   const fontStyle = getStyleString(node, 'fontStyle') ?? 'normal'
   const color = getStyleString(node, 'color') ?? 'var(--ui-text-primary)'
+  const editing =
+    edit?.kind === 'node'
+    && edit.nodeId === node.id
+    && edit.field === 'text'
+  const baseWidth = editing
+    ? (edit.layout.baseRect?.width ?? rect.width)
+    : rect.width
+  const textStyle: CSSProperties = {
+    fontSize,
+    fontWeight,
+    fontStyle,
+    color,
+    opacity: selected ? 1 : 0.9
+  }
 
   return (
     <div className="wb-text-node-viewport">
-      <div
-        ref={bindRef}
-        data-edit-node-id={node.id}
-        data-edit-field="text"
-        className={`wb-default-text-display${isSticky ? ' wb-sticky-content' : ''}`}
-        style={{
-          fontSize,
-          fontWeight,
-          fontStyle,
-          color,
-          opacity: selected ? 1 : 0.9
-        }}
-      >
-        {text || placeholder}
+      <div className={`wb-text-node-content${isSticky ? ' wb-sticky-content' : ''}`}>
+        {editing ? (
+          <EditableSlot
+            bindRef={bindRef}
+            value={text}
+            caret={edit.caret}
+            multiline
+            className="wb-default-text-editor"
+            style={textStyle}
+            measure={
+              variant === 'text'
+                ? {
+                    node,
+                    baseWidth,
+                    placeholder,
+                    minWidth: edit.layout.baseRect?.width ?? rect.width,
+                    fontSize
+                  }
+                : undefined
+            }
+          />
+        ) : (
+            <div
+              ref={bindRef}
+              data-edit-node-id={node.id}
+              data-edit-field="text"
+              className="wb-default-text-display"
+              style={textStyle}
+            >
+              {text || placeholder}
+            </div>
+          )}
       </div>
     </div>
   )

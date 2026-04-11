@@ -7,7 +7,7 @@ import type {
   AppearanceList,
   Section,
   SectionKey
-} from '../types'
+} from '../model'
 import type {
   SectionState
 } from '../runtime/state'
@@ -283,24 +283,4 @@ export const publishSectionsState = (input: {
     appearances,
     sections
   }
-}
-
-export const recordIdsOfAppearances = (
-  appearances: Pick<AppearanceList, 'get'>,
-  ids: readonly AppearanceId[]
-): readonly RecordId[] => {
-  const seen = new Set<RecordId>()
-  const next: RecordId[] = []
-
-  ids.forEach(id => {
-    const recordId = appearances.get(id)?.recordId
-    if (!recordId || seen.has(recordId)) {
-      return
-    }
-
-    seen.add(recordId)
-    next.push(recordId)
-  })
-
-  return next
 }

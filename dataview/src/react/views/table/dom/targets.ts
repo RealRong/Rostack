@@ -9,9 +9,11 @@ import {
   grid,
 } from '@dataview/table'
 import type {
-  AppearanceId,
-  CellRef
+  AppearanceId
 } from '@dataview/engine/project'
+import type {
+  CellRef
+} from '@dataview/engine/viewmodel'
 
 export type TableTargetKind =
   | 'cell'

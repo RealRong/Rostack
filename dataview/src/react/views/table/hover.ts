@@ -6,9 +6,11 @@ import {
 } from '@shared/store'
 import type { Point } from '@shared/dom'
 import type {
-  AppearanceId,
-  CellRef
+  AppearanceId
 } from '@dataview/engine/project'
+import type {
+  CellRef
+} from '@dataview/engine/viewmodel'
 import {
   hoveredCellOf,
   hoveredRowIdOf,

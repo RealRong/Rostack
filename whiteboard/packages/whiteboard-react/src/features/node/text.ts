@@ -25,6 +25,5 @@ export {
 } from '@shared/dom'
 export { bindNodeTextSource } from './dom/textSourceRegistry'
 export {
-  measureBoundTextNodeSize,
   measureTextNodeSize
 } from './dom/textMeasure'

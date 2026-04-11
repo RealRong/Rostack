@@ -9,7 +9,8 @@ import {
   FRAME_DEFAULT_TITLE
 } from '@whiteboard/core/node'
 import type { NodeDefinition } from '#react/types/node'
-import { useEditor, usePickRef } from '#react/runtime/hooks'
+import { EditableSlot } from '#react/features/edit/EditableSlot'
+import { useEdit, useEditor, usePickRef } from '#react/runtime/hooks'
 import { bindNodeTextSource } from '../../text'
 import {
   createSchema,
@@ -45,6 +46,7 @@ type FrameNodeChromeProps = {
 export const FrameNodeChrome = ({
   node
 }: FrameNodeChromeProps) => {
+  const edit = useEdit()
   const editor = useEditor()
   const titleRef = useRef<HTMLDivElement | null>(null)
   const bindTitleRef = useCallback((element: HTMLDivElement | null) => {
@@ -63,23 +65,50 @@ export const FrameNodeChrome = ({
     part: 'field',
     field: 'title'
   })
-  const title = getDataString(node, 'title') || FRAME_DEFAULT_TITLE
+  const rawTitle = getDataString(node, 'title') ?? ''
+  const title = rawTitle || FRAME_DEFAULT_TITLE
   const color = getStyleString(node, 'color') ?? FRAME_DEFAULT_TEXT_COLOR
+  const editing =
+    edit?.kind === 'node'
+    && edit.nodeId === node.id
+    && edit.field === 'title'
+  const bindFieldRef = useCallback((element: HTMLDivElement | null) => {
+    bindTitleRef(element)
+    pickTitleRef(element)
+  }, [bindTitleRef, pickTitleRef])
 
   return (
     <div className="wb-frame-header">
-      <div
-        ref={(element) => {
-          bindTitleRef(element)
-          pickTitleRef(element)
-        }}
-        data-edit-node-id={node.id}
-        data-edit-field="title"
-        className="wb-frame-title"
-        style={{ color }}
-      >
-        {title}
-      </div>
+      {editing ? (
+        <EditableSlot
+          bindRef={bindFieldRef}
+          value={rawTitle}
+          caret={edit.caret}
+          multiline={false}
+          className="wb-frame-title wb-default-text-editor"
+          style={{
+            color,
+            minWidth: 0,
+            maxWidth: '100%',
+            height: '100%',
+            whiteSpace: 'pre',
+            overflow: 'hidden',
+            textOverflow: 'clip',
+            userSelect: 'text',
+            WebkitUserSelect: 'text'
+          }}
+        />
+      ) : (
+          <div
+            ref={bindFieldRef}
+            data-edit-node-id={node.id}
+            data-edit-field="title"
+            className="wb-frame-title"
+            style={{ color }}
+          >
+            {title}
+          </div>
+        )}
     </div>
   )
 }

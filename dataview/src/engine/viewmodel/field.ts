@@ -6,7 +6,7 @@ import type {
 import type {
   AppearanceList,
   AppearanceId,
-} from './types'
+} from '../project/model'
 
 export interface CellRef {
   appearanceId: AppearanceId

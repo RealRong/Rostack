@@ -16,9 +16,11 @@ import {
   type AppearanceList,
   type FieldList,
   type AppearanceId,
+} from '@dataview/engine/project'
+import {
   type CellRef,
   sameCellRef
-} from '@dataview/engine/project'
+} from '@dataview/engine/viewmodel'
 import type {
   TableCurrentView as CurrentView
 } from '../currentView'

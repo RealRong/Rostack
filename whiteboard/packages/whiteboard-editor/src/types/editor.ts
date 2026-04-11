@@ -73,10 +73,9 @@ import type {
   ViewportRead
 } from '../runtime/viewport'
 import type {
-  EditCapability,
   EditCaret,
   EditField,
-  EditMeasureMode,
+  EditLayout,
   EditSession,
   EditStyleDraft,
   EditTool
@@ -358,7 +357,7 @@ export type EditorSessionEditActions = {
   input: (text: string) => void
   caret: (caret: EditCaret) => void
   style: (patch: EditStyleDraft) => void
-  measure: (size?: Size) => void
+  measure: (patch: Partial<EditLayout>) => void
   clear: () => void
 }
 
@@ -448,16 +447,6 @@ export type EditorTextToolbarPresentation = {
     background?: string
     align?: 'left' | 'center' | 'right'
   }
-}
-
-export type EditorEditHostPresentation = {
-  key: string
-  session: NonNullable<EditSession>
-  text: string
-  placeholder?: string
-  multiline: boolean
-  measure: EditMeasureMode
-  capabilities: EditCapability
 }
 
 export type EditorAppActions = {
@@ -655,7 +644,6 @@ export type EditorSelect = {
   tool: EditorToolSelect
   viewport: EditorViewportSelect
   edit: () => EditorStore['edit']
-  editHost: () => ReadStore<EditorEditHostPresentation | undefined>
   interaction: () => EditorStore['interaction']
   selection: EditorSelectionSelect
   group: Pick<RuntimeRead['group'], 'exactIds' | 'nodeIds' | 'edgeIds'>

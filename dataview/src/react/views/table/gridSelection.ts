@@ -1,7 +1,9 @@
 import type {
-  AppearanceId,
-  CellRef
+  AppearanceId
 } from '@dataview/engine/project'
+import type {
+  CellRef
+} from '@dataview/engine/viewmodel'
 import type {
   TableCurrentView as CurrentView
 } from './currentView'

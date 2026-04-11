@@ -49,8 +49,10 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       recordIds: read.recordIds,
       record: read.record,
       customFieldIds: read.customFieldIds,
+      customFields: read.customFields,
       customField: read.customField,
       viewIds: read.viewIds,
+      views: read.views,
       view: read.view
     },
     project,

@@ -39,13 +39,15 @@ import type {
   AppearanceId,
   AppearanceList,
   FieldList,
-  Placement,
   Section,
   SectionKey
-} from '@dataview/engine/project/types'
+} from '@dataview/engine/project/model'
+import type {
+  Placement
+} from '@dataview/engine/viewmodel/types'
 import type {
   CellRef
-} from '@dataview/engine/project'
+} from '@dataview/engine/viewmodel'
 
 export interface CreateEngineOptions {
   document: DataDoc
@@ -77,8 +79,10 @@ export interface EngineReadApi {
   recordIds: ReadStore<readonly RecordId[]>
   record: KeyedReadStore<RecordId, Row | undefined>
   customFieldIds: ReadStore<readonly CustomFieldId[]>
+  customFields: ReadStore<readonly CustomField[]>
   customField: KeyedReadStore<CustomFieldId, CustomField | undefined>
   viewIds: ReadStore<readonly ViewId[]>
+  views: ReadStore<readonly View[]>
   view: KeyedReadStore<ViewId, View | undefined>
 }
 

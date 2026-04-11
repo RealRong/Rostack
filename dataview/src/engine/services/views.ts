@@ -2,7 +2,6 @@ import type {
   ViewType,
   ViewId
 } from '@dataview/core/contracts'
-import { getDocumentViews } from '@dataview/core/document'
 import type {
   Engine,
   ViewsEngineApi
@@ -11,7 +10,7 @@ import type {
 export const createViewsEngineApi = (options: {
   engine: Pick<Engine, 'read' | 'command'>
 }): ViewsEngineApi => {
-  const readViews = () => getDocumentViews(options.engine.read.document.get())
+  const readViews = () => options.engine.read.views.get()
 
   return {
     list: readViews,

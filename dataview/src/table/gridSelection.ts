@@ -1,10 +1,12 @@
 import type {
   AppearanceId,
   AppearanceList,
-  CellRef,
   FieldList
 } from '@dataview/engine/project'
-import { sameCellRef } from '@dataview/engine/project'
+import type {
+  CellRef
+} from '@dataview/engine/viewmodel'
+import { sameCellRef } from '@dataview/engine/viewmodel'
 import {
   grid
 } from './grid'

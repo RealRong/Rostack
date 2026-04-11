@@ -9,6 +9,7 @@ export {
 export type {
   EditCapability,
   EditCaret,
+  EditLayout,
   EditSession,
   EditStyleDraft,
   EditTool,

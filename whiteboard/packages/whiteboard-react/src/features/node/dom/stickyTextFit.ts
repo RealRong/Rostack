@@ -139,30 +139,24 @@ export const measureStickyFontSize = ({
     return estimateTextAutoFont('sticky', rect)
   }
 
-  const frame = source.parentElement
-  if (!(frame instanceof HTMLElement)) {
-    return estimateTextAutoFont('sticky', rect)
-  }
-
-  const frameRect = frame.getBoundingClientRect()
+  const frameRect = source.getBoundingClientRect()
   if (frameRect.width <= 0 || frameRect.height <= 0) {
     return estimateTextAutoFont('sticky', rect)
   }
 
-  const frameStyle = window.getComputedStyle(frame)
   const sourceStyle = window.getComputedStyle(source)
   const sourceFontSize = readPx(sourceStyle.fontSize, TEXT_DEFAULT_FONT_SIZE)
   const contentBox = resolveTextContentBox({
     width: frameRect.width,
     height: frameRect.height,
-    paddingTop: readNumber(frameStyle.paddingTop),
-    paddingRight: readNumber(frameStyle.paddingRight),
-    paddingBottom: readNumber(frameStyle.paddingBottom),
-    paddingLeft: readNumber(frameStyle.paddingLeft),
-    borderTop: readNumber(frameStyle.borderTopWidth),
-    borderRight: readNumber(frameStyle.borderRightWidth),
-    borderBottom: readNumber(frameStyle.borderBottomWidth),
-    borderLeft: readNumber(frameStyle.borderLeftWidth)
+    paddingTop: readNumber(sourceStyle.paddingTop),
+    paddingRight: readNumber(sourceStyle.paddingRight),
+    paddingBottom: readNumber(sourceStyle.paddingBottom),
+    paddingLeft: readNumber(sourceStyle.paddingLeft),
+    borderTop: readNumber(sourceStyle.borderTopWidth),
+    borderRight: readNumber(sourceStyle.borderRightWidth),
+    borderBottom: readNumber(sourceStyle.borderBottomWidth),
+    borderLeft: readNumber(sourceStyle.borderLeftWidth)
   })
   const range = resolveTextAutoFont('sticky', contentBox)
   const signature = readStickyFitSignature({

@@ -1,7 +1,9 @@
 import {
-  type AppearanceId,
-  type CellRef
+  type AppearanceId
 } from '@dataview/engine/project'
+import type {
+  CellRef
+} from '@dataview/engine/viewmodel'
 import {
   pageScrollNode,
   type ScrollNode

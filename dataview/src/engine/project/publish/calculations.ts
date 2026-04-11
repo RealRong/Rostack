@@ -9,7 +9,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   SectionKey
-} from '../types'
+} from '../model'
 import type {
   CalcState
 } from '../runtime/state'

@@ -22,23 +22,18 @@ import type {
 } from '../../types/editor'
 import type { NodePatchWriter } from '../node/types'
 
-type MindmapRuntimeHost = {
+type MindmapHost = {
   read: EditorRead
-  document: {
-    mindmap: {
-      create: EditorMindmapCommands['create']
-      delete: EditorMindmapCommands['delete']
-      insert: EditorMindmapCommands['insert']
-      moveSubtree: EditorMindmapCommands['moveSubtree']
-      removeSubtree: EditorMindmapCommands['removeSubtree']
-      cloneSubtree: EditorMindmapCommands['cloneSubtree']
-      updateNode: EditorMindmapCommands['updateNode']
-    }
-    node: {
-      update: NodePatchWriter['update']
-    }
+  commands: Pick<
+    EditorMindmapCommands,
+    'create' | 'delete' | 'insert' | 'moveSubtree' | 'removeSubtree' | 'cloneSubtree' | 'updateNode'
+  >
+  node: {
+    update: NodePatchWriter['update']
   }
 }
+
+type MindmapExecute = Engine['execute']
 
 const DEFAULT_MINDMAP_SIDE: 'left' | 'right' = 'right'
 const createLayoutHint = ({
@@ -60,7 +55,7 @@ const readNodePosition = ({
   editor,
   nodeId
 }: {
-  editor: MindmapRuntimeHost
+  editor: MindmapHost
   nodeId: NodeId
 }) => {
   const node = editor.read.node.item.get(nodeId)?.node
@@ -79,7 +74,7 @@ export const insertMindmapByPlacement = ({
   layout,
   payload
 }: {
-  editor: MindmapRuntimeHost
+  editor: MindmapHost
   id: NodeId
   tree: MindmapTree
   targetNodeId: MindmapNodeId
@@ -106,7 +101,7 @@ export const insertMindmapByPlacement = ({
   })
 
   if (plan.mode === 'child') {
-    return editor.document.mindmap.insert(id, {
+    return editor.commands.insert(id, {
       kind: 'child',
       parentId: plan.parentId,
       payload: normalizedPayload,
@@ -119,7 +114,7 @@ export const insertMindmapByPlacement = ({
   }
 
   if (plan.mode === 'sibling') {
-    return editor.document.mindmap.insert(id, {
+    return editor.commands.insert(id, {
       kind: 'sibling',
       nodeId: plan.nodeId,
       position: plan.position,
@@ -131,7 +126,7 @@ export const insertMindmapByPlacement = ({
   }
 
   if (plan.mode === 'towardRoot') {
-    return editor.document.mindmap.insert(id, {
+    return editor.commands.insert(id, {
       kind: 'parent',
       nodeId: plan.nodeId,
       payload: normalizedPayload,
@@ -153,7 +148,7 @@ export const moveMindmapByDrop = ({
   nodeSize,
   layout
 }: {
-  editor: MindmapRuntimeHost
+  editor: MindmapHost
   id: NodeId
   nodeId: MindmapNodeId
   drop: {
@@ -175,7 +170,7 @@ export const moveMindmapByDrop = ({
     return undefined
   }
 
-  return editor.document.mindmap.moveSubtree(id, {
+  return editor.commands.moveSubtree(id, {
     nodeId,
     parentId: drop.parentId,
     index: drop.index,
@@ -195,7 +190,7 @@ export const moveMindmapRoot = ({
   origin,
   threshold = DEFAULT_ROOT_MOVE_THRESHOLD
 }: {
-  editor: MindmapRuntimeHost
+  editor: MindmapHost
   nodeId: NodeId
   position: Point
   origin?: Point
@@ -213,7 +208,7 @@ export const moveMindmapRoot = ({
     return undefined
   }
 
-  return editor.document.node.update(nodeId, {
+  return editor.node.update(nodeId, {
     fields: {
       position: {
         x: position.x,
@@ -223,56 +218,85 @@ export const moveMindmapRoot = ({
   })
 }
 
-export const createMindmapRuntime = ({
-  engine,
-  runtimeHost
-}: {
-  engine: Engine
-  runtimeHost: MindmapRuntimeHost
-}): EditorMindmapCommands => ({
-  create: (payload) => engine.execute({
+const createMindmapCommands = (
+  execute: MindmapExecute
+): Pick<
+  EditorMindmapCommands,
+  'create' | 'delete' | 'insert' | 'moveSubtree' | 'removeSubtree' | 'cloneSubtree' | 'updateNode'
+> => ({
+  create: (payload) => execute({
     type: 'mindmap.create',
     payload
   }),
-  delete: (ids) => engine.execute({
+  delete: (ids) => execute({
     type: 'mindmap.delete',
     ids
   }),
-  insert: (id, input) => engine.execute({
+  insert: (id, input) => execute({
     type: 'mindmap.insert',
     id,
     input
   }),
-  moveSubtree: (id, input) => engine.execute({
+  moveSubtree: (id, input) => execute({
     type: 'mindmap.move',
     id,
     input
   }),
-  removeSubtree: (id, input) => engine.execute({
+  removeSubtree: (id, input) => execute({
     type: 'mindmap.remove',
     id,
     input
   }),
-  cloneSubtree: (id, input) => engine.execute({
+  cloneSubtree: (id, input) => execute({
     type: 'mindmap.clone',
     id,
     input
   }),
-  updateNode: (id, input) => engine.execute({
+  updateNode: (id, input) => execute({
     type: 'mindmap.patchNode',
     id,
     input
-  }),
+  })
+})
+
+export const createMindmapRuntime = ({
+  execute,
+  read,
+  node
+}: {
+  execute: MindmapExecute
+  read: EditorRead
+  node: {
+    update: NodePatchWriter['update']
+  }
+}): EditorMindmapCommands => {
+  const commands = createMindmapCommands(execute)
+
+  return {
+    ...commands,
   insertByPlacement: (input) => insertMindmapByPlacement({
-    editor: runtimeHost,
+    editor: {
+      read,
+      commands,
+      node
+    },
     ...input
   }),
   moveByDrop: (input) => moveMindmapByDrop({
-    editor: runtimeHost,
+    editor: {
+      read,
+      commands,
+      node
+    },
     ...input
   }),
   moveRoot: (input) => moveMindmapRoot({
-    editor: runtimeHost,
+    editor: {
+      read,
+      commands,
+      node
+    },
     ...input
   })
-})
+  }
+}

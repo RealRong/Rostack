@@ -4,16 +4,7 @@ import {
   useContext,
   type ReactNode
 } from 'react'
-import type {
-  KanbanCreateCardInput,
-  KanbanMoveCardsInput
-} from '@dataview/engine'
 import type { KanbanController } from './useKanbanController'
-
-export type {
-  KanbanCreateCardInput as KanbanCreateCardInput,
-  KanbanMoveCardsInput as KanbanMoveCardsInput
-}
 
 export type Kanban = KanbanController
 

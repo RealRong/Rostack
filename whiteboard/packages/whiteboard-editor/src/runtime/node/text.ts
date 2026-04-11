@@ -4,10 +4,10 @@ import type { NodeId } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { CommandResult } from '@engine-types/result'
 import type {
-  NodeAppearanceMutations,
   NodePatchWriter,
   NodeTextMutations
 } from './types'
+import type { NodeAppearanceMutations } from './mutations'
 import type {
   PreviewRuntime,
 } from '../preview/types'

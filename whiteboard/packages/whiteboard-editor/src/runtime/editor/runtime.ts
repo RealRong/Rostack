@@ -13,15 +13,11 @@ import type { SessionRuntime } from '../session/types'
 import { createViewRuntime } from '../view/runtime'
 import type { ViewRuntime } from '../view/types'
 
-export type EditorRuntimeChannels = {
+export type EditorRuntime = {
   document: DocumentRuntime
   session: SessionRuntime
   view: ViewRuntime
   preview: PreviewRuntime
-}
-
-export type EditorRuntime = EditorRuntimeChannels & {
-  batch: <T>(recipe: (tx: EditorRuntimeChannels) => T) => T
 }
 
 export const createEditorRuntime = ({
@@ -63,12 +59,6 @@ export const createEditorRuntime = ({
     document,
     session,
     view,
-    preview,
-    batch: (recipe) => recipe({
-      document,
-      session,
-      view,
-      preview
-    })
+    preview
   }
 }

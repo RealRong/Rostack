@@ -404,7 +404,7 @@ export const useKanbanController = (input: {
     ),
     onDraggingChange: setDragging,
     onDrop: (cardIds, target) => {
-      dataView.engine.view(currentView.view.id).items.moveAppearances(cardIds, {
+      dataView.engine.view(currentView.view.id).items.move(cardIds, {
         section: target.sectionKey,
         ...(target.beforeAppearanceId ? { before: target.beforeAppearanceId } : {})
       })

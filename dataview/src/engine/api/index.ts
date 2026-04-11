@@ -30,9 +30,7 @@ export type {
   ViewAccessorApi
 } from './public'
 export type {
-  KanbanApi,
-  KanbanCreateCardInput,
-  KanbanMoveCardsInput,
+  ViewCellsApi,
   ViewItemsApi,
   ViewGalleryApi,
   ViewKanbanApi,

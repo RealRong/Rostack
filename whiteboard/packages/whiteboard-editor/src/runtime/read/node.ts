@@ -26,7 +26,7 @@ import type {
   NodeType,
   Rect
 } from '@whiteboard/core/types'
-import type { NodeRegistry } from '../../types/node'
+import type { NodeRegistry, NodeRole } from '../../types/node'
 import type {
   NodeOverlayProjection
 } from '../overlay/types'
@@ -34,17 +34,6 @@ import {
   applyNodeProjectionPatch,
   applyNodeProjectionRect
 } from './nodeProjection'
-import {
-  resolveNodeConnect,
-  resolveNodeEnter,
-  resolveNodeRole,
-  resolveNodeTransform,
-  type NodeRole
-} from './nodeCapability'
-import {
-  createOverlayStateStore,
-  createPatchedItemStore
-} from './keyed'
 import {
   type EditSession
 } from '../state/edit'
@@ -98,6 +87,14 @@ export type NodeRead = {
     nodeIds: readonly NodeId[]
   ) => TransformSelectionTargets<Node> | undefined
   ordered: () => readonly Node[]
+}
+
+type NodeBehaviorLike = {
+  role?: NodeRole
+  connect?: boolean
+  enter?: boolean
+  canResize?: boolean
+  canRotate?: boolean
 }
 
 const readNodeType = (
@@ -195,6 +192,28 @@ const isNodeCanvasSnapshotEqual = (
     && isNodeGeometryEqual(left.geometry, right.geometry)
   )
 )
+
+const resolveNodeRole = (
+  definition?: Pick<NodeBehaviorLike, 'role'>
+): NodeRole => definition?.role ?? 'content'
+
+const resolveNodeTransform = (
+  definition?: Pick<NodeBehaviorLike, 'role' | 'canResize' | 'canRotate'>
+) => ({
+  resize: definition?.canResize ?? true,
+  rotate:
+    typeof definition?.canRotate === 'boolean'
+      ? definition.canRotate
+      : resolveNodeRole(definition) === 'content'
+})
+
+const resolveNodeConnect = (
+  definition?: Pick<NodeBehaviorLike, 'connect'>
+) => definition?.connect ?? true
+
+const resolveNodeEnter = (
+  definition?: Pick<NodeBehaviorLike, 'enter'>
+) => definition?.enter ?? false
 
 const readNodeRotation = (
   node: NodeItem['node']
@@ -330,129 +349,6 @@ const applyEditSession = (
   }
 }
 
-const createNodeItemStore = ({
-  read,
-  overlay,
-  edit
-}: {
-  read: Pick<EngineRead, 'node'>
-  overlay: KeyedReadStore<NodeId, NodeOverlayProjection>
-  edit: ReadStore<EditSession>
-}): NodeRead['item'] => createPatchedItemStore({
-  source: read.node.item,
-  overlay,
-  project: (item, projection, readStore) => {
-    const patch = projection.patch
-    const projected = patch
-      ? {
-          node: applyNodeProjectionPatch(item.node, patch),
-          rect: applyNodeProjectionRect(item.rect, patch)
-        }
-      : item
-
-    return applyEditSession(
-      applyNodeTextPreview(projected, projection),
-      readStore(edit)
-    )
-  },
-  isEqual: isNodeItemEqual
-})
-
-const createNodeStateStore = ({
-  overlay
-}: {
-  overlay: KeyedReadStore<NodeId, NodeOverlayProjection>
-}): NodeRead['state'] => createOverlayStateStore({
-  overlay,
-  project: toNodeRuntimeState,
-  isEqual: isNodeStateEqual
-})
-
-const createNodeViewStore = ({
-  item,
-  state,
-  capability
-}: {
-  item: NodeRead['item']
-  state: NodeRead['state']
-  capability: NodeRead['capability']
-}): NodeRead['view'] => createKeyedDerivedStore({
-  get: (readStore, nodeId: NodeId) => {
-    const resolvedItem = readStore(item, nodeId)
-    if (!resolvedItem) {
-      return undefined
-    }
-
-    const resolvedState = readStore(state, nodeId)
-    return toNodeView(
-      nodeId,
-      resolvedItem,
-      resolvedState,
-      capability(resolvedItem.node)
-    )
-  },
-  isEqual: isNodeViewEqual
-})
-
-const createNodeCanvasStore = ({
-  item
-}: {
-  item: NodeRead['item']
-}): NodeRead['canvas'] => createKeyedDerivedStore({
-  get: (readStore, nodeId: NodeId) => {
-    const resolvedItem = readStore(item, nodeId)
-    if (!resolvedItem) {
-      return undefined
-    }
-
-    return {
-      node: resolvedItem.node,
-      geometry: readNodeItemGeometry(resolvedItem)
-    }
-  },
-  isEqual: isNodeCanvasSnapshotEqual
-})
-
-const createNodeRectStore = ({
-  item
-}: {
-  item: NodeRead['item']
-}): NodeRead['rect'] => createKeyedDerivedStore({
-  get: (readStore, nodeId: NodeId) => readStore(item, nodeId)?.rect,
-  isEqual: isSameOptionalRectTuple
-})
-
-const createNodeBoundsStore = ({
-  item
-}: {
-  item: NodeRead['item']
-}): NodeRead['bounds'] => createKeyedDerivedStore({
-  get: (readStore, nodeId: NodeId) => {
-    const resolvedItem = readStore(item, nodeId)
-    return resolvedItem
-      ? getNodeItemBounds(resolvedItem)
-      : undefined
-  },
-  isEqual: isSameOptionalRectTuple
-})
-
-const createNodeCapabilityResolver = (
-  registry: NodeRegistry
-): NodeRead['capability'] => (
-  node: Pick<Node, 'type'> | NodeType
-) => {
-  const definition = registry.get(readNodeType(node))
-  const transform = resolveNodeTransform(definition)
-
-  return {
-    role: resolveNodeRole(definition),
-    connect: resolveNodeConnect(definition),
-    enter: resolveNodeEnter(definition),
-    resize: transform.resize,
-    rotate: transform.rotate
-  }
-}
-
 export const createNodeRead = ({
   read,
   registry,
@@ -464,28 +360,91 @@ export const createNodeRead = ({
   overlay: KeyedReadStore<NodeId, NodeOverlayProjection>
   edit: ReadStore<EditSession>
 }): NodeRead => {
-  const item = createNodeItemStore({
-    read,
-    overlay,
-    edit
+  const item: NodeRead['item'] = createKeyedDerivedStore({
+    get: (readStore, nodeId: NodeId) => {
+      const current = readStore(read.node.item, nodeId)
+      if (!current) {
+        return undefined
+      }
+
+      const projection = readStore(overlay, nodeId)
+      const patch = projection.patch
+      const projected = patch
+        ? {
+            node: applyNodeProjectionPatch(current.node, patch),
+            rect: applyNodeProjectionRect(current.rect, patch)
+          }
+        : current
+
+      return applyEditSession(
+        applyNodeTextPreview(projected, projection),
+        readStore(edit)
+      )
+    },
+    isEqual: isNodeItemEqual
   })
-  const state = createNodeStateStore({
-    overlay
+  const state: NodeRead['state'] = createKeyedDerivedStore({
+    get: (readStore, nodeId: NodeId) => toNodeRuntimeState(
+      readStore(overlay, nodeId)
+    ),
+    isEqual: isNodeStateEqual
   })
-  const capability = createNodeCapabilityResolver(registry)
-  const view = createNodeViewStore({
-    item,
-    state,
-    capability
+  const capability: NodeRead['capability'] = (
+    node: Pick<Node, 'type'> | NodeType
+  ) => {
+    const definition = registry.get(readNodeType(node))
+    const transform = resolveNodeTransform(definition)
+
+    return {
+      role: resolveNodeRole(definition),
+      connect: resolveNodeConnect(definition),
+      enter: resolveNodeEnter(definition),
+      resize: transform.resize,
+      rotate: transform.rotate
+    }
+  }
+  const view: NodeRead['view'] = createKeyedDerivedStore({
+    get: (readStore, nodeId: NodeId) => {
+      const resolvedItem = readStore(item, nodeId)
+      if (!resolvedItem) {
+        return undefined
+      }
+
+      return toNodeView(
+        nodeId,
+        resolvedItem,
+        readStore(state, nodeId),
+        capability(resolvedItem.node)
+      )
+    },
+    isEqual: isNodeViewEqual
   })
-  const canvas = createNodeCanvasStore({
-    item
+  const canvas: NodeRead['canvas'] = createKeyedDerivedStore({
+    get: (readStore, nodeId: NodeId) => {
+      const resolvedItem = readStore(item, nodeId)
+      if (!resolvedItem) {
+        return undefined
+      }
+
+      return {
+        node: resolvedItem.node,
+        geometry: readNodeItemGeometry(resolvedItem)
+      }
+    },
+    isEqual: isNodeCanvasSnapshotEqual
   })
-  const rect = createNodeRectStore({
-    item
+  const rect: NodeRead['rect'] = createKeyedDerivedStore({
+    get: (readStore, nodeId: NodeId) => readStore(item, nodeId)?.rect,
+    isEqual: isSameOptionalRectTuple
   })
-  const bounds = createNodeBoundsStore({
-    item
+  const bounds: NodeRead['bounds'] = createKeyedDerivedStore({
+    get: (readStore, nodeId: NodeId) => {
+      const resolvedItem = readStore(item, nodeId)
+      return resolvedItem
+        ? getNodeItemBounds(resolvedItem)
+        : undefined
+    },
+    isEqual: isSameOptionalRectTuple
   })
 
   return {

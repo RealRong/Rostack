@@ -2,12 +2,8 @@ import { memo, useCallback } from 'react'
 import type { Field } from '@dataview/core/contracts'
 import {
   canQuickToggleFieldValue,
-  isTitleFieldId,
   resolveFieldPrimaryAction
 } from '@dataview/core/field'
-import {
-  toRecordField
-} from '@dataview/engine/project'
 import {
   type AppearanceId
 } from '@dataview/engine/project'
@@ -58,50 +54,15 @@ const View = (props: CellProps) => {
       return
     }
 
-    const target = toRecordField({
-      appearanceId: cell.appearanceId,
-      fieldId: cell.fieldId
-    }, currentView.appearances)
-    if (!target) {
-      return
-    }
-
     table.gridSelection.set(cell)
     table.focus()
+    const view = engine.view(currentView.view.id)
     if (action.value === undefined) {
-      if (isTitleFieldId(target.fieldId)) {
-        engine.action({
-          type: 'record.patch',
-          target: {
-            type: 'record',
-            recordId: target.recordId
-          },
-          patch: {
-            title: ''
-          }
-        })
-        return
-      }
-
-      engine.records.clearValue(target.recordId, target.fieldId)
+      view.cells.clear(cell)
       return
     }
 
-    if (isTitleFieldId(target.fieldId)) {
-      engine.action({
-        type: 'record.patch',
-        target: {
-          type: 'record',
-          recordId: target.recordId
-        },
-        patch: {
-          title: String(action.value ?? '')
-        }
-      })
-      return
-    }
-
-    engine.records.setValue(target.recordId, target.fieldId, action.value)
+    view.cells.set(cell, action.value)
   }
 
   if (!cellRender.exists || !recordId) {

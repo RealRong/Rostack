@@ -83,7 +83,7 @@ export const PageKeyboardHost = () => {
           }
 
           if (currentView) {
-            engine.view(currentView.id).items.removeAppearances(
+            engine.view(currentView.id).items.remove(
               dataView.selection.get().ids
             )
           }

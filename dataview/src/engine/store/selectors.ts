@@ -44,14 +44,6 @@ import type {
   Store
 } from './state'
 
-const notify = (
-  listeners: ReadonlySet<() => void>
-) => {
-  Array.from(listeners).forEach(listener => {
-    listener()
-  })
-}
-
 const createSelector = <T,>(input: {
   store: Store
   read: (state: State) => T
@@ -70,7 +62,9 @@ const createSelector = <T,>(input: {
     }
 
     current = next
-    notify(listeners)
+    Array.from(listeners).forEach(listener => {
+      listener()
+    })
   }
 
   return createReadStore({
@@ -125,101 +119,133 @@ const createKeyedSelector = <K, T>(input: {
   })
 }
 
+const selectDoc = <T,>(input: {
+  store: Store
+  read: (document: DataDoc) => T
+  isEqual?: Equality<T>
+}) => createSelector({
+  store: input.store,
+  read: state => input.read(state.doc),
+  ...(input.isEqual ? { isEqual: input.isEqual } : {})
+})
+
+const selectDocById = <K, T>(input: {
+  store: Store
+  read: (document: DataDoc, key: K) => T
+  isEqual?: Equality<T>
+  keyOf?: (key: K) => unknown
+}) => createKeyedSelector({
+  store: input.store,
+  read: (state, key: K) => input.read(state.doc, key),
+  ...(input.isEqual ? { isEqual: input.isEqual } : {}),
+  ...(input.keyOf ? { keyOf: input.keyOf } : {})
+})
+
+const selectProject = <T,>(input: {
+  store: Store
+  read: (project: State['project']) => T
+  isEqual?: Equality<T>
+}) => createSelector({
+  store: input.store,
+  read: state => input.read(state.project),
+  ...(input.isEqual ? { isEqual: input.isEqual } : {})
+})
+
 export const createReadApi = (
   store: Store
 ): EngineReadApi => ({
-  document: createSelector({
+  document: selectDoc({
     store,
-    read: state => state.doc
+    read: document => document
   }),
-  activeViewId: createSelector({
+  activeViewId: selectDoc({
     store,
-    read: state => getDocumentActiveViewId(state.doc)
+    read: getDocumentActiveViewId
   }),
-  activeView: createSelector({
+  activeView: selectDoc({
     store,
-    read: state => getDocumentActiveView(state.doc)
+    read: getDocumentActiveView
   }),
-  recordIds: createSelector<readonly RecordId[]>({
+  recordIds: selectDoc<readonly RecordId[]>({
     store,
-    read: state => state.doc.records.order,
+    read: document => document.records.order,
     isEqual: sameOrder
   }),
-  record: createKeyedSelector({
+  record: selectDocById({
     store,
-    read: (state, recordId: RecordId) => getDocumentRecordById(state.doc, recordId)
+    read: getDocumentRecordById
   }),
-  customFieldIds: createSelector<readonly CustomFieldId[]>({
+  customFieldIds: selectDoc<readonly CustomFieldId[]>({
     store,
-    read: state => state.doc.fields.order,
+    read: document => document.fields.order,
     isEqual: sameOrder
   }),
-  customFields: createSelector<readonly CustomField[]>({
+  customFields: selectDoc<readonly CustomField[]>({
     store,
-    read: state => getDocumentCustomFields(state.doc),
+    read: getDocumentCustomFields,
     isEqual: sameOrder
   }),
-  customField: createKeyedSelector({
+  customField: selectDocById({
     store,
-    read: (state, fieldId: CustomFieldId) => getDocumentCustomFieldById(state.doc, fieldId)
+    read: getDocumentCustomFieldById
   }),
-  viewIds: createSelector<readonly ViewId[]>({
+  viewIds: selectDoc<readonly ViewId[]>({
     store,
-    read: state => state.doc.views.order,
+    read: document => document.views.order,
     isEqual: sameOrder
   }),
-  views: createSelector<readonly View[]>({
+  views: selectDoc<readonly View[]>({
     store,
-    read: state => getDocumentViews(state.doc),
+    read: getDocumentViews,
     isEqual: sameOrder
   }),
-  view: createKeyedSelector<ViewId, View | undefined>({
+  view: selectDocById<ViewId, View | undefined>({
     store,
-    read: (state, viewId: ViewId) => getDocumentViewById(state.doc, viewId)
+    read: getDocumentViewById
   })
 })
 
 export const createProjectApi = (
   store: Store
 ): EngineProjectApi => ({
-  view: createSelector({
+  view: selectProject({
     store,
-    read: state => state.project.view
+    read: project => project.view
   }),
-  filter: createSelector({
+  filter: selectProject({
     store,
-    read: state => state.project.filter
+    read: project => project.filter
   }),
-  group: createSelector({
+  group: selectProject({
     store,
-    read: state => state.project.group
+    read: project => project.group
   }),
-  search: createSelector({
+  search: selectProject({
     store,
-    read: state => state.project.search
+    read: project => project.search
   }),
-  sort: createSelector({
+  sort: selectProject({
     store,
-    read: state => state.project.sort
+    read: project => project.sort
   }),
-  records: createSelector({
+  records: selectProject({
     store,
-    read: state => state.project.records
+    read: project => project.records
   }),
-  sections: createSelector({
+  sections: selectProject({
     store,
-    read: state => state.project.sections
+    read: project => project.sections
   }),
-  appearances: createSelector({
+  appearances: selectProject({
     store,
-    read: state => state.project.appearances
+    read: project => project.appearances
   }),
-  fields: createSelector({
+  fields: selectProject({
     store,
-    read: state => state.project.fields
+    read: project => project.fields
   }),
-  calculations: createSelector({
+  calculations: selectProject({
     store,
-    read: state => state.project.calculations as ReadonlyMap<SectionKey, CalculationCollection> | undefined
+    read: project => project.calculations as ReadonlyMap<SectionKey, CalculationCollection> | undefined
   })
 })

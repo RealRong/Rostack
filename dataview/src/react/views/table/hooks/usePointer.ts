@@ -498,7 +498,13 @@ export const usePointer = (
     cell: CellRef,
     value: unknown | undefined
   ) => {
-    editor.view(currentView.view.id).items.writeCell(cell, value)
+    const view = editor.view(currentView.view.id)
+    if (value === undefined) {
+      view.cells.clear(cell)
+      return
+    }
+
+    view.cells.set(cell, value)
   }, [currentView.view.id, editor])
 
   const runPrimary = useCallback((

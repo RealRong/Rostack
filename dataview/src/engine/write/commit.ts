@@ -38,22 +38,18 @@ import type {
 import type {
   ActionResult,
   CommitResult,
-  CreatedEntities,
-  TraceDeltaSummary
+  CreatedEntities
 } from '../api/public'
 import {
-  HistoryState
-} from '../api/public/history'
-import {
-  canRedo,
-  canUndo,
   clearHistory,
   clearRedo,
-  historyState,
-  pushUndo,
-  takeRedo,
-  takeUndo
+  createWriteHistory,
+  pushUndo
 } from './history'
+import {
+  summarizeDelta,
+  toTraceKind
+} from './trace'
 
 type Kind =
   | 'write'
@@ -96,82 +92,6 @@ const createdFromChanges = (
   return created.records?.length || created.fields?.length || created.views?.length
     ? created
     : undefined
-}
-
-const touchedCount = (
-  all: boolean,
-  ids: readonly string[]
-): number | 'all' | undefined => {
-  if (all) {
-    return 'all'
-  }
-  return ids.length
-    ? new Set(ids).size
-    : undefined
-}
-
-const summarizeDelta = (
-  delta: NonNullable<CommitResult['changes']>
-): TraceDeltaSummary => {
-  const semantics = new Map<string, number>()
-  delta.semantics.forEach(item => {
-    semantics.set(item.kind, (semantics.get(item.kind) ?? 0) + 1)
-  })
-
-  return {
-    summary: {
-      ...delta.summary
-    },
-    semantics: Array.from(semantics.entries()).map(([kind, count]) => ({
-      kind,
-      ...(count > 1 ? { count } : {})
-    })),
-    entities: {
-      touchedRecordCount: touchedCount(
-        delta.entities.records?.update === 'all'
-        || delta.entities.values?.records === 'all',
-        [
-          ...(delta.entities.records?.add ?? []),
-          ...(Array.isArray(delta.entities.records?.update) ? delta.entities.records.update : []),
-          ...(delta.entities.records?.remove ?? []),
-          ...(Array.isArray(delta.entities.values?.records) ? delta.entities.values.records : [])
-        ]
-      ),
-      touchedFieldCount: touchedCount(
-        delta.entities.fields?.update === 'all'
-        || delta.entities.values?.fields === 'all',
-        [
-          ...(delta.entities.fields?.add ?? []),
-          ...(Array.isArray(delta.entities.fields?.update) ? delta.entities.fields.update : []),
-          ...(delta.entities.fields?.remove ?? []),
-          ...(Array.isArray(delta.entities.values?.fields) ? delta.entities.values.fields : [])
-        ]
-      ),
-      touchedViewCount: touchedCount(
-        delta.entities.views?.update === 'all',
-        [
-          ...(delta.entities.views?.add ?? []),
-          ...(Array.isArray(delta.entities.views?.update) ? delta.entities.views.update : []),
-          ...(delta.entities.views?.remove ?? [])
-        ]
-      )
-    }
-  }
-}
-
-const toTraceKind = (
-  kind: Kind
-): 'dispatch' | 'undo' | 'redo' | 'replace' => {
-  switch (kind) {
-    case 'write':
-      return 'dispatch'
-    case 'undo':
-      return 'undo'
-    case 'redo':
-      return 'redo'
-    case 'load':
-      return 'replace'
-  }
 }
 
 const replayResult = (
@@ -241,35 +161,11 @@ const writePlan = (
   }
 }
 
-const undoPlan = (): Plan<CommitResult> => base => {
-  const replay = takeUndo(base.history)
-  if (!replay.operations) {
-    return {
-      ok: false,
-      result: {
-        issues: [],
-        applied: false
-      }
-    }
-  }
-
-  return replayResult(base, 'undo', replay.operations, replay.history)
-}
-
-const redoPlan = (): Plan<CommitResult> => base => {
-  const replay = takeRedo(base.history)
-  if (!replay.operations) {
-    return {
-      ok: false,
-      result: {
-        issues: [],
-        applied: false
-      }
-    }
-  }
-
-  return replayResult(base, 'redo', replay.operations, replay.history)
-}
+const replayPlan = (
+  kind: 'undo' | 'redo',
+  operations: readonly BaseOperation[],
+  history: State['history']
+): Plan<CommitResult> => base => replayResult(base, kind, operations, history)
 
 const loadPlan = (
   doc: DataDoc
@@ -361,45 +257,22 @@ export const createWriteControl = (input: {
   store: Store
   perf: PerfRuntime
   capturePerf: boolean
-}) => ({
-  run: (batch: ResolvedWriteBatch): ActionResult => commit({
+}) => {
+  const runPlan = <TResult extends CommitResult>(
+    plan: Plan<TResult>
+  ) => commit({
     store: input.store,
     perf: input.perf,
     capturePerf: input.capturePerf,
-    plan: writePlan(batch)
-  }),
-  undo: (): CommitResult => commit({
-    store: input.store,
-    perf: input.perf,
-    capturePerf: input.capturePerf,
-    plan: undoPlan()
-  }),
-  redo: (): CommitResult => commit({
-    store: input.store,
-    perf: input.perf,
-    capturePerf: input.capturePerf,
-    plan: redoPlan()
-  }),
-  load: (doc: DataDoc): CommitResult => commit({
-    store: input.store,
-    perf: input.perf,
-    capturePerf: input.capturePerf,
-    plan: loadPlan(doc)
-  }),
-  history: {
-    state: () => historyState(input.store.get().history),
-    canUndo: () => canUndo(input.store.get().history),
-    canRedo: () => canRedo(input.store.get().history),
-    clear: () => {
-      const current = input.store.get()
-      if (!current.history.undo.length && !current.history.redo.length) {
-        return
-      }
+    plan
+  })
 
-      input.store.set({
-        ...current,
-        history: clearHistory(current.history)
-      })
-    }
+  return {
+    run: (batch: ResolvedWriteBatch): ActionResult => runPlan(writePlan(batch)),
+    load: (doc: DataDoc): CommitResult => runPlan(loadPlan(doc)),
+    history: createWriteHistory({
+      store: input.store,
+      replay: (kind, operations, history) => runPlan(replayPlan(kind, operations, history))
+    })
   }
-})
+}

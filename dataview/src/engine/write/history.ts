@@ -1,6 +1,7 @@
 import type { BaseOperation } from '@dataview/core/contracts/operations'
+import type { CommitResult } from '../api/public'
 import type { HistoryState } from '../api/public/history'
-import type { State } from '../store/state'
+import type { State, Store } from '../store/state'
 
 const trimUndo = (
   entries: State['history']['undo'],
@@ -99,3 +100,45 @@ export const canUndo = (
 export const canRedo = (
   history: State['history']
 ) => history.redo.length > 0
+
+export const createWriteHistory = (input: {
+  store: Store
+  replay: (
+    kind: 'undo' | 'redo',
+    operations: readonly BaseOperation[],
+    history: State['history']
+  ) => CommitResult
+}) => ({
+  state: () => historyState(input.store.get().history),
+  canUndo: () => canUndo(input.store.get().history),
+  canRedo: () => canRedo(input.store.get().history),
+  undo: (): CommitResult => {
+    const replay = takeUndo(input.store.get().history)
+    return replay.operations
+      ? input.replay('undo', replay.operations, replay.history)
+      : {
+          issues: [],
+          applied: false
+        }
+  },
+  redo: (): CommitResult => {
+    const replay = takeRedo(input.store.get().history)
+    return replay.operations
+      ? input.replay('redo', replay.operations, replay.history)
+      : {
+          issues: [],
+          applied: false
+        }
+  },
+  clear: () => {
+    const current = input.store.get()
+    if (!current.history.undo.length && !current.history.redo.length) {
+      return
+    }
+
+    input.store.set({
+      ...current,
+      history: clearHistory(current.history)
+    })
+  }
+})

@@ -24,11 +24,57 @@ import {
 import { createEdgeToolbarRead } from './edgeToolbar'
 import {
   createSelectionRead,
-  type SelectionInternalRead,
+  type SelectionModelRead,
   type SelectionRead
 } from './selection'
-import { createToolRead, type ToolRead } from './tool'
+import type {
+  DrawKind,
+  EdgePresetKey,
+  InsertPresetKey,
+  Tool
+} from '../../types/tool'
 import type { EdgeToolbarContext } from '../../types/edgePresentation'
+
+export type ToolRead = {
+  get: () => Tool
+  type: () => Tool['type']
+  preset: () => EdgePresetKey | InsertPresetKey | DrawKind | undefined
+  is: (type: Tool['type'], preset?: string) => boolean
+}
+
+const readToolPreset = (
+  tool: Tool
+) => (
+  'preset' in tool
+    ? tool.preset
+    : 'kind' in tool
+      ? tool.kind
+      : undefined
+)
+
+const isToolMatch = (
+  tool: Tool,
+  type: Tool['type'],
+  value?: string
+) => {
+  if (tool.type !== type) {
+    return false
+  }
+
+  if (value === undefined) {
+    return true
+  }
+
+  switch (tool.type) {
+    case 'edge':
+    case 'insert':
+      return tool.preset === value
+    case 'draw':
+      return tool.kind === value
+    default:
+      return false
+  }
+}
 
 export type RuntimeRead = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
   history: ReadStore<HistoryState>
@@ -58,13 +104,6 @@ export type RuntimeRead = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
   }
 }
 
-export type RuntimeReadBundle = {
-  read: RuntimeRead
-  internal: {
-    selection: SelectionInternalRead
-  }
-}
-
 export const createRead = ({
   engineRead,
   registry,
@@ -81,7 +120,10 @@ export const createRead = ({
   interaction: Pick<InteractionRuntime, 'mode' | 'chrome'>
   overlay: Pick<EditorOverlay, 'selectors'>
   viewport: EditorViewportRuntime
-}): RuntimeReadBundle => {
+}): {
+  read: RuntimeRead
+  selectionModel: SelectionModelRead
+} => {
   const nodeRead: NodeRead = createNodeRead({
     read: engineRead,
     registry,
@@ -116,9 +158,12 @@ export const createRead = ({
     edit: runtime.state.edit.source,
     interaction
   })
-  const toolRead = createToolRead({
-    tool: runtime.state.tool
-  })
+  const toolRead: ToolRead = {
+    get: () => runtime.state.tool.get(),
+    type: () => runtime.state.tool.get().type,
+    preset: () => readToolPreset(runtime.state.tool.get()),
+    is: (type, preset) => isToolMatch(runtime.state.tool.get(), type, preset)
+  }
 
   return {
     read: {
@@ -154,8 +199,6 @@ export const createRead = ({
         feedback: overlay.selectors.feedback
       }
     },
-    internal: {
-      selection: selectionRead.internal
-    }
+    selectionModel: selectionRead.model
   }
 }

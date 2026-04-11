@@ -3,16 +3,26 @@ import type {
 } from '@whiteboard/core/document'
 import type { Point } from '@whiteboard/core/types'
 import type {
+  EditorRead,
   EditorClipboardApi,
-  EditorClipboardTarget
+  EditorClipboardTarget,
+  EditorSelectionApi,
+  EditorStore
 } from '../../types/editor'
-import type {
-  ClipboardRuntime
-} from './types'
+import type { DocumentRuntime } from './types'
+import type { SessionRuntime } from '../session/types'
 import {
   createClipboardPacket,
   type ClipboardPacket
 } from '../../clipboard/packet'
+
+type ClipboardRuntime = {
+  read: EditorRead
+  document: Pick<DocumentRuntime, 'insert'>
+  session: Pick<SessionRuntime, 'selection'>
+  selection: Pick<EditorSelectionApi, 'delete'>
+  state: Pick<EditorStore, 'viewport' | 'selection'>
+}
 
 const applyInsertedRoots = (input: {
   editor: ClipboardRuntime

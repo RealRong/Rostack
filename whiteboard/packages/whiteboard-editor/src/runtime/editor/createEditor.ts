@@ -41,7 +41,7 @@ import { createEditorInput } from './input'
 import { createEditorState } from './state'
 import { createEditorRuntime } from './runtime'
 import { createSelectionActions } from '../document/selection'
-import { createEdgeLabelActions } from '../document/edge'
+import { createEdgeLabelActions } from '../document/edgeLabel'
 import { createClipboardActions } from '../document/clipboard'
 import {
   dataUpdate,
@@ -174,7 +174,7 @@ export const createEditor = ({
 
   const interactionContext: InteractionContext = {
     read,
-    selection: readBundle.internal.selection,
+    selection: readBundle.selectionModel,
     write,
     config: engine.config,
     snap
@@ -430,7 +430,7 @@ export const createEditor = ({
     () => state.selection,
     {
       box: () => read.selection.box,
-      summary: () => readBundle.internal.selection.model,
+      summary: () => readBundle.selectionModel,
       overlay: () => read.selection.overlay,
       nodeToolbar: () => read.selection.nodeToolbar,
       node: () => read.selection.node

@@ -1,22 +1,27 @@
 import { createFrameNodeInput } from '@whiteboard/core/node'
 import {
-  normalizeSelectionTarget
+  normalizeSelectionTarget,
+  type SelectionTarget
 } from '@whiteboard/core/selection'
-import type { CanvasItemRef, NodeInput } from '@whiteboard/core/types'
-import type { EditorRead } from '../../types/editor'
-import type { SessionRuntime } from '../session/types'
 import type {
-  DocumentRuntime,
-  DocumentSelectionActions,
-  OrderMode
-} from './types'
-import {
-  readGroupTarget,
-  resolveInsertedSelection,
-  toCanvasRefs
-} from './target'
+  CanvasItemRef,
+  GroupId,
+  NodeInput
+} from '@whiteboard/core/types'
+import type {
+  EditorOrderMode,
+  EditorRead,
+  EditorSelectionApi
+} from '../../types/editor'
+import type { SessionRuntime } from '../session/types'
+import type { DocumentRuntime } from './types'
 
 const DEFAULT_FRAME_PADDING = 32
+
+type DocumentSelectionActions = Pick<
+  EditorSelectionApi,
+  'duplicate' | 'delete' | 'order' | 'group' | 'ungroup' | 'frame'
+>
 
 type SelectionActionHost = {
   read: Pick<EditorRead, 'group'>
@@ -30,13 +35,13 @@ type SelectionActionHost = {
 const orderRefs = (
   document: Pick<DocumentRuntime, 'order'>,
   refs: CanvasItemRef[],
-  mode: OrderMode
+  mode: EditorOrderMode
 ) => document.order(refs, mode)
 
 const orderGroups = (
   order: DocumentRuntime['group']['order'],
   groupIds: readonly string[],
-  mode: OrderMode
+  mode: EditorOrderMode
 ) => {
   const ids = [...groupIds]
   if (mode === 'front') {
@@ -50,6 +55,34 @@ const orderGroups = (
   }
 
   return order.sendToBack(ids)
+}
+
+const toCanvasRefs = (
+  target: SelectionTarget
+): CanvasItemRef[] => [
+  ...target.nodeIds.map((id) => ({
+    kind: 'node' as const,
+    id
+  })),
+  ...target.edgeIds.map((id) => ({
+    kind: 'edge' as const,
+    id
+  }))
+]
+
+const readGroupTarget = (
+  read: Pick<EditorRead, 'group'>,
+  groupId: GroupId
+): SelectionTarget | undefined => {
+  const nodeIds = read.group.nodeIds(groupId)
+  const edgeIds = read.group.edgeIds(groupId)
+
+  return nodeIds.length > 0 || edgeIds.length > 0
+    ? {
+        nodeIds,
+        edgeIds
+      }
+    : undefined
 }
 
 const createFrame = (
@@ -103,7 +136,14 @@ export const createSelectionActions = ({
     }
 
     if (options?.selectInserted !== false) {
-      session.selection.replace(resolveInsertedSelection(result.data))
+      session.selection.replace({
+        nodeIds: result.data.roots.nodeIds.length > 0
+          ? result.data.roots.nodeIds
+          : result.data.allNodeIds,
+        edgeIds: result.data.roots.edgeIds.length > 0
+          ? result.data.roots.edgeIds
+          : result.data.allEdgeIds
+      })
     }
 
     return true

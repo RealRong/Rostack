@@ -41,11 +41,9 @@ export type {
 } from './engine'
 export type {
   FieldsEngineApi,
-  KanbanApi,
-  KanbanCreateCardInput,
-  KanbanMoveCardsInput,
   RecordsEngineApi,
   ViewAccessorApi,
+  ViewCellsApi,
   ViewEngineApi,
   ViewGalleryApi,
   ViewItemsApi,

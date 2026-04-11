@@ -5,7 +5,6 @@ import type {
   CustomField,
   CustomFieldId,
   CustomFieldKind,
-  EditTarget,
   FieldId,
   FieldOption,
   Filter,
@@ -125,35 +124,24 @@ export interface ViewOrderApi {
 }
 
 export interface ViewItemsApi {
-  moveAppearances: (
+  move: (
     appearanceIds: readonly AppearanceId[],
     target: Placement
   ) => void
-  createInSection: (
-    sectionKey: SectionKey,
-    input?: {
-      title?: string
-      values?: Partial<Record<CustomFieldId, unknown>>
-    }
-  ) => RecordId | undefined
-  removeAppearances: (appearanceIds: readonly AppearanceId[]) => void
-  writeCell: (cell: CellRef, value: unknown | undefined) => void
+  create: (input: {
+    section: SectionKey
+    title?: string
+    values?: Partial<Record<CustomFieldId, unknown>>
+  }) => RecordId | undefined
+  remove: (appearanceIds: readonly AppearanceId[]) => void
 }
 
-export interface KanbanCreateCardInput {
-  groupKey: string
-  title: string
-}
-
-export interface KanbanMoveCardsInput {
-  recordIds: readonly RecordId[]
-  groupKey: string
-  beforeRecordId?: RecordId
-}
-
-export interface KanbanApi {
-  createCard: (input: KanbanCreateCardInput) => RecordId | undefined
-  moveCards: (input: KanbanMoveCardsInput) => void
+export interface ViewCellsApi {
+  set: (
+    cell: CellRef,
+    value: unknown
+  ) => void
+  clear: (cell: CellRef) => void
 }
 
 export interface ViewEngineApi {
@@ -233,5 +221,5 @@ export interface ViewEngineApi {
   kanban: ViewKanbanApi
   order: ViewOrderApi
   items: ViewItemsApi
-  cards: KanbanApi
+  cells: ViewCellsApi
 }

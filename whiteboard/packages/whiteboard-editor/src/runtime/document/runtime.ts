@@ -3,10 +3,8 @@ import type { EditorRead } from '../../types/editor'
 import type { PreviewRuntime } from '../preview/types'
 import type { SessionRuntime } from '../session/types'
 import { createMindmapRuntime } from './mindmap'
-import { createNodeAppearanceMutations } from '../node/appearance'
+import { createNodeMutations } from '../node/mutations'
 import { createNodePatchWriter } from '../node/patch'
-import { createNodeLockMutations } from '../node/lock'
-import { createNodeShapeMutations } from '../node/shape'
 import { createNodeTextMutations } from '../node/text'
 import type { DocumentRuntime } from './types'
 
@@ -22,14 +20,7 @@ export const createDocumentRuntime = ({
   preview: Pick<PreviewRuntime, 'node'>
 }): DocumentRuntime => {
   const nodePatch = createNodePatchWriter(engine)
-  const nodeAppearance = createNodeAppearanceMutations({
-    document: nodePatch
-  })
-  const nodeLock = createNodeLockMutations({
-    engine,
-    document: nodePatch
-  })
-  const nodeShape = createNodeShapeMutations({
+  const nodeMutations = createNodeMutations({
     engine,
     document: nodePatch
   })
@@ -43,7 +34,7 @@ export const createDocumentRuntime = ({
       ids
     }),
     document: nodePatch,
-    appearance: nodeAppearance
+    appearance: nodeMutations.appearance
   })
 
   const node = {
@@ -80,9 +71,9 @@ export const createDocumentRuntime = ({
     }),
     update: nodePatch.update,
     updateMany: nodePatch.updateMany,
-    lock: nodeLock,
-    shape: nodeShape,
-    appearance: nodeAppearance,
+    lock: nodeMutations.lock,
+    shape: nodeMutations.shape,
+    appearance: nodeMutations.appearance,
     text: {
       commit: nodeText.commit,
       setColor: nodeText.setColor,
@@ -94,49 +85,10 @@ export const createDocumentRuntime = ({
   } satisfies DocumentRuntime['node']
 
   const mindmap = createMindmapRuntime({
-    engine,
-    runtimeHost: {
-      read,
-      document: {
-        mindmap: {
-          create: (payload) => engine.execute({
-            type: 'mindmap.create',
-            payload
-          }),
-          delete: (ids) => engine.execute({
-            type: 'mindmap.delete',
-            ids
-          }),
-          insert: (id, input) => engine.execute({
-            type: 'mindmap.insert',
-            id,
-            input
-          }),
-          moveSubtree: (id, input) => engine.execute({
-            type: 'mindmap.move',
-            id,
-            input
-          }),
-          removeSubtree: (id, input) => engine.execute({
-            type: 'mindmap.remove',
-            id,
-            input
-          }),
-          cloneSubtree: (id, input) => engine.execute({
-            type: 'mindmap.clone',
-            id,
-            input
-          }),
-          updateNode: (id, input) => engine.execute({
-            type: 'mindmap.patchNode',
-            id,
-            input
-          })
-        },
-        node: {
-          update: nodePatch.update
-        }
-      }
+    execute: engine.execute,
+    read,
+    node: {
+      update: nodePatch.update
     }
   })
 

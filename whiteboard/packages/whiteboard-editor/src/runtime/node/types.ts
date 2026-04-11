@@ -15,11 +15,6 @@ export type NodePatchWriter = {
   ) => CommandResult
 }
 
-export type NodeLockMutations = {
-  set: (nodeIds: readonly NodeId[], locked: boolean) => CommandResult
-  toggle: (nodeIds: readonly NodeId[]) => CommandResult
-}
-
 export type NodeTextMutations = {
   preview: (input: {
     nodeId: NodeId
@@ -61,19 +56,4 @@ export type NodeTextMutations = {
     nodeIds: readonly NodeId[],
     align?: 'left' | 'center' | 'right'
   ) => CommandResult
-}
-
-export type NodeShapeMutations = {
-  setKind: (nodeIds: readonly NodeId[], kind: string) => CommandResult
-}
-
-export type NodeAppearanceMutations = {
-  setFill: (nodeIds: readonly NodeId[], fill: string) => CommandResult
-  setFillOpacity: (nodeIds: readonly NodeId[], opacity?: number) => CommandResult
-  setStroke: (nodeIds: readonly NodeId[], stroke: string) => CommandResult
-  setStrokeWidth: (nodeIds: readonly NodeId[], width: number) => CommandResult
-  setStrokeOpacity: (nodeIds: readonly NodeId[], opacity?: number) => CommandResult
-  setStrokeDash: (nodeIds: readonly NodeId[], dash?: readonly number[]) => CommandResult
-  setOpacity: (nodeIds: readonly NodeId[], opacity: number) => CommandResult
-  setTextColor: (nodeIds: readonly NodeId[], color: string) => CommandResult
 }

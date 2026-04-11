@@ -20,10 +20,8 @@ export type {
   Kanban,
   KanbanController,
   KanbanViewProps,
-  KanbanCreateCardInput,
   KanbanNewRecordPosition,
-  KanbanOptions,
-  KanbanMoveCardsInput
+  KanbanOptions
 } from './views/kanban'
 export { Page } from './page'
 export type {

@@ -26,10 +26,6 @@ import {
 import type {
   EdgeOverlayProjection
 } from '../overlay/types'
-import {
-  createOverlayStateStore,
-  createPatchedItemStore
-} from './keyed'
 import type { NodeCanvasSnapshot, NodeRead } from './node'
 import {
   type EditSession
@@ -250,147 +246,6 @@ const isEdgeViewStateEqual = (
   )
 )
 
-const createEdgeItemStore = ({
-  read,
-  overlay,
-  edit
-}: {
-  read: Pick<EngineRead, 'edge'>
-  overlay: KeyedReadStore<EdgeId, EdgeOverlayProjection>
-  edit: ReadStore<EditSession>
-}): EdgeRead['item'] => createPatchedItemStore({
-  source: read.edge.item,
-  overlay,
-  project: (entry, projection, readStore) => {
-    const nextEdge = applyEdgePatch(entry.edge, projection.patch)
-    const session = readStore(edit)
-    if (
-      !session
-      || session.kind !== 'edge-label'
-      || session.edgeId !== entry.edge.id
-    ) {
-      return nextEdge === entry.edge
-        ? entry
-        : {
-            ...entry,
-            edge: nextEdge
-          }
-    }
-
-    const nextLabels = nextEdge.labels?.map((label) => (
-      label.id !== session.labelId
-        ? label
-        : {
-            ...label,
-            text: session.draft.text
-          }
-    ))
-
-    return {
-      ...entry,
-      edge: {
-        ...nextEdge,
-        ...(nextLabels ? { labels: nextLabels } : {})
-      }
-    }
-  },
-  isEqual: isEdgeItemEqual
-})
-
-const createEdgeStateStore = ({
-  overlay
-}: {
-  overlay: KeyedReadStore<EdgeId, EdgeOverlayProjection>
-}): EdgeRead['state'] => createOverlayStateStore({
-  overlay,
-  project: toEdgeRuntimeState,
-  isEqual: isEdgeStateEqual
-})
-
-const createEdgeResolvedStore = ({
-  item,
-  nodeCanvas
-}: {
-  item: EdgeRead['item']
-  nodeCanvas: KeyedReadStore<NodeId, NodeCanvasSnapshot | undefined>
-}): EdgeRead['resolved'] => createKeyedDerivedStore({
-  isEqual: isEdgeViewEqual,
-  get: (readStore, edgeId: EdgeId) => {
-    const entry = readStore(item, edgeId)
-    if (!entry) {
-      return undefined
-    }
-
-    const source =
-      entry.edge.source.kind === 'node'
-        ? readStore(nodeCanvas, entry.edge.source.nodeId)
-        : undefined
-    const target =
-      entry.edge.target.kind === 'node'
-        ? readStore(nodeCanvas, entry.edge.target.nodeId)
-        : undefined
-
-    if (
-      (entry.edge.source.kind === 'node' && !source)
-      || (entry.edge.target.kind === 'node' && !target)
-    ) {
-      return undefined
-    }
-
-    try {
-      return resolveEdgeView({
-        edge: entry.edge,
-        source,
-        target
-      })
-    } catch {
-      return undefined
-    }
-  }
-})
-
-const createEdgeViewStore = ({
-  item,
-  state,
-  resolved
-}: {
-  item: EdgeRead['item']
-  state: EdgeRead['state']
-  resolved: EdgeRead['resolved']
-}): EdgeRead['view'] => createKeyedDerivedStore({
-  get: (readStore, edgeId: EdgeId) => {
-    const resolvedItem = readStore(item, edgeId)
-    const resolvedView = readStore(resolved, edgeId)
-    if (!resolvedItem || !resolvedView) {
-      return undefined
-    }
-
-    const resolvedState = readStore(state, edgeId)
-    return {
-      edgeId,
-      edge: resolvedItem.edge,
-      patched: resolvedState.patched,
-      activeRouteIndex: resolvedState.activeRouteIndex,
-      ...resolvedView
-    }
-  },
-  isEqual: isEdgeViewStateEqual
-})
-
-const createEdgeBoundsStore = ({
-  resolved
-}: {
-  resolved: EdgeRead['resolved']
-}): EdgeRead['bounds'] => createKeyedDerivedStore({
-  get: (readStore, edgeId: EdgeId) => {
-    const resolvedEntry = readStore(resolved, edgeId)
-    return resolvedEntry
-      ? getEdgePathBounds(resolvedEntry.path)
-      : undefined
-  },
-  isEqual: isSameOptionalRectTuple
-})
-
 export const createEdgeRead = ({
   read,
   node,
@@ -406,25 +261,115 @@ export const createEdgeRead = ({
     connect: boolean
   }
 }): EdgeRead => {
-  const item = createEdgeItemStore({
-    read,
-    overlay,
-    edit
+  const item: EdgeRead['item'] = createKeyedDerivedStore({
+    get: (readStore, edgeId: EdgeId) => {
+      const entry = readStore(read.edge.item, edgeId)
+      if (!entry) {
+        return undefined
+      }
+
+      const projection = readStore(overlay, edgeId)
+      const nextEdge = applyEdgePatch(entry.edge, projection.patch)
+      const session = readStore(edit)
+      if (
+        !session
+        || session.kind !== 'edge-label'
+        || session.edgeId !== entry.edge.id
+      ) {
+        return nextEdge === entry.edge
+          ? entry
+          : {
+              ...entry,
+              edge: nextEdge
+            }
+      }
+
+      const nextLabels = nextEdge.labels?.map((label) => (
+        label.id !== session.labelId
+          ? label
+          : {
+              ...label,
+              text: session.draft.text
+            }
+      ))
+
+      return {
+        ...entry,
+        edge: {
+          ...nextEdge,
+          ...(nextLabels ? { labels: nextLabels } : {})
+        }
+      }
+    },
+    isEqual: isEdgeItemEqual
   })
-  const state = createEdgeStateStore({
-    overlay
+  const state: EdgeRead['state'] = createKeyedDerivedStore({
+    get: (readStore, edgeId: EdgeId) => toEdgeRuntimeState(
+      readStore(overlay, edgeId)
+    ),
+    isEqual: isEdgeStateEqual
   })
-  const resolved = createEdgeResolvedStore({
-    item,
-    nodeCanvas: node.canvas
+  const resolved: EdgeRead['resolved'] = createKeyedDerivedStore({
+    isEqual: isEdgeViewEqual,
+    get: (readStore, edgeId: EdgeId) => {
+      const entry = readStore(item, edgeId)
+      if (!entry) {
+        return undefined
+      }
+
+      const source =
+        entry.edge.source.kind === 'node'
+          ? readStore(node.canvas, entry.edge.source.nodeId)
+          : undefined
+      const target =
+        entry.edge.target.kind === 'node'
+          ? readStore(node.canvas, entry.edge.target.nodeId)
+          : undefined
+
+      if (
+        (entry.edge.source.kind === 'node' && !source)
+        || (entry.edge.target.kind === 'node' && !target)
+      ) {
+        return undefined
+      }
+
+      try {
+        return resolveEdgeView({
+          edge: entry.edge,
+          source,
+          target
+        })
+      } catch {
+        return undefined
+      }
+    }
   })
-  const view = createEdgeViewStore({
-    item,
-    state,
-    resolved
+  const view: EdgeRead['view'] = createKeyedDerivedStore({
+    get: (readStore, edgeId: EdgeId) => {
+      const resolvedItem = readStore(item, edgeId)
+      const resolvedView = readStore(resolved, edgeId)
+      if (!resolvedItem || !resolvedView) {
+        return undefined
+      }
+
+      return {
+        edgeId,
+        edge: resolvedItem.edge,
+        patched: readStore(state, edgeId).patched,
+        activeRouteIndex: readStore(state, edgeId).activeRouteIndex,
+        ...resolvedView
+      }
+    },
+    isEqual: isEdgeViewStateEqual
   })
-  const bounds = createEdgeBoundsStore({
-    resolved
+  const bounds: EdgeRead['bounds'] = createKeyedDerivedStore({
+    get: (readStore, edgeId: EdgeId) => {
+      const resolvedEntry = readStore(resolved, edgeId)
+      return resolvedEntry
+        ? getEdgePathBounds(resolvedEntry.path)
+        : undefined
+    },
+    isEqual: isSameOptionalRectTuple
   })
 
   const connectCandidates: EdgeRead['connectCandidates'] = (

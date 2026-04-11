@@ -66,7 +66,7 @@ import type {
   InsertPresetKey
 } from './tool'
 import type { RuntimeRead } from '../runtime/read'
-import type { SelectionInternalRead } from '../runtime/read/selection'
+import type { SelectionModelRead } from '../runtime/read/selection'
 import type {
   ViewportCommands,
   ViewportInputRuntime,
@@ -591,7 +591,7 @@ export type EditorViewportSelect = (() => EditorStore['viewport']) & {
 
 export type EditorSelectionSelect = (() => EditorStore['selection']) & {
   box: () => RuntimeRead['selection']['box']
-  summary: () => SelectionInternalRead['model']
+  summary: () => SelectionModelRead
   overlay: () => RuntimeRead['selection']['overlay']
   nodeToolbar: () => RuntimeRead['selection']['nodeToolbar']
   node: () => RuntimeRead['selection']['node']

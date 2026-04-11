@@ -149,7 +149,7 @@ const resolveSelectionPress = (
   if (!targetInput) {
     return null
   }
-  const selectionModel = ctx.selection.model.get()
+  const selectionModel = ctx.selection.get()
 
   const resolved = resolveSelectionPressDecision({
     getNode: (nodeId) => ctx.read.node.item.get(nodeId)?.node,

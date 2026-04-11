@@ -13,39 +13,18 @@ import type {
 } from '@whiteboard/core/types'
 import type { CommandResult } from '@engine-types/result'
 import type {
-  EditorRead,
   EditorDocumentApi,
   EditorEdgesApi,
   EditorHistoryApi,
   EditorMindmapCommands,
   EditorNodesApi,
-  EditorOrderMode,
-  EditorStore,
-  EditorSelectionApi
+  EditorOrderMode
 } from '../../types/editor'
 import type {
-  NodeAppearanceMutations,
-  NodeLockMutations,
   NodePatchWriter,
-  NodeShapeMutations,
   NodeTextMutations
 } from '../node/types'
-import type { SessionRuntime } from '../session/types'
-
-export type OrderMode = EditorOrderMode
-
-export type DocumentSelectionActions = Pick<
-  EditorSelectionApi,
-  'duplicate' | 'delete' | 'order' | 'group' | 'ungroup' | 'frame'
->
-
-export type ClipboardRuntime = {
-  read: EditorRead
-  document: Pick<DocumentRuntime, 'insert'>
-  session: Pick<SessionRuntime, 'selection'>
-  selection: Pick<EditorSelectionApi, 'delete'>
-  state: Pick<EditorStore, 'viewport' | 'selection'>
-}
+import type { NodeMutations } from '../node/mutations'
 
 export type DocumentNodeTextApi = Pick<
   NodeTextMutations,
@@ -62,10 +41,10 @@ export type DocumentNodeApi = {
   duplicate: EditorNodesApi['duplicate']
   update: NodePatchWriter['update']
   updateMany: NodePatchWriter['updateMany']
-  lock: NodeLockMutations
+  lock: NodeMutations['lock']
   text: DocumentNodeTextApi
-  shape: NodeShapeMutations
-  appearance: NodeAppearanceMutations
+  shape: NodeMutations['shape']
+  appearance: NodeMutations['appearance']
 }
 
 export type DocumentRuntime = {
@@ -76,7 +55,7 @@ export type DocumentRuntime = {
   ) => CommandResult<Omit<SliceInsertResult, 'operations'>>
   delete: (refs: CanvasItemRef[]) => CommandResult
   duplicate: (refs: CanvasItemRef[]) => CommandResult<Omit<SliceInsertResult, 'operations'>>
-  order: (refs: CanvasItemRef[], mode: OrderMode) => CommandResult
+  order: (refs: CanvasItemRef[], mode: EditorOrderMode) => CommandResult
   background: {
     set: (background?: Document['background']) => CommandResult
   }

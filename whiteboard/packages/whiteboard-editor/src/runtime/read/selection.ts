@@ -47,9 +47,7 @@ export type SelectionModel = {
   affordance: SelectionAffordance
 }
 
-export type SelectionInternalRead = {
-  model: ReadStore<SelectionModel>
-}
+export type SelectionModelRead = ReadStore<SelectionModel>
 
 const isSelectionTransformBoxEqual = (
   left: SelectionTransformBox,
@@ -138,7 +136,7 @@ export const createSelectionRead = ({
   interaction: Pick<InteractionRuntime, 'mode' | 'chrome'>
 }): {
   public: SelectionRead
-  internal: SelectionInternalRead
+  model: SelectionModelRead
 } => {
   const summary = createDerivedStore<SelectionSummary>({
     get: (readStore) => {
@@ -266,8 +264,6 @@ export const createSelectionRead = ({
       overlay,
       nodeToolbar
     },
-    internal: {
-      model
-    }
+    model
   }
 }

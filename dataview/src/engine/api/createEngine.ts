@@ -76,8 +76,8 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       state: write.history.state,
       canUndo: write.history.canUndo,
       canRedo: write.history.canRedo,
-      undo: write.undo,
-      redo: write.redo,
+      undo: write.history.undo,
+      redo: write.history.redo,
       clear: write.history.clear
     },
     document: {

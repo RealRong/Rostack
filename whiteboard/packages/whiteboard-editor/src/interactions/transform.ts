@@ -173,7 +173,7 @@ const readSelectionTransformSpec = (
   handle: TransformPickHandle,
   input: PointerDownInput
 ): TransformSpec<Node> | undefined => {
-  const selectionModel = ctx.selection.model.get()
+  const selectionModel = ctx.selection.get()
   const selection = selectionModel.summary
   const affordance = selectionModel.affordance
   if (

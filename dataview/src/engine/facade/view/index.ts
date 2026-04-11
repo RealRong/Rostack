@@ -22,27 +22,21 @@ import {
   readSectionRecordIds,
   move,
   toRecordField,
-  type CellRef,
+  type CellRef
 } from '@dataview/engine/project'
 import type {
   AppearanceId,
   AppearanceList,
   Section,
-  SectionKey,
   ViewGroupProjection
-} from '@dataview/engine/project'
-import type {
-  Placement
 } from '@dataview/engine/project'
 import { createRecordId } from '@dataview/engine/command/entityId'
 import { meta, renderMessage } from '@dataview/meta'
 import type {
   Engine,
+  ViewCellsApi,
   ViewGalleryApi,
   ViewKanbanApi,
-  KanbanApi,
-  KanbanCreateCardInput,
-  KanbanMoveCardsInput,
   ViewItemsApi,
   ViewOrderApi,
   ViewEngineApi,
@@ -81,10 +75,10 @@ const sameValue = (
   return false
 }
 
-const toValueCommand = (
+const toRecordFieldAction = (
   recordId: RecordId,
   fieldId: FieldId,
-  next: Exclude<GroupWriteResult, { kind: 'invalid' }>
+  value: unknown | undefined
 ): Action => (
   isTitleFieldId(fieldId)
     ? {
@@ -94,12 +88,12 @@ const toValueCommand = (
           recordId
         },
         patch: {
-          title: next.kind === 'clear'
+          title: value === undefined
             ? ''
-            : String(next.value ?? '')
+            : String(value ?? '')
         }
       }
-    : next.kind === 'clear'
+    : value === undefined
       ? {
           type: 'value.clear',
           target: {
@@ -115,8 +109,20 @@ const toValueCommand = (
             recordId
           },
           field: fieldId,
-          value: next.value
+          value
         }
+)
+
+const toValueCommand = (
+  recordId: RecordId,
+  fieldId: FieldId,
+  next: Exclude<GroupWriteResult, { kind: 'invalid' }>
+): Action => toRecordFieldAction(
+  recordId,
+  fieldId,
+  next.kind === 'clear'
+    ? undefined
+    : next.value
 )
 
 const createGroupWriteCommands = (input: {
@@ -261,7 +267,7 @@ export const createViewEngineApi = (options: {
   }
 
   const items: ViewItemsApi = {
-    moveAppearances: (appearanceIds, target) => {
+    move: (appearanceIds, target) => {
       const currentView = readCurrentProjection()
       if (!currentView) {
         return
@@ -329,7 +335,7 @@ export const createViewEngineApi = (options: {
         dispatch(nextCommands)
       }
     },
-    createInSection: (sectionKey, input) => {
+    create: input => {
       const currentView = readCurrentProjection()
       if (!currentView) {
         return undefined
@@ -340,10 +346,10 @@ export const createViewEngineApi = (options: {
         return undefined
       }
 
-      const values: Partial<Record<string, unknown>> = {
-        ...(input?.values ?? {})
+      const values: Partial<Record<FieldId, unknown>> = {
+        ...(input.values ?? {})
       }
-      let title = input?.title?.trim()
+      let title = input.title?.trim()
 
       if (groupWrite) {
         const fieldId = groupWrite.group.field
@@ -353,7 +359,7 @@ export const createViewEngineApi = (options: {
           currentValue: isTitleFieldId(fieldId)
             ? title
             : values[fieldId],
-          toKey: sectionKey
+          toKey: input.section
         })
         if (next.kind === 'invalid') {
           return undefined
@@ -390,7 +396,7 @@ export const createViewEngineApi = (options: {
             sections: currentView.sections,
             appearances: currentView.appearances
           },
-          sectionKey
+          input.section
         )[0]
         const moveCommand = commands.createMoveOrderCommand([recordId], beforeRecordId)
         if (moveCommand) {
@@ -403,7 +409,7 @@ export const createViewEngineApi = (options: {
         ? recordId
         : undefined
     },
-    removeAppearances: appearanceIds => {
+    remove: appearanceIds => {
       const currentView = readCurrentProjection()
       if (!currentView) {
         return
@@ -418,65 +424,38 @@ export const createViewEngineApi = (options: {
         type: 'record.remove',
         recordIds: [...recordIds]
       })
-    },
-    writeCell: (cell, value) => {
+    }
+  }
+
+  const writeCell = (
+    currentView: ActiveViewContext,
+    cell: CellRef,
+    value: unknown | undefined
+  ) => {
+    const target = toRecordField(cell, currentView.appearances)
+    if (!target) {
+      return
+    }
+
+    dispatch(toRecordFieldAction(target.recordId, target.fieldId, value))
+  }
+
+  const cells: ViewCellsApi = {
+    set: (cell, value) => {
       const currentView = readCurrentProjection()
       if (!currentView) {
         return
       }
 
-      const target = toRecordField(cell, currentView.appearances)
-      if (!target) {
+      writeCell(currentView, cell, value)
+    },
+    clear: cell => {
+      const currentView = readCurrentProjection()
+      if (!currentView) {
         return
       }
 
-      if (value === undefined) {
-        dispatch(
-          isTitleFieldId(target.fieldId)
-            ? {
-                type: 'record.patch',
-                target: {
-                  type: 'record',
-                  recordId: target.recordId
-                },
-                patch: {
-                  title: ''
-                }
-              }
-            : {
-                type: 'value.clear',
-                target: {
-                  type: 'record',
-                  recordId: target.recordId
-                },
-                field: target.fieldId
-              }
-        )
-        return
-      }
-
-      dispatch(
-        isTitleFieldId(target.fieldId)
-          ? {
-              type: 'record.patch',
-              target: {
-                type: 'record',
-                recordId: target.recordId
-              },
-              patch: {
-                title: String(value ?? '')
-              }
-            }
-          : {
-              type: 'value.set',
-              target: {
-                type: 'record',
-                recordId: target.recordId
-              },
-              field: target.fieldId,
-              value
-            }
-      )
+      writeCell(currentView, cell, undefined)
     }
   }
 
@@ -547,124 +526,6 @@ export const createViewEngineApi = (options: {
     }
   }
 
-  const cards: KanbanApi = {
-    createCard: (input: KanbanCreateCardInput) => {
-      const currentView = readCurrentProjection()
-      let title = input.title.trim()
-      if (!currentView || !title) {
-        return undefined
-      }
-
-      const groupWrite = readGroupWriteContext(currentView.groupProjection)
-      if (currentView.view.group && !groupWrite) {
-        return undefined
-      }
-
-      const values: Partial<Record<CustomFieldId, unknown>> = {}
-
-      if (groupWrite) {
-        const fieldId = groupWrite.group.field
-        const next = groupCore.write.next({
-          field: groupWrite.field,
-          group: groupWrite.group,
-          currentValue: isTitleFieldId(fieldId)
-            ? title
-            : values[fieldId],
-          toKey: input.groupKey
-        })
-        if (next.kind === 'invalid') {
-          return undefined
-        }
-
-        if (isTitleFieldId(fieldId)) {
-          title = next.kind === 'clear'
-            ? ''
-            : String(next.value ?? '')
-        } else if (next.kind === 'clear') {
-          delete values[fieldId]
-        } else {
-          values[fieldId] = next.value
-        }
-      }
-
-      const recordId = createRecordId()
-      const nextCommands: Action[] = [{
-        type: 'record.create',
-        input: {
-          id: recordId,
-          title,
-          values
-        }
-      }]
-
-      const beforeRecordId = (
-        currentView.view.type === 'kanban'
-        && currentView.view.options.kanban.newRecordPosition === 'start'
-        && !currentView.view.sort.length
-      )
-        ? readSectionRecordIds(
-            {
-              sections: currentView.sections,
-              appearances: currentView.appearances
-            },
-            input.groupKey
-          )[0]
-        : undefined
-      const insertOrderCommand = beforeRecordId
-        ? commands.createMoveOrderCommand([recordId], beforeRecordId)
-        : undefined
-      if (insertOrderCommand) {
-        nextCommands.push(insertOrderCommand)
-      }
-
-      const result = dispatch(nextCommands)
-      return result.applied
-        ? recordId
-        : undefined
-    },
-    moveCards: (input: KanbanMoveCardsInput) => {
-      const currentView = readCurrentProjection()
-      const recordIds = Array.from(new Set(input.recordIds))
-
-      if (!currentView || !recordIds.length) {
-        return
-      }
-
-      const groupWrite = readGroupWriteContext(currentView.groupProjection)
-      if (!groupWrite) {
-        return
-      }
-
-      const moveCommand = commands.createMoveOrderCommand(recordIds, input.beforeRecordId)
-      if (!moveCommand) {
-        return
-      }
-
-      const valueCommands: Action[] = []
-      const fieldId = groupWrite.group.field
-
-      for (const recordId of recordIds) {
-        const record = options.engine.read.record.get(recordId)
-        const currentValue = isTitleFieldId(fieldId)
-          ? record?.title
-          : record?.values[fieldId]
-        const next = groupCore.write.next({
-          field: groupWrite.field,
-          group: groupWrite.group,
-          currentValue,
-          toKey: input.groupKey
-        })
-        if (next.kind === 'invalid') {
-          return
-        }
-
-        valueCommands.push(toValueCommand(recordId, fieldId, next))
-      }
-
-      dispatch([...valueCommands, moveCommand])
-    }
-  }
-
   return {
     type: commands.type,
     search: commands.search,
@@ -678,6 +539,6 @@ export const createViewEngineApi = (options: {
     kanban: commands.kanban,
     order,
     items,
-    cards
+    cells
   }
 }

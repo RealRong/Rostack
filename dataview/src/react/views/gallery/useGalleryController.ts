@@ -205,7 +205,7 @@ export const useGalleryController = (input: {
         return
       }
 
-      dataView.engine.view(currentView.view.id).items.moveAppearances(ids, {
+      dataView.engine.view(currentView.view.id).items.move(ids, {
         section,
         ...(target.beforeAppearanceId ? { before: target.beforeAppearanceId } : {})
       })

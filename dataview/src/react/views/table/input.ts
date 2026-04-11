@@ -1,9 +1,7 @@
 import type { KeyInput } from '@dataview/react/interaction'
-import { isTitleFieldId } from '@dataview/core/field'
 import type { FieldId } from '@dataview/core/contracts'
 import {
-  type CellRef,
-  toRecordField
+  type CellRef
 } from '@dataview/engine/project'
 import type {
   TableCurrentView as CurrentView
@@ -28,51 +26,6 @@ import {
 } from '@dataview/table'
 import type { CellOpenInput } from './openCell'
 import type { GridSelectionStore } from './gridSelection'
-
-const clearRecordField = (input: {
-  editor: Engine
-  recordId: string
-  fieldId: string
-}) => {
-  if (isTitleFieldId(input.fieldId)) {
-    input.editor.action({
-      type: 'record.patch',
-      target: {
-        type: 'record',
-        recordId: input.recordId
-      },
-      patch: {
-        title: ''
-      }
-    })
-    return
-  }
-
-  input.editor.records.clearValue(input.recordId, input.fieldId)
-}
-
-const setRecordField = (input: {
-  editor: Engine
-  recordId: string
-  fieldId: string
-  value: unknown
-}) => {
-  if (isTitleFieldId(input.fieldId)) {
-    input.editor.action({
-      type: 'record.patch',
-      target: {
-        type: 'record',
-        recordId: input.recordId
-      },
-      patch: {
-        title: String(input.value ?? '')
-      }
-    })
-    return
-  }
-
-  input.editor.records.setValue(input.recordId, input.fieldId, input.value)
-}
 
 const currentKey = (
   input: TableKeyInput | KeyInput
@@ -158,23 +111,19 @@ export const handleTableKey = (input: {
           seedDraft: action.seedDraft
         })
         return true
-      case 'clear-cells':
+      case 'clear-cells': {
+        const view = input.editor.view(input.currentView.view.id)
         action.appearanceIds.forEach(appearanceId => {
-          const recordId = input.currentView.appearances.get(appearanceId)?.recordId
-          if (!recordId) {
-            return
-          }
-
           action.fieldIds.forEach(fieldId => {
-            clearRecordField({
-              editor: input.editor,
-              recordId,
+            view.cells.clear({
+              appearanceId,
               fieldId
             })
           })
         })
         input.reveal()
         return true
+      }
     }
   }
 
@@ -220,7 +169,7 @@ export const handleTableKey = (input: {
     }
     case 'Backspace':
     case 'Delete':
-      input.editor.view(input.currentView.view.id).items.removeAppearances(
+      input.editor.view(input.currentView.view.id).items.remove(
         currentSelection.ids
       )
       input.setKeyboardMode()
@@ -257,30 +206,14 @@ export const applyPaste = (input: {
     return false
   }
 
+  const view = input.editor.view(currentView.view.id)
   entries.forEach(entry => {
-    const target = toRecordField({
-      appearanceId: entry.cell.appearanceId,
-      fieldId: entry.cell.fieldId
-    }, currentView.appearances)
-    if (!target) {
-      return
-    }
-
     if (entry.value === undefined) {
-      clearRecordField({
-        editor: input.editor,
-        recordId: target.recordId,
-        fieldId: target.fieldId
-      })
+      view.cells.clear(entry.cell)
       return
     }
 
-    setRecordField({
-      editor: input.editor,
-      recordId: target.recordId,
-      fieldId: target.fieldId,
-      value: entry.value
-    })
+    view.cells.set(entry.cell, entry.value)
   })
 
   return true

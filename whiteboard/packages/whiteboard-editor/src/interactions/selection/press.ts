@@ -1,8 +1,4 @@
-import {
-  isSelectionTargetEqual,
-} from '@whiteboard/core/selection'
 import { createTimeoutTask, type TimeoutTask } from '@shared/core'
-import type { Node } from '@whiteboard/core/types'
 import type { EditField } from '../../runtime/state/edit'
 import {
   GestureTuning
@@ -23,99 +19,23 @@ import { createMarqueeInteraction } from './marquee'
 import { createMoveInteraction } from './move'
 import {
   matchSelectionTap,
-  resolveSelectionPressDecision,
-  type SelectionDragDecision,
-  type SelectionMarqueeDecision,
-  type SelectionPressDecision,
-  type SelectionPressTarget,
-  type SelectionPressTargetInput
-} from './pressPolicy'
+  resolveSelectionPress as resolveSelectionPressPlan,
+  resolveSelectionPressTarget,
+  resolveSelectionEditField,
+  type SelectionPressDragPlan,
+  type SelectionMarqueePlan,
+  type SelectionPressPlan,
+  type SelectionPressTarget
+} from '../../runtime/selectionPress'
 
 type SelectionPressField = EditField
-type SelectionSubjectInput = Pick<PointerDownInput, 'pick'>
 
-const resolveImplicitEditField = (
-  node: Node | undefined
-): EditField | undefined => {
-  if (!node) {
-    return undefined
-  }
-
-  switch (node.type) {
-    case 'text':
-    case 'sticky':
-    case 'shape':
-      return 'text'
-    default:
-      return undefined
-  }
-}
-
-const isGroupSelectionCurrent = (
-  ctx: InteractionContext,
-  groupId: string,
-  target: {
-    nodeIds: readonly string[]
-    edgeIds: readonly string[]
-  }
-) => {
-  const selection = ctx.read.group.target(groupId)
-  return selection
-    ? isSelectionTargetEqual(selection, target)
-    : false
-}
-
-const resolveSelectionPressTargetInput = (
-  ctx: InteractionContext,
-  input: SelectionSubjectInput
-): SelectionPressTargetInput<SelectionPressField> | undefined => {
-  switch (input.pick.kind) {
-    case 'background':
-      return {
-        kind: 'background'
-      }
-    case 'group':
-      return {
-        kind: 'group',
-        groupId: input.pick.id
-      }
-    case 'selection-box':
-      return {
-        kind: 'selection-box',
-        part: input.pick.part
-      }
-    case 'node': {
-      if (input.pick.part === 'field') {
-        return {
-          kind: 'node',
-          nodeId: input.pick.id,
-          part: 'field',
-          field: input.pick.field
-        }
-      }
-
-      if (input.pick.part === 'body') {
-        return {
-          kind: 'node',
-          nodeId: input.pick.id,
-          part: 'body'
-        }
-      }
-
-      return undefined
-    }
-    case 'edge':
-    case 'mindmap':
-      return undefined
-  }
-}
-
-const resolveSelectionPress = (
+const resolveSelectionPressAction = (
   ctx: InteractionContext,
   input: PointerDownInput
 ): {
   target: SelectionPressTarget<SelectionPressField>
-  decision: SelectionPressDecision<SelectionPressField>
+  plan: SelectionPressPlan<SelectionPressField>
 } | null => {
   const tool = ctx.read.tool.get()
 
@@ -130,29 +50,31 @@ const resolveSelectionPress = (
     return null
   }
 
-  const targetInput = resolveSelectionPressTargetInput(ctx, input)
-  if (!targetInput) {
+  const target = resolveSelectionPressTarget<SelectionPressField>(input.pick)
+  if (!target) {
     return null
   }
   const selectionModel = ctx.selection.get()
 
-  const resolved = resolveSelectionPressDecision({
-    getNode: (nodeId) => ctx.read.node.item.get(nodeId)?.node,
-    canEnter: (nodeId) => {
-      const node = ctx.read.node.item.get(nodeId)?.node
-      return node
-        ? ctx.read.node.capability(node).enter
-        : false
+  const resolved = resolveSelectionPressPlan({
+    node: {
+      get: (nodeId) => ctx.read.node.item.get(nodeId)?.node,
+      canEnter: (nodeId) => {
+        const node = ctx.read.node.item.get(nodeId)?.node
+        return node
+          ? ctx.read.node.capability(node).enter
+          : false
+      },
+      groupId: ctx.read.group.ofNode
     },
-    getNodeGroupId: ctx.read.group.ofNode,
-    getGroupSelection: (groupId) => ctx.read.group.target(groupId),
-    isGroupSelected: (groupId, target) =>
-      isGroupSelectionCurrent(ctx, groupId, target)
+    group: {
+      target: (groupId) => ctx.read.group.target(groupId)
+    }
   }, {
     modifiers: input.modifiers,
     selection: selectionModel.summary,
     affordance: selectionModel.affordance,
-    targetInput
+    target
   })
   if (!resolved) {
     return null
@@ -160,7 +82,7 @@ const resolveSelectionPress = (
 
   return {
     target: resolved.target,
-    decision: resolved.decision
+    plan: resolved.plan
   }
 }
 
@@ -168,7 +90,7 @@ const createSelectionSession = (
   input: {
     ctx: InteractionContext
     start: PointerDownInput
-    decision: SelectionDragDecision | SelectionMarqueeDecision | undefined
+    decision: SelectionPressDragPlan | SelectionMarqueePlan | undefined
   }
 ) => {
   if (!input.decision) {
@@ -179,7 +101,7 @@ const createSelectionSession = (
     return createMoveInteraction(input.ctx, {
       start: input.start,
       target: input.decision.target,
-      selection: input.decision.selection
+      visibility: input.decision.visibility
     })
   }
 
@@ -194,7 +116,7 @@ const createPressSession = (
   start: PointerDownInput,
   resolved: {
     target: SelectionPressTarget<SelectionPressField>
-    decision: SelectionPressDecision<SelectionPressField>
+    plan: SelectionPressPlan<SelectionPressField>
   }
 ): InteractionSession => {
   let holdTask: TimeoutTask | null = null
@@ -205,7 +127,7 @@ const createPressSession = (
   const pressSession: InteractionSession = {
     mode: 'press',
     pointerId: start.pointerId,
-    chrome: resolved.decision.chrome,
+    chrome: resolved.plan.chrome,
     attach: (dispatch) => {
       dispatchTransition = dispatch
     },
@@ -224,7 +146,7 @@ const createPressSession = (
       const next = createSelectionSession({
         ctx,
         start,
-        decision: resolved.decision.drag
+        decision: resolved.plan.drag
       })
       if (!next) {
         return FINISH
@@ -236,13 +158,13 @@ const createPressSession = (
     up: (input) => {
       holdTask?.cancel()
       holdTask = null
-      const tap = resolved.decision.tap
+      const tap = resolved.plan.tap
       if (!tap) {
         return FINISH
       }
 
-      const targetInput = resolveSelectionPressTargetInput(ctx, input)
-      if (!matchSelectionTap(resolved.target, targetInput)) {
+      const target = resolveSelectionPressTarget<SelectionPressField>(input.pick)
+      if (!matchSelectionTap(resolved.target, target)) {
         return FINISH
       }
 
@@ -254,7 +176,7 @@ const createPressSession = (
           ctx.write.session.selection.replace(tap.target)
           break
         case 'edit-node': {
-          const field = resolveImplicitEditField(
+          const field = resolveSelectionEditField(
             ctx.read.node.item.get(tap.nodeId)?.node
           )
           if (!field) {
@@ -292,13 +214,13 @@ const createPressSession = (
     }
   }
 
-  if (resolved.decision.hold) {
+  if (resolved.plan.hold) {
     holdTask = createTimeoutTask(() => {
       holdTask = null
       const next = createSelectionSession({
         ctx,
         start,
-        decision: resolved.decision.hold
+        decision: resolved.plan.hold
       })
       dispatchTransition?.(
         next
@@ -316,7 +238,7 @@ export const startSelectionPress = (
   ctx: InteractionContext,
   input: PointerDownInput
 ): InteractionSession | null => {
-  const resolved = resolveSelectionPress(ctx, input)
+  const resolved = resolveSelectionPressAction(ctx, input)
   return resolved
     ? createPressSession(ctx, input, resolved)
     : null

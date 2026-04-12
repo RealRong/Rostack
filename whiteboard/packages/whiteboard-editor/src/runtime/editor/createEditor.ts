@@ -6,13 +6,6 @@ import type { Tool } from '../../types/tool'
 import type { DrawPreferences } from '../../types/draw'
 import type { Editor } from '../../types/editor'
 import {
-  drawTool,
-  edgeTool,
-  handTool,
-  insertTool,
-  selectTool
-} from '../../tool/model'
-import {
   createInteractionRuntime,
   createSnapRuntime
 } from '../interaction'
@@ -199,19 +192,19 @@ export const createEditor = ({
       tool: {
         set: write.session.tool.set,
         select: () => {
-          write.session.tool.set(selectTool())
+          write.session.tool.set({ type: 'select' })
         },
         draw: (kind) => {
-          write.session.tool.set(drawTool(kind))
+          write.session.tool.set({ type: 'draw', kind })
         },
         edge: (preset) => {
-          write.session.tool.set(edgeTool(preset))
+          write.session.tool.set({ type: 'edge', preset })
         },
         insert: (preset) => {
-          write.session.tool.set(insertTool(preset))
+          write.session.tool.set({ type: 'insert', preset })
         },
         hand: () => {
-          write.session.tool.set(handTool())
+          write.session.tool.set({ type: 'hand' })
         }
       },
       viewport: {

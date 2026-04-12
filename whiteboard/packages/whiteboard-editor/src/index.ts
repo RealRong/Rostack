@@ -72,19 +72,6 @@ export type {
 export type {
   EditorPick
 } from './types/pick'
-export {
-  DEFAULT_DRAW_BRUSH_KIND,
-  DEFAULT_DRAW_KIND,
-  DEFAULT_EDGE_PRESET_KEY,
-  drawTool,
-  edgeTool,
-  handTool,
-  insertTool,
-  isDrawBrushKind,
-  isDrawKind,
-  isSameTool,
-  selectTool
-} from './tool/model'
 export type {
   DrawBrushKind,
   DrawKind,

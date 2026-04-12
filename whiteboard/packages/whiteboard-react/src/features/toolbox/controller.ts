@@ -1,9 +1,4 @@
 import {
-  drawTool,
-  edgeTool,
-  handTool,
-  insertTool,
-  selectTool,
   type EdgePresetKey,
   type Tool
 } from '@whiteboard/editor'

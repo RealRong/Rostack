@@ -3,7 +3,6 @@ import type { EditorRead } from '../../types/editor'
 import type { SessionActions } from '../../types/commands'
 import type { NodeRegistry } from '../../types/node'
 import type { Tool } from '../../types/tool'
-import { isSameTool } from '../../tool/model'
 import type { EditorStateController } from '../state'
 import {
   type EditCapability,
@@ -28,6 +27,26 @@ const resolveNodeCapability = ({
   nodeType: Parameters<Pick<NodeRegistry, 'get'>['get']>[0]
   field: EditField
 }) => registry.get(nodeType)?.edit?.fields?.[field]
+
+const isSameTool = (
+  left: Tool,
+  right: Tool
+) => {
+  if (left.type !== right.type) {
+    return false
+  }
+
+  switch (left.type) {
+    case 'edge':
+      return right.type === 'edge' && left.preset === right.preset
+    case 'insert':
+      return right.type === 'insert' && left.preset === right.preset
+    case 'draw':
+      return right.type === 'draw' && left.kind === right.kind
+    default:
+      return true
+  }
+}
 
 export const createSessionCommands = ({
   runtime,

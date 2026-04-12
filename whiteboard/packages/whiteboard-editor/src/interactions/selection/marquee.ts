@@ -21,20 +21,20 @@ import {
   type MarqueeSelectionEffect,
   type MarqueeSelectionEvent
 } from './marqueeState'
-import type { SelectionMarqueeDecision } from './pressPolicy'
+import type { SelectionMarqueePlan } from '../../runtime/selectionPress'
 
 type MarqueePointer = Pick<PointerDownInput, 'screen' | 'world'>
 
 type MarqueeInteractionInput = {
   start: PointerDownInput
-  action: SelectionMarqueeDecision
+  action: SelectionMarqueePlan
 }
 
 const readMatchedSelection = (
   input: {
     ctx: InteractionContext
     rect: Rect
-    match: SelectionMarqueeDecision['match']
+    match: SelectionMarqueePlan['match']
   }
 ): SelectionTarget => ({
   nodeIds: input.ctx.read.node.idsInRect(input.rect, {

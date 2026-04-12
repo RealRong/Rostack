@@ -1,4 +1,8 @@
-import type { View, ViewOptions } from '../contracts'
+import type {
+  FieldId,
+  View,
+  ViewOptions
+} from '../contracts'
 
 export type JsonObject = Record<string, unknown>
 
@@ -34,3 +38,18 @@ export const cloneViewOptions = (
     cardsPerColumn: options.kanban.cardsPerColumn
   }
 })
+
+export const resolveDisplayInsertBeforeFieldId = (
+  fieldIds: readonly FieldId[],
+  anchorFieldId: FieldId,
+  side: 'left' | 'right'
+): FieldId | null => {
+  const anchorIndex = fieldIds.findIndex(fieldId => fieldId === anchorFieldId)
+  if (anchorIndex === -1) {
+    return null
+  }
+
+  return side === 'left'
+    ? anchorFieldId
+    : fieldIds[anchorIndex + 1] ?? null
+}

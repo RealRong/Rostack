@@ -4,7 +4,6 @@ import {
   type BoardConfig as EngineBoardConfig
 } from '@whiteboard/core/config'
 import type { Viewport } from '@whiteboard/core/types'
-import { selectTool } from '@whiteboard/editor'
 import type { WhiteboardOptions } from '../types/common/board'
 import type { ResolvedConfig } from '../types/common/config'
 
@@ -37,7 +36,7 @@ const DEFAULT_CONFIG: ResolvedConfig = {
     captureSystem: true,
     captureRemote: false
   },
-  initialTool: selectTool(),
+  initialTool: { type: 'select' },
   shortcuts: undefined
 }
 

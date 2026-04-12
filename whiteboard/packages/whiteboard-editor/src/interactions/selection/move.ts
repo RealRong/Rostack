@@ -17,7 +17,7 @@ import { createSelectionGesture } from '../../runtime/interaction/gesture'
 import type {
   PointerDownInput
 } from '../../types/input'
-import type { SelectionMoveSelectionBehavior } from './pressPolicy'
+import type { SelectionMoveVisibility } from '../../runtime/selectionPress'
 
 const toMoveNodePatches = (
   result: MoveStepResult
@@ -65,7 +65,7 @@ const resolveFrameHoverId = (
 type MoveInteractionInput = {
   start: PointerDownInput
   target: SelectionTarget
-  selection: SelectionMoveSelectionBehavior
+  visibility: SelectionMoveVisibility
 }
 
 export const createMoveInteraction = (
@@ -83,12 +83,15 @@ export const createMoveInteraction = (
     return null
   }
   let state = initialState
-  const restoreSelection = input.selection.kind === 'temporary'
-    ? input.selection.restoreSelection
+  const restoreSelection = input.visibility.kind === 'temporary'
+    ? input.visibility.restore
     : undefined
 
-  if (input.selection.visibleSelection) {
-    ctx.write.session.selection.replace(input.selection.visibleSelection)
+  if (
+    input.visibility.kind === 'show'
+    || input.visibility.kind === 'temporary'
+  ) {
+    ctx.write.session.selection.replace(input.visibility.selection)
   }
   let modifiers = input.start.modifiers
   let interaction = null as InteractionSession | null

@@ -4,12 +4,7 @@ import {
   type DrawPreferences as DrawState,
 } from '@whiteboard/editor/draw'
 import {
-  DEFAULT_DRAW_BRUSH_KIND,
-  DEFAULT_DRAW_KIND,
-  DEFAULT_EDGE_PRESET_KEY,
-  isDrawBrushKind,
   type DrawKind,
-  type EdgePresetKey,
   type Tool
 } from '@whiteboard/editor'
 import {
@@ -25,6 +20,12 @@ import type {
   ToolPaletteMemory,
   ToolPaletteView
 } from '../../types/toolbox'
+import {
+  DEFAULT_DRAW_BRUSH_KIND,
+  DEFAULT_DRAW_KIND,
+  DEFAULT_EDGE_PRESET_KEY,
+  isDrawBrushKind
+} from './tool'
 
 const readToolPaletteBrushState = (
   state: DrawState,

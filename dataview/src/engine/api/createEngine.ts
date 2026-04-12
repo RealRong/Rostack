@@ -5,7 +5,6 @@ import type {
 import {
   cloneDocument
 } from '@dataview/core/document'
-import { read as readValue } from '@shared/core'
 import type {
   CreateEngineOptions,
   Engine
@@ -16,7 +15,7 @@ import {
 import {
   createFieldsEngineApi,
   createRecordsEngineApi,
-  createActiveViewApi,
+  createActiveEngineApi,
   createViewsEngineApi
 } from '../facade'
 import {
@@ -24,7 +23,6 @@ import {
   createStore
 } from '../store/state'
 import {
-  createActiveBaseApi,
   createReadApi
 } from '../store/selectors'
 import {
@@ -56,10 +54,6 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
         : [action]
     })
   )
-  const activeBase = createActiveBaseApi({
-    store,
-    read
-  })
   const fields = createFieldsEngineApi({
     read,
     dispatch
@@ -68,29 +62,13 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     read,
     dispatch
   })
-  const activeView = createActiveViewApi({
-    readViewId: activeBase.id.get,
-    readDocument: () => readValue(read.document),
-    readView: () => readValue(activeBase.view),
-    readState: () => readValue(activeBase.state),
-    activeRead: activeBase.read,
-    readRecord: activeBase.read.record,
+  const active = createActiveEngineApi({
+    store,
+    read,
     dispatch,
     fields,
     records
   })
-  const active = Object.assign(
-    activeBase,
-    activeView
-  )
-  active.gallery = {
-    ...activeView.gallery,
-    state: activeBase.gallery.state
-  }
-  active.kanban = {
-    ...activeView.kanban,
-    state: activeBase.kanban.state
-  }
   const views = createViewsEngineApi({
     read,
     dispatch

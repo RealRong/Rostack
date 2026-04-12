@@ -4,7 +4,7 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import { read } from '@shared/core'
-import { isTitleFieldId } from '@dataview/core/field'
+import { createRecordFieldWriteAction } from '@dataview/core/field'
 import type {
   EngineReadApi,
   RecordsEngineApi
@@ -20,40 +20,7 @@ export const createRecordsEngineApi = (options: {
     fieldId: FieldId,
     value: unknown | undefined
   ) => {
-    if (isTitleFieldId(fieldId)) {
-      options.dispatch({
-        type: 'record.patch',
-        target: {
-          type: 'record',
-          recordId
-        },
-        patch: {
-          title: value === undefined
-            ? ''
-            : String(value ?? '')
-        }
-      })
-      return
-    }
-
-    options.dispatch(value === undefined
-      ? {
-          type: 'value.clear',
-          target: {
-            type: 'record',
-            recordId
-          },
-          field: fieldId
-        }
-      : {
-          type: 'value.set',
-          target: {
-            type: 'record',
-            recordId
-          },
-          field: fieldId,
-          value
-        })
+    options.dispatch(createRecordFieldWriteAction(recordId, fieldId, value))
   }
 
   return {

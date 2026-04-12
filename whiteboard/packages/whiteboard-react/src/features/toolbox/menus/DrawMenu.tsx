@@ -16,7 +16,6 @@ import type {
   DrawBrushKind,
   DrawKind
 } from '@whiteboard/editor'
-import { isDrawBrushKind } from '@whiteboard/editor'
 import { DRAW_COLOR_OPTIONS } from '../../selection/chrome/menus/options'
 import {
   TOOLBOX_PANEL_CLASSNAME,
@@ -24,6 +23,7 @@ import {
   ToolboxColorSwatch,
   ToolboxMenuSection
 } from '../primitives'
+import { isDrawBrushKind } from '../tool'
 
 const DRAW_KIND_ICONS = {
   pen: PencilLine,

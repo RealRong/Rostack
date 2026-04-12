@@ -1,7 +1,6 @@
 import {
   deriveSelectionAffordance,
   deriveSelectionSummary,
-  getTargetBounds,
   isSelectionAffordanceEqual,
   isSelectionSummaryEqual,
   resolveSelectionTransformBox,
@@ -14,7 +13,6 @@ import type { Edge, Node, Rect } from '@whiteboard/core/types'
 import { sameOptionalRect as isSameOptionalRectTuple } from '@shared/core'
 import {
   createDerivedStore,
-  type ReadFn,
   type ReadStore
 } from '@shared/core'
 import type { EdgeRead } from './edge'
@@ -33,6 +31,11 @@ import {
   resolveSelectionOverlay,
   resolveSelectionToolbar
 } from './selectionPresentation'
+import {
+  readTargetBounds,
+  readTargetEdges,
+  readTargetNodes
+} from './utils'
 
 export type SelectionRead = {
   box: ReadStore<Rect | undefined>
@@ -91,32 +94,17 @@ const isSelectionNodeInfoEqual = (
   )
 }
 
-const readSelectedNodes = (
-  node: NodeRead,
-  target: SelectionTarget,
-  readStore: ReadFn
-) => target.nodeIds
-  .map((nodeId) => readStore(node.item, nodeId)?.node)
-  .filter((entry): entry is Node => Boolean(entry))
+const readNodeTransformCapability = (
+  node: Pick<NodeRead, 'capability'>,
+  entry: Node
+) => {
+  const capability = node.capability(entry)
 
-const readSelectedEdges = (
-  edge: EdgeRead,
-  target: SelectionTarget,
-  readStore: ReadFn
-) => target.edgeIds
-  .map((edgeId) => readStore(edge.item, edgeId)?.edge)
-  .filter((entry): entry is Edge => Boolean(entry))
-
-const readTrackedTargetBounds = (
-  readStore: ReadFn,
-  node: Pick<NodeRead, 'bounds'>,
-  edge: Pick<EdgeRead, 'bounds'>,
-  target: SelectionTarget
-) => getTargetBounds({
-  target,
-  readNodeBounds: (nodeId) => readStore(node.bounds, nodeId),
-  readEdgeBounds: (edgeId) => readStore(edge.bounds, edgeId)
-})
+  return {
+    resize: capability.resize,
+    rotate: capability.rotate
+  }
+}
 
 export const createSelectionRead = ({
   source,
@@ -141,14 +129,14 @@ export const createSelectionRead = ({
   const summary = createDerivedStore<SelectionSummary>({
     get: (readStore) => {
       const selectionTarget = readStore(source)
-      const nodes = readSelectedNodes(node, selectionTarget, readStore)
-      const edges = readSelectedEdges(edge, selectionTarget, readStore)
+      const nodes = readTargetNodes(readStore, node, selectionTarget)
+      const edges = readTargetEdges(readStore, edge, selectionTarget)
 
       return deriveSelectionSummary({
         target: selectionTarget,
         nodes,
         edges,
-        readBounds: (target) => readTrackedTargetBounds(
+        readBounds: (target) => readTargetBounds(
           readStore,
           node,
           edge,
@@ -158,14 +146,7 @@ export const createSelectionRead = ({
           !entry.locked
           && node.capability(entry).role === 'content'
         ),
-        resolveNodeTransformCapability: (entry) => {
-          const capability = node.capability(entry)
-
-          return {
-            resize: capability.resize,
-            rotate: capability.rotate
-          }
-        }
+        resolveNodeTransformCapability: (entry) => readNodeTransformCapability(node, entry)
       })
     },
     isEqual: isSelectionSummaryEqual
@@ -174,7 +155,7 @@ export const createSelectionRead = ({
     get: (readStore) => {
       const selectionTarget = readStore(source)
       const box = selectionTarget.nodeIds.length > 0
-        ? readTrackedTargetBounds(readStore, node, edge, {
+        ? readTargetBounds(readStore, node, edge, {
           nodeIds: selectionTarget.nodeIds,
           edgeIds: []
         })
@@ -196,14 +177,7 @@ export const createSelectionRead = ({
         selection: resolvedSummary,
         transformBox: resolvedTransformBox.box,
         resolveNodeRole: (entry) => node.capability(entry).role,
-        resolveNodeTransformCapability: (entry) => {
-          const capability = node.capability(entry)
-
-          return {
-            resize: capability.resize,
-            rotate: capability.rotate
-          }
-        }
+        resolveNodeTransformCapability: (entry) => readNodeTransformCapability(node, entry)
       })
     },
     isEqual: isSelectionAffordanceEqual

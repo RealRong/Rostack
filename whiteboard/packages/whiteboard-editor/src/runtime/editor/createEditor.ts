@@ -26,7 +26,7 @@ import { createRead } from '../read'
 import { createEditorStateController } from '../state'
 import { createEditorInput } from './input'
 import { createEditorState } from './state'
-import { createEditorServices } from './services'
+import { createEditorCommands } from '../commands'
 
 export const createEditor = ({
   engine,
@@ -73,7 +73,7 @@ export const createEditor = ({
     runtime,
     viewport: viewport.read
   })
-  const write = createEditorServices({
+  const write = createEditorCommands({
     engine,
     read,
     registry,

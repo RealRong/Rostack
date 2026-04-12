@@ -76,6 +76,15 @@ const isToolMatch = (
   }
 }
 
+const createToolRead = (
+  source: Pick<ReadStore<Tool>, 'get'>
+): ToolRead => ({
+  get: () => source.get(),
+  type: () => source.get().type,
+  preset: () => readToolPreset(source.get()),
+  is: (type, preset) => isToolMatch(source.get(), type, preset)
+})
+
 export type RuntimeRead = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
   history: ReadStore<HistoryState>
   group: GroupRead
@@ -124,17 +133,24 @@ export const createRead = ({
   read: RuntimeRead
   selectionModel: SelectionModelRead
 } => {
+  const {
+    draw,
+    edit,
+    selection,
+    space,
+    tool
+  } = runtime.state
   const nodeRead: NodeRead = createNodeRead({
     read: engineRead,
     registry,
     overlay: overlay.selectors.node,
-    edit: runtime.state.edit.source
+    edit: edit.source
   })
   const edgeRead = createEdgeRead({
     read: engineRead,
     node: nodeRead,
     overlay: overlay.selectors.edge,
-    edit: runtime.state.edit.source,
+    edit: edit.source,
     capability: nodeRead.capability
   })
   const mindmapView = createMindmapViewStore({
@@ -142,28 +158,23 @@ export const createRead = ({
     drag: overlay.selectors.feedback.mindmapDrag
   })
   const edgeToolbar = createEdgeToolbarRead({
-    selection: runtime.state.selection.source,
+    selection: selection.source,
     node: nodeRead,
     edge: edgeRead,
-    tool: runtime.state.tool,
-    edit: runtime.state.edit.source,
+    tool,
+    edit: edit.source,
     interaction
   })
   const selectionRead = createSelectionRead({
-    source: runtime.state.selection.source,
+    source: selection.source,
     node: nodeRead,
     edge: edgeRead,
     registry,
-    tool: runtime.state.tool,
-    edit: runtime.state.edit.source,
+    tool,
+    edit: edit.source,
     interaction
   })
-  const toolRead: ToolRead = {
-    get: () => runtime.state.tool.get(),
-    type: () => runtime.state.tool.get().type,
-    preset: () => readToolPreset(runtime.state.tool.get()),
-    is: (type, preset) => isToolMatch(runtime.state.tool.get(), type, preset)
-  }
+  const toolRead = createToolRead(tool)
 
   return {
     read: {
@@ -184,8 +195,8 @@ export const createRead = ({
       selection: selectionRead.public,
       slice: engineRead.slice,
       tool: toolRead,
-      draw: runtime.state.draw.store,
-      space: runtime.state.space,
+      draw: draw.store,
+      space,
       viewport: {
         get: viewport.read.get,
         subscribe: viewport.read.subscribe,

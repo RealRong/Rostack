@@ -5,8 +5,8 @@ import type {
   EditorStore
 } from '../../types/editor'
 import type { NodeCommands } from '../node/types'
-import type { EdgeCommands } from '../commands/edge'
-import type { SessionCommands } from '../commands/session'
+import type { EdgeCommands } from './edge'
+import type { SessionCommands } from './session'
 import type { EditorStateController } from '../state'
 
 type EditCommandsHost = {

@@ -11,49 +11,49 @@ import type {
 import type { NodeRegistry } from '../../types/node'
 import type { EditorStateController } from '../state'
 import type { EditorOverlay } from '../overlay'
-import type { EditorViewportRuntime } from './types'
+import type { EditorViewportRuntime } from '../editor/types'
 import {
   createDocumentCommands
-} from '../commands/document'
-import type { DocumentCommands } from '../commands/document'
+} from './document'
+import type { DocumentCommands } from './document'
 import {
   createHistoryCommands
-} from '../commands/history'
-import {
-  createPreviewCommands
-} from '../overlay/preview'
-import type { PreviewCommands } from '../overlay/preview'
+} from './history'
 import {
   createSessionCommands
-} from '../commands/session'
-import type { SessionCommands } from '../commands/session'
+} from './session'
+import type { SessionCommands } from './session'
 import {
   createViewCommands
-} from '../commands/view'
-import type { ViewCommands } from '../commands/view'
+} from './view'
+import type { ViewCommands } from './view'
 import {
   createSelectionCommands,
   type SelectionCommands
-} from '../commands/selection'
+} from './selection'
 import {
   createClipboardCommands
-} from '../commands/clipboard'
+} from './clipboard'
 import {
   createEdgeCommands,
   type EdgeCommands
-} from '../commands/edge'
+} from './edge'
+import {
+  createMindmapCommands
+} from './mindmap'
 import {
   createNodeCommands
 } from '../node/commands'
 import type { NodeCommands } from '../node/types'
 import {
-  createMindmapCommands
-} from '../commands/mindmap'
+  createPreviewCommands
+} from '../overlay/preview'
+import type { PreviewCommands } from '../overlay/preview'
 import {
   createEditCommands
 } from './edit'
 
-export type EditorServices = {
+export type EditorCommands = {
   document: DocumentCommands
   node: NodeCommands
   edge: EdgeCommands
@@ -67,7 +67,7 @@ export type EditorServices = {
   preview: PreviewCommands
 }
 
-export const createEditorServices = ({
+export const createEditorCommands = ({
   engine,
   read,
   registry,
@@ -83,7 +83,7 @@ export const createEditorServices = ({
   overlay: Pick<EditorOverlay, 'set'>
   viewport: EditorViewportRuntime
   state: Pick<EditorState, 'edit' | 'selection' | 'viewport'>
-}): EditorServices => {
+}): EditorCommands => {
   const preview = createPreviewCommands({
     overlay
   })

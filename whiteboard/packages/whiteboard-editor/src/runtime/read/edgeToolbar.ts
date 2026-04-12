@@ -1,4 +1,3 @@
-import { getTargetBounds } from '@whiteboard/core/selection'
 import type {
   Edge,
   EdgeDash,
@@ -18,6 +17,11 @@ import type { InteractionRuntime } from '../interaction/types'
 import type { NodeRead } from './node'
 import type { EdgeRead } from './edge'
 import type { EdgeToolbarContext } from '../../types/edgePresentation'
+import {
+  readTargetBounds,
+  readTargetEdges,
+  readUniformValue
+} from './utils'
 
 const isEdgeToolbarEqual = (
   left: EdgeToolbarContext | undefined,
@@ -41,20 +45,6 @@ const isEdgeToolbarEqual = (
     && left.labelCount === right.labelCount
     && isSameOptionalBoxTuple(left.box, right.box)
   )
-}
-
-const readUniformValue = <TValue,>(
-  edges: readonly Edge[],
-  read: (edge: Edge) => TValue
-): TValue | undefined => {
-  if (edges.length === 0) {
-    return undefined
-  }
-
-  const first = read(edges[0]!)
-  return edges.every((edge) => Object.is(first, read(edge)))
-    ? first
-    : undefined
 }
 
 const isEdgeEditingInteraction = (
@@ -98,20 +88,15 @@ export const createEdgeToolbarRead = ({
       return undefined
     }
 
-    const edges = target.edgeIds
-      .map((edgeId) => readStore(edge.item, edgeId)?.edge)
-      .filter((entry): entry is Edge => Boolean(entry))
+    const edges = readTargetEdges(readStore, edge, target)
 
     if (edges.length === 0) {
       return undefined
     }
 
-    const box = getTargetBounds({
-      target: {
-        edgeIds: edges.map((entry) => entry.id)
-      },
-      readNodeBounds: (nodeId) => readStore(node.bounds, nodeId),
-      readEdgeBounds: (edgeId) => readStore(edge.bounds, edgeId)
+    const box = readTargetBounds(readStore, node, edge, {
+      nodeIds: [],
+      edgeIds: edges.map((entry) => entry.id)
     })
     if (!box) {
       return undefined

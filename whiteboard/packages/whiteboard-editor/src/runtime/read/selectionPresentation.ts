@@ -26,8 +26,11 @@ import type { NodeRegistry } from '../../types/node'
 import type { Tool } from '../../types/tool'
 import type { EditSession } from '../state/edit'
 import { readSelectionNodeStats } from '../../selection/nodeSummary'
+import { readUniformValue } from './utils'
 
 type StyleFieldKind = 'string' | 'number' | 'numberArray'
+
+const UI_TEXT_PRIMARY = 'var(--ui-text-primary)'
 
 const readObjectCountLabel = (
   count: number
@@ -63,20 +66,11 @@ const normalizeDash = (
   value: readonly number[] | undefined
 ) => value?.length ? value : undefined
 
-const readUniformValue = <TValue,>(
-  nodes: readonly Node[],
-  read: (node: Node) => TValue,
-  equal: (left: TValue, right: TValue) => boolean = Object.is
-): TValue | undefined => {
-  if (!nodes.length) {
-    return undefined
-  }
-
-  const first = read(nodes[0]!)
-  return nodes.every((node) => equal(first, read(node)))
-    ? first
-    : undefined
-}
+const readShapeDefaults = (
+  node: Node
+) => node.type === 'shape'
+  ? readShapeSpec(readShapeKind(node)).defaults
+  : undefined
 
 const hasStyleField = (
   schema: NodeSchema | undefined,
@@ -145,73 +139,55 @@ const hasControl = (
   return meta?.controls.includes(control) ?? false
 })
 
+const readDefaultFill = (
+  node: Node
+) => readShapeDefaults(node)?.fill
+  ?? (node.type === 'sticky'
+    ? STICKY_DEFAULT_FILL
+    : node.type === 'frame'
+      ? FRAME_DEFAULT_FILL
+      : undefined)
+
 const readFill = (
   node: Node
-) => {
-  if (node.type === 'shape') {
-    return readString(node, 'fill') ?? readShapeSpec(readShapeKind(node)).defaults.fill
-  }
-  if (node.type === 'sticky') {
-    return readString(node, 'fill') ?? STICKY_DEFAULT_FILL
-  }
-  if (node.type === 'frame') {
-    return readString(node, 'fill') ?? FRAME_DEFAULT_FILL
-  }
-
-  return readString(node, 'fill')
-}
+) => readString(node, 'fill') ?? readDefaultFill(node)
 
 const readFillOpacity = (
   node: Node
-) => {
-  if (node.type === 'shape') {
-    return readNumber(node, 'fillOpacity') ?? 1
-  }
+) => readNumber(node, 'fillOpacity')
+  ?? (node.type === 'shape' ? 1 : undefined)
 
-  return readNumber(node, 'fillOpacity')
-}
+const readDefaultStroke = (
+  node: Node
+) => readShapeDefaults(node)?.stroke
+  ?? (node.type === 'frame'
+    ? FRAME_DEFAULT_STROKE
+    : node.type === 'draw'
+      ? UI_TEXT_PRIMARY
+      : undefined)
 
 const readStroke = (
   node: Node
-) => {
-  if (node.type === 'shape') {
-    return readString(node, 'stroke') ?? readShapeSpec(readShapeKind(node)).defaults.stroke
-  }
-  if (node.type === 'frame') {
-    return readString(node, 'stroke') ?? FRAME_DEFAULT_STROKE
-  }
-  if (node.type === 'draw') {
-    return readString(node, 'stroke') ?? 'var(--ui-text-primary)'
-  }
+) => readString(node, 'stroke') ?? readDefaultStroke(node)
 
-  return readString(node, 'stroke')
-}
+const readDefaultStrokeWidth = (
+  node: Node
+) => node.type === 'shape'
+  ? 1
+  : node.type === 'frame'
+    ? FRAME_DEFAULT_STROKE_WIDTH
+    : node.type === 'draw'
+      ? 2
+      : undefined
 
 const readStrokeWidth = (
   node: Node
-) => {
-  if (node.type === 'shape') {
-    return readNumber(node, 'strokeWidth') ?? 1
-  }
-  if (node.type === 'frame') {
-    return readNumber(node, 'strokeWidth') ?? FRAME_DEFAULT_STROKE_WIDTH
-  }
-  if (node.type === 'draw') {
-    return readNumber(node, 'strokeWidth') ?? 2
-  }
-
-  return readNumber(node, 'strokeWidth')
-}
+) => readNumber(node, 'strokeWidth') ?? readDefaultStrokeWidth(node)
 
 const readStrokeOpacity = (
   node: Node
-) => {
-  if (node.type === 'shape') {
-    return readNumber(node, 'strokeOpacity') ?? 1
-  }
-
-  return readNumber(node, 'strokeOpacity')
-}
+) => readNumber(node, 'strokeOpacity')
+  ?? (node.type === 'shape' ? 1 : undefined)
 
 const readOpacity = (
   node: Node
@@ -221,24 +197,20 @@ const readStrokeDash = (
   node: Node
 ) => readNumberArray(node, 'strokeDash')
 
+const readDefaultTextColor = (
+  node: Node
+) => readShapeDefaults(node)?.color
+  ?? (node.type === 'sticky'
+    ? STICKY_DEFAULT_TEXT_COLOR
+    : node.type === 'frame'
+      ? FRAME_DEFAULT_TEXT_COLOR
+      : node.type === 'text'
+        ? UI_TEXT_PRIMARY
+        : undefined)
+
 const readTextColor = (
   node: Node
-) => {
-  if (node.type === 'shape') {
-    return readString(node, 'color') ?? readShapeSpec(readShapeKind(node)).defaults.color
-  }
-  if (node.type === 'sticky') {
-    return readString(node, 'color') ?? STICKY_DEFAULT_TEXT_COLOR
-  }
-  if (node.type === 'frame') {
-    return readString(node, 'color') ?? FRAME_DEFAULT_TEXT_COLOR
-  }
-  if (node.type === 'text') {
-    return readString(node, 'color') ?? 'var(--ui-text-primary)'
-  }
-
-  return readString(node, 'color')
-}
+) => readString(node, 'color') ?? readDefaultTextColor(node)
 
 const readFontSize = (
   node: Node
@@ -265,6 +237,15 @@ const readTextAlign = (
   return node.type === 'shape' ? 'center' : 'left'
 }
 
+const readToolbarValue = <TValue,>(
+  enabled: boolean,
+  nodes: readonly Node[],
+  read: (node: Node) => TValue,
+  equal?: (left: TValue, right: TValue) => boolean
+) => enabled
+  ? readUniformValue(nodes, read, equal)
+  : undefined
+
 const resolveToolbarContext = ({
   summary,
   box,
@@ -288,6 +269,19 @@ const resolveToolbarContext = ({
   const canEditStroke = hasControl(nodes, registry, 'stroke')
   const canEditTextColor = hasControl(nodes, registry, 'text')
     && supportsStyleField(nodes, registry, 'color', 'string')
+  const styleSupport = {
+    fontSize: supportsStyleField(nodes, registry, 'fontSize', 'number'),
+    fontWeight: supportsStyleField(nodes, registry, 'fontWeight', 'number'),
+    fontStyle: supportsStyleField(nodes, registry, 'fontStyle', 'string'),
+    textAlign: supportsStyleField(nodes, registry, 'textAlign', 'string'),
+    fillOpacity: supportsStyleField(nodes, registry, 'fillOpacity', 'number'),
+    strokeOpacity: supportsStyleField(nodes, registry, 'strokeOpacity', 'number'),
+    strokeDash: supportsStyleField(nodes, registry, 'strokeDash', 'numberArray'),
+    opacity: supportsStyleField(nodes, registry, 'opacity', 'number')
+  }
+  const canEditFillOpacity = canEditFill && styleSupport.fillOpacity
+  const canEditStrokeOpacity = canEditStroke && styleSupport.strokeOpacity
+  const canEditStrokeDash = canEditStroke && styleSupport.strokeDash
 
   return {
     box,
@@ -304,23 +298,17 @@ const resolveToolbarContext = ({
           }
         : undefined,
     canChangeShapeKind: selectionKind === 'shape',
-    canEditFontSize: supportsStyleField(nodes, registry, 'fontSize', 'number'),
-    canEditFontWeight: supportsStyleField(nodes, registry, 'fontWeight', 'number'),
-    canEditFontStyle: supportsStyleField(nodes, registry, 'fontStyle', 'string'),
-    canEditTextAlign: supportsStyleField(nodes, registry, 'textAlign', 'string'),
+    canEditFontSize: styleSupport.fontSize,
+    canEditFontWeight: styleSupport.fontWeight,
+    canEditFontStyle: styleSupport.fontStyle,
+    canEditTextAlign: styleSupport.textAlign,
     canEditTextColor,
     canEditFill,
-    canEditFillOpacity:
-      canEditFill
-      && supportsStyleField(nodes, registry, 'fillOpacity', 'number'),
+    canEditFillOpacity,
     canEditStroke,
-    canEditStrokeOpacity:
-      canEditStroke
-      && supportsStyleField(nodes, registry, 'strokeOpacity', 'number'),
-    canEditStrokeDash:
-      canEditStroke
-      && supportsStyleField(nodes, registry, 'strokeDash', 'numberArray'),
-    canEditNodeOpacity: supportsStyleField(nodes, registry, 'opacity', 'number'),
+    canEditStrokeOpacity,
+    canEditStrokeDash,
+    canEditNodeOpacity: styleSupport.opacity,
     shapeKind:
       selectionKind === 'shape' && summary.items.primaryNode
         ? readShapeKind(summary.items.primaryNode)
@@ -329,55 +317,26 @@ const resolveToolbarContext = ({
       selectionKind === 'shape'
         ? readUniformValue(nodes, readShapeKind)
         : undefined,
-    fontSize: supportsStyleField(nodes, registry, 'fontSize', 'number')
-      ? readUniformValue(nodes, readFontSize)
-      : undefined,
-    fontWeight: supportsStyleField(nodes, registry, 'fontWeight', 'number')
-      ? readUniformValue(nodes, readFontWeight)
-      : undefined,
-    fontStyle: supportsStyleField(nodes, registry, 'fontStyle', 'string')
-      ? readUniformValue(nodes, readFontStyle)
-      : undefined,
-    textAlign: supportsStyleField(nodes, registry, 'textAlign', 'string')
-      ? readUniformValue(nodes, readTextAlign)
-      : undefined,
-    textColor: canEditTextColor
-      ? readUniformValue(nodes, readTextColor)
-      : undefined,
-    fill: canEditFill
-      ? readUniformValue(nodes, readFill)
-      : undefined,
-    fillOpacity:
-      canEditFill
-      && supportsStyleField(nodes, registry, 'fillOpacity', 'number')
-        ? readUniformValue(nodes, readFillOpacity)
-        : undefined,
-    stroke: canEditStroke
-      ? readUniformValue(nodes, readStroke)
-      : undefined,
-    strokeWidth: canEditStroke
-      ? readUniformValue(nodes, readStrokeWidth)
-      : undefined,
-    strokeOpacity:
-      canEditStroke
-      && supportsStyleField(nodes, registry, 'strokeOpacity', 'number')
-        ? readUniformValue(nodes, readStrokeOpacity)
-        : undefined,
-    strokeDash:
-      canEditStroke
-      && supportsStyleField(nodes, registry, 'strokeDash', 'numberArray')
-        ? readUniformValue(
-            nodes,
-            readStrokeDash,
-            (left, right) => isSameOptionalNumberArray(
-              normalizeDash(left),
-              normalizeDash(right)
-            )
-          )
-        : undefined,
-    opacity: supportsStyleField(nodes, registry, 'opacity', 'number')
-      ? readUniformValue(nodes, readOpacity)
-      : undefined,
+    fontSize: readToolbarValue(styleSupport.fontSize, nodes, readFontSize),
+    fontWeight: readToolbarValue(styleSupport.fontWeight, nodes, readFontWeight),
+    fontStyle: readToolbarValue(styleSupport.fontStyle, nodes, readFontStyle),
+    textAlign: readToolbarValue(styleSupport.textAlign, nodes, readTextAlign),
+    textColor: readToolbarValue(canEditTextColor, nodes, readTextColor),
+    fill: readToolbarValue(canEditFill, nodes, readFill),
+    fillOpacity: readToolbarValue(canEditFillOpacity, nodes, readFillOpacity),
+    stroke: readToolbarValue(canEditStroke, nodes, readStroke),
+    strokeWidth: readToolbarValue(canEditStroke, nodes, readStrokeWidth),
+    strokeOpacity: readToolbarValue(canEditStrokeOpacity, nodes, readStrokeOpacity),
+    strokeDash: readToolbarValue(
+      canEditStrokeDash,
+      nodes,
+      readStrokeDash,
+      (left, right) => isSameOptionalNumberArray(
+        normalizeDash(left),
+        normalizeDash(right)
+      )
+    ),
+    opacity: readToolbarValue(styleSupport.opacity, nodes, readOpacity),
     locked: nodeSummary.lock
   }
 }

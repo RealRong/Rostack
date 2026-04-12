@@ -1,4 +1,5 @@
 export * from './demand'
+export * from './duplicate'
 export * from './gallery'
 export * from './kanban'
 export * from './naming'

@@ -39,12 +39,37 @@ export type EdgeRouteHandleDraft = {
   activeRouteIndex: number
 }
 
-export type EdgeRouteHandleCommit = {
-  edgeId: EdgeId
-  index: number
-  point?: Point
-  route?: EdgePatch['route']
-}
+export type EdgeRouteStart =
+  | {
+      kind: 'insert'
+      edgeId: EdgeId
+      pointerId: number
+      startWorld: Point
+      origin: Point
+      point: Point
+    }
+  | {
+      kind: 'remove'
+      edgeId: EdgeId
+      index: number
+    }
+  | {
+      kind: 'session'
+      state: EdgeRouteHandleState
+    }
+
+export type EdgeRouteCommit =
+  | {
+      kind: 'move-point'
+      edgeId: EdgeId
+      index: number
+      point: Point
+    }
+  | {
+      kind: 'update-route'
+      edgeId: EdgeId
+      route: EdgePatch['route']
+    }
 
 type EdgeRoutePick = Extract<PointerDownInput['pick'], {
   kind: 'edge'
@@ -112,7 +137,7 @@ export const startEdgeRoutePoint = (input: {
   point: input.point ?? input.origin
 })
 
-export const startEdgeRouteSegment = (input: {
+const startEdgeRouteSegment = (input: {
   edgeId: EdgeId
   index: number
   segmentIndex: number
@@ -136,10 +161,71 @@ export const startEdgeRouteSegment = (input: {
   routePoints: input.baseRoutePoints
 })
 
-export const readEdgeRouteSegmentView = (
-  edge: Pick<EdgeRead, 'resolved' | 'item' | 'capability'>,
-  edgeId: EdgeId
-) => readEditableRouteView(edge, edgeId)
+export const startEdgeRoute = (input: {
+  edge: Pick<EdgeRead, 'resolved' | 'item' | 'capability'>
+  pointer: PointerDownInput
+}): EdgeRouteStart | undefined => {
+  const target = resolveEdgeRoutePickTarget(
+    input.edge,
+    input.pointer.pick
+  )
+  if (!target) {
+    return undefined
+  }
+
+  if (target.kind === 'anchor' && input.pointer.detail >= 2) {
+    return {
+      kind: 'remove',
+      edgeId: target.edgeId,
+      index: target.index
+    }
+  }
+
+  if (target.kind === 'anchor') {
+    return {
+      kind: 'session',
+      state: startEdgeRoutePoint({
+        edgeId: target.edgeId,
+        index: target.index,
+        pointerId: input.pointer.pointerId,
+        startWorld: input.pointer.world,
+        origin: target.point
+      })
+    }
+  }
+
+  const item = input.edge.item.get(target.edgeId)
+  const view = readEditableRouteView(input.edge, target.edgeId)
+
+  if (item?.edge.type === 'elbow' && view) {
+    return {
+      kind: 'session',
+      state: startEdgeRouteSegment({
+        edgeId: target.edgeId,
+        index: target.index,
+        segmentIndex: target.segmentIndex,
+        axis: target.axis,
+        pointerId: input.pointer.pointerId,
+        startWorld: input.pointer.world,
+        origin: target.point,
+        pathPoints: view.path.points,
+        baseRoutePoints:
+          item.edge.route?.kind === 'manual'
+            ? item.edge.route.points
+            : []
+      })
+    }
+  }
+
+  return {
+    kind: 'insert',
+    edgeId: target.edgeId,
+    pointerId: input.pointer.pointerId,
+    startWorld: input.pointer.world,
+    origin: target.point,
+    point: input.pointer.world
+  }
+}
 
 export const stepEdgeRoute = (input: {
   state: EdgeRouteHandleState
@@ -212,32 +298,33 @@ export const stepEdgeRoute = (input: {
 
 export const commitEdgeRoute = (
   state: EdgeRouteHandleState
-): EdgeRouteHandleCommit => ({
-  edgeId: state.edgeId,
-  index: state.index,
-  point:
-    state.kind === 'anchor'
-      ? (
-          isPointEqual(state.point, state.origin)
-            ? undefined
-            : state.point
-        )
-      : undefined,
-  route:
-    state.kind === 'segment'
-      ? (
-          areRoutePointsEqual(state.routePoints, state.baseRoutePoints)
-            ? undefined
-            : (
-                state.routePoints.length > 0
-                  ? {
-                      kind: 'manual',
-                      points: [...state.routePoints]
-                    }
-                  : {
-                      kind: 'auto'
-                    }
-              )
-        )
-      : undefined
-})
+): EdgeRouteCommit | undefined => {
+  if (state.kind === 'anchor') {
+    return isPointEqual(state.point, state.origin)
+      ? undefined
+      : {
+          kind: 'move-point',
+          edgeId: state.edgeId,
+          index: state.index,
+          point: state.point
+        }
+  }
+
+  if (areRoutePointsEqual(state.routePoints, state.baseRoutePoints)) {
+    return undefined
+  }
+
+  return {
+    kind: 'update-route',
+    edgeId: state.edgeId,
+    route:
+      state.routePoints.length > 0
+        ? {
+            kind: 'manual',
+            points: [...state.routePoints]
+          }
+        : {
+            kind: 'auto'
+          }
+  }
+}

@@ -8,6 +8,7 @@ export {
   getDocumentFieldIds,
   getDocumentFields,
   getDocumentTitleField,
+  hasDocumentField,
   hasDocumentCustomField,
   isDocumentTitleFieldId,
   patchDocumentCustomField,

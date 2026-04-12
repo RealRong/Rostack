@@ -1,5 +1,6 @@
 import type { DataRecord, EditTarget } from '@dataview/core/contracts'
 import { enumerateRecords } from '@dataview/core/document'
+import { unique } from '@shared/core'
 
 export interface CommandResult {
   issues: import('./issues').ValidationIssue[]
@@ -14,12 +15,10 @@ export const commandResult = (
   operations
 })
 
-export const isNonEmptyString = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0
-
 export const uniqueRecordIds = (target: EditTarget): string[] => (
   target.type === 'record'
     ? [target.recordId]
-    : Array.from(new Set(target.recordIds))
+    : unique(target.recordIds)
 )
 
 export const collectRecordIds = (records: DataRecord[]) => {

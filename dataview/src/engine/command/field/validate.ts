@@ -1,3 +1,7 @@
+import {
+  isNonEmptyString,
+  trimLowercase
+} from '@shared/core'
 import type {
   DataDoc,
   FlatOption,
@@ -13,7 +17,6 @@ import {
   isValidDateTimeZone
 } from '@dataview/core/field'
 import { createIssue, type IssueSource, type ValidationIssue } from '../issues'
-import { isNonEmptyString } from '../shared'
 
 const validateBaseOptions = (
   source: IssueSource,
@@ -36,7 +39,11 @@ const validateBaseOptions = (
     if (!isNonEmptyString(option.name)) {
       issues.push(createIssue(source, 'error', 'field.invalid', 'Field option name must be a non-empty string', `${path}.${index}.name`))
     } else {
-      const normalizedName = option.name.trim().toLowerCase()
+      const normalizedName = trimLowercase(option.name)
+      if (!normalizedName) {
+        issues.push(createIssue(source, 'error', 'field.invalid', 'Field option name must be a non-empty string', `${path}.${index}.name`))
+        return
+      }
       if (names.has(normalizedName)) {
         issues.push(createIssue(source, 'error', 'field.invalid', `Duplicate field option name: ${option.name}`, `${path}.${index}.name`))
       } else {

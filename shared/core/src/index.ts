@@ -1,3 +1,5 @@
+export * from './collection'
 export * from './equality'
 export * from './store'
+export * from './string'
 export * from './scheduler'

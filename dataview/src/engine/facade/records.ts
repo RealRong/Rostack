@@ -3,7 +3,10 @@ import type {
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
-import { read } from '@shared/core'
+import {
+  read,
+  unique
+} from '@shared/core'
 import { createRecordFieldWriteAction } from '@dataview/core/field'
 import type {
   EngineReadApi,
@@ -42,7 +45,7 @@ export const createRecordsEngineApi = (options: {
       })
     },
     removeMany: recordIds => {
-      const nextRecordIds = Array.from(new Set(recordIds))
+      const nextRecordIds = unique(recordIds)
       if (!nextRecordIds.length) {
         return
       }

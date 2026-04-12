@@ -8,8 +8,9 @@ import {
 } from '@whiteboard/core/selection'
 import type { SelectionMode } from '@whiteboard/core/node'
 import type { GroupId, Node, NodeId } from '@whiteboard/core/types'
-import type { EditField } from '../runtime/state/edit'
-import type { PointerDownInput } from '../types/input'
+import type { RuntimeRead } from '../read'
+import type { SelectionModelRead } from '../read/selection'
+import type { PointerDownInput } from '../../types/input'
 
 type ModifierEventLike = {
   alt: boolean
@@ -247,21 +248,53 @@ export const resolveSelectionPressTarget = <TField extends string>(
   }
 }
 
-export const resolveSelectionEditField = (
-  node: Node | undefined
-): EditField | undefined => {
-  if (!node) {
+export const resolveSelectionPressAction = <TField extends string>(
+  input: {
+    read: Pick<RuntimeRead, 'tool' | 'node' | 'group'>
+    selection: Pick<SelectionModelRead, 'get'>
+    pointer: PointerDownInput
+  }
+): SelectionPressResolution<TField> | undefined => {
+  const tool = input.read.tool.get()
+
+  if (
+    tool.type !== 'select'
+    || input.pointer.pick.kind === 'edge'
+    || input.pointer.pick.kind === 'mindmap'
+    || input.pointer.editable
+    || input.pointer.ignoreInput
+    || input.pointer.ignoreSelection
+  ) {
     return undefined
   }
 
-  switch (node.type) {
-    case 'text':
-    case 'sticky':
-    case 'shape':
-      return 'text'
-    default:
-      return undefined
+  const target = resolveSelectionPressTarget<TField>(input.pointer.pick)
+  if (!target) {
+    return undefined
   }
+
+  const selectionModel = input.selection.get()
+
+  return resolveSelectionPress({
+    node: {
+      get: (nodeId) => input.read.node.item.get(nodeId)?.node,
+      canEnter: (nodeId) => {
+        const node = input.read.node.item.get(nodeId)?.node
+        return node
+          ? input.read.node.capability(node).enter
+          : false
+      },
+      groupId: input.read.group.ofNode
+    },
+    group: {
+      target: (groupId) => input.read.group.target(groupId)
+    }
+  }, {
+    modifiers: input.pointer.modifiers,
+    selection: selectionModel.summary,
+    affordance: selectionModel.affordance,
+    target
+  })
 }
 
 const isGroupSelected = (

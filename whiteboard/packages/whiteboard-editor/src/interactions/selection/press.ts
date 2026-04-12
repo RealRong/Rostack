@@ -19,14 +19,14 @@ import { createMarqueeInteraction } from './marquee'
 import { createMoveInteraction } from './move'
 import {
   matchSelectionTap,
-  resolveSelectionPress as resolveSelectionPressPlan,
+  resolveSelectionPressAction as resolveSelectionPressStart,
   resolveSelectionPressTarget,
-  resolveSelectionEditField,
   type SelectionPressDragPlan,
   type SelectionMarqueePlan,
   type SelectionPressPlan,
   type SelectionPressTarget
-} from '../../runtime/selectionPress'
+} from '../../runtime/selection/press'
+import { resolveSelectionEditField } from '../../runtime/selection/edit'
 
 type SelectionPressField = EditField
 
@@ -37,53 +37,13 @@ const resolveSelectionPressAction = (
   target: SelectionPressTarget<SelectionPressField>
   plan: SelectionPressPlan<SelectionPressField>
 } | null => {
-  const tool = ctx.read.tool.get()
-
-  if (
-    tool.type !== 'select'
-    || input.pick.kind === 'edge'
-    || input.pick.kind === 'mindmap'
-    || input.editable
-    || input.ignoreInput
-    || input.ignoreSelection
-  ) {
-    return null
-  }
-
-  const target = resolveSelectionPressTarget<SelectionPressField>(input.pick)
-  if (!target) {
-    return null
-  }
-  const selectionModel = ctx.selection.get()
-
-  const resolved = resolveSelectionPressPlan({
-    node: {
-      get: (nodeId) => ctx.read.node.item.get(nodeId)?.node,
-      canEnter: (nodeId) => {
-        const node = ctx.read.node.item.get(nodeId)?.node
-        return node
-          ? ctx.read.node.capability(node).enter
-          : false
-      },
-      groupId: ctx.read.group.ofNode
-    },
-    group: {
-      target: (groupId) => ctx.read.group.target(groupId)
-    }
-  }, {
-    modifiers: input.modifiers,
-    selection: selectionModel.summary,
-    affordance: selectionModel.affordance,
-    target
+  const resolved = resolveSelectionPressStart<SelectionPressField>({
+    read: ctx.read,
+    selection: ctx.selection,
+    pointer: input
   })
-  if (!resolved) {
-    return null
-  }
 
-  return {
-    target: resolved.target,
-    plan: resolved.plan
-  }
+  return resolved ?? null
 }
 
 const createSelectionSession = (

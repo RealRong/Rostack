@@ -1,54 +1,18 @@
-import {
-  resolveDrawPoints,
-  resolveDrawStroke
-} from '@whiteboard/core/node'
-import type { Point } from '@whiteboard/core/types'
 import type { PointerDownInput, PointerSample } from '../../types/input'
 import type { InteractionContext } from '../context'
-import type {
-  InteractionSession
-} from '../../runtime/interaction/types'
+import type { InteractionSession } from '../../runtime/interaction/types'
 import { FINISH } from '../../runtime/interaction/result'
-import type { DrawBrushKind } from '../../types/tool'
-import type {
-  ResolvedDrawStyle
-} from '../../types/draw'
-import { readDrawStyle } from '../../draw'
-
-const DRAW_MIN_LENGTH_SCREEN = 4
-const SAMPLE_DISTANCE_SCREEN = 1
+import {
+  commitDrawStroke,
+  previewDrawStroke,
+  startDrawStroke,
+  stepDrawStroke,
+  type DrawStrokeState
+} from '../../runtime/draw/stroke'
 
 type DrawPointer = {
   samples: readonly PointerSample[]
 }
-
-export type StrokeState = {
-  brush: DrawBrushKind
-  style: ResolvedDrawStyle
-  points: readonly Point[]
-  lastScreen: Point
-  lengthScreen: number
-}
-
-const readZoom = (
-  ctx: InteractionContext
-) => ctx.read.viewport.get().zoom
-
-const readStyle = (
-  ctx: InteractionContext,
-  kind: DrawBrushKind
-) => readDrawStyle(
-  ctx.read.draw.get(),
-  kind
-)
-
-const resolveStrokePoints = (
-  ctx: InteractionContext,
-  points: readonly Point[]
-) => resolveDrawPoints({
-  points,
-  zoom: readZoom(ctx)
-})
 
 const clearStrokeOverlay = (
   ctx: InteractionContext
@@ -58,144 +22,27 @@ const clearStrokeOverlay = (
 
 const writeStrokePreview = (
   ctx: InteractionContext,
-  state: StrokeState
+  state: DrawStrokeState
 ) => {
-  ctx.write.preview.draw.setPreview({
-    kind: state.brush,
-    style: state.style,
-    points: resolveStrokePoints(ctx, state.points)
-  })
-}
-
-const hasMovedEnough = (
-  left: Point,
-  right: Point
-) => {
-  const dx = right.x - left.x
-  const dy = right.y - left.y
-  return (dx * dx) + (dy * dy) >= SAMPLE_DISTANCE_SCREEN * SAMPLE_DISTANCE_SCREEN
-}
-
-const appendStrokeSample = (
-  state: StrokeState,
-  sample: PointerSample,
-  force = false
-): StrokeState => {
-  const previous = state.points[state.points.length - 1]
-
-  if (!force && !hasMovedEnough(state.lastScreen, sample.screen)) {
-    return state
-  }
-
-  if (
-    previous
-    && previous.x === sample.world.x
-    && previous.y === sample.world.y
-  ) {
-    return state.lastScreen.x === sample.screen.x
-      && state.lastScreen.y === sample.screen.y
-      ? state
-      : {
-          ...state,
-          lastScreen: sample.screen
-        }
-  }
-
-  return {
-    ...state,
-    points: [...state.points, sample.world],
-    lengthScreen:
-      state.lengthScreen
-      + Math.hypot(
-          sample.screen.x - state.lastScreen.x,
-          sample.screen.y - state.lastScreen.y
-        ),
-    lastScreen: sample.screen
-  }
+  ctx.write.preview.draw.setPreview(
+    previewDrawStroke(state, {
+      zoom: ctx.read.viewport.get().zoom
+    })
+  )
 }
 
 export const startStrokeState = (
   ctx: InteractionContext,
   input: PointerDownInput
-): StrokeState | null => {
-  const tool = ctx.read.tool.get()
-
-  if (
-    tool.type !== 'draw'
-    || tool.kind === 'eraser'
-    || input.pick.kind !== 'background'
-    || input.editable
-    || input.ignoreInput
-    || input.ignoreSelection
-  ) {
-    return null
-  }
-
-  return {
-    brush: tool.kind,
-    style: readStyle(ctx, tool.kind),
-    points: [input.world],
-    lastScreen: input.screen,
-    lengthScreen: 0
-  }
-}
-
-const stepStrokeState = (
-  state: StrokeState,
-  input: DrawPointer,
-  force = false
-) => {
-  let nextState = state
-
-  for (let index = 0; index < input.samples.length; index += 1) {
-    nextState = appendStrokeSample(
-      nextState,
-      input.samples[index]!,
-      force && index === input.samples.length - 1
-    )
-  }
-
-  return nextState
-}
-
-const commitStrokeState = (
-  ctx: InteractionContext,
-  state: StrokeState
-) => {
-  if (
-    state.points.length < 2
-    || state.lengthScreen < DRAW_MIN_LENGTH_SCREEN
-  ) {
-    return
-  }
-
-  const stroke = resolveDrawStroke({
-    points: resolveStrokePoints(ctx, state.points),
-    width: state.style.width
-  })
-  if (!stroke) {
-    return
-  }
-
-  ctx.write.node.create({
-    type: 'draw',
-    position: stroke.position,
-    size: stroke.size,
-    data: {
-      points: stroke.points,
-      baseSize: stroke.size
-    },
-    style: {
-      stroke: state.style.color,
-      strokeWidth: state.style.width,
-      opacity: state.style.opacity
-    }
-  })
-}
+): DrawStrokeState | null => startDrawStroke({
+  tool: ctx.read.tool.get(),
+  pointer: input,
+  preferences: ctx.read.draw.get()
+}) ?? null
 
 export const createStrokeSession = (
   ctx: InteractionContext,
-  initial: StrokeState
+  initial: DrawStrokeState
 ): InteractionSession => {
   let state = initial
 
@@ -203,7 +50,13 @@ export const createStrokeSession = (
     input: DrawPointer,
     force = false
   ) => {
-    const nextState = stepStrokeState(state, input, force)
+    const nextState = stepDrawStroke(
+      state,
+      input,
+      {
+        force
+      }
+    )
     if (nextState.points !== state.points) {
       writeStrokePreview(ctx, nextState)
     }
@@ -217,7 +70,12 @@ export const createStrokeSession = (
     },
     up: (input) => {
       step(input, true)
-      commitStrokeState(ctx, state)
+      const commit = commitDrawStroke(state, {
+        zoom: ctx.read.viewport.get().zoom
+      })
+      if (commit) {
+        ctx.write.node.create(commit)
+      }
       return FINISH
     },
     cleanup: () => {

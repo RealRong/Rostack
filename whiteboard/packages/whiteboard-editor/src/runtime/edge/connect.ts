@@ -220,15 +220,6 @@ export const startEdgeConnect = (input: {
   })
 }
 
-export const createInitialEdgeConnectEvaluation = (
-  state: EdgeConnectState
-): EdgeConnectEvaluation => ({
-  resolution: {
-    mode: 'free',
-    pointWorld: state.to?.point ?? state.from.point
-  }
-})
-
 const toPreviewEdgeEnd = (
   draft: EdgeConnectState['from']
 ): EdgeEnd => (
@@ -305,25 +296,33 @@ const toDraftEndFromEvaluation = (
 )
 
 export const stepEdgeConnect = (input: {
+  node: Pick<NodeRead, 'canvas'>
   state: EdgeConnectState
   world: PointerDownInput['world']
   snap: (input: {
     pointerWorld: PointerDownInput['world']
   }) => EdgeConnectEvaluation
+  showPreviewPath: boolean
 }): {
   state: EdgeConnectState
-  evaluation: EdgeConnectEvaluation
+  gesture: EdgeGestureDraft
 } => {
   const evaluation = input.snap({
     pointerWorld: input.world
   })
+  const state = setEdgeConnectTarget(
+    input.state,
+    toDraftEndFromEvaluation(evaluation)
+  )
 
   return {
-    evaluation,
-    state: setEdgeConnectTarget(
-      input.state,
-      toDraftEndFromEvaluation(evaluation)
-    )
+    state,
+    gesture: readEdgeConnectGesture({
+      node: input.node,
+      state,
+      evaluation,
+      showPreviewPath: input.showPreviewPath
+    })
   }
 }
 

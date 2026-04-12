@@ -17,7 +17,7 @@ import { createSelectionGesture } from '../../runtime/interaction/gesture'
 import type {
   PointerDownInput
 } from '../../types/input'
-import type { SelectionMoveVisibility } from '../../runtime/selectionPress'
+import type { SelectionMoveVisibility } from '../../runtime/selection/press'
 
 const toMoveNodePatches = (
   result: MoveStepResult

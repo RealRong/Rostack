@@ -94,6 +94,12 @@ export const getDocumentFieldById = (
     : getDocumentCustomFieldById(document, fieldId)
 )
 
+export const hasDocumentField = (
+  document: DataDoc,
+  fieldId: FieldId
+) => isDocumentTitleFieldId(fieldId)
+  || hasDocumentCustomField(document, fieldId)
+
 export const getDocumentFields = (
   document: DataDoc
 ): Field[] => [

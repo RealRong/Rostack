@@ -18,14 +18,12 @@ export type NodeContext = {
 }
 
 export const createNodeContext = ({
-  engineRead,
   read,
   patch,
   preview,
   session,
   deleteCascade
 }: {
-  engineRead: EditorRead['node']['item']
   read: EditorRead
   patch: NodePatchWriter
   preview: Pick<PreviewCommands['node'], 'text'>
@@ -33,7 +31,7 @@ export const createNodeContext = ({
   deleteCascade: (ids: NodeId[]) => ReturnType<NodePatchWriter['update']> | undefined
 }): NodeContext => ({
   read: {
-    committed: (id) => engineRead.get(id),
+    committed: (id) => read.node.committed.get(id),
     live: (id) => read.node.item.get(id)
   },
   write: {

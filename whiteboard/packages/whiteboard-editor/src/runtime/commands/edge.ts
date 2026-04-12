@@ -61,6 +61,11 @@ const readEdge = (
   edgeId: EdgeId
 ) => read.edge.item.get(edgeId)?.edge
 
+const readCommittedEdge = (
+  read: Pick<EditorRead, 'edge'>,
+  edgeId: EdgeId
+) => read.edge.committed.get(edgeId)?.edge
+
 const patchEdges = (
   engine: Engine,
   updates: readonly {
@@ -79,12 +84,13 @@ const patchEdges = (
 }
 
 const patchExistingEdges = (
+  read: Pick<EditorRead, 'edge'>,
   engine: Engine,
   edgeIds: readonly EdgeId[],
   patch: EdgePatch
 ) => patchEdges(
   engine,
-  edgeIds.flatMap((id) => engine.read.edge.item.get(id)
+  edgeIds.flatMap((id) => readCommittedEdge(read, id)
     ? [{
         id,
         patch
@@ -205,7 +211,7 @@ export const createEdgeCommands = ({
       return undefined
     }
 
-    return patchExistingEdges(engine, edgeIds, patch)
+    return patchExistingEdges(read, engine, edgeIds, patch)
   },
   move: (edgeId, delta) => engine.execute({
     type: 'edge.move',

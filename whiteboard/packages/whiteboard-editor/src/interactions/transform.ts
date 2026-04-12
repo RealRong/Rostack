@@ -1,15 +1,9 @@
 import {
-  computeResizeRect,
   finishTransform,
-  getResizeSourceEdges,
   getResizeUpdateRect,
-  readTextWrapWidth,
-  readTextWidthMode,
   resolveTextHandle,
   startTransform,
   stepTransform,
-  TEXT_DEFAULT_FONT_SIZE,
-  toTransformCommitPatch,
   type TransformPreviewPatch,
   type TransformState,
   type TransformSelectionMember,
@@ -26,10 +20,9 @@ import { createSelectionGesture } from '../runtime/interaction/gesture'
 import type { PointerDownInput } from '../types/input'
 import type { TransformPickHandle } from '../types/pick'
 import {
-  dataUpdate,
-  mergeNodeUpdates,
-  styleUpdate
-} from '../runtime/node/patch'
+  commitTextTransform,
+  projectTextTransform
+} from '../runtime/node/textTransform'
 
 type TransformTarget = TransformSelectionMember<Node>
 type TextTransformMode = 'reflow' | 'scale'
@@ -52,27 +45,6 @@ const readNodeRotation = (
 const RESIZE_MIN_SIZE = {
   width: 20,
   height: 20
-}
-
-const readTextFontSize = (
-  node: Node
-) => (
-  typeof node.style?.fontSize === 'number'
-    ? node.style.fontSize
-    : TEXT_DEFAULT_FONT_SIZE
-)
-
-const readTextScaleMinSize = (
-  rect: TransformTarget['rect']
-) => {
-  const widthRatio = RESIZE_MIN_SIZE.width / Math.max(rect.width, 0.0001)
-  const heightRatio = RESIZE_MIN_SIZE.height / Math.max(rect.height, 0.0001)
-  const ratio = Math.max(widthRatio, heightRatio)
-
-  return {
-    width: rect.width * ratio,
-    height: rect.height * ratio
-  }
 }
 
 const toTransformNodePatches = (
@@ -312,8 +284,6 @@ const createSingleTextTransformSession = (
     rotation: spec.rotation,
     startScreen: spec.startScreen
   }) as Extract<TransformState<Node>, { kind: 'single-resize' }>
-  const startFontSize = readTextFontSize(spec.target.node)
-  const startWidthMode = readTextWidthMode(spec.target.node)
   let modifiers = start.modifiers
   let interaction = null as InteractionSession | null
 
@@ -321,44 +291,16 @@ const createSingleTextTransformSession = (
     input: Pick<PointerDownInput, 'screen' | 'modifiers'>
   ) => {
     modifiers = input.modifiers
-    const zoom = ctx.read.viewport.get().zoom
-    const rawRect = spec.mode === 'reflow'
-      ? computeResizeRect({
-          drag: baseState.drag,
-          currentScreen: input.screen,
-          zoom,
-          minSize: RESIZE_MIN_SIZE,
-          altKey: false,
-          shiftKey: false
-        }).rect
-      : computeResizeRect({
-          drag: baseState.drag,
-          currentScreen: input.screen,
-          zoom,
-          minSize: readTextScaleMinSize(spec.target.rect),
-          altKey: false,
-          shiftKey: true
-        }).rect
-    const { sourceX, sourceY } = getResizeSourceEdges(baseState.drag.handle)
-    const snapped = ctx.snap.node.resize({
-      rect: rawRect,
-      source: {
-        x: sourceX,
-        y: sourceY
-      },
+    const result = projectTextTransform({
+      drag: baseState.drag,
+      mode: spec.mode,
+      target: spec.target,
+      handle: spec.handle,
+      screen: input.screen,
+      zoom: ctx.read.viewport.get().zoom,
       minSize: RESIZE_MIN_SIZE,
-      excludeIds: [spec.target.id],
-      disabled: baseState.drag.startRotation !== 0
+      snap: ctx.snap.node.resize
     })
-    const nextRect = getResizeUpdateRect(snapped.update)
-    const nextFontSize = spec.mode === 'scale'
-      ? Math.max(
-          1,
-          startFontSize * (
-            nextRect.width / Math.max(spec.target.rect.width, 0.0001)
-          )
-        )
-      : undefined
 
     interaction!.gesture = createSelectionGesture(
       'selection-transform',
@@ -367,34 +309,13 @@ const createSingleTextTransformSession = (
         edgePatches: [],
         frameHoverId: undefined,
         marquee: undefined,
-        guides: snapped.guides
+        guides: result.guides
       }
     )
 
     ctx.write.preview.node.text.set(
       spec.target.id,
-      {
-        position: {
-          x: nextRect.x,
-          y: nextRect.y
-        },
-        size: {
-          width: nextRect.width,
-          height: nextRect.height
-        },
-        mode: spec.mode === 'reflow'
-          ? 'wrap'
-          : startWidthMode,
-        wrapWidth: spec.mode === 'reflow' || startWidthMode === 'wrap'
-          ? nextRect.width
-          : undefined,
-        handle: spec.handle,
-        ...(spec.mode === 'scale'
-          ? {
-              fontSize: nextFontSize
-            }
-          : {})
-      }
+      result.preview
     )
   }
 
@@ -424,42 +345,16 @@ const createSingleTextTransformSession = (
         return FINISH
       }
 
-      const geometry = toTransformCommitPatch(spec.target.node, {
-        position: {
-          x: previewItem.rect.x,
-          y: previewItem.rect.y
-        },
-        size: {
-          width: previewItem.rect.width,
-          height: previewItem.rect.height
+      const update = commitTextTransform({
+        target: spec.target,
+        mode: spec.mode,
+        preview: {
+          node: previewItem.node,
+          rect: previewItem.rect
         }
       })
-      const nextFontSize = previewItem.node.type === 'text'
-        ? Math.max(1, Math.round(readTextFontSize(previewItem.node)))
-        : undefined
-      const update = mergeNodeUpdates(
-        geometry
-          ? {
-              fields: geometry
-            }
-          : undefined,
-        spec.mode === 'reflow' && readTextWidthMode(spec.target.node) !== 'wrap'
-          ? dataUpdate('widthMode', 'wrap')
-          : undefined,
-        readTextWidthMode(previewItem.node) === 'wrap'
-        && readTextWrapWidth(spec.target.node) !== previewItem.rect.width
-          ? dataUpdate('wrapWidth', previewItem.rect.width)
-          : spec.mode === 'scale'
-            && readTextWidthMode(previewItem.node) === 'auto'
-            && readTextWrapWidth(spec.target.node) !== undefined
-              ? dataUpdate('wrapWidth', undefined)
-          : undefined,
-        spec.mode === 'scale' && nextFontSize !== readTextFontSize(spec.target.node)
-          ? styleUpdate('fontSize', nextFontSize)
-          : undefined
-      )
 
-      if (update.fields || update.records?.length) {
+      if (update) {
         ctx.write.node.update(spec.target.id, update)
       }
 

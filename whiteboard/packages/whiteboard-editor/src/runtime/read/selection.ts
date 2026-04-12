@@ -28,7 +28,7 @@ import type {
   SelectionNodeInfo,
   SelectionOverlay,
   NodeToolbarContext
-} from '../../selection'
+} from '../../types/selectionPresentation'
 import {
   readSelectionNodeInfo,
   resolveSelectionOverlay,

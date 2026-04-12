@@ -1,23 +1,16 @@
 import type {
-  BucketSort,
-  CalculationMetric,
   CustomField,
   CustomFieldId,
   CustomFieldKind,
   FieldId,
   FieldOption,
-  Filter,
-  FilterRule,
   GalleryCardSize,
   KanbanCardsPerColumn,
   KanbanNewRecordPosition,
   RecordId,
   DataRecord,
-  SortDirection,
-  Sorter,
   StatusCategory,
   View,
-  ViewGroup,
   ViewId,
   ViewType
 } from '@dataview/core/contracts'
@@ -34,7 +27,6 @@ export interface ViewsEngineApi {
   list: () => readonly View[]
   get: (viewId: ViewId) => View | undefined
   open: (viewId: ViewId) => void
-  api: (viewId: ViewId) => ViewEngineApi
   create: (input: {
     name: string
     type: ViewType
@@ -135,84 +127,4 @@ export interface ViewCellsApi {
     value: unknown
   ) => void
   clear: (cell: CellRef) => void
-}
-
-export interface ViewEngineApi {
-  type: {
-    set: (type: ViewType) => void
-  }
-  search: {
-    set: (value: string) => void
-  }
-  filter: {
-    add: (fieldId: FieldId) => void
-    set: (index: number, rule: FilterRule) => void
-    preset: (index: number, presetId: string) => void
-    value: (index: number, value: FilterRule['value'] | undefined) => void
-    mode: (value: Filter['mode']) => void
-    remove: (index: number) => void
-    clear: () => void
-  }
-  sort: {
-    add: (fieldId: FieldId, direction?: SortDirection) => void
-    set: (fieldId: FieldId, direction: SortDirection) => void
-    only: (fieldId: FieldId, direction: SortDirection) => void
-    move: (from: number, to: number) => void
-    replace: (index: number, sorter: Sorter) => void
-    remove: (index: number) => void
-    clear: () => void
-  }
-  group: {
-    set: (fieldId: FieldId) => void
-    clear: () => void
-    toggle: (fieldId: FieldId) => void
-    setMode: (mode: string) => void
-    setSort: (sort: BucketSort) => void
-    setInterval: (interval: ViewGroup['bucketInterval']) => void
-    setShowEmpty: (value: boolean) => void
-    show: (key: string) => void
-    hide: (key: string) => void
-    collapse: (key: string) => void
-    expand: (key: string) => void
-    toggleCollapse: (key: string) => void
-  }
-  calc: {
-    set: (fieldId: FieldId, metric: CalculationMetric | null) => void
-  }
-  display: {
-    replace: (fieldIds: readonly FieldId[]) => void
-    move: (
-      fieldIds: readonly FieldId[],
-      beforeFieldId?: FieldId | null
-    ) => void
-    show: (
-      fieldId: FieldId,
-      beforeFieldId?: FieldId | null
-    ) => void
-    hide: (fieldId: FieldId) => void
-    clear: () => void
-  }
-  table: {
-    setWidths: (widths: Partial<Record<FieldId, number>>) => void
-    setVerticalLines: (value: boolean) => void
-    insertLeft: (
-      anchorFieldId: FieldId,
-      input?: {
-        name?: string
-        kind?: CustomFieldKind
-      }
-    ) => CustomFieldId | undefined
-    insertRight: (
-      anchorFieldId: FieldId,
-      input?: {
-        name?: string
-        kind?: CustomFieldKind
-      }
-    ) => CustomFieldId | undefined
-  }
-  gallery: ViewGalleryApi
-  kanban: ViewKanbanApi
-  order: ViewOrderApi
-  items: ViewItemsApi
-  cells: ViewCellsApi
 }

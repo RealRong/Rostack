@@ -168,6 +168,7 @@ const resolveEdgeCapability = (
 
 export type EdgeRead = {
   list: EngineRead['edge']['list']
+  committed: EngineRead['edge']['item']
   item: KeyedReadStore<EdgeId, EdgeItem | undefined>
   edges: (edgeIds: readonly EdgeId[]) => readonly Edge[]
   state: KeyedReadStore<EdgeId, EdgeRuntimeState>
@@ -398,6 +399,7 @@ export const createEdgeRead = ({
 
   return {
     list: read.edge.list,
+    committed: read.edge.item,
     item,
     edges: (edgeIds) => readPresentValues(edgeIds, (edgeId) => item.get(edgeId)?.edge),
     state,

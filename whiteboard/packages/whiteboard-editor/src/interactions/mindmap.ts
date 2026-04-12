@@ -53,19 +53,15 @@ const resolveMindmapDragState = (
     return null
   }
 
-  const treeView = ctx.read.mindmap.item.get(input.pick.treeId)
-  if (!treeView) {
-    return null
-  }
-
-  const position = treeView.node.position
-  if (!position) {
+  const treeView = ctx.read.mindmap.snapshot.get(input.pick.treeId)
+  const rootPosition = ctx.read.mindmap.rootPosition.get(input.pick.treeId)
+  if (!treeView || !rootPosition) {
     return null
   }
 
   const baseOffset = {
-    x: position.x,
-    y: position.y
+    x: rootPosition.x,
+    y: rootPosition.y
   }
 
   return input.pick.nodeId === treeView.tree.rootId
@@ -94,7 +90,7 @@ const projectMindmapState = (input: {
   world: input.world,
   treeView:
     input.state.kind === 'subtree'
-      ? input.ctx.read.mindmap.item.get(input.state.treeId)
+      ? input.ctx.read.mindmap.snapshot.get(input.state.treeId)
       : undefined
 })
 

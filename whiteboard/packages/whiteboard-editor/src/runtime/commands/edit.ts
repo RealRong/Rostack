@@ -1,7 +1,7 @@
 import { isSizeEqual } from '@whiteboard/core/geometry'
 import type { CommandResult } from '@engine-types/result'
-import type { Engine } from '@whiteboard/engine'
 import type {
+  EditorRead,
   EditorStore
 } from '../../types/editor'
 import type { NodeCommands } from '../node/types'
@@ -10,7 +10,7 @@ import type { SessionCommands } from './session'
 import type { EditorStateController } from '../state'
 
 type EditCommandsHost = {
-  engine: Engine
+  read: Pick<EditorRead, 'node' | 'edge'>
   edit: EditorStore['edit']
   runtime: Pick<EditorStateController, 'state'>
   session: Pick<SessionCommands, 'edit'>
@@ -29,7 +29,7 @@ const resolveNodeCommitValue = (input: {
 )
 
 export const createEditCommands = ({
-  engine,
+  read,
   edit,
   runtime,
   session,
@@ -50,7 +50,7 @@ export const createEditCommands = ({
       && currentEdit.capabilities.empty === 'remove'
       && !currentEdit.initial.text.trim()
     ) {
-      const committedEdge = engine.read.edge.item.get(currentEdit.edgeId)?.edge
+      const committedEdge = read.edge.committed.get(currentEdit.edgeId)?.edge
       if (!committedEdge?.labels?.some((label) => label.id === currentEdit.labelId)) {
         session.edit.clear()
         return undefined
@@ -72,7 +72,7 @@ export const createEditCommands = ({
     runtime.state.edit.mutate.status('committing')
 
     if (currentEdit.kind === 'node') {
-      const committed = engine.read.node.item.get(currentEdit.nodeId)
+      const committed = read.node.committed.get(currentEdit.nodeId)
       if (!committed) {
         session.edit.clear()
         return undefined

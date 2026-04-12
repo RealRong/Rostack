@@ -16,7 +16,7 @@ import {
 import {
   createFieldsEngineApi,
   createRecordsEngineApi,
-  createViewEngineApi,
+  createActiveViewApi,
   createViewsEngineApi
 } from '../facade'
 import {
@@ -68,16 +68,11 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     read,
     dispatch
   })
-  const createScopedViewApi = (viewId: string) => createViewEngineApi({
-    resolveViewId: () => viewId,
+  const activeView = createActiveViewApi({
+    readViewId: activeBase.id.get,
     readDocument: () => readValue(read.document),
-    readView: () => readValue(read.view, viewId),
-    readState: () => {
-      const state = activeBase.state.get()
-      return state?.view.id === viewId
-        ? state
-        : undefined
-    },
+    readView: () => readValue(activeBase.view),
+    readState: () => readValue(activeBase.state),
     activeRead: activeBase.read,
     readRecord: activeBase.read.record,
     dispatch,
@@ -85,31 +80,20 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     records
   })
   const active = Object.assign(
-    createViewEngineApi({
-      resolveViewId: activeBase.id.get,
-      readDocument: () => readValue(read.document),
-      readView: () => readValue(activeBase.view),
-      readState: () => readValue(activeBase.state),
-      activeRead: activeBase.read,
-      readRecord: activeBase.read.record,
-      dispatch,
-      fields,
-      records
-    }),
-    activeBase
+    activeBase,
+    activeView
   )
   active.gallery = {
-    ...active.gallery,
+    ...activeView.gallery,
     state: activeBase.gallery.state
   }
   active.kanban = {
-    ...active.kanban,
+    ...activeView.kanban,
     state: activeBase.kanban.state
   }
   const views = createViewsEngineApi({
     read,
-    dispatch,
-    api: createScopedViewApi
+    dispatch
   })
 
   const engine: Engine = {

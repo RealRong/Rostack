@@ -8,7 +8,6 @@ import {
 } from '@dataview/core/view'
 import type {
   EngineReadApi,
-  ViewEngineApi,
   ViewsEngineApi
 } from '../api/public'
 import type { ActionResult } from '../api/public/command'
@@ -16,7 +15,6 @@ import type { ActionResult } from '../api/public/command'
 export const createViewsEngineApi = (options: {
   read: EngineReadApi
   dispatch: (action: Action | readonly Action[]) => ActionResult
-  api: (viewId: ViewId) => ViewEngineApi
 }): ViewsEngineApi => {
   const readViews = () => read(options.read.views)
 
@@ -29,7 +27,6 @@ export const createViewsEngineApi = (options: {
         viewId
       })
     },
-    api: options.api,
     create: input => {
       const preferredName = input.name.trim()
       if (!preferredName) {

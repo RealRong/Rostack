@@ -1,4 +1,4 @@
 export { createFieldsEngineApi } from './fields'
 export { createRecordsEngineApi } from './records'
-export { createViewEngineApi } from './view'
+export { createActiveViewApi } from './view'
 export { createViewsEngineApi } from './views'

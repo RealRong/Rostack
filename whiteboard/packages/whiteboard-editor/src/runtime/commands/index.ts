@@ -88,7 +88,6 @@ export const createEditorCommands = ({
     overlay
   })
   const session = createSessionCommands({
-    engine,
     runtime,
     read,
     registry
@@ -134,7 +133,7 @@ export const createEditorCommands = ({
     }
   })
   const edit = createEditCommands({
-    engine,
+    read,
     edit: state.edit,
     runtime,
     session,

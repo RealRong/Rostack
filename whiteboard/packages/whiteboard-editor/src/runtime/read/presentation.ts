@@ -22,7 +22,7 @@ import type {
   SelectionOverlay,
   NodeToolbarContext,
   ToolbarSelectionKind
-} from '../../selection'
+} from '../../types/selectionPresentation'
 import type {
   ControlId,
   NodeFamily,

@@ -79,6 +79,7 @@ export type NodeCanvasSnapshot = {
 
 export type NodeRead = {
   list: EngineRead['node']['list']
+  committed: EngineRead['node']['item']
   item: KeyedReadStore<NodeId, NodeItem | undefined>
   nodes: (nodeIds: readonly NodeId[]) => readonly Node[]
   state: KeyedReadStore<NodeId, NodeRuntimeState>
@@ -486,6 +487,7 @@ export const createNodeRead = ({
 
   return {
     list: read.node.list,
+    committed: read.node.item,
     item,
     nodes: (nodeIds) => readPresentValues(nodeIds, (nodeId) => item.get(nodeId)?.node),
     state,

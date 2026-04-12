@@ -1,167 +1,52 @@
-# Dataview Engine Facade 简化方案
+# Dataview Engine Facade 最终实施方案
 
-## 目标
+## 1. 明确决策
 
-下一步 `dataview/src/engine/facade` 的优化重点，不是继续微调实现细节，而是把 facade 层的公共语义彻底收口到与真实运行时一致的形态。
+本次 `dataview/src/engine/facade` 重构，按下面结论一步到位执行，不保留兼容层，不保留过渡接口，不保留双轨实现。
 
-系统的真实约束是：
-
-- 一个文档可以持有多个持久化 view。
-- 任意时刻只有一个 active view session。
-
-因此 facade 层必须明确区分两件事：
-
-- 持久化 view 配置管理
-- 当前 active view 的完整运行时 domain 行为
-
-目标是：
+硬性结论如下：
 
 - 保留多 view 文档模型。
-- 保留 `engine.active` 作为唯一完整 view domain API。
-- 收缩 `engine.views.api(viewId)` 这条语义不诚实的接口。
-- 让 `engine/facade/view/index.ts` 不再混合 config 写操作与 active-only 行为。
+- 保留 `engine.active` 作为唯一完整的 active view session API。
+- 保留 `engine.views`，但它只负责 view 集合管理。
+- 明确删除 `engine.views.api(viewId)`。
+- 不新增 `engine.views.config(viewId)`。
+- 不允许再通过 scoped `viewId` 暴露完整 `ViewEngineApi`。
 
----
+这份方案里没有“先保留再观察”的模糊空间。最终 API 直接收口到真实运行时语义：
 
-## 最终判断
+- 一个文档可以有多个持久化 view。
+- 任意时刻只有一个 active view session。
 
-### 成立的核心结论
+因此只有 `engine.active` 可以承载完整 view domain 行为。
 
-1. `ActiveViewState` 不是主要问题。
+## 2. 最终 API 设计
 
-它表达的是 active view 的运行时投影，本身是合理边界。当前 React 真实工作面也已经围绕 `engine.active` 在组织。
+### 2.1 `Engine`
 
-2. `engine.views` 不是问题。
-
-`engine.views` 对应的是 document 级别的 view 集合管理：
-
-- `list`
-- `get`
-- `open`
-- `create`
-- `rename`
-- `duplicate`
-- `remove`
-
-这些能力与多 view 文档模型完全一致，应该保留。
-
-3. `engine.views.api(viewId)` 是 facade 层当前最核心的问题。
-
-类型上它表达的是：
-
-- 任意 `viewId` 都可以拿到一套完整 `ViewEngineApi`
-
-但实现上的真实语义不是这样。
-
-当前完整 `ViewEngineApi` 里，有一批能力天然依赖 active runtime：
-
-- `items`
-- `cells`
-- active runtime 下的 `read` / `select`
-- 基于 `appearances`、`sections`、group runtime 语义的移动与写入
-
-这意味着：
-
-- 类型层面表达为“任意 view 都有完整 API”
-- 运行时真实语义却是“只有 active 的那个 view 才有完整 API”
-
-这就是 facade 当前最主要的语义错位。
-
----
-
-## 当前问题
-
-### 1. `ViewEngineApi` 混了两层职责
-
-当前 `ViewEngineApi` 在 [services.ts](/Users/realrong/Rostack/dataview/src/engine/api/public/services.ts) 里同时承载：
-
-- 持久化 view config 写操作
-- active-only runtime 行为
-
-这两层相关，但不是同一层职责。
-
-具体看：
-
-- 明显属于 config 的：
-  - `type`
-  - `search`
-  - `filter`
-  - `sort`
-  - `group`
-  - `calc`
-  - `display`
-  - `table` / `gallery` / `kanban` 下的静态配置项
-  - `order` 的 record 级写入
-
-- 明显属于 active runtime 的：
-  - `items`
-  - `cells`
-  - active read / select
-  - 基于 section / appearance / group runtime 计算出的移动行为
-
-问题不是“这些能力不该存在”，而是它们不该继续挂在同一个 scoped `ViewEngineApi` 上，对任意 `viewId` 看起来都等价。
-
-### 2. `createViewEngineApi()` 当前是总装混合层
-
-[view/index.ts](/Users/realrong/Rostack/dataview/src/engine/facade/view/index.ts) 当前同时在做：
-
-- view config patch builder
-- active-only item / cell 行为
-- active runtime read 依赖下的 group move / create 语义
-
-这导致：
-
-- `engine.active` 依赖它
-- `engine.views.api(viewId)` 也依赖它
-
-最后把 active-only 能力“借壳”暴露给了 scoped view API。
-
-### 3. `views.ts` 的 `api(viewId)` 让 public surface 不诚实
-
-[views.ts](/Users/realrong/Rostack/dataview/src/engine/facade/views.ts) 当前的：
+最终顶层结构保持简短直接：
 
 ```ts
-api: (viewId: ViewId) => ViewEngineApi
+interface Engine {
+  active: ActiveEngineApi
+  views: ViewsEngineApi
+  fields: FieldsEngineApi
+  records: RecordsEngineApi
+  document: EngineDocumentApi
+  history: EngineHistoryApi
+  perf: EnginePerfApi
+  read: EngineReadApi
+}
 ```
 
-最大的问题不是实现复杂，而是 public type 在撒谎。它暗示所有 view 都有完整 domain API，但实际上只有 active 的那个 view 才成立。
+顶层不再额外提供按 `viewId` scoped 的完整 facade。
 
----
+### 2.2 `ViewsEngineApi`
 
-## 最终 API 方向
-
-### 1. `engine.active` 保留为唯一完整 view domain API
-
-最终只有 `engine.active` 拥有完整的 view domain surface。
-
-它应继续承载：
-
-- `search`
-- `filter`
-- `sort`
-- `group`
-- `calc`
-- `display`
-- `table`
-- `gallery`
-- `kanban`
-- `order`
-- `items`
-- `cells`
-- `read`
-- `select`
-
-结论：
-
-- 只有 `engine.active` 能表达“完整 view session”。
-- 任何依赖 active runtime projection 的能力都只能留在这里。
-
-### 2. `engine.views` 保留为集合管理 API
-
-最终 `engine.views` 只负责文档中的持久化 view 集合管理：
+`engine.views` 只保留集合管理能力：
 
 ```ts
-interface ViewsApi {
+interface ViewsEngineApi {
   list: () => readonly View[]
   get: (viewId: ViewId) => View | undefined
   open: (viewId: ViewId) => void
@@ -172,291 +57,331 @@ interface ViewsApi {
 }
 ```
 
-结论：
+明确禁止：
 
-- `engine.views` 不应继续看起来像“view domain API factory”。
-- 它表达的是 document 级 view 集合，不是 active session。
+- `api(viewId)`
+- `config(viewId)`
+- 任何 scoped runtime facade
 
-### 3. 去掉或收缩 `engine.views.api(viewId)`
+原因不是“以后完全不可能编辑 inactive view”，而是当前系统没有必要为这种需求保留一整套 facade 结构。需要编辑某个 inactive view 时，先 `open(viewId)`，再通过 `engine.active` 操作。
 
-这是下一步 facade 简化的第一优先级。
+### 2.3 `ActiveEngineApi`
 
-推荐最终方向：
+`engine.active` 是唯一完整 view session API。它同时承载两类能力：
 
-- 不再公开 `engine.views.api(viewId): ViewEngineApi`
+- 当前 active view 的 config 写入
+- 当前 active runtime 的读取与写入
 
-如果业务确实需要“在不 open 的前提下编辑 inactive view 配置”，推荐显式引入一个更窄接口，而不是继续复用完整 `ViewEngineApi`。
-
-更合理的候选形态是：
+最终边界如下：
 
 ```ts
-interface ViewsApi {
-  config: (viewId: ViewId) => ViewConfigApi
+interface ActiveEngineApi {
+  id: ReadStore<ViewId | undefined>
+  view: ReadStore<View | undefined>
+  state: ReadStore<ActiveViewState | undefined>
+  select: ActiveSelectApi
+  read: ActiveReadApi
+
+  type: { set: (type: ViewType) => void }
+  search: { set: (value: string) => void }
+  filter: ...
+  sort: ...
+  group: ...
+  calc: ...
+  display: ...
+  table: ...
+  gallery: ActiveGalleryApi
+  kanban: ActiveKanbanApi
+  order: ViewOrderApi
+  items: ViewItemsApi
+  cells: ViewCellsApi
 }
 ```
 
-或者更保守：
-
-- 暂时不加 `config(viewId)`，只保留集合管理 API
-- 当明确出现 inactive view config 编辑需求时，再补一个窄接口
-
-当前最重要的不是立刻引入 `config(viewId)`，而是先让 `api(viewId)` 不再伪装成完整 `ViewEngineApi`。
-
----
-
-## 推荐的接口拆分
-
-### 1. `ActiveViewSessionApi`
-
-这是 `engine.active` 的真实职责。
-
-它应是当前完整 `ViewEngineApi` 加 active session 能力的归宿，包含：
-
-- view config 行为
-- active runtime 行为
-- active read / select
-
-换句话说：
-
-- `engine.active` 保持大而全
-- 但它的“大而全”是合理的，因为系统里同时只有一个 active session
-
-### 2. `ViewConfigApi`
-
-如果后续确实需要“编辑 inactive view”，这层只负责持久化 config 写入。
-
-建议能力只包含：
-
-- `rename`
-- `type`
-- `search`
-- `filter`
-- `sort`
-- `group`
-- `calc`
-- `display`
-- 静态 options
-- record 级 `order`
-
-不应放入的能力：
-
-- `items`
-- `cells`
-- `read`
-- `select`
-- 任何依赖 `appearances`、`sections`、active projection 的行为
-
-### 3. `order` 的归属
-
-这里要特别说明：
-
-- `order.move(recordIds, beforeRecordId)` 本质上是 config 层能力
-- active-only 的是“如何从 runtime appearance / section / drag target 推导出这组 `recordIds + beforeRecordId`”
-
-也就是说：
-
-- `planMove(...)` 属于 active runtime 读取
-- `order.move(...)` 本身可以保留在 config 层
-
-因此后续拆分时不应把 `order` 粗暴归为 active-only。
-
----
-
-## 对现有文件的具体判断
-
-### `dataview/src/engine/facade/view/index.ts`
-
-这是下一步重构核心文件。
-
-当前问题：
-
-- config 写操作和 active runtime 行为混在一起
-- 被 `engine.active` 和 `engine.views.api(viewId)` 共同复用
-
-最终方向：
-
-- 拆成两层：
-  - `createViewConfigApi(...)`
-  - `createActiveViewApi(...)`
-
-其中：
-
-- `createViewConfigApi(...)` 只处理 config patch / write
-- `createActiveViewApi(...)` 在 config API 之上叠加：
-  - `items`
-  - `cells`
-  - active runtime 相关行为
-
-### `dataview/src/engine/facade/view/commands.ts`
-
-当前不是第一优先级问题。
-
-它主要负责 config patch 构造，语义上更接近未来的 `ViewConfigApi` 内部实现。
-
 结论：
 
-- 先不把它当主要问题。
-- 等 `view/index.ts` 拆层后，再决定：
-  - 保留为 config patch builder
-  - 或者直接内联
+- 只有 `engine.active` 能做 `items.move`
+- 只有 `engine.active` 能做 `items.create`
+- 只有 `engine.active` 能做 `cells.set/clear`
+- 只有 `engine.active` 能访问 `read` / `select`
+- 只有 `engine.active` 能消费 `appearances` / `sections` / `calculations`
 
-### `dataview/src/engine/facade/views.ts`
+### 2.4 `ViewEngineApi`
 
-当前问题集中在：
+最终不再保留“可同时代表 active 和 inactive scoped view”的 `ViewEngineApi` 心智模型。
+
+实施上允许两种等价收口方式，目标一致：
+
+方案 A：
+
+- 删除 `ViewEngineApi`
+- 直接让 `ActiveEngineApi` 成为唯一 view facade 类型
+
+方案 B：
+
+- 保留 `ViewEngineApi` 这个名字
+- 但它明确只表示 active view facade
+- 不允许再被 `engine.views` 复用
+
+最终推荐方案是 A，因为更干净，不会继续制造 scoped facade 的误解。
+
+## 3. 职责拆分
+
+### 3.1 `engine.views` 的职责
+
+只处理文档级 view 集合管理：
+
+- 列表
+- 读取单个持久化 view
+- 打开某个 view
+- 创建
+- 重命名
+- 复制
+- 删除
+
+它不负责：
+
+- item 级行为
+- cell 级行为
+- active query/runtime 行为
+- `read` / `select`
+- group runtime 下的移动推导
+
+### 3.2 `engine.active` 的职责
+
+处理当前 active session 的完整行为：
+
+- view config 修改
+- 当前投影读取
+- section / appearance / cell 推导
+- 拖拽移动
+- 当前视图下的新建记录
+- 当前视图下的 cell 写入
+
+### 3.3 `order` 的归属
+
+`order.move(recordIds, beforeRecordId)` 保留在 active facade 上对外暴露，但语义上它属于“对 active view config 的写入”，不是独立 runtime 模块。
+
+active-only 的部分是：
+
+- 从 `appearanceIds + Placement` 推导出 `recordIds + beforeRecordId`
+
+这部分继续由 `engine.active.read.planMove(...)` 及 `items.move(...)` 消费，不向 `engine.views` 下沉。
+
+## 4. facade 文件最终形态
+
+### 4.1 `dataview/src/engine/facade/views.ts`
+
+最终只保留集合管理实现：
+
+- `list`
+- `get`
+- `open`
+- `create`
+- `rename`
+- `duplicate`
+- `remove`
+
+必须删除：
+
+- `api`
+- 任何 `viewId => createViewEngineApi(...)` 的依赖
+
+### 4.2 `dataview/src/engine/facade/view/index.ts`
+
+这个文件必须从“混合总装层”收口成“只服务 active facade 的构造器”。
+
+最终要求：
+
+- 不再支持任意 `viewId` scoped 复用
+- 不再接收 `resolveViewId()` 这种为 scoped facade 服务的参数
+- 不再承载“如果恰好 active 才能正常工作”的半真半假的语义
+
+推荐的最终形态：
 
 ```ts
-api: (viewId: ViewId) => ViewEngineApi
+createActiveViewApi({
+  activeBase,
+  readDocument,
+  dispatch,
+  fields,
+  records
+})
 ```
 
-最终方向：
+该构造器内部直接依赖 active context：
 
-- 删除 `api(viewId): ViewEngineApi`
-- 或改为更窄的：
-  - `config(viewId): ViewConfigApi`
+- active view
+- active state
+- active read
 
-### `dataview/src/engine/api/public/services.ts`
+而不是再人为绕一层 scoped `viewId`。
 
-这是需要同步收口的 public type 定义文件。
+### 4.3 `dataview/src/engine/facade/view/commands.ts`
 
-最终方向：
+这个文件只保留 config patch 构造逻辑。如果拆分后内容足够短，可以直接内联回 `view/index.ts`。
 
-- `ViewsEngineApi` 不再暴露 `api(viewId): ViewEngineApi`
-- `ViewEngineApi` 应重新命名或重新界定为 active-only 语义
-- 如果需要 inactive view config API，则新增独立的 `ViewConfigApi`
+明确原则：
 
-### `dataview/src/engine/facade/index.ts`
+- 如果保留独立文件，它只服务 active facade 的 config 部分
+- 不允许再以“复用给 scoped inactive facade”为理由保留复杂抽象
 
-不是主要问题。
+### 4.4 `dataview/src/engine/api/createEngine.ts`
 
-它只是导出组织层。等 `view/index.ts` 拆分后，再自然调整导出面即可。
+最终装配方式必须改成：
 
----
+- `active` 直接由 active base 加 active view facade 组合而成
+- `views` 直接由集合管理 facade 生成
+- 删除 `createScopedViewApi`
 
-## 最终推荐心智模型
+明确禁止保留：
 
-系统应该被这样理解：
+```ts
+const createScopedViewApi = (viewId: string) => ...
+```
 
-- `engine.views` 负责管理文档里的持久化 views
-- `engine.active` 代表当前唯一的 active view session
-- 只有 `engine.active` 拥有依赖运行时投影的完整 view 行为
-- inactive view 如果允许直接编辑，也只通过更窄的 config-only API 处理
+## 5. public type 具体修改
 
-这一模型与实际运行时完全一致，也与当前 React 的真实使用方式一致。
+### 5.1 `dataview/src/engine/api/public/services.ts`
 
----
+必须修改：
 
-## 具体落地方案
+- 从 `ViewsEngineApi` 中删除 `api: (viewId: ViewId) => ViewEngineApi`
+- 如果 `ViewEngineApi` 还保留，必须明确改为 active-only 语义
+- 更推荐直接删除 `ViewEngineApi`，让 `services.ts` 只保留真正还存在的公共接口
 
-### 阶段 1. 先收口 public type
+### 5.2 `dataview/src/engine/api/public/project.ts`
 
-目标：
+`ActiveEngineApi` 保持为唯一完整 view session 类型。
 
-- 在 public types 上先把语义纠正过来
+如果删除 `ViewEngineApi`，则这里直接显式声明 active 的 config/action surface，不再通过：
 
-具体动作：
+```ts
+extends Omit<ViewEngineApi, ...>
+```
 
-- 在 [services.ts](/Users/realrong/Rostack/dataview/src/engine/api/public/services.ts) 中：
-  - 标记 `ViewEngineApi` 为 active-only 语义
-  - 删除或准备删除 `ViewsEngineApi.api(viewId): ViewEngineApi`
-- 明确 `engine.active` 是唯一完整 view domain API
+原因很简单：
 
-完成标准：
+- `ViewEngineApi` 这个中间层已经不再有独立存在价值
+- 继续 `Omit` 只会保留旧架构痕迹
 
-- 公共类型不再表达“任意 view 都有完整 runtime API”
+### 5.3 `dataview/src/engine/api/public/index.ts`
 
-### 阶段 2. 拆 `createViewEngineApi()`
+同步删除不再对外导出的 facade 类型。
 
-目标：
+### 5.4 `dataview/src/index.ts`
 
-- 把 config 与 active runtime 行为分层
+同步删除不再对外 re-export 的 facade 类型。
 
-具体动作：
+## 6. 代码层必须删除的旧实现
 
-- 从 [view/index.ts](/Users/realrong/Rostack/dataview/src/engine/facade/view/index.ts) 中提炼：
-  - `createViewConfigApi(...)`
-  - `createActiveViewApi(...)`
+这次重构中必须删干净的内容：
 
-建议边界：
+- `engine.views.api(viewId)`
+- `ViewsEngineApi.api`
+- `createScopedViewApi`
+- scoped `createViewEngineApi(viewId)` 复用路径
+- 任何“传入任意 `viewId`，返回完整 view facade”的实现
+- 任何仅为支持这条旧线而存在的类型中间层
 
-- `createViewConfigApi(...)`：
-  - `type`
-  - `search`
-  - `filter`
-  - `sort`
-  - `group`
-  - `calc`
-  - `display`
-  - 静态 `table/gallery/kanban` config
-  - `order`
+清理标准不是“外部暂时不用了”，而是：
 
-- `createActiveViewApi(...)`：
-  - `items`
-  - `cells`
-  - active-specific runtime write behavior
+- 类型删掉
+- 实现删掉
+- 调用面删掉
+- re-export 删掉
 
-完成标准：
+## 7. 实施步骤
 
-- `view/index.ts` 不再是总装混合层
+### 阶段 1. 收口 public API
 
-### 阶段 3. 收缩 `views.ts`
+修改文件：
 
-目标：
+- `dataview/src/engine/api/public/services.ts`
+- `dataview/src/engine/api/public/project.ts`
+- `dataview/src/engine/api/public/index.ts`
+- `dataview/src/index.ts`
 
-- 让 `engine.views` 回到集合管理职责
+执行内容：
 
-具体动作：
-
-- 从 [views.ts](/Users/realrong/Rostack/dataview/src/engine/facade/views.ts) 删除：
-  - `api(viewId): ViewEngineApi`
-
-可选动作：
-
-- 如果确实需要 inactive config 编辑：
-  - 新增 `config(viewId): ViewConfigApi`
+- 删除 `ViewsEngineApi.api`
+- 删除或收缩 `ViewEngineApi`
+- 让 `ActiveEngineApi` 成为唯一完整 facade 类型
 
 完成标准：
 
-- `engine.views` 不再作为完整 domain API factory
+- public type 不再表达 scoped 完整 view facade
 
-### 阶段 4. 只保留 `engine.active` 的完整行为
+### 阶段 2. 收口 facade 实现
 
-目标：
+修改文件：
 
-- 把完整 domain surface 只留在 active session 上
+- `dataview/src/engine/facade/views.ts`
+- `dataview/src/engine/facade/view/index.ts`
+- `dataview/src/engine/facade/view/commands.ts`
+- `dataview/src/engine/facade/index.ts`
 
-具体动作：
+执行内容：
 
-- [createEngine.ts](/Users/realrong/Rostack/dataview/src/engine/api/createEngine.ts) 中：
-  - active 只组合 `createActiveViewApi(...)`
-  - views 只组合集合管理 API
-
-完成标准：
-
-- `engine.active` 成为唯一完整 view 行为入口
-
-### 阶段 5. 清理旧调用点
-
-目标：
-
-- 清理所有对 `engine.views.api(viewId)` 的依赖
-
-具体动作：
-
-- 全局检索并替换所有 `views.api(...)` 调用
-- 按使用场景改为：
-  - `engine.active.*`
-  - `engine.views.*`
-  - 或未来的 `engine.views.config(...)`
+- `views.ts` 删除 `api`
+- `view/index.ts` 改成只构造 active facade
+- 去掉为 scoped viewId 复用服务的参数和分支
+- 对过短的 helper 直接内联
 
 完成标准：
 
-- 仓库中不再残留 `views.api(viewId)` 这条旧线
+- facade 层只剩两条线：`engine.views` 集合管理、`engine.active` 完整 session
 
----
+### 阶段 3. 重组 engine 装配
 
-## 实施要求
+修改文件：
 
-- 一步到位，不保留兼容层。
-- 不允许继续让 scoped inactive view API 伪装成完整 `ViewEngineApi`。
-- 先做语义拆分，再决定文件是否进一步内联。
-- 优先以公共 API 是否诚实为判断标准，而不是以“复用实现”作为优先标准。
+- `dataview/src/engine/api/createEngine.ts`
+
+执行内容：
+
+- 删除 `createScopedViewApi`
+- `active` 直接装配 active facade
+- `views` 只装配集合管理 facade
+
+完成标准：
+
+- `createEngine()` 中不再出现 scoped view facade 工厂
+
+### 阶段 4. 全局清理
+
+全局检索并清理：
+
+- `views.api(`
+- `ViewEngineApi`
+- `createScopedViewApi`
+
+完成标准：
+
+- 仓库里不再残留旧架构名字和实现
+
+## 8. 实施约束
+
+这次实施必须遵守：
+
+- 一步到位
+- 不保留兼容层
+- 不保留 fallback
+- 不保留双轨实现
+- 不新增 `engine.views.config(viewId)` 作为折中方案
+- 不允许继续把 active-only 能力伪装成任意 `viewId` 都可用的 facade
+
+## 9. 最终结果
+
+重构完成后，engine facade 的心智模型必须简化为：
+
+- `engine.views` 管理“有哪些 view”
+- `engine.active` 操作“当前这个 view”
+
+只有这两条线。
+
+不再存在第三条：
+
+- “给我任意一个 viewId，我拿到一套完整 facade”
+
+这条线必须彻底删除。

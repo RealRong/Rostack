@@ -31,15 +31,36 @@ import type {
   RecordsEngineApi,
   ViewCellsApi,
   ViewGalleryApi,
-  ViewKanbanApi,
   ViewItemsApi,
-  ViewOrderApi,
-  ViewEngineApi,
-  ViewTableApi
+  ViewKanbanApi,
+  ViewOrderApi
 } from '../../api/public'
 import {
   createViewCommandNamespaces
 } from './commands'
+
+type ActiveViewCommandsApi = Omit<
+  Pick<
+    ActiveEngineApi,
+    | 'type'
+    | 'search'
+    | 'filter'
+    | 'sort'
+    | 'group'
+    | 'calc'
+    | 'display'
+    | 'table'
+    | 'gallery'
+    | 'kanban'
+    | 'order'
+    | 'items'
+    | 'cells'
+  >,
+  'gallery' | 'kanban'
+> & {
+  gallery: ViewGalleryApi
+  kanban: ViewKanbanApi
+}
 
 const sameValue = (
   left: unknown,
@@ -177,8 +198,8 @@ const createGroupWriteCommands = (input: {
   return commands
 }
 
-export const createViewEngineApi = (options: {
-  resolveViewId: () => ViewId | undefined
+export const createActiveViewApi = (options: {
+  readViewId: () => ViewId | undefined
   readDocument: () => DataDoc
   readView: () => View | undefined
   readState: () => ActiveViewState | undefined
@@ -189,13 +210,13 @@ export const createViewEngineApi = (options: {
   }
   fields: Pick<FieldsEngineApi, 'list' | 'create'>
   records: Pick<RecordsEngineApi, 'field'>
-}): ViewEngineApi => {
+}): ActiveViewCommandsApi => {
   const readDocument = options.readDocument
   const readCurrentView = options.readView
 
   const commit = (action: Action | readonly Action[]) => options.dispatch(action).applied
   const commands = createViewCommandNamespaces({
-    resolveViewId: options.resolveViewId,
+    readViewId: options.readViewId,
     commit,
     readDocument,
     readView: readCurrentView
@@ -363,7 +384,6 @@ export const createViewEngineApi = (options: {
   }
 
   const writeCell = (
-    state: ActiveViewState,
     cell: CellRef,
     value: unknown | undefined
   ) => {
@@ -382,20 +402,18 @@ export const createViewEngineApi = (options: {
 
   const cells: ViewCellsApi = {
     set: (cell, value) => {
-      const state = options.readState()
-      if (!state) {
+      if (!options.readState()) {
         return
       }
 
-      writeCell(state, cell, value)
+      writeCell(cell, value)
     },
     clear: cell => {
-      const state = options.readState()
-      if (!state) {
+      if (!options.readState()) {
         return
       }
 
-      writeCell(state, cell, undefined)
+      writeCell(cell, undefined)
     }
   }
 
@@ -439,7 +457,7 @@ export const createViewEngineApi = (options: {
     })
   }
 
-  const table: ViewEngineApi['table'] = {
+  const table: ActiveEngineApi['table'] = {
     setWidths: widths => {
       commands.tableSettings.setColumnWidths(widths)
     },

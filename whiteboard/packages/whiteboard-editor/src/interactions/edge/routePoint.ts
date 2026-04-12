@@ -18,6 +18,7 @@ import type { PointerDownInput } from '../../types/input'
 import type { InteractionContext } from '../context'
 import {
   finishRouteHandleState,
+  type RouteHandleState,
   startRouteHandleState,
   startStepSegmentRouteHandleState,
   stepRouteHandleState
@@ -99,25 +100,16 @@ const resolvePickTarget = (
   })
 }
 
-export const createEdgeRoutePointSession = (
-  ctx: InteractionContext,
-  input: {
-    edgeId: EdgeId
-    index: number
-    pointerId: number
-    startWorld: PointerDownInput['world']
-    origin: PointerDownInput['world']
-    point?: PointerDownInput['world']
-  }
-): InteractionSession => {
-  let state = startRouteHandleState({
-    edgeId: input.edgeId,
-    index: input.index,
-    pointerId: input.pointerId,
-    startWorld: input.startWorld,
-    origin: input.origin,
-    point: input.point
-  })
+const createEdgeRouteSession = (input: {
+  ctx: InteractionContext
+  state: RouteHandleState
+  commit: (commit: ReturnType<typeof finishRouteHandleState>) => void
+}): InteractionSession => {
+  const {
+    ctx,
+    commit
+  } = input
+  let state = input.state
   let interaction = null as InteractionSession | null
 
   const step = (
@@ -135,11 +127,8 @@ export const createEdgeRoutePointSession = (
     })
     state = result.state
 
-    if (!result.draft) {
+    if (!result.draft?.patch) {
       return
-    }
-    if (!result.draft.patch) {
-      return CANCEL
     }
 
     interaction!.gesture = createEdgeGesture(
@@ -187,19 +176,7 @@ export const createEdgeRoutePointSession = (
         return transition
       }
 
-      const commit = finishRouteHandleState(state)
-      if (!readCapability(ctx, state.edgeId)?.editRoute) {
-        return FINISH
-      }
-
-      if (commit.route) {
-        ctx.write.edge.update(commit.edgeId, {
-          route: commit.route
-        })
-      } else if (commit.point) {
-        ctx.write.edge.route.move(commit.edgeId, commit.index, commit.point)
-      }
-
+      commit(finishRouteHandleState(state))
       return FINISH
     },
     cleanup: () => {}
@@ -207,6 +184,44 @@ export const createEdgeRoutePointSession = (
 
   return interaction
 }
+
+export const createEdgeRoutePointSession = (
+  ctx: InteractionContext,
+  input: {
+    edgeId: EdgeId
+    index: number
+    pointerId: number
+    startWorld: PointerDownInput['world']
+    origin: PointerDownInput['world']
+    point?: PointerDownInput['world']
+  }
+): InteractionSession => createEdgeRouteSession({
+  ctx,
+  state: startRouteHandleState({
+    edgeId: input.edgeId,
+    index: input.index,
+    pointerId: input.pointerId,
+    startWorld: input.startWorld,
+    origin: input.origin,
+    point: input.point
+  }),
+  commit: (commit) => {
+    if (!readCapability(ctx, commit.edgeId)?.editRoute) {
+      return
+    }
+
+    if (commit.route) {
+      ctx.write.edge.update(commit.edgeId, {
+        route: commit.route
+      })
+      return
+    }
+
+    if (commit.point) {
+      ctx.write.edge.route.move(commit.edgeId, commit.index, commit.point)
+    }
+  }
+})
 
 export const startEdgeRouteHandleInteraction = (
   ctx: InteractionContext,
@@ -244,94 +259,30 @@ export const startEdgeRouteHandleInteraction = (
     const item = ctx.read.edge.item.get(target.edgeId)
     const view = readEditableRouteView(ctx, target.edgeId)
     if (item?.edge.type === 'elbow' && view) {
-      let state = startStepSegmentRouteHandleState({
-        edgeId: target.edgeId,
-        index: target.index,
-        segmentIndex: target.segmentIndex,
-        axis: target.axis,
-        pointerId: start.pointerId,
-        startWorld: start.world,
-        origin: target.point,
-        pathPoints: view.path.points,
-        baseRoutePoints:
-          item.edge.route?.kind === 'manual'
-            ? item.edge.route.points
-            : []
-      })
-      let interaction = null as InteractionSession | null
-
-      const step = (
-        pointer: PointerClient
-      ) => {
-        const edgeItem = ctx.read.edge.item.get(state.edgeId)
-        if (!edgeItem || !readCapability(ctx, state.edgeId)?.editRoute) {
-          return CANCEL
-        }
-
-        const result = stepRouteHandleState({
-          state,
-          edge: edgeItem.edge,
-          pointerWorld: readViewport(ctx).pointer(pointer).world
-        })
-        state = result.state
-
-        if (!result.draft?.patch) {
-          return
-        }
-
-        interaction!.gesture = createEdgeGesture(
-          'edge-route',
-          {
-            patches: [{
-              id: state.edgeId,
-              patch: result.draft.patch,
-              activeRouteIndex: result.draft.activeRouteIndex
-            }]
-          }
-        )
-      }
-
-      interaction = {
-        mode: 'edge-route',
-        pointerId: state.pointerId,
-        gesture: createEdgeGesture(
-          'edge-route',
-          {
-            patches: [{
-              id: state.edgeId,
-              activeRouteIndex: state.index
-            }]
-          }
-        ),
-        autoPan: {
-          frame: (pointer) => step(pointer)
-        },
-        move: (input) => step({
-          clientX: input.client.x,
-          clientY: input.client.y
-        }) || undefined,
-        up: (input) => {
-          const transition = step({
-            clientX: input.client.x,
-            clientY: input.client.y
-          })
-          if (transition) {
-            return transition
-          }
-
-          const commit = finishRouteHandleState(state)
+      return createEdgeRouteSession({
+        ctx,
+        state: startStepSegmentRouteHandleState({
+          edgeId: target.edgeId,
+          index: target.index,
+          segmentIndex: target.segmentIndex,
+          axis: target.axis,
+          pointerId: start.pointerId,
+          startWorld: start.world,
+          origin: target.point,
+          pathPoints: view.path.points,
+          baseRoutePoints:
+            item.edge.route?.kind === 'manual'
+              ? item.edge.route.points
+              : []
+        }),
+        commit: (commit) => {
           if (commit.route) {
             ctx.write.edge.update(commit.edgeId, {
               route: commit.route
             })
           }
-
-          return FINISH
-        },
-        cleanup: () => {}
-      }
-
-      return interaction
+        }
+      })
     }
   }
 

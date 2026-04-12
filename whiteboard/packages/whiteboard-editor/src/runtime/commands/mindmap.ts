@@ -56,12 +56,7 @@ const readNodePosition = ({
 }: {
   editor: MindmapHost
   nodeId: NodeId
-}) => {
-  const node = editor.read.node.item.get(nodeId)?.node
-  return node && 'position' in node
-    ? node.position
-    : undefined
-}
+}) => editor.read.mindmap.rootPosition.get(nodeId)
 
 export const insertMindmapByPlacement = ({
   editor,

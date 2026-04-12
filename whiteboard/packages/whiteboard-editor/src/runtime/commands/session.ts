@@ -1,10 +1,3 @@
-import type { Engine } from '@whiteboard/engine'
-import {
-  applySelectionTarget,
-  isSelectionTargetEqual,
-  normalizeSelectionTarget,
-  type SelectionTarget
-} from '@whiteboard/core/selection'
 import { readTextWrapWidth } from '@whiteboard/core/node'
 import type { EditorRead } from '../../types/editor'
 import type { SessionActions } from '../../types/commands'
@@ -37,26 +30,22 @@ const resolveNodeCapability = ({
 }) => registry.get(nodeType)?.edit?.fields?.[field]
 
 export const createSessionCommands = ({
-  engine,
   runtime,
   read,
   registry
 }: {
-  engine: Engine
   runtime: Pick<EditorStateController, 'state'>
   read: EditorRead
   registry: Pick<NodeRegistry, 'get'>
 }): SessionCommands => {
-  const writeSelection = (input: {
-    next: SelectionTarget
-    apply: () => void
-  }) => {
-    if (isSelectionTargetEqual(runtime.state.selection.source.get(), input.next)) {
+  const writeSelection = (
+    apply: () => boolean
+  ) => {
+    if (!apply()) {
       return
     }
 
     runtime.state.edit.mutate.clear()
-    input.apply()
   }
 
   const startNode: SessionCommands['edit']['startNode'] = (
@@ -154,56 +143,22 @@ export const createSessionCommands = ({
     },
     selection: {
       replace: (input) => {
-        writeSelection({
-          next: normalizeSelectionTarget(input),
-          apply: () => {
-            runtime.state.selection.mutate.replace(input)
-          }
-        })
+        writeSelection(() => runtime.state.selection.mutate.replace(input))
       },
       add: (input) => {
-        writeSelection({
-          next: applySelectionTarget(runtime.state.selection.source.get(), input, 'add'),
-          apply: () => {
-            runtime.state.selection.mutate.add(input)
-          }
-        })
+        writeSelection(() => runtime.state.selection.mutate.apply('add', input))
       },
       remove: (input) => {
-        writeSelection({
-          next: applySelectionTarget(runtime.state.selection.source.get(), input, 'subtract'),
-          apply: () => {
-            runtime.state.selection.mutate.remove(input)
-          }
-        })
+        writeSelection(() => runtime.state.selection.mutate.apply('subtract', input))
       },
       toggle: (input) => {
-        writeSelection({
-          next: applySelectionTarget(runtime.state.selection.source.get(), input, 'toggle'),
-          apply: () => {
-            runtime.state.selection.mutate.toggle(input)
-          }
-        })
+        writeSelection(() => runtime.state.selection.mutate.apply('toggle', input))
       },
       selectAll: () => {
-        const next = normalizeSelectionTarget({
-          nodeIds: [...engine.read.node.list.get()],
-          edgeIds: [...engine.read.edge.list.get()]
-        })
-        writeSelection({
-          next,
-          apply: () => {
-            runtime.state.selection.mutate.replace(next)
-          }
-        })
+        writeSelection(() => runtime.state.selection.mutate.selectAll(read))
       },
       clear: () => {
-        writeSelection({
-          next: normalizeSelectionTarget({}),
-          apply: () => {
-            runtime.state.selection.mutate.clear()
-          }
-        })
+        writeSelection(() => runtime.state.selection.mutate.clear())
       }
     },
     edit: {

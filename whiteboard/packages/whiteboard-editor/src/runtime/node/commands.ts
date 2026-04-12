@@ -107,7 +107,6 @@ export const createNodeCommands = ({
 }): NodeCommands => {
   const patch = createNodePatchWriter(engine)
   const ctx = createNodeContext({
-    engineRead: engine.read.node.item,
     read,
     patch,
     preview: preview.node,

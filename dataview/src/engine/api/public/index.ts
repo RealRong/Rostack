@@ -53,7 +53,6 @@ export type {
   FieldsEngineApi,
   RecordsEngineApi,
   ViewCellsApi,
-  ViewEngineApi,
   ViewGalleryApi,
   ViewItemsApi,
   ViewKanbanApi,

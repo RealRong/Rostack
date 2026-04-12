@@ -72,30 +72,29 @@ import {
   showDisplayField
 } from '@dataview/core/view'
 import type {
-  ViewEngineApi,
+  ActiveEngineApi,
   ViewGalleryApi,
   ViewKanbanApi,
-  ViewOrderApi,
   ViewTableApi
 } from '../../api/public'
 
 type ViewPatchAction = Extract<Action, { type: 'view.patch' }>
 
 interface CreateViewCommandNamespacesOptions {
-  resolveViewId: () => ViewId | undefined
+  readViewId: () => ViewId | undefined
   commit: (action: Action) => boolean
   readDocument: () => DataDoc
   readView: () => View | undefined
 }
 
 export interface ViewCommandNamespaces {
-  type: ViewEngineApi['type']
-  search: ViewEngineApi['search']
-  filter: ViewEngineApi['filter']
-  sort: ViewEngineApi['sort']
-  group: ViewEngineApi['group']
-  calc: ViewEngineApi['calc']
-  display: ViewEngineApi['display']
+  type: ActiveEngineApi['type']
+  search: ActiveEngineApi['search']
+  filter: ActiveEngineApi['filter']
+  sort: ActiveEngineApi['sort']
+  group: ActiveEngineApi['group']
+  calc: ActiveEngineApi['calc']
+  display: ActiveEngineApi['display']
   tableSettings: ViewTableApi
   gallery: ViewGalleryApi
   kanban: ViewKanbanApi
@@ -103,7 +102,7 @@ export interface ViewCommandNamespaces {
     recordIds: readonly RecordId[],
     beforeRecordId?: RecordId
   ) => ViewPatchAction | undefined
-  clearOrder: ViewOrderApi['clear']
+  clearOrder: ActiveEngineApi['order']['clear']
 }
 
 interface CommandContext {
@@ -154,7 +153,7 @@ const createCommandContext = (
   }
 
   const commitPatch = (patch: ViewPatch) => {
-    const action = createPatchCommand(options.resolveViewId(), patch)
+    const action = createPatchCommand(options.readViewId(), patch)
     return action
       ? options.commit(action)
       : false
@@ -215,7 +214,7 @@ const createCommandContext = (
   return {
     readDocument: options.readDocument,
     commitPatch,
-    createPatchCommand: patch => createPatchCommand(options.resolveViewId(), patch),
+    createPatchCommand: patch => createPatchCommand(options.readViewId(), patch),
     withView,
     withField,
     withFilterField,

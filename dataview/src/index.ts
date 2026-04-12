@@ -117,7 +117,6 @@ export type {
   FieldsEngineApi,
   RecordsEngineApi,
   ViewCellsApi,
-  ViewEngineApi,
   ViewGalleryApi,
   ViewKanbanApi,
   ViewOrderApi,

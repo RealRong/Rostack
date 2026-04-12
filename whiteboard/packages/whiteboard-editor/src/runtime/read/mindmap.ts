@@ -6,7 +6,7 @@ import {
   type KeyedReadStore,
   type ReadStore
 } from '@shared/core'
-import type { NodeId, Rect } from '@whiteboard/core/types'
+import type { NodeId, Point, Rect } from '@whiteboard/core/types'
 import type { MindmapNodeId } from '@whiteboard/core/mindmap'
 import type { EngineRead, MindmapItem } from '@whiteboard/engine'
 import type { MindmapDragFeedback } from '../overlay/types'
@@ -56,6 +56,13 @@ export type MindmapView = {
     x2: number
     y2: number
   }
+}
+
+export type MindmapRead = EngineRead['mindmap'] & {
+  snapshot: EngineRead['mindmap']['item']
+  tree: KeyedReadStore<NodeId, MindmapItem['tree'] | undefined>
+  rootPosition: KeyedReadStore<NodeId, Point | undefined>
+  view: KeyedReadStore<NodeId, MindmapView | undefined>
 }
 
 const isMindmapNodeViewEqual = (
@@ -174,3 +181,40 @@ export const createMindmapViewStore = ({
   },
   isEqual: isMindmapViewEqual
 })
+
+export const createMindmapRead = ({
+  read,
+  drag
+}: {
+  read: EngineRead['mindmap']
+  drag: ReadStore<MindmapDragFeedback | undefined>
+}): MindmapRead => {
+  const tree: MindmapRead['tree'] = createKeyedDerivedStore({
+    get: (treeId: NodeId) => read.item.get(treeId)?.tree,
+    isEqual: (left, right) => left === right
+  })
+  const rootPosition: MindmapRead['rootPosition'] = createKeyedDerivedStore({
+    get: (treeId: NodeId) => read.item.get(treeId)?.node.position,
+    isEqual: (left, right) => (
+      left === right
+      || (
+        left !== undefined
+        && right !== undefined
+        && left.x === right.x
+        && left.y === right.y
+      )
+    )
+  })
+  const view = createMindmapViewStore({
+    item: read.item,
+    drag
+  })
+
+  return {
+    ...read,
+    snapshot: read.item,
+    tree,
+    rootPosition,
+    view
+  }
+}

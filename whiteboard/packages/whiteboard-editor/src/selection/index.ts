@@ -6,9 +6,3 @@ export type {
   NodeToolbarFilter,
   ToolbarSelectionKind
 } from '../types/selectionPresentation'
-export type {
-  SelectionOverlay,
-  NodeToolbarContext,
-  NodeToolbarFilter,
-  ToolbarSelectionKind
-} from '../types/selectionPresentation'

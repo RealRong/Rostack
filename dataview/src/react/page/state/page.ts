@@ -9,6 +9,7 @@ import {
 } from '@dataview/core/document'
 import {
   createDerivedStore,
+  read,
   type ReadStore
 } from '@shared/core'
 import {
@@ -129,7 +130,7 @@ export const createPageStateStore = (options: {
   page: ReadStore<PageSessionState>
   valueEditorOpen: ReadStore<boolean>
 }) => createDerivedStore<PageState>({
-  get: read => pageState({
+  get: () => pageState({
     document: read(options.document),
     activeViewId: read(options.activeViewId),
     activeViewType: read(options.activeView)?.type,

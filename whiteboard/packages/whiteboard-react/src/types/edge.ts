@@ -3,13 +3,13 @@ import type { EdgeId } from '@whiteboard/core/types'
 import type { WhiteboardRuntime } from './runtime'
 
 export type EdgeResolved = NonNullable<
-  ReturnType<ReturnType<WhiteboardRuntime['select']['edge']['resolved']>['get']>
+  ReturnType<WhiteboardRuntime['read']['edge']['resolved']['get']>
 >
 
 export type EdgeState = EdgeResolved
 
 export type EdgeView = NonNullable<
-  ReturnType<ReturnType<WhiteboardRuntime['select']['edge']['view']>['get']>
+  ReturnType<WhiteboardRuntime['read']['edge']['view']['get']>
 >
 
 export type SelectedEdgeRoutePointView = {

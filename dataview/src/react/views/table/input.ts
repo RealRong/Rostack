@@ -1,11 +1,9 @@
 import type { KeyInput } from '@dataview/react/interaction'
 import type { FieldId } from '@dataview/core/contracts'
+import type { ActiveViewState as CurrentView } from '@dataview/engine'
 import {
   type CellRef
 } from '@dataview/engine/project'
-import type {
-  TableCurrentView as CurrentView
-} from './currentView'
 import type {
   Selection,
   SelectionApi

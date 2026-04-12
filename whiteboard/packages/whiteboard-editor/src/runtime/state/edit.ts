@@ -5,7 +5,8 @@ import type {
   Rect,
   Size
 } from '@whiteboard/core/types'
-import { createValueStore, type ValueStore } from '@shared/core'
+import type { ValueStore } from '@shared/core'
+import { createCommandState } from './store'
 
 export type EditField = 'text' | 'title'
 export type EditEmptyBehavior = 'keep' | 'remove' | 'default'
@@ -83,28 +84,24 @@ export type EditState = {
 }
 
 export const createEditState = (): EditState => {
-  const source = createValueStore<EditSession>(null)
-
-  const update = (
-    recipe: (current: NonNullable<EditSession>) => NonNullable<EditSession>
-  ) => {
-    const current = source.get()
-    if (!current) {
-      return
-    }
-
-    source.set(recipe(current))
-  }
+  const state = createCommandState<EditSession>({
+    initial: null
+  })
+  const source = state.store
 
   return {
     source,
     mutate: {
       set: (session) => {
-        source.set(session)
+        state.set(session)
       },
       input: (text) => {
-        update((current) => (
-          current.draft.text === text
+        state.update((current) => {
+          if (!current) {
+            return current
+          }
+
+          return current.draft.text === text
             ? current
             : {
                 ...current,
@@ -113,17 +110,23 @@ export const createEditState = (): EditState => {
                   text
                 }
               }
-        ))
+        })
       },
       caret: (caret) => {
-        update((current) => (
-          current.caret.kind === caret.kind
-          && (
-            caret.kind !== 'point'
-            || (
-              current.caret.kind === 'point'
-              && current.caret.client.x === caret.client.x
-              && current.caret.client.y === caret.client.y
+        state.update((current) => {
+          if (!current) {
+            return current
+          }
+
+          return (
+            current.caret.kind === caret.kind
+            && (
+              caret.kind !== 'point'
+              || (
+                current.caret.kind === 'point'
+                && current.caret.client.x === caret.client.x
+                && current.caret.client.y === caret.client.y
+              )
             )
           )
             ? current
@@ -131,10 +134,14 @@ export const createEditState = (): EditState => {
                 ...current,
                 caret
               }
-        ))
+        })
       },
       measure: (patch) => {
-        update((current) => {
+        state.update((current) => {
+          if (!current) {
+            return current
+          }
+
           const nextLayout = {
             ...current.layout,
             ...patch
@@ -149,21 +156,25 @@ export const createEditState = (): EditState => {
         })
       },
       status: (status) => {
-        update((current) => (
-          current.status === status
+        state.update((current) => {
+          if (!current) {
+            return current
+          }
+
+          return current.status === status
             ? current
             : {
                 ...current,
                 status
               }
-        ))
+        })
       },
       clear: () => {
-        if (source.get() === null) {
+        if (state.read() === null) {
           return
         }
 
-        source.set(null)
+        state.set(null)
       }
     }
   }

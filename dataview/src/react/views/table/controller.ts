@@ -1,4 +1,7 @@
-import type { Engine } from '@dataview/engine'
+import type {
+  ActiveViewState as CurrentView,
+  Engine
+} from '@dataview/engine'
 import {
   revealElement,
   revealY
@@ -12,9 +15,6 @@ import {
   type Section
 } from '@dataview/engine/project'
 import type {
-  TableCurrentView as CurrentView
-} from './currentView'
-import type {
   Selection
 } from '@dataview/react/runtime/selection'
 import type {
@@ -26,6 +26,7 @@ import {
 import {
   createDerivedStore,
   createValueStore,
+  read,
   type ReadStore
 } from '@shared/core'
 import type {
@@ -231,10 +232,10 @@ export const createTableController = (options: {
     isEqual: Object.is
   })
   const lockedStore = createDerivedStore<boolean>({
-    get: read => read(options.pageStore).lock !== null
+    get: () => read(options.pageStore).lock !== null
   })
   const valueEditorOpenStore = createDerivedStore<boolean>({
-    get: read => read(options.pageStore).valueEditorOpen
+    get: () => read(options.pageStore).valueEditorOpen
   })
   const interaction = createInteractionCoordinator()
   const capabilities = createCapabilities({

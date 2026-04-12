@@ -3,7 +3,7 @@ import { useEditorRuntime } from '#react/runtime/hooks'
 
 export const Marquee = () => {
   const editor = useEditorRuntime()
-  const chrome = useStoreValue(editor.select.chrome())
+  const chrome = useStoreValue(editor.read.chrome)
   const marquee = chrome.marquee
 
   if (!marquee) return null

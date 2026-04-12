@@ -1,7 +1,6 @@
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import type { MindmapLayoutConfig } from '@whiteboard/core/mindmap'
 import type { MindmapItem } from '@engine-types/projection'
-import type { ReadStore } from '@shared/core'
 import type { Node, NodeId, SpatialNode } from '@whiteboard/core/types'
 import type { BoardConfig } from '@engine-types/instance'
 import { DEFAULT_TUNING } from '../../config'
@@ -11,9 +10,8 @@ import {
   getMindmapLabel,
   getMindmapTree
 } from '@whiteboard/core/mindmap'
-import { createValueStore } from '@shared/core'
 import type { ReadSnapshot } from '@engine-types/internal/read'
-import { createTrackedRead } from './tracked'
+import { createProjectionRuntime } from './projection'
 
 type MindmapTreeCacheKey = {
   treeId: string
@@ -124,8 +122,8 @@ export const createMindmapProjection = (
   }
 ) => {
   const config = deps.config
-  const list = createValueStore<readonly NodeId[]>([])
-  const tracked = createTrackedRead<NodeId, MindmapItem | undefined>({
+  const projection = createProjectionRuntime<NodeId, MindmapItem | undefined>({
+    initialList: [],
     emptyValue: undefined,
     read: (treeId) => {
       ensureSynced()
@@ -255,7 +253,7 @@ export const createMindmapProjection = (
 
   const initial = reconcile(state)
   commitState(initial.nextState)
-  list.set(state.ids)
+  projection.setList(state.ids)
 
   const applyChange = (impact: KernelReadImpact, snapshot: ReadSnapshot) => {
     snapshotRef = snapshot
@@ -267,15 +265,15 @@ export const createMindmapProjection = (
     commitState(next.nextState)
 
     if (next.idsChanged) {
-      list.set(state.ids)
+      projection.setList(state.ids)
     }
 
-    tracked.sync(next.changedTreeIds)
+    projection.sync(next.changedTreeIds)
   }
 
   return {
-    list: list as ReadStore<readonly NodeId[]>,
-    item: tracked.item,
+    list: projection.list,
+    item: projection.item,
     applyChange
   }
 }

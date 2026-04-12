@@ -210,7 +210,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
           user: prev?.user ?? binding.user,
           pointer,
           selection: getSelectionSnapshot(editor),
-          tool: serializePresenceTool(editor.select.tool().get()),
+          tool: serializePresenceTool(editor.store.tool.get()),
           activity,
           updatedAt: Date.now()
         }
@@ -233,7 +233,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
       }
       lastPointerPublishAtRef.current = now
 
-      const pointer = editor.select.viewport.pointer({
+      const pointer = editor.read.viewport.pointer({
         clientX,
         clientY
       })
@@ -259,13 +259,13 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
       activity: 'idle'
     })
 
-    const unsubscribeSelection = editor.select.selection().subscribe(() => {
+    const unsubscribeSelection = editor.store.selection.subscribe(() => {
       syncPresence()
     })
-    const unsubscribeTool = editor.select.tool().subscribe(() => {
+    const unsubscribeTool = editor.store.tool.subscribe(() => {
       syncPresence()
     })
-    const unsubscribeEdit = editor.select.edit().subscribe(() => {
+    const unsubscribeEdit = editor.store.edit.subscribe(() => {
       syncPresence()
     })
 

@@ -19,7 +19,6 @@ import type {
 import type {
   PointerDownInput
 } from '../../types/input'
-import { readGroupSelection } from '../../runtime/read/utils'
 import { createMarqueeInteraction } from './marquee'
 import { createMoveInteraction } from './move'
 import {
@@ -60,7 +59,7 @@ const isGroupSelectionCurrent = (
     edgeIds: readonly string[]
   }
 ) => {
-  const selection = readGroupSelection(ctx.read.group, groupId)
+  const selection = ctx.read.group.target(groupId)
   return selection
     ? isSelectionTargetEqual(selection, target)
     : false
@@ -146,7 +145,7 @@ const resolveSelectionPress = (
         : false
     },
     getNodeGroupId: ctx.read.group.ofNode,
-    getGroupSelection: (groupId) => readGroupSelection(ctx.read.group, groupId),
+    getGroupSelection: (groupId) => ctx.read.group.target(groupId),
     isGroupSelected: (groupId, target) =>
       isGroupSelectionCurrent(ctx, groupId, target)
   }, {

@@ -1,5 +1,6 @@
 import {
   createDerivedStore,
+  read,
   createValueStore
 } from '@shared/core'
 import type { ActiveGesture } from './gesture'
@@ -68,13 +69,13 @@ export const createInteractionRuntime = ({
   const active = createValueStore<SessionMeta | null>(null)
   const gesture = createValueStore<ActiveGesture | null>(null)
   const busy = createDerivedStore({
-    get: (read) => read(active) !== null
+    get: () => read(active) !== null
   })
   const mode = createDerivedStore({
-    get: (read) => read(active)?.mode ?? 'idle'
+    get: () => read(active)?.mode ?? 'idle'
   })
   const chrome = createDerivedStore({
-    get: (read) => {
+    get: () => {
       const current = read(active)
       return current === null
         || Boolean(current.chrome)

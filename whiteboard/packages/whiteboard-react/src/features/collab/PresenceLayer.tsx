@@ -16,11 +16,11 @@ const toScreenRect = (
     height: number
   }
 ) => {
-  const topLeft = editor.select.viewport.worldToScreen({
+  const topLeft = editor.read.viewport.worldToScreen({
     x: rect.x,
     y: rect.y
   })
-  const bottomRight = editor.select.viewport.worldToScreen({
+  const bottomRight = editor.read.viewport.worldToScreen({
     x: rect.x + rect.width,
     y: rect.y + rect.height
   })
@@ -43,7 +43,7 @@ const PresenceNodeSelection = ({
   viewport: unknown
 }) => {
   const editor = useEditorRuntime()
-  const item = useKeyedStoreValue(editor.select.node.item(), nodeId)
+  const item = useKeyedStoreValue(editor.read.node.item, nodeId)
 
   if (!item) {
     return null
@@ -55,7 +55,7 @@ const PresenceNodeSelection = ({
     <div
       className="wb-presence-selection"
       style={{
-        ...toScreenRect(editor, editor.select.node.bounds(nodeId) ?? item.rect),
+        ...toScreenRect(editor, editor.read.node.bounds.get(nodeId) ?? item.rect),
         borderColor: color,
         backgroundColor: `${color}18`
       }}
@@ -73,7 +73,7 @@ const PresenceEdgeSelection = ({
   viewport: unknown
 }) => {
   const editor = useEditorRuntime()
-  const edge = useKeyedStoreValue(editor.select.edge.resolved(), edgeId)
+  const edge = useKeyedStoreValue(editor.read.edge.resolved, edgeId)
 
   if (!edge) {
     return null
@@ -81,7 +81,7 @@ const PresenceEdgeSelection = ({
 
   void viewport
 
-  const bounds = editor.select.edge.bounds(edgeId)
+  const bounds = editor.read.edge.bounds.get(edgeId)
   if (!bounds) {
     return null
   }
@@ -113,7 +113,7 @@ const PresenceCursor = ({
 
   void viewport
 
-  const cursor = editor.select.viewport.worldToScreen(peer.pointer.world)
+  const cursor = editor.read.viewport.worldToScreen(peer.pointer.world)
 
   return (
     <div
@@ -176,7 +176,7 @@ export const PresenceLayer = ({
   binding?: WhiteboardPresenceBinding
 }) => {
   const editor = useEditorRuntime()
-  const viewport = useStoreValue(editor.select.viewport())
+  const viewport = useStoreValue(editor.store.viewport)
   const [version, setVersion] = useState(0)
 
   useEffect(() => {

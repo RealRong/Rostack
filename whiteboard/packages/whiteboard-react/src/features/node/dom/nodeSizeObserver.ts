@@ -28,7 +28,7 @@ export const useNodeSizeObserver = () => {
     schedule: 'raf',
     onChange: changes => {
       changes.forEach(({ key: nodeId, size }) => {
-        const current = editor.select.node.item().get(nodeId)
+        const current = editor.read.node.item.get(nodeId)
         if (!current || !isValidSize(size)) return
 
         const committedSize = {

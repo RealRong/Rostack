@@ -1,4 +1,9 @@
-import { createDerivedStore, createValueStore, type ReadStore } from '@shared/core'
+import {
+  createDerivedStore,
+  createValueStore,
+  read,
+  type ReadStore
+} from '@shared/core'
 import {
   readEdgeGestureOverlayState,
   readSelectionGesturePreview,
@@ -128,7 +133,7 @@ export const createOverlayState = ({
     isEqual: isOverlayStateEqual
   })
   const composedState = createDerivedStore<EditorOverlayState>({
-    get: (read) => composeOverlayState({
+    get: () => composeOverlayState({
       base: read(baseState),
       gesture: read(gesture)
     }),

@@ -6,7 +6,6 @@ import {
   useState,
   type CSSProperties
 } from 'react'
-import { FileText } from 'lucide-react'
 import type {
   Row,
   RecordId
@@ -47,7 +46,7 @@ export const Card = (props: {
   const controller = useGalleryContext()
   const dataView = useDataView()
   const engine = dataView.engine
-  const recordId = controller.currentView.appearances.get(props.appearanceId)?.recordId ?? '' as RecordId
+  const recordId = controller.getRecordId(props.appearanceId) ?? '' as RecordId
   const record = useKeyedStoreValue(engine.read.record, recordId)
   if (!record) {
     return null
@@ -72,8 +71,8 @@ const GalleryCardContent = (props: {
   style?: CSSProperties
 }) => {
   const controller = useGalleryContext()
-  const viewId = controller.currentView.view.id
-  const fields = controller.fields
+  const viewId = controller.viewId
+  const fields = controller.customFields
   const selected = controller.selectedIdSet.has(props.appearanceId)
   const active = controller.drag.activeId === props.appearanceId
   const draggingSelected = controller.drag.activeId !== undefined

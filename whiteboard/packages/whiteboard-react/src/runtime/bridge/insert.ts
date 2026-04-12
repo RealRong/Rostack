@@ -136,7 +136,7 @@ const insertMindmapPreset = ({
     })
   })
 
-  const rect = editor.select.node.item().get(result.data.mindmapId)?.rect
+  const rect = editor.read.node.item.get(result.data.mindmapId)?.rect
   const width = rect?.width ?? 260
   const height = rect?.height ?? 180
 

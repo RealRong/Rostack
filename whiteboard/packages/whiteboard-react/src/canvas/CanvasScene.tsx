@@ -13,8 +13,8 @@ import {
 
 export const CanvasScene = () => {
   const editor = useEditorRuntime()
-  const scene = useStoreValue(editor.select.scene())
-  const selection = useStoreValue(editor.select.selection())
+  const scene = useStoreValue(editor.read.scene.list)
+  const selection = useStoreValue(editor.store.selection)
   const registerMeasuredElement = useNodeSizeObserver()
 
   return (

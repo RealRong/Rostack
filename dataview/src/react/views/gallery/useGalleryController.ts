@@ -8,6 +8,7 @@ import {
 } from 'react'
 import type {
   CustomField,
+  Row,
   View
 } from '@dataview/core/contracts'
 import type {
@@ -26,11 +27,12 @@ import {
   interactiveSelector
 } from '@shared/dom'
 import {
-  move as currentViewMove
+  move as viewMove
 } from '@dataview/engine/project'
 import {
   type AppearanceId,
-  type Section
+  type Section,
+  type SectionKey
 } from '@dataview/engine/project'
 import {
   resolveDefaultAutoPanTargets
@@ -51,17 +53,18 @@ import {
   type GalleryLayoutCache
 } from './virtual'
 
-export type GalleryCurrentView = Omit<ActiveViewState, 'sections'> & {
+export type GalleryActiveState = ActiveViewState & {
   view: View & {
     type: 'gallery'
   }
-  sections: readonly Section[]
 }
 
 export interface GalleryController {
-  currentView: GalleryCurrentView
+  viewId: View['id']
+  appearances: ActiveViewState['appearances']
+  appearanceIds: readonly AppearanceId[]
   sections: readonly Section[]
-  fields: readonly CustomField[]
+  customFields: readonly CustomField[]
   canReorder: boolean
   groupUsesOptionColors: boolean
   containerRef: RefObject<HTMLDivElement | null>
@@ -71,7 +74,9 @@ export interface GalleryController {
   selectedIdSet: ReadonlySet<AppearanceId>
   drag: ReturnType<typeof useCardReorder>
   indicator?: GalleryDropTarget['indicator']
-  readSectionColorId: (sectionKey: string) => string | undefined
+  getRecordId: (appearanceId: AppearanceId) => string | undefined
+  getRecord: (appearanceId: AppearanceId) => Row | undefined
+  getSectionColor: (sectionKey: SectionKey) => string | undefined
   select: (id: AppearanceId, mode?: 'replace' | 'toggle') => void
   marqueeActive: boolean
   visualTargets: VisualTargetRegistry
@@ -79,22 +84,22 @@ export interface GalleryController {
 
 export const useGalleryController = (input: {
   containerRef: RefObject<HTMLDivElement | null>
-  currentView: GalleryCurrentView
+  active: GalleryActiveState
   extra: ActiveGalleryState
 }): GalleryController => {
   const dataView = useDataView()
-  const currentView = input.currentView
+  const active = input.active
   const extra = input.extra
 
-  const fields = extra.customFields
   const canReorder = extra.canReorder
   const [dragging, setDragging] = useState(false)
   const visualTargets = useRef(createVisualTargetRegistry({
     resolveScrollTargets: () => resolveDefaultAutoPanTargets(input.containerRef.current)
   })).current
-  const grouped = Boolean(currentView.view.group)
+  const grouped = active.group.active
   const groupUsesOptionColors = extra.groupUsesOptionColors
-  const sections = currentView.sections
+  const sections = extra.sections
+  const appearanceIds = active.appearances.ids
   const minCardWidth = GALLERY_CARD_MIN_WIDTH[extra.cardSize]
   const virtual = useGalleryBlocks({
     grouped,
@@ -108,27 +113,33 @@ export const useGalleryController = (input: {
     dataView => dataView.selection.store
   )
   const marqueeSession = useStoreValue(dataView.marquee.store)
-  const marqueeActive = marqueeSession?.ownerViewId === currentView.view.id
+  const marqueeActive = marqueeSession?.ownerViewId === active.view.id
   const selectedIdSet = useMemo(
     () => new Set(selectionState.ids),
     [selectionState.ids]
   )
   const getLayout = useCallback(() => virtual.layout, [virtual.layout])
-  const readSectionColorId = useCallback((sectionKey: string) => (
+  const getRecordId = useCallback((appearanceId: AppearanceId) => (
+    dataView.engine.active.read.getAppearanceRecordId(appearanceId)
+  ), [dataView.engine.active.read])
+  const getRecord = useCallback((appearanceId: AppearanceId) => (
+    dataView.engine.active.read.getAppearanceRecord(appearanceId)
+  ), [dataView.engine.active.read])
+  const getSectionColor = useCallback((sectionKey: SectionKey) => (
     groupUsesOptionColors
       ? dataView.engine.active.read.getSectionColor(sectionKey)
       : undefined
   ), [dataView.engine.active.read, groupUsesOptionColors])
 
   useEffect(() => dataView.marquee.registerAdapter({
-    viewId: currentView.view.id,
+    viewId: active.view.id,
     disabled: dragging,
     canStart: event => !closestTarget(
       event.target,
       `[${DATAVIEW_APPEARANCE_ID_ATTR}],${interactiveSelector}`
     ),
-    getTargets: () => visualTargets.getTargets(currentView.appearances.ids),
-    order: () => currentView.appearances.ids,
+    getTargets: () => visualTargets.getTargets(appearanceIds),
+    order: () => appearanceIds,
     resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(input.containerRef.current),
     onStart: () => {
       visualTargets.clearFrozen()
@@ -140,8 +151,8 @@ export const useGalleryController = (input: {
       visualTargets.clearFrozen()
     }
   }), [
-    currentView.appearances.ids,
-    currentView.view.id,
+    active.view.id,
+    appearanceIds,
     dataView.marquee,
     dragging,
     input.containerRef,
@@ -151,10 +162,10 @@ export const useGalleryController = (input: {
   const drag = useCardReorder({
     containerRef: input.containerRef,
     canDrag: canReorder,
-    itemMap: new Map(currentView.appearances.ids.map(id => [id, id] as const)),
+    itemMap: new Map(appearanceIds.map(id => [id, id] as const)),
     getLayout,
-    getDragIds: activeId => currentViewMove.drag(
-      currentView.appearances.ids,
+    getDragIds: activeId => viewMove.drag(
+      appearanceIds,
       selectionState.ids,
       activeId
     ),
@@ -186,7 +197,7 @@ export const useGalleryController = (input: {
       return undefined
     }
 
-    const plan = currentViewMove.plan(currentView.appearances, drag.dragIds, {
+    const plan = viewMove.plan(active.appearances, drag.dragIds, {
       section,
       ...(drag.overTarget.beforeAppearanceId ? { before: drag.overTarget.beforeAppearanceId } : {})
     })
@@ -194,7 +205,7 @@ export const useGalleryController = (input: {
     return plan.changed
       ? drag.overTarget.indicator
       : undefined
-  }, [currentView, dataView.engine.active.read, drag.dragIds, drag.overTarget])
+  }, [active.appearances, dataView.engine.active.read, drag.dragIds, drag.overTarget])
 
   const select = useCallback((id: AppearanceId, mode: 'replace' | 'toggle' = 'replace') => {
     if (mode === 'toggle') {
@@ -206,9 +217,11 @@ export const useGalleryController = (input: {
   }, [dataView.selection])
 
   return useMemo(() => ({
-    currentView,
+    viewId: active.view.id,
+    appearances: active.appearances,
+    appearanceIds,
     sections,
-    fields,
+    customFields: active.customFields,
     canReorder,
     groupUsesOptionColors,
     containerRef: input.containerRef,
@@ -218,20 +231,26 @@ export const useGalleryController = (input: {
     selectedIdSet,
     drag,
     indicator,
-    readSectionColorId,
+    getRecordId,
+    getRecord,
+    getSectionColor,
     select,
     marqueeActive,
     visualTargets
   }), [
+    active.appearances,
+    active.customFields,
+    active.view.id,
+    appearanceIds,
     canReorder,
-    currentView,
     drag,
+    getRecord,
+    getRecordId,
+    getSectionColor,
     groupUsesOptionColors,
     indicator,
     input.containerRef,
     marqueeActive,
-    fields,
-    readSectionColorId,
     sections,
     select,
     selectedIdSet,

@@ -29,9 +29,9 @@ const resolveMarker = (value: string | undefined, fallbackId: string) => {
 
 const EdgeHintOverlay = () => {
   const editor = useEditorRuntime()
-  const chrome = useStoreValue(editor.select.chrome())
+  const chrome = useStoreValue(editor.read.chrome)
   const hint = chrome.edgeGuide
-  const zoom = useStoreValue(editor.select.viewport()).zoom
+  const zoom = useStoreValue(editor.store.viewport).zoom
   const { path, connect } = hint
   const snap = connect && (
     connect.resolution.mode === 'outline'

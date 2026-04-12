@@ -1,6 +1,7 @@
 import {
   createKeyedDerivedStore,
   createValueStore,
+  read,
   type KeyedReadStore,
   type ValueStore
 } from '@shared/core'
@@ -65,7 +66,7 @@ export const createHover = (): Hover => {
   return {
     cell: createKeyedDerivedStore<CellRef, boolean>({
       keyOf: cellKey,
-      get: (read, cell) => {
+      get: (cell) => {
         const hoveredCell = hoveredCellOf(read(state).target)
         if (!hoveredCell) {
           return false
@@ -78,7 +79,7 @@ export const createHover = (): Hover => {
     }),
     row: createKeyedDerivedStore<AppearanceId, boolean>({
       keyOf: rowId => rowId,
-      get: (read, rowId) => hoveredRowIdOf(read(state).target) === rowId,
+      get: (rowId) => hoveredRowIdOf(read(state).target) === rowId,
       isEqual: Object.is
     }),
     get: () => state.get().target,

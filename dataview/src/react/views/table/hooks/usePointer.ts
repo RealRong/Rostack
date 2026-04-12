@@ -1,3 +1,4 @@
+import type { ActiveViewState as CurrentView } from '@dataview/engine'
 import {
   useEffect,
   useCallback,
@@ -21,9 +22,6 @@ import {
   type CellRef,
   sameCellRef
 } from '@dataview/engine/project'
-import type {
-  TableCurrentView as CurrentView
-} from '../currentView'
 import {
   getRecordFieldValue,
   resolveFieldPrimaryAction

@@ -2,6 +2,7 @@ import {
   createDerivedStore,
   createProjectedKeyedStore,
   createProjectedStore,
+  read,
   type ReadStore
 } from '@shared/core'
 import type { Guide } from '@whiteboard/core/node'
@@ -77,7 +78,7 @@ export const createOverlaySelectors = ({
     schedule: 'raf'
   })
   const marquee = createDerivedStore<MarqueeFeedback | undefined>({
-    get: (read) => {
+    get: () => {
       const next = read(state).selection.marquee
       read(viewport)
       if (!next) {

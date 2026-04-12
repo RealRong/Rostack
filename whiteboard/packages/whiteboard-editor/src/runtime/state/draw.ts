@@ -1,4 +1,4 @@
-import { createValueStore, type ValueStore } from '@shared/core'
+import type { ValueStore } from '@shared/core'
 import { DRAW_SLOTS } from '../../draw'
 import type {
   BrushStyle,
@@ -6,6 +6,7 @@ import type {
   DrawCommands,
   DrawPreferences
 } from '../../types/draw'
+import { createCommandState } from './store'
 
 export type DrawPreferencesState = {
   store: ValueStore<DrawPreferences>
@@ -66,30 +67,32 @@ const isSameBrush = (
   )
 )
 
+const isDrawPreferencesEqual = (
+  left: DrawPreferences,
+  right: DrawPreferences
+) => (
+  isSameBrush(left.pen, right.pen)
+  && isSameBrush(left.highlighter, right.highlighter)
+)
+
 export const createDrawPreferencesState = (
   initialPreferences: DrawPreferences
 ): DrawPreferencesState => {
-  const store = createValueStore<DrawPreferences>(
-    normalizeDrawPreferences(initialPreferences)
-  )
+  const state = createCommandState<DrawPreferences>({
+    initial: initialPreferences,
+    normalize: normalizeDrawPreferences,
+    isEqual: isDrawPreferencesEqual
+  })
+  const store = state.store
 
   return {
     store,
     commands: {
       set: (preferences) => {
-        const next = normalizeDrawPreferences(preferences)
-        const current = store.get()
-        if (
-          isSameBrush(current.pen, next.pen)
-          && isSameBrush(current.highlighter, next.highlighter)
-        ) {
-          return
-        }
-
-        store.set(next)
+        state.set(preferences)
       },
       slot: (kind, slot) => {
-        store.update((current) => {
+        state.update((current) => {
           const previous = current[kind]
           if (previous.slot === slot) {
             return current
@@ -105,11 +108,11 @@ export const createDrawPreferencesState = (
             : {
                 ...current,
                 [kind]: next
-              }
+            }
         })
       },
       patch: (kind, slot, patch) => {
-        store.update((current) => {
+        state.update((current) => {
           const previous = current[kind]
           const currentStyle = previous.slots[slot]
           const nextStyle = normalizeStyle({

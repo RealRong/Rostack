@@ -80,7 +80,7 @@ NodeTransformOverlayItem.displayName = 'NodeTransformOverlayItem'
 
 const EdgeConnectOverlay = () => {
   const editor = useEditorRuntime()
-  const chrome = useStoreValue(editor.select.chrome())
+  const chrome = useStoreValue(editor.read.chrome)
   const hint = chrome.edgeGuide
   const connect = hint.connect
   const view = useNodeOverlayView(connect?.focusedNodeId)
@@ -156,7 +156,7 @@ const SelectionHandlesOverlay = ({
 
 export const NodeOverlayLayer = () => {
   const editor = useEditorRuntime()
-  const chrome = useStoreValue(editor.select.chrome())
+  const chrome = useStoreValue(editor.read.chrome)
   const guides = chrome.snap
   const overlay = chrome.selection
 

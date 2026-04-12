@@ -1,12 +1,10 @@
+import type { ActiveViewState as CurrentView } from '@dataview/engine'
 import type {
   AppearanceId
 } from '@dataview/engine/project'
 import type {
   CellRef
 } from '@dataview/engine/project'
-import type {
-  TableCurrentView as CurrentView
-} from './currentView'
 import {
   gridSelection,
   type GridSelection

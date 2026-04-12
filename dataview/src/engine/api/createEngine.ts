@@ -5,6 +5,7 @@ import type {
 import {
   cloneDocument
 } from '@dataview/core/document'
+import { read as readValue } from '@shared/core'
 import type {
   CreateEngineOptions,
   Engine
@@ -69,8 +70,8 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   })
   const createScopedViewApi = (viewId: string) => createViewEngineApi({
     resolveViewId: () => viewId,
-    readDocument: read.document.get,
-    readView: () => read.view.get(viewId),
+    readDocument: () => readValue(read.document),
+    readView: () => readValue(read.view, viewId),
     readState: () => {
       const state = activeBase.state.get()
       return state?.view.id === viewId
@@ -85,9 +86,9 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   const active = Object.assign(
     createViewEngineApi({
       resolveViewId: activeBase.id.get,
-      readDocument: read.document.get,
-      readView: activeBase.view.get,
-      readState: activeBase.state.get,
+      readDocument: () => readValue(read.document),
+      readView: () => readValue(activeBase.view),
+      readState: () => readValue(activeBase.state),
       readRecord: activeBase.read.getRecord,
       dispatch,
       fields,
@@ -95,10 +96,6 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     }),
     activeBase
   )
-  active.table = {
-    ...active.table,
-    state: activeBase.table.state
-  }
   active.gallery = {
     ...active.gallery,
     state: activeBase.gallery.state

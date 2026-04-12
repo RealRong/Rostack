@@ -49,6 +49,12 @@ import { createReadModel } from './model'
 import { createMindmapProjection } from './mindmap'
 import { createNodeProjection } from './node'
 import type { ReadSnapshot } from '@engine-types/internal/read'
+import {
+  resolveGroupTarget,
+  resolveTargetBounds,
+  resolveTargetEdges,
+  resolveTargetNodes
+} from './target'
 
 const EMPTY_GROUP_IDS: readonly string[] = []
 
@@ -240,6 +246,28 @@ export const createRead = ({
     groupId: string
   ) => listGroupEdgeIds(readDocument(), groupId)
 
+  const readCommittedTargetNodes: EngineRead['target']['nodes'] = (
+    target
+  ) => resolveTargetNodes({
+    target,
+    readNode: (nodeId) => nodeProjection.item.get(nodeId)?.node
+  })
+
+  const readCommittedTargetEdges: EngineRead['target']['edges'] = (
+    target
+  ) => resolveTargetEdges({
+    target,
+    readEdge: (edgeId) => edgeProjection.item.get(edgeId)?.edge
+  })
+
+  const readCommittedTargetBounds: EngineRead['target']['bounds'] = (
+    target
+  ) => resolveTargetBounds({
+    target,
+    readNodeBounds: readProjectedNodeBounds,
+    readEdgeBounds
+  })
+
   const readTargetGroupIds = (
     target: SelectionTarget
   ) => {
@@ -411,25 +439,29 @@ export const createRead = ({
         item: readGroupItem,
         ofNode: readNodeGroupId,
         ofEdge: readEdgeGroupId,
+        target: (groupId) => resolveGroupTarget({
+          groupId,
+          readNodeIds: readGroupNodeIds,
+          readEdgeIds: readGroupEdgeIds
+        }),
         members: readGroupMembers,
-        nodeIds: readGroupNodeIds,
-        edgeIds: readGroupEdgeIds,
         bounds: (groupId) => {
-          const nodeIds = readGroupNodeIds(groupId)
-          const edgeIds = readGroupEdgeIds(groupId)
-          return nodeIds.length > 0 || edgeIds.length > 0
-            ? getTargetBounds({
-                target: {
-                  nodeIds,
-                  edgeIds
-                },
-                readNodeBounds: readProjectedNodeBounds,
-                readEdgeBounds
-              })
+          const target = resolveGroupTarget({
+            groupId,
+            readNodeIds: readGroupNodeIds,
+            readEdgeIds: readGroupEdgeIds
+          })
+          return target
+            ? readCommittedTargetBounds(target)
             : undefined
         },
         wholeIds: readWholeGroupIds,
         exactIds: readExactGroupIds
+      },
+      target: {
+        nodes: readCommittedTargetNodes,
+        edges: readCommittedTargetEdges,
+        bounds: readCommittedTargetBounds
       },
       node: {
         list: nodeProjection.list,

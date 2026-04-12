@@ -2,18 +2,51 @@ import {
   createContext,
   createElement,
   useContext,
+  useMemo,
   type ReactNode
 } from 'react'
-import type { KanbanController } from './useKanbanController'
+import type { ActiveKanbanState } from '@dataview/engine'
+import {
+  type KanbanActiveState,
+  type KanbanRuntime,
+  useKanbanRuntime
+} from './runtime'
 
-export type Kanban = KanbanController
+export interface KanbanContextValue {
+  active: KanbanActiveState
+  extra: ActiveKanbanState
+  runtime: KanbanRuntime
+}
 
-const KanbanContext = createContext<KanbanController | null>(null)
+export type Kanban = KanbanContextValue
+
+const KanbanContext = createContext<KanbanContextValue | null>(null)
 
 export const KanbanProvider = (props: {
-  value: KanbanController
+  active: KanbanActiveState
+  extra: ActiveKanbanState
+  columnWidth: number
+  columnMinHeight: number
   children?: ReactNode
-}) => createElement(KanbanContext.Provider, { value: props.value }, props.children)
+}) => {
+  const runtime = useKanbanRuntime({
+    active: props.active,
+    extra: props.extra,
+    columnWidth: props.columnWidth,
+    columnMinHeight: props.columnMinHeight
+  })
+  const value = useMemo<KanbanContextValue>(() => ({
+    active: props.active,
+    extra: props.extra,
+    runtime
+  }), [
+    props.active,
+    props.extra,
+    runtime
+  ])
+
+  return createElement(KanbanContext.Provider, { value }, props.children)
+}
 
 export const useKanbanContext = () => {
   const value = useContext(KanbanContext)

@@ -1,11 +1,14 @@
 export type { QueryBarEntry } from './page/session/types'
 export {
   GalleryView,
-  useGalleryContext
+  useGalleryContext,
+  useGalleryRuntime
 } from './views/gallery'
 export type { TableOptions, ViewDisplay } from '@dataview/core/contracts'
 export type {
   Gallery,
+  GalleryActiveState,
+  GalleryRuntime,
   GalleryViewProps,
   GalleryCardSize,
   GalleryOptions
@@ -14,11 +17,13 @@ export {
   KanbanView,
   KanbanProvider,
   useKanbanContext,
-  useKanbanController
+  useKanbanRuntime
 } from './views/kanban'
 export type {
   Kanban,
-  KanbanController,
+  KanbanActiveState,
+  KanbanRuntime,
+  KanbanSectionVisibility,
   KanbanViewProps,
   KanbanNewRecordPosition,
   KanbanOptions

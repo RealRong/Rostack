@@ -300,13 +300,13 @@ export const EdgeToolbar = ({
 }) => {
   const editor = useEditorRuntime()
   const surface = useElementSize(containerRef)
-  const panel = useStoreValue(editor.select.panel())
+  const panel = useStoreValue(editor.read.panel)
   const toolbar = panel.edgeToolbar
   const buttonRefByKey = useRef<Partial<Record<PanelKey, HTMLElement | null>>>({})
   const [activePanelKey, setActivePanelKey] = useState<PanelKey | null>(null)
   const [positionSession, setPositionSession] = useState<ToolbarPositionSession | null>(null)
   const worldToScreen = useCallback(
-    (point: Point) => editor.select.viewport.worldToScreen(point),
+    (point: Point) => editor.read.viewport.worldToScreen(point),
     [editor]
   )
 
@@ -322,7 +322,7 @@ export const EdgeToolbar = ({
     buildStyle: (style: Edge['style'] | undefined) => NonNullable<EdgePatch['style']>
   ) => {
     edgeIds.forEach((edgeId) => {
-      const edge = editor.select.edge.item().get(edgeId)?.edge
+      const edge = editor.read.edge.item.get(edgeId)?.edge
       if (!edge) {
         return
       }

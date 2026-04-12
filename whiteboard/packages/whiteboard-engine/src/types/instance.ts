@@ -22,6 +22,7 @@ import type {
   Group,
   GroupId,
   Document,
+  Edge,
   EdgeId,
   NodeGeometry,
   Node,
@@ -98,12 +99,17 @@ export type GroupRead = {
   item: (groupId: GroupId) => Group | undefined
   ofNode: (nodeId: NodeId) => GroupId | undefined
   ofEdge: (edgeId: EdgeId) => GroupId | undefined
+  target: (groupId: GroupId) => SelectionTarget | undefined
   members: (groupId: GroupId) => readonly CanvasItemRef[]
-  nodeIds: (groupId: GroupId) => readonly NodeId[]
-  edgeIds: (groupId: GroupId) => readonly EdgeId[]
   bounds: (groupId: GroupId) => Rect | undefined
   wholeIds: (target: SelectionTarget) => readonly GroupId[]
   exactIds: (target: SelectionTarget) => readonly GroupId[]
+}
+
+export type TargetRead = {
+  nodes: (target: SelectionTarget) => readonly Node[]
+  edges: (target: SelectionTarget) => readonly Edge[]
+  bounds: (target: SelectionTarget) => Rect | undefined
 }
 
 export type EdgeRead = {
@@ -137,6 +143,7 @@ export type EngineRead = {
   }
   frame: FrameRead
   group: GroupRead
+  target: TargetRead
   node: NodeRead
   edge: EdgeRead
   mindmap: MindmapRead

@@ -8,7 +8,8 @@ import type {
   BaseOperation
 } from '@dataview/core/contracts/operations'
 import {
-  createValueStore
+  createValueStore,
+  type ValueStore
 } from '@shared/core'
 import {
   createIndexState
@@ -53,12 +54,7 @@ export interface State {
   }
 }
 
-export interface Store {
-  get: () => State
-  set: (next: State) => void
-  update: (recipe: (previous: State) => State) => void
-  sub: (fn: () => void) => () => void
-}
+export type Store = ValueStore<State>
 
 export const createInitialState = (input: {
   doc: DataDoc
@@ -93,15 +89,6 @@ export const createInitialState = (input: {
 
 export const createStore = (
   initial: State
-): Store => {
-  const store = createValueStore<State>({
-    initial
-  })
-
-  return {
-    get: store.get,
-    set: store.set,
-    update: store.update,
-    sub: store.subscribe
-  }
-}
+): Store => createValueStore<State>({
+  initial
+})

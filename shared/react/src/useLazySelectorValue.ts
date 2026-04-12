@@ -1,12 +1,11 @@
 import { useMemo, useRef } from 'react'
 import {
   createDerivedStore,
-  type Equality,
-  type StoreRead
+  type Equality
 } from '@shared/core'
 import { useStoreValue } from './useStoreValue'
 
-type LazySelectorLeaf<T> = (read: StoreRead) => T
+type LazySelectorLeaf<T> = () => T
 
 export type LazySelectorSource<T> = {
   [K in keyof T]:
@@ -18,7 +17,6 @@ export type LazySelectorSource<T> = {
 }
 
 export const createLazySelectorSnapshot = <T,>(
-  read: StoreRead,
   source: LazySelectorSource<T>
 ): T => {
   const cache = new Map<PropertyKey, unknown>()
@@ -31,14 +29,13 @@ export const createLazySelectorSnapshot = <T,>(
 
       const entry = (source as Record<PropertyKey, unknown>)[property]
       if (typeof entry === 'function') {
-        const next = (entry as LazySelectorLeaf<unknown>)(read)
+        const next = (entry as LazySelectorLeaf<unknown>)()
         cache.set(property, next)
         return next
       }
 
       if (entry && typeof entry === 'object') {
         const next = createLazySelectorSnapshot(
-          read,
           entry as LazySelectorSource<unknown>
         )
         cache.set(property, next)
@@ -72,9 +69,7 @@ export const useLazySelectorValue = <TSnapshot, TResult>(
   const equal = options.isEqual ?? Object.is
 
   const store = useMemo(() => createDerivedStore<TResult>({
-    get: read => selectorRef.current(
-      createLazySelectorSnapshot(read, options.source)
-    ),
+    get: () => selectorRef.current(createLazySelectorSnapshot(options.source)),
     isEqual: equal
   }), [equal, options.source])
 

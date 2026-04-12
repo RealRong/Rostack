@@ -12,12 +12,13 @@ const contentInsetStyle = {
 export const Grid = () => {
   const controller = useGalleryContext()
   const {
+    appearanceIds,
     blocks,
     containerRef,
     indicator,
     layout
   } = controller
-  const empty = controller.currentView.appearances.ids.length === 0
+  const empty = appearanceIds.length === 0
   const sectionSizeByKey = new Map(
     controller.sections.map(section => [section.key, section.ids.length] as const)
   )
@@ -75,7 +76,7 @@ export const Grid = () => {
                         <span
                           className="inline-flex h-2.5 w-2.5 rounded-full"
                           style={resolveOptionDotStyle(
-                            controller.readSectionColorId(block.section.key)
+                            controller.getSectionColor(block.section.key)
                           )}
                         />
                       ) : null}

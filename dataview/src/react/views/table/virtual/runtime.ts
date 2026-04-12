@@ -1,9 +1,7 @@
+import type { ActiveViewState as CurrentView } from '@dataview/engine'
 import type {
   AppearanceId
 } from '@dataview/engine/project'
-import type {
-  TableCurrentView as CurrentView
-} from '../currentView'
 import type {
   MarqueeSessionState
 } from '@dataview/react/runtime/marquee'
@@ -18,6 +16,7 @@ import {
   createDerivedStore,
   createValueStore,
   joinUnsubscribes,
+  read,
   type ReadStore
 } from '@shared/core'
 import {
@@ -327,7 +326,7 @@ export const createTableVirtualRuntime = (options: {
   layout: TableLayout
 }): TableVirtualRuntime => {
   const layout = createDerivedStore<TableVirtualLayoutSnapshot>({
-    get: read => resolveLayoutSnapshot({
+    get: () => resolveLayoutSnapshot({
       currentView: read(options.currentViewStore),
       rowHeight: options.layout.rowHeight,
       headerHeight: options.layout.headerHeight
@@ -339,7 +338,7 @@ export const createTableVirtualRuntime = (options: {
     isEqual: sameViewportSnapshot
   })
   const interaction = createDerivedStore<TableVirtualInteractionSnapshot>({
-    get: read => {
+    get: () => {
       const marqueeActive = resolveMarqueeActive({
         currentView: read(options.currentViewStore),
         session: read(options.marqueeStore)
@@ -357,7 +356,7 @@ export const createTableVirtualRuntime = (options: {
     isEqual: sameInteractionSnapshot
   })
   const windowStore = createDerivedStore<TableVirtualWindowSnapshot>({
-    get: read => resolveTableWindowSnapshot({
+    get: () => resolveTableWindowSnapshot({
       layout: read(layout),
       viewport: read(viewportStore),
       interaction: read(interaction)

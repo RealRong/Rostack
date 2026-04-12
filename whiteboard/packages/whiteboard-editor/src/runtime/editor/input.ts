@@ -7,7 +7,6 @@ import type { EditorCommands } from '../commands'
 import type { ContextMenuIntent } from '../../types/input'
 import type { InteractionRuntime } from '../interaction/types'
 import type { EdgeHoverService } from '../../interactions/edge/hover'
-import { readGroupSelection } from '../read/utils'
 
 const readSelectionIntent = (
   selection: EditorState['selection'],
@@ -94,7 +93,7 @@ export const createEditorInput = ({
           return readSelectionIntent(selection, input.screen)
         }
         case 'group': {
-          const target = readGroupSelection(read.group, input.pick.id)
+          const target = read.group.target(input.pick.id)
           if (!target) {
             return {
               kind: 'canvas',

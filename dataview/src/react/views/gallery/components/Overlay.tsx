@@ -1,8 +1,5 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  useDataView
-} from '@dataview/react/dataview'
 import { CardPreview } from '@dataview/react/views/shared'
 import { resolveNeutralCardStyle } from '@ui/color'
 import { cn } from '@ui/utils'
@@ -14,14 +11,10 @@ import {
 
 export const Overlay = () => {
   const controller = useGalleryContext()
-  const engine = useDataView().engine
   const overlayRef = useRef<HTMLDivElement | null>(null)
   const appearanceId = controller.drag.activeId
-  const recordId = appearanceId
-    ? controller.currentView.appearances.get(appearanceId)?.recordId
-    : undefined
-  const record = recordId
-    ? engine.read.record.get(recordId)
+  const record = appearanceId
+    ? controller.getRecord(appearanceId)
     : undefined
   const pointer = controller.drag.pointerRef.current
   const offset = controller.drag.overlayOffsetRef.current
@@ -74,7 +67,7 @@ export const Overlay = () => {
           <CardPreview
             style={resolveNeutralCardStyle('default', 'preview')}
             record={record}
-            fields={controller.fields}
+            fields={controller.customFields}
             titlePlaceholder={CARD_TITLE_PLACEHOLDER}
             slots={{
               root: 'relative h-full rounded-xl p-3 transition-colors',

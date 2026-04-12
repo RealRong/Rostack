@@ -49,12 +49,10 @@ export interface StagedKeyedStore<Key, T, Input> extends KeyedReadStore<Key, T> 
   flush(): void
 }
 
-export interface StoreRead {
+interface StoreRead {
   <T>(store: ReadStore<T>): T
   <K, T>(store: KeyedReadStore<K, T>, key: K): T
 }
-
-export type ReadFn = StoreRead
 
 interface Dependency {
   store: ReadStore<unknown> | KeyedReadStore<unknown, unknown>
@@ -90,13 +88,109 @@ const createTrackedRead = (
 ): StoreRead => ((store: ReadStore<unknown> | KeyedReadStore<unknown, unknown>, ...args: [unknown?]) => {
   if (args.length === 0) {
     pushDependency(dependencies, { store })
-    return (store as ReadStore<unknown>).get()
+    return runWithPlainGetAccess(() => (store as ReadStore<unknown>).get())
   }
 
   const [key] = args
   pushDependency(dependencies, { store, key })
-  return (store as KeyedReadStore<unknown, unknown>).get(key)
+  return runWithPlainGetAccess(() => (store as KeyedReadStore<unknown, unknown>).get(key))
 }) as StoreRead
+
+const peekStore = ((store: ReadStore<unknown> | KeyedReadStore<unknown, unknown>, ...args: [unknown?]) => {
+  if (args.length === 0) {
+    return runWithPlainGetAccess(() => (store as ReadStore<unknown>).get())
+  }
+
+  const [key] = args
+  return runWithPlainGetAccess(() => (store as KeyedReadStore<unknown, unknown>).get(key))
+}) as StoreRead
+
+let activeReadScope: StoreRead | null = null
+let plainGetAccessDepth = 0
+
+const runWithReadScope = <T,>(
+  scope: StoreRead,
+  fn: () => T
+): T => {
+  const previous = activeReadScope
+  activeReadScope = scope
+
+  try {
+    return fn()
+  } finally {
+    activeReadScope = previous
+  }
+}
+
+const runWithPlainGetAccess = <T,>(
+  fn: () => T
+): T => {
+  plainGetAccessDepth += 1
+
+  try {
+    return fn()
+  } finally {
+    plainGetAccessDepth -= 1
+  }
+}
+
+const assertPlainGetAllowed = () => {
+  if (activeReadScope === null || plainGetAccessDepth > 0) {
+    return
+  }
+
+  throw new Error(
+    'Do not call store.get() inside a derived computation. Use read(store) instead.'
+  )
+}
+
+const guardPlainGet = <T,>(
+  get: () => T
+) => () => {
+  assertPlainGetAllowed()
+  return get()
+}
+
+const guardPlainKeyedGet = <K, T>(
+  get: (key: K) => T
+) => (key: K) => {
+  assertPlainGetAllowed()
+  return get(key)
+}
+
+export function peek<T>(
+  store: ReadStore<T>
+): T
+export function peek<K, T>(
+  store: KeyedReadStore<K, T>,
+  key: K
+): T
+export function peek<K, T>(
+  store: ReadStore<T> | KeyedReadStore<K, T>,
+  key?: K
+): T {
+  return key === undefined
+    ? peekStore(store as ReadStore<T>)
+    : peekStore(store as KeyedReadStore<K, T>, key)
+}
+
+export function read<T>(
+  store: ReadStore<T>
+): T
+export function read<K, T>(
+  store: KeyedReadStore<K, T>,
+  key: K
+): T
+export function read<K, T>(
+  store: ReadStore<T> | KeyedReadStore<K, T>,
+  key?: K
+): T {
+  const current = activeReadScope ?? peekStore
+
+  return key === undefined
+    ? current(store as ReadStore<T>)
+    : current(store as KeyedReadStore<K, T>, key)
+}
 
 const subscribeDependency = (
   dependency: Dependency,
@@ -184,7 +278,7 @@ export const createReadStore = <T,>(
     isEqual?: Equality<T>
   }
 ): ReadStore<T> => ({
-  get: options.get,
+  get: guardPlainGet(options.get),
   subscribe: options.subscribe,
   ...(options.isEqual ? { isEqual: options.isEqual } : {})
 })
@@ -196,7 +290,7 @@ export const createKeyedReadStore = <K, T>(
     isEqual?: Equality<T>
   }
 ): KeyedReadStore<K, T> => ({
-  get: options.get,
+  get: guardPlainKeyedGet(options.get),
   subscribe: options.subscribe,
   ...(options.isEqual ? { isEqual: options.isEqual } : {})
 })
@@ -250,7 +344,7 @@ export function createValueStore<T>(
   }
 
   return {
-    get: () => current,
+    get: guardPlainGet(() => current),
     set,
     update: recipe => set(recipe(current)),
     subscribe: listener => {
@@ -265,7 +359,7 @@ export function createValueStore<T>(
 
 export const createDerivedStore = <T,>(
   options: {
-    get: (read: StoreRead) => T
+    get: () => T
     isEqual?: Equality<T>
   }
 ): ReadStore<T> => {
@@ -285,7 +379,10 @@ export const createDerivedStore = <T,>(
     computing = true
     try {
       const nextDependencies: Dependency[] = []
-      const nextValue = options.get(createTrackedRead(nextDependencies))
+      const nextValue = runWithReadScope(
+        createTrackedRead(nextDependencies),
+        options.get
+      )
 
       if (!sameDependencies(dependencies, nextDependencies)) {
         unsubscribeDependencies()
@@ -314,13 +411,13 @@ export const createDerivedStore = <T,>(
   }
 
   return {
-    get: () => {
+    get: guardPlainGet(() => {
       if (!hasCurrent) {
         recompute(false)
       }
 
       return current as T
-    },
+    }),
     subscribe: listener => {
       listeners.add(listener)
       if (listeners.size === 1) {
@@ -342,7 +439,7 @@ export const createDerivedStore = <T,>(
 
 export const createKeyedDerivedStore = <K, T>(
   options: {
-    get: (read: StoreRead, key: K) => T
+    get: (key: K) => T
     isEqual?: Equality<T>
     keyOf?: (key: K) => unknown
   }
@@ -356,7 +453,7 @@ export const createKeyedDerivedStore = <K, T>(
     }
 
     const store = createDerivedStore({
-      get: read => options.get(read, key),
+      get: () => options.get(key),
       ...(options.isEqual ? { isEqual: options.isEqual } : {})
     })
     cache.set(cacheKey, store)
@@ -364,7 +461,7 @@ export const createKeyedDerivedStore = <K, T>(
   }
 
   return {
-    get: key => resolveStore(key).get(),
+    get: guardPlainKeyedGet((key: K) => resolveStore(key).get()),
     subscribe: (key, listener) => resolveStore(key).subscribe(listener),
     ...(options.isEqual ? { isEqual: options.isEqual } : {})
   }
@@ -461,7 +558,7 @@ export const createKeyedStore = <Key, T,>(
 
   return {
     all: () => current,
-    get: key => readCurrent(key),
+    get: guardPlainKeyedGet((key: Key) => readCurrent(key)),
     subscribe: (key, listener) => {
       const listeners = listenersByKey.get(key) ?? new Set<Listener>()
       if (!listenersByKey.has(key)) {
@@ -560,7 +657,7 @@ export const createProjectedStore = <Source, Value>({
   }, schedule)
 
   const refresh = () => {
-    const next = select(source.get())
+    const next = select(peek(source))
     if (!hasValue || !isEqual(current as Value, next)) {
       current = next
     }
@@ -569,20 +666,20 @@ export const createProjectedStore = <Source, Value>({
 
   const handleSourceChange = () => {
     if (schedule === 'sync') {
-      commit(select(source.get()))
+      commit(select(peek(source)))
       return
     }
 
-    pendingSource = source.get()
+    pendingSource = peek(source)
     hasPending = true
     task.schedule()
   }
 
   return {
-    get: () => {
+    get: guardPlainGet(() => {
       refresh()
       return current as Value
-    },
+    }),
     subscribe: listener => {
       listeners.add(listener)
 
@@ -663,7 +760,7 @@ export const createProjectedKeyedStore = <Source, Key, Value>({
   }
 
   const refresh = () => {
-    current = select(source.get())
+    current = select(peek(source))
   }
 
   const task = createScheduleTask(() => {
@@ -679,23 +776,23 @@ export const createProjectedKeyedStore = <Source, Key, Value>({
 
   const handleSourceChange = () => {
     if (schedule === 'sync') {
-      commit(select(source.get()))
+      commit(select(peek(source)))
       return
     }
 
-    pendingSource = source.get()
+    pendingSource = peek(source)
     hasPending = true
     task.schedule()
   }
 
   return {
-    get: key => {
+    get: guardPlainKeyedGet((key: Key) => {
       if (!tracking) {
-        return select(source.get()).get(key) ?? emptyValue
+        return select(peek(source)).get(key) ?? emptyValue
       }
 
       return current.get(key) ?? emptyValue
-    },
+    }),
     subscribe: (key, listener) => {
       const listeners = listenersByKey.get(key) ?? new Set<Listener>()
       if (!listenersByKey.has(key)) {
@@ -751,7 +848,7 @@ export const createStagedValueStore = <T,>({
   const listeners = new Set<Listener>()
 
   return {
-    get: () => current,
+    get: guardPlainGet(() => current),
     subscribe: listener => {
       listeners.add(listener)
       return () => {
@@ -839,7 +936,7 @@ export const createStagedKeyedStore = <Key, Value, Input>({
   }
 
   return {
-    get: key => current.get(key) ?? emptyValue,
+    get: guardPlainKeyedGet((key: Key) => current.get(key) ?? emptyValue),
     all: () => current,
     subscribe: (key, listener) => {
       const listeners = listenersByKey.get(key) ?? new Set<Listener>()

@@ -3,7 +3,6 @@ import type {
   CanvasNode,
   EdgeItem
 } from '@engine-types/projection'
-import type { ReadStore } from '@shared/core'
 import type { Edge, EdgeId, NodeId, Point } from '@whiteboard/core/types'
 import {
   collectRelatedEdgeIds,
@@ -15,9 +14,8 @@ import {
   samePointArray as isSamePointArray,
   sameRectWithRotation as isSameRectWithRotationTuple
 } from '@shared/core'
-import { createValueStore } from '@shared/core'
 import type { ReadSnapshot } from '@engine-types/internal/read'
-import { createTrackedRead } from './tracked'
+import { createProjectionRuntime } from './projection'
 
 type EdgeCacheEntry = {
   sourceNodeRef?: CanvasNode
@@ -233,8 +231,8 @@ const resolveEdgeRebuild = (impact: KernelReadImpact): 'none' | 'dirty' | 'full'
 export const createEdgeProjection = (initialSnapshot: ReadSnapshot) => {
   const getNodeRect = (snapshot: ReadSnapshot) => snapshot.index.node.get
   const readModel = (snapshot: ReadSnapshot) => snapshot.model
-  const list = createValueStore<readonly EdgeId[]>([])
-  const tracked = createTrackedRead<EdgeId, EdgeItem | undefined>({
+  const projection = createProjectionRuntime<EdgeId, EdgeItem | undefined>({
+    initialList: [],
     emptyValue: undefined,
     read: (edgeId) => {
       ensureSynced()
@@ -488,7 +486,7 @@ const reconcileEdges = (
   const initial = reconcileAll(state, initialVisibleEdges)
   commitState(initial.nextState)
   visibleEdgesRef = initialVisibleEdges
-  list.set(state.ids)
+  projection.setList(state.ids)
 
   const applyChange = (impact: KernelReadImpact, snapshot: ReadSnapshot) => {
     snapshotRef = snapshot
@@ -528,10 +526,10 @@ const reconcileEdges = (
     }
 
     if (idsChanged) {
-      list.set(state.ids)
+      projection.setList(state.ids)
     }
 
-    tracked.sync(changedEdgeIds)
+    projection.sync(changedEdgeIds)
   }
 
   const related = (nodeIds: Iterable<NodeId>) => {
@@ -540,9 +538,9 @@ const reconcileEdges = (
   }
 
   return {
-    list: list as ReadStore<readonly EdgeId[]>,
+    list: projection.list,
     related,
-    item: tracked.item,
+    item: projection.item,
     applyChange
   }
 }

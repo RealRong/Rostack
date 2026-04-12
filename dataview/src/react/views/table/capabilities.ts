@@ -1,6 +1,6 @@
-import { createDerivedStore, type ReadStore } from '@shared/core'
+import type { ActiveViewState as CurrentView } from '@dataview/engine'
+import { createDerivedStore, read, type ReadStore } from '@shared/core'
 import type { InteractionState } from '@dataview/react/interaction'
-import type { TableCurrentView as CurrentView } from './currentView'
 
 export interface Capabilities {
   canHover: boolean
@@ -24,7 +24,7 @@ export const createCapabilities = (options: {
   locked: ReadStore<boolean>
   interaction: ReadStore<InteractionState>
 }): ReadStore<Capabilities> => createDerivedStore<Capabilities>({
-  get: read => {
+  get: () => {
     const locked = read(options.locked)
     const interaction = read(options.interaction)
     const currentView = read(options.currentView)

@@ -104,7 +104,7 @@ const EdgeLabelItem = ({
   label: NonNullable<EdgeView['edge']['labels']>[number]
 }) => {
   const editor = useEditorRuntime()
-  const selection = useStoreValue(editor.select.selection())
+  const selection = useStoreValue(editor.store.selection)
   const edit = useEdit()
   const ref = usePickRef({
     kind: 'edge',
@@ -178,7 +178,7 @@ const EdgeLabelItem = ({
       return
     }
 
-    const world = editor.select.viewport.pointer({
+    const world = editor.read.viewport.pointer({
       clientX: event.clientX,
       clientY: event.clientY
     }).world
@@ -304,7 +304,7 @@ const EdgeItemBase = ({
   const config = useResolvedConfig()
   const entry = useEdgeView(edgeId)
   const hitTestThresholdScreen = config.edge.hitTestThresholdScreen
-  const box = editor.select.edge.box(edgeId)
+  const box = editor.read.edge.box(edgeId)
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)
 

@@ -7,9 +7,9 @@ import {
   type SelectionTarget
 } from '@whiteboard/core/selection'
 import {
-  createValueStore,
   type ValueStore
 } from '@shared/core'
+import { createCommandState } from './store'
 
 export type SelectionMutate = {
   replace: (input: SelectionInput) => void
@@ -25,35 +25,29 @@ export type SelectionState = {
 }
 
 export const createSelectionState = (): SelectionState => {
-  const source = createValueStore<SelectionTarget>(EMPTY_SELECTION_TARGET, {
+  const state = createCommandState<SelectionTarget>({
+    initial: EMPTY_SELECTION_TARGET,
     isEqual: isSelectionTargetEqual
   })
-  const readSource = () => source.get()
-  const writeSource = (next: SelectionTarget) => {
-    if (isSelectionTargetEqual(readSource(), next)) {
-      return
-    }
-
-    source.set(next)
-  }
+  const source = state.store
 
   return {
     source,
     mutate: {
       replace: (input: SelectionInput) => {
-        writeSource(normalizeSelectionTarget(input))
+        state.set(normalizeSelectionTarget(input))
       },
       add: (input: SelectionInput) => {
-        writeSource(applySelectionTarget(readSource(), input, 'add'))
+        state.set(applySelectionTarget(state.read(), input, 'add'))
       },
       remove: (input: SelectionInput) => {
-        writeSource(applySelectionTarget(readSource(), input, 'subtract'))
+        state.set(applySelectionTarget(state.read(), input, 'subtract'))
       },
       toggle: (input: SelectionInput) => {
-        writeSource(applySelectionTarget(readSource(), input, 'toggle'))
+        state.set(applySelectionTarget(state.read(), input, 'toggle'))
       },
       clear: () => {
-        writeSource(EMPTY_SELECTION_TARGET)
+        state.set(EMPTY_SELECTION_TARGET)
       }
     }
   }

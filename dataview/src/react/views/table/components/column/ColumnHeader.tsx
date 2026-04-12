@@ -12,6 +12,7 @@ import {
 import { useSortable } from '@dnd-kit/sortable'
 import {
   useCallback,
+  useMemo,
   useRef,
   useState,
   type PointerEvent
@@ -109,7 +110,10 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   const view = currentView.view
   const groupProjection = currentView.group
   const sortProjection = currentView.sort
-  const showVerticalLines = currentView.showVerticalLines
+  const showVerticalLinesStore = useMemo(() => editor.active.select(
+    state => state?.view.options.table.showVerticalLines ?? false
+  ), [editor])
+  const showVerticalLines = useStoreValue(showVerticalLinesStore)
   const sortable = useSortable({
     id: props.sortId,
     transition: {

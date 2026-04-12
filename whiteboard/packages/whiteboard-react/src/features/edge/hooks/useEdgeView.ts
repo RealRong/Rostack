@@ -13,7 +13,7 @@ export const useEdgeView = (
 ): EdgeView | undefined => {
   const editor = useEditorRuntime()
   return useOptionalKeyedStoreValue(
-    editor.select.edge.view(),
+    editor.read.edge.view,
     edgeId,
     undefined
   )
@@ -21,7 +21,7 @@ export const useEdgeView = (
 
 export const useSelectedEdgeView = (): SelectedEdgeView | undefined => {
   const editor = useEditorRuntime()
-  const selection = useStoreValue(editor.select.selection())
+  const selection = useStoreValue(editor.store.selection)
   const edgeId = selection.nodeIds.length === 0 && selection.edgeIds.length === 1
     ? selection.edgeIds[0]
     : undefined

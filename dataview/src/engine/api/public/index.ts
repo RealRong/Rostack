@@ -37,8 +37,6 @@ export type {
   ActiveKanbanApi,
   ActiveKanbanState,
   ActiveSelectApi,
-  ActiveTableApi,
-  ActiveTableState,
   ActiveView,
   ActiveViewReadApi,
   ActiveViewState,

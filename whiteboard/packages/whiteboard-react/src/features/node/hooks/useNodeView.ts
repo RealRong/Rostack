@@ -65,9 +65,9 @@ export type NodeOverlayView = {
   canResize: NodeView['canResize']
   canRotate: NodeView['canRotate']
 }
-type RuntimeNodeView = NonNullable<ReturnType<
-  ReturnType<ReturnType<typeof useEditorRuntime>['select']['node']['view']>['get']
->>
+type RuntimeNodeView = NonNullable<
+  ReturnType<ReturnType<typeof useEditorRuntime>['read']['node']['view']['get']>
+>
 
 const resolveNodeOverlayViewState = (
   view: RuntimeNodeView
@@ -138,7 +138,7 @@ export const useNodeView = (
   const editor = useEditorRuntime()
   const registry = useNodeRegistry()
   const view = useOptionalKeyedStoreValue(
-    editor.select.node.view(),
+    editor.read.node.view,
     nodeId,
     undefined
   )
@@ -160,7 +160,7 @@ export const useNodeOverlayView = (
 ): NodeOverlayView | undefined => {
   const editor = useEditorRuntime()
   const view = useOptionalKeyedStoreValue(
-    editor.select.node.view(),
+    editor.read.node.view,
     nodeId,
     undefined
   )

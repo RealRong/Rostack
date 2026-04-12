@@ -19,15 +19,16 @@ const findCardNode = (
 export const ColumnBody = (props: {
   section: Section
 }) => {
-  const controller = useKanbanContext()
+  const {
+    runtime
+  } = useKanbanContext()
   const bodyRef = useRef<HTMLDivElement | null>(null)
-  const visibleIds = controller.readVisibleIds(props.section.key)
-  const visibleCount = controller.readVisibleCount(props.section.key)
-  const hiddenCount = controller.hiddenCount(props.section.key)
-  const showMoreCount = controller.cardsPerColumn === 'all'
-    ? hiddenCount
-    : Math.min(hiddenCount, controller.cardsPerColumn)
-  const overTarget = controller.drag.overTarget
+  const visibility = runtime.visibility.bySection.get(props.section.key)
+  const visibleIds = visibility?.visibleIds ?? props.section.ids
+  const visibleCount = visibility?.visibleCount ?? props.section.ids.length
+  const hiddenCount = visibility?.hiddenCount ?? 0
+  const showMoreCount = visibility?.showMoreCount ?? 0
+  const overTarget = runtime.drag.overTarget
   const sectionOverTarget = overTarget?.sectionKey === props.section.key
     ? overTarget
     : undefined
@@ -64,7 +65,7 @@ export const ColumnBody = (props: {
       className="relative"
       style={{
         overflowAnchor: 'none',
-        minHeight: Math.max(controller.layout.columnMinHeight, props.section.ids.length ? 0 : 120)
+        minHeight: Math.max(runtime.layout.columnMinHeight, props.section.ids.length ? 0 : 120)
       }}
     >
       {props.section.ids.length ? (
@@ -80,20 +81,12 @@ export const ColumnBody = (props: {
               top={indicatorTop}
             />
           ) : null}
-          {visibleIds.map(id => {
-            const record = controller.readRecord(id)
-            if (!record) {
-              return null
-            }
-
-            return (
-              <Card
-                key={id}
-                appearanceId={id}
-                record={record}
-              />
-            )
-          })}
+          {visibleIds.map(id => (
+            <Card
+              key={id}
+              appearanceId={id}
+            />
+          ))}
           {hiddenCount ? (
             <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed bg-surface/70 px-3 py-2.5">
               <div className="min-w-0">
@@ -109,7 +102,7 @@ export const ColumnBody = (props: {
                 size="sm"
                 className="shrink-0"
                 onClick={() => {
-                  controller.showMore(props.section.key)
+                  runtime.visibility.showMore(props.section.key)
                 }}
               >
                 {`Show ${showMoreCount} more`}

@@ -11,6 +11,7 @@ import type {
   TextPreviewEntry,
   TextPreviewPatch
 } from './types'
+import { mergeEntryById } from './merge'
 
 export const EMPTY_NODE_PATCHES: readonly NodePatchEntry[] = []
 export const EMPTY_TEXT_PREVIEW_PATCHES: readonly TextPreviewEntry[] = []
@@ -245,17 +246,17 @@ export const toNodeOverlayMap = (
 
   for (let index = 0; index < state.node.text.patches.length; index += 1) {
     const entry = state.node.text.patches[index]!
-    next.set(entry.id, {
+    mergeEntryById(next, entry.id, (current) => ({
+      ...current,
       text: entry.patch,
-      hovered: false,
+      hovered: current?.hovered ?? false,
       hidden: hiddenSet.has(entry.id)
-    })
+    }))
   }
 
   for (let index = 0; index < state.selection.node.patches.length; index += 1) {
     const entry = state.selection.node.patches[index]!
-    const current = next.get(entry.id)
-    next.set(entry.id, {
+    mergeEntryById(next, entry.id, (current) => ({
       patch: current?.patch
         ? {
             ...current.patch,
@@ -265,17 +266,17 @@ export const toNodeOverlayMap = (
       text: current?.text,
       hovered: state.selection.node.frameHoverId === entry.id,
       hidden: hiddenSet.has(entry.id)
-    })
+    }))
   }
 
-  if (state.selection.node.frameHoverId !== undefined) {
-    const current = next.get(state.selection.node.frameHoverId)
-    next.set(state.selection.node.frameHoverId, {
+  const frameHoverId = state.selection.node.frameHoverId
+  if (frameHoverId !== undefined) {
+    mergeEntryById(next, frameHoverId, (current) => ({
       patch: current?.patch,
       text: current?.text,
       hovered: true,
-      hidden: hiddenSet.has(state.selection.node.frameHoverId)
-    })
+      hidden: hiddenSet.has(frameHoverId)
+    }))
   }
 
   for (let index = 0; index < state.draw.hidden.length; index += 1) {

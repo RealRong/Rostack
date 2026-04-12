@@ -1,6 +1,5 @@
 import type { KeyedReadStore, ReadStore } from '@shared/core'
 import type { EngineRead } from '@whiteboard/engine'
-import type { GroupRead } from '@engine-types/instance'
 import type { HistoryState } from '@whiteboard/core/kernel'
 import type { NodeId } from '@whiteboard/core/types'
 import type { NodeRegistry } from '../../types/node'
@@ -27,6 +26,10 @@ import {
   type SelectionModelRead,
   type SelectionRead
 } from './selection'
+import {
+  createTargetRead,
+  type RuntimeTargetRead
+} from './target'
 import type {
   DrawKind,
   EdgePresetKey,
@@ -87,7 +90,8 @@ const createToolRead = (
 
 export type RuntimeRead = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
   history: ReadStore<HistoryState>
-  group: GroupRead
+  group: EngineRead['group']
+  target: RuntimeTargetRead
   node: NodeRead
   edge: EdgeRead & {
     toolbar: ReadStore<EdgeToolbarContext | undefined>
@@ -165,6 +169,10 @@ export const createRead = ({
     edit: edit.source,
     interaction
   })
+  const targetRead = createTargetRead({
+    node: nodeRead,
+    edge: edgeRead
+  })
   const selectionRead = createSelectionRead({
     source: selection.source,
     node: nodeRead,
@@ -181,6 +189,7 @@ export const createRead = ({
       document: engineRead.document,
       frame: engineRead.frame,
       group: engineRead.group,
+      target: targetRead,
       history,
       node: nodeRead,
       edge: {

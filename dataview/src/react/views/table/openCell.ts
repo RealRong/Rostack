@@ -1,10 +1,8 @@
+import type { ActiveViewState as CurrentView } from '@dataview/engine'
 import type {
   CellRef,
   ViewFieldRef
 } from '@dataview/engine/project'
-import type {
-  TableCurrentView as CurrentView
-} from './currentView'
 import type {
   ValueEditorApi,
   ValueEditorCloseAction,

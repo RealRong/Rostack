@@ -1,26 +1,35 @@
 import {
+  createKeyedReadStore,
   createKeyedStore,
-  type KeyedReadStore
-} from '@shared/core'
-import {
-  sameValue as isSameValue
+  createValueStore,
+  sameValue as isSameValue,
+  type KeyedReadStore,
+  type ReadStore
 } from '@shared/core'
 
-export const createTrackedRead = <Key, Value,>({
+export const createProjectionRuntime = <Key, Value,>({
+  initialList,
   emptyValue,
   read,
   isEmpty = (value) => isSameValue(value, emptyValue)
 }: {
+  initialList: readonly Key[]
   emptyValue: Value
   read: (key: Key) => Value
   isEmpty?: (value: Value) => boolean
-}) => {
+}): {
+  list: ReadStore<readonly Key[]>
+  item: KeyedReadStore<Key, Value>
+  trackedKeys: () => IterableIterator<Key>
+  setList: (next: readonly Key[]) => void
+  sync: (keys: Iterable<Key>) => void
+} => {
+  const list = createValueStore(initialList)
   const counts = new Map<Key, number>()
   const tracked = createKeyedStore<Key, Value>({
     emptyValue
   })
-
-  const item: KeyedReadStore<Key, Value> = {
+  const item = createKeyedReadStore<Key, Value>({
     get: (key) => read(key),
     subscribe: (key, listener) => {
       counts.set(key, (counts.get(key) ?? 0) + 1)
@@ -33,6 +42,7 @@ export const createTrackedRead = <Key, Value,>({
       }
 
       const unsubscribe = tracked.subscribe(key, listener)
+
       return () => {
         unsubscribe()
         const nextCount = (counts.get(key) ?? 1) - 1
@@ -45,13 +55,16 @@ export const createTrackedRead = <Key, Value,>({
         tracked.delete(key)
       }
     }
-  }
+  })
 
   return {
+    list,
     item,
-    size: () => counts.size,
-    keys: () => counts.keys(),
-    sync: (keys: Iterable<Key>) => {
+    trackedKeys: () => counts.keys(),
+    setList: (next) => {
+      list.set(next)
+    },
+    sync: (keys) => {
       const set: Array<readonly [Key, Value]> = []
       const del: Key[] = []
 
@@ -63,9 +76,10 @@ export const createTrackedRead = <Key, Value,>({
         const current = read(key)
         if (isEmpty(current)) {
           del.push(key)
-        } else {
-          set.push([key, current] as const)
+          continue
         }
+
+        set.push([key, current] as const)
       }
 
       if (!set.length && !del.length) {

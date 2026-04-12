@@ -2,7 +2,6 @@ import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
   CustomField,
   CustomFieldId,
-  CustomFieldKind,
   DataDoc,
   Field,
   FieldId,
@@ -71,12 +70,14 @@ export interface ActiveViewState {
   view: View
   filter: ViewFilterProjection
   group: ViewGroupProjection
+  groupField: Field | undefined
   search: ViewSearchProjection
   sort: ViewSortProjection
   records: RecordSet
   sections: readonly Section[]
   appearances: AppearanceList
   fields: FieldList
+  customFields: readonly CustomField[]
   calculations: ReadonlyMap<SectionKey, CalculationCollection>
 }
 
@@ -91,52 +92,22 @@ export interface ActiveViewReadApi {
   getAppearanceRecord: (appearanceId: AppearanceId) => Row | undefined
   getAppearanceSectionKey: (appearanceId: AppearanceId) => SectionKey | undefined
   getSectionColor: (section: SectionKey) => string | undefined
+  getAppearanceColor: (appearanceId: AppearanceId) => string | undefined
   getDisplayFieldIndex: (fieldId: FieldId) => number
-}
-
-export interface ActiveTableState {
-  groupField: Field | undefined
-  customFields: readonly CustomField[]
-  visibleFieldIds: readonly FieldId[]
-  showVerticalLines: boolean
 }
 
 export interface ActiveGalleryState {
   sections: readonly Section[]
-  groupField: Field | undefined
   groupUsesOptionColors: boolean
-  customFields: readonly CustomField[]
   canReorder: boolean
   cardSize: GalleryCardSize
 }
 
 export interface ActiveKanbanState {
-  groupField: Field | undefined
   groupUsesOptionColors: boolean
-  customFields: readonly CustomField[]
   cardsPerColumn: KanbanCardsPerColumn
   fillColumnColor: boolean
   canReorder: boolean
-}
-
-export interface ActiveTableApi {
-  state: ReadStore<ActiveTableState | undefined>
-  setWidths: (widths: Partial<Record<FieldId, number>>) => void
-  setVerticalLines: (value: boolean) => void
-  insertLeft: (
-    anchorFieldId: FieldId,
-    input?: {
-      name?: string
-      kind?: CustomFieldKind
-    }
-  ) => CustomFieldId | undefined
-  insertRight: (
-    anchorFieldId: FieldId,
-    input?: {
-      name?: string
-      kind?: CustomFieldKind
-    }
-  ) => CustomFieldId | undefined
 }
 
 export interface ActiveGalleryApi extends ViewGalleryApi {
@@ -154,13 +125,12 @@ export interface ActiveSelectApi {
   ): ReadStore<T>
 }
 
-export interface ActiveEngineApi extends Omit<ViewEngineApi, 'table' | 'gallery' | 'kanban'> {
+export interface ActiveEngineApi extends Omit<ViewEngineApi, 'gallery' | 'kanban'> {
   id: ReadStore<ViewId | undefined>
   view: ReadStore<View | undefined>
   state: ReadStore<ActiveViewState | undefined>
   select: ActiveSelectApi
   read: ActiveViewReadApi
-  table: ActiveTableApi
   gallery: ActiveGalleryApi
   kanban: ActiveKanbanApi
 }

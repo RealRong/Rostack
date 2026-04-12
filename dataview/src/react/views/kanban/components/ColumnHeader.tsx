@@ -6,8 +6,11 @@ import { useKanbanContext } from '../context'
 export const ColumnHeader = (props: {
   section: Section
 }) => {
-  const controller = useKanbanContext()
-  const groupField = controller.groupField
+  const {
+    active,
+    extra
+  } = useKanbanContext()
+  const groupField = active.groupField
   const bucket = props.section.bucket
   const canRenderBucket = Boolean(groupField && bucket)
   const count = props.section.ids.length
@@ -22,7 +25,7 @@ export const ColumnHeader = (props: {
           emptyPlaceholder={bucket?.title ?? props.section.title}
           className={cn(
             'max-w-full',
-            !controller.groupUsesOptionColors && 'text-sm font-semibold text-foreground'
+            !extra.groupUsesOptionColors && 'text-sm font-semibold text-foreground'
           )}
         />
       ) : (

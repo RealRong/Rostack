@@ -1,5 +1,6 @@
 import {
-  createDerivedStore
+  createDerivedStore,
+  read
 } from '@shared/core'
 import type { Editor, EditorInteractionState } from '../../types/editor'
 import type { InteractionRuntime } from '../interaction/types'
@@ -16,10 +17,10 @@ export const createEditorState = ({
   viewport: EditorViewportRuntime['read']
 }): Editor['store'] => {
   const interactionState = createDerivedStore<EditorInteractionState>({
-    get: (readStore) => {
-      const mode = readStore(interaction.mode)
-      const busy = readStore(interaction.busy)
-      const chrome = readStore(interaction.chrome)
+    get: () => {
+      const mode = read(interaction.mode)
+      const busy = read(interaction.busy)
+      const chrome = read(interaction.chrome)
       const transforming = mode === 'node-transform'
 
       return {
@@ -38,7 +39,7 @@ export const createEditorState = ({
           mode === 'edge-drag'
           || mode === 'edge-connect'
           || mode === 'edge-route',
-        space: readStore(runtime.state.space)
+        space: read(runtime.state.space)
       }
     },
     isEqual: (left, right) => (

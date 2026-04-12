@@ -2,6 +2,7 @@ import type {
   Action,
   ViewId
 } from '@dataview/core/contracts'
+import { read } from '@shared/core'
 import {
   createDuplicateViewPreferredName
 } from '@dataview/core/view'
@@ -17,11 +18,11 @@ export const createViewsEngineApi = (options: {
   dispatch: (action: Action | readonly Action[]) => ActionResult
   api: (viewId: ViewId) => ViewEngineApi
 }): ViewsEngineApi => {
-  const readViews = () => options.read.views.get()
+  const readViews = () => read(options.read.views)
 
   return {
     list: readViews,
-    get: viewId => options.read.view.get(viewId),
+    get: viewId => read(options.read.view, viewId),
     open: viewId => {
       options.dispatch({
         type: 'view.open',
@@ -59,7 +60,7 @@ export const createViewsEngineApi = (options: {
       })
     },
     duplicate: viewId => {
-      const sourceView = options.read.view.get(viewId)
+      const sourceView = read(options.read.view, viewId)
       if (!sourceView) {
         return undefined
       }

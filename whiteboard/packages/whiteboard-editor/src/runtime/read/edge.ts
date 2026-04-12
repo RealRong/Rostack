@@ -20,8 +20,8 @@ import {
 } from '@whiteboard/engine'
 import {
   createKeyedDerivedStore,
+  read as readValue,
   type KeyedReadStore,
-  type ReadFn,
   type ReadStore
 } from '@shared/core'
 import type {
@@ -300,19 +300,17 @@ const readEdgeItem = (
 
 const readResolvedNodeSnapshot = (
   readNode: Pick<NodeRead, 'canvas'>,
-  readStore: ReadFn,
   edgeEnd: EdgeItem['edge']['source'] | EdgeItem['edge']['target']
 ) => edgeEnd.kind === 'node'
-  ? readStore(readNode.canvas, edgeEnd.nodeId)
+  ? readValue(readNode.canvas, edgeEnd.nodeId)
   : undefined
 
 const readResolvedEdgeView = (
-  readStore: ReadFn,
   node: Pick<NodeRead, 'canvas'>,
   entry: EdgeItem
 ) => {
-  const source = readResolvedNodeSnapshot(node, readStore, entry.edge.source)
-  const target = readResolvedNodeSnapshot(node, readStore, entry.edge.target)
+  const source = readResolvedNodeSnapshot(node, entry.edge.source)
+  const target = readResolvedNodeSnapshot(node, entry.edge.target)
 
   if (
     (entry.edge.source.kind === 'node' && !source)
@@ -362,33 +360,33 @@ export const createEdgeRead = ({
   }
 }): EdgeRead => {
   const item: EdgeRead['item'] = createKeyedDerivedStore({
-    get: (readStore, edgeId: EdgeId) => {
-      const entry = readStore(read.edge.item, edgeId)
+    get: (edgeId: EdgeId) => {
+      const entry = readValue(read.edge.item, edgeId)
       return entry
-        ? readEdgeItem(entry, readStore(overlay, edgeId), readStore(edit))
+        ? readEdgeItem(entry, readValue(overlay, edgeId), readValue(edit))
         : undefined
     },
     isEqual: isEdgeItemEqual
   })
   const state: EdgeRead['state'] = createKeyedDerivedStore({
-    get: (readStore, edgeId: EdgeId) => toEdgeRuntimeState(
-      readStore(overlay, edgeId)
+    get: (edgeId: EdgeId) => toEdgeRuntimeState(
+      readValue(overlay, edgeId)
     ),
     isEqual: isEdgeStateEqual
   })
   const resolved: EdgeRead['resolved'] = createKeyedDerivedStore({
     isEqual: isEdgeViewEqual,
-    get: (readStore, edgeId: EdgeId) => {
-      const entry = readStore(item, edgeId)
+    get: (edgeId: EdgeId) => {
+      const entry = readValue(item, edgeId)
       return entry
-        ? readResolvedEdgeView(readStore, node, entry)
+        ? readResolvedEdgeView(node, entry)
         : undefined
     }
   })
   const view: EdgeRead['view'] = createKeyedDerivedStore({
-    get: (readStore, edgeId: EdgeId) => {
-      const resolvedItem = readStore(item, edgeId)
-      const resolvedView = readStore(resolved, edgeId)
+    get: (edgeId: EdgeId) => {
+      const resolvedItem = readValue(item, edgeId)
+      const resolvedView = readValue(resolved, edgeId)
       if (!resolvedItem || !resolvedView) {
         return undefined
       }
@@ -396,16 +394,16 @@ export const createEdgeRead = ({
       return {
         edgeId,
         edge: resolvedItem.edge,
-        patched: readStore(state, edgeId).patched,
-        activeRouteIndex: readStore(state, edgeId).activeRouteIndex,
+        patched: readValue(state, edgeId).patched,
+        activeRouteIndex: readValue(state, edgeId).activeRouteIndex,
         ...resolvedView
       }
     },
     isEqual: isEdgeViewStateEqual
   })
   const bounds: EdgeRead['bounds'] = createKeyedDerivedStore({
-    get: (readStore, edgeId: EdgeId) => {
-      const resolvedEntry = readStore(resolved, edgeId)
+    get: (edgeId: EdgeId) => {
+      const resolvedEntry = readValue(resolved, edgeId)
       return resolvedEntry
         ? getEdgePathBounds(resolvedEntry.path)
         : undefined

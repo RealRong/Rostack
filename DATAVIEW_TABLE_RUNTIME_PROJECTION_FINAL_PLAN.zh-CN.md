@@ -549,30 +549,43 @@ type TableActiveState = ActiveViewState & {
 - 在每个 selector 调用点重复做 `view.type === 'table'` 判断
 
 
-## 10.2 建议补的通用 selector 约定
+## 10.2 默认不引入 selector helper
 
-为了避免每个组件都手写重复 selector，最终可以统一沉淀少量轻量 helper，但这些 helper 仍然只基于 `engine.active.select(...)`，不创建新 projection：
+这套方案默认不需要任何 selector helper。
 
-例如：
+也就是说，像下面这种一行字段读取：
 
-```ts
-selectActiveGroup()
-selectActiveSort()
-selectActiveGroupField()
-selectActiveCustomFields()
-selectActiveShowVerticalLines()
-selectActiveDisplayFields()
-```
+- `state => state?.group`
+- `state => state?.sort`
+- `state => state?.groupField`
+- `state => state?.customFields ?? []`
+- `state => state?.view.display.fields ?? []`
+- `state => state?.view.options.table.showVerticalLines ?? false`
 
-注意：
+都应该直接内联写在调用点，不额外抽：
 
-- 这些如果存在，也应该只是 selector helper
-- 不是新的 store namespace
-- 不是新的 table state
-- 不是新的 currentView 层
-- helper 内部同样不允许重复写 `view.type === 'table'` 防御分支
+- `selectActiveGroup()`
+- `selectActiveSort()`
+- `selectActiveGroupField()`
+- `selectActiveCustomFields()`
+- `selectActiveShowVerticalLines()`
+- `selectActiveDisplayFields()`
 
-也就是说，允许“少量 selector helper”，不允许“重新长出 projection 系统”
+原因很简单：
+
+- 这些 selector 已经足够短
+- 抽 helper 只会增加命名、跳转和抽象层
+- 很容易再次长出一套轻量但持续扩张的 selector 框架
+
+这里只有一个例外：
+
+- 如果未来出现“同一个非平凡 selector 在多个地方重复出现”，再按真实重复决定是否抽取
+
+但在默认情况下，文档立场是：
+
+- 不预设 helper
+- 不为了可能未来复用而提前建 helper
+- 直接内联 selector
 
 
 ## 11. 需要删除的东西
@@ -590,7 +603,6 @@ selectActiveDisplayFields()
 
 - `engine.active.state`
 - `engine.active.select(...)`
-- 必要时极薄的 selector helper
 - table 局部组件对 `state.view.options.table.showVerticalLines` 的按需订阅
 - 必要时一个极薄的 table 类型收窄别名
 

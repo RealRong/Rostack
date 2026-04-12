@@ -3,6 +3,7 @@ import type {
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
+import { read } from '@shared/core'
 import { isTitleFieldId } from '@dataview/core/field'
 import type {
   EngineReadApi,
@@ -56,7 +57,7 @@ export const createRecordsEngineApi = (options: {
   }
 
   return {
-    get: recordId => options.read.record.get(recordId),
+    get: recordId => read(options.read.record, recordId),
     create: input => {
       const result = options.dispatch({
         type: 'record.create',

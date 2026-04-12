@@ -17,9 +17,6 @@ import {
   createTableController,
   type TableController
 } from './controller'
-import {
-  createTableViewStore
-} from './projection'
 
 interface TableProviderProps {
   rowHeight: number
@@ -58,9 +55,7 @@ export const TableProvider = (props: TableProviderProps) => {
     containerRef,
     canvasRef
   }), [props.headerHeight, props.rowHeight])
-  const currentView = useMemo(() => createTableViewStore({
-    engine
-  }), [engine])
+  const currentView = engine.active.state
   const table = useMemo(() => createTableController({
     engine,
     pageStore: dataView.page.store,

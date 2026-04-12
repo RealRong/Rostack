@@ -9,6 +9,7 @@ import type {
   EdgeOverlayState,
   EditorOverlayState
 } from './types'
+import { mergeEntryById } from './merge'
 
 export const EMPTY_EDGE_PATCHES: readonly EdgeOverlayEntry[] = []
 export const EMPTY_EDGE_GUIDE: EdgeGuide = {}
@@ -131,34 +132,44 @@ export const toEdgeOverlayMap = (
 
   const next = new Map<EdgeId, EdgeOverlayProjection>()
 
-  const writeEntry = (
-    entry: EdgeOverlayEntry
-  ) => {
-    const current = next.get(entry.id)
-    const patch = current?.patch
-      ? {
-          ...current.patch,
-          ...entry.patch
-        }
-      : entry.patch
-    const activeRouteIndex = entry.activeRouteIndex ?? current?.activeRouteIndex
+  for (let index = 0; index < state.selection.edge.length; index += 1) {
+    const entry = state.selection.edge[index]!
+    mergeEntryById(next, entry.id, (current) => {
+      const patch = current?.patch
+        ? {
+            ...current.patch,
+            ...entry.patch
+          }
+        : entry.patch
+      const activeRouteIndex = entry.activeRouteIndex ?? current?.activeRouteIndex
 
-    if (!patch && activeRouteIndex === undefined) {
-      return
-    }
-
-    next.set(entry.id, {
-      patch,
-      activeRouteIndex
+      return !patch && activeRouteIndex === undefined
+        ? undefined
+        : {
+            patch,
+            activeRouteIndex
+          }
     })
   }
 
-  for (let index = 0; index < state.selection.edge.length; index += 1) {
-    writeEntry(state.selection.edge[index]!)
-  }
-
   for (let index = 0; index < state.edge.interaction.length; index += 1) {
-    writeEntry(state.edge.interaction[index]!)
+    const entry = state.edge.interaction[index]!
+    mergeEntryById(next, entry.id, (current) => {
+      const patch = current?.patch
+        ? {
+            ...current.patch,
+            ...entry.patch
+          }
+        : entry.patch
+      const activeRouteIndex = entry.activeRouteIndex ?? current?.activeRouteIndex
+
+      return !patch && activeRouteIndex === undefined
+        ? undefined
+        : {
+            patch,
+            activeRouteIndex
+          }
+    })
   }
 
   return next.size > 0

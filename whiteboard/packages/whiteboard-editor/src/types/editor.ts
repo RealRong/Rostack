@@ -116,6 +116,12 @@ export type EditorPanelPresentation = {
   draw: DrawPreferences
 }
 
+export type EditorPublicRead = EditorRead & {
+  chrome: ReadStore<EditorChromePresentation>
+  panel: ReadStore<EditorPanelPresentation>
+  selectionModel: SelectionModelRead
+}
+
 export type EditorAppActions = AppActions
 
 export type EditorToolActions = ToolActions
@@ -170,69 +176,6 @@ export type EditorActions = {
   history: HistoryCommands
 }
 
-export type EditorDocSelect = (() => RuntimeRead['document']) & {
-  bounds: RuntimeRead['document']['bounds']
-  background: () => RuntimeRead['document']['background']
-}
-
-export type EditorToolSelect = (() => EditorStore['tool']) & {
-  is: RuntimeRead['tool']['is']
-}
-
-export type EditorViewportSelect = (() => EditorStore['viewport']) & {
-  pointer: RuntimeRead['viewport']['pointer']
-  worldToScreen: RuntimeRead['viewport']['worldToScreen']
-  screenPoint: RuntimeRead['viewport']['screenPoint']
-  size: RuntimeRead['viewport']['size']
-}
-
-export type EditorSelectionSelect = (() => EditorStore['selection']) & {
-  box: () => RuntimeRead['selection']['box']
-  summary: () => SelectionModelRead
-  overlay: () => RuntimeRead['selection']['overlay']
-  nodeToolbar: () => RuntimeRead['selection']['nodeToolbar']
-  node: () => RuntimeRead['selection']['node']
-}
-
-export type EditorNodeSelect = {
-  item: () => RuntimeRead['node']['item']
-  view: () => RuntimeRead['node']['view']
-  capability: () => RuntimeRead['node']['capability']
-  bounds: RuntimeRead['node']['bounds']['get']
-}
-
-export type EditorEdgeSelect = {
-  item: () => RuntimeRead['edge']['item']
-  resolved: () => RuntimeRead['edge']['resolved']
-  view: () => RuntimeRead['edge']['view']
-  toolbar: () => RuntimeRead['edge']['toolbar']
-  bounds: RuntimeRead['edge']['bounds']['get']
-  box: RuntimeRead['edge']['box']
-}
-
-export type EditorMindmapSelect = {
-  item: () => RuntimeRead['mindmap']['item']
-  view: () => RuntimeRead['mindmap']['view']
-}
-
-export type EditorSelect = {
-  scene: () => RuntimeRead['scene']['list']
-  chrome: () => ReadStore<EditorChromePresentation>
-  panel: () => ReadStore<EditorPanelPresentation>
-  doc: EditorDocSelect
-  history: () => RuntimeRead['history']
-  draw: () => EditorStore['draw']
-  tool: EditorToolSelect
-  viewport: EditorViewportSelect
-  edit: () => EditorStore['edit']
-  interaction: () => EditorStore['interaction']
-  selection: EditorSelectionSelect
-  group: Pick<RuntimeRead['group'], 'exactIds' | 'nodeIds' | 'edgeIds'>
-  node: EditorNodeSelect
-  edge: EditorEdgeSelect
-  mindmap: EditorMindmapSelect
-}
-
 export type EditorEvents = {
   change: (listener: (document: Document, commit: Commit) => void) => Unsubscribe
   history: (listener: (state: HistoryState) => void) => Unsubscribe
@@ -242,7 +185,7 @@ export type EditorEvents = {
 
 export type Editor = {
   store: EditorStore
+  read: EditorPublicRead
   actions: EditorActions
-  select: EditorSelect
   events: EditorEvents
 }

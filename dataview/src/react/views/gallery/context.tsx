@@ -2,59 +2,66 @@ import {
   createContext,
   createElement,
   useContext,
-  useRef,
+  useMemo,
   type ReactNode
 } from 'react'
+import type { ActiveGalleryState } from '@dataview/engine'
 import type { ActiveViewState } from '@dataview/engine'
 import {
   useDataViewValue
 } from '@dataview/react/dataview'
 import {
-  type GalleryController,
-  type GalleryCurrentView,
-  useGalleryController
-} from './useGalleryController'
+  type GalleryActiveState,
+  type GalleryRuntime,
+  useGalleryRuntime
+} from './runtime'
 
 export interface GalleryProviderProps {
   children?: ReactNode
 }
 
-export type Gallery = GalleryController
+export interface GalleryContextValue {
+  active: GalleryActiveState
+  extra: ActiveGalleryState
+  runtime: GalleryRuntime
+}
+
+export type Gallery = GalleryContextValue
 
 const Ctx = createContext<Gallery | null>(null)
 
-const readGalleryCurrentView = (
-  state: ActiveViewState | undefined,
-  sections: GalleryCurrentView['sections']
-): GalleryCurrentView | undefined => (
+const readGalleryActiveState = (
+  state: ActiveViewState | undefined
+): GalleryActiveState | undefined => (
   state?.view.type === 'gallery'
-    ? {
-        ...state,
-        view: state.view,
-        sections
-      } as GalleryCurrentView
+    ? state as GalleryActiveState
     : undefined
 )
 
 export const GalleryProvider = (props: GalleryProviderProps) => {
-  const containerRef = useRef<HTMLDivElement | null>(null)
+  const active = useDataViewValue(
+    dataView => dataView.engine.active.state,
+    readGalleryActiveState
+  )
   const extra = useDataViewValue(
     dataView => dataView.engine.active.gallery.state
   )
-  const currentView = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => extra
-      ? readGalleryCurrentView(state, extra.sections)
-      : undefined
-  )
-  if (!extra || !currentView) {
+  if (!active || !extra) {
     throw new Error('Gallery view requires an active gallery state.')
   }
-  const value = useGalleryController({
-    containerRef,
-    currentView,
+  const runtime = useGalleryRuntime({
+    active,
     extra
   })
+  const value = useMemo<GalleryContextValue>(() => ({
+    active,
+    extra,
+    runtime
+  }), [
+    active,
+    extra,
+    runtime
+  ])
 
   return createElement(Ctx.Provider, { value }, props.children)
 }

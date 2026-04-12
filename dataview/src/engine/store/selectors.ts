@@ -27,8 +27,8 @@ import {
 } from '@dataview/core/field'
 import {
   createDerivedStore,
-  createKeyedReadStore,
-  createReadStore,
+  createKeyedDerivedStore,
+  read,
   type Equality,
   type KeyedReadStore,
   type ReadStore
@@ -42,7 +42,6 @@ import type {
   ActiveGalleryState,
   ActiveKanbanState,
   ActiveSelectApi,
-  ActiveTableState,
   ActiveViewReadApi,
   ActiveViewState,
   EngineReadApi
@@ -83,12 +82,12 @@ const sameCustomFields = (
   && left.every((field, index) => field === right[index])
 
 const resolveGroupField = (
-  state: ActiveViewState,
+  group: Pick<ActiveViewState['group'], 'field' | 'fieldId'>,
   document: DataDoc
-): Field | undefined => state.group.field
+): Field | undefined => group.field
   ?? (
-    state.group.fieldId
-      ? getDocumentFieldById(document, state.group.fieldId)
+    group.fieldId
+      ? getDocumentFieldById(document, group.fieldId)
       : undefined
   )
 
@@ -97,79 +96,24 @@ const resolveCustomFields = (
 ): readonly CustomField[] => fields.all.filter(isCustomField)
 
 const createSelector = <T,>(input: {
-  store: Store
+  store: ReadStore<State>
   read: (state: State) => T
   isEqual?: Equality<T>
-}): ReadStore<T> => {
-  const isEqual = input.isEqual ?? sameValue
-  const listeners = new Set<() => void>()
-  let current = input.read(input.store.get())
-  let unsubscribeBase = () => {}
-
-  const sync = () => {
-    const next = input.read(input.store.get())
-    if (isEqual(current, next)) {
-      current = next
-      return
-    }
-
-    current = next
-    Array.from(listeners).forEach(listener => {
-      listener()
-    })
-  }
-
-  return createReadStore({
-    get: () => input.read(input.store.get()),
-    subscribe: listener => {
-      listeners.add(listener)
-      if (listeners.size === 1) {
-        current = input.read(input.store.get())
-        unsubscribeBase = input.store.sub(sync)
-      }
-
-      return () => {
-        listeners.delete(listener)
-        if (listeners.size === 0) {
-          unsubscribeBase()
-          unsubscribeBase = () => {}
-        }
-      }
-    },
-    isEqual
-  })
-}
+}): ReadStore<T> => createDerivedStore({
+  get: () => input.read(read(input.store)),
+  ...(input.isEqual ? { isEqual: input.isEqual } : {})
+})
 
 const createKeyedSelector = <K, T>(input: {
-  store: Store
+  store: ReadStore<State>
   read: (state: State, key: K) => T
   isEqual?: Equality<T>
   keyOf?: (key: K) => unknown
-}): KeyedReadStore<K, T> => {
-  const cache = new Map<unknown, ReadStore<T>>()
-
-  const resolveStore = (key: K): ReadStore<T> => {
-    const cacheKey = input.keyOf ? input.keyOf(key) : key
-    const cached = cache.get(cacheKey)
-    if (cached) {
-      return cached
-    }
-
-    const store = createSelector({
-      store: input.store,
-      read: state => input.read(state, key),
-      ...(input.isEqual ? { isEqual: input.isEqual } : {})
-    })
-    cache.set(cacheKey, store)
-    return store
-  }
-
-  return createKeyedReadStore({
-    get: key => input.read(input.store.get(), key),
-    subscribe: (key, listener) => resolveStore(key).subscribe(listener),
-    ...(input.isEqual ? { isEqual: input.isEqual } : {})
-  })
-}
+}): KeyedReadStore<K, T> => createKeyedDerivedStore({
+  get: (key) => input.read(read(input.store), key),
+  ...(input.isEqual ? { isEqual: input.isEqual } : {}),
+  ...(input.keyOf ? { keyOf: input.keyOf } : {})
+})
 
 const selectDoc = <T,>(input: {
   store: Store
@@ -202,25 +146,15 @@ const sameActiveState = (
   && left.view === right.view
   && left.filter === right.filter
   && left.group === right.group
+  && left.groupField === right.groupField
   && left.search === right.search
   && left.sort === right.sort
   && left.records === right.records
   && left.sections === right.sections
   && left.appearances === right.appearances
   && left.fields === right.fields
-  && left.calculations === right.calculations
-)
-
-const sameActiveTableState = (
-  left: ActiveTableState | undefined,
-  right: ActiveTableState | undefined
-) => left === right || (
-  !!left
-  && !!right
-  && left.groupField === right.groupField
   && sameCustomFields(left.customFields, right.customFields)
-  && sameOrder(left.visibleFieldIds, right.visibleFieldIds)
-  && left.showVerticalLines === right.showVerticalLines
+  && left.calculations === right.calculations
 )
 
 const sameActiveGalleryState = (
@@ -229,9 +163,7 @@ const sameActiveGalleryState = (
 ) => left === right || (
   !!left
   && !!right
-  && left.groupField === right.groupField
   && left.groupUsesOptionColors === right.groupUsesOptionColors
-  && sameCustomFields(left.customFields, right.customFields)
   && left.canReorder === right.canReorder
   && left.cardSize === right.cardSize
   && sameValue(left.sections, right.sections)
@@ -243,9 +175,7 @@ const sameActiveKanbanState = (
 ) => left === right || (
   !!left
   && !!right
-  && left.groupField === right.groupField
   && left.groupUsesOptionColors === right.groupUsesOptionColors
-  && sameCustomFields(left.customFields, right.customFields)
   && left.cardsPerColumn === right.cardsPerColumn
   && left.fillColumnColor === right.fillColumnColor
   && left.canReorder === right.canReorder
@@ -280,16 +210,21 @@ const readActiveState = (
     return undefined
   }
 
+  const groupField = resolveGroupField(group, current.doc)
+  const customFields = resolveCustomFields(fields)
+
   return {
     view: activeView,
     filter,
     group,
+    groupField,
     search,
     sort,
     records,
     sections,
     appearances,
     fields,
+    customFields,
     calculations
   }
 }
@@ -346,7 +281,7 @@ const createActiveSelectApi = (
   selector,
   isEqual
 ) => createDerivedStore({
-  get: read => selector(read(state)),
+  get: () => selector(read(state)),
   ...(isEqual ? { isEqual } : {})
 })
 
@@ -354,15 +289,15 @@ const createActiveReadApi = (input: {
   read: EngineReadApi
   state: ReadStore<ActiveViewState | undefined>
 }): ActiveViewReadApi => {
-  const readDocument = () => input.read.document.get()
-  const readState = () => input.state.get()
+  const readDocument = () => read(input.read.document)
+  const readState = () => read(input.state)
 
   const getField = (fieldId: FieldId): Field | undefined => (
     getDocumentFieldById(readDocument(), fieldId)
   )
 
   return {
-    getRecord: recordId => input.read.record.get(recordId),
+    getRecord: recordId => read(input.read.record, recordId),
     getField,
     getGroupField: () => {
       const state = readState()
@@ -370,10 +305,7 @@ const createActiveReadApi = (input: {
         return undefined
       }
 
-      return state.group.field
-        ?? (state.group.fieldId
-          ? getField(state.group.fieldId)
-          : undefined)
+      return state.groupField
     },
     getFilterField: index => {
       const rule = readState()?.filter.rules[index]
@@ -401,11 +333,18 @@ const createActiveReadApi = (input: {
     getAppearanceRecord: appearanceId => {
       const recordId = readState()?.appearances.get(appearanceId)?.recordId
       return recordId
-        ? input.read.record.get(recordId)
+        ? read(input.read.record, recordId)
         : undefined
     },
     getAppearanceSectionKey: appearanceId => readState()?.appearances.sectionOf(appearanceId),
     getSectionColor: section => readState()?.sections.find(current => current.key === section)?.color,
+    getAppearanceColor: appearanceId => {
+      const state = readState()
+      const section = state?.appearances.sectionOf(appearanceId)
+      return section
+        ? state?.sections.find(current => current.key === section)?.color
+        : undefined
+    },
     getDisplayFieldIndex: fieldId => readState()?.view.display.fields.indexOf(fieldId) ?? -1
   }
 }
@@ -414,7 +353,6 @@ export const createActiveBaseApi = (input: {
   store: Store
   read: EngineReadApi
 }): Pick<ActiveEngineApi, 'id' | 'view' | 'state' | 'select' | 'read'> & {
-  table: Pick<ActiveEngineApi['table'], 'state'>
   gallery: Pick<ActiveEngineApi['gallery'], 'state'>
   kanban: Pick<ActiveEngineApi['kanban'], 'state'>
 } => {
@@ -431,23 +369,6 @@ export const createActiveBaseApi = (input: {
     read: readActiveState,
     isEqual: sameActiveState
   })
-  const tableState = createSelector<ActiveTableState | undefined>({
-    store: input.store,
-    read: current => {
-      const state = readActiveState(current)
-      if (!state || state.view.type !== 'table') {
-        return undefined
-      }
-
-      return {
-        groupField: resolveGroupField(state, current.doc),
-        customFields: resolveCustomFields(state.fields),
-        visibleFieldIds: state.view.display.fields,
-        showVerticalLines: state.view.options.table.showVerticalLines
-      }
-    },
-    isEqual: sameActiveTableState
-  })
   const galleryState = createSelector<ActiveGalleryState | undefined>({
     store: input.store,
     read: current => {
@@ -456,7 +377,7 @@ export const createActiveBaseApi = (input: {
         return undefined
       }
 
-      const groupField = resolveGroupField(state, current.doc)
+      const groupField = state.groupField
       const groupUsesOptionColors = usesOptionGroupingColors(groupField)
       const canReorder = !state.group.active && !state.sort.active
 
@@ -469,10 +390,8 @@ export const createActiveBaseApi = (input: {
               color: undefined,
               collapsed: false,
               ids: state.appearances.ids
-            }],
-        groupField,
+        }],
         groupUsesOptionColors,
-        customFields: resolveCustomFields(state.fields),
         canReorder,
         cardSize: state.view.options.gallery.cardSize
       }
@@ -487,13 +406,11 @@ export const createActiveBaseApi = (input: {
         return undefined
       }
 
-      const groupField = resolveGroupField(state, current.doc)
+      const groupField = state.groupField
       const groupUsesOptionColors = usesOptionGroupingColors(groupField)
 
       return {
-        groupField,
         groupUsesOptionColors,
-        customFields: resolveCustomFields(state.fields),
         cardsPerColumn: state.view.options.kanban.cardsPerColumn,
         fillColumnColor: groupUsesOptionColors && state.view.options.kanban.fillColumnColor,
         canReorder: state.group.active && !state.sort.active
@@ -511,9 +428,6 @@ export const createActiveBaseApi = (input: {
       read: input.read,
       state
     }),
-    table: {
-      state: tableState
-    },
     gallery: {
       state: galleryState
     },

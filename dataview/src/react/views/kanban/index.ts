@@ -3,9 +3,11 @@ export type { KanbanViewProps } from './KanbanView'
 export { KanbanProvider, useKanbanContext } from './context'
 export type { Kanban } from './context'
 export {
-  useKanbanController,
-  type KanbanController
-} from './useKanbanController'
+  useKanbanRuntime,
+  type KanbanActiveState,
+  type KanbanRuntime,
+  type KanbanSectionVisibility
+} from './runtime'
 export type {
   KanbanNewRecordPosition,
   KanbanOptions

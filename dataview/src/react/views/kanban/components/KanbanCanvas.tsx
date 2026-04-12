@@ -15,12 +15,15 @@ const contentInsetStyle = {
 } as const
 
 export const KanbanCanvas = () => {
-  const controller = useKanbanContext()
+  const {
+    active,
+    runtime
+  } = useKanbanContext()
 
   return (
     <div className="flex flex-col gap-6">
       <div
-        ref={controller.scrollRef}
+        ref={runtime.scrollRef}
         className="relative overflow-x-auto overflow-y-visible"
       >
         <div
@@ -33,7 +36,7 @@ export const KanbanCanvas = () => {
               overflowAnchor: 'none'
             }}
           >
-            {controller.currentView.sections.map(section => (
+            {active.sections.map(section => (
               <Column
                 key={section.key}
                 section={section}

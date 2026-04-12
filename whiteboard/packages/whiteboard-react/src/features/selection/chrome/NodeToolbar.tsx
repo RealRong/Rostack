@@ -53,13 +53,13 @@ export const NodeToolbar = ({
 }) => {
   const editor = useEditorRuntime()
   const surface = useElementSize(containerRef)
-  const panel = useStoreValue(editor.select.panel())
+  const panel = useStoreValue(editor.read.panel)
   const toolbar = panel.nodeToolbar
   const buttonRefByKey = useRef<Partial<Record<ToolbarPanelKey, HTMLElement | null>>>({})
   const [activePanelKey, setActivePanelKey] = useState<ToolbarPanelKey | null>(null)
   const [positionSession, setPositionSession] = useState<ToolbarPositionSession | null>(null)
   const worldToScreen = useCallback(
-    (point: Point) => editor.select.viewport.worldToScreen(point),
+    (point: Point) => editor.read.viewport.worldToScreen(point),
     [editor]
   )
   const recipe = useMemo(

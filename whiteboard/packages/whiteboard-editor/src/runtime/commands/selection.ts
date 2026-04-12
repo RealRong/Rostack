@@ -74,17 +74,7 @@ const toCanvasRefs = (
 const readGroupTarget = (
   read: Pick<EditorRead, 'group'>,
   groupId: GroupId
-): SelectionTarget | undefined => {
-  const nodeIds = read.group.nodeIds(groupId)
-  const edgeIds = read.group.edgeIds(groupId)
-
-  return nodeIds.length > 0 || edgeIds.length > 0
-    ? {
-        nodeIds,
-        edgeIds
-      }
-    : undefined
-}
+): SelectionTarget | undefined => read.group.target(groupId)
 
 const createFrame = (
   node: Pick<NodeCommands, 'create'>,

@@ -1,5 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import type { RecordId } from '@dataview/core/contracts'
+import {
+  useDataView,
+  useDataViewKeyedValue
+} from '@dataview/react/dataview'
 import { CardPreview } from '@dataview/react/views/shared'
 import {
   resolveNeutralCardStyle,
@@ -11,17 +16,26 @@ import { useKanbanContext } from '../context'
 const stackedCardStyle = resolveNeutralCardStyle('default', 'preview')
 
 export const Overlay = () => {
-  const controller = useKanbanContext()
-  const appearanceId = controller.drag.activeId
-  const record = appearanceId
-    ? controller.readRecord(appearanceId)
+  const {
+    active,
+    extra,
+    runtime
+  } = useKanbanContext()
+  const engine = useDataView().engine
+  const appearanceId = runtime.drag.activeId
+  const recordId = appearanceId
+    ? engine.active.read.getAppearanceRecordId(appearanceId)
     : undefined
-  const sectionColorId = appearanceId
-    ? controller.readAppearanceColorId(appearanceId)
+  const record = useDataViewKeyedValue(
+    dataView => dataView.engine.read.record,
+    (recordId ?? '' as RecordId)
+  )
+  const sectionColorId = appearanceId && extra.groupUsesOptionColors
+    ? engine.active.read.getAppearanceColor(appearanceId)
     : undefined
   const overlayRef = useRef<HTMLDivElement | null>(null)
-  const pointer = controller.drag.pointerRef.current
-  const offset = controller.drag.overlayOffsetRef.current
+  const pointer = runtime.drag.pointerRef.current
+  const offset = runtime.drag.overlayOffsetRef.current
 
   useEffect(() => {
     if (!record || typeof window === 'undefined') {
@@ -30,8 +44,8 @@ export const Overlay = () => {
 
     let frame = 0
     const update = () => {
-      const pointer = controller.drag.pointerRef.current
-      const offset = controller.drag.overlayOffsetRef.current
+      const pointer = runtime.drag.pointerRef.current
+      const offset = runtime.drag.overlayOffsetRef.current
       const node = overlayRef.current
       if (pointer && node) {
         node.style.transform = `translate3d(${Math.round(pointer.x - offset.x)}px, ${Math.round(pointer.y - offset.y)}px, 0)`
@@ -43,7 +57,7 @@ export const Overlay = () => {
     return () => {
       window.cancelAnimationFrame(frame)
     }
-  }, [controller.drag.overlayOffsetRef, controller.drag.pointerRef, record])
+  }, [record, runtime.drag.overlayOffsetRef, runtime.drag.pointerRef])
 
   if (!appearanceId || !record || typeof document === 'undefined') {
     return null
@@ -54,14 +68,14 @@ export const Overlay = () => {
       ref={overlayRef}
       className="pointer-events-none fixed left-0 top-0 z-[999]"
       style={{
-        width: controller.drag.overlaySize.width || Math.max(220, controller.layout.columnWidth - 32),
+        width: runtime.drag.overlaySize.width || Math.max(220, runtime.layout.columnWidth - 32),
         transform: pointer
           ? `translate3d(${Math.round(pointer.x - offset.x)}px, ${Math.round(pointer.y - offset.y)}px, 0)`
           : 'translate3d(-9999px, -9999px, 0)'
       }}
     >
       <div className="relative">
-        {controller.drag.dragIds.length > 1 ? (
+        {runtime.drag.dragIds.length > 1 ? (
           <>
             <div
               className="absolute inset-x-3 top-3 h-full rounded-2xl opacity-60"
@@ -73,13 +87,13 @@ export const Overlay = () => {
             />
           </>
         ) : null}
-        <div className={cn(controller.drag.dragIds.length > 1 && 'relative')}>
+        <div className={cn(runtime.drag.dragIds.length > 1 && 'relative')}>
           <CardPreview
-            style={controller.fillColumnColor
+            style={extra.fillColumnColor
               ? resolveOptionCardStyle(sectionColorId)
               : resolveNeutralCardStyle('default', 'preview')}
             record={record}
-            fields={controller.fields}
+            fields={active.customFields}
             titlePlaceholder={record.id}
             propertyDensity="compact"
             showEmptyProperties
@@ -97,9 +111,9 @@ export const Overlay = () => {
                 value: 'text-xs leading-5 text-foreground'
               }
             }}
-            badge={controller.drag.dragIds.length > 1 ? (
+            badge={runtime.drag.dragIds.length > 1 ? (
               <span className="absolute right-3 top-3 inline-flex min-w-6 items-center justify-center rounded-full bg-foreground px-1.5 py-0.5 text-[10px] font-semibold text-background">
-                {controller.drag.dragIds.length}
+                {runtime.drag.dragIds.length}
               </span>
             ) : undefined}
           />

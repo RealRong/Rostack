@@ -1,3 +1,4 @@
+import type { ActiveViewState as CurrentView } from '@dataview/engine'
 import type {
   RecordId,
   Row
@@ -8,6 +9,7 @@ import {
 import {
   createDerivedStore,
   createKeyedDerivedStore,
+  read,
   type KeyedReadStore,
   type ReadStore
 } from '@shared/core'
@@ -17,9 +19,6 @@ import {
 import type {
   CellRef
 } from '@dataview/engine/project'
-import type {
-  TableCurrentView as CurrentView
-} from './currentView'
 import {
   fill,
   grid,
@@ -97,35 +96,35 @@ export const createCellRender = (options: {
   recordStore: KeyedReadStore<RecordId, Row | undefined>
 }): CellRender => {
   const selectionChrome = createDerivedStore<SelectionChrome>({
-    get: readStore => {
-      const currentGridSelection = readStore(options.gridSelectionStore)
+    get: () => {
+      const currentGridSelection = read(options.gridSelectionStore)
       const currentRange = range.from(currentGridSelection)
       const focusCell = gridSelection.focus(currentGridSelection)
-      const currentView = readStore(options.currentViewStore)
+      const currentView = read(options.currentViewStore)
       return {
         rangeEdges: currentRange && currentView
           ? range.edges(currentRange, currentView.appearances, currentView.fields)
           : undefined,
         focusCell,
-        selectionVisible: !readStore(options.valueEditorOpenStore)
+        selectionVisible: !read(options.valueEditorOpenStore)
       }
     },
     isEqual: equalSelectionChrome
   })
 
   const fillCell = createDerivedStore<CellRef | undefined>({
-    get: readStore => {
-      if (!readStore(options.capabilitiesStore).showFillHandle) {
+    get: () => {
+      if (!read(options.capabilitiesStore).showFillHandle) {
         return undefined
       }
 
-      const currentView = readStore(options.currentViewStore)
+      const currentView = read(options.currentViewStore)
       if (!currentView) {
         return undefined
       }
 
       return fill.handleCell(
-        readStore(options.gridSelectionStore),
+        read(options.gridSelectionStore),
         currentView.appearances,
         currentView.fields
       )
@@ -135,12 +134,12 @@ export const createCellRender = (options: {
 
   return createKeyedDerivedStore<CellRef, CellRenderState>({
     keyOf: cellCacheKey,
-    get: (readStore, cell) => {
-      const currentCapabilities = readStore(options.capabilitiesStore)
-      const currentView = readStore(options.currentViewStore)
+    get: (cell) => {
+      const currentCapabilities = read(options.capabilitiesStore)
+      const currentView = read(options.currentViewStore)
       const recordId = currentView?.appearances.get(cell.appearanceId)?.recordId
       const record = recordId
-        ? readStore(options.recordStore, recordId)
+        ? read(options.recordStore, recordId)
         : undefined
       const rowIndex = currentView
         ? grid.appearanceIndex(currentView.appearances, cell.appearanceId)
@@ -149,9 +148,9 @@ export const createCellRender = (options: {
         ? grid.fieldIndex(currentView.fields, cell.fieldId)
         : undefined
       const hovered = currentCapabilities.canHover
-        && readStore(options.hoverCellStore, cell)
-      const selectionState = readStore(selectionChrome)
-      const currentFillCell = readStore(fillCell)
+        && read(options.hoverCellStore, cell)
+      const selectionState = read(selectionChrome)
+      const currentFillCell = read(fillCell)
       const rangeEdges = selectionState.rangeEdges
       const selected = (
         rangeEdges

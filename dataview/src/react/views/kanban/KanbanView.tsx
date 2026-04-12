@@ -5,9 +5,8 @@ import {
   useDataViewValue
 } from '@dataview/react/dataview'
 import {
-  useKanbanController,
-  type KanbanCurrentView
-} from './useKanbanController'
+  type KanbanActiveState
+} from './runtime'
 import type { ActiveViewState } from '@dataview/engine'
 
 const DEFAULT_COLUMN_WIDTH = 320
@@ -16,11 +15,11 @@ const contentInsetStyle = {
   paddingInline: PAGE_INLINE_INSET_CSS
 } as const
 
-const readKanbanCurrentView = (
+const readKanbanActiveState = (
   state: ActiveViewState | undefined
-): KanbanCurrentView | undefined => (
+): KanbanActiveState | undefined => (
   state?.view.type === 'kanban'
-    ? state as KanbanCurrentView
+    ? state as KanbanActiveState
     : undefined
 )
 
@@ -32,24 +31,18 @@ export interface KanbanViewProps {
 export const KanbanView = (props: KanbanViewProps) => {
   const columnWidth = props.columnWidth ?? DEFAULT_COLUMN_WIDTH
   const columnMinHeight = props.columnMinHeight ?? DEFAULT_COLUMN_MIN_HEIGHT
-  const currentView = useDataViewValue(
+  const active = useDataViewValue(
     dataView => dataView.engine.active.state,
-    readKanbanCurrentView
+    readKanbanActiveState
   )
   const extra = useDataViewValue(
     dataView => dataView.engine.active.kanban.state
   )
-  if (!currentView || !extra) {
+  if (!active || !extra) {
     throw new Error('Kanban view requires an active kanban state.')
   }
-  const controller = useKanbanController({
-    currentView,
-    extra,
-    columnWidth,
-    columnMinHeight
-  })
 
-  if (!controller.currentView.view.group) {
+  if (!active.group.active) {
     return (
       <div style={contentInsetStyle}>
         <Empty />
@@ -58,7 +51,12 @@ export const KanbanView = (props: KanbanViewProps) => {
   }
 
   return (
-    <KanbanProvider value={controller}>
+    <KanbanProvider
+      active={active}
+      extra={extra}
+      columnWidth={columnWidth}
+      columnMinHeight={columnMinHeight}
+    >
       <KanbanCanvas />
     </KanbanProvider>
   )

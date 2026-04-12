@@ -1,4 +1,4 @@
-import { createDerivedStore } from '@shared/core'
+import { createDerivedStore, read as readValue } from '@shared/core'
 import type { Engine } from '@whiteboard/engine'
 import type { Viewport } from '@whiteboard/core/types'
 import type { NodeRegistry } from '../../types/node'
@@ -137,12 +137,12 @@ export const createEditor = ({
     replace: replaceDocument
   } = write.document
   const chrome = createDerivedStore({
-    get: readStore => ({
-      marquee: readStore(read.overlay.feedback.marquee),
-      draw: readStore(read.overlay.feedback.draw),
-      edgeGuide: readStore(read.overlay.feedback.edgeGuide),
-      snap: readStore(read.overlay.feedback.snap),
-      selection: readStore(read.selection.overlay)
+    get: () => ({
+      marquee: readValue(read.overlay.feedback.marquee),
+      draw: readValue(read.overlay.feedback.draw),
+      edgeGuide: readValue(read.overlay.feedback.edgeGuide),
+      snap: readValue(read.overlay.feedback.snap),
+      selection: readValue(read.selection.overlay)
     }),
     isEqual: (left, right) => (
       left.marquee === right.marquee
@@ -153,11 +153,11 @@ export const createEditor = ({
     )
   })
   const panel = createDerivedStore({
-    get: readStore => ({
-      nodeToolbar: readStore(read.selection.nodeToolbar),
-      edgeToolbar: readStore(read.edge.toolbar),
-      history: readStore(read.history),
-      draw: readStore(read.draw)
+    get: () => ({
+      nodeToolbar: readValue(read.selection.nodeToolbar),
+      edgeToolbar: readValue(read.edge.toolbar),
+      history: readValue(read.history),
+      draw: readValue(read.draw)
     }),
     isEqual: (left, right) => (
       left.nodeToolbar === right.nodeToolbar
@@ -166,39 +166,6 @@ export const createEditor = ({
       && left.draw === right.draw
     )
   })
-  const docSelect = Object.assign(
-    () => read.document,
-    {
-      bounds: read.document.bounds,
-      background: () => read.document.background
-    }
-  )
-  const toolSelect = Object.assign(
-    () => state.tool,
-    {
-      is: read.tool.is
-    }
-  )
-  const viewportSelect = Object.assign(
-    () => state.viewport,
-    {
-      pointer: read.viewport.pointer,
-      worldToScreen: read.viewport.worldToScreen,
-      screenPoint: read.viewport.screenPoint,
-      size: read.viewport.size
-    }
-  )
-  const selectionSelect = Object.assign(
-    () => state.selection,
-    {
-      box: () => read.selection.box,
-      summary: () => readBundle.selectionModel,
-      overlay: () => read.selection.overlay,
-      nodeToolbar: () => read.selection.nodeToolbar,
-      node: () => read.selection.node
-    }
-  )
-
   const disposeListeners = new Set<() => void>()
   const dispose = () => {
     unsubscribeCommit()
@@ -210,6 +177,12 @@ export const createEditor = ({
 
   const editor = {
     store: state,
+    read: {
+      ...read,
+      chrome,
+      panel,
+      selectionModel: readBundle.selectionModel
+    },
     actions: {
       app: {
         reset: resetRuntimeState,
@@ -284,42 +257,6 @@ export const createEditor = ({
       mindmap: write.mindmap,
       clipboard: write.clipboard,
       history: write.history
-    },
-    select: {
-      scene: () => read.scene.list,
-      chrome: () => chrome,
-      panel: () => panel,
-      doc: docSelect,
-      history: () => read.history,
-      draw: () => state.draw,
-      tool: toolSelect,
-      viewport: viewportSelect,
-      edit: () => state.edit,
-      interaction: () => state.interaction,
-      selection: selectionSelect,
-      group: {
-        exactIds: read.group.exactIds,
-        nodeIds: read.group.nodeIds,
-        edgeIds: read.group.edgeIds
-      },
-      node: {
-        item: () => read.node.item,
-        view: () => read.node.view,
-        capability: () => read.node.capability,
-        bounds: read.node.bounds.get
-      },
-      edge: {
-        item: () => read.edge.item,
-        resolved: () => read.edge.resolved,
-        view: () => read.edge.view,
-        toolbar: () => read.edge.toolbar,
-        bounds: read.edge.bounds.get,
-        box: read.edge.box
-      },
-      mindmap: {
-        item: () => read.mindmap.item,
-        view: () => read.mindmap.view
-      }
     },
     events: {
       change: (listener) => engine.commit.subscribe(() => {

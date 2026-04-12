@@ -10,16 +10,16 @@ import {
   resolveOptionCardStyle
 } from '@ui/color'
 import type {
-  Row,
+  RecordId
 } from '@dataview/core/contracts'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
 } from '@dataview/react/dom/appearance'
 import { shouldCapturePointer } from '@shared/dom'
 import {
-  useDataView
+  useDataView,
+  useDataViewKeyedValue
 } from '@dataview/react/dataview'
-import { useKeyedStoreValue } from '@shared/react'
 import {
   CardContent
 } from '@dataview/react/views/shared'
@@ -32,30 +32,39 @@ import {
 
 export const Card = (props: {
   appearanceId: AppearanceId
-  record: Row
   className?: string
   style?: CSSProperties
 }) => {
-  const controller = useKanbanContext()
+  const {
+    active,
+    extra,
+    runtime
+  } = useKanbanContext()
   const dataView = useDataView()
   const engine = dataView.engine
-  const record = useKeyedStoreValue(engine.read.record, props.record.id) ?? props.record
-  const selected = controller.selection.selectedIdSet.has(props.appearanceId)
-  const active = controller.drag.activeId === props.appearanceId
-  const draggingSelected = controller.drag.activeId !== undefined
-    && controller.drag.dragIdSet.has(props.appearanceId)
-  const canDrag = controller.canReorder
+  const recordId = engine.active.read.getAppearanceRecordId(props.appearanceId) ?? '' as RecordId
+  const record = useDataViewKeyedValue(
+    current => current.engine.read.record,
+    recordId
+  )
+  const selected = runtime.selection.selectedIdSet.has(props.appearanceId)
+  const draggingActive = runtime.drag.activeId === props.appearanceId
+  const draggingSelected = runtime.drag.activeId !== undefined
+    && runtime.drag.dragIdSet.has(props.appearanceId)
+  const canDrag = extra.canReorder
   const [hovered, setHovered] = useState(false)
   const editing = useCardEditingState({
-    viewId: controller.currentView.view.id,
+    viewId: active.view.id,
     appearanceId: props.appearanceId
   })
   const cardNodeRef = useRef<HTMLElement | null>(null)
-  const marqueeActiveRef = useRef(controller.marqueeActive)
-  marqueeActiveRef.current = controller.marqueeActive
-  const sectionColorId = controller.readAppearanceColorId(props.appearanceId)
+  const marqueeActiveRef = useRef(runtime.marqueeActive)
+  marqueeActiveRef.current = runtime.marqueeActive
+  const sectionColorId = extra.groupUsesOptionColors
+    ? engine.active.read.getAppearanceColor(props.appearanceId)
+    : undefined
   const surfaceState = hovered && !editing ? 'hover' : 'default'
-  const surfaceStyle = controller.fillColumnColor
+  const surfaceStyle = extra.fillColumnColor
     ? resolveOptionCardStyle(sectionColorId, surfaceState)
     : resolveNeutralCardStyle(surfaceState, 'preview')
   const contentRef = useCallback((node: HTMLElement | null) => {
@@ -68,15 +77,19 @@ export const Card = (props: {
       return
     }
 
-    controller.visualTargets.register(props.appearanceId, node)
+    runtime.visualTargets.register(props.appearanceId, node)
 
     return () => {
       if (marqueeActiveRef.current) {
-        controller.visualTargets.freeze(props.appearanceId, node)
+        runtime.visualTargets.freeze(props.appearanceId, node)
       }
-      controller.visualTargets.register(props.appearanceId, null)
+      runtime.visualTargets.register(props.appearanceId, null)
     }
-  }, [controller.visualTargets, props.appearanceId])
+  }, [props.appearanceId, runtime.visualTargets])
+
+  if (!record) {
+    return null
+  }
 
   return (
     <CardContent
@@ -99,14 +112,14 @@ export const Card = (props: {
           return
         }
 
-        controller.drag.onPointerDown(props.appearanceId, event)
+        runtime.drag.onPointerDown(props.appearanceId, event)
       }}
       onClick={event => {
         if (editing) {
           return
         }
 
-        if (controller.drag.shouldIgnoreClick()) {
+        if (runtime.drag.shouldIgnoreClick()) {
           event.preventDefault()
           event.stopPropagation()
           return
@@ -116,7 +129,7 @@ export const Card = (props: {
           return
         }
 
-        controller.selection.select(
+        runtime.selection.select(
           props.appearanceId,
           event.metaKey || event.ctrlKey ? 'toggle' : 'replace'
         )
@@ -126,8 +139,8 @@ export const Card = (props: {
         'touch-none',
         !editing && 'select-none',
         !editing && canDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
-        active && 'opacity-35',
-        draggingSelected && !active && 'opacity-60',
+        draggingActive && 'opacity-35',
+        draggingSelected && !draggingActive && 'opacity-60',
         props.className
       )}
       style={{
@@ -154,12 +167,12 @@ export const Card = (props: {
           value: 'text-sm text-foreground'
         }
       }}
-      viewId={controller.currentView.view.id}
+      viewId={active.view.id}
       appearanceId={props.appearanceId}
       record={record}
-      fields={controller.fields}
+      fields={active.customFields}
       titlePlaceholder={record.id}
-      showEditAction={hovered && !editing && !active}
+      showEditAction={hovered && !editing && !draggingActive}
       propertyDensity="compact"
     />
   )

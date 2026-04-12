@@ -85,7 +85,7 @@ export const createWhiteboardServices = ({
     editor,
     point,
     onPointerDown: input => {
-      const tool = editor.select.tool().get()
+      const tool = editor.store.tool.get()
       if (
         tool.type !== 'insert'
         || input.pick.kind !== 'background'
@@ -112,7 +112,7 @@ export const createWhiteboardServices = ({
     adapter: createClipboardHostAdapter(),
     readDefaultOrigin: () => {
       const current = point.get()
-      return clonePoint(current ?? editor.select.viewport().get().center)
+      return clonePoint(current ?? editor.store.viewport.get().center)
     }
   })
 

@@ -3,11 +3,12 @@ import type {
   WhiteboardRuntime
 } from '#react/types/runtime'
 import { useStoreValue } from '@shared/react'
+import type { ReadStore } from '@shared/core'
 import { useWhiteboardServices } from './useWhiteboard'
 
-type EditTarget = ReturnType<ReturnType<WhiteboardInstance['select']['edit']>['get']>
-type Tool = ReturnType<ReturnType<WhiteboardInstance['select']['tool']>['get']>
-type InteractionState = ReturnType<ReturnType<WhiteboardInstance['select']['interaction']>['get']>
+type EditTarget = ReturnType<WhiteboardInstance['store']['edit']['get']>
+type Tool = ReturnType<WhiteboardInstance['store']['tool']['get']>
+type InteractionState = ReturnType<WhiteboardInstance['store']['interaction']['get']>
 
 export const useEditorRuntime = (): WhiteboardRuntime => {
   return useWhiteboardServices().editor
@@ -15,24 +16,21 @@ export const useEditorRuntime = (): WhiteboardRuntime => {
 
 export const useEditor = (): WhiteboardRuntime => useEditorRuntime()
 
-export const useEditorSelect = <T,>(
-  selector: (editor: WhiteboardRuntime) => {
-    get: () => T
-    subscribe: (listener: () => void) => () => void
-  }
+export const useEditorStore = <T,>(
+  selector: (editor: WhiteboardRuntime) => ReadStore<T>
 ): T => {
   const editor = useEditorRuntime()
   return useStoreValue(selector(editor))
 }
 
 export const useEdit = (): EditTarget => {
-  return useEditorSelect(editor => editor.select.edit())
+  return useEditorStore(editor => editor.store.edit)
 }
 
 export const useTool = (): Tool => {
-  return useEditorSelect(editor => editor.select.tool())
+  return useEditorStore(editor => editor.store.tool)
 }
 
 export const useInteraction = (): InteractionState => {
-  return useEditorSelect(editor => editor.select.interaction())
+  return useEditorStore(editor => editor.store.interaction)
 }

@@ -1,17 +1,13 @@
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import type { NodeItem } from '@engine-types/projection'
-import type { ReadStore } from '@shared/core'
 import type { NodeId } from '@whiteboard/core/types'
-import { createValueStore } from '@shared/core'
 import type { ReadSnapshot } from '@engine-types/internal/read'
-import { createTrackedRead } from './tracked'
+import { createProjectionRuntime } from './projection'
 
 export const createNodeProjection = (initialSnapshot: ReadSnapshot) => {
   const cacheById = new Map<NodeId, NodeItem>()
-  const list = createValueStore(
-    initialSnapshot.model.canvas.nodeIds as readonly NodeId[]
-  )
-  const tracked = createTrackedRead<NodeId, NodeItem | undefined>({
+  const projection = createProjectionRuntime<NodeId, NodeItem | undefined>({
+    initialList: initialSnapshot.model.canvas.nodeIds as readonly NodeId[],
     emptyValue: undefined,
     read: (nodeId) => readCached(nodeId)
   })
@@ -61,12 +57,12 @@ export const createNodeProjection = (initialSnapshot: ReadSnapshot) => {
     extraChangedNodeIds: readonly NodeId[] = []
   ) => {
     snapshotRef = snapshot
-    const prevIds = list.get()
+    const prevIds = projection.list.get()
     const nextIds = snapshotRef.model.canvas.nodeIds as readonly NodeId[]
     const idsChanged = prevIds !== nextIds
 
     if (idsChanged) {
-      list.set(nextIds)
+      projection.setList(nextIds)
     }
 
     const changedNodeIds = new Set<NodeId>()
@@ -79,7 +75,7 @@ export const createNodeProjection = (initialSnapshot: ReadSnapshot) => {
       cacheById.forEach((_, nodeId) => {
         changedNodeIds.add(nodeId)
       })
-      for (const nodeId of tracked.keys()) {
+      for (const nodeId of projection.trackedKeys()) {
         changedNodeIds.add(nodeId)
       }
     } else {
@@ -100,12 +96,12 @@ export const createNodeProjection = (initialSnapshot: ReadSnapshot) => {
       })
     }
 
-    tracked.sync(changedNodeIds)
+    projection.sync(changedNodeIds)
   }
 
   return {
-    list: list as ReadStore<readonly NodeId[]>,
-    item: tracked.item,
+    list: projection.list,
+    item: projection.item,
     applyChange
   }
 }

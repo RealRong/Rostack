@@ -1,6 +1,7 @@
 import {
   createDerivedStore,
-  createValueStore
+  createValueStore,
+  read
 } from '@shared/core'
 import type {
   CloseValueEditorOptions,
@@ -78,7 +79,7 @@ export const createValueEditorApi = (): ValueEditorController => {
     initial: null
   })
   const openStore = createDerivedStore<boolean>({
-    get: read => Boolean(read(store))
+    get: () => Boolean(read(store))
   })
 
   return {

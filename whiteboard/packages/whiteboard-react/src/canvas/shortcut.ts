@@ -22,14 +22,14 @@ type ShortcutState = ReturnType<typeof readShortcutState>
 const readShortcutState = (
   editor: Editor
 ) => {
-  const selection = editor.select.selection().get()
+  const selection = editor.store.selection.get()
   const count = selection.nodeIds.length + selection.edgeIds.length
 
   return {
     selection,
     hasSelection: count > 0,
     canGroup: count >= 2,
-    canUngroup: editor.select.group.exactIds(selection).length > 0,
+    canUngroup: editor.read.group.exactIds(selection).length > 0,
     canDuplicate: count > 0
   }
 }
@@ -47,7 +47,7 @@ const canRunShortcut = (
     case 'selection.selectAll':
       return true
     case 'selection.clear':
-      return state.hasSelection || !editor.select.tool.is('select')
+      return state.hasSelection || !editor.read.tool.is('select')
     case 'selection.delete':
       return state.hasSelection
     case 'selection.duplicate':
@@ -76,7 +76,7 @@ export const runShortcut = (
       editor.actions.selection.selectAll()
       return true
     case 'selection.clear':
-      if (!editor.select.tool.is('select')) {
+      if (!editor.read.tool.is('select')) {
         editor.actions.tool.select()
       }
       editor.actions.selection.clear()

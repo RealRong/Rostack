@@ -1,4 +1,9 @@
-import { createKeyedDerivedStore, type KeyedReadStore, type ReadStore } from '@shared/core'
+import {
+  createKeyedDerivedStore,
+  read,
+  type KeyedReadStore,
+  type ReadStore
+} from '@shared/core'
 import type { NodeId, Rect } from '@whiteboard/core/types'
 import type { MindmapNodeId } from '@whiteboard/core/mindmap'
 import type { EngineRead, MindmapItem } from '@whiteboard/engine'
@@ -163,8 +168,8 @@ export const createMindmapViewStore = ({
   item: EngineRead['mindmap']['item']
   drag: ReadStore<MindmapDragFeedback | undefined>
 }): KeyedReadStore<NodeId, MindmapView | undefined> => createKeyedDerivedStore({
-  get: (readStore, treeId: NodeId) => {
-    const treeView = readStore(item, treeId)
+  get: (treeId: NodeId) => {
+    const treeView = read(item, treeId)
     if (!treeView) {
       return undefined
     }
@@ -172,7 +177,7 @@ export const createMindmapViewStore = ({
     return toMindmapView(
       treeId,
       treeView,
-      readStore(drag)
+      read(drag)
     )
   },
   isEqual: isMindmapViewEqual

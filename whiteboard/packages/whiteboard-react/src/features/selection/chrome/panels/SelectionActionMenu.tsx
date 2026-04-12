@@ -56,9 +56,9 @@ export const SelectionActionMenu = ({
 }) => {
   const editor = useEditorRuntime()
   const { clipboard } = useWhiteboardServices()
-  const target = useStoreValue(editor.select.selection())
-  const nodeInfo = useStoreValue(editor.select.selection.node())
-  const box = useStoreValue(editor.select.selection.box())
+  const target = useStoreValue(editor.store.selection)
+  const nodeInfo = useStoreValue(editor.read.selection.node)
+  const box = useStoreValue(editor.read.selection.box)
   const nodeIds = target.nodeIds
   const edgeIds = target.edgeIds
   const count = nodeIds.length + edgeIds.length
@@ -66,7 +66,7 @@ export const SelectionActionMenu = ({
     editor,
     target
   })
-  const exactGroupIds = editor.select.group.exactIds(target)
+  const exactGroupIds = editor.read.group.exactIds(target)
   const pureNodeSelection =
     nodeIds.length > 0
     && edgeIds.length === 0

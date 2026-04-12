@@ -1,4 +1,4 @@
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useMemo } from 'react'
 import type { Field } from '@dataview/core/contracts'
 import {
   canQuickToggleFieldValue,
@@ -31,7 +31,10 @@ const View = (props: CellProps) => {
   if (!currentView) {
     throw new Error('Table cell requires an active current view.')
   }
-  const showVerticalLines = currentView.showVerticalLines
+  const showVerticalLinesStore = useMemo(() => engine.active.select(
+    state => state?.view.options.table.showVerticalLines ?? false
+  ), [engine])
+  const showVerticalLines = useStoreValue(showVerticalLinesStore)
 
   const cell = {
     appearanceId: props.appearanceId,

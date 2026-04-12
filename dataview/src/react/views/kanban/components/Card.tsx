@@ -42,7 +42,7 @@ export const Card = (props: {
   } = useKanbanContext()
   const dataView = useDataView()
   const engine = dataView.engine
-  const recordId = engine.active.read.getAppearanceRecordId(props.appearanceId) ?? '' as RecordId
+  const recordId = engine.active.read.appearance(props.appearanceId)?.recordId ?? '' as RecordId
   const record = useDataViewKeyedValue(
     current => current.engine.read.record,
     recordId
@@ -61,7 +61,9 @@ export const Card = (props: {
   const marqueeActiveRef = useRef(runtime.marqueeActive)
   marqueeActiveRef.current = runtime.marqueeActive
   const sectionColorId = extra.groupUsesOptionColors
-    ? engine.active.read.getAppearanceColor(props.appearanceId)
+    ? engine.active.read.section(
+        engine.active.read.appearance(props.appearanceId)?.sectionKey ?? ''
+      )?.color
     : undefined
   const surfaceState = hovered && !editing ? 'hover' : 'default'
   const surfaceStyle = extra.fillColumnColor

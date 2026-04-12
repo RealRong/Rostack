@@ -31,16 +31,19 @@ export type {
   CommitTrace
 } from './perf'
 export type {
+  ActiveCell,
   ActiveEngineApi,
   ActiveGalleryApi,
   ActiveGalleryState,
   ActiveKanbanApi,
   ActiveKanbanState,
+  ActiveQuery,
+  ActiveReadApi,
   ActiveSelectApi,
   ActiveView,
-  ActiveViewReadApi,
   ActiveViewState,
   EngineReadApi,
+  ItemMovePlan,
   RecordSet
 } from './project'
 export type {

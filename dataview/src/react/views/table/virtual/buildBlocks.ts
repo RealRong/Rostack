@@ -91,14 +91,14 @@ export const buildTableBlocks = (input: {
       top,
       height: input.headerHeight,
       scopeId: section.key,
-      rowIds: section.ids,
+      rowIds: section.appearanceIds,
       label: `Select rows in ${section.title}`
     }
     blocks.push(columnHeader)
     top += input.headerHeight
     top = pushRowBlocks({
       blocks,
-      rowIds: section.ids,
+      rowIds: section.appearanceIds,
       top,
       rowHeight: input.rowHeight
     })

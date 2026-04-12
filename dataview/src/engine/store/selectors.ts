@@ -35,24 +35,21 @@ import {
   sameValue
 } from '@shared/core'
 import type {
+  ActiveCell,
   ActiveEngineApi,
   ActiveGalleryState,
   ActiveKanbanState,
+  ActiveQuery,
+  ActiveReadApi,
   ActiveSelectApi,
-  ActiveViewReadApi,
   ActiveViewState,
   EngineReadApi
 } from '../api/public'
 import type {
   AppearanceId,
-  AppearanceList,
-  FieldList,
   SectionKey
 } from '../project/readModels'
-import {
-  readSectionRecordIds,
-  toRecordField
-} from '../project'
+import type { Placement } from '../project'
 import type {
   State,
   Store
@@ -121,10 +118,7 @@ const sameActiveState = (
   !!left
   && !!right
   && left.view === right.view
-  && left.filter === right.filter
-  && left.group === right.group
-  && left.search === right.search
-  && left.sort === right.sort
+  && left.query === right.query
   && left.records === right.records
   && left.sections === right.sections
   && left.appearances === right.appearances
@@ -141,7 +135,6 @@ const sameActiveGalleryState = (
   && left.groupUsesOptionColors === right.groupUsesOptionColors
   && left.canReorder === right.canReorder
   && left.cardSize === right.cardSize
-  && sameValue(left.sections, right.sections)
 )
 
 const sameActiveKanbanState = (
@@ -160,10 +153,7 @@ const readActiveState = (
   current: State
 ): ActiveViewState | undefined => {
   const activeView = getDocumentActiveView(current.doc)
-  const filter = current.project.filter
-  const group = current.project.group
-  const search = current.project.search
-  const sort = current.project.sort
+  const query = current.project.query
   const records = current.project.records
   const sections = current.project.sections
   const appearances = current.project.appearances
@@ -172,10 +162,7 @@ const readActiveState = (
 
   if (
     !activeView
-    || !filter
-    || !group
-    || !search
-    || !sort
+    || !query
     || !records
     || !sections
     || !appearances
@@ -187,10 +174,7 @@ const readActiveState = (
 
   return {
     view: activeView,
-    filter,
-    group,
-    search,
-    sort,
+    query,
     records,
     sections,
     appearances,
@@ -258,64 +242,122 @@ const createActiveSelectApi = (
 const createActiveReadApi = (input: {
   read: EngineReadApi
   state: ReadStore<ActiveViewState | undefined>
-}): ActiveViewReadApi => {
+}): ActiveReadApi => {
   const readDocument = () => read(input.read.document)
   const readState = () => read(input.state)
-
-  const getField = (fieldId: FieldId): Field | undefined => (
+  const readField = (fieldId: FieldId): Field | undefined => (
     getDocumentFieldById(readDocument(), fieldId)
   )
+  const readSection = (key: SectionKey) => readState()?.sections.get(key)
+  const readAppearance = (id: AppearanceId) => readState()?.appearances.get(id)
+  const readCell = (cell: import('../project').CellRef): ActiveCell | undefined => {
+    const state = readState()
+    if (!state) {
+      return undefined
+    }
+
+    const appearance = state.appearances.get(cell.appearanceId)
+    if (!appearance) {
+      return undefined
+    }
+
+    const record = read(input.read.record, appearance.recordId)
+    if (!record) {
+      return undefined
+    }
+
+    return {
+      appearanceId: cell.appearanceId,
+      recordId: appearance.recordId,
+      fieldId: cell.fieldId,
+      sectionKey: appearance.sectionKey,
+      record,
+      field: readField(cell.fieldId),
+      value: cell.fieldId === 'title'
+        ? record.title
+        : record.values[cell.fieldId]
+    }
+  }
+  const planMove = (
+    appearanceIds: readonly AppearanceId[],
+    target: Placement
+  ) => {
+    const state = readState()
+    if (!state) {
+      return {
+        appearanceIds: [],
+        recordIds: [],
+        changed: false,
+        sectionChanged: false,
+        target: {
+          sectionKey: target.sectionKey
+        }
+      }
+    }
+
+    const validIds = appearanceIds.filter(id => state.appearances.has(id))
+    const movingSet = new Set(validIds)
+    const section = state.sections.get(target.sectionKey)
+    const sectionAppearanceIds = section?.appearanceIds ?? []
+    const beforeAppearanceId = target.before && sectionAppearanceIds.includes(target.before)
+      ? target.before
+      : undefined
+    const remaining = sectionAppearanceIds.filter(id => !movingSet.has(id))
+    const index = beforeAppearanceId
+      ? remaining.indexOf(beforeAppearanceId)
+      : -1
+    const nextBeforeAppearanceId = beforeAppearanceId && index >= 0
+      ? remaining[index]
+      : undefined
+    const recordIds = validIds.flatMap(id => {
+      const recordId = state.appearances.get(id)?.recordId
+      return recordId ? [recordId] : []
+    }).filter((recordId, index, source) => source.indexOf(recordId) === index)
+    const beforeRecordId = nextBeforeAppearanceId
+      ? state.appearances.get(nextBeforeAppearanceId)?.recordId
+      : undefined
+    const sectionChanged = validIds.some(id => state.appearances.get(id)?.sectionKey !== target.sectionKey)
+    const changed = (
+      sectionChanged
+      || validIds.some((id, index) => sectionAppearanceIds.filter(current => movingSet.has(current))[index] !== id)
+      || Boolean(beforeAppearanceId !== nextBeforeAppearanceId)
+    ) && validIds.length > 0
+
+    return {
+      appearanceIds: validIds,
+      recordIds,
+      changed,
+      sectionChanged,
+      target: {
+        sectionKey: target.sectionKey,
+        ...(nextBeforeAppearanceId ? { beforeAppearanceId: nextBeforeAppearanceId } : {}),
+        ...(beforeRecordId ? { beforeRecordId } : {})
+      }
+    }
+  }
 
   return {
-    getRecord: recordId => read(input.read.record, recordId),
-    getField,
-    getGroupField: () => {
+    record: recordId => read(input.read.record, recordId),
+    field: readField,
+    section: readSection,
+    appearance: readAppearance,
+    cell: readCell,
+    groupField: () => {
       const state = readState()
-      if (!state || !state.group.active) {
+      if (!state || !state.query.group.active) {
         return undefined
       }
 
-      return state.group.field
+      return state.query.group.field
     },
-    getFilterField: index => {
-      const rule = readState()?.filter.rules[index]
+    filterField: index => {
+      const rule = readState()?.query.filter.rules[index]
       return rule?.field
         ?? (rule?.fieldId
-          ? getField(rule.fieldId)
+          ? readField(rule.fieldId)
           : undefined)
     },
-    getRecordField: cell => {
-      const state = readState()
-      return state
-        ? toRecordField(cell, state.appearances) ?? undefined
-        : undefined
-    },
-    getSectionRecordIds: section => {
-      const state = readState()
-      return state
-        ? readSectionRecordIds({
-            sections: state.sections,
-            appearances: state.appearances
-          }, section)
-        : []
-    },
-    getAppearanceRecordId: appearanceId => readState()?.appearances.get(appearanceId)?.recordId,
-    getAppearanceRecord: appearanceId => {
-      const recordId = readState()?.appearances.get(appearanceId)?.recordId
-      return recordId
-        ? read(input.read.record, recordId)
-        : undefined
-    },
-    getAppearanceSectionKey: appearanceId => readState()?.appearances.sectionOf(appearanceId),
-    getSectionColor: section => readState()?.sections.find(current => current.key === section)?.color,
-    getAppearanceColor: appearanceId => {
-      const state = readState()
-      const section = state?.appearances.sectionOf(appearanceId)
-      return section
-        ? state?.sections.find(current => current.key === section)?.color
-        : undefined
-    },
-    getDisplayFieldIndex: fieldId => readState()?.view.display.fields.indexOf(fieldId) ?? -1
+    planMove
   }
 }
 
@@ -347,20 +389,11 @@ export const createActiveBaseApi = (input: {
         return undefined
       }
 
-      const groupField = state.group.field
+      const groupField = state.query.group.field
       const groupUsesOptionColors = usesOptionGroupingColors(groupField)
-      const canReorder = !state.group.active && !state.sort.active
+      const canReorder = !state.query.group.active && !state.query.sort.active
 
       return {
-        sections: state.group.active
-          ? state.sections
-          : [{
-              key: 'all',
-              title: '',
-              color: undefined,
-              collapsed: false,
-              ids: state.appearances.ids
-        }],
         groupUsesOptionColors,
         canReorder,
         cardSize: state.view.options.gallery.cardSize
@@ -376,14 +409,14 @@ export const createActiveBaseApi = (input: {
         return undefined
       }
 
-      const groupField = state.group.field
+      const groupField = state.query.group.field
       const groupUsesOptionColors = usesOptionGroupingColors(groupField)
 
       return {
         groupUsesOptionColors,
         cardsPerColumn: state.view.options.kanban.cardsPerColumn,
         fillColumnColor: groupUsesOptionColors && state.view.options.kanban.fillColumnColor,
-        canReorder: state.group.active && !state.sort.active
+        canReorder: state.query.group.active && !state.query.sort.active
       }
     },
     isEqual: sameActiveKanbanState

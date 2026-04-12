@@ -1,24 +1,10 @@
 import { isPointEqual } from '@whiteboard/core/geometry'
-import type { EdgeHandle } from '@whiteboard/core/edge'
 import type { Edge, EdgeId, EdgePatch, Point } from '@whiteboard/core/types'
-import { clearRoute, moveRoutePoint, setRoutePoints } from '@whiteboard/core/edge'
-
-export type RouteHandleTarget =
-  | {
-      kind: 'anchor'
-      edgeId: EdgeId
-      index: number
-      point: Point
-    }
-  | {
-      kind: 'segment'
-      edgeId: EdgeId
-      index: number
-      segmentIndex: number
-      role: 'insert' | 'control'
-      axis: 'x' | 'y'
-      point: Point
-    }
+import {
+  areRoutePointsEqual,
+  moveElbowRouteSegment,
+  moveRoutePoint
+} from '@whiteboard/core/edge'
 
 export type RouteHandleState =
   | {
@@ -56,55 +42,6 @@ export type RouteHandleCommit = {
   route?: EdgePatch['route']
 }
 
-export const resolveRouteHandleTarget = (input: {
-  edgeId: EdgeId
-  handles: readonly EdgeHandle[]
-  pick: {
-    index?: number
-    insert?: number
-    segment?: number
-  }
-}): RouteHandleTarget | undefined => {
-  if (input.pick.index !== undefined) {
-    const handle = input.handles.find((entry) => (
-      entry.kind === 'anchor'
-      && entry.index === input.pick.index
-    ))
-
-    return handle?.kind === 'anchor'
-      ? {
-          kind: 'anchor',
-          edgeId: input.edgeId,
-          index: handle.index,
-          point: handle.point
-        }
-      : undefined
-  }
-
-  const segmentIndex = input.pick.segment
-  const insertIndex = input.pick.insert ?? 0
-  const handle = input.handles.find((entry) => (
-    entry.kind === 'segment'
-    && (
-      segmentIndex !== undefined
-        ? entry.segmentIndex === segmentIndex
-        : entry.insertIndex === insertIndex
-    )
-  ))
-
-  return handle?.kind === 'segment'
-    ? {
-        kind: 'segment',
-        edgeId: input.edgeId,
-        index: handle.insertIndex,
-        segmentIndex: handle.segmentIndex,
-        role: handle.role,
-        axis: handle.axis,
-        point: handle.point
-      }
-    : undefined
-}
-
 export const startRouteHandleState = (input: {
   edgeId: EdgeId
   index: number
@@ -122,123 +59,6 @@ export const startRouteHandleState = (input: {
   origin: input.origin,
   point: input.point ?? input.origin
 })
-
-const normalizePolylinePoints = (
-  points: readonly Point[]
-) => {
-  const normalized: Point[] = []
-
-  for (let index = 0; index < points.length; index += 1) {
-    const point = points[index]!
-    const last = normalized[normalized.length - 1]
-
-    if (!last) {
-      normalized.push(point)
-      continue
-    }
-
-    if (isPointEqual(last, point)) {
-      continue
-    }
-
-    normalized.push(point)
-
-    while (normalized.length >= 3) {
-      const right = normalized[normalized.length - 1]!
-      const middle = normalized[normalized.length - 2]!
-      const left = normalized[normalized.length - 3]!
-      const collinear =
-        (left.x === middle.x && middle.x === right.x)
-        || (left.y === middle.y && middle.y === right.y)
-
-      if (!collinear) {
-        break
-      }
-
-      normalized.splice(normalized.length - 2, 1)
-    }
-  }
-
-  return normalized
-}
-
-const toManualRoutePatch = (
-  edge: Edge,
-  pathPoints: readonly Point[]
-) => {
-  const normalized = normalizePolylinePoints(pathPoints)
-  const routePoints = normalized.slice(1, -1)
-
-  return routePoints.length > 0
-    ? setRoutePoints(edge, routePoints)
-    : clearRoute(edge)
-}
-
-const moveStepSegmentPath = ({
-  pathPoints,
-  segmentIndex,
-  axis,
-  pointerWorld,
-  startWorld
-}: {
-  pathPoints: readonly Point[]
-  segmentIndex: number
-  axis: 'x' | 'y'
-  pointerWorld: Point
-  startWorld: Point
-}) => {
-  const start = pathPoints[segmentIndex]
-  const end = pathPoints[segmentIndex + 1]
-  if (!start || !end) {
-    return pathPoints
-  }
-
-  const delta =
-    axis === 'x'
-      ? pointerWorld.x - startWorld.x
-      : pointerWorld.y - startWorld.y
-  const next = [...pathPoints]
-
-  if (pathPoints.length === 2) {
-    if (axis === 'x') {
-      return normalizePolylinePoints([
-        next[0]!,
-        { x: start.x + delta, y: start.y },
-        { x: end.x + delta, y: end.y },
-        next[1]!
-      ])
-    }
-
-    return normalizePolylinePoints([
-      next[0]!,
-      { x: start.x, y: start.y + delta },
-      { x: end.x, y: end.y + delta },
-      next[1]!
-    ])
-  }
-
-  const shiftedStart =
-    axis === 'x'
-      ? { x: start.x + delta, y: start.y }
-      : { x: start.x, y: start.y + delta }
-  const shiftedEnd =
-    axis === 'x'
-      ? { x: end.x + delta, y: end.y }
-      : { x: end.x, y: end.y + delta }
-
-  if (segmentIndex === 0) {
-    next.splice(0, 2, next[0]!, shiftedStart, shiftedEnd)
-    return normalizePolylinePoints(next)
-  }
-
-  if (segmentIndex === pathPoints.length - 2) {
-    next.splice(segmentIndex, 2, shiftedStart, shiftedEnd, next[pathPoints.length - 1]!)
-    return normalizePolylinePoints(next)
-  }
-
-  next.splice(segmentIndex, 2, shiftedStart, shiftedEnd)
-  return normalizePolylinePoints(next)
-}
 
 export const startStepSegmentRouteHandleState = (input: {
   edgeId: EdgeId
@@ -283,14 +103,18 @@ export const stepRouteHandleState = (input: {
       }
     }
 
-    const nextPathPoints = moveStepSegmentPath({
+    const patch = moveElbowRouteSegment({
+      edge: input.edge,
       pathPoints: input.state.pathPoints,
       segmentIndex: input.state.segmentIndex,
       axis: input.state.axis,
-      pointerWorld: input.pointerWorld,
-      startWorld: input.state.startWorld
+      delta
     })
-    const patch = toManualRoutePatch(input.edge, nextPathPoints)
+    if (!patch) {
+      return {
+        state: input.state
+      }
+    }
 
     return {
       state: {
@@ -345,8 +169,7 @@ export const finishRouteHandleState = (
   route:
     state.kind === 'segment'
       ? (
-          state.routePoints.length === state.baseRoutePoints.length
-          && state.routePoints.every((point, index) => isPointEqual(point, state.baseRoutePoints[index]!))
+          areRoutePointsEqual(state.routePoints, state.baseRoutePoints)
             ? undefined
             : (
                 state.routePoints.length > 0

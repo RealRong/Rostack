@@ -100,7 +100,7 @@ export const GroupingPanel = () => {
   )
   const group = useDataViewValue(
     dataView => dataView.engine.active.state,
-    state => state?.group
+    state => state?.query.group
   ) ?? EMPTY_GROUP
   const currentViewDomain = currentView
     ? engine.active

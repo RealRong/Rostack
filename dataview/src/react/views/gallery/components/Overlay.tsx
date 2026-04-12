@@ -23,7 +23,7 @@ export const Overlay = () => {
   const overlayRef = useRef<HTMLDivElement | null>(null)
   const appearanceId = runtime.drag.activeId
   const recordId = appearanceId
-    ? engine.active.read.getAppearanceRecordId(appearanceId)
+    ? engine.active.read.appearance(appearanceId)?.recordId
     : undefined
   const record = useDataViewKeyedValue(
     dataView => dataView.engine.read.record,

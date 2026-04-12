@@ -78,7 +78,8 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
         ? state
         : undefined
     },
-    readRecord: activeBase.read.getRecord,
+    activeRead: activeBase.read,
+    readRecord: activeBase.read.record,
     dispatch,
     fields,
     records
@@ -89,7 +90,8 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       readDocument: () => readValue(read.document),
       readView: () => readValue(activeBase.view),
       readState: () => readValue(activeBase.state),
-      readRecord: activeBase.read.getRecord,
+      activeRead: activeBase.read,
+      readRecord: activeBase.read.record,
       dispatch,
       fields,
       records

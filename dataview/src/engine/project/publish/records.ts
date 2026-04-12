@@ -16,14 +16,14 @@ export const publishRecordSet = (input: {
   const previous = input.previous
   return previous
     && previous.viewId === input.activeViewId
-    && previous.derivedIds === input.query.derived
-    && previous.orderedIds === input.query.ordered
-    && previous.visibleIds === input.query.visible
+    && previous.derived === input.query.derived
+    && previous.ordered === input.query.ordered
+    && previous.visible === input.query.visible
     ? previous
     : {
         viewId: input.activeViewId,
-        derivedIds: input.query.derived,
-        orderedIds: input.query.ordered,
-        visibleIds: input.query.visible
+        derived: input.query.derived,
+        ordered: input.query.ordered,
+        visible: input.query.visible
       }
 }

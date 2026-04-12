@@ -14,6 +14,10 @@ export {
 
 export { rotatePoint } from './point'
 export { getAnchorPoint } from './anchor'
+export {
+  normalizePolylinePoints,
+  arePointListsEqual
+} from './polyline'
 
 export {
   getRotatedCorners,

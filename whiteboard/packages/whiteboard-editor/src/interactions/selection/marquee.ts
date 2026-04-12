@@ -16,9 +16,10 @@ import type {
 import type { PointerDownInput } from '../../types/input'
 import {
   createMarqueeRect,
-  finishMarqueeSelection,
+  reduceMarqueeSelection,
   startMarqueeSelection,
-  stepMarqueeSelection
+  type MarqueeSelectionEffect,
+  type MarqueeSelectionEvent
 } from './marqueeState'
 import type { SelectionMarqueeDecision } from './pressPolicy'
 
@@ -45,6 +46,32 @@ const readMatchedSelection = (
   })
 })
 
+const applyMarqueeEffect = (
+  ctx: InteractionContext,
+  interaction: InteractionSession,
+  effect: MarqueeSelectionEffect
+) => {
+  switch (effect.type) {
+    case 'selection.replace':
+      ctx.write.session.selection.replace(effect.selection)
+      return
+    case 'preview.set':
+      interaction.gesture = createSelectionGesture(
+        'selection-marquee',
+        {
+          nodePatches: [],
+          edgePatches: [],
+          frameHoverId: undefined,
+          guides: [],
+          marquee: {
+            worldRect: effect.worldRect,
+            match: effect.match
+          }
+        }
+      )
+  }
+}
+
 export const createMarqueeInteraction = (
   ctx: InteractionContext,
   input: MarqueeInteractionInput
@@ -63,11 +90,21 @@ export const createMarqueeInteraction = (
     ctx.write.session.selection.clear()
   }
 
+  const dispatch = (
+    event: MarqueeSelectionEvent
+  ) => {
+    const result = reduceMarqueeSelection(state, event)
+    state = result.state
+    result.effects.forEach((effect) => {
+      applyMarqueeEffect(ctx, interaction!, effect)
+    })
+  }
+
   const step = (
     pointer: MarqueePointer
   ) => {
-    const result = stepMarqueeSelection({
-      state,
+    dispatch({
+      type: 'pointer.move',
       currentScreen: pointer.screen,
       currentWorld: pointer.world,
       minDistance: GestureTuning.dragMinDistance,
@@ -77,30 +114,6 @@ export const createMarqueeInteraction = (
         match: input.action.match
       })
     })
-    state = result.state
-    if (!result.draft.active || !result.draft.worldRect) {
-      return false
-    }
-
-    if (result.draft.changed && result.draft.selection) {
-      ctx.write.session.selection.replace(result.draft.selection)
-    }
-
-    interaction!.gesture = createSelectionGesture(
-      'selection-marquee',
-      {
-        nodePatches: [],
-        edgePatches: [],
-        frameHoverId: undefined,
-        guides: [],
-        marquee: {
-          worldRect: result.draft.worldRect,
-          match: input.action.match
-        }
-      }
-    )
-
-    return true
   }
 
   interaction = {
@@ -110,7 +123,7 @@ export const createMarqueeInteraction = (
     gesture: null,
     autoPan: {
       frame: (pointer) => {
-        if (!state.active) {
+        if (state.kind !== 'active') {
           return
         }
 
@@ -125,11 +138,24 @@ export const createMarqueeInteraction = (
       step(next)
     },
     up: (next) => {
-      step(next)
-      finishMarqueeSelection(state)
+      dispatch({
+        type: 'pointer.up',
+        currentScreen: next.screen,
+        currentWorld: next.world,
+        minDistance: GestureTuning.dragMinDistance,
+        matched: readMatchedSelection({
+          ctx,
+          rect: createMarqueeRect(state.startWorld, next.world),
+          match: input.action.match
+        })
+      })
       return FINISH
     },
-    cleanup: () => {}
+    cleanup: () => {
+      dispatch({
+        type: 'cancel'
+      })
+    }
   }
 
   return interaction

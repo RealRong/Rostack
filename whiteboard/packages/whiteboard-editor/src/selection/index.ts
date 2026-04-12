@@ -1,7 +1,11 @@
 export type {
   SelectionNodeInfo,
-  SelectionNodeTypeInfo
-} from './nodeSummary'
+  SelectionNodeTypeInfo,
+  SelectionOverlay,
+  NodeToolbarContext,
+  NodeToolbarFilter,
+  ToolbarSelectionKind
+} from '../types/selectionPresentation'
 export type {
   SelectionOverlay,
   NodeToolbarContext,

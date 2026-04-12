@@ -1,13 +1,20 @@
 import type { ShapeKind } from '@whiteboard/core/node'
 import type { Node, NodeId, Rect } from '@whiteboard/core/types'
-import type {
-  SelectionNodeInfo,
-  SelectionNodeTypeInfo
-} from '../selection/nodeSummary'
-export type {
-  SelectionNodeInfo,
-  SelectionNodeTypeInfo
-} from '../selection/nodeSummary'
+import type { NodeFamily } from './node'
+
+export type SelectionNodeTypeInfo = {
+  key: string
+  name: string
+  family: NodeFamily
+  icon: string
+  count: number
+  nodeIds: readonly NodeId[]
+}
+
+export type SelectionNodeInfo = {
+  lock: 'none' | 'mixed' | 'all'
+  types: readonly SelectionNodeTypeInfo[]
+}
 
 export type ToolbarSelectionKind =
   | 'shape'

@@ -1,367 +1,230 @@
-# Dataview Engine Project Helper 收敛方案
-
-## 目标
-
-`dataview/src/engine/project` 当前的问题，不是“函数太多”，而是“公开读模型能力不完整”，导致 facade、store、React 侧不断补 helper，把本来应该在底层完成的解析和派生扩散到上层。
-
-本方案的目标是：
-
-- 把 `engine/project` 从“helper 集合”收敛回“投影运行时 + 发布读模型”。
-- 把跨层重复出现的解析逻辑下沉到 `published read model` 或 `engine.active.read`。
-- 删除不是稳定领域抽象的 root-level helpers。
-- 让 React 和 facade 尽量只消费：
-  - `engine.active.state`
-  - `engine.active.read`
-  - `engine.active.items`
-
-最终状态下，外层不应该再理解 `sections + appearances + refs + movePlan` 之间的拼装细节。
-
----
-
-## 当前问题
-
-### 1. `engine/project` 混了三层职责
-
-当前目录里同时存在三类内容：
-
-- 运行时投影：
-  - `runtime/*`
-  - `publish/*`
-- 公开读模型：
-  - `readModels.ts`
-  - `viewProjections.ts`
-- 对外补洞 helper：
-  - `appearanceHelpers.ts`
-  - `sectionHelpers.ts`
-  - `refs.ts`
-  - `movePlan.ts`
-
-问题不在于有纯函数，而在于最后一类 helper 实际上是在补“底层没把能力做好”的洞。
-
-### 2. 公开读模型是半成品
-
-当前对外暴露的读模型缺几个关键能力：
-
-- `sections` 只是 `readonly Section[]`
-- `appearances` 只有一半导航能力
-- `fields` 不是完整列模型
-- `cell -> record/field/section` 解析没有底层统一入口
-- 拖拽移动计划没有底层统一入口
-
-结果是上层不断出现这些行为：
-
-- `sections.find(...)`
-- `appearances.get(...).recordId`
-- `appearances.sectionOf(...)`
-- `readSectionRecordIds(...)`
-- `recordIdsOfAppearances(...)`
-- `toRecordField(...)`
-- `move.plan(...)`
-
-这说明 helper 不是附加便利，而是业务主路径依赖。
-
-### 3. `ActiveViewReadApi` 还是补救层，不是最终读取层
-
-当前 `engine.active.read` 已经开始吸收一部分能力，但仍然依赖：
-
-- `toRecordField`
-- `readSectionRecordIds`
-- `sections.find`
-- `appearances.sectionOf`
-
-这说明它还没有做到“调用方不需要了解底层拼装关系”。
-
----
-
-## 结论
-
-需要在底层补能力，并删除一批 helper。
-
-原则如下：
-
-- 运行时内部纯函数可以保留。
-- 发布阶段内部复用函数可以保留。
-- 对外的 root-level helper 要尽量清空。
-- 读能力应尽量长在读模型对象本身，或长在 `engine.active.read`。
-
-核心方向不是“继续增加新的 helper”，而是：
-
-1. 把发布模型做完整。
-2. 把 `engine.active.read` 做成真正的一等读取入口。
-3. 让 facade 和 React 停止自己做解析。
-
----
-
-## 各文件判断
-
-### 应删除或基本删除
-
-#### `dataview/src/engine/project/appearanceHelpers.ts`
-
-当前只有：
-
-- `recordIdsOfAppearances`
-
-这个能力本质上应该属于 `AppearanceList`，不应该是一个额外 helper 文件。
-
-结论：
-
-- 删除文件。
-- 对应能力并入 `AppearanceList` 或 `engine.active.read`。
-
-#### `dataview/src/engine/project/sectionHelpers.ts`
-
-当前包含：
-
-- `sectionIds`
-- `readSectionRecordIds`
-
-这是 `sections` 只暴露数组后的补救层。
-
-结论：
-
-- 删除文件。
-- 引入 `SectionList`，把按 key 读取 section 的能力做成模型内建能力。
-
-#### `dataview/src/engine/project/movePlan.ts`
-
-当前暴露：
-
-- `move.drag`
-- `move.before`
-- `move.apply`
-- `move.plan`
-
-这已经不是“工具函数”，而是视图移动语义的一部分。gallery、kanban、facade 都依赖它，说明它应该成为底层一等能力，而不是 root helper。
-
-结论：
-
-- 对外删除 `movePlan.ts`。
-- 如有必要，保留内部实现，但收进 `AppearanceList` 或 `engine.active.read.planItemMove(...)`。
-
-#### `dataview/src/engine/project/refs.ts`
-
-当前混了三类内容：
-
-- 类型：`CellRef`、`RecordFieldRef`、`ViewFieldRef`
-- 比较：`sameCellRef`、`sameViewField`
-- 解析：`fieldOf`、`toRecordField`
-
-问题最大的不是类型，而是解析函数。`fieldOf`、`toRecordField` 都是在补“cell 没有统一解析入口”。
-
-结论：
-
-- `fieldOf`、`toRecordField` 删除。
-- `ViewFieldRef`、`RecordFieldRef` 视最终 API 设计决定是否保留。
-- `sameCellRef` 可保留，但应迁出 root project helper 区。
-- `sameFieldLookup` 倾向删除。
-
-### 可保留，但应视为内部实现
-
-#### `dataview/src/engine/project/publish/sections.ts`
-
-里面的：
-
-- `createAppearanceId`
-- `parseAppearanceId`
-
-属于 `AppearanceList` 的编码实现细节，不应该被外层依赖。
-
-结论：
-
-- 保留实现。
-- 不对外强调为 helper。
-
-#### `dataview/src/engine/project/runtime/sections/shape.ts`
-
-里面的：
-
-- `visibleOf`
-- `collapsedOf`
-- `buildSectionNode`
-
-属于运行时阶段内部结构函数。
-
-结论：
-
-- 保留。
-- 仅作为 runtime 内部函数。
-
-#### `runtime/query/index.ts`、`runtime/sections/index.ts`、`runtime/calc/index.ts`
-
-这里的 `resolve*Action` 是阶段调度逻辑，不属于问题。
-
-结论：
-
-- 保留。
-
----
-
-## 需要补的底层能力
-
-### 1. 引入 `SectionList`
-
-当前 `ActiveViewState.sections` 是 `readonly Section[]`，这会迫使上层：
-
-- 遍历查找 section
-- 从 section key 找 ids
-- 从 section key 找 color
-- 从 section key 再配合 appearances 算 record ids
-
-这说明数组不是合适的公开模型。
-
-建议新增发布模型：
+# Dataview Engine Project 最终 API 与落地方案
+
+## 最终 API 设计
+
+本节是唯一实现目标。后续落地以本节为准，不保留兼容层，不保留第二套 helper 线，不新增并行旧 API。
+
+### 顶层 Engine API
+
+```ts
+interface Engine {
+  read: EngineReadApi
+  active: ActiveApi
+  views: ViewsApi
+  fields: FieldsApi
+  records: RecordsApi
+  action: (action: Action | readonly Action[]) => ActionResult
+  history: HistoryApi
+  perf: PerfApi
+}
+```
+
+约束：
+
+- 不再公开 `project` 顶层 API。
+- active view projection 的公共读取全部进入 `engine.active`。
+- 不再新增 `project.*` 风格公共 helper。
+
+### `engine.active`
+
+```ts
+interface ActiveApi extends ViewApi {
+  id: ReadStore<ViewId | undefined>
+  view: ReadStore<View | undefined>
+  state: ReadStore<ActiveViewState | undefined>
+  select: ActiveSelectApi
+  read: ActiveReadApi
+
+  table: ActiveTableApi
+  gallery: ActiveGalleryApi
+  kanban: ActiveKanbanApi
+}
+```
+
+约束：
+
+- `state` 提供完整活动视图快照。
+- `select` 负责精细订阅。
+- `read` 是唯一解析入口。
+- `table/gallery/kanban` 只保留各自真正特殊的内容，不复制通用投影状态。
+
+### `ActiveViewState`
+
+```ts
+interface ActiveViewState {
+  view: View
+  query: ActiveQuery
+  records: RecordSet
+  sections: SectionList
+  appearances: AppearanceList
+  fields: FieldList
+  calculations: ReadonlyMap<SectionKey, CalculationCollection>
+}
+
+interface ActiveQuery {
+  filter: ViewFilterProjection
+  group: ViewGroupProjection
+  search: ViewSearchProjection
+  sort: ViewSortProjection
+}
+```
+
+约束：
+
+- `filter/group/search/sort` 收进 `query`，不再并列挂在 `ActiveViewState` 顶层。
+- `sections` 必须是 `SectionList`，不能再是数组。
+- `fields` 必须是完整显示列模型。
+
+### `RecordSet`
+
+```ts
+interface RecordSet {
+  viewId: ViewId
+  derived: readonly RecordId[]
+  ordered: readonly RecordId[]
+  visible: readonly RecordId[]
+}
+```
+
+约束：
+
+- 不再使用 `derivedIds/orderedIds/visibleIds`。
+- `RecordSet` 只表达 record id 集，不承担其他读取职责。
+
+### `SectionList`
 
 ```ts
 interface SectionList {
   ids: readonly SectionKey[]
   all: readonly Section[]
-  get: (sectionKey: SectionKey) => Section | undefined
-  has: (sectionKey: SectionKey) => boolean
-  indexOf: (sectionKey: SectionKey) => number | undefined
-  appearanceIds: (sectionKey: SectionKey) => readonly AppearanceId[]
-  recordIds: (sectionKey: SectionKey) => readonly RecordId[]
-  color: (sectionKey: SectionKey) => string | undefined
+  get: (key: SectionKey) => Section | undefined
+  has: (key: SectionKey) => boolean
+  indexOf: (key: SectionKey) => number | undefined
+  at: (index: number) => SectionKey | undefined
+}
+
+interface Section {
+  key: SectionKey
+  title: string
+  color?: string
+  bucket?: SectionBucket
+  collapsed: boolean
+  appearanceIds: readonly AppearanceId[]
+  recordIds: readonly RecordId[]
 }
 ```
 
-说明：
+约束：
 
-- `recordIds(sectionKey)` 应直接是底层能力，不应再让调用方自己用 `appearances` 转。
-- `all` 保留是为了列表渲染方便。
-- `ids` 保留是为了稳定顺序、低成本比对和导航。
+- 原 `ids` 改为 `appearanceIds`。
+- `recordIds` 作为底层发布能力直接提供。
+- 上层不允许再通过 `sections.find(...)` 做 key 查找。
 
-落地后可以删除：
-
-- `sectionHelpers.ts`
-- `getSectionColor` 中的 `find(...)`
-- `getSectionRecordIds` 里的拼接逻辑
-
-### 2. 增强 `AppearanceList`
-
-当前 `AppearanceList` 已经有：
-
-- `get`
-- `has`
-- `indexOf`
-- `at`
-- `prev`
-- `next`
-- `range`
-- `sectionOf`
-- `idsIn`
-
-但还缺最关键的跨层常用能力：
+### `AppearanceList`
 
 ```ts
 interface AppearanceList {
-  recordId: (appearanceId: AppearanceId) => RecordId | undefined
-  recordIds: (appearanceIds: readonly AppearanceId[]) => readonly RecordId[]
-  planMove: (
-    appearanceIds: readonly AppearanceId[],
-    target: Placement
-  ) => {
-    ids: readonly AppearanceId[]
-    target: {
-      section: SectionKey
-      before?: AppearanceId
-    }
-    changed: boolean
-  }
+  ids: readonly AppearanceId[]
+  count: number
+
+  get: (id: AppearanceId) => Appearance | undefined
+  has: (id: AppearanceId) => boolean
+  indexOf: (id: AppearanceId) => number | undefined
+  at: (index: number) => AppearanceId | undefined
+
+  prev: (id: AppearanceId) => AppearanceId | undefined
+  next: (id: AppearanceId) => AppearanceId | undefined
+  range: (anchor: AppearanceId, focus: AppearanceId) => readonly AppearanceId[]
+}
+
+interface Appearance {
+  id: AppearanceId
+  recordId: RecordId
+  sectionKey: SectionKey
 }
 ```
 
-说明：
+约束：
 
-- `recordId` 和 `recordIds` 是 `recordIdsOfAppearances` 的模型内化。
-- `planMove` 是 `move.plan` 的模型内化。
+- `Appearance.section` 统一改为 `sectionKey`。
+- `AppearanceList` 只负责 appearance 导航，不再把外层依赖的解析散落到 helper。
 
-如果继续只给 `get`，那外层就必然继续自己拼 dedupe、filter、order 和 `before` 计算。
-
-### 3. 增强 `FieldList`
-
-当前 `FieldList` 的定义和实际语义不够一致，尤其 `publish/view.ts` 里当前生成逻辑会排除 title，导致它更像“可见 custom fields 列表”，而不是“当前视图显示字段模型”。
-
-建议统一为完整列模型：
+### `FieldList`
 
 ```ts
 interface FieldList {
   ids: readonly FieldId[]
   all: readonly Field[]
   custom: readonly CustomField[]
-  get: (fieldId: FieldId) => Field | undefined
-  has: (fieldId: FieldId) => boolean
-  indexOf: (fieldId: FieldId) => number | undefined
+
+  get: (id: FieldId) => Field | undefined
+  has: (id: FieldId) => boolean
+  indexOf: (id: FieldId) => number | undefined
   at: (index: number) => FieldId | undefined
   range: (anchor: FieldId, focus: FieldId) => readonly FieldId[]
 }
 ```
 
-关键要求：
+约束：
 
-- `ids` 必须和 `view.display.fields` 对齐。
-- `all` 必须和 `ids` 对齐。
-- `title` 必须能出现在 `get/indexOf/range` 的主路径里。
-- `custom` 只是派生，不是主体。
+- `ids` 与 `view.display.fields` 一一对应。
+- `all` 与 `ids` 一一对应。
+- `title` 必须进入主路径。
+- `custom` 只是派生视图，不是主体模型。
 
-这样可以收敛这些散落读取：
+### `ActiveReadApi`
 
-- `view.display.fields.indexOf(...)`
-- `fields.get(...)`
-- `fields.custom`
-- `active.read.getDisplayFieldIndex(...)`
+```ts
+interface ActiveReadApi {
+  record: (recordId: RecordId) => DataRecord | undefined
+  field: (fieldId: FieldId) => Field | undefined
 
-### 4. 把 cell 解析做成底层统一入口
+  section: (key: SectionKey) => Section | undefined
+  appearance: (id: AppearanceId) => Appearance | undefined
+  cell: (ref: CellRef) => ActiveCell | undefined
 
-当前从一个 `CellRef` 走到真实业务对象，需要额外依赖：
+  filterField: (index: number) => Field | undefined
+  groupField: () => Field | undefined
 
-- `appearances`
-- `toRecordField`
-- `fieldOf`
-- `getRecord`
-- `getField`
+  planMove: (
+    appearanceIds: readonly AppearanceId[],
+    target: Placement
+  ) => ItemMovePlan
+}
+```
 
-这导致 table、facade、active.read 到处重复“cell -> recordId -> field -> value”的解析链。
+约束：
 
-建议 `engine.active.read` 直接提供：
+- 统一使用短名：
+  - `record`
+  - `field`
+  - `section`
+  - `appearance`
+  - `cell`
+  - `planMove`
+- 不再保留新的长 getter 风格 API。
+- 外层通过返回的完整对象拿数据，不再依赖辅助 helper 拼装。
+
+### `ActiveCell`
 
 ```ts
 interface ActiveCell {
   appearanceId: AppearanceId
   recordId: RecordId
   fieldId: FieldId
-  section: SectionKey
+  sectionKey: SectionKey
   record: DataRecord
   field: Field | undefined
-}
-
-interface ActiveViewReadApi {
-  resolveCell: (cell: CellRef) => ActiveCell | undefined
-  getCellRecordId: (cell: CellRef) => RecordId | undefined
-  getCellField: (cell: CellRef) => Field | undefined
-  getCellValue: (cell: CellRef) => unknown
-  getCellSection: (cell: CellRef) => SectionKey | undefined
+  value: unknown
 }
 ```
 
-结论：
+约束：
 
-- `fieldOf` 删除。
-- `toRecordField` 删除。
-- table `openCell`、cell write、hover/selection 里的部分解析统一走 `active.read`。
+- `CellRef -> record/field/value/section` 必须一次解析完成。
+- table、value editor、cell write 不再手动拼 `appearance -> record -> field -> value`。
 
-### 5. 把移动计划做成底层统一读取能力
-
-当前 gallery、kanban、facade 在做移动时，需要组合：
-
-- `move.plan`
-- `recordIdsOfAppearances`
-- `readSectionRecordIds`
-- `move.before`
-
-这说明“拖拽移动计划”已经是领域读能力，不该继续散在 helper 里。
-
-建议直接提供：
+### `ItemMovePlan`
 
 ```ts
 interface ItemMovePlan {
@@ -370,279 +233,335 @@ interface ItemMovePlan {
   changed: boolean
   sectionChanged: boolean
   target: {
-    section: SectionKey
+    sectionKey: SectionKey
     beforeAppearanceId?: AppearanceId
     beforeRecordId?: RecordId
   }
 }
-
-interface ActiveViewReadApi {
-  planItemMove: (
-    appearanceIds: readonly AppearanceId[],
-    target: Placement
-  ) => ItemMovePlan
-}
 ```
 
-这样：
+约束：
 
-- React 侧只判断 `plan.changed`
-- facade 直接拿 `plan.recordIds` 和 `plan.target.beforeRecordId`
-- 不再自己算 `sectionChanged`
-- 不再自己算 `beforeRecordId`
+- gallery、kanban、facade 都统一消费 `planMove(...)` 的结果。
+- 不再自己计算 `recordIds`、`beforeRecordId`、`sectionChanged`。
 
----
-
-## 最终 API 形态建议
-
-### `ActiveViewState`
-
-保留它作为“完整活动视图快照”，但其内部读模型要升级：
+### View-specific active state
 
 ```ts
-interface ActiveViewState {
-  view: View
-  filter: ViewFilterProjection
-  group: ViewGroupProjection
-  search: ViewSearchProjection
-  sort: ViewSortProjection
-  records: RecordSet
-  sections: SectionList
-  appearances: AppearanceList
-  fields: FieldList
-  calculations: ReadonlyMap<SectionKey, CalculationCollection>
+interface ActiveTableState {
+  showVerticalLines: boolean
+}
+
+interface ActiveGalleryState {
+  cardSize: GalleryCardSize
+  canReorder: boolean
+  groupUsesOptionColors: boolean
+}
+
+interface ActiveKanbanState {
+  cardsPerColumn: KanbanCardsPerColumn
+  fillColumnColor: boolean
+  canReorder: boolean
+  groupUsesOptionColors: boolean
 }
 ```
 
-关键变化：
+约束：
 
-- `sections` 从数组升级为 `SectionList`
-- `fields` 变成完整显示列模型
+- table/gallery/kanban 不复制通用投影数据。
+- 通用数据统一从 `ActiveViewState` 读取。
+- view-specific state 只保留各自真正特殊的项。
 
-### `ActiveViewReadApi`
-
-目标不是继续补零碎 getter，而是成为唯一解析入口。
-
-建议最终至少具备：
+### 基础输入类型
 
 ```ts
-interface ActiveViewReadApi {
-  getRecord: (recordId: RecordId) => DataRecord | undefined
-  getField: (fieldId: FieldId) => Field | undefined
+interface CellRef {
+  appearanceId: AppearanceId
+  fieldId: FieldId
+}
 
-  getGroupField: () => Field | undefined
-  getFilterField: (index: number) => Field | undefined
-
-  getAppearanceRecordId: (appearanceId: AppearanceId) => RecordId | undefined
-  getAppearanceRecord: (appearanceId: AppearanceId) => DataRecord | undefined
-  getAppearanceSectionKey: (appearanceId: AppearanceId) => SectionKey | undefined
-  getAppearanceColor: (appearanceId: AppearanceId) => string | undefined
-
-  getSectionRecordIds: (section: SectionKey) => readonly RecordId[]
-  getSectionColor: (section: SectionKey) => string | undefined
-
-  getDisplayFieldIndex: (fieldId: FieldId) => number
-
-  resolveCell: (cell: CellRef) => ActiveCell | undefined
-  getCellRecordId: (cell: CellRef) => RecordId | undefined
-  getCellField: (cell: CellRef) => Field | undefined
-  getCellValue: (cell: CellRef) => unknown
-  getCellSection: (cell: CellRef) => SectionKey | undefined
-
-  planItemMove: (
-    appearanceIds: readonly AppearanceId[],
-    target: Placement
-  ) => ItemMovePlan
+interface Placement {
+  sectionKey: SectionKey
+  before?: AppearanceId
 }
 ```
 
-最终目标是：外层使用 `read`，而不是直接依赖 `engine/project` helper。
+约束：
 
----
+- `Placement.section` 一律改为 `sectionKey`。
+- `Appearance.sectionKey`、`ActiveCell.sectionKey`、`ItemMovePlan.target.sectionKey` 命名保持一致。
 
-## 对现有调用方的影响
+### 明确删除的公共 helper / API
 
-### `engine/store/selectors.ts`
-
-当前这里仍然在自己拼：
-
-- `toRecordField`
-- `readSectionRecordIds`
-- `sections.find(...)`
-- `appearances.sectionOf(...)`
-
-最终应该变成直接调用发布模型对象方法或统一 read API，不再手写拼装逻辑。
-
-### `engine/facade/view/index.ts`
-
-这是目前 helper 依赖最重的地方，主要依赖：
+以下名字不作为最终公共 API 保留：
 
 - `recordIdsOfAppearances`
 - `readSectionRecordIds`
+- `sectionIds`
+- `fieldOf`
+- `toRecordField`
 - `move.plan`
 - `move.before`
-- `toRecordField`
+- `move.apply`
+- `replaceField`
+- `sameFieldLookup`
 
-最终应变为：
-
-- record id 由 `appearances.recordIds(...)` 或 `active.read.planItemMove(...)` 提供
-- section record ids 由 `sections.recordIds(...)` 提供
-- cell 解析由 `active.read.resolveCell(...)` 提供
-- 拖拽计划由 `active.read.planItemMove(...)` 提供
-
-### React table
-
-`openCell` 当前依赖 `fieldOf(...)`。  
-最终应改为：
-
-- `engine.active.read.resolveCell(cell)`
-
-这样 table 不再需要知道 `viewId + appearances` 的拼装逻辑。
-
-### React gallery / kanban
-
-当前拖拽 indicator 和 drop 逻辑依赖 `viewMove.plan(...)`。  
-最终应改为：
-
-- `engine.active.read.planItemMove(...)`
-
-React 只读计划结果，不做移动语义计算。
-
----
-
-## 目录收敛建议
-
-最终 `dataview/src/engine/project` 建议收敛为三层：
-
-### 1. `runtime/*`
-
-只负责：
-
-- query
-- sections
-- calc
-- demand
-- trace
-
-不对外承担 helper 职责。
-
-### 2. `publish/*`
-
-负责把 runtime state 发布成完整读模型：
-
-- `SectionList`
-- `AppearanceList`
-- `FieldList`
-- filter/group/search/sort projection
-
-### 3. `public types`
-
-只保留稳定领域模型：
-
-- `readModels.ts`
-- `viewProjections.ts`
-- `index.ts`
-
-其中 `index.ts` 不应再导出一堆 root helper。
-
----
-
-## 最终文件级建议
-
-### 删除
+以下文件目标是删除或彻底收缩到内部实现：
 
 - `dataview/src/engine/project/appearanceHelpers.ts`
 - `dataview/src/engine/project/sectionHelpers.ts`
 - `dataview/src/engine/project/movePlan.ts`
-
-### 大幅收缩或重组
-
 - `dataview/src/engine/project/refs.ts`
-- `dataview/src/engine/project/index.ts`
-
-### 保留并增强
-
-- `dataview/src/engine/project/readModels.ts`
-- `dataview/src/engine/project/viewProjections.ts`
-- `dataview/src/engine/project/publish/sections.ts`
-- `dataview/src/engine/project/publish/view.ts`
-
-### 配套调整
-
-- `dataview/src/engine/api/public/project.ts`
-- `dataview/src/engine/store/selectors.ts`
-- `dataview/src/engine/facade/view/index.ts`
-- `dataview/src/react/views/table/openCell.ts`
-- `dataview/src/react/views/gallery/runtime.ts`
-- `dataview/src/react/views/kanban/runtime.ts`
 
 ---
 
-## 一步到位实施方案
+## 具体执行落地方案
 
-### 阶段 1. 完整化发布模型
+本节是一步到位执行方案，默认不保留兼容、不保留过渡实现、不保留旧导出。
 
-目标：
-
-- `sections` 升级为 `SectionList`
-- `fields` 升级为完整列模型
-- `appearances` 增加 `recordId / recordIds / planMove`
-
-完成标准：
-
-- `readModels.ts` 不再只是薄接口定义，而是明确承载最终读能力设计
-- `publish/sections.ts`、`publish/view.ts` 直接生成完整模型
-
-### 阶段 2. 收口到 `engine.active.read`
+### 阶段 1. 重定义公开模型
 
 目标：
 
-- 新增 cell 解析能力
-- 新增 item move plan 能力
-- 所有 section/appearance/field 的常用读取都从这里统一出去
+- 重写 `readModels.ts`
+- 重写 `engine/api/public/project.ts`
+- 把最终命名与结构一次切到位
+
+具体动作：
+
+- `ActiveViewState` 改成：
+  - `view`
+  - `query`
+  - `records`
+  - `sections`
+  - `appearances`
+  - `fields`
+  - `calculations`
+- `RecordSet` 改成：
+  - `derived`
+  - `ordered`
+  - `visible`
+- `Section.ids` 改成 `appearanceIds`
+- `Section` 新增 `recordIds`
+- `Appearance.section` 改成 `sectionKey`
+- `Placement.section` 改成 `sectionKey`
+- `ActiveViewReadApi` 直接改成最终的 `ActiveReadApi`
 
 完成标准：
 
-- `ActiveViewReadApi` 能承接 table、gallery、kanban、facade 的主读取路径
+- 类型层不再残留旧命名：
+  - `derivedIds`
+  - `orderedIds`
+  - `visibleIds`
+  - `section`
+  - 各类 `getXxx` 风格读取函数
 
-### 阶段 3. 删除 helper 依赖
+### 阶段 2. 重写 publish 层，直接发布最终读模型
 
 目标：
 
-- facade 不再 import `recordIdsOfAppearances`、`readSectionRecordIds`、`move.plan`、`toRecordField`
-- React 不再 import `fieldOf`、`move.plan`
+- `publish/view.ts`
+- `publish/sections.ts`
+- `publish/records.ts`
+
+直接生成最终形态的：
+
+- `SectionList`
+- `AppearanceList`
+- `FieldList`
+- `RecordSet`
+- `ActiveQuery`
+
+具体动作：
+
+- `SectionList` 在 publish 阶段构建完整索引：
+  - `ids`
+  - `all`
+  - `get`
+  - `has`
+  - `indexOf`
+  - `at`
+- `Section` 在 publish 阶段就填好：
+  - `appearanceIds`
+  - `recordIds`
+- `AppearanceList` 保留最小导航职责：
+  - `get`
+  - `has`
+  - `indexOf`
+  - `at`
+  - `prev`
+  - `next`
+  - `range`
+- `FieldList` 按完整 `view.display.fields` 生成，不再跳过 `title`
+- `filter/group/search/sort` 组装成 `query`
 
 完成标准：
 
-- `appearanceHelpers.ts`、`sectionHelpers.ts`、`movePlan.ts` 删除
-- `refs.ts` 只保留必要类型或直接并回更合理位置
+- `sections` 不再是数组。
+- `fields` 不再是“custom fields 视图”。
+- `RecordSet` 不再带 `Ids` 后缀命名。
 
-### 阶段 4. 清理导出面
+### 阶段 3. 重写 `engine.active.read`
 
 目标：
 
-- `engine/project/index.ts` 只导出稳定模型和必要类型
-- 不再对外导出补洞 helper
+- 让 `engine.active.read` 成为唯一解析入口。
+
+具体动作：
+
+- 在 `store/selectors.ts` 中直接实现：
+  - `record`
+  - `field`
+  - `section`
+  - `appearance`
+  - `cell`
+  - `filterField`
+  - `groupField`
+  - `planMove`
+- `cell(ref)` 一次返回：
+  - `appearanceId`
+  - `recordId`
+  - `fieldId`
+  - `sectionKey`
+  - `record`
+  - `field`
+  - `value`
+- `planMove(...)` 一次返回：
+  - `appearanceIds`
+  - `recordIds`
+  - `changed`
+  - `sectionChanged`
+  - `target.sectionKey`
+  - `target.beforeAppearanceId`
+  - `target.beforeRecordId`
 
 完成标准：
 
-- 外层 import `@dataview/engine/project` 时，不再依赖 helper 思维
+- `store/selectors.ts` 不再依赖：
+  - `readSectionRecordIds`
+  - `toRecordField`
+  - `sections.find(...)`
+  - `appearances.sectionOf(...)`
+
+### 阶段 4. 删除 root-level helper 依赖
+
+目标：
+
+- 清掉 facade、React、store 对 `engine/project` helper 的主路径依赖。
+
+具体动作：
+
+- `engine/facade/view/index.ts`：
+  - 改为使用 `active.read.planMove(...)`
+  - 改为使用 `active.read.cell(...)`
+  - 不再自己计算 `recordIds`、`beforeRecordId`
+- `react/views/table/openCell.ts`：
+  - 改为使用 `engine.active.read.cell(...)`
+  - 删除 `fieldOf(...)`
+- `react/views/gallery/runtime.ts`：
+  - indicator 和 drop 全部改成 `engine.active.read.planMove(...)`
+- `react/views/kanban/runtime.ts`：
+  - indicator 和 drop 全部改成 `engine.active.read.planMove(...)`
+
+完成标准：
+
+- 外层不再 import：
+  - `recordIdsOfAppearances`
+  - `readSectionRecordIds`
+  - `fieldOf`
+  - `toRecordField`
+  - `move.plan`
+  - `move.before`
+
+### 阶段 5. 删除旧文件与旧导出
+
+目标：
+
+- 彻底收口 `dataview/src/engine/project` 的公共导出面。
+
+具体动作：
+
+- 删除：
+  - `appearanceHelpers.ts`
+  - `sectionHelpers.ts`
+  - `movePlan.ts`
+- `refs.ts` 只保留必要的类型：
+  - `CellRef`
+  - 如仍需要才保留极少量纯类型定义
+- `index.ts` 只导出稳定模型和必要类型：
+  - `Appearance`
+  - `AppearanceList`
+  - `Section`
+  - `SectionList`
+  - `FieldList`
+  - `CellRef`
+  - `Placement`
+  - projection types
+
+完成标准：
+
+- `@dataview/engine/project` 不再是 helper 出口。
+- `engine/project` 对外只剩稳定领域模型定义。
+
+### 阶段 6. 同步 React 订阅方式
+
+目标：
+
+- 让 React 尽量直接订阅稳定对象，不在组件内派生重复逻辑。
+
+具体动作：
+
+- 通用投影读取优先使用：
+  - `engine.active.state`
+  - `engine.active.select(...)`
+  - `engine.active.read`
+- 细粒度订阅原则：
+  - 通用快照走 `state`
+  - 单值优化走 `select`
+  - 即时解析走 `read`
+- 不允许在 React 中继续写：
+  - `sections.find(...)`
+  - `appearances.get(...).recordId`
+  - `view.display.fields.indexOf(...)`
+  - `state.group.active ? ... : ...` 这一类原本应由底层读模型提供的重复拼装
+
+完成标准：
+
+- table/gallery/kanban 只处理 UI 逻辑，不再承担投影拼装。
+
+### 阶段 7. 编译与清理校验
+
+目标：
+
+- 确认没有残留旧命名、旧 helper 依赖、旧导出。
+
+具体动作：
+
+- 全局检索旧 API 名称并清零：
+  - `recordIdsOfAppearances`
+  - `readSectionRecordIds`
+  - `fieldOf`
+  - `toRecordField`
+  - `move.plan`
+  - `move.before`
+  - `derivedIds`
+  - `orderedIds`
+  - `visibleIds`
+- 检查 `engine/project/index.ts` 的导出面，只保留最终模型和类型。
+- 运行 TypeScript 编译，修复所有连锁类型错误。
+
+完成标准：
+
+- 不存在旧 helper 主路径引用。
+- 不存在旧命名字段。
+- 不存在第二套 API。
 
 ---
 
-## 最终判断
+## 实施要求
 
-`engine/project` 的问题，本质上不是 helper 太多，而是：
-
-- 发布出来的读模型还不够完整
-- 统一 read API 还没真正接管解析职责
-- 导致 facade 和 React 被迫理解 project 内部结构
-
-因此，正确方向不是继续增加 helper，而是：
-
-1. 让 `SectionList`、`AppearanceList`、`FieldList` 成为完整读模型。
-2. 让 `engine.active.read` 成为唯一解析入口。
-3. 删除 `appearanceHelpers`、`sectionHelpers`、`movePlan` 这类补洞层。
-4. 把 `refs` 从“解析 helper 集合”收缩回“必要类型定义”。
-
-如果这套方案落地，`engine/project` 会从“对外散落 helper 的目录”收敛成“投影运行时 + 完整发布模型”的清晰结构。
+- 一步到位，不留兼容层。
+- 旧实现必须删除干净。
+- 不允许同一语义保留两套命名。
+- 优先做底层模型和 `active.read`，再改 facade 和 React。
+- 所有上层改动都以“减少 helper、减少手动拼装、统一读路径”为验收标准。

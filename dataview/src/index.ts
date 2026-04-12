@@ -74,14 +74,16 @@ export {
 } from './core/contracts'
 export { createEngine } from './engine/api'
 export type {
+  ActiveCell,
   ActiveEngineApi,
   ActiveGalleryApi,
   ActiveGalleryState,
   ActiveKanbanApi,
   ActiveKanbanState,
+  ActiveQuery,
+  ActiveReadApi,
   ActiveSelectApi,
   ActiveView,
-  ActiveViewReadApi,
   ActiveViewState,
   CreateEngineOptions,
   CommitResult,
@@ -97,6 +99,7 @@ export type {
   HistoryActionResult,
   IndexStageTrace,
   IndexTrace,
+  ItemMovePlan,
   RecordSet,
   PerfCounter,
   PerfStats,

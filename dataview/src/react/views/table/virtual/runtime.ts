@@ -173,7 +173,7 @@ const sameBlock = (
         && left.section.key === right.section.key
         && left.section.title === right.section.title
         && left.section.collapsed === right.section.collapsed
-        && sameOrder(left.section.ids, right.section.ids)
+        && sameOrder(left.section.appearanceIds, right.section.appearanceIds)
   }
 }
 
@@ -300,7 +300,7 @@ const resolveLayoutSnapshot = (input: {
   const blocks = buildTableBlocks({
     grouped,
     rowIds: input.currentView.appearances.ids,
-    sections: input.currentView.sections,
+    sections: input.currentView.sections.all,
     rowHeight: input.rowHeight,
     headerHeight: input.headerHeight
   })

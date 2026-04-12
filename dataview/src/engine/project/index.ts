@@ -4,14 +4,13 @@ export type {
   AppearanceList,
   FieldList,
   Section,
+  SectionList,
   SectionBucket,
   SectionKey
 } from './readModels'
 export type {
-  FieldLookup,
   CellRef,
   ViewFieldRef,
-  RecordFieldRef,
   Placement
 } from './refs'
 export type {
@@ -23,22 +22,4 @@ export type {
   ViewSearchProjection,
   ViewSortProjection
 } from './viewProjections'
-export {
-  recordIdsOfAppearances
-} from './appearanceHelpers'
-export {
-  readSectionRecordIds,
-  sectionIds
-} from './sectionHelpers'
-export {
-  fieldId,
-  fieldOf,
-  replaceField,
-  sameCellRef,
-  sameFieldLookup,
-  sameViewField,
-  toRecordField
-} from './refs'
-export {
-  move
-} from './movePlan'
+export { sameCellRef } from './refs'

@@ -24,14 +24,16 @@ export const Overlay = () => {
   const engine = useDataView().engine
   const appearanceId = runtime.drag.activeId
   const recordId = appearanceId
-    ? engine.active.read.getAppearanceRecordId(appearanceId)
+    ? engine.active.read.appearance(appearanceId)?.recordId
     : undefined
   const record = useDataViewKeyedValue(
     dataView => dataView.engine.read.record,
     (recordId ?? '' as RecordId)
   )
   const sectionColorId = appearanceId && extra.groupUsesOptionColors
-    ? engine.active.read.getAppearanceColor(appearanceId)
+    ? engine.active.read.section(
+        engine.active.read.appearance(appearanceId)?.sectionKey ?? ''
+      )?.color
     : undefined
   const overlayRef = useRef<HTMLDivElement | null>(null)
   const pointer = runtime.drag.pointerRef.current

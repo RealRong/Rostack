@@ -7,8 +7,7 @@ import {
   STICKY_DEFAULT_TEXT_COLOR,
   TEXT_DEFAULT_FONT_SIZE,
   readShapeKind,
-  readShapeSpec,
-  type ShapeKind
+  readShapeSpec
 } from '@whiteboard/core/node'
 import { sameOptionalNumberArray as isSameOptionalNumberArray } from '@shared/core'
 import type {
@@ -18,23 +17,59 @@ import type {
 } from '@whiteboard/core/selection'
 import type { Node, NodeSchema, Rect } from '@whiteboard/core/types'
 import type {
+  SelectionNodeInfo,
+  SelectionNodeTypeInfo,
   SelectionOverlay,
   NodeToolbarContext,
   ToolbarSelectionKind
 } from '../../selection'
-import type { NodeRegistry } from '../../types/node'
+import type {
+  ControlId,
+  NodeFamily,
+  NodeMeta,
+  NodeRegistry
+} from '../../types/node'
 import type { Tool } from '../../types/tool'
 import type { EditSession } from '../state/edit'
-import { readSelectionNodeStats } from '../../selection/nodeSummary'
 import { readUniformValue } from './utils'
 
 type StyleFieldKind = 'string' | 'number' | 'numberArray'
 
+type SelectionNodeStats = {
+  ids: readonly string[]
+  count: number
+  hasGroup: boolean
+  lock: SelectionNodeInfo['lock']
+  types: readonly SelectionNodeTypeInfo[]
+  mixed: boolean
+}
+
 const UI_TEXT_PRIMARY = 'var(--ui-text-primary)'
+const EMPTY_CONTROLS: readonly ControlId[] = []
 
 const readObjectCountLabel = (
   count: number
 ) => count === 1 ? '1 object' : `${count} objects`
+
+const readNodeMeta = (
+  registry: Pick<NodeRegistry, 'get'>,
+  node: Node
+): NodeMeta => {
+  const definition = registry.get(node.type)
+  const meta = definition?.describe?.(node) ?? definition?.meta
+
+  if (meta) {
+    return meta
+  }
+
+  return {
+    key: node.type,
+    name: node.type,
+    family: 'shape',
+    icon: node.type,
+    controls: EMPTY_CONTROLS
+  }
+}
 
 const readString = (
   node: Node,
@@ -99,9 +134,83 @@ const supportsStyleField = (
   return Array.isArray(value) && value.every((entry) => typeof entry === 'number')
 })
 
+const readSelectionNodeStats = ({
+  summary,
+  registry
+}: {
+  summary: SelectionSummary
+  registry: Pick<NodeRegistry, 'get'>
+}): SelectionNodeStats => {
+  const nodes = summary.items.nodes
+  const ids = summary.target.nodeIds
+  const count = ids.length
+  const hasGroup = summary.groups.count > 0
+  const lockedCount = nodes.reduce(
+    (total, node) => total + (node.locked ? 1 : 0),
+    0
+  )
+  const statsByType = new Map<string, {
+    key: string
+    name: string
+    family: NodeFamily
+    icon: string
+    count: number
+    nodeIds: string[]
+  }>()
+
+  nodes.forEach((node) => {
+    const meta = readNodeMeta(registry, node)
+    const key = meta.key ?? node.type
+    const current = statsByType.get(key)
+    if (current) {
+      current.count += 1
+      current.nodeIds.push(node.id)
+      return
+    }
+
+    statsByType.set(key, {
+      key,
+      name: meta.name,
+      family: meta.family,
+      icon: meta.icon,
+      count: 1,
+      nodeIds: [node.id]
+    })
+  })
+
+  const types = [...statsByType.values()]
+    .sort((left, right) => (
+      right.count - left.count || left.key.localeCompare(right.key)
+    ))
+    .map((entry) => ({
+      key: entry.key,
+      name: entry.name,
+      family: entry.family,
+      icon: entry.icon,
+      count: entry.count,
+      nodeIds: entry.nodeIds
+    }))
+
+  return {
+    ids,
+    count,
+    hasGroup,
+    lock:
+      count === 0
+        ? 'none'
+        : lockedCount === count
+          ? 'all'
+          : lockedCount === 0
+            ? 'none'
+            : 'mixed',
+    types,
+    mixed: types.length > 1
+  }
+}
+
 const resolveToolbarSelectionKind = (
   nodes: readonly Node[],
-  summary: ReturnType<typeof readSelectionNodeStats>
+  summary: SelectionNodeStats
 ): ToolbarSelectionKind => {
   if (nodes.every((node) => node.type === 'shape')) {
     return 'shape'
@@ -133,11 +242,7 @@ const hasControl = (
   nodes: readonly Node[],
   registry: Pick<NodeRegistry, 'get'>,
   control: 'fill' | 'stroke' | 'text'
-) => nodes.every((node) => {
-  const definition = registry.get(node.type)
-  const meta = definition?.describe?.(node) ?? definition?.meta
-  return meta?.controls.includes(control) ?? false
-})
+) => nodes.every((node) => readNodeMeta(registry, node).controls.includes(control))
 
 const readDefaultFill = (
   node: Node
@@ -240,104 +345,31 @@ const readTextAlign = (
 const readToolbarValue = <TValue,>(
   enabled: boolean,
   nodes: readonly Node[],
-  read: (node: Node) => TValue,
+  readValue: (node: Node) => TValue,
   equal?: (left: TValue, right: TValue) => boolean
 ) => enabled
-  ? readUniformValue(nodes, read, equal)
+  ? readUniformValue(nodes, readValue, equal)
   : undefined
 
-const resolveToolbarContext = ({
+export const readSelectionNodeInfo = ({
   summary,
-  box,
   registry
 }: {
   summary: SelectionSummary
-  box: Rect
   registry: Pick<NodeRegistry, 'get'>
-}): NodeToolbarContext | undefined => {
-  const nodes = summary.items.nodes
-  if (!nodes.length || summary.items.edgeCount > 0) {
+}): SelectionNodeInfo | undefined => {
+  if (summary.items.nodeCount === 0 || summary.items.edgeCount > 0) {
     return undefined
   }
 
-  const nodeSummary = readSelectionNodeStats({
+  const stats = readSelectionNodeStats({
     summary,
     registry
   })
-  const selectionKind = resolveToolbarSelectionKind(nodes, nodeSummary)
-  const canEditFill = hasControl(nodes, registry, 'fill')
-  const canEditStroke = hasControl(nodes, registry, 'stroke')
-  const canEditTextColor = hasControl(nodes, registry, 'text')
-    && supportsStyleField(nodes, registry, 'color', 'string')
-  const styleSupport = {
-    fontSize: supportsStyleField(nodes, registry, 'fontSize', 'number'),
-    fontWeight: supportsStyleField(nodes, registry, 'fontWeight', 'number'),
-    fontStyle: supportsStyleField(nodes, registry, 'fontStyle', 'string'),
-    textAlign: supportsStyleField(nodes, registry, 'textAlign', 'string'),
-    fillOpacity: supportsStyleField(nodes, registry, 'fillOpacity', 'number'),
-    strokeOpacity: supportsStyleField(nodes, registry, 'strokeOpacity', 'number'),
-    strokeDash: supportsStyleField(nodes, registry, 'strokeDash', 'numberArray'),
-    opacity: supportsStyleField(nodes, registry, 'opacity', 'number')
-  }
-  const canEditFillOpacity = canEditFill && styleSupport.fillOpacity
-  const canEditStrokeOpacity = canEditStroke && styleSupport.strokeOpacity
-  const canEditStrokeDash = canEditStroke && styleSupport.strokeDash
 
   return {
-    box,
-    key: nodes.map((node) => node.id).join('\0'),
-    kind: selectionKind,
-    nodeIds: nodeSummary.ids,
-    nodes,
-    primaryNode: summary.items.primaryNode,
-    filter:
-      nodeSummary.count > 1 && nodeSummary.types.length > 1
-        ? {
-            label: readObjectCountLabel(nodeSummary.count),
-            types: nodeSummary.types
-          }
-        : undefined,
-    canChangeShapeKind: selectionKind === 'shape',
-    canEditFontSize: styleSupport.fontSize,
-    canEditFontWeight: styleSupport.fontWeight,
-    canEditFontStyle: styleSupport.fontStyle,
-    canEditTextAlign: styleSupport.textAlign,
-    canEditTextColor,
-    canEditFill,
-    canEditFillOpacity,
-    canEditStroke,
-    canEditStrokeOpacity,
-    canEditStrokeDash,
-    canEditNodeOpacity: styleSupport.opacity,
-    shapeKind:
-      selectionKind === 'shape' && summary.items.primaryNode
-        ? readShapeKind(summary.items.primaryNode)
-        : undefined,
-    shapeKindValue:
-      selectionKind === 'shape'
-        ? readUniformValue(nodes, readShapeKind)
-        : undefined,
-    fontSize: readToolbarValue(styleSupport.fontSize, nodes, readFontSize),
-    fontWeight: readToolbarValue(styleSupport.fontWeight, nodes, readFontWeight),
-    fontStyle: readToolbarValue(styleSupport.fontStyle, nodes, readFontStyle),
-    textAlign: readToolbarValue(styleSupport.textAlign, nodes, readTextAlign),
-    textColor: readToolbarValue(canEditTextColor, nodes, readTextColor),
-    fill: readToolbarValue(canEditFill, nodes, readFill),
-    fillOpacity: readToolbarValue(canEditFillOpacity, nodes, readFillOpacity),
-    stroke: readToolbarValue(canEditStroke, nodes, readStroke),
-    strokeWidth: readToolbarValue(canEditStroke, nodes, readStrokeWidth),
-    strokeOpacity: readToolbarValue(canEditStrokeOpacity, nodes, readStrokeOpacity),
-    strokeDash: readToolbarValue(
-      canEditStrokeDash,
-      nodes,
-      readStrokeDash,
-      (left, right) => isSameOptionalNumberArray(
-        normalizeDash(left),
-        normalizeDash(right)
-      )
-    ),
-    opacity: readToolbarValue(styleSupport.opacity, nodes, readOpacity),
-    locked: nodeSummary.lock
+    lock: stats.lock,
+    types: stats.types
   }
 }
 
@@ -428,9 +460,84 @@ export const resolveSelectionToolbar = ({
     return undefined
   }
 
-  return resolveToolbarContext({
+  const nodes = summary.items.nodes
+  const nodeSummary = readSelectionNodeStats({
     summary,
-    box,
     registry
   })
+  const selectionKind = resolveToolbarSelectionKind(nodes, nodeSummary)
+  const canEditFill = hasControl(nodes, registry, 'fill')
+  const canEditStroke = hasControl(nodes, registry, 'stroke')
+  const canEditTextColor = hasControl(nodes, registry, 'text')
+    && supportsStyleField(nodes, registry, 'color', 'string')
+  const styleSupport = {
+    fontSize: supportsStyleField(nodes, registry, 'fontSize', 'number'),
+    fontWeight: supportsStyleField(nodes, registry, 'fontWeight', 'number'),
+    fontStyle: supportsStyleField(nodes, registry, 'fontStyle', 'string'),
+    textAlign: supportsStyleField(nodes, registry, 'textAlign', 'string'),
+    fillOpacity: supportsStyleField(nodes, registry, 'fillOpacity', 'number'),
+    strokeOpacity: supportsStyleField(nodes, registry, 'strokeOpacity', 'number'),
+    strokeDash: supportsStyleField(nodes, registry, 'strokeDash', 'numberArray'),
+    opacity: supportsStyleField(nodes, registry, 'opacity', 'number')
+  }
+  const canEditFillOpacity = canEditFill && styleSupport.fillOpacity
+  const canEditStrokeOpacity = canEditStroke && styleSupport.strokeOpacity
+  const canEditStrokeDash = canEditStroke && styleSupport.strokeDash
+
+  return {
+    box,
+    key: nodes.map((node) => node.id).join('\0'),
+    kind: selectionKind,
+    nodeIds: nodeSummary.ids,
+    nodes,
+    primaryNode: summary.items.primaryNode,
+    filter:
+      nodeSummary.count > 1 && nodeSummary.types.length > 1
+        ? {
+            label: readObjectCountLabel(nodeSummary.count),
+            types: nodeSummary.types
+          }
+        : undefined,
+    canChangeShapeKind: selectionKind === 'shape',
+    canEditFontSize: styleSupport.fontSize,
+    canEditFontWeight: styleSupport.fontWeight,
+    canEditFontStyle: styleSupport.fontStyle,
+    canEditTextAlign: styleSupport.textAlign,
+    canEditTextColor,
+    canEditFill,
+    canEditFillOpacity,
+    canEditStroke,
+    canEditStrokeOpacity,
+    canEditStrokeDash,
+    canEditNodeOpacity: styleSupport.opacity,
+    shapeKind:
+      selectionKind === 'shape' && summary.items.primaryNode
+        ? readShapeKind(summary.items.primaryNode)
+        : undefined,
+    shapeKindValue:
+      selectionKind === 'shape'
+        ? readUniformValue(nodes, readShapeKind)
+        : undefined,
+    fontSize: readToolbarValue(styleSupport.fontSize, nodes, readFontSize),
+    fontWeight: readToolbarValue(styleSupport.fontWeight, nodes, readFontWeight),
+    fontStyle: readToolbarValue(styleSupport.fontStyle, nodes, readFontStyle),
+    textAlign: readToolbarValue(styleSupport.textAlign, nodes, readTextAlign),
+    textColor: readToolbarValue(canEditTextColor, nodes, readTextColor),
+    fill: readToolbarValue(canEditFill, nodes, readFill),
+    fillOpacity: readToolbarValue(canEditFillOpacity, nodes, readFillOpacity),
+    stroke: readToolbarValue(canEditStroke, nodes, readStroke),
+    strokeWidth: readToolbarValue(canEditStroke, nodes, readStrokeWidth),
+    strokeOpacity: readToolbarValue(canEditStrokeOpacity, nodes, readStrokeOpacity),
+    strokeDash: readToolbarValue(
+      canEditStrokeDash,
+      nodes,
+      readStrokeDash,
+      (left, right) => isSameOptionalNumberArray(
+        normalizeDash(left),
+        normalizeDash(right)
+      )
+    ),
+    opacity: readToolbarValue(styleSupport.opacity, nodes, readOpacity),
+    locked: nodeSummary.lock
+  }
 }

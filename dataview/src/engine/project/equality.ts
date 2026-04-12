@@ -15,6 +15,7 @@ import type {
   AppearanceList,
   FieldList,
   Section,
+  SectionList,
   SectionKey
 } from './readModels'
 
@@ -42,7 +43,8 @@ const equalSection = (
   && left.title === right.title
   && left.color === right.color
   && left.collapsed === right.collapsed
-  && equalIds(left.ids, right.ids)
+  && equalIds(left.appearanceIds, right.appearanceIds)
+  && equalIds(left.recordIds, right.recordIds)
   && sameJsonValue(left.bucket, right.bucket)
 )
 
@@ -95,13 +97,15 @@ export const sameAppearanceList = (
 ) => (
   equalIds(left.ids, right.ids)
   && left.count === right.count
-  && sameMap(left.idsBySection, right.idsBySection, equalIds)
 )
 
-export const sameSections = (
-  left: readonly Section[],
-  right: readonly Section[]
-) => equalList(left, right, equalSection)
+export const sameSectionList = (
+  left: SectionList,
+  right: SectionList
+) => (
+  equalIds(left.ids, right.ids)
+  && equalList(left.all, right.all, equalSection)
+)
 
 export const sameFieldList = (
   left: Pick<FieldList, 'ids' | 'all'>,

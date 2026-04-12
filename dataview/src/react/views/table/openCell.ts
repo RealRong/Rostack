@@ -9,9 +9,6 @@ import type {
   ValueEditorSessionPolicy
 } from '@dataview/react/runtime/valueEditor'
 import { ownerDocumentOf, resolveFieldAnchor } from '@dataview/react/dom/field'
-import {
-  fieldOf
-} from '@dataview/engine/project'
 import type { GridSelectionStore } from './gridSelection'
 import type { Dom } from './dom'
 
@@ -106,6 +103,10 @@ const createTableSessionPolicy = (input: {
 
 export const createCellOpener = (options: {
   valueEditor: ValueEditorApi
+  resolveCell: (cell: CellRef) => {
+    recordId: string
+    fieldId: string
+  } | undefined
   currentView: () => CurrentView | undefined
   gridSelection: GridSelectionStore
   dom: Dom
@@ -164,18 +165,19 @@ export const createCellOpener = (options: {
       return false
     }
 
-    const field = fieldOf({
-      viewId: currentView.view.id,
-      field: input.cell,
-      appearances: currentView.appearances
-    })
-    if (!field) {
+    const resolved = options.resolveCell(input.cell)
+    if (!resolved) {
       return false
     }
 
     return openTarget({
       cell: input.cell,
-      field,
+      field: {
+        viewId: currentView.view.id,
+        appearanceId: input.cell.appearanceId,
+        recordId: resolved.recordId,
+        fieldId: resolved.fieldId
+      },
       element: input.element,
       seedDraft: input.seedDraft
     })

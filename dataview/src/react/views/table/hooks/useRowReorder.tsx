@@ -126,14 +126,17 @@ export const useRowReorder = (): RowReorderApi => {
       }
 
       const beforeId = rowBeforeId(target)
-      const section = currentView.appearances.sectionOf(beforeId ?? dragIds[0])
-        ?? currentView.sections[0]?.key
-      if (!section) {
+      const sectionKey = (
+        beforeId
+          ? currentView.appearances.get(beforeId)?.sectionKey
+          : currentView.appearances.get(dragIds[0])?.sectionKey
+      ) ?? currentView.sections.all[0]?.key
+      if (!sectionKey) {
         return
       }
 
       dataView.engine.active.items.move(dragIds, {
-        section,
+        sectionKey,
         ...(beforeId ? { before: beforeId } : {})
       })
     },

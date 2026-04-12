@@ -25,9 +25,6 @@ import {
   interactiveSelector
 } from '@shared/dom'
 import {
-  move as viewMove
-} from '@dataview/engine/project'
-import type {
   AppearanceId
 } from '@dataview/engine/project'
 import {
@@ -84,8 +81,8 @@ export const useGalleryRuntime = (input: {
   })).current
   const appearanceIds = input.active.appearances.ids
   const virtual = useGalleryBlocks({
-    grouped: input.active.group.active,
-    sections: input.extra.sections,
+    grouped: input.active.query.group.active,
+    sections: input.active.sections.all,
     minCardWidth: GALLERY_CARD_MIN_WIDTH[input.extra.cardSize],
     containerRef,
     overscan: dragging ? 1200 : 640
@@ -140,22 +137,22 @@ export const useGalleryRuntime = (input: {
     canDrag: input.extra.canReorder,
     itemMap: new Map(appearanceIds.map(id => [id, id] as const)),
     getLayout: () => virtual.layout,
-    getDragIds: activeId => viewMove.drag(
-      appearanceIds,
-      selectionState.ids,
-      activeId
+    getDragIds: activeId => (
+      selectionState.ids.includes(activeId)
+        ? selectionState.ids.filter(id => appearanceIds.includes(id))
+        : [activeId]
     ),
     onDraggingChange: setDragging,
     onDrop: (ids, target) => {
-      const section = target.beforeAppearanceId
-        ? dataView.engine.active.read.getAppearanceSectionKey(target.beforeAppearanceId)
+      const sectionKey = target.beforeAppearanceId
+        ? dataView.engine.active.read.appearance(target.beforeAppearanceId)?.sectionKey
         : target.sectionKey
-      if (!section) {
+      if (!sectionKey) {
         return
       }
 
       dataView.engine.active.items.move(ids, {
-        section,
+        sectionKey,
         ...(target.beforeAppearanceId ? { before: target.beforeAppearanceId } : {})
       })
     }
@@ -166,15 +163,15 @@ export const useGalleryRuntime = (input: {
       return undefined
     }
 
-    const section = drag.overTarget.beforeAppearanceId
-      ? dataView.engine.active.read.getAppearanceSectionKey(drag.overTarget.beforeAppearanceId)
+    const sectionKey = drag.overTarget.beforeAppearanceId
+      ? dataView.engine.active.read.appearance(drag.overTarget.beforeAppearanceId)?.sectionKey
       : drag.overTarget.sectionKey
-    if (!section) {
+    if (!sectionKey) {
       return undefined
     }
 
-    const plan = viewMove.plan(input.active.appearances, drag.dragIds, {
-      section,
+    const plan = dataView.engine.active.read.planMove(drag.dragIds, {
+      sectionKey,
       ...(drag.overTarget.beforeAppearanceId ? { before: drag.overTarget.beforeAppearanceId } : {})
     })
 

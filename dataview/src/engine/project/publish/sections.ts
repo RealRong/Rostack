@@ -9,6 +9,7 @@ import type {
   AppearanceId,
   AppearanceList,
   Section,
+  SectionList,
   SectionKey
 } from '../readModels'
 import type {
@@ -21,9 +22,9 @@ const SECTION_PREFIX = 'section:'
 const RECORD_PREFIX = 'record:'
 
 export const createAppearanceId = (input: {
-  section: SectionKey
+  sectionKey: SectionKey
   recordId: RecordId
-}): AppearanceId => `section:${input.section}\u0000record:${input.recordId}`
+}): AppearanceId => `section:${input.sectionKey}\u0000record:${input.recordId}`
 
 const parseAppearanceId = (
   id: AppearanceId
@@ -33,27 +34,25 @@ const parseAppearanceId = (
     return undefined
   }
 
-  const section = id.slice(SECTION_PREFIX.length, split)
+  const sectionKey = id.slice(SECTION_PREFIX.length, split)
   const record = id.slice(split + SEPARATOR.length)
   if (!record.startsWith(RECORD_PREFIX)) {
     return undefined
   }
 
-  return {
-    id,
-    section,
-    recordId: record.slice(RECORD_PREFIX.length) as RecordId
-  }
+    return {
+      id,
+      sectionKey,
+      recordId: record.slice(RECORD_PREFIX.length) as RecordId
+    }
 }
 
 export const createAppearanceList = (input: {
   ids: readonly AppearanceId[]
-  idsBySection: ReadonlyMap<SectionKey, readonly AppearanceId[]>
   count: number
   previous?: AppearanceList
 }): AppearanceList => {
   let visibleIndex: ReadonlyMap<AppearanceId, number> | undefined
-  let allIds: ReadonlySet<AppearanceId> | undefined
   const cache = new Map<AppearanceId, Appearance>()
 
   const ensureVisibleIndex = () => {
@@ -67,35 +66,13 @@ export const createAppearanceList = (input: {
     return visibleIndex
   }
 
-  const ensureAllIds = () => {
-    if (allIds) {
-      return allIds
-    }
-
-    const next = new Set<AppearanceId>()
-    input.idsBySection.forEach((ids, section) => {
-      ids.forEach(id => {
-        if (parseAppearanceId(id)?.section === section) {
-          next.add(id)
-        }
-      })
-    })
-    allIds = next
-    return allIds
-  }
-
   return {
     ids: input.ids,
-    idsBySection: input.idsBySection,
     count: input.count,
     get: id => {
       const cached = cache.get(id)
       if (cached) {
         return cached
-      }
-
-      if (!ensureAllIds().has(id)) {
-        return undefined
       }
 
       const parsed = parseAppearanceId(id)
@@ -134,15 +111,7 @@ export const createAppearanceList = (input: {
       const start = Math.min(anchorIndex, focusIndex)
       const end = Math.max(anchorIndex, focusIndex)
       return input.ids.slice(start, end + 1)
-    },
-    sectionOf: id => {
-      if (!ensureAllIds().has(id)) {
-        return undefined
-      }
-
-      return parseAppearanceId(id)?.section
-    },
-    idsIn: section => input.idsBySection.get(section) ?? emptyIds
+    }
   }
 }
 
@@ -153,7 +122,6 @@ export const buildAppearanceList = (input: {
 }): AppearanceList => {
   const previous = input.previous
   const ids: AppearanceId[] = []
-  const nextIdsBySection = new Map<SectionKey, readonly AppearanceId[]>()
   let totalIdCount = 0
 
   input.sections.order.forEach(sectionKey => {
@@ -167,19 +135,14 @@ export const buildAppearanceList = (input: {
       && input.previousSections?.byKey.get(sectionKey) === section
     )
     const previousSectionIds = canReuseSectionIds
-      ? previous.idsIn(sectionKey)
+      ? input.previousSections?.byKey.get(sectionKey)?.visible
+        ? input.previous?.ids.filter(id => parseAppearanceId(id)?.sectionKey === sectionKey)
+        : []
       : undefined
     const sectionIds = previousSectionIds ?? section.ids.map(recordId => createAppearanceId({
-      section: sectionKey,
+      sectionKey,
       recordId
     }))
-
-    nextIdsBySection.set(
-      sectionKey,
-      previousSectionIds && sameOrder(previousSectionIds, sectionIds)
-        ? previousSectionIds
-        : sectionIds
-    )
     totalIdCount += sectionIds.length
     if (!section.collapsed) {
       ids.push(...sectionIds)
@@ -189,15 +152,10 @@ export const buildAppearanceList = (input: {
   const publishedIds = previous && sameOrder(previous.ids, ids)
     ? previous.ids
     : ids
-  const idsBySection = previous && previous.idsBySection.size === nextIdsBySection.size
-    && Array.from(nextIdsBySection.entries()).every(([key, value]) => previous.idsBySection.get(key) === value)
-    ? previous.idsBySection
-    : nextIdsBySection
 
   if (
     previous
     && previous.ids === publishedIds
-    && previous.idsBySection === idsBySection
     && previous.count === totalIdCount
   ) {
     return previous
@@ -205,7 +163,6 @@ export const buildAppearanceList = (input: {
 
   return createAppearanceList({
     ids: publishedIds,
-    idsBySection,
     count: totalIdCount,
     previous
   })
@@ -214,13 +171,16 @@ export const buildAppearanceList = (input: {
 export const buildPublishedSections = (input: {
   sections: SectionState
   appearances: AppearanceList
-  previous?: readonly Section[]
+  previous?: SectionList
   previousSections?: SectionState
-}): readonly Section[] => {
+}): SectionList => {
+  const previous = input.previous
   const previousByKey = new Map(
-    (input.previous ?? []).map(section => [section.key, section] as const)
+    (previous?.all ?? []).map(section => [section.key, section] as const)
   )
-  const next: Section[] = []
+  const sections: Section[] = []
+  const byKey = new Map<SectionKey, Section>()
+  const ids: SectionKey[] = []
 
   input.sections.order.forEach(key => {
     const node = input.sections.byKey.get(key)
@@ -228,29 +188,57 @@ export const buildPublishedSections = (input: {
       return
     }
 
-    const ids = input.appearances.idsIn(node.key)
+    const appearanceIds = node.ids.map(recordId => createAppearanceId({
+      sectionKey: node.key,
+      recordId
+    }))
     const previousSection = previousByKey.get(node.key)
     const canReuse = previousSection
       && input.previousSections?.byKey.get(node.key) === node
-      && previousSection.ids === ids
+      && sameOrder(previousSection.appearanceIds, appearanceIds)
+      && sameOrder(previousSection.recordIds, node.ids)
 
-    next.push(canReuse
+    const section = canReuse
       ? previousSection
       : {
           key: node.key,
           title: node.title,
           color: node.color,
           bucket: node.bucket,
-          ids,
+          appearanceIds,
+          recordIds: node.ids,
           collapsed: node.collapsed
-        })
+        }
+    sections.push(section)
+    ids.push(section.key)
+    byKey.set(section.key, section)
   })
 
-  return input.previous
-    && input.previous.length === next.length
-    && input.previous.every((section, index) => section === next[index])
-    ? input.previous
-    : next
+  const publishedIds = previous && sameOrder(previous.ids, ids)
+    ? previous.ids
+    : ids
+  const publishedSections = previous
+    && previous.all.length === sections.length
+    && previous.all.every((section, index) => section === sections[index])
+    ? previous.all
+    : sections
+
+  if (
+    previous
+    && previous.ids === publishedIds
+    && previous.all === publishedSections
+  ) {
+    return previous
+  }
+
+  return {
+    ids: publishedIds,
+    all: publishedSections,
+    get: key => byKey.get(key),
+    has: key => byKey.has(key),
+    indexOf: key => publishedIds.indexOf(key),
+    at: index => publishedIds[index]
+  }
 }
 
 export const publishSectionsState = (input: {
@@ -258,11 +246,11 @@ export const publishSectionsState = (input: {
   previousSections?: SectionState
   previous?: {
     appearances?: AppearanceList
-    sections?: readonly Section[]
+    sections?: SectionList
   }
 }): {
   appearances: AppearanceList
-  sections: readonly Section[]
+  sections: SectionList
 } => {
   const appearances = buildAppearanceList({
     sections: input.sections,

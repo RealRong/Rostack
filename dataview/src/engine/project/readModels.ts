@@ -14,7 +14,7 @@ export type SectionBucket = Pick<Bucket, 'key' | 'title' | 'value' | 'clearValue
 export interface Appearance {
   id: AppearanceId
   recordId: RecordId
-  section: SectionKey
+  sectionKey: SectionKey
 }
 
 export interface Section {
@@ -22,13 +22,22 @@ export interface Section {
   title: string
   color?: string
   bucket?: SectionBucket
-  ids: readonly AppearanceId[]
   collapsed: boolean
+  appearanceIds: readonly AppearanceId[]
+  recordIds: readonly RecordId[]
+}
+
+export interface SectionList {
+  ids: readonly SectionKey[]
+  all: readonly Section[]
+  get: (key: SectionKey) => Section | undefined
+  has: (key: SectionKey) => boolean
+  indexOf: (key: SectionKey) => number | undefined
+  at: (index: number) => SectionKey | undefined
 }
 
 export interface AppearanceList {
   ids: readonly AppearanceId[]
-  idsBySection: ReadonlyMap<SectionKey, readonly AppearanceId[]>
   count: number
   get: (id: AppearanceId) => Appearance | undefined
   has: (id: AppearanceId) => boolean
@@ -37,8 +46,6 @@ export interface AppearanceList {
   prev: (id: AppearanceId) => AppearanceId | undefined
   next: (id: AppearanceId) => AppearanceId | undefined
   range: (anchor: AppearanceId, focus: AppearanceId) => readonly AppearanceId[]
-  sectionOf: (id: AppearanceId) => SectionKey | undefined
-  idsIn: (section: SectionKey) => readonly AppearanceId[]
 }
 
 export interface FieldList {

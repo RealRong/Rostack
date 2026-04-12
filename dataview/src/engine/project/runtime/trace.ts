@@ -2,7 +2,7 @@ import type {
   CalculationCollection
 } from '@dataview/core/calculation'
 import type {
-  Section,
+  SectionList,
   SectionKey
 } from '../readModels'
 import type {
@@ -30,25 +30,25 @@ const countChangedIds = (
 }
 
 const countReusedSections = (
-  previous: readonly Section[] | undefined,
-  next: readonly Section[] | undefined
+  previous: SectionList | undefined,
+  next: SectionList | undefined
 ) => {
-  if (!previous?.length || !next?.length) {
+  if (!previous?.all.length || !next?.all.length) {
     return 0
   }
 
-  const previousByKey = new Map(previous.map(section => [section.key, section] as const))
-  return next.reduce((count, section) => count + (
+  const previousByKey = new Map(previous.all.map(section => [section.key, section] as const))
+  return next.all.reduce((count, section) => count + (
     previousByKey.get(section.key) === section ? 1 : 0
   ), 0)
 }
 
 const countChangedSections = (
-  previous: readonly Section[] | undefined,
-  next: readonly Section[] | undefined
+  previous: SectionList | undefined,
+  next: SectionList | undefined
 ) => {
-  const previousByKey = new Map((previous ?? []).map(section => [section.key, section] as const))
-  const nextByKey = new Map((next ?? []).map(section => [section.key, section] as const))
+  const previousByKey = new Map((previous?.all ?? []).map(section => [section.key, section] as const))
+  const nextByKey = new Map((next?.all ?? []).map(section => [section.key, section] as const))
   const keys = new Set([
     ...Array.from(previousByKey.keys()),
     ...Array.from(nextByKey.keys())
@@ -86,15 +86,15 @@ export const buildStageMetrics = (
       }
 
       const reusedNodeCount = (
-        (previousRecords?.derivedIds === nextRecords.derivedIds ? 1 : 0)
-        + (previousRecords?.orderedIds === nextRecords.orderedIds ? 1 : 0)
-        + (previousRecords?.visibleIds === nextRecords.visibleIds ? 1 : 0)
+        (previousRecords?.derived === nextRecords.derived ? 1 : 0)
+        + (previousRecords?.ordered === nextRecords.ordered ? 1 : 0)
+        + (previousRecords?.visible === nextRecords.visible ? 1 : 0)
       )
-      const changedRecordCount = countChangedIds(previousRecords?.visibleIds, nextRecords.visibleIds)
+      const changedRecordCount = countChangedIds(previousRecords?.visible, nextRecords.visible)
 
       return {
-        inputCount: previousRecords?.visibleIds.length,
-        outputCount: nextRecords.visibleIds.length,
+        inputCount: previousRecords?.visible.length,
+        outputCount: nextRecords.visible.length,
         reusedNodeCount,
         rebuiltNodeCount: 3 - reusedNodeCount,
         ...(changedRecordCount === undefined ? {} : { changedRecordCount })
@@ -109,10 +109,10 @@ export const buildStageMetrics = (
 
       const reusedNodeCount = countReusedSections(previousSections, nextSections)
       return {
-        inputCount: previousSections?.length,
-        outputCount: nextSections.length,
+        inputCount: previousSections?.all.length,
+        outputCount: nextSections.all.length,
         reusedNodeCount,
-        rebuiltNodeCount: nextSections.length - reusedNodeCount,
+        rebuiltNodeCount: nextSections.all.length - reusedNodeCount,
         changedSectionCount: countChangedSections(previousSections, nextSections)
       }
     }

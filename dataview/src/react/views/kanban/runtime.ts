@@ -26,9 +26,6 @@ import {
   interactiveSelector
 } from '@shared/dom'
 import {
-  move as viewMove
-} from '@dataview/engine/project'
-import type {
   AppearanceId,
   Section,
   SectionKey
@@ -92,7 +89,7 @@ const resolveInitialVisibleCount = (
 const readSectionLengths = (
   sections: readonly Section[]
 ) => new Map(
-  sections.map(section => [section.key, section.ids.length] as const)
+  sections.map(section => [section.key, section.appearanceIds.length] as const)
 )
 
 const useSectionVisibility = (input: {
@@ -147,21 +144,21 @@ const useSectionVisibility = (input: {
             Math.max(previousInitialVisibleCount, previousExpandedCount)
           )
         const currentVisibleCount = next[section.key] === undefined
-          ? resolveInitialVisibleCount(input.cardsPerColumn, section.ids.length)
+          ? resolveInitialVisibleCount(input.cardsPerColumn, section.appearanceIds.length)
           : Math.min(
-            section.ids.length,
+            section.appearanceIds.length,
             Math.max(
-              resolveInitialVisibleCount(input.cardsPerColumn, section.ids.length),
+              resolveInitialVisibleCount(input.cardsPerColumn, section.appearanceIds.length),
               next[section.key]!
             )
           )
 
         if (
-          section.ids.length > previousLength
+          section.appearanceIds.length > previousLength
           && previousVisibleCount >= previousLength
-          && currentVisibleCount < section.ids.length
+          && currentVisibleCount < section.appearanceIds.length
         ) {
-          next[section.key] = section.ids.length
+          next[section.key] = section.appearanceIds.length
           changed = true
         }
       })
@@ -178,13 +175,13 @@ const useSectionVisibility = (input: {
     input.sections.map(section => {
       const initialVisibleCount = resolveInitialVisibleCount(
         input.cardsPerColumn,
-        section.ids.length
+        section.appearanceIds.length
       )
       const expandedCount = expandedCountBySectionKey[section.key]
       const visibleCount = expandedCount === undefined
         ? initialVisibleCount
-        : Math.min(section.ids.length, Math.max(initialVisibleCount, expandedCount))
-      const hiddenCount = Math.max(0, section.ids.length - visibleCount)
+        : Math.min(section.appearanceIds.length, Math.max(initialVisibleCount, expandedCount))
+      const hiddenCount = Math.max(0, section.appearanceIds.length - visibleCount)
       const showMoreCount = input.cardsPerColumn === 'all'
         ? hiddenCount
         : Math.min(hiddenCount, input.cardsPerColumn)
@@ -192,7 +189,7 @@ const useSectionVisibility = (input: {
       return [
         section.key,
         {
-          visibleIds: section.ids.slice(0, visibleCount),
+          visibleIds: section.appearanceIds.slice(0, visibleCount),
           visibleCount,
           hiddenCount,
           showMoreCount
@@ -202,7 +199,7 @@ const useSectionVisibility = (input: {
   ), [expandedCountBySectionKey, input.cardsPerColumn, input.sections])
 
   const sectionIdsByKey = useMemo(() => new Map(
-    input.sections.map(section => [section.key, section.ids] as const)
+    input.sections.map(section => [section.key, section.appearanceIds] as const)
   ), [input.sections])
 
   const showMore = useCallback((sectionKey: SectionKey) => {
@@ -279,7 +276,7 @@ export const useKanbanRuntime = (input: {
   const marqueeActive = marqueeSession?.ownerViewId === input.active.view.id
   const visibility = useSectionVisibility({
     viewId: input.active.view.id,
-    sections: input.active.sections,
+    sections: input.active.sections.all,
     cardsPerColumn: input.extra.cardsPerColumn
   })
 
@@ -317,15 +314,15 @@ export const useKanbanRuntime = (input: {
     canDrag: input.extra.canReorder,
     itemMap: new Map(appearanceIds.map(id => [id, id] as const)),
     getLayout: () => readBoardLayout(scrollRef.current),
-    getDragIds: activeId => viewMove.drag(
-      appearanceIds,
-      selectedIds,
-      activeId
+    getDragIds: activeId => (
+      selectedIds.includes(activeId)
+        ? selectedIds.filter(id => appearanceIds.includes(id))
+        : [activeId]
     ),
     onDraggingChange: setDragging,
     onDrop: (cardIds, target) => {
       dataView.engine.active.items.move(cardIds, {
-        section: target.sectionKey,
+        sectionKey: target.sectionKey,
         ...(target.beforeAppearanceId ? { before: target.beforeAppearanceId } : {})
       })
     }

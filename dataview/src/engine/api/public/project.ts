@@ -14,10 +14,12 @@ import type {
   ViewType
 } from '@dataview/core/contracts'
 import type {
+  Appearance,
   AppearanceId,
   AppearanceList,
   FieldList,
   Section,
+  SectionList,
   SectionKey
 } from '../../project/readModels'
 import type {
@@ -31,10 +33,7 @@ import type {
   ReadStore,
   Equality
 } from '@shared/core'
-import type {
-  CellRef,
-  RecordFieldRef
-} from '../../project/refs'
+import type { CellRef, Placement } from '../../project/refs'
 import type {
   ViewEngineApi,
   ViewGalleryApi,
@@ -61,41 +60,65 @@ export interface ActiveView {
 
 export interface RecordSet {
   viewId: ViewId
-  derivedIds: readonly RecordId[]
-  orderedIds: readonly RecordId[]
-  visibleIds: readonly RecordId[]
+  derived: readonly RecordId[]
+  ordered: readonly RecordId[]
+  visible: readonly RecordId[]
 }
 
-export interface ActiveViewState {
-  view: View
+export interface ActiveQuery {
   filter: ViewFilterProjection
   group: ViewGroupProjection
   search: ViewSearchProjection
   sort: ViewSortProjection
+}
+
+export interface ActiveViewState {
+  view: View
+  query: ActiveQuery
   records: RecordSet
-  sections: readonly Section[]
+  sections: SectionList
   appearances: AppearanceList
   fields: FieldList
   calculations: ReadonlyMap<SectionKey, CalculationCollection>
 }
 
-export interface ActiveViewReadApi {
-  getRecord: (recordId: RecordId) => DataRecord | undefined
-  getField: (fieldId: FieldId) => Field | undefined
-  getGroupField: () => Field | undefined
-  getFilterField: (index: number) => Field | undefined
-  getRecordField: (cell: CellRef) => RecordFieldRef | undefined
-  getSectionRecordIds: (section: SectionKey) => readonly RecordId[]
-  getAppearanceRecordId: (appearanceId: AppearanceId) => RecordId | undefined
-  getAppearanceRecord: (appearanceId: AppearanceId) => DataRecord | undefined
-  getAppearanceSectionKey: (appearanceId: AppearanceId) => SectionKey | undefined
-  getSectionColor: (section: SectionKey) => string | undefined
-  getAppearanceColor: (appearanceId: AppearanceId) => string | undefined
-  getDisplayFieldIndex: (fieldId: FieldId) => number
+export interface ActiveCell {
+  appearanceId: AppearanceId
+  recordId: RecordId
+  fieldId: FieldId
+  sectionKey: SectionKey
+  record: DataRecord
+  field: Field | undefined
+  value: unknown
+}
+
+export interface ItemMovePlan {
+  appearanceIds: readonly AppearanceId[]
+  recordIds: readonly RecordId[]
+  changed: boolean
+  sectionChanged: boolean
+  target: {
+    sectionKey: SectionKey
+    beforeAppearanceId?: AppearanceId
+    beforeRecordId?: RecordId
+  }
+}
+
+export interface ActiveReadApi {
+  record: (recordId: RecordId) => DataRecord | undefined
+  field: (fieldId: FieldId) => Field | undefined
+  section: (key: SectionKey) => Section | undefined
+  appearance: (id: AppearanceId) => Appearance | undefined
+  cell: (ref: CellRef) => ActiveCell | undefined
+  filterField: (index: number) => Field | undefined
+  groupField: () => Field | undefined
+  planMove: (
+    appearanceIds: readonly AppearanceId[],
+    target: Placement
+  ) => ItemMovePlan
 }
 
 export interface ActiveGalleryState {
-  sections: readonly Section[]
   groupUsesOptionColors: boolean
   canReorder: boolean
   cardSize: GalleryCardSize
@@ -128,7 +151,7 @@ export interface ActiveEngineApi extends Omit<ViewEngineApi, 'gallery' | 'kanban
   view: ReadStore<View | undefined>
   state: ReadStore<ActiveViewState | undefined>
   select: ActiveSelectApi
-  read: ActiveViewReadApi
+  read: ActiveReadApi
   gallery: ActiveGalleryApi
   kanban: ActiveKanbanApi
 }

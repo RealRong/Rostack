@@ -26,7 +26,7 @@ export const Grid = () => {
   const indicator = runtime.indicator
   const empty = active.appearances.ids.length === 0
   const sectionSizeByKey = new Map(
-    extra.sections.map(section => [section.key, section.ids.length] as const)
+    active.sections.all.map(section => [section.key, section.appearanceIds.length] as const)
   )
   const lastBlock = blocks[blocks.length - 1]
   const bottomSpacerHeight = lastBlock
@@ -82,7 +82,7 @@ export const Grid = () => {
                         <span
                           className="inline-flex h-2.5 w-2.5 rounded-full"
                           style={resolveOptionDotStyle(
-                            engine.active.read.getSectionColor(block.section.key)
+                            engine.active.read.section(block.section.key)?.color
                           )}
                         />
                       ) : null}

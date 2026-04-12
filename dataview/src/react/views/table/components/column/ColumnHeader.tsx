@@ -108,8 +108,8 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   }
 
   const view = currentView.view
-  const groupProjection = currentView.group
-  const sortProjection = currentView.sort
+  const groupProjection = currentView.query.group
+  const sortProjection = currentView.query.sort
   const showVerticalLinesStore = useMemo(() => editor.active.select(
     state => state?.view.options.table.showVerticalLines ?? false
   ), [editor])

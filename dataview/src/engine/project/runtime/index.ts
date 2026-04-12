@@ -25,10 +25,7 @@ import type {
 
 const PROJECT_STORE_KEYS = [
   'view',
-  'filter',
-  'group',
-  'search',
-  'sort',
+  'query',
   'records',
   'sections',
   'appearances',

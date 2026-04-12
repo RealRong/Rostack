@@ -36,7 +36,7 @@ export const KanbanCanvas = () => {
               overflowAnchor: 'none'
             }}
           >
-            {active.sections.map(section => (
+            {active.sections.all.map(section => (
               <Column
                 key={section.key}
                 section={section}

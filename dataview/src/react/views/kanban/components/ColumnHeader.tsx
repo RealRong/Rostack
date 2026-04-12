@@ -10,10 +10,10 @@ export const ColumnHeader = (props: {
     active,
     extra
   } = useKanbanContext()
-  const groupField = active.group.field
+  const groupField = active.query.group.field
   const bucket = props.section.bucket
   const canRenderBucket = Boolean(groupField && bucket)
-  const count = props.section.ids.length
+  const count = props.section.appearanceIds.length
 
   return (
     <div className="flex items-center gap-3">

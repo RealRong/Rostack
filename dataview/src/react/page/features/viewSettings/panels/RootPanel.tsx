@@ -222,15 +222,15 @@ export const RootPanel = () => {
   const fields = getDocumentFields(document)
   const filterProjection = useDataViewValue(
     dataView => dataView.engine.active.state,
-    state => state?.filter
+    state => state?.query.filter
   )
   const sortProjection = useDataViewValue(
     dataView => dataView.engine.active.state,
-    state => state?.sort
+    state => state?.query.sort
   )
   const groupProjection = useDataViewValue(
     dataView => dataView.engine.active.state,
-    state => state?.group
+    state => state?.query.group
   )
   const viewsCount = getDocumentViews(document).length
   const propertyCount = currentView?.display.fields.length ?? 0

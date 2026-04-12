@@ -29,11 +29,11 @@ import type {
   SelectionOverlay,
   NodeToolbarContext
 } from '../../selection'
-import { readSelectionNodeInfo } from '../../selection/nodeSummary'
 import {
+  readSelectionNodeInfo,
   resolveSelectionOverlay,
   resolveSelectionToolbar
-} from './selectionPresentation'
+} from './presentation'
 import { createTargetRead } from './target'
 
 export type SelectionRead = {

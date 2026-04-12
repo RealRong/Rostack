@@ -42,7 +42,7 @@ export const KanbanView = (props: KanbanViewProps) => {
     throw new Error('Kanban view requires an active kanban state.')
   }
 
-  if (!active.group.active) {
+  if (!active.query.group.active) {
     return (
       <div style={contentInsetStyle}>
         <Empty />

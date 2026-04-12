@@ -13,6 +13,7 @@ import type {
   SectionKey
 } from '../readModels'
 import type {
+  ActiveQuery,
   ActiveView,
   RecordSet,
 } from '../../api/public'
@@ -22,15 +23,13 @@ import type {
   ViewSearchProjection,
   ViewSortProjection
 } from '../viewProjections'
+import type { SectionList } from '../readModels'
 
 export interface ProjectState {
   view?: ActiveView
-  filter?: ViewFilterProjection
-  group?: ViewGroupProjection
-  search?: ViewSearchProjection
-  sort?: ViewSortProjection
+  query?: ActiveQuery
   records?: RecordSet
-  sections?: readonly Section[]
+  sections?: SectionList
   appearances?: AppearanceList
   fields?: FieldList
   calculations?: ReadonlyMap<SectionKey, CalculationCollection>
@@ -104,10 +103,7 @@ export const emptyProjectionState = (): ProjectionState => ({
 
 export const emptyProjectState = (): ProjectState => ({
   view: undefined,
-  filter: undefined,
-  group: undefined,
-  search: undefined,
-  sort: undefined,
+  query: undefined,
   records: undefined,
   sections: undefined,
   appearances: undefined,

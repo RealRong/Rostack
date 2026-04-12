@@ -16,10 +16,6 @@ import {
 import { isTitleFieldId } from '@dataview/core/field'
 import { createUniqueFieldName } from '@dataview/core/field'
 import {
-  recordIdsOfAppearances,
-  readSectionRecordIds,
-  move,
-  toRecordField,
   type CellRef
 } from '@dataview/engine/project'
 import type {
@@ -113,7 +109,7 @@ const toRecordFieldAction = (
 )
 
 const createGroupWriteCommands = (input: {
-  readRecord: (recordId: RecordId) => ReturnType<ActiveEngineApi['read']['getRecord']>
+  readRecord: (recordId: RecordId) => ReturnType<ActiveEngineApi['read']['record']>
   group: ViewGroup
   field: Field
   appearances: AppearanceList
@@ -153,7 +149,7 @@ const createGroupWriteCommands = (input: {
         field: input.field,
         group: input.group,
         currentValue,
-        fromKey: input.appearances.sectionOf(appearanceId),
+        fromKey: input.appearances.get(appearanceId)?.sectionKey,
         toKey: input.targetSection
       })
       if (next.kind === 'invalid') {
@@ -186,7 +182,8 @@ export const createViewEngineApi = (options: {
   readDocument: () => DataDoc
   readView: () => View | undefined
   readState: () => ActiveViewState | undefined
-  readRecord: ActiveEngineApi['read']['getRecord']
+  activeRead: ActiveEngineApi['read']
+  readRecord: ActiveEngineApi['read']['record']
   dispatch: (action: Action | readonly Action[]) => {
     applied: boolean
   }
@@ -221,54 +218,34 @@ export const createViewEngineApi = (options: {
         return
       }
 
-      const groupWrite = state.group?.group && state.group.field
+      const groupWrite = state.query.group.group && state.query.group.field
         ? {
-            group: state.group.group,
-            field: state.group.field
+            group: state.query.group.group,
+            field: state.query.group.field
           }
         : undefined
-      const plan = move.plan(state.appearances, appearanceIds, target)
-      if (!plan.changed || !plan.ids.length) {
+      const resolvedPlan = options.activeRead.planMove(appearanceIds, target)
+      if (!resolvedPlan.changed || !resolvedPlan.appearanceIds.length) {
         return
       }
 
-      const recordIds = recordIdsOfAppearances(state.appearances, plan.ids)
-      if (!recordIds.length) {
+      if (!resolvedPlan.recordIds.length) {
         return
       }
 
-      const sectionChanged = plan.ids.some(id => state.appearances.sectionOf(id) !== plan.target.section)
-      if (sectionChanged && state.view.group && !groupWrite) {
+      if (resolvedPlan.sectionChanged && state.view.group && !groupWrite) {
         return
       }
-
-      const sectionRecordIds = readSectionRecordIds(
-        {
-          sections: state.sections,
-          appearances: state.appearances
-        },
-        plan.target.section
-      )
-      const rawBeforeRecordId = plan.target.before
-        ? state.appearances.get(plan.target.before)?.recordId
-        : undefined
-      const beforeRecordId = rawBeforeRecordId
-        ? move.before(
-            sectionRecordIds,
-            sectionRecordIds.indexOf(rawBeforeRecordId),
-            recordIds
-          )
-        : undefined
       const nextCommands: Action[] = []
 
-      if (sectionChanged && groupWrite) {
+      if (resolvedPlan.sectionChanged && groupWrite) {
         const valueCommands = createGroupWriteCommands({
           readRecord: options.readRecord,
           group: groupWrite.group,
           field: groupWrite.field,
           appearances: state.appearances,
-          ids: plan.ids,
-          targetSection: plan.target.section
+          ids: resolvedPlan.appearanceIds,
+          targetSection: resolvedPlan.target.sectionKey
         })
         if (!valueCommands) {
           return
@@ -278,7 +255,10 @@ export const createViewEngineApi = (options: {
       }
 
       if (!state.view.sort.length) {
-        const moveCommand = commands.createMoveOrderCommand(recordIds, beforeRecordId)
+        const moveCommand = commands.createMoveOrderCommand(
+          resolvedPlan.recordIds,
+          resolvedPlan.target.beforeRecordId
+        )
         if (moveCommand) {
           nextCommands.push(moveCommand)
         }
@@ -294,10 +274,10 @@ export const createViewEngineApi = (options: {
         return undefined
       }
 
-      const groupWrite = state.group?.group && state.group.field
+      const groupWrite = state.query.group.group && state.query.group.field
         ? {
-            group: state.group.group,
-            field: state.group.field
+            group: state.query.group.group,
+            field: state.query.group.field
           }
         : undefined
       if (state.view.group && !groupWrite) {
@@ -349,13 +329,7 @@ export const createViewEngineApi = (options: {
         && state.view.options.kanban.newRecordPosition === 'start'
         && !state.view.sort.length
       ) {
-        const beforeRecordId = readSectionRecordIds(
-          {
-            sections: state.sections,
-            appearances: state.appearances
-          },
-          input.section
-        )[0]
+        const beforeRecordId = state.sections.get(input.section)?.recordIds[0]
         const moveCommand = commands.createMoveOrderCommand([recordId], beforeRecordId)
         if (moveCommand) {
           nextCommands.push(moveCommand)
@@ -373,7 +347,10 @@ export const createViewEngineApi = (options: {
         return
       }
 
-      const recordIds = recordIdsOfAppearances(state.appearances, appearanceIds)
+      const recordIds = appearanceIds.flatMap(appearanceId => {
+        const recordId = state.appearances.get(appearanceId)?.recordId
+        return recordId ? [recordId] : []
+      }).filter((recordId, index, source) => source.indexOf(recordId) === index)
       if (!recordIds.length) {
         return
       }
@@ -390,7 +367,7 @@ export const createViewEngineApi = (options: {
     cell: CellRef,
     value: unknown | undefined
   ) => {
-    const target = toRecordField(cell, state.appearances)
+    const target = options.activeRead.cell(cell)
     if (!target) {
       return
     }

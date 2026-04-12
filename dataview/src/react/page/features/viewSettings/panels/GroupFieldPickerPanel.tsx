@@ -17,7 +17,7 @@ export const GroupFieldPickerPanel = () => {
   )
   const groupProjection = useDataViewValue(
     dataView => dataView.engine.active.state,
-    state => state?.group
+    state => state?.query.group
   )
   const currentViewDomain = currentView
     ? engine.active

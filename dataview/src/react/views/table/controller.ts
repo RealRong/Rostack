@@ -100,7 +100,7 @@ const sectionBlockHeight = (input: {
     : (
       input.headerHeight
       + input.headerHeight
-      + (input.section.ids.length * input.rowHeight)
+      + (input.section.appearanceIds.length * input.rowHeight)
     )
 
 const flatRowTarget = (input: {
@@ -136,8 +136,8 @@ const groupedRowTarget = (input: {
 } | null => {
   let sectionTop = 0
 
-  for (const section of input.currentView.sections) {
-    const rowIndex = section.ids.indexOf(input.rowId)
+  for (const section of input.currentView.sections.all) {
+    const rowIndex = section.appearanceIds.indexOf(input.rowId)
     if (rowIndex !== -1) {
       const top = sectionTop + input.headerHeight + input.headerHeight + (rowIndex * input.rowHeight)
       return {
@@ -325,6 +325,15 @@ export const createTableController = (options: {
   }
   const openCell = createCellOpener({
     valueEditor: options.valueEditor,
+    resolveCell: cell => {
+      const resolved = options.engine.active.read.cell(cell)
+      return resolved
+        ? {
+            recordId: resolved.recordId,
+            fieldId: resolved.fieldId
+          }
+        : undefined
+    },
     currentView: currentView.get,
     gridSelection,
     dom,

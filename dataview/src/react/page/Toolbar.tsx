@@ -149,15 +149,15 @@ export const PageToolbar = () => {
   )
   const searchProjection = useDataViewValue(
     dataView => dataView.engine.active.state,
-    state => state?.search
+    state => state?.query.search
   )
   const filterProjection = useDataViewValue(
     dataView => dataView.engine.active.state,
-    state => state?.filter
+    state => state?.query.filter
   )
   const sortProjection = useDataViewValue(
     dataView => dataView.engine.active.state,
-    state => state?.sort
+    state => state?.query.sort
   )
   const currentViewDomain = currentView
     ? engine.active

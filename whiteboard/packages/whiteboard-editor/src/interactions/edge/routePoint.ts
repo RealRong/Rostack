@@ -1,4 +1,6 @@
 import {
+  resolveEdgeRouteHandleTarget,
+  type EdgeRouteHandleTarget,
   type EdgeView
 } from '@whiteboard/core/edge'
 import type { EdgeId } from '@whiteboard/core/types'
@@ -16,7 +18,6 @@ import type { PointerDownInput } from '../../types/input'
 import type { InteractionContext } from '../context'
 import {
   finishRouteHandleState,
-  resolveRouteHandleTarget,
   startRouteHandleState,
   startStepSegmentRouteHandleState,
   stepRouteHandleState
@@ -77,7 +78,7 @@ const isEdgeRoutePick = (
 const resolvePickTarget = (
   ctx: InteractionContext,
   pick: PointerDownInput['pick']
-) => {
+): EdgeRouteHandleTarget | undefined => {
   if (!isEdgeRoutePick(pick)) {
     return undefined
   }
@@ -87,7 +88,7 @@ const resolvePickTarget = (
     return undefined
   }
 
-  return resolveRouteHandleTarget({
+  return resolveEdgeRouteHandleTarget({
     edgeId: pick.id,
     handles: view.handles,
     pick: {

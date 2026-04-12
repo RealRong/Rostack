@@ -1,3 +1,4 @@
+import { normalizePolylinePoints } from '../geometry'
 import type { EdgeAnchor, Point } from '../types'
 import type {
   EdgePathInput,
@@ -77,45 +78,6 @@ const pushPoint = (
   if (!last || !isSamePoint(last, point)) {
     points.push(point)
   }
-}
-
-const normalizePolylinePoints = (
-  points: readonly Point[]
-) => {
-  const normalized: Point[] = []
-
-  for (let index = 0; index < points.length; index += 1) {
-    const point = points[index]!
-
-    if (!normalized.length) {
-      normalized.push(point)
-      continue
-    }
-
-    const last = normalized[normalized.length - 1]!
-    if (isSamePoint(last, point)) {
-      continue
-    }
-
-    normalized.push(point)
-
-    while (normalized.length >= 3) {
-      const right = normalized[normalized.length - 1]!
-      const middle = normalized[normalized.length - 2]!
-      const left = normalized[normalized.length - 3]!
-      const collinear =
-        (left.x === middle.x && middle.x === right.x)
-        || (left.y === middle.y && middle.y === right.y)
-
-      if (!collinear) {
-        break
-      }
-
-      normalized.splice(normalized.length - 2, 1)
-    }
-  }
-
-  return normalized
 }
 
 const createSegments = (

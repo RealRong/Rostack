@@ -12,28 +12,55 @@ import type { SelectionMode } from '@whiteboard/core/node'
 
 export type MarqueeMatch = 'touch' | 'contain'
 
-export type MarqueeSelectionState = {
+type MarqueeSelectionBaseState = {
   pointerId: number
   startScreen: Point
   startWorld: Point
   match: MarqueeMatch
   mode: SelectionMode
   base: SelectionTarget
-  active: boolean
-  worldRect?: Rect
   selection: SelectionTarget
 }
 
-export type MarqueeSelectionDraft = {
-  active: boolean
-  worldRect?: Rect
-  selection?: SelectionTarget
-  changed: boolean
-}
+export type MarqueeSelectionState =
+  | (MarqueeSelectionBaseState & {
+      kind: 'armed'
+    })
+  | (MarqueeSelectionBaseState & {
+      kind: 'active'
+      worldRect: Rect
+    })
+  | (MarqueeSelectionBaseState & {
+      kind: 'finished'
+      worldRect?: Rect
+    })
 
-export type MarqueeSelectionStepResult = {
+export type MarqueeSelectionEffect =
+  | {
+      type: 'selection.replace'
+      selection: SelectionTarget
+    }
+  | {
+      type: 'preview.set'
+      worldRect: Rect
+      match: MarqueeMatch
+    }
+
+export type MarqueeSelectionEvent =
+  | {
+      type: 'pointer.move' | 'pointer.up'
+      currentScreen: Point
+      currentWorld: Point
+      minDistance: number
+      matched: SelectionTarget
+    }
+  | {
+      type: 'cancel'
+    }
+
+export type MarqueeSelectionTransition = {
   state: MarqueeSelectionState
-  draft: MarqueeSelectionDraft
+  effects: readonly MarqueeSelectionEffect[]
 }
 
 export const createMarqueeRect = (
@@ -41,20 +68,86 @@ export const createMarqueeRect = (
   current: Point
 ): Rect => rectFromPoints(start, current)
 
-export const hasMarqueeStarted = (options: {
+const hasMarqueeStarted = (input: {
   startScreen: Point
   currentScreen: Point
   minDistance: number
   active: boolean
 }) => {
-  if (options.active) {
+  if (input.active) {
     return true
   }
 
-  const dx = Math.abs(options.currentScreen.x - options.startScreen.x)
-  const dy = Math.abs(options.currentScreen.y - options.startScreen.y)
+  const dx = Math.abs(input.currentScreen.x - input.startScreen.x)
+  const dy = Math.abs(input.currentScreen.y - input.startScreen.y)
 
-  return dx >= options.minDistance || dy >= options.minDistance
+  return dx >= input.minDistance || dy >= input.minDistance
+}
+
+const toMarqueeSelectionState = (
+  input: {
+    previous: MarqueeSelectionState
+    event: Extract<MarqueeSelectionEvent, {
+      type: 'pointer.move' | 'pointer.up'
+    }>
+  }
+): MarqueeSelectionState => {
+  const active = hasMarqueeStarted({
+    startScreen: input.previous.startScreen,
+    currentScreen: input.event.currentScreen,
+    minDistance: input.event.minDistance,
+    active: input.previous.kind === 'active'
+  })
+
+  if (!active) {
+    return input.event.type === 'pointer.up'
+      ? {
+          ...input.previous,
+          kind: 'finished'
+        }
+      : input.previous
+  }
+
+  const worldRect = createMarqueeRect(
+    input.previous.startWorld,
+    input.event.currentWorld
+  )
+  const selection = applySelectionTarget(
+    input.previous.base,
+    input.event.matched,
+    input.previous.mode
+  )
+
+  return {
+    ...input.previous,
+    kind: input.event.type === 'pointer.up' ? 'finished' : 'active',
+    worldRect,
+    selection
+  }
+}
+
+const toMarqueeSelectionEffects = (
+  previous: MarqueeSelectionState,
+  next: MarqueeSelectionState
+): readonly MarqueeSelectionEffect[] => {
+  if (next.kind === 'armed' || next.kind === 'finished') {
+    return []
+  }
+
+  const effects: MarqueeSelectionEffect[] = [{
+    type: 'preview.set',
+    worldRect: next.worldRect,
+    match: next.match
+  }]
+
+  if (!isSelectionTargetEqual(previous.selection, next.selection)) {
+    effects.push({
+      type: 'selection.replace',
+      selection: next.selection
+    })
+  }
+
+  return effects
 }
 
 export const startMarqueeSelection = (
@@ -67,75 +160,44 @@ export const startMarqueeSelection = (
     base: SelectionTarget
   }
 ): MarqueeSelectionState => ({
+  kind: 'armed',
   pointerId: input.pointerId,
   startScreen: input.startScreen,
   startWorld: input.startWorld,
   match: input.match,
   mode: input.mode,
   base: input.base,
-  active: false,
   selection: input.base
 })
 
-export const stepMarqueeSelection = (
-  input: {
-    state: MarqueeSelectionState
-    currentScreen: Point
-    currentWorld: Point
-    minDistance: number
-    matched: SelectionTarget
-  }
-): MarqueeSelectionStepResult => {
-  const active = hasMarqueeStarted({
-    startScreen: input.state.startScreen,
-    currentScreen: input.currentScreen,
-    minDistance: input.minDistance,
-    active: input.state.active
-  })
-  if (!active) {
+export const reduceMarqueeSelection = (
+  state: MarqueeSelectionState,
+  event: MarqueeSelectionEvent
+): MarqueeSelectionTransition => {
+  if (state.kind === 'finished') {
     return {
-      state: input.state,
-      draft: {
-        active: false,
-        changed: false
-      }
+      state,
+      effects: []
     }
   }
 
-  const worldRect = createMarqueeRect(
-    input.state.startWorld,
-    input.currentWorld
-  )
-  const selection = applySelectionTarget(
-    input.state.base,
-    input.matched,
-    input.state.mode
-  )
-  const state = {
-    ...input.state,
-    active: true,
-    worldRect,
-    selection
-  } satisfies MarqueeSelectionState
+  if (event.type === 'cancel') {
+    return {
+      state: {
+        ...state,
+        kind: 'finished'
+      },
+      effects: []
+    }
+  }
+
+  const next = toMarqueeSelectionState({
+    previous: state,
+    event
+  })
 
   return {
-    state,
-    draft: {
-      active: true,
-      worldRect,
-      selection,
-      changed: !isSelectionTargetEqual(input.state.selection, selection)
-    }
+    state: next,
+    effects: toMarqueeSelectionEffects(state, next)
   }
 }
-
-export const finishMarqueeSelection = (
-  state: MarqueeSelectionState
-): MarqueeSelectionDraft => ({
-  active: state.active,
-  worldRect: state.worldRect,
-  selection: state.active
-    ? state.selection
-    : undefined,
-  changed: false
-})

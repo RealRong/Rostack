@@ -24,8 +24,8 @@ export const ColumnBody = (props: {
   } = useKanbanContext()
   const bodyRef = useRef<HTMLDivElement | null>(null)
   const visibility = runtime.visibility.bySection.get(props.section.key)
-  const visibleIds = visibility?.visibleIds ?? props.section.ids
-  const visibleCount = visibility?.visibleCount ?? props.section.ids.length
+  const visibleIds = visibility?.visibleIds ?? props.section.appearanceIds
+  const visibleCount = visibility?.visibleCount ?? props.section.appearanceIds.length
   const hiddenCount = visibility?.hiddenCount ?? 0
   const showMoreCount = visibility?.showMoreCount ?? 0
   const overTarget = runtime.drag.overTarget
@@ -65,10 +65,10 @@ export const ColumnBody = (props: {
       className="relative"
       style={{
         overflowAnchor: 'none',
-        minHeight: Math.max(runtime.layout.columnMinHeight, props.section.ids.length ? 0 : 120)
+        minHeight: Math.max(runtime.layout.columnMinHeight, props.section.appearanceIds.length ? 0 : 120)
       }}
     >
-      {props.section.ids.length ? (
+      {props.section.appearanceIds.length ? (
         <div
           className="flex flex-col"
           style={{
@@ -91,7 +91,7 @@ export const ColumnBody = (props: {
             <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed bg-surface/70 px-3 py-2.5">
               <div className="min-w-0">
                 <div className="text-xs font-medium text-foreground">
-                  {`Showing ${visibleCount} / ${props.section.ids.length}`}
+                  {`Showing ${visibleCount} / ${props.section.appearanceIds.length}`}
                 </div>
                 <div className="text-xs text-fg-muted">
                   {`${hiddenCount} more card${hiddenCount === 1 ? '' : 's'} hidden`}

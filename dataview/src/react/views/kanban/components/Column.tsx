@@ -20,7 +20,7 @@ export const Column = (props: {
   const isColumnTarget = overTarget?.sectionKey === props.section.key
     && !overTarget.beforeAppearanceId
   const sectionColor = extra.groupUsesOptionColors
-    ? engine.active.read.getSectionColor(props.section.key)
+    ? engine.active.read.section(props.section.key)?.color
     : undefined
 
   return (

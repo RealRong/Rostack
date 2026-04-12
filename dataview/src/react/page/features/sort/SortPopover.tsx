@@ -37,7 +37,7 @@ export const SortPopover = (props: SortPopoverProps) => {
   )
   const sortProjection = useDataViewValue(
     dataView => dataView.engine.active.state,
-    state => state?.sort
+    state => state?.query.sort
   )
   const currentViewDomain = currentView
     ? engine.active

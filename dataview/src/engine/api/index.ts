@@ -1,12 +1,14 @@
 export type {
+  ActiveCell,
   ActiveEngineApi,
   ActiveGalleryApi,
   ActiveGalleryState,
   ActiveKanbanApi,
   ActiveKanbanState,
+  ActiveQuery,
+  ActiveReadApi,
   ActiveSelectApi,
   ActiveView,
-  ActiveViewReadApi,
   ActiveViewState,
   CreateEngineOptions,
   CommitResult,
@@ -31,6 +33,7 @@ export type {
   ProjectStageTrace,
   ProjectTrace,
   PublishTrace,
+  ItemMovePlan,
   RecordSet,
   RunningStat,
   TraceDeltaSummary

@@ -36,6 +36,7 @@ import {
   getFieldGroupMeta
 } from '@dataview/core/field'
 import type {
+  ActiveQuery,
   ActiveView
 } from '../../api/public'
 import type {
@@ -122,14 +123,8 @@ const createFields = (input: {
   byId: ReadonlyMap<FieldId, Field>
 }): FieldList => {
   const all = input.fieldIds.flatMap(fieldId => {
-    if (isTitleFieldId(fieldId)) {
-      return []
-    }
-
     const field = input.byId.get(fieldId)
-    return field
-      ? [field]
-      : []
+    return field ? [field] : []
   })
   const ids = all.map(field => field.id)
   const custom = all.filter(isCustomField) as readonly CustomField[]
@@ -403,18 +398,12 @@ export const publishViewState = (input: {
   viewId?: ViewId
   previous: {
     view?: ActiveView
-    filter?: ViewFilterProjection
-    group?: ViewGroupProjection
-    search?: ViewSearchProjection
-    sort?: ViewSortProjection
+    query?: ActiveQuery
     fields?: FieldList
   }
 }): {
   view?: ActiveView
-  filter?: ViewFilterProjection
-  group?: ViewGroupProjection
-  search?: ViewSearchProjection
-  sort?: ViewSortProjection
+  query?: ActiveQuery
   fields?: FieldList
 } => {
   const view = input.viewId
@@ -423,10 +412,7 @@ export const publishViewState = (input: {
   if (!view || !input.viewId) {
     return {
       view: undefined,
-      filter: undefined,
-      group: undefined,
-      search: undefined,
-      sort: undefined,
+      query: undefined,
       fields: undefined
     }
   }
@@ -456,10 +442,21 @@ export const publishViewState = (input: {
 
   return {
     view: reuseProjection(input.previous.view, nextView, equalActiveView),
-    filter: reuseProjection(input.previous.filter, nextFilter, equalFilterProjection),
-    group: reuseProjection(input.previous.group, nextGroup, equalGroupProjection),
-    search: reuseProjection(input.previous.search, nextSearch, equalSearchProjection),
-    sort: reuseProjection(input.previous.sort, nextSort, equalSortProjection),
+    query: reuseProjection(
+      input.previous.query,
+      {
+        filter: nextFilter,
+        group: nextGroup,
+        search: nextSearch,
+        sort: nextSort
+      },
+      (current, next) => (
+        equalFilterProjection(current.filter, next.filter)
+        && equalGroupProjection(current.group, next.group)
+        && equalSearchProjection(current.search, next.search)
+        && equalSortProjection(current.sort, next.sort)
+      )
+    ),
     fields: reuseProjection(input.previous.fields, nextFields, sameFieldList)
   }
 }

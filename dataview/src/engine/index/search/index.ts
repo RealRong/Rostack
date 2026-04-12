@@ -13,10 +13,15 @@ import {
   normalizeSearchableValue
 } from '@dataview/core/field'
 import {
-  collectSchemaFieldIds,
-  collectTouchedRecordIds,
-  hasRecordSetChange
-} from '../shared'
+  trimLowercase,
+  unique
+} from '@shared/core'
+import {
+  createFieldSyncContext,
+  shouldDropFieldIndex,
+  shouldRebuildFieldIndex,
+  shouldSyncFieldIndex
+} from '../runtime/sync'
 import type {
   RecordIndex,
   SearchDemand,
@@ -26,12 +31,10 @@ import type {
 const normalizeTokens = (
   values: readonly string[]
 ): string | undefined => {
-  const tokens = Array.from(new Set(
-    values
-      .filter(Boolean)
-      .map(value => value.trim().toLowerCase())
-      .filter(Boolean)
-  ))
+  const tokens = unique(values.flatMap(value => {
+    const token = trimLowercase(value)
+    return token ? [token] : []
+  }))
 
   return tokens.length
     ? tokens.join('\u0000')
@@ -214,29 +217,18 @@ export const syncSearchIndex = (
     return previous
   }
 
-  const touchedRecords = collectTouchedRecordIds(delta)
-  const schemaFields = collectSchemaFieldIds(delta)
-  const valueFields = new Set<FieldId>()
-  if (Array.isArray(delta.entities.values?.fields)) {
-    delta.entities.values.fields.forEach(fieldId => valueFields.add(fieldId))
-  }
-  delta.semantics.forEach(item => {
-    if (item.kind === 'record.values' && Array.isArray(item.fields)) {
-      item.fields.forEach(fieldId => valueFields.add(fieldId))
-    }
-    if (item.kind === 'record.patch' && item.aspects.includes('title')) {
-      valueFields.add('title')
-    }
+  const context = createFieldSyncContext(delta, {
+    includeTitlePatch: true,
+    includeRecordSetChange: true
   })
 
   const rebuildAll = hasLoadedAll && (
-    schemaFields.size > 0
-    || touchedRecords === 'all'
+    context.schemaFields.size > 0
+    || context.touchedRecords === 'all'
   )
   const rebuildFieldIds = new Set<FieldId>(
     Array.from(loadedFieldIds).filter(fieldId => (
-      schemaFields.has(fieldId)
-      || touchedRecords === 'all'
+      shouldRebuildFieldIndex(context, fieldId)
     ))
   )
 
@@ -247,15 +239,13 @@ export const syncSearchIndex = (
     id: fieldId,
     field: getDocumentFieldById(document, fieldId)
   }))
-  const recordSetChanged = hasRecordSetChange(delta)
-
   if (rebuildAll) {
     nextAll = buildAllTexts(document, records)
     changed = true
-  } else if (hasLoadedAll && touchedRecords !== 'all' && touchedRecords.size) {
+  } else if (hasLoadedAll && context.touchedRecords !== 'all' && context.touchedRecords.size) {
     const texts = new Map(previous.all!)
 
-    touchedRecords.forEach(recordId => {
+    context.touchedRecords.forEach(recordId => {
       const record = records.rows.get(recordId)
       const nextText = record
         ? buildAllTokens(record, allFields)
@@ -273,7 +263,7 @@ export const syncSearchIndex = (
   }
 
   Array.from(loadedFieldIds).forEach(fieldId => {
-    if (schemaFields.has(fieldId) && !getDocumentFieldById(document, fieldId)) {
+    if (shouldDropFieldIndex(document, context, fieldId)) {
       nextFields.delete(fieldId)
       changed = true
       return
@@ -285,16 +275,12 @@ export const syncSearchIndex = (
       return
     }
 
-    if (
-      touchedRecords === 'all'
-      || !touchedRecords.size
-      || (!valueFields.has(fieldId) && !recordSetChanged)
-    ) {
+    if (!shouldSyncFieldIndex(context, fieldId)) {
       return
     }
 
     const texts = new Map(previous.fields.get(fieldId))
-    touchedRecords.forEach(recordId => {
+    context.touchedRecords.forEach(recordId => {
       const record = records.rows.get(recordId)
       const nextText = record
         ? buildFieldTokens(record, fieldId, getDocumentFieldById(document, fieldId))

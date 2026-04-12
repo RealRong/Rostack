@@ -2,9 +2,12 @@ import type {
   Action,
   ViewId
 } from '@dataview/core/contracts'
-import { read } from '@shared/core'
 import {
-  createDuplicateViewPreferredName
+  read,
+  trimToUndefined
+} from '@shared/core'
+import {
+  createDuplicateViewInput
 } from '@dataview/core/view'
 import type {
   EngineReadApi,
@@ -28,7 +31,7 @@ export const createViewsEngineApi = (options: {
       })
     },
     create: input => {
-      const preferredName = input.name.trim()
+      const preferredName = trimToUndefined(input.name)
       if (!preferredName) {
         return undefined
       }
@@ -43,7 +46,7 @@ export const createViewsEngineApi = (options: {
       return result.created?.views?.[0]
     },
     rename: (viewId: ViewId, name: string) => {
-      const nextName = name.trim()
+      const nextName = trimToUndefined(name)
       if (!nextName) {
         return
       }
@@ -64,20 +67,7 @@ export const createViewsEngineApi = (options: {
 
       const result = options.dispatch({
         type: 'view.create',
-        input: {
-          name: createDuplicateViewPreferredName(sourceView.name),
-          type: sourceView.type,
-          search: sourceView.search,
-          filter: sourceView.filter,
-          sort: sourceView.sort,
-          ...(sourceView.group
-            ? { group: sourceView.group }
-            : {}),
-          calc: sourceView.calc,
-          display: sourceView.display,
-          options: sourceView.options,
-          orders: sourceView.orders
-        }
+        input: createDuplicateViewInput(sourceView)
       })
       return result.created?.views?.[0]
     },

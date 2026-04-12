@@ -8,15 +8,16 @@ import {
   readBooleanValue,
   readNumberValue
 } from '@dataview/core/field'
+import {
+  trimToUndefined
+} from '@shared/core'
 import type {
   AggregateEntry,
   AggregateState
 } from './types'
 
 const asPlainString = (value: unknown) => (
-  typeof value === 'string'
-    ? value.trim()
-    : ''
+  trimToUndefined(value) ?? ''
 )
 
 const stableSerialize = (value: unknown): string => {
@@ -74,8 +75,10 @@ const uniqueValueKey = (
 
       const normalized = value
         .filter(item => typeof item === 'string')
-        .map(item => item.trim())
-        .filter(Boolean)
+        .flatMap(item => {
+          const normalizedItem = trimToUndefined(item)
+          return normalizedItem ? [normalizedItem] : []
+        })
         .sort((left, right) => left.localeCompare(right))
       return `multi:${JSON.stringify(normalized)}`
     }
@@ -99,8 +102,8 @@ export const createAggregateEntry = (
   return {
     empty: false,
     label: getFieldDisplayValue(field, value) ?? JSON.stringify(value),
-    optionId: field?.kind === 'status' && typeof value === 'string' && value.trim()
-      ? value.trim()
+    optionId: field?.kind === 'status'
+      ? trimToUndefined(value)
       : undefined,
     uniqueKey: uniqueValueKey(field, value),
     comparable: number !== undefined

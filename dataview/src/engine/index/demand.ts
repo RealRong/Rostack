@@ -2,7 +2,9 @@ import type {
   FieldId
 } from '@dataview/core/contracts'
 import {
-  sameOrder
+  sameOrder,
+  uniqueBy,
+  uniqueSorted
 } from '@shared/core'
 import type {
   GroupDemand,
@@ -19,25 +21,26 @@ export interface NormalizedIndexDemand {
   calculationFields: readonly FieldId[]
 }
 
-const uniqueSorted = (
-  values: readonly FieldId[] = []
-): readonly FieldId[] => Array.from(new Set(values)).sort()
-
 const uniqueGroups = (
   groups: readonly GroupDemand[] = []
 ): readonly GroupDemand[] => {
-  const next = new Map<string, GroupDemand>()
-  groups.forEach(group => {
-    next.set([
+  return uniqueBy(groups, group => [
       group.fieldId,
       group.mode ?? '',
       group.bucketSort ?? '',
       group.bucketInterval ?? ''
-    ].join('\u0000'), group)
-  })
-  return Array.from(next.entries())
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([, group]) => group)
+    ].join('\u0000'))
+    .sort((left, right) => [
+      left.fieldId,
+      left.mode ?? '',
+      left.bucketSort ?? '',
+      left.bucketInterval ?? ''
+    ].join('\u0000').localeCompare([
+      right.fieldId,
+      right.mode ?? '',
+      right.bucketSort ?? '',
+      right.bucketInterval ?? ''
+    ].join('\u0000')))
 }
 
 export const normalizeIndexDemand = (
@@ -45,11 +48,11 @@ export const normalizeIndexDemand = (
 ): NormalizedIndexDemand => ({
   search: {
     all: demand?.search?.all === true,
-    fields: uniqueSorted(demand?.search?.fields)
+    fields: uniqueSorted(demand?.search?.fields ?? [])
   },
   groups: uniqueGroups(demand?.groups),
-  sortFields: uniqueSorted(demand?.sortFields),
-  calculationFields: uniqueSorted(demand?.calculationFields)
+  sortFields: uniqueSorted(demand?.sortFields ?? []),
+  calculationFields: uniqueSorted(demand?.calculationFields ?? [])
 })
 
 export const sameFieldIdList = (

@@ -26,7 +26,7 @@ export const serializePresenceTool = (
     case 'draw':
       return {
         type: tool.type,
-        value: tool.kind
+        value: tool.mode
       }
     default:
       return {

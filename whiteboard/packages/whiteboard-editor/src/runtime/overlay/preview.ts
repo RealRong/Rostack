@@ -1,5 +1,5 @@
 import type { NodeId } from '@whiteboard/core/types'
-import type { DrawPreview } from '../../types/draw'
+import type { DrawPreview } from '../../draw'
 import {
   isTextPreviewPatchEqual,
   readTextPreviewEntry,

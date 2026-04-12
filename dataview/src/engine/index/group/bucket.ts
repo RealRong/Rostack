@@ -18,6 +18,9 @@ import {
   resolveFieldGroupBucketEntries
 } from '@dataview/core/field'
 import {
+  trimToUndefined
+} from '@shared/core'
+import {
   compareGroupSortValues,
   compareLabels,
   readBucketOrder,
@@ -49,8 +52,8 @@ const toScalarBucketKey = (
   }
 
   if (typeof value === 'string') {
-    const normalized = value.trim()
-    return normalized.length
+    const normalized = trimToUndefined(value)
+    return normalized
       ? normalized
       : KANBAN_EMPTY_BUCKET_KEY
   }

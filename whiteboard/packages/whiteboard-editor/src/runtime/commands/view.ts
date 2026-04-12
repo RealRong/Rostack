@@ -9,6 +9,10 @@ import type {
 import type { EditorStateController } from '../state'
 import type { EditorViewportRuntime } from '../editor/types'
 import type { ViewportInputRuntime } from '../viewport'
+import {
+  DEFAULT_DRAW_BRUSH,
+  hasDrawBrush
+} from '../../draw'
 
 export type ViewCommands = {
   viewport: ViewportActions
@@ -48,23 +52,23 @@ export const createViewCommands = ({
     }
   },
   draw: {
-    set: (preferences) => {
-      runtime.state.draw.commands.set(preferences)
+    set: (state) => {
+      runtime.state.draw.commands.set(state)
     },
     slot: (slot) => {
       const tool = runtime.state.tool.get()
-      const kind = tool.type === 'draw' && tool.kind !== 'eraser'
-        ? tool.kind
-        : 'pen'
-      runtime.state.draw.commands.slot(kind, slot)
+      const brush = tool.type === 'draw' && hasDrawBrush(tool.mode)
+        ? tool.mode
+        : DEFAULT_DRAW_BRUSH
+      runtime.state.draw.commands.slot(brush, slot)
     },
     patch: (patch) => {
       const tool = runtime.state.tool.get()
-      const kind = tool.type === 'draw' && tool.kind !== 'eraser'
-        ? tool.kind
-        : 'pen'
-      const currentSlot = runtime.state.draw.store.get()[kind].slot
-      runtime.state.draw.commands.patch(kind, currentSlot, patch)
+      const brush = tool.type === 'draw' && hasDrawBrush(tool.mode)
+        ? tool.mode
+        : DEFAULT_DRAW_BRUSH
+      const currentSlot = runtime.state.draw.store.get()[brush].slot
+      runtime.state.draw.commands.patch(brush, currentSlot, patch)
     }
   }
 })

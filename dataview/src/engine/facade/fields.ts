@@ -8,7 +8,10 @@ import {
   hasFieldOptions,
   getFieldOptions
 } from '@dataview/core/field'
-import { read } from '@shared/core'
+import {
+  read,
+  trimToUndefined
+} from '@shared/core'
 import { createPropertyId } from '@dataview/engine/command/entityId'
 import type {
   EngineReadApi,
@@ -44,7 +47,7 @@ export const createFieldsEngineApi = (options: {
     list: readProperties,
     get: getProperty,
     create: input => {
-      const name = input.name.trim()
+      const name = trimToUndefined(input.name)
       if (!name) {
         return undefined
       }
@@ -64,7 +67,7 @@ export const createFieldsEngineApi = (options: {
         : undefined
     },
     rename: (fieldId, name) => {
-      const nextName = name.trim()
+      const nextName = trimToUndefined(name)
       if (!nextName) {
         return
       }
@@ -141,7 +144,7 @@ export const createFieldsEngineApi = (options: {
       },
       create: (fieldId, name) => {
         const field = getOptionPropertyById(fieldId)
-        const nextName = name.trim()
+        const nextName = trimToUndefined(name)
         if (!field || !nextName) {
           return undefined
         }
@@ -189,7 +192,7 @@ export const createFieldsEngineApi = (options: {
           return undefined
         }
 
-        const nextName = patch.name?.trim()
+        const nextName = trimToUndefined(patch.name)
         if (patch.name !== undefined) {
           if (!nextName) {
             return undefined

@@ -1,17 +1,11 @@
+import type { DrawMode } from '../draw/model'
+
 export type EdgePresetKey =
   | 'edge.straight'
   | 'edge.elbow'
   | 'edge.curve'
 
 export type InsertPresetKey = string
-
-export type DrawBrushKind =
-  | 'pen'
-  | 'highlighter'
-
-export type DrawKind =
-  | DrawBrushKind
-  | 'eraser'
 
 export type SelectTool = {
   type: 'select'
@@ -33,7 +27,7 @@ export type InsertTool = {
 
 export type DrawTool = {
   type: 'draw'
-  kind: DrawKind
+  mode: DrawMode
 }
 
 export type Tool =

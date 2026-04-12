@@ -1,348 +1,223 @@
-# Dataview Engine 长期最优重构审计与迁移清单
+# Dataview Engine 单 Active View 最终重构清单
 
 ## 文档定位
 
-这不是局部优化建议，也不是保守兼容方案。
+这份文档是 `dataview/src/engine` 的最终收口方案，前提已经明确：
 
-这份文档面向 `dataview/src/engine` 的一次性架构收口，目标是：
+- 运行时全局只有一个 active view。
+- 不需要多面板并行存在。
+- 不需要同时维护多个 view runtime。
+- 不需要预热 inactive view。
+- 切换 view 时允许重建当前 active runtime。
 
-- 把类型定义收拢到清晰边界，结束“类型散落在各处”的状态。
-- 把上下文传递改成稳定、可组合、可推导的模型，结束 ad-hoc helper 链条。
-- 把公开 API、内部 runtime、派生状态、写入编排分层做实，结束边界倒置。
-- 把命名缩短并统一，结束 `Engine*Api` / `Active*Api` / `View*Api` / `project/*` 的混杂状态。
-- 保留当前引擎里真正有价值的增量派生与性能意识，但移除多余包装层。
+因此，这份方案不再为“未来可能出现的多 view 并行 runtime”预留结构。
 
-这份文档整合并上收现有几份局部方案：
+这不是保守兼容方案，也不是局部整理建议，而是基于单 active view 约束做出的更简单、更激进、也更适合当前产品的长期版本。
 
-- `DATAVIEW_ACTIVE_VIEW_API_SIMPLIFICATION_PLAN.zh-CN.md`
-- `DATAVIEW_ENGINE_FACADE_SIMPLIFICATION_PLAN.zh-CN.md`
-- `DATAVIEW_ENGINE_PROJECT_HELPER_REDUCTION_PLAN.zh-CN.md`
+## 核心结论
 
-后续如果决定执行，应以本文件为主，不再并行维护多份局部计划。
+当前 `engine` 最大的问题，不是算法不够强，而是围绕“当前 active view”这个单一事实，仍然堆出了太多中间层：
 
-## 一句话判断
+- `action`
+- `command`
+- `operation`
+- `index`
+- `project/runtime`
+- `project/publish`
+- `store/active`
+- `api/public`
+- `facade/view`
 
-当前 `engine` 的核心问题不是某个模块写得“不够好看”，而是内部同时存在太多“半重叠但不完全等价”的模型层：
+这些层里有不少在做的其实是同一件事：
 
-- document model
-- command/action model
-- operation model
-- index state
-- project/projection state
-- published state
-- active store state
-- public API state
+- 重新包装 active view 状态
+- 重新拼接上下文
+- 重新命名同一组数据
+- 重新把一次写入拆成另一种中间形式
 
-这些层没有形成严格单向依赖，而是在互相借类型、互相重复包装、互相补 helper。
+在“全局只有一个 active view”的前提下，这些层里有一大半都应该被压平。
 
-结果就是：
+一句话结论：
 
-- 类型越补越多，但抽象没有变清晰。
-- 上下文越传越多，但责任没有真正收口。
-- API 越分越细，但命名越来越长，重复越来越多。
-- 任何一个看似简单的改动，都会跨 `action` / `command` / `project` / `store` / `facade` 多层同步修改。
+- 保留多 view 的文档数据模型。
+- 删除多余的多 session runtime 心智模型。
+- 把 engine 收口成 `doc + active runtime + write planner` 三个主轴。
 
-## 现状审计结论
+## 对当前代码的判断
 
-### 1. 边界倒置：内部 runtime 依赖 public type
+## 1. `activeViewId` 驱动 index demand 不是问题，应该被接受
 
-这是当前最危险的问题之一。
+当前 `resolveIndexDemand(document, activeViewId)` 直接按 active view 推导 demand，见：
 
-`project/runtime/state.ts` 里的内部状态直接依赖 `../../api/public` 导出的 `ActiveView`、`ActiveQuery`、`RecordSet`，见：
+- `dataview/src/engine/project/runtime/demand.ts`
+- `dataview/src/engine/store/state.ts`
 
-- `dataview/src/engine/project/runtime/state.ts:15-35`
+如果要支持多个并行 runtime，这会成为结构限制。
 
-这意味着：
+但在你当前明确不要多面板、不要多 runtime 的前提下，这恰恰是正确的简化。
 
-- internal state 不是自己的闭包模型。
-- public contract 反过来决定 internal runtime 结构。
-- 任何 public type 改名或裁剪，都会直接冲击 runtime 层。
+也就是说，这里不该继续往“全局 per-view index registry”方向演进，而应该明确承认：
 
-同类问题还出现在：
+- index 就是当前 active view 服务的 active index
+- 它和 active view 生命周期绑定是合理的
 
-- `dataview/src/engine/store/active/state.ts:7-18`
-- `dataview/src/engine/store/active/read.ts:13-26`
-- `dataview/src/engine/project/publish/view.ts:38-47`
-- `dataview/src/engine/api/public/command.ts:8`
+后续方案里应该保留这一点，而不是把它视为必须消除的耦合。
 
-结论：
+## 2. 真正多余的是 `project/runtime -> publish -> store/active` 三层包装
 
-- public contract 必须从 internal runtime 派生，不能反过来被 internal runtime 引用。
-- `api/public` 只能位于最外层，不能被 `project/runtime`、`store/active` 这类内部模块反向依赖。
+当前 active view 派生链路里，存在明显重复包装：
 
-### 2. 状态模型重复过多，名称与职责不匹配
+- `project/runtime` 生成内部派生状态
+- `project/publish` 再把它包装成更像 public 的结构
+- `store/active` 再把 `project.*` 拼成 `ActiveViewState`
+- `store/active/read.ts` 再补 `cell`、`planMove`、`filterField`、`groupField`
 
-当前至少同时存在这些相邻但不同的状态概念：
+这条链过长，而且所有层都围绕“当前 active view”工作，并没有真正的多 session 价值。
 
-- `State`：全局 store 状态，见 `dataview/src/engine/store/state.ts:45-55`
-- `IndexState`：索引状态
-- `ProjectionState`：query/sections/calc 的内部派生缓存，见 `dataview/src/engine/project/runtime/state.ts:71-75`
-- `ProjectState`：发布后的 active view 投影，见 `dataview/src/engine/project/runtime/state.ts:28-35`
-- `ActiveViewState`：public active state，见 `dataview/src/engine/api/public/project.ts:84-92`
-- `ActiveGalleryState` / `ActiveKanbanState`：UI 特化 state，见 `dataview/src/engine/api/public/project.ts:130-149`
+在单 active view 模式下，正确做法是：
 
-这些模型的问题不是“数量多”，而是：
+- 删除 `project` 这个中间主语
+- 直接建立 `active runtime`
+- internal 只保留一份 `ActiveSnapshot`
+- public `engine.active.state` 直接读它
 
-- 名称不精确。
-- 边界不闭合。
-- 有的本该 internal，有的本该 public，但相互穿插。
+也就是说，应该从：
 
-`ProjectState` 这个名字尤其差，因为它并不是 project，也不是 generic projection，它其实表达的是“当前 active view 的发布快照”。
+```text
+doc -> index -> project/runtime -> project/publish -> store/active -> active api
+```
 
-推荐最终命名：
+变成：
 
-- `ProjectState` -> `ViewSessionSnapshot`
-- `ProjectionState` -> `ViewSessionCache`
-- `ActiveViewState` -> `ViewSession`
+```text
+doc -> activeIndex -> activeSnapshot -> active api
+```
 
-### 3. 写入链路层次过多，而且存在重复验证与重复 document 演算
+## 3. `lowerAction -> runCommands` 双阶段写入链过重
 
-当前写入主链是：
+当前主写入路径是：
 
-- `Action`
+- `resolveActionBatch(...)`
 - `lowerAction(...)`
-- `LoweredCommand[]`
 - `runCommands(...)`
-- `BaseOperation[]`
 - `applyOperations(...)`
-- `deriveIndex(...)`
-- `deriveProject(...)`
 
-关键问题：
+这里的问题是：
 
-- `resolveActionBatch(...)` 会在 action 级循环里维护 `workingDocument`，见 `dataview/src/engine/command/index.ts:8-55`
-- `runCommands(...)` 又会在 command 级循环里维护 `workingDocument`，见 `dataview/src/engine/command/runCommands.ts:228-266`
-- `action/lower.ts` 已经做了一轮存在性/结构性校验，`runCommands.ts` 又做一轮存在性/结构性校验
-- `action/lower.ts` 把高层行为拆成“看起来更 canonical 的 command”，但这些 command 本质上仍然只是下游 operation 的过渡层
+- action 层循环维护一次 `workingDocument`
+- command 层循环又维护一次 `workingDocument`
+- `lowerAction` 与 `runCommands` 都在做存在性校验、结构校验、补默认值、生成下游 payload
 
-最明显的信号是：
+这条链条在“engine 想保留一套 command IR”时还能自圆其说。
 
-- `dataview/src/engine/action/lower.ts` 已经达到 1508 行
-- 同时还配着一个 266 行的 `runCommands.ts`
-- 再加一个 `command/context.ts`
+但对你现在的目标来说，这条链已经明显过度设计了。
 
-这不是“拆得细”，而是“同一条语义链被迫走了两次”。
+最终应该改成：
 
-最终决策：
+```text
+dispatch(action)
+  -> planActions(document, actions)
+  -> applyOperations(document, operations)
+  -> deriveActive(document, delta)
+```
 
-- 取消现有 `lowerAction -> runCommands` 双阶段编排。
-- 合并为单一 `planActions(document, actions): WritePlan`。
-- 如果仍需要中间 IR，保留为 internal-only `MutationPlanItem`，不再叫 `Command`，也不再对外泄漏。
+也就是：
 
-### 4. `action/lower.ts` 是典型的“单文件领域编译器”，必须拆
+- 只保留一套 planner
+- planner 直接产出 operation plan
+- 不再保留现有 `command` 这一层的中间抽象
 
-`dataview/src/engine/action/lower.ts` 同时承担了：
+## 4. `facade/view/index.ts` 已经不是 façade，而是 active runtime 的上帝对象
 
-- action 入口分发
-- 文档查询
-- 默认值生成
-- view 归一化
-- field option 处理
-- record/view/field 修复逻辑
-- validation
-- command 生成
-- clone / equality / normalize helper
+当前这个文件同时承担：
 
-从 `LoweredCommand` 定义到总 switch 的主干见：
-
-- `dataview/src/engine/action/lower.ts:77-100`
-- `dataview/src/engine/action/lower.ts:1226-1508`
-
-这种文件形态会让任何一个 action domain 的改动都触发整片回归风险。
-
-最终拆分目标：
-
-- `mutate/planner/record.ts`
-- `mutate/planner/value.ts`
-- `mutate/planner/field.ts`
-- `mutate/planner/view.ts`
-- `mutate/planner/shared.ts`
-- `mutate/planner/validate.ts`
-
-并且入口文件只做路由，不持有业务细节。
-
-### 5. `facade/view/index.ts` 已经变成 active session 的“上帝对象”
-
-`dataview/src/engine/facade/view/index.ts` 838 行，内部直接塞满：
-
-- active store 组装
-- patch action 生成
-- view query 写入
-- item move 规则
-- section/group 写值逻辑
-- table/gallery/kanban 特化
+- active store 装配
+- patch action 构造
+- query 写入
+- group 规则写值
+- item move
+- item create
 - cell 写入
-- field 创建 + 插列
+- table/gallery/kanban 特化
+- 字段创建与显示列插入
 
-见：
+它的问题不是“大”，而是：
 
-- `dataview/src/engine/facade/view/index.ts:160-260`
-- `dataview/src/engine/facade/view/index.ts:306-837`
+- 轻量 patch 操作和重业务动作混在一起
+- 上下文缺失，只能靠 `withView`、`withField`、`withGroupField` 这类 helper 拼
+- active runtime 的真实规则被埋在 façade 里
 
-这层的问题不是代码重复，而是：
+在单 active view 模式下，更应该直接拆成 active domain services：
 
-- 它既像 façade，又像 command builder，又像 session service，又像 UI adapter。
-- `withView` / `withField` / `withFilterField` / `withGroupField` 这些 helper 说明 context 缺失，只能靠闭包一点点兜。
-- `items.move` / `items.create` 这类强语义行为，和 `table.setWidths` 这种简单 patch 写入放在同一个对象里，导致“轻写入”和“重业务动作”混杂。
+- `active/query`
+- `active/items`
+- `active/cells`
+- `active/display`
+- `active/table`
+- `active/gallery`
+- `active/kanban`
 
-最终决策：
+façade 本身只能保留薄路由。
 
-- `facade/view/index.ts` 必须拆成按 domain 划分的 active session service。
-- façade 只能做薄路由，不能承载业务规则。
+## 5. 当前命名重复，且很多名字在单 active view 语义下已经没有必要
 
-建议拆分：
+当前有一组很重的名字：
 
-- `api/active/query.ts`
-- `api/active/layout.ts`
-- `api/active/items.ts`
-- `api/active/cells.ts`
-- `api/active/display.ts`
-- `api/active/table.ts`
-- `api/active/gallery.ts`
-- `api/active/kanban.ts`
+- `EngineReadApi`
+- `ActiveReadApi`
+- `ActiveEngineApi`
+- `ViewsEngineApi`
+- `FieldsEngineApi`
+- `RecordsEngineApi`
+- `ProjectState`
+- `ProjectionState`
 
-### 6. API 命名冗长、重复，而且同义能力命名不统一
+这些名字的问题不只是长，更重要的是：
 
-代表性问题：
+- 很多名字是在为“可能还有别的 engine/view/runtime 变体”做区分
+- 但你的产品语义并不需要那么多区分
 
-- `EngineReadApi` / `ActiveReadApi` / `ActiveEngineApi` / `ViewsEngineApi` / `FieldsEngineApi` / `RecordsEngineApi`
-- `ViewTableApi.setColumnWidths(...)` 对应 active 侧却叫 `table.setWidths(...)`
-- `fields.update(...)`、`fields.replaceSchema(...)`、`fields.convert(...)`、`field.patch`、`field.put`、`field.replace` 混着出现
+在单 active view 模式下，命名应该更直接：
 
-相关位置：
+- `DocumentReadApi`
+- `ViewApi`
+- `ViewReadApi`
+- `ViewsApi`
+- `FieldsApi`
+- `RecordsApi`
+- `ActiveIndex`
+- `ActiveSnapshot`
+- `ActiveCache`
 
-- `dataview/src/engine/api/public/project.ts:52-240`
-- `dataview/src/engine/api/public/services.ts:26-125`
-- `dataview/src/engine/facade/view/index.ts:774-820`
+## 最终架构决策
 
-最终决策：
+## 一、保留什么
 
-- 顶层 service 去掉 `Engine` 前缀，统一为 `ViewsApi` / `FieldsApi` / `RecordsApi` / `DocumentApi` / `HistoryApi` / `PerfApi`
-- active 侧统一为 `ViewSessionApi`
-- 所有名词层统一短名，所有动词层统一动词集合
+- 保留 `DataDoc.views` 和 `DataDoc.activeViewId`
+- 保留 `engine.views` 作为 view 集合管理
+- 保留 `engine.active` 作为唯一完整 view API
+- 保留 active view 驱动的 index 体系
+- 保留 perf trace 与 history
+- 保留 search/group/sort/calc 这些索引算法
 
-统一动词集合：
+## 二、删除什么
 
-- `get`
-- `list`
-- `create`
-- `update`
-- `replace`
-- `remove`
-- `move`
-- `clear`
-- `set`
-- `toggle`
+- 删除 `project` 作为中间 runtime 主语
+- 删除“可能存在多个并行 session”的设计预留
+- 删除 `command` 这层中间 IR
+- 删除 `store/active` 对 active state 的二次包装
+- 删除 scoped view runtime façade 的心智模型
+- 删除 inactive view runtime 预热/缓存方向
 
-不再混用：
+## 三、明确接受什么代价
 
-- `put` 和 `create/update/replace`
-- `setWidths` 和 `setColumnWidths`
-- `field.set` 这种语义模糊命名
+- `view.open(viewId)` 时可以重建当前 active runtime
+- 不为 inactive view 维持派生缓存
+- 不追求切 view 时复用旧 active runtime 身份
 
-### 7. `project/publish/*` 与 `store/active/*` 之间重复包装过多
+这是有意识的简化，不是退化。
 
-当前存在明显的“publish 一次，再包装一次，再 select 一次”现象：
-
-- `publishViewState(...)` 负责从文档和 view 构建 public-ish query/fields/view 模型，见 `dataview/src/engine/project/publish/view.ts:396-460`
-- `publishSectionsState(...)` 负责构建 `AppearanceList` / `SectionList`，见 `dataview/src/engine/project/publish/sections.ts:244-271`
-- `store/active/state.ts` 又从 `current.project.*` 重新拼 `ActiveViewState`，见 `dataview/src/engine/store/active/state.ts:72-112`
-- `store/active/read.ts` 再补 `cell` / `planMove` / `filterField` / `groupField`，见 `dataview/src/engine/store/active/read.ts:38-158`
-
-这说明当前系统没有一个稳定的“session snapshot”边界。
-
-最终决策：
-
-- internal 层只保留一个稳定的 `ViewSessionSnapshot`
-- public `engine.active.state` 直接读这个 snapshot
-- `engine.active.read` 只做解析，不再承担“补模型空洞”的责任
-
-### 8. appearance/section 这类 UI read model 里混入了 ID 语义解析
-
-`publish/sections.ts` 中 `AppearanceId` 被编码为：
-
-- `section:${sectionKey}\u0000record:${recordId}`
-
-然后又在 `parseAppearanceId(...)` 里解析回来，见：
-
-- `dataview/src/engine/project/publish/sections.ts:24-48`
-
-这是一个明显的边界泄漏信号：
-
-- 说明 snapshot 没有稳定保存 appearance 对象，只保存了半语义字符串
-- 说明 list model 正在拿 ID 当数据结构用
-
-最终决策：
-
-- internal session snapshot 直接保存 `AppearanceNode`
-- `AppearanceId` 只作为外部索引 key，不再反向解析业务语义
-
-### 9. active view 过度耦合整个 derive/index 生命周期
-
-当前 store 初始化与每次 commit 都把 index demand 绑定到 `activeViewId`：
-
-- `dataview/src/engine/project/runtime/demand.ts:25-53`
-- `dataview/src/engine/store/state.ts:59-87`
-
-这会导致：
-
-- 全局 index 生命周期受 UI active view 影响
-- view 切换是“全局 demand 切换”，不是“session 切换”
-- 难以支持 per-view snapshot cache，也不利于未来多面板/并行预热
-
-最终决策：
-
-- document-level index 与 active session 解耦
-- `index` 保持 document 维度的可复用 read model
-- `session` 保持 `viewId` 维度的派生快照缓存
-
-### 10. 仓库外部消费面已经出现 API 漂移
-
-当前 bench/test 仍在用旧式 API，如：
-
-- `engine.view(viewId)...`
-- `engine.project...`
-- `engine.records.setValue(...)`
-
-见：
-
-- `dataview/bench/scenarios/index.cjs:13-100`
-
-这说明 public API 迁移并没有形成单一收口面，仓库内已经存在“旧心智模型残留”。
-
-最终决策：
-
-- 执行长期重构时，必须把 bench/test/fixtures 一并清理
-- 不允许再保留旧 API 幻影用法
-
-## 当前代码中值得保留的部分
-
-这次重构不应该推倒重写一切。下面几块是当前引擎真正有价值的基础：
-
-- `index/records` 的增量同步思路是对的，见 `dataview/src/engine/index/records/index.ts`
-- `index/search` 的 demand-driven 构建是对的，见 `dataview/src/engine/index/search/index.ts`
-- `index/aggregate` 的纯函数聚合状态设计是可复用的，见 `dataview/src/engine/index/aggregate.ts`
-- `write/commit.ts` 把 commit、history、derive、perf 串起来的总流程是对的，见 `dataview/src/engine/write/commit.ts`
-- perf trace 模型是有长期价值的，不该删，只该下沉到更清晰的边界
-
-换句话说：
-
-- 要重写的是边界和编排
-- 不是重写所有索引算法
-
-## 最终目标架构
-
-## 一、硬性架构决策
-
-- 保留多 view 文档模型。
-- 保留“任意时刻只有一个 active session”的产品语义。
-- 保留 `engine.active` 作为唯一完整 view session API。
-- `engine.views` 只保留 view 集合管理，不再承载 scoped runtime façade。
-- 顶层新增稳定的 `dispatch` 基础能力，所有 façade 退化为薄便利层。
-- 删除 `project` 作为 engine 内部目录和类型主语，统一改为 `session`。
-- public contract 与 internal contract 分离，internal 不允许 import `api/public`。
-
-## 二、目标目录
+## 目标结构
 
 建议最终收口为：
 
@@ -351,10 +226,12 @@ dataview/src/engine/
   api/
     createEngine.ts
     public/
-      index.ts
-      contracts.ts
       engine.ts
-  core/
+      index.ts
+  contracts/
+    public.ts
+    internal.ts
+  state/
     store.ts
     history.ts
     perf.ts
@@ -365,12 +242,12 @@ dataview/src/engine/
       value.ts
       field.ts
       view.ts
-      validate.ts
       shared.ts
+      validate.ts
   derive/
-    index/
+    activeIndex/
       ...
-    session/
+    active/
       runtime.ts
       snapshot.ts
       query.ts
@@ -390,56 +267,67 @@ dataview/src/engine/
       table.ts
       gallery.ts
       kanban.ts
-  contracts/
-    public.ts
-    internal.ts
-    naming.ts
 ```
 
 这里最重要的不是目录名，而是依赖方向：
 
-- `contracts/public` 只被外层消费
-- `contracts/internal` 只服务 engine 内部
-- `derive/*` 不 import `api/public`
-- `services/*` 可以 import public contract，但不反向定义 internal state
-- `api/createEngine.ts` 只做装配，不写业务规则
+- `contracts/internal.ts` 只给 engine 内部用
+- `contracts/public.ts` 只给外部与 services 边界用
+- `derive/active/*` 不 import `api/public`
+- `api/createEngine.ts` 只做装配
+- `services/*` 不承载核心派生规则
 
-## 三、目标类型命名
+## 目标 store 形状
 
-推荐统一命名如下：
+单 active view 模式下，store 应该非常直接：
 
-| 当前 | 目标 | 说明 |
-| --- | --- | --- |
-| `EngineReadApi` | `DocumentReadApi` | 文档读取，不是 engine 级行为 |
-| `ActiveReadApi` | `ViewReadApi` | 读取的是 active view session |
-| `ActiveEngineApi` | `ViewSessionApi` | 真正表达语义 |
-| `ViewsEngineApi` | `ViewsApi` | 去掉冗余 `Engine` |
-| `FieldsEngineApi` | `FieldsApi` | 去掉冗余 `Engine` |
-| `RecordsEngineApi` | `RecordsApi` | 去掉冗余 `Engine` |
-| `EngineDocumentApi` | `DocumentApi` | 去掉冗余 `Engine` |
-| `EngineHistoryApi` | `HistoryApi` | 去掉冗余 `Engine` |
-| `EnginePerfApi` | `PerfApi` | 去掉冗余 `Engine` |
-| `ProjectState` | `ViewSessionSnapshot` | internal 发布快照 |
-| `ProjectionState` | `ViewSessionCache` | internal 派生缓存 |
-| `QueryState` | `QueryCache` | internal query cache |
-| `SectionState` | `SectionCache` | internal section cache |
-| `CalcState` | `CalculationCache` | internal calc cache |
-| `ActiveViewState` | `ViewSession` | public session 快照 |
+```ts
+interface EngineState {
+  rev: number
+  doc: DataDoc
+  history: HistoryState
+  active: {
+    demand: ActiveDemand
+    index: ActiveIndex
+    cache: ActiveCache
+    snapshot: ActiveSnapshot
+  }
+}
+```
 
-注意：
+这里的关键点：
 
-- public 层允许用短名
-- internal 层允许用精确名
-- 但不能再出现“同一个概念在不同层被叫完全不同东西”的情况
+- 不再有 `project`
+- 不再有 `cache.indexDemand + cache.projection` 的拆散组合
+- 所有 active runtime 相关状态都放在 `active` 下
 
-## 四、目标 `Engine` 形状
+## 目标 derive 链路
 
-推荐长期稳定版：
+最终链路应该是：
+
+```text
+dispatch(action)
+  -> planActions(base.doc, actions)
+  -> applyOperations(base.doc, operations)
+  -> resolveActiveDemand(nextDoc, nextDoc.activeViewId)
+  -> deriveActiveIndex(previous.active.index, nextDoc, delta, demand)
+  -> deriveActiveSnapshot(previous.active.snapshot, previous.active.cache, nextDoc, activeIndex, delta)
+  -> commit(nextState)
+```
+
+这里要点只有两个：
+
+- active index 继续只服务当前 active view
+- active snapshot 是唯一 active 派生快照
+
+## 目标 public API
+
+建议最终稳定版：
 
 ```ts
 interface Engine {
   read: DocumentReadApi
-  active: ViewSessionApi
+  active: ViewApi
   views: ViewsApi
   fields: FieldsApi
   records: RecordsApi
@@ -450,299 +338,248 @@ interface Engine {
 }
 ```
 
-说明：
+约束如下：
 
-- `dispatch` 是最低层能力，facade 只是方便。
-- `engine.views` 只负责 view 集合管理。
-- 任何依赖 active session runtime 的能力，只能存在于 `engine.active`。
+- `engine.views` 只做 view 集合管理
+- `engine.active` 是唯一完整 active view API
+- 任何依赖 sections、appearances、group runtime 的能力，只能存在于 `engine.active`
+- 顶层显式暴露 `dispatch`，facade 只做 convenience layer
 
-## 五、最终 context 模型
+## `engine.views` 的职责
 
-必须把“零碎 helper 闭包上下文”换成显式上下文对象。
+只保留：
 
-推荐统一为三类：
+- `list`
+- `get`
+- `open`
+- `create`
+- `rename`
+- `duplicate`
+- `remove`
 
-### 1. 写入上下文 `WriteContext`
+不允许：
 
-```ts
-interface WriteContext {
-  document: DataDoc
-  readers: DocumentReaders
-  ids: IdFactory
-  issues: ValidationCollector
-}
-```
+- scoped runtime façade
+- inactive view 的 read/select/session 操作
+- `items` / `cells` / `planMove` 这类 active-only 能力
 
-用途：
+## `engine.active` 的职责
 
-- action 规划
-- schema/default 解析
-- 跨实体修复
+`engine.active` 是唯一完整 active view API，包含：
 
-### 2. 派生上下文 `DeriveContext`
+- 当前 active view 的读取
+- 当前 active snapshot 的订阅
+- query 相关写入
+- display/layout 相关写入
+- items move/create/remove
+- cells set/clear
+- table/gallery/kanban 特化行为
 
-```ts
-interface DeriveContext {
-  document: DataDoc
-  delta: CommitDelta
-  index: IndexSnapshot
-  perf: DerivePerfRecorder | null
-}
-```
+也就是说：
 
-用途：
+- 只有这里可以消费 active runtime
+- 只有这里允许操作 appearance、section、cell
 
-- index derive
-- session derive
+## 目标类型命名
 
-### 3. active session 上下文 `SessionContext`
+建议统一如下：
 
-```ts
-interface SessionContext {
-  view: View
-  session: ViewSession
-  document: DataDoc
-  dispatch: Engine['dispatch']
-}
-```
+| 当前 | 目标 |
+| --- | --- |
+| `EngineReadApi` | `DocumentReadApi` |
+| `ActiveEngineApi` | `ViewApi` |
+| `ActiveReadApi` | `ViewReadApi` |
+| `ViewsEngineApi` | `ViewsApi` |
+| `FieldsEngineApi` | `FieldsApi` |
+| `RecordsEngineApi` | `RecordsApi` |
+| `ProjectState` | `ActiveSnapshot` |
+| `ProjectionState` | `ActiveCache` |
+| `IndexState` | `ActiveIndex` |
 
-用途：
+这里不追求“最学术正确”的命名，而追求与你的真实约束一致：
 
-- active façade 各 domain service
+- 全局只有一个 active runtime
+- 所以 internal name 也应该承认自己是 active-only
 
-这三类 context 必须显式建模，不再继续扩散：
+## 必须保留的内部模型
 
-- `withView`
-- `withField`
-- `withGroupField`
-- `withFilterField`
+下面这些结构仍然有价值，不该推倒：
+
+- record index
+- search index
+- group index
+- sort index
+- calculation aggregate state
+- commit trace
+- history replay
+
+也就是说：
+
+- 算法层保留
+- 包装层削掉
+
+## 必须删除的内部模型
+
+下面这些概念应该被彻底删除或吸收：
+
+- `project` 作为目录和类型主语
+- `publish` 作为单独中间层
+- `store/active` 作为 active state 二次拼装层
+- `LoweredCommand`
+- `LowerActionResult`
+- `ResolvedWriteBatch` 里依赖 command 语义的旧结构
 - `createCommandContext`
 
-这种“缺什么补什么”的闭包 helper。
+## 一次性迁移 checklist
 
-## 一步到位迁移清单
+### A. 锁定单 active view 约束
 
-以下 checklist 假设执行的是一次性重构，不保留双轨 API，不保留旧 façade，不保留 `project.*` 公开入口。
+- [ ] 在根方案和实现注释里明确：runtime 全局只有一个 active view。
+- [ ] 不再设计 per-view runtime cache。
+- [ ] 不再为 inactive view 维护 snapshot/index。
 
-### A. 先决条件
+### B. 先收口类型边界
 
-- [ ] 冻结 `dataview/src/engine` 新功能开发，先做架构切换。
-- [ ] 明确这次重构的 public API 以本文件为准，不再接受临时兼容接口。
-- [ ] 先补齐当前行为快照测试，特别是 view query、group move、calc、history、undo/redo。
-- [ ] 把 bench、fixtures、test 视为迁移范围的一部分，不允许“代码换了，基准脚本继续飘”。
-
-### B. 类型与边界收口
-
-- [ ] 新建 `engine/contracts/public.ts`，承接所有对外 engine contract。
-- [ ] 新建 `engine/contracts/internal.ts`，承接所有 internal runtime contract。
-- [ ] 从 internal 层移除对 `api/public` 的反向 import。
-- [ ] 删除 `project/runtime/state.ts` 中对 `ActiveView` / `ActiveQuery` / `RecordSet` 的 public 依赖。
-- [ ] 把 `readModels.ts`、`viewProjections.ts`、`refs.ts` 中仍有长期价值的类型归并到 `session` 相关 contract 文件。
-- [ ] 统一 `AppearanceId` / `SectionKey` / `CellRef` 这类 session domain 类型的归属，不再散落在 `project/*` 多个文件。
+- [ ] 新建 `contracts/internal.ts` 与 `contracts/public.ts`。
+- [ ] internal runtime 全面移除对 `api/public` 的依赖。
+- [ ] `project/runtime/state.ts` 现有类型全部迁到 internal contract。
+- [ ] `readModels.ts`、`viewProjections.ts`、`refs.ts` 重新分配归属。
 
 完成标准：
 
-- internal runtime 所有类型都能在不 import `api/public` 的前提下独立编译。
+- internal derive 层在不 import public api type 的情况下可独立编译。
 
-### C. 改写写入编排链
+### C. 删除 `project` 主语，改成 active runtime
 
-- [ ] 新建 `mutate/planner/index.ts`，提供统一 `planActions(...)` 入口。
-- [ ] 按 `record` / `value` / `field` / `view` 拆 planner 子模块。
-- [ ] 把 `action/lower.ts` 的业务规则拆进各 domain planner。
-- [ ] 把 `command/runCommands.ts` 的重复存在性校验合并到 planner 流程。
-- [ ] planner 直接产出 `WritePlan`：
-  - operations
-  - semantic draft
-  - issues
-  - created entities
-- [ ] 删除 `LoweredCommand` / `LowerActionResult` 这类只服务旧链路的中间类型。
-- [ ] 删除 `command/context.ts`。
-- [ ] `command` 目录只保留真正仍有独立意义的 validation / issue 结构；如果不再需要，整体删除。
+- [ ] `project/runtime` 改为 `derive/active`
+- [ ] `project/publish` 合并进 `derive/active/snapshot`
+- [ ] `ProjectState` 改为 `ActiveSnapshot`
+- [ ] `ProjectionState` 改为 `ActiveCache`
+- [ ] `store.state` 中的 `project` 字段改为 `active.snapshot`
 
 完成标准：
 
-- 从 public `dispatch(action)` 到 `BaseOperation[]` 只经过一套 planner，不再有 `lower -> runCommands` 双阶段。
+- engine 内部不再出现 `project.*` 作为 active runtime 的统称。
 
-### D. 重建 session derive 层
+### D. 压平写入链
 
-- [ ] 把 `project` 目录重命名并收口为 `session`。
-- [ ] 把 `ProjectState` 改为 `ViewSessionSnapshot`。
-- [ ] 把 `ProjectionState` 改为 `ViewSessionCache`。
-- [ ] `runProjection(...)` 改名为 `deriveSession(...)`。
-- [ ] `query` / `sections` / `calc` stage 统一输入输出接口，收敛 `previousProjection` / `previousPublished` 这种平铺大对象。
-- [ ] 建立 `SessionDeriveInput` / `SessionDeriveResult` 明确 contract。
-- [ ] 让 stage 只处理 internal cache，不直接产出 public model。
-- [ ] publish 行为退化为“把 internal cache 转为 stable snapshot”，而不是另起一套 public-ish 类型系统。
+- [ ] 新建统一入口 `planActions(...)`
+- [ ] 按 domain 拆 planner：`record`、`value`、`field`、`view`
+- [ ] `action/lower.ts` 拆除
+- [ ] `runCommands.ts` 拆除
+- [ ] `command/context.ts` 拆除
+- [ ] planner 直接产出 operations、delta draft、issues、created entities
 
 完成标准：
 
-- `deriveSession(...)` 的输入对象不再携带一组互相平行的 `previousProjection.query`、`previousPublished.records`、`previousSections` 之类碎片。
+- `dispatch(action)` 到 operations 之间只有一层 planner。
 
-### E. 改写 view/session publish 与 collection model
+### E. 合并 active state 包装层
 
-- [ ] 统一 `FieldList` / `SectionList` / `AppearanceList` 的构造方式，提取共享 collection builder。
-- [ ] 停止从 `AppearanceId` 反向 parse 业务语义。
-- [ ] internal snapshot 直接持有 `AppearanceNode` / `SectionNode`。
-- [ ] public collection 只暴露必要导航能力，不内嵌额外派生逻辑。
-- [ ] 合并 `publishViewState`、`publishSectionsState`、`publishCalculations` 里的 equality/reuse 工具，抽成共享 snapshot reuse 机制。
-- [ ] 让 `engine.active.state` 直接读取 stable session snapshot，而不是 `store/active/state.ts` 再拼一遍。
+- [ ] 删除 `store/active/state.ts` 中的 active state 拼装逻辑
+- [ ] 删除 `store/active/read.ts` 中对 snapshot 空洞的补模型职责
+- [ ] `engine.active.state` 直接订阅 `active.snapshot`
+- [ ] `engine.active.read` 只保留解析型 helper，不再承担“补足 public state”职责
 
 完成标准：
 
-- session snapshot 变成唯一可信的 active view published model。
+- active snapshot 只有一个来源，不再先 publish 再 store 拼装。
 
-### F. 改写 store 结构
+### F. 拆分 active services
 
-- [ ] `store/state.ts` 不再把 `project` 作为全局状态字段名。
-- [ ] 新建 `session` 字段，明确表示 active view session snapshot。
-- [ ] 为 per-view session cache 预留结构：
-  - `session.active`
-  - `session.byViewId`
-  - `session.cacheRev`
-- [ ] `indexDemand` 不再只绑定 `activeViewId`。
-- [ ] `index` 改造成 document-level 可复用 index registry。
+- [ ] 把当前 `facade/view/index.ts` 拆成 domain files
+- [ ] `items.move` 与 `items.create` 下沉到 `services/active/items.ts`
+- [ ] `cells.set/clear` 下沉到 `services/active/cells.ts`
+- [ ] query/group/display/table/gallery/kanban 各自独立
+- [ ] façade 入口文件只负责组装
 
 完成标准：
 
-- 切 view 主要切 session，而不是重新定义整套全局 index 身份。
+- 不再存在单个 active façade 文件承载所有规则。
 
-### G. 改写 public API 与 façade
+### G. 统一 public API 命名
 
-- [ ] 顶层 `Engine` 增加 `dispatch(...)`。
-- [ ] `ViewsEngineApi` 改名为 `ViewsApi`。
-- [ ] `FieldsEngineApi` 改名为 `FieldsApi`。
-- [ ] `RecordsEngineApi` 改名为 `RecordsApi`。
-- [ ] `ActiveEngineApi` 改名为 `ViewSessionApi`。
-- [ ] `EngineReadApi` 改名为 `DocumentReadApi`。
-- [ ] `ActiveReadApi` 改名为 `ViewReadApi`。
-- [ ] `ViewTableApi.setColumnWidths(...)` 与 active table 的 `setWidths(...)` 统一成一个名字。
-- [ ] `records.field.set/clear` 改成更直观的 value 语义命名：
-  - 推荐 `records.values.set`
-  - 推荐 `records.values.clear`
-- [ ] `engine.views` 只保留 view collection 操作：
-  - `list`
-  - `get`
-  - `open`
-  - `create`
-  - `rename`
-  - `duplicate`
-  - `remove`
-- [ ] `engine.active` 保留唯一完整 session 行为面。
+- [ ] `ViewsEngineApi` 改为 `ViewsApi`
+- [ ] `FieldsEngineApi` 改为 `FieldsApi`
+- [ ] `RecordsEngineApi` 改为 `RecordsApi`
+- [ ] `EngineReadApi` 改为 `DocumentReadApi`
+- [ ] `ActiveEngineApi` 改为 `ViewApi`
+- [ ] `ActiveReadApi` 改为 `ViewReadApi`
+- [ ] `table.setColumnWidths` 与 `table.setWidths` 统一成一个名字
+- [ ] `records.field.set/clear` 改成更直接的 value 语义命名
 
 完成标准：
 
-- 顶层公开 API 不再出现一组带 `Engine` 前缀的 service 名。
-- 同类行为在 active 与非 active 侧不再出现“同义不同名”。
+- 同类行为只保留一套命名。
 
-### H. 拆分 active service 实现
+### H. 清理旧 API 残影
 
-- [ ] 删除 `facade/view/index.ts` 的上帝对象结构。
-- [ ] 拆成 active service 子域文件：
-  - `query`
-  - `group`
-  - `display`
-  - `items`
-  - `cells`
-  - `table`
-  - `gallery`
-  - `kanban`
-- [ ] `items.move` / `items.create` 中的 group write 推导下沉到专用 domain service。
-- [ ] `table.insertLeft` / `insertRight` 中的“建字段 + 插列”流程下沉到 layout/domain service。
-- [ ] active service 构造器统一接受 `SessionContext`。
+- [ ] bench/test/fixtures 全量改成新 API
+- [ ] 删除仓库内所有 `engine.view(...)` 风格旧调用
+- [ ] 删除仓库内所有 `engine.project.*` 风格旧调用
+- [ ] 删除仓库内所有 `engine.records.setValue(...)` 风格旧调用
 
 完成标准：
 
-- 不再存在一个 800 行 active façade 文件同时承载所有 active domain 行为。
+- 仓库内部不再存在旧 API 心智残影。
 
-### I. 清理遗留命名与旧 API 残影
+### I. 保持 active-coupled performance 模型
 
-- [ ] 删除 `project` 目录名和 `project.*` 顶层 public 概念。
-- [ ] 删除 bench/test 中的旧用法：
-  - `engine.view(...)`
-  - `engine.project.*`
-  - `engine.records.setValue(...)`
-- [ ] 所有测试和 benchmark 改为消费新 public API。
-- [ ] `src/index.ts` 只导出最终稳定 contract，不再兼容旧命名别名。
+- [ ] 保留 active view 驱动的 demand 模型
+- [ ] 保留 `reuse/sync/rebuild` trace 能力
+- [ ] 确保切 view 时重建 active runtime 路径可观测
+- [ ] benchmark 重点覆盖 active write 与 active switch，不再验证不存在的多 runtime 场景
 
 完成标准：
 
-- 仓库内不存在旧 API 字符串模式。
+- 性能模型服务当前产品事实，而不是未来假设。
 
-### J. 性能与稳定性验收
+## 不该再做的事
 
-- [ ] 保留 commit trace / perf stats，但重新绑定到新边界。
-- [ ] 对比重构前后 benchmark：
-  - value write
-  - grouped move
-  - search update
-  - sort/group/calc 更新
-  - undo/redo
-- [ ] 确保 view 切换不会无意义触发全局 index 重建。
-- [ ] 确保 `reuse` / `sync` / `rebuild` 策略仍然可观测。
-- [ ] 补齐 snapshot identity 测试，验证无关改动不会破坏 selector 复用。
+后续重构中，下面这些方向不应该再被引入：
 
-完成标准：
+- 为 inactive view 预留 runtime cache
+- 为未来多面板加 `byViewId` session registry
+- 为 command 体系保留第二套中间 IR
+- 再引入一个介于 derive 与 public state 之间的新 publish 层
+- 再造一层 `active store` 来拼已有 snapshot
 
-- 不只是“行为没坏”，还要证明结构重构后复用率和切换路径更稳定。
-
-## 迁移顺序建议
-
-虽然目标是“一步到位”，但实现上仍然应该按下面顺序推进，避免中途结构塌陷：
-
-1. 先收口 contract 与命名，建立新目录与新类型。
-2. 再替换写入 planner。
-3. 再替换 session derive。
-4. 再替换 active services。
-5. 最后统一 public export、bench、tests、fixtures。
-6. 所有新链路稳定后，删除旧目录与旧 barrel。
-
-不要反过来从 façade 改起。因为 façade 是最表层，先动它只会把内部混乱继续抹平到别处。
-
-## 必删清单
-
-执行完成后，下面这些旧结构不应继续存在：
-
-- 旧 `project` 命名主干
-- 旧 `command/context.ts`
-- 旧 `action/lower.ts` 单文件巨型编排器
-- 旧 `runCommands.ts` 双阶段 command executor
-- 任何 internal 层对 `api/public` 的反向 type import
-- 任何 `engine.view(...)` / `engine.project.*` 仓库内调用
+这些都只会把已经明确不需要的复杂度重新带回来。
 
 ## 最终验收标准
 
-如果这次重构完成后，仍然存在下面任意一条，就说明没有做到“长期最优”：
+这次重构完成后，真正达标应该满足以下条件：
 
-- internal runtime 还在 import public types
-- active session 仍然要靠 `withView` / `withField` 这类 helper 补上下文
-- action 写入还要走两次 document 模拟
-- `project` 这个命名还同时指 runtime、published model、public API 三种东西
-- 同类 API 还存在 `setColumnWidths` / `setWidths` 这种不一致
-- 仓库内部还有旧 API 消费残影
+- engine 内部只存在一个 active runtime 主轴
+- active index 与 active snapshot 生命周期一致
+- `project` 作为 active runtime 主语被彻底删除
+- 写入链只有一套 planner
+- active public state 只有一个来源
+- façade 变薄，业务规则回到 domain services
+- bench/test 不再出现旧 API 残影
 
-反过来说，真正达标的状态应该是：
+如果重构完成后还存在以下任一情况，就说明没有真正做简单：
 
-- 写入链路只有一套 planner
-- 派生链路只有一套 session snapshot
-- public / internal 类型边界完全分离
-- `engine.active` 的语义明确且唯一
-- 所有 service 命名短、统一、稳定
-- benchmark、tests、fixtures 全部收口到同一套 API
+- internal 还在 import public types
+- active state 还要靠二次包装拼出来
+- write path 还保留 `action -> command -> operation` 双阶段
+- 还在讨论 inactive view runtime cache
+- 一个 active façade 文件仍然承载所有业务规则
 
 ## 结论
 
-`dataview/src/engine` 当前不是“再整理几个 helper”和“移动几份 type”就能长期健康的状态。
+在“全局只有一个 active view”的约束下，Dataview engine 的长期最优方向不是做更通用，而是做更诚实：
 
-它已经进入典型的二阶段架构债阶段：
+- 承认 runtime 是 active-only
+- 承认切 view 可以重建 runtime
+- 保留真正有价值的 index 与 perf 基础
+- 删除所有为并不存在的多 runtime 场景预留的中间层
 
-- 第一阶段为了把功能做出来，增加了必要包装。
-- 第二阶段这些包装开始彼此重叠，继续补丁式优化只会让边界越来越模糊。
+最终应该把 engine 收口成一个非常清楚的结构：
 
-正确做法不是继续做局部减法，而是直接完成一次边界重建：
+- 文档层负责持久化 view 集合
+- planner 负责把 action 规划成写入
+- active runtime 负责当前 view 的派生与读取
+- façade 只负责提供薄 API
 
-- 以 `dispatch + document/index/session` 为核心骨架
-- 以 `public contract / internal contract` 为类型边界
-- 以 `engine.active` 为唯一完整 session API
-- 以 `service 薄层 + domain planner + derive snapshot` 为最终结构
-
-这是当前 engine 走向长期最优的唯一合理方向。
+这才是你当前约束下真正简单、真正稳、也真正适合长期演进的方案。

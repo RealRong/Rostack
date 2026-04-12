@@ -5,8 +5,7 @@ import {
   createStoreEntityRead
 } from '../read/entities'
 import {
-  selectDoc,
-  selectDocById
+  selectDoc
 } from './base'
 import type {
   Store

@@ -2,7 +2,10 @@ import type { ReadStore } from '@shared/core'
 import type { EngineRead } from '@whiteboard/engine'
 import type { HistoryState } from '@whiteboard/core/kernel'
 import type { NodeRegistry } from '../../types/node'
-import type { DrawPreferences } from '../../types/draw'
+import type {
+  DrawMode,
+  DrawState
+} from '../../draw'
 import type { InteractionRuntime } from '../interaction/types'
 import type { EditorOverlay } from '../overlay'
 import type { EditorViewportRuntime } from '../editor/types'
@@ -30,7 +33,6 @@ import {
   type RuntimeTargetRead
 } from './target'
 import type {
-  DrawKind,
   EdgePresetKey,
   InsertPresetKey,
   Tool
@@ -40,17 +42,17 @@ import type { EdgeToolbarContext } from '../../types/edgePresentation'
 export type ToolRead = {
   get: () => Tool
   type: () => Tool['type']
-  preset: () => EdgePresetKey | InsertPresetKey | DrawKind | undefined
-  is: (type: Tool['type'], preset?: string) => boolean
+  value: () => EdgePresetKey | InsertPresetKey | DrawMode | undefined
+  is: (type: Tool['type'], value?: string) => boolean
 }
 
-const readToolPreset = (
+const readToolValue = (
   tool: Tool
 ) => (
   'preset' in tool
     ? tool.preset
-    : 'kind' in tool
-      ? tool.kind
+    : 'mode' in tool
+      ? tool.mode
       : undefined
 )
 
@@ -72,7 +74,7 @@ const isToolMatch = (
     case 'insert':
       return tool.preset === value
     case 'draw':
-      return tool.kind === value
+      return tool.mode === value
     default:
       return false
   }
@@ -83,8 +85,8 @@ const createToolRead = (
 ): ToolRead => ({
   get: () => source.get(),
   type: () => source.get().type,
-  preset: () => readToolPreset(source.get()),
-  is: (type, preset) => isToolMatch(source.get(), type, preset)
+  value: () => readToolValue(source.get()),
+  is: (type, value) => isToolMatch(source.get(), type, value)
 })
 
 export type RuntimeRead = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
@@ -98,7 +100,7 @@ export type RuntimeRead = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
   mindmap: MindmapRead
   selection: SelectionRead
   tool: ToolRead
-  draw: ReadStore<DrawPreferences>
+  draw: ReadStore<DrawState>
   space: ReadStore<boolean>
   viewport: {
     get: EditorViewportRuntime['read']['get']

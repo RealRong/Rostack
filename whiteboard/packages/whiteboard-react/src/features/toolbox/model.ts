@@ -1,10 +1,13 @@
 import {
   readDrawSlot,
   readDrawStyle,
-  type DrawPreferences as DrawState,
+  DEFAULT_DRAW_BRUSH,
+  DEFAULT_DRAW_MODE,
+  hasDrawBrush,
+  type DrawMode,
+  type DrawState,
 } from '@whiteboard/editor/draw'
 import {
-  type DrawKind,
   type Tool
 } from '@whiteboard/editor'
 import {
@@ -20,31 +23,27 @@ import type {
   ToolPaletteMemory,
   ToolPaletteView
 } from '../../types/toolbox'
-import {
-  DEFAULT_DRAW_BRUSH_KIND,
-  DEFAULT_DRAW_KIND,
-  DEFAULT_EDGE_PRESET_KEY,
-  isDrawBrushKind
-} from './tool'
+
+const DEFAULT_EDGE_PRESET_KEY = 'edge.straight'
 
 const readToolPaletteBrushState = (
   state: DrawState,
-  kind: DrawKind
+  mode: DrawMode
 ): ToolPaletteBrushState => {
-  const brushKind = isDrawBrushKind(kind)
-    ? kind
-    : DEFAULT_DRAW_BRUSH_KIND
-  const brush = state[brushKind]
+  const brush = hasDrawBrush(mode)
+    ? mode
+    : DEFAULT_DRAW_BRUSH
+  const nextState = state[brush]
 
   return {
-    brushKind,
     brush,
-    slot: readDrawSlot(state, brushKind)
+    state: nextState,
+    slot: readDrawSlot(state, brush)
   }
 }
 
 export const DEFAULT_TOOL_PALETTE_MEMORY: ToolPaletteMemory = {
-  drawKind: DEFAULT_DRAW_KIND,
+  drawMode: DEFAULT_DRAW_MODE,
   edgePreset: DEFAULT_EDGE_PRESET_KEY,
   stickyPreset: DEFAULT_STICKY_PRESET_KEY,
   shapePreset: DEFAULT_SHAPE_PRESET_KEY,
@@ -58,7 +57,7 @@ export const rememberToolPaletteTool = (
   if (tool.type === 'draw') {
     return {
       ...memory,
-      drawKind: tool.kind
+      drawMode: tool.mode
     }
   }
 
@@ -120,11 +119,11 @@ export const readToolPaletteView = ({
   const edgePreset = tool.type === 'edge'
     ? tool.preset
     : memory.edgePreset
-  const drawKind = tool.type === 'draw'
-    ? tool.kind
-    : memory.drawKind
-  const drawBrush = readToolPaletteBrushState(drawState, drawKind)
-  const drawStyle = readDrawStyle(drawState, drawBrush.brushKind)
+  const drawMode = tool.type === 'draw'
+    ? tool.mode
+    : memory.drawMode
+  const drawBrush = readToolPaletteBrushState(drawState, drawMode)
+  const drawStyle = readDrawStyle(drawState, drawBrush.brush)
 
   return {
     insertGroup,
@@ -134,10 +133,10 @@ export const readToolPaletteView = ({
     shapeKind: readShapePresetKind(shapePreset),
     mindmapPreset,
     edgePreset,
-    drawKind,
+    drawMode,
     drawBrush,
     drawStyle,
-    drawButtonStyle: isDrawBrushKind(drawKind)
+    drawButtonStyle: hasDrawBrush(drawMode)
       ? drawStyle
       : undefined
   }

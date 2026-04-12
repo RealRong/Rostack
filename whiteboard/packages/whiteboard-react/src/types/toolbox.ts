@@ -1,12 +1,12 @@
 import type { ShapeKind } from '@whiteboard/core/node'
 import type {
+  DrawBrushState,
   DrawBrush,
+  DrawMode,
   DrawSlot,
-  ResolvedDrawStyle
+  DrawStyle
 } from '@whiteboard/editor/draw'
 import type {
-  DrawBrushKind,
-  DrawKind,
   EdgePresetKey
 } from '@whiteboard/editor'
 import type { InsertPresetGroup, StickyTone } from '../features/toolbox/presets'
@@ -19,13 +19,13 @@ export type ToolPaletteMenuKey =
   | 'mindmap'
 
 export type ToolPaletteBrushState = {
-  brushKind: DrawBrushKind
   brush: DrawBrush
+  state: DrawBrushState
   slot: DrawSlot
 }
 
 export type ToolPaletteMemory = {
-  drawKind: DrawKind
+  drawMode: DrawMode
   edgePreset: EdgePresetKey
   stickyPreset: string
   shapePreset: string
@@ -40,8 +40,8 @@ export type ToolPaletteView = {
   shapeKind?: ShapeKind
   mindmapPreset: string
   edgePreset: EdgePresetKey
-  drawKind: DrawKind
+  drawMode: DrawMode
   drawBrush: ToolPaletteBrushState
-  drawStyle: ResolvedDrawStyle
-  drawButtonStyle?: ResolvedDrawStyle
+  drawStyle: DrawStyle
+  drawButtonStyle?: DrawStyle
 }

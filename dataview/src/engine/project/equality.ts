@@ -18,12 +18,9 @@ import type {
   SectionList,
   SectionKey
 } from './readModels'
-
-const equalList = <T,>(
-  left: readonly T[],
-  right: readonly T[],
-  equal: (left: T, right: T) => boolean
-) => sameOrder(left, right, equal)
+import {
+  sameList
+} from './reuse'
 
 const equalIds = <T extends string>(
   left: readonly T[],
@@ -104,7 +101,7 @@ export const sameSectionList = (
   right: SectionList
 ) => (
   equalIds(left.ids, right.ids)
-  && equalList(left.all, right.all, equalSection)
+  && sameList(left.all, right.all, equalSection)
 )
 
 export const sameFieldList = (
@@ -112,7 +109,7 @@ export const sameFieldList = (
   right: Pick<FieldList, 'ids' | 'all'>
 ) => (
   equalIds(left.ids, right.ids)
-  && equalList(left.all, right.all, equalField)
+  && sameList(left.all, right.all, equalField)
 )
 
 export const sameCalculationsBySection = (

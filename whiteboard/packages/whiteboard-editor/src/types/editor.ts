@@ -5,7 +5,7 @@ import type {
   Document,
   Viewport
 } from '@whiteboard/core/types'
-import type { DrawPreferences } from './draw'
+import type { DrawState } from '../draw/state'
 import type {
   ContextMenuInput,
   ContextMenuIntent,
@@ -86,7 +86,7 @@ export type EditorInteractionState = Readonly<{
 
 export type EditorState = {
   tool: ReadStore<Tool>
-  draw: ReadStore<DrawPreferences>
+  draw: ReadStore<DrawState>
   edit: ReadStore<EditSession>
   selection: ReadStore<SelectionTarget>
   interaction: ReadStore<EditorInteractionState>
@@ -113,7 +113,7 @@ export type EditorPanelPresentation = {
   nodeToolbar: ReturnType<RuntimeRead['selection']['nodeToolbar']['get']>
   edgeToolbar: ReturnType<RuntimeRead['edge']['toolbar']['get']>
   history: HistoryState
-  draw: DrawPreferences
+  draw: DrawState
 }
 
 export type EditorPublicRead = EditorRead & {

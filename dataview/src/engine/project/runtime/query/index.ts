@@ -8,6 +8,9 @@ import {
   TITLE_FIELD_ID
 } from '@dataview/core/contracts'
 import {
+  trimToUndefined
+} from '@shared/core'
+import {
   viewFilterFields,
   viewSearchFields,
   viewSortFields
@@ -60,6 +63,8 @@ const resolveQueryAction = (input: {
   view: View
   previous?: QueryState
 }): ProjectionAction => {
+  const hasSearchQuery = Boolean(trimToUndefined(input.view.search.query))
+
   if (
     !input.previous
     || input.previousViewId !== input.activeViewId
@@ -97,7 +102,7 @@ const resolveQueryAction = (input: {
           queryFields.filter.has(changedField)
           || queryFields.sort.has(changedField)
           || (
-            input.view.search.query.trim()
+            hasSearchQuery
             && queryUsesChangedFields(queryFields.search, new Set([changedField]))
           )
         ) {
@@ -120,7 +125,7 @@ const resolveQueryAction = (input: {
             hasIntersection(queryFields.filter, changedFields)
             || hasIntersection(queryFields.sort, changedFields)
             || (
-              input.view.search.query.trim()
+              hasSearchQuery
               && queryUsesChangedFields(queryFields.search, changedFields)
             )
           )
@@ -141,7 +146,7 @@ const resolveQueryAction = (input: {
               hasIntersection(queryFields.filter, changedFields)
               || hasIntersection(queryFields.sort, changedFields)
               || (
-                input.view.search.query.trim()
+                hasSearchQuery
                 && queryUsesChangedFields(queryFields.search, changedFields)
               )
             )

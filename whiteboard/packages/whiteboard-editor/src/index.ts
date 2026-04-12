@@ -73,8 +73,6 @@ export type {
   EditorPick
 } from './types/pick'
 export type {
-  DrawBrushKind,
-  DrawKind,
   DrawTool,
   EdgePresetKey,
   EdgeTool,

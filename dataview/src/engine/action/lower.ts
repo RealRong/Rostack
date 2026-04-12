@@ -24,6 +24,7 @@ import {
 import type { RowInsertTarget } from '@dataview/core/contracts/operations'
 import type { TableOptions } from '@dataview/core/contracts/viewOptions'
 import {
+  hasDocumentField,
   getDocumentCustomFieldById,
   getDocumentCustomFields,
   getDocumentFieldById,
@@ -65,14 +66,20 @@ import {
 } from '@dataview/core/view/options'
 import { cloneViewOptions } from '@dataview/core/view/shared'
 import {
+  isNonEmptyString,
   sameJsonValue,
   sameOrder,
-  sameShallowRecord
+  sameShallowRecord,
+  trimToUndefined
 } from '@shared/core'
 import { createIssue, hasValidationErrors, type IssueSource, type ValidationIssue } from '../command/issues'
-import { isNonEmptyString, uniqueRecordIds } from '../command/shared'
+import { uniqueRecordIds } from '../command/shared'
 import { validateField } from '../command/field/validate'
 import { createPropertyId, createRecordId, createViewId } from '../command/entityId'
+import {
+  validateFieldExists,
+  validateViewExists
+} from '../validation/entity'
 
 export interface LoweredCommand {
   index: number
@@ -138,24 +145,6 @@ const validateTarget = (
 const listTargetRecordIds = (
   target: EditTarget
 ) => uniqueRecordIds(target) as RecordId[]
-
-const validateFieldExists = (
-  document: DataDoc,
-  source: IssueSource,
-  fieldId: string,
-  path = 'fieldId'
-) => getDocumentCustomFieldById(document, fieldId)
-  ? []
-  : [createIssue(source, 'error', 'field.notFound', `Unknown field: ${fieldId}`, path)]
-
-const validateViewExists = (
-  document: DataDoc,
-  source: IssueSource,
-  viewId: string,
-  path = 'viewId'
-) => getDocumentViewById(document, viewId)
-  ? []
-  : [createIssue(source, 'error', 'view.notFound', `Unknown view: ${viewId}`, path)]
 
 const toViewPut = (
   view: View
@@ -268,7 +257,7 @@ const lowerRecordCreate = (
   index: number
 ): LowerActionResult => {
   const source = sourceOf(index, action)
-  const explicitRecordId = action.input.id?.trim()
+  const explicitRecordId = trimToUndefined(action.input.id)
   const issues = [
     ...(action.input.id !== undefined && !explicitRecordId
       ? [createIssue(source, 'error', 'record.invalidId', 'Record id must be a non-empty string', 'input.id')]
@@ -284,7 +273,7 @@ const lowerRecordCreate = (
 
   const record = {
     id: explicitRecordId || createRecordId(),
-    title: action.input.title?.trim() ?? '',
+    title: trimToUndefined(action.input.title) ?? '',
     type: action.input.type ?? resolveDefaultRecordType(document),
     values: resolveRecordCreateValues(document, action.input.values),
     meta: action.input.meta
@@ -479,7 +468,7 @@ const lowerFieldCreate = (
   index: number
 ): LowerActionResult => {
   const source = sourceOf(index, action)
-  const explicitFieldId = action.input.id?.trim()
+  const explicitFieldId = trimToUndefined(action.input.id)
   const issues: ValidationIssue[] = []
 
   if (action.input.id !== undefined && !explicitFieldId) {
@@ -677,7 +666,7 @@ const lowerFieldOptionCreate = (
     return lowerResult(context.issues, [], index)
   }
 
-  const explicitName = action.input?.name?.trim()
+  const explicitName = trimToUndefined(action.input?.name)
   if (action.input?.name !== undefined && !explicitName) {
     context.issues.push(createIssue(source, 'error', 'field.invalid', 'Field option name must be a non-empty string', 'input.name'))
     return lowerResult(context.issues, [], index)
@@ -740,7 +729,7 @@ const lowerFieldOptionUpdate = (
     return lowerResult(context.issues, [], index)
   }
 
-  const optionId = action.optionId.trim()
+  const optionId = trimToUndefined(action.optionId)
   if (!optionId) {
     context.issues.push(createIssue(source, 'error', 'field.invalid', 'Field option id must be a non-empty string', 'optionId'))
     return lowerResult(context.issues, [], index)
@@ -752,7 +741,7 @@ const lowerFieldOptionUpdate = (
     return lowerResult(context.issues, [], index)
   }
 
-  const nextName = action.patch.name?.trim()
+  const nextName = trimToUndefined(action.patch.name)
   if (action.patch.name !== undefined) {
     if (!nextName) {
       context.issues.push(createIssue(source, 'error', 'field.invalid', 'Field option name must be a non-empty string', 'patch.name'))
@@ -766,13 +755,14 @@ const lowerFieldOptionUpdate = (
     }
   }
 
+  const nextColor = action.patch.color === undefined
+    ? undefined
+    : trimToUndefined(action.patch.color) ?? null
   const nextOption = {
     ...target,
     ...(nextName ? { name: nextName } : {}),
-    ...(action.patch.color !== undefined
-      ? (action.patch.color.trim()
-          ? { color: action.patch.color.trim() }
-          : { color: null })
+    ...(nextColor !== undefined
+      ? { color: nextColor }
       : {}),
     ...(context.field.kind === 'status' && action.patch.category !== undefined
       ? { category: action.patch.category }
@@ -802,7 +792,7 @@ const lowerFieldOptionRemove = (
     return lowerResult(context.issues, [], index)
   }
 
-  const optionId = action.optionId.trim()
+  const optionId = trimToUndefined(action.optionId)
   if (!optionId) {
     context.issues.push(createIssue(source, 'error', 'field.invalid', 'Field option id must be a non-empty string', 'optionId'))
     return lowerResult(context.issues, [], index)
@@ -973,7 +963,7 @@ const validateFieldIdList = (
       return
     }
     seen.add(fieldId)
-    if (!getDocumentFieldById(document, fieldId)) {
+    if (!hasDocumentField(document, fieldId)) {
       issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${fieldId}`, `${path}.${index}`))
     }
   })
@@ -1036,7 +1026,7 @@ const validateSorters = (
   sorters.forEach((sorter, index) => {
     if (!isNonEmptyString(sorter.field)) {
       issues.push(createIssue(source, 'error', 'view.invalidProjection', 'Sorter field must be a non-empty string', `${path}.${index}.field`))
-    } else if (!getDocumentFieldById(document, sorter.field)) {
+    } else if (!hasDocumentField(document, sorter.field)) {
       issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${sorter.field}`, `${path}.${index}.field`))
     } else if (seen.has(sorter.field)) {
       issues.push(createIssue(source, 'error', 'view.invalidProjection', `Duplicate sorter field: ${sorter.field}`, `${path}.${index}.field`))
@@ -1113,7 +1103,7 @@ const validateTableOptions = (
       issues.push(createIssue(source, 'error', 'view.invalidProjection', 'width field id must be a non-empty string', `${path}.widths`))
       return
     }
-    if (!getDocumentFieldById(document, fieldId)) {
+    if (!hasDocumentField(document, fieldId)) {
       issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${fieldId}`, `${path}.widths.${fieldId}`))
     }
     if (typeof width !== 'number' || !Number.isFinite(width) || width <= 0) {
@@ -1340,8 +1330,8 @@ const lowerViewCreate = (
   index: number
 ): LowerActionResult => {
   const source = sourceOf(index, action)
-  const explicitViewId = action.input.id?.trim()
-  const preferredName = action.input.name.trim()
+  const explicitViewId = trimToUndefined(action.input.id)
+  const preferredName = trimToUndefined(action.input.name) ?? ''
   const issues: ValidationIssue[] = []
 
   if (action.input.id !== undefined && !explicitViewId) {

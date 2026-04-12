@@ -16,10 +16,12 @@ import {
   patchAggregateState
 } from './aggregate'
 import {
-  collectSchemaFieldIds,
-  collectTouchedRecordIds,
-  collectValueFieldIds
-} from './shared'
+  ensureFieldIndexes,
+  createFieldSyncContext,
+  shouldDropFieldIndex,
+  shouldRebuildFieldIndex,
+  shouldSyncFieldIndex
+} from './runtime/sync'
 import type {
   AggregateEntry,
   CalculationIndex,
@@ -88,21 +90,16 @@ export const ensureCalculationIndex = (
   records: RecordIndex,
   fieldIds: readonly FieldId[] = []
 ): CalculationIndex => {
-  let changed = false
-  const nextFields = new Map(previous.fields)
-
-  fieldIds.forEach(fieldId => {
-    if (nextFields.has(fieldId) || !getDocumentFieldById(document, fieldId)) {
-      return
-    }
-
-    nextFields.set(fieldId, buildFieldCalcIndex(document, records, fieldId))
-    changed = true
+  const ensured = ensureFieldIndexes({
+    previous: previous.fields,
+    document,
+    fieldIds,
+    build: fieldId => buildFieldCalcIndex(document, records, fieldId)
   })
 
-  return changed
+  return ensured.changed
     ? {
-        fields: nextFields,
+        fields: ensured.fields,
         rev: previous.rev + 1
       }
     : previous
@@ -119,29 +116,26 @@ export const syncCalculationIndex = (
   }
 
   const loadedFieldIds = new Set(previous.fields.keys())
-  const schemaFields = collectSchemaFieldIds(delta)
-  const valueFields = collectValueFieldIds(delta, { includeTitlePatch: true })
-  const touchedRecords = collectTouchedRecordIds(delta)
+  const context = createFieldSyncContext(delta, {
+    includeTitlePatch: true
+  })
   let changed = false
   const nextFields = new Map(previous.fields)
 
   Array.from(loadedFieldIds).forEach(fieldId => {
-    if (schemaFields.has(fieldId) && !getDocumentFieldById(document, fieldId)) {
+    if (shouldDropFieldIndex(document, context, fieldId)) {
       nextFields.delete(fieldId)
       changed = true
       return
     }
 
-    if (
-      schemaFields.has(fieldId)
-      || touchedRecords === 'all'
-    ) {
+    if (shouldRebuildFieldIndex(context, fieldId)) {
       nextFields.set(fieldId, buildFieldCalcIndex(document, records, fieldId))
       changed = true
       return
     }
 
-    if (!touchedRecords.size || !valueFields.has(fieldId)) {
+    if (!shouldSyncFieldIndex(context, fieldId)) {
       return
     }
 
@@ -154,7 +148,7 @@ export const syncCalculationIndex = (
     const nextEntries = new Map(previousField.global.entries)
     let nextGlobal = previousField.global
 
-    touchedRecords.forEach(recordId => {
+    context.touchedRecords.forEach(recordId => {
       const previousEntry = nextEntries.get(recordId)
       const row = records.rows.get(recordId)
       if (!row) {

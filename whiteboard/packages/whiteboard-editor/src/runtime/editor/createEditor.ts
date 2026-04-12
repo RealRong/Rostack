@@ -3,7 +3,10 @@ import type { Engine } from '@whiteboard/engine'
 import type { Viewport } from '@whiteboard/core/types'
 import type { NodeRegistry } from '../../types/node'
 import type { Tool } from '../../types/tool'
-import type { DrawPreferences } from '../../types/draw'
+import {
+  DEFAULT_DRAW_STATE,
+  type DrawState
+} from '../../draw/state'
 import type { Editor } from '../../types/editor'
 import {
   createInteractionRuntime,
@@ -24,19 +27,19 @@ import { createEditorCommands } from '../commands'
 export const createEditor = ({
   engine,
   initialTool,
-  initialDrawPreferences,
+  initialDrawState = DEFAULT_DRAW_STATE,
   initialViewport,
   registry,
 }: {
   engine: Engine
   initialTool: Tool
-  initialDrawPreferences: DrawPreferences
+  initialDrawState?: DrawState
   initialViewport: Viewport
   registry: NodeRegistry
 }): Editor => {
   const runtime = createEditorStateController({
     initialTool,
-    initialDrawPreferences
+    initialDrawState
   })
   const viewport = createViewport({
     initialViewport
@@ -194,8 +197,8 @@ export const createEditor = ({
         select: () => {
           write.session.tool.set({ type: 'select' })
         },
-        draw: (kind) => {
-          write.session.tool.set({ type: 'draw', kind })
+        draw: (mode) => {
+          write.session.tool.set({ type: 'draw', mode })
         },
         edge: (preset) => {
           write.session.tool.set({ type: 'edge', preset })

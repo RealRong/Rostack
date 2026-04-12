@@ -3,12 +3,13 @@ import {
   moveElbowRouteSegment,
   moveRoutePoint,
   areRoutePointsEqual,
+  type EdgeView as CoreEdgeView,
   type EdgeRouteHandleTarget
 } from '@whiteboard/core/edge'
 import { isPointEqual } from '@whiteboard/core/geometry'
 import type { Edge, EdgeId, EdgePatch, Point } from '@whiteboard/core/types'
 import type { PointerDownInput } from '../../types/input'
-import type { EdgeRead, EdgeView } from '../read/edge'
+import type { EdgeRead } from '../read/edge'
 
 export type EdgeRouteHandleState =
   | {
@@ -87,7 +88,7 @@ const isEdgeRoutePick = (
 const readEditableRouteView = (
   edge: Pick<EdgeRead, 'resolved' | 'item' | 'capability'>,
   edgeId: EdgeId
-): EdgeView | undefined => {
+): CoreEdgeView | undefined => {
   const view = edge.resolved.get(edgeId)
   const item = edge.item.get(edgeId)
 

@@ -8,6 +8,7 @@ import {
 import {
   createDerivedStore,
   read,
+  unique,
   type ReadStore
 } from '@shared/core'
 import type {
@@ -106,10 +107,10 @@ export const createActiveReadApi = (input: {
     const nextBeforeAppearanceId = beforeAppearanceId && index >= 0
       ? remaining[index]
       : undefined
-    const recordIds = validIds.flatMap(id => {
+    const recordIds = unique(validIds.flatMap(id => {
       const recordId = state.appearances.get(id)?.recordId
       return recordId ? [recordId] : []
-    }).filter((recordId, index, source) => source.indexOf(recordId) === index)
+    }))
     const beforeRecordId = nextBeforeAppearanceId
       ? state.appearances.get(nextBeforeAppearanceId)?.recordId
       : undefined

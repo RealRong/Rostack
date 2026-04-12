@@ -22,7 +22,7 @@ export const createDrawInteraction = (
       return null
     }
 
-    if (tool.kind === 'eraser') {
+    if (tool.mode === 'eraser') {
       const state = startEraseState(ctx, input)
       return state
         ? createEraseSession(ctx, state)

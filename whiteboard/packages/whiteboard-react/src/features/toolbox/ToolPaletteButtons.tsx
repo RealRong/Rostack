@@ -10,9 +10,9 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import {
-  type DrawKind,
   type Tool
 } from '@whiteboard/editor'
+import type { DrawMode } from '@whiteboard/editor/draw'
 import { readShapePreviewFill } from '@whiteboard/core/node'
 import type {
   ToolPaletteView
@@ -44,11 +44,11 @@ const ToolIcon = ({
   />
 )
 
-const DRAW_KIND_ICON = {
+const DRAW_MODE_ICON = {
   pen: PencilLine,
   highlighter: Highlighter,
   eraser: Eraser
-} as const satisfies Record<DrawKind, typeof PencilLine>
+} as const satisfies Record<DrawMode, typeof PencilLine>
 
 export const ToolPaletteButtons = ({
   tool,
@@ -63,7 +63,7 @@ export const ToolPaletteButtons = ({
     current: Partial<Record<'draw' | 'edge' | 'sticky' | 'shape' | 'mindmap', HTMLButtonElement | null>>
   }
 }) => {
-  const DrawButtonIcon = DRAW_KIND_ICON[palette.drawKind]
+  const DrawButtonIcon = DRAW_MODE_ICON[palette.drawMode]
   const toolIcon = tool.type === 'hand' ? Hand : MousePointer2
 
   return (

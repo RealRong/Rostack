@@ -7,15 +7,14 @@ import { cn } from '@ui'
 import type {
   BrushStyle,
   BrushStylePatch,
+  DrawBrush,
+  DrawMode,
   DrawSlot
 } from '@whiteboard/editor/draw'
 import {
+  DRAW_MODES,
   DRAW_SLOTS
 } from '@whiteboard/editor/draw'
-import type {
-  DrawBrushKind,
-  DrawKind
-} from '@whiteboard/editor'
 import { DRAW_COLOR_OPTIONS } from '../../selection/chrome/menus/options'
 import {
   TOOLBOX_PANEL_CLASSNAME,
@@ -23,13 +22,13 @@ import {
   ToolboxColorSwatch,
   ToolboxMenuSection
 } from '../primitives'
-import { isDrawBrushKind } from '../tool'
+import { hasDrawBrush } from '@whiteboard/editor/draw'
 
-const DRAW_KIND_ICONS = {
+const DRAW_MODE_ICONS = {
   pen: PencilLine,
   highlighter: Highlighter,
   eraser: Eraser
-} as const satisfies Record<DrawKind, typeof PencilLine>
+} as const satisfies Record<DrawMode, typeof PencilLine>
 
 const DRAW_WIDTH_RANGE = {
   pen: {
@@ -40,41 +39,41 @@ const DRAW_WIDTH_RANGE = {
     min: 6,
     max: 24
   }
-} as const satisfies Record<DrawBrushKind, { min: number, max: number }>
+} as const satisfies Record<DrawBrush, { min: number, max: number }>
 
 const resolveSlotSize = (
   width: number
 ) => Math.max(6, Math.min(16, width + 2))
 
 export const DrawMenu = ({
-  kind,
+  mode,
   activeSlot,
   slots,
   panelOpen = false,
-  onKind,
+  onMode,
   onSlot,
   onPatch
 }: {
-  kind: DrawKind
+  mode: DrawMode
   activeSlot?: DrawSlot
   slots?: Readonly<Record<DrawSlot, BrushStyle>>
   panelOpen?: boolean
-  onKind: (value: DrawKind) => void
+  onMode: (value: DrawMode) => void
   onSlot: (value: DrawSlot) => void
   onPatch: (patch: BrushStylePatch) => void
 }) => {
-  const brushKind = isDrawBrushKind(kind)
-    ? kind
+  const brush = hasDrawBrush(mode)
+    ? mode
     : undefined
   const style =
-    brushKind && activeSlot && slots
+    brush && activeSlot && slots
       ? slots[activeSlot]
       : undefined
 
   return (
     <div
       className="flex items-start gap-3"
-      data-brush={brushKind ? 'true' : undefined}
+      data-brush={brush ? 'true' : undefined}
     >
       <div className={cn(
         TOOLBOX_PANEL_CLASSNAME,
@@ -83,17 +82,17 @@ export const DrawMenu = ({
         <div
           className="flex w-full flex-col items-center gap-1"
           role="toolbar"
-          aria-label="Draw kind"
+          aria-label="Draw mode"
         >
-          {(Object.keys(DRAW_KIND_ICONS) as DrawKind[]).map((value) => {
-            const Icon = DRAW_KIND_ICONS[value]
+          {DRAW_MODES.map((value) => {
+            const Icon = DRAW_MODE_ICONS[value]
             return (
               <ToolboxButton
                 key={value}
                 type="button"
                 className="h-10 w-10 rounded-xl text-fg-muted hover:text-fg"
-                pressed={kind === value}
-                onClick={() => onKind(value)}
+                pressed={mode === value}
+                onClick={() => onMode(value)}
                 aria-label={value}
                 title={value}
               >
@@ -102,7 +101,7 @@ export const DrawMenu = ({
             )
           })}
         </div>
-        {brushKind && activeSlot && slots ? (
+        {brush && activeSlot && slots ? (
           <>
             <div className="my-[4px] h-px w-full bg-[rgb(from_var(--ui-border-subtle)_r_g_b_/_0.45)]" />
             <div
@@ -139,7 +138,7 @@ export const DrawMenu = ({
           </>
         ) : null}
       </div>
-      {panelOpen && brushKind && activeSlot && slots && style ? (
+      {panelOpen && brush && activeSlot && slots && style ? (
         <div className={cn(TOOLBOX_PANEL_CLASSNAME, 'w-[292px] p-3')}>
           <div className="min-w-0">
             <ToolboxMenuSection title="Width">
@@ -147,8 +146,8 @@ export const DrawMenu = ({
                 <input
                   type="range"
                   className="m-0 w-full [accent-color:var(--ui-accent)]"
-                  min={DRAW_WIDTH_RANGE[brushKind].min}
-                  max={DRAW_WIDTH_RANGE[brushKind].max}
+                  min={DRAW_WIDTH_RANGE[brush].min}
+                  max={DRAW_WIDTH_RANGE[brush].max}
                   step={1}
                   value={style.width}
                   onChange={(event) => {
@@ -164,7 +163,7 @@ export const DrawMenu = ({
                       width: Math.max(10, Math.min(28, style.width * 2)),
                       height: Math.max(2, style.width),
                       background: style.color,
-                      opacity: brushKind === 'highlighter' ? 0.35 : 1
+                      opacity: brush === 'highlighter' ? 0.35 : 1
                     }}
                   />
                   <span>{style.width}px</span>

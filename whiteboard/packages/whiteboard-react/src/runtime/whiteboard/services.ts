@@ -6,7 +6,6 @@ import type {
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
 import { createEditor } from '@whiteboard/editor'
-import { DEFAULT_DRAW_PREFERENCES } from '../../features/toolbox/drawPreferences'
 import { INSERT_PRESET_CATALOG } from '../../features/toolbox/presets'
 import type { ResolvedConfig } from '../../types/common/config'
 import { createClipboardHostAdapter } from '../../dom/host/clipboard'
@@ -72,7 +71,6 @@ export const createWhiteboardServices = ({
   const editor = createEditor({
     engine,
     initialTool: resolvedConfig.initialTool,
-    initialDrawPreferences: DEFAULT_DRAW_PREFERENCES,
     initialViewport: resolvedConfig.viewport.initial,
     registry
   })

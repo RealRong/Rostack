@@ -11,10 +11,12 @@ import {
   compareFieldValues
 } from '@dataview/core/field'
 import {
-  collectSchemaFieldIds,
-  collectTouchedRecordIds,
-  collectValueFieldIds
-} from '../shared'
+  createFieldSyncContext,
+  ensureFieldIndexes,
+  shouldDropFieldIndex,
+  shouldRebuildFieldIndex,
+  shouldSyncFieldIndex
+} from '../runtime/sync'
 import type {
   RecordIndex,
   SortFieldIndex,
@@ -185,21 +187,16 @@ export const ensureSortIndex = (
   records: RecordIndex,
   fieldIds: readonly FieldId[] = []
 ): SortIndex => {
-  let changed = false
-  const nextFields = new Map(previous.fields)
-
-  fieldIds.forEach(fieldId => {
-    if (nextFields.has(fieldId) || !getDocumentFieldById(document, fieldId)) {
-      return
-    }
-
-    nextFields.set(fieldId, buildFieldSortIndex(document, records, fieldId))
-    changed = true
+  const ensured = ensureFieldIndexes({
+    previous: previous.fields,
+    document,
+    fieldIds,
+    build: fieldId => buildFieldSortIndex(document, records, fieldId)
   })
 
-  return changed
+  return ensured.changed
     ? {
-        fields: nextFields,
+        fields: ensured.fields,
         rev: previous.rev + 1
       }
     : previous
@@ -216,29 +213,26 @@ export const syncSortIndex = (
   }
 
   const loadedFieldIds = new Set(previous.fields.keys())
-  const schemaFields = collectSchemaFieldIds(delta)
-  const valueFields = collectValueFieldIds(delta, { includeTitlePatch: true })
-  const touchedRecords = collectTouchedRecordIds(delta)
+  const context = createFieldSyncContext(delta, {
+    includeTitlePatch: true
+  })
   let changed = false
   const nextFields = new Map(previous.fields)
 
   Array.from(loadedFieldIds).forEach(fieldId => {
-    if (schemaFields.has(fieldId) && !getDocumentFieldById(document, fieldId)) {
+    if (shouldDropFieldIndex(document, context, fieldId)) {
       nextFields.delete(fieldId)
       changed = true
       return
     }
 
-    if (
-      schemaFields.has(fieldId)
-      || touchedRecords === 'all'
-    ) {
+    if (shouldRebuildFieldIndex(context, fieldId)) {
       nextFields.set(fieldId, buildFieldSortIndex(document, records, fieldId))
       changed = true
       return
     }
 
-    if (!touchedRecords.size || !valueFields.has(fieldId)) {
+    if (!shouldSyncFieldIndex(context, fieldId)) {
       return
     }
 
@@ -252,7 +246,7 @@ export const syncSortIndex = (
       document,
       records,
       fieldId,
-      touchedRecords
+      touchedRecords: context.touchedRecords
     })
     if (nextField !== previousField) {
       nextFields.set(fieldId, nextField)

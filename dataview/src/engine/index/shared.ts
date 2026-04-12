@@ -5,7 +5,7 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import {
-  getDocumentFieldById,
+  hasDocumentField,
   getDocumentFieldIds
 } from '@dataview/core/document'
 
@@ -150,4 +150,4 @@ export const hasRecordSetChange = (
 export const hasField = (
   document: DataDoc,
   fieldId: FieldId
-): boolean => Boolean(getDocumentFieldById(document, fieldId))
+): boolean => hasDocumentField(document, fieldId)

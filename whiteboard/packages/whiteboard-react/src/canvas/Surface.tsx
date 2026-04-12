@@ -78,7 +78,7 @@ export const Surface = ({
           tool.type === 'edge' || tool.type === 'insert'
             ? tool.preset
             : tool.type === 'draw'
-              ? tool.kind
+              ? tool.mode
               : undefined
         }
         tabIndex={0}

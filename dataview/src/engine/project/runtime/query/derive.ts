@@ -5,7 +5,8 @@ import type {
   View
 } from '@dataview/core/contracts'
 import {
-  sameOrder
+  sameOrder,
+  trimLowercase
 } from '@shared/core'
 import {
   getDocumentFieldById
@@ -112,7 +113,7 @@ const resolveSearchMatches = (input: {
   search: View['search']
   index: SearchIndex
 }): ReadonlySet<RecordId> | undefined => {
-  const query = input.search.query.trim().toLowerCase()
+  const query = trimLowercase(input.search.query)
   if (!query) {
     return undefined
   }

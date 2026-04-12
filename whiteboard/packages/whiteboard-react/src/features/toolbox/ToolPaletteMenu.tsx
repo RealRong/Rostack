@@ -29,11 +29,11 @@ export const ToolPaletteMenu = ({
   if (openMenu === 'draw') {
     return (
       <DrawMenu
-        kind={palette.drawKind}
+        mode={palette.drawMode}
         activeSlot={palette.drawBrush.slot}
-        slots={palette.drawBrush.brush.slots}
+        slots={palette.drawBrush.state.slots}
         panelOpen={drawPanelOpen}
-        onKind={controller.selectDrawKind}
+        onMode={controller.selectDrawMode}
         onSlot={controller.selectDrawSlot}
         onPatch={controller.patchDrawStyle}
       />

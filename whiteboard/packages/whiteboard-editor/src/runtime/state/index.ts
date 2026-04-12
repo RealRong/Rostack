@@ -2,11 +2,11 @@ import { createValueStore, type ValueStore } from '@shared/core'
 import type { Tool } from '../../types/tool'
 import type { EditorRead, EditorState } from '../../types/editor'
 import type { PointerSample } from '../../types/input'
-import type { DrawPreferences } from '../../types/draw'
+import type { DrawState } from '../../draw/state'
 import { createEditState, type EditState } from './edit'
 import {
-  createDrawPreferencesState,
-  type DrawPreferencesState
+  createDrawStateStore,
+  type DrawStateStore
 } from './draw'
 import {
   createSelectionState,
@@ -17,7 +17,7 @@ type ReadNodeEdge = Pick<EditorRead, 'node' | 'edge'>
 
 export type EditorLocalState = {
   tool: ValueStore<Tool>
-  draw: DrawPreferencesState
+  draw: DrawStateStore
   selection: SelectionState
   edit: EditState
   pointer: ValueStore<PointerSample | null>
@@ -35,13 +35,13 @@ export type EditorStateController = {
 
 export const createEditorStateController = ({
   initialTool,
-  initialDrawPreferences
+  initialDrawState
 }: {
   initialTool: Tool
-  initialDrawPreferences: DrawPreferences
+  initialDrawState: DrawState
 }): EditorStateController => {
   const tool = createValueStore<Tool>(initialTool)
-  const draw = createDrawPreferencesState(initialDrawPreferences)
+  const draw = createDrawStateStore(initialDrawState)
   const selection = createSelectionState()
   const edit = createEditState()
   const pointer = createValueStore<PointerSample | null>(null)

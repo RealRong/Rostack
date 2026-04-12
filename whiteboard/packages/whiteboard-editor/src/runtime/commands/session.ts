@@ -42,7 +42,7 @@ const isSameTool = (
     case 'insert':
       return right.type === 'insert' && left.preset === right.preset
     case 'draw':
-      return right.type === 'draw' && left.kind === right.kind
+      return right.type === 'draw' && left.mode === right.mode
     default:
       return true
   }

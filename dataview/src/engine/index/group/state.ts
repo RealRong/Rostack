@@ -4,15 +4,19 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import {
+  hasDocumentField,
   getDocumentFieldById
 } from '@dataview/core/document'
 import {
-  collectSchemaFieldIds,
-  collectTouchedRecordIds,
-  collectValueFieldIds,
   insertOrderedId,
   removeOrderedId
 } from '../shared'
+import {
+  createFieldSyncContext,
+  shouldDropFieldIndex,
+  shouldRebuildFieldIndex,
+  shouldSyncFieldIndex
+} from '../runtime/sync'
 import type {
   BucketKey,
   GroupDemand,
@@ -212,7 +216,7 @@ export const ensureGroupIndex = (
 
   groups.forEach(demand => {
     const key = createGroupDemandKey(demand)
-    if (nextGroups.has(key) || !getDocumentFieldById(document, demand.fieldId)) {
+    if (nextGroups.has(key) || !hasDocumentField(document, demand.fieldId)) {
       return
     }
 
@@ -238,15 +242,15 @@ export const syncGroupIndex = (
     return previous
   }
 
-  const schemaFields = collectSchemaFieldIds(delta)
-  const valueFields = collectValueFieldIds(delta, { includeTitlePatch: true })
-  const touchedRecords = collectTouchedRecordIds(delta)
+  const context = createFieldSyncContext(delta, {
+    includeTitlePatch: true
+  })
   let changed = false
   const nextGroups = new Map(previous.groups)
 
   Array.from(previous.groups.entries()).forEach(([key, groupIndex]) => {
     const fieldId = groupIndex.fieldId
-    if (schemaFields.has(fieldId) && !getDocumentFieldById(document, fieldId)) {
+    if (shouldDropFieldIndex(document, context, fieldId)) {
       nextGroups.delete(key)
       changed = true
       return
@@ -259,16 +263,13 @@ export const syncGroupIndex = (
       bucketInterval: groupIndex.bucketInterval
     }
 
-    if (
-      schemaFields.has(fieldId)
-      || touchedRecords === 'all'
-    ) {
+    if (shouldRebuildFieldIndex(context, fieldId)) {
       nextGroups.set(key, buildGroupFieldIndex(document, records, demand, groupIndex))
       changed = true
       return
     }
 
-    if (!touchedRecords.size || !valueFields.has(fieldId)) {
+    if (!shouldSyncFieldIndex(context, fieldId)) {
       return
     }
 
@@ -276,7 +277,7 @@ export const syncGroupIndex = (
       previous: groupIndex,
       document,
       records,
-      touchedRecords
+      touchedRecords: context.touchedRecords
     })
     if (nextGroup !== groupIndex) {
       nextGroups.set(key, nextGroup)

@@ -37,7 +37,7 @@ export const startStrokeState = (
 ): DrawStrokeState | null => startDrawStroke({
   tool: ctx.read.tool.get(),
   pointer: input,
-  preferences: ctx.read.draw.get()
+  state: ctx.read.draw.get()
 }) ?? null
 
 export const createStrokeSession = (

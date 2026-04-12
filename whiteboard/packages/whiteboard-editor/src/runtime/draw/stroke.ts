@@ -3,10 +3,16 @@ import {
   resolveDrawStroke
 } from '@whiteboard/core/node'
 import type { NodeInput, Point } from '@whiteboard/core/types'
-import { readDrawStyle } from '../../draw'
-import type { DrawPreview, DrawPreferences, ResolvedDrawStyle } from '../../types/draw'
+import {
+  hasDrawBrush,
+  readDrawStyle,
+  type DrawBrush,
+  type DrawPreview,
+  type DrawState,
+  type DrawStyle
+} from '../../draw'
 import type { PointerDownInput, PointerSample } from '../../types/input'
-import type { DrawBrushKind, Tool } from '../../types/tool'
+import type { Tool } from '../../types/tool'
 
 const DRAW_MIN_LENGTH_SCREEN = 4
 const SAMPLE_DISTANCE_SCREEN = 1
@@ -16,8 +22,8 @@ type DrawStrokePointer = {
 }
 
 export type DrawStrokeState = {
-  brush: DrawBrushKind
-  style: ResolvedDrawStyle
+  brush: DrawBrush
+  style: DrawStyle
   points: readonly Point[]
   lastScreen: Point
   lengthScreen: number
@@ -81,11 +87,11 @@ const resolveStrokePoints = (
 export const startDrawStroke = (input: {
   tool: Tool
   pointer: PointerDownInput
-  preferences: DrawPreferences
+  state: DrawState
 }): DrawStrokeState | undefined => {
   if (
     input.tool.type !== 'draw'
-    || input.tool.kind === 'eraser'
+    || !hasDrawBrush(input.tool.mode)
     || input.pointer.pick.kind !== 'background'
     || input.pointer.editable
     || input.pointer.ignoreInput
@@ -95,8 +101,8 @@ export const startDrawStroke = (input: {
   }
 
   return {
-    brush: input.tool.kind,
-    style: readDrawStyle(input.preferences, input.tool.kind),
+    brush: input.tool.mode,
+    style: readDrawStyle(input.state, input.tool.mode),
     points: [input.pointer.world],
     lastScreen: input.pointer.screen,
     lengthScreen: 0

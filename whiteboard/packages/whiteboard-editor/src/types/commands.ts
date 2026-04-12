@@ -42,17 +42,17 @@ import type {
 import type { ClipboardPacket } from '../clipboard/packet'
 import type {
   BrushStylePatch,
-  DrawPreferences,
-  DrawSlot
-} from './draw'
+  DrawState
+} from '../draw/state'
+import type { DrawSlot } from '../draw/model'
 import type { MindmapLayoutConfig } from './mindmap'
 import type { PointerSample } from './input'
 import type {
-  DrawKind,
   EdgePresetKey,
   InsertPresetKey,
   Tool
 } from './tool'
+import type { DrawMode } from '../draw/model'
 import type {
   EditCaret,
   EditField,
@@ -300,7 +300,7 @@ export type HistoryCommands = {
 }
 
 export type DrawCommands = {
-  set: (preferences: DrawPreferences) => void
+  set: (state: DrawState) => void
   slot: (slot: DrawSlot) => void
   patch: (patch: BrushStylePatch) => void
 }
@@ -329,7 +329,7 @@ export type ViewActions = {
 export type ToolActions = {
   set: SessionToolActions['set']
   select: () => void
-  draw: (kind: DrawKind) => void
+  draw: (mode: DrawMode) => void
   edge: (preset: EdgePresetKey) => void
   insert: (preset: InsertPresetKey) => void
   hand: () => void

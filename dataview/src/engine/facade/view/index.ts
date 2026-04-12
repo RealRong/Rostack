@@ -70,7 +70,8 @@ import {
 } from '@dataview/core/view'
 import {
   read as readValue,
-  sameJsonValue
+  sameJsonValue,
+  trimToUndefined
 } from '@shared/core'
 import type {
   CellRef
@@ -270,7 +271,7 @@ export const createActiveEngineApi = (options: {
     kind?: CustomFieldKind
   }): CustomFieldId | undefined => {
     const kind = input?.kind ?? 'text'
-    const explicitName = input?.name?.trim()
+    const explicitName = trimToUndefined(input?.name)
     const name = explicitName || createUniqueFieldName(
       renderMessage(meta.field.kind.get(kind).defaultName),
       options.fields.list()
@@ -679,7 +680,7 @@ export const createActiveEngineApi = (options: {
       const values: Partial<Record<FieldId, unknown>> = {
         ...(input.values ?? {})
       }
-      let title = input.title?.trim()
+      let title = trimToUndefined(input.title)
 
       if (groupWrite) {
         const fieldId = groupWrite.group.field

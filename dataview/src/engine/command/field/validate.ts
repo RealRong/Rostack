@@ -130,7 +130,7 @@ const validateFieldShape = (
       } else if (
         typeof field.defaultOptionId === 'string'
         && (
-          !field.defaultOptionId.trim()
+          !isNonEmptyString(field.defaultOptionId)
           || !field.options.some(option => option.id === field.defaultOptionId)
         )
       ) {

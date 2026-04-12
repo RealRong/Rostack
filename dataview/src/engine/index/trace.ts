@@ -8,10 +8,8 @@ import type {
   SearchIndex
 } from './types'
 import {
-  collectSchemaFieldIds,
-  collectTouchedRecordIds,
-  collectValueFieldIds
-} from './shared'
+  createFieldSyncContext
+} from './runtime/sync'
 
 export const fullRebuildFrom = (
   delta: CommitDelta
@@ -25,7 +23,7 @@ export const fullRebuildFrom = (
 export const touchedRecordCountOf = (
   delta: CommitDelta
 ): number | 'all' | undefined => {
-  const touched = collectTouchedRecordIds(delta)
+  const touched = createFieldSyncContext(delta).touchedRecords
   return touched === 'all'
     ? 'all'
     : touched.size || undefined
@@ -41,9 +39,12 @@ export const touchedFieldCountOf = (
     return 'all'
   }
 
+  const context = createFieldSyncContext(delta, {
+    includeTitlePatch: true
+  })
   const touched = new Set([
-    ...collectSchemaFieldIds(delta),
-    ...collectValueFieldIds(delta, { includeTitlePatch: true })
+    ...context.schemaFields,
+    ...context.valueFields
   ])
   return touched.size || undefined
 }

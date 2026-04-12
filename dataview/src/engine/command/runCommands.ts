@@ -1,17 +1,20 @@
 import type { Command, CustomField, DataDoc, DataRecord } from '@dataview/core/contracts'
 import type { DeltaItem } from '@dataview/core/contracts'
 import { buildSemanticDraft } from '@dataview/core/commit/semantics'
-import {
-  getDocumentCustomFieldById,
-  getDocumentRecordById,
-  getDocumentViewById
-} from '@dataview/core/document'
 import { reduceOperations } from '@dataview/core/operation'
+import {
+  isNonEmptyString
+} from '@shared/core'
 import { createCommandContext } from './context'
 import { createIssue, hasValidationErrors, type ValidationIssue } from './issues'
-import { commandResult, isNonEmptyString, type CommandResult } from './shared'
+import { commandResult, type CommandResult } from './shared'
 import type { LoweredCommand } from '../action/lower'
 import { validateField } from './field/validate'
+import {
+  validateFieldExists,
+  validateRecordExists,
+  validateViewExists
+} from '../validation/entity'
 
 export interface ResolvedWriteBatch {
   operations: CommandResult['operations']
@@ -19,36 +22,6 @@ export interface ResolvedWriteBatch {
   issues: ValidationIssue[]
   canApply: boolean
 }
-
-const validateRecordExists = (
-  document: DataDoc,
-  commandIndex: number,
-  command: Command,
-  recordId: string,
-  path: string
-) => getDocumentRecordById(document, recordId)
-  ? []
-  : [createIssue({ index: commandIndex, type: command.type }, 'error', 'record.notFound', `Unknown record: ${recordId}`, path)]
-
-const validateViewExists = (
-  document: DataDoc,
-  commandIndex: number,
-  command: Command,
-  viewId: string,
-  path: string
-) => getDocumentViewById(document, viewId)
-  ? []
-  : [createIssue({ index: commandIndex, type: command.type }, 'error', 'view.notFound', `Unknown view: ${viewId}`, path)]
-
-const validateFieldExists = (
-  document: DataDoc,
-  commandIndex: number,
-  command: Command,
-  fieldId: string,
-  path: string
-) => getDocumentCustomFieldById(document, fieldId)
-  ? []
-  : [createIssue({ index: commandIndex, type: command.type }, 'error', 'field.notFound', `Unknown field: ${fieldId}`, path)]
 
 const runCommand = (
   document: DataDoc,
@@ -98,7 +71,7 @@ const runCommand = (
       }])
     }
     case 'record.patch': {
-      const issues = validateRecordExists(document, ctx.index, lowered.command, lowered.command.recordId, 'recordId')
+      const issues = validateRecordExists(document, source, lowered.command.recordId, 'recordId')
       if (!Object.keys(lowered.command.patch).length) {
         issues.push(createIssue(source, 'error', 'record.emptyPatch', 'record.patch patch cannot be empty', 'patch'))
       }
@@ -115,8 +88,8 @@ const runCommand = (
       }])
     case 'value.set': {
       const issues = [
-        ...validateRecordExists(document, ctx.index, lowered.command, lowered.command.recordId, 'recordId'),
-        ...validateFieldExists(document, ctx.index, lowered.command, lowered.command.field, 'field')
+        ...validateRecordExists(document, source, lowered.command.recordId, 'recordId'),
+        ...validateFieldExists(document, source, lowered.command.field, 'field')
       ]
       return commandResult(issues, [{
         type: 'document.value.set',
@@ -126,7 +99,7 @@ const runCommand = (
       }])
     }
     case 'value.patch': {
-      const issues = validateRecordExists(document, ctx.index, lowered.command, lowered.command.recordId, 'recordId')
+      const issues = validateRecordExists(document, source, lowered.command.recordId, 'recordId')
       if (!Object.keys(lowered.command.patch).length) {
         issues.push(createIssue(source, 'error', 'value.emptyPatch', 'value.patch patch cannot be empty', 'patch'))
       }
@@ -138,8 +111,8 @@ const runCommand = (
     }
     case 'value.clear': {
       const issues = [
-        ...validateRecordExists(document, ctx.index, lowered.command, lowered.command.recordId, 'recordId'),
-        ...validateFieldExists(document, ctx.index, lowered.command, lowered.command.field, 'field')
+        ...validateRecordExists(document, source, lowered.command.recordId, 'recordId'),
+        ...validateFieldExists(document, source, lowered.command.field, 'field')
       ]
       return commandResult(issues, [{
         type: 'document.value.clear',
@@ -155,7 +128,7 @@ const runCommand = (
       }])
     }
     case 'field.patch': {
-      const issues = validateFieldExists(document, ctx.index, lowered.command, lowered.command.fieldId, 'fieldId')
+      const issues = validateFieldExists(document, source, lowered.command.fieldId, 'fieldId')
       const field = ctx.read.fields.get(lowered.command.fieldId)
       if (!field) {
         return commandResult(issues)
@@ -172,7 +145,7 @@ const runCommand = (
       }])
     }
     case 'field.remove': {
-      const issues = validateFieldExists(document, ctx.index, lowered.command, lowered.command.fieldId, 'fieldId')
+      const issues = validateFieldExists(document, source, lowered.command.fieldId, 'fieldId')
       return commandResult(issues, [{
         type: 'document.field.remove',
         fieldId: lowered.command.fieldId
@@ -196,14 +169,14 @@ const runCommand = (
       }])
     }
     case 'view.remove': {
-      const issues = validateViewExists(document, ctx.index, lowered.command, lowered.command.viewId, 'viewId')
+      const issues = validateViewExists(document, source, lowered.command.viewId, 'viewId')
       return commandResult(issues, [{
         type: 'document.view.remove',
         viewId: lowered.command.viewId
       }])
     }
     case 'activeView.set': {
-      const issues = validateViewExists(document, ctx.index, lowered.command, lowered.command.viewId, 'viewId')
+      const issues = validateViewExists(document, source, lowered.command.viewId, 'viewId')
       return commandResult(issues, [{
         type: 'document.activeView.set',
         viewId: lowered.command.viewId

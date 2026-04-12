@@ -28,7 +28,7 @@ import {
   sameFilterRule
 } from '@dataview/core/filter'
 import {
-  sameOrder
+  trimToUndefined
 } from '@shared/core'
 import {
   isCustomField,
@@ -45,52 +45,14 @@ import type {
 import {
   sameFieldList
 } from '../equality'
+import {
+  reuseIfEqual,
+  sameList,
+  sameOptionalList,
+  sameOptionalProjection
+} from '../reuse'
 
 const emptyIds = [] as readonly FieldId[]
-
-const equalList = <T,>(
-  left: readonly T[],
-  right: readonly T[],
-  equal: (left: T, right: T) => boolean
-) => sameOrder(left, right, equal)
-
-const equalOptionalList = <T,>(
-  left: readonly T[] | undefined,
-  right: readonly T[] | undefined,
-  equal: (left: T, right: T) => boolean
-) => {
-  if (!left || !right) {
-    return left === right
-  }
-
-  return equalList(left, right, equal)
-}
-
-const equalProjection = <T,>(
-  left: T | undefined,
-  right: T | undefined,
-  equal: (left: T, right: T) => boolean
-) => {
-  if (!left || !right) {
-    return left === right
-  }
-
-  return equal(left, right)
-}
-
-const reuseProjection = <T,>(
-  previous: T | undefined,
-  next: T | undefined,
-  equal: (left: T, right: T) => boolean
-) => {
-  if (!previous || !next) {
-    return next
-  }
-
-  return equal(previous, next)
-    ? previous
-    : next
-}
 
 const resolveActiveView = (
   document: DataDoc,
@@ -163,7 +125,7 @@ const createSearchProjection = (
   ...(search.fields?.length
     ? { fields: [...search.fields] }
     : {}),
-  active: Boolean(search.query.trim())
+  active: Boolean(trimToUndefined(search.query))
 })
 
 const createFilterRuleProjection = (
@@ -309,7 +271,7 @@ const createGroupProjection = (input: {
 const equalActiveView = (
   left: ActiveView | undefined,
   right: ActiveView | undefined
-) => equalProjection(left, right, (current, next) => (
+) => sameOptionalProjection(left, right, (current, next) => (
   current.id === next.id
   && current.name === next.name
   && current.type === next.type
@@ -335,26 +297,26 @@ const equalFilterRuleProjection = (
   && left.editorKind === right.editorKind
   && left.valueText === right.valueText
   && left.bodyLayout === right.bodyLayout
-  && equalList(left.conditions, right.conditions, equalFilterCondition)
+  && sameList(left.conditions, right.conditions, equalFilterCondition)
 )
 
 const equalFilterProjection = (
   left: ViewFilterProjection | undefined,
   right: ViewFilterProjection | undefined
-) => equalProjection(left, right, (current, next) => (
+) => sameOptionalProjection(left, right, (current, next) => (
   current.viewId === next.viewId
   && current.mode === next.mode
-  && equalList(current.rules, next.rules, equalFilterRuleProjection)
+  && sameList(current.rules, next.rules, equalFilterRuleProjection)
 ))
 
 const equalSearchProjection = (
   left: ViewSearchProjection | undefined,
   right: ViewSearchProjection | undefined
-) => equalProjection(left, right, (current, next) => (
+) => sameOptionalProjection(left, right, (current, next) => (
   current.viewId === next.viewId
   && current.query === next.query
   && current.active === next.active
-  && equalOptionalList(current.fields, next.fields, Object.is)
+  && sameOptionalList(current.fields, next.fields, Object.is)
 ))
 
 const equalSortRuleProjection = (
@@ -370,16 +332,16 @@ const equalSortRuleProjection = (
 const equalSortProjection = (
   left: ViewSortProjection | undefined,
   right: ViewSortProjection | undefined
-) => equalProjection(left, right, (current, next) => (
+) => sameOptionalProjection(left, right, (current, next) => (
   current.viewId === next.viewId
   && current.active === next.active
-  && equalList(current.rules, next.rules, equalSortRuleProjection)
+  && sameList(current.rules, next.rules, equalSortRuleProjection)
 ))
 
 const equalGroupProjection = (
   left: ViewGroupProjection | undefined,
   right: ViewGroupProjection | undefined
-) => equalProjection(left, right, (current, next) => (
+) => sameOptionalProjection(left, right, (current, next) => (
   current.viewId === next.viewId
   && current.active === next.active
   && current.fieldId === next.fieldId
@@ -389,8 +351,8 @@ const equalGroupProjection = (
   && current.bucketInterval === next.bucketInterval
   && current.showEmpty === next.showEmpty
   && current.supportsInterval === next.supportsInterval
-  && equalList(current.availableModes, next.availableModes, Object.is)
-  && equalList(current.availableBucketSorts, next.availableBucketSorts, Object.is)
+  && sameList(current.availableModes, next.availableModes, Object.is)
+  && sameList(current.availableBucketSorts, next.availableBucketSorts, Object.is)
 ))
 
 export const publishViewState = (input: {
@@ -441,8 +403,8 @@ export const publishViewState = (input: {
   })
 
   return {
-    view: reuseProjection(input.previous.view, nextView, equalActiveView),
-    query: reuseProjection(
+    view: reuseIfEqual(input.previous.view, nextView, equalActiveView),
+    query: reuseIfEqual(
       input.previous.query,
       {
         filter: nextFilter,
@@ -457,6 +419,6 @@ export const publishViewState = (input: {
         && equalSortProjection(current.sort, next.sort)
       )
     ),
-    fields: reuseProjection(input.previous.fields, nextFields, sameFieldList)
+    fields: reuseIfEqual(input.previous.fields, nextFields, sameFieldList)
   }
 }

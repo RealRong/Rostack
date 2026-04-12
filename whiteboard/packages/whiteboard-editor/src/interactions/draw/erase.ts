@@ -82,7 +82,7 @@ export const startEraseState = (
 
   if (
     tool.type !== 'draw'
-    || tool.kind !== 'eraser'
+    || tool.mode !== 'eraser'
     || input.editable
     || input.ignoreInput
     || input.ignoreSelection

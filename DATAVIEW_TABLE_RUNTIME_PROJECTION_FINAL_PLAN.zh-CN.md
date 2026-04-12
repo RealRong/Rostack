@@ -199,6 +199,7 @@ interface ActiveTableState
 
 - table 不再有 `engine.active.table.state`
 - table 主体直接使用 `engine.active.state`
+- `engine.active.select(...)` 成为 table 侧唯一允许的细粒度订阅入口
 
 
 ## 7. table 侧最终读取原则
@@ -226,6 +227,164 @@ const state = engine.active.state
 
 - `showVerticalLines` 由用到它的组件直接订阅 `state.view.options.table.showVerticalLines`
 
+这里要进一步明确一条总原则：
+
+- table 不再自己创建 projection store
+- 但 table 允许直接使用 `engine.active.select(...)` 做局部字段订阅
+
+也就是说，最终只有两种合法读法：
+
+1. 直接读取整份 `engine.active.state`
+2. 基于 `engine.active.select(...)` 读取局部字段
+
+不允许再出现第三种：
+
+3. React 本地重新拼一份 `TableCurrentView`
+
+
+## 7.1 什么时候直接用 `engine.active.state`
+
+如果一个模块天然需要同时消费多块 active projection，而且这些数据本来就共同组成该模块的运行时主上下文，那么它就应该直接拿整份 `engine.active.state`。
+
+table 里典型适合直接使用整份 active state 的地方有：
+
+- `createTableController(...)`
+- table body 主运行时
+- pointer / grid selection / virtual runtime
+- row reorder
+- input / paste / openCell
+- 任何同时依赖 `view + appearances + sections + fields + calculations + group + sort` 的模块
+
+这些模块如果硬拆成多个 selector，只会让读边界更碎，反而更难理解。
+
+
+## 7.2 什么时候用 `engine.active.select(...)`
+
+如果一个模块只关心 active state 上的局部字段，而且这个字段变化不应该带着整个模块一起重算，那么它就应该走：
+
+```ts
+engine.active.select(...)
+```
+
+这条规则特别适合：
+
+- 小 UI 组件
+- 单一展示选项
+- 只依赖一两个字段的叶子组件
+- 只读取局部字段的 page 面板或 toolbar 控件
+
+一句话概括：
+
+- 主运行时读整份 state
+- 叶子节点读 selector
+
+这里再加一条硬约束：
+
+- table host 一旦挂载，就已经意味着当前 active view 必然是 table
+- 所以 table 侧 selector 不允许再写 `state?.view.type === 'table'` 这种重复防御
+- 类型收窄和挂载保证只存在于 host 边界，不允许在 table 叶子组件里重复出现
+
+也就是说，未来实现里应明确避免这种形式：
+
+```ts
+engine.active.select(state => (
+  state?.view.type === 'table'
+    ? state.view.display.fields
+    : []
+))
+```
+
+因为这会把已经在 host 层解决过的问题，再次扩散到每个 selector 调用点，属于冗余复杂度。
+
+
+## 7.3 table 里哪些地方应该用 `engine.active.select(...)`
+
+按最终方案，table 侧至少有这些位置应该改成 `engine.active.select(...)`：
+
+### `showVerticalLines`
+
+这是最典型的 selector 字段。
+
+当前只有少数组件关心它，例如：
+
+- cell
+- column header
+
+这些地方不应该再依赖一份 table projection store，只需要局部订阅：
+
+```ts
+engine.active.select(state => state?.view.options.table.showVerticalLines ?? false)
+```
+
+### `view.display.fields`
+
+如果某个局部模块只关心可见列顺序，而不关心整份 active state，也应该直接走 selector：
+
+```ts
+engine.active.select(state => state?.view.display.fields ?? [])
+```
+
+这适合：
+
+- 只关心列顺序的局部 UI
+- 列设置面板
+- 仅依赖 display fields 的工具条能力
+
+### `group`
+
+如果某个局部模块只关心当前 group projection，不需要整份 active state，就应该直接订阅：
+
+```ts
+engine.active.select(state => state?.group)
+```
+
+### `sort`
+
+如果某个局部模块只关心排序状态，也应该直接订阅：
+
+```ts
+engine.active.select(state => state?.sort)
+```
+
+### `groupField`
+
+如果某个局部模块只关心分组字段对象，不需要整份上下文，也应该直接订阅：
+
+```ts
+engine.active.select(state => state?.groupField)
+```
+
+### `customFields`
+
+如果某个局部模块只关心当前 active view 的自定义字段集合，也应该直接订阅：
+
+```ts
+engine.active.select(state => state?.customFields ?? [])
+```
+
+
+## 7.4 table 里哪些地方不应该用 `engine.active.select(...)`
+
+下面这些模块不应该把自己拆成很多 selector 再拼起来，而应该直接拿整份 `engine.active.state`：
+
+- controller
+- body 主渲染入口
+- pointer runtime
+- virtual runtime
+- grid selection
+- openCell / applyPaste 这类需要同时读取多块结构的 runtime
+
+原因很简单：
+
+- 这些模块不是叶子组件
+- 它们本来就需要一份完整的运行时上下文
+- 如果拆成很多 selector，复杂度只会从 projection.ts 转移到调用端
+
+也就是说：
+
+- 我们删除 React 本地 projection，不是为了把每个模块都改成细碎 selector
+- 而是为了让“完整上下文”和“局部订阅”各归其位
+
 
 ## 8. React 侧最终形态
 
@@ -245,6 +404,18 @@ const currentView = useMemo(() => createTableViewStore({
 - React 本地 merge `active.state + active.table.state`
 
 最终 `TableProvider` 只需要把 engine 的 active state 直接交给 controller。
+
+如果需要稳定地传入一个 store，直接传：
+
+```ts
+engine.active.state
+```
+
+不要再创建：
+
+- `createTableViewStore(...)`
+- `createDerivedStore(...)` 包一层 table current view
+- React 本地 table equality
 
 
 ## 8.2 `currentView.ts`
@@ -313,6 +484,15 @@ type TableActiveState = ActiveViewState & {
 - 薄类型收窄是允许的
 - 新 projection 层是不允许的
 
+进一步说，controller 的最终输入应该是：
+
+- 一份 `engine.active.state`
+- 外加局部 runtime store，例如 selection / marquee / page state
+
+而不是：
+
+- React 先拼一份 table current view 再传进去
+
 
 ## 10. 关于订阅粒度
 
@@ -342,6 +522,58 @@ type TableActiveState = ActiveViewState & {
 
 - React 再自己拼一层 table current view
 
+这里再补一条最终约束：
+
+- table 侧所有细粒度优化，都必须建立在 `engine.active.select(...)` 之上
+- 不允许以“优化重渲染”为理由重新引入 `currentView.ts` / `projection.ts`
+
+
+## 10.1 `engine.active.select(...)` 的最终定位
+
+在这套方案里，`engine.active.select(...)` 的定位非常明确：
+
+- 它不是 projection builder
+- 它不是 table runtime store 的替代品
+- 它只是 active state 的细粒度订阅入口
+
+所以它只应该做两件事：
+
+1. 从通用 `ActiveViewState` 挑出局部字段
+2. 让叶子模块避免因为无关字段变化而重算
+
+它不应该承担：
+
+- 拼 table current view
+- 做 table 专属领域归一化
+- 在 React 侧复制一份 active state
+- 在每个 selector 调用点重复做 `view.type === 'table'` 判断
+
+
+## 10.2 建议补的通用 selector 约定
+
+为了避免每个组件都手写重复 selector，最终可以统一沉淀少量轻量 helper，但这些 helper 仍然只基于 `engine.active.select(...)`，不创建新 projection：
+
+例如：
+
+```ts
+selectActiveGroup()
+selectActiveSort()
+selectActiveGroupField()
+selectActiveCustomFields()
+selectActiveShowVerticalLines()
+selectActiveDisplayFields()
+```
+
+注意：
+
+- 这些如果存在，也应该只是 selector helper
+- 不是新的 store namespace
+- 不是新的 table state
+- 不是新的 currentView 层
+- helper 内部同样不允许重复写 `view.type === 'table'` 防御分支
+
+也就是说，允许“少量 selector helper”，不允许“重新长出 projection 系统”
+
 
 ## 11. 需要删除的东西
 
@@ -358,6 +590,7 @@ type TableActiveState = ActiveViewState & {
 
 - `engine.active.state`
 - `engine.active.select(...)`
+- 必要时极薄的 selector helper
 - table 局部组件对 `state.view.options.table.showVerticalLines` 的按需订阅
 - 必要时一个极薄的 table 类型收窄别名
 

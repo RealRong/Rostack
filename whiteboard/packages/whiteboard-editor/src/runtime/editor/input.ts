@@ -7,9 +7,7 @@ import type { EditorCommands } from '../commands'
 import type { ContextMenuIntent } from '../../types/input'
 import type { InteractionRuntime } from '../interaction/types'
 import type { EdgeHoverService } from '../../interactions/edge/hover'
-import {
-  sameOrder as isSameIds
-} from '@shared/core'
+import { readGroupSelection } from '../read/utils'
 
 const readSelectionIntent = (
   selection: EditorState['selection'],
@@ -26,55 +24,6 @@ const readSelectionIntent = (
         screen
       }
     : null
-}
-
-const syncNodeSelection = (
-  selection: EditorState['selection'],
-  write: EditorCommands,
-  nodeIds: readonly string[]
-) => {
-  const current = selection.get()
-  if (isSameIds(current.nodeIds, nodeIds) && current.edgeIds.length === 0) {
-    return
-  }
-
-  write.session.selection.replace({
-    nodeIds
-  })
-}
-
-const syncSingleEdgeSelection = (
-  selection: EditorState['selection'],
-  write: EditorCommands,
-  edgeId: string
-) => {
-  const current = selection.get()
-  if (
-    current.nodeIds.length === 0
-    && current.edgeIds.length === 1
-    && current.edgeIds[0] === edgeId
-  ) {
-    return
-  }
-
-  write.session.selection.replace({
-    edgeIds: [edgeId]
-  })
-}
-
-const readGroupSelection = (
-  read: EditorRead,
-  groupId: string
-) => {
-  const nodeIds = read.group.nodeIds(groupId)
-  const edgeIds = read.group.edgeIds(groupId)
-
-  return nodeIds.length > 0 || edgeIds.length > 0
-    ? {
-        nodeIds,
-        edgeIds
-      }
-    : undefined
 }
 
 export const createEditorInput = ({
@@ -106,10 +55,14 @@ export const createEditorInput = ({
     write.view.pointer.clear()
   }
 
+  const clearTransientState = () => {
+    clearPointer()
+    edgeHover.clear()
+  }
+
   return {
     cancel: () => {
-      clearPointer()
-      edgeHover.clear()
+      clearTransientState()
       interaction.cancel()
     },
     contextMenu: (input) => {
@@ -135,11 +88,13 @@ export const createEditorInput = ({
             return readSelectionIntent(selection, input.screen)
           }
 
-          syncNodeSelection(selection, write, [input.pick.id])
+          write.session.selection.replace({
+            nodeIds: [input.pick.id]
+          })
           return readSelectionIntent(selection, input.screen)
         }
         case 'group': {
-          const target = readGroupSelection(read, input.pick.id)
+          const target = readGroupSelection(read.group, input.pick.id)
           if (!target) {
             return {
               kind: 'canvas',
@@ -152,7 +107,9 @@ export const createEditorInput = ({
           return readSelectionIntent(selection, input.screen)
         }
         case 'edge':
-          syncSingleEdgeSelection(selection, write, input.pick.id)
+          write.session.selection.replace({
+            edgeIds: [input.pick.id]
+          })
           return {
             kind: 'edge',
             screen: input.screen,
@@ -193,13 +150,11 @@ export const createEditorInput = ({
       return interaction.handlePointerUp(input)
     },
     pointerCancel: (input) => {
-      clearPointer()
-      edgeHover.clear()
+      clearTransientState()
       return interaction.handlePointerCancel(input)
     },
     pointerLeave: () => {
-      clearPointer()
-      edgeHover.clear()
+      clearTransientState()
       interaction.handlePointerLeave()
     },
     wheel: (input) => {
@@ -225,8 +180,7 @@ export const createEditorInput = ({
     keyDown: (input) => interaction.handleKeyDown(input),
     keyUp: (input) => interaction.handleKeyUp(input),
     blur: () => {
-      clearPointer()
-      edgeHover.clear()
+      clearTransientState()
       interaction.handleBlur()
     }
   }

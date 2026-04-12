@@ -7,7 +7,7 @@ import type {
 } from '@whiteboard/core/types'
 import {
   sanitizeOperations
-} from '../document/normalize/sanitize'
+} from '../document/sanitize'
 import {
   collectChanges,
   collectFinalizeOps,
@@ -44,10 +44,10 @@ export const createWritePipeline = ({
   ): KernelReduceResult => (
     operations.length > 0
       ? reduce(
-          document,
-          [...reduced.data.changes.operations, ...operations],
-          origin
-        )
+        document,
+        [...reduced.data.changes.operations, ...operations],
+        origin
+      )
       : reduced
   )
 

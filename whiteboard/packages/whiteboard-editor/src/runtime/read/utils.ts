@@ -1,6 +1,7 @@
 import { getTargetBounds, type SelectionTarget } from '@whiteboard/core/selection'
 import type { Edge, Node, Rect } from '@whiteboard/core/types'
 import type { ReadFn } from '@shared/core'
+import type { GroupRead } from '@engine-types/instance'
 import type { EdgeRead } from './edge'
 import type { NodeRead } from './node'
 
@@ -45,3 +46,18 @@ export const readTargetBounds = (
   readNodeBounds: (nodeId) => readStore(node.bounds, nodeId),
   readEdgeBounds: (edgeId) => readStore(edge.bounds, edgeId)
 })
+
+export const readGroupSelection = (
+  group: Pick<GroupRead, 'nodeIds' | 'edgeIds'>,
+  groupId: string
+) => {
+  const nodeIds = group.nodeIds(groupId)
+  const edgeIds = group.edgeIds(groupId)
+
+  return nodeIds.length > 0 || edgeIds.length > 0
+    ? {
+        nodeIds,
+        edgeIds
+      }
+    : undefined
+}

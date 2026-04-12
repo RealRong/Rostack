@@ -19,6 +19,7 @@ import type {
 import type {
   PointerDownInput
 } from '../../types/input'
+import { readGroupSelection } from '../../runtime/read/utils'
 import { createMarqueeInteraction } from './marquee'
 import { createMoveInteraction } from './move'
 import {
@@ -51,21 +52,6 @@ const resolveImplicitEditField = (
   }
 }
 
-const readGroupSelection = (
-  ctx: InteractionContext,
-  groupId: string
-) => {
-  const nodeIds = ctx.read.group.nodeIds(groupId)
-  const edgeIds = ctx.read.group.edgeIds(groupId)
-
-  return nodeIds.length > 0 || edgeIds.length > 0
-    ? {
-        nodeIds,
-        edgeIds
-      }
-    : undefined
-}
-
 const isGroupSelectionCurrent = (
   ctx: InteractionContext,
   groupId: string,
@@ -74,7 +60,7 @@ const isGroupSelectionCurrent = (
     edgeIds: readonly string[]
   }
 ) => {
-  const selection = readGroupSelection(ctx, groupId)
+  const selection = readGroupSelection(ctx.read.group, groupId)
   return selection
     ? isSelectionTargetEqual(selection, target)
     : false
@@ -160,7 +146,7 @@ const resolveSelectionPress = (
         : false
     },
     getNodeGroupId: ctx.read.group.ofNode,
-    getGroupSelection: (groupId) => readGroupSelection(ctx, groupId),
+    getGroupSelection: (groupId) => readGroupSelection(ctx.read.group, groupId),
     isGroupSelected: (groupId, target) =>
       isGroupSelectionCurrent(ctx, groupId, target)
   }, {

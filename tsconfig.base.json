@@ -10,13 +10,27 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "paths": {
-      "@shared/*": ["shared/*/src/index.ts"],
-      "@ui": ["ui/src/index.ts"],
-      "@ui/css/*": ["ui/css/*"],
-      "@ui/*": ["ui/src/*"],
-      "@dataview": ["dataview/src/index.ts"],
-      "@dataview/*": ["dataview/src/*"],
-      "@whiteboard": ["whiteboard/packages/whiteboard-react/src/index.ts"]
+      "@shared/*": [
+        "shared/*/src/index.ts"
+      ],
+      "@ui": [
+        "ui/src/index.ts"
+      ],
+      "@ui/css/*": [
+        "ui/css/*"
+      ],
+      "@ui/*": [
+        "ui/src/*"
+      ],
+      "@dataview": [
+        "dataview/src/index.ts"
+      ],
+      "@dataview/*": [
+        "dataview/src/*"
+      ],
+      "@whiteboard": [
+        "whiteboard/packages/whiteboard-react/src/index.ts"
+      ]
     }
   }
 }

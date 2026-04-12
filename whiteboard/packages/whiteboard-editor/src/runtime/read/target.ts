@@ -10,26 +10,6 @@ export type RuntimeTargetRead = {
   bounds: (target: SelectionTarget) => Rect | undefined
 }
 
-const resolveTargetNodes = ({
-  target,
-  readNode
-}: {
-  target: SelectionTarget
-  readNode: (nodeId: NodeId) => Node | undefined
-}): Node[] => target.nodeIds
-  .map((nodeId) => readNode(nodeId))
-  .filter((entry): entry is Node => Boolean(entry))
-
-const resolveTargetEdges = ({
-  target,
-  readEdge
-}: {
-  target: SelectionTarget
-  readEdge: (edgeId: EdgeId) => Edge | undefined
-}): Edge[] => target.edgeIds
-  .map((edgeId) => readEdge(edgeId))
-  .filter((entry): entry is Edge => Boolean(entry))
-
 const resolveTargetBounds = ({
   target,
   readNodeBounds,
@@ -48,17 +28,11 @@ export const createTargetRead = ({
   node,
   edge
 }: {
-  node: Pick<NodeRead, 'item' | 'bounds'>
-  edge: Pick<EdgeRead, 'item' | 'bounds'>
+  node: Pick<NodeRead, 'nodes' | 'bounds'>
+  edge: Pick<EdgeRead, 'edges' | 'bounds'>
 }): RuntimeTargetRead => ({
-  nodes: (target) => resolveTargetNodes({
-    target,
-    readNode: (nodeId) => read(node.item, nodeId)?.node
-  }),
-  edges: (target) => resolveTargetEdges({
-    target,
-    readEdge: (edgeId) => read(edge.item, edgeId)?.edge
-  }),
+  nodes: (target) => node.nodes(target.nodeIds),
+  edges: (target) => edge.edges(target.edgeIds),
   bounds: (target) => resolveTargetBounds({
     target,
     readNodeBounds: (nodeId) => read(node.bounds, nodeId),

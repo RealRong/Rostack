@@ -2,7 +2,6 @@ import { Button } from '@ui'
 import { FillPanel } from '../../panels/FillPanel'
 import { preventToolbarPointerDown, ToolbarFillIcon } from '../primitives'
 import type { ToolbarItemSpec } from './types'
-import { toNodeStylePatch } from '#react/features/node/update'
 
 export const fillItem: ToolbarItemSpec = {
   key: 'fill',
@@ -36,34 +35,18 @@ export const fillItem: ToolbarItemSpec = {
   renderPanel: ({
     context,
     editor
-  }) => {
-    const node = context.primaryNode ?? context.nodes[0]
-
-    return (
-      <FillPanel
+  }) => (
+    <FillPanel
       fill={context.fill}
       fillOpacity={context.fillOpacity}
       onFillChange={(value) => {
-        if (!node) {
-          return
-        }
-
-        editor.actions.node.patch(context.nodeIds, toNodeStylePatch(node, {
-          fill: value
-        }))
+        editor.actions.node.style.fill(context.nodeIds, value)
       }}
       onFillOpacityChange={context.canEditFillOpacity
         ? (value) => {
-            if (!node) {
-              return
-            }
-
-            editor.actions.node.patch(context.nodeIds, toNodeStylePatch(node, {
-              fillOpacity: value
-            }))
+            editor.actions.node.style.fillOpacity(context.nodeIds, value)
           }
         : undefined}
-      />
-    )
-  }
+    />
+  )
 }

@@ -12,7 +12,7 @@ import type {
   CustomField,
   DataDoc,
   FieldId,
-  Row,
+  DataRecord,
   View
 } from '../contracts/state'
 import {
@@ -166,8 +166,8 @@ export const collectFieldSchemaAspects = (
 }
 
 export const collectRecordPatchAspects = (
-  previousRecord: Row | undefined,
-  nextRecord: Row | undefined
+  previousRecord: DataRecord | undefined,
+  nextRecord: DataRecord | undefined
 ): readonly RecordPatchAspect[] => {
   if (!previousRecord || !nextRecord) {
     return []

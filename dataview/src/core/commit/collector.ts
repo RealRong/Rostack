@@ -18,7 +18,7 @@ import type {
   DataDoc,
   FieldId,
   RecordId,
-  Row,
+  DataRecord,
   View,
   ViewId
 } from '../contracts/state'

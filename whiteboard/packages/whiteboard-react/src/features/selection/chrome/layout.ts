@@ -70,6 +70,19 @@ export const resolveToolbarPlacement = ({
   }
 }
 
+export const resolveToolbarAnchorWorld = ({
+  placement,
+  rect
+}: {
+  placement: ToolbarPlacement
+  rect: Rect
+}): Point => ({
+  x: rect.x + rect.width / 2,
+  y: placement === 'top'
+    ? rect.y
+    : rect.y + rect.height
+})
+
 const resolveHorizontalPosition = (
   centerX: number,
   containerWidth: number,

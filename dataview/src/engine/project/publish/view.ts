@@ -1,4 +1,5 @@
 import type {
+  CustomField,
   DataDoc,
   Field,
   FieldId,
@@ -30,6 +31,7 @@ import {
   sameOrder
 } from '@shared/core'
 import {
+  isCustomField,
   isTitleFieldId,
   getFieldGroupMeta
 } from '@dataview/core/field'
@@ -130,12 +132,14 @@ const createFields = (input: {
       : []
   })
   const ids = all.map(field => field.id)
+  const custom = all.filter(isCustomField) as readonly CustomField[]
   const indexById = new Map(ids.map((id, index) => [id, index] as const))
   const visibleById = new Map(all.map(field => [field.id, field] as const))
 
   return {
     ids,
     all,
+    custom,
     get: id => visibleById.get(id),
     has: id => indexById.has(id),
     indexOf: id => indexById.get(id),

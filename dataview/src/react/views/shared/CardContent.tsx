@@ -7,7 +7,7 @@ import {
 import { SquarePen } from 'lucide-react'
 import type {
   CustomField,
-  Row,
+  DataRecord,
   ViewId
 } from '@dataview/core/contracts'
 import type {
@@ -53,7 +53,7 @@ export interface CardContentProps extends Omit<ComponentPropsWithoutRef<'article
   }
   viewId: ViewId
   appearanceId: AppearanceId
-  record: Row
+  record: DataRecord
   fields: readonly CustomField[]
   titlePlaceholder: string
   showEditAction?: boolean

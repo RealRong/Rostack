@@ -2,7 +2,6 @@ import { Button } from '@ui'
 import { TextColorPanel } from '../../panels/TextColorPanel'
 import { preventToolbarPointerDown, ToolbarTextColorIcon } from '../primitives'
 import type { ToolbarItemSpec } from './types'
-import { toNodeStylePatch } from '#react/features/node/update'
 
 export const textColorItem: ToolbarItemSpec = {
   key: 'text-color',
@@ -33,22 +32,12 @@ export const textColorItem: ToolbarItemSpec = {
   renderPanel: ({
     context,
     editor
-  }) => {
-    const node = context.primaryNode ?? context.nodes[0]
-
-    return (
-      <TextColorPanel
+  }) => (
+    <TextColorPanel
       value={context.textColor}
       onChange={(value) => {
-        if (!node) {
-          return
-        }
-
-        editor.actions.node.patch(context.nodeIds, toNodeStylePatch(node, {
-          color: value
-        }))
+        editor.actions.node.style.textColor(context.nodeIds, value)
       }}
-      />
-    )
-  }
+    />
+  )
 }

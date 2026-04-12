@@ -3,7 +3,9 @@ import type { Engine } from '@whiteboard/engine'
 import {
   createNodePatchWriter,
   dataUpdate,
-  styleUpdate
+  styleUpdate,
+  toNodeDataUpdates,
+  toNodeStyleUpdates
 } from './patch'
 import {
   createNodeContext,
@@ -67,52 +69,28 @@ const createNodeStyleCommands = (
   ctx: NodeContext
 ): NodeStyleCommands => ({
   fill: (nodeIds, value) => ctx.write.updateMany(
-    nodeIds.map((id) => ({
-      id,
-      update: styleUpdate('fill', value)
-    }))
+    toNodeStyleUpdates(nodeIds, 'fill', value)
   ),
   fillOpacity: (nodeIds, value) => ctx.write.updateMany(
-    nodeIds.map((id) => ({
-      id,
-      update: styleUpdate('fillOpacity', value)
-    }))
+    toNodeStyleUpdates(nodeIds, 'fillOpacity', value)
   ),
   stroke: (nodeIds, value) => ctx.write.updateMany(
-    nodeIds.map((id) => ({
-      id,
-      update: styleUpdate('stroke', value)
-    }))
+    toNodeStyleUpdates(nodeIds, 'stroke', value)
   ),
   strokeWidth: (nodeIds, value) => ctx.write.updateMany(
-    nodeIds.map((id) => ({
-      id,
-      update: styleUpdate('strokeWidth', value)
-    }))
+    toNodeStyleUpdates(nodeIds, 'strokeWidth', value)
   ),
   strokeOpacity: (nodeIds, value) => ctx.write.updateMany(
-    nodeIds.map((id) => ({
-      id,
-      update: styleUpdate('strokeOpacity', value)
-    }))
+    toNodeStyleUpdates(nodeIds, 'strokeOpacity', value)
   ),
   strokeDash: (nodeIds, value) => ctx.write.updateMany(
-    nodeIds.map((id) => ({
-      id,
-      update: styleUpdate('strokeDash', value)
-    }))
+    toNodeStyleUpdates(nodeIds, 'strokeDash', value)
   ),
   opacity: (nodeIds, value) => ctx.write.updateMany(
-    nodeIds.map((id) => ({
-      id,
-      update: styleUpdate('opacity', value)
-    }))
+    toNodeStyleUpdates(nodeIds, 'opacity', value)
   ),
   textColor: (nodeIds, value) => ctx.write.updateMany(
-    nodeIds.map((id) => ({
-      id,
-      update: styleUpdate('color', value)
-    }))
+    toNodeStyleUpdates(nodeIds, 'color', value)
   )
 })
 

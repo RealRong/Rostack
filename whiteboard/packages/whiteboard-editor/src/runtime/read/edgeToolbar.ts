@@ -66,8 +66,8 @@ export const createEdgeToolbarRead = ({
     nodeIds: readonly string[]
     edgeIds: readonly string[]
   }>
-  node: Pick<NodeRead, 'item' | 'bounds'>
-  edge: Pick<EdgeRead, 'item' | 'bounds'>
+  node: Pick<NodeRead, 'nodes' | 'bounds'>
+  edge: Pick<EdgeRead, 'edges' | 'bounds'>
   tool: ReadStore<Tool>
   edit: ReadStore<EditSession>
   interaction: Pick<InteractionRuntime, 'mode' | 'chrome'>

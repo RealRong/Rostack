@@ -8,7 +8,7 @@ import type {
   GalleryCardSize,
   KanbanCardsPerColumn,
   RecordId,
-  Row,
+  DataRecord,
   View,
   ViewId,
   ViewType
@@ -44,7 +44,7 @@ import type {
 export interface EngineReadApi {
   document: ReadStore<DataDoc>
   recordIds: ReadStore<readonly RecordId[]>
-  record: KeyedReadStore<RecordId, Row | undefined>
+  record: KeyedReadStore<RecordId, DataRecord | undefined>
   customFieldIds: ReadStore<readonly CustomFieldId[]>
   customFields: ReadStore<readonly CustomField[]>
   customField: KeyedReadStore<CustomFieldId, CustomField | undefined>
@@ -70,26 +70,24 @@ export interface ActiveViewState {
   view: View
   filter: ViewFilterProjection
   group: ViewGroupProjection
-  groupField: Field | undefined
   search: ViewSearchProjection
   sort: ViewSortProjection
   records: RecordSet
   sections: readonly Section[]
   appearances: AppearanceList
   fields: FieldList
-  customFields: readonly CustomField[]
   calculations: ReadonlyMap<SectionKey, CalculationCollection>
 }
 
 export interface ActiveViewReadApi {
-  getRecord: (recordId: RecordId) => Row | undefined
+  getRecord: (recordId: RecordId) => DataRecord | undefined
   getField: (fieldId: FieldId) => Field | undefined
   getGroupField: () => Field | undefined
   getFilterField: (index: number) => Field | undefined
   getRecordField: (cell: CellRef) => RecordFieldRef | undefined
   getSectionRecordIds: (section: SectionKey) => readonly RecordId[]
   getAppearanceRecordId: (appearanceId: AppearanceId) => RecordId | undefined
-  getAppearanceRecord: (appearanceId: AppearanceId) => Row | undefined
+  getAppearanceRecord: (appearanceId: AppearanceId) => DataRecord | undefined
   getAppearanceSectionKey: (appearanceId: AppearanceId) => SectionKey | undefined
   getSectionColor: (section: SectionKey) => string | undefined
   getAppearanceColor: (appearanceId: AppearanceId) => string | undefined

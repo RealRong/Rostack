@@ -16,6 +16,7 @@ import {
   createKeyedDerivedStore,
   read as readValue,
   type KeyedReadStore,
+  sameRect,
   sameOptionalRect as isSameOptionalRectTuple,
   samePointArray as isSamePointArray,
   type ReadStore
@@ -39,6 +40,7 @@ import type {
 import {
   type EditSession
 } from '../state/edit'
+import { readPresentValues } from './utils'
 
 export type NodeRuntimeState = {
   hovered: boolean
@@ -78,6 +80,7 @@ export type NodeCanvasSnapshot = {
 export type NodeRead = {
   list: EngineRead['node']['list']
   item: KeyedReadStore<NodeId, NodeItem | undefined>
+  nodes: (nodeIds: readonly NodeId[]) => readonly Node[]
   state: KeyedReadStore<NodeId, NodeRuntimeState>
   view: KeyedReadStore<NodeId, NodeView | undefined>
   canvas: KeyedReadStore<NodeId, NodeCanvasSnapshot | undefined>
@@ -123,16 +126,6 @@ const isNodeStateEqual = (
   && left.resizing === right.resizing
 )
 
-const isRectEqual = (
-  left: Rect,
-  right: Rect
-) => (
-  left.x === right.x
-  && left.y === right.y
-  && left.width === right.width
-  && left.height === right.height
-)
-
 const isNodeViewEqual = (
   left: NodeView | undefined,
   right: NodeView | undefined
@@ -142,8 +135,8 @@ const isNodeViewEqual = (
     left !== undefined
     && right !== undefined
     && left.node === right.node
-    && isRectEqual(left.rect, right.rect)
-    && isRectEqual(left.frameRect, right.frameRect)
+    && sameRect(left.rect, right.rect)
+    && sameRect(left.frameRect, right.frameRect)
     && left.rotation === right.rotation
     && left.hovered === right.hovered
     && left.hidden === right.hidden
@@ -159,13 +152,13 @@ const isNodeGeometryEqual = (
   left: NodeGeometry,
   right: NodeGeometry
 ) => (
-  isRectEqual(left.rect, right.rect)
-  && isRectEqual(left.bounds, right.bounds)
+  sameRect(left.rect, right.rect)
+  && sameRect(left.bounds, right.bounds)
   && left.outline.kind === right.outline.kind
   && (
     left.outline.kind === 'rect' && right.outline.kind === 'rect'
       ? (
-          isRectEqual(left.outline.rect, right.outline.rect)
+          sameRect(left.outline.rect, right.outline.rect)
           && left.outline.rotation === right.outline.rotation
         )
       : left.outline.kind === 'polygon' && right.outline.kind === 'polygon'
@@ -215,7 +208,7 @@ const patchRect = (
     height: patch.size?.height ?? rect.height
   }
 
-  return isRectEqual(next, rect)
+  return sameRect(next, rect)
     ? rect
     : next
 }
@@ -494,6 +487,7 @@ export const createNodeRead = ({
   return {
     list: read.node.list,
     item,
+    nodes: (nodeIds) => readPresentValues(nodeIds, (nodeId) => item.get(nodeId)?.node),
     state,
     view,
     canvas,
@@ -502,8 +496,6 @@ export const createNodeRead = ({
     capability,
     idsInRect: read.node.idsInRect,
     transformTargets: read.node.transformTargets,
-    ordered: () => read.node.list.get()
-      .map((nodeId) => item.get(nodeId)?.node)
-      .filter((node): node is Node => Boolean(node))
+    ordered: () => readPresentValues(read.node.list.get(), (nodeId) => item.get(nodeId)?.node)
   }
 }

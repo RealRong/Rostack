@@ -252,7 +252,10 @@ export const createEditor = ({
         reconnect: write.edge.reconnect,
         delete: write.edge.delete,
         route: write.edge.route,
-        label: write.edge.label
+        label: write.edge.label,
+        style: write.edge.style,
+        type: write.edge.type,
+        textMode: write.edge.textMode
       },
       mindmap: write.mindmap,
       clipboard: write.clipboard,

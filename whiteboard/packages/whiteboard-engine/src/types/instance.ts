@@ -65,6 +65,7 @@ export type EngineReadIndex = {
 export type NodeRead = {
   list: ReadStore<readonly NodeId[]>
   item: KeyedReadStore<NodeId, Readonly<NodeItem> | undefined>
+  nodes: (nodeIds: readonly NodeId[]) => readonly Node[]
   geometry: (nodeId: NodeId) => NodeGeometry | undefined
   rect: (nodeId: NodeId) => Rect | undefined
   bounds: (nodeId: NodeId) => Rect | undefined
@@ -115,6 +116,7 @@ export type TargetRead = {
 export type EdgeRead = {
   list: ReadStore<readonly EdgeId[]>
   item: KeyedReadStore<EdgeId, Readonly<EdgeItem> | undefined>
+  edges: (edgeIds: readonly EdgeId[]) => readonly Edge[]
   related: (nodeIds: Iterable<NodeId>) => readonly EdgeId[]
 }
 

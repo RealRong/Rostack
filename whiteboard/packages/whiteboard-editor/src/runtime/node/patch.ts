@@ -1,5 +1,5 @@
 import { compileNodeFieldUpdate } from '@whiteboard/core/schema'
-import type { NodeUpdateInput } from '@whiteboard/core/types'
+import type { NodeId, NodeUpdateInput } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { NodePatchWriter } from './types'
 
@@ -47,6 +47,32 @@ export const dataUpdate = (
     path
   },
   value
+)
+
+export const toNodeBatchUpdates = (
+  nodeIds: readonly NodeId[],
+  update: NodeUpdateInput
+) => nodeIds.map((id) => ({
+  id,
+  update
+}))
+
+export const toNodeStyleUpdates = (
+  nodeIds: readonly NodeId[],
+  path: string,
+  value: unknown
+) => toNodeBatchUpdates(
+  nodeIds,
+  styleUpdate(path, value)
+)
+
+export const toNodeDataUpdates = (
+  nodeIds: readonly NodeId[],
+  path: string,
+  value: unknown
+) => toNodeBatchUpdates(
+  nodeIds,
+  dataUpdate(path, value)
 )
 
 export const createNodePatchWriter = (

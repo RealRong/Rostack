@@ -2,7 +2,7 @@ import type {
   CustomField,
   CustomFieldId,
   RecordId,
-  Row,
+  DataRecord,
   View,
   ViewId
 } from './state'
@@ -11,13 +11,13 @@ import type { RowInsertTarget } from './operations'
 export type Command =
   | {
       type: 'record.insert'
-      records: Row[]
+      records: DataRecord[]
       target?: RowInsertTarget
     }
   | {
       type: 'record.patch'
       recordId: RecordId
-      patch: Partial<Omit<Row, 'id'>>
+      patch: Partial<Omit<DataRecord, 'id'>>
     }
   | {
       type: 'record.remove'

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Button, cn } from '@ui'
+import { Button, Slider, cn } from '@ui'
 import { preventToolbarPointerDown } from '../toolbar/primitives'
 
 export const PANEL_SECTION_TITLE_CLASSNAME = 'text-xs font-semibold uppercase text-fg-muted'
@@ -29,6 +29,40 @@ export const PanelSection = ({
   </div>
 )
 
+export const formatPercent = (
+  value: number
+) => `${Math.round(value * 100)}%`
+
+export const SliderSection = ({
+  title,
+  value,
+  min,
+  max,
+  step,
+  formatValue,
+  onChange
+}: {
+  title: string
+  value: number
+  min: number
+  max: number
+  step: number
+  formatValue?: (value: number) => string
+  onChange: (value: number) => void
+}) => (
+  <PanelSection title={title}>
+    <Slider
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      formatValue={formatValue}
+      onValueChange={onChange}
+      onValueCommit={onChange}
+    />
+  </PanelSection>
+)
+
 export const SwatchButton = ({
   color,
   active = false,
@@ -51,6 +85,29 @@ export const SwatchButton = ({
     onClick={onClick}
     aria-label={color}
   />
+)
+
+export const ColorSwatchGrid = ({
+  options,
+  value,
+  onChange
+}: {
+  options: readonly {
+    value: string
+  }[]
+  value?: string
+  onChange: (value: string) => void
+}) => (
+  <div className="grid grid-cols-5 gap-2">
+    {options.map((option) => (
+      <SwatchButton
+        key={option.value}
+        color={option.value}
+        active={value === option.value}
+        onClick={() => onChange(option.value)}
+      />
+    ))}
+  </div>
 )
 
 export const SegmentedButton = ({

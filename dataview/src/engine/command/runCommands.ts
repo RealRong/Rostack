@@ -1,4 +1,4 @@
-import type { Command, CustomField, DataDoc, Row } from '@dataview/core/contracts'
+import type { Command, CustomField, DataDoc, DataRecord } from '@dataview/core/contracts'
 import type { DeltaItem } from '@dataview/core/contracts'
 import { buildSemanticDraft } from '@dataview/core/commit/semantics'
 import {
@@ -86,7 +86,7 @@ const runCommand = (
         issues.push(createIssue(source, 'error', 'record.invalidIndex', 'record.insert target index must be >= 0', 'target.index'))
       }
       if (lowered.command.records.some(record => {
-        const rawRecord = record as Row & { children?: unknown; expanded?: unknown }
+        const rawRecord = record as DataRecord & { children?: unknown; expanded?: unknown }
         return Array.isArray(rawRecord.children) || rawRecord.expanded !== undefined
       })) {
         issues.push(createIssue(source, 'error', 'record.hierarchyUnsupported', 'Hierarchy payload is not supported in canonical records', 'records'))

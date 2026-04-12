@@ -8,7 +8,7 @@ import type {
   Field,
   FieldId,
   RecordId,
-  Row,
+  DataRecord,
   View,
   ViewId
 } from '@dataview/core/contracts'
@@ -22,9 +22,6 @@ import {
   getDocumentViewById,
   getDocumentViews
 } from '@dataview/core/document'
-import {
-  isCustomField
-} from '@dataview/core/field'
 import {
   createDerivedStore,
   createKeyedDerivedStore,
@@ -74,26 +71,6 @@ const usesOptionGroupingColors = (
     || field.kind === 'status'
   )
 }
-
-const sameCustomFields = (
-  left: readonly CustomField[],
-  right: readonly CustomField[]
-) => left.length === right.length
-  && left.every((field, index) => field === right[index])
-
-const resolveGroupField = (
-  group: Pick<ActiveViewState['group'], 'field' | 'fieldId'>,
-  document: DataDoc
-): Field | undefined => group.field
-  ?? (
-    group.fieldId
-      ? getDocumentFieldById(document, group.fieldId)
-      : undefined
-  )
-
-const resolveCustomFields = (
-  fields: FieldList
-): readonly CustomField[] => fields.all.filter(isCustomField)
 
 const createSelector = <T,>(input: {
   store: ReadStore<State>
@@ -146,14 +123,12 @@ const sameActiveState = (
   && left.view === right.view
   && left.filter === right.filter
   && left.group === right.group
-  && left.groupField === right.groupField
   && left.search === right.search
   && left.sort === right.sort
   && left.records === right.records
   && left.sections === right.sections
   && left.appearances === right.appearances
   && left.fields === right.fields
-  && sameCustomFields(left.customFields, right.customFields)
   && left.calculations === right.calculations
 )
 
@@ -210,21 +185,16 @@ const readActiveState = (
     return undefined
   }
 
-  const groupField = resolveGroupField(group, current.doc)
-  const customFields = resolveCustomFields(fields)
-
   return {
     view: activeView,
     filter,
     group,
-    groupField,
     search,
     sort,
     records,
     sections,
     appearances,
     fields,
-    customFields,
     calculations
   }
 }
@@ -305,7 +275,7 @@ const createActiveReadApi = (input: {
         return undefined
       }
 
-      return state.groupField
+      return state.group.field
     },
     getFilterField: index => {
       const rule = readState()?.filter.rules[index]
@@ -377,7 +347,7 @@ export const createActiveBaseApi = (input: {
         return undefined
       }
 
-      const groupField = state.groupField
+      const groupField = state.group.field
       const groupUsesOptionColors = usesOptionGroupingColors(groupField)
       const canReorder = !state.group.active && !state.sort.active
 
@@ -406,7 +376,7 @@ export const createActiveBaseApi = (input: {
         return undefined
       }
 
-      const groupField = state.groupField
+      const groupField = state.group.field
       const groupUsesOptionColors = usesOptionGroupingColors(groupField)
 
       return {

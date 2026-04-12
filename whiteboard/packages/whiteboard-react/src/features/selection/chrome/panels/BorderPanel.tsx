@@ -1,17 +1,19 @@
-import { Slider } from '@ui'
 import { sameOptionalNumberArray as isSameOptionalNumberArray } from '@shared/core'
 import { STROKE_COLOR_OPTIONS } from '../menus/options'
-import { Panel, PanelSection, SegmentedButton, SwatchButton } from './ShapeToolbarPrimitives'
+import {
+  ColorSwatchGrid,
+  Panel,
+  PanelSection,
+  SegmentedButton,
+  SliderSection,
+  formatPercent
+} from './ShapeToolbarPrimitives'
 
 const STROKE_STYLE_OPTIONS = [
   { key: 'solid', label: 'Solid', dash: undefined as readonly number[] | undefined },
   { key: 'dashed', label: 'Dashed', dash: [8, 6] as const },
   { key: 'dotted', label: 'Dotted', dash: [2, 4] as const }
 ] as const
-
-const formatPercent = (
-  value: number
-) => `${Math.round(value * 100)}%`
 
 const normalizeDash = (
   value: readonly number[] | undefined
@@ -71,40 +73,31 @@ export const BorderPanel = ({
         </div>
       </PanelSection>
     ) : null}
-    <PanelSection title="Thickness">
-      <Slider
-        min={0}
-        max={16}
-        step={1}
-        value={strokeWidth ?? 1}
-        onValueChange={onStrokeWidthChange}
-        onValueCommit={onStrokeWidthChange}
-      />
-    </PanelSection>
+    <SliderSection
+      title="Thickness"
+      min={0}
+      max={16}
+      step={1}
+      value={strokeWidth ?? 1}
+      onChange={onStrokeWidthChange}
+    />
     {showOpacity && onOpacityChange ? (
-      <PanelSection title="Opacity">
-        <Slider
-          min={0}
-          max={1}
-          step={0.05}
-          value={opacity ?? 1}
-          formatValue={formatPercent}
-          onValueChange={onOpacityChange}
-          onValueCommit={onOpacityChange}
-        />
-      </PanelSection>
+      <SliderSection
+        title="Opacity"
+        min={0}
+        max={1}
+        step={0.05}
+        value={opacity ?? 1}
+        formatValue={formatPercent}
+        onChange={onOpacityChange}
+      />
     ) : null}
     <PanelSection title="Color">
-      <div className="grid grid-cols-5 gap-2">
-        {STROKE_COLOR_OPTIONS.map((option) => (
-          <SwatchButton
-            key={option.value}
-            color={option.value}
-            active={stroke === option.value}
-            onClick={() => onStrokeChange(option.value)}
-          />
-        ))}
-      </div>
+      <ColorSwatchGrid
+        options={STROKE_COLOR_OPTIONS}
+        value={stroke}
+        onChange={onStrokeChange}
+      />
     </PanelSection>
   </Panel>
 )

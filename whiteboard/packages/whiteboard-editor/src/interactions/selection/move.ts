@@ -6,7 +6,6 @@ import {
   stepMoveState
 } from '@whiteboard/core/node'
 import type { SelectionTarget } from '@whiteboard/core/selection'
-import type { Edge } from '@whiteboard/core/types'
 import {
   FINISH
 } from '../../runtime/interaction/result'
@@ -75,9 +74,7 @@ export const createMoveInteraction = (
 ): InteractionSession | null => {
   const initialState = startMoveState({
     nodes: ctx.read.node.ordered(),
-    edges: ctx.read.edge.list.get()
-      .map((edgeId) => ctx.read.edge.item.get(edgeId)?.edge)
-      .filter((edge): edge is Edge => Boolean(edge)),
+    edges: ctx.read.edge.edges(ctx.read.edge.list.get()),
     target: input.target,
     startWorld: input.start.world,
     nodeSize: ctx.config.nodeSize

@@ -1,6 +1,5 @@
 import { Button } from '@ui'
 import { ShapeGlyph } from '#react/features/node'
-import { toNodeDataPatch } from '#react/features/node/update'
 import { ShapePickerPanel } from '../../panels/ShapePickerPanel'
 import { preventToolbarPointerDown } from '../primitives'
 import type { ToolbarItemSpec } from './types'
@@ -42,22 +41,12 @@ export const shapeKindItem: ToolbarItemSpec = {
   renderPanel: ({
     context,
     editor
-  }) => {
-    const node = context.primaryNode ?? context.nodes[0]
-
-    return (
-      <ShapePickerPanel
+  }) => (
+    <ShapePickerPanel
       value={context.shapeKindValue ?? context.shapeKind}
       onChange={(value) => {
-        if (!node) {
-          return
-        }
-
-        editor.actions.node.patch(context.nodeIds, toNodeDataPatch(node, {
-          kind: value
-        }))
+        editor.actions.node.shape.set(context.nodeIds, value)
       }}
-      />
-    )
-  }
+    />
+  )
 }

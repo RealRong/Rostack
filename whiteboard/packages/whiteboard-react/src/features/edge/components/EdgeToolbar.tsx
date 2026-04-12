@@ -1,34 +1,25 @@
 import {
   useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
   type RefObject
 } from 'react'
-import { Button, Slider, cn } from '@ui'
+import { Button } from '@ui'
 import { ArrowLeftRight, Type } from 'lucide-react'
 import type {
-  Edge,
   EdgeDash,
-  EdgePatch,
   EdgeMarker,
   EdgeTextMode,
   EdgeType,
   Point
 } from '@whiteboard/core/types'
-import { useElementSize, useStoreValue } from '@shared/react'
+import { useStoreValue } from '@shared/react'
 import { useEditorRuntime } from '#react/runtime/hooks'
-import { WhiteboardPopover } from '#react/runtime/overlay'
+import { FloatingToolbarShell } from '#react/features/selection/chrome/FloatingToolbarShell'
 import {
-  buildToolbarStyle,
-  resolveToolbarPlacement
-} from '#react/features/selection/chrome/layout'
-import {
+  ColorSwatchGrid,
   Panel,
   PanelSection,
   SegmentedButton,
-  SwatchButton
+  SliderSection
 } from '#react/features/selection/chrome/panels/ShapeToolbarPrimitives'
 import { STROKE_COLOR_OPTIONS } from '#react/features/selection/chrome/menus/options'
 import {
@@ -38,35 +29,10 @@ import {
 
 type PanelKey = 'start' | 'end' | 'line' | 'color' | 'text-mode'
 
-type ToolbarPositionSession = {
-  key: string
-  placement: 'top' | 'bottom'
-  anchorWorld: Point
-}
-
 const EDGE_TYPES: readonly EdgeType[] = ['straight', 'elbow', 'curve']
 const EDGE_DASHES: readonly EdgeDash[] = ['solid', 'dashed', 'dotted']
 const EDGE_MARKERS: readonly EdgeMarker[] = ['none', 'arrow']
 const EDGE_TEXT_MODES: readonly EdgeTextMode[] = ['horizontal', 'tangent']
-
-const resolveToolbarAnchorWorld = ({
-  placement,
-  x,
-  y,
-  width,
-  height
-}: {
-  placement: 'top' | 'bottom'
-  x: number
-  y: number
-  width: number
-  height: number
-}): Point => ({
-  x: x + width / 2,
-  y: placement === 'top'
-    ? y
-    : y + height
-})
 
 const EdgeMarkerIcon = ({
   marker,
@@ -233,16 +199,14 @@ const LinePanel = ({
         ))}
       </div>
     </PanelSection>
-    <PanelSection title="Line width">
-      <Slider
-        min={1}
-        max={16}
-        step={1}
-        value={width ?? 2}
-        onValueChange={onWidthChange}
-        onValueCommit={onWidthChange}
-      />
-    </PanelSection>
+    <SliderSection
+      title="Line width"
+      min={1}
+      max={16}
+      step={1}
+      value={width ?? 2}
+      onChange={onWidthChange}
+    />
   </Panel>
 )
 
@@ -255,16 +219,11 @@ const ColorPanel = ({
 }) => (
   <Panel className="min-w-[240px]">
     <PanelSection title="Color">
-      <div className="grid grid-cols-5 gap-2">
-        {STROKE_COLOR_OPTIONS.map((option) => (
-          <SwatchButton
-            key={option.value}
-            color={option.value}
-            active={value === option.value}
-            onClick={() => onChange(option.value)}
-          />
-        ))}
-      </div>
+      <ColorSwatchGrid
+        options={STROKE_COLOR_OPTIONS}
+        value={value}
+        onChange={onChange}
+      />
     </PanelSection>
   </Panel>
 )
@@ -299,311 +258,200 @@ export const EdgeToolbar = ({
   containerRef: RefObject<HTMLDivElement | null>
 }) => {
   const editor = useEditorRuntime()
-  const surface = useElementSize(containerRef)
   const panel = useStoreValue(editor.read.panel)
   const toolbar = panel.edgeToolbar
-  const buttonRefByKey = useRef<Partial<Record<PanelKey, HTMLElement | null>>>({})
-  const [activePanelKey, setActivePanelKey] = useState<PanelKey | null>(null)
-  const [positionSession, setPositionSession] = useState<ToolbarPositionSession | null>(null)
   const worldToScreen = useCallback(
     (point: Point) => editor.read.viewport.worldToScreen(point),
     [editor]
   )
-
-  const closePanel = useCallback(() => {
-    setActivePanelKey(null)
-  }, [])
-
-  const togglePanel = useCallback((key: PanelKey) => {
-    setActivePanelKey((current) => current === key ? null : key)
-  }, [])
-  const patchEdgeStyles = useCallback((
-    edgeIds: readonly string[],
-    buildStyle: (style: Edge['style'] | undefined) => NonNullable<EdgePatch['style']>
-  ) => {
-    edgeIds.forEach((edgeId) => {
-      const edge = editor.read.edge.item.get(edgeId)?.edge
-      if (!edge) {
-        return
-      }
-
-      editor.actions.edge.patch([edgeId], {
-        style: buildStyle(edge.style)
-      })
-    })
-  }, [editor])
-
-  const key = toolbar?.selectionKey ?? null
-  const livePlacement = toolbar
-    ? resolveToolbarPlacement({
-        worldToScreen,
-        rect: toolbar.box
-      })
-    : undefined
-  const livePosition = toolbar && key && livePlacement
-    ? {
-        key,
-        placement: livePlacement.placement,
-        anchorWorld: resolveToolbarAnchorWorld({
-          placement: livePlacement.placement,
-          x: toolbar.box.x,
-          y: toolbar.box.y,
-          width: toolbar.box.width,
-          height: toolbar.box.height
-        })
-      } satisfies ToolbarPositionSession
-    : null
-
-  useEffect(() => {
-    closePanel()
-  }, [closePanel, key])
-
-  useEffect(() => {
-    if (!toolbar || !livePosition || !key) {
-      setPositionSession(null)
-      return
-    }
-
-    setPositionSession((current) => current?.key === key ? current : livePosition)
-  }, [key, livePosition, toolbar])
 
   if (!toolbar) {
     return null
   }
 
   const single = toolbar.edgeIds.length === 1
-  const resolvedPosition = positionSession?.key === key
-    ? positionSession
-    : livePosition
-  const toolbarAnchor = resolvedPosition
-    ? worldToScreen(resolvedPosition.anchorWorld)
-    : livePlacement?.anchor
-  if (!toolbarAnchor) {
-    return null
-  }
-
   const itemCount = single ? 10 : 7
-  const toolbarStyle = buildToolbarStyle({
-    placement: resolvedPosition?.placement ?? livePlacement?.placement ?? 'top',
-    x: toolbarAnchor.x,
-    y: (resolvedPosition?.placement ?? livePlacement?.placement ?? 'top') === 'top'
-      ? toolbarAnchor.y - 12
-      : toolbarAnchor.y + 12,
-    containerWidth: surface.width,
-    itemCount
-  })
-  const activePanelButton = activePanelKey
-    ? buttonRefByKey.current[activePanelKey]
-    : null
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-[var(--wb-z-toolbar)]">
-      <div
-        className="pointer-events-auto absolute inline-flex items-center gap-1 rounded-2xl bg-floating px-2 py-1.5 shadow-popover"
-        style={toolbarStyle}
-        onPointerDown={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-        }}
-      >
-        <Button
-          ref={(element) => {
-            buttonRefByKey.current.start = element
-          }}
-          variant="ghost"
-          pressed={activePanelKey === 'start'}
-          className="h-9 w-9 rounded-xl p-0"
-          onClick={() => {
-            togglePanel('start')
-          }}
-          title="Line start"
-          aria-label="Line start"
-        >
-          <EdgeMarkerIcon marker={toolbar.start} side="start" />
-        </Button>
-        {single ? (
-          <ToolbarIconButton
-            active={false}
-            title="Swap markers"
-            onClick={() => {
-              if (!toolbar.primaryEdgeId) {
-                return
-              }
-              patchEdgeStyles([toolbar.primaryEdgeId], (style) => ({
-                ...(style ?? {}),
-                start: style?.end ?? toolbar.end ?? 'none',
-                end: style?.start ?? toolbar.start ?? 'none'
-              }))
+    <FloatingToolbarShell<PanelKey>
+      containerRef={containerRef}
+      toolbarKey={toolbar.selectionKey}
+      box={toolbar.box}
+      itemCount={itemCount}
+      worldToScreen={worldToScreen}
+      renderToolbar={({
+        activePanelKey,
+        togglePanel,
+        registerPanelButton
+      }) => (
+        <>
+          <Button
+            ref={(element) => {
+              registerPanelButton('start', element)
             }}
+            variant="ghost"
+            pressed={activePanelKey === 'start'}
+            className="h-9 w-9 rounded-xl p-0"
+            onClick={() => {
+              togglePanel('start')
+            }}
+            title="Line start"
+            aria-label="Line start"
           >
-            <ArrowLeftRight size={18} strokeWidth={1.9} />
-          </ToolbarIconButton>
-        ) : null}
-        <Button
-          ref={(element) => {
-            buttonRefByKey.current.end = element
-          }}
-          variant="ghost"
-          pressed={activePanelKey === 'end'}
-          className="h-9 w-9 rounded-xl p-0"
-          onClick={() => {
-            togglePanel('end')
-          }}
-          title="Line end"
-          aria-label="Line end"
-        >
-          <EdgeMarkerIcon marker={toolbar.end} side="end" />
-        </Button>
-        <ToolbarDivider />
-        <Button
-          ref={(element) => {
-            buttonRefByKey.current.line = element
-          }}
-          variant="ghost"
-          pressed={activePanelKey === 'line'}
-          className="h-9 w-9 rounded-xl p-0"
-          onClick={() => {
-            togglePanel('line')
-          }}
-          title="Line type"
-          aria-label="Line type"
-        >
-          <EdgeLineIcon
-            type={toolbar.type}
-            dash={toolbar.dash}
-            color={toolbar.color}
-          />
-        </Button>
-        <Button
-          ref={(element) => {
-            buttonRefByKey.current.color = element
-          }}
-          variant="ghost"
-          pressed={activePanelKey === 'color'}
-          className="h-9 w-9 rounded-xl p-0"
-          onClick={() => {
-            togglePanel('color')
-          }}
-          title="Color"
-          aria-label="Color"
-        >
-          <EdgeColorIcon color={toolbar.color} />
-        </Button>
-        {single ? (
-          <>
-            <ToolbarDivider />
+            <EdgeMarkerIcon marker={toolbar.start} side="start" />
+          </Button>
+          {single ? (
             <ToolbarIconButton
-              active={toolbar.labelCount > 0}
-              title="Add label"
+              active={false}
+              title="Swap markers"
               onClick={() => {
                 if (!toolbar.primaryEdgeId) {
                   return
                 }
-                editor.actions.edge.label.add(toolbar.primaryEdgeId)
+
+                editor.actions.edge.style.start(
+                  [toolbar.primaryEdgeId],
+                  toolbar.end ?? 'none'
+                )
+                editor.actions.edge.style.end(
+                  [toolbar.primaryEdgeId],
+                  toolbar.start ?? 'none'
+                )
               }}
             >
-              <Type size={18} strokeWidth={1.9} />
+              <ArrowLeftRight size={18} strokeWidth={1.9} />
             </ToolbarIconButton>
-            <Button
-              ref={(element) => {
-                buttonRefByKey.current['text-mode'] = element
-              }}
-              variant="ghost"
-              pressed={activePanelKey === 'text-mode'}
-              className="h-9 min-w-[76px] rounded-xl px-3 text-sm font-medium text-fg"
-              onClick={() => {
-                togglePanel('text-mode')
-              }}
-              title="Text position"
-              aria-label="Text position"
-            >
-              {toolbar.textMode ?? 'horizontal'}
-            </Button>
-          </>
-        ) : null}
-      </div>
-      {activePanelKey && activePanelButton ? (
-        <WhiteboardPopover
-          open
-          anchor={activePanelButton}
-          onOpenChange={(nextOpen) => {
-            if (!nextOpen) {
-              closePanel()
-            }
-          }}
-          placement="bottom"
-          offset={10}
-          surface="blocking"
-          backdrop="transparent"
-          padding="menu"
-          size="md"
-          contentClassName={cn('min-w-0 overflow-hidden p-0')}
-        >
-          {activePanelKey === 'start' ? (
-            <MarkerPanel
-              value={toolbar.start}
-              onChange={(value) => {
-                patchEdgeStyles(toolbar.edgeIds, (style) => ({
-                  ...(style ?? {}),
-                  start: value
-                }))
-              }}
-            />
-          ) : activePanelKey === 'end' ? (
-            <MarkerPanel
-              value={toolbar.end}
-              onChange={(value) => {
-                patchEdgeStyles(toolbar.edgeIds, (style) => ({
-                  ...(style ?? {}),
-                  end: value
-                }))
-              }}
-            />
-          ) : activePanelKey === 'line' ? (
-            <LinePanel
+          ) : null}
+          <Button
+            ref={(element) => {
+              registerPanelButton('end', element)
+            }}
+            variant="ghost"
+            pressed={activePanelKey === 'end'}
+            className="h-9 w-9 rounded-xl p-0"
+            onClick={() => {
+              togglePanel('end')
+            }}
+            title="Line end"
+            aria-label="Line end"
+          >
+            <EdgeMarkerIcon marker={toolbar.end} side="end" />
+          </Button>
+          <ToolbarDivider />
+          <Button
+            ref={(element) => {
+              registerPanelButton('line', element)
+            }}
+            variant="ghost"
+            pressed={activePanelKey === 'line'}
+            className="h-9 w-9 rounded-xl p-0"
+            onClick={() => {
+              togglePanel('line')
+            }}
+            title="Line type"
+            aria-label="Line type"
+          >
+            <EdgeLineIcon
               type={toolbar.type}
               dash={toolbar.dash}
-              width={toolbar.width}
-              onTypeChange={(value) => {
-                editor.actions.edge.patch(toolbar.edgeIds, {
-                  type: value
-                })
-              }}
-              onDashChange={(value) => {
-                patchEdgeStyles(toolbar.edgeIds, (style) => ({
-                  ...(style ?? {}),
-                  dash: value
-                }))
-              }}
-              onWidthChange={(value) => {
-                patchEdgeStyles(toolbar.edgeIds, (style) => ({
-                  ...(style ?? {}),
-                  width: value
-                }))
-              }}
+              color={toolbar.color}
             />
-          ) : activePanelKey === 'color' ? (
-            <ColorPanel
-              value={toolbar.color}
-              onChange={(value) => {
-                patchEdgeStyles(toolbar.edgeIds, (style) => ({
-                  ...(style ?? {}),
-                  color: value
-                }))
-              }}
-            />
-          ) : single ? (
-            <TextModePanel
-              value={toolbar.textMode}
-              onChange={(value) => {
-                editor.actions.edge.patch(toolbar.edgeIds, {
-                  textMode: value
-                })
-              }}
-            />
+          </Button>
+          <Button
+            ref={(element) => {
+              registerPanelButton('color', element)
+            }}
+            variant="ghost"
+            pressed={activePanelKey === 'color'}
+            className="h-9 w-9 rounded-xl p-0"
+            onClick={() => {
+              togglePanel('color')
+            }}
+            title="Color"
+            aria-label="Color"
+          >
+            <EdgeColorIcon color={toolbar.color} />
+          </Button>
+          {single ? (
+            <>
+              <ToolbarDivider />
+              <ToolbarIconButton
+                active={toolbar.labelCount > 0}
+                title="Add label"
+                onClick={() => {
+                  if (!toolbar.primaryEdgeId) {
+                    return
+                  }
+                  editor.actions.edge.label.add(toolbar.primaryEdgeId)
+                }}
+              >
+                <Type size={18} strokeWidth={1.9} />
+              </ToolbarIconButton>
+              <Button
+                ref={(element) => {
+                  registerPanelButton('text-mode', element)
+                }}
+                variant="ghost"
+                pressed={activePanelKey === 'text-mode'}
+                className="h-9 min-w-[76px] rounded-xl px-3 text-sm font-medium text-fg"
+                onClick={() => {
+                  togglePanel('text-mode')
+                }}
+                title="Text position"
+                aria-label="Text position"
+              >
+                {toolbar.textMode ?? 'horizontal'}
+              </Button>
+            </>
           ) : null}
-        </WhiteboardPopover>
-      ) : null}
-    </div>
+        </>
+      )}
+      renderPanel={({ activePanelKey }) => (
+        activePanelKey === 'start' ? (
+          <MarkerPanel
+            value={toolbar.start}
+            onChange={(value) => {
+              editor.actions.edge.style.start(toolbar.edgeIds, value)
+            }}
+          />
+        ) : activePanelKey === 'end' ? (
+          <MarkerPanel
+            value={toolbar.end}
+            onChange={(value) => {
+              editor.actions.edge.style.end(toolbar.edgeIds, value)
+            }}
+          />
+        ) : activePanelKey === 'line' ? (
+          <LinePanel
+            type={toolbar.type}
+            dash={toolbar.dash}
+            width={toolbar.width}
+            onTypeChange={(value) => {
+              editor.actions.edge.type.set(toolbar.edgeIds, value)
+            }}
+            onDashChange={(value) => {
+              editor.actions.edge.style.dash(toolbar.edgeIds, value)
+            }}
+            onWidthChange={(value) => {
+              editor.actions.edge.style.width(toolbar.edgeIds, value)
+            }}
+          />
+        ) : activePanelKey === 'color' ? (
+          <ColorPanel
+            value={toolbar.color}
+            onChange={(value) => {
+              editor.actions.edge.style.color(toolbar.edgeIds, value)
+            }}
+          />
+        ) : single ? (
+          <TextModePanel
+            value={toolbar.textMode}
+            onChange={(value) => {
+              editor.actions.edge.textMode.set(toolbar.edgeIds, value)
+            }}
+          />
+        ) : null
+      )}
+    />
   )
 }

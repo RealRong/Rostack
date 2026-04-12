@@ -3,7 +3,7 @@ import type {
   CustomFieldId,
   DataDoc,
   RecordId,
-  Row,
+  DataRecord,
   View,
   ViewId
 } from '@dataview/core/contracts'
@@ -19,8 +19,8 @@ import {
 
 export interface CommandRead {
   records: {
-    list: () => readonly Row[]
-    get: (recordId: RecordId) => Row | undefined
+    list: () => readonly DataRecord[]
+    get: (recordId: RecordId) => DataRecord | undefined
     has: (recordId: RecordId) => boolean
   }
   fields: {

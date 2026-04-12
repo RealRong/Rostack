@@ -6,7 +6,7 @@ import {
 } from 'react'
 import type {
   TitleFieldId,
-  Row,
+  DataRecord,
   ViewId
 } from '@dataview/core/contracts'
 import {
@@ -35,7 +35,7 @@ export const useCardEditingState = (input: {
 export const useCardTitleEditing = (input: {
   viewId: ViewId
   appearanceId: AppearanceId
-  record: Row
+  record: DataRecord
 }) => {
   const dataView = useDataView()
   const engine = dataView.engine

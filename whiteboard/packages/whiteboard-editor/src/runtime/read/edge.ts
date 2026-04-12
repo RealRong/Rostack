@@ -3,6 +3,8 @@ import {
   applyEdgePatch,
   getEdgePathBounds,
   isPointEdgeEnd,
+  sameEdgeAnchor,
+  sameResolvedEdgeEnd,
   type EdgeConnectCandidate,
   matchEdgeRect,
   resolveEdgeView,
@@ -13,7 +15,7 @@ import {
   sameOrder as isOrderedArrayEqual,
   samePointArray as isSamePointArray
 } from '@shared/core'
-import type { EdgeId, Node, NodeId, NodeType, Rect } from '@whiteboard/core/types'
+import type { Edge, EdgeId, Node, NodeId, NodeType, Rect } from '@whiteboard/core/types'
 import {
   type EdgeItem,
   type EngineRead
@@ -31,6 +33,7 @@ import type { NodeCanvasSnapshot, NodeRead } from './node'
 import {
   type EditSession
 } from '../state/edit'
+import { readPresentValues } from './utils'
 
 export type EdgeRuntimeState = {
   patched: boolean
@@ -74,52 +77,11 @@ const isEdgeItemEqual = (
     && left.edge === right.edge
     && left?.ends.source.end.kind === right?.ends.source.end.kind
     && left?.ends.target.end.kind === right?.ends.target.end.kind
-    && left?.ends.source.anchor?.side === right?.ends.source.anchor?.side
-    && left?.ends.target.anchor?.side === right?.ends.target.anchor?.side
-    && left?.ends.source.anchor?.offset === right?.ends.source.anchor?.offset
-    && left?.ends.target.anchor?.offset === right?.ends.target.anchor?.offset
+    && sameEdgeAnchor(left?.ends.source.anchor, right?.ends.source.anchor)
+    && sameEdgeAnchor(left?.ends.target.anchor, right?.ends.target.anchor)
     && isPointEqual(left?.ends.source.point, right?.ends.source.point)
     && isPointEqual(left?.ends.target.point, right?.ends.target.point)
   )
-)
-
-const isEdgeAnchorEqual = (
-  left: EdgeItem['ends']['source']['anchor'],
-  right: EdgeItem['ends']['source']['anchor']
-) => (
-  left === right
-  || (
-    left?.side === right?.side
-    && left?.offset === right?.offset
-  )
-)
-
-const isEdgeEndEqual = (
-  left: CoreEdgeView['ends']['source']['end'],
-  right: CoreEdgeView['ends']['source']['end']
-) => {
-  if (left === right) {
-    return true
-  }
-  if (left.kind !== right.kind) {
-    return false
-  }
-  if (left.kind === 'point' && right.kind === 'point') {
-    return isPointEqual(left.point, right.point)
-  }
-  if (left.kind === 'node' && right.kind === 'node') {
-    return left.nodeId === right.nodeId
-  }
-  return false
-}
-
-const isResolvedEdgeEndEqual = (
-  left: CoreEdgeView['ends']['source'],
-  right: CoreEdgeView['ends']['source']
-) => (
-  isEdgeEndEqual(left.end, right.end)
-  && isPointEqual(left.point, right.point)
-  && isEdgeAnchorEqual(left.anchor, right.anchor)
 )
 
 const isEdgePathSegmentEqual = (
@@ -179,8 +141,8 @@ const isEdgeViewEqual = (
   || (
     left !== undefined
     && right !== undefined
-    && isResolvedEdgeEndEqual(left.ends.source, right.ends.source)
-    && isResolvedEdgeEndEqual(left.ends.target, right.ends.target)
+    && sameResolvedEdgeEnd(left.ends.source, right.ends.source)
+    && sameResolvedEdgeEnd(left.ends.target, right.ends.target)
     && left.path.svgPath === right.path.svgPath
     && isSamePointArray(left.path.points, right.path.points)
     && isPointEqual(left.path.label, right.path.label)
@@ -207,6 +169,7 @@ const resolveEdgeCapability = (
 export type EdgeRead = {
   list: EngineRead['edge']['list']
   item: KeyedReadStore<EdgeId, EdgeItem | undefined>
+  edges: (edgeIds: readonly EdgeId[]) => readonly Edge[]
   state: KeyedReadStore<EdgeId, EdgeRuntimeState>
   resolved: KeyedReadStore<EdgeId, CoreEdgeView | undefined>
   view: KeyedReadStore<EdgeId, EdgeView | undefined>
@@ -436,6 +399,7 @@ export const createEdgeRead = ({
   return {
     list: read.edge.list,
     item,
+    edges: (edgeIds) => readPresentValues(edgeIds, (edgeId) => item.get(edgeId)?.edge),
     state,
     resolved,
     view,

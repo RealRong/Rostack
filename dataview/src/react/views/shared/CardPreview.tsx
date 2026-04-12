@@ -4,7 +4,7 @@ import {
 } from 'react'
 import type {
   CustomField,
-  Row
+  DataRecord
 } from '@dataview/core/contracts'
 import { isEmptyFieldValue } from '@dataview/core/field'
 import { FieldValueContent } from '@dataview/react/field/value'
@@ -27,7 +27,7 @@ export interface CardPreviewProps extends Omit<ComponentPropsWithoutRef<'article
       value?: string
     }
   }
-  record: Row
+  record: DataRecord
   fields: readonly CustomField[]
   titlePlaceholder: string
   titleLeading?: ReactNode

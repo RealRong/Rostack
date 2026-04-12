@@ -1,7 +1,6 @@
 import { FontSizePanel } from '../../panels/FontSizePanel'
 import { FontSizeControl } from './shared/FontSizeControl'
 import type { ToolbarItemSpec } from './types'
-import { toNodeFieldUpdate } from '#react/features/node/update'
 
 export const fontSizeItem: ToolbarItemSpec = {
   key: 'font-size',
@@ -12,11 +11,8 @@ export const fontSizeItem: ToolbarItemSpec = {
     editor,
     togglePanel,
     registerPanelButton
-  }) => {
-    const node = context.primaryNode ?? context.nodes[0]
-
-    return (
-      <FontSizeControl
+  }) => (
+    <FontSizeControl
       value={context.fontSize}
       registerAnchor={(element) => {
         registerPanelButton('font-size', element)
@@ -25,40 +21,27 @@ export const fontSizeItem: ToolbarItemSpec = {
         togglePanel('font-size')
       }}
       onCommit={(value) => {
-        if (!node) {
-          return
-        }
-
-        editor.actions.node.patch(context.nodeIds, toNodeFieldUpdate({
-          scope: 'style',
-          path: 'fontSize'
-        }, value))
+        editor.actions.node.text.size({
+          nodeIds: context.nodeIds,
+          value
+        })
       }}
-      />
-    )
-  },
+    />
+  ),
   renderPanel: ({
     context,
     editor,
     closePanel
-  }) => {
-    const node = context.primaryNode ?? context.nodes[0]
-
-    return (
-      <FontSizePanel
+  }) => (
+    <FontSizePanel
       value={context.fontSize}
       onChange={(value) => {
         closePanel()
-        if (!node) {
-          return
-        }
-
-        editor.actions.node.patch(context.nodeIds, toNodeFieldUpdate({
-          scope: 'style',
-          path: 'fontSize'
-        }, value))
+        editor.actions.node.text.size({
+          nodeIds: context.nodeIds,
+          value
+        })
       }}
-      />
-    )
-  }
+    />
+  )
 }

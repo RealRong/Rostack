@@ -35,7 +35,7 @@ export type {
   NodeId,
   OperationPayload,
   OperationType,
-  Row,
+  DataRecord,
   RowCreateInput,
   RowInsertTarget,
   ResolvedGroupKey,

@@ -3,7 +3,7 @@ import type {
   DataDoc,
   FieldId,
   RecordId,
-  Row
+  DataRecord
 } from '@dataview/core/contracts'
 import {
   getDocumentFieldById
@@ -39,7 +39,7 @@ const normalizeTokens = (
 }
 
 const buildFieldTokens = (
-  record: Row,
+  record: DataRecord,
   fieldId: FieldId,
   field?: ReturnType<typeof getDocumentFieldById>
 ): string | undefined => normalizeTokens(
@@ -49,7 +49,7 @@ const buildFieldTokens = (
 )
 
 const buildAllTokens = (
-  record: Row,
+  record: DataRecord,
   fields: readonly {
     id: FieldId
     field: ReturnType<typeof getDocumentFieldById>

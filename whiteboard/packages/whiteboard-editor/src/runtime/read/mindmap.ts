@@ -1,6 +1,8 @@
 import {
   createKeyedDerivedStore,
   read,
+  sameRect,
+  sameOptionalRect,
   type KeyedReadStore,
   type ReadStore
 } from '@shared/core'
@@ -56,22 +58,12 @@ export type MindmapView = {
   }
 }
 
-const isRectEqual = (
-  left: Rect | undefined,
-  right: Rect | undefined
-) => (
-  left?.x === right?.x
-  && left?.y === right?.y
-  && left?.width === right?.width
-  && left?.height === right?.height
-)
-
 const isMindmapNodeViewEqual = (
   left: MindmapNodeView,
   right: MindmapNodeView
 ) => (
   left.id === right.id
-  && isRectEqual(left.rect, right.rect)
+  && sameRect(left.rect, right.rect)
   && left.label === right.label
   && left.dragActive === right.dragActive
   && left.attachTarget === right.attachTarget
@@ -112,7 +104,7 @@ const isMindmapViewEqual = (
     && left.lines.every((line, index) => isLineEqual(line, right.lines[index]!))
     && left.nodes.length === right.nodes.length
     && left.nodes.every((node, index) => isMindmapNodeViewEqual(node, right.nodes[index]!))
-    && isRectEqual(left.ghost, right.ghost)
+    && sameOptionalRect(left.ghost, right.ghost)
     && left.connectionLine?.x1 === right.connectionLine?.x1
     && left.connectionLine?.y1 === right.connectionLine?.y1
     && left.connectionLine?.x2 === right.connectionLine?.x2

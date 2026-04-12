@@ -34,6 +34,7 @@ import {
 } from '@whiteboard/core/selection'
 import {
   type CanvasItemRef,
+  type Edge,
   type EdgeId,
   type Node,
   type NodeId,
@@ -51,9 +52,7 @@ import { createNodeProjection } from './node'
 import type { ReadSnapshot } from '@engine-types/internal/read'
 import {
   resolveGroupTarget,
-  resolveTargetBounds,
-  resolveTargetEdges,
-  resolveTargetNodes
+  resolveTargetBounds
 } from './target'
 
 const EMPTY_GROUP_IDS: readonly string[] = []
@@ -136,9 +135,22 @@ export const createRead = ({
   const readProjectedNodeBounds = (nodeId: NodeId): Rect | undefined =>
     readProjectedNodeGeometry(nodeId)?.bounds
 
-  const readOrderedNodes = (): Node[] => nodeProjection.list.get()
-    .map((nodeId) => index.node.get(nodeId)?.node)
-    .filter((node): node is Node => Boolean(node))
+  const readPresentValues = <TId, TValue>(
+    ids: readonly TId[],
+    project: (id: TId) => TValue | undefined
+  ): TValue[] => ids
+    .map((id) => project(id))
+    .filter((value): value is TValue => Boolean(value))
+
+  const readNodes: EngineRead['node']['nodes'] = (
+    nodeIds
+  ) => readPresentValues(nodeIds, (nodeId) => nodeProjection.item.get(nodeId)?.node)
+
+  const readEdges: EngineRead['edge']['edges'] = (
+    edgeIds
+  ) => readPresentValues(edgeIds, (edgeId) => edgeProjection.item.get(edgeId)?.edge)
+
+  const readOrderedNodes = (): Node[] => [...readNodes(nodeProjection.list.get())]
 
   const readFrameRect = (
     frameId: NodeId
@@ -248,17 +260,11 @@ export const createRead = ({
 
   const readCommittedTargetNodes: EngineRead['target']['nodes'] = (
     target
-  ) => resolveTargetNodes({
-    target,
-    readNode: (nodeId) => nodeProjection.item.get(nodeId)?.node
-  })
+  ) => readNodes(target.nodeIds)
 
   const readCommittedTargetEdges: EngineRead['target']['edges'] = (
     target
-  ) => resolveTargetEdges({
-    target,
-    readEdge: (edgeId) => edgeProjection.item.get(edgeId)?.edge
-  })
+  ) => readEdges(target.edgeIds)
 
   const readCommittedTargetBounds: EngineRead['target']['bounds'] = (
     target
@@ -466,6 +472,7 @@ export const createRead = ({
       node: {
         list: nodeProjection.list,
         item: nodeProjection.item,
+        nodes: readNodes,
         geometry: readProjectedNodeGeometry,
         rect: readProjectedNodeRect,
         bounds: readProjectedNodeBounds,
@@ -475,6 +482,7 @@ export const createRead = ({
       edge: {
         list: edgeProjection.list,
         item: edgeProjection.item,
+        edges: readEdges,
         related: edgeProjection.related
       },
       mindmap: {

@@ -1,3 +1,5 @@
+import { ViewOptions } from "./viewOptions"
+
 export type RecordId = string
 export type ViewId = string
 export type CustomFieldId = string
@@ -86,7 +88,7 @@ export interface FileValue {
 
 export type ViewCalc = Partial<Record<FieldId, CalculationMetric>>
 
-export interface Row {
+export interface DataRecord {
   id: RecordId
   title: string
   type?: string
@@ -279,7 +281,7 @@ export interface View {
   group?: ViewGroup
   calc: ViewCalc
   display: ViewDisplay
-  options: import('./viewOptions').ViewOptions
+  options: ViewOptions
   orders: RecordId[]
 }
 
@@ -290,15 +292,9 @@ export interface EntityTable<TId extends string, TEntity extends { id: TId }> {
 
 export interface DataDoc {
   schemaVersion: number
-  records: EntityTable<RecordId, Row>
+  records: EntityTable<RecordId, DataRecord>
   fields: EntityTable<CustomFieldId, CustomField>
   views: EntityTable<ViewId, View>
   activeViewId?: ViewId
   meta?: Record<string, unknown>
 }
-
-export type StateSlice =
-  | 'documentRecords'
-  | 'documentViews'
-  | 'documentProperties'
-  | 'externalRelations'

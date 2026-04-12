@@ -2,7 +2,7 @@ import type {
   Field,
   FieldId,
   CustomField,
-  Row,
+  DataRecord,
   ViewGroup
 } from '../contracts/state'
 import {
@@ -127,7 +127,7 @@ export const isTitleField = (
 ): field is Extract<Field, { kind: 'title' }> => field?.kind === 'title'
 
 export const getRecordFieldValue = (
-  record: Row,
+  record: DataRecord,
   fieldId: FieldId
 ): unknown => (
   isTitleFieldId(fieldId)

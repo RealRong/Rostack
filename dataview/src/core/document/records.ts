@@ -1,4 +1,4 @@
-import type { IndexPath, CustomFieldId, DataDoc, EntityTable, Row, RecordId } from '../contracts/state'
+import type { CustomFieldId, DataDoc, DataRecord, EntityTable, IndexPath, RecordId } from '../contracts/state'
 import {
   getEntityTableById,
   getEntityTableIds,
@@ -9,13 +9,13 @@ import {
 } from './table'
 
 export interface RecordEntry {
-  record: Row
+  record: DataRecord
   path: IndexPath
   index: number
 }
 
 export const enumerateRecords = (
-  records: readonly Row[],
+  records: readonly DataRecord[],
   visitor: (entry: RecordEntry) => void
 ) => {
   records.forEach((record, index) => {
@@ -23,7 +23,7 @@ export const enumerateRecords = (
   })
 }
 
-const replaceDocumentRecordsTable = (document: DataDoc, records: EntityTable<RecordId, Row>): DataDoc => {
+const replaceDocumentRecordsTable = (document: DataDoc, records: EntityTable<RecordId, DataRecord>): DataDoc => {
   if (records === document.records) {
     return document
   }
@@ -36,9 +36,9 @@ const replaceDocumentRecordsTable = (document: DataDoc, records: EntityTable<Rec
 
 const createRecordOverlay = (
   document: DataDoc
-): Record<RecordId, Row> => Object.create(document.records.byId) as Record<RecordId, Row>
+): Record<RecordId, DataRecord> => Object.create(document.records.byId) as Record<RecordId, DataRecord>
 
-export const getDocumentRecords = (document: DataDoc): Row[] => {
+export const getDocumentRecords = (document: DataDoc): DataRecord[] => {
   return listEntityTable(document.records)
 }
 
@@ -46,7 +46,7 @@ export const getDocumentRecordIds = (document: DataDoc): RecordId[] => {
   return getEntityTableIds(document.records)
 }
 
-export const getDocumentRecordById = (document: DataDoc, recordId: RecordId): Row | undefined => {
+export const getDocumentRecordById = (document: DataDoc, recordId: RecordId): DataRecord | undefined => {
   return getEntityTableById(document.records, recordId)
 }
 
@@ -56,11 +56,11 @@ export const getDocumentRecordIndex = (document: DataDoc, recordId: RecordId) =>
   return document.records.order.indexOf(recordId)
 }
 
-export const replaceDocumentRecords = (document: DataDoc, records: readonly Row[]): DataDoc => {
+export const replaceDocumentRecords = (document: DataDoc, records: readonly DataRecord[]): DataDoc => {
   return replaceDocumentRecordsTable(document, normalizeRecordInput(records))
 }
 
-export const insertDocumentRecords = (document: DataDoc, records: readonly Row[], index?: number): DataDoc => {
+export const insertDocumentRecords = (document: DataDoc, records: readonly DataRecord[], index?: number): DataDoc => {
   if (!records.length) {
     return document
   }
@@ -89,13 +89,13 @@ export const insertDocumentRecords = (document: DataDoc, records: readonly Row[]
   })
 }
 
-export const patchDocumentRecord = (document: DataDoc, recordId: RecordId, patch: Partial<Omit<Row, 'id'>>): DataDoc => {
+export const patchDocumentRecord = (document: DataDoc, recordId: RecordId, patch: Partial<Omit<DataRecord, 'id'>>): DataDoc => {
   const current = document.records.byId[recordId]
   if (!current) {
     return document
   }
 
-  const nextRecord = mergePatchedEntity(current, patch as Partial<Row>) as Row
+  const nextRecord = mergePatchedEntity(current, patch as Partial<DataRecord>) as DataRecord
   if (nextRecord === current) {
     return document
   }
@@ -124,7 +124,7 @@ export const removeDocumentRecords = (document: DataDoc, recordIds: readonly Rec
       return
     }
     removedCount += 1
-    nextById[recordId] = undefined as unknown as Row
+    nextById[recordId] = undefined as unknown as DataRecord
   })
 
   if (!removedCount) {
@@ -140,7 +140,7 @@ export const removeDocumentRecords = (document: DataDoc, recordIds: readonly Rec
 const replaceDocumentRecord = (
   document: DataDoc,
   recordId: RecordId,
-  record: Row
+  record: DataRecord
 ): DataDoc => {
   const byId = createRecordOverlay(document)
   byId[recordId] = record
@@ -153,7 +153,7 @@ const replaceDocumentRecord = (
 const updateDocumentRecord = (
   document: DataDoc,
   recordId: RecordId,
-  updater: (record: Row) => Row
+  updater: (record: DataRecord) => DataRecord
 ): DataDoc => {
   const record = getDocumentRecordById(document, recordId)
   if (!record) {

@@ -1,6 +1,6 @@
-import type { EntityTable, Row, RecordId } from '../contracts/state'
+import type { DataRecord, EntityTable, RecordId } from '../contracts/state'
 
-export const cloneRecordInput = (record: Row): Row => structuredClone(record)
+export const cloneRecordInput = (record: DataRecord): DataRecord => structuredClone(record)
 
 export const cloneEntityInput = <TEntity>(entity: TEntity): TEntity => structuredClone(entity)
 
@@ -46,8 +46,8 @@ export const cloneEntityTable = <TId extends string, TEntity extends { id: TId }
   }
 }
 
-export const cloneRecordTable = (table: EntityTable<RecordId, Row>): EntityTable<RecordId, Row> => {
-  const byId: Record<RecordId, Row> = {}
+export const cloneRecordTable = (table: EntityTable<RecordId, DataRecord>): EntityTable<RecordId, DataRecord> => {
+  const byId: Record<RecordId, DataRecord> = {}
 
   for (const recordIdKey in table.byId) {
     const recordId = recordIdKey as RecordId
@@ -149,8 +149,8 @@ export const removeEntityTableEntity = <TId extends string, TEntity extends { id
   }
 }
 
-export const normalizeRecordInput = (records: readonly Row[]): EntityTable<RecordId, Row> => {
-  const byId: Record<RecordId, Row> = {}
+export const normalizeRecordInput = (records: readonly DataRecord[]): EntityTable<RecordId, DataRecord> => {
+  const byId: Record<RecordId, DataRecord> = {}
   const order: RecordId[] = []
   const seen = new Set<RecordId>()
 
@@ -201,8 +201,8 @@ export const normalizeEntityTable = <TId extends string, TEntity extends { id: T
   }
 }
 
-export const normalizeRecordTable = (table: EntityTable<RecordId, Row>): EntityTable<RecordId, Row> => {
-  const byId: Record<RecordId, Row> = {}
+export const normalizeRecordTable = (table: EntityTable<RecordId, DataRecord>): EntityTable<RecordId, DataRecord> => {
+  const byId: Record<RecordId, DataRecord> = {}
   const order: RecordId[] = []
   const seen = new Set<RecordId>()
 

@@ -1,4 +1,4 @@
-import type { EditTarget, Row } from '@dataview/core/contracts'
+import type { DataRecord, EditTarget } from '@dataview/core/contracts'
 import { enumerateRecords } from '@dataview/core/document'
 
 export interface CommandResult {
@@ -22,7 +22,7 @@ export const uniqueRecordIds = (target: EditTarget): string[] => (
     : Array.from(new Set(target.recordIds))
 )
 
-export const collectRecordIds = (records: Row[]) => {
+export const collectRecordIds = (records: DataRecord[]) => {
   const recordIds: string[] = []
   enumerateRecords(records, entry => {
     recordIds.push(entry.record.id)
@@ -30,9 +30,9 @@ export const collectRecordIds = (records: Row[]) => {
   return recordIds
 }
 
-export const hasHierarchyPayload = (records: Row[]) => (
+export const hasHierarchyPayload = (records: DataRecord[]) => (
   records.some(record => {
-    const rawRecord = record as Row & { children?: unknown; expanded?: unknown }
+    const rawRecord = record as DataRecord & { children?: unknown; expanded?: unknown }
     return Array.isArray(rawRecord.children) || rawRecord.expanded !== undefined
   })
 )

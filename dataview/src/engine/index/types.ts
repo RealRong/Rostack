@@ -2,7 +2,7 @@ import type {
   Field,
   FieldId,
   RecordId,
-  Row,
+  DataRecord,
   ViewGroup
 } from '@dataview/core/contracts'
 import type {
@@ -16,7 +16,7 @@ export type SortKey = unknown
 export interface RecordIndex {
   ids: readonly RecordId[]
   order: ReadonlyMap<RecordId, number>
-  rows: ReadonlyMap<RecordId, Row>
+  rows: ReadonlyMap<RecordId, DataRecord>
   values: ReadonlyMap<FieldId, ReadonlyMap<RecordId, unknown>>
   rev: number
 }

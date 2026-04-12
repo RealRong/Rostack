@@ -1,7 +1,7 @@
 import type { ActiveViewState as CurrentView } from '@dataview/engine'
 import type {
+  DataRecord,
   RecordId,
-  Row
 } from '@dataview/core/contracts'
 import {
   getRecordFieldValue
@@ -93,7 +93,7 @@ export const createCellRender = (options: {
   currentViewStore: ReadStore<CurrentView | undefined>
   capabilitiesStore: ReadStore<Capabilities>
   hoverCellStore: KeyedReadStore<CellRef, boolean>
-  recordStore: KeyedReadStore<RecordId, Row | undefined>
+  recordStore: KeyedReadStore<RecordId, DataRecord | undefined>
 }): CellRender => {
   const selectionChrome = createDerivedStore<SelectionChrome>({
     get: () => {

@@ -1,5 +1,5 @@
 import type { BaseOperation } from '../../contracts/operations'
-import type { DataDoc, CustomField, Row, View } from '../../contracts/state'
+import type { DataDoc, CustomField, DataRecord, View } from '../../contracts/state'
 import {
   enumerateRecords,
   getDocumentActiveViewId,
@@ -12,9 +12,9 @@ import {
 const hasOwn = (record: Record<string, unknown>, key: string) => Object.prototype.hasOwnProperty.call(record, key)
 const readObjectValue = (value: unknown, key: string) => (value as Record<string, unknown>)[key]
 
-const collectInsertedRecordIds = (records: readonly Row[]) => {
+const collectInsertedRecordIds = (records: readonly DataRecord[]) => {
   const recordIds: string[] = []
-  enumerateRecords(records as Row[], entry => {
+  enumerateRecords(records as DataRecord[], entry => {
     recordIds.push(entry.record.id)
   })
   return recordIds
@@ -33,7 +33,7 @@ const captureRecordEntries = (document: DataDoc, recordIds: readonly string[]) =
         index
       }
     })
-    .filter((entry): entry is { record: Row; index: number } => Boolean(entry))
+    .filter((entry): entry is { record: DataRecord; index: number } => Boolean(entry))
     .sort((left, right) => left.index - right.index)
 }
 
@@ -52,7 +52,7 @@ const buildRecordInverse = (
 
       const patch = Object.fromEntries(
         Object.keys(operation.patch).map(key => [key, readObjectValue(record, key)])
-      ) as Partial<Omit<Row, 'id'>>
+      ) as Partial<Omit<DataRecord, 'id'>>
 
       return [{ type: 'document.record.patch', recordId: operation.recordId, patch }]
     }

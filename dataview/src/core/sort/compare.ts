@@ -1,6 +1,6 @@
 import type {
   DataDoc,
-  Row,
+  DataRecord,
   Sorter
 } from '@dataview/core/contracts'
 import {
@@ -12,8 +12,8 @@ import {
 } from '@dataview/core/field'
 
 export const compareSortedRecords = (
-  left: Row,
-  right: Row,
+  left: DataRecord,
+  right: DataRecord,
   sorter: Sorter,
   document: DataDoc
 ): number => {

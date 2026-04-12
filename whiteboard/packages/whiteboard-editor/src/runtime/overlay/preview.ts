@@ -12,6 +12,10 @@ import type {
   MindmapDragFeedback,
   TextPreviewPatch
 } from './types'
+import {
+  updateOverlayBranch,
+  updateOverlayNestedBranch
+} from './update'
 
 export type PreviewCommands = {
   draw: {
@@ -79,85 +83,54 @@ export const createPreviewCommands = ({
   overlay: Pick<EditorOverlay, 'set'>
 }): PreviewCommands => ({
   draw: {
-    setPreview: (preview) => {
-      overlay.set((current) => (
-        current.draw.preview === preview
-          ? current
-          : {
-              ...current,
-              draw: {
-                ...current.draw,
-                preview
-              }
-            }
-      ))
-    },
-    setHidden: (nodeIds) => {
-      overlay.set((current) => ({
-        ...current,
-        draw: {
-          ...current.draw,
-          hidden: nodeIds
-        }
-      }))
-    },
-    clear: () => {
-      overlay.set((current) => (
-        current.draw.preview === null
-        && current.draw.hidden.length === 0
-          ? current
-          : {
-              ...current,
-              draw: {
-                preview: null,
-                hidden: EMPTY_NODE_IDS
-              }
-            }
-      ))
-    }
+    setPreview: (preview) => updateOverlayNestedBranch(
+      overlay,
+      'draw',
+      'preview',
+      (current) => current === preview ? current : preview
+    ),
+    setHidden: (nodeIds) => updateOverlayNestedBranch(
+      overlay,
+      'draw',
+      'hidden',
+      (current) => current === nodeIds ? current : nodeIds
+    ),
+    clear: () => updateOverlayBranch(overlay, 'draw', (current) => (
+      current.preview === null && current.hidden.length === 0
+        ? current
+        : {
+            preview: null,
+            hidden: EMPTY_NODE_IDS
+          }
+    ))
   },
   node: {
     text: {
       set: (nodeId, patch) => {
-        overlay.set((current) => {
-          const currentPatch = readTextPreviewEntry(current.node.text.patches, nodeId)
+        updateOverlayNestedBranch(overlay, 'node', 'text', (current) => {
+          const currentPatch = readTextPreviewEntry(current.patches, nodeId)
           const nextPatch = mergeTextPreviewPatch(currentPatch, patch)
-
           if (isTextPreviewPatchEqual(currentPatch, nextPatch)) {
             return current
           }
 
           return {
-            ...current,
-            node: {
-              ...current.node,
-              text: {
-                patches: replaceTextPreviewEntry(current.node.text.patches, nodeId, nextPatch)
-              }
-            }
+            patches: replaceTextPreviewEntry(current.patches, nodeId, nextPatch)
           }
         })
       },
       clear: (nodeId) => {
-        overlay.set((current) => {
-          if (!readTextPreviewEntry(current.node.text.patches, nodeId)) {
-            return current
-          }
-
-          return {
-            ...current,
-            node: {
-              ...current.node,
-              text: {
-                patches: replaceTextPreviewEntry(current.node.text.patches, nodeId, undefined)
+        updateOverlayNestedBranch(overlay, 'node', 'text', (current) => (
+          readTextPreviewEntry(current.patches, nodeId)
+            ? {
+                patches: replaceTextPreviewEntry(current.patches, nodeId, undefined)
               }
-            }
-          }
-        })
+            : current
+        ))
       },
       clearSize: (nodeId) => {
-        overlay.set((current) => {
-          const patch = readTextPreviewEntry(current.node.text.patches, nodeId)
+        updateOverlayNestedBranch(overlay, 'node', 'text', (current) => {
+          const patch = readTextPreviewEntry(current.patches, nodeId)
           if (!patch?.size) {
             return current
           }
@@ -171,113 +144,67 @@ export const createPreviewCommands = ({
           }
 
           return {
-            ...current,
-            node: {
-              ...current.node,
-              text: {
-                patches: replaceTextPreviewEntry(
-                  current.node.text.patches,
-                  nodeId,
-                  !nextPatch.position
-                  && nextPatch.fontSize === undefined
-                  && nextPatch.mode === undefined
-                  && nextPatch.wrapWidth === undefined
-                  && nextPatch.handle === undefined
-                    ? undefined
-                    : nextPatch
-                )
-              }
-            }
+            patches: replaceTextPreviewEntry(
+              current.patches,
+              nodeId,
+              !nextPatch.position
+              && nextPatch.fontSize === undefined
+              && nextPatch.mode === undefined
+              && nextPatch.wrapWidth === undefined
+              && nextPatch.handle === undefined
+                ? undefined
+                : nextPatch
+            )
           }
         })
       }
     }
   },
   edge: {
-    setInteraction: (entries) => {
-      overlay.set((current) => ({
-        ...current,
-        edge: {
-          ...current.edge,
-          interaction: entries
-        }
-      }))
-    },
-    setGuide: (guide) => {
-      overlay.set((current) => (
-        current.edge.guide === guide
-          ? current
-          : {
-              ...current,
-              edge: {
-                ...current.edge,
-                guide
-              }
-            }
-      ))
-    },
-    clearPatches: () => {
-      overlay.set((current) => (
-        current.edge.interaction.length === 0
-          ? current
-          : {
-              ...current,
-              edge: {
-                ...current.edge,
-                interaction: EMPTY_EDGE_PATCHES
-              }
-            }
-      ))
-    },
-    clearGuide: () => {
-      overlay.set((current) => (
-        current.edge.guide === undefined
-          ? current
-          : {
-              ...current,
-              edge: {
-                ...current.edge,
-                guide: undefined
-              }
-            }
-      ))
-    },
-    clear: () => {
-      overlay.set((current) => (
-        current.edge.interaction.length === 0
-        && current.edge.guide === undefined
-          ? current
-          : {
-              ...current,
-              edge: {
-                ...current.edge,
-                interaction: EMPTY_EDGE_PATCHES,
-                guide: undefined
-              }
-            }
-      ))
-    }
+    setInteraction: (entries) => updateOverlayNestedBranch(
+      overlay,
+      'edge',
+      'interaction',
+      (current) => current === entries ? current : entries
+    ),
+    setGuide: (guide) => updateOverlayNestedBranch(
+      overlay,
+      'edge',
+      'guide',
+      (current) => current === guide ? current : guide
+    ),
+    clearPatches: () => updateOverlayNestedBranch(
+      overlay,
+      'edge',
+      'interaction',
+      (current) => current.length === 0 ? current : EMPTY_EDGE_PATCHES
+    ),
+    clearGuide: () => updateOverlayNestedBranch(
+      overlay,
+      'edge',
+      'guide',
+      (current) => current === undefined ? current : undefined
+    ),
+    clear: () => updateOverlayBranch(overlay, 'edge', (current) => (
+      current.interaction.length === 0 && current.guide === undefined
+        ? current
+        : {
+            interaction: EMPTY_EDGE_PATCHES,
+            guide: undefined
+          }
+    ))
   },
   mindmap: {
-    setDrag: (drag) => {
-      overlay.set((current) => ({
-        ...current,
-        mindmap: {
-          drag
-        }
-      }))
-    },
-    clear: () => {
-      overlay.set((current) => (
-        current.mindmap.drag === undefined
-          ? current
-          : {
-              ...current,
-              mindmap: {
-                drag: undefined
-              }
-            }
-      ))
-    }
+    setDrag: (drag) => updateOverlayNestedBranch(
+      overlay,
+      'mindmap',
+      'drag',
+      (current) => current === drag ? current : drag
+    ),
+    clear: () => updateOverlayBranch(overlay, 'mindmap', (current) => (
+      current.drag === undefined
+        ? current
+        : {}
+    ))
   }
 })

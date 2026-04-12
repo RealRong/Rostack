@@ -1,10 +1,11 @@
-import { Slider } from '@ui'
 import { FILL_COLOR_OPTIONS } from '../menus/options'
-import { Panel, PanelSection, SwatchButton } from './ShapeToolbarPrimitives'
-
-const formatPercent = (
-  value: number
-) => `${Math.round(value * 100)}%`
+import {
+  ColorSwatchGrid,
+  Panel,
+  PanelSection,
+  SliderSection,
+  formatPercent
+} from './ShapeToolbarPrimitives'
 
 export const FillPanel = ({
   fill,
@@ -19,34 +20,29 @@ export const FillPanel = ({
 }) => (
   <Panel className="min-w-[260px]">
     {onFillOpacityChange ? (
-      <PanelSection title="Opacity">
+      <>
+        <SliderSection
+          title="Opacity"
+          min={0}
+          max={1}
+          step={0.05}
+          value={fillOpacity ?? 1}
+          formatValue={formatPercent}
+          onChange={onFillOpacityChange}
+        />
         <div className="flex flex-col gap-2">
-          <Slider
-            min={0}
-            max={1}
-            step={0.05}
-            value={fillOpacity ?? 1}
-            formatValue={formatPercent}
-            onValueChange={onFillOpacityChange}
-            onValueCommit={onFillOpacityChange}
-          />
           <div className="text-right text-xs font-medium text-fg-muted">
             {formatPercent(fillOpacity ?? 1)}
           </div>
         </div>
-      </PanelSection>
+      </>
     ) : null}
     <PanelSection title="Color">
-      <div className="grid grid-cols-5 gap-2">
-        {FILL_COLOR_OPTIONS.map((option) => (
-          <SwatchButton
-            key={option.value}
-            color={option.value}
-            active={fill === option.value}
-            onClick={() => onFillChange(option.value)}
-          />
-        ))}
-      </div>
+      <ColorSwatchGrid
+        options={FILL_COLOR_OPTIONS}
+        value={fill}
+        onChange={onFillChange}
+      />
     </PanelSection>
   </Panel>
 )

@@ -162,11 +162,10 @@ export const SelectionActionMenu = ({
             key: 'state.lock',
             label: readLockLabel(nodeInfo?.lock ?? 'none'),
             onSelect: () => {
-              editor.actions.node.patch([...nodeIds], {
-                fields: {
-                  locked: (nodeInfo?.lock ?? 'none') !== 'all'
-                }
-              })
+              editor.actions.node.lock.set(
+                [...nodeIds],
+                (nodeInfo?.lock ?? 'none') !== 'all'
+              )
             }
           }
         ]

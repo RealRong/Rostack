@@ -1,4 +1,7 @@
 import { PAGE_INLINE_INSET_CSS } from '@dataview/react/page/layout'
+import {
+  useDataView
+} from '@dataview/react/dataview'
 import { resolveOptionDotStyle } from '@ui/color'
 import { useGalleryContext } from '../context'
 import { GALLERY_CARD_GAP } from '../virtual'
@@ -10,17 +13,20 @@ const contentInsetStyle = {
 } as const
 
 export const Grid = () => {
-  const controller = useGalleryContext()
   const {
-    appearanceIds,
+    active,
+    extra,
+    runtime
+  } = useGalleryContext()
+  const engine = useDataView().engine
+  const {
     blocks,
-    containerRef,
-    indicator,
     layout
-  } = controller
-  const empty = appearanceIds.length === 0
+  } = runtime.virtual
+  const indicator = runtime.indicator
+  const empty = active.appearances.ids.length === 0
   const sectionSizeByKey = new Map(
-    controller.sections.map(section => [section.key, section.ids.length] as const)
+    extra.sections.map(section => [section.key, section.ids.length] as const)
   )
   const lastBlock = blocks[blocks.length - 1]
   const bottomSpacerHeight = lastBlock
@@ -30,7 +36,7 @@ export const Grid = () => {
   return (
     <div className="flex flex-col gap-6">
       <div
-        ref={containerRef}
+        ref={runtime.containerRef}
         className="relative"
         style={contentInsetStyle}
       >
@@ -72,11 +78,11 @@ export const Grid = () => {
                         marginTop
                       }}
                     >
-                      {controller.groupUsesOptionColors ? (
+                      {extra.groupUsesOptionColors ? (
                         <span
                           className="inline-flex h-2.5 w-2.5 rounded-full"
                           style={resolveOptionDotStyle(
-                            controller.getSectionColor(block.section.key)
+                            engine.active.read.getSectionColor(block.section.key)
                           )}
                         />
                       ) : null}
@@ -116,7 +122,7 @@ export const Grid = () => {
                         <Card
                           key={id}
                           appearanceId={id}
-                          measureRef={controller.measure(id)}
+                          measureRef={runtime.virtual.measure(id)}
                         />
                       ))}
                     </div>

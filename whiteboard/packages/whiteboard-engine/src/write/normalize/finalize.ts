@@ -1,5 +1,10 @@
 import {
-  isPointEqual
+  sameEdgeEnd,
+  sameEdgeLabels,
+  sameEdgeRoute
+} from '@whiteboard/core/edge'
+import {
+  isSizeEqual
 } from '@whiteboard/core/geometry'
 import {
   sameOptionalPoint,
@@ -12,9 +17,7 @@ import { compileNodeFieldUpdate } from '@whiteboard/core/schema'
 import type {
   Document,
   Edge,
-  EdgeEnd,
   EdgeId,
-  EdgeLabel,
   Node,
   NodeId,
   Operation,
@@ -23,7 +26,6 @@ import type {
 } from '@whiteboard/core/types'
 
 const TEXT_WIDTH_MODE_KEY = 'widthMode'
-type NodeEdgeEnd = Extract<EdgeEnd, { kind: 'node' }>
 
 type NodeChange = {
   before?: Node
@@ -99,14 +101,6 @@ const collectTouchedIds = (
   }
 }
 
-const isSizeEqual = (
-  left?: Size,
-  right?: Size
-) => (
-  (left?.width ?? 0) === (right?.width ?? 0)
-  && (left?.height ?? 0) === (right?.height ?? 0)
-)
-
 const isRotationEqual = (
   left?: number,
   right?: number
@@ -128,82 +122,6 @@ const isShallowEqual = (
   left: object | undefined,
   right: object | undefined
 ) => sameShallowRecord(left, right)
-
-const isEdgeAnchorEqual = (
-  left: NodeEdgeEnd['anchor'],
-  right: NodeEdgeEnd['anchor']
-) => (
-  left?.side === right?.side
-  && (left?.offset ?? 0) === (right?.offset ?? 0)
-)
-
-const isEdgeEndEqual = (
-  left: EdgeEnd,
-  right: EdgeEnd
-) => {
-  if (left.kind !== right.kind) {
-    return false
-  }
-
-  if (left.kind === 'point' && right.kind === 'point') {
-    return isPointEqual(left.point, right.point)
-  }
-
-  if (left.kind === 'node' && right.kind === 'node') {
-    return (
-      left.nodeId === right.nodeId
-      && isEdgeAnchorEqual(left.anchor, right.anchor)
-    )
-  }
-
-  return false
-}
-
-const isEdgeRouteEqual = (
-  left: Edge['route'],
-  right: Edge['route']
-) => (
-  left?.kind === right?.kind
-  && isPointArrayEqual(
-    left?.kind === 'manual' ? left.points : undefined,
-    right?.kind === 'manual' ? right.points : undefined
-  )
-)
-
-const isEdgeLabelEqual = (
-  left?: EdgeLabel,
-  right?: EdgeLabel
-) => (
-  left?.id === right?.id
-  && left?.text === right?.text
-  && left?.t === right?.t
-  && left?.offset === right?.offset
-  && left?.style?.size === right?.style?.size
-  && left?.style?.weight === right?.style?.weight
-  && left?.style?.italic === right?.style?.italic
-  && left?.style?.color === right?.style?.color
-  && left?.style?.bg === right?.style?.bg
-)
-
-const isEdgeLabelsEqual = (
-  left?: readonly EdgeLabel[],
-  right?: readonly EdgeLabel[]
-) => {
-  if (left === right) {
-    return true
-  }
-  if (!left || !right || left.length !== right.length) {
-    return false
-  }
-
-  for (let index = 0; index < left.length; index += 1) {
-    if (!isEdgeLabelEqual(left[index], right[index])) {
-      return false
-    }
-  }
-
-  return true
-}
 
 const diffNodeChange = (
   before: Node | undefined,
@@ -272,15 +190,15 @@ const diffEdgeChange = (
   }
 
   const geometry = (
-    !isEdgeEndEqual(before.source, after.source)
-    || !isEdgeEndEqual(before.target, after.target)
+    !sameEdgeEnd(before.source, after.source)
+    || !sameEdgeEnd(before.target, after.target)
     || before.type !== after.type
-    || !isEdgeRouteEqual(before.route, after.route)
+    || !sameEdgeRoute(before.route, after.route)
   )
   const value = (
     !isShallowEqual(before.style, after.style)
     || before.textMode !== after.textMode
-    || !isEdgeLabelsEqual(before.labels, after.labels)
+    || !sameEdgeLabels(before.labels, after.labels)
     || !isShallowEqual(before.data, after.data)
   )
 

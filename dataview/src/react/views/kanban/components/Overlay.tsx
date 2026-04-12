@@ -93,7 +93,7 @@ export const Overlay = () => {
               ? resolveOptionCardStyle(sectionColorId)
               : resolveNeutralCardStyle('default', 'preview')}
             record={record}
-            fields={active.customFields}
+            fields={active.fields.custom}
             titlePlaceholder={record.id}
             propertyDensity="compact"
             showEmptyProperties

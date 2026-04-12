@@ -10,7 +10,7 @@ export const ColumnHeader = (props: {
     active,
     extra
   } = useKanbanContext()
-  const groupField = active.groupField
+  const groupField = active.group.field
   const bucket = props.section.bucket
   const canRenderBucket = Boolean(groupField && bucket)
   const count = props.section.ids.length

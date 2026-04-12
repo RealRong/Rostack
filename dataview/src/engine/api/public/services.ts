@@ -12,7 +12,7 @@ import type {
   KanbanCardsPerColumn,
   KanbanNewRecordPosition,
   RecordId,
-  Row,
+  DataRecord,
   SortDirection,
   Sorter,
   StatusCategory,
@@ -83,7 +83,7 @@ export interface FieldsEngineApi {
 }
 
 export interface RecordsEngineApi {
-  get: (recordId: RecordId) => Row | undefined
+  get: (recordId: RecordId) => DataRecord | undefined
   create: (input?: {
     values?: Partial<Record<CustomFieldId, unknown>>
   }) => RecordId | undefined

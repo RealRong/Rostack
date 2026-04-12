@@ -1,6 +1,6 @@
 import type {
   DataDoc,
-  Row,
+  DataRecord,
   Search
 } from '@dataview/core/contracts'
 import {
@@ -14,7 +14,7 @@ import {
 } from '@dataview/core/field'
 
 export const matchSearchRecord = (
-  record: Row,
+  record: DataRecord,
   search: Search,
   document: DataDoc
 ): boolean => {

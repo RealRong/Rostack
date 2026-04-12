@@ -1,10 +1,9 @@
-import { isPointEqual } from '../geometry'
 import type {
   Edge,
   EdgeLabel,
-  EdgeEnd,
   EdgePatch
 } from '../types'
+import { sameEdgeEnd } from './equality'
 
 const cloneEdgeLabels = (
   labels: readonly EdgeLabel[]
@@ -16,42 +15,13 @@ const cloneEdgeLabels = (
   style: label.style ? { ...label.style } : undefined
 }))
 
-const isEdgeEndEqual = (
-  left: EdgeEnd | undefined,
-  right: EdgeEnd | undefined
-) => {
-  if (left === right) {
-    return true
-  }
-
-  if (!left || !right) {
-    return left === right
-  }
-
-  if (left.kind !== right.kind) {
-    return false
-  }
-
-  if (left.kind === 'point' && right.kind === 'point') {
-    return isPointEqual(left.point, right.point)
-  }
-
-  if (left.kind === 'node' && right.kind === 'node') {
-    return left.nodeId === right.nodeId
-      && left.anchor?.side === right.anchor?.side
-      && left.anchor?.offset === right.anchor?.offset
-  }
-
-  return false
-}
-
 export const isEdgePatchEqual = (
   left?: EdgePatch,
   right?: EdgePatch
 ) => (
   left?.type === right?.type
-  && isEdgeEndEqual(left?.source, right?.source)
-  && isEdgeEndEqual(left?.target, right?.target)
+  && sameEdgeEnd(left?.source, right?.source)
+  && sameEdgeEnd(left?.target, right?.target)
   && left?.route === right?.route
   && left?.style === right?.style
   && left?.textMode === right?.textMode

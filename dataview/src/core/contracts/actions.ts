@@ -4,7 +4,7 @@ import type {
   CustomFieldKind,
   Filter,
   RecordId,
-  Row,
+  DataRecord,
   Search,
   Sorter,
   StatusCategory,
@@ -76,7 +76,7 @@ export type Action =
   | {
       type: 'record.patch'
       target: EditTarget
-      patch: Partial<Omit<Row, 'id'>>
+      patch: Partial<Omit<DataRecord, 'id'>>
     }
   | {
       type: 'record.remove'

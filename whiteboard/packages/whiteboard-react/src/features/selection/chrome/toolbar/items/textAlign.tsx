@@ -7,7 +7,6 @@ import {
 import { TextAlignPanel } from '../../panels/TextAlignPanel'
 import { preventToolbarPointerDown } from '../primitives'
 import type { ToolbarItemSpec } from './types'
-import { toNodeStylePatch } from '#react/features/node/update'
 
 const TEXT_ALIGN_OPTIONS = [
   { key: 'left' as const, icon: AlignLeft },
@@ -47,22 +46,12 @@ export const textAlignItem: ToolbarItemSpec = {
   renderPanel: ({
     context,
     editor
-  }) => {
-    const node = context.primaryNode ?? context.nodes[0]
-
-    return (
-      <TextAlignPanel
+  }) => (
+    <TextAlignPanel
       value={context.textAlign}
       onChange={(value) => {
-        if (!node) {
-          return
-        }
-
-        editor.actions.node.patch(context.nodeIds, toNodeStylePatch(node, {
-          textAlign: value
-        }))
+        editor.actions.node.text.align(context.nodeIds, value)
       }}
-      />
-    )
-  }
+    />
+  )
 }

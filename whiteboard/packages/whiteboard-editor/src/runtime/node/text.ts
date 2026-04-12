@@ -5,7 +5,8 @@ import type { NodeTextCommands } from './types'
 import {
   dataUpdate,
   mergeNodeUpdates,
-  styleUpdate
+  styleUpdate,
+  toNodeStyleUpdates
 } from './patch'
 
 export const createNodeTextCommands = (
@@ -105,10 +106,7 @@ export const createNodeTextCommands = (
     )
   },
   color: (nodeIds, color) => ctx.write.updateMany(
-    nodeIds.map((id) => ({
-      id,
-      update: styleUpdate('color', color)
-    }))
+    toNodeStyleUpdates(nodeIds, 'color', color)
   ),
   size: ({
     nodeIds,
@@ -140,21 +138,12 @@ export const createNodeTextCommands = (
     })
   ),
   weight: (nodeIds, weight) => ctx.write.updateMany(
-    nodeIds.map((id) => ({
-      id,
-      update: styleUpdate('fontWeight', weight)
-    }))
+    toNodeStyleUpdates(nodeIds, 'fontWeight', weight)
   ),
   italic: (nodeIds, italic) => ctx.write.updateMany(
-    nodeIds.map((id) => ({
-      id,
-      update: styleUpdate('fontStyle', italic ? 'italic' : 'normal')
-    }))
+    toNodeStyleUpdates(nodeIds, 'fontStyle', italic ? 'italic' : 'normal')
   ),
   align: (nodeIds, align) => ctx.write.updateMany(
-    nodeIds.map((id) => ({
-      id,
-      update: styleUpdate('textAlign', align)
-    }))
+    toNodeStyleUpdates(nodeIds, 'textAlign', align)
   )
 })

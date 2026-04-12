@@ -1,4 +1,5 @@
 import type {
+  CustomField,
   Field,
   FieldId,
   RecordId
@@ -43,6 +44,7 @@ export interface AppearanceList {
 export interface FieldList {
   ids: readonly FieldId[]
   all: readonly Field[]
+  custom: readonly CustomField[]
   get: (id: FieldId) => Field | undefined
   has: (id: FieldId) => boolean
   indexOf: (id: FieldId) => number | undefined

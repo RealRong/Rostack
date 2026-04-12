@@ -1,5 +1,13 @@
 import { createId } from '@whiteboard/core/id'
-import type { Edge, EdgeId, EdgePatch } from '@whiteboard/core/types'
+import type {
+  Edge,
+  EdgeDash,
+  EdgeId,
+  EdgeMarker,
+  EdgePatch,
+  EdgeTextMode,
+  EdgeType
+} from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { CommandResult } from '@engine-types/result'
 import type { EdgeApi } from '../../types/commands'
@@ -24,6 +32,19 @@ export type EdgeCommands = {
   delete: (ids: EdgeId[]) => CommandResult
   route: EdgeApi['route']
   label: EdgeApi['labels']
+  style: {
+    color: (edgeIds: readonly EdgeId[], value?: string) => CommandResult | undefined
+    width: (edgeIds: readonly EdgeId[], value?: number) => CommandResult | undefined
+    dash: (edgeIds: readonly EdgeId[], value?: EdgeDash) => CommandResult | undefined
+    start: (edgeIds: readonly EdgeId[], value?: EdgeMarker) => CommandResult | undefined
+    end: (edgeIds: readonly EdgeId[], value?: EdgeMarker) => CommandResult | undefined
+  }
+  type: {
+    set: (edgeIds: readonly EdgeId[], value: EdgeType) => CommandResult | undefined
+  }
+  textMode: {
+    set: (edgeIds: readonly EdgeId[], value?: EdgeTextMode) => CommandResult | undefined
+  }
 }
 
 const DEFAULT_EDGE_LABEL = {
@@ -39,6 +60,94 @@ const readEdge = (
   read: EditorRead,
   edgeId: EdgeId
 ) => read.edge.item.get(edgeId)?.edge
+
+const patchEdges = (
+  engine: Engine,
+  updates: readonly {
+    id: EdgeId
+    patch: EdgePatch
+  }[]
+) => {
+  if (!updates.length) {
+    return undefined
+  }
+
+  return engine.execute({
+    type: 'edge.patch',
+    updates
+  })
+}
+
+const patchExistingEdges = (
+  engine: Engine,
+  edgeIds: readonly EdgeId[],
+  patch: EdgePatch
+) => patchEdges(
+  engine,
+  edgeIds.flatMap((id) => engine.read.edge.item.get(id)
+    ? [{
+        id,
+        patch
+      }]
+    : [])
+)
+
+const patchEdgesBy = (
+  edgeIds: readonly EdgeId[],
+  read: EditorRead,
+  engine: Engine,
+  buildPatch: (edge: Edge) => EdgePatch | undefined
+) => patchEdges(
+  engine,
+  edgeIds.flatMap((edgeId) => {
+    const edge = readEdge(read, edgeId)
+    if (!edge) {
+      return []
+    }
+
+    const patch = buildPatch(edge)
+    if (!patch || !hasEdgePatchContent(patch)) {
+      return []
+    }
+
+    return [{
+      id: edgeId,
+      patch
+    }]
+  })
+)
+
+const patchEdgeStyle = <Key extends keyof NonNullable<Edge['style']>>(
+  edgeIds: readonly EdgeId[],
+  read: EditorRead,
+  engine: Engine,
+  key: Key,
+  value: NonNullable<Edge['style']>[Key] | undefined
+) => patchEdgesBy(edgeIds, read, engine, (edge) => {
+  if (edge.style?.[key] === value) {
+    return undefined
+  }
+
+  return {
+    style: {
+      ...(edge.style ?? {}),
+      [key]: value
+    }
+  }
+})
+
+const patchEdgeType = (
+  edgeIds: readonly EdgeId[],
+  read: EditorRead,
+  engine: Engine,
+  value: EdgeType
+) => patchEdgesBy(edgeIds, read, engine, (edge) => (
+  edge.type === value
+    ? undefined
+    : {
+        type: value
+      }
+))
 
 const mergeEdgeLabelPatch = (
   edge: Edge,
@@ -96,20 +205,7 @@ export const createEdgeCommands = ({
       return undefined
     }
 
-    const updates = edgeIds.flatMap((id) => engine.read.edge.item.get(id)
-      ? [{
-          id,
-          patch
-        }]
-      : [])
-    if (!updates.length) {
-      return undefined
-    }
-
-    return engine.execute({
-      type: 'edge.patch',
-      updates
-    })
+    return patchExistingEdges(engine, edgeIds, patch)
   },
   move: (edgeId, delta) => engine.execute({
     type: 'edge.move',
@@ -247,5 +343,24 @@ export const createEdgeCommands = ({
         }]
       })
     }
+  },
+  style: {
+    color: (edgeIds, value) => patchEdgeStyle(edgeIds, read, engine, 'color', value),
+    width: (edgeIds, value) => patchEdgeStyle(edgeIds, read, engine, 'width', value),
+    dash: (edgeIds, value) => patchEdgeStyle(edgeIds, read, engine, 'dash', value),
+    start: (edgeIds, value) => patchEdgeStyle(edgeIds, read, engine, 'start', value),
+    end: (edgeIds, value) => patchEdgeStyle(edgeIds, read, engine, 'end', value)
+  },
+  type: {
+    set: (edgeIds, value) => patchEdgeType(edgeIds, read, engine, value)
+  },
+  textMode: {
+    set: (edgeIds, value) => patchEdgesBy(edgeIds, read, engine, (edge) => (
+      edge.textMode === value
+        ? undefined
+        : {
+            textMode: value
+          }
+    ))
   }
 })

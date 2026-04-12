@@ -8,7 +8,7 @@ import type {
   FieldId,
   Filter,
   RecordId,
-  Row,
+  DataRecord,
   Search,
   Sorter,
   View,
@@ -288,7 +288,7 @@ const lowerRecordCreate = (
     type: action.input.type ?? resolveDefaultRecordType(document),
     values: resolveRecordCreateValues(document, action.input.values),
     meta: action.input.meta
-  } satisfies Row
+  } satisfies DataRecord
 
   return lowerResult(issues, [{
     type: 'record.insert',

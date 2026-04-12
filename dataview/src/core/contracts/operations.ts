@@ -1,4 +1,4 @@
-import type { CustomFieldId, CustomField, Row, View, RecordId, ViewId } from './state'
+import type { CustomFieldId, CustomField, DataRecord, View, RecordId, ViewId } from './state'
 
 export interface RowInsertTarget {
   index?: number
@@ -9,13 +9,13 @@ export type ValuePatch = Partial<Record<CustomFieldId, unknown>>
 export type BaseOperation =
   | {
       type: 'document.record.insert'
-      records: Row[]
+      records: DataRecord[]
       target?: RowInsertTarget
     }
   | {
       type: 'document.record.patch'
       recordId: RecordId
-      patch: Partial<Omit<Row, 'id'>>
+      patch: Partial<Omit<DataRecord, 'id'>>
     }
   | {
       type: 'document.record.remove'

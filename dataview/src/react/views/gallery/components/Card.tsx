@@ -7,7 +7,7 @@ import {
   type CSSProperties
 } from 'react'
 import type {
-  Row,
+  DataRecord,
   RecordId
 } from '@dataview/core/contracts'
 import {
@@ -20,9 +20,9 @@ import {
   shouldCapturePointer
 } from '@shared/dom'
 import {
-  useDataView
+  useDataView,
+  useDataViewKeyedValue
 } from '@dataview/react/dataview'
-import { useKeyedStoreValue } from '@shared/react'
 import {
   CardContent
 } from '@dataview/react/views/shared'
@@ -43,11 +43,18 @@ export const Card = (props: {
   className?: string
   style?: CSSProperties
 }) => {
-  const controller = useGalleryContext()
+  const {
+    active,
+    extra,
+    runtime
+  } = useGalleryContext()
   const dataView = useDataView()
   const engine = dataView.engine
-  const recordId = controller.getRecordId(props.appearanceId) ?? '' as RecordId
-  const record = useKeyedStoreValue(engine.read.record, recordId)
+  const recordId = engine.active.read.getAppearanceRecordId(props.appearanceId) ?? '' as RecordId
+  const record = useDataViewKeyedValue(
+    current => current.engine.read.record,
+    recordId
+  )
   if (!record) {
     return null
   }
@@ -65,19 +72,23 @@ export const Card = (props: {
 
 const GalleryCardContent = (props: {
   appearanceId: AppearanceId
-  record: Row
+  record: DataRecord
   measureRef?: (node: HTMLElement | null) => void
   className?: string
   style?: CSSProperties
 }) => {
-  const controller = useGalleryContext()
-  const viewId = controller.viewId
-  const fields = controller.customFields
-  const selected = controller.selectedIdSet.has(props.appearanceId)
-  const active = controller.drag.activeId === props.appearanceId
-  const draggingSelected = controller.drag.activeId !== undefined
-    && controller.drag.dragIdSet.has(props.appearanceId)
-  const canDrag = controller.canReorder
+  const {
+    active,
+    extra,
+    runtime
+  } = useGalleryContext()
+  const viewId = active.view.id
+  const fields = active.fields.custom
+  const selected = runtime.selection.selectedIdSet.has(props.appearanceId)
+  const draggingActive = runtime.drag.activeId === props.appearanceId
+  const draggingSelected = runtime.drag.activeId !== undefined
+    && runtime.drag.dragIdSet.has(props.appearanceId)
+  const canDrag = extra.canReorder
   const [hovered, setHovered] = useState(false)
   const editing = useCardEditingState({
     viewId,
@@ -86,8 +97,8 @@ const GalleryCardContent = (props: {
   const cardNodeRef = useRef<HTMLElement | null>(null)
   const measureRefRef = useRef(props.measureRef)
   measureRefRef.current = props.measureRef
-  const marqueeActiveRef = useRef(controller.marqueeActive)
-  marqueeActiveRef.current = controller.marqueeActive
+  const marqueeActiveRef = useRef(runtime.marqueeActive)
+  marqueeActiveRef.current = runtime.marqueeActive
   const hasVisibleFields = useMemo(() => fields.some(field => (
     editing
     || !isEmptyFieldValue(props.record.values[field.id])
@@ -106,15 +117,15 @@ const GalleryCardContent = (props: {
       return
     }
 
-    controller.visualTargets.register(props.appearanceId, node)
+    runtime.visualTargets.register(props.appearanceId, node)
 
     return () => {
       if (marqueeActiveRef.current) {
-        controller.visualTargets.freeze(props.appearanceId, node)
+        runtime.visualTargets.freeze(props.appearanceId, node)
       }
-      controller.visualTargets.register(props.appearanceId, null)
+      runtime.visualTargets.register(props.appearanceId, null)
     }
-  }, [controller.visualTargets, props.appearanceId])
+  }, [props.appearanceId, runtime.visualTargets])
 
   return (
     <CardContent
@@ -137,14 +148,14 @@ const GalleryCardContent = (props: {
           return
         }
 
-        controller.drag.onPointerDown(props.appearanceId, event)
+        runtime.drag.onPointerDown(props.appearanceId, event)
       }}
       onClick={event => {
         if (editing) {
           return
         }
 
-        if (controller.drag.shouldIgnoreClick()) {
+        if (runtime.drag.shouldIgnoreClick()) {
           event.preventDefault()
           event.stopPropagation()
           return
@@ -154,7 +165,7 @@ const GalleryCardContent = (props: {
           return
         }
 
-        controller.select(
+        runtime.selection.select(
           props.appearanceId,
           event.metaKey || event.ctrlKey ? 'toggle' : 'replace'
         )
@@ -164,8 +175,8 @@ const GalleryCardContent = (props: {
         'touch-none',
         !editing && 'select-none',
         !editing && canDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
-        active && 'opacity-35',
-        draggingSelected && !active && 'opacity-60',
+        draggingActive && 'opacity-35',
+        draggingSelected && !draggingActive && 'opacity-60',
         props.className
       )}
       style={{
@@ -197,7 +208,7 @@ const GalleryCardContent = (props: {
       record={props.record}
       fields={fields}
       titlePlaceholder={CARD_TITLE_PLACEHOLDER}
-      showEditAction={hovered && !editing && !active}
+      showEditAction={hovered && !editing && !draggingActive}
     />
   )
 }

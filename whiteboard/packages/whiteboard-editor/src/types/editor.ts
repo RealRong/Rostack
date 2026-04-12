@@ -1,22 +1,10 @@
-import type {
-  ContainerRect,
-  ViewportLimits
-} from '@whiteboard/core/geometry'
-import type {
-  HistoryConfig as KernelHistoryConfig,
-  HistoryState
-} from '@whiteboard/core/kernel'
+import type { HistoryState } from '@whiteboard/core/kernel'
 import type { SelectionInput, SelectionTarget } from '@whiteboard/core/selection'
 import type { ReadStore, Unsubscribe } from '@shared/core'
-import type { CommandResult } from '@engine-types/result'
 import type {
   Document,
-  EdgeId,
-  NodeId,
-  Size,
   Viewport
 } from '@whiteboard/core/types'
-import type { MindmapLayoutConfig } from './mindmap'
 import type { DrawPreferences } from './draw'
 import type {
   ContextMenuInput,
@@ -31,25 +19,23 @@ import type {
   Tool
 } from './tool'
 import type {
+  AppActions,
+  AppConfig,
   ClipboardCommands,
   ClipboardOptions,
   ClipboardTarget,
   DrawCommands,
-  EdgeApi,
-  EdgeLabelPatch,
   HistoryCommands,
   MindmapCommands,
-  NodeApi,
   OrderMode,
   SelectionApi,
-  SessionActions,
   SessionEditActions,
   SessionSelectionActions,
-  SessionToolActions,
   ToolActions,
-  ViewActions,
   ViewportActions
 } from './commands'
+import type { NodeCommands as RuntimeNodeCommands } from '../runtime/node/types'
+import type { EdgeCommands as RuntimeEdgeCommands } from '../runtime/commands/edge'
 import type { RuntimeRead } from '../runtime/read'
 import type { SelectionModelRead } from '../runtime/read/selection'
 import type {
@@ -59,10 +45,8 @@ import type {
 import type {
   EditCaret,
   EditField,
-  EditLayout,
   EditSession
 } from '../runtime/state/edit'
-import type { ClipboardPacket } from '../clipboard/packet'
 import type { Commit } from '@engine-types/commit'
 
 export type EditorClipboardTarget = ClipboardTarget
@@ -111,27 +95,9 @@ export type EditorState = {
 
 export type EditorRead = RuntimeRead
 
-export type EditorViewportActions = ViewportActions
-export type EditorMindmapCommands = MindmapCommands
-export type EditorOrderMode = OrderMode
-export type EditorEdgeLabelPatch = EdgeLabelPatch
-export type EditorClipboardApi = ClipboardCommands
-export type EditorSelectionApi = SelectionApi
-export type EditorNodesApi = NodeApi
-export type MindmapNodePatch = Parameters<EditorMindmapCommands['updateNode']>[1]
-export type EditorEdgesApi = EdgeApi
-export type EditorSessionToolActions = SessionToolActions
-export type EditorSessionSelectionActions = SessionSelectionActions
-export type EditorSessionEditActions = SessionEditActions
-export type EditorSessionActions = SessionActions
-export type EditorHistoryApi = HistoryCommands
-export type EditorDrawActions = DrawCommands
-export type EditorViewActions = ViewActions
+export type MindmapNodePatch = Parameters<MindmapCommands['updateNode']>[1]
 
-export type EditorConfig = {
-  mindmapLayout: MindmapLayoutConfig
-  history?: KernelHistoryConfig
-}
+export type EditorConfig = AppConfig
 
 export type EditorStore = EditorState
 
@@ -150,139 +116,58 @@ export type EditorPanelPresentation = {
   draw: DrawPreferences
 }
 
-export type EditorAppActions = {
-  reset: () => void
-  replace: (document: Document) => CommandResult
-  export: () => Document
-  configure: (config: EditorConfig) => void
-  dispose: () => void
-}
+export type EditorAppActions = AppActions
 
 export type EditorToolActions = ToolActions
 
 export type EditorSelectionActions = {
-  replace: EditorSessionSelectionActions['replace']
-  add: EditorSessionSelectionActions['add']
-  remove: EditorSessionSelectionActions['remove']
-  toggle: EditorSessionSelectionActions['toggle']
-  selectAll: EditorSessionSelectionActions['selectAll']
-  clear: EditorSessionSelectionActions['clear']
-  frame: EditorSelectionApi['frame']
-  order: (
-    mode: EditorOrderMode,
-    target?: SelectionInput
-  ) => boolean
-  group: (
-    options?: Parameters<EditorSelectionApi['group']>[1]
-  ) => boolean
-  ungroup: (
-    options?: Parameters<EditorSelectionApi['ungroup']>[1]
-  ) => boolean
-  delete: (
-    options?: Parameters<EditorSelectionApi['delete']>[1]
-  ) => boolean
-  duplicate: (
-    options?: Parameters<EditorSelectionApi['duplicate']>[1]
-  ) => boolean
+  replace: SessionSelectionActions['replace']
+  add: SessionSelectionActions['add']
+  remove: SessionSelectionActions['remove']
+  toggle: SessionSelectionActions['toggle']
+  selectAll: SessionSelectionActions['selectAll']
+  clear: SessionSelectionActions['clear']
+  frame: SelectionApi['frame']
+  order: SelectionApi['order']
+  group: SelectionApi['group']
+  ungroup: SelectionApi['ungroup']
+  delete: SelectionApi['delete']
+  duplicate: SelectionApi['duplicate']
 }
 
-export type EditorEditActions = EditorSessionEditActions & {
+export type EditorEditActions = SessionEditActions & {
   cancel: () => void
   commit: () => void
 }
 
 export type EditorInteractionActions = EditorInput
 
-export type EditorNodeActions = {
-  create: EditorNodesApi['create']
-  patch: EditorNodesApi['patch']
-  move: EditorNodesApi['move']
-  align: EditorNodesApi['align']
-  distribute: EditorNodesApi['distribute']
-  delete: (ids: NodeId[]) => CommandResult
-  deleteCascade: (ids: NodeId[]) => CommandResult
-  duplicate: EditorNodesApi['duplicate']
-  lock: (ids: readonly NodeId[], value: boolean) => CommandResult
-  text: {
-    commit: (input: {
-      nodeId: NodeId
-      field: EditField
-      value: string
-      size?: Size
-    }) => CommandResult | undefined
-    color: (ids: readonly NodeId[], color: string) => CommandResult
-    size: (input: {
-      nodeIds: readonly NodeId[]
-      value?: number
-      sizeById?: Readonly<Record<NodeId, Size>>
-    }) => CommandResult
-    weight: (ids: readonly NodeId[], value?: number) => CommandResult
-    italic: (ids: readonly NodeId[], value: boolean) => CommandResult
-    align: (
-      ids: readonly NodeId[],
-      value?: 'left' | 'center' | 'right'
-    ) => CommandResult
-  }
-  style: {
-    fill: (ids: readonly NodeId[], value: string) => CommandResult
-    stroke: (ids: readonly NodeId[], value: string) => CommandResult
-  }
-  shape: {
-    set: (ids: readonly NodeId[], kind: string) => CommandResult
-  }
-}
+export type EditorNodeActions = Omit<
+  RuntimeNodeCommands,
+  'update' | 'updateMany'
+>
 
-export type EditorEdgeActions = {
-  create: EditorEdgesApi['create']
-  patch: EditorEdgesApi['patch']
-  move: EditorEdgesApi['move']
-  reconnect: EditorEdgesApi['reconnect']
-  delete: EditorEdgesApi['remove']
-  route: EditorEdgesApi['route']
-  label: {
-    add: EditorEdgesApi['labels']['add']
-    patch: EditorEdgesApi['labels']['patch']
-    remove: EditorEdgesApi['labels']['remove']
-    setText: (
-      edgeId: EdgeId,
-      labelId: string,
-      text: string
-    ) => CommandResult | undefined
-  }
-}
+export type EditorEdgeActions = Pick<
+  RuntimeEdgeCommands,
+  'create' | 'patch' | 'move' | 'reconnect' | 'delete' | 'route' | 'label'
+>
 
 export type EditorActions = {
   app: EditorAppActions
   tool: EditorToolActions
-  viewport: {
-    set: EditorViewportActions['set']
-    panBy: EditorViewportActions['panBy']
-    zoomTo: EditorViewportActions['zoomTo']
-    fit: EditorViewportActions['fit']
-    reset: EditorViewportActions['reset']
-    setRect: EditorViewportActions['setRect']
-    setLimits: EditorViewportActions['setLimits']
-  }
-  draw: EditorDrawActions
+  viewport: Pick<
+    ViewportActions,
+    'set' | 'panBy' | 'zoomTo' | 'fit' | 'reset' | 'setRect' | 'setLimits'
+  >
+  draw: DrawCommands
   selection: EditorSelectionActions
   edit: EditorEditActions
   interaction: EditorInteractionActions
   node: EditorNodeActions
   edge: EditorEdgeActions
-  mindmap: {
-    create: EditorMindmapCommands['create']
-    delete: EditorMindmapCommands['delete']
-    insert: EditorMindmapCommands['insert']
-    moveSubtree: EditorMindmapCommands['moveSubtree']
-    removeSubtree: EditorMindmapCommands['removeSubtree']
-    clone: EditorMindmapCommands['cloneSubtree']
-    updateNode: EditorMindmapCommands['updateNode']
-    insertByPlacement: EditorMindmapCommands['insertByPlacement']
-    moveByDrop: EditorMindmapCommands['moveByDrop']
-    moveRoot: EditorMindmapCommands['moveRoot']
-  }
-  clipboard: EditorClipboardApi
-  history: EditorHistoryApi
+  mindmap: MindmapCommands
+  clipboard: ClipboardCommands
+  history: HistoryCommands
 }
 
 export type EditorDocSelect = (() => RuntimeRead['document']) & {

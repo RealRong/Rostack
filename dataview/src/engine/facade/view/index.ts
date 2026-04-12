@@ -24,8 +24,7 @@ import {
 } from '@dataview/engine/project'
 import type {
   AppearanceId,
-  AppearanceList,
-  Section
+  AppearanceList
 } from '@dataview/engine/project'
 import { createRecordId } from '@dataview/engine/command/entityId'
 import { meta, renderMessage } from '@dataview/meta'
@@ -182,10 +181,6 @@ const createGroupWriteCommands = (input: {
   return commands
 }
 
-type ProjectedViewState = ActiveViewState & {
-  appearances: AppearanceList
-  sections: readonly Section[]
-}
 export const createViewEngineApi = (options: {
   resolveViewId: () => ViewId | undefined
   readDocument: () => DataDoc
@@ -200,19 +195,6 @@ export const createViewEngineApi = (options: {
 }): ViewEngineApi => {
   const readDocument = options.readDocument
   const readCurrentView = options.readView
-  const readProjectedState = (): ProjectedViewState | undefined => {
-    const viewId = options.resolveViewId()
-    const state = options.readState()
-    if (!viewId || !state || state.view.id !== viewId) {
-      return undefined
-    }
-
-    if (!state.appearances || !state.sections) {
-      return undefined
-    }
-
-    return state as ProjectedViewState
-  }
 
   const commit = (action: Action | readonly Action[]) => options.dispatch(action).applied
   const commands = createViewCommandNamespaces({
@@ -234,7 +216,7 @@ export const createViewEngineApi = (options: {
 
   const items: ViewItemsApi = {
     move: (appearanceIds, target) => {
-      const state = readProjectedState()
+      const state = options.readState()
       if (!state) {
         return
       }
@@ -307,7 +289,7 @@ export const createViewEngineApi = (options: {
       }
     },
     create: input => {
-      const state = readProjectedState()
+      const state = options.readState()
       if (!state) {
         return undefined
       }
@@ -386,7 +368,7 @@ export const createViewEngineApi = (options: {
         : undefined
     },
     remove: appearanceIds => {
-      const state = readProjectedState()
+      const state = options.readState()
       if (!state) {
         return
       }
@@ -404,7 +386,7 @@ export const createViewEngineApi = (options: {
   }
 
   const writeCell = (
-    state: ProjectedViewState,
+    state: ActiveViewState,
     cell: CellRef,
     value: unknown | undefined
   ) => {
@@ -423,7 +405,7 @@ export const createViewEngineApi = (options: {
 
   const cells: ViewCellsApi = {
     set: (cell, value) => {
-      const state = readProjectedState()
+      const state = options.readState()
       if (!state) {
         return
       }
@@ -431,7 +413,7 @@ export const createViewEngineApi = (options: {
       writeCell(state, cell, value)
     },
     clear: cell => {
-      const state = readProjectedState()
+      const state = options.readState()
       if (!state) {
         return
       }

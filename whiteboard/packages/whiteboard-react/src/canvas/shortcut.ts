@@ -82,15 +82,15 @@ export const runShortcut = (
       editor.actions.selection.clear()
       return true
     case 'selection.delete':
-      return editor.actions.selection.delete()
+      return editor.actions.selection.delete(selection)
     case 'selection.duplicate': {
-      return editor.actions.selection.duplicate()
+      return editor.actions.selection.duplicate(selection)
     }
     case 'group.merge': {
-      return editor.actions.selection.group()
+      return editor.actions.selection.group(selection)
     }
     case 'group.ungroup': {
-      return editor.actions.selection.ungroup()
+      return editor.actions.selection.ungroup(selection)
     }
     case 'history.undo':
       return editor.actions.history.undo().ok

@@ -26,14 +26,15 @@ import type {
   NodeType,
   Rect
 } from '@whiteboard/core/types'
-import type { NodeRegistry, NodeRole } from '../../types/node'
 import type {
-  NodeOverlayProjection
+  NodeDefinition,
+  NodeRegistry,
+  NodeRole
+} from '../../types/node'
+import type {
+  NodeOverlayProjection,
+  NodePatch
 } from '../overlay/types'
-import {
-  applyNodeProjectionPatch,
-  applyNodeProjectionRect
-} from './nodeProjection'
 import {
   type EditSession
 } from '../state/edit'
@@ -87,14 +88,6 @@ export type NodeRead = {
     nodeIds: readonly NodeId[]
   ) => TransformSelectionTargets<Node> | undefined
   ordered: () => readonly Node[]
-}
-
-type NodeBehaviorLike = {
-  role?: NodeRole
-  connect?: boolean
-  enter?: boolean
-  canResize?: boolean
-  canRotate?: boolean
 }
 
 const readNodeType = (
@@ -193,31 +186,90 @@ const isNodeCanvasSnapshotEqual = (
   )
 )
 
-const resolveNodeRole = (
-  definition?: Pick<NodeBehaviorLike, 'role'>
-): NodeRole => definition?.role ?? 'content'
-
-const resolveNodeTransform = (
-  definition?: Pick<NodeBehaviorLike, 'role' | 'canResize' | 'canRotate'>
-) => ({
-  resize: definition?.canResize ?? true,
-  rotate:
-    typeof definition?.canRotate === 'boolean'
-      ? definition.canRotate
-      : resolveNodeRole(definition) === 'content'
-})
-
-const resolveNodeConnect = (
-  definition?: Pick<NodeBehaviorLike, 'connect'>
-) => definition?.connect ?? true
-
-const resolveNodeEnter = (
-  definition?: Pick<NodeBehaviorLike, 'enter'>
-) => definition?.enter ?? false
-
 const readNodeRotation = (
   node: NodeItem['node']
 ) => (typeof node.rotation === 'number' ? node.rotation : 0)
+
+const patchRect = (
+  rect: Rect,
+  patch?: {
+    position?: {
+      x: number
+      y: number
+    }
+    size?: {
+      width: number
+      height: number
+    }
+  }
+) => {
+  if (!patch?.position && !patch?.size) {
+    return rect
+  }
+
+  const next = {
+    x: patch.position?.x ?? rect.x,
+    y: patch.position?.y ?? rect.y,
+    width: patch.size?.width ?? rect.width,
+    height: patch.size?.height ?? rect.height
+  }
+
+  return isRectEqual(next, rect)
+    ? rect
+    : next
+}
+
+const resolveNodeCapability = (
+  definition?: NodeDefinition
+): NodeCapability => {
+  const role = definition?.role ?? 'content'
+
+  return {
+    role,
+    connect: definition?.connect ?? true,
+    enter: definition?.enter ?? false,
+    resize: definition?.canResize ?? true,
+    rotate:
+      typeof definition?.canRotate === 'boolean'
+        ? definition.canRotate
+        : role === 'content'
+  }
+}
+
+const applyNodePatch = (
+  item: NodeItem,
+  patch: NodePatch | undefined
+): NodeItem => {
+  if (!patch) {
+    return item
+  }
+
+  const nextNode = (
+    !patch.position
+    && !patch.size
+    && patch.rotation === undefined
+  )
+    ? item.node
+    : {
+        ...item.node,
+        position: patch.position ?? item.node.position,
+        size: patch.size ?? item.node.size,
+        rotation:
+          typeof patch.rotation === 'number'
+            ? patch.rotation
+            : item.node.rotation
+      }
+  const nextRect = patchRect(item.rect, patch)
+
+  if (nextNode === item.node && nextRect === item.rect) {
+    return item
+  }
+
+  return {
+    node: nextNode,
+    rect: nextRect
+  }
+}
 
 const toNodeView = (
   nodeId: NodeId,
@@ -296,17 +348,13 @@ const applyNodeTextPreview = (
   const dataWithWrapWidth = nextWrapWidth === readTextWrapWidth(item.node)
     ? data
     : setTextWrapWidth({ data }, nextWrapWidth)
-  const rect = text.size
-    || text.position
-    ? {
-        x: text.position?.x ?? item.rect.x,
-        y: text.position?.y ?? item.rect.y,
-        width: text.size?.width ?? item.rect.width,
-        height: text.size?.height ?? item.rect.height
-      }
-    : item.rect
+  const nextRect = patchRect(item.rect, text)
 
-  if (style === item.node.style && dataWithWrapWidth === item.node.data && rect === item.rect) {
+  if (
+    style === item.node.style
+    && dataWithWrapWidth === item.node.data
+    && nextRect === item.rect
+  ) {
     return item
   }
 
@@ -316,11 +364,11 @@ const applyNodeTextPreview = (
       style,
       data: dataWithWrapWidth
     },
-    rect
+    rect: nextRect
   }
 }
 
-const applyEditSession = (
+const applyNodeEditSession = (
   item: NodeItem,
   edit: EditSession
 ): NodeItem => {
@@ -349,6 +397,18 @@ const applyEditSession = (
   }
 }
 
+const applyNodeProjection = (
+  item: NodeItem,
+  projection: NodeOverlayProjection,
+  edit: EditSession
+): NodeItem => applyNodeEditSession(
+  applyNodeTextPreview(
+    applyNodePatch(item, projection.patch),
+    projection
+  ),
+  edit
+)
+
 export const createNodeRead = ({
   read,
   registry,
@@ -367,17 +427,9 @@ export const createNodeRead = ({
         return undefined
       }
 
-      const projection = readStore(overlay, nodeId)
-      const patch = projection.patch
-      const projected = patch
-        ? {
-            node: applyNodeProjectionPatch(current.node, patch),
-            rect: applyNodeProjectionRect(current.rect, patch)
-          }
-        : current
-
-      return applyEditSession(
-        applyNodeTextPreview(projected, projection),
+      return applyNodeProjection(
+        current,
+        readStore(overlay, nodeId),
         readStore(edit)
       )
     },
@@ -391,18 +443,9 @@ export const createNodeRead = ({
   })
   const capability: NodeRead['capability'] = (
     node: Pick<Node, 'type'> | NodeType
-  ) => {
-    const definition = registry.get(readNodeType(node))
-    const transform = resolveNodeTransform(definition)
-
-    return {
-      role: resolveNodeRole(definition),
-      connect: resolveNodeConnect(definition),
-      enter: resolveNodeEnter(definition),
-      resize: transform.resize,
-      rotate: transform.rotate
-    }
-  }
+  ) => resolveNodeCapability(
+    registry.get(readNodeType(node))
+  )
   const view: NodeRead['view'] = createKeyedDerivedStore({
     get: (readStore, nodeId: NodeId) => {
       const resolvedItem = readStore(item, nodeId)

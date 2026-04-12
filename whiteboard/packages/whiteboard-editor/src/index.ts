@@ -32,6 +32,27 @@ export type {
   EditorInput
 } from './types/editor'
 export type {
+  AppActions,
+  ClipboardCommands,
+  ClipboardOptions,
+  ClipboardTarget,
+  DrawCommands,
+  EdgeApi,
+  EdgeLabelPatch,
+  HistoryCommands,
+  MindmapCommands,
+  NodeApi,
+  OrderMode,
+  SelectionApi,
+  SessionActions,
+  SessionEditActions,
+  SessionSelectionActions,
+  SessionToolActions,
+  ToolActions,
+  ViewActions,
+  ViewportActions
+} from './types/commands'
+export type {
   ClipboardPacket
 } from './clipboard/packet'
 export type {

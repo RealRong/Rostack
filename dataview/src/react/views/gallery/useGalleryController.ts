@@ -6,12 +6,14 @@ import {
   useState,
   type RefObject
 } from 'react'
-import type { ViewId } from '@dataview/core/contracts'
 import type {
   CustomField,
   View
 } from '@dataview/core/contracts'
-import { isCustomField } from '@dataview/core/field'
+import type {
+  ActiveGalleryState,
+  ActiveViewState
+} from '@dataview/engine'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
 } from '@dataview/react/dom/appearance'
@@ -28,8 +30,6 @@ import {
 } from '@dataview/engine/project'
 import {
   type AppearanceId,
-  type AppearanceList,
-  type FieldList,
   type Section
 } from '@dataview/engine/project'
 import {
@@ -50,13 +50,12 @@ import {
   type GalleryBlock,
   type GalleryLayoutCache
 } from './virtual'
-import { usesOptionGroupingColors } from '@dataview/react/views/shared/optionGrouping'
 
-type GalleryCurrentView = {
-  view: View
-  appearances: AppearanceList
+export type GalleryCurrentView = Omit<ActiveViewState, 'sections'> & {
+  view: View & {
+    type: 'gallery'
+  }
   sections: readonly Section[]
-  fields: FieldList
 }
 
 export interface GalleryController {
@@ -79,66 +78,24 @@ export interface GalleryController {
 }
 
 export const useGalleryController = (input: {
-  viewId: ViewId
   containerRef: RefObject<HTMLDivElement | null>
+  currentView: GalleryCurrentView
+  extra: ActiveGalleryState
 }): GalleryController => {
   const dataView = useDataView()
-  const activeState = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => (
-      state
-      && state.view.id === input.viewId
-      && state.view.type === 'gallery'
-      && state.appearances
-      && state.sections
-      && state.fields
-        ? state
-        : undefined
-    )
-  )
-  const currentView = useMemo<GalleryCurrentView | undefined>(() => (
-    activeState
-      ? {
-          view: activeState.view,
-          appearances: activeState.appearances!,
-          sections: activeState.sections!,
-          fields: activeState.fields!
-        }
-      : undefined
-  ), [activeState])
-  if (!currentView) {
-    throw new Error('Gallery view requires an active current view.')
-  }
-  const groupProjection = activeState?.group
-  const sortProjection = activeState?.sort
+  const currentView = input.currentView
+  const extra = input.extra
 
-  const fields = useMemo(
-    () => currentView.fields.all.filter(isCustomField),
-    [currentView.fields.all]
-  )
-  const canReorder = !(groupProjection?.active ?? false) && !(sortProjection?.active ?? false)
+  const fields = extra.customFields
+  const canReorder = extra.canReorder
   const [dragging, setDragging] = useState(false)
   const visualTargets = useRef(createVisualTargetRegistry({
     resolveScrollTargets: () => resolveDefaultAutoPanTargets(input.containerRef.current)
   })).current
-  const grouped = groupProjection?.active === true
-  const groupField = groupProjection?.field
-  const groupUsesOptionColors = grouped && usesOptionGroupingColors(groupField)
-  const sections = useMemo<readonly Section[]>(() => (
-    grouped
-      ? currentView.sections
-      : [{
-        key: 'all',
-        title: '',
-        color: undefined,
-        collapsed: false,
-        ids: currentView.appearances.ids
-      }]
-  ), [currentView.appearances.ids, currentView.sections, grouped])
-  const sectionColorByKey = useMemo(() => new Map(
-    sections.map(section => [section.key, section.color] as const)
-  ), [sections])
-  const minCardWidth = GALLERY_CARD_MIN_WIDTH[currentView.view.options.gallery.cardSize]
+  const grouped = Boolean(currentView.view.group)
+  const groupUsesOptionColors = extra.groupUsesOptionColors
+  const sections = currentView.sections
+  const minCardWidth = GALLERY_CARD_MIN_WIDTH[extra.cardSize]
   const virtual = useGalleryBlocks({
     grouped,
     sections,
@@ -159,9 +116,9 @@ export const useGalleryController = (input: {
   const getLayout = useCallback(() => virtual.layout, [virtual.layout])
   const readSectionColorId = useCallback((sectionKey: string) => (
     groupUsesOptionColors
-      ? sectionColorByKey.get(sectionKey)
+      ? dataView.engine.active.read.getSectionColor(sectionKey)
       : undefined
-  ), [groupUsesOptionColors, sectionColorByKey])
+  ), [dataView.engine.active.read, groupUsesOptionColors])
 
   useEffect(() => dataView.marquee.registerAdapter({
     viewId: currentView.view.id,
@@ -204,7 +161,7 @@ export const useGalleryController = (input: {
     onDraggingChange: setDragging,
     onDrop: (ids, target) => {
       const section = target.beforeAppearanceId
-        ? currentView.appearances.sectionOf(target.beforeAppearanceId)
+        ? dataView.engine.active.read.getAppearanceSectionKey(target.beforeAppearanceId)
         : target.sectionKey
       if (!section) {
         return
@@ -223,7 +180,7 @@ export const useGalleryController = (input: {
     }
 
     const section = drag.overTarget.beforeAppearanceId
-      ? currentView.appearances.sectionOf(drag.overTarget.beforeAppearanceId)
+      ? dataView.engine.active.read.getAppearanceSectionKey(drag.overTarget.beforeAppearanceId)
       : drag.overTarget.sectionKey
     if (!section) {
       return undefined
@@ -237,7 +194,7 @@ export const useGalleryController = (input: {
     return plan.changed
       ? drag.overTarget.indicator
       : undefined
-  }, [currentView, drag.dragIds, drag.overTarget])
+  }, [currentView, dataView.engine.active.read, drag.dragIds, drag.overTarget])
 
   const select = useCallback((id: AppearanceId, mode: 'replace' | 'toggle' = 'replace') => {
     if (mode === 'toggle') {

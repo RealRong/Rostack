@@ -2,11 +2,11 @@ import { isSizeEqual } from '@whiteboard/core/geometry'
 import type { CommandResult } from '@engine-types/result'
 import type { Engine } from '@whiteboard/engine'
 import type {
-  EditorEdgeActions,
   EditorStore
 } from '../../types/editor'
 import type { NodeCommands } from '../node/types'
-import type { SessionCommands } from '../session/types'
+import type { EdgeCommands } from '../commands/edge'
+import type { SessionCommands } from '../commands/session'
 import type { EditorStateController } from '../state'
 
 type EditCommandsHost = {
@@ -15,7 +15,7 @@ type EditCommandsHost = {
   runtime: Pick<EditorStateController, 'state'>
   session: Pick<SessionCommands, 'edit'>
   node: Pick<NodeCommands, 'text'>
-  edgeLabel: Pick<EditorEdgeActions['label'], 'remove' | 'setText'>
+  edge: Pick<EdgeCommands, 'label'>
 }
 
 const resolveNodeCommitValue = (input: {
@@ -34,7 +34,7 @@ export const createEditCommands = ({
   runtime,
   session,
   node,
-  edgeLabel
+  edge
 }: EditCommandsHost): {
   cancel: () => CommandResult | undefined
   commit: () => CommandResult | undefined
@@ -50,14 +50,14 @@ export const createEditCommands = ({
       && currentEdit.capabilities.empty === 'remove'
       && !currentEdit.initial.text.trim()
     ) {
-      const edge = engine.read.edge.item.get(currentEdit.edgeId)?.edge
-      if (!edge?.labels?.some((label) => label.id === currentEdit.labelId)) {
+      const committedEdge = engine.read.edge.item.get(currentEdit.edgeId)?.edge
+      if (!committedEdge?.labels?.some((label) => label.id === currentEdit.labelId)) {
         session.edit.clear()
         return undefined
       }
 
       session.edit.clear()
-      return edgeLabel.remove(currentEdit.edgeId, currentEdit.labelId)
+      return edge.label.remove(currentEdit.edgeId, currentEdit.labelId)
     }
 
     session.edit.clear()
@@ -104,14 +104,16 @@ export const createEditCommands = ({
       && !currentEdit.draft.text.trim()
     ) {
       session.edit.clear()
-      return edgeLabel.remove(currentEdit.edgeId, currentEdit.labelId)
+      return edge.label.remove(currentEdit.edgeId, currentEdit.labelId)
     }
 
     session.edit.clear()
-    return edgeLabel.setText(
+    return edge.label.patch(
       currentEdit.edgeId,
       currentEdit.labelId,
-      currentEdit.draft.text
+      {
+        text: currentEdit.draft.text
+      }
     )
   }
 })

@@ -111,7 +111,7 @@ export const SelectionActionMenu = ({
       key: 'edit.duplicate',
       label: 'Duplicate',
       onSelect: () => {
-        editor.actions.selection.duplicate()
+        editor.actions.selection.duplicate(target)
       }
     },
     {
@@ -127,7 +127,7 @@ export const SelectionActionMenu = ({
         key: item.key,
         label: item.label,
         onSelect: () => {
-          editor.actions.selection.order(item.mode)
+          editor.actions.selection.order(target, item.mode)
         }
       }))
     },
@@ -138,7 +138,7 @@ export const SelectionActionMenu = ({
             key: 'structure.group',
             label: 'Group',
             onSelect: () => {
-              editor.actions.selection.group()
+              editor.actions.selection.group(target)
             }
           }
         ]
@@ -150,7 +150,7 @@ export const SelectionActionMenu = ({
             key: 'structure.ungroup',
             label: 'Ungroup',
             onSelect: () => {
-              editor.actions.selection.ungroup()
+              editor.actions.selection.ungroup(target)
             }
           }
         ]
@@ -205,7 +205,7 @@ export const SelectionActionMenu = ({
       label: 'Delete',
       tone: 'destructive' as const,
       onSelect: () => {
-        editor.actions.selection.delete()
+        editor.actions.selection.delete(target)
       }
     }
   ])

@@ -1,11 +1,43 @@
 import type { NodeId } from '@whiteboard/core/types'
-import type { EditorOverlay } from '../overlay'
+import type { DrawPreview } from '../../types/draw'
 import {
   isTextPreviewPatchEqual,
   readTextPreviewEntry,
   replaceTextPreviewEntry
-} from '../overlay/node'
-import type { PreviewCommands } from './types'
+} from './node'
+import type {
+  EdgeGuide,
+  EdgeOverlayEntry,
+  EditorOverlay,
+  MindmapDragFeedback,
+  TextPreviewPatch
+} from './types'
+
+export type PreviewCommands = {
+  draw: {
+    setPreview: (preview: DrawPreview | null) => void
+    setHidden: (nodeIds: readonly NodeId[]) => void
+    clear: () => void
+  }
+  node: {
+    text: {
+      set: (nodeId: NodeId, patch?: TextPreviewPatch) => void
+      clear: (nodeId: NodeId) => void
+      clearSize: (nodeId: NodeId) => void
+    }
+  }
+  edge: {
+    setInteraction: (entries: readonly EdgeOverlayEntry[]) => void
+    setGuide: (guide?: EdgeGuide) => void
+    clearPatches: () => void
+    clearGuide: () => void
+    clear: () => void
+  }
+  mindmap: {
+    setDrag: (drag?: MindmapDragFeedback) => void
+    clear: () => void
+  }
+}
 
 const EMPTY_EDGE_PATCHES = [] as const
 const EMPTY_NODE_IDS: readonly NodeId[] = []

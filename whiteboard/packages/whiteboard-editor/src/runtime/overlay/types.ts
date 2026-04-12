@@ -10,6 +10,7 @@ import type {
   EdgeId,
   EdgePatch,
   MindmapNodeId,
+  NodeFieldPatch,
   NodeId,
   Point,
   Rect
@@ -17,10 +18,12 @@ import type {
 import type { Size } from '@whiteboard/core/types'
 import type { KeyedReadStore, ReadStore } from '@shared/core'
 import type { DrawPreview } from '../../types/draw'
-import type { NodeProjectionPatch } from '../read/nodeProjection'
 import type { MarqueeMatch } from '../../interactions/selection/marqueeState'
 
-export type NodePatch = NodeProjectionPatch
+export type NodePatch = Pick<
+  NodeFieldPatch,
+  'position' | 'size' | 'rotation'
+>
 
 export type NodePatchEntry = {
   id: NodeId

@@ -31,16 +31,13 @@ export const PageBody = (props: PageBodyProps) => {
     case 'kanban':
       return (
         <KanbanView
-          viewId={view.id}
           columnWidth={props.kanban?.columnWidth}
           columnMinHeight={props.kanban?.columnMinHeight}
         />
       )
     case 'gallery':
       return (
-        <GalleryView
-          viewId={view.id}
-        />
+        <GalleryView />
       )
     default:
       return (

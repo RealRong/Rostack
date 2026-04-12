@@ -15,9 +15,9 @@ import type {
   OrderMode,
   SelectionApi
 } from '../../types/commands'
-import type { DocumentCommands } from '../document/types'
+import type { DocumentCommands } from './document'
 import type { NodeCommands } from '../node/types'
-import type { SessionCommands } from '../session/types'
+import type { SessionCommands } from './session'
 
 const DEFAULT_FRAME_PADDING = 32
 

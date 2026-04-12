@@ -24,7 +24,6 @@ import { getFieldCalculationMetrics } from '@dataview/core/calculation'
 import { getSorterFieldId } from '@dataview/react/page/features/sort'
 import {
   useDataView,
-  useDataViewValue
 } from '@dataview/react/dataview'
 import { useStoreValue } from '@shared/react'
 import { useTableContext } from '../../context'
@@ -108,15 +107,9 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   }
 
   const view = currentView.view
-  const activeState = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => state?.view.id === view.id
-      ? state
-      : undefined
-  )
-  const groupProjection = activeState?.group
-  const sortProjection = activeState?.sort
-  const showVerticalLines = view.options.table.showVerticalLines
+  const groupProjection = currentView.group
+  const sortProjection = currentView.sort
+  const showVerticalLines = currentView.showVerticalLines
   const sortable = useSortable({
     id: props.sortId,
     transition: {

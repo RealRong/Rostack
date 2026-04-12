@@ -1,7 +1,7 @@
 import type { NodeId } from '@whiteboard/core/types'
 import type { EditorRead } from '../../types/editor'
-import type { PreviewCommands } from '../preview/types'
-import type { SessionCommands } from '../session/types'
+import type { PreviewCommands } from '../overlay/preview'
+import type { SessionCommands } from '../commands/session'
 import type { NodePatchWriter } from './types'
 
 export type NodeContext = {

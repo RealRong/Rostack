@@ -18,7 +18,13 @@ import {
   sameSorters
 } from '@dataview/core/sort'
 import type {
+  ActiveViewState
+} from '@dataview/engine'
+import type {
+  CustomField,
+  Field,
   Filter,
+  FieldId,
   View,
   ViewCalc,
   ViewDisplay
@@ -32,21 +38,24 @@ import {
 import type {
   AppearanceList,
   FieldList,
-  FieldLookup,
   Section,
   SectionKey
 } from '@dataview/engine/project'
-import {
-  sameFieldLookup
-} from '@dataview/engine/project'
 
 export interface TableCurrentView {
-  view: View
-  fieldLookup: FieldLookup
+  view: View & {
+    type: 'table'
+  }
+  group: ActiveViewState['group']
+  sort: ActiveViewState['sort']
   appearances: AppearanceList
   sections: readonly Section[]
   fields: FieldList
   calculationsBySection: ReadonlyMap<SectionKey, CalculationCollection>
+  groupField?: Field
+  customFields: readonly CustomField[]
+  visibleFieldIds: readonly FieldId[]
+  showVerticalLines: boolean
 }
 
 const equalIds = <T extends string>(
@@ -105,10 +114,16 @@ export const sameTableCurrentView = (
 
   return (
     equalView(left.view, right.view)
-    && sameFieldLookup(left.fieldLookup, right.fieldLookup)
+    && left.group === right.group
+    && left.sort === right.sort
     && sameAppearanceList(left.appearances, right.appearances)
     && sameSections(left.sections, right.sections)
     && sameFieldList(left.fields, right.fields)
     && sameCalculationsBySection(left.calculationsBySection, right.calculationsBySection)
+    && left.groupField === right.groupField
+    && left.customFields.length === right.customFields.length
+    && left.customFields.every((field, index) => field === right.customFields[index])
+    && equalIds(left.visibleFieldIds, right.visibleFieldIds)
+    && left.showVerticalLines === right.showVerticalLines
   )
 }

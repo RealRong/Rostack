@@ -2,7 +2,10 @@ import type {
   ContainerRect,
   ViewportLimits
 } from '@whiteboard/core/geometry'
-import type { HistoryState } from '@whiteboard/core/kernel'
+import type {
+  HistoryConfig as KernelHistoryConfig,
+  HistoryState
+} from '@whiteboard/core/kernel'
 import type { SelectionInput } from '@whiteboard/core/selection'
 import type {
   NodeAlignMode,
@@ -188,17 +191,6 @@ export type EdgeApi = {
   }
 }
 
-export type EdgeLabelActions = {
-  add: EdgeApi['labels']['add']
-  patch: EdgeApi['labels']['patch']
-  remove: EdgeApi['labels']['remove']
-  setText: (
-    edgeId: EdgeId,
-    labelId: string,
-    text: string
-  ) => CommandResult | undefined
-}
-
 export type MindmapCommands = {
   create: (payload?: MindmapCreateOptions) => CommandResult<{
     mindmapId: MindmapId
@@ -343,13 +335,15 @@ export type ToolActions = {
   hand: () => void
 }
 
+export type AppConfig = {
+  mindmapLayout: MindmapLayoutConfig
+  history?: KernelHistoryConfig
+}
+
 export type AppActions = {
   reset: () => void
   replace: (document: Document) => CommandResult
   export: () => Document
-  configure: (config: {
-    mindmapLayout: MindmapLayoutConfig
-    history?: unknown
-  }) => void
+  configure: (config: AppConfig) => void
   dispose: () => void
 }

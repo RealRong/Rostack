@@ -2,9 +2,12 @@ import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
   CustomField,
   CustomFieldId,
+  CustomFieldKind,
   DataDoc,
   Field,
   FieldId,
+  GalleryCardSize,
+  KanbanCardsPerColumn,
   RecordId,
   Row,
   View,
@@ -12,6 +15,7 @@ import type {
   ViewType
 } from '@dataview/core/contracts'
 import type {
+  AppearanceId,
   AppearanceList,
   FieldList,
   Section,
@@ -33,7 +37,9 @@ import type {
   RecordFieldRef
 } from '../../project/refs'
 import type {
-  ViewEngineApi
+  ViewEngineApi,
+  ViewGalleryApi,
+  ViewKanbanApi
 } from './services'
 
 export interface EngineReadApi {
@@ -63,15 +69,15 @@ export interface RecordSet {
 
 export interface ActiveViewState {
   view: View
-  filter: ViewFilterProjection | undefined
-  group: ViewGroupProjection | undefined
-  search: ViewSearchProjection | undefined
-  sort: ViewSortProjection | undefined
-  records: RecordSet | undefined
-  sections: readonly Section[] | undefined
-  appearances: AppearanceList | undefined
-  fields: FieldList | undefined
-  calculations: ReadonlyMap<SectionKey, CalculationCollection> | undefined
+  filter: ViewFilterProjection
+  group: ViewGroupProjection
+  search: ViewSearchProjection
+  sort: ViewSortProjection
+  records: RecordSet
+  sections: readonly Section[]
+  appearances: AppearanceList
+  fields: FieldList
+  calculations: ReadonlyMap<SectionKey, CalculationCollection>
 }
 
 export interface ActiveViewReadApi {
@@ -81,6 +87,64 @@ export interface ActiveViewReadApi {
   getFilterField: (index: number) => Field | undefined
   getRecordField: (cell: CellRef) => RecordFieldRef | undefined
   getSectionRecordIds: (section: SectionKey) => readonly RecordId[]
+  getAppearanceRecordId: (appearanceId: AppearanceId) => RecordId | undefined
+  getAppearanceRecord: (appearanceId: AppearanceId) => Row | undefined
+  getAppearanceSectionKey: (appearanceId: AppearanceId) => SectionKey | undefined
+  getSectionColor: (section: SectionKey) => string | undefined
+  getDisplayFieldIndex: (fieldId: FieldId) => number
+}
+
+export interface ActiveTableState {
+  groupField: Field | undefined
+  customFields: readonly CustomField[]
+  visibleFieldIds: readonly FieldId[]
+  showVerticalLines: boolean
+}
+
+export interface ActiveGalleryState {
+  sections: readonly Section[]
+  groupField: Field | undefined
+  groupUsesOptionColors: boolean
+  customFields: readonly CustomField[]
+  canReorder: boolean
+  cardSize: GalleryCardSize
+}
+
+export interface ActiveKanbanState {
+  groupField: Field | undefined
+  groupUsesOptionColors: boolean
+  customFields: readonly CustomField[]
+  cardsPerColumn: KanbanCardsPerColumn
+  fillColumnColor: boolean
+  canReorder: boolean
+}
+
+export interface ActiveTableApi {
+  state: ReadStore<ActiveTableState | undefined>
+  setWidths: (widths: Partial<Record<FieldId, number>>) => void
+  setVerticalLines: (value: boolean) => void
+  insertLeft: (
+    anchorFieldId: FieldId,
+    input?: {
+      name?: string
+      kind?: CustomFieldKind
+    }
+  ) => CustomFieldId | undefined
+  insertRight: (
+    anchorFieldId: FieldId,
+    input?: {
+      name?: string
+      kind?: CustomFieldKind
+    }
+  ) => CustomFieldId | undefined
+}
+
+export interface ActiveGalleryApi extends ViewGalleryApi {
+  state: ReadStore<ActiveGalleryState | undefined>
+}
+
+export interface ActiveKanbanApi extends ViewKanbanApi {
+  state: ReadStore<ActiveKanbanState | undefined>
 }
 
 export interface ActiveSelectApi {
@@ -90,10 +154,13 @@ export interface ActiveSelectApi {
   ): ReadStore<T>
 }
 
-export interface ActiveEngineApi extends ViewEngineApi {
+export interface ActiveEngineApi extends Omit<ViewEngineApi, 'table' | 'gallery' | 'kanban'> {
   id: ReadStore<ViewId | undefined>
   view: ReadStore<View | undefined>
   state: ReadStore<ActiveViewState | undefined>
   select: ActiveSelectApi
   read: ActiveViewReadApi
+  table: ActiveTableApi
+  gallery: ActiveGalleryApi
+  kanban: ActiveKanbanApi
 }

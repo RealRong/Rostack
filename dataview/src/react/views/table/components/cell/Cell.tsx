@@ -31,7 +31,7 @@ const View = (props: CellProps) => {
   if (!currentView) {
     throw new Error('Table cell requires an active current view.')
   }
-  const showVerticalLines = currentView.view.options.table.showVerticalLines
+  const showVerticalLines = currentView.showVerticalLines
 
   const cell = {
     appearanceId: props.appearanceId,

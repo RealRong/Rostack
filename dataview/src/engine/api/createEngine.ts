@@ -95,6 +95,18 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     }),
     activeBase
   )
+  active.table = {
+    ...active.table,
+    state: activeBase.table.state
+  }
+  active.gallery = {
+    ...active.gallery,
+    state: activeBase.gallery.state
+  }
+  active.kanban = {
+    ...active.kanban,
+    state: activeBase.kanban.state
+  }
   const views = createViewsEngineApi({
     read,
     dispatch,

@@ -11,16 +11,15 @@ import type {
   KanbanCardsPerColumn,
   CustomField,
   Row,
-  View,
-  ViewId
+  View
 } from '@dataview/core/contracts'
 import type {
+  ActiveKanbanState,
   ActiveViewState
 } from '@dataview/engine'
-import { isCustomField } from '@dataview/core/field'
 import {
   useDataView,
-  useDataViewValue,
+  useDataViewValue
 } from '@dataview/react/dataview'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR,
@@ -35,8 +34,6 @@ import {
 } from '@dataview/engine/project'
 import {
   type AppearanceId,
-  type AppearanceList,
-  type FieldList,
   type Section,
   type SectionKey
 } from '@dataview/engine/project'
@@ -57,15 +54,11 @@ import {
 import {
   useDrag
 } from './drag'
-import { usesOptionGroupingColors } from '@dataview/react/views/shared/optionGrouping'
 
-type KanbanCurrentView = ActiveViewState & {
+export type KanbanCurrentView = ActiveViewState & {
   view: View & {
     type: 'kanban'
   }
-  appearances: AppearanceList
-  sections: readonly Section[]
-  fields: FieldList
 }
 
 interface KanbanSelectionState {
@@ -84,20 +77,6 @@ const resolveInitialVisibleCount = (
   limit === 'all'
     ? total
     : Math.min(total, limit)
-)
-
-const readKanbanCurrentView = (
-  state: ActiveViewState | undefined,
-  viewId: ViewId
-): KanbanCurrentView | undefined => (
-  state
-  && state.view.id === viewId
-  && state.view.type === 'kanban'
-  && state.appearances
-  && state.sections
-  && state.fields
-    ? state as KanbanCurrentView
-    : undefined
 )
 
 const readSectionLengths = (
@@ -134,45 +113,33 @@ export interface KanbanController {
 }
 
 export const useKanbanController = (input: {
-  viewId: ViewId
   columnWidth: number
   columnMinHeight: number
+  currentView: KanbanCurrentView
+  extra: ActiveKanbanState
 }): KanbanController => {
   const dataView = useDataView()
-  const currentView = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => readKanbanCurrentView(state, input.viewId)
-  )
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [dragging, setDragging] = useState(false)
   const visualTargets = useRef(createVisualTargetRegistry({
     resolveScrollTargets: () => resolveDefaultAutoPanTargets(scrollRef.current)
   })).current
-
-  if (!currentView) {
-    throw new Error('Kanban view requires an active current view.')
-  }
-  const group = currentView.group
-  const sort = currentView.sort
-
-  const fields = useMemo(
-    () => currentView.fields.all.filter(isCustomField),
-    [currentView.fields.all]
-  )
-  const groupField = group?.field
-  const groupUsesOptionColors = usesOptionGroupingColors(groupField)
-  const fillColumnColor = groupUsesOptionColors
-    && currentView.view.options.kanban.fillColumnColor
-  const cardsPerColumn = currentView.view.options.kanban.cardsPerColumn
-  const canReorder = (group?.active ?? false) && !(sort?.active ?? false)
+  const currentView = input.currentView
+  const extra = input.extra
+  const fields = extra.customFields
+  const groupField = extra.groupField
+  const groupUsesOptionColors = extra.groupUsesOptionColors
+  const fillColumnColor = extra.fillColumnColor
+  const cardsPerColumn = extra.cardsPerColumn
+  const canReorder = extra.canReorder
   const [expandedCountBySectionKey, setExpandedCountBySectionKey] = useState<Partial<Record<SectionKey, number>>>({})
   const previousSectionLengthsRef = useRef(new Map<SectionKey, number>())
   const selectionValue = useDataViewValue(
     dataView => dataView.selection.store
   )
   const selectedIds = selectionValue.ids
-  const selectedIdSet = useMemo(
-    () => new Set(selectedIds),
+  const selectedIdSet = useMemo<ReadonlySet<AppearanceId>>(
+    () => new Set<AppearanceId>(selectedIds),
     [selectedIds]
   )
   const select = useCallback((id: AppearanceId, mode: 'replace' | 'toggle' = 'replace') => {
@@ -185,18 +152,8 @@ export const useKanbanController = (input: {
   }, [dataView.selection])
 
   const readRecord = useCallback((id: AppearanceId) => {
-    const recordId = currentView.appearances.get(id)?.recordId
-    return recordId
-      ? dataView.engine.read.record.get(recordId)
-      : undefined
-  }, [currentView.appearances, dataView.engine.read.record])
-
-  const sectionKeyById = useMemo(() => new Map(
-    currentView.sections.flatMap(section => section.ids.map(id => [id, section.key] as const))
-  ), [currentView.sections])
-  const sectionColorByKey = useMemo(() => new Map(
-    currentView.sections.map(section => [section.key, section.color] as const)
-  ), [currentView.sections])
+    return dataView.engine.active.read.getAppearanceRecord(id)
+  }, [dataView.engine.active.read])
   const marqueeSession = useStoreValue(dataView.marquee.store)
   const marqueeActive = marqueeSession?.ownerViewId === currentView.view.id
 
@@ -387,15 +344,15 @@ export const useKanbanController = (input: {
   ])
   const readSectionColorId = useCallback((sectionKey: SectionKey) => (
     groupUsesOptionColors
-      ? sectionColorByKey.get(sectionKey)
+      ? dataView.engine.active.read.getSectionColor(sectionKey)
       : undefined
-  ), [groupUsesOptionColors, sectionColorByKey])
+  ), [dataView.engine.active.read, groupUsesOptionColors])
   const readAppearanceColorId = useCallback((id: AppearanceId) => {
-    const sectionKey = sectionKeyById.get(id)
+    const sectionKey = dataView.engine.active.read.getAppearanceSectionKey(id)
     return sectionKey
       ? readSectionColorId(sectionKey)
       : undefined
-  }, [readSectionColorId, sectionKeyById])
+  }, [dataView.engine.active.read, readSectionColorId])
 
   const drag = useDrag({
     containerRef: scrollRef,

@@ -1,52 +1,54 @@
 import type { Engine } from '@whiteboard/engine'
 import type {
-  EditorClipboardApi,
-  EditorEdgeActions,
-  EditorMindmapCommands,
   EditorRead,
   EditorState
 } from '../../types/editor'
+import type {
+  ClipboardCommands,
+  HistoryCommands,
+  MindmapCommands
+} from '../../types/commands'
 import type { NodeRegistry } from '../../types/node'
 import type { EditorStateController } from '../state'
 import type { EditorOverlay } from '../overlay'
 import type { EditorViewportRuntime } from './types'
 import {
   createDocumentCommands
-} from '../document/commands'
-import type { DocumentCommands } from '../document/types'
+} from '../commands/document'
+import type { DocumentCommands } from '../commands/document'
+import {
+  createHistoryCommands
+} from '../commands/history'
 import {
   createPreviewCommands
-} from '../preview/commands'
-import type { PreviewCommands } from '../preview/types'
+} from '../overlay/preview'
+import type { PreviewCommands } from '../overlay/preview'
 import {
   createSessionCommands
-} from '../session/commands'
-import type { SessionCommands } from '../session/types'
+} from '../commands/session'
+import type { SessionCommands } from '../commands/session'
 import {
   createViewCommands
-} from '../view/commands'
-import type { ViewCommands } from '../view/types'
+} from '../commands/view'
+import type { ViewCommands } from '../commands/view'
 import {
   createSelectionCommands,
   type SelectionCommands
-} from '../selection/commands'
+} from '../commands/selection'
 import {
   createClipboardCommands
-} from '../clipboard/commands'
-import {
-  createEdgeLabelCommands
-} from '../edgeLabel/commands'
+} from '../commands/clipboard'
 import {
   createEdgeCommands,
   type EdgeCommands
-} from '../edge/commands'
+} from '../commands/edge'
 import {
   createNodeCommands
 } from '../node/commands'
 import type { NodeCommands } from '../node/types'
 import {
   createMindmapCommands
-} from '../mindmap/commands'
+} from '../commands/mindmap'
 import {
   createEditCommands
 } from './edit'
@@ -55,10 +57,10 @@ export type EditorServices = {
   document: DocumentCommands
   node: NodeCommands
   edge: EdgeCommands
-  mindmap: EditorMindmapCommands
+  mindmap: MindmapCommands
   selection: SelectionCommands
-  clipboard: EditorClipboardApi
-  edgeLabel: EditorEdgeActions['label']
+  clipboard: ClipboardCommands
+  history: HistoryCommands
   edit: ReturnType<typeof createEditCommands>
   session: SessionCommands
   view: ViewCommands
@@ -95,6 +97,7 @@ export const createEditorServices = ({
     runtime,
     viewport
   })
+  const history = createHistoryCommands(engine)
   const document = createDocumentCommands(engine)
   const node = createNodeCommands({
     engine,
@@ -102,7 +105,12 @@ export const createEditorServices = ({
     preview,
     session
   })
-  const edge = createEdgeCommands(engine)
+  const edge = createEdgeCommands({
+    engine,
+    read,
+    edit: state.edit,
+    session
+  })
   const mindmap = createMindmapCommands({
     execute: engine.execute,
     read,
@@ -115,12 +123,6 @@ export const createEditorServices = ({
     document,
     node,
     session
-  })
-  const edgeLabel = createEdgeLabelCommands({
-    read,
-    edit: state.edit,
-    session,
-    edge
   })
   const clipboard = createClipboardCommands({
     editor: {
@@ -137,7 +139,7 @@ export const createEditorServices = ({
     runtime,
     session,
     node,
-    edgeLabel
+    edge
   })
 
   return {
@@ -147,7 +149,7 @@ export const createEditorServices = ({
     mindmap,
     selection,
     clipboard,
-    edgeLabel,
+    history,
     edit,
     session,
     view,

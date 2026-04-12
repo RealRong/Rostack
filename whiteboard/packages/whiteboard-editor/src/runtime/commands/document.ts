@@ -1,5 +1,53 @@
+import type {
+  Slice,
+  SliceInsertOptions,
+  SliceInsertResult
+} from '@whiteboard/core/document'
+import type {
+  CanvasItemRef,
+  Document,
+  EdgeId,
+  GroupId,
+  NodeId
+} from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
-import type { DocumentCommands } from './types'
+import type { CommandResult } from '@engine-types/result'
+import type { OrderMode } from '../../types/commands'
+
+export type DocumentCommands = {
+  replace: (document: Document) => CommandResult
+  insert: (
+    slice: Slice,
+    options?: SliceInsertOptions
+  ) => CommandResult<Omit<SliceInsertResult, 'operations'>>
+  delete: (refs: CanvasItemRef[]) => CommandResult
+  duplicate: (refs: CanvasItemRef[]) => CommandResult<Omit<SliceInsertResult, 'operations'>>
+  order: (refs: CanvasItemRef[], mode: OrderMode) => CommandResult
+  background: {
+    set: (background?: Document['background']) => CommandResult
+  }
+  group: {
+    merge: (target: {
+      nodeIds?: readonly NodeId[]
+      edgeIds?: readonly EdgeId[]
+    }) => CommandResult<{ groupId: GroupId }>
+    order: {
+      set: (ids: GroupId[]) => CommandResult
+      bringToFront: (ids: GroupId[]) => CommandResult
+      sendToBack: (ids: GroupId[]) => CommandResult
+      bringForward: (ids: GroupId[]) => CommandResult
+      sendBackward: (ids: GroupId[]) => CommandResult
+    }
+    ungroup: (id: GroupId) => CommandResult<{
+      nodeIds: readonly NodeId[]
+      edgeIds: readonly EdgeId[]
+    }>
+    ungroupMany: (ids: GroupId[]) => CommandResult<{
+      nodeIds: readonly NodeId[]
+      edgeIds: readonly EdgeId[]
+    }>
+  }
+}
 
 export const createDocumentCommands = (
   engine: Engine
@@ -31,12 +79,6 @@ export const createDocumentCommands = (
       type: 'document.background.set',
       background
     })
-  },
-  history: {
-    get: engine.history.get,
-    undo: engine.history.undo,
-    redo: engine.history.redo,
-    clear: engine.history.clear
   },
   group: {
     merge: (target) => engine.execute({

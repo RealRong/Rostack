@@ -14,9 +14,9 @@ import {
   createClipboardPacket,
   type ClipboardPacket
 } from '../../clipboard/packet'
-import type { DocumentCommands } from '../document/types'
-import type { SessionCommands } from '../session/types'
-import type { SelectionCommands } from '../selection/commands'
+import type { DocumentCommands } from './document'
+import type { SessionCommands } from './session'
+import type { SelectionCommands } from './selection'
 
 type ClipboardCommandsHost = {
   read: EditorRead

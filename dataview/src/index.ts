@@ -75,7 +75,13 @@ export {
 export { createEngine } from './engine/api'
 export type {
   ActiveEngineApi,
+  ActiveGalleryApi,
+  ActiveGalleryState,
+  ActiveKanbanApi,
+  ActiveKanbanState,
   ActiveSelectApi,
+  ActiveTableApi,
+  ActiveTableState,
   ActiveView,
   ActiveViewReadApi,
   ActiveViewState,

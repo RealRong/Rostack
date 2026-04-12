@@ -166,7 +166,6 @@ export const createEditor = ({
       && left.draw === right.draw
     )
   })
-  const currentSelection = () => state.selection.get()
   const docSelect = Object.assign(
     () => read.document,
     {
@@ -260,13 +259,11 @@ export const createEditor = ({
         selectAll: write.session.selection.selectAll,
         clear: write.session.selection.clear,
         frame: write.selection.frame,
-        order: (mode, target = currentSelection()) => (
-          write.selection.order(target, mode)
-        ),
-        group: (options) => write.selection.group(currentSelection(), options),
-        ungroup: (options) => write.selection.ungroup(currentSelection(), options),
-        delete: (options) => write.selection.delete(currentSelection(), options),
-        duplicate: (options) => write.selection.duplicate(currentSelection(), options)
+        order: write.selection.order,
+        group: write.selection.group,
+        ungroup: write.selection.ungroup,
+        delete: write.selection.delete,
+        duplicate: write.selection.duplicate
       },
       edit: {
         ...write.session.edit,
@@ -274,32 +271,7 @@ export const createEditor = ({
         commit: write.edit.commit
       },
       interaction: input,
-      node: {
-        create: write.node.create,
-        patch: write.node.patch,
-        move: write.node.move,
-        align: write.node.align,
-        distribute: write.node.distribute,
-        delete: write.node.delete,
-        deleteCascade: write.node.deleteCascade,
-        duplicate: write.node.duplicate,
-        lock: write.node.lock.set,
-        text: {
-          commit: write.node.text.commit,
-          color: write.node.text.color,
-          size: write.node.text.size,
-          weight: write.node.text.weight,
-          italic: write.node.text.italic,
-          align: write.node.text.align
-        },
-        style: {
-          fill: write.node.style.fill,
-          stroke: write.node.style.stroke
-        },
-        shape: {
-          set: write.node.shape.set
-        }
-      },
+      node: write.node,
       edge: {
         create: write.edge.create,
         patch: write.edge.patch,
@@ -307,27 +279,11 @@ export const createEditor = ({
         reconnect: write.edge.reconnect,
         delete: write.edge.delete,
         route: write.edge.route,
-        label: {
-          add: write.edgeLabel.add,
-          patch: write.edgeLabel.patch,
-          remove: write.edgeLabel.remove,
-          setText: write.edgeLabel.setText
-        }
+        label: write.edge.label
       },
-      mindmap: {
-        create: write.mindmap.create,
-        delete: write.mindmap.delete,
-        insert: write.mindmap.insert,
-        moveSubtree: write.mindmap.moveSubtree,
-        removeSubtree: write.mindmap.removeSubtree,
-        clone: write.mindmap.cloneSubtree,
-        updateNode: write.mindmap.updateNode,
-        insertByPlacement: write.mindmap.insertByPlacement,
-        moveByDrop: write.mindmap.moveByDrop,
-        moveRoot: write.mindmap.moveRoot
-      },
+      mindmap: write.mindmap,
       clipboard: write.clipboard,
-      history: write.document.history
+      history: write.history
     },
     select: {
       scene: () => read.scene.list,

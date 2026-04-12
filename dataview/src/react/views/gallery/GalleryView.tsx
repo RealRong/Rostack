@@ -1,16 +1,11 @@
-import type { ViewId } from '@dataview/core/contracts'
 import { Grid } from './components/Grid'
 import { GalleryProvider } from './context'
 
-export interface GalleryViewProps {
-  viewId: ViewId
-}
+export interface GalleryViewProps {}
 
-export const GalleryView = (props: GalleryViewProps) => {
+export const GalleryView = (_props: GalleryViewProps) => {
   return (
-    <GalleryProvider
-      viewId={props.viewId}
-    >
+    <GalleryProvider>
       <Grid />
     </GalleryProvider>
   )

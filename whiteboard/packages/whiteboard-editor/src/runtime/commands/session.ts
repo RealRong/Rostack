@@ -7,6 +7,7 @@ import {
 } from '@whiteboard/core/selection'
 import { readTextWrapWidth } from '@whiteboard/core/node'
 import type { EditorRead } from '../../types/editor'
+import type { SessionActions } from '../../types/commands'
 import type { NodeRegistry } from '../../types/node'
 import type { Tool } from '../../types/tool'
 import { isSameTool } from '../../tool/model'
@@ -15,7 +16,8 @@ import {
   type EditCapability,
   type EditField
 } from '../state/edit'
-import type { SessionCommands } from './types'
+
+export type SessionCommands = SessionActions
 
 const DEFAULT_EDGE_LABEL_CAPABILITY: EditCapability = {
   placeholder: 'Label',

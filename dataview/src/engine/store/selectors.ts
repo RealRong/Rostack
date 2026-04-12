@@ -23,6 +23,9 @@ import {
   getDocumentViews
 } from '@dataview/core/document'
 import {
+  isCustomField
+} from '@dataview/core/field'
+import {
   createDerivedStore,
   createKeyedReadStore,
   createReadStore,
@@ -36,12 +39,16 @@ import {
 } from '@shared/core'
 import type {
   ActiveEngineApi,
+  ActiveGalleryState,
+  ActiveKanbanState,
   ActiveSelectApi,
+  ActiveTableState,
   ActiveViewReadApi,
   ActiveViewState,
   EngineReadApi
 } from '../api/public'
 import type {
+  AppearanceId,
   AppearanceList,
   FieldList,
   SectionKey
@@ -54,6 +61,40 @@ import type {
   State,
   Store
 } from './state'
+
+const usesOptionGroupingColors = (
+  field?: Pick<Field, 'kind'>
+) => {
+  if (!field || field.kind === 'title') {
+    return false
+  }
+
+  return (
+    field.kind === 'select'
+    || field.kind === 'multiSelect'
+    || field.kind === 'status'
+  )
+}
+
+const sameCustomFields = (
+  left: readonly CustomField[],
+  right: readonly CustomField[]
+) => left.length === right.length
+  && left.every((field, index) => field === right[index])
+
+const resolveGroupField = (
+  state: ActiveViewState,
+  document: DataDoc
+): Field | undefined => state.group.field
+  ?? (
+    state.group.fieldId
+      ? getDocumentFieldById(document, state.group.fieldId)
+      : undefined
+  )
+
+const resolveCustomFields = (
+  fields: FieldList
+): readonly CustomField[] => fields.all.filter(isCustomField)
 
 const createSelector = <T,>(input: {
   store: Store
@@ -170,6 +211,89 @@ const sameActiveState = (
   && left.calculations === right.calculations
 )
 
+const sameActiveTableState = (
+  left: ActiveTableState | undefined,
+  right: ActiveTableState | undefined
+) => left === right || (
+  !!left
+  && !!right
+  && left.groupField === right.groupField
+  && sameCustomFields(left.customFields, right.customFields)
+  && sameOrder(left.visibleFieldIds, right.visibleFieldIds)
+  && left.showVerticalLines === right.showVerticalLines
+)
+
+const sameActiveGalleryState = (
+  left: ActiveGalleryState | undefined,
+  right: ActiveGalleryState | undefined
+) => left === right || (
+  !!left
+  && !!right
+  && left.groupField === right.groupField
+  && left.groupUsesOptionColors === right.groupUsesOptionColors
+  && sameCustomFields(left.customFields, right.customFields)
+  && left.canReorder === right.canReorder
+  && left.cardSize === right.cardSize
+  && sameValue(left.sections, right.sections)
+)
+
+const sameActiveKanbanState = (
+  left: ActiveKanbanState | undefined,
+  right: ActiveKanbanState | undefined
+) => left === right || (
+  !!left
+  && !!right
+  && left.groupField === right.groupField
+  && left.groupUsesOptionColors === right.groupUsesOptionColors
+  && sameCustomFields(left.customFields, right.customFields)
+  && left.cardsPerColumn === right.cardsPerColumn
+  && left.fillColumnColor === right.fillColumnColor
+  && left.canReorder === right.canReorder
+)
+
+const readActiveState = (
+  current: State
+): ActiveViewState | undefined => {
+  const activeView = getDocumentActiveView(current.doc)
+  const filter = current.project.filter
+  const group = current.project.group
+  const search = current.project.search
+  const sort = current.project.sort
+  const records = current.project.records
+  const sections = current.project.sections
+  const appearances = current.project.appearances
+  const fields = current.project.fields
+  const calculations = current.project.calculations
+
+  if (
+    !activeView
+    || !filter
+    || !group
+    || !search
+    || !sort
+    || !records
+    || !sections
+    || !appearances
+    || !fields
+    || !calculations
+  ) {
+    return undefined
+  }
+
+  return {
+    view: activeView,
+    filter,
+    group,
+    search,
+    sort,
+    records,
+    sections,
+    appearances,
+    fields,
+    calculations
+  }
+}
+
 export const createReadApi = (
   store: Store
 ): EngineReadApi => ({
@@ -242,7 +366,7 @@ const createActiveReadApi = (input: {
     getField,
     getGroupField: () => {
       const state = readState()
-      if (!state?.group?.active) {
+      if (!state || !state.group.active) {
         return undefined
       }
 
@@ -252,34 +376,48 @@ const createActiveReadApi = (input: {
           : undefined)
     },
     getFilterField: index => {
-      const rule = readState()?.filter?.rules[index]
+      const rule = readState()?.filter.rules[index]
       return rule?.field
         ?? (rule?.fieldId
           ? getField(rule.fieldId)
           : undefined)
     },
     getRecordField: cell => {
-      const appearances = readState()?.appearances
-      return appearances
-        ? toRecordField(cell, appearances) ?? undefined
+      const state = readState()
+      return state
+        ? toRecordField(cell, state.appearances) ?? undefined
         : undefined
     },
     getSectionRecordIds: section => {
       const state = readState()
-      return state?.sections && state.appearances
+      return state
         ? readSectionRecordIds({
             sections: state.sections,
             appearances: state.appearances
           }, section)
         : []
-    }
+    },
+    getAppearanceRecordId: appearanceId => readState()?.appearances.get(appearanceId)?.recordId,
+    getAppearanceRecord: appearanceId => {
+      const recordId = readState()?.appearances.get(appearanceId)?.recordId
+      return recordId
+        ? input.read.record.get(recordId)
+        : undefined
+    },
+    getAppearanceSectionKey: appearanceId => readState()?.appearances.sectionOf(appearanceId),
+    getSectionColor: section => readState()?.sections.find(current => current.key === section)?.color,
+    getDisplayFieldIndex: fieldId => readState()?.view.display.fields.indexOf(fieldId) ?? -1
   }
 }
 
 export const createActiveBaseApi = (input: {
   store: Store
   read: EngineReadApi
-}): Pick<ActiveEngineApi, 'id' | 'view' | 'state' | 'select' | 'read'> => {
+}): Pick<ActiveEngineApi, 'id' | 'view' | 'state' | 'select' | 'read'> & {
+  table: Pick<ActiveEngineApi['table'], 'state'>
+  gallery: Pick<ActiveEngineApi['gallery'], 'state'>
+  kanban: Pick<ActiveEngineApi['kanban'], 'state'>
+} => {
   const id = selectDoc({
     store: input.store,
     read: getDocumentActiveViewId
@@ -290,26 +428,78 @@ export const createActiveBaseApi = (input: {
   })
   const state = createSelector<ActiveViewState | undefined>({
     store: input.store,
+    read: readActiveState,
+    isEqual: sameActiveState
+  })
+  const tableState = createSelector<ActiveTableState | undefined>({
+    store: input.store,
     read: current => {
-      const activeView = getDocumentActiveView(current.doc)
-      if (!activeView) {
+      const state = readActiveState(current)
+      if (!state || state.view.type !== 'table') {
         return undefined
       }
 
       return {
-        view: activeView,
-        filter: current.project.filter,
-        group: current.project.group,
-        search: current.project.search,
-        sort: current.project.sort,
-        records: current.project.records,
-        sections: current.project.sections,
-        appearances: current.project.appearances,
-        fields: current.project.fields,
-        calculations: current.project.calculations as ReadonlyMap<SectionKey, CalculationCollection> | undefined
+        groupField: resolveGroupField(state, current.doc),
+        customFields: resolveCustomFields(state.fields),
+        visibleFieldIds: state.view.display.fields,
+        showVerticalLines: state.view.options.table.showVerticalLines
       }
     },
-    isEqual: sameActiveState
+    isEqual: sameActiveTableState
+  })
+  const galleryState = createSelector<ActiveGalleryState | undefined>({
+    store: input.store,
+    read: current => {
+      const state = readActiveState(current)
+      if (!state || state.view.type !== 'gallery') {
+        return undefined
+      }
+
+      const groupField = resolveGroupField(state, current.doc)
+      const groupUsesOptionColors = usesOptionGroupingColors(groupField)
+      const canReorder = !state.group.active && !state.sort.active
+
+      return {
+        sections: state.group.active
+          ? state.sections
+          : [{
+              key: 'all',
+              title: '',
+              color: undefined,
+              collapsed: false,
+              ids: state.appearances.ids
+            }],
+        groupField,
+        groupUsesOptionColors,
+        customFields: resolveCustomFields(state.fields),
+        canReorder,
+        cardSize: state.view.options.gallery.cardSize
+      }
+    },
+    isEqual: sameActiveGalleryState
+  })
+  const kanbanState = createSelector<ActiveKanbanState | undefined>({
+    store: input.store,
+    read: current => {
+      const state = readActiveState(current)
+      if (!state || state.view.type !== 'kanban') {
+        return undefined
+      }
+
+      const groupField = resolveGroupField(state, current.doc)
+      const groupUsesOptionColors = usesOptionGroupingColors(groupField)
+
+      return {
+        groupField,
+        groupUsesOptionColors,
+        customFields: resolveCustomFields(state.fields),
+        cardsPerColumn: state.view.options.kanban.cardsPerColumn,
+        fillColumnColor: groupUsesOptionColors && state.view.options.kanban.fillColumnColor,
+        canReorder: state.group.active && !state.sort.active
+      }
+    },
+    isEqual: sameActiveKanbanState
   })
 
   return {
@@ -320,6 +510,15 @@ export const createActiveBaseApi = (input: {
     read: createActiveReadApi({
       read: input.read,
       state
-    })
+    }),
+    table: {
+      state: tableState
+    },
+    gallery: {
+      state: galleryState
+    },
+    kanban: {
+      state: kanbanState
+    }
   }
 }

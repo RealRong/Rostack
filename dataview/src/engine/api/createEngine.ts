@@ -24,7 +24,7 @@ import {
 } from '../store/state'
 import {
   createReadApi
-} from '../store/selectors'
+} from '../store/read'
 import {
   resolveActionBatch
 } from '../command'

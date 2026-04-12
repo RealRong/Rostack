@@ -46,8 +46,7 @@ import type {
   ViewGalleryApi,
   ViewKanbanApi,
   ViewCellsApi,
-  ViewItemsApi,
-  ViewOrderApi
+  ViewItemsApi
 } from './services'
 
 export interface EngineReadApi {
@@ -236,7 +235,6 @@ export interface ActiveEngineApi {
   }
   gallery: ActiveGalleryApi
   kanban: ActiveKanbanApi
-  order: ViewOrderApi
   items: ViewItemsApi
   cells: ViewCellsApi
 }

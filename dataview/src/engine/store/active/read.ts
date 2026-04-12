@@ -8,7 +8,6 @@ import {
 import {
   createDerivedStore,
   read,
-  type Equality,
   type ReadStore
 } from '@shared/core'
 import type {
@@ -23,8 +22,7 @@ import type {
   SectionKey
 } from '../../project/readModels'
 import type {
-  CellRef,
-  Placement
+  CellRef
 } from '../../project'
 
 export const createActiveSelectApi = (

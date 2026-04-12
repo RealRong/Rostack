@@ -5,6 +5,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   AppearanceId,
+  SectionKey,
 } from './readModels'
 
 export interface CellRef {
@@ -18,7 +19,7 @@ export interface ViewFieldRef extends CellRef {
 }
 
 export interface Placement {
-  sectionKey: import('./readModels').SectionKey
+  sectionKey: SectionKey
   before?: AppearanceId
 }
 

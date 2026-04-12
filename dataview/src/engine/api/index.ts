@@ -45,7 +45,6 @@ export type {
   ViewKanbanApi,
   FieldsEngineApi,
   RecordsEngineApi,
-  ViewOrderApi,
   ViewTableApi,
   ViewsEngineApi
 } from './public'

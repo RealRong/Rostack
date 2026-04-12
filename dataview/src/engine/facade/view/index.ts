@@ -53,7 +53,6 @@ import {
 } from '@dataview/core/sort'
 import {
   clearDisplayFields,
-  clearViewOrders,
   hideDisplayField,
   moveDisplayFields,
   reorderViewOrders,
@@ -74,8 +73,7 @@ import {
   sameJsonValue
 } from '@shared/core'
 import type {
-  CellRef,
-  Placement
+  CellRef
 } from '@dataview/engine/project'
 import type {
   AppearanceId,
@@ -90,8 +88,9 @@ import type {
   RecordsEngineApi
 } from '../../api/public'
 import {
-  createActiveBaseApi
-} from '../../store/selectors'
+  createActiveStoreApi,
+  createActiveViewStateStores
+} from '../../store/active'
 import type { Store } from '../../store/state'
 
 type ViewPatchAction = Extract<Action, { type: 'view.patch' }>
@@ -167,19 +166,20 @@ export const createActiveEngineApi = (options: {
   fields: Pick<FieldsEngineApi, 'list' | 'create'>
   records: Pick<RecordsEngineApi, 'field'>
 }): ActiveEngineApi => {
-  const activeBase = createActiveBaseApi({
+  const active = createActiveStoreApi({
     store: options.store,
     read: options.read
   })
+  const viewStates = createActiveViewStateStores(options.store)
   const readDocument = () => readValue(options.read.document)
-  const readView = () => readValue(activeBase.view)
-  const readState = () => readValue(activeBase.state)
+  const readView = () => readValue(active.view)
+  const readState = () => readValue(active.state)
   const commit = (action: Action | readonly Action[]) => options.dispatch(action).applied
 
   const createPatchAction = (
     patch: ViewPatch
   ): ViewPatchAction | undefined => {
-    const viewId = activeBase.id.get()
+    const viewId = active.id.get()
     return viewId
       ? {
           type: 'view.patch',
@@ -290,7 +290,7 @@ export const createActiveEngineApi = (options: {
     cell: CellRef,
     value: unknown | undefined
   ) => {
-    const target = activeBase.read.cell(cell)
+    const target = active.read.cell(cell)
     if (!target) {
       return
     }
@@ -578,7 +578,7 @@ export const createActiveEngineApi = (options: {
         })
       })
     },
-    state: activeBase.gallery.state
+    state: viewStates.gallery.state
   }
 
   const kanban: ActiveEngineApi['kanban'] = {
@@ -603,21 +603,7 @@ export const createActiveEngineApi = (options: {
         })
       })
     },
-    state: activeBase.kanban.state
-  }
-
-  const order: ActiveEngineApi['order'] = {
-    move: (recordIds, beforeRecordId) => {
-      const action = createMoveOrderAction(recordIds, beforeRecordId)
-      if (action) {
-        commit(action)
-      }
-    },
-    clear: () => {
-      commitPatch({
-        orders: clearViewOrders()
-      })
-    }
+    state: viewStates.kanban.state
   }
 
   const items: ActiveEngineApi['items'] = {
@@ -633,7 +619,7 @@ export const createActiveEngineApi = (options: {
             field: state.query.group.field
           }
         : undefined
-      const plan = activeBase.read.planMove(appearanceIds, target)
+      const plan = active.read.planMove(appearanceIds, target)
       if (!plan.changed || !plan.appearanceIds.length || !plan.recordIds.length) {
         return
       }
@@ -646,7 +632,7 @@ export const createActiveEngineApi = (options: {
 
       if (plan.sectionChanged && groupWrite) {
         const valueActions = createGroupWriteActions({
-          readRecord: activeBase.read.record,
+          readRecord: active.read.record,
           group: groupWrite.group,
           field: groupWrite.field,
           appearances: state.appearances,
@@ -736,7 +722,7 @@ export const createActiveEngineApi = (options: {
         && !state.view.sort.length
       ) {
         const beforeRecordId = state.sections.get(input.section)?.recordIds[0]
-        const moveAction = createMoveOrderAction([recordId], beforeRecordId)
+      const moveAction = createMoveOrderAction([recordId], beforeRecordId)
         if (moveAction) {
           actions.push(moveAction)
         }
@@ -835,7 +821,7 @@ export const createActiveEngineApi = (options: {
   }
 
   return {
-    ...activeBase,
+    ...active,
     type,
     search,
     filter,
@@ -846,7 +832,6 @@ export const createActiveEngineApi = (options: {
     table,
     gallery,
     kanban,
-    order,
     items,
     cells
   }

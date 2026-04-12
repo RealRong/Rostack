@@ -1,7 +1,4 @@
 import type {
-  CalculationCollection
-} from '@dataview/core/calculation'
-import type {
   Field
 } from '@dataview/core/contracts'
 import {
@@ -10,7 +7,6 @@ import {
 import type {
   ActiveGalleryState,
   ActiveKanbanState,
-  ActiveQuery,
   ActiveViewState
 } from '../../api/public'
 import {

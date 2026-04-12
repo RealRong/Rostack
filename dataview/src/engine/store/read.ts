@@ -1,7 +1,6 @@
 import type {
   CustomField,
   CustomFieldId,
-  DataRecord,
   RecordId,
   View,
   ViewId

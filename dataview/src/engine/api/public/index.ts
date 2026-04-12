@@ -56,7 +56,6 @@ export type {
   ViewGalleryApi,
   ViewItemsApi,
   ViewKanbanApi,
-  ViewOrderApi,
   ViewTableApi,
   ViewsEngineApi
 } from './services'

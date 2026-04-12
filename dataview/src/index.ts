@@ -119,7 +119,6 @@ export type {
   ViewCellsApi,
   ViewGalleryApi,
   ViewKanbanApi,
-  ViewOrderApi,
   ViewTableApi,
   ViewsEngineApi
 } from './engine/api'

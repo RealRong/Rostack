@@ -103,11 +103,6 @@ export interface ViewKanbanApi {
   setCardsPerColumn: (value: KanbanCardsPerColumn) => void
 }
 
-export interface ViewOrderApi {
-  move: (recordIds: readonly RecordId[], beforeRecordId?: RecordId) => void
-  clear: () => void
-}
-
 export interface ViewItemsApi {
   move: (
     appearanceIds: readonly AppearanceId[],

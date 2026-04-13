@@ -1,4 +1,4 @@
-import type { ViewFieldRef } from '@dataview/engine/project'
+import type { ViewFieldRef } from '@dataview/engine'
 
 export interface FieldAnchor {
   x: number
@@ -47,7 +47,7 @@ export const fieldAttrs = (
   field: ViewFieldRef
 ) => ({
   [FIELD_VIEW_ID_ATTR]: field.viewId,
-  [FIELD_APPEARANCE_ID_ATTR]: field.appearanceId,
+  [FIELD_APPEARANCE_ID_ATTR]: field.itemId,
   [FIELD_RECORD_ID_ATTR]: field.recordId,
   [FIELD_FIELD_ID_ATTR]: field.fieldId
 })
@@ -64,7 +64,7 @@ export const fieldElement = (
   for (const node of nodes) {
     if (
       node.dataset.valueEditorViewId === field.viewId
-      && node.dataset.valueEditorAppearanceId === field.appearanceId
+      && node.dataset.valueEditorAppearanceId === field.itemId
       && node.dataset.valueEditorRecordId === field.recordId
       && node.dataset.valueEditorFieldId === field.fieldId
     ) {

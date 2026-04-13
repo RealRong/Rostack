@@ -11,16 +11,14 @@ import type {
   AggregateState,
   IndexState
 } from '../../../index/types'
+import type { SectionKey } from '../../../contracts/public'
 import type {
-  SectionKey
-} from '../../readModels'
-import type {
-  CalcState,
-  SectionState
-} from '../state'
+  SectionState,
+  SummaryState
+} from '../../../contracts/internal'
 import {
-  buildCalcState,
   buildSectionFieldState,
+  buildSummaryState,
   EMPTY_AGGREGATES,
   readCalcFields,
   sameIds
@@ -31,8 +29,8 @@ const sameEntry = (
   right: AggregateEntry | undefined
 ) => JSON.stringify(left) === JSON.stringify(right)
 
-export const syncCalcState = (input: {
-  previous?: CalcState
+export const syncSummaryState = (input: {
+  previous?: SummaryState
   previousSections?: SectionState
   sections: SectionState
   view: View
@@ -40,7 +38,7 @@ export const syncCalcState = (input: {
   action: 'reuse' | 'sync' | 'rebuild'
   touchedRecords: ReadonlySet<string> | 'all'
   touchedFields: ReadonlySet<FieldId> | 'all'
-}): CalcState => {
+}): SummaryState => {
   const previousState = input.previous
   if (input.action === 'reuse' && previousState) {
     return previousState
@@ -72,7 +70,7 @@ export const syncCalcState = (input: {
     || input.touchedRecords === 'all'
     || input.touchedFields === 'all'
   ) {
-    return buildCalcState({
+    return buildSummaryState({
       sections: input.sections,
       view: input.view,
       index: input.index
@@ -113,7 +111,7 @@ export const syncCalcState = (input: {
           fieldId,
           entries
             ? buildSectionFieldState({
-                sectionIds: currentSection.ids,
+                sectionIds: currentSection.recordIds,
                 entries
               })
             : buildAggregateState(new Map())
@@ -124,10 +122,10 @@ export const syncCalcState = (input: {
       if (input.touchedFields !== 'all' && !input.touchedFields.has(fieldId)) {
         nextByField.set(
           fieldId,
-          sameIds(previousSection.ids, currentSection.ids)
+          sameIds(previousSection.recordIds, currentSection.recordIds)
             ? (previousByField.get(fieldId) ?? buildAggregateState(new Map()))
             : buildSectionFieldState({
-                sectionIds: currentSection.ids,
+                sectionIds: currentSection.recordIds,
                 entries: input.index.calculations.fields.get(fieldId)?.global.entries ?? new Map()
               })
         )
@@ -147,7 +145,7 @@ export const syncCalcState = (input: {
 
       touchedRecords.forEach(recordId => {
         const previousEntry = state?.entries.get(recordId)
-        const nextEntry = currentSection.ids.includes(recordId)
+        const nextEntry = currentSection.recordIds.includes(recordId)
           ? entries.get(recordId)
           : undefined
         if (sameEntry(previousEntry, nextEntry)) {

@@ -7,8 +7,8 @@ import {
   selection
 } from '@dataview/react/runtime/selection'
 import type {
-  AppearanceId
-} from '@dataview/engine/project'
+  ItemId
+} from '@dataview/engine'
 import {
   useDataView,
   useDataViewValue,
@@ -18,7 +18,7 @@ import { useTableContext } from '../../context'
 import { RowSelectionButton, TableLeadingRail } from './RowRail'
 import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
 export interface RowScopeSelectionRailProps {
-  rowIds: readonly AppearanceId[]
+  rowIds: readonly ItemId[]
   label?: string
 }
 
@@ -65,7 +65,7 @@ const View = (props: RowScopeSelectionRailProps) => {
             focus: currentSelection.focus
           })
         } else {
-          const nextIds = selection.normalize(currentView.appearances.ids, [
+          const nextIds = selection.normalize(currentView.items.ids, [
             ...currentSelection.ids,
             ...props.rowIds
           ])

@@ -4,10 +4,10 @@ import type {
 import {
   sameOrder
 } from '@shared/core'
-import type { AppearanceId } from '@dataview/engine/project'
+import type { ItemId } from '@dataview/engine'
 
 export interface TableRowReorderHint {
-  beforeId: AppearanceId | null
+  beforeId: ItemId | null
   top: number
 }
 
@@ -47,10 +47,10 @@ export const columnBeforeId = (input: {
 }
 
 export const rowDragIds = (input: {
-  activeId: AppearanceId
-  selectedRowIds: readonly AppearanceId[]
-  visibleRowIdSet: ReadonlySet<AppearanceId>
-}): readonly AppearanceId[] => {
+  activeId: ItemId
+  selectedRowIds: readonly ItemId[]
+  visibleRowIdSet: ReadonlySet<ItemId>
+}): readonly ItemId[] => {
   const visibleSelectedIds = input.selectedRowIds
     .filter(rowId => input.visibleRowIdSet.has(rowId))
   const dragIds = visibleSelectedIds.includes(input.activeId)
@@ -63,10 +63,10 @@ export const rowDragIds = (input: {
 }
 
 export const rowSelectionTarget = (input: {
-  activeId: AppearanceId
-  dragIds: readonly AppearanceId[]
-  selectedRowIds: readonly AppearanceId[]
-}): AppearanceId | null => (
+  activeId: ItemId
+  dragIds: readonly ItemId[]
+  selectedRowIds: readonly ItemId[]
+}): ItemId | null => (
   input.dragIds.length === 1
   && input.dragIds[0] === input.activeId
   && !input.selectedRowIds.includes(input.activeId)
@@ -83,9 +83,9 @@ export const sameRowHint = (
 )
 
 export const reorderRows = (
-  current: readonly AppearanceId[],
-  moving: readonly AppearanceId[],
-  beforeId?: AppearanceId | null
+  current: readonly ItemId[],
+  moving: readonly ItemId[],
+  beforeId?: ItemId | null
 ) => {
   const movingIds = Array.from(new Set(moving))
   if (!movingIds.length) {
@@ -117,8 +117,8 @@ export const rowBeforeId = (
 
 export const showRowHint = (
   hint: TableRowReorderHint | null,
-  rowIds: readonly AppearanceId[],
-  dragIds: readonly AppearanceId[]
+  rowIds: readonly ItemId[],
+  dragIds: readonly ItemId[]
 ) => {
   if (!hint || !dragIds.length) {
     return false

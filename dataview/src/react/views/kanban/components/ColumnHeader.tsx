@@ -1,4 +1,4 @@
-import type { Section } from '@dataview/engine/project'
+import type { Section } from '@dataview/engine'
 import { FieldValueContent } from '@dataview/react/field/value'
 import { cn } from '@ui/utils'
 import { useKanbanContext } from '../context'
@@ -13,7 +13,7 @@ export const ColumnHeader = (props: {
   const groupField = active.query.group.field
   const bucket = props.section.bucket
   const canRenderBucket = Boolean(groupField && bucket)
-  const count = props.section.appearanceIds.length
+  const count = props.section.itemIds.length
 
   return (
     <div className="flex items-center gap-3">

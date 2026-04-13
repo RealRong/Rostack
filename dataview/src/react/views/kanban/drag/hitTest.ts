@@ -47,7 +47,7 @@ export const dropTargetFromPoint = (
   return beforeCard
     ? {
         sectionKey: column.key,
-        beforeAppearanceId: beforeCard.id
+        beforeItemId: beforeCard.id
       }
     : {
         sectionKey: column.key

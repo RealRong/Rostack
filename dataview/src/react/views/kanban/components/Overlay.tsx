@@ -22,17 +22,17 @@ export const Overlay = () => {
     runtime
   } = useKanbanContext()
   const engine = useDataView().engine
-  const appearanceId = runtime.drag.activeId
-  const recordId = appearanceId
-    ? engine.active.read.appearance(appearanceId)?.recordId
+  const itemId = runtime.drag.activeId
+  const recordId = itemId
+    ? engine.view.read.item(itemId)?.recordId
     : undefined
   const record = useDataViewKeyedValue(
     dataView => dataView.engine.read.record,
     (recordId ?? '' as RecordId)
   )
-  const sectionColorId = appearanceId && extra.groupUsesOptionColors
-    ? engine.active.read.section(
-        engine.active.read.appearance(appearanceId)?.sectionKey ?? ''
+  const sectionColorId = itemId && extra.groupUsesOptionColors
+    ? engine.view.read.section(
+        engine.view.read.item(itemId)?.sectionKey ?? ''
       )?.color
     : undefined
   const overlayRef = useRef<HTMLDivElement | null>(null)
@@ -61,7 +61,7 @@ export const Overlay = () => {
     }
   }, [record, runtime.drag.overlayOffsetRef, runtime.drag.pointerRef])
 
-  if (!appearanceId || !record || typeof document === 'undefined') {
+  if (!itemId || !record || typeof document === 'undefined') {
     return null
   }
 

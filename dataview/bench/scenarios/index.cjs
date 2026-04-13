@@ -6,33 +6,38 @@ const scenario = (
   definition
 ) => definition
 
+const openView = (engine, viewId) => {
+  engine.views.open(viewId)
+  return engine.view
+}
+
 const SCENARIOS = [
   scenario({
     id: 'record.value.points.single',
     title: 'Single numeric value update',
     run: (engine, fixture) => {
-      engine.records.setValue(fixture.ids.target, fixture.fields.points, fixture.recordCount + 1)
+      engine.records.values.set(fixture.ids.target, fixture.fields.points, fixture.recordCount + 1)
     }
   }),
   scenario({
     id: 'record.value.status.grouped',
     title: 'Single group field update in grouped view',
     setup: (engine, fixture) => {
-      engine.view(fixture.viewId).group.set(fixture.fields.status)
+      openView(engine, fixture.viewId).group.set(fixture.fields.status)
     },
     run: (engine, fixture) => {
-      engine.records.setValue(fixture.ids.groupTarget, fixture.fields.status, STATUS_OPTIONS[2].id)
+      engine.records.values.set(fixture.ids.groupTarget, fixture.fields.status, STATUS_OPTIONS[2].id)
     }
   }),
   scenario({
-    id: 'record.value.points.grouped.calc',
-    title: 'Single calc field update in grouped calculated view',
+    id: 'record.value.points.grouped.summary',
+    title: 'Single summary field update in grouped summarized view',
     setup: (engine, fixture) => {
-      engine.view(fixture.viewId).group.set(fixture.fields.status)
-      engine.view(fixture.viewId).calc.set(fixture.fields.points, 'sum')
+      openView(engine, fixture.viewId).group.set(fixture.fields.status)
+      openView(engine, fixture.viewId).summary.set(fixture.fields.points, 'sum')
     },
     run: (engine, fixture) => {
-      engine.records.setValue(fixture.ids.target, fixture.fields.points, fixture.recordCount + 1)
+      engine.records.values.set(fixture.ids.target, fixture.fields.points, fixture.recordCount + 1)
     }
   }),
   scenario({
@@ -40,17 +45,17 @@ const SCENARIOS = [
     title: 'Search query update',
     run: (engine, fixture) => {
       const query = fixture.ids.search.replace('rec_', 'Task ')
-      engine.view(fixture.viewId).search.set(query.replace('_', ' '))
+      openView(engine, fixture.viewId).search.set(query.replace('_', ' '))
     }
   }),
   scenario({
     id: 'view.query.filter.set',
     title: 'Filter value update',
     setup: (engine, fixture) => {
-      engine.view(fixture.viewId).filter.add(fixture.fields.status)
+      openView(engine, fixture.viewId).filters.add(fixture.fields.status)
     },
     run: (engine, fixture) => {
-      engine.view(fixture.viewId).filter.set(0, {
+      openView(engine, fixture.viewId).filters.update(0, {
         fieldId: fixture.fields.status,
         presetId: 'eq',
         value: STATUS_OPTIONS[2].id
@@ -58,28 +63,28 @@ const SCENARIOS = [
     }
   }),
   scenario({
-    id: 'view.query.sort.only',
+    id: 'view.query.sort.keepOnly',
     title: 'Sort rule update',
     run: (engine, fixture) => {
-      engine.view(fixture.viewId).sort.only(fixture.fields.points, 'desc')
+      openView(engine, fixture.viewId).sort.keepOnly(fixture.fields.points, 'desc')
     }
   }),
   scenario({
     id: 'view.query.group.set',
     title: 'Group rule update',
     run: (engine, fixture) => {
-      engine.view(fixture.viewId).group.set(fixture.fields.status)
+      openView(engine, fixture.viewId).group.set(fixture.fields.status)
     }
   }),
   scenario({
     id: 'history.undo.grouped.value',
     title: 'Undo after grouped value update',
     setup: (engine, fixture) => {
-      engine.view(fixture.viewId).group.set(fixture.fields.status)
-      engine.view(fixture.viewId).calc.set(fixture.fields.points, 'sum')
+      openView(engine, fixture.viewId).group.set(fixture.fields.status)
+      openView(engine, fixture.viewId).summary.set(fixture.fields.points, 'sum')
     },
     prepare: (engine, fixture) => {
-      engine.records.setValue(fixture.ids.groupTarget, fixture.fields.status, STATUS_OPTIONS[2].id)
+      engine.records.values.set(fixture.ids.groupTarget, fixture.fields.status, STATUS_OPTIONS[2].id)
     },
     run: engine => {
       engine.history.undo()
@@ -89,11 +94,11 @@ const SCENARIOS = [
     id: 'history.redo.grouped.value',
     title: 'Redo after grouped value update',
     setup: (engine, fixture) => {
-      engine.view(fixture.viewId).group.set(fixture.fields.status)
-      engine.view(fixture.viewId).calc.set(fixture.fields.points, 'sum')
+      openView(engine, fixture.viewId).group.set(fixture.fields.status)
+      openView(engine, fixture.viewId).summary.set(fixture.fields.points, 'sum')
     },
     prepare: (engine, fixture) => {
-      engine.records.setValue(fixture.ids.groupTarget, fixture.fields.status, STATUS_OPTIONS[2].id)
+      engine.records.values.set(fixture.ids.groupTarget, fixture.fields.status, STATUS_OPTIONS[2].id)
       engine.history.undo()
     },
     run: engine => {

@@ -82,7 +82,7 @@ const compareBenchmarks = input => {
       return
     }
 
-    const metrics = ['totalMs', 'indexMs', 'projectMs', 'publishMs']
+    const metrics = ['totalMs', 'indexMs', 'viewMs', 'snapshotMs']
     metrics.forEach(metric => {
       const baselineValue = baselineResult.avg?.[metric]
       const currentValue = result.avg?.[metric]
@@ -187,4 +187,3 @@ module.exports = {
   parseArgs,
   reportComparison
 }
-

@@ -4,7 +4,7 @@ import {
   usePointerDragSession,
   type PointerPosition
 } from '@dataview/react/interaction/usePointerDragSession'
-import type { AppearanceId } from '@dataview/engine/project'
+import type { ItemId } from '@dataview/engine'
 import type { DropTarget } from './ids'
 import { dropTargetFromPoint } from './hitTest'
 import type { BoardLayout } from './layout'
@@ -12,9 +12,9 @@ import type { BoardLayout } from './layout'
 interface Options {
   containerRef: RefObject<HTMLElement | null>
   canDrag: boolean
-  itemMap: ReadonlyMap<AppearanceId, AppearanceId>
-  getDragIds: (activeId: AppearanceId) => readonly AppearanceId[]
-  onDrop: (cardIds: readonly AppearanceId[], target: DropTarget) => void
+  itemMap: ReadonlyMap<ItemId, ItemId>
+  getDragIds: (activeId: ItemId) => readonly ItemId[]
+  onDrop: (cardIds: readonly ItemId[], target: DropTarget) => void
   getLayout: () => BoardLayout | null
   onDraggingChange?: (dragging: boolean) => void
 }
@@ -24,7 +24,7 @@ const sameTarget = (
   right?: DropTarget
 ) => (
   left?.sectionKey === right?.sectionKey
-  && left?.beforeAppearanceId === right?.beforeAppearanceId
+  && left?.beforeItemId === right?.beforeItemId
 )
 
 export const useDrag = (options: Options) => {
@@ -38,7 +38,7 @@ export const useDrag = (options: Options) => {
     return dropTargetFromPoint(options.getLayout(), point)
   }, [options.containerRef, options.getLayout])
 
-  const session = usePointerDragSession<AppearanceId, AppearanceId, DropTarget>({
+  const session = usePointerDragSession<ItemId, ItemId, DropTarget>({
     containerRef: options.containerRef,
     canDrag: options.canDrag,
     autoPan: true,

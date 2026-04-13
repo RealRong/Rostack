@@ -32,11 +32,11 @@ test('bench compare reports timing regression over threshold', () => {
       avg: {
         totalMs: 10,
         indexMs: 5,
-        projectMs: 4,
-        publishMs: 1
+        viewMs: 4,
+        snapshotMs: 1
       },
       plan: {
-        records: 'reuse'
+        query: 'reuse'
       },
       indexActions: {
         records: 'sync'
@@ -52,11 +52,11 @@ test('bench compare reports timing regression over threshold', () => {
       avg: {
         totalMs: 14,
         indexMs: 5,
-        projectMs: 4,
-        publishMs: 1
+        viewMs: 4,
+        snapshotMs: 1
       },
       plan: {
-        records: 'reuse'
+        query: 'reuse'
       },
       indexActions: {
         records: 'sync'
@@ -87,8 +87,8 @@ test('bench compare reports plan drift even without timing regression', () => {
       avg: {
         totalMs: 10,
         indexMs: 5,
-        projectMs: 4,
-        publishMs: 1
+        viewMs: 4,
+        snapshotMs: 1
       },
       plan: {
         sections: 'sync'
@@ -107,8 +107,8 @@ test('bench compare reports plan drift even without timing regression', () => {
       avg: {
         totalMs: 10.2,
         indexMs: 5,
-        projectMs: 4.1,
-        publishMs: 1.1
+        viewMs: 4.1,
+        snapshotMs: 1.1
       },
       plan: {
         sections: 'rebuild'

@@ -1,7 +1,6 @@
 import type {
   DataDoc,
   FieldId,
-  View,
   ViewId
 } from '@dataview/core/contracts'
 import {
@@ -11,18 +10,13 @@ import {
   createGroupDemand
 } from '../../index/group'
 import {
-  viewCalcFields,
-  viewDisplayFields,
-  viewFilterFields,
-  viewSearchFields,
   viewSortDemandFields,
-  viewSortFields
 } from '@dataview/core/view'
 import type {
   IndexDemand
 } from '../../index/types'
 
-export const resolveIndexDemand = (
+export const resolveViewDemand = (
   document: DataDoc,
   activeViewId?: ViewId
 ): IndexDemand => {

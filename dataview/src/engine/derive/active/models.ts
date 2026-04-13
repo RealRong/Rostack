@@ -1,60 +1,10 @@
-import type {
-  CustomField,
-  Field,
-  FieldId,
-  RecordId
-} from '@dataview/core/contracts'
-import type { Bucket } from '@dataview/core/field'
-
-export type AppearanceId = string
-export type SectionKey = string
-
-export type SectionBucket = Pick<Bucket, 'key' | 'title' | 'value' | 'clearValue' | 'empty' | 'color'>
-
-export interface Appearance {
-  id: AppearanceId
-  recordId: RecordId
-  sectionKey: SectionKey
-}
-
-export interface Section {
-  key: SectionKey
-  title: string
-  color?: string
-  bucket?: SectionBucket
-  collapsed: boolean
-  appearanceIds: readonly AppearanceId[]
-  recordIds: readonly RecordId[]
-}
-
-export interface SectionList {
-  ids: readonly SectionKey[]
-  all: readonly Section[]
-  get: (key: SectionKey) => Section | undefined
-  has: (key: SectionKey) => boolean
-  indexOf: (key: SectionKey) => number | undefined
-  at: (index: number) => SectionKey | undefined
-}
-
-export interface AppearanceList {
-  ids: readonly AppearanceId[]
-  count: number
-  get: (id: AppearanceId) => Appearance | undefined
-  has: (id: AppearanceId) => boolean
-  indexOf: (id: AppearanceId) => number | undefined
-  at: (index: number) => AppearanceId | undefined
-  prev: (id: AppearanceId) => AppearanceId | undefined
-  next: (id: AppearanceId) => AppearanceId | undefined
-  range: (anchor: AppearanceId, focus: AppearanceId) => readonly AppearanceId[]
-}
-
-export interface FieldList {
-  ids: readonly FieldId[]
-  all: readonly Field[]
-  custom: readonly CustomField[]
-  get: (id: FieldId) => Field | undefined
-  has: (id: FieldId) => boolean
-  indexOf: (id: FieldId) => number | undefined
-  at: (index: number) => FieldId | undefined
-  range: (anchor: FieldId, focus: FieldId) => readonly FieldId[]
-}
+export type {
+  FieldList,
+  ItemId,
+  ItemList,
+  Section,
+  SectionBucket,
+  SectionKey,
+  SectionList,
+  ViewItem
+} from '../../contracts/public'

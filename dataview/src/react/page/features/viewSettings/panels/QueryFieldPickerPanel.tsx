@@ -17,18 +17,18 @@ export const QueryFieldPickerPanel = (props: {
   const page = dataView.page
   const document = useDataViewValue(dataView => dataView.engine.read.document)
   const currentView = useDataViewValue(
-    dataView => dataView.engine.active.view
+    dataView => dataView.engine.view.config
   )
   const filterProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => state?.query.filter
+    dataView => dataView.engine.view.state,
+    state => state?.query.filters
   )
   const sortProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
+    dataView => dataView.engine.view.state,
     state => state?.query.sort
   )
   const currentViewDomain = currentView
-    ? engine.active
+    ? engine.view
     : undefined
   const fields = getDocumentFields(document)
   const router = useViewSettings()
@@ -44,7 +44,7 @@ export const QueryFieldPickerPanel = (props: {
           : meta.ui.fieldPicker.allSorted}
         onSelect={fieldId => {
           if (props.kind === 'filter') {
-            currentViewDomain?.filter.add(fieldId)
+            currentViewDomain?.filters.add(fieldId)
             page.query.open({
               kind: 'filter',
               fieldId

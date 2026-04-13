@@ -22,13 +22,12 @@ import type {
   IndexState
 } from '../../../index/types'
 import type {
-  ProjectState,
-  ProjectionAction,
+  DeriveAction,
   QueryState
-} from '../state'
+} from '../../../contracts/internal'
 import {
-  publishRecordSet
-} from '../../publish/records'
+  publishViewRecords
+} from '../records'
 export {
   buildQueryState
 } from './derive'
@@ -62,7 +61,7 @@ const resolveQueryAction = (input: {
   delta: CommitDelta
   view: View
   previous?: QueryState
-}): ProjectionAction => {
+}): DeriveAction => {
   const hasSearchQuery = Boolean(trimToUndefined(input.view.search.query))
 
   if (
@@ -79,7 +78,7 @@ const resolveQueryAction = (input: {
     sort: viewSortFields(input.view)
   }
 
-  let action: ProjectionAction = 'reuse'
+  let action: DeriveAction = 'reuse'
 
   for (const item of input.delta.semantics) {
     switch (item.kind) {
@@ -176,11 +175,11 @@ export const runQueryStage = (input: {
   view: View
   index: IndexState
   previous?: QueryState
-  previousPublished?: ProjectState['records']
+  previousPublished?: import('../../../contracts/public').ViewRecords
 }): {
-  action: ProjectionAction
+  action: DeriveAction
   state: QueryState
-  records: ProjectState['records']
+  records: import('../../../contracts/public').ViewRecords
 } => {
   const action = resolveQueryAction(input)
   const state = action === 'reuse' && input.previous
@@ -195,8 +194,7 @@ export const runQueryStage = (input: {
   return {
     action,
     state,
-    records: publishRecordSet({
-      activeViewId: input.activeViewId,
+    records: publishViewRecords({
       query: state,
       previous: input.previousPublished
     })

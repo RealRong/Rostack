@@ -1,9 +1,9 @@
 import {
-  type AppearanceId
-} from '@dataview/engine/project'
+  type ItemId
+} from '@dataview/engine'
 import type {
   CellRef
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import {
   pageScrollNode,
   type ScrollNode
@@ -15,7 +15,7 @@ export interface Dom {
   container: () => HTMLDivElement | null
   canvas: () => HTMLDivElement | null
   scrollRoot: () => ScrollNode | null
-  row: (rowId: AppearanceId) => HTMLElement | null
+  row: (rowId: ItemId) => HTMLElement | null
   cell: (cell: CellRef) => HTMLElement | null
 }
 

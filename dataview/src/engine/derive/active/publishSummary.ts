@@ -9,16 +9,16 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   SectionKey
-} from '../readModels'
+} from '../../contracts/public'
 import type {
-  CalcState
-} from '../runtime/state'
+  SummaryState
+} from '../../contracts/internal'
 import {
   computeCalculationFromState
-} from '../runtime/calc/compute'
+} from './summary/compute'
 import {
   readCalcFields
-} from '../runtime/calc/state'
+} from './summary/state'
 
 const createCollection = (
   byField: ReadonlyMap<FieldId, CalculationResult>
@@ -29,9 +29,9 @@ const createCollection = (
 
 const EMPTY_COLLECTION = createCollection(new Map())
 
-export const publishCalculations = (input: {
-  calc: CalcState
-  previousCalc?: CalcState
+export const publishSummaries = (input: {
+  summary: SummaryState
+  previousSummary?: SummaryState
   previous?: ReadonlyMap<SectionKey, CalculationCollection>
   fieldsById: ReadonlyMap<FieldId, Field>
   view: View
@@ -40,7 +40,7 @@ export const publishCalculations = (input: {
 
   if (!calcFields.length) {
     const next = new Map<SectionKey, CalculationCollection>(
-      Array.from(input.calc.bySection.keys()).map(sectionKey => [sectionKey, EMPTY_COLLECTION] as const)
+      Array.from(input.summary.bySection.keys()).map(sectionKey => [sectionKey, EMPTY_COLLECTION] as const)
     )
 
     return input.previous
@@ -51,10 +51,10 @@ export const publishCalculations = (input: {
   }
 
   const next = new Map(
-    Array.from(input.calc.bySection.entries()).map(([sectionKey, states]) => [
+    Array.from(input.summary.bySection.entries()).map(([sectionKey, states]) => [
       sectionKey,
       (
-        input.previousCalc?.bySection.get(sectionKey) === states
+        input.previousSummary?.bySection.get(sectionKey) === states
           ? input.previous?.get(sectionKey)
           : undefined
       ) ?? createCollection(new Map(

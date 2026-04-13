@@ -10,14 +10,13 @@ import {
   collectTouchedRecordIds
 } from '../../../index/shared'
 import type {
-  ProjectState,
-  ProjectionAction,
+  DeriveAction,
   QueryState,
   SectionState
-} from '../state'
+} from '../../../contracts/internal'
 import {
-  publishSectionsState
-} from '../../publish/sections'
+  publishSections
+} from '../collections'
 export {
   syncSectionState
 } from './sync'
@@ -33,7 +32,7 @@ const resolveSectionsAction = (input: {
   previous?: SectionState
   previousQuery?: QueryState
   query: QueryState
-}): ProjectionAction => {
+}): DeriveAction => {
   if (
     !input.previous
     || !input.previousQuery
@@ -93,13 +92,16 @@ export const runSectionsStage = (input: {
   query: QueryState
   previous?: SectionState
   previousQuery?: QueryState
-  previousPublished: Pick<ProjectState, 'sections' | 'appearances'>
+  previousPublished: {
+    sections?: import('../../../contracts/public').SectionList
+    items?: import('../../../contracts/public').ItemList
+  }
   index: IndexState
 }): {
-  action: ProjectionAction
+  action: DeriveAction
   state: SectionState
-  sections: ProjectState['sections']
-  appearances: ProjectState['appearances']
+  sections: import('../../../contracts/public').SectionList
+  items: import('../../../contracts/public').ItemList
 } => {
   const touchedRecords = collectTouchedRecordIds(input.delta)
   const action = resolveSectionsAction({
@@ -120,11 +122,11 @@ export const runSectionsStage = (input: {
     touchedRecords,
     action
   })
-  const published = publishSectionsState({
+  const published = publishSections({
     sections: state,
     previousSections: input.previous,
     previous: {
-      appearances: input.previousPublished.appearances,
+      items: input.previousPublished.items,
       sections: input.previousPublished.sections
     }
   })
@@ -133,6 +135,6 @@ export const runSectionsStage = (input: {
     action,
     state,
     sections: published.sections,
-    appearances: published.appearances
+    items: published.items
   }
 }

@@ -147,7 +147,7 @@ export const useColumnResize = () => {
           )
 
           if (changed) {
-            editor.active.table.setWidths(nextWidths)
+            editor.view.table.setColumnWidths(nextWidths)
           }
         }
 

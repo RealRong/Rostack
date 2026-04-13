@@ -7,7 +7,7 @@ import {
 import { observeElementSize } from '@shared/dom'
 import type {
   Section
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import {
   readInlineInsets,
   useMeasuredHeights,
@@ -47,7 +47,7 @@ export const useGalleryBlocks = (input: {
 }) => {
   const [containerVersion, bumpContainerVersion] = useReducer((value: number) => value + 1, 0)
   const ids = useMemo(
-    () => input.sections.flatMap(section => section.appearanceIds),
+    () => input.sections.flatMap(section => section.itemIds),
     [input.sections]
   )
 

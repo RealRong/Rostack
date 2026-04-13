@@ -5,8 +5,8 @@ import {
   useMemo,
   type ReactNode
 } from 'react'
-import type { ActiveGalleryState } from '@dataview/engine'
-import type { ActiveViewState } from '@dataview/engine'
+import type { GalleryState } from '@dataview/engine'
+import type { ViewState } from '@dataview/engine'
 import {
   useDataViewValue
 } from '@dataview/react/dataview'
@@ -22,7 +22,7 @@ export interface GalleryProviderProps {
 
 export interface GalleryContextValue {
   active: GalleryActiveState
-  extra: ActiveGalleryState
+  extra: GalleryState
   runtime: GalleryRuntime
 }
 
@@ -31,7 +31,7 @@ export type Gallery = GalleryContextValue
 const Ctx = createContext<Gallery | null>(null)
 
 const readGalleryActiveState = (
-  state: ActiveViewState | undefined
+  state: ViewState | undefined
 ): GalleryActiveState | undefined => (
   state?.view.type === 'gallery'
     ? state as GalleryActiveState
@@ -40,11 +40,11 @@ const readGalleryActiveState = (
 
 export const GalleryProvider = (props: GalleryProviderProps) => {
   const active = useDataViewValue(
-    dataView => dataView.engine.active.state,
+    dataView => dataView.engine.view.state,
     readGalleryActiveState
   )
   const extra = useDataViewValue(
-    dataView => dataView.engine.active.gallery.state
+    dataView => dataView.engine.view.gallery.state
   )
   if (!active || !extra) {
     throw new Error('Gallery view requires an active gallery state.')

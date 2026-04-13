@@ -25,8 +25,8 @@
         "totalMs": 3.3,
         "commitMs": 0.6,
         "indexMs": 1.8,
-        "projectMs": 0.6,
-        "publishMs": 0.4
+        "viewMs": 0.6,
+        "snapshotMs": 0.4
       },
       "changedStores": [],
       "indexActions": {
@@ -34,12 +34,12 @@
         "search": "sync",
         "group": "sync",
         "sort": "sync",
-        "calculations": "sync"
+        "summaries": "sync"
       },
       "plan": {
         "query": "reuse",
         "sections": "reuse",
-        "calc": "reuse"
+        "summary": "reuse"
       }
     },
     {
@@ -55,24 +55,24 @@
         "totalMs": 3.0,
         "commitMs": 0.1,
         "indexMs": 1.0,
-        "projectMs": 2.0,
-        "publishMs": 0.2
+        "viewMs": 2.0,
+        "snapshotMs": 0.2
       },
       "changedStores": [
         "sections",
-        "appearances"
+        "items"
       ],
       "indexActions": {
         "records": "sync",
         "search": "sync",
         "group": "sync",
         "sort": "sync",
-        "calculations": "sync"
+        "summaries": "sync"
       },
       "plan": {
         "query": "reuse",
         "sections": "sync",
-        "calc": "sync"
+        "summary": "sync"
       }
     }
   ]

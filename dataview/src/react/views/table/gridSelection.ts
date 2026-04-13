@@ -1,10 +1,10 @@
-import type { ActiveViewState as CurrentView } from '@dataview/engine'
+import type { ViewState as CurrentView } from '@dataview/engine'
 import type {
-  AppearanceId
-} from '@dataview/engine/project'
+  ItemId
+} from '@dataview/engine'
 import type {
   CellRef
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import {
   gridSelection,
   type GridSelection
@@ -28,7 +28,7 @@ export interface GridSelectionStore {
       wrap?: boolean
     }
   ) => void
-  first: (rowId?: AppearanceId) => void
+  first: (rowId?: ItemId) => void
   dispose: () => void
 }
 
@@ -45,7 +45,7 @@ export const createGridSelection = (
     store.update(current => currentView
       ? gridSelection.reconcile(
           current,
-          currentView.appearances,
+          currentView.items,
           currentView.fields
         )
       : null
@@ -71,7 +71,7 @@ export const createGridSelection = (
         current,
         rowDelta,
         columnDelta,
-        currentView.appearances,
+        currentView.items,
         currentView.fields,
         options
       ) ?? current)
@@ -84,7 +84,7 @@ export const createGridSelection = (
 
       store.update(current => gridSelection.first(
         current,
-        currentView.appearances,
+        currentView.items,
         currentView.fields,
         rowId
       ) ?? null)

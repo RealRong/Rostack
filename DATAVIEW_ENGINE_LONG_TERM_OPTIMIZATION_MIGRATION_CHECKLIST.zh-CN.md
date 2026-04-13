@@ -78,19 +78,19 @@
 
 - 删除 `project` 这个中间主语
 - 直接建立 `active runtime`
-- internal 只保留一份 `ActiveSnapshot`
-- public `engine.active.state` 直接读它
+- internal 只保留一份 `ViewSnapshot`
+- public `engine.view.state` 直接读它
 
 也就是说，应该从：
 
 ```text
-doc -> index -> project/runtime -> project/publish -> store/active -> active api
+doc -> index -> project/runtime -> project/publish -> store/active -> current view api
 ```
 
 变成：
 
 ```text
-doc -> activeIndex -> activeSnapshot -> active api
+doc -> currentViewIndex -> currentViewSnapshot -> current view api
 ```
 
 ## 3. `lowerAction -> runCommands` 双阶段写入链过重
@@ -118,7 +118,7 @@ doc -> activeIndex -> activeSnapshot -> active api
 dispatch(action)
   -> planActions(document, actions)
   -> applyOperations(document, operations)
-  -> deriveActive(document, delta)
+  -> deriveView(document, delta)
 ```
 
 也就是：
@@ -185,9 +185,12 @@ façade 本身只能保留薄路由。
 - `ViewsApi`
 - `FieldsApi`
 - `RecordsApi`
-- `ActiveIndex`
-- `ActiveSnapshot`
-- `ActiveCache`
+- `ViewIndex`
+- `ViewSnapshot`
+- `ViewCache`
+- `PerformanceApi`
+- `ViewItem`
+- `ItemList`
 
 ## 最终架构决策
 
@@ -195,10 +198,10 @@ façade 本身只能保留薄路由。
 
 - 保留 `DataDoc.views` 和 `DataDoc.activeViewId`
 - 保留 `engine.views` 作为 view 集合管理
-- 保留 `engine.active` 作为唯一完整 view API
+- 保留 `engine.view` 作为唯一完整当前 view API
 - 保留 active view 驱动的 index 体系
-- 保留 perf trace 与 history
-- 保留 search/group/sort/calc 这些索引算法
+- 保留 performance trace 与 history
+- 保留 search/group/sort/calculation 这些索引与汇总算法
 
 ## 二、删除什么
 
@@ -234,7 +237,7 @@ dataview/src/engine/
   state/
     store.ts
     history.ts
-    perf.ts
+    performance.ts
   mutate/
     planner/
       index.ts
@@ -286,11 +289,11 @@ interface EngineState {
   rev: number
   doc: DataDoc
   history: HistoryState
-  active: {
-    demand: ActiveDemand
-    index: ActiveIndex
-    cache: ActiveCache
-    snapshot: ActiveSnapshot
+  currentView: {
+    demand: ViewDemand
+    index: ViewIndex
+    cache: ViewCache
+    snapshot: ViewSnapshot
   }
 }
 ```
@@ -299,7 +302,7 @@ interface EngineState {
 
 - 不再有 `project`
 - 不再有 `cache.indexDemand + cache.projection` 的拆散组合
-- 所有 active runtime 相关状态都放在 `active` 下
+- 所有当前 view runtime 相关状态都放在 `currentView` 下
 
 ## 目标 derive 链路
 
@@ -309,41 +312,402 @@ interface EngineState {
 dispatch(action)
   -> planActions(base.doc, actions)
   -> applyOperations(base.doc, operations)
-  -> resolveActiveDemand(nextDoc, nextDoc.activeViewId)
-  -> deriveActiveIndex(previous.active.index, nextDoc, delta, demand)
-  -> deriveActiveSnapshot(previous.active.snapshot, previous.active.cache, nextDoc, activeIndex, delta)
+  -> resolveViewDemand(nextDoc, nextDoc.activeViewId)
+  -> deriveViewIndex(previous.currentView.index, nextDoc, delta, demand)
+  -> deriveViewSnapshot(previous.currentView.snapshot, previous.currentView.cache, nextDoc, viewIndex, delta)
   -> commit(nextState)
 ```
 
 这里要点只有两个：
 
-- active index 继续只服务当前 active view
-- active snapshot 是唯一 active 派生快照
+- current view index 继续只服务当前 active view
+- current view snapshot 是唯一当前 view 派生快照
 
-## 目标 public API
+## 最终命名规则
+
+最终 API 命名必须同时满足四个条件：
+
+- 短，但不能靠缩写变短。
+- 语义直接，不要靠上下文猜。
+- 使用行业常见词。
+- singular / plural 一致，看到名字就知道是“当前对象”还是“集合”。
+
+硬性规则如下：
+
+- 用完整单词，不使用业务缩写：
+  - `performance`，不用 `perf`
+  - `summary`，不用 `calc`
+  - `current`，不用 `ctx` 一类缩写
+  - `item`，不用 `appearance`
+- 当前运行时对象使用单数：
+  - `view`
+  - `document`
+  - `history`
+  - `performance`
+- 集合管理对象使用复数：
+  - `views`
+  - `fields`
+  - `records`
+- 持久化配置统一叫 `config`
+- 运行时快照统一叫 `state`
+- 操作动词只使用下面这些常见词：
+  - `get`
+  - `list`
+  - `open`
+  - `create`
+  - `rename`
+  - `update`
+  - `replace`
+  - `remove`
+  - `move`
+  - `set`
+  - `clear`
+  - `toggle`
+
+## 最终 public API 设计
 
 建议最终稳定版：
 
 ```ts
 interface Engine {
   read: DocumentReadApi
-  active: ViewApi
+  view: ViewApi
   views: ViewsApi
   fields: FieldsApi
   records: RecordsApi
-  dispatch: (action: Action | readonly Action[]) => ActionResult
   document: DocumentApi
   history: HistoryApi
-  perf: PerfApi
+  performance: PerformanceApi
+  dispatch: (action: Action | readonly Action[]) => ActionResult
 }
 ```
 
 约束如下：
 
 - `engine.views` 只做 view 集合管理
-- `engine.active` 是唯一完整 active view API
-- 任何依赖 sections、appearances、group runtime 的能力，只能存在于 `engine.active`
-- 顶层显式暴露 `dispatch`，facade 只做 convenience layer
+- `engine.view` 是唯一完整当前 view API
+- 任何依赖 sections、items、group runtime 的能力，只能存在于 `engine.view`
+- 顶层显式暴露 `dispatch`，其余 service 只是便利层
+
+### `DocumentReadApi`
+
+```ts
+interface DocumentReadApi {
+  document: ReadStore<DataDoc>
+  recordIds: ReadStore<readonly RecordId[]>
+  record: KeyedReadStore<RecordId, DataRecord | undefined>
+  fieldIds: ReadStore<readonly CustomFieldId[]>
+  field: KeyedReadStore<CustomFieldId, CustomField | undefined>
+  viewIds: ReadStore<readonly ViewId[]>
+  view: KeyedReadStore<ViewId, View | undefined>
+}
+```
+
+说明：
+
+- 这里是文档级只读入口。
+- 这里的 `field` 指文档中持久化的自定义字段，不负责 active view 的可见字段列表。
+
+### `ViewsApi`
+
+```ts
+interface ViewsApi {
+  list: () => readonly View[]
+  get: (viewId: ViewId) => View | undefined
+  open: (viewId: ViewId) => void
+  create: (input: {
+    name: string
+    type: ViewType
+  }) => ViewId | undefined
+  rename: (viewId: ViewId, name: string) => void
+  duplicate: (viewId: ViewId) => ViewId | undefined
+  remove: (viewId: ViewId) => void
+}
+```
+
+说明：
+
+- `views` 只负责持久化 view 集合管理。
+- `views` 不暴露当前 view runtime。
+
+### `ViewApi`
+
+```ts
+interface ViewApi {
+  id: ReadStore<ViewId | undefined>
+  config: ReadStore<View | undefined>
+  state: ReadStore<ViewState | undefined>
+  select: <T>(
+    selector: (state: ViewState | undefined) => T,
+    isEqual?: Equality<T>
+  ) => ReadStore<T>
+  read: ViewReadApi
+
+  changeType: (type: ViewType) => void
+
+  search: {
+    set: (query: string) => void
+  }
+
+  filters: {
+    add: (fieldId: FieldId) => void
+    update: (index: number, rule: FilterRule) => void
+    setPreset: (index: number, presetId: string) => void
+    setValue: (index: number, value: FilterRule['value'] | undefined) => void
+    setMode: (mode: Filter['mode']) => void
+    remove: (index: number) => void
+    clear: () => void
+  }
+
+  sort: {
+    add: (fieldId: FieldId, direction?: SortDirection) => void
+    update: (fieldId: FieldId, direction: SortDirection) => void
+    keepOnly: (fieldId: FieldId, direction: SortDirection) => void
+    move: (from: number, to: number) => void
+    replace: (index: number, sorter: Sorter) => void
+    remove: (index: number) => void
+    clear: () => void
+  }
+
+  group: {
+    set: (fieldId: FieldId) => void
+    clear: () => void
+    toggle: (fieldId: FieldId) => void
+    setMode: (mode: string) => void
+    setSort: (sort: BucketSort) => void
+    setInterval: (interval: ViewGroup['bucketInterval']) => void
+    setShowEmpty: (value: boolean) => void
+  }
+
+  sections: {
+    show: (sectionKey: string) => void
+    hide: (sectionKey: string) => void
+    collapse: (sectionKey: string) => void
+    expand: (sectionKey: string) => void
+    toggleCollapse: (sectionKey: string) => void
+  }
+
+  summary: {
+    set: (fieldId: FieldId, metric: CalculationMetric | null) => void
+  }
+
+  display: {
+    replace: (fieldIds: readonly FieldId[]) => void
+    move: (
+      fieldIds: readonly FieldId[],
+      beforeFieldId?: FieldId | null
+    ) => void
+    show: (
+      fieldId: FieldId,
+      beforeFieldId?: FieldId | null
+    ) => void
+    hide: (fieldId: FieldId) => void
+    clear: () => void
+  }
+
+  table: {
+    setColumnWidths: (widths: Partial<Record<FieldId, number>>) => void
+    setVerticalLines: (value: boolean) => void
+    insertFieldLeft: (
+      anchorFieldId: FieldId,
+      input?: {
+        name?: string
+        kind?: CustomFieldKind
+      }
+    ) => CustomFieldId | undefined
+    insertFieldRight: (
+      anchorFieldId: FieldId,
+      input?: {
+        name?: string
+        kind?: CustomFieldKind
+      }
+    ) => CustomFieldId | undefined
+  }
+
+  gallery: GalleryApi
+  kanban: KanbanApi
+  items: ViewItemsApi
+  cells: ViewCellsApi
+}
+```
+
+说明：
+
+- `view` 是当前 view runtime 的唯一完整入口。
+- `config` 表示当前 view 的持久化配置。
+- `state` 表示当前 view 的运行时快照。
+- `summary` 是最终公开名，不再使用 `calc`。
+
+### `ViewState`
+
+```ts
+type ItemId = string
+
+interface ViewState {
+  view: View
+  query: ViewQuery
+  records: ViewRecords
+  sections: SectionList
+  items: ItemList
+  fields: FieldList
+  summaries: ReadonlyMap<SectionKey, FieldSummaryCollection>
+}
+
+interface ViewQuery {
+  search: ViewSearchProjection
+  filters: ViewFilterProjection
+  group: ViewGroupProjection
+  sort: ViewSortProjection
+}
+
+interface ViewRecords {
+  matched: readonly RecordId[]
+  ordered: readonly RecordId[]
+  visible: readonly RecordId[]
+}
+```
+
+说明：
+
+- `matched` 表示当前 active view 经过 index 排序后的记录序列，还未叠加 view 手动顺序。
+- `ordered` 表示叠加 view 手动顺序后的记录序列；当存在显式 sort 时，通常与 `matched` 相同。
+- `visible` 表示在 `ordered` 基础上应用 search/filter 后的结果；section 折叠/隐藏只影响 `sections` 与 `items`，不再回写这里。
+- `items` 是最终公开名，不再使用 `appearances`。
+- `fields` 在 `ViewState` 上下文里已经天然表示“当前 view 显示字段”，不需要再额外加 `visible` 前缀。
+
+### `ViewReadApi`
+
+```ts
+interface ViewReadApi {
+  record: (recordId: RecordId) => DataRecord | undefined
+  field: (fieldId: FieldId) => Field | undefined
+  section: (sectionKey: SectionKey) => Section | undefined
+  item: (itemId: ItemId) => ViewItem | undefined
+  cell: (cell: CellRef) => ViewCell | undefined
+  filterField: (index: number) => Field | undefined
+  groupField: () => Field | undefined
+}
+```
+
+说明：
+
+- `read` 只保留读取动作。
+- `planMove` 属于移动规划，不属于读取，因此不放在 `read` 下。
+
+### `ViewItemsApi` 与 `ViewCellsApi`
+
+```ts
+interface ViewItemsApi {
+  planMove: (
+    itemIds: readonly ItemId[],
+    target: Placement
+  ) => MovePlan
+  move: (
+    itemIds: readonly ItemId[],
+    target: Placement
+  ) => void
+  create: (input: {
+    section: SectionKey
+    title?: string
+    values?: Partial<Record<CustomFieldId, unknown>>
+  }) => RecordId | undefined
+  remove: (itemIds: readonly ItemId[]) => void
+}
+
+interface ViewCellsApi {
+  set: (
+    cell: CellRef,
+    value: unknown
+  ) => void
+  clear: (cell: CellRef) => void
+}
+```
+
+### `FieldsApi`
+
+```ts
+interface FieldsApi {
+  list: () => readonly CustomField[]
+  get: (fieldId: CustomFieldId) => CustomField | undefined
+  create: (input: {
+    name: string
+    kind?: CustomFieldKind
+  }) => CustomFieldId | undefined
+  rename: (fieldId: CustomFieldId, name: string) => void
+  update: (fieldId: CustomFieldId, patch: Partial<Omit<CustomField, 'id'>>) => void
+  replace: (fieldId: CustomFieldId, field: CustomField) => void
+  changeType: (
+    fieldId: CustomFieldId,
+    input: {
+      kind: CustomFieldKind
+    }
+  ) => void
+  duplicate: (fieldId: CustomFieldId) => CustomFieldId | undefined
+  remove: (fieldId: CustomFieldId) => boolean
+  options: {
+    append: (fieldId: CustomFieldId) => FieldOption | undefined
+    create: (fieldId: CustomFieldId, name: string) => FieldOption | undefined
+    reorder: (fieldId: CustomFieldId, optionIds: readonly string[]) => void
+    update: (
+      fieldId: CustomFieldId,
+      optionId: string,
+      patch: {
+        name?: string
+        color?: string
+        category?: StatusCategory
+      }
+    ) => FieldOption | undefined
+    remove: (fieldId: CustomFieldId, optionId: string) => void
+  }
+}
+```
+
+### `RecordsApi`
+
+```ts
+interface RecordsApi {
+  get: (recordId: RecordId) => DataRecord | undefined
+  create: (input?: {
+    values?: Partial<Record<CustomFieldId, unknown>>
+  }) => RecordId | undefined
+  remove: (recordId: RecordId) => void
+  removeMany: (recordIds: readonly RecordId[]) => void
+  values: {
+    set: (recordId: RecordId, fieldId: FieldId, value: unknown) => void
+    clear: (recordId: RecordId, fieldId: FieldId) => void
+  }
+}
+```
+
+### `DocumentApi`、`HistoryApi`、`PerformanceApi`
+
+```ts
+interface DocumentApi {
+  export: () => DataDoc
+  replace: (document: DataDoc) => DataDoc
+}
+
+interface HistoryApi {
+  state: () => HistoryState
+  canUndo: () => boolean
+  canRedo: () => boolean
+  undo: () => CommitResult
+  redo: () => CommitResult
+  clear: () => void
+}
+
+interface PerformanceApi {
+  traces: {
+    last: () => CommitTrace | undefined
+    list: (limit?: number) => readonly CommitTrace[]
+    clear: () => void
+  }
+  stats: {
+    snapshot: () => PerformanceStats
+    clear: () => void
+  }
+}
+```
 
 ## `engine.views` 的职责
 
@@ -363,12 +727,12 @@ interface Engine {
 - inactive view 的 read/select/session 操作
 - `items` / `cells` / `planMove` 这类 active-only 能力
 
-## `engine.active` 的职责
+## `engine.view` 的职责
 
-`engine.active` 是唯一完整 active view API，包含：
+`engine.view` 是唯一完整当前 view API，包含：
 
 - 当前 active view 的读取
-- 当前 active snapshot 的订阅
+- 当前 current view snapshot 的订阅
 - query 相关写入
 - display/layout 相关写入
 - items move/create/remove
@@ -377,24 +741,32 @@ interface Engine {
 
 也就是说：
 
-- 只有这里可以消费 active runtime
-- 只有这里允许操作 appearance、section、cell
+- 只有这里可以消费当前 view runtime
+- 只有这里允许操作 item、section、cell
 
 ## 目标类型命名
 
 建议统一如下：
 
-| 当前 | 目标 |
+| 当前 | 最终名称 |
 | --- | --- |
+| `engine.active` | `engine.view` |
+| `engine.perf` | `engine.performance` |
 | `EngineReadApi` | `DocumentReadApi` |
 | `ActiveEngineApi` | `ViewApi` |
 | `ActiveReadApi` | `ViewReadApi` |
 | `ViewsEngineApi` | `ViewsApi` |
 | `FieldsEngineApi` | `FieldsApi` |
 | `RecordsEngineApi` | `RecordsApi` |
-| `ProjectState` | `ActiveSnapshot` |
-| `ProjectionState` | `ActiveCache` |
-| `IndexState` | `ActiveIndex` |
+| `ProjectState` | `ViewSnapshot` |
+| `ProjectionState` | `ViewCache` |
+| `IndexState` | `ViewIndex` |
+| `AppearanceId` | `ItemId` |
+| `Appearance` | `ViewItem` |
+| `AppearanceList` | `ItemList` |
+| `appearances` | `items` |
+| `calc` | `summary` |
+| `perf` | `performance` |
 
 这里不追求“最学术正确”的命名，而追求与你的真实约束一致：
 
@@ -432,18 +804,23 @@ interface Engine {
 
 ## 一次性迁移 checklist
 
+落地说明：
+
+- 下列项已全部完成。
+- D 阶段最终以 `planActions(...)` + `PlannedWriteBatch` 落地；planner 直接产出 canonical operations、semantic delta draft 与 issues，commit result 再从最终 delta 归纳 created entities，避免重复维护第二份 created 状态。
+
 ### A. 锁定单 active view 约束
 
-- [ ] 在根方案和实现注释里明确：runtime 全局只有一个 active view。
-- [ ] 不再设计 per-view runtime cache。
-- [ ] 不再为 inactive view 维护 snapshot/index。
+- [x] 在根方案和实现注释里明确：runtime 全局只有一个 active view。
+- [x] 不再设计 per-view runtime cache。
+- [x] 不再为 inactive view 维护 snapshot/index。
 
 ### B. 先收口类型边界
 
-- [ ] 新建 `contracts/internal.ts` 与 `contracts/public.ts`。
-- [ ] internal runtime 全面移除对 `api/public` 的依赖。
-- [ ] `project/runtime/state.ts` 现有类型全部迁到 internal contract。
-- [ ] `readModels.ts`、`viewProjections.ts`、`refs.ts` 重新分配归属。
+- [x] 新建 `contracts/internal.ts` 与 `contracts/public.ts`。
+- [x] internal runtime 全面移除对 `api/public` 的依赖。
+- [x] `project/runtime/state.ts` 现有类型全部迁到 internal contract。
+- [x] `readModels.ts`、`viewProjections.ts`、`refs.ts` 重新分配归属。
 
 完成标准：
 
@@ -451,11 +828,11 @@ interface Engine {
 
 ### C. 删除 `project` 主语，改成 active runtime
 
-- [ ] `project/runtime` 改为 `derive/active`
-- [ ] `project/publish` 合并进 `derive/active/snapshot`
-- [ ] `ProjectState` 改为 `ActiveSnapshot`
-- [ ] `ProjectionState` 改为 `ActiveCache`
-- [ ] `store.state` 中的 `project` 字段改为 `active.snapshot`
+- [x] `project/runtime` 改为 `derive/active`
+- [x] `project/publish` 合并进 `derive/active/snapshot`
+- [x] `ProjectState` 改为 `ViewSnapshot`
+- [x] `ProjectionState` 改为 `ViewCache`
+- [x] `store.state` 中的 `project` 字段改为 `currentView.snapshot`
 
 完成标准：
 
@@ -463,12 +840,12 @@ interface Engine {
 
 ### D. 压平写入链
 
-- [ ] 新建统一入口 `planActions(...)`
-- [ ] 按 domain 拆 planner：`record`、`value`、`field`、`view`
-- [ ] `action/lower.ts` 拆除
-- [ ] `runCommands.ts` 拆除
-- [ ] `command/context.ts` 拆除
-- [ ] planner 直接产出 operations、delta draft、issues、created entities
+- [x] 新建统一入口 `planActions(...)`
+- [x] 按 domain 拆 planner：`record`、`value`、`field`、`view`
+- [x] `action/lower.ts` 拆除
+- [x] `runCommands.ts` 拆除
+- [x] `command/context.ts` 拆除
+- [x] planner 直接产出 operations、delta draft、issues、created entities
 
 完成标准：
 
@@ -476,10 +853,11 @@ interface Engine {
 
 ### E. 合并 active state 包装层
 
-- [ ] 删除 `store/active/state.ts` 中的 active state 拼装逻辑
-- [ ] 删除 `store/active/read.ts` 中对 snapshot 空洞的补模型职责
-- [ ] `engine.active.state` 直接订阅 `active.snapshot`
-- [ ] `engine.active.read` 只保留解析型 helper，不再承担“补足 public state”职责
+- [x] 删除 `store/active/state.ts` 中的 active state 拼装逻辑
+- [x] 删除 `store/active/read.ts` 中对 snapshot 空洞的补模型职责
+- [x] `engine.view.state` 直接订阅 `currentView.snapshot`
+- [x] `engine.view.read` 只保留解析型 helper，不再承担“补足 public state”职责
+- [x] `planMove` 从 `read` 挪到 `items`
 
 完成标准：
 
@@ -487,11 +865,11 @@ interface Engine {
 
 ### F. 拆分 active services
 
-- [ ] 把当前 `facade/view/index.ts` 拆成 domain files
-- [ ] `items.move` 与 `items.create` 下沉到 `services/active/items.ts`
-- [ ] `cells.set/clear` 下沉到 `services/active/cells.ts`
-- [ ] query/group/display/table/gallery/kanban 各自独立
-- [ ] façade 入口文件只负责组装
+- [x] 把当前 `facade/view/index.ts` 拆成 domain files
+- [x] `items.move` 与 `items.create` 下沉到 `services/active/items.ts`
+- [x] `cells.set/clear` 下沉到 `services/active/cells.ts`
+- [x] query/group/display/table/gallery/kanban 各自独立
+- [x] façade 入口文件只负责组装
 
 完成标准：
 
@@ -499,14 +877,22 @@ interface Engine {
 
 ### G. 统一 public API 命名
 
-- [ ] `ViewsEngineApi` 改为 `ViewsApi`
-- [ ] `FieldsEngineApi` 改为 `FieldsApi`
-- [ ] `RecordsEngineApi` 改为 `RecordsApi`
-- [ ] `EngineReadApi` 改为 `DocumentReadApi`
-- [ ] `ActiveEngineApi` 改为 `ViewApi`
-- [ ] `ActiveReadApi` 改为 `ViewReadApi`
-- [ ] `table.setColumnWidths` 与 `table.setWidths` 统一成一个名字
-- [ ] `records.field.set/clear` 改成更直接的 value 语义命名
+- [x] `ViewsEngineApi` 改为 `ViewsApi`
+- [x] `FieldsEngineApi` 改为 `FieldsApi`
+- [x] `RecordsEngineApi` 改为 `RecordsApi`
+- [x] `EngineReadApi` 改为 `DocumentReadApi`
+- [x] `ActiveEngineApi` 改为 `ViewApi`
+- [x] `ActiveReadApi` 改为 `ViewReadApi`
+- [x] `engine.active` 改为 `engine.view`
+- [x] `engine.perf` 改为 `engine.performance`
+- [x] `calc` namespace 改为 `summary`
+- [x] `appearance` / `appearances` 改为 `item` / `items`
+- [x] `CurrentViewRecords.matchedIds/sortedIds/visibleIds` 改为 `matched/ordered/visible`
+- [x] `visibleFields` 改为 `fields`
+- [x] `group` 中的 section 操作拆到 `sections`
+- [x] `display.replaceFields/moveFields/showField/hideField/clearFields` 改为 `display.replace/move/show/hide/clear`
+- [x] `table.setColumnWidths` 与 `table.setWidths` 统一成 `setColumnWidths`
+- [x] `records.field.set/clear` 改成 `records.values.set/clear`
 
 完成标准：
 
@@ -514,10 +900,10 @@ interface Engine {
 
 ### H. 清理旧 API 残影
 
-- [ ] bench/test/fixtures 全量改成新 API
-- [ ] 删除仓库内所有 `engine.view(...)` 风格旧调用
-- [ ] 删除仓库内所有 `engine.project.*` 风格旧调用
-- [ ] 删除仓库内所有 `engine.records.setValue(...)` 风格旧调用
+- [x] bench/test/fixtures 全量改成新 API
+- [x] 删除仓库内所有 `engine.view(...)` 风格旧调用
+- [x] 删除仓库内所有 `engine.project.*` 风格旧调用
+- [x] 删除仓库内所有 `engine.records.setValue(...)` 风格旧调用
 
 完成标准：
 
@@ -525,10 +911,10 @@ interface Engine {
 
 ### I. 保持 active-coupled performance 模型
 
-- [ ] 保留 active view 驱动的 demand 模型
-- [ ] 保留 `reuse/sync/rebuild` trace 能力
-- [ ] 确保切 view 时重建 active runtime 路径可观测
-- [ ] benchmark 重点覆盖 active write 与 active switch，不再验证不存在的多 runtime 场景
+- [x] 保留 active view 驱动的 demand 模型
+- [x] 保留 `reuse/sync/rebuild` trace 能力
+- [x] 确保切 view 时重建 active runtime 路径可观测
+- [x] benchmark 重点覆盖 active write 与 active switch，不再验证不存在的多 runtime 场景
 
 完成标准：
 
@@ -572,7 +958,7 @@ interface Engine {
 
 - 承认 runtime 是 active-only
 - 承认切 view 可以重建 runtime
-- 保留真正有价值的 index 与 perf 基础
+- 保留真正有价值的 index 与 performance 基础
 - 删除所有为并不存在的多 runtime 场景预留的中间层
 
 最终应该把 engine 收口成一个非常清楚的结构：

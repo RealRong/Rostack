@@ -1,5 +1,5 @@
 import type { Box } from '@shared/dom'
-import type { AppearanceId } from '@dataview/engine/project'
+import type { ItemId } from '@dataview/engine'
 import type { SelectionTarget } from './types'
 
 export const boxFromDomRect = (
@@ -14,7 +14,7 @@ export const boxFromDomRect = (
 })
 
 export const selectionTargetFromElement = (
-  id: AppearanceId,
+  id: ItemId,
   element: Element
 ): SelectionTarget => ({
   id,

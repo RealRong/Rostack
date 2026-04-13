@@ -1,9 +1,9 @@
 import type {
-  AppearanceId
-} from '@dataview/engine/project'
+  ItemId
+} from '@dataview/engine'
 import type {
   CellRef
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 
 export type TableHoverTarget =
   | {
@@ -12,7 +12,7 @@ export type TableHoverTarget =
     }
   | {
       type: 'row-rail'
-      rowId: AppearanceId
+      rowId: ItemId
     }
 
 export const sameHoverTarget = (
@@ -29,7 +29,7 @@ export const sameHoverTarget = (
 
   if (left.type === 'cell' && right.type === 'cell') {
     return (
-      left.cell.appearanceId === right.cell.appearanceId
+      left.cell.itemId === right.cell.itemId
       && left.cell.fieldId === right.cell.fieldId
     )
   }
@@ -43,13 +43,13 @@ export const sameHoverTarget = (
 
 export const hoveredRowIdOf = (
   target: TableHoverTarget | null
-): AppearanceId | null => {
+): ItemId | null => {
   if (!target) {
     return null
   }
 
   return target.type === 'cell'
-    ? target.cell.appearanceId
+    ? target.cell.itemId
     : target.rowId
 }
 

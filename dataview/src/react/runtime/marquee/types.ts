@@ -1,4 +1,4 @@
-import type { AppearanceId } from '@dataview/engine/project'
+import type { ItemId } from '@dataview/engine'
 import type {
   Box,
   Point,
@@ -17,17 +17,17 @@ export interface MarqueeSessionState {
   start: Point
   current: Point
   box: Box
-  baseSelectedIds: readonly AppearanceId[]
+  baseSelectedIds: readonly ItemId[]
 }
 
-export interface SelectionTarget extends RectItem<AppearanceId> { }
+export interface SelectionTarget extends RectItem<ItemId> { }
 
 export interface MarqueeAdapter {
   viewId: ViewId
   canStart: (event: PointerEvent) => boolean
   getTargets?: () => readonly SelectionTarget[]
-  getHitIds?: (session: MarqueeSessionState) => readonly AppearanceId[]
-  order: () => readonly AppearanceId[]
+  getHitIds?: (session: MarqueeSessionState) => readonly ItemId[]
+  order: () => readonly ItemId[]
   resolveAutoPanTargets?: () => AutoPanTargets | null
   previewSelection?: (selection: Selection) => void
   clearPreviewSelection?: () => void

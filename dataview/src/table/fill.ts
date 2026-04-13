@@ -1,10 +1,10 @@
 import type {
-  AppearanceList,
+  ItemList,
   FieldList
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import type {
   CellRef
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import {
   range
 } from './range'
@@ -19,7 +19,7 @@ export interface TableFillEntry {
 
 const handleCell = (
   current: GridSelection | null,
-  appearances: Pick<AppearanceList, 'indexOf' | 'ids'>,
+  items: Pick<ItemList, 'indexOf' | 'ids'>,
   fields: Pick<FieldList, 'indexOf' | 'ids'>
 ): CellRef | undefined => {
   if (!current) {
@@ -27,7 +27,7 @@ const handleCell = (
   }
 
   const currentRange = range.from(current)
-  const rowIds = currentRange ? range.appearances(currentRange, appearances) : []
+  const rowIds = currentRange ? range.items(currentRange, items) : []
   const fieldIds = currentRange ? range.fields(currentRange, fields) : []
 
   if (rowIds.length !== 1 || !fieldIds.length) {
@@ -39,13 +39,13 @@ const handleCell = (
 
 const can = (
   current: GridSelection | null,
-  appearances: Pick<AppearanceList, 'indexOf' | 'ids'>,
+  items: Pick<ItemList, 'indexOf' | 'ids'>,
   fields: Pick<FieldList, 'indexOf' | 'ids'>
-) => Boolean(handleCell(current, appearances, fields))
+) => Boolean(handleCell(current, items, fields))
 
 const plan = (
   current: GridSelection | null,
-  appearances: Pick<AppearanceList, 'indexOf' | 'ids'>,
+  items: Pick<ItemList, 'indexOf' | 'ids'>,
   fields: Pick<FieldList, 'indexOf' | 'ids'>,
   read: (cell: CellRef) => {
     exists: boolean
@@ -62,21 +62,21 @@ const plan = (
   }
 
   const fieldIds = range.fields(currentRange, fields)
-  const targetAppearanceIds = range.appearances(currentRange, appearances)
-    .filter(appearanceId => appearanceId !== current.anchor.appearanceId)
+  const targetAppearanceIds = range.items(currentRange, items)
+    .filter(itemId => itemId !== current.anchor.itemId)
 
   if (!fieldIds.length || !targetAppearanceIds.length) {
     return []
   }
 
-  return targetAppearanceIds.flatMap(appearanceId => (
+  return targetAppearanceIds.flatMap(itemId => (
     fieldIds.map(fieldId => ({
       cell: {
-        appearanceId,
+        itemId,
         fieldId
       },
       value: read({
-        appearanceId: current.anchor.appearanceId,
+        itemId: current.anchor.itemId,
         fieldId
       }).value
     }))

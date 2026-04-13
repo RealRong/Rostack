@@ -1,8 +1,8 @@
-import type { ActiveViewState as CurrentView } from '@dataview/engine'
+import type { ViewState as CurrentView } from '@dataview/engine'
 import type {
   CellRef,
   ViewFieldRef
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import type {
   ValueEditorApi,
   ValueEditorCloseAction,
@@ -174,7 +174,7 @@ export const createCellOpener = (options: {
       cell: input.cell,
       field: {
         viewId: currentView.view.id,
-        appearanceId: input.cell.appearanceId,
+        itemId: input.cell.itemId,
         recordId: resolved.recordId,
         fieldId: resolved.fieldId
       },

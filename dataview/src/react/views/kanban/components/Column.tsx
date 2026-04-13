@@ -3,7 +3,7 @@ import {
   useDataView
 } from '@dataview/react/dataview'
 import { cn } from '@ui/utils'
-import type { Section } from '@dataview/engine/project'
+import type { Section } from '@dataview/engine'
 import { useKanbanContext } from '../context'
 import { ColumnBody } from './ColumnBody'
 import { ColumnHeader } from './ColumnHeader'
@@ -18,9 +18,9 @@ export const Column = (props: {
   const engine = useDataView().engine
   const overTarget = runtime.drag.overTarget
   const isColumnTarget = overTarget?.sectionKey === props.section.key
-    && !overTarget.beforeAppearanceId
+    && !overTarget.beforeItemId
   const sectionColor = extra.groupUsesOptionColors
-    ? engine.active.read.section(props.section.key)?.color
+    ? engine.view.read.section(props.section.key)?.color
     : undefined
 
   return (

@@ -7,89 +7,65 @@ import {
   getDocumentFields,
   getDocumentViewById
 } from '@dataview/core/document'
+import type { IndexState } from '../../index/types'
 import type {
-  IndexState
-} from '../../index/types'
+  DeriveAction,
+  ViewCache
+} from '../../contracts/internal'
 import type {
-  ProjectStageMetrics,
-  ProjectStageName,
-  ProjectStageTrace,
-  ProjectTrace
-} from '../../api/public'
-import {
-  now
-} from '../../perf/shared'
-import {
-  runQueryStage
-} from './query'
-import {
-  runSectionsStage
-} from './sections'
-import {
-  runCalcStage
-} from './calc'
-import {
-  publishViewState
-} from '../publish/view'
-import {
-  buildStageMetrics
-} from './trace'
-import {
-  emptyCalcState,
-  emptyProjectionState,
-  emptyProjectState,
-  type ProjectionAction,
-  type ProjectionState,
-  type ProjectState
-} from './state'
+  ViewStageMetrics,
+  ViewStageName,
+  ViewStageTrace,
+  ViewState,
+  ViewTrace
+} from '../../contracts/public'
+import { now } from '../../perf/shared'
+import { publishViewBase } from './snapshot'
+import { buildStageMetrics } from './trace'
+import { runQueryStage } from './query'
+import { runSectionsStage } from './sections'
+import { runSummaryStage } from './summary'
 
-interface ProjectRunResult {
-  projection: ProjectionState
-  published: ProjectState
-  trace?: ProjectTrace
+interface ViewRunResult {
+  cache: ViewCache
+  snapshot?: ViewState
+  trace?: ViewTrace
 }
 
-const equalProjectValue = (
-  previous: ProjectState[keyof ProjectState],
-  next: ProjectState[keyof ProjectState]
-) => Object.is(previous, next)
-
-export const runProjection = (input: {
+export const deriveViewSnapshot = (input: {
   document: DataDoc
   activeViewId?: ViewId
   delta: CommitDelta
   index: IndexState
-  previousProjection: ProjectionState
-  previousPublished: ProjectState
+  previousCache: ViewCache
+  previousSnapshot?: ViewState
   capturePerf: boolean
-}): ProjectRunResult => {
+}): ViewRunResult => {
   const totalStart = now()
-  const stageTraces: ProjectStageTrace[] = []
+  const stageTraces: ViewStageTrace[] = []
   const view = input.activeViewId
     ? getDocumentViewById(input.document, input.activeViewId)
     : undefined
 
-  const timeStage = <T extends { action: ProjectionAction },>(
-    stage: ProjectStageName,
+  const timeStage = <T extends { action: DeriveAction },>(
+    stage: ViewStageName,
     run: () => T,
-    previousPublishedValue: ProjectState[keyof ProjectState],
-    readPublishedValue: (result: T) => ProjectState[keyof ProjectState],
-    buildMetrics?: (result: T) => ProjectStageMetrics | undefined
+    previousSnapshot: ViewState | undefined,
+    nextSnapshot: (result: T) => ViewState | undefined,
+    buildMetrics?: (result: T) => ViewStageMetrics | undefined
   ): T => {
     const start = input.capturePerf ? now() : 0
     const result = run()
     if (input.capturePerf) {
-      const nextPublishedValue = readPublishedValue(result)
+      const next = nextSnapshot(result)
       stageTraces.push({
         stage,
         action: result.action,
         executed: result.action !== 'reuse',
-        changed: !Object.is(previousPublishedValue, nextPublishedValue),
+        changed: !Object.is(previousSnapshot, next),
         durationMs: now() - start,
         ...(buildMetrics
-          ? {
-              metrics: buildMetrics(result)
-            }
+          ? { metrics: buildMetrics(result) }
           : {})
       })
     }
@@ -98,28 +74,32 @@ export const runProjection = (input: {
 
   if (!view || !input.activeViewId) {
     return {
-      projection: emptyProjectionState(),
-      published: emptyProjectState(),
+      cache: {
+        query: input.previousCache.query,
+        sections: input.previousCache.sections,
+        summary: input.previousCache.summary
+      },
+      snapshot: undefined,
       ...(input.capturePerf
         ? {
             trace: {
               plan: {
                 query: 'reuse',
                 sections: 'reuse',
-                calc: 'reuse'
+                summary: 'reuse'
               },
               timings: {
                 totalMs: now() - totalStart
               },
               stages: stageTraces
-            } satisfies ProjectTrace
+            } satisfies ViewTrace
           }
         : {})
     }
   }
 
   const activeViewId = input.activeViewId
-  const previousViewId = input.previousPublished.view?.id
+  const previousViewId = input.previousSnapshot?.view.id
   const fieldsById = new Map(
     getDocumentFields(input.document).map(field => [field.id, field] as const)
   )
@@ -133,15 +113,25 @@ export const runProjection = (input: {
       delta: input.delta,
       view,
       index: input.index,
-      previous: input.previousProjection.query,
-      previousPublished: input.previousPublished.records
+      previous: input.previousCache.query,
+      previousPublished: input.previousSnapshot?.records
     }),
-    input.previousPublished.records,
-    result => result.records,
+    input.previousSnapshot,
+    result => input.previousSnapshot
+      ? {
+          ...input.previousSnapshot,
+          records: result.records
+        }
+      : undefined,
     result => buildStageMetrics(
       'query',
-      input.previousPublished.records,
-      result.records
+      input.previousSnapshot,
+      input.previousSnapshot
+        ? {
+            ...input.previousSnapshot,
+            records: result.records
+          }
+        : undefined
     )
   )
 
@@ -153,79 +143,123 @@ export const runProjection = (input: {
       delta: input.delta,
       view,
       query: query.state,
-      previous: input.previousProjection.sections,
-      previousQuery: input.previousProjection.query,
+      previous: input.previousCache.sections,
+      previousQuery: input.previousCache.query,
       previousPublished: {
-        sections: input.previousPublished.sections,
-        appearances: input.previousPublished.appearances
+        sections: input.previousSnapshot?.sections,
+        items: input.previousSnapshot?.items
       },
       index: input.index
     }),
-    input.previousPublished.sections,
-    result => result.sections,
+    input.previousSnapshot,
+    result => input.previousSnapshot
+      ? {
+          ...input.previousSnapshot,
+          sections: result.sections,
+          items: result.items
+        }
+      : undefined,
     result => buildStageMetrics(
       'sections',
-      input.previousPublished.sections,
-      result.sections
+      input.previousSnapshot,
+      input.previousSnapshot
+        ? {
+            ...input.previousSnapshot,
+            sections: result.sections,
+            items: result.items
+          }
+        : undefined
     )
   )
 
-  const calc = timeStage(
-    'calc',
-    () => runCalcStage({
+  const summary = timeStage(
+    'summary',
+    () => runSummaryStage({
       activeViewId,
       previousViewId,
       delta: input.delta,
       view,
-      previous: input.previousProjection.calc,
-      previousSections: input.previousProjection.sections,
-      previousPublished: input.previousPublished.calculations,
+      previous: input.previousCache.summary,
+      previousSections: input.previousCache.sections,
+      previousPublished: input.previousSnapshot?.summaries,
       sections: sections.state,
       sectionsAction: sections.action,
       index: input.index,
       fieldsById
     }),
-    input.previousPublished.calculations,
-    result => result.calculations,
+    input.previousSnapshot,
+    result => input.previousSnapshot
+      ? {
+          ...input.previousSnapshot,
+          summaries: result.summaries
+        }
+      : undefined,
     result => buildStageMetrics(
-      'calc',
-      input.previousPublished.calculations,
-      result.calculations
+      'summary',
+      input.previousSnapshot,
+      input.previousSnapshot
+        ? {
+            ...input.previousSnapshot,
+            summaries: result.summaries
+          }
+        : undefined
     )
   )
 
-  const published = {
-    ...publishViewState({
-      document: input.document,
-      viewId: activeViewId,
-      previous: input.previousPublished
-    }),
-    records: query.records,
-    sections: sections.sections,
-    appearances: sections.appearances,
-    calculations: calc.calculations
-  } satisfies ProjectState
+  const base = publishViewBase({
+    document: input.document,
+    viewId: activeViewId,
+    previous: input.previousSnapshot
+      ? {
+          view: input.previousSnapshot.view,
+          query: input.previousSnapshot.query,
+          fields: input.previousSnapshot.fields
+        }
+      : undefined
+  })
+  const snapshot = base.view && base.query && base.fields
+    ? {
+        view: base.view,
+        query: base.query,
+        records: query.records,
+        sections: sections.sections,
+        items: sections.items,
+        fields: base.fields,
+        summaries: summary.summaries
+      } satisfies ViewState
+    : undefined
+  const publishedSnapshot = snapshot
+    && input.previousSnapshot
+    && input.previousSnapshot.view === snapshot.view
+    && input.previousSnapshot.query === snapshot.query
+    && input.previousSnapshot.records === snapshot.records
+    && input.previousSnapshot.sections === snapshot.sections
+    && input.previousSnapshot.items === snapshot.items
+    && input.previousSnapshot.fields === snapshot.fields
+    && input.previousSnapshot.summaries === snapshot.summaries
+      ? input.previousSnapshot
+      : snapshot
 
   return {
-    projection: {
+    cache: {
       query: query.state,
       sections: sections.state,
-      calc: calc.state
+      summary: summary.state
     },
-    published,
+    snapshot: publishedSnapshot,
     ...(input.capturePerf
       ? {
-        trace: {
-          plan: {
+          trace: {
+            plan: {
               query: query.action,
               sections: sections.action,
-              calc: calc.action
+              summary: summary.action
             },
             timings: {
               totalMs: now() - totalStart
             },
             stages: stageTraces
-          } satisfies ProjectTrace
+          } satisfies ViewTrace
         }
       : {})
   }

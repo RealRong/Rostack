@@ -55,7 +55,7 @@ export const TableProvider = (props: TableProviderProps) => {
     containerRef,
     canvasRef
   }), [props.headerHeight, props.rowHeight])
-  const currentView = engine.active.state
+  const currentView = engine.view.state
   const table = useMemo(() => createTableController({
     engine,
     pageStore: dataView.page.store,

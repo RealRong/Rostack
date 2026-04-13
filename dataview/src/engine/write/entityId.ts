@@ -13,6 +13,6 @@ const nextId = (prefix: keyof typeof seeds) => {
 
 export const createRecordId = (): RecordId => nextId('record')
 
-export const createPropertyId = (): CustomFieldId => nextId('field')
+export const createFieldId = (): CustomFieldId => nextId('field')
 
 export const createViewId = (): ViewId => nextId('view')

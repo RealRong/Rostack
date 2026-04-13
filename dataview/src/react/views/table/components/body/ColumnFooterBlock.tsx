@@ -17,7 +17,7 @@ export const ColumnFooterBlock = (props: ColumnFooterBlockProps) => {
     throw new Error('Table footer requires an active current view.')
   }
 
-  const calculations = currentView.calculations.get(props.scopeId)
+  const calculations = currentView.summaries.get(props.scopeId)
   return (
     <div
       className="grid h-full min-w-0 items-center text-sm text-muted-foreground"

@@ -1,12 +1,12 @@
 import type { Field } from '@dataview/core/contracts'
 import { parseFieldDraft } from '@dataview/core/field'
 import type {
-  AppearanceList,
+  ItemList,
   FieldList
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import type {
   CellRef
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import {
   grid
 } from './grid'
@@ -62,7 +62,7 @@ const parseCellDraft = (
 
 const planRangeBroadcast = (
   currentSelection: GridSelection | null,
-  appearances: Pick<AppearanceList, 'indexOf' | 'ids'>,
+  items: Pick<ItemList, 'indexOf' | 'ids'>,
   fields: FieldList,
   draft: string
 ): TablePasteEntry[] => {
@@ -71,15 +71,15 @@ const planRangeBroadcast = (
     return []
   }
 
-  const appearanceIds = range.appearances(currentRange, appearances)
+  const itemIds = range.items(currentRange, items)
   const fieldIds = range.fields(currentRange, fields)
-  if (!appearanceIds.length || !fieldIds.length) {
+  if (!itemIds.length || !fieldIds.length) {
     return []
   }
 
   const fieldMap = new Map(fields.all.map(field => [field.id, field] as const))
 
-  return appearanceIds.flatMap(appearanceId => (
+  return itemIds.flatMap(itemId => (
     fieldIds.flatMap(fieldId => {
       const field = fieldMap.get(fieldId)
       if (!field) {
@@ -93,7 +93,7 @@ const planRangeBroadcast = (
 
       return [{
         cell: {
-          appearanceId,
+          itemId,
           fieldId
         },
         value: parsed.value
@@ -104,7 +104,7 @@ const planRangeBroadcast = (
 
 export const planPaste = (options: {
   selection: GridSelection | null
-  appearances: Pick<AppearanceList, 'indexOf' | 'ids' | 'at'>
+  items: Pick<ItemList, 'indexOf' | 'ids' | 'at'>
   fields: FieldList
   matrix: readonly (readonly string[])[]
 }): TablePasteEntry[] => {
@@ -115,25 +115,25 @@ export const planPaste = (options: {
 
   if (options.matrix.length === 1 && options.matrix[0]?.length === 1) {
     const currentRange = range.from(options.selection)
-    if (currentRange && !range.isSingle(currentRange, options.appearances, options.fields)) {
+    if (currentRange && !range.isSingle(currentRange, options.items, options.fields)) {
       return planRangeBroadcast(
         options.selection,
-        options.appearances,
+        options.items,
         options.fields,
         options.matrix[0][0] ?? ''
       )
     }
   }
 
-  const rowStart = grid.appearanceIndex(options.appearances, anchorCell.appearanceId)
+  const rowStart = grid.appearanceIndex(options.items, anchorCell.itemId)
   const fieldStart = grid.fieldIndex(options.fields, anchorCell.fieldId)
   if (rowStart === undefined || fieldStart === undefined) {
     return []
   }
 
   return options.matrix.flatMap((row, rowOffset) => {
-    const appearanceId = grid.appearanceAt(options.appearances, rowStart + rowOffset)
-    if (!appearanceId) {
+    const itemId = grid.appearanceAt(options.items, rowStart + rowOffset)
+    if (!itemId) {
       return []
     }
 
@@ -150,7 +150,7 @@ export const planPaste = (options: {
 
       return [{
         cell: {
-          appearanceId,
+          itemId,
           fieldId: field.id
         },
         value: parsed.value

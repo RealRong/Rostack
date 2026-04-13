@@ -1,4 +1,4 @@
-import type { ActiveViewState as CurrentView } from '@dataview/engine'
+import type { ViewState as CurrentView } from '@dataview/engine'
 import {
   useEffect,
   useCallback,
@@ -14,14 +14,14 @@ import {
   gridSelection
 } from '@dataview/table'
 import {
-  type AppearanceList,
+  type ItemList,
   type FieldList,
-  type AppearanceId,
-} from '@dataview/engine/project'
+  type ItemId,
+} from '@dataview/engine'
 import {
   type CellRef,
   sameCellRef
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import {
   getRecordFieldValue,
   resolveFieldPrimaryAction
@@ -94,13 +94,13 @@ type FillPointerState = Extract<PointerState, {
 
 interface RowHoverContext {
   container: HTMLElement | null
-  appearances: Pick<AppearanceList, 'has'>
+  items: Pick<ItemList, 'has'>
   fields: Pick<FieldList, 'has'>
-  rowIds: readonly AppearanceId[]
+  rowIds: readonly ItemId[]
   rowIdAtPoint: (input: {
-    rowIds: readonly AppearanceId[]
+    rowIds: readonly ItemId[]
     point: Point | null
-  }) => AppearanceId | null
+  }) => ItemId | null
 }
 
 const THRESHOLD = 4
@@ -141,7 +141,7 @@ const rowHoverTargetFromElement = (
   const rowId = (
     rowElement?.dataset.rowId
     ?? rowElement?.dataset.rowRailRowId
-  ) as AppearanceId | undefined
+  ) as ItemId | undefined
 
   return rowId
     ? {
@@ -153,12 +153,12 @@ const rowHoverTargetFromElement = (
 
 const hoverTargetFromElement = (
   target: EventTarget | null,
-  appearances: Pick<AppearanceList, 'has'>,
+  items: Pick<ItemList, 'has'>,
   fields: Pick<FieldList, 'has'>
 ): TableHoverTarget | null => {
   const cell = (
-    cellFromTarget(target, appearances, fields, 'cell')
-    ?? cellFromTarget(target, appearances, fields, 'fill-handle')
+    cellFromTarget(target, items, fields, 'cell')
+    ?? cellFromTarget(target, items, fields, 'fill-handle')
   )
   if (cell) {
     return {
@@ -225,7 +225,7 @@ const hoverTargetFromPoint = (
     elementAtPoint: nextPoint => document.elementFromPoint(nextPoint.x, nextPoint.y),
     targetFromElement: element => hoverTargetFromElement(
       element,
-      context.appearances,
+      context.items,
       context.fields
     ),
     allowsRowFallback: element => allowsRowHoverFallback(element, context.container),
@@ -238,7 +238,7 @@ const useHoverBinding = (input: {
   currentView: CurrentView
   enabled: boolean
 }) => {
-  const rowIds = input.currentView.appearances.ids
+  const rowIds = input.currentView.items.ids
   const enabledRef = useRef(input.enabled)
   const rowIdsRef = useRef(rowIds)
   const frameRef = useRef<number | undefined>(undefined)
@@ -248,12 +248,12 @@ const useHoverBinding = (input: {
 
   const rowContext = useCallback((): RowHoverContext => ({
     container: input.table.dom.container(),
-    appearances: input.currentView.appearances,
+    items: input.currentView.items,
     fields: input.currentView.fields,
     rowIds: rowIdsRef.current,
     rowIdAtPoint: input.table.rowHit.idAtPoint
   }), [
-    input.currentView.appearances,
+    input.currentView.items,
     input.currentView.fields,
     input.table
   ])
@@ -425,7 +425,7 @@ export const usePointer = (
     currentView.fields.all.find((field: { id: string }) => field.id === fieldId)
   ), [currentView.fields.all])
   const readCell = useCallback((cell: CellRef) => {
-    const recordId = currentView.appearances.get(cell.appearanceId)?.recordId
+    const recordId = currentView.items.get(cell.itemId)?.recordId
     const record = recordId
       ? editor.read.record.get(recordId)
       : undefined
@@ -436,7 +436,7 @@ export const usePointer = (
         ? getRecordFieldValue(record, cell.fieldId)
         : undefined
     }
-  }, [currentView.appearances, editor])
+  }, [currentView.items, editor])
 
   const selectCell = useCallback((
     cell: CellRef,
@@ -473,11 +473,11 @@ export const usePointer = (
     setDragTarget(
       cellFromPoint(
         point,
-        currentView.appearances,
+        currentView.items,
         currentView.fields
       ) ?? undefined
     )
-  }, [currentView.appearances, currentView.fields, setDragTarget, table.hover])
+  }, [currentView.items, currentView.fields, setDragTarget, table.hover])
 
   const resolveAutoPanTargets = useCallback(
     () => dragActive
@@ -497,11 +497,11 @@ export const usePointer = (
     value: unknown | undefined
   ) => {
     if (value === undefined) {
-      editor.active.cells.clear(cell)
+      editor.view.cells.clear(cell)
       return
     }
 
-    editor.active.cells.set(cell, value)
+    editor.view.cells.set(cell, value)
   }, [editor])
 
   const runPrimary = useCallback((
@@ -548,7 +548,7 @@ export const usePointer = (
     const currentSelection = table.gridSelection.get()
     const entries = fill.plan(
       currentSelection,
-      currentView.appearances,
+      currentView.items,
       currentView.fields,
       readCell
     )
@@ -562,7 +562,7 @@ export const usePointer = (
     })
     table.focus()
   }, [
-    currentView.appearances,
+    currentView.items,
     currentView.fields,
     readCell,
     table,
@@ -580,7 +580,7 @@ export const usePointer = (
     table.hover.clear(point)
     const target = cellFromPoint(
       point,
-      currentView.appearances,
+      currentView.items,
       currentView.fields
     ) ?? undefined
 
@@ -614,7 +614,7 @@ export const usePointer = (
     setDragTarget(target)
   }, [
     dataView.selection,
-    currentView.appearances,
+    currentView.items,
     currentView.fields,
     readGridSelection,
     setDragTarget,
@@ -760,7 +760,7 @@ export const usePointer = (
 
       const fillCell = cellFromTarget(
         event.target,
-        currentView.appearances,
+        currentView.items,
         currentView.fields,
         'fill-handle'
       )
@@ -772,7 +772,7 @@ export const usePointer = (
 
       const cell = cellFromTarget(
         event.target,
-        currentView.appearances,
+        currentView.items,
         currentView.fields,
         'cell'
       )
@@ -790,7 +790,7 @@ export const usePointer = (
       onBlankPointerDownRef.current(event)
     },
     [
-      currentView.appearances,
+      currentView.items,
       currentView.fields,
       startFill,
       startPress

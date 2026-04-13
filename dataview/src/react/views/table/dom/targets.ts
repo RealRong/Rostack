@@ -2,18 +2,18 @@ import type { CustomFieldId } from '@dataview/core/contracts'
 import type { Point } from '@shared/dom'
 import { targetElement } from '@shared/dom'
 import {
-  type AppearanceList,
+  type ItemList,
   type FieldList
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import {
   grid,
 } from '@dataview/table'
 import type {
-  AppearanceId
-} from '@dataview/engine/project'
+  ItemId
+} from '@dataview/engine'
 import type {
   CellRef
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 
 export type TableTargetKind =
   | 'cell'
@@ -65,23 +65,23 @@ const cellIdFromElement = (
 ): CellRef | null => (
   element?.dataset.rowId && element.dataset.fieldId
     ? {
-        appearanceId: element.dataset.rowId as AppearanceId,
+        itemId: element.dataset.rowId as ItemId,
         fieldId: element.dataset.fieldId as CustomFieldId
       }
     : null
 )
 
 const resolveCellId = (
-  appearances: Pick<AppearanceList, 'has'>,
+  items: Pick<ItemList, 'has'>,
   fields: Pick<FieldList, 'has'>,
   cell: CellRef | null
 ): CellRef | null => {
-  if (!cell || !grid.containsCell(appearances, fields, cell)) {
+  if (!cell || !grid.containsCell(items, fields, cell)) {
     return null
   }
 
   return {
-    appearanceId: cell.appearanceId,
+    itemId: cell.itemId,
     fieldId: cell.fieldId
   }
 }
@@ -92,28 +92,28 @@ export const hasTableTarget = (
 
 const cellFromElement = (
   element: Element | null,
-  appearances: Pick<AppearanceList, 'has'>,
+  items: Pick<ItemList, 'has'>,
   fields: Pick<FieldList, 'has'>
 ): CellRef | null => resolveCellId(
-  appearances,
+  items,
   fields,
   cellIdFromElement(element instanceof HTMLElement ? element : null)
 )
 
 export const cellFromTarget = (
   target: EventTarget | null,
-  appearances: Pick<AppearanceList, 'has'>,
+  items: Pick<ItemList, 'has'>,
   fields: Pick<FieldList, 'has'>,
   kind?: 'cell' | 'fill-handle'
 ): CellRef | null => cellFromElement(
   closestTableTargetElement(target, kind),
-  appearances,
+  items,
   fields
 )
 
 export const cellFromPoint = (
   point: Point | null,
-  appearances: Pick<AppearanceList, 'has'>,
+  items: Pick<ItemList, 'has'>,
   fields: Pick<FieldList, 'has'>,
   kind?: 'cell' | 'fill-handle'
 ): CellRef | null => {
@@ -126,7 +126,7 @@ export const cellFromPoint = (
       document.elementFromPoint(point.x, point.y),
       kind
     ),
-    appearances,
+    items,
     fields
   )
 }

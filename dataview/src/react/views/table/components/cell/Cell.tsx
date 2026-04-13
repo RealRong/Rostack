@@ -5,8 +5,8 @@ import {
   resolveFieldPrimaryAction
 } from '@dataview/core/field'
 import {
-  type AppearanceId
-} from '@dataview/engine/project'
+  type ItemId
+} from '@dataview/engine'
 import { useDataView } from '@dataview/react/dataview'
 import { fieldAttrs } from '@dataview/react/dom/field'
 import { useTableContext } from '../../context'
@@ -15,12 +15,12 @@ import { cn } from '@ui/utils'
 import { CellValue } from './CellValue'
 
 export interface CellProps {
-  appearanceId: AppearanceId
+  itemId: ItemId
   field: Field
 }
 
 const same = (left: CellProps, right: CellProps) => (
-  left.appearanceId === right.appearanceId
+  left.itemId === right.itemId
   && left.field === right.field
 )
 
@@ -31,20 +31,20 @@ const View = (props: CellProps) => {
   if (!currentView) {
     throw new Error('Table cell requires an active current view.')
   }
-  const showVerticalLinesStore = useMemo(() => engine.active.select(
+  const showVerticalLinesStore = useMemo(() => engine.view.select(
     state => state?.view.options.table.showVerticalLines ?? false
   ), [engine])
   const showVerticalLines = useStoreValue(showVerticalLinesStore)
 
   const cell = {
-    appearanceId: props.appearanceId,
+    itemId: props.itemId,
     fieldId: props.field.id
   }
   const cellRef = useCallback((node: HTMLDivElement | null) => {
     table.nodes.registerCell(cell, node)
-  }, [cell.appearanceId, cell.fieldId, table.nodes])
+  }, [cell.itemId, cell.fieldId, table.nodes])
   const cellRender = useKeyedStoreValue(table.cellRender, cell)
-  const recordId = currentView.appearances.get(props.appearanceId)?.recordId
+  const recordId = currentView.items.get(props.itemId)?.recordId
   const canQuickToggle = canQuickToggleFieldValue(props.field)
 
   const onQuickToggle = () => {
@@ -60,11 +60,11 @@ const View = (props: CellProps) => {
     table.gridSelection.set(cell)
     table.focus()
     if (action.value === undefined) {
-      engine.active.cells.clear(cell)
+      engine.view.cells.clear(cell)
       return
     }
 
-    engine.active.cells.set(cell, action.value)
+    engine.view.cells.set(cell, action.value)
   }
 
   if (!cellRender.exists || !recordId) {
@@ -76,11 +76,11 @@ const View = (props: CellProps) => {
       ref={cellRef}
       data-table-target="cell"
       data-table-cell="true"
-      data-row-id={props.appearanceId}
+      data-row-id={props.itemId}
       data-field-id={props.field.id}
       {...fieldAttrs({
         viewId: currentView.view.id,
-        appearanceId: props.appearanceId,
+        itemId: props.itemId,
         recordId,
         fieldId: props.field.id
       })}
@@ -126,7 +126,7 @@ const View = (props: CellProps) => {
           tabIndex={-1}
           data-table-target="fill-handle"
           data-table-fill-handle="true"
-          data-row-id={props.appearanceId}
+          data-row-id={props.itemId}
           data-field-id={props.field.id}
           className="absolute -bottom-1 -right-1 z-20 h-[9px] w-[9px] box-border cursor-ns-resize rounded-full border-2 border-primary bg-background transition-transform touch-none"
         />

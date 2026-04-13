@@ -1,6 +1,5 @@
 import type {
   Action,
-  Command,
   CustomField,
   DataDoc,
   EditTarget,
@@ -21,7 +20,10 @@ import {
   KANBAN_CARDS_PER_COLUMN_OPTIONS,
   type KanbanOptions
 } from '@dataview/core/contracts/kanban'
-import type { RowInsertTarget } from '@dataview/core/contracts/operations'
+import type {
+  BaseOperation,
+  RowInsertTarget
+} from '@dataview/core/contracts/operations'
 import type { TableOptions } from '@dataview/core/contracts/viewOptions'
 import {
   hasDocumentField,
@@ -72,38 +74,32 @@ import {
   sameShallowRecord,
   trimToUndefined
 } from '@shared/core'
-import { createIssue, hasValidationErrors, type IssueSource, type ValidationIssue } from '../command/issues'
-import { uniqueRecordIds } from '../command/shared'
-import { validateField } from '../command/field/validate'
-import { createPropertyId, createRecordId, createViewId } from '../command/entityId'
+import { createIssue, hasValidationErrors, type IssueSource, type ValidationIssue } from './issues'
+import { uniqueRecordIds } from './shared'
+import { validateField } from '../validation/field'
+import { createFieldId, createRecordId, createViewId } from './entityId'
 import {
   validateFieldExists,
   validateViewExists
 } from '../validation/entity'
 
-export interface LoweredCommand {
-  index: number
-  command: Command
-}
-
-export interface LowerActionResult {
+export interface PlannedActionResult {
   issues: ValidationIssue[]
-  commands: LoweredCommand[]
+  operations: BaseOperation[]
 }
 
 const DEFAULT_OPTION_NAME = 'Option'
 const sameRecordOrder = sameOrder<string>
 const sameFieldIds = sameOrder<string>
 
-const lowerResult = (
+const planResult = (
   issues: ValidationIssue[],
-  commands: Command[] = [],
-  index = 0
-): LowerActionResult => ({
+  operations: BaseOperation[] = []
+): PlannedActionResult => ({
   issues,
-  commands: hasValidationErrors(issues)
+  operations: hasValidationErrors(issues)
     ? []
-    : commands.map(command => ({ index, command }))
+    : operations
 })
 
 const sourceOf = (
@@ -148,24 +144,24 @@ const listTargetRecordIds = (
 
 const toViewPut = (
   view: View
-): Command => ({
-  type: 'view.put',
+): BaseOperation => ({
+  type: 'document.view.put',
   view
 })
 
 const toFieldPatch = (
   fieldId: string,
   patch: Partial<Omit<CustomField, 'id'>>
-): Command => ({
-  type: 'field.patch',
+): BaseOperation => ({
+  type: 'document.field.patch',
   fieldId,
   patch
 })
 
-const buildCreateFieldViewCommands = (
+const buildCreateFieldViewOps = (
   document: DataDoc,
   field: CustomField
-): Command[] => (
+): BaseOperation[] => (
   getDocumentViews(document)
     .filter(view => view.type === 'table')
     .flatMap(view => (
@@ -180,10 +176,10 @@ const buildCreateFieldViewCommands = (
     ))
 )
 
-const buildRemovedFieldViewCommands = (
+const buildRemovedFieldViewOps = (
   document: DataDoc,
   fieldId: string
-): Command[] => (
+): BaseOperation[] => (
   getDocumentViews(document)
     .flatMap(view => {
       const nextView = repairViewForRemovedField(view, fieldId)
@@ -193,10 +189,10 @@ const buildRemovedFieldViewCommands = (
     })
 )
 
-const buildConvertedFieldViewCommands = (
+const buildConvertedFieldViewOps = (
   document: DataDoc,
   field: CustomField
-): Command[] => (
+): BaseOperation[] => (
   getDocumentViews(document)
     .flatMap(view => {
       const nextView = repairViewForConvertedField(view, field)
@@ -206,10 +202,10 @@ const buildConvertedFieldViewCommands = (
     })
 )
 
-const buildRecordRemoveViewCommands = (
+const buildRecordRemoveViewOps = (
   document: DataDoc,
   recordIds: readonly RecordId[]
-): Command[] => {
+): BaseOperation[] => {
   const removedRecordIdSet = new Set(recordIds)
   return getDocumentViews(document).flatMap(view => {
     const nextOrders = normalizeViewOrders(document, view.orders.filter(recordId => !removedRecordIdSet.has(recordId)))
@@ -255,7 +251,7 @@ const lowerRecordCreate = (
   document: DataDoc,
   action: Extract<Action, { type: 'record.create' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const explicitRecordId = trimToUndefined(action.input.id)
   const issues = [
@@ -268,7 +264,7 @@ const lowerRecordCreate = (
   ]
 
   if (hasValidationErrors(issues)) {
-    return lowerResult(issues, [], index)
+    return planResult(issues)
   }
 
   const record = {
@@ -279,17 +275,17 @@ const lowerRecordCreate = (
     meta: action.input.meta
   } satisfies DataRecord
 
-  return lowerResult(issues, [{
-    type: 'record.insert',
+  return planResult(issues, [{
+    type: 'document.record.insert',
     records: [record]
-  }], index)
+  }])
 }
 
 const lowerRecordPatch = (
   document: DataDoc,
   action: Extract<Action, { type: 'record.patch' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const issues = validateTarget(document, source, action.target)
 
@@ -300,14 +296,13 @@ const lowerRecordPatch = (
     issues.push(createIssue(source, 'error', 'record.emptyPatch', 'record.patch values patch must be an object', 'patch.values'))
   }
 
-  return lowerResult(
+  return planResult(
     issues,
     listTargetRecordIds(action.target).map(recordId => ({
-      type: 'record.patch',
+      type: 'document.record.patch',
       recordId,
       patch: action.patch
-    })),
-    index
+    }))
   )
 }
 
@@ -315,7 +310,7 @@ const lowerRecordRemove = (
   document: DataDoc,
   action: Extract<Action, { type: 'record.remove' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const issues = validateBatchItems(source, action.recordIds, 'recordIds')
   action.recordIds.forEach((recordId, itemIndex) => {
@@ -323,16 +318,15 @@ const lowerRecordRemove = (
       issues.push(createIssue(source, 'error', 'record.notFound', `Unknown record: ${recordId}`, `recordIds.${itemIndex}`))
     }
   })
-  return lowerResult(
+  return planResult(
     issues,
     [
-      ...buildRecordRemoveViewCommands(document, action.recordIds),
+      ...buildRecordRemoveViewOps(document, action.recordIds),
       {
-        type: 'record.remove',
+        type: 'document.record.remove',
         recordIds: action.recordIds
       }
-    ],
-    index
+    ]
   )
 }
 
@@ -340,21 +334,23 @@ const lowerValueSet = (
   document: DataDoc,
   action: Extract<Action, { type: 'value.set' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
-  const issues = validateTarget(document, source, action.target)
+  const issues = [
+    ...validateTarget(document, source, action.target),
+    ...validateFieldExists(document, source, action.field, 'field')
+  ]
   if (!isNonEmptyString(action.field)) {
     issues.push(createIssue(source, 'error', 'value.invalidField', 'value.set requires a non-empty field', 'field'))
   }
-  return lowerResult(
+  return planResult(
     issues,
     listTargetRecordIds(action.target).map(recordId => ({
-      type: 'value.set',
+      type: 'document.value.set',
       recordId,
       field: action.field,
       value: action.value
-    })),
-    index
+    }))
   )
 }
 
@@ -362,20 +358,19 @@ const lowerValuePatch = (
   document: DataDoc,
   action: Extract<Action, { type: 'value.patch' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const issues = validateTarget(document, source, action.target)
   if (!Object.keys(action.patch).length) {
     issues.push(createIssue(source, 'error', 'value.emptyPatch', 'value.patch patch cannot be empty', 'patch'))
   }
-  return lowerResult(
+  return planResult(
     issues,
     listTargetRecordIds(action.target).map(recordId => ({
-      type: 'value.patch',
+      type: 'document.value.patch',
       recordId,
       patch: action.patch
-    })),
-    index
+    }))
   )
 }
 
@@ -383,20 +378,22 @@ const lowerValueClear = (
   document: DataDoc,
   action: Extract<Action, { type: 'value.clear' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
-  const issues = validateTarget(document, source, action.target)
+  const issues = [
+    ...validateTarget(document, source, action.target),
+    ...validateFieldExists(document, source, action.field, 'field')
+  ]
   if (!isNonEmptyString(action.field)) {
     issues.push(createIssue(source, 'error', 'value.invalidField', 'value.clear requires a non-empty field', 'field'))
   }
-  return lowerResult(
+  return planResult(
     issues,
     listTargetRecordIds(action.target).map(recordId => ({
-      type: 'value.clear',
+      type: 'document.value.clear',
       recordId,
       field: action.field
-    })),
-    index
+    }))
   )
 }
 
@@ -466,7 +463,7 @@ const lowerFieldCreate = (
   document: DataDoc,
   action: Extract<Action, { type: 'field.create' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const explicitFieldId = trimToUndefined(action.input.id)
   const issues: ValidationIssue[] = []
@@ -479,27 +476,26 @@ const lowerFieldCreate = (
   }
 
   if (hasValidationErrors(issues)) {
-    return lowerResult(issues, [], index)
+    return planResult(issues)
   }
 
   const field = createDefaultCustomField({
-    id: explicitFieldId || createPropertyId(),
+    id: explicitFieldId || createFieldId(),
     name: action.input.name,
     kind: action.input.kind ?? 'text',
     meta: action.input.meta
   })
 
   const fieldIssues = validateField(document, source, field, 'input')
-  return lowerResult(
+  return planResult(
     [...issues, ...fieldIssues],
     [
       {
-        type: 'field.put',
+        type: 'document.field.put',
         field
       },
-      ...buildCreateFieldViewCommands(document, field)
-    ],
-    index
+      ...buildCreateFieldViewOps(document, field)
+    ]
   )
 }
 
@@ -507,18 +503,18 @@ const lowerFieldPatch = (
   document: DataDoc,
   action: Extract<Action, { type: 'field.patch' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const issues = validateFieldExists(document, source, action.fieldId)
   const field = getDocumentCustomFieldById(document, action.fieldId)
 
   if (!field || hasValidationErrors(issues)) {
-    return lowerResult(issues, [], index)
+    return planResult(issues)
   }
 
   if (!Object.keys(action.patch).length) {
     issues.push(createIssue(source, 'error', 'field.invalid', 'field.patch patch cannot be empty', 'patch'))
-    return lowerResult(issues, [], index)
+    return planResult(issues)
   }
 
   const nextField = {
@@ -527,14 +523,14 @@ const lowerFieldPatch = (
   } as CustomField
   issues.push(...validateField(document, source, nextField, 'patch'))
 
-  return lowerResult(issues, [toFieldPatch(action.fieldId, action.patch)], index)
+  return planResult(issues, [toFieldPatch(action.fieldId, action.patch)])
 }
 
 const lowerFieldReplace = (
   document: DataDoc,
   action: Extract<Action, { type: 'field.replace' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const issues = validateFieldExists(document, source, action.fieldId)
   const field = {
@@ -543,22 +539,22 @@ const lowerFieldReplace = (
   } satisfies CustomField
 
   issues.push(...validateField(document, source, field, 'field'))
-  return lowerResult(issues, [{
-    type: 'field.put',
+  return planResult(issues, [{
+    type: 'document.field.put',
     field
-  }], index)
+  }])
 }
 
 const lowerFieldConvert = (
   document: DataDoc,
   action: Extract<Action, { type: 'field.convert' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const issues = validateFieldExists(document, source, action.fieldId)
   const field = getDocumentCustomFieldById(document, action.fieldId)
   if (!field || hasValidationErrors(issues)) {
-    return lowerResult(issues, [], index)
+    return planResult(issues)
   }
 
   const patch = createFieldConvertPatch(field, action.input)
@@ -568,13 +564,12 @@ const lowerFieldConvert = (
   } as CustomField
   issues.push(...validateField(document, source, nextField, 'input'))
 
-  return lowerResult(
+  return planResult(
     issues,
     [
       toFieldPatch(action.fieldId, patch),
-      ...buildConvertedFieldViewCommands(document, nextField)
-    ],
-    index
+      ...buildConvertedFieldViewOps(document, nextField)
+    ]
   )
 }
 
@@ -582,15 +577,15 @@ const lowerFieldDuplicate = (
   document: DataDoc,
   action: Extract<Action, { type: 'field.duplicate' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const issues = validateFieldExists(document, source, action.fieldId)
   const sourceField = getDocumentCustomFieldById(document, action.fieldId)
   if (!sourceField || hasValidationErrors(issues)) {
-    return lowerResult(issues, [], index)
+    return planResult(issues)
   }
 
-  const nextFieldId = createPropertyId()
+  const nextFieldId = createFieldId()
   const nextField: CustomField = {
     ...structuredClone(sourceField),
     id: nextFieldId,
@@ -598,10 +593,10 @@ const lowerFieldDuplicate = (
   }
   issues.push(...validateField(document, source, nextField, 'field'))
 
-  const recordCommands: Command[] = getDocumentRecords(document).flatMap(record => (
+  const recordOps: BaseOperation[] = getDocumentRecords(document).flatMap(record => (
     Object.prototype.hasOwnProperty.call(record.values, sourceField.id)
       ? [{
-          type: 'value.set' as const,
+          type: 'document.value.set' as const,
           recordId: record.id,
           field: nextFieldId,
           value: structuredClone(record.values[sourceField.id])
@@ -609,7 +604,7 @@ const lowerFieldDuplicate = (
       : []
   ))
 
-  const viewCommands: Command[] = getDocumentViews(document).flatMap(view => {
+  const viewOps: BaseOperation[] = getDocumentViews(document).flatMap(view => {
     const sourceFieldIds = view.display.fields
     const currentFieldIds = view.type === 'table' && !sourceFieldIds.includes(nextFieldId)
       ? [...sourceFieldIds, nextFieldId]
@@ -640,18 +635,17 @@ const lowerFieldDuplicate = (
     })]
   })
 
-  return lowerResult(
+  return planResult(
     issues,
     [
       {
-        type: 'field.put',
+        type: 'document.field.put',
         field: nextField
       },
-      ...buildCreateFieldViewCommands(document, nextField),
-      ...recordCommands,
-      ...viewCommands
-    ],
-    index
+      ...buildCreateFieldViewOps(document, nextField),
+      ...recordOps,
+      ...viewOps
+    ]
   )
 }
 
@@ -659,20 +653,20 @@ const lowerFieldOptionCreate = (
   document: DataDoc,
   action: Extract<Action, { type: 'field.option.create' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const context = requireOptionField(document, source, action.fieldId)
   if (!context.field || !context.options || hasValidationErrors(context.issues)) {
-    return lowerResult(context.issues, [], index)
+    return planResult(context.issues)
   }
 
   const explicitName = trimToUndefined(action.input?.name)
   if (action.input?.name !== undefined && !explicitName) {
     context.issues.push(createIssue(source, 'error', 'field.invalid', 'Field option name must be a non-empty string', 'input.name'))
-    return lowerResult(context.issues, [], index)
+    return planResult(context.issues)
   }
   if (explicitName && findFieldOptionByName(context.options, explicitName)) {
-    return lowerResult(context.issues, [], index)
+    return planResult(context.issues)
   }
 
   const nextOption = createNextFieldOption(
@@ -681,18 +675,18 @@ const lowerFieldOptionCreate = (
     explicitName ?? createOptionName(context.options)
   )
   const patch = replaceFieldOptions(context.field, [...context.options, nextOption]) as Partial<Omit<CustomField, 'id'>>
-  return lowerResult(context.issues, [toFieldPatch(action.fieldId, patch)], index)
+  return planResult(context.issues, [toFieldPatch(action.fieldId, patch)])
 }
 
 const lowerFieldOptionReorder = (
   document: DataDoc,
   action: Extract<Action, { type: 'field.option.reorder' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const context = requireOptionField(document, source, action.fieldId)
   if (!context.field || !context.options || hasValidationErrors(context.issues)) {
-    return lowerResult(context.issues, [], index)
+    return planResult(context.issues)
   }
 
   const optionMap = new Map(context.options.map(option => [option.id, option] as const))
@@ -712,46 +706,46 @@ const lowerFieldOptionReorder = (
     nextOptions.length === context.options.length
     && nextOptions.every((option, optionIndex) => option?.id === context.options[optionIndex]?.id)
   ) {
-    return lowerResult(context.issues, [], index)
+    return planResult(context.issues)
   }
 
-  return lowerResult(context.issues, [toFieldPatch(action.fieldId, replaceFieldOptions(context.field, nextOptions) as Partial<Omit<CustomField, 'id'>>)], index)
+  return planResult(context.issues, [toFieldPatch(action.fieldId, replaceFieldOptions(context.field, nextOptions) as Partial<Omit<CustomField, 'id'>>)])
 }
 
 const lowerFieldOptionUpdate = (
   document: DataDoc,
   action: Extract<Action, { type: 'field.option.update' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const context = requireOptionField(document, source, action.fieldId)
   if (!context.field || !context.options || hasValidationErrors(context.issues)) {
-    return lowerResult(context.issues, [], index)
+    return planResult(context.issues)
   }
 
   const optionId = trimToUndefined(action.optionId)
   if (!optionId) {
     context.issues.push(createIssue(source, 'error', 'field.invalid', 'Field option id must be a non-empty string', 'optionId'))
-    return lowerResult(context.issues, [], index)
+    return planResult(context.issues)
   }
 
   const target = context.options.find(option => option.id === optionId)
   if (!target) {
     context.issues.push(createIssue(source, 'error', 'field.invalid', `Unknown field option: ${optionId}`, 'optionId'))
-    return lowerResult(context.issues, [], index)
+    return planResult(context.issues)
   }
 
   const nextName = trimToUndefined(action.patch.name)
   if (action.patch.name !== undefined) {
     if (!nextName) {
       context.issues.push(createIssue(source, 'error', 'field.invalid', 'Field option name must be a non-empty string', 'patch.name'))
-      return lowerResult(context.issues, [], index)
+      return planResult(context.issues)
     }
 
     const conflicting = findFieldOptionByName(context.options, nextName)
     if (conflicting && conflicting.id !== optionId) {
       context.issues.push(createIssue(source, 'error', 'field.invalid', `Duplicate field option name: ${nextName}`, 'patch.name'))
-      return lowerResult(context.issues, [], index)
+      return planResult(context.issues)
     }
   }
 
@@ -770,7 +764,7 @@ const lowerFieldOptionUpdate = (
   }
 
   if (sameJsonValue(nextOption, target)) {
-    return lowerResult(context.issues, [], index)
+    return planResult(context.issues)
   }
 
   const patch = replaceFieldOptions(
@@ -778,28 +772,28 @@ const lowerFieldOptionUpdate = (
     context.options.map(option => option.id === optionId ? nextOption : option)
   ) as Partial<Omit<CustomField, 'id'>>
 
-  return lowerResult(context.issues, [toFieldPatch(action.fieldId, patch)], index)
+  return planResult(context.issues, [toFieldPatch(action.fieldId, patch)])
 }
 
 const lowerFieldOptionRemove = (
   document: DataDoc,
   action: Extract<Action, { type: 'field.option.remove' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const context = requireOptionField(document, source, action.fieldId)
   if (!context.field || !context.options || hasValidationErrors(context.issues)) {
-    return lowerResult(context.issues, [], index)
+    return planResult(context.issues)
   }
 
   const optionId = trimToUndefined(action.optionId)
   if (!optionId) {
     context.issues.push(createIssue(source, 'error', 'field.invalid', 'Field option id must be a non-empty string', 'optionId'))
-    return lowerResult(context.issues, [], index)
+    return planResult(context.issues)
   }
   if (!context.options.some(option => option.id === optionId)) {
     context.issues.push(createIssue(source, 'error', 'field.invalid', `Unknown field option: ${optionId}`, 'optionId'))
-    return lowerResult(context.issues, [], index)
+    return planResult(context.issues)
   }
 
   const patch = {
@@ -812,13 +806,13 @@ const lowerFieldOptionRemove = (
       : {})
   } as Partial<Omit<CustomField, 'id'>>
 
-  const valueCommands: Command[] = []
+  const valueOps: BaseOperation[] = []
 
   if (context.field.kind === 'select' || context.field.kind === 'status') {
     getDocumentRecords(document).forEach(record => {
       if (record.values[context.field.id] === optionId) {
-        valueCommands.push({
-          type: 'value.clear',
+        valueOps.push({
+          type: 'document.value.clear',
           recordId: record.id,
           field: context.field.id
         })
@@ -836,16 +830,16 @@ const lowerFieldOptionRemove = (
         return
       }
 
-      valueCommands.push(
+      valueOps.push(
         nextValue.length
           ? {
-              type: 'value.set',
+              type: 'document.value.set',
               recordId: record.id,
               field: context.field.id,
               value: nextValue
             }
           : {
-              type: 'value.clear',
+              type: 'document.value.clear',
               recordId: record.id,
               field: context.field.id
             }
@@ -853,26 +847,25 @@ const lowerFieldOptionRemove = (
     })
   }
 
-  return lowerResult(context.issues, [toFieldPatch(action.fieldId, patch), ...valueCommands], index)
+  return planResult(context.issues, [toFieldPatch(action.fieldId, patch), ...valueOps])
 }
 
 const lowerFieldRemove = (
   document: DataDoc,
   action: Extract<Action, { type: 'field.remove' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const issues = validateFieldExists(document, source, action.fieldId)
-  return lowerResult(
+  return planResult(
     issues,
     [
-      ...buildRemovedFieldViewCommands(document, action.fieldId),
+      ...buildRemovedFieldViewOps(document, action.fieldId),
       {
-        type: 'field.remove',
+        type: 'document.field.remove',
         fieldId: action.fieldId
       }
-    ],
-    index
+    ]
   )
 }
 
@@ -1328,7 +1321,7 @@ const lowerViewCreate = (
   document: DataDoc,
   action: Extract<Action, { type: 'view.create' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const explicitViewId = trimToUndefined(action.input.id)
   const preferredName = trimToUndefined(action.input.name) ?? ''
@@ -1344,7 +1337,7 @@ const lowerViewCreate = (
     issues.push(createIssue(source, 'error', 'view.invalid', 'View name must be a non-empty string', 'input.name'))
   }
   if (hasValidationErrors(issues)) {
-    return lowerResult(issues, [], index)
+    return planResult(issues)
   }
 
   const fields = getDocumentFields(document)
@@ -1370,46 +1363,45 @@ const lowerViewCreate = (
   } satisfies View)
 
   issues.push(...validateView(document, source, view))
-  return lowerResult(issues, [toViewPut(view)], index)
+  return planResult(issues, [toViewPut(view)])
 }
 
 const lowerViewPatch = (
   document: DataDoc,
   action: Extract<Action, { type: 'view.patch' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const issues = validateViewExists(document, source, action.viewId)
   const view = getDocumentViewById(document, action.viewId)
   if (!view || hasValidationErrors(issues)) {
-    return lowerResult(issues, [], index)
+    return planResult(issues)
   }
 
   const nextView = normalizeView(document, applyViewPatch(view, action.patch))
   if (sameJsonValue(nextView, view)) {
-    return lowerResult(issues, [], index)
+    return planResult(issues)
   }
 
   issues.push(...validateView(document, source, nextView))
-  return lowerResult(issues, [toViewPut(nextView)], index)
+  return planResult(issues, [toViewPut(nextView)])
 }
 
 const lowerViewOpen = (
   document: DataDoc,
   action: Extract<Action, { type: 'view.open' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const issues = validateViewExists(document, source, action.viewId)
-  return lowerResult(
+  return planResult(
     issues,
     getDocumentViewById(document, action.viewId)
       ? [{
-          type: 'activeView.set',
+          type: 'document.activeView.set',
           viewId: action.viewId
         }]
-      : [],
-    index
+      : []
   )
 }
 
@@ -1417,36 +1409,36 @@ const lowerViewRemove = (
   document: DataDoc,
   action: Extract<Action, { type: 'view.remove' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const issues = validateViewExists(document, source, action.viewId)
-  return lowerResult(issues, [{
-    type: 'view.remove',
+  return planResult(issues, [{
+    type: 'document.view.remove',
     viewId: action.viewId
-  }], index)
+  }])
 }
 
 const lowerExternalBump = (
   _document: DataDoc,
   action: Extract<Action, { type: 'external.bumpVersion' }>,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   const source = sourceOf(index, action)
   const issues = isNonEmptyString(action.source)
     ? []
     : [createIssue(source, 'error', 'external.invalidSource', 'external.bumpVersion requires a non-empty source', 'source')]
 
-  return lowerResult(issues, [{
-    type: 'external.bumpVersion',
+  return planResult(issues, [{
+    type: 'external.version.bump',
     source: action.source
-  }], index)
+  }])
 }
 
-export const lowerAction = (
+export const planWriteAction = (
   document: DataDoc,
   action: Action,
   index: number
-): LowerActionResult => {
+): PlannedActionResult => {
   switch (action.type) {
     case 'record.create':
       return lowerRecordCreate(document, action, index)

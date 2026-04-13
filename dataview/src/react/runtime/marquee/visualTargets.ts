@@ -1,4 +1,4 @@
-import type { AppearanceId } from '@dataview/engine/project'
+import type { ItemId } from '@dataview/engine'
 import {
   scrollMetrics,
   type ScrollNode
@@ -23,12 +23,12 @@ interface FrozenSnapshot {
 }
 
 export interface VisualTargetRegistry {
-  node(id: AppearanceId): HTMLElement | null
-  nodes(ids: readonly AppearanceId[]): readonly HTMLElement[]
-  register(id: AppearanceId, node: HTMLElement | null): void
-  freeze(id: AppearanceId, node: HTMLElement): void
+  node(id: ItemId): HTMLElement | null
+  nodes(ids: readonly ItemId[]): readonly HTMLElement[]
+  register(id: ItemId, node: HTMLElement | null): void
+  freeze(id: ItemId, node: HTMLElement): void
   clearFrozen(): void
-  getTargets(order: readonly AppearanceId[]): readonly SelectionTarget[]
+  getTargets(order: readonly ItemId[]): readonly SelectionTarget[]
 }
 
 const readScrollAnchor = (
@@ -84,11 +84,11 @@ const projectFrozenTarget = (snapshot: FrozenSnapshot): SelectionTarget => {
 
 export const createVisualTargetRegistry = (options?: {
   resolveScrollTargets?: () => AutoPanTargets | null
-  freezeSnapshot?: (id: AppearanceId, node: HTMLElement) => unknown
+  freezeSnapshot?: (id: ItemId, node: HTMLElement) => unknown
   projectSnapshot?: (snapshot: unknown) => SelectionTarget
 }): VisualTargetRegistry => {
-  const liveNodes = new Map<AppearanceId, HTMLElement>()
-  const frozenTargets = new Map<AppearanceId, unknown>()
+  const liveNodes = new Map<ItemId, HTMLElement>()
+  const frozenTargets = new Map<ItemId, unknown>()
 
   return {
     node: id => liveNodes.get(id) ?? null,

@@ -2,80 +2,77 @@ import type {
   Action,
   DataDoc
 } from '@dataview/core/contracts'
-import {
-  cloneDocument
-} from '@dataview/core/document'
+import { cloneDocument } from '@dataview/core/document'
 import type {
   CreateEngineOptions,
   Engine
-} from './public'
+} from '../contracts/public'
+import { createPerformanceRuntime } from '../state/performance'
 import {
-  createPerfRuntime
-} from '../perf/runtime'
-import {
-  createFieldsEngineApi,
-  createRecordsEngineApi,
-  createActiveEngineApi,
-  createViewsEngineApi
-} from '../facade'
+  createFieldsApi,
+  createRecordsApi,
+  createViewApi,
+  createViewsApi
+} from '../services'
 import {
   createInitialState,
   createStore
-} from '../store/state'
+} from '../state/store'
 import {
-  createReadApi
-} from '../store/read'
+  createDocumentReadApi
+} from '../state/read'
 import {
-  resolveActionBatch
-} from '../command'
+  planActions
+} from '../write/resolve'
 import { createWriteControl } from '../write/commit'
 
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const historyCapacity = Math.max(0, options.history?.capacity ?? 100)
   const initialDocument = cloneDocument(options.document)
-  const perf = createPerfRuntime(options.perf)
-  const capturePerf = Boolean(options.perf?.trace || options.perf?.stats)
+  const performance = createPerformanceRuntime(options.performance)
+  const capturePerformance = Boolean(options.performance?.traces || options.performance?.stats)
   const store = createStore(createInitialState({
     doc: initialDocument,
     historyCap: historyCapacity,
-    capturePerf
+    capturePerf: capturePerformance
   }))
-  const read = createReadApi(store)
+  const read = createDocumentReadApi(store)
   const write = createWriteControl({
     store,
-    perf,
-    capturePerf
+    perf: performance,
+    capturePerf: capturePerformance
   })
   const dispatch = (action: Action | readonly Action[]) => write.run(
-    resolveActionBatch({
+    planActions({
       document: store.get().doc,
       actions: Array.isArray(action)
         ? action
         : [action]
     })
   )
-  const fields = createFieldsEngineApi({
+  const fields = createFieldsApi({
     read,
     dispatch
   })
-  const records = createRecordsEngineApi({
+  const records = createRecordsApi({
     read,
     dispatch
   })
-  const active = createActiveEngineApi({
+  const view = createViewApi({
     store,
     read,
     dispatch,
     fields,
     records
   })
-  const views = createViewsEngineApi({
+  const views = createViewsApi({
     read,
     dispatch
   })
 
-  const engine: Engine = {
-    active,
+  return {
+    read,
+    view,
     views,
     fields,
     records,
@@ -94,14 +91,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       redo: write.history.redo,
       clear: write.history.clear
     },
-    perf: perf.api,
-    read
+    performance: performance.api,
+    dispatch
   }
-
-  return engine
 }
-
-export type {
-  CreateEngineOptions,
-  Engine
-} from './public'

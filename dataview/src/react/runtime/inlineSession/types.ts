@@ -1,10 +1,10 @@
 import type { ViewId } from '@dataview/core/contracts'
-import type { AppearanceId } from '@dataview/engine/project'
+import type { ItemId } from '@dataview/engine'
 import type { ValueStore } from '@shared/core'
 
 export interface InlineSessionTarget {
   viewId: ViewId
-  appearanceId: AppearanceId
+  itemId: ItemId
 }
 
 export type InlineSessionExitReason =

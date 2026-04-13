@@ -1,13 +1,13 @@
 import type { Field, FieldId } from '@dataview/core/contracts'
 import { resolveFieldValueBehavior } from '@dataview/core/field'
 import type {
-  AppearanceId,
-  AppearanceList,
+  ItemId,
+  ItemList,
   FieldList
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import type {
   CellRef
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import type { GridSelection } from './gridSelection'
 import { range } from './range'
 
@@ -43,7 +43,7 @@ export type TableGridKeyAction =
     }
   | {
       kind: 'clear-cells'
-      appearanceIds: readonly AppearanceId[]
+      itemIds: readonly ItemId[]
       fieldIds: readonly FieldId[]
     }
 
@@ -63,7 +63,7 @@ export const isSelectAll = (input: TableKeyInput) => (
 export const gridKeyAction = (input: {
   key: TableKeyInput
   selection: GridSelection
-  appearances: Pick<AppearanceList, 'indexOf' | 'ids'>
+  items: Pick<ItemList, 'indexOf' | 'ids'>
   fields: Pick<FieldList, 'indexOf' | 'ids'>
   read: TableKeyboardRead
 }): TableGridKeyAction | null => {
@@ -122,7 +122,7 @@ export const gridKeyAction = (input: {
       const currentRange = range.from(input.selection)
       return {
         kind: 'clear-cells',
-        appearanceIds: currentRange ? range.appearances(currentRange, input.appearances) : [],
+        itemIds: currentRange ? range.items(currentRange, input.items) : [],
         fieldIds: currentRange ? range.fields(currentRange, input.fields) : []
       }
     }

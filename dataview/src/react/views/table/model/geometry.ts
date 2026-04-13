@@ -5,10 +5,10 @@ import {
   type Point,
   type Rect
 } from '@shared/dom'
-import type { AppearanceId } from '@dataview/engine/project'
+import type { ItemId } from '@dataview/engine'
 
 export interface TableRowRect {
-  rowId: AppearanceId
+  rowId: ItemId
   left: number
   top: number
   right: number
@@ -17,19 +17,19 @@ export interface TableRowRect {
 }
 
 export interface TableRowGapHit {
-  beforeId: AppearanceId | null
+  beforeId: ItemId | null
   top: number
 }
 
 export interface TableRowRangeHit {
-  topRowId: AppearanceId
-  bottomRowId: AppearanceId
+  topRowId: ItemId
+  bottomRowId: ItemId
 }
 
 export const rowIdAtPoint = (input: {
   rects: readonly TableRowRect[]
   point: Point
-}): AppearanceId | null => (
+}): ItemId | null => (
   input.rects.find(rect => containsPoint(rect, input.point))?.rowId ?? null
 )
 
@@ -42,8 +42,8 @@ export const rowRangeInBox = (input: {
   }
 
   const box = normalizeRect(input.box)
-  let topRowId: AppearanceId | null = null
-  let bottomRowId: AppearanceId | null = null
+  let topRowId: ItemId | null = null
+  let bottomRowId: ItemId | null = null
 
   for (const rect of input.rects) {
     if (!intersects(box, rect)) {

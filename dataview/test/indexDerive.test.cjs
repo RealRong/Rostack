@@ -4,7 +4,7 @@ const assert = require('node:assert/strict')
 const {
   createIndexState,
   deriveIndex
-} = require('../.tmp/group-test-dist/engine/derive/index.js')
+} = require('../.tmp/group-test-dist/engine/index/runtime.js')
 
 const TITLE_FIELD_ID = 'title'
 const FIELD_STATUS = 'status'

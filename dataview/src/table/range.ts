@@ -1,11 +1,11 @@
 import type {
-  AppearanceList,
+  ItemList,
   FieldList
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import type {
   CellRef
-} from '@dataview/engine/project'
-import { sameCellRef } from '@dataview/engine/project'
+} from '@dataview/engine'
+import { sameCellRef } from '@dataview/engine'
 import {
   grid
 } from './grid'
@@ -41,11 +41,11 @@ const equal = (
 
 const edges = (
   currentRange: TableCellRange,
-  appearances: Pick<AppearanceList, 'indexOf'>,
+  items: Pick<ItemList, 'indexOf'>,
   fields: Pick<FieldList, 'indexOf'>
 ): TableCellRangeEdges | undefined => {
-  const anchorRowIndex = grid.appearanceIndex(appearances, currentRange.anchor.appearanceId)
-  const focusRowIndex = grid.appearanceIndex(appearances, currentRange.focus.appearanceId)
+  const anchorRowIndex = grid.appearanceIndex(items, currentRange.anchor.itemId)
+  const focusRowIndex = grid.appearanceIndex(items, currentRange.focus.itemId)
   const anchorFieldIndex = grid.fieldIndex(fields, currentRange.anchor.fieldId)
   const focusFieldIndex = grid.fieldIndex(fields, currentRange.focus.fieldId)
 
@@ -66,10 +66,10 @@ const edges = (
   }
 }
 
-const appearances = (
+const items = (
   currentRange: TableCellRange,
-  source: Pick<AppearanceList, 'indexOf' | 'ids'>
-) => grid.appearancesBetween(source, currentRange.anchor.appearanceId, currentRange.focus.appearanceId)
+  source: Pick<ItemList, 'indexOf' | 'ids'>
+) => grid.appearancesBetween(source, currentRange.anchor.itemId, currentRange.focus.itemId)
 
 const fields = (
   currentRange: TableCellRange,
@@ -78,12 +78,12 @@ const fields = (
 
 const hasCell = (
   currentRange: TableCellRange,
-  appearancesSource: Pick<AppearanceList, 'indexOf'>,
+  appearancesSource: Pick<ItemList, 'indexOf'>,
   propertiesSource: Pick<FieldList, 'indexOf'>,
   cell: CellRef
 ) => {
   const currentEdges = edges(currentRange, appearancesSource, propertiesSource)
-  const rowIndex = grid.appearanceIndex(appearancesSource, cell.appearanceId)
+  const rowIndex = grid.appearanceIndex(appearancesSource, cell.itemId)
   const fieldIndex = grid.fieldIndex(propertiesSource, cell.fieldId)
   return currentEdges !== undefined
     && rowIndex !== undefined
@@ -96,7 +96,7 @@ const hasCell = (
 
 const isSingle = (
   currentRange: TableCellRange,
-  appearancesSource: Pick<AppearanceList, 'indexOf'>,
+  appearancesSource: Pick<ItemList, 'indexOf'>,
   propertiesSource: Pick<FieldList, 'indexOf'>
 ) => {
   const currentEdges = edges(currentRange, appearancesSource, propertiesSource)
@@ -111,7 +111,7 @@ export const range = {
   from,
   equal,
   edges,
-  appearances,
+  items,
   fields,
   hasCell,
   isSingle

@@ -13,14 +13,14 @@ export const GroupFieldPickerPanel = () => {
   const engine = dataView.engine
   const document = useDataViewValue(dataView => dataView.engine.read.document)
   const currentView = useDataViewValue(
-    dataView => dataView.engine.active.view
+    dataView => dataView.engine.view.config
   )
   const groupProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
+    dataView => dataView.engine.view.state,
     state => state?.query.group
   )
   const currentViewDomain = currentView
-    ? engine.active
+    ? engine.view
     : undefined
   const router = useViewSettings()
   const fields = getDocumentFields(document)

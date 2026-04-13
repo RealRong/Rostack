@@ -5,7 +5,7 @@ import {
   useMemo,
   type ReactNode
 } from 'react'
-import type { ActiveKanbanState } from '@dataview/engine'
+import type { KanbanState } from '@dataview/engine'
 import {
   type KanbanActiveState,
   type KanbanRuntime,
@@ -14,7 +14,7 @@ import {
 
 export interface KanbanContextValue {
   active: KanbanActiveState
-  extra: ActiveKanbanState
+  extra: KanbanState
   runtime: KanbanRuntime
 }
 
@@ -24,7 +24,7 @@ const KanbanContext = createContext<KanbanContextValue | null>(null)
 
 export const KanbanProvider = (props: {
   active: KanbanActiveState
-  extra: ActiveKanbanState
+  extra: KanbanState
   columnWidth: number
   columnMinHeight: number
   children?: ReactNode

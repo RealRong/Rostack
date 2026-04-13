@@ -1,6 +1,6 @@
 import { GripVertical } from 'lucide-react'
 import type { PointerEvent, ReactNode } from 'react'
-import type { AppearanceId } from '@dataview/engine/project'
+import type { ItemId } from '@dataview/engine'
 import {
   type RowRailState,
   type RowRailStateInput
@@ -25,7 +25,7 @@ export const TABLE_SELECTION_INSET = (
 export type { RowRailState, RowRailStateInput }
 
 export interface RowRailProps {
-  rowId: AppearanceId
+  rowId: ItemId
   selected: boolean
   state: RowRailState
   marqueeActive: boolean
@@ -97,7 +97,7 @@ export const RowSelectionButton = (props: RowSelectionButtonProps) => {
 }
 
 export interface TableLeadingRailProps {
-  rowId?: AppearanceId
+  rowId?: ItemId
   className?: string
   leading?: ReactNode
   selection?: ReactNode

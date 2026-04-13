@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { BucketSort, Field, ViewGroup } from '@dataview/core/contracts'
-import type { ViewGroupProjection } from '@dataview/engine/project'
+import type { ViewGroupProjection } from '@dataview/engine'
 import {
   useDataView,
   useDataViewValue
@@ -96,14 +96,14 @@ export const GroupingPanel = () => {
   const engine = dataView.engine
   const router = useViewSettings()
   const currentView = useDataViewValue(
-    dataView => dataView.engine.active.view
+    dataView => dataView.engine.view.config
   )
   const group = useDataViewValue(
-    dataView => dataView.engine.active.state,
+    dataView => dataView.engine.view.state,
     state => state?.query.group
   ) ?? EMPTY_GROUP
   const currentViewDomain = currentView
-    ? engine.active
+    ? engine.view
     : undefined
   const groupField = group.field
   const [intervalDraft, setIntervalDraft] = useState(

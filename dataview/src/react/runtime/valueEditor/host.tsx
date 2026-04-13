@@ -202,11 +202,11 @@ export const FieldValueEditorHost = () => {
 
   const writeValue = (value: unknown | undefined) => {
     if (value === undefined) {
-      engine.records.field.clear(record.id, valueField.id)
+      engine.records.values.clear(record.id, valueField.id)
       return
     }
 
-    engine.records.field.set(record.id, valueField.id, value)
+    engine.records.values.set(record.id, valueField.id, value)
   }
 
   const applyInput = (input: EditInput) => {
@@ -279,7 +279,7 @@ export const FieldValueEditorHost = () => {
             }}
           >
             <FieldValueEditor
-              key={`${session.field.viewId}\u0000${session.field.appearanceId}\u0000${session.field.fieldId}\u0000${valueField.kind}`}
+              key={`${session.field.viewId}\u0000${session.field.itemId}\u0000${session.field.fieldId}\u0000${valueField.kind}`}
               ref={editorRef}
               field={valueField}
               value={isTitleFieldId(valueField.id)

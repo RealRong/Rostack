@@ -13,11 +13,11 @@ import {
 } from '../../../index/group'
 import type {
   SectionKey
-} from '../../readModels'
+} from '../../../contracts/public'
 import type {
   SectionNodeState,
   SectionState
-} from '../state'
+} from '../../../contracts/internal'
 
 export const ROOT_SECTION_KEY = 'root' as SectionKey
 
@@ -50,11 +50,11 @@ export const sameSectionNode = (
   && left.color === right.color
   && left.visible === right.visible
   && left.collapsed === right.collapsed
-  && sameRecordIds(left.ids, right.ids)
+  && sameRecordIds(left.recordIds, right.recordIds)
   && sameBucket(left.bucket, right.bucket)
 
 export const visibleOf = (
-  ids: readonly RecordId[],
+  recordIds: readonly RecordId[],
   group: ViewGroup | undefined,
   sectionKey: SectionKey
 ) => {
@@ -67,7 +67,7 @@ export const visibleOf = (
     return false
   }
 
-  return group.showEmpty !== false || ids.length > 0
+  return group.showEmpty !== false || recordIds.length > 0
 }
 
 export const collapsedOf = (
@@ -77,7 +77,7 @@ export const collapsedOf = (
 
 export const buildSectionNode = (input: {
   key: SectionKey
-  ids: readonly RecordId[]
+  recordIds: readonly RecordId[]
   group: ViewGroup | undefined
   index: IndexState
 }): SectionNodeState => {
@@ -101,8 +101,8 @@ export const buildSectionNode = (input: {
           }
         }
       : {}),
-    ids: input.ids,
-    visible: visibleOf(input.ids, input.group, input.key),
+    recordIds: input.recordIds,
+    visible: visibleOf(input.recordIds, input.group, input.key),
     collapsed: collapsedOf(input.group, input.key)
   }
 }

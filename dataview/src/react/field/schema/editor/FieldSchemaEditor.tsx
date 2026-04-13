@@ -22,7 +22,7 @@ export interface FieldSchemaEditorProps {
 export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
   const editor = useDataView().engine
   const field = useDataViewKeyedValue(
-    dataView => dataView.engine.read.customField,
+    dataView => dataView.engine.read.field,
     props.fieldId
   )
   const [nameDraft, setNameDraft] = useState('')
@@ -56,7 +56,7 @@ export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
       kind: field.kind,
       isTitleProperty: false,
       onSelect: nextKind => {
-        editor.fields.convert(field.id, { kind: nextKind })
+        editor.fields.changeType(field.id, { kind: nextKind })
       }
     })
   }]

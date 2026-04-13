@@ -89,9 +89,9 @@ export const LayoutPanel = () => {
   const dataView = useDataView()
   const engine = dataView.engine
   const document = useDataViewValue(dataView => dataView.engine.read.document)
-  const view = useDataViewValue(dataView => dataView.engine.active.view)
+  const view = useDataViewValue(dataView => dataView.engine.view.config)
   const viewApi = view
-    ? engine.active
+    ? engine.view
     : undefined
   const fieldMap = new Map(getDocumentFields(document).map(field => [field.id, field] as const))
   const groupField = view?.group?.field
@@ -157,7 +157,7 @@ export const LayoutPanel = () => {
                 return
               }
 
-              viewApi.type.set(type)
+              viewApi.changeType(type)
             }}
           />
         ))}

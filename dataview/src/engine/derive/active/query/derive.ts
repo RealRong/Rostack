@@ -28,7 +28,7 @@ import type {
 } from '../../../index/types'
 import type {
   QueryState
-} from '../state'
+} from '../../../contracts/internal'
 
 const sameIds = sameOrder<RecordId>
 
@@ -230,13 +230,13 @@ export const buildQueryState = (input: {
   const hasFilter = effectiveRules.length > 0
   const hasSearch = Boolean(searchMatches)
 
-  const derived = sortRecordIds({
+  const matched = sortRecordIds({
     ids: input.index.records.ids,
     document: input.document,
     index: input.index,
     view: input.view
   })
-  const ordered = applyViewOrders(derived, input.view)
+  const ordered = applyViewOrders(matched, input.view)
   const visible = !hasSearch && !hasFilter
     ? ordered
     : filterVisibleIds({
@@ -249,9 +249,9 @@ export const buildQueryState = (input: {
       })
 
   const previous = input.previous
-  const nextDerived = previous && sameIds(previous.derived, derived)
-    ? previous.derived
-    : derived
+  const nextMatched = previous && sameIds(previous.matched, matched)
+    ? previous.matched
+    : matched
   const nextOrdered = previous && sameIds(previous.ordered, ordered)
     ? previous.ordered
     : ordered
@@ -260,7 +260,7 @@ export const buildQueryState = (input: {
     : visible
 
   return {
-    derived: nextDerived,
+    matched: nextMatched,
     ordered: nextOrdered,
     visible: nextVisible,
     visibleSet: previous && nextVisible === previous.visible

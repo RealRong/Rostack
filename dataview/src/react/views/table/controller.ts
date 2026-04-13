@@ -1,5 +1,5 @@
 import type {
-  ActiveViewState as CurrentView,
+  ViewState as CurrentView,
   Engine
 } from '@dataview/engine'
 import {
@@ -11,9 +11,9 @@ import {
   type InteractionApi
 } from '@dataview/react/interaction'
 import {
-  type AppearanceId,
+  type ItemId,
   type Section
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import type {
   Selection
 } from '@dataview/react/runtime/selection'
@@ -67,7 +67,7 @@ export interface TableController {
   currentView: ReadStore<CurrentView | undefined>
   gridSelection: GridSelectionStore
   marqueeSelection: ValueStore<Selection | null>
-  rowRail: ValueStore<AppearanceId | null>
+  rowRail: ValueStore<ItemId | null>
   layout: TableLayout
   virtual: TableVirtualRuntime
   nodes: Nodes
@@ -80,7 +80,7 @@ export interface TableController {
   hover: Hover
   cellRender: CellRender
   revealCursor: () => void
-  revealRow: (rowId: AppearanceId) => void
+  revealRow: (rowId: ItemId) => void
   dispose: () => void
 }
 
@@ -100,20 +100,20 @@ const sectionBlockHeight = (input: {
     : (
       input.headerHeight
       + input.headerHeight
-      + (input.section.appearanceIds.length * input.rowHeight)
+      + (input.section.itemIds.length * input.rowHeight)
     )
 
 const flatRowTarget = (input: {
   currentView: CurrentView
-  rowId: AppearanceId
+  rowId: ItemId
   rowHeight: number
   headerHeight: number
 }): {
-  rowId: AppearanceId
+  rowId: ItemId
   top: number
   bottom: number
 } | null => {
-  const rowIndex = input.currentView.appearances.indexOf(input.rowId)
+  const rowIndex = input.currentView.items.indexOf(input.rowId)
 
   return rowIndex === undefined
     ? null
@@ -126,18 +126,18 @@ const flatRowTarget = (input: {
 
 const groupedRowTarget = (input: {
   currentView: CurrentView
-  rowId: AppearanceId
+  rowId: ItemId
   rowHeight: number
   headerHeight: number
 }): {
-  rowId: AppearanceId
+  rowId: ItemId
   top: number
   bottom: number
 } | null => {
   let sectionTop = 0
 
   for (const section of input.currentView.sections.all) {
-    const rowIndex = section.appearanceIds.indexOf(input.rowId)
+    const rowIndex = section.itemIds.indexOf(input.rowId)
     if (rowIndex !== -1) {
       const top = sectionTop + input.headerHeight + input.headerHeight + (rowIndex * input.rowHeight)
       return {
@@ -159,11 +159,11 @@ const groupedRowTarget = (input: {
 
 const rowTarget = (input: {
   currentView: CurrentView
-  rowId: AppearanceId
+  rowId: ItemId
   rowHeight: number
   headerHeight: number
 }): {
-  rowId: AppearanceId
+  rowId: ItemId
   top: number
   bottom: number
 } | null => input.currentView.view.group
@@ -177,7 +177,7 @@ const selectionRow = (input: {
   rowHeight: number
   headerHeight: number
 }): {
-  rowId: AppearanceId
+  rowId: ItemId
   top: number
   bottom: number
 } | null => {
@@ -186,7 +186,7 @@ const selectionRow = (input: {
     return null
   }
 
-  const rowId = input.gridSelection?.focus.appearanceId
+  const rowId = input.gridSelection?.focus.itemId
     ?? input.selection.focus
     ?? input.selection.ids[0]
   if (!rowId) {
@@ -227,7 +227,7 @@ export const createTableController = (options: {
       return selectionHelpers.equal(left, right)
     }
   })
-  const rowRail = createValueStore<AppearanceId | null>({
+  const rowRail = createValueStore<ItemId | null>({
     initial: null,
     isEqual: Object.is
   })
@@ -263,7 +263,7 @@ export const createTableController = (options: {
     })
   }
   const revealTarget = (target: {
-    rowId: AppearanceId
+    rowId: ItemId
     top: number
     bottom: number
   }) => {
@@ -291,7 +291,7 @@ export const createTableController = (options: {
       inset: 8
     })
   }
-  const revealRow = (rowId: AppearanceId) => {
+  const revealRow = (rowId: ItemId) => {
     const activeCurrentView = currentView.get()
     if (!activeCurrentView) {
       return
@@ -326,7 +326,7 @@ export const createTableController = (options: {
   const openCell = createCellOpener({
     valueEditor: options.valueEditor,
     resolveCell: cell => {
-      const resolved = options.engine.active.read.cell(cell)
+      const resolved = options.engine.view.read.cell(cell)
       return resolved
         ? {
             recordId: resolved.recordId,

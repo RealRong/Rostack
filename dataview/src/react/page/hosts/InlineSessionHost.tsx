@@ -35,9 +35,9 @@ export const PageInlineSessionHost = () => {
       dataView.inlineSession.exit({
         reason: 'escape'
       })
-      dataView.selection.set([session.appearanceId], {
-        anchor: session.appearanceId,
-        focus: session.appearanceId
+      dataView.selection.set([session.itemId], {
+        anchor: session.itemId,
+        focus: session.itemId
       })
     }
 
@@ -51,7 +51,7 @@ export const PageInlineSessionHost = () => {
         return
       }
 
-      if (closestDataviewAppearanceId(event.target) === session.appearanceId) {
+      if (closestDataviewAppearanceId(event.target) === session.itemId) {
         return
       }
 

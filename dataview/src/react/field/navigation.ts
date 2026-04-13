@@ -2,15 +2,15 @@ import type {
   FieldId,
 } from '@dataview/core/contracts'
 import type {
-  AppearanceId,
-  AppearanceList
-} from '@dataview/engine/project'
+  ItemId,
+  ItemList
+} from '@dataview/engine'
 import type {
   CellRef
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 
 export interface FieldScope {
-  appearanceIds: readonly AppearanceId[]
+  itemIds: readonly ItemId[]
   fieldIds: readonly FieldId[]
 }
 
@@ -37,8 +37,8 @@ export const stepField = (input: {
   columnDelta: -1 | 0 | 1
 }): CellRef | null => {
   const rowIndex = stepIndex(
-    input.scope.appearanceIds,
-    input.field.appearanceId,
+    input.scope.itemIds,
+    input.field.itemId,
     input.rowDelta
   )
   const columnIndex = stepIndex(
@@ -50,14 +50,14 @@ export const stepField = (input: {
     return null
   }
 
-  const appearanceId = input.scope.appearanceIds[rowIndex]
+  const itemId = input.scope.itemIds[rowIndex]
   const fieldId = input.scope.fieldIds[columnIndex]
-  if (!appearanceId || !fieldId) {
+  if (!itemId || !fieldId) {
     return null
   }
 
   return {
-    appearanceId,
+    itemId,
     fieldId
   }
 }

@@ -110,7 +110,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   const view = currentView.view
   const groupProjection = currentView.query.group
   const sortProjection = currentView.query.sort
-  const showVerticalLinesStore = useMemo(() => editor.active.select(
+  const showVerticalLinesStore = useMemo(() => editor.view.select(
     state => state?.view.options.table.showVerticalLines ?? false
   ), [editor])
   const showVerticalLines = useStoreValue(showVerticalLinesStore)
@@ -146,17 +146,17 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   const urlConfig = customField?.kind === 'url'
     ? customField
     : undefined
-  const viewApi = editor.active
+  const viewApi = editor.view
 
   const insertProperty = (side: 'left' | 'right') => {
     if (side === 'left') {
-      viewApi.table.insertLeft(props.field.id, {
+      viewApi.table.insertFieldLeft(props.field.id, {
         kind: 'text'
       })
       return
     }
 
-    viewApi.table.insertRight(props.field.id, {
+    viewApi.table.insertFieldRight(props.field.id, {
       kind: 'text'
     })
   }
@@ -189,7 +189,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
           kind: customField.kind,
           isTitleProperty: false,
           onSelect: kind => {
-            editor.fields.convert(customField.id, { kind })
+            editor.fields.changeType(customField.id, { kind })
             setMenuOpen(false)
           }
         })
@@ -232,7 +232,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       label: '筛选',
       leading: <Filter className="size-4" size={16} strokeWidth={1.8} />,
       onSelect: () => {
-        viewApi.filter.add(props.field.id)
+        viewApi.filters.add(props.field.id)
         page.query.open({
           kind: 'filter',
           fieldId: props.field.id
@@ -254,7 +254,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
           label: renderMessage(meta.sort.direction.get('asc').message),
           checked: sortDirection === 'asc',
           onSelect: () => {
-            viewApi.sort.only(props.field.id, 'asc')
+            viewApi.sort.keepOnly(props.field.id, 'asc')
           }
         },
         {
@@ -263,7 +263,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
           label: renderMessage(meta.sort.direction.get('desc').message),
           checked: sortDirection === 'desc',
           onSelect: () => {
-            viewApi.sort.only(props.field.id, 'desc')
+            viewApi.sort.keepOnly(props.field.id, 'desc')
           }
         }
       ]
@@ -283,7 +283,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
           label: '无',
           checked: !calculationMetric,
           onSelect: () => {
-            viewApi.calc.set(props.field.id, null)
+            viewApi.summary.set(props.field.id, null)
           }
         },
         ...calculationMetrics.map(metric => ({
@@ -292,7 +292,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
           label: CALCULATION_LABELS[metric],
           checked: calculationMetric === metric,
           onSelect: () => {
-            viewApi.calc.set(props.field.id, metric)
+            viewApi.summary.set(props.field.id, metric)
           }
         }))
       ]

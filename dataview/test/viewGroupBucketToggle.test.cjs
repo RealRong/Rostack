@@ -222,34 +222,90 @@ const createEmptyDocument = () => {
   }
 }
 
-const projectSectionRecordIds = (engine, sectionKey) => {
-  const sections = engine.project.sections.get() ?? []
-  const appearances = engine.project.appearances.get()
+const createEngineForTest = options => createEngine({
+  document: options.document,
+  ...(options.perf
+    ? {
+        performance: {
+          traces: options.perf.trace,
+          stats: options.perf.stats
+        }
+      }
+    : {})
+})
 
+const readViewState = engine => engine.view.state.get()
+
+const itemIdByRecordId = (engine, recordId) => {
+  const items = readViewState(engine)?.items
+  if (!items) {
+    return undefined
+  }
+
+  return items.ids.find(itemId => items.get(itemId)?.recordId === recordId)
+}
+
+const moveRecordOrder = (engine, recordIds, beforeRecordId) => {
+  const state = readViewState(engine)
+  if (!state) {
+    return
+  }
+
+  const itemIds = recordIds.flatMap(recordId => {
+    const itemId = itemIdByRecordId(engine, recordId)
+    return itemId ? [itemId] : []
+  })
+  if (!itemIds.length) {
+    return
+  }
+
+  const beforeItemId = beforeRecordId
+    ? itemIdByRecordId(engine, beforeRecordId)
+    : undefined
+  const section = beforeItemId
+    ? state.items.get(beforeItemId)?.sectionKey
+    : state.items.get(itemIds[0])?.sectionKey ?? state.sections.ids[0]
+  if (!section) {
+    return
+  }
+
+  engine.view.items.move(itemIds, {
+    section,
+    ...(beforeItemId ? { before: beforeItemId } : {})
+  })
+}
+
+const openView = (engine, viewId) => {
+  engine.views.open(viewId)
+  return engine.view
+}
+
+const viewSectionRecordIds = (engine, sectionKey) => {
+  const state = readViewState(engine)
   return (
-    sections.find(section => section.key === sectionKey)?.ids
-      .map(id => appearances?.get(id)?.recordId)
+    state?.sections.get(sectionKey)?.itemIds
+      .map(itemId => state.items.get(itemId)?.recordId)
       .filter(Boolean)
     ?? []
   )
 }
 
-const projectSnapshot = engine => {
-  const calculations = engine.project.calculations.get()
+const viewSnapshot = engine => {
+  const state = readViewState(engine)
 
   return {
     records: {
-      derivedIds: [...(engine.project.records.get()?.derivedIds ?? [])],
-      orderedIds: [...(engine.project.records.get()?.orderedIds ?? [])],
-      visibleIds: [...(engine.project.records.get()?.visibleIds ?? [])]
+      matched: [...(state?.records.matched ?? [])],
+      ordered: [...(state?.records.ordered ?? [])],
+      visible: [...(state?.records.visible ?? [])]
     },
-    sections: (engine.project.sections.get() ?? []).map(section => ({
+    sections: (state?.sections.all ?? []).map(section => ({
       key: section.key,
       collapsed: section.collapsed,
-      recordIds: projectSectionRecordIds(engine, section.key)
+      recordIds: viewSectionRecordIds(engine, section.key)
     })),
-    calculations: Object.fromEntries(
-      Array.from(calculations?.entries() ?? []).map(([sectionKey, collection]) => [
+    summaries: Object.fromEntries(
+      Array.from(state?.summaries.entries() ?? []).map(([sectionKey, collection]) => [
         sectionKey,
         Object.fromEntries(Array.from(collection.byField.entries()))
       ])
@@ -258,16 +314,16 @@ const projectSnapshot = engine => {
 }
 
 test('view group bucket toggle clears the final collapsed bucket state', () => {
-  const engine = createEngine({
+  const engine = createEngineForTest({
     document: createDocument()
   })
 
-  engine.view.open(VIEW_TABLE)
-  engine.view(VIEW_TABLE).group.set(FIELD_STATUS)
-  engine.view(VIEW_TABLE).group.toggleCollapse('todo')
+  engine.views.open(VIEW_TABLE)
+  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).sections.toggleCollapse('todo')
 
   let view = engine.read.view.get(VIEW_TABLE)
-  let sections = engine.project.sections.get()
+  let sections = readViewState(engine)?.sections.all ?? []
 
   assert.deepEqual(view.group.buckets, {
     todo: {
@@ -279,10 +335,10 @@ test('view group bucket toggle clears the final collapsed bucket state', () => {
     true
   )
 
-  engine.view(VIEW_TABLE).group.toggleCollapse('todo')
+  openView(engine, VIEW_TABLE).sections.toggleCollapse('todo')
 
   view = engine.read.view.get(VIEW_TABLE)
-  sections = engine.project.sections.get()
+  sections = readViewState(engine)?.sections.all ?? []
 
   assert.equal(view.group?.buckets, undefined)
   assert.equal(
@@ -292,20 +348,20 @@ test('view group bucket toggle clears the final collapsed bucket state', () => {
 })
 
 test('view group interval set clears back to the field default when value is undefined', () => {
-  const engine = createEngine({
+  const engine = createEngineForTest({
     document: createDocument()
   })
 
-  engine.view(VIEW_TABLE).group.set(FIELD_POINTS)
+  openView(engine, VIEW_TABLE).group.set(FIELD_POINTS)
 
   let view = engine.read.view.get(VIEW_TABLE)
   assert.equal(view.group?.bucketInterval, 10)
 
-  engine.view(VIEW_TABLE).group.setInterval(5)
+  openView(engine, VIEW_TABLE).group.setInterval(5)
   view = engine.read.view.get(VIEW_TABLE)
   assert.equal(view.group?.bucketInterval, 5)
 
-  engine.view(VIEW_TABLE).group.setInterval(undefined)
+  openView(engine, VIEW_TABLE).group.setInterval(undefined)
   view = engine.read.view.get(VIEW_TABLE)
   assert.equal(view.group?.bucketInterval, 10)
 })
@@ -332,65 +388,67 @@ test('kanban cards per column defaults to all and persists through the view api'
   })
   document.views.order.push(VIEW_BOARD)
 
-  const engine = createEngine({
+  const engine = createEngineForTest({
     document
   })
 
   let board = engine.read.view.get(VIEW_BOARD)
   assert.equal(board.options.kanban.cardsPerColumn, 'all')
 
-  engine.view(VIEW_BOARD).kanban.setCardsPerColumn(25)
+  openView(engine, VIEW_BOARD).kanban.setCardsPerColumn(25)
   board = engine.read.view.get(VIEW_BOARD)
   assert.equal(board.options.kanban.cardsPerColumn, 25)
 
-  engine.view(VIEW_BOARD).kanban.setCardsPerColumn(100)
+  openView(engine, VIEW_BOARD).kanban.setCardsPerColumn(100)
   board = engine.read.view.get(VIEW_BOARD)
   assert.equal(board.options.kanban.cardsPerColumn, 100)
 
-  engine.view(VIEW_BOARD).kanban.setCardsPerColumn('all')
+  openView(engine, VIEW_BOARD).kanban.setCardsPerColumn('all')
   board = engine.read.view.get(VIEW_BOARD)
   assert.equal(board.options.kanban.cardsPerColumn, 'all')
 })
 
-test('engine.project rebuilds from one active pipeline while keeping projection boundaries', () => {
-  const engine = createEngine({
+test('engine.view keeps selector boundaries inside one active pipeline', () => {
+  const engine = createEngineForTest({
     document: createMultiViewDocument()
   })
 
-  let viewEvents = 0
+  const groupStore = engine.view.select(current => current?.query.group)
+  const sortStore = engine.view.select(current => current?.query.sort)
+  let idEvents = 0
   let sortEvents = 0
-  const unsubscribeView = engine.project.view.subscribe(() => {
-    viewEvents += 1
+  const unsubscribeId = engine.view.id.subscribe(() => {
+    idEvents += 1
   })
-  const unsubscribeSort = engine.project.sort.subscribe(() => {
+  const unsubscribeSort = sortStore.subscribe(() => {
     sortEvents += 1
   })
 
-  assert.equal(engine.project.view.get()?.id, VIEW_TABLE)
-  assert.equal(engine.project.group.get()?.active, false)
-  assert.equal(engine.project.sort.get()?.active, false)
+  assert.equal(engine.view.id.get(), VIEW_TABLE)
+  assert.equal(groupStore.get()?.active, false)
+  assert.equal(sortStore.get()?.active, false)
 
-  engine.view(VIEW_TABLE).sort.add(FIELD_POINTS)
+  openView(engine, VIEW_TABLE).sort.add(FIELD_POINTS)
 
-  assert.equal(engine.project.view.get()?.id, VIEW_TABLE)
-  assert.equal(engine.project.sort.get()?.active, true)
-  assert.equal(engine.project.sort.get()?.rules[0]?.sorter.field, FIELD_POINTS)
-  assert.equal(viewEvents, 0)
+  assert.equal(engine.view.id.get(), VIEW_TABLE)
+  assert.equal(sortStore.get()?.active, true)
+  assert.equal(sortStore.get()?.rules[0]?.sorter.field, FIELD_POINTS)
+  assert.equal(idEvents, 0)
   assert.equal(sortEvents, 1)
 
-  engine.view.open(VIEW_BOARD)
+  engine.views.open(VIEW_BOARD)
 
-  assert.equal(engine.project.view.get()?.id, VIEW_BOARD)
-  assert.equal(engine.project.group.get()?.active, true)
-  assert.equal(engine.project.group.get()?.fieldId, FIELD_STATUS)
-  assert.equal(viewEvents, 1)
+  assert.equal(engine.view.id.get(), VIEW_BOARD)
+  assert.equal(groupStore.get()?.active, true)
+  assert.equal(groupStore.get()?.fieldId, FIELD_STATUS)
+  assert.equal(idEvents, 1)
 
-  unsubscribeView()
+  unsubscribeId()
   unsubscribeSort()
 })
 
-test('engine.document.replace publishes coherent read and project state in one step', () => {
-  const engine = createEngine({
+test('engine.document.replace publishes coherent read and active view state in one step', () => {
+  const engine = createEngineForTest({
     document: createDocument()
   })
   const nextDocument = createMultiViewDocument()
@@ -399,92 +457,93 @@ test('engine.document.replace publishes coherent read and project state in one s
   const unsubscribe = engine.read.document.subscribe(() => {
     documentEvents += 1
     assert.equal(engine.read.document.get().activeViewId, VIEW_TABLE)
-    assert.equal(engine.read.activeViewId.get(), VIEW_TABLE)
-    assert.equal(engine.project.view.get()?.id, VIEW_TABLE)
-    assert.deepEqual(engine.project.records.get()?.visibleIds, ['rec_1'])
+    assert.equal(engine.view.id.get(), VIEW_TABLE)
+    assert.deepEqual(readViewState(engine)?.records.visible, ['rec_1'])
   })
 
   engine.document.replace(nextDocument)
 
   assert.equal(documentEvents, 1)
-  assert.equal(engine.project.view.get()?.id, VIEW_TABLE)
-  assert.deepEqual(engine.project.records.get()?.visibleIds, ['rec_1'])
+  assert.equal(engine.view.id.get(), VIEW_TABLE)
+  assert.deepEqual(readViewState(engine)?.records.visible, ['rec_1'])
 
   unsubscribe()
 })
 
-test('engine.project exposes body projections for the active view', () => {
-  const engine = createEngine({
+test('engine.view.state exposes body projections for the active view', () => {
+  const engine = createEngineForTest({
     document: createDocument()
   })
 
-  engine.view(VIEW_TABLE).group.set(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
 
-  const records = engine.project.records.get()
-  const sections = engine.project.sections.get()
-  const appearances = engine.project.appearances.get()
-  const fields = engine.project.fields.get()
-  const calculations = engine.project.calculations.get()
+  const state = readViewState(engine)
+  const records = state?.records
+  const sections = state?.sections.all
+  const items = state?.items
+  const fields = state?.fields
+  const summaries = state?.summaries
 
-  assert.deepEqual(records?.visibleIds, ['rec_1', 'rec_2', 'rec_3'])
+  assert.deepEqual(records?.visible, ['rec_1', 'rec_2', 'rec_3'])
   assert.deepEqual(sections?.map(section => section.key), ['todo', 'doing', 'done', '(empty)'])
-  assert.equal(appearances?.ids.length, 3)
-  assert.deepEqual(fields?.ids, [FIELD_STATUS, FIELD_POINTS])
-  assert.ok(calculations?.get('todo'))
+  assert.equal(items?.ids.length, 3)
+  assert.deepEqual(fields?.ids, [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS])
+  assert.deepEqual(fields?.custom.map(field => field.id), [FIELD_STATUS, FIELD_POINTS])
+  assert.ok(summaries?.get('todo'))
 })
 
-test('engine.project records honor search filter sort and manual order', () => {
-  const engine = createEngine({
+test('engine.view.state records honor search filter sort and manual order', () => {
+  const engine = createEngineForTest({
     document: createDocument()
   })
 
   assert.deepEqual(
-    engine.project.records.get()?.visibleIds,
+    readViewState(engine)?.records.visible,
     ['rec_1', 'rec_2', 'rec_3']
   )
 
-  engine.view(VIEW_TABLE).search.set('task 2')
+  openView(engine, VIEW_TABLE).search.set('task 2')
   assert.deepEqual(
-    engine.project.records.get()?.visibleIds,
+    readViewState(engine)?.records.visible,
     ['rec_2']
   )
 
-  engine.view(VIEW_TABLE).search.set('')
-  engine.view(VIEW_TABLE).filter.add(FIELD_STATUS)
-  engine.view(VIEW_TABLE).filter.set(0, {
+  openView(engine, VIEW_TABLE).search.set('')
+  openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).filters.update(0, {
     fieldId: FIELD_STATUS,
     presetId: 'eq',
     value: 'done'
   })
   assert.deepEqual(
-    engine.project.records.get()?.visibleIds,
+    readViewState(engine)?.records.visible,
     ['rec_3']
   )
 
-  engine.view(VIEW_TABLE).filter.clear()
-  engine.view(VIEW_TABLE).sort.only(FIELD_POINTS, 'desc')
+  openView(engine, VIEW_TABLE).filters.clear()
+  openView(engine, VIEW_TABLE).sort.keepOnly(FIELD_POINTS, 'desc')
   assert.deepEqual(
-    engine.project.records.get()?.derivedIds,
+    readViewState(engine)?.records.matched,
     ['rec_3', 'rec_2', 'rec_1']
   )
   assert.deepEqual(
-    engine.project.records.get()?.orderedIds,
+    readViewState(engine)?.records.ordered,
     ['rec_3', 'rec_2', 'rec_1']
   )
 
-  engine.view(VIEW_TABLE).sort.clear()
-  engine.view(VIEW_TABLE).order.move(['rec_3'], 'rec_1')
+  openView(engine, VIEW_TABLE).sort.clear()
+  moveRecordOrder(engine, ['rec_3'], 'rec_1')
   assert.deepEqual(
-    engine.project.records.get()?.orderedIds,
+    readViewState(engine)?.records.ordered,
     ['rec_3', 'rec_1', 'rec_2']
   )
   assert.deepEqual(
-    engine.project.records.get()?.visibleIds,
+    readViewState(engine)?.records.visible,
     ['rec_3', 'rec_1', 'rec_2']
   )
 })
 
-test('engine.project grouped sections keep visible record order inside each bucket', () => {
+test('engine.view.state grouped sections keep visible record order inside each bucket', () => {
   const document = createDocument()
   document.records.byId.rec_4 = {
     id: 'rec_4',
@@ -497,24 +556,25 @@ test('engine.project grouped sections keep visible record order inside each buck
   }
   document.records.order = ['rec_1', 'rec_2', 'rec_3', 'rec_4']
 
-  const engine = createEngine({
+  const engine = createEngineForTest({
     document
   })
 
-  engine.view(VIEW_TABLE).sort.only(FIELD_POINTS, 'desc')
-  engine.view(VIEW_TABLE).group.set(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).sort.keepOnly(FIELD_POINTS, 'desc')
+  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
 
-  const sections = engine.project.sections.get()
-  const appearances = engine.project.appearances.get()
+  const state = readViewState(engine)
+  const sections = state?.sections.all
+  const items = state?.items
   const todoIds = sections
     ?.find(section => section.key === 'todo')
-    ?.ids
-    .map(id => appearances?.get(id)?.recordId)
+    ?.itemIds
+    .map(id => items?.get(id)?.recordId)
 
   assert.deepEqual(todoIds, ['rec_4', 'rec_1'])
 })
 
-test('engine.project calculations are derived from index aggregates', () => {
+test('engine.view.state summaries are derived from index aggregates', () => {
   const document = createDocument()
   document.records.byId.rec_4 = {
     id: 'rec_4',
@@ -527,26 +587,26 @@ test('engine.project calculations are derived from index aggregates', () => {
   }
   document.records.order = ['rec_1', 'rec_2', 'rec_3', 'rec_4']
 
-  const engine = createEngine({
+  const engine = createEngineForTest({
     document
   })
 
-  engine.view(VIEW_TABLE).calc.set(FIELD_POINTS, 'median')
-  engine.view(VIEW_TABLE).calc.set(FIELD_STATUS, 'countUniqueValues')
+  openView(engine, VIEW_TABLE).summary.set(FIELD_POINTS, 'median')
+  openView(engine, VIEW_TABLE).summary.set(FIELD_STATUS, 'countUniqueValues')
 
-  let calculations = engine.project.calculations.get()
-  let root = calculations?.get('root')
+  let summaries = readViewState(engine)?.summaries
+  let root = summaries?.get('root')
 
   assert.equal(root?.get(FIELD_POINTS)?.kind, 'scalar')
   assert.equal(root?.get(FIELD_POINTS)?.value, 2.5)
   assert.equal(root?.get(FIELD_STATUS)?.kind, 'scalar')
   assert.equal(root?.get(FIELD_STATUS)?.value, 3)
 
-  engine.view(VIEW_TABLE).group.set(FIELD_STATUS)
-  engine.view(VIEW_TABLE).calc.set(FIELD_STATUS, 'percentByOption')
+  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).summary.set(FIELD_STATUS, 'percentByOption')
 
-  calculations = engine.project.calculations.get()
-  const todo = calculations?.get('todo')
+  summaries = readViewState(engine)?.summaries
+  const todo = summaries?.get('todo')
   const todoMedian = todo?.get(FIELD_POINTS)
   const todoStatus = todo?.get(FIELD_STATUS)
 
@@ -557,83 +617,85 @@ test('engine.project calculations are derived from index aggregates', () => {
   assert.equal(todoStatus?.items[0]?.percent, 1)
 })
 
-test('engine.project sync reuses unaffected grouped sections and calculations on data changes', () => {
-  const engine = createEngine({
+test('engine.view sync reuses unaffected grouped sections and summaries on data changes', () => {
+  const engine = createEngineForTest({
     document: createDocument()
   })
 
-  engine.view(VIEW_TABLE).group.set(FIELD_STATUS)
-  engine.view(VIEW_TABLE).calc.set(FIELD_POINTS, 'sum')
+  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).summary.set(FIELD_POINTS, 'sum')
 
-  const recordsBefore = engine.project.records.get()
-  const sectionsBefore = engine.project.sections.get()
-  const appearancesBefore = engine.project.appearances.get()
-  const calculationsBefore = engine.project.calculations.get()
+  const stateBefore = readViewState(engine)
+  const recordsBefore = stateBefore?.records
+  const sectionsBefore = stateBefore?.sections.all
+  const itemsBefore = stateBefore?.items
+  const summariesBefore = stateBefore?.summaries
   const doingSectionBefore = sectionsBefore?.find(section => section.key === 'doing')
   const doneSectionBefore = sectionsBefore?.find(section => section.key === 'done')
-  const doingCalculationBefore = calculationsBefore?.get('doing')
-  const doneCalculationBefore = calculationsBefore?.get('done')
-  const doingAppearanceBefore = doingSectionBefore?.ids[0]
-    ? appearancesBefore?.get(doingSectionBefore.ids[0])
+  const doingSummaryBefore = summariesBefore?.get('doing')
+  const doneSummaryBefore = summariesBefore?.get('done')
+  const doingItemBefore = doingSectionBefore?.itemIds[0]
+    ? itemsBefore?.get(doingSectionBefore.itemIds[0])
     : undefined
 
-  engine.records.setValue('rec_1', FIELD_STATUS, 'done')
+  engine.records.values.set('rec_1', FIELD_STATUS, 'done')
 
-  const recordsAfter = engine.project.records.get()
-  const sectionsAfter = engine.project.sections.get()
-  const appearancesAfter = engine.project.appearances.get()
-  const calculationsAfter = engine.project.calculations.get()
+  const stateAfter = readViewState(engine)
+  const recordsAfter = stateAfter?.records
+  const sectionsAfter = stateAfter?.sections.all
+  const itemsAfter = stateAfter?.items
+  const summariesAfter = stateAfter?.summaries
   const doingSectionAfter = sectionsAfter?.find(section => section.key === 'doing')
   const doneSectionAfter = sectionsAfter?.find(section => section.key === 'done')
-  const doingAppearanceAfter = doingSectionAfter?.ids[0]
-    ? appearancesAfter?.get(doingSectionAfter.ids[0])
+  const doingItemAfter = doingSectionAfter?.itemIds[0]
+    ? itemsAfter?.get(doingSectionAfter.itemIds[0])
     : undefined
 
   assert.equal(recordsAfter, recordsBefore)
   assert.equal(doingSectionAfter, doingSectionBefore)
   assert.notEqual(doneSectionAfter, doneSectionBefore)
-  assert.equal(doingAppearanceAfter, doingAppearanceBefore)
-  assert.equal(calculationsAfter?.get('doing'), doingCalculationBefore)
-  assert.notEqual(calculationsAfter?.get('done'), doneCalculationBefore)
-  assert.deepEqual(projectSectionRecordIds(engine, 'todo'), [])
-  assert.deepEqual(projectSectionRecordIds(engine, 'done'), ['rec_1', 'rec_3'])
+  assert.equal(doingItemAfter, doingItemBefore)
+  assert.equal(summariesAfter?.get('doing'), doingSummaryBefore)
+  assert.notEqual(summariesAfter?.get('done'), doneSummaryBefore)
+  assert.deepEqual(viewSectionRecordIds(engine, 'todo'), [])
+  assert.deepEqual(viewSectionRecordIds(engine, 'done'), ['rec_1', 'rec_3'])
 })
 
-test('engine.project reconcile keeps undo redo equivalent across sequential deltas', () => {
-  const engine = createEngine({
+test('engine.view reconcile keeps undo redo equivalent across sequential deltas', () => {
+  const engine = createEngineForTest({
     document: createDocument()
   })
 
-  engine.view(VIEW_TABLE).group.set(FIELD_STATUS)
-  engine.view(VIEW_TABLE).calc.set(FIELD_POINTS, 'sum')
+  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).summary.set(FIELD_POINTS, 'sum')
 
-  const initial = projectSnapshot(engine)
+  const initial = viewSnapshot(engine)
 
-  engine.records.setValue('rec_1', FIELD_POINTS, 10)
-  const afterPoints = projectSnapshot(engine)
+  engine.records.values.set('rec_1', FIELD_POINTS, 10)
+  const afterPoints = viewSnapshot(engine)
 
-  engine.records.setValue('rec_1', FIELD_STATUS, 'doing')
-  const afterGroupMove = projectSnapshot(engine)
+  engine.records.values.set('rec_1', FIELD_STATUS, 'doing')
+  const afterGroupMove = viewSnapshot(engine)
 
   assert.equal(engine.history.canUndo(), true)
   assert.equal(engine.history.canRedo(), false)
 
   engine.history.undo()
-  assert.deepEqual(projectSnapshot(engine), afterPoints)
+  assert.deepEqual(viewSnapshot(engine), afterPoints)
 
   engine.history.undo()
-  assert.deepEqual(projectSnapshot(engine), initial)
+  assert.deepEqual(viewSnapshot(engine), initial)
   assert.equal(engine.history.canRedo(), true)
 
   engine.history.redo()
-  assert.deepEqual(projectSnapshot(engine), afterPoints)
+  assert.deepEqual(viewSnapshot(engine), afterPoints)
 
   engine.history.redo()
-  assert.deepEqual(projectSnapshot(engine), afterGroupMove)
+  assert.deepEqual(viewSnapshot(engine), afterGroupMove)
 })
 
-test('engine.perf traces project and publish behavior for incremental updates', () => {
-  const engine = createEngine({
+test('engine.performance traces active view derive and snapshot behavior for incremental updates', () => {
+  const engine = createEngineForTest({
     document: createDocument(),
     perf: {
       trace: true,
@@ -641,44 +703,45 @@ test('engine.perf traces project and publish behavior for incremental updates', 
     }
   })
 
-  engine.view(VIEW_TABLE).group.set(FIELD_STATUS)
-  engine.view(VIEW_TABLE).calc.set(FIELD_POINTS, 'sum')
-  engine.perf.trace.clear()
-  engine.perf.stats.clear()
+  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).summary.set(FIELD_POINTS, 'sum')
+  engine.performance.traces.clear()
+  engine.performance.stats.clear()
 
-  engine.records.setValue('rec_1', FIELD_STATUS, 'done')
+  engine.records.values.set('rec_1', FIELD_STATUS, 'done')
 
-  const trace = engine.perf.trace.last()
-  const stats = engine.perf.stats.snapshot()
-  const sectionsStage = trace?.project.stages.find(stage => stage.stage === 'sections')
-  const calculationsStage = trace?.project.stages.find(stage => stage.stage === 'calc')
+  const trace = engine.performance.traces.last()
+  const stats = engine.performance.stats.snapshot()
+  const sectionsStage = trace?.view.stages.find(stage => stage.stage === 'sections')
+  const summaryStage = trace?.view.stages.find(stage => stage.stage === 'summary')
 
   assert.ok(trace)
   assert.equal(trace.kind, 'dispatch')
   assert.equal(trace.delta.summary.values, true)
-  assert.equal(trace.project.plan.query, 'reuse')
-  assert.equal(trace.project.plan.sections, 'sync')
-  assert.equal(trace.project.plan.calc, 'sync')
+  assert.equal(trace.view.plan.query, 'reuse')
+  assert.equal(trace.view.plan.sections, 'sync')
+  assert.equal(trace.view.plan.summary, 'sync')
   assert.equal(trace.index.group.action, 'sync')
-  assert.ok(trace.publish.changedStores.includes('sections'))
-  assert.ok(trace.publish.changedStores.includes('appearances'))
-  assert.ok(trace.publish.changedStores.includes('calculations'))
+  assert.equal(trace.index.summaries.action, 'reuse')
+  assert.ok(trace.snapshot.changedStores.includes('sections'))
+  assert.ok(trace.snapshot.changedStores.includes('items'))
+  assert.ok(trace.snapshot.changedStores.includes('summaries'))
   assert.equal(sectionsStage?.action, 'sync')
-  assert.equal(calculationsStage?.action, 'sync')
+  assert.equal(summaryStage?.action, 'sync')
   assert.ok((sectionsStage?.metrics?.reusedNodeCount ?? 0) >= 2)
-  assert.ok((calculationsStage?.metrics?.reusedNodeCount ?? 0) >= 1)
+  assert.ok((summaryStage?.metrics?.reusedNodeCount ?? 0) >= 1)
   assert.equal(stats.commits.total, 1)
   assert.equal(stats.commits.dispatch, 1)
   assert.equal(stats.stages.sections.sync, 1)
   assert.equal(stats.indexes.group.changed, 1)
 })
 
-test('view.create resolves duplicate names in the command layer', () => {
-  const engine = createEngine({
+test('view.create resolves duplicate names in the write planner', () => {
+  const engine = createEngineForTest({
     document: createDocument()
   })
 
-  const result = engine.command({
+  const result = engine.dispatch({
     type: 'view.create',
     input: {
       name: 'Tasks',
@@ -692,11 +755,11 @@ test('view.create resolves duplicate names in the command layer', () => {
 })
 
 test('engine.views.duplicate reuses the shared unique naming rule', () => {
-  const engine = createEngine({
+  const engine = createEngineForTest({
     document: createEmptyDocument()
   })
 
-  const sourceViewId = engine.command({
+  const sourceViewId = engine.dispatch({
     type: 'view.create',
     input: {
       name: 'Tasks',
@@ -706,7 +769,7 @@ test('engine.views.duplicate reuses the shared unique naming rule', () => {
 
   assert.ok(sourceViewId)
 
-  engine.command({
+  engine.dispatch({
     type: 'view.create',
     input: {
       name: 'Tasks Copy',

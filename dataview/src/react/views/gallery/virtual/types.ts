@@ -2,9 +2,9 @@ import type {
   Rect
 } from '@shared/dom'
 import type {
-  AppearanceId,
+  ItemId,
   Section
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import type {
   VirtualBlock
 } from '@dataview/react/virtual'
@@ -14,11 +14,11 @@ export interface GalleryRowLayout {
   rowIndex: number
   top: number
   height: number
-  ids: readonly AppearanceId[]
+  ids: readonly ItemId[]
 }
 
 export interface GalleryCardLayout {
-  id: AppearanceId
+  id: ItemId
   sectionKey: Section['key']
   rowIndex: number
   columnIndex: number

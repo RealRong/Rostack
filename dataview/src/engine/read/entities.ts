@@ -22,12 +22,10 @@ import {
   type ReadStore
 } from '@shared/core'
 import {
-  selectDoc,
-  selectDocById
-} from '../store/base'
-import type {
-  Store
-} from '../store/state'
+  selectDocument,
+  selectDocumentById
+} from '../state/select'
+import type { Store } from '../state/store'
 
 interface DocumentEntityRead<TId, T> {
   list: () => readonly T[]
@@ -57,23 +55,23 @@ const createEntityReadStore = <TId, T>(input: {
   list: ReadStore<readonly T[]>
   get: KeyedReadStore<TId, T | undefined>
 } => ({
-  ids: selectDoc<readonly TId[]>({
+  ids: selectDocument<readonly TId[]>({
     store: input.store,
     read: input.ids,
     isEqual: sameOrder
   }),
-  list: selectDoc<readonly T[]>({
+  list: selectDocument<readonly T[]>({
     store: input.store,
     read: input.list,
     isEqual: sameOrder
   }),
-  get: selectDocById<TId, T | undefined>({
+  get: selectDocumentById<TId, T | undefined>({
     store: input.store,
     read: input.get
   })
 })
 
-export interface CommandRead {
+export interface WriteRead {
   records: DocumentEntityRead<RecordId, DataRecord>
   fields: DocumentEntityRead<CustomFieldId, CustomField>
   views: DocumentEntityRead<ViewId, View> & {
@@ -82,9 +80,9 @@ export interface CommandRead {
   }
 }
 
-export const createCommandRead = (
+export const createWriteRead = (
   document: DataDoc
-): CommandRead => {
+): WriteRead => {
   const records = createDocumentEntityRead(document, {
     list: getDocumentRecords,
     get: getDocumentRecordById
@@ -119,9 +117,9 @@ export const createStoreEntityRead = (
 ): {
   recordIds: ReadStore<readonly RecordId[]>
   record: KeyedReadStore<RecordId, DataRecord | undefined>
-  customFieldIds: ReadStore<readonly CustomFieldId[]>
-  customFields: ReadStore<readonly CustomField[]>
-  customField: KeyedReadStore<CustomFieldId, CustomField | undefined>
+  fieldIds: ReadStore<readonly CustomFieldId[]>
+  fields: ReadStore<readonly CustomField[]>
+  field: KeyedReadStore<CustomFieldId, CustomField | undefined>
   viewIds: ReadStore<readonly ViewId[]>
   views: ReadStore<readonly View[]>
   view: KeyedReadStore<ViewId, View | undefined>
@@ -148,9 +146,9 @@ export const createStoreEntityRead = (
   return {
     recordIds: records.ids,
     record: records.get,
-    customFieldIds: fields.ids,
-    customFields: fields.list,
-    customField: fields.get,
+    fieldIds: fields.ids,
+    fields: fields.list,
+    field: fields.get,
     viewIds: views.ids,
     views: views.list,
     view: views.get

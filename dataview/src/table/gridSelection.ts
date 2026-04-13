@@ -1,12 +1,12 @@
 import type {
-  AppearanceId,
-  AppearanceList,
+  ItemId,
+  ItemList,
   FieldList
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import type {
   CellRef
-} from '@dataview/engine/project'
-import { sameCellRef } from '@dataview/engine/project'
+} from '@dataview/engine'
+import { sameCellRef } from '@dataview/engine'
 import {
   grid
 } from './grid'
@@ -45,26 +45,26 @@ const anchor = (
 
 const reconcile = (
   current: GridSelection | null,
-  appearances: Pick<AppearanceList, 'has' | 'indexOf' | 'ids' | 'at'>,
+  items: Pick<ItemList, 'has' | 'indexOf' | 'ids' | 'at'>,
   fields: Pick<FieldList, 'has' | 'ids' | 'at'>
 ): GridSelection | null => {
   if (!current) {
     return null
   }
 
-  if (!appearances.has(current.focus.appearanceId)) {
+  if (!items.has(current.focus.itemId)) {
     return null
   }
 
   const focusCell = fields.has(current.focus.fieldId)
     ? current.focus
-    : grid.firstCell(appearances, fields, current.focus.appearanceId)
+    : grid.firstCell(items, fields, current.focus.itemId)
   if (!focusCell) {
     return null
   }
 
   const anchorCell = (
-    appearances.has(current.anchor.appearanceId)
+    items.has(current.anchor.itemId)
     && fields.has(current.anchor.fieldId)
   )
     ? current.anchor
@@ -75,14 +75,14 @@ const reconcile = (
 
 const first = (
   current: GridSelection | null,
-  appearances: Pick<AppearanceList, 'ids' | 'has' | 'indexOf' | 'at'>,
+  items: Pick<ItemList, 'ids' | 'has' | 'indexOf' | 'at'>,
   fields: Pick<FieldList, 'ids' | 'at'>,
-  appearanceId?: AppearanceId
+  itemId?: ItemId
 ): GridSelection | undefined => {
   const targetCell = grid.firstCell(
-    appearances,
+    items,
     fields,
-    appearanceId ?? current?.focus.appearanceId
+    itemId ?? current?.focus.itemId
   )
   return targetCell
     ? set(targetCell)
@@ -93,19 +93,19 @@ const move = (
   current: GridSelection | null,
   rowDelta: number,
   columnDelta: number,
-  appearances: Pick<AppearanceList, 'ids' | 'indexOf' | 'at'>,
+  items: Pick<ItemList, 'ids' | 'indexOf' | 'at'>,
   fields: Pick<FieldList, 'ids' | 'indexOf' | 'at'>,
   options?: {
     extend?: boolean
     wrap?: boolean
   }
 ): GridSelection | undefined => {
-  if (!current || !appearances.ids.length || !fields.ids.length) {
+  if (!current || !items.ids.length || !fields.ids.length) {
     return undefined
   }
 
   const nextFocus = grid.stepField(
-    appearances,
+    items,
     fields,
     options?.extend ? current.focus : current.anchor,
     {

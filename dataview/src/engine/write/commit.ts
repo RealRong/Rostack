@@ -17,35 +17,35 @@ import {
   deriveIndex
 } from '../index/runtime'
 import {
-  deriveProject
-} from '../project/runtime'
+  deriveViewRuntime
+} from '../derive/active/runtime'
 import type {
-  ResolvedWriteBatch
-} from '../command'
+  PlannedWriteBatch
+} from './resolve'
 import type {
-  PerfRuntime
-} from '../perf/runtime'
+  PerformanceRuntime
+} from '../state/performance'
 import {
   now
 } from '../perf/shared'
 import {
-  resolveIndexDemand
-} from '../project/runtime/demand'
+  resolveViewDemand
+} from '../derive/active/demand'
 import type {
-  State,
+  EngineState,
   Store
-} from '../store/state'
+} from '../state/store'
 import type {
   ActionResult,
   CommitResult,
   CreatedEntities
-} from '../api/public'
+} from '../contracts/public'
 import {
   clearHistory,
   clearRedo,
   createWriteHistory,
   pushUndo
-} from './history'
+} from '../state/history'
 import {
   summarizeDelta,
   toTraceKind
@@ -66,14 +66,14 @@ type Draft<TResult extends CommitResult = CommitResult> =
       ok: true
       kind: Kind
       doc: DataDoc
-      history: State['history']
+      history: EngineState['history']
       delta: NonNullable<CommitResult['changes']>
       result: TResult
       ms?: number
     }
 
 type Plan<TResult extends CommitResult = CommitResult> = (
-  base: State
+  base: EngineState
 ) => Draft<TResult>
 
 const createdFromChanges = (
@@ -95,10 +95,10 @@ const createdFromChanges = (
 }
 
 const replayResult = (
-  base: State,
+  base: EngineState,
   kind: 'undo' | 'redo',
   operations: readonly BaseOperation[],
-  history: State['history']
+  history: EngineState['history']
 ): Draft<CommitResult> => {
   const startedAt = now()
   const applied = applyOperations(base.doc, operations)
@@ -119,7 +119,7 @@ const replayResult = (
 }
 
 const writePlan = (
-  batch: ResolvedWriteBatch
+  batch: PlannedWriteBatch
 ): Plan<ActionResult> => base => {
   if (!batch.canApply || !batch.operations.length) {
     return {
@@ -164,7 +164,7 @@ const writePlan = (
 const replayPlan = (
   kind: 'undo' | 'redo',
   operations: readonly BaseOperation[],
-  history: State['history']
+  history: EngineState['history']
 ): Plan<CommitResult> => base => replayResult(base, kind, operations, history)
 
 const loadPlan = (
@@ -189,7 +189,7 @@ const loadPlan = (
 
 const commit = <TResult extends CommitResult>(input: {
   store: Store
-  perf: PerfRuntime
+  perf: PerformanceRuntime
   capturePerf: boolean
   plan: Plan<TResult>
 }): TResult => {
@@ -201,37 +201,39 @@ const commit = <TResult extends CommitResult>(input: {
   }
 
   const nextIndex = deriveIndex({
-    previous: base.index,
-    previousDemand: base.cache.indexDemand,
+    previous: base.currentView.index,
+    previousDemand: base.currentView.demand,
     document: draft.doc,
     delta: draft.delta,
-    demand: resolveIndexDemand(draft.doc, draft.doc.activeViewId)
+    demand: resolveViewDemand(draft.doc, draft.doc.activeViewId)
   })
-  const nextProject = deriveProject({
-    previous: base.project,
-    projection: base.cache.projection,
+  const nextView = deriveViewRuntime({
+    previous: base.currentView.snapshot,
+    cache: base.currentView.cache,
     doc: draft.doc,
     index: nextIndex.state,
     delta: draft.delta,
     capturePerf: input.capturePerf
   })
 
-  const next: State = {
+  const next = {
     rev: base.rev + 1,
     doc: draft.doc,
     history: draft.history,
-    index: nextIndex.state,
-    project: nextProject.state,
-    cache: {
-      indexDemand: nextIndex.demand,
-      projection: nextProject.projection
+    currentView: {
+      demand: nextIndex.demand,
+      index: nextIndex.state,
+      cache: nextView.cache,
+      ...(nextView.snapshot
+        ? { snapshot: nextView.snapshot }
+        : {})
     }
   }
 
   if (
     input.perf.enabled
     && nextIndex.trace
-    && nextProject.trace
+    && nextView.trace
   ) {
     input.perf.recordCommit({
       kind: toTraceKind(draft.kind),
@@ -239,13 +241,13 @@ const commit = <TResult extends CommitResult>(input: {
         totalMs: now() - startedAt,
         commitMs: draft.ms,
         indexMs: nextIndex.trace.timings.totalMs,
-        projectMs: nextProject.trace.project.timings.totalMs,
-        publishMs: nextProject.trace.publishMs
+        viewMs: nextView.trace.view.timings.totalMs,
+        snapshotMs: nextView.trace.snapshotMs
       },
       delta: summarizeDelta(draft.delta),
       index: nextIndex.trace,
-      project: nextProject.trace.project,
-      publish: nextProject.trace.publish
+      view: nextView.trace.view,
+      snapshot: nextView.trace.snapshot
     })
   }
 
@@ -255,7 +257,7 @@ const commit = <TResult extends CommitResult>(input: {
 
 export const createWriteControl = (input: {
   store: Store
-  perf: PerfRuntime
+  perf: PerformanceRuntime
   capturePerf: boolean
 }) => {
   const runPlan = <TResult extends CommitResult>(
@@ -268,11 +270,15 @@ export const createWriteControl = (input: {
   })
 
   return {
-    run: (batch: ResolvedWriteBatch): ActionResult => runPlan(writePlan(batch)),
+    run: (batch: PlannedWriteBatch): ActionResult => runPlan(writePlan(batch)),
     load: (doc: DataDoc): CommitResult => runPlan(loadPlan(doc)),
     history: createWriteHistory({
       store: input.store,
-      replay: (kind, operations, history) => runPlan(replayPlan(kind, operations, history))
+      replay: (
+        kind: 'undo' | 'redo',
+        operations: readonly BaseOperation[],
+        history: EngineState['history']
+      ) => runPlan(replayPlan(kind, operations, history))
     })
   }
 }

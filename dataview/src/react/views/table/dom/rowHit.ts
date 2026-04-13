@@ -5,7 +5,7 @@ import {
   type Point,
   type Rect
 } from '@shared/dom'
-import type { AppearanceId } from '@dataview/engine/project'
+import type { ItemId } from '@dataview/engine'
 import {
   rowGapHitAtPoint,
   rowIdAtPoint,
@@ -21,7 +21,7 @@ const emptyRowRects = [] as readonly TableRowRect[]
 const collectRowRects = (input: {
   container: HTMLElement | null | undefined
   nodes?: Nodes
-  rowIds: readonly AppearanceId[]
+  rowIds: readonly ItemId[]
   left?: number
 }): readonly TableRowRect[] => {
   const container = input.container
@@ -38,7 +38,7 @@ const collectRowRects = (input: {
 
   return mountedRows
     .flatMap(node => {
-      const rowId = node.dataset.rowId as AppearanceId | undefined
+      const rowId = node.dataset.rowId as ItemId | undefined
       if (!rowId || !rowOrder.has(rowId)) {
         return []
       }
@@ -65,9 +65,9 @@ const collectRowRects = (input: {
 export const mountedRowIdAtPoint = (input: {
   container: HTMLElement | null | undefined
   nodes?: Nodes
-  rowIds: readonly AppearanceId[]
+  rowIds: readonly ItemId[]
   point: Point | null
-}): AppearanceId | null => {
+}): ItemId | null => {
   const container = input.container
   const point = input.point
   if (!container || !point) {
@@ -88,7 +88,7 @@ export const mountedRowIdAtPoint = (input: {
 export const mountedRowRangeInBox = (input: {
   container: HTMLElement | null | undefined
   nodes?: Nodes
-  rowIds: readonly AppearanceId[]
+  rowIds: readonly ItemId[]
   box: Rect | null
 }): TableRowRangeHit | null => {
   const container = input.container
@@ -109,7 +109,7 @@ export const mountedRowRangeInBox = (input: {
 export const mountedRowGapAtPoint = (input: {
   container: HTMLElement | null | undefined
   nodes?: Nodes
-  rowIds: readonly AppearanceId[]
+  rowIds: readonly ItemId[]
   point: Point | null
 }): TableRowGapHit | null => {
   const container = input.container
@@ -130,11 +130,11 @@ export const mountedRowGapAtPoint = (input: {
 
 export interface RowHit {
   idAtPoint: (input: {
-    rowIds: readonly AppearanceId[]
+    rowIds: readonly ItemId[]
     point: Point | null
-  }) => AppearanceId | null
+  }) => ItemId | null
   gapAtPoint: (input: {
-    rowIds: readonly AppearanceId[]
+    rowIds: readonly ItemId[]
     point: Point | null
   }) => TableRowGapHit | null
 }

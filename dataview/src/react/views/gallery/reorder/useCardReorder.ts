@@ -1,5 +1,5 @@
 import { useCallback, type RefObject } from 'react'
-import type { AppearanceId } from '@dataview/engine/project'
+import type { ItemId } from '@dataview/engine'
 import { pointIn } from '@shared/dom'
 import {
   usePointerDragSession,
@@ -14,9 +14,9 @@ const INDICATOR_EPSILON = 0.5
 interface Options {
   containerRef: RefObject<HTMLElement | null>
   canDrag: boolean
-  itemMap: ReadonlyMap<AppearanceId, AppearanceId>
-  getDragIds: (activeId: AppearanceId) => readonly AppearanceId[]
-  onDrop: (cardIds: readonly AppearanceId[], target: GalleryDropTarget) => void
+  itemMap: ReadonlyMap<ItemId, ItemId>
+  getDragIds: (activeId: ItemId) => readonly ItemId[]
+  onDrop: (cardIds: readonly ItemId[], target: GalleryDropTarget) => void
   getLayout: () => GalleryLayoutCache | null
   onDraggingChange?: (dragging: boolean) => void
 }
@@ -28,14 +28,14 @@ const sameTarget = (
   left?.sectionKey === right?.sectionKey
   && left?.anchorId === right?.anchorId
   && left?.side === right?.side
-  && left?.beforeAppearanceId === right?.beforeAppearanceId
+  && left?.beforeItemId === right?.beforeItemId
   && Math.abs((left?.indicator.left ?? 0) - (right?.indicator.left ?? 0)) <= INDICATOR_EPSILON
   && Math.abs((left?.indicator.top ?? 0) - (right?.indicator.top ?? 0)) <= INDICATOR_EPSILON
   && Math.abs((left?.indicator.height ?? 0) - (right?.indicator.height ?? 0)) <= INDICATOR_EPSILON
 )
 
 export const useCardReorder = (options: Options) => {
-  const resolveTarget = useCallback((pointer: PointerPosition | null, dragIds: readonly AppearanceId[]) => {
+  const resolveTarget = useCallback((pointer: PointerPosition | null, dragIds: readonly ItemId[]) => {
     const container = options.containerRef.current
     if (!container || !pointer) {
       return undefined
@@ -45,7 +45,7 @@ export const useCardReorder = (options: Options) => {
     return dropTargetFromPoint(options.getLayout(), point, dragIds)
   }, [options.containerRef, options.getLayout])
 
-  const session = usePointerDragSession<AppearanceId, AppearanceId, GalleryDropTarget>({
+  const session = usePointerDragSession<ItemId, ItemId, GalleryDropTarget>({
     containerRef: options.containerRef,
     canDrag: options.canDrag,
     autoPan: true,

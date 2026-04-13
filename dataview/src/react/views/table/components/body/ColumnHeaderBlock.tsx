@@ -6,14 +6,14 @@ import type {
   FieldId
 } from '@dataview/core/contracts'
 import type {
-  AppearanceId
-} from '@dataview/engine/project'
+  ItemId
+} from '@dataview/engine'
 import { RowScopeSelectionRail } from '../row/RowScopeSelectionRail'
 import { ColumnHeaderRow } from '../column/ColumnHeaderRow'
 
 export interface ColumnHeaderBlockProps {
   scopeId: string
-  rowIds: readonly AppearanceId[]
+  rowIds: readonly ItemId[]
   label?: string
   columns: readonly Field[]
   template: string

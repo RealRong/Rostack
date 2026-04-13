@@ -15,11 +15,11 @@ import type {
 } from '../../../index/types'
 import type {
   SectionKey
-} from '../../readModels'
+} from '../../../contracts/public'
 import type {
-  CalcState,
-  SectionState
-} from '../state'
+  SectionState,
+  SummaryState
+} from '../../../contracts/internal'
 
 export const EMPTY_AGGREGATES = new Map<FieldId, AggregateState>()
 
@@ -45,11 +45,11 @@ export const buildSectionFieldState = (input: {
   })
 ))
 
-export const buildCalcState = (input: {
+export const buildSummaryState = (input: {
   sections: SectionState
   view: View
   index: IndexState
-}): CalcState => {
+}): SummaryState => {
   const bySection = new Map<SectionKey, ReadonlyMap<FieldId, AggregateState>>()
   const calcFields = readCalcFields(input.view)
 
@@ -79,7 +79,7 @@ export const buildCalcState = (input: {
       }
 
       byField.set(fieldId, buildSectionFieldState({
-        sectionIds: section.ids,
+        sectionIds: section.recordIds,
         entries
       }))
     })

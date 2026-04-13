@@ -37,8 +37,8 @@ import {
   type MarqueeApi
 } from '@dataview/react/runtime/marquee'
 import type {
-  AppearanceList
-} from '@dataview/engine/project'
+  ItemList
+} from '@dataview/engine'
 import type {
   View
 } from '@dataview/core/contracts'
@@ -59,28 +59,28 @@ export interface DataViewSession extends DataViewContextValue {
 }
 
 const bindSelectionToAppearances = (input: {
-  appearances: ReadStore<AppearanceList | undefined>
+  items: ReadStore<ItemList | undefined>
   selection: SelectionApi
 }) => {
   const sync = () => {
-    const appearances = input.appearances.get()
-    if (!appearances) {
+    const items = input.items.get()
+    if (!items) {
       if (!selectionHelpers.equal(input.selection.get(), emptySelection)) {
         input.selection.store.set(emptySelection)
       }
       return
     }
 
-    syncSelection(input.selection.store, appearances.ids)
+    syncSelection(input.selection.store, items.ids)
   }
 
   sync()
-  return input.appearances.subscribe(sync)
+  return input.items.subscribe(sync)
 }
 
 const bindInlineSessionToView = (input: {
   activeView: ReadStore<View | undefined>
-  appearances: ReadStore<AppearanceList | undefined>
+  items: ReadStore<ItemList | undefined>
   inlineSession: InlineSessionApi
 }) => {
   const sync = () => {
@@ -90,15 +90,15 @@ const bindInlineSessionToView = (input: {
     }
 
     const view = input.activeView.get()
-    const appearances = input.appearances.get()
-    if (!view || !appearances) {
+    const items = input.items.get()
+    if (!view || !items) {
       input.inlineSession.exit({
         reason: 'view-change'
       })
       return
     }
 
-    if (view.id !== session.viewId || !appearances.has(session.appearanceId)) {
+    if (view.id !== session.viewId || !items.has(session.itemId)) {
       input.inlineSession.exit({
         reason: 'view-change'
       })
@@ -108,7 +108,7 @@ const bindInlineSessionToView = (input: {
   sync()
   return joinUnsubscribes([
     input.activeView.subscribe(sync),
-    input.appearances.subscribe(sync)
+    input.items.subscribe(sync)
   ])
 }
 
@@ -169,30 +169,30 @@ export const createDataViewSession = (input: {
   const marquee = createMarqueeApi()
   const inlineSession = createInlineSessionApi()
   const valueEditor = createValueEditorApi()
-  const activeAppearances = input.engine.active.select(
-    state => state?.appearances
+  const activeAppearances = input.engine.view.select(
+    state => state?.items
   )
   const selection = createSelectionApi({
     store: selectionStore,
     scope: {
-      appearances: () => activeAppearances.get()
+      items: () => activeAppearances.get()
     }
   })
   const pageStateStore = createPageStateStore({
     document: input.engine.read.document,
-    activeViewId: input.engine.active.id,
-    activeView: input.engine.active.view,
+    activeViewId: input.engine.view.id,
+    activeView: input.engine.view.config,
     page: page.store,
     valueEditorOpen: valueEditor.openStore
   })
 
   const disposeBindings = joinUnsubscribes([
     bindSelectionToAppearances({
-      appearances: activeAppearances,
+      items: activeAppearances,
       selection
     }),
     bindMarqueeToView({
-      activeView: input.engine.active.view,
+      activeView: input.engine.view.config,
       marquee
     }),
     bindInlineSessionToSelection({
@@ -200,8 +200,8 @@ export const createDataViewSession = (input: {
       inlineSession
     }),
     bindInlineSessionToView({
-      activeView: input.engine.active.view,
-      appearances: activeAppearances,
+      activeView: input.engine.view.config,
+      items: activeAppearances,
       inlineSession
     })
   ])

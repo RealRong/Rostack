@@ -217,19 +217,19 @@ export const RootPanel = () => {
   const document = useDataViewValue(dataView => dataView.engine.read.document)
   const router = useViewSettings()
   const currentView = useDataViewValue(
-    dataView => dataView.engine.active.view
+    dataView => dataView.engine.view.config
   )
   const fields = getDocumentFields(document)
   const filterProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => state?.query.filter
+    dataView => dataView.engine.view.state,
+    state => state?.query.filters
   )
   const sortProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
+    dataView => dataView.engine.view.state,
     state => state?.query.sort
   )
   const groupProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
+    dataView => dataView.engine.view.state,
     state => state?.query.group
   )
   const viewsCount = getDocumentViews(document).length

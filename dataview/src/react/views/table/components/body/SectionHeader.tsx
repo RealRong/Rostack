@@ -6,7 +6,7 @@ import {
 } from '@dataview/react/dataview'
 import type {
   Section
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import { useStoreValue } from '@shared/react'
 import { useTableContext } from '../../context'
 import { Button } from '@ui/button'
@@ -48,7 +48,7 @@ export const SectionHeader = (props: SectionHeaderProps) => {
           event.stopPropagation()
         }}
         onClick={() => {
-          engine.active.group.toggleCollapse(props.section.key)
+          engine.view.sections.toggleCollapse(props.section.key)
           table.focus()
         }}
       >

@@ -28,7 +28,7 @@ import {
 } from '@dataview/react/views/shared'
 import { resolveNeutralCardStyle } from '@ui/color'
 import { cn } from '@ui/utils'
-import type { AppearanceId } from '@dataview/engine/project'
+import type { ItemId } from '@dataview/engine'
 import { useGalleryContext } from '../context'
 import {
   CARD_TITLE_PLACEHOLDER
@@ -38,7 +38,7 @@ import {
 } from '@dataview/react/views/shared/useCardTitleEditing'
 
 export const Card = (props: {
-  appearanceId: AppearanceId
+  itemId: ItemId
   measureRef?: (node: HTMLElement | null) => void
   className?: string
   style?: CSSProperties
@@ -50,7 +50,7 @@ export const Card = (props: {
   } = useGalleryContext()
   const dataView = useDataView()
   const engine = dataView.engine
-  const recordId = engine.active.read.appearance(props.appearanceId)?.recordId ?? '' as RecordId
+  const recordId = engine.view.read.item(props.itemId)?.recordId ?? '' as RecordId
   const record = useDataViewKeyedValue(
     current => current.engine.read.record,
     recordId
@@ -61,7 +61,7 @@ export const Card = (props: {
 
   return (
     <GalleryCardContent
-      appearanceId={props.appearanceId}
+      itemId={props.itemId}
       record={record}
       measureRef={props.measureRef}
       className={props.className}
@@ -71,7 +71,7 @@ export const Card = (props: {
 }
 
 const GalleryCardContent = (props: {
-  appearanceId: AppearanceId
+  itemId: ItemId
   record: DataRecord
   measureRef?: (node: HTMLElement | null) => void
   className?: string
@@ -84,15 +84,15 @@ const GalleryCardContent = (props: {
   } = useGalleryContext()
   const viewId = active.view.id
   const fields = active.fields.custom
-  const selected = runtime.selection.selectedIdSet.has(props.appearanceId)
-  const draggingActive = runtime.drag.activeId === props.appearanceId
+  const selected = runtime.selection.selectedIdSet.has(props.itemId)
+  const draggingActive = runtime.drag.activeId === props.itemId
   const draggingSelected = runtime.drag.activeId !== undefined
-    && runtime.drag.dragIdSet.has(props.appearanceId)
+    && runtime.drag.dragIdSet.has(props.itemId)
   const canDrag = extra.canReorder
   const [hovered, setHovered] = useState(false)
   const editing = useCardEditingState({
     viewId,
-    appearanceId: props.appearanceId
+    itemId: props.itemId
   })
   const cardNodeRef = useRef<HTMLElement | null>(null)
   const measureRefRef = useRef(props.measureRef)
@@ -117,21 +117,21 @@ const GalleryCardContent = (props: {
       return
     }
 
-    runtime.visualTargets.register(props.appearanceId, node)
+    runtime.visualTargets.register(props.itemId, node)
 
     return () => {
       if (marqueeActiveRef.current) {
-        runtime.visualTargets.freeze(props.appearanceId, node)
+        runtime.visualTargets.freeze(props.itemId, node)
       }
-      runtime.visualTargets.register(props.appearanceId, null)
+      runtime.visualTargets.register(props.itemId, null)
     }
-  }, [props.appearanceId, runtime.visualTargets])
+  }, [props.itemId, runtime.visualTargets])
 
   return (
     <CardContent
       ref={contentRef}
       {...{
-        [DATAVIEW_APPEARANCE_ID_ATTR]: props.appearanceId
+        [DATAVIEW_APPEARANCE_ID_ATTR]: props.itemId
       }}
       onPointerEnter={() => {
         setHovered(true)
@@ -148,7 +148,7 @@ const GalleryCardContent = (props: {
           return
         }
 
-        runtime.drag.onPointerDown(props.appearanceId, event)
+        runtime.drag.onPointerDown(props.itemId, event)
       }}
       onClick={event => {
         if (editing) {
@@ -166,7 +166,7 @@ const GalleryCardContent = (props: {
         }
 
         runtime.selection.select(
-          props.appearanceId,
+          props.itemId,
           event.metaKey || event.ctrlKey ? 'toggle' : 'replace'
         )
       }}
@@ -204,7 +204,7 @@ const GalleryCardContent = (props: {
         }
       }}
       viewId={viewId}
-      appearanceId={props.appearanceId}
+      itemId={props.itemId}
       record={props.record}
       fields={fields}
       titlePlaceholder={CARD_TITLE_PLACEHOLDER}

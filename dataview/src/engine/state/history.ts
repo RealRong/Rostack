@@ -1,10 +1,15 @@
 import type { BaseOperation } from '@dataview/core/contracts/operations'
-import type { CommitResult } from '../api/public'
-import type { HistoryState } from '../api/public/history'
-import type { State, Store } from '../store/state'
+import type {
+  CommitResult,
+  HistoryState
+} from '../contracts/public'
+import type {
+  EngineState,
+  Store
+} from './store'
 
 const trimUndo = (
-  entries: State['history']['undo'],
+  entries: EngineState['history']['undo'],
   cap: number
 ) => {
   if (!cap) {
@@ -17,16 +22,16 @@ const trimUndo = (
 }
 
 export const clearHistory = (
-  history: State['history']
-): State['history'] => ({
+  history: EngineState['history']
+): EngineState['history'] => ({
   ...history,
   undo: [],
   redo: []
 })
 
 export const clearRedo = (
-  history: State['history']
-): State['history'] => (
+  history: EngineState['history']
+): EngineState['history'] => (
   history.redo.length
     ? {
         ...history,
@@ -36,15 +41,15 @@ export const clearRedo = (
 )
 
 export const pushUndo = (
-  history: State['history'],
-  entry: State['history']['undo'][number]
-): State['history'] => ({
+  history: EngineState['history'],
+  entry: EngineState['history']['undo'][number]
+): EngineState['history'] => ({
   ...history,
   undo: trimUndo([...history.undo, entry], history.cap)
 })
 
-export const takeUndo = (history: State['history']): {
-  history: State['history']
+export const takeUndo = (history: EngineState['history']): {
+  history: EngineState['history']
   operations?: BaseOperation[]
 } => {
   const entry = history.undo.at(-1)
@@ -64,8 +69,8 @@ export const takeUndo = (history: State['history']): {
   }
 }
 
-export const takeRedo = (history: State['history']): {
-  history: State['history']
+export const takeRedo = (history: EngineState['history']): {
+  history: EngineState['history']
   operations?: BaseOperation[]
 } => {
   const entry = history.redo.at(-1)
@@ -86,7 +91,7 @@ export const takeRedo = (history: State['history']): {
 }
 
 export const historyState = (
-  history: State['history']
+  history: EngineState['history']
 ): HistoryState => ({
   capacity: history.cap,
   undoDepth: history.undo.length,
@@ -94,11 +99,11 @@ export const historyState = (
 })
 
 export const canUndo = (
-  history: State['history']
+  history: EngineState['history']
 ) => history.undo.length > 0
 
 export const canRedo = (
-  history: State['history']
+  history: EngineState['history']
 ) => history.redo.length > 0
 
 export const createWriteHistory = (input: {
@@ -106,7 +111,7 @@ export const createWriteHistory = (input: {
   replay: (
     kind: 'undo' | 'redo',
     operations: readonly BaseOperation[],
-    history: State['history']
+    history: EngineState['history']
   ) => CommitResult
 }) => ({
   state: () => historyState(input.store.get().history),

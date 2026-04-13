@@ -13,7 +13,7 @@ import {
   createIssue,
   type IssueSource,
   type ValidationIssue
-} from '../command/issues'
+} from '../write/issues'
 
 export const validateRecordExists = (
   document: DataDoc,

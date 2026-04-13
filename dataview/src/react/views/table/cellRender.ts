@@ -1,4 +1,4 @@
-import type { ActiveViewState as CurrentView } from '@dataview/engine'
+import type { ViewState as CurrentView } from '@dataview/engine'
 import type {
   DataRecord,
   RecordId,
@@ -15,10 +15,10 @@ import {
 } from '@shared/core'
 import {
   sameCellRef
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import type {
   CellRef
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import {
   fill,
   grid,
@@ -83,7 +83,7 @@ const equalRenderState = (
   && left.chrome.fill === right.chrome.fill
 )
 
-const cellCacheKey = (cell: CellRef) => `${cell.appearanceId}\u0000${cell.fieldId}`
+const cellCacheKey = (cell: CellRef) => `${cell.itemId}\u0000${cell.fieldId}`
 
 export type CellRender = KeyedReadStore<CellRef, CellRenderState>
 
@@ -103,7 +103,7 @@ export const createCellRender = (options: {
       const currentView = read(options.currentViewStore)
       return {
         rangeEdges: currentRange && currentView
-          ? range.edges(currentRange, currentView.appearances, currentView.fields)
+          ? range.edges(currentRange, currentView.items, currentView.fields)
           : undefined,
         focusCell,
         selectionVisible: !read(options.valueEditorOpenStore)
@@ -125,7 +125,7 @@ export const createCellRender = (options: {
 
       return fill.handleCell(
         read(options.gridSelectionStore),
-        currentView.appearances,
+        currentView.items,
         currentView.fields
       )
     },
@@ -137,12 +137,12 @@ export const createCellRender = (options: {
     get: (cell) => {
       const currentCapabilities = read(options.capabilitiesStore)
       const currentView = read(options.currentViewStore)
-      const recordId = currentView?.appearances.get(cell.appearanceId)?.recordId
+      const recordId = currentView?.items.get(cell.itemId)?.recordId
       const record = recordId
         ? read(options.recordStore, recordId)
         : undefined
       const rowIndex = currentView
-        ? grid.appearanceIndex(currentView.appearances, cell.appearanceId)
+        ? grid.appearanceIndex(currentView.items, cell.itemId)
         : undefined
       const fieldIndex = currentView
         ? grid.fieldIndex(currentView.fields, cell.fieldId)

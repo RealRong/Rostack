@@ -20,7 +20,7 @@ const sameTarget = (
   }
 
   return left.viewId === right.viewId
-    && left.appearanceId === right.appearanceId
+    && left.itemId === right.itemId
 }
 
 export const createInlineSessionApi = (

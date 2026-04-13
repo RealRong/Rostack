@@ -7,7 +7,7 @@ import {
 import {
   type KanbanActiveState
 } from './runtime'
-import type { ActiveViewState } from '@dataview/engine'
+import type { ViewState } from '@dataview/engine'
 
 const DEFAULT_COLUMN_WIDTH = 320
 const DEFAULT_COLUMN_MIN_HEIGHT = 260
@@ -16,7 +16,7 @@ const contentInsetStyle = {
 } as const
 
 const readKanbanActiveState = (
-  state: ActiveViewState | undefined
+  state: ViewState | undefined
 ): KanbanActiveState | undefined => (
   state?.view.type === 'kanban'
     ? state as KanbanActiveState
@@ -32,11 +32,11 @@ export const KanbanView = (props: KanbanViewProps) => {
   const columnWidth = props.columnWidth ?? DEFAULT_COLUMN_WIDTH
   const columnMinHeight = props.columnMinHeight ?? DEFAULT_COLUMN_MIN_HEIGHT
   const active = useDataViewValue(
-    dataView => dataView.engine.active.state,
+    dataView => dataView.engine.view.state,
     readKanbanActiveState
   )
   const extra = useDataViewValue(
-    dataView => dataView.engine.active.kanban.state
+    dataView => dataView.engine.view.kanban.state
   )
   if (!active || !extra) {
     throw new Error('Kanban view requires an active kanban state.')

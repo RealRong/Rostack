@@ -6,8 +6,8 @@ import {
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import type {
-  AppearanceId
-} from '@dataview/engine/project'
+  ItemId
+} from '@dataview/engine'
 import type {
   SelectionApi
 } from '@dataview/react/runtime/selection'
@@ -25,20 +25,20 @@ import { RowRail } from './RowRail'
 import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
 
 export interface RowProps {
-  appearanceId: AppearanceId
+  itemId: ItemId
   template: string
   rowHeight: number
   marqueeActive: boolean
   dragActive: boolean
   isDragging: boolean
   onDragStart: (input: {
-    rowId: AppearanceId
+    rowId: ItemId
     event: ReactPointerEvent<HTMLButtonElement>
   }) => void
 }
 
 const same = (left: RowProps, right: RowProps) => (
-  left.appearanceId === right.appearanceId
+  left.itemId === right.itemId
   && left.template === right.template
   && left.rowHeight === right.rowHeight
   && left.marqueeActive === right.marqueeActive
@@ -49,7 +49,7 @@ const same = (left: RowProps, right: RowProps) => (
 
 export const applyRowCheckboxSelection = (input: {
   selection: Pick<SelectionApi, 'extend' | 'toggle'>
-  rowId: AppearanceId
+  rowId: ItemId
   shiftKey: boolean
 }) => {
   if (input.shiftKey) {
@@ -80,24 +80,24 @@ const View = (props: RowProps) => {
       return
     }
 
-    table.nodes.registerRow(props.appearanceId, node)
+    table.nodes.registerRow(props.itemId, node)
 
     return () => {
-      table.nodes.registerRow(props.appearanceId, null)
+      table.nodes.registerRow(props.itemId, null)
     }
-  }, [props.appearanceId, table.nodes])
+  }, [props.itemId, table.nodes])
   const capabilities = useStoreValue(table.capabilities)
   const rowRail = useStoreValue(table.rowRail)
-  const exposed = rowRail === props.appearanceId
+  const exposed = rowRail === props.itemId
   const previewSelected = useStoreSelector(
     table.marqueeSelection,
     selection => selection
-      ? selection.ids.includes(props.appearanceId)
+      ? selection.ids.includes(props.itemId)
       : null
   )
   const committedSelected = useDataViewValue(
     dataView => dataView.selection.store,
-    selection => selection.ids.includes(props.appearanceId)
+    selection => selection.ids.includes(props.itemId)
   )
   const selected = previewSelected ?? committedSelected
   const rail = rowRailState({
@@ -129,21 +129,21 @@ const View = (props: RowProps) => {
       up: () => {
         applyRowCheckboxSelection({
           selection: dataView.selection,
-          rowId: props.appearanceId,
+          rowId: props.itemId,
           shiftKey: event.shiftKey
         })
         table.gridSelection.clear()
-        table.rowRail.set(props.appearanceId)
+        table.rowRail.set(props.itemId)
         table.focus()
       }
     })
-  }, [dataView.selection, props.appearanceId, table])
+  }, [dataView.selection, props.itemId, table])
 
   return (
     <div
       ref={rowRef}
       data-table-target="row"
-      data-row-id={props.appearanceId}
+      data-row-id={props.itemId}
       role="row"
       aria-selected={selected}
       onPointerDown={onRowPointerDown}
@@ -154,7 +154,7 @@ const View = (props: RowProps) => {
       }}
     >
       <RowRail
-        rowId={props.appearanceId}
+        rowId={props.itemId}
         selected={selected}
         state={rail}
         marqueeActive={props.marqueeActive}
@@ -162,7 +162,7 @@ const View = (props: RowProps) => {
         onDragPointerStart={event => {
           table.rowRail.set(null)
           props.onDragStart({
-            rowId: props.appearanceId,
+            rowId: props.itemId,
             event
           })
         }}
@@ -179,7 +179,7 @@ const View = (props: RowProps) => {
         {columns.map(field => (
           <Cell
             key={field.id}
-            appearanceId={props.appearanceId}
+            itemId={props.itemId}
             field={field}
           />
         ))}

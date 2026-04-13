@@ -13,7 +13,7 @@ import {
   useDataView,
   useDataViewValue
 } from '@dataview/react/dataview'
-import type { AppearanceId } from '@dataview/engine/project'
+import type { ItemId } from '@dataview/engine'
 import {
   resolveInlineSessionExitEffect
 } from '@dataview/react/runtime/inlineSession'
@@ -23,25 +23,25 @@ import {
 
 export const useCardEditingState = (input: {
   viewId: ViewId
-  appearanceId: AppearanceId
+  itemId: ItemId
 }) => useDataViewValue(
   dataView => dataView.inlineSession.store,
   target => (
     target?.viewId === input.viewId
-      && target.appearanceId === input.appearanceId
+      && target.itemId === input.itemId
   )
 )
 
 export const useCardTitleEditing = (input: {
   viewId: ViewId
-  appearanceId: AppearanceId
+  itemId: ItemId
   record: DataRecord
 }) => {
   const dataView = useDataView()
   const engine = dataView.engine
   const editing = useCardEditingState({
     viewId: input.viewId,
-    appearanceId: input.appearanceId
+    itemId: input.itemId
   })
   const committedTitle = readCardTitleText(input.record)
   const [titleDraft, setTitleDraft] = useState(() => committedTitle)
@@ -74,12 +74,12 @@ export const useCardTitleEditing = (input: {
     dataView.selection.clear()
     dataView.inlineSession.enter({
       viewId: input.viewId,
-      appearanceId: input.appearanceId
+      itemId: input.itemId
     })
   }, [
     dataView.inlineSession,
     dataView.selection,
-    input.appearanceId,
+    input.itemId,
     input.record,
     input.viewId
   ])
@@ -95,7 +95,7 @@ export const useCardTitleEditing = (input: {
     }
 
     committedTitleRef.current = nextValue
-    engine.records.field.set(input.record.id, 'title' as TitleFieldId, nextValue)
+    engine.records.values.set(input.record.id, 'title' as TitleFieldId, nextValue)
   }, [
     engine,
     input.record.id
@@ -120,7 +120,7 @@ export const useCardTitleEditing = (input: {
     return dataView.inlineSession.onExit(event => {
       if (
         event.target.viewId !== input.viewId
-        || event.target.appearanceId !== input.appearanceId
+        || event.target.itemId !== input.itemId
       ) {
         return
       }
@@ -138,7 +138,7 @@ export const useCardTitleEditing = (input: {
     commitTitle,
     dataView.inlineSession,
     editing,
-    input.appearanceId,
+    input.itemId,
     input.viewId,
     resetTitleDraft
   ])

@@ -1,4 +1,4 @@
-import type { ActiveViewState as CurrentView } from '@dataview/engine'
+import type { ViewState as CurrentView } from '@dataview/engine'
 import { createDerivedStore, read, type ReadStore } from '@shared/core'
 import type { InteractionState } from '@dataview/react/interaction'
 

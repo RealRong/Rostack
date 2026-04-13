@@ -17,7 +17,7 @@ import {
 } from '@dataview/react/dom/field'
 import type {
   ViewFieldRef
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import { cn } from '@ui/utils'
 import { openCardField } from './openCardField'
 
@@ -75,10 +75,10 @@ export const CardField = (props: CardFieldProps) => {
       return
     }
 
-    dataView.selection.set([props.field.appearanceId])
+    dataView.selection.set([props.field.itemId])
     applyRecordValue({
-      set: engine.records.field.set,
-      clear: engine.records.field.clear,
+      set: engine.records.values.set,
+      clear: engine.records.values.clear,
       recordId: props.field.recordId,
       fieldId: customField.id,
       value: action.value
@@ -97,7 +97,7 @@ export const CardField = (props: CardFieldProps) => {
       field: props.field,
       element,
       focusOwner: () => {
-        dataView.selection.set([props.field.appearanceId])
+        dataView.selection.set([props.field.itemId])
       }
     })
   }
@@ -130,7 +130,7 @@ export const CardField = (props: CardFieldProps) => {
         }
 
         event.stopPropagation()
-        dataView.selection.set([props.field.appearanceId])
+        dataView.selection.set([props.field.itemId])
       }}
       onDoubleClick={event => {
         if (props.openOnClick) {
@@ -141,7 +141,7 @@ export const CardField = (props: CardFieldProps) => {
 
         event.preventDefault()
         event.stopPropagation()
-        dataView.selection.set([props.field.appearanceId])
+        dataView.selection.set([props.field.itemId])
         open(event.currentTarget)
       }}
       className={cn('min-w-0 select-none text-left', props.className)}

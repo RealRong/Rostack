@@ -5,7 +5,7 @@ import type {
 import type {
   IndexStageTrace,
   IndexTrace
-} from '../api/public'
+} from '../contracts/public'
 import {
   buildCalculationIndex,
   ensureCalculationIndex,
@@ -138,8 +138,8 @@ export const deriveIndex = (input: {
     : buildSortIndex(input.document, records, nextDemand.sortFields, previous.sort.rev + 1)
   const sortMs = now() - sortStart
 
-  const calculationsStart = now()
-  const calculations = sameFieldIdList(input.previousDemand.calculationFields, nextDemand.calculationFields)
+  const summariesStart = now()
+  const summaries = sameFieldIdList(input.previousDemand.calculationFields, nextDemand.calculationFields)
     ? ensureCalculationIndex(
         syncCalculationIndex(previous.calculations, input.document, records, input.delta),
         input.document,
@@ -152,14 +152,14 @@ export const deriveIndex = (input: {
         nextDemand.calculationFields,
         previous.calculations.rev + 1
       )
-  const calculationsMs = now() - calculationsStart
+  const summariesMs = now() - summariesStart
 
   const state = {
     records,
     search,
     group,
     sort,
-    calculations
+    calculations: summaries
   } satisfies IndexState
 
   return {
@@ -171,7 +171,7 @@ export const deriveIndex = (input: {
         || search !== previous.search
         || group !== previous.group
         || sort !== previous.sort
-        || calculations !== previous.calculations
+        || summaries !== previous.calculations
       ),
       timings: {
         totalMs: now() - totalStart,
@@ -179,7 +179,7 @@ export const deriveIndex = (input: {
         searchMs,
         groupMs,
         sortMs,
-        calculationsMs
+        summariesMs
       },
       records: createIndexStageTrace({
         previous: previous.records,
@@ -221,13 +221,13 @@ export const deriveIndex = (input: {
         touchedRecordCount,
         touchedFieldCount
       }),
-      calculations: createIndexStageTrace({
+      summaries: createIndexStageTrace({
         previous: previous.calculations,
-        next: calculations,
+        next: summaries,
         rebuild,
-        durationMs: calculationsMs,
+        durationMs: summariesMs,
         inputSize: previous.calculations.fields.size,
-        outputSize: calculations.fields.size,
+        outputSize: summaries.fields.size,
         touchedRecordCount,
         touchedFieldCount
       })

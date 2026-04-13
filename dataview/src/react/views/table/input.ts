@@ -1,9 +1,9 @@
 import type { KeyInput } from '@dataview/react/interaction'
 import type { FieldId } from '@dataview/core/contracts'
-import type { ActiveViewState as CurrentView } from '@dataview/engine'
+import type { ViewState as CurrentView } from '@dataview/engine'
 import {
   type CellRef
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import type {
   Selection,
   SelectionApi
@@ -67,7 +67,7 @@ export const handleTableKey = (input: {
     if (key.key === 'Escape') {
       const currentRange = range.from(currentGridSelection)
       const rowIds = currentRange
-        ? range.appearances(currentRange, input.currentView.appearances)
+        ? range.items(currentRange, input.currentView.items)
         : []
       input.selectionApi.set(rowIds, {
         anchor: rowIds[0],
@@ -82,7 +82,7 @@ export const handleTableKey = (input: {
     const action = gridKeyAction({
       key,
       selection: currentGridSelection,
-      appearances: input.currentView.appearances,
+      items: input.currentView.items,
       fields: input.currentView.fields,
       read: {
         cell: input.readCell,
@@ -110,10 +110,10 @@ export const handleTableKey = (input: {
         })
         return true
       case 'clear-cells': {
-        action.appearanceIds.forEach(appearanceId => {
+        action.itemIds.forEach(itemId => {
           action.fieldIds.forEach(fieldId => {
-            input.editor.active.cells.clear({
-              appearanceId,
+            input.editor.view.cells.clear({
+              itemId,
               fieldId
             })
           })
@@ -133,7 +133,7 @@ export const handleTableKey = (input: {
     case 'ArrowUp':
     case 'ArrowDown': {
       const next = rowSelection.step(
-        input.currentView.appearances.ids,
+        input.currentView.items.ids,
         currentSelection,
         key.key === 'ArrowUp' ? -1 : 1,
         {
@@ -166,7 +166,7 @@ export const handleTableKey = (input: {
     }
     case 'Backspace':
     case 'Delete':
-      input.editor.active.items.remove(
+      input.editor.view.items.remove(
         currentSelection.ids
       )
       input.setKeyboardMode()
@@ -195,7 +195,7 @@ export const applyPaste = (input: {
 
   const entries = planPaste({
     selection: input.gridSelection,
-    appearances: currentView.appearances,
+    items: currentView.items,
     fields: currentView.fields,
     matrix
   })
@@ -205,11 +205,11 @@ export const applyPaste = (input: {
 
   entries.forEach(entry => {
     if (entry.value === undefined) {
-      input.editor.active.cells.clear(entry.cell)
+      input.editor.view.cells.clear(entry.cell)
       return
     }
 
-    input.editor.active.cells.set(entry.cell, entry.value)
+    input.editor.view.cells.set(entry.cell, entry.value)
   })
 
   return true

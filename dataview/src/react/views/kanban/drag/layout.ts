@@ -6,17 +6,17 @@ import {
   DATAVIEW_APPEARANCE_ID_ATTR
 } from '@dataview/react/dom/appearance'
 import type {
-  AppearanceId,
+  ItemId,
   SectionKey
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 
 export interface CardLayout {
-  id: AppearanceId
+  id: ItemId
   rect: Rect
 }
 
 export interface CardPosition {
-  id: AppearanceId
+  id: ItemId
   top: number
   height: number
 }

@@ -1,7 +1,7 @@
 import type {
-  AppearanceId,
+  ItemId,
   Section
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import type {
   TableBlock,
   TableColumnFooterBlock,
@@ -12,7 +12,7 @@ import type {
 
 const pushRowBlocks = (input: {
   blocks: TableBlock[]
-  rowIds: readonly AppearanceId[]
+  rowIds: readonly ItemId[]
   top: number
   rowHeight: number
 }) => {
@@ -33,7 +33,7 @@ const pushRowBlocks = (input: {
 
 export const buildTableBlocks = (input: {
   grouped: boolean
-  rowIds: readonly AppearanceId[]
+  rowIds: readonly ItemId[]
   sections: readonly Section[]
   rowHeight: number
   headerHeight: number
@@ -91,14 +91,14 @@ export const buildTableBlocks = (input: {
       top,
       height: input.headerHeight,
       scopeId: section.key,
-      rowIds: section.appearanceIds,
+      rowIds: section.itemIds,
       label: `Select rows in ${section.title}`
     }
     blocks.push(columnHeader)
     top += input.headerHeight
     top = pushRowBlocks({
       blocks,
-      rowIds: section.appearanceIds,
+      rowIds: section.itemIds,
       top,
       rowHeight: input.rowHeight
     })

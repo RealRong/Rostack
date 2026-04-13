@@ -10,11 +10,11 @@ import type {
 } from '../../../index/types'
 import type {
   SectionKey
-} from '../../readModels'
+} from '../../../contracts/public'
 import type {
   QueryState,
   SectionState
-} from '../state'
+} from '../../../contracts/internal'
 import {
   ROOT_SECTION_KEY,
   buildSectionNode,
@@ -50,7 +50,7 @@ export const buildSectionState = (input: {
     const root = {
       key: ROOT_SECTION_KEY,
       title: 'All',
-      ids: input.query.visible,
+      recordIds: input.query.visible,
       visible: true,
       collapsed: false
     }
@@ -89,7 +89,7 @@ export const buildSectionState = (input: {
     const ids = idsByKey.get(key) ?? []
     const nextNode = buildSectionNode({
       key,
-      ids,
+      recordIds: ids,
       group: input.view.group,
       index: input.index
     })

@@ -121,7 +121,7 @@ const ViewTab = (props: ViewTabProps) => {
         }}
         className={cn(
           'inline-flex h-9 shrink-0 select-none items-center gap-2 rounded-3xl bg-transparent px-4 font-semibold text-fg-muted transition-[background-color,color] hover:bg-hover hover:text-fg',
-          props.active && 'bg-pressed text-fg hover:bg-pressed'
+          props.view && 'bg-pressed text-fg hover:bg-pressed'
         )}
       >
         <Icon className="shrink-0" size={16} strokeWidth={1.5} />
@@ -145,22 +145,22 @@ export const PageToolbar = () => {
   const fields = getDocumentFields(document)
   const views = getDocumentViews(document)
   const currentView = useDataViewValue(
-    dataView => dataView.engine.active.view
+    dataView => dataView.engine.view.config
   )
   const searchProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
+    dataView => dataView.engine.view.state,
     state => state?.query.search
   )
   const filterProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => state?.query.filter
+    dataView => dataView.engine.view.state,
+    state => state?.query.filters
   )
   const sortProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
+    dataView => dataView.engine.view.state,
     state => state?.query.sort
   )
   const currentViewDomain = currentView
-    ? engine.active
+    ? engine.view
     : undefined
   const searchInputRef = useRef<HTMLInputElement | null>(null)
   const searchQuery = searchProjection?.query ?? ''
@@ -348,7 +348,7 @@ export const PageToolbar = () => {
                     fields={availableFilterFields}
                     emptyMessage={meta.ui.fieldPicker.allFiltered}
                     onSelect={fieldId => {
-                      currentViewDomain?.filter.add(fieldId)
+                      currentViewDomain?.filters.add(fieldId)
                       setToolbarRoute(null)
                       page.query.open({
                         kind: 'filter',

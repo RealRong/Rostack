@@ -66,8 +66,8 @@ const parseArgs = argv => {
 
 const createBenchEngine = fixture => createEngine({
   document: fixture.document,
-  perf: {
-    trace: true,
+  performance: {
+    traces: true,
     stats: true
   }
 })
@@ -78,14 +78,14 @@ const runScenarioIteration = (scenario, size) => {
 
   scenario.setup?.(engine, fixture)
   scenario.prepare?.(engine, fixture)
-  engine.perf.trace.clear()
-  engine.perf.stats.clear()
+  engine.performance.traces.clear()
+  engine.performance.stats.clear()
 
   const startedAt = performance.now()
   scenario.run(engine, fixture)
   const elapsedMs = performance.now() - startedAt
-  const trace = engine.perf.trace.last()
-  const stats = engine.perf.stats.snapshot()
+  const trace = engine.performance.traces.last()
+  const stats = engine.performance.stats.snapshot()
 
   if (!trace) {
     throw new Error(`Scenario "${scenario.id}" did not produce a perf trace.`)
@@ -114,22 +114,22 @@ const summarizeRuns = (runs, scenario, size) => {
       totalMs: averageOf(runs.map(run => run.trace.timings.totalMs)),
       commitMs: averageOf(runs.map(run => run.trace.timings.commitMs ?? 0)),
       indexMs: averageOf(runs.map(run => run.trace.timings.indexMs ?? 0)),
-      projectMs: averageOf(runs.map(run => run.trace.timings.projectMs ?? 0)),
-      publishMs: averageOf(runs.map(run => run.trace.timings.publishMs ?? 0))
+      viewMs: averageOf(runs.map(run => run.trace.timings.viewMs ?? 0)),
+      snapshotMs: averageOf(runs.map(run => run.trace.timings.snapshotMs ?? 0))
     },
-    changedStores: [...last.trace.publish.changedStores],
+    changedStores: [...last.trace.snapshot.changedStores],
     indexActions: {
       records: last.trace.index.records.action,
       search: last.trace.index.search.action,
       group: last.trace.index.group.action,
       sort: last.trace.index.sort.action,
-      calculations: last.trace.index.calculations.action
+      summaries: last.trace.index.summaries.action
     },
     plan: {
-      ...last.trace.project.plan
+      ...last.trace.view.plan
     },
     stageDurationsMs: Object.fromEntries(
-      last.trace.project.stages.map(stage => [stage.stage, stage.durationMs])
+      last.trace.view.stages.map(stage => [stage.stage, stage.durationMs])
     ),
     stats: last.stats
   }
@@ -142,7 +142,7 @@ const reportResults = results => {
   results.results.forEach(result => {
     console.log('')
     console.log(`${result.size} | ${result.scenario.id} | records=${result.records}`)
-    console.log(`  avg total=${result.avg.totalMs.toFixed(3)}ms index=${result.avg.indexMs.toFixed(3)}ms project=${result.avg.projectMs.toFixed(3)}ms publish=${result.avg.publishMs.toFixed(3)}ms`)
+    console.log(`  avg total=${result.avg.totalMs.toFixed(3)}ms index=${result.avg.indexMs.toFixed(3)}ms view=${result.avg.viewMs.toFixed(3)}ms snapshot=${result.avg.snapshotMs.toFixed(3)}ms`)
     console.log(`  changed stores=${result.changedStores.join(',') || '(none)'}`)
     console.log(`  index actions=${Object.entries(result.indexActions).map(([key, value]) => `${key}:${value}`).join(' ')}`)
   })
@@ -212,4 +212,3 @@ module.exports = {
   parseArgs,
   runBenchmarks
 }
-

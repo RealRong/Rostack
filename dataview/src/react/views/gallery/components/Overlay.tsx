@@ -21,9 +21,9 @@ export const Overlay = () => {
   } = useGalleryContext()
   const engine = useDataView().engine
   const overlayRef = useRef<HTMLDivElement | null>(null)
-  const appearanceId = runtime.drag.activeId
-  const recordId = appearanceId
-    ? engine.active.read.appearance(appearanceId)?.recordId
+  const itemId = runtime.drag.activeId
+  const recordId = itemId
+    ? engine.view.read.item(itemId)?.recordId
     : undefined
   const record = useDataViewKeyedValue(
     dataView => dataView.engine.read.record,
@@ -54,7 +54,7 @@ export const Overlay = () => {
     }
   }, [record, runtime.drag.overlayOffsetRef, runtime.drag.pointerRef])
 
-  if (!appearanceId || !record || typeof document === 'undefined') {
+  if (!itemId || !record || typeof document === 'undefined') {
     return null
   }
 

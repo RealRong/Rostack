@@ -1,7 +1,7 @@
 import type {
-  AppearanceId,
+  ItemId,
   Section
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import type {
   VirtualBlock
 } from '@dataview/react/virtual'
@@ -9,7 +9,7 @@ import type {
 export interface TableColumnHeaderBlock extends VirtualBlock {
   kind: 'column-header'
   scopeId: string
-  rowIds: readonly AppearanceId[]
+  rowIds: readonly ItemId[]
   label?: string
 }
 
@@ -25,7 +25,7 @@ export interface TableColumnFooterBlock extends VirtualBlock {
 
 export interface TableRowBlock extends VirtualBlock {
   kind: 'row'
-  rowId: AppearanceId
+  rowId: ItemId
 }
 
 export type TableBlock =

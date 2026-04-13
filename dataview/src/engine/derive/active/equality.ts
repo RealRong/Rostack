@@ -12,12 +12,12 @@ import type {
   Field,
 } from '@dataview/core/contracts'
 import type {
-  AppearanceList,
   FieldList,
+  ItemList,
   Section,
   SectionList,
   SectionKey
-} from './readModels'
+} from '../../contracts/public'
 import {
   sameList
 } from './reuse'
@@ -40,7 +40,7 @@ const equalSection = (
   && left.title === right.title
   && left.color === right.color
   && left.collapsed === right.collapsed
-  && equalIds(left.appearanceIds, right.appearanceIds)
+  && equalIds(left.itemIds, right.itemIds)
   && equalIds(left.recordIds, right.recordIds)
   && sameJsonValue(left.bucket, right.bucket)
 )
@@ -88,9 +88,9 @@ const equalCalculationCollection = (
   right: CalculationCollection
 ) => sameMap(left.byField, right.byField, equalCalculationResult)
 
-export const sameAppearanceList = (
-  left: AppearanceList,
-  right: AppearanceList
+export const sameItemList = (
+  left: ItemList,
+  right: ItemList
 ) => (
   equalIds(left.ids, right.ids)
   && left.count === right.count
@@ -112,7 +112,7 @@ export const sameFieldList = (
   && sameList(left.all, right.all, equalField)
 )
 
-export const sameCalculationsBySection = (
+export const sameSummariesBySection = (
   left: ReadonlyMap<SectionKey, CalculationCollection>,
   right: ReadonlyMap<SectionKey, CalculationCollection>
 ) => sameMap(left, right, equalCalculationCollection)

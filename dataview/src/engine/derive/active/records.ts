@@ -1,28 +1,22 @@
 import type {
-  ViewId
-} from '@dataview/core/contracts'
-import type {
-  RecordSet
-} from '../../api/public'
+  ViewRecords
+} from '../../contracts/public'
 import type {
   QueryState
-} from '../runtime/state'
+} from '../../contracts/internal'
 
-export const publishRecordSet = (input: {
-  activeViewId: ViewId
+export const publishViewRecords = (input: {
   query: QueryState
-  previous?: RecordSet
-}): RecordSet => {
+  previous?: ViewRecords
+}): ViewRecords => {
   const previous = input.previous
   return previous
-    && previous.viewId === input.activeViewId
-    && previous.derived === input.query.derived
+    && previous.matched === input.query.matched
     && previous.ordered === input.query.ordered
     && previous.visible === input.query.visible
     ? previous
     : {
-        viewId: input.activeViewId,
-        derived: input.query.derived,
+        matched: input.query.matched,
         ordered: input.query.ordered,
         visible: input.query.visible
       }

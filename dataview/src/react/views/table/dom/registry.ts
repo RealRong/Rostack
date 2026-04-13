@@ -6,40 +6,40 @@ import {
   type Rect
 } from '@shared/dom'
 import type {
-  AppearanceId
-} from '@dataview/engine/project'
+  ItemId
+} from '@dataview/engine'
 import type {
   CellRef
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 
 const cellKey = (cell: {
-  appearanceId: AppearanceId
+  itemId: ItemId
   fieldId: CustomFieldId
-}) => `${cell.appearanceId}\u0000${cell.fieldId}`
+}) => `${cell.itemId}\u0000${cell.fieldId}`
 
 export interface Nodes {
   column: (fieldId: CustomFieldId) => HTMLElement | null
-  row: (rowId: AppearanceId) => HTMLElement | null
+  row: (rowId: ItemId) => HTMLElement | null
   cell: (cell: {
-    appearanceId: AppearanceId
+    itemId: ItemId
     fieldId: CustomFieldId
   }) => HTMLElement | null
   columns: (fieldIds: readonly CustomFieldId[]) => readonly HTMLElement[]
-  rows: (rowIds: readonly AppearanceId[]) => readonly HTMLElement[]
+  rows: (rowIds: readonly ItemId[]) => readonly HTMLElement[]
   registerColumn: (
     fieldId: CustomFieldId,
     node: HTMLElement | null
   ) => void
   registerRow: (
-    rowId: AppearanceId,
+    rowId: ItemId,
     node: HTMLElement | null
   ) => void
-  startRowMarquee: (rowIds: readonly AppearanceId[]) => void
+  startRowMarquee: (rowIds: readonly ItemId[]) => void
   endRowMarquee: () => void
   hitRows: (
-    rowIds: readonly AppearanceId[],
+    rowIds: readonly ItemId[],
     box: Pick<Rect, 'left' | 'top' | 'right' | 'bottom'>
-  ) => readonly AppearanceId[]
+  ) => readonly ItemId[]
   registerCell: (
     cell: CellRef,
     node: HTMLElement | null
@@ -54,13 +54,13 @@ export const createNodes = (options?: {
   } | null
 }): Nodes => {
   const columnNodes = new Map<CustomFieldId, HTMLElement>()
-  const rowNodes = new Map<AppearanceId, HTMLElement>()
-  const rowRects = new Map<AppearanceId, Rect>()
+  const rowNodes = new Map<ItemId, HTMLElement>()
+  const rowRects = new Map<ItemId, Rect>()
   const cellNodes = new Map<string, HTMLElement>()
   let marqueeActive = false
 
   const measureRow = (
-    rowId: AppearanceId,
+    rowId: ItemId,
     node: HTMLElement
   ): Rect | null => {
     const container = options?.resolveContainer?.()
@@ -74,7 +74,7 @@ export const createNodes = (options?: {
   }
 
   const cachedRowRect = (
-    rowId: AppearanceId
+    rowId: ItemId
   ): Rect | null => {
     const cached = rowRects.get(rowId)
     if (cached) {

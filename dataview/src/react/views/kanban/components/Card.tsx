@@ -24,14 +24,14 @@ import {
   CardContent
 } from '@dataview/react/views/shared'
 import { cn } from '@ui/utils'
-import type { AppearanceId } from '@dataview/engine/project'
+import type { ItemId } from '@dataview/engine'
 import { useKanbanContext } from '../context'
 import {
   useCardEditingState
 } from '@dataview/react/views/shared/useCardTitleEditing'
 
 export const Card = (props: {
-  appearanceId: AppearanceId
+  itemId: ItemId
   className?: string
   style?: CSSProperties
 }) => {
@@ -42,27 +42,27 @@ export const Card = (props: {
   } = useKanbanContext()
   const dataView = useDataView()
   const engine = dataView.engine
-  const recordId = engine.active.read.appearance(props.appearanceId)?.recordId ?? '' as RecordId
+  const recordId = engine.view.read.item(props.itemId)?.recordId ?? '' as RecordId
   const record = useDataViewKeyedValue(
     current => current.engine.read.record,
     recordId
   )
-  const selected = runtime.selection.selectedIdSet.has(props.appearanceId)
-  const draggingActive = runtime.drag.activeId === props.appearanceId
+  const selected = runtime.selection.selectedIdSet.has(props.itemId)
+  const draggingActive = runtime.drag.activeId === props.itemId
   const draggingSelected = runtime.drag.activeId !== undefined
-    && runtime.drag.dragIdSet.has(props.appearanceId)
+    && runtime.drag.dragIdSet.has(props.itemId)
   const canDrag = extra.canReorder
   const [hovered, setHovered] = useState(false)
   const editing = useCardEditingState({
     viewId: active.view.id,
-    appearanceId: props.appearanceId
+    itemId: props.itemId
   })
   const cardNodeRef = useRef<HTMLElement | null>(null)
   const marqueeActiveRef = useRef(runtime.marqueeActive)
   marqueeActiveRef.current = runtime.marqueeActive
   const sectionColorId = extra.groupUsesOptionColors
-    ? engine.active.read.section(
-        engine.active.read.appearance(props.appearanceId)?.sectionKey ?? ''
+    ? engine.view.read.section(
+        engine.view.read.item(props.itemId)?.sectionKey ?? ''
       )?.color
     : undefined
   const surfaceState = hovered && !editing ? 'hover' : 'default'
@@ -79,15 +79,15 @@ export const Card = (props: {
       return
     }
 
-    runtime.visualTargets.register(props.appearanceId, node)
+    runtime.visualTargets.register(props.itemId, node)
 
     return () => {
       if (marqueeActiveRef.current) {
-        runtime.visualTargets.freeze(props.appearanceId, node)
+        runtime.visualTargets.freeze(props.itemId, node)
       }
-      runtime.visualTargets.register(props.appearanceId, null)
+      runtime.visualTargets.register(props.itemId, null)
     }
-  }, [props.appearanceId, runtime.visualTargets])
+  }, [props.itemId, runtime.visualTargets])
 
   if (!record) {
     return null
@@ -97,7 +97,7 @@ export const Card = (props: {
     <CardContent
       ref={contentRef}
       {...{
-        [DATAVIEW_APPEARANCE_ID_ATTR]: props.appearanceId
+        [DATAVIEW_APPEARANCE_ID_ATTR]: props.itemId
       }}
       onPointerEnter={() => {
         setHovered(true)
@@ -114,7 +114,7 @@ export const Card = (props: {
           return
         }
 
-        runtime.drag.onPointerDown(props.appearanceId, event)
+        runtime.drag.onPointerDown(props.itemId, event)
       }}
       onClick={event => {
         if (editing) {
@@ -132,7 +132,7 @@ export const Card = (props: {
         }
 
         runtime.selection.select(
-          props.appearanceId,
+          props.itemId,
           event.metaKey || event.ctrlKey ? 'toggle' : 'replace'
         )
       }}
@@ -170,7 +170,7 @@ export const Card = (props: {
         }
       }}
       viewId={active.view.id}
-      appearanceId={props.appearanceId}
+      itemId={props.itemId}
       record={record}
       fields={active.fields.custom}
       titlePlaceholder={record.id}

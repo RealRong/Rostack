@@ -1,23 +1,32 @@
+import { buildSemanticDraft } from '@dataview/core/commit/semantics'
 import type { Action, DataDoc } from '@dataview/core/contracts'
 import type { DeltaItem } from '@dataview/core/contracts'
+import type { BaseOperation } from '@dataview/core/contracts/operations'
 import { reduceOperations } from '@dataview/core/operation'
-import { lowerAction } from '../action/lower'
+import { planWriteAction } from './plan'
 import { hasValidationErrors, type ValidationIssue } from './issues'
-import { runCommands, type ResolvedWriteBatch } from './runCommands'
 
-export const resolveActionBatch = (input: {
+export interface PlannedWriteBatch {
+  operations: readonly BaseOperation[]
+  deltaDraft: readonly DeltaItem[]
+  issues: ValidationIssue[]
+  canApply: boolean
+}
+
+export const planActions = (input: {
   document: DataDoc
   actions: readonly Action[]
-}): ResolvedWriteBatch => {
+}): PlannedWriteBatch => {
+  // The write path plans directly to canonical operations for the single active runtime.
   const issues: ValidationIssue[] = []
-  const operations: ResolvedWriteBatch['operations'] = []
+  const operations: BaseOperation[] = []
   const deltaDraft: DeltaItem[] = []
   let workingDocument = input.document
 
   for (const [index, action] of input.actions.entries()) {
-    const lowered = lowerAction(workingDocument, action, index)
-    issues.push(...lowered.issues)
-    if (hasValidationErrors(lowered.issues)) {
+    const planned = planWriteAction(workingDocument, action, index)
+    issues.push(...planned.issues)
+    if (hasValidationErrors(planned.issues)) {
       return {
         operations: [],
         deltaDraft: [],
@@ -26,23 +35,17 @@ export const resolveActionBatch = (input: {
       }
     }
 
-    const batch = runCommands({
-      document: workingDocument,
-      commands: lowered.commands
-    })
-    issues.push(...batch.issues)
-    if (!batch.canApply) {
-      return {
-        operations: [],
-        deltaDraft: [],
-        issues,
-        canApply: false
-      }
+    if (!planned.operations.length) {
+      continue
     }
 
-    const nextDocument = reduceOperations(workingDocument, batch.operations)
-    deltaDraft.push(...batch.deltaDraft)
-    operations.push(...batch.operations)
+    const nextDocument = reduceOperations(workingDocument, planned.operations)
+    deltaDraft.push(...buildSemanticDraft({
+      beforeDocument: workingDocument,
+      afterDocument: nextDocument,
+      operations: planned.operations
+    }))
+    operations.push(...planned.operations)
     workingDocument = nextDocument
   }
 
@@ -53,8 +56,6 @@ export const resolveActionBatch = (input: {
     canApply: true
   }
 }
-
-export type { ResolvedWriteBatch } from './runCommands'
 export type {
   ValidationCode,
   ValidationIssue,

@@ -6,8 +6,8 @@ import type {
   FieldId
 } from '@dataview/core/contracts'
 import type {
-  AppearanceId
-} from '@dataview/engine/project'
+  ItemId
+} from '@dataview/engine'
 import {
   useStoreValue
 } from '@shared/react'
@@ -22,9 +22,9 @@ export interface BlockContentProps {
   template: string
   marqueeActive: boolean
   dragActive: boolean
-  dragIdSet: ReadonlySet<AppearanceId>
+  dragIdSet: ReadonlySet<ItemId>
   onDragStart: (input: {
-    rowId: AppearanceId
+    rowId: ItemId
     event: ReactPointerEvent<HTMLButtonElement>
   }) => void
   resizingPropertyId?: FieldId
@@ -98,7 +98,7 @@ export const BlockContent = (props: BlockContentProps) => {
                     }}
                   >
                     <Row
-                      appearanceId={block.rowId}
+                      itemId={block.rowId}
                       template={props.template}
                       rowHeight={table.layout.rowHeight}
                       marqueeActive={props.marqueeActive}

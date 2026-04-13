@@ -128,7 +128,7 @@ const resolveScrolledAnchor = (
 
 export const PageMarqueeHost = () => {
   const dataView = useDataView()
-  const currentView = useDataViewValue(dataView => dataView.engine.active.view)
+  const currentView = useDataViewValue(dataView => dataView.engine.view.config)
   const overlay = useOverlay()
   const valueEditorOpen = useDataViewValue(
     dataView => dataView.page.store,

@@ -1,7 +1,7 @@
-import type { ActiveViewState as CurrentView } from '@dataview/engine'
+import type { ViewState as CurrentView } from '@dataview/engine'
 import type {
-  AppearanceId
-} from '@dataview/engine/project'
+  ItemId
+} from '@dataview/engine'
 import type {
   MarqueeSessionState
 } from '@dataview/react/runtime/marquee'
@@ -173,7 +173,7 @@ const sameBlock = (
         && left.section.key === right.section.key
         && left.section.title === right.section.title
         && left.section.collapsed === right.section.collapsed
-        && sameOrder(left.section.appearanceIds, right.section.appearanceIds)
+        && sameOrder(left.section.itemIds, right.section.itemIds)
   }
 }
 
@@ -299,7 +299,7 @@ const resolveLayoutSnapshot = (input: {
   const grouped = Boolean(input.currentView.view.group)
   const blocks = buildTableBlocks({
     grouped,
-    rowIds: input.currentView.appearances.ids,
+    rowIds: input.currentView.items.ids,
     sections: input.currentView.sections.all,
     rowHeight: input.rowHeight,
     headerHeight: input.headerHeight

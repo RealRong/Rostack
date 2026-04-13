@@ -10,11 +10,11 @@ import {
   sameOptionalPoint
 } from '@shared/core'
 import type {
-  AppearanceId
-} from '@dataview/engine/project'
+  ItemId
+} from '@dataview/engine'
 import type {
   CellRef
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import {
   hoveredCellOf,
   hoveredRowIdOf,
@@ -24,7 +24,7 @@ import {
 
 export interface Hover {
   cell: KeyedReadStore<CellRef, boolean>
-  row: KeyedReadStore<AppearanceId, boolean>
+  row: KeyedReadStore<ItemId, boolean>
   get: () => TableHoverTarget | null
   point: () => Point | null
   set: (
@@ -39,7 +39,7 @@ interface HoverState {
   pointer: Point | null
 }
 
-const cellKey = (cell: CellRef) => `${cell.appearanceId}\u0000${cell.fieldId}`
+const cellKey = (cell: CellRef) => `${cell.itemId}\u0000${cell.fieldId}`
 
 export const createHover = (): Hover => {
   const state: ValueStore<HoverState> = createValueStore<HoverState>({
@@ -72,12 +72,12 @@ export const createHover = (): Hover => {
           return false
         }
 
-        return hoveredCell.appearanceId === cell.appearanceId
+        return hoveredCell.itemId === cell.itemId
           && hoveredCell.fieldId === cell.fieldId
       },
       isEqual: Object.is
     }),
-    row: createKeyedDerivedStore<AppearanceId, boolean>({
+    row: createKeyedDerivedStore<ItemId, boolean>({
       keyOf: rowId => rowId,
       get: (rowId) => hoveredRowIdOf(read(state).target) === rowId,
       isEqual: Object.is

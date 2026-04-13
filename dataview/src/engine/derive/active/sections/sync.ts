@@ -11,7 +11,7 @@ import {
 import type {
   QueryState,
   SectionState
-} from '../state'
+} from '../../../contracts/internal'
 import {
   buildSectionState,
   resolveSectionKeys
@@ -103,7 +103,7 @@ export const syncSectionState = (input: {
   const idsByKey = new Map(
     Array.from(previous.byKey.entries(), ([key, node]) => [
       key,
-      [...node.ids]
+      [...node.recordIds]
     ] as const)
   )
   const byRecord = new Map(previous.byRecord)
@@ -144,7 +144,7 @@ export const syncSectionState = (input: {
     const ids = idsByKey.get(key) ?? []
     const nextNode = buildSectionNode({
       key,
-      ids,
+      recordIds: ids,
       group: input.view.group,
       index: input.index
     })

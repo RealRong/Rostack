@@ -14,7 +14,7 @@ const editingTargetSelector = [
 export const PageKeyboardHost = () => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const currentView = useDataViewValue(dataView => dataView.engine.active.view)
+  const currentView = useDataViewValue(dataView => dataView.engine.view.config)
   const valueEditorOpen = useDataViewValue(
     dataView => dataView.page.store,
     state => state.valueEditorOpen
@@ -83,7 +83,7 @@ export const PageKeyboardHost = () => {
           }
 
           if (currentView) {
-            engine.active.items.remove(
+            engine.view.items.remove(
               dataView.selection.get().ids
             )
           }

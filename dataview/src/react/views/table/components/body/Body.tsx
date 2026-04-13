@@ -25,7 +25,7 @@ import {
   resolveDefaultAutoPanTargets
 } from '@dataview/react/interaction/autoPan'
 import { useStoreValue } from '@shared/react'
-import { type CellRef } from '@dataview/engine/project'
+import { type CellRef } from '@dataview/engine'
 import { applyPaste, handleTableKey } from '../../input'
 import {
   gridContentBounds,
@@ -84,8 +84,8 @@ const View = () => {
         && !closestTarget(event.target, interactiveSelector)
       )
     },
-    getHitIds: session => table.nodes.hitRows(currentView.appearances.ids, session.box),
-    order: () => currentView.appearances.ids,
+    getHitIds: session => table.nodes.hitRows(currentView.items.ids, session.box),
+    order: () => currentView.items.ids,
     previewSelection: nextSelection => {
       table.marqueeSelection.set(nextSelection)
     },
@@ -94,7 +94,7 @@ const View = () => {
     },
     resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(table.layout.containerRef.current),
     onStart: () => {
-      table.nodes.startRowMarquee(currentView.appearances.ids)
+      table.nodes.startRowMarquee(currentView.items.ids)
       table.marqueeSelection.set(null)
       table.gridSelection.clear()
       table.rowRail.set(null)
@@ -107,7 +107,7 @@ const View = () => {
       table.nodes.endRowMarquee()
     }
   }), [
-    currentView.appearances.ids,
+    currentView.items.ids,
     currentView.view.id,
     dataView.marquee,
     marqueeDisabled,
@@ -125,7 +125,7 @@ const View = () => {
     onBlankPointerDown
   })
   const readCell = useCallback((cell: CellRef) => {
-    const recordId = currentView.appearances.get(cell.appearanceId)?.recordId
+    const recordId = currentView.items.get(cell.itemId)?.recordId
     const record = recordId
       ? engine.read.record.get(recordId)
       : undefined
@@ -208,7 +208,7 @@ const View = () => {
         collisionDetection={closestCenter}
       >
         <Surface
-          rowCount={currentView.appearances.ids.length}
+          rowCount={currentView.items.ids.length}
           colCount={columns.length}
           onPointerDown={pointer.onPointerDown}
           onPointerMove={pointer.onPointerMove}

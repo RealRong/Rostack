@@ -5,7 +5,7 @@ import {
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import { cloneDragGhostNode } from '@dataview/react/dom/dragGhost'
-import type { AppearanceId } from '@dataview/engine/project'
+import type { ItemId } from '@dataview/engine'
 import {
   rowDragIds,
   rowSelectionTarget,
@@ -26,17 +26,17 @@ export interface RowReorderOverlayModel {
   active: boolean
   node: HTMLElement | null
   extraCount: number
-  pointerRef: ReturnType<typeof usePointerDragSession<AppearanceId, AppearanceId, TableRowReorderHint>>['pointerRef']
-  overlayOffsetRef: ReturnType<typeof usePointerDragSession<AppearanceId, AppearanceId, TableRowReorderHint>>['overlayOffsetRef']
+  pointerRef: ReturnType<typeof usePointerDragSession<ItemId, ItemId, TableRowReorderHint>>['pointerRef']
+  overlayOffsetRef: ReturnType<typeof usePointerDragSession<ItemId, ItemId, TableRowReorderHint>>['overlayOffsetRef']
 }
 
 export interface RowReorderApi {
   active: boolean
-  dragIdSet: ReadonlySet<AppearanceId>
+  dragIdSet: ReadonlySet<ItemId>
   hint: TableRowReorderHint | null
   overlay: RowReorderOverlayModel
   startDrag: (input: {
-    rowId: AppearanceId
+    rowId: ItemId
     event: ReactPointerEvent<HTMLButtonElement>
   }) => void
 }
@@ -54,7 +54,7 @@ export const useRowReorder = (): RowReorderApi => {
   const currentSelection = useDataViewValue(
     dataView => dataView.selection.store
   )
-  const rowIds = currentView.appearances.ids
+  const rowIds = currentView.items.ids
   const rowIdSet = useMemo(
     () => new Set(rowIds),
     [rowIds]
@@ -63,10 +63,10 @@ export const useRowReorder = (): RowReorderApi => {
     () => new Map(rowIds.map(rowId => [rowId, rowId] as const)),
     [rowIds]
   )
-  const selectionTargetRef = useRef<AppearanceId | null>(null)
+  const selectionTargetRef = useRef<ItemId | null>(null)
   const previewNodeRef = useRef<HTMLElement | null>(null)
 
-  const resolveDragIds = useCallback((activeId: AppearanceId) => {
+  const resolveDragIds = useCallback((activeId: ItemId) => {
     return rowDragIds({
       activeId,
       selectedRowIds: currentSelection.ids,
@@ -74,11 +74,11 @@ export const useRowReorder = (): RowReorderApi => {
     })
   }, [currentSelection.ids, rowIdSet])
 
-  const rowRect = useCallback((rowId: AppearanceId) => (
+  const rowRect = useCallback((rowId: ItemId) => (
     table.dom.row(rowId)?.getBoundingClientRect() ?? null
   ), [table.dom])
 
-  const drag = usePointerDragSession<AppearanceId, AppearanceId, TableRowReorderHint>({
+  const drag = usePointerDragSession<ItemId, ItemId, TableRowReorderHint>({
     containerRef: layout.containerRef,
     canDrag: capabilities.canRowDrag,
     autoPan: true,
@@ -128,15 +128,15 @@ export const useRowReorder = (): RowReorderApi => {
       const beforeId = rowBeforeId(target)
       const sectionKey = (
         beforeId
-          ? currentView.appearances.get(beforeId)?.sectionKey
-          : currentView.appearances.get(dragIds[0])?.sectionKey
+          ? currentView.items.get(beforeId)?.sectionKey
+          : currentView.items.get(dragIds[0])?.sectionKey
       ) ?? currentView.sections.all[0]?.key
       if (!sectionKey) {
         return
       }
 
-      dataView.engine.active.items.move(dragIds, {
-        sectionKey,
+      dataView.engine.view.items.move(dragIds, {
+        section: sectionKey,
         ...(beforeId ? { before: beforeId } : {})
       })
     },
@@ -160,7 +160,7 @@ export const useRowReorder = (): RowReorderApi => {
   })
 
   const startDrag = useCallback((input: {
-    rowId: AppearanceId
+    rowId: ItemId
     event: ReactPointerEvent<HTMLButtonElement>
   }) => {
     if (!capabilities.canRowDrag) {

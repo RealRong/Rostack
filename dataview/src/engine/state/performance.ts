@@ -1,20 +1,20 @@
 import type {
   CommitTrace,
-  EnginePerfApi,
-  EnginePerfOptions,
-  PerfCounter,
-  PerfStats,
-  ProjectStageName,
+  PerformanceApi,
+  PerformanceCounter,
+  PerformanceOptions,
+  PerformanceStats,
   RunningStat,
-  StagePerfStats
-} from '../api/public'
+  StagePerformanceStats,
+  ViewStageName
+} from '../contracts/public'
 
 type PendingCommitTrace = Omit<CommitTrace, 'id'>
 
-const PROJECT_STAGE_NAMES: readonly ProjectStageName[] = [
+const VIEW_STAGE_NAMES: readonly ViewStageName[] = [
   'query',
   'sections',
-  'calc'
+  'summary'
 ]
 
 const cloneRunningStat = (
@@ -34,13 +34,13 @@ const createRunningStat = (): RunningStat => ({
   max: 0
 })
 
-const createPerfCounter = (): PerfCounter => ({
+const createPerformanceCounter = (): PerformanceCounter => ({
   total: 0,
   changed: 0,
   rebuilt: 0
 })
 
-const createStagePerfStats = (): StagePerfStats => ({
+const createStagePerformanceStats = (): StagePerformanceStats => ({
   total: 0,
   reuse: 0,
   sync: 0,
@@ -63,7 +63,7 @@ const updateRunningStat = (
   stat.max = Math.max(stat.max, value)
 }
 
-const createPerfStats = (): PerfStats => ({
+const createPerformanceStats = (): PerformanceStats => ({
   commits: {
     total: 0,
     dispatch: 0,
@@ -74,47 +74,47 @@ const createPerfStats = (): PerfStats => ({
   timings: {
     totalMs: createRunningStat(),
     indexMs: createRunningStat(),
-    projectMs: createRunningStat()
+    viewMs: createRunningStat()
   },
   indexes: {
-    records: createPerfCounter(),
-    search: createPerfCounter(),
-    group: createPerfCounter(),
-    sort: createPerfCounter(),
-    calculations: createPerfCounter()
+    records: createPerformanceCounter(),
+    search: createPerformanceCounter(),
+    group: createPerformanceCounter(),
+    sort: createPerformanceCounter(),
+    summaries: createPerformanceCounter()
   },
   stages: Object.fromEntries(
-    PROJECT_STAGE_NAMES.map(stage => [stage, createStagePerfStats()] as const)
-  ) as Record<ProjectStageName, StagePerfStats>
+    VIEW_STAGE_NAMES.map(stage => [stage, createStagePerformanceStats()] as const)
+  ) as Record<ViewStageName, StagePerformanceStats>
 })
 
-const clonePerfStats = (
-  stats: PerfStats
-): PerfStats => ({
+const clonePerformanceStats = (
+  stats: PerformanceStats
+): PerformanceStats => ({
   commits: {
     ...stats.commits
   },
   timings: {
     totalMs: cloneRunningStat(stats.timings.totalMs),
     indexMs: cloneRunningStat(stats.timings.indexMs),
-    projectMs: cloneRunningStat(stats.timings.projectMs)
+    viewMs: cloneRunningStat(stats.timings.viewMs)
   },
   indexes: {
     records: { ...stats.indexes.records },
     search: { ...stats.indexes.search },
     group: { ...stats.indexes.group },
     sort: { ...stats.indexes.sort },
-    calculations: { ...stats.indexes.calculations }
+    summaries: { ...stats.indexes.summaries }
   },
   stages: Object.fromEntries(
-    PROJECT_STAGE_NAMES.map(stage => [
+    VIEW_STAGE_NAMES.map(stage => [
       stage,
       {
         ...stats.stages[stage],
         duration: cloneRunningStat(stats.stages[stage].duration)
       }
     ] as const)
-  ) as Record<ProjectStageName, StagePerfStats>
+  ) as Record<ViewStageName, StagePerformanceStats>
 })
 
 const cloneTrace = (
@@ -143,47 +143,47 @@ const cloneTrace = (
     search: { ...trace.index.search },
     group: { ...trace.index.group },
     sort: { ...trace.index.sort },
-    calculations: { ...trace.index.calculations }
+    summaries: { ...trace.index.summaries }
   },
-  project: {
+  view: {
     plan: {
-      ...trace.project.plan
+      ...trace.view.plan
     },
     timings: {
-      ...trace.project.timings
+      ...trace.view.timings
     },
-    stages: trace.project.stages.map(stage => ({
+    stages: trace.view.stages.map(stage => ({
       ...stage,
       ...(stage.metrics ? { metrics: { ...stage.metrics } } : {})
     }))
   },
-  publish: {
-    storeCount: trace.publish.storeCount,
-    changedStores: [...trace.publish.changedStores]
+  snapshot: {
+    storeCount: trace.snapshot.storeCount,
+    changedStores: [...trace.snapshot.changedStores]
   }
 })
 
-export interface PerfRuntime {
+export interface PerformanceRuntime {
   enabled: boolean
-  api: EnginePerfApi
+  api: PerformanceApi
   recordCommit: (trace: PendingCommitTrace) => void
 }
 
-export const createPerfRuntime = (
-  options?: EnginePerfOptions
-): PerfRuntime => {
-  const traceEnabled = Boolean(options?.trace)
-  const traceCapacity = typeof options?.trace === 'object'
-    ? Math.max(1, options.trace.capacity ?? 50)
+export const createPerformanceRuntime = (
+  options?: PerformanceOptions
+): PerformanceRuntime => {
+  const tracesEnabled = Boolean(options?.traces)
+  const tracesCapacity = typeof options?.traces === 'object'
+    ? Math.max(1, options.traces.capacity ?? 50)
     : 50
   const statsEnabled = options?.stats === true
-  const enabled = traceEnabled || statsEnabled
+  const enabled = tracesEnabled || statsEnabled
   let nextTraceId = 1
   let traces: CommitTrace[] = []
-  let stats = createPerfStats()
+  let stats = createPerformanceStats()
 
-  const api: EnginePerfApi = {
-    trace: {
+  const api: PerformanceApi = {
+    traces: {
       last: () => {
         const trace = traces.at(-1)
         return trace
@@ -202,9 +202,9 @@ export const createPerfRuntime = (
       }
     },
     stats: {
-      snapshot: () => clonePerfStats(stats),
+      snapshot: () => clonePerformanceStats(stats),
       clear: () => {
-        stats = createPerfStats()
+        stats = createPerformanceStats()
       }
     }
   }
@@ -219,10 +219,10 @@ export const createPerfRuntime = (
       }
       nextTraceId += 1
 
-      if (traceEnabled) {
+      if (tracesEnabled) {
         traces.push(cloneTrace(nextTrace))
-        if (traces.length > traceCapacity) {
-          traces = traces.slice(traces.length - traceCapacity)
+        if (traces.length > tracesCapacity) {
+          traces = traces.slice(traces.length - tracesCapacity)
         }
       }
 
@@ -234,9 +234,9 @@ export const createPerfRuntime = (
       stats.commits[nextTrace.kind] += 1
       updateRunningStat(stats.timings.totalMs, nextTrace.timings.totalMs)
       updateRunningStat(stats.timings.indexMs, nextTrace.timings.indexMs)
-      updateRunningStat(stats.timings.projectMs, nextTrace.timings.projectMs)
+      updateRunningStat(stats.timings.viewMs, nextTrace.timings.viewMs)
 
-      ;(['records', 'search', 'group', 'sort', 'calculations'] as const).forEach(indexName => {
+      ;(['records', 'search', 'group', 'sort', 'summaries'] as const).forEach(indexName => {
         const counter = stats.indexes[indexName]
         const stage = nextTrace.index[indexName]
         counter.total += 1
@@ -248,7 +248,7 @@ export const createPerfRuntime = (
         }
       })
 
-      nextTrace.project.stages.forEach(stage => {
+      nextTrace.view.stages.forEach(stage => {
         const target = stats.stages[stage.stage]
         target.total += 1
         target[stage.action] += 1

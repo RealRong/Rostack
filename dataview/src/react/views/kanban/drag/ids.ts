@@ -1,6 +1,6 @@
-import type { AppearanceId, SectionKey } from '@dataview/engine/project'
+import type { ItemId, SectionKey } from '@dataview/engine'
 
 export interface DropTarget {
   sectionKey: SectionKey
-  beforeAppearanceId?: AppearanceId
+  beforeItemId?: ItemId
 }

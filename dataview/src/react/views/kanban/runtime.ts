@@ -11,8 +11,8 @@ import type {
   View
 } from '@dataview/core/contracts'
 import type {
-  ActiveKanbanState,
-  ActiveViewState
+  KanbanState,
+  ViewState
 } from '@dataview/engine'
 import {
   useDataView,
@@ -26,10 +26,10 @@ import {
   interactiveSelector
 } from '@shared/dom'
 import {
-  AppearanceId,
+  ItemId,
   Section,
   SectionKey
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import {
   resolveDefaultAutoPanTargets
 } from '@dataview/react/interaction/autoPan'
@@ -45,14 +45,14 @@ import {
   useDrag
 } from './drag'
 
-export type KanbanActiveState = ActiveViewState & {
+export type KanbanActiveState = ViewState & {
   view: View & {
     type: 'kanban'
   }
 }
 
 export interface KanbanSectionVisibility {
-  visibleIds: readonly AppearanceId[]
+  visibleIds: readonly ItemId[]
   visibleCount: number
   hiddenCount: number
   showMoreCount: number
@@ -65,8 +65,8 @@ export interface KanbanRuntime {
   }
   scrollRef: RefObject<HTMLDivElement | null>
   selection: {
-    selectedIdSet: ReadonlySet<AppearanceId>
-    select: (id: AppearanceId, mode?: 'replace' | 'toggle') => void
+    selectedIdSet: ReadonlySet<ItemId>
+    select: (id: ItemId, mode?: 'replace' | 'toggle') => void
   }
   drag: ReturnType<typeof useDrag>
   marqueeActive: boolean
@@ -89,7 +89,7 @@ const resolveInitialVisibleCount = (
 const readSectionLengths = (
   sections: readonly Section[]
 ) => new Map(
-  sections.map(section => [section.key, section.appearanceIds.length] as const)
+  sections.map(section => [section.key, section.itemIds.length] as const)
 )
 
 const useSectionVisibility = (input: {
@@ -144,21 +144,21 @@ const useSectionVisibility = (input: {
             Math.max(previousInitialVisibleCount, previousExpandedCount)
           )
         const currentVisibleCount = next[section.key] === undefined
-          ? resolveInitialVisibleCount(input.cardsPerColumn, section.appearanceIds.length)
+          ? resolveInitialVisibleCount(input.cardsPerColumn, section.itemIds.length)
           : Math.min(
-            section.appearanceIds.length,
+            section.itemIds.length,
             Math.max(
-              resolveInitialVisibleCount(input.cardsPerColumn, section.appearanceIds.length),
+              resolveInitialVisibleCount(input.cardsPerColumn, section.itemIds.length),
               next[section.key]!
             )
           )
 
         if (
-          section.appearanceIds.length > previousLength
+          section.itemIds.length > previousLength
           && previousVisibleCount >= previousLength
-          && currentVisibleCount < section.appearanceIds.length
+          && currentVisibleCount < section.itemIds.length
         ) {
-          next[section.key] = section.appearanceIds.length
+          next[section.key] = section.itemIds.length
           changed = true
         }
       })
@@ -175,13 +175,13 @@ const useSectionVisibility = (input: {
     input.sections.map(section => {
       const initialVisibleCount = resolveInitialVisibleCount(
         input.cardsPerColumn,
-        section.appearanceIds.length
+        section.itemIds.length
       )
       const expandedCount = expandedCountBySectionKey[section.key]
       const visibleCount = expandedCount === undefined
         ? initialVisibleCount
-        : Math.min(section.appearanceIds.length, Math.max(initialVisibleCount, expandedCount))
-      const hiddenCount = Math.max(0, section.appearanceIds.length - visibleCount)
+        : Math.min(section.itemIds.length, Math.max(initialVisibleCount, expandedCount))
+      const hiddenCount = Math.max(0, section.itemIds.length - visibleCount)
       const showMoreCount = input.cardsPerColumn === 'all'
         ? hiddenCount
         : Math.min(hiddenCount, input.cardsPerColumn)
@@ -189,7 +189,7 @@ const useSectionVisibility = (input: {
       return [
         section.key,
         {
-          visibleIds: section.appearanceIds.slice(0, visibleCount),
+          visibleIds: section.itemIds.slice(0, visibleCount),
           visibleCount,
           hiddenCount,
           showMoreCount
@@ -199,7 +199,7 @@ const useSectionVisibility = (input: {
   ), [expandedCountBySectionKey, input.cardsPerColumn, input.sections])
 
   const sectionIdsByKey = useMemo(() => new Map(
-    input.sections.map(section => [section.key, section.appearanceIds] as const)
+    input.sections.map(section => [section.key, section.itemIds] as const)
   ), [input.sections])
 
   const showMore = useCallback((sectionKey: SectionKey) => {
@@ -247,7 +247,7 @@ export const useKanbanRuntime = (input: {
   columnWidth: number
   columnMinHeight: number
   active: KanbanActiveState
-  extra: ActiveKanbanState
+  extra: KanbanState
 }): KanbanRuntime => {
   const dataView = useDataView()
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -255,16 +255,16 @@ export const useKanbanRuntime = (input: {
   const visualTargets = useRef(createVisualTargetRegistry({
     resolveScrollTargets: () => resolveDefaultAutoPanTargets(scrollRef.current)
   })).current
-  const appearanceIds = input.active.appearances.ids
+  const itemIds = input.active.items.ids
   const selectionValue = useDataViewValue(
     dataView => dataView.selection.store
   )
   const selectedIds = selectionValue.ids
-  const selectedIdSet = useMemo<ReadonlySet<AppearanceId>>(
+  const selectedIdSet = useMemo<ReadonlySet<ItemId>>(
     () => new Set(selectedIds),
     [selectedIds]
   )
-  const select = useCallback((id: AppearanceId, mode: 'replace' | 'toggle' = 'replace') => {
+  const select = useCallback((id: ItemId, mode: 'replace' | 'toggle' = 'replace') => {
     if (mode === 'toggle') {
       dataView.selection.toggle([id])
       return
@@ -288,8 +288,8 @@ export const useKanbanRuntime = (input: {
         dataviewAppearanceSelector,
         interactiveSelector
       ].join(',')),
-      getTargets: () => visualTargets.getTargets(appearanceIds),
-      order: () => appearanceIds,
+      getTargets: () => visualTargets.getTargets(itemIds),
+      order: () => itemIds,
       resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(scrollRef.current),
       onStart: () => {
         visualTargets.clearFrozen()
@@ -302,7 +302,7 @@ export const useKanbanRuntime = (input: {
       }
     })
   }, [
-    appearanceIds,
+    itemIds,
     dataView.marquee,
     dragging,
     input.active.view.id,
@@ -312,18 +312,18 @@ export const useKanbanRuntime = (input: {
   const drag = useDrag({
     containerRef: scrollRef,
     canDrag: input.extra.canReorder,
-    itemMap: new Map(appearanceIds.map(id => [id, id] as const)),
+    itemMap: new Map(itemIds.map(id => [id, id] as const)),
     getLayout: () => readBoardLayout(scrollRef.current),
     getDragIds: activeId => (
       selectedIds.includes(activeId)
-        ? selectedIds.filter(id => appearanceIds.includes(id))
+        ? selectedIds.filter(id => itemIds.includes(id))
         : [activeId]
     ),
     onDraggingChange: setDragging,
     onDrop: (cardIds, target) => {
-      dataView.engine.active.items.move(cardIds, {
-        sectionKey: target.sectionKey,
-        ...(target.beforeAppearanceId ? { before: target.beforeAppearanceId } : {})
+      dataView.engine.view.items.move(cardIds, {
+        section: target.sectionKey,
+        ...(target.beforeItemId ? { before: target.beforeItemId } : {})
       })
     }
   })

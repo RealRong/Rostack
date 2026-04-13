@@ -1,15 +1,15 @@
 import type {
-  AppearanceId,
-  AppearanceList
-} from '@dataview/engine/project'
+  ItemId,
+  ItemList
+} from '@dataview/engine'
 import type {
   ValueStore
 } from '@shared/core'
 
 export interface Selection {
-  ids: readonly AppearanceId[]
-  anchor?: AppearanceId
-  focus?: AppearanceId
+  ids: readonly ItemId[]
+  anchor?: ItemId
+  focus?: ItemId
 }
 
 export interface SelectionStore extends ValueStore<Selection> { }
@@ -20,16 +20,16 @@ export interface SelectionApi {
   clear(): void
   all(): void
   set(
-    ids: readonly AppearanceId[],
+    ids: readonly ItemId[],
     options?: {
-      anchor?: AppearanceId
-      focus?: AppearanceId
+      anchor?: ItemId
+      focus?: ItemId
     }
   ): void
-  toggle(ids: readonly AppearanceId[]): void
-  extend(to: AppearanceId): void
+  toggle(ids: readonly ItemId[]): void
+  extend(to: ItemId): void
 }
 
 export interface SelectionScope {
-  appearances: () => AppearanceList | undefined
+  items: () => ItemList | undefined
 }

@@ -1,7 +1,7 @@
 import type {
-  AppearanceId,
+  ItemId,
   Section
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import {
   resolveAutoFillGridMetrics
 } from '@dataview/react/virtual'
@@ -29,10 +29,10 @@ export const GALLERY_SECTION_HEADER_GAP = 12
 export const GALLERY_SECTION_EMPTY_HEIGHT = 96
 
 const chunkIds = (
-  ids: readonly AppearanceId[],
+  ids: readonly ItemId[],
   size: number
 ) => {
-  const rows: AppearanceId[][] = []
+  const rows: ItemId[][] = []
   for (let index = 0; index < ids.length; index += size) {
     rows.push(ids.slice(index, index + size))
   }
@@ -40,9 +40,9 @@ const chunkIds = (
 }
 
 const rowHeight = (input: {
-  ids: readonly AppearanceId[]
+  ids: readonly ItemId[]
   estimatedHeight: number
-  heightById: ReadonlyMap<AppearanceId, number>
+  heightById: ReadonlyMap<ItemId, number>
 }) => Math.max(
   ...input.ids.map(id => input.heightById.get(id) ?? input.estimatedHeight)
 )
@@ -79,7 +79,7 @@ export const buildGalleryLayout = (input: {
   minCardWidth: number
   gap?: number
   estimatedHeight?: number
-  heightById: ReadonlyMap<AppearanceId, number>
+  heightById: ReadonlyMap<ItemId, number>
 }): GalleryLayoutCache => {
   const gap = input.gap ?? GALLERY_CARD_GAP
   const estimatedHeight = input.estimatedHeight ?? GALLERY_CARD_ESTIMATED_HEIGHT
@@ -124,7 +124,7 @@ export const buildGalleryLayout = (input: {
       return
     }
 
-    if (!section.appearanceIds.length) {
+    if (!section.itemIds.length) {
       if (!input.grouped) {
         return
       }
@@ -144,7 +144,7 @@ export const buildGalleryLayout = (input: {
       return
     }
 
-    const sectionRows = chunkIds(section.appearanceIds, columnCount)
+    const sectionRows = chunkIds(section.itemIds, columnCount)
     sectionRows.forEach((rowIds, rowIndex) => {
       const height = rowHeight({
         ids: rowIds,

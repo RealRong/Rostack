@@ -11,11 +11,11 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import type {
-  AppearanceId
-} from '@dataview/engine/project'
+  ItemId
+} from '@dataview/engine'
 import type {
   ViewFieldRef
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import { isEmptyFieldValue } from '@dataview/core/field'
 import { Button } from '@ui/button'
 import { cn } from '@ui/utils'
@@ -25,12 +25,12 @@ import { useCardTitleEditing } from './useCardTitleEditing'
 
 const fieldRef = (input: {
   viewId: ViewId
-  appearanceId: AppearanceId
+  itemId: ItemId
   recordId: string
   fieldId: string
 }): ViewFieldRef => ({
   viewId: input.viewId,
-  appearanceId: input.appearanceId,
+  itemId: input.itemId,
   recordId: input.recordId,
   fieldId: input.fieldId
 })
@@ -52,7 +52,7 @@ export interface CardContentProps extends Omit<ComponentPropsWithoutRef<'article
     }
   }
   viewId: ViewId
-  appearanceId: AppearanceId
+  itemId: ItemId
   record: DataRecord
   fields: readonly CustomField[]
   titlePlaceholder: string
@@ -65,7 +65,7 @@ export const CardContent = forwardRef<HTMLElement, CardContentProps>((props, ref
   const {
     slots,
     viewId,
-    appearanceId,
+    itemId,
     record,
     fields,
     titlePlaceholder,
@@ -77,7 +77,7 @@ export const CardContent = forwardRef<HTMLElement, CardContentProps>((props, ref
   } = props
   const editing = useCardTitleEditing({
     viewId,
-    appearanceId,
+    itemId,
     record
   })
   const fieldProperties = useMemo(() => fields, [fields])
@@ -131,7 +131,7 @@ export const CardContent = forwardRef<HTMLElement, CardContentProps>((props, ref
               <CardFieldSlot
                 field={fieldRef({
                   viewId,
-                  appearanceId,
+                  itemId,
                   recordId: record.id,
                   fieldId: property.id
                 })}

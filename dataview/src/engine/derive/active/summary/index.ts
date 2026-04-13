@@ -4,38 +4,31 @@ import type {
   View,
   ViewId
 } from '@dataview/core/contracts'
-import {
-  TITLE_FIELD_ID
-} from '@dataview/core/contracts'
-import {
-  viewCalcFields
-} from '@dataview/core/view'
+import { TITLE_FIELD_ID } from '@dataview/core/contracts'
+import { viewCalcFields } from '@dataview/core/view'
 import {
   collectSchemaFieldIds,
   collectTouchedRecordIds,
   collectValueFieldIds
 } from '../../../index/shared'
+import type { IndexState } from '../../../index/types'
 import type {
-  IndexState
-} from '../../../index/types'
-import type {
-  ProjectState,
-  ProjectionAction,
-  CalcState,
-  SectionState
-} from '../state'
+  DeriveAction,
+  SectionState,
+  SummaryState
+} from '../../../contracts/internal'
+import type { SectionKey } from '../../../contracts/public'
+import { publishSummaries } from '../publishSummary'
+import {
+  syncSummaryState
+} from './sync'
+
 export {
   computeCalculationFromState
 } from './compute'
 export {
-  syncCalcState
+  syncSummaryState
 } from './sync'
-import {
-  syncCalcState
-} from './sync'
-import {
-  publishCalculations
-} from '../../publish/calculations'
 
 const hasIntersection = (
   left: ReadonlySet<FieldId>,
@@ -66,15 +59,15 @@ const collectTouchedFields = (
   ])
 }
 
-const resolveCalcAction = (input: {
+const resolveSummaryAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
   delta: CommitDelta
   view: View
-  previous?: CalcState
+  previous?: SummaryState
   previousSections?: SectionState
-  sectionsAction: ProjectionAction
-}): ProjectionAction => {
+  sectionsAction: DeriveAction
+}): DeriveAction => {
   if (
     !input.previous
     || !input.previousSections
@@ -137,26 +130,26 @@ const resolveCalcAction = (input: {
   return 'reuse'
 }
 
-export const runCalcStage = (input: {
+export const runSummaryStage = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
   delta: CommitDelta
   view: View
-  previous?: CalcState
+  previous?: SummaryState
   previousSections?: SectionState
-  previousPublished?: ProjectState['calculations']
+  previousPublished?: ReadonlyMap<SectionKey, import('@dataview/core/calculation').CalculationCollection>
   sections: SectionState
-  sectionsAction: ProjectionAction
+  sectionsAction: DeriveAction
   index: IndexState
   fieldsById: ReadonlyMap<FieldId, import('@dataview/core/contracts').Field>
 }): {
-  action: ProjectionAction
-  state: CalcState
-  calculations: ProjectState['calculations']
+  action: DeriveAction
+  state: SummaryState
+  summaries: ReadonlyMap<SectionKey, import('@dataview/core/calculation').CalculationCollection>
 } => {
   const touchedRecords = collectTouchedRecordIds(input.delta)
   const touchedFields = collectTouchedFields(input.delta)
-  const action = resolveCalcAction({
+  const action = resolveSummaryAction({
     activeViewId: input.activeViewId,
     previousViewId: input.previousViewId,
     delta: input.delta,
@@ -165,7 +158,7 @@ export const runCalcStage = (input: {
     previousSections: input.previousSections,
     sectionsAction: input.sectionsAction
   })
-  const state = syncCalcState({
+  const state = syncSummaryState({
     previous: input.previous,
     previousSections: input.previousSections,
     sections: input.sections,
@@ -179,9 +172,9 @@ export const runCalcStage = (input: {
   return {
     action,
     state,
-    calculations: publishCalculations({
-      calc: state,
-      previousCalc: input.previous,
+    summaries: publishSummaries({
+      summary: state,
+      previousSummary: input.previous,
       previous: input.previousPublished,
       fieldsById: input.fieldsById,
       view: input.view

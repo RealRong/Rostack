@@ -1,8 +1,8 @@
 import type { Rect } from '@shared/dom'
 import type {
-  AppearanceId,
+  ItemId,
   SectionKey
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import type {
   GalleryLayoutCache
 } from '../virtual'
@@ -11,9 +11,9 @@ type GalleryCard = GalleryLayoutCache['cards'][number]
 
 export interface GalleryDropTarget {
   sectionKey: SectionKey
-  anchorId: AppearanceId
+  anchorId: ItemId
   side: 'left' | 'right'
-  beforeAppearanceId?: AppearanceId
+  beforeItemId?: ItemId
   indicator: {
     left: number
     top: number
@@ -64,7 +64,7 @@ export const dropTargetFromPoint = (
     x: number
     y: number
   },
-  excludeIds: readonly AppearanceId[] = []
+  excludeIds: readonly ItemId[] = []
 ): GalleryDropTarget | undefined => {
   if (!layout) {
     return undefined
@@ -118,7 +118,7 @@ export const dropTargetFromPoint = (
       sectionKey: row.sectionKey,
       anchorId: firstCard.id,
       side: 'left',
-      beforeAppearanceId: firstCard.id,
+      beforeItemId: firstCard.id,
       indicator: {
         left: Math.max(0, firstCard.rect.left - EDGE_OFFSET),
         top: firstCard.rect.top,
@@ -145,7 +145,7 @@ export const dropTargetFromPoint = (
         sectionKey: row.sectionKey,
         anchorId: card.id,
         side,
-        beforeAppearanceId: side === 'left' ? card.id : nextCard?.id,
+        beforeItemId: side === 'left' ? card.id : nextCard?.id,
         indicator: {
           left: side === 'left'
             ? Math.max(0, card.rect.left - EDGE_OFFSET)
@@ -162,7 +162,7 @@ export const dropTargetFromPoint = (
         sectionKey: row.sectionKey,
         anchorId: nextRowCard.id,
         side: 'left',
-        beforeAppearanceId: nextRowCard.id,
+        beforeItemId: nextRowCard.id,
         indicator: {
           left: Math.max(0, nextRowCard.rect.left - EDGE_OFFSET),
           top: nextRowCard.rect.top,
@@ -181,7 +181,7 @@ export const dropTargetFromPoint = (
     sectionKey: row.sectionKey,
     anchorId: lastCard.id,
     side: 'right',
-    beforeAppearanceId: nextVisibleCard?.id,
+    beforeItemId: nextVisibleCard?.id,
     indicator: {
       left: lastCard.rect.right + EDGE_OFFSET,
       top: lastCard.rect.top,

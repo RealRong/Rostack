@@ -10,8 +10,8 @@ import type {
   View
 } from '@dataview/core/contracts'
 import type {
-  ActiveGalleryState,
-  ActiveViewState
+  GalleryState,
+  ViewState
 } from '@dataview/engine'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
@@ -25,8 +25,8 @@ import {
   interactiveSelector
 } from '@shared/dom'
 import {
-  AppearanceId
-} from '@dataview/engine/project'
+  ItemId
+} from '@dataview/engine'
 import {
   resolveDefaultAutoPanTargets
 } from '@dataview/react/interaction/autoPan'
@@ -46,7 +46,7 @@ import {
   type GalleryLayoutCache
 } from './virtual'
 
-export type GalleryActiveState = ActiveViewState & {
+export type GalleryActiveState = ViewState & {
   view: View & {
     type: 'gallery'
   }
@@ -57,11 +57,11 @@ export interface GalleryRuntime {
   virtual: {
     layout: GalleryLayoutCache
     blocks: readonly GalleryBlock[]
-    measure: (id: AppearanceId) => (node: HTMLElement | null) => void
+    measure: (id: ItemId) => (node: HTMLElement | null) => void
   }
   selection: {
-    selectedIdSet: ReadonlySet<AppearanceId>
-    select: (id: AppearanceId, mode?: 'replace' | 'toggle') => void
+    selectedIdSet: ReadonlySet<ItemId>
+    select: (id: ItemId, mode?: 'replace' | 'toggle') => void
   }
   drag: ReturnType<typeof useCardReorder>
   indicator?: GalleryDropTarget['indicator']
@@ -71,7 +71,7 @@ export interface GalleryRuntime {
 
 export const useGalleryRuntime = (input: {
   active: GalleryActiveState
-  extra: ActiveGalleryState
+  extra: GalleryState
 }): GalleryRuntime => {
   const dataView = useDataView()
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -79,7 +79,7 @@ export const useGalleryRuntime = (input: {
   const visualTargets = useRef(createVisualTargetRegistry({
     resolveScrollTargets: () => resolveDefaultAutoPanTargets(containerRef.current)
   })).current
-  const appearanceIds = input.active.appearances.ids
+  const itemIds = input.active.items.ids
   const virtual = useGalleryBlocks({
     grouped: input.active.query.group.active,
     sections: input.active.sections.all,
@@ -90,11 +90,11 @@ export const useGalleryRuntime = (input: {
   const selectionState = useDataViewValue(
     dataView => dataView.selection.store
   )
-  const selectedIdSet = useMemo<ReadonlySet<AppearanceId>>(
+  const selectedIdSet = useMemo<ReadonlySet<ItemId>>(
     () => new Set(selectionState.ids),
     [selectionState.ids]
   )
-  const select = useCallback((id: AppearanceId, mode: 'replace' | 'toggle' = 'replace') => {
+  const select = useCallback((id: ItemId, mode: 'replace' | 'toggle' = 'replace') => {
     if (mode === 'toggle') {
       dataView.selection.toggle([id])
       return
@@ -112,8 +112,8 @@ export const useGalleryRuntime = (input: {
       event.target,
       `[${DATAVIEW_APPEARANCE_ID_ATTR}],${interactiveSelector}`
     ),
-    getTargets: () => visualTargets.getTargets(appearanceIds),
-    order: () => appearanceIds,
+    getTargets: () => visualTargets.getTargets(itemIds),
+    order: () => itemIds,
     resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(containerRef.current),
     onStart: () => {
       visualTargets.clearFrozen()
@@ -125,7 +125,7 @@ export const useGalleryRuntime = (input: {
       visualTargets.clearFrozen()
     }
   }), [
-    appearanceIds,
+    itemIds,
     dataView.marquee,
     dragging,
     input.active.view.id,
@@ -135,25 +135,25 @@ export const useGalleryRuntime = (input: {
   const drag = useCardReorder({
     containerRef,
     canDrag: input.extra.canReorder,
-    itemMap: new Map(appearanceIds.map(id => [id, id] as const)),
+    itemMap: new Map(itemIds.map(id => [id, id] as const)),
     getLayout: () => virtual.layout,
     getDragIds: activeId => (
       selectionState.ids.includes(activeId)
-        ? selectionState.ids.filter(id => appearanceIds.includes(id))
+        ? selectionState.ids.filter(id => itemIds.includes(id))
         : [activeId]
     ),
     onDraggingChange: setDragging,
     onDrop: (ids, target) => {
-      const sectionKey = target.beforeAppearanceId
-        ? dataView.engine.active.read.appearance(target.beforeAppearanceId)?.sectionKey
+      const section = target.beforeItemId
+        ? dataView.engine.view.read.item(target.beforeItemId)?.sectionKey
         : target.sectionKey
-      if (!sectionKey) {
+      if (!section) {
         return
       }
 
-      dataView.engine.active.items.move(ids, {
-        sectionKey,
-        ...(target.beforeAppearanceId ? { before: target.beforeAppearanceId } : {})
+      dataView.engine.view.items.move(ids, {
+        section,
+        ...(target.beforeItemId ? { before: target.beforeItemId } : {})
       })
     }
   })
@@ -163,22 +163,22 @@ export const useGalleryRuntime = (input: {
       return undefined
     }
 
-    const sectionKey = drag.overTarget.beforeAppearanceId
-      ? dataView.engine.active.read.appearance(drag.overTarget.beforeAppearanceId)?.sectionKey
+    const section = drag.overTarget.beforeItemId
+      ? dataView.engine.view.read.item(drag.overTarget.beforeItemId)?.sectionKey
       : drag.overTarget.sectionKey
-    if (!sectionKey) {
+    if (!section) {
       return undefined
     }
 
-    const plan = dataView.engine.active.read.planMove(drag.dragIds, {
-      sectionKey,
-      ...(drag.overTarget.beforeAppearanceId ? { before: drag.overTarget.beforeAppearanceId } : {})
+    const plan = dataView.engine.view.items.planMove(drag.dragIds, {
+      section,
+      ...(drag.overTarget.beforeItemId ? { before: drag.overTarget.beforeItemId } : {})
     })
 
     return plan.changed
       ? drag.overTarget.indicator
       : undefined
-  }, [dataView.engine.active.read, drag.dragIds, drag.overTarget, input.active.appearances])
+  }, [dataView.engine.view, drag.dragIds, drag.overTarget, input.active.items])
 
   return useMemo(() => ({
     containerRef,

@@ -29,20 +29,20 @@ export const ViewQueryBar = () => {
     state => state.query
   )
   const currentView = useDataViewValue(
-    dataView => dataView.engine.active.view
+    dataView => dataView.engine.view.config
   )
 
   const filterProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => state?.query.filter
+    dataView => dataView.engine.view.state,
+    state => state?.query.filters
   )
   const sortProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
+    dataView => dataView.engine.view.state,
     state => state?.query.sort
   )
 
   const currentViewDomain = currentView
-    ? engine.active
+    ? engine.view
     : undefined
   const filters = filterProjection?.rules ?? []
   const sorts = sortProjection?.rules ?? []
@@ -95,13 +95,13 @@ export const ViewQueryBar = () => {
             page.query.close()
           }}
           onPresetChange={presetId => {
-            currentViewDomain?.filter.preset(index, presetId)
+            currentViewDomain?.filters.setPreset(index, presetId)
           }}
           onValueChange={value => {
-            currentViewDomain?.filter.value(index, value)
+            currentViewDomain?.filters.setValue(index, value)
           }}
           onRemove={() => {
-            currentViewDomain?.filter.remove(index)
+            currentViewDomain?.filters.remove(index)
             page.query.close()
           }}
         />
@@ -140,7 +140,7 @@ export const ViewQueryBar = () => {
               <FieldPicker
                 fields={availableFilterFields}
                 onSelect={fieldId => {
-                  currentViewDomain?.filter.add(fieldId)
+                  currentViewDomain?.filters.add(fieldId)
                   page.query.open({
                     kind: 'filter',
                     fieldId

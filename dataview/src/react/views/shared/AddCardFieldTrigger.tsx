@@ -6,7 +6,7 @@ import {
 } from '@dataview/react/dataview'
 import type {
   ViewFieldRef
-} from '@dataview/engine/project'
+} from '@dataview/engine'
 import {
   meta,
   renderMessage
@@ -38,14 +38,14 @@ export const AddCardFieldTrigger = (props: AddCardFieldTriggerProps) => {
       onClick={event => {
         event.stopPropagation()
         if (!props.openOnClick) {
-          dataView.selection.set([props.field.appearanceId])
+          dataView.selection.set([props.field.itemId])
         }
         openCardField({
           valueEditor: dataView.valueEditor,
           field: props.field,
           element: event.currentTarget,
           focusOwner: () => {
-            dataView.selection.set([props.field.appearanceId])
+            dataView.selection.set([props.field.itemId])
           }
         })
       }}

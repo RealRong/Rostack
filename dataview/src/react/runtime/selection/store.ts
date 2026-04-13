@@ -5,14 +5,14 @@ import {
   sameOrder
 } from '@shared/core'
 import type {
-  AppearanceId
-} from '@dataview/engine/project'
+  ItemId
+} from '@dataview/engine'
 import type {
   Selection,
   SelectionStore
 } from './types'
 
-const emptyIds = [] as readonly AppearanceId[]
+const emptyIds = [] as readonly ItemId[]
 
 export const emptySelection: Selection = {
   ids: emptyIds
@@ -21,9 +21,9 @@ export const emptySelection: Selection = {
 type SelectMode = 'replace' | 'toggle' | 'range'
 
 const includesId = (
-  ids: readonly AppearanceId[],
-  id: AppearanceId | undefined
-): id is AppearanceId => {
+  ids: readonly ItemId[],
+  id: ItemId | undefined
+): id is ItemId => {
   if (!id) {
     return false
   }
@@ -32,10 +32,10 @@ const includesId = (
 }
 
 const createSelection = (
-  ids: readonly AppearanceId[],
+  ids: readonly ItemId[],
   input?: {
-    anchor?: AppearanceId
-    focus?: AppearanceId
+    anchor?: ItemId
+    focus?: ItemId
   }
 ): Selection => {
   if (!ids.length) {
@@ -57,7 +57,7 @@ const createSelection = (
 }
 
 const currentAnchor = (
-  order: readonly AppearanceId[],
+  order: readonly ItemId[],
   current: Selection
 ) => (
   current.anchor && order.includes(current.anchor)
@@ -68,7 +68,7 @@ const currentAnchor = (
 )
 
 const reconcileSelection = (
-  ids: readonly AppearanceId[],
+  ids: readonly ItemId[],
   current: Selection
 ): Selection => {
   const nextIds = selection.normalize(ids, current.ids)
@@ -100,8 +100,8 @@ export const selection = {
     && sameOrder(left.ids, right.ids)
   ),
   normalize: (
-    order: readonly AppearanceId[],
-    ids: readonly AppearanceId[]
+    order: readonly ItemId[],
+    ids: readonly ItemId[]
   ) => {
     if (!ids.length) {
       return emptyIds
@@ -111,20 +111,20 @@ export const selection = {
     return order.filter(id => idSet.has(id))
   },
   set: (
-    order: readonly AppearanceId[],
-    ids: readonly AppearanceId[],
+    order: readonly ItemId[],
+    ids: readonly ItemId[],
     options?: {
-      anchor?: AppearanceId
-      focus?: AppearanceId
+      anchor?: ItemId
+      focus?: ItemId
     }
   ): Selection => {
     const nextIds = selection.normalize(order, ids)
     return createSelection(nextIds, options)
   },
   toggle: (
-    order: readonly AppearanceId[],
+    order: readonly ItemId[],
     current: Selection,
-    ids: readonly AppearanceId[]
+    ids: readonly ItemId[]
   ): Selection => {
     const targetIds = selection.normalize(order, ids)
     if (!targetIds.length) {
@@ -145,9 +145,9 @@ export const selection = {
     return createSelection(nextIds, current)
   },
   extend: (
-    order: readonly AppearanceId[],
+    order: readonly ItemId[],
     current: Selection,
-    to: AppearanceId
+    to: ItemId
   ): Selection => {
     const focusIndex = order.indexOf(to)
     if (focusIndex === -1) {
@@ -174,13 +174,13 @@ export const selection = {
     )
   },
   apply: (
-    order: readonly AppearanceId[],
+    order: readonly ItemId[],
     current: Selection,
-    ids: readonly AppearanceId[],
+    ids: readonly ItemId[],
     mode: SelectMode,
     options?: {
-      anchor?: AppearanceId
-      focus?: AppearanceId
+      anchor?: ItemId
+      focus?: ItemId
     }
   ): Selection => {
     switch (mode) {
@@ -204,7 +204,7 @@ export const selection = {
     }
   },
   step: (
-    order: readonly AppearanceId[],
+    order: readonly ItemId[],
     current: Selection,
     delta: number,
     options?: {
@@ -238,7 +238,7 @@ export const selection = {
   },
   clear: (): Selection => emptySelection,
   all: (
-    order: readonly AppearanceId[]
+    order: readonly ItemId[]
   ): Selection => selection.set(order, order)
 } as const
 
@@ -251,7 +251,7 @@ export const createSelectionStore = (
 
 export const syncSelection = (
   store: SelectionStore,
-  ids: readonly AppearanceId[]
+  ids: readonly ItemId[]
 ) => {
   const next = reconcileSelection(ids, store.get())
   if (selection.equal(store.get(), next)) {

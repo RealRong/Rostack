@@ -1,16 +1,11 @@
+import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
-  CalculationCollection
-} from '@dataview/core/calculation'
-import type {
+  SectionKey,
   SectionList,
-  SectionKey
-} from '../readModels'
-import type {
-  ProjectStageMetrics
-} from '../../api/public'
-import type {
-  ProjectState
-} from './state'
+  ViewRecords,
+  ViewStageMetrics,
+  ViewState
+} from '../../contracts/public'
 
 const countChangedIds = (
   previous: readonly string[] | undefined,
@@ -59,7 +54,7 @@ const countChangedSections = (
   ), 0)
 }
 
-const countReusedCalculations = (
+const countReusedSummaries = (
   previous: ReadonlyMap<SectionKey, CalculationCollection> | undefined,
   next: ReadonlyMap<SectionKey, CalculationCollection> | undefined
 ) => {
@@ -73,20 +68,20 @@ const countReusedCalculations = (
 }
 
 export const buildStageMetrics = (
-  stage: 'query' | 'sections' | 'calc',
-  previous: ProjectState[keyof ProjectState],
-  next: ProjectState[keyof ProjectState]
-): ProjectStageMetrics | undefined => {
+  stage: 'query' | 'sections' | 'summary',
+  previous: ViewState | undefined,
+  next: ViewState | undefined
+): ViewStageMetrics | undefined => {
   switch (stage) {
     case 'query': {
-      const previousRecords = previous as ProjectState['records']
-      const nextRecords = next as ProjectState['records']
+      const previousRecords = previous?.records
+      const nextRecords = next?.records
       if (!nextRecords) {
         return undefined
       }
 
       const reusedNodeCount = (
-        (previousRecords?.derived === nextRecords.derived ? 1 : 0)
+        (previousRecords?.matched === nextRecords.matched ? 1 : 0)
         + (previousRecords?.ordered === nextRecords.ordered ? 1 : 0)
         + (previousRecords?.visible === nextRecords.visible ? 1 : 0)
       )
@@ -101,8 +96,8 @@ export const buildStageMetrics = (
       }
     }
     case 'sections': {
-      const previousSections = previous as ProjectState['sections']
-      const nextSections = next as ProjectState['sections']
+      const previousSections = previous?.sections
+      const nextSections = next?.sections
       if (!nextSections) {
         return undefined
       }
@@ -116,20 +111,20 @@ export const buildStageMetrics = (
         changedSectionCount: countChangedSections(previousSections, nextSections)
       }
     }
-    case 'calc': {
-      const previousCalculations = previous as ProjectState['calculations']
-      const nextCalculations = next as ProjectState['calculations']
-      if (!nextCalculations) {
+    case 'summary': {
+      const previousSummaries = previous?.summaries
+      const nextSummaries = next?.summaries
+      if (!nextSummaries) {
         return undefined
       }
 
-      const reusedNodeCount = countReusedCalculations(previousCalculations, nextCalculations)
+      const reusedNodeCount = countReusedSummaries(previousSummaries, nextSummaries)
       return {
-        inputCount: previousCalculations?.size,
-        outputCount: nextCalculations.size,
+        inputCount: previousSummaries?.size,
+        outputCount: nextSummaries.size,
         reusedNodeCount,
-        rebuiltNodeCount: nextCalculations.size - reusedNodeCount,
-        changedSectionCount: nextCalculations.size - reusedNodeCount
+        rebuiltNodeCount: nextSummaries.size - reusedNodeCount,
+        changedSectionCount: nextSummaries.size - reusedNodeCount
       }
     }
   }

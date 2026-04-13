@@ -17,48 +17,48 @@ export const createSelectionApi = (input: {
     input.store.set(selection.clear())
   },
   all: () => {
-    const appearances = input.scope.appearances()
-    if (!appearances) {
+    const items = input.scope.items()
+    if (!items) {
       return
     }
 
     input.store.set(
-      selection.all(appearances.ids)
+      selection.all(items.ids)
     )
   },
   set: (ids, options) => {
-    const appearances = input.scope.appearances()
-    if (!appearances) {
+    const items = input.scope.items()
+    if (!items) {
       return
     }
 
     input.store.set(
-      selection.set(appearances.ids, ids, options)
+      selection.set(items.ids, ids, options)
     )
   },
   toggle: ids => {
-    const appearances = input.scope.appearances()
-    if (!appearances) {
+    const items = input.scope.items()
+    if (!items) {
       return
     }
 
     input.store.set(
       selection.toggle(
-        appearances.ids,
+        items.ids,
         input.store.get(),
         ids
       )
     )
   },
   extend: to => {
-    const appearances = input.scope.appearances()
-    if (!appearances) {
+    const items = input.scope.items()
+    if (!items) {
       return
     }
 
     input.store.set(
       selection.extend(
-        appearances.ids,
+        items.ids,
         input.store.get(),
         to
       )

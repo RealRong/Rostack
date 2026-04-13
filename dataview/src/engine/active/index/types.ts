@@ -15,6 +15,7 @@ export type SortKey = unknown
 
 export interface RecordIndex {
   ids: readonly RecordId[]
+  fieldIds: readonly FieldId[]
   order: ReadonlyMap<RecordId, number>
   rows: ReadonlyMap<RecordId, DataRecord>
   values: ReadonlyMap<FieldId, ReadonlyMap<RecordId, unknown>>
@@ -48,7 +49,10 @@ export interface SearchIndex {
 
 export interface SearchTextIndex {
   texts: ReadonlyMap<RecordId, string>
-  tokens: ReadonlyMap<string, readonly RecordId[]>
+}
+
+export interface RecordBucketLookup {
+  get(recordId: RecordId): readonly BucketKey[] | undefined
 }
 
 export interface GroupFieldIndex {
@@ -56,7 +60,7 @@ export interface GroupFieldIndex {
   mode?: ViewGroup['mode']
   bucketSort?: ViewGroup['bucketSort']
   bucketInterval?: ViewGroup['bucketInterval']
-  recordBuckets: ReadonlyMap<RecordId, readonly BucketKey[]>
+  recordBuckets: RecordBucketLookup
   bucketRecords: ReadonlyMap<BucketKey, SortedIdSet<RecordId>>
   buckets: ReadonlyMap<BucketKey, Bucket>
   order: readonly BucketKey[]

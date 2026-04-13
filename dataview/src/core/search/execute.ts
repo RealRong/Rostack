@@ -1,4 +1,5 @@
 import type {
+  CustomField,
   DataDoc,
   DataRecord,
   Search
@@ -12,6 +13,23 @@ import {
   getRecordFieldValue,
   normalizeSearchableValue
 } from '@dataview/core/field'
+
+const isDefaultSearchField = (
+  field: CustomField | undefined
+): boolean => {
+  switch (field?.kind) {
+    case 'text':
+    case 'url':
+    case 'email':
+    case 'phone':
+    case 'select':
+    case 'multiSelect':
+    case 'status':
+      return true
+    default:
+      return false
+  }
+}
 
 export const matchSearchRecord = (
   record: DataRecord,
@@ -30,14 +48,12 @@ export const matchSearchRecord = (
       })
     : [
         ...normalizeSearchableValue(record.title),
-        ...normalizeSearchableValue(record.type),
-        ...normalizeSearchableValue(record.meta),
-        ...Object.entries(record.values).flatMap(([fieldId, value]) => (
-          getFieldSearchTokens(
-            getDocumentCustomFieldById(document, fieldId),
-            value
-          )
-        ))
+        ...Object.entries(record.values).flatMap(([fieldId, value]) => {
+          const field = getDocumentCustomFieldById(document, fieldId)
+          return isDefaultSearchField(field)
+            ? getFieldSearchTokens(field, value)
+            : []
+        })
       ]
 
   return candidates.some(candidate => candidate.toLowerCase().includes(query))

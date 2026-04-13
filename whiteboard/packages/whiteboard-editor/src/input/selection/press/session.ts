@@ -18,33 +18,21 @@ import type {
 import { createMarqueeInteraction } from '../marquee/session'
 import { createMoveInteraction } from '../move/session'
 import {
-  matchSelectionTap,
-  resolveSelectionPressAction as resolveSelectionPressStart,
+  startSelectionPressAction
+} from './start'
+import {
   resolveSelectionPressTarget,
   type SelectionPressDragPlan,
   type SelectionMarqueePlan,
   type SelectionPressPlan,
   type SelectionPressTarget
-} from './start'
+} from './resolve'
+import {
+  matchSelectionTap
+} from './plan'
 import { resolveSelectionEditField } from '../edit'
 
 type SelectionPressField = EditField
-
-const resolveSelectionPressAction = (
-  ctx: InteractionContext,
-  input: PointerDownInput
-): {
-  target: SelectionPressTarget<SelectionPressField>
-  plan: SelectionPressPlan<SelectionPressField>
-} | null => {
-  const resolved = resolveSelectionPressStart<SelectionPressField>({
-    read: ctx.read,
-    selection: ctx.selection,
-    pointer: input
-  })
-
-  return resolved ?? null
-}
 
 const createSelectionSession = (
   input: {
@@ -198,7 +186,11 @@ export const startSelectionPress = (
   ctx: InteractionContext,
   input: PointerDownInput
 ): InteractionSession | null => {
-  const resolved = resolveSelectionPressAction(ctx, input)
+  const resolved = startSelectionPressAction<SelectionPressField>({
+    read: ctx.read,
+    selection: ctx.selection,
+    pointer: input
+  })
   return resolved
     ? createPressSession(ctx, input, resolved)
     : null

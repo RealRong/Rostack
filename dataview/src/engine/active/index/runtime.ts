@@ -57,7 +57,7 @@ const buildState = (
   demand?: IndexDemand
 ): IndexState => {
   const normalized = normalizeIndexDemand(demand)
-  const records = buildRecordIndex(document)
+  const records = buildRecordIndex(document, normalized.recordFields)
 
   return {
     records,
@@ -102,7 +102,12 @@ export const deriveIndex = (input: {
   const rebuild = fullRebuildFrom(input.delta)
 
   const recordsStart = now()
-  const records = syncRecordIndex(previous.records, input.document, input.delta)
+  const records = syncRecordIndex(
+    previous.records,
+    input.document,
+    input.delta,
+    nextDemand.recordFields
+  )
   const recordsMs = now() - recordsStart
 
   const searchStart = now()

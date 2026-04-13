@@ -149,7 +149,7 @@ const resolveTransformSpec = (
   return readSelectionTransformSpec(ctx, input.pick.handle, input) ?? null
 }
 
-export const startTransformInteraction = (
+const startTransformInteraction = (
   ctx: InteractionContext,
   input: PointerDownInput
 ) => {

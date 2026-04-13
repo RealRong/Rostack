@@ -26,42 +26,37 @@ import {
 } from '../../../contracts/internal'
 
 const insertOrdered = (
-  ids: readonly RecordId[],
+  ids: RecordId[],
   recordId: RecordId,
   order: ReadonlyMap<RecordId, number>
-): readonly RecordId[] => {
+): void => {
   if (ids.includes(recordId)) {
-    return ids
+    return
   }
 
   const nextOrder = order.get(recordId) ?? Number.MAX_SAFE_INTEGER
-  const next = [...ids]
-  const index = next.findIndex(current => (
+  const index = ids.findIndex(current => (
     (order.get(current) ?? Number.MAX_SAFE_INTEGER) > nextOrder
   ))
 
   if (index < 0) {
-    next.push(recordId)
-    return next
+    ids.push(recordId)
+    return
   }
 
-  next.splice(index, 0, recordId)
-  return next
+  ids.splice(index, 0, recordId)
 }
 
 const removeId = (
-  ids: readonly RecordId[],
+  ids: RecordId[],
   recordId: RecordId
-): readonly RecordId[] => {
+): void => {
   const index = ids.indexOf(recordId)
   if (index < 0) {
-    return ids
+    return
   }
 
-  return [
-    ...ids.slice(0, index),
-    ...ids.slice(index + 1)
-  ]
+  ids.splice(index, 1)
 }
 
 export const syncSectionState = (input: {
@@ -103,13 +98,28 @@ export const syncSectionState = (input: {
   }
 
   const previous = input.previous
-  const idsByKey = new Map(
-    Array.from(previous.byKey.entries(), ([key, node]) => [
-      key,
-      [...node.recordIds]
-    ] as const)
-  )
-  const byRecord = new Map(previous.byRecord)
+  const queryOrder = readQueryOrder(input.query)
+  const idsByKey = new Map<import('../../../contracts/public').SectionKey, RecordId[]>()
+  let byRecord: Map<RecordId, readonly import('../../../contracts/public').SectionKey[]> | undefined
+  const ensureIds = (
+    key: import('../../../contracts/public').SectionKey
+  ) => {
+    const cached = idsByKey.get(key)
+    if (cached) {
+      return cached
+    }
+
+    const next = [...(previous.byKey.get(key)?.recordIds ?? [])]
+    idsByKey.set(key, next)
+    return next
+  }
+  const ensureByRecord = () => {
+    if (!byRecord) {
+      byRecord = new Map(previous.byRecord)
+    }
+
+    return byRecord
+  }
 
   input.touchedRecords.forEach(recordId => {
     const before = previous.byRecord.get(recordId) ?? []
@@ -125,33 +135,34 @@ export const syncSectionState = (input: {
     }
 
     before.forEach(key => {
-      idsByKey.set(key, removeId(idsByKey.get(key) ?? [], recordId))
+      removeId(ensureIds(key), recordId)
     })
     after.forEach(key => {
-      idsByKey.set(
-        key,
-        insertOrdered(
-          idsByKey.get(key) ?? [],
-          recordId,
-          readQueryOrder(input.query)
-        )
+      insertOrdered(
+        ensureIds(key),
+        recordId,
+        queryOrder
       )
     })
 
     if (after.length) {
-      byRecord.set(recordId, after)
+      ensureByRecord().set(recordId, after)
       return
     }
 
-    byRecord.delete(recordId)
+    ensureByRecord().delete(recordId)
   })
+
+  if (!idsByKey.size && !byRecord) {
+    return previous
+  }
 
   const order = readGroupFieldIndex(input.index.group, input.view.group)?.order ?? []
   const byKey = new Map(previous.byKey)
   byKey.clear()
 
   order.forEach(key => {
-    const ids = idsByKey.get(key) ?? []
+    const ids = idsByKey.get(key) ?? previous.byKey.get(key)?.recordIds ?? []
     const nextNode = buildSectionNode({
       key,
       recordIds: ids,
@@ -168,6 +179,6 @@ export const syncSectionState = (input: {
       ? previous.order
       : order,
     byKey,
-    byRecord
+    byRecord: byRecord ?? previous.byRecord
   }
 }

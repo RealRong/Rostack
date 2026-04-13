@@ -12,6 +12,7 @@ import type {
 } from './types'
 
 export interface NormalizedIndexDemand {
+  recordFields: readonly FieldId[]
   search: {
     all: boolean
     fields: readonly FieldId[]
@@ -45,15 +46,21 @@ const uniqueGroups = (
 
 export const normalizeIndexDemand = (
   demand?: IndexDemand
-): NormalizedIndexDemand => ({
-  search: {
-    all: demand?.search?.all === true,
-    fields: uniqueSorted(demand?.search?.fields ?? [])
-  },
-  groups: uniqueGroups(demand?.groups),
-  sortFields: uniqueSorted(demand?.sortFields ?? []),
-  calculationFields: uniqueSorted(demand?.calculationFields ?? [])
-})
+): NormalizedIndexDemand => {
+  const groups = uniqueGroups(demand?.groups)
+  const sortFields = uniqueSorted(demand?.sortFields ?? [])
+
+  return {
+    recordFields: sortFields,
+    search: {
+      all: demand?.search?.all === true,
+      fields: uniqueSorted(demand?.search?.fields ?? [])
+    },
+    groups,
+    sortFields,
+    calculationFields: uniqueSorted(demand?.calculationFields ?? [])
+  }
+}
 
 export const sameFieldIdList = (
   left: readonly FieldId[],

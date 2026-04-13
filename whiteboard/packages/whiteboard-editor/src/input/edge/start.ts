@@ -16,7 +16,7 @@ import { startEdgeMove, type EdgeMoveState } from './move/start'
 import { createEdgeRouteSession, createEdgeRoutePointSession } from './route/session'
 import { startEdgeRoute, type EdgeRouteHandleState, type EdgeRouteStart } from './route/start'
 
-export type EdgeInteractionStart =
+type EdgeInteractionStart =
   | {
       kind: 'connect'
       state: EdgeConnectState
@@ -34,17 +34,7 @@ export type EdgeInteractionStart =
       kind: 'handled'
     }
 
-export const readEdgeInteractionCapability = (
-  edge: Pick<EdgeRead, 'item' | 'capability'>,
-  edgeId: EdgeId
-) => {
-  const item = edge.item.get(edgeId)
-  return item
-    ? edge.capability(item.edge)
-    : undefined
-}
-
-export const selectEdgeInteraction = (
+const selectEdgeInteraction = (
   session: Pick<SessionCommands, 'selection'>,
   edgeId: EdgeId
 ) => {
@@ -53,7 +43,58 @@ export const selectEdgeInteraction = (
   })
 }
 
-export const startEdgeInteraction = (input: {
+const startEdgeRouteInteraction = (input: {
+  edge: Pick<EdgeRead, 'item' | 'resolved' | 'capability'>
+  pointer: PointerDownInput
+  session: Pick<SessionCommands, 'selection'>
+}): EdgeInteractionStart | undefined => {
+  const route = startEdgeRoute({
+    edge: input.edge,
+    pointer: input.pointer
+  })
+  if (!route) {
+    return undefined
+  }
+
+  selectEdgeInteraction(
+    input.session,
+    route.kind === 'session'
+      ? route.state.edgeId
+      : route.edgeId
+  )
+
+  return route.kind === 'session'
+    ? {
+        kind: 'route',
+        state: route.state
+      }
+    : route
+}
+
+const startEdgeBodyInteraction = (input: {
+  edge: Pick<EdgeRead, 'item' | 'capability'>
+  edgeId: EdgeId
+  pointerId: number
+  start: PointerDownInput['world']
+}): EdgeInteractionStart => {
+  const state = startEdgeMove({
+    edge: input.edge,
+    edgeId: input.edgeId,
+    pointerId: input.pointerId,
+    start: input.start
+  })
+
+  return state.edge
+    ? {
+        kind: 'move',
+        state
+      }
+    : {
+        kind: 'handled'
+      }
+}
+
+const startEdgeInteraction = (input: {
   tool: Tool
   pointer: PointerDownInput
   node: Pick<NodeRead, 'canvas' | 'capability'>
@@ -89,27 +130,11 @@ export const startEdgeInteraction = (input: {
   }
 
   if (input.pointer.pick.part === 'path') {
-    const route = startEdgeRoute({
+    return startEdgeRouteInteraction({
       edge: input.edge,
-      pointer: input.pointer
+      pointer: input.pointer,
+      session: input.session
     })
-    if (!route) {
-      return undefined
-    }
-
-    selectEdgeInteraction(
-      input.session,
-      route.kind === 'session'
-        ? route.state.edgeId
-        : route.edgeId
-    )
-
-    return route.kind === 'session'
-      ? {
-          kind: 'route',
-          state: route.state
-        }
-      : route
   }
 
   if (input.pointer.pick.part !== 'body') {
@@ -117,21 +142,12 @@ export const startEdgeInteraction = (input: {
   }
 
   selectEdgeInteraction(input.session, input.pointer.pick.id)
-  const state = startEdgeMove({
+  return startEdgeBodyInteraction({
     edge: input.edge,
     edgeId: input.pointer.pick.id,
     pointerId: input.pointer.pointerId,
     start: input.pointer.world
   })
-
-  return state.edge
-    ? {
-        kind: 'move',
-        state
-      }
-    : {
-        kind: 'handled'
-      }
 }
 
 export const createEdgeInteraction = (

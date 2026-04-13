@@ -9,8 +9,7 @@ import {
   getDocumentFieldById
 } from '@dataview/core/document'
 import {
-  getFieldSearchTokens,
-  normalizeSearchableValue
+  getFieldSearchTokens
 } from '@dataview/core/field'
 import {
   trimLowercase,
@@ -75,13 +74,28 @@ const buildAllTokens = (
   }
 
   addTokens(getFieldSearchTokens(undefined, record.title))
-  addTokens(normalizeSearchableValue(record.type))
-  addTokens(normalizeSearchableValue(record.meta))
   fields.forEach(({ id, field }) => {
     addTokens(buildFieldTokens(record, id, field))
   })
 
   return normalizeTokens(Array.from(tokens))
+}
+
+const isDefaultSearchField = (
+  field: ReturnType<typeof getDocumentFieldById>
+): boolean => {
+  switch (field?.kind) {
+    case 'text':
+    case 'url':
+    case 'email':
+    case 'phone':
+    case 'select':
+    case 'multiSelect':
+    case 'status':
+      return true
+    default:
+      return false
+  }
 }
 
 const buildTextIndex = (input: {
@@ -100,8 +114,7 @@ const buildTextIndex = (input: {
   })
 
   return {
-    texts,
-    tokens: new Map()
+    texts
   }
 }
 
@@ -131,8 +144,7 @@ const updateTextIndex = (input: {
 
   return changed
     ? {
-        texts,
-        tokens: input.previous.tokens
+        texts
       }
     : input.previous
 }
@@ -145,8 +157,7 @@ const buildFieldIndex = (
   const field = getDocumentFieldById(document, fieldId)
   if (!field && fieldId !== 'title') {
     return {
-      texts: new Map(),
-      tokens: new Map()
+      texts: new Map()
     }
   }
 
@@ -165,10 +176,12 @@ const buildAllIndex = (
   document: DataDoc,
   records: RecordIndex
 ): SearchTextIndex => {
-  const fields = document.fields.order.map(fieldId => ({
-    id: fieldId,
-    field: getDocumentFieldById(document, fieldId)
-  }))
+  const fields = document.fields.order
+    .map(fieldId => ({
+      id: fieldId,
+      field: getDocumentFieldById(document, fieldId)
+    }))
+    .filter(({ field }) => isDefaultSearchField(field))
 
   return buildTextIndex({
     ids: records.ids,

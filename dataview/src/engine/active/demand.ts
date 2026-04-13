@@ -63,7 +63,7 @@ export const resolveViewDemand = (
   ]))
 
   return {
-    ...(search ? { search } : {}),
+    search,
     ...(groups.length ? { groups } : {}),
     ...(sortFields.length
       ? { sortFields }

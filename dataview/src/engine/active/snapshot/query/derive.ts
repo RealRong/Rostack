@@ -46,6 +46,16 @@ type EffectiveFilterRule = {
   rule: View['filter']['rules'][number]
 }
 
+type FilterCandidate = {
+  ids: readonly RecordId[]
+  exact: boolean
+}
+
+type FilterRulePlan = {
+  rule: EffectiveFilterRule
+  candidate?: FilterCandidate
+}
+
 type SearchPlan = {
   query?: string
   sources: readonly SearchTextIndex[]
@@ -182,31 +192,11 @@ const resolveSearchCandidatesForSource = (
     return undefined
   }
 
-  if (!source.tokens.size) {
-    return Array.from(source.texts.entries()).flatMap(([recordId, text]) => (
-      terms.every(term => text.includes(term))
-        ? [recordId]
-        : []
-    ))
-  }
-
-  let candidates: readonly RecordId[] | undefined
-  for (const term of terms) {
-    const tokenIds = source.tokens.get(term)
-    if (!tokenIds) {
-      return []
-    }
-
-    candidates = candidates
-      ? intersectCandidates(candidates, tokenIds)
-      : tokenIds
-
-    if (!candidates.length) {
-      return candidates
-    }
-  }
-
-  return candidates
+  return Array.from(source.texts.entries()).flatMap(([recordId, text]) => (
+    terms.every(term => text.includes(term))
+      ? [recordId]
+      : []
+  ))
 }
 
 const resolveSearchPlan = (input: {
@@ -310,7 +300,7 @@ const resolveGroupFilterCandidates = (input: {
   fieldId: string
   rule: View['filter']['rules'][number]
   index: IndexState
-}): readonly RecordId[] | undefined => {
+}): FilterCandidate | undefined => {
   const groupIndex = readGroupFieldIndex(input.index.group, {
     field: input.fieldId
   })
@@ -338,13 +328,25 @@ const resolveGroupFilterCandidates = (input: {
       const optionIds = readFilterOptionSetValue(input.rule.value).optionIds
       switch (input.rule.presetId) {
         case 'eq':
-          return optionIds.length ? readBucketIds(optionIds) : []
+          return {
+            ids: optionIds.length ? readBucketIds(optionIds) : [],
+            exact: true
+          }
         case 'neq':
-          return readRemainingBucketIds(new Set(optionIds))
+          return {
+            ids: readRemainingBucketIds(new Set(optionIds)),
+            exact: true
+          }
         case 'exists_true':
-          return readRemainingBucketIds(new Set([KANBAN_EMPTY_BUCKET_KEY]))
+          return {
+            ids: readRemainingBucketIds(new Set([KANBAN_EMPTY_BUCKET_KEY])),
+            exact: true
+          }
         case 'exists_false':
-          return readBucketIds([KANBAN_EMPTY_BUCKET_KEY])
+          return {
+            ids: readBucketIds([KANBAN_EMPTY_BUCKET_KEY]),
+            exact: true
+          }
         default:
           return undefined
       }
@@ -353,11 +355,20 @@ const resolveGroupFilterCandidates = (input: {
       const optionIds = readFilterOptionSetValue(input.rule.value).optionIds
       switch (input.rule.presetId) {
         case 'contains':
-          return optionIds.length ? readBucketIds(optionIds) : []
+          return {
+            ids: optionIds.length ? readBucketIds(optionIds) : [],
+            exact: true
+          }
         case 'exists_true':
-          return readRemainingBucketIds(new Set([KANBAN_EMPTY_BUCKET_KEY]))
+          return {
+            ids: readRemainingBucketIds(new Set([KANBAN_EMPTY_BUCKET_KEY])),
+            exact: true
+          }
         case 'exists_false':
-          return readBucketIds([KANBAN_EMPTY_BUCKET_KEY])
+          return {
+            ids: readBucketIds([KANBAN_EMPTY_BUCKET_KEY]),
+            exact: true
+          }
         default:
           return undefined
       }
@@ -365,13 +376,25 @@ const resolveGroupFilterCandidates = (input: {
     case 'boolean':
       switch (input.rule.presetId) {
         case 'checked':
-          return readBucketIds(['true'])
+          return {
+            ids: readBucketIds(['true']),
+            exact: true
+          }
         case 'unchecked':
-          return readBucketIds(['false'])
+          return {
+            ids: readBucketIds(['false']),
+            exact: true
+          }
         case 'exists_true':
-          return readRemainingBucketIds(new Set([KANBAN_EMPTY_BUCKET_KEY]))
+          return {
+            ids: readRemainingBucketIds(new Set([KANBAN_EMPTY_BUCKET_KEY])),
+            exact: true
+          }
         case 'exists_false':
-          return readBucketIds([KANBAN_EMPTY_BUCKET_KEY])
+          return {
+            ids: readBucketIds([KANBAN_EMPTY_BUCKET_KEY]),
+            exact: true
+          }
         default:
           return undefined
       }
@@ -407,7 +430,7 @@ const resolveSortedFilterCandidates = (input: {
   fieldId: string
   rule: View['filter']['rules'][number]
   index: IndexState
-}): readonly RecordId[] | undefined => {
+}): FilterCandidate | undefined => {
   if (input.field?.kind !== 'number' && input.field?.kind !== 'date') {
     return undefined
   }
@@ -418,10 +441,13 @@ const resolveSortedFilterCandidates = (input: {
   }
 
   if (input.rule.presetId === 'exists_true') {
-    return sortIdsByRecordOrder(
-      Array.from(input.index.records.values.get(input.fieldId)?.keys() ?? []),
-      input.index.records.order
-    )
+    return {
+      ids: sortIdsByRecordOrder(
+        Array.from(input.index.records.values.get(input.fieldId)?.keys() ?? []),
+        input.index.records.order
+      ),
+      exact: true
+    }
   }
 
   const expected = input.rule.value
@@ -444,10 +470,13 @@ const resolveSortedFilterCandidates = (input: {
         compare,
         accept: comparison => comparison > 0
       })
-      return sortIdsByRecordOrder(
-        sortIndex.asc.slice(start, end),
-        input.index.records.order
-      )
+      return {
+        ids: sortIdsByRecordOrder(
+          sortIndex.asc.slice(start, end),
+          input.index.records.order
+        ),
+        exact: true
+      }
     }
     case 'gt': {
       const start = lowerBoundByFilter({
@@ -455,10 +484,13 @@ const resolveSortedFilterCandidates = (input: {
         compare,
         accept: comparison => comparison > 0
       })
-      return sortIdsByRecordOrder(
-        sortIndex.asc.slice(start),
-        input.index.records.order
-      )
+      return {
+        ids: sortIdsByRecordOrder(
+          sortIndex.asc.slice(start),
+          input.index.records.order
+        ),
+        exact: true
+      }
     }
     case 'gte': {
       const start = lowerBoundByFilter({
@@ -466,10 +498,13 @@ const resolveSortedFilterCandidates = (input: {
         compare,
         accept: comparison => comparison >= 0
       })
-      return sortIdsByRecordOrder(
-        sortIndex.asc.slice(start),
-        input.index.records.order
-      )
+      return {
+        ids: sortIdsByRecordOrder(
+          sortIndex.asc.slice(start),
+          input.index.records.order
+        ),
+        exact: true
+      }
     }
     case 'lt': {
       const end = lowerBoundByFilter({
@@ -477,10 +512,13 @@ const resolveSortedFilterCandidates = (input: {
         compare,
         accept: comparison => comparison >= 0
       })
-      return sortIdsByRecordOrder(
-        sortIndex.asc.slice(0, end),
-        input.index.records.order
-      )
+      return {
+        ids: sortIdsByRecordOrder(
+          sortIndex.asc.slice(0, end),
+          input.index.records.order
+        ),
+        exact: true
+      }
     }
     case 'lte': {
       const end = lowerBoundByFilter({
@@ -488,10 +526,13 @@ const resolveSortedFilterCandidates = (input: {
         compare,
         accept: comparison => comparison > 0
       })
-      return sortIdsByRecordOrder(
-        sortIndex.asc.slice(0, end),
-        input.index.records.order
-      )
+      return {
+        ids: sortIdsByRecordOrder(
+          sortIndex.asc.slice(0, end),
+          input.index.records.order
+        ),
+        exact: true
+      }
     }
     default:
       return undefined
@@ -501,7 +542,7 @@ const resolveSortedFilterCandidates = (input: {
 const resolveFilterCandidatesForRule = (input: {
   rule: EffectiveFilterRule
   index: IndexState
-}): readonly RecordId[] | undefined => (
+}): FilterCandidate | undefined => (
   resolveGroupFilterCandidates({
     field: input.rule.field,
     fieldId: input.rule.fieldId,
@@ -516,48 +557,68 @@ const resolveFilterCandidatesForRule = (input: {
     })
 )
 
-const resolveFilterCandidates = (input: {
+const resolveFilterPlans = (input: {
   rules: readonly EffectiveFilterRule[]
+  index: IndexState
+}): readonly FilterRulePlan[] => input.rules.map(rule => ({
+  rule,
+  candidate: resolveFilterCandidatesForRule({
+    rule,
+    index: input.index
+  })
+}))
+
+const resolveFilterCandidates = (input: {
+  plans: readonly FilterRulePlan[]
   mode: View['filter']['mode']
   index: IndexState
 }): readonly RecordId[] | undefined => {
-  if (!input.rules.length) {
+  if (!input.plans.length) {
     return undefined
   }
 
   if (input.mode === 'or') {
     const candidateLists: RecordId[][] = []
-    for (const rule of input.rules) {
-      const candidates = resolveFilterCandidatesForRule({
-        rule,
-        index: input.index
-      })
-      if (!candidates) {
+    for (const plan of input.plans) {
+      if (!plan.candidate) {
         return undefined
       }
 
-      candidateLists.push([...candidates])
+      candidateLists.push([...plan.candidate.ids])
     }
 
     return unionCandidates(candidateLists, input.index.records.order)
   }
 
   let candidates: readonly RecordId[] | undefined
-  input.rules.forEach(rule => {
-    const nextCandidates = resolveFilterCandidatesForRule({
-      rule,
-      index: input.index
-    })
-    if (!nextCandidates) {
+  input.plans.forEach(plan => {
+    if (!plan.candidate) {
       return
     }
 
     candidates = candidates
-      ? intersectCandidates(candidates, nextCandidates)
-      : nextCandidates
+      ? intersectCandidates(candidates, plan.candidate.ids)
+      : plan.candidate.ids
   })
 
   return candidates
+}
+
+const resolveFilterPredicateRules = (input: {
+  plans: readonly FilterRulePlan[]
+  mode: View['filter']['mode']
+}): readonly EffectiveFilterRule[] => {
+  if (input.mode === 'or') {
+    return input.plans.every(plan => plan.candidate?.exact)
+      ? []
+      : input.plans.map(plan => plan.rule)
+  }
+
+  return input.plans.flatMap(plan => (
+    plan.candidate?.exact
+      ? []
+      : [plan.rule]
+  ))
 }
 
 const filterVisibleIds = (input: {
@@ -591,10 +652,18 @@ export const buildQueryState = (input: {
     recordOrder: input.index.records.order
   })
   const effectiveRules = resolveEffectiveFilterRules(input.document, input.view)
-  const filterCandidates = resolveFilterCandidates({
+  const filterPlans = resolveFilterPlans({
     rules: effectiveRules,
+    index: input.index
+  })
+  const filterCandidates = resolveFilterCandidates({
+    plans: filterPlans,
     mode: input.view.filter.mode,
     index: input.index
+  })
+  const filterPredicateRules = resolveFilterPredicateRules({
+    plans: filterPlans,
+    mode: input.view.filter.mode
   })
   const hasFilter = effectiveRules.length > 0
   const hasSearch = Boolean(searchPlan.query)
@@ -620,7 +689,7 @@ export const buildQueryState = (input: {
         ids: candidateIds ?? ordered,
         index: input.index,
         searchPlan,
-        filterRules: effectiveRules,
+        filterRules: filterPredicateRules,
         filterMode: input.view.filter.mode
       })
 

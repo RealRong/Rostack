@@ -21,7 +21,7 @@ import {
   type MarqueeSelectionEffect,
   type MarqueeSelectionEvent
 } from './state'
-import type { SelectionMarqueePlan } from '../press/start'
+import type { SelectionMarqueePlan } from '../press/resolve'
 
 type MarqueePointer = Pick<PointerDownInput, 'screen' | 'world'>
 

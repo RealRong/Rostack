@@ -1,8 +1,8 @@
 import { getTargetBounds, type SelectionTarget } from '@whiteboard/core/selection'
 import type { Edge, EdgeId, Node, NodeId, Rect } from '@whiteboard/core/types'
 import { read } from '@shared/core'
-import type { EdgeRead } from './edge/read'
-import type { NodeRead } from './node/read'
+import type { EdgePresentationRead } from './edge/read'
+import type { NodePresentationRead } from './node/read'
 
 export type RuntimeTargetRead = {
   nodes: (target: SelectionTarget) => readonly Node[]
@@ -28,8 +28,8 @@ export const createTargetRead = ({
   node,
   edge
 }: {
-  node: Pick<NodeRead, 'nodes' | 'bounds'>
-  edge: Pick<EdgeRead, 'edges' | 'bounds'>
+  node: Pick<NodePresentationRead, 'nodes' | 'bounds'>
+  edge: Pick<EdgePresentationRead, 'edges' | 'bounds'>
 }): RuntimeTargetRead => ({
   nodes: (target) => node.nodes(target.nodeIds),
   edges: (target) => edge.edges(target.edgeIds),

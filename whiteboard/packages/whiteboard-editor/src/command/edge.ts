@@ -11,10 +11,8 @@ import type {
 import type { Engine } from '@whiteboard/engine'
 import type { CommandResult } from '@whiteboard/engine/types/result'
 import type { EdgeApi } from '../types/commands'
-import type {
-  EditorRead,
-  EditorStore
-} from '../types/editor'
+import type { EditorState } from '../types/editor'
+import type { EditorQueryRead } from '../query'
 import type { SessionActions } from '../types/commands'
 
 export type EdgeCommands = {
@@ -57,12 +55,12 @@ const hasEdgePatchContent = (
 ) => Object.keys(patch).length > 0
 
 const readEdge = (
-  read: EditorRead,
+  read: EditorQueryRead,
   edgeId: EdgeId
 ) => read.edge.item.get(edgeId)?.edge
 
 const readCommittedEdge = (
-  read: Pick<EditorRead, 'edge'>,
+  read: Pick<EditorQueryRead, 'edge'>,
   edgeId: EdgeId
 ) => read.edge.committed.get(edgeId)?.edge
 
@@ -84,7 +82,7 @@ const patchEdges = (
 }
 
 const patchExistingEdges = (
-  read: Pick<EditorRead, 'edge'>,
+  read: Pick<EditorQueryRead, 'edge'>,
   engine: Engine,
   edgeIds: readonly EdgeId[],
   patch: EdgePatch
@@ -100,7 +98,7 @@ const patchExistingEdges = (
 
 const patchEdgesBy = (
   edgeIds: readonly EdgeId[],
-  read: EditorRead,
+  read: EditorQueryRead,
   engine: Engine,
   buildPatch: (edge: Edge) => EdgePatch | undefined
 ) => patchEdges(
@@ -125,7 +123,7 @@ const patchEdgesBy = (
 
 const patchEdgeStyle = <Key extends keyof NonNullable<Edge['style']>>(
   edgeIds: readonly EdgeId[],
-  read: EditorRead,
+  read: EditorQueryRead,
   engine: Engine,
   key: Key,
   value: NonNullable<Edge['style']>[Key] | undefined
@@ -144,7 +142,7 @@ const patchEdgeStyle = <Key extends keyof NonNullable<Edge['style']>>(
 
 const patchEdgeType = (
   edgeIds: readonly EdgeId[],
-  read: EditorRead,
+  read: EditorQueryRead,
   engine: Engine,
   value: EdgeType
 ) => patchEdgesBy(edgeIds, read, engine, (edge) => (
@@ -198,8 +196,8 @@ export const createEdgeCommands = ({
   session
 }: {
   engine: Engine
-  read: EditorRead
-  edit: EditorStore['edit']
+  read: EditorQueryRead
+  edit: EditorState['edit']
   session: Pick<SessionActions, 'edit' | 'selection'>
 }): EdgeCommands => ({
   create: (payload) => engine.execute({

@@ -5,7 +5,7 @@ import type {
   EdgeId,
   Point
 } from '@whiteboard/core/types'
-import type { EdgeRead } from '../../../query/edge/read'
+import type { EdgePresentationRead } from '../../../query/edge/read'
 
 export type EdgeMoveState = {
   edgeId: EdgeId
@@ -16,7 +16,7 @@ export type EdgeMoveState = {
 }
 
 export const readMovableEdge = (
-  edge: Pick<EdgeRead, 'item' | 'capability'>,
+  edge: Pick<EdgePresentationRead, 'item' | 'capability'>,
   edgeId: EdgeId
 ) => {
   const item = edge.item.get(edgeId)
@@ -27,7 +27,7 @@ export const readMovableEdge = (
 }
 
 export const startEdgeMove = (input: {
-  edge: Pick<EdgeRead, 'item' | 'capability'>
+  edge: Pick<EdgePresentationRead, 'item' | 'capability'>
   edgeId: EdgeId
   pointerId: number
   start: Point

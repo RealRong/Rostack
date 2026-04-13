@@ -4,7 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    ".": "./index.ts"
+    ".": "./src/index.ts"
+  },
+  "imports": {
+    "#meta": "./src/index.ts",
+    "#meta/*": "./src/*"
   },
   "dependencies": {
     "lucide-react": "^0.577.0",

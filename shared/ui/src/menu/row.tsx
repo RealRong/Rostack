@@ -5,11 +5,11 @@ import {
   type KeyboardEvent,
   type ReactNode
 } from 'react'
-import { Switch } from '../switch'
-import { cn } from '../utils'
-import type { VerticalReorderHandleProps } from '../vertical-reorder-list'
-import { resolveRowAppearance } from './shared'
-import type { ActiveSource, SelectionAppearance } from './types'
+import { Switch } from '#ui/switch'
+import { cn } from '#ui/utils'
+import type { VerticalReorderHandleProps } from '#ui/vertical-reorder-list'
+import { resolveRowAppearance } from '#ui/menu/shared'
+import type { ActiveSource, SelectionAppearance } from '#ui/menu/types'
 
 type Tone = 'default' | 'destructive'
 

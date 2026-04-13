@@ -1,4 +1,4 @@
-import type { RuntimeRead } from '../../../query'
+import type { EditorQueryRead } from '../../../query'
 import type { SelectionModelRead } from '../../../query/selection/model'
 import type { PointerDownInput } from '../../../types/input'
 import type {
@@ -11,7 +11,7 @@ import {
 
 export const startSelectionPressAction = <TField extends string>(
   input: {
-    read: Pick<RuntimeRead, 'tool' | 'node' | 'group'>
+    read: Pick<EditorQueryRead, 'tool' | 'node' | 'group'>
     selection: Pick<SelectionModelRead, 'get'>
     pointer: PointerDownInput
   }

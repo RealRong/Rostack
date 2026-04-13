@@ -17,7 +17,7 @@ import type {
   NodeStyleCommands,
   NodePatchWriter
 } from './types'
-import type { EditorRead } from '../../types/editor'
+import type { EditorQueryRead } from '../../query'
 import type { LocalFeedbackActions } from '../../local/actions/feedback'
 import type { SessionActions } from '../../types/commands'
 
@@ -124,7 +124,7 @@ export const createNodeCommands = ({
   session
 }: {
   engine: Engine
-  read: EditorRead
+  read: EditorQueryRead
   preview: Pick<LocalFeedbackActions, 'node'>
   session: Pick<SessionActions, 'edit' | 'selection'>
 }): NodeCommands => {

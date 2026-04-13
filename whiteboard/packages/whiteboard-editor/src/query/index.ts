@@ -15,15 +15,15 @@ import type {
 import type { EditorLocalRuntime } from '../local/runtime'
 import {
   createNodeRead,
-  type NodeRead
+  type NodePresentationRead
 } from './node/read'
 import {
   createEdgeRead,
-  type EdgeRead
+  type EdgePresentationRead
 } from './edge/read'
 import {
   createMindmapRead,
-  type MindmapRead
+  type MindmapPresentationRead
 } from './mindmap/read'
 import {
   createSelectionModelRead,
@@ -91,15 +91,15 @@ const createToolRead = (
   is: (type, value) => isToolMatch(readValue(source), type, value)
 })
 
-export type RuntimeRead = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
+export type EditorQueryRead = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
   history: ReadStore<HistoryState>
   group: EngineRead['group']
   target: RuntimeTargetRead
-  node: NodeRead
-  edge: EdgeRead & {
+  node: NodePresentationRead
+  edge: EdgePresentationRead & {
     toolbar: ReadStore<EdgeToolbarContext | undefined>
   }
-  mindmap: MindmapRead
+  mindmap: MindmapPresentationRead
   selection: SelectionRead
   tool: ToolRead
   draw: ReadStore<DrawState>
@@ -121,7 +121,7 @@ export type RuntimeRead = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
 }
 
 export type QueryRuntime = {
-  read: RuntimeRead
+  read: EditorQueryRead
   selectionModel: SelectionModelRead
 }
 
@@ -143,7 +143,7 @@ export const createQueryRuntime = ({
     space,
     tool
   } = local.state
-  const nodeRead: NodeRead = createNodeRead({
+  const nodeRead: NodePresentationRead = createNodeRead({
     read: engineRead,
     registry,
     feedback: local.feedback.selectors.node,

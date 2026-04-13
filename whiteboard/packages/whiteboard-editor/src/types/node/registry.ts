@@ -1,8 +1,10 @@
 import type {
+  BaseNodeDefinition,
   Node,
-  NodeSchema,
-  NodeType
+  NodeType,
+  NodeRole
 } from '@whiteboard/core/types'
+import type { ShapeControlId } from '@whiteboard/core/node'
 import type {
   EditCapability,
   EditField
@@ -10,8 +12,7 @@ import type {
 
 export type NodeHit = 'box' | 'path' | 'none'
 export type NodeFamily = 'text' | 'shape' | 'frame' | 'draw'
-export type ControlId = 'fill' | 'stroke' | 'text' | 'group'
-export type NodeRole = 'content' | 'frame'
+export type ControlId = ShapeControlId | 'group'
 
 export type NodeMeta = {
   key?: string
@@ -21,16 +22,12 @@ export type NodeMeta = {
   controls: readonly ControlId[]
 }
 
-export type NodeDefinition = {
-  type: NodeType
+export type NodeDefinition = BaseNodeDefinition & {
   meta: NodeMeta
   describe?: (node: Node) => NodeMeta
   role?: NodeRole
-  geometry?: 'rect' | 'shape'
   hit?: NodeHit
   connect?: boolean
-  schema?: NodeSchema
-  defaultData?: Record<string, unknown>
   canRotate?: boolean
   canResize?: boolean
   autoMeasure?: boolean

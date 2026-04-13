@@ -1,7 +1,7 @@
 import * as React from 'react'
-import { Button, type ButtonProps } from './button'
-import { FloatingSurface, type FloatingSurfaceProps } from './floating'
-import { cn } from './utils'
+import { Button, type ButtonProps } from '#ui/button'
+import { FloatingSurface, type FloatingSurfaceProps } from '#ui/floating'
+import { cn } from '#ui/utils'
 
 export interface ToolbarButtonProps extends ButtonProps {
   active?: boolean

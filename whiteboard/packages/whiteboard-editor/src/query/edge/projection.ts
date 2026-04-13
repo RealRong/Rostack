@@ -12,7 +12,7 @@ import type {
 import type {
   EdgeFeedbackProjection
 } from '../../local/feedback/types'
-import type { NodeCanvasSnapshot, NodeRead } from '../node/read'
+import type { NodeCanvasSnapshot, NodePresentationRead } from '../node/read'
 import type {
   EditSession
 } from '../../local/session/edit'
@@ -65,14 +65,14 @@ export const projectEdgeItem = (
 }
 
 const readResolvedNodeSnapshot = (
-  readNode: Pick<NodeRead, 'canvas'>,
+  readNode: Pick<NodePresentationRead, 'canvas'>,
   edgeEnd: EdgeItem['edge']['source'] | EdgeItem['edge']['target']
 ): NodeCanvasSnapshot | undefined => edgeEnd.kind === 'node'
   ? readValue(readNode.canvas, edgeEnd.nodeId)
   : undefined
 
 export const readProjectedEdgeView = (
-  node: Pick<NodeRead, 'canvas'>,
+  node: Pick<NodePresentationRead, 'canvas'>,
   entry: EdgeItem
 ): CoreEdgeView | undefined => {
   const source = readResolvedNodeSnapshot(node, entry.edge.source)

@@ -1,13 +1,13 @@
 import type { NodeId } from '@whiteboard/core/types'
-import type { EditorRead } from '../../types/editor'
+import type { EditorQueryRead } from '../../query'
 import type { LocalFeedbackActions } from '../../local/actions/feedback'
 import type { SessionActions } from '../../types/commands'
 import type { NodePatchWriter } from './types'
 
 export type NodeContext = {
   read: {
-    committed: (id: NodeId) => ReturnType<EditorRead['node']['item']['get']>
-    live: (id: NodeId) => ReturnType<EditorRead['node']['item']['get']>
+    committed: (id: NodeId) => ReturnType<EditorQueryRead['node']['item']['get']>
+    live: (id: NodeId) => ReturnType<EditorQueryRead['node']['item']['get']>
   }
   write: NodePatchWriter & {
     deleteCascade: (ids: NodeId[]) => ReturnType<NodePatchWriter['update']> | undefined
@@ -24,7 +24,7 @@ export const createNodeContext = ({
   session,
   deleteCascade
 }: {
-  read: EditorRead
+  read: EditorQueryRead
   patch: NodePatchWriter
   preview: Pick<LocalFeedbackActions['node'], 'text'>
   session: Pick<SessionActions, 'edit' | 'selection'>

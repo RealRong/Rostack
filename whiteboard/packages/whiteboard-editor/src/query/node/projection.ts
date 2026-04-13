@@ -3,7 +3,8 @@ import {
   applyNodeTextDraft,
   applyNodeTextPreview,
   getNodeBounds,
-  getNodeGeometry
+  getNodeGeometry,
+  readNodeRotation
 } from '@whiteboard/core/node'
 import type {
   NodeGeometry,
@@ -15,7 +16,7 @@ import type { NodeFeedbackProjection } from '../../local/feedback/types'
 
 export const readNodeProjectionRotation = (
   node: NodeItem['node']
-) => (typeof node.rotation === 'number' ? node.rotation : 0)
+) => readNodeRotation(node)
 
 export const readProjectedNodeBounds = (
   item: NodeItem

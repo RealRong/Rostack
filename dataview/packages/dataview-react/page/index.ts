@@ -1,8 +1,0 @@
-export { Page } from './Page'
-export type { PageProps } from './Page'
-export { PageHeader } from './Header'
-export type { PageHeaderProps } from './Header'
-export { PageToolbar } from './Toolbar'
-export type { PageToolbarProps } from './Toolbar'
-export { PageBody } from './Body'
-export type { PageBodyProps } from './Body'

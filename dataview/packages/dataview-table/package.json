@@ -4,7 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    ".": "./index.ts"
+    ".": "./src/index.ts"
+  },
+  "imports": {
+    "#table": "./src/index.ts",
+    "#table/*": "./src/*"
   },
   "dependencies": {
     "@dataview/core": "workspace:*",

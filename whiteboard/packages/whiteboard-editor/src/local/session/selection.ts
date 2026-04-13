@@ -10,11 +10,11 @@ import type { SelectionMode } from '@whiteboard/core/node'
 import {
   type ValueStore
 } from '@shared/core'
-import type { EditorRead } from '../../types/editor'
+import type { EditorQueryRead } from '../../query'
 import { sameOrder as isOrderedArrayEqual } from '@shared/core'
 import { createCommandState } from './store'
 
-type SelectionReadSource = Pick<EditorRead, 'node' | 'edge'>
+type SelectionReadSource = Pick<EditorQueryRead, 'node' | 'edge'>
 
 const readNextSelectionTarget = (
   current: SelectionTarget,

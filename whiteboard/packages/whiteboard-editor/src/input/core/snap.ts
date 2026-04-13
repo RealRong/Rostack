@@ -19,8 +19,8 @@ import {
 } from '@whiteboard/core/node'
 import type { Point, Rect, Size } from '@whiteboard/core/types'
 import type { ModifierKeys } from '../../types/input'
+import { EMPTY_GUIDES } from '../../local/feedback/selection'
 
-const EMPTY_GUIDES: readonly Guide[] = []
 const DEFAULT_MIN_SIZE: Size = {
   width: 20,
   height: 20

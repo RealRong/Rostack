@@ -12,10 +12,3 @@ export const readUniformValue = <TItem, TValue>(
     ? first
     : undefined
 }
-
-export const readPresentValues = <TId, TValue>(
-  ids: readonly TId[],
-  read: (id: TId) => TValue | undefined
-): TValue[] => ids
-  .map((id) => read(id))
-  .filter((value): value is TValue => value !== undefined)

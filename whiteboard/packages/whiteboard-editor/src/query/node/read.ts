@@ -8,6 +8,7 @@ import type {
 } from '@whiteboard/engine'
 import {
   createKeyedDerivedStore,
+  presentValues,
   read as readValue,
   type KeyedReadStore,
   sameRect,
@@ -19,13 +20,13 @@ import type {
   NodeGeometry,
   Node,
   NodeId,
+  NodeRole,
   NodeType,
   Rect
 } from '@whiteboard/core/types'
 import type {
   NodeDefinition,
-  NodeRegistry,
-  NodeRole
+  NodeRegistry
 } from '../../types/node'
 import type {
   NodeFeedbackProjection,
@@ -37,7 +38,6 @@ import {
   readProjectedNodeBounds,
   readProjectedNodeGeometry
 } from './projection'
-import { readPresentValues } from '../utils'
 
 export type NodeRuntimeState = {
   hovered: boolean
@@ -74,7 +74,7 @@ export type NodeCanvasSnapshot = {
   geometry: ReturnType<typeof readProjectedNodeGeometry>
 }
 
-export type NodeRead = {
+export type NodePresentationRead = {
   list: EngineRead['node']['list']
   committed: EngineRead['node']['item']
   item: KeyedReadStore<NodeId, NodeItem | undefined>
@@ -251,8 +251,8 @@ export const createNodeRead = ({
   registry: NodeRegistry
   feedback: KeyedReadStore<NodeId, NodeFeedbackProjection>
   edit: ReadStore<EditSession>
-}): NodeRead => {
-  const item: NodeRead['item'] = createKeyedDerivedStore({
+}): NodePresentationRead => {
+  const item: NodePresentationRead['item'] = createKeyedDerivedStore({
     get: (nodeId: NodeId) => {
       const current = readValue(read.node.item, nodeId)
       if (!current) {
@@ -267,18 +267,18 @@ export const createNodeRead = ({
     },
     isEqual: isNodeItemEqual
   })
-  const state: NodeRead['state'] = createKeyedDerivedStore({
+  const state: NodePresentationRead['state'] = createKeyedDerivedStore({
     get: (nodeId: NodeId) => toNodeRuntimeState(
       readValue(feedback, nodeId)
     ),
     isEqual: isNodeStateEqual
   })
-  const capability: NodeRead['capability'] = (
+  const capability: NodePresentationRead['capability'] = (
     node: Pick<Node, 'type'> | NodeType
   ) => resolveNodeCapability(
     registry.get(readNodeType(node))
   )
-  const view: NodeRead['view'] = createKeyedDerivedStore({
+  const view: NodePresentationRead['view'] = createKeyedDerivedStore({
     get: (nodeId: NodeId) => {
       const resolvedItem = readValue(item, nodeId)
       if (!resolvedItem) {
@@ -294,7 +294,7 @@ export const createNodeRead = ({
     },
     isEqual: isNodeViewEqual
   })
-  const canvas: NodeRead['canvas'] = createKeyedDerivedStore({
+  const canvas: NodePresentationRead['canvas'] = createKeyedDerivedStore({
     get: (nodeId: NodeId) => {
       const resolvedItem = readValue(item, nodeId)
       if (!resolvedItem) {
@@ -308,11 +308,11 @@ export const createNodeRead = ({
     },
     isEqual: isNodeCanvasSnapshotEqual
   })
-  const rect: NodeRead['rect'] = createKeyedDerivedStore({
+  const rect: NodePresentationRead['rect'] = createKeyedDerivedStore({
     get: (nodeId: NodeId) => readValue(item, nodeId)?.rect,
     isEqual: isSameOptionalRectTuple
   })
-  const bounds: NodeRead['bounds'] = createKeyedDerivedStore({
+  const bounds: NodePresentationRead['bounds'] = createKeyedDerivedStore({
     get: (nodeId: NodeId) => {
       const resolvedItem = readValue(item, nodeId)
       return resolvedItem
@@ -326,7 +326,7 @@ export const createNodeRead = ({
     list: read.node.list,
     committed: read.node.item,
     item,
-    nodes: (nodeIds) => readPresentValues(nodeIds, (nodeId) => readValue(item, nodeId)?.node),
+    nodes: (nodeIds) => presentValues(nodeIds, (nodeId) => readValue(item, nodeId)?.node),
     state,
     view,
     canvas,
@@ -335,6 +335,6 @@ export const createNodeRead = ({
     capability,
     idsInRect: read.node.idsInRect,
     transformTargets: read.node.transformTargets,
-    ordered: () => readPresentValues(readValue(read.node.list), (nodeId) => readValue(item, nodeId)?.node)
+    ordered: () => presentValues(readValue(read.node.list), (nodeId) => readValue(item, nodeId)?.node)
   }
 }

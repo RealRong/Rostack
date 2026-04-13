@@ -4,8 +4,8 @@ export type {
   NodeRegistry,
   NodeRenderProps,
   NodeWrite,
-  NodeRole,
   NodeHit,
   NodeMeta,
   NodeFamily
 } from './registry'
+export type { NodeRole } from '@whiteboard/core/types'

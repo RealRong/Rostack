@@ -31,3 +31,10 @@ export const uniqueSorted = <T,>(
     ? next.sort(compare)
     : next.sort()
 }
+
+export const presentValues = <TId, TValue>(
+  ids: readonly TId[],
+  read: (id: TId) => TValue | undefined
+): TValue[] => ids
+  .map((id) => read(id))
+  .filter((value): value is TValue => value !== undefined)

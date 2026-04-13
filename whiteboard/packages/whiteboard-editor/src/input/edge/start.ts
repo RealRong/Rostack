@@ -7,8 +7,8 @@ import type { InteractionContext } from '../context'
 import type { PointerDownInput } from '../../types/input'
 import type { Tool } from '../../types/tool'
 import type { SessionActions } from '../../types/commands'
-import type { EdgeRead } from '../../query/edge/read'
-import type { NodeRead } from '../../query/node/read'
+import type { EdgePresentationRead } from '../../query/edge/read'
+import type { NodePresentationRead } from '../../query/node/read'
 import { createEdgeConnectSession } from './connect/session'
 import { startEdgeConnect } from './connect/start'
 import { createEdgeBodyMoveSession } from './move/session'
@@ -44,7 +44,7 @@ const selectEdgeInteraction = (
 }
 
 const startEdgeRouteInteraction = (input: {
-  edge: Pick<EdgeRead, 'item' | 'resolved' | 'capability'>
+  edge: Pick<EdgePresentationRead, 'item' | 'resolved' | 'capability'>
   pointer: PointerDownInput
   session: Pick<SessionActions, 'selection'>
 }): EdgeInteractionStart | undefined => {
@@ -72,7 +72,7 @@ const startEdgeRouteInteraction = (input: {
 }
 
 const startEdgeBodyInteraction = (input: {
-  edge: Pick<EdgeRead, 'item' | 'capability'>
+  edge: Pick<EdgePresentationRead, 'item' | 'capability'>
   edgeId: EdgeId
   pointerId: number
   start: PointerDownInput['world']
@@ -97,8 +97,8 @@ const startEdgeBodyInteraction = (input: {
 const startEdgeInteraction = (input: {
   tool: Tool
   pointer: PointerDownInput
-  node: Pick<NodeRead, 'canvas' | 'capability'>
-  edge: Pick<EdgeRead, 'item' | 'resolved' | 'capability'>
+  node: Pick<NodePresentationRead, 'canvas' | 'capability'>
+  edge: Pick<EdgePresentationRead, 'item' | 'resolved' | 'capability'>
   zoom: number
   config: BoardConfig['edge']
   session: Pick<SessionActions, 'selection'>

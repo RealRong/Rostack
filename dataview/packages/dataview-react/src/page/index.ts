@@ -1,0 +1,8 @@
+export { Page } from '#react/page/Page'
+export type { PageProps } from '#react/page/Page'
+export { PageHeader } from '#react/page/Header'
+export type { PageHeaderProps } from '#react/page/Header'
+export { PageToolbar } from '#react/page/Toolbar'
+export type { PageToolbarProps } from '#react/page/Toolbar'
+export { PageBody } from '#react/page/Body'
+export type { PageBodyProps } from '#react/page/Body'

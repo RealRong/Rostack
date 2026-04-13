@@ -5,9 +5,7 @@ import {
   planMindmapSubtreeMove
 } from '@whiteboard/core/mindmap'
 import type { NodeId } from '@whiteboard/core/types'
-import type {
-  EditorRead
-} from '../types/editor'
+import type { EditorQueryRead } from '../query'
 import type { MindmapCommands } from '../types/commands'
 import type { NodeCommands } from './node/types'
 
@@ -17,7 +15,7 @@ const readNodePosition = ({
   read,
   nodeId
 }: {
-  read: EditorRead
+  read: EditorQueryRead
   nodeId: NodeId
 }) => read.mindmap.rootPosition.get(nodeId)
 
@@ -68,7 +66,7 @@ export const createMindmapCommands = ({
   node
 }: {
   execute: MindmapExecute
-  read: EditorRead
+  read: EditorQueryRead
   node: Pick<NodeCommands, 'update'>
 }): MindmapCommands => {
   const commands = createMindmapCoreCommands(execute)

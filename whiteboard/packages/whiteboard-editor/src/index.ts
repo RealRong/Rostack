@@ -18,22 +18,19 @@ export type {
 export type {
   Editor,
   EditorActions,
-  EditorAppActions,
   EditorChromePresentation,
-  EditorConfig,
   EditorEdgeActions,
   EditorEvents,
   EditorPanelPresentation,
-  EditorRead,
+  EditorInput,
   EditorPublicRead,
-  EditorStore,
-  MindmapNodePatch,
-  EditorClipboardOptions,
-  EditorClipboardTarget,
-  EditorInput
+  EditorSelectionActions,
+  EditorNodeActions,
+  EditorEditActions
 } from './types/editor'
 export type {
   AppActions,
+  AppConfig,
   ClipboardCommands,
   ClipboardOptions,
   ClipboardTarget,
@@ -53,6 +50,9 @@ export type {
   ViewActions,
   ViewportActions
 } from './types/commands'
+export type {
+  EditorQueryRead
+} from './query'
 export type {
   ClipboardPacket
 } from './command/clipboard/packet'
@@ -94,7 +94,6 @@ export type {
   ControlId,
   NodeDefinition,
   NodeRegistry,
-  NodeRole,
   NodeHit,
   NodeMeta,
   NodeFamily

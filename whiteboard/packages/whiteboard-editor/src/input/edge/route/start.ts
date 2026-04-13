@@ -9,7 +9,7 @@ import {
 import { isPointEqual } from '@whiteboard/core/geometry'
 import type { Edge, EdgeId, EdgePatch, Point } from '@whiteboard/core/types'
 import type { PointerDownInput } from '../../../types/input'
-import type { EdgeRead } from '../../../query/edge/read'
+import type { EdgePresentationRead } from '../../../query/edge/read'
 
 export type EdgeRouteHandleState =
   | {
@@ -86,7 +86,7 @@ const isEdgeRoutePick = (
 )
 
 const readEditableRouteView = (
-  edge: Pick<EdgeRead, 'resolved' | 'item' | 'capability'>,
+  edge: Pick<EdgePresentationRead, 'resolved' | 'item' | 'capability'>,
   edgeId: EdgeId
 ): CoreEdgeView | undefined => {
   const view = edge.resolved.get(edgeId)
@@ -98,7 +98,7 @@ const readEditableRouteView = (
 }
 
 export const resolveEdgeRoutePickTarget = (
-  edge: Pick<EdgeRead, 'resolved' | 'item' | 'capability'>,
+  edge: Pick<EdgePresentationRead, 'resolved' | 'item' | 'capability'>,
   pick: PointerDownInput['pick']
 ): EdgeRouteHandleTarget | undefined => {
   if (!isEdgeRoutePick(pick)) {
@@ -163,7 +163,7 @@ const startEdgeRouteSegment = (input: {
 })
 
 export const startEdgeRoute = (input: {
-  edge: Pick<EdgeRead, 'resolved' | 'item' | 'capability'>
+  edge: Pick<EdgePresentationRead, 'resolved' | 'item' | 'capability'>
   pointer: PointerDownInput
 }): EdgeRouteStart | undefined => {
   const target = resolveEdgeRoutePickTarget(

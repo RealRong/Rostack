@@ -2,7 +2,7 @@ import { buildEdgeCreateOperation } from '../edge/commands'
 import { isNodeEdgeEnd, readEdgeRoutePoints } from '../edge'
 import { resolveEdgeEnds } from '../edge/endpoints'
 import { getAABBFromPoints, getRectCenter } from '../geometry'
-import { getNodeGeometry, getNodeRect } from '../node'
+import { getNodeGeometry, getNodeRect, readNodeRotation } from '../node'
 import { getNodesBoundingRect } from '../node/group'
 import { expandFrameSelection } from '../node/frame'
 import { buildNodeCreateOperation } from '../node/commands'
@@ -92,7 +92,7 @@ const toEdgeNodeSnapshot = (
     geometry: getNodeGeometry(
       node,
       rect,
-      typeof node.rotation === 'number' ? node.rotation : 0
+      readNodeRotation(node)
     )
   }
 }

@@ -1,5 +1,6 @@
 import type {
   Node,
+  NodeRole,
   NodeUpdateInput,
   NodeType,
   Rect
@@ -9,8 +10,7 @@ import type {
   NodeDefinition as EditorNodeDefinition,
   NodeFamily,
   NodeHit,
-  NodeMeta,
-  NodeRole
+  NodeMeta
 } from '@whiteboard/editor'
 import type { CSSProperties, ReactNode } from 'react'
 

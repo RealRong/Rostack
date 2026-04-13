@@ -58,7 +58,7 @@ export type MindmapView = {
   }
 }
 
-export type MindmapRead = EngineRead['mindmap'] & {
+export type MindmapPresentationRead = EngineRead['mindmap'] & {
   snapshot: EngineRead['mindmap']['item']
   tree: KeyedReadStore<NodeId, MindmapItem['tree'] | undefined>
   rootPosition: KeyedReadStore<NodeId, Point | undefined>
@@ -188,12 +188,12 @@ export const createMindmapRead = ({
 }: {
   read: EngineRead['mindmap']
   drag: ReadStore<MindmapDragFeedback | undefined>
-}): MindmapRead => {
-  const tree: MindmapRead['tree'] = createKeyedDerivedStore({
+}): MindmapPresentationRead => {
+  const tree: MindmapPresentationRead['tree'] = createKeyedDerivedStore({
     get: (treeId: NodeId) => readValue(read.item, treeId)?.tree,
     isEqual: (left, right) => left === right
   })
-  const rootPosition: MindmapRead['rootPosition'] = createKeyedDerivedStore({
+  const rootPosition: MindmapPresentationRead['rootPosition'] = createKeyedDerivedStore({
     get: (treeId: NodeId) => readValue(read.item, treeId)?.node.position,
     isEqual: (left, right) => (
       left === right

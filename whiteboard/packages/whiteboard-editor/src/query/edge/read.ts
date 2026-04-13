@@ -20,6 +20,7 @@ import {
 } from '@whiteboard/engine'
 import {
   createKeyedDerivedStore,
+  presentValues,
   read as readValue,
   type KeyedReadStore,
   type ReadStore
@@ -27,13 +28,12 @@ import {
 import type {
   EdgeFeedbackProjection
 } from '../../local/feedback/types'
-import type { NodeCanvasSnapshot, NodeRead } from '../node/read'
+import type { NodeCanvasSnapshot, NodePresentationRead } from '../node/read'
 import type { EditSession } from '../../local/session/edit'
 import {
   projectEdgeItem,
   readProjectedEdgeView
 } from './projection'
-import { readPresentValues } from '../utils'
 
 export type EdgeRuntimeState = {
   patched: boolean
@@ -166,7 +166,7 @@ const resolveEdgeCapability = (
   move: isPointEdgeEnd(edge.source) && isPointEdgeEnd(edge.target)
 })
 
-export type EdgeRead = {
+export type EdgePresentationRead = {
   list: EngineRead['edge']['list']
   committed: EngineRead['edge']['item']
   item: KeyedReadStore<EdgeId, EdgeItem | undefined>
@@ -237,14 +237,14 @@ export const createEdgeRead = ({
   capability
 }: {
   read: Pick<EngineRead, 'edge'>
-  node: Pick<NodeRead, 'canvas' | 'idsInRect'>
+  node: Pick<NodePresentationRead, 'canvas' | 'idsInRect'>
   feedback: KeyedReadStore<EdgeId, EdgeFeedbackProjection>
   edit: ReadStore<EditSession>
   capability: (node: Pick<Node, 'type'> | NodeType) => {
     connect: boolean
   }
-}): EdgeRead => {
-  const item: EdgeRead['item'] = createKeyedDerivedStore({
+}): EdgePresentationRead => {
+  const item: EdgePresentationRead['item'] = createKeyedDerivedStore({
     get: (edgeId: EdgeId) => {
       const entry = readValue(read.edge.item, edgeId)
       return entry
@@ -253,13 +253,13 @@ export const createEdgeRead = ({
     },
     isEqual: isEdgeItemEqual
   })
-  const state: EdgeRead['state'] = createKeyedDerivedStore({
+  const state: EdgePresentationRead['state'] = createKeyedDerivedStore({
     get: (edgeId: EdgeId) => toEdgeRuntimeState(
       readValue(feedback, edgeId)
     ),
     isEqual: isEdgeStateEqual
   })
-  const resolved: EdgeRead['resolved'] = createKeyedDerivedStore({
+  const resolved: EdgePresentationRead['resolved'] = createKeyedDerivedStore({
     isEqual: isEdgeViewEqual,
     get: (edgeId: EdgeId) => {
       const entry = readValue(item, edgeId)
@@ -268,7 +268,7 @@ export const createEdgeRead = ({
         : undefined
     }
   })
-  const view: EdgeRead['view'] = createKeyedDerivedStore({
+  const view: EdgePresentationRead['view'] = createKeyedDerivedStore({
     get: (edgeId: EdgeId) => {
       const resolvedItem = readValue(item, edgeId)
       const resolvedView = readValue(resolved, edgeId)
@@ -286,7 +286,7 @@ export const createEdgeRead = ({
     },
     isEqual: isEdgeViewStateEqual
   })
-  const bounds: EdgeRead['bounds'] = createKeyedDerivedStore({
+  const bounds: EdgePresentationRead['bounds'] = createKeyedDerivedStore({
     get: (edgeId: EdgeId) => {
       const resolvedEntry = readValue(resolved, edgeId)
       return resolvedEntry
@@ -296,7 +296,7 @@ export const createEdgeRead = ({
     isEqual: isSameOptionalRectTuple
   })
 
-  const connectCandidates: EdgeRead['connectCandidates'] = (
+  const connectCandidates: EdgePresentationRead['connectCandidates'] = (
     rect
   ) => {
     const nodeIds = node.idsInRect(rect)
@@ -322,7 +322,7 @@ export const createEdgeRead = ({
     list: read.edge.list,
     committed: read.edge.item,
     item,
-    edges: (edgeIds) => readPresentValues(edgeIds, (edgeId) => readValue(item, edgeId)?.edge),
+    edges: (edgeIds) => presentValues(edgeIds, (edgeId) => readValue(item, edgeId)?.edge),
     state,
     resolved,
     view,

@@ -10,7 +10,7 @@ import type { NodeId, Point } from '@whiteboard/core/types'
 import type { PointerDownInput } from '../../../types/input'
 import type { Tool } from '../../../types/tool'
 import type { MindmapDragFeedback } from '../../../local/feedback'
-import type { MindmapRead } from '../../../query/mindmap/read'
+import type { MindmapPresentationRead } from '../../../query/mindmap/read'
 
 export type MindmapDragState = CoreMindmapDragState
 
@@ -63,7 +63,7 @@ export const previewMindmapDrag = (
 export const startMindmapDrag = (input: {
   tool: Tool
   pointer: PointerDownInput
-  mindmap: Pick<MindmapRead, 'snapshot' | 'rootPosition'>
+  mindmap: Pick<MindmapPresentationRead, 'snapshot' | 'rootPosition'>
 }): MindmapDragState | undefined => {
   if (
     input.tool.type !== 'select'
@@ -106,7 +106,7 @@ export const startMindmapDrag = (input: {
 export const stepMindmapDrag = (input: {
   state: MindmapDragState
   world: Point
-  mindmap: Pick<MindmapRead, 'snapshot'>
+  mindmap: Pick<MindmapPresentationRead, 'snapshot'>
 }): MindmapDragState => projectMindmapDrag({
   active: input.state,
   world: input.world,

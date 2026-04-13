@@ -3,8 +3,7 @@ import {
   listNodes
 } from '@whiteboard/core/document'
 import { isNodeEdgeEnd } from '@whiteboard/core/edge'
-import { expandFrameSelection } from '@whiteboard/core/node'
-import { getNodeBounds, getNodeRect } from '@whiteboard/core/node'
+import { expandFrameSelection, getNodeBounds, getNodeRect, readNodeRotation } from '@whiteboard/core/node'
 import type {
   Document,
   EdgeId,
@@ -17,7 +16,7 @@ const boundsOf = (node: Node, fallbackSize: Size) =>
   getNodeBounds(
     node,
     getNodeRect(node, fallbackSize),
-    typeof node.rotation === 'number' ? node.rotation : 0
+    readNodeRotation(node)
   )
 
 export const expand = (

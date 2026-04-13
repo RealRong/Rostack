@@ -5,7 +5,8 @@ import {
   type ValueStore
 } from '@shared/core'
 import type { Viewport } from '@whiteboard/core/types'
-import type { EditorRead, EditorState } from '../types/editor'
+import type { EditorState } from '../types/editor'
+import type { EditorQueryRead } from '../query'
 import type { PointerSample } from '../types/input'
 import type { NodeRegistry } from '../types/node'
 import type { Tool } from '../types/tool'
@@ -63,7 +64,7 @@ type RunningSession = {
   session: InteractionSession
 }
 
-type ReadNodeEdge = Pick<EditorRead, 'node' | 'edge'>
+type ReadNodeEdge = Pick<EditorQueryRead, 'node' | 'edge'>
 
 export type EditorLocalState = {
   tool: ValueStore<Tool>
@@ -92,7 +93,7 @@ export type EditorLocalRuntime = {
   interaction: InteractionRuntime
   feedback: EditorFeedbackRuntime
   actions: EditorLocalActions
-  bindQuery: (read: EditorRead) => void
+  bindQuery: (read: EditorQueryRead) => void
   bindInteractions: (bindings: readonly InteractionBinding[]) => void
   reset: () => void
   reconcileAfterCommit: (read: ReadNodeEdge) => void
@@ -477,7 +478,7 @@ export const createLocalRuntime = ({
     initialViewport
   })
 
-  let readRuntime: EditorRead | null = null
+  let readRuntime: EditorQueryRead | null = null
   let bindings: readonly InteractionBinding[] = []
 
   const state: EditorLocalState = {

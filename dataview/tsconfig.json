@@ -15,6 +15,6 @@
     "esModuleInterop": true,
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "include": ["packages/**/*.ts", "packages/**/*.tsx"],
   "exclude": ["node_modules", "demo/dist", ".tmp"]
 }

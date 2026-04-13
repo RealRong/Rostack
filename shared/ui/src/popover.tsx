@@ -45,8 +45,8 @@ import {
   type OverlayBackdrop,
   type OverlayLayerKind,
   type OverlayLayerMode
-} from './overlay'
-import { cn } from './utils'
+} from '#ui/overlay'
+import { cn } from '#ui/utils'
 
 const POPOVER_TRANSITION_MS = 200
 

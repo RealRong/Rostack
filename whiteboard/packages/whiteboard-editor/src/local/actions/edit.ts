@@ -1,5 +1,5 @@
 import { readTextWrapWidth } from '@whiteboard/core/node'
-import type { EditorRead } from '../../types/editor'
+import type { EditorQueryRead } from '../../query'
 import type { SessionActions } from '../../types/commands'
 import type { NodeRegistry } from '../../types/node'
 import {
@@ -34,7 +34,7 @@ export const createLocalEditActions = ({
 }: {
   state: Pick<EditorLocalState, 'edit'>
   registry: Pick<NodeRegistry, 'get'>
-  getRead: () => Pick<EditorRead, 'node' | 'edge'> | null
+  getRead: () => Pick<EditorQueryRead, 'node' | 'edge'> | null
 }): LocalEditActions => {
   const startNode: LocalEditActions['startNode'] = (
     nodeId,

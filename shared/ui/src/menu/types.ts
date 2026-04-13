@@ -6,12 +6,12 @@ import type {
   PopoverProps,
   PopoverSurfacePadding,
   PopoverSurfaceSize
-} from '../popover'
+} from '#ui/popover'
 import type {
   ListCustomItem,
   ListDividerItem,
   ListLabelItem
-} from '../list-structure'
+} from '#ui/list-structure'
 
 export type MenuPresentation = 'cascade' | 'dropdown'
 export type MenuPopoverContent = ReactNode | (() => ReactNode)

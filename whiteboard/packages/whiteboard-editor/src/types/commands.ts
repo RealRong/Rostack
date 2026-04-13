@@ -19,26 +19,25 @@ import type {
   EdgeId,
   EdgeInput,
   EdgePatch,
+  MindmapCloneSubtreeInput,
+  MindmapCreateInput,
   MindmapId,
+  MindmapInsertInput,
+  MindmapMoveSubtreeInput,
   MindmapNodeData,
   MindmapNodeId,
+  MindmapRemoveSubtreeInput,
   MindmapTree,
+  MindmapUpdateNodeInput,
   NodeId,
   NodeInput,
   NodeUpdateInput,
+  OrderMode,
   Origin,
   Point,
   Rect,
   Size
 } from '@whiteboard/core/types'
-import type {
-  MindmapCloneSubtreeInput,
-  MindmapCreateOptions,
-  MindmapInsertOptions,
-  MindmapMoveSubtreeInput,
-  MindmapRemoveSubtreeInput,
-  MindmapUpdateNodeInput
-} from '@whiteboard/engine'
 import type { ClipboardPacket } from '../command/clipboard/packet'
 import type {
   BrushStylePatch,
@@ -59,11 +58,7 @@ import type {
 } from '../local/session/edit'
 import type { ViewportCommands } from '../local/viewport/runtime'
 
-export type OrderMode =
-  | 'front'
-  | 'back'
-  | 'forward'
-  | 'backward'
+export type { OrderMode } from '@whiteboard/core/types'
 
 export type EdgeLabelPatch = NonNullable<Edge['labels']>[number] extends infer Label
   ? Label extends {
@@ -191,14 +186,14 @@ export type EdgeApi = {
 }
 
 export type MindmapCommands = {
-  create: (payload?: MindmapCreateOptions) => CommandResult<{
+  create: (payload?: MindmapCreateInput) => CommandResult<{
     mindmapId: MindmapId
     rootId: MindmapNodeId
   }>
   delete: (ids: MindmapId[]) => CommandResult
   insert: (
     id: MindmapId,
-    input: MindmapInsertOptions
+    input: MindmapInsertInput
   ) => CommandResult<{ nodeId: MindmapNodeId }>
   moveSubtree: (
     id: MindmapId,

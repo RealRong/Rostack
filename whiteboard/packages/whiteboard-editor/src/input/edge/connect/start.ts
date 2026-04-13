@@ -26,12 +26,12 @@ import type {
 import type { PointerDownInput } from '../../../types/input'
 import type { EdgePresetKey, Tool } from '../../../types/tool'
 import type { EdgeGestureDraft } from '../../core/gesture'
-import type { EdgeRead } from '../../../query/edge/read'
-import type { NodeCanvasSnapshot, NodeRead } from '../../../query/node/read'
+import type { EdgePresentationRead } from '../../../query/edge/read'
+import type { NodeCanvasSnapshot, NodePresentationRead } from '../../../query/node/read'
 
-type EdgeConnectNodeRead = Pick<NodeRead, 'canvas' | 'capability'>
-type EdgeConnectPreviewNodeRead = Pick<NodeRead, 'canvas'>
-type EdgeConnectEdgeRead = Pick<EdgeRead, 'item' | 'resolved' | 'capability'>
+type EdgeConnectNodeRead = Pick<NodePresentationRead, 'canvas' | 'capability'>
+type EdgeConnectPreviewNodeRead = Pick<NodePresentationRead, 'canvas'>
+type EdgeConnectEdgeRead = Pick<EdgePresentationRead, 'item' | 'resolved' | 'capability'>
 type EdgeConnectSnap = (input: {
   pointerWorld: PointerDownInput['world']
 }) => EdgeConnectEvaluation

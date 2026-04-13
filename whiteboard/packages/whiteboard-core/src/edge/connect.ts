@@ -29,14 +29,11 @@ import {
   getNodeAnchor,
   projectPointToNodeOutline
 } from '../node/outline'
+import { readNodeRotation } from '../node'
 
 type ScoredConnectTarget = EdgeConnectResult & {
   distance: number
 }
-
-const readNodeRotation = (
-  node: Node
-) => (typeof node.rotation === 'number' ? node.rotation : 0)
 
 export const DEFAULT_EDGE_ANCHOR_OFFSET = 0.5
 

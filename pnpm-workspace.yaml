@@ -1,8 +1,7 @@
 packages:
   - 'apps/*'
   - 'dataview'
-  - 'dataview/src/*'
+  - 'dataview/packages/*'
   - 'shared/*'
   - 'whiteboard'
   - 'whiteboard/packages/*'
-  - 'ui'

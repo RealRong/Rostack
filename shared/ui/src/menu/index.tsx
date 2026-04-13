@@ -1,6 +1,6 @@
-import { Base } from './base'
-import { Dropdown } from './dropdown'
-import { Reorder } from './reorder'
+import { Base } from '#ui/menu/base'
+import { Dropdown } from '#ui/menu/dropdown'
+import { Reorder } from '#ui/menu/reorder'
 
 export const Menu = Object.assign(Base, {
   Reorder,
@@ -28,4 +28,4 @@ export type {
   SubmenuOpenPolicy as MenuSubmenuOpenPolicy,
   SurfaceSize as MenuSurfaceSize,
   ToggleItem as MenuToggleItem
-} from './types'
+} from '#ui/menu/types'

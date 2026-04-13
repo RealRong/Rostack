@@ -1,4 +1,5 @@
 import { getRectCenter } from '../geometry'
+import { readNodeRotation } from '../node'
 import { getNodeAnchor } from '../node/outline'
 import type { EdgeAnchor, EdgeEnd, Node, NodeGeometry, Point } from '../types'
 import type {
@@ -17,10 +18,6 @@ type ResolveNodeEndInput = {
   }
   otherPoint: Point
 }
-
-const readNodeRotation = (
-  node: Node
-) => (typeof node.rotation === 'number' ? node.rotation : 0)
 
 const resolveNodeEnd = ({
   end,

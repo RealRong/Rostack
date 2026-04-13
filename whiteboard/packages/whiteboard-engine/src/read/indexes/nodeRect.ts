@@ -2,6 +2,7 @@ import type { CanvasNode } from '#types/projection'
 import type { Node, NodeId, Rect } from '@whiteboard/core/types'
 import {
   getNodeIdsInRect as getNodeIdsInRectRaw,
+  readNodeRotation,
   type NodeRectHitOptions
 } from '@whiteboard/core/node'
 import type { BoardConfig } from '#types/instance'
@@ -11,10 +12,6 @@ import { sameOrder as isSameRefOrder } from '@shared/core'
 import { NodeGeometryCache } from '../../geometry/nodeGeometry'
 
 type Rebuild = 'none' | 'dirty' | 'full'
-
-const readNodeRotation = (
-  node: Node
-) => (typeof node.rotation === 'number' ? node.rotation : 0)
 
 const resolveRebuild = (impact: KernelReadImpact): Rebuild => {
   if (impact.reset || impact.node.list) {

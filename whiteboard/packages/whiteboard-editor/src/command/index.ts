@@ -5,7 +5,7 @@ import type {
   MindmapCommands
 } from '../types/commands'
 import type { EditorLocalRuntime } from '../local/runtime'
-import type { RuntimeRead } from '../query'
+import type { EditorQueryRead } from '../query'
 import {
   createClipboardCommands
 } from './clipboard'
@@ -48,7 +48,7 @@ export const createCommandRuntime = ({
   local
 }: {
   engine: Engine
-  read: RuntimeRead
+  read: EditorQueryRead
   local: Pick<EditorLocalRuntime, 'actions' | 'stores' | 'viewport'>
 }): EditorCommandRuntime => {
   const history = createHistoryCommands(engine)

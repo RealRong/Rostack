@@ -1,5 +1,5 @@
 import type { Node, NodeGeometry, NodeId, Rect, Size } from '@whiteboard/core/types'
-import { getNodeGeometry, getNodeRect } from '@whiteboard/core/node'
+import { getNodeGeometry, getNodeRect, readNodeRotation } from '@whiteboard/core/node'
 import {
   sameRectWithRotation as isSameRectWithRotationTuple,
   toFiniteOrUndefined
@@ -44,7 +44,7 @@ export class NodeGeometryCache {
     geometry: getNodeGeometry(
       node,
       getNodeRect(node, this.nodeSize),
-      typeof node.rotation === 'number' ? node.rotation : 0
+      readNodeRotation(node)
     )
   })
 

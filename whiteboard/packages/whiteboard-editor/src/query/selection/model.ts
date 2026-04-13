@@ -16,7 +16,7 @@ import {
   sameOptionalRect as isSameOptionalRectTuple,
   type ReadStore
 } from '@shared/core'
-import type { NodeRead } from '../node/read'
+import type { NodePresentationRead } from '../node/read'
 import type { RuntimeTargetRead } from '../target'
 
 export type SelectionModel = {
@@ -45,7 +45,7 @@ const isSelectionModelEqual = (
 )
 
 const readNodeTransformCapability = (
-  node: Pick<NodeRead, 'capability'>,
+  node: Pick<NodePresentationRead, 'capability'>,
   entry: Node
 ) => {
   const capability = node.capability(entry)
@@ -62,7 +62,7 @@ export const createSelectionModelRead = ({
   target
 }: {
   source: ReadStore<SelectionTarget>
-  node: NodeRead
+  node: NodePresentationRead
   target: RuntimeTargetRead
 }): SelectionModelRead => {
   const summary = createDerivedStore<SelectionSummary>({

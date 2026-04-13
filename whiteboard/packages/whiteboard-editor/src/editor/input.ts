@@ -1,8 +1,8 @@
 import type {
   EditorInput,
-  EditorRead,
   EditorState
 } from '../types/editor'
+import type { EditorQueryRead } from '../query'
 import type { EditorLocalRuntime } from '../local/runtime'
 import type { ContextMenuIntent } from '../types/input'
 import type { InteractionRuntime } from '../input/core/types'
@@ -33,7 +33,7 @@ export const createEditorInput = ({
 }: {
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
-  read: EditorRead
+  read: EditorQueryRead
   local: Pick<EditorLocalRuntime, 'actions' | 'stores'>
 }): EditorInput => {
   const writePointer = (input: {

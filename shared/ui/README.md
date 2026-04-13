@@ -3,10 +3,7 @@
 This directory is the shared UI surface for the repo.
 
 - `css/` contains the shared theme tokens and reusable CSS primitives.
-- `react/` contains shared React entry points where the current dependency layout allows it.
+- `src/` contains the canonical shared React primitives and supporting utilities.
 - `tailwind/` contains shared Tailwind config fragments.
-
-Current constraint:
-
-- The canonical implementation of some React primitives still lives under `dataview/src/react/ui`.
-- Shared React entry points should only expose components that can be consumed safely with the current package-local dependency layout.
+- Internal package imports should use `#ui/*`.
+- Cross-package consumers should import from `@shared/ui` or `@shared/ui/*`.

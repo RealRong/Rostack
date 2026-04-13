@@ -23,6 +23,7 @@ import {
 import {
   collectFrameMembers,
   filterNodeIdsInRect,
+  readNodeRotation,
   resolveSelectionTransformTargets,
   resolveFrameAtPoint,
   resolveNodeFrame,
@@ -41,7 +42,7 @@ import {
   type Point,
   type Rect
 } from '@whiteboard/core/types'
-import { createValueStore } from '@shared/core'
+import { createValueStore, presentValues } from '@shared/core'
 import { DEFAULT_TUNING } from '../../config'
 import { RESET_READ_IMPACT } from '../impacts'
 import { NodeRectIndex, SnapIndex } from '../indexes'
@@ -69,9 +70,6 @@ export const createRead = ({
   read: EngineRead
   invalidate: (impact: KernelReadImpact) => void
 } => {
-  const readNodeRotation = (
-    node: Node
-  ) => (typeof node.rotation === 'number' ? node.rotation : 0)
   const readDocument = document.get
   const readModel = createReadModel({ readDocument })
 
@@ -135,20 +133,13 @@ export const createRead = ({
   const readProjectedNodeBounds = (nodeId: NodeId): Rect | undefined =>
     readProjectedNodeGeometry(nodeId)?.bounds
 
-  const readPresentValues = <TId, TValue>(
-    ids: readonly TId[],
-    project: (id: TId) => TValue | undefined
-  ): TValue[] => ids
-    .map((id) => project(id))
-    .filter((value): value is TValue => Boolean(value))
-
   const readNodes: EngineRead['node']['nodes'] = (
     nodeIds
-  ) => readPresentValues(nodeIds, (nodeId) => nodeProjection.item.get(nodeId)?.node)
+  ) => presentValues(nodeIds, (nodeId) => nodeProjection.item.get(nodeId)?.node)
 
   const readEdges: EngineRead['edge']['edges'] = (
     edgeIds
-  ) => readPresentValues(edgeIds, (edgeId) => edgeProjection.item.get(edgeId)?.edge)
+  ) => presentValues(edgeIds, (edgeId) => edgeProjection.item.get(edgeId)?.edge)
 
   const readOrderedNodes = (): Node[] => [...readNodes(nodeProjection.list.get())]
 

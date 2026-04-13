@@ -1,12 +1,12 @@
-export { Button, type ButtonProps } from './button'
-export { Checkbox, type CheckboxProps } from './checkbox'
+export { Button, type ButtonProps } from '#ui/button'
+export { Checkbox, type CheckboxProps } from '#ui/checkbox'
 export {
   FloatingLayer,
   FloatingSurface,
   type FloatingLayerProps,
   type FloatingSurfaceProps
-} from './floating'
-export { Input, type InputProps } from './input'
+} from '#ui/floating'
+export { Input, type InputProps } from '#ui/input'
 export {
   ColorSwatchGrid,
   formatPercent,
@@ -17,7 +17,7 @@ export {
   SliderSection,
   SwatchButton,
   type SwatchButtonProps
-} from './panel'
+} from '#ui/panel'
 export {
   PickerButton,
   PickerDivider,
@@ -28,14 +28,14 @@ export {
   PickerSection,
   PickerSurface,
   PickerTintBar
-} from './picker'
+} from '#ui/picker'
 export {
     Slider,
     type SliderMark,
     type SliderProps
-  } from './slider'
-export { Select, type SelectProps } from './select'
-export { Label, type LabelProps } from './label'
+  } from '#ui/slider'
+export { Select, type SelectProps } from '#ui/select'
+export { Label, type LabelProps } from '#ui/label'
 export {
   Menu,
   type MenuItem,
@@ -48,13 +48,13 @@ export {
   type MenuSelectionMode,
   type MenuSurfaceSize,
   type MenuSubmenuOpenPolicy
-} from './menu'
+} from '#ui/menu/index'
 export type {
   ListCustomItem,
   ListDividerItem,
   ListLabelItem,
   ListStructuralItem
-} from './list-structure'
+} from '#ui/list-structure'
 export {
   Popover,
   type PopoverAnchor,
@@ -67,7 +67,7 @@ export {
   type PopoverSurfaceSize,
   type PopoverProps,
   type PopoverTriggerProps
-} from './popover'
+} from '#ui/popover'
 export {
   OverlayProvider,
   OverlayRoot,
@@ -89,9 +89,9 @@ export {
   type OverlayLayerKind,
   type OverlayLayerMode,
   type OverlayLayerOptions
-} from './overlay'
-export { PanelHeader, type PanelHeaderProps } from './panel-header'
-export { Switch, type SwitchProps } from './switch'
+} from '#ui/overlay'
+export { PanelHeader, type PanelHeaderProps } from '#ui/panel-header'
+export { Switch, type SwitchProps } from '#ui/switch'
 export {
   ToolbarBar,
   ToolbarButton,
@@ -100,7 +100,7 @@ export {
   ToolbarIconButton,
   ToolbarStrokeIcon,
   ToolbarTextColorIcon
-} from './toolbar'
+} from '#ui/toolbar'
 export {
   UI_CONTENT_COLOR_FAMILIES,
   UI_CONTENT_COLOR_IDS,
@@ -114,16 +114,16 @@ export {
   resolveOptionDotStyle,
   resolveOptionStatusDotStyle,
   resolveOptionSurfaceStyle
-} from './color'
+} from '#ui/color/index'
 export {
   VerticalReorderList,
   type VerticalReorderHandleProps,
   type VerticalReorderItemState,
   type VerticalReorderListProps
-} from './vertical-reorder-list'
-export { cn } from './utils'
+} from '#ui/vertical-reorder-list'
+export { cn } from '#ui/utils'
 export type {
   UiOptionColorFamily,
   UiOptionColorId,
   UiOptionColorTokenUsage
-} from './color'
+} from '#ui/color/index'

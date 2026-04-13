@@ -1,5 +1,5 @@
 import type { Point } from '@whiteboard/core/types'
-import type { EditorClipboardTarget } from '@whiteboard/editor'
+import type { ClipboardTarget } from '@whiteboard/editor'
 import type { WhiteboardRuntime } from '#react/types/runtime'
 import type { ClipboardAdapter } from '../../dom/host/clipboard'
 
@@ -12,13 +12,13 @@ const clonePoint = (
 
 export type ClipboardBridge = {
   copy: (
-    target?: EditorClipboardTarget,
+    target?: ClipboardTarget,
     options?: {
       event?: ClipboardEvent
     }
   ) => Promise<boolean>
   cut: (
-    target?: EditorClipboardTarget,
+    target?: ClipboardTarget,
     options?: {
       event?: ClipboardEvent
     }

@@ -1,4 +1,4 @@
-import type { EditorRead } from '../../types/editor'
+import type { EditorQueryRead } from '../../query'
 import type { SessionActions } from '../../types/commands'
 import type { Tool } from '../../types/tool'
 import type { EditorLocalState } from '../runtime'
@@ -30,7 +30,7 @@ export const createLocalSessionActions = ({
   getRead
 }: {
   state: Pick<EditorLocalState, 'tool' | 'selection' | 'edit'>
-  getRead: () => Pick<EditorRead, 'node' | 'edge'> | null
+  getRead: () => Pick<EditorQueryRead, 'node' | 'edge'> | null
 }): LocalSessionActions => {
   const writeSelection = (
     apply: () => boolean

@@ -10,6 +10,7 @@ import {
   resolveEdgeEnds,
   type EdgeRelations
 } from '@whiteboard/core/edge'
+import { readNodeRotation } from '@whiteboard/core/node'
 import {
   samePointArray as isSamePointArray,
   sameRectWithRotation as isSameRectWithRotationTuple
@@ -106,10 +107,6 @@ const emptyState = (): EdgeCacheState => ({
   ids: [],
   byId: new Map<EdgeId, EdgeItem>()
 })
-
-const readNodeRotation = (
-  node: CanvasNode['node']
-) => (typeof node.rotation === 'number' ? node.rotation : 0)
 
 const isSameView = (
   prevIds: readonly EdgeId[],

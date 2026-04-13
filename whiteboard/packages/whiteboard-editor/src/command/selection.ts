@@ -8,9 +8,7 @@ import type {
   GroupId,
   NodeInput
 } from '@whiteboard/core/types'
-import type {
-  EditorRead,
-} from '../types/editor'
+import type { EditorQueryRead } from '../query'
 import type {
   OrderMode,
   SessionActions,
@@ -27,7 +25,7 @@ export type SelectionCommands = Pick<
 >
 
 type SelectionCommandsHost = {
-  read: Pick<EditorRead, 'group'>
+  read: Pick<EditorQueryRead, 'group'>
   document: Pick<DocumentCommands, 'delete' | 'duplicate' | 'order' | 'group'>
   node: Pick<NodeCommands, 'create'>
   session: Pick<SessionActions, 'selection'>
@@ -72,7 +70,7 @@ const toCanvasRefs = (
 ]
 
 const readGroupTarget = (
-  read: Pick<EditorRead, 'group'>,
+  read: Pick<EditorQueryRead, 'group'>,
   groupId: GroupId
 ): SelectionTarget | undefined => read.group.target(groupId)
 

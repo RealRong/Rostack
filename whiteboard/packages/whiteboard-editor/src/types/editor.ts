@@ -22,12 +22,9 @@ import type {
   AppActions,
   AppConfig,
   ClipboardCommands,
-  ClipboardOptions,
-  ClipboardTarget,
   DrawCommands,
   HistoryCommands,
   MindmapCommands,
-  OrderMode,
   SelectionApi,
   SessionEditActions,
   SessionSelectionActions,
@@ -36,7 +33,6 @@ import type {
 } from './commands'
 import type { NodeCommands as RuntimeNodeCommands } from '../command/node/types'
 import type { EdgeCommands as RuntimeEdgeCommands } from '../command/edge'
-import type { RuntimeRead } from '../query'
 import type { SelectionModelRead } from '../query/selection/model'
 import type {
   ViewportInputRuntime,
@@ -48,9 +44,7 @@ import type {
   EditSession
 } from '../local/session/edit'
 import type { Commit } from '@whiteboard/engine/types/commit'
-
-export type EditorClipboardTarget = ClipboardTarget
-export type EditorClipboardOptions = ClipboardOptions
+import type { EditorQueryRead } from '../query'
 
 export type EditorPointerDispatchResult = {
   handled: boolean
@@ -93,38 +87,26 @@ export type EditorState = {
   viewport: ReadStore<Viewport>
 }
 
-export type EditorRead = RuntimeRead
-
-export type MindmapNodePatch = Parameters<MindmapCommands['updateNode']>[1]
-
-export type EditorConfig = AppConfig
-
-export type EditorStore = EditorState
-
 export type EditorChromePresentation = {
-  marquee: ReturnType<RuntimeRead['feedback']['marquee']['get']>
-  draw: ReturnType<RuntimeRead['feedback']['draw']['get']>
-  edgeGuide: ReturnType<RuntimeRead['feedback']['edgeGuide']['get']>
-  snap: ReturnType<RuntimeRead['feedback']['snap']['get']>
-  selection: ReturnType<RuntimeRead['selection']['overlay']['get']>
+  marquee: ReturnType<EditorQueryRead['feedback']['marquee']['get']>
+  draw: ReturnType<EditorQueryRead['feedback']['draw']['get']>
+  edgeGuide: ReturnType<EditorQueryRead['feedback']['edgeGuide']['get']>
+  snap: ReturnType<EditorQueryRead['feedback']['snap']['get']>
+  selection: ReturnType<EditorQueryRead['selection']['overlay']['get']>
 }
 
 export type EditorPanelPresentation = {
-  nodeToolbar: ReturnType<RuntimeRead['selection']['nodeToolbar']['get']>
-  edgeToolbar: ReturnType<RuntimeRead['edge']['toolbar']['get']>
+  nodeToolbar: ReturnType<EditorQueryRead['selection']['nodeToolbar']['get']>
+  edgeToolbar: ReturnType<EditorQueryRead['edge']['toolbar']['get']>
   history: HistoryState
   draw: DrawState
 }
 
-export type EditorPublicRead = EditorRead & {
+export type EditorPublicRead = EditorQueryRead & {
   chrome: ReadStore<EditorChromePresentation>
   panel: ReadStore<EditorPanelPresentation>
   selectionModel: SelectionModelRead
 }
-
-export type EditorAppActions = AppActions
-
-export type EditorToolActions = ToolActions
 
 export type EditorSelectionActions = {
   replace: SessionSelectionActions['replace']
@@ -146,8 +128,6 @@ export type EditorEditActions = SessionEditActions & {
   commit: () => void
 }
 
-export type EditorInteractionActions = EditorInput
-
 export type EditorNodeActions = Omit<
   RuntimeNodeCommands,
   'update' | 'updateMany'
@@ -159,8 +139,8 @@ export type EditorEdgeActions = Pick<
 >
 
 export type EditorActions = {
-  app: EditorAppActions
-  tool: EditorToolActions
+  app: AppActions
+  tool: ToolActions
   viewport: Pick<
     ViewportActions,
     'set' | 'panBy' | 'zoomTo' | 'fit' | 'reset' | 'setRect' | 'setLimits'
@@ -168,7 +148,7 @@ export type EditorActions = {
   draw: DrawCommands
   selection: EditorSelectionActions
   edit: EditorEditActions
-  interaction: EditorInteractionActions
+  interaction: EditorInput
   node: EditorNodeActions
   edge: EditorEdgeActions
   mindmap: MindmapCommands
@@ -184,7 +164,7 @@ export type EditorEvents = {
 }
 
 export type Editor = {
-  store: EditorStore
+  store: EditorState
   read: EditorPublicRead
   actions: EditorActions
   events: EditorEvents

@@ -1,4 +1,5 @@
 import {
+  readNodeRotation,
   resolveTextHandle,
   type TransformSpec
 } from '@whiteboard/core/node'
@@ -13,10 +14,6 @@ import {
   type RuntimeTransformSpec,
   type TransformTarget
 } from './session'
-
-const readNodeRotation = (
-  node: Node
-) => (typeof node.rotation === 'number' ? node.rotation : 0)
 
 const readTransformTarget = (
   ctx: InteractionContext,

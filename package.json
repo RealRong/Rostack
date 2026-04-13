@@ -3,6 +3,7 @@
   "private": true,
   "packageManager": "pnpm@9.15.5",
   "devDependencies": {
+    "@tsdown/css": "^0.21.8",
     "tsdown": "^0.21.8",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
@@ -10,7 +11,7 @@
     "vitest": "^4.1.4"
   },
   "scripts": {
-    "build": "pnpm run build:shared && pnpm run build:dataview && pnpm run build:dataview:app && pnpm run build:whiteboard && pnpm run build:whiteboard:app",
+    "build": "pnpm run build:shared && pnpm run build:dataview && pnpm run build:whiteboard && pnpm run build:whiteboard:app",
     "build:shared": "pnpm --filter @shared/core run build && pnpm --filter @shared/dom run build && pnpm --filter @shared/react run build && pnpm --filter @shared/ui run build",
     "build:dataview": "pnpm -C dataview run build",
     "build:dataview:app": "pnpm -C apps/dataview run build",

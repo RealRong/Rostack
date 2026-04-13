@@ -1,11 +1,39 @@
 export { Button, type ButtonProps } from './button'
 export { Checkbox, type CheckboxProps } from './checkbox'
+export {
+  FloatingLayer,
+  FloatingSurface,
+  type FloatingLayerProps,
+  type FloatingSurfaceProps
+} from './floating'
 export { Input, type InputProps } from './input'
 export {
-  Slider,
-  type SliderMark,
-  type SliderProps
-} from './slider'
+  ColorSwatchGrid,
+  formatPercent,
+  Panel,
+  PANEL_SECTION_TITLE_CLASSNAME,
+  PanelSection,
+  SegmentedButton,
+  SliderSection,
+  SwatchButton,
+  type SwatchButtonProps
+} from './panel'
+export {
+  PickerButton,
+  PickerDivider,
+  PickerGridButton,
+  PickerIconButton,
+  PickerOptionButton,
+  PickerPanelSurface,
+  PickerSection,
+  PickerSurface,
+  PickerTintBar
+} from './picker'
+export {
+    Slider,
+    type SliderMark,
+    type SliderProps
+  } from './slider'
 export { Select, type SelectProps } from './select'
 export { Label, type LabelProps } from './label'
 export {
@@ -64,6 +92,15 @@ export {
 } from './overlay'
 export { PanelHeader, type PanelHeaderProps } from './panel-header'
 export { Switch, type SwitchProps } from './switch'
+export {
+  ToolbarBar,
+  ToolbarButton,
+  ToolbarDivider,
+  ToolbarFillIcon,
+  ToolbarIconButton,
+  ToolbarStrokeIcon,
+  ToolbarTextColorIcon
+} from './toolbar'
 export {
   UI_CONTENT_COLOR_FAMILIES,
   UI_CONTENT_COLOR_IDS,

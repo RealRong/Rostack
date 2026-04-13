@@ -58,7 +58,7 @@ export type {
   ViewId
 } from './core/contracts'
 export { normalizeSearchableValue } from './core/field'
-export type { ValidationIssue } from './engine/write/issues'
+export type { ValidationIssue } from './engine/mutate/issues'
 export {
   cloneGalleryOptions,
   cloneKanbanOptions,
@@ -72,8 +72,13 @@ export {
   KANBAN_CARDS_PER_COLUMN_OPTIONS,
   TITLE_FIELD_ID
 } from './core/contracts'
-export { createEngine } from './engine/api'
+export { createEngine } from './engine/api/engine'
 export type {
+  ActiveCellsApi,
+  ActiveItemsApi,
+  ActiveViewApi,
+  ActiveViewReadApi,
+  ActiveViewSelectApi,
   ActionResult,
   CellRef,
   CommitResult,
@@ -81,7 +86,8 @@ export type {
   CreateEngineOptions,
   CreatedEntities,
   DocumentApi,
-  DocumentReadApi,
+  DocumentEntitySelectApi,
+  DocumentSelectApi,
   Engine,
   FieldList,
   FieldsApi,
@@ -115,17 +121,13 @@ export type {
   SortRuleProjection,
   StagePerformanceStats,
   TraceDeltaSummary,
-  ViewApi,
   ViewCell,
-  ViewCellsApi,
   ViewFieldRef,
   ViewFilterProjection,
   ViewGroupProjection,
   ViewItem,
-  ViewItemsApi,
   ViewPlanTrace,
   ViewQuery,
-  ViewReadApi,
   ViewRecords,
   ViewSearchProjection,
   ViewSortProjection,
@@ -136,5 +138,5 @@ export type {
   ViewState,
   ViewTrace,
   ViewsApi
-} from './engine/api'
+} from './engine/api/engine'
 export { sameCellRef } from './engine/contracts/public'

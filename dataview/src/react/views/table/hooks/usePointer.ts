@@ -427,7 +427,7 @@ export const usePointer = (
   const readCell = useCallback((cell: CellRef) => {
     const recordId = currentView.items.get(cell.itemId)?.recordId
     const record = recordId
-      ? editor.read.record.get(recordId)
+      ? editor.select.records.byId.get(recordId)
       : undefined
 
     return {
@@ -497,11 +497,11 @@ export const usePointer = (
     value: unknown | undefined
   ) => {
     if (value === undefined) {
-      editor.view.cells.clear(cell)
+      editor.active.cells.clear(cell)
       return
     }
 
-    editor.view.cells.set(cell, value)
+    editor.active.cells.set(cell, value)
   }, [editor])
 
   const runPrimary = useCallback((

@@ -26,7 +26,7 @@ import type {
   SearchDemand,
   SearchIndex,
   SearchTextIndex
-} from '../types'
+} from './types'
 
 const TOKEN_SEPARATOR = '\u0000'
 

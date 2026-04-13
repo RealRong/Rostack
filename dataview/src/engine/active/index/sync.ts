@@ -12,7 +12,7 @@ import {
   collectTouchedRecordIds,
   collectValueFieldIds,
   hasRecordSetChange
-} from '../shared'
+} from './shared'
 
 export interface FieldSyncContext {
   schemaFields: ReadonlySet<FieldId>

@@ -9,7 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@rostack/ui": "workspace:*",
     "@whiteboard/core": "workspace:*",
     "@whiteboard/react": "workspace:*",
     "react": "^19.0.0",

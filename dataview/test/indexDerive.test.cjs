@@ -4,7 +4,7 @@ const assert = require('node:assert/strict')
 const {
   createIndexState,
   deriveIndex
-} = require('../.tmp/group-test-dist/engine/index/runtime.js')
+} = require('../.tmp/group-test-dist/engine/active/index/runtime.js')
 
 const TITLE_FIELD_ID = 'title'
 const FIELD_STATUS = 'status'
@@ -141,7 +141,7 @@ const createIndexHarness = (document, demand) => {
   }
 }
 
-test('engine.index sync patches search/group/sort/calculation on record value changes', () => {
+test('engine.active.index sync patches search/group/sort/calculation on record value changes', () => {
   const document = createDocument()
   const index = createIndexHarness(document, {
     search: {
@@ -210,7 +210,7 @@ test('engine.index sync patches search/group/sort/calculation on record value ch
   assert.deepEqual(statusCalc.global.distribution.get('Done'), 2)
 })
 
-test('engine.index sync rebuilds only touched field semantics on schema changes', () => {
+test('engine.active.index sync rebuilds only touched field semantics on schema changes', () => {
   const document = createDocument()
   const index = createIndexHarness(document, {
     search: {

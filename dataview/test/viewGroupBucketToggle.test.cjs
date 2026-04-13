@@ -234,7 +234,7 @@ const createEngineForTest = options => createEngine({
     : {})
 })
 
-const readViewState = engine => engine.view.state.get()
+const readViewState = engine => engine.active.state.get()
 
 const itemIdByRecordId = (engine, recordId) => {
   const items = readViewState(engine)?.items
@@ -269,7 +269,7 @@ const moveRecordOrder = (engine, recordIds, beforeRecordId) => {
     return
   }
 
-  engine.view.items.move(itemIds, {
+  engine.active.items.move(itemIds, {
     section,
     ...(beforeItemId ? { before: beforeItemId } : {})
   })
@@ -277,7 +277,7 @@ const moveRecordOrder = (engine, recordIds, beforeRecordId) => {
 
 const openView = (engine, viewId) => {
   engine.views.open(viewId)
-  return engine.view
+  return engine.active
 }
 
 const viewSectionRecordIds = (engine, sectionKey) => {
@@ -322,7 +322,7 @@ test('view group bucket toggle clears the final collapsed bucket state', () => {
   openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
   openView(engine, VIEW_TABLE).sections.toggleCollapse('todo')
 
-  let view = engine.read.view.get(VIEW_TABLE)
+  let view = engine.select.views.byId.get(VIEW_TABLE)
   let sections = readViewState(engine)?.sections.all ?? []
 
   assert.deepEqual(view.group.buckets, {
@@ -337,7 +337,7 @@ test('view group bucket toggle clears the final collapsed bucket state', () => {
 
   openView(engine, VIEW_TABLE).sections.toggleCollapse('todo')
 
-  view = engine.read.view.get(VIEW_TABLE)
+  view = engine.select.views.byId.get(VIEW_TABLE)
   sections = readViewState(engine)?.sections.all ?? []
 
   assert.equal(view.group?.buckets, undefined)
@@ -354,15 +354,15 @@ test('view group interval set clears back to the field default when value is und
 
   openView(engine, VIEW_TABLE).group.set(FIELD_POINTS)
 
-  let view = engine.read.view.get(VIEW_TABLE)
+  let view = engine.select.views.byId.get(VIEW_TABLE)
   assert.equal(view.group?.bucketInterval, 10)
 
   openView(engine, VIEW_TABLE).group.setInterval(5)
-  view = engine.read.view.get(VIEW_TABLE)
+  view = engine.select.views.byId.get(VIEW_TABLE)
   assert.equal(view.group?.bucketInterval, 5)
 
   openView(engine, VIEW_TABLE).group.setInterval(undefined)
-  view = engine.read.view.get(VIEW_TABLE)
+  view = engine.select.views.byId.get(VIEW_TABLE)
   assert.equal(view.group?.bucketInterval, 10)
 })
 
@@ -392,45 +392,45 @@ test('kanban cards per column defaults to all and persists through the view api'
     document
   })
 
-  let board = engine.read.view.get(VIEW_BOARD)
+  let board = engine.select.views.byId.get(VIEW_BOARD)
   assert.equal(board.options.kanban.cardsPerColumn, 'all')
 
   openView(engine, VIEW_BOARD).kanban.setCardsPerColumn(25)
-  board = engine.read.view.get(VIEW_BOARD)
+  board = engine.select.views.byId.get(VIEW_BOARD)
   assert.equal(board.options.kanban.cardsPerColumn, 25)
 
   openView(engine, VIEW_BOARD).kanban.setCardsPerColumn(100)
-  board = engine.read.view.get(VIEW_BOARD)
+  board = engine.select.views.byId.get(VIEW_BOARD)
   assert.equal(board.options.kanban.cardsPerColumn, 100)
 
   openView(engine, VIEW_BOARD).kanban.setCardsPerColumn('all')
-  board = engine.read.view.get(VIEW_BOARD)
+  board = engine.select.views.byId.get(VIEW_BOARD)
   assert.equal(board.options.kanban.cardsPerColumn, 'all')
 })
 
-test('engine.view keeps selector boundaries inside one active pipeline', () => {
+test('engine.active keeps selector boundaries inside one active pipeline', () => {
   const engine = createEngineForTest({
     document: createMultiViewDocument()
   })
 
-  const groupStore = engine.view.select(current => current?.query.group)
-  const sortStore = engine.view.select(current => current?.query.sort)
+  const groupStore = engine.active.select(current => current?.query.group)
+  const sortStore = engine.active.select(current => current?.query.sort)
   let idEvents = 0
   let sortEvents = 0
-  const unsubscribeId = engine.view.id.subscribe(() => {
+  const unsubscribeId = engine.active.id.subscribe(() => {
     idEvents += 1
   })
   const unsubscribeSort = sortStore.subscribe(() => {
     sortEvents += 1
   })
 
-  assert.equal(engine.view.id.get(), VIEW_TABLE)
+  assert.equal(engine.active.id.get(), VIEW_TABLE)
   assert.equal(groupStore.get()?.active, false)
   assert.equal(sortStore.get()?.active, false)
 
   openView(engine, VIEW_TABLE).sort.add(FIELD_POINTS)
 
-  assert.equal(engine.view.id.get(), VIEW_TABLE)
+  assert.equal(engine.active.id.get(), VIEW_TABLE)
   assert.equal(sortStore.get()?.active, true)
   assert.equal(sortStore.get()?.rules[0]?.sorter.field, FIELD_POINTS)
   assert.equal(idEvents, 0)
@@ -438,7 +438,7 @@ test('engine.view keeps selector boundaries inside one active pipeline', () => {
 
   engine.views.open(VIEW_BOARD)
 
-  assert.equal(engine.view.id.get(), VIEW_BOARD)
+  assert.equal(engine.active.id.get(), VIEW_BOARD)
   assert.equal(groupStore.get()?.active, true)
   assert.equal(groupStore.get()?.fieldId, FIELD_STATUS)
   assert.equal(idEvents, 1)
@@ -447,30 +447,30 @@ test('engine.view keeps selector boundaries inside one active pipeline', () => {
   unsubscribeSort()
 })
 
-test('engine.document.replace publishes coherent read and active view state in one step', () => {
+test('engine.document.replace publishes coherent select and active view state in one step', () => {
   const engine = createEngineForTest({
     document: createDocument()
   })
   const nextDocument = createMultiViewDocument()
   let documentEvents = 0
 
-  const unsubscribe = engine.read.document.subscribe(() => {
+  const unsubscribe = engine.select.document.subscribe(() => {
     documentEvents += 1
-    assert.equal(engine.read.document.get().activeViewId, VIEW_TABLE)
-    assert.equal(engine.view.id.get(), VIEW_TABLE)
+    assert.equal(engine.select.document.get().activeViewId, VIEW_TABLE)
+    assert.equal(engine.active.id.get(), VIEW_TABLE)
     assert.deepEqual(readViewState(engine)?.records.visible, ['rec_1'])
   })
 
   engine.document.replace(nextDocument)
 
   assert.equal(documentEvents, 1)
-  assert.equal(engine.view.id.get(), VIEW_TABLE)
+  assert.equal(engine.active.id.get(), VIEW_TABLE)
   assert.deepEqual(readViewState(engine)?.records.visible, ['rec_1'])
 
   unsubscribe()
 })
 
-test('engine.view.state exposes body projections for the active view', () => {
+test('engine.active.state exposes body projections for the active view', () => {
   const engine = createEngineForTest({
     document: createDocument()
   })
@@ -492,7 +492,7 @@ test('engine.view.state exposes body projections for the active view', () => {
   assert.ok(summaries?.get('todo'))
 })
 
-test('engine.view.state records honor search filter sort and manual order', () => {
+test('engine.active.state records honor search filter sort and manual order', () => {
   const engine = createEngineForTest({
     document: createDocument()
   })
@@ -543,7 +543,7 @@ test('engine.view.state records honor search filter sort and manual order', () =
   )
 })
 
-test('engine.view.state grouped sections keep visible record order inside each bucket', () => {
+test('engine.active.state grouped sections keep visible record order inside each bucket', () => {
   const document = createDocument()
   document.records.byId.rec_4 = {
     id: 'rec_4',
@@ -574,7 +574,7 @@ test('engine.view.state grouped sections keep visible record order inside each b
   assert.deepEqual(todoIds, ['rec_4', 'rec_1'])
 })
 
-test('engine.view.state summaries are derived from index aggregates', () => {
+test('engine.active.state summaries are derived from index aggregates', () => {
   const document = createDocument()
   document.records.byId.rec_4 = {
     id: 'rec_4',
@@ -617,7 +617,7 @@ test('engine.view.state summaries are derived from index aggregates', () => {
   assert.equal(todoStatus?.items[0]?.percent, 1)
 })
 
-test('engine.view sync reuses unaffected grouped sections and summaries on data changes', () => {
+test('engine.active sync reuses unaffected grouped sections and summaries on data changes', () => {
   const engine = createEngineForTest({
     document: createDocument()
   })
@@ -661,7 +661,7 @@ test('engine.view sync reuses unaffected grouped sections and summaries on data 
   assert.deepEqual(viewSectionRecordIds(engine, 'done'), ['rec_1', 'rec_3'])
 })
 
-test('engine.view reconcile keeps undo redo equivalent across sequential deltas', () => {
+test('engine.active reconcile keeps undo redo equivalent across sequential deltas', () => {
   const engine = createEngineForTest({
     document: createDocument()
   })
@@ -751,7 +751,7 @@ test('view.create resolves duplicate names in the write planner', () => {
 
   const createdViewId = result.created?.views?.[0]
   assert.ok(createdViewId)
-  assert.equal(engine.read.view.get(createdViewId)?.name, 'Tasks 2')
+  assert.equal(engine.select.views.byId.get(createdViewId)?.name, 'Tasks 2')
 })
 
 test('engine.views.duplicate reuses the shared unique naming rule', () => {
@@ -779,5 +779,5 @@ test('engine.views.duplicate reuses the shared unique naming rule', () => {
 
   const createdViewId = engine.views.duplicate(sourceViewId)
   assert.ok(createdViewId)
-  assert.equal(engine.read.view.get(createdViewId)?.name, 'Tasks Copy 2')
+  assert.equal(engine.select.views.byId.get(createdViewId)?.name, 'Tasks Copy 2')
 })

@@ -1,4 +1,4 @@
-import type { CommitResult, TraceDeltaSummary } from '../contracts/public'
+import type { CommitResult, TraceDeltaSummary } from '../../contracts/public'
 
 type WriteKind =
   | 'write'

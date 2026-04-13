@@ -1,3 +1,4 @@
+import '@rostack/ui/css/core.css'
 import './styles/whiteboard-react.css'
 
 export { Whiteboard } from './Whiteboard'

@@ -110,7 +110,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   const view = currentView.view
   const groupProjection = currentView.query.group
   const sortProjection = currentView.query.sort
-  const showVerticalLinesStore = useMemo(() => editor.view.select(
+  const showVerticalLinesStore = useMemo(() => editor.active.select(
     state => state?.view.options.table.showVerticalLines ?? false
   ), [editor])
   const showVerticalLines = useStoreValue(showVerticalLinesStore)
@@ -146,7 +146,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   const urlConfig = customField?.kind === 'url'
     ? customField
     : undefined
-  const viewApi = editor.view
+  const viewApi = editor.active
 
   const insertProperty = (side: 'left' | 'right') => {
     if (side === 'left') {

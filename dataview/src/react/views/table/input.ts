@@ -112,7 +112,7 @@ export const handleTableKey = (input: {
       case 'clear-cells': {
         action.itemIds.forEach(itemId => {
           action.fieldIds.forEach(fieldId => {
-            input.editor.view.cells.clear({
+            input.editor.active.cells.clear({
               itemId,
               fieldId
             })
@@ -166,7 +166,7 @@ export const handleTableKey = (input: {
     }
     case 'Backspace':
     case 'Delete':
-      input.editor.view.items.remove(
+      input.editor.active.items.remove(
         currentSelection.ids
       )
       input.setKeyboardMode()
@@ -205,11 +205,11 @@ export const applyPaste = (input: {
 
   entries.forEach(entry => {
     if (entry.value === undefined) {
-      input.editor.view.cells.clear(entry.cell)
+      input.editor.active.cells.clear(entry.cell)
       return
     }
 
-    input.editor.view.cells.set(entry.cell, entry.value)
+    input.editor.active.cells.set(entry.cell, entry.value)
   })
 
   return true

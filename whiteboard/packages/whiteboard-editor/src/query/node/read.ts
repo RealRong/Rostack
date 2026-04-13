@@ -28,7 +28,7 @@ import type {
   NodeRole
 } from '../../types/node'
 import type {
-  NodeOverlayProjection,
+  NodeFeedbackProjection,
 } from '../../local/feedback/types'
 import type { EditSession } from '../../local/session/edit'
 import {
@@ -228,28 +228,28 @@ const readNodeItemGeometry = (
 ): ReturnType<typeof readProjectedNodeGeometry> => readProjectedNodeGeometry(item)
 
 const toNodeRuntimeState = (
-  projection: NodeOverlayProjection
+  feedback: NodeFeedbackProjection
 ): NodeRuntimeState => ({
-  hovered: projection.hovered,
-  hidden: projection.hidden,
-  patched: Boolean(projection.patch || projection.text),
+  hovered: feedback.hovered,
+  hidden: feedback.hidden,
+  patched: Boolean(feedback.patch || feedback.text),
   resizing: Boolean(
-    projection.patch?.size
-    || projection.text?.handle
-    || projection.text?.size
-    || projection.text?.position
+    feedback.patch?.size
+    || feedback.text?.handle
+    || feedback.text?.size
+    || feedback.text?.position
   )
 })
 
 export const createNodeRead = ({
   read,
   registry,
-  overlay,
+  feedback,
   edit
 }: {
   read: EngineRead
   registry: NodeRegistry
-  overlay: KeyedReadStore<NodeId, NodeOverlayProjection>
+  feedback: KeyedReadStore<NodeId, NodeFeedbackProjection>
   edit: ReadStore<EditSession>
 }): NodeRead => {
   const item: NodeRead['item'] = createKeyedDerivedStore({
@@ -261,7 +261,7 @@ export const createNodeRead = ({
 
       return projectNodeItem(
         current,
-        readValue(overlay, nodeId),
+        readValue(feedback, nodeId),
         readValue(edit)
       )
     },
@@ -269,7 +269,7 @@ export const createNodeRead = ({
   })
   const state: NodeRead['state'] = createKeyedDerivedStore({
     get: (nodeId: NodeId) => toNodeRuntimeState(
-      readValue(overlay, nodeId)
+      readValue(feedback, nodeId)
     ),
     isEqual: isNodeStateEqual
   })

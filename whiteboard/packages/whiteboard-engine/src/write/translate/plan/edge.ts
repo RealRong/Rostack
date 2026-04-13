@@ -1,4 +1,4 @@
-import type { WriteCommandMap } from '@engine-types/command'
+import type { EdgeBatchUpdate, EdgeCommand } from '#types/command'
 import {
   getEdge,
   getNode
@@ -20,21 +20,22 @@ import type { Edge, EdgeId, Node, SpatialNode } from '@whiteboard/core/types'
 import type { WriteTranslateContext } from '../index'
 import type { Step } from './shared'
 
-type Command = WriteCommandMap['edge']
-type Create = Extract<Command, { type: 'create' }>
-type Move = Extract<Command, { type: 'move' }>
-type UpdateMany = Extract<Command, { type: 'updateMany' }>
-type Remove = Extract<Command, { type: 'delete' }>
-type Route = Extract<Command, { type: 'route' }>
-type RouteInsert = Extract<Route, { mode: 'insert' }>
+type Create = Extract<EdgeCommand, { type: 'edge.create' }>
+type Move = Extract<EdgeCommand, { type: 'edge.move' }>
+type Reconnect = Extract<EdgeCommand, { type: 'edge.reconnect' }>
+type Patch = Extract<EdgeCommand, { type: 'edge.patch' }>
+type UpdateMany = Reconnect | Patch
+type Remove = Extract<EdgeCommand, { type: 'edge.delete' }>
+type Route = Extract<EdgeCommand, { type: `edge.route.${string}` }>
+type RouteInsert = Extract<Route, { type: 'edge.route.insert' }>
 type RouteRest = Exclude<Route, RouteInsert>
 
 const asSpatial = (
   node: Node | undefined
 ): SpatialNode | undefined => node
 
-const mergePatches = (updates: readonly UpdateMany['updates'][number][]) => {
-  const patchById = new Map<EdgeId, UpdateMany['updates'][number]['patch']>()
+const mergePatches = (updates: readonly EdgeBatchUpdate[]) => {
+  const patchById = new Map<EdgeId, EdgeBatchUpdate['patch']>()
 
   updates.forEach(({ id, patch }) => {
     if (!Object.keys(patch).length) {
@@ -153,7 +154,15 @@ export const move = (
   )
 
 export const updateMany = (command: UpdateMany): Step => {
-  const operations = mergePatches(command.updates)
+  const updates = command.type === 'edge.reconnect'
+    ? [{
+        id: command.edgeId,
+        patch: command.end === 'source'
+          ? { source: command.target }
+          : { target: command.target }
+      }]
+    : command.updates
+  const operations = mergePatches(updates)
   if (!operations.length) {
     return err('cancelled', 'No edge updates provided.')
   }
@@ -188,8 +197,8 @@ export function route(
   command: Route,
   ctx: WriteTranslateContext
 ): Step<{ index: number }> | Step {
-  switch (command.mode) {
-    case 'insert': {
+  switch (command.type) {
+    case 'edge.route.insert': {
       if (!command.point) {
         return err('invalid', 'Route point required.')
       }
@@ -221,8 +230,8 @@ export function route(
         }
       })
     }
-    case 'move': {
-      if (command.index === undefined || !command.point) {
+    case 'edge.route.move': {
+      if (!command.point) {
         return err('invalid', 'Route index and point required.')
       }
 
@@ -232,17 +241,13 @@ export function route(
         moveRoutePoint(edge, moveIndex, movePoint)
       )
     }
-    case 'remove': {
-      if (command.index === undefined) {
-        return err('invalid', 'Route index required.')
-      }
-
+    case 'edge.route.remove': {
       const removeIndex = command.index
       return routePatch(command.edgeId, ctx, (edge) =>
         removeRoutePoint(edge, removeIndex)
       )
     }
-    case 'clear':
+    case 'edge.route.clear':
       return routePatch(command.edgeId, ctx, (edge) => clearRoute(edge))
     default:
       return err('invalid', 'Unsupported route mode.')

@@ -9,15 +9,15 @@ import type { Guide } from '@whiteboard/core/node'
 import type { ViewportRuntime } from '../viewport/runtime'
 import {
   EMPTY_EDGE_GUIDE,
-  EMPTY_EDGE_OVERLAY_PROJECTION,
+  EMPTY_EDGE_FEEDBACK_PROJECTION,
   isEdgeGuideEqual,
   isEdgeProjectionEqual,
-  toEdgeOverlayMap
+  toEdgeFeedbackMap
 } from './edge'
 import {
-  EMPTY_NODE_OVERLAY_PROJECTION,
+  EMPTY_NODE_FEEDBACK_PROJECTION,
   isNodeProjectionEqual,
-  toNodeOverlayMap
+  toNodeFeedbackMap
 } from './node'
 import {
   EMPTY_GUIDES,
@@ -25,29 +25,29 @@ import {
   projectWorldRect
 } from './selection'
 import type {
-  EditorOverlay,
-  EditorOverlayState,
+  EditorFeedbackRuntime,
+  EditorFeedbackState,
   MarqueeFeedback
 } from './types'
 
-export const createOverlaySelectors = ({
+export const createFeedbackSelectors = ({
   state,
   viewport
 }: {
-  state: ReadStore<EditorOverlayState>
+  state: ReadStore<EditorFeedbackState>
   viewport: ViewportRuntime['read']
-}): EditorOverlay['selectors'] => {
+}): EditorFeedbackRuntime['selectors'] => {
   const node = createProjectedKeyedStore({
     source: state,
-    select: toNodeOverlayMap,
-    emptyValue: EMPTY_NODE_OVERLAY_PROJECTION,
+    select: toNodeFeedbackMap,
+    emptyValue: EMPTY_NODE_FEEDBACK_PROJECTION,
     isEqual: isNodeProjectionEqual,
     schedule: 'microtask'
   })
   const edge = createProjectedKeyedStore({
     source: state,
-    select: toEdgeOverlayMap,
-    emptyValue: EMPTY_EDGE_OVERLAY_PROJECTION,
+    select: toEdgeFeedbackMap,
+    emptyValue: EMPTY_EDGE_FEEDBACK_PROJECTION,
     isEqual: isEdgeProjectionEqual,
     schedule: 'raf'
   })
@@ -96,12 +96,10 @@ export const createOverlaySelectors = ({
   return {
     node,
     edge,
-    feedback: {
-      draw,
-      marquee,
-      mindmapDrag,
-      edgeGuide,
-      snap
-    }
+    draw,
+    marquee,
+    mindmapDrag,
+    edgeGuide,
+    snap
   }
 }

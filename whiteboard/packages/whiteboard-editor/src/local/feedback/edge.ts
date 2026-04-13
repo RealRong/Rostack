@@ -4,20 +4,20 @@ import type { EdgeId } from '@whiteboard/core/types'
 import type {
   EdgeConnectFeedback,
   EdgeGuide,
-  EdgeOverlayEntry,
-  EdgeOverlayProjection,
-  EdgeOverlayState,
-  EditorOverlayState
+  EdgeFeedbackEntry,
+  EdgeFeedbackProjection,
+  EdgeFeedbackState,
+  EditorFeedbackState
 } from './types'
 import { mergeEntryById } from './merge'
 
-export const EMPTY_EDGE_PATCHES: readonly EdgeOverlayEntry[] = []
+export const EMPTY_EDGE_FEEDBACK_ENTRIES: readonly EdgeFeedbackEntry[] = []
 export const EMPTY_EDGE_GUIDE: EdgeGuide = {}
-export const EMPTY_EDGE_OVERLAY: EdgeOverlayState = {
-  interaction: EMPTY_EDGE_PATCHES
+export const EMPTY_EDGE_FEEDBACK: EdgeFeedbackState = {
+  interaction: EMPTY_EDGE_FEEDBACK_ENTRIES
 }
-export const EMPTY_EDGE_OVERLAY_PROJECTION: EdgeOverlayProjection = {}
-const EMPTY_EDGE_OVERLAY_MAP = new Map<EdgeId, EdgeOverlayProjection>()
+export const EMPTY_EDGE_FEEDBACK_PROJECTION: EdgeFeedbackProjection = {}
+const EMPTY_EDGE_FEEDBACK_MAP = new Map<EdgeId, EdgeFeedbackProjection>()
 
 const isEdgeConnectFeedbackEqual = (
   left: EdgeConnectFeedback | undefined,
@@ -83,8 +83,8 @@ export const isEdgeGuideEqual = (
 )
 
 export const isEdgeProjectionEqual = (
-  left: EdgeOverlayProjection,
-  right: EdgeOverlayProjection
+  left: EdgeFeedbackProjection,
+  right: EdgeFeedbackProjection
 ) => (
   isEdgePatchEqual(left.patch, right.patch)
   && left.activeRouteIndex === right.activeRouteIndex
@@ -97,9 +97,9 @@ const isEdgeGuideEmpty = (
   || (!guide.path && !guide.connect)
 )
 
-const mergeEdgeOverlayEntries = (
-  next: Map<EdgeId, EdgeOverlayProjection>,
-  entries: readonly EdgeOverlayEntry[]
+const mergeEdgeFeedbackEntries = (
+  next: Map<EdgeId, EdgeFeedbackProjection>,
+  entries: readonly EdgeFeedbackEntry[]
 ) => {
   for (let index = 0; index < entries.length; index += 1) {
     const entry = entries[index]!
@@ -122,21 +122,21 @@ const mergeEdgeOverlayEntries = (
   }
 }
 
-export const normalizeEdgeOverlayState = (
-  state: EdgeOverlayState
-): EdgeOverlayState => {
+export const normalizeEdgeFeedbackState = (
+  state: EdgeFeedbackState
+): EdgeFeedbackState => {
   const interaction = state.interaction.length > 0
     ? state.interaction
-    : EMPTY_EDGE_PATCHES
+    : EMPTY_EDGE_FEEDBACK_ENTRIES
   const guide = isEdgeGuideEmpty(state.guide)
     ? undefined
     : state.guide
 
   if (
-    interaction === EMPTY_EDGE_PATCHES
+    interaction === EMPTY_EDGE_FEEDBACK_ENTRIES
     && guide === undefined
   ) {
-    return EMPTY_EDGE_OVERLAY
+    return EMPTY_EDGE_FEEDBACK
   }
 
   return {
@@ -145,21 +145,21 @@ export const normalizeEdgeOverlayState = (
   }
 }
 
-export const toEdgeOverlayMap = (
-  state: EditorOverlayState
+export const toEdgeFeedbackMap = (
+  state: EditorFeedbackState
 ) => {
   if (
     state.selection.edge.length === 0
     && state.edge.interaction.length === 0
   ) {
-    return EMPTY_EDGE_OVERLAY_MAP
+    return EMPTY_EDGE_FEEDBACK_MAP
   }
 
-  const next = new Map<EdgeId, EdgeOverlayProjection>()
-  mergeEdgeOverlayEntries(next, state.selection.edge)
-  mergeEdgeOverlayEntries(next, state.edge.interaction)
+  const next = new Map<EdgeId, EdgeFeedbackProjection>()
+  mergeEdgeFeedbackEntries(next, state.selection.edge)
+  mergeEdgeFeedbackEntries(next, state.edge.interaction)
 
   return next.size > 0
     ? next
-    : EMPTY_EDGE_OVERLAY_MAP
+    : EMPTY_EDGE_FEEDBACK_MAP
 }

@@ -1,4 +1,4 @@
-import type { ReadModel } from '@engine-types/read'
+import type { ReadModel } from '#types/read'
 import type { Document, Edge, Node, NodeId } from '@whiteboard/core/types'
 import {
   toLayerOrderedCanvasNodeIds

@@ -1,13 +1,13 @@
-import '@ui/css/core.css'
+import '@shared/ui/css/core.css'
 import './styles.css'
 
 import { createRoot } from 'react-dom/client'
 import {
-  createDefaultViewOptions,
-  createEngine,
   type DataDoc,
   type CustomField
-} from '@dataview'
+} from '@dataview/core/contracts'
+import { createDefaultViewOptions } from '@dataview/core/view'
+import { createEngine } from '@dataview/engine'
 import {
   TITLE_FIELD_ID
 } from '@dataview/core/contracts'

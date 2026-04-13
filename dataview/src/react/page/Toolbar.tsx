@@ -16,19 +16,19 @@ import {
   getDocumentFields,
   getDocumentViews
 } from '@dataview/core/document'
-import { Button } from '@ui/button'
-import { Menu, type MenuItem } from '@ui/menu'
-import { Popover } from '@ui/popover'
-import { cn } from '@ui/utils'
-import { FieldPicker } from '@dataview/react/field/picker'
-import { CreateViewPopover } from '@dataview/react/page/features/createView'
-import { getAvailableFilterFields } from '@dataview/react/page/features/filter/filterUi'
-import { getAvailableSorterFields } from '@dataview/react/page/features/sort'
-import { ViewSettingsPopover } from '@dataview/react/page/features/viewSettings'
+import { Button } from '@shared/ui/button'
+import { Menu, type MenuItem } from '@shared/ui/menu'
+import { Popover } from '@shared/ui/popover'
+import { cn } from '@shared/ui/utils'
+import { FieldPicker } from '#react/field/picker'
+import { CreateViewPopover } from '#react/page/features/createView'
+import { getAvailableFilterFields } from '#react/page/features/filter/filterUi'
+import { getAvailableSorterFields } from '#react/page/features/sort'
+import { ViewSettingsPopover } from '#react/page/features/viewSettings'
 import {
   useDataView,
   useDataViewValue,
-} from '@dataview/react/dataview'
+} from '#react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 
 interface ViewTabProps {

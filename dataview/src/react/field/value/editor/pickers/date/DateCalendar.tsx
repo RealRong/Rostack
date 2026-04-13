@@ -16,8 +16,8 @@ import {
   useMemo,
   useState
 } from 'react'
-import { Button } from '@ui/button'
-import { cn } from '@ui/utils'
+import { Button } from '@shared/ui/button'
+import { cn } from '@shared/ui/utils'
 import {
   readDateDraftBoundaryDate,
   type DateValueDraft

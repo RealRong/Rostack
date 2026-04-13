@@ -4,7 +4,7 @@ import type {
 } from '@dataview/engine'
 import type {
   MarqueeSessionState
-} from '@dataview/react/runtime/marquee'
+} from '#react/runtime/marquee'
 import {
   observeElementSize,
   pageScrollNode,

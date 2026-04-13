@@ -1,4 +1,4 @@
-import { ToolbarButton } from '@rostack/ui'
+import { ToolbarButton } from '@shared/ui'
 import { ShapeGlyph } from '#react/features/node'
 import { ShapePickerPanel } from '../../panels/ShapePickerPanel'
 import type { ToolbarItemSpec } from './types'

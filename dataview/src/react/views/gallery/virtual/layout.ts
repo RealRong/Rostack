@@ -4,7 +4,7 @@ import type {
 } from '@dataview/engine'
 import {
   resolveAutoFillGridMetrics
-} from '@dataview/react/virtual'
+} from '#react/virtual'
 import type {
   GalleryBlock,
   GalleryCardLayout,

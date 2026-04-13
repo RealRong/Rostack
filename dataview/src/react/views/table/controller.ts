@@ -9,20 +9,20 @@ import {
 import {
   createInteractionCoordinator,
   type InteractionApi
-} from '@dataview/react/interaction'
+} from '#react/interaction'
 import {
   type ItemId,
   type Section
 } from '@dataview/engine'
 import type {
   Selection
-} from '@dataview/react/runtime/selection'
+} from '#react/runtime/selection'
 import type {
   MarqueeSessionState
-} from '@dataview/react/runtime/marquee'
+} from '#react/runtime/marquee'
 import {
   selection as selectionHelpers
-} from '@dataview/react/runtime/selection'
+} from '#react/runtime/selection'
 import {
   createDerivedStore,
   createValueStore,
@@ -32,8 +32,8 @@ import {
 import type {
   ValueStore
 } from '@shared/core'
-import type { PageState } from '@dataview/react/page/session/types'
-import type { ValueEditorApi } from '@dataview/react/runtime/valueEditor'
+import type { PageState } from '#react/page/session/types'
+import type { ValueEditorApi } from '#react/runtime/valueEditor'
 import {
   createCapabilities,
   type Capabilities

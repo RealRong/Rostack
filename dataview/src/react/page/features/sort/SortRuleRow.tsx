@@ -6,14 +6,14 @@ import {
   X
 } from 'lucide-react'
 import type { Field, Sorter } from '@dataview/core/contracts'
-import { FieldPicker } from '@dataview/react/field/picker'
-import { Button } from '@ui/button'
-import { Menu } from '@ui/menu'
-import { Popover } from '@ui/popover'
-import type { VerticalReorderItemState } from '@ui/vertical-reorder-list'
-import { cn } from '@ui/utils'
+import { FieldPicker } from '#react/field/picker'
+import { Button } from '@shared/ui/button'
+import { Menu } from '@shared/ui/menu'
+import { Popover } from '@shared/ui/popover'
+import type { VerticalReorderItemState } from '@shared/ui/vertical-reorder-list'
+import { cn } from '@shared/ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
-import { buildChoiceToggleItems } from '@dataview/react/menu-builders'
+import { buildChoiceToggleItems } from '#react/menu-builders'
 import {
   SORT_DIRECTIONS,
   findSorterField,

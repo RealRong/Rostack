@@ -41,6 +41,7 @@ export type NodeType =
   | 'mindmap'
 
 export type SpatialNodeType = NodeType
+export type NodeRole = 'content' | 'frame'
 export type NodeLayer = 'background' | 'default' | 'overlay'
 export type NodeData = Record<string, unknown>
 export type NodeStyleValue =
@@ -79,6 +80,12 @@ export type EdgeType = EdgeBaseType | (string & {})
 export type EdgeMarker = 'none' | 'arrow'
 export type EdgeDash = 'solid' | 'dashed' | 'dotted'
 export type EdgeTextMode = 'horizontal' | 'tangent'
+export type OrderMode =
+  | 'set'
+  | 'front'
+  | 'back'
+  | 'forward'
+  | 'backward'
 
 export type NodeEdgeEnd = {
   kind: 'node'

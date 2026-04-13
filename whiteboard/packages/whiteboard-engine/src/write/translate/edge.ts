@@ -1,37 +1,36 @@
-import type { EdgeWriteOutput, WriteCommandMap } from '@engine-types/command'
-import type { TranslateResult } from '@engine-types/internal/translate'
+import type { CommandOutput, EdgeCommand } from '#types/command'
+import type { TranslateResult } from '#types/internal/translate'
 import type { WriteTranslateContext } from './index'
 import * as plan from './plan/edge'
 import { fromOps, invalid } from './result'
 
-type EdgeCommand = WriteCommandMap['edge']
-
 export const translateEdge = <C extends EdgeCommand>(
   command: C,
   ctx: WriteTranslateContext
-): TranslateResult<EdgeWriteOutput<C>> => {
+): TranslateResult<CommandOutput<C>> => {
   switch (command.type) {
-    case 'create':
+    case 'edge.create':
       return fromOps(
         plan.create(command, ctx),
         ({ output }) => output
-      ) as TranslateResult<EdgeWriteOutput<C>>
-    case 'move':
-      return fromOps(plan.move(command, ctx)) as TranslateResult<EdgeWriteOutput<C>>
-    case 'updateMany':
-      return fromOps(plan.updateMany(command)) as TranslateResult<EdgeWriteOutput<C>>
-    case 'delete':
-      return fromOps(plan.remove(command)) as TranslateResult<EdgeWriteOutput<C>>
-    case 'route':
-      if (command.mode === 'insert') {
-        return fromOps(
-          plan.route(command, ctx),
-          ({ output }) => output
-        ) as TranslateResult<EdgeWriteOutput<C>>
-      }
-
-      return fromOps(plan.route(command, ctx)) as TranslateResult<EdgeWriteOutput<C>>
+      ) as TranslateResult<CommandOutput<C>>
+    case 'edge.move':
+      return fromOps(plan.move(command, ctx)) as TranslateResult<CommandOutput<C>>
+    case 'edge.reconnect':
+    case 'edge.patch':
+      return fromOps(plan.updateMany(command)) as TranslateResult<CommandOutput<C>>
+    case 'edge.delete':
+      return fromOps(plan.remove(command)) as TranslateResult<CommandOutput<C>>
+    case 'edge.route.insert':
+      return fromOps(
+        plan.route(command, ctx),
+        ({ output }) => output
+      ) as TranslateResult<CommandOutput<C>>
+    case 'edge.route.move':
+    case 'edge.route.remove':
+    case 'edge.route.clear':
+      return fromOps(plan.route(command, ctx)) as TranslateResult<CommandOutput<C>>
     default:
-      return invalid('Unsupported edge action.') as TranslateResult<EdgeWriteOutput<C>>
+      return invalid('Unsupported edge action.') as TranslateResult<CommandOutput<C>>
   }
 }

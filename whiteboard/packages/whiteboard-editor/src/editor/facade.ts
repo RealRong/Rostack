@@ -148,10 +148,10 @@ export const createEditorFacade = ({
 
   const chrome = createDerivedStore({
     get: () => ({
-      marquee: readValue(query.read.overlay.feedback.marquee),
-      draw: readValue(query.read.overlay.feedback.draw),
-      edgeGuide: readValue(query.read.overlay.feedback.edgeGuide),
-      snap: readValue(query.read.overlay.feedback.snap),
+      marquee: readValue(query.read.feedback.marquee),
+      draw: readValue(query.read.feedback.draw),
+      edgeGuide: readValue(query.read.feedback.edgeGuide),
+      snap: readValue(query.read.feedback.snap),
       selection: readValue(query.read.selection.overlay)
     }),
     isEqual: (left, right) => (

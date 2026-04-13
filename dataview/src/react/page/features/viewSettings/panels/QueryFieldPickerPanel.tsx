@@ -1,11 +1,11 @@
 import { getDocumentFields } from '@dataview/core/document'
-import { FieldPicker } from '@dataview/react/field/picker'
-import { getAvailableFilterFields } from '@dataview/react/page/features/filter/filterUi'
-import { getAvailableSorterFields } from '@dataview/react/page/features/sort'
+import { FieldPicker } from '#react/field/picker'
+import { getAvailableFilterFields } from '#react/page/features/filter/filterUi'
+import { getAvailableSorterFields } from '#react/page/features/sort'
 import {
   useDataView,
   useDataViewValue
-} from '@dataview/react/dataview'
+} from '#react/dataview'
 import { meta } from '@dataview/meta'
 import { useViewSettings } from '../context'
 

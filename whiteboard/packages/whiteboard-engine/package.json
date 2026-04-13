@@ -2,33 +2,39 @@
   "name": "@whiteboard/engine",
   "version": "0.1.0",
   "type": "module",
-  "main": "dist/index.cjs",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    }
+    ".": "./src/index.ts",
+    "./types": "./src/types/index.ts",
+    "./types/*": "./src/types/*.ts",
+    "./types/internal/*": "./src/types/internal/*.ts"
+  },
+  "imports": {
+    "#types": "./src/types/index.ts",
+    "#types/*": "./src/types/*.ts",
+    "#types/internal/*": "./src/types/internal/*.ts"
   },
   "files": [
+    "src",
     "dist"
   ],
   "dependencies": {
     "@shared/core": "workspace:*",
     "@whiteboard/core": "workspace:*"
   },
+  "devDependencies": {
+    "tsup": "^8.0.2",
+    "typescript": "^5.9.3"
+  },
   "scripts": {
-    "build": "pnpm -C ../.. build:engine",
-    "bench:drag-frame": "pnpm -C ../.. exec sh -lc 'cd packages/whiteboard-engine && tsup bench/dragFrame.ts --format esm --outDir .bench --clean --silent && node .bench/dragFrame.js'",
+    "build": "tsup --config tsup.config.ts",
+    "bench:drag-frame": "tsup bench/dragFrame.ts --format esm --outDir .bench --clean --silent && node .bench/dragFrame.js",
     "bench:drag-frame:check": "WB_BENCH_ENFORCE=1 pnpm run bench:drag-frame",
-    "bench:node-transform-frame": "pnpm -C ../.. exec sh -lc 'cd packages/whiteboard-engine && tsup bench/nodeTransformFrame.ts --format esm --outDir .bench --clean --silent && node .bench/nodeTransformFrame.js'",
+    "bench:node-transform-frame": "tsup bench/nodeTransformFrame.ts --format esm --outDir .bench --clean --silent && node .bench/nodeTransformFrame.js",
     "bench:node-transform-frame:check": "WB_BENCH_ENFORCE=1 pnpm run bench:node-transform-frame",
-    "bench:edge-routing-frame": "pnpm -C ../.. exec sh -lc 'cd packages/whiteboard-engine && tsup bench/edgeRoutingFrame.ts --format esm --outDir .bench --clean --silent && node .bench/edgeRoutingFrame.js'",
+    "bench:edge-routing-frame": "tsup bench/edgeRoutingFrame.ts --format esm --outDir .bench --clean --silent && node .bench/edgeRoutingFrame.js",
     "bench:edge-routing-frame:check": "WB_BENCH_ENFORCE=1 pnpm run bench:edge-routing-frame",
     "bench:check": "pnpm run bench:drag-frame:check && pnpm run bench:node-transform-frame:check && pnpm run bench:edge-routing-frame:check",
-    "lint": "pnpm -C ../.. typecheck:engine",
+    "lint": "tsc -p tsconfig.json --noEmit",
     "test": "echo \"No tests\""
   }
 }

@@ -1,8 +1,8 @@
-import { resolveOptionColumnStyle } from '@ui/color'
+import { resolveOptionColumnStyle } from '@shared/ui/color'
 import {
   useDataView
-} from '@dataview/react/dataview'
-import { cn } from '@ui/utils'
+} from '#react/dataview'
+import { cn } from '@shared/ui/utils'
 import type { Section } from '@dataview/engine'
 import { useKanbanContext } from '../context'
 import { ColumnBody } from './ColumnBody'

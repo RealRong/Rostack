@@ -9,21 +9,21 @@ import type {
   StatusCategory
 } from '@dataview/core/contracts'
 import { getFieldOptions, getStatusSections } from '@dataview/core/field'
-import { useDataView } from '@dataview/react/dataview'
+import { useDataView } from '#react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
-import { Button } from '@ui/button'
+import { Button } from '@shared/ui/button'
 import {
   Menu,
   type MenuReorderItem
-} from '@ui/menu'
-import { cn } from '@ui/utils'
+} from '@shared/ui/menu'
+import { cn } from '@shared/ui/utils'
 import {
   OptionEditorPanel,
-} from '@dataview/react/field/options'
+} from '#react/field/options'
 import {
   buildOptionPanelReorderItem,
   readOptionLabel
-} from '@dataview/react/menu-builders'
+} from '#react/menu-builders'
 import { getStatusCategoryLabel } from '@dataview/core/field'
 import { FIELD_DROPDOWN_MENU_PROPS } from '../../dropdown'
 

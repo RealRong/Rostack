@@ -3,9 +3,9 @@ import type { ReactNode } from 'react'
 import type { StatusCategory } from '@dataview/core/contracts'
 import { getStatusCategoryLabel } from '@dataview/core/field'
 import { meta, renderMessage } from '@dataview/meta'
-import { resolveOptionDotStyle, resolveOptionColorToken } from '@ui/color'
-import type { MenuItem, MenuReorderItem, MenuSurfaceSize } from '@ui/menu'
-import { FieldOptionTag, type FieldOptionTagProps } from '@dataview/react/field/options'
+import { resolveOptionDotStyle, resolveOptionColorToken } from '@shared/ui/color'
+import type { MenuItem, MenuReorderItem, MenuSurfaceSize } from '@shared/ui/menu'
+import { FieldOptionTag, type FieldOptionTagProps } from '#react/field/options'
 
 export interface MenuOptionLike {
   id: string
@@ -41,7 +41,7 @@ export const buildOptionPanelItem = (input: {
   surface?: 'list' | 'panel'
   presentation?: 'cascade' | 'dropdown'
   placement?: import('@floating-ui/react').Placement
-  offset?: import('@ui/popover').PopoverOffset
+  offset?: import('@shared/ui/popover').PopoverOffset
   trailing?: ReactNode
   className?: string
   variant?: FieldOptionTagProps['variant']
@@ -73,7 +73,7 @@ export const buildOptionPanelReorderItem = (input: {
   size?: MenuSurfaceSize
   presentation?: 'cascade' | 'dropdown'
   placement?: import('@floating-ui/react').Placement
-  offset?: import('@ui/popover').PopoverOffset
+  offset?: import('@shared/ui/popover').PopoverOffset
   trailing?: ReactNode
   className?: string
   variant?: FieldOptionTagProps['variant']

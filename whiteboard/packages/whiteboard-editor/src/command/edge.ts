@@ -9,7 +9,7 @@ import type {
   EdgeType
 } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
-import type { CommandResult } from '@engine-types/result'
+import type { CommandResult } from '@whiteboard/engine/types/result'
 import type { EdgeApi } from '../types/commands'
 import type {
   EditorRead,

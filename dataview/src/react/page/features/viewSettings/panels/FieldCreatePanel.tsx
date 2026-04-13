@@ -1,5 +1,5 @@
-import { FieldKindPicker } from '@dataview/react/field/schema'
-import { useDataView } from '@dataview/react/dataview'
+import { FieldKindPicker } from '#react/field/schema'
+import { useDataView } from '#react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { useViewSettings } from '../context'
 

@@ -12,7 +12,7 @@ import {
   ToolbarButton,
   ToolbarDivider,
   ToolbarIconButton
-} from '@rostack/ui'
+} from '@shared/ui'
 import type {
   EdgeDash,
   EdgeMarker,

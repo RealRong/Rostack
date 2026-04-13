@@ -1,4 +1,4 @@
-import { ToolbarFillIcon, ToolbarIconButton } from '@rostack/ui'
+import { ToolbarFillIcon, ToolbarIconButton } from '@shared/ui'
 import { FillPanel } from '../../panels/FillPanel'
 import type { ToolbarItemSpec } from './types'
 

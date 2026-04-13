@@ -1,4 +1,4 @@
-import { ToolbarIconButton } from '@rostack/ui'
+import { ToolbarIconButton } from '@shared/ui'
 import { Lock } from 'lucide-react'
 import type { ToolbarItemSpec } from './types'
 

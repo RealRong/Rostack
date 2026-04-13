@@ -10,13 +10,13 @@ import { meta, renderMessage } from '@dataview/meta'
 import {
   type MenuItem,
   type MenuReorderItem
-} from '@ui/menu'
-import { useDataView } from '@dataview/react/dataview'
-import type { EditorSubmitTrigger } from '@dataview/react/interaction'
+} from '@shared/ui/menu'
+import { useDataView } from '#react/dataview'
+import type { EditorSubmitTrigger } from '#react/interaction'
 import {
   buildEditableOptionItem,
   readOptionLabel
-} from '@dataview/react/menu-builders'
+} from '#react/menu-builders'
 import type { FieldValueDraftEditorProps } from '../../contracts'
 
 const CREATE_OPTION_KEY = '__create-option__'

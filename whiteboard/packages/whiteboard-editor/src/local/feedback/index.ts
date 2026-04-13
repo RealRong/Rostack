@@ -1,15 +1,15 @@
 import type { ReadStore } from '@shared/core'
 import type { ViewportRuntime } from '../viewport/runtime'
 import { type ActiveGesture } from '../../input/core/gesture'
-import { createOverlaySelectors } from './selectors'
-import { createOverlayState } from './state'
-import type { EditorOverlay } from './types'
+import { createFeedbackSelectors } from './selectors'
+import { createFeedbackState } from './state'
+import type { EditorFeedbackRuntime } from './types'
 
 export type {
   EdgeConnectFeedback,
   EdgeGuide,
-  EdgeOverlayEntry,
-  EditorOverlay as EditorFeedbackRuntime,
+  EdgeFeedbackEntry,
+  EditorFeedbackRuntime,
   MindmapDragFeedback
 } from './types'
 
@@ -19,11 +19,11 @@ export const createFeedback = ({
 }: {
   viewport: ViewportRuntime['read']
   gesture: Pick<ReadStore<ActiveGesture | null>, 'get' | 'subscribe'>
-}): EditorOverlay => {
-  const state = createOverlayState({
+}): EditorFeedbackRuntime => {
+  const state = createFeedbackState({
     gesture
   })
-  const selectors = createOverlaySelectors({
+  const selectors = createFeedbackSelectors({
     state,
     viewport
   })

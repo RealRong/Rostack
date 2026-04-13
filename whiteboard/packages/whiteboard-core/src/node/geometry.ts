@@ -6,6 +6,10 @@ import {
 import type { Node, Rect, Size, SpatialNode } from '../types'
 import { getNodeBounds } from './outline'
 
+export const readNodeRotation = (
+  node: Pick<SpatialNode, 'rotation'>
+): number => (typeof node.rotation === 'number' ? node.rotation : 0)
+
 export const getNodeRect = (
   node: SpatialNode,
   fallback: Size
@@ -27,7 +31,7 @@ export const getNodeAABB = (
   fallback: Size
 ): Rect => {
   const rect = getNodeRect(node, fallback)
-  const rotation = typeof node.rotation === 'number' ? node.rotation : 0
+  const rotation = readNodeRotation(node)
   if (!rotation) return rect
   const corners = getRotatedCorners(rect, rotation)
   return getAABBFromPoints(corners)
@@ -38,7 +42,7 @@ export const getNodeBoundsByNode = (
   fallbackSize: Size
 ): Rect | undefined => {
   const rect = getNodeRect(node, fallbackSize)
-  const rotation = typeof node.rotation === 'number' ? node.rotation : 0
+  const rotation = readNodeRotation(node)
 
   return getNodeBounds(node, rect, rotation)
 }

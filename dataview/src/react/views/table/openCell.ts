@@ -7,8 +7,8 @@ import type {
   ValueEditorApi,
   ValueEditorCloseAction,
   ValueEditorSessionPolicy
-} from '@dataview/react/runtime/valueEditor'
-import { ownerDocumentOf, resolveFieldAnchor } from '@dataview/react/dom/field'
+} from '#react/runtime/valueEditor'
+import { ownerDocumentOf, resolveFieldAnchor } from '#react/dom/field'
 import type { GridSelectionStore } from './gridSelection'
 import type { Dom } from './dom'
 

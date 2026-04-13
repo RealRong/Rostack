@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Placement } from '@floating-ui/react'
-import type { MenuItem, MenuSurfaceSize } from '@ui/menu'
+import type { MenuItem, MenuSurfaceSize } from '@shared/ui/menu'
 
 export interface ChoiceOption<TValue extends string> {
   id: TValue

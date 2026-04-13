@@ -1,7 +1,7 @@
 import type {
   View,
   ViewCreateInput
-} from '@dataview/core/contracts'
+} from '#core/contracts'
 import {
   createDuplicateViewPreferredName
 } from './naming'

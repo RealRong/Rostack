@@ -12,7 +12,7 @@ import {
   readInlineInsets,
   useMeasuredHeights,
   useVirtualBlocks
-} from '@dataview/react/virtual'
+} from '#react/virtual'
 import {
   buildGalleryLayout,
   GALLERY_CARD_ESTIMATED_HEIGHT,

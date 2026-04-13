@@ -1,7 +1,4 @@
-import type {
-  DocumentWriteOutput,
-  WriteCommandMap
-} from '@engine-types/command'
+import type { CommandOutput, DocumentCommand } from '#types/command'
 import {
   buildInsertSliceOperations,
   exportSliceFromSelection
@@ -15,12 +12,11 @@ import { sameOrder } from '../order/refs'
 import { cascadeDeleteTargets } from '../selection/node'
 import type { Step } from './shared'
 
-type Command = WriteCommandMap['document']
-type Insert = Extract<Command, { type: 'insert' }>
-type Remove = Extract<Command, { type: 'delete' }>
-type Duplicate = Extract<Command, { type: 'duplicate' }>
-type Background = Extract<Command, { type: 'background' }>
-type Order = Extract<Command, { type: 'order' }>
+type Insert = Extract<DocumentCommand, { type: 'document.insert' }>
+type Remove = Extract<DocumentCommand, { type: 'document.delete' }>
+type Duplicate = Extract<DocumentCommand, { type: 'document.duplicate' }>
+type Background = Extract<DocumentCommand, { type: 'document.background.set' }>
+type Order = Extract<DocumentCommand, { type: 'document.order' }>
 
 const pickRefs = (refs: readonly CanvasItemRef[]) => ({
   nodeIds: Array.from(new Set(
@@ -44,9 +40,9 @@ const sameBg = (
 )
 
 const insertOut = (data: {
-  roots: DocumentWriteOutput<Insert>['roots']
-  allNodeIds: DocumentWriteOutput<Insert>['allNodeIds']
-  allEdgeIds: DocumentWriteOutput<Insert>['allEdgeIds']
+  roots: CommandOutput<Insert>['roots']
+  allNodeIds: CommandOutput<Insert>['allNodeIds']
+  allEdgeIds: CommandOutput<Insert>['allEdgeIds']
 }) => ({
   roots: data.roots,
   allNodeIds: data.allNodeIds,
@@ -56,7 +52,7 @@ const insertOut = (data: {
 export const insert = (
   command: Insert,
   ctx: WriteTranslateContext
-): Step<DocumentWriteOutput<Insert>> => {
+): Step<CommandOutput<Insert>> => {
   const next = buildInsertSliceOperations({
     doc: ctx.doc,
     slice: command.slice,
@@ -64,7 +60,6 @@ export const insert = (
     registries: ctx.registries,
     createNodeId: ctx.ids.node,
     createEdgeId: ctx.ids.edge,
-    origin: command.options?.origin,
     delta: command.options?.delta,
     roots: command.options?.roots
   })
@@ -118,7 +113,7 @@ export const remove = (
 export const duplicate = (
   command: Duplicate,
   ctx: WriteTranslateContext
-): Step<DocumentWriteOutput<Duplicate>> => {
+): Step<CommandOutput<Duplicate>> => {
   const { nodeIds, edgeIds } = pickRefs(command.refs)
   if (!nodeIds.length && !edgeIds.length) {
     return err('cancelled', 'No items selected.')

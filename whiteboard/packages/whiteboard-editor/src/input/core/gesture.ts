@@ -1,7 +1,7 @@
 import type {
   EdgeGuide,
-  EdgeOverlayEntry,
-  EdgeOverlayState,
+  EdgeFeedbackEntry,
+  EdgeFeedbackState,
   SelectionPreviewState
 } from '../../local/feedback/types'
 
@@ -21,7 +21,7 @@ export type TransformGesture = {
 }
 
 export type EdgeGestureDraft = {
-  patches: readonly EdgeOverlayEntry[]
+  patches: readonly EdgeFeedbackEntry[]
   guide?: EdgeGuide
 }
 
@@ -100,9 +100,9 @@ export const readSelectionGesturePreview = (
   ? gesture.draft
   : EMPTY_SELECTION_PREVIEW
 
-export const readEdgeGestureOverlayState = (
+export const readEdgeGestureFeedbackState = (
   gesture: ActiveGesture | null | undefined
-): EdgeOverlayState => (
+): EdgeFeedbackState => (
   gesture?.kind === 'edge-connect'
   || gesture?.kind === 'edge-move'
   || gesture?.kind === 'edge-route'

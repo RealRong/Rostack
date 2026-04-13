@@ -1,5 +1,11 @@
 import type { Result } from '../types/result'
 import type { MindmapInsertPayload } from '../types/mindmap'
+import type {
+  MindmapCommandOptions,
+  Point,
+  Rect,
+  Size
+} from '../types/model'
 
 export type { MindmapInsertPayload } from '../types/mindmap'
 
@@ -30,13 +36,13 @@ export interface MindmapTree {
   meta?: {
     createdAt?: string
     updatedAt?: string
-    position?: { x: number; y: number }
+    position?: Point
   }
 }
 
 export interface MindmapLayout {
-  node: Record<MindmapNodeId, { x: number; y: number; width: number; height: number }>
-  bbox: { x: number; y: number; width: number; height: number }
+  node: Record<MindmapNodeId, Rect>
+  bbox: Rect
 }
 
 export interface MindmapLayoutOptions {
@@ -52,7 +58,7 @@ export type MindmapLayoutConfig = {
   options?: MindmapLayoutOptions
 }
 
-export type GetNodeSize = (id: MindmapNodeId) => { width: number; height: number }
+export type GetNodeSize = (id: MindmapNodeId) => Size
 
 export interface MindmapSizeAdapter {
   getNodeSize: GetNodeSize
@@ -88,24 +94,20 @@ export type MindmapInsertInput =
       kind: 'child'
       parentId: MindmapNodeId
       payload?: MindmapNodeData | MindmapInsertPayload
-      options?: {
-        index?: number
-        side?: 'left' | 'right'
-      }
+      options?: MindmapCommandOptions
     }
   | {
       kind: 'sibling'
       nodeId: MindmapNodeId
       position: 'before' | 'after'
       payload?: MindmapNodeData | MindmapInsertPayload
+      options?: Pick<MindmapCommandOptions, 'layout'>
     }
   | {
       kind: 'parent'
       nodeId: MindmapNodeId
       payload?: MindmapNodeData | MindmapInsertPayload
-      options?: {
-        side?: 'left' | 'right'
-      }
+      options?: Pick<MindmapCommandOptions, 'side' | 'layout'>
     }
 
 export type MindmapMoveSubtreeInput = {
@@ -113,6 +115,7 @@ export type MindmapMoveSubtreeInput = {
   parentId: MindmapNodeId
   index?: number
   side?: 'left' | 'right'
+  layout?: MindmapCommandOptions['layout']
 }
 
 export type MindmapRemoveSubtreeInput = {

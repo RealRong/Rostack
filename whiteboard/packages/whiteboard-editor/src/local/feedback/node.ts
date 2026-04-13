@@ -1,13 +1,13 @@
 import { isPointEqual, isSizeEqual } from '@whiteboard/core/geometry'
 import type { NodeId } from '@whiteboard/core/types'
 import type {
-  EditorOverlayState,
-  NodeOverlayProjection,
-  NodeOverlayState,
+  EditorFeedbackState,
+  NodeFeedbackProjection,
+  NodeFeedbackState,
   NodePatch,
   NodePatchEntry,
-  NodeSelectionOverlayState,
-  NodeTextOverlayState,
+  NodeSelectionFeedbackState,
+  NodeTextFeedbackState,
   TextPreviewEntry,
   TextPreviewPatch
 } from './types'
@@ -17,24 +17,24 @@ export const EMPTY_NODE_PATCHES: readonly NodePatchEntry[] = []
 export const EMPTY_TEXT_PREVIEW_PATCHES: readonly TextPreviewEntry[] = []
 export const EMPTY_NODE_HIDDEN: readonly NodeId[] = []
 
-export const EMPTY_NODE_SELECTION_OVERLAY: NodeSelectionOverlayState = {
+export const EMPTY_NODE_SELECTION_FEEDBACK: NodeSelectionFeedbackState = {
   patches: EMPTY_NODE_PATCHES
 }
 
-const EMPTY_NODE_TEXT_OVERLAY: NodeTextOverlayState = {
+const EMPTY_NODE_TEXT_FEEDBACK: NodeTextFeedbackState = {
   patches: EMPTY_TEXT_PREVIEW_PATCHES
 }
 
-export const EMPTY_NODE_OVERLAY: NodeOverlayState = {
-  text: EMPTY_NODE_TEXT_OVERLAY
+export const EMPTY_NODE_FEEDBACK: NodeFeedbackState = {
+  text: EMPTY_NODE_TEXT_FEEDBACK
 }
 
-export const EMPTY_NODE_OVERLAY_PROJECTION: NodeOverlayProjection = {
+export const EMPTY_NODE_FEEDBACK_PROJECTION: NodeFeedbackProjection = {
   hovered: false,
   hidden: false
 }
 
-const EMPTY_NODE_OVERLAY_MAP = new Map<NodeId, NodeOverlayProjection>()
+const EMPTY_NODE_FEEDBACK_MAP = new Map<NodeId, NodeFeedbackProjection>()
 
 const isNodePatchEqual = (
   left: NodePatch | undefined,
@@ -164,13 +164,13 @@ const hasTextPreviewPatch = (
   || patch?.handle !== undefined
 )
 
-const toNodeTextOverlayState = (
+const toNodeTextFeedbackState = (
   patches: readonly TextPreviewEntry[]
-): NodeTextOverlayState => patches.length > 0
+): NodeTextFeedbackState => patches.length > 0
   ? {
       patches
     }
-  : EMPTY_NODE_TEXT_OVERLAY
+  : EMPTY_NODE_TEXT_FEEDBACK
 
 const mergeTextPreviewPatch = (
   current: TextPreviewPatch | undefined,
@@ -195,44 +195,44 @@ const mergeTextPreviewPatch = (
 }
 
 export const updateNodeTextPreview = (
-  state: NodeTextOverlayState,
+  state: NodeTextFeedbackState,
   nodeId: NodeId,
   patch: TextPreviewPatch | undefined
-): NodeTextOverlayState => {
+): NodeTextFeedbackState => {
   const currentPatch = readTextPreviewEntry(state.patches, nodeId)
   const nextPatch = mergeTextPreviewPatch(currentPatch, patch)
   if (isTextPreviewPatchEqual(currentPatch, nextPatch)) {
     return state
   }
 
-  return toNodeTextOverlayState(
+  return toNodeTextFeedbackState(
     replaceTextPreviewEntry(state.patches, nodeId, nextPatch)
   )
 }
 
 export const clearNodeTextPreview = (
-  state: NodeTextOverlayState,
+  state: NodeTextFeedbackState,
   nodeId: NodeId
-): NodeTextOverlayState => {
+): NodeTextFeedbackState => {
   if (!readTextPreviewEntry(state.patches, nodeId)) {
     return state
   }
 
-  return toNodeTextOverlayState(
+  return toNodeTextFeedbackState(
     replaceTextPreviewEntry(state.patches, nodeId, undefined)
   )
 }
 
 export const clearNodeTextPreviewSize = (
-  state: NodeTextOverlayState,
+  state: NodeTextFeedbackState,
   nodeId: NodeId
-): NodeTextOverlayState => {
+): NodeTextFeedbackState => {
   const patch = readTextPreviewEntry(state.patches, nodeId)
   if (!patch?.size) {
     return state
   }
 
-  return toNodeTextOverlayState(
+  return toNodeTextFeedbackState(
     replaceTextPreviewEntry(
       state.patches,
       nodeId,
@@ -255,14 +255,14 @@ export const clearNodeTextPreviewSize = (
   )
 }
 
-export const isNodeOverlayStateEqual = (
-  left: NodeOverlayState,
-  right: NodeOverlayState
+export const isNodeFeedbackStateEqual = (
+  left: NodeFeedbackState,
+  right: NodeFeedbackState
 ) => left.text.patches === right.text.patches
 
 export const isNodeProjectionEqual = (
-  left: NodeOverlayProjection,
-  right: NodeOverlayProjection
+  left: NodeFeedbackProjection,
+  right: NodeFeedbackProjection
 ) => (
   isNodePatchEqual(left.patch, right.patch)
   && isTextPreviewPatchEqual(left.text, right.text)
@@ -270,29 +270,29 @@ export const isNodeProjectionEqual = (
   && left.hidden === right.hidden
 )
 
-export const normalizeNodeOverlayState = (
-  state: NodeOverlayState
-): NodeOverlayState => {
+export const normalizeNodeFeedbackState = (
+  state: NodeFeedbackState
+): NodeFeedbackState => {
   const textPatches = state.text.patches.length > 0
     ? state.text.patches
     : EMPTY_TEXT_PREVIEW_PATCHES
 
   if (textPatches === EMPTY_TEXT_PREVIEW_PATCHES) {
-    return EMPTY_NODE_OVERLAY
+    return EMPTY_NODE_FEEDBACK
   }
 
   return {
     text:
       textPatches === EMPTY_TEXT_PREVIEW_PATCHES
-        ? EMPTY_NODE_TEXT_OVERLAY
+        ? EMPTY_NODE_TEXT_FEEDBACK
         : {
             patches: textPatches
           }
   }
 }
 
-export const toNodeOverlayMap = (
-  state: EditorOverlayState
+export const toNodeFeedbackMap = (
+  state: EditorFeedbackState
 ) => {
   if (
     state.selection.node.patches.length === 0
@@ -300,10 +300,10 @@ export const toNodeOverlayMap = (
     && state.draw.hidden.length === 0
     && state.selection.node.frameHoverId === undefined
   ) {
-    return EMPTY_NODE_OVERLAY_MAP
+    return EMPTY_NODE_FEEDBACK_MAP
   }
 
-  const next = new Map<NodeId, NodeOverlayProjection>()
+  const next = new Map<NodeId, NodeFeedbackProjection>()
   const hiddenSet = new Set(state.draw.hidden)
 
   for (let index = 0; index < state.node.text.patches.length; index += 1) {

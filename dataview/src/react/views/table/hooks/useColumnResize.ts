@@ -11,7 +11,7 @@ import {
   sameMap
 } from '@shared/core'
 import { disableUserSelect } from '@shared/dom'
-import { useDataView } from '@dataview/react/dataview'
+import { useDataView } from '#react/dataview'
 import { useStoreValue } from '@shared/react'
 import { closestTableTargetElement } from '../dom/targets'
 import { useTableContext } from '../context'

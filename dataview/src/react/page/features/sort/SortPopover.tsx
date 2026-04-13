@@ -6,14 +6,14 @@ import {
   Trash2
 } from 'lucide-react'
 import { getDocumentFields } from '@dataview/core/document'
-import { Menu, type MenuItem } from '@ui/menu'
-import { Popover } from '@ui/popover'
-import { VerticalReorderList } from '@ui/vertical-reorder-list'
+import { Menu, type MenuItem } from '@shared/ui/menu'
+import { Popover } from '@shared/ui/popover'
+import { VerticalReorderList } from '@shared/ui/vertical-reorder-list'
 import {
   useDataView,
   useDataViewValue
-} from '@dataview/react/dataview'
-import { FieldPicker } from '@dataview/react/field/picker'
+} from '#react/dataview'
+import { FieldPicker } from '#react/field/picker'
 import { meta, renderMessage } from '@dataview/meta'
 import { SortRuleRow } from './SortRuleRow'
 import {

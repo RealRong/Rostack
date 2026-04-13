@@ -1,36 +1,34 @@
 import type {
-  WriteCommandMap,
-  WriteOutput
-} from '@engine-types/command'
-import type { TranslateResult } from '@engine-types/internal/translate'
+  CommandOutput,
+  DocumentCommand
+} from '#types/command'
+import type { TranslateResult } from '#types/internal/translate'
 import type { WriteTranslateContext } from './index'
 import * as plan from './plan/document'
 import { fromOps, invalid } from './result'
 
-type DocumentCommand = WriteCommandMap['document']
-
 export const translateDocument = <C extends DocumentCommand>(
   command: C,
   ctx: WriteTranslateContext
-): TranslateResult<WriteOutput<'document', C>> => {
+): TranslateResult<CommandOutput<C>> => {
   switch (command.type) {
-    case 'insert':
+    case 'document.insert':
       return fromOps(
         plan.insert(command, ctx),
         ({ output }) => output
-      ) as TranslateResult<WriteOutput<'document', C>>
-    case 'delete':
-      return fromOps(plan.remove(command, ctx)) as TranslateResult<WriteOutput<'document', C>>
-    case 'duplicate':
+      ) as TranslateResult<CommandOutput<C>>
+    case 'document.delete':
+      return fromOps(plan.remove(command, ctx)) as TranslateResult<CommandOutput<C>>
+    case 'document.duplicate':
       return fromOps(
         plan.duplicate(command, ctx),
         ({ output }) => output
-      ) as TranslateResult<WriteOutput<'document', C>>
-    case 'background':
-      return fromOps(plan.background(command, ctx)) as TranslateResult<WriteOutput<'document', C>>
-    case 'order':
-      return fromOps(plan.order(command, ctx)) as TranslateResult<WriteOutput<'document', C>>
+      ) as TranslateResult<CommandOutput<C>>
+    case 'document.background.set':
+      return fromOps(plan.background(command, ctx)) as TranslateResult<CommandOutput<C>>
+    case 'document.order':
+      return fromOps(plan.order(command, ctx)) as TranslateResult<CommandOutput<C>>
     default:
-      return invalid('Unsupported document action.') as TranslateResult<WriteOutput<'document', C>>
+      return invalid('Unsupported document action.') as TranslateResult<CommandOutput<C>>
   }
 }

@@ -10,7 +10,7 @@ import {
 } from '@dnd-kit/core'
 import type { FieldId } from '@dataview/core/contracts'
 import { columnBeforeId } from '@dataview/table'
-import { useDataView } from '@dataview/react/dataview'
+import { useDataView } from '#react/dataview'
 import { useStoreValue } from '@shared/react'
 import { useTableContext } from '../context'
 

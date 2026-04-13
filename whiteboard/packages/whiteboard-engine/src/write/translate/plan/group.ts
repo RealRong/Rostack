@@ -1,4 +1,3 @@
-import type { OrderMode } from '@engine-types/command'
 import {
   getNode,
   listCanvasItemRefs,
@@ -9,7 +8,7 @@ import {
 } from '@whiteboard/core/document'
 import { createNodeFieldsUpdateOperation } from '@whiteboard/core/node'
 import { err, ok } from '@whiteboard/core/result'
-import type { Document, EdgeId, GroupId, NodeId, Operation } from '@whiteboard/core/types'
+import type { Document, EdgeId, GroupId, NodeId, Operation, OrderMode } from '@whiteboard/core/types'
 import {
   block,
   normalizeOrder

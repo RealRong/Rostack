@@ -1,4 +1,4 @@
-import { PickerPanelSurface } from '@rostack/ui'
+import { PickerPanelSurface } from '@shared/ui'
 import type {
   ToolPaletteMenuKey,
   ToolPaletteView

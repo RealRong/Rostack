@@ -1,4 +1,4 @@
-import { ToolbarIconButton, ToolbarStrokeIcon } from '@rostack/ui'
+import { ToolbarIconButton, ToolbarStrokeIcon } from '@shared/ui'
 import { BorderPanel } from '../../panels/BorderPanel'
 import type { ToolbarItemSpec } from './types'
 

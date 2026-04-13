@@ -5,7 +5,7 @@ import {
 } from '@shared/dom'
 import type {
   AutoPanTargets
-} from '@dataview/react/interaction/autoPan'
+} from '#react/interaction/autoPan'
 import type { SelectionTarget } from './types'
 import { selectionTargetFromElement } from './dom'
 

@@ -1,8 +1,8 @@
-import { PAGE_INLINE_INSET_CSS } from '@dataview/react/page/layout'
+import { PAGE_INLINE_INSET_CSS } from '#react/page/layout'
 import {
   useDataView
-} from '@dataview/react/dataview'
-import { resolveOptionDotStyle } from '@ui/color'
+} from '#react/dataview'
+import { resolveOptionDotStyle } from '@shared/ui/color'
 import { useGalleryContext } from '../context'
 import { GALLERY_CARD_GAP } from '../virtual'
 import { Card } from './Card'

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { Select } from '@ui/select'
-import { cn } from '@ui/utils'
+import { Select } from '@shared/ui/select'
+import { cn } from '@shared/ui/utils'
 import { focusWithoutScroll } from '@shared/dom'
 import {
   isComposing,

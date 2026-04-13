@@ -4,15 +4,15 @@ import type { RecordId } from '@dataview/core/contracts'
 import {
   useDataView,
   useDataViewKeyedValue
-} from '@dataview/react/dataview'
-import { CardPreview } from '@dataview/react/views/shared'
-import { resolveNeutralCardStyle } from '@ui/color'
-import { cn } from '@ui/utils'
+} from '#react/dataview'
+import { CardPreview } from '#react/views/shared'
+import { resolveNeutralCardStyle } from '@shared/ui/color'
+import { cn } from '@shared/ui/utils'
 import { FileText } from 'lucide-react'
 import { useGalleryContext } from '../context'
 import {
   CARD_TITLE_PLACEHOLDER
-} from '@dataview/react/views/shared/cardTitleValue'
+} from '#react/views/shared/cardTitleValue'
 
 export const Overlay = () => {
   const {

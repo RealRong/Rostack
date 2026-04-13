@@ -2,17 +2,11 @@
   "name": "@whiteboard/collab",
   "version": "0.1.0",
   "type": "module",
-  "main": "dist/index.cjs",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    }
+    ".": "./src/index.ts"
   },
   "files": [
+    "src",
     "dist"
   ],
   "dependencies": {
@@ -21,9 +15,13 @@
     "@whiteboard/engine": "workspace:*",
     "yjs": "^13.6.27"
   },
+  "devDependencies": {
+    "tsup": "^8.0.2",
+    "typescript": "^5.9.3"
+  },
   "scripts": {
-    "build": "pnpm -C ../.. build:collab",
-    "lint": "pnpm -C ../.. typecheck:collab",
-    "test": "pnpm -C ../whiteboard-core build && pnpm -C ../whiteboard-engine build && pnpm run build && node --test test/*.test.mjs"
+    "build": "tsup --config tsup.config.ts",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm -C ../whiteboard-core run build && pnpm -C ../whiteboard-engine run build && pnpm run build && node --test test/*.test.mjs"
   }
 }

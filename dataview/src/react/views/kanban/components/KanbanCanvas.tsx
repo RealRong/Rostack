@@ -1,4 +1,4 @@
-import { PAGE_INLINE_INSET_CSS } from '@dataview/react/page/layout'
+import { PAGE_INLINE_INSET_CSS } from '#react/page/layout'
 import { useKanbanContext } from '../context'
 import { Column } from './Column'
 import { Overlay } from './Overlay'

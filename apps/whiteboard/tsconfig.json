@@ -2,33 +2,7 @@
   "extends": "../../whiteboard/tsconfig.base.json",
   "compilerOptions": {
     "jsx": "react-jsx",
-    "baseUrl": "../..",
-    "types": ["vite/client"],
-    "paths": {
-      "@shared/*": ["shared/*/src/index.ts"],
-      "@ui": ["ui/src/index.ts"],
-      "@ui/*": ["ui/src/*"],
-      "@whiteboard/collab": ["whiteboard/packages/whiteboard-collab/src/index.ts"],
-      "@whiteboard/editor": ["whiteboard/packages/whiteboard-editor/src/index.ts"],
-      "@whiteboard/editor/draw": ["whiteboard/packages/whiteboard-editor/src/draw.ts"],
-      "@whiteboard/react": ["whiteboard/packages/whiteboard-react/src/index.ts"],
-      "@whiteboard/engine": ["whiteboard/packages/whiteboard-engine/src/index.ts"],
-      "@engine-types": ["whiteboard/packages/whiteboard-engine/src/types/index.ts"],
-      "@engine-types/*": ["whiteboard/packages/whiteboard-engine/src/types/*"],
-      "@whiteboard/core/types": ["whiteboard/packages/whiteboard-core/src/types/index.ts"],
-      "@whiteboard/core/utils": ["whiteboard/packages/whiteboard-core/src/utils/index.ts"],
-      "@whiteboard/core/geometry": ["whiteboard/packages/whiteboard-core/src/geometry/index.ts"],
-      "@whiteboard/core/node": ["whiteboard/packages/whiteboard-core/src/node/index.ts"],
-      "@whiteboard/core/selection": ["whiteboard/packages/whiteboard-core/src/selection/index.ts"],
-      "@whiteboard/core/mindmap": ["whiteboard/packages/whiteboard-core/src/mindmap/index.ts"],
-      "@whiteboard/core/edge": ["whiteboard/packages/whiteboard-core/src/edge/index.ts"],
-      "@whiteboard/core/schema": ["whiteboard/packages/whiteboard-core/src/schema/index.ts"],
-      "@whiteboard/core/kernel": ["whiteboard/packages/whiteboard-core/src/kernel/index.ts"],
-      "@whiteboard/core/config": ["whiteboard/packages/whiteboard-core/src/config/index.ts"],
-      "@whiteboard/core/document": ["whiteboard/packages/whiteboard-core/src/document/index.ts"],
-      "@whiteboard/core/perf": ["whiteboard/packages/whiteboard-core/src/perf/index.ts"],
-      "types/*": ["whiteboard/packages/whiteboard-react/src/types/*"]
-    }
+    "types": ["vite/client"]
   },
   "include": ["src"]
 }

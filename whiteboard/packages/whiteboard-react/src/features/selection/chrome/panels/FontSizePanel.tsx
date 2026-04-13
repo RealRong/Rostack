@@ -1,4 +1,4 @@
-import { Button, Panel } from '@rostack/ui'
+import { Button, Panel } from '@shared/ui'
 
 const FONT_SIZE_PRESETS = [10, 12, 14, 18, 24, 36, 48, 64, 80, 144, 288] as const
 

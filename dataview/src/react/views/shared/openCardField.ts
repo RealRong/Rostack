@@ -2,14 +2,14 @@ import {
   belowFieldAnchor,
   ownerDocumentOf,
   resolveFieldAnchor
-} from '@dataview/react/dom/field'
+} from '#react/dom/field'
 import type {
   ViewFieldRef
 } from '@dataview/engine'
 import type {
   ValueEditorApi,
   ValueEditorSessionPolicy
-} from '@dataview/react/runtime/valueEditor'
+} from '#react/runtime/valueEditor'
 
 const createCardSessionPolicy = (focusOwner: () => void): ValueEditorSessionPolicy => ({
   resolveOnCommit: () => ({

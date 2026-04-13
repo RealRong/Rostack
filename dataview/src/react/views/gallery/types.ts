@@ -5,7 +5,7 @@ import type {
   ItemId,
   ViewState
 } from '@dataview/engine'
-import type { VisualTargetRegistry } from '@dataview/react/runtime/marquee'
+import type { VisualTargetRegistry } from '#react/runtime/marquee'
 import type { GalleryDropTarget } from './reorder'
 import type {
   GalleryBlock,

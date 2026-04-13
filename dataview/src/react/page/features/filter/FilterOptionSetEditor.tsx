@@ -12,9 +12,9 @@ import {
   getStatusCategoryLabel,
   isCustomField
 } from '@dataview/core/field'
-import { buildOptionTagLabel } from '@dataview/react/menu-builders'
-import { Checkbox } from '@ui/checkbox'
-import { cn } from '@ui/utils'
+import { buildOptionTagLabel } from '#react/menu-builders'
+import { Checkbox } from '@shared/ui/checkbox'
+import { cn } from '@shared/ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
 
 export interface FilterOptionSetEditorProps {

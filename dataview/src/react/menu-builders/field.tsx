@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Field } from '@dataview/core/contracts'
 import { meta, renderMessage } from '@dataview/meta'
-import type { MenuItem, MenuReorderItem } from '@ui/menu'
+import type { MenuItem, MenuReorderItem } from '@shared/ui/menu'
 
 const buildFieldContent = (field: Field, input?: {
   label?: ReactNode

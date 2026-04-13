@@ -5,68 +5,68 @@ import {
   type ReadStore
 } from '@shared/core'
 import {
-  readEdgeGestureOverlayState,
+  readEdgeGestureFeedbackState,
   readSelectionGesturePreview,
   type ActiveGesture
 } from '../../input/core/gesture'
 import {
   EMPTY_EDGE_GUIDE,
-  EMPTY_EDGE_OVERLAY,
+  EMPTY_EDGE_FEEDBACK,
   isEdgeGuideEqual,
-  normalizeEdgeOverlayState
+  normalizeEdgeFeedbackState
 } from './edge'
 import {
   EMPTY_NODE_HIDDEN,
-  EMPTY_NODE_OVERLAY,
-  isNodeOverlayStateEqual,
-  normalizeNodeOverlayState
+  EMPTY_NODE_FEEDBACK,
+  isNodeFeedbackStateEqual,
+  normalizeNodeFeedbackState
 } from './node'
 import {
-  EMPTY_SELECTION_OVERLAY,
-  isSelectionOverlayStateEqual,
-  normalizeSelectionOverlayState,
-  toSelectionOverlayState
+  EMPTY_SELECTION_FEEDBACK,
+  isSelectionFeedbackStateEqual,
+  normalizeSelectionFeedbackState,
+  toSelectionFeedbackState
 } from './selection'
-import type { EditorOverlay, EditorOverlayState } from './types'
+import type { EditorFeedbackRuntime, EditorFeedbackState } from './types'
 
-const normalizeDrawOverlayState = (
-  state: EditorOverlayState['draw']
-): EditorOverlayState['draw'] => ({
+const normalizeDrawFeedbackState = (
+  state: EditorFeedbackState['draw']
+): EditorFeedbackState['draw'] => ({
   preview: state.preview ?? null,
   hidden: state.hidden.length > 0
     ? state.hidden
     : EMPTY_NODE_HIDDEN
 })
 
-const EMPTY_OVERLAY_STATE: EditorOverlayState = {
-  node: EMPTY_NODE_OVERLAY,
-  edge: EMPTY_EDGE_OVERLAY,
+const EMPTY_FEEDBACK_STATE: EditorFeedbackState = {
+  node: EMPTY_NODE_FEEDBACK,
+  edge: EMPTY_EDGE_FEEDBACK,
   draw: {
     preview: null,
     hidden: EMPTY_NODE_HIDDEN
   },
-  selection: EMPTY_SELECTION_OVERLAY,
+  selection: EMPTY_SELECTION_FEEDBACK,
   mindmap: {}
 }
 
-const normalizeOverlayState = (
-  state: EditorOverlayState
-): EditorOverlayState => {
-  const node = normalizeNodeOverlayState(state.node)
-  const edge = normalizeEdgeOverlayState(state.edge)
-  const selection = normalizeSelectionOverlayState(state.selection)
-  const draw = normalizeDrawOverlayState(state.draw)
+const normalizeFeedbackState = (
+  state: EditorFeedbackState
+): EditorFeedbackState => {
+  const node = normalizeNodeFeedbackState(state.node)
+  const edge = normalizeEdgeFeedbackState(state.edge)
+  const selection = normalizeSelectionFeedbackState(state.selection)
+  const draw = normalizeDrawFeedbackState(state.draw)
   const mindmapDrag = state.mindmap.drag
 
   if (
-    node === EMPTY_NODE_OVERLAY
-    && edge === EMPTY_EDGE_OVERLAY
-    && selection === EMPTY_SELECTION_OVERLAY
+    node === EMPTY_NODE_FEEDBACK
+    && edge === EMPTY_EDGE_FEEDBACK
+    && selection === EMPTY_SELECTION_FEEDBACK
     && draw.preview === null
     && draw.hidden === EMPTY_NODE_HIDDEN
     && mindmapDrag === undefined
   ) {
-    return EMPTY_OVERLAY_STATE
+    return EMPTY_FEEDBACK_STATE
   }
 
   return {
@@ -80,16 +80,16 @@ const normalizeOverlayState = (
   }
 }
 
-const isOverlayStateEqual = (
-  left: EditorOverlayState,
-  right: EditorOverlayState
+const isFeedbackStateEqual = (
+  left: EditorFeedbackState,
+  right: EditorFeedbackState
 ) => (
-  isNodeOverlayStateEqual(left.node, right.node)
+  isNodeFeedbackStateEqual(left.node, right.node)
   && left.edge.interaction === right.edge.interaction
   && isEdgeGuideEqual(left.edge.guide ?? EMPTY_EDGE_GUIDE, right.edge.guide ?? EMPTY_EDGE_GUIDE)
   && left.draw.preview === right.draw.preview
   && left.draw.hidden === right.draw.hidden
-  && isSelectionOverlayStateEqual(left.selection, right.selection)
+  && isSelectionFeedbackStateEqual(left.selection, right.selection)
   && left.mindmap.drag === right.mindmap.drag
 )
 
@@ -103,43 +103,43 @@ const isEdgeGestureKind = (
   || gesture?.kind === 'edge-route'
 )
 
-const composeOverlayState = ({
+const composeFeedbackState = ({
   base,
   gesture
 }: {
-  base: EditorOverlayState
+  base: EditorFeedbackState
   gesture: ActiveGesture | null
-}): EditorOverlayState => {
-  const nextSelection = toSelectionOverlayState(
+}): EditorFeedbackState => {
+  const nextSelection = toSelectionFeedbackState(
     readSelectionGesturePreview(gesture)
   )
   const nextEdge = isEdgeGestureKind(gesture)
-    ? normalizeEdgeOverlayState(readEdgeGestureOverlayState(gesture))
+    ? normalizeEdgeFeedbackState(readEdgeGestureFeedbackState(gesture))
     : base.edge
 
-  return normalizeOverlayState({
+  return normalizeFeedbackState({
     ...base,
     selection: nextSelection,
     edge: nextEdge
   })
 }
 
-export const createOverlayState = ({
+export const createFeedbackState = ({
   gesture
 }: {
   gesture: Pick<ReadStore<ActiveGesture | null>, 'get' | 'subscribe'>
-}): Pick<EditorOverlay, 'get' | 'subscribe' | 'set' | 'reset'> => {
-  const baseState = createValueStore<EditorOverlayState>(EMPTY_OVERLAY_STATE, {
-    isEqual: isOverlayStateEqual
+}): Pick<EditorFeedbackRuntime, 'get' | 'subscribe' | 'set' | 'reset'> => {
+  const baseState = createValueStore<EditorFeedbackState>(EMPTY_FEEDBACK_STATE, {
+    isEqual: isFeedbackStateEqual
   })
-  const composedState = createDerivedStore<EditorOverlayState>({
-    get: () => composeOverlayState({
+  const composedState = createDerivedStore<EditorFeedbackState>({
+    get: () => composeFeedbackState({
       base: read(baseState),
       gesture: read(gesture)
     }),
-    isEqual: isOverlayStateEqual
+    isEqual: isFeedbackStateEqual
   })
-  let current = EMPTY_OVERLAY_STATE
+  let current = EMPTY_FEEDBACK_STATE
 
   return {
     get: composedState.get,
@@ -148,12 +148,12 @@ export const createOverlayState = ({
       const resolved = typeof next === 'function'
         ? next(current)
         : next
-      current = normalizeOverlayState(resolved)
+      current = normalizeFeedbackState(resolved)
       baseState.set(current)
     },
     reset: () => {
-      current = EMPTY_OVERLAY_STATE
-      baseState.set(EMPTY_OVERLAY_STATE)
+      current = EMPTY_FEEDBACK_STATE
+      baseState.set(EMPTY_FEEDBACK_STATE)
     }
   }
 }

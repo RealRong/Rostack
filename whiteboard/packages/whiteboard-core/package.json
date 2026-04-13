@@ -3,81 +3,34 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
-    "./types": {
-      "types": "./dist/types/index.d.ts",
-      "import": "./dist/types/index.js",
-      "require": "./dist/types/index.cjs"
-    },
-    "./result": {
-      "types": "./dist/result/index.d.ts",
-      "import": "./dist/result/index.js",
-      "require": "./dist/result/index.cjs"
-    },
-    "./id": {
-      "types": "./dist/id/index.d.ts",
-      "import": "./dist/id/index.js",
-      "require": "./dist/id/index.cjs"
-    },
-    "./value": {
-      "types": "./dist/value/index.d.ts",
-      "import": "./dist/value/index.js",
-      "require": "./dist/value/index.cjs"
-    },
-    "./geometry": {
-      "types": "./dist/geometry/index.d.ts",
-      "import": "./dist/geometry/index.js",
-      "require": "./dist/geometry/index.cjs"
-    },
-    "./node": {
-      "types": "./dist/node/index.d.ts",
-      "import": "./dist/node/index.js",
-      "require": "./dist/node/index.cjs"
-    },
-    "./mindmap": {
-      "types": "./dist/mindmap/index.d.ts",
-      "import": "./dist/mindmap/index.js",
-      "require": "./dist/mindmap/index.cjs"
-    },
-    "./edge": {
-      "types": "./dist/edge/index.d.ts",
-      "import": "./dist/edge/index.js",
-      "require": "./dist/edge/index.cjs"
-    },
-    "./schema": {
-      "types": "./dist/schema/index.d.ts",
-      "import": "./dist/schema/index.js",
-      "require": "./dist/schema/index.cjs"
-    },
-    "./kernel": {
-      "types": "./dist/kernel/index.d.ts",
-      "import": "./dist/kernel/index.js",
-      "require": "./dist/kernel/index.cjs"
-    },
-    "./config": {
-      "types": "./dist/config/index.d.ts",
-      "import": "./dist/config/index.js",
-      "require": "./dist/config/index.cjs"
-    },
-    "./document": {
-      "types": "./dist/document/index.d.ts",
-      "import": "./dist/document/index.js",
-      "require": "./dist/document/index.cjs"
-    },
-    "./selection": {
-      "types": "./dist/selection/index.d.ts",
-      "import": "./dist/selection/index.js",
-      "require": "./dist/selection/index.cjs"
-    }
+    "./types": "./src/types/index.ts",
+    "./result": "./src/result/index.ts",
+    "./id": "./src/id/index.ts",
+    "./value": "./src/value/index.ts",
+    "./geometry": "./src/geometry/index.ts",
+    "./node": "./src/node/index.ts",
+    "./mindmap": "./src/mindmap/index.ts",
+    "./edge": "./src/edge/index.ts",
+    "./schema": "./src/schema/index.ts",
+    "./kernel": "./src/kernel/index.ts",
+    "./config": "./src/config/index.ts",
+    "./document": "./src/document/index.ts",
+    "./selection": "./src/selection/index.ts"
   },
   "files": [
+    "src",
     "dist"
   ],
   "dependencies": {
     "@shared/core": "workspace:*"
   },
+  "devDependencies": {
+    "tsup": "^8.0.2",
+    "typescript": "^5.9.3"
+  },
   "scripts": {
-    "build": "pnpm -C ../.. build:core",
-    "lint": "pnpm -C ../.. typecheck:core",
+    "build": "tsup --config tsup.config.ts",
+    "lint": "tsc -p tsconfig.json --noEmit",
     "test": "pnpm run build && node --test test/*.test.mjs"
   }
 }

@@ -3,30 +3,30 @@ import type { Guide } from '@whiteboard/core/node'
 import type { Rect } from '@whiteboard/core/types'
 import type { ViewportRuntime } from '../viewport/runtime'
 import {
-  EMPTY_EDGE_PATCHES
+  EMPTY_EDGE_FEEDBACK_ENTRIES
 } from './edge'
 import {
   EMPTY_NODE_PATCHES,
-  EMPTY_NODE_SELECTION_OVERLAY
+  EMPTY_NODE_SELECTION_FEEDBACK
 } from './node'
 import type {
   MarqueeFeedback,
-  MarqueeOverlayState,
+  MarqueeFeedbackState,
   SelectionPreviewState,
-  SelectionOverlayState
+  SelectionFeedbackState
 } from './types'
 
 export const EMPTY_GUIDES: readonly Guide[] = []
 
-export const EMPTY_SELECTION_OVERLAY: SelectionOverlayState = {
-  node: EMPTY_NODE_SELECTION_OVERLAY,
-  edge: EMPTY_EDGE_PATCHES,
+export const EMPTY_SELECTION_FEEDBACK: SelectionFeedbackState = {
+  node: EMPTY_NODE_SELECTION_FEEDBACK,
+  edge: EMPTY_EDGE_FEEDBACK_ENTRIES,
   guides: EMPTY_GUIDES
 }
 
-const isMarqueeEqual = (
-  left: MarqueeOverlayState | undefined,
-  right: MarqueeOverlayState | undefined
+const isMarqueeFeedbackStateEqual = (
+  left: MarqueeFeedbackState | undefined,
+  right: MarqueeFeedbackState | undefined
 ) => (
   left === right
   || (
@@ -52,26 +52,26 @@ export const isMarqueeFeedbackEqual = (
   )
 )
 
-export const isSelectionOverlayStateEqual = (
-  left: SelectionOverlayState,
-  right: SelectionOverlayState
+export const isSelectionFeedbackStateEqual = (
+  left: SelectionFeedbackState,
+  right: SelectionFeedbackState
 ) => (
   left.node.patches === right.node.patches
   && left.node.frameHoverId === right.node.frameHoverId
   && left.edge === right.edge
-  && isMarqueeEqual(left.marquee, right.marquee)
+  && isMarqueeFeedbackStateEqual(left.marquee, right.marquee)
   && left.guides === right.guides
 )
 
-export const normalizeSelectionOverlayState = (
-  state: SelectionOverlayState
-): SelectionOverlayState => {
+export const normalizeSelectionFeedbackState = (
+  state: SelectionFeedbackState
+): SelectionFeedbackState => {
   const nodePatches = state.node.patches.length > 0
     ? state.node.patches
     : EMPTY_NODE_PATCHES
   const edge = state.edge.length > 0
     ? state.edge
-    : EMPTY_EDGE_PATCHES
+    : EMPTY_EDGE_FEEDBACK_ENTRIES
   const guides = state.guides.length > 0
     ? state.guides
     : EMPTY_GUIDES
@@ -80,17 +80,17 @@ export const normalizeSelectionOverlayState = (
   if (
     nodePatches === EMPTY_NODE_PATCHES
     && state.node.frameHoverId === undefined
-    && edge === EMPTY_EDGE_PATCHES
+    && edge === EMPTY_EDGE_FEEDBACK_ENTRIES
     && guides === EMPTY_GUIDES
     && marquee === undefined
   ) {
-    return EMPTY_SELECTION_OVERLAY
+    return EMPTY_SELECTION_FEEDBACK
   }
 
   return {
     node:
       nodePatches === EMPTY_NODE_PATCHES && state.node.frameHoverId === undefined
-        ? EMPTY_NODE_SELECTION_OVERLAY
+        ? EMPTY_NODE_SELECTION_FEEDBACK
         : {
             patches: nodePatches,
             frameHoverId: state.node.frameHoverId
@@ -101,9 +101,9 @@ export const normalizeSelectionOverlayState = (
   }
 }
 
-export const toSelectionOverlayState = (
+export const toSelectionFeedbackState = (
   preview: SelectionPreviewState
-): SelectionOverlayState => normalizeSelectionOverlayState({
+): SelectionFeedbackState => normalizeSelectionFeedbackState({
   node: {
     patches: preview.nodePatches,
     frameHoverId: preview.frameHoverId

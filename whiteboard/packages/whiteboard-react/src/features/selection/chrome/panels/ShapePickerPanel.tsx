@@ -1,4 +1,4 @@
-import { Button, Panel, PanelSection, cn } from '@rostack/ui'
+import { Button, Panel, PanelSection, cn } from '@shared/ui'
 import {
   SHAPE_MENU_SECTIONS,
   readShapePreviewFill,

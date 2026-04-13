@@ -8,17 +8,17 @@ import {
 } from '@dataview/core/field'
 import {
   useDataView,
-} from '@dataview/react/dataview'
+} from '#react/dataview'
 import {
   FieldValueContent
-} from '@dataview/react/field/value'
+} from '#react/field/value'
 import {
   fieldAttrs
-} from '@dataview/react/dom/field'
+} from '#react/dom/field'
 import type {
   ViewFieldRef
 } from '@dataview/engine'
-import { cn } from '@ui/utils'
+import { cn } from '@shared/ui/utils'
 import { openCardField } from './openCardField'
 
 export interface CardFieldProps {

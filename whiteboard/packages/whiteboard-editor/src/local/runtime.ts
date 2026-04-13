@@ -523,7 +523,7 @@ export const createLocalRuntime = ({
       state
     }),
     feedback: createLocalFeedbackActions({
-      overlay: feedback
+      feedback
     })
   }
 

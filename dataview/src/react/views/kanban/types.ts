@@ -6,7 +6,7 @@ import type {
   SectionKey,
   ViewState
 } from '@dataview/engine'
-import type { VisualTargetRegistry } from '@dataview/react/runtime/marquee'
+import type { VisualTargetRegistry } from '#react/runtime/marquee'
 
 export type ActiveKanbanViewState = ViewState & {
   view: View & {

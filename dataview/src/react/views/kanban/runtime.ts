@@ -14,10 +14,10 @@ import type {
 import {
   useDataView,
   useDataViewValue
-} from '@dataview/react/dataview'
+} from '#react/dataview'
 import {
   dataviewAppearanceSelector
-} from '@dataview/react/dom/appearance'
+} from '#react/dom/appearance'
 import {
   closestTarget,
   interactiveSelector
@@ -29,10 +29,10 @@ import {
 } from '@dataview/engine'
 import {
   resolveDefaultAutoPanTargets
-} from '@dataview/react/interaction/autoPan'
+} from '#react/interaction/autoPan'
 import {
   createVisualTargetRegistry
-} from '@dataview/react/runtime/marquee'
+} from '#react/runtime/marquee'
 import { useStoreValue } from '@shared/react'
 import {
   readBoardLayout

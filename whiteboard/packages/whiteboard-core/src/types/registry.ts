@@ -2,16 +2,21 @@ import type {
   Document,
   EdgeSchema,
   EdgeType,
+  NodeRole,
   NodeSchema,
   NodeType
 } from './model'
 
-export interface NodeTypeDefinition {
+export interface BaseNodeDefinition {
   type: NodeType
   label?: string
   geometry?: 'rect' | 'shape'
   defaultData?: Record<string, unknown>
   schema?: NodeSchema
+}
+
+export interface NodeTypeDefinition extends BaseNodeDefinition {
+  role?: NodeRole
   validate?: (data: unknown) => boolean
 }
 

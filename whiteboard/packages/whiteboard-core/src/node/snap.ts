@@ -1,7 +1,9 @@
 import type { Rect, Size } from '../types'
+import type {
+  HorizontalResizeEdge,
+  VerticalResizeEdge
+} from './resize'
 
-type HorizontalResizeEdge = 'left' | 'right'
-type VerticalResizeEdge = 'top' | 'bottom'
 type HorizontalSnapEdge = 'left' | 'right' | 'centerX'
 type VerticalSnapEdge = 'top' | 'bottom' | 'centerY'
 

@@ -19,15 +19,15 @@ export type {
   MarqueeMode,
   MarqueeSessionState,
   SelectionTarget
-} from '@dataview/react/runtime/marquee'
+} from '#react/runtime/marquee'
 export type {
   InlineSessionApi,
   InlineSessionTarget
-} from '@dataview/react/runtime/inlineSession'
+} from '#react/runtime/inlineSession'
 export type {
   Selection,
   SelectionApi
-} from '@dataview/react/runtime/selection'
+} from '#react/runtime/selection'
 export type {
   PageLock,
   PageState,
@@ -38,7 +38,7 @@ export type {
   QueryBarState,
   SettingsRoute,
   SettingsState
-} from '@dataview/react/page/session/types'
+} from '#react/page/session/types'
 export type {
   CloseValueEditorOptions,
   OpenValueEditorInput,
@@ -48,4 +48,4 @@ export type {
   ValueEditorResult,
   ValueEditorSessionPolicy,
   ViewFieldRef
-} from '@dataview/react/runtime/valueEditor'
+} from '#react/runtime/valueEditor'

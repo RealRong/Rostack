@@ -11,7 +11,7 @@ import type {
 } from '@whiteboard/core/types'
 import type { NodeItem } from '@whiteboard/engine'
 import type { EditSession } from '../../local/session/edit'
-import type { NodeOverlayProjection } from '../../local/feedback/types'
+import type { NodeFeedbackProjection } from '../../local/feedback/types'
 
 export const readNodeProjectionRotation = (
   node: NodeItem['node']
@@ -54,12 +54,12 @@ const readNodeTextDraft = (
 
 export const projectNodeItem = (
   item: NodeItem,
-  projection: NodeOverlayProjection,
+  feedback: NodeFeedbackProjection,
   edit: EditSession
 ): NodeItem => applyNodeTextDraft(
   applyNodeTextPreview(
-    applyNodeGeometryPatch(item, projection.patch),
-    projection.text
+    applyNodeGeometryPatch(item, feedback.patch),
+    feedback.text
   ),
   readNodeTextDraft(item, edit)
 )

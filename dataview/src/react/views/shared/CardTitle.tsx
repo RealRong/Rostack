@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { focusInputWithoutScroll } from '@shared/dom'
-import { Input } from '@ui/input'
-import { cn } from '@ui/utils'
+import { Input } from '@shared/ui/input'
+import { cn } from '@shared/ui/utils'
 
 export interface CardTitleProps {
   editing: boolean

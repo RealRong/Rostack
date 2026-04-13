@@ -11,7 +11,7 @@ import {
   PickerSection,
   PickerSurface,
   Slider
-} from '@rostack/ui'
+} from '@shared/ui'
 import type {
   BrushStyle,
   BrushStylePatch,

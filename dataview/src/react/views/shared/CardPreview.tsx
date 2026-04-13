@@ -7,8 +7,8 @@ import type {
   DataRecord
 } from '@dataview/core/contracts'
 import { isEmptyFieldValue } from '@dataview/core/field'
-import { FieldValueContent } from '@dataview/react/field/value'
-import { cn } from '@ui/utils'
+import { FieldValueContent } from '#react/field/value'
+import { cn } from '@shared/ui/utils'
 import { CardTitle } from './CardTitle'
 import { readCardTitleText } from './cardTitleValue'
 

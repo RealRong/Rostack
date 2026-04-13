@@ -1,4 +1,4 @@
-import { ToolbarIconButton } from '@rostack/ui'
+import { ToolbarIconButton } from '@shared/ui'
 import { MoreHorizontal } from 'lucide-react'
 import { SelectionActionMenu } from '../../panels/SelectionActionMenu'
 import type { ToolbarItemSpec } from './types'

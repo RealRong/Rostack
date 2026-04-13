@@ -14,12 +14,12 @@ import {
   formatTimeZoneLabel,
   getAvailableTimezones,
 } from '@dataview/core/field'
-import { Input } from '@ui/input'
-import { Menu, type MenuItem } from '@ui/menu'
-import { cn } from '@ui/utils'
-import { useDataView } from '@dataview/react/dataview'
+import { Input } from '@shared/ui/input'
+import { Menu, type MenuItem } from '@shared/ui/menu'
+import { cn } from '@shared/ui/utils'
+import { useDataView } from '#react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
-import { buildChoiceSubmenuItem } from '@dataview/react/menu-builders'
+import { buildChoiceSubmenuItem } from '#react/menu-builders'
 import type { FieldValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@shared/dom'
 import {

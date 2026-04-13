@@ -1,6 +1,6 @@
 import type { CustomField } from '@dataview/core/contracts'
 import { formatDateValue } from '@dataview/core/field'
-import { cn } from '@ui/utils'
+import { cn } from '@shared/ui/utils'
 import { DateValueEditor } from '../editor/pickers/date/DateValueEditor'
 import {
   createDateValueDraft,

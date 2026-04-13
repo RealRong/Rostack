@@ -18,18 +18,18 @@ import {
   type PointerEvent
 } from 'react'
 import type { CalculationMetric, Field, FieldId, CustomField } from '@dataview/core/contracts'
-import { Menu, type MenuItem } from '@ui/menu'
-import { cn } from '@ui/utils'
+import { Menu, type MenuItem } from '@shared/ui/menu'
+import { cn } from '@shared/ui/utils'
 import { isCustomField } from '@dataview/core/field'
 import { getFieldCalculationMetrics } from '@dataview/core/calculation'
-import { getSorterFieldId } from '@dataview/react/page/features/sort'
+import { getSorterFieldId } from '#react/page/features/sort'
 import {
   useDataView,
-} from '@dataview/react/dataview'
+} from '#react/dataview'
 import { useStoreValue } from '@shared/react'
 import { useTableContext } from '../../context'
 import { meta, renderMessage } from '@dataview/meta'
-import { buildFieldKindMenuItems } from '@dataview/react/field/schema'
+import { buildFieldKindMenuItems } from '#react/field/schema'
 
 export interface ColumnHeaderProps {
   field: Field

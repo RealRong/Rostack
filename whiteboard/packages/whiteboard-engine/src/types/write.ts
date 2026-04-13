@@ -1,20 +1,10 @@
-import type {
-  ChangeSet,
-  Document,
-  Operation,
-  Origin
-} from '@whiteboard/core/types'
+import type { ChangeSet, Document, Operation, Origin } from '@whiteboard/core/types'
 import type {
   HistoryConfig,
   HistoryState
 } from '@whiteboard/core/kernel'
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
-import type {
-  WriteCommandMap,
-  WriteDomain,
-  WriteInput,
-  WriteOutput
-} from './command'
+import type { CommandOutput, TranslateCommand } from './command'
 import type { CommandFailure } from './result'
 
 export type DraftKind = 'apply' | 'replace' | 'undo' | 'redo'
@@ -39,10 +29,7 @@ export type Draft<T = void> =
     })
 
 export type Writer = {
-  run: <
-    D extends WriteDomain,
-    C extends WriteCommandMap[D]
-  >(input: WriteInput<D, C>) => Draft<WriteOutput<D, C>>
+  run: <C extends TranslateCommand>(command: C, origin?: Origin) => Draft<CommandOutput<C>>
   ops: (
     operations: readonly Operation[],
     origin?: Origin

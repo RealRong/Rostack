@@ -2,11 +2,11 @@
 
 ## 目标
 
-将 `whiteboard/packages/whiteboard-react` 的视觉样式、浮层组件和颜色体系尽量迁移到 `ui/css` 与 `@ui/src`，使：
+将 `whiteboard/packages/whiteboard-react` 的视觉样式、浮层组件和颜色体系尽量迁移到 `ui/css` 与 `@shared/ui/src`，使：
 
 - `whiteboard/packages/whiteboard-react/src/styles/whiteboard-react.css` 只保留 whiteboard runtime 必需的结构类、缩放相关几何、overlay 层级和少量编辑态 class。
 - 颜色、边框、阴影、surface、accent 等主题能力统一依赖 `ui/css` 的 token 和 semantic 层，不再在 whiteboard 内维护一套二级 token。
-- whiteboard 的 toolbar、panel、menu、toolbox、dock 等 chrome 组件复用 `@ui/src` 的基础组件和 primitive，减少局部实现。
+- whiteboard 的 toolbar、panel、menu、toolbox、dock 等 chrome 组件复用 `@shared/ui/src` 的基础组件和 primitive，减少局部实现。
 - whiteboard 仍保留自身领域内强耦合的 runtime 结构和交互样式，不为了抽象而抽象。
 
 ## 当前现状
@@ -26,9 +26,9 @@
 whiteboard-react 并不是从零开始迁移，已经有明显基础：
 
 - `OverlayProvider` 来自 `@ui`。
-- `WhiteboardPopover` 本质上是 `@ui/Popover` 的轻封装。
-- 右键菜单已经基于 `@ui/Menu`。
-- 多数 toolbar、toolbox、dock 已经使用 `@ui/Button`、`@ui/Slider` 和 `ui` token class。
+- `WhiteboardPopover` 本质上是 `@shared/ui/Popover` 的轻封装。
+- 右键菜单已经基于 `@shared/ui/Menu`。
+- 多数 toolbar、toolbox、dock 已经使用 `@shared/ui/Button`、`@shared/ui/Slider` 和 `ui` token class。
 - 颜色选项已经使用 `@ui` 的 color family 和 `resolveOptionColorToken`。
 
 说明整体方向是成立的，问题主要在于旧 CSS 没清理干净，以及还缺少一层真正可复用的 UI primitive。
@@ -194,7 +194,7 @@ whiteboard 需要统一依赖：
 - border 直接使用 `--ui-border-default`、`--ui-border-strong`、`--ui-divider`。
 - text 直接使用 `--ui-text-primary`、`--ui-text-secondary`、`--ui-text-tertiary`。
 - accent 和 selection 直接基于 `--ui-accent`、`--ui-accent-overlay`、`--ui-accent-outline` 生成。
-- 色板和 node 默认色统一使用 `@ui/src/color` 的 helper 与 family 数据。
+- 色板和 node 默认色统一使用 `@shared/ui/src/color` 的 helper 与 family 数据。
 
 ### 3. whiteboard-specific 样式中的颜色也要直接吃 `--ui-*`
 
@@ -209,7 +209,7 @@ whiteboard 需要统一依赖：
 
 也就是说，保留 class，不保留白板内部的主题系统。
 
-## 应迁移到 `@ui/src` 的组件与 primitive
+## 应迁移到 `@shared/ui/src` 的组件与 primitive
 
 ### 1. 优先抽取 selection panel primitive
 
@@ -247,7 +247,7 @@ whiteboard 需要统一依赖：
 
 原因：
 
-- 它们已经高度依赖 `@ui/Button` 和 `ui` token。
+- 它们已经高度依赖 `@shared/ui/Button` 和 `ui` token。
 - 逻辑上更像是 UI 组件库的一部分，而不是 whiteboard runtime 的核心。
 
 ### 3. 抽取 toolbar primitive
@@ -368,16 +368,16 @@ whiteboard 需要统一依赖：
 
 需要先确认并补齐：
 
-- `@whiteboard/react` 是否正式依赖 `@rostack/ui`。
-- whiteboard 作为包被外部消费时，是否要求宿主显式引入 `@ui/css/core.css`。
+- `@whiteboard/react` 是否正式依赖 `@shared/ui`。
+- whiteboard 作为包被外部消费时，是否要求宿主显式引入 `@shared/ui/css/core.css`。
 - whiteboard 的 UI class 是否继续依赖宿主侧 Tailwind content 扫描源码。
 
 当前现状是：
 
-- demo app 已经显式引入 `@ui/css/core.css`。
+- demo app 已经显式引入 `@shared/ui/css/core.css`。
 - demo app 的 Tailwind content 也显式扫描 `whiteboard-react/src` 与 `ui/src`。
 
-如果这个契约不明确，后面所有“组件迁移到 `@ui/src`”都只能在当前 app 内成立，不能保证库消费场景稳定。
+如果这个契约不明确，后面所有“组件迁移到 `@shared/ui/src`”都只能在当前 app 内成立，不能保证库消费场景稳定。
 
 ### 阶段二：先删死代码
 
@@ -391,7 +391,7 @@ whiteboard 需要统一依赖：
 
 ### 阶段三：抽 UI primitive
 
-优先把以下白板内部 primitive 上移到 `@ui/src`：
+优先把以下白板内部 primitive 上移到 `@shared/ui/src`：
 
 - selection panel primitive
 - toolbox primitive
@@ -453,7 +453,7 @@ whiteboard 需要统一依赖：
 
 ### 3. presence 颜色是一个单独问题
 
-`@ui/src/color` 现在擅长固定 family token，但 presence 使用的是用户自定义任意颜色。
+`@shared/ui/src/color` 现在擅长固定 family token，但 presence 使用的是用户自定义任意颜色。
 
 因此 presence 相关视觉统一时，需要额外决定：
 
@@ -464,15 +464,15 @@ whiteboard 需要统一依赖：
 
 正确的迁移路径不是简单地“把 `whiteboard-react.css` 改薄”，而是：
 
-1. 先明确 `@whiteboard/react` 与 `@rostack/ui` 的依赖和样式契约。
+1. 先明确 `@whiteboard/react` 与 `@shared/ui` 的依赖和样式契约。
 2. 删除 `whiteboard-react.css` 中已经废弃的旧 chrome 样式。
-3. 把白板内部已成熟的 toolbar / panel / toolbox primitive 抽到 `@ui/src`。
+3. 把白板内部已成熟的 toolbar / panel / toolbox primitive 抽到 `@shared/ui/src`。
 4. 让剩余 whiteboard-specific class 继续存在，但颜色直接改吃 `--ui-*`。
 5. 最终把 `whiteboard-react.css` 收敛为一个纯 runtime 结构样式文件。
 
 如果后续开始实际实施，建议第一轮只做两件事：
 
 - 删除死代码 selector。
-- 抽取 `ShapeToolbarPrimitives`、`toolbox/primitives`、`toolbar/primitives` 到 `@ui/src`。
+- 抽取 `ShapeToolbarPrimitives`、`toolbox/primitives`、`toolbar/primitives` 到 `@shared/ui/src`。
 
 这两步收益最大，风险最低，也最能验证迁移方向是否正确。

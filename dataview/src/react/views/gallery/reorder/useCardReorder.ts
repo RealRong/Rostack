@@ -4,7 +4,7 @@ import { pointIn } from '@shared/dom'
 import {
   usePointerDragSession,
   type PointerPosition
-} from '@dataview/react/interaction/usePointerDragSession'
+} from '#react/interaction/usePointerDragSession'
 import type { GalleryDropTarget } from './hitTest'
 import { dropTargetFromPoint } from './hitTest'
 import type { GalleryLayoutCache } from '../virtual'

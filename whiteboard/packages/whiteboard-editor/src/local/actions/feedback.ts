@@ -7,14 +7,14 @@ import {
 } from '../feedback/node'
 import type {
   EdgeGuide,
-  EdgeOverlayEntry,
-  EditorOverlay,
+  EdgeFeedbackEntry,
+  EditorFeedbackRuntime,
   MindmapDragFeedback,
   TextPreviewPatch
 } from '../feedback/types'
 import {
-  updateOverlayBranch,
-  updateOverlayNestedBranch
+  updateFeedbackBranch,
+  updateFeedbackNestedBranch
 } from '../feedback/update'
 
 export type LocalFeedbackActions = {
@@ -31,7 +31,7 @@ export type LocalFeedbackActions = {
     }
   }
   edge: {
-    setInteraction: (entries: readonly EdgeOverlayEntry[]) => void
+    setInteraction: (entries: readonly EdgeFeedbackEntry[]) => void
     setGuide: (guide?: EdgeGuide) => void
     clearPatches: () => void
     clearGuide: () => void
@@ -43,52 +43,52 @@ export type LocalFeedbackActions = {
   }
 }
 
-const EMPTY_EDGE_PATCHES = [] as const
-const EMPTY_NODE_IDS: readonly NodeId[] = []
+const EMPTY_EDGE_FEEDBACK_ENTRIES = [] as const
+const EMPTY_HIDDEN_NODE_IDS: readonly NodeId[] = []
 
 export const createLocalFeedbackActions = ({
-  overlay
+  feedback
 }: {
-  overlay: Pick<EditorOverlay, 'set'>
+  feedback: Pick<EditorFeedbackRuntime, 'set'>
 }): LocalFeedbackActions => ({
   draw: {
-    setPreview: (preview) => updateOverlayNestedBranch(
-      overlay,
+    setPreview: (preview) => updateFeedbackNestedBranch(
+      feedback,
       'draw',
       'preview',
       (current) => current === preview ? current : preview
     ),
-    setHidden: (nodeIds) => updateOverlayNestedBranch(
-      overlay,
+    setHidden: (nodeIds) => updateFeedbackNestedBranch(
+      feedback,
       'draw',
       'hidden',
       (current) => current === nodeIds ? current : nodeIds
     ),
-    clear: () => updateOverlayBranch(overlay, 'draw', (current) => (
+    clear: () => updateFeedbackBranch(feedback, 'draw', (current) => (
       current.preview === null && current.hidden.length === 0
         ? current
         : {
             preview: null,
-            hidden: EMPTY_NODE_IDS
+            hidden: EMPTY_HIDDEN_NODE_IDS
           }
     ))
   },
   node: {
     text: {
-      set: (nodeId, patch) => updateOverlayNestedBranch(
-        overlay,
+      set: (nodeId, patch) => updateFeedbackNestedBranch(
+        feedback,
         'node',
         'text',
         (current) => updateNodeTextPreview(current, nodeId, patch)
       ),
-      clear: (nodeId) => updateOverlayNestedBranch(
-        overlay,
+      clear: (nodeId) => updateFeedbackNestedBranch(
+        feedback,
         'node',
         'text',
         (current) => clearNodeTextPreview(current, nodeId)
       ),
-      clearSize: (nodeId) => updateOverlayNestedBranch(
-        overlay,
+      clearSize: (nodeId) => updateFeedbackNestedBranch(
+        feedback,
         'node',
         'text',
         (current) => clearNodeTextPreviewSize(current, nodeId)
@@ -96,47 +96,47 @@ export const createLocalFeedbackActions = ({
     }
   },
   edge: {
-    setInteraction: (entries) => updateOverlayNestedBranch(
-      overlay,
+    setInteraction: (entries) => updateFeedbackNestedBranch(
+      feedback,
       'edge',
       'interaction',
       (current) => current === entries ? current : entries
     ),
-    setGuide: (guide) => updateOverlayNestedBranch(
-      overlay,
+    setGuide: (guide) => updateFeedbackNestedBranch(
+      feedback,
       'edge',
       'guide',
       (current) => current === guide ? current : guide
     ),
-    clearPatches: () => updateOverlayNestedBranch(
-      overlay,
+    clearPatches: () => updateFeedbackNestedBranch(
+      feedback,
       'edge',
       'interaction',
-      (current) => current.length === 0 ? current : EMPTY_EDGE_PATCHES
+      (current) => current.length === 0 ? current : EMPTY_EDGE_FEEDBACK_ENTRIES
     ),
-    clearGuide: () => updateOverlayNestedBranch(
-      overlay,
+    clearGuide: () => updateFeedbackNestedBranch(
+      feedback,
       'edge',
       'guide',
       (current) => current === undefined ? current : undefined
     ),
-    clear: () => updateOverlayBranch(overlay, 'edge', (current) => (
+    clear: () => updateFeedbackBranch(feedback, 'edge', (current) => (
       current.interaction.length === 0 && current.guide === undefined
         ? current
         : {
-            interaction: EMPTY_EDGE_PATCHES,
+            interaction: EMPTY_EDGE_FEEDBACK_ENTRIES,
             guide: undefined
           }
     ))
   },
   mindmap: {
-    setDrag: (drag) => updateOverlayNestedBranch(
-      overlay,
+    setDrag: (drag) => updateFeedbackNestedBranch(
+      feedback,
       'mindmap',
       'drag',
       (current) => current === drag ? current : drag
     ),
-    clear: () => updateOverlayBranch(overlay, 'mindmap', (current) => (
+    clear: () => updateFeedbackBranch(feedback, 'mindmap', (current) => (
       current.drag === undefined
         ? current
         : {}

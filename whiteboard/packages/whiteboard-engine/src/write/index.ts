@@ -1,11 +1,6 @@
-import type { Draft, DraftKind, Writer } from '@engine-types/write'
-import type {
-  WriteCommandMap,
-  WriteDomain,
-  WriteInput,
-  WriteOutput
-} from '@engine-types/command'
-import type { BoardConfig } from '@engine-types/instance'
+import type { Draft, DraftKind, Writer } from '#types/write'
+import type { CommandOutput, TranslateCommand } from '#types/command'
+import type { BoardConfig } from '#types/instance'
 import { assertDocument } from '@whiteboard/core/document'
 import {
   type ChangeSet,
@@ -158,26 +153,28 @@ export const createWrite = ({
     )
   })
 
-  const run = <
-    D extends WriteDomain,
-    C extends WriteCommandMap[D]
-  >(input: WriteInput<D, C>): Draft<WriteOutput<D, C>> => {
+  const run = <C extends TranslateCommand>(
+    command: C,
+    origin: Origin = 'user'
+  ): Draft<CommandOutput<C>> => {
     const doc = document.get()
-    const translated = translateWrite(input, {
+    const translated = translateWrite(command, {
       doc,
       config,
       registries,
       ids
     })
-    if (!translated.ok) return translated
+    if (!translated.ok) {
+      return translated as Draft<CommandOutput<C>>
+    }
 
     return reduceToDraft(
       doc,
       translated.operations,
-      input.origin ?? 'user',
+      origin,
       'apply',
       translated.output
-    )
+    ) as Draft<CommandOutput<C>>
   }
 
   const ops = (

@@ -6,7 +6,7 @@ import type {
   SelectField,
   StatusField,
   StatusOption
-} from '@dataview/core/contracts'
+} from '#core/contracts'
 import {
   hasFieldOptions
 } from '../kind/spec'

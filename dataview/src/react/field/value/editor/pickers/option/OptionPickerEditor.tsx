@@ -5,11 +5,11 @@ import {
 import { meta, renderMessage } from '@dataview/meta'
 import {
   OptionToken
-} from '@dataview/react/field/options'
+} from '#react/field/options'
 import {
   Menu,
   type MenuHandle
-} from '@ui/menu'
+} from '@shared/ui/menu'
 import { focusInputWithoutScroll } from '@shared/dom'
 import { PickerInputBar } from '../../shared/PickerInputBar'
 import { usePickerKeydown } from '../../shared/usePickerKeydown'

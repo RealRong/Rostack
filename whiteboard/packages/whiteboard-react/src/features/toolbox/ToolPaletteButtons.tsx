@@ -14,7 +14,7 @@ import {
   PickerDivider,
   PickerIconButton,
   PickerTintBar
-} from '@rostack/ui'
+} from '@shared/ui'
 import {
   type Tool
 } from '@whiteboard/editor'

@@ -9,7 +9,7 @@ import type { GalleryState } from '@dataview/engine'
 import type { ViewState } from '@dataview/engine'
 import {
   useDataViewValue
-} from '@dataview/react/dataview'
+} from '#react/dataview'
 import {
   useGalleryRuntime
 } from './runtime'

@@ -11,7 +11,7 @@ import type {
   Point,
   Size
 } from '@whiteboard/core/types'
-import type { CommandResult } from '@engine-types/result'
+import type { CommandResult } from '@whiteboard/engine/types/result'
 import type { NodeApi } from '../../types/commands'
 
 export type NodePatchWriter = {

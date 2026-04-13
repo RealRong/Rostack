@@ -4,7 +4,7 @@ import {
   PanelSection,
   SliderSection,
   formatPercent
-} from '@rostack/ui'
+} from '@shared/ui'
 import { FILL_COLOR_OPTIONS } from '../menus/options'
 
 export const FillPanel = ({

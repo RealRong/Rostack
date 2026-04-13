@@ -2,7 +2,7 @@ import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import type {
   CanvasNode,
   EdgeItem
-} from '@engine-types/projection'
+} from '#types/projection'
 import type { Edge, EdgeId, NodeId, Point } from '@whiteboard/core/types'
 import {
   collectRelatedEdgeIds,
@@ -14,7 +14,7 @@ import {
   samePointArray as isSamePointArray,
   sameRectWithRotation as isSameRectWithRotationTuple
 } from '@shared/core'
-import type { ReadSnapshot } from '@engine-types/internal/read'
+import type { ReadSnapshot } from '#types/internal/read'
 import { createProjectionRuntime } from './projection'
 
 type EdgeCacheEntry = {

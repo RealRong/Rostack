@@ -1,10 +1,10 @@
-import type { OrderMode } from '@engine-types/command'
 import {
   listCanvasItemRefs
 } from '@whiteboard/core/document'
 import type {
   CanvasItemRef,
-  Document
+  Document,
+  OrderMode
 } from '@whiteboard/core/types'
 import {
   fromKey,

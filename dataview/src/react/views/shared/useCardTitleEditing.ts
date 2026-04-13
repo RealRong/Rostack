@@ -12,11 +12,11 @@ import type {
 import {
   useDataView,
   useDataViewValue
-} from '@dataview/react/dataview'
+} from '#react/dataview'
 import type { ItemId } from '@dataview/engine'
 import {
   resolveInlineSessionExitEffect
-} from '@dataview/react/runtime/inlineSession'
+} from '#react/runtime/inlineSession'
 import {
   readCardTitleText
 } from './cardTitleValue'

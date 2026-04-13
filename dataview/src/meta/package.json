@@ -1,0 +1,13 @@
+{
+  "name": "@dataview/meta",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "dependencies": {
+    "lucide-react": "^0.577.0",
+    "react": "^19.1.1"
+  }
+}

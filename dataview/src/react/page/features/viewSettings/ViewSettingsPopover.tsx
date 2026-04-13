@@ -1,13 +1,13 @@
 import { Settings2 } from 'lucide-react'
-import { Button } from '@ui/button'
-import { PanelHeader } from '@ui/panel-header'
-import { Popover } from '@ui/popover'
+import { Button } from '@shared/ui/button'
+import { PanelHeader } from '@shared/ui/panel-header'
+import { Popover } from '@shared/ui/popover'
 import {
   useDataView,
   useDataViewValue
-} from '@dataview/react/dataview'
+} from '#react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
-import { FieldSchemaEditor } from '@dataview/react/field/schema'
+import { FieldSchemaEditor } from '#react/field/schema'
 import {
   ViewSettingsContext,
 } from './context'

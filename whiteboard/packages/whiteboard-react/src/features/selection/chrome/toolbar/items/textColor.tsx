@@ -1,4 +1,4 @@
-import { ToolbarIconButton, ToolbarTextColorIcon } from '@rostack/ui'
+import { ToolbarIconButton, ToolbarTextColorIcon } from '@shared/ui'
 import { TextColorPanel } from '../../panels/TextColorPanel'
 import type { ToolbarItemSpec } from './types'
 

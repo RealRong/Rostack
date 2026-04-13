@@ -1,4 +1,4 @@
-import { PickerOptionButton, PickerSection } from '@rostack/ui'
+import { PickerOptionButton, PickerSection } from '@shared/ui'
 import {
   MINDMAP_INSERT_PRESETS,
   MINDMAP_INSERT_TEMPLATES

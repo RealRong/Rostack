@@ -5,8 +5,8 @@ import {
   type RowRailState,
   type RowRailStateInput
 } from '../../model/rowRail'
-import { Checkbox } from '@ui/checkbox'
-import { cn } from '@ui/utils'
+import { Checkbox } from '@shared/ui/checkbox'
+import { cn } from '@shared/ui/utils'
 import {
   TABLE_REORDER_HANDLE_SIZE,
   TABLE_REORDER_RAIL_GAP,

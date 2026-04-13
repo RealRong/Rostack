@@ -11,7 +11,7 @@ import type {
   NodeAlignMode,
   NodeDistributeMode
 } from '@whiteboard/core/node'
-import type { CommandResult } from '@engine-types/result'
+import type { CommandResult } from '@whiteboard/engine/types/result'
 import type {
   Document,
   Edge,

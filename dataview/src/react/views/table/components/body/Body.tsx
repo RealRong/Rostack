@@ -10,8 +10,8 @@ import {
   closestCenter,
   DndContext
 } from '@dnd-kit/core'
-import { modifiers } from '@dataview/react/interaction'
-import { DragGhost } from '@dataview/react/dom/dragGhost'
+import { modifiers } from '#react/interaction'
+import { DragGhost } from '#react/dom/dragGhost'
 import {
   closestTarget,
   hasInteractiveTarget,
@@ -20,10 +20,10 @@ import {
 import {
   useDataView,
   useDataViewValue
-} from '@dataview/react/dataview'
+} from '#react/dataview'
 import {
   resolveDefaultAutoPanTargets
-} from '@dataview/react/interaction/autoPan'
+} from '#react/interaction/autoPan'
 import { useStoreValue } from '@shared/react'
 import { type CellRef } from '@dataview/engine'
 import { applyPaste, handleTableKey } from '../../input'

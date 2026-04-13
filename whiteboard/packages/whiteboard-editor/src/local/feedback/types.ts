@@ -44,33 +44,33 @@ export type TextPreviewEntry = {
   patch: TextPreviewPatch
 }
 
-export type NodeSelectionOverlayState = {
+export type NodeSelectionFeedbackState = {
   patches: readonly NodePatchEntry[]
   frameHoverId?: NodeId
 }
 
-export type NodeTextOverlayState = {
+export type NodeTextFeedbackState = {
   patches: readonly TextPreviewEntry[]
 }
 
-export type NodeOverlayState = {
-  text: NodeTextOverlayState
+export type NodeFeedbackState = {
+  text: NodeTextFeedbackState
 }
 
-export type NodeOverlayProjection = {
+export type NodeFeedbackProjection = {
   patch?: NodePatch
   text?: TextPreviewPatch
   hovered: boolean
   hidden: boolean
 }
 
-export type EdgeOverlayEntry = {
+export type EdgeFeedbackEntry = {
   id: EdgeId
   patch?: EdgePatch
   activeRouteIndex?: number
 }
 
-export type EdgeOverlayProjection = {
+export type EdgeFeedbackProjection = {
   patch?: EdgePatch
   activeRouteIndex?: number
 }
@@ -88,12 +88,12 @@ export type EdgeGuide = {
   connect?: EdgeConnectFeedback
 }
 
-export type EdgeOverlayState = {
-  interaction: readonly EdgeOverlayEntry[]
+export type EdgeFeedbackState = {
+  interaction: readonly EdgeFeedbackEntry[]
   guide?: EdgeGuide
 }
 
-export type MarqueeOverlayState = {
+export type MarqueeFeedbackState = {
   worldRect: Rect
   match: MarqueeMatch
 }
@@ -116,50 +116,50 @@ export type MindmapDragFeedback = {
   preview?: MindmapDragPreview
 }
 
-export type SelectionOverlayState = {
-  node: NodeSelectionOverlayState
-  edge: readonly EdgeOverlayEntry[]
-  marquee?: MarqueeOverlayState
+export type SelectionFeedbackState = {
+  node: NodeSelectionFeedbackState
+  edge: readonly EdgeFeedbackEntry[]
+  marquee?: MarqueeFeedbackState
   guides: readonly Guide[]
 }
 
 export type SelectionPreviewState = {
   nodePatches: readonly NodePatchEntry[]
-  edgePatches: readonly EdgeOverlayEntry[]
+  edgePatches: readonly EdgeFeedbackEntry[]
   frameHoverId?: NodeId
-  marquee?: MarqueeOverlayState
+  marquee?: MarqueeFeedbackState
   guides: readonly Guide[]
 }
 
-export type EditorOverlayState = {
-  node: NodeOverlayState
-  edge: EdgeOverlayState
+export type EditorFeedbackState = {
+  node: NodeFeedbackState
+  edge: EdgeFeedbackState
   draw: {
     preview: DrawPreview | null
     hidden: readonly NodeId[]
   }
-  selection: SelectionOverlayState
+  selection: SelectionFeedbackState
   mindmap: {
     drag?: MindmapDragFeedback
   }
 }
 
-export type EditorOverlay = Pick<ReadStore<EditorOverlayState>, 'get' | 'subscribe'> & {
+export type EditorFeedbackSelectors = {
+  node: KeyedReadStore<NodeId, NodeFeedbackProjection>
+  edge: KeyedReadStore<EdgeId, EdgeFeedbackProjection>
+  draw: ReadStore<DrawPreview | null>
+  marquee: ReadStore<MarqueeFeedback | undefined>
+  mindmapDrag: ReadStore<MindmapDragFeedback | undefined>
+  edgeGuide: ReadStore<EdgeGuide>
+  snap: ReadStore<readonly Guide[]>
+}
+
+export type EditorFeedbackRuntime = Pick<ReadStore<EditorFeedbackState>, 'get' | 'subscribe'> & {
   set: (
     next:
-      | EditorOverlayState
-      | ((current: EditorOverlayState) => EditorOverlayState)
+      | EditorFeedbackState
+      | ((current: EditorFeedbackState) => EditorFeedbackState)
   ) => void
   reset: () => void
-  selectors: {
-    node: KeyedReadStore<NodeId, NodeOverlayProjection>
-    edge: KeyedReadStore<EdgeId, EdgeOverlayProjection>
-    feedback: {
-      draw: ReadStore<DrawPreview | null>
-      marquee: ReadStore<MarqueeFeedback | undefined>
-      mindmapDrag: ReadStore<MindmapDragFeedback | undefined>
-      edgeGuide: ReadStore<EdgeGuide>
-      snap: ReadStore<readonly Guide[]>
-    }
-  }
+  selectors: EditorFeedbackSelectors
 }

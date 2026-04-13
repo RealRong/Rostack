@@ -1,4 +1,4 @@
-import { ToolbarButton } from '@rostack/ui'
+import { ToolbarButton } from '@shared/ui'
 import { Shapes } from 'lucide-react'
 import { SelectionFilterMenu } from '../../panels/SelectionFilterMenu'
 import type { ToolbarItemSpec } from './types'

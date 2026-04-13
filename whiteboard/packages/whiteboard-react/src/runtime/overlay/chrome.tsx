@@ -2,7 +2,7 @@ import {
   Popover,
   type PopoverContentProps,
   type PopoverProps
-} from '@rostack/ui'
+} from '@shared/ui'
 
 export interface WhiteboardPopoverProps extends Omit<PopoverProps, 'children'> {
   children?: PopoverContentProps['children']

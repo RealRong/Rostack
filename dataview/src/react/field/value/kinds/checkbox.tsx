@@ -1,6 +1,6 @@
 import type { CustomField } from '@dataview/core/contracts'
 import { parseFieldDraft } from '@dataview/core/field'
-import { cn } from '@ui/utils'
+import { cn } from '@shared/ui/utils'
 import { CheckboxEditor } from '../editor/basic/CheckboxEditor'
 import type { FieldValueSpec } from './contracts'
 import { renderEmpty } from './shared'

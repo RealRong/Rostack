@@ -2,10 +2,14 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 
 const {
-  createDefaultViewOptions,
-  createEngine,
+  createEngine
+} = require('../.tmp/group-test-dist/engine')
+const {
+  createDefaultViewOptions
+} = require('../.tmp/group-test-dist/core/view')
+const {
   TITLE_FIELD_ID
-} = require('../.tmp/group-test-dist')
+} = require('../.tmp/group-test-dist/core/contracts')
 
 const FIELD_STATUS = 'status'
 const FIELD_POINTS = 'points'

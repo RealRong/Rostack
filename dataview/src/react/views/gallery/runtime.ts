@@ -10,21 +10,21 @@ import type {
 } from '@dataview/engine'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
-} from '@dataview/react/dom/appearance'
+} from '#react/dom/appearance'
 import {
   useDataView,
   useDataViewValue
-} from '@dataview/react/dataview'
+} from '#react/dataview'
 import {
   closestTarget,
   interactiveSelector
 } from '@shared/dom'
 import {
   resolveDefaultAutoPanTargets
-} from '@dataview/react/interaction/autoPan'
+} from '#react/interaction/autoPan'
 import {
   createVisualTargetRegistry
-} from '@dataview/react/runtime/marquee'
+} from '#react/runtime/marquee'
 import { useStoreValue } from '@shared/react'
 import {
   useCardReorder

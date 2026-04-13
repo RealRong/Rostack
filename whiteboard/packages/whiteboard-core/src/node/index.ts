@@ -9,6 +9,7 @@ export {
 export {
   getNodeAABB,
   getNodeBoundsByNode,
+  readNodeRotation,
   getNodeRect,
   getNodesBounds
 } from './geometry'
@@ -92,7 +93,6 @@ export {
   rotateVector
 } from './transform'
 export type {
-  HorizontalResizeEdge,
   ResizeGestureInput,
   ResizeGestureSnapshot,
   ResizeUpdate,
@@ -117,9 +117,12 @@ export type {
   TransformState,
   TransformStepInput,
   TransformStepResult,
-  TransformHandle,
-  VerticalResizeEdge
+  TransformHandle
 } from './transform'
+export type {
+  HorizontalResizeEdge,
+  VerticalResizeEdge
+} from './resize'
 export {
   buildSnapCandidates,
   computeResizeSnap,

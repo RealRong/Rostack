@@ -1,0 +1,14 @@
+{
+  "name": "@dataview/table",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "dependencies": {
+    "@dataview/core": "workspace:*",
+    "@dataview/engine": "workspace:*",
+    "@shared/core": "workspace:*"
+  }
+}

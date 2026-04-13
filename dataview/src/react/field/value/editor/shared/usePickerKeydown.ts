@@ -1,5 +1,5 @@
 import { useCallback, type KeyboardEvent as ReactKeyboardEvent } from 'react'
-import type { EditorSubmitTrigger } from '@dataview/react/interaction'
+import type { EditorSubmitTrigger } from '#react/interaction'
 import {
   isComposing,
   keyAction

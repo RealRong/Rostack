@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
-import { OverlayProvider } from '@rostack/ui'
+import { OverlayProvider } from '@shared/ui'
 import type { Document } from '@whiteboard/core/types'
 import {
   createYjsSession,

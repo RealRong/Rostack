@@ -1,5 +1,5 @@
 import { renderMessage } from '@dataview/meta'
-import { cn } from '@ui/utils'
+import { cn } from '@shared/ui/utils'
 import type { CreateViewItem } from './catalog'
 
 export interface ViewTypeCardProps {

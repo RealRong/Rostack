@@ -1,4 +1,4 @@
-import { PickerGridButton, PickerSection } from '@rostack/ui'
+import { PickerGridButton, PickerSection } from '@shared/ui'
 import {
   SHAPE_MENU_SECTIONS,
   readShapePreviewFill

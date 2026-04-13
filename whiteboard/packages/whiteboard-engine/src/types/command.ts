@@ -6,11 +6,18 @@ import type {
   EdgeInput,
   EdgePatch,
   GroupId,
+  MindmapCloneSubtreeInput,
+  MindmapCreateInput,
   MindmapId,
+  MindmapInsertInput,
+  MindmapMoveSubtreeInput,
   MindmapNodeId,
+  MindmapRemoveSubtreeInput,
+  MindmapUpdateNodeInput,
   NodeId,
   NodeInput,
   NodeUpdateInput,
+  OrderMode,
   Origin,
   Point
 } from '@whiteboard/core/types'
@@ -23,16 +30,9 @@ import type {
   NodeAlignMode,
   NodeDistributeMode
 } from '@whiteboard/core/node'
-import type {
-  MindmapApplyCommand,
-  MindmapCloneSubtreeInput,
-  MindmapCreateOptions,
-  MindmapInsertOptions,
-  MindmapMoveSubtreeInput,
-  MindmapRemoveSubtreeInput,
-  MindmapUpdateNodeInput
-} from './mindmap'
 import type { CommandResult } from './result'
+
+export type { OrderMode } from '@whiteboard/core/types'
 
 export type NodeBatchUpdate = {
   id: NodeId
@@ -48,217 +48,10 @@ export type NodeUpdateManyOptions = {
   origin?: Origin
 }
 
-export type OrderMode =
-  | 'set'
-  | 'front'
-  | 'back'
-  | 'forward'
-  | 'backward'
-
-export type DocumentWriteCommand =
-  | {
-      type: 'insert'
-      slice: Slice
-      options?: SliceInsertOptions
-    }
-  | {
-      type: 'delete'
-      refs: CanvasItemRef[]
-    }
-  | {
-      type: 'duplicate'
-      refs: CanvasItemRef[]
-    }
-  | {
-      type: 'background'
-      background?: Document['background']
-    }
-  | {
-      type: 'order'
-      mode: OrderMode
-      refs: CanvasItemRef[]
-    }
-
-export type NodeWriteCommand =
-  | {
-      type: 'create'
-      payload: NodeInput
-    }
-  | {
-      type: 'move'
-      ids: readonly NodeId[]
-      delta: Point
-    }
-  | {
-      type: 'updateMany'
-      updates: readonly NodeBatchUpdate[]
-    }
-  | {
-      type: 'align'
-      ids: readonly NodeId[]
-      mode: NodeAlignMode
-    }
-  | {
-      type: 'distribute'
-      ids: readonly NodeId[]
-      mode: NodeDistributeMode
-    }
-  | {
-      type: 'delete'
-      ids: NodeId[]
-    }
-  | {
-      type: 'deleteCascade'
-      ids: NodeId[]
-    }
-  | {
-      type: 'duplicate'
-      ids: NodeId[]
-    }
-
-export type GroupWriteCommand =
-  | {
-      type: 'merge'
-      target: {
-        nodeIds?: readonly NodeId[]
-        edgeIds?: readonly EdgeId[]
-      }
-    }
-  | {
-      type: 'order'
-      mode: OrderMode
-      ids: GroupId[]
-    }
-  | {
-      type: 'ungroup'
-      id: GroupId
-    }
-  | {
-      type: 'ungroupMany'
-      ids: GroupId[]
-    }
-
 export type EdgeBatchUpdate = {
   id: EdgeId
   patch: EdgePatch
 }
-
-export type EdgeWriteCommand =
-  | {
-      type: 'create'
-      payload: EdgeInput
-    }
-  | {
-      type: 'move'
-      edgeId: EdgeId
-      delta: Point
-    }
-  | {
-      type: 'updateMany'
-      updates: readonly EdgeBatchUpdate[]
-    }
-  | {
-      type: 'delete'
-      ids: EdgeId[]
-    }
-  | {
-      type: 'route'
-      mode: 'insert' | 'move' | 'remove' | 'clear'
-      edgeId: EdgeId
-      index?: number
-      point?: Point
-    }
-
-export type MindmapWriteCommand = MindmapApplyCommand
-
-export type WriteDomain =
-  | 'document'
-  | 'node'
-  | 'group'
-  | 'edge'
-  | 'mindmap'
-
-export type WriteCommandMap = {
-  document: DocumentWriteCommand
-  node: NodeWriteCommand
-  group: GroupWriteCommand
-  edge: EdgeWriteCommand
-  mindmap: MindmapWriteCommand
-}
-
-export type WriteInput<
-  D extends WriteDomain = WriteDomain,
-  C extends WriteCommandMap[D] = WriteCommandMap[D]
-> = {
-  domain: D
-  command: C
-  origin?: Origin
-}
-
-export type DocumentWriteOutput<C extends DocumentWriteCommand = DocumentWriteCommand> =
-  C extends { type: 'insert' }
-    ? Omit<SliceInsertResult, 'operations'>
-    : C extends { type: 'duplicate' }
-      ? Omit<SliceInsertResult, 'operations'>
-    : void
-
-export type NodeWriteOutput<C extends NodeWriteCommand = NodeWriteCommand> =
-  C extends { type: 'create' }
-    ? { nodeId: NodeId }
-    : C extends { type: 'duplicate' }
-      ? {
-          nodeIds: readonly NodeId[]
-          edgeIds: readonly EdgeId[]
-        }
-      : void
-
-export type GroupWriteOutput<C extends GroupWriteCommand = GroupWriteCommand> =
-  C extends { type: 'merge' }
-    ? { groupId: GroupId }
-    : C extends ({ type: 'ungroup' } | { type: 'ungroupMany' })
-      ? {
-          nodeIds: readonly NodeId[]
-          edgeIds: readonly EdgeId[]
-        }
-      : void
-
-export type EdgeWriteOutput<C extends EdgeWriteCommand = EdgeWriteCommand> =
-  C extends { type: 'create' }
-    ? { edgeId: EdgeId }
-    : C extends { type: 'route'; mode: 'insert' }
-      ? { index: number }
-      : void
-
-export type MindmapWriteOutput<C extends MindmapWriteCommand = MindmapWriteCommand> =
-  C extends { type: 'create' }
-    ? {
-        mindmapId: MindmapId
-        rootId: MindmapNodeId
-      }
-    : C extends { type: 'insert' }
-      ? { nodeId: MindmapNodeId }
-      : C extends { type: 'clone.subtree' }
-        ? {
-            nodeId: MindmapNodeId
-            map: Record<MindmapNodeId, MindmapNodeId>
-          }
-        : void
-
-export type WriteOutput<
-  D extends WriteDomain,
-  C extends WriteCommandMap[D] = WriteCommandMap[D]
-> =
-  D extends 'document'
-    ? DocumentWriteOutput<Extract<C, DocumentWriteCommand>>
-    : D extends 'node'
-      ? NodeWriteOutput<Extract<C, NodeWriteCommand>>
-      : D extends 'group'
-        ? GroupWriteOutput<Extract<C, GroupWriteCommand>>
-      : D extends 'edge'
-      ? EdgeWriteOutput<Extract<C, EdgeWriteCommand>>
-      : D extends 'mindmap'
-        ? MindmapWriteOutput<Extract<C, MindmapWriteCommand>>
-        : never
 
 export type EngineCommand =
   | {
@@ -388,7 +181,7 @@ export type EngineCommand =
     }
   | {
       type: 'mindmap.create'
-      payload?: MindmapCreateOptions
+      payload?: MindmapCreateInput
     }
   | {
       type: 'mindmap.delete'
@@ -397,7 +190,7 @@ export type EngineCommand =
   | {
       type: 'mindmap.insert'
       id: MindmapId
-      input: MindmapInsertOptions
+      input: MindmapInsertInput
     }
   | {
       type: 'mindmap.move'
@@ -420,13 +213,20 @@ export type EngineCommand =
       input: MindmapUpdateNodeInput
     }
 
-export type ExecuteOptions = {
-  origin?: Origin
-}
+export type ReplaceDocumentCommand = Extract<
+  EngineCommand,
+  { type: 'document.replace' }
+>
 
-export type ExecuteResult<
-  C extends EngineCommand = EngineCommand
-> = CommandResult<
+export type TranslateCommand = Exclude<EngineCommand, ReplaceDocumentCommand>
+
+export type DocumentCommand = Extract<EngineCommand, { type: `document.${string}` }>
+export type NodeCommand = Extract<EngineCommand, { type: `node.${string}` }>
+export type GroupCommand = Extract<EngineCommand, { type: `group.${string}` }>
+export type EdgeCommand = Extract<EngineCommand, { type: `edge.${string}` }>
+export type MindmapCommand = Extract<EngineCommand, { type: `mindmap.${string}` }>
+
+export type CommandOutput<C extends EngineCommand> =
   C extends { type: 'document.insert' | 'document.duplicate' }
     ? Omit<SliceInsertResult, 'operations'>
     : C extends { type: 'node.create' }
@@ -460,4 +260,11 @@ export type ExecuteResult<
                           map: Record<MindmapNodeId, MindmapNodeId>
                         }
                       : void
->
+
+export type ExecuteOptions = {
+  origin?: Origin
+}
+
+export type ExecuteResult<
+  C extends EngineCommand = EngineCommand
+> = CommandResult<CommandOutput<C>>

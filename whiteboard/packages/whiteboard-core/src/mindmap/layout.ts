@@ -1,7 +1,11 @@
-import type { GetNodeSize, MindmapLayout, MindmapLayoutOptions, MindmapNodeId, MindmapTree } from './types'
-
-type LayoutNode = { x: number; y: number; width: number; height: number }
-type Size = { width: number; height: number }
+import type {
+  GetNodeSize,
+  MindmapLayout,
+  MindmapLayoutOptions,
+  MindmapNodeId,
+  MindmapTree
+} from './types'
+import type { Rect, Size } from '../types'
 
 const getChildren = (tree: MindmapTree, nodeId: MindmapNodeId) => tree.children[nodeId] ?? []
 
@@ -14,7 +18,7 @@ export const layoutMindmap = (
   const vGap = options.vGap ?? 12
   const sideOption = options.side ?? 'both'
 
-  const layout: Record<MindmapNodeId, LayoutNode> = {}
+  const layout: Record<MindmapNodeId, Rect> = {}
   const sizeCache = new Map<MindmapNodeId, Size>()
   const measureCache = new Map<string, Size>()
 
@@ -424,7 +428,7 @@ export const layoutMindmapTidy = (
       })
   })
 
-  const layout: Record<MindmapNodeId, LayoutNode> = {}
+  const layout: Record<MindmapNodeId, Rect> = {}
   Object.keys(centerY).forEach((id) => {
     const nodeId = id as MindmapNodeId
     const y = centerY[nodeId]

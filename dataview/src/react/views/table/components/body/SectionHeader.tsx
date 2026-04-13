@@ -3,14 +3,14 @@ import {
 } from 'lucide-react'
 import {
   useDataView
-} from '@dataview/react/dataview'
+} from '#react/dataview'
 import type {
   Section
 } from '@dataview/engine'
 import { useStoreValue } from '@shared/react'
 import { useTableContext } from '../../context'
-import { Button } from '@ui/button'
-import { cn } from '@ui/utils'
+import { Button } from '@shared/ui/button'
+import { cn } from '@shared/ui/utils'
 
 export interface SectionHeaderProps {
   section: Section

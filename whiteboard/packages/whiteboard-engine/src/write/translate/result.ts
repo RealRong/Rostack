@@ -1,6 +1,6 @@
 import type { Operation } from '@whiteboard/core/types'
-import type { CommandFailure } from '@engine-types/result'
-import type { TranslateResult } from '@engine-types/internal/translate'
+import type { CommandFailure } from '#types/result'
+import type { TranslateResult } from '#types/internal/translate'
 import { cancelled as cancelledResult, failure, invalid as invalidResult } from '../../result'
 
 export function success(operations: readonly Operation[]): TranslateResult<void>

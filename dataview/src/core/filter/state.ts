@@ -2,7 +2,7 @@ import type {
   Field,
   Filter,
   FilterRule
-} from '@dataview/core/contracts'
+} from '#core/contracts'
 import {
   applyFilterPreset,
   cloneFilterRule,

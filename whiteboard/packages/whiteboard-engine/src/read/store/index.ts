@@ -1,5 +1,5 @@
-import type { ReadModel } from '@engine-types/read'
-import type { EngineDocument, EngineRead, EngineReadIndex } from '@engine-types/instance'
+import type { ReadModel } from '#types/read'
+import type { EngineDocument, EngineRead, EngineReadIndex } from '#types/instance'
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import type { BoardConfig } from '@whiteboard/core/config'
 import type { MindmapLayoutConfig } from '@whiteboard/core/mindmap'
@@ -49,7 +49,7 @@ import { createEdgeProjection } from './edge'
 import { createReadModel } from './model'
 import { createMindmapProjection } from './mindmap'
 import { createNodeProjection } from './node'
-import type { ReadSnapshot } from '@engine-types/internal/read'
+import type { ReadSnapshot } from '#types/internal/read'
 import {
   resolveGroupTarget,
   resolveTargetBounds

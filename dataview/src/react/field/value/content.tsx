@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Field } from '@dataview/core/contracts'
-import { cn } from '@ui/utils'
+import { cn } from '@shared/ui/utils'
 import { FieldValueRenderer } from './FieldValueRenderer'
 import { getFieldValueSpec } from './kinds'
 

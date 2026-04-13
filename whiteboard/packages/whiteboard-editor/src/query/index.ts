@@ -112,9 +112,11 @@ export type RuntimeRead = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
     screenPoint: ViewportRuntime['input']['screenPoint']
     size: ViewportRuntime['input']['size']
   }
-  overlay: {
-    node: EditorFeedbackRuntime['selectors']['node']
-    feedback: EditorFeedbackRuntime['selectors']['feedback']
+  feedback: {
+    draw: EditorFeedbackRuntime['selectors']['draw']
+    marquee: EditorFeedbackRuntime['selectors']['marquee']
+    edgeGuide: EditorFeedbackRuntime['selectors']['edgeGuide']
+    snap: EditorFeedbackRuntime['selectors']['snap']
   }
 }
 
@@ -144,19 +146,19 @@ export const createQueryRuntime = ({
   const nodeRead: NodeRead = createNodeRead({
     read: engineRead,
     registry,
-    overlay: local.feedback.selectors.node,
+    feedback: local.feedback.selectors.node,
     edit: edit.source
   })
   const edgeRead = createEdgeRead({
     read: engineRead,
     node: nodeRead,
-    overlay: local.feedback.selectors.edge,
+    feedback: local.feedback.selectors.edge,
     edit: edit.source,
     capability: nodeRead.capability
   })
   const mindmapRead = createMindmapRead({
     read: engineRead.mindmap,
-    drag: local.feedback.selectors.feedback.mindmapDrag
+    drag: local.feedback.selectors.mindmapDrag
   })
   const targetRead = createTargetRead({
     node: nodeRead,
@@ -210,9 +212,11 @@ export const createQueryRuntime = ({
         screenPoint: local.viewport.input.screenPoint,
         size: local.viewport.input.size
       },
-      overlay: {
-        node: local.feedback.selectors.node,
-        feedback: local.feedback.selectors.feedback
+      feedback: {
+        draw: local.feedback.selectors.draw,
+        marquee: local.feedback.selectors.marquee,
+        edgeGuide: local.feedback.selectors.edgeGuide,
+        snap: local.feedback.selectors.snap
       }
     },
     selectionModel

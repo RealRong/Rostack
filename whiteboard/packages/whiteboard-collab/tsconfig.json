@@ -1,14 +1,8 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "dist",
-    "baseUrl": ".",
-    "paths": {
-      "@shared/*": ["../../../shared/*/src/index.ts"],
-      "@whiteboard/core/*": ["../whiteboard-core/src/*/index.ts"],
-      "@whiteboard/engine": ["../whiteboard-engine/src/index.ts"],
-      "@engine-types/*": ["../whiteboard-engine/src/types/*"]
-    }
+    "rootDir": "src",
+    "outDir": "dist"
   },
   "include": ["src"]
 }

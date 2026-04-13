@@ -1,10 +1,10 @@
 import { X } from 'lucide-react'
-import { Button } from '@ui/button'
+import { Button } from '@shared/ui/button'
 import {
   resolveOptionBadgeStyle,
   resolveOptionStatusDotStyle
-} from '@ui/color'
-import { cn } from '@ui/utils'
+} from '@shared/ui/color'
+import { cn } from '@shared/ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
 
 export interface OptionTokenProps {

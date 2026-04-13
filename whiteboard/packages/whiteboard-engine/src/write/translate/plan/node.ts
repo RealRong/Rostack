@@ -1,4 +1,4 @@
-import type { WriteCommandMap } from '@engine-types/command'
+import type { NodeCommand } from '#types/command'
 import {
   buildInsertSliceOperations,
   exportSliceFromNodes,
@@ -24,15 +24,14 @@ import type { WriteTranslateContext } from '../index'
 import { cascadeDeleteTargets } from '../selection/node'
 import type { Step } from './shared'
 
-type Command = WriteCommandMap['node']
-type Create = Extract<Command, { type: 'create' }>
-type Move = Extract<Command, { type: 'move' }>
-type UpdateMany = Extract<Command, { type: 'updateMany' }>
-type RemoveCascade = Extract<Command, { type: 'deleteCascade' }>
-type Duplicate = Extract<Command, { type: 'duplicate' }>
-type Align = Extract<Command, { type: 'align' }>
-type Distribute = Extract<Command, { type: 'distribute' }>
-type Remove = Extract<Command, { type: 'delete' }>
+type Create = Extract<NodeCommand, { type: 'node.create' }>
+type Move = Extract<NodeCommand, { type: 'node.move' }>
+type UpdateMany = Extract<NodeCommand, { type: 'node.patch' }>
+type RemoveCascade = Extract<NodeCommand, { type: 'node.deleteCascade' }>
+type Duplicate = Extract<NodeCommand, { type: 'node.duplicate' }>
+type Align = Extract<NodeCommand, { type: 'node.align' }>
+type Distribute = Extract<NodeCommand, { type: 'node.distribute' }>
+type Remove = Extract<NodeCommand, { type: 'node.delete' }>
 
 const takeOps = (updates: readonly UpdateMany['updates'][number][], doc: WriteTranslateContext['doc']) => {
   const nextById = new Map<NodeId, Node>()

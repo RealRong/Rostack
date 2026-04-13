@@ -1,19 +1,23 @@
 {
-  "name": "rostack",
+  "name": "@rostack/workspace",
   "private": true,
   "packageManager": "pnpm@9.15.5",
+  "devDependencies": {
+    "tsup": "^8.0.2",
+    "typescript": "^5.9.3"
+  },
   "scripts": {
     "build": "pnpm run build:dataview && pnpm run build:whiteboard && pnpm run build:whiteboard:app",
-    "build:dataview": "pnpm --dir dataview build",
-    "build:dataview:app": "pnpm --dir apps/dataview build",
-    "build:whiteboard": "pnpm --dir whiteboard build",
-    "build:whiteboard:app": "pnpm --dir apps/whiteboard build",
+    "build:dataview": "pnpm -C dataview run build",
+    "build:dataview:app": "pnpm -C apps/dataview run build",
+    "build:whiteboard": "pnpm --filter @whiteboard/core run build && pnpm --filter @whiteboard/engine run build && pnpm --filter @whiteboard/editor run build && pnpm --filter @whiteboard/react run build && pnpm --filter @whiteboard/collab run build",
+    "build:whiteboard:app": "pnpm -C apps/whiteboard run build",
     "build:whiteboard:demo": "pnpm run build:whiteboard:app",
     "typecheck": "pnpm run typecheck:dataview && pnpm run typecheck:whiteboard",
-    "typecheck:dataview": "pnpm --dir dataview typecheck && pnpm --dir dataview demo:typecheck",
-    "typecheck:whiteboard": "pnpm --dir whiteboard lint",
+    "typecheck:dataview": "pnpm -C dataview run typecheck && pnpm -C dataview run demo:typecheck",
+    "typecheck:whiteboard": "pnpm --filter @whiteboard/core run lint && pnpm --filter @whiteboard/engine run lint && pnpm --filter @whiteboard/editor run lint && pnpm --filter @whiteboard/react run lint && pnpm --filter @whiteboard/collab run lint && pnpm -C apps/whiteboard run typecheck",
     "test": "pnpm run test:dataview && pnpm run test:whiteboard",
-    "test:dataview": "pnpm --dir dataview test",
-    "test:whiteboard": "pnpm --dir whiteboard test"
+    "test:dataview": "pnpm -C dataview run test",
+    "test:whiteboard": "pnpm --filter @whiteboard/core run test && pnpm --filter @whiteboard/engine run test && pnpm --filter @whiteboard/editor run test && pnpm --filter @whiteboard/react run test && pnpm --filter @whiteboard/collab run test"
   }
 }

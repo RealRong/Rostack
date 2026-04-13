@@ -1,7 +1,7 @@
 import type { CustomFieldKind } from '@dataview/core/contracts'
-import { Menu, type MenuItem } from '@ui/menu'
+import { Menu, type MenuItem } from '@shared/ui/menu'
 import { meta, renderMessage } from '@dataview/meta'
-import { buildChoiceToggleItems } from '@dataview/react/menu-builders'
+import { buildChoiceToggleItems } from '#react/menu-builders'
 
 export interface FieldKindPickerProps {
   kind?: CustomFieldKind

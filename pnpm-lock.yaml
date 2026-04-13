@@ -6,14 +6,27 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      tsup:
+        specifier: ^8.0.2
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.8)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   apps/dataview:
     dependencies:
-      '@rendevoz/group-next':
+      '@dataview/core':
         specifier: workspace:*
-        version: link:../../dataview
-      '@rostack/ui':
+        version: link:../../dataview/src/core
+      '@dataview/engine':
+        specifier: workspace:*
+        version: link:../../dataview/src/engine
+      '@dataview/react':
+        specifier: workspace:*
+        version: link:../../dataview/src/react
+      '@shared/ui':
         specifier: workspace:*
         version: link:../../ui
       react:
@@ -53,9 +66,6 @@ importers:
 
   apps/whiteboard:
     dependencies:
-      '@rostack/ui':
-        specifier: workspace:*
-        version: link:../../ui
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../../whiteboard/packages/whiteboard-core
@@ -99,9 +109,30 @@ importers:
 
   dataview:
     dependencies:
+      '@dataview/core':
+        specifier: workspace:*
+        version: link:src/core
+      '@dataview/engine':
+        specifier: workspace:*
+        version: link:src/engine
+      '@dataview/meta':
+        specifier: workspace:*
+        version: link:src/meta
+      '@dataview/react':
+        specifier: workspace:*
+        version: link:src/react
+      '@dataview/table':
+        specifier: workspace:*
+        version: link:src/table
       '@date-fns/tz':
         specifier: ^1.4.1
         version: 1.4.1
+      '@dnd-kit/core':
+        specifier: ^6.1.0
+        version: 6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@dnd-kit/sortable':
+        specifier: ^8.0.0
+        version: 8.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
       '@floating-ui/react':
         specifier: ^0.27.19
         version: 0.27.19(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -111,15 +142,18 @@ importers:
       '@radix-ui/react-slot':
         specifier: ^1.2.4
         version: 1.2.4(@types/react@19.2.14)(react@19.2.4)
-      '@shared/dom':
-        specifier: workspace:*
-        version: link:../shared/dom
       '@shared/core':
         specifier: workspace:*
         version: link:../shared/core
+      '@shared/dom':
+        specifier: workspace:*
+        version: link:../shared/dom
       '@shared/react':
         specifier: workspace:*
         version: link:../shared/react
+      '@shared/ui':
+        specifier: workspace:*
+        version: link:../ui
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -138,16 +172,16 @@ importers:
       lucide-react:
         specifier: ^0.577.0
         version: 0.577.0(react@19.2.4)
+      react:
+        specifier: ^19.1.1
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.1
+        version: 19.2.4(react@19.2.4)
       tailwind-merge:
         specifier: ^3.3.1
         version: 3.5.0
     devDependencies:
-      '@dnd-kit/core':
-        specifier: ^6.1.0
-        version: 6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@dnd-kit/sortable':
-        specifier: ^8.0.0
-        version: 8.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
       '@types/node':
         specifier: ^25.3.5
         version: 25.5.0
@@ -166,12 +200,6 @@ importers:
       postcss:
         specifier: ^8.5.6
         version: 8.5.8
-      react:
-        specifier: ^19.1.1
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.1.1
-        version: 19.2.4(react@19.2.4)
       tailwindcss:
         specifier: ^3.4.18
         version: 3.4.19
@@ -182,13 +210,106 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.5.0)(jiti@1.21.7)
 
+  dataview/src/core:
+    dependencies:
+      '@date-fns/tz':
+        specifier: ^1.4.1
+        version: 1.4.1
+      '@shared/core':
+        specifier: workspace:*
+        version: link:../../../shared/core
+      date-fns:
+        specifier: ^4.1.0
+        version: 4.1.0
+
+  dataview/src/engine:
+    dependencies:
+      '@dataview/core':
+        specifier: workspace:*
+        version: link:../core
+      '@dataview/meta':
+        specifier: workspace:*
+        version: link:../meta
+      '@shared/core':
+        specifier: workspace:*
+        version: link:../../../shared/core
+
+  dataview/src/meta:
+    dependencies:
+      lucide-react:
+        specifier: ^0.577.0
+        version: 0.577.0(react@19.2.4)
+      react:
+        specifier: ^19.1.1
+        version: 19.2.4
+
+  dataview/src/react:
+    dependencies:
+      '@dataview/core':
+        specifier: workspace:*
+        version: link:../core
+      '@dataview/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@dataview/meta':
+        specifier: workspace:*
+        version: link:../meta
+      '@dataview/table':
+        specifier: workspace:*
+        version: link:../table
+      '@dnd-kit/core':
+        specifier: ^6.1.0
+        version: 6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@dnd-kit/sortable':
+        specifier: ^8.0.0
+        version: 8.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
+      '@floating-ui/react':
+        specifier: ^0.27.19
+        version: 0.27.19(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@shared/core':
+        specifier: workspace:*
+        version: link:../../../shared/core
+      '@shared/dom':
+        specifier: workspace:*
+        version: link:../../../shared/dom
+      '@shared/react':
+        specifier: workspace:*
+        version: link:../../../shared/react
+      '@shared/ui':
+        specifier: workspace:*
+        version: link:../../../ui
+      date-fns:
+        specifier: ^4.1.0
+        version: 4.1.0
+      lucide-react:
+        specifier: ^0.577.0
+        version: 0.577.0(react@19.2.4)
+      react:
+        specifier: ^19.1.1
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.1
+        version: 19.2.4(react@19.2.4)
+
+  dataview/src/table:
+    dependencies:
+      '@dataview/core':
+        specifier: workspace:*
+        version: link:../core
+      '@dataview/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@shared/core':
+        specifier: workspace:*
+        version: link:../../../shared/core
+
+  shared/core: {}
+
   shared/dom:
     dependencies:
       '@shared/core':
         specifier: workspace:*
         version: link:../core
-
-  shared/core: {}
 
   shared/react:
     dependencies:
@@ -252,23 +373,7 @@ importers:
         specifier: ^19.1.8
         version: 19.2.3(@types/react@19.2.14)
 
-  whiteboard:
-    devDependencies:
-      '@types/node':
-        specifier: ^20.11.30
-        version: 20.19.37
-      '@types/react':
-        specifier: ^19.2.5
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19.2.3
-        version: 19.2.3(@types/react@19.2.14)
-      tsup:
-        specifier: ^8.0.2
-        version: 8.5.1(jiti@1.21.7)(postcss@8.5.8)(typescript@5.9.3)
-      typescript:
-        specifier: ^5.4.5
-        version: 5.9.3
+  whiteboard: {}
 
   whiteboard/packages/whiteboard-collab:
     dependencies:
@@ -284,12 +389,26 @@ importers:
       yjs:
         specifier: ^13.6.27
         version: 13.6.30
+    devDependencies:
+      tsup:
+        specifier: ^8.0.2
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.8)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   whiteboard/packages/whiteboard-core:
     dependencies:
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
+    devDependencies:
+      tsup:
+        specifier: ^8.0.2
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.8)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   whiteboard/packages/whiteboard-editor:
     dependencies:
@@ -305,6 +424,13 @@ importers:
       '@whiteboard/engine':
         specifier: workspace:*
         version: link:../whiteboard-engine
+    devDependencies:
+      tsup:
+        specifier: ^8.0.2
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.8)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   whiteboard/packages/whiteboard-engine:
     dependencies:
@@ -314,6 +440,13 @@ importers:
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core
+    devDependencies:
+      tsup:
+        specifier: ^8.0.2
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.8)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   whiteboard/packages/whiteboard-react:
     dependencies:
@@ -326,6 +459,9 @@ importers:
       '@shared/react':
         specifier: workspace:*
         version: link:../../../shared/react
+      '@shared/ui':
+        specifier: workspace:*
+        version: link:../../../ui
       '@whiteboard/collab':
         specifier: workspace:*
         version: link:../whiteboard-collab
@@ -347,6 +483,19 @@ importers:
       yjs:
         specifier: ^13.6.27
         version: 13.6.30
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.5
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.14)
+      tsup:
+        specifier: ^8.0.2
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.8)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
 packages:
 
@@ -995,9 +1144,6 @@ packages:
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
 
-  '@types/node@20.19.37':
-    resolution: {integrity: sha512-8kzdPJ3FsNsVIurqBs7oodNnCEVbni9yUEkaHbgptDACOPW04jimGagZ51E6+lXUwJjgnBw+hyko/lkFWCldqw==}
-
   '@types/node@25.5.0':
     resolution: {integrity: sha512-jp2P3tQMSxWugkCUKLRPVUpGaL5MVFwF8RDuSRztfwgN1wmqJeMSbKlnEtQqU8UrhTmzEmZdu2I6v2dpp7XIxw==}
 
@@ -1545,9 +1691,6 @@ packages:
 
   ufo@1.6.3:
     resolution: {integrity: sha512-yDJTmhydvl5lJzBmy/hyOAA0d+aqCBuwl818haVdYCRrWV84o7YyeVm4QlVHStqNrrJSTb6jKuFAVqAFsr+K3Q==}
-
-  undici-types@6.21.0:
-    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
   undici-types@7.18.2:
     resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
@@ -2118,10 +2261,6 @@ snapshots:
 
   '@types/estree@1.0.8': {}
 
-  '@types/node@20.19.37':
-    dependencies:
-      undici-types: 6.21.0
-
   '@types/node@25.5.0':
     dependencies:
       undici-types: 7.18.2
@@ -2679,8 +2818,6 @@ snapshots:
   typescript@5.9.3: {}
 
   ufo@1.6.3: {}
-
-  undici-types@6.21.0: {}
 
   undici-types@7.18.2: {}
 

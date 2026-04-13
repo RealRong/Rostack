@@ -13,6 +13,10 @@ import {
   rotatePoint
 } from '../geometry'
 import type { Guide } from './snap'
+import type {
+  HorizontalResizeEdge,
+  VerticalResizeEdge
+} from './resize'
 
 type ResizeHandleMeta = {
   sx: -1 | 0 | 1
@@ -21,8 +25,6 @@ type ResizeHandleMeta = {
 }
 
 export type ResizeDirection = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
-export type HorizontalResizeEdge = 'left' | 'right'
-export type VerticalResizeEdge = 'top' | 'bottom'
 
 export type TransformHandle = {
   id: string

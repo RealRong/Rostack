@@ -2,7 +2,7 @@ import type { ReactElement } from 'react'
 import {
   Popover,
   type PopoverOffset
-} from '@ui/popover'
+} from '@shared/ui/popover'
 import type { Placement } from '@floating-ui/react'
 import { OptionEditorPanel } from './OptionEditorPanel'
 

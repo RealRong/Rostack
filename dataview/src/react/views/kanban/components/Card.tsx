@@ -8,27 +8,27 @@ import {
 import {
   resolveNeutralCardStyle,
   resolveOptionCardStyle
-} from '@ui/color'
+} from '@shared/ui/color'
 import type {
   RecordId
 } from '@dataview/core/contracts'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
-} from '@dataview/react/dom/appearance'
+} from '#react/dom/appearance'
 import { shouldCapturePointer } from '@shared/dom'
 import {
   useDataView,
   useDataViewKeyedValue
-} from '@dataview/react/dataview'
+} from '#react/dataview'
 import {
   CardContent
-} from '@dataview/react/views/shared'
-import { cn } from '@ui/utils'
+} from '#react/views/shared'
+import { cn } from '@shared/ui/utils'
 import type { ItemId } from '@dataview/engine'
 import { useKanbanContext } from '../context'
 import {
   useCardEditingState
-} from '@dataview/react/views/shared/useCardTitleEditing'
+} from '#react/views/shared/useCardTitleEditing'
 
 export const Card = (props: {
   itemId: ItemId

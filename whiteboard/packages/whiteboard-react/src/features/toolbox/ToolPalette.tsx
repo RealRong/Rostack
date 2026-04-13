@@ -5,7 +5,7 @@ import {
   useRef,
   useState
 } from 'react'
-import { FloatingLayer } from '@rostack/ui'
+import { FloatingLayer } from '@shared/ui'
 import { useStoreValue } from '@shared/react'
 import {
   useEditor,

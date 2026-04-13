@@ -1,7 +1,6 @@
 export type * from './command'
 export type * from './commit'
 export type * from './instance'
-export type * from './mindmap'
 export type * from './projection'
 export type * from './read'
 export type * from './result'

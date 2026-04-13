@@ -1,23 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "rootDir": "src",
     "outDir": "dist",
-    "jsx": "react-jsx",
-    "baseUrl": ".",
-    "paths": {
-      "@shared/*": ["../../../shared/*/src/index.ts"],
-      "#react": ["src/index.ts"],
-      "#react/*": ["src/*"],
-      "@rostack/ui": ["../../../ui/src/index.ts"],
-      "@rostack/ui/*": ["../../../ui/src/*"],
-      "@whiteboard/collab": ["../whiteboard-collab/src/index.ts"],
-      "@whiteboard/core/*": ["../whiteboard-core/src/*/index.ts"],
-      "@whiteboard/editor": ["../whiteboard-editor/src/index.ts"],
-      "@whiteboard/editor/draw": ["../whiteboard-editor/src/local/draw/index.ts"],
-      "@whiteboard/engine": ["../whiteboard-engine/src/index.ts"],
-      "@engine-types": ["../whiteboard-engine/src/types/index.ts"],
-      "@engine-types/*": ["../whiteboard-engine/src/types/*"]
-    }
+    "jsx": "react-jsx"
   },
   "include": ["src"]
 }

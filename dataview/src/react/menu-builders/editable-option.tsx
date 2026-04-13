@@ -1,8 +1,8 @@
 import { MoreHorizontal } from 'lucide-react'
-import type { MenuItemRow } from '@ui/menu'
-import { Button } from '@ui/button'
+import type { MenuItemRow } from '@shared/ui/menu'
+import { Button } from '@shared/ui/button'
 import { meta, renderMessage } from '@dataview/meta'
-import { OptionEditorPopover } from '@dataview/react/field/options'
+import { OptionEditorPopover } from '#react/field/options'
 import {
   buildOptionTagLabel,
   readOptionLabel,

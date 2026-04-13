@@ -6,9 +6,9 @@ import type {
 import {
   useDataView,
   useDataViewKeyedValue
-} from '@dataview/react/dataview'
-import { Input } from '@ui/input'
-import { Menu, type MenuItem } from '@ui/menu'
+} from '#react/dataview'
+import { Input } from '@shared/ui/input'
+import { Menu, type MenuItem } from '@shared/ui/menu'
 import { meta, renderMessage } from '@dataview/meta'
 import { FIELD_DROPDOWN_MENU_PROPS } from '../../dropdown'
 import { buildFieldKindMenuItems } from '../FieldKindPicker'

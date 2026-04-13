@@ -17,17 +17,17 @@ import {
   Menu,
   type MenuHandle,
   type MenuItem
-} from '@ui/menu'
-import { useDataView } from '@dataview/react/dataview'
+} from '@shared/ui/menu'
+import { useDataView } from '#react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import {
   OptionToken
-} from '@dataview/react/field/options'
-import type { EditorSubmitTrigger } from '@dataview/react/interaction'
+} from '#react/field/options'
+import type { EditorSubmitTrigger } from '#react/interaction'
 import {
   buildEditableOptionItem,
   readOptionLabel
-} from '@dataview/react/menu-builders'
+} from '#react/menu-builders'
 import type { FieldValueDraftEditorProps } from '../../contracts'
 import { focusInputWithoutScroll } from '@shared/dom'
 import { PickerInputBar } from '../../shared/PickerInputBar'

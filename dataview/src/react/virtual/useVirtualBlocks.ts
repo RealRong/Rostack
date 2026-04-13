@@ -5,7 +5,7 @@ import {
 } from '@shared/dom'
 import {
   useViewportVersion
-} from '@dataview/react/dom/viewport'
+} from '#react/dom/viewport'
 import {
   findVirtualBlockEndIndex,
   findVirtualBlockStartIndex

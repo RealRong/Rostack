@@ -1,4 +1,4 @@
-import { PickerGridButton, PickerSection } from '@rostack/ui'
+import { PickerGridButton, PickerSection } from '@shared/ui'
 import {
   STICKY_INSERT_OPTIONS,
   STICKY_INSERT_PRESETS

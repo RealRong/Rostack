@@ -5,18 +5,18 @@ import {
 import { useMemo, useState } from 'react'
 import type { Field } from '@dataview/core/contracts'
 import { getDocumentFields } from '@dataview/core/document'
-import { Button } from '@ui/button'
-import { Input } from '@ui/input'
-import { Menu, type MenuItem, type MenuReorderItem } from '@ui/menu'
+import { Button } from '@shared/ui/button'
+import { Input } from '@shared/ui/input'
+import { Menu, type MenuItem, type MenuReorderItem } from '@shared/ui/menu'
 import {
   useDataView,
   useDataViewValue
-} from '@dataview/react/dataview'
+} from '#react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import {
   buildFieldActionItem,
   buildFieldReorderItem
-} from '@dataview/react/menu-builders'
+} from '#react/menu-builders'
 
 export const ViewFieldsPanel = () => {
   const dataView = useDataView()

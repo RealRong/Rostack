@@ -1,5 +1,5 @@
 import type { EdgePresetKey } from '@whiteboard/editor'
-import { PickerOptionButton, PickerSection } from '@rostack/ui'
+import { PickerOptionButton, PickerSection } from '@shared/ui'
 
 type EdgeOption = {
   key: EdgePresetKey

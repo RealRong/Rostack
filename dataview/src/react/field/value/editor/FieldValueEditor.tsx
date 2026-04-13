@@ -9,7 +9,7 @@ import {
   cancel,
   commit,
   type EditorSubmitTrigger
-} from '@dataview/react/interaction'
+} from '#react/interaction'
 import { isCustomField } from '@dataview/core/field'
 import { getFieldValueSpec } from '../kinds'
 import type {

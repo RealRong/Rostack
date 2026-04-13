@@ -17,8 +17,8 @@ import type {
   ViewFieldRef
 } from '@dataview/engine'
 import { isEmptyFieldValue } from '@dataview/core/field'
-import { Button } from '@ui/button'
-import { cn } from '@ui/utils'
+import { Button } from '@shared/ui/button'
+import { cn } from '@shared/ui/utils'
 import { CardFieldSlot } from './CardFieldSlot'
 import { CardTitle } from './CardTitle'
 import { useCardTitleEditing } from './useCardTitleEditing'

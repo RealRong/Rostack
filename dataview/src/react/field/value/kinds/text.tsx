@@ -4,7 +4,7 @@ import {
   getFieldDisplayValue,
   parseFieldDraft
 } from '@dataview/core/field'
-import { cn } from '@ui/utils'
+import { cn } from '@shared/ui/utils'
 import {
   InputEditor,
   type InputKind

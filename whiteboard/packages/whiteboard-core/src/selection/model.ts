@@ -1,6 +1,14 @@
 import { applySelection, type SelectionMode } from '../node/selection'
 import { getRectsBoundingRect } from '../geometry'
-import type { Edge, EdgeId, GroupId, Node, NodeId, Rect } from '../types'
+import type {
+  Edge,
+  EdgeId,
+  GroupId,
+  Node,
+  NodeId,
+  NodeRole,
+  Rect
+} from '../types'
 import {
   sameOptionalRect as isSameOptionalRectTuple,
   sameOrder as isOrderedArrayEqual
@@ -313,7 +321,7 @@ export const deriveSelectionAffordance = ({
 }: {
   selection: SelectionSummary
   transformBox?: Rect
-  resolveNodeRole: (node: Node) => 'content' | 'frame'
+  resolveNodeRole: (node: Node) => NodeRole
   resolveNodeTransformCapability: (node: Node) => {
     resize: boolean
     rotate: boolean

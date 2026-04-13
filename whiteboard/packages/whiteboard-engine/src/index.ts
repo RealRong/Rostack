@@ -12,14 +12,6 @@ export type {
 } from './types/command'
 export type { Commit } from './types/commit'
 export type {
-  MindmapCloneSubtreeInput,
-  MindmapCreateOptions,
-  MindmapInsertOptions,
-  MindmapMoveSubtreeInput,
-  MindmapRemoveSubtreeInput,
-  MindmapUpdateNodeInput
-} from './types/mindmap'
-export type {
   CanvasNode,
   EdgeItem,
   MindmapItem,

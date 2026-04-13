@@ -1,8 +1,8 @@
 import {
   resolveOptionBadgeStyle,
   resolveOptionStatusDotStyle
-} from '@ui/color'
-import { cn } from '@ui/utils'
+} from '@shared/ui/color'
+import { cn } from '@shared/ui/utils'
 
 export interface FieldOptionTagProps {
   label: string

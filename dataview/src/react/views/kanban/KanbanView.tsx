@@ -1,9 +1,9 @@
 import { Empty, KanbanCanvas } from './components'
 import { KanbanProvider } from './context'
-import { PAGE_INLINE_INSET_CSS } from '@dataview/react/page/layout'
+import { PAGE_INLINE_INSET_CSS } from '#react/page/layout'
 import {
   useDataViewValue
-} from '@dataview/react/dataview'
+} from '#react/dataview'
 import {
   type ActiveKanbanViewState
 } from './types'

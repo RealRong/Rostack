@@ -1,0 +1,41 @@
+{
+  "name": "@dataview/core",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./calculation": "./calculation/index.ts",
+    "./commit/*": "./commit/*.ts",
+    "./contracts": "./contracts/index.ts",
+    "./contracts/*": "./contracts/*.ts",
+    "./document": "./document/index.ts",
+    "./field": "./field/index.ts",
+    "./field/kind/*": "./field/kind/*.ts",
+    "./filter": "./filter/index.ts",
+    "./group": "./group/index.ts",
+    "./operation": "./operation/index.ts",
+    "./query": "./query/index.ts",
+    "./search": "./search/index.ts",
+    "./sort": "./sort/index.ts",
+    "./view": "./view/index.ts",
+    "./view/*": "./view/*.ts"
+  },
+  "imports": {
+    "#core/calculation": "./calculation/index.ts",
+    "#core/contracts": "./contracts/index.ts",
+    "#core/contracts/*": "./contracts/*.ts",
+    "#core/document": "./document/index.ts",
+    "#core/field": "./field/index.ts",
+    "#core/field/kind/*": "./field/kind/*.ts",
+    "#core/filter": "./filter/index.ts",
+    "#core/group": "./group/index.ts",
+    "#core/search": "./search/index.ts",
+    "#core/sort": "./sort/index.ts",
+    "#core/view/shared": "./view/shared.ts"
+  },
+  "dependencies": {
+    "@date-fns/tz": "^1.4.1",
+    "@shared/core": "workspace:*",
+    "date-fns": "^4.1.0"
+  }
+}

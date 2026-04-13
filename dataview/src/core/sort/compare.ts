@@ -2,14 +2,14 @@ import type {
   DataDoc,
   DataRecord,
   Sorter
-} from '@dataview/core/contracts'
+} from '#core/contracts'
 import {
   getDocumentFieldById
-} from '@dataview/core/document'
+} from '#core/document'
 import {
   compareFieldValues,
   getRecordFieldValue
-} from '@dataview/core/field'
+} from '#core/field'
 
 export const compareSortedRecords = (
   left: DataRecord,

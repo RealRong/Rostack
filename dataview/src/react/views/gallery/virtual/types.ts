@@ -7,7 +7,7 @@ import type {
 } from '@dataview/engine'
 import type {
   VirtualBlock
-} from '@dataview/react/virtual'
+} from '#react/virtual'
 
 export interface GalleryRowLayout {
   sectionKey: Section['key']

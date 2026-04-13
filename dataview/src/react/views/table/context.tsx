@@ -7,7 +7,7 @@ import {
   useRef,
   type ReactNode
 } from 'react'
-import { useDataView } from '@dataview/react/dataview'
+import { useDataView } from '#react/dataview'
 import { createNodes } from './dom/registry'
 import {
   contentBounds,

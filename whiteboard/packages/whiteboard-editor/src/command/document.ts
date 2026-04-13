@@ -11,7 +11,7 @@ import type {
   NodeId
 } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
-import type { CommandResult } from '@engine-types/result'
+import type { CommandResult } from '@whiteboard/engine/types/result'
 import type { OrderMode } from '../types/commands'
 
 export type DocumentCommands = {

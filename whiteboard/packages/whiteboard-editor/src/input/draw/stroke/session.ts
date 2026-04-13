@@ -14,7 +14,7 @@ type DrawPointer = {
   samples: readonly PointerSample[]
 }
 
-const clearStrokeOverlay = (
+const clearStrokePreview = (
   ctx: InteractionContext
 ) => {
   ctx.local.feedback.draw.setPreview(null)
@@ -79,7 +79,7 @@ export const createStrokeSession = (
       return FINISH
     },
     cleanup: () => {
-      clearStrokeOverlay(ctx)
+      clearStrokePreview(ctx)
     }
   }
 }

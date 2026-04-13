@@ -7,13 +7,13 @@ import {
 } from '@shared/core'
 import {
   createPageSessionApi
-} from '@dataview/react/page/session/api'
+} from '#react/page/session/api'
 import type {
   PageSessionInput
-} from '@dataview/react/page/session/types'
+} from '#react/page/session/types'
 import {
   createPageStateStore
-} from '@dataview/react/page/state'
+} from '#react/page/state'
 import {
   createSelectionApi,
   createSelectionStore,
@@ -21,18 +21,18 @@ import {
   selection as selectionHelpers,
   syncSelection,
   type SelectionApi
-} from '@dataview/react/runtime/selection'
+} from '#react/runtime/selection'
 import {
   createInlineSessionApi,
   type InlineSessionApi
-} from '@dataview/react/runtime/inlineSession'
+} from '#react/runtime/inlineSession'
 import {
   createValueEditorApi,
-} from '@dataview/react/runtime/valueEditor'
+} from '#react/runtime/valueEditor'
 import {
   createMarqueeApi,
   type MarqueeApi
-} from '@dataview/react/runtime/marquee'
+} from '#react/runtime/marquee'
 import type {
   ItemList
 } from '@dataview/engine'

@@ -47,7 +47,7 @@ import type {
   EditField,
   EditSession
 } from '../local/session/edit'
-import type { Commit } from '@engine-types/commit'
+import type { Commit } from '@whiteboard/engine/types/commit'
 
 export type EditorClipboardTarget = ClipboardTarget
 export type EditorClipboardOptions = ClipboardOptions
@@ -102,10 +102,10 @@ export type EditorConfig = AppConfig
 export type EditorStore = EditorState
 
 export type EditorChromePresentation = {
-  marquee: ReturnType<RuntimeRead['overlay']['feedback']['marquee']['get']>
-  draw: ReturnType<RuntimeRead['overlay']['feedback']['draw']['get']>
-  edgeGuide: ReturnType<RuntimeRead['overlay']['feedback']['edgeGuide']['get']>
-  snap: ReturnType<RuntimeRead['overlay']['feedback']['snap']['get']>
+  marquee: ReturnType<RuntimeRead['feedback']['marquee']['get']>
+  draw: ReturnType<RuntimeRead['feedback']['draw']['get']>
+  edgeGuide: ReturnType<RuntimeRead['feedback']['edgeGuide']['get']>
+  snap: ReturnType<RuntimeRead['feedback']['snap']['get']>
   selection: ReturnType<RuntimeRead['selection']['overlay']['get']>
 }
 

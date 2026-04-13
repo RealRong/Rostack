@@ -25,7 +25,7 @@ import {
   type ReadStore
 } from '@shared/core'
 import type {
-  EdgeOverlayProjection
+  EdgeFeedbackProjection
 } from '../../local/feedback/types'
 import type { NodeCanvasSnapshot, NodeRead } from '../node/read'
 import type { EditSession } from '../../local/session/edit'
@@ -193,10 +193,10 @@ const isEdgeStateEqual = (
 )
 
 const toEdgeRuntimeState = (
-  projection: EdgeOverlayProjection
+  feedback: EdgeFeedbackProjection
 ): EdgeRuntimeState => ({
-  patched: Boolean(projection.patch),
-  activeRouteIndex: projection.activeRouteIndex
+  patched: Boolean(feedback.patch),
+  activeRouteIndex: feedback.activeRouteIndex
 })
 
 const isEdgeViewStateEqual = (
@@ -232,13 +232,13 @@ const readEdgeBox = (
 export const createEdgeRead = ({
   read,
   node,
-  overlay,
+  feedback,
   edit,
   capability
 }: {
   read: Pick<EngineRead, 'edge'>
   node: Pick<NodeRead, 'canvas' | 'idsInRect'>
-  overlay: KeyedReadStore<EdgeId, EdgeOverlayProjection>
+  feedback: KeyedReadStore<EdgeId, EdgeFeedbackProjection>
   edit: ReadStore<EditSession>
   capability: (node: Pick<Node, 'type'> | NodeType) => {
     connect: boolean
@@ -248,14 +248,14 @@ export const createEdgeRead = ({
     get: (edgeId: EdgeId) => {
       const entry = readValue(read.edge.item, edgeId)
       return entry
-        ? projectEdgeItem(entry, readValue(overlay, edgeId), readValue(edit))
+        ? projectEdgeItem(entry, readValue(feedback, edgeId), readValue(edit))
         : undefined
     },
     isEqual: isEdgeItemEqual
   })
   const state: EdgeRead['state'] = createKeyedDerivedStore({
     get: (edgeId: EdgeId) => toEdgeRuntimeState(
-      readValue(overlay, edgeId)
+      readValue(feedback, edgeId)
     ),
     isEqual: isEdgeStateEqual
   })

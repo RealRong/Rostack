@@ -1,5 +1,4 @@
 const {
-  cpSync,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -10,13 +9,26 @@ const {
 const { dirname, join, relative, sep } = require('node:path')
 const ts = require('typescript')
 
-const buildDir = join(process.cwd(), '.tmp', 'group-test-build')
 const outDir = join(process.cwd(), '.tmp', 'group-test-dist')
-const dataviewBuildDir = join(buildDir, 'dataview', 'src')
+const dataviewSourceDir = join(process.cwd(), 'src')
 const sharedSourceDir = join(process.cwd(), '..', 'shared')
-const uiBuildDir = join(buildDir, 'ui', 'src')
+const uiSourceDir = join(process.cwd(), '..', 'ui', 'src')
 const sharedOutDir = join(outDir, '__shared__')
 const uiOutDir = join(outDir, '__ui__')
+
+const DATAVIEW_PACKAGE_DIRS = {
+  core: join(outDir, 'core'),
+  engine: join(outDir, 'engine'),
+  meta: join(outDir, 'meta'),
+  react: join(outDir, 'react'),
+  table: join(outDir, 'table')
+}
+
+const SHARED_PACKAGE_DIRS = {
+  core: join(sharedOutDir, 'core', 'src'),
+  dom: join(sharedOutDir, 'dom', 'src'),
+  react: join(sharedOutDir, 'react', 'src')
+}
 
 const toPosixPath = value => value.split(sep).join('/')
 
@@ -29,37 +41,7 @@ const toRelativeRequirePath = (filePath, absoluteTarget) => {
   return nextTarget
 }
 
-const rewriteAliasRequires = filePath => {
-  const content = readFileSync(filePath, 'utf8')
-  const nextContent = content
-    .replace(/require\((['"])@dataview(?:\/([^'"]+))?\1\)/g, (_match, quote, target) => {
-      const absoluteTarget = target
-        ? join(outDir, target)
-        : join(outDir, 'index.js')
-      return `require(${quote}${toRelativeRequirePath(filePath, absoluteTarget)}${quote})`
-    })
-    .replace(/require\((['"])@ui(?:\/([^'"]+))?\1\)/g, (_match, quote, target) => {
-      const absoluteTarget = target
-        ? join(uiOutDir, target)
-        : join(uiOutDir, 'index.js')
-      return `require(${quote}${toRelativeRequirePath(filePath, absoluteTarget)}${quote})`
-    })
-    .replace(/require\((['"])@shared(?:\/([^'"]+))?\1\)/g, (_match, quote, target) => {
-      const absoluteTarget = target
-        ? join(sharedOutDir, target, 'src', 'index.js')
-        : join(sharedOutDir, 'index.js')
-      return `require(${quote}${toRelativeRequirePath(filePath, absoluteTarget)}${quote})`
-    })
-    .replace(/require\((['"])(\.{1,2}\/[^'"]+)\.tsx?\1\)/g, (_match, quote, target) => (
-      `require(${quote}${target}.js${quote})`
-    ))
-
-  if (nextContent !== content) {
-    writeFileSync(filePath, nextContent)
-  }
-}
-
-const transpileSharedSource = (sourceRoot, outRoot) => {
+const transpileTree = (sourceRoot, outRoot) => {
   readdirSync(sourceRoot).forEach(entry => {
     const sourcePath = join(sourceRoot, entry)
     const stats = statSync(sourcePath)
@@ -69,7 +51,7 @@ const transpileSharedSource = (sourceRoot, outRoot) => {
         return
       }
 
-      transpileSharedSource(sourcePath, join(outRoot, entry))
+      transpileTree(sourcePath, join(outRoot, entry))
       return
     }
 
@@ -81,10 +63,7 @@ const transpileSharedSource = (sourceRoot, outRoot) => {
       return
     }
 
-    const outputPath = join(
-      outRoot,
-      entry.replace(/\.tsx?$/, '.js')
-    )
+    const outputPath = join(outRoot, entry.replace(/\.tsx?$/, '.js'))
     const content = readFileSync(sourcePath, 'utf8')
     const transpiled = ts.transpileModule(content, {
       compilerOptions: {
@@ -100,6 +79,52 @@ const transpileSharedSource = (sourceRoot, outRoot) => {
   })
 }
 
+const resolveOutputModule = (baseDir, target) => {
+  const nextTarget = target ?? 'index'
+  const candidates = [
+    join(baseDir, `${nextTarget}.js`),
+    join(baseDir, nextTarget, 'index.js')
+  ]
+
+  for (const candidate of candidates) {
+    try {
+      if (statSync(candidate).isFile()) {
+        return candidate
+      }
+    } catch {}
+  }
+
+  return candidates[0]
+}
+
+const rewritePackageRequires = filePath => {
+  const content = readFileSync(filePath, 'utf8')
+  const nextContent = content
+    .replace(/require\((['"])@dataview\/(core|engine|meta|react|table)(?:\/([^'"]+))?\1\)/g, (_match, quote, pkg, target) => {
+      const absoluteTarget = resolveOutputModule(DATAVIEW_PACKAGE_DIRS[pkg], target)
+      return `require(${quote}${toRelativeRequirePath(filePath, absoluteTarget)}${quote})`
+    })
+    .replace(/require\((['"])#(core|react)(?:\/([^'"]+))?\1\)/g, (_match, quote, pkg, target) => {
+      const absoluteTarget = resolveOutputModule(DATAVIEW_PACKAGE_DIRS[pkg], target)
+      return `require(${quote}${toRelativeRequirePath(filePath, absoluteTarget)}${quote})`
+    })
+    .replace(/require\((['"])@shared\/ui(?:\/([^'"]+))?\1\)/g, (_match, quote, target) => {
+      const absoluteTarget = resolveOutputModule(uiOutDir, target)
+      return `require(${quote}${toRelativeRequirePath(filePath, absoluteTarget)}${quote})`
+    })
+    .replace(/require\((['"])@shared\/(core|dom|react)(?:\/([^'"]+))?\1\)/g, (_match, quote, pkg, target) => {
+      const absoluteTarget = resolveOutputModule(SHARED_PACKAGE_DIRS[pkg], target)
+      return `require(${quote}${toRelativeRequirePath(filePath, absoluteTarget)}${quote})`
+    })
+    .replace(/require\((['"])(\.{1,2}\/[^'"]+)\.tsx?\1\)/g, (_match, quote, target) => {
+      return `require(${quote}${target}.js${quote})`
+    })
+
+  if (nextContent !== content) {
+    writeFileSync(filePath, nextContent)
+  }
+}
+
 const rewriteDirectory = directory => {
   readdirSync(directory).forEach(entry => {
     const filePath = join(directory, entry)
@@ -111,15 +136,15 @@ const rewriteDirectory = directory => {
     }
 
     if (filePath.endsWith('.js')) {
-      rewriteAliasRequires(filePath)
+      rewritePackageRequires(filePath)
     }
   })
 }
 
 rmSync(outDir, { recursive: true, force: true })
-cpSync(dataviewBuildDir, outDir, { recursive: true })
-cpSync(uiBuildDir, uiOutDir, { recursive: true })
-transpileSharedSource(sharedSourceDir, sharedOutDir)
+transpileTree(dataviewSourceDir, outDir)
+transpileTree(uiSourceDir, uiOutDir)
+transpileTree(sharedSourceDir, sharedOutDir)
 mkdirSync(outDir, { recursive: true })
 writeFileSync(join(outDir, 'package.json'), JSON.stringify({ type: 'commonjs' }, null, 2) + '\n')
 rewriteDirectory(outDir)

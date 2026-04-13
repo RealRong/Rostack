@@ -6,7 +6,7 @@ import {
 } from 'react'
 import type { Point } from '@whiteboard/core/types'
 import { useStoreValue } from '@shared/react'
-import { ToolbarDivider } from '@rostack/ui'
+import { ToolbarDivider } from '@shared/ui'
 import { useEditorRuntime } from '#react/runtime/hooks'
 import { readToolbarItemSpec, renderToolbarPanel } from './toolbar/items'
 import { resolveToolbarRecipe } from './toolbar/recipe'

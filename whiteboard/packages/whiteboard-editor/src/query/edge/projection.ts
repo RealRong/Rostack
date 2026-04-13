@@ -10,7 +10,7 @@ import type {
   EdgeItem
 } from '@whiteboard/engine'
 import type {
-  EdgeOverlayProjection
+  EdgeFeedbackProjection
 } from '../../local/feedback/types'
 import type { NodeCanvasSnapshot, NodeRead } from '../node/read'
 import type {
@@ -48,11 +48,11 @@ const applyEdgeEditSession = (
 
 export const projectEdgeItem = (
   entry: EdgeItem,
-  projection: EdgeOverlayProjection,
+  feedback: EdgeFeedbackProjection,
   session: EditSession
 ): EdgeItem => {
   const nextEdge = applyEdgeEditSession(
-    applyEdgePatch(entry.edge, projection.patch),
+    applyEdgePatch(entry.edge, feedback.patch),
     session
   )
 

@@ -2,22 +2,12 @@
   "name": "@whiteboard/editor",
   "version": "0.1.0",
   "type": "module",
-  "main": "dist/index.cjs",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    },
-    "./draw": {
-      "types": "./dist/draw.d.ts",
-      "import": "./dist/draw.js",
-      "require": "./dist/draw.cjs"
-    }
+    ".": "./src/index.ts",
+    "./draw": "./src/local/draw/index.ts"
   },
   "files": [
+    "src",
     "dist"
   ],
   "dependencies": {
@@ -26,9 +16,13 @@
     "@whiteboard/core": "workspace:*",
     "@whiteboard/engine": "workspace:*"
   },
+  "devDependencies": {
+    "tsup": "^8.0.2",
+    "typescript": "^5.9.3"
+  },
   "scripts": {
-    "build": "pnpm -C ../.. build:editor",
-    "lint": "pnpm -C ../.. typecheck:editor",
+    "build": "tsup --config tsup.config.ts",
+    "lint": "tsc -p tsconfig.json --noEmit",
     "test": "echo \"No tests\""
   }
 }

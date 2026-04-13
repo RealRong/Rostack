@@ -3,7 +3,7 @@ import { pointIn } from '@shared/dom'
 import {
   usePointerDragSession,
   type PointerPosition
-} from '@dataview/react/interaction/usePointerDragSession'
+} from '#react/interaction/usePointerDragSession'
 import type { ItemId } from '@dataview/engine'
 import type { DropTarget } from './ids'
 import { dropTargetFromPoint } from './hitTest'

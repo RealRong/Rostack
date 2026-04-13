@@ -1,9 +1,9 @@
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { meta, renderMessage } from '@dataview/meta'
-import { useDataView } from '@dataview/react/dataview'
-import { Button } from '@ui/button'
-import { Popover } from '@ui/popover'
+import { useDataView } from '#react/dataview'
+import { Button } from '@shared/ui/button'
+import { Popover } from '@shared/ui/popover'
 import { CREATE_VIEW_ITEMS, type CreateViewItem } from './catalog'
 import { ViewTypeCard } from './ViewTypeCard'
 

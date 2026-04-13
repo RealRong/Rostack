@@ -1,11 +1,11 @@
-import type { EditorOverlay, EditorOverlayState } from './types'
+import type { EditorFeedbackRuntime, EditorFeedbackState } from './types'
 
-export const updateOverlayBranch = <TKey extends keyof EditorOverlayState>(
-  overlay: Pick<EditorOverlay, 'set'>,
+export const updateFeedbackBranch = <TKey extends keyof EditorFeedbackState>(
+  feedback: Pick<EditorFeedbackRuntime, 'set'>,
   key: TKey,
-  project: (branch: EditorOverlayState[TKey]) => EditorOverlayState[TKey]
+  project: (branch: EditorFeedbackState[TKey]) => EditorFeedbackState[TKey]
 ) => {
-  overlay.set((current) => {
+  feedback.set((current) => {
     const nextBranch = project(current[key])
     return nextBranch === current[key]
       ? current
@@ -16,18 +16,18 @@ export const updateOverlayBranch = <TKey extends keyof EditorOverlayState>(
   })
 }
 
-export const updateOverlayNestedBranch = <
-  TKey extends keyof EditorOverlayState,
-  TNestedKey extends keyof EditorOverlayState[TKey]
+export const updateFeedbackNestedBranch = <
+  TKey extends keyof EditorFeedbackState,
+  TNestedKey extends keyof EditorFeedbackState[TKey]
 >(
-  overlay: Pick<EditorOverlay, 'set'>,
+  feedback: Pick<EditorFeedbackRuntime, 'set'>,
   key: TKey,
   nestedKey: TNestedKey,
   project: (
-    branch: EditorOverlayState[TKey][TNestedKey]
-  ) => EditorOverlayState[TKey][TNestedKey]
+    branch: EditorFeedbackState[TKey][TNestedKey]
+  ) => EditorFeedbackState[TKey][TNestedKey]
 ) => {
-  overlay.set((current) => {
+  feedback.set((current) => {
     const branch = current[key]
     const nextNestedBranch = project(branch[nestedKey])
     return nextNestedBranch === branch[nestedKey]

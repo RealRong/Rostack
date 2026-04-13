@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import type { Field, FieldId } from '@dataview/core/contracts'
-import { Input } from '@ui/input'
-import { Menu, type MenuItem } from '@ui/menu'
+import { Input } from '@shared/ui/input'
+import { Menu, type MenuItem } from '@shared/ui/menu'
 import { meta, renderMessage, type MessageSpec } from '@dataview/meta'
-import { buildFieldToggleItem } from '@dataview/react/menu-builders'
+import { buildFieldToggleItem } from '#react/menu-builders'
 
 export interface FieldPickerProps {
   fields: readonly Field[]

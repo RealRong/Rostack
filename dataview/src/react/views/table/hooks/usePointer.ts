@@ -26,16 +26,16 @@ import {
   getRecordFieldValue,
   resolveFieldPrimaryAction
 } from '@dataview/core/field'
-import { isOverlayBlockingElement } from '@ui/overlay'
+import { isOverlayBlockingElement } from '@shared/ui/overlay'
 import {
   containsRelatedTarget,
   shouldCapturePointer
 } from '@shared/dom'
-import { useDataView } from '@dataview/react/dataview'
+import { useDataView } from '#react/dataview'
 import {
   resolveDefaultAutoPanTargets,
   useAutoPan
-} from '@dataview/react/interaction/autoPan'
+} from '#react/interaction/autoPan'
 import { useStoreValue } from '@shared/react'
 import type { TableHoverTarget } from '../model/hover'
 import { hoveredRowIdOf } from '../model/hover'

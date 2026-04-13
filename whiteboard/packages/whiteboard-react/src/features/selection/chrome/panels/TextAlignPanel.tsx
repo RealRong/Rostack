@@ -1,4 +1,4 @@
-import { Panel, PanelSection, SegmentedButton } from '@rostack/ui'
+import { Panel, PanelSection, SegmentedButton } from '@shared/ui'
 import {
   AlignCenter,
   AlignLeft,

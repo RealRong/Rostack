@@ -16,17 +16,17 @@ import {
   getStatusOptionCategory,
   getStatusSections
 } from '@dataview/core/field'
-import { Input } from '@ui/input'
-import { Menu, type MenuItem } from '@ui/menu'
+import { Input } from '@shared/ui/input'
+import { Menu, type MenuItem } from '@shared/ui/menu'
 import {
   useDataView,
   useDataViewKeyedValue
-} from '@dataview/react/dataview'
+} from '#react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import {
   buildChoiceSubmenuItem,
   buildOptionColorItems
-} from '@dataview/react/menu-builders'
+} from '#react/menu-builders'
 import { FIELD_DROPDOWN_MENU_PROPS } from '../dropdown'
 import type { OptionLike } from './OptionEditorPopover'
 import { buildStatusIdsAfterCategoryMove } from './statusOptionMenu'

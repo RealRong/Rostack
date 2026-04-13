@@ -1,4 +1,4 @@
-import type { CustomField } from '@dataview/core/contracts'
+import type { CustomField } from '#core/contracts'
 import {
   getKind,
   getFieldKind

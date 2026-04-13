@@ -1,4 +1,4 @@
-import { ColorSwatchGrid, Panel, PanelSection } from '@rostack/ui'
+import { ColorSwatchGrid, Panel, PanelSection } from '@shared/ui'
 import { TEXT_COLOR_OPTIONS } from '../menus/options'
 
 export const TextColorPanel = ({

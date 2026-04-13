@@ -1,12 +1,12 @@
 import { type CSSProperties } from 'react'
-import { OverlayProvider } from '@ui/overlay'
-import { ViewQueryBar } from '@dataview/react/page/features/viewQuery/ViewQueryBar'
+import { OverlayProvider } from '@shared/ui/overlay'
+import { ViewQueryBar } from '#react/page/features/viewQuery/ViewQueryBar'
 import {
   PageInlineSessionHost,
   PageKeyboardHost,
   PageMarqueeHost
-} from '@dataview/react/page/hosts'
-import { FieldValueEditorHost } from '@dataview/react/runtime/valueEditor'
+} from '#react/page/hosts'
+import { FieldValueEditorHost } from '#react/runtime/valueEditor'
 import { PageBody, type PageBodyProps } from './Body'
 import { PageToolbar } from './Toolbar'
 import { PAGE_INLINE_INSET_CSS, PAGE_INLINE_INSET_VALUE } from './layout'

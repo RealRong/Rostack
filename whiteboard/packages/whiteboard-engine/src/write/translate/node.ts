@@ -1,38 +1,37 @@
-import type { NodeWriteOutput, WriteCommandMap } from '@engine-types/command'
-import type { TranslateResult } from '@engine-types/internal/translate'
+import type { CommandOutput, NodeCommand } from '#types/command'
+import type { TranslateResult } from '#types/internal/translate'
 import type { WriteTranslateContext } from './index'
 import * as plan from './plan/node'
 import { fromOps, invalid } from './result'
 
-type NodeCommand = WriteCommandMap['node']
 export const translateNode = <C extends NodeCommand>(
   command: C,
   ctx: WriteTranslateContext
-): TranslateResult<NodeWriteOutput<C>> => {
+): TranslateResult<CommandOutput<C>> => {
   switch (command.type) {
-    case 'create':
+    case 'node.create':
       return fromOps(
         plan.create(command, ctx),
         ({ output }) => output
-      ) as TranslateResult<NodeWriteOutput<C>>
-    case 'updateMany':
-      return fromOps(plan.updateMany(command, ctx.doc)) as TranslateResult<NodeWriteOutput<C>>
-    case 'move':
-      return fromOps(plan.move(command, ctx)) as TranslateResult<NodeWriteOutput<C>>
-    case 'align':
-      return fromOps(plan.align(command, ctx)) as TranslateResult<NodeWriteOutput<C>>
-    case 'distribute':
-      return fromOps(plan.distribute(command, ctx)) as TranslateResult<NodeWriteOutput<C>>
-    case 'delete':
-      return fromOps(plan.remove(command)) as TranslateResult<NodeWriteOutput<C>>
-    case 'deleteCascade':
-      return fromOps(plan.removeCascade(command, ctx)) as TranslateResult<NodeWriteOutput<C>>
-    case 'duplicate':
+      ) as TranslateResult<CommandOutput<C>>
+    case 'node.patch':
+      return fromOps(plan.updateMany(command, ctx.doc)) as TranslateResult<CommandOutput<C>>
+    case 'node.move':
+      return fromOps(plan.move(command, ctx)) as TranslateResult<CommandOutput<C>>
+    case 'node.align':
+      return fromOps(plan.align(command, ctx)) as TranslateResult<CommandOutput<C>>
+    case 'node.distribute':
+      return fromOps(plan.distribute(command, ctx)) as TranslateResult<CommandOutput<C>>
+    case 'node.delete':
+      return fromOps(plan.remove(command)) as TranslateResult<CommandOutput<C>>
+    case 'node.deleteCascade':
+      return fromOps(plan.removeCascade(command, ctx)) as TranslateResult<CommandOutput<C>>
+    case 'node.duplicate':
       return fromOps(
         plan.duplicate(command, ctx),
         ({ output }) => output
-      ) as TranslateResult<NodeWriteOutput<C>>
+      ) as TranslateResult<CommandOutput<C>>
     default:
-      return invalid('Unsupported node action.') as TranslateResult<NodeWriteOutput<C>>
+      return invalid('Unsupported node action.') as TranslateResult<CommandOutput<C>>
   }
 }

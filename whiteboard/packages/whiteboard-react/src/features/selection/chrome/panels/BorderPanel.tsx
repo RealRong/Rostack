@@ -5,7 +5,7 @@ import {
   SegmentedButton,
   SliderSection,
   formatPercent
-} from '@rostack/ui'
+} from '@shared/ui'
 import { sameOptionalNumberArray as isSameOptionalNumberArray } from '@shared/core'
 import { STROKE_COLOR_OPTIONS } from '../menus/options'
 

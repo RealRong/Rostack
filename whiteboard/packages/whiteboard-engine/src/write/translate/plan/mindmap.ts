@@ -1,11 +1,4 @@
-import type {
-  MindmapCloneSubtreeInput,
-  MindmapCreateOptions,
-  MindmapInsertOptions,
-  MindmapMoveSubtreeInput,
-  MindmapRemoveSubtreeInput,
-  MindmapUpdateNodeInput
-} from '@engine-types/mindmap'
+import type { CommandOutput, MindmapCommand } from '#types/command'
 import { getNode } from '@whiteboard/core/document'
 import {
   cloneSubtree as cloneTree,
@@ -23,7 +16,7 @@ import { getMindmapTreeFromDocument } from '@whiteboard/core/mindmap'
 import { err, ok } from '@whiteboard/core/result'
 import type {
   Document,
-  MindmapCommandOptions,
+  MindmapCreateInput,
   MindmapId,
   MindmapInsertInput,
   MindmapNodeId,
@@ -51,61 +44,14 @@ const withNodeId = <T extends object>(
   }
 })
 
-const insertInput = (
-  input: MindmapInsertOptions
-): {
-  input: MindmapInsertInput
-  layout?: MindmapCommandOptions['layout']
-} => {
-  switch (input.kind) {
-    case 'child':
-      return {
-        input: {
-          kind: 'child',
-          parentId: input.parentId,
-          payload: input.payload,
-          options: {
-            index: input.options?.index,
-            side: input.options?.side
-          }
-        },
-        layout: input.options?.layout
-      }
-    case 'sibling':
-      return {
-        input: {
-          kind: 'sibling',
-          nodeId: input.nodeId,
-          position: input.position,
-          payload: input.payload
-        },
-        layout: input.options?.layout
-      }
-    case 'parent':
-      return {
-        input: {
-          kind: 'parent',
-          nodeId: input.nodeId,
-          payload: input.payload,
-          options: {
-            side: input.options?.side
-          }
-        },
-        layout: input.options?.layout
-      }
-  }
-}
-
 const apply = <TExtra extends object = {}, TOutput = void>({
   doc,
   id,
-  layout,
   exec,
   pick
 }: {
   doc: Document
   id: MindmapId
-  layout?: MindmapCommandOptions['layout']
   exec: (tree: MindmapTree) => MindmapCommandResult<TExtra>
   pick?: (result: { tree: MindmapTree } & TExtra) => TOutput
 }): Step<TOutput> => {
@@ -128,7 +74,7 @@ const apply = <TExtra extends object = {}, TOutput = void>({
     operations: createMindmapUpdateOps({
       beforeTree: before,
       afterTree: next.data.tree,
-      hint: layout,
+      hint: undefined,
       node
     }),
     output: pick ? pick(next.data) : undefined as TOutput
@@ -136,9 +82,10 @@ const apply = <TExtra extends object = {}, TOutput = void>({
 }
 
 export const create = (
-  payload: MindmapCreateOptions | undefined,
+  command: Extract<MindmapCommand, { type: 'mindmap.create' }>,
   ctx: WriteTranslateContext
-): Step<{ mindmapId: MindmapId; rootId: MindmapNodeId }> => {
+): Step<CommandOutput<Extract<MindmapCommand, { type: 'mindmap.create' }>>> => {
+  const payload = command.payload
   if (payload?.id && treeOf(ctx.doc, payload.id)) {
     return err('invalid', `Mindmap ${payload.id} already exists.`)
   }
@@ -163,9 +110,10 @@ export const create = (
 }
 
 export const removeMany = (
-  ids: readonly MindmapId[],
+  command: Extract<MindmapCommand, { type: 'mindmap.delete' }>,
   doc: Document
 ): Step => {
+  const ids = command.ids
   if (!ids.length) {
     return err('invalid', 'No mindmap ids provided.')
   }
@@ -183,69 +131,54 @@ export const removeMany = (
 }
 
 export const insert = (
-  id: MindmapId,
-  input: MindmapInsertOptions,
+  command: Extract<MindmapCommand, { type: 'mindmap.insert' }>,
   ctx: WriteTranslateContext
-): Step<{ nodeId: MindmapNodeId }> => {
-  const next = insertInput(input)
-
+): Step<CommandOutput<Extract<MindmapCommand, { type: 'mindmap.insert' }>>> => {
   return apply({
     doc: ctx.doc,
-    id,
-    layout: next.layout,
-    exec: (tree) => insertNode(tree, next.input, withNodeId(ctx.ids.mindmapNode)),
+    id: command.id,
+    exec: (tree) => insertNode(tree, command.input, withNodeId(ctx.ids.mindmapNode)),
     pick: ({ nodeId }) => ({ nodeId })
   })
 }
 
 export const moveSubtree = (
-  id: MindmapId,
-  input: MindmapMoveSubtreeInput,
+  command: Extract<MindmapCommand, { type: 'mindmap.move' }>,
   ctx: WriteTranslateContext
 ): Step =>
   apply({
     doc: ctx.doc,
-    id,
-    layout: input.layout,
-    exec: (tree) =>
-      moveTree(tree, {
-        nodeId: input.nodeId,
-        parentId: input.parentId,
-        index: input.index,
-        side: input.side
-      })
+    id: command.id,
+    exec: (tree) => moveTree(tree, command.input)
   })
 
 export const removeSubtree = (
-  id: MindmapId,
-  input: MindmapRemoveSubtreeInput,
+  command: Extract<MindmapCommand, { type: 'mindmap.remove' }>,
   ctx: WriteTranslateContext
 ): Step =>
   apply({
     doc: ctx.doc,
-    id,
-    exec: (tree) => removeTree(tree, input)
+    id: command.id,
+    exec: (tree) => removeTree(tree, command.input)
   })
 
 export const cloneSubtree = (
-  id: MindmapId,
-  input: MindmapCloneSubtreeInput,
+  command: Extract<MindmapCommand, { type: 'mindmap.clone' }>,
   ctx: WriteTranslateContext
-): Step<{ nodeId: MindmapNodeId; map: Record<MindmapNodeId, MindmapNodeId> }> =>
+): Step<CommandOutput<Extract<MindmapCommand, { type: 'mindmap.clone' }>>> =>
   apply({
     doc: ctx.doc,
-    id,
-    exec: (tree) => cloneTree(tree, input, withNodeId(ctx.ids.mindmapNode)),
+    id: command.id,
+    exec: (tree) => cloneTree(tree, command.input, withNodeId(ctx.ids.mindmapNode)),
     pick: ({ nodeId, map }) => ({ nodeId, map })
   })
 
 export const updateNode = (
-  id: MindmapId,
-  input: MindmapUpdateNodeInput,
+  command: Extract<MindmapCommand, { type: 'mindmap.patchNode' }>,
   ctx: WriteTranslateContext
 ): Step =>
   apply({
     doc: ctx.doc,
-    id,
-    exec: (tree) => updateTreeNode(tree, input)
+    id: command.id,
+    exec: (tree) => updateTreeNode(tree, command.input)
   })

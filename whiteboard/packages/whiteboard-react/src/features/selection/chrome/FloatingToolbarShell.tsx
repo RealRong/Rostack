@@ -7,7 +7,7 @@ import {
   type RefObject
 } from 'react'
 import type { Point, Rect } from '@whiteboard/core/types'
-import { cn, FloatingLayer, ToolbarBar } from '@rostack/ui'
+import { cn, FloatingLayer, ToolbarBar } from '@shared/ui'
 import { useElementSize } from '@shared/react'
 import { WhiteboardPopover } from '#react/runtime/overlay'
 import {

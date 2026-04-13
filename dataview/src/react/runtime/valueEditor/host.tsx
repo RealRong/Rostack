@@ -17,11 +17,11 @@ import {
   FieldValueEditor,
   getFieldValueSpec,
   type FieldValueEditorHandle
-} from '@dataview/react/field/value'
+} from '#react/field/value'
 import {
   useDataView
-} from '@dataview/react/dataview'
-import type { EditInput } from '@dataview/react/interaction'
+} from '#react/dataview'
+import type { EditInput } from '#react/interaction'
 import type {
   ValueEditorResult,
   ValueEditorSession
@@ -30,7 +30,7 @@ import {
   OverlayProvider,
   OVERLAY_BLOCKING_ATTR,
   OVERLAY_BLOCKING_BACKDROP_ATTR
-} from '@ui/overlay'
+} from '@shared/ui/overlay'
 import { observeElementSize } from '@shared/dom'
 import { useStoreValue } from '@shared/react'
 

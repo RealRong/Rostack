@@ -1,5 +1,5 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react'
-import { cn } from '@ui/utils'
+import { cn } from '@shared/ui/utils'
 
 export type QueryChipState =
   | 'idle'

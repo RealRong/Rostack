@@ -1,6 +1,6 @@
 import { ChevronRight } from 'lucide-react'
 import type { ReactNode } from 'react'
-import type { MenuItem } from '@ui/menu'
+import type { MenuItem } from '@shared/ui/menu'
 
 export const buildNavigationItem = (input: {
   key: string

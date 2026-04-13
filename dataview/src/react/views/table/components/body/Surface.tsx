@@ -8,7 +8,7 @@ import type {
   PointerEventHandler,
   ReactNode
 } from 'react'
-import { PAGE_INLINE_INSET_CSS } from '@dataview/react/page/layout'
+import { PAGE_INLINE_INSET_CSS } from '#react/page/layout'
 import { useTableContext } from '../../context'
 
 const PAGE_PADDING_BOTTOM = 180

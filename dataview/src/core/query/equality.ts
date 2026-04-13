@@ -1,16 +1,16 @@
 import {
   sameFilterRule
-} from '@dataview/core/filter'
+} from '#core/filter'
 import {
   sameGroup
-} from '@dataview/core/group'
+} from '#core/group'
 import {
   sameSearch
-} from '@dataview/core/search'
+} from '#core/search'
 import {
   sameSorters
-} from '@dataview/core/sort'
-import type { DocumentViewQuery } from '@dataview/core/contracts'
+} from '#core/sort'
+import type { DocumentViewQuery } from '#core/contracts'
 
 export const isSameViewQuery = (
   left: DocumentViewQuery,

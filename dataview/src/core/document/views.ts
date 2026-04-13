@@ -7,10 +7,10 @@ import type {
   ViewDisplay,
   ViewId
 } from '../contracts/state'
-import { normalizeViewCalculations } from '@dataview/core/calculation'
-import { normalizeGroup } from '@dataview/core/group'
-import { normalizeSearch } from '@dataview/core/search'
-import { normalizeSorters } from '@dataview/core/sort'
+import { normalizeViewCalculations } from '#core/calculation'
+import { normalizeGroup } from '#core/group'
+import { normalizeSearch } from '#core/search'
+import { normalizeSorters } from '#core/sort'
 import { getDocumentFields } from './fields'
 import { normalizeRecordOrderIds } from '../view/order'
 import { normalizeViewOptions } from '../view/normalize'

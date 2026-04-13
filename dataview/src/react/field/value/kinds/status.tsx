@@ -4,7 +4,7 @@ import {
   getFieldDisplayValue,
   parseFieldDraft
 } from '@dataview/core/field'
-import { FieldOptionTag } from '@dataview/react/field/options'
+import { FieldOptionTag } from '#react/field/options'
 import { StatusValueEditor } from '../editor/pickers/status/StatusValueEditor'
 import type { FieldValueSpec } from './contracts'
 import {

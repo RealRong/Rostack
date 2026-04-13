@@ -321,7 +321,7 @@ export const useKanbanRuntime = (input: {
     ),
     onDraggingChange: setDragging,
     onDrop: (cardIds, target) => {
-      dataView.engine.view.items.move(cardIds, {
+      dataView.engine.active.items.move(cardIds, {
         section: target.sectionKey,
         ...(target.beforeItemId ? { before: target.beforeItemId } : {})
       })

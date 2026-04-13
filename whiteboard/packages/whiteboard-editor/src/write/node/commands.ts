@@ -1,16 +1,12 @@
 import { isNodeUpdateEmpty } from '@whiteboard/core/node'
+import {
+  compileNodeDataUpdate,
+  compileNodeStyleUpdate
+} from '@whiteboard/core/schema'
+import type { NodeId } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
-import {
-  createNodePatchWriter,
-  dataUpdate,
-  styleUpdate,
-  toNodeDataUpdates,
-  toNodeStyleUpdates
-} from './patch'
-import {
-  createNodeContext,
-  type NodeContext
-} from './context'
+import { createNodeContext } from './context'
+import type { NodeContext } from './context'
 import {
   createNodeTextCommands
 } from './text'
@@ -18,11 +14,38 @@ import type {
   NodeCommands,
   NodeLockCommands,
   NodeShapeCommands,
-  NodeStyleCommands
+  NodeStyleCommands,
+  NodePatchWriter
 } from './types'
 import type { EditorRead } from '../../types/editor'
 import type { PreviewCommands } from '../overlay'
 import type { SessionCommands } from '../session'
+
+const createNodePatchWriter = (
+  engine: Engine
+): NodePatchWriter => ({
+  update: (id, update) => engine.execute({
+    type: 'node.patch',
+    updates: [{
+      id,
+      update
+    }]
+  }),
+  updateMany: (updates, options) => engine.execute({
+    type: 'node.patch',
+    updates,
+    origin: options?.origin
+  })
+})
+
+const toNodeStyleBatchUpdates = (
+  nodeIds: readonly NodeId[],
+  path: string,
+  value: unknown
+) => nodeIds.map((id) => ({
+  id,
+  update: compileNodeStyleUpdate(path, value)
+}))
 
 const createNodeLockCommands = (
   ctx: NodeContext
@@ -59,7 +82,7 @@ const createNodeShapeCommands = (
 
       return [{
         id,
-        update: dataUpdate('kind', kind)
+        update: compileNodeDataUpdate('kind', kind)
       }]
     })
   )
@@ -69,28 +92,28 @@ const createNodeStyleCommands = (
   ctx: NodeContext
 ): NodeStyleCommands => ({
   fill: (nodeIds, value) => ctx.write.updateMany(
-    toNodeStyleUpdates(nodeIds, 'fill', value)
+    toNodeStyleBatchUpdates(nodeIds, 'fill', value)
   ),
   fillOpacity: (nodeIds, value) => ctx.write.updateMany(
-    toNodeStyleUpdates(nodeIds, 'fillOpacity', value)
+    toNodeStyleBatchUpdates(nodeIds, 'fillOpacity', value)
   ),
   stroke: (nodeIds, value) => ctx.write.updateMany(
-    toNodeStyleUpdates(nodeIds, 'stroke', value)
+    toNodeStyleBatchUpdates(nodeIds, 'stroke', value)
   ),
   strokeWidth: (nodeIds, value) => ctx.write.updateMany(
-    toNodeStyleUpdates(nodeIds, 'strokeWidth', value)
+    toNodeStyleBatchUpdates(nodeIds, 'strokeWidth', value)
   ),
   strokeOpacity: (nodeIds, value) => ctx.write.updateMany(
-    toNodeStyleUpdates(nodeIds, 'strokeOpacity', value)
+    toNodeStyleBatchUpdates(nodeIds, 'strokeOpacity', value)
   ),
   strokeDash: (nodeIds, value) => ctx.write.updateMany(
-    toNodeStyleUpdates(nodeIds, 'strokeDash', value)
+    toNodeStyleBatchUpdates(nodeIds, 'strokeDash', value)
   ),
   opacity: (nodeIds, value) => ctx.write.updateMany(
-    toNodeStyleUpdates(nodeIds, 'opacity', value)
+    toNodeStyleBatchUpdates(nodeIds, 'opacity', value)
   ),
   textColor: (nodeIds, value) => ctx.write.updateMany(
-    toNodeStyleUpdates(nodeIds, 'color', value)
+    toNodeStyleBatchUpdates(nodeIds, 'color', value)
   )
 })
 

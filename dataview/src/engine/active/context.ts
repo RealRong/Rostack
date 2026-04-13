@@ -10,21 +10,13 @@ import type {
   ViewPatch
 } from '@dataview/core/contracts'
 import {
-  getDocumentActiveView,
-  getDocumentActiveViewId,
-  getDocumentFieldById
-} from '@dataview/core/document'
-import {
   createRecordFieldWriteAction,
   createUniqueFieldName,
   isTitleFieldId
 } from '@dataview/core/field'
 import { group as groupCore } from '@dataview/core/group'
+import { reorderViewOrders } from '@dataview/core/view'
 import {
-  reorderViewOrders
-} from '@dataview/core/view'
-import {
-  createDerivedStore,
   read,
   sameJsonValue,
   type ReadStore
@@ -32,155 +24,46 @@ import {
 import { meta, renderMessage } from '@dataview/meta'
 import type {
   ActionResult,
-  DocumentReadApi,
-  FieldList,
+  ActiveViewApi,
+  DocumentSelectApi,
   FieldsApi,
   GalleryState,
   ItemId,
   ItemList,
   KanbanState,
-  RecordsApi,
-  ViewApi,
-  ViewSelectApi,
-  ViewState
-} from '../../contracts/public'
-import { createStoreSelector, selectDocument } from '../../state/select'
-import type { Store } from '../../state/store'
+  RecordsApi
+} from '../contracts/public'
+import { readActiveView, readActiveViewId } from '../document/activeView'
+import { readDocumentFieldById } from '../document/fieldLookup'
+import { selectDocument } from '../runtime/selectors/document'
+import type { RuntimeStore } from '../runtime/store'
+import {
+  createActiveSelect,
+  createActiveStateStore,
+  createGalleryStateStore,
+  createKanbanStateStore
+} from './selectors'
 
-type ViewPatchAction = Extract<Action, { type: 'view.patch' }>
+type ActiveViewPatchAction = Extract<Action, { type: 'view.patch' }>
 
-const usesOptionGroupingColors = (
-  field?: Pick<Field, 'kind'>
-) => {
-  if (!field || field.kind === 'title') {
-    return false
-  }
-
-  return (
-    field.kind === 'select'
-    || field.kind === 'multiSelect'
-    || field.kind === 'status'
-  )
-}
-
-const sameViewState = (
-  left: ViewState | undefined,
-  right: ViewState | undefined
-) => left === right || (
-  !!left
-  && !!right
-  && left.view === right.view
-  && left.query === right.query
-  && left.records === right.records
-  && left.sections === right.sections
-  && left.items === right.items
-  && left.fields === right.fields
-  && left.summaries === right.summaries
-)
-
-const sameGalleryState = (
-  left: GalleryState | undefined,
-  right: GalleryState | undefined
-) => left === right || (
-  !!left
-  && !!right
-  && left.groupUsesOptionColors === right.groupUsesOptionColors
-  && left.canReorder === right.canReorder
-  && left.cardSize === right.cardSize
-)
-
-const sameKanbanState = (
-  left: KanbanState | undefined,
-  right: KanbanState | undefined
-) => left === right || (
-  !!left
-  && !!right
-  && left.groupUsesOptionColors === right.groupUsesOptionColors
-  && left.cardsPerColumn === right.cardsPerColumn
-  && left.fillColumnColor === right.fillColumnColor
-  && left.canReorder === right.canReorder
-)
-
-export const createViewSelect = (
-  state: ReadStore<ViewState | undefined>
-): ViewSelectApi => (
-  selector,
-  isEqual
-) => createDerivedStore({
-  get: () => selector(read(state)),
-  ...(isEqual ? { isEqual } : {})
-})
-
-export const createViewStateStore = (
-  store: Store
-) => createStoreSelector<ViewState | undefined>({
-  store,
-  read: state => state.currentView.snapshot,
-  isEqual: sameViewState
-})
-
-export const createGalleryStateStore = (
-  state: ReadStore<ViewState | undefined>
-) => createDerivedStore<GalleryState | undefined>({
-  get: () => {
-    const current = read(state)
-    if (!current || current.view.type !== 'gallery') {
-      return undefined
-    }
-
-    const groupField = current.query.group.field
-    const groupUsesOptionColors = usesOptionGroupingColors(groupField)
-    const canReorder = !current.query.group.active && !current.query.sort.active
-
-    return {
-      groupUsesOptionColors,
-      canReorder,
-      cardSize: current.view.options.gallery.cardSize
-    }
-  },
-  isEqual: sameGalleryState
-})
-
-export const createKanbanStateStore = (
-  state: ReadStore<ViewState | undefined>
-) => createDerivedStore<KanbanState | undefined>({
-  get: () => {
-    const current = read(state)
-    if (!current || current.view.type !== 'kanban') {
-      return undefined
-    }
-
-    const groupField = current.query.group.field
-    const groupUsesOptionColors = usesOptionGroupingColors(groupField)
-
-    return {
-      groupUsesOptionColors,
-      cardsPerColumn: current.view.options.kanban.cardsPerColumn,
-      fillColumnColor: groupUsesOptionColors && current.view.options.kanban.fillColumnColor,
-      canReorder: current.query.group.active && !current.query.sort.active
-    }
-  },
-  isEqual: sameKanbanState
-})
-
-export interface ViewBaseOptions {
-  store: Store
-  read: DocumentReadApi
+export interface ActiveContextOptions {
+  store: RuntimeStore
+  select: DocumentSelectApi
   dispatch: (action: Action | readonly Action[]) => ActionResult
   fields: Pick<FieldsApi, 'list' | 'create'>
   records: Pick<RecordsApi, 'values'>
 }
 
-export interface ViewBaseContext {
-  id: ViewApi['id']
-  config: ViewApi['config']
-  state: ViewApi['state']
-  select: ViewApi['select']
+export interface ActiveViewContext {
+  id: ActiveViewApi['id']
+  config: ActiveViewApi['config']
+  state: ActiveViewApi['state']
+  select: ActiveViewApi['select']
   galleryState: ReadStore<GalleryState | undefined>
   kanbanState: ReadStore<KanbanState | undefined>
   readDocument: () => import('@dataview/core/contracts').DataDoc
   readConfig: () => View | undefined
-  readState: () => ViewState | undefined
+  readState: () => import('../contracts/public').ViewState | undefined
   commit: (action: Action | readonly Action[]) => boolean
   commitPatch: (patch: ViewPatch) => boolean
   withView: <T>(fn: (view: View) => T) => T | undefined
@@ -190,14 +73,14 @@ export interface ViewBaseContext {
   createMoveOrderAction: (
     recordIds: readonly RecordId[],
     beforeRecordId?: RecordId
-  ) => ViewPatchAction | undefined
+  ) => ActiveViewPatchAction | undefined
   createField: (input?: {
     name?: string
     kind?: CustomFieldKind
   }) => CustomFieldId | undefined
-  documentRead: DocumentReadApi
+  documentSelect: DocumentSelectApi
   recordsApi: Pick<RecordsApi, 'values'>
-  dispatch: ViewBaseOptions['dispatch']
+  dispatch: ActiveContextOptions['dispatch']
 }
 
 export const createGroupValueActions = (input: {
@@ -262,29 +145,29 @@ export const createGroupValueActions = (input: {
   return actions
 }
 
-export const createViewBase = (
-  options: ViewBaseOptions
-): ViewBaseContext => {
+export const createActiveContext = (
+  options: ActiveContextOptions
+): ActiveViewContext => {
   const id = selectDocument({
     store: options.store,
-    read: getDocumentActiveViewId
+    read: readActiveViewId
   })
   const config = selectDocument({
     store: options.store,
-    read: getDocumentActiveView
+    read: readActiveView
   })
-  const state = createViewStateStore(options.store)
-  const select = createViewSelect(state)
+  const state = createActiveStateStore(options.store)
+  const select = createActiveSelect(state)
   const galleryState = createGalleryStateStore(state)
   const kanbanState = createKanbanStateStore(state)
-  const readDocument = () => read(options.read.document)
+  const readDocument = () => read(options.select.document)
   const readConfig = () => read(config)
   const readState = () => read(state)
   const commit = (action: Action | readonly Action[]) => options.dispatch(action).applied
 
   const createPatchAction = (
     patch: ViewPatch
-  ): ViewPatchAction | undefined => {
+  ): ActiveViewPatchAction | undefined => {
     const viewId = id.get()
     return viewId
       ? {
@@ -317,7 +200,7 @@ export const createViewBase = (
     fieldId: FieldId,
     fn: (view: View, field: Field) => T
   ): T | undefined => withView(view => {
-    const field = getDocumentFieldById(readDocument(), fieldId)
+    const field = readDocumentFieldById(readDocument(), fieldId)
     if (!field) {
       return undefined
     }
@@ -333,7 +216,7 @@ export const createViewBase = (
     return fn(
       view,
       fieldId
-        ? getDocumentFieldById(readDocument(), fieldId)
+        ? readDocumentFieldById(readDocument(), fieldId)
         : undefined
     )
   })
@@ -345,7 +228,7 @@ export const createViewBase = (
       return undefined
     }
 
-    const field = getDocumentFieldById(readDocument(), view.group.field)
+    const field = readDocumentFieldById(readDocument(), view.group.field)
     if (!field) {
       return undefined
     }
@@ -356,7 +239,7 @@ export const createViewBase = (
   const createMoveOrderAction = (
     recordIds: readonly RecordId[],
     beforeRecordId?: RecordId
-  ): ViewPatchAction | undefined => withView(view => {
+  ): ActiveViewPatchAction | undefined => withView(view => {
     if (!recordIds.length) {
       return undefined
     }
@@ -410,7 +293,7 @@ export const createViewBase = (
     withGroupField,
     createMoveOrderAction,
     createField,
-    documentRead: options.read,
+    documentSelect: options.select,
     recordsApi: options.records,
     dispatch: options.dispatch
   }

@@ -28,12 +28,12 @@ import {
 } from '@dataview/core/view/order'
 import {
   readGroupFieldIndex
-} from '../../../index/group'
+} from '../../index/group/demand'
 import type {
   IndexState,
   SearchIndex,
   SearchTextIndex
-} from '../../../index/types'
+} from '../../index/types'
 import type {
   QueryState
 } from '../../../contracts/internal'

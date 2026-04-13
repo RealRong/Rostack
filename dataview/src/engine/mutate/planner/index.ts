@@ -3,8 +3,8 @@ import type { Action, DataDoc } from '@dataview/core/contracts'
 import type { DeltaItem } from '@dataview/core/contracts'
 import type { BaseOperation } from '@dataview/core/contracts/operations'
 import { reduceOperations } from '@dataview/core/operation'
-import { planWriteAction } from './plan'
-import { hasValidationErrors, type ValidationIssue } from './issues'
+import { planWriteAction } from '../../write/plan'
+import { hasValidationErrors, type ValidationIssue } from '../issues'
 
 export interface PlannedWriteBatch {
   operations: readonly BaseOperation[]
@@ -60,4 +60,4 @@ export type {
   ValidationCode,
   ValidationIssue,
   ValidationSeverity
-} from './issues'
+} from '../issues'

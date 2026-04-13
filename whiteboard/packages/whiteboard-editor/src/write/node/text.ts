@@ -1,13 +1,22 @@
 import { isTextContentEmpty } from '@whiteboard/core/node'
 import { isSizeEqual } from '@whiteboard/core/geometry'
+import {
+  compileNodeDataUpdate,
+  compileNodeStyleUpdate,
+  mergeNodeUpdates
+} from '@whiteboard/core/schema'
+import type { NodeId } from '@whiteboard/core/types'
 import type { NodeContext } from './context'
 import type { NodeTextCommands } from './types'
-import {
-  dataUpdate,
-  mergeNodeUpdates,
-  styleUpdate,
-  toNodeStyleUpdates
-} from './patch'
+
+const toNodeStyleBatchUpdates = (
+  nodeIds: readonly NodeId[],
+  path: string,
+  value: unknown
+) => nodeIds.map((id) => ({
+  id,
+  update: compileNodeStyleUpdate(path, value)
+}))
 
 export const createNodeTextCommands = (
   ctx: NodeContext
@@ -94,7 +103,7 @@ export const createNodeTextCommands = (
     return ctx.write.update(
       nodeId,
       mergeNodeUpdates(
-        dataUpdate(field, value),
+        compileNodeDataUpdate(field, value),
         sizeUpdate
           ? {
               fields: {
@@ -106,7 +115,7 @@ export const createNodeTextCommands = (
     )
   },
   color: (nodeIds, color) => ctx.write.updateMany(
-    toNodeStyleUpdates(nodeIds, 'color', color)
+    toNodeStyleBatchUpdates(nodeIds, 'color', color)
   ),
   size: ({
     nodeIds,
@@ -125,7 +134,7 @@ export const createNodeTextCommands = (
       return {
         id,
         update: mergeNodeUpdates(
-          styleUpdate('fontSize', value),
+          compileNodeStyleUpdate('fontSize', value),
           sizeUpdate
             ? {
                 fields: {
@@ -138,12 +147,12 @@ export const createNodeTextCommands = (
     })
   ),
   weight: (nodeIds, weight) => ctx.write.updateMany(
-    toNodeStyleUpdates(nodeIds, 'fontWeight', weight)
+    toNodeStyleBatchUpdates(nodeIds, 'fontWeight', weight)
   ),
   italic: (nodeIds, italic) => ctx.write.updateMany(
-    toNodeStyleUpdates(nodeIds, 'fontStyle', italic ? 'italic' : 'normal')
+    toNodeStyleBatchUpdates(nodeIds, 'fontStyle', italic ? 'italic' : 'normal')
   ),
   align: (nodeIds, align) => ctx.write.updateMany(
-    toNodeStyleUpdates(nodeIds, 'textAlign', align)
+    toNodeStyleBatchUpdates(nodeIds, 'textAlign', align)
   )
 })

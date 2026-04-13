@@ -35,7 +35,7 @@ import type {
 } from '@shared/core'
 import type {
   ValidationIssue
-} from '../write/issues'
+} from '../mutate/issues'
 
 export interface CreateEngineOptions {
   document: DataDoc
@@ -247,7 +247,7 @@ export interface MovePlan {
   }
 }
 
-export interface ViewReadApi {
+export interface ActiveViewReadApi {
   record: (recordId: RecordId) => DataRecord | undefined
   field: (fieldId: FieldId) => Field | undefined
   section: (sectionKey: SectionKey) => Section | undefined
@@ -270,7 +270,7 @@ export interface KanbanState {
   canReorder: boolean
 }
 
-export interface ViewSelectApi {
+export interface ActiveViewSelectApi {
   <T>(
     selector: (state: ViewState | undefined) => T,
     isEqual?: Equality<T>
@@ -290,7 +290,7 @@ export interface KanbanApi {
   setCardsPerColumn: (value: KanbanCardsPerColumn) => void
 }
 
-export interface ViewItemsApi {
+export interface ActiveItemsApi {
   planMove: (
     itemIds: readonly ItemId[],
     target: Placement
@@ -307,17 +307,17 @@ export interface ViewItemsApi {
   remove: (itemIds: readonly ItemId[]) => void
 }
 
-export interface ViewCellsApi {
+export interface ActiveCellsApi {
   set: (cell: CellRef, value: unknown) => void
   clear: (cell: CellRef) => void
 }
 
-export interface ViewApi {
+export interface ActiveViewApi {
   id: ReadStore<ViewId | undefined>
   config: ReadStore<View | undefined>
   state: ReadStore<ViewState | undefined>
-  select: ViewSelectApi
-  read: ViewReadApi
+  select: ActiveViewSelectApi
+  read: ActiveViewReadApi
   changeType: (type: ViewType) => void
   search: {
     set: (query: string) => void
@@ -386,18 +386,21 @@ export interface ViewApi {
   }
   gallery: GalleryApi
   kanban: KanbanApi
-  items: ViewItemsApi
-  cells: ViewCellsApi
+  items: ActiveItemsApi
+  cells: ActiveCellsApi
 }
 
-export interface DocumentReadApi {
+export interface DocumentEntitySelectApi<TId, T> {
+  ids: ReadStore<readonly TId[]>
+  all: ReadStore<readonly T[]>
+  byId: KeyedReadStore<TId, T | undefined>
+}
+
+export interface DocumentSelectApi {
   document: ReadStore<DataDoc>
-  recordIds: ReadStore<readonly RecordId[]>
-  record: KeyedReadStore<RecordId, DataRecord | undefined>
-  fieldIds: ReadStore<readonly CustomFieldId[]>
-  field: KeyedReadStore<CustomFieldId, CustomField | undefined>
-  viewIds: ReadStore<readonly ViewId[]>
-  view: KeyedReadStore<ViewId, View | undefined>
+  records: DocumentEntitySelectApi<RecordId, DataRecord>
+  fields: DocumentEntitySelectApi<CustomFieldId, CustomField>
+  views: DocumentEntitySelectApi<ViewId, View>
 }
 
 export interface ViewsApi {
@@ -657,8 +660,8 @@ export interface PerformanceApi {
 }
 
 export interface Engine {
-  read: DocumentReadApi
-  view: ViewApi
+  select: DocumentSelectApi
+  active: ActiveViewApi
   views: ViewsApi
   fields: FieldsApi
   records: RecordsApi

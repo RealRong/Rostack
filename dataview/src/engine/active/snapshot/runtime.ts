@@ -7,7 +7,7 @@ import {
   getDocumentFields,
   getDocumentViewById
 } from '@dataview/core/document'
-import type { IndexState } from '../../index/types'
+import type { IndexState } from '../index/types'
 import type {
   DeriveAction,
   ViewCache
@@ -19,12 +19,12 @@ import type {
   ViewState,
   ViewTrace
 } from '../../contracts/public'
-import { now } from '../../perf/shared'
-import { publishViewBase } from './snapshot'
+import { now } from '../../runtime/clock'
+import { publishViewBase } from './base'
 import { buildStageMetrics } from './trace'
-import { runQueryStage } from './query'
-import { runSectionsStage } from './sections'
-import { runSummaryStage } from './summary'
+import { runQueryStage } from './query/runtime'
+import { runSectionsStage } from './sections/runtime'
+import { runSummaryStage } from './summary/runtime'
 
 interface ViewRunResult {
   cache: ViewCache

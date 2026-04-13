@@ -86,7 +86,7 @@ export const FieldValueEditorHost = () => {
   const engine = dataView.engine
   const valueEditor = dataView.valueEditor
   const session = useStoreValue(valueEditor.store)
-  const document = useStoreValue(engine.read.document)
+  const document = useStoreValue(engine.select.document)
   const field = session?.field
   const valueField = field
     ? getDocumentFieldById(document, field.fieldId)

@@ -1,6 +1,6 @@
 import {
   createKeyedDerivedStore,
-  read,
+  read as readValue,
   sameRect,
   sameOptionalRect,
   type KeyedReadStore,
@@ -168,7 +168,7 @@ export const createMindmapViewStore = ({
   drag: ReadStore<MindmapDragFeedback | undefined>
 }): KeyedReadStore<NodeId, MindmapView | undefined> => createKeyedDerivedStore({
   get: (treeId: NodeId) => {
-    const treeView = read(item, treeId)
+    const treeView = readValue(item, treeId)
     if (!treeView) {
       return undefined
     }
@@ -176,7 +176,7 @@ export const createMindmapViewStore = ({
     return toMindmapView(
       treeId,
       treeView,
-      read(drag)
+      readValue(drag)
     )
   },
   isEqual: isMindmapViewEqual
@@ -190,11 +190,11 @@ export const createMindmapRead = ({
   drag: ReadStore<MindmapDragFeedback | undefined>
 }): MindmapRead => {
   const tree: MindmapRead['tree'] = createKeyedDerivedStore({
-    get: (treeId: NodeId) => read.item.get(treeId)?.tree,
+    get: (treeId: NodeId) => readValue(read.item, treeId)?.tree,
     isEqual: (left, right) => left === right
   })
   const rootPosition: MindmapRead['rootPosition'] = createKeyedDerivedStore({
-    get: (treeId: NodeId) => read.item.get(treeId)?.node.position,
+    get: (treeId: NodeId) => readValue(read.item, treeId)?.node.position,
     isEqual: (left, right) => (
       left === right
       || (

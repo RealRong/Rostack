@@ -154,6 +154,12 @@ export {
   distributeNodes
 } from './layout'
 export {
+  applyNodeGeometryPatch,
+  applyNodeTextDraft,
+  applyNodeTextPreview,
+  isNodeProjectionPatchEqual
+} from './projection'
+export {
   estimateTextAutoFont,
   isTextContentEmpty,
   isTextNode,

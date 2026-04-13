@@ -15,37 +15,37 @@ import {
 } from '@dataview/core/operation'
 import {
   deriveIndex
-} from '../index/runtime'
+} from '../../active/index/runtime'
 import {
   deriveViewRuntime
-} from '../derive/active/runtime'
+} from '../../active/runtime'
 import type {
   PlannedWriteBatch
-} from './resolve'
+} from '../planner'
 import type {
   PerformanceRuntime
-} from '../state/performance'
+} from '../../runtime/performance'
 import {
   now
-} from '../perf/shared'
+} from '../../runtime/clock'
 import {
   resolveViewDemand
-} from '../derive/active/demand'
+} from '../../active/demand'
 import type {
-  EngineState,
-  Store
-} from '../state/store'
+  EngineRuntimeState,
+  RuntimeStore
+} from '../../runtime/store'
 import type {
   ActionResult,
   CommitResult,
   CreatedEntities
-} from '../contracts/public'
+} from '../../contracts/public'
 import {
   clearHistory,
   clearRedo,
   createWriteHistory,
   pushUndo
-} from '../state/history'
+} from '../../runtime/history'
 import {
   summarizeDelta,
   toTraceKind
@@ -66,14 +66,14 @@ type Draft<TResult extends CommitResult = CommitResult> =
       ok: true
       kind: Kind
       doc: DataDoc
-      history: EngineState['history']
+      history: EngineRuntimeState['history']
       delta: NonNullable<CommitResult['changes']>
       result: TResult
       ms?: number
     }
 
 type Plan<TResult extends CommitResult = CommitResult> = (
-  base: EngineState
+  base: EngineRuntimeState
 ) => Draft<TResult>
 
 const createdFromChanges = (
@@ -95,10 +95,10 @@ const createdFromChanges = (
 }
 
 const replayResult = (
-  base: EngineState,
+  base: EngineRuntimeState,
   kind: 'undo' | 'redo',
   operations: readonly BaseOperation[],
-  history: EngineState['history']
+  history: EngineRuntimeState['history']
 ): Draft<CommitResult> => {
   const startedAt = now()
   const applied = applyOperations(base.doc, operations)
@@ -164,7 +164,7 @@ const writePlan = (
 const replayPlan = (
   kind: 'undo' | 'redo',
   operations: readonly BaseOperation[],
-  history: EngineState['history']
+  history: EngineRuntimeState['history']
 ): Plan<CommitResult> => base => replayResult(base, kind, operations, history)
 
 const loadPlan = (
@@ -188,7 +188,7 @@ const loadPlan = (
 }
 
 const commit = <TResult extends CommitResult>(input: {
-  store: Store
+  store: RuntimeStore
   perf: PerformanceRuntime
   capturePerf: boolean
   plan: Plan<TResult>
@@ -256,7 +256,7 @@ const commit = <TResult extends CommitResult>(input: {
 }
 
 export const createWriteControl = (input: {
-  store: Store
+  store: RuntimeStore
   perf: PerformanceRuntime
   capturePerf: boolean
 }) => {
@@ -277,7 +277,7 @@ export const createWriteControl = (input: {
       replay: (
         kind: 'undo' | 'redo',
         operations: readonly BaseOperation[],
-        history: EngineState['history']
+        history: EngineRuntimeState['history']
       ) => runPlan(replayPlan(kind, operations, history))
     })
   }

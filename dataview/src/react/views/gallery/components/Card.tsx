@@ -50,9 +50,9 @@ export const Card = (props: {
   } = useGalleryContext()
   const dataView = useDataView()
   const engine = dataView.engine
-  const recordId = engine.view.read.item(props.itemId)?.recordId ?? '' as RecordId
+  const recordId = engine.active.read.item(props.itemId)?.recordId ?? '' as RecordId
   const record = useDataViewKeyedValue(
-    current => current.engine.read.record,
+    current => current.engine.select.records.byId,
     recordId
   )
   if (!record) {

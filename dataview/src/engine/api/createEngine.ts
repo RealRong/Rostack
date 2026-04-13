@@ -7,36 +7,30 @@ import type {
   CreateEngineOptions,
   Engine
 } from '../contracts/public'
-import { createPerformanceRuntime } from '../state/performance'
+import { createPerformanceRuntime } from '../runtime/performance'
+import { createActiveViewApi } from './active'
+import { createDocumentSelectApi } from './documentSelect'
+import { createFieldsApi } from './fields'
+import { createRecordsApi } from './records'
+import { createViewsApi } from './views'
 import {
-  createFieldsApi,
-  createRecordsApi,
-  createViewApi,
-  createViewsApi
-} from '../services'
-import {
-  createInitialState,
+  createRuntimeState,
   createStore
-} from '../state/store'
-import {
-  createDocumentReadApi
-} from '../state/read'
-import {
-  planActions
-} from '../write/resolve'
-import { createWriteControl } from '../write/commit'
+} from '../runtime/store'
+import { planActions } from '../mutate/planner'
+import { createWriteControl } from '../mutate/commit/runtime'
 
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const historyCapacity = Math.max(0, options.history?.capacity ?? 100)
   const initialDocument = cloneDocument(options.document)
   const performance = createPerformanceRuntime(options.performance)
   const capturePerformance = Boolean(options.performance?.traces || options.performance?.stats)
-  const store = createStore(createInitialState({
+  const store = createStore(createRuntimeState({
     doc: initialDocument,
     historyCap: historyCapacity,
     capturePerf: capturePerformance
   }))
-  const read = createDocumentReadApi(store)
+  const select = createDocumentSelectApi(store)
   const write = createWriteControl({
     store,
     perf: performance,
@@ -51,28 +45,28 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     })
   )
   const fields = createFieldsApi({
-    read,
+    select,
     dispatch
   })
   const records = createRecordsApi({
-    read,
+    select,
     dispatch
   })
-  const view = createViewApi({
+  const active = createActiveViewApi({
     store,
-    read,
+    select,
     dispatch,
     fields,
     records
   })
   const views = createViewsApi({
-    read,
+    select,
     dispatch
   })
 
   return {
-    read,
-    view,
+    select,
+    active,
     views,
     fields,
     records,

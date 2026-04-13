@@ -16,7 +16,7 @@ import {
   isCustomFieldKind,
   isValidDateTimeZone
 } from '@dataview/core/field'
-import { createIssue, type IssueSource, type ValidationIssue } from '../write/issues'
+import { createIssue, type IssueSource, type ValidationIssue } from '../issues'
 
 const validateBaseOptions = (
   source: IssueSource,

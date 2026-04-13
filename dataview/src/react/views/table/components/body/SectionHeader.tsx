@@ -48,7 +48,7 @@ export const SectionHeader = (props: SectionHeaderProps) => {
           event.stopPropagation()
         }}
         onClick={() => {
-          engine.view.sections.toggleCollapse(props.section.key)
+          engine.active.sections.toggleCollapse(props.section.key)
           table.focus()
         }}
       >

@@ -3,13 +3,13 @@ import {
   setTableColumnWidths,
   setTableVerticalLines
 } from '@dataview/core/view'
-import type { ViewApi } from '../../contracts/public'
-import type { ViewBaseContext } from './base'
+import type { ActiveViewApi } from '../../contracts/public'
+import type { ActiveViewContext } from '../context'
 
 export const createTableApi = (input: {
-  base: ViewBaseContext
-  display: ViewApi['display']
-}): ViewApi['table'] => ({
+  base: ActiveViewContext
+  display: ActiveViewApi['display']
+}): ActiveViewApi['table'] => ({
   setColumnWidths: widths => {
     input.base.withView(view => {
       input.base.commitPatch({

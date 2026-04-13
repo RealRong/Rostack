@@ -97,6 +97,31 @@ const isEdgeGuideEmpty = (
   || (!guide.path && !guide.connect)
 )
 
+const mergeEdgeOverlayEntries = (
+  next: Map<EdgeId, EdgeOverlayProjection>,
+  entries: readonly EdgeOverlayEntry[]
+) => {
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index]!
+    mergeEntryById(next, entry.id, (current) => {
+      const patch = current?.patch
+        ? {
+            ...current.patch,
+            ...entry.patch
+          }
+        : entry.patch
+      const activeRouteIndex = entry.activeRouteIndex ?? current?.activeRouteIndex
+
+      return !patch && activeRouteIndex === undefined
+        ? undefined
+        : {
+            patch,
+            activeRouteIndex
+          }
+    })
+  }
+}
+
 export const normalizeEdgeOverlayState = (
   state: EdgeOverlayState
 ): EdgeOverlayState => {
@@ -131,46 +156,8 @@ export const toEdgeOverlayMap = (
   }
 
   const next = new Map<EdgeId, EdgeOverlayProjection>()
-
-  for (let index = 0; index < state.selection.edge.length; index += 1) {
-    const entry = state.selection.edge[index]!
-    mergeEntryById(next, entry.id, (current) => {
-      const patch = current?.patch
-        ? {
-            ...current.patch,
-            ...entry.patch
-          }
-        : entry.patch
-      const activeRouteIndex = entry.activeRouteIndex ?? current?.activeRouteIndex
-
-      return !patch && activeRouteIndex === undefined
-        ? undefined
-        : {
-            patch,
-            activeRouteIndex
-          }
-    })
-  }
-
-  for (let index = 0; index < state.edge.interaction.length; index += 1) {
-    const entry = state.edge.interaction[index]!
-    mergeEntryById(next, entry.id, (current) => {
-      const patch = current?.patch
-        ? {
-            ...current.patch,
-            ...entry.patch
-          }
-        : entry.patch
-      const activeRouteIndex = entry.activeRouteIndex ?? current?.activeRouteIndex
-
-      return !patch && activeRouteIndex === undefined
-        ? undefined
-        : {
-            patch,
-            activeRouteIndex
-          }
-    })
-  }
+  mergeEdgeOverlayEntries(next, state.selection.edge)
+  mergeEdgeOverlayEntries(next, state.edge.interaction)
 
   return next.size > 0
     ? next

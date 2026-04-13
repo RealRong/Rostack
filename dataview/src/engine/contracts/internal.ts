@@ -1,32 +1,23 @@
 import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
-  BaseOperation,
-  DataDoc,
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
-import type { NormalizedIndexDemand } from '../index/demand'
 import type {
-  IndexState,
   SectionAggregateState
-} from '../index/types'
+} from '../active/index/types'
 import type {
   SectionBucket,
   SectionKey,
   ViewRecords,
   ViewState
 } from './public'
-
-export interface HistoryEntry {
-  undo: BaseOperation[]
-  redo: BaseOperation[]
-}
-
-export interface History {
-  cap: number
-  undo: HistoryEntry[]
-  redo: HistoryEntry[]
-}
+export type {
+  ActiveRuntimeState,
+  EngineRuntimeState,
+  HistoryEntry,
+  RuntimeHistory
+} from '../runtime/state'
 
 export interface QueryState {
   matched: readonly RecordId[]
@@ -66,20 +57,6 @@ export interface ViewCache {
   query: QueryState
   sections: SectionState
   summary: SummaryState
-}
-
-export interface CurrentViewState {
-  demand: NormalizedIndexDemand
-  index: IndexState
-  cache: ViewCache
-  snapshot?: ViewState
-}
-
-export interface EngineState {
-  rev: number
-  doc: DataDoc
-  history: History
-  currentView: CurrentViewState
 }
 
 const EMPTY_SUMMARY_BY_SECTION = new Map<SectionKey, ReadonlyMap<FieldId, SectionAggregateState>>()

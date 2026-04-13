@@ -1,10 +1,10 @@
 import { setViewCalcMetric } from '@dataview/core/view'
-import type { ViewApi } from '../../contracts/public'
-import type { ViewBaseContext } from './base'
+import type { ActiveViewApi } from '../../contracts/public'
+import type { ActiveViewContext } from '../context'
 
 export const createSummaryApi = (
-  base: ViewBaseContext
-): ViewApi['summary'] => ({
+  base: ActiveViewContext
+): ActiveViewApi['summary'] => ({
   set: (fieldId, metric) => {
     base.withView(view => {
       base.commitPatch({

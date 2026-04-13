@@ -1,13 +1,11 @@
 import { isPointEqual } from '@whiteboard/core/geometry'
 import {
-  applyEdgePatch,
   getEdgePathBounds,
   isPointEdgeEnd,
   sameEdgeAnchor,
   sameResolvedEdgeEnd,
   type EdgeConnectCandidate,
   matchEdgeRect,
-  resolveEdgeView,
   type EdgeView as CoreEdgeView
 } from '@whiteboard/core/edge'
 import {
@@ -30,9 +28,11 @@ import type {
   EdgeOverlayProjection
 } from '../overlay/types'
 import type { NodeCanvasSnapshot, NodeRead } from './node'
+import type { EditSession } from '../state/edit'
 import {
-  type EditSession
-} from '../state/edit'
+  projectEdgeItem,
+  readProjectedEdgeView
+} from '../projection/edge'
 import { readPresentValues } from './utils'
 
 export type EdgeRuntimeState = {
@@ -215,85 +215,6 @@ const isEdgeViewStateEqual = (
   )
 )
 
-const applyEdgeEditSession = (
-  edge: EdgeItem['edge'],
-  session: EditSession
-): EdgeItem['edge'] => {
-  if (
-    !session
-    || session.kind !== 'edge-label'
-    || session.edgeId !== edge.id
-  ) {
-    return edge
-  }
-
-  const nextLabels = edge.labels?.map((label) => (
-    label.id !== session.labelId
-      ? label
-      : {
-          ...label,
-          text: session.draft.text
-        }
-  ))
-
-  return nextLabels
-    ? {
-        ...edge,
-        labels: nextLabels
-      }
-    : edge
-}
-
-const readEdgeItem = (
-  entry: EdgeItem,
-  projection: EdgeOverlayProjection,
-  session: EditSession
-) => {
-  const nextEdge = applyEdgeEditSession(
-    applyEdgePatch(entry.edge, projection.patch),
-    session
-  )
-
-  return nextEdge === entry.edge
-    ? entry
-    : {
-        ...entry,
-        edge: nextEdge
-      }
-}
-
-const readResolvedNodeSnapshot = (
-  readNode: Pick<NodeRead, 'canvas'>,
-  edgeEnd: EdgeItem['edge']['source'] | EdgeItem['edge']['target']
-) => edgeEnd.kind === 'node'
-  ? readValue(readNode.canvas, edgeEnd.nodeId)
-  : undefined
-
-const readResolvedEdgeView = (
-  node: Pick<NodeRead, 'canvas'>,
-  entry: EdgeItem
-) => {
-  const source = readResolvedNodeSnapshot(node, entry.edge.source)
-  const target = readResolvedNodeSnapshot(node, entry.edge.target)
-
-  if (
-    (entry.edge.source.kind === 'node' && !source)
-    || (entry.edge.target.kind === 'node' && !target)
-  ) {
-    return undefined
-  }
-
-  try {
-    return resolveEdgeView({
-      edge: entry.edge,
-      source,
-      target
-    })
-  } catch {
-    return undefined
-  }
-}
-
 const readEdgeBox = (
   rect: Rect | undefined,
   edge: EdgeItem['edge'] | undefined
@@ -327,7 +248,7 @@ export const createEdgeRead = ({
     get: (edgeId: EdgeId) => {
       const entry = readValue(read.edge.item, edgeId)
       return entry
-        ? readEdgeItem(entry, readValue(overlay, edgeId), readValue(edit))
+        ? projectEdgeItem(entry, readValue(overlay, edgeId), readValue(edit))
         : undefined
     },
     isEqual: isEdgeItemEqual
@@ -343,7 +264,7 @@ export const createEdgeRead = ({
     get: (edgeId: EdgeId) => {
       const entry = readValue(item, edgeId)
       return entry
-        ? readResolvedEdgeView(node, entry)
+        ? readProjectedEdgeView(node, entry)
         : undefined
     }
   })
@@ -382,7 +303,7 @@ export const createEdgeRead = ({
     const candidates: EdgeConnectCandidate[] = []
 
     for (let index = 0; index < nodeIds.length; index += 1) {
-      const snapshot = node.canvas.get(nodeIds[index])
+      const snapshot = readValue(node.canvas, nodeIds[index])
       if (!snapshot || !capability(snapshot.node).connect) {
         continue
       }
@@ -401,19 +322,19 @@ export const createEdgeRead = ({
     list: read.edge.list,
     committed: read.edge.item,
     item,
-    edges: (edgeIds) => readPresentValues(edgeIds, (edgeId) => item.get(edgeId)?.edge),
+    edges: (edgeIds) => readPresentValues(edgeIds, (edgeId) => readValue(item, edgeId)?.edge),
     state,
     resolved,
     view,
     bounds,
     box: (edgeId) => readEdgeBox(
-      bounds.get(edgeId),
-      item.get(edgeId)?.edge
+      readValue(bounds, edgeId),
+      readValue(item, edgeId)?.edge
     ),
     capability: resolveEdgeCapability,
     related: read.edge.related,
-    idsInRect: (rect, options) => read.edge.list.get().filter((edgeId) => {
-      const nextResolved = resolved.get(edgeId)
+    idsInRect: (rect, options) => readValue(read.edge.list).filter((edgeId) => {
+      const nextResolved = readValue(resolved, edgeId)
       if (!nextResolved) {
         return false
       }

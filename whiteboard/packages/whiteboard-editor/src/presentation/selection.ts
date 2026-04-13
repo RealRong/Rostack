@@ -391,7 +391,7 @@ const isSelectionNodeInfoEqual = (
   )
 }
 
-export const readSelectionNodeInfo = ({
+const readSelectionNodeInfo = ({
   summary,
   registry
 }: {
@@ -413,7 +413,7 @@ export const readSelectionNodeInfo = ({
   }
 }
 
-export const resolveSelectionOverlay = ({
+const resolveSelectionOverlay = ({
   summary,
   transformBox,
   affordance,
@@ -469,7 +469,7 @@ export const resolveSelectionOverlay = ({
       }
 }
 
-export const resolveSelectionToolbar = ({
+const resolveSelectionToolbar = ({
   summary,
   affordance,
   registry,

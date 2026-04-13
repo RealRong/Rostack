@@ -40,11 +40,11 @@ const readGalleryActiveState = (
 
 export const GalleryProvider = (props: GalleryProviderProps) => {
   const active = useDataViewValue(
-    dataView => dataView.engine.view.state,
+    dataView => dataView.engine.active.state,
     readGalleryActiveState
   )
   const extra = useDataViewValue(
-    dataView => dataView.engine.view.gallery.state
+    dataView => dataView.engine.active.gallery.state
   )
   if (!active || !extra) {
     throw new Error('Gallery view requires an active gallery state.')

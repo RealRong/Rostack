@@ -1,43 +1,39 @@
 import type { Action } from '@dataview/core/contracts'
 import type {
   ActionResult,
-  DocumentReadApi,
+  ActiveViewApi,
+  DocumentSelectApi,
   FieldsApi,
-  RecordsApi,
-  ViewApi
-} from '../../contracts/public'
-import type { Store } from '../../state/store'
-import {
-  createViewBase
-} from './base'
-import {
-  createViewReadApi
-} from './read'
+  RecordsApi
+} from '../contracts/public'
+import { createActiveContext } from '../active/context'
+import { createActiveViewReadApi } from '../active/read'
+import type { RuntimeStore } from '../runtime/store'
 import {
   createSearchApi,
   createFiltersApi,
   createSortApi,
   createGroupApi
-} from './query'
-import { createSectionsApi } from './sections'
-import { createSummaryApi } from './summary'
-import { createDisplayApi } from './display'
-import { createTableApi } from './table'
-import { createGalleryApi } from './gallery'
-import { createKanbanApi } from './kanban'
-import { createViewItemsApi } from './items'
-import { createCellsApi } from './cells'
+} from '../active/commands/query'
+import { createSectionsApi } from '../active/commands/sections'
+import { createSummaryApi } from '../active/commands/summary'
+import { createDisplayApi } from '../active/commands/display'
+import { createTableApi } from '../active/commands/table'
+import { createGalleryApi } from '../active/commands/gallery'
+import { createKanbanApi } from '../active/commands/kanban'
+import { createActiveItemsApi } from '../active/commands/items'
+import { createCellsApi } from '../active/commands/cells'
 
-export const createViewApi = (options: {
-  store: Store
-  read: DocumentReadApi
+export const createActiveViewApi = (options: {
+  store: RuntimeStore
+  select: DocumentSelectApi
   dispatch: (action: Action | readonly Action[]) => ActionResult
   fields: Pick<FieldsApi, 'list' | 'create'>
   records: Pick<RecordsApi, 'values'>
-}): ViewApi => {
-  const base = createViewBase(options)
-  const readApi = createViewReadApi({
-    read: options.read,
+}): ActiveViewApi => {
+  const base = createActiveContext(options)
+  const readApi = createActiveViewReadApi({
+    select: options.select,
     state: base.state
   })
   const display = createDisplayApi(base)
@@ -66,7 +62,7 @@ export const createViewApi = (options: {
     }),
     gallery: createGalleryApi(base),
     kanban: createKanbanApi(base),
-    items: createViewItemsApi({
+    items: createActiveItemsApi({
       base,
       read: readApi
     }),

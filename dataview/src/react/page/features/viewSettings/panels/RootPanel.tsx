@@ -214,22 +214,22 @@ const readGroupSummary = (
 export const RootPanel = () => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const document = useDataViewValue(dataView => dataView.engine.read.document)
+  const document = useDataViewValue(dataView => dataView.engine.select.document)
   const router = useViewSettings()
   const currentView = useDataViewValue(
-    dataView => dataView.engine.view.config
+    dataView => dataView.engine.active.config
   )
   const fields = getDocumentFields(document)
   const filterProjection = useDataViewValue(
-    dataView => dataView.engine.view.state,
+    dataView => dataView.engine.active.state,
     state => state?.query.filters
   )
   const sortProjection = useDataViewValue(
-    dataView => dataView.engine.view.state,
+    dataView => dataView.engine.active.state,
     state => state?.query.sort
   )
   const groupProjection = useDataViewValue(
-    dataView => dataView.engine.view.state,
+    dataView => dataView.engine.active.state,
     state => state?.query.group
   )
   const viewsCount = getDocumentViews(document).length

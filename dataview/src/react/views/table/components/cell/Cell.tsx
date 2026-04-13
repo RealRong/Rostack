@@ -31,7 +31,7 @@ const View = (props: CellProps) => {
   if (!currentView) {
     throw new Error('Table cell requires an active current view.')
   }
-  const showVerticalLinesStore = useMemo(() => engine.view.select(
+  const showVerticalLinesStore = useMemo(() => engine.active.select(
     state => state?.view.options.table.showVerticalLines ?? false
   ), [engine])
   const showVerticalLines = useStoreValue(showVerticalLinesStore)
@@ -60,11 +60,11 @@ const View = (props: CellProps) => {
     table.gridSelection.set(cell)
     table.focus()
     if (action.value === undefined) {
-      engine.view.cells.clear(cell)
+      engine.active.cells.clear(cell)
       return
     }
 
-    engine.view.cells.set(cell, action.value)
+    engine.active.cells.set(cell, action.value)
   }
 
   if (!cellRender.exists || !recordId) {

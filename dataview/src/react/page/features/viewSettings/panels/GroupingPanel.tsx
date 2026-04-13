@@ -96,14 +96,14 @@ export const GroupingPanel = () => {
   const engine = dataView.engine
   const router = useViewSettings()
   const currentView = useDataViewValue(
-    dataView => dataView.engine.view.config
+    dataView => dataView.engine.active.config
   )
   const group = useDataViewValue(
-    dataView => dataView.engine.view.state,
+    dataView => dataView.engine.active.state,
     state => state?.query.group
   ) ?? EMPTY_GROUP
   const currentViewDomain = currentView
-    ? engine.view
+    ? engine.active
     : undefined
   const groupField = group.field
   const [intervalDraft, setIntervalDraft] = useState(

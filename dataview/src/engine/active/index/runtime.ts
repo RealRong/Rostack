@@ -5,52 +5,52 @@ import type {
 import type {
   IndexStageTrace,
   IndexTrace
-} from '../contracts/public'
+} from '../../contracts/public'
 import {
   buildCalculationIndex,
   ensureCalculationIndex,
   syncCalculationIndex
-} from '../index/calculations'
+} from './calculations'
 import {
   normalizeIndexDemand,
   sameFieldIdList,
   sameGroupDemand,
   sameSearchDemand,
   type NormalizedIndexDemand
-} from '../index/demand'
+} from './demand'
 import {
   buildGroupIndex,
   ensureGroupIndex,
   syncGroupIndex
-} from '../index/group'
+} from './group/runtime'
 import {
   buildRecordIndex,
   syncRecordIndex
-} from '../index/records'
+} from './records'
 import {
   buildSearchIndex,
   ensureSearchIndex,
   syncSearchIndex
-} from '../index/search'
+} from './search'
 import {
   buildSortIndex,
   ensureSortIndex,
   syncSortIndex
-} from '../index/sort'
+} from './sort'
 import {
   createIndexStageTrace,
   fullRebuildFrom,
   searchEntryCountOf,
   touchedFieldCountOf,
   touchedRecordCountOf
-} from '../index/trace'
+} from './trace'
 import type {
   IndexDemand,
   IndexState
-} from '../index/types'
+} from './types'
 import {
   now
-} from '../perf/shared'
+} from '../../runtime/clock'
 
 const buildState = (
   document: DataDoc,

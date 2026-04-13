@@ -88,10 +88,10 @@ const LayoutSwitchRow = (props: {
 export const LayoutPanel = () => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const document = useDataViewValue(dataView => dataView.engine.read.document)
-  const view = useDataViewValue(dataView => dataView.engine.view.config)
+  const document = useDataViewValue(dataView => dataView.engine.select.document)
+  const view = useDataViewValue(dataView => dataView.engine.active.config)
   const viewApi = view
-    ? engine.view
+    ? engine.active
     : undefined
   const fieldMap = new Map(getDocumentFields(document).map(field => [field.id, field] as const))
   const groupField = view?.group?.field

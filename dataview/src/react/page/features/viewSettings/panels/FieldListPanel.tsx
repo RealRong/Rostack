@@ -8,7 +8,7 @@ import { useViewSettings } from '../context'
 
 export const FieldListPanel = () => {
   const router = useViewSettings()
-  const document = useDataViewValue(dataView => dataView.engine.read.document)
+  const document = useDataViewValue(dataView => dataView.engine.select.document)
   const fields = getDocumentCustomFields(document)
 
   return (

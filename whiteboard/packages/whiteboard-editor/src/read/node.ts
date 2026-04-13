@@ -1,10 +1,4 @@
 import {
-  readTextWrapWidth,
-  getNodeBounds,
-  getNodeGeometry,
-  readTextWidthMode,
-  setTextWrapWidth,
-  setTextWidthMode,
   type NodeRectHitOptions,
   type TransformSelectionTargets
 } from '@whiteboard/core/node'
@@ -35,11 +29,14 @@ import type {
 } from '../types/node'
 import type {
   NodeOverlayProjection,
-  NodePatch
 } from '../overlay/types'
+import type { EditSession } from '../state/edit'
 import {
-  type EditSession
-} from '../state/edit'
+  projectNodeItem,
+  readNodeProjectionRotation,
+  readProjectedNodeBounds,
+  readProjectedNodeGeometry
+} from '../projection/node'
 import { readPresentValues } from './utils'
 
 export type NodeRuntimeState = {
@@ -74,7 +71,7 @@ export type NodeView = {
 
 export type NodeCanvasSnapshot = {
   node: Node
-  geometry: NodeGeometry
+  geometry: ReturnType<typeof readProjectedNodeGeometry>
 }
 
 export type NodeRead = {
@@ -181,39 +178,6 @@ const isNodeCanvasSnapshotEqual = (
   )
 )
 
-const readNodeRotation = (
-  node: NodeItem['node']
-) => (typeof node.rotation === 'number' ? node.rotation : 0)
-
-const patchRect = (
-  rect: Rect,
-  patch?: {
-    position?: {
-      x: number
-      y: number
-    }
-    size?: {
-      width: number
-      height: number
-    }
-  }
-) => {
-  if (!patch?.position && !patch?.size) {
-    return rect
-  }
-
-  const next = {
-    x: patch.position?.x ?? rect.x,
-    y: patch.position?.y ?? rect.y,
-    width: patch.size?.width ?? rect.width,
-    height: patch.size?.height ?? rect.height
-  }
-
-  return sameRect(next, rect)
-    ? rect
-    : next
-}
-
 const resolveNodeCapability = (
   definition?: NodeDefinition
 ): NodeCapability => {
@@ -231,48 +195,13 @@ const resolveNodeCapability = (
   }
 }
 
-const applyNodePatch = (
-  item: NodeItem,
-  patch: NodePatch | undefined
-): NodeItem => {
-  if (!patch) {
-    return item
-  }
-
-  const nextNode = (
-    !patch.position
-    && !patch.size
-    && patch.rotation === undefined
-  )
-    ? item.node
-    : {
-        ...item.node,
-        position: patch.position ?? item.node.position,
-        size: patch.size ?? item.node.size,
-        rotation:
-          typeof patch.rotation === 'number'
-            ? patch.rotation
-            : item.node.rotation
-      }
-  const nextRect = patchRect(item.rect, patch)
-
-  if (nextNode === item.node && nextRect === item.rect) {
-    return item
-  }
-
-  return {
-    node: nextNode,
-    rect: nextRect
-  }
-}
-
 const toNodeView = (
   nodeId: NodeId,
   item: NodeItem,
   state: NodeRuntimeState,
   capability: NodeCapability
 ): NodeView => {
-  const rotation = readNodeRotation(item.node)
+  const rotation = readNodeProjectionRotation(item.node)
 
   return {
     nodeId,
@@ -292,15 +221,11 @@ const toNodeView = (
 
 const getNodeItemBounds = (
   item: NodeItem
-): Rect => getNodeBounds(item.node, item.rect, readNodeRotation(item.node))
+): Rect => readProjectedNodeBounds(item)
 
 const readNodeItemGeometry = (
   item: NodeItem
-): NodeGeometry => getNodeGeometry(
-  item.node,
-  item.rect,
-  readNodeRotation(item.node)
-)
+): ReturnType<typeof readProjectedNodeGeometry> => readProjectedNodeGeometry(item)
 
 const toNodeRuntimeState = (
   projection: NodeOverlayProjection
@@ -315,94 +240,6 @@ const toNodeRuntimeState = (
     || projection.text?.position
   )
 })
-
-const applyNodeTextPreview = (
-  item: NodeItem,
-  projection: NodeOverlayProjection
-): NodeItem => {
-  const text = projection.text
-  if (!text || item.node.type !== 'text') {
-    return item
-  }
-
-  const currentFontSize = typeof item.node.style?.fontSize === 'number'
-    ? item.node.style.fontSize
-    : undefined
-  const style = text.fontSize === undefined || text.fontSize === currentFontSize
-    ? item.node.style
-    : {
-        ...(item.node.style ?? {}),
-        fontSize: text.fontSize
-      }
-  const data = text.mode === undefined || text.mode === readTextWidthMode(item.node)
-    ? item.node.data
-    : setTextWidthMode(item.node, text.mode)
-  const nextWrapWidth = text.mode === 'auto'
-    ? undefined
-    : text.wrapWidth
-  const dataWithWrapWidth = nextWrapWidth === readTextWrapWidth(item.node)
-    ? data
-    : setTextWrapWidth({ data }, nextWrapWidth)
-  const nextRect = patchRect(item.rect, text)
-
-  if (
-    style === item.node.style
-    && dataWithWrapWidth === item.node.data
-    && nextRect === item.rect
-  ) {
-    return item
-  }
-
-  return {
-    node: {
-      ...item.node,
-      style,
-      data: dataWithWrapWidth
-    },
-    rect: nextRect
-  }
-}
-
-const applyNodeEditSession = (
-  item: NodeItem,
-  edit: EditSession
-): NodeItem => {
-  if (!edit || edit.kind !== 'node' || edit.nodeId !== item.node.id) {
-    return item
-  }
-
-  return {
-    node: {
-      ...item.node,
-      data: {
-        ...(item.node.data ?? {}),
-        [edit.field]: edit.draft.text
-      }
-    },
-    rect:
-      edit.field === 'text'
-      && item.node.type === 'text'
-      && edit.layout.liveSize
-        ? {
-            ...item.rect,
-            width: edit.layout.liveSize.width,
-            height: edit.layout.liveSize.height
-          }
-        : item.rect
-  }
-}
-
-const applyNodeProjection = (
-  item: NodeItem,
-  projection: NodeOverlayProjection,
-  edit: EditSession
-): NodeItem => applyNodeEditSession(
-  applyNodeTextPreview(
-    applyNodePatch(item, projection.patch),
-    projection
-  ),
-  edit
-)
 
 export const createNodeRead = ({
   read,
@@ -422,7 +259,7 @@ export const createNodeRead = ({
         return undefined
       }
 
-      return applyNodeProjection(
+      return projectNodeItem(
         current,
         readValue(overlay, nodeId),
         readValue(edit)
@@ -489,7 +326,7 @@ export const createNodeRead = ({
     list: read.node.list,
     committed: read.node.item,
     item,
-    nodes: (nodeIds) => readPresentValues(nodeIds, (nodeId) => item.get(nodeId)?.node),
+    nodes: (nodeIds) => readPresentValues(nodeIds, (nodeId) => readValue(item, nodeId)?.node),
     state,
     view,
     canvas,
@@ -498,6 +335,6 @@ export const createNodeRead = ({
     capability,
     idsInRect: read.node.idsInRect,
     transformTargets: read.node.transformTargets,
-    ordered: () => readPresentValues(read.node.list.get(), (nodeId) => item.get(nodeId)?.node)
+    ordered: () => readPresentValues(readValue(read.node.list), (nodeId) => readValue(item, nodeId)?.node)
   }
 }

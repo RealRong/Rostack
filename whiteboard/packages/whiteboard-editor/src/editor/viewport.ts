@@ -20,6 +20,7 @@ import {
 import type { Point, Rect, Viewport } from '@whiteboard/core/types'
 import {
   createValueStore,
+  read,
   type ReadStore
 } from '@shared/core'
 import { sameBox as isSameBoxTuple } from '@shared/core'
@@ -106,7 +107,7 @@ export const createViewport = ({
 
   return {
     read: {
-      get: () => state.get(),
+      get: () => read(state),
       subscribe: (listener) => state.subscribe(listener),
       pointer: (input) => {
         const screen = clientToScreenPoint(
@@ -117,11 +118,11 @@ export const createViewport = ({
 
         return {
           screen,
-          world: screenToWorldPoint(screen, state.get(), rect)
+          world: screenToWorldPoint(screen, read(state), rect)
         }
       },
       worldToScreen: (point) =>
-        worldToScreenPoint(point, state.get(), rect)
+        worldToScreenPoint(point, read(state), rect)
     },
     commands: {
       set: (viewport) => {

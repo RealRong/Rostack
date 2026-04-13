@@ -1,4 +1,4 @@
-import type { ReadStore } from '@shared/core'
+import { read as readValue, type ReadStore } from '@shared/core'
 import type { EngineRead } from '@whiteboard/engine'
 import type { HistoryState } from '@whiteboard/core/kernel'
 import type { NodeRegistry } from '../types/node'
@@ -84,12 +84,12 @@ const isToolMatch = (
 }
 
 const createToolRead = (
-  source: Pick<ReadStore<Tool>, 'get'>
+  source: ReadStore<Tool>
 ): ToolRead => ({
-  get: () => source.get(),
-  type: () => source.get().type,
-  value: () => readToolValue(source.get()),
-  is: (type, value) => isToolMatch(source.get(), type, value)
+  get: () => readValue(source),
+  type: () => readValue(source).type,
+  value: () => readToolValue(readValue(source)),
+  is: (type, value) => isToolMatch(readValue(source), type, value)
 })
 
 export type RuntimeRead = Omit<EngineRead, 'node' | 'edge' | 'index'> & {

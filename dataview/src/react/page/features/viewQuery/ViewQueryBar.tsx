@@ -22,27 +22,27 @@ export const ViewQueryBar = () => {
   const dataView = useDataView()
   const engine = dataView.engine
   const page = dataView.page
-  const document = useDataViewValue(dataView => dataView.engine.read.document)
+  const document = useDataViewValue(dataView => dataView.engine.select.document)
   const fields = getDocumentFields(document)
   const queryBar = useDataViewValue(
     dataView => dataView.page.store,
     state => state.query
   )
   const currentView = useDataViewValue(
-    dataView => dataView.engine.view.config
+    dataView => dataView.engine.active.config
   )
 
   const filterProjection = useDataViewValue(
-    dataView => dataView.engine.view.state,
+    dataView => dataView.engine.active.state,
     state => state?.query.filters
   )
   const sortProjection = useDataViewValue(
-    dataView => dataView.engine.view.state,
+    dataView => dataView.engine.active.state,
     state => state?.query.sort
   )
 
   const currentViewDomain = currentView
-    ? engine.view
+    ? engine.active
     : undefined
   const filters = filterProjection?.rules ?? []
   const sorts = sortProjection?.rules ?? []

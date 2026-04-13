@@ -13,10 +13,10 @@ import {
   read,
   trimToUndefined
 } from '@shared/core'
-import { createFieldId } from '../write/entityId'
+import { createFieldId } from '../mutate/entityId'
 import type {
   ActionResult,
-  DocumentReadApi,
+  DocumentSelectApi,
   FieldsApi
 } from '../contracts/public'
 
@@ -35,16 +35,16 @@ const findAddedOption = (
 }
 
 export const createFieldsApi = (options: {
-  read: DocumentReadApi
+  select: DocumentSelectApi
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }): FieldsApi => {
   const dispatch = options.dispatch
-  const listFields = () => read(options.read.fieldIds)
+  const listFields = () => read(options.select.fields.ids)
     .flatMap(fieldId => {
-      const field = read(options.read.field, fieldId)
+      const field = read(options.select.fields.byId, fieldId)
       return field ? [field] : []
     })
-  const getField = (fieldId: CustomFieldId) => read(options.read.field, fieldId)
+  const getField = (fieldId: CustomFieldId) => read(options.select.fields.byId, fieldId)
   const getOptionFieldById = (fieldId: CustomFieldId) => getOptionField(getField(fieldId))
 
   return {

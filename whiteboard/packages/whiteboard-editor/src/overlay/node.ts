@@ -36,7 +36,7 @@ export const EMPTY_NODE_OVERLAY_PROJECTION: NodeOverlayProjection = {
 
 const EMPTY_NODE_OVERLAY_MAP = new Map<NodeId, NodeOverlayProjection>()
 
-export const isNodePatchEqual = (
+const isNodePatchEqual = (
   left: NodePatch | undefined,
   right: NodePatch | undefined
 ) => (
@@ -45,7 +45,7 @@ export const isNodePatchEqual = (
   && left?.rotation === right?.rotation
 )
 
-export const isTextPreviewPatchEqual = (
+const isTextPreviewPatchEqual = (
   left: TextPreviewPatch | undefined,
   right: TextPreviewPatch | undefined
 ) => (
@@ -57,10 +57,13 @@ export const isTextPreviewPatchEqual = (
   && left?.handle === right?.handle
 )
 
-export const readNodePatchEntry = (
-  patches: readonly NodePatchEntry[],
+const readEntryPatch = <TPatch, TEntry extends {
+  id: NodeId
+  patch: TPatch
+}>(
+  patches: readonly TEntry[],
   nodeId: NodeId
-): NodePatch | undefined => {
+): TPatch | undefined => {
   for (let index = 0; index < patches.length; index += 1) {
     const entry = patches[index]!
     if (entry.id === nodeId) {
@@ -71,13 +74,24 @@ export const readNodePatchEntry = (
   return undefined
 }
 
-export const replaceNodePatchEntry = (
-  patches: readonly NodePatchEntry[],
-  nodeId: NodeId,
-  patch: NodePatch | undefined
-): readonly NodePatchEntry[] => {
+const replaceEntryPatch = <TPatch, TEntry extends {
+  id: NodeId
+  patch: TPatch
+}>({
+  patches,
+  nodeId,
+  patch,
+  isEqual,
+  createEntry
+}: {
+  patches: readonly TEntry[]
+  nodeId: NodeId
+  patch: TPatch | undefined
+  isEqual: (left: TPatch, right: TPatch) => boolean
+  createEntry: (nodeId: NodeId, patch: TPatch) => TEntry
+}): readonly TEntry[] => {
   let changed = false
-  const next: NodePatchEntry[] = []
+  const next: TEntry[] = []
 
   for (let index = 0; index < patches.length; index += 1) {
     const entry = patches[index]!
@@ -91,15 +105,12 @@ export const replaceNodePatchEntry = (
       continue
     }
 
-    if (isNodePatchEqual(entry.patch, patch)) {
+    if (isEqual(entry.patch, patch)) {
       next.push(entry)
       continue
     }
 
-    next.push({
-      id: nodeId,
-      patch
-    })
+    next.push(createEntry(nodeId, patch))
     changed = true
   }
 
@@ -118,79 +129,130 @@ export const replaceNodePatchEntry = (
 
   return [
     ...patches,
-    {
-      id: nodeId,
-      patch
-    }
+    createEntry(nodeId, patch)
   ]
 }
 
-export const readTextPreviewEntry = (
+const readTextPreviewEntry = (
   patches: readonly TextPreviewEntry[],
   nodeId: NodeId
-): TextPreviewPatch | undefined => {
-  for (let index = 0; index < patches.length; index += 1) {
-    const entry = patches[index]!
-    if (entry.id === nodeId) {
-      return entry.patch
-    }
-  }
+): TextPreviewPatch | undefined => readEntryPatch(patches, nodeId)
 
-  return undefined
-}
-
-export const replaceTextPreviewEntry = (
+const replaceTextPreviewEntry = (
   patches: readonly TextPreviewEntry[],
   nodeId: NodeId,
   patch: TextPreviewPatch | undefined
-): readonly TextPreviewEntry[] => {
-  let changed = false
-  const next: TextPreviewEntry[] = []
+): readonly TextPreviewEntry[] => replaceEntryPatch({
+  patches,
+  nodeId,
+  patch,
+  isEqual: isTextPreviewPatchEqual,
+  createEntry: (id, nextPatch) => ({
+    id,
+    patch: nextPatch
+  })
+})
 
-  for (let index = 0; index < patches.length; index += 1) {
-    const entry = patches[index]!
-    if (entry.id !== nodeId) {
-      next.push(entry)
-      continue
+const hasTextPreviewPatch = (
+  patch: TextPreviewPatch | undefined
+) => Boolean(
+  patch?.position
+  || patch?.size
+  || patch?.fontSize !== undefined
+  || patch?.mode !== undefined
+  || patch?.wrapWidth !== undefined
+  || patch?.handle !== undefined
+)
+
+const toNodeTextOverlayState = (
+  patches: readonly TextPreviewEntry[]
+): NodeTextOverlayState => patches.length > 0
+  ? {
+      patches
     }
+  : EMPTY_NODE_TEXT_OVERLAY
 
-    if (!patch) {
-      changed = true
-      continue
-    }
-
-    if (isTextPreviewPatchEqual(entry.patch, patch)) {
-      next.push(entry)
-      continue
-    }
-
-    next.push({
-      id: nodeId,
-      patch
-    })
-    changed = true
+const mergeTextPreviewPatch = (
+  current: TextPreviewPatch | undefined,
+  patch: TextPreviewPatch | undefined
+) => {
+  if (!current && !patch) {
+    return undefined
   }
 
-  if (!patch) {
-    return changed
-      ? next
-      : patches
+  const next = {
+    position: patch?.position ?? current?.position,
+    size: patch?.size ?? current?.size,
+    fontSize: patch?.fontSize ?? current?.fontSize,
+    mode: patch?.mode ?? current?.mode,
+    wrapWidth: patch?.wrapWidth ?? current?.wrapWidth,
+    handle: patch?.handle ?? current?.handle
   }
 
-  const hasPatch = patches.some((entry) => entry.id === nodeId)
-  if (hasPatch) {
-    return changed
-      ? next
-      : patches
+  return hasTextPreviewPatch(next)
+    ? next
+    : undefined
+}
+
+export const updateNodeTextPreview = (
+  state: NodeTextOverlayState,
+  nodeId: NodeId,
+  patch: TextPreviewPatch | undefined
+): NodeTextOverlayState => {
+  const currentPatch = readTextPreviewEntry(state.patches, nodeId)
+  const nextPatch = mergeTextPreviewPatch(currentPatch, patch)
+  if (isTextPreviewPatchEqual(currentPatch, nextPatch)) {
+    return state
   }
 
-  return [
-    ...patches,
-    {
-      id: nodeId,
-      patch
-    }
-  ]
+  return toNodeTextOverlayState(
+    replaceTextPreviewEntry(state.patches, nodeId, nextPatch)
+  )
+}
+
+export const clearNodeTextPreview = (
+  state: NodeTextOverlayState,
+  nodeId: NodeId
+): NodeTextOverlayState => {
+  if (!readTextPreviewEntry(state.patches, nodeId)) {
+    return state
+  }
+
+  return toNodeTextOverlayState(
+    replaceTextPreviewEntry(state.patches, nodeId, undefined)
+  )
+}
+
+export const clearNodeTextPreviewSize = (
+  state: NodeTextOverlayState,
+  nodeId: NodeId
+): NodeTextOverlayState => {
+  const patch = readTextPreviewEntry(state.patches, nodeId)
+  if (!patch?.size) {
+    return state
+  }
+
+  return toNodeTextOverlayState(
+    replaceTextPreviewEntry(
+      state.patches,
+      nodeId,
+      hasTextPreviewPatch({
+        position: patch.position,
+        fontSize: patch.fontSize,
+        mode: patch.mode,
+        wrapWidth: patch.wrapWidth,
+        handle: patch.handle
+      })
+        ? {
+            position: patch.position,
+            fontSize: patch.fontSize,
+            mode: patch.mode,
+            wrapWidth: patch.wrapWidth,
+            handle: patch.handle
+          }
+        : undefined
+    )
+  )
 }
 
 export const isNodeOverlayStateEqual = (

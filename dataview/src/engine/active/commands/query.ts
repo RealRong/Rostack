@@ -26,12 +26,12 @@ import {
   setOnlySorter,
   setSorter
 } from '@dataview/core/sort'
-import type { ViewApi } from '../../contracts/public'
-import type { ViewBaseContext } from './base'
+import type { ActiveViewApi } from '../../contracts/public'
+import type { ActiveViewContext } from '../context'
 
 export const createSearchApi = (
-  base: ViewBaseContext
-): ViewApi['search'] => ({
+  base: ActiveViewContext
+): ActiveViewApi['search'] => ({
   set: value => {
     base.withView(view => {
       base.commitPatch({
@@ -42,8 +42,8 @@ export const createSearchApi = (
 })
 
 export const createFiltersApi = (
-  base: ViewBaseContext
-): ViewApi['filters'] => ({
+  base: ActiveViewContext
+): ActiveViewApi['filters'] => ({
   add: fieldId => {
     base.withField(fieldId, (view, field) => {
       base.commitPatch({
@@ -99,8 +99,8 @@ export const createFiltersApi = (
 })
 
 export const createSortApi = (
-  base: ViewBaseContext
-): ViewApi['sort'] => ({
+  base: ActiveViewContext
+): ActiveViewApi['sort'] => ({
   add: (fieldId, direction) => {
     base.withView(view => {
       base.commitPatch({
@@ -153,8 +153,8 @@ export const createSortApi = (
 })
 
 export const createGroupApi = (
-  base: ViewBaseContext
-): ViewApi['group'] => ({
+  base: ActiveViewContext
+): ActiveViewApi['group'] => ({
   set: fieldId => {
     base.withField(fieldId, (view, field) => {
       base.commitPatch({

@@ -1,4 +1,9 @@
 import {
+  compileNodeDataUpdate,
+  compileNodeStyleUpdate,
+  mergeNodeUpdates
+} from '@whiteboard/core/schema'
+import {
   computeResizeRect,
   getResizeSourceEdges,
   getResizeUpdateRect,
@@ -11,11 +16,6 @@ import {
 } from '@whiteboard/core/node'
 import type { Node, NodeUpdateInput, Rect } from '@whiteboard/core/types'
 import type { ResizeSnapInput, ResizeSnapResult } from '../core/snap'
-import {
-  dataUpdate,
-  mergeNodeUpdates,
-  styleUpdate
-} from '../../write/node/patch'
 
 type TextTransformMode = 'reflow' | 'scale'
 
@@ -153,18 +153,18 @@ export const commitTextTransform = (input: {
         }
       : undefined,
     input.mode === 'reflow' && readTextWidthMode(input.target.node) !== 'wrap'
-      ? dataUpdate('widthMode', 'wrap')
+      ? compileNodeDataUpdate('widthMode', 'wrap')
       : undefined,
     readTextWidthMode(input.preview.node) === 'wrap'
     && readTextWrapWidth(input.target.node) !== input.preview.rect.width
-      ? dataUpdate('wrapWidth', input.preview.rect.width)
+      ? compileNodeDataUpdate('wrapWidth', input.preview.rect.width)
       : input.mode === 'scale'
         && readTextWidthMode(input.preview.node) === 'auto'
         && readTextWrapWidth(input.target.node) !== undefined
-          ? dataUpdate('wrapWidth', undefined)
+          ? compileNodeDataUpdate('wrapWidth', undefined)
         : undefined,
     input.mode === 'scale' && nextFontSize !== readTextFontSize(input.target.node)
-      ? styleUpdate('fontSize', nextFontSize)
+      ? compileNodeStyleUpdate('fontSize', nextFontSize)
       : undefined
   )
 

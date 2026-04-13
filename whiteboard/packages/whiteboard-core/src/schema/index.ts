@@ -240,3 +240,49 @@ export const compileNodeFieldUpdates = (
     ? { records }
     : {}
 }
+
+export const compileNodeDataUpdate = (
+  path: string,
+  value: unknown
+): NodeUpdateInput => compileNodeFieldUpdate(
+  {
+    scope: 'data',
+    path
+  },
+  value
+)
+
+export const compileNodeStyleUpdate = (
+  path: string,
+  value: unknown
+): NodeUpdateInput => compileNodeFieldUpdate(
+  {
+    scope: 'style',
+    path
+  },
+  value
+)
+
+export const mergeNodeUpdates = (
+  ...updates: Array<NodeUpdateInput | undefined>
+): NodeUpdateInput => {
+  const fields = updates.reduce<NodeUpdateInput['fields']>(
+    (current, update) => {
+      if (!update?.fields) {
+        return current
+      }
+
+      return {
+        ...(current ?? {}),
+        ...update.fields
+      }
+    },
+    undefined
+  )
+  const records = updates.flatMap((update) => update?.records ?? [])
+
+  return {
+    ...(fields ? { fields } : {}),
+    ...(records.length ? { records } : {})
+  }
+}

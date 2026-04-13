@@ -11,7 +11,7 @@ export interface PageBodyProps {
 }
 
 export const PageBody = (props: PageBodyProps) => {
-  const view = useDataViewValue(dataView => dataView.engine.view.config)
+  const view = useDataViewValue(dataView => dataView.engine.active.config)
 
   if (!view) {
     return (

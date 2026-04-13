@@ -1,26 +1,23 @@
 import type {
-  Field,
   FieldId
 } from '@dataview/core/contracts'
-import { getDocumentFieldById } from '@dataview/core/document'
 import { read, type ReadStore } from '@shared/core'
 import type {
+  ActiveViewReadApi,
   CellRef,
-  DocumentReadApi,
+  DocumentSelectApi,
   ViewCell,
-  ViewReadApi,
   ViewState
-} from '../../contracts/public'
+} from '../contracts/public'
+import { readDocumentFieldById } from '../document/fieldLookup'
 
-export const createViewReadApi = (input: {
-  read: DocumentReadApi
+export const createActiveViewReadApi = (input: {
+  select: DocumentSelectApi
   state: ReadStore<ViewState | undefined>
-}): ViewReadApi => {
-  const readDocument = () => read(input.read.document)
+}): ActiveViewReadApi => {
+  const readDocument = () => read(input.select.document)
   const readState = () => read(input.state)
-  const readField = (fieldId: FieldId): Field | undefined => (
-    getDocumentFieldById(readDocument(), fieldId)
-  )
+  const readField = (fieldId: FieldId) => readDocumentFieldById(readDocument(), fieldId)
   const readSection = (sectionKey: string) => readState()?.sections.get(sectionKey)
   const readItem = (itemId: string) => readState()?.items.get(itemId)
   const readCell = (cell: CellRef): ViewCell | undefined => {
@@ -34,7 +31,7 @@ export const createViewReadApi = (input: {
       return undefined
     }
 
-    const record = read(input.read.record, item.recordId)
+    const record = read(input.select.records.byId, item.recordId)
     if (!record) {
       return undefined
     }
@@ -53,7 +50,7 @@ export const createViewReadApi = (input: {
   }
 
   return {
-    record: recordId => read(input.read.record, recordId),
+    record: recordId => read(input.select.records.byId, recordId),
     field: readField,
     section: readSection,
     item: readItem,

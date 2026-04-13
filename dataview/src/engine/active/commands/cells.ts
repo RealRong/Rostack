@@ -1,10 +1,10 @@
-import type { ViewApi } from '../../contracts/public'
-import type { ViewBaseContext } from './base'
+import type { ActiveViewApi } from '../../contracts/public'
+import type { ActiveViewContext } from '../context'
 
 export const createCellsApi = (input: {
-  base: ViewBaseContext
-  read: ViewApi['read']
-}): ViewApi['cells'] => ({
+  base: ActiveViewContext
+  read: ActiveViewApi['read']
+}): ActiveViewApi['cells'] => ({
   set: (cell, value) => {
     const state = input.base.readState()
     if (!state) {

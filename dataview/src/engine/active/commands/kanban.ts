@@ -3,12 +3,12 @@ import {
   setKanbanFillColumnColor,
   setKanbanNewRecordPosition
 } from '@dataview/core/view'
-import type { ViewApi } from '../../contracts/public'
-import type { ViewBaseContext } from './base'
+import type { ActiveViewApi } from '../../contracts/public'
+import type { ActiveViewContext } from '../context'
 
 export const createKanbanApi = (
-  base: ViewBaseContext
-): ViewApi['kanban'] => ({
+  base: ActiveViewContext
+): ActiveViewApi['kanban'] => ({
   setNewRecordPosition: value => {
     base.withView(view => {
       base.commitPatch({

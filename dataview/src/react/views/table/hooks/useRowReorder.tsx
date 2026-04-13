@@ -135,7 +135,7 @@ export const useRowReorder = (): RowReorderApi => {
         return
       }
 
-      dataView.engine.view.items.move(dragIds, {
+      dataView.engine.active.items.move(dragIds, {
         section: sectionKey,
         ...(beforeId ? { before: beforeId } : {})
       })

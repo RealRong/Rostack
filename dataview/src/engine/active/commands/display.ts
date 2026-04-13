@@ -5,12 +5,12 @@ import {
   replaceDisplayFields,
   showDisplayField
 } from '@dataview/core/view'
-import type { ViewApi } from '../../contracts/public'
-import type { ViewBaseContext } from './base'
+import type { ActiveViewApi } from '../../contracts/public'
+import type { ActiveViewContext } from '../context'
 
 export const createDisplayApi = (
-  base: ViewBaseContext
-): ViewApi['display'] => ({
+  base: ActiveViewContext
+): ActiveViewApi['display'] => ({
   replace: fieldIds => {
     base.withView(() => {
       base.commitPatch({

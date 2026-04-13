@@ -21,12 +21,12 @@ import {
 export const ViewFieldsPanel = () => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const document = useDataViewValue(dataView => dataView.engine.read.document)
+  const document = useDataViewValue(dataView => dataView.engine.select.document)
   const currentView = useDataViewValue(
-    dataView => dataView.engine.view.config
+    dataView => dataView.engine.active.config
   )
   const currentViewDomain = currentView
-    ? engine.view
+    ? engine.active
     : undefined
   const fields = getDocumentFields(document)
   const [query, setQuery] = useState('')

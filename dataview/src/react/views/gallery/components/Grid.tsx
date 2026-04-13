@@ -82,7 +82,7 @@ export const Grid = () => {
                         <span
                           className="inline-flex h-2.5 w-2.5 rounded-full"
                           style={resolveOptionDotStyle(
-                            engine.view.read.section(block.section.key)?.color
+                            engine.active.read.section(block.section.key)?.color
                           )}
                         />
                       ) : null}

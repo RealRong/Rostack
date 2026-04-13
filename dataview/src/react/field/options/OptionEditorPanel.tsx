@@ -41,7 +41,7 @@ export interface OptionEditorPanelProps {
 export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
   const editor = useDataView().engine
   const field = useDataViewKeyedValue(
-    dataView => dataView.engine.read.field,
+    dataView => dataView.engine.select.fields.byId,
     props.fieldId
   )
   const currentOption = getFieldOption(field, props.option.id)

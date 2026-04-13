@@ -5,13 +5,13 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   IndexState
-} from '../../../index/types'
+} from '../../index/types'
 import {
   collectTouchedRecordIds
-} from '../../../index/shared'
+} from '../../index/shared'
 import {
   now
-} from '../../../perf/shared'
+} from '../../../runtime/clock'
 import type {
   DeriveAction,
   QueryState,
@@ -19,7 +19,7 @@ import type {
 } from '../../../contracts/internal'
 import {
   publishSections
-} from '../collections'
+} from './publish'
 export {
   syncSectionState
 } from './sync'

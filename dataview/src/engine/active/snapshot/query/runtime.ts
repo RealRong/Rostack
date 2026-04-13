@@ -12,7 +12,7 @@ import {
 } from '@shared/core'
 import {
   now
-} from '../../../perf/shared'
+} from '../../../runtime/clock'
 import {
   viewFilterFields,
   viewSearchFields,
@@ -20,23 +20,37 @@ import {
 } from '@dataview/core/view'
 import {
   collectValueFieldIds
-} from '../../../index/shared'
+} from '../../index/shared'
 import type {
   IndexState
-} from '../../../index/types'
+} from '../../index/types'
 import type {
   DeriveAction,
   QueryState
 } from '../../../contracts/internal'
-import {
-  publishViewRecords
-} from '../records'
 export {
   buildQueryState
 } from './derive'
 import {
   buildQueryState
 } from './derive'
+
+const publishViewRecords = (input: {
+  query: QueryState
+  previous?: import('../../../contracts/public').ViewRecords
+}): import('../../../contracts/public').ViewRecords => {
+  const previous = input.previous
+  return previous
+    && previous.matched === input.query.matched
+    && previous.ordered === input.query.ordered
+    && previous.visible === input.query.visible
+    ? previous
+    : {
+        matched: input.query.matched,
+        ordered: input.query.ordered,
+        visible: input.query.visible
+      }
+}
 
 const hasIntersection = (
   left: ReadonlySet<FieldId>,

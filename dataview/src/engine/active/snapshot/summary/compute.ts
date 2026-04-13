@@ -4,7 +4,9 @@ import type {
 } from '@dataview/core/calculation'
 import type {
   CalculationMetric,
+  FieldId,
   Field,
+  View,
   StatusField
 } from '@dataview/core/contracts'
 import {
@@ -13,7 +15,12 @@ import {
 } from '@dataview/core/field'
 import type {
   AggregateState
-} from '../../../index/types'
+} from '../../index/types'
+
+export const readCalcFields = (
+  view: View
+): readonly FieldId[] => Object.entries(view.calc)
+  .flatMap(([fieldId, metric]) => metric ? [fieldId as FieldId] : [])
 
 const EMPTY_DISPLAY = '--'
 const NUMBER_FORMATTERS = new Map<string, Intl.NumberFormat>()

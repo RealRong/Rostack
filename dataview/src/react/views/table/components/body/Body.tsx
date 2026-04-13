@@ -127,7 +127,7 @@ const View = () => {
   const readCell = useCallback((cell: CellRef) => {
     const recordId = currentView.items.get(cell.itemId)?.recordId
     const record = recordId
-      ? engine.read.record.get(recordId)
+      ? engine.select.records.byId.get(recordId)
       : undefined
 
     return {

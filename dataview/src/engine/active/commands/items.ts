@@ -6,14 +6,14 @@ import type {
 import { isTitleFieldId } from '@dataview/core/field'
 import { group as groupCore } from '@dataview/core/group'
 import { trimToUndefined, unique } from '@shared/core'
-import { createRecordId } from '../../write/entityId'
+import { createRecordId } from '../../mutate/entityId'
 import type {
+  ActiveItemsApi,
+  ActiveViewReadApi,
   MovePlan,
-  Placement,
-  ViewItemsApi,
-  ViewReadApi
+  Placement
 } from '../../contracts/public'
-import { createGroupValueActions, type ViewBaseContext } from './base'
+import { createGroupValueActions, type ActiveViewContext } from '../context'
 
 export const planMove = (
   itemIds: readonly string[],
@@ -84,10 +84,10 @@ export const planMove = (
   }
 }
 
-export const createViewItemsApi = (input: {
-  base: ViewBaseContext
-  read: ViewReadApi
-}): ViewItemsApi => ({
+export const createActiveItemsApi = (input: {
+  base: ActiveViewContext
+  read: ActiveViewReadApi
+}): ActiveItemsApi => ({
   planMove: (itemIds, target) => planMove(itemIds, target, input.base.readState),
   move: (itemIds, target) => {
     const state = input.base.readState()

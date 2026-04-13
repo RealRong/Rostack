@@ -3,20 +3,20 @@ import type {
   DataDoc,
   ViewId
 } from '@dataview/core/contracts'
-import { now } from '../../perf/shared'
-import type { IndexState } from '../../index/types'
-import type { ViewCache } from '../../contracts/internal'
+import { now } from '../runtime/clock'
+import type { IndexState } from './index/types'
+import type { ViewCache } from '../contracts/internal'
 import type {
   SnapshotTrace,
   ViewState,
   ViewTrace
-} from '../../contracts/public'
+} from '../contracts/public'
 import {
   emptyViewCache
-} from '../../contracts/internal'
+} from '../contracts/internal'
 import {
   deriveViewSnapshot
-} from './run'
+} from './snapshot/runtime'
 
 const SNAPSHOT_KEYS = [
   'view',

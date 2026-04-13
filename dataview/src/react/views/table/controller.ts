@@ -326,7 +326,7 @@ export const createTableController = (options: {
   const openCell = createCellOpener({
     valueEditor: options.valueEditor,
     resolveCell: cell => {
-      const resolved = options.engine.view.read.cell(cell)
+      const resolved = options.engine.active.read.cell(cell)
       return resolved
         ? {
             recordId: resolved.recordId,
@@ -346,7 +346,7 @@ export const createTableController = (options: {
     currentViewStore: currentView,
     capabilitiesStore: capabilities,
     hoverCellStore: hover.cell,
-    recordStore: options.engine.read.record
+    recordStore: options.engine.select.records.byId
   })
 
   return {

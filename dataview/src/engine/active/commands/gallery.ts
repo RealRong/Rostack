@@ -2,12 +2,12 @@ import {
   setGalleryCardSize,
   setGalleryShowFieldLabels
 } from '@dataview/core/view'
-import type { ViewApi } from '../../contracts/public'
-import type { ViewBaseContext } from './base'
+import type { ActiveViewApi } from '../../contracts/public'
+import type { ActiveViewContext } from '../context'
 
 export const createGalleryApi = (
-  base: ViewBaseContext
-): ViewApi['gallery'] => ({
+  base: ActiveViewContext
+): ActiveViewApi['gallery'] => ({
   setLabels: value => {
     base.withView(view => {
       base.commitPatch({

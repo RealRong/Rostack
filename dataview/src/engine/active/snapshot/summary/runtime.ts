@@ -8,20 +8,20 @@ import { TITLE_FIELD_ID } from '@dataview/core/contracts'
 import { viewCalcFields } from '@dataview/core/view'
 import {
   now
-} from '../../../perf/shared'
+} from '../../../runtime/clock'
 import {
   collectSchemaFieldIds,
   collectTouchedRecordIds,
   collectValueFieldIds
-} from '../../../index/shared'
-import type { IndexState } from '../../../index/types'
+} from '../../index/shared'
+import type { IndexState } from '../../index/types'
 import type {
   DeriveAction,
   SectionState,
   SummaryState
 } from '../../../contracts/internal'
 import type { SectionKey } from '../../../contracts/public'
-import { publishSummaries } from '../publishSummary'
+import { publishSummaries } from './publish'
 import {
   syncSummaryState
 } from './sync'

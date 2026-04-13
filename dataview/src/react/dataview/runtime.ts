@@ -169,7 +169,7 @@ export const createDataViewSession = (input: {
   const marquee = createMarqueeApi()
   const inlineSession = createInlineSessionApi()
   const valueEditor = createValueEditorApi()
-  const activeAppearances = input.engine.view.select(
+  const activeAppearances = input.engine.active.select(
     state => state?.items
   )
   const selection = createSelectionApi({
@@ -179,9 +179,9 @@ export const createDataViewSession = (input: {
     }
   })
   const pageStateStore = createPageStateStore({
-    document: input.engine.read.document,
-    activeViewId: input.engine.view.id,
-    activeView: input.engine.view.config,
+    document: input.engine.select.document,
+    activeViewId: input.engine.active.id,
+    activeView: input.engine.active.config,
     page: page.store,
     valueEditorOpen: valueEditor.openStore
   })
@@ -192,7 +192,7 @@ export const createDataViewSession = (input: {
       selection
     }),
     bindMarqueeToView({
-      activeView: input.engine.view.config,
+      activeView: input.engine.active.config,
       marquee
     }),
     bindInlineSessionToSelection({
@@ -200,7 +200,7 @@ export const createDataViewSession = (input: {
       inlineSession
     }),
     bindInlineSessionToView({
-      activeView: input.engine.view.config,
+      activeView: input.engine.active.config,
       items: activeAppearances,
       inlineSession
     })

@@ -3,12 +3,12 @@ import {
   setGroupBucketHidden,
   toggleGroupBucketCollapsed
 } from '@dataview/core/group'
-import type { ViewApi } from '../../contracts/public'
-import type { ViewBaseContext } from './base'
+import type { ActiveViewApi } from '../../contracts/public'
+import type { ActiveViewContext } from '../context'
 
 export const createSectionsApi = (
-  base: ViewBaseContext
-): ViewApi['sections'] => ({
+  base: ActiveViewContext
+): ActiveViewApi['sections'] => ({
   show: key => {
     base.withGroupField((view, field) => {
       base.commitPatch({

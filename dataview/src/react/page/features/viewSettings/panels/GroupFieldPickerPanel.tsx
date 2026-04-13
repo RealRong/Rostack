@@ -11,16 +11,16 @@ import { useViewSettings } from '../context'
 export const GroupFieldPickerPanel = () => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const document = useDataViewValue(dataView => dataView.engine.read.document)
+  const document = useDataViewValue(dataView => dataView.engine.select.document)
   const currentView = useDataViewValue(
-    dataView => dataView.engine.view.config
+    dataView => dataView.engine.active.config
   )
   const groupProjection = useDataViewValue(
-    dataView => dataView.engine.view.state,
+    dataView => dataView.engine.active.state,
     state => state?.query.group
   )
   const currentViewDomain = currentView
-    ? engine.view
+    ? engine.active
     : undefined
   const router = useViewSettings()
   const fields = getDocumentFields(document)

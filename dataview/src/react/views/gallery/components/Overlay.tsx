@@ -23,10 +23,10 @@ export const Overlay = () => {
   const overlayRef = useRef<HTMLDivElement | null>(null)
   const itemId = runtime.drag.activeId
   const recordId = itemId
-    ? engine.view.read.item(itemId)?.recordId
+    ? engine.active.read.item(itemId)?.recordId
     : undefined
   const record = useDataViewKeyedValue(
-    dataView => dataView.engine.read.record,
+    dataView => dataView.engine.select.records.byId,
     (recordId ?? '' as RecordId)
   )
   const pointer = runtime.drag.pointerRef.current

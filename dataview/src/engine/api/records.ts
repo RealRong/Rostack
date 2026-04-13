@@ -10,12 +10,12 @@ import {
 import { createRecordFieldWriteAction } from '@dataview/core/field'
 import type {
   ActionResult,
-  DocumentReadApi,
+  DocumentSelectApi,
   RecordsApi
 } from '../contracts/public'
 
 export const createRecordsApi = (options: {
-  read: DocumentReadApi
+  select: DocumentSelectApi
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }): RecordsApi => {
   const writeField = (
@@ -27,7 +27,7 @@ export const createRecordsApi = (options: {
   }
 
   return {
-    get: recordId => read(options.read.record, recordId),
+    get: recordId => read(options.select.records.byId, recordId),
     create: input => {
       const result = options.dispatch({
         type: 'record.create',

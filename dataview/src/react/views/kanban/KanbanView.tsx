@@ -32,11 +32,11 @@ export const KanbanView = (props: KanbanViewProps) => {
   const columnWidth = props.columnWidth ?? DEFAULT_COLUMN_WIDTH
   const columnMinHeight = props.columnMinHeight ?? DEFAULT_COLUMN_MIN_HEIGHT
   const active = useDataViewValue(
-    dataView => dataView.engine.view.state,
+    dataView => dataView.engine.active.state,
     readKanbanActiveState
   )
   const extra = useDataViewValue(
-    dataView => dataView.engine.view.kanban.state
+    dataView => dataView.engine.active.kanban.state
   )
   if (!active || !extra) {
     throw new Error('Kanban view requires an active kanban state.')

@@ -9,23 +9,23 @@ import {
 import { createDuplicateViewInput } from '@dataview/core/view'
 import type {
   ActionResult,
-  DocumentReadApi,
+  DocumentSelectApi,
   ViewsApi
 } from '../contracts/public'
 
 export const createViewsApi = (options: {
-  read: DocumentReadApi
+  select: DocumentSelectApi
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }): ViewsApi => {
-  const readViews = () => read(options.read.viewIds)
+  const readViews = () => read(options.select.views.ids)
     .flatMap(viewId => {
-      const view = read(options.read.view, viewId)
+      const view = read(options.select.views.byId, viewId)
       return view ? [view] : []
     })
 
   return {
     list: readViews,
-    get: viewId => read(options.read.view, viewId),
+    get: viewId => read(options.select.views.byId, viewId),
     open: viewId => {
       options.dispatch({
         type: 'view.open',
@@ -62,7 +62,7 @@ export const createViewsApi = (options: {
       })
     },
     duplicate: viewId => {
-      const sourceView = read(options.read.view, viewId)
+      const sourceView = read(options.select.views.byId, viewId)
       if (!sourceView) {
         return undefined
       }

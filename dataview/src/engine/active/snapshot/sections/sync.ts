@@ -4,23 +4,21 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   IndexState
-} from '../../../index/types'
+} from '../../index/types'
 import {
   readGroupFieldIndex
-} from '../../../index/group'
+} from '../../index/group/demand'
 import type {
   QueryState,
   SectionState
 } from '../../../contracts/internal'
 import {
+  buildSectionNode,
   buildSectionState,
+  sameRecordIds,
+  sameSectionNode,
   resolveSectionKeys
 } from './derive'
-import {
-  buildSectionNode,
-  sameRecordIds,
-  sameSectionNode
-} from './shape'
 import {
   readQueryOrder
 } from '../../../contracts/internal'

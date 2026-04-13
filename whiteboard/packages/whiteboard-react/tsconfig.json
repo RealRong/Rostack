@@ -13,7 +13,7 @@
       "@whiteboard/collab": ["../whiteboard-collab/src/index.ts"],
       "@whiteboard/core/*": ["../whiteboard-core/src/*/index.ts"],
       "@whiteboard/editor": ["../whiteboard-editor/src/index.ts"],
-      "@whiteboard/editor/draw": ["../whiteboard-editor/src/draw.ts"],
+      "@whiteboard/editor/draw": ["../whiteboard-editor/src/model/draw/index.ts"],
       "@whiteboard/engine": ["../whiteboard-engine/src/index.ts"],
       "@engine-types": ["../whiteboard-engine/src/types/index.ts"],
       "@engine-types/*": ["../whiteboard-engine/src/types/*"]

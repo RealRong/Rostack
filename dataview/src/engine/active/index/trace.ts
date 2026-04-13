@@ -9,7 +9,7 @@ import type {
 } from './types'
 import {
   createFieldSyncContext
-} from './runtime/sync'
+} from './sync'
 
 export const fullRebuildFrom = (
   delta: CommitDelta

@@ -1,23 +1,33 @@
-import type { DocumentReadApi } from '../contracts/public'
-import { createStoreEntityRead } from '../read/entities'
-import { selectDocument } from './select'
-import type { Store } from './store'
+import type { DocumentSelectApi } from '../contracts/public'
+import { listDocumentFields, readDocumentField, readDocumentFieldIds } from '../document/fields'
+import { listDocumentRecords, readDocumentRecord, readDocumentRecordIds } from '../document/records'
+import { listDocumentViews, readDocumentView, readDocumentViewIds } from '../document/views'
+import { createDocumentEntitySelectors, selectDocument } from '../runtime/selectors/document'
+import type { RuntimeStore } from '../runtime/store'
 
-export const createDocumentReadApi = (
-  store: Store
-): DocumentReadApi => {
-  const entities = createStoreEntityRead(store)
-
-  return {
-    document: selectDocument({
-      store,
-      read: document => document
-    }),
-    recordIds: entities.recordIds,
-    record: entities.record,
-    fieldIds: entities.fieldIds,
-    field: entities.field,
-    viewIds: entities.viewIds,
-    view: entities.view
-  }
-}
+export const createDocumentSelectApi = (
+  store: RuntimeStore
+): DocumentSelectApi => ({
+  document: selectDocument({
+    store,
+    read: document => document
+  }),
+  records: createDocumentEntitySelectors({
+    store,
+    ids: readDocumentRecordIds,
+    all: listDocumentRecords,
+    byId: readDocumentRecord
+  }),
+  fields: createDocumentEntitySelectors({
+    store,
+    ids: readDocumentFieldIds,
+    all: listDocumentFields,
+    byId: readDocumentField
+  }),
+  views: createDocumentEntitySelectors({
+    store,
+    ids: readDocumentViewIds,
+    all: listDocumentViews,
+    byId: readDocumentView
+  })
+})

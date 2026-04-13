@@ -1,9 +1,9 @@
 import type { NodeId } from '@whiteboard/core/types'
 import type { DrawPreview } from '../model/draw'
 import {
-  isTextPreviewPatchEqual,
-  readTextPreviewEntry,
-  replaceTextPreviewEntry
+  clearNodeTextPreview,
+  clearNodeTextPreviewSize,
+  updateNodeTextPreview
 } from '../overlay/node'
 import type {
   EdgeGuide,
@@ -46,37 +46,6 @@ export type PreviewCommands = {
 const EMPTY_EDGE_PATCHES = [] as const
 const EMPTY_NODE_IDS: readonly NodeId[] = []
 
-const mergeTextPreviewPatch = (
-  current: Parameters<PreviewCommands['node']['text']['set']>[1],
-  patch: Parameters<PreviewCommands['node']['text']['set']>[1]
-) => {
-  if (!current && !patch) {
-    return undefined
-  }
-
-  const next = {
-    position: patch?.position ?? current?.position,
-    size: patch?.size ?? current?.size,
-    fontSize: patch?.fontSize ?? current?.fontSize,
-    mode: patch?.mode ?? current?.mode,
-    wrapWidth: patch?.wrapWidth ?? current?.wrapWidth,
-    handle: patch?.handle ?? current?.handle
-  }
-
-  if (
-    !next.position
-    && !next.size
-    && next.fontSize === undefined
-    && next.mode === undefined
-    && next.wrapWidth === undefined
-    && next.handle === undefined
-  ) {
-    return undefined
-  }
-
-  return next
-}
-
 export const createPreviewCommands = ({
   overlay
 }: {
@@ -106,58 +75,24 @@ export const createPreviewCommands = ({
   },
   node: {
     text: {
-      set: (nodeId, patch) => {
-        updateOverlayNestedBranch(overlay, 'node', 'text', (current) => {
-          const currentPatch = readTextPreviewEntry(current.patches, nodeId)
-          const nextPatch = mergeTextPreviewPatch(currentPatch, patch)
-          if (isTextPreviewPatchEqual(currentPatch, nextPatch)) {
-            return current
-          }
-
-          return {
-            patches: replaceTextPreviewEntry(current.patches, nodeId, nextPatch)
-          }
-        })
-      },
-      clear: (nodeId) => {
-        updateOverlayNestedBranch(overlay, 'node', 'text', (current) => (
-          readTextPreviewEntry(current.patches, nodeId)
-            ? {
-                patches: replaceTextPreviewEntry(current.patches, nodeId, undefined)
-              }
-            : current
-        ))
-      },
-      clearSize: (nodeId) => {
-        updateOverlayNestedBranch(overlay, 'node', 'text', (current) => {
-          const patch = readTextPreviewEntry(current.patches, nodeId)
-          if (!patch?.size) {
-            return current
-          }
-
-          const nextPatch = {
-            position: patch.position,
-            fontSize: patch.fontSize,
-            mode: patch.mode,
-            wrapWidth: patch.wrapWidth,
-            handle: patch.handle
-          }
-
-          return {
-            patches: replaceTextPreviewEntry(
-              current.patches,
-              nodeId,
-              !nextPatch.position
-              && nextPatch.fontSize === undefined
-              && nextPatch.mode === undefined
-              && nextPatch.wrapWidth === undefined
-              && nextPatch.handle === undefined
-                ? undefined
-                : nextPatch
-            )
-          }
-        })
-      }
+      set: (nodeId, patch) => updateOverlayNestedBranch(
+        overlay,
+        'node',
+        'text',
+        (current) => updateNodeTextPreview(current, nodeId, patch)
+      ),
+      clear: (nodeId) => updateOverlayNestedBranch(
+        overlay,
+        'node',
+        'text',
+        (current) => clearNodeTextPreview(current, nodeId)
+      ),
+      clearSize: (nodeId) => updateOverlayNestedBranch(
+        overlay,
+        'node',
+        'text',
+        (current) => clearNodeTextPreviewSize(current, nodeId)
+      )
     }
   },
   edge: {

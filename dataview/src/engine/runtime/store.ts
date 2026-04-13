@@ -4,19 +4,19 @@ import {
   createValueStore,
   type ValueStore
 } from '@shared/core'
-import type { EngineState } from '../contracts/internal'
-import { createIndexState } from '../index/runtime'
-import { resolveViewDemand } from '../derive/active/demand'
-import { createViewRuntime } from '../derive/active/runtime'
+import { resolveViewDemand } from '../active/demand'
+import { createIndexState } from '../active/index/runtime'
+import { createViewRuntime } from '../active/runtime'
+import type { EngineRuntimeState } from './state'
 
-export type Store = ValueStore<EngineState>
-export type { EngineState } from '../contracts/internal'
+export type RuntimeStore = ValueStore<EngineRuntimeState>
+export type { EngineRuntimeState } from './state'
 
-export const createInitialState = (input: {
+export const createRuntimeState = (input: {
   doc: DataDoc
   historyCap: number
   capturePerf: boolean
-}): EngineState => {
+}): EngineRuntimeState => {
   // The engine maintains exactly one derived runtime for the current active view.
   // Inactive views keep only document config and are rebuilt on demand when opened.
   const demand = resolveViewDemand(input.doc, input.doc.activeViewId)
@@ -48,7 +48,7 @@ export const createInitialState = (input: {
 }
 
 export const createStore = (
-  initial: EngineState
-): Store => createValueStore<EngineState>({
+  initial: EngineRuntimeState
+): RuntimeStore => createValueStore<EngineRuntimeState>({
   initial
 })

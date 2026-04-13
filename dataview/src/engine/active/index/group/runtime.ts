@@ -15,7 +15,7 @@ import {
   shouldDropFieldIndex,
   shouldRebuildFieldIndex,
   shouldSyncFieldIndex
-} from '../runtime/sync'
+} from '../sync'
 import type {
   BucketKey,
   GroupDemand,

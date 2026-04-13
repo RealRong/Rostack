@@ -145,13 +145,13 @@ export const useGalleryRuntime = (input: {
     onDraggingChange: setDragging,
     onDrop: (ids, target) => {
       const section = target.beforeItemId
-        ? dataView.engine.view.read.item(target.beforeItemId)?.sectionKey
+        ? dataView.engine.active.read.item(target.beforeItemId)?.sectionKey
         : target.sectionKey
       if (!section) {
         return
       }
 
-      dataView.engine.view.items.move(ids, {
+      dataView.engine.active.items.move(ids, {
         section,
         ...(target.beforeItemId ? { before: target.beforeItemId } : {})
       })
@@ -164,13 +164,13 @@ export const useGalleryRuntime = (input: {
     }
 
     const section = drag.overTarget.beforeItemId
-      ? dataView.engine.view.read.item(drag.overTarget.beforeItemId)?.sectionKey
+      ? dataView.engine.active.read.item(drag.overTarget.beforeItemId)?.sectionKey
       : drag.overTarget.sectionKey
     if (!section) {
       return undefined
     }
 
-    const plan = dataView.engine.view.items.planMove(drag.dragIds, {
+    const plan = dataView.engine.active.items.planMove(drag.dragIds, {
       section,
       ...(drag.overTarget.beforeItemId ? { before: drag.overTarget.beforeItemId } : {})
     })
@@ -178,7 +178,7 @@ export const useGalleryRuntime = (input: {
     return plan.changed
       ? drag.overTarget.indicator
       : undefined
-  }, [dataView.engine.view, drag.dragIds, drag.overTarget, input.active.items])
+  }, [dataView.engine.active, drag.dragIds, drag.overTarget, input.active.items])
 
   return useMemo(() => ({
     containerRef,

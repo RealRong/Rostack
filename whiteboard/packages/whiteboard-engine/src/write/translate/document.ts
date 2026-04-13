@@ -1,11 +1,11 @@
 import type {
   CommandOutput,
   DocumentCommand
-} from '#types/command'
-import type { TranslateResult } from '#types/internal/translate'
-import type { WriteTranslateContext } from './index'
-import * as plan from './plan/document'
-import { fromOps, invalid } from './result'
+} from '#whiteboard-engine/command'
+import type { TranslateResult } from '#whiteboard-engine/internal/translate'
+import type { WriteTranslateContext } from '#whiteboard-engine/write/translate'
+import * as plan from '#whiteboard-engine/write/translate/plan/document'
+import { fromOps, invalid } from '#whiteboard-engine/write/translate/result'
 
 export const translateDocument = <C extends DocumentCommand>(
   command: C,

@@ -1,21 +1,12 @@
-const test = require('node:test')
-const assert = require('node:assert/strict')
-const {
-  mkdtempSync,
-  writeFileSync
-} = require('node:fs')
-const {
-  join
-} = require('node:path')
-const {
-  tmpdir
-} = require('node:os')
+import assert from 'node:assert/strict'
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { test } from 'vitest'
 
-const {
-  compareBenchmarks
-} = require('../bench/runner/compare.cjs')
+import { compareBenchmarks } from '../bench/runner/compare'
 
-const writeJson = (directory, name, value) => {
+const writeJson = (directory: string, name: string, value: unknown) => {
   const target = join(directory, name)
   writeFileSync(target, JSON.stringify(value, null, 2))
   return target

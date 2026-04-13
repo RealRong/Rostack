@@ -5,7 +5,7 @@ import type {
   FilterPresetId,
   FilterRule,
   ViewId
-} from '#core/contracts/index.ts'
+} from '#dataview-core/contracts'
 
 export interface FilterPreset {
   id: FilterPresetId

@@ -19,12 +19,18 @@
     "./view": "./src/view/index.ts",
     "./view/*": "./src/view/*.ts"
   },
-  "imports": {
-    "#core/*": "./src/*"
+  "scripts": {
+    "build": "tsdown --config tsdown.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "@date-fns/tz": "^1.4.1",
     "@shared/core": "workspace:*",
     "date-fns": "^4.1.0"
-  }
+  },
+  "files": [
+    "src",
+    "dist"
+  ]
 }

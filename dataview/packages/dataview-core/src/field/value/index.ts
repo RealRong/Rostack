@@ -1,19 +1,19 @@
 import type {
   CustomField
-} from '#core/contracts/state.ts'
+} from '#dataview-core/contracts/state'
 import {
   getKind,
   getFieldKind
-} from '#core/field/kind/index.ts'
-import type { FieldDraftParseResult } from '#core/field/kind/shared.ts'
-export type { FieldDraftParseResult } from '#core/field/kind/shared.ts'
+} from '#dataview-core/field/kind'
+import type { FieldDraftParseResult } from '#dataview-core/field/kind/shared'
+export type { FieldDraftParseResult } from '#dataview-core/field/kind/shared'
 export {
   isEmptyFieldValue,
   normalizeFieldToken,
   normalizeSearchableValue,
   readBooleanValue,
   readNumberValue
-} from '#core/field/kind/shared.ts'
+} from '#dataview-core/field/kind/shared'
 
 export const parseCustomFieldDraft = (
   field: CustomField | undefined,

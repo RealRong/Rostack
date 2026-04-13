@@ -4,7 +4,7 @@ import type { ItemId } from '@dataview/engine'
 import {
   type RowRailState,
   type RowRailStateInput
-} from '#react/views/table/model/rowRail.ts'
+} from '#dataview-react/views/table/model/rowRail'
 import { Checkbox } from '@shared/ui/checkbox'
 import { cn } from '@shared/ui/utils'
 import {
@@ -13,7 +13,7 @@ import {
   TABLE_REORDER_RAIL_WIDTH,
   TABLE_SELECTION_SLOT_WIDTH,
   TABLE_SURFACE_LEADING_OFFSET
-} from '#react/views/table/layout.ts'
+} from '#dataview-react/views/table/layout'
 
 export const TABLE_SELECTION_INSET = (
   TABLE_SURFACE_LEADING_OFFSET

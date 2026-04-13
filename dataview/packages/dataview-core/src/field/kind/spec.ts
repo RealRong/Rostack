@@ -4,17 +4,17 @@ import type {
   CustomFieldKind,
   FieldOption,
   CustomFieldId
-} from '#core/contracts/state.ts'
+} from '#dataview-core/contracts/state'
 import {
   createDefaultDateFieldConfig
-} from '#core/field/kind/date.ts'
+} from '#dataview-core/field/kind/date'
 import {
   createDefaultStatusOptions,
   getStatusOptionCategory
-} from '#core/field/kind/status.ts'
+} from '#dataview-core/field/kind/status'
 import {
   createDefaultUrlFieldConfig
-} from '#core/field/kind/url.ts'
+} from '#dataview-core/field/kind/url'
 
 export type OptionKind = Extract<CustomFieldKind, 'select' | 'multiSelect' | 'status'>
 

@@ -1,5 +1,5 @@
-import { expandRect } from './geometry'
-import type { Point, Rect } from './types'
+import { expandRect } from '#whiteboard-core/geometry'
+import type { Point, Rect } from '#whiteboard-core/types'
 
 export type SnapThresholdConfig = {
   snapThresholdScreen: number

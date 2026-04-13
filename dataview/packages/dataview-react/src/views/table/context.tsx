@@ -7,16 +7,16 @@ import {
   useRef,
   type ReactNode
 } from 'react'
-import { useDataView } from '#react/dataview/index.ts'
-import { createNodes } from '#react/views/table/dom/registry.ts'
+import { useDataView } from '#dataview-react/dataview'
+import { createNodes } from '#dataview-react/views/table/dom/registry'
 import {
   contentBounds,
   type TableLayout
-} from '#react/views/table/layout.ts'
+} from '#dataview-react/views/table/layout'
 import {
   createTableController,
   type TableController
-} from '#react/views/table/controller.ts'
+} from '#dataview-react/views/table/controller'
 
 interface TableProviderProps {
   rowHeight: number

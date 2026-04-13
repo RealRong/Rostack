@@ -1,8 +1,8 @@
 import type {
   ShortcutAction,
   ShortcutBinding
-} from '../types/common/shortcut'
-import type { WhiteboardRuntime as Editor } from '#react/types/runtime'
+} from '#whiteboard-react/types/common/shortcut'
+import type { WhiteboardRuntime as Editor } from '#whiteboard-react/types/runtime'
 
 export const DefaultShortcutBindings: readonly ShortcutBinding[] = [
   { key: 'Mod+G', action: 'group.merge' },

@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import {
   compileNodeFieldRecord,
   compileNodeFieldUpdate,
   compileNodeFieldUpdates
-} from '../dist/schema/index.js'
+} from '@whiteboard/core/schema'
 
 test('compileNodeFieldRecord 将 schema field 编译为 canonical node record', () => {
   assert.deepEqual(

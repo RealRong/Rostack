@@ -1,6 +1,6 @@
-export { createRegistries } from './registries'
-export { reduceOperations } from './reduce'
-export { createHistory } from './history'
+export { createRegistries } from '#whiteboard-core/kernel/registries'
+export { reduceOperations } from '#whiteboard-core/kernel/reduce'
+export { createHistory } from '#whiteboard-core/kernel/history'
 
 export type {
   HistoryApi,
@@ -12,4 +12,4 @@ export type {
   KernelReduceData,
   KernelReadImpact,
   KernelReduceResult
-} from './types'
+} from '#whiteboard-core/kernel/types'

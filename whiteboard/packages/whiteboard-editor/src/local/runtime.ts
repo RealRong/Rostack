@@ -5,49 +5,49 @@ import {
   type ValueStore
 } from '@shared/core'
 import type { Viewport } from '@whiteboard/core/types'
-import type { EditorState } from '../types/editor'
-import type { EditorQueryRead } from '../query'
-import type { PointerSample } from '../types/input'
-import type { NodeRegistry } from '../types/node'
-import type { Tool } from '../types/tool'
-import type { DrawState } from './draw/state'
-import { createLocalDrawActions, type LocalDrawActions } from './actions/draw'
+import type { EditorState } from '#whiteboard-editor/types/editor'
+import type { EditorQueryRead } from '#whiteboard-editor/query'
+import type { PointerSample } from '#whiteboard-editor/types/input'
+import type { NodeRegistry } from '#whiteboard-editor/types/node'
+import type { Tool } from '#whiteboard-editor/types/tool'
+import type { DrawState } from '#whiteboard-editor/local/draw/state'
+import { createLocalDrawActions, type LocalDrawActions } from '#whiteboard-editor/local/actions/draw'
 import {
   createLocalFeedbackActions,
   type LocalFeedbackActions
-} from './actions/feedback'
-import { createLocalEditActions, type LocalEditActions } from './actions/edit'
+} from '#whiteboard-editor/local/actions/feedback'
+import { createLocalEditActions, type LocalEditActions } from '#whiteboard-editor/local/actions/edit'
 import {
   createLocalSessionActions,
   type LocalSessionActions
-} from './actions/session'
+} from '#whiteboard-editor/local/actions/session'
 import {
   createLocalViewportActions,
   type LocalViewportActions
-} from './actions/viewport'
+} from '#whiteboard-editor/local/actions/viewport'
 import {
   createDrawStateStore,
   type DrawStateStore
-} from './draw/runtime'
-import { createFeedback, type EditorFeedbackRuntime } from './feedback'
-import { createEditState, type EditState } from './session/edit'
+} from '#whiteboard-editor/local/draw/runtime'
+import { createFeedback, type EditorFeedbackRuntime } from '#whiteboard-editor/local/feedback'
+import { createEditState, type EditState } from '#whiteboard-editor/local/session/edit'
 import {
   createSelectionState,
   type SelectionState
-} from './session/selection'
+} from '#whiteboard-editor/local/session/selection'
 import {
   createViewport,
   type ViewportInputRuntime,
   type ViewportRuntime
-} from './viewport/runtime'
-import { createAutoPan } from '../input/core/autoPan'
-import type { ActiveGesture } from '../input/core/gesture'
+} from '#whiteboard-editor/local/viewport/runtime'
+import { createAutoPan } from '#whiteboard-editor/input/core/autoPan'
+import type { ActiveGesture } from '#whiteboard-editor/input/core/gesture'
 import type {
   InteractionBinding,
   InteractionRuntime,
   InteractionSession,
   InteractionSessionTransition
-} from '../input/core/types'
+} from '#whiteboard-editor/input/core/types'
 
 type SessionMeta = Readonly<{
   id: number

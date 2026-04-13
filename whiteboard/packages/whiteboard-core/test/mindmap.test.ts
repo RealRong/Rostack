@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import {
   addChild,
   createMindmap,
@@ -10,7 +10,7 @@ import {
   moveSubtree,
   removeSubtree,
   updateNode
-} from '../dist/mindmap/index.js'
+} from '@whiteboard/core/mindmap'
 
 test('mindmap commands', () => {
   let nodeSeq = 1

@@ -1,4 +1,4 @@
-import type { CustomFieldId, DataDoc, DataRecord, EntityTable, IndexPath, RecordId } from '#core/contracts/state.ts'
+import type { CustomFieldId, DataDoc, DataRecord, IndexPath, RecordId } from '#dataview-core/contracts/state'
 import {
   createEntityOverlay,
   getEntityTableById,
@@ -8,7 +8,7 @@ import {
   mergePatchedEntity,
   normalizeRecordInput,
   replaceDocumentTable
-} from '#core/document/table.ts'
+} from '#dataview-core/document/table'
 
 export interface RecordEntry {
   record: DataRecord

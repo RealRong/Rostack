@@ -2,7 +2,7 @@ import type { NodeToolbarContext } from '@whiteboard/editor'
 import type {
   ToolbarItemKey,
   ToolbarRecipeItem
-} from './types'
+} from '#whiteboard-react/features/selection/chrome/toolbar/types'
 
 const DIVIDER = { kind: 'divider' } as const
 

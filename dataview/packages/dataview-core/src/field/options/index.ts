@@ -6,13 +6,13 @@ import type {
   SelectField,
   StatusField,
   StatusOption
-} from '#core/contracts/index.ts'
+} from '#dataview-core/contracts'
 import {
   hasFieldOptions
-} from '#core/field/kind/spec.ts'
+} from '#dataview-core/field/kind/spec'
 import {
   createFieldKey
-} from '#core/field/schema/index.ts'
+} from '#dataview-core/field/schema'
 
 export const normalizeOptionToken = (value: string) => value.trim().toLowerCase()
 

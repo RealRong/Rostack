@@ -10,19 +10,19 @@ import type {
 } from '@dataview/engine'
 import type {
   SelectionApi
-} from '#react/runtime/selection/index.ts'
+} from '#dataview-react/runtime/selection'
 import { shouldCapturePointer } from '@shared/dom'
 import {
   useDataView,
   useDataViewValue
-} from '#react/dataview/index.ts'
-import { rowRailState } from '#react/views/table/model/rowRail.ts'
-import { useTableContext } from '#react/views/table/context.tsx'
+} from '#dataview-react/dataview'
+import { rowRailState } from '#dataview-react/views/table/model/rowRail'
+import { useTableContext } from '#dataview-react/views/table/context'
 import { useStoreValue } from '@shared/react'
 import { cn } from '@shared/ui/utils'
-import { Cell } from '#react/views/table/components/cell/Cell.tsx'
-import { RowRail } from '#react/views/table/components/row/RowRail.tsx'
-import { useStoreSelector } from '#react/dataview/storeSelector.ts'
+import { Cell } from '#dataview-react/views/table/components/cell/Cell'
+import { RowRail } from '#dataview-react/views/table/components/row/RowRail'
+import { useStoreSelector } from '#dataview-react/dataview/storeSelector'
 
 export interface RowProps {
   itemId: ItemId

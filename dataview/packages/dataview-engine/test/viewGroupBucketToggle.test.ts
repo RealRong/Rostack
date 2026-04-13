@@ -1,15 +1,9 @@
-const test = require('node:test')
-const assert = require('node:assert/strict')
+import assert from 'node:assert/strict'
+import { test } from 'vitest'
 
-const {
-  createEngine
-} = require('../.tmp/group-test-dist/engine')
-const {
-  createDefaultViewOptions
-} = require('../.tmp/group-test-dist/core/view')
-const {
-  TITLE_FIELD_ID
-} = require('../.tmp/group-test-dist/core/contracts')
+import { TITLE_FIELD_ID } from '@dataview/core/contracts'
+import { createDefaultViewOptions } from '@dataview/core/view'
+import { createEngine } from '#dataview-engine'
 
 const FIELD_STATUS = 'status'
 const FIELD_POINTS = 'points'

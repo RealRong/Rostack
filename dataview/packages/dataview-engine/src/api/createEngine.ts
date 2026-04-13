@@ -6,19 +6,19 @@ import { cloneDocument } from '@dataview/core/document'
 import type {
   CreateEngineOptions,
   Engine
-} from '#engine/contracts/public.ts'
-import { createPerformanceRuntime } from '#engine/runtime/performance.ts'
-import { createActiveViewApi } from '#engine/api/active.ts'
-import { createDocumentSelectApi } from '#engine/api/documentSelect.ts'
-import { createFieldsApi } from '#engine/api/fields.ts'
-import { createRecordsApi } from '#engine/api/records.ts'
-import { createViewsApi } from '#engine/api/views.ts'
+} from '#dataview-engine/contracts/public'
+import { createPerformanceRuntime } from '#dataview-engine/runtime/performance'
+import { createActiveViewApi } from '#dataview-engine/api/active'
+import { createDocumentSelectApi } from '#dataview-engine/api/documentSelect'
+import { createFieldsApi } from '#dataview-engine/api/fields'
+import { createRecordsApi } from '#dataview-engine/api/records'
+import { createViewsApi } from '#dataview-engine/api/views'
 import {
   createRuntimeState,
   createStore
-} from '#engine/runtime/store.ts'
-import { planActions } from '#engine/mutate/planner/index.ts'
-import { createWriteControl } from '#engine/mutate/commit/runtime.ts'
+} from '#dataview-engine/runtime/store'
+import { planActions } from '#dataview-engine/mutate/planner'
+import { createWriteControl } from '#dataview-engine/mutate/commit/runtime'
 
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const historyCapacity = Math.max(0, options.history?.capacity ?? 100)

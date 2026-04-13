@@ -6,9 +6,10 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "imports": {
-    "#react": "./src/index.ts",
-    "#react/*": "./src/*"
+  "scripts": {
+    "build": "tsdown --config tsdown.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "@dataview/core": "workspace:*",
@@ -26,5 +27,9 @@
     "lucide-react": "^0.577.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
-  }
+  },
+  "files": [
+    "src",
+    "dist"
+  ]
 }

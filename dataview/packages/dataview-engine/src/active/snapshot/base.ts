@@ -33,15 +33,15 @@ import type {
   ViewGroupProjection,
   ViewSearchProjection,
   ViewSortProjection
-} from '#engine/contracts/public.ts'
-import { sameFieldList } from '#engine/active/snapshot/equality.ts'
-import { createOrderedListAccess } from '#engine/active/snapshot/list.ts'
+} from '#dataview-engine/contracts/public'
+import { sameFieldList } from '#dataview-engine/active/snapshot/equality'
+import { createOrderedListAccess } from '#dataview-engine/active/snapshot/list'
 import {
   reuseIfEqual,
   sameList,
   sameOptionalList,
   sameOptionalProjection
-} from '#engine/active/snapshot/reuse.ts'
+} from '#dataview-engine/active/snapshot/reuse'
 
 const resolveFieldsById = (
   document: DataDoc

@@ -4,8 +4,8 @@ import type {
   MindmapLayoutOptions,
   MindmapNodeId,
   MindmapTree
-} from './types'
-import type { Rect, Size } from '../types'
+} from '#whiteboard-core/mindmap/types'
+import type { Rect, Size } from '#whiteboard-core/types'
 
 const getChildren = (tree: MindmapTree, nodeId: MindmapNodeId) => tree.children[nodeId] ?? []
 

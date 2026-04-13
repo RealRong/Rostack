@@ -5,13 +5,13 @@ import {
 } from '@shared/dom'
 import type { ContextMenuIntent, EditorPick } from '@whiteboard/editor'
 import type { Point } from '@whiteboard/core/types'
-import type { WhiteboardRuntime } from '#react/types/runtime'
-import { consumeDomEvent } from '../../dom/host/event'
+import type { WhiteboardRuntime } from '#whiteboard-react/types/runtime'
+import { consumeDomEvent } from '#whiteboard-react/dom/host/event'
 import {
   resolvePoint,
   resolvePointerInput
-} from '../../dom/host/input'
-import { createPickRegistry } from '../../dom/host/pickRegistry'
+} from '#whiteboard-react/dom/host/input'
+import { createPickRegistry } from '#whiteboard-react/dom/host/pickRegistry'
 
 const isViewportPanStart = (
   event: PointerEvent,

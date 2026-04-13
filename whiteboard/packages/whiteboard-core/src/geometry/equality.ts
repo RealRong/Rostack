@@ -1,4 +1,4 @@
-import type { Point, Size } from '../types'
+import type { Point, Size } from '#whiteboard-core/types'
 
 export const isPointEqual = (
   left: Point | undefined,

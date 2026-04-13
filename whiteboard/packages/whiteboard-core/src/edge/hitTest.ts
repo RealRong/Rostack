@@ -3,13 +3,13 @@ import {
   isPointInRect,
   rectContains,
   rectIntersects
-} from '../geometry'
-import type { Point, Rect } from '../types'
+} from '#whiteboard-core/geometry'
+import type { Point, Rect } from '#whiteboard-core/types'
 import type {
   EdgePathResult,
   EdgePathSegment,
   EdgeRectHitMode
-} from '../types/edge'
+} from '#whiteboard-core/types/edge'
 
 const toSegmentPoints = (
   segment: EdgePathSegment

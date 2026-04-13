@@ -7,10 +7,10 @@ import type {
 } from '@dataview/engine'
 import {
   range
-} from '#table/range.ts'
+} from '#dataview-table/range'
 import {
   type GridSelection
-} from '#table/gridSelection.ts'
+} from '#dataview-table/gridSelection'
 
 export interface TableFillEntry {
   cell: CellRef

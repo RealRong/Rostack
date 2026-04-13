@@ -1,7 +1,7 @@
 export {
   dropTargetFromPoint,
   type GalleryDropTarget
-} from '#react/views/gallery/reorder/hitTest.ts'
+} from '#dataview-react/views/gallery/reorder/hitTest'
 export {
   useCardReorder
-} from '#react/views/gallery/reorder/useCardReorder.ts'
+} from '#dataview-react/views/gallery/reorder/useCardReorder'

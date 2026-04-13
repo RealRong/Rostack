@@ -1,5 +1,5 @@
-import { getRectCenter } from './rect'
-import type { Point, Rect, Viewport } from '../types'
+import { getRectCenter } from '#whiteboard-core/geometry/rect'
+import type { Point, Rect, Viewport } from '#whiteboard-core/types'
 
 export type ContainerRect = {
   left: number

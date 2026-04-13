@@ -4,8 +4,8 @@ import { useKeyedStoreValue } from '@shared/react'
 import {
   useEditorRuntime,
   useResolvedConfig
-} from '#react/runtime/hooks'
-import type { MindmapTreeViewData } from '#react/types/mindmap'
+} from '#whiteboard-react/runtime/hooks'
+import type { MindmapTreeViewData } from '#whiteboard-react/types/mindmap'
 
 export const useMindmapTreeView = (
   treeId: NodeId

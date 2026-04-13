@@ -1,12 +1,12 @@
-export { type DropTarget } from '#react/views/kanban/drag/ids.ts'
+export { type DropTarget } from '#dataview-react/views/kanban/drag/ids'
 export {
   dropTargetFromPoint
-} from '#react/views/kanban/drag/hitTest.ts'
+} from '#dataview-react/views/kanban/drag/hitTest'
 export {
   readBoardLayout,
   type BoardLayout,
   type CardLayout,
   type CardPosition,
   type ColumnLayout
-} from '#react/views/kanban/drag/layout.ts'
-export { useDrag } from '#react/views/kanban/drag/useDrag.ts'
+} from '#dataview-react/views/kanban/drag/layout'
+export { useDrag } from '#dataview-react/views/kanban/drag/useDrag'

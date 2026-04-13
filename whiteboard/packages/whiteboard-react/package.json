@@ -5,31 +5,6 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "imports": {
-    "#react/dom/host/targets": "./src/dom/host/targets.ts",
-    "#react/features/draw/stroke": "./src/features/draw/stroke.tsx",
-    "#react/features/edge/components/EdgeItem": "./src/features/edge/components/EdgeItem.tsx",
-    "#react/features/edge/constants": "./src/features/edge/constants.ts",
-    "#react/features/edit/EditableSlot": "./src/features/edit/EditableSlot.tsx",
-    "#react/features/edit/session": "./src/features/edit/session.ts",
-    "#react/features/mindmap/components/MindmapTreeView": "./src/features/mindmap/components/MindmapTreeView.tsx",
-    "#react/features/mindmap/hooks/useMindmapTreeView": "./src/features/mindmap/hooks/useMindmapTreeView.ts",
-    "#react/features/node": "./src/features/node/index.ts",
-    "#react/features/node/components/NodeItem": "./src/features/node/components/NodeItem.tsx",
-    "#react/features/node/dom/editableText": "./src/features/node/dom/editableText.ts",
-    "#react/features/node/dom/nodeSizeObserver": "./src/features/node/dom/nodeSizeObserver.ts",
-    "#react/features/node/dom/textMeasure": "./src/features/node/dom/textMeasure.ts",
-    "#react/features/node/text": "./src/features/node/text.ts",
-    "#react/features/selection/chrome/FloatingToolbarShell": "./src/features/selection/chrome/FloatingToolbarShell.tsx",
-    "#react/features/selection/chrome/menus/options": "./src/features/selection/chrome/menus/options.ts",
-    "#react/runtime/hooks": "./src/runtime/hooks/index.ts",
-    "#react/runtime/overlay": "./src/runtime/overlay/index.ts",
-    "#react/types/edge": "./src/types/edge.ts",
-    "#react/types/mindmap": "./src/types/mindmap.ts",
-    "#react/types/node": "./src/types/node/index.ts",
-    "#react/types/runtime": "./src/types/runtime.ts",
-    "#react/types/selection": "./src/types/selection.ts"
-  },
   "files": [
     "src",
     "dist"
@@ -48,16 +23,14 @@
   },
   "devDependencies": {
     "@types/react": "^19.2.5",
-    "@types/react-dom": "^19.2.3",
-    "tsup": "^8.0.2",
-    "typescript": "^5.9.3"
+    "@types/react-dom": "^19.2.3"
   },
   "peerDependencies": {
     "react": ">=18"
   },
   "scripts": {
-    "build": "tsup --config tsup.config.ts",
-    "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "echo \"No tests\""
+    "build": "tsdown --config tsdown.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts"
   }
 }

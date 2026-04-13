@@ -1,5 +1,5 @@
 import type { DrawPreview as DrawPreviewValue } from '@whiteboard/editor/draw'
-import { DrawStrokeShape } from './stroke'
+import { DrawStrokeShape } from '#whiteboard-react/features/draw/stroke'
 
 export const DrawPreview = ({
   preview

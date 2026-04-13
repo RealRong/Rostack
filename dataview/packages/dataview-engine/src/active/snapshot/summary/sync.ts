@@ -8,17 +8,17 @@ import {
   buildSectionAggregateState,
   patchSectionAggregateState,
   sameAggregateEntry
-} from '#engine/active/index/aggregate.ts'
+} from '#dataview-engine/active/index/aggregate'
 import type {
   IndexState,
   SectionAggregateState
-} from '#engine/active/index/contracts.ts'
-import type { SectionKey } from '#engine/contracts/public.ts'
+} from '#dataview-engine/active/index/contracts'
+import type { SectionKey } from '#dataview-engine/contracts/public'
 import type {
   SectionState,
   SummaryState
-} from '#engine/contracts/internal.ts'
-import { readCalcFields } from '#engine/active/snapshot/summary/compute.ts'
+} from '#dataview-engine/contracts/internal'
+import { readCalcFields } from '#dataview-engine/active/snapshot/summary/compute'
 
 const EMPTY_AGGREGATES = new Map<FieldId, SectionAggregateState>()
 
@@ -29,7 +29,7 @@ const sameIds = (
 
 const buildSectionFieldState = (input: {
   sectionIds: readonly string[]
-  entries: ReadonlyMap<string, import('#engine/active/index/contracts.ts').AggregateEntry>
+  entries: ReadonlyMap<string, import('#dataview-engine/active/index/contracts').AggregateEntry>
 }): SectionAggregateState => buildSectionAggregateState(new Map(
   input.sectionIds.flatMap(recordId => {
     const entry = input.entries.get(recordId)

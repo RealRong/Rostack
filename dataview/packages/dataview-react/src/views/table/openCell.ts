@@ -7,10 +7,10 @@ import type {
   ValueEditorApi,
   ValueEditorCloseAction,
   ValueEditorSessionPolicy
-} from '#react/runtime/valueEditor/index.ts'
-import { ownerDocumentOf, resolveFieldAnchor } from '#react/dom/field.ts'
-import type { GridSelectionStore } from '#react/views/table/gridSelection.ts'
-import type { Dom } from '#react/views/table/dom/index.ts'
+} from '#dataview-react/runtime/valueEditor'
+import { ownerDocumentOf, resolveFieldAnchor } from '#dataview-react/dom/field'
+import type { GridSelectionStore } from '#dataview-react/views/table/gridSelection'
+import type { Dom } from '#dataview-react/views/table/dom'
 
 export interface CellOpenInput {
   cell: CellRef

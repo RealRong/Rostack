@@ -1,13 +1,13 @@
-import { buildEdgeCreateOperation } from '../edge/commands'
-import { isNodeEdgeEnd, readEdgeRoutePoints } from '../edge'
-import { resolveEdgeEnds } from '../edge/endpoints'
-import { getAABBFromPoints, getRectCenter } from '../geometry'
-import { getNodeGeometry, getNodeRect, readNodeRotation } from '../node'
-import { getNodesBoundingRect } from '../node/group'
-import { expandFrameSelection } from '../node/frame'
-import { buildNodeCreateOperation } from '../node/commands'
-import { createId } from '../id'
-import { err, ok } from '../result'
+import { buildEdgeCreateOperation } from '#whiteboard-core/edge/commands'
+import { isNodeEdgeEnd, readEdgeRoutePoints } from '#whiteboard-core/edge'
+import { resolveEdgeEnds } from '#whiteboard-core/edge/endpoints'
+import { getAABBFromPoints, getRectCenter } from '#whiteboard-core/geometry'
+import { getNodeGeometry, getNodeRect, readNodeRotation } from '#whiteboard-core/node'
+import { getNodesBoundingRect } from '#whiteboard-core/node/group'
+import { expandFrameSelection } from '#whiteboard-core/node/frame'
+import { buildNodeCreateOperation } from '#whiteboard-core/node/commands'
+import { createId } from '#whiteboard-core/id'
+import { err, ok } from '#whiteboard-core/result'
 import type {
   CoreRegistries,
   Document,
@@ -24,16 +24,16 @@ import type {
   Result,
   Size,
   SpatialNode
-} from '../types'
+} from '#whiteboard-core/types'
 import type {
   Slice,
   SliceExportResult,
   SliceInsertOptions,
   SliceInsertResult,
   SliceRoots
-} from '../types/document'
-import { getEdge, getNode, listEdges, listNodes } from '../document'
-import { cloneValue } from '../value'
+} from '#whiteboard-core/types/document'
+import { getEdge, getNode, listEdges, listNodes } from '#whiteboard-core/document'
+import { cloneValue } from '#whiteboard-core/value'
 
 type ExportNodesInput = {
   doc: Document

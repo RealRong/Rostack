@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useKeyedStoreValue, useStoreValue } from '@shared/react'
-import { useEditorRuntime } from '#react/runtime/hooks'
+import { useEditorRuntime } from '#whiteboard-react/runtime/hooks'
 import type {
   WhiteboardPresenceBinding,
   WhiteboardPresenceState
-} from '../../types/common/presence'
-import { formatPresenceToolLabel } from './presence'
+} from '#whiteboard-react/types/common/presence'
+import { formatPresenceToolLabel } from '#whiteboard-react/features/collab/presence'
 
 const toScreenRect = (
   editor: ReturnType<typeof useEditorRuntime>,

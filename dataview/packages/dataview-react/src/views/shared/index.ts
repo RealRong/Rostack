@@ -1,14 +1,14 @@
-export { CardField, type CardFieldProps } from '#react/views/shared/CardField.tsx'
-export { CardContent, type CardContentProps } from '#react/views/shared/CardContent.tsx'
-export { CardPreview, type CardPreviewProps } from '#react/views/shared/CardPreview.tsx'
-export { CardTitle, type CardTitleProps } from '#react/views/shared/CardTitle.tsx'
+export { CardField, type CardFieldProps } from '#dataview-react/views/shared/CardField'
+export { CardContent, type CardContentProps } from '#dataview-react/views/shared/CardContent'
+export { CardPreview, type CardPreviewProps } from '#dataview-react/views/shared/CardPreview'
+export { CardTitle, type CardTitleProps } from '#dataview-react/views/shared/CardTitle'
 export {
   AddCardFieldTrigger,
   type AddCardFieldTriggerProps
-} from '#react/views/shared/AddCardFieldTrigger.tsx'
+} from '#dataview-react/views/shared/AddCardFieldTrigger'
 export {
   CardFieldSlot,
   type CardFieldSlotProps
-} from '#react/views/shared/CardFieldSlot.tsx'
-export { openCardField } from '#react/views/shared/openCardField.ts'
-export { useCardEditingState, useCardTitleEditing } from '#react/views/shared/useCardTitleEditing.ts'
+} from '#dataview-react/views/shared/CardFieldSlot'
+export { openCardField } from '#dataview-react/views/shared/openCardField'
+export { useCardEditingState, useCardTitleEditing } from '#dataview-react/views/shared/useCardTitleEditing'

@@ -1,1 +1,1 @@
-export { ViewSettingsPopover } from '#react/page/features/viewSettings/ViewSettingsPopover.tsx'
+export { ViewSettingsPopover } from '#dataview-react/page/features/viewSettings/ViewSettingsPopover'

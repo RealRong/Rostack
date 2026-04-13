@@ -2,7 +2,7 @@ import {
   createContext,
   useContext
 } from 'react'
-import type { SettingsRoute } from '#react/page/session/types.ts'
+import type { SettingsRoute } from '#dataview-react/page/session/types'
 
 export interface SettingsRouter {
   route: SettingsRoute

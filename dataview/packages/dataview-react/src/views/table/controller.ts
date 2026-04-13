@@ -9,20 +9,20 @@ import {
 import {
   createInteractionCoordinator,
   type InteractionApi
-} from '#react/interaction/index.ts'
+} from '#dataview-react/interaction'
 import {
   type ItemId,
   type Section
 } from '@dataview/engine'
 import type {
   Selection
-} from '#react/runtime/selection/index.ts'
+} from '#dataview-react/runtime/selection'
 import type {
   MarqueeSessionState
-} from '#react/runtime/marquee/index.ts'
+} from '#dataview-react/runtime/marquee'
 import {
   selection as selectionHelpers
-} from '#react/runtime/selection/index.ts'
+} from '#dataview-react/runtime/selection'
 import {
   createDerivedStore,
   createValueStore,
@@ -32,36 +32,36 @@ import {
 import type {
   ValueStore
 } from '@shared/core'
-import type { PageState } from '#react/page/session/types.ts'
-import type { ValueEditorApi } from '#react/runtime/valueEditor/index.ts'
+import type { PageState } from '#dataview-react/page/session/types'
+import type { ValueEditorApi } from '#dataview-react/runtime/valueEditor'
 import {
   createCapabilities,
   type Capabilities
-} from '#react/views/table/capabilities.ts'
+} from '#dataview-react/views/table/capabilities'
 import {
   createDom,
   type Dom
-} from '#react/views/table/dom/index.ts'
-import type { Nodes } from '#react/views/table/dom/registry.ts'
+} from '#dataview-react/views/table/dom'
+import type { Nodes } from '#dataview-react/views/table/dom/registry'
 import {
   createCellOpener,
   type CellOpenInput
-} from '#react/views/table/openCell.ts'
+} from '#dataview-react/views/table/openCell'
 import {
   createRowHit,
   type RowHit
-} from '#react/views/table/dom/rowHit.ts'
-import { createHover, type Hover } from '#react/views/table/hover.ts'
-import type { TableLayout } from '#react/views/table/layout.ts'
-import { createCellRender, type CellRender } from '#react/views/table/cellRender.ts'
+} from '#dataview-react/views/table/dom/rowHit'
+import { createHover, type Hover } from '#dataview-react/views/table/hover'
+import type { TableLayout } from '#dataview-react/views/table/layout'
+import { createCellRender, type CellRender } from '#dataview-react/views/table/cellRender'
 import {
   createGridSelection,
   type GridSelectionStore
-} from '#react/views/table/gridSelection.ts'
+} from '#dataview-react/views/table/gridSelection'
 import {
   createTableVirtualRuntime,
   type TableVirtualRuntime
-} from '#react/views/table/virtual/runtime.ts'
+} from '#dataview-react/views/table/virtual/runtime'
 
 export interface TableController {
   currentView: ReadStore<CurrentView | undefined>

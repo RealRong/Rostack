@@ -8,8 +8,8 @@ import type {
   EdgeFeedbackProjection,
   EdgeFeedbackState,
   EditorFeedbackState
-} from './types'
-import { mergeEntryById } from './merge'
+} from '#whiteboard-editor/local/feedback/types'
+import { mergeEntryById } from '#whiteboard-editor/local/feedback/merge'
 
 export const EMPTY_EDGE_FEEDBACK_ENTRIES: readonly EdgeFeedbackEntry[] = []
 export const EMPTY_EDGE_GUIDE: EdgeGuide = {}

@@ -1,7 +1,7 @@
 import type { NodeToolbarFilter } from '@whiteboard/editor'
 import { Menu, type MenuItem } from '@shared/ui'
-import { NodeTypeIcon } from '#react/features/node'
-import type { WhiteboardRuntime } from '#react/types/runtime'
+import { NodeTypeIcon } from '#whiteboard-react/features/node'
+import type { WhiteboardRuntime } from '#whiteboard-react/types/runtime'
 
 const toMenuItems = (
   editor: WhiteboardRuntime,

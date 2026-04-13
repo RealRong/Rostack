@@ -2,6 +2,22 @@
 
 日期：2026-04-14
 
+## 落地状态
+
+- 状态：已按本清单完成整轮迁移，不保留兼容层、过渡层或旧实现双轨。
+- 完成日期：2026-04-14
+- 验证结果：
+  - `pnpm -C dataview typecheck`
+  - `pnpm -C dataview test`
+- 本轮已完成的关键收口：
+  - 删除 `core/query/*` 与 `DocumentViewQuery`
+  - 删除 `engine/document/*` 薄转发层
+  - 收缩 `ViewSearchProjection.search`、`SortRuleProjection.fieldId`、`ViewGroupProjection.group`
+  - 建立 `core/search` canonical token builder，并替换 `core` 与 `engine` 双份搜索文本逻辑
+  - 合并 `planner/views.ts`、`mutate/validate/*`、`active/index/shared.ts`、`active/snapshot/*` 中的重复 helper 与 stage 骨架
+  - 引入 ordered collection factory，统一 `FieldList / ItemList / SectionList` 的导航与索引逻辑
+  - 回收 `document/table.ts`、`document/records.ts`、`document/fields.ts`、`document/views.ts` 中的 records-specialized 重复实现
+
 ## 审计范围
 
 本轮只审计当前真实源码，而不是旧别名路径或构建产物。
@@ -538,4 +554,3 @@
 - [ ] view/search/filter/sort/group/display 的 canonical helper 只保留一套实现。
 - [ ] schema rule、search rule、delta touched-set rule 都只保留一套实现。
 - [ ] 新增一个 view/index/snapshot 能力时，不需要再复制 stage 模板代码。
-

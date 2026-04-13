@@ -7,7 +7,7 @@ import type {
   RunningStat,
   StagePerformanceStats,
   ViewStageName
-} from '#engine/contracts/public.ts'
+} from '#dataview-engine/contracts/public'
 
 type PendingCommitTrace = Omit<CommitTrace, 'id'>
 

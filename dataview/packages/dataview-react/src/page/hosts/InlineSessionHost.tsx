@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
 import {
   closestDataviewAppearanceId
-} from '#react/dom/appearance.ts'
+} from '#dataview-react/dom/appearance'
 import {
   useDataView
-} from '#react/dataview/index.ts'
+} from '#dataview-react/dataview'
 
 export const PageInlineSessionHost = () => {
   const dataView = useDataView()

@@ -1,10 +1,10 @@
-import type { DrawCommands } from '../../types/commands'
-import type { Tool } from '../../types/tool'
+import type { DrawCommands } from '#whiteboard-editor/types/commands'
+import type { Tool } from '#whiteboard-editor/types/tool'
 import {
   DEFAULT_DRAW_BRUSH,
   hasDrawBrush
-} from '../draw'
-import type { DrawStateStore } from '../draw/runtime'
+} from '#whiteboard-editor/local/draw'
+import type { DrawStateStore } from '#whiteboard-editor/local/draw/runtime'
 
 type DrawStateHost = {
   tool: {

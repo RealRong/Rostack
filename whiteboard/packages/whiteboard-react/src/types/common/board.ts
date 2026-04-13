@@ -3,10 +3,10 @@ import type { HistoryConfig as KernelHistoryConfig } from '@whiteboard/core/kern
 import type { CoreRegistries, Document } from '@whiteboard/core/types'
 import type { MindmapLayoutConfig } from '@whiteboard/core/mindmap'
 import type { Tool } from '@whiteboard/editor'
-import type { NodeRegistry } from '../node'
-import type { Size, ViewportConfig, EdgeConfig, NodeConfig } from './base'
-import type { WhiteboardCollabOptions } from './collab'
-import type { ShortcutOverrides } from './shortcut'
+import type { NodeRegistry } from '#whiteboard-react/types/node'
+import type { Size, ViewportConfig, EdgeConfig, NodeConfig } from '#whiteboard-react/types/common/base'
+import type { WhiteboardCollabOptions } from '#whiteboard-react/types/common/collab'
+import type { ShortcutOverrides } from '#whiteboard-react/types/common/shortcut'
 
 export type HistoryOptions = Partial<KernelHistoryConfig>
 

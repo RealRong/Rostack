@@ -7,11 +7,11 @@ import {
 import type { Point } from '@whiteboard/core/types'
 import { useStoreValue } from '@shared/react'
 import { ToolbarDivider } from '@shared/ui'
-import { useEditorRuntime } from '#react/runtime/hooks'
-import { readToolbarItemSpec, renderToolbarPanel } from './toolbar/items'
-import { resolveToolbarRecipe } from './toolbar/recipe'
-import type { ToolbarPanelKey } from './toolbar/types'
-import { FloatingToolbarShell } from './FloatingToolbarShell'
+import { useEditorRuntime } from '#whiteboard-react/runtime/hooks'
+import { readToolbarItemSpec, renderToolbarPanel } from '#whiteboard-react/features/selection/chrome/toolbar/items'
+import { resolveToolbarRecipe } from '#whiteboard-react/features/selection/chrome/toolbar/recipe'
+import type { ToolbarPanelKey } from '#whiteboard-react/features/selection/chrome/toolbar/types'
+import { FloatingToolbarShell } from '#whiteboard-react/features/selection/chrome/FloatingToolbarShell'
 
 export const NodeToolbar = ({
   containerRef

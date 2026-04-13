@@ -1,32 +1,32 @@
 export {
   grid,
-} from '#table/grid.ts'
+} from '#dataview-table/grid'
 export {
   gridSelection,
   type GridSelection
-} from '#table/gridSelection.ts'
+} from '#dataview-table/gridSelection'
 export {
   range,
   type TableCellRange,
   type TableCellRangeEdges
-} from '#table/range.ts'
+} from '#dataview-table/range'
 export {
   fill,
   type TableFillEntry
-} from '#table/fill.ts'
+} from '#dataview-table/fill'
 export {
   paste,
   parseClipboardMatrix,
   planPaste,
   type TablePasteEntry
-} from '#table/paste.ts'
+} from '#dataview-table/paste'
 export {
   isSelectAll,
   gridKeyAction,
   type TableGridKeyAction,
   type TableKeyInput,
   type TableKeyboardRead
-} from '#table/keyboard.ts'
+} from '#dataview-table/keyboard'
 export {
   reorderRows,
   columnBeforeId,
@@ -36,4 +36,4 @@ export {
   sameRowHint,
   showRowHint,
   type TableRowReorderHint
-} from '#table/reorder.ts'
+} from '#dataview-table/reorder'

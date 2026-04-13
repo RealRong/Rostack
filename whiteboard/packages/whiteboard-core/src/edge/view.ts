@@ -1,7 +1,7 @@
-import { getEdgePath } from './path'
-import { resolveEdgeEnds } from './endpoints'
-import { readEdgeRoutePoints } from './route'
-import type { EdgeHandle, EdgeView, ResolveEdgeEndsInput } from '../types/edge'
+import { getEdgePath } from '#whiteboard-core/edge/path'
+import { resolveEdgeEnds } from '#whiteboard-core/edge/endpoints'
+import { readEdgeRoutePoints } from '#whiteboard-core/edge/route'
+import type { EdgeHandle, EdgeView, ResolveEdgeEndsInput } from '#whiteboard-core/types/edge'
 
 const buildEdgeHandles = (
   ends: NonNullable<ReturnType<typeof resolveEdgeEnds>>,

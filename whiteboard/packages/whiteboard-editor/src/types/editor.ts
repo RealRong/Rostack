@@ -5,7 +5,7 @@ import type {
   Document,
   Viewport
 } from '@whiteboard/core/types'
-import type { DrawState } from '../local/draw/state'
+import type { DrawState } from '#whiteboard-editor/local/draw/state'
 import type {
   ContextMenuInput,
   ContextMenuIntent,
@@ -14,10 +14,10 @@ import type {
   PointerMoveInput,
   PointerUpInput,
   WheelInput
-} from './input'
+} from '#whiteboard-editor/types/input'
 import type {
   Tool
-} from './tool'
+} from '#whiteboard-editor/types/tool'
 import type {
   AppActions,
   AppConfig,
@@ -30,21 +30,21 @@ import type {
   SessionSelectionActions,
   ToolActions,
   ViewportActions
-} from './commands'
-import type { NodeCommands as RuntimeNodeCommands } from '../command/node/types'
-import type { EdgeCommands as RuntimeEdgeCommands } from '../command/edge'
-import type { SelectionModelRead } from '../query/selection/model'
+} from '#whiteboard-editor/types/commands'
+import type { NodeCommands as RuntimeNodeCommands } from '#whiteboard-editor/command/node/types'
+import type { EdgeCommands as RuntimeEdgeCommands } from '#whiteboard-editor/command/edge'
+import type { SelectionModelRead } from '#whiteboard-editor/query/selection/model'
 import type {
   ViewportInputRuntime,
   ViewportRead
-} from '../local/viewport/runtime'
+} from '#whiteboard-editor/local/viewport/runtime'
 import type {
   EditCaret,
   EditField,
   EditSession
-} from '../local/session/edit'
+} from '#whiteboard-editor/local/session/edit'
 import type { Commit } from '@whiteboard/engine/types/commit'
-import type { EditorQueryRead } from '../query'
+import type { EditorQueryRead } from '#whiteboard-editor/query'
 
 export type EditorPointerDispatchResult = {
   handled: boolean

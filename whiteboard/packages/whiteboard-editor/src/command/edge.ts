@@ -10,10 +10,10 @@ import type {
 } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { CommandResult } from '@whiteboard/engine/types/result'
-import type { EdgeApi } from '../types/commands'
-import type { EditorState } from '../types/editor'
-import type { EditorQueryRead } from '../query'
-import type { SessionActions } from '../types/commands'
+import type { EdgeApi } from '#whiteboard-editor/types/commands'
+import type { EditorState } from '#whiteboard-editor/types/editor'
+import type { EditorQueryRead } from '#whiteboard-editor/query'
+import type { SessionActions } from '#whiteboard-editor/types/commands'
 
 export type EdgeCommands = {
   create: EdgeApi['create']

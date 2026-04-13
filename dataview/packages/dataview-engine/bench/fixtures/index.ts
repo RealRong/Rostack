@@ -1,7 +1,4 @@
-const {
-  createDefaultViewOptions,
-  TITLE_FIELD_ID
-} = require('../runtime.cjs')
+import { createDefaultViewOptions, TITLE_FIELD_ID } from '../runtime'
 
 const FIELD_STATUS = 'status'
 const FIELD_POINTS = 'points'
@@ -64,7 +61,7 @@ const createFields = () => ([
   }
 ])
 
-const createFieldTable = fields => {
+const createFieldTable = (fields) => {
   const byId = {}
 
   fields.forEach(field => {
@@ -77,11 +74,11 @@ const createFieldTable = fields => {
   }
 }
 
-const padRecordNumber = value => String(value).padStart(6, '0')
+const padRecordNumber = (value: number) => String(value).padStart(6, '0')
 
-const createRecordId = index => `rec_${padRecordNumber(index + 1)}`
+const createRecordId = (index: number) => `rec_${padRecordNumber(index + 1)}`
 
-const createDocument = recordCount => {
+const createDocument = (recordCount: number) => {
   const fields = createFields()
   const recordsById = {}
   const recordOrder = []
@@ -139,7 +136,7 @@ const createDocument = recordCount => {
   }
 }
 
-const createFixture = size => {
+const createFixture = (size: keyof typeof SIZE_TO_COUNT) => {
   const recordCount = SIZE_TO_COUNT[size]
   if (!recordCount) {
     throw new Error(`Unknown fixture size: ${size}`)
@@ -168,7 +165,7 @@ const createFixture = size => {
   }
 }
 
-module.exports = {
+export {
   SIZE_TO_COUNT,
   STATUS_OPTIONS,
   VIEW_TABLE,

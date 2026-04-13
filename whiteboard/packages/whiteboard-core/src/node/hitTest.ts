@@ -1,9 +1,9 @@
-import type { Node, NodeId, NodeType, Rect } from '../types'
+import type { Node, NodeId, NodeType, Rect } from '#whiteboard-core/types'
 import {
   rectContainsRotatedRect,
   rectIntersectsRotatedRect
-} from '../geometry'
-import { matchDrawRect } from './draw'
+} from '#whiteboard-core/geometry'
+import { matchDrawRect } from '#whiteboard-core/node/draw'
 
 export type NodeRectHitEntry = {
   node: {

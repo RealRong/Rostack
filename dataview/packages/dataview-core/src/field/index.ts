@@ -6,10 +6,10 @@ import type {
   DataRecord,
   RecordId,
   ViewGroup
-} from '#core/contracts/index.ts'
+} from '#dataview-core/contracts'
 import {
   TITLE_FIELD_ID
-} from '#core/contracts/state.ts'
+} from '#dataview-core/contracts/state'
 import {
   getKind,
   getFieldGroupMeta as getCustomFieldGroupMeta,
@@ -17,41 +17,41 @@ import {
   resolveGroupBucketEntries,
   type Bucket,
   type FieldGroupMeta
-} from '#core/field/kind/index.ts'
+} from '#dataview-core/field/kind'
 import {
   createDefaultCustomField
-} from '#core/field/schema/index.ts'
+} from '#dataview-core/field/schema'
 import {
   hasFieldOptions as supportsFieldOptions
-} from '#core/field/kind/spec.ts'
+} from '#dataview-core/field/kind/spec'
 import {
   canQuickToggleCustomFieldValue,
   resolveCustomFieldPrimaryAction,
   resolveCustomFieldValueBehavior,
   type FieldValueBehavior
-} from '#core/field/behavior.ts'
+} from '#dataview-core/field/behavior'
 import {
   getCustomFieldDisplayValue,
   parseCustomFieldDraft,
   type FieldDraftParseResult
-} from '#core/field/value/index.ts'
+} from '#dataview-core/field/value'
 import {
   getFieldSearchTokens as getCustomFieldSearchTokens
-} from '#core/field/value/search.ts'
+} from '#dataview-core/field/value/search'
 import {
   compareFieldValues as compareCustomFieldValues
-} from '#core/field/value/sort.ts'
-export * from '#core/field/kind/index.ts'
-export * from '#core/field/kind/spec.ts'
-export * from '#core/field/kind/date.ts'
-export * from '#core/field/kind/status.ts'
-export * from '#core/field/kind/url.ts'
-export * from '#core/field/behavior.ts'
-export * from '#core/field/value/index.ts'
-export * from '#core/field/value/search.ts'
-export * from '#core/field/value/sort.ts'
-export * from '#core/field/schema/index.ts'
-export * from '#core/field/options/index.ts'
+} from '#dataview-core/field/value/sort'
+export * from '#dataview-core/field/kind'
+export * from '#dataview-core/field/kind/spec'
+export * from '#dataview-core/field/kind/date'
+export * from '#dataview-core/field/kind/status'
+export * from '#dataview-core/field/kind/url'
+export * from '#dataview-core/field/behavior'
+export * from '#dataview-core/field/value'
+export * from '#dataview-core/field/value/search'
+export * from '#dataview-core/field/value/sort'
+export * from '#dataview-core/field/schema'
+export * from '#dataview-core/field/options'
 export {
   STATUS_CATEGORIES,
   compareStatusFieldValues,
@@ -63,7 +63,7 @@ export {
   getStatusFieldDefaultOption,
   getStatusOptionCategory,
   getStatusSections,
-} from '#core/field/kind/status.ts'
+} from '#dataview-core/field/kind/status'
 export {
   createDateGroupValue,
   createDefaultDateFieldConfig,
@@ -73,19 +73,19 @@ export {
   parseDateGroupKey,
   parseDateInputDraft,
   readDateComparableTimestamp
-} from '#core/field/kind/date.ts'
+} from '#dataview-core/field/kind/date'
 export {
   createDefaultUrlFieldConfig,
   formatUrlDisplayValue
-} from '#core/field/kind/url.ts'
+} from '#dataview-core/field/kind/url'
 export {
   normalizeSearchableValue,
   isEmptyFieldValue,
   normalizeFieldToken,
   type FieldDraftParseResult
-} from '#core/field/value/index.ts'
-export type { FieldGroupMeta } from '#core/field/kind/index.ts'
-export type { FieldValueBehavior } from '#core/field/behavior.ts'
+} from '#dataview-core/field/value'
+export type { FieldGroupMeta } from '#dataview-core/field/kind'
+export type { FieldValueBehavior } from '#dataview-core/field/behavior'
 export const createDefaultField = createDefaultCustomField
 export const hasFieldOptions = (
   field?: Field

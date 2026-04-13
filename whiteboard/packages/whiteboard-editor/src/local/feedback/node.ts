@@ -10,8 +10,8 @@ import type {
   NodeTextFeedbackState,
   TextPreviewEntry,
   TextPreviewPatch
-} from './types'
-import { mergeEntryById } from './merge'
+} from '#whiteboard-editor/local/feedback/types'
+import { mergeEntryById } from '#whiteboard-editor/local/feedback/merge'
 
 export const EMPTY_NODE_PATCHES: readonly NodePatchEntry[] = []
 export const EMPTY_TEXT_PREVIEW_PATCHES: readonly TextPreviewEntry[] = []

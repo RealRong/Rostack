@@ -1,7 +1,7 @@
-import type { CanvasNode } from '#types/projection'
+import type { CanvasNode } from '#whiteboard-engine/projection'
 import type { NodeId, Rect } from '@whiteboard/core/types'
 import type { SnapCandidate } from '@whiteboard/core/node'
-import type { EngineReadIndex } from '#types/instance'
+import type { EngineReadIndex } from '#whiteboard-engine/instance'
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import {
   sameOrder as isSameRefOrder,

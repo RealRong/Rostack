@@ -11,9 +11,9 @@ import type {
   NodeType,
   NodeTypeDefinition,
   SchemaField
-} from '../types'
-import { cloneValue } from '../value'
-import { getValueByPath, hasValueByPath, setValueByPath } from '../utils/objectPath'
+} from '#whiteboard-core/types'
+import { cloneValue } from '#whiteboard-core/value'
+import { getValueByPath, hasValueByPath, setValueByPath } from '#whiteboard-core/utils/objectPath'
 
 type SchemaTarget = {
   data?: Record<string, unknown>

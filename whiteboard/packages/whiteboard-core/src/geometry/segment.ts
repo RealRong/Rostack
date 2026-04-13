@@ -1,4 +1,4 @@
-import type { Point, Rect } from '../types'
+import type { Point, Rect } from '#whiteboard-core/types'
 
 export const distancePointToSegment = (
   point: Point,

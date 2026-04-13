@@ -4,53 +4,53 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   IndexTrace
-} from '#engine/contracts/public.ts'
+} from '#dataview-engine/contracts/public'
 import {
   buildCalculationIndex,
   ensureCalculationIndex,
   syncCalculationIndex
-} from '#engine/active/index/calculations.ts'
+} from '#dataview-engine/active/index/calculations'
 import {
   normalizeIndexDemand,
   sameFieldIdList,
   sameGroupDemand,
   sameSearchDemand
-} from '#engine/active/index/demand.ts'
+} from '#dataview-engine/active/index/demand'
 import {
   buildGroupIndex,
   ensureGroupIndex,
   syncGroupIndex
-} from '#engine/active/index/group/runtime.ts'
+} from '#dataview-engine/active/index/group/runtime'
 import {
   buildRecordIndex,
   syncRecordIndex
-} from '#engine/active/index/records.ts'
+} from '#dataview-engine/active/index/records'
 import {
   buildSearchIndex,
   ensureSearchIndex,
   syncSearchIndex
-} from '#engine/active/index/search.ts'
+} from '#dataview-engine/active/index/search'
 import {
   buildSortIndex,
   ensureSortIndex,
   syncSortIndex
-} from '#engine/active/index/sort.ts'
+} from '#dataview-engine/active/index/sort'
 import {
   createIndexStageTrace,
   fullRebuildFrom,
   searchEntryCountOf,
   touchedFieldCountOf,
   touchedRecordCountOf
-} from '#engine/active/index/trace.ts'
+} from '#dataview-engine/active/index/trace'
 import type {
   IndexDemand,
   IndexDeriveResult,
   IndexState,
   NormalizedIndexDemand
-} from '#engine/active/index/contracts.ts'
+} from '#dataview-engine/active/index/contracts'
 import {
   now
-} from '#engine/runtime/clock.ts'
+} from '#dataview-engine/runtime/clock'
 
 const buildState = (
   document: DataDoc,

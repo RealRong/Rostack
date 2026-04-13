@@ -5,7 +5,7 @@ import type {
   ViewRecords,
   ViewStageMetrics,
   ViewState
-} from '#engine/contracts/public.ts'
+} from '#dataview-engine/contracts/public'
 
 const countChangedIds = (
   previous: readonly string[] | undefined,

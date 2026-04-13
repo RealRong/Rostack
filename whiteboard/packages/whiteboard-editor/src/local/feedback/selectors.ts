@@ -6,29 +6,29 @@ import {
   type ReadStore
 } from '@shared/core'
 import type { Guide } from '@whiteboard/core/node'
-import type { ViewportRuntime } from '../viewport/runtime'
+import type { ViewportRuntime } from '#whiteboard-editor/local/viewport/runtime'
 import {
   EMPTY_EDGE_GUIDE,
   EMPTY_EDGE_FEEDBACK_PROJECTION,
   isEdgeGuideEqual,
   isEdgeProjectionEqual,
   toEdgeFeedbackMap
-} from './edge'
+} from '#whiteboard-editor/local/feedback/edge'
 import {
   EMPTY_NODE_FEEDBACK_PROJECTION,
   isNodeProjectionEqual,
   toNodeFeedbackMap
-} from './node'
+} from '#whiteboard-editor/local/feedback/node'
 import {
   EMPTY_GUIDES,
   isMarqueeFeedbackEqual,
   projectWorldRect
-} from './selection'
+} from '#whiteboard-editor/local/feedback/selection'
 import type {
   EditorFeedbackRuntime,
   EditorFeedbackState,
   MarqueeFeedback
-} from './types'
+} from '#whiteboard-editor/local/feedback/types'
 
 export const createFeedbackSelectors = ({
   state,

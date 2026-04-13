@@ -7,7 +7,7 @@ import type {
   SelectionAppearance,
   SelectionMode,
   SubmenuItem
-} from '#ui/menu/types.ts'
+} from '#shared-ui/menu/types'
 
 export const SUBMENU_OFFSET = {
   mainAxis: -8

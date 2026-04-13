@@ -6,7 +6,7 @@ import type {
   EdgeItem,
   MindmapItem,
   NodeItem
-} from './projection'
+} from '#whiteboard-engine/types/projection'
 import type {
   HistoryConfig,
   HistoryState
@@ -40,9 +40,9 @@ import type {
   EngineCommand,
   ExecuteOptions,
   ExecuteResult
-} from './command'
-import type { Commit } from './commit'
-import type { CommandResult } from './result'
+} from '#whiteboard-engine/types/command'
+import type { Commit } from '#whiteboard-engine/types/commit'
+import type { CommandResult } from '#whiteboard-engine/types/result'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 export type { BoardConfig } from '@whiteboard/core/config'
 

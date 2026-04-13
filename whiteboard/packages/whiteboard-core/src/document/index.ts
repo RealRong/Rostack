@@ -1,5 +1,5 @@
-export { assertDocument } from './assert'
-export { createDocument } from './model'
+export { assertDocument } from '#whiteboard-core/document/assert'
+export { createDocument } from '#whiteboard-core/document/model'
 export {
   getEdge,
   getGroup,
@@ -14,12 +14,12 @@ export {
   listGroupNodeIds,
   listGroups,
   listNodes
-} from './query'
-export * from './slice'
+} from '#whiteboard-core/document/query'
+export * from '#whiteboard-core/document/slice'
 export type {
   Slice,
   SliceExportResult,
   SliceInsertOptions,
   SliceInsertResult,
   SliceRoots
-} from '../types/document'
+} from '#whiteboard-core/types/document'

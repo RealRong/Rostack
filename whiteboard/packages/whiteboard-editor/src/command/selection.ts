@@ -8,14 +8,14 @@ import type {
   GroupId,
   NodeInput
 } from '@whiteboard/core/types'
-import type { EditorQueryRead } from '../query'
+import type { EditorQueryRead } from '#whiteboard-editor/query'
 import type {
   OrderMode,
   SessionActions,
   SelectionApi
-} from '../types/commands'
-import type { DocumentCommands } from './document'
-import type { NodeCommands } from './node/types'
+} from '#whiteboard-editor/types/commands'
+import type { DocumentCommands } from '#whiteboard-editor/command/document'
+import type { NodeCommands } from '#whiteboard-editor/command/node/types'
 
 const DEFAULT_FRAME_PADDING = 32
 

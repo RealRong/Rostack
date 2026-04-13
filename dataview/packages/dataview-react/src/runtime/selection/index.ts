@@ -1,13 +1,13 @@
-export { createSelectionApi } from '#react/runtime/selection/api.ts'
+export { createSelectionApi } from '#dataview-react/runtime/selection/api'
 export {
   createSelectionStore,
   emptySelection,
   selection,
   syncSelection
-} from '#react/runtime/selection/store.ts'
+} from '#dataview-react/runtime/selection/store'
 export type {
   Selection,
   SelectionApi,
   SelectionScope,
   SelectionStore
-} from '#react/runtime/selection/types.ts'
+} from '#dataview-react/runtime/selection/types'

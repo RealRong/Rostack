@@ -1,1 +1,1 @@
-export { QueryChip, type QueryChipProps, type QueryChipState } from '#react/page/features/query/QueryChip.tsx'
+export { QueryChip, type QueryChipProps, type QueryChipState } from '#dataview-react/page/features/query/QueryChip'

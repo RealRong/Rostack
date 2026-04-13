@@ -8,26 +8,26 @@ import {
   readEdgeGestureFeedbackState,
   readSelectionGesturePreview,
   type ActiveGesture
-} from '../../input/core/gesture'
+} from '#whiteboard-editor/input/core/gesture'
 import {
   EMPTY_EDGE_GUIDE,
   EMPTY_EDGE_FEEDBACK,
   isEdgeGuideEqual,
   normalizeEdgeFeedbackState
-} from './edge'
+} from '#whiteboard-editor/local/feedback/edge'
 import {
   EMPTY_NODE_HIDDEN,
   EMPTY_NODE_FEEDBACK,
   isNodeFeedbackStateEqual,
   normalizeNodeFeedbackState
-} from './node'
+} from '#whiteboard-editor/local/feedback/node'
 import {
   EMPTY_SELECTION_FEEDBACK,
   isSelectionFeedbackStateEqual,
   normalizeSelectionFeedbackState,
   toSelectionFeedbackState
-} from './selection'
-import type { EditorFeedbackRuntime, EditorFeedbackState } from './types'
+} from '#whiteboard-editor/local/feedback/selection'
+import type { EditorFeedbackRuntime, EditorFeedbackState } from '#whiteboard-editor/local/feedback/types'
 
 const normalizeDrawFeedbackState = (
   state: EditorFeedbackState['draw']

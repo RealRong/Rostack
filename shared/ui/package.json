@@ -28,9 +28,10 @@
     "./css/semantic.css": "./css/semantic.css",
     "./css/base.css": "./css/base.css"
   },
-  "imports": {
-    "#ui": "./src/index.ts",
-    "#ui/*": "./src/*"
+  "scripts": {
+    "build": "tsdown --config tsdown.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "@shared/dom": "workspace:*",
@@ -53,6 +54,7 @@
   "files": [
     "css",
     "src",
+    "dist",
     "tailwind",
     "README.md"
   ]

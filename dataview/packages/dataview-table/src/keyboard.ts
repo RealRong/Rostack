@@ -8,8 +8,8 @@ import type {
 import type {
   CellRef
 } from '@dataview/engine'
-import type { GridSelection } from '#table/gridSelection.ts'
-import { range } from '#table/range.ts'
+import type { GridSelection } from '#dataview-table/gridSelection'
+import { range } from '#dataview-table/range'
 
 export interface TableKeyInput {
   key: string

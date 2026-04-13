@@ -4,14 +4,14 @@ import {
   readShapeSpec
 } from '@whiteboard/core/node'
 import { useCallback, useRef, type CSSProperties } from 'react'
-import type { NodeDefinition, NodeRenderProps } from '#react/types/node'
-import { EditableSlot } from '#react/features/edit/EditableSlot'
-import { matchNodeEdit } from '#react/features/edit/session'
-import { useEdit, useEditor } from '#react/runtime/hooks'
+import type { NodeDefinition, NodeRenderProps } from '#whiteboard-react/types/node'
+import { EditableSlot } from '#whiteboard-react/features/edit/EditableSlot'
+import { matchNodeEdit } from '#whiteboard-react/features/edit/session'
+import { useEdit, useEditor } from '#whiteboard-react/runtime/hooks'
 import {
   ShapeGlyph
-} from '../../shape'
-import { bindNodeTextSource, TEXT_DEFAULT_FONT_SIZE } from '../../text'
+} from '#whiteboard-react/features/node/shape'
+import { bindNodeTextSource, TEXT_DEFAULT_FONT_SIZE } from '#whiteboard-react/features/node/text'
 import {
   createSchema,
   createTextField,
@@ -19,7 +19,7 @@ import {
   getStyleNumber,
   getStyleString,
   styleField
-} from './shared'
+} from '#whiteboard-react/features/node/registry/default/shared'
 
 const shapeSchema = createSchema('shape', 'Shape', [
   styleField('fillOpacity', 'Fill opacity', 'number', { min: 0, max: 1, step: 0.05 }),

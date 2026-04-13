@@ -10,20 +10,20 @@ import { useStoreValue } from '@shared/react'
 import {
   useEditor,
   useTool
-} from '#react/runtime/hooks'
-import { WhiteboardPopover } from '#react/runtime/overlay'
-import { ToolPaletteButtons } from './ToolPaletteButtons'
-import { ToolPaletteMenu } from './ToolPaletteMenu'
-import { createToolPaletteController } from './controller'
+} from '#whiteboard-react/runtime/hooks'
+import { WhiteboardPopover } from '#whiteboard-react/runtime/overlay'
+import { ToolPaletteButtons } from '#whiteboard-react/features/toolbox/ToolPaletteButtons'
+import { ToolPaletteMenu } from '#whiteboard-react/features/toolbox/ToolPaletteMenu'
+import { createToolPaletteController } from '#whiteboard-react/features/toolbox/controller'
 import {
   DEFAULT_TOOL_PALETTE_MEMORY,
   rememberToolPaletteTool,
   readToolPaletteView
-} from './model'
+} from '#whiteboard-react/features/toolbox/model'
 import type {
   ToolPaletteMemory,
   ToolPaletteMenuKey
-} from '../../types/toolbox'
+} from '#whiteboard-react/types/toolbox'
 
 export const ToolPalette = () => {
   const editor = useEditor()

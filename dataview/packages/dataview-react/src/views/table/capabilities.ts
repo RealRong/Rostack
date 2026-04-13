@@ -1,6 +1,6 @@
 import type { ViewState as CurrentView } from '@dataview/engine'
 import { createDerivedStore, read, type ReadStore } from '@shared/core'
-import type { InteractionState } from '#react/interaction/index.ts'
+import type { InteractionState } from '#dataview-react/interaction'
 
 export interface Capabilities {
   canHover: boolean

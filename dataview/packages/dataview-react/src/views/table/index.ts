@@ -1,2 +1,2 @@
-export { TableView } from '#react/views/table/TableView.tsx'
-export type { TableViewProps } from '#react/views/table/TableView.tsx'
+export { TableView } from '#dataview-react/views/table/TableView'
+export type { TableViewProps } from '#dataview-react/views/table/TableView'

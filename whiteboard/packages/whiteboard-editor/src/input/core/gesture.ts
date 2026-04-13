@@ -3,7 +3,7 @@ import type {
   EdgeFeedbackEntry,
   EdgeFeedbackState,
   SelectionPreviewState
-} from '../../local/feedback/types'
+} from '#whiteboard-editor/local/feedback/types'
 
 export type MoveGesture = {
   kind: 'selection-move'

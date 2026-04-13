@@ -9,7 +9,7 @@ import {
   isCustomFieldKind,
   validateCustomFieldShape
 } from '@dataview/core/field'
-import { createIssue, type IssueSource, type ValidationIssue } from '#engine/mutate/issues.ts'
+import { createIssue, type IssueSource, type ValidationIssue } from '#dataview-engine/mutate/issues'
 
 export const validateField = (
   _document: DataDoc,

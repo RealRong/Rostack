@@ -13,13 +13,13 @@ import {
   shouldDropFieldIndex,
   shouldRebuildFieldIndex,
   shouldSyncFieldIndex
-} from '#engine/active/index/sync.ts'
+} from '#dataview-engine/active/index/sync'
 import type {
   RecordIndex,
   SearchDemand,
   SearchIndex,
   SearchTextIndex
-} from '#engine/active/index/contracts.ts'
+} from '#dataview-engine/active/index/contracts'
 
 const buildTextIndex = (input: {
   ids: readonly RecordId[]

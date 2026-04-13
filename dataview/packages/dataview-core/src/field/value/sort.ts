@@ -1,8 +1,8 @@
-import type { CustomField } from '#core/contracts/index.ts'
+import type { CustomField } from '#dataview-core/contracts'
 import {
   getKind,
   getFieldKind
-} from '#core/field/kind/index.ts'
+} from '#dataview-core/field/kind'
 
 export const compareFieldValues = (
   field: CustomField | undefined,

@@ -3,13 +3,13 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   IndexStageTrace
-} from '#engine/contracts/public.ts'
+} from '#dataview-engine/contracts/public'
 import type {
   SearchIndex
-} from '#engine/active/index/contracts.ts'
+} from '#dataview-engine/active/index/contracts'
 import {
   createFieldSyncContext
-} from '#engine/active/index/sync.ts'
+} from '#dataview-engine/active/index/sync'
 
 export const fullRebuildFrom = (
   delta: CommitDelta

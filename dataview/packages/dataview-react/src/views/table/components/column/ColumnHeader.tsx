@@ -22,14 +22,14 @@ import { Menu, type MenuItem } from '@shared/ui/menu'
 import { cn } from '@shared/ui/utils'
 import { isCustomField } from '@dataview/core/field'
 import { getFieldCalculationMetrics } from '@dataview/core/calculation'
-import { getSorterFieldId } from '#react/page/features/sort/index.ts'
+import { getSorterFieldId } from '#dataview-react/page/features/sort'
 import {
   useDataView,
-} from '#react/dataview/index.ts'
+} from '#dataview-react/dataview'
 import { useStoreValue } from '@shared/react'
-import { useTableContext } from '#react/views/table/context.tsx'
+import { useTableContext } from '#dataview-react/views/table/context'
 import { meta, renderMessage } from '@dataview/meta'
-import { buildFieldKindMenuItems } from '#react/field/schema/index.ts'
+import { buildFieldKindMenuItems } from '#dataview-react/field/schema'
 
 export interface ColumnHeaderProps {
   field: Field

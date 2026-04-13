@@ -2,7 +2,7 @@ export type {
   DrawMode,
   DrawBrush,
   DrawSlot
-} from './model'
+} from '#whiteboard-editor/local/draw/model'
 export {
   DRAW_MODES,
   DRAW_BRUSHES,
@@ -12,7 +12,7 @@ export {
   isDrawMode,
   isDrawBrush,
   hasDrawBrush
-} from './model'
+} from '#whiteboard-editor/local/draw/model'
 export type {
   BrushStyle,
   BrushStylePatch,
@@ -20,8 +20,8 @@ export type {
   DrawState,
   DrawStyle,
   DrawPreview
-} from './state'
+} from '#whiteboard-editor/local/draw/state'
 export {
   readDrawSlot,
   readDrawStyle
-} from './state'
+} from '#whiteboard-editor/local/draw/state'

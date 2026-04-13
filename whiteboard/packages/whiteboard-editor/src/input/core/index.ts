@@ -1,14 +1,14 @@
-export { createSnapRuntime } from './snap'
+export { createSnapRuntime } from '#whiteboard-editor/input/core/snap'
 export {
   CANCEL,
   FINISH,
   HANDLED,
   replaceSession
-} from './result'
+} from '#whiteboard-editor/input/core/result'
 export type {
   InteractionBinding,
   InteractionRuntime,
   InteractionSession,
   InteractionSessionTransition,
   InteractionStartResult
-} from './types'
+} from '#whiteboard-editor/input/core/types'

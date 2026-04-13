@@ -3,11 +3,11 @@ export {
   resolveAutoFillGridMetrics,
   type AutoFillGridMetrics,
   type InlineInsets
-} from '#react/virtual/grid.ts'
+} from '#dataview-react/virtual/grid'
 export {
   useMeasuredHeights,
   type UseMeasuredHeightsOptions,
   type UseMeasuredHeightsResult
-} from '#react/virtual/useMeasuredHeights.ts'
-export { useVirtualBlocks, type UseVirtualBlocksOptions, type UseVirtualBlocksResult } from '#react/virtual/useVirtualBlocks.ts'
-export type { VirtualBlock } from '#react/virtual/types.ts'
+} from '#dataview-react/virtual/useMeasuredHeights'
+export { useVirtualBlocks, type UseVirtualBlocksOptions, type UseVirtualBlocksResult } from '#dataview-react/virtual/useVirtualBlocks'
+export type { VirtualBlock } from '#dataview-react/virtual/types'

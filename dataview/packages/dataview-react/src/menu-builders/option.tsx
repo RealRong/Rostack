@@ -5,7 +5,7 @@ import { getStatusCategoryLabel } from '@dataview/core/field'
 import { meta, renderMessage } from '@dataview/meta'
 import { resolveOptionDotStyle, resolveOptionColorToken } from '@shared/ui/color'
 import type { MenuItem, MenuReorderItem, MenuSurfaceSize } from '@shared/ui/menu'
-import { FieldOptionTag, type FieldOptionTagProps } from '#react/field/options/index.ts'
+import { FieldOptionTag, type FieldOptionTagProps } from '#dataview-react/field/options'
 
 export interface MenuOptionLike {
   id: string

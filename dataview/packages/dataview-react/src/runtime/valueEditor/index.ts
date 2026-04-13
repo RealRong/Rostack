@@ -1,5 +1,5 @@
-export { createValueEditorApi } from '#react/runtime/valueEditor/api.ts'
-export { FieldValueEditorHost } from '#react/runtime/valueEditor/host.tsx'
+export { createValueEditorApi } from '#dataview-react/runtime/valueEditor/api'
+export { FieldValueEditorHost } from '#dataview-react/runtime/valueEditor/host'
 export type {
   CloseValueEditorOptions,
   OpenValueEditorInput,
@@ -11,4 +11,4 @@ export type {
   ValueEditorSessionPolicy,
   ValueEditorSession,
   ViewFieldRef
-} from '#react/runtime/valueEditor/types.ts'
+} from '#dataview-react/runtime/valueEditor/types'

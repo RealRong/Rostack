@@ -1,45 +1,45 @@
 import { read as readValue, type ReadStore } from '@shared/core'
 import type { EngineRead } from '@whiteboard/engine'
 import type { HistoryState } from '@whiteboard/core/kernel'
-import type { NodeRegistry } from '../types/node'
+import type { NodeRegistry } from '#whiteboard-editor/types/node'
 import type {
   DrawMode,
   DrawState
-} from '../local/draw'
-import type { EdgeToolbarContext } from '../types/edgePresentation'
+} from '#whiteboard-editor/local/draw'
+import type { EdgeToolbarContext } from '#whiteboard-editor/types/edgePresentation'
 import type {
   EdgePresetKey,
   InsertPresetKey,
   Tool
-} from '../types/tool'
-import type { EditorLocalRuntime } from '../local/runtime'
+} from '#whiteboard-editor/types/tool'
+import type { EditorLocalRuntime } from '#whiteboard-editor/local/runtime'
 import {
   createNodeRead,
   type NodePresentationRead
-} from './node/read'
+} from '#whiteboard-editor/query/node/read'
 import {
   createEdgeRead,
   type EdgePresentationRead
-} from './edge/read'
+} from '#whiteboard-editor/query/edge/read'
 import {
   createMindmapRead,
   type MindmapPresentationRead
-} from './mindmap/read'
+} from '#whiteboard-editor/query/mindmap/read'
 import {
   createSelectionModelRead,
   type SelectionModelRead
-} from './selection/model'
+} from '#whiteboard-editor/query/selection/model'
 import {
   createSelectionPresentationRead,
   type SelectionRead
-} from './selection/presentation'
-import { createEdgeToolbarRead } from './selection/edgeToolbar'
+} from '#whiteboard-editor/query/selection/presentation'
+import { createEdgeToolbarRead } from '#whiteboard-editor/query/selection/edgeToolbar'
 import {
   createTargetRead,
   type RuntimeTargetRead
-} from './target'
-import type { ViewportRuntime } from '../local/viewport/runtime'
-import type { EditorFeedbackRuntime } from '../local/feedback'
+} from '#whiteboard-editor/query/target'
+import type { ViewportRuntime } from '#whiteboard-editor/local/viewport/runtime'
+import type { EditorFeedbackRuntime } from '#whiteboard-editor/local/feedback'
 
 export type ToolRead = {
   get: () => Tool

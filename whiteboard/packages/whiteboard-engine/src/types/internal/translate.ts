@@ -1,5 +1,5 @@
 import type { Operation } from '@whiteboard/core/types'
-import type { CommandFailure } from '../result'
+import type { CommandFailure } from '#whiteboard-engine/types/result'
 
 type TranslateSuccess<T = void> = {
   ok: true

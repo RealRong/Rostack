@@ -1,4 +1,4 @@
-import type { KeyInput } from '#react/interaction/index.ts'
+import type { KeyInput } from '#dataview-react/interaction'
 import type { FieldId } from '@dataview/core/contracts'
 import type { ViewState as CurrentView } from '@dataview/engine'
 import {
@@ -7,13 +7,13 @@ import {
 import type {
   Selection,
   SelectionApi
-} from '#react/runtime/selection/index.ts'
+} from '#dataview-react/runtime/selection'
 import type {
   Engine
 } from '@dataview/engine'
 import {
   selection as rowSelection
-} from '#react/runtime/selection/index.ts'
+} from '#dataview-react/runtime/selection'
 import {
   gridKeyAction,
   isSelectAll,
@@ -22,8 +22,8 @@ import {
   range,
   type TableKeyInput
 } from '@dataview/table'
-import type { CellOpenInput } from '#react/views/table/openCell.ts'
-import type { GridSelectionStore } from '#react/views/table/gridSelection.ts'
+import type { CellOpenInput } from '#dataview-react/views/table/openCell'
+import type { GridSelectionStore } from '#dataview-react/views/table/gridSelection'
 
 const currentKey = (
   input: TableKeyInput | KeyInput

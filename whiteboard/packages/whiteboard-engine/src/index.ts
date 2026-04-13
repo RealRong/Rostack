@@ -1,26 +1,26 @@
-export { createEngine } from './instance/engine'
-export { normalizeDocument } from './document/normalize'
+export { createEngine } from '#whiteboard-engine/instance/engine'
+export { normalizeDocument } from '#whiteboard-engine/document/normalize'
 export {
   DEFAULT_BOARD_CONFIG
-} from './config'
+} from '#whiteboard-engine/config'
 
 export type {
   EngineCommand,
   OrderMode,
   ExecuteOptions,
   ExecuteResult
-} from './types/command'
-export type { Commit } from './types/commit'
+} from '#whiteboard-engine/types/command'
+export type { Commit } from '#whiteboard-engine/types/commit'
 export type {
   CanvasNode,
   EdgeItem,
   MindmapItem,
   NodeItem
-} from './types/projection'
+} from '#whiteboard-engine/types/projection'
 export type {
   Engine,
   EngineHistory,
   ApplyOperationsOptions,
   BoardConfig,
   EngineRead
-} from './types/instance'
+} from '#whiteboard-engine/types/instance'

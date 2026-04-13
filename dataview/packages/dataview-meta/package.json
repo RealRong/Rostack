@@ -6,12 +6,17 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "imports": {
-    "#meta": "./src/index.ts",
-    "#meta/*": "./src/*"
+  "scripts": {
+    "build": "tsdown --config tsdown.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "lucide-react": "^0.577.0",
     "react": "^19.1.1"
-  }
+  },
+  "files": [
+    "src",
+    "dist"
+  ]
 }

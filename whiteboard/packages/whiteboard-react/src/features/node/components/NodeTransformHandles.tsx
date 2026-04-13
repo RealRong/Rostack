@@ -10,7 +10,7 @@ import {
 } from '@whiteboard/core/node'
 import type { NodeItem } from '@whiteboard/engine'
 import { useStoreValue } from '@shared/react'
-import { useEditor, usePickRef } from '#react/runtime/hooks'
+import { useEditor, usePickRef } from '#whiteboard-react/runtime/hooks'
 
 type NodeViewNode = NodeItem['node']
 type NodeViewRect = NodeItem['rect']

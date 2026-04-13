@@ -1,36 +1,36 @@
 import { createTimeoutTask, type TimeoutTask } from '@shared/core'
-import type { EditField } from '../../../local/session/edit'
+import type { EditField } from '#whiteboard-editor/local/session/edit'
 import {
   GestureTuning
-} from '../../core/config'
+} from '#whiteboard-editor/input/core/config'
 import {
   FINISH,
   replaceSession
-} from '../../core/result'
-import type { InteractionContext } from '../../context'
+} from '#whiteboard-editor/input/core/result'
+import type { InteractionContext } from '#whiteboard-editor/input/context'
 import type {
   InteractionSession,
   InteractionSessionTransition
-} from '../../core/types'
+} from '#whiteboard-editor/input/core/types'
 import type {
   PointerDownInput
-} from '../../../types/input'
-import { createMarqueeInteraction } from '../marquee/session'
-import { createMoveInteraction } from '../move/session'
+} from '#whiteboard-editor/types/input'
+import { createMarqueeInteraction } from '#whiteboard-editor/input/selection/marquee/session'
+import { createMoveInteraction } from '#whiteboard-editor/input/selection/move/session'
 import {
   startSelectionPressAction
-} from './start'
+} from '#whiteboard-editor/input/selection/press/start'
 import {
   resolveSelectionPressTarget,
   type SelectionPressDragPlan,
   type SelectionMarqueePlan,
   type SelectionPressPlan,
   type SelectionPressTarget
-} from './resolve'
+} from '#whiteboard-editor/input/selection/press/resolve'
 import {
   matchSelectionTap
-} from './plan'
-import { resolveSelectionEditField } from '../edit'
+} from '#whiteboard-editor/input/selection/press/plan'
+import { resolveSelectionEditField } from '#whiteboard-editor/input/selection/edit'
 
 type SelectionPressField = EditField
 

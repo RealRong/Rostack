@@ -1,10 +1,6 @@
-const {
-  STATUS_OPTIONS
-} = require('../fixtures/index.cjs')
+import { STATUS_OPTIONS } from '../fixtures/index'
 
-const scenario = (
-  definition
-) => definition
+const scenario = (definition) => definition
 
 const openView = (engine, viewId) => {
   engine.views.open(viewId)
@@ -107,9 +103,7 @@ const SCENARIOS = [
   })
 ]
 
-const getScenarios = (
-  requestedIds
-) => {
+const getScenarios = (requestedIds) => {
   if (!requestedIds?.length) {
     return SCENARIOS
   }
@@ -118,7 +112,7 @@ const getScenarios = (
   return SCENARIOS.filter(item => requested.has(item.id))
 }
 
-module.exports = {
+export {
   SCENARIOS,
   getScenarios
 }

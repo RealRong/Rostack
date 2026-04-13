@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import {
   createRoutePatchFromPathPoints,
   moveElbowRouteSegment,
   moveElbowRouteSegmentPoints,
   resolveEdgeRouteHandleTarget
-} from '../dist/edge/index.js'
-import { normalizePolylinePoints } from '../dist/geometry/index.js'
+} from '@whiteboard/core/edge'
+import { normalizePolylinePoints } from '@whiteboard/core/geometry'
 
 const createEdge = (overrides = {}) => ({
   id: 'edge_1',

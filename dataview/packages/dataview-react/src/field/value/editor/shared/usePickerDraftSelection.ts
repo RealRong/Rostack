@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react'
-import type { EditorSubmitTrigger } from '#react/interaction/index.ts'
+import type { EditorSubmitTrigger } from '#dataview-react/interaction'
 
 const splitDraftKeys = <Key extends string>(draft: string) => draft
   .split(',')

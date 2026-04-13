@@ -3,21 +3,27 @@
   "private": true,
   "packageManager": "pnpm@9.15.5",
   "devDependencies": {
-    "tsup": "^8.0.2",
-    "typescript": "^5.9.3"
+    "tsdown": "^0.21.8",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.4"
   },
   "scripts": {
-    "build": "pnpm run build:dataview && pnpm run build:whiteboard && pnpm run build:whiteboard:app",
+    "build": "pnpm run build:shared && pnpm run build:dataview && pnpm run build:dataview:app && pnpm run build:whiteboard && pnpm run build:whiteboard:app",
+    "build:shared": "pnpm --filter @shared/core run build && pnpm --filter @shared/dom run build && pnpm --filter @shared/react run build && pnpm --filter @shared/ui run build",
     "build:dataview": "pnpm -C dataview run build",
     "build:dataview:app": "pnpm -C apps/dataview run build",
     "build:whiteboard": "pnpm --filter @whiteboard/core run build && pnpm --filter @whiteboard/engine run build && pnpm --filter @whiteboard/editor run build && pnpm --filter @whiteboard/react run build && pnpm --filter @whiteboard/collab run build",
     "build:whiteboard:app": "pnpm -C apps/whiteboard run build",
     "build:whiteboard:demo": "pnpm run build:whiteboard:app",
-    "typecheck": "pnpm run typecheck:dataview && pnpm run typecheck:whiteboard",
+    "typecheck": "pnpm run typecheck:shared && pnpm run typecheck:dataview && pnpm run typecheck:whiteboard",
+    "typecheck:shared": "pnpm --filter @shared/core run typecheck && pnpm --filter @shared/dom run typecheck && pnpm --filter @shared/react run typecheck && pnpm --filter @shared/ui run typecheck",
     "typecheck:dataview": "pnpm -C dataview run typecheck && pnpm -C dataview run demo:typecheck",
-    "typecheck:whiteboard": "pnpm --filter @whiteboard/core run lint && pnpm --filter @whiteboard/engine run lint && pnpm --filter @whiteboard/editor run lint && pnpm --filter @whiteboard/react run lint && pnpm --filter @whiteboard/collab run lint && pnpm -C apps/whiteboard run typecheck",
-    "test": "pnpm run test:dataview && pnpm run test:whiteboard",
+    "typecheck:whiteboard": "pnpm -C whiteboard run typecheck && pnpm -C apps/whiteboard run typecheck",
+    "test": "pnpm run test:shared && pnpm run test:dataview && pnpm run test:whiteboard",
+    "test:shared": "pnpm --filter @shared/core run test && pnpm --filter @shared/dom run test && pnpm --filter @shared/react run test && pnpm --filter @shared/ui run test",
     "test:dataview": "pnpm -C dataview run test",
-    "test:whiteboard": "pnpm --filter @whiteboard/core run test && pnpm --filter @whiteboard/engine run test && pnpm --filter @whiteboard/editor run test && pnpm --filter @whiteboard/react run test && pnpm --filter @whiteboard/collab run test"
+    "test:whiteboard": "pnpm -C whiteboard run test"
   }
 }

@@ -2,7 +2,7 @@ import { PickerOptionButton, PickerSection } from '@shared/ui'
 import {
   MINDMAP_INSERT_PRESETS,
   MINDMAP_INSERT_TEMPLATES
-} from '../presets'
+} from '#whiteboard-react/features/toolbox/presets'
 
 const MindmapTemplatePreview = ({
   templateKey

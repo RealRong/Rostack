@@ -9,26 +9,26 @@ import { viewCalcFields } from '@dataview/core/view'
 import {
   collectTouchedRecordIds,
   collectTouchedFieldIds
-} from '#engine/active/index/shared.ts'
-import type { IndexState } from '#engine/active/index/contracts.ts'
+} from '#dataview-engine/active/index/shared'
+import type { IndexState } from '#dataview-engine/active/index/contracts'
 import type {
   DeriveAction,
   SectionState,
   SummaryState
-} from '#engine/contracts/internal.ts'
-import type { SectionKey } from '#engine/contracts/public.ts'
-import { runSnapshotStage } from '#engine/active/snapshot/stage.ts'
-import { publishSummaries } from '#engine/active/snapshot/summary/publish.ts'
+} from '#dataview-engine/contracts/internal'
+import type { SectionKey } from '#dataview-engine/contracts/public'
+import { runSnapshotStage } from '#dataview-engine/active/snapshot/stage'
+import { publishSummaries } from '#dataview-engine/active/snapshot/summary/publish'
 import {
   syncSummaryState
-} from '#engine/active/snapshot/summary/sync.ts'
+} from '#dataview-engine/active/snapshot/summary/sync'
 
 export {
   computeCalculationFromState
-} from '#engine/active/snapshot/summary/compute.ts'
+} from '#dataview-engine/active/snapshot/summary/compute'
 export {
   syncSummaryState
-} from '#engine/active/snapshot/summary/sync.ts'
+} from '#dataview-engine/active/snapshot/summary/sync'
 
 const hasIntersection = (
   left: ReadonlySet<FieldId>,

@@ -9,12 +9,12 @@ import { Menu } from '@shared/ui/menu'
 import { Popover } from '@shared/ui/popover'
 import { cn } from '@shared/ui/utils'
 import { meta, renderMessage } from '@dataview/meta'
-import { QueryChip } from '#react/page/features/query/index.ts'
-import { FilterOptionSetEditor } from '#react/page/features/filter/FilterOptionSetEditor.tsx'
+import { QueryChip } from '#dataview-react/page/features/query'
+import { FilterOptionSetEditor } from '#dataview-react/page/features/filter/FilterOptionSetEditor'
 import {
   getFilterPresetLabel,
   getFilterValuePlaceholder
-} from '#react/page/features/filter/filterText.ts'
+} from '#dataview-react/page/features/filter/filterText'
 
 export interface FilterRulePopoverProps {
   entry: FilterRuleProjection

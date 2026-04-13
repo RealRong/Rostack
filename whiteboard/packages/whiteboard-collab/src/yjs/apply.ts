@@ -3,7 +3,7 @@ import type {
   Operation
 } from '@whiteboard/core/types'
 import * as Y from 'yjs'
-import { replaceYjsDocument } from './materialize'
+import { replaceYjsDocument } from '#whiteboard-collab/yjs/materialize'
 
 export const applyOperationsToYjsDocument = ({
   doc,

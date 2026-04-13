@@ -1,4 +1,4 @@
-import type { EditorFeedbackRuntime, EditorFeedbackState } from './types'
+import type { EditorFeedbackRuntime, EditorFeedbackState } from '#whiteboard-editor/local/feedback/types'
 
 export const updateFeedbackBranch = <TKey extends keyof EditorFeedbackState>(
   feedback: Pick<EditorFeedbackRuntime, 'set'>,

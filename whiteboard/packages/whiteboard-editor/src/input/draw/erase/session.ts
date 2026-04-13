@@ -1,14 +1,14 @@
-import { FINISH } from '../../core/result'
+import { FINISH } from '#whiteboard-editor/input/core/result'
 import type {
   InteractionSession
-} from '../../core/types'
-import type { InteractionContext } from '../../context'
+} from '#whiteboard-editor/input/core/types'
+import type { InteractionContext } from '#whiteboard-editor/input/context'
 import {
   commitEraseState,
   startEraseState,
   stepEraseState,
   type EraseState
-} from './start'
+} from '#whiteboard-editor/input/draw/erase/start'
 
 export const createEraseSession = (
   ctx: InteractionContext,

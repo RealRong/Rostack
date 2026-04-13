@@ -11,11 +11,11 @@ import type {
 } from '@whiteboard/engine'
 import type {
   EdgeFeedbackProjection
-} from '../../local/feedback/types'
-import type { NodeCanvasSnapshot, NodePresentationRead } from '../node/read'
+} from '#whiteboard-editor/local/feedback/types'
+import type { NodeCanvasSnapshot, NodePresentationRead } from '#whiteboard-editor/query/node/read'
 import type {
   EditSession
-} from '../../local/session/edit'
+} from '#whiteboard-editor/local/session/edit'
 
 const applyEdgeEditSession = (
   edge: EdgeItem['edge'],

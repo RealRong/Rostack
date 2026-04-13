@@ -1,9 +1,9 @@
-export { GalleryView } from '#react/views/gallery/GalleryView.tsx'
-export type { GalleryViewProps } from '#react/views/gallery/GalleryView.tsx'
-export { useGalleryContext } from '#react/views/gallery/context.tsx'
-export type { Gallery } from '#react/views/gallery/context.tsx'
-export { useGalleryRuntime } from '#react/views/gallery/runtime.ts'
+export { GalleryView } from '#dataview-react/views/gallery/GalleryView'
+export type { GalleryViewProps } from '#dataview-react/views/gallery/GalleryView'
+export { useGalleryContext } from '#dataview-react/views/gallery/context'
+export type { Gallery } from '#dataview-react/views/gallery/context'
+export { useGalleryRuntime } from '#dataview-react/views/gallery/runtime'
 export type {
   ActiveGalleryViewState,
   GalleryViewRuntime
-} from '#react/views/gallery/types.ts'
+} from '#dataview-react/views/gallery/types'

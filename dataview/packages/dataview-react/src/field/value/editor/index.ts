@@ -1,6 +1,6 @@
-export { FieldValueEditor } from '#react/field/value/editor/FieldValueEditor.tsx'
+export { FieldValueEditor } from '#dataview-react/field/value/editor/FieldValueEditor'
 export type {
   FieldValueDraftEditorProps,
   FieldValueEditorHandle,
   FieldValueEditorProps
-} from '#react/field/value/editor/contracts.ts'
+} from '#dataview-react/field/value/editor/contracts'

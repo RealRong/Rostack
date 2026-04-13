@@ -1,5 +1,5 @@
-import type { Equality } from './equality'
-import { createRafTask } from './scheduler'
+import type { Equality } from '#shared-core/equality'
+import { createRafTask } from '#shared-core/scheduler'
 
 export type Listener = () => void
 export type Unsubscribe = () => void

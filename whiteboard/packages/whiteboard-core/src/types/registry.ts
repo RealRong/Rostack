@@ -5,7 +5,7 @@ import type {
   NodeRole,
   NodeSchema,
   NodeType
-} from './model'
+} from '#whiteboard-core/types/model'
 
 export interface BaseNodeDefinition {
   type: NodeType

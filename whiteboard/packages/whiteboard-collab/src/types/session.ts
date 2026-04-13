@@ -5,7 +5,7 @@ import type {
   CollabBootstrapMode,
   CollabProvider,
   CollabStatus
-} from './provider'
+} from '#whiteboard-collab/types/provider'
 
 export type CreateYjsSessionOptions = {
   engine: Engine

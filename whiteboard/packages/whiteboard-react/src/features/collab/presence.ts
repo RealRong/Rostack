@@ -1,10 +1,10 @@
 import type { Tool } from '@whiteboard/editor'
-import type { WhiteboardRuntime } from '#react/types/runtime'
+import type { WhiteboardRuntime } from '#whiteboard-react/types/runtime'
 import type {
   WhiteboardPresenceActivity,
   WhiteboardPresenceState,
   WhiteboardPresenceTool
-} from '../../types/common/presence'
+} from '#whiteboard-react/types/common/presence'
 
 export const getSelectionSnapshot = (
   editor: WhiteboardRuntime

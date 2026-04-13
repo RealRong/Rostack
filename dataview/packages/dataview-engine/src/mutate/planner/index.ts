@@ -4,19 +4,19 @@ import type { DeltaItem } from '@dataview/core/contracts'
 import type { BaseOperation } from '@dataview/core/contracts/operations'
 import { reduceOperations } from '@dataview/core/operation'
 import { isNonEmptyString } from '@shared/core'
-import { planFieldAction } from '#engine/mutate/planner/fields.ts'
+import { planFieldAction } from '#dataview-engine/mutate/planner/fields'
 import {
   createIssue,
   hasValidationErrors,
   type ValidationIssue
-} from '#engine/mutate/issues.ts'
-import { planRecordAction } from '#engine/mutate/planner/records.ts'
+} from '#dataview-engine/mutate/issues'
+import { planRecordAction } from '#dataview-engine/mutate/planner/records'
 import {
   planResult,
   sourceOf,
   type PlannedActionResult
-} from '#engine/mutate/planner/shared.ts'
-import { planViewAction } from '#engine/mutate/planner/views.ts'
+} from '#dataview-engine/mutate/planner/shared'
+import { planViewAction } from '#dataview-engine/mutate/planner/views'
 
 export interface PlannedWriteBatch {
   operations: readonly BaseOperation[]
@@ -72,7 +72,7 @@ export type {
   ValidationCode,
   ValidationIssue,
   ValidationSeverity
-} from '#engine/mutate/issues.ts'
+} from '#dataview-engine/mutate/issues'
 
 const lowerExternalBump = (
   _document: DataDoc,

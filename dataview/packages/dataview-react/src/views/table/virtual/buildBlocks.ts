@@ -8,7 +8,7 @@ import type {
   TableColumnHeaderBlock,
   TableRowBlock,
   TableSectionHeaderBlock
-} from '#react/views/table/virtual/types.ts'
+} from '#dataview-react/views/table/virtual/types'
 
 const pushRowBlocks = (input: {
   blocks: TableBlock[]

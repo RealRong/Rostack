@@ -1,9 +1,9 @@
 import {
   now
-} from '#engine/runtime/clock.ts'
+} from '#dataview-engine/runtime/clock'
 import type {
   DeriveAction
-} from '#engine/contracts/internal.ts'
+} from '#dataview-engine/contracts/internal'
 
 export interface SnapshotStageResult<TState, TPublished> {
   action: DeriveAction

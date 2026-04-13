@@ -71,20 +71,20 @@ import {
   sameOrder,
   trimToUndefined
 } from '@shared/core'
-import { createViewId } from '#engine/mutate/entityId.ts'
+import { createViewId } from '#dataview-engine/mutate/entityId'
 import {
   createIssue,
   hasValidationErrors,
   type IssueSource,
   type ValidationIssue
-} from '#engine/mutate/issues.ts'
-import { validateViewExists } from '#engine/mutate/validate/entity.ts'
+} from '#dataview-engine/mutate/issues'
+import { validateViewExists } from '#dataview-engine/mutate/validate/entity'
 import {
   planResult,
   sourceOf,
   toViewPut,
   type PlannedActionResult
-} from '#engine/mutate/planner/shared.ts'
+} from '#dataview-engine/mutate/planner/shared'
 
 const sameRecordOrder = sameOrder<string>
 

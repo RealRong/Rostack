@@ -8,10 +8,10 @@ import type {
   DataViewContextValue,
   DataViewSession,
   EngineProviderProps
-} from '#react/dataview/types.ts'
+} from '#dataview-react/dataview/types'
 import {
   createDataViewSession
-} from '#react/dataview/runtime.ts'
+} from '#dataview-react/dataview/runtime'
 
 const DataViewContext = createContext<DataViewContextValue | null>(null)
 export const EngineProvider = (props: EngineProviderProps) => (

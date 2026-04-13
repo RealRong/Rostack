@@ -1,12 +1,12 @@
 import type { ReadStore } from '@shared/core'
-import type { ActiveGesture } from './gesture'
+import type { ActiveGesture } from '#whiteboard-editor/input/core/gesture'
 import type {
   KeyboardInput,
   PointerDownInput,
   PointerMoveInput,
   PointerUpInput,
   WheelInput
-} from '../../types/input'
+} from '#whiteboard-editor/types/input'
 
 type InteractionMode =
   | 'idle'

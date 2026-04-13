@@ -1,13 +1,13 @@
 import type {
   View,
   ViewCreateInput
-} from '#core/contracts/index.ts'
+} from '#dataview-core/contracts'
 import {
   createDuplicateViewPreferredName
-} from '#core/view/naming.ts'
+} from '#dataview-core/view/naming'
 import {
   cloneViewOptions
-} from '#core/view/shared.ts'
+} from '#dataview-core/view/shared'
 
 const cloneViewInput = (
   view: View

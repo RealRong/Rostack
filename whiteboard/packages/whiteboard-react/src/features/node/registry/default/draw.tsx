@@ -2,13 +2,13 @@ import {
   readDrawBaseSize,
   readDrawPoints
 } from '@whiteboard/core/node'
-import type { NodeDefinition } from '#react/types/node'
+import type { NodeDefinition } from '#whiteboard-react/types/node'
 import {
   DrawStrokeHitShape,
   DrawStrokeSelectionShape,
   DrawStrokeShape
-} from '#react/features/draw/stroke'
-import { createSchema, getStyleNumber, getStyleString, styleField } from './shared'
+} from '#whiteboard-react/features/draw/stroke'
+import { createSchema, getStyleNumber, getStyleString, styleField } from '#whiteboard-react/features/node/registry/default/shared'
 
 const drawSchema = createSchema('draw', 'Draw', [
   styleField('stroke', 'Stroke', 'color'),

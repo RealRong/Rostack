@@ -1,11 +1,11 @@
-export { FieldSchemaEditor } from '#react/field/schema/editor/index.ts'
+export { FieldSchemaEditor } from '#dataview-react/field/schema/editor'
 export {
   FieldKindPicker,
   buildFieldKindMenuItems
-} from '#react/field/schema/FieldKindPicker.tsx'
+} from '#dataview-react/field/schema/FieldKindPicker'
 export type {
   FieldSchemaEditorProps
-} from '#react/field/schema/editor/index.ts'
+} from '#dataview-react/field/schema/editor'
 export type {
   FieldKindPickerProps
-} from '#react/field/schema/FieldKindPicker.tsx'
+} from '#dataview-react/field/schema/FieldKindPicker'

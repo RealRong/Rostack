@@ -18,21 +18,21 @@ import {
   type MenuHandle,
   type MenuItem
 } from '@shared/ui/menu'
-import { useDataView } from '#react/dataview/index.ts'
+import { useDataView } from '#dataview-react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import {
   OptionToken
-} from '#react/field/options/index.ts'
-import type { EditorSubmitTrigger } from '#react/interaction/index.ts'
+} from '#dataview-react/field/options'
+import type { EditorSubmitTrigger } from '#dataview-react/interaction'
 import {
   buildEditableOptionItem,
   readOptionLabel
-} from '#react/menu-builders/index.ts'
-import type { FieldValueDraftEditorProps } from '#react/field/value/editor/contracts.ts'
+} from '#dataview-react/menu-builders'
+import type { FieldValueDraftEditorProps } from '#dataview-react/field/value/editor/contracts'
 import { focusInputWithoutScroll } from '@shared/dom'
-import { PickerInputBar } from '#react/field/value/editor/shared/PickerInputBar.tsx'
-import { useDraftCommit } from '#react/field/value/editor/shared/useDraftCommit.ts'
-import { usePickerKeydown } from '#react/field/value/editor/shared/usePickerKeydown.ts'
+import { PickerInputBar } from '#dataview-react/field/value/editor/shared/PickerInputBar'
+import { useDraftCommit } from '#dataview-react/field/value/editor/shared/useDraftCommit'
+import { usePickerKeydown } from '#dataview-react/field/value/editor/shared/usePickerKeydown'
 
 const optionLabel = (
   option: ReturnType<typeof getFieldOptions>[number]

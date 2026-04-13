@@ -1,5 +1,5 @@
-import type { Point } from '../types'
-import { isPointEqual } from './equality'
+import type { Point } from '#whiteboard-core/types'
+import { isPointEqual } from '#whiteboard-core/geometry/equality'
 
 export const normalizePolylinePoints = (
   points: readonly Point[]

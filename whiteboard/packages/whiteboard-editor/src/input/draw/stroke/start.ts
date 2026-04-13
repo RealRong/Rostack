@@ -10,9 +10,9 @@ import {
   type DrawPreview,
   type DrawState,
   type DrawStyle
-} from '../../../local/draw'
-import type { PointerDownInput, PointerSample } from '../../../types/input'
-import type { Tool } from '../../../types/tool'
+} from '#whiteboard-editor/local/draw'
+import type { PointerDownInput, PointerSample } from '#whiteboard-editor/types/input'
+import type { Tool } from '#whiteboard-editor/types/tool'
 
 const DRAW_MIN_LENGTH_SCREEN = 4
 const SAMPLE_DISTANCE_SCREEN = 1

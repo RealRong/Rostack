@@ -1,4 +1,4 @@
-import type { BoardConfig } from '#types/instance'
+import type { BoardConfig } from '#whiteboard-engine/instance'
 import type {
   CommandOutput,
   DocumentCommand,
@@ -7,8 +7,8 @@ import type {
   MindmapCommand,
   NodeCommand,
   TranslateCommand
-} from '#types/command'
-import type { TranslateResult } from '#types/internal/translate'
+} from '#whiteboard-engine/command'
+import type { TranslateResult } from '#whiteboard-engine/internal/translate'
 import type {
   CoreRegistries,
   Document,
@@ -18,12 +18,12 @@ import type {
   MindmapNodeId,
   NodeId
 } from '@whiteboard/core/types'
-import { invalid } from './result'
-import { translateDocument } from './document'
-import { translateEdge } from './edge'
-import { translateGroup } from './group'
-import { translateMindmap } from './mindmap'
-import { translateNode } from './node'
+import { invalid } from '#whiteboard-engine/write/translate/result'
+import { translateDocument } from '#whiteboard-engine/write/translate/document'
+import { translateEdge } from '#whiteboard-engine/write/translate/edge'
+import { translateGroup } from '#whiteboard-engine/write/translate/group'
+import { translateMindmap } from '#whiteboard-engine/write/translate/mindmap'
+import { translateNode } from '#whiteboard-engine/write/translate/node'
 
 export type WriteTranslateContext = {
   doc: Document

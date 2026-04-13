@@ -1,6 +1,6 @@
 import { ToolbarIconButton } from '@shared/ui'
 import { Lock } from 'lucide-react'
-import type { ToolbarItemSpec } from './types'
+import type { ToolbarItemSpec } from '#whiteboard-react/features/selection/chrome/toolbar/items/types'
 
 export const lockItem: ToolbarItemSpec = {
   key: 'lock',

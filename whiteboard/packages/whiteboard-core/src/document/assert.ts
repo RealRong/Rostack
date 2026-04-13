@@ -1,4 +1,4 @@
-import type { Document } from '../types'
+import type { Document } from '#whiteboard-core/types'
 
 const hasOwn = (target: object, key: PropertyKey) =>
   Object.prototype.hasOwnProperty.call(target, key)

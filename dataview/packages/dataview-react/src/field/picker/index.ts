@@ -1,2 +1,2 @@
-export { FieldPicker } from '#react/field/picker/FieldPicker.tsx'
-export type { FieldPickerProps } from '#react/field/picker/FieldPicker.tsx'
+export { FieldPicker } from '#dataview-react/field/picker/FieldPicker'
+export type { FieldPickerProps } from '#dataview-react/field/picker/FieldPicker'

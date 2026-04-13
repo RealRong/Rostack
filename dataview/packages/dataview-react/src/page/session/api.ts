@@ -6,18 +6,18 @@ import {
   ROOT_SETTINGS_ROUTE,
   cloneSettingsRoute,
   parentSettingsRoute
-} from '#react/page/session/settings.ts'
+} from '#dataview-react/page/session/settings'
 import {
   cloneQueryBarEntry,
   createDefaultPageSessionState,
   equalPageSessionState
-} from '#react/page/session/state.ts'
+} from '#dataview-react/page/session/state'
 import type {
   PageSessionApi,
   PageSessionInput,
   PageSessionState,
   QueryBarEntry
-} from '#react/page/session/types.ts'
+} from '#dataview-react/page/session/types'
 
 export interface PageSessionController extends PageSessionApi {
   store: ValueStore<PageSessionState>

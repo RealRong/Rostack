@@ -1,11 +1,11 @@
 import type { RefObject } from 'react'
-import { PresenceLayer } from '../features/collab/PresenceLayer'
-import { EdgeToolbar } from '../features/edge/components/EdgeToolbar'
-import { ContextMenu } from '../features/selection/chrome/ContextMenu'
-import { NodeToolbar } from '../features/selection/chrome/NodeToolbar'
-import { ToolPalette } from '../features/toolbox/ToolPalette'
-import { ViewportDock } from '../features/viewport/ViewportDock'
-import type { WhiteboardPresenceBinding } from '../types/common/presence'
+import { PresenceLayer } from '#whiteboard-react/features/collab/PresenceLayer'
+import { EdgeToolbar } from '#whiteboard-react/features/edge/components/EdgeToolbar'
+import { ContextMenu } from '#whiteboard-react/features/selection/chrome/ContextMenu'
+import { NodeToolbar } from '#whiteboard-react/features/selection/chrome/NodeToolbar'
+import { ToolPalette } from '#whiteboard-react/features/toolbox/ToolPalette'
+import { ViewportDock } from '#whiteboard-react/features/viewport/ViewportDock'
+import type { WhiteboardPresenceBinding } from '#whiteboard-react/types/common/presence'
 
 export const Chrome = ({
   containerRef,

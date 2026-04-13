@@ -4,24 +4,24 @@ import {
 import type { Rect } from '@whiteboard/core/types'
 import {
   createSelectionGesture
-} from '../../core/gesture'
-import { GestureTuning } from '../../core/config'
+} from '#whiteboard-editor/input/core/gesture'
+import { GestureTuning } from '#whiteboard-editor/input/core/config'
 import {
   FINISH
-} from '../../core/result'
-import type { InteractionContext } from '../../context'
+} from '#whiteboard-editor/input/core/result'
+import type { InteractionContext } from '#whiteboard-editor/input/context'
 import type {
   InteractionSession
-} from '../../core/types'
-import type { PointerDownInput } from '../../../types/input'
+} from '#whiteboard-editor/input/core/types'
+import type { PointerDownInput } from '#whiteboard-editor/types/input'
 import {
   createMarqueeRect,
   reduceMarqueeSelection,
   startMarqueeSelection,
   type MarqueeSelectionEffect,
   type MarqueeSelectionEvent
-} from './state'
-import type { SelectionMarqueePlan } from '../press/resolve'
+} from '#whiteboard-editor/input/selection/marquee/state'
+import type { SelectionMarqueePlan } from '#whiteboard-editor/input/selection/press/resolve'
 
 type MarqueePointer = Pick<PointerDownInput, 'screen' | 'world'>
 

@@ -5,9 +5,9 @@ import {
   planMindmapSubtreeMove
 } from '@whiteboard/core/mindmap'
 import type { NodeId } from '@whiteboard/core/types'
-import type { EditorQueryRead } from '../query'
-import type { MindmapCommands } from '../types/commands'
-import type { NodeCommands } from './node/types'
+import type { EditorQueryRead } from '#whiteboard-editor/query'
+import type { MindmapCommands } from '#whiteboard-editor/types/commands'
+import type { NodeCommands } from '#whiteboard-editor/command/node/types'
 
 type MindmapExecute = Engine['execute']
 

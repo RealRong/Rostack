@@ -1,31 +1,20 @@
-const {
-  mkdirSync,
-  writeFileSync
-} = require('node:fs')
-const path = require('node:path')
-const {
-  performance
-} = require('node:perf_hooks')
-const {
-  createEngine
-} = require('../runtime.cjs')
-const {
-  SIZE_TO_COUNT,
-  createFixture
-} = require('../fixtures/index.cjs')
-const {
-  getScenarios
-} = require('../scenarios/index.cjs')
+import { mkdirSync, writeFileSync } from 'node:fs'
+import path from 'node:path'
+import { performance } from 'node:perf_hooks'
+
+import { createEngine } from '../runtime'
+import { SIZE_TO_COUNT, createFixture } from '../fixtures/index'
+import { getScenarios } from '../scenarios/index'
 
 const DEFAULT_SIZES = ['small', 'medium']
 const DEFAULT_ITERATIONS = 3
 const DEFAULT_WARMUP = 1
 
-const averageOf = values => values.length
+const averageOf = (values: number[]) => values.length
   ? values.reduce((sum, value) => sum + value, 0) / values.length
   : 0
 
-const parseArgs = argv => {
+const parseArgs = (argv: string[]) => {
   const options = {
     sizes: DEFAULT_SIZES,
     iterations: DEFAULT_ITERATIONS,
@@ -64,7 +53,7 @@ const parseArgs = argv => {
   return options
 }
 
-const createBenchEngine = fixture => createEngine({
+const createBenchEngine = (fixture) => createEngine({
   document: fixture.document,
   performance: {
     traces: true,
@@ -145,7 +134,7 @@ const summarizeRuns = (runs, scenario, size) => {
   }
 }
 
-const reportResults = results => {
+const reportResults = (results) => {
   console.log(`Dataview benchmark results (${results.generatedAt})`)
   console.log(`sizes=${results.config.sizes.join(',')} iterations=${results.config.iterations} warmup=${results.config.warmup}`)
 
@@ -211,11 +200,11 @@ const runBenchmarks = (input = {}) => {
   return output
 }
 
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   runBenchmarks(parseArgs(process.argv.slice(2)))
 }
 
-module.exports = {
+export {
   DEFAULT_ITERATIONS,
   DEFAULT_SIZES,
   DEFAULT_WARMUP,

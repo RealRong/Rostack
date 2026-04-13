@@ -1,17 +1,17 @@
 export {
   EngineProvider,
   useDataView
-} from '#react/dataview/provider.tsx'
+} from '#dataview-react/dataview/provider'
 export {
   useDataViewKeyedValue,
   useDataViewValue
-} from '#react/dataview/useDataViewValue.ts'
+} from '#dataview-react/dataview/useDataViewValue'
 
 export type {
   DataViewContextValue,
   DataViewSession,
   EngineProviderProps
-} from '#react/dataview/types.ts'
+} from '#dataview-react/dataview/types'
 
 export type {
   MarqueeAdapter,
@@ -19,15 +19,15 @@ export type {
   MarqueeMode,
   MarqueeSessionState,
   SelectionTarget
-} from '#react/runtime/marquee/index.ts'
+} from '#dataview-react/runtime/marquee'
 export type {
   InlineSessionApi,
   InlineSessionTarget
-} from '#react/runtime/inlineSession/index.ts'
+} from '#dataview-react/runtime/inlineSession'
 export type {
   Selection,
   SelectionApi
-} from '#react/runtime/selection/index.ts'
+} from '#dataview-react/runtime/selection'
 export type {
   PageLock,
   PageState,
@@ -38,7 +38,7 @@ export type {
   QueryBarState,
   SettingsRoute,
   SettingsState
-} from '#react/page/session/types.ts'
+} from '#dataview-react/page/session/types'
 export type {
   CloseValueEditorOptions,
   OpenValueEditorInput,
@@ -48,4 +48,4 @@ export type {
   ValueEditorResult,
   ValueEditorSessionPolicy,
   ViewFieldRef
-} from '#react/runtime/valueEditor/index.ts'
+} from '#dataview-react/runtime/valueEditor'

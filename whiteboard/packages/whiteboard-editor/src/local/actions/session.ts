@@ -1,7 +1,7 @@
-import type { EditorQueryRead } from '../../query'
-import type { SessionActions } from '../../types/commands'
-import type { Tool } from '../../types/tool'
-import type { EditorLocalState } from '../runtime'
+import type { EditorQueryRead } from '#whiteboard-editor/query'
+import type { SessionActions } from '#whiteboard-editor/types/commands'
+import type { Tool } from '#whiteboard-editor/types/tool'
+import type { EditorLocalState } from '#whiteboard-editor/local/runtime'
 
 export type LocalSessionActions = Pick<SessionActions, 'tool' | 'selection'>
 

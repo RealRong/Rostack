@@ -7,8 +7,8 @@ import {
   useRef,
   useState
 } from 'react'
-import { cn } from '#ui/utils.ts'
-import { Level } from '#ui/menu/level.tsx'
+import { cn } from '#shared-ui/utils'
+import { Level } from '#shared-ui/menu/level'
 import {
   appendPath,
   firstEnabledPath,
@@ -21,7 +21,7 @@ import {
   serializePath,
   toValueResult,
   toggleSelection
-} from '#ui/menu/shared.ts'
+} from '#shared-ui/menu/shared'
 import type {
   Controller,
   Handle,
@@ -29,7 +29,7 @@ import type {
   Props,
   SubmenuCloseReason,
   SubmenuItem
-} from '#ui/menu/types.ts'
+} from '#shared-ui/menu/types'
 
 export const Base = forwardRef<Handle, Props>((props, ref) => {
   const submenuOpenPolicy = props.submenuOpenPolicy ?? 'hover'

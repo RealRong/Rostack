@@ -1,6 +1,6 @@
-import { applyEdgeDefaults, getMissingEdgeFields } from '../schema'
-import { hasEdge, hasNode } from '../document'
-import { err, ok } from '../result'
+import { applyEdgeDefaults, getMissingEdgeFields } from '#whiteboard-core/schema'
+import { hasEdge, hasNode } from '#whiteboard-core/document'
+import { err, ok } from '#whiteboard-core/result'
 import type {
   CoreRegistries,
   Document,
@@ -9,12 +9,12 @@ import type {
   EdgeInput,
   EdgePatch,
   Point
-} from '../types'
+} from '#whiteboard-core/types'
 import type {
   EdgeCreateOperationResult,
   InsertRoutePointResult
-} from '../types/edge'
-import { isManualEdgeRoute, isNodeEdgeEnd, isPointEdgeEnd } from './guards'
+} from '#whiteboard-core/types/edge'
+import { isManualEdgeRoute, isNodeEdgeEnd, isPointEdgeEnd } from '#whiteboard-core/edge/guards'
 
 type BuildEdgeCreateOperationInput = {
   payload: EdgeInput

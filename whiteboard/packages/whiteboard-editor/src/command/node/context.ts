@@ -1,8 +1,8 @@
 import type { NodeId } from '@whiteboard/core/types'
-import type { EditorQueryRead } from '../../query'
-import type { LocalFeedbackActions } from '../../local/actions/feedback'
-import type { SessionActions } from '../../types/commands'
-import type { NodePatchWriter } from './types'
+import type { EditorQueryRead } from '#whiteboard-editor/query'
+import type { LocalFeedbackActions } from '#whiteboard-editor/local/actions/feedback'
+import type { SessionActions } from '#whiteboard-editor/types/commands'
+import type { NodePatchWriter } from '#whiteboard-editor/command/node/types'
 
 export type NodeContext = {
   read: {

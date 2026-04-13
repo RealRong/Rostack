@@ -8,7 +8,7 @@ import type {
   ViewCalc,
   ViewDisplay,
   ViewOptions
-} from '#core/contracts/index.ts'
+} from '#dataview-core/contracts'
 import {
   sameJsonValue,
   sameOrder,
@@ -17,10 +17,10 @@ import {
 import {
   applyRecordOrder,
   reorderRecordBlockIds
-} from '#core/view/order.ts'
+} from '#dataview-core/view/order'
 import {
   cloneViewOptions
-} from '#core/view/shared.ts'
+} from '#dataview-core/view/shared'
 
 export const cloneDisplay = (
   display: ViewDisplay

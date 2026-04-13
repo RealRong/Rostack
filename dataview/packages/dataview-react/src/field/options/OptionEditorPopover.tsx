@@ -4,7 +4,7 @@ import {
   type PopoverOffset
 } from '@shared/ui/popover'
 import type { Placement } from '@floating-ui/react'
-import { OptionEditorPanel } from '#react/field/options/OptionEditorPanel.tsx'
+import { OptionEditorPanel } from '#dataview-react/field/options/OptionEditorPanel'
 
 export interface OptionLike {
   id: string

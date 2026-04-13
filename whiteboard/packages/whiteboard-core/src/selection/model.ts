@@ -1,5 +1,5 @@
-import { applySelection, type SelectionMode } from '../node/selection'
-import { getRectsBoundingRect } from '../geometry'
+import { applySelection, type SelectionMode } from '#whiteboard-core/node/selection'
+import { getRectsBoundingRect } from '#whiteboard-core/geometry'
 import type {
   Edge,
   EdgeId,
@@ -8,7 +8,7 @@ import type {
   NodeId,
   NodeRole,
   Rect
-} from '../types'
+} from '#whiteboard-core/types'
 import {
   sameOptionalRect as isSameOptionalRectTuple,
   sameOrder as isOrderedArrayEqual

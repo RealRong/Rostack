@@ -1,6 +1,6 @@
 import { ToolbarIconButton, ToolbarTextColorIcon } from '@shared/ui'
-import { TextColorPanel } from '../../panels/TextColorPanel'
-import type { ToolbarItemSpec } from './types'
+import { TextColorPanel } from '#whiteboard-react/features/selection/chrome/panels/TextColorPanel'
+import type { ToolbarItemSpec } from '#whiteboard-react/features/selection/chrome/toolbar/items/types'
 
 export const textColorItem: ToolbarItemSpec = {
   key: 'text-color',

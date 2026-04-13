@@ -1,4 +1,4 @@
-export { clamp, degToRad } from './scalar'
+export { clamp, degToRad } from '#whiteboard-core/geometry/scalar'
 
 export {
   getRectCenter,
@@ -10,34 +10,34 @@ export {
   getRectCorners,
   getAABBFromPoints,
   getRectsBoundingRect
-} from './rect'
+} from '#whiteboard-core/geometry/rect'
 
-export { rotatePoint } from './point'
-export { getAnchorPoint } from './anchor'
+export { rotatePoint } from '#whiteboard-core/geometry/point'
+export { getAnchorPoint } from '#whiteboard-core/geometry/anchor'
 export {
   normalizePolylinePoints,
   arePointListsEqual
-} from './polyline'
+} from '#whiteboard-core/geometry/polyline'
 
 export {
   getRotatedCorners,
   isPointInRotatedRect
-} from './rotation'
+} from '#whiteboard-core/geometry/rotation'
 
 export {
   rectIntersectsRotatedRect,
   rectContainsRotatedRect
-} from './collision'
+} from '#whiteboard-core/geometry/collision'
 
 export {
   distancePointToSegment,
   getSegmentBounds
-} from './segment'
+} from '#whiteboard-core/geometry/segment'
 
 export {
   isPointEqual,
   isSizeEqual
-} from './equality'
+} from '#whiteboard-core/geometry/equality'
 
 export {
   DEFAULT_VIEWPORT_FIT_PADDING,
@@ -57,9 +57,9 @@ export {
   zoomViewport,
   worldToScreenPoint,
   isSameViewport
-} from './viewport'
+} from '#whiteboard-core/geometry/viewport'
 export type {
   ContainerRect,
   ViewportLimits,
   WheelInput
-} from './viewport'
+} from '#whiteboard-core/geometry/viewport'

@@ -9,16 +9,16 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   SectionKey
-} from '#engine/contracts/public.ts'
+} from '#dataview-engine/contracts/public'
 import type {
   SummaryState
-} from '#engine/contracts/internal.ts'
+} from '#dataview-engine/contracts/internal'
 import {
   computeCalculationFromState
-} from '#engine/active/snapshot/summary/compute.ts'
+} from '#dataview-engine/active/snapshot/summary/compute'
 import {
   readCalcFields
-} from '#engine/active/snapshot/summary/compute.ts'
+} from '#dataview-engine/active/snapshot/summary/compute'
 
 const createCollection = (
   byField: ReadonlyMap<FieldId, CalculationResult>

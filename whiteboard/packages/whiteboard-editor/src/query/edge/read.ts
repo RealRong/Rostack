@@ -27,13 +27,13 @@ import {
 } from '@shared/core'
 import type {
   EdgeFeedbackProjection
-} from '../../local/feedback/types'
-import type { NodeCanvasSnapshot, NodePresentationRead } from '../node/read'
-import type { EditSession } from '../../local/session/edit'
+} from '#whiteboard-editor/local/feedback/types'
+import type { NodeCanvasSnapshot, NodePresentationRead } from '#whiteboard-editor/query/node/read'
+import type { EditSession } from '#whiteboard-editor/local/session/edit'
 import {
   projectEdgeItem,
   readProjectedEdgeView
-} from './projection'
+} from '#whiteboard-editor/query/edge/projection'
 
 export type EdgeRuntimeState = {
   patched: boolean

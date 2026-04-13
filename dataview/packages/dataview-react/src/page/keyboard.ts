@@ -1,4 +1,4 @@
-import type { KeyInput } from '#react/interaction/index.ts'
+import type { KeyInput } from '#dataview-react/interaction'
 
 export type PageShortcutAction =
   | { kind: 'undo' }

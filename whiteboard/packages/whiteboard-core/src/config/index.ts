@@ -1,4 +1,4 @@
-import type { Size } from '../types'
+import type { Size } from '#whiteboard-core/types'
 
 export type BoardConfig = {
   nodeSize: Size

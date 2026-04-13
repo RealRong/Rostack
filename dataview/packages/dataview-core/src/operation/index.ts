@@ -1,3 +1,3 @@
-export { applyOperations } from '#core/operation/applyOperations.ts'
-export type { ApplyOperationsResult } from '#core/operation/applyOperations.ts'
-export { reduceOperation, reduceOperations } from '#core/operation/reducer.ts'
+export { applyOperations } from '#dataview-core/operation/applyOperations'
+export type { ApplyOperationsResult } from '#dataview-core/operation/applyOperations'
+export { reduceOperation, reduceOperations } from '#dataview-core/operation/reducer'

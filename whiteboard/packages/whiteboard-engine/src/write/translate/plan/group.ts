@@ -12,13 +12,13 @@ import type { Document, EdgeId, GroupId, NodeId, Operation, OrderMode } from '@w
 import {
   block,
   normalizeOrder
-} from '../order/policy'
+} from '#whiteboard-engine/write/translate/order/policy'
 import {
   groups,
   pick,
   sameOrder
-} from '../order/refs'
-import type { Step } from './shared'
+} from '#whiteboard-engine/write/translate/order/refs'
+import type { Step } from '#whiteboard-engine/write/translate/plan/shared'
 
 type MergeTarget = {
   nodeIds?: readonly NodeId[]

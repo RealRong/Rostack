@@ -1,6 +1,6 @@
-import type { Draft, DraftKind, Writer } from '#types/write'
-import type { CommandOutput, TranslateCommand } from '#types/command'
-import type { BoardConfig } from '#types/instance'
+import type { Draft, DraftKind, Writer } from '#whiteboard-engine/write'
+import type { CommandOutput, TranslateCommand } from '#whiteboard-engine/command'
+import type { BoardConfig } from '#whiteboard-engine/instance'
 import { assertDocument } from '@whiteboard/core/document'
 import {
   type ChangeSet,
@@ -20,11 +20,11 @@ import {
   type KernelReduceResult
 } from '@whiteboard/core/kernel'
 import { createId } from '@whiteboard/core/id'
-import { DEFAULT_HISTORY_CONFIG } from '../config'
-import { cancelled, failure } from '../result'
-import { normalizeDocument } from '../document/normalize'
-import { createWritePipeline } from './normalize'
-import { translateWrite } from './translate'
+import { DEFAULT_HISTORY_CONFIG } from '#whiteboard-engine/config'
+import { cancelled, failure } from '#whiteboard-engine/result'
+import { normalizeDocument } from '#whiteboard-engine/document/normalize'
+import { createWritePipeline } from '#whiteboard-engine/write/normalize'
+import { translateWrite } from '#whiteboard-engine/write/translate'
 
 const now = (): number => {
   if (typeof performance !== 'undefined' && typeof performance.now === 'function') {

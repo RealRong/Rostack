@@ -1,7 +1,7 @@
-import { arePointListsEqual, normalizePolylinePoints } from '../geometry'
-import type { Edge, EdgeId, EdgePatch, Point } from '../types'
-import type { EdgeHandle } from '../types/edge'
-import { clearRoute, setRoutePoints } from './commands'
+import { arePointListsEqual, normalizePolylinePoints } from '#whiteboard-core/geometry'
+import type { Edge, EdgeId, EdgePatch, Point } from '#whiteboard-core/types'
+import type { EdgeHandle } from '#whiteboard-core/types/edge'
+import { clearRoute, setRoutePoints } from '#whiteboard-core/edge/commands'
 
 export type EdgeRouteHandlePick = {
   index?: number

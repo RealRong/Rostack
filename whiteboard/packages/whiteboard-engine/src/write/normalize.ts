@@ -7,11 +7,11 @@ import type {
 } from '@whiteboard/core/types'
 import {
   sanitizeOperations
-} from '../document/sanitize'
+} from '#whiteboard-engine/document/sanitize'
 import {
   collectChanges,
   collectFinalizeOps,
-} from './normalize/finalize'
+} from '#whiteboard-engine/write/normalize/finalize'
 
 type Reduce = (
   document: Document,

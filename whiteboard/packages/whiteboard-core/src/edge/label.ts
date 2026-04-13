@@ -1,5 +1,5 @@
-import type { Point } from '../types'
-import type { EdgePathResult } from '../types/edge'
+import type { Point } from '#whiteboard-core/types'
+import type { EdgePathResult } from '#whiteboard-core/types/edge'
 
 type EdgePolylinePoint = Point
 

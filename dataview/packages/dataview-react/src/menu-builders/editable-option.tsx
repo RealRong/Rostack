@@ -2,12 +2,12 @@ import { MoreHorizontal } from 'lucide-react'
 import type { MenuItemRow } from '@shared/ui/menu'
 import { Button } from '@shared/ui/button'
 import { meta, renderMessage } from '@dataview/meta'
-import { OptionEditorPopover } from '#react/field/options/index.ts'
+import { OptionEditorPopover } from '#dataview-react/field/options'
 import {
   buildOptionTagLabel,
   readOptionLabel,
   type MenuOptionLike
-} from '#react/menu-builders/option.tsx'
+} from '#dataview-react/menu-builders/option'
 
 export const buildEditableOptionItem = (input: {
   fieldId: string

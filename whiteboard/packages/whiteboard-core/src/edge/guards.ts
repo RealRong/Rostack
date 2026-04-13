@@ -3,7 +3,7 @@ import type {
   EdgeRoute,
   NodeEdgeEnd,
   PointEdgeEnd
-} from '../types'
+} from '#whiteboard-core/types'
 
 export const isNodeEdgeEnd = (
   value: EdgeEnd

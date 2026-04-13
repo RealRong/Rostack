@@ -2,8 +2,8 @@ export type {
   CollabBootstrapMode,
   CollabProvider,
   CollabStatus
-} from './provider'
+} from '#whiteboard-collab/types/provider'
 export type {
   CollabSession,
   CreateYjsSessionOptions
-} from './session'
+} from '#whiteboard-collab/types/session'

@@ -10,7 +10,7 @@ import type {
 import type {
   Selection,
   SelectionStore
-} from '#react/runtime/selection/types.ts'
+} from '#dataview-react/runtime/selection/types'
 
 const emptyIds = [] as readonly ItemId[]
 

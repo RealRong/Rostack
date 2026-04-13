@@ -12,7 +12,7 @@ import { disableUserSelect } from '@shared/dom'
 import {
   resolveDefaultAutoPanTargets,
   useAutoPan
-} from '#react/interaction/autoPan.ts'
+} from '#dataview-react/interaction/autoPan'
 
 const DEFAULT_ACTIVATION_DISTANCE = 4
 const DEFAULT_SUPPRESS_CLICK_MS = 180

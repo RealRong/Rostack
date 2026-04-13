@@ -5,8 +5,8 @@ import {
 } from '@whiteboard/core/selection'
 import type { SelectionMode } from '@whiteboard/core/node'
 import type { GroupId, Node, NodeId } from '@whiteboard/core/types'
-import type { PointerDownInput } from '../../../types/input'
-import { resolveSelectionPressPlan } from './plan'
+import type { PointerDownInput } from '#whiteboard-editor/types/input'
+import { resolveSelectionPressPlan } from '#whiteboard-editor/input/selection/press/plan'
 
 type ModifierEventLike = {
   alt: boolean

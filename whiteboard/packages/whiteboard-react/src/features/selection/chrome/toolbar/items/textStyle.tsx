@@ -3,7 +3,7 @@ import {
   Italic
 } from 'lucide-react'
 import { ToolbarIconButton } from '@shared/ui'
-import type { ToolbarItemSpec } from './types'
+import type { ToolbarItemSpec } from '#whiteboard-react/features/selection/chrome/toolbar/items/types'
 
 export const boldItem: ToolbarItemSpec = {
   key: 'bold',

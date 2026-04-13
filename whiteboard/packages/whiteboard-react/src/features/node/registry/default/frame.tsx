@@ -8,11 +8,11 @@ import {
   FRAME_DEFAULT_TEXT_COLOR,
   FRAME_DEFAULT_TITLE
 } from '@whiteboard/core/node'
-import type { NodeDefinition } from '#react/types/node'
-import { EditableSlot } from '#react/features/edit/EditableSlot'
-import { matchNodeEdit } from '#react/features/edit/session'
-import { useEdit, useEditor, usePickRef } from '#react/runtime/hooks'
-import { bindNodeTextSource } from '../../text'
+import type { NodeDefinition } from '#whiteboard-react/types/node'
+import { EditableSlot } from '#whiteboard-react/features/edit/EditableSlot'
+import { matchNodeEdit } from '#whiteboard-react/features/edit/session'
+import { useEdit, useEditor, usePickRef } from '#whiteboard-react/runtime/hooks'
+import { bindNodeTextSource } from '#whiteboard-react/features/node/text'
 import {
   createSchema,
   createTextField,
@@ -20,7 +20,7 @@ import {
   getStyleNumber,
   getStyleString,
   styleField
-} from './shared'
+} from '#whiteboard-react/features/node/registry/default/shared'
 
 const frameSchema = createSchema('frame', 'Frame', [
   createTextField('title'),

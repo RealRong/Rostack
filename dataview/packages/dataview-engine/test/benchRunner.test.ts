@@ -1,9 +1,7 @@
-const test = require('node:test')
-const assert = require('node:assert/strict')
+import assert from 'node:assert/strict'
+import { test } from 'vitest'
 
-const {
-  runBenchmarks
-} = require('../bench/runner/index.cjs')
+import { runBenchmarks } from '../bench/runner/index'
 
 test('bench runner produces structured output for smoke scenarios', () => {
   const result = runBenchmarks({

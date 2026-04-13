@@ -11,7 +11,7 @@ import type {
   DocumentSelectApi,
   ViewCell,
   ViewState
-} from '#engine/contracts/public.ts'
+} from '#dataview-engine/contracts/public'
 
 export const createActiveViewReadApi = (input: {
   select: DocumentSelectApi

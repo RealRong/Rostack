@@ -1,4 +1,4 @@
-import type { InlineSessionExitReason } from '#react/runtime/inlineSession/types.ts'
+import type { InlineSessionExitReason } from '#dataview-react/runtime/inlineSession/types'
 
 export type InlineSessionExitEffect = 'commit' | 'discard'
 

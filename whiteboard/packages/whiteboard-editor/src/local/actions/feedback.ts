@@ -1,21 +1,21 @@
 import type { NodeId } from '@whiteboard/core/types'
-import type { DrawPreview } from '../draw'
+import type { DrawPreview } from '#whiteboard-editor/local/draw'
 import {
   clearNodeTextPreview,
   clearNodeTextPreviewSize,
   updateNodeTextPreview
-} from '../feedback/node'
+} from '#whiteboard-editor/local/feedback/node'
 import type {
   EdgeGuide,
   EdgeFeedbackEntry,
   EditorFeedbackRuntime,
   MindmapDragFeedback,
   TextPreviewPatch
-} from '../feedback/types'
+} from '#whiteboard-editor/local/feedback/types'
 import {
   updateFeedbackBranch,
   updateFeedbackNestedBranch
-} from '../feedback/update'
+} from '#whiteboard-editor/local/feedback/update'
 
 export type LocalFeedbackActions = {
   draw: {

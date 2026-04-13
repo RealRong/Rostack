@@ -3,7 +3,7 @@ import type {
   MindmapLayoutOptions,
   MindmapNodeData,
   MindmapNodeId
-} from '../mindmap/types'
+} from '#whiteboard-core/mindmap/types'
 
 export type DocumentId = string
 export type NodeId = string

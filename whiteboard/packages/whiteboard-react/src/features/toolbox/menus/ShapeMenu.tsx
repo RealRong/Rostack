@@ -5,8 +5,8 @@ import {
 } from '@whiteboard/core/node'
 import {
   ShapeGlyph
-} from '#react/features/node'
-import { readShapePresetKind } from '../presets'
+} from '#whiteboard-react/features/node'
+import { readShapePresetKind } from '#whiteboard-react/features/toolbox/presets'
 
 export const ShapeMenu = ({
   value,

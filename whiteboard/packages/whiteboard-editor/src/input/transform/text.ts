@@ -15,7 +15,7 @@ import {
   type TransformSelectionMember
 } from '@whiteboard/core/node'
 import type { Node, NodeUpdateInput, Rect } from '@whiteboard/core/types'
-import type { ResizeSnapInput, ResizeSnapResult } from '../core/snap'
+import type { ResizeSnapInput, ResizeSnapResult } from '#whiteboard-editor/input/core/snap'
 
 type TextTransformMode = 'reflow' | 'scale'
 

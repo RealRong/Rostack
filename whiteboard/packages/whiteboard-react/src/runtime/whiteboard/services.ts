@@ -6,13 +6,13 @@ import type {
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
 import { createEditor } from '@whiteboard/editor'
-import { INSERT_PRESET_CATALOG } from '../../features/toolbox/presets'
-import type { ResolvedConfig } from '../../types/common/config'
-import { createClipboardHostAdapter } from '../../dom/host/clipboard'
-import { createClipboardBridge } from '../bridge/clipboard'
-import { createInsertBridge } from '../bridge/insert'
-import { createPointerBridge } from '../bridge/pointer'
-import type { WhiteboardServicesContextValue } from '../hooks/useWhiteboard'
+import { INSERT_PRESET_CATALOG } from '#whiteboard-react/features/toolbox/presets'
+import type { ResolvedConfig } from '#whiteboard-react/types/common/config'
+import { createClipboardHostAdapter } from '#whiteboard-react/dom/host/clipboard'
+import { createClipboardBridge } from '#whiteboard-react/runtime/bridge/clipboard'
+import { createInsertBridge } from '#whiteboard-react/runtime/bridge/insert'
+import { createPointerBridge } from '#whiteboard-react/runtime/bridge/pointer'
+import type { WhiteboardServicesContextValue } from '#whiteboard-react/runtime/hooks/useWhiteboard'
 
 const clonePoint = (
   point: Point

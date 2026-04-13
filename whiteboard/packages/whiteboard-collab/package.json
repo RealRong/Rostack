@@ -15,13 +15,9 @@
     "@whiteboard/engine": "workspace:*",
     "yjs": "^13.6.27"
   },
-  "devDependencies": {
-    "tsup": "^8.0.2",
-    "typescript": "^5.9.3"
-  },
   "scripts": {
-    "build": "tsup --config tsup.config.ts",
-    "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "pnpm -C ../whiteboard-core run build && pnpm -C ../whiteboard-engine run build && pnpm run build && node --test test/*.test.mjs"
+    "build": "tsdown --config tsdown.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts"
   }
 }

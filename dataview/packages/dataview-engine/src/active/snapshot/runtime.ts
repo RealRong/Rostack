@@ -7,24 +7,24 @@ import {
   getDocumentFields,
   getDocumentViewById
 } from '@dataview/core/document'
-import type { IndexState } from '#engine/active/index/contracts.ts'
+import type { IndexState } from '#dataview-engine/active/index/contracts'
 import type {
   DeriveAction,
   ViewCache
-} from '#engine/contracts/internal.ts'
+} from '#dataview-engine/contracts/internal'
 import type {
   ViewStageMetrics,
   ViewStageName,
   ViewStageTrace,
   ViewState,
   ViewTrace
-} from '#engine/contracts/public.ts'
-import { now } from '#engine/runtime/clock.ts'
-import { publishViewBase } from '#engine/active/snapshot/base.ts'
-import { buildStageMetrics } from '#engine/active/snapshot/trace.ts'
-import { runQueryStage } from '#engine/active/snapshot/query/runtime.ts'
-import { runSectionsStage } from '#engine/active/snapshot/sections/runtime.ts'
-import { runSummaryStage } from '#engine/active/snapshot/summary/runtime.ts'
+} from '#dataview-engine/contracts/public'
+import { now } from '#dataview-engine/runtime/clock'
+import { publishViewBase } from '#dataview-engine/active/snapshot/base'
+import { buildStageMetrics } from '#dataview-engine/active/snapshot/trace'
+import { runQueryStage } from '#dataview-engine/active/snapshot/query/runtime'
+import { runSectionsStage } from '#dataview-engine/active/snapshot/sections/runtime'
+import { runSummaryStage } from '#dataview-engine/active/snapshot/summary/runtime'
 
 interface ViewRunResult {
   cache: ViewCache

@@ -1,1 +1,1 @@
-export { CreateViewPopover } from '#react/page/features/createView/CreateViewPopover.tsx'
+export { CreateViewPopover } from '#dataview-react/page/features/createView/CreateViewPopover'

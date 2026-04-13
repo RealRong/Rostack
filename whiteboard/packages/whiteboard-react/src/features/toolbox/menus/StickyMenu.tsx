@@ -2,7 +2,7 @@ import { PickerGridButton, PickerSection } from '@shared/ui'
 import {
   STICKY_INSERT_OPTIONS,
   STICKY_INSERT_PRESETS
-} from '../presets'
+} from '#whiteboard-react/features/toolbox/presets'
 
 export const StickyMenu = ({
   value,

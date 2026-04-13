@@ -2,13 +2,13 @@ import {
   ROOT_SETTINGS_ROUTE,
   cloneSettingsRoute,
   equalSettingsRoute
-} from '#react/page/session/settings.ts'
+} from '#dataview-react/page/session/settings'
 import type {
   PageSessionInput,
   PageSessionState,
   QueryBarEntry,
   SettingsState
-} from '#react/page/session/types.ts'
+} from '#dataview-react/page/session/types'
 
 export const cloneQueryBarEntry = (
   entry: QueryBarEntry | null | undefined

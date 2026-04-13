@@ -5,25 +5,25 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   IndexState
-} from '#engine/active/index/contracts.ts'
+} from '#dataview-engine/active/index/contracts'
 import {
   collectTouchedRecordIds
-} from '#engine/active/index/shared.ts'
+} from '#dataview-engine/active/index/shared'
 import type {
   DeriveAction,
   QueryState,
   SectionState
-} from '#engine/contracts/internal.ts'
-import { runSnapshotStage } from '#engine/active/snapshot/stage.ts'
+} from '#dataview-engine/contracts/internal'
+import { runSnapshotStage } from '#dataview-engine/active/snapshot/stage'
 import {
   publishSections
-} from '#engine/active/snapshot/sections/publish.ts'
+} from '#dataview-engine/active/snapshot/sections/publish'
 export {
   syncSectionState
-} from '#engine/active/snapshot/sections/sync.ts'
+} from '#dataview-engine/active/snapshot/sections/sync'
 import {
   syncSectionState
-} from '#engine/active/snapshot/sections/sync.ts'
+} from '#dataview-engine/active/snapshot/sections/sync'
 
 const resolveSectionsAction = (input: {
   activeViewId: ViewId
@@ -94,15 +94,15 @@ export const runSectionsStage = (input: {
   previous?: SectionState
   previousQuery?: QueryState
   previousPublished: {
-    sections?: import('#engine/contracts/public.ts').SectionList
-    items?: import('#engine/contracts/public.ts').ItemList
+    sections?: import('#dataview-engine/contracts/public').SectionList
+    items?: import('#dataview-engine/contracts/public').ItemList
   }
   index: IndexState
 }): {
   action: DeriveAction
   state: SectionState
-  sections: import('#engine/contracts/public.ts').SectionList
-  items: import('#engine/contracts/public.ts').ItemList
+  sections: import('#dataview-engine/contracts/public').SectionList
+  items: import('#dataview-engine/contracts/public').ItemList
   deriveMs: number
   publishMs: number
 } => {

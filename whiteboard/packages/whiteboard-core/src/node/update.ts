@@ -6,13 +6,13 @@ import type {
   NodeRecordMutation,
   NodeUpdateInput,
   Operation
-} from '../types'
+} from '#whiteboard-core/types'
 import {
   applyPathMutation,
   isObjectContainer
-} from '../utils/recordMutation'
-import { getValueByPath } from '../utils/objectPath'
-import { cloneValue } from '../value'
+} from '#whiteboard-core/utils/recordMutation'
+import { getValueByPath } from '#whiteboard-core/utils/objectPath'
+import { cloneValue } from '#whiteboard-core/value'
 
 export type NodeUpdateImpact = {
   geometry: boolean

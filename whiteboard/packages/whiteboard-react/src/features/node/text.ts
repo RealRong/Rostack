@@ -26,7 +26,7 @@ export {
   focusEditableEnd,
   readEditableText
 } from '@shared/dom'
-export { bindNodeTextSource } from './dom/textSourceRegistry'
+export { bindNodeTextSource } from '#whiteboard-react/features/node/dom/textSourceRegistry'
 export {
   measureTextNodeSize
-} from './dom/textMeasure'
+} from '#whiteboard-react/features/node/dom/textMeasure'

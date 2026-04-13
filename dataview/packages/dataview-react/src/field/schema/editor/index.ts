@@ -1,2 +1,2 @@
-export { FieldSchemaEditor } from '#react/field/schema/editor/FieldSchemaEditor.tsx'
-export type { FieldSchemaEditorProps } from '#react/field/schema/editor/FieldSchemaEditor.tsx'
+export { FieldSchemaEditor } from '#dataview-react/field/schema/editor/FieldSchemaEditor'
+export type { FieldSchemaEditorProps } from '#dataview-react/field/schema/editor/FieldSchemaEditor'

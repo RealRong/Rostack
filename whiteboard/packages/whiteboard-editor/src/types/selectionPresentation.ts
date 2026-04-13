@@ -1,6 +1,6 @@
 import type { ShapeKind } from '@whiteboard/core/node'
 import type { Node, NodeId, Rect } from '@whiteboard/core/types'
-import type { NodeFamily } from './node'
+import type { NodeFamily } from '#whiteboard-editor/types/node'
 
 export type SelectionNodeTypeInfo = {
   key: string

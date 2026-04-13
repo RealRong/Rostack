@@ -15,14 +15,14 @@ import type {
   WheelInput
 } from '@whiteboard/editor'
 import type { Point } from '@whiteboard/core/types'
-import type { WhiteboardRuntime } from '#react/types/runtime'
-import type { PickRegistry } from './pickRegistry'
+import type { WhiteboardRuntime } from '#whiteboard-react/types/runtime'
+import type { PickRegistry } from '#whiteboard-react/dom/host/pickRegistry'
 import {
   isContextMenuIgnoredTarget,
   isEditableTarget,
   isInputIgnoredTarget,
   isSelectionIgnoredTarget
-} from './targets'
+} from '#whiteboard-react/dom/host/targets'
 
 type TargetEvent = Pick<MouseEvent | PointerEvent | WheelEvent, 'target' | 'clientX' | 'clientY'>
 type ClientPointInput = Pick<MouseEvent | PointerEvent | WheelEvent, 'clientX' | 'clientY'>

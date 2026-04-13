@@ -15,7 +15,7 @@ import {
   shouldDropFieldIndex,
   shouldRebuildFieldIndex,
   shouldSyncFieldIndex
-} from '#engine/active/index/sync.ts'
+} from '#dataview-engine/active/index/sync'
 import type {
   BucketKey,
   GroupDemand,
@@ -24,15 +24,15 @@ import type {
   RecordIndex,
   RecordBucketLookup,
   SortedIdSet
-} from '#engine/active/index/contracts.ts'
+} from '#dataview-engine/active/index/contracts'
 import {
   buildBucketState,
   resolveBucketKeys,
   sameBucketKeys
-} from '#engine/active/index/group/bucket.ts'
+} from '#dataview-engine/active/index/group/bucket'
 import {
   createGroupDemandKey
-} from '#engine/active/index/group/demand.ts'
+} from '#dataview-engine/active/index/group/demand'
 
 class PatchedRecordBuckets implements RecordBucketLookup {
   constructor(

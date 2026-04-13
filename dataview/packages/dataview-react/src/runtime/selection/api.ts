@@ -1,11 +1,11 @@
 import {
   selection
-} from '#react/runtime/selection/store.ts'
+} from '#dataview-react/runtime/selection/store'
 import type {
   SelectionApi,
   SelectionScope,
   SelectionStore
-} from '#react/runtime/selection/types.ts'
+} from '#dataview-react/runtime/selection/types'
 
 export const createSelectionApi = (input: {
   store: SelectionStore

@@ -4,14 +4,14 @@ import type { RecordId } from '@dataview/core/contracts'
 import {
   useDataView,
   useDataViewKeyedValue
-} from '#react/dataview/index.ts'
-import { CardPreview } from '#react/views/shared/index.ts'
+} from '#dataview-react/dataview'
+import { CardPreview } from '#dataview-react/views/shared'
 import {
   resolveNeutralCardStyle,
   resolveOptionCardStyle
 } from '@shared/ui/color'
 import { cn } from '@shared/ui/utils'
-import { useKanbanContext } from '#react/views/kanban/context.tsx'
+import { useKanbanContext } from '#dataview-react/views/kanban/context'
 
 const stackedCardStyle = resolveNeutralCardStyle('default', 'preview')
 

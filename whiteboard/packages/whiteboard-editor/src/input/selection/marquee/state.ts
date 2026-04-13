@@ -9,7 +9,7 @@ import {
   type SelectionTarget
 } from '@whiteboard/core/selection'
 import type { SelectionMode } from '@whiteboard/core/node'
-import type { MarqueeMatch } from '../shared'
+import type { MarqueeMatch } from '#whiteboard-editor/input/selection/shared'
 
 type MarqueeSelectionBaseState = {
   pointerId: number

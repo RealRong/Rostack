@@ -1,6 +1,6 @@
 import { ToolbarFillIcon, ToolbarIconButton } from '@shared/ui'
-import { FillPanel } from '../../panels/FillPanel'
-import type { ToolbarItemSpec } from './types'
+import { FillPanel } from '#whiteboard-react/features/selection/chrome/panels/FillPanel'
+import type { ToolbarItemSpec } from '#whiteboard-react/features/selection/chrome/toolbar/items/types'
 
 export const fillItem: ToolbarItemSpec = {
   key: 'fill',

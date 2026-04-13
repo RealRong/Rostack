@@ -1,7 +1,7 @@
 import { ToolbarIconButton } from '@shared/ui'
 import { MoreHorizontal } from 'lucide-react'
-import { SelectionActionMenu } from '../../panels/SelectionActionMenu'
-import type { ToolbarItemSpec } from './types'
+import { SelectionActionMenu } from '#whiteboard-react/features/selection/chrome/panels/SelectionActionMenu'
+import type { ToolbarItemSpec } from '#whiteboard-react/features/selection/chrome/toolbar/items/types'
 
 export const moreItem: ToolbarItemSpec = {
   key: 'more',

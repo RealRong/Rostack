@@ -1,17 +1,17 @@
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import type { MindmapLayoutConfig } from '@whiteboard/core/mindmap'
-import type { MindmapItem } from '#types/projection'
+import type { MindmapItem } from '#whiteboard-engine/projection'
 import type { Node, NodeId, SpatialNode } from '@whiteboard/core/types'
-import type { BoardConfig } from '#types/instance'
-import { DEFAULT_TUNING } from '../../config'
+import type { BoardConfig } from '#whiteboard-engine/instance'
+import { DEFAULT_TUNING } from '#whiteboard-engine/config'
 import {
   buildMindmapLines,
   computeMindmapLayout,
   getMindmapLabel,
   getMindmapTree
 } from '@whiteboard/core/mindmap'
-import type { ReadSnapshot } from '#types/internal/read'
-import { createProjectionRuntime } from './projection'
+import type { ReadSnapshot } from '#whiteboard-engine/internal/read'
+import { createProjectionRuntime } from '#whiteboard-engine/read/store/projection'
 
 type MindmapTreeCacheKey = {
   treeId: string

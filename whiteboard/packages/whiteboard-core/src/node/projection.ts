@@ -1,12 +1,12 @@
-import { isPointEqual, isSizeEqual } from '../geometry'
-import type { Node, NodeFieldPatch, Point, Rect, Size } from '../types'
-import type { TextWidthMode } from './text'
+import { isPointEqual, isSizeEqual } from '#whiteboard-core/geometry'
+import type { Node, NodeFieldPatch, Point, Rect, Size } from '#whiteboard-core/types'
+import type { TextWidthMode } from '#whiteboard-core/node/text'
 import {
   readTextWrapWidth,
   readTextWidthMode,
   setTextWrapWidth,
   setTextWidthMode
-} from './text'
+} from '#whiteboard-core/node/text'
 
 type NodeProjectionItem<TNode extends Node = Node> = {
   node: TNode

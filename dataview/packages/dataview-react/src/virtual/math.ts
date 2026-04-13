@@ -1,4 +1,4 @@
-import type { VirtualBlock } from '#react/virtual/types.ts'
+import type { VirtualBlock } from '#dataview-react/virtual/types'
 
 export const findVirtualBlockStartIndex = (
   blocks: readonly VirtualBlock[],

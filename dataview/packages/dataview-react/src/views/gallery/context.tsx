@@ -9,14 +9,14 @@ import type { GalleryState } from '@dataview/engine'
 import type { ViewState } from '@dataview/engine'
 import {
   useDataViewValue
-} from '#react/dataview/index.ts'
+} from '#dataview-react/dataview'
 import {
   useGalleryRuntime
-} from '#react/views/gallery/runtime.ts'
+} from '#dataview-react/views/gallery/runtime'
 import type {
   ActiveGalleryViewState,
   GalleryViewRuntime
-} from '#react/views/gallery/types.ts'
+} from '#dataview-react/views/gallery/types'
 
 export interface GalleryProviderProps {
   children?: ReactNode

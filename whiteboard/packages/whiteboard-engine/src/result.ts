@@ -1,6 +1,6 @@
 import type { ErrorInfo } from '@whiteboard/core/types'
-import type { Commit } from '#types/commit'
-import type { CommandFailure, CommandResult } from '#types/result'
+import type { Commit } from '#whiteboard-engine/commit'
+import type { CommandFailure, CommandResult } from '#whiteboard-engine/result'
 
 export const failure = <C extends string>(
   code: C,

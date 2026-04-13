@@ -1,4 +1,4 @@
-import type { Node } from '../types'
+import type { Node } from '#whiteboard-core/types'
 
 const EMPTY_NODES: Node[] = []
 

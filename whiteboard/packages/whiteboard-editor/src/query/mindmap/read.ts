@@ -14,7 +14,7 @@ import type {
   Rect
 } from '@whiteboard/core/types'
 import type { EngineRead, MindmapItem } from '@whiteboard/engine'
-import type { MindmapDragFeedback } from '../../local/feedback/types'
+import type { MindmapDragFeedback } from '#whiteboard-editor/local/feedback/types'
 
 export type MindmapNodeView = {
   id: MindmapNodeId

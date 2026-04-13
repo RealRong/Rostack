@@ -1,10 +1,10 @@
-import type { EdgeAnchor, Node, Point, Rect } from '../types'
-import { isPointEqual } from '../geometry'
+import type { EdgeAnchor, Node, Point, Rect } from '#whiteboard-core/types'
+import { isPointEqual } from '#whiteboard-core/geometry'
 import {
   getAutoNodeAnchor,
   projectNodeAnchor
-} from '../node/outline'
-import type { AnchorSnapOptions, EdgeConnectTarget } from '../types/edge'
+} from '#whiteboard-core/node/outline'
+import type { AnchorSnapOptions, EdgeConnectTarget } from '#whiteboard-core/types/edge'
 
 export const isSameConnectTarget = (
   left?: EdgeConnectTarget,

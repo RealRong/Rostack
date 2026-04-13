@@ -37,15 +37,15 @@ import type {
   ItemList,
   KanbanState,
   RecordsApi
-} from '#engine/contracts/public.ts'
-import { selectDocument } from '#engine/runtime/selectors/document.ts'
-import type { RuntimeStore } from '#engine/runtime/store.ts'
+} from '#dataview-engine/contracts/public'
+import { selectDocument } from '#dataview-engine/runtime/selectors/document'
+import type { RuntimeStore } from '#dataview-engine/runtime/store'
 import {
   createActiveSelect,
   createActiveStateStore,
   createGalleryStateStore,
   createKanbanStateStore
-} from '#engine/active/selectors.ts'
+} from '#dataview-engine/active/selectors'
 
 type ActiveViewPatchAction = Extract<Action, { type: 'view.patch' }>
 
@@ -66,7 +66,7 @@ export interface ActiveViewContext {
   kanbanState: ReadStore<KanbanState | undefined>
   readDocument: () => import('@dataview/core/contracts').DataDoc
   readConfig: () => View | undefined
-  readState: () => import('#engine/contracts/public.ts').ViewState | undefined
+  readState: () => import('#dataview-engine/contracts/public').ViewState | undefined
   commit: (action: Action | readonly Action[]) => boolean
   commitPatch: (patch: ViewPatch) => boolean
   withView: <T>(fn: (view: View) => T) => T | undefined

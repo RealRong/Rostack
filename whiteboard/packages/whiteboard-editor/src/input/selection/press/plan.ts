@@ -12,7 +12,7 @@ import type {
   SelectionPressSubject,
   SelectionPressTarget,
   SelectionPressTapPlan
-} from './resolve'
+} from '#whiteboard-editor/input/selection/press/resolve'
 
 const HOLD_TO_CONTAIN_MARQUEE: SelectionMarqueePlan = {
   kind: 'marquee',

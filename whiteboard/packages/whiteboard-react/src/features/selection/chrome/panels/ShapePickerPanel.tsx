@@ -4,7 +4,7 @@ import {
   readShapePreviewFill,
   type ShapeKind
 } from '@whiteboard/core/node'
-import { ShapeGlyph } from '#react/features/node'
+import { ShapeGlyph } from '#whiteboard-react/features/node'
 
 export const ShapePickerPanel = ({
   value,

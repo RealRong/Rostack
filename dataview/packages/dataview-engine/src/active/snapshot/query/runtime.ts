@@ -17,21 +17,21 @@ import {
 } from '@dataview/core/view'
 import {
   collectValueFieldIds
-} from '#engine/active/index/shared.ts'
+} from '#dataview-engine/active/index/shared'
 import type {
   IndexState
-} from '#engine/active/index/contracts.ts'
-import { runSnapshotStage } from '#engine/active/snapshot/stage.ts'
+} from '#dataview-engine/active/index/contracts'
+import { runSnapshotStage } from '#dataview-engine/active/snapshot/stage'
 import type {
   DeriveAction,
   QueryState
-} from '#engine/contracts/internal.ts'
+} from '#dataview-engine/contracts/internal'
 export {
   buildQueryState
-} from '#engine/active/snapshot/query/derive.ts'
+} from '#dataview-engine/active/snapshot/query/derive'
 import {
   buildQueryState
-} from '#engine/active/snapshot/query/derive.ts'
+} from '#dataview-engine/active/snapshot/query/derive'
 
 const hasIntersection = (
   left: ReadonlySet<FieldId>,
@@ -173,11 +173,11 @@ export const runQueryStage = (input: {
   view: View
   index: IndexState
   previous?: QueryState
-  previousPublished?: import('#engine/contracts/public.ts').ViewRecords
+  previousPublished?: import('#dataview-engine/contracts/public').ViewRecords
 }): {
   action: DeriveAction
   state: QueryState
-  records: import('#engine/contracts/public.ts').ViewRecords
+  records: import('#dataview-engine/contracts/public').ViewRecords
   deriveMs: number
   publishMs: number
 } => {

@@ -4,20 +4,20 @@ import type {
   RecordPatchAspect,
   ViewLayoutAspect,
   ViewQueryAspect
-} from '#core/contracts/delta.ts'
+} from '#dataview-core/contracts/delta'
 import type {
   BaseOperation
-} from '#core/contracts/operations.ts'
+} from '#dataview-core/contracts/operations'
 import type {
   CustomField,
   DataDoc,
   FieldId,
   DataRecord,
   View
-} from '#core/contracts/state.ts'
+} from '#dataview-core/contracts/state'
 import {
   TITLE_FIELD_ID
-} from '#core/contracts/state.ts'
+} from '#dataview-core/contracts/state'
 import {
   sameJsonValue,
   sameOptionalOrder
@@ -26,19 +26,19 @@ import {
   getDocumentCustomFieldById,
   getDocumentRecordById,
   getDocumentViewById
-} from '#core/document/index.ts'
+} from '#dataview-core/document'
 import {
   sameFilter
-} from '#core/filter/index.ts'
+} from '#dataview-core/filter'
 import {
   sameGroup
-} from '#core/group/index.ts'
+} from '#dataview-core/group'
 import {
   sameSearch
-} from '#core/search/index.ts'
+} from '#dataview-core/search'
 import {
   sameSorters
-} from '#core/sort/index.ts'
+} from '#dataview-core/sort'
 
 const sameIdList = <T extends string>(
   left: readonly T[] | undefined,

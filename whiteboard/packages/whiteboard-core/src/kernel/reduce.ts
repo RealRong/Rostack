@@ -9,20 +9,20 @@ import type {
   NodeId,
   Operation,
   Origin
-} from '../types'
+} from '#whiteboard-core/types'
 import {
   applyNodeUpdate,
   buildNodeUpdateInverse,
   classifyNodeUpdate
-} from '../node'
-import { getEdge, getNode } from '../document'
-import { createId } from '../id'
-import { err, ok } from '../result'
+} from '#whiteboard-core/node'
+import { getEdge, getNode } from '#whiteboard-core/document'
+import { createId } from '#whiteboard-core/id'
+import { err, ok } from '#whiteboard-core/result'
 import type {
   KernelContext,
   KernelReadImpact,
   KernelReduceResult
-} from './types'
+} from '#whiteboard-core/kernel/types'
 
 type NodeImpactState = {
   ids: Set<NodeId>

@@ -19,9 +19,9 @@ import type {
 import { isEmptyFieldValue } from '@dataview/core/field'
 import { Button } from '@shared/ui/button'
 import { cn } from '@shared/ui/utils'
-import { CardFieldSlot } from '#react/views/shared/CardFieldSlot.tsx'
-import { CardTitle } from '#react/views/shared/CardTitle.tsx'
-import { useCardTitleEditing } from '#react/views/shared/useCardTitleEditing.ts'
+import { CardFieldSlot } from '#dataview-react/views/shared/CardFieldSlot'
+import { CardTitle } from '#dataview-react/views/shared/CardTitle'
+import { useCardTitleEditing } from '#dataview-react/views/shared/useCardTitleEditing'
 
 const fieldRef = (input: {
   viewId: ViewId

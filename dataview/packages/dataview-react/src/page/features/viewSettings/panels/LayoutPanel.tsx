@@ -4,10 +4,10 @@ import {
   type ViewType
 } from '@dataview/core/contracts'
 import { getDocumentFields } from '@dataview/core/document'
-import { useDataView, useDataViewValue } from '#react/dataview/index.ts'
+import { useDataView, useDataViewValue } from '#dataview-react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
-import { buildChoiceSubmenuItem } from '#react/menu-builders/index.ts'
-import { usesOptionGroupingColors } from '#react/views/shared/optionGrouping.ts'
+import { buildChoiceSubmenuItem } from '#dataview-react/menu-builders'
+import { usesOptionGroupingColors } from '#dataview-react/views/shared/optionGrouping'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { Switch } from '@shared/ui/switch'
 import { cn } from '@shared/ui/utils'

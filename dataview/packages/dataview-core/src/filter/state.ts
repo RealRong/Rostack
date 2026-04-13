@@ -2,13 +2,13 @@ import type {
   Field,
   Filter,
   FilterRule
-} from '#core/contracts/index.ts'
+} from '#dataview-core/contracts'
 import {
   applyFilterPreset,
   cloneFilterRule,
   createDefaultFilterRule,
   setFilterRuleValue
-} from '#core/filter/spec.ts'
+} from '#dataview-core/filter/spec'
 
 export const sameFilterRule = (
   left: FilterRule,

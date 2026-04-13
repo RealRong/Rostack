@@ -1,12 +1,10 @@
-const {
-  readFileSync
-} = require('node:fs')
-const path = require('node:path')
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 
 const DEFAULT_THRESHOLD = 0.2
 const DEFAULT_MIN_DELTA_MS = 1
 
-const parseArgs = argv => {
+const parseArgs = (argv: string[]) => {
   const options = {
     baseline: undefined,
     current: undefined,
@@ -47,13 +45,13 @@ const parseArgs = argv => {
   return options
 }
 
-const loadJson = filePath => JSON.parse(
+const loadJson = (filePath: string) => JSON.parse(
   readFileSync(path.resolve(process.cwd(), filePath), 'utf8')
 )
 
-const scenarioKeyOf = result => `${result.size}:${result.scenario.id}`
+const scenarioKeyOf = (result) => `${result.size}:${result.scenario.id}`
 
-const percentDeltaOf = (baseline, current) => {
+const percentDeltaOf = (baseline: number, current: number) => {
   if (baseline === 0) {
     return current > 0
       ? Infinity
@@ -65,7 +63,7 @@ const percentDeltaOf = (baseline, current) => {
 
 const compareActions = (baseline, current) => JSON.stringify(baseline) === JSON.stringify(current)
 
-const compareBenchmarks = input => {
+const compareBenchmarks = (input) => {
   const baseline = loadJson(input.baseline)
   const current = loadJson(input.current)
   const baselineByScenario = new Map(
@@ -136,9 +134,9 @@ const compareBenchmarks = input => {
   }
 }
 
-const formatPercent = value => `${(value * 100).toFixed(1)}%`
+const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`
 
-const reportComparison = result => {
+const reportComparison = (result) => {
   console.log(`Dataview perf compare`)
   console.log(`baseline=${result.baseline}`)
   console.log(`current=${result.current}`)
@@ -165,10 +163,10 @@ const reportComparison = result => {
   })
 }
 
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   const options = parseArgs(process.argv.slice(2))
   if (!options.baseline || !options.current) {
-    throw new Error('compare.cjs requires --baseline and --current')
+    throw new Error('compare.ts requires --baseline and --current')
   }
 
   const result = compareBenchmarks(options)
@@ -180,7 +178,7 @@ if (require.main === module) {
   }
 }
 
-module.exports = {
+export {
   DEFAULT_THRESHOLD,
   DEFAULT_MIN_DELTA_MS,
   compareBenchmarks,

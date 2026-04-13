@@ -1,7 +1,7 @@
 import type {
   CalculationMetric,
   FieldId
-} from '#core/contracts/state.ts'
+} from '#dataview-core/contracts/state'
 
 export interface CalculationDistributionItem {
   key: string

@@ -4,19 +4,19 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   SectionAggregateState
-} from '#engine/active/index/contracts.ts'
+} from '#dataview-engine/active/index/contracts'
 import type {
   Section,
   SectionKey,
   ViewRecords,
   ViewSummaries
-} from '#engine/contracts/shared.ts'
+} from '#dataview-engine/contracts/shared'
 export type {
   ActiveRuntimeState,
   EngineRuntimeState,
   HistoryEntry,
   RuntimeHistory
-} from '#engine/runtime/state.ts'
+} from '#dataview-engine/runtime/state'
 
 export interface QueryState extends ViewRecords {
   visibleSet?: ReadonlySet<RecordId>

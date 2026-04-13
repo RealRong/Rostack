@@ -1,14 +1,14 @@
 import type { ValueStore } from '@shared/core'
-import type { BrushStylePatch } from './state'
-import type { DrawBrush, DrawSlot } from './model'
+import type { BrushStylePatch } from '#whiteboard-editor/local/draw/state'
+import type { DrawBrush, DrawSlot } from '#whiteboard-editor/local/draw/model'
 import {
   isDrawStateEqual,
   normalizeDrawState,
   patchDrawStyle,
   setDrawSlot,
   type DrawState as DrawStateValue
-} from './state'
-import { createCommandState } from '../session/store'
+} from '#whiteboard-editor/local/draw/state'
+import { createCommandState } from '#whiteboard-editor/local/session/store'
 
 type DrawStateStoreCommands = {
   set: (state: DrawStateValue) => void

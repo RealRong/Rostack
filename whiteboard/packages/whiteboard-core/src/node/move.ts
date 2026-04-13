@@ -1,7 +1,7 @@
 import {
   moveEdge,
   moveEdgeRoute
-} from '../edge'
+} from '#whiteboard-core/edge'
 import type {
   Edge,
   EdgeId,
@@ -11,9 +11,9 @@ import type {
   Point,
   Rect,
   Size
-} from '../types'
-import { expandFrameSelection } from './frame'
-import { getNodeBoundsByNode } from './geometry'
+} from '#whiteboard-core/types'
+import { expandFrameSelection } from '#whiteboard-core/node/frame'
+import { getNodeBoundsByNode } from '#whiteboard-core/node/geometry'
 
 export type MoveMember = {
   id: NodeId

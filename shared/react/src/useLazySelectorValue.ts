@@ -3,7 +3,7 @@ import {
   createDerivedStore,
   type Equality
 } from '@shared/core'
-import { useStoreValue } from './useStoreValue'
+import { useStoreValue } from '#shared-react/useStoreValue'
 
 type LazySelectorLeaf<T> = () => T
 

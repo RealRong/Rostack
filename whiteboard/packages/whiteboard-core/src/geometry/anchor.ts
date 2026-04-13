@@ -1,6 +1,6 @@
-import type { EdgeAnchor, Point, Rect } from '../types'
-import { rotatePoint } from './point'
-import { getRectCenter } from './rect'
+import type { EdgeAnchor, Point, Rect } from '#whiteboard-core/types'
+import { rotatePoint } from '#whiteboard-core/geometry/point'
+import { getRectCenter } from '#whiteboard-core/geometry/rect'
 
 export const getAnchorPoint = (
   rect: Rect,

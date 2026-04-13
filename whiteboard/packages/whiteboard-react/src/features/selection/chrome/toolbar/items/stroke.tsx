@@ -1,6 +1,6 @@
 import { ToolbarIconButton, ToolbarStrokeIcon } from '@shared/ui'
-import { BorderPanel } from '../../panels/BorderPanel'
-import type { ToolbarItemSpec } from './types'
+import { BorderPanel } from '#whiteboard-react/features/selection/chrome/panels/BorderPanel'
+import type { ToolbarItemSpec } from '#whiteboard-react/features/selection/chrome/toolbar/items/types'
 
 export const strokeItem: ToolbarItemSpec = {
   key: 'stroke',

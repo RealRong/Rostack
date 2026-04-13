@@ -5,22 +5,22 @@ import type {
   CustomFieldKind,
   StatusOption,
   CustomFieldId
-} from '#core/contracts/state.ts'
+} from '#dataview-core/contracts/state'
 import {
   createDefaultDateFieldConfig,
   DATE_DISPLAY_FORMATS,
   DATE_TIME_FORMATS,
   DATE_VALUE_KINDS,
   isValidDateTimeZone
-} from '#core/field/kind/date.ts'
+} from '#dataview-core/field/kind/date'
 import {
   CUSTOM_FIELD_KINDS,
   createDefaultFieldOfKind
-} from '#core/field/kind/spec.ts'
+} from '#dataview-core/field/kind/spec'
 import {
   createDefaultStatusOptions,
   STATUS_CATEGORIES
-} from '#core/field/kind/status.ts'
+} from '#dataview-core/field/kind/status'
 import {
   isNonEmptyString,
   trimLowercase

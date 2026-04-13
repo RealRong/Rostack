@@ -6,10 +6,16 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "build": "tsdown --config tsdown.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts"
+  },
   "dependencies": {
     "@shared/core": "workspace:*"
   },
   "files": [
-    "src"
+    "src",
+    "dist"
   ]
 }

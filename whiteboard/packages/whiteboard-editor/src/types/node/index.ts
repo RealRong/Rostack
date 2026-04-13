@@ -5,4 +5,4 @@ export type {
   NodeHit,
   NodeMeta,
   NodeFamily
-} from './registry'
+} from '#whiteboard-editor/types/node/registry'

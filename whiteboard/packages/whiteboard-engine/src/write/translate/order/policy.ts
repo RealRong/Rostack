@@ -12,7 +12,7 @@ import {
   key,
   sameOrder,
   same
-} from './refs'
+} from '#whiteboard-engine/write/translate/order/refs'
 
 type Doc = Pick<Document, 'nodes' | 'edges'>
 type OrderedDoc = Pick<Document, 'nodes' | 'edges' | 'order'>

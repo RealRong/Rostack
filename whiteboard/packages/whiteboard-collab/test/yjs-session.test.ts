@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
+import { test } from 'vitest'
 import * as Y from 'yjs'
-import { createDocument } from '../../whiteboard-core/dist/document/index.js'
-import { createEngine } from '../../whiteboard-engine/dist/index.js'
+import { createDocument } from '@whiteboard/core/document'
+import { createEngine } from '@whiteboard/engine'
 import {
   createYjsSession,
   materializeYjsDocument
-} from '../dist/index.js'
+} from '@whiteboard/collab'
 
 const createTestEngine = (id = 'doc_test') =>
   createEngine({

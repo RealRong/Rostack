@@ -1,12 +1,12 @@
-import { PAGE_INLINE_INSET_CSS } from '#react/page/layout.ts'
+import { PAGE_INLINE_INSET_CSS } from '#dataview-react/page/layout'
 import {
   useDataView
-} from '#react/dataview/index.ts'
+} from '#dataview-react/dataview'
 import { resolveOptionDotStyle } from '@shared/ui/color'
-import { useGalleryContext } from '#react/views/gallery/context.tsx'
-import { GALLERY_CARD_GAP } from '#react/views/gallery/virtual/index.ts'
-import { Card } from '#react/views/gallery/components/Card.tsx'
-import { Overlay } from '#react/views/gallery/components/Overlay.tsx'
+import { useGalleryContext } from '#dataview-react/views/gallery/context'
+import { GALLERY_CARD_GAP } from '#dataview-react/views/gallery/virtual'
+import { Card } from '#dataview-react/views/gallery/components/Card'
+import { Overlay } from '#dataview-react/views/gallery/components/Overlay'
 
 const contentInsetStyle = {
   paddingInline: PAGE_INLINE_INSET_CSS

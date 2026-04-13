@@ -1,4 +1,4 @@
-import type { CustomField, UrlField } from '#core/contracts/state.ts'
+import type { CustomField, UrlField } from '#dataview-core/contracts/state'
 
 export type UrlFieldConfig = Pick<UrlField, 'displayFullUrl'>
 export interface ResolvedUrlFieldConfig extends UrlFieldConfig {

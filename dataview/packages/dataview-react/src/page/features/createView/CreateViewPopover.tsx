@@ -1,11 +1,11 @@
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { meta, renderMessage } from '@dataview/meta'
-import { useDataView } from '#react/dataview/index.ts'
+import { useDataView } from '#dataview-react/dataview'
 import { Button } from '@shared/ui/button'
 import { Popover } from '@shared/ui/popover'
-import { CREATE_VIEW_ITEMS, type CreateViewItem } from '#react/page/features/createView/catalog.tsx'
-import { ViewTypeCard } from '#react/page/features/createView/ViewTypeCard.tsx'
+import { CREATE_VIEW_ITEMS, type CreateViewItem } from '#dataview-react/page/features/createView/catalog'
+import { ViewTypeCard } from '#dataview-react/page/features/createView/ViewTypeCard'
 
 export const CreateViewPopover = () => {
   const dataView = useDataView()

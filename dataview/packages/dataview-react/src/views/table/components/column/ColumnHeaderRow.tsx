@@ -11,8 +11,8 @@ import type {
   Field,
   FieldId
 } from '@dataview/core/contracts'
-import { columnSortId } from '#react/views/table/hooks/useColumnReorder.ts'
-import { ColumnHeader } from '#react/views/table/components/column/ColumnHeader.tsx'
+import { columnSortId } from '#dataview-react/views/table/hooks/useColumnReorder'
+import { ColumnHeader } from '#dataview-react/views/table/components/column/ColumnHeader'
 
 export interface ColumnHeaderRowProps {
   scopeId: string

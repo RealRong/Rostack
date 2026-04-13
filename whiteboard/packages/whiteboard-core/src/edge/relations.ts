@@ -1,6 +1,6 @@
-import type { Edge, EdgeId, NodeId } from '../types'
-import type { EdgeRelations } from '../types/edge'
-import { isNodeEdgeEnd } from './guards'
+import type { Edge, EdgeId, NodeId } from '#whiteboard-core/types'
+import type { EdgeRelations } from '#whiteboard-core/types/edge'
+import { isNodeEdgeEnd } from '#whiteboard-core/edge/guards'
 
 const linkNodeEdge = (
   nodeToEdgeIds: Map<NodeId, Set<EdgeId>>,

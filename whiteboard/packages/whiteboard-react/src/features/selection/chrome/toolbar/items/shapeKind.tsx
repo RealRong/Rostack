@@ -1,7 +1,7 @@
 import { ToolbarButton } from '@shared/ui'
-import { ShapeGlyph } from '#react/features/node'
-import { ShapePickerPanel } from '../../panels/ShapePickerPanel'
-import type { ToolbarItemSpec } from './types'
+import { ShapeGlyph } from '#whiteboard-react/features/node'
+import { ShapePickerPanel } from '#whiteboard-react/features/selection/chrome/panels/ShapePickerPanel'
+import type { ToolbarItemSpec } from '#whiteboard-react/features/selection/chrome/toolbar/items/types'
 
 export const shapeKindItem: ToolbarItemSpec = {
   key: 'shape-kind',

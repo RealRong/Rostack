@@ -5,7 +5,7 @@ import type {
   CollabStatus
 } from '@whiteboard/collab'
 import type * as Y from 'yjs'
-import type { WhiteboardPresenceBinding } from './presence'
+import type { WhiteboardPresenceBinding } from '#whiteboard-react/types/common/presence'
 
 export type WhiteboardCollabPresenceOptions = {
   binding: WhiteboardPresenceBinding

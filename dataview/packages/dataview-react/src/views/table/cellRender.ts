@@ -26,8 +26,8 @@ import {
   gridSelection,
   type GridSelection
 } from '@dataview/table'
-import type { Capabilities } from '#react/views/table/capabilities.ts'
-import { cellChrome, type CellChromeState } from '#react/views/table/model/chrome.ts'
+import type { Capabilities } from '#dataview-react/views/table/capabilities'
+import { cellChrome, type CellChromeState } from '#dataview-react/views/table/model/chrome'
 
 export interface CellRenderState {
   exists: boolean

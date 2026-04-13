@@ -2,14 +2,14 @@ import type { NodeId } from '@whiteboard/core/types'
 import {
   useStoreValue
 } from '@shared/react'
-import { useEditorRuntime } from '#react/runtime/hooks'
-import { useNodeSizeObserver } from '#react/features/node/dom/nodeSizeObserver'
-import { NodeItem } from '#react/features/node/components/NodeItem'
-import { EdgeItem } from '#react/features/edge/components/EdgeItem'
+import { useEditorRuntime } from '#whiteboard-react/runtime/hooks'
+import { useNodeSizeObserver } from '#whiteboard-react/features/node/dom/nodeSizeObserver'
+import { NodeItem } from '#whiteboard-react/features/node/components/NodeItem'
+import { EdgeItem } from '#whiteboard-react/features/edge/components/EdgeItem'
 import {
   EDGE_ARROW_END_ID,
   EDGE_ARROW_START_ID
-} from '#react/features/edge/constants'
+} from '#whiteboard-react/features/edge/constants'
 
 export const CanvasScene = () => {
   const editor = useEditorRuntime()

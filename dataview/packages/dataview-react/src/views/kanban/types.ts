@@ -6,7 +6,7 @@ import type {
   SectionKey,
   ViewState
 } from '@dataview/engine'
-import type { VisualTargetRegistry } from '#react/runtime/marquee/index.ts'
+import type { VisualTargetRegistry } from '#dataview-react/runtime/marquee'
 
 export type ActiveKanbanViewState = ViewState & {
   view: View & {
@@ -31,7 +31,7 @@ export interface KanbanViewRuntime {
     selectedIdSet: ReadonlySet<ItemId>
     select: (id: ItemId, mode?: 'replace' | 'toggle') => void
   }
-  drag: ReturnType<typeof import('#react/views/kanban/drag/index.ts').useDrag>
+  drag: ReturnType<typeof import('#dataview-react/views/kanban/drag').useDrag>
   marqueeActive: boolean
   visualTargets: VisualTargetRegistry
   visibility: {

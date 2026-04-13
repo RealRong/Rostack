@@ -1,4 +1,4 @@
-import type { ReadModel } from '#types/read'
+import type { ReadModel } from '#whiteboard-engine/read'
 import type { Document, Edge, Node, NodeId } from '@whiteboard/core/types'
 import {
   toLayerOrderedCanvasNodeIds
@@ -11,7 +11,7 @@ import {
 import {
   deriveNodeReadSlices,
   deriveVisibleEdges
-} from './nodeReadModel'
+} from '#whiteboard-engine/read/store/nodeReadModel'
 
 const isSameModelRefs = (
   cache: ReadModel | undefined,

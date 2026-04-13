@@ -13,7 +13,7 @@ import {
 } from '@whiteboard/core/node'
 import {
   ShapeGlyph
-} from '../shape'
+} from '#whiteboard-react/features/node/shape'
 
 const IconByName: Record<string, LucideIcon> = {
   text: Type,

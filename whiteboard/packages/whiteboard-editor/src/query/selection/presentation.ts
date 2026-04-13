@@ -28,18 +28,18 @@ import type {
   SelectionOverlay,
   NodeToolbarContext,
   ToolbarSelectionKind
-} from '../../types/selectionPresentation'
+} from '#whiteboard-editor/types/selectionPresentation'
 import type {
   ControlId,
   NodeFamily,
   NodeMeta,
   NodeRegistry
-} from '../../types/node'
-import type { Tool } from '../../types/tool'
-import type { EditSession } from '../../local/session/edit'
-import { readUniformValue } from '../utils'
-import type { SelectionModelRead } from './model'
-import type { InteractionRuntime } from '../../input/core/types'
+} from '#whiteboard-editor/types/node'
+import type { Tool } from '#whiteboard-editor/types/tool'
+import type { EditSession } from '#whiteboard-editor/local/session/edit'
+import { readUniformValue } from '#whiteboard-editor/query/utils'
+import type { SelectionModelRead } from '#whiteboard-editor/query/selection/model'
+import type { InteractionRuntime } from '#whiteboard-editor/input/core/types'
 
 export type SelectionRead = {
   box: ReadStore<Rect | undefined>

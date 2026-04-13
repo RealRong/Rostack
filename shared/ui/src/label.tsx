@@ -1,6 +1,6 @@
 import * as React from 'react'
 import * as LabelPrimitive from '@radix-ui/react-label'
-import { cn } from '#ui/utils.ts'
+import { cn } from '#shared-ui/utils'
 
 export interface LabelProps extends React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> {}
 

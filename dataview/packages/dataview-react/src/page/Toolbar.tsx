@@ -20,15 +20,15 @@ import { Button } from '@shared/ui/button'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { Popover } from '@shared/ui/popover'
 import { cn } from '@shared/ui/utils'
-import { FieldPicker } from '#react/field/picker/index.ts'
-import { CreateViewPopover } from '#react/page/features/createView/index.ts'
-import { getAvailableFilterFields } from '#react/page/features/filter/filterUi.ts'
-import { getAvailableSorterFields } from '#react/page/features/sort/index.ts'
-import { ViewSettingsPopover } from '#react/page/features/viewSettings/index.ts'
+import { FieldPicker } from '#dataview-react/field/picker'
+import { CreateViewPopover } from '#dataview-react/page/features/createView'
+import { getAvailableFilterFields } from '#dataview-react/page/features/filter/filterUi'
+import { getAvailableSorterFields } from '#dataview-react/page/features/sort'
+import { ViewSettingsPopover } from '#dataview-react/page/features/viewSettings'
 import {
   useDataView,
   useDataViewValue,
-} from '#react/dataview/index.ts'
+} from '#dataview-react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 
 interface ViewTabProps {

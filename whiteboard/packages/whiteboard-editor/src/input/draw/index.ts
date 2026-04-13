@@ -1,15 +1,15 @@
 import type {
   InteractionBinding
-} from '../core/types'
-import type { InteractionContext } from '../context'
+} from '#whiteboard-editor/input/core/types'
+import type { InteractionContext } from '#whiteboard-editor/input/context'
 import {
   createStrokeSession,
   startStrokeState
-} from './stroke/session'
-import { startEraseState } from './erase/start'
+} from '#whiteboard-editor/input/draw/stroke/session'
+import { startEraseState } from '#whiteboard-editor/input/draw/erase/start'
 import {
   createEraseSession
-} from './erase/session'
+} from '#whiteboard-editor/input/draw/erase/session'
 
 export const createDrawInteraction = (
   ctx: InteractionContext

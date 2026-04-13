@@ -20,7 +20,7 @@ import {
   useRef,
   type ReactNode
 } from 'react'
-import { cn } from '#ui/utils.ts'
+import { cn } from '#shared-ui/utils'
 
 const clamp = (value: number, min: number, max: number) => (
   Math.min(Math.max(value, min), max)

@@ -9,16 +9,16 @@ import {
   type TransformSpec
 } from '@whiteboard/core/node'
 import type { Node } from '@whiteboard/core/types'
-import type { InteractionSession } from '../core/types'
-import { FINISH } from '../core/result'
-import { createSelectionGesture } from '../core/gesture'
-import type { InteractionContext } from '../context'
-import type { PointerDownInput } from '../../types/input'
-import type { TransformPickHandle } from '../../types/pick'
+import type { InteractionSession } from '#whiteboard-editor/input/core/types'
+import { FINISH } from '#whiteboard-editor/input/core/result'
+import { createSelectionGesture } from '#whiteboard-editor/input/core/gesture'
+import type { InteractionContext } from '#whiteboard-editor/input/context'
+import type { PointerDownInput } from '#whiteboard-editor/types/input'
+import type { TransformPickHandle } from '#whiteboard-editor/types/pick'
 import {
   commitTextTransform,
   projectTextTransform
-} from './text'
+} from '#whiteboard-editor/input/transform/text'
 
 export type TransformTarget = TransformSelectionMember<Node>
 export type TextTransformMode = 'reflow' | 'scale'

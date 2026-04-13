@@ -1,10 +1,10 @@
-const test = require('node:test')
-const assert = require('node:assert/strict')
+import assert from 'node:assert/strict'
+import { test } from 'vitest'
 
-const {
+import {
   createIndexState,
   deriveIndex
-} = require('../.tmp/group-test-dist/engine/active/index/runtime.js')
+} from '#dataview-engine/active/index/runtime'
 
 const TITLE_FIELD_ID = 'title'
 const FIELD_STATUS = 'status'
@@ -50,7 +50,7 @@ const createFields = (options = STATUS_OPTIONS) => ([
   }
 ])
 
-const createFieldTable = fields => {
+const createFieldTable = (fields) => {
   const byId = {}
   fields.forEach(field => {
     byId[field.id] = field

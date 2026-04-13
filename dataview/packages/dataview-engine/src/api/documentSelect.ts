@@ -9,9 +9,9 @@ import {
   getDocumentViewIds,
   getDocumentViews
 } from '@dataview/core/document'
-import type { DocumentSelectApi } from '#engine/contracts/public.ts'
-import { createDocumentEntitySelectors, selectDocument } from '#engine/runtime/selectors/document.ts'
-import type { RuntimeStore } from '#engine/runtime/store.ts'
+import type { DocumentSelectApi } from '#dataview-engine/contracts/public'
+import { createDocumentEntitySelectors, selectDocument } from '#dataview-engine/runtime/selectors/document'
+import type { RuntimeStore } from '#dataview-engine/runtime/store'
 
 export const createDocumentSelectApi = (
   store: RuntimeStore

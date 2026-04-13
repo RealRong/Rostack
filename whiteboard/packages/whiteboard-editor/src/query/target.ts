@@ -1,8 +1,8 @@
 import { getTargetBounds, type SelectionTarget } from '@whiteboard/core/selection'
 import type { Edge, EdgeId, Node, NodeId, Rect } from '@whiteboard/core/types'
 import { read } from '@shared/core'
-import type { EdgePresentationRead } from './edge/read'
-import type { NodePresentationRead } from './node/read'
+import type { EdgePresentationRead } from '#whiteboard-editor/query/edge/read'
+import type { NodePresentationRead } from '#whiteboard-editor/query/node/read'
 
 export type RuntimeTargetRead = {
   nodes: (target: SelectionTarget) => readonly Node[]

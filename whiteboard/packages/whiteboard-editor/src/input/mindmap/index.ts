@@ -1,11 +1,11 @@
 import type {
   InteractionBinding
-} from '../core/types'
-import type { InteractionContext } from '../context'
+} from '#whiteboard-editor/input/core/types'
+import type { InteractionContext } from '#whiteboard-editor/input/context'
 import {
   startMindmapDrag,
-} from './drag/start'
-import { createMindmapSession } from './drag/session'
+} from '#whiteboard-editor/input/mindmap/drag/start'
+import { createMindmapSession } from '#whiteboard-editor/input/mindmap/drag/session'
 
 export const createMindmapInteraction = (
   ctx: InteractionContext

@@ -8,8 +8,8 @@ import {
 } from '@whiteboard/core/edge'
 import { isPointEqual } from '@whiteboard/core/geometry'
 import type { Edge, EdgeId, EdgePatch, Point } from '@whiteboard/core/types'
-import type { PointerDownInput } from '../../../types/input'
-import type { EdgePresentationRead } from '../../../query/edge/read'
+import type { PointerDownInput } from '#whiteboard-editor/types/input'
+import type { EdgePresentationRead } from '#whiteboard-editor/query/edge/read'
 
 export type EdgeRouteHandleState =
   | {

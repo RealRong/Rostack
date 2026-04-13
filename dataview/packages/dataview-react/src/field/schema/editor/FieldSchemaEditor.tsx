@@ -6,14 +6,14 @@ import type {
 import {
   useDataView,
   useDataViewKeyedValue
-} from '#react/dataview/index.ts'
+} from '#dataview-react/dataview'
 import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { meta, renderMessage } from '@dataview/meta'
-import { FIELD_DROPDOWN_MENU_PROPS } from '#react/field/dropdown.ts'
-import { buildFieldKindMenuItems } from '#react/field/schema/FieldKindPicker.tsx'
-import { buildFieldFormatMenuItems } from '#react/field/schema/editor/FieldFormatSection.tsx'
-import { FieldOptionsSection } from '#react/field/schema/editor/FieldOptionsSection.tsx'
+import { FIELD_DROPDOWN_MENU_PROPS } from '#dataview-react/field/dropdown'
+import { buildFieldKindMenuItems } from '#dataview-react/field/schema/FieldKindPicker'
+import { buildFieldFormatMenuItems } from '#dataview-react/field/schema/editor/FieldFormatSection'
+import { FieldOptionsSection } from '#dataview-react/field/schema/editor/FieldOptionsSection'
 
 export interface FieldSchemaEditorProps {
   fieldId: CustomFieldId

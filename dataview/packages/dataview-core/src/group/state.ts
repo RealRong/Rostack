@@ -2,10 +2,10 @@ import type {
   BucketState,
   Field,
   ViewGroup
-} from '#core/contracts/index.ts'
+} from '#dataview-core/contracts'
 import {
   getFieldGroupMeta
-} from '#core/field/index.ts'
+} from '#dataview-core/field'
 
 export type ViewGroupPatch = Pick<ViewGroup, 'mode' | 'bucketSort' | 'bucketInterval' | 'showEmpty'>
 

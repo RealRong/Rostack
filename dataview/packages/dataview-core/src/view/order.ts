@@ -1,4 +1,4 @@
-import type { RecordId } from '#core/contracts/state.ts'
+import type { RecordId } from '#dataview-core/contracts/state'
 
 export const normalizeRecordOrderIds = (
   recordIds: readonly RecordId[] | undefined,

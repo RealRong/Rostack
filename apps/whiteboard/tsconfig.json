@@ -1,8 +1,10 @@
 {
-  "extends": "../../whiteboard/tsconfig.base.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "noEmit": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
-    "types": ["vite/client"]
+    "types": ["node", "vite/client"]
   },
-  "include": ["src"]
+  "include": ["src", "vite.config.ts"]
 }

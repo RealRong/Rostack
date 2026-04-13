@@ -1,6 +1,6 @@
-import { createId } from '../id'
-import { err, ok } from '../result'
-import { applyPathMutation } from '../utils/recordMutation'
+import { createId } from '#whiteboard-core/id'
+import { err, ok } from '#whiteboard-core/result'
+import { applyPathMutation } from '#whiteboard-core/utils/recordMutation'
 import type {
   MindmapCommandResult,
   MindmapCloneSubtreeInput,
@@ -15,8 +15,8 @@ import type {
   MindmapRemoveSubtreeInput,
   MindmapTree,
   MindmapUpdateNodeInput
-} from './types'
-import type { MindmapInsertPayload } from '../types/mindmap'
+} from '#whiteboard-core/mindmap/types'
+import type { MindmapInsertPayload } from '#whiteboard-core/types/mindmap'
 
 type TreeDraft = MindmapTree
 

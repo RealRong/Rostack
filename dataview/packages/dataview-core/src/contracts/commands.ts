@@ -5,8 +5,8 @@ import type {
   DataRecord,
   View,
   ViewId
-} from '#core/contracts/state.ts'
-import type { RowInsertTarget } from '#core/contracts/operations.ts'
+} from '#dataview-core/contracts/state'
+import type { RowInsertTarget } from '#dataview-core/contracts/operations'
 
 export type Command =
   | {

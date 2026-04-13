@@ -1,6 +1,6 @@
 import type { RecordId } from '@dataview/core/contracts'
 import { sameOrder } from '@shared/core'
-import { createOrderedListAccess } from '#engine/active/snapshot/list.ts'
+import { createOrderedListAccess } from '#dataview-engine/active/snapshot/list'
 import type {
   ItemId,
   ItemList,
@@ -8,8 +8,8 @@ import type {
   SectionKey,
   SectionList,
   ViewItem
-} from '#engine/contracts/public.ts'
-import type { SectionState } from '#engine/contracts/internal.ts'
+} from '#dataview-engine/contracts/public'
+import type { SectionState } from '#dataview-engine/contracts/internal'
 const SEPARATOR = '\u0000'
 const SECTION_PREFIX = 'section:'
 const RECORD_PREFIX = 'record:'
@@ -79,7 +79,6 @@ export const createItemList = (input: {
 export const buildItemList = (input: {
   sections: SectionState
   previous?: ItemList
-  previousSections?: SectionState
 }): ItemList => {
   const previous = input.previous
   const ids: ItemId[] = []
@@ -207,8 +206,7 @@ export const publishSections = (input: {
 } => {
   const items = buildItemList({
     sections: input.sections,
-    previous: input.previous?.items,
-    previousSections: input.previousSections
+    previous: input.previous?.items
   })
   const sections = buildSections({
     sections: input.sections,

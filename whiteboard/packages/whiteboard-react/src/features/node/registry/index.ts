@@ -1,5 +1,5 @@
 export {
   createNodeRegistry,
   resolveNodeMeta
-} from './nodeRegistry'
-export { createDefaultNodeRegistry } from './default'
+} from '#whiteboard-react/features/node/registry/nodeRegistry'
+export { createDefaultNodeRegistry } from '#whiteboard-react/features/node/registry/default'

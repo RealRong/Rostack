@@ -1,5 +1,5 @@
-import { message } from '#meta/message.ts'
-import { defineMetaCollection } from '#meta/shared.ts'
+import { message } from '#dataview-meta/message'
+import { defineMetaCollection } from '#dataview-meta/shared'
 
 export type OptionColorId =
   | ''

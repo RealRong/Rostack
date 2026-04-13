@@ -1,5 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react'
-import { useWhiteboardServices } from '#react/runtime/hooks'
+import { useWhiteboardServices } from '#whiteboard-react/runtime/hooks'
 
 export const usePointer = ({
   containerRef,

@@ -1,8 +1,8 @@
 import { useOverlayKey } from '@shared/ui/overlay'
-import { keyDown } from '#react/interaction/index.ts'
-import { useDataView, useDataViewValue } from '#react/dataview/index.ts'
+import { keyDown } from '#dataview-react/interaction'
+import { useDataView, useDataViewValue } from '#dataview-react/dataview'
 import { closestTarget } from '@shared/dom'
-import { pageShortcutAction } from '#react/page/keyboard.ts'
+import { pageShortcutAction } from '#dataview-react/page/keyboard'
 
 const editingTargetSelector = [
   'input',

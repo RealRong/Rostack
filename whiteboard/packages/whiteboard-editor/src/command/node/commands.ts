@@ -5,21 +5,21 @@ import {
 } from '@whiteboard/core/schema'
 import type { NodeId } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
-import { createNodeContext } from './context'
-import type { NodeContext } from './context'
+import { createNodeContext } from '#whiteboard-editor/command/node/context'
+import type { NodeContext } from '#whiteboard-editor/command/node/context'
 import {
   createNodeTextCommands
-} from './text'
+} from '#whiteboard-editor/command/node/text'
 import type {
   NodeCommands,
   NodeLockCommands,
   NodeShapeCommands,
   NodeStyleCommands,
   NodePatchWriter
-} from './types'
-import type { EditorQueryRead } from '../../query'
-import type { LocalFeedbackActions } from '../../local/actions/feedback'
-import type { SessionActions } from '../../types/commands'
+} from '#whiteboard-editor/command/node/types'
+import type { EditorQueryRead } from '#whiteboard-editor/query'
+import type { LocalFeedbackActions } from '#whiteboard-editor/local/actions/feedback'
+import type { SessionActions } from '#whiteboard-editor/types/commands'
 
 const createNodePatchWriter = (
   engine: Engine

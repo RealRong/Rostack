@@ -3,7 +3,7 @@ import type {
   FieldId,
   RecordId,
   ViewId
-} from '#core/contracts/state.ts'
+} from '#dataview-core/contracts/state'
 
 export type DeltaIds<T extends string = string> = readonly T[] | 'all'
 

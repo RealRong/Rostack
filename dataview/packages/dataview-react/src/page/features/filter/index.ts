@@ -1,2 +1,2 @@
-export { FilterRulePopover } from '#react/page/features/filter/FilterRulePopover.tsx'
-export type { FilterRulePopoverProps } from '#react/page/features/filter/FilterRulePopover.tsx'
+export { FilterRulePopover } from '#dataview-react/page/features/filter/FilterRulePopover'
+export type { FilterRulePopoverProps } from '#dataview-react/page/features/filter/FilterRulePopover'

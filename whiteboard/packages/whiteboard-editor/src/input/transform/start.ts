@@ -4,16 +4,16 @@ import {
   type TransformSpec
 } from '@whiteboard/core/node'
 import type { Node, NodeId } from '@whiteboard/core/types'
-import type { InteractionBinding } from '../core/types'
-import type { InteractionContext } from '../context'
-import type { PointerDownInput } from '../../types/input'
-import type { TransformPickHandle } from '../../types/pick'
+import type { InteractionBinding } from '#whiteboard-editor/input/core/types'
+import type { InteractionContext } from '#whiteboard-editor/input/context'
+import type { PointerDownInput } from '#whiteboard-editor/types/input'
+import type { TransformPickHandle } from '#whiteboard-editor/types/pick'
 import {
   createSingleTextTransformSession,
   createTransformSession,
   type RuntimeTransformSpec,
   type TransformTarget
-} from './session'
+} from '#whiteboard-editor/input/transform/session'
 
 const readTransformTarget = (
   ctx: InteractionContext,

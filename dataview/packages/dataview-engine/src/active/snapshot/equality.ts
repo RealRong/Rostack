@@ -17,10 +17,10 @@ import type {
   Section,
   SectionList,
   SectionKey
-} from '#engine/contracts/public.ts'
+} from '#dataview-engine/contracts/public'
 import {
   sameList
-} from '#engine/active/snapshot/reuse.ts'
+} from '#dataview-engine/active/snapshot/reuse'
 
 const equalIds = <T extends string>(
   left: readonly T[],

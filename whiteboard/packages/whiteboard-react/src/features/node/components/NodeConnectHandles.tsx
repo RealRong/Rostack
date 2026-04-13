@@ -1,7 +1,7 @@
 import { getNodeAnchor } from '@whiteboard/core/node'
 import type { NodeItem } from '@whiteboard/engine'
 import type { EdgeAnchor } from '@whiteboard/core/types'
-import { usePickRef } from '#react/runtime/hooks'
+import { usePickRef } from '#whiteboard-react/runtime/hooks'
 
 type NodeViewNode = NodeItem['node']
 type NodeViewRect = NodeItem['rect']

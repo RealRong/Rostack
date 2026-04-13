@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState, type RefObject } from 'react'
 import type { ContextMenuIntent } from '@whiteboard/editor'
 import {
   useWhiteboardServices
-} from '#react/runtime/hooks'
-import { WhiteboardPopover } from '#react/runtime/overlay'
-import { isContextMenuIgnoredTarget } from '#react/dom/host/targets'
-import { CanvasContextMenu } from './panels/CanvasContextMenu'
-import { EdgeContextMenu } from './panels/EdgeContextMenu'
-import { SelectionActionMenu } from './panels/SelectionActionMenu'
+} from '#whiteboard-react/runtime/hooks'
+import { WhiteboardPopover } from '#whiteboard-react/runtime/overlay'
+import { isContextMenuIgnoredTarget } from '#whiteboard-react/dom/host/targets'
+import { CanvasContextMenu } from '#whiteboard-react/features/selection/chrome/panels/CanvasContextMenu'
+import { EdgeContextMenu } from '#whiteboard-react/features/selection/chrome/panels/EdgeContextMenu'
+import { SelectionActionMenu } from '#whiteboard-react/features/selection/chrome/panels/SelectionActionMenu'
 
 export const ContextMenu = ({
   containerRef

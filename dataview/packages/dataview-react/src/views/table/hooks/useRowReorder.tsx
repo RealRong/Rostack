@@ -4,7 +4,7 @@ import {
   useRef,
   type PointerEvent as ReactPointerEvent
 } from 'react'
-import { cloneDragGhostNode } from '#react/dom/dragGhost.tsx'
+import { cloneDragGhostNode } from '#dataview-react/dom/dragGhost'
 import type { ItemId } from '@dataview/engine'
 import {
   rowDragIds,
@@ -17,10 +17,10 @@ import {
 import {
   useDataView,
   useDataViewValue
-} from '#react/dataview/index.ts'
+} from '#dataview-react/dataview'
 import { useStoreValue } from '@shared/react'
-import { usePointerDragSession } from '#react/interaction/usePointerDragSession.ts'
-import { useTableContext } from '#react/views/table/context.tsx'
+import { usePointerDragSession } from '#dataview-react/interaction/usePointerDragSession'
+import { useTableContext } from '#dataview-react/views/table/context'
 
 export interface RowReorderOverlayModel {
   active: boolean

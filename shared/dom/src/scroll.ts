@@ -1,4 +1,4 @@
-import type { Rect } from './geometry'
+import type { Rect } from '#shared-dom/geometry'
 
 export type ScrollNode = HTMLElement | Window
 

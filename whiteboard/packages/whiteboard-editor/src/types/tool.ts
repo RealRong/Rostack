@@ -1,4 +1,4 @@
-import type { DrawMode } from '../local/draw/model'
+import type { DrawMode } from '#whiteboard-editor/local/draw/model'
 
 export type EdgePresetKey =
   | 'edge.straight'

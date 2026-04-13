@@ -12,7 +12,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { closestTarget } from '@shared/dom'
-import { cn } from '#ui/utils.ts'
+import { cn } from '#shared-ui/utils'
 
 export const OVERLAY_LAYER_ATTR = 'data-ui-overlay-layer'
 export const OVERLAY_BACKDROP_ATTR = 'data-ui-overlay-backdrop-for'

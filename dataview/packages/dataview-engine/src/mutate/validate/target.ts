@@ -6,10 +6,10 @@ import {
   createIssue,
   type IssueSource,
   type ValidationIssue
-} from '#engine/mutate/issues.ts'
+} from '#dataview-engine/mutate/issues'
 import {
   validateRecordExists
-} from '#engine/mutate/validate/entity.ts'
+} from '#dataview-engine/mutate/validate/entity'
 
 export const validateRequiredCollection = (
   source: IssueSource,

@@ -1,4 +1,4 @@
-import type { Result } from '../types/result'
+import type { Result } from '#whiteboard-core/types/result'
 
 export function ok(): Result<void, never>
 export function ok<T>(data: T): Result<T, never>

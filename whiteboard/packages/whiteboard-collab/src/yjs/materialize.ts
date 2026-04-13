@@ -7,7 +7,7 @@ import {
   readDocumentLikeFromYDoc,
   toYValue,
   writeSchemaVersion
-} from './shared'
+} from '#whiteboard-collab/yjs/shared'
 
 export const hasYjsDocumentSnapshot = (
   doc: Y.Doc

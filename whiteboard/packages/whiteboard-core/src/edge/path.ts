@@ -1,12 +1,12 @@
-import { normalizePolylinePoints } from '../geometry'
-import type { EdgeAnchor, Point } from '../types'
+import { normalizePolylinePoints } from '#whiteboard-core/geometry'
+import type { EdgeAnchor, Point } from '#whiteboard-core/types'
 import type {
   EdgePathInput,
   EdgePathResult,
   EdgePathSegment,
   EdgeRouter
-} from '../types/edge'
-import { readEdgeRoutePoints } from './route'
+} from '#whiteboard-core/types/edge'
+import { readEdgeRoutePoints } from '#whiteboard-core/edge/route'
 
 const DEFAULT_ORTHO_OFFSET = 50
 const DEFAULT_CURVE_CURVATURE = 0.35

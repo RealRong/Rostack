@@ -3,7 +3,7 @@ import type {
   ReactNode
 } from 'react'
 import type { FieldDraftParseResult } from '@dataview/core/field'
-import type { FieldValueDraftEditorProps } from '#react/field/value/editor/index.ts'
+import type { FieldValueDraftEditorProps } from '#dataview-react/field/value/editor'
 
 export interface RenderProps {
   value: unknown

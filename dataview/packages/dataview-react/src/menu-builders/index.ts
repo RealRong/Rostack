@@ -2,16 +2,16 @@ export {
   buildFieldActionItem,
   buildFieldReorderItem,
   buildFieldToggleItem
-} from '#react/menu-builders/field.tsx'
+} from '#dataview-react/menu-builders/field'
 export {
   buildChoiceSubmenuItem,
   buildChoiceToggleItems,
   type ChoiceOption
-} from '#react/menu-builders/choice.tsx'
-export { buildNavigationItem } from '#react/menu-builders/navigation.tsx'
+} from '#dataview-react/menu-builders/choice'
+export { buildNavigationItem } from '#dataview-react/menu-builders/navigation'
 export {
   buildEditableOptionItem
-} from '#react/menu-builders/editable-option.tsx'
+} from '#dataview-react/menu-builders/editable-option'
 export {
   buildOptionColorItems,
   buildOptionPanelItem,
@@ -20,4 +20,4 @@ export {
   buildStatusCategoryToggleItems,
   readOptionLabel,
   type MenuOptionLike
-} from '#react/menu-builders/option.tsx'
+} from '#dataview-react/menu-builders/option'

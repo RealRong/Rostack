@@ -1,4 +1,4 @@
 export {
   WhiteboardPopover,
   type WhiteboardPopoverProps
-} from './chrome'
+} from '#whiteboard-react/runtime/overlay/chrome'

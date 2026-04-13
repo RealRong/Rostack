@@ -4,8 +4,8 @@ import type {
   Point,
   Rect
 } from '@whiteboard/core/types'
-import type { PointerDownInput, PointerSample } from '../../../types/input'
-import type { InteractionContext } from '../../context'
+import type { PointerDownInput, PointerSample } from '#whiteboard-editor/types/input'
+import type { InteractionContext } from '#whiteboard-editor/input/context'
 
 const ERASER_HIT_EPSILON_SCREEN = 2
 const ZOOM_EPSILON = 0.0001

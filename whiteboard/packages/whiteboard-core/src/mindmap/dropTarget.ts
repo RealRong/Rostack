@@ -1,4 +1,4 @@
-import type { Point, Rect, NodeId } from '../types'
+import type { Point, Rect, NodeId } from '#whiteboard-core/types'
 import type {
   MindmapDragDropTarget,
   MindmapLayout,
@@ -6,17 +6,17 @@ import type {
   MindmapLayoutOptions,
   MindmapNodeId,
   MindmapTree
-} from './types'
+} from '#whiteboard-core/mindmap/types'
 import type {
   MindmapDragState,
   RootMindmapDrag,
   SubtreeDropTargetOptions,
   SubtreeMindmapDrag
-} from '../types/mindmap'
+} from '#whiteboard-core/types/mindmap'
 import {
   getSide,
   getSubtreeIds
-} from './query'
+} from '#whiteboard-core/mindmap/query'
 
 type ComputeEdgeAlignmentResult = {
   key: 'left-to-right' | 'right-to-left' | 'top-to-bottom' | 'bottom-to-top'

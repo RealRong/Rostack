@@ -1,6 +1,6 @@
 export {
   compareSortedRecords
-} from '#core/sort/compare.ts'
+} from '#dataview-core/sort/compare'
 export {
   addSorter,
   clearSorters,
@@ -15,4 +15,4 @@ export {
   sameSorters,
   setOnlySorter,
   setSorter
-} from '#core/sort/state.ts'
+} from '#dataview-core/sort/state'

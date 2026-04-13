@@ -14,21 +14,21 @@ import type {
 } from '@dataview/core/contracts'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
-} from '#react/dom/appearance.ts'
+} from '#dataview-react/dom/appearance'
 import { shouldCapturePointer } from '@shared/dom'
 import {
   useDataView,
   useDataViewKeyedValue
-} from '#react/dataview/index.ts'
+} from '#dataview-react/dataview'
 import {
   CardContent
-} from '#react/views/shared/index.ts'
+} from '#dataview-react/views/shared'
 import { cn } from '@shared/ui/utils'
 import type { ItemId } from '@dataview/engine'
-import { useKanbanContext } from '#react/views/kanban/context.tsx'
+import { useKanbanContext } from '#dataview-react/views/kanban/context'
 import {
   useCardEditingState
-} from '#react/views/shared/useCardTitleEditing.ts'
+} from '#dataview-react/views/shared/useCardTitleEditing'
 
 export const Card = (props: {
   itemId: ItemId

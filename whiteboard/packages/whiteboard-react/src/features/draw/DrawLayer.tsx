@@ -1,6 +1,6 @@
-import { DrawPreview } from './DrawPreview'
+import { DrawPreview } from '#whiteboard-react/features/draw/DrawPreview'
 import { useStoreValue } from '@shared/react'
-import { useEditorRuntime } from '#react/runtime/hooks'
+import { useEditorRuntime } from '#whiteboard-react/runtime/hooks'
 
 export const DrawLayer = () => {
   const editor = useEditorRuntime()

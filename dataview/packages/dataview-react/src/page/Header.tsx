@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import { type ComponentType } from 'react'
 import type { ViewType } from '@dataview/core/contracts'
-import { useDataViewValue } from '#react/dataview/index.ts'
+import { useDataViewValue } from '#dataview-react/dataview'
 
 interface IconProps {
   className?: string

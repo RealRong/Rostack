@@ -6,13 +6,18 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "imports": {
-    "#table": "./src/index.ts",
-    "#table/*": "./src/*"
+  "scripts": {
+    "build": "tsdown --config tsdown.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "@dataview/core": "workspace:*",
     "@dataview/engine": "workspace:*",
     "@shared/core": "workspace:*"
-  }
+  },
+  "files": [
+    "src",
+    "dist"
+  ]
 }

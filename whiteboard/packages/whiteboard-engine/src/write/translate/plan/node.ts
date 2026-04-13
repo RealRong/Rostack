@@ -1,4 +1,4 @@
-import type { NodeCommand } from '#types/command'
+import type { NodeCommand } from '#whiteboard-engine/command'
 import {
   buildInsertSliceOperations,
   exportSliceFromNodes,
@@ -19,10 +19,10 @@ import {
 } from '@whiteboard/core/node'
 import { err, ok } from '@whiteboard/core/result'
 import type { EdgeId, Node, NodeId } from '@whiteboard/core/types'
-import { DEFAULT_TUNING } from '../../../config'
-import type { WriteTranslateContext } from '../index'
-import { cascadeDeleteTargets } from '../selection/node'
-import type { Step } from './shared'
+import { DEFAULT_TUNING } from '#whiteboard-engine/config'
+import type { WriteTranslateContext } from '#whiteboard-engine/write/translate'
+import { cascadeDeleteTargets } from '#whiteboard-engine/write/translate/selection/node'
+import type { Step } from '#whiteboard-engine/write/translate/plan/shared'
 
 type Create = Extract<NodeCommand, { type: 'node.create' }>
 type Move = Extract<NodeCommand, { type: 'node.move' }>

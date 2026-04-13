@@ -3,12 +3,12 @@ import {
 } from 'lucide-react'
 import {
   useDataView
-} from '#react/dataview/index.ts'
+} from '#dataview-react/dataview'
 import type {
   Section
 } from '@dataview/engine'
 import { useStoreValue } from '@shared/react'
-import { useTableContext } from '#react/views/table/context.tsx'
+import { useTableContext } from '#dataview-react/views/table/context'
 import { Button } from '@shared/ui/button'
 import { cn } from '@shared/ui/utils'
 

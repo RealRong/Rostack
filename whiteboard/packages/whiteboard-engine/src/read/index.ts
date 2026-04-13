@@ -1,1 +1,1 @@
-export { createRead } from './store'
+export { createRead } from '#whiteboard-engine/read/store'

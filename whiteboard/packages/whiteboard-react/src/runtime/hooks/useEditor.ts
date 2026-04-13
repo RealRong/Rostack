@@ -1,10 +1,10 @@
 import type {
   WhiteboardInstance,
   WhiteboardRuntime
-} from '#react/types/runtime'
+} from '#whiteboard-react/types/runtime'
 import { useStoreValue } from '@shared/react'
 import type { ReadStore } from '@shared/core'
-import { useWhiteboardServices } from './useWhiteboard'
+import { useWhiteboardServices } from '#whiteboard-react/runtime/hooks/useWhiteboard'
 
 type EditTarget = ReturnType<WhiteboardInstance['store']['edit']['get']>
 type Tool = ReturnType<WhiteboardInstance['store']['tool']['get']>

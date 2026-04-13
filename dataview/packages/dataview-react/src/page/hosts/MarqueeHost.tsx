@@ -17,22 +17,22 @@ import {
 import {
   type AutoPanTargets,
   useAutoPan
-} from '#react/interaction/autoPan.ts'
+} from '#dataview-react/interaction/autoPan'
 import {
   useDataView,
   useDataViewValue
-} from '#react/dataview/index.ts'
+} from '#dataview-react/dataview'
 import { useOverlay } from '@shared/ui/overlay'
 import {
   selection as selectionHelpers,
   type Selection
-} from '#react/runtime/selection/index.ts'
+} from '#dataview-react/runtime/selection'
 import { useStoreValue } from '@shared/react'
 import type {
   MarqueeAdapter,
   MarqueeMode,
   MarqueeSessionState
-} from '#react/runtime/marquee/index.ts'
+} from '#dataview-react/runtime/marquee'
 
 const resolveMarqueeMode = (input: {
   shiftKey: boolean

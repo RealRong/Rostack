@@ -1,6 +1,6 @@
 import { setViewCalcMetric } from '@dataview/core/view'
-import type { ActiveViewApi } from '#engine/contracts/public.ts'
-import type { ActiveViewContext } from '#engine/active/context.ts'
+import type { ActiveViewApi } from '#dataview-engine/contracts/public'
+import type { ActiveViewContext } from '#dataview-engine/active/context'
 
 export const createSummaryApi = (
   base: ActiveViewContext

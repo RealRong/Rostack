@@ -1,16 +1,16 @@
-export { FieldOptionTag } from '#react/field/options/FieldOptionTag.tsx'
-export { OptionToken } from '#react/field/options/OptionToken.tsx'
-export { OptionEditorPanel } from '#react/field/options/OptionEditorPanel.tsx'
-export { OptionEditorPopover } from '#react/field/options/OptionEditorPopover.tsx'
+export { FieldOptionTag } from '#dataview-react/field/options/FieldOptionTag'
+export { OptionToken } from '#dataview-react/field/options/OptionToken'
+export { OptionEditorPanel } from '#dataview-react/field/options/OptionEditorPanel'
+export { OptionEditorPopover } from '#dataview-react/field/options/OptionEditorPopover'
 export {
   buildStatusIdsAfterCategoryMove
-} from '#react/field/options/statusOptionMenu.tsx'
+} from '#dataview-react/field/options/statusOptionMenu'
 export type {
   FieldOptionTagProps
-} from '#react/field/options/FieldOptionTag.tsx'
-export type { OptionTokenProps } from '#react/field/options/OptionToken.tsx'
-export type { OptionEditorPanelProps } from '#react/field/options/OptionEditorPanel.tsx'
+} from '#dataview-react/field/options/FieldOptionTag'
+export type { OptionTokenProps } from '#dataview-react/field/options/OptionToken'
+export type { OptionEditorPanelProps } from '#dataview-react/field/options/OptionEditorPanel'
 export type {
   OptionEditorPopoverProps,
   OptionLike
-} from '#react/field/options/OptionEditorPopover.tsx'
+} from '#dataview-react/field/options/OptionEditorPopover'

@@ -1,5 +1,5 @@
-export { cloneDocument, normalizeDocument } from '#core/document/normalize.ts'
-export * from '#core/document/table.ts'
+export { cloneDocument, normalizeDocument } from '#dataview-core/document/normalize'
+export * from '#dataview-core/document/table'
 export {
   getDocumentCustomFieldById,
   getDocumentCustomFieldIds,
@@ -14,7 +14,7 @@ export {
   patchDocumentCustomField,
   putDocumentCustomField,
   removeDocumentCustomField
-} from '#core/document/fields.ts'
+} from '#dataview-core/document/fields'
 export {
   clearDocumentValue,
   enumerateRecords,
@@ -29,7 +29,7 @@ export {
   removeDocumentRecords,
   replaceDocumentRecords,
   setDocumentValue
-} from '#core/document/records.ts'
+} from '#dataview-core/document/records'
 export {
   getDocumentActiveView,
   getDocumentActiveViewId,
@@ -43,4 +43,4 @@ export {
   resolveDocumentActiveViewId,
   removeDocumentView,
   setDocumentActiveViewId
-} from '#core/document/views.ts'
+} from '#dataview-core/document/views'

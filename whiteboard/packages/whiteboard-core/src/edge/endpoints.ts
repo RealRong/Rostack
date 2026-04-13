@@ -1,14 +1,14 @@
-import { getRectCenter } from '../geometry'
-import { readNodeRotation } from '../node'
-import { getNodeAnchor } from '../node/outline'
-import type { EdgeAnchor, EdgeEnd, Node, NodeGeometry, Point } from '../types'
+import { getRectCenter } from '#whiteboard-core/geometry'
+import { readNodeRotation } from '#whiteboard-core/node'
+import { getNodeAnchor } from '#whiteboard-core/node/outline'
+import type { EdgeAnchor, EdgeEnd, Node, NodeGeometry, Point } from '#whiteboard-core/types'
 import type {
   ResolveEdgeEndsInput,
   ResolvedEdgeEnd,
   ResolvedEdgeEnds
-} from '../types/edge'
-import { getAutoAnchorFromRect } from './anchor'
-import { isNodeEdgeEnd } from './guards'
+} from '#whiteboard-core/types/edge'
+import { getAutoAnchorFromRect } from '#whiteboard-core/edge/anchor'
+import { isNodeEdgeEnd } from '#whiteboard-core/edge/guards'
 
 type ResolveNodeEndInput = {
   end: Extract<EdgeEnd, { kind: 'node' }>

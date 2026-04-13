@@ -6,7 +6,7 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import type { ValueStore } from '@shared/core'
-import { createCommandState } from './store'
+import { createCommandState } from '#whiteboard-editor/local/session/store'
 
 export type EditField = 'text' | 'title'
 export type EditEmptyBehavior = 'keep' | 'remove' | 'default'

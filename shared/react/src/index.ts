@@ -1,12 +1,12 @@
-export { useExternalValue } from './useExternalValue'
-export { useElementSize } from './useElementSize'
+export { useExternalValue } from '#shared-react/useExternalValue'
+export { useElementSize } from '#shared-react/useElementSize'
 export {
   createLazySelectorSnapshot,
   useLazySelectorValue,
   type LazySelectorSource
-} from './useLazySelectorValue'
+} from '#shared-react/useLazySelectorValue'
 export {
   useKeyedStoreValue,
   useOptionalKeyedStoreValue,
   useStoreValue
-} from './useStoreValue'
+} from '#shared-react/useStoreValue'

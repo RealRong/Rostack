@@ -1,5 +1,5 @@
 import { Menu, type MenuItem } from '@shared/ui'
-import { useEditorRuntime, useWhiteboardServices } from '#react/runtime/hooks'
+import { useEditorRuntime, useWhiteboardServices } from '#whiteboard-react/runtime/hooks'
 
 const ORDER_ITEMS = [
   { key: 'order.front', label: 'Bring to front', mode: 'front' as const },

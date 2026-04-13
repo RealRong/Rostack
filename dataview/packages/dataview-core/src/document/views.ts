@@ -4,23 +4,23 @@ import type {
   View,
   RecordId,
   ViewId
-} from '#core/contracts/state.ts'
-import { normalizeViewCalculations } from '#core/calculation/index.ts'
-import { normalizeFilter } from '#core/filter/index.ts'
-import { normalizeGroup } from '#core/group/index.ts'
-import { normalizeSearch } from '#core/search/index.ts'
-import { normalizeSorters } from '#core/sort/index.ts'
-import { getDocumentFields } from '#core/document/fields.ts'
-import { normalizeRecordOrderIds } from '#core/view/order.ts'
-import { normalizeViewOptions } from '#core/view/normalize.ts'
-import { normalizeViewDisplay } from '#core/view/state.ts'
+} from '#dataview-core/contracts/state'
+import { normalizeViewCalculations } from '#dataview-core/calculation'
+import { normalizeFilter } from '#dataview-core/filter'
+import { normalizeGroup } from '#dataview-core/group'
+import { normalizeSearch } from '#dataview-core/search'
+import { normalizeSorters } from '#dataview-core/sort'
+import { getDocumentFields } from '#dataview-core/document/fields'
+import { normalizeRecordOrderIds } from '#dataview-core/view/order'
+import { normalizeViewOptions } from '#dataview-core/view/normalize'
+import { normalizeViewDisplay } from '#dataview-core/view/state'
 import {
   cloneEntityInput,
   normalizeEntityTable,
   putEntityTableEntity,
   replaceDocumentTable,
   removeEntityTableEntity
-} from '#core/document/table.ts'
+} from '#dataview-core/document/table'
 
 const createValidRecordIdSet = (document: DataDoc) => new Set<RecordId>(document.records.order)
 

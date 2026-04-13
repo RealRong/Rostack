@@ -1,15 +1,15 @@
-import type { CanvasNode } from '#types/projection'
+import type { CanvasNode } from '#whiteboard-engine/projection'
 import type { Node, NodeId, Rect } from '@whiteboard/core/types'
 import {
   getNodeIdsInRect as getNodeIdsInRectRaw,
   readNodeRotation,
   type NodeRectHitOptions
 } from '@whiteboard/core/node'
-import type { BoardConfig } from '#types/instance'
-import type { ReadModel } from '#types/read'
+import type { BoardConfig } from '#whiteboard-engine/instance'
+import type { ReadModel } from '#whiteboard-engine/read'
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import { sameOrder as isSameRefOrder } from '@shared/core'
-import { NodeGeometryCache } from '../../geometry/nodeGeometry'
+import { NodeGeometryCache } from '#whiteboard-engine/geometry/nodeGeometry'
 
 type Rebuild = 'none' | 'dirty' | 'full'
 

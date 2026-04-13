@@ -6,8 +6,8 @@ import { useOptionalKeyedStoreValue } from '@shared/react'
 import {
   useEditorRuntime,
   useNodeRegistry
-} from '#react/runtime/hooks'
-import type { NodeDefinition, NodeRegistry, NodeRenderProps, NodeWrite } from '#react/types/node'
+} from '#whiteboard-react/runtime/hooks'
+import type { NodeDefinition, NodeRegistry, NodeRenderProps, NodeWrite } from '#whiteboard-react/types/node'
 
 const buildNodeTransformStyle = (
   rect: NodeItem['rect'],

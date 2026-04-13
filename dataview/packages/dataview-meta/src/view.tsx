@@ -5,8 +5,8 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import type { ViewType } from '@dataview/core/contracts'
-import { message } from '#meta/message.ts'
-import { defineMetaCollection } from '#meta/shared.ts'
+import { message } from '#dataview-meta/message'
+import { defineMetaCollection } from '#dataview-meta/shared'
 
 export interface ViewDescriptor {
   id: string

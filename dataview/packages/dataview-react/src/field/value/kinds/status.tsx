@@ -4,12 +4,12 @@ import {
   getFieldDisplayValue,
   parseFieldDraft
 } from '@dataview/core/field'
-import { FieldOptionTag } from '#react/field/options/index.ts'
-import { StatusValueEditor } from '#react/field/value/editor/pickers/status/StatusValueEditor.tsx'
-import type { FieldValueSpec } from '#react/field/value/kinds/contracts.ts'
+import { FieldOptionTag } from '#dataview-react/field/options'
+import { StatusValueEditor } from '#dataview-react/field/value/editor/pickers/status/StatusValueEditor'
+import type { FieldValueSpec } from '#dataview-react/field/value/kinds/contracts'
 import {
   renderEmpty
-} from '#react/field/value/kinds/shared.tsx'
+} from '#dataview-react/field/value/kinds/shared'
 
 export const createStatusFieldSpec = (
   field: CustomField | undefined

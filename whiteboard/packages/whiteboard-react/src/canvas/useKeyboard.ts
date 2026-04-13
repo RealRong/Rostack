@@ -4,16 +4,16 @@ import {
   detectShortcutPlatform,
   readShortcut,
   resolveShortcutBindings
-} from '../dom/host/shortcut'
-import type { ShortcutOverrides } from '../types/common/shortcut'
-import { useEditorRuntime } from '#react/runtime/hooks'
-import { consumeDomEvent } from '../dom/host/event'
-import { isKeyboardIgnoredTarget } from '#react/dom/host/targets'
+} from '#whiteboard-react/dom/host/shortcut'
+import type { ShortcutOverrides } from '#whiteboard-react/types/common/shortcut'
+import { useEditorRuntime } from '#whiteboard-react/runtime/hooks'
+import { consumeDomEvent } from '#whiteboard-react/dom/host/event'
+import { isKeyboardIgnoredTarget } from '#whiteboard-react/dom/host/targets'
 import {
   DefaultShortcutBindings,
   runShortcut
-} from './shortcut'
-import { resolveKeyboardInput } from '../dom/host/input'
+} from '#whiteboard-react/canvas/shortcut'
+import { resolveKeyboardInput } from '#whiteboard-react/dom/host/input'
 
 export const useKeyboard = ({
   containerRef,

@@ -1,14 +1,14 @@
 import type { CustomField } from '@dataview/core/contracts'
 import { formatDateValue } from '@dataview/core/field'
 import { cn } from '@shared/ui/utils'
-import { DateValueEditor } from '#react/field/value/editor/pickers/date/DateValueEditor.tsx'
+import { DateValueEditor } from '#dataview-react/field/value/editor/pickers/date/DateValueEditor'
 import {
   createDateValueDraft,
   parseDateValueDraft,
   type DateValueDraft
-} from '#react/field/value/editor/pickers/date/DateValueDraft.ts'
-import type { FieldValueSpec } from '#react/field/value/kinds/contracts.ts'
-import { renderEmpty } from '#react/field/value/kinds/shared.tsx'
+} from '#dataview-react/field/value/editor/pickers/date/DateValueDraft'
+import type { FieldValueSpec } from '#dataview-react/field/value/kinds/contracts'
+import { renderEmpty } from '#dataview-react/field/value/kinds/shared'
 
 export const createDatePropertySpec = (
   field: CustomField | undefined

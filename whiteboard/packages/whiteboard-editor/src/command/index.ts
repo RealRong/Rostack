@@ -3,34 +3,34 @@ import type {
   ClipboardCommands,
   HistoryCommands,
   MindmapCommands
-} from '../types/commands'
-import type { EditorLocalRuntime } from '../local/runtime'
-import type { EditorQueryRead } from '../query'
+} from '#whiteboard-editor/types/commands'
+import type { EditorLocalRuntime } from '#whiteboard-editor/local/runtime'
+import type { EditorQueryRead } from '#whiteboard-editor/query'
 import {
   createClipboardCommands
-} from './clipboard'
+} from '#whiteboard-editor/command/clipboard'
 import {
   createDocumentCommands
-} from './document'
-import type { DocumentCommands } from './document'
+} from '#whiteboard-editor/command/document'
+import type { DocumentCommands } from '#whiteboard-editor/command/document'
 import {
   createHistoryCommands
-} from './history'
+} from '#whiteboard-editor/command/history'
 import {
   createSelectionCommands,
   type SelectionCommands
-} from './selection'
+} from '#whiteboard-editor/command/selection'
 import {
   createEdgeCommands,
   type EdgeCommands
-} from './edge'
+} from '#whiteboard-editor/command/edge'
 import {
   createMindmapCommands
-} from './mindmap'
+} from '#whiteboard-editor/command/mindmap'
 import {
   createNodeCommands
-} from './node/commands'
-import type { NodeCommands } from './node/types'
+} from '#whiteboard-editor/command/node/commands'
+import type { NodeCommands } from '#whiteboard-editor/command/node/types'
 
 export type EditorCommandRuntime = {
   document: DocumentCommands

@@ -2,8 +2,8 @@ import type {
   Node,
   Rect,
   Size
-} from '../types'
-import { getNodesBounds } from './geometry'
+} from '#whiteboard-core/types'
+import { getNodesBounds } from '#whiteboard-core/node/geometry'
 
 export const getNodesBoundingRect = (
   nodes: readonly Node[],

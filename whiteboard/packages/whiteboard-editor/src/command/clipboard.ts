@@ -2,19 +2,19 @@ import type {
   SliceRoots
 } from '@whiteboard/core/document'
 import type { Point } from '@whiteboard/core/types'
-import type { EditorState } from '../types/editor'
-import type { EditorQueryRead } from '../query'
+import type { EditorState } from '#whiteboard-editor/types/editor'
+import type { EditorQueryRead } from '#whiteboard-editor/query'
 import type {
   ClipboardCommands,
   SessionActions,
   ClipboardTarget
-} from '../types/commands'
+} from '#whiteboard-editor/types/commands'
 import {
   createClipboardPacket,
   type ClipboardPacket
-} from './clipboard/packet'
-import type { DocumentCommands } from './document'
-import type { SelectionCommands } from './selection'
+} from '#whiteboard-editor/command/clipboard/packet'
+import type { DocumentCommands } from '#whiteboard-editor/command/document'
+import type { SelectionCommands } from '#whiteboard-editor/command/selection'
 
 type ClipboardCommandsHost = {
   read: EditorQueryRead

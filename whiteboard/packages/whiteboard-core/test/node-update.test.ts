@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
-import { reduceOperations } from '../dist/kernel/index.js'
+import { test } from 'vitest'
+import { reduceOperations } from '@whiteboard/core/kernel'
 import {
   applyNodeUpdate,
   buildNodeUpdateInverse,
   createNodeFieldsUpdateOperation,
   createNodeUpdateOperation
-} from '../dist/node/index.js'
-import { createDocument } from '../dist/document/index.js'
+} from '@whiteboard/core/node'
+import { createDocument } from '@whiteboard/core/document'
 
 const FIXED_TIMESTAMP = Date.parse('2024-01-01T00:00:00.000Z')
 const FIXED_ISO = new Date(FIXED_TIMESTAMP).toISOString()

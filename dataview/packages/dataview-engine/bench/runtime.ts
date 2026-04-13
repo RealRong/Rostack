@@ -1,14 +1,9 @@
-const {
-  createEngine
-} = require('../.tmp/group-test-dist/engine')
-const {
-  createDefaultViewOptions
-} = require('../.tmp/group-test-dist/core/view')
-const {
-  TITLE_FIELD_ID
-} = require('../.tmp/group-test-dist/core/contracts')
+import { TITLE_FIELD_ID } from '@dataview/core/contracts'
+import { createDefaultViewOptions } from '@dataview/core/view'
 
-module.exports = {
+import { createEngine } from '#dataview-engine'
+
+export {
   createDefaultViewOptions,
   createEngine,
   TITLE_FIELD_ID

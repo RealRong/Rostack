@@ -1,7 +1,7 @@
 import type {
   FieldId,
   View
-} from '#core/contracts/index'
+} from '#core/contracts/index.ts'
 
 export const viewSearchFields = (
   view: View

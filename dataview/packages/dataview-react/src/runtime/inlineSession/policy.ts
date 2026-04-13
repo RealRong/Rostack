@@ -1,4 +1,4 @@
-import type { InlineSessionExitReason } from '#react/runtime/inlineSession/types'
+import type { InlineSessionExitReason } from '#react/runtime/inlineSession/types.ts'
 
 export type InlineSessionExitEffect = 'commit' | 'discard'
 

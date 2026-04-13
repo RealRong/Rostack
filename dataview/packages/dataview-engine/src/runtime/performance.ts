@@ -7,7 +7,7 @@ import type {
   RunningStat,
   StagePerformanceStats,
   ViewStageName
-} from '#engine/contracts/public'
+} from '#engine/contracts/public.ts'
 
 type PendingCommitTrace = Omit<CommitTrace, 'id'>
 

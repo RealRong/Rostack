@@ -19,16 +19,16 @@ importers:
     dependencies:
       '@dataview/core':
         specifier: workspace:*
-        version: link:../../dataview/src/core
+        version: link:../../dataview/packages/dataview-core
       '@dataview/engine':
         specifier: workspace:*
-        version: link:../../dataview/src/engine
+        version: link:../../dataview/packages/dataview-engine
       '@dataview/react':
         specifier: workspace:*
-        version: link:../../dataview/src/react
+        version: link:../../dataview/packages/dataview-react
       '@shared/ui':
         specifier: workspace:*
-        version: link:../../ui
+        version: link:../../shared/ui
       react:
         specifier: ^19.1.1
         version: 19.2.4
@@ -111,19 +111,19 @@ importers:
     dependencies:
       '@dataview/core':
         specifier: workspace:*
-        version: link:src/core
+        version: link:packages/dataview-core
       '@dataview/engine':
         specifier: workspace:*
-        version: link:src/engine
+        version: link:packages/dataview-engine
       '@dataview/meta':
         specifier: workspace:*
-        version: link:src/meta
+        version: link:packages/dataview-meta
       '@dataview/react':
         specifier: workspace:*
-        version: link:src/react
+        version: link:packages/dataview-react
       '@dataview/table':
         specifier: workspace:*
-        version: link:src/table
+        version: link:packages/dataview-table
       '@date-fns/tz':
         specifier: ^1.4.1
         version: 1.4.1
@@ -153,7 +153,7 @@ importers:
         version: link:../shared/react
       '@shared/ui':
         specifier: workspace:*
-        version: link:../ui
+        version: link:../shared/ui
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -210,7 +210,7 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.5.0)(jiti@1.21.7)
 
-  dataview/src/core:
+  dataview/packages/dataview-core:
     dependencies:
       '@date-fns/tz':
         specifier: ^1.4.1
@@ -222,19 +222,19 @@ importers:
         specifier: ^4.1.0
         version: 4.1.0
 
-  dataview/src/engine:
+  dataview/packages/dataview-engine:
     dependencies:
       '@dataview/core':
         specifier: workspace:*
-        version: link:../core
+        version: link:../dataview-core
       '@dataview/meta':
         specifier: workspace:*
-        version: link:../meta
+        version: link:../dataview-meta
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
 
-  dataview/src/meta:
+  dataview/packages/dataview-meta:
     dependencies:
       lucide-react:
         specifier: ^0.577.0
@@ -243,20 +243,20 @@ importers:
         specifier: ^19.1.1
         version: 19.2.4
 
-  dataview/src/react:
+  dataview/packages/dataview-react:
     dependencies:
       '@dataview/core':
         specifier: workspace:*
-        version: link:../core
+        version: link:../dataview-core
       '@dataview/engine':
         specifier: workspace:*
-        version: link:../engine
+        version: link:../dataview-engine
       '@dataview/meta':
         specifier: workspace:*
-        version: link:../meta
+        version: link:../dataview-meta
       '@dataview/table':
         specifier: workspace:*
-        version: link:../table
+        version: link:../dataview-table
       '@dnd-kit/core':
         specifier: ^6.1.0
         version: 6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -277,7 +277,7 @@ importers:
         version: link:../../../shared/react
       '@shared/ui':
         specifier: workspace:*
-        version: link:../../../ui
+        version: link:../../../shared/ui
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
@@ -291,14 +291,14 @@ importers:
         specifier: ^19.1.1
         version: 19.2.4(react@19.2.4)
 
-  dataview/src/table:
+  dataview/packages/dataview-table:
     dependencies:
       '@dataview/core':
         specifier: workspace:*
-        version: link:../core
+        version: link:../dataview-core
       '@dataview/engine':
         specifier: workspace:*
-        version: link:../engine
+        version: link:../dataview-engine
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
@@ -327,7 +327,7 @@ importers:
         specifier: ^19.1.12
         version: 19.2.14
 
-  ui:
+  shared/ui:
     dependencies:
       '@dnd-kit/core':
         specifier: ^6.1.0
@@ -346,7 +346,7 @@ importers:
         version: 1.2.4(@types/react@19.2.14)(react@19.2.4)
       '@shared/dom':
         specifier: workspace:*
-        version: link:../shared/dom
+        version: link:../dom
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -461,7 +461,7 @@ importers:
         version: link:../../../shared/react
       '@shared/ui':
         specifier: workspace:*
-        version: link:../../../ui
+        version: link:../../../shared/ui
       '@whiteboard/collab':
         specifier: workspace:*
         version: link:../whiteboard-collab

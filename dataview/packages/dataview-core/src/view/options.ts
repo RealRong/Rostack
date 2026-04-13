@@ -5,8 +5,8 @@ import type {
   TableOptions,
   ViewOptions,
   ViewType
-} from '#core/contracts/index'
-import { cloneViewOptions } from '#core/view/shared'
+} from '#core/contracts/index.ts'
+import { cloneViewOptions } from '#core/view/shared.ts'
 
 export const cloneTableOptions = (
   table: TableOptions

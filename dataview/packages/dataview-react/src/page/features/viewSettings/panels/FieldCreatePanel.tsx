@@ -1,7 +1,7 @@
-import { FieldKindPicker } from '#react/field/schema'
-import { useDataView } from '#react/dataview'
+import { FieldKindPicker } from '#react/field/schema/index.ts'
+import { useDataView } from '#react/dataview/index.ts'
 import { meta, renderMessage } from '@dataview/meta'
-import { useViewSettings } from '#react/page/features/viewSettings/context'
+import { useViewSettings } from '#react/page/features/viewSettings/context.tsx'
 
 export const FieldCreatePanel = () => {
   const editor = useDataView().engine

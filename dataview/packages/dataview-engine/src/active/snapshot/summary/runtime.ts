@@ -8,30 +8,30 @@ import { TITLE_FIELD_ID } from '@dataview/core/contracts'
 import { viewCalcFields } from '@dataview/core/view'
 import {
   now
-} from '#engine/runtime/clock'
+} from '#engine/runtime/clock.ts'
 import {
   collectSchemaFieldIds,
   collectTouchedRecordIds,
   collectValueFieldIds
-} from '#engine/active/index/shared'
-import type { IndexState } from '#engine/active/index/contracts'
+} from '#engine/active/index/shared.ts'
+import type { IndexState } from '#engine/active/index/contracts.ts'
 import type {
   DeriveAction,
   SectionState,
   SummaryState
-} from '#engine/contracts/internal'
-import type { SectionKey } from '#engine/contracts/public'
-import { publishSummaries } from '#engine/active/snapshot/summary/publish'
+} from '#engine/contracts/internal.ts'
+import type { SectionKey } from '#engine/contracts/public.ts'
+import { publishSummaries } from '#engine/active/snapshot/summary/publish.ts'
 import {
   syncSummaryState
-} from '#engine/active/snapshot/summary/sync'
+} from '#engine/active/snapshot/summary/sync.ts'
 
 export {
   computeCalculationFromState
-} from '#engine/active/snapshot/summary/compute'
+} from '#engine/active/snapshot/summary/compute.ts'
 export {
   syncSummaryState
-} from '#engine/active/snapshot/summary/sync'
+} from '#engine/active/snapshot/summary/sync.ts'
 
 const hasIntersection = (
   left: ReadonlySet<FieldId>,

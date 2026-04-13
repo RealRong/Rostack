@@ -2,7 +2,7 @@ import type {
   FieldId,
   View,
   ViewOptions
-} from '#core/contracts/index'
+} from '#core/contracts/index.ts'
 
 export type JsonObject = Record<string, unknown>
 

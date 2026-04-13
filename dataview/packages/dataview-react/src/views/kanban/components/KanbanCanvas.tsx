@@ -1,7 +1,7 @@
-import { PAGE_INLINE_INSET_CSS } from '#react/page/layout'
-import { useKanbanContext } from '#react/views/kanban/context'
-import { Column } from '#react/views/kanban/components/Column'
-import { Overlay } from '#react/views/kanban/components/Overlay'
+import { PAGE_INLINE_INSET_CSS } from '#react/page/layout.ts'
+import { useKanbanContext } from '#react/views/kanban/context.tsx'
+import { Column } from '#react/views/kanban/components/Column.tsx'
+import { Overlay } from '#react/views/kanban/components/Overlay.tsx'
 
 const PAGE_PADDING_BOTTOM = 180
 

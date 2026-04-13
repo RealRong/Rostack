@@ -1,4 +1,4 @@
-import { ViewOptions } from "#core/contracts/viewOptions"
+import { ViewOptions } from "#core/contracts/viewOptions.ts"
 
 export type RecordId = string
 export type ViewId = string

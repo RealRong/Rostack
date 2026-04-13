@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Field } from '@dataview/core/contracts'
-import { getFieldValueSpec } from '#react/field/value/kinds/index'
+import { getFieldValueSpec } from '#react/field/value/kinds/index.ts'
 
 export interface FieldValueRendererProps {
   field?: Field

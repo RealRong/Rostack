@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
-import { Popover } from '#ui/popover'
-import { Base } from '#ui/menu/base'
-import type { DropdownProps } from '#ui/menu/types'
+import { Popover } from '#ui/popover.tsx'
+import { Base } from '#ui/menu/base.tsx'
+import type { DropdownProps } from '#ui/menu/types.ts'
 
 export const Dropdown = (props: DropdownProps) => {
   const {

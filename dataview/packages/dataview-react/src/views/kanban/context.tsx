@@ -8,11 +8,11 @@ import {
 import type { KanbanState } from '@dataview/engine'
 import {
   useKanbanRuntime
-} from '#react/views/kanban/runtime'
+} from '#react/views/kanban/runtime.ts'
 import type {
   ActiveKanbanViewState,
   KanbanViewRuntime
-} from '#react/views/kanban/types'
+} from '#react/views/kanban/types.ts'
 
 export interface KanbanContextValue {
   active: ActiveKanbanViewState

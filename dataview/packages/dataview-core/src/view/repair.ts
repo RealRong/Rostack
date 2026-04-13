@@ -2,19 +2,19 @@ import type {
   CustomField,
   CustomFieldId,
   View
-} from '#core/contracts/index'
+} from '#core/contracts/index.ts'
 import {
   supportsFieldCalculationMetric
-} from '#core/calculation/index'
+} from '#core/calculation/index.ts'
 import {
   getFieldGroupMeta
-} from '#core/field/index'
+} from '#core/field/index.ts'
 import {
   getFilterPresetIds
-} from '#core/filter/index'
+} from '#core/filter/index.ts'
 import {
   pruneFieldFromViewOptions
-} from '#core/view/options'
+} from '#core/view/options.ts'
 
 const sameJson = (
   left: unknown,

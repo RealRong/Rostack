@@ -1,5 +1,5 @@
 import { ArrowLeft } from 'lucide-react'
-import { Button } from '#ui/button'
+import { Button } from '#ui/button.tsx'
 
 export interface PanelHeaderProps {
   title: string

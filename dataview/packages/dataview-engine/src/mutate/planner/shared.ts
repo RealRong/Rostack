@@ -14,7 +14,7 @@ import {
   hasValidationErrors,
   type IssueSource,
   type ValidationIssue
-} from '#engine/mutate/issues'
+} from '#engine/mutate/issues.ts'
 
 export const uniqueRecordIds = (target: EditTarget): string[] => (
   target.type === 'record'

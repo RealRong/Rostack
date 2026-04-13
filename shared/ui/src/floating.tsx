@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cn } from '#ui/utils'
+import { cn } from '#ui/utils.ts'
 
 const FLOATING_SURFACE_VARIANT_CLASS_NAMES = {
   compact: 'rounded-xl',

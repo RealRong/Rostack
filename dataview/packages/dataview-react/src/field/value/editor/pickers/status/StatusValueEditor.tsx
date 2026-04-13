@@ -18,21 +18,21 @@ import {
   type MenuHandle,
   type MenuItem
 } from '@shared/ui/menu'
-import { useDataView } from '#react/dataview'
+import { useDataView } from '#react/dataview/index.ts'
 import { meta, renderMessage } from '@dataview/meta'
 import {
   OptionToken
-} from '#react/field/options'
-import type { EditorSubmitTrigger } from '#react/interaction'
+} from '#react/field/options/index.ts'
+import type { EditorSubmitTrigger } from '#react/interaction/index.ts'
 import {
   buildEditableOptionItem,
   readOptionLabel
-} from '#react/menu-builders'
-import type { FieldValueDraftEditorProps } from '#react/field/value/editor/contracts'
+} from '#react/menu-builders/index.ts'
+import type { FieldValueDraftEditorProps } from '#react/field/value/editor/contracts.ts'
 import { focusInputWithoutScroll } from '@shared/dom'
-import { PickerInputBar } from '#react/field/value/editor/shared/PickerInputBar'
-import { useDraftCommit } from '#react/field/value/editor/shared/useDraftCommit'
-import { usePickerKeydown } from '#react/field/value/editor/shared/usePickerKeydown'
+import { PickerInputBar } from '#react/field/value/editor/shared/PickerInputBar.tsx'
+import { useDraftCommit } from '#react/field/value/editor/shared/useDraftCommit.ts'
+import { usePickerKeydown } from '#react/field/value/editor/shared/usePickerKeydown.ts'
 
 const optionLabel = (
   option: ReturnType<typeof getFieldOptions>[number]

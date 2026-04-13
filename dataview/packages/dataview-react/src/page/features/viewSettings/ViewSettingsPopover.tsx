@@ -5,20 +5,20 @@ import { Popover } from '@shared/ui/popover'
 import {
   useDataView,
   useDataViewValue
-} from '#react/dataview'
+} from '#react/dataview/index.ts'
 import { meta, renderMessage } from '@dataview/meta'
-import { FieldSchemaEditor } from '#react/field/schema'
+import { FieldSchemaEditor } from '#react/field/schema/index.ts'
 import {
   ViewSettingsContext,
-} from '#react/page/features/viewSettings/context'
-import { GroupingPanel } from '#react/page/features/viewSettings/panels/GroupingPanel'
-import { GroupFieldPickerPanel } from '#react/page/features/viewSettings/panels/GroupFieldPickerPanel'
-import { LayoutPanel } from '#react/page/features/viewSettings/panels/LayoutPanel'
-import { FieldCreatePanel } from '#react/page/features/viewSettings/panels/FieldCreatePanel'
-import { FieldListPanel } from '#react/page/features/viewSettings/panels/FieldListPanel'
-import { QueryFieldPickerPanel } from '#react/page/features/viewSettings/panels/QueryFieldPickerPanel'
-import { RootPanel } from '#react/page/features/viewSettings/panels/RootPanel'
-import { ViewFieldsPanel } from '#react/page/features/viewSettings/panels/ViewFieldsPanel'
+} from '#react/page/features/viewSettings/context.tsx'
+import { GroupingPanel } from '#react/page/features/viewSettings/panels/GroupingPanel.tsx'
+import { GroupFieldPickerPanel } from '#react/page/features/viewSettings/panels/GroupFieldPickerPanel.tsx'
+import { LayoutPanel } from '#react/page/features/viewSettings/panels/LayoutPanel.tsx'
+import { FieldCreatePanel } from '#react/page/features/viewSettings/panels/FieldCreatePanel.tsx'
+import { FieldListPanel } from '#react/page/features/viewSettings/panels/FieldListPanel.tsx'
+import { QueryFieldPickerPanel } from '#react/page/features/viewSettings/panels/QueryFieldPickerPanel.tsx'
+import { RootPanel } from '#react/page/features/viewSettings/panels/RootPanel.tsx'
+import { ViewFieldsPanel } from '#react/page/features/viewSettings/panels/ViewFieldsPanel.tsx'
 
 export const ViewSettingsPopover = () => {
   const dataView = useDataView()

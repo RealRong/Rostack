@@ -33,10 +33,10 @@ import type {
   GroupFieldIndex,
   RecordIndex,
   SortedIdSet
-} from '#engine/active/index/contracts'
+} from '#engine/active/index/contracts.ts'
 import {
   toGroupOptions
-} from '#engine/active/index/group/demand'
+} from '#engine/active/index/group/demand.ts'
 
 export const sameBucketKeys = (
   left: readonly BucketKey[],

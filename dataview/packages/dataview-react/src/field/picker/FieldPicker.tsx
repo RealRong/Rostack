@@ -3,7 +3,7 @@ import type { Field, FieldId } from '@dataview/core/contracts'
 import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { meta, renderMessage, type MessageSpec } from '@dataview/meta'
-import { buildFieldToggleItem } from '#react/menu-builders'
+import { buildFieldToggleItem } from '#react/menu-builders/index.ts'
 
 export interface FieldPickerProps {
   fields: readonly Field[]

@@ -1,9 +1,9 @@
-import type { DocumentSelectApi } from '#engine/contracts/public'
-import { listDocumentFields, readDocumentField, readDocumentFieldIds } from '#engine/document/fields'
-import { listDocumentRecords, readDocumentRecord, readDocumentRecordIds } from '#engine/document/records'
-import { listDocumentViews, readDocumentView, readDocumentViewIds } from '#engine/document/views'
-import { createDocumentEntitySelectors, selectDocument } from '#engine/runtime/selectors/document'
-import type { RuntimeStore } from '#engine/runtime/store'
+import type { DocumentSelectApi } from '#engine/contracts/public.ts'
+import { listDocumentFields, readDocumentField, readDocumentFieldIds } from '#engine/document/fields.ts'
+import { listDocumentRecords, readDocumentRecord, readDocumentRecordIds } from '#engine/document/records.ts'
+import { listDocumentViews, readDocumentView, readDocumentViewIds } from '#engine/document/views.ts'
+import { createDocumentEntitySelectors, selectDocument } from '#engine/runtime/selectors/document.ts'
+import type { RuntimeStore } from '#engine/runtime/store.ts'
 
 export const createDocumentSelectApi = (
   store: RuntimeStore

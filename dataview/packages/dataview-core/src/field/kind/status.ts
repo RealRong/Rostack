@@ -3,7 +3,7 @@ import type {
   StatusField,
   StatusOption,
   StatusCategory
-} from '#core/contracts'
+} from '#core/contracts/index.ts'
 
 export const STATUS_CATEGORIES = [
   'todo',

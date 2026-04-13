@@ -45,20 +45,20 @@ import {
   sameShallowRecord,
   trimToUndefined
 } from '@shared/core'
-import { createViewId } from '#engine/mutate/entityId'
+import { createViewId } from '#engine/mutate/entityId.ts'
 import {
   createIssue,
   hasValidationErrors,
   type IssueSource,
   type ValidationIssue
-} from '#engine/mutate/issues'
-import { validateViewExists } from '#engine/mutate/validate/entity'
+} from '#engine/mutate/issues.ts'
+import { validateViewExists } from '#engine/mutate/validate/entity.ts'
 import {
   planResult,
   sourceOf,
   toViewPut,
   type PlannedActionResult
-} from '#engine/mutate/planner/shared'
+} from '#engine/mutate/planner/shared.ts'
 
 const sameFieldIds = sameOrder<string>
 const sameRecordOrder = sameOrder<string>

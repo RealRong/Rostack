@@ -1,4 +1,4 @@
-import type { CustomFieldId, CustomField, DataRecord, View, RecordId, ViewId } from '#core/contracts/state'
+import type { CustomFieldId, CustomField, DataRecord, View, RecordId, ViewId } from '#core/contracts/state.ts'
 
 export interface RowInsertTarget {
   index?: number

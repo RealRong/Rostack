@@ -12,14 +12,14 @@ import type {
 import {
   useDataView,
   useDataViewValue
-} from '#react/dataview'
+} from '#react/dataview/index.ts'
 import type { ItemId } from '@dataview/engine'
 import {
   resolveInlineSessionExitEffect
-} from '#react/runtime/inlineSession'
+} from '#react/runtime/inlineSession/index.ts'
 import {
   readCardTitleText
-} from '#react/views/shared/cardTitleValue'
+} from '#react/views/shared/cardTitleValue.ts'
 
 export const useCardEditingState = (input: {
   viewId: ViewId

@@ -2,8 +2,8 @@ import {
   setGalleryCardSize,
   setGalleryShowFieldLabels
 } from '@dataview/core/view'
-import type { ActiveViewApi } from '#engine/contracts/public'
-import type { ActiveViewContext } from '#engine/active/context'
+import type { ActiveViewApi } from '#engine/contracts/public.ts'
+import type { ActiveViewContext } from '#engine/active/context.ts'
 
 export const createGalleryApi = (
   base: ActiveViewContext

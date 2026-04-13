@@ -10,7 +10,7 @@ import type {
   MarqueeAdapter,
   MarqueeApi,
   MarqueeSessionState
-} from '#react/runtime/marquee/types'
+} from '#react/runtime/marquee/types.ts'
 
 const sameSession = (
   left: MarqueeSessionState | null,

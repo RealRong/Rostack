@@ -8,14 +8,14 @@ export {
   resolveOptionDotStyle,
   resolveOptionStatusDotStyle,
   resolveOptionSurfaceStyle
-} from '#ui/color/resolve'
+} from '#ui/color/resolve.ts'
 
 export {
   UI_CONTENT_COLOR_FAMILIES,
   UI_CONTENT_COLOR_IDS,
   UI_OPTION_COLOR_FAMILIES,
   UI_OPTION_COLOR_IDS
-} from '#ui/color/types'
+} from '#ui/color/types.ts'
 
 export type {
   UiOptionColorFamily,
@@ -23,4 +23,4 @@ export type {
   UiNeutralCardSurfaceTone,
   UiOptionColorId,
   UiOptionColorTokenUsage
-} from '#ui/color/types'
+} from '#ui/color/types.ts'

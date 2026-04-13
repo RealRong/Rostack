@@ -1,6 +1,6 @@
 import type {
   View
-} from '#core/contracts'
+} from '#core/contracts/index.ts'
 
 const suffixPattern = /^(.*?)(?:\s+(\d+))?$/
 

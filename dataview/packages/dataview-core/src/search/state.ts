@@ -1,6 +1,6 @@
 import type {
   Search
-} from '#core/contracts'
+} from '#core/contracts/index.ts'
 import {
   sameOptionalOrder
 } from '@shared/core'

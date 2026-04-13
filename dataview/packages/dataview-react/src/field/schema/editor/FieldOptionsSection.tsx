@@ -2,16 +2,16 @@ import { Plus, Settings2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { CustomField } from '@dataview/core/contracts'
 import { getFieldOptions } from '@dataview/core/field'
-import { useDataView } from '#react/dataview'
+import { useDataView } from '#react/dataview/index.ts'
 import { meta, renderMessage } from '@dataview/meta'
 import {
   OptionEditorPanel,
-} from '#react/field/options'
-import { buildOptionPanelItem } from '#react/menu-builders'
-import { FIELD_DROPDOWN_MENU_PROPS } from '#react/field/dropdown'
+} from '#react/field/options/index.ts'
+import { buildOptionPanelItem } from '#react/menu-builders/index.ts'
+import { FIELD_DROPDOWN_MENU_PROPS } from '#react/field/dropdown.ts'
 import { Button } from '@shared/ui/button'
 import { Menu, type MenuItem } from '@shared/ui/menu'
-import { FieldStatusOptionsSection } from '#react/field/schema/editor/FieldStatusOptionsSection'
+import { FieldStatusOptionsSection } from '#react/field/schema/editor/FieldStatusOptionsSection.tsx'
 
 const PlainFieldOptionsSection = (props: {
   field: CustomField

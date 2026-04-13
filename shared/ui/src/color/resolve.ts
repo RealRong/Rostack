@@ -5,7 +5,7 @@ import {
   type UiNeutralCardSurfaceTone,
   type UiOptionColorId,
   type UiOptionColorTokenUsage
-} from '#ui/color/types'
+} from '#ui/color/types.ts'
 
 const OPTION_COLOR_ID_SET = new Set<UiOptionColorId>(UI_OPTION_COLOR_IDS)
 

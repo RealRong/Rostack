@@ -1,6 +1,6 @@
 import { Check, Minus } from 'lucide-react'
 import type { ButtonHTMLAttributes, HTMLAttributes } from 'react'
-import { cn } from '#ui/utils'
+import { cn } from '#ui/utils.ts'
 
 export interface CheckboxProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'onChange'> {
   checked: boolean

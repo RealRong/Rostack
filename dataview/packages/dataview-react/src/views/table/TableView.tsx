@@ -1,5 +1,5 @@
-import { TableProvider } from '#react/views/table/context'
-import { Body } from '#react/views/table/components/body/Body'
+import { TableProvider } from '#react/views/table/context.tsx'
+import { Body } from '#react/views/table/components/body/Body.tsx'
 
 const DEFAULT_ROW_HEIGHT = 36
 const DEFAULT_HEADER_HEIGHT = 32

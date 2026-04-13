@@ -1,9 +1,9 @@
-import type { CommitDelta } from '#core/contracts/delta'
-import type { BaseOperation } from '#core/contracts/operations'
-import type { DataDoc } from '#core/contracts/state'
-import { type DeltaCollector, createDeltaCollector } from '#core/commit/collector'
-import { reduceOperation } from '#core/operation/reducer'
-import { buildInverseOperations } from '#core/operation/history/inverse'
+import type { CommitDelta } from '#core/contracts/delta.ts'
+import type { BaseOperation } from '#core/contracts/operations.ts'
+import type { DataDoc } from '#core/contracts/state.ts'
+import { type DeltaCollector, createDeltaCollector } from '#core/commit/collector.ts'
+import { reduceOperation } from '#core/operation/reducer.ts'
+import { buildInverseOperations } from '#core/operation/history/inverse.ts'
 
 export interface ApplyOperationsResult {
   document: DataDoc

@@ -9,7 +9,7 @@ import type {
 import { sameCellRef } from '@dataview/engine'
 import {
   grid
-} from '#table/grid'
+} from '#table/grid.ts'
 
 export interface GridSelection {
   focus: CellRef

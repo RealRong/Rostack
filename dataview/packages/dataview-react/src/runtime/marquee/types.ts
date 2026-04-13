@@ -6,8 +6,8 @@ import type {
 } from '@shared/dom'
 import type { ValueStore } from '@shared/core'
 import type { ViewId } from '@dataview/core/contracts'
-import type { AutoPanTargets } from '#react/interaction/autoPan'
-import type { Selection } from '#react/runtime/selection'
+import type { AutoPanTargets } from '#react/interaction/autoPan.ts'
+import type { Selection } from '#react/runtime/selection/index.ts'
 
 export type MarqueeMode = 'replace' | 'add' | 'toggle'
 

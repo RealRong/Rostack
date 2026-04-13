@@ -1,11 +1,11 @@
 import { useRef } from 'react'
-import { DATAVIEW_APPEARANCE_ID_ATTR } from '#react/dom/appearance'
+import { DATAVIEW_APPEARANCE_ID_ATTR } from '#react/dom/appearance.ts'
 import { Button } from '@shared/ui/button'
 import { cn } from '@shared/ui/utils'
 import type { Section } from '@dataview/engine'
-import { useKanbanContext } from '#react/views/kanban/context'
-import { Card } from '#react/views/kanban/components/Card'
-import { ColumnDropIndicator } from '#react/views/kanban/components/ColumnDropIndicator'
+import { useKanbanContext } from '#react/views/kanban/context.tsx'
+import { Card } from '#react/views/kanban/components/Card.tsx'
+import { ColumnDropIndicator } from '#react/views/kanban/components/ColumnDropIndicator.tsx'
 
 const CARD_GAP = 8
 

@@ -8,9 +8,9 @@ import type {
   GalleryState,
   KanbanState,
   ViewState
-} from '#engine/contracts/public'
-import { selectActiveSnapshot } from '#engine/runtime/selectors/active'
-import type { RuntimeStore } from '#engine/runtime/store'
+} from '#engine/contracts/public.ts'
+import { selectActiveSnapshot } from '#engine/runtime/selectors/active.ts'
+import type { RuntimeStore } from '#engine/runtime/store.ts'
 
 const usesOptionGroupingColors = (
   field?: Pick<import('@dataview/core/contracts').Field, 'kind'>

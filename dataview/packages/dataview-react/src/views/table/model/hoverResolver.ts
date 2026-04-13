@@ -1,5 +1,5 @@
 import type { Point } from '@shared/dom'
-import type { TableHoverTarget } from '#react/views/table/model/hover'
+import type { TableHoverTarget } from '#react/views/table/model/hover.ts'
 
 export interface RowHoverFallbackPolicy {
   withinContainer: boolean

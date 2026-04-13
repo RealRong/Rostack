@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { Popover } from '#ui/popover'
-import { VerticalReorderList } from '#ui/vertical-reorder-list'
+import { Popover } from '#ui/popover.tsx'
+import { VerticalReorderList } from '#ui/vertical-reorder-list.tsx'
 import {
   DROPDOWN_SUBMENU_OFFSET,
   SUBMENU_OFFSET,
@@ -9,13 +9,13 @@ import {
   resolvePresentation,
   toValueResult,
   toggleSelection
-} from '#ui/menu/shared'
+} from '#ui/menu/shared.ts'
 import {
   Handle,
   Row,
   handleActivationKey
-} from '#ui/menu/row'
-import type { ReorderProps, SubmenuCloseReason } from '#ui/menu/types'
+} from '#ui/menu/row.tsx'
+import type { ReorderProps, SubmenuCloseReason } from '#ui/menu/types.ts'
 
 export const Reorder = (props: ReorderProps) => {
   const selectionMode = props.selectionMode ?? 'none'

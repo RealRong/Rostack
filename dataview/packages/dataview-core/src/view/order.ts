@@ -1,4 +1,4 @@
-import type { RecordId } from '#core/contracts/state'
+import type { RecordId } from '#core/contracts/state.ts'
 
 export const normalizeRecordOrderIds = (
   recordIds: readonly RecordId[] | undefined,

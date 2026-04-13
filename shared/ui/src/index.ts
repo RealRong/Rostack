@@ -1,12 +1,12 @@
-export { Button, type ButtonProps } from '#ui/button'
-export { Checkbox, type CheckboxProps } from '#ui/checkbox'
+export { Button, type ButtonProps } from '#ui/button.tsx'
+export { Checkbox, type CheckboxProps } from '#ui/checkbox.tsx'
 export {
   FloatingLayer,
   FloatingSurface,
   type FloatingLayerProps,
   type FloatingSurfaceProps
-} from '#ui/floating'
-export { Input, type InputProps } from '#ui/input'
+} from '#ui/floating.tsx'
+export { Input, type InputProps } from '#ui/input.tsx'
 export {
   ColorSwatchGrid,
   formatPercent,
@@ -17,7 +17,7 @@ export {
   SliderSection,
   SwatchButton,
   type SwatchButtonProps
-} from '#ui/panel'
+} from '#ui/panel.tsx'
 export {
   PickerButton,
   PickerDivider,
@@ -28,14 +28,14 @@ export {
   PickerSection,
   PickerSurface,
   PickerTintBar
-} from '#ui/picker'
+} from '#ui/picker.tsx'
 export {
     Slider,
     type SliderMark,
     type SliderProps
-  } from '#ui/slider'
-export { Select, type SelectProps } from '#ui/select'
-export { Label, type LabelProps } from '#ui/label'
+  } from '#ui/slider.tsx'
+export { Select, type SelectProps } from '#ui/select.tsx'
+export { Label, type LabelProps } from '#ui/label.tsx'
 export {
   Menu,
   type MenuItem,
@@ -48,13 +48,13 @@ export {
   type MenuSelectionMode,
   type MenuSurfaceSize,
   type MenuSubmenuOpenPolicy
-} from '#ui/menu/index'
+} from '#ui/menu/index.tsx'
 export type {
   ListCustomItem,
   ListDividerItem,
   ListLabelItem,
   ListStructuralItem
-} from '#ui/list-structure'
+} from '#ui/list-structure.tsx'
 export {
   Popover,
   type PopoverAnchor,
@@ -67,7 +67,7 @@ export {
   type PopoverSurfaceSize,
   type PopoverProps,
   type PopoverTriggerProps
-} from '#ui/popover'
+} from '#ui/popover.tsx'
 export {
   OverlayProvider,
   OverlayRoot,
@@ -89,9 +89,9 @@ export {
   type OverlayLayerKind,
   type OverlayLayerMode,
   type OverlayLayerOptions
-} from '#ui/overlay'
-export { PanelHeader, type PanelHeaderProps } from '#ui/panel-header'
-export { Switch, type SwitchProps } from '#ui/switch'
+} from '#ui/overlay.tsx'
+export { PanelHeader, type PanelHeaderProps } from '#ui/panel-header.tsx'
+export { Switch, type SwitchProps } from '#ui/switch.tsx'
 export {
   ToolbarBar,
   ToolbarButton,
@@ -100,7 +100,7 @@ export {
   ToolbarIconButton,
   ToolbarStrokeIcon,
   ToolbarTextColorIcon
-} from '#ui/toolbar'
+} from '#ui/toolbar.tsx'
 export {
   UI_CONTENT_COLOR_FAMILIES,
   UI_CONTENT_COLOR_IDS,
@@ -114,16 +114,16 @@ export {
   resolveOptionDotStyle,
   resolveOptionStatusDotStyle,
   resolveOptionSurfaceStyle
-} from '#ui/color/index'
+} from '#ui/color/index.ts'
 export {
   VerticalReorderList,
   type VerticalReorderHandleProps,
   type VerticalReorderItemState,
   type VerticalReorderListProps
-} from '#ui/vertical-reorder-list'
-export { cn } from '#ui/utils'
+} from '#ui/vertical-reorder-list.tsx'
+export { cn } from '#ui/utils.ts'
 export type {
   UiOptionColorFamily,
   UiOptionColorId,
   UiOptionColorTokenUsage
-} from '#ui/color/index'
+} from '#ui/color/index.ts'

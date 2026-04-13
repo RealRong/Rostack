@@ -74,6 +74,16 @@ const transpileTree = (sourceRoot, outRoot) => {
     }
 
     if (
+      sourcePath.endsWith('.json')
+    ) {
+      const outputPath = join(outRoot, entry)
+      const content = readFileSync(sourcePath)
+      mkdirSync(dirname(outputPath), { recursive: true })
+      writeFileSync(outputPath, content)
+      return
+    }
+
+    if (
       (!sourcePath.endsWith('.ts') && !sourcePath.endsWith('.tsx'))
       || sourcePath.endsWith('.d.ts')
       || sourcePath.endsWith('.d.tsx')
@@ -110,9 +120,13 @@ const transpileSharedTrees = packageDirs => {
 }
 
 const resolveOutputModule = (baseDir, target) => {
-  const nextTarget = target ?? 'index'
+  const nextTarget = target
+    ? target.replace(/\.tsx?$/, '')
+    : 'index'
   const candidates = [
-    join(baseDir, `${nextTarget}.js`),
+    target?.endsWith('.json')
+      ? join(baseDir, target)
+      : join(baseDir, `${nextTarget}.js`),
     join(baseDir, nextTarget, 'index.js')
   ]
 

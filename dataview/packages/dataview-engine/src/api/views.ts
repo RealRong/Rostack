@@ -11,7 +11,7 @@ import type {
   ActionResult,
   DocumentSelectApi,
   ViewsApi
-} from '#engine/contracts/public'
+} from '#engine/contracts/public.ts'
 
 export const createViewsApi = (options: {
   select: DocumentSelectApi

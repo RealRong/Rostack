@@ -3,11 +3,11 @@ import { pointIn } from '@shared/dom'
 import {
   usePointerDragSession,
   type PointerPosition
-} from '#react/interaction/usePointerDragSession'
+} from '#react/interaction/usePointerDragSession.ts'
 import type { ItemId } from '@dataview/engine'
-import type { DropTarget } from '#react/views/kanban/drag/ids'
-import { dropTargetFromPoint } from '#react/views/kanban/drag/hitTest'
-import type { BoardLayout } from '#react/views/kanban/drag/layout'
+import type { DropTarget } from '#react/views/kanban/drag/ids.ts'
+import { dropTargetFromPoint } from '#react/views/kanban/drag/hitTest.ts'
+import type { BoardLayout } from '#react/views/kanban/drag/layout.ts'
 
 interface Options {
   containerRef: RefObject<HTMLElement | null>

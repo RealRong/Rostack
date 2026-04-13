@@ -15,7 +15,7 @@ import {
 } from '@dataview/core/field'
 import type {
   AggregateState
-} from '#engine/active/index/contracts'
+} from '#engine/active/index/contracts.ts'
 
 export const readCalcFields = (
   view: View

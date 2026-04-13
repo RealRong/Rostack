@@ -1,7 +1,7 @@
 import * as React from 'react'
-import { Button, type ButtonProps } from '#ui/button'
-import { FloatingSurface, type FloatingSurfaceProps } from '#ui/floating'
-import { cn } from '#ui/utils'
+import { Button, type ButtonProps } from '#ui/button.tsx'
+import { FloatingSurface, type FloatingSurfaceProps } from '#ui/floating.tsx'
+import { cn } from '#ui/utils.ts'
 
 export const PickerSurface = React.forwardRef<HTMLDivElement, FloatingSurfaceProps>(
   ({ className, variant = 'compact', ...props }, ref) => (

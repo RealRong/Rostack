@@ -2,13 +2,13 @@ import {
   ROOT_SETTINGS_ROUTE,
   cloneSettingsRoute,
   equalSettingsRoute
-} from '#react/page/session/settings'
+} from '#react/page/session/settings.ts'
 import type {
   PageSessionInput,
   PageSessionState,
   QueryBarEntry,
   SettingsState
-} from '#react/page/session/types'
+} from '#react/page/session/types.ts'
 
 export const cloneQueryBarEntry = (
   entry: QueryBarEntry | null | undefined

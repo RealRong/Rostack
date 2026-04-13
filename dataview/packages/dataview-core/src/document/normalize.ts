@@ -1,10 +1,10 @@
-import type { DataDoc } from '#core/contracts/state'
-import { normalizeCustomFields } from '#core/field/index'
-import { cloneEntityTable, cloneRecordTable, normalizeEntityTable, normalizeRecordTable } from '#core/document/table'
+import type { DataDoc } from '#core/contracts/state.ts'
+import { normalizeCustomFields } from '#core/field/index.ts'
+import { cloneEntityTable, cloneRecordTable, normalizeEntityTable, normalizeRecordTable } from '#core/document/table.ts'
 import {
   normalizeDocumentViews,
   resolveDocumentActiveViewId
-} from '#core/document/views'
+} from '#core/document/views.ts'
 
 export const normalizeDocument = (document: DataDoc): DataDoc => {
   const records = normalizeRecordTable(document.records)

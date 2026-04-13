@@ -1,12 +1,12 @@
 import type {
   CommitDelta
-} from '#core/contracts/delta'
+} from '#core/contracts/delta.ts'
 import type {
   DataDoc
-} from '#core/contracts/state'
+} from '#core/contracts/state.ts'
 import {
   getDocumentActiveViewId
-} from '#core/document/index'
+} from '#core/document/index.ts'
 
 export const createResetDelta = (
   beforeDocument: DataDoc | undefined,

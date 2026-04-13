@@ -15,7 +15,7 @@ import type {
   AggregateEntry,
   AggregateState,
   SectionAggregateState
-} from '#engine/active/index/contracts'
+} from '#engine/active/index/contracts.ts'
 
 const asPlainString = (value: unknown) => (
   trimToUndefined(value) ?? ''

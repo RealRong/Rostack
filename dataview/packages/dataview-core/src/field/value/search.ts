@@ -1,9 +1,9 @@
-import type { CustomField } from '#core/contracts'
+import type { CustomField } from '#core/contracts/index.ts'
 import {
   getKind,
   getFieldKind
-} from '#core/field/kind/index'
-import { normalizeSearchableValue } from '#core/field/kind/shared'
+} from '#core/field/kind/index.ts'
+import { normalizeSearchableValue } from '#core/field/kind/shared.ts'
 
 export const getFieldSearchTokens = (
   field: CustomField | undefined,

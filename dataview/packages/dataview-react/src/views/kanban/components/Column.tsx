@@ -1,12 +1,12 @@
 import { resolveOptionColumnStyle } from '@shared/ui/color'
 import {
   useDataView
-} from '#react/dataview'
+} from '#react/dataview/index.ts'
 import { cn } from '@shared/ui/utils'
 import type { Section } from '@dataview/engine'
-import { useKanbanContext } from '#react/views/kanban/context'
-import { ColumnBody } from '#react/views/kanban/components/ColumnBody'
-import { ColumnHeader } from '#react/views/kanban/components/ColumnHeader'
+import { useKanbanContext } from '#react/views/kanban/context.tsx'
+import { ColumnBody } from '#react/views/kanban/components/ColumnBody.tsx'
+import { ColumnHeader } from '#react/views/kanban/components/ColumnHeader.tsx'
 
 export const Column = (props: {
   section: Section

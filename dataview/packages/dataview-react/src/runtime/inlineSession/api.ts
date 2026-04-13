@@ -5,7 +5,7 @@ import type {
   InlineSessionApi,
   InlineSessionExitEvent,
   InlineSessionTarget
-} from '#react/runtime/inlineSession/types'
+} from '#react/runtime/inlineSession/types.ts'
 
 const sameTarget = (
   left: InlineSessionTarget | null,

@@ -1,7 +1,7 @@
 import type { Equality } from '@shared/core'
-import type { EngineRuntimeState } from '#engine/runtime/state'
-import type { RuntimeStore } from '#engine/runtime/store'
-import { createRuntimeSelector } from '#engine/runtime/selectors/core'
+import type { EngineRuntimeState } from '#engine/runtime/state.ts'
+import type { RuntimeStore } from '#engine/runtime/store.ts'
+import { createRuntimeSelector } from '#engine/runtime/selectors/core.ts'
 
 export const selectActiveRuntime = <T,>(input: {
   store: RuntimeStore

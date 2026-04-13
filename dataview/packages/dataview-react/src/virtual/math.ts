@@ -1,4 +1,4 @@
-import type { VirtualBlock } from '#react/virtual/types'
+import type { VirtualBlock } from '#react/virtual/types.ts'
 
 export const findVirtualBlockStartIndex = (
   blocks: readonly VirtualBlock[],

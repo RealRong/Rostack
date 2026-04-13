@@ -1,8 +1,8 @@
 import type { Rect } from '@shared/dom'
-import type { DropTarget } from '#react/views/kanban/drag/ids'
+import type { DropTarget } from '#react/views/kanban/drag/ids.ts'
 import type {
   BoardLayout
-} from '#react/views/kanban/drag/layout'
+} from '#react/views/kanban/drag/layout.ts'
 const centerX = (rect: Rect) => rect.left + rect.width / 2
 
 const resolveColumn = (

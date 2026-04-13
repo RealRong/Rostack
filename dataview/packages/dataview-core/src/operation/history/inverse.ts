@@ -1,5 +1,5 @@
-import type { BaseOperation } from '#core/contracts/operations'
-import type { DataDoc, CustomField, DataRecord, View } from '#core/contracts/state'
+import type { BaseOperation } from '#core/contracts/operations.ts'
+import type { DataDoc, CustomField, DataRecord, View } from '#core/contracts/state.ts'
 import {
   enumerateRecords,
   getDocumentActiveViewId,
@@ -7,7 +7,7 @@ import {
   getDocumentRecordById,
   getDocumentRecordIndex,
   getDocumentViewById
-} from '#core/document/index'
+} from '#core/document/index.ts'
 
 const hasOwn = (record: Record<string, unknown>, key: string) => Object.prototype.hasOwnProperty.call(record, key)
 const readObjectValue = (value: unknown, key: string) => (value as Record<string, unknown>)[key]

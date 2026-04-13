@@ -1,6 +1,6 @@
 export {
   compareSortedRecords
-} from '#core/sort/compare'
+} from '#core/sort/compare.ts'
 export {
   addSorter,
   clearSorters,
@@ -14,4 +14,4 @@ export {
   sameSorters,
   setOnlySorter,
   setSorter
-} from '#core/sort/state'
+} from '#core/sort/state.ts'

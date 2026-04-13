@@ -5,12 +5,12 @@ import type {
   ItemId,
   ViewState
 } from '@dataview/engine'
-import type { VisualTargetRegistry } from '#react/runtime/marquee'
-import type { GalleryDropTarget } from '#react/views/gallery/reorder/index'
+import type { VisualTargetRegistry } from '#react/runtime/marquee/index.ts'
+import type { GalleryDropTarget } from '#react/views/gallery/reorder/index.ts'
 import type {
   GalleryBlock,
   GalleryLayoutCache
-} from '#react/views/gallery/virtual/index'
+} from '#react/views/gallery/virtual/index.ts'
 
 export type ActiveGalleryViewState = ViewState & {
   view: View & {
@@ -29,7 +29,7 @@ export interface GalleryViewRuntime {
     selectedIdSet: ReadonlySet<ItemId>
     select: (id: ItemId, mode?: 'replace' | 'toggle') => void
   }
-  drag: ReturnType<typeof import('#react/views/gallery/reorder/index').useCardReorder>
+  drag: ReturnType<typeof import('#react/views/gallery/reorder/index.ts').useCardReorder>
   indicator?: GalleryDropTarget['indicator']
   marqueeActive: boolean
   visualTargets: VisualTargetRegistry

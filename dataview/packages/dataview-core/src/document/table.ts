@@ -1,4 +1,4 @@
-import type { DataRecord, EntityTable, RecordId } from '#core/contracts/state'
+import type { DataRecord, EntityTable, RecordId } from '#core/contracts/state.ts'
 
 export const cloneRecordInput = (record: DataRecord): DataRecord => structuredClone(record)
 

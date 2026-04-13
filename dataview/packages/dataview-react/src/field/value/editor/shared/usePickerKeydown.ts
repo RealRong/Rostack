@@ -1,9 +1,9 @@
 import { useCallback, type KeyboardEvent as ReactKeyboardEvent } from 'react'
-import type { EditorSubmitTrigger } from '#react/interaction'
+import type { EditorSubmitTrigger } from '#react/interaction/index.ts'
 import {
   isComposing,
   keyAction
-} from '#react/field/value/editor/shared/keyboard'
+} from '#react/field/value/editor/shared/keyboard.ts'
 
 export const usePickerKeydown = (input: {
   editingBlocked?: boolean

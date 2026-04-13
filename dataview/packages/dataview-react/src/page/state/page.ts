@@ -15,14 +15,14 @@ import {
 import {
   cloneSettingsRoute,
   normalizeSettingsRoute
-} from '#react/page/session/settings'
+} from '#react/page/session/settings.ts'
 import type {
   PageState,
   PageSessionState,
   QueryBarEntry,
   QueryBarState,
   SettingsState
-} from '#react/page/session/types'
+} from '#react/page/session/types.ts'
 
 const resolveQueryBarEntry = (
   document: DataDoc,

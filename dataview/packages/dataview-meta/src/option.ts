@@ -1,5 +1,5 @@
-import { message } from '#meta/message'
-import { defineMetaCollection } from '#meta/shared'
+import { message } from '#meta/message.ts'
+import { defineMetaCollection } from '#meta/shared.ts'
 
 export type OptionColorId =
   | ''

@@ -12,15 +12,15 @@ import { VerticalReorderList } from '@shared/ui/vertical-reorder-list'
 import {
   useDataView,
   useDataViewValue
-} from '#react/dataview'
-import { FieldPicker } from '#react/field/picker'
+} from '#react/dataview/index.ts'
+import { FieldPicker } from '#react/field/picker/index.ts'
 import { meta, renderMessage } from '@dataview/meta'
-import { SortRuleRow } from '#react/page/features/sort/SortRuleRow'
+import { SortRuleRow } from '#react/page/features/sort/SortRuleRow.tsx'
 import {
   getAvailableSorterFields,
   getSorterItemId
-} from '#react/page/features/sort/sortUi'
-import { QueryChip } from '#react/page/features/query/index'
+} from '#react/page/features/sort/sortUi.ts'
+import { QueryChip } from '#react/page/features/query/index.ts'
 
 export interface SortPopoverProps {
   open: boolean

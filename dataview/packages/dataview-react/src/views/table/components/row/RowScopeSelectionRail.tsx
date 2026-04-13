@@ -5,18 +5,18 @@ import {
 } from 'react'
 import {
   selection
-} from '#react/runtime/selection'
+} from '#react/runtime/selection/index.ts'
 import type {
   ItemId
 } from '@dataview/engine'
 import {
   useDataView,
   useDataViewValue,
-} from '#react/dataview'
+} from '#react/dataview/index.ts'
 import { useStoreValue } from '@shared/react'
-import { useTableContext } from '#react/views/table/context'
-import { RowSelectionButton, TableLeadingRail } from '#react/views/table/components/row/RowRail'
-import { useStoreSelector } from '#react/dataview/storeSelector'
+import { useTableContext } from '#react/views/table/context.tsx'
+import { RowSelectionButton, TableLeadingRail } from '#react/views/table/components/row/RowRail.tsx'
+import { useStoreSelector } from '#react/dataview/storeSelector.ts'
 export interface RowScopeSelectionRailProps {
   rowIds: readonly ItemId[]
   label?: string

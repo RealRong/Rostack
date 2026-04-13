@@ -5,14 +5,14 @@ import {
 } from '@shared/dom'
 import {
   useViewportVersion
-} from '#react/dom/viewport'
+} from '#react/dom/viewport.ts'
 import {
   findVirtualBlockEndIndex,
   findVirtualBlockStartIndex
-} from '#react/virtual/math'
+} from '#react/virtual/math.ts'
 import type {
   VirtualBlock
-} from '#react/virtual/types'
+} from '#react/virtual/types.ts'
 
 const DEFAULT_OVERSCAN = 480
 

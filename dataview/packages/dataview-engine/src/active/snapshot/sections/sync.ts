@@ -4,24 +4,24 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   IndexState
-} from '#engine/active/index/contracts'
+} from '#engine/active/index/contracts.ts'
 import {
   readGroupFieldIndex
-} from '#engine/active/index/group/demand'
+} from '#engine/active/index/group/demand.ts'
 import type {
   QueryState,
   SectionState
-} from '#engine/contracts/internal'
+} from '#engine/contracts/internal.ts'
 import {
   buildSectionNode,
   buildSectionState,
   sameRecordIds,
   sameSectionNode,
   resolveSectionKeys
-} from '#engine/active/snapshot/sections/derive'
+} from '#engine/active/snapshot/sections/derive.ts'
 import {
   readQueryOrder
-} from '#engine/contracts/internal'
+} from '#engine/contracts/internal.ts'
 
 const insertOrdered = (
   ids: RecordId[],
@@ -97,10 +97,10 @@ export const syncSectionState = (input: {
 
   const previous = input.previous
   const queryOrder = readQueryOrder(input.query)
-  const idsByKey = new Map<import('#engine/contracts/public').SectionKey, RecordId[]>()
-  let byRecord: Map<RecordId, readonly import('#engine/contracts/public').SectionKey[]> | undefined
+  const idsByKey = new Map<import('#engine/contracts/public.ts').SectionKey, RecordId[]>()
+  let byRecord: Map<RecordId, readonly import('#engine/contracts/public.ts').SectionKey[]> | undefined
   const ensureIds = (
-    key: import('#engine/contracts/public').SectionKey
+    key: import('#engine/contracts/public.ts').SectionKey
   ) => {
     const cached = idsByKey.get(key)
     if (cached) {

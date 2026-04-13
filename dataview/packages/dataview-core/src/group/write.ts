@@ -1,19 +1,19 @@
 import type {
   Field,
   ViewGroup
-} from '#core/contracts'
+} from '#core/contracts/index.ts'
 import {
   KANBAN_EMPTY_BUCKET_KEY
-} from '#core/contracts'
+} from '#core/contracts/index.ts'
 import {
   STATUS_CATEGORIES,
   createDateGroupValue,
   getFieldOption,
   getStatusDefaultOption
-} from '#core/field'
+} from '#core/field/index.ts'
 import {
   parseDateGroupKey
-} from '#core/field/kind/date'
+} from '#core/field/kind/date.ts'
 
 export type GroupWriteResult =
   | { kind: 'set'; value: unknown }

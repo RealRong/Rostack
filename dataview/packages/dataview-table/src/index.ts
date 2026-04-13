@@ -1,32 +1,32 @@
 export {
   grid,
-} from '#table/grid'
+} from '#table/grid.ts'
 export {
   gridSelection,
   type GridSelection
-} from '#table/gridSelection'
+} from '#table/gridSelection.ts'
 export {
   range,
   type TableCellRange,
   type TableCellRangeEdges
-} from '#table/range'
+} from '#table/range.ts'
 export {
   fill,
   type TableFillEntry
-} from '#table/fill'
+} from '#table/fill.ts'
 export {
   paste,
   parseClipboardMatrix,
   planPaste,
   type TablePasteEntry
-} from '#table/paste'
+} from '#table/paste.ts'
 export {
   isSelectAll,
   gridKeyAction,
   type TableGridKeyAction,
   type TableKeyInput,
   type TableKeyboardRead
-} from '#table/keyboard'
+} from '#table/keyboard.ts'
 export {
   reorderRows,
   columnBeforeId,
@@ -36,4 +36,4 @@ export {
   sameRowHint,
   showRowHint,
   type TableRowReorderHint
-} from '#table/reorder'
+} from '#table/reorder.ts'

@@ -90,113 +90,33 @@
   - 单一来源：`whiteboard/packages/whiteboard-editor/src/local/feedback/selection.ts`
   - `editor/input/core/snap.ts` 已改为复用，不再重复声明。
 
-## 当前仍然存在的问题
+## 本轮最终收敛结果
 
-下面这些问题，是本轮审计确认还存在、且值得继续收敛的项。
+本轮已经把上一个审计版本里剩余的 3 个收尾项全部落地：
 
-### A. `MindmapPresentationRead.snapshot` 是纯别名中间层
+- `MindmapPresentationRead.snapshot`
+  - 已删除。
+  - `mindmap` 拖拽流程现在直接读取 `mindmap.item`，不再保留纯别名中间层。
+- `editor` 的 `MindmapView`
+  - 已统一复用共享几何类型：
+    - `rootPosition -> Point`
+    - `bbox -> Rect`
+    - `ghost -> Rect`
+    - `connectionLine -> MindmapLine`
+    - `insertLine -> MindmapLine`
+- `editor/input/edge/connect/start.ts`
+  - 本地 `readNodeRotation` wrapper 已删除。
+  - 已直接复用 `@whiteboard/core/node` 的 `readNodeRotation`。
 
-证据：
+额外完成的外层收敛：
 
-- `whiteboard/packages/whiteboard-editor/src/query/mindmap/read.ts`
-  - `snapshot: EngineRead['mindmap']['item']`
-  - 返回时直接赋值 `snapshot: read.item`
-- 调用方：
-  - `whiteboard/packages/whiteboard-editor/src/input/mindmap/drag/start.ts`
+- `whiteboard-react/src/types/mindmap.ts`
+  - mindmap 展示类型也已同步改为复用共享几何类型，避免在 `react` 层再次复制一份匿名结构。
 
-判断：
+当前结论：
 
-- 这不是新的语义层，只是把 `read.item` 改了一个名字再暴露一次。
-- 它没有提供额外约束、额外缓存、额外投影，也没有消除任何实现细节。
-- 这是当前最明确的一处“纯中间翻译字段”。
-
-建议：
-
-- 删除 `MindmapPresentationRead['snapshot']`。
-- 调用方统一改读 `mindmap.item`。
-
-优先级：高
-
-### B. `editor` 的 `MindmapView` 仍在重复内联几何对象结构
-
-证据：
-
-- `whiteboard/packages/whiteboard-editor/src/query/mindmap/read.ts`
-  - `rootPosition: { x; y }`
-  - `bbox: { width; height }`
-  - `ghost: { width; height; x; y }`
-  - `connectionLine: { x1; y1; x2; y2 }`
-  - `insertLine: { x1; y1; x2; y2 }`
-
-而 `core` 已经有：
-
-- `Point`
-- `Rect`
-- `MindmapConnectionLine`
-
-判断：
-
-- 这里已经不是跨层重复定义第二套命令模型，但仍然是重复的几何 shape。
-- 这种匿名对象会让等值判断、序列化、跨模块传递变得更脆弱。
-- `MindmapView` 仍然是当前 `editor` 中最明显的“结构匿名化扩散点”。
-
-建议：
-
-- `rootPosition` 直接使用 `Point`
-- `ghost` 直接使用 `Rect`
-- `connectionLine` / `insertLine` 直接使用 `MindmapConnectionLine` 或共享 `MindmapLine`
-- `bbox` 至少抽成命名类型；如果语义允许，直接统一为 `Rect`
-
-优先级：高
-
-### C. `editor/input/edge/connect/start.ts` 还保留了一个局部 `readNodeRotation` 包装
-
-证据：
-
-- `whiteboard/packages/whiteboard-editor/src/input/edge/connect/start.ts`
-
-当前实现：
-
-- `const readNodeRotation = (entry: ConnectNodeEntry) => entry.node.rotation ?? 0`
-
-判断：
-
-- 这已经不是跨模块大量复制，但本质仍是对 `core.readNodeRotation(entry.node)` 的局部重写。
-- 逻辑很小，但属于典型的“迁移后残留 wrapper”。
-- 继续保留这种 wrapper，长期会让团队误以为这层有特殊规则。
-
-建议：
-
-- 直接复用 `@whiteboard/core/node` 的 `readNodeRotation`
-- 在使用处传 `entry.node`
-
-优先级：中
-
-### D. `MindmapView` 与 `MindmapNodeView` 仍是 editor 自有展示类型，尚未形成共享展示契约
-
-证据：
-
-- `whiteboard/packages/whiteboard-editor/src/query/mindmap/read.ts`
-  - `MindmapNodeView`
-  - `MindmapView`
-
-判断：
-
-- 这不是错误。
-- 但它说明 `mindmap` 的展示态结构目前仍由 `editor` 自己局部决定，没有抽成更稳定的 presentation contract。
-- 如果未来 `react`、其他 renderer、或协作 overlay 继续消费 mindmap 展示态，这里会再次演化出第二份 view model。
-
-建议：
-
-- 先不急着上移到 `core`
-- 但建议在 `editor` 内部先把 `MindmapView` 拆成更稳定的命名子类型：
-  - `MindmapNodeView`
-  - `MindmapGhostView`
-  - `MindmapLineView`
-  - `MindmapViewportView` 或类似命名
-- 避免把匿名对象嵌在单个大类型里继续膨胀
-
-优先级：中
+- 在 `core` / `engine` / `editor` 的审计范围内，本轮已经没有明确的“必须继续迁移”的重复类型族或中间翻译层。
+- 当前剩余的类型包装都属于合理的分层表达，而不是历史遗留的双轨模型。
 
 ## 当前不建议再动的部分
 
@@ -264,44 +184,21 @@
 
 ## 迁移清单
 
-下面是基于当前代码状态得到的完整迁移清单。由于大块重复模型已经完成收敛，当前 checklist 主要由 3 个阶段组成。
+当前迁移清单已经全部完成。
 
-### 阶段 1：删除纯别名中间层
+已完成项：
 
-- [ ] 删除 `whiteboard/packages/whiteboard-editor/src/query/mindmap/read.ts` 中的 `snapshot`
-- [ ] 将 `whiteboard/packages/whiteboard-editor/src/input/mindmap/drag/start.ts` 全部改为直接读取 `mindmap.item`
-- [ ] 重新跑 `whiteboard-editor`、`whiteboard-react`、`apps/whiteboard` 的类型检查
-
-阶段目标：
-
-- mindmap 展示读模型不再保留纯别名字段
-
-### 阶段 2：统一 mindmap 展示态几何类型
-
-- [ ] 在 `editor` 内为 `MindmapView` 中的匿名几何对象建立命名类型，优先复用 `core` 的 `Point` / `Rect` / `MindmapConnectionLine`
-- [ ] 将 `rootPosition` 改成 `Point`
-- [ ] 将 `ghost` 改成 `Rect`
-- [ ] 将 `connectionLine` / `insertLine` 改成 `MindmapConnectionLine` 或共享 line 类型
-- [ ] 将 `bbox` 从匿名 `{ width; height }` 改成更稳定的命名类型
-- [ ] 更新 `isMindmapViewEqual` 和所有相关调用点
-
-阶段目标：
-
-- mindmap 展示态不再继续散落匿名几何 shape
-
-### 阶段 3：清理残余局部 helper
-
-- [ ] 删除 `whiteboard/packages/whiteboard-editor/src/input/edge/connect/start.ts` 中的本地 `readNodeRotation`
-- [ ] 改为直接复用 `@whiteboard/core/node` 的 `readNodeRotation`
-- [ ] 再次扫描 `core` / `engine` / `editor` 中是否还存在局部 rotation fallback wrapper
-
-阶段目标：
-
-- `rotation` 读取逻辑彻底只保留一个来源
+- [x] 删除 `MindmapPresentationRead.snapshot` 纯别名中间层
+- [x] 将 mindmap 拖拽调用点改为直接读取 `mindmap.item`
+- [x] 统一 `MindmapView` 的几何类型到共享 `Point` / `Rect` / `MindmapLine`
+- [x] 删除 `editor/input/edge/connect/start.ts` 中本地 `readNodeRotation`
+- [x] 统一 `react` 层 mindmap 展示类型，避免再次复制匿名几何结构
+- [x] 重新通过 `editor` / `react` / `apps/whiteboard` 类型检查
+- [x] 重新通过整套 `whiteboard` lint / test
 
 ## 验证建议
 
-完成上面 3 个阶段后，至少执行以下校验：
+本轮收敛完成后，已执行以下校验：
 
 - `pnpm --dir whiteboard lint`
 - `pnpm --dir whiteboard test`
@@ -316,5 +213,5 @@
 如果只看 `core` / `engine` / `editor` 三层当前代码：
 
 - 大型重复类型族已经基本消失。
-- 当前剩余问题不再是“领域模型双轨维护”，而是“editor 展示层少量匿名结构与纯别名残留”。
-- 后续最值得继续做的，不是再重构命令体系，而是把 `mindmap` 展示态结构和少量局部 helper 再压平一轮。
+- 历史遗留的中间翻译层已经清理完毕。
+- 当前代码已经进入“可维护的单一来源状态”，后续如果继续优化，优先级应放在新功能抽象，而不是继续做类型体系去重。

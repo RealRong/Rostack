@@ -11,11 +11,11 @@ import type {
 import {
   useStoreValue
 } from '@shared/react'
-import { useTableContext } from '#react/views/table/context'
-import { Row } from '#react/views/table/components/row/Row'
-import { ColumnFooterBlock } from '#react/views/table/components/body/ColumnFooterBlock'
-import { ColumnHeaderBlock } from '#react/views/table/components/body/ColumnHeaderBlock'
-import { SectionHeader } from '#react/views/table/components/body/SectionHeader'
+import { useTableContext } from '#react/views/table/context.tsx'
+import { Row } from '#react/views/table/components/row/Row.tsx'
+import { ColumnFooterBlock } from '#react/views/table/components/body/ColumnFooterBlock.tsx'
+import { ColumnHeaderBlock } from '#react/views/table/components/body/ColumnHeaderBlock.tsx'
+import { SectionHeader } from '#react/views/table/components/body/SectionHeader.tsx'
 
 export interface BlockContentProps {
   columns: readonly Field[]

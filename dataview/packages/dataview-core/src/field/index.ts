@@ -6,10 +6,10 @@ import type {
   DataRecord,
   RecordId,
   ViewGroup
-} from '#core/contracts/index'
+} from '#core/contracts/index.ts'
 import {
   TITLE_FIELD_ID
-} from '#core/contracts/state'
+} from '#core/contracts/state.ts'
 import {
   getKind,
   getFieldGroupMeta as getCustomFieldGroupMeta,
@@ -17,41 +17,41 @@ import {
   resolveGroupBucketEntries,
   type Bucket,
   type FieldGroupMeta
-} from '#core/field/kind/index'
+} from '#core/field/kind/index.ts'
 import {
   createDefaultCustomField
-} from '#core/field/schema/index'
+} from '#core/field/schema/index.ts'
 import {
   hasFieldOptions as supportsFieldOptions
-} from '#core/field/kind/spec'
+} from '#core/field/kind/spec.ts'
 import {
   canQuickToggleCustomFieldValue,
   resolveCustomFieldPrimaryAction,
   resolveCustomFieldValueBehavior,
   type FieldValueBehavior
-} from '#core/field/behavior'
+} from '#core/field/behavior.ts'
 import {
   getCustomFieldDisplayValue,
   parseCustomFieldDraft,
   type FieldDraftParseResult
-} from '#core/field/value/index'
+} from '#core/field/value/index.ts'
 import {
   getFieldSearchTokens as getCustomFieldSearchTokens
-} from '#core/field/value/search'
+} from '#core/field/value/search.ts'
 import {
   compareFieldValues as compareCustomFieldValues
-} from '#core/field/value/sort'
-export * from '#core/field/kind/index'
-export * from '#core/field/kind/spec'
-export * from '#core/field/kind/date'
-export * from '#core/field/kind/status'
-export * from '#core/field/kind/url'
-export * from '#core/field/behavior'
-export * from '#core/field/value/index'
-export * from '#core/field/value/search'
-export * from '#core/field/value/sort'
-export * from '#core/field/schema/index'
-export * from '#core/field/options/index'
+} from '#core/field/value/sort.ts'
+export * from '#core/field/kind/index.ts'
+export * from '#core/field/kind/spec.ts'
+export * from '#core/field/kind/date.ts'
+export * from '#core/field/kind/status.ts'
+export * from '#core/field/kind/url.ts'
+export * from '#core/field/behavior.ts'
+export * from '#core/field/value/index.ts'
+export * from '#core/field/value/search.ts'
+export * from '#core/field/value/sort.ts'
+export * from '#core/field/schema/index.ts'
+export * from '#core/field/options/index.ts'
 export {
   STATUS_CATEGORIES,
   compareStatusFieldValues,
@@ -63,7 +63,7 @@ export {
   getStatusFieldDefaultOption,
   getStatusOptionCategory,
   getStatusSections,
-} from '#core/field/kind/status'
+} from '#core/field/kind/status.ts'
 export {
   createDateGroupValue,
   createDefaultDateFieldConfig,
@@ -73,19 +73,19 @@ export {
   parseDateGroupKey,
   parseDateInputDraft,
   readDateComparableTimestamp
-} from '#core/field/kind/date'
+} from '#core/field/kind/date.ts'
 export {
   createDefaultUrlFieldConfig,
   formatUrlDisplayValue
-} from '#core/field/kind/url'
+} from '#core/field/kind/url.ts'
 export {
   normalizeSearchableValue,
   isEmptyFieldValue,
   normalizeFieldToken,
   type FieldDraftParseResult
-} from '#core/field/value/index'
-export type { FieldGroupMeta } from '#core/field/kind/index'
-export type { FieldValueBehavior } from '#core/field/behavior'
+} from '#core/field/value/index.ts'
+export type { FieldGroupMeta } from '#core/field/kind/index.ts'
+export type { FieldValueBehavior } from '#core/field/behavior.ts'
 export const createDefaultField = createDefaultCustomField
 export const hasFieldOptions = (
   field?: Field

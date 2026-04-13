@@ -8,14 +8,14 @@ import type {
   ViewCalc,
   ViewDisplay,
   ViewOptions
-} from '#core/contracts/index'
+} from '#core/contracts/index.ts'
 import {
   applyRecordOrder,
   reorderRecordBlockIds
-} from '#core/view/order'
+} from '#core/view/order.ts'
 import {
   cloneViewOptions
-} from '#core/view/shared'
+} from '#core/view/shared.ts'
 
 export const cloneDisplay = (
   display: ViewDisplay

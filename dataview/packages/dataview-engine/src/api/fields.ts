@@ -13,12 +13,12 @@ import {
   read,
   trimToUndefined
 } from '@shared/core'
-import { createFieldId } from '#engine/mutate/entityId'
+import { createFieldId } from '#engine/mutate/entityId.ts'
 import type {
   ActionResult,
   DocumentSelectApi,
   FieldsApi
-} from '#engine/contracts/public'
+} from '#engine/contracts/public.ts'
 
 const getOptionField = (
   field?: CustomField

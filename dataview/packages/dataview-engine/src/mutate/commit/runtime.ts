@@ -15,41 +15,41 @@ import {
 } from '@dataview/core/operation'
 import {
   deriveIndex
-} from '#engine/active/index/runtime'
+} from '#engine/active/index/runtime.ts'
 import {
   deriveViewRuntime
-} from '#engine/active/runtime'
+} from '#engine/active/runtime.ts'
 import type {
   PlannedWriteBatch
-} from '#engine/mutate/planner/index'
+} from '#engine/mutate/planner/index.ts'
 import type {
   PerformanceRuntime
-} from '#engine/runtime/performance'
+} from '#engine/runtime/performance.ts'
 import {
   now
-} from '#engine/runtime/clock'
+} from '#engine/runtime/clock.ts'
 import {
   resolveViewDemand
-} from '#engine/active/demand'
+} from '#engine/active/demand.ts'
 import type {
   EngineRuntimeState,
   RuntimeStore
-} from '#engine/runtime/store'
+} from '#engine/runtime/store.ts'
 import type {
   ActionResult,
   CommitResult,
   CreatedEntities
-} from '#engine/contracts/public'
+} from '#engine/contracts/public.ts'
 import {
   clearHistory,
   clearRedo,
   createWriteHistory,
   pushUndo
-} from '#engine/runtime/history'
+} from '#engine/runtime/history.ts'
 import {
   summarizeDelta,
   toTraceKind
-} from '#engine/mutate/commit/trace'
+} from '#engine/mutate/commit/trace.ts'
 
 type Kind =
   | 'write'

@@ -1,4 +1,4 @@
-import { cn } from '#ui/utils'
+import { cn } from '#ui/utils.ts'
 
 export interface SwitchProps {
   checked: boolean

@@ -9,11 +9,11 @@ import type {
 } from '@dataview/engine'
 import {
   grid
-} from '#table/grid'
+} from '#table/grid.ts'
 import {
   type GridSelection
-} from '#table/gridSelection'
-import { range } from '#table/range'
+} from '#table/gridSelection.ts'
+import { range } from '#table/range.ts'
 
 export interface TablePasteEntry {
   cell: CellRef

@@ -1,12 +1,12 @@
-import { Empty, KanbanCanvas } from '#react/views/kanban/components/index'
-import { KanbanProvider } from '#react/views/kanban/context'
-import { PAGE_INLINE_INSET_CSS } from '#react/page/layout'
+import { Empty, KanbanCanvas } from '#react/views/kanban/components/index.ts'
+import { KanbanProvider } from '#react/views/kanban/context.tsx'
+import { PAGE_INLINE_INSET_CSS } from '#react/page/layout.ts'
 import {
   useDataViewValue
-} from '#react/dataview'
+} from '#react/dataview/index.ts'
 import {
   type ActiveKanbanViewState
-} from '#react/views/kanban/types'
+} from '#react/views/kanban/types.ts'
 import type { ViewState } from '@dataview/engine'
 
 const DEFAULT_COLUMN_WIDTH = 320

@@ -1,11 +1,11 @@
 import {
   selection
-} from '#react/runtime/selection/store'
+} from '#react/runtime/selection/store.ts'
 import type {
   SelectionApi,
   SelectionScope,
   SelectionStore
-} from '#react/runtime/selection/types'
+} from '#react/runtime/selection/types.ts'
 
 export const createSelectionApi = (input: {
   store: SelectionStore

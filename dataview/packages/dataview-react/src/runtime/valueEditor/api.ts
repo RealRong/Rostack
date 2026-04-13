@@ -11,7 +11,7 @@ import type {
   ValueEditorResult,
   ValueEditorSession,
   ViewFieldRef
-} from '#react/runtime/valueEditor/types'
+} from '#react/runtime/valueEditor/types.ts'
 
 const cloneField = (
   field: ViewFieldRef

@@ -2,7 +2,7 @@ export type {
   FilterEditorKind,
   FilterPreset,
   FilterSpec
-} from '#core/filter/types'
+} from '#core/filter/types.ts'
 export {
   applyFilterPreset,
   cloneFilterRule,
@@ -18,7 +18,7 @@ export {
   normalizeFilterRule,
   readFilterOptionSetValue,
   setFilterRuleValue
-} from '#core/filter/spec'
+} from '#core/filter/spec.ts'
 export {
   addFilterRule,
   cloneFilter,
@@ -30,4 +30,4 @@ export {
   setFilterMode,
   setFilterPreset,
   setFilterValue
-} from '#core/filter/state'
+} from '#core/filter/state.ts'

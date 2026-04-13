@@ -5,11 +5,11 @@ import type {
   PageState,
   PageSessionApi,
   PageSessionInput
-} from '#react/page/session/types'
-import type { SelectionApi } from '#react/runtime/selection'
-import type { InlineSessionApi } from '#react/runtime/inlineSession'
-import type { ValueEditorController } from '#react/runtime/valueEditor'
-import type { MarqueeApi } from '#react/runtime/marquee'
+} from '#react/page/session/types.ts'
+import type { SelectionApi } from '#react/runtime/selection/index.ts'
+import type { InlineSessionApi } from '#react/runtime/inlineSession/index.ts'
+import type { ValueEditorController } from '#react/runtime/valueEditor/index.ts'
+import type { MarqueeApi } from '#react/runtime/marquee/index.ts'
 
 export interface DataViewContextValue {
   engine: Engine

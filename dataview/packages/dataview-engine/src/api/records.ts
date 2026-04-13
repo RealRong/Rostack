@@ -12,7 +12,7 @@ import type {
   ActionResult,
   DocumentSelectApi,
   RecordsApi
-} from '#engine/contracts/public'
+} from '#engine/contracts/public.ts'
 
 export const createRecordsApi = (options: {
   select: DocumentSelectApi

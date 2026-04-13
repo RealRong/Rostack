@@ -3,8 +3,8 @@ import type {
   Field,
   FieldId,
   ViewCalc
-} from '#core/contracts/state'
-import { isJsonObject } from '#core/view/shared'
+} from '#core/contracts/state.ts'
+import { isJsonObject } from '#core/view/shared.ts'
 
 const BASE_METRICS = [
   'countAll',

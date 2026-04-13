@@ -14,10 +14,10 @@ import type {
 import {
   useDataView,
   useDataViewValue
-} from '#react/dataview'
+} from '#react/dataview/index.ts'
 import {
   dataviewAppearanceSelector
-} from '#react/dom/appearance'
+} from '#react/dom/appearance.ts'
 import {
   closestTarget,
   interactiveSelector
@@ -29,22 +29,22 @@ import {
 } from '@dataview/engine'
 import {
   resolveDefaultAutoPanTargets
-} from '#react/interaction/autoPan'
+} from '#react/interaction/autoPan.ts'
 import {
   createVisualTargetRegistry
-} from '#react/runtime/marquee'
+} from '#react/runtime/marquee/index.ts'
 import { useStoreValue } from '@shared/react'
 import {
   readBoardLayout
-} from '#react/views/kanban/drag/index'
+} from '#react/views/kanban/drag/index.ts'
 import {
   useDrag
-} from '#react/views/kanban/drag/index'
+} from '#react/views/kanban/drag/index.ts'
 import type {
   KanbanRuntimeInput,
   KanbanSectionVisibility,
   KanbanViewRuntime
-} from '#react/views/kanban/types'
+} from '#react/views/kanban/types.ts'
 
 const resolveInitialVisibleCount = (
   limit: KanbanCardsPerColumn,

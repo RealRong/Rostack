@@ -5,22 +5,22 @@ import type {
   CustomFieldKind,
   StatusOption,
   CustomFieldId
-} from '#core/contracts/state'
+} from '#core/contracts/state.ts'
 import {
   createDefaultDateFieldConfig,
   DATE_DISPLAY_FORMATS,
   DATE_TIME_FORMATS,
   DATE_VALUE_KINDS,
   isValidDateTimeZone
-} from '#core/field/kind/date'
+} from '#core/field/kind/date.ts'
 import {
   CUSTOM_FIELD_KINDS,
   createDefaultFieldOfKind
-} from '#core/field/kind/spec'
+} from '#core/field/kind/spec.ts'
 import {
   createDefaultStatusOptions,
   STATUS_CATEGORIES
-} from '#core/field/kind/status'
+} from '#core/field/kind/status.ts'
 
 export const isCustomFieldKind = (value: unknown): value is CustomFieldKind => (
   typeof value === 'string' && CUSTOM_FIELD_KINDS.includes(value as CustomFieldKind)

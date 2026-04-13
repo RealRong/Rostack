@@ -1,6 +1,6 @@
-import type { GalleryOptions } from '#core/contracts/gallery'
-import type { KanbanOptions } from '#core/contracts/kanban'
-import type { FieldId } from '#core/contracts/state'
+import type { GalleryOptions } from '#core/contracts/gallery.ts'
+import type { KanbanOptions } from '#core/contracts/kanban.ts'
+import type { FieldId } from '#core/contracts/state.ts'
 
 export interface TableOptions {
   widths: Readonly<Partial<Record<FieldId, number>>>

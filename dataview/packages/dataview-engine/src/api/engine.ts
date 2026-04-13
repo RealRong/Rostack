@@ -1,2 +1,2 @@
-export { createEngine } from '#engine/api/createEngine'
-export type * from '#engine/contracts/public'
+export { createEngine } from '#engine/api/createEngine.ts'
+export type * from '#engine/contracts/public.ts'

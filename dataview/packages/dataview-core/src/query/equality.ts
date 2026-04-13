@@ -1,16 +1,16 @@
 import {
   sameFilterRule
-} from '#core/filter'
+} from '#core/filter/index.ts'
 import {
   sameGroup
-} from '#core/group'
+} from '#core/group/index.ts'
 import {
   sameSearch
-} from '#core/search'
+} from '#core/search/index.ts'
 import {
   sameSorters
-} from '#core/sort'
-import type { DocumentViewQuery } from '#core/contracts'
+} from '#core/sort/index.ts'
+import type { DocumentViewQuery } from '#core/contracts/index.ts'
 
 export const isSameViewQuery = (
   left: DocumentViewQuery,

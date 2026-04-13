@@ -10,8 +10,8 @@ import {
   closestCenter,
   DndContext
 } from '@dnd-kit/core'
-import { modifiers } from '#react/interaction'
-import { DragGhost } from '#react/dom/dragGhost'
+import { modifiers } from '#react/interaction/index.ts'
+import { DragGhost } from '#react/dom/dragGhost.tsx'
 import {
   closestTarget,
   hasInteractiveTarget,
@@ -20,26 +20,26 @@ import {
 import {
   useDataView,
   useDataViewValue
-} from '#react/dataview'
+} from '#react/dataview/index.ts'
 import {
   resolveDefaultAutoPanTargets
-} from '#react/interaction/autoPan'
+} from '#react/interaction/autoPan.ts'
 import { useStoreValue } from '@shared/react'
 import { type CellRef } from '@dataview/engine'
-import { applyPaste, handleTableKey } from '#react/views/table/input'
+import { applyPaste, handleTableKey } from '#react/views/table/input.ts'
 import {
   gridContentBounds,
   gridTemplate
-} from '#react/views/table/layout'
-import { useTableContext } from '#react/views/table/context'
-import { useColumnResize } from '#react/views/table/hooks/useColumnResize'
-import { useColumnReorder } from '#react/views/table/hooks/useColumnReorder'
-import { useRowReorder } from '#react/views/table/hooks/useRowReorder'
-import { usePointer } from '#react/views/table/hooks/usePointer'
-import { hasTableTarget } from '#react/views/table/dom/targets'
-import { RowDropIndicator } from '#react/views/table/components/overlay/RowDropIndicator'
-import { BlockContent } from '#react/views/table/components/body/BlockContent'
-import { Surface } from '#react/views/table/components/body/Surface'
+} from '#react/views/table/layout.ts'
+import { useTableContext } from '#react/views/table/context.tsx'
+import { useColumnResize } from '#react/views/table/hooks/useColumnResize.ts'
+import { useColumnReorder } from '#react/views/table/hooks/useColumnReorder.ts'
+import { useRowReorder } from '#react/views/table/hooks/useRowReorder.tsx'
+import { usePointer } from '#react/views/table/hooks/usePointer.ts'
+import { hasTableTarget } from '#react/views/table/dom/targets.ts'
+import { RowDropIndicator } from '#react/views/table/components/overlay/RowDropIndicator.tsx'
+import { BlockContent } from '#react/views/table/components/body/BlockContent.tsx'
+import { Surface } from '#react/views/table/components/body/Surface.tsx'
 
 const View = () => {
   const dataView = useDataView()

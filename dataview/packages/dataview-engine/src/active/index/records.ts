@@ -14,10 +14,10 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   RecordIndex
-} from '#engine/active/index/contracts'
+} from '#engine/active/index/contracts.ts'
 import {
   createOrderIndex
-} from '#engine/active/index/shared'
+} from '#engine/active/index/shared.ts'
 
 const toValueMap = (
   document: DataDoc,

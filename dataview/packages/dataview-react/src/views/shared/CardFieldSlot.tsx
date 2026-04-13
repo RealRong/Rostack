@@ -7,8 +7,8 @@ import {
 import type {
   ViewFieldRef
 } from '@dataview/engine'
-import { CardField } from '#react/views/shared/CardField'
-import { AddCardFieldTrigger } from '#react/views/shared/AddCardFieldTrigger'
+import { CardField } from '#react/views/shared/CardField.tsx'
+import { AddCardFieldTrigger } from '#react/views/shared/AddCardFieldTrigger.tsx'
 
 export interface CardFieldSlotProps {
   field: ViewFieldRef

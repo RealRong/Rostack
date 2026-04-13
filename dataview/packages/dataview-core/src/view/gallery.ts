@@ -1,8 +1,8 @@
 import type {
   GalleryCardSize,
   GalleryOptions
-} from '#core/contracts/gallery'
-import { isJsonObject } from '#core/view/shared'
+} from '#core/contracts/gallery.ts'
+import { isJsonObject } from '#core/view/shared.ts'
 
 const DEFAULT_CARD_SIZE: GalleryCardSize = 'md'
 const DEFAULT_SHOW_FIELD_LABELS = true

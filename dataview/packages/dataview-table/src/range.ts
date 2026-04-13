@@ -8,10 +8,10 @@ import type {
 import { sameCellRef } from '@dataview/engine'
 import {
   grid
-} from '#table/grid'
+} from '#table/grid.ts'
 import {
   type GridSelection
-} from '#table/gridSelection'
+} from '#table/gridSelection.ts'
 
 export interface TableCellRange {
   anchor: CellRef

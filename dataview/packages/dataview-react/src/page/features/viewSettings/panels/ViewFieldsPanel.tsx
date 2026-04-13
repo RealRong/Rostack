@@ -11,12 +11,12 @@ import { Menu, type MenuItem, type MenuReorderItem } from '@shared/ui/menu'
 import {
   useDataView,
   useDataViewValue
-} from '#react/dataview'
+} from '#react/dataview/index.ts'
 import { meta, renderMessage } from '@dataview/meta'
 import {
   buildFieldActionItem,
   buildFieldReorderItem
-} from '#react/menu-builders'
+} from '#react/menu-builders/index.ts'
 
 export const ViewFieldsPanel = () => {
   const dataView = useDataView()

@@ -5,9 +5,9 @@ import type {
   Sorter,
   ViewType
 } from '@dataview/core/contracts'
-import { message, renderMessage, type MessageSpec } from '#meta/message'
-import { sort } from '#meta/sort'
-import { view } from '#meta/view'
+import { message, renderMessage, type MessageSpec } from '#meta/message.ts'
+import { sort } from '#meta/sort.ts'
+import { view } from '#meta/view.tsx'
 
 type SettingsRouteKind =
   | 'root'

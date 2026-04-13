@@ -1,4 +1,4 @@
-import type { CustomFieldId, DataDoc, DataRecord, EntityTable, IndexPath, RecordId } from '#core/contracts/state'
+import type { CustomFieldId, DataDoc, DataRecord, EntityTable, IndexPath, RecordId } from '#core/contracts/state.ts'
 import {
   getEntityTableById,
   getEntityTableIds,
@@ -6,7 +6,7 @@ import {
   listEntityTable,
   mergePatchedEntity,
   normalizeRecordInput
-} from '#core/document/table'
+} from '#core/document/table.ts'
 
 export interface RecordEntry {
   record: DataRecord

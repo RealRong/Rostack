@@ -3,16 +3,16 @@ import type {
   DataDoc,
   DataRecord,
   Search
-} from '#core/contracts'
+} from '#core/contracts/index.ts'
 import {
   getDocumentCustomFieldById,
   getDocumentFieldById
-} from '#core/document'
+} from '#core/document/index.ts'
 import {
   getFieldSearchTokens,
   getRecordFieldValue,
   normalizeSearchableValue
-} from '#core/field'
+} from '#core/field/index.ts'
 
 const isDefaultSearchField = (
   field: CustomField | undefined

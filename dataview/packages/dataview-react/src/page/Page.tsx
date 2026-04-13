@@ -1,15 +1,15 @@
 import { type CSSProperties } from 'react'
 import { OverlayProvider } from '@shared/ui/overlay'
-import { ViewQueryBar } from '#react/page/features/viewQuery/ViewQueryBar'
+import { ViewQueryBar } from '#react/page/features/viewQuery/ViewQueryBar.tsx'
 import {
   PageInlineSessionHost,
   PageKeyboardHost,
   PageMarqueeHost
-} from '#react/page/hosts'
-import { FieldValueEditorHost } from '#react/runtime/valueEditor'
-import { PageBody, type PageBodyProps } from '#react/page/Body'
-import { PageToolbar } from '#react/page/Toolbar'
-import { PAGE_INLINE_INSET_CSS, PAGE_INLINE_INSET_VALUE } from '#react/page/layout'
+} from '#react/page/hosts/index.ts'
+import { FieldValueEditorHost } from '#react/runtime/valueEditor/index.ts'
+import { PageBody, type PageBodyProps } from '#react/page/Body.tsx'
+import { PageToolbar } from '#react/page/Toolbar.tsx'
+import { PAGE_INLINE_INSET_CSS, PAGE_INLINE_INSET_VALUE } from '#react/page/layout.ts'
 
 export interface PageProps {
   table?: PageBodyProps['table']

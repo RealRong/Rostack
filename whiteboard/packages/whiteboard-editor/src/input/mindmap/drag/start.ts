@@ -63,7 +63,7 @@ export const previewMindmapDrag = (
 export const startMindmapDrag = (input: {
   tool: Tool
   pointer: PointerDownInput
-  mindmap: Pick<MindmapPresentationRead, 'snapshot' | 'rootPosition'>
+  mindmap: Pick<MindmapPresentationRead, 'item' | 'rootPosition'>
 }): MindmapDragState | undefined => {
   if (
     input.tool.type !== 'select'
@@ -75,7 +75,7 @@ export const startMindmapDrag = (input: {
     return undefined
   }
 
-  const treeView = input.mindmap.snapshot.get(input.pointer.pick.treeId)
+  const treeView = input.mindmap.item.get(input.pointer.pick.treeId)
   const rootPosition = input.mindmap.rootPosition.get(input.pointer.pick.treeId)
   if (!treeView || !rootPosition) {
     return undefined
@@ -106,13 +106,13 @@ export const startMindmapDrag = (input: {
 export const stepMindmapDrag = (input: {
   state: MindmapDragState
   world: Point
-  mindmap: Pick<MindmapPresentationRead, 'snapshot'>
+  mindmap: Pick<MindmapPresentationRead, 'item'>
 }): MindmapDragState => projectMindmapDrag({
   active: input.state,
   world: input.world,
   treeView:
     input.state.kind === 'subtree'
-      ? input.mindmap.snapshot.get(input.state.treeId)
+      ? input.mindmap.item.get(input.state.treeId)
       : undefined
 })
 

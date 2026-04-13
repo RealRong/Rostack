@@ -7,8 +7,8 @@ import type {
   SectionKey,
   SectionList,
   ViewItem
-} from '#engine/contracts/public'
-import type { SectionState } from '#engine/contracts/internal'
+} from '#engine/contracts/public.ts'
+import type { SectionState } from '#engine/contracts/internal.ts'
 
 const EMPTY_IDS = [] as readonly ItemId[]
 const SEPARATOR = '\u0000'

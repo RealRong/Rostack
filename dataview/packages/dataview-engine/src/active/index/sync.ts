@@ -12,8 +12,8 @@ import {
   collectTouchedRecordIds,
   collectValueFieldIds,
   hasRecordSetChange
-} from '#engine/active/index/shared'
-import type { FieldSyncContext } from '#engine/active/index/contracts'
+} from '#engine/active/index/shared.ts'
+import type { FieldSyncContext } from '#engine/active/index/contracts.ts'
 
 export const createFieldSyncContext = (
   delta: CommitDelta,

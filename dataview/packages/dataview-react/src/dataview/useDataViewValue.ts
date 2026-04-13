@@ -7,9 +7,9 @@ import {
   useKeyedStoreValue,
   useStoreValue
 } from '@shared/react'
-import { useStoreSelector } from '#react/dataview/storeSelector'
-import type { DataViewContextValue } from '#react/dataview/types'
-import { useDataView } from '#react/dataview/provider'
+import { useStoreSelector } from '#react/dataview/storeSelector.ts'
+import type { DataViewContextValue } from '#react/dataview/types.ts'
+import { useDataView } from '#react/dataview/provider.tsx'
 
 export function useDataViewValue<TState>(
   resolveStore: (dataView: DataViewContextValue) => ReadStore<TState>

@@ -8,8 +8,8 @@ import type {
 import type {
   ItemId
 } from '@dataview/engine'
-import { RowScopeSelectionRail } from '#react/views/table/components/row/RowScopeSelectionRail'
-import { ColumnHeaderRow } from '#react/views/table/components/column/ColumnHeaderRow'
+import { RowScopeSelectionRail } from '#react/views/table/components/row/RowScopeSelectionRail.tsx'
+import { ColumnHeaderRow } from '#react/views/table/components/column/ColumnHeaderRow.tsx'
 
 export interface ColumnHeaderBlockProps {
   scopeId: string

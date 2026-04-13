@@ -4,7 +4,7 @@ import type {
 } from '@dataview/engine'
 import type {
   VirtualBlock
-} from '#react/virtual'
+} from '#react/virtual/index.ts'
 
 export interface TableColumnHeaderBlock extends VirtualBlock {
   kind: 'column-header'

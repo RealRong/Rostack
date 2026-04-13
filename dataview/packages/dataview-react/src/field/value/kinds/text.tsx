@@ -8,10 +8,10 @@ import { cn } from '@shared/ui/utils'
 import {
   InputEditor,
   type InputKind
-} from '#react/field/value/editor/basic/InputEditor'
-import type { FieldValueDraftEditorProps } from '#react/field/value/editor/index'
-import type { FieldValueSpec } from '#react/field/value/kinds/contracts'
-import { renderEmpty } from '#react/field/value/kinds/shared'
+} from '#react/field/value/editor/basic/InputEditor.tsx'
+import type { FieldValueDraftEditorProps } from '#react/field/value/editor/index.ts'
+import type { FieldValueSpec } from '#react/field/value/kinds/contracts.ts'
+import { renderEmpty } from '#react/field/value/kinds/shared.tsx'
 
 const resolveInputKind = (
   field?: Field

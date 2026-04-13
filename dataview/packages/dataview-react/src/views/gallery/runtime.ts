@@ -10,33 +10,33 @@ import type {
 } from '@dataview/engine'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
-} from '#react/dom/appearance'
+} from '#react/dom/appearance.ts'
 import {
   useDataView,
   useDataViewValue
-} from '#react/dataview'
+} from '#react/dataview/index.ts'
 import {
   closestTarget,
   interactiveSelector
 } from '@shared/dom'
 import {
   resolveDefaultAutoPanTargets
-} from '#react/interaction/autoPan'
+} from '#react/interaction/autoPan.ts'
 import {
   createVisualTargetRegistry
-} from '#react/runtime/marquee'
+} from '#react/runtime/marquee/index.ts'
 import { useStoreValue } from '@shared/react'
 import {
   useCardReorder
-} from '#react/views/gallery/reorder/index'
+} from '#react/views/gallery/reorder/index.ts'
 import {
   GALLERY_CARD_MIN_WIDTH,
   useGalleryBlocks
-} from '#react/views/gallery/virtual/index'
+} from '#react/views/gallery/virtual/index.ts'
 import type {
   GalleryRuntimeInput,
   GalleryViewRuntime
-} from '#react/views/gallery/types'
+} from '#react/views/gallery/types.ts'
 
 export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntime => {
   const dataView = useDataView()

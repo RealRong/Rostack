@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { flushSync } from 'react-dom'
-import type { EditorSubmitTrigger } from '#react/interaction'
+import type { EditorSubmitTrigger } from '#react/interaction/index.ts'
 
 export const useDraftCommit = <TDraft,>(input: {
   onDraftChange: (draft: TDraft) => void

@@ -1,7 +1,7 @@
 import type {
   SortDirection,
   Sorter
-} from '#core/contracts'
+} from '#core/contracts/index.ts'
 
 export const cloneSorter = (
   sorter: Sorter

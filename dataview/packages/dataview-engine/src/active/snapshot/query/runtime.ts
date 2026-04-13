@@ -12,7 +12,7 @@ import {
 } from '@shared/core'
 import {
   now
-} from '#engine/runtime/clock'
+} from '#engine/runtime/clock.ts'
 import {
   viewFilterFields,
   viewSearchFields,
@@ -20,25 +20,25 @@ import {
 } from '@dataview/core/view'
 import {
   collectValueFieldIds
-} from '#engine/active/index/shared'
+} from '#engine/active/index/shared.ts'
 import type {
   IndexState
-} from '#engine/active/index/contracts'
+} from '#engine/active/index/contracts.ts'
 import type {
   DeriveAction,
   QueryState
-} from '#engine/contracts/internal'
+} from '#engine/contracts/internal.ts'
 export {
   buildQueryState
-} from '#engine/active/snapshot/query/derive'
+} from '#engine/active/snapshot/query/derive.ts'
 import {
   buildQueryState
-} from '#engine/active/snapshot/query/derive'
+} from '#engine/active/snapshot/query/derive.ts'
 
 const publishViewRecords = (input: {
   query: QueryState
-  previous?: import('#engine/contracts/public').ViewRecords
-}): import('#engine/contracts/public').ViewRecords => {
+  previous?: import('#engine/contracts/public.ts').ViewRecords
+}): import('#engine/contracts/public.ts').ViewRecords => {
   const previous = input.previous
   return previous
     && previous.matched === input.query.matched
@@ -192,11 +192,11 @@ export const runQueryStage = (input: {
   view: View
   index: IndexState
   previous?: QueryState
-  previousPublished?: import('#engine/contracts/public').ViewRecords
+  previousPublished?: import('#engine/contracts/public.ts').ViewRecords
 }): {
   action: DeriveAction
   state: QueryState
-  records: import('#engine/contracts/public').ViewRecords
+  records: import('#engine/contracts/public.ts').ViewRecords
   deriveMs: number
   publishMs: number
 } => {

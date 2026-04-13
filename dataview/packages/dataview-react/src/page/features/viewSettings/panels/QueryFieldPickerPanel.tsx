@@ -1,13 +1,13 @@
 import { getDocumentFields } from '@dataview/core/document'
-import { FieldPicker } from '#react/field/picker'
-import { getAvailableFilterFields } from '#react/page/features/filter/filterUi'
-import { getAvailableSorterFields } from '#react/page/features/sort'
+import { FieldPicker } from '#react/field/picker/index.ts'
+import { getAvailableFilterFields } from '#react/page/features/filter/filterUi.ts'
+import { getAvailableSorterFields } from '#react/page/features/sort/index.ts'
 import {
   useDataView,
   useDataViewValue
-} from '#react/dataview'
+} from '#react/dataview/index.ts'
 import { meta } from '@dataview/meta'
-import { useViewSettings } from '#react/page/features/viewSettings/context'
+import { useViewSettings } from '#react/page/features/viewSettings/context.tsx'
 
 export const QueryFieldPickerPanel = (props: {
   kind: 'filter' | 'sort'

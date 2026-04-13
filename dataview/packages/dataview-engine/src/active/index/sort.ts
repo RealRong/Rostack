@@ -16,12 +16,12 @@ import {
   shouldDropFieldIndex,
   shouldRebuildFieldIndex,
   shouldSyncFieldIndex
-} from '#engine/active/index/sync'
+} from '#engine/active/index/sync.ts'
 import type {
   RecordIndex,
   SortFieldIndex,
   SortIndex
-} from '#engine/active/index/contracts'
+} from '#engine/active/index/contracts.ts'
 
 const MAX_INCREMENTAL_TOUCHES = 64
 

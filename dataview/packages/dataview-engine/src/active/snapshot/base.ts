@@ -33,14 +33,14 @@ import type {
   ViewGroupProjection,
   ViewSearchProjection,
   ViewSortProjection
-} from '#engine/contracts/public'
-import { sameFieldList } from '#engine/active/snapshot/equality'
+} from '#engine/contracts/public.ts'
+import { sameFieldList } from '#engine/active/snapshot/equality.ts'
 import {
   reuseIfEqual,
   sameList,
   sameOptionalList,
   sameOptionalProjection
-} from '#engine/active/snapshot/reuse'
+} from '#engine/active/snapshot/reuse.ts'
 
 const EMPTY_IDS = [] as readonly FieldId[]
 

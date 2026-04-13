@@ -1,12 +1,13 @@
-import type { MindmapNodeId, NodeId, Rect } from '@whiteboard/core/types'
+import type {
+  MindmapConnectionLine,
+  MindmapLine,
+  MindmapNodeId,
+  NodeId,
+  Point,
+  Rect
+} from '@whiteboard/core/types'
 
-export type MindmapLineView = {
-  id: string
-  x1: number
-  y1: number
-  x2: number
-  y2: number
-}
+export type MindmapLineView = MindmapConnectionLine
 
 export type MindmapNodeView = {
   id: MindmapNodeId
@@ -20,36 +21,15 @@ export type MindmapNodeView = {
 
 export type MindmapTreeViewData = {
   treeId: NodeId
-  baseOffset: {
-    x: number
-    y: number
-  }
-  bbox: {
-    width: number
-    height: number
-  }
+  baseOffset: Point
+  bbox: Rect
   shiftX: number
   shiftY: number
   lines: readonly MindmapLineView[]
   nodes: readonly MindmapNodeView[]
-  ghost?: {
-    width: number
-    height: number
-    x: number
-    y: number
-  }
-  connectionLine?: {
-    x1: number
-    y1: number
-    x2: number
-    y2: number
-  }
-  insertLine?: {
-    x1: number
-    y1: number
-    x2: number
-    y2: number
-  }
+  ghost?: Rect
+  connectionLine?: MindmapLine
+  insertLine?: MindmapLine
   onAddChild: (
     nodeId: MindmapNodeId,
     placement: 'left' | 'right' | 'up' | 'down'

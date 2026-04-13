@@ -13,8 +13,8 @@ import type {
   ViewGroup,
   ViewId,
   ViewType
-} from '#core/contracts/state'
-import type { ViewOptions } from '#core/contracts/viewOptions'
+} from '#core/contracts/state.ts'
+import type { ViewOptions } from '#core/contracts/viewOptions.ts'
 
 export type EditTarget =
   | {

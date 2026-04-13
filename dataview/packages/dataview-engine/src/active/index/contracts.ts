@@ -12,7 +12,7 @@ import type {
 } from '@dataview/core/field'
 import type {
   IndexTrace
-} from '#engine/contracts/public'
+} from '#engine/contracts/public.ts'
 
 export type SortedIdSet<T extends string> = readonly T[]
 export type BucketKey = string

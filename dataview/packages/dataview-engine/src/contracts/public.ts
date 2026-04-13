@@ -34,7 +34,7 @@ import type {
 } from '@shared/core'
 import type {
   ValidationIssue
-} from '#engine/mutate/issues'
+} from '#engine/mutate/issues.ts'
 import type {
   CellRef,
   FieldList,
@@ -49,7 +49,7 @@ import type {
   ViewItem,
   ViewRecords,
   ViewSummaries
-} from '#engine/contracts/shared'
+} from '#engine/contracts/shared.ts'
 
 export type {
   CellRef,
@@ -65,7 +65,7 @@ export type {
   ViewItem,
   ViewRecords,
   ViewSummaries
-} from '#engine/contracts/shared'
+} from '#engine/contracts/shared.ts'
 
 export interface CreateEngineOptions {
   document: DataDoc

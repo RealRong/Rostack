@@ -1,6 +1,6 @@
 import { renderMessage } from '@dataview/meta'
 import { cn } from '@shared/ui/utils'
-import type { CreateViewItem } from '#react/page/features/createView/catalog'
+import type { CreateViewItem } from '#react/page/features/createView/catalog.tsx'
 
 export interface ViewTypeCardProps {
   item: CreateViewItem

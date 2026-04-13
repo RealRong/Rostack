@@ -6,21 +6,21 @@ import type {
 import { sameOrder } from '@shared/core'
 import {
   readGroupFieldIndex
-} from '#engine/active/index/group/demand'
+} from '#engine/active/index/group/demand.ts'
 import type {
   IndexState
-} from '#engine/active/index/contracts'
+} from '#engine/active/index/contracts.ts'
 import type {
   SectionKey
-} from '#engine/contracts/public'
+} from '#engine/contracts/public.ts'
 import type {
   QueryState,
   SectionState
-} from '#engine/contracts/internal'
-import { createItemId } from '#engine/active/snapshot/sections/publish'
+} from '#engine/contracts/internal.ts'
+import { createItemId } from '#engine/active/snapshot/sections/publish.ts'
 import {
   readQueryVisibleSet
-} from '#engine/contracts/internal'
+} from '#engine/contracts/internal.ts'
 
 export const ROOT_SECTION_KEY = 'root' as SectionKey
 
@@ -30,8 +30,8 @@ export const sameRecordIds = (
 ) => sameOrder(left, right)
 
 const sameBucket = (
-  left: import('#engine/contracts/internal').SectionNodeState['bucket'],
-  right: import('#engine/contracts/internal').SectionNodeState['bucket']
+  left: import('#engine/contracts/internal.ts').SectionNodeState['bucket'],
+  right: import('#engine/contracts/internal.ts').SectionNodeState['bucket']
 ) => {
   if (!left || !right) {
     return left === right
@@ -46,8 +46,8 @@ const sameBucket = (
 }
 
 export const sameSectionNode = (
-  left: import('#engine/contracts/internal').SectionNodeState,
-  right: import('#engine/contracts/internal').SectionNodeState
+  left: import('#engine/contracts/internal.ts').SectionNodeState,
+  right: import('#engine/contracts/internal.ts').SectionNodeState
 ) => left.key === right.key
   && left.title === right.title
   && left.color === right.color
@@ -83,8 +83,8 @@ export const buildSectionNode = (input: {
   recordIds: readonly RecordId[]
   group: ViewGroup | undefined
   index: IndexState
-  previous?: import('#engine/contracts/internal').SectionNodeState
-}): import('#engine/contracts/internal').SectionNodeState => {
+  previous?: import('#engine/contracts/internal.ts').SectionNodeState
+}): import('#engine/contracts/internal.ts').SectionNodeState => {
   const bucket = input.group
     ? readGroupFieldIndex(input.index.group, input.group)?.buckets.get(input.key)
     : undefined

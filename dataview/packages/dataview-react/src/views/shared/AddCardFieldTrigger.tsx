@@ -3,7 +3,7 @@ import type {
 } from '@dataview/core/contracts'
 import {
   useDataView
-} from '#react/dataview'
+} from '#react/dataview/index.ts'
 import type {
   ViewFieldRef
 } from '@dataview/engine'
@@ -12,7 +12,7 @@ import {
   renderMessage
 } from '@dataview/meta'
 import { cn } from '@shared/ui/utils'
-import { openCardField } from '#react/views/shared/openCardField'
+import { openCardField } from '#react/views/shared/openCardField.ts'
 
 export interface AddCardFieldTriggerProps {
   field: ViewFieldRef

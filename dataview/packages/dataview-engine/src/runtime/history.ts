@@ -2,11 +2,11 @@ import type { BaseOperation } from '@dataview/core/contracts/operations'
 import type {
   CommitResult,
   HistoryState
-} from '#engine/contracts/public'
+} from '#engine/contracts/public.ts'
 import type {
   EngineRuntimeState,
   RuntimeStore
-} from '#engine/runtime/store'
+} from '#engine/runtime/store.ts'
 
 const trimUndo = (
   entries: EngineRuntimeState['history']['undo'],

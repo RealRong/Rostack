@@ -1,4 +1,4 @@
-import type { MessageSpec } from '#meta/message'
+import type { MessageSpec } from '#meta/message.ts'
 
 export interface MetaDescriptor {
   id: string

@@ -4,20 +4,20 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   SectionAggregateState
-} from '#engine/active/index/contracts'
+} from '#engine/active/index/contracts.ts'
 import type {
   ItemId,
   SectionBucket,
   SectionKey,
   ViewRecords,
   ViewSummaries
-} from '#engine/contracts/shared'
+} from '#engine/contracts/shared.ts'
 export type {
   ActiveRuntimeState,
   EngineRuntimeState,
   HistoryEntry,
   RuntimeHistory
-} from '#engine/runtime/state'
+} from '#engine/runtime/state.ts'
 
 export interface QueryState {
   matched: readonly RecordId[]

@@ -1,7 +1,7 @@
 import type { DataDoc } from '@dataview/core/contracts'
 import { sameOrder, type Equality } from '@shared/core'
-import type { RuntimeStore } from '#engine/runtime/store'
-import { createRuntimeKeyedSelector, createRuntimeSelector } from '#engine/runtime/selectors/core'
+import type { RuntimeStore } from '#engine/runtime/store.ts'
+import { createRuntimeKeyedSelector, createRuntimeSelector } from '#engine/runtime/selectors/core.ts'
 
 export const selectDocument = <T,>(input: {
   store: RuntimeStore

@@ -8,8 +8,8 @@ export {
   GALLERY_SECTION_HEADER_GAP,
   GALLERY_SECTION_HEADER_HEIGHT,
   resolveGalleryGridMetrics
-} from '#react/views/gallery/virtual/layout'
-export { useGalleryBlocks } from '#react/views/gallery/virtual/useGalleryBlocks'
+} from '#react/views/gallery/virtual/layout.ts'
+export { useGalleryBlocks } from '#react/views/gallery/virtual/useGalleryBlocks.ts'
 export type {
   GalleryBlock,
   GalleryCardLayout,
@@ -18,4 +18,4 @@ export type {
   GalleryRowLayout,
   GallerySectionEmptyBlock,
   GallerySectionHeaderBlock
-} from '#react/views/gallery/virtual/types'
+} from '#react/views/gallery/virtual/types.ts'

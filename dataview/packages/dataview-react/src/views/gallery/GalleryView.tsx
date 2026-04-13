@@ -1,5 +1,5 @@
-import { Grid } from '#react/views/gallery/components/Grid'
-import { GalleryProvider } from '#react/views/gallery/context'
+import { Grid } from '#react/views/gallery/components/Grid.tsx'
+import { GalleryProvider } from '#react/views/gallery/context.tsx'
 
 export interface GalleryViewProps {}
 

@@ -6,8 +6,13 @@ import {
   type KeyedReadStore,
   type ReadStore
 } from '@shared/core'
-import type { NodeId, Point, Rect } from '@whiteboard/core/types'
-import type { MindmapNodeId } from '@whiteboard/core/mindmap'
+import type {
+  MindmapLine,
+  MindmapNodeId,
+  NodeId,
+  Point,
+  Rect
+} from '@whiteboard/core/types'
 import type { EngineRead, MindmapItem } from '@whiteboard/engine'
 import type { MindmapDragFeedback } from '../../local/feedback/types'
 
@@ -24,42 +29,20 @@ export type MindmapNodeView = {
 export type MindmapView = {
   treeId: NodeId
   rootId: NodeId
-  rootPosition: {
-    x: number
-    y: number
-  }
+  rootPosition: Point
   tree: MindmapItem['tree']
   layout: MindmapItem['layout']
-  bbox: {
-    width: number
-    height: number
-  }
+  bbox: Rect
   shiftX: number
   shiftY: number
   lines: MindmapItem['lines']
   nodes: readonly MindmapNodeView[]
-  ghost?: {
-    width: number
-    height: number
-    x: number
-    y: number
-  }
-  connectionLine?: {
-    x1: number
-    y1: number
-    x2: number
-    y2: number
-  }
-  insertLine?: {
-    x1: number
-    y1: number
-    x2: number
-    y2: number
-  }
+  ghost?: Rect
+  connectionLine?: MindmapLine
+  insertLine?: MindmapLine
 }
 
 export type MindmapPresentationRead = EngineRead['mindmap'] & {
-  snapshot: EngineRead['mindmap']['item']
   tree: KeyedReadStore<NodeId, MindmapItem['tree'] | undefined>
   rootPosition: KeyedReadStore<NodeId, Point | undefined>
   view: KeyedReadStore<NodeId, MindmapView | undefined>
@@ -79,10 +62,10 @@ const isMindmapNodeViewEqual = (
 )
 
 const isLineEqual = (
-  left: MindmapView['lines'][number],
-  right: MindmapView['lines'][number]
+  left: MindmapLine | MindmapView['lines'][number],
+  right: MindmapLine | MindmapView['lines'][number]
 ) => (
-  left.id === right.id
+  ('id' in left ? left.id : undefined) === ('id' in right ? right.id : undefined)
   && left.x1 === right.x1
   && left.y1 === right.y1
   && left.x2 === right.x2
@@ -103,8 +86,7 @@ const isMindmapViewEqual = (
     && left.rootPosition.y === right.rootPosition.y
     && left.tree === right.tree
     && left.layout === right.layout
-    && left.bbox.width === right.bbox.width
-    && left.bbox.height === right.bbox.height
+    && sameRect(left.bbox, right.bbox)
     && left.shiftX === right.shiftX
     && left.shiftY === right.shiftY
     && left.lines.length === right.lines.length
@@ -212,7 +194,6 @@ export const createMindmapRead = ({
 
   return {
     ...read,
-    snapshot: read.item,
     tree,
     rootPosition,
     view

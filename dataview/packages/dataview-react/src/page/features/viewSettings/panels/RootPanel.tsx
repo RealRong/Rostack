@@ -18,13 +18,13 @@ import {
 import {
   useDataView,
   useDataViewValue
-} from '#react/dataview'
+} from '#react/dataview/index.ts'
 import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { meta, renderMessage } from '@dataview/meta'
-import { buildNavigationItem } from '#react/menu-builders'
-import { useViewSettings } from '#react/page/features/viewSettings/context'
-import { supportsGroupSettings } from '#react/page/session/settings'
+import { buildNavigationItem } from '#react/menu-builders/index.ts'
+import { useViewSettings } from '#react/page/features/viewSettings/context.tsx'
+import { supportsGroupSettings } from '#react/page/session/settings.ts'
 
 type RootRouteKind = 'layout' | 'viewProperties' | 'fieldList' | 'filter' | 'sort' | 'group'
 

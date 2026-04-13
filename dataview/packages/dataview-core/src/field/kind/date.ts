@@ -16,7 +16,7 @@ import type {
   DateDisplayFormat,
   DateValueKind,
   TimeDisplayFormat
-} from '#core/contracts/state'
+} from '#core/contracts/state.ts'
 
 export type DateFieldConfig = Pick<DateField, 'displayDateFormat' | 'displayTimeFormat' | 'defaultValueKind' | 'defaultTimezone'>
 export type DateGroupMode = 'day' | 'week' | 'month' | 'quarter' | 'year'

@@ -2,8 +2,8 @@ import type {
   SortDirection,
   Sorter
 } from '@dataview/core/contracts'
-import { message } from '#meta/message'
-import { defineMetaCollection } from '#meta/shared'
+import { message } from '#meta/message.ts'
+import { defineMetaCollection } from '#meta/shared.ts'
 
 export interface SortDirectionDescriptor {
   id: SortDirection | string

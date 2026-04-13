@@ -5,9 +5,9 @@ import {
 } from '@shared/dom'
 import type {
   AutoPanTargets
-} from '#react/interaction/autoPan'
-import type { SelectionTarget } from '#react/runtime/marquee/types'
-import { selectionTargetFromElement } from '#react/runtime/marquee/dom'
+} from '#react/interaction/autoPan.ts'
+import type { SelectionTarget } from '#react/runtime/marquee/types.ts'
+import { selectionTargetFromElement } from '#react/runtime/marquee/dom.ts'
 
 interface SnapshotScrollAnchor {
   node: ScrollNode

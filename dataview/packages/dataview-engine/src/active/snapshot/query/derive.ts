@@ -28,15 +28,15 @@ import {
 } from '@dataview/core/view/order'
 import {
   readGroupFieldIndex
-} from '#engine/active/index/group/demand'
+} from '#engine/active/index/group/demand.ts'
 import type {
   IndexState,
   SearchIndex,
   SearchTextIndex
-} from '#engine/active/index/contracts'
+} from '#engine/active/index/contracts.ts'
 import type {
   QueryState
-} from '#engine/contracts/internal'
+} from '#engine/contracts/internal.ts'
 
 const sameIds = sameOrder<RecordId>
 

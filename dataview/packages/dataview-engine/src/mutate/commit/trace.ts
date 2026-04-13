@@ -1,4 +1,4 @@
-import type { CommitResult, TraceDeltaSummary } from '#engine/contracts/public'
+import type { CommitResult, TraceDeltaSummary } from '#engine/contracts/public.ts'
 
 type WriteKind =
   | 'write'

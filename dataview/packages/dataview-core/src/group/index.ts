@@ -15,11 +15,11 @@ export {
   toggleGroup,
   toggleGroupBucketCollapsed,
   type ViewGroupPatch
-} from '#core/group/state'
+} from '#core/group/state.ts'
 export type {
   GroupWriteResult
-} from '#core/group/write'
+} from '#core/group/write.ts'
 export {
   group,
   nextGroupWriteValue
-} from '#core/group/write'
+} from '#core/group/write.ts'

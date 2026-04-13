@@ -13,8 +13,8 @@ import {
   type TableRowGapHit,
   type TableRowRangeHit,
   type TableRowRect
-} from '#react/views/table/model/geometry'
-import type { Nodes } from '#react/views/table/dom/registry'
+} from '#react/views/table/model/geometry.ts'
+import type { Nodes } from '#react/views/table/dom/registry.ts'
 
 const emptyRowRects = [] as readonly TableRowRect[]
 

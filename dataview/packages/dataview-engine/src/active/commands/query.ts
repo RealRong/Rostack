@@ -26,8 +26,8 @@ import {
   setOnlySorter,
   setSorter
 } from '@dataview/core/sort'
-import type { ActiveViewApi } from '#engine/contracts/public'
-import type { ActiveViewContext } from '#engine/active/context'
+import type { ActiveViewApi } from '#engine/contracts/public.ts'
+import type { ActiveViewContext } from '#engine/active/context.ts'
 
 export const createSearchApi = (
   base: ActiveViewContext

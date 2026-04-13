@@ -9,13 +9,13 @@ import {
   cancel,
   commit,
   type EditorSubmitTrigger
-} from '#react/interaction'
+} from '#react/interaction/index.ts'
 import { isCustomField } from '@dataview/core/field'
-import { getFieldValueSpec } from '#react/field/value/kinds/index'
+import { getFieldValueSpec } from '#react/field/value/kinds/index.ts'
 import type {
   FieldValueEditorHandle,
   FieldValueEditorProps
-} from '#react/field/value/editor/contracts'
+} from '#react/field/value/editor/contracts.ts'
 
 export const FieldValueEditor = forwardRef<
   FieldValueEditorHandle,

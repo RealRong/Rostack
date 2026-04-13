@@ -1,15 +1,15 @@
 import type {
   DocumentViewQuery
-} from '#core/contracts'
+} from '#core/contracts/index.ts'
 import {
   normalizeGroup
-} from '#core/group'
+} from '#core/group/index.ts'
 import {
   normalizeSearch
-} from '#core/search'
+} from '#core/search/index.ts'
 import {
   normalizeSorters
-} from '#core/sort'
+} from '#core/sort/index.ts'
 
 export const normalizeViewQuery = (
   query?: Partial<Pick<DocumentViewQuery, 'search' | 'filter' | 'group' | 'sort'>>

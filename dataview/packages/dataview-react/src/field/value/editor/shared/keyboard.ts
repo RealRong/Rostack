@@ -1,4 +1,4 @@
-import type { EditorSubmitTrigger } from '#react/interaction'
+import type { EditorSubmitTrigger } from '#react/interaction/index.ts'
 
 export type KeyAction =
   | {

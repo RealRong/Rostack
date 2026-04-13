@@ -20,9 +20,9 @@ import {
 import {
   createIssue,
   hasValidationErrors
-} from '#engine/mutate/issues'
-import { createRecordId } from '#engine/mutate/entityId'
-import { validateFieldExists } from '#engine/mutate/validate/entity'
+} from '#engine/mutate/issues.ts'
+import { createRecordId } from '#engine/mutate/entityId.ts'
+import { validateFieldExists } from '#engine/mutate/validate/entity.ts'
 import {
   listTargetRecordIds,
   planResult,
@@ -31,7 +31,7 @@ import {
   validateBatchItems,
   validateTarget,
   type PlannedActionResult
-} from '#engine/mutate/planner/shared'
+} from '#engine/mutate/planner/shared.ts'
 
 const buildRecordRemoveViewOps = (
   document: DataDoc,

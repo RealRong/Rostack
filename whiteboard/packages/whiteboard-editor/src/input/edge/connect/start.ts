@@ -14,7 +14,7 @@ import {
   type EdgeConnectState
 } from '@whiteboard/core/edge'
 import type { BoardConfig } from '@whiteboard/core/config'
-import { getNodeAnchor } from '@whiteboard/core/node'
+import { getNodeAnchor, readNodeRotation } from '@whiteboard/core/node'
 import type {
   Edge,
   EdgeAnchor,
@@ -69,10 +69,6 @@ const EDGE_PRESET_TYPE = {
   'edge.elbow': 'elbow',
   'edge.curve': 'curve'
 } as const satisfies Record<EdgePresetKey, EdgeType>
-
-const readNodeRotation = (
-  entry: ConnectNodeEntry
-) => entry.node.rotation ?? 0
 
 const readEdgePresetType = (
   preset: EdgePresetKey
@@ -167,7 +163,7 @@ const resolveNodeHandleStart = (input: {
       entry.node,
       entry.geometry.rect,
       anchor,
-      readNodeRotation(entry)
+      readNodeRotation(entry.node)
     )
   })
 }
@@ -195,7 +191,7 @@ const resolveNodeBodyStart = (input: {
   const resolved = resolveAnchorFromPoint({
     node: entry.node,
     rect: entry.geometry.rect,
-    rotation: readNodeRotation(entry),
+    rotation: readNodeRotation(entry.node),
     pointWorld: input.pointer.world,
     zoom: input.zoom,
     config: input.config

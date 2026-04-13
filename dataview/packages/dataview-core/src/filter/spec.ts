@@ -4,7 +4,7 @@ import type {
   FilterOptionSetValue,
   FilterPresetId,
   FilterRule
-} from '#core/contracts'
+} from '#core/contracts/index.ts'
 import {
   compareFieldValues,
   getFieldDisplayValue,
@@ -13,12 +13,12 @@ import {
   isEmptyFieldValue,
   normalizeSearchableValue,
   readDateComparableTimestamp
-} from '#core/field'
+} from '#core/field/index.ts'
 import type {
   FilterEditorKind,
   FilterPreset,
   FilterSpec
-} from '#core/filter/types'
+} from '#core/filter/types.ts'
 
 const defineFilterPreset = (
   id: FilterPresetId,

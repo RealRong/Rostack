@@ -10,7 +10,7 @@ import type {
   GroupDemand,
   IndexDemand,
   NormalizedIndexDemand
-} from '#engine/active/index/contracts'
+} from '#engine/active/index/contracts.ts'
 
 const uniqueGroups = (
   groups: readonly GroupDemand[] = []

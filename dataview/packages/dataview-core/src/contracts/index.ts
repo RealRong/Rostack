@@ -6,7 +6,7 @@ export type {
   RowCreateInput,
   ViewCreateInput,
   ViewPatch
-} from '#core/contracts/actions'
+} from '#core/contracts/actions.ts'
 export type {
   CommitDelta,
   DeltaEntities,
@@ -19,35 +19,35 @@ export type {
   RecordPatchAspect,
   ViewLayoutAspect,
   ViewQueryAspect
-} from '#core/contracts/delta'
+} from '#core/contracts/delta.ts'
 export type {
   Command,
   CommandType,
-} from '#core/contracts/commands'
+} from '#core/contracts/commands.ts'
 export type {
   GalleryCardSize,
   GalleryOptions
-} from '#core/contracts/gallery'
+} from '#core/contracts/gallery.ts'
 export type {
   TableOptions,
   ViewOptions
-} from '#core/contracts/viewOptions'
+} from '#core/contracts/viewOptions.ts'
 export {
   KANBAN_EMPTY_BUCKET_KEY,
   KANBAN_CARDS_PER_COLUMN_OPTIONS
-} from '#core/contracts/kanban'
+} from '#core/contracts/kanban.ts'
 export type {
   KanbanCardsPerColumn,
   KanbanNewRecordPosition,
   KanbanOptions
-} from '#core/contracts/kanban'
+} from '#core/contracts/kanban.ts'
 export type {
   BaseOperation,
   OperationPayload,
   OperationType,
   RowInsertTarget,
   ValuePatch
-} from '#core/contracts/operations'
+} from '#core/contracts/operations.ts'
 export type {
   CustomFieldId,
   Field,
@@ -105,5 +105,5 @@ export type {
   IndexPath,
   RecordId,
   ViewId
-} from '#core/contracts/state'
-export { TITLE_FIELD_ID } from '#core/contracts/state'
+} from '#core/contracts/state.ts'
+export { TITLE_FIELD_ID } from '#core/contracts/state.ts'

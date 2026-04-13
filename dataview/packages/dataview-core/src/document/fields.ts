@@ -7,10 +7,10 @@ import type {
   FieldId,
   TitleField,
   TitleFieldId
-} from '#core/contracts/state'
+} from '#core/contracts/state.ts'
 import {
   TITLE_FIELD_ID
-} from '#core/contracts/state'
+} from '#core/contracts/state.ts'
 import {
   getEntityTableById,
   getEntityTableIds,
@@ -19,7 +19,7 @@ import {
   patchEntityTableEntity,
   putEntityTableEntity,
   removeEntityTableEntity
-} from '#core/document/table'
+} from '#core/document/table.ts'
 
 const replaceDocumentFieldsTable = (
   document: DataDoc,

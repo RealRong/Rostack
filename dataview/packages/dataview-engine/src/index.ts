@@ -1,2 +1,2 @@
-export * from '#engine/api/engine'
-export { sameCellRef } from '#engine/contracts/public'
+export * from '#engine/api/engine.ts'
+export { sameCellRef } from '#engine/contracts/public.ts'

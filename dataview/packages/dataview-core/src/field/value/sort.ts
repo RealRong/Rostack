@@ -1,8 +1,8 @@
-import type { CustomField } from '#core/contracts'
+import type { CustomField } from '#core/contracts/index.ts'
 import {
   getKind,
   getFieldKind
-} from '#core/field/kind/index'
+} from '#core/field/kind/index.ts'
 
 export const compareFieldValues = (
   field: CustomField | undefined,

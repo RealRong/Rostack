@@ -8,8 +8,8 @@ import type {
   DocumentSelectApi,
   ViewCell,
   ViewState
-} from '#engine/contracts/public'
-import { readDocumentFieldById } from '#engine/document/fieldLookup'
+} from '#engine/contracts/public.ts'
+import { readDocumentFieldById } from '#engine/document/fieldLookup.ts'
 
 export const createActiveViewReadApi = (input: {
   select: DocumentSelectApi

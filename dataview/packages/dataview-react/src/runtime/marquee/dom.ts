@@ -1,6 +1,6 @@
 import type { Box } from '@shared/dom'
 import type { ItemId } from '@dataview/engine'
-import type { SelectionTarget } from '#react/runtime/marquee/types'
+import type { SelectionTarget } from '#react/runtime/marquee/types.ts'
 
 export const boxFromDomRect = (
   rect: Pick<DOMRectReadOnly, 'left' | 'top' | 'right' | 'bottom' | 'width' | 'height'>

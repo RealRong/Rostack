@@ -14,20 +14,20 @@ import {
   buildAggregateState,
   createAggregateEntry,
   patchAggregateState
-} from '#engine/active/index/aggregate'
+} from '#engine/active/index/aggregate.ts'
 import {
   ensureFieldIndexes,
   createFieldSyncContext,
   shouldDropFieldIndex,
   shouldRebuildFieldIndex,
   shouldSyncFieldIndex
-} from '#engine/active/index/sync'
+} from '#engine/active/index/sync.ts'
 import type {
   AggregateEntry,
   CalculationIndex,
   FieldCalcIndex,
   RecordIndex
-} from '#engine/active/index/contracts'
+} from '#engine/active/index/contracts.ts'
 
 const buildFieldEntries = (
   document: DataDoc,

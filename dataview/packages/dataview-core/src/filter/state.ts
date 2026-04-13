@@ -2,13 +2,13 @@ import type {
   Field,
   Filter,
   FilterRule
-} from '#core/contracts'
+} from '#core/contracts/index.ts'
 import {
   applyFilterPreset,
   cloneFilterRule,
   createDefaultFilterRule,
   setFilterRuleValue
-} from '#core/filter/spec'
+} from '#core/filter/spec.ts'
 
 export const sameFilterRule = (
   left: FilterRule,

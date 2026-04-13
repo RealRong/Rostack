@@ -4,7 +4,7 @@ import type {
 } from '@dataview/engine'
 import type {
   MarqueeSessionState
-} from '#react/runtime/marquee'
+} from '#react/runtime/marquee/index.ts'
 import {
   observeElementSize,
   pageScrollNode,
@@ -25,17 +25,17 @@ import {
 import {
   findVirtualBlockEndIndex,
   findVirtualBlockStartIndex
-} from '#react/virtual/math'
+} from '#react/virtual/math.ts'
 import {
   contentBounds,
   type TableLayout
-} from '#react/views/table/layout'
+} from '#react/views/table/layout.ts'
 import {
   buildTableBlocks
-} from '#react/views/table/virtual/buildBlocks'
+} from '#react/views/table/virtual/buildBlocks.ts'
 import type {
   TableBlock
-} from '#react/views/table/virtual/types'
+} from '#react/views/table/virtual/types.ts'
 
 const BOOTSTRAP_VIEWPORT_HEIGHT = () => (
   typeof window !== 'undefined'

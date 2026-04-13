@@ -15,27 +15,27 @@ import {
 } from '@dataview/core/field'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
-} from '#react/dom/appearance'
+} from '#react/dom/appearance.ts'
 import {
   shouldCapturePointer
 } from '@shared/dom'
 import {
   useDataView,
   useDataViewKeyedValue
-} from '#react/dataview'
+} from '#react/dataview/index.ts'
 import {
   CardContent
-} from '#react/views/shared'
+} from '#react/views/shared/index.ts'
 import { resolveNeutralCardStyle } from '@shared/ui/color'
 import { cn } from '@shared/ui/utils'
 import type { ItemId } from '@dataview/engine'
-import { useGalleryContext } from '#react/views/gallery/context'
+import { useGalleryContext } from '#react/views/gallery/context.tsx'
 import {
   CARD_TITLE_PLACEHOLDER
-} from '#react/views/shared/cardTitleValue'
+} from '#react/views/shared/cardTitleValue.ts'
 import {
   useCardEditingState
-} from '#react/views/shared/useCardTitleEditing'
+} from '#react/views/shared/useCardTitleEditing.ts'
 
 export const Card = (props: {
   itemId: ItemId

@@ -9,20 +9,20 @@ import {
 import {
   createInteractionCoordinator,
   type InteractionApi
-} from '#react/interaction'
+} from '#react/interaction/index.ts'
 import {
   type ItemId,
   type Section
 } from '@dataview/engine'
 import type {
   Selection
-} from '#react/runtime/selection'
+} from '#react/runtime/selection/index.ts'
 import type {
   MarqueeSessionState
-} from '#react/runtime/marquee'
+} from '#react/runtime/marquee/index.ts'
 import {
   selection as selectionHelpers
-} from '#react/runtime/selection'
+} from '#react/runtime/selection/index.ts'
 import {
   createDerivedStore,
   createValueStore,
@@ -32,36 +32,36 @@ import {
 import type {
   ValueStore
 } from '@shared/core'
-import type { PageState } from '#react/page/session/types'
-import type { ValueEditorApi } from '#react/runtime/valueEditor'
+import type { PageState } from '#react/page/session/types.ts'
+import type { ValueEditorApi } from '#react/runtime/valueEditor/index.ts'
 import {
   createCapabilities,
   type Capabilities
-} from '#react/views/table/capabilities'
+} from '#react/views/table/capabilities.ts'
 import {
   createDom,
   type Dom
-} from '#react/views/table/dom/index'
-import type { Nodes } from '#react/views/table/dom/registry'
+} from '#react/views/table/dom/index.ts'
+import type { Nodes } from '#react/views/table/dom/registry.ts'
 import {
   createCellOpener,
   type CellOpenInput
-} from '#react/views/table/openCell'
+} from '#react/views/table/openCell.ts'
 import {
   createRowHit,
   type RowHit
-} from '#react/views/table/dom/rowHit'
-import { createHover, type Hover } from '#react/views/table/hover'
-import type { TableLayout } from '#react/views/table/layout'
-import { createCellRender, type CellRender } from '#react/views/table/cellRender'
+} from '#react/views/table/dom/rowHit.ts'
+import { createHover, type Hover } from '#react/views/table/hover.ts'
+import type { TableLayout } from '#react/views/table/layout.ts'
+import { createCellRender, type CellRender } from '#react/views/table/cellRender.ts'
 import {
   createGridSelection,
   type GridSelectionStore
-} from '#react/views/table/gridSelection'
+} from '#react/views/table/gridSelection.ts'
 import {
   createTableVirtualRuntime,
   type TableVirtualRuntime
-} from '#react/views/table/virtual/runtime'
+} from '#react/views/table/virtual/runtime.ts'
 
 export interface TableController {
   currentView: ReadStore<CurrentView | undefined>

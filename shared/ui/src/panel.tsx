@@ -1,7 +1,7 @@
 import * as React from 'react'
-import { Button, type ButtonProps } from '#ui/button'
-import { Slider } from '#ui/slider'
-import { cn } from '#ui/utils'
+import { Button, type ButtonProps } from '#ui/button.tsx'
+import { Slider } from '#ui/slider.tsx'
+import { cn } from '#ui/utils.ts'
 
 const SWATCH_SIZE_CLASS_NAMES = {
   sm: 'h-7 w-7',

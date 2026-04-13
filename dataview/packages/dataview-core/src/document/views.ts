@@ -6,20 +6,20 @@ import type {
   RecordId,
   ViewDisplay,
   ViewId
-} from '#core/contracts/state'
-import { normalizeViewCalculations } from '#core/calculation'
-import { normalizeGroup } from '#core/group'
-import { normalizeSearch } from '#core/search'
-import { normalizeSorters } from '#core/sort'
-import { getDocumentFields } from '#core/document/fields'
-import { normalizeRecordOrderIds } from '#core/view/order'
-import { normalizeViewOptions } from '#core/view/normalize'
+} from '#core/contracts/state.ts'
+import { normalizeViewCalculations } from '#core/calculation/index.ts'
+import { normalizeGroup } from '#core/group/index.ts'
+import { normalizeSearch } from '#core/search/index.ts'
+import { normalizeSorters } from '#core/sort/index.ts'
+import { getDocumentFields } from '#core/document/fields.ts'
+import { normalizeRecordOrderIds } from '#core/view/order.ts'
+import { normalizeViewOptions } from '#core/view/normalize.ts'
 import {
   cloneEntityInput,
   normalizeEntityTable,
   putEntityTableEntity,
   removeEntityTableEntity
-} from '#core/document/table'
+} from '#core/document/table.ts'
 
 const replaceDocumentViewsTable = (document: DataDoc, views: EntityTable<ViewId, View>): DataDoc => {
   if (views === document.views) {

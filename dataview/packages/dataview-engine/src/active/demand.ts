@@ -9,13 +9,13 @@ import {
 } from '@dataview/core/document'
 import {
   createGroupDemand
-} from '#engine/active/index/group/demand'
+} from '#engine/active/index/group/demand.ts'
 import {
   viewSortDemandFields,
 } from '@dataview/core/view'
 import type {
   IndexDemand
-} from '#engine/active/index/contracts'
+} from '#engine/active/index/contracts.ts'
 
 export const resolveViewDemand = (
   document: DataDoc,

@@ -1,4 +1,4 @@
-import type { EdgeBatchUpdate, EdgeCommand } from '#whiteboard-engine/command'
+import type { EdgeBatchUpdate, EdgeCommand } from '#whiteboard-engine/types/command'
 import {
   getEdge,
   getNode

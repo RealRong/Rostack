@@ -1,5 +1,5 @@
-import type { CommandOutput, NodeCommand } from '#whiteboard-engine/command'
-import type { TranslateResult } from '#whiteboard-engine/internal/translate'
+import type { CommandOutput, NodeCommand } from '#whiteboard-engine/types/command'
+import type { TranslateResult } from '#whiteboard-engine/types/internal/translate'
 import type { WriteTranslateContext } from '#whiteboard-engine/write/translate'
 import * as plan from '#whiteboard-engine/write/translate/plan/node'
 import { fromOps, invalid } from '#whiteboard-engine/write/translate/result'

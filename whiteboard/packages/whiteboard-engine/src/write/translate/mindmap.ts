@@ -1,5 +1,5 @@
-import type { CommandOutput, MindmapCommand } from '#whiteboard-engine/command'
-import type { TranslateResult } from '#whiteboard-engine/internal/translate'
+import type { CommandOutput, MindmapCommand } from '#whiteboard-engine/types/command'
+import type { TranslateResult } from '#whiteboard-engine/types/internal/translate'
 import type { WriteTranslateContext } from '#whiteboard-engine/write/translate'
 import * as plan from '#whiteboard-engine/write/translate/plan/mindmap'
 import { fromOps, invalid } from '#whiteboard-engine/write/translate/result'

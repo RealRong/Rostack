@@ -1,4 +1,4 @@
-import type { NodeCommand } from '#whiteboard-engine/command'
+import type { NodeCommand } from '#whiteboard-engine/types/command'
 import {
   buildInsertSliceOperations,
   exportSliceFromNodes,

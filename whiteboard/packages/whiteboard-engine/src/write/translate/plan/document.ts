@@ -1,4 +1,4 @@
-import type { CommandOutput, DocumentCommand } from '#whiteboard-engine/command'
+import type { CommandOutput, DocumentCommand } from '#whiteboard-engine/types/command'
 import {
   buildInsertSliceOperations,
   exportSliceFromSelection

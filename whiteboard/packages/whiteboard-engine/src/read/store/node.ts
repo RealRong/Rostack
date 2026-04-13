@@ -1,7 +1,7 @@
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
-import type { NodeItem } from '#whiteboard-engine/projection'
+import type { NodeItem } from '#whiteboard-engine/types/projection'
 import type { NodeId } from '@whiteboard/core/types'
-import type { ReadSnapshot } from '#whiteboard-engine/internal/read'
+import type { ReadSnapshot } from '#whiteboard-engine/types/internal/read'
 import { createProjectionRuntime } from '#whiteboard-engine/read/store/projection'
 
 export const createNodeProjection = (initialSnapshot: ReadSnapshot) => {

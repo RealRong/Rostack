@@ -1,8 +1,8 @@
 import type {
   CommandOutput,
   GroupCommand
-} from '#whiteboard-engine/command'
-import type { TranslateResult } from '#whiteboard-engine/internal/translate'
+} from '#whiteboard-engine/types/command'
+import type { TranslateResult } from '#whiteboard-engine/types/internal/translate'
 import type { WriteTranslateContext } from '#whiteboard-engine/write/translate'
 import * as plan from '#whiteboard-engine/write/translate/plan/group'
 import { cancelled, fromOps } from '#whiteboard-engine/write/translate/result'

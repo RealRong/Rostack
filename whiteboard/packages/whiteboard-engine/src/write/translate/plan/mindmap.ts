@@ -1,4 +1,4 @@
-import type { CommandOutput, MindmapCommand } from '#whiteboard-engine/command'
+import type { CommandOutput, MindmapCommand } from '#whiteboard-engine/types/command'
 import { getNode } from '@whiteboard/core/document'
 import {
   cloneSubtree as cloneTree,

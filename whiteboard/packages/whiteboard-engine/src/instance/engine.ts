@@ -2,13 +2,13 @@ import type {
   CreateEngineOptions,
   Engine,
   EngineRuntimeOptions
-} from '#whiteboard-engine/instance'
+} from '#whiteboard-engine/types/instance'
 import type {
   EngineCommand,
   ExecuteOptions,
   ExecuteResult,
   TranslateCommand
-} from '#whiteboard-engine/command'
+} from '#whiteboard-engine/types/command'
 import type { MindmapLayoutConfig } from '@whiteboard/core/mindmap'
 import { createRegistries } from '@whiteboard/core/kernel'
 import { resolveBoardConfig } from '#whiteboard-engine/config'
@@ -17,9 +17,9 @@ import { MINDMAP_LAYOUT_READ_IMPACT, RESET_READ_IMPACT } from '#whiteboard-engin
 import { createWrite } from '#whiteboard-engine/write'
 import { createDocumentSource } from '#whiteboard-engine/instance/document'
 import { normalizeDocument } from '#whiteboard-engine/document/normalize'
-import type { Commit } from '#whiteboard-engine/commit'
-import type { CommandResult } from '#whiteboard-engine/result'
-import type { Draft } from '#whiteboard-engine/write'
+import type { Commit } from '#whiteboard-engine/types/commit'
+import type { CommandResult } from '#whiteboard-engine/types/result'
+import type { Draft } from '#whiteboard-engine/types/write'
 import { success } from '#whiteboard-engine/result'
 import { createValueStore } from '@shared/core'
 

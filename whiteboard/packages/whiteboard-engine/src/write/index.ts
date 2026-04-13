@@ -1,6 +1,6 @@
-import type { Draft, DraftKind, Writer } from '#whiteboard-engine/write'
-import type { CommandOutput, TranslateCommand } from '#whiteboard-engine/command'
-import type { BoardConfig } from '#whiteboard-engine/instance'
+import type { Draft, DraftKind, Writer } from '#whiteboard-engine/types/write'
+import type { CommandOutput, TranslateCommand } from '#whiteboard-engine/types/command'
+import type { BoardConfig } from '#whiteboard-engine/types/instance'
 import { assertDocument } from '@whiteboard/core/document'
 import {
   type ChangeSet,

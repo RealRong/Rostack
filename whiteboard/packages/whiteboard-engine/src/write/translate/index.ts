@@ -1,4 +1,4 @@
-import type { BoardConfig } from '#whiteboard-engine/instance'
+import type { BoardConfig } from '#whiteboard-engine/types/instance'
 import type {
   CommandOutput,
   DocumentCommand,
@@ -7,8 +7,8 @@ import type {
   MindmapCommand,
   NodeCommand,
   TranslateCommand
-} from '#whiteboard-engine/command'
-import type { TranslateResult } from '#whiteboard-engine/internal/translate'
+} from '#whiteboard-engine/types/command'
+import type { TranslateResult } from '#whiteboard-engine/types/internal/translate'
 import type {
   CoreRegistries,
   Document,

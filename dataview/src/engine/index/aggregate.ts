@@ -13,7 +13,8 @@ import {
 } from '@shared/core'
 import type {
   AggregateEntry,
-  AggregateState
+  AggregateState,
+  SectionAggregateState
 } from './types'
 
 const asPlainString = (value: unknown) => (
@@ -142,6 +143,20 @@ const readRange = (
   }
 }
 
+const readNumberRange = (
+  numberCounts: ReadonlyMap<number, number>
+): Pick<AggregateState, 'min' | 'max'> => {
+  if (!numberCounts.size) {
+    return {}
+  }
+
+  const values = Array.from(numberCounts.keys()).sort((left, right) => left - right)
+  return {
+    min: values[0],
+    max: values[values.length - 1]
+  }
+}
+
 export const buildAggregateState = (
   entries: ReadonlyMap<RecordId, AggregateEntry>
 ): AggregateState => {
@@ -185,10 +200,16 @@ export const buildAggregateState = (
     distribution,
     uniqueCounts,
     numberCounts,
-    optionCounts,
-    entries
+    optionCounts
   }
 }
+
+export const buildSectionAggregateState = (
+  entries: ReadonlyMap<RecordId, AggregateEntry>
+): SectionAggregateState => ({
+  ...buildAggregateState(entries),
+  entries
+})
 
 const decrementMapCount = <T,>(
   map: Map<T, number>,
@@ -221,23 +242,31 @@ const incrementMapCount = <T,>(
   map.set(key, (map.get(key) ?? 0) + 1)
 }
 
-const sameEntry = (
+export const sameAggregateEntry = (
   left: AggregateEntry | undefined,
   right: AggregateEntry | undefined
-) => JSON.stringify(left) === JSON.stringify(right)
+) => left === right
+  || (
+    Boolean(left)
+    && Boolean(right)
+    && left?.empty === right?.empty
+    && left?.label === right?.label
+    && left?.number === right?.number
+    && left?.comparable === right?.comparable
+    && left?.uniqueKey === right?.uniqueKey
+    && left?.optionId === right?.optionId
+  )
 
 export const patchAggregateState = (input: {
   state: AggregateState
-  recordId: RecordId
   previous?: AggregateEntry
   next?: AggregateEntry
+  entries?: ReadonlyMap<RecordId, AggregateEntry>
 }): AggregateState => {
-  const previousEntry = input.previous ?? input.state.entries.get(input.recordId)
-  if (sameEntry(previousEntry, input.next)) {
+  if (sameAggregateEntry(input.previous, input.next)) {
     return input.state
   }
 
-  const entries = new Map(input.state.entries)
   const distribution = new Map(input.state.distribution)
   const uniqueCounts = new Map(input.state.uniqueCounts)
   const numberCounts = new Map(input.state.numberCounts)
@@ -248,24 +277,23 @@ export const patchAggregateState = (input: {
   let hasNumber = input.state.sum !== undefined
   let mustRecomputeRange = false
 
-  if (previousEntry) {
-    entries.delete(input.recordId)
+  if (input.previous) {
     count -= 1
-    if (!previousEntry.empty) {
+    if (!input.previous.empty) {
       nonEmpty -= 1
-      decrementMapCount(distribution, previousEntry.label)
-      decrementMapCount(uniqueCounts, previousEntry.uniqueKey)
-      decrementMapCount(numberCounts, previousEntry.number)
-      decrementMapCount(optionCounts, previousEntry.optionId)
-      if (previousEntry.number !== undefined) {
-        sum -= previousEntry.number
+      decrementMapCount(distribution, input.previous.label)
+      decrementMapCount(uniqueCounts, input.previous.uniqueKey)
+      decrementMapCount(numberCounts, input.previous.number)
+      decrementMapCount(optionCounts, input.previous.optionId)
+      if (input.previous.number !== undefined) {
+        sum -= input.previous.number
         hasNumber = numberCounts.size > 0
       }
       if (
-        previousEntry.comparable !== undefined
+        input.previous.comparable !== undefined
         && (
-          previousEntry.comparable === input.state.min
-          || previousEntry.comparable === input.state.max
+          input.previous.comparable === input.state.min
+          || input.previous.comparable === input.state.max
         )
       ) {
         mustRecomputeRange = true
@@ -274,7 +302,6 @@ export const patchAggregateState = (input: {
   }
 
   if (input.next) {
-    entries.set(input.recordId, input.next)
     count += 1
     if (!input.next.empty) {
       nonEmpty += 1
@@ -290,7 +317,11 @@ export const patchAggregateState = (input: {
   }
 
   const nextRange = mustRecomputeRange
-    ? readRange(entries)
+    ? (
+        input.entries
+          ? readRange(input.entries)
+          : readNumberRange(numberCounts)
+      )
     : {
         ...(input.state.min !== undefined ? { min: input.state.min } : {}),
         ...(input.state.max !== undefined ? { max: input.state.max } : {})
@@ -327,16 +358,45 @@ export const patchAggregateState = (input: {
     distribution,
     uniqueCounts,
     numberCounts,
-    optionCounts,
+    optionCounts
+  }
+}
+
+export const patchSectionAggregateState = (input: {
+  state: SectionAggregateState
+  recordId: RecordId
+  previous?: AggregateEntry
+  next?: AggregateEntry
+}): SectionAggregateState => {
+  const previousEntry = input.previous ?? input.state.entries.get(input.recordId)
+  if (sameAggregateEntry(previousEntry, input.next)) {
+    return input.state
+  }
+
+  const entries = new Map(input.state.entries)
+  if (previousEntry) {
+    entries.delete(input.recordId)
+  }
+  if (input.next) {
+    entries.set(input.recordId, input.next)
+  }
+
+  return {
+    ...patchAggregateState({
+      state: input.state,
+      previous: previousEntry,
+      next: input.next,
+      entries
+    }),
     entries
   }
 }
 
 export const applyAggregateEntry = (input: {
-  state: AggregateState
+  state: SectionAggregateState
   recordId: RecordId
   next?: AggregateEntry
-}): AggregateState => patchAggregateState({
+}): SectionAggregateState => patchSectionAggregateState({
   state: input.state,
   recordId: input.recordId,
   next: input.next

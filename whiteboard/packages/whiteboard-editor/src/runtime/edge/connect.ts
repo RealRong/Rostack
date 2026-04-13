@@ -3,8 +3,8 @@ import {
   type EdgeConnectEvaluation,
   type EdgeConnectPreview,
   resolveAnchorFromPoint,
-  resolveEdgeView,
   resolveEdgeConnectPreview,
+  resolveEdgeView,
   resolveReconnectDraftEnd,
   setEdgeConnectTarget,
   startEdgeCreate,
@@ -13,8 +13,8 @@ import {
   toEdgeDraftEnd,
   type EdgeConnectState
 } from '@whiteboard/core/edge'
-import { getNodeAnchor } from '@whiteboard/core/node'
 import type { BoardConfig } from '@whiteboard/core/config'
+import { getNodeAnchor } from '@whiteboard/core/node'
 import type {
   Edge,
   EdgeAnchor,
@@ -25,12 +25,43 @@ import type {
 } from '@whiteboard/core/types'
 import type { PointerDownInput } from '../../types/input'
 import type { EdgePresetKey, Tool } from '../../types/tool'
-import type { NodeCanvasSnapshot, NodeRead } from '../read/node'
-import type { EdgeRead } from '../read/edge'
 import type { EdgeGestureDraft } from '../interaction/gesture'
+import type { EdgeRead } from '../read/edge'
+import type { NodeCanvasSnapshot, NodeRead } from '../read/node'
+
+type EdgeConnectNodeRead = Pick<NodeRead, 'canvas' | 'capability'>
+type EdgeConnectPreviewNodeRead = Pick<NodeRead, 'canvas'>
+type EdgeConnectEdgeRead = Pick<EdgeRead, 'item' | 'resolved' | 'capability'>
+type EdgeConnectSnap = (input: {
+  pointerWorld: PointerDownInput['world']
+}) => EdgeConnectEvaluation
+
+type EdgeConnectStartInput = {
+  tool: Tool
+  pointer: PointerDownInput
+  node: EdgeConnectNodeRead
+  edge: EdgeConnectEdgeRead
+  zoom: number
+  config: BoardConfig['edge']
+}
+
+type EdgeConnectStepInput = {
+  node: EdgeConnectPreviewNodeRead
+  state: EdgeConnectState
+  world: PointerDownInput['world']
+  snap: EdgeConnectSnap
+  showPreviewPath: boolean
+}
+
+type EdgeConnectGestureInput = {
+  node: EdgeConnectPreviewNodeRead
+  state: EdgeConnectState
+  evaluation: EdgeConnectEvaluation
+  showPreviewPath: boolean
+}
 
 type ConnectNodeEntry = NonNullable<
-  ReturnType<Pick<NodeRead, 'canvas'>['canvas']['get']>
+  ReturnType<EdgeConnectNodeRead['canvas']['get']>
 >
 
 const EDGE_PRESET_TYPE = {
@@ -41,14 +72,14 @@ const EDGE_PRESET_TYPE = {
 
 const readNodeRotation = (
   entry: ConnectNodeEntry
-) => (entry.node.rotation ?? 0)
+) => entry.node.rotation ?? 0
 
 const readEdgePresetType = (
   preset: EdgePresetKey
 ): EdgeType => EDGE_PRESET_TYPE[preset]
 
 const readConnectNode = (
-  node: Pick<NodeRead, 'canvas' | 'capability'>,
+  node: EdgeConnectNodeRead,
   nodeId: NodeId
 ): ConnectNodeEntry | undefined => {
   const entry = node.canvas.get(nodeId)
@@ -59,48 +90,100 @@ const readConnectNode = (
   return entry
 }
 
-const resolveCreateFromNode = (input: {
-  node: Pick<NodeRead, 'canvas' | 'capability'>
-  zoom: number
-  config: BoardConfig['edge']
+const isNodeHandleConnectPick = (
+  pointer: PointerDownInput
+) => (
+  pointer.pick.kind === 'node'
+  && pointer.pick.part === 'connect'
+  && Boolean(pointer.pick.side)
+)
+
+const shouldBlockFreeCreateStart = (
+  pointer: PointerDownInput
+) => (
+  pointer.editable
+  || pointer.ignoreInput
+  || pointer.ignoreSelection
+)
+
+const startFreeEdgeCreate = (
+  pointer: PointerDownInput,
+  edgeType: EdgeType
+): EdgeConnectState => startEdgeCreate({
+  pointerId: pointer.pointerId,
+  edgeType,
+  from: toEdgeDraftEnd(pointer.world),
+  to: toEdgeDraftEnd(pointer.world)
+})
+
+const startNodeEdgeCreate = (input: {
+  pointer: PointerDownInput
+  edgeType: EdgeType
+  nodeId: NodeId
+  anchor: EdgeAnchor
+  point: PointerDownInput['world']
+}): EdgeConnectState => startEdgeCreate({
+  pointerId: input.pointer.pointerId,
+  edgeType: input.edgeType,
+  from: {
+    kind: 'node',
+    nodeId: input.nodeId,
+    anchor: input.anchor,
+    point: input.point
+  },
+  to: toEdgeDraftEnd(input.pointer.world)
+})
+
+const resolveNodeHandleStart = (input: {
+  node: EdgeConnectNodeRead
   pointer: PointerDownInput
   edgeType: EdgeType
 }): EdgeConnectState | undefined => {
   const pick = input.pointer.pick
-  if (pick.kind !== 'node') {
+  if (
+    pick.kind !== 'node'
+    || pick.part !== 'connect'
+    || !pick.side
+  ) {
     return undefined
   }
 
-  if (pick.part === 'connect' && pick.side) {
-    const entry = readConnectNode(input.node, pick.id)
-    if (!entry) {
-      return undefined
-    }
-
-    const anchor: EdgeAnchor = {
-      side: pick.side,
-      offset: DEFAULT_EDGE_ANCHOR_OFFSET
-    }
-
-    return startEdgeCreate({
-      pointerId: input.pointer.pointerId,
-      edgeType: input.edgeType,
-      from: {
-        kind: 'node',
-        nodeId: pick.id,
-        anchor,
-        point: getNodeAnchor(
-          entry.node,
-          entry.geometry.rect,
-          anchor,
-          readNodeRotation(entry)
-        )
-      },
-      to: toEdgeDraftEnd(input.pointer.world)
-    })
+  const entry = readConnectNode(input.node, pick.id)
+  if (!entry) {
+    return undefined
   }
 
-  if (pick.part !== 'body') {
+  const anchor: EdgeAnchor = {
+    side: pick.side,
+    offset: DEFAULT_EDGE_ANCHOR_OFFSET
+  }
+
+  return startNodeEdgeCreate({
+    pointer: input.pointer,
+    edgeType: input.edgeType,
+    nodeId: pick.id,
+    anchor,
+    point: getNodeAnchor(
+      entry.node,
+      entry.geometry.rect,
+      anchor,
+      readNodeRotation(entry)
+    )
+  })
+}
+
+const resolveNodeBodyStart = (input: {
+  node: EdgeConnectNodeRead
+  pointer: PointerDownInput
+  edgeType: EdgeType
+  zoom: number
+  config: BoardConfig['edge']
+}): EdgeConnectState | undefined => {
+  const pick = input.pointer.pick
+  if (
+    pick.kind !== 'node'
+    || pick.part !== 'body'
+  ) {
     return undefined
   }
 
@@ -118,21 +201,28 @@ const resolveCreateFromNode = (input: {
     config: input.config
   })
 
-  return startEdgeCreate({
-    pointerId: input.pointer.pointerId,
+  return startNodeEdgeCreate({
+    pointer: input.pointer,
     edgeType: input.edgeType,
-    from: {
-      kind: 'node',
-      nodeId: pick.id,
-      anchor: resolved.anchor,
-      point: resolved.point
-    },
-    to: toEdgeDraftEnd(input.pointer.world)
+    nodeId: pick.id,
+    anchor: resolved.anchor,
+    point: resolved.point
   })
 }
 
-const resolveReconnectState = (input: {
-  edge: Pick<EdgeRead, 'item' | 'resolved' | 'capability'>
+const resolveCreateStart = (input: {
+  node: EdgeConnectNodeRead
+  pointer: PointerDownInput
+  edgeType: EdgeType
+  zoom: number
+  config: BoardConfig['edge']
+}): EdgeConnectState | undefined => (
+  resolveNodeHandleStart(input)
+  ?? resolveNodeBodyStart(input)
+)
+
+const resolveReconnectStart = (input: {
+  edge: EdgeConnectEdgeRead
   edgeId: EdgeId
   end: 'source' | 'target'
   pointerId: number
@@ -164,43 +254,26 @@ const resolveReconnectState = (input: {
   })
 }
 
-export const startEdgeConnect = (input: {
-  tool: Tool
-  pointer: PointerDownInput
-  node: Pick<NodeRead, 'canvas' | 'capability'>
-  edge: Pick<EdgeRead, 'item' | 'resolved' | 'capability'>
-  zoom: number
-  config: BoardConfig['edge']
-}): EdgeConnectState | undefined => {
+export const startEdgeConnect = (
+  input: EdgeConnectStartInput
+): EdgeConnectState | undefined => {
   if (input.tool.type === 'edge') {
-    const canStartFromNodeHandle =
-      input.pointer.pick.kind === 'node'
-      && input.pointer.pick.part === 'connect'
-      && Boolean(input.pointer.pick.side)
+    const edgeType = readEdgePresetType(input.tool.preset)
 
     if (
-      !canStartFromNodeHandle
-      && (
-        input.pointer.editable
-        || input.pointer.ignoreInput
-        || input.pointer.ignoreSelection
-      )
+      !isNodeHandleConnectPick(input.pointer)
+      && shouldBlockFreeCreateStart(input.pointer)
     ) {
       return undefined
     }
 
-    return resolveCreateFromNode({
+    return resolveCreateStart({
       node: input.node,
-      zoom: input.zoom,
-      config: input.config,
       pointer: input.pointer,
-      edgeType: readEdgePresetType(input.tool.preset)
-    }) ?? startEdgeCreate({
-      pointerId: input.pointer.pointerId,
-      edgeType: readEdgePresetType(input.tool.preset),
-      from: toEdgeDraftEnd(input.pointer.world),
-      to: toEdgeDraftEnd(input.pointer.world)
-    })
+      edgeType,
+      zoom: input.zoom,
+      config: input.config
+    }) ?? startFreeEdgeCreate(input.pointer, edgeType)
   }
 
   if (
@@ -212,7 +285,7 @@ export const startEdgeConnect = (input: {
     return undefined
   }
 
-  return resolveReconnectState({
+  return resolveReconnectStart({
     edge: input.edge,
     edgeId: input.pointer.pick.id,
     end: input.pointer.pick.end,
@@ -235,37 +308,50 @@ const toPreviewEdgeEnd = (
       }
 )
 
-const readNodeSnapshot = (
-  node: Pick<NodeRead, 'canvas'>,
-  nodeId: NodeId
-): NodeCanvasSnapshot | undefined => node.canvas.get(nodeId)
-
-const resolveCreatePreviewPath = (
-  node: Pick<NodeRead, 'canvas'>,
+const createPreviewEdge = (
   state: EdgeConnectState
-): EdgeConnectPreview['path'] | undefined => {
+): Edge | undefined => {
   if (state.kind !== 'create' || !state.to) {
     return undefined
   }
 
-  const edge: Edge = {
+  return {
     id: '__preview__',
     source: toPreviewEdgeEnd(state.from),
     target: toPreviewEdgeEnd(state.to),
     type: state.edgeType,
     route: { kind: 'auto' }
   }
+}
+
+const readPreviewNodeSnapshot = (
+  node: EdgeConnectPreviewNodeRead,
+  nodeId: NodeId
+): NodeCanvasSnapshot | undefined => node.canvas.get(nodeId)
+
+const resolveCreatePreviewPath = (
+  node: EdgeConnectPreviewNodeRead,
+  state: EdgeConnectState
+): EdgeConnectPreview['path'] | undefined => {
+  const edge = createPreviewEdge(state)
+  const targetDraft = state.kind === 'create'
+    ? state.to
+    : undefined
+
+  if (!edge || state.kind !== 'create' || !targetDraft) {
+    return undefined
+  }
 
   const source = state.from.kind === 'node'
-    ? readNodeSnapshot(node, state.from.nodeId)
+    ? readPreviewNodeSnapshot(node, state.from.nodeId)
     : undefined
-  const target = state.to.kind === 'node'
-    ? readNodeSnapshot(node, state.to.nodeId)
+  const target = targetDraft.kind === 'node'
+    ? readPreviewNodeSnapshot(node, targetDraft.nodeId)
     : undefined
 
   if (
     (state.from.kind === 'node' && !source)
-    || (state.to.kind === 'node' && !target)
+    || (targetDraft.kind === 'node' && !target)
   ) {
     return undefined
   }
@@ -282,6 +368,49 @@ const resolveCreatePreviewPath = (
   }
 }
 
+const hasConnectGuide = (
+  evaluation: EdgeConnectEvaluation
+) => (
+  evaluation.focusedNodeId !== undefined
+  || evaluation.resolution.mode !== 'free'
+)
+
+const readReconnectPreviewPatches = (
+  state: EdgeConnectState,
+  preview: EdgeConnectPreview | undefined
+): EdgeGestureDraft['patches'] => (
+  state.kind === 'reconnect' && preview?.patch
+    ? [{
+        id: state.edgeId,
+        patch: preview.patch
+      }]
+    : []
+)
+
+export const readEdgeConnectGesture = (
+  input: EdgeConnectGestureInput
+): EdgeGestureDraft => {
+  const preview = resolveEdgeConnectPreview(
+    input.state,
+    input.showPreviewPath
+      ? resolveCreatePreviewPath(input.node, input.state)
+      : undefined
+  )
+
+  return {
+    patches: readReconnectPreviewPatches(input.state, preview),
+    guide: preview || hasConnectGuide(input.evaluation)
+      ? {
+          path: preview?.path,
+          connect: {
+            focusedNodeId: input.evaluation.focusedNodeId,
+            resolution: input.evaluation.resolution
+          }
+        }
+      : undefined
+  }
+}
+
 const toDraftEndFromEvaluation = (
   evaluation: EdgeConnectEvaluation
 ) => toEdgeDraftEnd(
@@ -295,25 +424,27 @@ const toDraftEndFromEvaluation = (
       }
 )
 
-export const stepEdgeConnect = (input: {
-  node: Pick<NodeRead, 'canvas'>
+const applyEdgeConnectEvaluation = (input: {
   state: EdgeConnectState
-  world: PointerDownInput['world']
-  snap: (input: {
-    pointerWorld: PointerDownInput['world']
-  }) => EdgeConnectEvaluation
-  showPreviewPath: boolean
-}): {
+  evaluation: EdgeConnectEvaluation
+}): EdgeConnectState => setEdgeConnectTarget(
+  input.state,
+  toDraftEndFromEvaluation(input.evaluation)
+)
+
+export const stepEdgeConnect = (
+  input: EdgeConnectStepInput
+): {
   state: EdgeConnectState
   gesture: EdgeGestureDraft
 } => {
   const evaluation = input.snap({
     pointerWorld: input.world
   })
-  const state = setEdgeConnectTarget(
-    input.state,
-    toDraftEndFromEvaluation(evaluation)
-  )
+  const state = applyEdgeConnectEvaluation({
+    state: input.state,
+    evaluation
+  })
 
   return {
     state,
@@ -323,43 +454,6 @@ export const stepEdgeConnect = (input: {
       evaluation,
       showPreviewPath: input.showPreviewPath
     })
-  }
-}
-
-export const readEdgeConnectGesture = (input: {
-  node: Pick<NodeRead, 'canvas'>
-  state: EdgeConnectState
-  evaluation: EdgeConnectEvaluation
-  showPreviewPath: boolean
-}): EdgeGestureDraft => {
-  const preview = resolveEdgeConnectPreview(
-    input.state,
-    input.showPreviewPath
-      ? resolveCreatePreviewPath(input.node, input.state)
-      : undefined
-  )
-  const hasConnectFeedback =
-    input.evaluation.focusedNodeId !== undefined
-    || input.evaluation.resolution.mode !== 'free'
-
-  return {
-    patches:
-      input.state.kind === 'reconnect' && preview?.patch
-        ? [{
-            id: input.state.edgeId,
-            patch: preview.patch
-          }]
-        : [],
-    guide: preview
-      || hasConnectFeedback
-      ? {
-          path: preview?.path,
-          connect: {
-            focusedNodeId: input.evaluation.focusedNodeId,
-            resolution: input.evaluation.resolution
-          }
-        }
-      : undefined
   }
 }
 

@@ -14,6 +14,9 @@ import {
 import type {
   SectionKey
 } from '../../../contracts/public'
+import {
+  createItemId
+} from '../collections'
 import type {
   SectionNodeState,
   SectionState
@@ -80,10 +83,17 @@ export const buildSectionNode = (input: {
   recordIds: readonly RecordId[]
   group: ViewGroup | undefined
   index: IndexState
+  previous?: SectionNodeState
 }): SectionNodeState => {
   const bucket = input.group
     ? readGroupFieldIndex(input.index.group, input.group)?.buckets.get(input.key)
     : undefined
+  const itemIds = input.previous && sameRecordIds(input.previous.recordIds, input.recordIds)
+    ? input.previous.itemIds
+    : input.recordIds.map(recordId => createItemId({
+        section: input.key,
+        recordId
+      }))
 
   return {
     key: input.key,
@@ -102,6 +112,7 @@ export const buildSectionNode = (input: {
         }
       : {}),
     recordIds: input.recordIds,
+    itemIds,
     visible: visibleOf(input.recordIds, input.group, input.key),
     collapsed: collapsedOf(input.group, input.key)
   }

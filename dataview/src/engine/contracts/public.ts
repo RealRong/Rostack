@@ -564,6 +564,8 @@ export interface ViewStageTrace {
   executed: boolean
   changed: boolean
   durationMs: number
+  deriveMs: number
+  publishMs: number
   metrics?: ViewStageMetrics
 }
 

@@ -21,6 +21,9 @@ import {
   sameRecordIds,
   sameSectionNode
 } from './shape'
+import {
+  readQueryOrder
+} from '../../../contracts/internal'
 
 const insertOrdered = (
   ids: readonly RecordId[],
@@ -125,7 +128,14 @@ export const syncSectionState = (input: {
       idsByKey.set(key, removeId(idsByKey.get(key) ?? [], recordId))
     })
     after.forEach(key => {
-      idsByKey.set(key, insertOrdered(idsByKey.get(key) ?? [], recordId, input.query.order))
+      idsByKey.set(
+        key,
+        insertOrdered(
+          idsByKey.get(key) ?? [],
+          recordId,
+          readQueryOrder(input.query)
+        )
+      )
     })
 
     if (after.length) {
@@ -146,7 +156,8 @@ export const syncSectionState = (input: {
       key,
       recordIds: ids,
       group: input.view.group,
-      index: input.index
+      index: input.index,
+      previous: previous.byKey.get(key)
     })
     const previousNode = previous.byKey.get(key)
     byKey.set(key, previousNode && sameSectionNode(previousNode, nextNode) ? previousNode : nextNode)

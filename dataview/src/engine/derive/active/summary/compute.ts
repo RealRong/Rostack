@@ -16,11 +16,29 @@ import type {
 } from '../../../index/types'
 
 const EMPTY_DISPLAY = '--'
+const NUMBER_FORMATTERS = new Map<string, Intl.NumberFormat>()
+
+const getNumberFormatter = (
+  options: Intl.NumberFormatOptions
+): Intl.NumberFormat => {
+  const key = JSON.stringify({
+    maximumFractionDigits: options.maximumFractionDigits,
+    minimumFractionDigits: options.minimumFractionDigits
+  })
+  const cached = NUMBER_FORMATTERS.get(key)
+  if (cached) {
+    return cached
+  }
+
+  const formatter = new Intl.NumberFormat(undefined, options)
+  NUMBER_FORMATTERS.set(key, formatter)
+  return formatter
+}
 
 const formatNumber = (
   value: number,
   options: Intl.NumberFormatOptions = {}
-) => new Intl.NumberFormat(undefined, {
+) => getNumberFormatter({
   maximumFractionDigits: Number.isInteger(value) ? 0 : 2,
   ...options
 }).format(value)

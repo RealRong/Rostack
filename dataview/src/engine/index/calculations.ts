@@ -60,6 +60,7 @@ const buildFieldCalcIndex = (
   const entries = buildFieldEntries(document, records, fieldId)
 
   return {
+    entries,
     global: buildAggregateState(entries)
   }
 }
@@ -145,7 +146,7 @@ export const syncCalculationIndex = (
       return
     }
 
-    const nextEntries = new Map(previousField.global.entries)
+    const nextEntries = new Map(previousField.entries)
     let nextGlobal = previousField.global
 
     context.touchedRecords.forEach(recordId => {
@@ -155,8 +156,8 @@ export const syncCalculationIndex = (
         nextEntries.delete(recordId)
         nextGlobal = patchAggregateState({
           state: nextGlobal,
-          recordId,
-          previous: previousEntry
+          previous: previousEntry,
+          entries: nextEntries
         })
         return
       }
@@ -165,19 +166,15 @@ export const syncCalculationIndex = (
       nextEntries.set(recordId, nextEntry)
       nextGlobal = patchAggregateState({
         state: nextGlobal,
-        recordId,
         previous: previousEntry,
-        next: nextEntry
+        next: nextEntry,
+        entries: nextEntries
       })
     })
 
     nextFields.set(fieldId, {
-      global: nextGlobal.entries === nextEntries
-        ? nextGlobal
-        : {
-            ...nextGlobal,
-            entries: nextEntries
-          }
+      entries: nextEntries,
+      global: nextGlobal
     })
     changed = true
   })

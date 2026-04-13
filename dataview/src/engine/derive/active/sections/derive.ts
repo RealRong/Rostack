@@ -21,6 +21,12 @@ import {
   sameRecordIds,
   sameSectionNode
 } from './shape'
+import {
+  createItemId
+} from '../collections'
+import {
+  readQueryVisibleSet
+} from '../../../contracts/internal'
 
 export const resolveSectionKeys = (input: {
   recordId: RecordId
@@ -28,7 +34,7 @@ export const resolveSectionKeys = (input: {
   view: View
   index: IndexState
 }): readonly SectionKey[] => {
-  if (!input.query.visibleSet.has(input.recordId)) {
+  if (!readQueryVisibleSet(input.query).has(input.recordId)) {
     return []
   }
 
@@ -47,14 +53,20 @@ export const buildSectionState = (input: {
   previous?: SectionState
 }): SectionState => {
   if (!input.view.group) {
+    const previousRoot = input.previous?.byKey.get(ROOT_SECTION_KEY)
     const root = {
       key: ROOT_SECTION_KEY,
       title: 'All',
       recordIds: input.query.visible,
+      itemIds: previousRoot && sameRecordIds(previousRoot.recordIds, input.query.visible)
+        ? previousRoot.itemIds
+        : input.query.visible.map(recordId => createItemId({
+            section: ROOT_SECTION_KEY,
+            recordId
+          })),
       visible: true,
       collapsed: false
     }
-    const previousRoot = input.previous?.byKey.get(ROOT_SECTION_KEY)
 
     return {
       order: [ROOT_SECTION_KEY],
@@ -91,7 +103,8 @@ export const buildSectionState = (input: {
       key,
       recordIds: ids,
       group: input.view.group,
-      index: input.index
+      index: input.index,
+      previous: input.previous?.byKey.get(key)
     })
     const previousNode = input.previous?.byKey.get(key)
     byKey.set(key, previousNode && sameSectionNode(previousNode, nextNode) ? previousNode : nextNode)

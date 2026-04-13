@@ -7,6 +7,9 @@ import type {
 import { TITLE_FIELD_ID } from '@dataview/core/contracts'
 import { viewCalcFields } from '@dataview/core/view'
 import {
+  now
+} from '../../../perf/shared'
+import {
   collectSchemaFieldIds,
   collectTouchedRecordIds,
   collectValueFieldIds
@@ -146,6 +149,8 @@ export const runSummaryStage = (input: {
   action: DeriveAction
   state: SummaryState
   summaries: ReadonlyMap<SectionKey, import('@dataview/core/calculation').CalculationCollection>
+  deriveMs: number
+  publishMs: number
 } => {
   const touchedRecords = collectTouchedRecordIds(input.delta)
   const touchedFields = collectTouchedFields(input.delta)
@@ -158,6 +163,7 @@ export const runSummaryStage = (input: {
     previousSections: input.previousSections,
     sectionsAction: input.sectionsAction
   })
+  const deriveStart = now()
   const state = syncSummaryState({
     previous: input.previous,
     previousSections: input.previousSections,
@@ -168,16 +174,37 @@ export const runSummaryStage = (input: {
     touchedRecords,
     touchedFields
   })
+  const deriveMs = now() - deriveStart
+
+  if (
+    action === 'reuse'
+    && state === input.previous
+    && input.previousPublished
+  ) {
+    return {
+      action,
+      state,
+      summaries: input.previousPublished,
+      deriveMs,
+      publishMs: 0
+    }
+  }
+
+  const publishStart = now()
+  const summaries = publishSummaries({
+    summary: state,
+    previousSummary: input.previous,
+    previous: input.previousPublished,
+    fieldsById: input.fieldsById,
+    view: input.view
+  })
+  const publishMs = now() - publishStart
 
   return {
     action,
     state,
-    summaries: publishSummaries({
-      summary: state,
-      previousSummary: input.previous,
-      previous: input.previousPublished,
-      fieldsById: input.fieldsById,
-      view: input.view
-    })
+    summaries,
+    deriveMs,
+    publishMs
   }
 }

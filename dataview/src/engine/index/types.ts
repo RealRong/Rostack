@@ -41,9 +41,14 @@ export interface GroupDemand {
 }
 
 export interface SearchIndex {
-  all?: ReadonlyMap<RecordId, string>
-  fields: ReadonlyMap<FieldId, ReadonlyMap<RecordId, string>>
+  all?: SearchTextIndex
+  fields: ReadonlyMap<FieldId, SearchTextIndex>
   rev: number
+}
+
+export interface SearchTextIndex {
+  texts: ReadonlyMap<RecordId, string>
+  tokens: ReadonlyMap<string, readonly RecordId[]>
 }
 
 export interface GroupFieldIndex {
@@ -82,6 +87,9 @@ export interface AggregateState {
   uniqueCounts: ReadonlyMap<string, number>
   numberCounts: ReadonlyMap<number, number>
   optionCounts: ReadonlyMap<string, number>
+}
+
+export interface SectionAggregateState extends AggregateState {
   entries: ReadonlyMap<RecordId, AggregateEntry>
 }
 
@@ -95,6 +103,7 @@ export interface AggregateEntry {
 }
 
 export interface FieldCalcIndex {
+  entries: ReadonlyMap<RecordId, AggregateEntry>
   global: AggregateState
 }
 

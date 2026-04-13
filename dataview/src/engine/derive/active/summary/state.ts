@@ -6,12 +6,13 @@ import {
   sameOrder
 } from '@shared/core'
 import {
-  buildAggregateState
+  buildSectionAggregateState
 } from '../../../index/aggregate'
 import type {
   AggregateEntry,
   AggregateState,
-  IndexState
+  IndexState,
+  SectionAggregateState
 } from '../../../index/types'
 import type {
   SectionKey
@@ -21,7 +22,7 @@ import type {
   SummaryState
 } from '../../../contracts/internal'
 
-export const EMPTY_AGGREGATES = new Map<FieldId, AggregateState>()
+export const EMPTY_AGGREGATES = new Map<FieldId, SectionAggregateState>()
 
 export const readCalcFields = (
   view: View
@@ -36,7 +37,7 @@ export const sameIds = (
 export const buildSectionFieldState = (input: {
   sectionIds: readonly string[]
   entries: ReadonlyMap<string, AggregateEntry>
-}): AggregateState => buildAggregateState(new Map(
+}): SectionAggregateState => buildSectionAggregateState(new Map(
   input.sectionIds.flatMap(recordId => {
     const entry = input.entries.get(recordId)
     return entry
@@ -50,7 +51,7 @@ export const buildSummaryState = (input: {
   view: View
   index: IndexState
 }): SummaryState => {
-  const bySection = new Map<SectionKey, ReadonlyMap<FieldId, AggregateState>>()
+  const bySection = new Map<SectionKey, ReadonlyMap<FieldId, SectionAggregateState>>()
   const calcFields = readCalcFields(input.view)
 
   if (!calcFields.length) {
@@ -71,9 +72,9 @@ export const buildSummaryState = (input: {
       return
     }
 
-    const byField = new Map<FieldId, AggregateState>()
+    const byField = new Map<FieldId, SectionAggregateState>()
     calcFields.forEach(fieldId => {
-      const entries = input.index.calculations.fields.get(fieldId)?.global.entries
+      const entries = input.index.calculations.fields.get(fieldId)?.entries
       if (!entries) {
         return
       }

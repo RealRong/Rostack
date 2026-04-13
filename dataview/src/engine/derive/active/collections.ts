@@ -124,22 +124,9 @@ export const buildItemList = (input: {
       return
     }
 
-    const canReuseSectionIds = Boolean(
-      previous
-      && input.previousSections?.byKey.get(sectionKey) === section
-    )
-    const previousSectionIds = canReuseSectionIds
-      ? input.previousSections?.byKey.get(sectionKey)?.visible
-        ? input.previous?.ids.filter(id => parseItemId(id)?.sectionKey === sectionKey)
-        : []
-      : undefined
-    const sectionIds = previousSectionIds ?? section.recordIds.map(recordId => createItemId({
-      section: sectionKey,
-      recordId
-    }))
-    totalIdCount += sectionIds.length
+    totalIdCount += section.itemIds.length
     if (!section.collapsed) {
-      ids.push(...sectionIds)
+      ids.push(...section.itemIds)
     }
   })
 
@@ -181,10 +168,7 @@ export const buildSections = (input: {
       return
     }
 
-    const itemIds = node.recordIds.map(recordId => createItemId({
-      section: node.key,
-      recordId
-    }))
+    const itemIds = node.itemIds
     const previousSection = previousByKey.get(node.key)
     const canReuse = Boolean(
       previousSection

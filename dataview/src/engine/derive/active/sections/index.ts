@@ -9,6 +9,9 @@ import type {
 import {
   collectTouchedRecordIds
 } from '../../../index/shared'
+import {
+  now
+} from '../../../perf/shared'
 import type {
   DeriveAction,
   QueryState,
@@ -102,6 +105,8 @@ export const runSectionsStage = (input: {
   state: SectionState
   sections: import('../../../contracts/public').SectionList
   items: import('../../../contracts/public').ItemList
+  deriveMs: number
+  publishMs: number
 } => {
   const touchedRecords = collectTouchedRecordIds(input.delta)
   const action = resolveSectionsAction({
@@ -113,6 +118,7 @@ export const runSectionsStage = (input: {
     previousQuery: input.previousQuery,
     query: input.query
   })
+  const deriveStart = now()
   const state = syncSectionState({
     previous: input.previous,
     previousQuery: input.previousQuery,
@@ -122,6 +128,25 @@ export const runSectionsStage = (input: {
     touchedRecords,
     action
   })
+  const deriveMs = now() - deriveStart
+
+  if (
+    action === 'reuse'
+    && state === input.previous
+    && input.previousPublished.sections
+    && input.previousPublished.items
+  ) {
+    return {
+      action,
+      state,
+      sections: input.previousPublished.sections,
+      items: input.previousPublished.items,
+      deriveMs,
+      publishMs: 0
+    }
+  }
+
+  const publishStart = now()
   const published = publishSections({
     sections: state,
     previousSections: input.previous,
@@ -130,11 +155,14 @@ export const runSectionsStage = (input: {
       sections: input.previousPublished.sections
     }
   })
+  const publishMs = now() - publishStart
 
   return {
     action,
     state,
     sections: published.sections,
-    items: published.items
+    items: published.items,
+    deriveMs,
+    publishMs
   }
 }

@@ -191,28 +191,50 @@
 
 这一层只做装配，不承载底层领域逻辑。
 
-## 4. 最终目录结构
+## 4. 最终最优文件目录
 
-建议最终收口为下面这个结构：
+这里给出的是我认为长期最优、且语义最稳定的一版终态目录。重点不是“尽量扁平”，而是“只保留真实领域层级，删除假层”。
+
+### 4.1 顶层目录
+
+```text
+dataview/src/engine/
+  api/
+  document/
+  runtime/
+  active/
+  mutate/
+  contracts/
+```
+
+顶层只保留 6 个主语：
+
+- `api`：对外装配
+- `document`：纯 `DataDoc` 读取与规则
+- `runtime`：root runtime store 与 selector 基础设施
+- `active`：当前 active view runtime
+- `mutate`：写路径的规划与提交
+- `contracts`：public/internal 类型
+
+### 4.2 最终最优文件树
 
 ```text
 dataview/src/engine/
   api/
     createEngine.ts
-    public.ts
-    document/
-      select.ts
+    engine.ts
+    active.ts
     fields.ts
     records.ts
     views.ts
-    active/
-      index.ts
+    documentSelect.ts
 
   document/
     records.ts
     fields.ts
     views.ts
     activeView.ts
+    fieldLookup.ts
     entities.ts
 
   runtime/
@@ -231,24 +253,42 @@ dataview/src/engine/
     context.ts
     selectors.ts
     read.ts
+
     index/
       runtime.ts
-      records.ts
-      search.ts
-      group.ts
-      sort.ts
-      calculations.ts
+      demand.ts
       trace.ts
       shared.ts
+      records.ts
+      search.ts
+      sort.ts
+      calculations.ts
+      group/
+        runtime.ts
+        demand.ts
+        bucket.ts
+
     snapshot/
       runtime.ts
-      query.ts
-      sections.ts
-      summary.ts
+      base.ts
       collections.ts
-      reuse.ts
       equality.ts
+      reuse.ts
       trace.ts
+      query/
+        runtime.ts
+        derive.ts
+      sections/
+        runtime.ts
+        derive.ts
+        sync.ts
+        publish.ts
+      summary/
+        runtime.ts
+        compute.ts
+        sync.ts
+        publish.ts
+
     commands/
       query.ts
       display.ts
@@ -263,13 +303,13 @@ dataview/src/engine/
     planner/
       index.ts
       shared.ts
-      view.ts
-      field.ts
-      record.ts
+      records.ts
+      fields.ts
+      views.ts
       validate.ts
       issues.ts
     commit/
-      index.ts
+      runtime.ts
       trace.ts
     entityId.ts
 
@@ -278,14 +318,62 @@ dataview/src/engine/
     internal.ts
 ```
 
-这份结构里有几个关键决策：
+### 4.3 这份文件树的关键判断
+
+这份结构里最重要的决定，不是简单移动文件，而是明确哪些层级应该保留，哪些应该消失。
 
 - 删除顶层 `read/`
 - 删除顶层 `services/`
 - 删除顶层 `state/`
 - 删除顶层 `write/`
-- 顶层 `index/` 并入 `active/index/`
-- 顶层 `derive/active/` 并入 `active/snapshot/`
+- 顶层 `index/` 整体并入 `active/index/`
+- 顶层 `derive/active/` 整体并入 `active/snapshot/`
+- `api/` 不再出现子目录式 facade 拼装层，直接按 public surface 组织
+- `document/` 只保留纯文档访问，不再知道 `ReadStore`
+- `runtime/selectors/` 统一承接所有 reactive selector 构造
+
+### 4.4 不做“全面扁平化”
+
+长期最优不等于把所有文件打平成一层。这里必须明确反对错误的全面扁平化。
+
+不应该做的事：
+
+- 不要把 `active/index/*` 全部塞进 `active/`
+- 不要把 `active/snapshot/query`、`sections`、`summary` 打平到一个目录
+- 不要把所有 stage helper 合并成两个超大文件
+
+应该做的事：
+
+- 只删除没有真实边界价值的中间层
+- 保留真实存在的流水线阶段
+- 让目录直接表达派生顺序和依赖方向
+
+换句话说，最终最优结构不是“草坪式扁平”，而是“一棵目录树，但每一层都有真实语义”。
+
+### 4.5 哪些地方要压平，哪些地方要保留分层
+
+应该压平的地方：
+
+- 很薄的 barrel file
+- 纯转发 `index.ts`
+- 只有 1 到 2 个导出的伪命名空间文件
+- 只是为了躲避大文件而拆出来、但没有独立主语的 helper 文件
+
+应该保留分层的地方：
+
+- `active/index/` 这一整层
+- `active/snapshot/` 这一整层
+- `active/snapshot/query`
+- `active/snapshot/sections`
+- `active/snapshot/summary`
+- `active/commands/`
+- `runtime/selectors/`
+
+判断标准只有一个：
+
+- 这层目录是否对应一个稳定领域或稳定阶段
+
+如果答案是“是”，就保留；如果只是为了“看起来没那么大”，就删掉。
 
 ## 5. 文件迁移与处置
 
@@ -718,7 +806,186 @@ active runtime 更新本质上只是 commit 后的派生刷新，不应该再散
 
 这比继续在 `read/`、`services/`、`state/` 里做局部修补稳定得多。
 
-## 10. 最终建议
+## 10. 最终实施方案
+
+这里给出的不是低风险迁移清单，而是在“允许重构成本、目标是最快到达长期最优终态”的前提下，最合适的一次性实施方案。
+
+### 10.1 实施总原则
+
+- 不保留兼容层
+- 不保留双目录双实现
+- 不保留新旧命名并存
+- 不做“先复制过去再慢慢替换”的长期过渡
+- 每一步都以最终边界为准，而不是为了迁移方便暂时制造新中间层
+
+这意味着实施过程虽然可以分阶段提交，但每个阶段都必须朝着同一个最终目录收口，而不是引入新的临时抽象。
+
+### 10.2 第一阶段：先把目录主语改对
+
+第一阶段只做结构切割，不主动改算法行为。
+
+目标：
+
+- 建立 `document/`
+- 建立 `runtime/`
+- 建立 `active/`
+- 建立 `mutate/`
+- 建立最终 `api/`
+
+具体动作：
+
+1. 把 `state/store.ts`、`state/history.ts`、`state/performance.ts` 迁移到 `runtime/`
+2. 把 `state/select.ts` 拆到 `runtime/selectors/`
+3. 把 `state/read.ts` 迁移到 `api/documentSelect.ts`
+4. 把 `services/fields.ts`、`records.ts`、`views.ts` 迁移到 `api/`
+5. 把 `services/active/index.ts` 的装配职责迁移到 `api/active.ts`
+6. 保留原实现逻辑，只改 import 和模块归属
+
+这一步的目标不是简化代码，而是先让目录名与职责主语一致。
+
+### 10.3 第二阶段：拆开 document read 与 runtime select
+
+第二阶段解决当前最容易继续长歪的边界问题。
+
+目标：
+
+- 彻底删除顶层 `read/`
+- 彻底消灭一个文件同时处理 `DataDoc` 与 `RuntimeStore` 的情况
+
+具体动作：
+
+1. 删除 `read/entities.ts`
+2. 把纯 `DataDoc` 的实体访问拆到 `document/entities.ts`
+3. 把 document entity selector 构造拆到 `runtime/selectors/document.ts`
+4. 删除 `createWriteRead()`
+5. 把 public 的 `DocumentReadApi` 收口成 `DocumentSelectApi`
+
+验收标准：
+
+- `document/` 下不再 import `ReadStore`
+- `runtime/selectors/` 下不再 import `DataDoc` helper 以外的 public API
+- engine 里不再存在顶层 `read/`
+
+### 10.4 第三阶段：把 `index` 和 `derive/active` 收口成一个 active runtime 子树
+
+这是整个方案里最关键的一步。
+
+目标：
+
+- 不做全面扁平化
+- 但把当前两条并列顶层链路收口为同一棵 `active/` 子树
+
+具体动作：
+
+1. 把 `index/*` 整体迁移到 `active/index/*`
+2. 把 `derive/active/*` 整体迁移到 `active/snapshot/*`
+3. 把当前 `index/runtime.ts` 重命名为 `active/index/runtime.ts`
+4. 把当前 `derive/active/runtime.ts` 与 `run.ts` 的总装逻辑收口为 `active/runtime.ts` + `active/snapshot/runtime.ts`
+5. 保留 `query`、`sections`、`summary` 这三个 snapshot stage 的目录层级
+6. 保留 `records`、`search`、`group`、`sort`、`calculations` 这五个 index stage 的目录层级
+7. 删除只有转发作用的薄 `index.ts` 文件和假命名空间
+
+验收标准：
+
+- 顶层不再存在 `index/`
+- 顶层不再存在 `derive/active/`
+- active runtime 的所有派生逻辑都能从 `active/` 一棵树读全
+
+### 10.5 第四阶段：拆掉 `services/active/base.ts` 上帝对象
+
+当前 active 这层的复杂度，主要是被 `services/active/base.ts` 吞掉了。
+
+目标：
+
+- 去掉万能 `base`
+- 建立显式的 active runtime context 和 command 边界
+
+具体动作：
+
+1. 提取 `active/context.ts`
+2. 提取 `active/selectors.ts`
+3. 保留 `active/read.ts` 作为同步 helper
+4. 把 query/display/sections/items/cells/gallery/kanban/table 的行为全部迁移到 `active/commands/*`
+5. 让 `api/active.ts` 只做 public API 装配
+
+验收标准：
+
+- 不再存在 `services/active/base.ts`
+- `active/context.ts` 不包含具体业务算法
+- `active/commands/*` 不构造 `ReadStore`
+- `api/active.ts` 不实现核心业务规则
+
+### 10.6 第五阶段：重命名 public API，校正最终语义
+
+目录正确后，应该顺手把 public naming 一次改正。
+
+具体动作：
+
+1. `engine.view` 改成 `engine.active`
+2. `engine.read` 改成 `engine.select`
+3. `DocumentReadApi` 改成 `DocumentSelectApi`
+4. `ViewApi` 改成 `ActiveViewApi`
+5. `Store` 改成 `RuntimeStore`
+6. `EngineState` 改成 `EngineRuntimeState`
+
+这一步非常重要，因为公开命名会反过来约束后续代码组织。如果 public API 继续沿用旧名字，内部边界很容易再次倒退。
+
+### 10.7 第六阶段：删除旧层与死代码
+
+所有新目录接通之后，不应该长期保留旧层。
+
+必须直接删除：
+
+- 旧 `state/`
+- 旧 `read/`
+- 旧 `services/`
+- 旧 `write/`
+- 顶层 `index/`
+- 顶层 `derive/active/`
+- 未再被消费的 helper
+- 仅剩转发作用的 barrel file
+
+验收标准：
+
+- 旧目录彻底消失
+- 不再有新代码依赖旧 import path
+- 不再有一份逻辑存在两份命名空间
+
+### 10.8 最终 cutover 的验收清单
+
+最终完成时，必须同时满足下面这些条件：
+
+- `engine/` 顶层只剩 `api / document / runtime / active / mutate / contracts`
+- 所有 `ReadStore` 工厂都在 `runtime/selectors/` 或 `active/selectors.ts`
+- 所有纯同步读取都在 `document/` 或 `active/read.ts`
+- 所有 public API 装配都在 `api/`
+- 所有 active runtime 派生都在 `active/`
+- 所有写入规划与提交都在 `mutate/`
+- 不再存在 `services/active/base.ts` 这种上帝对象
+- 不再存在 `createWriteRead()` 这种混合 facade
+- 不再存在顶层 `read/`、`services/`、`state/`、`write/`
+
+### 10.9 为什么这是“最终实施方案”而不是“迁移建议”
+
+因为这套顺序不是在讨论“怎么最稳”，而是在讨论“怎么最快到达真正稳定的终态”。
+
+如果目标是长期最优，那么真正应该避免的不是一次性大重排，而是下面这类动作：
+
+- 先造一个临时层，准备未来再删
+- 先保留旧命名，等大家适应
+- 先把文件搬过去，但继续保留旧抽象
+- 先把 `index` 和 `derive` 合在语义上，但继续放两个顶层目录
+
+这些做法短期舒服，长期通常会留下新的历史包袱。
+
+所以最终实施方案应该直接面对真实终态：
+
+- 用最终主语改目录
+- 用最终边界改文件职责
+- 用最终命名改 public API
+- 改完立刻删除旧层
+
+## 11. 最终建议
 
 如果目标真的是“一步到位到长期最优”，我的结论非常明确：
 

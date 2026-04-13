@@ -52,8 +52,8 @@ export const touchedFieldCountOf = (
 export const searchEntryCountOf = (
   search: SearchIndex
 ): number => (
-  (search.all?.size ?? 0)
-  + Array.from(search.fields.values()).reduce((count, field) => count + field.size, 0)
+  (search.all?.texts.size ?? 0)
+  + Array.from(search.fields.values()).reduce((count, field) => count + field.texts.size, 0)
 )
 
 export const createIndexStageTrace = (input: {

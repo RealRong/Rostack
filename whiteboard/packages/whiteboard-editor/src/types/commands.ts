@@ -43,8 +43,8 @@ import type { ClipboardPacket } from '../clipboard/packet'
 import type {
   BrushStylePatch,
   DrawState
-} from '../draw/state'
-import type { DrawSlot } from '../draw/model'
+} from '../model/draw/state'
+import type { DrawSlot } from '../model/draw/model'
 import type { MindmapLayoutConfig } from './mindmap'
 import type { PointerSample } from './input'
 import type {
@@ -52,13 +52,13 @@ import type {
   InsertPresetKey,
   Tool
 } from './tool'
-import type { DrawMode } from '../draw/model'
+import type { DrawMode } from '../model/draw/model'
 import type {
   EditCaret,
   EditField,
   EditLayout
-} from '../runtime/state/edit'
-import type { ViewportCommands } from '../runtime/viewport'
+} from '../state/edit'
+import type { ViewportCommands } from '../editor/viewport'
 
 export type OrderMode =
   | 'front'

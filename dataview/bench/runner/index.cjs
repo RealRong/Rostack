@@ -131,6 +131,16 @@ const summarizeRuns = (runs, scenario, size) => {
     stageDurationsMs: Object.fromEntries(
       last.trace.view.stages.map(stage => [stage.stage, stage.durationMs])
     ),
+    stageTimingsMs: Object.fromEntries(
+      last.trace.view.stages.map(stage => [
+        stage.stage,
+        {
+          total: stage.durationMs,
+          derive: stage.deriveMs,
+          publish: stage.publishMs
+        }
+      ])
+    ),
     stats: last.stats
   }
 }

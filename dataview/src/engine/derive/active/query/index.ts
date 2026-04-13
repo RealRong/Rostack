@@ -11,6 +11,9 @@ import {
   trimToUndefined
 } from '@shared/core'
 import {
+  now
+} from '../../../perf/shared'
+import {
   viewFilterFields,
   viewSearchFields,
   viewSortFields
@@ -180,8 +183,11 @@ export const runQueryStage = (input: {
   action: DeriveAction
   state: QueryState
   records: import('../../../contracts/public').ViewRecords
+  deriveMs: number
+  publishMs: number
 } => {
   const action = resolveQueryAction(input)
+  const deriveStart = now()
   const state = action === 'reuse' && input.previous
     ? input.previous
     : buildQueryState({
@@ -190,13 +196,34 @@ export const runQueryStage = (input: {
         index: input.index,
         previous: input.previous
       })
+  const deriveMs = now() - deriveStart
+
+  if (
+    action === 'reuse'
+    && state === input.previous
+    && input.previousPublished
+  ) {
+    return {
+      action,
+      state,
+      records: input.previousPublished,
+      deriveMs,
+      publishMs: 0
+    }
+  }
+
+  const publishStart = now()
+  const records = publishViewRecords({
+    query: state,
+    previous: input.previousPublished
+  })
+  const publishMs = now() - publishStart
 
   return {
     action,
     state,
-    records: publishViewRecords({
-      query: state,
-      previous: input.previousPublished
-    })
+    records,
+    deriveMs,
+    publishMs
   }
 }

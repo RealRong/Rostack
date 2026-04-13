@@ -4,6 +4,7 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import {
+  getDocumentFieldById,
   getDocumentViewById
 } from '@dataview/core/document'
 import {
@@ -27,15 +28,45 @@ export const resolveViewDemand = (
     return {}
   }
 
+  const filterGroupFields = new Set<FieldId>()
+  const filterSortFields = new Set<FieldId>()
+  view.filter.rules.forEach(rule => {
+    const field = getDocumentFieldById(document, rule.fieldId)
+    switch (field?.kind) {
+      case 'status':
+      case 'select':
+      case 'multiSelect':
+      case 'boolean':
+        filterGroupFields.add(rule.fieldId)
+        break
+      case 'number':
+      case 'date':
+        filterSortFields.add(rule.fieldId)
+        break
+      default:
+        break
+    }
+  })
+
   const search = view.search.fields?.length
     ? { fields: view.search.fields }
     : { all: true }
+  const groups = view.group
+    ? [
+        createGroupDemand(view.group),
+        ...Array.from(filterGroupFields).map(fieldId => ({ fieldId }))
+      ]
+    : Array.from(filterGroupFields).map(fieldId => ({ fieldId }))
+  const sortFields = Array.from(new Set([
+    ...viewSortDemandFields(view),
+    ...filterSortFields
+  ]))
 
   return {
     ...(search ? { search } : {}),
-    ...(view.group ? { groups: [createGroupDemand(view.group)] } : {}),
-    ...(view.display.fields.length || view.sort.length
-      ? { sortFields: viewSortDemandFields(view) }
+    ...(groups.length ? { groups } : {}),
+    ...(sortFields.length
+      ? { sortFields }
       : {}),
     ...(Object.entries(view.calc).some(([, metric]) => Boolean(metric))
       ? {

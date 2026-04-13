@@ -3,7 +3,7 @@ import { defineConfig } from 'tsup'
 export default defineConfig({
   entry: {
     index: 'src/index.ts',
-    draw: 'src/draw.ts'
+    draw: 'src/model/draw/index.ts'
   },
   format: ['esm', 'cjs'],
   dts: true,

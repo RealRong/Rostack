@@ -10,7 +10,8 @@ import type {
 const GROUP_SEPARATOR = '\u0000'
 
 export const createGroupDemand = (
-  group: Pick<ViewGroup, 'field' | 'mode' | 'bucketSort' | 'bucketInterval'>
+  group: Pick<ViewGroup, 'field'>
+    & Partial<Pick<ViewGroup, 'mode' | 'bucketSort' | 'bucketInterval'>>
 ): GroupDemand => ({
   fieldId: group.field,
   ...(group.mode === undefined ? {} : { mode: group.mode }),
@@ -37,7 +38,8 @@ export const createGroupDemandKey = (
 
 export const readGroupFieldIndex = (
   index: GroupIndex,
-  group: Pick<ViewGroup, 'field' | 'mode' | 'bucketSort' | 'bucketInterval'>
+  group: Pick<ViewGroup, 'field'>
+    & Partial<Pick<ViewGroup, 'mode' | 'bucketSort' | 'bucketInterval'>>
 ): GroupFieldIndex | undefined => index.groups.get(
   createGroupDemandKey(createGroupDemand(group))
 )

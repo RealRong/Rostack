@@ -54,16 +54,23 @@ export const deriveViewSnapshot = (input: {
     nextSnapshot: (result: T) => ViewState | undefined,
     buildMetrics?: (result: T) => ViewStageMetrics | undefined
   ): T => {
-    const start = input.capturePerf ? now() : 0
     const result = run()
     if (input.capturePerf) {
       const next = nextSnapshot(result)
+      const deriveMs = 'deriveMs' in result && typeof result.deriveMs === 'number'
+        ? result.deriveMs
+        : 0
+      const publishMs = 'publishMs' in result && typeof result.publishMs === 'number'
+        ? result.publishMs
+        : 0
       stageTraces.push({
         stage,
         action: result.action,
         executed: result.action !== 'reuse',
         changed: !Object.is(previousSnapshot, next),
-        durationMs: now() - start,
+        durationMs: deriveMs + publishMs,
+        deriveMs,
+        publishMs,
         ...(buildMetrics
           ? { metrics: buildMetrics(result) }
           : {})

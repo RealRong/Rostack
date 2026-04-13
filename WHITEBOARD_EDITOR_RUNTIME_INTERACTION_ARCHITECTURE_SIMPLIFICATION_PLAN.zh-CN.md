@@ -197,7 +197,7 @@
 
 ### 现有优点
 
-- connect / move / route 已经有明确 feature axis
+- connect / move / route 已经有明确的 start/求解侧下沉
 - session projector 已经比旧实现薄很多
 - edge feature 的核心领域语义比其他 feature 更清晰
 
@@ -227,7 +227,7 @@
 这里真正必要的是：
 
 - 一个 feature start/router
-- 若干 axis
+- 按动作划分的 `start.ts`
 - 若干 session
 
 现在的 `index.ts -> interaction.ts` 两跳并没有带来足够信息增益。
@@ -254,7 +254,7 @@ edge 不是设计失败，而是迁移停在半程。
 3. 移出 `hover` 这类 feature service
 4. 删除无收益的双 router
 
-## 2. Selection：领域轴已经出现，但重心失衡
+## 2. Selection：领域 start 侧已经出现，但重心失衡
 
 ### 现状
 
@@ -270,7 +270,7 @@ selection 相关逻辑主要分布在：
 
 ### 现有优点
 
-- `press` 的 target / plan / match 已明显下沉到 runtime axis
+- `press` 的 target / plan / match 已明显下沉到 start/resolve 侧
 - `marqueeState.ts` 作为 reducer 文件本身是合理的
 - interaction 层相比旧实现已经明显变薄
 
@@ -311,7 +311,7 @@ selection 相关逻辑主要分布在：
 
 ### 结论
 
-selection 接下来应该做的不是再补一层轴，而是：
+selection 接下来应该做的不是再补一个抽象层，而是：
 
 1. 把 `press` 重心拆平
 2. 把 marquee shared type 移出 reducer
@@ -342,11 +342,11 @@ draw 相关逻辑当前分布在：
 
 这不是“模块化”，而是命名空间碎裂。
 
-#### 2. `stroke` 已经轴化，`erase` 还停在旧风格
+#### 2. `stroke` 已开始走 `start/session`，`erase` 还停在旧风格
 
 当前 draw 内部已经出现两种架构风格：
 
-- `stroke` 走 runtime axis + session projector
+- `stroke` 已开始采用 `start/session` 分工
 - `erase` 仍在 interaction 文件里自己管完整流程
 
 这会导致 draw feature 内部也没有统一组织原则。
@@ -365,7 +365,7 @@ draw 的长期最优不是保留现状并继续细拆，而是：
 2. 把 draw input flow 迁到单一 feature 目录
 3. 让 `stroke` 与 `erase` 采用同一种 input 组织方式
 
-## 4. Transform：当前最明显的“未轴化”大文件
+## 4. Transform：当前最明显的“未收成 `start/session`”大文件
 
 ### 现状
 
@@ -383,15 +383,15 @@ draw 的长期最优不是保留现状并继续细拆，而是：
 
 transform 是当前最明显的架构不一致点之一：
 
-- edge 已有 feature axis
-- selection 已有 feature axis
-- draw.stroke 已有 feature axis
-- mindmap.drag 已有 feature axis
+- edge 已有明确的 start/session 分工方向
+- selection 已有明确的 start/session 分工方向
+- draw.stroke 已有明确的 start/session 分工方向
+- mindmap.drag 已有明确的 start/session 分工方向
 - transform 仍停留在 interaction 大文件
 
 ### 结论
 
-transform 是下一批必须补齐 axis 的 feature，而且优先级高于 viewport、mindmap 等命名整理项。
+transform 是下一批必须补齐 `start/session` 结构的 feature，而且优先级高于 viewport、mindmap 等命名整理项。
 
 ## 5. Mindmap：结构方向对，命名空间未并轨
 
@@ -407,7 +407,7 @@ transform 是下一批必须补齐 axis 的 feature，而且优先级高于 view
 这条链路本身比较清楚，问题不在实现，而在全局一致性：
 
 - 如果 edge / selection / draw / transform 都统一到 feature input 目录
-- mindmap 也不应继续作为“单文件 interaction + runtime axis”的孤例存在
+- mindmap 也不应继续作为“单文件 interaction + 独立 start 逻辑”的孤例存在
 
 ### 结论
 
@@ -559,7 +559,7 @@ mindmap 不是复杂度热点，但应该在目录收敛时一并并轨。
 阅读者的真正负担是：
 
 - 必须先定位“这条链路在哪些目录”
-- 再判断每一层到底是 router、axis、session 还是 service
+- 再判断每一层到底是 router、start、session 还是 service
 
 这比单文件内部多几个 helper 更伤可读性。
 
@@ -567,7 +567,7 @@ mindmap 不是复杂度热点，但应该在目录收敛时一并并轨。
 
 当前一些大文件的问题，也确实需要靠内部重组解决，但原则应当非常明确。
 
-### Axis 文件
+### `start.ts` 文件
 
 适用于：
 
@@ -580,7 +580,7 @@ mindmap 不是复杂度热点，但应该在目录收敛时一并并轨。
 - 一个主入口，按 top-down 顺序组织
 - 只导出 feature 级入口，不导出一串阶段函数
 - 共享状态在单个局部 state bag 中流动，不要跨十几个 helper 反复穿参
-- 只有在同一逻辑被多个 axis 复用时，才提升为 shared helper
+- 只有在同一逻辑被多个 `start.ts` 流程复用时，才提升为 shared helper
 - 不要为了“看起来函数更小”把单一事务流程打散到过多文件
 
 结论上，这类文件更适合：
@@ -589,6 +589,17 @@ mindmap 不是复杂度热点，但应该在目录收敛时一并并轨。
 - 在需要管理明显阶段性共享状态时，使用局部闭包状态
 
 而不是上来就做 class，也不是无止境地拆成很多平级小函数。
+
+这里再明确一条命名原则：
+
+- 长期不要使用 `Axis` 后缀
+- 统一采用“动作目录 + `start.ts` / `session.ts`”
+
+原因是：
+
+- `start` 对职责更自解释
+- `Axis` 是架构内部术语，不适合作为长期公开文件名
+- 动作目录可以让同一动作的 shared type / state / helper 自然近邻放置
 
 ### Session 文件
 
@@ -658,36 +669,44 @@ src/
     edge/
       start.ts
       hover.ts
-      connectAxis.ts
-      connectSession.ts
-      moveAxis.ts
-      moveSession.ts
-      routeAxis.ts
-      routeSession.ts
+      connect/
+        start.ts
+        session.ts
+      move/
+        start.ts
+        session.ts
+      route/
+        start.ts
+        session.ts
 
     selection/
       shared.ts
       press/
+        start.ts
         resolve.ts
         plan.ts
         session.ts
       marquee/
         state.ts
         session.ts
-      moveSession.ts
+      move/
+        session.ts
 
     draw/
-      strokeAxis.ts
-      strokeSession.ts
-      eraseAxis.ts
-      eraseSession.ts
+      stroke/
+        start.ts
+        session.ts
+      erase/
+        start.ts
+        session.ts
 
     mindmap/
-      dragAxis.ts
-      dragSession.ts
+      drag/
+        start.ts
+        session.ts
 
     transform/
-      axis.ts
+      start.ts
       text.ts
       session.ts
 
@@ -816,7 +835,7 @@ src/
 
 1. `runtime/edge/interaction.ts` 改为 feature start/router 命名并并入 edge feature 目录
 2. `interactions/edge/hover.ts` 上收为 edge feature 公共 service
-3. `connect/move/route` axis 与 session 合并到单一 `input/edge/*`
+3. `connect/move/route` 的 `start.ts` 与 `session.ts` 合并到单一 `input/edge/*`
 4. 删除 `interactions/edge/index.ts -> runtime/edge/interaction.ts` 的双 router
 
 ## Selection
@@ -829,18 +848,18 @@ src/
 ## Draw
 
 1. 根级 `draw/*` 迁到 `model/draw/*`
-2. `stroke` 与 `erase` 统一采用 axis + session 组织
+2. `stroke` 与 `erase` 统一采用“动作目录 + `start.ts` / `session.ts`”组织
 3. 删掉根级 `draw.ts` 这种额外壳入口
 
 ## Transform
 
-1. 从 `interactions/transform.ts` 拆出正式的 feature axis
+1. 从 `interactions/transform.ts` 拆出正式的 `start.ts`
 2. 将 text transform 特判作为 transform feature 内部 specialization
 3. 让 transform 与其他复杂 feature 采用一致的 input 结构
 
 ## Mindmap
 
-1. 保持现有 axis + session 思路
+1. 保持现有“动作目录 + `start.ts` / `session.ts`”思路
 2. 在目录收敛时一并迁入统一 feature 目录
 
 ## Viewport
@@ -906,7 +925,7 @@ src/
 
 结果要求：
 
-- 每个 feature 的 start / axis / session / service 在同一命名空间内
+- 每个 feature 的 start / session / service 在同一命名空间内
 
 ## 阶段 3：补齐未轴化 feature
 
@@ -921,7 +940,7 @@ src/
 
 结果要求：
 
-- 不再存在“有的 feature 走 axis/session，有的 feature 仍是 interaction 大文件”的明显不一致
+- 不再存在“有的 feature 走 `start/session`，有的 feature 仍是 interaction 大文件”的明显不一致
 
 ## 阶段 4：read / presentation / write 语义拆正
 
@@ -965,12 +984,12 @@ src/
 
 1. 不再存在任何 `runtime -> interactions` 式反向依赖
 2. `interaction` 一词只保留一个含义：input kernel
-3. 同一 feature 的 start / axis / session / hover / reducer 尽量在同一命名空间内
+3. 同一 feature 的 start / session / hover / reducer 尽量在同一命名空间内
 4. `read` 目录不再包含 toolbar / overlay / mixed-value UI projection
 5. `write` 目录能明确区分 engine write、session/local write、overlay write、view write
 6. 根级不再存在与 feature 目录并行的模糊命名空间，例如当前的 `draw/*`
 7. `createEditor` 只依赖公开入口，不依赖 feature 私有实现文件
-8. 大型 axis 文件的拆分以“信息流清晰”为目标，而不是以“函数更小”为目标
+8. 大型 `start.ts` 文件的拆分以“信息流清晰”为目标，而不是以“函数更小”为目标
 
 ## 最终判断
 

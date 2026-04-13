@@ -1,4 +1,4 @@
-import type { DrawMode } from '../draw/model'
+import type { DrawMode } from '../model/draw/model'
 
 export type EdgePresetKey =
   | 'edge.straight'

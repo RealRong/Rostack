@@ -1,6 +1,6 @@
 export {
   createEditor
-} from './runtime/editor/createEditor'
+} from './editor/createEditor'
 export {
   createClipboardPacket,
   parseClipboardPacket,
@@ -14,7 +14,7 @@ export type {
   EditField,
   EditMeasureMode,
   EditEmptyBehavior
-} from './runtime/state/edit'
+} from './state/edit'
 export type {
   Editor,
   EditorActions,
@@ -109,4 +109,4 @@ export type {
   SelectionNodeInfo,
   SelectionNodeTypeInfo,
   ToolbarSelectionKind
-} from './selection'
+} from './types/selectionPresentation'

@@ -25,8 +25,11 @@ import {
 import type {
   RecordIndex,
   SearchDemand,
-  SearchIndex
+  SearchIndex,
+  SearchTextIndex
 } from '../types'
+
+const TOKEN_SEPARATOR = '\u0000'
 
 const normalizeTokens = (
   values: readonly string[]
@@ -37,7 +40,7 @@ const normalizeTokens = (
   }))
 
   return tokens.length
-    ? tokens.join('\u0000')
+    ? tokens.join(TOKEN_SEPARATOR)
     : undefined
 }
 
@@ -61,7 +64,7 @@ const buildAllTokens = (
   const tokens = new Set<string>()
   const addTokens = (nextTokens: readonly string[] | string | undefined) => {
     const values = typeof nextTokens === 'string'
-      ? nextTokens.split('\u0000')
+      ? nextTokens.split(TOKEN_SEPARATOR)
       : nextTokens
 
     values?.forEach(token => {
@@ -81,60 +84,101 @@ const buildAllTokens = (
   return normalizeTokens(Array.from(tokens))
 }
 
-const buildFieldTexts = (
+const buildTextIndex = (input: {
+  ids: readonly RecordId[]
+  readText: (recordId: RecordId) => string | undefined
+}): SearchTextIndex => {
+  const texts = new Map<RecordId, string>()
+
+  input.ids.forEach(recordId => {
+    const text = input.readText(recordId)
+    if (!text) {
+      return
+    }
+
+    texts.set(recordId, text)
+  })
+
+  return {
+    texts,
+    tokens: new Map()
+  }
+}
+
+const updateTextIndex = (input: {
+  previous: SearchTextIndex
+  touchedRecords: ReadonlySet<RecordId>
+  readText: (recordId: RecordId) => string | undefined
+}): SearchTextIndex => {
+  const texts = new Map(input.previous.texts)
+  let changed = false
+
+  input.touchedRecords.forEach(recordId => {
+    const previousText = texts.get(recordId)
+    const nextText = input.readText(recordId)
+    if (previousText === nextText) {
+      return
+    }
+
+    if (nextText) {
+      texts.set(recordId, nextText)
+    } else {
+      texts.delete(recordId)
+    }
+
+    changed = true
+  })
+
+  return changed
+    ? {
+        texts,
+        tokens: input.previous.tokens
+      }
+    : input.previous
+}
+
+const buildFieldIndex = (
   document: DataDoc,
   records: RecordIndex,
   fieldId: FieldId
-): ReadonlyMap<RecordId, string> => {
-  const texts = new Map<RecordId, string>()
+): SearchTextIndex => {
   const field = getDocumentFieldById(document, fieldId)
-
   if (!field && fieldId !== 'title') {
-    return texts
+    return {
+      texts: new Map(),
+      tokens: new Map()
+    }
   }
 
-  records.ids.forEach(recordId => {
-    const record = records.rows.get(recordId)
-    if (!record) {
-      return
+  return buildTextIndex({
+    ids: records.ids,
+    readText: recordId => {
+      const record = records.rows.get(recordId)
+      return record
+        ? buildFieldTokens(record, fieldId, field)
+        : undefined
     }
-
-    const tokens = buildFieldTokens(record, fieldId, field)
-    if (!tokens) {
-      return
-    }
-
-    texts.set(recordId, tokens)
   })
-
-  return texts
 }
 
-const buildAllTexts = (
+const buildAllIndex = (
   document: DataDoc,
   records: RecordIndex
-): ReadonlyMap<RecordId, string> => {
-  const texts = new Map<RecordId, string>()
+): SearchTextIndex => {
   const fields = document.fields.order.map(fieldId => ({
     id: fieldId,
     field: getDocumentFieldById(document, fieldId)
   }))
 
-  records.ids.forEach(recordId => {
-    const record = records.rows.get(recordId)
-    if (!record) {
-      return
+  return buildTextIndex({
+    ids: records.ids,
+    readText: recordId => {
+      const record = records.rows.get(recordId)
+      return record
+        ? buildAllTokens(record, fields)
+        : undefined
     }
-
-    const tokens = buildAllTokens(record, fields)
-    if (!tokens) {
-      return
-    }
-
-    texts.set(recordId, tokens)
   })
-
-  return texts
 }
 
 const normalizeDemand = (
@@ -179,7 +223,7 @@ export const ensureSearchIndex = (
   const nextFields = new Map(previous.fields)
 
   if (normalized.all && !previous.all) {
-    nextAll = buildAllTexts(document, records)
+    nextAll = buildAllIndex(document, records)
     changed = true
   }
 
@@ -188,7 +232,7 @@ export const ensureSearchIndex = (
       return
     }
 
-    nextFields.set(fieldId, buildFieldTexts(document, records, fieldId))
+    nextFields.set(fieldId, buildFieldIndex(document, records, fieldId))
     changed = true
   })
 
@@ -239,27 +283,25 @@ export const syncSearchIndex = (
     id: fieldId,
     field: getDocumentFieldById(document, fieldId)
   }))
+
   if (rebuildAll) {
-    nextAll = buildAllTexts(document, records)
+    nextAll = buildAllIndex(document, records)
     changed = true
   } else if (hasLoadedAll && context.touchedRecords !== 'all' && context.touchedRecords.size) {
-    const texts = new Map(previous.all!)
-
-    context.touchedRecords.forEach(recordId => {
-      const record = records.rows.get(recordId)
-      const nextText = record
-        ? buildAllTokens(record, allFields)
-        : undefined
-      if (nextText) {
-        texts.set(recordId, nextText)
-        return
+    const next = updateTextIndex({
+      previous: previous.all!,
+      touchedRecords: context.touchedRecords,
+      readText: recordId => {
+        const record = records.rows.get(recordId)
+        return record
+          ? buildAllTokens(record, allFields)
+          : undefined
       }
-
-      texts.delete(recordId)
     })
-
-    nextAll = texts
-    changed = true
+    if (next !== previous.all) {
+      nextAll = next
+      changed = true
+    }
   }
 
   Array.from(loadedFieldIds).forEach(fieldId => {
@@ -270,7 +312,7 @@ export const syncSearchIndex = (
     }
 
     if (rebuildFieldIds.has(fieldId)) {
-      nextFields.set(fieldId, buildFieldTexts(document, records, fieldId))
+      nextFields.set(fieldId, buildFieldIndex(document, records, fieldId))
       changed = true
       return
     }
@@ -279,22 +321,26 @@ export const syncSearchIndex = (
       return
     }
 
-    const texts = new Map(previous.fields.get(fieldId))
-    context.touchedRecords.forEach(recordId => {
-      const record = records.rows.get(recordId)
-      const nextText = record
-        ? buildFieldTokens(record, fieldId, getDocumentFieldById(document, fieldId))
-        : undefined
+    const previousField = previous.fields.get(fieldId)
+    if (!previousField) {
+      return
+    }
 
-      if (nextText) {
-        texts.set(recordId, nextText)
-        return
+    const nextField = updateTextIndex({
+      previous: previousField,
+      touchedRecords: context.touchedRecords,
+      readText: recordId => {
+        const record = records.rows.get(recordId)
+        return record
+          ? buildFieldTokens(record, fieldId, getDocumentFieldById(document, fieldId))
+          : undefined
       }
-
-      texts.delete(recordId)
     })
-    nextFields.set(fieldId, texts)
-    changed = true
+
+    if (nextField !== previousField) {
+      nextFields.set(fieldId, nextField)
+      changed = true
+    }
   })
 
   return changed

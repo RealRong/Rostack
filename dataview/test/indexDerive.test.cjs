@@ -191,8 +191,8 @@ test('engine.index sync patches search/group/sort/calculation on record value ch
   })).state
 
   const titleSearch = state.search.fields.get(TITLE_FIELD_ID)
-  assert.equal(titleSearch.get('rec_2'), 'renamed 2')
-  assert.equal(titleSearch.get('rec_1'), 'task 1')
+  assert.equal(titleSearch.texts.get('rec_2'), 'renamed 2')
+  assert.equal(titleSearch.texts.get('rec_1'), 'task 1')
 
   const statusGroup = Array.from(state.group.groups.values())
     .find(group => group.fieldId === FIELD_STATUS)
@@ -254,9 +254,9 @@ test('engine.index sync rebuilds only touched field semantics on schema changes'
   assert.equal(state.sort.fields.get(FIELD_POINTS), before.sort.fields.get(FIELD_POINTS))
 
   const statusSearch = state.search.fields.get(FIELD_STATUS)
-  assert.equal(statusSearch.get('rec_1'), 'todo')
-  assert.ok(statusSearch.get('rec_3')?.includes('done'))
-  assert.ok(statusSearch.get('rec_3')?.includes('finished'))
+  assert.equal(statusSearch.texts.get('rec_1'), 'todo')
+  assert.ok(statusSearch.texts.get('rec_3')?.includes('done'))
+  assert.ok(statusSearch.texts.get('rec_3')?.includes('finished'))
 
   const statusCalc = state.calculations.fields.get(FIELD_STATUS)
   assert.equal(statusCalc.global.distribution.get('Done'), undefined)

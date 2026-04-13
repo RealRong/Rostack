@@ -154,6 +154,8 @@ const cloneTrace = (
     },
     stages: trace.view.stages.map(stage => ({
       ...stage,
+      deriveMs: stage.deriveMs,
+      publishMs: stage.publishMs,
       ...(stage.metrics ? { metrics: { ...stage.metrics } } : {})
     }))
   },

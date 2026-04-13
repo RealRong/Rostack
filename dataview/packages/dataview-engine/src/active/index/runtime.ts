@@ -54,17 +54,42 @@ import {
 
 const buildState = (
   document: DataDoc,
-  demand?: IndexDemand
+  demand: NormalizedIndexDemand
 ): IndexState => {
-  const normalized = normalizeIndexDemand(demand)
-  const records = buildRecordIndex(document, normalized.recordFields)
+  const records = buildRecordIndex(document, demand.recordFields)
 
   return {
     records,
-    search: buildSearchIndex(document, records, normalized.search),
-    group: buildGroupIndex(document, records, normalized.groups),
-    sort: buildSortIndex(document, records, normalized.sortFields),
-    calculations: buildCalculationIndex(document, records, normalized.calculationFields)
+    search: buildSearchIndex(document, records, demand.search),
+    group: buildGroupIndex(document, records, demand.groups),
+    sort: buildSortIndex(document, records, demand.sortFields),
+    calculations: buildCalculationIndex(document, records, demand.calculationFields)
+  }
+}
+
+const runIndexDemandStage = <
+  TState extends { rev: number },
+  TDemand
+>(input: {
+  previous: TState
+  previousDemand: TDemand
+  nextDemand: TDemand
+  sameDemand: (left: TDemand, right: TDemand) => boolean
+  sync: (previous: TState) => TState
+  ensure: (state: TState) => TState
+  build: (rev: number) => TState
+}): {
+  state: TState
+  durationMs: number
+} => {
+  const start = now()
+  const state = input.sameDemand(input.previousDemand, input.nextDemand)
+    ? input.ensure(input.sync(input.previous))
+    : input.build(input.previous.rev + 1)
+
+  return {
+    state,
+    durationMs: now() - start
   }
 }
 
@@ -74,7 +99,7 @@ export const createIndexState = (
 ): IndexDeriveResult => {
   const normalized = normalizeIndexDemand(demand)
   return {
-    state: buildState(document, demand),
+    state: buildState(document, normalized),
     demand: normalized
   }
 }
@@ -104,54 +129,54 @@ export const deriveIndex = (input: {
   )
   const recordsMs = now() - recordsStart
 
-  const searchStart = now()
-  const search = sameSearchDemand(input.previousDemand.search, nextDemand.search)
-    ? ensureSearchIndex(
-        syncSearchIndex(previous.search, input.document, records, input.delta),
-        input.document,
-        records,
-        nextDemand.search
-      )
-    : buildSearchIndex(input.document, records, nextDemand.search, previous.search.rev + 1)
-  const searchMs = now() - searchStart
+  const searchStage = runIndexDemandStage({
+    previous: previous.search,
+    previousDemand: input.previousDemand.search,
+    nextDemand: nextDemand.search,
+    sameDemand: sameSearchDemand,
+    sync: current => syncSearchIndex(current, input.document, records, input.delta),
+    ensure: current => ensureSearchIndex(current, input.document, records, nextDemand.search),
+    build: rev => buildSearchIndex(input.document, records, nextDemand.search, rev)
+  })
 
-  const groupStart = now()
-  const group = sameGroupDemand(input.previousDemand.groups, nextDemand.groups)
-    ? ensureGroupIndex(
-        syncGroupIndex(previous.group, input.document, records, input.delta),
-        input.document,
-        records,
-        nextDemand.groups
-      )
-    : buildGroupIndex(input.document, records, nextDemand.groups, previous.group.rev + 1)
-  const groupMs = now() - groupStart
+  const groupStage = runIndexDemandStage({
+    previous: previous.group,
+    previousDemand: input.previousDemand.groups,
+    nextDemand: nextDemand.groups,
+    sameDemand: sameGroupDemand,
+    sync: current => syncGroupIndex(current, input.document, records, input.delta),
+    ensure: current => ensureGroupIndex(current, input.document, records, nextDemand.groups),
+    build: rev => buildGroupIndex(input.document, records, nextDemand.groups, rev)
+  })
 
-  const sortStart = now()
-  const sort = sameFieldIdList(input.previousDemand.sortFields, nextDemand.sortFields)
-    ? ensureSortIndex(
-        syncSortIndex(previous.sort, input.document, records, input.delta),
-        input.document,
-        records,
-        nextDemand.sortFields
-      )
-    : buildSortIndex(input.document, records, nextDemand.sortFields, previous.sort.rev + 1)
-  const sortMs = now() - sortStart
+  const sortStage = runIndexDemandStage({
+    previous: previous.sort,
+    previousDemand: input.previousDemand.sortFields,
+    nextDemand: nextDemand.sortFields,
+    sameDemand: sameFieldIdList,
+    sync: current => syncSortIndex(current, input.document, records, input.delta),
+    ensure: current => ensureSortIndex(current, input.document, records, nextDemand.sortFields),
+    build: rev => buildSortIndex(input.document, records, nextDemand.sortFields, rev)
+  })
 
-  const summariesStart = now()
-  const summaries = sameFieldIdList(input.previousDemand.calculationFields, nextDemand.calculationFields)
-    ? ensureCalculationIndex(
-        syncCalculationIndex(previous.calculations, input.document, records, input.delta),
-        input.document,
-        records,
-        nextDemand.calculationFields
-      )
-    : buildCalculationIndex(
-        input.document,
-        records,
-        nextDemand.calculationFields,
-        previous.calculations.rev + 1
-      )
-  const summariesMs = now() - summariesStart
+  const summariesStage = runIndexDemandStage({
+    previous: previous.calculations,
+    previousDemand: input.previousDemand.calculationFields,
+    nextDemand: nextDemand.calculationFields,
+    sameDemand: sameFieldIdList,
+    sync: current => syncCalculationIndex(current, input.document, records, input.delta),
+    ensure: current => ensureCalculationIndex(current, input.document, records, nextDemand.calculationFields),
+    build: rev => buildCalculationIndex(input.document, records, nextDemand.calculationFields, rev)
+  })
+
+  const search = searchStage.state
+  const group = groupStage.state
+  const sort = sortStage.state
+  const summaries = summariesStage.state
+  const searchMs = searchStage.durationMs
+  const groupMs = groupStage.durationMs
+  const sortMs = sortStage.durationMs
+  const summariesMs = summariesStage.durationMs
 
   const state = {
     records,

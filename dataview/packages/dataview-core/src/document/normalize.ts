@@ -1,13 +1,16 @@
 import type { DataDoc } from '#core/contracts/state.ts'
 import { normalizeCustomFields } from '#core/field/index.ts'
-import { cloneEntityTable, cloneRecordTable, normalizeEntityTable, normalizeRecordTable } from '#core/document/table.ts'
+import {
+  cloneEntityTable,
+  normalizeEntityTable
+} from '#core/document/table.ts'
 import {
   normalizeDocumentViews,
   resolveDocumentActiveViewId
 } from '#core/document/views.ts'
 
 export const normalizeDocument = (document: DataDoc): DataDoc => {
-  const records = normalizeRecordTable(document.records)
+  const records = normalizeEntityTable(document.records)
 
   return {
     schemaVersion: document.schemaVersion,
@@ -24,7 +27,7 @@ export const normalizeDocument = (document: DataDoc): DataDoc => {
 
 export const cloneDocument = (document: DataDoc): DataDoc => ({
   schemaVersion: document.schemaVersion,
-  records: cloneRecordTable(document.records),
+  records: cloneEntityTable(document.records),
   fields: cloneEntityTable(document.fields),
   views: cloneEntityTable(document.views),
   activeViewId: resolveDocumentActiveViewId(document),

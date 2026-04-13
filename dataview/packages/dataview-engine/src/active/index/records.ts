@@ -16,6 +16,8 @@ import type {
   RecordIndex
 } from '#engine/active/index/contracts.ts'
 import {
+  collectTouchedFieldIds,
+  collectTouchedRecordIds,
   createOrderIndex
 } from '#engine/active/index/shared.ts'
 
@@ -43,37 +45,6 @@ const readFieldValue = (
     ? row?.title
     : row?.values[fieldId]
 )
-
-const collectUpdatedRecordIds = (
-  delta: CommitDelta
-) => {
-  const ids = new Set<RecordId>()
-
-  const updated = delta.entities.records?.update
-  if (updated === 'all') {
-    return 'all' as const
-  }
-  if (Array.isArray(updated)) {
-    updated.forEach(id => ids.add(id))
-  }
-  const valueRecords = delta.entities.values?.records
-  if (Array.isArray(valueRecords)) {
-    valueRecords.forEach(id => ids.add(id))
-  }
-
-  for (const item of delta.semantics) {
-    if (item.kind === 'record.add' || item.kind === 'record.remove' || item.kind === 'record.patch') {
-      item.ids.forEach(id => ids.add(id))
-      continue
-    }
-
-    if (item.kind === 'record.values' && Array.isArray(item.records)) {
-      item.records.forEach(id => ids.add(id))
-    }
-  }
-
-  return ids
-}
 
 const buildRows = (
   document: DataDoc
@@ -121,8 +92,8 @@ export const syncRecordIndex = (
     return buildRecordIndex(document, nextFieldIds, previous.rev + 1)
   }
 
-  const updatedRecordIds = collectUpdatedRecordIds(delta)
-  if (updatedRecordIds === 'all') {
+  const touchedRecordIds = collectTouchedRecordIds(delta)
+  if (touchedRecordIds === 'all') {
     return buildRecordIndex(document, nextFieldIds, previous.rev + 1)
   }
 
@@ -150,7 +121,7 @@ export const syncRecordIndex = (
     ensureRows().delete(recordId)
   })
 
-  updatedRecordIds.forEach(recordId => {
+  touchedRecordIds.forEach(recordId => {
     const row = document.records.byId[recordId]
     const previousRow = previous.rows.get(recordId)
     if (row === previousRow) {
@@ -171,28 +142,16 @@ export const syncRecordIndex = (
     nextFieldIds.forEach(fieldId => touchedFields.add(fieldId))
   }
 
-  if (Array.isArray(delta.entities.values?.fields)) {
-    delta.entities.values.fields.forEach(fieldId => {
+  const deltaTouchedFields = collectTouchedFieldIds(delta, {
+    includeTitlePatch: true
+  })
+  if (deltaTouchedFields !== 'all') {
+    deltaTouchedFields.forEach(fieldId => {
       if (nextFieldSet.has(fieldId)) {
         touchedFields.add(fieldId)
       }
     })
   }
-
-  delta.semantics.forEach(item => {
-    if (item.kind === 'record.patch' && item.aspects.includes('title') && nextFieldSet.has(TITLE_FIELD_ID)) {
-      touchedFields.add(TITLE_FIELD_ID)
-      return
-    }
-
-    if (item.kind === 'record.values' && Array.isArray(item.fields)) {
-      item.fields.forEach(fieldId => {
-        if (nextFieldSet.has(fieldId)) {
-          touchedFields.add(fieldId)
-        }
-      })
-    }
-  })
 
   const mutableColumns = new Map<FieldId, Map<RecordId, unknown>>()
   const readColumn = (
@@ -215,7 +174,7 @@ export const syncRecordIndex = (
 
   touchedFields.forEach(fieldId => {
     const column = ensureColumn(fieldId)
-    updatedRecordIds.forEach(recordId => {
+    touchedRecordIds.forEach(recordId => {
       const nextValue = readFieldValue(document.records.byId[recordId], fieldId)
       if (nextValue === undefined) {
         column.delete(recordId)

@@ -23,6 +23,7 @@ export {
   addFilterRule,
   cloneFilter,
   findFilterIndex,
+  normalizeFilter,
   removeFilterRule,
   replaceFilterRule,
   sameFilter,

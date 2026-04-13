@@ -38,6 +38,40 @@ export const sameFilter = (
   })
 )
 
+export const normalizeFilter = (
+  filter: unknown
+): Filter => {
+  const source = typeof filter === 'object' && filter !== null
+    ? filter as {
+        mode?: unknown
+        rules?: unknown
+      }
+    : undefined
+
+  return {
+    mode: source?.mode === 'or' ? 'or' : 'and',
+    rules: Array.isArray(source?.rules)
+      ? source.rules
+          .filter((rule): rule is {
+            fieldId?: unknown
+            presetId?: unknown
+            value?: unknown
+          } => typeof rule === 'object' && rule !== null)
+          .map(rule => ({
+            fieldId: typeof rule.fieldId === 'string'
+              ? rule.fieldId
+              : '',
+            presetId: typeof rule.presetId === 'string'
+              ? rule.presetId
+              : '',
+            ...(Object.prototype.hasOwnProperty.call(rule, 'value')
+              ? { value: structuredClone(rule.value) as FilterRule['value'] }
+              : {})
+          }))
+      : []
+  }
+}
+
 export const findFilterIndex = (
   filter: Filter,
   fieldId: string

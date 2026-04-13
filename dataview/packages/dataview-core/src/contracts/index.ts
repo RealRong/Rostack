@@ -100,7 +100,6 @@ export type {
   View,
   ViewCalc,
   ViewDisplay,
-  DocumentViewQuery,
   ViewType,
   IndexPath,
   RecordId,

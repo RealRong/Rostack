@@ -14,6 +14,11 @@ import {
   createUniqueFieldName,
   isTitleFieldId
 } from '@dataview/core/field'
+import {
+  getDocumentActiveView,
+  getDocumentActiveViewId,
+  getDocumentFieldById
+} from '@dataview/core/document'
 import { group as groupCore } from '@dataview/core/group'
 import { reorderViewOrders } from '@dataview/core/view'
 import {
@@ -33,8 +38,6 @@ import type {
   KanbanState,
   RecordsApi
 } from '#engine/contracts/public.ts'
-import { readActiveView, readActiveViewId } from '#engine/document/activeView.ts'
-import { readDocumentFieldById } from '#engine/document/fieldLookup.ts'
 import { selectDocument } from '#engine/runtime/selectors/document.ts'
 import type { RuntimeStore } from '#engine/runtime/store.ts'
 import {
@@ -150,11 +153,11 @@ export const createActiveContext = (
 ): ActiveViewContext => {
   const id = selectDocument({
     store: options.store,
-    read: readActiveViewId
+    read: getDocumentActiveViewId
   })
   const config = selectDocument({
     store: options.store,
-    read: readActiveView
+    read: getDocumentActiveView
   })
   const state = createActiveStateStore(options.store)
   const select = createActiveSelect(state)
@@ -200,7 +203,7 @@ export const createActiveContext = (
     fieldId: FieldId,
     fn: (view: View, field: Field) => T
   ): T | undefined => withView(view => {
-    const field = readDocumentFieldById(readDocument(), fieldId)
+    const field = getDocumentFieldById(readDocument(), fieldId)
     if (!field) {
       return undefined
     }
@@ -216,7 +219,7 @@ export const createActiveContext = (
     return fn(
       view,
       fieldId
-        ? readDocumentFieldById(readDocument(), fieldId)
+        ? getDocumentFieldById(readDocument(), fieldId)
         : undefined
     )
   })
@@ -228,7 +231,7 @@ export const createActiveContext = (
       return undefined
     }
 
-    const field = readDocumentFieldById(readDocument(), view.group.field)
+    const field = getDocumentFieldById(readDocument(), view.group.field)
     if (!field) {
       return undefined
     }

@@ -26,7 +26,7 @@ export interface ViewItem {
   sectionKey: SectionKey
 }
 
-export interface Section {
+export interface SectionData {
   key: SectionKey
   title: string
   color?: string
@@ -35,6 +35,8 @@ export interface Section {
   itemIds: readonly ItemId[]
   recordIds: readonly RecordId[]
 }
+
+export interface Section extends SectionData {}
 
 export interface SectionList {
   ids: readonly SectionKey[]

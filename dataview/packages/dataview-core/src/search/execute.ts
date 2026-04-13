@@ -1,35 +1,9 @@
 import type {
-  CustomField,
   DataDoc,
   DataRecord,
   Search
 } from '#core/contracts/index.ts'
-import {
-  getDocumentCustomFieldById,
-  getDocumentFieldById
-} from '#core/document/index.ts'
-import {
-  getFieldSearchTokens,
-  getRecordFieldValue,
-  normalizeSearchableValue
-} from '#core/field/index.ts'
-
-const isDefaultSearchField = (
-  field: CustomField | undefined
-): boolean => {
-  switch (field?.kind) {
-    case 'text':
-    case 'url':
-    case 'email':
-    case 'phone':
-    case 'select':
-    case 'multiSelect':
-    case 'status':
-      return true
-    default:
-      return false
-  }
-}
+import { buildRecordSearchTexts } from '#core/search/tokens.ts'
 
 export const matchSearchRecord = (
   record: DataRecord,
@@ -41,20 +15,7 @@ export const matchSearchRecord = (
     return true
   }
 
-  const candidates = search.fields?.length
-    ? search.fields.flatMap(fieldId => {
-        const field = getDocumentFieldById(document, fieldId)
-        return getFieldSearchTokens(field, getRecordFieldValue(record, fieldId))
-      })
-    : [
-        ...normalizeSearchableValue(record.title),
-        ...Object.entries(record.values).flatMap(([fieldId, value]) => {
-          const field = getDocumentCustomFieldById(document, fieldId)
-          return isDefaultSearchField(field)
-            ? getFieldSearchTokens(field, value)
-            : []
-        })
-      ]
+  const candidates = buildRecordSearchTexts(record, search, document)
 
   return candidates.some(candidate => candidate.toLowerCase().includes(query))
 }

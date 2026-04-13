@@ -17,7 +17,6 @@ import type {
   KanbanNewRecordPosition,
   RecordId,
   DataRecord,
-  Search,
   SortDirection,
   Sorter,
   StatusCategory,
@@ -122,7 +121,6 @@ export interface ViewFilterProjection {
 
 export interface ViewGroupProjection {
   viewId: ViewId
-  group?: ViewGroup
   active: boolean
   fieldId: FieldId | ''
   field?: Field
@@ -138,7 +136,6 @@ export interface ViewGroupProjection {
 
 export interface ViewSearchProjection {
   viewId: ViewId
-  search: Search
   query: string
   fields?: readonly FieldId[]
   active: boolean
@@ -146,7 +143,6 @@ export interface ViewSearchProjection {
 
 export interface SortRuleProjection {
   sorter: Sorter
-  fieldId: FieldId
   field?: Field
   fieldLabel: string
 }

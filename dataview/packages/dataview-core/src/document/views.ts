@@ -1,36 +1,26 @@
 import type {
   DataDoc,
   EntityTable,
-  Filter,
   View,
   RecordId,
-  ViewDisplay,
   ViewId
 } from '#core/contracts/state.ts'
 import { normalizeViewCalculations } from '#core/calculation/index.ts'
+import { normalizeFilter } from '#core/filter/index.ts'
 import { normalizeGroup } from '#core/group/index.ts'
 import { normalizeSearch } from '#core/search/index.ts'
 import { normalizeSorters } from '#core/sort/index.ts'
 import { getDocumentFields } from '#core/document/fields.ts'
 import { normalizeRecordOrderIds } from '#core/view/order.ts'
 import { normalizeViewOptions } from '#core/view/normalize.ts'
+import { normalizeViewDisplay } from '#core/view/state.ts'
 import {
   cloneEntityInput,
   normalizeEntityTable,
   putEntityTableEntity,
+  replaceDocumentTable,
   removeEntityTableEntity
 } from '#core/document/table.ts'
-
-const replaceDocumentViewsTable = (document: DataDoc, views: EntityTable<ViewId, View>): DataDoc => {
-  if (views === document.views) {
-    return document
-  }
-
-  return {
-    ...document,
-    views
-  }
-}
 
 const createValidRecordIdSet = (document: DataDoc) => new Set<RecordId>(document.records.order)
 
@@ -38,55 +28,6 @@ export const normalizeViewOrders = (
   document: DataDoc,
   orders: readonly RecordId[] | undefined
 ) => normalizeRecordOrderIds(orders, createValidRecordIdSet(document))
-
-const normalizeFieldIdList = (value: unknown): string[] => (
-  Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string')
-    : []
-)
-
-const normalizeDocumentViewFilter = (filter: unknown): Filter => {
-  const source = typeof filter === 'object' && filter !== null
-    ? filter as {
-        mode?: unknown
-        rules?: unknown
-      }
-    : undefined
-
-  return {
-    mode: source?.mode === 'or' ? 'or' : 'and',
-    rules: Array.isArray(source?.rules)
-      ? source.rules
-          .filter(rule => typeof rule === 'object' && rule !== null)
-          .map(rule => {
-            const currentRule = rule as {
-              fieldId?: unknown
-              presetId?: unknown
-              value?: unknown
-            }
-            return {
-              fieldId: typeof currentRule.fieldId === 'string' ? currentRule.fieldId : '',
-              presetId: typeof currentRule.presetId === 'string' ? currentRule.presetId : '',
-              ...(Object.prototype.hasOwnProperty.call(currentRule, 'value')
-                ? { value: structuredClone(currentRule.value) as Filter['rules'][number]['value'] }
-                : {})
-            }
-          })
-      : []
-  }
-}
-
-const normalizeDocumentViewDisplay = (display: unknown): ViewDisplay => {
-  const source = typeof display === 'object' && display !== null
-    ? display as {
-        fields?: unknown
-      }
-    : undefined
-
-  return {
-    fields: normalizeFieldIdList(source?.fields)
-  }
-}
 
 const normalizeDocumentView = (
   document: DataDoc,
@@ -102,7 +43,7 @@ const normalizeDocumentView = (
   return {
     ...cloneEntityInput(view),
     search: normalizeSearch(view.search),
-    filter: normalizeDocumentViewFilter(view.filter),
+    filter: normalizeFilter(view.filter),
     sort: normalizeSorters(view.sort),
     ...(group
       ? { group }
@@ -110,7 +51,7 @@ const normalizeDocumentView = (
     calc: normalizeViewCalculations(view.calc, {
       fields: new Map(fields.map(field => [field.id, field] as const))
     }),
-    display: normalizeDocumentViewDisplay(view.display),
+    display: normalizeViewDisplay(view.display),
     options: normalizedOptions,
     orders: normalizeViewOrders(document, view.orders)
   }
@@ -186,8 +127,9 @@ export const setDocumentActiveViewId = (
 }
 
 export const putDocumentView = (document: DataDoc, view: View): DataDoc => {
-  const nextDocument = replaceDocumentViewsTable(
+  const nextDocument = replaceDocumentTable(
     document,
+    'views',
     putEntityTableEntity(document.views, view)
   )
 
@@ -202,8 +144,9 @@ export const removeDocumentView = (document: DataDoc, viewId: ViewId): DataDoc =
     return document
   }
 
-  const nextDocument = replaceDocumentViewsTable(
+  const nextDocument = replaceDocumentTable(
     document,
+    'views',
     removeEntityTableEntity(document.views, viewId)
   )
 

@@ -24,12 +24,15 @@ import {
 import { createRecordId } from '#engine/mutate/entityId.ts'
 import { validateFieldExists } from '#engine/mutate/validate/entity.ts'
 import {
+  validateEditTarget,
+  validateRecordIdsExist,
+  validateRequiredCollection
+} from '#engine/mutate/validate/target.ts'
+import {
   listTargetRecordIds,
   planResult,
   sourceOf,
   toViewPut,
-  validateBatchItems,
-  validateTarget,
   type PlannedActionResult
 } from '#engine/mutate/planner/shared.ts'
 
@@ -119,7 +122,7 @@ const lowerRecordPatch = (
   index: number
 ): PlannedActionResult => {
   const source = sourceOf(index, action)
-  const issues = validateTarget(document, source, action.target)
+  const issues = validateEditTarget(document, source, action.target)
 
   if (!Object.keys(action.patch).length) {
     issues.push(createIssue(source, 'error', 'record.emptyPatch', 'record.patch patch cannot be empty', 'patch'))
@@ -144,12 +147,10 @@ const lowerRecordRemove = (
   index: number
 ): PlannedActionResult => {
   const source = sourceOf(index, action)
-  const issues = validateBatchItems(source, action.recordIds, 'recordIds')
-  action.recordIds.forEach((recordId, itemIndex) => {
-    if (!getDocumentRecordById(document, recordId)) {
-      issues.push(createIssue(source, 'error', 'record.notFound', `Unknown record: ${recordId}`, `recordIds.${itemIndex}`))
-    }
-  })
+  const issues = [
+    ...validateRequiredCollection(source, action.recordIds, 'recordIds'),
+    ...validateRecordIdsExist(document, source, action.recordIds, 'recordIds')
+  ]
   return planResult(
     issues,
     [
@@ -169,7 +170,7 @@ const lowerValueSet = (
 ): PlannedActionResult => {
   const source = sourceOf(index, action)
   const issues = [
-    ...validateTarget(document, source, action.target),
+    ...validateEditTarget(document, source, action.target),
     ...validateFieldExists(document, source, action.field, 'field')
   ]
   if (!isNonEmptyString(action.field)) {
@@ -192,7 +193,7 @@ const lowerValuePatch = (
   index: number
 ): PlannedActionResult => {
   const source = sourceOf(index, action)
-  const issues = validateTarget(document, source, action.target)
+  const issues = validateEditTarget(document, source, action.target)
   if (!Object.keys(action.patch).length) {
     issues.push(createIssue(source, 'error', 'value.emptyPatch', 'value.patch patch cannot be empty', 'patch'))
   }
@@ -213,7 +214,7 @@ const lowerValueClear = (
 ): PlannedActionResult => {
   const source = sourceOf(index, action)
   const issues = [
-    ...validateTarget(document, source, action.target),
+    ...validateEditTarget(document, source, action.target),
     ...validateFieldExists(document, source, action.field, 'field')
   ]
   if (!isNonEmptyString(action.field)) {

@@ -95,9 +95,9 @@ export const createActiveItemsApi = (input: {
       return
     }
 
-    const groupWrite = state.query.group.group && state.query.group.field
+    const groupWrite = state.view.group && state.query.group.field
       ? {
-          group: state.query.group.group,
+          group: state.view.group,
           field: state.query.group.field
         }
       : undefined
@@ -148,9 +148,9 @@ export const createActiveItemsApi = (input: {
       return undefined
     }
 
-    const groupWrite = state.query.group.group && state.query.group.field
+    const groupWrite = state.view.group && state.query.group.field
       ? {
-          group: state.query.group.group,
+          group: state.view.group,
           field: state.query.group.field
         }
       : undefined

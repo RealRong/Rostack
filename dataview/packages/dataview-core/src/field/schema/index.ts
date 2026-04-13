@@ -21,6 +21,23 @@ import {
   createDefaultStatusOptions,
   STATUS_CATEGORIES
 } from '#core/field/kind/status.ts'
+import {
+  isNonEmptyString,
+  trimLowercase
+} from '@shared/core'
+
+export interface FieldSchemaValidationIssue {
+  path: string
+  message: string
+}
+
+const createFieldSchemaIssue = (
+  path: string,
+  message: string
+): FieldSchemaValidationIssue => ({
+  path,
+  message
+})
 
 export const isCustomFieldKind = (value: unknown): value is CustomFieldKind => (
   typeof value === 'string' && CUSTOM_FIELD_KINDS.includes(value as CustomFieldKind)
@@ -128,6 +145,189 @@ export const createDefaultCustomField = (input: {
   kind: CustomFieldKind
   meta?: Record<string, unknown>
 }): CustomField => createDefaultFieldOfKind(input.kind, input)
+
+const validateBaseOptions = (
+  options: readonly FlatOption[],
+  path: string
+): FieldSchemaValidationIssue[] => {
+  const issues: FieldSchemaValidationIssue[] = []
+  const ids = new Set<string>()
+  const names = new Set<string>()
+
+  options.forEach((option, index) => {
+    if (!isNonEmptyString(option.id)) {
+      issues.push(createFieldSchemaIssue(
+        `${path}.${index}.id`,
+        'Field option id must be a non-empty string'
+      ))
+    } else if (ids.has(option.id)) {
+      issues.push(createFieldSchemaIssue(
+        `${path}.${index}.id`,
+        `Duplicate field option id: ${option.id}`
+      ))
+    } else {
+      ids.add(option.id)
+    }
+
+    if (!isNonEmptyString(option.name)) {
+      issues.push(createFieldSchemaIssue(
+        `${path}.${index}.name`,
+        'Field option name must be a non-empty string'
+      ))
+    } else {
+      const normalizedName = trimLowercase(option.name)
+      if (!normalizedName) {
+        issues.push(createFieldSchemaIssue(
+          `${path}.${index}.name`,
+          'Field option name must be a non-empty string'
+        ))
+      } else if (names.has(normalizedName)) {
+        issues.push(createFieldSchemaIssue(
+          `${path}.${index}.name`,
+          `Duplicate field option name: ${option.name}`
+        ))
+      } else {
+        names.add(normalizedName)
+      }
+    }
+
+    if (option.color !== null && !isNonEmptyString(option.color)) {
+      issues.push(createFieldSchemaIssue(
+        `${path}.${index}.color`,
+        'Field option color must be null or a non-empty string'
+      ))
+    }
+  })
+
+  return issues
+}
+
+export const validateCustomFieldShape = (
+  field: CustomField,
+  path: string
+): readonly FieldSchemaValidationIssue[] => {
+  const issues: FieldSchemaValidationIssue[] = []
+
+  switch (field.kind) {
+    case 'text':
+    case 'email':
+    case 'phone':
+    case 'boolean':
+      return issues
+    case 'url':
+      if (typeof field.displayFullUrl !== 'boolean') {
+        issues.push(createFieldSchemaIssue(
+          `${path}.displayFullUrl`,
+          'URL field displayFullUrl must be boolean'
+        ))
+      }
+      return issues
+    case 'number':
+      if (!['number', 'integer', 'percent', 'currency'].includes(field.format)) {
+        issues.push(createFieldSchemaIssue(
+          `${path}.format`,
+          'Number field format is invalid'
+        ))
+      }
+      if (field.precision !== null && (!Number.isInteger(field.precision) || field.precision < 0)) {
+        issues.push(createFieldSchemaIssue(
+          `${path}.precision`,
+          'Number field precision must be null or a non-negative integer'
+        ))
+      }
+      if (field.currency !== null && !isNonEmptyString(field.currency)) {
+        issues.push(createFieldSchemaIssue(
+          `${path}.currency`,
+          'Number field currency must be null or a non-empty string'
+        ))
+      }
+      if (typeof field.useThousandsSeparator !== 'boolean') {
+        issues.push(createFieldSchemaIssue(
+          `${path}.useThousandsSeparator`,
+          'Number field useThousandsSeparator must be boolean'
+        ))
+      }
+      return issues
+    case 'select':
+    case 'multiSelect':
+      issues.push(...validateBaseOptions(field.options, `${path}.options`))
+      return issues
+    case 'status':
+      issues.push(...validateBaseOptions(field.options, `${path}.options`))
+      field.options.forEach((option, index) => {
+        if (!STATUS_CATEGORIES.includes(option.category)) {
+          issues.push(createFieldSchemaIssue(
+            `${path}.options.${index}.category`,
+            `Status option category is invalid: ${String(option.category)}`
+          ))
+        }
+      })
+      if (field.defaultOptionId !== null && field.defaultOptionId !== undefined && typeof field.defaultOptionId !== 'string') {
+        issues.push(createFieldSchemaIssue(
+          `${path}.defaultOptionId`,
+          'Status field defaultOptionId must be null or a non-empty string'
+        ))
+      } else if (
+        typeof field.defaultOptionId === 'string'
+        && (
+          !isNonEmptyString(field.defaultOptionId)
+          || !field.options.some(option => option.id === field.defaultOptionId)
+        )
+      ) {
+        issues.push(createFieldSchemaIssue(
+          `${path}.defaultOptionId`,
+          'Status field defaultOptionId must reference an existing option'
+        ))
+      }
+      return issues
+    case 'date':
+      if (!DATE_DISPLAY_FORMATS.includes(field.displayDateFormat)) {
+        issues.push(createFieldSchemaIssue(
+          `${path}.displayDateFormat`,
+          'Date field displayDateFormat is invalid'
+        ))
+      }
+      if (!DATE_TIME_FORMATS.includes(field.displayTimeFormat)) {
+        issues.push(createFieldSchemaIssue(
+          `${path}.displayTimeFormat`,
+          'Date field displayTimeFormat is invalid'
+        ))
+      }
+      if (!DATE_VALUE_KINDS.includes(field.defaultValueKind)) {
+        issues.push(createFieldSchemaIssue(
+          `${path}.defaultValueKind`,
+          'Date field defaultValueKind is invalid'
+        ))
+      }
+      if (
+        field.defaultTimezone !== null
+        && (
+          typeof field.defaultTimezone !== 'string'
+          || !isValidDateTimeZone(field.defaultTimezone)
+        )
+      ) {
+        issues.push(createFieldSchemaIssue(
+          `${path}.defaultTimezone`,
+          'Date field defaultTimezone must be null or a valid IANA timezone'
+        ))
+      }
+      return issues
+    case 'asset':
+      if (typeof field.multiple !== 'boolean') {
+        issues.push(createFieldSchemaIssue(
+          `${path}.multiple`,
+          'Asset field multiple must be boolean'
+        ))
+      }
+      if (!['any', 'image', 'video', 'audio', 'media'].includes(field.accept)) {
+        issues.push(createFieldSchemaIssue(
+          `${path}.accept`,
+          'Asset field accept is invalid'
+        ))
+      }
+      return issues
+  }
+}
 
 export const normalizeCustomField = (field: CustomField): CustomField => {
   const base = {

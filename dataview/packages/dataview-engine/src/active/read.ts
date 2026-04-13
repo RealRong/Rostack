@@ -1,6 +1,9 @@
 import type {
   FieldId
 } from '@dataview/core/contracts'
+import {
+  getDocumentFieldById
+} from '@dataview/core/document'
 import { read, type ReadStore } from '@shared/core'
 import type {
   ActiveViewReadApi,
@@ -9,7 +12,6 @@ import type {
   ViewCell,
   ViewState
 } from '#engine/contracts/public.ts'
-import { readDocumentFieldById } from '#engine/document/fieldLookup.ts'
 
 export const createActiveViewReadApi = (input: {
   select: DocumentSelectApi
@@ -17,7 +19,7 @@ export const createActiveViewReadApi = (input: {
 }): ActiveViewReadApi => {
   const readDocument = () => read(input.select.document)
   const readState = () => read(input.state)
-  const readField = (fieldId: FieldId) => readDocumentFieldById(readDocument(), fieldId)
+  const readField = (fieldId: FieldId) => getDocumentFieldById(readDocument(), fieldId)
   const readSection = (sectionKey: string) => readState()?.sections.get(sectionKey)
   const readItem = (itemId: string) => readState()?.items.get(itemId)
   const readCell = (cell: CellRef): ViewCell | undefined => {

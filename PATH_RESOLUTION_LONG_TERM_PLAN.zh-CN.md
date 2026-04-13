@@ -1,5 +1,8 @@
 # Path Resolution Long-Term Plan
 
+> 注意：本文件已经被 [UNIFIED_IMPORT_TOOLCHAIN_FINAL_PLAN.zh-CN.md](/Users/realrong/Rostack/UNIFIED_IMPORT_TOOLCHAIN_FINAL_PLAN.zh-CN.md) 取代。  
+> 后续 `shared`、`dataview`、`whiteboard` 的正式长期导入与工具链方案，统一以新文件为准。
+
 ## 目标
 
 这个仓库的长期目标不是继续维护一套更复杂的 `tsconfig.paths`，而是把“导入路径的单一事实来源”切到 workspace package 与 `package.json` 声明上。

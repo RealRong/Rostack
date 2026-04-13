@@ -2,7 +2,6 @@ import type {
   CustomField,
   CustomFieldId,
   DataDoc,
-  EntityTable,
   Field,
   FieldId,
   TitleField,
@@ -18,22 +17,9 @@ import {
   listEntityTable,
   patchEntityTableEntity,
   putEntityTableEntity,
+  replaceDocumentTable,
   removeEntityTableEntity
 } from '#core/document/table.ts'
-
-const replaceDocumentFieldsTable = (
-  document: DataDoc,
-  fields: EntityTable<CustomFieldId, CustomField>
-): DataDoc => {
-  if (fields === document.fields) {
-    return document
-  }
-
-  return {
-    ...document,
-    fields
-  }
-}
 
 export const getDocumentCustomFields = (document: DataDoc): CustomField[] => {
   return listEntityTable(document.fields)
@@ -44,7 +30,7 @@ export const getDocumentCustomFieldById = (document: DataDoc, fieldId: CustomFie
 export const hasDocumentCustomField = (document: DataDoc, fieldId: CustomFieldId) => hasEntityTableId(document.fields, fieldId)
 
 export const putDocumentCustomField = (document: DataDoc, field: CustomField): DataDoc => {
-  return replaceDocumentFieldsTable(document, putEntityTableEntity(document.fields, field))
+  return replaceDocumentTable(document, 'fields', putEntityTableEntity(document.fields, field))
 }
 
 export const patchDocumentCustomField = (document: DataDoc, fieldId: CustomFieldId, patch: Partial<Omit<CustomField, 'id'>>): DataDoc => {
@@ -53,7 +39,7 @@ export const patchDocumentCustomField = (document: DataDoc, fieldId: CustomField
     return document
   }
 
-  return replaceDocumentFieldsTable(document, nextFields)
+  return replaceDocumentTable(document, 'fields', nextFields)
 }
 
 export const removeDocumentCustomField = (document: DataDoc, fieldId: CustomFieldId): DataDoc => {
@@ -62,7 +48,7 @@ export const removeDocumentCustomField = (document: DataDoc, fieldId: CustomFiel
     return document
   }
 
-  return replaceDocumentFieldsTable(document, nextFields)
+  return replaceDocumentTable(document, 'fields', nextFields)
 }
 
 const TITLE_FIELD: TitleField = {

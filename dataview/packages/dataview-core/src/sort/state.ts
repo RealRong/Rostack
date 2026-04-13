@@ -10,6 +10,10 @@ export const cloneSorter = (
   direction: sorter.direction
 })
 
+export const cloneSorters = (
+  sorters: readonly Sorter[]
+): Sorter[] => sorters.map(cloneSorter)
+
 export const normalizeSorter = (
   sorter: unknown
 ): Sorter | undefined => {
@@ -68,11 +72,11 @@ export const addSorter = (
   direction: SortDirection = 'asc'
 ): Sorter[] => {
   if (findSorterIndex(sorters, fieldId) !== -1) {
-    return [...sorters]
+    return cloneSorters(sorters)
   }
 
   return [
-    ...sorters.map(cloneSorter),
+    ...cloneSorters(sorters),
     {
       field: fieldId,
       direction
@@ -85,7 +89,7 @@ export const setSorter = (
   fieldId: string,
   direction: SortDirection
 ): Sorter[] => {
-  const next = sorters.map(cloneSorter)
+  const next = cloneSorters(sorters)
   const index = findSorterIndex(next, fieldId)
 
   if (index === -1) {
@@ -113,7 +117,7 @@ export const setOnlySorter = (
     && sorters[0]?.field === fieldId
     && sorters[0]?.direction === direction
   ) {
-    return [...sorters]
+    return cloneSorters(sorters)
   }
 
   return [{
@@ -128,10 +132,10 @@ export const replaceSorter = (
   sorter: Sorter
 ): Sorter[] => {
   if (!sorters[index]) {
-    return [...sorters]
+    return cloneSorters(sorters)
   }
 
-  const next = sorters.map(cloneSorter)
+  const next = cloneSorters(sorters)
   next[index] = cloneSorter(sorter)
   return next
 }
@@ -141,10 +145,10 @@ export const removeSorter = (
   index: number
 ): Sorter[] => {
   if (index < 0 || index >= sorters.length) {
-    return [...sorters]
+    return cloneSorters(sorters)
   }
 
-  const next = sorters.map(cloneSorter)
+  const next = cloneSorters(sorters)
   next.splice(index, 1)
   return next
 }
@@ -161,10 +165,10 @@ export const moveSorter = (
     || to >= sorters.length
     || from === to
   ) {
-    return [...sorters]
+    return cloneSorters(sorters)
   }
 
-  const next = sorters.map(cloneSorter)
+  const next = cloneSorters(sorters)
   const [sorter] = next.splice(from, 1)
   if (!sorter) {
     return next
@@ -179,5 +183,5 @@ export const clearSorters = (
 ): Sorter[] => (
   sorters.length
     ? []
-    : [...sorters]
+    : cloneSorters(sorters)
 )

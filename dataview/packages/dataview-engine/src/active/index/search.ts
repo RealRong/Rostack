@@ -2,19 +2,12 @@ import type {
   CommitDelta,
   DataDoc,
   FieldId,
-  RecordId,
-  DataRecord
+  RecordId
 } from '@dataview/core/contracts'
 import {
-  getDocumentFieldById
-} from '@dataview/core/document'
-import {
-  getFieldSearchTokens
-} from '@dataview/core/field'
-import {
-  trimLowercase,
-  unique
-} from '@shared/core'
+  buildRecordDefaultSearchText,
+  buildRecordFieldSearchText
+} from '@dataview/core/search'
 import {
   createFieldSyncContext,
   shouldDropFieldIndex,
@@ -27,76 +20,6 @@ import type {
   SearchIndex,
   SearchTextIndex
 } from '#engine/active/index/contracts.ts'
-
-const TOKEN_SEPARATOR = '\u0000'
-
-const normalizeTokens = (
-  values: readonly string[]
-): string | undefined => {
-  const tokens = unique(values.flatMap(value => {
-    const token = trimLowercase(value)
-    return token ? [token] : []
-  }))
-
-  return tokens.length
-    ? tokens.join(TOKEN_SEPARATOR)
-    : undefined
-}
-
-const buildFieldTokens = (
-  record: DataRecord,
-  fieldId: FieldId,
-  field?: ReturnType<typeof getDocumentFieldById>
-): string | undefined => normalizeTokens(
-  fieldId === 'title'
-    ? getFieldSearchTokens(field, record.title)
-    : getFieldSearchTokens(field, record.values[fieldId])
-)
-
-const buildAllTokens = (
-  record: DataRecord,
-  fields: readonly {
-    id: FieldId
-    field: ReturnType<typeof getDocumentFieldById>
-  }[]
-): string | undefined => {
-  const tokens = new Set<string>()
-  const addTokens = (nextTokens: readonly string[] | string | undefined) => {
-    const values = typeof nextTokens === 'string'
-      ? nextTokens.split(TOKEN_SEPARATOR)
-      : nextTokens
-
-    values?.forEach(token => {
-      if (token) {
-        tokens.add(token.toLowerCase())
-      }
-    })
-  }
-
-  addTokens(getFieldSearchTokens(undefined, record.title))
-  fields.forEach(({ id, field }) => {
-    addTokens(buildFieldTokens(record, id, field))
-  })
-
-  return normalizeTokens(Array.from(tokens))
-}
-
-const isDefaultSearchField = (
-  field: ReturnType<typeof getDocumentFieldById>
-): boolean => {
-  switch (field?.kind) {
-    case 'text':
-    case 'url':
-    case 'email':
-    case 'phone':
-    case 'select':
-    case 'multiSelect':
-    case 'status':
-      return true
-    default:
-      return false
-  }
-}
 
 const buildTextIndex = (input: {
   ids: readonly RecordId[]
@@ -154,8 +77,7 @@ const buildFieldIndex = (
   records: RecordIndex,
   fieldId: FieldId
 ): SearchTextIndex => {
-  const field = getDocumentFieldById(document, fieldId)
-  if (!field && fieldId !== 'title') {
+  if (fieldId !== 'title' && !document.fields.byId[fieldId]) {
     return {
       texts: new Map()
     }
@@ -166,7 +88,7 @@ const buildFieldIndex = (
     readText: recordId => {
       const record = records.rows.get(recordId)
       return record
-        ? buildFieldTokens(record, fieldId, field)
+        ? buildRecordFieldSearchText(record, fieldId, document)
         : undefined
     }
   })
@@ -175,24 +97,15 @@ const buildFieldIndex = (
 const buildAllIndex = (
   document: DataDoc,
   records: RecordIndex
-): SearchTextIndex => {
-  const fields = document.fields.order
-    .map(fieldId => ({
-      id: fieldId,
-      field: getDocumentFieldById(document, fieldId)
-    }))
-    .filter(({ field }) => isDefaultSearchField(field))
-
-  return buildTextIndex({
+): SearchTextIndex => buildTextIndex({
     ids: records.ids,
     readText: recordId => {
       const record = records.rows.get(recordId)
       return record
-        ? buildAllTokens(record, fields)
+        ? buildRecordDefaultSearchText(record, document)
         : undefined
     }
   })
-}
 
 const normalizeDemand = (
   demand?: SearchDemand
@@ -292,10 +205,6 @@ export const syncSearchIndex = (
   let changed = false
   let nextAll = previous.all
   const nextFields = new Map(previous.fields)
-  const allFields = document.fields.order.map(fieldId => ({
-    id: fieldId,
-    field: getDocumentFieldById(document, fieldId)
-  }))
 
   if (rebuildAll) {
     nextAll = buildAllIndex(document, records)
@@ -307,7 +216,7 @@ export const syncSearchIndex = (
       readText: recordId => {
         const record = records.rows.get(recordId)
         return record
-          ? buildAllTokens(record, allFields)
+          ? buildRecordDefaultSearchText(record, document)
           : undefined
       }
     })
@@ -345,7 +254,7 @@ export const syncSearchIndex = (
       readText: recordId => {
         const record = records.rows.get(recordId)
         return record
-          ? buildFieldTokens(record, fieldId, getDocumentFieldById(document, fieldId))
+          ? buildRecordFieldSearchText(record, fieldId, document)
           : undefined
       }
     })

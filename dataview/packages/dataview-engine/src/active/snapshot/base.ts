@@ -35,14 +35,13 @@ import type {
   ViewSortProjection
 } from '#engine/contracts/public.ts'
 import { sameFieldList } from '#engine/active/snapshot/equality.ts'
+import { createOrderedListAccess } from '#engine/active/snapshot/list.ts'
 import {
   reuseIfEqual,
   sameList,
   sameOptionalList,
   sameOptionalProjection
 } from '#engine/active/snapshot/reuse.ts'
-
-const EMPTY_IDS = [] as readonly FieldId[]
 
 const resolveFieldsById = (
   document: DataDoc
@@ -60,37 +59,26 @@ const createFields = (input: {
   })
   const ids = all.map(field => field.id)
   const custom = all.filter(isCustomField) as readonly CustomField[]
-  const indexById = new Map(ids.map((id, index) => [id, index] as const))
   const visibleById = new Map(all.map(field => [field.id, field] as const))
+  const ordered = createOrderedListAccess(ids)
 
   return {
     ids,
     all,
     custom,
     get: id => visibleById.get(id),
-    has: id => indexById.has(id),
-    indexOf: id => indexById.get(id),
-    at: index => ids[index],
-    range: (anchor, focus) => {
-      const anchorIndex = indexById.get(anchor)
-      const focusIndex = indexById.get(focus)
-      if (anchorIndex === undefined || focusIndex === undefined) {
-        return EMPTY_IDS
-      }
-
-      const start = Math.min(anchorIndex, focusIndex)
-      const end = Math.max(anchorIndex, focusIndex)
-      return ids.slice(start, end + 1)
-    }
+    has: ordered.has,
+    indexOf: ordered.indexOf,
+    at: ordered.at,
+    range: ordered.range
   }
 }
 
 const createSearchProjection = (
   viewId: ViewId,
-  search: ViewSearchProjection['search']
+  search: View['search']
 ): ViewSearchProjection => ({
   viewId,
-  search,
   query: search.query,
   ...(search.fields?.length
     ? { fields: [...search.fields] }
@@ -148,7 +136,6 @@ const createSortRuleProjection = (input: {
 
   return {
     sorter: input.sorter,
-    fieldId: input.sorter.field,
     field,
     fieldLabel: field?.name ?? 'Deleted field'
   }
@@ -198,7 +185,6 @@ const createGroupProjection = (input: {
   if (!field) {
     return {
       viewId: input.viewId,
-      group,
       active: true,
       fieldId: group.field,
       field: undefined,
@@ -223,7 +209,6 @@ const createGroupProjection = (input: {
 
   return {
     viewId: input.viewId,
-    group,
     active: true,
     fieldId: field.id,
     field,
@@ -281,8 +266,7 @@ const equalSortRuleProjection = (
   left: SortRuleProjection,
   right: SortRuleProjection
 ) => (
-  left.fieldId === right.fieldId
-  && left.fieldLabel === right.fieldLabel
+  left.fieldLabel === right.fieldLabel
   && left.sorter.field === right.sorter.field
   && left.sorter.direction === right.sorter.direction
 )

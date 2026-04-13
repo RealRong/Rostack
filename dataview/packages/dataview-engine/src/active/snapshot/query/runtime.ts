@@ -11,9 +11,6 @@ import {
   trimToUndefined
 } from '@shared/core'
 import {
-  now
-} from '#engine/runtime/clock.ts'
-import {
   viewFilterFields,
   viewSearchFields,
   viewSortFields
@@ -24,6 +21,7 @@ import {
 import type {
   IndexState
 } from '#engine/active/index/contracts.ts'
+import { runSnapshotStage } from '#engine/active/snapshot/stage.ts'
 import type {
   DeriveAction,
   QueryState
@@ -34,23 +32,6 @@ export {
 import {
   buildQueryState
 } from '#engine/active/snapshot/query/derive.ts'
-
-const publishViewRecords = (input: {
-  query: QueryState
-  previous?: import('#engine/contracts/public.ts').ViewRecords
-}): import('#engine/contracts/public.ts').ViewRecords => {
-  const previous = input.previous
-  return previous
-    && previous.matched === input.query.matched
-    && previous.ordered === input.query.ordered
-    && previous.visible === input.query.visible
-    ? previous
-    : {
-        matched: input.query.matched,
-        ordered: input.query.ordered,
-        visible: input.query.visible
-      }
-}
 
 const hasIntersection = (
   left: ReadonlySet<FieldId>,
@@ -201,43 +182,33 @@ export const runQueryStage = (input: {
   publishMs: number
 } => {
   const action = resolveQueryAction(input)
-  const deriveStart = now()
-  const state = action === 'reuse' && input.previous
-    ? input.previous
-    : buildQueryState({
-        document: input.document,
-        view: input.view,
-        index: input.index,
-        previous: input.previous
-      })
-  const deriveMs = now() - deriveStart
-
-  if (
-    action === 'reuse'
-    && state === input.previous
-    && input.previousPublished
-  ) {
-    return {
-      action,
-      state,
-      records: input.previousPublished,
-      deriveMs,
-      publishMs: 0
-    }
-  }
-
-  const publishStart = now()
-  const records = publishViewRecords({
-    query: state,
-    previous: input.previousPublished
+  const stage = runSnapshotStage({
+    action,
+    previousState: input.previous,
+    previousPublished: input.previousPublished,
+    derive: () => action === 'reuse' && input.previous
+      ? input.previous
+      : buildQueryState({
+          document: input.document,
+          view: input.view,
+          index: input.index,
+          previous: input.previous
+        }),
+    publish: state => (
+      input.previousPublished
+      && input.previousPublished.matched === state.matched
+      && input.previousPublished.ordered === state.ordered
+      && input.previousPublished.visible === state.visible
+        ? input.previousPublished
+        : state
+    )
   })
-  const publishMs = now() - publishStart
 
   return {
-    action,
-    state,
-    records,
-    deriveMs,
-    publishMs
+    action: stage.action,
+    state: stage.state,
+    records: stage.published,
+    deriveMs: stage.deriveMs,
+    publishMs: stage.publishMs
   }
 }

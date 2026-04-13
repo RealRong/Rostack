@@ -1,11 +1,13 @@
 import type { CustomFieldId, DataDoc, DataRecord, EntityTable, IndexPath, RecordId } from '#core/contracts/state.ts'
 import {
+  createEntityOverlay,
   getEntityTableById,
   getEntityTableIds,
   hasEntityTableId,
   listEntityTable,
   mergePatchedEntity,
-  normalizeRecordInput
+  normalizeRecordInput,
+  replaceDocumentTable
 } from '#core/document/table.ts'
 
 export interface RecordEntry {
@@ -22,21 +24,6 @@ export const enumerateRecords = (
     visitor({ record, path: [index], index })
   })
 }
-
-const replaceDocumentRecordsTable = (document: DataDoc, records: EntityTable<RecordId, DataRecord>): DataDoc => {
-  if (records === document.records) {
-    return document
-  }
-
-  return {
-    ...document,
-    records
-  }
-}
-
-const createRecordOverlay = (
-  document: DataDoc
-): Record<RecordId, DataRecord> => Object.create(document.records.byId) as Record<RecordId, DataRecord>
 
 export const getDocumentRecords = (document: DataDoc): DataRecord[] => {
   return listEntityTable(document.records)
@@ -57,7 +44,7 @@ export const getDocumentRecordIndex = (document: DataDoc, recordId: RecordId) =>
 }
 
 export const replaceDocumentRecords = (document: DataDoc, records: readonly DataRecord[]): DataDoc => {
-  return replaceDocumentRecordsTable(document, normalizeRecordInput(records))
+  return replaceDocumentTable(document, 'records', normalizeRecordInput(records))
 }
 
 export const insertDocumentRecords = (document: DataDoc, records: readonly DataRecord[], index?: number): DataDoc => {
@@ -75,7 +62,7 @@ export const insertDocumentRecords = (document: DataDoc, records: readonly DataR
   const remainingOrder = document.records.order.filter(recordId => !insertedIdSet.has(recordId))
   const safeIndex = Math.max(0, Math.min(index ?? remainingOrder.length, remainingOrder.length))
   const nextOrder = [...remainingOrder.slice(0, safeIndex), ...insertedIds, ...remainingOrder.slice(safeIndex)]
-  const byId = createRecordOverlay(document)
+  const byId = createEntityOverlay(document.records)
   insertedIds.forEach(recordId => {
     const record = nextRecords.byId[recordId]
     if (record) {
@@ -83,7 +70,7 @@ export const insertDocumentRecords = (document: DataDoc, records: readonly DataR
     }
   })
 
-  return replaceDocumentRecordsTable(document, {
+  return replaceDocumentTable(document, 'records', {
     byId,
     order: nextOrder
   })
@@ -100,9 +87,9 @@ export const patchDocumentRecord = (document: DataDoc, recordId: RecordId, patch
     return document
   }
 
-  return replaceDocumentRecordsTable(document, {
+  return replaceDocumentTable(document, 'records', {
     byId: (() => {
-      const byId = createRecordOverlay(document)
+      const byId = createEntityOverlay(document.records)
       byId[recordId] = nextRecord
       return byId
     })(),
@@ -117,7 +104,7 @@ export const removeDocumentRecords = (document: DataDoc, recordIds: readonly Rec
 
   const removed = new Set(recordIds)
   let removedCount = 0
-  const nextById = createRecordOverlay(document)
+  const nextById = createEntityOverlay(document.records)
 
   recordIds.forEach(recordId => {
     if (!document.records.byId[recordId]) {
@@ -131,7 +118,7 @@ export const removeDocumentRecords = (document: DataDoc, recordIds: readonly Rec
     return document
   }
 
-  return replaceDocumentRecordsTable(document, {
+  return replaceDocumentTable(document, 'records', {
     byId: nextById,
     order: document.records.order.filter(recordId => !removed.has(recordId))
   })
@@ -142,9 +129,9 @@ const replaceDocumentRecord = (
   recordId: RecordId,
   record: DataRecord
 ): DataDoc => {
-  const byId = createRecordOverlay(document)
+  const byId = createEntityOverlay(document.records)
   byId[recordId] = record
-  return replaceDocumentRecordsTable(document, {
+  return replaceDocumentTable(document, 'records', {
     byId,
     order: document.records.order
   })

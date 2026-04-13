@@ -9,14 +9,12 @@ import type {
 import {
   collectTouchedRecordIds
 } from '#engine/active/index/shared.ts'
-import {
-  now
-} from '#engine/runtime/clock.ts'
 import type {
   DeriveAction,
   QueryState,
   SectionState
 } from '#engine/contracts/internal.ts'
+import { runSnapshotStage } from '#engine/active/snapshot/stage.ts'
 import {
   publishSections
 } from '#engine/active/snapshot/sections/publish.ts'
@@ -108,6 +106,13 @@ export const runSectionsStage = (input: {
   deriveMs: number
   publishMs: number
 } => {
+  const previousPublished = input.previousPublished.sections
+    && input.previousPublished.items
+    ? {
+        sections: input.previousPublished.sections,
+        items: input.previousPublished.items
+      }
+    : undefined
   const touchedRecords = collectTouchedRecordIds(input.delta)
   const action = resolveSectionsAction({
     activeViewId: input.activeViewId,
@@ -118,51 +123,40 @@ export const runSectionsStage = (input: {
     previousQuery: input.previousQuery,
     query: input.query
   })
-  const deriveStart = now()
-  const state = syncSectionState({
-    previous: input.previous,
-    previousQuery: input.previousQuery,
-    view: input.view,
-    query: input.query,
-    index: input.index,
-    touchedRecords,
-    action
+  const stage = runSnapshotStage({
+    action,
+    previousState: input.previous,
+    previousPublished,
+    derive: () => syncSectionState({
+      previous: input.previous,
+      previousQuery: input.previousQuery,
+      view: input.view,
+      query: input.query,
+      index: input.index,
+      touchedRecords,
+      action
+    }),
+    publish: state => publishSections({
+      sections: state,
+      previousSections: input.previous,
+      previous: {
+        items: previousPublished?.items,
+        sections: previousPublished?.sections
+      }
+    }),
+    canReusePublished: stageInput => (
+      stageInput.action === 'reuse'
+      && stageInput.state === input.previous
+      && stageInput.previousPublished !== undefined
+    )
   })
-  const deriveMs = now() - deriveStart
-
-  if (
-    action === 'reuse'
-    && state === input.previous
-    && input.previousPublished.sections
-    && input.previousPublished.items
-  ) {
-    return {
-      action,
-      state,
-      sections: input.previousPublished.sections,
-      items: input.previousPublished.items,
-      deriveMs,
-      publishMs: 0
-    }
-  }
-
-  const publishStart = now()
-  const published = publishSections({
-    sections: state,
-    previousSections: input.previous,
-    previous: {
-      items: input.previousPublished.items,
-      sections: input.previousPublished.sections
-    }
-  })
-  const publishMs = now() - publishStart
 
   return {
-    action,
-    state,
-    sections: published.sections,
-    items: published.items,
-    deriveMs,
-    publishMs
+    action: stage.action,
+    state: stage.state,
+    sections: stage.published.sections,
+    items: stage.published.items,
+    deriveMs: stage.deriveMs,
+    publishMs: stage.publishMs
   }
 }

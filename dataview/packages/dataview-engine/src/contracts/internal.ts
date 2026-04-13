@@ -6,8 +6,7 @@ import type {
   SectionAggregateState
 } from '#engine/active/index/contracts.ts'
 import type {
-  ItemId,
-  SectionBucket,
+  Section,
   SectionKey,
   ViewRecords,
   ViewSummaries
@@ -19,10 +18,7 @@ export type {
   RuntimeHistory
 } from '#engine/runtime/state.ts'
 
-export interface QueryState {
-  matched: readonly RecordId[]
-  ordered: readonly RecordId[]
-  visible: readonly RecordId[]
+export interface QueryState extends ViewRecords {
   visibleSet?: ReadonlySet<RecordId>
   order?: ReadonlyMap<RecordId, number>
 }
@@ -32,15 +28,8 @@ export type DeriveAction =
   | 'sync'
   | 'rebuild'
 
-export interface SectionNodeState {
-  key: SectionKey
-  title: string
-  color?: string
-  bucket?: SectionBucket
-  recordIds: readonly RecordId[]
-  itemIds: readonly ItemId[]
+export interface SectionNodeState extends Section {
   visible: boolean
-  collapsed: boolean
 }
 
 export interface SectionState {
@@ -59,15 +48,20 @@ export interface ViewCache {
   summary: SummaryState
 }
 
+const EMPTY_RECORD_IDS = [] as readonly RecordId[]
+const EMPTY_VIEW_RECORDS: ViewRecords = {
+  matched: EMPTY_RECORD_IDS,
+  ordered: EMPTY_RECORD_IDS,
+  visible: EMPTY_RECORD_IDS
+}
+
 const EMPTY_SUMMARY_BY_SECTION = new Map<SectionKey, ReadonlyMap<FieldId, SectionAggregateState>>()
 const EMPTY_SUMMARY_STATE: SummaryState = {
   bySection: EMPTY_SUMMARY_BY_SECTION
 }
 
 export const emptyQueryState = (): QueryState => ({
-  matched: [],
-  ordered: [],
-  visible: []
+  ...EMPTY_VIEW_RECORDS
 })
 
 export const emptySectionState = (): SectionState => ({
@@ -84,11 +78,7 @@ export const emptyViewCache = (): ViewCache => ({
   summary: emptySummaryState()
 })
 
-export const emptyViewRecords = (): ViewRecords => ({
-  matched: [],
-  ordered: [],
-  visible: []
-})
+export const emptyViewRecords = (): ViewRecords => EMPTY_VIEW_RECORDS
 
 export const emptySummaries = (): ViewSummaries => new Map()
 

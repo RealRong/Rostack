@@ -1,5 +1,6 @@
 import type { RecordId } from '@dataview/core/contracts'
 import { sameOrder } from '@shared/core'
+import { createOrderedListAccess } from '#engine/active/snapshot/list.ts'
 import type {
   ItemId,
   ItemList,
@@ -9,8 +10,6 @@ import type {
   ViewItem
 } from '#engine/contracts/public.ts'
 import type { SectionState } from '#engine/contracts/internal.ts'
-
-const EMPTY_IDS = [] as readonly ItemId[]
 const SEPARATOR = '\u0000'
 const SECTION_PREFIX = 'section:'
 const RECORD_PREFIX = 'record:'
@@ -46,19 +45,8 @@ export const createItemList = (input: {
   count: number
   previous?: ItemList
 }): ItemList => {
-  let visibleIndex: ReadonlyMap<ItemId, number> | undefined
   const cache = new Map<ItemId, ViewItem>()
-
-  const ensureVisibleIndex = () => {
-    if (visibleIndex) {
-      return visibleIndex
-    }
-
-    visibleIndex = new Map(
-      input.ids.map((id, index) => [id, index] as const)
-    )
-    return visibleIndex
-  }
+  const ordered = createOrderedListAccess(input.ids)
 
   return {
     ids: input.ids,
@@ -79,33 +67,12 @@ export const createItemList = (input: {
       cache.set(id, next)
       return next
     },
-    has: id => ensureVisibleIndex().has(id),
-    indexOf: id => ensureVisibleIndex().get(id),
-    at: index => input.ids[index],
-    prev: id => {
-      const index = ensureVisibleIndex().get(id)
-      return index === undefined || index <= 0
-        ? undefined
-        : input.ids[index - 1]
-    },
-    next: id => {
-      const index = ensureVisibleIndex().get(id)
-      return index === undefined || index >= input.ids.length - 1
-        ? undefined
-        : input.ids[index + 1]
-    },
-    range: (anchor, focus) => {
-      const index = ensureVisibleIndex()
-      const anchorIndex = index.get(anchor)
-      const focusIndex = index.get(focus)
-      if (anchorIndex === undefined || focusIndex === undefined) {
-        return EMPTY_IDS
-      }
-
-      const start = Math.min(anchorIndex, focusIndex)
-      const end = Math.max(anchorIndex, focusIndex)
-      return input.ids.slice(start, end + 1)
-    }
+    has: ordered.has,
+    indexOf: ordered.indexOf,
+    at: ordered.at,
+    prev: ordered.prev,
+    next: ordered.next,
+    range: ordered.range
   }
 }
 
@@ -201,6 +168,7 @@ export const buildSections = (input: {
     && previous.all.every((section, index) => section === sections[index])
     ? previous.all
     : sections
+  const ordered = createOrderedListAccess(publishedIds)
 
   if (
     previous
@@ -220,9 +188,9 @@ export const buildSections = (input: {
     ids: publishedIds,
     all: publishedSections,
     get: key => publishedByKey.get(key),
-    has: key => publishedByKey.has(key),
-    indexOf: key => publishedIds.indexOf(key),
-    at: index => publishedIds[index]
+    has: ordered.has,
+    indexOf: ordered.indexOf,
+    at: ordered.at
   }
 }
 

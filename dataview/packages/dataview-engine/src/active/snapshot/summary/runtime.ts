@@ -7,12 +7,8 @@ import type {
 import { TITLE_FIELD_ID } from '@dataview/core/contracts'
 import { viewCalcFields } from '@dataview/core/view'
 import {
-  now
-} from '#engine/runtime/clock.ts'
-import {
-  collectSchemaFieldIds,
   collectTouchedRecordIds,
-  collectValueFieldIds
+  collectTouchedFieldIds
 } from '#engine/active/index/shared.ts'
 import type { IndexState } from '#engine/active/index/contracts.ts'
 import type {
@@ -21,6 +17,7 @@ import type {
   SummaryState
 } from '#engine/contracts/internal.ts'
 import type { SectionKey } from '#engine/contracts/public.ts'
+import { runSnapshotStage } from '#engine/active/snapshot/stage.ts'
 import { publishSummaries } from '#engine/active/snapshot/summary/publish.ts'
 import {
   syncSummaryState
@@ -48,19 +45,9 @@ const hasIntersection = (
 
 const collectTouchedFields = (
   delta: CommitDelta
-): ReadonlySet<FieldId> | 'all' => {
-  if (
-    delta.entities.fields?.update === 'all'
-    || delta.entities.values?.fields === 'all'
-  ) {
-    return 'all'
-  }
-
-  return new Set([
-    ...collectSchemaFieldIds(delta),
-    ...collectValueFieldIds(delta, { includeTitlePatch: true })
-  ])
-}
+): ReadonlySet<FieldId> | 'all' => collectTouchedFieldIds(delta, {
+  includeTitlePatch: true
+})
 
 const resolveSummaryAction = (input: {
   activeViewId: ViewId
@@ -163,48 +150,34 @@ export const runSummaryStage = (input: {
     previousSections: input.previousSections,
     sectionsAction: input.sectionsAction
   })
-  const deriveStart = now()
-  const state = syncSummaryState({
-    previous: input.previous,
-    previousSections: input.previousSections,
-    sections: input.sections,
-    view: input.view,
-    index: input.index,
+  const stage = runSnapshotStage({
     action,
-    touchedRecords,
-    touchedFields
-  })
-  const deriveMs = now() - deriveStart
-
-  if (
-    action === 'reuse'
-    && state === input.previous
-    && input.previousPublished
-  ) {
-    return {
+    previousState: input.previous,
+    previousPublished: input.previousPublished,
+    derive: () => syncSummaryState({
+      previous: input.previous,
+      previousSections: input.previousSections,
+      sections: input.sections,
+      view: input.view,
+      index: input.index,
       action,
-      state,
-      summaries: input.previousPublished,
-      deriveMs,
-      publishMs: 0
-    }
-  }
-
-  const publishStart = now()
-  const summaries = publishSummaries({
-    summary: state,
-    previousSummary: input.previous,
-    previous: input.previousPublished,
-    fieldsById: input.fieldsById,
-    view: input.view
+      touchedRecords,
+      touchedFields
+    }),
+    publish: state => publishSummaries({
+      summary: state,
+      previousSummary: input.previous,
+      previous: input.previousPublished,
+      fieldsById: input.fieldsById,
+      view: input.view
+    })
   })
-  const publishMs = now() - publishStart
 
   return {
-    action,
-    state,
-    summaries,
-    deriveMs,
-    publishMs
+    action: stage.action,
+    state: stage.state,
+    summaries: stage.published,
+    deriveMs: stage.deriveMs,
+    publishMs: stage.publishMs
   }
 }

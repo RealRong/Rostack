@@ -30,19 +30,45 @@ import {
   supportsFieldCalculationMetric
 } from '@dataview/core/calculation'
 import { getFieldGroupMeta, isGroupBucketSort } from '@dataview/core/field'
-import { hasFilterPreset } from '@dataview/core/filter'
-import { normalizeViewQuery } from '@dataview/core/query'
-import { resolveUniqueViewName } from '@dataview/core/view'
+import {
+  cloneFilter,
+  hasFilterPreset,
+  normalizeFilter,
+  sameFilter
+} from '@dataview/core/filter'
+import {
+  cloneGroup,
+  normalizeGroup,
+  sameGroup
+} from '@dataview/core/group'
+import {
+  cloneSearch,
+  normalizeSearch,
+  sameSearch
+} from '@dataview/core/search'
+import {
+  cloneSorters,
+  normalizeSorters,
+  sameSorters
+} from '@dataview/core/sort'
+import {
+  cloneDisplay,
+  cloneViewCalc,
+  cloneViewOptions,
+  normalizeViewDisplay,
+  resolveUniqueViewName,
+  sameDisplay,
+  sameViewCalc,
+  sameViewOptions
+} from '@dataview/core/view'
 import {
   createDefaultViewDisplay,
   createDefaultViewOptions
 } from '@dataview/core/view/options'
-import { cloneViewOptions } from '@dataview/core/view/shared'
 import {
   isNonEmptyString,
   sameJsonValue,
   sameOrder,
-  sameShallowRecord,
   trimToUndefined
 } from '@shared/core'
 import { createViewId } from '#engine/mutate/entityId.ts'
@@ -60,76 +86,7 @@ import {
   type PlannedActionResult
 } from '#engine/mutate/planner/shared.ts'
 
-const sameFieldIds = sameOrder<string>
 const sameRecordOrder = sameOrder<string>
-
-const sameWidths = (
-  left: TableOptions['widths'],
-  right: TableOptions['widths']
-) => sameShallowRecord(left, right)
-
-const calculationEntries = (
-  calc: ViewCalc
-) => Object.entries(calc).sort(([left], [right]) => left.localeCompare(right))
-
-const sameCalc = (
-  left: ViewCalc,
-  right: ViewCalc
-) => sameJsonValue(calculationEntries(left), calculationEntries(right))
-
-const sameDisplay = (
-  left: ViewDisplay,
-  right: ViewDisplay
-) => sameFieldIds(left.fields, right.fields)
-
-const sameSearch = (
-  left: Search,
-  right: Search
-) => left.query === right.query && sameFieldIds(left.fields ?? [], right.fields ?? [])
-
-const sameFilterRule = (
-  left: Filter['rules'][number],
-  right: Filter['rules'][number]
-) => sameJsonValue(left, right)
-
-const sameFilter = (
-  left: Filter,
-  right: Filter
-) => left.mode === right.mode && left.rules.length === right.rules.length && left.rules.every((rule, index) => sameFilterRule(rule, right.rules[index]!))
-
-const sameSorters = (
-  left: readonly Sorter[],
-  right: readonly Sorter[]
-) => left.length === right.length && left.every((sorter, index) => sorter.field === right[index]?.field && sorter.direction === right[index]?.direction)
-
-const sameGroup = (
-  left: ViewGroup | undefined,
-  right: ViewGroup | undefined
-) => sameJsonValue(left, right)
-
-const sameViewOptions = (
-  left: View['options'],
-  right: View['options']
-) => (
-  sameWidths(left.table.widths, right.table.widths)
-  && left.table.showVerticalLines === right.table.showVerticalLines
-  && left.gallery.showFieldLabels === right.gallery.showFieldLabels
-  && left.gallery.cardSize === right.gallery.cardSize
-  && left.kanban.newRecordPosition === right.kanban.newRecordPosition
-  && left.kanban.fillColumnColor === right.kanban.fillColumnColor
-  && left.kanban.cardsPerColumn === right.kanban.cardsPerColumn
-)
-
-const cloneSearch = (search: Search): Search => ({
-  query: search.query,
-  ...(search.fields ? { fields: [...search.fields] } : {})
-})
-
-const cloneFilter = (filter: Filter): Filter => structuredClone(filter)
-const cloneSorters = (sorters: readonly Sorter[]): Sorter[] => sorters.map(sorter => ({ ...sorter }))
-const cloneGroup = (group: ViewGroup): ViewGroup => structuredClone(group)
-const cloneCalc = (calc: ViewCalc): ViewCalc => structuredClone(calc)
-const cloneDisplay = (display: ViewDisplay): ViewDisplay => ({ fields: [...display.fields] })
 
 const validateFieldIdList = (
   document: DataDoc,
@@ -468,8 +425,8 @@ const applyViewPatch = (
       }
     }
   }
-  if (patch.calc !== undefined && !sameCalc(view.calc, patch.calc)) {
-    ensureMutable().calc = cloneCalc(patch.calc)
+  if (patch.calc !== undefined && !sameViewCalc(view.calc, patch.calc)) {
+    ensureMutable().calc = cloneViewCalc(patch.calc)
   }
   if (patch.display !== undefined && !sameDisplay(view.display, patch.display)) {
     ensureMutable().display = cloneDisplay(patch.display)
@@ -488,24 +445,19 @@ const normalizeView = (
   view: View
 ): View => {
   const fields = getDocumentFields(document)
-  const query = normalizeViewQuery({
-    search: view.search,
-    filter: view.filter,
-    sort: view.sort,
-    ...(view.group ? { group: view.group } : {})
-  })
+  const group = normalizeGroup(view.group)
 
   return {
     ...view,
-    search: query.search,
-    filter: query.filter,
-    sort: query.sort,
-    ...(query.group ? { group: query.group } : {}),
-    ...(!query.group ? { group: undefined } : {}),
+    search: normalizeSearch(view.search),
+    filter: normalizeFilter(view.filter),
+    sort: normalizeSorters(view.sort),
+    ...(group ? { group } : {}),
+    ...(!group ? { group: undefined } : {}),
     calc: normalizeViewCalculations(view.calc, {
       fields: new Map(fields.map(field => [field.id, field] as const))
     }),
-    display: cloneDisplay(view.display),
+    display: normalizeViewDisplay(view.display),
     options: cloneViewOptions(view.options),
     orders: [...view.orders]
   }

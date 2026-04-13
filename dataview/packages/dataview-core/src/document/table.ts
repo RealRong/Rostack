@@ -1,12 +1,29 @@
-import type { DataRecord, EntityTable, RecordId } from '#core/contracts/state.ts'
+import type { DataDoc, DataRecord, EntityTable, RecordId } from '#core/contracts/state.ts'
 
 export const cloneRecordInput = (record: DataRecord): DataRecord => structuredClone(record)
 
 export const cloneEntityInput = <TEntity>(entity: TEntity): TEntity => structuredClone(entity)
 
-const createEntityOverlay = <TId extends string, TEntity extends { id: TId }>(
+export const createEntityOverlay = <TId extends string, TEntity extends { id: TId }>(
   table: EntityTable<TId, TEntity>
 ): Record<TId, TEntity> => Object.create(table.byId) as Record<TId, TEntity>
+
+export const replaceDocumentTable = <
+  TKey extends 'fields' | 'records' | 'views'
+>(
+  document: DataDoc,
+  key: TKey,
+  table: DataDoc[TKey]
+): DataDoc => {
+  if (document[key] === table) {
+    return document
+  }
+
+  return {
+    ...document,
+    [key]: table
+  }
+}
 
 export const listEntityTable = <TId extends string, TEntity extends { id: TId }>(table: EntityTable<TId, TEntity>): TEntity[] => {
   return table.order
@@ -38,24 +55,6 @@ export const cloneEntityTable = <TId extends string, TEntity extends { id: TId }
       continue
     }
     byId[entityId] = cloneEntityInput(entity)
-  }
-
-  return {
-    byId,
-    order: table.order.slice()
-  }
-}
-
-export const cloneRecordTable = (table: EntityTable<RecordId, DataRecord>): EntityTable<RecordId, DataRecord> => {
-  const byId: Record<RecordId, DataRecord> = {}
-
-  for (const recordIdKey in table.byId) {
-    const recordId = recordIdKey as RecordId
-    const record = table.byId[recordId]
-    if (!record) {
-      continue
-    }
-    byId[recordId] = cloneRecordInput(record)
   }
 
   return {
@@ -193,38 +192,6 @@ export const normalizeEntityTable = <TId extends string, TEntity extends { id: T
     seen.add(entityId)
     byId[entityId] = cloneEntityInput(entity)
     order.push(entityId)
-  }
-
-  return {
-    byId,
-    order
-  }
-}
-
-export const normalizeRecordTable = (table: EntityTable<RecordId, DataRecord>): EntityTable<RecordId, DataRecord> => {
-  const byId: Record<RecordId, DataRecord> = {}
-  const order: RecordId[] = []
-  const seen = new Set<RecordId>()
-
-  table.order.forEach(recordId => {
-    const record = table.byId[recordId]
-    if (!record || seen.has(recordId)) {
-      return
-    }
-    seen.add(recordId)
-    byId[recordId] = cloneRecordInput(record)
-    order.push(recordId)
-  })
-
-  for (const recordIdKey in table.byId) {
-    const recordId = recordIdKey as RecordId
-    const record = table.byId[recordId]
-    if (!record || seen.has(recordId)) {
-      continue
-    }
-    seen.add(recordId)
-    byId[recordId] = cloneRecordInput(record)
-    order.push(recordId)
   }
 
   return {

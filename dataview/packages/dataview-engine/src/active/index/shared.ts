@@ -107,6 +107,27 @@ export const collectValueFieldIds = (
   return ids
 }
 
+export const collectTouchedFieldIds = (
+  delta: CommitDelta,
+  options?: {
+    includeTitlePatch?: boolean
+  }
+): ReadonlySet<FieldId> | 'all' => {
+  if (
+    delta.entities.fields?.update === 'all'
+    || delta.entities.values?.fields === 'all'
+  ) {
+    return 'all'
+  }
+
+  return new Set([
+    ...collectSchemaFieldIds(delta),
+    ...collectValueFieldIds(delta, {
+      includeTitlePatch: options?.includeTitlePatch
+    })
+  ])
+}
+
 export const collectTouchedRecordIds = (
   delta: CommitDelta
 ): ReadonlySet<RecordId> | 'all' => {

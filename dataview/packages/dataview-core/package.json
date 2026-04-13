@@ -14,7 +14,6 @@
     "./filter": "./src/filter/index.ts",
     "./group": "./src/group/index.ts",
     "./operation": "./src/operation/index.ts",
-    "./query": "./src/query/index.ts",
     "./search": "./src/search/index.ts",
     "./sort": "./src/sort/index.ts",
     "./view": "./src/view/index.ts",

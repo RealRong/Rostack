@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { BucketSort, Field, ViewGroup } from '@dataview/core/contracts'
+import type { BucketSort, Field } from '@dataview/core/contracts'
 import type { ViewGroupProjection } from '@dataview/engine'
 import {
   useDataView,
@@ -79,7 +79,6 @@ const EMPTY_GROUP: ViewGroupProjection = {
   viewId: '',
   active: false,
   fieldId: '',
-  group: undefined as ViewGroup | undefined,
   field: undefined,
   fieldLabel: '',
   mode: '',

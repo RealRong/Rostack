@@ -10,6 +10,11 @@ import type {
   ViewOptions
 } from '#core/contracts/index.ts'
 import {
+  sameJsonValue,
+  sameOrder,
+  sameShallowRecord
+} from '@shared/core'
+import {
   applyRecordOrder,
   reorderRecordBlockIds
 } from '#core/view/order.ts'
@@ -22,6 +27,11 @@ export const cloneDisplay = (
 ): ViewDisplay => ({
   fields: [...display.fields]
 })
+
+export const sameDisplay = (
+  left: ViewDisplay,
+  right: ViewDisplay
+): boolean => sameOrder(left.fields, right.fields)
 
 const uniqueFieldIds = (
   fieldIds: readonly FieldId[]
@@ -46,6 +56,22 @@ export const replaceDisplayFields = (
 ): ViewDisplay => ({
   fields: uniqueFieldIds(fieldIds)
 })
+
+export const normalizeViewDisplay = (
+  display: unknown
+): ViewDisplay => {
+  const source = typeof display === 'object' && display !== null
+    ? display as {
+        fields?: unknown
+      }
+    : undefined
+
+  return replaceDisplayFields(
+    Array.isArray(source?.fields)
+      ? source.fields.filter((fieldId): fieldId is FieldId => typeof fieldId === 'string')
+      : []
+  )
+}
 
 export const moveDisplayFields = (
   display: ViewDisplay,
@@ -135,6 +161,20 @@ export const setViewCalcMetric = (
   return nextCalc
 }
 
+export const cloneViewCalc = (
+  calc: ViewCalc
+): ViewCalc => ({
+  ...calc
+})
+
+export const sameViewCalc = (
+  left: ViewCalc,
+  right: ViewCalc
+): boolean => sameJsonValue(
+  Object.entries(left).sort(([leftFieldId], [rightFieldId]) => leftFieldId.localeCompare(rightFieldId)),
+  Object.entries(right).sort(([leftFieldId], [rightFieldId]) => leftFieldId.localeCompare(rightFieldId))
+)
+
 export const reorderViewOrders = (input: {
   allRecordIds: readonly RecordId[]
   currentOrder: readonly RecordId[]
@@ -157,6 +197,19 @@ export const reorderViewOrders = (input: {
 }
 
 export const clearViewOrders = (): RecordId[] => []
+
+export const sameViewOptions = (
+  left: ViewOptions,
+  right: ViewOptions
+): boolean => (
+  sameShallowRecord(left.table.widths, right.table.widths)
+  && left.table.showVerticalLines === right.table.showVerticalLines
+  && left.gallery.showFieldLabels === right.gallery.showFieldLabels
+  && left.gallery.cardSize === right.gallery.cardSize
+  && left.kanban.newRecordPosition === right.kanban.newRecordPosition
+  && left.kanban.fillColumnColor === right.kanban.fillColumnColor
+  && left.kanban.cardsPerColumn === right.kanban.cardsPerColumn
+)
 
 export const setTableColumnWidths = (
   options: ViewOptions,

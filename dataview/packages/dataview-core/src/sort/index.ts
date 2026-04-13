@@ -5,6 +5,7 @@ export {
   addSorter,
   clearSorters,
   cloneSorter,
+  cloneSorters,
   findSorterIndex,
   moveSorter,
   normalizeSorter,

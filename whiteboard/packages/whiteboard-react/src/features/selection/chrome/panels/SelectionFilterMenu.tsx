@@ -1,6 +1,5 @@
 import type { NodeToolbarFilter } from '@whiteboard/editor'
-import type { MenuItem } from '@ui'
-import { Menu } from '@ui'
+import { Menu, type MenuItem } from '@rostack/ui'
 import { NodeTypeIcon } from '#react/features/node'
 import type { WhiteboardRuntime } from '#react/types/runtime'
 

@@ -1,5 +1,5 @@
-import type { RuntimeRead } from '../../../read'
-import type { SelectionModelRead } from '../../../read/selectionModel'
+import type { RuntimeRead } from '../../../query'
+import type { SelectionModelRead } from '../../../query/selection/model'
 import type { PointerDownInput } from '../../../types/input'
 import type {
   SelectionPressResolution

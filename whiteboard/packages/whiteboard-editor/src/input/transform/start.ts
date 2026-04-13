@@ -22,7 +22,7 @@ const readTransformTarget = (
   ctx: InteractionContext,
   nodeId: NodeId
 ): TransformTarget | undefined => {
-  const entry = ctx.read.node.canvas.get(nodeId)
+  const entry = ctx.query.node.canvas.get(nodeId)
 
   return entry
     ? {
@@ -39,12 +39,12 @@ const readNodeTransformSpec = (
   handle: TransformPickHandle,
   input: PointerDownInput
 ): RuntimeTransformSpec | undefined => {
-  const entry = ctx.read.node.canvas.get(nodeId)
+  const entry = ctx.query.node.canvas.get(nodeId)
   if (!entry || entry.node.locked) {
     return undefined
   }
 
-  const capability = ctx.read.node.capability(entry.node)
+  const capability = ctx.query.node.capability(entry.node)
   const target = readTransformTarget(ctx, nodeId)
   if (!target) {
     return undefined
@@ -112,7 +112,7 @@ const readSelectionTransformSpec = (
     return undefined
   }
 
-  const resolved = ctx.read.node.transformTargets(selection.target.nodeIds)
+  const resolved = ctx.query.node.transformTargets(selection.target.nodeIds)
   if (!resolved?.targets.length) {
     return undefined
   }
@@ -132,7 +132,7 @@ const resolveTransformSpec = (
   ctx: InteractionContext,
   input: PointerDownInput
 ): RuntimeTransformSpec | null => {
-  const tool = ctx.read.tool.get()
+  const tool = ctx.query.tool.get()
   if (
     tool.type !== 'select'
     || (input.pick.kind !== 'node' && input.pick.kind !== 'selection-box')

@@ -1,13 +1,8 @@
-import { cn } from '@ui'
+import { PickerOptionButton, PickerSection } from '@rostack/ui'
 import {
   MINDMAP_INSERT_PRESETS,
   MINDMAP_INSERT_TEMPLATES
 } from '../presets'
-import {
-  TOOLBOX_OPTION_BUTTON_CLASSNAME,
-  ToolboxButton,
-  ToolboxMenuSection
-} from '../primitives'
 
 const MindmapTemplatePreview = ({
   templateKey
@@ -72,16 +67,13 @@ export const MindmapMenu = ({
   value?: string
   onChange: (value: string) => void
 }) => (
-  <ToolboxMenuSection title="Mindmap">
+  <PickerSection title="Mindmap">
     <div className="flex flex-col gap-1">
       {MINDMAP_INSERT_PRESETS.map((preset) => (
-        <ToolboxButton
+        <PickerOptionButton
           key={preset.key}
           type="button"
-          className={cn(
-            TOOLBOX_OPTION_BUTTON_CLASSNAME,
-            'grid grid-cols-[72px_minmax(0,1fr)] items-center gap-2.5 px-2.5 py-2'
-          )}
+          className="grid grid-cols-[72px_minmax(0,1fr)] items-center gap-2.5 px-2.5 py-2"
           pressed={value === preset.key}
           onClick={() => onChange(preset.key)}
         >
@@ -92,8 +84,8 @@ export const MindmapMenu = ({
             <span className="text-sm leading-5 text-fg">{preset.label}</span>
             <span className="text-xs leading-4 text-fg-muted">{preset.description}</span>
           </span>
-        </ToolboxButton>
+        </PickerOptionButton>
       ))}
     </div>
-  </ToolboxMenuSection>
+  </PickerSection>
 )

@@ -77,8 +77,8 @@ const EdgeHintOverlay = () => {
           cx={snap.x}
           cy={snap.y}
           r={snapRadius}
-          fill="var(--wb-selection-fill)"
-          stroke="var(--wb-accent)"
+          fill="rgb(from var(--ui-accent) r g b / 0.12)"
+          stroke="var(--ui-accent)"
           strokeWidth={2 / Math.max(zoom, 0.0001)}
           vectorEffect="non-scaling-stroke"
           className="wb-edge-preview-point"

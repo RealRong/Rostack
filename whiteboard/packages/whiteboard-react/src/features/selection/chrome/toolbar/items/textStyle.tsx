@@ -2,7 +2,7 @@ import {
   Bold,
   Italic
 } from 'lucide-react'
-import { ToolbarIconButton } from '../primitives'
+import { ToolbarIconButton } from '@rostack/ui'
 import type { ToolbarItemSpec } from './types'
 
 export const boldItem: ToolbarItemSpec = {

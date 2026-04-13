@@ -2,29 +2,16 @@ import {
   createContext,
   useContext,
   useEffect,
-  useMemo,
-  type ReactNode
+  useMemo
 } from 'react'
 import type {
   DataViewContextValue,
-  DataViewSession
-} from './runtime'
+  DataViewSession,
+  EngineProviderProps
+} from './types'
 import {
   createDataViewSession
 } from './runtime'
-import type {
-  Engine
-} from '@dataview/engine'
-import type {
-  PageSessionInput
-} from '@dataview/react/page/session/types'
-
-export interface EngineProviderProps {
-  engine: Engine
-  initialPage?: PageSessionInput
-  children?: ReactNode
-}
-export type { DataViewContextValue } from './runtime'
 
 const DataViewContext = createContext<DataViewContextValue | null>(null)
 export const EngineProvider = (props: EngineProviderProps) => (

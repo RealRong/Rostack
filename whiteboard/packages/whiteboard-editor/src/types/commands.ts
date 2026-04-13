@@ -39,12 +39,12 @@ import type {
   MindmapRemoveSubtreeInput,
   MindmapUpdateNodeInput
 } from '@whiteboard/engine'
-import type { ClipboardPacket } from '../clipboard/packet'
+import type { ClipboardPacket } from '../command/clipboard/packet'
 import type {
   BrushStylePatch,
   DrawState
-} from '../model/draw/state'
-import type { DrawSlot } from '../model/draw/model'
+} from '../local/draw/state'
+import type { DrawMode, DrawSlot } from '../local/draw/model'
 import type { MindmapLayoutConfig } from './mindmap'
 import type { PointerSample } from './input'
 import type {
@@ -52,13 +52,12 @@ import type {
   InsertPresetKey,
   Tool
 } from './tool'
-import type { DrawMode } from '../model/draw/model'
 import type {
   EditCaret,
   EditField,
   EditLayout
-} from '../state/edit'
-import type { ViewportCommands } from '../editor/viewport'
+} from '../local/session/edit'
+import type { ViewportCommands } from '../local/viewport/runtime'
 
 export type OrderMode =
   | 'front'

@@ -1,10 +1,5 @@
 import type { EdgePresetKey } from '@whiteboard/editor'
-import { cn } from '@ui'
-import {
-  TOOLBOX_OPTION_BUTTON_CLASSNAME,
-  ToolboxButton,
-  ToolboxMenuSection
-} from '../primitives'
+import { PickerOptionButton, PickerSection } from '@rostack/ui'
 
 type EdgeOption = {
   key: EdgePresetKey
@@ -64,16 +59,13 @@ export const EdgeMenu = ({
   value: EdgePresetKey
   onChange: (value: EdgePresetKey) => void
 }) => (
-  <ToolboxMenuSection title="Edge">
+  <PickerSection title="Edge">
     <div className="flex flex-col gap-1">
       {EDGE_OPTIONS.map((option) => (
-        <ToolboxButton
+        <PickerOptionButton
           key={option.key}
           type="button"
-          className={cn(
-            TOOLBOX_OPTION_BUTTON_CLASSNAME,
-            'min-h-10 gap-2.5'
-          )}
+          className="min-h-10 gap-2.5"
           pressed={value === option.key}
           onClick={() => onChange(option.key)}
         >
@@ -81,8 +73,8 @@ export const EdgeMenu = ({
             <EdgePresetGlyph preset={option.key} />
           </span>
           <span className="text-sm leading-5 text-fg">{option.label}</span>
-        </ToolboxButton>
+        </PickerOptionButton>
       ))}
     </div>
-  </ToolboxMenuSection>
+  </PickerSection>
 )

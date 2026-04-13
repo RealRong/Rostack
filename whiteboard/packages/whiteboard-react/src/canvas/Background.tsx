@@ -30,7 +30,7 @@ export const Background = () => {
     const step = resolveStep(viewport.zoom)
     const offsetX = viewport.center.x * viewport.zoom
     const offsetY = viewport.center.y * viewport.zoom
-    const color = background?.color ?? 'var(--wb-canvas-pattern-color)'
+    const color = background?.color ?? 'rgb(from var(--ui-text-primary) r g b / 0.08)'
 
     return {
       backgroundImage:

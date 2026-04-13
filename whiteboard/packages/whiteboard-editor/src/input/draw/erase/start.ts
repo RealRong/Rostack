@@ -22,10 +22,10 @@ export type EraseState = {
 const queryDrawNodeIdsInRect = (
   ctx: InteractionContext,
   rect: Rect
-): readonly NodeId[] => ctx.read.node.idsInRect(rect, {
+): readonly NodeId[] => ctx.query.node.idsInRect(rect, {
   match: 'touch'
 }).filter((nodeId) => (
-  ctx.read.node.item.get(nodeId)?.node.type === 'draw'
+  ctx.query.node.item.get(nodeId)?.node.type === 'draw'
 ))
 
 const collectErasePoint = (
@@ -35,7 +35,7 @@ const collectErasePoint = (
 ): EraseState => {
   const halfWorld =
     ERASER_HIT_EPSILON_SCREEN
-    / Math.max(ctx.read.viewport.get().zoom, ZOOM_EPSILON)
+    / Math.max(ctx.query.viewport.get().zoom, ZOOM_EPSILON)
   const nodeIds = queryDrawNodeIdsInRect(
     ctx,
     getSegmentBounds(state.lastWorld, world, halfWorld)
@@ -74,7 +74,7 @@ export const startEraseState = (
   ctx: InteractionContext,
   input: PointerDownInput
 ): EraseState | null => {
-  const tool = ctx.read.tool.get()
+  const tool = ctx.query.tool.get()
 
   if (
     tool.type !== 'draw'
@@ -111,6 +111,6 @@ export const commitEraseState = (
   state: EraseState
 ) => {
   if (state.ids.length > 0) {
-    ctx.write.node.delete([...state.ids])
+    ctx.command.node.delete([...state.ids])
   }
 }

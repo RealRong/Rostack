@@ -5,8 +5,8 @@ import {
   useDataViewValue
 } from '@dataview/react/dataview'
 import {
-  type KanbanActiveState
-} from './runtime'
+  type ActiveKanbanViewState
+} from './types'
 import type { ViewState } from '@dataview/engine'
 
 const DEFAULT_COLUMN_WIDTH = 320
@@ -17,9 +17,9 @@ const contentInsetStyle = {
 
 const readKanbanActiveState = (
   state: ViewState | undefined
-): KanbanActiveState | undefined => (
+): ActiveKanbanViewState | undefined => (
   state?.view.type === 'kanban'
-    ? state as KanbanActiveState
+    ? state as ActiveKanbanViewState
     : undefined
 )
 

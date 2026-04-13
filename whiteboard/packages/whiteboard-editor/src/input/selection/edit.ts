@@ -1,5 +1,5 @@
 import type { Node } from '@whiteboard/core/types'
-import type { EditField } from '../../state/edit'
+import type { EditField } from '../../local/session/edit'
 
 export const resolveSelectionEditField = (
   node: Node | undefined

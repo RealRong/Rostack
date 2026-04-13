@@ -12,7 +12,7 @@ import {
 import type {
   IndexState,
   SectionAggregateState
-} from '../../index/types'
+} from '../../index/contracts'
 import type { SectionKey } from '../../../contracts/public'
 import type {
   SectionState,
@@ -29,7 +29,7 @@ const sameIds = (
 
 const buildSectionFieldState = (input: {
   sectionIds: readonly string[]
-  entries: ReadonlyMap<string, import('../../index/types').AggregateEntry>
+  entries: ReadonlyMap<string, import('../../index/contracts').AggregateEntry>
 }): SectionAggregateState => buildSectionAggregateState(new Map(
   input.sectionIds.flatMap(recordId => {
     const entry = input.entries.get(recordId)

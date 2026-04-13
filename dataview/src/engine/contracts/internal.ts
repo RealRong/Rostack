@@ -1,17 +1,17 @@
-import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
 import type {
   SectionAggregateState
-} from '../active/index/types'
+} from '../active/index/contracts'
 import type {
+  ItemId,
   SectionBucket,
   SectionKey,
   ViewRecords,
-  ViewState
-} from './public'
+  ViewSummaries
+} from './shared'
 export type {
   ActiveRuntimeState,
   EngineRuntimeState,
@@ -38,7 +38,7 @@ export interface SectionNodeState {
   color?: string
   bucket?: SectionBucket
   recordIds: readonly RecordId[]
-  itemIds: readonly import('./public').ItemId[]
+  itemIds: readonly ItemId[]
   visible: boolean
   collapsed: boolean
 }
@@ -90,7 +90,7 @@ export const emptyViewRecords = (): ViewRecords => ({
   visible: []
 })
 
-export const emptySummaries = (): ReadonlyMap<SectionKey, CalculationCollection> => new Map()
+export const emptySummaries = (): ViewSummaries => new Map()
 
 export const readQueryVisibleSet = (
   state: QueryState

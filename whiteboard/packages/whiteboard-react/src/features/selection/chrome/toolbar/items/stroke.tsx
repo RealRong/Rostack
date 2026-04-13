@@ -1,6 +1,5 @@
-import { Button } from '@ui'
+import { ToolbarIconButton, ToolbarStrokeIcon } from '@rostack/ui'
 import { BorderPanel } from '../../panels/BorderPanel'
-import { preventToolbarPointerDown, ToolbarStrokeIcon } from '../primitives'
 import type { ToolbarItemSpec } from './types'
 
 export const strokeItem: ToolbarItemSpec = {
@@ -12,14 +11,11 @@ export const strokeItem: ToolbarItemSpec = {
     togglePanel,
     registerPanelButton
   }) => (
-    <Button
+    <ToolbarIconButton
       ref={(element) => {
         registerPanelButton('stroke', element)
       }}
-      variant="ghost"
-      pressed={activePanelKey === 'stroke'}
-      className="h-9 w-9 rounded-xl p-0"
-      onPointerDown={preventToolbarPointerDown}
+      active={activePanelKey === 'stroke'}
       onClick={() => {
         togglePanel('stroke')
       }}
@@ -34,7 +30,7 @@ export const strokeItem: ToolbarItemSpec = {
           ? context.strokeOpacity
           : context.opacity}
       />
-    </Button>
+    </ToolbarIconButton>
   ),
   renderPanel: ({
     context,

@@ -1,4 +1,3 @@
-import { createDerivedStore, read as readValue } from '@shared/core'
 import type { Engine } from '@whiteboard/engine'
 import type { Viewport } from '@whiteboard/core/types'
 import type { NodeRegistry } from '../types/node'
@@ -6,23 +5,17 @@ import type { Tool } from '../types/tool'
 import {
   DEFAULT_DRAW_STATE,
   type DrawState
-} from '../model/draw/state'
+} from '../local/draw/state'
 import type { Editor } from '../types/editor'
-import {
-  createInteractionRuntime,
-  createSnapRuntime
-} from '../input/core'
+import { createSnapRuntime } from '../input/core'
 import type { InteractionContext } from '../input/context'
-import type { InteractionBinding } from '../input/core/types'
-import { createViewport } from './viewport'
 import { createEditorInteractions } from '../input'
 import { createEdgeHoverService } from '../input/edge/hover'
-import { createOverlay } from '../overlay'
-import { createRead } from '../read'
-import { createEditorStateController } from '../state'
+import { createLocalRuntime } from '../local/runtime'
+import { createQueryRuntime } from '../query'
+import { createCommandRuntime } from '../command'
 import { createEditorInput } from './input'
-import { createEditorState } from './state'
-import { createEditorCommands } from '../write'
+import { createEditorFacade } from './facade'
 
 export const createEditor = ({
   engine,
@@ -37,49 +30,26 @@ export const createEditor = ({
   initialViewport: Viewport
   registry: NodeRegistry
 }): Editor => {
-  const runtime = createEditorStateController({
+  const local = createLocalRuntime({
     initialTool,
-    initialDrawState
+    initialDrawState,
+    initialViewport,
+    registry
   })
-  const viewport = createViewport({
-    initialViewport
-  })
-  let interactions: readonly InteractionBinding[] = []
-  const interaction = createInteractionRuntime({
-    getViewport: () => viewport.input,
-    getBindings: () => interactions,
-    space: runtime.state.space
-  })
-  const overlay = createOverlay({
-    viewport: viewport.read,
-    gesture: interaction.gesture
-  })
-  const readBundle = createRead({
+  const query = createQueryRuntime({
     engineRead: engine.read,
     registry,
     history: engine.history,
-    runtime,
-    interaction,
-    overlay,
-    viewport
+    local
   })
-  const read = readBundle.read
-  const state = createEditorState({
-    interaction,
-    runtime,
-    viewport: viewport.read
-  })
-  const write = createEditorCommands({
+  local.bindQuery(query.read)
+  const command = createCommandRuntime({
     engine,
-    read,
-    registry,
-    runtime,
-    overlay,
-    viewport,
-    state
+    read: query.read,
+    local
   })
   const snap = createSnapRuntime({
-    readZoom: () => viewport.read.get().zoom,
+    readZoom: () => local.viewport.read.get().zoom,
     node: {
       config: engine.config.node,
       query: engine.read.index.snap.inRect
@@ -87,198 +57,35 @@ export const createEditor = ({
     edge: {
       config: engine.config.edge,
       nodeSize: engine.config.nodeSize,
-      query: read.edge.connectCandidates
+      query: query.read.edge.connectCandidates
     }
   })
 
   const interactionContext: InteractionContext = {
-    read,
-    selection: readBundle.selectionModel,
-    write,
+    query: query.read,
+    selection: query.selectionModel,
+    command,
+    local: local.actions,
     config: engine.config,
     snap
   }
   const edgeHover = createEdgeHoverService(interactionContext)
 
-  interactions = createEditorInteractions(interactionContext)
+  local.bindInteractions(
+    createEditorInteractions(interactionContext)
+  )
   const input = createEditorInput({
-    interaction,
+    interaction: local.interaction,
     edgeHover,
-    read,
-    write,
-    selection: state.selection
+    read: query.read,
+    local
   })
 
-  const resetRuntimeState = () => {
-    input.cancel()
-    overlay.reset()
-    runtime.resetLocal()
-  }
-
-  const unsubscribeCommit = engine.commit.subscribe(() => {
-    const commit = engine.commit.get()
-    if (!commit) {
-      return
-    }
-
-    if (commit.kind === 'replace') {
-      resetRuntimeState()
-      return
-    }
-
-    runtime.reconcileAfterCommit(read)
+  return createEditorFacade({
+    engine,
+    local,
+    query,
+    command,
+    input
   })
-
-  const {
-    replace: replaceDocument
-  } = write.document
-  const chrome = createDerivedStore({
-    get: () => ({
-      marquee: readValue(read.overlay.feedback.marquee),
-      draw: readValue(read.overlay.feedback.draw),
-      edgeGuide: readValue(read.overlay.feedback.edgeGuide),
-      snap: readValue(read.overlay.feedback.snap),
-      selection: readValue(read.selection.overlay)
-    }),
-    isEqual: (left, right) => (
-      left.marquee === right.marquee
-      && left.draw === right.draw
-      && left.edgeGuide === right.edgeGuide
-      && left.snap === right.snap
-      && left.selection === right.selection
-    )
-  })
-  const panel = createDerivedStore({
-    get: () => ({
-      nodeToolbar: readValue(read.selection.nodeToolbar),
-      edgeToolbar: readValue(read.edge.toolbar),
-      history: readValue(read.history),
-      draw: readValue(read.draw)
-    }),
-    isEqual: (left, right) => (
-      left.nodeToolbar === right.nodeToolbar
-      && left.edgeToolbar === right.edgeToolbar
-      && left.history === right.history
-      && left.draw === right.draw
-    )
-  })
-  const disposeListeners = new Set<() => void>()
-  const dispose = () => {
-    unsubscribeCommit()
-    resetRuntimeState()
-    Array.from(disposeListeners).forEach(listener => listener())
-    disposeListeners.clear()
-    engine.dispose()
-  }
-
-  const editor = {
-    store: state,
-    read: {
-      ...read,
-      chrome,
-      panel,
-      selectionModel: readBundle.selectionModel
-    },
-    actions: {
-      app: {
-        reset: resetRuntimeState,
-        replace: replaceDocument,
-        export: () => engine.document.get(),
-        configure: (config) => {
-          engine.configure({
-            mindmapLayout: config.mindmapLayout,
-            history: config.history
-          })
-        },
-        dispose
-      },
-      tool: {
-        set: write.session.tool.set,
-        select: () => {
-          write.session.tool.set({ type: 'select' })
-        },
-        draw: (mode) => {
-          write.session.tool.set({ type: 'draw', mode })
-        },
-        edge: (preset) => {
-          write.session.tool.set({ type: 'edge', preset })
-        },
-        insert: (preset) => {
-          write.session.tool.set({ type: 'insert', preset })
-        },
-        hand: () => {
-          write.session.tool.set({ type: 'hand' })
-        }
-      },
-      viewport: {
-        set: write.view.viewport.set,
-        panBy: write.view.viewport.panBy,
-        zoomTo: write.view.viewport.zoomTo,
-        fit: write.view.viewport.fit,
-        reset: write.view.viewport.reset,
-        setRect: write.view.viewport.setRect,
-        setLimits: write.view.viewport.setLimits
-      },
-      draw: write.view.draw,
-      selection: {
-        replace: write.session.selection.replace,
-        add: write.session.selection.add,
-        remove: write.session.selection.remove,
-        toggle: write.session.selection.toggle,
-        selectAll: write.session.selection.selectAll,
-        clear: write.session.selection.clear,
-        frame: write.selection.frame,
-        order: write.selection.order,
-        group: write.selection.group,
-        ungroup: write.selection.ungroup,
-        delete: write.selection.delete,
-        duplicate: write.selection.duplicate
-      },
-      edit: {
-        ...write.session.edit,
-        cancel: write.edit.cancel,
-        commit: write.edit.commit
-      },
-      interaction: input,
-      node: write.node,
-      edge: {
-        create: write.edge.create,
-        patch: write.edge.patch,
-        move: write.edge.move,
-        reconnect: write.edge.reconnect,
-        delete: write.edge.delete,
-        route: write.edge.route,
-        label: write.edge.label,
-        style: write.edge.style,
-        type: write.edge.type,
-        textMode: write.edge.textMode
-      },
-      mindmap: write.mindmap,
-      clipboard: write.clipboard,
-      history: write.history
-    },
-    events: {
-      change: (listener) => engine.commit.subscribe(() => {
-        const commit = engine.commit.get()
-        if (!commit) {
-          return
-        }
-        listener(commit.doc, commit)
-      }),
-      history: (listener) => read.history.subscribe(() => {
-        listener(read.history.get())
-      }),
-      selection: (listener) => state.selection.subscribe(() => {
-        listener(state.selection.get())
-      }),
-      dispose: (listener) => {
-        disposeListeners.add(listener)
-        return () => {
-          disposeListeners.delete(listener)
-        }
-      }
-    }
-  } satisfies Editor
-
-  return editor
 }

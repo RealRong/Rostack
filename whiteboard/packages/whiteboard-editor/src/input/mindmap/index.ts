@@ -13,9 +13,9 @@ export const createMindmapInteraction = (
   key: 'mindmap',
   start: (input) => {
     const state = startMindmapDrag({
-      tool: ctx.read.tool.get(),
+      tool: ctx.query.tool.get(),
       pointer: input,
-      mindmap: ctx.read.mindmap
+      mindmap: ctx.query.mindmap
     })
 
     return state

@@ -10,11 +10,11 @@ import {
 import {
   sameSorters
 } from '@dataview/core/sort'
-import type { ViewQuery } from '@dataview/core/contracts'
+import type { DocumentViewQuery } from '@dataview/core/contracts'
 
 export const isSameViewQuery = (
-  left: ViewQuery,
-  right: ViewQuery
+  left: DocumentViewQuery,
+  right: DocumentViewQuery
 ) => {
   if (!sameSearch(left.search, right.search)) {
     return false

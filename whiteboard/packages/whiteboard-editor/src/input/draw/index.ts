@@ -16,7 +16,7 @@ export const createDrawInteraction = (
 ): InteractionBinding => ({
   key: 'draw',
   start: (input) => {
-    const tool = ctx.read.tool.get()
+    const tool = ctx.query.tool.get()
 
     if (tool.type !== 'draw') {
       return null

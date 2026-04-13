@@ -19,11 +19,11 @@ const commitConnectState = (
   }
 
   if (commit.kind === 'reconnect') {
-    ctx.write.edge.reconnect(commit.edgeId, commit.end, commit.target)
+    ctx.command.edge.reconnect(commit.edgeId, commit.end, commit.target)
     return
   }
 
-  ctx.write.edge.create(commit.input)
+  ctx.command.edge.create(commit.input)
 }
 
 export const createEdgeConnectSession = (
@@ -40,7 +40,7 @@ export const createEdgeConnectSession = (
   ) => Math.hypot(
     world.x - originWorld.x,
     world.y - originWorld.y
-  ) > 3 / Math.max(ctx.read.viewport.get().zoom, 0.0001)
+  ) > 3 / Math.max(ctx.query.viewport.get().zoom, 0.0001)
 
   const project = (
     world: PointerDownInput['world'],
@@ -52,7 +52,7 @@ export const createEdgeConnectSession = (
 
     lastWorld = world
     const result = stepEdgeConnect({
-      node: ctx.read.node,
+      node: ctx.query.node,
       state,
       world,
       snap: ctx.snap.edge.connect,
@@ -66,7 +66,7 @@ export const createEdgeConnectSession = (
   }
 
   const initialProjection = stepEdgeConnect({
-    node: ctx.read.node,
+    node: ctx.query.node,
     state,
     world: lastWorld,
     snap: ctx.snap.edge.connect,
@@ -84,7 +84,7 @@ export const createEdgeConnectSession = (
     autoPan: {
       frame: (pointer) => {
         project(
-          ctx.read.viewport.pointer(pointer).world,
+          ctx.query.viewport.pointer(pointer).world,
           state.pointerId
         )
       }

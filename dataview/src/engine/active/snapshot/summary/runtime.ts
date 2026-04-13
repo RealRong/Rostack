@@ -14,7 +14,7 @@ import {
   collectTouchedRecordIds,
   collectValueFieldIds
 } from '../../index/shared'
-import type { IndexState } from '../../index/types'
+import type { IndexState } from '../../index/contracts'
 import type {
   DeriveAction,
   SectionState,

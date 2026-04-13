@@ -1,3 +1,4 @@
+import { PickerPanelSurface } from '@rostack/ui'
 import type {
   ToolPaletteMenuKey,
   ToolPaletteView
@@ -8,8 +9,6 @@ import { MindmapMenu } from './menus/MindmapMenu'
 import { ShapeMenu } from './menus/ShapeMenu'
 import { StickyMenu } from './menus/StickyMenu'
 import type { ToolPaletteController } from './controller'
-import { TOOLBOX_PANEL_CLASSNAME } from './primitives'
-import { cn } from '@ui'
 
 export const ToolPaletteMenu = ({
   openMenu,
@@ -41,12 +40,7 @@ export const ToolPaletteMenu = ({
   }
 
   return (
-    <div
-      className={cn(
-        'max-h-[calc(100vh-32px)] min-w-[220px] max-w-[320px] overflow-auto rounded-[10px] p-2 text-sm',
-        TOOLBOX_PANEL_CLASSNAME
-      )}
-    >
+    <PickerPanelSurface className="max-h-[calc(100vh-32px)] min-w-[220px] max-w-[320px] overflow-auto">
       {openMenu === 'edge' ? (
         <EdgeMenu
           value={palette.edgePreset}
@@ -71,6 +65,6 @@ export const ToolPaletteMenu = ({
           onChange={controller.selectInsertPreset}
         />
       ) : null}
-    </div>
+    </PickerPanelSurface>
   )
 }

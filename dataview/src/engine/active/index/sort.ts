@@ -21,7 +21,7 @@ import type {
   RecordIndex,
   SortFieldIndex,
   SortIndex
-} from './types'
+} from './contracts'
 
 const MAX_INCREMENTAL_TOUCHES = 64
 

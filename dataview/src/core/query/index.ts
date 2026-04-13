@@ -1,5 +1,5 @@
 export type {
-  ViewQuery
+  DocumentViewQuery
 } from '@dataview/core/contracts'
 export { normalizeViewQuery } from './normalize'
 export { isSameViewQuery } from './equality'

@@ -1,12 +1,10 @@
+import { Button, Panel, PanelSection, cn } from '@rostack/ui'
 import {
   SHAPE_MENU_SECTIONS,
   readShapePreviewFill,
   type ShapeKind
 } from '@whiteboard/core/node'
-import { Button, cn } from '@ui'
 import { ShapeGlyph } from '#react/features/node'
-import { preventToolbarPointerDown } from '../toolbar/primitives'
-import { Panel, PanelSection } from './ShapeToolbarPrimitives'
 
 export const ShapePickerPanel = ({
   value,
@@ -31,7 +29,6 @@ export const ShapePickerPanel = ({
                   active && 'border-accent bg-pressed'
                 )}
                 pressed={active}
-                onPointerDown={preventToolbarPointerDown}
                 onClick={() => onChange(item.kind)}
                 title={item.label}
                 aria-label={item.label}

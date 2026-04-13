@@ -2,8 +2,17 @@ import {
   useCallback,
   type RefObject
 } from 'react'
-import { Button } from '@ui'
 import { ArrowLeftRight, Type } from 'lucide-react'
+import {
+  ColorSwatchGrid,
+  Panel,
+  PanelSection,
+  SegmentedButton,
+  SliderSection,
+  ToolbarButton,
+  ToolbarDivider,
+  ToolbarIconButton
+} from '@rostack/ui'
 import type {
   EdgeDash,
   EdgeMarker,
@@ -14,18 +23,7 @@ import type {
 import { useStoreValue } from '@shared/react'
 import { useEditorRuntime } from '#react/runtime/hooks'
 import { FloatingToolbarShell } from '#react/features/selection/chrome/FloatingToolbarShell'
-import {
-  ColorSwatchGrid,
-  Panel,
-  PanelSection,
-  SegmentedButton,
-  SliderSection
-} from '#react/features/selection/chrome/panels/ShapeToolbarPrimitives'
 import { STROKE_COLOR_OPTIONS } from '#react/features/selection/chrome/menus/options'
-import {
-  ToolbarDivider,
-  ToolbarIconButton
-} from '#react/features/selection/chrome/toolbar/primitives'
 
 type PanelKey = 'start' | 'end' | 'line' | 'color' | 'text-mode'
 
@@ -285,13 +283,11 @@ export const EdgeToolbar = ({
         registerPanelButton
       }) => (
         <>
-          <Button
+          <ToolbarIconButton
             ref={(element) => {
               registerPanelButton('start', element)
             }}
-            variant="ghost"
-            pressed={activePanelKey === 'start'}
-            className="h-9 w-9 rounded-xl p-0"
+            active={activePanelKey === 'start'}
             onClick={() => {
               togglePanel('start')
             }}
@@ -299,7 +295,7 @@ export const EdgeToolbar = ({
             aria-label="Line start"
           >
             <EdgeMarkerIcon marker={toolbar.start} side="start" />
-          </Button>
+          </ToolbarIconButton>
           {single ? (
             <ToolbarIconButton
               active={false}
@@ -318,17 +314,15 @@ export const EdgeToolbar = ({
                   toolbar.start ?? 'none'
                 )
               }}
-            >
-              <ArrowLeftRight size={18} strokeWidth={1.9} />
-            </ToolbarIconButton>
+              >
+                <ArrowLeftRight size={18} strokeWidth={1.9} />
+              </ToolbarIconButton>
           ) : null}
-          <Button
+          <ToolbarIconButton
             ref={(element) => {
               registerPanelButton('end', element)
             }}
-            variant="ghost"
-            pressed={activePanelKey === 'end'}
-            className="h-9 w-9 rounded-xl p-0"
+            active={activePanelKey === 'end'}
             onClick={() => {
               togglePanel('end')
             }}
@@ -336,15 +330,13 @@ export const EdgeToolbar = ({
             aria-label="Line end"
           >
             <EdgeMarkerIcon marker={toolbar.end} side="end" />
-          </Button>
+          </ToolbarIconButton>
           <ToolbarDivider />
-          <Button
+          <ToolbarIconButton
             ref={(element) => {
               registerPanelButton('line', element)
             }}
-            variant="ghost"
-            pressed={activePanelKey === 'line'}
-            className="h-9 w-9 rounded-xl p-0"
+            active={activePanelKey === 'line'}
             onClick={() => {
               togglePanel('line')
             }}
@@ -356,14 +348,12 @@ export const EdgeToolbar = ({
               dash={toolbar.dash}
               color={toolbar.color}
             />
-          </Button>
-          <Button
+          </ToolbarIconButton>
+          <ToolbarIconButton
             ref={(element) => {
               registerPanelButton('color', element)
             }}
-            variant="ghost"
-            pressed={activePanelKey === 'color'}
-            className="h-9 w-9 rounded-xl p-0"
+            active={activePanelKey === 'color'}
             onClick={() => {
               togglePanel('color')
             }}
@@ -371,7 +361,7 @@ export const EdgeToolbar = ({
             aria-label="Color"
           >
             <EdgeColorIcon color={toolbar.color} />
-          </Button>
+          </ToolbarIconButton>
           {single ? (
             <>
               <ToolbarDivider />
@@ -387,13 +377,12 @@ export const EdgeToolbar = ({
               >
                 <Type size={18} strokeWidth={1.9} />
               </ToolbarIconButton>
-              <Button
+              <ToolbarButton
                 ref={(element) => {
                   registerPanelButton('text-mode', element)
                 }}
-                variant="ghost"
-                pressed={activePanelKey === 'text-mode'}
-                className="h-9 min-w-[76px] rounded-xl px-3 text-sm font-medium text-fg"
+                active={activePanelKey === 'text-mode'}
+                className="min-w-[76px]"
                 onClick={() => {
                   togglePanel('text-mode')
                 }}
@@ -401,7 +390,7 @@ export const EdgeToolbar = ({
                 aria-label="Text position"
               >
                 {toolbar.textMode ?? 'horizontal'}
-              </Button>
+              </ToolbarButton>
             </>
           ) : null}
         </>

@@ -4,7 +4,7 @@ import type {
   Point,
   SpatialNodeInput
 } from '@whiteboard/core/types'
-import type { EditField } from '../state/edit'
+import type { EditField } from '../local/session/edit'
 
 export type InsertPresetGroup =
   | 'text'

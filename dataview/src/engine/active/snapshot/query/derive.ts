@@ -33,7 +33,7 @@ import type {
   IndexState,
   SearchIndex,
   SearchTextIndex
-} from '../../index/types'
+} from '../../index/contracts'
 import type {
   QueryState
 } from '../../../contracts/internal'

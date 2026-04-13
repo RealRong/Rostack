@@ -1,5 +1,5 @@
 import type {
-  ViewQuery
+  DocumentViewQuery
 } from '@dataview/core/contracts'
 import {
   normalizeGroup
@@ -12,8 +12,8 @@ import {
 } from '@dataview/core/sort'
 
 export const normalizeViewQuery = (
-  query?: Partial<Pick<ViewQuery, 'search' | 'filter' | 'group' | 'sort'>>
-): ViewQuery => {
+  query?: Partial<Pick<DocumentViewQuery, 'search' | 'filter' | 'group' | 'sort'>>
+): DocumentViewQuery => {
   return {
     search: normalizeSearch(query?.search),
     filter: query?.filter

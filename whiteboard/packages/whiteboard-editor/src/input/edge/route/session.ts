@@ -22,7 +22,7 @@ type PointerClient = {
 const readViewportWorld = (
   ctx: InteractionContext,
   pointer: PointerClient
-) => ctx.read.viewport.pointer(pointer).world
+) => ctx.query.viewport.pointer(pointer).world
 
 const readRouteGesture = (
   state: EdgeRouteHandleState,
@@ -52,8 +52,8 @@ export const createEdgeRouteSession = (
   const step = (
     pointer: PointerClient
   ) => {
-    const item = ctx.read.edge.item.get(state.edgeId)
-    if (!item || !ctx.read.edge.capability(item.edge).editRoute) {
+    const item = ctx.query.edge.item.get(state.edgeId)
+    if (!item || !ctx.query.edge.capability(item.edge).editRoute) {
       return CANCEL
     }
 
@@ -96,13 +96,13 @@ export const createEdgeRouteSession = (
 
       const commit = commitEdgeRoute(state)
       if (commit?.kind === 'update-route') {
-        ctx.write.edge.update(commit.edgeId, {
+        ctx.command.edge.update(commit.edgeId, {
           route: commit.route
         })
       }
 
       if (commit?.kind === 'move-point') {
-        ctx.write.edge.route.move(commit.edgeId, commit.index, commit.point)
+        ctx.command.edge.route.move(commit.edgeId, commit.index, commit.point)
       }
 
       return FINISH

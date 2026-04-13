@@ -4,12 +4,14 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import { now } from '../runtime/clock'
-import type { IndexState } from './index/types'
+import type { IndexState } from './index/contracts'
 import type { ViewCache } from '../contracts/internal'
 import type {
+  ViewRuntimeResult
+} from '../contracts/runtime'
+import type {
   SnapshotTrace,
-  ViewState,
-  ViewTrace
+  ViewState
 } from '../contracts/public'
 import {
   emptyViewCache
@@ -41,16 +43,6 @@ const createSnapshotTrace = (
       ? [...SNAPSHOT_KEYS]
       : []
 })
-
-export interface ViewRuntimeResult {
-  cache: ViewCache
-  snapshot?: ViewState
-  trace?: {
-    view: ViewTrace
-    snapshot: SnapshotTrace
-    snapshotMs: number
-  }
-}
 
 export const createViewRuntime = (input: {
   doc: DataDoc

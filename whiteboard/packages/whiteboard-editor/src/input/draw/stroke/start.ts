@@ -10,7 +10,7 @@ import {
   type DrawPreview,
   type DrawState,
   type DrawStyle
-} from '../../../model/draw'
+} from '../../../local/draw'
 import type { PointerDownInput, PointerSample } from '../../../types/input'
 import type { Tool } from '../../../types/tool'
 

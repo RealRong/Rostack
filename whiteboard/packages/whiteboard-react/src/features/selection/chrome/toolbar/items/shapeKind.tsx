@@ -1,7 +1,6 @@
-import { Button } from '@ui'
+import { ToolbarButton } from '@rostack/ui'
 import { ShapeGlyph } from '#react/features/node'
 import { ShapePickerPanel } from '../../panels/ShapePickerPanel'
-import { preventToolbarPointerDown } from '../primitives'
 import type { ToolbarItemSpec } from './types'
 
 export const shapeKindItem: ToolbarItemSpec = {
@@ -14,14 +13,12 @@ export const shapeKindItem: ToolbarItemSpec = {
     togglePanel,
     registerPanelButton
   }) => (
-    <Button
+    <ToolbarButton
       ref={(element) => {
         registerPanelButton('shape-kind', element)
       }}
-      variant="ghost"
-      pressed={activePanelKey === 'shape-kind'}
-      className="h-9 rounded-xl px-2.5"
-      onPointerDown={preventToolbarPointerDown}
+      active={activePanelKey === 'shape-kind'}
+      className="px-2.5"
       onClick={() => {
         togglePanel('shape-kind')
       }}
@@ -36,7 +33,7 @@ export const shapeKindItem: ToolbarItemSpec = {
         stroke="currentColor"
         strokeWidth={4}
       />
-    </Button>
+    </ToolbarButton>
   ),
   renderPanel: ({
     context,

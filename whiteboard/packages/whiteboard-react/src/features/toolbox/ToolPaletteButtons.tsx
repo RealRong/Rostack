@@ -10,6 +10,12 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import {
+  FloatingSurface,
+  PickerDivider,
+  PickerIconButton,
+  PickerTintBar
+} from '@rostack/ui'
+import {
   type Tool
 } from '@whiteboard/editor'
 import type { DrawMode } from '@whiteboard/editor/draw'
@@ -23,14 +29,6 @@ import {
 import { EdgePresetGlyph } from './menus/EdgeMenu'
 import { TEXT_INSERT_PRESET } from './presets'
 import type { ToolPaletteController } from './controller'
-import {
-  TOOLBOX_BUTTON_TINT_CLASSNAME,
-  TOOLBOX_GRID_BUTTON_CLASSNAME,
-  TOOLBOX_ICON_BUTTON_CLASSNAME,
-  TOOLBOX_SURFACE_CLASSNAME,
-  ToolboxButton
-} from './primitives'
-import { cn } from '@ui'
 
 const ToolIcon = ({
   icon: Icon
@@ -67,26 +65,28 @@ export const ToolPaletteButtons = ({
   const toolIcon = tool.type === 'hand' ? Hand : MousePointer2
 
   return (
-    <div className={cn(
-      TOOLBOX_SURFACE_CLASSNAME,
-      'pointer-events-auto absolute left-4 top-4 flex w-[52px] flex-col gap-1 p-1.5'
-    )}>
-      <ToolboxButton
+    <FloatingSurface
+      variant="compact"
+      className="absolute left-4 top-4 flex w-[52px] flex-col gap-1 p-1.5"
+      onPointerDown={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+      }}
+    >
+      <PickerIconButton
         type="button"
-        className={TOOLBOX_ICON_BUTTON_CLASSNAME}
         pressed={tool.type === 'select' || tool.type === 'hand'}
         onClick={controller.togglePrimaryTool}
         title={tool.type === 'hand' ? 'Hand' : 'Select'}
       >
         <ToolIcon icon={toolIcon} />
-      </ToolboxButton>
-      <div className="mx-0 my-0.5 h-px w-full bg-[rgb(from_var(--ui-border-subtle)_r_g_b_/_0.4)]" />
-      <ToolboxButton
+      </PickerIconButton>
+      <PickerDivider />
+      <PickerIconButton
         ref={(element) => {
           buttonRefByKey.current.edge = element
         }}
         type="button"
-        className={TOOLBOX_ICON_BUTTON_CLASSNAME}
         pressed={tool.type === 'edge'}
         onClick={controller.toggleEdgeMenu}
         title="Edge"
@@ -94,42 +94,38 @@ export const ToolPaletteButtons = ({
         <span className="inline-flex h-[22px] w-[22px] items-center justify-center text-current">
           <EdgePresetGlyph preset={palette.edgePreset} />
         </span>
-      </ToolboxButton>
-      <ToolboxButton
+      </PickerIconButton>
+      <PickerIconButton
         ref={(element) => {
           buttonRefByKey.current.sticky = element
         }}
         type="button"
-        className={TOOLBOX_ICON_BUTTON_CLASSNAME}
         pressed={palette.insertGroup === 'sticky'}
         onClick={() => {
           controller.toggleInsertMenu('sticky')
         }}
         title="Sticky note"
       >
-        <span
-          className={TOOLBOX_BUTTON_TINT_CLASSNAME}
+        <PickerTintBar
           style={{
             background: palette.stickyTone?.fill
           }}
         />
         <ToolIcon icon={StickyNote} />
-      </ToolboxButton>
-      <ToolboxButton
+      </PickerIconButton>
+      <PickerIconButton
         type="button"
-        className={TOOLBOX_ICON_BUTTON_CLASSNAME}
         pressed={tool.type === 'insert' && tool.preset === TEXT_INSERT_PRESET.key}
         onClick={controller.activateTextTool}
         title="Text"
       >
         <ToolIcon icon={Type} />
-      </ToolboxButton>
-      <ToolboxButton
+      </PickerIconButton>
+      <PickerIconButton
         ref={(element) => {
           buttonRefByKey.current.shape = element
         }}
         type="button"
-        className={TOOLBOX_ICON_BUTTON_CLASSNAME}
         pressed={palette.insertGroup === 'shape'}
         onClick={() => {
           controller.toggleInsertMenu('shape')
@@ -148,20 +144,18 @@ export const ToolPaletteButtons = ({
             />
           </span>
         ) : null}
-      </ToolboxButton>
-      <ToolboxButton
+      </PickerIconButton>
+      <PickerIconButton
         ref={(element) => {
           buttonRefByKey.current.draw = element
         }}
         type="button"
-        className={TOOLBOX_ICON_BUTTON_CLASSNAME}
         pressed={tool.type === 'draw'}
         onClick={controller.toggleDrawMenu}
         title="Draw"
       >
         {palette.drawButtonStyle ? (
-          <span
-            className={TOOLBOX_BUTTON_TINT_CLASSNAME}
+          <PickerTintBar
             style={{
               background: palette.drawButtonStyle.color,
               opacity: palette.drawButtonStyle.opacity
@@ -169,13 +163,12 @@ export const ToolPaletteButtons = ({
           />
         ) : null}
         <ToolIcon icon={DrawButtonIcon} />
-      </ToolboxButton>
-      <ToolboxButton
+      </PickerIconButton>
+      <PickerIconButton
         ref={(element) => {
           buttonRefByKey.current.mindmap = element
         }}
         type="button"
-        className={TOOLBOX_ICON_BUTTON_CLASSNAME}
         pressed={palette.insertGroup === 'mindmap'}
         onClick={() => {
           controller.toggleInsertMenu('mindmap')
@@ -183,7 +176,7 @@ export const ToolPaletteButtons = ({
         title="Mindmap"
       >
         <ToolIcon icon={GitBranch} />
-      </ToolboxButton>
-    </div>
+      </PickerIconButton>
+    </FloatingSurface>
   )
 }

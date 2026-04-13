@@ -26,8 +26,8 @@ import type {
 import type { PointerDownInput } from '../../../types/input'
 import type { EdgePresetKey, Tool } from '../../../types/tool'
 import type { EdgeGestureDraft } from '../../core/gesture'
-import type { EdgeRead } from '../../../read/edge'
-import type { NodeCanvasSnapshot, NodeRead } from '../../../read/node'
+import type { EdgeRead } from '../../../query/edge/read'
+import type { NodeCanvasSnapshot, NodeRead } from '../../../query/node/read'
 
 type EdgeConnectNodeRead = Pick<NodeRead, 'canvas' | 'capability'>
 type EdgeConnectPreviewNodeRead = Pick<NodeRead, 'canvas'>

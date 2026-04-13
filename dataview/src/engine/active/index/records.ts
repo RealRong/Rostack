@@ -14,7 +14,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   RecordIndex
-} from './types'
+} from './contracts'
 import {
   createOrderIndex
 } from './shared'

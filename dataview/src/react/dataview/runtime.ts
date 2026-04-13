@@ -9,8 +9,6 @@ import {
   createPageSessionApi
 } from '@dataview/react/page/session/api'
 import type {
-  PageState,
-  PageSessionApi,
   PageSessionInput
 } from '@dataview/react/page/session/types'
 import {
@@ -30,7 +28,6 @@ import {
 } from '@dataview/react/runtime/inlineSession'
 import {
   createValueEditorApi,
-  type ValueEditorController
 } from '@dataview/react/runtime/valueEditor'
 import {
   createMarqueeApi,
@@ -42,21 +39,9 @@ import type {
 import type {
   View
 } from '@dataview/core/contracts'
-
-export interface DataViewContextValue {
-  engine: Engine
-  page: PageSessionApi & {
-    store: ReadStore<PageState>
-  }
-  selection: SelectionApi
-  marquee: MarqueeApi
-  inlineSession: InlineSessionApi
-  valueEditor: ValueEditorController
-}
-
-export interface DataViewSession extends DataViewContextValue {
-  dispose(): void
-}
+import type {
+  DataViewSession
+} from './types'
 
 const bindSelectionToAppearances = (input: {
   items: ReadStore<ItemList | undefined>

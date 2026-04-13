@@ -49,7 +49,7 @@ export const createEdgeBodyMoveSession = (
     pointerId: state.pointerId,
     gesture: null,
     autoPan: {
-      frame: (pointer) => step(ctx.read.viewport.pointer(pointer).world)
+      frame: (pointer) => step(ctx.query.viewport.pointer(pointer).world)
     },
     move: (input) => {
       const transition = step(input.world)
@@ -65,7 +65,7 @@ export const createEdgeBodyMoveSession = (
 
       const commit = commitEdgeMove(state)
       if (commit) {
-        ctx.write.edge.move(commit.edgeId, commit.delta)
+        ctx.command.edge.move(commit.edgeId, commit.delta)
       }
 
       return FINISH

@@ -1,11 +1,11 @@
-import { FILL_COLOR_OPTIONS } from '../menus/options'
 import {
   ColorSwatchGrid,
   Panel,
   PanelSection,
   SliderSection,
   formatPercent
-} from './ShapeToolbarPrimitives'
+} from '@rostack/ui'
+import { FILL_COLOR_OPTIONS } from '../menus/options'
 
 export const FillPanel = ({
   fill,

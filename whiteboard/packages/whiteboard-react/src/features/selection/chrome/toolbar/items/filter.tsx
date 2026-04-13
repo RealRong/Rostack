@@ -1,7 +1,6 @@
-import { Button } from '@ui'
+import { ToolbarButton } from '@rostack/ui'
 import { Shapes } from 'lucide-react'
 import { SelectionFilterMenu } from '../../panels/SelectionFilterMenu'
-import { preventToolbarPointerDown } from '../primitives'
 import type { ToolbarItemSpec } from './types'
 
 export const filterItem: ToolbarItemSpec = {
@@ -14,14 +13,12 @@ export const filterItem: ToolbarItemSpec = {
     togglePanel,
     registerPanelButton
   }) => (
-    <Button
+    <ToolbarButton
       ref={(element) => {
         registerPanelButton('filter', element)
       }}
-      variant="ghost"
-      pressed={activePanelKey === 'filter'}
-      className="h-9 min-w-0 gap-1.5 rounded-xl px-3 text-[13px] font-medium text-fg"
-      onPointerDown={preventToolbarPointerDown}
+      active={activePanelKey === 'filter'}
+      className="gap-1.5 text-[13px]"
       onClick={() => {
         togglePanel('filter')
       }}
@@ -30,7 +27,7 @@ export const filterItem: ToolbarItemSpec = {
     >
       <Shapes size={16} strokeWidth={1.9} />
       <span className="truncate">{context.filter?.label ?? 'Objects'}</span>
-    </Button>
+    </ToolbarButton>
   ),
   renderPanel: ({
     editor,

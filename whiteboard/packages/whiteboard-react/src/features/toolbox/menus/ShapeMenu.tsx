@@ -1,17 +1,12 @@
+import { PickerGridButton, PickerSection } from '@rostack/ui'
 import {
   SHAPE_MENU_SECTIONS,
   readShapePreviewFill
 } from '@whiteboard/core/node'
-import { cn } from '@ui'
 import {
   ShapeGlyph
 } from '#react/features/node'
 import { readShapePresetKind } from '../presets'
-import {
-  TOOLBOX_GRID_BUTTON_CLASSNAME,
-  ToolboxButton,
-  ToolboxMenuSection
-} from '../primitives'
 
 export const ShapeMenu = ({
   value,
@@ -25,21 +20,17 @@ export const ShapeMenu = ({
   return (
     <>
       {SHAPE_MENU_SECTIONS.map((section) => (
-        <ToolboxMenuSection key={section.key} title={section.title}>
+        <PickerSection key={section.key} title={section.title}>
           <div className="grid grid-cols-5 gap-2">
             {section.items.map((item) => {
               const preset = `shape.${item.kind}`
               const active = activeKind === item.kind
 
               return (
-                <ToolboxButton
+                <PickerGridButton
                   key={preset}
                   type="button"
-                  className={cn(
-                    TOOLBOX_GRID_BUTTON_CLASSNAME,
-                    'aspect-square items-center justify-center',
-                    active && '[box-shadow:inset_0_0_0_1px_rgb(from_var(--ui-accent)_r_g_b_/_0.45)]'
-                  )}
+                  className="aspect-square items-center justify-center"
                   pressed={active}
                   onClick={() => onChange(preset)}
                   aria-label={item.label}
@@ -56,11 +47,11 @@ export const ShapeMenu = ({
                       strokeWidth={4}
                     />
                   </span>
-                </ToolboxButton>
+                </PickerGridButton>
               )
             })}
           </div>
-        </ToolboxMenuSection>
+        </PickerSection>
       ))}
     </>
   )

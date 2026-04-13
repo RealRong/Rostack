@@ -4,8 +4,8 @@ import {
 } from '@shared/core'
 import type { Editor, EditorInteractionState } from '../types/editor'
 import type { InteractionRuntime } from '../input/core/types'
-import type { EditorViewportRuntime } from './types'
-import type { EditorStateController } from '../state'
+import type { EditorLocalRuntime } from '../local/runtime'
+import type { ViewportRuntime } from '../local/viewport/runtime'
 
 export const createEditorState = ({
   interaction,
@@ -13,8 +13,8 @@ export const createEditorState = ({
   viewport
 }: {
   interaction: InteractionRuntime
-  runtime: EditorStateController
-  viewport: EditorViewportRuntime['read']
+  runtime: EditorLocalRuntime
+  viewport: ViewportRuntime['read']
 }): Editor['store'] => {
   const interactionState = createDerivedStore<EditorInteractionState>({
     get: () => {
@@ -55,7 +55,10 @@ export const createEditorState = ({
   })
 
   return {
-    ...runtime.public.state,
+    tool: runtime.stores.tool,
+    draw: runtime.stores.draw,
+    edit: runtime.stores.edit,
+    selection: runtime.stores.selection,
     viewport,
     interaction: interactionState
   } satisfies Editor['store']

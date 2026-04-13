@@ -1,11 +1,10 @@
-import { Button } from '@ui'
+import { ToolbarIconButton } from '@rostack/ui'
 import {
   AlignCenter,
   AlignLeft,
   AlignRight
 } from 'lucide-react'
 import { TextAlignPanel } from '../../panels/TextAlignPanel'
-import { preventToolbarPointerDown } from '../primitives'
 import type { ToolbarItemSpec } from './types'
 
 const TEXT_ALIGN_OPTIONS = [
@@ -23,14 +22,11 @@ export const textAlignItem: ToolbarItemSpec = {
     togglePanel,
     registerPanelButton
   }) => (
-    <Button
+    <ToolbarIconButton
       ref={(element) => {
         registerPanelButton('text-align', element)
       }}
-      variant="ghost"
-      pressed={activePanelKey === 'text-align'}
-      className="h-9 w-9 rounded-xl p-0"
-      onPointerDown={preventToolbarPointerDown}
+      active={activePanelKey === 'text-align'}
       onClick={() => {
         togglePanel('text-align')
       }}
@@ -41,7 +37,7 @@ export const textAlignItem: ToolbarItemSpec = {
         const Icon = TEXT_ALIGN_OPTIONS.find((option) => option.key === context.textAlign)?.icon ?? AlignLeft
         return <Icon size={18} strokeWidth={1.9} />
       })()}
-    </Button>
+    </ToolbarIconButton>
   ),
   renderPanel: ({
     context,

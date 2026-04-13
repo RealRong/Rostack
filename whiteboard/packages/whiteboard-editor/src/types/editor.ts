@@ -5,7 +5,7 @@ import type {
   Document,
   Viewport
 } from '@whiteboard/core/types'
-import type { DrawState } from '../model/draw/state'
+import type { DrawState } from '../local/draw/state'
 import type {
   ContextMenuInput,
   ContextMenuIntent,
@@ -34,19 +34,19 @@ import type {
   ToolActions,
   ViewportActions
 } from './commands'
-import type { NodeCommands as RuntimeNodeCommands } from '../write/node/types'
-import type { EdgeCommands as RuntimeEdgeCommands } from '../write/edge'
-import type { RuntimeRead } from '../read'
-import type { SelectionModelRead } from '../read/selectionModel'
+import type { NodeCommands as RuntimeNodeCommands } from '../command/node/types'
+import type { EdgeCommands as RuntimeEdgeCommands } from '../command/edge'
+import type { RuntimeRead } from '../query'
+import type { SelectionModelRead } from '../query/selection/model'
 import type {
   ViewportInputRuntime,
   ViewportRead
-} from '../editor/viewport'
+} from '../local/viewport/runtime'
 import type {
   EditCaret,
   EditField,
   EditSession
-} from '../state/edit'
+} from '../local/session/edit'
 import type { Commit } from '@engine-types/commit'
 
 export type EditorClipboardTarget = ClipboardTarget

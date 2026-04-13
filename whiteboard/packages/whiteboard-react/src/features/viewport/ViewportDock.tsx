@@ -6,17 +6,19 @@ import {
   Undo2,
   type LucideIcon
 } from 'lucide-react'
+import {
+  FloatingLayer,
+  ToolbarBar,
+  ToolbarButton,
+  ToolbarDivider,
+  ToolbarIconButton
+} from '@rostack/ui'
 import { useStoreValue } from '@shared/react'
-import { Button, cn } from '@ui'
 import { useEditor } from '#react/runtime/hooks'
 
 const ZOOM_FACTOR = 1.2
-const iconButtonClassName = cn(
-  'h-9 w-9 rounded-[10px] text-fg-muted hover:text-fg'
-)
-const zoomButtonClassName = cn(
-  'h-9 min-w-[58px] rounded-[10px] px-2.5 text-sm font-medium text-fg-muted hover:text-fg'
-)
+const iconButtonClassName = 'text-fg-muted hover:text-fg'
+const zoomButtonClassName = 'min-w-[58px] px-2.5 text-fg-muted hover:text-fg'
 
 const ToolIcon = ({
   icon: Icon
@@ -46,14 +48,18 @@ export const ViewportDock = () => {
   }
 
   return (
-    <div
-      className="pointer-events-none absolute inset-0 z-[var(--wb-z-toolbar)] overflow-visible"
-    >
-      <div className="pointer-events-auto absolute bottom-4 right-4 inline-flex items-center gap-2 rounded-xl border border-[rgb(from_var(--ui-border-subtle)_r_g_b_/_0.4)] bg-floating p-1.5 shadow-popover">
+    <FloatingLayer className="z-[var(--wb-z-toolbar)]">
+      <ToolbarBar
+        variant="compact"
+        className="absolute bottom-4 right-4 gap-2 rounded-xl p-1.5"
+        onPointerDown={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+        }}
+      >
         <div className="inline-flex items-center gap-0.5">
-          <Button
+          <ToolbarIconButton
             type="button"
-            variant="ghost"
             className={iconButtonClassName}
             onClick={() => {
               editor.actions.history.undo()
@@ -62,10 +68,9 @@ export const ViewportDock = () => {
             title="Undo"
           >
             <ToolIcon icon={Undo2} />
-          </Button>
-          <Button
+          </ToolbarIconButton>
+          <ToolbarIconButton
             type="button"
-            variant="ghost"
             className={iconButtonClassName}
             onClick={() => {
               editor.actions.history.redo()
@@ -74,25 +79,23 @@ export const ViewportDock = () => {
             title="Redo"
           >
             <ToolIcon icon={Redo2} />
-          </Button>
+          </ToolbarIconButton>
         </div>
-        <div className="self-stretch border-l border-divider" />
+        <ToolbarDivider />
         <div className="inline-flex items-center gap-0.5">
-          <Button
+          <ToolbarIconButton
             type="button"
-            variant="ghost"
             className={iconButtonClassName}
             onClick={fitToScreen}
             title="Fit to screen"
           >
             <ToolIcon icon={Scan} />
-          </Button>
+          </ToolbarIconButton>
         </div>
-        <div className="self-stretch border-l border-divider" />
+        <ToolbarDivider />
         <div className="inline-flex items-center gap-0.5">
-          <Button
+          <ToolbarIconButton
             type="button"
-            variant="ghost"
             className={iconButtonClassName}
             onClick={() => {
               editor.actions.viewport.zoomTo(viewport.zoom / ZOOM_FACTOR)
@@ -100,10 +103,9 @@ export const ViewportDock = () => {
             title="Zoom out"
           >
             <ToolIcon icon={Minus} />
-          </Button>
-          <Button
+          </ToolbarIconButton>
+          <ToolbarButton
             type="button"
-            variant="ghost"
             className={zoomButtonClassName}
             onClick={() => {
               editor.actions.viewport.zoomTo(1)
@@ -111,10 +113,9 @@ export const ViewportDock = () => {
             title="Reset zoom"
           >
             {formatZoom(viewport.zoom)}
-          </Button>
-          <Button
+          </ToolbarButton>
+          <ToolbarIconButton
             type="button"
-            variant="ghost"
             className={iconButtonClassName}
             onClick={() => {
               editor.actions.viewport.zoomTo(viewport.zoom * ZOOM_FACTOR)
@@ -122,9 +123,9 @@ export const ViewportDock = () => {
             title="Zoom in"
           >
             <ToolIcon icon={Plus} />
-          </Button>
+          </ToolbarIconButton>
         </div>
-      </div>
-    </div>
+      </ToolbarBar>
+    </FloatingLayer>
   )
 }

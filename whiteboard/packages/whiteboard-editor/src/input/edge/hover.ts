@@ -13,15 +13,15 @@ export const createEdgeHoverService = (
   let hoverPoint: Point | null = null
 
   const hoverTask = createRafTask(() => {
-    if (!hoverPoint || ctx.read.tool.get().type !== 'edge') {
-      ctx.write.preview.edge.clearGuide()
+    if (!hoverPoint || ctx.query.tool.get().type !== 'edge') {
+      ctx.local.feedback.edge.clearGuide()
       return
     }
 
     const evaluation = ctx.snap.edge.connect({
       pointerWorld: hoverPoint
     })
-    ctx.write.preview.edge.setGuide(
+    ctx.local.feedback.edge.setGuide(
       evaluation.focusedNodeId || evaluation.resolution.mode !== 'free'
         ? {
             connect: {
@@ -36,12 +36,12 @@ export const createEdgeHoverService = (
   const clear = () => {
     hoverTask.cancel()
     hoverPoint = null
-    ctx.write.preview.edge.clearGuide()
+    ctx.local.feedback.edge.clearGuide()
   }
 
   return {
     move: (world) => {
-      if (ctx.read.tool.get().type !== 'edge') {
+      if (ctx.query.tool.get().type !== 'edge') {
         clear()
         return
       }

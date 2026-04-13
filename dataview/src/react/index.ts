@@ -4,14 +4,11 @@ export {
   useGalleryContext,
   useGalleryRuntime
 } from './views/gallery'
-export type { TableOptions, ViewDisplay } from '@dataview/core/contracts'
 export type {
   Gallery,
-  GalleryActiveState,
-  GalleryRuntime,
+  ActiveGalleryViewState,
   GalleryViewProps,
-  GalleryCardSize,
-  GalleryOptions
+  GalleryViewRuntime
 } from './views/gallery'
 export {
   KanbanView,
@@ -21,12 +18,10 @@ export {
 } from './views/kanban'
 export type {
   Kanban,
-  KanbanActiveState,
-  KanbanRuntime,
+  ActiveKanbanViewState,
   KanbanSectionVisibility,
   KanbanViewProps,
-  KanbanNewRecordPosition,
-  KanbanOptions
+  KanbanViewRuntime
 } from './views/kanban'
 export { Page } from './page'
 export type {
@@ -47,7 +42,8 @@ export {
 } from './dataview'
 export { meta, renderMessage } from '@dataview/meta'
 export type {
-  Engine,
+  DataViewContextValue,
+  DataViewSession,
   EngineProviderProps
 } from './dataview'
 export type {

@@ -12,7 +12,7 @@ const applyMindmapPreview = (
   ctx: InteractionContext,
   state: MindmapDragState
 ) => {
-  ctx.write.preview.mindmap.setDrag(
+  ctx.local.feedback.mindmap.setDrag(
     previewMindmapDrag(state)
   )
 }
@@ -33,7 +33,7 @@ export const createMindmapSession = (
     state = stepMindmapDrag({
       state,
       world,
-      mindmap: ctx.read.mindmap
+      mindmap: ctx.query.mindmap
     })
     applyMindmapPreview(ctx, state)
   }
@@ -45,7 +45,7 @@ export const createMindmapSession = (
     autoPan: {
       frame: (pointer) => {
         project(
-          ctx.read.viewport.pointer(pointer).world
+          ctx.query.viewport.pointer(pointer).world
         )
       }
     },
@@ -55,7 +55,7 @@ export const createMindmapSession = (
     up: () => {
       const commit = commitMindmapDrag(state)
       if (commit?.kind === 'root') {
-        ctx.write.mindmap.moveRoot({
+        ctx.command.mindmap.moveRoot({
           nodeId: commit.nodeId,
           position: commit.position,
           origin: commit.origin
@@ -63,7 +63,7 @@ export const createMindmapSession = (
       }
 
       if (commit?.kind === 'subtree') {
-        ctx.write.mindmap.moveByDrop({
+        ctx.command.mindmap.moveByDrop({
           id: commit.id,
           nodeId: commit.nodeId,
           drop: commit.drop,
@@ -76,7 +76,7 @@ export const createMindmapSession = (
       return FINISH
     },
     cleanup: () => {
-      ctx.write.preview.mindmap.clear()
+      ctx.local.feedback.mindmap.clear()
     }
   }
 }

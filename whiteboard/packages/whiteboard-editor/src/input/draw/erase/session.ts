@@ -17,7 +17,7 @@ export const createEraseSession = (
   let state = initial
 
   if (state.ids.length > 0) {
-    ctx.write.preview.draw.setHidden(state.ids)
+    ctx.local.feedback.draw.setHidden(state.ids)
   }
 
   const step = (
@@ -25,7 +25,7 @@ export const createEraseSession = (
   ) => {
     const nextState = stepEraseState(ctx, state, input)
     if (nextState.ids !== state.ids) {
-      ctx.write.preview.draw.setHidden(nextState.ids)
+      ctx.local.feedback.draw.setHidden(nextState.ids)
     }
     state = nextState
   }
@@ -41,7 +41,7 @@ export const createEraseSession = (
       return FINISH
     },
     cleanup: () => {
-      ctx.write.preview.draw.clear()
+      ctx.local.feedback.draw.clear()
     }
   }
 }

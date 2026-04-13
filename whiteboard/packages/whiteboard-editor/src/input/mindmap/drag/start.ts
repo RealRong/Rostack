@@ -9,8 +9,8 @@ import {
 import type { NodeId, Point } from '@whiteboard/core/types'
 import type { PointerDownInput } from '../../../types/input'
 import type { Tool } from '../../../types/tool'
-import type { MindmapDragFeedback } from '../../../overlay'
-import type { MindmapRead } from '../../../read/mindmap'
+import type { MindmapDragFeedback } from '../../../local/feedback'
+import type { MindmapRead } from '../../../query/mindmap/read'
 
 export type MindmapDragState = CoreMindmapDragState
 

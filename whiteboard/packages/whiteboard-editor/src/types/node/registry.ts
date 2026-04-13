@@ -6,7 +6,7 @@ import type {
 import type {
   EditCapability,
   EditField
-} from '../../state/edit'
+} from '../../local/session/edit'
 
 export type NodeHit = 'box' | 'path' | 'none'
 export type NodeFamily = 'text' | 'shape' | 'frame' | 'draw'

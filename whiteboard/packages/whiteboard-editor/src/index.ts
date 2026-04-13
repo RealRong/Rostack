@@ -5,7 +5,7 @@ export {
   createClipboardPacket,
   parseClipboardPacket,
   serializeClipboardPacket
-} from './clipboard/packet'
+} from './command/clipboard/packet'
 export type {
   EditCapability,
   EditCaret,
@@ -14,7 +14,7 @@ export type {
   EditField,
   EditMeasureMode,
   EditEmptyBehavior
-} from './state/edit'
+} from './local/session/edit'
 export type {
   Editor,
   EditorActions,
@@ -55,7 +55,7 @@ export type {
 } from './types/commands'
 export type {
   ClipboardPacket
-} from './clipboard/packet'
+} from './command/clipboard/packet'
 export type {
   ContextMenuInput,
   ContextMenuIntent,

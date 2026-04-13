@@ -3,7 +3,6 @@ import type {
   DataDoc
 } from '@dataview/core/contracts'
 import type {
-  IndexStageTrace,
   IndexTrace
 } from '../../contracts/public'
 import {
@@ -15,8 +14,7 @@ import {
   normalizeIndexDemand,
   sameFieldIdList,
   sameGroupDemand,
-  sameSearchDemand,
-  type NormalizedIndexDemand
+  sameSearchDemand
 } from './demand'
 import {
   buildGroupIndex,
@@ -46,8 +44,10 @@ import {
 } from './trace'
 import type {
   IndexDemand,
-  IndexState
-} from './types'
+  IndexDeriveResult,
+  IndexState,
+  NormalizedIndexDemand
+} from './contracts'
 import {
   now
 } from '../../runtime/clock'
@@ -66,12 +66,6 @@ const buildState = (
     sort: buildSortIndex(document, records, normalized.sortFields),
     calculations: buildCalculationIndex(document, records, normalized.calculationFields)
   }
-}
-
-export interface IndexDeriveResult {
-  state: IndexState
-  demand: NormalizedIndexDemand
-  trace?: IndexTrace
 }
 
 export const createIndexState = (

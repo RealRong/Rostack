@@ -1,6 +1,5 @@
-import { Button } from '@ui'
+import { ToolbarIconButton, ToolbarTextColorIcon } from '@rostack/ui'
 import { TextColorPanel } from '../../panels/TextColorPanel'
-import { preventToolbarPointerDown, ToolbarTextColorIcon } from '../primitives'
 import type { ToolbarItemSpec } from './types'
 
 export const textColorItem: ToolbarItemSpec = {
@@ -12,14 +11,11 @@ export const textColorItem: ToolbarItemSpec = {
     togglePanel,
     registerPanelButton
   }) => (
-    <Button
+    <ToolbarIconButton
       ref={(element) => {
         registerPanelButton('text-color', element)
       }}
-      variant="ghost"
-      pressed={activePanelKey === 'text-color'}
-      className="h-9 w-9 rounded-xl p-0"
-      onPointerDown={preventToolbarPointerDown}
+      active={activePanelKey === 'text-color'}
       onClick={() => {
         togglePanel('text-color')
       }}
@@ -27,7 +23,7 @@ export const textColorItem: ToolbarItemSpec = {
       aria-label="Text color"
     >
       <ToolbarTextColorIcon color={context.textColor} />
-    </Button>
+    </ToolbarIconButton>
   ),
   renderPanel: ({
     context,

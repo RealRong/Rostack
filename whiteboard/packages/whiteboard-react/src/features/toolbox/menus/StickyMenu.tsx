@@ -1,13 +1,8 @@
-import { cn } from '@ui'
+import { PickerGridButton, PickerSection } from '@rostack/ui'
 import {
   STICKY_INSERT_OPTIONS,
   STICKY_INSERT_PRESETS
 } from '../presets'
-import {
-  TOOLBOX_GRID_BUTTON_CLASSNAME,
-  ToolboxButton,
-  ToolboxMenuSection
-} from '../primitives'
 
 export const StickyMenu = ({
   value,
@@ -16,19 +11,15 @@ export const StickyMenu = ({
   value?: string
   onChange: (value: string) => void
 }) => (
-  <ToolboxMenuSection title="Sticky notes">
+  <PickerSection title="Sticky notes">
     <div className="grid grid-cols-4 gap-2">
       {STICKY_INSERT_PRESETS.map((preset, index) => {
         const option = STICKY_INSERT_OPTIONS[index]
         return (
-          <ToolboxButton
+          <PickerGridButton
             key={preset.key}
             type="button"
-            className={cn(
-              TOOLBOX_GRID_BUTTON_CLASSNAME,
-              'aspect-square flex-col items-stretch gap-1.5',
-              value === preset.key && '[box-shadow:inset_0_0_0_1px_rgb(from_var(--ui-accent)_r_g_b_/_0.45)]'
-            )}
+            className="aspect-square flex-col items-stretch gap-1.5"
             pressed={value === preset.key}
             onClick={() => onChange(preset.key)}
             aria-label={preset.label}
@@ -42,9 +33,9 @@ export const StickyMenu = ({
             >
               <span className="absolute right-0 top-0 h-3 w-3 bg-[linear-gradient(135deg,rgb(from_var(--ui-surface)_r_g_b_/_0.56)_0%,rgb(from_var(--ui-surface)_r_g_b_/_0)_100%)]" />
             </span>
-          </ToolboxButton>
+          </PickerGridButton>
         )
       })}
     </div>
-  </ToolboxMenuSection>
+  </PickerSection>
 )

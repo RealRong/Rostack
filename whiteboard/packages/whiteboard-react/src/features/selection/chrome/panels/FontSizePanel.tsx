@@ -1,5 +1,4 @@
-import { Button, cn } from '@ui'
-import { preventToolbarPointerDown } from '../toolbar/primitives'
+import { Button, Panel } from '@rostack/ui'
 
 const FONT_SIZE_PRESETS = [10, 12, 14, 18, 24, 36, 48, 64, 80, 144, 288] as const
 
@@ -11,21 +10,18 @@ export const FontSizePanel = ({
   onChange: (value: number) => void
 }) => {
   return (
-    <div className="flex flex-col gap-1 w-20 p-2">
-      {FONT_SIZE_PRESETS.map((preset, index) => (
+    <Panel className="w-20 min-w-[5rem] gap-1 p-2">
+      {FONT_SIZE_PRESETS.map((preset) => (
         <Button
           key={preset}
-          variant={'ghost'}
-          className={cn(
-            'font-medium text-fg transition-colors',
-            value === preset && 'bg-pressed'
-          )}
-          onPointerDown={preventToolbarPointerDown}
+          variant="ghost"
+          pressed={value === preset}
+          className="font-medium"
           onClick={() => onChange(preset)}
         >
           {preset}
         </Button>
       ))}
-    </div>
+    </Panel>
   )
 }

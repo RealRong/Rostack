@@ -23,7 +23,7 @@ import {
 } from '../../index/shared'
 import type {
   IndexState
-} from '../../index/types'
+} from '../../index/contracts'
 import type {
   DeriveAction,
   QueryState

@@ -27,7 +27,7 @@ import type {
   CalculationIndex,
   FieldCalcIndex,
   RecordIndex
-} from './types'
+} from './contracts'
 
 const buildFieldEntries = (
   document: DataDoc,

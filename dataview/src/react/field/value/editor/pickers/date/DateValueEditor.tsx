@@ -7,9 +7,11 @@ import {
 } from 'react'
 import type { CustomField } from '@dataview/core/contracts'
 import {
-  formatTimeZoneLabel,
   type DateDisplayFormat,
-  type DateTimeFormat,
+  type TimeDisplayFormat,
+} from '@dataview/core/contracts'
+import {
+  formatTimeZoneLabel,
   getAvailableTimezones,
 } from '@dataview/core/field'
 import { Input } from '@ui/input'
@@ -215,7 +217,7 @@ export const DateValueEditor = (
           size: 'md',
           value: dateConfig.displayTimeFormat,
           options: meta.field.date.displayTimeFormat.list.map(option => ({
-            id: option.id as DateTimeFormat,
+            id: option.id as TimeDisplayFormat,
             label: renderMessage(option.message)
           })),
           onSelect: value => updateFieldConfig({

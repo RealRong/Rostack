@@ -5,6 +5,7 @@ import {
   useRef,
   useState
 } from 'react'
+import { FloatingLayer } from '@rostack/ui'
 import { useStoreValue } from '@shared/react'
 import {
   useEditor,
@@ -14,7 +15,6 @@ import { WhiteboardPopover } from '#react/runtime/overlay'
 import { ToolPaletteButtons } from './ToolPaletteButtons'
 import { ToolPaletteMenu } from './ToolPaletteMenu'
 import { createToolPaletteController } from './controller'
-import { TOOLBOX_LAYER_CLASSNAME } from './primitives'
 import {
   DEFAULT_TOOL_PALETTE_MEMORY,
   rememberToolPaletteTool,
@@ -67,9 +67,7 @@ export const ToolPalette = () => {
     : '!bg-transparent !shadow-none !p-0 min-w-[220px] max-w-[320px] max-h-[calc(100vh-32px)] overflow-auto'
 
   return (
-    <div
-      className={TOOLBOX_LAYER_CLASSNAME}
-    >
+    <FloatingLayer className="z-[var(--wb-z-toolbar)]">
       <ToolPaletteButtons
         tool={tool}
         palette={palette}
@@ -97,6 +95,6 @@ export const ToolPalette = () => {
           />
         </WhiteboardPopover>
       ) : null}
-    </div>
+    </FloatingLayer>
   )
 }

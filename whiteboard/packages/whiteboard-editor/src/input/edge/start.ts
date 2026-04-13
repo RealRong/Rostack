@@ -6,9 +6,9 @@ import { HANDLED } from '../core/result'
 import type { InteractionContext } from '../context'
 import type { PointerDownInput } from '../../types/input'
 import type { Tool } from '../../types/tool'
-import type { SessionCommands } from '../../write/session'
-import type { EdgeRead } from '../../read/edge'
-import type { NodeRead } from '../../read/node'
+import type { SessionActions } from '../../types/commands'
+import type { EdgeRead } from '../../query/edge/read'
+import type { NodeRead } from '../../query/node/read'
 import { createEdgeConnectSession } from './connect/session'
 import { startEdgeConnect } from './connect/start'
 import { createEdgeBodyMoveSession } from './move/session'
@@ -35,7 +35,7 @@ type EdgeInteractionStart =
     }
 
 const selectEdgeInteraction = (
-  session: Pick<SessionCommands, 'selection'>,
+  session: Pick<SessionActions, 'selection'>,
   edgeId: EdgeId
 ) => {
   session.selection.replace({
@@ -46,7 +46,7 @@ const selectEdgeInteraction = (
 const startEdgeRouteInteraction = (input: {
   edge: Pick<EdgeRead, 'item' | 'resolved' | 'capability'>
   pointer: PointerDownInput
-  session: Pick<SessionCommands, 'selection'>
+  session: Pick<SessionActions, 'selection'>
 }): EdgeInteractionStart | undefined => {
   const route = startEdgeRoute({
     edge: input.edge,
@@ -101,7 +101,7 @@ const startEdgeInteraction = (input: {
   edge: Pick<EdgeRead, 'item' | 'resolved' | 'capability'>
   zoom: number
   config: BoardConfig['edge']
-  session: Pick<SessionCommands, 'selection'>
+  session: Pick<SessionActions, 'selection'>
 }): EdgeInteractionStart | undefined => {
   const connect = startEdgeConnect({
     tool: input.tool,
@@ -156,13 +156,15 @@ export const createEdgeInteraction = (
   key: 'edge',
   start: (input) => {
     const action = startEdgeInteraction({
-      tool: ctx.read.tool.get(),
+      tool: ctx.query.tool.get(),
       pointer: input,
-      node: ctx.read.node,
-      edge: ctx.read.edge,
-      zoom: ctx.read.viewport.get().zoom,
+      node: ctx.query.node,
+      edge: ctx.query.edge,
+      zoom: ctx.query.viewport.get().zoom,
       config: ctx.config.edge,
-      session: ctx.write.session
+      session: {
+        selection: ctx.local.session.selection
+      }
     })
     if (!action) {
       return null
@@ -176,16 +178,16 @@ export const createEdgeInteraction = (
       case 'route':
         return createEdgeRouteSession(ctx, action.state)
       case 'remove':
-        ctx.write.edge.route.remove(action.edgeId, action.index)
-        ctx.write.preview.edge.clearPatches()
+        ctx.command.edge.route.remove(action.edgeId, action.index)
+        ctx.local.feedback.edge.clearPatches()
         return HANDLED
       case 'insert': {
-        const result = ctx.write.edge.route.insert(
+        const result = ctx.command.edge.route.insert(
           action.edgeId,
           action.point
         )
         if (!result.ok) {
-          ctx.write.preview.edge.clearPatches()
+          ctx.local.feedback.edge.clearPatches()
           return HANDLED
         }
 

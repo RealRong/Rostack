@@ -1,4 +1,3 @@
-import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
   Action,
   BucketSort,
@@ -36,6 +35,37 @@ import type {
 import type {
   ValidationIssue
 } from '../mutate/issues'
+import type {
+  CellRef,
+  FieldList,
+  ItemId,
+  ItemList,
+  Placement,
+  Section,
+  SectionBucket,
+  SectionKey,
+  SectionList,
+  ViewFieldRef,
+  ViewItem,
+  ViewRecords,
+  ViewSummaries
+} from './shared'
+
+export type {
+  CellRef,
+  FieldList,
+  ItemId,
+  ItemList,
+  Placement,
+  Section,
+  SectionBucket,
+  SectionKey,
+  SectionList,
+  ViewFieldRef,
+  ViewItem,
+  ViewRecords,
+  ViewSummaries
+} from './shared'
 
 export interface CreateEngineOptions {
   document: DataDoc
@@ -60,81 +90,6 @@ export interface ActionResult extends CommitResult {
 }
 
 export interface HistoryActionResult extends CommitResult {}
-
-export type ItemId = string
-export type SectionKey = string
-
-export interface SectionBucket {
-  key: string
-  title: string
-  value: unknown
-  clearValue?: unknown
-  empty?: boolean
-  color?: string
-}
-
-export interface ViewItem {
-  id: ItemId
-  recordId: RecordId
-  sectionKey: SectionKey
-}
-
-export interface Section {
-  key: SectionKey
-  title: string
-  color?: string
-  bucket?: SectionBucket
-  collapsed: boolean
-  itemIds: readonly ItemId[]
-  recordIds: readonly RecordId[]
-}
-
-export interface SectionList {
-  ids: readonly SectionKey[]
-  all: readonly Section[]
-  get: (key: SectionKey) => Section | undefined
-  has: (key: SectionKey) => boolean
-  indexOf: (key: SectionKey) => number | undefined
-  at: (index: number) => SectionKey | undefined
-}
-
-export interface ItemList {
-  ids: readonly ItemId[]
-  count: number
-  get: (id: ItemId) => ViewItem | undefined
-  has: (id: ItemId) => boolean
-  indexOf: (id: ItemId) => number | undefined
-  at: (index: number) => ItemId | undefined
-  prev: (id: ItemId) => ItemId | undefined
-  next: (id: ItemId) => ItemId | undefined
-  range: (anchor: ItemId, focus: ItemId) => readonly ItemId[]
-}
-
-export interface FieldList {
-  ids: readonly FieldId[]
-  all: readonly Field[]
-  custom: readonly CustomField[]
-  get: (id: FieldId) => Field | undefined
-  has: (id: FieldId) => boolean
-  indexOf: (id: FieldId) => number | undefined
-  at: (index: number) => FieldId | undefined
-  range: (anchor: FieldId, focus: FieldId) => readonly FieldId[]
-}
-
-export interface CellRef {
-  itemId: ItemId
-  fieldId: FieldId
-}
-
-export interface ViewFieldRef extends CellRef {
-  viewId: ViewId
-  recordId: RecordId
-}
-
-export interface Placement {
-  section: SectionKey
-  before?: ItemId
-}
 
 export const sameCellRef = (
   left: CellRef,
@@ -202,27 +157,21 @@ export interface ViewSortProjection {
   rules: readonly SortRuleProjection[]
 }
 
-export interface ViewQuery {
+export interface ActiveViewQuery {
   search: ViewSearchProjection
   filters: ViewFilterProjection
   group: ViewGroupProjection
   sort: ViewSortProjection
 }
 
-export interface ViewRecords {
-  matched: readonly RecordId[]
-  ordered: readonly RecordId[]
-  visible: readonly RecordId[]
-}
-
 export interface ViewState {
   view: View
-  query: ViewQuery
+  query: ActiveViewQuery
   records: ViewRecords
   sections: SectionList
   items: ItemList
   fields: FieldList
-  summaries: ReadonlyMap<SectionKey, CalculationCollection>
+  summaries: ViewSummaries
 }
 
 export interface ViewCell {

@@ -1,5 +1,3 @@
-import { sameOptionalNumberArray as isSameOptionalNumberArray } from '@shared/core'
-import { STROKE_COLOR_OPTIONS } from '../menus/options'
 import {
   ColorSwatchGrid,
   Panel,
@@ -7,7 +5,9 @@ import {
   SegmentedButton,
   SliderSection,
   formatPercent
-} from './ShapeToolbarPrimitives'
+} from '@rostack/ui'
+import { sameOptionalNumberArray as isSameOptionalNumberArray } from '@shared/core'
+import { STROKE_COLOR_OPTIONS } from '../menus/options'
 
 const STROKE_STYLE_OPTIONS = [
   { key: 'solid', label: 'Solid', dash: undefined as readonly number[] | undefined },

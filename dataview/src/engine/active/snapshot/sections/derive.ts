@@ -9,7 +9,7 @@ import {
 } from '../../index/group/demand'
 import type {
   IndexState
-} from '../../index/types'
+} from '../../index/contracts'
 import type {
   SectionKey
 } from '../../../contracts/public'

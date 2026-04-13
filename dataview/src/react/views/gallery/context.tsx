@@ -11,19 +11,21 @@ import {
   useDataViewValue
 } from '@dataview/react/dataview'
 import {
-  type GalleryActiveState,
-  type GalleryRuntime,
   useGalleryRuntime
 } from './runtime'
+import type {
+  ActiveGalleryViewState,
+  GalleryViewRuntime
+} from './types'
 
 export interface GalleryProviderProps {
   children?: ReactNode
 }
 
 export interface GalleryContextValue {
-  active: GalleryActiveState
+  active: ActiveGalleryViewState
   extra: GalleryState
-  runtime: GalleryRuntime
+  runtime: GalleryViewRuntime
 }
 
 export type Gallery = GalleryContextValue
@@ -32,9 +34,9 @@ const Ctx = createContext<Gallery | null>(null)
 
 const readGalleryActiveState = (
   state: ViewState | undefined
-): GalleryActiveState | undefined => (
+): ActiveGalleryViewState | undefined => (
   state?.view.type === 'gallery'
-    ? state as GalleryActiveState
+    ? state as ActiveGalleryViewState
     : undefined
 )
 

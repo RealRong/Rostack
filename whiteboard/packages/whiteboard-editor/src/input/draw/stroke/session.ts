@@ -17,16 +17,16 @@ type DrawPointer = {
 const clearStrokeOverlay = (
   ctx: InteractionContext
 ) => {
-  ctx.write.preview.draw.setPreview(null)
+  ctx.local.feedback.draw.setPreview(null)
 }
 
 const writeStrokePreview = (
   ctx: InteractionContext,
   state: DrawStrokeState
 ) => {
-  ctx.write.preview.draw.setPreview(
+  ctx.local.feedback.draw.setPreview(
     previewDrawStroke(state, {
-      zoom: ctx.read.viewport.get().zoom
+      zoom: ctx.query.viewport.get().zoom
     })
   )
 }
@@ -35,9 +35,9 @@ export const startStrokeState = (
   ctx: InteractionContext,
   input: PointerDownInput
 ): DrawStrokeState | null => startDrawStroke({
-  tool: ctx.read.tool.get(),
+  tool: ctx.query.tool.get(),
   pointer: input,
-  state: ctx.read.draw.get()
+  state: ctx.query.draw.get()
 }) ?? null
 
 export const createStrokeSession = (
@@ -71,10 +71,10 @@ export const createStrokeSession = (
     up: (input) => {
       step(input, true)
       const commit = commitDrawStroke(state, {
-        zoom: ctx.read.viewport.get().zoom
+        zoom: ctx.query.viewport.get().zoom
       })
       if (commit) {
-        ctx.write.node.create(commit)
+        ctx.command.node.create(commit)
       }
       return FINISH
     },

@@ -20,14 +20,14 @@ type PanPointer = {
 
 type ViewportInteractionDeps = Pick<
   InteractionContext,
-  'read' | 'write'
+  'query' | 'local'
 >
 
 const allowsLeftDrag = (
   ctx: ViewportInteractionDeps
 ) => (
-  ctx.read.space.get()
-  || ctx.read.tool.is('hand')
+  ctx.query.space.get()
+  || ctx.query.tool.is('hand')
 )
 
 const updatePan = (
@@ -45,7 +45,7 @@ const updatePan = (
     x: input.client.x,
     y: input.client.y
   }
-  ctx.write.view.viewport.panScreenBy({
+  ctx.local.viewport.viewport.panScreenBy({
     x: -deltaX,
     y: -deltaY
   })

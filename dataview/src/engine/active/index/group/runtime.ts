@@ -24,7 +24,7 @@ import type {
   RecordIndex,
   RecordBucketLookup,
   SortedIdSet
-} from '../types'
+} from '../contracts'
 import {
   buildBucketState,
   resolveBucketKeys,

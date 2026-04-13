@@ -7,8 +7,8 @@ import {
   type RefObject
 } from 'react'
 import type { Point, Rect } from '@whiteboard/core/types'
+import { cn, FloatingLayer, ToolbarBar } from '@rostack/ui'
 import { useElementSize } from '@shared/react'
-import { cn } from '@ui'
 import { WhiteboardPopover } from '#react/runtime/overlay'
 import {
   buildToolbarStyle,
@@ -135,9 +135,9 @@ export const FloatingToolbarShell = <TPanelKey extends string>({
     : panelClassName
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-[var(--wb-z-toolbar)]">
-      <div
-        className="pointer-events-auto absolute inline-flex items-center gap-1 rounded-2xl bg-floating px-2 py-1.5 shadow-popover"
+    <FloatingLayer className="z-[var(--wb-z-toolbar)]">
+      <ToolbarBar
+        className="absolute"
         style={toolbarStyle}
         onPointerDown={(event) => {
           event.preventDefault()
@@ -152,7 +152,7 @@ export const FloatingToolbarShell = <TPanelKey extends string>({
             buttonRefByKey.current[key] = element
           }
         })}
-      </div>
+      </ToolbarBar>
       {activePanelKey && activePanelButton && panelContent ? (
         <WhiteboardPopover
           open
@@ -173,6 +173,6 @@ export const FloatingToolbarShell = <TPanelKey extends string>({
           {panelContent}
         </WhiteboardPopover>
       ) : null}
-    </div>
+    </FloatingLayer>
   )
 }

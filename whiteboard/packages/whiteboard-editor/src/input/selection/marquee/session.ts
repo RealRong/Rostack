@@ -37,11 +37,11 @@ const readMatchedSelection = (
     match: SelectionMarqueePlan['match']
   }
 ): SelectionTarget => ({
-  nodeIds: input.ctx.read.node.idsInRect(input.rect, {
+  nodeIds: input.ctx.query.node.idsInRect(input.rect, {
     match: input.match,
     policy: 'selection-marquee'
   }),
-  edgeIds: input.ctx.read.edge.idsInRect(input.rect, {
+  edgeIds: input.ctx.query.edge.idsInRect(input.rect, {
     match: input.match
   })
 })
@@ -53,7 +53,7 @@ const applyMarqueeEffect = (
 ) => {
   switch (effect.type) {
     case 'selection.replace':
-      ctx.write.session.selection.replace(effect.selection)
+      ctx.local.session.selection.replace(effect.selection)
       return
     case 'preview.set':
       interaction.gesture = createSelectionGesture(
@@ -87,7 +87,7 @@ export const createMarqueeInteraction = (
   let interaction = null as InteractionSession | null
 
   if (input.action.clearOnStart) {
-    ctx.write.session.selection.clear()
+    ctx.local.session.selection.clear()
   }
 
   const dispatch = (
@@ -127,7 +127,7 @@ export const createMarqueeInteraction = (
           return
         }
 
-        const sample = ctx.read.viewport.pointer(pointer)
+        const sample = ctx.query.viewport.pointer(pointer)
         step({
           screen: sample.screen,
           world: sample.world

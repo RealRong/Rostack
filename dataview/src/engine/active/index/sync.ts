@@ -13,13 +13,7 @@ import {
   collectValueFieldIds,
   hasRecordSetChange
 } from './shared'
-
-export interface FieldSyncContext {
-  schemaFields: ReadonlySet<FieldId>
-  valueFields: ReadonlySet<FieldId>
-  touchedRecords: ReadonlySet<RecordId> | 'all'
-  recordSetChanged: boolean
-}
+import type { FieldSyncContext } from './contracts'
 
 export const createFieldSyncContext = (
   delta: CommitDelta,

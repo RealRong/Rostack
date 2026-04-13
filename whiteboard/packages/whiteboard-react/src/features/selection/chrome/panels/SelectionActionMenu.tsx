@@ -1,5 +1,4 @@
-import type { MenuItem } from '@ui'
-import { Menu } from '@ui'
+import { Menu, type MenuItem } from '@rostack/ui'
 import { useStoreValue } from '@shared/react'
 import { useEditorRuntime, useWhiteboardServices } from '#react/runtime/hooks'
 import { readSelectionCan } from '../../capability'

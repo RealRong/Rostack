@@ -2,16 +2,23 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState
+  useState,
+  type PointerEvent
 } from 'react'
 import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react'
-import { preventToolbarPointerDown } from '../../primitives'
 
 const FONT_SIZE_MIN = 8
 const FONT_SIZE_MAX = 288
+
+const preventPointerDown = (
+  event: PointerEvent<HTMLButtonElement>
+) => {
+  event.preventDefault()
+  event.stopPropagation()
+}
 
 const clampFontSize = (
   value: number
@@ -75,7 +82,7 @@ export const FontSizeControl = ({
       <button
         type="button"
         className="flex w-12 items-center justify-center text-sm font-semibold text-fg outline-none"
-        onPointerDown={preventToolbarPointerDown}
+        onPointerDown={preventPointerDown}
         onClick={onTogglePanel}
         title="Font size"
         aria-label="Font size"
@@ -124,7 +131,7 @@ export const FontSizeControl = ({
         <button
           type="button"
           className="flex h-1/2 items-center justify-center text-fg-muted transition-colors hover:bg-pressed hover:text-fg"
-          onPointerDown={preventToolbarPointerDown}
+          onPointerDown={preventPointerDown}
           onClick={(event) => {
             event.stopPropagation()
             step(1)
@@ -137,7 +144,7 @@ export const FontSizeControl = ({
         <button
           type="button"
           className="flex h-1/2 items-center justify-center text-fg-muted transition-colors hover:bg-pressed hover:text-fg"
-          onPointerDown={preventToolbarPointerDown}
+          onPointerDown={preventPointerDown}
           onClick={(event) => {
             event.stopPropagation()
             step(-1)

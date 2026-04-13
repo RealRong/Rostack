@@ -15,7 +15,7 @@ import type {
   AggregateEntry,
   AggregateState,
   SectionAggregateState
-} from './types'
+} from './contracts'
 
 const asPlainString = (value: unknown) => (
   trimToUndefined(value) ?? ''

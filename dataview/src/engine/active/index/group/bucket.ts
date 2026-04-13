@@ -33,7 +33,7 @@ import type {
   GroupFieldIndex,
   RecordIndex,
   SortedIdSet
-} from '../types'
+} from '../contracts'
 import {
   toGroupOptions
 } from './demand'

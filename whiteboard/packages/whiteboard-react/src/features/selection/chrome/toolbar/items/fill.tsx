@@ -1,6 +1,5 @@
-import { Button } from '@ui'
+import { ToolbarFillIcon, ToolbarIconButton } from '@rostack/ui'
 import { FillPanel } from '../../panels/FillPanel'
-import { preventToolbarPointerDown, ToolbarFillIcon } from '../primitives'
 import type { ToolbarItemSpec } from './types'
 
 export const fillItem: ToolbarItemSpec = {
@@ -12,14 +11,11 @@ export const fillItem: ToolbarItemSpec = {
     togglePanel,
     registerPanelButton
   }) => (
-    <Button
+    <ToolbarIconButton
       ref={(element) => {
         registerPanelButton('fill', element)
       }}
-      variant="ghost"
-      pressed={activePanelKey === 'fill'}
-      className="h-9 w-9 rounded-xl p-0"
-      onPointerDown={preventToolbarPointerDown}
+      active={activePanelKey === 'fill'}
       onClick={() => {
         togglePanel('fill')
       }}
@@ -30,7 +26,7 @@ export const fillItem: ToolbarItemSpec = {
         fill={context.fill}
         opacity={context.fillOpacity}
       />
-    </Button>
+    </ToolbarIconButton>
   ),
   renderPanel: ({
     context,

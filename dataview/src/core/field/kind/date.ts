@@ -12,18 +12,18 @@ import {
 import type {
   DateValue,
   DateField,
-  CustomField
+  CustomField,
+  DateDisplayFormat,
+  DateValueKind,
+  TimeDisplayFormat
 } from '../../contracts/state'
 
 export type DateFieldConfig = Pick<DateField, 'displayDateFormat' | 'displayTimeFormat' | 'defaultValueKind' | 'defaultTimezone'>
-export type DateValueKind = DateValue['kind']
-export type DateDisplayFormat = NonNullable<DateFieldConfig['displayDateFormat']>
-export type DateTimeFormat = NonNullable<DateFieldConfig['displayTimeFormat']>
 export type DateGroupMode = 'day' | 'week' | 'month' | 'quarter' | 'year'
 
 export const DATE_VALUE_KINDS = ['date', 'datetime'] as const satisfies readonly DateValueKind[]
 export const DATE_DISPLAY_FORMATS = ['full', 'short', 'mdy', 'dmy', 'ymd', 'relative'] as const satisfies readonly DateDisplayFormat[]
-export const DATE_TIME_FORMATS = ['12h', '24h'] as const satisfies readonly DateTimeFormat[]
+export const DATE_TIME_FORMATS = ['12h', '24h'] as const satisfies readonly TimeDisplayFormat[]
 export const DATE_GROUP_MODES = ['day', 'week', 'month', 'quarter', 'year'] as const satisfies readonly DateGroupMode[]
 
 const DATE_ONLY_FORMAT = 'yyyy-MM-dd'
@@ -167,7 +167,7 @@ export const isValidDateTimeZone = (value: string) => {
 
 const formatTimeValue = (
   value: DateLike,
-  formatKind: DateTimeFormat
+  formatKind: TimeDisplayFormat
 ) => format(
   value,
   formatKind === '24h' ? 'HH:mm' : 'h:mm a'

@@ -264,7 +264,7 @@ export interface ViewDisplay {
   fields: readonly FieldId[]
 }
 
-export interface ViewQuery {
+export interface DocumentViewQuery {
   filter: Filter
   search: Search
   sort: Sorter[]

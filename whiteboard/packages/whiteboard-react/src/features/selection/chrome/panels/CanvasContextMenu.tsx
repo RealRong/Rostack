@@ -1,6 +1,5 @@
 import type { Point } from '@whiteboard/core/types'
-import type { MenuItem } from '@ui'
-import { Menu } from '@ui'
+import { Menu, type MenuItem } from '@rostack/ui'
 import { useEditorRuntime, useWhiteboardServices } from '#react/runtime/hooks'
 
 const toMenuItems = (

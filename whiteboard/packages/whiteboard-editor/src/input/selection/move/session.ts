@@ -42,7 +42,7 @@ const toMoveEdgePatches = (
 const findParentFrameId = (
   ctx: InteractionContext,
   nodeId: string
-) => ctx.read.frame.of(nodeId)
+) => ctx.query.frame.of(nodeId)
 
 const resolveFrameHoverId = (
   ctx: InteractionContext,
@@ -53,7 +53,7 @@ const resolveFrameHoverId = (
   }
 ) => {
   const movingIds = new Set(state.move.members.map((member) => member.id))
-  let frameId = ctx.read.frame.at(pointerWorld)
+  let frameId = ctx.query.frame.at(pointerWorld)
 
   while (frameId && movingIds.has(frameId)) {
     frameId = findParentFrameId(ctx, frameId)
@@ -73,8 +73,8 @@ export const createMoveInteraction = (
   input: MoveInteractionInput
 ): InteractionSession | null => {
   const initialState = startMoveState({
-    nodes: ctx.read.node.ordered(),
-    edges: ctx.read.edge.edges(ctx.read.edge.list.get()),
+    nodes: ctx.query.node.ordered(),
+    edges: ctx.query.edge.edges(ctx.query.edge.list.get()),
     target: input.target,
     startWorld: input.start.world,
     nodeSize: ctx.config.nodeSize
@@ -91,7 +91,7 @@ export const createMoveInteraction = (
     input.visibility.kind === 'show'
     || input.visibility.kind === 'temporary'
   ) {
-    ctx.write.session.selection.replace(input.visibility.selection)
+    ctx.local.session.selection.replace(input.visibility.selection)
   }
   let modifiers = input.start.modifiers
   let interaction = null as InteractionSession | null
@@ -108,7 +108,7 @@ export const createMoveInteraction = (
     const result = stepMoveState({
       state,
       pointerWorld: nextInput.world,
-      snap: ctx.read.tool.is('select')
+      snap: ctx.query.tool.is('select')
         ? ({ rect, excludeIds }) => {
             const snapped = ctx.snap.node.move({
               rect,
@@ -142,7 +142,7 @@ export const createMoveInteraction = (
     autoPan: {
       frame: (pointer) => {
         project({
-          world: ctx.read.viewport.pointer(pointer).world,
+          world: ctx.query.viewport.pointer(pointer).world,
           modifiers
         })
       }
@@ -157,21 +157,21 @@ export const createMoveInteraction = (
       const commit = finishMoveState(state)
 
       if (commit.delta) {
-        ctx.write.node.move({
+        ctx.command.node.move({
           ids: state.move.rootIds,
           delta: commit.delta
         })
       }
 
       if (commit.edges.length > 0) {
-        ctx.write.edge.updateMany(commit.edges)
+        ctx.command.edge.updateMany(commit.edges)
       }
 
       return FINISH
     },
     cleanup: () => {
       if (restoreSelection) {
-        ctx.write.session.selection.replace(restoreSelection)
+        ctx.local.session.selection.replace(restoreSelection)
       }
     }
   }

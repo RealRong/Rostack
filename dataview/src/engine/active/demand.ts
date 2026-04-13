@@ -15,7 +15,7 @@ import {
 } from '@dataview/core/view'
 import type {
   IndexDemand
-} from './index/types'
+} from './index/contracts'
 
 export const resolveViewDemand = (
   document: DataDoc,

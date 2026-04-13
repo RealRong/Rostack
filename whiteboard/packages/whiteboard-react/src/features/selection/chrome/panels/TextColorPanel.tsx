@@ -1,5 +1,5 @@
+import { ColorSwatchGrid, Panel, PanelSection } from '@rostack/ui'
 import { TEXT_COLOR_OPTIONS } from '../menus/options'
-import { ColorSwatchGrid, Panel, PanelSection } from './ShapeToolbarPrimitives'
 
 export const TextColorPanel = ({
   value,

@@ -7,7 +7,7 @@ import {
   getDocumentFields,
   getDocumentViewById
 } from '@dataview/core/document'
-import type { IndexState } from '../index/types'
+import type { IndexState } from '../index/contracts'
 import type {
   DeriveAction,
   ViewCache

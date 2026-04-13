@@ -1,7 +1,5 @@
 export {
   EngineProvider,
-  type DataViewContextValue,
-  type EngineProviderProps,
   useDataView
 } from './provider'
 export {
@@ -10,8 +8,10 @@ export {
 } from './useDataViewValue'
 
 export type {
-  Engine
-} from '@dataview/engine'
+  DataViewContextValue,
+  DataViewSession,
+  EngineProviderProps
+} from './types'
 
 export type {
   MarqueeAdapter,

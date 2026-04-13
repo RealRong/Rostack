@@ -257,11 +257,11 @@ const createTextStyle = (variant: 'text' | 'sticky') => (props: NodeRenderProps)
   return {
     '--wb-sticky-fill': readStickyFill(props.node),
     background:
-      'linear-gradient(180deg, rgb(from var(--wb-ui-surface) r g b / 0.16) 0%, rgb(from var(--wb-ui-surface) r g b / 0) 18%, rgb(from var(--wb-ui-text-primary) r g b / 0.04) 100%), var(--wb-sticky-fill, var(--ui-yellow-surface))',
+      'linear-gradient(180deg, rgb(from var(--ui-surface) r g b / 0.16) 0%, rgb(from var(--ui-surface) r g b / 0) 18%, rgb(from var(--ui-text-primary) r g b / 0.04) 100%), var(--wb-sticky-fill, var(--ui-yellow-surface))',
     border: 'none',
     boxSizing: 'border-box',
     borderRadius: 0,
-    boxShadow: 'inset 0 1px 0 rgb(from var(--wb-ui-surface) r g b / 0.18), inset 0 -1px 0 rgb(from var(--wb-ui-text-primary) r g b / 0.04)',
+    boxShadow: 'inset 0 1px 0 rgb(from var(--ui-surface) r g b / 0.18), inset 0 -1px 0 rgb(from var(--ui-text-primary) r g b / 0.04)',
     display: 'block',
     isolation: 'isolate',
     overflow: 'visible',

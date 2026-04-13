@@ -1,7 +1,7 @@
 import { resolveEdgePressureVector } from '@shared/dom'
 import { createRafTask } from '@shared/core'
 import type { Point } from '@whiteboard/core/types'
-import type { ViewportInputRuntime } from '../../editor/viewport'
+import type { ViewportInputRuntime } from '../../local/viewport/runtime'
 import type { InteractionSession } from './types'
 
 type PanVector = Point

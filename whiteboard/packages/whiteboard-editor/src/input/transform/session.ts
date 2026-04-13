@@ -76,7 +76,7 @@ export const createTransformSession = (
         alt: input.modifiers.alt,
         shift: input.modifiers.shift
       },
-      zoom: ctx.read.viewport.get().zoom,
+      zoom: ctx.query.viewport.get().zoom,
       minSize: RESIZE_MIN_SIZE,
       snap: (resize) => {
         const snapped = ctx.snap.node.resize(resize)
@@ -107,8 +107,8 @@ export const createTransformSession = (
     autoPan: {
       frame: (pointer) => {
         project({
-          screen: ctx.read.viewport.screenPoint(pointer.clientX, pointer.clientY),
-          world: ctx.read.viewport.pointer(pointer).world,
+          screen: ctx.query.viewport.screenPoint(pointer.clientX, pointer.clientY),
+          world: ctx.query.viewport.pointer(pointer).world,
           modifiers
         })
       }
@@ -121,7 +121,7 @@ export const createTransformSession = (
 
       const updates = finishTransform(state)
       if (updates.length > 0) {
-        ctx.write.node.updateMany(updates)
+        ctx.command.node.updateMany(updates)
       }
 
       return FINISH
@@ -158,7 +158,7 @@ export const createSingleTextTransformSession = (
       target: spec.target,
       handle: spec.handle,
       screen: input.screen,
-      zoom: ctx.read.viewport.get().zoom,
+      zoom: ctx.query.viewport.get().zoom,
       minSize: RESIZE_MIN_SIZE,
       snap: ctx.snap.node.resize
     })
@@ -174,7 +174,7 @@ export const createSingleTextTransformSession = (
       }
     )
 
-    ctx.write.preview.node.text.set(
+    ctx.local.feedback.node.text.set(
       spec.target.id,
       result.preview
     )
@@ -188,7 +188,7 @@ export const createSingleTextTransformSession = (
     autoPan: {
       frame: (pointer) => {
         project({
-          screen: ctx.read.viewport.screenPoint(pointer.clientX, pointer.clientY),
+          screen: ctx.query.viewport.screenPoint(pointer.clientX, pointer.clientY),
           modifiers
         })
       }
@@ -199,8 +199,8 @@ export const createSingleTextTransformSession = (
     up: (input) => {
       project(input)
 
-      const previewItem = ctx.read.node.item.get(spec.target.id)
-      ctx.write.preview.node.text.clear(spec.target.id)
+      const previewItem = ctx.query.node.item.get(spec.target.id)
+      ctx.local.feedback.node.text.clear(spec.target.id)
 
       if (!previewItem) {
         return FINISH
@@ -216,13 +216,13 @@ export const createSingleTextTransformSession = (
       })
 
       if (update) {
-        ctx.write.node.update(spec.target.id, update)
+        ctx.command.node.update(spec.target.id, update)
       }
 
       return FINISH
     },
     cleanup: () => {
-      ctx.write.preview.node.text.clear(spec.target.id)
+      ctx.local.feedback.node.text.clear(spec.target.id)
     }
   }
 

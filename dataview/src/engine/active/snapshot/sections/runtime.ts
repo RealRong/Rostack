@@ -5,7 +5,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   IndexState
-} from '../../index/types'
+} from '../../index/contracts'
 import {
   collectTouchedRecordIds
 } from '../../index/shared'

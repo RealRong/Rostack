@@ -1,9 +1,9 @@
+import { Panel, PanelSection, SegmentedButton } from '@rostack/ui'
 import {
   AlignCenter,
   AlignLeft,
   AlignRight
 } from 'lucide-react'
-import { Panel, PanelSection, SegmentedButton } from './ShapeToolbarPrimitives'
 
 const TEXT_ALIGN_OPTIONS = [
   { key: 'left' as const, title: 'Align left', icon: AlignLeft },

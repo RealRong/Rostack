@@ -9,7 +9,7 @@ import {
 import { isPointEqual } from '@whiteboard/core/geometry'
 import type { Edge, EdgeId, EdgePatch, Point } from '@whiteboard/core/types'
 import type { PointerDownInput } from '../../../types/input'
-import type { EdgeRead } from '../../../read/edge'
+import type { EdgeRead } from '../../../query/edge/read'
 
 export type EdgeRouteHandleState =
   | {

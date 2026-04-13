@@ -3,7 +3,7 @@ import type {
   EditorRead,
   EditorState
 } from '../types/editor'
-import type { EditorCommands } from '../write'
+import type { EditorLocalRuntime } from '../local/runtime'
 import type { ContextMenuIntent } from '../types/input'
 import type { InteractionRuntime } from '../input/core/types'
 import type { EdgeHoverService } from '../input/edge/hover'
@@ -29,21 +29,19 @@ export const createEditorInput = ({
   interaction,
   edgeHover,
   read,
-  write,
-  selection
+  local
 }: {
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
   read: EditorRead
-  write: EditorCommands
-  selection: EditorState['selection']
+  local: Pick<EditorLocalRuntime, 'actions' | 'stores'>
 }): EditorInput => {
   const writePointer = (input: {
     client: { x: number, y: number }
     screen: { x: number, y: number }
     world: { x: number, y: number }
   }) => {
-    write.view.pointer.set({
+    local.actions.viewport.pointer.set({
       client: input.client,
       screen: input.screen,
       world: input.world
@@ -51,7 +49,7 @@ export const createEditorInput = ({
   }
 
   const clearPointer = () => {
-    write.view.pointer.clear()
+    local.actions.viewport.pointer.clear()
   }
 
   const clearTransientState = () => {
@@ -74,23 +72,23 @@ export const createEditorInput = ({
 
       switch (input.pick.kind) {
         case 'selection-box': {
-          return readSelectionIntent(selection, input.screen) ?? {
+          return readSelectionIntent(local.stores.selection, input.screen) ?? {
             kind: 'canvas',
             screen: input.screen,
             world: input.world
           }
         }
         case 'node': {
-          const current = selection.get()
+          const current = local.stores.selection.get()
           const reuseCurrentSelection = current.nodeIds.includes(input.pick.id)
           if (reuseCurrentSelection) {
-            return readSelectionIntent(selection, input.screen)
+            return readSelectionIntent(local.stores.selection, input.screen)
           }
 
-          write.session.selection.replace({
+          local.actions.session.selection.replace({
             nodeIds: [input.pick.id]
           })
-          return readSelectionIntent(selection, input.screen)
+          return readSelectionIntent(local.stores.selection, input.screen)
         }
         case 'group': {
           const target = read.group.target(input.pick.id)
@@ -102,11 +100,11 @@ export const createEditorInput = ({
             }
           }
 
-          write.session.selection.replace(target)
-          return readSelectionIntent(selection, input.screen)
+          local.actions.session.selection.replace(target)
+          return readSelectionIntent(local.stores.selection, input.screen)
         }
         case 'edge':
-          write.session.selection.replace({
+          local.actions.session.selection.replace({
             edgeIds: [input.pick.id]
           })
           return {
@@ -163,7 +161,7 @@ export const createEditorInput = ({
         return true
       }
 
-      write.view.viewport.wheel(
+      local.actions.viewport.viewport.wheel(
         {
           deltaX: input.deltaX,
           deltaY: input.deltaY,

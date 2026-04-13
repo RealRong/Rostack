@@ -24,13 +24,13 @@ import {
 } from '@dataview/core/field'
 import { trimToUndefined } from '@shared/core'
 import type {
+  ActiveViewQuery,
   FieldList,
   FilterConditionProjection,
   FilterRuleProjection,
   SortRuleProjection,
   ViewFilterProjection,
   ViewGroupProjection,
-  ViewQuery,
   ViewSearchProjection,
   ViewSortProjection
 } from '../../contracts/public'
@@ -318,12 +318,12 @@ export const publishViewBase = (input: {
   viewId?: ViewId
   previous?: {
     view?: View
-    query?: ViewQuery
+    query?: ActiveViewQuery
     fields?: FieldList
   }
 }): {
   view?: View
-  query?: ViewQuery
+  query?: ActiveViewQuery
   fields?: FieldList
 } => {
   const view = input.viewId

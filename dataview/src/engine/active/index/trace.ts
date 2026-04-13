@@ -6,7 +6,7 @@ import type {
 } from '../../contracts/public'
 import type {
   SearchIndex
-} from './types'
+} from './contracts'
 import {
   createFieldSyncContext
 } from './sync'

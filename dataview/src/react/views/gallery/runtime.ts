@@ -3,15 +3,10 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
-  type RefObject
+  useState
 } from 'react'
 import type {
-  View
-} from '@dataview/core/contracts'
-import type {
-  GalleryState,
-  ViewState
+  ItemId
 } from '@dataview/engine'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
@@ -25,54 +20,25 @@ import {
   interactiveSelector
 } from '@shared/dom'
 import {
-  ItemId
-} from '@dataview/engine'
-import {
   resolveDefaultAutoPanTargets
 } from '@dataview/react/interaction/autoPan'
 import {
-  createVisualTargetRegistry,
-  type VisualTargetRegistry
+  createVisualTargetRegistry
 } from '@dataview/react/runtime/marquee'
 import { useStoreValue } from '@shared/react'
-import type { GalleryDropTarget } from './reorder'
 import {
   useCardReorder
 } from './reorder'
 import {
   GALLERY_CARD_MIN_WIDTH,
-  useGalleryBlocks,
-  type GalleryBlock,
-  type GalleryLayoutCache
+  useGalleryBlocks
 } from './virtual'
+import type {
+  GalleryRuntimeInput,
+  GalleryViewRuntime
+} from './types'
 
-export type GalleryActiveState = ViewState & {
-  view: View & {
-    type: 'gallery'
-  }
-}
-
-export interface GalleryRuntime {
-  containerRef: RefObject<HTMLDivElement | null>
-  virtual: {
-    layout: GalleryLayoutCache
-    blocks: readonly GalleryBlock[]
-    measure: (id: ItemId) => (node: HTMLElement | null) => void
-  }
-  selection: {
-    selectedIdSet: ReadonlySet<ItemId>
-    select: (id: ItemId, mode?: 'replace' | 'toggle') => void
-  }
-  drag: ReturnType<typeof useCardReorder>
-  indicator?: GalleryDropTarget['indicator']
-  marqueeActive: boolean
-  visualTargets: VisualTargetRegistry
-}
-
-export const useGalleryRuntime = (input: {
-  active: GalleryActiveState
-  extra: GalleryState
-}): GalleryRuntime => {
+export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntime => {
   const dataView = useDataView()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [dragging, setDragging] = useState(false)

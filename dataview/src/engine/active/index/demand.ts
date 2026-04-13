@@ -8,19 +8,9 @@ import {
 } from '@shared/core'
 import type {
   GroupDemand,
-  IndexDemand
-} from './types'
-
-export interface NormalizedIndexDemand {
-  recordFields: readonly FieldId[]
-  search: {
-    all: boolean
-    fields: readonly FieldId[]
-  }
-  groups: readonly GroupDemand[]
-  sortFields: readonly FieldId[]
-  calculationFields: readonly FieldId[]
-}
+  IndexDemand,
+  NormalizedIndexDemand
+} from './contracts'
 
 const uniqueGroups = (
   groups: readonly GroupDemand[] = []

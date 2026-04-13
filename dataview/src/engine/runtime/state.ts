@@ -1,7 +1,9 @@
 import type { DataDoc } from '@dataview/core/contracts'
 import type { BaseOperation } from '@dataview/core/contracts/operations'
-import type { NormalizedIndexDemand } from '../active/index/demand'
-import type { IndexState } from '../active/index/types'
+import type {
+  IndexState,
+  NormalizedIndexDemand
+} from '../active/index/contracts'
 import type { ViewCache } from '../contracts/internal'
 import type { ViewState } from '../contracts/public'
 

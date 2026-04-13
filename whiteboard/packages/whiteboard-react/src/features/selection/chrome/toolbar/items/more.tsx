@@ -1,7 +1,6 @@
-import { Button } from '@ui'
+import { ToolbarIconButton } from '@rostack/ui'
 import { MoreHorizontal } from 'lucide-react'
 import { SelectionActionMenu } from '../../panels/SelectionActionMenu'
-import { preventToolbarPointerDown } from '../primitives'
 import type { ToolbarItemSpec } from './types'
 
 export const moreItem: ToolbarItemSpec = {
@@ -12,14 +11,11 @@ export const moreItem: ToolbarItemSpec = {
     togglePanel,
     registerPanelButton
   }) => (
-    <Button
+    <ToolbarIconButton
       ref={(element) => {
         registerPanelButton('more', element)
       }}
-      variant="ghost"
-      pressed={activePanelKey === 'more'}
-      className="h-9 w-9 rounded-xl p-0"
-      onPointerDown={preventToolbarPointerDown}
+      active={activePanelKey === 'more'}
       onClick={() => {
         togglePanel('more')
       }}
@@ -27,7 +23,7 @@ export const moreItem: ToolbarItemSpec = {
       aria-label="More"
     >
       <MoreHorizontal size={18} strokeWidth={1.9} />
-    </Button>
+    </ToolbarIconButton>
   ),
   renderPanel: ({
     closePanel

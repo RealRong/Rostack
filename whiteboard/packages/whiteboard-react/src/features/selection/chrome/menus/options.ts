@@ -1,7 +1,7 @@
 import {
   UI_CONTENT_COLOR_FAMILIES,
   resolveOptionColorToken
-} from '@ui'
+} from '@rostack/ui'
 
 type ColorOption = {
   label: string

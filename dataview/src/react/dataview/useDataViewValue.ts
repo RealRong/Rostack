@@ -8,7 +8,7 @@ import {
   useStoreValue
 } from '@shared/react'
 import { useStoreSelector } from './storeSelector'
-import type { DataViewContextValue } from './provider'
+import type { DataViewContextValue } from './types'
 import { useDataView } from './provider'
 
 export function useDataViewValue<TState>(

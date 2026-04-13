@@ -5,7 +5,7 @@ import type {
   GroupDemand,
   GroupFieldIndex,
   GroupIndex
-} from '../types'
+} from '../contracts'
 
 const GROUP_SEPARATOR = '\u0000'
 

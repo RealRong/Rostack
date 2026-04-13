@@ -7,15 +7,17 @@ import {
 } from 'react'
 import type { KanbanState } from '@dataview/engine'
 import {
-  type KanbanActiveState,
-  type KanbanRuntime,
   useKanbanRuntime
 } from './runtime'
+import type {
+  ActiveKanbanViewState,
+  KanbanViewRuntime
+} from './types'
 
 export interface KanbanContextValue {
-  active: KanbanActiveState
+  active: ActiveKanbanViewState
   extra: KanbanState
-  runtime: KanbanRuntime
+  runtime: KanbanViewRuntime
 }
 
 export type Kanban = KanbanContextValue
@@ -23,7 +25,7 @@ export type Kanban = KanbanContextValue
 const KanbanContext = createContext<KanbanContextValue | null>(null)
 
 export const KanbanProvider = (props: {
-  active: KanbanActiveState
+  active: ActiveKanbanViewState
   extra: KanbanState
   columnWidth: number
   columnMinHeight: number

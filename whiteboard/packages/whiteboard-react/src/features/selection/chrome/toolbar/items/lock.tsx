@@ -1,5 +1,5 @@
+import { ToolbarIconButton } from '@rostack/ui'
 import { Lock } from 'lucide-react'
-import { ToolbarIconButton } from '../primitives'
 import type { ToolbarItemSpec } from './types'
 
 export const lockItem: ToolbarItemSpec = {

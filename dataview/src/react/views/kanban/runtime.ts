@@ -3,15 +3,12 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
-  type RefObject
+  useState
 } from 'react'
 import type {
-  KanbanCardsPerColumn,
-  View
+  KanbanCardsPerColumn
 } from '@dataview/core/contracts'
 import type {
-  KanbanState,
   ViewState
 } from '@dataview/engine'
 import {
@@ -34,8 +31,7 @@ import {
   resolveDefaultAutoPanTargets
 } from '@dataview/react/interaction/autoPan'
 import {
-  createVisualTargetRegistry,
-  type VisualTargetRegistry
+  createVisualTargetRegistry
 } from '@dataview/react/runtime/marquee'
 import { useStoreValue } from '@shared/react'
 import {
@@ -44,38 +40,11 @@ import {
 import {
   useDrag
 } from './drag'
-
-export type KanbanActiveState = ViewState & {
-  view: View & {
-    type: 'kanban'
-  }
-}
-
-export interface KanbanSectionVisibility {
-  visibleIds: readonly ItemId[]
-  visibleCount: number
-  hiddenCount: number
-  showMoreCount: number
-}
-
-export interface KanbanRuntime {
-  layout: {
-    columnWidth: number
-    columnMinHeight: number
-  }
-  scrollRef: RefObject<HTMLDivElement | null>
-  selection: {
-    selectedIdSet: ReadonlySet<ItemId>
-    select: (id: ItemId, mode?: 'replace' | 'toggle') => void
-  }
-  drag: ReturnType<typeof useDrag>
-  marqueeActive: boolean
-  visualTargets: VisualTargetRegistry
-  visibility: {
-    bySection: ReadonlyMap<SectionKey, KanbanSectionVisibility>
-    showMore: (sectionKey: SectionKey) => void
-  }
-}
+import type {
+  KanbanRuntimeInput,
+  KanbanSectionVisibility,
+  KanbanViewRuntime
+} from './types'
 
 const resolveInitialVisibleCount = (
   limit: KanbanCardsPerColumn,
@@ -93,7 +62,7 @@ const readSectionLengths = (
 )
 
 const useSectionVisibility = (input: {
-  viewId: View['id']
+  viewId: ViewState['view']['id']
   sections: readonly Section[]
   cardsPerColumn: KanbanCardsPerColumn
 }) => {
@@ -243,12 +212,7 @@ const useSectionVisibility = (input: {
   }
 }
 
-export const useKanbanRuntime = (input: {
-  columnWidth: number
-  columnMinHeight: number
-  active: KanbanActiveState
-  extra: KanbanState
-}): KanbanRuntime => {
+export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime => {
   const dataView = useDataView()
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [dragging, setDragging] = useState(false)

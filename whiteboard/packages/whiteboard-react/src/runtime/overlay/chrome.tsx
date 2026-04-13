@@ -2,29 +2,18 @@ import {
   Popover,
   type PopoverContentProps,
   type PopoverProps
-} from '@ui'
-import {
-  type HTMLAttributes,
-} from 'react'
+} from '@rostack/ui'
 
-const WHITEBOARD_CHROME_FLOATING_PROPS: HTMLAttributes<HTMLDivElement> = {
-  onContextMenu: (event) => {
-    event.preventDefault()
-    event.stopPropagation()
-  }
+export interface WhiteboardPopoverProps extends Omit<PopoverProps, 'children'> {
+  children?: PopoverContentProps['children']
+  className?: PopoverContentProps['className']
+  contentClassName?: PopoverContentProps['contentClassName']
+  contentProps?: PopoverContentProps['contentProps']
+  floatingProps?: PopoverContentProps['floatingProps']
+  initialFocus?: PopoverContentProps['initialFocus']
+  padding?: PopoverContentProps['padding']
+  size?: PopoverContentProps['size']
 }
-
-export interface WhiteboardPopoverProps extends Omit<PopoverProps, 'children'>, Pick<
-PopoverContentProps,
-  | 'children'
-  | 'className'
-  | 'contentClassName'
-  | 'contentProps'
-  | 'floatingProps'
-  | 'initialFocus'
-  | 'padding'
-  | 'size'
-> {}
 
 export const WhiteboardPopover = (
   props: WhiteboardPopoverProps
@@ -52,9 +41,17 @@ export const WhiteboardPopover = (
         contentProps={contentProps}
         floatingProps={{
           ...floatingProps,
+          onPointerDownCapture: event => {
+            floatingProps?.onPointerDownCapture?.(event)
+            if (!event.defaultPrevented) {
+              event.stopPropagation()
+            }
+          },
           onContextMenu: event => {
             floatingProps?.onContextMenu?.(event)
-            // WHITEBOARD_CHROME_FLOATING_PROPS.onContextMenu?.(event)
+            if (!event.defaultPrevented) {
+              event.stopPropagation()
+            }
           }
         }}
       >

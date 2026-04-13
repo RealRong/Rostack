@@ -3,7 +3,15 @@ import {
   Highlighter,
   PencilLine
 } from 'lucide-react'
-import { cn } from '@ui'
+import {
+  ColorSwatchGrid,
+  PickerDivider,
+  PickerIconButton,
+  PickerPanelSurface,
+  PickerSection,
+  PickerSurface,
+  Slider
+} from '@rostack/ui'
 import type {
   BrushStyle,
   BrushStylePatch,
@@ -15,14 +23,8 @@ import {
   DRAW_MODES,
   DRAW_SLOTS
 } from '@whiteboard/editor/draw'
-import { DRAW_COLOR_OPTIONS } from '../../selection/chrome/menus/options'
-import {
-  TOOLBOX_PANEL_CLASSNAME,
-  ToolboxButton,
-  ToolboxColorSwatch,
-  ToolboxMenuSection
-} from '../primitives'
 import { hasDrawBrush } from '@whiteboard/editor/draw'
+import { DRAW_COLOR_OPTIONS } from '../../selection/chrome/menus/options'
 
 const DRAW_MODE_ICONS = {
   pen: PencilLine,
@@ -75,10 +77,7 @@ export const DrawMenu = ({
       className="flex items-start gap-3"
       data-brush={brush ? 'true' : undefined}
     >
-      <div className={cn(
-        TOOLBOX_PANEL_CLASSNAME,
-        'flex w-14 flex-col items-center gap-1 p-[8px_7px]'
-      )}>
+      <PickerSurface className="w-14 items-center gap-1 p-[8px_7px]">
         <div
           className="flex w-full flex-col items-center gap-1"
           role="toolbar"
@@ -87,23 +86,22 @@ export const DrawMenu = ({
           {DRAW_MODES.map((value) => {
             const Icon = DRAW_MODE_ICONS[value]
             return (
-              <ToolboxButton
+              <PickerIconButton
                 key={value}
                 type="button"
-                className="h-10 w-10 rounded-xl text-fg-muted hover:text-fg"
                 pressed={mode === value}
                 onClick={() => onMode(value)}
                 aria-label={value}
                 title={value}
               >
                 <Icon size={20} strokeWidth={1} absoluteStrokeWidth />
-              </ToolboxButton>
+              </PickerIconButton>
             )
           })}
         </div>
         {brush && activeSlot && slots ? (
           <>
-            <div className="my-[4px] h-px w-full bg-[rgb(from_var(--ui-border-subtle)_r_g_b_/_0.45)]" />
+            <PickerDivider />
             <div
               className="flex w-full flex-col items-center gap-1"
               role="toolbar"
@@ -112,13 +110,10 @@ export const DrawMenu = ({
               {DRAW_SLOTS.map((slot) => {
                 const slotStyle = slots[slot]
                 return (
-                  <ToolboxButton
+                  <PickerIconButton
                     key={slot}
                     type="button"
-                    className={cn(
-                      'h-10 w-10 rounded-xl text-fg-muted hover:text-fg',
-                      activeSlot === slot && 'bg-transparent [box-shadow:inset_0_0_0_2px_rgb(from_var(--ui-accent)_r_g_b_/_0.22)] hover:bg-transparent'
-                    )}
+                    pressed={activeSlot === slot}
                     onClick={() => onSlot(slot)}
                     aria-label={`slot ${slot}`}
                     title={`slot ${slot}`}
@@ -131,28 +126,31 @@ export const DrawMenu = ({
                         background: slotStyle.color
                       }}
                     />
-                  </ToolboxButton>
+                  </PickerIconButton>
                 )
               })}
             </div>
           </>
         ) : null}
-      </div>
+      </PickerSurface>
       {panelOpen && brush && activeSlot && slots && style ? (
-        <div className={cn(TOOLBOX_PANEL_CLASSNAME, 'w-[292px] p-3')}>
+        <PickerPanelSurface className="w-[292px] p-3">
           <div className="min-w-0">
-            <ToolboxMenuSection title="Width">
+            <PickerSection title="Width">
               <div className="flex flex-col gap-2.5">
-                <input
-                  type="range"
-                  className="m-0 w-full [accent-color:var(--ui-accent)]"
+                <Slider
                   min={DRAW_WIDTH_RANGE[brush].min}
                   max={DRAW_WIDTH_RANGE[brush].max}
                   step={1}
                   value={style.width}
-                  onChange={(event) => {
+                  onValueChange={(value) => {
                     onPatch({
-                      width: Number(event.currentTarget.value)
+                      width: value
+                    })
+                  }}
+                  onValueCommit={(value) => {
+                    onPatch({
+                      width: value
                     })
                   }}
                 />
@@ -169,23 +167,20 @@ export const DrawMenu = ({
                   <span>{style.width}px</span>
                 </div>
               </div>
-            </ToolboxMenuSection>
+            </PickerSection>
             <div className="mt-4">
-              <ToolboxMenuSection title="All colors">
-                <div className="grid grid-cols-5 gap-2.5">
-                  {DRAW_COLOR_OPTIONS.map((option) => (
-                    <ToolboxColorSwatch
-                      key={option.value}
-                      color={option.value}
-                      active={style.color === option.value}
-                      onClick={() => onPatch({ color: option.value })}
-                    />
-                  ))}
-                </div>
-              </ToolboxMenuSection>
+              <PickerSection title="All colors">
+                <ColorSwatchGrid
+                  options={DRAW_COLOR_OPTIONS}
+                  value={style.color}
+                  onChange={(value) => onPatch({ color: value })}
+                  className="grid-cols-5 gap-2.5"
+                  swatchSize="md"
+                />
+              </PickerSection>
             </div>
           </div>
-        </div>
+        </PickerPanelSurface>
       ) : null}
     </div>
   )

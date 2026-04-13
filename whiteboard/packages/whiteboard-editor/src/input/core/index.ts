@@ -1,4 +1,3 @@
-export { createInteractionRuntime } from './runtime'
 export { createSnapRuntime } from './snap'
 export {
   CANCEL,

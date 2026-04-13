@@ -1,5 +1,5 @@
 import { createTimeoutTask, type TimeoutTask } from '@shared/core'
-import type { EditField } from '../../../state/edit'
+import type { EditField } from '../../../local/session/edit'
 import {
   GestureTuning
 } from '../../core/config'
@@ -118,19 +118,19 @@ const createPressSession = (
 
       switch (tap.kind) {
         case 'clear':
-          ctx.write.session.selection.clear()
+          ctx.local.session.selection.clear()
           break
         case 'select':
-          ctx.write.session.selection.replace(tap.target)
+          ctx.local.session.selection.replace(tap.target)
           break
         case 'edit-node': {
           const field = resolveSelectionEditField(
-            ctx.read.node.item.get(tap.nodeId)?.node
+            ctx.query.node.item.get(tap.nodeId)?.node
           )
           if (!field) {
             break
           }
-          ctx.write.session.edit.startNode(tap.nodeId, field, {
+          ctx.local.edit.startNode(tap.nodeId, field, {
             caret: {
               kind: 'point',
               client: input.client
@@ -140,9 +140,9 @@ const createPressSession = (
         }
         case 'edit-field':
           if (tap.selection) {
-            ctx.write.session.selection.replace(tap.selection)
+            ctx.local.session.selection.replace(tap.selection)
           }
-          ctx.write.session.edit.startNode(tap.nodeId, tap.field, {
+          ctx.local.edit.startNode(tap.nodeId, tap.field, {
             caret: {
               kind: 'point',
               client: input.client
@@ -187,7 +187,7 @@ export const startSelectionPress = (
   input: PointerDownInput
 ): InteractionSession | null => {
   const resolved = startSelectionPressAction<SelectionPressField>({
-    read: ctx.read,
+    read: ctx.query,
     selection: ctx.selection,
     pointer: input
   })

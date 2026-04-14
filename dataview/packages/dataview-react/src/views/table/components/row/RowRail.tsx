@@ -66,7 +66,8 @@ export interface RowSelectionButtonProps {
   label?: string
   className?: string
   showOnHover?: boolean
-  onPointerStart: (event: PointerEvent<HTMLElement>) => void
+  onPointerStart?: (event: PointerEvent<HTMLElement>) => void
+  onPress?: () => void
 }
 
 export const RowSelectionButton = (props: RowSelectionButtonProps) => {
@@ -79,7 +80,14 @@ export const RowSelectionButton = (props: RowSelectionButtonProps) => {
       }
       event.preventDefault()
       event.stopPropagation()
-      props.onPointerStart(event)
+      props.onPointerStart?.(event)
+    }} onClick={event => {
+      if (props.disabled || !props.onPress) {
+        return
+      }
+      event.preventDefault()
+      event.stopPropagation()
+      props.onPress()
     }} className={cn(
       'flex h-full pointer-events-auto cursor-pointer shrink-0 items-center justify-center',
       props.showOnHover && 'group/row-selection'
@@ -117,9 +125,9 @@ export interface TableLeadingRailProps {
 export const TableLeadingRail = (props: TableLeadingRailProps) => {
   return (
     <div
+      data-table-target="row-rail"
       data-row-rail-row-id={props.rowId}
       data-row-id={props.rowId}
-      {...(props.rowId ? { 'data-table-target': 'row-rail' as const } : {})}
       className={cn(
         'pointer-events-none absolute inset-y-0 left-0 right-0 z-10 overflow-visible',
         props.className

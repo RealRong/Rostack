@@ -1,7 +1,6 @@
 import {
   memo,
-  useCallback,
-  type PointerEvent
+  useCallback
 } from 'react'
 import {
   selection
@@ -50,35 +49,27 @@ const View = (props: RowScopeSelectionRailProps) => {
   const someSelected = selectedRowCount > 0 && !allSelected
   const disabled = rowCount === 0
 
-  const onPointerStart = useCallback((event: PointerEvent<HTMLElement>) => {
-    table.interaction.start({
-      mode: 'pointer',
-      gesture: 'row-select',
-      event,
-      capture: false,
-      up: () => {
-        if (allSelected) {
-          const scopeSet = new Set(props.rowIds)
-          const nextIds = currentSelection.ids.filter(rowId => !scopeSet.has(rowId))
-          dataView.selection.set(nextIds, {
-            anchor: currentSelection.anchor,
-            focus: currentSelection.focus
-          })
-        } else {
-          const nextIds = selection.normalize(currentView.items.ids, [
-            ...currentSelection.ids,
-            ...props.rowIds
-          ])
-          dataView.selection.set(nextIds, {
-            anchor: currentSelection.anchor ?? nextIds[0],
-            focus: currentSelection.focus ?? nextIds[nextIds.length - 1]
-          })
-        }
+  const onPress = useCallback(() => {
+    if (allSelected) {
+      const scopeSet = new Set(props.rowIds)
+      const nextIds = currentSelection.ids.filter(rowId => !scopeSet.has(rowId))
+      dataView.selection.set(nextIds, {
+        anchor: currentSelection.anchor,
+        focus: currentSelection.focus
+      })
+    } else {
+      const nextIds = selection.normalize(currentView.items.ids, [
+        ...currentSelection.ids,
+        ...props.rowIds
+      ])
+      dataView.selection.set(nextIds, {
+        anchor: currentSelection.anchor ?? nextIds[0],
+        focus: currentSelection.focus ?? nextIds[nextIds.length - 1]
+      })
+    }
 
-        table.gridSelection.clear()
-        table.focus()
-      }
-    })
+    table.gridSelection.clear()
+    table.focus()
   }, [
     allSelected,
     currentSelection,
@@ -97,7 +88,7 @@ const View = (props: RowScopeSelectionRailProps) => {
           selected={allSelected}
           indeterminate={someSelected}
           disabled={disabled}
-          onPointerStart={onPointerStart}
+          onPress={onPress}
           label={props.label ?? 'Select rows'}
           showOnHover
         />

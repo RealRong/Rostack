@@ -18,11 +18,13 @@ export type WhiteboardPaletteRegistry = Readonly<Record<
 
 export const WHITEBOARD_PALETTE_REGISTRY: WhiteboardPaletteRegistry = {
   bg: range(0, 28),
+  sticky: range(0, 29),
   border: range(0, 29),
   text: range(0, 19)
 }
 
 export const WHITEBOARD_BG_PALETTE_INDICES = WHITEBOARD_PALETTE_REGISTRY.bg
+export const WHITEBOARD_STICKY_PALETTE_INDICES = WHITEBOARD_PALETTE_REGISTRY.sticky
 export const WHITEBOARD_BORDER_PALETTE_INDICES = WHITEBOARD_PALETTE_REGISTRY.border
 export const WHITEBOARD_TEXT_PALETTE_INDICES = WHITEBOARD_PALETTE_REGISTRY.text
 
@@ -31,6 +33,7 @@ export const WHITEBOARD_PALETTE_KEYS: Readonly<Record<
   readonly WhiteboardPaletteKey[]
 >> = {
   bg: WHITEBOARD_BG_PALETTE_INDICES.map((index) => createWhiteboardPaletteKey('bg', index)),
+  sticky: WHITEBOARD_STICKY_PALETTE_INDICES.map((index) => createWhiteboardPaletteKey('sticky', index)),
   border: WHITEBOARD_BORDER_PALETTE_INDICES.map((index) => createWhiteboardPaletteKey('border', index)),
   text: WHITEBOARD_TEXT_PALETTE_INDICES.map((index) => createWhiteboardPaletteKey('text', index))
 }

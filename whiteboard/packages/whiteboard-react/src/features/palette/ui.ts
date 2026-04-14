@@ -1,11 +1,11 @@
 import {
   WHITEBOARD_BG_PALETTE_INDICES,
   WHITEBOARD_BORDER_PALETTE_INDICES,
+  WHITEBOARD_STICKY_PALETTE_INDICES,
   WHITEBOARD_TEXT_PALETTE_INDICES,
   createWhiteboardPaletteKey,
   type WhiteboardPaletteGroup
 } from '@whiteboard/core/node'
-import { STICKY_TONE_OPTIONS } from '@whiteboard/react/features/palette/sticky'
 import { resolvePaletteColor } from '@whiteboard/react/features/palette/render'
 
 type WhiteboardPaletteSection = {
@@ -44,6 +44,21 @@ const BG_PALETTE_SECTIONS: readonly WhiteboardPaletteSection[] = [
 ] as const
 
 const BORDER_PALETTE_SECTIONS: readonly WhiteboardPaletteSection[] = [
+  {
+    key: 'neutral',
+    indices: range(0, 9)
+  },
+  {
+    key: 'classic-muted',
+    indices: range(10, 19)
+  },
+  {
+    key: 'classic-vivid',
+    indices: range(20, 29)
+  }
+] as const
+
+const STICKY_PALETTE_SECTIONS: readonly WhiteboardPaletteSection[] = [
   {
     key: 'neutral',
     indices: range(0, 9)
@@ -97,6 +112,11 @@ const BORDER_PALETTE_OPTIONS = createPaletteOptions(
   flattenSections(BORDER_PALETTE_SECTIONS).filter((index) => WHITEBOARD_BORDER_PALETTE_INDICES.includes(index))
 )
 
+const STICKY_PALETTE_OPTIONS = createPaletteOptions(
+  'sticky',
+  flattenSections(STICKY_PALETTE_SECTIONS).filter((index) => WHITEBOARD_STICKY_PALETTE_INDICES.includes(index))
+)
+
 const TEXT_PALETTE_OPTIONS = createPaletteOptions(
   'text',
   flattenSections(TEXT_PALETTE_SECTIONS).filter((index) => WHITEBOARD_TEXT_PALETTE_INDICES.includes(index))
@@ -115,12 +135,7 @@ export const WHITEBOARD_FILL_COLOR_OPTIONS: readonly WhiteboardColorOption[] = [
   ...BG_PALETTE_OPTIONS
 ]
 
-export const WHITEBOARD_STICKY_FILL_OPTIONS: readonly WhiteboardColorOption[] = STICKY_TONE_OPTIONS.map((tone) => ({
-  label: tone.label,
-  value: tone.fillKey,
-  color: tone.fill,
-  ariaLabel: tone.label
-}))
+export const WHITEBOARD_STICKY_FILL_OPTIONS: readonly WhiteboardColorOption[] = STICKY_PALETTE_OPTIONS
 
 export const WHITEBOARD_STROKE_COLOR_OPTIONS: readonly WhiteboardColorOption[] = BORDER_PALETTE_OPTIONS
 

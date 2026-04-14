@@ -32,7 +32,7 @@ export const WHITEBOARD_STROKE_DEFAULT_COLOR = createWhiteboardPaletteKey('borde
 export const WHITEBOARD_SURFACE_DEFAULT_FILL = createWhiteboardPaletteKey('bg', 7)
 
 export const WHITEBOARD_STICKY_DEFAULTS: Readonly<Required<WhiteboardPaintPreset>> = {
-  fill: createWhiteboardPaletteKey('bg', 12),
+  fill: createWhiteboardPaletteKey('sticky', 13),
   stroke: createWhiteboardPaletteKey('border', 4),
   strokeWidth: 1,
   color: WHITEBOARD_TEXT_DEFAULT_COLOR
@@ -112,43 +112,43 @@ export const WHITEBOARD_DRAW_DEFAULTS: Readonly<Record<'pen' | 'highlighter', Wh
 
 export const WHITEBOARD_STICKY_TONE_PRESETS: readonly WhiteboardStickyTonePreset[] = [
   {
-    id: '12',
-    fillKey: createWhiteboardPaletteKey('bg', 12),
-    strokeKey: createWhiteboardPaletteKey('border', 12)
-  },
-  {
-    id: '14',
-    fillKey: createWhiteboardPaletteKey('bg', 14),
-    strokeKey: createWhiteboardPaletteKey('border', 14)
+    id: '13',
+    fillKey: createWhiteboardPaletteKey('sticky', 13),
+    strokeKey: createWhiteboardPaletteKey('border', 13)
   },
   {
     id: '15',
-    fillKey: createWhiteboardPaletteKey('bg', 15),
+    fillKey: createWhiteboardPaletteKey('sticky', 15),
     strokeKey: createWhiteboardPaletteKey('border', 15)
   },
   {
-    id: '18',
-    fillKey: createWhiteboardPaletteKey('bg', 18),
+    id: '16',
+    fillKey: createWhiteboardPaletteKey('sticky', 16),
+    strokeKey: createWhiteboardPaletteKey('border', 16)
+  },
+  {
+    id: '19',
+    fillKey: createWhiteboardPaletteKey('sticky', 19),
     strokeKey: createWhiteboardPaletteKey('border', 19)
   },
   {
-    id: '22',
-    fillKey: createWhiteboardPaletteKey('bg', 22),
+    id: '23',
+    fillKey: createWhiteboardPaletteKey('sticky', 23),
     strokeKey: createWhiteboardPaletteKey('border', 23)
   },
   {
-    id: '23',
-    fillKey: createWhiteboardPaletteKey('bg', 23),
+    id: '24',
+    fillKey: createWhiteboardPaletteKey('sticky', 24),
     strokeKey: createWhiteboardPaletteKey('border', 24)
   },
   {
-    id: '25',
-    fillKey: createWhiteboardPaletteKey('bg', 25),
+    id: '26',
+    fillKey: createWhiteboardPaletteKey('sticky', 26),
     strokeKey: createWhiteboardPaletteKey('border', 26)
   },
   {
-    id: '28',
-    fillKey: createWhiteboardPaletteKey('bg', 28),
+    id: '29',
+    fillKey: createWhiteboardPaletteKey('sticky', 29),
     strokeKey: createWhiteboardPaletteKey('border', 29)
   }
 ] as const

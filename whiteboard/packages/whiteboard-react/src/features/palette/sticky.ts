@@ -95,7 +95,7 @@ const STICKY_INSERT_OPTION_INDEX = new Map(
   STICKY_INSERT_OPTIONS.map((option) => [option.key, option] as const)
 )
 
-export const DEFAULT_STICKY_INSERT_OPTION_KEY = STICKY_INSERT_OPTIONS[0]?.key ?? 'sticky.square.12'
+export const DEFAULT_STICKY_INSERT_OPTION_KEY = STICKY_INSERT_OPTIONS[0]?.key ?? 'sticky.square.13'
 
 export const getStickyInsertPresetKey = ({
   toneKey,
@@ -106,7 +106,7 @@ export const getStickyInsertPresetKey = ({
 }): string => {
   const tone = toneKey ? STICKY_TONE_INDEX.get(toneKey) : undefined
   const format = formatKey ? STICKY_FORMAT_INDEX.get(formatKey) : undefined
-  const toneId = tone?.id ?? STICKY_TONE_OPTIONS[0]?.id ?? '12'
+  const toneId = tone?.id ?? STICKY_TONE_OPTIONS[0]?.id ?? '13'
   const nextFormat = format?.key ?? STICKY_FORMAT_OPTIONS[0]?.key ?? 'square'
 
   return STICKY_INSERT_OPTION_INDEX.get(`sticky.${nextFormat}.${toneId}`)?.key

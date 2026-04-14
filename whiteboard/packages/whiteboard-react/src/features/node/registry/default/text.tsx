@@ -398,7 +398,7 @@ const createTextStyle = (variant: 'text' | 'sticky') => (props: NodeRenderProps)
   return {
     '--wb-sticky-fill': readStickyFill(props.node),
     '--wb-sticky-stroke': stickyStroke,
-    background: 'var(--wb-sticky-fill, var(--wb-palette-bg-12))',
+    background: 'var(--wb-sticky-fill, var(--wb-palette-sticky-13))',
     border: 'none',
     boxSizing: 'border-box',
     borderRadius: 0,

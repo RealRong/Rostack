@@ -44,9 +44,9 @@ export interface ColumnHeaderProps {
 const CALCULATION_LABELS: Record<CalculationMetric, string> = {
   countAll: '总数',
   countValues: '值的总数',
-  countUniqueValues: '唯一值总数',
-  countEmpty: '空单元格总数',
-  countNonEmpty: '非空单元格总数',
+  countUniqueValues: '唯一值的总数',
+  countEmpty: '空单元格的总数',
+  countNonEmpty: '非空单元格的总数',
   percentEmpty: '空单元格百分比',
   percentNonEmpty: '非空单元格百分比',
   sum: '总和',
@@ -55,8 +55,112 @@ const CALCULATION_LABELS: Record<CalculationMetric, string> = {
   min: '最小值',
   max: '最大值',
   range: '范围',
-  countByOption: '每个分组总数',
-  percentByOption: '每个分组百分比'
+  countByOption: '每个选项总数',
+  percentByOption: '每个选项百分比'
+}
+
+const CALCULATION_MENU_GROUPS = [
+  {
+    key: 'counts',
+    label: '总数',
+    metrics: [
+      'countAll',
+      'countValues',
+      'countUniqueValues',
+      'countEmpty',
+      'countNonEmpty'
+    ]
+  },
+  {
+    key: 'percentages',
+    label: '百分比',
+    metrics: [
+      'percentEmpty',
+      'percentNonEmpty'
+    ]
+  },
+  {
+    key: 'options',
+    label: '按选项',
+    metrics: [
+      'countByOption',
+      'percentByOption'
+    ]
+  },
+  {
+    key: 'advanced',
+    label: '更多选择',
+    metrics: [
+      'sum',
+      'average',
+      'median',
+      'min',
+      'max',
+      'range'
+    ]
+  }
+] as const satisfies readonly {
+  key: string
+  label: string
+  metrics: readonly CalculationMetric[]
+}[]
+
+const buildCalculationMetricItems = (input: {
+  metrics: readonly CalculationMetric[]
+  currentMetric?: CalculationMetric
+  onSelectMetric: (metric: CalculationMetric) => void
+}): readonly MenuItem[] => input.metrics.map(metric => ({
+  kind: 'toggle' as const,
+  key: `calculation:${metric}`,
+  label: CALCULATION_LABELS[metric],
+  checked: input.currentMetric === metric,
+  onSelect: () => {
+    input.onSelectMetric(metric)
+  }
+}))
+
+const buildCalculationMenuItems = (input: {
+  metrics: readonly CalculationMetric[]
+  currentMetric?: CalculationMetric
+  onClear: () => void
+  onSelectMetric: (metric: CalculationMetric) => void
+}): readonly MenuItem[] => {
+  const availableMetrics = new Set<CalculationMetric>(input.metrics)
+  const groupItems = CALCULATION_MENU_GROUPS.flatMap(group => {
+    const metrics = group.metrics.filter(metric => availableMetrics.has(metric))
+    if (!metrics.length) {
+      return []
+    }
+
+    const selectedMetric = metrics.find(metric => metric === input.currentMetric)
+
+    return [{
+      kind: 'submenu' as const,
+      key: `calculation-group:${group.key}`,
+      label: group.label,
+      ...(selectedMetric
+        ? {
+            suffix: CALCULATION_LABELS[selectedMetric]
+          }
+        : {}),
+      items: buildCalculationMetricItems({
+        metrics,
+        currentMetric: input.currentMetric,
+        onSelectMetric: input.onSelectMetric
+      })
+    }]
+  })
+
+  return [
+    {
+      kind: 'toggle' as const,
+      key: 'calculation:none',
+      label: '无',
+      checked: !input.currentMetric,
+      onSelect: input.onClear
+    },
+    ...groupItems
+  ]
 }
 
 interface ResizeHandleProps {
@@ -276,26 +380,16 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       suffix: calculationMetric
         ? CALCULATION_LABELS[calculationMetric]
         : '无',
-      items: [
-        {
-          kind: 'toggle' as const,
-          key: 'calculation:none',
-          label: '无',
-          checked: !calculationMetric,
-          onSelect: () => {
-            viewApi.summary.set(props.field.id, null)
-          }
+      items: buildCalculationMenuItems({
+        metrics: calculationMetrics,
+        currentMetric: calculationMetric,
+        onClear: () => {
+          viewApi.summary.set(props.field.id, null)
         },
-        ...calculationMetrics.map(metric => ({
-          kind: 'toggle' as const,
-          key: `calculation:${metric}`,
-          label: CALCULATION_LABELS[metric],
-          checked: calculationMetric === metric,
-          onSelect: () => {
-            viewApi.summary.set(props.field.id, metric)
-          }
-        }))
-      ]
+        onSelectMetric: metric => {
+          viewApi.summary.set(props.field.id, metric)
+        }
+      })
     },
     {
       kind: 'action' as const,

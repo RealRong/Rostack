@@ -406,6 +406,61 @@ test('kanban cards per column defaults to all and persists through the view api'
   assert.equal(board.options.kanban.cardsPerColumn, 'all')
 })
 
+test('view.create and changeType to kanban resolve a default group field', () => {
+  const engine = createEngineForTest({
+    document: createMultiViewDocument()
+  })
+
+  const createdId = engine.views.create({
+    name: 'Auto Board',
+    type: 'kanban'
+  })
+  assert.ok(createdId)
+  assert.equal(
+    engine.views.get(createdId!)?.group?.field,
+    FIELD_STATUS
+  )
+
+  openView(engine, VIEW_TABLE).changeType('kanban')
+  assert.equal(engine.active.config.get()?.type, 'kanban')
+  assert.equal(engine.active.config.get()?.group?.field, FIELD_STATUS)
+})
+
+test('kanban default group prefers option-like fields over earlier scalar fields', () => {
+  const fields = [
+    {
+      id: FIELD_POINTS,
+      name: 'Points',
+      kind: 'number',
+      format: 'number',
+      precision: null,
+      currency: null,
+      useThousandsSeparator: false
+    },
+    {
+      id: FIELD_STATUS,
+      name: 'Status',
+      kind: 'status',
+      defaultOptionId: 'todo',
+      options: STATUS_OPTIONS.map(option => ({ ...option }))
+    }
+  ]
+  const engine = createEngineForTest({
+    document: {
+      ...createEmptyDocument(),
+      fields: createFieldTable(fields)
+    }
+  })
+
+  const createdId = engine.views.create({
+    name: 'Preferred Board',
+    type: 'kanban'
+  })
+
+  assert.ok(createdId)
+  assert.equal(engine.views.get(createdId!)?.group?.field, FIELD_STATUS)
+})
+
 test('engine.active keeps selector boundaries inside one active pipeline', () => {
   const engine = createEngineForTest({
     document: createMultiViewDocument()

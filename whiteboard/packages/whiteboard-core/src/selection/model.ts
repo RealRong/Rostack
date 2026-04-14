@@ -115,11 +115,6 @@ export type SelectionSummary = {
   box?: Rect
 }
 
-export type SelectionTransformBox = {
-  box?: Rect
-  canResize: boolean
-}
-
 const EMPTY_TRANSFORM: SelectionTransform = {
   move: false,
   resize: 'none'
@@ -152,14 +147,16 @@ export const deriveSelectionSummary = ({
   target,
   nodes,
   edges,
-  readBounds,
+  readNodeRect,
+  readEdgeBounds,
   resolveNodeTransformCapability,
   isNodeScalable
 }: {
   target: SelectionTarget
   nodes: readonly Node[]
   edges: readonly Edge[]
-  readBounds: (target: SelectionTarget) => Rect | undefined
+  readNodeRect: (node: Node) => Rect | undefined
+  readEdgeBounds: (edge: Edge) => Rect | undefined
   resolveNodeTransformCapability: (node: Node) => {
     resize: boolean
     rotate: boolean
@@ -218,10 +215,16 @@ export const deriveSelectionSummary = ({
               : 'none' as const
       }
     : EMPTY_TRANSFORM
-  const box = readBounds({
-    nodeIds: target.nodeIds,
-    edgeIds: target.edgeIds
-  })
+  const box = getRectsBoundingRect([
+    ...nodeItems.flatMap((node) => {
+      const rect = readNodeRect(node)
+      return rect ? [rect] : []
+    }),
+    ...edgeItems.flatMap((edge) => {
+      const rect = readEdgeBounds(edge)
+      return rect ? [rect] : []
+    })
+  ])
   return {
     kind:
       nodeCount > 0 && edgeCount > 0
@@ -277,14 +280,6 @@ const edgeItemsGroupIds = (
   .map((edge) => edge.groupId)
   .filter((groupId): groupId is GroupId => Boolean(groupId))
 
-export const resolveSelectionTransformBox = (
-  selection: SelectionSummary,
-  box: Rect | undefined = selection.box
-): SelectionTransformBox => ({
-  box,
-  canResize: selection.transform.resize !== 'none'
-})
-
 export type SelectionAffordanceOwner =
   | 'none'
   | 'single-node'
@@ -296,7 +291,6 @@ export type SelectionAffordance = {
   owner: SelectionAffordanceOwner
   ownerNodeId?: NodeId
   displayBox?: Rect
-  transformBox?: Rect
   moveHit: SelectionAffordanceMoveHit
   canMove: boolean
   canResize: boolean
@@ -315,12 +309,10 @@ const EMPTY_AFFORDANCE: SelectionAffordance = {
 
 export const deriveSelectionAffordance = ({
   selection,
-  transformBox,
   resolveNodeRole,
   resolveNodeTransformCapability
 }: {
   selection: SelectionSummary
-  transformBox?: Rect
   resolveNodeRole: (node: Node) => NodeRole
   resolveNodeTransformCapability: (node: Node) => {
     resize: boolean
@@ -335,8 +327,7 @@ export const deriveSelectionAffordance = ({
   if (!primaryNode || nodeCount === 0) {
     return {
       ...EMPTY_AFFORDANCE,
-      displayBox,
-      transformBox
+      displayBox
     }
   }
 
@@ -349,7 +340,6 @@ export const deriveSelectionAffordance = ({
         owner: 'single-node',
         ownerNodeId: primaryNode.id,
         displayBox,
-        transformBox: transformBox ?? displayBox,
         moveHit:
           selection.transform.move && Boolean(displayBox)
             ? 'body'
@@ -365,7 +355,6 @@ export const deriveSelectionAffordance = ({
       owner: 'single-node',
       ownerNodeId: primaryNode.id,
       displayBox,
-      transformBox: transformBox ?? displayBox,
       moveHit:
         selection.transform.move && Boolean(displayBox)
           ? 'body'
@@ -380,7 +369,6 @@ export const deriveSelectionAffordance = ({
   return {
     owner: 'multi-selection',
     displayBox,
-    transformBox,
     moveHit:
       selection.transform.move
       && nodeCount > 0
@@ -392,7 +380,8 @@ export const deriveSelectionAffordance = ({
       && nodeCount > 0
       && Boolean(displayBox),
     canResize:
-      Boolean(transformBox)
+      edgeCount === 0
+      && Boolean(displayBox)
       && selection.transform.resize !== 'none',
     canRotate: false,
     showSingleNodeOverlay: false
@@ -411,7 +400,6 @@ export const isSelectionAffordanceEqual = (
   && left.canRotate === right.canRotate
   && left.showSingleNodeOverlay === right.showSingleNodeOverlay
   && isSameOptionalRectTuple(left.displayBox, right.displayBox)
-  && isSameOptionalRectTuple(left.transformBox, right.transformBox)
 )
 
 export type BoundsTarget = {

@@ -12,13 +12,17 @@ export const ColumnHeader = (props: {
   } = useKanbanContext()
   const groupField = active.query.group.field
   const bucket = props.section.bucket
-  const canRenderBucket = Boolean(groupField && bucket)
+  const canRenderBucketValue = Boolean(
+    extra.groupUsesOptionColors
+    && groupField
+    && bucket
+  )
   const count = props.section.itemIds.length
 
   return (
     <div className="flex items-center gap-3">
 
-      {canRenderBucket ? (
+      {canRenderBucketValue ? (
         <FieldValueContent
           field={groupField}
           value={bucket?.value}

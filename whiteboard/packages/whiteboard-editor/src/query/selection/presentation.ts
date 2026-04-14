@@ -21,8 +21,7 @@ import {
 } from '@shared/core'
 import type {
   SelectionAffordance,
-  SelectionSummary,
-  SelectionTransformBox
+  SelectionSummary
 } from '@whiteboard/core/selection'
 import type { Node, NodeSchema, Rect } from '@whiteboard/core/types'
 import type {
@@ -422,7 +421,6 @@ const readSelectionNodeInfo = ({
 
 const resolveSelectionOverlay = ({
   summary,
-  transformBox,
   affordance,
   tool,
   edit,
@@ -430,7 +428,6 @@ const resolveSelectionOverlay = ({
   transforming
 }: {
   summary: SelectionSummary
-  transformBox: SelectionTransformBox
   affordance: SelectionAffordance
   tool: Tool
   edit: EditSession
@@ -463,14 +460,12 @@ const resolveSelectionOverlay = ({
     : {
         kind: 'selection',
         box,
-        transformBox: affordance.transformBox ?? transformBox.box,
         interactive:
           affordance.canMove
           && affordance.moveHit === 'body',
         frame: affordance.owner !== 'none',
         handles:
           showTransformHandles
-          && Boolean(affordance.transformBox ?? transformBox.box)
           && affordance.canResize,
         canResize: affordance.canResize
       }
@@ -621,7 +616,6 @@ export const createSelectionPresentationRead = ({
 
       return resolveSelectionOverlay({
         summary: resolvedModel.summary,
-        transformBox: resolvedModel.transformBox,
         affordance: resolvedModel.affordance,
         tool: read(tool),
         edit: read(edit),

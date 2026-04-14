@@ -101,7 +101,7 @@ const readSelectionTransformSpec = (
   const selection = selectionModel.summary
   const affordance = selectionModel.affordance
   if (
-    !affordance.transformBox
+    !selection.box
     || handle.kind !== 'resize'
     || !handle.direction
     || !affordance.canResize
@@ -117,7 +117,7 @@ const readSelectionTransformSpec = (
   return {
     kind: 'multi-scale',
     pointerId: input.pointerId,
-    box: affordance.transformBox,
+    box: selection.box,
     targets: resolved.targets as readonly TransformTarget[],
     commitIds: resolved.commitIds,
     handle: handle.direction,

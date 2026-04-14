@@ -4,6 +4,7 @@ import {
   SHAPE_DESCRIPTORS,
   containsPointInNodeOutline,
   createShapeNodeInput,
+  getNodeBounds,
   getNodeOutline,
   isShapeKind,
   readShapeDescriptor,
@@ -86,8 +87,8 @@ test('new shape outlines keep hit testing aligned with the descriptor geometry',
       rect,
       0,
       {
-        x: 50,
-        y: 20
+        x: 5,
+        y: 10
       }
     ),
     false
@@ -124,4 +125,34 @@ test('new shape outlines keep hit testing aligned with the descriptor geometry',
 
   assert.equal(starOutline.kind, 'polygon')
   assert.ok(starOutline.points.length > 0)
+})
+
+test('basic and flowchart shapes fill the canonical rect with their outline bounds', () => {
+  const rect = {
+    x: 120,
+    y: 80,
+    width: 260,
+    height: 180
+  }
+
+  SHAPE_DESCRIPTORS
+    .filter((descriptor) => descriptor.group !== 'annotation')
+    .forEach((descriptor) => {
+      const bounds = getNodeBounds(
+        {
+          type: 'shape',
+          data: {
+            kind: descriptor.kind
+          }
+        },
+        rect,
+        0
+      )
+
+      assert.deepEqual(
+        bounds,
+        rect,
+        `${descriptor.kind} should use rect as its outline bounds`
+      )
+    })
 })

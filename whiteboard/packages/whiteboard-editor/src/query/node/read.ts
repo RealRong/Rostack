@@ -58,7 +58,6 @@ export type NodeView = {
   nodeId: NodeId
   node: NodeItem['node']
   rect: NodeItem['rect']
-  frameRect: NodeItem['rect']
   rotation: number
   hovered: boolean
   hidden: boolean
@@ -134,7 +133,6 @@ const isNodeViewEqual = (
     && right !== undefined
     && left.node === right.node
     && sameRect(left.rect, right.rect)
-    && sameRect(left.frameRect, right.frameRect)
     && left.rotation === right.rotation
     && left.hovered === right.hovered
     && left.hidden === right.hidden
@@ -207,7 +205,6 @@ const toNodeView = (
     nodeId,
     node: item.node,
     rect: item.rect,
-    frameRect: item.rect,
     rotation,
     hovered: state.hovered,
     hidden: state.hidden,

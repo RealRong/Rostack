@@ -76,7 +76,6 @@ export type SelectionOverlay =
   | {
       kind: 'selection'
       box: Rect
-      transformBox?: Rect
       interactive: boolean
       frame: boolean
       handles: boolean

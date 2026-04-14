@@ -66,7 +66,7 @@ const NodeTransformOverlayItem = memo(({
       {showHandles && !view.node.locked ? (
         <NodeTransformHandles
           node={view.node}
-          rect={view.transformRect}
+          rect={view.rect}
           rotation={view.rotation}
           canResize={view.canResize}
           canRotate={view.canRotate}
@@ -139,14 +139,10 @@ const SelectionHandlesOverlay = ({
   if (!overlay.handles) {
     return null
   }
-  const transformBox = overlay.transformBox
-  if (!transformBox) {
-    return null
-  }
 
   return (
     <TransformHandles
-      rect={transformBox}
+      rect={overlay.box}
       rotation={0}
       canResize={overlay.canResize}
       canRotate={false}

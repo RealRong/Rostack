@@ -41,7 +41,7 @@ const canIndexSnapCandidate = (
 
 const resolveSnapRect = (
   entry: CanvasNode
-): Rect => entry.geometry.bounds
+): Rect => entry.geometry.rect
 
 type SnapCacheEntry = {
   rect: RectTuple

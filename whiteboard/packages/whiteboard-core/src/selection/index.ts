@@ -9,7 +9,6 @@ export {
   isSelectionAffordanceEqual,
   isSelectionSummaryEqual,
   resolveSelectionBoxTarget,
-  resolveSelectionTransformBox,
   type SelectionInput,
   type BoundsTarget,
   type SelectionAffordance,
@@ -18,5 +17,4 @@ export {
   type SelectionSummary,
   type SelectionTarget,
   type SelectionTransform,
-  type SelectionTransformBox,
 } from '@whiteboard/core/selection/model'

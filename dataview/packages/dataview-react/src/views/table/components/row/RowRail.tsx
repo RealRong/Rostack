@@ -65,10 +65,13 @@ export interface RowSelectionButtonProps {
   disabled?: boolean
   label?: string
   className?: string
+  showOnHover?: boolean
   onPointerStart: (event: PointerEvent<HTMLElement>) => void
 }
 
 export const RowSelectionButton = (props: RowSelectionButtonProps) => {
+  const visible = props.selected || props.indeterminate || !props.showOnHover
+
   return (
     <div onPointerDown={event => {
       if (props.disabled) {
@@ -77,7 +80,10 @@ export const RowSelectionButton = (props: RowSelectionButtonProps) => {
       event.preventDefault()
       event.stopPropagation()
       props.onPointerStart(event)
-    }} className='flex h-full pointer-events-auto cursor-pointer shrink-0 items-center justify-center' style={{
+    }} className={cn(
+      'flex h-full pointer-events-auto cursor-pointer shrink-0 items-center justify-center',
+      props.showOnHover && 'group/row-selection'
+    )} style={{
       width: TABLE_SELECTION_SLOT_WIDTH + TABLE_SELECTION_INSET * 2
     }}>
       <Checkbox
@@ -88,6 +94,11 @@ export const RowSelectionButton = (props: RowSelectionButtonProps) => {
         title={props.label ?? 'Select row'}
         className={cn(
           'pointer-events-auto',
+          props.showOnHover && (
+            visible
+              ? 'opacity-100'
+              : 'opacity-0 group-hover/row-selection:opacity-100 group-focus-within/row-selection:opacity-100'
+          ),
           props.className,
         )}
       />

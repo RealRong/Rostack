@@ -167,7 +167,7 @@ export const createQueryRuntime = ({
   const selectionModel = createSelectionModelRead({
     source: selection.source,
     node: nodeRead,
-    target: targetRead
+    edge: edgeRead
   })
   const selectionRead = createSelectionPresentationRead({
     model: selectionModel,

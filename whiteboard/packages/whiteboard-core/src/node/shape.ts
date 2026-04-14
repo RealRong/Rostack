@@ -208,6 +208,218 @@ const createCubicCurve = (
   return points
 }
 
+type LegacyShapeBounds = {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
+const roundShapeCoordinate = (
+  value: number
+) => Math.round(value * 1000) / 1000
+
+const normalizeLegacyX = (
+  source: LegacyShapeBounds,
+  value: number
+) => roundShapeCoordinate(
+  ((value - source.left) / (source.right - source.left)) * OUTLINE_VIEWBOX
+)
+
+const normalizeLegacyY = (
+  source: LegacyShapeBounds,
+  value: number
+) => roundShapeCoordinate(
+  ((value - source.top) / (source.bottom - source.top)) * OUTLINE_VIEWBOX
+)
+
+const normalizeLegacyWidth = (
+  source: LegacyShapeBounds,
+  value: number
+) => roundShapeCoordinate(
+  (value / (source.right - source.left)) * OUTLINE_VIEWBOX
+)
+
+const normalizeLegacyHeight = (
+  source: LegacyShapeBounds,
+  value: number
+) => roundShapeCoordinate(
+  (value / (source.bottom - source.top)) * OUTLINE_VIEWBOX
+)
+
+const normalizeLegacyTuple = (
+  source: LegacyShapeBounds,
+  value: readonly [number, number]
+): readonly [number, number] => [
+  normalizeLegacyX(source, value[0]),
+  normalizeLegacyY(source, value[1])
+]
+
+const normalizeLegacyPoint = (
+  source: LegacyShapeBounds,
+  value: readonly [number, number]
+): Point => point100(
+  normalizeLegacyX(source, value[0]),
+  normalizeLegacyY(source, value[1])
+)
+
+const normalizeLegacyPolyline = (
+  source: LegacyShapeBounds,
+  ...values: ReadonlyArray<readonly [number, number]>
+): Point[] => values.map((value) => normalizeLegacyPoint(source, value))
+
+const createNormalizedRoundedRectOutline = (
+  source: LegacyShapeBounds,
+  options: {
+    left: number
+    top: number
+    right: number
+    bottom: number
+    radiusX: number
+    radiusY: number
+  }
+) => createRoundedRectOutline({
+  left: normalizeLegacyX(source, options.left),
+  top: normalizeLegacyY(source, options.top),
+  right: normalizeLegacyX(source, options.right),
+  bottom: normalizeLegacyY(source, options.bottom),
+  radiusX: normalizeLegacyWidth(source, options.radiusX),
+  radiusY: normalizeLegacyHeight(source, options.radiusY)
+})
+
+const createNormalizedEllipseArc = (
+  source: LegacyShapeBounds,
+  startDeg: number,
+  endDeg: number,
+  options: {
+    centerX: number
+    centerY: number
+    radiusX: number
+    radiusY: number
+    segments?: number
+  }
+) => createEllipseArc(startDeg, endDeg, {
+  centerX: normalizeLegacyX(source, options.centerX),
+  centerY: normalizeLegacyY(source, options.centerY),
+  radiusX: normalizeLegacyWidth(source, options.radiusX),
+  radiusY: normalizeLegacyHeight(source, options.radiusY),
+  segments: options.segments
+})
+
+const PATH_COMMAND_ARG_LENGTH: Partial<Record<string, number>> = {
+  M: 2,
+  L: 2,
+  H: 1,
+  V: 1,
+  C: 6,
+  S: 4,
+  Q: 4,
+  T: 2,
+  A: 7
+}
+
+const normalizeLegacyPathArgs = (
+  source: LegacyShapeBounds,
+  command: string,
+  values: readonly number[]
+) => {
+  switch (command) {
+    case 'M':
+    case 'L':
+    case 'T':
+      return [
+        normalizeLegacyX(source, values[0]!),
+        normalizeLegacyY(source, values[1]!)
+      ]
+    case 'H':
+      return [normalizeLegacyX(source, values[0]!)]
+    case 'V':
+      return [normalizeLegacyY(source, values[0]!)]
+    case 'C':
+      return [
+        normalizeLegacyX(source, values[0]!),
+        normalizeLegacyY(source, values[1]!),
+        normalizeLegacyX(source, values[2]!),
+        normalizeLegacyY(source, values[3]!),
+        normalizeLegacyX(source, values[4]!),
+        normalizeLegacyY(source, values[5]!)
+      ]
+    case 'S':
+    case 'Q':
+      return [
+        normalizeLegacyX(source, values[0]!),
+        normalizeLegacyY(source, values[1]!),
+        normalizeLegacyX(source, values[2]!),
+        normalizeLegacyY(source, values[3]!)
+      ]
+    case 'A':
+      return [
+        normalizeLegacyWidth(source, values[0]!),
+        normalizeLegacyHeight(source, values[1]!),
+        values[2]!,
+        values[3]!,
+        values[4]!,
+        normalizeLegacyX(source, values[5]!),
+        normalizeLegacyY(source, values[6]!)
+      ]
+    default:
+      return [...values]
+  }
+}
+
+const normalizeLegacyPathData = (
+  source: LegacyShapeBounds,
+  d: string
+) => {
+  const tokens = d.match(/[A-Za-z]|-?(?:\d+\.?\d*|\.\d+)/g) ?? []
+  const output: string[] = []
+  let index = 0
+  let command: string | undefined
+
+  while (index < tokens.length) {
+    const token = tokens[index]!
+    if (/^[A-Za-z]$/.test(token)) {
+      command = token
+      output.push(token)
+      index += 1
+      if (command === 'Z') {
+        continue
+      }
+    }
+
+    if (!command) {
+      break
+    }
+
+    const argLength = PATH_COMMAND_ARG_LENGTH[command]
+    if (!argLength) {
+      continue
+    }
+
+    while (index < tokens.length && !/^[A-Za-z]$/.test(tokens[index]!)) {
+      const values = tokens
+        .slice(index, index + argLength)
+        .map((value) => Number(value))
+      if (values.length < argLength) {
+        break
+      }
+
+      output.push(
+        normalizeLegacyPathArgs(source, command, values)
+          .map((value) => String(value))
+          .join(' ')
+      )
+      index += argLength
+
+      if (command === 'M') {
+        command = 'L'
+      }
+    }
+  }
+
+  return output.join(' ')
+}
+
 const createRoundedRectOutline = (options: {
   left: number
   top: number
@@ -430,53 +642,95 @@ const createShapeDescriptor = (
   previewFill: input.previewFill ?? DEFAULT_PREVIEW_FILL
 })
 
-const RECT_OUTLINE = createRoundedRectOutline({
+const LEGACY_INSET_BOUNDS: LegacyShapeBounds = {
   left: 3,
   top: 3,
   right: 97,
-  bottom: 97,
-  radiusX: 0,
-  radiusY: 0
-})
+  bottom: 97
+}
 
-const ROUNDED_RECT_OUTLINE = createRoundedRectOutline({
-  left: 3,
-  top: 3,
-  right: 97,
-  bottom: 97,
-  radiusX: 14,
-  radiusY: 14
-})
+const STAR_BOUNDS: LegacyShapeBounds = {
+  left: 4,
+  top: 4,
+  right: 96,
+  bottom: 96
+}
 
-const PILL_OUTLINE = createRoundedRectOutline({
+const SEMICIRCLE_BOUNDS: LegacyShapeBounds = {
   left: 3,
-  top: 3,
+  top: 50,
   right: 97,
-  bottom: 97,
-  radiusX: 47,
-  radiusY: 47
-})
+  bottom: 97
+}
+
+const normalizeInsetPath = (
+  d: string
+) => normalizeLegacyPathData(LEGACY_INSET_BOUNDS, d)
+
+const normalizeStarPath = (
+  d: string
+) => normalizeLegacyPathData(STAR_BOUNDS, d)
+
+const normalizeSemicirclePath = (
+  d: string
+) => normalizeLegacyPathData(SEMICIRCLE_BOUNDS, d)
+
+const RECT_OUTLINE = createNormalizedRoundedRectOutline(
+  LEGACY_INSET_BOUNDS,
+  {
+    left: 3,
+    top: 3,
+    right: 97,
+    bottom: 97,
+    radiusX: 0,
+    radiusY: 0
+  }
+)
+
+const ROUNDED_RECT_OUTLINE = createNormalizedRoundedRectOutline(
+  LEGACY_INSET_BOUNDS,
+  {
+    left: 3,
+    top: 3,
+    right: 97,
+    bottom: 97,
+    radiusX: 14,
+    radiusY: 14
+  }
+)
+
+const PILL_OUTLINE = createNormalizedRoundedRectOutline(
+  LEGACY_INSET_BOUNDS,
+  {
+    left: 3,
+    top: 3,
+    right: 97,
+    bottom: 97,
+    radiusX: 47,
+    radiusY: 47
+  }
+)
 
 const ELLIPSE_OUTLINE: ShapeOutlineSpec = {
-  top: createEllipseArc(180, 360, {
+  top: createNormalizedEllipseArc(LEGACY_INSET_BOUNDS, 180, 360, {
     centerX: 50,
     centerY: 50,
     radiusX: 47,
     radiusY: 47
   }),
-  right: createEllipseArc(270, 450, {
+  right: createNormalizedEllipseArc(LEGACY_INSET_BOUNDS, 270, 450, {
     centerX: 50,
     centerY: 50,
     radiusX: 47,
     radiusY: 47
   }),
-  bottom: createEllipseArc(180, 0, {
+  bottom: createNormalizedEllipseArc(LEGACY_INSET_BOUNDS, 180, 0, {
     centerX: 50,
     centerY: 50,
     radiusX: 47,
     radiusY: 47
   }),
-  left: createEllipseArc(270, 90, {
+  left: createNormalizedEllipseArc(LEGACY_INSET_BOUNDS, 270, 90, {
     centerX: 50,
     centerY: 50,
     radiusX: 47,
@@ -485,69 +739,69 @@ const ELLIPSE_OUTLINE: ShapeOutlineSpec = {
 }
 
 const DIAMOND_OUTLINE: ShapeOutlineSpec = {
-  top: polyline100([3, 50], [50, 3], [97, 50]),
-  right: polyline100([50, 3], [97, 50], [50, 97]),
-  bottom: polyline100([3, 50], [50, 97], [97, 50]),
-  left: polyline100([50, 3], [3, 50], [50, 97])
+  top: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [3, 50], [50, 3], [97, 50]),
+  right: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [50, 3], [97, 50], [50, 97]),
+  bottom: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [3, 50], [50, 97], [97, 50]),
+  left: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [50, 3], [3, 50], [50, 97])
 }
 
 const TRIANGLE_OUTLINE: ShapeOutlineSpec = {
-  top: polyline100([3, 97], [50, 3], [97, 97]),
-  right: polyline100([50, 3], [97, 97]),
-  bottom: polyline100([3, 97], [97, 97]),
-  left: polyline100([50, 3], [3, 97])
+  top: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [3, 97], [50, 3], [97, 97]),
+  right: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [50, 3], [97, 97]),
+  bottom: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [3, 97], [97, 97]),
+  left: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [50, 3], [3, 97])
 }
 
 const HEXAGON_OUTLINE: ShapeOutlineSpec = {
-  top: polyline100([22, 3], [78, 3]),
-  right: polyline100([78, 3], [97, 50], [78, 97]),
-  bottom: polyline100([22, 97], [78, 97]),
-  left: polyline100([22, 3], [3, 50], [22, 97])
+  top: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [22, 3], [78, 3]),
+  right: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [78, 3], [97, 50], [78, 97]),
+  bottom: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [22, 97], [78, 97]),
+  left: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [22, 3], [3, 50], [22, 97])
 }
 
 const PARALLELOGRAM_OUTLINE: ShapeOutlineSpec = {
-  top: polyline100([20, 3], [97, 3]),
-  right: polyline100([97, 3], [80, 97]),
-  bottom: polyline100([3, 97], [80, 97]),
-  left: polyline100([20, 3], [3, 97])
+  top: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [20, 3], [97, 3]),
+  right: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [97, 3], [80, 97]),
+  bottom: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [3, 97], [80, 97]),
+  left: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [20, 3], [3, 97])
 }
 
 const STAR_OUTLINE: ShapeOutlineSpec = {
-  top: polyline100([39, 35], [50, 4], [61, 35]),
-  right: polyline100([61, 35], [96, 35], [68, 56], [79, 96]),
-  bottom: polyline100([21, 96], [50, 74], [79, 96]),
-  left: polyline100([21, 96], [32, 56], [4, 35], [39, 35])
+  top: normalizeLegacyPolyline(STAR_BOUNDS, [39, 35], [50, 4], [61, 35]),
+  right: normalizeLegacyPolyline(STAR_BOUNDS, [61, 35], [96, 35], [68, 56], [79, 96]),
+  bottom: normalizeLegacyPolyline(STAR_BOUNDS, [21, 96], [50, 74], [79, 96]),
+  left: normalizeLegacyPolyline(STAR_BOUNDS, [21, 96], [32, 56], [4, 35], [39, 35])
 }
 
 const PENTAGON_OUTLINE: ShapeOutlineSpec = {
-  top: polyline100([3, 38], [50, 3], [97, 38]),
-  right: polyline100([50, 3], [97, 38], [79, 97]),
-  bottom: polyline100([21, 97], [79, 97]),
-  left: polyline100([50, 3], [3, 38], [21, 97])
+  top: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [3, 38], [50, 3], [97, 38]),
+  right: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [50, 3], [97, 38], [79, 97]),
+  bottom: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [21, 97], [79, 97]),
+  left: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [50, 3], [3, 38], [21, 97])
 }
 
 const TRAPEZOID_OUTLINE: ShapeOutlineSpec = {
-  top: polyline100([14, 3], [86, 3]),
-  right: polyline100([86, 3], [97, 97]),
-  bottom: polyline100([3, 97], [97, 97]),
-  left: polyline100([14, 3], [3, 97])
+  top: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [14, 3], [86, 3]),
+  right: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [86, 3], [97, 97]),
+  bottom: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [3, 97], [97, 97]),
+  left: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [14, 3], [3, 97])
 }
 
 const SEMICIRCLE_OUTLINE: ShapeOutlineSpec = {
-  top: createEllipseArc(180, 360, {
+  top: createNormalizedEllipseArc(SEMICIRCLE_BOUNDS, 180, 360, {
     centerX: 50,
     centerY: 97,
     radiusX: 47,
     radiusY: 47
   }),
-  right: createEllipseArc(270, 360, {
+  right: createNormalizedEllipseArc(SEMICIRCLE_BOUNDS, 270, 360, {
     centerX: 50,
     centerY: 97,
     radiusX: 47,
     radiusY: 47
   }),
-  bottom: polyline100([3, 97], [97, 97]),
-  left: createEllipseArc(180, 270, {
+  bottom: normalizeLegacyPolyline(SEMICIRCLE_BOUNDS, [3, 97], [97, 97]),
+  left: createNormalizedEllipseArc(SEMICIRCLE_BOUNDS, 180, 270, {
     centerX: 50,
     centerY: 97,
     radiusX: 47,
@@ -556,73 +810,60 @@ const SEMICIRCLE_OUTLINE: ShapeOutlineSpec = {
 }
 
 const CYLINDER_OUTLINE: ShapeOutlineSpec = {
-  top: createCubicCurve(
-    [10, 14],
-    [10, 4],
-    [90, 4],
-    [90, 14]
-  ),
-  right: polyline100([90, 14], [90, 86]),
-  bottom: createCubicCurve(
-    [10, 86],
-    [10, 96],
-    [90, 96],
-    [90, 86]
-  ),
-  left: polyline100([10, 14], [10, 86])
+  top: createEllipseArc(180, 360, {
+    centerX: 50,
+    centerY: 10,
+    radiusX: 50,
+    radiusY: 10
+  }),
+  right: polyline100([100, 10], [100, 90]),
+  bottom: createEllipseArc(0, 180, {
+    centerX: 50,
+    centerY: 90,
+    radiusX: 50,
+    radiusY: 10
+  }),
+  left: polyline100([0, 10], [0, 90])
 }
 
 const DOCUMENT_OUTLINE: ShapeOutlineSpec = {
-  top: polyline100([3, 3], [97, 3]),
-  right: polyline100([97, 3], [97, 84]),
-  bottom: joinPolyline(
-    createCubicCurve(
-      [3, 84],
-      [16, 74],
-      [32, 96],
-      [50, 84]
-    ),
-    createCubicCurve(
-      [50, 84],
-      [68, 74],
-      [84, 96],
-      [97, 84]
-    )
-  ),
-  left: polyline100([3, 3], [3, 84])
+  top: polyline100([0, 0], [100, 0]),
+  right: polyline100([100, 0], [100, 86]),
+  bottom: polyline100([0, 86], [25, 100], [50, 86], [75, 100], [100, 86]),
+  left: polyline100([0, 0], [0, 86])
 }
 
 const BEVEL_RECT_OUTLINE: ShapeOutlineSpec = {
-  top: polyline100([14, 3], [86, 3]),
-  right: polyline100([86, 3], [97, 14], [97, 86], [86, 97]),
-  bottom: polyline100([14, 97], [86, 97]),
-  left: polyline100([14, 3], [3, 14], [3, 86], [14, 97])
+  top: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [14, 3], [86, 3]),
+  right: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [86, 3], [97, 14], [97, 86], [86, 97]),
+  bottom: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [14, 97], [86, 97]),
+  left: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [14, 3], [3, 14], [3, 86], [14, 97])
 }
 
 const DELAY_OUTLINE: ShapeOutlineSpec = {
-  top: polyline100([3, 3], [55, 3]),
-  right: createEllipseArc(270, 450, {
+  top: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [3, 3], [55, 3]),
+  right: createNormalizedEllipseArc(LEGACY_INSET_BOUNDS, 270, 450, {
     centerX: 55,
     centerY: 50,
     radiusX: 42,
     radiusY: 47
   }),
-  bottom: polyline100([3, 97], [55, 97]),
-  left: polyline100([3, 3], [3, 97])
+  bottom: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [3, 97], [55, 97]),
+  left: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [3, 3], [3, 97])
 }
 
 const MANUAL_INPUT_OUTLINE: ShapeOutlineSpec = {
-  top: polyline100([3, 25], [97, 3]),
-  right: polyline100([97, 3], [97, 97]),
-  bottom: polyline100([3, 97], [97, 97]),
-  left: polyline100([3, 25], [3, 97])
+  top: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [3, 25], [97, 3]),
+  right: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [97, 3], [97, 97]),
+  bottom: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [3, 97], [97, 97]),
+  left: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [3, 25], [3, 97])
 }
 
 const MANUAL_OPERATION_OUTLINE: ShapeOutlineSpec = {
-  top: polyline100([3, 3], [97, 3]),
-  right: polyline100([97, 3], [84, 97]),
-  bottom: polyline100([16, 97], [84, 97]),
-  left: polyline100([3, 3], [16, 97])
+  top: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [3, 3], [97, 3]),
+  right: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [97, 3], [84, 97]),
+  bottom: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [16, 97], [84, 97]),
+  left: normalizeLegacyPolyline(LEGACY_INSET_BOUNDS, [3, 3], [16, 97])
 }
 
 const CALLOUT_OUTLINE: ShapeOutlineSpec = {
@@ -852,14 +1093,14 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     outline: RECT_OUTLINE,
     visual: {
       outer: createOuterPath(
-        createRoundedRectPath({
+        normalizeInsetPath(createRoundedRectPath({
           left: 3,
           top: 3,
           right: 97,
           bottom: 97,
           radiusX: 2,
           radiusY: 2
-        })
+        }))
       )
     }
   }),
@@ -878,14 +1119,14 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     outline: ROUNDED_RECT_OUTLINE,
     visual: {
       outer: createOuterPath(
-        createRoundedRectPath({
+        normalizeInsetPath(createRoundedRectPath({
           left: 3,
           top: 3,
           right: 97,
           bottom: 97,
           radiusX: 14,
           radiusY: 14
-        })
+        }))
       )
     }
   }),
@@ -904,14 +1145,14 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     outline: PILL_OUTLINE,
     visual: {
       outer: createOuterPath(
-        createRoundedRectPath({
+        normalizeInsetPath(createRoundedRectPath({
           left: 3,
           top: 3,
           right: 97,
           bottom: 97,
           radiusX: 47,
           radiusY: 47
-        })
+        }))
       )
     }
   }),
@@ -930,12 +1171,12 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     outline: ELLIPSE_OUTLINE,
     visual: {
       outer: createOuterPath(
-        createEllipsePath({
+        normalizeInsetPath(createEllipsePath({
           centerX: 50,
           centerY: 50,
           radiusX: 47,
           radiusY: 47
-        })
+        }))
       )
     }
   }),
@@ -954,12 +1195,12 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     outline: DIAMOND_OUTLINE,
     visual: {
       outer: createOuterPath(
-        createPolygonPath(
+        normalizeInsetPath(createPolygonPath(
           [50, 3],
           [97, 50],
           [50, 97],
           [3, 50]
-        )
+        ))
       )
     }
   }),
@@ -978,11 +1219,11 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     outline: TRIANGLE_OUTLINE,
     visual: {
       outer: createOuterPath(
-        createPolygonPath(
+        normalizeInsetPath(createPolygonPath(
           [50, 3],
           [97, 97],
           [3, 97]
-        )
+        ))
       )
     }
   }),
@@ -1001,14 +1242,14 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     outline: HEXAGON_OUTLINE,
     visual: {
       outer: createOuterPath(
-        createPolygonPath(
+        normalizeInsetPath(createPolygonPath(
           [22, 3],
           [78, 3],
           [97, 50],
           [78, 97],
           [22, 97],
           [3, 50]
-        )
+        ))
       )
     }
   }),
@@ -1027,12 +1268,12 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     outline: PARALLELOGRAM_OUTLINE,
     visual: {
       outer: createOuterPath(
-        createPolygonPath(
+        normalizeInsetPath(createPolygonPath(
           [20, 3],
           [97, 3],
           [80, 97],
           [3, 97]
-        )
+        ))
       )
     }
   }),
@@ -1051,7 +1292,7 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     outline: STAR_OUTLINE,
     visual: {
       outer: createOuterPath(
-        createPolygonPath(
+        normalizeStarPath(createPolygonPath(
           [50, 4],
           [61, 35],
           [96, 35],
@@ -1062,7 +1303,7 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
           [32, 56],
           [4, 35],
           [39, 35]
-        )
+        ))
       )
     }
   }),
@@ -1081,13 +1322,13 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     outline: PENTAGON_OUTLINE,
     visual: {
       outer: createOuterPath(
-        createPolygonPath(
+        normalizeInsetPath(createPolygonPath(
           [50, 3],
           [97, 38],
           [79, 97],
           [21, 97],
           [3, 38]
-        )
+        ))
       )
     }
   }),
@@ -1106,12 +1347,12 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     outline: TRAPEZOID_OUTLINE,
     visual: {
       outer: createOuterPath(
-        createPolygonPath(
+        normalizeInsetPath(createPolygonPath(
           [14, 3],
           [86, 3],
           [97, 97],
           [3, 97]
-        )
+        ))
       )
     }
   }),
@@ -1129,7 +1370,9 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     },
     outline: SEMICIRCLE_OUTLINE,
     visual: {
-      outer: createOuterPath('M3 97 A47 47 0 0 1 97 97 Z')
+      outer: createOuterPath(
+        normalizeSemicirclePath('M3 97 A47 47 0 0 1 97 97 Z')
+      )
     }
   }),
   createShapeDescriptor({
@@ -1147,14 +1390,14 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     outline: CYLINDER_OUTLINE,
     visual: {
       outer: createOuterPath(
-        'M10 14 C10 4 90 4 90 14 V86 C90 96 10 96 10 86 Z'
+        'M0 10 A50 10 0 0 1 100 10 V90 A50 10 0 0 1 0 90 Z'
       ),
       decorations: [
         createDecorationPath(
           createEllipsePath({
             centerX: 50,
-            centerY: 14,
-            radiusX: 40,
+            centerY: 10,
+            radiusX: 50,
             radiusY: 10
           }),
           {
@@ -1162,7 +1405,7 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
           }
         ),
         createDecorationPath(
-          'M10 86 C10 76 90 76 90 86',
+          'M0 90 A50 10 0 0 0 100 90',
           {
             strokeLinecap: 'round'
           }
@@ -1185,7 +1428,7 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     outline: DOCUMENT_OUTLINE,
     visual: {
       outer: createOuterPath(
-        'M3 3 H97 V84 C84 96 68 74 50 84 C32 96 16 74 3 84 Z'
+        'M0 0 H100 V86 Q87.5 86 75 100 Q62.5 86 50 86 Q37.5 86 25 100 Q12.5 86 0 86 Z'
       )
     }
   }),
@@ -1204,25 +1447,25 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     outline: RECT_OUTLINE,
     visual: {
       outer: createOuterPath(
-        createRectPath({
+        normalizeInsetPath(createRectPath({
           left: 3,
           top: 3,
           right: 97,
           bottom: 97
-        })
+        }))
       ),
       decorations: [
         createDecorationPath(
-          createOpenPolylinePath(
+          normalizeInsetPath(createOpenPolylinePath(
             [18, 3],
             [18, 97]
-          )
+          ))
         ),
         createDecorationPath(
-          createOpenPolylinePath(
+          normalizeInsetPath(createOpenPolylinePath(
             [82, 3],
             [82, 97]
-          )
+          ))
         )
       ]
     }
@@ -1242,7 +1485,7 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     outline: BEVEL_RECT_OUTLINE,
     visual: {
       outer: createOuterPath(
-        createPolygonPath(
+        normalizeInsetPath(createPolygonPath(
           [14, 3],
           [86, 3],
           [97, 14],
@@ -1251,7 +1494,7 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
           [14, 97],
           [3, 86],
           [3, 14]
-        )
+        ))
       )
     }
   }),
@@ -1270,7 +1513,7 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     outline: DELAY_OUTLINE,
     visual: {
       outer: createOuterPath(
-        'M3 3 H55 A42 47 0 0 1 55 97 H3 Z'
+        normalizeInsetPath('M3 3 H55 A42 47 0 0 1 55 97 H3 Z')
       )
     }
   }),
@@ -1289,12 +1532,12 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     outline: MANUAL_INPUT_OUTLINE,
     visual: {
       outer: createOuterPath(
-        createPolygonPath(
+        normalizeInsetPath(createPolygonPath(
           [3, 25],
           [97, 3],
           [97, 97],
           [3, 97]
-        )
+        ))
       )
     }
   }),
@@ -1313,12 +1556,12 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     outline: MANUAL_OPERATION_OUTLINE,
     visual: {
       outer: createOuterPath(
-        createPolygonPath(
+        normalizeInsetPath(createPolygonPath(
           [3, 3],
           [97, 3],
           [84, 97],
           [16, 97]
-        )
+        ))
       )
     }
   }),

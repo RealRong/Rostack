@@ -25,7 +25,7 @@ const NUMBER_METRICS = [
   'range'
 ] as const satisfies readonly CalculationMetric[]
 
-const STATUS_METRICS = [
+const OPTION_METRICS = [
   'countByOption',
   'percentByOption'
 ] as const satisfies readonly CalculationMetric[]
@@ -33,7 +33,7 @@ const STATUS_METRICS = [
 const CALCULATION_METRICS = [
   ...BASE_METRICS,
   ...NUMBER_METRICS,
-  ...STATUS_METRICS
+  ...OPTION_METRICS
 ] as const satisfies readonly CalculationMetric[]
 
 const CALCULATION_METRIC_SET = new Set<CalculationMetric>(CALCULATION_METRICS)
@@ -48,8 +48,10 @@ export const getFieldCalculationMetrics = (
   switch (field?.kind) {
     case 'number':
       return [...BASE_METRICS, ...NUMBER_METRICS]
+    case 'select':
+    case 'multiSelect':
     case 'status':
-      return [...BASE_METRICS, ...STATUS_METRICS]
+      return [...BASE_METRICS, ...OPTION_METRICS]
     default:
       return [...BASE_METRICS]
   }

@@ -3,44 +3,31 @@ import {
   deriveSelectionSummary,
   isSelectionAffordanceEqual,
   isSelectionSummaryEqual,
-  resolveSelectionTransformBox,
   type SelectionAffordance,
   type SelectionSummary,
-  type SelectionTarget,
-  type SelectionTransformBox
+  type SelectionTarget
 } from '@whiteboard/core/selection'
 import type { Node } from '@whiteboard/core/types'
 import {
   createDerivedStore,
   read,
-  sameOptionalRect as isSameOptionalRectTuple,
   type ReadStore
 } from '@shared/core'
+import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
 import type { NodePresentationRead } from '@whiteboard/editor/query/node/read'
-import type { RuntimeTargetRead } from '@whiteboard/editor/query/target'
 
 export type SelectionModel = {
   summary: SelectionSummary
-  transformBox: SelectionTransformBox
   affordance: SelectionAffordance
 }
 
 export type SelectionModelRead = ReadStore<SelectionModel>
-
-const isSelectionTransformBoxEqual = (
-  left: SelectionTransformBox,
-  right: SelectionTransformBox
-) => (
-  left.canResize === right.canResize
-  && isSameOptionalRectTuple(left.box, right.box)
-)
 
 const isSelectionModelEqual = (
   left: SelectionModel,
   right: SelectionModel
 ) => (
   isSelectionSummaryEqual(left.summary, right.summary)
-  && isSelectionTransformBoxEqual(left.transformBox, right.transformBox)
   && isSelectionAffordanceEqual(left.affordance, right.affordance)
 )
 
@@ -59,23 +46,24 @@ const readNodeTransformCapability = (
 export const createSelectionModelRead = ({
   source,
   node,
-  target
+  edge
 }: {
   source: ReadStore<SelectionTarget>
   node: NodePresentationRead
-  target: RuntimeTargetRead
+  edge: Pick<EdgePresentationRead, 'edges' | 'bounds'>
 }): SelectionModelRead => {
   const summary = createDerivedStore<SelectionSummary>({
     get: () => {
       const selectionTarget = read(source)
-      const nodes = target.nodes(selectionTarget)
-      const edges = target.edges(selectionTarget)
+      const nodes = node.nodes(selectionTarget.nodeIds)
+      const edges = edge.edges(selectionTarget.edgeIds)
 
       return deriveSelectionSummary({
         target: selectionTarget,
         nodes,
         edges,
-        readBounds: target.bounds,
+        readNodeRect: (entry) => read(node.rect, entry.id),
+        readEdgeBounds: (entry) => read(edge.bounds, entry.id),
         isNodeScalable: (entry) => (
           !entry.locked
           && node.capability(entry).role === 'content'
@@ -86,32 +74,10 @@ export const createSelectionModelRead = ({
     isEqual: isSelectionSummaryEqual
   })
 
-  const transformBox = createDerivedStore<SelectionTransformBox>({
-    get: () => {
-      const selectionTarget = read(source)
-      const box = selectionTarget.nodeIds.length > 0
-        ? target.bounds({
-            nodeIds: selectionTarget.nodeIds,
-            edgeIds: []
-          })
-        : undefined
-
-      return resolveSelectionTransformBox(
-        read(summary),
-        box
-      )
-    },
-    isEqual: isSelectionTransformBoxEqual
-  })
-
   const affordance = createDerivedStore<SelectionAffordance>({
     get: () => {
-      const resolvedSummary = read(summary)
-      const resolvedTransformBox = read(transformBox)
-
       return deriveSelectionAffordance({
-        selection: resolvedSummary,
-        transformBox: resolvedTransformBox.box,
+        selection: read(summary),
         resolveNodeRole: (entry) => node.capability(entry).role,
         resolveNodeTransformCapability: (entry) => readNodeTransformCapability(node, entry)
       })
@@ -122,7 +88,6 @@ export const createSelectionModelRead = ({
   return createDerivedStore<SelectionModel>({
     get: () => ({
       summary: read(summary),
-      transformBox: read(transformBox),
       affordance: read(affordance)
     }),
     isEqual: isSelectionModelEqual

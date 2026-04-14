@@ -99,6 +99,7 @@ const View = (props: RowScopeSelectionRailProps) => {
           disabled={disabled}
           onPointerStart={onPointerStart}
           label={props.label ?? 'Select rows'}
+          showOnHover
         />
       )}
     />

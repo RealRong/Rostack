@@ -3,7 +3,9 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import {
+  getFieldOption,
   getFieldDisplayValue,
+  hasFieldOptions,
   isEmptyFieldValue,
   readBooleanValue,
   readNumberValue
@@ -88,6 +90,44 @@ const uniqueValueKey = (
   }
 }
 
+const normalizeOptionId = (
+  field: Field | undefined,
+  value: unknown
+): string | undefined => {
+  if (!hasFieldOptions(field) || typeof value !== 'string') {
+    return undefined
+  }
+
+  return getFieldOption(field, value)?.id ?? trimToUndefined(value)
+}
+
+const readOptionIds = (
+  field: Field | undefined,
+  value: unknown
+): readonly string[] | undefined => {
+  if (!hasFieldOptions(field)) {
+    return undefined
+  }
+
+  if (field.kind === 'multiSelect') {
+    if (!Array.isArray(value)) {
+      return undefined
+    }
+
+    const rawOptionIds = value.flatMap(item => {
+      const optionId = normalizeOptionId(field, item)
+      return optionId ? [optionId] : []
+    })
+    const optionIds = Array.from(new Set(rawOptionIds))
+      .sort((left, right) => left.localeCompare(right))
+
+    return optionIds.length ? optionIds : undefined
+  }
+
+  const optionId = normalizeOptionId(field, value)
+  return optionId ? [optionId] : undefined
+}
+
 export const createAggregateEntry = (
   field: Field | undefined,
   value: unknown
@@ -103,9 +143,7 @@ export const createAggregateEntry = (
   return {
     empty: false,
     label: getFieldDisplayValue(field, value) ?? JSON.stringify(value),
-    optionId: field?.kind === 'status'
-      ? trimToUndefined(value)
-      : undefined,
+    optionIds: readOptionIds(field, value),
     uniqueKey: uniqueValueKey(field, value),
     comparable: number !== undefined
       ? number
@@ -187,9 +225,9 @@ export const buildAggregateState = (
       hasNumber = true
       numberCounts.set(entry.number, (numberCounts.get(entry.number) ?? 0) + 1)
     }
-    if (entry.optionId) {
-      optionCounts.set(entry.optionId, (optionCounts.get(entry.optionId) ?? 0) + 1)
-    }
+    entry.optionIds?.forEach(optionId => {
+      optionCounts.set(optionId, (optionCounts.get(optionId) ?? 0) + 1)
+    })
   })
 
   return {
@@ -242,6 +280,38 @@ const incrementMapCount = <T,>(
   map.set(key, (map.get(key) ?? 0) + 1)
 }
 
+const decrementMapCounts = <T,>(
+  map: Map<T, number>,
+  keys: readonly T[] | undefined
+) => {
+  keys?.forEach(key => {
+    decrementMapCount(map, key)
+  })
+}
+
+const incrementMapCounts = <T,>(
+  map: Map<T, number>,
+  keys: readonly T[] | undefined
+) => {
+  keys?.forEach(key => {
+    incrementMapCount(map, key)
+  })
+}
+
+const sameOptionIds = (
+  left: readonly string[] | undefined,
+  right: readonly string[] | undefined
+) => {
+  if (left === right) {
+    return true
+  }
+  if (!left || !right || left.length !== right.length) {
+    return false
+  }
+
+  return left.every((value, index) => value === right[index])
+}
+
 export const sameAggregateEntry = (
   left: AggregateEntry | undefined,
   right: AggregateEntry | undefined
@@ -254,7 +324,7 @@ export const sameAggregateEntry = (
     && left?.number === right?.number
     && left?.comparable === right?.comparable
     && left?.uniqueKey === right?.uniqueKey
-    && left?.optionId === right?.optionId
+    && sameOptionIds(left?.optionIds, right?.optionIds)
   )
 
 export const patchAggregateState = (input: {
@@ -284,7 +354,7 @@ export const patchAggregateState = (input: {
       decrementMapCount(distribution, input.previous.label)
       decrementMapCount(uniqueCounts, input.previous.uniqueKey)
       decrementMapCount(numberCounts, input.previous.number)
-      decrementMapCount(optionCounts, input.previous.optionId)
+      decrementMapCounts(optionCounts, input.previous.optionIds)
       if (input.previous.number !== undefined) {
         sum -= input.previous.number
         hasNumber = numberCounts.size > 0
@@ -308,7 +378,7 @@ export const patchAggregateState = (input: {
       incrementMapCount(distribution, input.next.label)
       incrementMapCount(uniqueCounts, input.next.uniqueKey)
       incrementMapCount(numberCounts, input.next.number)
-      incrementMapCount(optionCounts, input.next.optionId)
+      incrementMapCounts(optionCounts, input.next.optionIds)
       if (input.next.number !== undefined) {
         sum += input.next.number
         hasNumber = true

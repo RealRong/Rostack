@@ -41,7 +41,6 @@ export type NodeView = {
   nodeId: NodeId
   node: NodeItem['node']
   rect: NodeItem['rect']
-  frameRect: NodeItem['rect']
   rotation: number
   hidden: boolean
   resizing: boolean
@@ -58,7 +57,6 @@ export type NodeOverlayView = {
   nodeId: NodeView['nodeId']
   node: NodeView['node']
   rect: NodeView['rect']
-  transformRect: NodeView['frameRect']
   transformFrameStyle: CSSProperties
   rotation: NodeView['rotation']
   canConnect: NodeView['canConnect']
@@ -76,8 +74,7 @@ const resolveNodeOverlayViewState = (
     nodeId: view.nodeId,
     node: view.node,
     rect: view.rect,
-    transformRect: view.frameRect,
-    transformFrameStyle: buildOverlayFrameStyle(view.frameRect, view.rotation),
+    transformFrameStyle: buildOverlayFrameStyle(view.rect, view.rotation),
     rotation: view.rotation,
     canConnect: view.canConnect,
     canResize: view.canResize,
@@ -113,7 +110,6 @@ const resolveNodeViewState = (
     nodeId: baseView.nodeId,
     node: baseView.node,
     rect: baseView.rect,
-    frameRect: baseView.frameRect,
     rotation: baseView.rotation,
     hidden: baseView.hidden,
     resizing: baseView.resizing,

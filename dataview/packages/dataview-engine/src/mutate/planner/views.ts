@@ -39,7 +39,8 @@ import {
 import {
   cloneGroup,
   normalizeGroup,
-  sameGroup
+  sameGroup,
+  setGroup
 } from '@dataview/core/group'
 import {
   cloneSearch,
@@ -463,6 +464,48 @@ const normalizeView = (
   }
 }
 
+const resolveDefaultKanbanGroup = (
+  document: DataDoc
+): ViewGroup | undefined => {
+  const fields = getDocumentFields(document)
+  const isGroupable = (field: (typeof fields)[number]) => (
+    field.kind !== 'title'
+    && getFieldGroupMeta(field).modes.length > 0
+  )
+  const field = (
+    fields.find(candidate => (
+      isGroupable(candidate)
+      && (
+        candidate.kind === 'status'
+        || candidate.kind === 'select'
+        || candidate.kind === 'multiSelect'
+      )
+    ))
+    ?? fields.find(isGroupable)
+  )
+
+  return field
+    ? setGroup(undefined, field)
+    : undefined
+}
+
+const ensureKanbanGroup = (
+  document: DataDoc,
+  view: View
+): View => {
+  if (view.type !== 'kanban' || view.group) {
+    return view
+  }
+
+  const group = resolveDefaultKanbanGroup(document)
+  return group
+    ? {
+        ...view,
+        group
+      }
+    : view
+}
+
 const lowerViewCreate = (
   document: DataDoc,
   action: Extract<Action, { type: 'view.create' }>,
@@ -487,7 +530,7 @@ const lowerViewCreate = (
   }
 
   const fields = getDocumentFields(document)
-  const view = normalizeView(document, {
+  const view = ensureKanbanGroup(document, normalizeView(document, {
     id: explicitViewId || createViewId(),
     name: resolveUniqueViewName({
       views: getDocumentViews(document),
@@ -506,7 +549,7 @@ const lowerViewCreate = (
       ? cloneViewOptions(action.input.options)
       : createDefaultViewOptions(action.input.type, fields),
     orders: action.input.orders ? [...action.input.orders] : []
-  } satisfies View)
+  } satisfies View))
 
   issues.push(...validateView(document, source, view))
   return planResult(issues, [toViewPut(view)])
@@ -524,7 +567,11 @@ const lowerViewPatch = (
     return planResult(issues)
   }
 
-  const nextView = normalizeView(document, applyViewPatch(view, action.patch))
+  const nextView = (
+    action.patch.type === 'kanban'
+      ? ensureKanbanGroup(document, normalizeView(document, applyViewPatch(view, action.patch)))
+      : normalizeView(document, applyViewPatch(view, action.patch))
+  )
   if (sameJsonValue(nextView, view)) {
     return planResult(issues)
   }

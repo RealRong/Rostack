@@ -17,7 +17,7 @@ import {
   type MoveEffect,
   type MoveSet
 } from '@whiteboard/core/node/move'
-import { getNodeBoundsByNode } from '@whiteboard/core/node/geometry'
+import { getNodeRect } from '@whiteboard/core/node/geometry'
 
 export type MoveState = {
   nodes: readonly Node[]
@@ -52,8 +52,7 @@ const getMoveBounds = (
       return []
     }
 
-    const rect = getNodeBoundsByNode(node, nodeSize)
-    return rect ? [rect] : []
+    return [getNodeRect(node, nodeSize)]
   })
 
   return getRectsBoundingRect(rects)

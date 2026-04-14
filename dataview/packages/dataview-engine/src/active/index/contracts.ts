@@ -119,7 +119,7 @@ export interface AggregateEntry {
   number?: number
   comparable?: number | string
   uniqueKey?: string
-  optionId?: string
+  optionIds?: readonly string[]
 }
 
 export interface FieldCalcIndex {

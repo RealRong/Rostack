@@ -6,12 +6,12 @@ import type {
   CalculationMetric,
   FieldId,
   Field,
-  View,
-  StatusField
+  View
 } from '@dataview/core/contracts'
 import {
   getFieldOption,
-  getFieldOptions
+  getFieldOptions,
+  hasFieldOptions
 } from '@dataview/core/field'
 import type {
   AggregateState
@@ -152,8 +152,10 @@ const readMedian = (
   return values.reduce((sum, value) => sum + value, 0) / values.length
 }
 
-const computeStatusDistribution = (
-  field: StatusField | undefined,
+const computeOptionDistribution = (
+  field: Extract<Field, {
+    kind: 'select' | 'multiSelect' | 'status'
+  }> | undefined,
   metric: CalculationMetric,
   state: AggregateState
 ): CalculationResult => {
@@ -175,7 +177,7 @@ const computeStatusDistribution = (
     }
   })
 
-  const denominator = Array.from(counts.values()).reduce((sum, count) => sum + count, 0)
+  const denominator = Array.from(state.optionCounts.values()).reduce((sum, count) => sum + count, 0)
   const items = orderedOptionIds
     .map(optionId => {
       const count = counts.get(optionId) ?? state.optionCounts.get(optionId) ?? 0
@@ -256,8 +258,8 @@ export const computeCalculationFromState = (input: {
         : emptyResult(input.metric)
     case 'countByOption':
     case 'percentByOption':
-      return computeStatusDistribution(
-        input.field?.kind === 'status' ? input.field : undefined,
+      return computeOptionDistribution(
+        hasFieldOptions(input.field) ? input.field : undefined,
         input.metric,
         input.state
       )

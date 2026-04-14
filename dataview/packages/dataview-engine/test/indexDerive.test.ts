@@ -5,10 +5,15 @@ import {
   createIndexState,
   deriveIndex
 } from '@dataview/engine/active/index/runtime'
+import {
+  computeCalculationFromState
+} from '@dataview/engine/active/snapshot/summary/compute'
 
 const TITLE_FIELD_ID = 'title'
 const FIELD_STATUS = 'status'
 const FIELD_POINTS = 'points'
+const FIELD_PRIORITY = 'priority'
+const FIELD_TAGS = 'tags'
 
 const STATUS_OPTIONS = [
   {
@@ -261,4 +266,127 @@ test('engine.active.index sync rebuilds only touched field semantics on schema c
   const statusCalc = state.calculations.fields.get(FIELD_STATUS)
   assert.equal(statusCalc.global.distribution.get('Done'), undefined)
   assert.equal(statusCalc.global.distribution.get('Finished'), 1)
+})
+
+test('engine.active calculations support select and multiSelect option distributions', () => {
+  const document = createDocument({
+    fieldDefs: [
+      ...createFields(),
+      {
+        id: FIELD_PRIORITY,
+        name: 'Priority',
+        kind: 'select',
+        options: [
+          {
+            id: 'high',
+            name: 'High',
+            color: 'red'
+          },
+          {
+            id: 'low',
+            name: 'Low',
+            color: 'gray'
+          }
+        ]
+      },
+      {
+        id: FIELD_TAGS,
+        name: 'Tags',
+        kind: 'multiSelect',
+        options: [
+          {
+            id: 'bug',
+            name: 'Bug',
+            color: 'red'
+          },
+          {
+            id: 'backend',
+            name: 'Backend',
+            color: 'blue'
+          },
+          {
+            id: 'frontend',
+            name: 'Frontend',
+            color: 'green'
+          }
+        ]
+      }
+    ],
+    records: {
+      byId: {
+        rec_1: {
+          id: 'rec_1',
+          title: 'Task 1',
+          type: 'task',
+          values: {
+            [FIELD_STATUS]: 'todo',
+            [FIELD_POINTS]: 1,
+            [FIELD_PRIORITY]: 'high',
+            [FIELD_TAGS]: ['bug', 'backend']
+          }
+        },
+        rec_2: {
+          id: 'rec_2',
+          title: 'Task 2',
+          type: 'task',
+          values: {
+            [FIELD_STATUS]: 'doing',
+            [FIELD_POINTS]: 2,
+            [FIELD_PRIORITY]: 'high',
+            [FIELD_TAGS]: ['backend']
+          }
+        },
+        rec_3: {
+          id: 'rec_3',
+          title: 'Task 3',
+          type: 'task',
+          values: {
+            [FIELD_STATUS]: 'done',
+            [FIELD_POINTS]: 3,
+            [FIELD_PRIORITY]: 'low',
+            [FIELD_TAGS]: ['bug', 'frontend']
+          }
+        }
+      },
+      order: ['rec_1', 'rec_2', 'rec_3']
+    }
+  })
+
+  const index = createIndexHarness(document, {
+    calculationFields: [FIELD_PRIORITY, FIELD_TAGS]
+  })
+  const state = index.state()
+  const priorityField = document.fields.byId[FIELD_PRIORITY]
+  const tagField = document.fields.byId[FIELD_TAGS]
+  const priorityCalc = state.calculations.fields.get(FIELD_PRIORITY)
+  const tagCalc = state.calculations.fields.get(FIELD_TAGS)
+
+  assert.equal(priorityCalc.global.optionCounts.get('high'), 2)
+  assert.equal(priorityCalc.global.optionCounts.get('low'), 1)
+  assert.equal(tagCalc.global.optionCounts.get('bug'), 2)
+  assert.equal(tagCalc.global.optionCounts.get('backend'), 2)
+  assert.equal(tagCalc.global.optionCounts.get('frontend'), 1)
+
+  const priorityResult = computeCalculationFromState({
+    field: priorityField,
+    metric: 'percentByOption',
+    state: priorityCalc.global
+  })
+  const tagResult = computeCalculationFromState({
+    field: tagField,
+    metric: 'countByOption',
+    state: tagCalc.global
+  })
+
+  assert.equal(priorityResult.kind, 'distribution')
+  assert.equal(priorityResult.denominator, 3)
+  assert.deepEqual(priorityResult.items.map(item => item.key), ['high', 'low'])
+  assert.deepEqual(priorityResult.items.map(item => item.label), ['High', 'Low'])
+  assert.deepEqual(priorityResult.items.map(item => item.percent), [2 / 3, 1 / 3])
+
+  assert.equal(tagResult.kind, 'distribution')
+  assert.equal(tagResult.denominator, 5)
+  assert.deepEqual(tagResult.items.map(item => item.key), ['bug', 'backend', 'frontend'])
+  assert.deepEqual(tagResult.items.map(item => item.label), ['Bug', 'Backend', 'Frontend'])
+  assert.deepEqual(tagResult.items.map(item => item.count), [2, 2, 1])
 })

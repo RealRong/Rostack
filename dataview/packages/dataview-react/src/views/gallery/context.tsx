@@ -37,6 +37,28 @@ const Ctx = createContext<Gallery | null>(null)
 
 const readGalleryActiveState = readActiveTypedViewState('gallery')
 
+const GalleryRuntimeProvider = (props: {
+  active: ActiveGalleryViewState
+  extra: GalleryState
+  children?: ReactNode
+}) => {
+  const runtime = useGalleryRuntime({
+    active: props.active,
+    extra: props.extra
+  })
+  const value = useMemo<GalleryContextValue>(() => ({
+    active: props.active,
+    extra: props.extra,
+    runtime
+  }), [
+    props.active,
+    props.extra,
+    runtime
+  ])
+
+  return createElement(Ctx.Provider, { value }, props.children)
+}
+
 export const GalleryProvider = (props: GalleryProviderProps) => {
   const active = useDataViewValue(
     dataView => dataView.engine.active.state,
@@ -48,21 +70,15 @@ export const GalleryProvider = (props: GalleryProviderProps) => {
   if (!active || !extra) {
     return null
   }
-  const runtime = useGalleryRuntime({
-    active,
-    extra
-  })
-  const value = useMemo<GalleryContextValue>(() => ({
-    active,
-    extra,
-    runtime
-  }), [
-    active,
-    extra,
-    runtime
-  ])
 
-  return createElement(Ctx.Provider, { value }, props.children)
+  return (
+    <GalleryRuntimeProvider
+      active={active}
+      extra={extra}
+    >
+      {props.children}
+    </GalleryRuntimeProvider>
+  )
 }
 
 export const useGalleryContext = (): Gallery => {

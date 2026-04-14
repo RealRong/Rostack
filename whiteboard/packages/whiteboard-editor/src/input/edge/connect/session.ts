@@ -23,7 +23,17 @@ const commitConnectState = (
     return
   }
 
-  ctx.command.edge.create(commit.input)
+  const result = ctx.command.edge.create(commit.input)
+  if (!result.ok) {
+    return
+  }
+
+  ctx.local.session.tool.set({
+    type: 'select'
+  })
+  ctx.local.session.selection.replace({
+    edgeIds: [result.data.edgeId]
+  })
 }
 
 export const createEdgeConnectSession = (

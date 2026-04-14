@@ -15,6 +15,17 @@ export type EdgeMoveState = {
   delta: Point
 }
 
+const ZERO_POINT: Point = {
+  x: 0,
+  y: 0
+}
+
+const readEdgeMovePatch = (
+  state: EdgeMoveState
+) => state.edge && !isPointEqual(state.delta, ZERO_POINT)
+  ? moveEdge(state.edge, state.delta)
+  : undefined
+
 export const readMovableEdge = (
   edge: Pick<EdgePresentationRead, 'item' | 'capability'>,
   edgeId: EdgeId
@@ -60,16 +71,19 @@ export const stepEdgeMove = (
   }
   if (isPointEqual(delta, state.delta)) {
     return {
-      state
+      state,
+      patch: readEdgeMovePatch(state)
     }
   }
 
+  const nextState = {
+    ...state,
+    delta
+  }
+
   return {
-    state: {
-      ...state,
-      delta
-    },
-    patch: moveEdge(state.edge, delta)
+    state: nextState,
+    patch: readEdgeMovePatch(nextState)
   }
 }
 
@@ -79,7 +93,7 @@ export const commitEdgeMove = (
   edgeId: EdgeId
   delta: Point
 } | undefined => (
-  !isPointEqual(state.delta, { x: 0, y: 0 })
+  !isPointEqual(state.delta, ZERO_POINT)
     ? {
         edgeId: state.edgeId,
         delta: state.delta

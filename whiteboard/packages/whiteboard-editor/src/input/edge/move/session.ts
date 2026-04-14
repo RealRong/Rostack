@@ -12,6 +12,21 @@ import {
   type EdgeMoveState
 } from '@whiteboard/editor/input/edge/move/start'
 
+const readMoveGesture = (
+  state: EdgeMoveState,
+  patch?: ReturnType<typeof stepEdgeMove>['patch']
+) => patch
+  ? createEdgeGesture(
+      'edge-move',
+      {
+        patches: [{
+          id: state.edgeId,
+          patch
+        }]
+      }
+    )
+  : null
+
 export const createEdgeBodyMoveSession = (
   ctx: InteractionContext,
   initial: EdgeMoveState
@@ -29,19 +44,7 @@ export const createEdgeBodyMoveSession = (
       return CANCEL
     }
 
-    if (!result.patch) {
-      return
-    }
-
-    interaction!.gesture = createEdgeGesture(
-      'edge-move',
-      {
-        patches: [{
-          id: state.edgeId,
-          patch: result.patch
-        }]
-      }
-    )
+    interaction!.gesture = readMoveGesture(state, result.patch)
   }
 
   interaction = {

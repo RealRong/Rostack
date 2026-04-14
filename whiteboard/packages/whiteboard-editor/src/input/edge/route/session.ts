@@ -48,18 +48,19 @@ export const createEdgeRouteSession = (
 ): InteractionSession => {
   let state = initial
   let interaction = null as InteractionSession | null
+  const baseEdge = ctx.query.edge.item.get(initial.edgeId)?.edge
 
   const step = (
     pointer: PointerClient
   ) => {
     const item = ctx.query.edge.item.get(state.edgeId)
-    if (!item || !ctx.query.edge.capability(item.edge).editRoute) {
+    if (!item || !baseEdge || !ctx.query.edge.capability(item.edge).editRoute) {
       return CANCEL
     }
 
     const result = stepEdgeRoute({
       state,
-      edge: item.edge,
+      edge: baseEdge,
       pointerWorld: readViewportWorld(ctx, pointer)
     })
     state = result.state

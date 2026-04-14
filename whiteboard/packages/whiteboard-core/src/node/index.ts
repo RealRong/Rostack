@@ -193,10 +193,12 @@ export {
   applySelection
 } from '@whiteboard/core/node/selection'
 export {
+  SHAPE_DESCRIPTORS,
   SHAPE_MENU_SECTIONS,
   SHAPE_SPECS,
   createShapeNodeInput,
   isShapeKind,
+  readShapeDescriptor,
   readShapeKind,
   readShapeMeta,
   readShapePreviewFill,
@@ -205,11 +207,16 @@ export {
 } from '@whiteboard/core/node/shape'
 export type {
   ShapeControlId,
+  ShapeDescriptor,
   ShapeGroup,
   ShapeLabelInset,
   ShapeMenuSection,
   ShapeMeta,
-  ShapeSpec
+  ShapeOutlineSide,
+  ShapeOutlineSpec,
+  ShapePathSpec,
+  ShapeSpec,
+  ShapeVisualSpec
 } from '@whiteboard/core/node/shape'
 export {
   createWhiteboardPaletteKey,

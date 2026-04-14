@@ -281,7 +281,13 @@ export const stepEdgeRoute = (input: {
   }
   if (isPointEqual(point, input.state.point)) {
     return {
-      state: input.state
+      state: input.state,
+      draft: isPointEqual(input.state.point, input.state.origin)
+        ? undefined
+        : {
+            patch: moveRoutePoint(input.edge, input.state.index, input.state.point),
+            activeRouteIndex: input.state.index
+          }
     }
   }
 

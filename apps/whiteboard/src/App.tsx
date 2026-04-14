@@ -4,12 +4,12 @@ import {
   type WhiteboardInstance
 } from '@whiteboard/react'
 import type { Document } from '@whiteboard/core/types'
-import { scenarios } from './scenarios'
+import { scenarios } from '@whiteboard/demo/scenarios'
 import {
   createBroadcastChannelCollab,
   createDemoUser,
   readRoomIdFromUrl
-} from './collab'
+} from '@whiteboard/demo/collab'
 
 const resolveScenario = (id: string) =>
   scenarios.find((item) => item.id === id) ?? scenarios[0]

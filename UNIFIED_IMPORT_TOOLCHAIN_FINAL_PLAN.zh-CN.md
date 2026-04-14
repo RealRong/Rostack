@@ -160,9 +160,11 @@
 
 它最终应该保留：
 
+- `@rostack/dataview-demo/*`
 - `@shared/*`
 - `@dataview/*`
 - `@whiteboard/*`
+- `@whiteboard/demo/*`
 
 它最终不应再保留：
 
@@ -223,6 +225,7 @@
 - 测试里也只允许 `@...`
 - 不再允许 `#...`
 - 不再使用 `node --test`
+- 包级测试如果引用 bench / fixture，也继续走根级 `@...` 子路径，不再回退到相对路径
 
 ### 7.3 Node 脚本 / bench / 本地执行
 
@@ -233,8 +236,17 @@
 - bench、一次性脚本、本地调试脚本统一走 `tsx`
 - 脚本里也只允许 `@...`
 - 不再保留为 `#...` 或旧测试链路存在的中间转换脚本
+- bench 辅助模块统一挂在对应包名下的 `@scope/pkg/bench/*` 子路径
 
-### 7.4 包构建
+### 7.4 App / demo 源码导入
+
+正式规则：
+
+- app / demo 的源码模块也统一走 `@...`
+- app 内部源码使用自身 package 名子路径，例如 `@whiteboard/demo/*`
+- 不再把 app 内部 TypeScript 模块写成 `./App`、`./scenarios` 这类相对导入
+
+### 7.5 包构建
 
 - `tsdown`
 
@@ -252,8 +264,10 @@
 - 全仓源码导入统一为 `@...`
 - 根 [tsconfig.base.json](/Users/realrong/Rostack/tsconfig.base.json) 只保留 `@...`
 - 所有包保持无 `imports`
+- app / test / bench 入口也已切到 `@...`
 - `shared/ui` README 已与新模型对齐
 - 旧迁移脚本已删除
+- dataview 的旧测试中间产物目录已删除
 
 仍需长期保持的约束只有一类：
 
@@ -328,6 +342,7 @@
 - 所有 `test/**`
 - 所有 `bench/**`
 - 所有运行时辅助入口
+- 所有 app / demo 内部源码入口
 
 统一把 `#...` 改为 `@...`
 

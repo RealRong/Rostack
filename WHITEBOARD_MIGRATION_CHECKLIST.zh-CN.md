@@ -31,8 +31,8 @@
 结论：
 
 - 目前已经不存在之前那种“同一领域语义在三层各维护一份”的大块重复模型。
-- 剩余问题主要集中在 `editor` 内部的小型展示态包装和少量局部 helper。
-- 后续迁移已经不再是“重构命令/类型体系”，而是“消灭残余中间层、统一展示态几何命名、进一步压缩局部重复逻辑”。
+- 但重新白板式复扫后，仍然能定位到 2 处审计范围内的微型重复，以及 1 处紧邻 `react` 层的一致性缺口。
+- 后续迁移已经不再是“重构命令/类型体系”，而是“收掉残余局部重复定义，彻底完成最后一轮收敛”。
 
 ## 已完成收敛项
 
@@ -115,8 +115,78 @@
 
 当前结论：
 
-- 在 `core` / `engine` / `editor` 的审计范围内，本轮已经没有明确的“必须继续迁移”的重复类型族或中间翻译层。
-- 当前剩余的类型包装都属于合理的分层表达，而不是历史遗留的双轨模型。
+- 在 `core` / `engine` / `editor` 的审计范围内，历史上的大型重复类型族和中间翻译层已经清理完毕。
+- 但仍有少量“局部重复定义”没有收干净，规模不大，却应该纳入最终收尾清单。
+- 当前大部分剩余包装类型仍然属于合理分层表达，而不是历史遗留的双轨模型。
+
+## 本轮新增发现
+
+### 1. `engine` 节点索引的重建状态重复定义
+
+文件：
+
+- `whiteboard/packages/whiteboard-engine/src/read/indexes/snap.ts`
+- `whiteboard/packages/whiteboard-engine/src/read/indexes/nodeRect.ts`
+
+重复点：
+
+- 两个文件都定义了同一套 `Rebuild = 'none' | 'dirty' | 'full'`
+- 两个文件都复制了同样的 `resolveRebuild(impact: KernelReadImpact)` 逻辑
+
+判断：
+
+- 这不是 `core` 领域类型，不应该上移到 `core`
+- 但它已经形成 `engine` 内部的局部重复 helper，应该抽到 `engine/read/indexes` 的共享内部工具中
+
+结论：
+
+- 应继续收敛
+- 目标是 `engine` 内部单一来源，而不是再造新的跨层类型
+
+### 2. `editor` 文本变换模式重复定义
+
+文件：
+
+- `whiteboard/packages/whiteboard-editor/src/input/transform/session.ts`
+- `whiteboard/packages/whiteboard-editor/src/input/transform/text.ts`
+
+重复点：
+
+- 两个文件都定义了 `TextTransformMode = 'reflow' | 'scale'`
+
+判断：
+
+- 这是 `editor` 输入交互层自己的局部语义，不应上移到 `core`
+- 当前重复定义没有带来行为分叉，但属于可以直接消掉的重复类型
+
+结论：
+
+- 应继续收敛
+- 建议只保留一处导出，另一个文件直接复用
+
+### 3. `editor` / `react` 文本字段类型仍有一层重复
+
+文件：
+
+- `whiteboard/packages/whiteboard-editor/src/local/session/edit.ts`
+- `whiteboard/packages/whiteboard-react/src/features/node/dom/textSourceRegistry.ts`
+- `whiteboard/packages/whiteboard-react/src/features/node/registry/default/shared.tsx`
+
+重复点：
+
+- `editor` 已有 `EditField = 'text' | 'title'`
+- `react` 里仍然保留本地 `TextField = 'text' | 'title'`
+- `createTextField` 也仍然直接写 `'title' | 'text'`
+
+判断：
+
+- 这不是 `core` 类型
+- 但它已经属于不必要的相邻层重复，应该直接复用 `editor` 已存在的 `EditField`
+
+结论：
+
+- 这项不属于本次主审计范围的核心阻塞项
+- 但如果目标是“最后的收敛”，应一并纳入清理
 
 ## 当前不建议再动的部分
 
@@ -184,8 +254,6 @@
 
 ## 迁移清单
 
-当前迁移清单已经全部完成。
-
 已完成项：
 
 - [x] 删除 `MindmapPresentationRead.snapshot` 纯别名中间层
@@ -195,6 +263,16 @@
 - [x] 统一 `react` 层 mindmap 展示类型，避免再次复制匿名几何结构
 - [x] 重新通过 `editor` / `react` / `apps/whiteboard` 类型检查
 - [x] 重新通过整套 `whiteboard` lint / test
+
+剩余必做项：
+
+- [ ] 提取 `whiteboard/packages/whiteboard-engine/src/read/indexes/snap.ts` 与 `whiteboard/packages/whiteboard-engine/src/read/indexes/nodeRect.ts` 共用的 `Rebuild` / `resolveRebuild`
+- [ ] 删除 `whiteboard/packages/whiteboard-editor/src/input/transform/session.ts` 与 `whiteboard/packages/whiteboard-editor/src/input/transform/text.ts` 中重复的 `TextTransformMode` 定义，统一为单一来源
+
+相邻包一致性项：
+
+- [ ] 将 `whiteboard/packages/whiteboard-react/src/features/node/dom/textSourceRegistry.ts` 的 `TextField` 改为直接复用 `editor` 的 `EditField`
+- [ ] 将 `whiteboard/packages/whiteboard-react/src/features/node/registry/default/shared.tsx` 的 `createTextField(path: 'title' | 'text')` 改为复用同一个 `EditField`
 
 ## 验证建议
 
@@ -213,5 +291,8 @@
 如果只看 `core` / `engine` / `editor` 三层当前代码：
 
 - 大型重复类型族已经基本消失。
-- 历史遗留的中间翻译层已经清理完毕。
-- 当前代码已经进入“可维护的单一来源状态”，后续如果继续优化，优先级应放在新功能抽象，而不是继续做类型体系去重。
+- 历史遗留的中间翻译层已经基本清理完毕。
+- 但最后一轮复扫仍能确认 2 处应继续收掉的微型重复：
+  - `engine` 索引内部的 `Rebuild` / `resolveRebuild`
+  - `editor` 文本变换的 `TextTransformMode`
+- 如果把紧邻消费层也算进“whiteboard 最后收敛”，还应顺手统一 `react` 对 `EditField` 的重复声明。

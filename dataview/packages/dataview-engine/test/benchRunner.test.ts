@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 
-import { runBenchmarks } from '../bench/runner/index'
+import { runBenchmarks } from '@dataview/engine/bench/runner/index'
 
 test('bench runner produces structured output for smoke scenarios', () => {
   const result = runBenchmarks({

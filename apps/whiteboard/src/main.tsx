@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { App } from './App'
+import { App } from '@whiteboard/demo/App'
 import './app.css'
 
 const container = document.getElementById('root')

@@ -6,6 +6,7 @@
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "paths": {
+      "@rostack/dataview-demo/*": ["apps/dataview/src/*"],
       "@shared/core": ["shared/core/src/index.ts"],
       "@shared/core/*": ["shared/core/src/*"],
       "@shared/dom": ["shared/dom/src/index.ts"],
@@ -17,6 +18,7 @@
       "@dataview/core": ["dataview/packages/dataview-core/src/index.ts"],
       "@dataview/core/*": ["dataview/packages/dataview-core/src/*"],
       "@dataview/engine": ["dataview/packages/dataview-engine/src/index.ts"],
+      "@dataview/engine/bench/*": ["dataview/packages/dataview-engine/bench/*"],
       "@dataview/engine/*": ["dataview/packages/dataview-engine/src/*"],
       "@dataview/meta": ["dataview/packages/dataview-meta/src/index.ts"],
       "@dataview/meta/*": ["dataview/packages/dataview-meta/src/*"],
@@ -31,6 +33,7 @@
       "@whiteboard/editor": ["whiteboard/packages/whiteboard-editor/src/index.ts"],
       "@whiteboard/editor/*": ["whiteboard/packages/whiteboard-editor/src/*"],
       "@whiteboard/editor/draw": ["whiteboard/packages/whiteboard-editor/src/local/draw/index.ts"],
+      "@whiteboard/demo/*": ["apps/whiteboard/src/*"],
       "@whiteboard/react": ["whiteboard/packages/whiteboard-react/src/index.ts"],
       "@whiteboard/react/*": ["whiteboard/packages/whiteboard-react/src/*"],
       "@whiteboard/collab": ["whiteboard/packages/whiteboard-collab/src/index.ts"],

@@ -1,4 +1,7 @@
-import { createDefaultViewOptions, TITLE_FIELD_ID } from '../runtime'
+import {
+  createDefaultViewOptions,
+  TITLE_FIELD_ID
+} from '@dataview/engine/bench/runtime'
 
 const FIELD_STATUS = 'status'
 const FIELD_POINTS = 'points'

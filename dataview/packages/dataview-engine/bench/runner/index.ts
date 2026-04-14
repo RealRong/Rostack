@@ -2,9 +2,12 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { performance } from 'node:perf_hooks'
 
-import { createEngine } from '../runtime'
-import { SIZE_TO_COUNT, createFixture } from '../fixtures/index'
-import { getScenarios } from '../scenarios/index'
+import { createEngine } from '@dataview/engine/bench/runtime'
+import {
+  SIZE_TO_COUNT,
+  createFixture
+} from '@dataview/engine/bench/fixtures/index'
+import { getScenarios } from '@dataview/engine/bench/scenarios/index'
 
 const DEFAULT_SIZES = ['small', 'medium']
 const DEFAULT_ITERATIONS = 3

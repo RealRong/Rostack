@@ -1,4 +1,4 @@
-import { STATUS_OPTIONS } from '../fixtures/index'
+import { STATUS_OPTIONS } from '@dataview/engine/bench/fixtures/index'
 
 const scenario = (definition) => definition
 

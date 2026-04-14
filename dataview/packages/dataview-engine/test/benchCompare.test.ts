@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'vitest'
 
-import { compareBenchmarks } from '../bench/runner/compare'
+import { compareBenchmarks } from '@dataview/engine/bench/runner/compare'
 
 const writeJson = (directory: string, name: string, value: unknown) => {
   const target = join(directory, name)

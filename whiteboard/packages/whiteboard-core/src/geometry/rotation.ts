@@ -1,6 +1,6 @@
-import type { Point, Rect } from '#whiteboard-core/types'
-import { rotatePoint } from '#whiteboard-core/geometry/point'
-import { getRectCenter, getRectCorners } from '#whiteboard-core/geometry/rect'
+import type { Point, Rect } from '@whiteboard/core/types'
+import { rotatePoint } from '@whiteboard/core/geometry/point'
+import { getRectCenter, getRectCorners } from '@whiteboard/core/geometry/rect'
 
 export const getRotatedCorners = (rect: Rect, rotation = 0): Point[] => {
   if (!rotation) {

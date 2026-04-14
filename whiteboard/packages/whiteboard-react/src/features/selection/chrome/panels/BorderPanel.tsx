@@ -7,7 +7,7 @@ import {
   formatPercent
 } from '@shared/ui'
 import { sameOptionalNumberArray as isSameOptionalNumberArray } from '@shared/core'
-import { STROKE_COLOR_OPTIONS } from '#whiteboard-react/features/selection/chrome/menus/options'
+import { STROKE_COLOR_OPTIONS } from '@whiteboard/react/features/selection/chrome/menus/options'
 
 const STROKE_STYLE_OPTIONS = [
   { key: 'solid', label: 'Solid', dash: undefined as readonly number[] | undefined },

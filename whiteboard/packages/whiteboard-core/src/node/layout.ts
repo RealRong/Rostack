@@ -1,5 +1,5 @@
-import { isPointEqual } from '#whiteboard-core/geometry'
-import type { NodeId, Point, Rect } from '#whiteboard-core/types'
+import { isPointEqual } from '@whiteboard/core/geometry'
+import type { NodeId, Point, Rect } from '@whiteboard/core/types'
 
 export type NodeAlignMode =
   | 'top'

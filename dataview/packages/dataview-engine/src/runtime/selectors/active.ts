@@ -1,7 +1,7 @@
 import type { Equality } from '@shared/core'
-import type { EngineRuntimeState } from '#dataview-engine/runtime/state'
-import type { RuntimeStore } from '#dataview-engine/runtime/store'
-import { createRuntimeSelector } from '#dataview-engine/runtime/selectors/core'
+import type { EngineRuntimeState } from '@dataview/engine/runtime/state'
+import type { RuntimeStore } from '@dataview/engine/runtime/store'
+import { createRuntimeSelector } from '@dataview/engine/runtime/selectors/core'
 
 export const selectActiveRuntime = <T,>(input: {
   store: RuntimeStore

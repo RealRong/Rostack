@@ -1,9 +1,9 @@
-import { getEdgePath } from '#whiteboard-core/edge/path'
-import { resolveEdgeEnds } from '#whiteboard-core/edge/endpoints'
+import { getEdgePath } from '@whiteboard/core/edge/path'
+import { resolveEdgeEnds } from '@whiteboard/core/edge/endpoints'
 import type {
   ResolveEdgePathFromRectsInput,
   ResolvedEdgePathFromRects
-} from '#whiteboard-core/types/edge'
+} from '@whiteboard/core/types/edge'
 
 export const resolveEdgePathFromRects = ({
   edge,

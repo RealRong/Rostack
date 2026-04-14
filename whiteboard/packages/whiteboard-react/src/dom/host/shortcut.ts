@@ -3,7 +3,7 @@ import type {
   ShortcutAction,
   ShortcutBinding,
   ShortcutOverrides
-} from '#whiteboard-react/types/common/shortcut'
+} from '@whiteboard/react/types/common/shortcut'
 
 const ModifierOrder = ['Ctrl', 'Alt', 'Shift', 'Meta'] as const
 

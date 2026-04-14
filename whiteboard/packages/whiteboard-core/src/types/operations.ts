@@ -12,7 +12,7 @@ import type {
   NodeStyle,
   Point,
   Size
-} from '#whiteboard-core/types/model'
+} from '@whiteboard/core/types/model'
 
 export type SpatialNodeInput = Omit<Node, 'id'> & {
   id?: NodeId

@@ -1,12 +1,12 @@
 import type { Viewport } from '@whiteboard/core/types'
-import type { PointerSample } from '#whiteboard-editor/types/input'
+import type { PointerSample } from '@whiteboard/editor/types/input'
 import type {
   ViewPointerActions,
   ViewSpaceActions,
   ViewportActions
-} from '#whiteboard-editor/types/commands'
-import type { ViewportInputRuntime, ViewportRuntime } from '#whiteboard-editor/local/viewport/runtime'
-import type { EditorLocalState } from '#whiteboard-editor/local/runtime'
+} from '@whiteboard/editor/types/commands'
+import type { ViewportInputRuntime, ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
+import type { EditorLocalState } from '@whiteboard/editor/local/runtime'
 
 export type LocalViewportActions = {
   viewport: ViewportActions

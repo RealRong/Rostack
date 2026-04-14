@@ -28,22 +28,22 @@ import {
   sameJsonValue,
   trimToUndefined
 } from '@shared/core'
-import { createFieldId } from '#dataview-engine/mutate/entityId'
+import { createFieldId } from '@dataview/engine/mutate/entityId'
 import {
   createIssue,
   hasValidationErrors,
   type IssueSource,
   type ValidationIssue
-} from '#dataview-engine/mutate/issues'
-import { validateFieldExists } from '#dataview-engine/mutate/validate/entity'
-import { validateField } from '#dataview-engine/mutate/validate/field'
+} from '@dataview/engine/mutate/issues'
+import { validateFieldExists } from '@dataview/engine/mutate/validate/entity'
+import { validateField } from '@dataview/engine/mutate/validate/field'
 import {
   planResult,
   sourceOf,
   toFieldPatch,
   toViewPut,
   type PlannedActionResult
-} from '#dataview-engine/mutate/planner/shared'
+} from '@dataview/engine/mutate/planner/shared'
 
 const DEFAULT_OPTION_NAME = 'Option'
 

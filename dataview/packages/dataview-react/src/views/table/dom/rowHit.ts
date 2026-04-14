@@ -13,8 +13,8 @@ import {
   type TableRowGapHit,
   type TableRowRangeHit,
   type TableRowRect
-} from '#dataview-react/views/table/model/geometry'
-import type { Nodes } from '#dataview-react/views/table/dom/registry'
+} from '@dataview/react/views/table/model/geometry'
+import type { Nodes } from '@dataview/react/views/table/dom/registry'
 
 const emptyRowRects = [] as readonly TableRowRect[]
 

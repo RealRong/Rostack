@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { NodeToolbarContext } from '@whiteboard/editor'
-import type { WhiteboardRuntime } from '#whiteboard-react/types/runtime'
-import type { ToolbarItemKey, ToolbarPanelKey } from '#whiteboard-react/features/selection/chrome/toolbar/types'
+import type { WhiteboardRuntime } from '@whiteboard/react/types/runtime'
+import type { ToolbarItemKey, ToolbarPanelKey } from '@whiteboard/react/features/selection/chrome/toolbar/types'
 
 export type ToolbarButtonRendererProps = {
   context: NodeToolbarContext

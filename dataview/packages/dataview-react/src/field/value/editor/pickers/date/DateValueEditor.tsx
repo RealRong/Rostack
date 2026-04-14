@@ -17,16 +17,16 @@ import {
 import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { cn } from '@shared/ui/utils'
-import { useDataView } from '#dataview-react/dataview'
+import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
-import { buildChoiceSubmenuItem } from '#dataview-react/menu-builders'
-import type { FieldValueDraftEditorProps } from '#dataview-react/field/value/editor/contracts'
+import { buildChoiceSubmenuItem } from '@dataview/react/menu-builders'
+import type { FieldValueDraftEditorProps } from '@dataview/react/field/value/editor/contracts'
 import { focusInputWithoutScroll } from '@shared/dom'
 import {
   isComposing,
   keyAction
-} from '#dataview-react/field/value/editor/shared/keyboard'
-import { useDraftCommit } from '#dataview-react/field/value/editor/shared/useDraftCommit'
+} from '@dataview/react/field/value/editor/shared/keyboard'
+import { useDraftCommit } from '@dataview/react/field/value/editor/shared/useDraftCommit'
 import {
   applyDateDraftNow,
   clearDateValueDraft,
@@ -39,8 +39,8 @@ import {
   setDateDraftTimezone,
   type DateDraftBoundary,
   type DateValueDraft
-} from '#dataview-react/field/value/editor/pickers/date/DateValueDraft'
-import { DateCalendar } from '#dataview-react/field/value/editor/pickers/date/DateCalendar'
+} from '@dataview/react/field/value/editor/pickers/date/DateValueDraft'
+import { DateCalendar } from '@dataview/react/field/value/editor/pickers/date/DateCalendar'
 
 const FLOATING_TIMEZONE_ID = '__floating__'
 

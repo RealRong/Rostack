@@ -16,7 +16,7 @@ import type {
   DateDisplayFormat,
   DateValueKind,
   TimeDisplayFormat
-} from '#dataview-core/contracts/state'
+} from '@dataview/core/contracts/state'
 
 export type DateFieldConfig = Pick<DateField, 'displayDateFormat' | 'displayTimeFormat' | 'defaultValueKind' | 'defaultTimezone'>
 export type DateGroupMode = 'day' | 'week' | 'month' | 'quarter' | 'year'

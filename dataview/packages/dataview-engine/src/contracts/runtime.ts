@@ -1,9 +1,9 @@
-import type { ViewCache } from '#dataview-engine/contracts/internal'
+import type { ViewCache } from '@dataview/engine/contracts/internal'
 import type {
   SnapshotTrace,
   ViewState,
   ViewTrace
-} from '#dataview-engine/contracts/public'
+} from '@dataview/engine/contracts/public'
 
 export interface ViewRuntimeResult {
   cache: ViewCache

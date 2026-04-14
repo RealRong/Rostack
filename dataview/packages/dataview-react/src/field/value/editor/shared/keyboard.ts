@@ -1,4 +1,4 @@
-import type { EditorSubmitTrigger } from '#dataview-react/interaction'
+import type { EditorSubmitTrigger } from '@dataview/react/interaction'
 
 export type KeyAction =
   | {

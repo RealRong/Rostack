@@ -12,24 +12,24 @@ import type {
   Point,
   Rect,
   Size
-} from '#whiteboard-core/types'
+} from '@whiteboard/core/types'
 import {
   pickNearest,
   rectFromPoint,
   resolveScreenDistanceWorld
-} from '#whiteboard-core/snap'
+} from '@whiteboard/core/snap'
 import type {
   EdgeConnectCandidate,
   EdgeConnectConfig,
   EdgeConnectEvaluation,
   EdgeConnectResult
-} from '#whiteboard-core/types/edge'
-import { getAnchorFromPoint } from '#whiteboard-core/edge/anchor'
+} from '@whiteboard/core/types/edge'
+import { getAnchorFromPoint } from '@whiteboard/core/edge/anchor'
 import {
   getNodeAnchor,
   projectPointToNodeOutline
-} from '#whiteboard-core/node/outline'
-import { readNodeRotation } from '#whiteboard-core/node'
+} from '@whiteboard/core/node/outline'
+import { readNodeRotation } from '@whiteboard/core/node'
 
 type ScoredConnectTarget = EdgeConnectResult & {
   distance: number

@@ -1,11 +1,11 @@
 export {
   createEditor
-} from '#whiteboard-editor/editor/createEditor'
+} from '@whiteboard/editor/editor/createEditor'
 export {
   createClipboardPacket,
   parseClipboardPacket,
   serializeClipboardPacket
-} from '#whiteboard-editor/command/clipboard/packet'
+} from '@whiteboard/editor/command/clipboard/packet'
 export type {
   EditCapability,
   EditCaret,
@@ -14,7 +14,7 @@ export type {
   EditField,
   EditMeasureMode,
   EditEmptyBehavior
-} from '#whiteboard-editor/local/session/edit'
+} from '@whiteboard/editor/local/session/edit'
 export type {
   Editor,
   EditorActions,
@@ -27,7 +27,7 @@ export type {
   EditorSelectionActions,
   EditorNodeActions,
   EditorEditActions
-} from '#whiteboard-editor/types/editor'
+} from '@whiteboard/editor/types/editor'
 export type {
   AppActions,
   AppConfig,
@@ -49,13 +49,13 @@ export type {
   ToolActions,
   ViewActions,
   ViewportActions
-} from '#whiteboard-editor/types/commands'
+} from '@whiteboard/editor/types/commands'
 export type {
   EditorQueryRead
-} from '#whiteboard-editor/query'
+} from '@whiteboard/editor/query'
 export type {
   ClipboardPacket
-} from '#whiteboard-editor/command/clipboard/packet'
+} from '@whiteboard/editor/command/clipboard/packet'
 export type {
   ContextMenuInput,
   ContextMenuIntent,
@@ -68,10 +68,10 @@ export type {
   PointerSample,
   PointerUpInput,
   WheelInput
-} from '#whiteboard-editor/types/input'
+} from '@whiteboard/editor/types/input'
 export type {
   EditorPick
-} from '#whiteboard-editor/types/pick'
+} from '@whiteboard/editor/types/pick'
 export type {
   DrawTool,
   EdgePresetKey,
@@ -79,7 +79,7 @@ export type {
   InsertPresetKey,
   InsertTool,
   Tool
-} from '#whiteboard-editor/types/tool'
+} from '@whiteboard/editor/types/tool'
 export type {
   InsertPresetCatalog,
   InsertPlacement,
@@ -89,7 +89,7 @@ export type {
   MindmapTemplate,
   NodeInsertPreset,
   StickyTone
-} from '#whiteboard-editor/types/insert'
+} from '@whiteboard/editor/types/insert'
 export type {
   ControlId,
   NodeDefinition,
@@ -97,10 +97,10 @@ export type {
   NodeHit,
   NodeMeta,
   NodeFamily
-} from '#whiteboard-editor/types/node'
+} from '@whiteboard/editor/types/node'
 export type {
   EdgeToolbarContext
-} from '#whiteboard-editor/types/edgePresentation'
+} from '@whiteboard/editor/types/edgePresentation'
 export type {
   SelectionOverlay,
   NodeToolbarContext,
@@ -108,4 +108,4 @@ export type {
   SelectionNodeInfo,
   SelectionNodeTypeInfo,
   ToolbarSelectionKind
-} from '#whiteboard-editor/types/selectionPresentation'
+} from '@whiteboard/editor/types/selectionPresentation'

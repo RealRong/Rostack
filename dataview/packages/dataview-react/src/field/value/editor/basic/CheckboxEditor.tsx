@@ -5,8 +5,8 @@ import { focusWithoutScroll } from '@shared/dom'
 import {
   isComposing,
   keyAction
-} from '#dataview-react/field/value/editor/shared/keyboard'
-import type { FieldValueDraftEditorProps } from '#dataview-react/field/value/editor/contracts'
+} from '@dataview/react/field/value/editor/shared/keyboard'
+import type { FieldValueDraftEditorProps } from '@dataview/react/field/value/editor/contracts'
 
 export const CheckboxEditor = (props: FieldValueDraftEditorProps<string>) => {
   const selectRef = useRef<HTMLSelectElement | null>(null)

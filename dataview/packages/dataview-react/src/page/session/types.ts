@@ -9,7 +9,7 @@ export type QueryBarEntry =
     }
   | {
       kind: 'filter'
-      fieldId: CustomFieldId
+      index: number
     }
   | {
       kind: 'sort'

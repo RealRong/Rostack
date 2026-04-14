@@ -1,6 +1,6 @@
 import type { EdgeHandle } from '@whiteboard/core/edge'
 import type { EdgeId } from '@whiteboard/core/types'
-import type { WhiteboardRuntime } from '#whiteboard-react/types/runtime'
+import type { WhiteboardRuntime } from '@whiteboard/react/types/runtime'
 
 export type EdgeResolved = NonNullable<
   ReturnType<WhiteboardRuntime['read']['edge']['resolved']['get']>

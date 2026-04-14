@@ -3,34 +3,34 @@ import type {
   ClipboardCommands,
   HistoryCommands,
   MindmapCommands
-} from '#whiteboard-editor/types/commands'
-import type { EditorLocalRuntime } from '#whiteboard-editor/local/runtime'
-import type { EditorQueryRead } from '#whiteboard-editor/query'
+} from '@whiteboard/editor/types/commands'
+import type { EditorLocalRuntime } from '@whiteboard/editor/local/runtime'
+import type { EditorQueryRead } from '@whiteboard/editor/query'
 import {
   createClipboardCommands
-} from '#whiteboard-editor/command/clipboard'
+} from '@whiteboard/editor/command/clipboard'
 import {
   createDocumentCommands
-} from '#whiteboard-editor/command/document'
-import type { DocumentCommands } from '#whiteboard-editor/command/document'
+} from '@whiteboard/editor/command/document'
+import type { DocumentCommands } from '@whiteboard/editor/command/document'
 import {
   createHistoryCommands
-} from '#whiteboard-editor/command/history'
+} from '@whiteboard/editor/command/history'
 import {
   createSelectionCommands,
   type SelectionCommands
-} from '#whiteboard-editor/command/selection'
+} from '@whiteboard/editor/command/selection'
 import {
   createEdgeCommands,
   type EdgeCommands
-} from '#whiteboard-editor/command/edge'
+} from '@whiteboard/editor/command/edge'
 import {
   createMindmapCommands
-} from '#whiteboard-editor/command/mindmap'
+} from '@whiteboard/editor/command/mindmap'
 import {
   createNodeCommands
-} from '#whiteboard-editor/command/node/commands'
-import type { NodeCommands } from '#whiteboard-editor/command/node/types'
+} from '@whiteboard/editor/command/node/commands'
+import type { NodeCommands } from '@whiteboard/editor/command/node/types'
 
 export type EditorCommandRuntime = {
   document: DocumentCommands

@@ -5,18 +5,18 @@ import type {
   Point,
   Rect,
   Size
-} from '#whiteboard-core/types'
+} from '@whiteboard/core/types'
 import {
   getRectCenter,
   isPointEqual,
   isSizeEqual,
   rotatePoint
-} from '#whiteboard-core/geometry'
-import type { Guide } from '#whiteboard-core/node/snap'
+} from '@whiteboard/core/geometry'
+import type { Guide } from '@whiteboard/core/node/snap'
 import type {
   HorizontalResizeEdge,
   VerticalResizeEdge
-} from '#whiteboard-core/node/resize'
+} from '@whiteboard/core/node/resize'
 
 type ResizeHandleMeta = {
   sx: -1 | 0 | 1

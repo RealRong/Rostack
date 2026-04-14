@@ -4,7 +4,7 @@ import {
 } from '@shared/dom'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
-} from '#dataview-react/dom/appearance'
+} from '@dataview/react/dom/appearance'
 import type {
   ItemId,
   SectionKey

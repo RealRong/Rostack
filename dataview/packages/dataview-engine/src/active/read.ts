@@ -11,7 +11,7 @@ import type {
   DocumentSelectApi,
   ViewCell,
   ViewState
-} from '#dataview-engine/contracts/public'
+} from '@dataview/engine/contracts/public'
 
 export const createActiveViewReadApi = (input: {
   select: DocumentSelectApi
@@ -68,9 +68,6 @@ export const createActiveViewReadApi = (input: {
     filterField: index => {
       const rule = readState()?.query.filters.rules[index]
       return rule?.field
-        ?? (rule?.fieldId
-          ? readField(rule.fieldId)
-          : undefined)
     }
   }
 }

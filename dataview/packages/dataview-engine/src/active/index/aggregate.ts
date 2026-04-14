@@ -15,7 +15,7 @@ import type {
   AggregateEntry,
   AggregateState,
   SectionAggregateState
-} from '#dataview-engine/active/index/contracts'
+} from '@dataview/engine/active/index/contracts'
 
 const asPlainString = (value: unknown) => (
   trimToUndefined(value) ?? ''

@@ -1,8 +1,12 @@
 import {
-  createValueStore
+  createValueStore,
+  normalizeOrderedValues,
+  orderedRange,
+  sameOptionalAnchorFocus,
+  sameOrder
 } from '@shared/core'
 import {
-  sameOrder
+  stepOrderedValue
 } from '@shared/core'
 import type {
   ItemId
@@ -10,7 +14,7 @@ import type {
 import type {
   Selection,
   SelectionStore
-} from '#dataview-react/runtime/selection/types'
+} from '@dataview/react/runtime/selection/types'
 
 const emptyIds = [] as readonly ItemId[]
 
@@ -95,21 +99,13 @@ export const selection = {
     left: Selection,
     right: Selection
   ) => (
-    left.anchor === right.anchor
-    && left.focus === right.focus
+    sameOptionalAnchorFocus(left, right)
     && sameOrder(left.ids, right.ids)
   ),
   normalize: (
     order: readonly ItemId[],
     ids: readonly ItemId[]
-  ) => {
-    if (!ids.length) {
-      return emptyIds
-    }
-
-    const idSet = new Set(ids)
-    return order.filter(id => idSet.has(id))
-  },
+  ) => normalizeOrderedValues(order, ids),
   set: (
     order: readonly ItemId[],
     ids: readonly ItemId[],
@@ -163,10 +159,8 @@ export const selection = {
       return selection.set(order, [to])
     }
 
-    const start = Math.min(anchorIndex, focusIndex)
-    const end = Math.max(anchorIndex, focusIndex)
     return createSelection(
-      order.slice(start, end + 1),
+      orderedRange(order, anchor, to),
       {
         anchor,
         focus: to
@@ -219,12 +213,7 @@ export const selection = {
       ? current.focus
       : current.ids.find(id => order.includes(id))
         ?? order[0]
-    const currentIndex = order.indexOf(currentId)
-    if (currentIndex === -1) {
-      return undefined
-    }
-
-    const nextId = order[currentIndex + delta]
+    const nextId = stepOrderedValue(order, currentId, delta)
     if (!nextId) {
       return undefined
     }

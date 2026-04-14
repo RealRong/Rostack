@@ -7,24 +7,24 @@ import {
   getDocumentFields,
   getDocumentViewById
 } from '@dataview/core/document'
-import type { IndexState } from '#dataview-engine/active/index/contracts'
+import type { IndexState } from '@dataview/engine/active/index/contracts'
 import type {
   DeriveAction,
   ViewCache
-} from '#dataview-engine/contracts/internal'
+} from '@dataview/engine/contracts/internal'
 import type {
   ViewStageMetrics,
   ViewStageName,
   ViewStageTrace,
   ViewState,
   ViewTrace
-} from '#dataview-engine/contracts/public'
-import { now } from '#dataview-engine/runtime/clock'
-import { publishViewBase } from '#dataview-engine/active/snapshot/base'
-import { buildStageMetrics } from '#dataview-engine/active/snapshot/trace'
-import { runQueryStage } from '#dataview-engine/active/snapshot/query/runtime'
-import { runSectionsStage } from '#dataview-engine/active/snapshot/sections/runtime'
-import { runSummaryStage } from '#dataview-engine/active/snapshot/summary/runtime'
+} from '@dataview/engine/contracts/public'
+import { now } from '@dataview/engine/runtime/clock'
+import { publishViewBase } from '@dataview/engine/active/snapshot/base'
+import { buildStageMetrics } from '@dataview/engine/active/snapshot/trace'
+import { runQueryStage } from '@dataview/engine/active/snapshot/query/runtime'
+import { runSectionsStage } from '@dataview/engine/active/snapshot/sections/runtime'
+import { runSummaryStage } from '@dataview/engine/active/snapshot/summary/runtime'
 
 interface ViewRunResult {
   cache: ViewCache

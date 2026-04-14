@@ -6,11 +6,9 @@ import type {
   CellRef
 } from '@dataview/engine'
 import {
-  range
-} from '#dataview-table/range'
-import {
+  gridSelection,
   type GridSelection
-} from '#dataview-table/gridSelection'
+} from '@dataview/table/gridSelection'
 
 export interface TableFillEntry {
   cell: CellRef
@@ -26,9 +24,8 @@ const handleCell = (
     return undefined
   }
 
-  const currentRange = range.from(current)
-  const rowIds = currentRange ? range.items(currentRange, items) : []
-  const fieldIds = currentRange ? range.fields(currentRange, fields) : []
+  const rowIds = gridSelection.itemIds(current, items)
+  const fieldIds = gridSelection.fieldIds(current, fields)
 
   if (rowIds.length !== 1 || !fieldIds.length) {
     return undefined
@@ -56,13 +53,8 @@ const plan = (
     return []
   }
 
-  const currentRange = range.from(current)
-  if (!currentRange) {
-    return []
-  }
-
-  const fieldIds = range.fields(currentRange, fields)
-  const targetAppearanceIds = range.items(currentRange, items)
+  const fieldIds = gridSelection.fieldIds(current, fields)
+  const targetAppearanceIds = gridSelection.itemIds(current, items)
     .filter(itemId => itemId !== current.anchor.itemId)
 
   if (!fieldIds.length || !targetAppearanceIds.length) {

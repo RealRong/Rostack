@@ -4,21 +4,25 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   SectionAggregateState
-} from '#dataview-engine/active/index/contracts'
+} from '@dataview/engine/active/index/contracts'
 import type {
-  Section,
+  ItemId,
+  SectionBucket,
   SectionKey,
-  ViewRecords,
-  ViewSummaries
-} from '#dataview-engine/contracts/shared'
+  ViewRecords
+} from '@dataview/engine/contracts/shared'
+import {
+  EMPTY_SUMMARY_STATE as EMPTY_INTERNAL_SUMMARY_STATE
+} from '@dataview/engine/summary/empty'
 export type {
   ActiveRuntimeState,
   EngineRuntimeState,
   HistoryEntry,
   RuntimeHistory
-} from '#dataview-engine/runtime/state'
+} from '@dataview/engine/runtime/state'
 
-export interface QueryState extends ViewRecords {
+export interface QueryState {
+  records: ViewRecords
   visibleSet?: ReadonlySet<RecordId>
   order?: ReadonlyMap<RecordId, number>
 }
@@ -28,7 +32,14 @@ export type DeriveAction =
   | 'sync'
   | 'rebuild'
 
-export interface SectionNodeState extends Section {
+export interface SectionNodeState {
+  key: SectionKey
+  title: string
+  color?: string
+  bucket?: SectionBucket
+  collapsed: boolean
+  itemIds: readonly ItemId[]
+  recordIds: readonly RecordId[]
   visible: boolean
 }
 
@@ -55,13 +66,8 @@ const EMPTY_VIEW_RECORDS: ViewRecords = {
   visible: EMPTY_RECORD_IDS
 }
 
-const EMPTY_SUMMARY_BY_SECTION = new Map<SectionKey, ReadonlyMap<FieldId, SectionAggregateState>>()
-const EMPTY_SUMMARY_STATE: SummaryState = {
-  bySection: EMPTY_SUMMARY_BY_SECTION
-}
-
 export const emptyQueryState = (): QueryState => ({
-  ...EMPTY_VIEW_RECORDS
+  records: EMPTY_VIEW_RECORDS
 })
 
 export const emptySectionState = (): SectionState => ({
@@ -70,7 +76,7 @@ export const emptySectionState = (): SectionState => ({
   byRecord: new Map()
 })
 
-export const emptySummaryState = (): SummaryState => EMPTY_SUMMARY_STATE
+export const emptySummaryState = (): SummaryState => EMPTY_INTERNAL_SUMMARY_STATE
 
 export const emptyViewCache = (): ViewCache => ({
   query: emptyQueryState(),
@@ -80,13 +86,11 @@ export const emptyViewCache = (): ViewCache => ({
 
 export const emptyViewRecords = (): ViewRecords => EMPTY_VIEW_RECORDS
 
-export const emptySummaries = (): ViewSummaries => new Map()
-
 export const readQueryVisibleSet = (
   state: QueryState
 ): ReadonlySet<RecordId> => {
   if (!state.visibleSet) {
-    state.visibleSet = new Set(state.visible)
+    state.visibleSet = new Set(state.records.visible)
   }
 
   return state.visibleSet
@@ -97,7 +101,7 @@ export const readQueryOrder = (
 ): ReadonlyMap<RecordId, number> => {
   if (!state.order) {
     state.order = new Map(
-      state.ordered.map((id, index) => [id, index] as const)
+      state.records.ordered.map((id, index) => [id, index] as const)
     )
   }
 

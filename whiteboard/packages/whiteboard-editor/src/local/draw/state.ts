@@ -5,7 +5,7 @@ import {
   DRAW_SLOTS,
   type DrawBrush,
   type DrawSlot
-} from '#whiteboard-editor/local/draw/model'
+} from '@whiteboard/editor/local/draw/model'
 
 export type BrushStyle = Readonly<{
   color: string

@@ -1,13 +1,13 @@
-import type { EditorQueryRead } from '#whiteboard-editor/query'
-import type { SelectionModelRead } from '#whiteboard-editor/query/selection/model'
-import type { PointerDownInput } from '#whiteboard-editor/types/input'
+import type { EditorQueryRead } from '@whiteboard/editor/query'
+import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
+import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type {
   SelectionPressResolution
-} from '#whiteboard-editor/input/selection/press/resolve'
+} from '@whiteboard/editor/input/selection/press/resolve'
 import {
   resolveSelectionPress,
   resolveSelectionPressTarget
-} from '#whiteboard-editor/input/selection/press/resolve'
+} from '@whiteboard/editor/input/selection/press/resolve'
 
 export const startSelectionPressAction = <TField extends string>(
   input: {

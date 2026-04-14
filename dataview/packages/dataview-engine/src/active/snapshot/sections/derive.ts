@@ -6,21 +6,21 @@ import type {
 import { sameOrder } from '@shared/core'
 import {
   readGroupFieldIndex
-} from '#dataview-engine/active/index/group/demand'
+} from '@dataview/engine/active/index/group/demand'
 import type {
   IndexState
-} from '#dataview-engine/active/index/contracts'
+} from '@dataview/engine/active/index/contracts'
 import type {
   SectionKey
-} from '#dataview-engine/contracts/public'
+} from '@dataview/engine/contracts/public'
 import type {
   QueryState,
   SectionState
-} from '#dataview-engine/contracts/internal'
-import { createItemId } from '#dataview-engine/active/snapshot/sections/publish'
+} from '@dataview/engine/contracts/internal'
+import { createItemId } from '@dataview/engine/active/snapshot/sections/publish'
 import {
   readQueryVisibleSet
-} from '#dataview-engine/contracts/internal'
+} from '@dataview/engine/contracts/internal'
 
 export const ROOT_SECTION_KEY = 'root' as SectionKey
 
@@ -30,8 +30,8 @@ export const sameRecordIds = (
 ) => sameOrder(left, right)
 
 const sameBucket = (
-  left: import('#dataview-engine/contracts/internal').SectionNodeState['bucket'],
-  right: import('#dataview-engine/contracts/internal').SectionNodeState['bucket']
+  left: import('@dataview/engine/contracts/internal').SectionNodeState['bucket'],
+  right: import('@dataview/engine/contracts/internal').SectionNodeState['bucket']
 ) => {
   if (!left || !right) {
     return left === right
@@ -46,8 +46,8 @@ const sameBucket = (
 }
 
 export const sameSectionNode = (
-  left: import('#dataview-engine/contracts/internal').SectionNodeState,
-  right: import('#dataview-engine/contracts/internal').SectionNodeState
+  left: import('@dataview/engine/contracts/internal').SectionNodeState,
+  right: import('@dataview/engine/contracts/internal').SectionNodeState
 ) => left.key === right.key
   && left.title === right.title
   && left.color === right.color
@@ -83,8 +83,8 @@ export const buildSectionNode = (input: {
   recordIds: readonly RecordId[]
   group: ViewGroup | undefined
   index: IndexState
-  previous?: import('#dataview-engine/contracts/internal').SectionNodeState
-}): import('#dataview-engine/contracts/internal').SectionNodeState => {
+  previous?: import('@dataview/engine/contracts/internal').SectionNodeState
+}): import('@dataview/engine/contracts/internal').SectionNodeState => {
   const bucket = input.group
     ? readGroupFieldIndex(input.index.group, input.group)?.buckets.get(input.key)
     : undefined
@@ -147,10 +147,10 @@ export const buildSectionState = (input: {
     const root = {
       key: ROOT_SECTION_KEY,
       title: 'All',
-      recordIds: input.query.visible,
-      itemIds: previousRoot && sameRecordIds(previousRoot.recordIds, input.query.visible)
+      recordIds: input.query.records.visible,
+      itemIds: previousRoot && sameRecordIds(previousRoot.recordIds, input.query.records.visible)
         ? previousRoot.itemIds
-        : input.query.visible.map(recordId => createItemId({
+        : input.query.records.visible.map(recordId => createItemId({
             section: ROOT_SECTION_KEY,
             recordId
           })),
@@ -164,7 +164,7 @@ export const buildSectionState = (input: {
         [ROOT_SECTION_KEY, previousRoot && sameSectionNode(previousRoot, root) ? previousRoot : root] as const
       ]),
       byRecord: new Map(
-        input.query.visible.map(recordId => [recordId, [ROOT_SECTION_KEY]] as const)
+        input.query.records.visible.map(recordId => [recordId, [ROOT_SECTION_KEY]] as const)
       )
     }
   }
@@ -173,7 +173,7 @@ export const buildSectionState = (input: {
   const byRecord = new Map<RecordId, readonly SectionKey[]>()
   const idsByKey = new Map<SectionKey, RecordId[]>()
 
-  input.query.visible.forEach(recordId => {
+  input.query.records.visible.forEach(recordId => {
     const keys = groupIndex?.recordBuckets.get(recordId) ?? []
     byRecord.set(recordId, keys)
     keys.forEach(key => {

@@ -1,6 +1,6 @@
 import type {
   CustomField
-} from '#dataview-core/contracts'
+} from '@dataview/core/contracts'
 
 export interface FieldValueBehavior {
   canEdit: boolean

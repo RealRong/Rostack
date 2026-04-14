@@ -38,25 +38,25 @@ import type {
   Rect,
   Size
 } from '@whiteboard/core/types'
-import type { ClipboardPacket } from '#whiteboard-editor/command/clipboard/packet'
+import type { ClipboardPacket } from '@whiteboard/editor/command/clipboard/packet'
 import type {
   BrushStylePatch,
   DrawState
-} from '#whiteboard-editor/local/draw/state'
-import type { DrawMode, DrawSlot } from '#whiteboard-editor/local/draw/model'
-import type { MindmapLayoutConfig } from '#whiteboard-editor/types/mindmap'
-import type { PointerSample } from '#whiteboard-editor/types/input'
+} from '@whiteboard/editor/local/draw/state'
+import type { DrawMode, DrawSlot } from '@whiteboard/editor/local/draw/model'
+import type { MindmapLayoutConfig } from '@whiteboard/editor/types/mindmap'
+import type { PointerSample } from '@whiteboard/editor/types/input'
 import type {
   EdgePresetKey,
   InsertPresetKey,
   Tool
-} from '#whiteboard-editor/types/tool'
+} from '@whiteboard/editor/types/tool'
 import type {
   EditCaret,
   EditField,
   EditLayout
-} from '#whiteboard-editor/local/session/edit'
-import type { ViewportCommands } from '#whiteboard-editor/local/viewport/runtime'
+} from '@whiteboard/editor/local/session/edit'
+import type { ViewportCommands } from '@whiteboard/editor/local/viewport/runtime'
 
 export type { OrderMode } from '@whiteboard/core/types'
 

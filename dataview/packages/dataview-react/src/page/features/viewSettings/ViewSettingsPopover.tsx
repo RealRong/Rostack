@@ -5,20 +5,20 @@ import { Popover } from '@shared/ui/popover'
 import {
   useDataView,
   useDataViewValue
-} from '#dataview-react/dataview'
+} from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
-import { FieldSchemaEditor } from '#dataview-react/field/schema'
+import { FieldSchemaEditor } from '@dataview/react/field/schema'
 import {
   ViewSettingsContext,
-} from '#dataview-react/page/features/viewSettings/context'
-import { GroupingPanel } from '#dataview-react/page/features/viewSettings/panels/GroupingPanel'
-import { GroupFieldPickerPanel } from '#dataview-react/page/features/viewSettings/panels/GroupFieldPickerPanel'
-import { LayoutPanel } from '#dataview-react/page/features/viewSettings/panels/LayoutPanel'
-import { FieldCreatePanel } from '#dataview-react/page/features/viewSettings/panels/FieldCreatePanel'
-import { FieldListPanel } from '#dataview-react/page/features/viewSettings/panels/FieldListPanel'
-import { QueryFieldPickerPanel } from '#dataview-react/page/features/viewSettings/panels/QueryFieldPickerPanel'
-import { RootPanel } from '#dataview-react/page/features/viewSettings/panels/RootPanel'
-import { ViewFieldsPanel } from '#dataview-react/page/features/viewSettings/panels/ViewFieldsPanel'
+} from '@dataview/react/page/features/viewSettings/context'
+import { GroupingPanel } from '@dataview/react/page/features/viewSettings/panels/GroupingPanel'
+import { GroupFieldPickerPanel } from '@dataview/react/page/features/viewSettings/panels/GroupFieldPickerPanel'
+import { LayoutPanel } from '@dataview/react/page/features/viewSettings/panels/LayoutPanel'
+import { FieldCreatePanel } from '@dataview/react/page/features/viewSettings/panels/FieldCreatePanel'
+import { FieldListPanel } from '@dataview/react/page/features/viewSettings/panels/FieldListPanel'
+import { QueryFieldPickerPanel } from '@dataview/react/page/features/viewSettings/panels/QueryFieldPickerPanel'
+import { RootPanel } from '@dataview/react/page/features/viewSettings/panels/RootPanel'
+import { ViewFieldsPanel } from '@dataview/react/page/features/viewSettings/panels/ViewFieldsPanel'
 
 export const ViewSettingsPopover = () => {
   const dataView = useDataView()

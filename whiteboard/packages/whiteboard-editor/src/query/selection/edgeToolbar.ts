@@ -13,12 +13,12 @@ import {
   sameOrder as isOrderedArrayEqual,
   type ReadStore
 } from '@shared/core'
-import type { Tool } from '#whiteboard-editor/types/tool'
-import type { EditSession } from '#whiteboard-editor/local/session/edit'
-import type { InteractionRuntime } from '#whiteboard-editor/input/core/types'
-import type { EdgeToolbarContext } from '#whiteboard-editor/types/edgePresentation'
-import type { RuntimeTargetRead } from '#whiteboard-editor/query/target'
-import { readUniformValue } from '#whiteboard-editor/query/utils'
+import type { Tool } from '@whiteboard/editor/types/tool'
+import type { EditSession } from '@whiteboard/editor/local/session/edit'
+import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
+import type { EdgeToolbarContext } from '@whiteboard/editor/types/edgePresentation'
+import type { RuntimeTargetRead } from '@whiteboard/editor/query/target'
+import { readUniformValue } from '@whiteboard/editor/query/utils'
 
 const isEdgeToolbarEqual = (
   left: EdgeToolbarContext | undefined,

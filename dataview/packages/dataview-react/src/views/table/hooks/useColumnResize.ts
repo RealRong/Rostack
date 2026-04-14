@@ -11,11 +11,11 @@ import {
   sameMap
 } from '@shared/core'
 import { disableUserSelect } from '@shared/dom'
-import { useDataView } from '#dataview-react/dataview'
+import { useDataView } from '@dataview/react/dataview'
 import { useStoreValue } from '@shared/react'
-import { closestTableTargetElement } from '#dataview-react/views/table/dom/targets'
-import { useTableContext } from '#dataview-react/views/table/context'
-import { MIN_COLUMN_WIDTH } from '#dataview-react/views/table/layout'
+import { closestTableTargetElement } from '@dataview/react/views/table/dom/targets'
+import { useTableContext } from '@dataview/react/views/table/context'
+import { MIN_COLUMN_WIDTH } from '@dataview/react/views/table/layout'
 
 interface ColumnWidthPreview {
   fieldId: FieldId

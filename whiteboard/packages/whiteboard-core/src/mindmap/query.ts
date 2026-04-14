@@ -5,27 +5,27 @@ import {
   type MindmapNode,
   type MindmapNodeId,
   type MindmapTree
-} from '#whiteboard-core/mindmap/types'
+} from '@whiteboard/core/mindmap/types'
 import type {
   MindmapConnectionLine,
   MindmapInsertPlacement,
   MindmapInsertPlan
-} from '#whiteboard-core/types/mindmap'
-import { layoutMindmap, layoutMindmapTidy } from '#whiteboard-core/mindmap/layout'
+} from '@whiteboard/core/types/mindmap'
+import { layoutMindmap, layoutMindmapTidy } from '@whiteboard/core/mindmap/layout'
 import {
   createNodeFieldsUpdateOperation,
   createNodeUpdateOperation
-} from '#whiteboard-core/node/update'
-import { compileNodeFieldUpdate } from '#whiteboard-core/schema'
-import { getNode } from '#whiteboard-core/document'
+} from '@whiteboard/core/node/update'
+import { compileNodeFieldUpdate } from '@whiteboard/core/schema'
+import { getNode } from '@whiteboard/core/document'
 import type {
   Document,
   MindmapLayoutHint,
   Operation,
   Size,
   SpatialNode
-} from '#whiteboard-core/types'
-import { cloneValue } from '#whiteboard-core/value'
+} from '@whiteboard/core/types'
+import { cloneValue } from '@whiteboard/core/value'
 
 const computeConnectionLine = (
   parent: { x: number; y: number; width: number; height: number },

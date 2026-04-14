@@ -8,8 +8,8 @@ import type {
 import type {
   CellRef
 } from '@dataview/engine'
-import type { GridSelection } from '#dataview-table/gridSelection'
-import { range } from '#dataview-table/range'
+import type { GridSelection } from '@dataview/table/gridSelection'
+import { gridSelection } from '@dataview/table/gridSelection'
 
 export interface TableKeyInput {
   key: string
@@ -119,11 +119,10 @@ export const gridKeyAction = (input: {
         : null
     case 'Backspace':
     case 'Delete': {
-      const currentRange = range.from(input.selection)
       return {
         kind: 'clear-cells',
-        itemIds: currentRange ? range.items(currentRange, input.items) : [],
-        fieldIds: currentRange ? range.fields(currentRange, input.fields) : []
+        itemIds: gridSelection.itemIds(input.selection, input.items),
+        fieldIds: gridSelection.fieldIds(input.selection, input.fields)
       }
     }
     default:

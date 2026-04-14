@@ -7,10 +7,10 @@ import {
   type MindmapNodeId
 } from '@whiteboard/core/mindmap'
 import type { NodeId, Point } from '@whiteboard/core/types'
-import type { PointerDownInput } from '#whiteboard-editor/types/input'
-import type { Tool } from '#whiteboard-editor/types/tool'
-import type { MindmapDragFeedback } from '#whiteboard-editor/local/feedback'
-import type { MindmapPresentationRead } from '#whiteboard-editor/query/mindmap/read'
+import type { PointerDownInput } from '@whiteboard/editor/types/input'
+import type { Tool } from '@whiteboard/editor/types/tool'
+import type { MindmapDragFeedback } from '@whiteboard/editor/local/feedback'
+import type { MindmapPresentationRead } from '@whiteboard/editor/query/mindmap/read'
 
 export type MindmapDragState = CoreMindmapDragState
 

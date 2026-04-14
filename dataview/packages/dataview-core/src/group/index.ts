@@ -15,11 +15,11 @@ export {
   toggleGroup,
   toggleGroupBucketCollapsed,
   type ViewGroupPatch
-} from '#dataview-core/group/state'
+} from '@dataview/core/group/state'
 export type {
   GroupWriteResult
-} from '#dataview-core/group/write'
+} from '@dataview/core/group/write'
 export {
   group,
   nextGroupWriteValue
-} from '#dataview-core/group/write'
+} from '@dataview/core/group/write'

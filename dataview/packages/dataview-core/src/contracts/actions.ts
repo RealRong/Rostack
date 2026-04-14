@@ -13,8 +13,8 @@ import type {
   ViewGroup,
   ViewId,
   ViewType
-} from '#dataview-core/contracts/state'
-import type { ViewOptions } from '#dataview-core/contracts/viewOptions'
+} from '@dataview/core/contracts/state'
+import type { ViewOptions } from '@dataview/core/contracts/viewOptions'
 
 export type EditTarget =
   | {

@@ -33,15 +33,15 @@ import type {
   ViewGroupProjection,
   ViewSearchProjection,
   ViewSortProjection
-} from '#dataview-engine/contracts/public'
-import { sameFieldList } from '#dataview-engine/active/snapshot/equality'
-import { createOrderedListAccess } from '#dataview-engine/active/snapshot/list'
+} from '@dataview/engine/contracts/public'
+import { sameFieldList } from '@dataview/engine/active/snapshot/equality'
+import { createOrderedListAccess } from '@dataview/engine/active/snapshot/list'
 import {
   reuseIfEqual,
   sameList,
   sameOptionalList,
   sameOptionalProjection
-} from '#dataview-engine/active/snapshot/reuse'
+} from '@dataview/engine/active/snapshot/reuse'
 
 const resolveFieldsById = (
   document: DataDoc
@@ -94,7 +94,6 @@ const createFilterRuleProjection = (
 
   return {
     rule,
-    fieldId: rule.fieldId,
     field,
     fieldLabel: field?.name ?? 'Deleted field',
     activePresetId: rule.presetId,
@@ -233,7 +232,6 @@ const equalFilterRuleProjection = (
   right: FilterRuleProjection
 ) => (
   sameFilterRule(left.rule, right.rule)
-  && left.fieldId === right.fieldId
   && left.fieldLabel === right.fieldLabel
   && left.activePresetId === right.activePresetId
   && left.effective === right.effective

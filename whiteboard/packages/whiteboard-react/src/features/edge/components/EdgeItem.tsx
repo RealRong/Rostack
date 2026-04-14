@@ -18,12 +18,12 @@ import {
   useEditorRuntime,
   usePickRef,
   useResolvedConfig
-} from '#whiteboard-react/runtime/hooks'
-import { EditableSlot } from '#whiteboard-react/features/edit/EditableSlot'
-import { matchEdgeLabelEdit } from '#whiteboard-react/features/edit/session'
-import { useEdgeView } from '#whiteboard-react/features/edge/hooks/useEdgeView'
-import { EDGE_ARROW_END_ID, EDGE_ARROW_START_ID, resolveEdgeDash } from '#whiteboard-react/features/edge/constants'
-import type { EdgeView } from '#whiteboard-react/types/edge'
+} from '@whiteboard/react/runtime/hooks'
+import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
+import { matchEdgeLabelEdit } from '@whiteboard/react/features/edit/session'
+import { useEdgeView } from '@whiteboard/react/features/edge/hooks/useEdgeView'
+import { EDGE_ARROW_END_ID, EDGE_ARROW_START_ID, resolveEdgeDash } from '@whiteboard/react/features/edge/constants'
+import type { EdgeView } from '@whiteboard/react/types/edge'
 
 const EDGE_LABEL_DRAG_DISTANCE = 3
 const EDGE_LABEL_MAX_OFFSET = 24

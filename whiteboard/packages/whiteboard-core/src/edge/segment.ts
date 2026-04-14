@@ -1,6 +1,6 @@
-import type { Point } from '#whiteboard-core/types'
-import { distancePointToSegment } from '#whiteboard-core/geometry'
-import type { EdgePathSegment } from '#whiteboard-core/types/edge'
+import type { Point } from '@whiteboard/core/types'
+import { distancePointToSegment } from '@whiteboard/core/geometry'
+import type { EdgePathSegment } from '@whiteboard/core/types/edge'
 
 export const getNearestEdgeInsertIndex = (
   pointWorld: Point,

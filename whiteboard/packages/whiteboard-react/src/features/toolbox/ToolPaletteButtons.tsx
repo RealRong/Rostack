@@ -22,13 +22,13 @@ import type { DrawMode } from '@whiteboard/editor/draw'
 import { readShapePreviewFill } from '@whiteboard/core/node'
 import type {
   ToolPaletteView
-} from '#whiteboard-react/types/toolbox'
+} from '@whiteboard/react/types/toolbox'
 import {
   ShapeGlyph
-} from '#whiteboard-react/features/node'
-import { EdgePresetGlyph } from '#whiteboard-react/features/toolbox/menus/EdgeMenu'
-import { TEXT_INSERT_PRESET } from '#whiteboard-react/features/toolbox/presets'
-import type { ToolPaletteController } from '#whiteboard-react/features/toolbox/controller'
+} from '@whiteboard/react/features/node'
+import { EdgePresetGlyph } from '@whiteboard/react/features/toolbox/menus/EdgeMenu'
+import { TEXT_INSERT_PRESET } from '@whiteboard/react/features/toolbox/presets'
+import type { ToolPaletteController } from '@whiteboard/react/features/toolbox/controller'
 
 const ToolIcon = ({
   icon: Icon

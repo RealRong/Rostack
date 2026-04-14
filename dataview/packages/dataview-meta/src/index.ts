@@ -1,9 +1,9 @@
-import { message, renderMessage } from '#dataview-meta/message'
-import { field } from '#dataview-meta/field'
-import { option } from '#dataview-meta/option'
-import { sort } from '#dataview-meta/sort'
-import { ui } from '#dataview-meta/ui'
-import { view } from '#dataview-meta/view'
+import { message, renderMessage } from '@dataview/meta/message'
+import { field } from '@dataview/meta/field'
+import { option } from '@dataview/meta/option'
+import { sort } from '@dataview/meta/sort'
+import { ui } from '@dataview/meta/ui'
+import { view } from '@dataview/meta/view'
 
 export const meta = {
   view,
@@ -21,11 +21,11 @@ export {
 export type {
   MessageSpec,
   MessageValues
-} from '#dataview-meta/message'
+} from '@dataview/meta/message'
 
 export type {
   OptionColorId
-} from '#dataview-meta/option'
+} from '@dataview/meta/option'
 
 export type {
   FieldDateValueKindId,
@@ -33,4 +33,4 @@ export type {
   FieldDisplayTimeFormatId,
   FieldKindDescriptor,
   FieldNumberFormatId
-} from '#dataview-meta/field'
+} from '@dataview/meta/field'

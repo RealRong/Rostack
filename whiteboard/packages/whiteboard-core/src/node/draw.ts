@@ -8,8 +8,8 @@ import {
   rectContains,
   rectIntersects,
   rotatePoint
-} from '#whiteboard-core/geometry'
-import type { Point, Rect, Size, SpatialNode } from '#whiteboard-core/types'
+} from '@whiteboard/core/geometry'
+import type { Point, Rect, Size, SpatialNode } from '@whiteboard/core/types'
 
 export type ResolvedDrawStroke = Readonly<{
   position: Point

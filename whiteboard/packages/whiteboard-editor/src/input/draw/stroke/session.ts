@@ -1,14 +1,14 @@
-import type { PointerDownInput, PointerSample } from '#whiteboard-editor/types/input'
-import type { InteractionContext } from '#whiteboard-editor/input/context'
-import type { InteractionSession } from '#whiteboard-editor/input/core/types'
-import { FINISH } from '#whiteboard-editor/input/core/result'
+import type { PointerDownInput, PointerSample } from '@whiteboard/editor/types/input'
+import type { InteractionContext } from '@whiteboard/editor/input/context'
+import type { InteractionSession } from '@whiteboard/editor/input/core/types'
+import { FINISH } from '@whiteboard/editor/input/core/result'
 import {
   commitDrawStroke,
   previewDrawStroke,
   startDrawStroke,
   stepDrawStroke,
   type DrawStrokeState
-} from '#whiteboard-editor/input/draw/stroke/start'
+} from '@whiteboard/editor/input/draw/stroke/start'
 
 type DrawPointer = {
   samples: readonly PointerSample[]

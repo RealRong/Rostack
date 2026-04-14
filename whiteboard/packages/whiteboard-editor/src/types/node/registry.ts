@@ -8,7 +8,7 @@ import type { ShapeControlId } from '@whiteboard/core/node'
 import type {
   EditCapability,
   EditField
-} from '#whiteboard-editor/local/session/edit'
+} from '@whiteboard/editor/local/session/edit'
 
 export type NodeHit = 'box' | 'path' | 'none'
 export type NodeFamily = 'text' | 'shape' | 'frame' | 'draw'

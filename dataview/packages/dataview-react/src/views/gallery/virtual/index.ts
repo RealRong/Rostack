@@ -8,8 +8,8 @@ export {
   GALLERY_SECTION_HEADER_GAP,
   GALLERY_SECTION_HEADER_HEIGHT,
   resolveGalleryGridMetrics
-} from '#dataview-react/views/gallery/virtual/layout'
-export { useGalleryBlocks } from '#dataview-react/views/gallery/virtual/useGalleryBlocks'
+} from '@dataview/react/views/gallery/virtual/layout'
+export { useGalleryBlocks } from '@dataview/react/views/gallery/virtual/useGalleryBlocks'
 export type {
   GalleryBlock,
   GalleryCardLayout,
@@ -18,4 +18,4 @@ export type {
   GalleryRowLayout,
   GallerySectionEmptyBlock,
   GallerySectionHeaderBlock
-} from '#dataview-react/views/gallery/virtual/types'
+} from '@dataview/react/views/gallery/virtual/types'

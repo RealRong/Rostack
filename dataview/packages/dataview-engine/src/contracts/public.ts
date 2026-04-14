@@ -33,7 +33,7 @@ import type {
 } from '@shared/core'
 import type {
   ValidationIssue
-} from '#dataview-engine/mutate/issues'
+} from '@dataview/engine/mutate/issues'
 import type {
   CellRef,
   FieldList,
@@ -48,7 +48,7 @@ import type {
   ViewItem,
   ViewRecords,
   ViewSummaries
-} from '#dataview-engine/contracts/shared'
+} from '@dataview/engine/contracts/shared'
 
 export type {
   CellRef,
@@ -64,7 +64,7 @@ export type {
   ViewItem,
   ViewRecords,
   ViewSummaries
-} from '#dataview-engine/contracts/shared'
+} from '@dataview/engine/contracts/shared'
 
 export interface CreateEngineOptions {
   document: DataDoc
@@ -102,7 +102,6 @@ export interface FilterConditionProjection {
 
 export interface FilterRuleProjection {
   rule: FilterRule
-  fieldId: FieldId
   field?: Field
   fieldLabel: string
   activePresetId: FilterPresetId

@@ -5,7 +5,7 @@ import type {
   NodeOutline,
   Point,
   Rect
-} from '#whiteboard-core/types'
+} from '@whiteboard/core/types'
 import {
   clamp,
   getAnchorPoint,
@@ -13,8 +13,8 @@ import {
   getRectCenter,
   getRotatedCorners,
   rotatePoint
-} from '#whiteboard-core/geometry'
-import { readShapeKind, type ShapeKind } from '#whiteboard-core/node/shape'
+} from '@whiteboard/core/geometry'
+import { readShapeKind, type ShapeKind } from '@whiteboard/core/node/shape'
 
 type OutlineSide = EdgeAnchor['side']
 

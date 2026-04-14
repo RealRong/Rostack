@@ -1,20 +1,20 @@
 import { ChevronDown } from 'lucide-react'
 import { getDocumentFields } from '@dataview/core/document'
-import { FilterRulePopover } from '#dataview-react/page/features/filter'
+import { FilterRulePopover } from '@dataview/react/page/features/filter'
 import {
   getAvailableFilterFields,
-  getFilterFieldId
-} from '#dataview-react/page/features/filter/filterUi'
-import { SortPopover, getAvailableSorterFields } from '#dataview-react/page/features/sort'
+  getAvailableSorterFields
+} from '@dataview/react/page/features/query/fields'
+import { SortPopover } from '@dataview/react/page/features/sort'
 import {
   useDataView,
   useDataViewValue,
-} from '#dataview-react/dataview'
-import { FieldPicker } from '#dataview-react/field/picker'
+} from '@dataview/react/dataview'
+import { FieldPicker } from '@dataview/react/field/picker'
 import { Popover } from '@shared/ui/popover'
 import { meta, renderMessage } from '@dataview/meta'
-import type { QueryBarEntry } from '#dataview-react/page/session/types'
-import { QueryChip } from '#dataview-react/page/features/query'
+import type { QueryBarEntry } from '@dataview/react/page/session/types'
+import { QueryChip } from '@dataview/react/page/features/query'
 
 export type ViewQueryOpenEntry = QueryBarEntry
 
@@ -79,15 +79,14 @@ export const ViewQueryBar = () => {
 
       {filters.map((entry, index) => (
         <FilterRulePopover
-          key={`filter_${entry.fieldId}_${index}`}
+          key={`filter_${entry.rule.fieldId}_${index}`}
           entry={entry}
-          open={queryBar.route?.kind === 'filter' && queryBar.route.fieldId === getFilterFieldId(entry.rule)}
+          open={queryBar.route?.kind === 'filter' && queryBar.route.index === index}
           onOpenChange={open => {
-            const fieldId = getFilterFieldId(entry.rule)
-            if (open && fieldId) {
+            if (open) {
               page.query.open({
                 kind: 'filter',
-                fieldId
+                index
               })
               return
             }
@@ -143,7 +142,7 @@ export const ViewQueryBar = () => {
                   currentViewDomain?.filters.add(fieldId)
                   page.query.open({
                     kind: 'filter',
-                    fieldId
+                    index: filters.length
                   })
                 }}
               />

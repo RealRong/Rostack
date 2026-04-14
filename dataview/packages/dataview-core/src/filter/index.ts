@@ -2,7 +2,7 @@ export type {
   FilterEditorKind,
   FilterPreset,
   FilterSpec
-} from '#dataview-core/filter/types'
+} from '@dataview/core/filter/types'
 export {
   applyFilterPreset,
   cloneFilterRule,
@@ -18,7 +18,7 @@ export {
   normalizeFilterRule,
   readFilterOptionSetValue,
   setFilterRuleValue
-} from '#dataview-core/filter/spec'
+} from '@dataview/core/filter/spec'
 export {
   addFilterRule,
   cloneFilter,
@@ -31,4 +31,4 @@ export {
   setFilterMode,
   setFilterPreset,
   setFilterValue
-} from '#dataview-core/filter/state'
+} from '@dataview/core/filter/state'

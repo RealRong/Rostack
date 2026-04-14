@@ -1,12 +1,12 @@
-import type { InteractionSession } from '#whiteboard-editor/input/core/types'
-import { FINISH } from '#whiteboard-editor/input/core/result'
-import type { InteractionContext } from '#whiteboard-editor/input/context'
+import type { InteractionSession } from '@whiteboard/editor/input/core/types'
+import { FINISH } from '@whiteboard/editor/input/core/result'
+import type { InteractionContext } from '@whiteboard/editor/input/context'
 import {
   commitMindmapDrag,
   previewMindmapDrag,
   stepMindmapDrag,
   type MindmapDragState
-} from '#whiteboard-editor/input/mindmap/drag/start'
+} from '@whiteboard/editor/input/mindmap/drag/start'
 
 const applyMindmapPreview = (
   ctx: InteractionContext,

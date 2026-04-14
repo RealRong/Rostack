@@ -1,9 +1,9 @@
-import { GalleryView } from '#dataview-react/views/gallery'
-import { useDataViewValue } from '#dataview-react/dataview'
-import type { KanbanViewProps } from '#dataview-react/views/kanban'
-import { KanbanView } from '#dataview-react/views/kanban'
-import type { TableViewProps } from '#dataview-react/views/table'
-import { TableView } from '#dataview-react/views/table'
+import { GalleryView } from '@dataview/react/views/gallery'
+import { useDataViewValue } from '@dataview/react/dataview'
+import type { KanbanViewProps } from '@dataview/react/views/kanban'
+import { KanbanView } from '@dataview/react/views/kanban'
+import type { TableViewProps } from '@dataview/react/views/table'
+import { TableView } from '@dataview/react/views/table'
 
 export interface PageBodyProps {
   table?: Pick<TableViewProps, 'rowHeight'>

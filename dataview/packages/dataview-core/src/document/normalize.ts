@@ -1,13 +1,13 @@
-import type { DataDoc } from '#dataview-core/contracts/state'
-import { normalizeCustomFields } from '#dataview-core/field'
+import type { DataDoc } from '@dataview/core/contracts/state'
+import { normalizeCustomFields } from '@dataview/core/field'
 import {
   cloneEntityTable,
   normalizeEntityTable
-} from '#dataview-core/document/table'
+} from '@dataview/core/document/table'
 import {
   normalizeDocumentViews,
   resolveDocumentActiveViewId
-} from '#dataview-core/document/views'
+} from '@dataview/core/document/views'
 
 export const normalizeDocument = (document: DataDoc): DataDoc => {
   const records = normalizeEntityTable(document.records)

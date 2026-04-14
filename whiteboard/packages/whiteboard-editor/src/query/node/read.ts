@@ -27,17 +27,17 @@ import type {
 import type {
   NodeDefinition,
   NodeRegistry
-} from '#whiteboard-editor/types/node'
+} from '@whiteboard/editor/types/node'
 import type {
   NodeFeedbackProjection,
-} from '#whiteboard-editor/local/feedback/types'
-import type { EditSession } from '#whiteboard-editor/local/session/edit'
+} from '@whiteboard/editor/local/feedback/types'
+import type { EditSession } from '@whiteboard/editor/local/session/edit'
 import {
   projectNodeItem,
   readNodeProjectionRotation,
   readProjectedNodeBounds,
   readProjectedNodeGeometry
-} from '#whiteboard-editor/query/node/projection'
+} from '@whiteboard/editor/query/node/projection'
 
 export type NodeRuntimeState = {
   hovered: boolean

@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react'
 import type {
   ContextMenuPlacement,
   ToolbarPlacement
-} from '#whiteboard-react/types/selection'
+} from '@whiteboard/react/types/selection'
 
 const SAFE_MARGIN = 12
 const MENU_WIDTH = 220

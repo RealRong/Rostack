@@ -1,12 +1,12 @@
 import type { Field } from '@dataview/core/contracts'
 import { isCustomField } from '@dataview/core/field'
-import type { FieldValueSpec } from '#dataview-react/field/value/kinds/contracts'
-import { createCheckboxPropertySpec } from '#dataview-react/field/value/kinds/checkbox'
-import { createDatePropertySpec } from '#dataview-react/field/value/kinds/date'
-import { createMultiSelectPropertySpec } from '#dataview-react/field/value/kinds/multiSelect'
-import { createSingleSelectPropertySpec } from '#dataview-react/field/value/kinds/select'
-import { createStatusFieldSpec } from '#dataview-react/field/value/kinds/status'
-import { createTextPropertySpec } from '#dataview-react/field/value/kinds/text'
+import type { FieldValueSpec } from '@dataview/react/field/value/kinds/contracts'
+import { createCheckboxPropertySpec } from '@dataview/react/field/value/kinds/checkbox'
+import { createDatePropertySpec } from '@dataview/react/field/value/kinds/date'
+import { createMultiSelectPropertySpec } from '@dataview/react/field/value/kinds/multiSelect'
+import { createSingleSelectPropertySpec } from '@dataview/react/field/value/kinds/select'
+import { createStatusFieldSpec } from '@dataview/react/field/value/kinds/status'
+import { createTextPropertySpec } from '@dataview/react/field/value/kinds/text'
 
 export const getFieldValueSpec = (field?: Field): FieldValueSpec<any> => {
   switch (field?.kind) {

@@ -1,8 +1,8 @@
-import type { Rect, Size } from '#whiteboard-core/types'
+import type { Rect, Size } from '@whiteboard/core/types'
 import type {
   HorizontalResizeEdge,
   VerticalResizeEdge
-} from '#whiteboard-core/node/resize'
+} from '@whiteboard/core/node/resize'
 
 type HorizontalSnapEdge = 'left' | 'right' | 'centerX'
 type VerticalSnapEdge = 'top' | 'bottom' | 'centerY'

@@ -1,4 +1,4 @@
-import type { Edge, EdgeInput, NodeId } from '#whiteboard-core/types'
+import type { Edge, EdgeInput, NodeId } from '@whiteboard/core/types'
 
 const clonePoint = (point: { x: number; y: number }) => ({ x: point.x, y: point.y })
 

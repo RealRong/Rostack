@@ -1,5 +1,5 @@
 import type { Engine } from '@whiteboard/engine'
-import type { HistoryCommands } from '#whiteboard-editor/types/commands'
+import type { HistoryCommands } from '@whiteboard/editor/types/commands'
 
 export const createHistoryCommands = (
   engine: Engine

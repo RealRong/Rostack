@@ -3,11 +3,11 @@ import type {
   FieldId,
   ViewOptions,
   ViewType
-} from '#dataview-core/contracts'
-import { normalizeGalleryOptions } from '#dataview-core/view/gallery'
-import { normalizeKanbanOptions } from '#dataview-core/view/kanban'
-import { createDefaultViewOptions } from '#dataview-core/view/options'
-import { isJsonObject, toTrimmedString } from '#dataview-core/view/shared'
+} from '@dataview/core/contracts'
+import { normalizeGalleryOptions } from '@dataview/core/view/gallery'
+import { normalizeKanbanOptions } from '@dataview/core/view/kanban'
+import { createDefaultViewOptions } from '@dataview/core/view/options'
+import { isJsonObject, toTrimmedString } from '@dataview/core/view/shared'
 
 export interface NormalizeViewOptionsContext {
   type?: ViewType

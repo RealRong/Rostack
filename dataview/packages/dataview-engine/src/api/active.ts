@@ -5,24 +5,24 @@ import type {
   DocumentSelectApi,
   FieldsApi,
   RecordsApi
-} from '#dataview-engine/contracts/public'
-import { createActiveContext } from '#dataview-engine/active/context'
-import { createActiveViewReadApi } from '#dataview-engine/active/read'
-import type { RuntimeStore } from '#dataview-engine/runtime/store'
+} from '@dataview/engine/contracts/public'
+import { createActiveContext } from '@dataview/engine/active/context'
+import { createActiveViewReadApi } from '@dataview/engine/active/read'
+import type { RuntimeStore } from '@dataview/engine/runtime/store'
 import {
   createSearchApi,
   createFiltersApi,
   createSortApi,
   createGroupApi
-} from '#dataview-engine/active/commands/query'
-import { createSectionsApi } from '#dataview-engine/active/commands/sections'
-import { createSummaryApi } from '#dataview-engine/active/commands/summary'
-import { createDisplayApi } from '#dataview-engine/active/commands/display'
-import { createTableApi } from '#dataview-engine/active/commands/table'
-import { createGalleryApi } from '#dataview-engine/active/commands/gallery'
-import { createKanbanApi } from '#dataview-engine/active/commands/kanban'
-import { createActiveItemsApi } from '#dataview-engine/active/commands/items'
-import { createCellsApi } from '#dataview-engine/active/commands/cells'
+} from '@dataview/engine/active/commands/query'
+import { createSectionsApi } from '@dataview/engine/active/commands/sections'
+import { createSummaryApi } from '@dataview/engine/active/commands/summary'
+import { createDisplayApi } from '@dataview/engine/active/commands/display'
+import { createTableApi } from '@dataview/engine/active/commands/table'
+import { createGalleryApi } from '@dataview/engine/active/commands/gallery'
+import { createKanbanApi } from '@dataview/engine/active/commands/kanban'
+import { createActiveItemsApi } from '@dataview/engine/active/commands/items'
+import { createCellsApi } from '@dataview/engine/active/commands/cells'
 
 export const createActiveViewApi = (options: {
   store: RuntimeStore

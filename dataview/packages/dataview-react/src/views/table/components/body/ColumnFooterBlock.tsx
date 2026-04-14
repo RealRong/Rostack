@@ -2,7 +2,7 @@ import type {
   Field
 } from '@dataview/core/contracts'
 import { useStoreValue } from '@shared/react'
-import { useTableContext } from '#dataview-react/views/table/context'
+import { useTableContext } from '@dataview/react/views/table/context'
 
 export interface ColumnFooterBlockProps {
   scopeId: string

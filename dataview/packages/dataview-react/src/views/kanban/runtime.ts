@@ -12,12 +12,11 @@ import type {
   ViewState
 } from '@dataview/engine'
 import {
-  useDataView,
-  useDataViewValue
-} from '#dataview-react/dataview'
+  useDataView
+} from '@dataview/react/dataview'
 import {
   dataviewAppearanceSelector
-} from '#dataview-react/dom/appearance'
+} from '@dataview/react/dom/appearance'
 import {
   closestTarget,
   interactiveSelector
@@ -29,22 +28,21 @@ import {
 } from '@dataview/engine'
 import {
   resolveDefaultAutoPanTargets
-} from '#dataview-react/interaction/autoPan'
-import {
-  createVisualTargetRegistry
-} from '#dataview-react/runtime/marquee'
-import { useStoreValue } from '@shared/react'
+} from '@dataview/react/interaction/autoPan'
 import {
   readBoardLayout
-} from '#dataview-react/views/kanban/drag'
+} from '@dataview/react/views/kanban/drag'
 import {
   useDrag
-} from '#dataview-react/views/kanban/drag'
+} from '@dataview/react/views/kanban/drag'
 import type {
   KanbanRuntimeInput,
   KanbanSectionVisibility,
   KanbanViewRuntime
-} from '#dataview-react/views/kanban/types'
+} from '@dataview/react/views/kanban/types'
+import {
+  useItemInteractionRuntime
+} from '@dataview/react/views/shared/interactionRuntime'
 
 const resolveInitialVisibleCount = (
   limit: KanbanCardsPerColumn,
@@ -216,62 +214,22 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
   const dataView = useDataView()
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [dragging, setDragging] = useState(false)
-  const visualTargets = useRef(createVisualTargetRegistry({
-    resolveScrollTargets: () => resolveDefaultAutoPanTargets(scrollRef.current)
-  })).current
   const itemIds = input.active.items.ids
-  const selectionValue = useDataViewValue(
-    dataView => dataView.selection.store
-  )
-  const selectedIds = selectionValue.ids
-  const selectedIdSet = useMemo<ReadonlySet<ItemId>>(
-    () => new Set(selectedIds),
-    [selectedIds]
-  )
-  const select = useCallback((id: ItemId, mode: 'replace' | 'toggle' = 'replace') => {
-    if (mode === 'toggle') {
-      dataView.selection.toggle([id])
-      return
-    }
-
-    dataView.selection.set([id])
-  }, [dataView.selection])
-  const marqueeSession = useStoreValue(dataView.marquee.store)
-  const marqueeActive = marqueeSession?.ownerViewId === input.active.view.id
+  const interaction = useItemInteractionRuntime({
+    viewId: input.active.view.id,
+    itemIds,
+    disabled: dragging,
+    canStart: (event: PointerEvent) => !closestTarget(event.target, [
+      dataviewAppearanceSelector,
+      interactiveSelector
+    ].join(',')),
+    resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(scrollRef.current)
+  })
   const visibility = useSectionVisibility({
     viewId: input.active.view.id,
     sections: input.active.sections.all,
     cardsPerColumn: input.extra.cardsPerColumn
   })
-
-  useEffect(() => {
-    return dataView.marquee.registerAdapter({
-      viewId: input.active.view.id,
-      disabled: dragging,
-      canStart: (event: PointerEvent) => !closestTarget(event.target, [
-        dataviewAppearanceSelector,
-        interactiveSelector
-      ].join(',')),
-      getTargets: () => visualTargets.getTargets(itemIds),
-      order: () => itemIds,
-      resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(scrollRef.current),
-      onStart: () => {
-        visualTargets.clearFrozen()
-      },
-      onEnd: () => {
-        visualTargets.clearFrozen()
-      },
-      onCancel: () => {
-        visualTargets.clearFrozen()
-      }
-    })
-  }, [
-    itemIds,
-    dataView.marquee,
-    dragging,
-    input.active.view.id,
-    visualTargets
-  ])
 
   const drag = useDrag({
     containerRef: scrollRef,
@@ -279,8 +237,8 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
     itemMap: new Map(itemIds.map(id => [id, id] as const)),
     getLayout: () => readBoardLayout(scrollRef.current),
     getDragIds: activeId => (
-      selectedIds.includes(activeId)
-        ? selectedIds.filter(id => itemIds.includes(id))
+      interaction.selection.selectedIds.includes(activeId)
+        ? interaction.selection.selectedIds.filter(id => itemIds.includes(id))
         : [activeId]
     ),
     onDraggingChange: setDragging,
@@ -298,22 +256,15 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
       columnMinHeight: input.columnMinHeight
     },
     scrollRef,
-    selection: {
-      selectedIdSet,
-      select
-    },
+    ...interaction,
     drag,
-    marqueeActive,
-    visualTargets,
     visibility
   }), [
     drag,
     input.columnMinHeight,
     input.columnWidth,
-    marqueeActive,
-    select,
-    selectedIdSet,
+    interaction,
     visibility,
-    visualTargets
+    scrollRef
   ])
 }

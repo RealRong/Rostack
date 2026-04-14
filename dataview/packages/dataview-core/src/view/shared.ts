@@ -2,7 +2,7 @@ import type {
   FieldId,
   View,
   ViewOptions
-} from '#dataview-core/contracts'
+} from '@dataview/core/contracts'
 
 export type JsonObject = Record<string, unknown>
 

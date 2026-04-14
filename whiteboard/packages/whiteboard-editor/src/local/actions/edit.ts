@@ -1,12 +1,12 @@
 import { readTextWrapWidth } from '@whiteboard/core/node'
-import type { EditorQueryRead } from '#whiteboard-editor/query'
-import type { SessionActions } from '#whiteboard-editor/types/commands'
-import type { NodeRegistry } from '#whiteboard-editor/types/node'
+import type { EditorQueryRead } from '@whiteboard/editor/query'
+import type { SessionActions } from '@whiteboard/editor/types/commands'
+import type { NodeRegistry } from '@whiteboard/editor/types/node'
 import {
   type EditCapability,
   type EditField
-} from '#whiteboard-editor/local/session/edit'
-import type { EditorLocalState } from '#whiteboard-editor/local/runtime'
+} from '@whiteboard/editor/local/session/edit'
+import type { EditorLocalState } from '@whiteboard/editor/local/runtime'
 
 export type LocalEditActions = SessionActions['edit']
 

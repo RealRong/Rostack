@@ -4,24 +4,24 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   IndexState
-} from '#dataview-engine/active/index/contracts'
+} from '@dataview/engine/active/index/contracts'
 import {
   readGroupFieldIndex
-} from '#dataview-engine/active/index/group/demand'
+} from '@dataview/engine/active/index/group/demand'
 import type {
   QueryState,
   SectionState
-} from '#dataview-engine/contracts/internal'
+} from '@dataview/engine/contracts/internal'
 import {
   buildSectionNode,
   buildSectionState,
   sameRecordIds,
   sameSectionNode,
   resolveSectionKeys
-} from '#dataview-engine/active/snapshot/sections/derive'
+} from '@dataview/engine/active/snapshot/sections/derive'
 import {
   readQueryOrder
-} from '#dataview-engine/contracts/internal'
+} from '@dataview/engine/contracts/internal'
 
 const insertOrdered = (
   ids: RecordId[],
@@ -75,8 +75,8 @@ export const syncSectionState = (input: {
     || !input.previousQuery
     || input.action === 'rebuild'
     || input.touchedRecords === 'all'
-    || input.previousQuery.visible !== input.query.visible
-    || input.previousQuery.ordered !== input.query.ordered
+    || input.previousQuery.records.visible !== input.query.records.visible
+    || input.previousQuery.records.ordered !== input.query.records.ordered
   ) {
     return buildSectionState({
       view: input.view,
@@ -97,10 +97,10 @@ export const syncSectionState = (input: {
 
   const previous = input.previous
   const queryOrder = readQueryOrder(input.query)
-  const idsByKey = new Map<import('#dataview-engine/contracts/public').SectionKey, RecordId[]>()
-  let byRecord: Map<RecordId, readonly import('#dataview-engine/contracts/public').SectionKey[]> | undefined
+  const idsByKey = new Map<import('@dataview/engine/contracts/public').SectionKey, RecordId[]>()
+  let byRecord: Map<RecordId, readonly import('@dataview/engine/contracts/public').SectionKey[]> | undefined
   const ensureIds = (
-    key: import('#dataview-engine/contracts/public').SectionKey
+    key: import('@dataview/engine/contracts/public').SectionKey
   ) => {
     const cached = idsByKey.get(key)
     if (cached) {

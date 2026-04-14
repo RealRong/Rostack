@@ -1,4 +1,4 @@
-import type { EdgeRoute, Point } from '#whiteboard-core/types'
+import type { EdgeRoute, Point } from '@whiteboard/core/types'
 
 export const readEdgeRoutePoints = (
   route: EdgeRoute | undefined

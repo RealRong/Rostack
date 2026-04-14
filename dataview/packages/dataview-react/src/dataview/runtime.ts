@@ -7,13 +7,13 @@ import {
 } from '@shared/core'
 import {
   createPageSessionApi
-} from '#dataview-react/page/session/api'
+} from '@dataview/react/page/session/api'
 import type {
   PageSessionInput
-} from '#dataview-react/page/session/types'
+} from '@dataview/react/page/session/types'
 import {
   createPageStateStore
-} from '#dataview-react/page/state'
+} from '@dataview/react/page/state'
 import {
   createSelectionApi,
   createSelectionStore,
@@ -21,18 +21,18 @@ import {
   selection as selectionHelpers,
   syncSelection,
   type SelectionApi
-} from '#dataview-react/runtime/selection'
+} from '@dataview/react/runtime/selection'
 import {
   createInlineSessionApi,
   type InlineSessionApi
-} from '#dataview-react/runtime/inlineSession'
+} from '@dataview/react/runtime/inlineSession'
 import {
   createValueEditorApi,
-} from '#dataview-react/runtime/valueEditor'
+} from '@dataview/react/runtime/valueEditor'
 import {
   createMarqueeApi,
   type MarqueeApi
-} from '#dataview-react/runtime/marquee'
+} from '@dataview/react/runtime/marquee'
 import type {
   ItemList
 } from '@dataview/engine'
@@ -41,7 +41,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   DataViewSession
-} from '#dataview-react/dataview/types'
+} from '@dataview/react/dataview/types'
 
 const bindSelectionToAppearances = (input: {
   items: ReadStore<ItemList | undefined>

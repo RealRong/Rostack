@@ -19,4 +19,4 @@ export {
   type SelectionTarget,
   type SelectionTransform,
   type SelectionTransformBox,
-} from '#whiteboard-core/selection/model'
+} from '@whiteboard/core/selection/model'

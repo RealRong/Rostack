@@ -16,12 +16,12 @@ import {
   shouldDropFieldIndex,
   shouldRebuildFieldIndex,
   shouldSyncFieldIndex
-} from '#dataview-engine/active/index/sync'
+} from '@dataview/engine/active/index/sync'
 import type {
   RecordIndex,
   SortFieldIndex,
   SortIndex
-} from '#dataview-engine/active/index/contracts'
+} from '@dataview/engine/active/index/contracts'
 
 const MAX_INCREMENTAL_TOUCHES = 64
 

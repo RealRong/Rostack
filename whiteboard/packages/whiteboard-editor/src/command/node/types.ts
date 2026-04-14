@@ -12,7 +12,7 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import type { CommandResult } from '@whiteboard/engine/types/result'
-import type { NodeApi } from '#whiteboard-editor/types/commands'
+import type { NodeApi } from '@whiteboard/editor/types/commands'
 
 export type NodePatchWriter = {
   update: (id: NodeId, update: NodeUpdateInput) => CommandResult

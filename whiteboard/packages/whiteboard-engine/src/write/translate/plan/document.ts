@@ -1,16 +1,16 @@
-import type { CommandOutput, DocumentCommand } from '#whiteboard-engine/types/command'
+import type { CommandOutput, DocumentCommand } from '@whiteboard/engine/types/command'
 import {
   buildInsertSliceOperations,
   exportSliceFromSelection
 } from '@whiteboard/core/document'
 import { err, ok } from '@whiteboard/core/result'
 import type { CanvasItemRef, EdgeId } from '@whiteboard/core/types'
-import { DEFAULT_TUNING } from '#whiteboard-engine/config'
-import type { WriteTranslateContext } from '#whiteboard-engine/write/translate'
-import { normalizeOrder } from '#whiteboard-engine/write/translate/order/policy'
-import { sameOrder } from '#whiteboard-engine/write/translate/order/refs'
-import { cascadeDeleteTargets } from '#whiteboard-engine/write/translate/selection/node'
-import type { Step } from '#whiteboard-engine/write/translate/plan/shared'
+import { DEFAULT_TUNING } from '@whiteboard/engine/config'
+import type { WriteTranslateContext } from '@whiteboard/engine/write/translate'
+import { normalizeOrder } from '@whiteboard/engine/write/translate/order/policy'
+import { sameOrder } from '@whiteboard/engine/write/translate/order/refs'
+import { cascadeDeleteTargets } from '@whiteboard/engine/write/translate/selection/node'
+import type { Step } from '@whiteboard/engine/write/translate/plan/shared'
 
 type Insert = Extract<DocumentCommand, { type: 'document.insert' }>
 type Remove = Extract<DocumentCommand, { type: 'document.delete' }>

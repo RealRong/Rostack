@@ -1,5 +1,5 @@
-import type { Point } from '#whiteboard-core/types'
-import { degToRad } from '#whiteboard-core/geometry/scalar'
+import type { Point } from '@whiteboard/core/types'
+import { degToRad } from '@whiteboard/core/geometry/scalar'
 
 export const rotatePoint = (
   point: Point,

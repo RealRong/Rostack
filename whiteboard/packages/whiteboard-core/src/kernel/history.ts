@@ -1,11 +1,11 @@
-import type { Operation, Origin } from '#whiteboard-core/types'
+import type { Operation, Origin } from '@whiteboard/core/types'
 import type {
   HistoryApi,
   HistoryCapture,
   HistoryConfig,
   HistoryReplay,
   HistoryState
-} from '#whiteboard-core/types/kernel'
+} from '@whiteboard/core/types/kernel'
 
 const DEFAULT_HISTORY_CONFIG: HistoryConfig = {
   enabled: true,

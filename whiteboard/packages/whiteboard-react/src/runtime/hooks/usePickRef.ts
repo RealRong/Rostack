@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import type { EditorPick } from '@whiteboard/editor'
-import { useWhiteboardServices } from '#whiteboard-react/runtime/hooks/useWhiteboard'
+import { useWhiteboardServices } from '@whiteboard/react/runtime/hooks/useWhiteboard'
 
 const toPickKey = (
   pick: EditorPick

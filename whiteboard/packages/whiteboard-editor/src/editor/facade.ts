@@ -4,11 +4,11 @@ import {
   read as readValue
 } from '@shared/core'
 import type { Engine } from '@whiteboard/engine'
-import type { EditorInput, Editor } from '#whiteboard-editor/types/editor'
-import type { EditorCommandRuntime } from '#whiteboard-editor/command'
-import type { EditorLocalRuntime } from '#whiteboard-editor/local/runtime'
-import type { QueryRuntime } from '#whiteboard-editor/query'
-import { createEditorState } from '#whiteboard-editor/editor/state'
+import type { EditorInput, Editor } from '@whiteboard/editor/types/editor'
+import type { EditorCommandRuntime } from '@whiteboard/editor/command'
+import type { EditorLocalRuntime } from '@whiteboard/editor/local/runtime'
+import type { QueryRuntime } from '@whiteboard/editor/query'
+import { createEditorState } from '@whiteboard/editor/editor/state'
 
 const resolveNodeCommitValue = (input: {
   text: string

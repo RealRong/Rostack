@@ -1,5 +1,5 @@
-import type { ReadModel } from '#whiteboard-engine/types/read'
-import type { EngineDocument, EngineRead, EngineReadIndex } from '#whiteboard-engine/types/instance'
+import type { ReadModel } from '@whiteboard/engine/types/read'
+import type { EngineDocument, EngineRead, EngineReadIndex } from '@whiteboard/engine/types/instance'
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import type { BoardConfig } from '@whiteboard/core/config'
 import type { MindmapLayoutConfig } from '@whiteboard/core/mindmap'
@@ -43,18 +43,18 @@ import {
   type Rect
 } from '@whiteboard/core/types'
 import { createValueStore, presentValues } from '@shared/core'
-import { DEFAULT_TUNING } from '#whiteboard-engine/config'
-import { RESET_READ_IMPACT } from '#whiteboard-engine/read/impacts'
-import { NodeRectIndex, SnapIndex } from '#whiteboard-engine/read/indexes'
-import { createEdgeProjection } from '#whiteboard-engine/read/store/edge'
-import { createReadModel } from '#whiteboard-engine/read/store/model'
-import { createMindmapProjection } from '#whiteboard-engine/read/store/mindmap'
-import { createNodeProjection } from '#whiteboard-engine/read/store/node'
-import type { ReadSnapshot } from '#whiteboard-engine/types/internal/read'
+import { DEFAULT_TUNING } from '@whiteboard/engine/config'
+import { RESET_READ_IMPACT } from '@whiteboard/engine/read/impacts'
+import { NodeRectIndex, SnapIndex } from '@whiteboard/engine/read/indexes'
+import { createEdgeProjection } from '@whiteboard/engine/read/store/edge'
+import { createReadModel } from '@whiteboard/engine/read/store/model'
+import { createMindmapProjection } from '@whiteboard/engine/read/store/mindmap'
+import { createNodeProjection } from '@whiteboard/engine/read/store/node'
+import type { ReadSnapshot } from '@whiteboard/engine/types/internal/read'
 import {
   resolveGroupTarget,
   resolveTargetBounds
-} from '#whiteboard-engine/read/store/target'
+} from '@whiteboard/engine/read/store/target'
 
 const EMPTY_GROUP_IDS: readonly string[] = []
 

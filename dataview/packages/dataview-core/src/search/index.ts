@@ -1,6 +1,6 @@
 export {
   matchSearchRecord
-} from '#dataview-core/search/execute'
+} from '@dataview/core/search/execute'
 export {
   buildFieldSearchText,
   buildRecordDefaultSearchText,
@@ -11,10 +11,10 @@ export {
   SEARCH_TOKEN_SEPARATOR,
   splitSearchText,
   normalizeSearchTokens
-} from '#dataview-core/search/tokens'
+} from '@dataview/core/search/tokens'
 export {
   cloneSearch,
   normalizeSearch,
   sameSearch,
   setSearchQuery
-} from '#dataview-core/search/state'
+} from '@dataview/core/search/state'

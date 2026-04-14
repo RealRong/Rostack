@@ -4,13 +4,13 @@ import {
   createValueStore,
   type ValueStore
 } from '@shared/core'
-import { resolveViewDemand } from '#dataview-engine/active/demand'
-import { createIndexState } from '#dataview-engine/active/index/runtime'
-import { createViewRuntime } from '#dataview-engine/active/runtime'
-import type { EngineRuntimeState } from '#dataview-engine/runtime/state'
+import { resolveViewDemand } from '@dataview/engine/active/demand'
+import { createIndexState } from '@dataview/engine/active/index/runtime'
+import { createViewRuntime } from '@dataview/engine/active/runtime'
+import type { EngineRuntimeState } from '@dataview/engine/runtime/state'
 
 export type RuntimeStore = ValueStore<EngineRuntimeState>
-export type { EngineRuntimeState } from '#dataview-engine/runtime/state'
+export type { EngineRuntimeState } from '@dataview/engine/runtime/state'
 
 export const createRuntimeState = (input: {
   doc: DataDoc

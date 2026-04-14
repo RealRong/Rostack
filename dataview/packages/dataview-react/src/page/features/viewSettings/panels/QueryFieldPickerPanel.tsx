@@ -1,13 +1,15 @@
 import { getDocumentFields } from '@dataview/core/document'
-import { FieldPicker } from '#dataview-react/field/picker'
-import { getAvailableFilterFields } from '#dataview-react/page/features/filter/filterUi'
-import { getAvailableSorterFields } from '#dataview-react/page/features/sort'
+import { FieldPicker } from '@dataview/react/field/picker'
+import {
+  getAvailableFilterFields,
+  getAvailableSorterFields
+} from '@dataview/react/page/features/query/fields'
 import {
   useDataView,
   useDataViewValue
-} from '#dataview-react/dataview'
+} from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
-import { useViewSettings } from '#dataview-react/page/features/viewSettings/context'
+import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
 
 export const QueryFieldPickerPanel = (props: {
   kind: 'filter' | 'sort'
@@ -47,7 +49,7 @@ export const QueryFieldPickerPanel = (props: {
             currentViewDomain?.filters.add(fieldId)
             page.query.open({
               kind: 'filter',
-              fieldId
+              index: filterProjection?.rules.length ?? 0
             })
             router.close()
             return

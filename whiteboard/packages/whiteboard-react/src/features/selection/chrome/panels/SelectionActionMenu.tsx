@@ -1,7 +1,7 @@
 import { Menu, type MenuItem } from '@shared/ui'
 import { useStoreValue } from '@shared/react'
-import { useEditorRuntime, useWhiteboardServices } from '#whiteboard-react/runtime/hooks'
-import { readSelectionCan } from '#whiteboard-react/features/selection/capability'
+import { useEditorRuntime, useWhiteboardServices } from '@whiteboard/react/runtime/hooks'
+import { readSelectionCan } from '@whiteboard/react/features/selection/capability'
 
 const ORDER_ITEMS = [
   { key: 'order.front', label: 'Bring to front', mode: 'front' as const },

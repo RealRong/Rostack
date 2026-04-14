@@ -1,8 +1,3 @@
-import {
-  createDerivedStore,
-  createValueStore,
-  read
-} from '@shared/core'
 import type {
   CloseValueEditorOptions,
   OpenValueEditorInput,
@@ -11,7 +6,10 @@ import type {
   ValueEditorResult,
   ValueEditorSession,
   ViewFieldRef
-} from '#dataview-react/runtime/valueEditor/types'
+} from '@dataview/react/runtime/valueEditor/types'
+import {
+  createNullableControllerStore
+} from '@dataview/react/runtime/store'
 
 const cloneField = (
   field: ViewFieldRef
@@ -75,11 +73,10 @@ const dismissSession = (
 }
 
 export const createValueEditorApi = (): ValueEditorController => {
-  const store = createValueStore<ValueEditorSession | null>({
-    initial: null
-  })
-  const openStore = createDerivedStore<boolean>({
-    get: () => Boolean(read(store))
+  const {
+    store,
+    openStore
+  } = createNullableControllerStore<ValueEditorSession>({
   })
 
   return {

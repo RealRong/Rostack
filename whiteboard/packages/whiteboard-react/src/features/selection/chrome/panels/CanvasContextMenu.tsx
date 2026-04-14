@@ -1,6 +1,6 @@
 import type { Point } from '@whiteboard/core/types'
 import { Menu, type MenuItem } from '@shared/ui'
-import { useEditorRuntime, useWhiteboardServices } from '#whiteboard-react/runtime/hooks'
+import { useEditorRuntime, useWhiteboardServices } from '@whiteboard/react/runtime/hooks'
 
 const toMenuItems = (
   onUndo: () => void,

@@ -8,12 +8,12 @@ import type {
   DrawSlot
 } from '@whiteboard/editor/draw'
 import type { Dispatch, SetStateAction } from 'react'
-import type { WhiteboardRuntime as Editor } from '#whiteboard-react/types/runtime'
+import type { WhiteboardRuntime as Editor } from '@whiteboard/react/types/runtime'
 import type {
   ToolPaletteMenuKey,
   ToolPaletteView
-} from '#whiteboard-react/types/toolbox'
-import { TEXT_INSERT_PRESET } from '#whiteboard-react/features/toolbox/presets'
+} from '@whiteboard/react/types/toolbox'
+import { TEXT_INSERT_PRESET } from '@whiteboard/react/features/toolbox/presets'
 
 type MenuSetter = Dispatch<SetStateAction<ToolPaletteMenuKey | null>>
 type DrawPanelSetter = Dispatch<SetStateAction<boolean>>

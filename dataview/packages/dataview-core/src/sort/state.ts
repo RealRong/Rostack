@@ -1,7 +1,7 @@
 import type {
   SortDirection,
   Sorter
-} from '#dataview-core/contracts'
+} from '@dataview/core/contracts'
 
 export const cloneSorter = (
   sorter: Sorter

@@ -6,7 +6,7 @@ import {
 } from 'react'
 import type { Rect } from '@whiteboard/core/types'
 import { estimateTextAutoFont } from '@whiteboard/core/node'
-import { measureStickyFontSize } from '#whiteboard-react/features/node/dom/stickyTextFit'
+import { measureStickyFontSize } from '@whiteboard/react/features/node/dom/stickyTextFit'
 
 export const useStickyFontSize = ({
   text,

@@ -3,8 +3,8 @@ import { focusInputWithoutScroll } from '@shared/dom'
 import {
   isComposing,
   keyAction
-} from '#dataview-react/field/value/editor/shared/keyboard'
-import type { FieldValueDraftEditorProps } from '#dataview-react/field/value/editor/contracts'
+} from '@dataview/react/field/value/editor/shared/keyboard'
+import type { FieldValueDraftEditorProps } from '@dataview/react/field/value/editor/contracts'
 
 export type InputKind = 'text' | 'number'
 

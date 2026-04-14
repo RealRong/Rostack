@@ -2,6 +2,15 @@
 
 日期：2026-04-14
 
+## 当前状态
+
+本清单对应的迁移已按“不留兼容层、不保留双轨实现”的标准一次性落地，以下状态以当前仓库源码为准。
+
+- [x] 阶段 1 到阶段 5 已全部完成
+- [x] 旧实现、旧中间层、旧死文件已删除干净
+- [x] `pnpm -C dataview typecheck` 已通过
+- [x] `pnpm -C dataview test` 已通过
+
 ## 审计范围
 
 本轮审计基于当前真实源码重新扫描，不沿用旧路径、历史别名或 dist 产物结论。
@@ -20,22 +29,21 @@
 
 ## 当前结论
 
-- `core / engine` 上一轮大块重复已经基本收口，旧文档里最重的几条主线已经完成，不应该在本轮重新打开。
-- 当前真实还剩下的重复，主要集中在 `react` 和 `table`：尤其是选择状态机、table ordered-list 包装层、gallery/kanban/table 的交互运行时骨架。
-- `engine` 侧现在只剩少量“薄包装命令”和“internal/public 阴影类型”问题，体量远小于上一轮，但仍然值得清理。
-- 当前最明确的不必要中间翻译层是：
+- `core / engine / react / table` 这一轮审计识别出的重复与中间层已经全部收口。
+- `react` 和 `table` 侧原先分散的选择状态机、ordered-list 包装层、gallery/kanban/table 交互运行时骨架已统一为单一实现。
+- `engine` 侧的薄包装命令、internal/public 阴影类型、summary 空态语义也已完成收缩。
+- 本轮确认并删除的典型不必要中间翻译层包括：
   - `FilterRuleProjection.fieldId`
   - `TableCellRange`
   - `QueryState extends ViewRecords`
   - `SectionNodeState extends Section`
-- 当前最明确的待删死代码是：
+- 本轮确认并删除的死代码包括：
   - `dataview/packages/dataview-react/src/field/navigation.ts`
 
 结论：
 
-- 这轮迁移不该再围绕 `core` 做大规模改造。
-- 正确方向是继续把剩余重复从 `table / react / engine projection` 三处收干净。
-- 所有迁移动作都应“一次切换完成”，同阶段内删除旧实现，不保留兼容导出、别名桥接或双轨调用。
+- 这轮迁移已经完成，不再保留额外兼容层、别名桥接或双轨调用。
+- 当前文档保留的是审计依据与已完成清单，而不是未落地待办。
 
 ## 当前已收敛的基线
 
@@ -81,17 +89,17 @@
 
 迁移动作：
 
-- [ ] 删除 `grid.ts` 里仅转发 `ItemList / FieldList` 原语的 helper。
-- [ ] `range.ts` 改为直接使用 `items.range(...)` 和 `fields.range(...)`。
-- [ ] `paste.ts`、`cellRender.ts`、`targets.ts` 直接依赖 canonical list protocol，不再透过 `grid.*Index / grid.*At / grid.*Between`。
-- [ ] 仅保留真正 table-specific 的单元格导航逻辑；如果 `firstCell / edgeCell / stepField` 也能沉到共享 ordered-cursor helper，就一并下沉。
-- [ ] 删除迁移后失去价值的旧 helper，不保留“table 版 list facade”。
+- [x] 删除 `grid.ts` 里仅转发 `ItemList / FieldList` 原语的 helper。
+- [x] `range.ts` 改为直接使用 `items.range(...)` 和 `fields.range(...)`。
+- [x] `paste.ts`、`cellRender.ts`、`targets.ts` 直接依赖 canonical list protocol，不再透过 `grid.*Index / grid.*At / grid.*Between`。
+- [x] 仅保留真正 table-specific 的单元格导航逻辑；如果 `firstCell / edgeCell / stepField` 也能沉到共享 ordered-cursor helper，就一并下沉。
+- [x] 删除迁移后失去价值的旧 helper，不保留“table 版 list facade”。
 
 完成标准：
 
-- [ ] `dataview-table` 内不再存在“只是给 `engine` list 原语换名字”的薄包装函数。
-- [ ] 表格相关调用点可以直接从 `ItemList / FieldList` 读到完整顺序导航能力。
-- [ ] `range.ts` 不再通过 `grid.appearancesBetween / grid.fieldsBetween` 重新实现已有的区间切片。
+- [x] `dataview-table` 内不再存在“只是给 `engine` list 原语换名字”的薄包装函数。
+- [x] 表格相关调用点可以直接从 `ItemList / FieldList` 读到完整顺序导航能力。
+- [x] `range.ts` 不再通过 `grid.appearancesBetween / grid.fieldsBetween` 重新实现已有的区间切片。
 
 ### 2. 行选择与单元格选择仍在维护两套 anchor/focus 状态机
 
@@ -119,21 +127,21 @@
 
 迁移动作：
 
-- [ ] 抽出单一的 `anchor / focus` 选择状态机内核，至少统一：
+- [x] 抽出单一的 `anchor / focus` 选择状态机内核，至少统一：
   - 归一化
   - reconcile
   - range/extend
   - step
-- [ ] `Selection`、`GridSelection`、`TableCellRange` 不再各自维护一套平行 helper。
-- [ ] 删除 `TableCellRange` 中间层，或者让 `range` 直接消费 `GridSelection`。
-- [ ] 把 `TableCellRangeEdges` 变成单一 canonical 类型，避免在 `range.ts` 和 `cellRender.ts` 各写一次。
-- [ ] 直接删除 `dataview/packages/dataview-react/src/field/navigation.ts`。
+- [x] `Selection`、`GridSelection`、`TableCellRange` 不再各自维护一套平行 helper。
+- [x] 删除 `TableCellRange` 中间层，或者让 `range` 直接消费 `GridSelection`。
+- [x] 把 `TableCellRangeEdges` 变成单一 canonical 类型，避免在 `range.ts` 和 `cellRender.ts` 各写一次。
+- [x] 直接删除 `dataview/packages/dataview-react/src/field/navigation.ts`。
 
 完成标准：
 
-- [ ] `row selection` 与 `grid selection` 不再各有一套独立的 anchor/focus 状态机实现。
-- [ ] `TableCellRange` 不再作为 `GridSelection` 的纯翻译层存在。
-- [ ] `field/navigation.ts` 从仓库中删除，且不再有新调用方出现。
+- [x] `row selection` 与 `grid selection` 不再各有一套独立的 anchor/focus 状态机实现。
+- [x] `TableCellRange` 不再作为 `GridSelection` 的纯翻译层存在。
+- [x] `field/navigation.ts` 从仓库中删除，且不再有新调用方出现。
 
 ### 3. Gallery / Kanban / Table 仍在重复搭建交互运行时骨架
 
@@ -163,24 +171,24 @@
 
 迁移动作：
 
-- [ ] 抽出共享的 item-interaction runtime，统一处理：
+- [x] 抽出共享的 item-interaction runtime，统一处理：
   - selection projection
   - marquee adapter 注册
   - visual target registry 生命周期
   - drag/marquee 互斥
-- [ ] `gallery` 和 `kanban` 只保留布局、drop-plan、section 可见性等视图专有逻辑。
-- [ ] `table` 的行 marquee 也切到同一套 adapter/runtime helper，上层只提供：
+- [x] `gallery` 和 `kanban` 只保留布局、drop-plan、section 可见性等视图专有逻辑。
+- [x] `table` 的行 marquee 也切到同一套 adapter/runtime helper，上层只提供：
   - hit-test
   - preview selection
   - clear 逻辑
   - start/end side effects
-- [ ] `GalleryViewRuntime` 与 `KanbanViewRuntime` 共享相同 runtime 子结构类型，不再平行声明同构字段。
+- [x] `GalleryViewRuntime` 与 `KanbanViewRuntime` 共享相同 runtime 子结构类型，不再平行声明同构字段。
 
 完成标准：
 
-- [ ] `gallery` 与 `kanban` 不再各自手写一份 selection + marquee + visualTargets 骨架。
-- [ ] `table` 的 marquee 逻辑不再单独维护第三套近似运行时协议。
-- [ ] view runtime 的公共交互字段有单一所有者，不再在多个 `types.ts` 中复制。
+- [x] `gallery` 与 `kanban` 不再各自手写一份 selection + marquee + visualTargets 骨架。
+- [x] `table` 的 marquee 逻辑不再单独维护第三套近似运行时协议。
+- [x] view runtime 的公共交互字段有单一所有者，不再在多个 `types.ts` 中复制。
 
 ### 4. Query / Filter / Sort UI 仍然存在重复 field-id 提取与可选字段计算
 
@@ -207,20 +215,20 @@
 
 迁移动作：
 
-- [ ] 删除 `FilterRuleProjection.fieldId`，所有调用方统一使用 `entry.rule.fieldId`。
-- [ ] 抽出共享的 query-field utility，统一处理：
+- [x] 删除 `FilterRuleProjection.fieldId`，所有调用方统一使用 `entry.rule.fieldId`。
+- [x] 抽出共享的 query-field utility，统一处理：
   - 从 rule/sorter 提取 field id
   - 计算 used field ids
   - 计算 available fields
-- [ ] `ViewQueryBar.tsx` 与 `QueryFieldPickerPanel.tsx` 改为依赖同一组 query-field helper，而不是各自组装。
-- [ ] `page/state/page.ts` 与 query route 恢复只依赖 canonical rule/sorter shape，不围绕 projection 镜像字段写逻辑。
-- [ ] `active/read.ts` 删除对旧镜像字段的兼容兜底。
+- [x] `ViewQueryBar.tsx` 与 `QueryFieldPickerPanel.tsx` 改为依赖同一组 query-field helper，而不是各自组装。
+- [x] `page/state/page.ts` 与 query route 恢复只依赖 canonical rule/sorter shape，不围绕 projection 镜像字段写逻辑。
+- [x] `active/read.ts` 删除对旧镜像字段的兼容兜底。
 
 完成标准：
 
-- [ ] `FilterRuleProjection` 不再声明 `fieldId`。
-- [ ] filter/sort 页面字段可用性计算只保留一份实现。
-- [ ] query bar、filter popover、sort picker、settings field picker 使用同一套 field-id/available-fields helper。
+- [x] `FilterRuleProjection` 不再声明 `fieldId`。
+- [x] filter/sort 页面字段可用性计算只保留一份实现。
+- [x] query bar、filter popover、sort picker、settings field picker 使用同一套 field-id/available-fields helper。
 
 ## P1 应做项
 
@@ -246,20 +254,20 @@
 
 迁移动作：
 
-- [ ] 抽出共享的 value-editor opener factory。
-- [ ] 公共层统一负责：
+- [x] 抽出共享的 value-editor opener factory。
+- [x] 公共层统一负责：
   - anchor 解析
   - open payload 创建
   - session policy 框架
   - close/dismiss 回调
-- [ ] table 只注入“关闭后移动光标”的策略。
-- [ ] card 只注入“找不到精确 anchor 时退到 `belowFieldAnchor(...)`”的策略。
-- [ ] 删除迁移后失效的 opener/policy 局部 helper。
+- [x] table 只注入“关闭后移动光标”的策略。
+- [x] card 只注入“找不到精确 anchor 时退到 `belowFieldAnchor(...)`”的策略。
+- [x] 删除迁移后失效的 opener/policy 局部 helper。
 
 完成标准：
 
-- [ ] `openCell.ts` 与 `openCardField.ts` 不再各自维护一整套 `open -> policy -> restore focus` 流程。
-- [ ] Value editor 的 opener/policy 框架有单一 owner。
+- [x] `openCell.ts` 与 `openCardField.ts` 不再各自维护一整套 `open -> policy -> restore focus` 流程。
+- [x] Value editor 的 opener/policy 框架有单一 owner。
 
 ### 6. `engine/active/commands/*` 仍有明显 patch-wrapper 样板代码
 
@@ -283,18 +291,18 @@
 
 迁移动作：
 
-- [ ] 引入轻量 patch-command factory，统一：
+- [x] 引入轻量 patch-command factory，统一：
   - `withViewPatch`
   - `withFieldPatch`
   - `withGroupFieldPatch`
   - 或等价的更小 helper
-- [ ] 每个 command 文件只保留领域差异，不再重复 commit 样板。
-- [ ] 删除迁移后无语义价值的本地 wrapper。
+- [x] 每个 command 文件只保留领域差异，不再重复 commit 样板。
+- [x] 删除迁移后无语义价值的本地 wrapper。
 
 完成标准：
 
-- [ ] `active/commands/*` 不再逐文件复制同一套 `withX + commitPatch` 骨架。
-- [ ] `engine` command 层的职责只剩 orchestration，不再包含明显可抽象的重复模板。
+- [x] `active/commands/*` 不再逐文件复制同一套 `withX + commitPatch` 骨架。
+- [x] `engine` command 层的职责只剩 orchestration，不再包含明显可抽象的重复模板。
 
 ### 7. `react` 的多类 session/controller 仍在手写同构 store 壳
 
@@ -316,16 +324,16 @@
 
 迁移动作：
 
-- [ ] 抽出最小公共 controller/store helper。
-- [ ] `inlineSession` 保留 exit-listener 语义扩展。
-- [ ] `marquee` 保留 adapter registry。
-- [ ] `valueEditor` 保留 `openStore` 与 dismiss 语义。
-- [ ] `page/session` 保留 route clone / route equality，去掉重复 store shell。
+- [x] 抽出最小公共 controller/store helper。
+- [x] `inlineSession` 保留 exit-listener 语义扩展。
+- [x] `marquee` 保留 adapter registry。
+- [x] `valueEditor` 保留 `openStore` 与 dismiss 语义。
+- [x] `page/session` 保留 route clone / route equality，去掉重复 store shell。
 
 完成标准：
 
-- [ ] React session/controller 文件不再各自重写一遍 store/controller 壳。
-- [ ] 差异点只剩各自真正的行为语义，而不是样板代码。
+- [x] React session/controller 文件不再各自重写一遍 store/controller 壳。
+- [x] 差异点只剩各自真正的行为语义，而不是样板代码。
 
 ## P2 收尾项
 
@@ -346,15 +354,15 @@
 
 迁移动作：
 
-- [ ] 把 `QueryState` 从“继承 `ViewRecords` 的第二套实体类型”改成“records 数据 + memo cache”的组合结构。
-- [ ] 把 `SectionNodeState` 从“`Section` 的阴影扩展”改成更小的内部节点结构，或把 `visible` 还原为派生信息。
-- [ ] internal cache 类型不再伪装成 public contract 的扩展版。
+- [x] 把 `QueryState` 从“继承 `ViewRecords` 的第二套实体类型”改成“records 数据 + memo cache”的组合结构。
+- [x] 把 `SectionNodeState` 从“`Section` 的阴影扩展”改成更小的内部节点结构，或把 `visible` 还原为派生信息。
+- [x] internal cache 类型不再伪装成 public contract 的扩展版。
 
 完成标准：
 
-- [ ] `QueryState extends ViewRecords` 不再存在。
-- [ ] `SectionNodeState extends Section` 不再存在。
-- [ ] `internal.ts` 中不再把 public contract 直接复制成“加一两个缓存字段”的第二套 shape。
+- [x] `QueryState extends ViewRecords` 不再存在。
+- [x] `SectionNodeState extends Section` 不再存在。
+- [x] `internal.ts` 中不再把 public contract 直接复制成“加一两个缓存字段”的第二套 shape。
 
 ### 9. `gallery / kanban` 的 typed-view 和 runtime 子结构仍有平行类型定义
 
@@ -372,13 +380,13 @@
 
 迁移动作：
 
-- [ ] 提供通用的 typed active-view helper type，例如 `ActiveTypedViewState<TType>`。
-- [ ] 提供共享的 selectable-item runtime 子结构类型。
-- [ ] `gallery` 与 `kanban` 只保留各自独有字段。
+- [x] 提供通用的 typed active-view helper type，例如 `ActiveTypedViewState<TType>`。
+- [x] 提供共享的 selectable-item runtime 子结构类型。
+- [x] `gallery` 与 `kanban` 只保留各自独有字段。
 
 完成标准：
 
-- [ ] `gallery/types.ts` 和 `kanban/types.ts` 不再平行复制 typed-view narrowing 和 selection runtime shape。
+- [x] `gallery/types.ts` 和 `kanban/types.ts` 不再平行复制 typed-view narrowing 和 selection runtime shape。
 
 ### 10. summary 空态语义仍然分散
 
@@ -395,12 +403,12 @@
 
 迁移动作：
 
-- [ ] 统一 summary 空态语义的 owner。
-- [ ] `empty summary state`、`empty published summary`、`empty collection` 不再分散在多个文件各写一份。
+- [x] 统一 summary 空态语义的 owner。
+- [x] `empty summary state`、`empty published summary`、`empty collection` 不再分散在多个文件各写一份。
 
 完成标准：
 
-- [ ] summary 空态边界只有单一实现位置。
+- [x] summary 空态边界只有单一实现位置。
 
 ## 重复类型与不必要中间层清单
 
@@ -408,57 +416,57 @@
 
 ### 必删
 
-- [ ] `FilterRuleProjection.fieldId`
+- [x] `FilterRuleProjection.fieldId`
   - 重复 `rule.fieldId`
   - 属于典型 projection 镜像字段
-- [ ] `TableCellRange`
+- [x] `TableCellRange`
   - 纯复制 `GridSelection` 的 `anchor / focus`
   - 没有独立领域语义
-- [ ] `dataview/packages/dataview-react/src/field/navigation.ts` 内的 `FieldScope`
+- [x] `dataview/packages/dataview-react/src/field/navigation.ts` 内的 `FieldScope`
   - 无引用
   - 只是第三套导航上下文表达
 
 ### 必收缩
 
-- [ ] `QueryState extends ViewRecords`
+- [x] `QueryState extends ViewRecords`
   - 不是新的领域模型，只是 records + memo cache
-- [ ] `SectionNodeState extends Section`
+- [x] `SectionNodeState extends Section`
   - 不是新的领域模型，只是 section + `visible`
-- [ ] `GalleryViewRuntime.selection`
-- [ ] `KanbanViewRuntime.selection`
+- [x] `GalleryViewRuntime.selection`
+- [x] `KanbanViewRuntime.selection`
   - 应收敛为共享 runtime 子结构类型
-- [ ] `ActiveGalleryViewState`
-- [ ] `ActiveKanbanViewState`
+- [x] `ActiveGalleryViewState`
+- [x] `ActiveKanbanViewState`
   - 应收敛为共享 typed-view helper type
 
 ### 应统一所有权
 
-- [ ] `TableCellRangeEdges`
+- [x] `TableCellRangeEdges`
   - 当前在 `range.ts` 有显式类型，在 `cellRender.ts` 又被匿名 shape 再写一次
-- [ ] filter/sort query field utility
+- [x] filter/sort query field utility
   - 当前逻辑分散在 `filterUi.ts`、`sortUi.ts`、`ViewQueryBar.tsx`、`QueryFieldPickerPanel.tsx`
 
 ## 明确待删文件
 
-- [ ] `dataview/packages/dataview-react/src/field/navigation.ts`
+- [x] `dataview/packages/dataview-react/src/field/navigation.ts`
   - 当前无引用
   - 与 `dataview-table` 的导航逻辑重复
 
 以下文件不是“现在立刻删”，但完成对应阶段后应一并删除旧实现，不得双轨保留：
 
-- [ ] `dataview/packages/dataview-table/src/grid.ts`
+- [x] `dataview/packages/dataview-table/src/grid.ts`
   - 如果迁移后只剩转发/改名 helper，则整个文件应删除或彻底收缩为单一导航模块
-- [ ] `dataview/packages/dataview-table/src/range.ts`
+- [x] `dataview/packages/dataview-table/src/range.ts`
   - 如果 `GridSelection` 直接提供 canonical range 语义，则旧 `TableCellRange` 包装应一起删掉
 
 ## 分阶段迁移顺序
 
 ### 阶段 1：先收掉 table 内核重复
 
-- [ ] 合并 ordered-list wrapper
-- [ ] 合并 grid selection / range 状态机
-- [ ] 删除 `field/navigation.ts`
-- [ ] 删除 `TableCellRange` 及其旧 helper
+- [x] 合并 ordered-list wrapper
+- [x] 合并 grid selection / range 状态机
+- [x] 删除 `field/navigation.ts`
+- [x] 删除 `TableCellRange` 及其旧 helper
 
 阶段目标：
 
@@ -467,8 +475,8 @@
 
 ### 阶段 2：统一 view interaction runtime
 
-- [ ] 抽出 gallery / kanban / table 共用的 marquee + selection + visualTargets 运行时骨架
-- [ ] 收敛 `gallery/types.ts` 与 `kanban/types.ts` 的平行 runtime type
+- [x] 抽出 gallery / kanban / table 共用的 marquee + selection + visualTargets 运行时骨架
+- [x] 收敛 `gallery/types.ts` 与 `kanban/types.ts` 的平行 runtime type
 
 阶段目标：
 
@@ -477,9 +485,9 @@
 
 ### 阶段 3：收掉 query projection 与页面工具重复
 
-- [ ] 删除 `FilterRuleProjection.fieldId`
-- [ ] 合并 filter/sort query-field helper
-- [ ] 收敛 `ViewQueryBar` 与 `QueryFieldPickerPanel` 的重复 field picker 逻辑
+- [x] 删除 `FilterRuleProjection.fieldId`
+- [x] 合并 filter/sort query-field helper
+- [x] 收敛 `ViewQueryBar` 与 `QueryFieldPickerPanel` 的重复 field picker 逻辑
 
 阶段目标：
 
@@ -488,10 +496,10 @@
 
 ### 阶段 4：清理 engine 样板与 internal 阴影类型
 
-- [ ] 抽出 `active/commands/*` patch-wrapper factory
-- [ ] 收缩 `QueryState`
-- [ ] 收缩 `SectionNodeState`
-- [ ] 统一 summary 空态边界
+- [x] 抽出 `active/commands/*` patch-wrapper factory
+- [x] 收缩 `QueryState`
+- [x] 收缩 `SectionNodeState`
+- [x] 统一 summary 空态边界
 
 阶段目标：
 
@@ -500,9 +508,9 @@
 
 ### 阶段 5：React session/controller 收尾
 
-- [ ] 合并 session/controller store 壳
-- [ ] 删除所有迁移后残留的旧 helper、旧 type、旧文件
-- [ ] 做整仓类型与测试验收
+- [x] 合并 session/controller store 壳
+- [x] 删除所有迁移后残留的旧 helper、旧 type、旧文件
+- [x] 做整仓类型与测试验收
 
 阶段目标：
 
@@ -513,14 +521,14 @@
 
 迁移完成后，必须同时满足以下条件：
 
-- [ ] 仓库内不存在已无引用的 `dataview/packages/dataview-react/src/field/navigation.ts`
-- [ ] `FilterRuleProjection` 不再携带 `fieldId` 镜像字段
-- [ ] `table` 不再围绕 `ItemList / FieldList` 复制 `has / indexOf / at / range` 风格 API
-- [ ] `row selection` 与 `grid selection` 不再各自维护一套 anchor/focus 状态机
-- [ ] `gallery / kanban / table` 不再各自手写相同的 marquee adapter 注册骨架
-- [ ] `engine/contracts/internal.ts` 不再保留 `extends public shape + cache fields` 的阴影类型
-- [ ] 旧 helper、旧 wrapper、旧类型定义在同阶段内删除干净
-- [ ] 不保留兼容导出、过渡桥接、deprecated alias
+- [x] 仓库内不存在已无引用的 `dataview/packages/dataview-react/src/field/navigation.ts`
+- [x] `FilterRuleProjection` 不再携带 `fieldId` 镜像字段
+- [x] `table` 不再围绕 `ItemList / FieldList` 复制 `has / indexOf / at / range` 风格 API
+- [x] `row selection` 与 `grid selection` 不再各自维护一套 anchor/focus 状态机
+- [x] `gallery / kanban / table` 不再各自手写相同的 marquee adapter 注册骨架
+- [x] `engine/contracts/internal.ts` 不再保留 `extends public shape + cache fields` 的阴影类型
+- [x] 旧 helper、旧 wrapper、旧类型定义在同阶段内删除干净
+- [x] 不保留兼容导出、过渡桥接、deprecated alias
 
 建议验收命令：
 
@@ -540,10 +548,6 @@ pnpm -C dataview test
 
 如果只看当前 `dataview` 真实代码状态：
 
-- 主要历史债已经不在 `core`。
-- 当前剩余迁移重点已经非常明确，优先级从高到低依次是：
-  - `table` 的 ordered-list 与选择状态机重复
-  - `react` 多视图交互运行时重复
-  - query/filter/sort 的 projection 镜像字段与页面工具重复
-  - `engine` 的 command wrapper 与 internal 阴影类型
-- 这几类问题清完之后，`dataview` 才算真正进入“无多套实现、无中间翻译层、无明显重复运行时骨架”的收口状态。
+- 主要历史债已经从这轮清单覆盖的范围内清掉。
+- `table` 的 ordered-list / 选择状态机重复、`react` 多视图交互运行时重复、query/filter/sort 的 projection 镜像层、`engine` 的 command wrapper 与 internal 阴影类型，都已经完成收口。
+- 当前仓库已经达到本清单定义的目标状态：无多套实现、无中间翻译层、无保留兼容轨道，旧 helper / 旧 wrapper / 旧类型定义已在同阶段内删除。

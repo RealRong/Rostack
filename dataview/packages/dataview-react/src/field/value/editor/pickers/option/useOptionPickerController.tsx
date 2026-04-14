@@ -11,13 +11,13 @@ import {
   type MenuItem,
   type MenuReorderItem
 } from '@shared/ui/menu'
-import { useDataView } from '#dataview-react/dataview'
-import type { EditorSubmitTrigger } from '#dataview-react/interaction'
+import { useDataView } from '@dataview/react/dataview'
+import type { EditorSubmitTrigger } from '@dataview/react/interaction'
 import {
   buildEditableOptionItem,
   readOptionLabel
-} from '#dataview-react/menu-builders'
-import type { FieldValueDraftEditorProps } from '#dataview-react/field/value/editor/contracts'
+} from '@dataview/react/menu-builders'
+import type { FieldValueDraftEditorProps } from '@dataview/react/field/value/editor/contracts'
 
 const CREATE_OPTION_KEY = '__create-option__'
 const splitDraftKeys = (draft: string) => draft

@@ -12,8 +12,8 @@ import {
   type FieldNumberFormatId
 } from '@dataview/meta'
 import type { MenuItem } from '@shared/ui/menu'
-import { buildChoiceSubmenuItem } from '#dataview-react/menu-builders'
-import { FIELD_DROPDOWN_MENU_PROPS } from '#dataview-react/field/dropdown'
+import { buildChoiceSubmenuItem } from '@dataview/react/menu-builders'
+import { FIELD_DROPDOWN_MENU_PROPS } from '@dataview/react/field/dropdown'
 
 const FLOATING_TIMEZONE_ID = '__floating__'
 

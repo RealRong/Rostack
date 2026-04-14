@@ -1,12 +1,12 @@
 import type { EdgeId } from '@whiteboard/core/types'
 import { useMemo } from 'react'
 import { useOptionalKeyedStoreValue, useStoreValue } from '@shared/react'
-import { useEditorRuntime } from '#whiteboard-react/runtime/hooks'
+import { useEditorRuntime } from '@whiteboard/react/runtime/hooks'
 import type {
   EdgeView,
   SelectedEdgeRoutePointView,
   SelectedEdgeView
-} from '#whiteboard-react/types/edge'
+} from '@whiteboard/react/types/edge'
 
 export const useEdgeView = (
   edgeId: EdgeId | undefined
@@ -89,4 +89,4 @@ export type {
   EdgeView,
   SelectedEdgeRoutePointView,
   SelectedEdgeView
-} from '#whiteboard-react/types/edge'
+} from '@whiteboard/react/types/edge'

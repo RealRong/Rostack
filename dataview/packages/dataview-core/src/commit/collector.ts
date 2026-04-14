@@ -8,10 +8,10 @@ import type {
   RecordPatchAspect,
   ViewLayoutAspect,
   ViewQueryAspect
-} from '#dataview-core/contracts/delta'
+} from '@dataview/core/contracts/delta'
 import type {
   BaseOperation
-} from '#dataview-core/contracts/operations'
+} from '@dataview/core/contracts/operations'
 import type {
   CustomField,
   CustomFieldId,
@@ -21,22 +21,22 @@ import type {
   DataRecord,
   View,
   ViewId
-} from '#dataview-core/contracts/state'
+} from '@dataview/core/contracts/state'
 import {
   TITLE_FIELD_ID
-} from '#dataview-core/contracts/state'
+} from '@dataview/core/contracts/state'
 import {
   getDocumentCustomFieldById,
   getDocumentRecordById,
   getDocumentViewById
-} from '#dataview-core/document'
+} from '@dataview/core/document'
 import {
   collectCalculationFields,
   collectFieldSchemaAspects,
   collectRecordPatchAspects,
   collectViewLayoutAspects,
   collectViewQueryAspects
-} from '#dataview-core/commit/semantics'
+} from '@dataview/core/commit/semantics'
 
 const toSortedArray = <T extends string>(
   values: Set<T>

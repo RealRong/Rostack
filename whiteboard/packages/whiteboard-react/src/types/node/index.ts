@@ -7,5 +7,5 @@ export type {
   NodeHit,
   NodeMeta,
   NodeFamily
-} from '#whiteboard-react/types/node/registry'
+} from '@whiteboard/react/types/node/registry'
 export type { NodeRole } from '@whiteboard/core/types'

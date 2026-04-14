@@ -1,6 +1,6 @@
-import type { Point, Rect } from '#whiteboard-core/types'
-import { getRectCorners, rectIntersects } from '#whiteboard-core/geometry/rect'
-import { getRotatedCorners } from '#whiteboard-core/geometry/rotation'
+import type { Point, Rect } from '@whiteboard/core/types'
+import { getRectCorners, rectIntersects } from '@whiteboard/core/geometry/rect'
+import { getRotatedCorners } from '@whiteboard/core/geometry/rotation'
 
 const projectPoints = (points: Point[], axis: Point) => {
   let min = Number.POSITIVE_INFINITY

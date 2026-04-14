@@ -3,9 +3,9 @@ import type { BaseOperation } from '@dataview/core/contracts/operations'
 import type {
   IndexState,
   NormalizedIndexDemand
-} from '#dataview-engine/active/index/contracts'
-import type { ViewCache } from '#dataview-engine/contracts/internal'
-import type { ViewState } from '#dataview-engine/contracts/public'
+} from '@dataview/engine/active/index/contracts'
+import type { ViewCache } from '@dataview/engine/contracts/internal'
+import type { ViewState } from '@dataview/engine/contracts/public'
 
 export interface HistoryEntry {
   undo: BaseOperation[]

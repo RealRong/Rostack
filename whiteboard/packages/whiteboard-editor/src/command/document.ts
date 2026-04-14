@@ -12,7 +12,7 @@ import type {
 } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { CommandResult } from '@whiteboard/engine/types/result'
-import type { OrderMode } from '#whiteboard-editor/types/commands'
+import type { OrderMode } from '@whiteboard/editor/types/commands'
 
 export type DocumentCommands = {
   replace: (document: Document) => CommandResult

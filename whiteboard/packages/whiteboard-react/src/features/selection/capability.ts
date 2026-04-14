@@ -1,5 +1,5 @@
 import type { SelectionTarget } from '@whiteboard/core/selection'
-import type { WhiteboardRuntime } from '#whiteboard-react/types/runtime'
+import type { WhiteboardRuntime } from '@whiteboard/react/types/runtime'
 
 export type SelectionCan = {
   order: boolean

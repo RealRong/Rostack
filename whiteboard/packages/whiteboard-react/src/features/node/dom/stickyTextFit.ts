@@ -9,7 +9,7 @@ import {
   readLineHeightPx,
   readNumber,
   readPx
-} from '#whiteboard-react/features/node/dom/textTypography'
+} from '@whiteboard/react/features/node/dom/textTypography'
 
 type StickyFitElements = {
   frame: HTMLDivElement

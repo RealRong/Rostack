@@ -17,21 +17,21 @@ import {
 } from '@dataview/core/view'
 import {
   collectValueFieldIds
-} from '#dataview-engine/active/index/shared'
+} from '@dataview/engine/active/index/shared'
 import type {
   IndexState
-} from '#dataview-engine/active/index/contracts'
-import { runSnapshotStage } from '#dataview-engine/active/snapshot/stage'
+} from '@dataview/engine/active/index/contracts'
+import { runSnapshotStage } from '@dataview/engine/active/snapshot/stage'
 import type {
   DeriveAction,
   QueryState
-} from '#dataview-engine/contracts/internal'
+} from '@dataview/engine/contracts/internal'
 export {
   buildQueryState
-} from '#dataview-engine/active/snapshot/query/derive'
+} from '@dataview/engine/active/snapshot/query/derive'
 import {
   buildQueryState
-} from '#dataview-engine/active/snapshot/query/derive'
+} from '@dataview/engine/active/snapshot/query/derive'
 
 const hasIntersection = (
   left: ReadonlySet<FieldId>,
@@ -173,11 +173,11 @@ export const runQueryStage = (input: {
   view: View
   index: IndexState
   previous?: QueryState
-  previousPublished?: import('#dataview-engine/contracts/public').ViewRecords
+  previousPublished?: import('@dataview/engine/contracts/public').ViewRecords
 }): {
   action: DeriveAction
   state: QueryState
-  records: import('#dataview-engine/contracts/public').ViewRecords
+  records: import('@dataview/engine/contracts/public').ViewRecords
   deriveMs: number
   publishMs: number
 } => {
@@ -196,11 +196,11 @@ export const runQueryStage = (input: {
         }),
     publish: state => (
       input.previousPublished
-      && input.previousPublished.matched === state.matched
-      && input.previousPublished.ordered === state.ordered
-      && input.previousPublished.visible === state.visible
+      && input.previousPublished.matched === state.records.matched
+      && input.previousPublished.ordered === state.records.ordered
+      && input.previousPublished.visible === state.records.visible
         ? input.previousPublished
-        : state
+        : state.records
     )
   })
 

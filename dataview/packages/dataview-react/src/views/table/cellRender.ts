@@ -21,13 +21,11 @@ import type {
 } from '@dataview/engine'
 import {
   fill,
-  grid,
-  range,
   gridSelection,
   type GridSelection
 } from '@dataview/table'
-import type { Capabilities } from '#dataview-react/views/table/capabilities'
-import { cellChrome, type CellChromeState } from '#dataview-react/views/table/model/chrome'
+import type { Capabilities } from '@dataview/react/views/table/capabilities'
+import { cellChrome, type CellChromeState } from '@dataview/react/views/table/model/chrome'
 
 export interface CellRenderState {
   exists: boolean
@@ -98,12 +96,11 @@ export const createCellRender = (options: {
   const selectionChrome = createDerivedStore<SelectionChrome>({
     get: () => {
       const currentGridSelection = read(options.gridSelectionStore)
-      const currentRange = range.from(currentGridSelection)
       const focusCell = gridSelection.focus(currentGridSelection)
       const currentView = read(options.currentViewStore)
       return {
-        rangeEdges: currentRange && currentView
-          ? range.edges(currentRange, currentView.items, currentView.fields)
+        rangeEdges: currentGridSelection && currentView
+          ? gridSelection.edges(currentGridSelection, currentView.items, currentView.fields)
           : undefined,
         focusCell,
         selectionVisible: !read(options.valueEditorOpenStore)
@@ -142,10 +139,10 @@ export const createCellRender = (options: {
         ? read(options.recordStore, recordId)
         : undefined
       const rowIndex = currentView
-        ? grid.appearanceIndex(currentView.items, cell.itemId)
+        ? currentView.items.indexOf(cell.itemId)
         : undefined
       const fieldIndex = currentView
-        ? grid.fieldIndex(currentView.fields, cell.fieldId)
+        ? currentView.fields.indexOf(cell.fieldId)
         : undefined
       const hovered = currentCapabilities.canHover
         && read(options.hoverCellStore, cell)

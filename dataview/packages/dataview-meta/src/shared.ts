@@ -1,4 +1,4 @@
-import type { MessageSpec } from '#dataview-meta/message'
+import type { MessageSpec } from '@dataview/meta/message'
 
 export interface MetaDescriptor {
   id: string

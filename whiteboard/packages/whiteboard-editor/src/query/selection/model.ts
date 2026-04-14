@@ -16,8 +16,8 @@ import {
   sameOptionalRect as isSameOptionalRectTuple,
   type ReadStore
 } from '@shared/core'
-import type { NodePresentationRead } from '#whiteboard-editor/query/node/read'
-import type { RuntimeTargetRead } from '#whiteboard-editor/query/target'
+import type { NodePresentationRead } from '@whiteboard/editor/query/node/read'
+import type { RuntimeTargetRead } from '@whiteboard/editor/query/target'
 
 export type SelectionModel = {
   summary: SelectionSummary

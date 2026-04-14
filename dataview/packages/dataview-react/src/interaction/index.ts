@@ -1,13 +1,13 @@
 export {
   createInteractionCoordinator
-} from '#dataview-react/interaction/coordinator'
+} from '@dataview/react/interaction/coordinator'
 export {
   apply,
   cancel,
   commit,
   keyDown,
   modifiers
-} from '#dataview-react/interaction/events'
+} from '@dataview/react/interaction/events'
 
 export type {
   InteractionApi,
@@ -18,7 +18,7 @@ export type {
   InteractionSession,
   InteractionStartInput,
   InteractionState
-} from '#dataview-react/interaction/coordinator'
+} from '@dataview/react/interaction/coordinator'
 export type {
   EditInput,
   Hit,
@@ -28,4 +28,4 @@ export type {
   Point,
   EditorSubmitTrigger,
   PointerInput
-} from '#dataview-react/interaction/events'
+} from '@dataview/react/interaction/events'

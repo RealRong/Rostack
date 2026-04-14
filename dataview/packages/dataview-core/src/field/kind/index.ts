@@ -3,8 +3,8 @@ import type {
   CustomField,
   CustomFieldKind,
   ViewGroup
-} from '#dataview-core/contracts/state'
-import { KANBAN_EMPTY_BUCKET_KEY } from '#dataview-core/contracts/kanban'
+} from '@dataview/core/contracts/state'
+import { KANBAN_EMPTY_BUCKET_KEY } from '@dataview/core/contracts/kanban'
 import {
   createDateGroupKey,
   formatDateGroupTitle,
@@ -15,7 +15,7 @@ import {
   parseDateInputDraft,
   readDateComparableTimestamp,
   type DateGroupMode
-} from '#dataview-core/field/kind/date'
+} from '@dataview/core/field/kind/date'
 import {
   compareStatusFieldValues,
   getStatusCategoryColor,
@@ -24,16 +24,16 @@ import {
   getStatusDefaultOption,
   getStatusOptionCategory,
   STATUS_CATEGORIES
-} from '#dataview-core/field/kind/status'
+} from '@dataview/core/field/kind/status'
 import {
   getFieldOption,
   getFieldOptions,
   getFieldOptionOrder,
   getFieldOptionTokens
-} from '#dataview-core/field/options'
+} from '@dataview/core/field/options'
 import {
   formatUrlDisplayValue
-} from '#dataview-core/field/kind/url'
+} from '@dataview/core/field/kind/url'
 import {
   compareGroupSortValues,
   compareLabels,
@@ -41,11 +41,11 @@ import {
   readBucketSortValue,
   type Bucket,
   type ResolvedBucket
-} from '#dataview-core/field/kind/group'
+} from '@dataview/core/field/kind/group'
 import {
   kindSpecs,
   type KindSpec
-} from '#dataview-core/field/kind/spec'
+} from '@dataview/core/field/kind/spec'
 import {
   isEmptyFieldValue,
   normalizeSearchableValue,
@@ -53,7 +53,7 @@ import {
   readLooseNumberDraft,
   readNumberValue,
   type FieldDraftParseResult
-} from '#dataview-core/field/kind/shared'
+} from '@dataview/core/field/kind/shared'
 
 type FieldInput = CustomField | undefined
 
@@ -97,7 +97,7 @@ const comparePrimitive = (
   return left > right ? 1 : -1
 }
 
-export type { Bucket } from '#dataview-core/field/kind/group'
+export type { Bucket } from '@dataview/core/field/kind/group'
 
 const compareText = (
   left: unknown,

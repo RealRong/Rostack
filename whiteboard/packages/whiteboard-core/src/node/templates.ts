@@ -1,4 +1,4 @@
-import type { SpatialNodeInput } from '#whiteboard-core/types'
+import type { SpatialNodeInput } from '@whiteboard/core/types'
 
 export const TEXT_START_SIZE = {
   width: 144,

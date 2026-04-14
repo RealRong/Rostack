@@ -7,7 +7,7 @@ import type {
   GroupId,
   Node,
   NodeId
-} from '#whiteboard-core/types'
+} from '@whiteboard/core/types'
 
 const EMPTY_ORDER: CanvasItemRef[] = []
 

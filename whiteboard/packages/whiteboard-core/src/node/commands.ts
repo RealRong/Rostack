@@ -1,6 +1,6 @@
-import { applyNodeDefaults, getMissingNodeFields } from '#whiteboard-core/schema'
-import { getNode, hasNode, listNodes } from '#whiteboard-core/document'
-import { err, ok } from '#whiteboard-core/result'
+import { applyNodeDefaults, getMissingNodeFields } from '@whiteboard/core/schema'
+import { getNode, hasNode, listNodes } from '@whiteboard/core/document'
+import { err, ok } from '@whiteboard/core/result'
 import type {
   CoreRegistries,
   Document,
@@ -10,7 +10,7 @@ import type {
   Operation,
   Result,
   Size
-} from '#whiteboard-core/types'
+} from '@whiteboard/core/types'
 import {
   alignNodes,
   distributeNodes,
@@ -18,9 +18,9 @@ import {
   type NodeDistributeMode,
   type NodeLayoutEntry,
   type NodeLayoutUpdate
-} from '#whiteboard-core/node/layout'
-import { getNodeBoundsByNode } from '#whiteboard-core/node/geometry'
-import { createNodeFieldsUpdateOperation } from '#whiteboard-core/node/update'
+} from '@whiteboard/core/node/layout'
+import { getNodeBoundsByNode } from '@whiteboard/core/node/geometry'
+import { createNodeFieldsUpdateOperation } from '@whiteboard/core/node/update'
 
 type NodeCreateOperationResult =
   Result<{

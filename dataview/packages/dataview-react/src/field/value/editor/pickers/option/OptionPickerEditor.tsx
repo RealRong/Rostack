@@ -5,19 +5,19 @@ import {
 import { meta, renderMessage } from '@dataview/meta'
 import {
   OptionToken
-} from '#dataview-react/field/options'
+} from '@dataview/react/field/options'
 import {
   Menu,
   type MenuHandle
 } from '@shared/ui/menu'
 import { focusInputWithoutScroll } from '@shared/dom'
-import { PickerInputBar } from '#dataview-react/field/value/editor/shared/PickerInputBar'
-import { usePickerKeydown } from '#dataview-react/field/value/editor/shared/usePickerKeydown'
+import { PickerInputBar } from '@dataview/react/field/value/editor/shared/PickerInputBar'
+import { usePickerKeydown } from '@dataview/react/field/value/editor/shared/usePickerKeydown'
 import {
   type OptionPickerControllerInput,
   type PickerMode,
   useOptionPickerController
-} from '#dataview-react/field/value/editor/pickers/option/useOptionPickerController'
+} from '@dataview/react/field/value/editor/pickers/option/useOptionPickerController'
 
 export type { PickerMode }
 

@@ -4,7 +4,7 @@ import { test } from 'vitest'
 import {
   createIndexState,
   deriveIndex
-} from '#dataview-engine/active/index/runtime'
+} from '@dataview/engine/active/index/runtime'
 
 const TITLE_FIELD_ID = 'title'
 const FIELD_STATUS = 'status'

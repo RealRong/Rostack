@@ -1,21 +1,21 @@
 import type { Engine } from '@whiteboard/engine'
 import type { Viewport } from '@whiteboard/core/types'
-import type { NodeRegistry } from '#whiteboard-editor/types/node'
-import type { Tool } from '#whiteboard-editor/types/tool'
+import type { NodeRegistry } from '@whiteboard/editor/types/node'
+import type { Tool } from '@whiteboard/editor/types/tool'
 import {
   DEFAULT_DRAW_STATE,
   type DrawState
-} from '#whiteboard-editor/local/draw/state'
-import type { Editor } from '#whiteboard-editor/types/editor'
-import { createSnapRuntime } from '#whiteboard-editor/input/core'
-import type { InteractionContext } from '#whiteboard-editor/input/context'
-import { createEditorInteractions } from '#whiteboard-editor/input'
-import { createEdgeHoverService } from '#whiteboard-editor/input/edge/hover'
-import { createLocalRuntime } from '#whiteboard-editor/local/runtime'
-import { createQueryRuntime } from '#whiteboard-editor/query'
-import { createCommandRuntime } from '#whiteboard-editor/command'
-import { createEditorInput } from '#whiteboard-editor/editor/input'
-import { createEditorFacade } from '#whiteboard-editor/editor/facade'
+} from '@whiteboard/editor/local/draw/state'
+import type { Editor } from '@whiteboard/editor/types/editor'
+import { createSnapRuntime } from '@whiteboard/editor/input/core'
+import type { InteractionContext } from '@whiteboard/editor/input/context'
+import { createEditorInteractions } from '@whiteboard/editor/input'
+import { createEdgeHoverService } from '@whiteboard/editor/input/edge/hover'
+import { createLocalRuntime } from '@whiteboard/editor/local/runtime'
+import { createQueryRuntime } from '@whiteboard/editor/query'
+import { createCommandRuntime } from '@whiteboard/editor/command'
+import { createEditorInput } from '@whiteboard/editor/editor/input'
+import { createEditorFacade } from '@whiteboard/editor/editor/facade'
 
 export const createEditor = ({
   engine,

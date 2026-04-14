@@ -5,25 +5,25 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   IndexState
-} from '#dataview-engine/active/index/contracts'
+} from '@dataview/engine/active/index/contracts'
 import {
   collectTouchedRecordIds
-} from '#dataview-engine/active/index/shared'
+} from '@dataview/engine/active/index/shared'
 import type {
   DeriveAction,
   QueryState,
   SectionState
-} from '#dataview-engine/contracts/internal'
-import { runSnapshotStage } from '#dataview-engine/active/snapshot/stage'
+} from '@dataview/engine/contracts/internal'
+import { runSnapshotStage } from '@dataview/engine/active/snapshot/stage'
 import {
   publishSections
-} from '#dataview-engine/active/snapshot/sections/publish'
+} from '@dataview/engine/active/snapshot/sections/publish'
 export {
   syncSectionState
-} from '#dataview-engine/active/snapshot/sections/sync'
+} from '@dataview/engine/active/snapshot/sections/sync'
 import {
   syncSectionState
-} from '#dataview-engine/active/snapshot/sections/sync'
+} from '@dataview/engine/active/snapshot/sections/sync'
 
 const resolveSectionsAction = (input: {
   activeViewId: ViewId
@@ -44,8 +44,8 @@ const resolveSectionsAction = (input: {
   }
 
   if (
-    input.previousQuery.visible !== input.query.visible
-    || input.previousQuery.ordered !== input.query.ordered
+    input.previousQuery.records.visible !== input.query.records.visible
+    || input.previousQuery.records.ordered !== input.query.records.ordered
   ) {
     return 'rebuild'
   }
@@ -94,15 +94,15 @@ export const runSectionsStage = (input: {
   previous?: SectionState
   previousQuery?: QueryState
   previousPublished: {
-    sections?: import('#dataview-engine/contracts/public').SectionList
-    items?: import('#dataview-engine/contracts/public').ItemList
+    sections?: import('@dataview/engine/contracts/public').SectionList
+    items?: import('@dataview/engine/contracts/public').ItemList
   }
   index: IndexState
 }): {
   action: DeriveAction
   state: SectionState
-  sections: import('#dataview-engine/contracts/public').SectionList
-  items: import('#dataview-engine/contracts/public').ItemList
+  sections: import('@dataview/engine/contracts/public').SectionList
+  items: import('@dataview/engine/contracts/public').ItemList
   deriveMs: number
   publishMs: number
 } => {

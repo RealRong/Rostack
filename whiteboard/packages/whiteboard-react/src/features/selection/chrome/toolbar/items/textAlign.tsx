@@ -4,8 +4,8 @@ import {
   AlignLeft,
   AlignRight
 } from 'lucide-react'
-import { TextAlignPanel } from '#whiteboard-react/features/selection/chrome/panels/TextAlignPanel'
-import type { ToolbarItemSpec } from '#whiteboard-react/features/selection/chrome/toolbar/items/types'
+import { TextAlignPanel } from '@whiteboard/react/features/selection/chrome/panels/TextAlignPanel'
+import type { ToolbarItemSpec } from '@whiteboard/react/features/selection/chrome/toolbar/items/types'
 
 const TEXT_ALIGN_OPTIONS = [
   { key: 'left' as const, icon: AlignLeft },

@@ -5,8 +5,8 @@ import type {
   NodeId,
   Point,
   Rect
-} from '#whiteboard-core/types/model'
-import type { Operation } from '#whiteboard-core/types/operations'
+} from '@whiteboard/core/types/model'
+import type { Operation } from '@whiteboard/core/types/operations'
 
 export type Slice = {
   version: 1

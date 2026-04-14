@@ -1,9 +1,9 @@
 import type {
   InteractionBinding,
   InteractionSession
-} from '#whiteboard-editor/input/core/types'
-import { FINISH } from '#whiteboard-editor/input/core/result'
-import type { InteractionContext } from '#whiteboard-editor/input/context'
+} from '@whiteboard/editor/input/core/types'
+import { FINISH } from '@whiteboard/editor/input/core/result'
+import type { InteractionContext } from '@whiteboard/editor/input/context'
 type PanState = {
   lastClient: {
     x: number

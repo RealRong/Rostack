@@ -2,7 +2,7 @@ import type {
   InteractionSession,
   InteractionSessionTransition,
   InteractionStartResult
-} from '#whiteboard-editor/input/core/types'
+} from '@whiteboard/editor/input/core/types'
 
 export const FINISH = {
   kind: 'finish'

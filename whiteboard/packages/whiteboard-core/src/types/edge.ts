@@ -1,4 +1,4 @@
-import type { NodeOutlineAnchorOptions } from '#whiteboard-core/node/outline'
+import type { NodeOutlineAnchorOptions } from '@whiteboard/core/node/outline'
 import type {
   Edge,
   EdgeAnchor,
@@ -8,9 +8,9 @@ import type {
   NodeId,
   NodeGeometry,
   Point
-} from '#whiteboard-core/types/model'
-import type { EdgePatch, Operation } from '#whiteboard-core/types/operations'
-import type { Result } from '#whiteboard-core/types/result'
+} from '@whiteboard/core/types/model'
+import type { EdgePatch, Operation } from '@whiteboard/core/types/operations'
+import type { Result } from '@whiteboard/core/types/result'
 
 export type AnchorSnapOptions = NodeOutlineAnchorOptions
 

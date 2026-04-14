@@ -8,4 +8,4 @@ export type {
   KernelReadImpact,
   KernelReduceData,
   KernelReduceResult
-} from '#whiteboard-core/types/kernel'
+} from '@whiteboard/core/types/kernel'

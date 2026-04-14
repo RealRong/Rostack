@@ -2,9 +2,9 @@ import type {
   Document,
   EdgeId,
   NodeId
-} from '#whiteboard-core/types/model'
-import type { ChangeSet, Operation, Origin } from '#whiteboard-core/types/operations'
-import type { Result, ResultCode } from '#whiteboard-core/types/result'
+} from '@whiteboard/core/types/model'
+import type { ChangeSet, Operation, Origin } from '@whiteboard/core/types/operations'
+import type { Result, ResultCode } from '@whiteboard/core/types/result'
 
 export type HistoryState = {
   canUndo: boolean

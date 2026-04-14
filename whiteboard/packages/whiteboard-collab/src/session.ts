@@ -6,14 +6,14 @@ import type {
   CollabStatus,
   CollabSession,
   CreateYjsSessionOptions
-} from '#whiteboard-collab/types'
-import { applyOperationsToYjsDocument } from '#whiteboard-collab/yjs/apply'
+} from '@whiteboard/collab/types'
+import { applyOperationsToYjsDocument } from '@whiteboard/collab/yjs/apply'
 import {
   hasYjsDocumentSnapshot,
   materializeYjsDocument,
   replaceYjsDocument
-} from '#whiteboard-collab/yjs/materialize'
-import { compileRemoteDocumentChange } from '#whiteboard-collab/yjs/diff'
+} from '@whiteboard/collab/yjs/materialize'
+import { compileRemoteDocumentChange } from '@whiteboard/collab/yjs/diff'
 
 const resolveBootstrapMode = (
   mode: CollabBootstrapMode,

@@ -2,8 +2,8 @@ import type {
   Edge,
   EdgeLabel,
   EdgePatch
-} from '#whiteboard-core/types'
-import { sameEdgeEnd } from '#whiteboard-core/edge/equality'
+} from '@whiteboard/core/types'
+import { sameEdgeEnd } from '@whiteboard/core/edge/equality'
 
 const cloneEdgeLabels = (
   labels: readonly EdgeLabel[]

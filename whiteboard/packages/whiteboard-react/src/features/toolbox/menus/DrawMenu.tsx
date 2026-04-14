@@ -24,7 +24,7 @@ import {
   DRAW_SLOTS
 } from '@whiteboard/editor/draw'
 import { hasDrawBrush } from '@whiteboard/editor/draw'
-import { DRAW_COLOR_OPTIONS } from '#whiteboard-react/features/selection/chrome/menus/options'
+import { DRAW_COLOR_OPTIONS } from '@whiteboard/react/features/selection/chrome/menus/options'
 
 const DRAW_MODE_ICONS = {
   pen: PencilLine,

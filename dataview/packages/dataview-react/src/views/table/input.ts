@@ -1,4 +1,4 @@
-import type { KeyInput } from '#dataview-react/interaction'
+import type { KeyInput } from '@dataview/react/interaction'
 import type { FieldId } from '@dataview/core/contracts'
 import type { ViewState as CurrentView } from '@dataview/engine'
 import {
@@ -7,23 +7,23 @@ import {
 import type {
   Selection,
   SelectionApi
-} from '#dataview-react/runtime/selection'
+} from '@dataview/react/runtime/selection'
 import type {
   Engine
 } from '@dataview/engine'
 import {
   selection as rowSelection
-} from '#dataview-react/runtime/selection'
+} from '@dataview/react/runtime/selection'
 import {
   gridKeyAction,
   isSelectAll,
   parseClipboardMatrix,
   planPaste,
-  range,
+  gridSelection,
   type TableKeyInput
 } from '@dataview/table'
-import type { CellOpenInput } from '#dataview-react/views/table/openCell'
-import type { GridSelectionStore } from '#dataview-react/views/table/gridSelection'
+import type { CellOpenInput } from '@dataview/react/views/table/openCell'
+import type { GridSelectionStore } from '@dataview/react/views/table/gridSelection'
 
 const currentKey = (
   input: TableKeyInput | KeyInput
@@ -65,10 +65,10 @@ export const handleTableKey = (input: {
   const currentGridSelection = input.gridSelection.get()
   if (currentGridSelection) {
     if (key.key === 'Escape') {
-      const currentRange = range.from(currentGridSelection)
-      const rowIds = currentRange
-        ? range.items(currentRange, input.currentView.items)
-        : []
+      const rowIds = gridSelection.itemIds(
+        currentGridSelection,
+        input.currentView.items
+      )
       input.selectionApi.set(rowIds, {
         anchor: rowIds[0],
         focus: rowIds[rowIds.length - 1]

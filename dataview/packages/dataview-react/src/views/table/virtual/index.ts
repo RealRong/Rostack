@@ -1,16 +1,16 @@
-export { buildTableBlocks } from '#dataview-react/views/table/virtual/buildBlocks'
+export { buildTableBlocks } from '@dataview/react/views/table/virtual/buildBlocks'
 export {
   createTableVirtualRuntime,
   resolveTableWindowOverscan,
   resolveTableWindowSnapshot
-} from '#dataview-react/views/table/virtual/runtime'
+} from '@dataview/react/views/table/virtual/runtime'
 export type {
   TableBlock,
   TableColumnFooterBlock,
   TableColumnHeaderBlock,
   TableRowBlock,
   TableSectionHeaderBlock
-} from '#dataview-react/views/table/virtual/types'
+} from '@dataview/react/views/table/virtual/types'
 export type {
   TableVerticalDirection,
   TableVirtualInteractionSnapshot,
@@ -18,4 +18,4 @@ export type {
   TableVirtualRuntime,
   TableVirtualViewportSnapshot,
   TableVirtualWindowSnapshot
-} from '#dataview-react/views/table/virtual/runtime'
+} from '@dataview/react/views/table/virtual/runtime'

@@ -17,12 +17,12 @@ import {
   readInsertPresetGroup,
   readShapePresetKind,
   readStickyInsertTone
-} from '#whiteboard-react/features/toolbox/presets'
+} from '@whiteboard/react/features/toolbox/presets'
 import type {
   ToolPaletteBrushState,
   ToolPaletteMemory,
   ToolPaletteView
-} from '#whiteboard-react/types/toolbox'
+} from '@whiteboard/react/types/toolbox'
 
 const DEFAULT_EDGE_PRESET_KEY = 'edge.straight'
 

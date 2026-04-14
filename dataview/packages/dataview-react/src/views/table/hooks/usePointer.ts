@@ -31,24 +31,24 @@ import {
   containsRelatedTarget,
   shouldCapturePointer
 } from '@shared/dom'
-import { useDataView } from '#dataview-react/dataview'
+import { useDataView } from '@dataview/react/dataview'
 import {
   resolveDefaultAutoPanTargets,
   useAutoPan
-} from '#dataview-react/interaction/autoPan'
+} from '@dataview/react/interaction/autoPan'
 import { useStoreValue } from '@shared/react'
-import type { TableHoverTarget } from '#dataview-react/views/table/model/hover'
-import { hoveredRowIdOf } from '#dataview-react/views/table/model/hover'
-import { useTableContext } from '#dataview-react/views/table/context'
+import type { TableHoverTarget } from '@dataview/react/views/table/model/hover'
+import { hoveredRowIdOf } from '@dataview/react/views/table/model/hover'
+import { useTableContext } from '@dataview/react/views/table/context'
 import {
   cellFromPoint,
   cellFromTarget,
   closestTableTargetElement
-} from '#dataview-react/views/table/dom/targets'
+} from '@dataview/react/views/table/dom/targets'
 import {
   canFallbackToRowHover,
   resolveHoverTargetFromPoint
-} from '#dataview-react/views/table/model/hoverResolver'
+} from '@dataview/react/views/table/model/hoverResolver'
 
 export interface PointerOptions {
   enabled: boolean

@@ -6,7 +6,7 @@ export type {
   RowCreateInput,
   ViewCreateInput,
   ViewPatch
-} from '#dataview-core/contracts/actions'
+} from '@dataview/core/contracts/actions'
 export type {
   CommitDelta,
   DeltaEntities,
@@ -19,35 +19,35 @@ export type {
   RecordPatchAspect,
   ViewLayoutAspect,
   ViewQueryAspect
-} from '#dataview-core/contracts/delta'
+} from '@dataview/core/contracts/delta'
 export type {
   Command,
   CommandType,
-} from '#dataview-core/contracts/commands'
+} from '@dataview/core/contracts/commands'
 export type {
   GalleryCardSize,
   GalleryOptions
-} from '#dataview-core/contracts/gallery'
+} from '@dataview/core/contracts/gallery'
 export type {
   TableOptions,
   ViewOptions
-} from '#dataview-core/contracts/viewOptions'
+} from '@dataview/core/contracts/viewOptions'
 export {
   KANBAN_EMPTY_BUCKET_KEY,
   KANBAN_CARDS_PER_COLUMN_OPTIONS
-} from '#dataview-core/contracts/kanban'
+} from '@dataview/core/contracts/kanban'
 export type {
   KanbanCardsPerColumn,
   KanbanNewRecordPosition,
   KanbanOptions
-} from '#dataview-core/contracts/kanban'
+} from '@dataview/core/contracts/kanban'
 export type {
   BaseOperation,
   OperationPayload,
   OperationType,
   RowInsertTarget,
   ValuePatch
-} from '#dataview-core/contracts/operations'
+} from '@dataview/core/contracts/operations'
 export type {
   CustomFieldId,
   Field,
@@ -104,5 +104,5 @@ export type {
   IndexPath,
   RecordId,
   ViewId
-} from '#dataview-core/contracts/state'
-export { TITLE_FIELD_ID } from '#dataview-core/contracts/state'
+} from '@dataview/core/contracts/state'
+export { TITLE_FIELD_ID } from '@dataview/core/contracts/state'

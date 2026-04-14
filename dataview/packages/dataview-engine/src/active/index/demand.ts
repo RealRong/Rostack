@@ -10,7 +10,7 @@ import type {
   GroupDemand,
   IndexDemand,
   NormalizedIndexDemand
-} from '#dataview-engine/active/index/contracts'
+} from '@dataview/engine/active/index/contracts'
 
 const uniqueGroups = (
   groups: readonly GroupDemand[] = []

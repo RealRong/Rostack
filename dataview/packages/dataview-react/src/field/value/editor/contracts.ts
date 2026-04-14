@@ -2,7 +2,7 @@ import type { Field, CustomField } from '@dataview/core/contracts'
 import type {
   EditorSubmitTrigger,
   EditInput,
-} from '#dataview-react/interaction'
+} from '@dataview/react/interaction'
 
 export interface FieldValueEditorProps {
   field?: Field

@@ -9,12 +9,12 @@ import {
 import type { Point, Rect } from '@whiteboard/core/types'
 import { cn, FloatingLayer, ToolbarBar } from '@shared/ui'
 import { useElementSize } from '@shared/react'
-import { WhiteboardPopover } from '#whiteboard-react/runtime/overlay'
+import { WhiteboardPopover } from '@whiteboard/react/runtime/overlay'
 import {
   buildToolbarStyle,
   resolveToolbarAnchorWorld,
   resolveToolbarPlacement
-} from '#whiteboard-react/features/selection/chrome/layout'
+} from '@whiteboard/react/features/selection/chrome/layout'
 
 type FloatingToolbarPositionSession = {
   key: string

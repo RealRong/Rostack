@@ -1,9 +1,9 @@
-export { createYjsSession } from '#whiteboard-collab/session'
+export { createYjsSession } from '@whiteboard/collab/session'
 export {
   hasYjsDocumentSnapshot,
   materializeYjsDocument,
   replaceYjsDocument
-} from '#whiteboard-collab/yjs/materialize'
+} from '@whiteboard/collab/yjs/materialize'
 
 export type {
   CollabBootstrapMode,
@@ -11,4 +11,4 @@ export type {
   CollabSession,
   CollabStatus,
   CreateYjsSessionOptions
-} from '#whiteboard-collab/types'
+} from '@whiteboard/collab/types'

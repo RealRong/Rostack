@@ -11,8 +11,8 @@ import type {
   Rect
 } from '@whiteboard/core/types'
 import type { NodeItem } from '@whiteboard/engine'
-import type { EditSession } from '#whiteboard-editor/local/session/edit'
-import type { NodeFeedbackProjection } from '#whiteboard-editor/local/feedback/types'
+import type { EditSession } from '@whiteboard/editor/local/session/edit'
+import type { NodeFeedbackProjection } from '@whiteboard/editor/local/feedback/types'
 
 export const readNodeProjectionRotation = (
   node: NodeItem['node']

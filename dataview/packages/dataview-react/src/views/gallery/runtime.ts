@@ -1,50 +1,40 @@
 import {
-  useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState
 } from 'react'
-import type {
-  ItemId
-} from '@dataview/engine'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
-} from '#dataview-react/dom/appearance'
+} from '@dataview/react/dom/appearance'
 import {
-  useDataView,
-  useDataViewValue
-} from '#dataview-react/dataview'
+  useDataView
+} from '@dataview/react/dataview'
 import {
   closestTarget,
   interactiveSelector
 } from '@shared/dom'
 import {
   resolveDefaultAutoPanTargets
-} from '#dataview-react/interaction/autoPan'
-import {
-  createVisualTargetRegistry
-} from '#dataview-react/runtime/marquee'
-import { useStoreValue } from '@shared/react'
+} from '@dataview/react/interaction/autoPan'
 import {
   useCardReorder
-} from '#dataview-react/views/gallery/reorder'
+} from '@dataview/react/views/gallery/reorder'
 import {
   GALLERY_CARD_MIN_WIDTH,
   useGalleryBlocks
-} from '#dataview-react/views/gallery/virtual'
+} from '@dataview/react/views/gallery/virtual'
 import type {
   GalleryRuntimeInput,
   GalleryViewRuntime
-} from '#dataview-react/views/gallery/types'
+} from '@dataview/react/views/gallery/types'
+import {
+  useItemInteractionRuntime
+} from '@dataview/react/views/shared/interactionRuntime'
 
 export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntime => {
   const dataView = useDataView()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [dragging, setDragging] = useState(false)
-  const visualTargets = useRef(createVisualTargetRegistry({
-    resolveScrollTargets: () => resolveDefaultAutoPanTargets(containerRef.current)
-  })).current
   const itemIds = input.active.items.ids
   const virtual = useGalleryBlocks({
     grouped: input.active.query.group.active,
@@ -53,50 +43,16 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
     containerRef,
     overscan: dragging ? 1200 : 640
   })
-  const selectionState = useDataViewValue(
-    dataView => dataView.selection.store
-  )
-  const selectedIdSet = useMemo<ReadonlySet<ItemId>>(
-    () => new Set(selectionState.ids),
-    [selectionState.ids]
-  )
-  const select = useCallback((id: ItemId, mode: 'replace' | 'toggle' = 'replace') => {
-    if (mode === 'toggle') {
-      dataView.selection.toggle([id])
-      return
-    }
-
-    dataView.selection.set([id])
-  }, [dataView.selection])
-  const marqueeSession = useStoreValue(dataView.marquee.store)
-  const marqueeActive = marqueeSession?.ownerViewId === input.active.view.id
-
-  useEffect(() => dataView.marquee.registerAdapter({
+  const interaction = useItemInteractionRuntime({
     viewId: input.active.view.id,
+    itemIds,
     disabled: dragging,
     canStart: event => !closestTarget(
       event.target,
       `[${DATAVIEW_APPEARANCE_ID_ATTR}],${interactiveSelector}`
     ),
-    getTargets: () => visualTargets.getTargets(itemIds),
-    order: () => itemIds,
-    resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(containerRef.current),
-    onStart: () => {
-      visualTargets.clearFrozen()
-    },
-    onEnd: () => {
-      visualTargets.clearFrozen()
-    },
-    onCancel: () => {
-      visualTargets.clearFrozen()
-    }
-  }), [
-    itemIds,
-    dataView.marquee,
-    dragging,
-    input.active.view.id,
-    visualTargets
-  ])
+    resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(containerRef.current)
+  })
 
   const drag = useCardReorder({
     containerRef,
@@ -104,8 +60,8 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
     itemMap: new Map(itemIds.map(id => [id, id] as const)),
     getLayout: () => virtual.layout,
     getDragIds: activeId => (
-      selectionState.ids.includes(activeId)
-        ? selectionState.ids.filter(id => itemIds.includes(id))
+      interaction.selection.selectedIds.includes(activeId)
+        ? interaction.selection.selectedIds.filter(id => itemIds.includes(id))
         : [activeId]
     ),
     onDraggingChange: setDragging,
@@ -153,21 +109,14 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
       blocks: virtual.blocks,
       measure: virtual.measure
     },
-    selection: {
-      selectedIdSet,
-      select
-    },
+    ...interaction,
     drag,
-    indicator,
-    marqueeActive,
-    visualTargets
+    indicator
   }), [
+    containerRef,
     drag,
     indicator,
-    marqueeActive,
-    select,
-    selectedIdSet,
-    visualTargets,
+    interaction,
     virtual.blocks,
     virtual.layout,
     virtual.measure

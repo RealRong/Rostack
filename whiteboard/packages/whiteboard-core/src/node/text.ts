@@ -1,5 +1,5 @@
-import type { Rect } from '#whiteboard-core/types'
-import type { ResizeDirection } from '#whiteboard-core/node/transform'
+import type { Rect } from '@whiteboard/core/types'
+import type { ResizeDirection } from '@whiteboard/core/node/transform'
 
 export type TextVariant = 'text' | 'sticky'
 export type TextWidthMode = 'auto' | 'wrap'

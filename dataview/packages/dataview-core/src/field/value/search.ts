@@ -1,9 +1,9 @@
-import type { CustomField } from '#dataview-core/contracts'
+import type { CustomField } from '@dataview/core/contracts'
 import {
   getKind,
   getFieldKind
-} from '#dataview-core/field/kind'
-import { normalizeSearchableValue } from '#dataview-core/field/kind/shared'
+} from '@dataview/core/field/kind'
+import { normalizeSearchableValue } from '@dataview/core/field/kind/shared'
 
 export const getFieldSearchTokens = (
   field: CustomField | undefined,

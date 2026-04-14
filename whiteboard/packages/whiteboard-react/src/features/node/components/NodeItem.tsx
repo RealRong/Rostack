@@ -1,9 +1,9 @@
 import { memo, useEffect, useRef, type CSSProperties } from 'react'
 import type { NodeId } from '@whiteboard/core/types'
-import { usePickRef } from '#whiteboard-react/runtime/hooks'
-import { useNodeView } from '#whiteboard-react/features/node/hooks/useNodeView'
-import { useMindmapTreeView } from '#whiteboard-react/features/mindmap/hooks/useMindmapTreeView'
-import { MindmapTreeView } from '#whiteboard-react/features/mindmap/components/MindmapTreeView'
+import { usePickRef } from '@whiteboard/react/runtime/hooks'
+import { useNodeView } from '@whiteboard/react/features/node/hooks/useNodeView'
+import { useMindmapTreeView } from '@whiteboard/react/features/mindmap/hooks/useMindmapTreeView'
+import { MindmapTreeView } from '@whiteboard/react/features/mindmap/components/MindmapTreeView'
 
 type NodeItemProps = {
   nodeId: NodeId

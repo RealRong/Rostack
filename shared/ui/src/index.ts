@@ -1,12 +1,12 @@
-export { Button, type ButtonProps } from '#shared-ui/button'
-export { Checkbox, type CheckboxProps } from '#shared-ui/checkbox'
+export { Button, type ButtonProps } from '@shared/ui/button'
+export { Checkbox, type CheckboxProps } from '@shared/ui/checkbox'
 export {
   FloatingLayer,
   FloatingSurface,
   type FloatingLayerProps,
   type FloatingSurfaceProps
-} from '#shared-ui/floating'
-export { Input, type InputProps } from '#shared-ui/input'
+} from '@shared/ui/floating'
+export { Input, type InputProps } from '@shared/ui/input'
 export {
   ColorSwatchGrid,
   formatPercent,
@@ -17,7 +17,7 @@ export {
   SliderSection,
   SwatchButton,
   type SwatchButtonProps
-} from '#shared-ui/panel'
+} from '@shared/ui/panel'
 export {
   PickerButton,
   PickerDivider,
@@ -28,14 +28,14 @@ export {
   PickerSection,
   PickerSurface,
   PickerTintBar
-} from '#shared-ui/picker'
+} from '@shared/ui/picker'
 export {
     Slider,
     type SliderMark,
     type SliderProps
-  } from '#shared-ui/slider'
-export { Select, type SelectProps } from '#shared-ui/select'
-export { Label, type LabelProps } from '#shared-ui/label'
+  } from '@shared/ui/slider'
+export { Select, type SelectProps } from '@shared/ui/select'
+export { Label, type LabelProps } from '@shared/ui/label'
 export {
   Menu,
   type MenuItem,
@@ -48,13 +48,13 @@ export {
   type MenuSelectionMode,
   type MenuSurfaceSize,
   type MenuSubmenuOpenPolicy
-} from '#shared-ui/menu'
+} from '@shared/ui/menu'
 export type {
   ListCustomItem,
   ListDividerItem,
   ListLabelItem,
   ListStructuralItem
-} from '#shared-ui/list-structure'
+} from '@shared/ui/list-structure'
 export {
   Popover,
   type PopoverAnchor,
@@ -67,7 +67,7 @@ export {
   type PopoverSurfaceSize,
   type PopoverProps,
   type PopoverTriggerProps
-} from '#shared-ui/popover'
+} from '@shared/ui/popover'
 export {
   OverlayProvider,
   OverlayRoot,
@@ -89,9 +89,9 @@ export {
   type OverlayLayerKind,
   type OverlayLayerMode,
   type OverlayLayerOptions
-} from '#shared-ui/overlay'
-export { PanelHeader, type PanelHeaderProps } from '#shared-ui/panel-header'
-export { Switch, type SwitchProps } from '#shared-ui/switch'
+} from '@shared/ui/overlay'
+export { PanelHeader, type PanelHeaderProps } from '@shared/ui/panel-header'
+export { Switch, type SwitchProps } from '@shared/ui/switch'
 export {
   ToolbarBar,
   ToolbarButton,
@@ -100,7 +100,7 @@ export {
   ToolbarIconButton,
   ToolbarStrokeIcon,
   ToolbarTextColorIcon
-} from '#shared-ui/toolbar'
+} from '@shared/ui/toolbar'
 export {
   UI_CONTENT_COLOR_FAMILIES,
   UI_CONTENT_COLOR_IDS,
@@ -114,16 +114,16 @@ export {
   resolveOptionDotStyle,
   resolveOptionStatusDotStyle,
   resolveOptionSurfaceStyle
-} from '#shared-ui/color'
+} from '@shared/ui/color'
 export {
   VerticalReorderList,
   type VerticalReorderHandleProps,
   type VerticalReorderItemState,
   type VerticalReorderListProps
-} from '#shared-ui/vertical-reorder-list'
-export { cn } from '#shared-ui/utils'
+} from '@shared/ui/vertical-reorder-list'
+export { cn } from '@shared/ui/utils'
 export type {
   UiOptionColorFamily,
   UiOptionColorId,
   UiOptionColorTokenUsage
-} from '#shared-ui/color'
+} from '@shared/ui/color'

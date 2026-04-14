@@ -16,7 +16,7 @@ import {
   normalizeMeasureContent,
   readLineHeightPx,
   readPx
-} from '#whiteboard-react/features/node/dom/textTypography'
+} from '@whiteboard/react/features/node/dom/textTypography'
 
 type TextMeasureElements = {
   line: HTMLDivElement

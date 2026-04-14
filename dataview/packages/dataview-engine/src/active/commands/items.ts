@@ -6,19 +6,19 @@ import type {
 import { isTitleFieldId } from '@dataview/core/field'
 import { group as groupCore } from '@dataview/core/group'
 import { trimToUndefined, unique } from '@shared/core'
-import { createRecordId } from '#dataview-engine/mutate/entityId'
+import { createRecordId } from '@dataview/engine/mutate/entityId'
 import type {
   ActiveItemsApi,
   ActiveViewReadApi,
   MovePlan,
   Placement
-} from '#dataview-engine/contracts/public'
-import { createGroupValueActions, type ActiveViewContext } from '#dataview-engine/active/context'
+} from '@dataview/engine/contracts/public'
+import { createGroupValueActions, type ActiveViewContext } from '@dataview/engine/active/context'
 
 export const planMove = (
   itemIds: readonly string[],
   target: Placement,
-  readState: () => import('#dataview-engine/contracts/public').ViewState | undefined
+  readState: () => import('@dataview/engine/contracts/public').ViewState | undefined
 ): MovePlan => {
   const state = readState()
   if (!state) {

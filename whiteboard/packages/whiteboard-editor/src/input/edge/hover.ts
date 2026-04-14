@@ -1,6 +1,6 @@
 import { createRafTask } from '@shared/core'
 import type { Point } from '@whiteboard/core/types'
-import type { InteractionContext } from '#whiteboard-editor/input/context'
+import type { InteractionContext } from '@whiteboard/editor/input/context'
 
 export type EdgeHoverService = {
   move: (world: Point) => void

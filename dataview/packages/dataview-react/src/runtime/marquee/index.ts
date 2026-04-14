@@ -1,18 +1,18 @@
-export { createMarqueeApi } from '#dataview-react/runtime/marquee/api'
+export { createMarqueeApi } from '@dataview/react/runtime/marquee/api'
 export {
   boxFromDomRect,
   selectionTargetFromElement
-} from '#dataview-react/runtime/marquee/dom'
+} from '@dataview/react/runtime/marquee/dom'
 export {
   createVisualTargetRegistry
-} from '#dataview-react/runtime/marquee/visualTargets'
+} from '@dataview/react/runtime/marquee/visualTargets'
 export type {
   MarqueeAdapter,
   MarqueeApi,
   MarqueeMode,
   MarqueeSessionState,
   SelectionTarget
-} from '#dataview-react/runtime/marquee/types'
+} from '@dataview/react/runtime/marquee/types'
 export type {
   VisualTargetRegistry
-} from '#dataview-react/runtime/marquee/visualTargets'
+} from '@dataview/react/runtime/marquee/visualTargets'

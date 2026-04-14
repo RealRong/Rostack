@@ -1,6 +1,6 @@
-import { FontSizePanel } from '#whiteboard-react/features/selection/chrome/panels/FontSizePanel'
-import { FontSizeControl } from '#whiteboard-react/features/selection/chrome/toolbar/items/shared/FontSizeControl'
-import type { ToolbarItemSpec } from '#whiteboard-react/features/selection/chrome/toolbar/items/types'
+import { FontSizePanel } from '@whiteboard/react/features/selection/chrome/panels/FontSizePanel'
+import { FontSizeControl } from '@whiteboard/react/features/selection/chrome/toolbar/items/shared/FontSizeControl'
+import type { ToolbarItemSpec } from '@whiteboard/react/features/selection/chrome/toolbar/items/types'
 
 export const fontSizeItem: ToolbarItemSpec = {
   key: 'font-size',

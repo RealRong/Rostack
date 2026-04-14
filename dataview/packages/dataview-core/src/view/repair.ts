@@ -2,19 +2,19 @@ import type {
   CustomField,
   CustomFieldId,
   View
-} from '#dataview-core/contracts'
+} from '@dataview/core/contracts'
 import {
   supportsFieldCalculationMetric
-} from '#dataview-core/calculation'
+} from '@dataview/core/calculation'
 import {
   getFieldGroupMeta
-} from '#dataview-core/field'
+} from '@dataview/core/field'
 import {
   getFilterPresetIds
-} from '#dataview-core/filter'
+} from '@dataview/core/filter'
 import {
   pruneFieldFromViewOptions
-} from '#dataview-core/view/options'
+} from '@dataview/core/view/options'
 
 const sameJson = (
   left: unknown,

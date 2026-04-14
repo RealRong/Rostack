@@ -1,4 +1,4 @@
-import { cn } from '#shared-ui/utils'
+import { cn } from '@shared/ui/utils'
 
 export interface SwitchProps {
   checked: boolean

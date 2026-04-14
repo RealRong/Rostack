@@ -1,6 +1,6 @@
 import type { RecordId } from '@dataview/core/contracts'
 import { sameOrder } from '@shared/core'
-import { createOrderedListAccess } from '#dataview-engine/active/snapshot/list'
+import { createOrderedListAccess } from '@dataview/engine/active/snapshot/list'
 import type {
   ItemId,
   ItemList,
@@ -8,8 +8,8 @@ import type {
   SectionKey,
   SectionList,
   ViewItem
-} from '#dataview-engine/contracts/public'
-import type { SectionState } from '#dataview-engine/contracts/internal'
+} from '@dataview/engine/contracts/public'
+import type { SectionState } from '@dataview/engine/contracts/internal'
 const SEPARATOR = '\u0000'
 const SECTION_PREFIX = 'section:'
 const RECORD_PREFIX = 'record:'

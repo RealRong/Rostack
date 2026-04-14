@@ -1,19 +1,19 @@
 import type {
   Field,
   ViewGroup
-} from '#dataview-core/contracts'
+} from '@dataview/core/contracts'
 import {
   KANBAN_EMPTY_BUCKET_KEY
-} from '#dataview-core/contracts'
+} from '@dataview/core/contracts'
 import {
   STATUS_CATEGORIES,
   createDateGroupValue,
   getFieldOption,
   getStatusDefaultOption
-} from '#dataview-core/field'
+} from '@dataview/core/field'
 import {
   parseDateGroupKey
-} from '#dataview-core/field/kind/date'
+} from '@dataview/core/field/kind/date'
 
 export type GroupWriteResult =
   | { kind: 'set'; value: unknown }

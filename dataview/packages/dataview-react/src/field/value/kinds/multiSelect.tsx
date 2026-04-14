@@ -1,13 +1,13 @@
 import type { CustomField } from '@dataview/core/contracts'
 import { getFieldOption, parseFieldDraft } from '@dataview/core/field'
-import { FieldOptionTag } from '#dataview-react/field/options'
+import { FieldOptionTag } from '@dataview/react/field/options'
 import { cn } from '@shared/ui/utils'
-import { OptionPickerEditor } from '#dataview-react/field/value/editor/pickers/option/OptionPickerEditor'
-import type { FieldValueDraftEditorProps } from '#dataview-react/field/value/editor'
-import type { FieldValueSpec } from '#dataview-react/field/value/kinds/contracts'
+import { OptionPickerEditor } from '@dataview/react/field/value/editor/pickers/option/OptionPickerEditor'
+import type { FieldValueDraftEditorProps } from '@dataview/react/field/value/editor'
+import type { FieldValueSpec } from '@dataview/react/field/value/kinds/contracts'
 import {
   renderEmpty
-} from '#dataview-react/field/value/kinds/shared'
+} from '@dataview/react/field/value/kinds/shared'
 
 const MultiSelectEditor = (props: FieldValueDraftEditorProps<string>) => (
   <OptionPickerEditor {...props} mode="multi" />

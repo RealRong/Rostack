@@ -1,9 +1,9 @@
 import type { KeyboardEvent } from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { Popover } from '#shared-ui/popover'
-import { renderListStructuralItem } from '#shared-ui/list-structure'
+import { Popover } from '@shared/ui/popover'
+import { renderListStructuralItem } from '@shared/ui/list-structure'
 import { closestTarget } from '@shared/dom'
-import { cn } from '#shared-ui/utils'
+import { cn } from '@shared/ui/utils'
 import {
   DROPDOWN_SUBMENU_OFFSET,
   ITEM_PATH_ATTR,
@@ -17,9 +17,9 @@ import {
   renderContent,
   resolvePresentation,
   resolveSurface
-} from '#shared-ui/menu/shared'
-import { submenuArrow, Row, checkTrailing, handleActivationKey, switchTrailing } from '#shared-ui/menu/row'
-import type { Item, LevelProps, SelectionAppearance } from '#shared-ui/menu/types'
+} from '@shared/ui/menu/shared'
+import { submenuArrow, Row, checkTrailing, handleActivationKey, switchTrailing } from '@shared/ui/menu/row'
+import type { Item, LevelProps, SelectionAppearance } from '@shared/ui/menu/types'
 
 const itemTrailing = (
   item: Item,

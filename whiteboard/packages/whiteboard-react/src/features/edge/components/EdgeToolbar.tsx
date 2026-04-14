@@ -21,9 +21,9 @@ import type {
   Point
 } from '@whiteboard/core/types'
 import { useStoreValue } from '@shared/react'
-import { useEditorRuntime } from '#whiteboard-react/runtime/hooks'
-import { FloatingToolbarShell } from '#whiteboard-react/features/selection/chrome/FloatingToolbarShell'
-import { STROKE_COLOR_OPTIONS } from '#whiteboard-react/features/selection/chrome/menus/options'
+import { useEditorRuntime } from '@whiteboard/react/runtime/hooks'
+import { FloatingToolbarShell } from '@whiteboard/react/features/selection/chrome/FloatingToolbarShell'
+import { STROKE_COLOR_OPTIONS } from '@whiteboard/react/features/selection/chrome/menus/options'
 
 type PanelKey = 'start' | 'end' | 'line' | 'color' | 'text-mode'
 

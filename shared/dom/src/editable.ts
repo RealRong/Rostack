@@ -1,4 +1,4 @@
-import type { Point } from '#shared-dom/geometry'
+import type { Point } from '@shared/dom/geometry'
 
 export const readEditableText = (
   element: HTMLDivElement

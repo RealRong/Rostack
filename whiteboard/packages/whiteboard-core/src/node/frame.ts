@@ -1,13 +1,13 @@
 import {
   isPointInRect,
   rectContains
-} from '#whiteboard-core/geometry'
+} from '@whiteboard/core/geometry'
 import type {
   Node,
   NodeId,
   Point,
   Rect
-} from '#whiteboard-core/types'
+} from '@whiteboard/core/types'
 
 type FrameNodeLike = Pick<Node, 'id' | 'type'>
 

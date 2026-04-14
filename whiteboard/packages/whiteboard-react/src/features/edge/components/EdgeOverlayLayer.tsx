@@ -7,17 +7,17 @@ import {
   useInteraction,
   usePickRef,
   useTool
-} from '#whiteboard-react/runtime/hooks'
+} from '@whiteboard/react/runtime/hooks'
 import type {
   SelectedEdgeRoutePointView,
   SelectedEdgeView
-} from '#whiteboard-react/types/edge'
-import { useSelectedEdgeView } from '#whiteboard-react/features/edge/hooks/useEdgeView'
+} from '@whiteboard/react/types/edge'
+import { useSelectedEdgeView } from '@whiteboard/react/features/edge/hooks/useEdgeView'
 import {
   EDGE_ARROW_END_ID,
   EDGE_ARROW_START_ID,
   resolveEdgeDash
-} from '#whiteboard-react/features/edge/constants'
+} from '@whiteboard/react/features/edge/constants'
 
 const resolveMarker = (value: string | undefined, fallbackId: string) => {
   if (!value) return undefined

@@ -4,7 +4,7 @@ import type {
 } from '@dataview/engine'
 import {
   resolveAutoFillGridMetrics
-} from '#dataview-react/virtual'
+} from '@dataview/react/virtual'
 import type {
   GalleryBlock,
   GalleryCardLayout,
@@ -13,7 +13,7 @@ import type {
   GalleryRowLayout,
   GallerySectionEmptyBlock,
   GallerySectionHeaderBlock
-} from '#dataview-react/views/gallery/virtual/types'
+} from '@dataview/react/views/gallery/virtual/types'
 
 export const GALLERY_CARD_MIN_WIDTH = {
   sm: 220,

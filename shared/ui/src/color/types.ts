@@ -1,4 +1,4 @@
-import familyData from '#shared-ui/color/families.json'
+import familyData from '@shared/ui/color/families.json'
 
 export type UiOptionColorId =
   | 'default'

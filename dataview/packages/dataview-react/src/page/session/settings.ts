@@ -5,7 +5,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   SettingsRoute
-} from '#dataview-react/page/session/types'
+} from '@dataview/react/page/session/types'
 
 export const ROOT_SETTINGS_ROUTE: SettingsRoute = { kind: 'root' }
 

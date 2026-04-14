@@ -1,6 +1,6 @@
 import type {
   View
-} from '#dataview-core/contracts'
+} from '@dataview/core/contracts'
 
 const suffixPattern = /^(.*?)(?:\s+(\d+))?$/
 

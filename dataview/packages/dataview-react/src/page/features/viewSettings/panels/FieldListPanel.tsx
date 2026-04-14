@@ -1,10 +1,10 @@
 import { Plus } from 'lucide-react'
 import { getDocumentCustomFields } from '@dataview/core/document'
-import { FieldPicker } from '#dataview-react/field/picker'
+import { FieldPicker } from '@dataview/react/field/picker'
 import { Menu } from '@shared/ui/menu'
-import { useDataViewValue } from '#dataview-react/dataview'
+import { useDataViewValue } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
-import { useViewSettings } from '#dataview-react/page/features/viewSettings/context'
+import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
 
 export const FieldListPanel = () => {
   const router = useViewSettings()

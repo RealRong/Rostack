@@ -1,11 +1,11 @@
-import { isPointEqual } from '#whiteboard-core/geometry'
+import { isPointEqual } from '@whiteboard/core/geometry'
 import type {
   Edge,
   EdgeAnchor,
   EdgeEnd,
   EdgeLabel
-} from '#whiteboard-core/types'
-import type { ResolvedEdgeEnd } from '#whiteboard-core/types/edge'
+} from '@whiteboard/core/types'
+import type { ResolvedEdgeEnd } from '@whiteboard/core/types/edge'
 
 export const sameEdgeAnchor = (
   left: EdgeAnchor | undefined,

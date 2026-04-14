@@ -1,5 +1,5 @@
-import { cloneValue } from '#whiteboard-core/value'
-import { getValueByPath, setValueByPath } from '#whiteboard-core/utils/objectPath'
+import { cloneValue } from '@whiteboard/core/value'
+import { getValueByPath, setValueByPath } from '@whiteboard/core/utils/objectPath'
 
 type SetPathMutation = {
   op: 'set'

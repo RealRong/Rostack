@@ -1,5 +1,5 @@
-import { TableProvider } from '#dataview-react/views/table/context'
-import { Body } from '#dataview-react/views/table/components/body/Body'
+import { TableProvider } from '@dataview/react/views/table/context'
+import { Body } from '@dataview/react/views/table/components/body/Body'
 
 const DEFAULT_ROW_HEIGHT = 36
 const DEFAULT_HEADER_HEIGHT = 32

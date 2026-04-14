@@ -4,14 +4,14 @@ import {
   useState,
   type CSSProperties
 } from 'react'
-import type { NodeDefinition, NodeRenderProps } from '#whiteboard-react/types/node'
+import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
 import {
   useEdit,
   useEditor
-} from '#whiteboard-react/runtime/hooks'
-import { EditableSlot } from '#whiteboard-react/features/edit/EditableSlot'
-import { matchNodeEdit } from '#whiteboard-react/features/edit/session'
-import { useStickyFontSize } from '#whiteboard-react/features/node/hooks/useStickyFontSize'
+} from '@whiteboard/react/runtime/hooks'
+import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
+import { matchNodeEdit } from '@whiteboard/react/features/edit/session'
+import { useStickyFontSize } from '@whiteboard/react/features/node/hooks/useStickyFontSize'
 import {
   bindNodeTextSource,
   readTextWidthMode,
@@ -20,14 +20,14 @@ import {
   STICKY_PLACEHOLDER,
   TEXT_DEFAULT_FONT_SIZE,
   TEXT_PLACEHOLDER
-} from '#whiteboard-react/features/node/text'
+} from '@whiteboard/react/features/node/text'
 import {
   createSchema,
   createTextField,
   getStyleNumber,
   getStyleString,
   styleField
-} from '#whiteboard-react/features/node/registry/default/shared'
+} from '@whiteboard/react/features/node/registry/default/shared'
 
 const textSchema = createSchema('text', 'Text', [
   createTextField('text'),

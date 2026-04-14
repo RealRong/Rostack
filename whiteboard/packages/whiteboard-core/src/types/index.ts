@@ -1,11 +1,11 @@
-export * from '#whiteboard-core/types/model'
-export * from '#whiteboard-core/types/operations'
-export * from '#whiteboard-core/types/result'
-export * from '#whiteboard-core/types/registry'
-export * from '#whiteboard-core/types/document'
-export * from '#whiteboard-core/types/edge'
-export * from '#whiteboard-core/types/kernel'
-export * from '#whiteboard-core/types/mindmap'
+export * from '@whiteboard/core/types/model'
+export * from '@whiteboard/core/types/operations'
+export * from '@whiteboard/core/types/result'
+export * from '@whiteboard/core/types/registry'
+export * from '@whiteboard/core/types/document'
+export * from '@whiteboard/core/types/edge'
+export * from '@whiteboard/core/types/kernel'
+export * from '@whiteboard/core/types/mindmap'
 export type {
   GetNodeSize,
   LayoutMindmap,
@@ -30,4 +30,4 @@ export type {
   MindmapSizeAdapter,
   MindmapTree,
   MindmapUpdateNodeInput
-} from '#whiteboard-core/mindmap/types'
+} from '@whiteboard/core/mindmap/types'

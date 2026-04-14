@@ -1,4 +1,4 @@
-import type { CustomFieldId, CustomField, DataRecord, View, RecordId, ViewId } from '#dataview-core/contracts/state'
+import type { CustomFieldId, CustomField, DataRecord, View, RecordId, ViewId } from '@dataview/core/contracts/state'
 
 export interface RowInsertTarget {
   index?: number

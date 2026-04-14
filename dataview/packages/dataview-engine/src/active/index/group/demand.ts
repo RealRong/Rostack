@@ -5,7 +5,7 @@ import type {
   GroupDemand,
   GroupFieldIndex,
   GroupIndex
-} from '#dataview-engine/active/index/contracts'
+} from '@dataview/engine/active/index/contracts'
 
 const GROUP_SEPARATOR = '\u0000'
 

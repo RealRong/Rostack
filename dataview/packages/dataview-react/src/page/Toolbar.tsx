@@ -20,15 +20,17 @@ import { Button } from '@shared/ui/button'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { Popover } from '@shared/ui/popover'
 import { cn } from '@shared/ui/utils'
-import { FieldPicker } from '#dataview-react/field/picker'
-import { CreateViewPopover } from '#dataview-react/page/features/createView'
-import { getAvailableFilterFields } from '#dataview-react/page/features/filter/filterUi'
-import { getAvailableSorterFields } from '#dataview-react/page/features/sort'
-import { ViewSettingsPopover } from '#dataview-react/page/features/viewSettings'
+import { FieldPicker } from '@dataview/react/field/picker'
+import { CreateViewPopover } from '@dataview/react/page/features/createView'
+import {
+  getAvailableFilterFields,
+  getAvailableSorterFields
+} from '@dataview/react/page/features/query/fields'
+import { ViewSettingsPopover } from '@dataview/react/page/features/viewSettings'
 import {
   useDataView,
   useDataViewValue,
-} from '#dataview-react/dataview'
+} from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 
 interface ViewTabProps {
@@ -352,7 +354,7 @@ export const PageToolbar = () => {
                       setToolbarRoute(null)
                       page.query.open({
                         kind: 'filter',
-                        fieldId
+                        index: filterRules.length
                       })
                     }}
                   />

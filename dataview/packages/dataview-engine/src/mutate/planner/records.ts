@@ -20,21 +20,21 @@ import {
 import {
   createIssue,
   hasValidationErrors
-} from '#dataview-engine/mutate/issues'
-import { createRecordId } from '#dataview-engine/mutate/entityId'
-import { validateFieldExists } from '#dataview-engine/mutate/validate/entity'
+} from '@dataview/engine/mutate/issues'
+import { createRecordId } from '@dataview/engine/mutate/entityId'
+import { validateFieldExists } from '@dataview/engine/mutate/validate/entity'
 import {
   validateEditTarget,
   validateRecordIdsExist,
   validateRequiredCollection
-} from '#dataview-engine/mutate/validate/target'
+} from '@dataview/engine/mutate/validate/target'
 import {
   listTargetRecordIds,
   planResult,
   sourceOf,
   toViewPut,
   type PlannedActionResult
-} from '#dataview-engine/mutate/planner/shared'
+} from '@dataview/engine/mutate/planner/shared'
 
 const buildRecordRemoveViewOps = (
   document: DataDoc,

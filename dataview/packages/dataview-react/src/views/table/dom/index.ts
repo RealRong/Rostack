@@ -8,8 +8,8 @@ import {
   pageScrollNode,
   type ScrollNode
 } from '@shared/dom'
-import type { Nodes } from '#dataview-react/views/table/dom/registry'
-import type { TableLayout } from '#dataview-react/views/table/layout'
+import type { Nodes } from '@dataview/react/views/table/dom/registry'
+import type { TableLayout } from '@dataview/react/views/table/layout'
 
 export interface Dom {
   container: () => HTMLDivElement | null

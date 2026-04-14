@@ -8,12 +8,9 @@ import type {
   CellRef
 } from '@dataview/engine'
 import {
-  grid
-} from '#dataview-table/grid'
-import {
+  gridSelection,
   type GridSelection
-} from '#dataview-table/gridSelection'
-import { range } from '#dataview-table/range'
+} from '@dataview/table/gridSelection'
 
 export interface TablePasteEntry {
   cell: CellRef
@@ -62,17 +59,16 @@ const parseCellDraft = (
 
 const planRangeBroadcast = (
   currentSelection: GridSelection | null,
-  items: Pick<ItemList, 'indexOf' | 'ids'>,
-  fields: FieldList,
+  items: Pick<ItemList, 'ids'>,
+  fields: Pick<FieldList, 'ids' | 'all'>,
   draft: string
 ): TablePasteEntry[] => {
-  const currentRange = range.from(currentSelection)
-  if (!currentRange) {
+  if (!currentSelection) {
     return []
   }
 
-  const itemIds = range.items(currentRange, items)
-  const fieldIds = range.fields(currentRange, fields)
+  const itemIds = gridSelection.itemIds(currentSelection, items)
+  const fieldIds = gridSelection.fieldIds(currentSelection, fields)
   if (!itemIds.length || !fieldIds.length) {
     return []
   }
@@ -114,8 +110,7 @@ export const planPaste = (options: {
   }
 
   if (options.matrix.length === 1 && options.matrix[0]?.length === 1) {
-    const currentRange = range.from(options.selection)
-    if (currentRange && !range.isSingle(currentRange, options.items, options.fields)) {
+    if (options.selection && !gridSelection.isSingle(options.selection, options.items, options.fields)) {
       return planRangeBroadcast(
         options.selection,
         options.items,
@@ -125,14 +120,14 @@ export const planPaste = (options: {
     }
   }
 
-  const rowStart = grid.appearanceIndex(options.items, anchorCell.itemId)
-  const fieldStart = grid.fieldIndex(options.fields, anchorCell.fieldId)
+  const rowStart = options.items.indexOf(anchorCell.itemId)
+  const fieldStart = options.fields.indexOf(anchorCell.fieldId)
   if (rowStart === undefined || fieldStart === undefined) {
     return []
   }
 
   return options.matrix.flatMap((row, rowOffset) => {
-    const itemId = grid.appearanceAt(options.items, rowStart + rowOffset)
+    const itemId = options.items.at(rowStart + rowOffset)
     if (!itemId) {
       return []
     }

@@ -1,5 +1,5 @@
-import { message } from '#dataview-meta/message'
-import { defineMetaCollection } from '#dataview-meta/shared'
+import { message } from '@dataview/meta/message'
+import { defineMetaCollection } from '@dataview/meta/shared'
 
 export type OptionColorId =
   | ''

@@ -5,7 +5,7 @@ import type {
 } from '@dataview/engine'
 import type {
   GalleryLayoutCache
-} from '#dataview-react/views/gallery/virtual'
+} from '@dataview/react/views/gallery/virtual'
 
 type GalleryCard = GalleryLayoutCache['cards'][number]
 

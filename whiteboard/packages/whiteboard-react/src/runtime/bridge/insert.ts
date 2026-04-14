@@ -7,7 +7,7 @@ import {
   type NodeInsertPreset
 } from '@whiteboard/editor'
 import type { NodeId, Point, SpatialNodeInput } from '@whiteboard/core/types'
-import type { WhiteboardRuntime } from '#whiteboard-react/types/runtime'
+import type { WhiteboardRuntime } from '@whiteboard/react/types/runtime'
 
 type InsertResult = {
   nodeId: NodeId

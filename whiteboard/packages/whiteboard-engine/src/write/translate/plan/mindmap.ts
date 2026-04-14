@@ -1,4 +1,4 @@
-import type { CommandOutput, MindmapCommand } from '#whiteboard-engine/types/command'
+import type { CommandOutput, MindmapCommand } from '@whiteboard/engine/types/command'
 import { getNode } from '@whiteboard/core/document'
 import {
   cloneSubtree as cloneTree,
@@ -24,8 +24,8 @@ import type {
   Node,
   SpatialNode
 } from '@whiteboard/core/types'
-import type { WriteTranslateContext } from '#whiteboard-engine/write/translate'
-import type { Step } from '#whiteboard-engine/write/translate/plan/shared'
+import type { WriteTranslateContext } from '@whiteboard/engine/write/translate'
+import type { Step } from '@whiteboard/engine/write/translate/plan/shared'
 
 const asSpatial = (
   node: Node | undefined

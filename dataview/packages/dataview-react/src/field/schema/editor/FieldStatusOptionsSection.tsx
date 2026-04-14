@@ -9,7 +9,7 @@ import type {
   StatusCategory
 } from '@dataview/core/contracts'
 import { getFieldOptions, getStatusSections } from '@dataview/core/field'
-import { useDataView } from '#dataview-react/dataview'
+import { useDataView } from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import { Button } from '@shared/ui/button'
 import {
@@ -19,13 +19,13 @@ import {
 import { cn } from '@shared/ui/utils'
 import {
   OptionEditorPanel,
-} from '#dataview-react/field/options'
+} from '@dataview/react/field/options'
 import {
   buildOptionPanelReorderItem,
   readOptionLabel
-} from '#dataview-react/menu-builders'
+} from '@dataview/react/menu-builders'
 import { getStatusCategoryLabel } from '@dataview/core/field'
-import { FIELD_DROPDOWN_MENU_PROPS } from '#dataview-react/field/dropdown'
+import { FIELD_DROPDOWN_MENU_PROPS } from '@dataview/react/field/dropdown'
 
 const moveItem = <Item,>(items: readonly Item[], from: number, to: number) => {
   const next = [...items]

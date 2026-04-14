@@ -22,14 +22,14 @@ import { Menu, type MenuItem } from '@shared/ui/menu'
 import { cn } from '@shared/ui/utils'
 import { isCustomField } from '@dataview/core/field'
 import { getFieldCalculationMetrics } from '@dataview/core/calculation'
-import { getSorterFieldId } from '#dataview-react/page/features/sort'
+import { getSorterFieldId } from '@dataview/react/page/features/query/fields'
 import {
   useDataView,
-} from '#dataview-react/dataview'
+} from '@dataview/react/dataview'
 import { useStoreValue } from '@shared/react'
-import { useTableContext } from '#dataview-react/views/table/context'
+import { useTableContext } from '@dataview/react/views/table/context'
 import { meta, renderMessage } from '@dataview/meta'
-import { buildFieldKindMenuItems } from '#dataview-react/field/schema'
+import { buildFieldKindMenuItems } from '@dataview/react/field/schema'
 
 export interface ColumnHeaderProps {
   field: Field
@@ -235,7 +235,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
         viewApi.filters.add(props.field.id)
         page.query.open({
           kind: 'filter',
-          fieldId: props.field.id
+          index: currentView.query.filters.rules.length
         })
       }
     },

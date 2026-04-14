@@ -1,4 +1,4 @@
-export { clamp, degToRad } from '#whiteboard-core/geometry/scalar'
+export { clamp, degToRad } from '@whiteboard/core/geometry/scalar'
 
 export {
   getRectCenter,
@@ -10,34 +10,34 @@ export {
   getRectCorners,
   getAABBFromPoints,
   getRectsBoundingRect
-} from '#whiteboard-core/geometry/rect'
+} from '@whiteboard/core/geometry/rect'
 
-export { rotatePoint } from '#whiteboard-core/geometry/point'
-export { getAnchorPoint } from '#whiteboard-core/geometry/anchor'
+export { rotatePoint } from '@whiteboard/core/geometry/point'
+export { getAnchorPoint } from '@whiteboard/core/geometry/anchor'
 export {
   normalizePolylinePoints,
   arePointListsEqual
-} from '#whiteboard-core/geometry/polyline'
+} from '@whiteboard/core/geometry/polyline'
 
 export {
   getRotatedCorners,
   isPointInRotatedRect
-} from '#whiteboard-core/geometry/rotation'
+} from '@whiteboard/core/geometry/rotation'
 
 export {
   rectIntersectsRotatedRect,
   rectContainsRotatedRect
-} from '#whiteboard-core/geometry/collision'
+} from '@whiteboard/core/geometry/collision'
 
 export {
   distancePointToSegment,
   getSegmentBounds
-} from '#whiteboard-core/geometry/segment'
+} from '@whiteboard/core/geometry/segment'
 
 export {
   isPointEqual,
   isSizeEqual
-} from '#whiteboard-core/geometry/equality'
+} from '@whiteboard/core/geometry/equality'
 
 export {
   DEFAULT_VIEWPORT_FIT_PADDING,
@@ -57,9 +57,9 @@ export {
   zoomViewport,
   worldToScreenPoint,
   isSameViewport
-} from '#whiteboard-core/geometry/viewport'
+} from '@whiteboard/core/geometry/viewport'
 export type {
   ContainerRect,
   ViewportLimits,
   WheelInput
-} from '#whiteboard-core/geometry/viewport'
+} from '@whiteboard/core/geometry/viewport'

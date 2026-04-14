@@ -1,4 +1,4 @@
-import type { DataDoc, DataRecord, EntityTable, RecordId } from '#dataview-core/contracts/state'
+import type { DataDoc, DataRecord, EntityTable, RecordId } from '@dataview/core/contracts/state'
 
 export const cloneRecordInput = (record: DataRecord): DataRecord => structuredClone(record)
 

@@ -5,49 +5,49 @@ import {
   type ValueStore
 } from '@shared/core'
 import type { Viewport } from '@whiteboard/core/types'
-import type { EditorState } from '#whiteboard-editor/types/editor'
-import type { EditorQueryRead } from '#whiteboard-editor/query'
-import type { PointerSample } from '#whiteboard-editor/types/input'
-import type { NodeRegistry } from '#whiteboard-editor/types/node'
-import type { Tool } from '#whiteboard-editor/types/tool'
-import type { DrawState } from '#whiteboard-editor/local/draw/state'
-import { createLocalDrawActions, type LocalDrawActions } from '#whiteboard-editor/local/actions/draw'
+import type { EditorState } from '@whiteboard/editor/types/editor'
+import type { EditorQueryRead } from '@whiteboard/editor/query'
+import type { PointerSample } from '@whiteboard/editor/types/input'
+import type { NodeRegistry } from '@whiteboard/editor/types/node'
+import type { Tool } from '@whiteboard/editor/types/tool'
+import type { DrawState } from '@whiteboard/editor/local/draw/state'
+import { createLocalDrawActions, type LocalDrawActions } from '@whiteboard/editor/local/actions/draw'
 import {
   createLocalFeedbackActions,
   type LocalFeedbackActions
-} from '#whiteboard-editor/local/actions/feedback'
-import { createLocalEditActions, type LocalEditActions } from '#whiteboard-editor/local/actions/edit'
+} from '@whiteboard/editor/local/actions/feedback'
+import { createLocalEditActions, type LocalEditActions } from '@whiteboard/editor/local/actions/edit'
 import {
   createLocalSessionActions,
   type LocalSessionActions
-} from '#whiteboard-editor/local/actions/session'
+} from '@whiteboard/editor/local/actions/session'
 import {
   createLocalViewportActions,
   type LocalViewportActions
-} from '#whiteboard-editor/local/actions/viewport'
+} from '@whiteboard/editor/local/actions/viewport'
 import {
   createDrawStateStore,
   type DrawStateStore
-} from '#whiteboard-editor/local/draw/runtime'
-import { createFeedback, type EditorFeedbackRuntime } from '#whiteboard-editor/local/feedback'
-import { createEditState, type EditState } from '#whiteboard-editor/local/session/edit'
+} from '@whiteboard/editor/local/draw/runtime'
+import { createFeedback, type EditorFeedbackRuntime } from '@whiteboard/editor/local/feedback'
+import { createEditState, type EditState } from '@whiteboard/editor/local/session/edit'
 import {
   createSelectionState,
   type SelectionState
-} from '#whiteboard-editor/local/session/selection'
+} from '@whiteboard/editor/local/session/selection'
 import {
   createViewport,
   type ViewportInputRuntime,
   type ViewportRuntime
-} from '#whiteboard-editor/local/viewport/runtime'
-import { createAutoPan } from '#whiteboard-editor/input/core/autoPan'
-import type { ActiveGesture } from '#whiteboard-editor/input/core/gesture'
+} from '@whiteboard/editor/local/viewport/runtime'
+import { createAutoPan } from '@whiteboard/editor/input/core/autoPan'
+import type { ActiveGesture } from '@whiteboard/editor/input/core/gesture'
 import type {
   InteractionBinding,
   InteractionRuntime,
   InteractionSession,
   InteractionSessionTransition
-} from '#whiteboard-editor/input/core/types'
+} from '@whiteboard/editor/input/core/types'
 
 type SessionMeta = Readonly<{
   id: number

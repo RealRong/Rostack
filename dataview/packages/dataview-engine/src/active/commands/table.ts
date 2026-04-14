@@ -3,27 +3,20 @@ import {
   setTableColumnWidths,
   setTableVerticalLines
 } from '@dataview/core/view'
-import type { ActiveViewApi } from '#dataview-engine/contracts/public'
-import type { ActiveViewContext } from '#dataview-engine/active/context'
+import type { ActiveViewApi } from '@dataview/engine/contracts/public'
+import type { ActiveViewContext } from '@dataview/engine/active/context'
+import { withViewPatch } from '@dataview/engine/active/commands/shared'
 
 export const createTableApi = (input: {
   base: ActiveViewContext
   display: ActiveViewApi['display']
 }): ActiveViewApi['table'] => ({
-  setColumnWidths: widths => {
-    input.base.withView(view => {
-      input.base.commitPatch({
-        options: setTableColumnWidths(view.options, widths)
-      })
-    })
-  },
-  setVerticalLines: value => {
-    input.base.withView(view => {
-      input.base.commitPatch({
-        options: setTableVerticalLines(view.options, value)
-      })
-    })
-  },
+  setColumnWidths: widths => withViewPatch(input.base, view => ({
+    options: setTableColumnWidths(view.options, widths)
+  })),
+  setVerticalLines: value => withViewPatch(input.base, view => ({
+    options: setTableVerticalLines(view.options, value)
+  })),
   insertFieldLeft: (anchorFieldId, fieldInput) => {
     const fieldId = input.base.createField(fieldInput)
     if (!fieldId) {

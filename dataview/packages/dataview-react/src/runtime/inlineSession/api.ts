@@ -1,11 +1,12 @@
-import {
-  createValueStore
-} from '@shared/core'
 import type {
   InlineSessionApi,
   InlineSessionExitEvent,
   InlineSessionTarget
-} from '#dataview-react/runtime/inlineSession/types'
+} from '@dataview/react/runtime/inlineSession/types'
+import {
+  createListenerSet,
+  createNullableControllerStore
+} from '@dataview/react/runtime/store'
 
 const sameTarget = (
   left: InlineSessionTarget | null,
@@ -26,24 +27,21 @@ const sameTarget = (
 export const createInlineSessionApi = (
   initial: InlineSessionTarget | null = null
 ): InlineSessionApi => {
-  const store = createValueStore<InlineSessionTarget | null>({
+  const {
+    store,
+    get
+  } = createNullableControllerStore<InlineSessionTarget>({
     initial,
     isEqual: sameTarget
   })
-  const listeners = new Set<(event: InlineSessionExitEvent) => void>()
-
-  const notifyExit = (event: InlineSessionExitEvent) => {
-    Array.from(listeners).forEach(listener => {
-      listener(event)
-    })
-  }
+  const listeners = createListenerSet<InlineSessionExitEvent>()
 
   return {
     store,
     enter: target => {
-      const current = store.get()
+      const current = get()
       if (current && !sameTarget(current, target)) {
-        notifyExit({
+        listeners.emit({
           target: current,
           reason: 'programmatic'
         })
@@ -52,24 +50,18 @@ export const createInlineSessionApi = (
       store.set(target)
     },
     exit: options => {
-      const current = store.get()
+      const current = get()
       if (!current) {
         return
       }
 
       store.set(null)
-      notifyExit({
+      listeners.emit({
         target: current,
         reason: options?.reason ?? 'programmatic'
       })
     },
-    isActive: target => sameTarget(store.get(), target)
-    ,
-    onExit: listener => {
-      listeners.add(listener)
-      return () => {
-        listeners.delete(listener)
-      }
-    }
+    isActive: target => sameTarget(get(), target),
+    onExit: listeners.subscribe
   }
 }

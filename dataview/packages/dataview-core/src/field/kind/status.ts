@@ -3,7 +3,7 @@ import type {
   StatusField,
   StatusOption,
   StatusCategory
-} from '#dataview-core/contracts'
+} from '@dataview/core/contracts'
 
 export const STATUS_CATEGORIES = [
   'todo',

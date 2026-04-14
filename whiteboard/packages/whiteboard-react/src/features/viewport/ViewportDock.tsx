@@ -14,7 +14,7 @@ import {
   ToolbarIconButton
 } from '@shared/ui'
 import { useStoreValue } from '@shared/react'
-import { useEditor } from '#whiteboard-react/runtime/hooks'
+import { useEditor } from '@whiteboard/react/runtime/hooks'
 
 const ZOOM_FACTOR = 1.2
 const iconButtonClassName = 'text-fg-muted hover:text-fg'

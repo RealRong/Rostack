@@ -2,13 +2,13 @@ import { PickerPanelSurface } from '@shared/ui'
 import type {
   ToolPaletteMenuKey,
   ToolPaletteView
-} from '#whiteboard-react/types/toolbox'
-import { DrawMenu } from '#whiteboard-react/features/toolbox/menus/DrawMenu'
-import { EdgeMenu } from '#whiteboard-react/features/toolbox/menus/EdgeMenu'
-import { MindmapMenu } from '#whiteboard-react/features/toolbox/menus/MindmapMenu'
-import { ShapeMenu } from '#whiteboard-react/features/toolbox/menus/ShapeMenu'
-import { StickyMenu } from '#whiteboard-react/features/toolbox/menus/StickyMenu'
-import type { ToolPaletteController } from '#whiteboard-react/features/toolbox/controller'
+} from '@whiteboard/react/types/toolbox'
+import { DrawMenu } from '@whiteboard/react/features/toolbox/menus/DrawMenu'
+import { EdgeMenu } from '@whiteboard/react/features/toolbox/menus/EdgeMenu'
+import { MindmapMenu } from '@whiteboard/react/features/toolbox/menus/MindmapMenu'
+import { ShapeMenu } from '@whiteboard/react/features/toolbox/menus/ShapeMenu'
+import { StickyMenu } from '@whiteboard/react/features/toolbox/menus/StickyMenu'
+import type { ToolPaletteController } from '@whiteboard/react/features/toolbox/controller'
 
 export const ToolPaletteMenu = ({
   openMenu,

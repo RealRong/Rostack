@@ -1,23 +1,25 @@
 import {
-  createValueStore,
   type ValueStore
 } from '@shared/core'
+import {
+  createControllerStore
+} from '@dataview/react/runtime/store'
 import {
   ROOT_SETTINGS_ROUTE,
   cloneSettingsRoute,
   parentSettingsRoute
-} from '#dataview-react/page/session/settings'
+} from '@dataview/react/page/session/settings'
 import {
   cloneQueryBarEntry,
   createDefaultPageSessionState,
   equalPageSessionState
-} from '#dataview-react/page/session/state'
+} from '@dataview/react/page/session/state'
 import type {
   PageSessionApi,
   PageSessionInput,
   PageSessionState,
   QueryBarEntry
-} from '#dataview-react/page/session/types'
+} from '@dataview/react/page/session/types'
 
 export interface PageSessionController extends PageSessionApi {
   store: ValueStore<PageSessionState>
@@ -27,7 +29,9 @@ export interface PageSessionController extends PageSessionApi {
 export const createPageSessionApi = (
   initial?: PageSessionInput
 ): PageSessionController => {
-  const store = createValueStore<PageSessionState>({
+  const {
+    store
+  } = createControllerStore<PageSessionState>({
     initial: createDefaultPageSessionState(initial),
     isEqual: equalPageSessionState
   })

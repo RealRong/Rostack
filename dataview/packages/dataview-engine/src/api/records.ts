@@ -12,7 +12,7 @@ import type {
   ActionResult,
   DocumentSelectApi,
   RecordsApi
-} from '#dataview-engine/contracts/public'
+} from '@dataview/engine/contracts/public'
 
 export const createRecordsApi = (options: {
   select: DocumentSelectApi

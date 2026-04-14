@@ -6,7 +6,7 @@ import {
   type KeyedReadStore,
   type ReadStore
 } from '@shared/core'
-import type { EngineRuntimeState } from '#dataview-engine/runtime/state'
+import type { EngineRuntimeState } from '@dataview/engine/runtime/state'
 
 export const createRuntimeSelector = <T,>(input: {
   store: ReadStore<EngineRuntimeState>

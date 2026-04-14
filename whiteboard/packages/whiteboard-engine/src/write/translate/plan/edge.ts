@@ -1,4 +1,4 @@
-import type { EdgeBatchUpdate, EdgeCommand } from '#whiteboard-engine/types/command'
+import type { EdgeBatchUpdate, EdgeCommand } from '@whiteboard/engine/types/command'
 import {
   getEdge,
   getNode
@@ -17,8 +17,8 @@ import {
 import { getNodeGeometry, getNodeRect } from '@whiteboard/core/node'
 import { err, ok } from '@whiteboard/core/result'
 import type { Edge, EdgeId, Node, SpatialNode } from '@whiteboard/core/types'
-import type { WriteTranslateContext } from '#whiteboard-engine/write/translate'
-import type { Step } from '#whiteboard-engine/write/translate/plan/shared'
+import type { WriteTranslateContext } from '@whiteboard/engine/write/translate'
+import type { Step } from '@whiteboard/engine/write/translate/plan/shared'
 
 type Create = Extract<EdgeCommand, { type: 'edge.create' }>
 type Move = Extract<EdgeCommand, { type: 'edge.move' }>

@@ -7,12 +7,12 @@ import {
 import {
   type ItemId
 } from '@dataview/engine'
-import { useDataView } from '#dataview-react/dataview'
-import { fieldAttrs } from '#dataview-react/dom/field'
-import { useTableContext } from '#dataview-react/views/table/context'
+import { useDataView } from '@dataview/react/dataview'
+import { fieldAttrs } from '@dataview/react/dom/field'
+import { useTableContext } from '@dataview/react/views/table/context'
 import { useKeyedStoreValue, useStoreValue } from '@shared/react'
 import { cn } from '@shared/ui/utils'
-import { CellValue } from '#dataview-react/views/table/components/cell/CellValue'
+import { CellValue } from '@dataview/react/views/table/components/cell/CellValue'
 
 export interface CellProps {
   itemId: ItemId

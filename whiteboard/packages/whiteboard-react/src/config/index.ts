@@ -4,8 +4,8 @@ import {
   type BoardConfig as EngineBoardConfig
 } from '@whiteboard/core/config'
 import type { Viewport } from '@whiteboard/core/types'
-import type { WhiteboardOptions } from '#whiteboard-react/types/common/board'
-import type { ResolvedConfig } from '#whiteboard-react/types/common/config'
+import type { WhiteboardOptions } from '@whiteboard/react/types/common/board'
+import type { ResolvedConfig } from '@whiteboard/react/types/common/config'
 
 const ZOOM_EPSILON = 0.0001
 

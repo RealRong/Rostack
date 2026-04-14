@@ -8,13 +8,13 @@ import { useStoreValue } from '@shared/react'
 import {
   useEditorRuntime,
   usePickRef
-} from '#whiteboard-react/runtime/hooks'
-import { useNodeOverlayView } from '#whiteboard-react/features/node/hooks/useNodeView'
-import { NodeConnectHandles } from '#whiteboard-react/features/node/components/NodeConnectHandles'
+} from '@whiteboard/react/runtime/hooks'
+import { useNodeOverlayView } from '@whiteboard/react/features/node/hooks/useNodeView'
+import { NodeConnectHandles } from '@whiteboard/react/features/node/components/NodeConnectHandles'
 import {
   NodeTransformHandles,
   TransformHandles
-} from '#whiteboard-react/features/node/components/NodeTransformHandles'
+} from '@whiteboard/react/features/node/components/NodeTransformHandles'
 
 const NodeInteractionGuidesLayer = ({
   guides

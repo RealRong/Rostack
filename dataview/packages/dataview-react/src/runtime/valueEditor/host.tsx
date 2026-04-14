@@ -17,15 +17,15 @@ import {
   FieldValueEditor,
   getFieldValueSpec,
   type FieldValueEditorHandle
-} from '#dataview-react/field/value'
+} from '@dataview/react/field/value'
 import {
   useDataView
-} from '#dataview-react/dataview'
-import type { EditInput } from '#dataview-react/interaction'
+} from '@dataview/react/dataview'
+import type { EditInput } from '@dataview/react/interaction'
 import type {
   ValueEditorResult,
   ValueEditorSession
-} from '#dataview-react/runtime/valueEditor/types'
+} from '@dataview/react/runtime/valueEditor/types'
 import {
   OverlayProvider,
   OVERLAY_BLOCKING_ATTR,

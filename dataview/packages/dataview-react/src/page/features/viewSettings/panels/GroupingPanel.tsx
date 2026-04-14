@@ -4,15 +4,15 @@ import type { ViewGroupProjection } from '@dataview/engine'
 import {
   useDataView,
   useDataViewValue
-} from '#dataview-react/dataview'
+} from '@dataview/react/dataview'
 import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { meta, renderMessage } from '@dataview/meta'
 import {
   buildChoiceSubmenuItem,
   buildNavigationItem
-} from '#dataview-react/menu-builders'
-import { useViewSettings } from '#dataview-react/page/features/viewSettings/context'
+} from '@dataview/react/menu-builders'
+import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
 
 const readGroupModeLabel = (
   field: Field | undefined,

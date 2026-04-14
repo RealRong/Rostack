@@ -1,5 +1,5 @@
-import type { BaseOperation } from '#dataview-core/contracts/operations'
-import type { DataDoc, CustomField, DataRecord, View } from '#dataview-core/contracts/state'
+import type { BaseOperation } from '@dataview/core/contracts/operations'
+import type { DataDoc, CustomField, DataRecord, View } from '@dataview/core/contracts/state'
 import {
   enumerateRecords,
   getDocumentActiveViewId,
@@ -7,7 +7,7 @@ import {
   getDocumentRecordById,
   getDocumentRecordIndex,
   getDocumentViewById
-} from '#dataview-core/document'
+} from '@dataview/core/document'
 
 const hasOwn = (record: Record<string, unknown>, key: string) => Object.prototype.hasOwnProperty.call(record, key)
 const readObjectValue = (value: unknown, key: string) => (value as Record<string, unknown>)[key]

@@ -1,18 +1,15 @@
 import type { RefObject } from 'react'
-import type { View } from '@dataview/core/contracts'
 import type {
   ItemId,
   KanbanState,
-  SectionKey,
-  ViewState
+  SectionKey
 } from '@dataview/engine'
-import type { VisualTargetRegistry } from '#dataview-react/runtime/marquee'
+import type {
+  ActiveTypedViewState,
+  ItemInteractionRuntime
+} from '@dataview/react/views/shared/types'
 
-export type ActiveKanbanViewState = ViewState & {
-  view: View & {
-    type: 'kanban'
-  }
-}
+export type ActiveKanbanViewState = ActiveTypedViewState<'kanban'>
 
 export interface KanbanSectionVisibility {
   visibleIds: readonly ItemId[]
@@ -21,19 +18,13 @@ export interface KanbanSectionVisibility {
   showMoreCount: number
 }
 
-export interface KanbanViewRuntime {
+export interface KanbanViewRuntime extends ItemInteractionRuntime {
   layout: {
     columnWidth: number
     columnMinHeight: number
   }
   scrollRef: RefObject<HTMLDivElement | null>
-  selection: {
-    selectedIdSet: ReadonlySet<ItemId>
-    select: (id: ItemId, mode?: 'replace' | 'toggle') => void
-  }
-  drag: ReturnType<typeof import('#dataview-react/views/kanban/drag').useDrag>
-  marqueeActive: boolean
-  visualTargets: VisualTargetRegistry
+  drag: ReturnType<typeof import('@dataview/react/views/kanban/drag').useDrag>
   visibility: {
     bySection: ReadonlyMap<SectionKey, KanbanSectionVisibility>
     showMore: (sectionKey: SectionKey) => void

@@ -1,9 +1,9 @@
 import type { CustomField } from '@dataview/core/contracts'
 import { parseFieldDraft } from '@dataview/core/field'
 import { cn } from '@shared/ui/utils'
-import { CheckboxEditor } from '#dataview-react/field/value/editor/basic/CheckboxEditor'
-import type { FieldValueSpec } from '#dataview-react/field/value/kinds/contracts'
-import { renderEmpty } from '#dataview-react/field/value/kinds/shared'
+import { CheckboxEditor } from '@dataview/react/field/value/editor/basic/CheckboxEditor'
+import type { FieldValueSpec } from '@dataview/react/field/value/kinds/contracts'
+import { renderEmpty } from '@dataview/react/field/value/kinds/shared'
 
 export const createCheckboxPropertySpec = (
   field: CustomField | undefined

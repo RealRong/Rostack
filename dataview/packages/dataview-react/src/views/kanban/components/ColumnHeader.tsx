@@ -1,7 +1,7 @@
 import type { Section } from '@dataview/engine'
-import { FieldValueContent } from '#dataview-react/field/value'
+import { FieldValueContent } from '@dataview/react/field/value'
 import { cn } from '@shared/ui/utils'
-import { useKanbanContext } from '#dataview-react/views/kanban/context'
+import { useKanbanContext } from '@dataview/react/views/kanban/context'
 
 export const ColumnHeader = (props: {
   section: Section

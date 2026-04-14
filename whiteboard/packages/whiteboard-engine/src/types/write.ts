@@ -4,8 +4,8 @@ import type {
   HistoryState
 } from '@whiteboard/core/kernel'
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
-import type { CommandOutput, TranslateCommand } from '#whiteboard-engine/types/command'
-import type { CommandFailure } from '#whiteboard-engine/types/result'
+import type { CommandOutput, TranslateCommand } from '@whiteboard/engine/types/command'
+import type { CommandFailure } from '@whiteboard/engine/types/result'
 
 export type DraftKind = 'apply' | 'replace' | 'undo' | 'redo'
 

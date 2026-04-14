@@ -8,16 +8,16 @@ import {
   type RefCallback
 } from 'react'
 import type { Node } from '@whiteboard/core/types'
-import { readEditableText } from '#whiteboard-react/features/node/text'
-import { measureTextNodeSize } from '#whiteboard-react/features/node/dom/textMeasure'
+import { readEditableText } from '@whiteboard/react/features/node/text'
+import { measureTextNodeSize } from '@whiteboard/react/features/node/dom/textMeasure'
 import {
   focusEditableDraft,
   isEscapeEditingKey,
   isSubmitEditingKey,
   stopEditingPointerDown,
   syncEditableDraft
-} from '#whiteboard-react/features/node/dom/editableText'
-import { useEditorRuntime } from '#whiteboard-react/runtime/hooks'
+} from '@whiteboard/react/features/node/dom/editableText'
+import { useEditorRuntime } from '@whiteboard/react/runtime/hooks'
 import type { EditCaret } from '@whiteboard/editor'
 
 type TextMeasureInput = {

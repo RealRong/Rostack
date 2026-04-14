@@ -6,10 +6,10 @@ import type {
   FieldId,
   TitleField,
   TitleFieldId
-} from '#dataview-core/contracts/state'
+} from '@dataview/core/contracts/state'
 import {
   TITLE_FIELD_ID
-} from '#dataview-core/contracts/state'
+} from '@dataview/core/contracts/state'
 import {
   getEntityTableById,
   getEntityTableIds,
@@ -19,7 +19,7 @@ import {
   putEntityTableEntity,
   replaceDocumentTable,
   removeEntityTableEntity
-} from '#dataview-core/document/table'
+} from '@dataview/core/document/table'
 
 export const getDocumentCustomFields = (document: DataDoc): CustomField[] => {
   return listEntityTable(document.fields)

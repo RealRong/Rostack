@@ -2,13 +2,13 @@ import type {
   KanbanCardsPerColumn,
   KanbanNewRecordPosition,
   KanbanOptions
-} from '#dataview-core/contracts/kanban'
+} from '@dataview/core/contracts/kanban'
 import {
   isJsonObject
-} from '#dataview-core/view/shared'
+} from '@dataview/core/view/shared'
 import {
   KANBAN_CARDS_PER_COLUMN_OPTIONS
-} from '#dataview-core/contracts/kanban'
+} from '@dataview/core/contracts/kanban'
 
 const DEFAULT_NEW_RECORD_POSITION: KanbanNewRecordPosition = 'end'
 const DEFAULT_FILL_COLUMN_COLOR = true

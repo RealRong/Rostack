@@ -1,10 +1,10 @@
 import type {
   DataDoc,
   View,
-  ViewId
+  ViewId,
+  FilterRule
 } from '@dataview/core/contracts'
 import {
-  getDocumentFieldById,
   getDocumentCustomFields
 } from '@dataview/core/document'
 import {
@@ -15,14 +15,14 @@ import {
 import {
   cloneSettingsRoute,
   normalizeSettingsRoute
-} from '#dataview-react/page/session/settings'
+} from '@dataview/react/page/session/settings'
 import type {
   PageState,
   PageSessionState,
   QueryBarEntry,
   QueryBarState,
   SettingsState
-} from '#dataview-react/page/session/types'
+} from '@dataview/react/page/session/types'
 
 const resolveQueryBarEntry = (
   document: DataDoc,
@@ -50,16 +50,12 @@ const resolveQueryBarEntry = (
       : null
   }
 
-  if (!getDocumentFieldById(document, entry.fieldId)) {
-    return null
-  }
+  const rule = view.filter.rules[entry.index] as FilterRule | undefined
 
-  return view.filter.rules.some(rule => (
-    rule.fieldId === entry.fieldId
-  ))
+  return rule
     ? {
         kind: 'filter',
-        fieldId: entry.fieldId
+        index: entry.index
       }
     : null
 }

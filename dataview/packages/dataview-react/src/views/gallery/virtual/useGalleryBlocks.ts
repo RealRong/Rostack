@@ -12,13 +12,13 @@ import {
   readInlineInsets,
   useMeasuredHeights,
   useVirtualBlocks
-} from '#dataview-react/virtual'
+} from '@dataview/react/virtual'
 import {
   buildGalleryLayout,
   GALLERY_CARD_ESTIMATED_HEIGHT,
   GALLERY_CARD_GAP,
   resolveGalleryGridMetrics
-} from '#dataview-react/views/gallery/virtual/layout'
+} from '@dataview/react/views/gallery/virtual/layout'
 
 const resolveEstimatedHeight = (
   heightById: ReadonlyMap<string, number>,

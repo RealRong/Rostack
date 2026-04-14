@@ -11,7 +11,7 @@ import type {
   ActionResult,
   DocumentSelectApi,
   ViewsApi
-} from '#dataview-engine/contracts/public'
+} from '@dataview/engine/contracts/public'
 
 export const createViewsApi = (options: {
   select: DocumentSelectApi

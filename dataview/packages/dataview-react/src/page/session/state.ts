@@ -2,13 +2,13 @@ import {
   ROOT_SETTINGS_ROUTE,
   cloneSettingsRoute,
   equalSettingsRoute
-} from '#dataview-react/page/session/settings'
+} from '@dataview/react/page/session/settings'
 import type {
   PageSessionInput,
   PageSessionState,
   QueryBarEntry,
   SettingsState
-} from '#dataview-react/page/session/types'
+} from '@dataview/react/page/session/types'
 
 export const cloneQueryBarEntry = (
   entry: QueryBarEntry | null | undefined
@@ -20,7 +20,7 @@ export const cloneQueryBarEntry = (
   return entry.kind === 'filter'
     ? {
         kind: 'filter',
-        fieldId: entry.fieldId
+        index: entry.index
       }
     : entry.kind === 'addFilter'
       ? { kind: 'addFilter' }
@@ -48,7 +48,7 @@ const equalQueryBarEntry = (
     && (
       left.kind !== 'filter'
       || right.kind !== 'filter'
-      || left.fieldId === right.fieldId
+      || left.index === right.index
     )
 }
 

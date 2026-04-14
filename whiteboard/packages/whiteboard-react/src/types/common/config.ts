@@ -1,13 +1,13 @@
 import type { HistoryConfig as KernelHistoryConfig } from '@whiteboard/core/kernel'
 import type { MindmapLayoutConfig } from '@whiteboard/core/mindmap'
 import type { Tool } from '@whiteboard/editor'
-import type { WhiteboardOptions } from '#whiteboard-react/types/common/board'
+import type { WhiteboardOptions } from '@whiteboard/react/types/common/board'
 import type {
   EdgeConfig,
   NodeConfig,
   Size,
   ViewportConfig
-} from '#whiteboard-react/types/common/base'
+} from '@whiteboard/react/types/common/base'
 
 export type ResolvedConfig = Omit<
   WhiteboardOptions,

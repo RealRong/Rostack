@@ -1,4 +1,3 @@
-import type { CustomFieldId } from '@dataview/core/contracts'
 import type { Point } from '@shared/dom'
 import { targetElement } from '@shared/dom'
 import {
@@ -6,7 +5,7 @@ import {
   type FieldList
 } from '@dataview/engine'
 import {
-  grid,
+  cellNavigation
 } from '@dataview/table'
 import type {
   ItemId
@@ -66,7 +65,7 @@ const cellIdFromElement = (
   element?.dataset.rowId && element.dataset.fieldId
     ? {
         itemId: element.dataset.rowId as ItemId,
-        fieldId: element.dataset.fieldId as CustomFieldId
+        fieldId: element.dataset.fieldId
       }
     : null
 )
@@ -76,7 +75,7 @@ const resolveCellId = (
   fields: Pick<FieldList, 'has'>,
   cell: CellRef | null
 ): CellRef | null => {
-  if (!cell || !grid.containsCell(items, fields, cell)) {
+  if (!cell || !cellNavigation.hasCell(items, fields, cell)) {
     return null
   }
 

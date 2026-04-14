@@ -23,11 +23,11 @@ import type {
   EdgeType,
   NodeId
 } from '@whiteboard/core/types'
-import type { PointerDownInput } from '#whiteboard-editor/types/input'
-import type { EdgePresetKey, Tool } from '#whiteboard-editor/types/tool'
-import type { EdgeGestureDraft } from '#whiteboard-editor/input/core/gesture'
-import type { EdgePresentationRead } from '#whiteboard-editor/query/edge/read'
-import type { NodeCanvasSnapshot, NodePresentationRead } from '#whiteboard-editor/query/node/read'
+import type { PointerDownInput } from '@whiteboard/editor/types/input'
+import type { EdgePresetKey, Tool } from '@whiteboard/editor/types/tool'
+import type { EdgeGestureDraft } from '@whiteboard/editor/input/core/gesture'
+import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
+import type { NodeCanvasSnapshot, NodePresentationRead } from '@whiteboard/editor/query/node/read'
 
 type EdgeConnectNodeRead = Pick<NodePresentationRead, 'canvas' | 'capability'>
 type EdgeConnectPreviewNodeRead = Pick<NodePresentationRead, 'canvas'>

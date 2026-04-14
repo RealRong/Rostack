@@ -14,12 +14,12 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   RecordIndex
-} from '#dataview-engine/active/index/contracts'
+} from '@dataview/engine/active/index/contracts'
 import {
   collectTouchedFieldIds,
   collectTouchedRecordIds,
   createOrderIndex
-} from '#dataview-engine/active/index/shared'
+} from '@dataview/engine/active/index/shared'
 
 const toValueMap = (
   document: DataDoc,

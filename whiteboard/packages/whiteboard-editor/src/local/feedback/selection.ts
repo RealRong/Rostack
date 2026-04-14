@@ -1,20 +1,20 @@
 import { rectFromPoints } from '@whiteboard/core/geometry'
 import type { Guide } from '@whiteboard/core/node'
 import type { Rect } from '@whiteboard/core/types'
-import type { ViewportRuntime } from '#whiteboard-editor/local/viewport/runtime'
+import type { ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
 import {
   EMPTY_EDGE_FEEDBACK_ENTRIES
-} from '#whiteboard-editor/local/feedback/edge'
+} from '@whiteboard/editor/local/feedback/edge'
 import {
   EMPTY_NODE_PATCHES,
   EMPTY_NODE_SELECTION_FEEDBACK
-} from '#whiteboard-editor/local/feedback/node'
+} from '@whiteboard/editor/local/feedback/node'
 import type {
   MarqueeFeedback,
   MarqueeFeedbackState,
   SelectionPreviewState,
   SelectionFeedbackState
-} from '#whiteboard-editor/local/feedback/types'
+} from '@whiteboard/editor/local/feedback/types'
 
 export const EMPTY_GUIDES: readonly Guide[] = []
 

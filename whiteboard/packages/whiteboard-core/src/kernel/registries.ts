@@ -7,7 +7,7 @@ import type {
   Registry,
   SchemaRegistry,
   Serializer
-} from '#whiteboard-core/types'
+} from '@whiteboard/core/types'
 
 const createRegistry = <T,>(getId: (definition: T) => string): Registry<T> => {
   const map = new Map<string, T>()

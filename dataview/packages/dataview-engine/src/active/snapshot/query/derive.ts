@@ -28,15 +28,15 @@ import {
 } from '@dataview/core/view/order'
 import {
   readGroupFieldIndex
-} from '#dataview-engine/active/index/group/demand'
+} from '@dataview/engine/active/index/group/demand'
 import type {
   IndexState,
   SearchIndex,
   SearchTextIndex
-} from '#dataview-engine/active/index/contracts'
+} from '@dataview/engine/active/index/contracts'
 import type {
   QueryState
-} from '#dataview-engine/contracts/internal'
+} from '@dataview/engine/contracts/internal'
 
 const sameIds = sameOrder<RecordId>
 
@@ -694,24 +694,32 @@ export const buildQueryState = (input: {
       })
 
   const previous = input.previous
-  const nextMatched = previous && sameIds(previous.matched, matched)
-    ? previous.matched
+  const nextMatched = previous && sameIds(previous.records.matched, matched)
+    ? previous.records.matched
     : matched
-  const nextOrdered = previous && sameIds(previous.ordered, ordered)
-    ? previous.ordered
+  const nextOrdered = previous && sameIds(previous.records.ordered, ordered)
+    ? previous.records.ordered
     : ordered
-  const nextVisible = previous && sameIds(previous.visible, visible)
-    ? previous.visible
+  const nextVisible = previous && sameIds(previous.records.visible, visible)
+    ? previous.records.visible
     : visible
+  const nextRecords = previous
+    && nextMatched === previous.records.matched
+    && nextOrdered === previous.records.ordered
+    && nextVisible === previous.records.visible
+    ? previous.records
+    : {
+        matched: nextMatched,
+        ordered: nextOrdered,
+        visible: nextVisible
+      }
 
   return {
-    matched: nextMatched,
-    ordered: nextOrdered,
-    visible: nextVisible,
-    ...(previous && nextVisible === previous.visible && previous.visibleSet
+    records: nextRecords,
+    ...(previous && nextVisible === previous.records.visible && previous.visibleSet
       ? { visibleSet: previous.visibleSet }
       : {}),
-    ...(previous && nextOrdered === previous.ordered && previous.order
+    ...(previous && nextOrdered === previous.records.ordered && previous.order
       ? { order: previous.order }
       : {})
   }

@@ -1,7 +1,6 @@
 import {
   memo,
   useCallback,
-  useEffect,
   useMemo,
   type ClipboardEventHandler,
   type KeyboardEventHandler
@@ -10,8 +9,8 @@ import {
   closestCenter,
   DndContext
 } from '@dnd-kit/core'
-import { modifiers } from '#dataview-react/interaction'
-import { DragGhost } from '#dataview-react/dom/dragGhost'
+import { modifiers } from '@dataview/react/interaction'
+import { DragGhost } from '@dataview/react/dom/dragGhost'
 import {
   closestTarget,
   hasInteractiveTarget,
@@ -20,26 +19,28 @@ import {
 import {
   useDataView,
   useDataViewValue
-} from '#dataview-react/dataview'
+} from '@dataview/react/dataview'
 import {
   resolveDefaultAutoPanTargets
-} from '#dataview-react/interaction/autoPan'
+} from '@dataview/react/interaction/autoPan'
 import { useStoreValue } from '@shared/react'
 import { type CellRef } from '@dataview/engine'
-import { applyPaste, handleTableKey } from '#dataview-react/views/table/input'
+import { applyPaste, handleTableKey } from '@dataview/react/views/table/input'
 import {
   gridContentBounds,
   gridTemplate
-} from '#dataview-react/views/table/layout'
-import { useTableContext } from '#dataview-react/views/table/context'
-import { useColumnResize } from '#dataview-react/views/table/hooks/useColumnResize'
-import { useColumnReorder } from '#dataview-react/views/table/hooks/useColumnReorder'
-import { useRowReorder } from '#dataview-react/views/table/hooks/useRowReorder'
-import { usePointer } from '#dataview-react/views/table/hooks/usePointer'
-import { hasTableTarget } from '#dataview-react/views/table/dom/targets'
-import { RowDropIndicator } from '#dataview-react/views/table/components/overlay/RowDropIndicator'
-import { BlockContent } from '#dataview-react/views/table/components/body/BlockContent'
-import { Surface } from '#dataview-react/views/table/components/body/Surface'
+} from '@dataview/react/views/table/layout'
+import { useTableContext } from '@dataview/react/views/table/context'
+import { useColumnResize } from '@dataview/react/views/table/hooks/useColumnResize'
+import { useColumnReorder } from '@dataview/react/views/table/hooks/useColumnReorder'
+import { useRowReorder } from '@dataview/react/views/table/hooks/useRowReorder'
+import { usePointer } from '@dataview/react/views/table/hooks/usePointer'
+import { hasTableTarget } from '@dataview/react/views/table/dom/targets'
+import { RowDropIndicator } from '@dataview/react/views/table/components/overlay/RowDropIndicator'
+import { BlockContent } from '@dataview/react/views/table/components/body/BlockContent'
+import { Surface } from '@dataview/react/views/table/components/body/Surface'
+import { useRegisterMarqueeAdapter } from '@dataview/react/views/shared/interactionRuntime'
+import type { MarqueeAdapter } from '@dataview/react/runtime/marquee'
 
 const View = () => {
   const dataView = useDataView()
@@ -71,7 +72,7 @@ const View = () => {
     table.rowRail.set(null)
   }, [table.rowRail])
 
-  useEffect(() => dataView.marquee.registerAdapter({
+  const marqueeAdapter = useMemo<MarqueeAdapter>(() => ({
     viewId: currentView.view.id,
     disabled: marqueeDisabled,
     canStart: event => {
@@ -109,11 +110,11 @@ const View = () => {
   }), [
     currentView.items.ids,
     currentView.view.id,
-    dataView.marquee,
     marqueeDisabled,
     table.layout.containerRef,
     table
   ])
+  useRegisterMarqueeAdapter(marqueeAdapter)
 
   const pointer = usePointer({
     enabled: (

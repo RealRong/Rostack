@@ -1,16 +1,16 @@
 import type { Point } from '@whiteboard/core/types'
-import type { InteractionSession } from '#whiteboard-editor/input/core/types'
+import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import {
   CANCEL,
   FINISH
-} from '#whiteboard-editor/input/core/result'
-import { createEdgeGesture } from '#whiteboard-editor/input/core/gesture'
-import type { InteractionContext } from '#whiteboard-editor/input/context'
+} from '@whiteboard/editor/input/core/result'
+import { createEdgeGesture } from '@whiteboard/editor/input/core/gesture'
+import type { InteractionContext } from '@whiteboard/editor/input/context'
 import {
   commitEdgeMove,
   stepEdgeMove,
   type EdgeMoveState
-} from '#whiteboard-editor/input/edge/move/start'
+} from '@whiteboard/editor/input/edge/move/start'
 
 export const createEdgeBodyMoveSession = (
   ctx: InteractionContext,

@@ -4,8 +4,8 @@ import type {
   MindmapLayoutOptions,
   MindmapNodeId,
   MindmapTree
-} from '#whiteboard-core/mindmap/types'
-import type { NodeId, Point, Rect } from '#whiteboard-core/types/model'
+} from '@whiteboard/core/mindmap/types'
+import type { NodeId, Point, Rect } from '@whiteboard/core/types/model'
 
 export type MindmapLine = {
   x1: number

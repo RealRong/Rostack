@@ -1,5 +1,5 @@
-import type { BaseOperation } from '#dataview-core/contracts/operations'
-import type { DataDoc } from '#dataview-core/contracts/state'
+import type { BaseOperation } from '@dataview/core/contracts/operations'
+import type { DataDoc } from '@dataview/core/contracts/state'
 import {
   clearDocumentValue,
   insertDocumentRecords,
@@ -13,7 +13,7 @@ import {
   removeDocumentRecords,
   removeDocumentView,
   setDocumentValue
-} from '#dataview-core/document'
+} from '@dataview/core/document'
 
 export const reduceOperation = (
   document: DataDoc,

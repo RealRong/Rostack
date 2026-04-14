@@ -8,16 +8,16 @@ import {
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import {
   FINISH
-} from '#whiteboard-editor/input/core/result'
+} from '@whiteboard/editor/input/core/result'
 import type {
   InteractionSession
-} from '#whiteboard-editor/input/core/types'
-import type { InteractionContext } from '#whiteboard-editor/input/context'
-import { createSelectionGesture } from '#whiteboard-editor/input/core/gesture'
+} from '@whiteboard/editor/input/core/types'
+import type { InteractionContext } from '@whiteboard/editor/input/context'
+import { createSelectionGesture } from '@whiteboard/editor/input/core/gesture'
 import type {
   PointerDownInput
-} from '#whiteboard-editor/types/input'
-import type { SelectionMoveVisibility } from '#whiteboard-editor/input/selection/press/resolve'
+} from '@whiteboard/editor/types/input'
+import type { SelectionMoveVisibility } from '@whiteboard/editor/input/selection/press/resolve'
 
 const toMoveNodePatches = (
   result: MoveStepResult

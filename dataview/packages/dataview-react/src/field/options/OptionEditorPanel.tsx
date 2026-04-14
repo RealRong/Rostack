@@ -21,15 +21,15 @@ import { Menu, type MenuItem } from '@shared/ui/menu'
 import {
   useDataView,
   useDataViewKeyedValue
-} from '#dataview-react/dataview'
+} from '@dataview/react/dataview'
 import { meta, renderMessage } from '@dataview/meta'
 import {
   buildChoiceSubmenuItem,
   buildOptionColorItems
-} from '#dataview-react/menu-builders'
-import { FIELD_DROPDOWN_MENU_PROPS } from '#dataview-react/field/dropdown'
-import type { OptionLike } from '#dataview-react/field/options/OptionEditorPopover'
-import { buildStatusIdsAfterCategoryMove } from '#dataview-react/field/options/statusOptionMenu'
+} from '@dataview/react/menu-builders'
+import { FIELD_DROPDOWN_MENU_PROPS } from '@dataview/react/field/dropdown'
+import type { OptionLike } from '@dataview/react/field/options/OptionEditorPopover'
+import { buildStatusIdsAfterCategoryMove } from '@dataview/react/field/options/statusOptionMenu'
 
 export interface OptionEditorPanelProps {
   fieldId: string

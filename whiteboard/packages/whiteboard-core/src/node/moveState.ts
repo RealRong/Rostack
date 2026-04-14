@@ -1,5 +1,5 @@
-import { getRectsBoundingRect } from '#whiteboard-core/geometry'
-import type { SelectionTarget } from '#whiteboard-core/selection'
+import { getRectsBoundingRect } from '@whiteboard/core/geometry'
+import type { SelectionTarget } from '@whiteboard/core/selection'
 import type {
   Edge,
   Node,
@@ -7,7 +7,7 @@ import type {
   Point,
   Rect,
   Size
-} from '#whiteboard-core/types'
+} from '@whiteboard/core/types'
 import {
   buildMoveCommit,
   buildMoveSet,
@@ -16,8 +16,8 @@ import {
   type MoveEdgePlan,
   type MoveEffect,
   type MoveSet
-} from '#whiteboard-core/node/move'
-import { getNodeBoundsByNode } from '#whiteboard-core/node/geometry'
+} from '@whiteboard/core/node/move'
+import { getNodeBoundsByNode } from '@whiteboard/core/node/geometry'
 
 export type MoveState = {
   nodes: readonly Node[]

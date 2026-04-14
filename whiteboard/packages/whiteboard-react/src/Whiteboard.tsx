@@ -6,28 +6,28 @@ import {
   type CollabSession
 } from '@whiteboard/collab'
 import { normalizeDocument } from '@whiteboard/engine'
-import type { WhiteboardProps } from '#whiteboard-react/types/common/board'
-import { resolveConfig } from '#whiteboard-react/config'
-import { createDefaultNodeRegistry } from '#whiteboard-react/features/node'
+import type { WhiteboardProps } from '@whiteboard/react/types/common/board'
+import { resolveConfig } from '@whiteboard/react/config'
+import { createDefaultNodeRegistry } from '@whiteboard/react/features/node'
 import {
   getSelectionSnapshot,
   resolvePresenceActivity,
   serializePresenceTool
-} from '#whiteboard-react/features/collab/presence'
+} from '@whiteboard/react/features/collab/presence'
 import {
   WhiteboardConfigProvider,
   WhiteboardServicesProvider
-} from '#whiteboard-react/runtime/hooks/useWhiteboard'
-import type { WhiteboardInstance as Editor } from '#whiteboard-react/types/runtime'
+} from '@whiteboard/react/runtime/hooks/useWhiteboard'
+import type { WhiteboardInstance as Editor } from '@whiteboard/react/types/runtime'
 import type {
   WhiteboardPresenceActivity,
   WhiteboardPresencePointer
-} from '#whiteboard-react/types/common/presence'
-import { Surface } from '#whiteboard-react/canvas/Surface'
+} from '@whiteboard/react/types/common/presence'
+import { Surface } from '@whiteboard/react/canvas/Surface'
 import {
   createWhiteboardServices,
   isMirroredDocumentFromEngine
-} from '#whiteboard-react/runtime/whiteboard/services'
+} from '@whiteboard/react/runtime/whiteboard/services'
 
 const POINTER_THROTTLE_MS = 16
 

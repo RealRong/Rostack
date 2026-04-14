@@ -5,14 +5,14 @@ export {
   createNodeFieldsUpdateOperation,
   createNodeUpdateOperation,
   isNodeUpdateEmpty
-} from '#whiteboard-core/node/update'
+} from '@whiteboard/core/node/update'
 export {
   getNodeAABB,
   getNodeBoundsByNode,
   readNodeRotation,
   getNodeRect,
   getNodesBounds
-} from '#whiteboard-core/node/geometry'
+} from '@whiteboard/core/node/geometry'
 export {
   containsPointInNodeOutline,
   distanceToNodeOutline,
@@ -24,7 +24,7 @@ export {
   projectPointToNodeOutline,
   projectNodeAnchor,
   type NodeOutlineAnchorOptions
-} from '#whiteboard-core/node/outline'
+} from '@whiteboard/core/node/outline'
 export {
   matchDrawRect,
   readDrawBaseSize,
@@ -32,24 +32,24 @@ export {
   resolveDrawPoints,
   resolveDrawStroke,
   type ResolvedDrawStroke
-} from '#whiteboard-core/node/draw'
+} from '@whiteboard/core/node/draw'
 export {
   getNodesBoundingRect,
   rectEquals
-} from '#whiteboard-core/node/group'
+} from '@whiteboard/core/node/group'
 export {
   collectFrameMembers,
   expandFrameSelection,
   resolveFrameAtPoint,
   resolveNodeFrame
-} from '#whiteboard-core/node/frame'
+} from '@whiteboard/core/node/frame'
 export {
   buildMoveCommit,
   buildMoveSet,
   projectMovePreview,
   projectMovePositions,
   resolveMoveEffect
-} from '#whiteboard-core/node/move'
+} from '@whiteboard/core/node/move'
 export type {
   MoveCommit,
   MoveEdgePlan,
@@ -58,18 +58,18 @@ export type {
   MoveMember,
   MoveNodePosition,
   MoveSet
-} from '#whiteboard-core/node/move'
+} from '@whiteboard/core/node/move'
 export {
   finishMoveState,
   startMoveState,
   stepMoveState
-} from '#whiteboard-core/node/moveState'
+} from '@whiteboard/core/node/moveState'
 export type {
   MoveState,
   MoveSnapResolver,
   MoveStepResult
-} from '#whiteboard-core/node/moveState'
-export { deriveCanvasNodes, deriveVisibleNodes } from '#whiteboard-core/node/visibility'
+} from '@whiteboard/core/node/moveState'
+export { deriveCanvasNodes, deriveVisibleNodes } from '@whiteboard/core/node/visibility'
 export {
   buildTransformCommitUpdates,
   buildTransformHandles,
@@ -91,7 +91,7 @@ export {
   resizeHandleMap,
   toTransformCommitPatch,
   rotateVector
-} from '#whiteboard-core/node/transform'
+} from '@whiteboard/core/node/transform'
 export type {
   ResizeGestureInput,
   ResizeGestureSnapshot,
@@ -118,23 +118,23 @@ export type {
   TransformStepInput,
   TransformStepResult,
   TransformHandle
-} from '#whiteboard-core/node/transform'
+} from '@whiteboard/core/node/transform'
 export type {
   HorizontalResizeEdge,
   VerticalResizeEdge
-} from '#whiteboard-core/node/resize'
+} from '@whiteboard/core/node/resize'
 export {
   buildSnapCandidates,
   computeResizeSnap,
   computeSnap,
   createGridIndex,
   queryGridIndex
-} from '#whiteboard-core/node/snap'
+} from '@whiteboard/core/node/snap'
 export {
   expandRectByThreshold,
   resolveInteractionZoom,
   resolveSnapThresholdWorld
-} from '#whiteboard-core/snap'
+} from '@whiteboard/core/snap'
 export {
   filterNodeIdsInRect,
   getNodeIdsInRect,
@@ -145,23 +145,23 @@ export {
   type NodeRectHitPolicy,
   type NodeRectQuery,
   type NodeRectHitOptions
-} from '#whiteboard-core/node/hitTest'
-export { toLayerOrderedCanvasNodes, toLayerOrderedCanvasNodeIds } from '#whiteboard-core/node/layer'
+} from '@whiteboard/core/node/hitTest'
+export { toLayerOrderedCanvasNodes, toLayerOrderedCanvasNodeIds } from '@whiteboard/core/node/layer'
 export {
   buildNodeCreateOperation,
   buildNodeAlignOperations,
   buildNodeDistributeOperations
-} from '#whiteboard-core/node/commands'
+} from '@whiteboard/core/node/commands'
 export {
   alignNodes,
   distributeNodes
-} from '#whiteboard-core/node/layout'
+} from '@whiteboard/core/node/layout'
 export {
   applyNodeGeometryPatch,
   applyNodeTextDraft,
   applyNodeTextPreview,
   isNodeProjectionPatchEqual
-} from '#whiteboard-core/node/projection'
+} from '@whiteboard/core/node/projection'
 export {
   estimateTextAutoFont,
   isTextContentEmpty,
@@ -180,7 +180,7 @@ export {
   resolveTextBox,
   resolveTextContentBox,
   TEXT_DEFAULT_FONT_SIZE
-} from '#whiteboard-core/node/text'
+} from '@whiteboard/core/node/text'
 export type {
   TextAutoFont,
   TextContentBox,
@@ -188,10 +188,10 @@ export type {
   TextHandleMode,
   TextVariant,
   TextWidthMode
-} from '#whiteboard-core/node/text'
+} from '@whiteboard/core/node/text'
 export {
   applySelection
-} from '#whiteboard-core/node/selection'
+} from '@whiteboard/core/node/selection'
 export {
   SHAPE_MENU_SECTIONS,
   SHAPE_SPECS,
@@ -202,7 +202,7 @@ export {
   readShapePreviewFill,
   readShapeSpec,
   type ShapeKind
-} from '#whiteboard-core/node/shape'
+} from '@whiteboard/core/node/shape'
 export type {
   ShapeControlId,
   ShapeGroup,
@@ -210,7 +210,7 @@ export type {
   ShapeMenuSection,
   ShapeMeta,
   ShapeSpec
-} from '#whiteboard-core/node/shape'
+} from '@whiteboard/core/node/shape'
 export {
   FRAME_DEFAULT_FILL,
   FRAME_DEFAULT_STROKE,
@@ -229,13 +229,13 @@ export {
   createFrameNodeInput,
   createStickyNodeInput,
   createTextNodeInput
-} from '#whiteboard-core/node/templates'
+} from '@whiteboard/core/node/templates'
 export type {
   NodeAlignMode,
   NodeDistributeMode,
   NodeLayoutEntry,
   NodeLayoutUpdate
-} from '#whiteboard-core/node/layout'
+} from '@whiteboard/core/node/layout'
 export type {
   GridIndex,
   Guide,
@@ -243,10 +243,10 @@ export type {
   SnapCandidate,
   SnapEdge,
   SnapResult
-} from '#whiteboard-core/node/snap'
+} from '@whiteboard/core/node/snap'
 export type {
   SnapThresholdConfig
-} from '#whiteboard-core/snap'
+} from '@whiteboard/core/snap'
 export type {
   SelectionMode
-} from '#whiteboard-core/node/selection'
+} from '@whiteboard/core/node/selection'

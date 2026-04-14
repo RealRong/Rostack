@@ -4,7 +4,7 @@ import {
   createMeasuredElementObserver,
   type ElementSize
 } from '@shared/dom'
-import { useEditor } from '#whiteboard-react/runtime/hooks'
+import { useEditor } from '@whiteboard/react/runtime/hooks'
 
 type Size = ElementSize
 

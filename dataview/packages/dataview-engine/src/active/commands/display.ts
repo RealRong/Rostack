@@ -5,45 +5,36 @@ import {
   replaceDisplayFields,
   showDisplayField
 } from '@dataview/core/view'
-import type { ActiveViewApi } from '#dataview-engine/contracts/public'
-import type { ActiveViewContext } from '#dataview-engine/active/context'
+import type { ActiveViewApi } from '@dataview/engine/contracts/public'
+import type { ActiveViewContext } from '@dataview/engine/active/context'
+import { withViewPatch } from '@dataview/engine/active/commands/shared'
 
 export const createDisplayApi = (
   base: ActiveViewContext
 ): ActiveViewApi['display'] => ({
   replace: fieldIds => {
-    base.withView(() => {
-      base.commitPatch({
-        display: replaceDisplayFields(fieldIds)
-      })
-    })
+    withViewPatch(base, () => ({
+      display: replaceDisplayFields(fieldIds)
+    }))
   },
   move: (fieldIds, beforeFieldId) => {
-    base.withView(view => {
-      base.commitPatch({
-        display: moveDisplayFields(view.display, fieldIds, beforeFieldId)
-      })
-    })
+    withViewPatch(base, view => ({
+      display: moveDisplayFields(view.display, fieldIds, beforeFieldId)
+    }))
   },
   show: (fieldId, beforeFieldId) => {
-    base.withView(view => {
-      base.commitPatch({
-        display: showDisplayField(view.display, fieldId, beforeFieldId)
-      })
-    })
+    withViewPatch(base, view => ({
+      display: showDisplayField(view.display, fieldId, beforeFieldId)
+    }))
   },
   hide: fieldId => {
-    base.withView(view => {
-      base.commitPatch({
-        display: hideDisplayField(view.display, fieldId)
-      })
-    })
+    withViewPatch(base, view => ({
+      display: hideDisplayField(view.display, fieldId)
+    }))
   },
   clear: () => {
-    base.withView(() => {
-      base.commitPatch({
-        display: clearDisplayFields()
-      })
-    })
+    withViewPatch(base, () => ({
+      display: clearDisplayFields()
+    }))
   }
 })

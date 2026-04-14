@@ -10,9 +10,9 @@ import {
 } from '@dnd-kit/core'
 import type { FieldId } from '@dataview/core/contracts'
 import { columnBeforeId } from '@dataview/table'
-import { useDataView } from '#dataview-react/dataview'
+import { useDataView } from '@dataview/react/dataview'
 import { useStoreValue } from '@shared/react'
-import { useTableContext } from '#dataview-react/views/table/context'
+import { useTableContext } from '@dataview/react/views/table/context'
 
 const COLUMN_SORT_SCOPE_SEPARATOR = '\u0000'
 

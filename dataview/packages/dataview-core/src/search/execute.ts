@@ -2,8 +2,8 @@ import type {
   DataDoc,
   DataRecord,
   Search
-} from '#dataview-core/contracts'
-import { buildRecordSearchTexts } from '#dataview-core/search/tokens'
+} from '@dataview/core/contracts'
+import { buildRecordSearchTexts } from '@dataview/core/search/tokens'
 
 export const matchSearchRecord = (
   record: DataRecord,

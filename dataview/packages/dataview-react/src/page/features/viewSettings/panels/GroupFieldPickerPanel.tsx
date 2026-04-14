@@ -2,11 +2,11 @@ import { getDocumentFields } from '@dataview/core/document'
 import {
   useDataView,
   useDataViewValue
-} from '#dataview-react/dataview'
+} from '@dataview/react/dataview'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { meta, renderMessage } from '@dataview/meta'
-import { buildFieldToggleItem } from '#dataview-react/menu-builders'
-import { useViewSettings } from '#dataview-react/page/features/viewSettings/context'
+import { buildFieldToggleItem } from '@dataview/react/menu-builders'
+import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
 
 export const GroupFieldPickerPanel = () => {
   const dataView = useDataView()

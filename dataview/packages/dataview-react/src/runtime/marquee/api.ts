@@ -1,7 +1,4 @@
 import {
-  createValueStore
-} from '@shared/core'
-import {
   sameBox,
   sameOrder,
   samePoint
@@ -10,7 +7,10 @@ import type {
   MarqueeAdapter,
   MarqueeApi,
   MarqueeSessionState
-} from '#dataview-react/runtime/marquee/types'
+} from '@dataview/react/runtime/marquee/types'
+import {
+  createNullableControllerStore
+} from '@dataview/react/runtime/store'
 
 const sameSession = (
   left: MarqueeSessionState | null,
@@ -33,24 +33,25 @@ const sameSession = (
 }
 
 export const createMarqueeApi = (): MarqueeApi => {
-  const store = createValueStore<MarqueeSessionState | null>({
-    initial: null,
+  const {
+    store,
+    get,
+    clear
+  } = createNullableControllerStore<MarqueeSessionState>({
     isEqual: sameSession
   })
   const adapters = new Map<string, MarqueeAdapter>()
 
   return {
     store,
-    get: store.get,
+    get,
     start: session => {
       store.set(session)
     },
     update: session => {
       store.set(session)
     },
-    clear: () => {
-      store.set(null)
-    },
+    clear,
     registerAdapter: adapter => {
       adapters.set(adapter.viewId, adapter)
       return () => {

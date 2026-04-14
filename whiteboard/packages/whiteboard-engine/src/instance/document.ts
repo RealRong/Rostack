@@ -1,4 +1,4 @@
-import type { EngineDocument } from '#whiteboard-engine/types/instance'
+import type { EngineDocument } from '@whiteboard/engine/types/instance'
 import { assertDocument } from '@whiteboard/core/document'
 import type { Document } from '@whiteboard/core/types'
 

@@ -45,8 +45,8 @@ import {
   type OverlayBackdrop,
   type OverlayLayerKind,
   type OverlayLayerMode
-} from '#shared-ui/overlay'
-import { cn } from '#shared-ui/utils'
+} from '@shared/ui/overlay'
+import { cn } from '@shared/ui/utils'
 
 const POPOVER_TRANSITION_MS = 200
 

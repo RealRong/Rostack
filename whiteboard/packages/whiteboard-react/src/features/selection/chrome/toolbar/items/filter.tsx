@@ -1,7 +1,7 @@
 import { ToolbarButton } from '@shared/ui'
 import { Shapes } from 'lucide-react'
-import { SelectionFilterMenu } from '#whiteboard-react/features/selection/chrome/panels/SelectionFilterMenu'
-import type { ToolbarItemSpec } from '#whiteboard-react/features/selection/chrome/toolbar/items/types'
+import { SelectionFilterMenu } from '@whiteboard/react/features/selection/chrome/panels/SelectionFilterMenu'
+import type { ToolbarItemSpec } from '@whiteboard/react/features/selection/chrome/toolbar/items/types'
 
 export const filterItem: ToolbarItemSpec = {
   key: 'filter',

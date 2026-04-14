@@ -12,8 +12,8 @@ import {
   collectTouchedRecordIds,
   collectValueFieldIds,
   hasRecordSetChange
-} from '#dataview-engine/active/index/shared'
-import type { FieldSyncContext } from '#dataview-engine/active/index/contracts'
+} from '@dataview/engine/active/index/shared'
+import type { FieldSyncContext } from '@dataview/engine/active/index/contracts'
 
 export const createFieldSyncContext = (
   delta: CommitDelta,

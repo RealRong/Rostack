@@ -5,12 +5,13 @@ import type {
 } from '@dataview/engine'
 import type {
   ValueEditorApi,
-  ValueEditorCloseAction,
-  ValueEditorSessionPolicy
-} from '#dataview-react/runtime/valueEditor'
-import { ownerDocumentOf, resolveFieldAnchor } from '#dataview-react/dom/field'
-import type { GridSelectionStore } from '#dataview-react/views/table/gridSelection'
-import type { Dom } from '#dataview-react/views/table/dom'
+} from '@dataview/react/runtime/valueEditor'
+import type { GridSelectionStore } from '@dataview/react/views/table/gridSelection'
+import type { Dom } from '@dataview/react/views/table/dom'
+import {
+  createFocusOwnerSessionPolicy,
+  openFieldValueEditor
+} from '@dataview/react/views/shared/valueEditor'
 
 export interface CellOpenInput {
   cell: CellRef
@@ -53,7 +54,7 @@ const createTableSessionPolicy = (input: {
   gridSelection: GridSelectionStore
   revealSelection: () => void
   focus: () => void
-}): ValueEditorSessionPolicy => {
+}) => {
   const finish = () => {
     input.revealSelection()
     input.focus()
@@ -77,9 +78,13 @@ const createTableSessionPolicy = (input: {
     return true
   }
 
-  return {
+  return createFocusOwnerSessionPolicy({
+    focusOwner: () => {
+      input.gridSelection.set(input.cell)
+      finish()
+    },
     resolveOnCommit: resolveTableCloseAction,
-    applyCloseAction: (action: ValueEditorCloseAction) => {
+    applyCloseAction: action => {
       switch (action.kind) {
         case 'move-next-item':
           return moveSelection(1, 0)
@@ -96,9 +101,7 @@ const createTableSessionPolicy = (input: {
           return focusOwner()
       }
     },
-    onCancel: focusOwner,
-    onDismiss: focusOwner
-  }
+  })
 }
 
 export const createCellOpener = (options: {
@@ -118,45 +121,26 @@ export const createCellOpener = (options: {
     options.revealCursor()
   }
 
-  const resolveAnchor = (target: OpenTarget) => resolveFieldAnchor(
-    ownerDocumentOf(target.element ?? options.dom.cell(target.cell)),
-    target.field
-  )
-
   const openTarget = (
-    target: OpenTarget,
-    attempt = 0
+    target: OpenTarget
   ): boolean => {
-    syncTarget(target)
-
-    const anchor = resolveAnchor(target)
-    if (anchor) {
-      const opened = options.valueEditor.open({
-        field: target.field,
-        anchor,
-        policy: createTableSessionPolicy({
-          cell: target.cell,
-          gridSelection: options.gridSelection,
-          revealSelection: options.revealCursor,
-          focus: options.focus
-        }),
-        seedDraft: target.seedDraft
-      })
-
-      if (opened) {
-        return true
-      }
-    }
-
-    if (typeof window === 'undefined' || attempt >= 2) {
-      options.focus()
-      return false
-    }
-
-    window.requestAnimationFrame(() => {
-      openTarget(target, attempt + 1)
+    return openFieldValueEditor({
+      valueEditor: options.valueEditor,
+      field: target.field,
+      element: target.element ?? options.dom.cell(target.cell),
+      seedDraft: target.seedDraft,
+      policy: createTableSessionPolicy({
+        cell: target.cell,
+        gridSelection: options.gridSelection,
+        revealSelection: options.revealCursor,
+        focus: options.focus
+      }),
+      beforeResolve: () => {
+        syncTarget(target)
+      },
+      retryFrames: 2,
+      onFailure: options.focus
     })
-    return true
   }
 
   return (input: CellOpenInput) => {

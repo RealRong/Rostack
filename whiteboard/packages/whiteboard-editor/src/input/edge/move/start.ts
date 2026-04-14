@@ -5,7 +5,7 @@ import type {
   EdgeId,
   Point
 } from '@whiteboard/core/types'
-import type { EdgePresentationRead } from '#whiteboard-editor/query/edge/read'
+import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
 
 export type EdgeMoveState = {
   edgeId: EdgeId

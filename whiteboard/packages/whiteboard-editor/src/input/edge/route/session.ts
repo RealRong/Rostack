@@ -1,18 +1,18 @@
 import type { EdgeId } from '@whiteboard/core/types'
-import type { PointerDownInput } from '#whiteboard-editor/types/input'
-import type { InteractionContext } from '#whiteboard-editor/input/context'
-import type { InteractionSession } from '#whiteboard-editor/input/core/types'
+import type { PointerDownInput } from '@whiteboard/editor/types/input'
+import type { InteractionContext } from '@whiteboard/editor/input/context'
+import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import {
   CANCEL,
   FINISH
-} from '#whiteboard-editor/input/core/result'
-import { createEdgeGesture } from '#whiteboard-editor/input/core/gesture'
+} from '@whiteboard/editor/input/core/result'
+import { createEdgeGesture } from '@whiteboard/editor/input/core/gesture'
 import {
   commitEdgeRoute,
   startEdgeRoutePoint,
   stepEdgeRoute,
   type EdgeRouteHandleState
-} from '#whiteboard-editor/input/edge/route/start'
+} from '@whiteboard/editor/input/edge/route/start'
 
 type PointerClient = {
   clientX: number

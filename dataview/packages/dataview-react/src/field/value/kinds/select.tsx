@@ -4,13 +4,13 @@ import {
   getFieldDisplayValue,
   parseFieldDraft
 } from '@dataview/core/field'
-import { FieldOptionTag } from '#dataview-react/field/options'
-import { OptionPickerEditor } from '#dataview-react/field/value/editor/pickers/option/OptionPickerEditor'
-import type { FieldValueDraftEditorProps } from '#dataview-react/field/value/editor'
-import type { FieldValueSpec } from '#dataview-react/field/value/kinds/contracts'
+import { FieldOptionTag } from '@dataview/react/field/options'
+import { OptionPickerEditor } from '@dataview/react/field/value/editor/pickers/option/OptionPickerEditor'
+import type { FieldValueDraftEditorProps } from '@dataview/react/field/value/editor'
+import type { FieldValueSpec } from '@dataview/react/field/value/kinds/contracts'
 import {
   renderEmpty
-} from '#dataview-react/field/value/kinds/shared'
+} from '@dataview/react/field/value/kinds/shared'
 
 const SingleSelectEditor = (props: FieldValueDraftEditorProps<string>) => (
   <OptionPickerEditor {...props} mode="single" />

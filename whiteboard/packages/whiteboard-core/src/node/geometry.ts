@@ -2,9 +2,9 @@ import {
   getAABBFromPoints,
   getRectsBoundingRect,
   getRotatedCorners
-} from '#whiteboard-core/geometry'
-import type { Node, Rect, Size, SpatialNode } from '#whiteboard-core/types'
-import { getNodeBounds } from '#whiteboard-core/node/outline'
+} from '@whiteboard/core/geometry'
+import type { Node, Rect, Size, SpatialNode } from '@whiteboard/core/types'
+import { getNodeBounds } from '@whiteboard/core/node/outline'
 
 export const readNodeRotation = (
   node: Pick<SpatialNode, 'rotation'>

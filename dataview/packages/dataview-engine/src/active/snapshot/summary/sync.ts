@@ -8,19 +8,20 @@ import {
   buildSectionAggregateState,
   patchSectionAggregateState,
   sameAggregateEntry
-} from '#dataview-engine/active/index/aggregate'
+} from '@dataview/engine/active/index/aggregate'
 import type {
   IndexState,
   SectionAggregateState
-} from '#dataview-engine/active/index/contracts'
-import type { SectionKey } from '#dataview-engine/contracts/public'
+} from '@dataview/engine/active/index/contracts'
+import type { SectionKey } from '@dataview/engine/contracts/public'
 import type {
   SectionState,
   SummaryState
-} from '#dataview-engine/contracts/internal'
-import { readCalcFields } from '#dataview-engine/active/snapshot/summary/compute'
-
-const EMPTY_AGGREGATES = new Map<FieldId, SectionAggregateState>()
+} from '@dataview/engine/contracts/internal'
+import {
+  buildEmptySummaryState
+} from '@dataview/engine/summary/empty'
+import { readCalcFields } from '@dataview/engine/active/snapshot/summary/compute'
 
 const sameIds = (
   left: readonly string[],
@@ -29,7 +30,7 @@ const sameIds = (
 
 const buildSectionFieldState = (input: {
   sectionIds: readonly string[]
-  entries: ReadonlyMap<string, import('#dataview-engine/active/index/contracts').AggregateEntry>
+  entries: ReadonlyMap<string, import('@dataview/engine/active/index/contracts').AggregateEntry>
 }): SectionAggregateState => buildSectionAggregateState(new Map(
   input.sectionIds.flatMap(recordId => {
     const entry = input.entries.get(recordId)
@@ -44,20 +45,16 @@ const buildSummaryState = (input: {
   view: View
   index: IndexState
 }): SummaryState => {
-  const bySection = new Map<SectionKey, ReadonlyMap<FieldId, SectionAggregateState>>()
   const calcFields = readCalcFields(input.view)
+  const sectionKeys = input.sections.order.filter(
+    sectionKey => input.sections.byKey.get(sectionKey) !== undefined
+  )
 
   if (!calcFields.length) {
-    input.sections.order.forEach(sectionKey => {
-      if (input.sections.byKey.get(sectionKey)) {
-        bySection.set(sectionKey, EMPTY_AGGREGATES)
-      }
-    })
-
-    return {
-      bySection
-    }
+    return buildEmptySummaryState(sectionKeys) as SummaryState
   }
+
+  const bySection = new Map<SectionKey, ReadonlyMap<FieldId, SectionAggregateState>>()
 
   input.sections.order.forEach(sectionKey => {
     const section = input.sections.byKey.get(sectionKey)
@@ -111,20 +108,10 @@ export const syncSummaryState = (input: {
   const calcFields = readCalcFields(input.view)
 
   if (!calcFields.length) {
-    const nextBySection = new Map<SectionKey, ReadonlyMap<FieldId, SectionAggregateState>>()
-    input.sections.order.forEach(sectionKey => {
-      if (input.sections.byKey.get(sectionKey)) {
-        nextBySection.set(sectionKey, EMPTY_AGGREGATES)
-      }
-    })
-
-    return previousState
-      && previousState.bySection.size === nextBySection.size
-      && Array.from(nextBySection.keys()).every(key => previousState.bySection.get(key) === EMPTY_AGGREGATES)
-      ? previousState
-      : {
-          bySection: nextBySection
-        }
+    return buildEmptySummaryState(
+      input.sections.order.filter(sectionKey => input.sections.byKey.get(sectionKey) !== undefined),
+      previousState
+    ) as SummaryState
   }
 
   if (

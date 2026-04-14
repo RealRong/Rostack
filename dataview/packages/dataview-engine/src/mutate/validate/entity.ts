@@ -13,7 +13,7 @@ import {
   createIssue,
   type IssueSource,
   type ValidationIssue
-} from '#dataview-engine/mutate/issues'
+} from '@dataview/engine/mutate/issues'
 
 export const validateRecordExists = (
   document: DataDoc,

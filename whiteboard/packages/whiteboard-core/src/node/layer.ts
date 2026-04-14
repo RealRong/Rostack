@@ -1,4 +1,4 @@
-import type { Node, NodeId } from '#whiteboard-core/types'
+import type { Node, NodeId } from '@whiteboard/core/types'
 
 export const toLayerOrderedCanvasNodes = (nodes: Node[]) => {
   const background: Node[] = []

@@ -1,13 +1,13 @@
-import type { Result } from '#whiteboard-core/types/result'
-import type { MindmapInsertPayload } from '#whiteboard-core/types/mindmap'
+import type { Result } from '@whiteboard/core/types/result'
+import type { MindmapInsertPayload } from '@whiteboard/core/types/mindmap'
 import type {
   MindmapCommandOptions,
   Point,
   Rect,
   Size
-} from '#whiteboard-core/types/model'
+} from '@whiteboard/core/types/model'
 
-export type { MindmapInsertPayload } from '#whiteboard-core/types/mindmap'
+export type { MindmapInsertPayload } from '@whiteboard/core/types/mindmap'
 
 export type MindmapId = string
 export type MindmapNodeId = string

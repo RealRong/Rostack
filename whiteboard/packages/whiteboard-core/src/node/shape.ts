@@ -1,7 +1,7 @@
 import type {
   Node,
   SpatialNodeInput
-} from '#whiteboard-core/types'
+} from '@whiteboard/core/types'
 
 export type ShapeKind =
   | 'rect'

@@ -5,7 +5,7 @@ import {
   SliderSection,
   formatPercent
 } from '@shared/ui'
-import { FILL_COLOR_OPTIONS } from '#whiteboard-react/features/selection/chrome/menus/options'
+import { FILL_COLOR_OPTIONS } from '@whiteboard/react/features/selection/chrome/menus/options'
 
 export const FillPanel = ({
   fill,

@@ -5,14 +5,14 @@ import type {
   Field,
   FieldId,
   Search
-} from '#dataview-core/contracts'
+} from '@dataview/core/contracts'
 import {
   getDocumentCustomFieldById,
   getDocumentFieldById
-} from '#dataview-core/document'
+} from '@dataview/core/document'
 import {
   getFieldSearchTokens
-} from '#dataview-core/field'
+} from '@dataview/core/field'
 import {
   trimLowercase,
   unique

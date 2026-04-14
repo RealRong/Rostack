@@ -4,7 +4,7 @@ import type {
   FilterOptionSetValue,
   FilterPresetId,
   FilterRule
-} from '#dataview-core/contracts'
+} from '@dataview/core/contracts'
 import {
   compareFieldValues,
   getFieldDisplayValue,
@@ -13,12 +13,12 @@ import {
   isEmptyFieldValue,
   normalizeSearchableValue,
   readDateComparableTimestamp
-} from '#dataview-core/field'
+} from '@dataview/core/field'
 import type {
   FilterEditorKind,
   FilterPreset,
   FilterSpec
-} from '#dataview-core/filter/types'
+} from '@dataview/core/filter/types'
 
 const defineFilterPreset = (
   id: FilterPresetId,

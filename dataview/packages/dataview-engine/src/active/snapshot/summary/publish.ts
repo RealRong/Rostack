@@ -1,6 +1,5 @@
 import type {
-  CalculationCollection,
-  CalculationResult
+  CalculationCollection
 } from '@dataview/core/calculation'
 import type {
   Field,
@@ -9,25 +8,20 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   SectionKey
-} from '#dataview-engine/contracts/public'
+} from '@dataview/engine/contracts/public'
 import type {
   SummaryState
-} from '#dataview-engine/contracts/internal'
+} from '@dataview/engine/contracts/internal'
 import {
   computeCalculationFromState
-} from '#dataview-engine/active/snapshot/summary/compute'
+} from '@dataview/engine/active/snapshot/summary/compute'
 import {
   readCalcFields
-} from '#dataview-engine/active/snapshot/summary/compute'
-
-const createCollection = (
-  byField: ReadonlyMap<FieldId, CalculationResult>
-): CalculationCollection => ({
-  byField,
-  get: fieldId => byField.get(fieldId)
-})
-
-const EMPTY_COLLECTION = createCollection(new Map())
+} from '@dataview/engine/active/snapshot/summary/compute'
+import {
+  buildEmptyPublishedSummaries,
+  createSummaryCollection
+} from '@dataview/engine/summary/empty'
 
 export const publishSummaries = (input: {
   summary: SummaryState
@@ -39,15 +33,10 @@ export const publishSummaries = (input: {
   const calcFields = readCalcFields(input.view)
 
   if (!calcFields.length) {
-    const next = new Map<SectionKey, CalculationCollection>(
-      Array.from(input.summary.bySection.keys()).map(sectionKey => [sectionKey, EMPTY_COLLECTION] as const)
+    return buildEmptyPublishedSummaries(
+      Array.from(input.summary.bySection.keys()),
+      input.previous
     )
-
-    return input.previous
-      && input.previous.size === next.size
-      && Array.from(next.keys()).every(key => input.previous?.get(key) === EMPTY_COLLECTION)
-      ? input.previous
-      : next
   }
 
   const next = new Map(
@@ -57,7 +46,7 @@ export const publishSummaries = (input: {
         input.previousSummary?.bySection.get(sectionKey) === states
           ? input.previous?.get(sectionKey)
           : undefined
-      ) ?? createCollection(new Map(
+      ) ?? createSummaryCollection(new Map(
         calcFields.flatMap(fieldId => {
           const metric = input.view.calc[fieldId]
           const state = states.get(fieldId)

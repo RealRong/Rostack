@@ -1,13 +1,16 @@
-import { Empty, KanbanCanvas } from '#dataview-react/views/kanban/components'
-import { KanbanProvider } from '#dataview-react/views/kanban/context'
-import { PAGE_INLINE_INSET_CSS } from '#dataview-react/page/layout'
+import { Empty, KanbanCanvas } from '@dataview/react/views/kanban/components'
+import { KanbanProvider } from '@dataview/react/views/kanban/context'
+import { PAGE_INLINE_INSET_CSS } from '@dataview/react/page/layout'
 import {
   useDataViewValue
-} from '#dataview-react/dataview'
+} from '@dataview/react/dataview'
 import {
   type ActiveKanbanViewState
-} from '#dataview-react/views/kanban/types'
+} from '@dataview/react/views/kanban/types'
 import type { ViewState } from '@dataview/engine'
+import {
+  readActiveTypedViewState
+} from '@dataview/react/views/shared/types'
 
 const DEFAULT_COLUMN_WIDTH = 320
 const DEFAULT_COLUMN_MIN_HEIGHT = 260
@@ -15,13 +18,7 @@ const contentInsetStyle = {
   paddingInline: PAGE_INLINE_INSET_CSS
 } as const
 
-const readKanbanActiveState = (
-  state: ViewState | undefined
-): ActiveKanbanViewState | undefined => (
-  state?.view.type === 'kanban'
-    ? state as ActiveKanbanViewState
-    : undefined
-)
+const readKanbanActiveState = readActiveTypedViewState('kanban')
 
 export interface KanbanViewProps {
   columnWidth?: number

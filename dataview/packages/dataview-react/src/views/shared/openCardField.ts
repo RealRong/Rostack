@@ -1,27 +1,16 @@
 import {
   belowFieldAnchor,
-  ownerDocumentOf,
-  resolveFieldAnchor
-} from '#dataview-react/dom/field'
+} from '@dataview/react/dom/field'
 import type {
   ViewFieldRef
 } from '@dataview/engine'
 import type {
   ValueEditorApi,
-  ValueEditorSessionPolicy
-} from '#dataview-react/runtime/valueEditor'
-
-const createCardSessionPolicy = (focusOwner: () => void): ValueEditorSessionPolicy => ({
-  resolveOnCommit: () => ({
-    kind: 'focus-owner'
-  }),
-  applyCloseAction: () => {
-    focusOwner()
-    return true
-  },
-  onCancel: focusOwner,
-  onDismiss: focusOwner
-})
+} from '@dataview/react/runtime/valueEditor'
+import {
+  createFocusOwnerSessionPolicy,
+  openFieldValueEditor
+} from '@dataview/react/views/shared/valueEditor'
 
 export const openCardField = (input: {
   valueEditor: ValueEditorApi
@@ -30,23 +19,18 @@ export const openCardField = (input: {
   seedDraft?: string
   focusOwner: () => void
 }): boolean => {
-  const anchor = resolveFieldAnchor(
-    ownerDocumentOf(input.element),
-    input.field
-  ) ?? (
-      input.element instanceof HTMLElement
-        ? belowFieldAnchor(input.element)
+  return openFieldValueEditor({
+    valueEditor: input.valueEditor,
+    field: input.field,
+    element: input.element,
+    seedDraft: input.seedDraft,
+    policy: createFocusOwnerSessionPolicy({
+      focusOwner: input.focusOwner
+    }),
+    fallbackAnchor: element => (
+      element instanceof HTMLElement
+        ? belowFieldAnchor(element)
         : undefined
     )
-
-  if (!anchor) {
-    return false
-  }
-
-  return input.valueEditor.open({
-    field: input.field,
-    anchor,
-    seedDraft: input.seedDraft,
-    policy: createCardSessionPolicy(input.focusOwner)
   })
 }

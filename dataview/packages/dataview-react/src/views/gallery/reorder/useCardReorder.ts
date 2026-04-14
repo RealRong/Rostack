@@ -4,10 +4,10 @@ import { pointIn } from '@shared/dom'
 import {
   usePointerDragSession,
   type PointerPosition
-} from '#dataview-react/interaction/usePointerDragSession'
-import type { GalleryDropTarget } from '#dataview-react/views/gallery/reorder/hitTest'
-import { dropTargetFromPoint } from '#dataview-react/views/gallery/reorder/hitTest'
-import type { GalleryLayoutCache } from '#dataview-react/views/gallery/virtual'
+} from '@dataview/react/interaction/usePointerDragSession'
+import type { GalleryDropTarget } from '@dataview/react/views/gallery/reorder/hitTest'
+import { dropTargetFromPoint } from '@dataview/react/views/gallery/reorder/hitTest'
+import type { GalleryLayoutCache } from '@dataview/react/views/gallery/virtual'
 
 const INDICATOR_EPSILON = 0.5
 

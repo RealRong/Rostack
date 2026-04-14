@@ -1,5 +1,5 @@
-import { MindmapNodeItem } from '#whiteboard-react/features/mindmap/components/MindmapNodeItem'
-import type { MindmapTreeViewData } from '#whiteboard-react/types/mindmap'
+import { MindmapNodeItem } from '@whiteboard/react/features/mindmap/components/MindmapNodeItem'
+import type { MindmapTreeViewData } from '@whiteboard/react/types/mindmap'
 
 type MindmapTreeViewProps = {
   view: MindmapTreeViewData

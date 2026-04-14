@@ -1,4 +1,4 @@
-import type { EditorSubmitTrigger } from '#dataview-react/interaction'
+import type { EditorSubmitTrigger } from '@dataview/react/interaction'
 import type { ViewFieldRef } from '@dataview/engine'
 import type { ReadStore, ValueStore } from '@shared/core'
 

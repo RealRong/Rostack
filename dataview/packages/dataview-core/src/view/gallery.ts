@@ -1,8 +1,8 @@
 import type {
   GalleryCardSize,
   GalleryOptions
-} from '#dataview-core/contracts/gallery'
-import { isJsonObject } from '#dataview-core/view/shared'
+} from '@dataview/core/contracts/gallery'
+import { isJsonObject } from '@dataview/core/view/shared'
 
 const DEFAULT_CARD_SIZE: GalleryCardSize = 'md'
 const DEFAULT_SHOW_FIELD_LABELS = true

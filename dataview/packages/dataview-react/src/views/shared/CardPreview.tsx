@@ -7,10 +7,10 @@ import type {
   DataRecord
 } from '@dataview/core/contracts'
 import { isEmptyFieldValue } from '@dataview/core/field'
-import { FieldValueContent } from '#dataview-react/field/value'
+import { FieldValueContent } from '@dataview/react/field/value'
 import { cn } from '@shared/ui/utils'
-import { CardTitle } from '#dataview-react/views/shared/CardTitle'
-import { readCardTitleText } from '#dataview-react/views/shared/cardTitleValue'
+import { CardTitle } from '@dataview/react/views/shared/CardTitle'
+import { readCardTitleText } from '@dataview/react/views/shared/cardTitleValue'
 
 export interface CardPreviewProps extends Omit<ComponentPropsWithoutRef<'article'>, 'children'> {
   slots?: {

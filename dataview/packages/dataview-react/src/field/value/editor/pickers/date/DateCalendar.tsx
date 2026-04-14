@@ -21,7 +21,7 @@ import { cn } from '@shared/ui/utils'
 import {
   readDateDraftBoundaryDate,
   type DateValueDraft
-} from '#dataview-react/field/value/editor/pickers/date/DateValueDraft'
+} from '@dataview/react/field/value/editor/pickers/date/DateValueDraft'
 
 interface CalendarCell {
   date: string

@@ -4,10 +4,10 @@ import type {
   NodeUpdateInput,
   Point,
   Size
-} from '#whiteboard-core/types'
+} from '@whiteboard/core/types'
 import type {
   MindmapInsertPlacement
-} from '#whiteboard-core/types/mindmap'
+} from '@whiteboard/core/types/mindmap'
 import type {
   MindmapInsertInput,
   MindmapLayoutConfig,
@@ -15,10 +15,10 @@ import type {
   MindmapNodeData,
   MindmapNodeId,
   MindmapTree
-} from '#whiteboard-core/mindmap/types'
+} from '@whiteboard/core/mindmap/types'
 import {
   resolveInsertPlan
-} from '#whiteboard-core/mindmap/query'
+} from '@whiteboard/core/mindmap/query'
 
 export const DEFAULT_ROOT_MOVE_THRESHOLD = 0.5
 

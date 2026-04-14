@@ -20,7 +20,7 @@ import {
   hoveredRowIdOf,
   sameHoverTarget,
   type TableHoverTarget
-} from '#dataview-react/views/table/model/hover'
+} from '@dataview/react/views/table/model/hover'
 
 export interface Hover {
   cell: KeyedReadStore<CellRef, boolean>

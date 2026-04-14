@@ -32,6 +32,11 @@ export const createLocalSessionActions = ({
   state: Pick<EditorLocalState, 'tool' | 'selection' | 'edit'>
   getRead: () => Pick<EditorQueryRead, 'node' | 'edge'> | null
 }): LocalSessionActions => {
+  const clearSessionState = () => {
+    state.edit.mutate.clear()
+    state.selection.mutate.clear()
+  }
+
   const writeSelection = (
     apply: () => boolean
   ) => {
@@ -45,13 +50,17 @@ export const createLocalSessionActions = ({
   return {
     tool: {
       set: (nextTool) => {
-        if (nextTool.type === 'draw') {
-          state.edit.mutate.clear()
-          state.selection.mutate.clear()
+        const currentTool = state.tool.get()
+        const toolChanged = !isSameTool(currentTool, nextTool)
+
+        if (toolChanged || nextTool.type === 'draw') {
+          clearSessionState()
         }
-        if (isSameTool(state.tool.get(), nextTool)) {
+
+        if (!toolChanged) {
           return
         }
+
         state.tool.set(nextTool)
       }
     },

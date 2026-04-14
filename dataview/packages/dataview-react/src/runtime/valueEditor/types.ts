@@ -55,7 +55,7 @@ export interface OpenValueEditorInput {
   onResolve?: (result: ValueEditorResult) => void
 }
 
-export interface ValueEditorSession extends OpenValueEditorInput { }
+export type ValueEditorSession = OpenValueEditorInput
 
 export interface ValueEditorApi {
   open(input: OpenValueEditorInput): boolean

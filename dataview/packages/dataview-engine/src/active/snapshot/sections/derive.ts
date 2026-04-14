@@ -24,11 +24,6 @@ import {
 
 export const ROOT_SECTION_KEY = 'root' as SectionKey
 
-export const sameRecordIds = (
-  left: readonly RecordId[],
-  right: readonly RecordId[]
-) => sameOrder(left, right)
-
 const sameBucket = (
   left: import('@dataview/engine/contracts/internal').SectionNodeState['bucket'],
   right: import('@dataview/engine/contracts/internal').SectionNodeState['bucket']
@@ -53,7 +48,7 @@ export const sameSectionNode = (
   && left.color === right.color
   && left.visible === right.visible
   && left.collapsed === right.collapsed
-  && sameRecordIds(left.recordIds, right.recordIds)
+  && sameOrder(left.recordIds, right.recordIds)
   && sameBucket(left.bucket, right.bucket)
 
 const visibleOf = (
@@ -88,7 +83,7 @@ export const buildSectionNode = (input: {
   const bucket = input.group
     ? readGroupFieldIndex(input.index.group, input.group)?.buckets.get(input.key)
     : undefined
-  const itemIds = input.previous && sameRecordIds(input.previous.recordIds, input.recordIds)
+  const itemIds = input.previous && sameOrder(input.previous.recordIds, input.recordIds)
     ? input.previous.itemIds
     : input.recordIds.map(recordId => createItemId({
         section: input.key,
@@ -148,7 +143,7 @@ export const buildSectionState = (input: {
       key: ROOT_SECTION_KEY,
       title: 'All',
       recordIds: input.query.records.visible,
-      itemIds: previousRoot && sameRecordIds(previousRoot.recordIds, input.query.records.visible)
+      itemIds: previousRoot && sameOrder(previousRoot.recordIds, input.query.records.visible)
         ? previousRoot.itemIds
         : input.query.records.visible.map(recordId => createItemId({
             section: ROOT_SECTION_KEY,
@@ -201,7 +196,7 @@ export const buildSectionState = (input: {
   })
 
   return {
-    order: input.previous && sameRecordIds(input.previous.order, order)
+    order: input.previous && sameOrder(input.previous.order, order)
       ? input.previous.order
       : order,
     byKey,

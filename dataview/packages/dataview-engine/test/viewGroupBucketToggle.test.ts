@@ -424,12 +424,12 @@ test('engine.active keeps selector boundaries inside one active pipeline', () =>
 
   assert.equal(engine.active.id.get(), VIEW_TABLE)
   assert.equal(groupStore.get()?.active, false)
-  assert.equal(sortStore.get()?.active, false)
+  assert.equal(sortStore.get()?.rules.length ?? 0, 0)
 
   openView(engine, VIEW_TABLE).sort.add(FIELD_POINTS)
 
   assert.equal(engine.active.id.get(), VIEW_TABLE)
-  assert.equal(sortStore.get()?.active, true)
+  assert.equal(sortStore.get()?.rules.length, 1)
   assert.equal(sortStore.get()?.rules[0]?.sorter.field, FIELD_POINTS)
   assert.equal(idEvents, 0)
   assert.equal(sortEvents, 1)

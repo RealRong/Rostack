@@ -24,6 +24,7 @@ import type {
   ToolPaletteMemory,
   ToolPaletteMenuKey
 } from '@whiteboard/react/types/toolbox'
+import { Point } from '@shared/dom'
 
 export const ToolPalette = () => {
   const editor = useEditor()
@@ -62,10 +63,18 @@ export const ToolPalette = () => {
   const activeMenuButton = openMenu
     ? buttonRefByKey.current[openMenu]
     : null
-  const menuContentClassName = openMenu === 'draw'
-    ? '!bg-transparent !shadow-none !p-0 min-w-0'
-    : '!bg-transparent !shadow-none !p-0 min-w-[220px] max-w-[320px] max-h-[calc(100vh-32px)] overflow-auto'
 
+  const [pos, setPos] = useState<Point>()
+
+  useEffect(() => {
+    if (openMenu && activeMenuButton) {
+      const rect = activeMenuButton.getBoundingClientRect()
+      setPos({ x: rect.right + 10, y: rect.top + rect.height / 2 })
+      return
+    } else {
+      setPos(undefined)
+    }
+  }, [openMenu])
   return (
     <FloatingLayer className="z-[var(--wb-z-toolbar)]">
       <ToolPaletteButtons
@@ -74,18 +83,14 @@ export const ToolPalette = () => {
         controller={controller}
         buttonRefByKey={buttonRefByKey}
       />
-      {openMenu && activeMenuButton ? (
-        <WhiteboardPopover
-          open
-          anchor={activeMenuButton}
-          onOpenChange={(nextOpen) => {
-            if (!nextOpen) {
-              closeMenu()
-            }
+      {openMenu && pos ? (
+        <div
+          style={{
+            position: 'absolute',
+            top: pos.y,
+            left: pos.x
           }}
-          placement="right-start"
-          offset={10}
-          contentClassName={menuContentClassName}
+          className='-translate-y-1/2'
         >
           <ToolPaletteMenu
             openMenu={openMenu}
@@ -93,7 +98,7 @@ export const ToolPalette = () => {
             drawPanelOpen={drawPanelOpen}
             controller={controller}
           />
-        </WhiteboardPopover>
+        </div>
       ) : null}
     </FloatingLayer>
   )

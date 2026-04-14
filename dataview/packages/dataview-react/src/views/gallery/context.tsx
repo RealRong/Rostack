@@ -46,7 +46,7 @@ export const GalleryProvider = (props: GalleryProviderProps) => {
     dataView => dataView.engine.active.gallery.state
   )
   if (!active || !extra) {
-    throw new Error('Gallery view requires an active gallery state.')
+    return null
   }
   const runtime = useGalleryRuntime({
     active,

@@ -1,8 +1,33 @@
 import { PickerGridButton, PickerSection } from '@shared/ui'
 import {
-  STICKY_INSERT_OPTIONS,
-  STICKY_INSERT_PRESETS
+  STICKY_FORMAT_OPTIONS,
+  STICKY_TONE_OPTIONS,
+  getStickyInsertPresetKey,
 } from '@whiteboard/react/features/toolbox/presets'
+
+const StickySwatch = ({
+  fill,
+  border,
+  width,
+  height
+}: {
+  fill: string
+  border: string
+  width: number
+  height: number
+}) => (
+  <span className="inline-flex h-full w-full items-center justify-center">
+    <span
+      className="block rounded-[2px]"
+      style={{
+        width,
+        height,
+        background: fill,
+        boxShadow: `inset 0 0 0 1px ${border}`
+      }}
+    />
+  </span>
+)
 
 export const StickyMenu = ({
   value,
@@ -10,32 +35,54 @@ export const StickyMenu = ({
 }: {
   value?: string
   onChange: (value: string) => void
-}) => (
-  <PickerSection title="Sticky notes">
-    <div className="grid grid-cols-4 gap-2">
-      {STICKY_INSERT_PRESETS.map((preset, index) => {
-        const option = STICKY_INSERT_OPTIONS[index]
+}) => {
+  return (
+    <div className="flex flex-col gap-5">
+      {STICKY_FORMAT_OPTIONS.map((format) => {
+        const title = format.key === 'square'
+          ? 'Square (1:1)'
+          : 'Rectangle (2:1)'
+        const gridClassName = format.key === 'square'
+          ? 'grid grid-cols-4 gap-2.5'
+          : 'grid grid-cols-2 gap-2.5'
+        const swatchClassName = format.key === 'square'
+          ? 'aspect-square'
+          : 'aspect-[2/1]'
+        const previewWidth = format.key === 'square' ? 44 : 132
+        const previewHeight = format.key === 'square' ? 44 : 76
+
         return (
-          <PickerGridButton
-            key={preset.key}
-            type="button"
-            className="aspect-square flex-col items-stretch gap-1.5"
-            pressed={value === preset.key}
-            onClick={() => onChange(preset.key)}
-            aria-label={preset.label}
-            title={preset.label}
-          >
-            <span
-              className="relative h-full w-full overflow-hidden rounded-none border-none shadow-[inset_0_1px_0_rgb(from_var(--ui-surface)_r_g_b_/_0.14)]"
-              style={{
-                background: option.fill
-              }}
-            >
-              <span className="absolute right-0 top-0 h-3 w-3 bg-[linear-gradient(135deg,rgb(from_var(--ui-surface)_r_g_b_/_0.56)_0%,rgb(from_var(--ui-surface)_r_g_b_/_0)_100%)]" />
-            </span>
-          </PickerGridButton>
+          <PickerSection key={format.key} title={title}>
+            <div className={gridClassName}>
+              {STICKY_TONE_OPTIONS.map((tone) => {
+                const presetKey = getStickyInsertPresetKey({
+                  toneKey: tone.key,
+                  formatKey: format.key
+                })
+
+                return (
+                  <PickerGridButton
+                    key={presetKey}
+                    type="button"
+                    className={`items-center justify-center rounded-[10px] p-0 ${swatchClassName}`}
+                    pressed={value === presetKey}
+                    onClick={() => onChange(presetKey)}
+                    aria-label={`${title} ${tone.label}`}
+                    title={tone.label}
+                  >
+                    <StickySwatch
+                      fill={tone.fill}
+                      border={tone.border}
+                      width={previewWidth}
+                      height={previewHeight}
+                    />
+                  </PickerGridButton>
+                )
+              })}
+            </div>
+          </PickerSection>
         )
       })}
     </div>
-  </PickerSection>
-)
+  )
+}

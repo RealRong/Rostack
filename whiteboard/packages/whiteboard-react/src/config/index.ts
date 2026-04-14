@@ -33,7 +33,7 @@ const DEFAULT_CONFIG: ResolvedConfig = {
   history: {
     enabled: true,
     capacity: 100,
-    captureSystem: true,
+    captureSystem: false,
     captureRemote: false
   },
   initialTool: { type: 'select' },

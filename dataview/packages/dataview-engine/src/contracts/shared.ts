@@ -36,7 +36,7 @@ export interface SectionData {
   recordIds: readonly RecordId[]
 }
 
-export interface Section extends SectionData {}
+export type Section = SectionData
 
 export interface SectionList {
   ids: readonly SectionKey[]

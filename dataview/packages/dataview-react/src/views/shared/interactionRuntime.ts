@@ -2,7 +2,8 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef
+  useRef,
+  useState
 } from 'react'
 import type {
   ViewId
@@ -127,5 +128,55 @@ export const useItemInteractionRuntime = (input: {
     marqueeActive,
     selection,
     visualTargets
+  ])
+}
+
+export interface ItemDragRuntime extends ItemInteractionRuntime {
+  dragging: boolean
+  itemMap: ReadonlyMap<ItemId, ItemId>
+  getDragIds: (activeId: ItemId) => readonly ItemId[]
+  onDraggingChange: (dragging: boolean) => void
+}
+
+export const useItemDragRuntime = (input: {
+  viewId: ViewId
+  itemIds: readonly ItemId[]
+  canStart: (event: PointerEvent) => boolean
+  resolveAutoPanTargets: () => AutoPanTargets | null
+}): ItemDragRuntime => {
+  const [dragging, setDragging] = useState(false)
+  const interaction = useItemInteractionRuntime({
+    ...input,
+    disabled: dragging
+  })
+  const itemIdSet = useMemo(
+    () => new Set(input.itemIds),
+    [input.itemIds]
+  )
+  const itemMap = useMemo<ReadonlyMap<ItemId, ItemId>>(
+    () => new Map(input.itemIds.map(id => [id, id] as const)),
+    [input.itemIds]
+  )
+  const getDragIds = useCallback((activeId: ItemId) => (
+    interaction.selection.selectedIdSet.has(activeId)
+      ? interaction.selection.selectedIds.filter(id => itemIdSet.has(id))
+      : [activeId]
+  ), [
+    interaction.selection.selectedIdSet,
+    interaction.selection.selectedIds,
+    itemIdSet
+  ])
+
+  return useMemo(() => ({
+    ...interaction,
+    dragging,
+    itemMap,
+    getDragIds,
+    onDraggingChange: setDragging
+  }), [
+    dragging,
+    getDragIds,
+    interaction,
+    itemMap
   ])
 }

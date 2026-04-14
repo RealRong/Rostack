@@ -36,7 +36,7 @@ export const KanbanView = (props: KanbanViewProps) => {
     dataView => dataView.engine.active.kanban.state
   )
   if (!active || !extra) {
-    throw new Error('Kanban view requires an active kanban state.')
+    return null
   }
 
   if (!active.query.group.active) {

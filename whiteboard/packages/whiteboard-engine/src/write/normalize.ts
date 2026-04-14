@@ -5,6 +5,10 @@ import type {
   Origin,
   Size
 } from '@whiteboard/core/types'
+import { err } from '@whiteboard/core/result'
+import {
+  validateLockOperations
+} from '@whiteboard/core/lock'
 import {
   sanitizeOperations
 } from '@whiteboard/engine/document/sanitize'
@@ -89,6 +93,23 @@ export const createWritePipeline = ({
       document,
       operations
     })
+    const violation = validateLockOperations({
+      document,
+      operations: sanitizedOperations,
+      origin
+    })
+    if (violation) {
+      return err(
+        'cancelled',
+        violation.reason === 'locked-relation'
+          ? 'Locked node relations cannot be modified.'
+          : 'Locked nodes cannot be modified.',
+        {
+          lockedNodeIds: violation.lockedNodeIds,
+          operation: violation.operation
+        }
+      )
+    }
     const base = reduce(document, sanitizedOperations, origin)
     if (!base.ok) return base
 

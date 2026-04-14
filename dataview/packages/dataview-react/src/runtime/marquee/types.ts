@@ -20,7 +20,7 @@ export interface MarqueeSessionState {
   baseSelectedIds: readonly ItemId[]
 }
 
-export interface SelectionTarget extends RectItem<ItemId> { }
+export type SelectionTarget = RectItem<ItemId>
 
 export interface MarqueeAdapter {
   viewId: ViewId

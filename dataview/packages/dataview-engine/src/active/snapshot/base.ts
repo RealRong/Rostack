@@ -22,7 +22,7 @@ import {
   getFieldGroupMeta,
   isCustomField
 } from '@dataview/core/field'
-import { trimToUndefined } from '@shared/core'
+import { EMPTY_VIEW_GROUP_PROJECTION } from '@dataview/engine/contracts/public'
 import type {
   ActiveViewQuery,
   FieldList,
@@ -35,7 +35,9 @@ import type {
   ViewSortProjection
 } from '@dataview/engine/contracts/public'
 import { sameFieldList } from '@dataview/engine/active/snapshot/equality'
-import { createOrderedListAccess } from '@dataview/engine/active/snapshot/list'
+import {
+  createOrderedKeyedListCollection
+} from '@dataview/engine/active/snapshot/list'
 import {
   reuseIfEqual,
   sameList,
@@ -60,30 +62,25 @@ const createFields = (input: {
   const ids = all.map(field => field.id)
   const custom = all.filter(isCustomField) as readonly CustomField[]
   const visibleById = new Map(all.map(field => [field.id, field] as const))
-  const ordered = createOrderedListAccess(ids)
-
-  return {
+  const fields = createOrderedKeyedListCollection({
     ids,
     all,
-    custom,
-    get: id => visibleById.get(id),
-    has: ordered.has,
-    indexOf: ordered.indexOf,
-    at: ordered.at,
-    range: ordered.range
+    get: id => visibleById.get(id)
+  })
+
+  return {
+    ...fields,
+    custom
   }
 }
 
 const createSearchProjection = (
-  viewId: ViewId,
   search: View['search']
 ): ViewSearchProjection => ({
-  viewId,
   query: search.query,
   ...(search.fields?.length
     ? { fields: [...search.fields] }
-    : {}),
-  active: Boolean(trimToUndefined(search.query))
+    : {})
 })
 
 const createFilterRuleProjection = (
@@ -113,12 +110,9 @@ const createFilterRuleProjection = (
 }
 
 const createFilterProjection = (input: {
-  viewId: ViewId
   view: View
   fieldsById: ReadonlyMap<FieldId, Field>
 }): ViewFilterProjection => ({
-  viewId: input.viewId,
-  mode: input.view.filter.mode,
   rules: input.view.filter.rules.map(rule => createFilterRuleProjection(
     rule.fieldId === 'title'
       ? input.fieldsById.get('title')
@@ -135,59 +129,37 @@ const createSortRuleProjection = (input: {
 
   return {
     sorter: input.sorter,
-    field,
-    fieldLabel: field?.name ?? 'Deleted field'
+    field
   }
 }
 
 const createSortProjection = (input: {
-  viewId: ViewId
   view: View
   fieldsById: ReadonlyMap<FieldId, Field>
 }): ViewSortProjection => ({
-  viewId: input.viewId,
-  active: input.view.sort.length > 0,
   rules: input.view.sort.map(sorter => createSortRuleProjection({
     sorter,
     fieldsById: input.fieldsById
   }))
 })
 
-const createInactiveGroupProjection = (
-  viewId: ViewId
-): ViewGroupProjection => ({
-  viewId,
-  active: false,
-  fieldId: '',
-  field: undefined,
-  fieldLabel: '',
-  mode: '',
-  bucketSort: undefined,
-  bucketInterval: undefined,
-  showEmpty: true,
-  availableModes: [],
-  availableBucketSorts: [],
-  supportsInterval: false
-})
+const createInactiveGroupProjection = (): ViewGroupProjection => EMPTY_VIEW_GROUP_PROJECTION
 
 const createGroupProjection = (input: {
-  viewId: ViewId
   view: View
   fieldsById: ReadonlyMap<FieldId, Field>
 }): ViewGroupProjection => {
   const group = input.view.group
   if (!group) {
-    return createInactiveGroupProjection(input.viewId)
+    return createInactiveGroupProjection()
   }
 
   const field = input.fieldsById.get(group.field)
   if (!field) {
     return {
-      viewId: input.viewId,
       active: true,
       fieldId: group.field,
       field: undefined,
-      fieldLabel: 'Deleted field',
       mode: group.mode,
       bucketSort: group.bucketSort,
       bucketInterval: group.bucketInterval,
@@ -207,11 +179,9 @@ const createGroupProjection = (input: {
   })
 
   return {
-    viewId: input.viewId,
     active: true,
     fieldId: field.id,
     field,
-    fieldLabel: field.name,
     mode: meta.mode,
     bucketSort: meta.sort || undefined,
     bucketInterval: meta.bucketInterval,
@@ -245,18 +215,14 @@ const equalFilterProjection = (
   left: ViewFilterProjection | undefined,
   right: ViewFilterProjection | undefined
 ) => sameOptionalProjection(left, right, (current, next) => (
-  current.viewId === next.viewId
-  && current.mode === next.mode
-  && sameList(current.rules, next.rules, equalFilterRuleProjection)
+  sameList(current.rules, next.rules, equalFilterRuleProjection)
 ))
 
 const equalSearchProjection = (
   left: ViewSearchProjection | undefined,
   right: ViewSearchProjection | undefined
 ) => sameOptionalProjection(left, right, (current, next) => (
-  current.viewId === next.viewId
-  && current.query === next.query
-  && current.active === next.active
+  current.query === next.query
   && sameOptionalList(current.fields, next.fields, Object.is)
 ))
 
@@ -264,7 +230,7 @@ const equalSortRuleProjection = (
   left: SortRuleProjection,
   right: SortRuleProjection
 ) => (
-  left.fieldLabel === right.fieldLabel
+  left.field === right.field
   && left.sorter.field === right.sorter.field
   && left.sorter.direction === right.sorter.direction
 )
@@ -273,19 +239,16 @@ const equalSortProjection = (
   left: ViewSortProjection | undefined,
   right: ViewSortProjection | undefined
 ) => sameOptionalProjection(left, right, (current, next) => (
-  current.viewId === next.viewId
-  && current.active === next.active
-  && sameList(current.rules, next.rules, equalSortRuleProjection)
+  sameList(current.rules, next.rules, equalSortRuleProjection)
 ))
 
 const equalGroupProjection = (
   left: ViewGroupProjection | undefined,
   right: ViewGroupProjection | undefined
 ) => sameOptionalProjection(left, right, (current, next) => (
-  current.viewId === next.viewId
-  && current.active === next.active
+  current.active === next.active
   && current.fieldId === next.fieldId
-  && current.fieldLabel === next.fieldLabel
+  && current.field === next.field
   && current.mode === next.mode
   && current.bucketSort === next.bucketSort
   && current.bucketInterval === next.bucketInterval
@@ -320,19 +283,16 @@ export const publishViewBase = (input: {
   }
 
   const fieldsById = resolveFieldsById(input.document)
-  const nextSearch = createSearchProjection(input.viewId, view.search)
+  const nextSearch = createSearchProjection(view.search)
   const nextFilter = createFilterProjection({
-    viewId: input.viewId,
     view,
     fieldsById
   })
   const nextSort = createSortProjection({
-    viewId: input.viewId,
     view,
     fieldsById
   })
   const nextGroup = createGroupProjection({
-    viewId: input.viewId,
     view,
     fieldsById
   })

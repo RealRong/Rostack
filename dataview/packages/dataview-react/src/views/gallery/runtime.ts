@@ -1,7 +1,6 @@
 import {
   useMemo,
-  useRef,
-  useState
+  useRef
 } from 'react'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
@@ -28,43 +27,37 @@ import type {
   GalleryViewRuntime
 } from '@dataview/react/views/gallery/types'
 import {
-  useItemInteractionRuntime
+  useItemDragRuntime
 } from '@dataview/react/views/shared/interactionRuntime'
 
 export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntime => {
   const dataView = useDataView()
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const [dragging, setDragging] = useState(false)
   const itemIds = input.active.items.ids
-  const virtual = useGalleryBlocks({
-    grouped: input.active.query.group.active,
-    sections: input.active.sections.all,
-    minCardWidth: GALLERY_CARD_MIN_WIDTH[input.extra.cardSize],
-    containerRef,
-    overscan: dragging ? 1200 : 640
-  })
-  const interaction = useItemInteractionRuntime({
+  const interaction = useItemDragRuntime({
     viewId: input.active.view.id,
     itemIds,
-    disabled: dragging,
     canStart: event => !closestTarget(
       event.target,
       `[${DATAVIEW_APPEARANCE_ID_ATTR}],${interactiveSelector}`
     ),
     resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(containerRef.current)
   })
+  const virtual = useGalleryBlocks({
+    grouped: input.active.query.group.active,
+    sections: input.active.sections.all,
+    minCardWidth: GALLERY_CARD_MIN_WIDTH[input.extra.cardSize],
+    containerRef,
+    overscan: interaction.dragging ? 1200 : 640
+  })
 
   const drag = useCardReorder({
     containerRef,
     canDrag: input.extra.canReorder,
-    itemMap: new Map(itemIds.map(id => [id, id] as const)),
+    itemMap: interaction.itemMap,
     getLayout: () => virtual.layout,
-    getDragIds: activeId => (
-      interaction.selection.selectedIds.includes(activeId)
-        ? interaction.selection.selectedIds.filter(id => itemIds.includes(id))
-        : [activeId]
-    ),
-    onDraggingChange: setDragging,
+    getDragIds: interaction.getDragIds,
+    onDraggingChange: interaction.onDraggingChange,
     onDrop: (ids, target) => {
       const section = target.beforeItemId
         ? dataView.engine.active.read.item(target.beforeItemId)?.sectionKey

@@ -1,9 +1,11 @@
 import {
   useCallback,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties
 } from 'react'
+import { isSizeEqual } from '@whiteboard/core/geometry'
 import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
 import {
   useEdit,
@@ -14,6 +16,7 @@ import { matchNodeEdit } from '@whiteboard/react/features/edit/session'
 import { useStickyFontSize } from '@whiteboard/react/features/node/hooks/useStickyFontSize'
 import {
   bindNodeTextSource,
+  measureTextNodeSize,
   readTextWidthMode,
   readTextWrapWidth,
   STICKY_DEFAULT_FILL,
@@ -54,6 +57,14 @@ const readStickyFill = (
 ) => typeof node.style?.fill === 'string'
   ? node.style.fill
   : STICKY_DEFAULT_FILL
+
+const readStickyStroke = (
+  node: NodeRenderProps['node']
+) => getStyleString(node, 'stroke') ?? 'rgb(from var(--ui-text-primary) r g b / 0.12)'
+
+const readStickyStrokeWidth = (
+  node: NodeRenderProps['node']
+) => getStyleNumber(node, 'strokeWidth') ?? 1
 
 const useElementBinding = <
   TElement extends HTMLDivElement
@@ -105,6 +116,116 @@ const useNodeTextSourceBinding = (
   }
 }
 
+export const resolveTextMeasureInput = ({
+  node,
+  rect,
+  placeholder,
+  fontSize
+}: {
+  node: NodeRenderProps['node']
+  rect: Pick<NodeRenderProps['rect'], 'width'>
+  placeholder: string
+  fontSize: number
+}) => {
+  const widthMode = readTextWidthMode(node)
+  const wrapWidth = readTextWrapWidth(node)
+  const baseWidth = widthMode === 'wrap'
+    ? (wrapWidth ?? rect.width)
+    : rect.width
+
+  return {
+    node,
+    baseWidth,
+    placeholder,
+    maxWidth: widthMode === 'wrap'
+      ? baseWidth
+      : undefined,
+    fontSize
+  }
+}
+
+const useSyncedTextNodeSize = ({
+  node,
+  rect,
+  source,
+  content,
+  placeholder,
+  fontSize,
+  editing
+}: {
+  node: NodeRenderProps['node']
+  rect: NodeRenderProps['rect']
+  source: HTMLDivElement | null
+  content: string
+  placeholder: string
+  fontSize: number
+  editing: boolean
+}) => {
+  const editor = useEditor()
+  const pendingSizeRef = useRef<{
+    width: number
+    height: number
+  } | null>(null)
+
+  useLayoutEffect(() => {
+    if (!source?.isConnected || editing) {
+      return
+    }
+
+    const measure = resolveTextMeasureInput({
+      node,
+      rect,
+      placeholder,
+      fontSize
+    })
+    const currentSize = {
+      width: rect.width,
+      height: rect.height
+    }
+    if (pendingSizeRef.current && isSizeEqual(pendingSizeRef.current, currentSize)) {
+      pendingSizeRef.current = null
+    }
+
+    const measuredSize = measureTextNodeSize({
+      node: measure.node,
+      rect: {
+        width: measure.baseWidth
+      },
+      content,
+      placeholder: measure.placeholder,
+      source,
+      maxWidth: measure.maxWidth,
+      fontSize: measure.fontSize
+    })
+
+    if (
+      !measuredSize
+      || isSizeEqual(measuredSize, currentSize)
+      || (pendingSizeRef.current && isSizeEqual(pendingSizeRef.current, measuredSize))
+    ) {
+      return
+    }
+
+    pendingSizeRef.current = measuredSize
+    editor.actions.node.patch([node.id], {
+      fields: {
+        size: measuredSize
+      }
+    }, {
+      origin: 'system'
+    })
+  }, [
+    content,
+    editing,
+    editor.actions.node,
+    fontSize,
+    node,
+    placeholder,
+    rect,
+    source
+  ])
+}
+
 const TextNodeRenderer = ({
   node,
   rect,
@@ -114,6 +235,7 @@ const TextNodeRenderer = ({
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
   const placeholder = TEXT_PLACEHOLDER
   const {
+    sourceElement,
     bindRef
   } = useNodeTextSourceBinding(node.id)
   const fontSize = getStyleNumber(node, 'fontSize') ?? TEXT_DEFAULT_FONT_SIZE
@@ -122,8 +244,6 @@ const TextNodeRenderer = ({
   const color = getStyleString(node, 'color') ?? 'var(--ui-text-primary)'
   const nodeEdit = matchNodeEdit(edit, node.id, 'text')
   const editing = nodeEdit !== null
-  const widthMode = readTextWidthMode(node)
-  const wrapWidth = readTextWrapWidth(node)
   const textStyle: CSSProperties = {
     fontSize,
     fontWeight,
@@ -131,6 +251,22 @@ const TextNodeRenderer = ({
     color,
     opacity: selected ? 1 : 0.9
   }
+  const measure = resolveTextMeasureInput({
+    node,
+    rect,
+    placeholder,
+    fontSize
+  })
+
+  useSyncedTextNodeSize({
+    node,
+    rect,
+    source: sourceElement,
+    content: text,
+    placeholder,
+    fontSize,
+    editing
+  })
 
   return (
     <div className="wb-text-node-viewport">
@@ -143,17 +279,7 @@ const TextNodeRenderer = ({
             multiline
             className="wb-default-text-editor"
             style={textStyle}
-            measure={{
-              node,
-              baseWidth: widthMode === 'wrap'
-                ? (wrapWidth ?? rect.width)
-                : rect.width,
-              placeholder,
-              maxWidth: widthMode === 'wrap'
-                ? (wrapWidth ?? rect.width)
-                : undefined,
-              fontSize
-            }}
+            measure={measure}
           />
         ) : (
           <div
@@ -254,14 +380,17 @@ const createTextStyle = (variant: 'text' | 'sticky') => (props: NodeRenderProps)
     }
   }
 
+  const stickyStroke = readStickyStroke(props.node)
+  const stickyStrokeWidth = readStickyStrokeWidth(props.node)
+
   return {
     '--wb-sticky-fill': readStickyFill(props.node),
-    background:
-      'linear-gradient(180deg, rgb(from var(--ui-surface) r g b / 0.16) 0%, rgb(from var(--ui-surface) r g b / 0) 18%, rgb(from var(--ui-text-primary) r g b / 0.04) 100%), var(--wb-sticky-fill, var(--ui-yellow-surface))',
+    '--wb-sticky-stroke': stickyStroke,
+    background: 'var(--wb-sticky-fill, var(--ui-yellow-surface))',
     border: 'none',
     boxSizing: 'border-box',
     borderRadius: 0,
-    boxShadow: 'inset 0 1px 0 rgb(from var(--ui-surface) r g b / 0.18), inset 0 -1px 0 rgb(from var(--ui-text-primary) r g b / 0.04)',
+    boxShadow: `inset 0 0 0 ${stickyStrokeWidth}px var(--wb-sticky-stroke), inset 0 1px 0 rgb(from var(--ui-surface) r g b / 0.38), 0 1px 2px rgb(from var(--ui-text-primary) r g b / 0.04)`,
     display: 'block',
     isolation: 'isolate',
     overflow: 'visible',

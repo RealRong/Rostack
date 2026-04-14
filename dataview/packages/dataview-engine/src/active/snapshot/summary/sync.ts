@@ -23,11 +23,6 @@ import {
 } from '@dataview/engine/summary/empty'
 import { readCalcFields } from '@dataview/engine/active/snapshot/summary/compute'
 
-const sameIds = (
-  left: readonly string[],
-  right: readonly string[]
-) => sameOrder(left, right)
-
 const buildSectionFieldState = (input: {
   sectionIds: readonly string[]
   entries: ReadonlyMap<string, import('@dataview/engine/active/index/contracts').AggregateEntry>
@@ -176,7 +171,7 @@ export const syncSummaryState = (input: {
       if (
         input.touchedFields !== 'all'
         && !input.touchedFields.has(fieldId)
-        && sameIds(previousSection.recordIds, currentSection.recordIds)
+        && sameOrder(previousSection.recordIds, currentSection.recordIds)
       ) {
         nextByField.set(fieldId, previousFieldState)
         return

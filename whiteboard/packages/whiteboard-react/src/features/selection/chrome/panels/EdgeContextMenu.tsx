@@ -1,5 +1,6 @@
 import { Menu, type MenuItem } from '@shared/ui'
 import { useEditorRuntime, useWhiteboardServices } from '@whiteboard/react/runtime/hooks'
+import { readSelectionCan } from '@whiteboard/react/features/selection/capability'
 
 const ORDER_ITEMS = [
   { key: 'order.front', label: 'Bring to front', mode: 'front' as const },
@@ -10,6 +11,7 @@ const ORDER_ITEMS = [
 
 const toMenuItems = (
   edgeId: string,
+  can: ReturnType<typeof readSelectionCan>,
   onCopy: () => void,
   onCut: () => void,
   onDuplicate: () => void,
@@ -25,6 +27,7 @@ const toMenuItems = (
     kind: 'submenu' as const,
     key: 'arrange.order',
     label: 'Layer',
+    disabled: !can.order,
     items: ORDER_ITEMS.map((item) => ({
       kind: 'action' as const,
       key: `${item.key}:${edgeId}`,
@@ -53,12 +56,14 @@ const toMenuItems = (
     kind: 'action' as const,
     key: 'edge.cut',
     label: 'Cut',
+    disabled: !can.cut,
     onSelect: onCut
   },
   {
     kind: 'action' as const,
     key: 'edge.duplicate',
     label: 'Duplicate',
+    disabled: !can.duplicate,
     onSelect: onDuplicate
   },
   {
@@ -66,6 +71,7 @@ const toMenuItems = (
     key: 'edge.delete',
     label: 'Delete',
     tone: 'destructive' as const,
+    disabled: !can.delete,
     onSelect: onDelete
   }
 ]
@@ -79,11 +85,19 @@ export const EdgeContextMenu = ({
 }) => {
   const editor = useEditorRuntime()
   const { clipboard } = useWhiteboardServices()
+  const can = readSelectionCan({
+    editor,
+    target: {
+      nodeIds: [],
+      edgeIds: [edgeId]
+    }
+  })
 
   return (
     <Menu
       items={toMenuItems(
         edgeId,
+        can,
         () => {
           void clipboard.copy({
             edgeIds: [edgeId]

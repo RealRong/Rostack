@@ -16,6 +16,19 @@ const createFamilyColorOptions = (
 }))
 
 const FAMILY_FILL_COLOR_OPTIONS = createFamilyColorOptions('surface')
+const STICKY_FILL_COLOR_OPTIONS = UI_CONTENT_COLOR_FAMILIES
+  .filter((family) =>
+    family.id === 'yellow'
+    || family.id === 'pink'
+    || family.id === 'blue'
+    || family.id === 'green'
+    || family.id === 'orange'
+    || family.id === 'purple'
+  )
+  .map((family) => ({
+    label: family.label,
+    value: resolveOptionColorToken(family.id, 'surface-pressed')
+  }))
 
 const FAMILY_TEXT_COLOR_OPTIONS = UI_CONTENT_COLOR_FAMILIES
   .filter((family) => family.id !== 'yellow')
@@ -31,6 +44,8 @@ export const FILL_COLOR_OPTIONS: readonly ColorOption[] = [
   },
   ...FAMILY_FILL_COLOR_OPTIONS
 ]
+
+export const STICKY_FILL_OPTIONS: readonly ColorOption[] = STICKY_FILL_COLOR_OPTIONS
 
 export const STROKE_COLOR_OPTIONS: readonly ColorOption[] = [
   {

@@ -17,6 +17,9 @@ import {
   isNodeUpdateEmpty,
   resolveMoveEffect
 } from '@whiteboard/core/node'
+import {
+  resolveLockDecision
+} from '@whiteboard/core/lock'
 import { err, ok } from '@whiteboard/core/result'
 import type { EdgeId, Node, NodeId } from '@whiteboard/core/types'
 import { DEFAULT_TUNING } from '@whiteboard/engine/config'
@@ -253,6 +256,18 @@ export const duplicate = (
 ): Step<{ nodeIds: NodeId[]; edgeIds: EdgeId[] }> => {
   if (!command.ids.length) {
     return err('cancelled', 'No nodes selected.')
+  }
+  const locked = resolveLockDecision({
+    document: ctx.doc,
+    target: {
+      kind: 'nodes',
+      nodeIds: command.ids
+    }
+  })
+  if (!locked.allowed) {
+    return err('cancelled', 'Locked nodes cannot be duplicated.', {
+      lockedNodeIds: locked.lockedNodeIds
+    })
   }
 
   const slice = exportSliceFromNodes({

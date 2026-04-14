@@ -118,6 +118,7 @@ export type SelectionPressSubject<TField extends string = string> =
       mode: SelectionMode
       groupSelection: SelectionTarget
       selected: boolean
+      canMove: boolean
     }
   | {
       kind: 'node'
@@ -132,6 +133,8 @@ export type SelectionPressSubject<TField extends string = string> =
       groupSelection?: SelectionTarget
       groupSelected: boolean
       promoteToGroup: boolean
+      currentSelectionMovable: boolean
+      groupSelectionMovable: boolean
     }
 
 const readCurrentSelection = (
@@ -161,6 +164,11 @@ const canDragSelectionBox = (
   && affordance.canMove
   && !affordance.showSingleNodeOverlay
 )
+
+const canMoveSelectionTarget = (
+  deps: SelectionPressDeps,
+  target: SelectionTarget
+) => target.nodeIds.every((nodeId) => !deps.node.get(nodeId)?.locked)
 
 export const resolveSelectionPressMode = (
   modifiers: ModifierEventLike
@@ -260,7 +268,8 @@ export const resolveSelectionPressSubject = <TField extends string>(
         currentSelection,
         mode: input.mode,
         groupSelection,
-        selected: isGroupSelected(deps, input.target.groupId, currentSelection)
+        selected: isGroupSelected(deps, input.target.groupId, currentSelection),
+        canMove: canMoveSelectionTarget(deps, groupSelection)
       }
     }
     case 'node': {
@@ -310,7 +319,11 @@ export const resolveSelectionPressSubject = <TField extends string>(
           groupSelection
           && !groupSelected
           && !drilledWithinGroup
-        )
+        ),
+        currentSelectionMovable: canMoveSelectionTarget(deps, currentSelection),
+        groupSelectionMovable: groupSelection
+          ? canMoveSelectionTarget(deps, groupSelection)
+          : false
       }
     }
   }

@@ -110,18 +110,20 @@ const planGroupPress = <TField extends string>(
       kind: 'select',
       target: nextSelection
     },
-    drag: {
-      kind: 'move',
-      target: dragCurrentSelection
-        ? subject.currentSelection
-        : nextSelection,
-      visibility:
-        subject.mode === 'replace' && !subject.selected
-          ? showTemporarySelection(nextSelection, subject.currentSelection)
-          : dragCurrentSelection
-            ? HIDE_SELECTION
-            : showSelection(nextSelection)
-    },
+    drag: subject.canMove
+      ? {
+          kind: 'move',
+          target: dragCurrentSelection
+            ? subject.currentSelection
+            : nextSelection,
+          visibility:
+            subject.mode === 'replace' && !subject.selected
+              ? showTemporarySelection(nextSelection, subject.currentSelection)
+              : dragCurrentSelection
+                ? HIDE_SELECTION
+                : showSelection(nextSelection)
+        }
+      : undefined,
     hold: HOLD_TO_CONTAIN_MARQUEE
   }
 }
@@ -234,15 +236,23 @@ const planNodePress = <TField extends string>(
 ): SelectionPressPlan<TField> => {
   const nextSelection = resolveNodeNextSelection(subject)
   const dragTarget = resolveNodeDragTarget(subject, nextSelection)
+  const canDrag =
+    subject.repeat || subject.groupSelected || subject.selected
+      ? subject.currentSelectionMovable
+      : subject.promoteToGroup
+        ? subject.groupSelectionMovable
+        : !subject.node.locked
 
   return {
     chrome: subject.selected || subject.groupSelected,
     tap: resolveNodeTapPlan(subject, nextSelection),
-    drag: {
-      kind: 'move',
-      target: dragTarget,
-      visibility: resolveNodeDragVisibility(subject, nextSelection, dragTarget)
-    },
+    drag: canDrag
+      ? {
+          kind: 'move',
+          target: dragTarget,
+          visibility: resolveNodeDragVisibility(subject, nextSelection, dragTarget)
+        }
+      : undefined,
     hold: HOLD_TO_CONTAIN_MARQUEE
   }
 }

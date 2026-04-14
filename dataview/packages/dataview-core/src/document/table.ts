@@ -1,4 +1,5 @@
 import type { DataDoc, DataRecord, EntityTable, RecordId } from '@dataview/core/contracts/state'
+import { createOrderedKeyedCollection } from '@shared/core'
 
 export const cloneRecordInput = (record: DataRecord): DataRecord => structuredClone(record)
 
@@ -25,25 +26,30 @@ export const replaceDocumentTable = <
   }
 }
 
+const createEntityTableAccess = <TId extends string, TEntity extends { id: TId }>(
+  table: EntityTable<TId, TEntity>
+) => createOrderedKeyedCollection({
+  ids: table.order,
+  get: entityId => table.byId[entityId]
+})
+
 export const listEntityTable = <TId extends string, TEntity extends { id: TId }>(table: EntityTable<TId, TEntity>): TEntity[] => {
-  return table.order
-    .map(entityId => table.byId[entityId])
-    .filter((entity): entity is TEntity => Boolean(entity))
+  return createEntityTableAccess(table).all.slice()
 }
 
 export const getEntityTableIds = <TId extends string, TEntity extends { id: TId }>(table: EntityTable<TId, TEntity>): TId[] => {
-  return table.order.slice()
+  return createEntityTableAccess(table).ids.slice()
 }
 
 export const getEntityTableById = <TId extends string, TEntity extends { id: TId }>(
   table: EntityTable<TId, TEntity>,
   entityId: TId
-): TEntity | undefined => table.byId[entityId]
+): TEntity | undefined => createEntityTableAccess(table).get(entityId)
 
 export const hasEntityTableId = <TId extends string, TEntity extends { id: TId }>(
   table: EntityTable<TId, TEntity>,
   entityId: TId
-) => Boolean(table.byId[entityId])
+) => createEntityTableAccess(table).has(entityId)
 
 export const cloneEntityTable = <TId extends string, TEntity extends { id: TId }>(table: EntityTable<TId, TEntity>): EntityTable<TId, TEntity> => {
   const byId = {} as Record<TId, TEntity>
@@ -198,18 +204,4 @@ export const normalizeEntityTable = <TId extends string, TEntity extends { id: T
     byId,
     order
   }
-}
-
-export const isSameOrder = (left: readonly string[], right: readonly string[]) => {
-  if (left.length !== right.length) {
-    return false
-  }
-
-  for (let index = 0; index < left.length; index += 1) {
-    if (left[index] !== right[index]) {
-      return false
-    }
-  }
-
-  return true
 }

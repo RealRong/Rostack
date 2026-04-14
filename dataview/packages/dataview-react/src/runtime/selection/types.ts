@@ -12,7 +12,7 @@ export interface Selection {
   focus?: ItemId
 }
 
-export interface SelectionStore extends ValueStore<Selection> { }
+export type SelectionStore = ValueStore<Selection>
 
 export interface SelectionApi {
   store: SelectionStore

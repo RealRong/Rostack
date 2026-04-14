@@ -14,6 +14,11 @@ export type ActiveTypedViewState<TType extends View['type']> = ViewState & {
   }
 }
 
+export interface TypedRuntimeInput<TType extends View['type'], TExtra> {
+  active: ActiveTypedViewState<TType>
+  extra: TExtra
+}
+
 export interface SelectableItemRuntime {
   selectedIds: readonly ItemId[]
   selectedIdSet: ReadonlySet<ItemId>

@@ -3,6 +3,9 @@ import type {
   ShortcutBinding
 } from '@whiteboard/react/types/common/shortcut'
 import type { WhiteboardRuntime as Editor } from '@whiteboard/react/types/runtime'
+import {
+  readSelectionCan
+} from '@whiteboard/react/features/selection/capability'
 
 export const DefaultShortcutBindings: readonly ShortcutBinding[] = [
   { key: 'Mod+G', action: 'group.merge' },
@@ -28,9 +31,22 @@ const readShortcutState = (
   return {
     selection,
     hasSelection: count > 0,
-    canGroup: count >= 2,
-    canUngroup: editor.read.group.exactIds(selection).length > 0,
-    canDuplicate: count > 0
+    canGroup: readSelectionCan({
+      editor,
+      target: selection
+    }).makeGroup,
+    canUngroup: readSelectionCan({
+      editor,
+      target: selection
+    }).ungroup,
+    canDelete: readSelectionCan({
+      editor,
+      target: selection
+    }).delete,
+    canDuplicate: readSelectionCan({
+      editor,
+      target: selection
+    }).duplicate
   }
 }
 
@@ -49,7 +65,7 @@ const canRunShortcut = (
     case 'selection.clear':
       return state.hasSelection || !editor.read.tool.is('select')
     case 'selection.delete':
-      return state.hasSelection
+      return state.hasSelection && state.canDelete
     case 'selection.duplicate':
       return state.canDuplicate
     case 'history.undo':

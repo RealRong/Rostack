@@ -9,7 +9,11 @@ import type {
 import type {
   EdgePresetKey
 } from '@whiteboard/editor'
-import type { InsertPresetGroup, StickyTone } from '@whiteboard/react/features/toolbox/presets'
+import type {
+  InsertPresetGroup,
+  StickyFormat,
+  StickyTone
+} from '@whiteboard/react/features/toolbox/presets'
 
 export type ToolPaletteMenuKey =
   | 'draw'
@@ -36,6 +40,7 @@ export type ToolPaletteView = {
   insertGroup?: InsertPresetGroup
   stickyPreset: string
   stickyTone?: StickyTone
+  stickyFormat?: StickyFormat
   shapePreset: string
   shapeKind?: ShapeKind
   mindmapPreset: string

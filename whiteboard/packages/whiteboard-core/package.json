@@ -15,7 +15,8 @@
     "./kernel": "./src/kernel/index.ts",
     "./config": "./src/config/index.ts",
     "./document": "./src/document/index.ts",
-    "./selection": "./src/selection/index.ts"
+    "./selection": "./src/selection/index.ts",
+    "./lock": "./src/lock/index.ts"
   },
   "files": [
     "src",

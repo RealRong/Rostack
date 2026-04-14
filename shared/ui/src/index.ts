@@ -26,8 +26,7 @@ export {
   PickerOptionButton,
   PickerPanelSurface,
   PickerSection,
-  PickerSurface,
-  PickerTintBar
+  PickerSurface
 } from '@shared/ui/picker'
 export {
     Slider,

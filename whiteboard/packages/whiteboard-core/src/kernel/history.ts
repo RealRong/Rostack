@@ -10,7 +10,7 @@ import type {
 const DEFAULT_HISTORY_CONFIG: HistoryConfig = {
   enabled: true,
   capacity: 100,
-  captureSystem: true,
+  captureSystem: false,
   captureRemote: false
 }
 

@@ -167,7 +167,7 @@ export const FloatingToolbarShell = <TPanelKey extends string>({
           surface="blocking"
           backdrop="transparent"
           padding="menu"
-          size="md"
+          size="unset"
           contentClassName={cn('min-w-0 overflow-hidden p-0', resolvedPanelClassName)}
         >
           {panelContent}

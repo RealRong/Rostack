@@ -85,7 +85,7 @@ const EdgeConnectOverlay = () => {
   const connect = hint.connect
   const view = useNodeOverlayView(connect?.focusedNodeId)
 
-  if (!view || !view.canConnect) return null
+  if (!view || !view.canConnect || view.node.locked) return null
 
   const activeSide = connect?.resolution.mode === 'handle'
     ? connect.resolution.side

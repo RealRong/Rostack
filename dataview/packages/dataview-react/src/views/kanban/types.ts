@@ -6,7 +6,8 @@ import type {
 } from '@dataview/engine'
 import type {
   ActiveTypedViewState,
-  ItemInteractionRuntime
+  ItemInteractionRuntime,
+  TypedRuntimeInput
 } from '@dataview/react/views/shared/types'
 
 export type ActiveKanbanViewState = ActiveTypedViewState<'kanban'>
@@ -31,9 +32,7 @@ export interface KanbanViewRuntime extends ItemInteractionRuntime {
   }
 }
 
-export interface KanbanRuntimeInput {
+export type KanbanRuntimeInput = TypedRuntimeInput<'kanban', KanbanState> & {
   columnWidth: number
   columnMinHeight: number
-  active: ActiveKanbanViewState
-  extra: KanbanState
 }

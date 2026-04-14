@@ -64,10 +64,12 @@ export const startMindmapDrag = (input: {
   tool: Tool
   pointer: PointerDownInput
   mindmap: Pick<MindmapPresentationRead, 'item' | 'rootPosition'>
+  locked?: boolean
 }): MindmapDragState | undefined => {
   if (
     input.tool.type !== 'select'
     || input.pointer.pick.kind !== 'mindmap'
+    || input.locked
     || input.pointer.editable
     || input.pointer.ignoreInput
     || input.pointer.ignoreSelection

@@ -6,6 +6,7 @@ import type {
   SpatialNode
 } from '@whiteboard/core/types'
 import { createDocument } from '@whiteboard/core/document'
+import { TEXT_START_SIZE } from '@whiteboard/core/node'
 
 type Scenario = {
   id: string
@@ -80,7 +81,7 @@ const createBasicDocument = (): Document => {
       id: 'node-3',
       type: 'text',
       position: { x: -120, y: 140 },
-      size: { width: 200, height: 120 },
+      size: { ...TEXT_START_SIZE },
       groupId,
       data: { text: '双击编辑文本' }
     },

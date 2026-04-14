@@ -65,6 +65,8 @@ import {
 
 export interface TableController {
   currentView: ReadStore<CurrentView | undefined>
+  locked: ReadStore<boolean>
+  valueEditorOpen: ReadStore<boolean>
   gridSelection: GridSelectionStore
   marqueeSelection: ValueStore<Selection | null>
   rowRail: ValueStore<ItemId | null>
@@ -351,6 +353,8 @@ export const createTableController = (options: {
 
   return {
     currentView,
+    locked: lockedStore,
+    valueEditorOpen: valueEditorOpenStore,
     gridSelection,
     marqueeSelection,
     rowRail,

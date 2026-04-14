@@ -104,7 +104,8 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
     const ratio = max <= min
       ? 0
       : (resolvedValue - min) / (max - min)
-    const thumbOffset = `${ratio * 100}%`
+    const thumbRem = size === 'sm' ? 0.875 : 1
+    const thumbLeft = `calc(${ratio * 100}% - ${ratio * thumbRem}rem)`
     const mergedRef = React.useMemo(
       () => (node: HTMLDivElement | null) => {
         trackRef.current = node
@@ -209,7 +210,7 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
           <div
             className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-accent"
             style={{
-              width: thumbOffset
+              width: `${ratio * 100}%`
             }}
           />
           {marks?.length ? (
@@ -224,7 +225,7 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
                     key={`${mark.value}:${mark.label ?? ''}`}
                     className="absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-default bg-floating"
                     style={{
-                      left: `${markRatio * 100}%`
+                      left: `calc(${markRatio * 100}% - ${markRatio * thumbRem}rem + ${thumbRem / 2}rem)`
                     }}
                   />
                 )
@@ -238,8 +239,8 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
               size === 'sm' ? 'h-3.5 w-3.5 -translate-y-1/2' : 'h-4 w-4 -translate-y-1/2'
             )}
             style={{
-              left: thumbOffset,
-              transform: 'translate(-50%, -50%)'
+              left: thumbLeft,
+              transform: 'translateY(-50%)'
             }}
           />
         </div>

@@ -31,7 +31,7 @@ export type InsertBridge = {
     at: Point
   }) => InsertResult | undefined
   sticky: (options: {
-    toneKey?: string
+    presetKey?: string
     at: Point
   }) => InsertResult | undefined
   shape: (options: {
@@ -228,9 +228,9 @@ const createInsertCommands = ({
       presetKey: catalog.defaults.frame,
       options
     }),
-    sticky: ({ toneKey = catalog.defaults.sticky, at }) =>
+    sticky: ({ presetKey = catalog.defaults.sticky, at }) =>
       insertPresetByKey({
-        presetKey: toneKey,
+        presetKey,
         options: { at }
       }),
     shape: ({ kind, at }) =>

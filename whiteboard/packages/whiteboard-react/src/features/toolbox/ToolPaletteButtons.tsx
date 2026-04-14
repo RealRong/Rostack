@@ -4,7 +4,7 @@ import {
   Hand,
   Highlighter,
   MousePointer2,
-  PencilLine,
+  Pencil,
   StickyNote,
   Type,
   type LucideIcon
@@ -12,8 +12,7 @@ import {
 import {
   FloatingSurface,
   PickerDivider,
-  PickerIconButton,
-  PickerTintBar
+  PickerIconButton
 } from '@shared/ui'
 import {
   type Tool
@@ -43,10 +42,10 @@ const ToolIcon = ({
 )
 
 const DRAW_MODE_ICON = {
-  pen: PencilLine,
+  pen: Pencil,
   highlighter: Highlighter,
   eraser: Eraser
-} as const satisfies Record<DrawMode, typeof PencilLine>
+} as const satisfies Record<DrawMode, typeof Pencil>
 
 export const ToolPaletteButtons = ({
   tool,
@@ -66,8 +65,7 @@ export const ToolPaletteButtons = ({
 
   return (
     <FloatingSurface
-      variant="compact"
-      className="absolute left-4 top-4 flex w-[52px] flex-col gap-1 p-1.5"
+      className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-1 p-1.5"
       onPointerDown={(event) => {
         event.preventDefault()
         event.stopPropagation()
@@ -106,11 +104,6 @@ export const ToolPaletteButtons = ({
         }}
         title="Sticky note"
       >
-        <PickerTintBar
-          style={{
-            background: palette.stickyTone?.fill
-          }}
-        />
         <ToolIcon icon={StickyNote} />
       </PickerIconButton>
       <PickerIconButton
@@ -154,14 +147,6 @@ export const ToolPaletteButtons = ({
         onClick={controller.toggleDrawMenu}
         title="Draw"
       >
-        {palette.drawButtonStyle ? (
-          <PickerTintBar
-            style={{
-              background: palette.drawButtonStyle.color,
-              opacity: palette.drawButtonStyle.opacity
-            }}
-          />
-        ) : null}
         <ToolIcon icon={DrawButtonIcon} />
       </PickerIconButton>
       <PickerIconButton

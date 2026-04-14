@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { BucketSort, Field } from '@dataview/core/contracts'
-import type { ViewGroupProjection } from '@dataview/engine'
+import { EMPTY_VIEW_GROUP_PROJECTION } from '@dataview/engine'
 import {
   useDataView,
   useDataViewValue
@@ -75,21 +75,6 @@ const readBucketSortLabel = (bucketSort: BucketSort | undefined) => {
   }
 }
 
-const EMPTY_GROUP: ViewGroupProjection = {
-  viewId: '',
-  active: false,
-  fieldId: '',
-  field: undefined,
-  fieldLabel: '',
-  mode: '',
-  bucketSort: undefined,
-  bucketInterval: undefined,
-  showEmpty: true,
-  availableModes: [],
-  availableBucketSorts: [],
-  supportsInterval: false
-}
-
 export const GroupingPanel = () => {
   const dataView = useDataView()
   const engine = dataView.engine
@@ -100,7 +85,7 @@ export const GroupingPanel = () => {
   const group = useDataViewValue(
     dataView => dataView.engine.active.state,
     state => state?.query.group
-  ) ?? EMPTY_GROUP
+  ) ?? EMPTY_VIEW_GROUP_PROJECTION
   const currentViewDomain = currentView
     ? engine.active
     : undefined

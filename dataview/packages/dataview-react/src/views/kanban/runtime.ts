@@ -41,7 +41,7 @@ import type {
   KanbanViewRuntime
 } from '@dataview/react/views/kanban/types'
 import {
-  useItemInteractionRuntime
+  useItemDragRuntime
 } from '@dataview/react/views/shared/interactionRuntime'
 
 const resolveInitialVisibleCount = (
@@ -213,12 +213,10 @@ const useSectionVisibility = (input: {
 export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime => {
   const dataView = useDataView()
   const scrollRef = useRef<HTMLDivElement | null>(null)
-  const [dragging, setDragging] = useState(false)
   const itemIds = input.active.items.ids
-  const interaction = useItemInteractionRuntime({
+  const interaction = useItemDragRuntime({
     viewId: input.active.view.id,
     itemIds,
-    disabled: dragging,
     canStart: (event: PointerEvent) => !closestTarget(event.target, [
       dataviewAppearanceSelector,
       interactiveSelector
@@ -234,14 +232,10 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
   const drag = useDrag({
     containerRef: scrollRef,
     canDrag: input.extra.canReorder,
-    itemMap: new Map(itemIds.map(id => [id, id] as const)),
+    itemMap: interaction.itemMap,
     getLayout: () => readBoardLayout(scrollRef.current),
-    getDragIds: activeId => (
-      interaction.selection.selectedIds.includes(activeId)
-        ? interaction.selection.selectedIds.filter(id => itemIds.includes(id))
-        : [activeId]
-    ),
-    onDraggingChange: setDragging,
+    getDragIds: interaction.getDragIds,
+    onDraggingChange: interaction.onDraggingChange,
     onDrop: (cardIds, target) => {
       dataView.engine.active.items.move(cardIds, {
         section: target.sectionKey,

@@ -1,4 +1,3 @@
-import type { FieldId } from '@dataview/core/contracts'
 import type {
   CellRef,
   FieldList,
@@ -131,5 +130,3 @@ export const cellNavigation = {
   firstCell,
   stepCell
 } as const
-
-export type TableCellFieldId = FieldId

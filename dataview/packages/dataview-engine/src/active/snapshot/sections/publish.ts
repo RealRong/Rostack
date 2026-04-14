@@ -1,6 +1,9 @@
 import type { RecordId } from '@dataview/core/contracts'
 import { sameOrder } from '@shared/core'
-import { createOrderedListAccess } from '@dataview/engine/active/snapshot/list'
+import {
+  createOrderedKeyedListAccess,
+  createOrderedKeyedListCollection
+} from '@dataview/engine/active/snapshot/list'
 import type {
   ItemId,
   ItemList,
@@ -46,11 +49,8 @@ export const createItemList = (input: {
   previous?: ItemList
 }): ItemList => {
   const cache = new Map<ItemId, ViewItem>()
-  const ordered = createOrderedListAccess(input.ids)
-
-  return {
+  const items = createOrderedKeyedListAccess({
     ids: input.ids,
-    count: input.count,
     get: id => {
       const cached = cache.get(id)
       if (cached) {
@@ -66,13 +66,12 @@ export const createItemList = (input: {
       const next = reused ?? parsed
       cache.set(id, next)
       return next
-    },
-    has: ordered.has,
-    indexOf: ordered.indexOf,
-    at: ordered.at,
-    prev: ordered.prev,
-    next: ordered.next,
-    range: ordered.range
+    }
+  })
+
+  return {
+    ...items,
+    count: input.count
   }
 }
 
@@ -167,7 +166,16 @@ export const buildSections = (input: {
     && previous.all.every((section, index) => section === sections[index])
     ? previous.all
     : sections
-  const ordered = createOrderedListAccess(publishedIds)
+  const publishedByKey = previous
+    && previous.ids === publishedIds
+    && previous.all === publishedSections
+      ? new Map(publishedSections.map(section => [section.key, section] as const))
+      : byKey
+  const sectionList = createOrderedKeyedListCollection({
+    ids: publishedIds,
+    all: publishedSections,
+    get: key => publishedByKey.get(key)
+  })
 
   if (
     previous
@@ -177,19 +185,13 @@ export const buildSections = (input: {
     return previous
   }
 
-  const publishedByKey = previous
-    && previous.ids === publishedIds
-    && previous.all === publishedSections
-      ? new Map(publishedSections.map(section => [section.key, section] as const))
-      : byKey
-
   return {
-    ids: publishedIds,
-    all: publishedSections,
-    get: key => publishedByKey.get(key),
-    has: ordered.has,
-    indexOf: ordered.indexOf,
-    at: ordered.at
+    ids: sectionList.ids,
+    all: sectionList.all,
+    get: sectionList.get,
+    has: sectionList.has,
+    indexOf: sectionList.indexOf,
+    at: sectionList.at
   }
 }
 

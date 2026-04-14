@@ -5,20 +5,23 @@ import {
   SliderSection,
   formatPercent
 } from '@shared/ui'
-import { FILL_COLOR_OPTIONS } from '@whiteboard/react/features/selection/chrome/menus/options'
 
 export const FillPanel = ({
   fill,
   fillOpacity,
+  options,
   onFillChange,
   onFillOpacityChange
 }: {
   fill?: string
   fillOpacity?: number
+  options: readonly {
+    value: string
+  }[]
   onFillChange: (value: string) => void
   onFillOpacityChange?: (value: number) => void
 }) => (
-  <Panel className="min-w-[260px]">
+  <Panel className='w-[240px]'>
     {onFillOpacityChange ? (
       <>
         <SliderSection
@@ -30,16 +33,11 @@ export const FillPanel = ({
           formatValue={formatPercent}
           onChange={onFillOpacityChange}
         />
-        <div className="flex flex-col gap-2">
-          <div className="text-right text-xs font-medium text-fg-muted">
-            {formatPercent(fillOpacity ?? 1)}
-          </div>
-        </div>
       </>
     ) : null}
     <PanelSection title="Color">
       <ColorSwatchGrid
-        options={FILL_COLOR_OPTIONS}
+        options={options}
         value={fill}
         onChange={onFillChange}
       />

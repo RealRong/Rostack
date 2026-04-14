@@ -88,6 +88,7 @@ export type {
   MindmapInsertPreset,
   MindmapTemplate,
   NodeInsertPreset,
+  StickyFormat,
   StickyTone
 } from '@whiteboard/editor/types/insert'
 export type {

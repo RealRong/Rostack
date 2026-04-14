@@ -86,6 +86,7 @@ export const SelectionActionMenu = ({
       kind: 'action' as const,
       key: 'edit.cut',
       label: 'Cut',
+      disabled: !selectionCan.cut,
       onSelect: () => {
         void clipboard.cut({
           nodeIds,
@@ -109,6 +110,7 @@ export const SelectionActionMenu = ({
       kind: 'action' as const,
       key: 'edit.duplicate',
       label: 'Duplicate',
+      disabled: !selectionCan.duplicate,
       onSelect: () => {
         editor.actions.selection.duplicate(target)
       }
@@ -121,6 +123,7 @@ export const SelectionActionMenu = ({
       kind: 'submenu' as const,
       key: 'layer',
       label: 'Layer',
+      disabled: !selectionCan.order,
       items: ORDER_ITEMS.map((item) => ({
         kind: 'action' as const,
         key: item.key,
@@ -136,6 +139,7 @@ export const SelectionActionMenu = ({
             kind: 'action' as const,
             key: 'structure.group',
             label: 'Group',
+            disabled: !selectionCan.makeGroup,
             onSelect: () => {
               editor.actions.selection.group(target)
             }
@@ -148,6 +152,7 @@ export const SelectionActionMenu = ({
             kind: 'action' as const,
             key: 'structure.ungroup',
             label: 'Ungroup',
+            disabled: !selectionCan.ungroup,
             onSelect: () => {
               editor.actions.selection.ungroup(target)
             }
@@ -202,6 +207,7 @@ export const SelectionActionMenu = ({
       key: 'danger.delete',
       label: 'Delete',
       tone: 'destructive' as const,
+      disabled: !selectionCan.delete,
       onSelect: () => {
         editor.actions.selection.delete(target)
       }

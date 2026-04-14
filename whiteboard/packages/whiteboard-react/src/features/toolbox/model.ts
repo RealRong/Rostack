@@ -16,6 +16,7 @@ import {
   DEFAULT_STICKY_PRESET_KEY,
   readInsertPresetGroup,
   readShapePresetKind,
+  readStickyInsertFormat,
   readStickyInsertTone
 } from '@whiteboard/react/features/toolbox/presets'
 import type {
@@ -129,6 +130,7 @@ export const readToolPaletteView = ({
     insertGroup,
     stickyPreset,
     stickyTone: readStickyInsertTone(stickyPreset),
+    stickyFormat: readStickyInsertFormat(stickyPreset),
     shapePreset,
     shapeKind: readShapePresetKind(shapePreset),
     mindmapPreset,

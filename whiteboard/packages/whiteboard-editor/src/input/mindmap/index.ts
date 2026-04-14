@@ -15,7 +15,11 @@ export const createMindmapInteraction = (
     const state = startMindmapDrag({
       tool: ctx.query.tool.get(),
       pointer: input,
-      mindmap: ctx.query.mindmap
+      mindmap: ctx.query.mindmap,
+      locked:
+        input.pick.kind === 'mindmap'
+          ? Boolean(ctx.query.node.item.get(input.pick.treeId)?.node.locked)
+          : undefined
     })
 
     return state

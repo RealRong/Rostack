@@ -8,7 +8,7 @@ const SWATCH_SIZE_CLASS_NAMES = {
   md: 'h-10 w-10'
 } as const
 
-export const PANEL_SECTION_TITLE_CLASSNAME = 'text-xs font-semibold uppercase text-fg-muted'
+export const PANEL_SECTION_TITLE_CLASSNAME = 'text-xs font-semibold text-fg-muted'
 
 export const Panel = ({
   children,
@@ -17,7 +17,7 @@ export const Panel = ({
   children: React.ReactNode
   className?: string
 }) => (
-  <div className={cn('flex min-w-[240px] flex-col gap-4 p-3', className)}>
+  <div className={cn('flex flex-col gap-4 p-2', className)}>
     {children}
   </div>
 )
@@ -80,12 +80,12 @@ export interface SegmentedButtonProps extends ButtonProps {
 }
 
 export const SegmentedButton = React.forwardRef<HTMLButtonElement, SegmentedButtonProps>(
-  ({ active, className, pressed, variant = 'outline', ...props }, ref) => (
+  ({ active, className, pressed, variant = 'ghost', ...props }, ref) => (
     <Button
       ref={ref}
       variant={variant}
       pressed={pressed ?? active}
-      className={cn('h-8 min-w-0 flex-1 rounded-lg px-2.5', className)}
+      className={cn('h-8 min-w-0 flex-1', className)}
       {...props}
     />
   )
@@ -144,7 +144,9 @@ export const ColorSwatchGrid = ({
   swatchSize?: keyof typeof SWATCH_SIZE_CLASS_NAMES
   onSwatchPointerDown?: React.PointerEventHandler<HTMLButtonElement>
 }) => (
-  <div className={cn('grid grid-cols-5 gap-2', className)}>
+  <div className={cn('grid gap-2', className)} style={{
+    gridTemplateColumns: 'repeat(auto-fill, 25px)'
+  }}>
     {options.map((option) => (
       <SwatchButton
         key={option.value}

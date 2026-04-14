@@ -10,7 +10,7 @@ export const FontSizePanel = ({
   onChange: (value: number) => void
 }) => {
   return (
-    <Panel className="w-20 min-w-[5rem] gap-1 p-2">
+    <div className="w-20 flex flex-col gap-1">
       {FONT_SIZE_PRESETS.map((preset) => (
         <Button
           key={preset}
@@ -22,6 +22,6 @@ export const FontSizePanel = ({
           {preset}
         </Button>
       ))}
-    </Panel>
+    </div>
   )
 }

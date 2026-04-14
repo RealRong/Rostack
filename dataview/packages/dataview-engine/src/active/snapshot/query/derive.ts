@@ -38,8 +38,6 @@ import type {
   QueryState
 } from '@dataview/engine/contracts/internal'
 
-const sameIds = sameOrder<RecordId>
-
 type EffectiveFilterRule = {
   fieldId: string
   field: Field | undefined
@@ -694,13 +692,13 @@ export const buildQueryState = (input: {
       })
 
   const previous = input.previous
-  const nextMatched = previous && sameIds(previous.records.matched, matched)
+  const nextMatched = previous && sameOrder(previous.records.matched, matched)
     ? previous.records.matched
     : matched
-  const nextOrdered = previous && sameIds(previous.records.ordered, ordered)
+  const nextOrdered = previous && sameOrder(previous.records.ordered, ordered)
     ? previous.records.ordered
     : ordered
-  const nextVisible = previous && sameIds(previous.records.visible, visible)
+  const nextVisible = previous && sameOrder(previous.records.visible, visible)
     ? previous.records.visible
     : visible
   const nextRecords = previous

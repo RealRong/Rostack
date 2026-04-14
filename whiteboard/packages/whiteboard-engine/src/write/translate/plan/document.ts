@@ -3,6 +3,9 @@ import {
   buildInsertSliceOperations,
   exportSliceFromSelection
 } from '@whiteboard/core/document'
+import {
+  resolveLockDecision
+} from '@whiteboard/core/lock'
 import { err, ok } from '@whiteboard/core/result'
 import type { CanvasItemRef, EdgeId } from '@whiteboard/core/types'
 import { DEFAULT_TUNING } from '@whiteboard/engine/config'
@@ -117,6 +120,25 @@ export const duplicate = (
   const { nodeIds, edgeIds } = pickRefs(command.refs)
   if (!nodeIds.length && !edgeIds.length) {
     return err('cancelled', 'No items selected.')
+  }
+  const locked = resolveLockDecision({
+    document: ctx.doc,
+    target: {
+      kind: 'refs',
+      refs: command.refs,
+      includeEdgeRelations: true
+    }
+  })
+  if (!locked.allowed) {
+    return err(
+      'cancelled',
+      locked.reason === 'locked-relation'
+        ? 'Locked node relations cannot be duplicated.'
+        : 'Locked nodes cannot be duplicated.',
+      {
+        lockedNodeIds: locked.lockedNodeIds
+      }
+    )
   }
 
   const slice = exportSliceFromSelection({

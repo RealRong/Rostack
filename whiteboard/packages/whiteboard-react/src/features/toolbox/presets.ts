@@ -9,6 +9,8 @@ import {
   createTextNodeInput,
   SHAPE_SPECS,
   isShapeKind,
+  STICKY_RECTANGLE_SIZE,
+  STICKY_SQUARE_SIZE,
   type ShapeKind
 } from '@whiteboard/core/node'
 import type {
@@ -24,6 +26,7 @@ import type {
   MindmapInsertPreset,
   MindmapTemplate,
   NodeInsertPreset,
+  StickyFormat,
   StickyTone
 } from '@whiteboard/editor'
 
@@ -36,15 +39,11 @@ const firstPresetKey = <T extends {
 
 const STICKY_TONE_ORDER = [
   'yellow',
-  'orange',
-  'red',
   'pink',
-  'purple',
   'blue',
-  'teal',
   'green',
-  'brown',
-  'gray'
+  'orange',
+  'purple'
 ] as const
 
 const STICKY_TONES: readonly StickyTone[] = STICKY_TONE_ORDER.map((id) => {
@@ -55,13 +54,47 @@ const STICKY_TONES: readonly StickyTone[] = STICKY_TONE_ORDER.map((id) => {
   }
 
   return {
-    key: `sticky.${family.id}`,
+    key: `sticky-tone.${family.id}`,
+    id: family.id,
     label: family.label,
-    fill: resolveOptionColorToken(family.id, 'surface')
+    fill: resolveOptionColorToken(family.id, 'surface-pressed'),
+    border: `var(--ui-${family.id}-border-strong)`
   }
 })
 
-export const STICKY_INSERT_OPTIONS = STICKY_TONES
+const STICKY_FORMATS: readonly StickyFormat[] = [
+  {
+    key: 'square',
+    label: '1:1',
+    width: STICKY_SQUARE_SIZE.width,
+    height: STICKY_SQUARE_SIZE.height
+  },
+  {
+    key: 'rectangle',
+    label: 'Rectangle 2:1',
+    width: STICKY_RECTANGLE_SIZE.width,
+    height: STICKY_RECTANGLE_SIZE.height
+  }
+] as const
+
+export type StickyInsertOption = {
+  key: string
+  label: string
+  tone: StickyTone
+  format: StickyFormat
+}
+
+export const STICKY_TONE_OPTIONS = STICKY_TONES
+export const STICKY_FORMAT_OPTIONS = STICKY_FORMATS
+
+export const STICKY_INSERT_OPTIONS: readonly StickyInsertOption[] = STICKY_FORMATS.flatMap((format) =>
+  STICKY_TONES.map((tone) => ({
+    key: `sticky.${format.key}.${tone.id}`,
+    label: `${tone.label} ${format.label}`,
+    tone,
+    format
+  }))
+)
 
 export const MINDMAP_INSERT_TEMPLATES: readonly MindmapTemplate[] = [
   {
@@ -181,13 +214,19 @@ export const FRAME_INSERT_PRESET = createNodePreset({
   })
 })
 
-export const STICKY_INSERT_PRESETS: readonly NodeInsertPreset[] = STICKY_TONES.map((tone) =>
+export const STICKY_INSERT_PRESETS: readonly NodeInsertPreset[] = STICKY_INSERT_OPTIONS.map((option) =>
   createNodePreset({
-    key: tone.key,
+    key: option.key,
     group: 'sticky',
-    label: tone.label,
+    label: option.label,
     focus: 'text',
-    input: () => createStickyNodeInput(tone.fill)
+    input: () => createStickyNodeInput({
+      fill: option.tone.fill,
+      size: {
+        width: option.format.width,
+        height: option.format.height
+      }
+    })
   })
 )
 
@@ -215,13 +254,13 @@ const INSERT_PRESET_INDEX = new Map(
   INSERT_PRESETS.map((preset) => [preset.key, preset] as const)
 )
 
-const STICKY_TONE_INDEX = new Map(
-  STICKY_TONES.map((tone) => [tone.key, tone] as const)
+const STICKY_INSERT_OPTION_INDEX = new Map(
+  STICKY_INSERT_OPTIONS.map((option) => [option.key, option] as const)
 )
 
 export const DEFAULT_STICKY_PRESET_KEY = firstPresetKey(
   STICKY_INSERT_PRESETS,
-  'sticky.yellow'
+  'sticky.square.yellow'
 )
 
 export const DEFAULT_SHAPE_PRESET_KEY = firstPresetKey(
@@ -260,11 +299,33 @@ export const getInsertPreset = (
   key: string
 ) => INSERT_PRESET_INDEX.get(key)
 
+export const getStickyInsertPresetKey = ({
+  toneKey,
+  formatKey
+}: {
+  toneKey?: string
+  formatKey?: string
+}): string => {
+  const tone = STICKY_TONES.find((item) => item.key === toneKey) ?? STICKY_TONES[0]
+  const format = STICKY_FORMATS.find((item) => item.key === formatKey) ?? STICKY_FORMATS[0]
+
+  return STICKY_INSERT_OPTION_INDEX.get(`sticky.${format.key}.${tone.id}`)?.key
+    ?? DEFAULT_STICKY_PRESET_KEY
+}
+
+export const readStickyInsertOption = (
+  key: string | undefined
+): StickyInsertOption | undefined => key
+  ? STICKY_INSERT_OPTION_INDEX.get(key)
+  : undefined
+
 export const readStickyInsertTone = (
   key: string | undefined
-) => key
-  ? STICKY_TONE_INDEX.get(key)
-  : undefined
+) => readStickyInsertOption(key)?.tone
+
+export const readStickyInsertFormat = (
+  key: string | undefined
+) => readStickyInsertOption(key)?.format
 
 export const readInsertPresetGroup = (
   key: string | undefined
@@ -291,5 +352,6 @@ export type {
   MindmapInsertPreset,
   MindmapTemplate,
   NodeInsertPreset,
+  StickyFormat,
   StickyTone
 }

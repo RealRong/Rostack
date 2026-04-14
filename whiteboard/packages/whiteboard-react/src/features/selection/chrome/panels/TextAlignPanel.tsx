@@ -18,23 +18,18 @@ export const TextAlignPanel = ({
   value?: 'left' | 'center' | 'right'
   onChange: (value: 'left' | 'center' | 'right') => void
 }) => (
-  <Panel className="min-w-[180px]">
-    <PanelSection title="Text align">
-      <div className="flex items-center gap-2">
-        {TEXT_ALIGN_OPTIONS.map((option) => {
-          const Icon = option.icon
-
-          return (
-            <SegmentedButton
-              key={option.key}
-              active={value === option.key}
-              onClick={() => onChange(option.key)}
-            >
-              <Icon size={18} strokeWidth={1.9} />
-            </SegmentedButton>
-          )
-        })}
-      </div>
-    </PanelSection>
-  </Panel>
+  <div className="flex items-center gap-1.5">
+    {TEXT_ALIGN_OPTIONS.map((option) => {
+      const Icon = option.icon
+      return (
+        <SegmentedButton
+          key={option.key}
+          active={value === option.key}
+          onClick={() => onChange(option.key)}
+        >
+          <Icon size={18} strokeWidth={1.9} />
+        </SegmentedButton>
+      )
+    })}
+  </div>
 )

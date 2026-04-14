@@ -8,10 +8,9 @@ export interface ToolbarButtonProps extends ButtonProps {
 }
 
 export const ToolbarBar = React.forwardRef<HTMLDivElement, FloatingSurfaceProps>(
-  ({ className, variant = 'bar', ...props }, ref) => (
+  ({ className, ...props }, ref) => (
     <FloatingSurface
       ref={ref}
-      variant={variant}
       className={cn('inline-flex items-center gap-1 px-2 py-1.5', className)}
       {...props}
     />

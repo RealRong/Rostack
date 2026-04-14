@@ -17,8 +17,7 @@ import {
   interactiveSelector
 } from '@shared/dom'
 import {
-  useDataView,
-  useDataViewValue
+  useDataView
 } from '@dataview/react/dataview'
 import {
   resolveDefaultAutoPanTargets
@@ -52,10 +51,7 @@ const View = () => {
     throw new Error('Table body requires an active current view.')
   }
 
-  const locked = useDataViewValue(
-    dataView => dataView.page.store,
-    state => state.lock !== null
-  )
+  const locked = useStoreValue(table.locked)
   const columns = currentView.fields.all
   const capabilities = useStoreValue(table.capabilities)
   const virtualInteraction = useStoreValue(table.virtual.interaction)

@@ -79,7 +79,7 @@ const readConnectNode = (
   nodeId: NodeId
 ): ConnectNodeEntry | undefined => {
   const entry = node.canvas.get(nodeId)
-  if (!entry || !node.capability(entry.node).connect) {
+  if (!entry || entry.node.locked || !node.capability(entry.node).connect) {
     return undefined
   }
 

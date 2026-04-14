@@ -146,6 +146,10 @@ const normalizeRecipe = (
 const resolveTemplate = (
   context: NodeToolbarContext
 ) => {
+  if (context.locked !== 'none') {
+    return groupRecipe
+  }
+
   switch (context.kind) {
     case 'shape':
       return shapeRecipe

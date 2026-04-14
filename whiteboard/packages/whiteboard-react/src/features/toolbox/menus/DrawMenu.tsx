@@ -1,7 +1,7 @@
 import {
   Eraser,
   Highlighter,
-  PencilLine
+  Pencil
 } from 'lucide-react'
 import {
   ColorSwatchGrid,
@@ -27,10 +27,10 @@ import { hasDrawBrush } from '@whiteboard/editor/draw'
 import { DRAW_COLOR_OPTIONS } from '@whiteboard/react/features/selection/chrome/menus/options'
 
 const DRAW_MODE_ICONS = {
-  pen: PencilLine,
+  pen: Pencil,
   highlighter: Highlighter,
   eraser: Eraser
-} as const satisfies Record<DrawMode, typeof PencilLine>
+} as const satisfies Record<DrawMode, typeof Pencil>
 
 const DRAW_WIDTH_RANGE = {
   pen: {

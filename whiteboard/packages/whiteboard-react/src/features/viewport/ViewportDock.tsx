@@ -50,7 +50,6 @@ export const ViewportDock = () => {
   return (
     <FloatingLayer className="z-[var(--wb-z-toolbar)]">
       <ToolbarBar
-        variant="compact"
         className="absolute bottom-4 right-4 gap-2 rounded-xl p-1.5"
         onPointerDown={(event) => {
           event.preventDefault()

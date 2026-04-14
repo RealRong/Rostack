@@ -1,4 +1,7 @@
 import type { SelectionTarget } from '@whiteboard/core/selection'
+import {
+  resolveLockDecision
+} from '@whiteboard/core/lock'
 import type { WhiteboardRuntime } from '@whiteboard/react/types/runtime'
 
 export type SelectionCan = {
@@ -20,23 +23,66 @@ export const readSelectionCan = ({
   editor: WhiteboardRuntime
   target: SelectionTarget
 }): SelectionCan => {
+  const document = editor.actions.app.export()
   const pureNodeSelection =
     target.nodeIds.length > 0
     && target.edgeIds.length === 0
   const count = target.nodeIds.length + target.edgeIds.length
   const exactGroupIds = editor.read.group.exactIds(target)
+  const orderLock = resolveLockDecision({
+    document,
+    target: {
+      kind: 'refs',
+      refs: [
+        ...target.nodeIds.map((id) => ({ kind: 'node' as const, id })),
+        ...target.edgeIds.map((id) => ({ kind: 'edge' as const, id }))
+      ]
+    }
+  })
+  const destructiveLock = resolveLockDecision({
+    document,
+    target: {
+      kind: 'refs',
+      refs: [
+        ...target.nodeIds.map((id) => ({ kind: 'node' as const, id })),
+        ...target.edgeIds.map((id) => ({ kind: 'edge' as const, id }))
+      ],
+      includeEdgeRelations: true
+    }
+  })
+  const groupingLock = resolveLockDecision({
+    document,
+    target: {
+      kind: 'nodes',
+      nodeIds: target.nodeIds
+    }
+  })
+  const ungroupLock = resolveLockDecision({
+    document,
+    target: {
+      kind: 'groups',
+      groupIds: exactGroupIds
+    }
+  })
 
   return {
-    order: count > 0,
+    order: count > 0 && orderLock.allowed,
     makeGroup:
       count >= 2
+      && groupingLock.allowed
       && !(exactGroupIds.length === 1),
-    ungroup: exactGroupIds.length > 0,
+    ungroup: exactGroupIds.length > 0 && ungroupLock.allowed,
     copy: count > 0,
-    cut: count > 0,
-    duplicate: count > 0,
-    delete: count > 0,
-    align: pureNodeSelection && target.nodeIds.length >= 2,
-    distribute: pureNodeSelection && target.nodeIds.length >= 3
+    cut: count > 0 && destructiveLock.allowed,
+    duplicate: count > 0 && destructiveLock.allowed,
+    delete: count > 0 && destructiveLock.allowed,
+    align:
+      pureNodeSelection
+      && target.nodeIds.length >= 2
+      && groupingLock.allowed,
+    distribute:
+      pureNodeSelection
+      && target.nodeIds.length >= 3
+      && groupingLock.allowed
   }
 }

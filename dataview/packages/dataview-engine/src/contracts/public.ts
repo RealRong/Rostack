@@ -88,7 +88,7 @@ export interface ActionResult extends CommitResult {
   created?: CreatedEntities
 }
 
-export interface HistoryActionResult extends CommitResult {}
+export type HistoryActionResult = CommitResult
 
 export const sameCellRef = (
   left: CellRef,
@@ -113,17 +113,13 @@ export interface FilterRuleProjection {
 }
 
 export interface ViewFilterProjection {
-  viewId: ViewId
-  mode: Filter['mode']
   rules: readonly FilterRuleProjection[]
 }
 
 export interface ViewGroupProjection {
-  viewId: ViewId
   active: boolean
   fieldId: FieldId | ''
   field?: Field
-  fieldLabel: string
   mode: string
   bucketSort?: BucketSort
   bucketInterval?: number
@@ -134,22 +130,33 @@ export interface ViewGroupProjection {
 }
 
 export interface ViewSearchProjection {
-  viewId: ViewId
   query: string
   fields?: readonly FieldId[]
-  active: boolean
 }
 
 export interface SortRuleProjection {
   sorter: Sorter
   field?: Field
-  fieldLabel: string
 }
 
 export interface ViewSortProjection {
-  viewId: ViewId
-  active: boolean
   rules: readonly SortRuleProjection[]
+}
+
+const EMPTY_MODES = [] as readonly string[]
+const EMPTY_BUCKET_SORTS = [] as readonly BucketSort[]
+
+export const EMPTY_VIEW_GROUP_PROJECTION: ViewGroupProjection = {
+  active: false,
+  fieldId: '',
+  field: undefined,
+  mode: '',
+  bucketSort: undefined,
+  bucketInterval: undefined,
+  showEmpty: true,
+  availableModes: EMPTY_MODES,
+  availableBucketSorts: EMPTY_BUCKET_SORTS,
+  supportsInterval: false
 }
 
 export interface ActiveViewQuery {

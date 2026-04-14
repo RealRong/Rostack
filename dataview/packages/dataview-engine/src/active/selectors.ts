@@ -93,7 +93,7 @@ export const createGalleryStateStore = (
 
     const groupField = current.query.group.field
     const groupUsesOptionColors = usesOptionGroupingColors(groupField)
-    const canReorder = !current.query.group.active && !current.query.sort.active
+    const canReorder = !current.query.group.active && current.query.sort.rules.length === 0
 
     return {
       groupUsesOptionColors,
@@ -120,7 +120,7 @@ export const createKanbanStateStore = (
       groupUsesOptionColors,
       cardsPerColumn: current.view.options.kanban.cardsPerColumn,
       fillColumnColor: groupUsesOptionColors && current.view.options.kanban.fillColumnColor,
-      canReorder: current.query.group.active && !current.query.sort.active
+      canReorder: current.query.group.active && current.query.sort.rules.length === 0
     }
   },
   isEqual: sameKanbanState

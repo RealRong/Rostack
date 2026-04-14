@@ -10,7 +10,8 @@ import type {
 } from '@dataview/react/views/gallery/virtual'
 import type {
   ActiveTypedViewState,
-  ItemInteractionRuntime
+  ItemInteractionRuntime,
+  TypedRuntimeInput
 } from '@dataview/react/views/shared/types'
 
 export type ActiveGalleryViewState = ActiveTypedViewState<'gallery'>
@@ -26,7 +27,4 @@ export interface GalleryViewRuntime extends ItemInteractionRuntime {
   indicator?: GalleryDropTarget['indicator']
 }
 
-export interface GalleryRuntimeInput {
-  active: ActiveGalleryViewState
-  extra: GalleryState
-}
+export type GalleryRuntimeInput = TypedRuntimeInput<'gallery', GalleryState>

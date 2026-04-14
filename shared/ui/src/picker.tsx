@@ -4,10 +4,9 @@ import { FloatingSurface, type FloatingSurfaceProps } from '@shared/ui/floating'
 import { cn } from '@shared/ui/utils'
 
 export const PickerSurface = React.forwardRef<HTMLDivElement, FloatingSurfaceProps>(
-  ({ className, variant = 'compact', ...props }, ref) => (
+  ({ className, ...props }, ref) => (
     <FloatingSurface
       ref={ref}
-      variant={variant}
       className={cn('flex flex-col gap-1 p-1.5', className)}
       {...props}
     />
@@ -17,10 +16,9 @@ export const PickerSurface = React.forwardRef<HTMLDivElement, FloatingSurfacePro
 PickerSurface.displayName = 'PickerSurface'
 
 export const PickerPanelSurface = React.forwardRef<HTMLDivElement, FloatingSurfaceProps>(
-  ({ className, variant = 'panel', ...props }, ref) => (
+  ({ className, ...props }, ref) => (
     <FloatingSurface
       ref={ref}
-      variant={variant}
       className={cn('p-2 text-sm', className)}
       {...props}
     />
@@ -94,19 +92,6 @@ export const PickerSection = ({
     </div>
     {children}
   </div>
-)
-
-export const PickerTintBar = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLSpanElement>) => (
-  <span
-    className={cn(
-      'pointer-events-none absolute inset-x-[7px] bottom-[7px] h-1 rounded-full bg-surface-strong opacity-90',
-      className
-    )}
-    {...props}
-  />
 )
 
 export const PickerDivider = () => (

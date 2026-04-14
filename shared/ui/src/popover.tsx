@@ -51,7 +51,7 @@ import { cn } from '@shared/ui/utils'
 const POPOVER_TRANSITION_MS = 200
 
 export type PopoverOffset = Parameters<typeof middlewareOffset>[0]
-export type PopoverSurfaceSize = 'sm' | 'md' | 'lg' | 'xl'
+export type PopoverSurfaceSize = 'sm' | 'md' | 'lg' | 'xl' | 'unset'
 export type PopoverSurfacePadding = 'none' | 'menu' | 'panel'
 
 export type PopoverAnchorPoint = {
@@ -220,7 +220,8 @@ const POPOVER_SURFACE_SIZE_CLASS_NAMES: Record<PopoverSurfaceSize, string> = {
   sm: 'w-[180px]',
   md: 'w-[220px]',
   lg: 'w-[240px]',
-  xl: 'w-[280px]'
+  xl: 'w-[280px]',
+  unset: ''
 }
 
 const POPOVER_SURFACE_PADDING_CLASS_NAMES: Record<PopoverSurfacePadding, string> = {

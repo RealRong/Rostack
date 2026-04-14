@@ -5,14 +5,21 @@ export const TEXT_START_SIZE = {
   height: 24
 } as const
 
-export const STICKY_START_SIZE = {
-  width: 200,
-  height: 150
+export const STICKY_SQUARE_SIZE = {
+  width: 180,
+  height: 180
 } as const
+
+export const STICKY_RECTANGLE_SIZE = {
+  width: 240,
+  height: 120
+} as const
+
+export const STICKY_START_SIZE = STICKY_SQUARE_SIZE
 
 export const TEXT_PLACEHOLDER = 'Text'
 export const STICKY_PLACEHOLDER = 'Sticky'
-export const STICKY_DEFAULT_FILL = 'var(--ui-yellow-bg-strong)'
+export const STICKY_DEFAULT_FILL = 'var(--ui-yellow-surface-pressed)'
 export const STICKY_DEFAULT_TEXT_COLOR = 'var(--ui-text-primary)'
 export const STICKY_DEFAULT_STROKE = 'rgb(from var(--ui-text-primary) r g b / 0.12)'
 export const STICKY_DEFAULT_STROKE_WIDTH = 1
@@ -34,11 +41,18 @@ export const createTextNodeInput = (): Omit<SpatialNodeInput, 'position'> => ({
   data: { text: '' }
 })
 
-export const createStickyNodeInput = (
-  fill = STICKY_DEFAULT_FILL
-): Omit<SpatialNodeInput, 'position'> => ({
+export const createStickyNodeInput = ({
+  fill = STICKY_DEFAULT_FILL,
+  size = STICKY_START_SIZE
+}: {
+  fill?: string
+  size?: {
+    width: number
+    height: number
+  }
+} = {}): Omit<SpatialNodeInput, 'position'> => ({
   type: 'sticky',
-  size: { ...STICKY_START_SIZE },
+  size: { ...size },
   data: {
     text: ''
   },

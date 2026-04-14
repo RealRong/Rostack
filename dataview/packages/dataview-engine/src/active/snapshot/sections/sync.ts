@@ -2,6 +2,7 @@ import type {
   RecordId,
   View
 } from '@dataview/core/contracts'
+import { sameOrder } from '@shared/core'
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
@@ -15,7 +16,6 @@ import type {
 import {
   buildSectionNode,
   buildSectionState,
-  sameRecordIds,
   sameSectionNode,
   resolveSectionKeys
 } from '@dataview/engine/active/snapshot/sections/derive'
@@ -128,7 +128,7 @@ export const syncSectionState = (input: {
       index: input.index
     })
 
-    if (sameRecordIds(before, after)) {
+    if (sameOrder(before, after)) {
       return
     }
 
@@ -173,7 +173,7 @@ export const syncSectionState = (input: {
   })
 
   return {
-    order: sameRecordIds(previous.order, order)
+    order: sameOrder(previous.order, order)
       ? previous.order
       : order,
     byKey,

@@ -6,6 +6,7 @@ import {
   type MindmapInsertPreset,
   type NodeInsertPreset
 } from '@whiteboard/editor'
+import { resolveNodeBootstrapSize } from '@whiteboard/core/node'
 import type { NodeId, Point, SpatialNodeInput } from '@whiteboard/core/types'
 import type { WhiteboardRuntime } from '@whiteboard/react/types/runtime'
 
@@ -53,8 +54,9 @@ const placeNodeInput = ({
   input: Omit<SpatialNodeInput, 'position'>
   placement?: InsertPlacement
 }): SpatialNodeInput => {
-  const width = input.size?.width ?? 160
-  const height = input.size?.height ?? 80
+  const bootstrapSize = resolveNodeBootstrapSize(input)
+  const width = bootstrapSize?.width ?? 160
+  const height = bootstrapSize?.height ?? 80
 
   return {
     ...input,

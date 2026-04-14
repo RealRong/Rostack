@@ -12,6 +12,7 @@ import type {
   NodeTypeDefinition,
   SchemaField
 } from '@whiteboard/core/types'
+import { resolveNodeBootstrapSize } from '@whiteboard/core/node/templates'
 import { cloneValue } from '@whiteboard/core/value'
 import { getValueByPath, hasValueByPath, setValueByPath } from '@whiteboard/core/utils/objectPath'
 
@@ -101,6 +102,10 @@ export const applyNodeDefaults = (input: NodeInput, registries: CoreRegistries):
   const schema = resolveNodeSchema(registries, type)
   if (schema?.fields) {
     applyFieldDefaults(next, schema.fields)
+  }
+  const bootstrapSize = resolveNodeBootstrapSize(next)
+  if (bootstrapSize) {
+    next.size = bootstrapSize
   }
   return next
 }

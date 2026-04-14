@@ -228,6 +228,8 @@ export {
   STICKY_START_SIZE,
   TEXT_PLACEHOLDER,
   TEXT_START_SIZE,
+  resolveNodeBootstrapSize,
+  resolveTextNodeBootstrapSize,
   createFrameNodeInput,
   createStickyNodeInput,
   createTextNodeInput

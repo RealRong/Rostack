@@ -1,5 +1,7 @@
+import { isSizeEqual } from '@whiteboard/core/geometry'
 import {
   isNodeUpdateEmpty,
+  resolveNodeBootstrapSize
 } from '@whiteboard/core/node'
 import type {
   Document,
@@ -14,6 +16,17 @@ export const sanitizeDocument = (
   const entities: Record<string, Node> = {}
 
   Object.entries(document.nodes).forEach(([id, node]) => {
+    const bootstrapSize = resolveNodeBootstrapSize(node)
+
+    if (bootstrapSize && !isSizeEqual(node.size, bootstrapSize)) {
+      entities[id] = {
+        ...node,
+        size: bootstrapSize
+      }
+      changed = true
+      return
+    }
+
     entities[id] = node
   })
 
@@ -37,6 +50,18 @@ export const sanitizeOperations = ({
   operations.forEach((operation) => {
     switch (operation.type) {
       case 'node.create': {
+        const bootstrapSize = resolveNodeBootstrapSize(operation.node)
+        if (bootstrapSize && !isSizeEqual(operation.node.size, bootstrapSize)) {
+          next.push({
+            ...operation,
+            node: {
+              ...operation.node,
+              size: bootstrapSize
+            }
+          })
+          return
+        }
+
         next.push(operation)
         return
       }

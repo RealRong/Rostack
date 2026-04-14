@@ -1,4 +1,5 @@
 import { ToolbarIconButton, ToolbarStrokeIcon } from '@shared/ui'
+import { resolvePaletteColor } from '@whiteboard/react/features/palette'
 import { BorderPanel } from '@whiteboard/react/features/selection/chrome/panels/BorderPanel'
 import type { ToolbarItemSpec } from '@whiteboard/react/features/selection/chrome/toolbar/items/types'
 
@@ -23,7 +24,7 @@ export const strokeItem: ToolbarItemSpec = {
       aria-label="Border"
     >
       <ToolbarStrokeIcon
-        stroke={context.stroke}
+        stroke={resolvePaletteColor(context.stroke) ?? context.stroke}
         strokeWidth={context.strokeWidth}
         strokeDash={context.canEditStrokeDash ? context.strokeDash : undefined}
         opacity={context.canEditStrokeOpacity

@@ -47,21 +47,6 @@ export type MindmapInsertPreset = InsertPresetBase & {
   template: MindmapTemplate
 }
 
-export type StickyFormat = {
-  key: string
-  label: string
-  width: number
-  height: number
-}
-
-export type StickyTone = {
-  key: string
-  id: string
-  label: string
-  fill: string
-  border: string
-}
-
 export type InsertPreset =
   | NodeInsertPreset
   | MindmapInsertPreset

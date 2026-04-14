@@ -87,9 +87,7 @@ export type {
   InsertPresetGroup,
   MindmapInsertPreset,
   MindmapTemplate,
-  NodeInsertPreset,
-  StickyFormat,
-  StickyTone
+  NodeInsertPreset
 } from '@whiteboard/editor/types/insert'
 export type {
   ControlId,

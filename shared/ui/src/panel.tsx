@@ -8,6 +8,11 @@ const SWATCH_SIZE_CLASS_NAMES = {
   md: 'h-10 w-10'
 } as const
 
+const SWATCH_SIZE_PX = {
+  sm: 28,
+  md: 40
+} as const
+
 export const PANEL_SECTION_TITLE_CLASSNAME = 'text-xs font-semibold text-fg-muted'
 
 export const Panel = ({
@@ -98,14 +103,18 @@ export interface SwatchButtonProps extends Omit<
   'color'
 > {
   active?: boolean
-  color: string
+  color?: string
   size?: keyof typeof SWATCH_SIZE_CLASS_NAMES
+  shape?: 'round' | 'square'
+  transparent?: boolean
 }
 
 export const SwatchButton = ({
   active = false,
   color,
   size = 'sm',
+  shape = 'round',
+  transparent = false,
   className,
   type,
   ...props
@@ -114,15 +123,25 @@ export const SwatchButton = ({
     type={type ?? 'button'}
     className={cn(
       SWATCH_SIZE_CLASS_NAMES[size],
-      'rounded-full border border-default transition-[transform,box-shadow,border-color] duration-150 hover:scale-[1.03] hover:border-strong',
+      shape === 'square' ? 'rounded-md' : 'rounded-full',
+      'relative border border-default transition-[transform,box-shadow,border-color] duration-150 hover:scale-[1.03] hover:border-strong',
       active && 'border-accent [box-shadow:0_0_0_2px_rgb(from_var(--ui-accent)_r_g_b_/_0.18)]',
       className
     )}
     style={{
-      background: color
+      background: transparent ? 'transparent' : color
     }}
     {...props}
-  />
+  >
+    {transparent ? (
+      <span className="pointer-events-none absolute inset-[3px] rounded-[inherit] bg-surface" />
+    ) : null}
+    {transparent ? (
+      <span className="pointer-events-none absolute inset-0 block overflow-hidden rounded-[inherit]">
+        <span className="absolute left-1/2 top-[-15%] h-[130%] w-px -translate-x-1/2 rotate-45 bg-fg-muted" />
+      </span>
+    ) : null}
+  </button>
 )
 
 export const ColorSwatchGrid = ({
@@ -132,10 +151,15 @@ export const ColorSwatchGrid = ({
   className,
   swatchClassName,
   swatchSize = 'sm',
-  onSwatchPointerDown
+  onSwatchPointerDown,
+  columns,
+  swatchShape = 'round'
 }: {
   options: readonly {
     value: string
+    color?: string
+    ariaLabel?: string
+    transparent?: boolean
   }[]
   value?: string
   onChange: (value: string) => void
@@ -143,20 +167,26 @@ export const ColorSwatchGrid = ({
   swatchClassName?: string
   swatchSize?: keyof typeof SWATCH_SIZE_CLASS_NAMES
   onSwatchPointerDown?: React.PointerEventHandler<HTMLButtonElement>
+  columns?: number
+  swatchShape?: 'round' | 'square'
 }) => (
   <div className={cn('grid gap-2', className)} style={{
-    gridTemplateColumns: 'repeat(auto-fill, 25px)'
+    gridTemplateColumns: columns
+      ? `repeat(${columns}, ${SWATCH_SIZE_PX[swatchSize]}px)`
+      : `repeat(auto-fill, ${SWATCH_SIZE_PX[swatchSize]}px)`
   }}>
     {options.map((option) => (
       <SwatchButton
         key={option.value}
-        color={option.value}
+        color={option.color ?? option.value}
         active={value === option.value}
         size={swatchSize}
+        shape={swatchShape}
+        transparent={option.transparent}
         className={swatchClassName}
         onPointerDown={onSwatchPointerDown}
         onClick={() => onChange(option.value)}
-        aria-label={option.value}
+        aria-label={option.ariaLabel ?? option.value}
       />
     ))}
   </div>

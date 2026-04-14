@@ -71,7 +71,7 @@ export const PickerGridButton = React.forwardRef<HTMLButtonElement, ButtonProps>
   ({ className, ...props }, ref) => (
     <PickerButton
       ref={ref}
-      className={cn('h-auto w-full rounded-lg p-1.5 text-fg-muted hover:text-fg', className)}
+      className={cn('h-auto w-full rounded-lg p-1.5 text-fg-muted', className)}
       {...props}
     />
   )
@@ -87,7 +87,7 @@ export const PickerSection = ({
   children: React.ReactNode
 }) => (
   <div className="min-w-0">
-    <div className="mb-2.5 px-1 text-sm font-semibold text-fg-muted">
+    <div className="mb-3 text-sm text-fg-muted">
       {title}
     </div>
     {children}

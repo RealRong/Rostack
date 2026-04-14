@@ -2,6 +2,10 @@ import type {
   Node,
   SpatialNodeInput
 } from '@whiteboard/core/types'
+import {
+  WHITEBOARD_SHAPE_DEFAULTS,
+  WHITEBOARD_SHAPE_PRESET_PAINTS
+} from '@whiteboard/core/palette'
 
 export type ShapeKind =
   | 'rect'
@@ -82,16 +86,9 @@ const SHAPE_KIND_SET = new Set<ShapeKind>([
 ])
 
 const DEFAULT_SHAPE_KIND: ShapeKind = 'rect'
-const DEFAULT_FILL = 'var(--ui-surface)'
-const DEFAULT_STROKE = 'var(--ui-text-primary)'
-const DEFAULT_TEXT = 'var(--ui-text-primary)'
-const BLUE_FILL = 'var(--ui-blue-bg-strong)'
-const BLUE_STROKE = 'var(--ui-blue-text)'
-const YELLOW_FILL = 'rgb(from var(--ui-yellow-bg-strong) r g b / 0.9)'
-const YELLOW_STROKE = 'rgb(from var(--ui-yellow-text) r g b / 0.72)'
-const PREVIEW_FILL = 'var(--ui-surface-subtle)'
-const PREVIEW_FILL_BLUE = 'var(--ui-blue-bg-strong)'
-const PREVIEW_FILL_YELLOW_SOFT = 'var(--ui-yellow-bg-strong)'
+const DEFAULT_FILL = WHITEBOARD_SHAPE_DEFAULTS.fill
+const DEFAULT_STROKE = WHITEBOARD_SHAPE_DEFAULTS.stroke
+const DEFAULT_TEXT = WHITEBOARD_SHAPE_DEFAULTS.color
 const SHAPE_META_CONTROLS = ['fill', 'stroke', 'text'] as const
 
 export const isShapeKind = (
@@ -122,7 +119,7 @@ export const SHAPE_SPECS: readonly ShapeSpec[] = [
       stroke: DEFAULT_STROKE,
       color: DEFAULT_TEXT
     },
-    previewFill: PREVIEW_FILL,
+    previewFill: WHITEBOARD_SHAPE_PRESET_PAINTS.default.previewFill,
     labelInset: {
       top: 16,
       right: 16,
@@ -141,7 +138,7 @@ export const SHAPE_SPECS: readonly ShapeSpec[] = [
       stroke: DEFAULT_STROKE,
       color: DEFAULT_TEXT
     },
-    previewFill: PREVIEW_FILL,
+    previewFill: WHITEBOARD_SHAPE_PRESET_PAINTS.default.previewFill,
     labelInset: {
       top: 16,
       right: 18,
@@ -160,7 +157,7 @@ export const SHAPE_SPECS: readonly ShapeSpec[] = [
       stroke: DEFAULT_STROKE,
       color: DEFAULT_TEXT
     },
-    previewFill: PREVIEW_FILL,
+    previewFill: WHITEBOARD_SHAPE_PRESET_PAINTS.default.previewFill,
     labelInset: {
       top: 20,
       right: 28,
@@ -179,7 +176,7 @@ export const SHAPE_SPECS: readonly ShapeSpec[] = [
       stroke: DEFAULT_STROKE,
       color: DEFAULT_TEXT
     },
-    previewFill: PREVIEW_FILL,
+    previewFill: WHITEBOARD_SHAPE_PRESET_PAINTS.default.previewFill,
     labelInset: {
       top: '20%',
       right: '18%',
@@ -198,7 +195,7 @@ export const SHAPE_SPECS: readonly ShapeSpec[] = [
       stroke: DEFAULT_STROKE,
       color: DEFAULT_TEXT
     },
-    previewFill: PREVIEW_FILL,
+    previewFill: WHITEBOARD_SHAPE_PRESET_PAINTS.default.previewFill,
     labelInset: {
       top: '22%',
       right: '24%',
@@ -217,7 +214,7 @@ export const SHAPE_SPECS: readonly ShapeSpec[] = [
       stroke: DEFAULT_STROKE,
       color: DEFAULT_TEXT
     },
-    previewFill: PREVIEW_FILL,
+    previewFill: WHITEBOARD_SHAPE_PRESET_PAINTS.default.previewFill,
     labelInset: {
       top: '34%',
       right: '20%',
@@ -236,7 +233,7 @@ export const SHAPE_SPECS: readonly ShapeSpec[] = [
       stroke: DEFAULT_STROKE,
       color: DEFAULT_TEXT
     },
-    previewFill: PREVIEW_FILL,
+    previewFill: WHITEBOARD_SHAPE_PRESET_PAINTS.default.previewFill,
     labelInset: {
       top: 16,
       right: '18%',
@@ -255,7 +252,7 @@ export const SHAPE_SPECS: readonly ShapeSpec[] = [
       stroke: DEFAULT_STROKE,
       color: DEFAULT_TEXT
     },
-    previewFill: PREVIEW_FILL,
+    previewFill: WHITEBOARD_SHAPE_PRESET_PAINTS.default.previewFill,
     labelInset: {
       top: '14%',
       right: '21%',
@@ -274,7 +271,7 @@ export const SHAPE_SPECS: readonly ShapeSpec[] = [
       stroke: DEFAULT_STROKE,
       color: DEFAULT_TEXT
     },
-    previewFill: PREVIEW_FILL,
+    previewFill: WHITEBOARD_SHAPE_PRESET_PAINTS.default.previewFill,
     labelInset: {
       top: '20%',
       right: '16%',
@@ -293,7 +290,7 @@ export const SHAPE_SPECS: readonly ShapeSpec[] = [
       stroke: DEFAULT_STROKE,
       color: DEFAULT_TEXT
     },
-    previewFill: PREVIEW_FILL,
+    previewFill: WHITEBOARD_SHAPE_PRESET_PAINTS.default.previewFill,
     labelInset: {
       top: '12%',
       right: '12%',
@@ -312,7 +309,7 @@ export const SHAPE_SPECS: readonly ShapeSpec[] = [
       stroke: DEFAULT_STROKE,
       color: DEFAULT_TEXT
     },
-    previewFill: PREVIEW_FILL,
+    previewFill: WHITEBOARD_SHAPE_PRESET_PAINTS.default.previewFill,
     labelInset: {
       top: '14%',
       right: '22%',
@@ -331,7 +328,7 @@ export const SHAPE_SPECS: readonly ShapeSpec[] = [
       stroke: DEFAULT_STROKE,
       color: DEFAULT_TEXT
     },
-    previewFill: PREVIEW_FILL,
+    previewFill: WHITEBOARD_SHAPE_PRESET_PAINTS.default.previewFill,
     labelInset: {
       top: '12%',
       right: '12%',
@@ -350,7 +347,7 @@ export const SHAPE_SPECS: readonly ShapeSpec[] = [
       stroke: DEFAULT_STROKE,
       color: DEFAULT_TEXT
     },
-    previewFill: PREVIEW_FILL,
+    previewFill: WHITEBOARD_SHAPE_PRESET_PAINTS.default.previewFill,
     labelInset: {
       top: '22%',
       right: '16%',
@@ -365,11 +362,11 @@ export const SHAPE_SPECS: readonly ShapeSpec[] = [
     defaultSize: { width: 220, height: 110 },
     defaultText: 'Arrow',
     defaults: {
-      fill: BLUE_FILL,
-      stroke: BLUE_STROKE,
-      color: BLUE_STROKE
+      fill: WHITEBOARD_SHAPE_PRESET_PAINTS.arrowSticker.fill,
+      stroke: WHITEBOARD_SHAPE_PRESET_PAINTS.arrowSticker.stroke,
+      color: WHITEBOARD_SHAPE_PRESET_PAINTS.arrowSticker.color
     },
-    previewFill: PREVIEW_FILL_BLUE,
+    previewFill: WHITEBOARD_SHAPE_PRESET_PAINTS.arrowSticker.previewFill,
     labelInset: {
       top: '14%',
       right: '40%',
@@ -384,11 +381,11 @@ export const SHAPE_SPECS: readonly ShapeSpec[] = [
     defaultSize: { width: 220, height: 90 },
     defaultText: 'Highlight',
     defaults: {
-      fill: YELLOW_FILL,
-      stroke: YELLOW_STROKE,
-      color: DEFAULT_TEXT
+      fill: WHITEBOARD_SHAPE_PRESET_PAINTS.highlight.fill,
+      stroke: WHITEBOARD_SHAPE_PRESET_PAINTS.highlight.stroke,
+      color: WHITEBOARD_SHAPE_PRESET_PAINTS.highlight.color
     },
-    previewFill: PREVIEW_FILL_YELLOW_SOFT,
+    previewFill: WHITEBOARD_SHAPE_PRESET_PAINTS.highlight.previewFill,
     labelInset: {
       top: '18%',
       right: '10%',
@@ -461,4 +458,4 @@ export const SHAPE_MENU_SECTIONS: readonly ShapeMenuSection[] = [
 
 export const readShapePreviewFill = (
   kind: ShapeKind
-): string => readShapeSpec(kind).previewFill ?? PREVIEW_FILL
+): string => readShapeSpec(kind).previewFill ?? WHITEBOARD_SHAPE_PRESET_PAINTS.default.previewFill

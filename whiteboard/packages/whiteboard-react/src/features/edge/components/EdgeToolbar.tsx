@@ -23,7 +23,12 @@ import type {
 import { useStoreValue } from '@shared/react'
 import { useEditorRuntime } from '@whiteboard/react/runtime/hooks'
 import { FloatingToolbarShell } from '@whiteboard/react/features/selection/chrome/FloatingToolbarShell'
-import { STROKE_COLOR_OPTIONS } from '@whiteboard/react/features/selection/chrome/menus/options'
+import {
+  WHITEBOARD_PALETTE_GRID_COLUMNS,
+  WHITEBOARD_PALETTE_SWATCH_SHAPE,
+  WHITEBOARD_STROKE_COLOR_OPTIONS,
+  resolvePaletteColor
+} from '@whiteboard/react/features/palette'
 
 type PanelKey = 'start' | 'end' | 'line' | 'color' | 'text-mode'
 
@@ -89,7 +94,7 @@ const EdgeLineIcon = ({
       {type === 'curve' ? (
         <path
           d="M3 17 C8 4, 16 20, 21 7"
-          stroke={color ?? 'currentColor'}
+          stroke={resolvePaletteColor(color) ?? color ?? 'currentColor'}
           strokeWidth={1.8}
           strokeDasharray={dashArray}
           strokeLinecap="round"
@@ -97,7 +102,7 @@ const EdgeLineIcon = ({
       ) : type === 'elbow' ? (
         <path
           d="M4 17 H11 V7 H20"
-          stroke={color ?? 'currentColor'}
+          stroke={resolvePaletteColor(color) ?? color ?? 'currentColor'}
           strokeWidth={1.8}
           strokeDasharray={dashArray}
           strokeLinecap="round"
@@ -106,7 +111,7 @@ const EdgeLineIcon = ({
       ) : (
         <path
           d="M4 17 L20 7"
-          stroke={color ?? 'currentColor'}
+          stroke={resolvePaletteColor(color) ?? color ?? 'currentColor'}
           strokeWidth={1.8}
           strokeDasharray={dashArray}
           strokeLinecap="round"
@@ -124,7 +129,7 @@ const EdgeColorIcon = ({
   <svg viewBox="0 0 24 24" className="size-6" fill="none">
     <path
       d="M4 16 H20"
-      stroke={color ?? 'currentColor'}
+      stroke={resolvePaletteColor(color) ?? color ?? 'currentColor'}
       strokeWidth={2.2}
       strokeLinecap="round"
     />
@@ -215,12 +220,14 @@ const ColorPanel = ({
   value?: string
   onChange: (value: string) => void
 }) => (
-  <Panel className="min-w-[240px]">
+  <Panel className="min-w-[384px]">
     <PanelSection title="Color">
       <ColorSwatchGrid
-        options={STROKE_COLOR_OPTIONS}
+        options={WHITEBOARD_STROKE_COLOR_OPTIONS}
         value={value}
         onChange={onChange}
+        columns={WHITEBOARD_PALETTE_GRID_COLUMNS}
+        swatchShape={WHITEBOARD_PALETTE_SWATCH_SHAPE}
       />
     </PanelSection>
   </Panel>

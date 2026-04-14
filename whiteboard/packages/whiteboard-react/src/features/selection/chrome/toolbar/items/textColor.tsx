@@ -1,4 +1,5 @@
 import { ToolbarIconButton, ToolbarTextColorIcon } from '@shared/ui'
+import { resolvePaletteColor } from '@whiteboard/react/features/palette'
 import { TextColorPanel } from '@whiteboard/react/features/selection/chrome/panels/TextColorPanel'
 import type { ToolbarItemSpec } from '@whiteboard/react/features/selection/chrome/toolbar/items/types'
 
@@ -22,7 +23,7 @@ export const textColorItem: ToolbarItemSpec = {
       title="Text color"
       aria-label="Text color"
     >
-      <ToolbarTextColorIcon color={context.textColor} />
+      <ToolbarTextColorIcon color={resolvePaletteColor(context.textColor) ?? context.textColor} />
     </ToolbarIconButton>
   ),
   renderPanel: ({

@@ -6,6 +6,7 @@ import {
   type CSSProperties
 } from 'react'
 import { isSizeEqual } from '@whiteboard/core/geometry'
+import { WHITEBOARD_TEXT_DEFAULT_COLOR } from '@whiteboard/core/node'
 import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
 import {
   useEdit,
@@ -20,10 +21,12 @@ import {
   readTextWidthMode,
   readTextWrapWidth,
   STICKY_DEFAULT_FILL,
-  STICKY_PLACEHOLDER,
+  STICKY_DEFAULT_STROKE,
+  STICKY_DEFAULT_TEXT_COLOR,
   TEXT_DEFAULT_FONT_SIZE,
   TEXT_PLACEHOLDER
 } from '@whiteboard/react/features/node/text'
+import { resolvePaletteColorOr } from '@whiteboard/react/features/palette'
 import {
   createSchema,
   createTextField,
@@ -54,13 +57,17 @@ const stickySchema = createSchema('sticky', 'Sticky', [
 
 const readStickyFill = (
   node: NodeRenderProps['node']
-) => typeof node.style?.fill === 'string'
-  ? node.style.fill
-  : STICKY_DEFAULT_FILL
+) => resolvePaletteColorOr(
+  getStyleString(node, 'fill'),
+  STICKY_DEFAULT_FILL
+) ?? STICKY_DEFAULT_FILL
 
 const readStickyStroke = (
   node: NodeRenderProps['node']
-) => getStyleString(node, 'stroke') ?? 'rgb(from var(--ui-text-primary) r g b / 0.12)'
+) => resolvePaletteColorOr(
+  getStyleString(node, 'stroke'),
+  STICKY_DEFAULT_STROKE
+) ?? STICKY_DEFAULT_STROKE
 
 const readStickyStrokeWidth = (
   node: NodeRenderProps['node']
@@ -241,7 +248,10 @@ const TextNodeRenderer = ({
   const fontSize = getStyleNumber(node, 'fontSize') ?? TEXT_DEFAULT_FONT_SIZE
   const fontWeight = getStyleNumber(node, 'fontWeight') ?? 400
   const fontStyle = getStyleString(node, 'fontStyle') ?? 'normal'
-  const color = getStyleString(node, 'color') ?? 'var(--ui-text-primary)'
+  const color = resolvePaletteColorOr(
+    getStyleString(node, 'color'),
+    WHITEBOARD_TEXT_DEFAULT_COLOR
+  ) ?? 'var(--ui-text-primary)'
   const nodeEdit = matchNodeEdit(edit, node.id, 'text')
   const editing = nodeEdit !== null
   const textStyle: CSSProperties = {
@@ -304,7 +314,6 @@ const StickyNodeRenderer = ({
 }: NodeRenderProps) => {
   const edit = useEdit()
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
-  const placeholder = STICKY_PLACEHOLDER
   const {
     sourceElement,
     bindRef
@@ -322,7 +331,10 @@ const StickyNodeRenderer = ({
   const fontSize = getStyleNumber(node, 'fontSize') ?? autoFontSize
   const fontWeight = getStyleNumber(node, 'fontWeight') ?? 400
   const fontStyle = getStyleString(node, 'fontStyle') ?? 'normal'
-  const color = getStyleString(node, 'color') ?? 'var(--ui-text-primary)'
+  const color = resolvePaletteColorOr(
+    getStyleString(node, 'color'),
+    STICKY_DEFAULT_TEXT_COLOR
+  ) ?? 'var(--ui-text-primary)'
   const nodeEdit = matchNodeEdit(edit, node.id, 'text')
   const editing = nodeEdit !== null
   const textStyle: CSSProperties = {
@@ -356,7 +368,7 @@ const StickyNodeRenderer = ({
             className="wb-sticky-node-text"
             style={textStyle}
           >
-            {text || placeholder}
+            {text}
           </div>
         )}
       </div>
@@ -386,7 +398,7 @@ const createTextStyle = (variant: 'text' | 'sticky') => (props: NodeRenderProps)
   return {
     '--wb-sticky-fill': readStickyFill(props.node),
     '--wb-sticky-stroke': stickyStroke,
-    background: 'var(--wb-sticky-fill, var(--ui-yellow-surface))',
+    background: 'var(--wb-sticky-fill, var(--wb-palette-bg-12))',
     border: 'none',
     boxSizing: 'border-box',
     borderRadius: 0,
@@ -442,7 +454,7 @@ export const StickyNodeDefinition: NodeDefinition = {
   edit: {
     fields: {
       text: {
-        placeholder: STICKY_PLACEHOLDER,
+        placeholder: '',
         multiline: true,
         empty: 'keep',
         measure: 'none'

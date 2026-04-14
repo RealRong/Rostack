@@ -8,6 +8,7 @@ import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/no
 import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
 import { matchNodeEdit } from '@whiteboard/react/features/edit/session'
 import { useEdit, useEditor } from '@whiteboard/react/runtime/hooks'
+import { resolvePaletteColorOr } from '@whiteboard/react/features/palette'
 import {
   ShapeGlyph
 } from '@whiteboard/react/features/node/shape'
@@ -44,12 +45,21 @@ const readShapeColors = (
 
   return {
     kind,
-    fill: getStyleString(props.node, 'fill') ?? spec.defaults.fill,
+    fill: resolvePaletteColorOr(
+      getStyleString(props.node, 'fill'),
+      spec.defaults.fill
+    ) ?? spec.defaults.fill,
     fillOpacity: getStyleNumber(props.node, 'fillOpacity') ?? 1,
-    stroke: getStyleString(props.node, 'stroke') ?? spec.defaults.stroke,
+    stroke: resolvePaletteColorOr(
+      getStyleString(props.node, 'stroke'),
+      spec.defaults.stroke
+    ) ?? spec.defaults.stroke,
     strokeOpacity: getStyleNumber(props.node, 'strokeOpacity') ?? 1,
     strokeDash: getStyleNumberArray(props.node, 'strokeDash'),
-    color: getStyleString(props.node, 'color') ?? spec.defaults.color,
+    color: resolvePaletteColorOr(
+      getStyleString(props.node, 'color'),
+      spec.defaults.color
+    ) ?? spec.defaults.color,
     strokeWidth: getStyleNumber(props.node, 'strokeWidth') ?? (props.hovered ? 1.6 : 1.2),
     fontSize: getStyleNumber(props.node, 'fontSize') ?? TEXT_DEFAULT_FONT_SIZE,
     fontWeight: getStyleNumber(props.node, 'fontWeight') ?? 400,

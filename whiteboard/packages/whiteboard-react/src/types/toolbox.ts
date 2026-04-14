@@ -7,13 +7,13 @@ import type {
   DrawStyle
 } from '@whiteboard/editor/draw'
 import type {
-  EdgePresetKey
+  EdgePresetKey,
+  InsertPresetGroup
 } from '@whiteboard/editor'
 import type {
-  InsertPresetGroup,
   StickyFormat,
   StickyTone
-} from '@whiteboard/react/features/toolbox/presets'
+} from '@whiteboard/react/features/palette'
 
 export type ToolPaletteMenuKey =
   | 'draw'

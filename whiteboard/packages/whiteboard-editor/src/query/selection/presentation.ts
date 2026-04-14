@@ -4,8 +4,11 @@ import {
   FRAME_DEFAULT_STROKE_WIDTH,
   FRAME_DEFAULT_TEXT_COLOR,
   STICKY_DEFAULT_FILL,
+  STICKY_DEFAULT_STROKE,
+  STICKY_DEFAULT_STROKE_WIDTH,
   STICKY_DEFAULT_TEXT_COLOR,
   TEXT_DEFAULT_FONT_SIZE,
+  WHITEBOARD_TEXT_DEFAULT_COLOR,
   readShapeKind,
   readShapeSpec
 } from '@whiteboard/core/node'
@@ -59,7 +62,7 @@ type SelectionNodeStats = {
   mixed: boolean
 }
 
-const UI_TEXT_PRIMARY = 'var(--ui-text-primary)'
+const UI_TEXT_PRIMARY = WHITEBOARD_TEXT_DEFAULT_COLOR
 const EMPTY_CONTROLS: readonly ControlId[] = []
 
 const readObjectCountLabel = (
@@ -280,7 +283,9 @@ const readFillOpacity = (
 const readDefaultStroke = (
   node: Node
 ) => readShapeDefaults(node)?.stroke
-  ?? (node.type === 'frame'
+  ?? (node.type === 'sticky'
+    ? STICKY_DEFAULT_STROKE
+    : node.type === 'frame'
     ? FRAME_DEFAULT_STROKE
     : node.type === 'draw'
       ? UI_TEXT_PRIMARY
@@ -294,7 +299,9 @@ const readDefaultStrokeWidth = (
   node: Node
 ) => node.type === 'shape'
   ? 1
-  : node.type === 'frame'
+  : node.type === 'sticky'
+    ? STICKY_DEFAULT_STROKE_WIDTH
+    : node.type === 'frame'
     ? FRAME_DEFAULT_STROKE_WIDTH
     : node.type === 'draw'
       ? 2

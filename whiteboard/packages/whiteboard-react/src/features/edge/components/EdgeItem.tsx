@@ -12,6 +12,9 @@ import {
   projectPointToEdgeLabelPlacement,
   resolveEdgeLabelPlacement
 } from '@whiteboard/core/edge'
+import {
+  WHITEBOARD_TEXT_DEFAULT_COLOR
+} from '@whiteboard/core/node'
 import type { EdgeId } from '@whiteboard/core/types'
 import {
   useEdit,
@@ -23,6 +26,7 @@ import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
 import { matchEdgeLabelEdit } from '@whiteboard/react/features/edit/session'
 import { useEdgeView } from '@whiteboard/react/features/edge/hooks/useEdgeView'
 import { EDGE_ARROW_END_ID, EDGE_ARROW_START_ID, resolveEdgeDash } from '@whiteboard/react/features/edge/constants'
+import { resolvePaletteColor, resolvePaletteColorOr } from '@whiteboard/react/features/palette'
 import type { EdgeView } from '@whiteboard/react/types/edge'
 
 const EDGE_LABEL_DRAG_DISTANCE = 3
@@ -74,8 +78,8 @@ const resolveTextStyle = ({
   weight?: number
   italic?: boolean
 }): CSSProperties => ({
-  color: color ?? 'var(--ui-text-primary)',
-  background: bg ?? 'transparent',
+  color: resolvePaletteColorOr(color, 'var(--ui-text-primary)') ?? 'var(--ui-text-primary)',
+  background: resolvePaletteColor(bg) ?? bg ?? 'transparent',
   fontSize: size ?? 14,
   fontWeight: weight ?? 400,
   fontStyle: italic ? 'italic' : 'normal'
@@ -325,7 +329,10 @@ const EdgeItemBase = ({
     hoverStrokeWidth
   } = useMemo(() => {
     const edge = entry?.edge
-    const baseStroke = edge?.style?.color ?? 'var(--ui-text-primary)'
+    const baseStroke = resolvePaletteColorOr(
+      edge?.style?.color,
+      WHITEBOARD_TEXT_DEFAULT_COLOR
+    ) ?? 'var(--ui-text-primary)'
     const stroke = baseStroke
     const baseWidth = edge?.style?.width ?? 2
     const strokeWidth = baseWidth

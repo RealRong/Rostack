@@ -2,6 +2,7 @@ import type {
   CSSProperties
 } from 'react'
 import { useStoreValue } from '@shared/react'
+import { WHITEBOARD_TEXT_DEFAULT_COLOR } from '@whiteboard/core/node'
 import {
   useEditorRuntime,
   useInteraction,
@@ -18,6 +19,7 @@ import {
   EDGE_ARROW_START_ID,
   resolveEdgeDash
 } from '@whiteboard/react/features/edge/constants'
+import { resolvePaletteColorOr } from '@whiteboard/react/features/palette'
 
 const resolveMarker = (value: string | undefined, fallbackId: string) => {
   if (!value) return undefined
@@ -40,7 +42,10 @@ const EdgeHintOverlay = () => {
     ? connect.resolution.pointWorld
     : undefined
   const snapRadius = 6 / Math.max(zoom, 0.0001)
-  const stroke = path?.style?.color ?? 'var(--ui-text-primary)'
+  const stroke = resolvePaletteColorOr(
+    path?.style?.color,
+    WHITEBOARD_TEXT_DEFAULT_COLOR
+  ) ?? 'var(--ui-text-primary)'
   const strokeWidth = path?.style?.width ?? 2
   const dash = resolveEdgeDash(path?.style?.dash)
   const markerStart = resolveMarker(path?.style?.start, EDGE_ARROW_START_ID)

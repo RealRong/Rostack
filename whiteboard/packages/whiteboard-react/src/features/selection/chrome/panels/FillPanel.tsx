@@ -5,6 +5,10 @@ import {
   SliderSection,
   formatPercent
 } from '@shared/ui'
+import {
+  WHITEBOARD_PALETTE_GRID_COLUMNS,
+  WHITEBOARD_PALETTE_SWATCH_SHAPE
+} from '@whiteboard/react/features/palette'
 
 export const FillPanel = ({
   fill,
@@ -17,11 +21,14 @@ export const FillPanel = ({
   fillOpacity?: number
   options: readonly {
     value: string
+    color?: string
+    ariaLabel?: string
+    transparent?: boolean
   }[]
   onFillChange: (value: string) => void
   onFillOpacityChange?: (value: number) => void
 }) => (
-  <Panel className='w-[240px]'>
+  <Panel className='w-[384px]'>
     {onFillOpacityChange ? (
       <>
         <SliderSection
@@ -40,6 +47,8 @@ export const FillPanel = ({
         options={options}
         value={fill}
         onChange={onFillChange}
+        columns={WHITEBOARD_PALETTE_GRID_COLUMNS}
+        swatchShape={WHITEBOARD_PALETTE_SWATCH_SHAPE}
       />
     </PanelSection>
   </Panel>

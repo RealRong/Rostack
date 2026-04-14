@@ -1,8 +1,9 @@
 import { ToolbarFillIcon, ToolbarIconButton } from '@shared/ui'
 import {
-  FILL_COLOR_OPTIONS,
-  STICKY_FILL_OPTIONS
-} from '@whiteboard/react/features/selection/chrome/menus/options'
+  WHITEBOARD_FILL_COLOR_OPTIONS,
+  WHITEBOARD_STICKY_FILL_OPTIONS,
+  resolvePaletteColor
+} from '@whiteboard/react/features/palette'
 import { FillPanel } from '@whiteboard/react/features/selection/chrome/panels/FillPanel'
 import type { ToolbarItemSpec } from '@whiteboard/react/features/selection/chrome/toolbar/items/types'
 
@@ -27,7 +28,7 @@ export const fillItem: ToolbarItemSpec = {
       aria-label="Fill"
     >
       <ToolbarFillIcon
-        fill={context.fill}
+        fill={resolvePaletteColor(context.fill) ?? context.fill}
         opacity={context.fillOpacity}
       />
     </ToolbarIconButton>
@@ -40,8 +41,8 @@ export const fillItem: ToolbarItemSpec = {
       fill={context.fill}
       fillOpacity={context.fillOpacity}
       options={context.kind === 'sticky'
-        ? STICKY_FILL_OPTIONS
-        : FILL_COLOR_OPTIONS}
+        ? WHITEBOARD_STICKY_FILL_OPTIONS
+        : WHITEBOARD_FILL_COLOR_OPTIONS}
       onFillChange={(value) => {
         editor.actions.node.style.fill(context.nodeIds, value)
       }}

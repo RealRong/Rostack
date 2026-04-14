@@ -40,7 +40,7 @@ export const ToolPaletteMenu = ({
   }
 
   return (
-    <PickerPanelSurface className="max-h-[calc(100vh-32px)] max-w-[320px]">
+    <PickerPanelSurface className="max-w-[320px]">
       {openMenu === 'edge' ? (
         <EdgeMenu
           value={palette.edgePreset}

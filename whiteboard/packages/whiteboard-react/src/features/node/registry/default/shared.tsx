@@ -1,4 +1,5 @@
 import type { Node, NodeSchema, NodeType, SchemaField } from '@whiteboard/core/types'
+import { resolvePaletteColor } from '@whiteboard/react/features/palette'
 
 export const getDataString = (node: Node, key: string) => {
   const value = node.data && node.data[key]
@@ -12,7 +13,9 @@ export const getDataBool = (node: Node, key: string) => {
 
 export const getStyleString = (node: Node, key: string) => {
   const value = node.style && node.style[key]
-  return typeof value === 'string' ? value : undefined
+  return typeof value === 'string'
+    ? resolvePaletteColor(value) ?? value
+    : undefined
 }
 
 export const getStyleNumber = (node: Node, key: string) => {

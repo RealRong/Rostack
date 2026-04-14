@@ -24,7 +24,11 @@ import {
   DRAW_SLOTS
 } from '@whiteboard/editor/draw'
 import { hasDrawBrush } from '@whiteboard/editor/draw'
-import { DRAW_COLOR_OPTIONS } from '@whiteboard/react/features/selection/chrome/menus/options'
+import {
+  WHITEBOARD_DRAW_COLOR_OPTIONS,
+  WHITEBOARD_PALETTE_SWATCH_SHAPE,
+  resolvePaletteColor
+} from '@whiteboard/react/features/palette'
 
 const DRAW_MODE_ICONS = {
   pen: Pencil,
@@ -123,7 +127,7 @@ export const DrawMenu = ({
                       style={{
                         width: resolveSlotSize(slotStyle.width),
                         height: resolveSlotSize(slotStyle.width),
-                        background: slotStyle.color
+                        background: resolvePaletteColor(slotStyle.color) ?? slotStyle.color
                       }}
                     />
                   </PickerIconButton>
@@ -160,7 +164,7 @@ export const DrawMenu = ({
                     style={{
                       width: Math.max(10, Math.min(28, style.width * 2)),
                       height: Math.max(2, style.width),
-                      background: style.color,
+                      background: resolvePaletteColor(style.color) ?? style.color,
                       opacity: brush === 'highlighter' ? 0.35 : 1
                     }}
                   />
@@ -171,11 +175,12 @@ export const DrawMenu = ({
             <div className="mt-4">
               <PickerSection title="All colors">
                 <ColorSwatchGrid
-                  options={DRAW_COLOR_OPTIONS}
+                  options={WHITEBOARD_DRAW_COLOR_OPTIONS}
                   value={style.color}
                   onChange={(value) => onPatch({ color: value })}
-                  className="grid-cols-5 gap-2.5"
+                  className="gap-2.5"
                   swatchSize="md"
+                  swatchShape={WHITEBOARD_PALETTE_SWATCH_SHAPE}
                 />
               </PickerSection>
             </div>

@@ -212,6 +212,32 @@ export type {
   ShapeSpec
 } from '@whiteboard/core/node/shape'
 export {
+  createWhiteboardPaletteKey,
+  isWhiteboardPaletteKey,
+  parseWhiteboardPaletteKey,
+  resolveWhiteboardPaletteValue,
+  resolveWhiteboardPaletteVariable,
+  WHITEBOARD_BG_PALETTE_INDICES,
+  WHITEBOARD_BORDER_PALETTE_INDICES,
+  WHITEBOARD_DRAW_DEFAULTS,
+  WHITEBOARD_FRAME_DEFAULTS,
+  WHITEBOARD_PALETTE_KEYS,
+  WHITEBOARD_PALETTE_REGISTRY,
+  WHITEBOARD_SHAPE_DEFAULTS,
+  WHITEBOARD_SHAPE_PRESET_PAINTS,
+  WHITEBOARD_STICKY_DEFAULTS,
+  WHITEBOARD_STICKY_TONE_PRESETS,
+  WHITEBOARD_STROKE_DEFAULT_COLOR,
+  WHITEBOARD_SURFACE_DEFAULT_FILL,
+  WHITEBOARD_TEXT_DEFAULT_COLOR,
+  WHITEBOARD_TEXT_PALETTE_INDICES,
+  type WhiteboardPaletteGroup,
+  type WhiteboardPaletteKey,
+  type WhiteboardPaletteRegistry,
+  type WhiteboardPaintPreset,
+  type WhiteboardStickyTonePreset
+} from '@whiteboard/core/palette'
+export {
   FRAME_DEFAULT_FILL,
   FRAME_DEFAULT_STROKE,
   FRAME_DEFAULT_STROKE_WIDTH,

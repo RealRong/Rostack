@@ -1,5 +1,9 @@
 import { ColorSwatchGrid, Panel, PanelSection } from '@shared/ui'
-import { TEXT_COLOR_OPTIONS } from '@whiteboard/react/features/selection/chrome/menus/options'
+import {
+  WHITEBOARD_PALETTE_GRID_COLUMNS,
+  WHITEBOARD_PALETTE_SWATCH_SHAPE,
+  WHITEBOARD_TEXT_COLOR_OPTIONS
+} from '@whiteboard/react/features/palette'
 
 export const TextColorPanel = ({
   value,
@@ -8,12 +12,14 @@ export const TextColorPanel = ({
   value?: string
   onChange: (value: string) => void
 }) => (
-  <Panel className="min-w-[240px]">
+  <Panel className="min-w-[384px]">
     <PanelSection title="Text color">
       <ColorSwatchGrid
-        options={TEXT_COLOR_OPTIONS}
+        options={WHITEBOARD_TEXT_COLOR_OPTIONS}
         value={value}
         onChange={onChange}
+        columns={WHITEBOARD_PALETTE_GRID_COLUMNS}
+        swatchShape={WHITEBOARD_PALETTE_SWATCH_SHAPE}
       />
     </PanelSection>
   </Panel>

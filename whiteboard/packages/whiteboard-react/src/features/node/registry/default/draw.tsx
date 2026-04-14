@@ -1,4 +1,5 @@
 import {
+  WHITEBOARD_TEXT_DEFAULT_COLOR,
   readDrawBaseSize,
   readDrawPoints
 } from '@whiteboard/core/node'
@@ -8,6 +9,7 @@ import {
   DrawStrokeSelectionShape,
   DrawStrokeShape
 } from '@whiteboard/react/features/draw/stroke'
+import { resolvePaletteColorOr } from '@whiteboard/react/features/palette'
 import { createSchema, getStyleNumber, getStyleString, styleField } from '@whiteboard/react/features/node/registry/default/shared'
 
 const drawSchema = createSchema('draw', 'Draw', [
@@ -34,7 +36,10 @@ export const DrawNodeDefinition: NodeDefinition = {
   render: ({ node, selected }) => {
     const points = readDrawPoints(node)
     const baseSize = readDrawBaseSize(node)
-    const stroke = getStyleString(node, 'stroke') ?? 'var(--ui-text-primary)'
+    const stroke = resolvePaletteColorOr(
+      getStyleString(node, 'stroke'),
+      WHITEBOARD_TEXT_DEFAULT_COLOR
+    ) ?? 'var(--ui-text-primary)'
     const strokeWidth = getStyleNumber(node, 'strokeWidth') ?? 2
     const opacity = getStyleNumber(node, 'opacity') ?? 1
 

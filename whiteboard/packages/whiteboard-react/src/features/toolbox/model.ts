@@ -11,13 +11,15 @@ import {
   type Tool
 } from '@whiteboard/editor'
 import {
+  readStickyInsertFormat,
+  readStickyInsertTone
+} from '@whiteboard/react/features/palette'
+import {
   DEFAULT_MINDMAP_PRESET_KEY,
   DEFAULT_SHAPE_PRESET_KEY,
   DEFAULT_STICKY_PRESET_KEY,
   readInsertPresetGroup,
-  readShapePresetKind,
-  readStickyInsertFormat,
-  readStickyInsertTone
+  readShapePresetKind
 } from '@whiteboard/react/features/toolbox/presets'
 import type {
   ToolPaletteBrushState,

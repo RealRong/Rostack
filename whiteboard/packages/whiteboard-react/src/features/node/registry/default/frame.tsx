@@ -13,6 +13,7 @@ import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
 import { matchNodeEdit } from '@whiteboard/react/features/edit/session'
 import { useEdit, useEditor, usePickRef } from '@whiteboard/react/runtime/hooks'
 import { bindNodeTextSource } from '@whiteboard/react/features/node/text'
+import { resolvePaletteColorOr } from '@whiteboard/react/features/palette'
 import {
   createSchema,
   createTextField,
@@ -68,7 +69,10 @@ export const FrameNodeChrome = ({
   })
   const rawTitle = getDataString(node, 'title') ?? ''
   const title = rawTitle || FRAME_DEFAULT_TITLE
-  const color = getStyleString(node, 'color') ?? FRAME_DEFAULT_TEXT_COLOR
+  const color = resolvePaletteColorOr(
+    getStyleString(node, 'color'),
+    FRAME_DEFAULT_TEXT_COLOR
+  ) ?? FRAME_DEFAULT_TEXT_COLOR
   const nodeEdit = matchNodeEdit(edit, node.id, 'title')
   const editing = nodeEdit !== null
   const bindFieldRef = useCallback((element: HTMLDivElement | null) => {
@@ -113,9 +117,15 @@ export const FrameNodeChrome = ({
 }
 
 const frameStyle = (node: Node): CSSProperties => {
-  const stroke = getStyleString(node, 'stroke') ?? FRAME_DEFAULT_STROKE
+  const stroke = resolvePaletteColorOr(
+    getStyleString(node, 'stroke'),
+    FRAME_DEFAULT_STROKE
+  ) ?? FRAME_DEFAULT_STROKE
   const strokeWidth = getStyleNumber(node, 'strokeWidth') ?? FRAME_DEFAULT_STROKE_WIDTH
-  const fill = getStyleString(node, 'fill') ?? FRAME_DEFAULT_FILL
+  const fill = resolvePaletteColorOr(
+    getStyleString(node, 'fill'),
+    FRAME_DEFAULT_FILL
+  ) ?? FRAME_DEFAULT_FILL
 
   return {
     background: fill,

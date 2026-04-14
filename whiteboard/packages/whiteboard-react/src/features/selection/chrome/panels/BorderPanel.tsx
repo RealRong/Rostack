@@ -7,7 +7,11 @@ import {
   formatPercent
 } from '@shared/ui'
 import { sameOptionalNumberArray as isSameOptionalNumberArray } from '@shared/core'
-import { STROKE_COLOR_OPTIONS } from '@whiteboard/react/features/selection/chrome/menus/options'
+import {
+  WHITEBOARD_PALETTE_GRID_COLUMNS,
+  WHITEBOARD_PALETTE_SWATCH_SHAPE,
+  WHITEBOARD_STROKE_COLOR_OPTIONS
+} from '@whiteboard/react/features/palette'
 
 const STROKE_STYLE_OPTIONS = [
   { key: 'solid', label: 'Solid', dash: undefined as readonly number[] | undefined },
@@ -42,7 +46,7 @@ export const BorderPanel = ({
   onOpacityChange?: (value: number) => void
   onStrokeDashChange?: (value?: readonly number[]) => void
 }) => (
-  <Panel className="min-w-[240px] p-3">
+  <Panel className="min-w-[384px] p-3">
     {showStyle ? (
       <PanelSection title="Style">
         <div className="flex items-center gap-2">
@@ -94,9 +98,11 @@ export const BorderPanel = ({
     ) : null}
     <PanelSection title="Color">
       <ColorSwatchGrid
-        options={STROKE_COLOR_OPTIONS}
+        options={WHITEBOARD_STROKE_COLOR_OPTIONS}
         value={stroke}
         onChange={onStrokeChange}
+        columns={WHITEBOARD_PALETTE_GRID_COLUMNS}
+        swatchShape={WHITEBOARD_PALETTE_SWATCH_SHAPE}
       />
     </PanelSection>
   </Panel>

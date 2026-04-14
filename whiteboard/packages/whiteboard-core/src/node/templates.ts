@@ -1,4 +1,8 @@
 import type { Size, SpatialNodeInput } from '@whiteboard/core/types'
+import {
+  WHITEBOARD_FRAME_DEFAULTS,
+  WHITEBOARD_STICKY_DEFAULTS
+} from '@whiteboard/core/palette'
 import { readTextWrapWidth } from '@whiteboard/core/node/text'
 
 export const TEXT_START_SIZE = {
@@ -20,10 +24,10 @@ export const STICKY_START_SIZE = STICKY_SQUARE_SIZE
 
 export const TEXT_PLACEHOLDER = 'Text'
 export const STICKY_PLACEHOLDER = 'Sticky'
-export const STICKY_DEFAULT_FILL = 'var(--ui-yellow-surface-pressed)'
-export const STICKY_DEFAULT_TEXT_COLOR = 'var(--ui-text-primary)'
-export const STICKY_DEFAULT_STROKE = 'rgb(from var(--ui-text-primary) r g b / 0.12)'
-export const STICKY_DEFAULT_STROKE_WIDTH = 1
+export const STICKY_DEFAULT_FILL = WHITEBOARD_STICKY_DEFAULTS.fill
+export const STICKY_DEFAULT_TEXT_COLOR = WHITEBOARD_STICKY_DEFAULTS.color
+export const STICKY_DEFAULT_STROKE = WHITEBOARD_STICKY_DEFAULTS.stroke
+export const STICKY_DEFAULT_STROKE_WIDTH = WHITEBOARD_STICKY_DEFAULTS.strokeWidth
 
 export const FRAME_START_SIZE = {
   width: 520,
@@ -31,10 +35,10 @@ export const FRAME_START_SIZE = {
 } as const
 
 export const FRAME_DEFAULT_TITLE = 'Frame'
-export const FRAME_DEFAULT_FILL = 'transparent'
-export const FRAME_DEFAULT_STROKE = 'var(--ui-border-strong)'
-export const FRAME_DEFAULT_TEXT_COLOR = 'var(--ui-text-secondary)'
-export const FRAME_DEFAULT_STROKE_WIDTH = 1
+export const FRAME_DEFAULT_FILL = WHITEBOARD_FRAME_DEFAULTS.fill
+export const FRAME_DEFAULT_STROKE = WHITEBOARD_FRAME_DEFAULTS.stroke
+export const FRAME_DEFAULT_TEXT_COLOR = WHITEBOARD_FRAME_DEFAULTS.color
+export const FRAME_DEFAULT_STROKE_WIDTH = WHITEBOARD_FRAME_DEFAULTS.strokeWidth
 
 const isFinitePositive = (
   value: unknown
@@ -93,9 +97,11 @@ export const createTextNodeInput = (): Omit<SpatialNodeInput, 'position'> => ({
 
 export const createStickyNodeInput = ({
   fill = STICKY_DEFAULT_FILL,
+  stroke = STICKY_DEFAULT_STROKE,
   size = STICKY_START_SIZE
 }: {
   fill?: string
+  stroke?: string
   size?: {
     width: number
     height: number
@@ -109,7 +115,7 @@ export const createStickyNodeInput = ({
   style: {
     fill,
     color: STICKY_DEFAULT_TEXT_COLOR,
-    stroke: STICKY_DEFAULT_STROKE,
+    stroke,
     strokeWidth: STICKY_DEFAULT_STROKE_WIDTH
   }
 })

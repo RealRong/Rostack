@@ -1,5 +1,11 @@
-import type { BaseOperation } from '@dataview/core/contracts/operations'
-import type { DataDoc, CustomField, DataRecord, View } from '@dataview/core/contracts/state'
+import type {
+  BaseOperation,
+  DocumentRecordFieldRestoreEntry
+} from '@dataview/core/contracts/operations'
+import type { DataDoc, CustomField, DataRecord, FieldId } from '@dataview/core/contracts/state'
+import {
+  TITLE_FIELD_ID
+} from '@dataview/core/contracts/state'
 import {
   enumerateRecords,
   getDocumentActiveViewId,
@@ -37,6 +43,76 @@ const captureRecordEntries = (document: DataDoc, recordIds: readonly string[]) =
     .sort((left, right) => left.index - right.index)
 }
 
+const captureRecordFieldRestoreEntry = (
+  document: DataDoc,
+  recordId: string,
+  fieldIds: readonly FieldId[]
+): DocumentRecordFieldRestoreEntry | undefined => {
+  const record = getDocumentRecordById(document, recordId)
+  if (!record || !fieldIds.length) {
+    return undefined
+  }
+
+  const set: Partial<Record<FieldId, unknown>> = {}
+  const clear: FieldId[] = []
+
+  fieldIds.forEach(fieldId => {
+    if (fieldId === TITLE_FIELD_ID) {
+      if (record.title === '') {
+        clear.push(fieldId)
+        return
+      }
+
+      set[fieldId] = record.title
+      return
+    }
+
+    if (hasOwn(record.values, fieldId)) {
+      set[fieldId] = record.values[fieldId]
+      return
+    }
+
+    clear.push(fieldId)
+  })
+
+  return {
+    recordId,
+    ...(Object.keys(set).length
+      ? { set }
+      : {}),
+    ...(clear.length
+      ? { clear }
+      : {})
+  }
+}
+
+const captureWriteManyRestoreEntries = (
+  document: DataDoc,
+  input: Pick<Extract<BaseOperation, { type: 'document.record.fields.writeMany' }>, 'recordIds' | 'set' | 'clear'>
+): readonly DocumentRecordFieldRestoreEntry[] => {
+  const fieldIds = [...new Set<FieldId>([
+    ...(Object.keys(input.set ?? {}) as FieldId[]),
+    ...(input.clear ?? [])
+  ])]
+
+  return input.recordIds.flatMap(recordId => {
+    const entry = captureRecordFieldRestoreEntry(document, recordId, fieldIds)
+    return entry ? [entry] : []
+  })
+}
+
+const captureRestoreManyInverseEntries = (
+  document: DataDoc,
+  entries: readonly DocumentRecordFieldRestoreEntry[]
+): readonly DocumentRecordFieldRestoreEntry[] => entries.flatMap(entry => {
+  const fieldIds = [...new Set<FieldId>([
+    ...(Object.keys(entry.set ?? {}) as FieldId[]),
+    ...(entry.clear ?? [])
+  ])]
+  const nextEntry = captureRecordFieldRestoreEntry(document, entry.recordId, fieldIds)
+  return nextEntry ? [nextEntry] : []
+})
+
 const buildRecordInverse = (
   before: DataDoc,
   operation: Extract<BaseOperation, { type: 'document.record.insert' | 'document.record.patch' | 'document.record.remove' }>
@@ -52,7 +128,7 @@ const buildRecordInverse = (
 
       const patch = Object.fromEntries(
         Object.keys(operation.patch).map(key => [key, readObjectValue(record, key)])
-      ) as Partial<Omit<DataRecord, 'id'>>
+      ) as Partial<Omit<DataRecord, 'id' | 'values'>>
 
       return [{ type: 'document.record.patch', recordId: operation.recordId, patch }]
     }
@@ -67,48 +143,32 @@ const buildRecordInverse = (
   }
 }
 
-const buildValueInverse = (
+const buildRecordFieldInverse = (
   before: DataDoc,
-  operation: Extract<BaseOperation, { type: 'document.value.set' | 'document.value.patch' | 'document.value.clear' }>
+  operation: Extract<BaseOperation, {
+    type:
+      | 'document.record.fields.writeMany'
+      | 'document.record.fields.restoreMany'
+  }>
 ): BaseOperation[] => {
-  const record = getDocumentRecordById(before, operation.recordId)
-  if (!record) {
-    return []
-  }
-
   switch (operation.type) {
-    case 'document.value.set': {
-      const fieldId = String(operation.field)
-      if (hasOwn(record.values, fieldId)) {
-        return [{ type: 'document.value.set', recordId: operation.recordId, field: fieldId, value: record.values[fieldId] }]
-      }
-
-      return [{ type: 'document.value.clear', recordId: operation.recordId, field: fieldId }]
+    case 'document.record.fields.writeMany': {
+      const entries = captureWriteManyRestoreEntries(before, operation)
+      return entries.length
+        ? [{
+            type: 'document.record.fields.restoreMany',
+            entries
+          }]
+        : []
     }
-    case 'document.value.patch':
-      return Object.keys(operation.patch).map(fieldId => {
-        if (hasOwn(record.values, fieldId)) {
-          return {
-            type: 'document.value.set',
-            recordId: operation.recordId,
-            field: fieldId,
-            value: record.values[fieldId]
-          } satisfies BaseOperation
-        }
-
-        return {
-          type: 'document.value.clear',
-          recordId: operation.recordId,
-          field: fieldId
-        } satisfies BaseOperation
-      })
-    case 'document.value.clear': {
-      const fieldId = String(operation.field)
-      if (!hasOwn(record.values, fieldId)) {
-        return []
-      }
-
-      return [{ type: 'document.value.set', recordId: operation.recordId, field: fieldId, value: record.values[fieldId] }]
+    case 'document.record.fields.restoreMany': {
+      const entries = captureRestoreManyInverseEntries(before, operation.entries)
+      return entries.length
+        ? [{
+            type: 'document.record.fields.restoreMany',
+            entries
+          }]
+        : []
     }
   }
 }
@@ -178,10 +238,9 @@ export const buildInverseOperations = (before: DataDoc, operation: BaseOperation
     case 'document.record.patch':
     case 'document.record.remove':
       return buildRecordInverse(before, operation)
-    case 'document.value.set':
-    case 'document.value.patch':
-    case 'document.value.clear':
-      return buildValueInverse(before, operation)
+    case 'document.record.fields.writeMany':
+    case 'document.record.fields.restoreMany':
+      return buildRecordFieldInverse(before, operation)
     case 'document.view.put':
     case 'document.activeView.set':
     case 'document.view.remove':

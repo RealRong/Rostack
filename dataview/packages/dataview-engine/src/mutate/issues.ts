@@ -11,14 +11,16 @@ export type ValidationCode =
   | 'record.hierarchyUnsupported'
   | 'record.invalidIndex'
   | 'record.emptyPatch'
+  | 'record.invalidPatch'
+  | 'record.fields.invalidField'
+  | 'record.fields.emptyWrite'
+  | 'record.fields.overlap'
   | 'view.notFound'
   | 'view.invalid'
   | 'view.invalidProjection'
   | 'view.invalidOrder'
   | 'field.notFound'
   | 'field.invalid'
-  | 'value.invalidField'
-  | 'value.emptyPatch'
   | 'external.invalidSource'
 
 export interface ValidationIssue {

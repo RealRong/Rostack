@@ -1,4 +1,17 @@
-import type { CustomFieldId, DataDoc, DataRecord, IndexPath, RecordId } from '@dataview/core/contracts/state'
+import type {
+  DataDoc,
+  DataRecord,
+  FieldId,
+  IndexPath,
+  RecordId
+} from '@dataview/core/contracts/state'
+import {
+  TITLE_FIELD_ID
+} from '@dataview/core/contracts/state'
+import type {
+  DocumentRecordFieldRestoreEntry,
+  RecordFieldWriteManyOperationInput
+} from '@dataview/core/contracts/operations'
 import {
   createEntityOverlay,
   getEntityTableById,
@@ -14,6 +27,148 @@ export interface RecordEntry {
   record: DataRecord
   path: IndexPath
   index: number
+}
+
+interface CompiledRecordFieldWrite {
+  setEntries: readonly [FieldId, unknown][]
+  clear: readonly FieldId[]
+}
+
+const hasOwn = (value: Record<string, unknown>, key: string) => Object.prototype.hasOwnProperty.call(value, key)
+
+const compileRecordFieldWrite = (
+  write: Pick<RecordFieldWriteManyOperationInput, 'set' | 'clear'>
+): CompiledRecordFieldWrite | undefined => {
+  const setEntries = Object.entries(write.set ?? {}) as [FieldId, unknown][]
+  const clear = [...new Set(write.clear ?? [])]
+
+  return setEntries.length || clear.length
+    ? {
+        setEntries,
+        clear
+      }
+    : undefined
+}
+
+const applyCompiledRecordFieldWrite = (
+  record: DataRecord,
+  write: CompiledRecordFieldWrite
+): DataRecord => {
+  let nextTitle = record.title
+  let titleChanged = false
+  let nextValues = record.values
+  let valuesChanged = false
+
+  const clearValue = (fieldId: FieldId) => {
+    if (fieldId === TITLE_FIELD_ID) {
+      if (nextTitle === '') {
+        return
+      }
+
+      nextTitle = ''
+      titleChanged = true
+      return
+    }
+
+    if (!hasOwn(nextValues, fieldId)) {
+      return
+    }
+
+    if (!valuesChanged) {
+      nextValues = { ...nextValues }
+      valuesChanged = true
+    }
+
+    delete nextValues[fieldId]
+  }
+
+  write.setEntries.forEach(([fieldId, value]) => {
+    if (value === undefined) {
+      clearValue(fieldId)
+      return
+    }
+
+    if (fieldId === TITLE_FIELD_ID) {
+      const nextValue = String(value ?? '')
+      if (nextTitle === nextValue) {
+        return
+      }
+
+      nextTitle = nextValue
+      titleChanged = true
+      return
+    }
+
+    if (hasOwn(nextValues, fieldId) && Object.is(nextValues[fieldId], value)) {
+      return
+    }
+
+    if (!valuesChanged) {
+      nextValues = { ...nextValues }
+      valuesChanged = true
+    }
+
+    nextValues[fieldId] = value
+  })
+
+  write.clear.forEach(clearValue)
+
+  if (!titleChanged && !valuesChanged) {
+    return record
+  }
+
+  return {
+    ...record,
+    ...(titleChanged
+      ? { title: nextTitle }
+      : {}),
+    ...(valuesChanged
+      ? { values: nextValues }
+      : {})
+  }
+}
+
+const applyRecordFieldWriteEntries = (
+  document: DataDoc,
+  entries: readonly {
+    recordId: RecordId
+    write: CompiledRecordFieldWrite
+  }[]
+): DataDoc => {
+  if (!entries.length) {
+    return document
+  }
+
+  let nextById: Record<RecordId, DataRecord> | undefined
+  let changed = false
+
+  entries.forEach(entry => {
+    const current = document.records.byId[entry.recordId]
+    if (!current) {
+      return
+    }
+
+    const nextRecord = applyCompiledRecordFieldWrite(current, entry.write)
+    if (nextRecord === current) {
+      return
+    }
+
+    if (!nextById) {
+      nextById = createEntityOverlay(document.records)
+    }
+
+    nextById[entry.recordId] = nextRecord
+    changed = true
+  })
+
+  if (!changed || !nextById) {
+    return document
+  }
+
+  return replaceDocumentTable(document, 'records', {
+    byId: nextById,
+    order: document.records.order
+  })
 }
 
 export const enumerateRecords = (
@@ -76,7 +231,11 @@ export const insertDocumentRecords = (document: DataDoc, records: readonly DataR
   })
 }
 
-export const patchDocumentRecord = (document: DataDoc, recordId: RecordId, patch: Partial<Omit<DataRecord, 'id'>>): DataDoc => {
+export const patchDocumentRecord = (
+  document: DataDoc,
+  recordId: RecordId,
+  patch: Partial<Omit<DataRecord, 'id' | 'values'>>
+): DataDoc => {
   const current = document.records.byId[recordId]
   if (!current) {
     return document
@@ -124,82 +283,36 @@ export const removeDocumentRecords = (document: DataDoc, recordIds: readonly Rec
   })
 }
 
-const replaceDocumentRecord = (
+export const writeDocumentRecordFieldsMany = (
   document: DataDoc,
-  recordId: RecordId,
-  record: DataRecord
+  input: RecordFieldWriteManyOperationInput
 ): DataDoc => {
-  const byId = createEntityOverlay(document.records)
-  byId[recordId] = record
-  return replaceDocumentTable(document, 'records', {
-    byId,
-    order: document.records.order
-  })
-}
-
-const updateDocumentRecord = (
-  document: DataDoc,
-  recordId: RecordId,
-  updater: (record: DataRecord) => DataRecord
-): DataDoc => {
-  const record = getDocumentRecordById(document, recordId)
-  if (!record) {
+  const write = compileRecordFieldWrite(input)
+  if (!write || !input.recordIds.length) {
     return document
   }
 
-  const nextRecord = updater(record)
-  return nextRecord === record
-    ? document
-    : replaceDocumentRecord(document, recordId, nextRecord)
+  return applyRecordFieldWriteEntries(
+    document,
+    input.recordIds.map(recordId => ({
+      recordId,
+      write
+    }))
+  )
 }
 
-export const setDocumentValue = (document: DataDoc, recordId: RecordId, fieldId: CustomFieldId, value: unknown): DataDoc => {
-  return updateDocumentRecord(document, recordId, record => (
-    Object.is(record.values[fieldId], value)
-      ? record
-      : {
-          ...record,
-          values: {
-            ...record.values,
-            [fieldId]: value
-          }
-        }
-  ))
-}
-
-export const patchDocumentValues = (document: DataDoc, recordId: RecordId, patch: Partial<Record<CustomFieldId, unknown>>): DataDoc => {
-  if (!Object.keys(patch).length) {
-    return document
-  }
-
-  return updateDocumentRecord(document, recordId, record => {
-    const changed = Object.keys(patch).some(key => !Object.is(record.values[key], patch[key]))
-    if (!changed) {
-      return record
-    }
-
-    return {
-      ...record,
-      values: {
-        ...record.values,
-        ...patch
-      }
-    }
+export const restoreDocumentRecordFieldsMany = (
+  document: DataDoc,
+  entries: readonly DocumentRecordFieldRestoreEntry[]
+): DataDoc => applyRecordFieldWriteEntries(
+  document,
+  entries.flatMap(entry => {
+    const write = compileRecordFieldWrite(entry)
+    return write
+      ? [{
+          recordId: entry.recordId,
+          write
+        }]
+      : []
   })
-}
-
-export const clearDocumentValue = (document: DataDoc, recordId: RecordId, fieldId: CustomFieldId): DataDoc => {
-  return updateDocumentRecord(document, recordId, record => {
-    if (!Object.prototype.hasOwnProperty.call(record.values, fieldId)) {
-      return record
-    }
-
-    const nextValues = { ...record.values }
-    delete nextValues[fieldId]
-
-    return {
-      ...record,
-      values: nextValues
-    }
-  })
-}
+)

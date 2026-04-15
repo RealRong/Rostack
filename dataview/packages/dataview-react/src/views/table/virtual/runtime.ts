@@ -1,10 +1,5 @@
-import type { ViewState as CurrentView } from '@dataview/engine'
-import type {
-  ItemId
-} from '@dataview/engine'
-import type {
-  MarqueeSessionState
-} from '@dataview/react/runtime/marquee'
+import type { ViewState as CurrentView, ItemId } from '@dataview/engine'
+import type { MarqueeSessionState } from '@dataview/react/runtime/marquee'
 import {
   observeElementSize,
   pageScrollNode,
@@ -20,23 +15,9 @@ import {
   read,
   type ReadStore
 } from '@shared/core'
-import {
-  sameOrder
-} from '@shared/core'
-import {
-  findVirtualBlockEndIndex,
-  findVirtualBlockStartIndex
-} from '@dataview/react/virtual/math'
-import {
-  contentBounds,
-  type TableLayout
-} from '@dataview/react/views/table/layout'
-import {
-  buildTableBlocks
-} from '@dataview/react/views/table/virtual/buildBlocks'
-import type {
-  TableBlock
-} from '@dataview/react/views/table/virtual/types'
+import type { TableLayout } from '@dataview/react/views/table/layout'
+import { TableLayoutModel } from '@dataview/react/views/table/virtual/layoutModel'
+import type { TableBlock } from '@dataview/react/views/table/virtual/types'
 
 const BOOTSTRAP_VIEWPORT_HEIGHT = () => (
   typeof window !== 'undefined'
@@ -44,20 +25,13 @@ const BOOTSTRAP_VIEWPORT_HEIGHT = () => (
     : 720
 )
 
-const BOOTSTRAP_VIEWPORT_WIDTH = () => (
-  typeof window !== 'undefined'
-    ? Math.max(0, window.innerWidth)
-    : 1280
-)
-
 const EMPTY_BLOCKS = [] as readonly TableBlock[]
 const SCROLL_DOWN = 1 as const
 const SCROLL_IDLE = 0 as const
 const SCROLL_UP = -1 as const
 const MEASURE_SCROLL_Y = 1 << 0
-const MEASURE_SCROLL_X = 1 << 1
-const MEASURE_LAYOUT = 1 << 2
-const MEASURE_RESET_DIRECTION = 1 << 3
+const MEASURE_LAYOUT = 1 << 1
+const MEASURE_RESET_DIRECTION = 1 << 2
 
 export type TableVerticalDirection =
   | typeof SCROLL_UP
@@ -65,8 +39,8 @@ export type TableVerticalDirection =
   | typeof SCROLL_DOWN
 
 export interface TableVirtualLayoutSnapshot {
-  blocks: readonly TableBlock[]
   totalHeight: number
+  revision: number
 }
 
 export interface TableVirtualViewportSnapshot {
@@ -74,14 +48,8 @@ export interface TableVirtualViewportSnapshot {
   viewportTopInCanvas: number
   viewportBottomInCanvas: number
   viewportHeight: number
-  viewportWidth: number
-  pageScrollTop: number
   verticalDirection: TableVerticalDirection
-  scrollLeft: number
   containerWidth: number
-  containerHeight: number
-  contentLeft: number
-  contentRight: number
 }
 
 export interface TableVirtualInteractionSnapshot {
@@ -103,10 +71,18 @@ export interface TableVirtualRuntime {
   viewport: ReadStore<TableVirtualViewportSnapshot>
   interaction: ReadStore<TableVirtualInteractionSnapshot>
   window: ReadStore<TableVirtualWindowSnapshot>
+  locateRow: (rowId: ItemId) => {
+    rowId: ItemId
+    top: number
+    bottom: number
+  } | null
   measurement: {
     sync: (input: {
       bucketKey: string | number
-      blockHeights: ReadonlyMap<string, number>
+      heightById?: ReadonlyMap<string, number>
+      changedHeightById?: ReadonlyMap<string, number>
+      removedKeys?: readonly string[]
+      reset?: boolean
     }) => void
   }
   attach: () => void
@@ -115,11 +91,9 @@ export interface TableVirtualRuntime {
 }
 
 const EMPTY_LAYOUT_SNAPSHOT: TableVirtualLayoutSnapshot = {
-  blocks: EMPTY_BLOCKS,
-  totalHeight: 0
+  totalHeight: 0,
+  revision: 0
 }
-
-const EMPTY_BLOCK_HEIGHTS = new Map<string, number>()
 
 const createBootstrapViewportSnapshot = (): TableVirtualViewportSnapshot => {
   const height = BOOTSTRAP_VIEWPORT_HEIGHT()
@@ -128,14 +102,8 @@ const createBootstrapViewportSnapshot = (): TableVirtualViewportSnapshot => {
     viewportTopInCanvas: 0,
     viewportBottomInCanvas: height,
     viewportHeight: height,
-    viewportWidth: BOOTSTRAP_VIEWPORT_WIDTH(),
-    pageScrollTop: 0,
     verticalDirection: SCROLL_IDLE,
-    scrollLeft: 0,
-    containerWidth: 0,
-    containerHeight: 0,
-    contentLeft: 0,
-    contentRight: 0
+    containerWidth: 0
   }
 }
 
@@ -147,16 +115,30 @@ const EMPTY_WINDOW_SNAPSHOT: TableVirtualWindowSnapshot = {
   startTop: 0
 }
 
-const totalHeightOf = (
-  blocks: readonly TableBlock[]
-) => {
-  const last = blocks[blocks.length - 1]
-  return last
-    ? last.top + last.height
-    : 0
-}
+const sameLayoutSnapshot = (
+  left: TableVirtualLayoutSnapshot,
+  right: TableVirtualLayoutSnapshot
+) => left.totalHeight === right.totalHeight
+  && left.revision === right.revision
 
-const sameBlock = (
+const sameViewportSnapshot = (
+  left: TableVirtualViewportSnapshot,
+  right: TableVirtualViewportSnapshot
+) => left.ready === right.ready
+  && left.viewportTopInCanvas === right.viewportTopInCanvas
+  && left.viewportBottomInCanvas === right.viewportBottomInCanvas
+  && left.viewportHeight === right.viewportHeight
+  && left.verticalDirection === right.verticalDirection
+  && left.containerWidth === right.containerWidth
+
+const sameInteractionSnapshot = (
+  left: TableVirtualInteractionSnapshot,
+  right: TableVirtualInteractionSnapshot
+) => left.marqueeActive === right.marqueeActive
+  && left.overscanBefore === right.overscanBefore
+  && left.overscanAfter === right.overscanAfter
+
+const sameWindowBlock = (
   left: TableBlock,
   right: TableBlock
 ) => {
@@ -177,52 +159,17 @@ const sameBlock = (
       return right.kind === 'column-header'
         && left.scopeId === right.scopeId
         && left.label === right.label
-        && sameOrder(left.rowIds, right.rowIds)
+        && left.scope.key === right.scope.key
+        && left.scope.revision === right.scope.revision
+        && left.scope.count === right.scope.count
     case 'column-footer':
       return right.kind === 'column-footer'
         && left.scopeId === right.scopeId
     case 'section-header':
       return right.kind === 'section-header'
-        && left.section.key === right.section.key
-        && left.section.title === right.section.title
-        && left.section.collapsed === right.section.collapsed
-        && sameOrder(left.section.itemIds, right.section.itemIds)
+        && left.section === right.section
   }
 }
-
-const sameBlocks = (
-  left: readonly TableBlock[],
-  right: readonly TableBlock[]
-) => sameOrder(left, right, sameBlock)
-
-const sameLayoutSnapshot = (
-  left: TableVirtualLayoutSnapshot,
-  right: TableVirtualLayoutSnapshot
-) => left.totalHeight === right.totalHeight
-  && sameBlocks(left.blocks, right.blocks)
-
-const sameViewportSnapshot = (
-  left: TableVirtualViewportSnapshot,
-  right: TableVirtualViewportSnapshot
-) => left.ready === right.ready
-  && left.viewportTopInCanvas === right.viewportTopInCanvas
-  && left.viewportBottomInCanvas === right.viewportBottomInCanvas
-  && left.viewportHeight === right.viewportHeight
-  && left.viewportWidth === right.viewportWidth
-  && left.pageScrollTop === right.pageScrollTop
-  && left.verticalDirection === right.verticalDirection
-  && left.scrollLeft === right.scrollLeft
-  && left.containerWidth === right.containerWidth
-  && left.containerHeight === right.containerHeight
-  && left.contentLeft === right.contentLeft
-  && left.contentRight === right.contentRight
-
-const sameInteractionSnapshot = (
-  left: TableVirtualInteractionSnapshot,
-  right: TableVirtualInteractionSnapshot
-) => left.marqueeActive === right.marqueeActive
-  && left.overscanBefore === right.overscanBefore
-  && left.overscanAfter === right.overscanAfter
 
 const sameWindowSnapshot = (
   left: TableVirtualWindowSnapshot,
@@ -231,7 +178,8 @@ const sameWindowSnapshot = (
   && left.startIndex === right.startIndex
   && left.endIndex === right.endIndex
   && left.startTop === right.startTop
-  && sameBlocks(left.items, right.items)
+  && left.items.length === right.items.length
+  && left.items.every((block, index) => sameWindowBlock(block, right.items[index]!))
 
 export const resolveTableWindowOverscan = (input: {
   marqueeActive: boolean
@@ -265,15 +213,12 @@ export const resolveTableWindowOverscan = (input: {
 }
 
 export const resolveTableWindowSnapshot = (input: {
-  layout: TableVirtualLayoutSnapshot
+  model: TableLayoutModel | null
   viewport: TableVirtualViewportSnapshot
   interaction: Pick<TableVirtualInteractionSnapshot, 'overscanBefore' | 'overscanAfter'>
 }): TableVirtualWindowSnapshot => {
-  if (!input.layout.blocks.length) {
-    return {
-      ...EMPTY_WINDOW_SNAPSHOT,
-      totalHeight: input.layout.totalHeight
-    }
+  if (!input.model) {
+    return EMPTY_WINDOW_SNAPSHOT
   }
 
   const start = Math.max(
@@ -284,46 +229,11 @@ export const resolveTableWindowSnapshot = (input: {
     start,
     input.viewport.viewportBottomInCanvas + input.interaction.overscanAfter
   )
-  const startIndex = findVirtualBlockStartIndex(input.layout.blocks, start)
-  const endIndex = Math.max(
-    startIndex,
-    findVirtualBlockEndIndex(input.layout.blocks, end)
-  )
-  const items = input.layout.blocks.slice(startIndex, endIndex)
 
-  return {
-    items,
-    totalHeight: input.layout.totalHeight,
-    startIndex,
-    endIndex,
-    startTop: items[0]?.top ?? 0
-  }
-}
-
-const resolveLayoutSnapshot = (input: {
-  currentView: CurrentView | undefined
-  rowHeight: number
-  headerHeight: number
-  blockHeights: ReadonlyMap<string, number>
-}): TableVirtualLayoutSnapshot => {
-  if (!input.currentView) {
-    return EMPTY_LAYOUT_SNAPSHOT
-  }
-
-  const grouped = Boolean(input.currentView.view.group)
-  const blocks = buildTableBlocks({
-    grouped,
-    rowIds: input.currentView.items.ids,
-    sections: input.currentView.sections.all,
-    rowHeight: input.rowHeight,
-    headerHeight: input.headerHeight,
-    blockHeights: input.blockHeights
+  return input.model.materializeWindow({
+    start,
+    end
   })
-
-  return {
-    blocks,
-    totalHeight: totalHeightOf(blocks)
-  }
 }
 
 const resolveMarqueeActive = (input: {
@@ -340,39 +250,8 @@ export const createTableVirtualRuntime = (options: {
   marqueeStore: ReadStore<MarqueeSessionState | null>
   layout: TableLayout
 }): TableVirtualRuntime => {
-  const measurementsStore = createValueStore<{
-    bucketKey: string | number
-    blockHeights: ReadonlyMap<string, number>
-  }>({
-    initial: {
-      bucketKey: '__default__',
-      blockHeights: EMPTY_BLOCK_HEIGHTS
-    },
-    isEqual: (left, right) => {
-      if (left.bucketKey !== right.bucketKey) {
-        return false
-      }
-
-      if (left.blockHeights.size !== right.blockHeights.size) {
-        return false
-      }
-
-      for (const [key, value] of left.blockHeights) {
-        if (right.blockHeights.get(key) !== value) {
-          return false
-        }
-      }
-
-      return true
-    }
-  })
-  const layout = createDerivedStore<TableVirtualLayoutSnapshot>({
-    get: () => resolveLayoutSnapshot({
-      currentView: read(options.currentViewStore),
-      rowHeight: options.layout.rowHeight,
-      headerHeight: options.layout.headerHeight,
-      blockHeights: read(measurementsStore).blockHeights
-    }),
+  const layoutStore = createValueStore<TableVirtualLayoutSnapshot>({
+    initial: EMPTY_LAYOUT_SNAPSHOT,
     isEqual: sameLayoutSnapshot
   })
   const viewportStore = createValueStore<TableVirtualViewportSnapshot>({
@@ -397,14 +276,11 @@ export const createTableVirtualRuntime = (options: {
     },
     isEqual: sameInteractionSnapshot
   })
-  const windowStore = createDerivedStore<TableVirtualWindowSnapshot>({
-    get: () => resolveTableWindowSnapshot({
-      layout: read(layout),
-      viewport: read(viewportStore),
-      interaction: read(interaction)
-    }),
+  const windowStore = createValueStore<TableVirtualWindowSnapshot>({
+    initial: EMPTY_WINDOW_SNAPSHOT,
     isEqual: sameWindowSnapshot
   })
+  const measurementBuckets = new Map<string | number, Map<string, number>>()
 
   let attachedContainer: HTMLDivElement | null = null
   let attachedCanvas: HTMLDivElement | null = null
@@ -413,33 +289,75 @@ export const createTableVirtualRuntime = (options: {
   let frame: number | null = null
   let pendingMeasureFlags = 0
   let canvasTopInScrollContent: number | null = null
-  let previousLayoutSnapshot = layout.get()
+  let lastPageScrollTop = 0
+  let currentBucketKey: string | number = '__default__'
+  let currentView = options.currentViewStore.get()
+  let layoutRevision = 0
+  let layoutModel = currentView
+    ? TableLayoutModel.fromCurrentView({
+        currentView,
+        rowHeight: options.layout.rowHeight,
+        headerHeight: options.layout.headerHeight,
+        measuredHeights: measurementBuckets.get(currentBucketKey)
+      })
+    : null
 
-  const compensateLayoutShift = (input: {
-    previous: TableVirtualLayoutSnapshot
-    next: TableVirtualLayoutSnapshot
-  }) => {
+  const publishLayout = () => {
+    layoutStore.set(layoutModel
+      ? {
+          totalHeight: layoutModel.totalHeight,
+          revision: layoutRevision
+        }
+      : EMPTY_LAYOUT_SNAPSHOT)
+  }
+
+  const updateWindowSnapshot = () => {
+    windowStore.set(resolveTableWindowSnapshot({
+      model: layoutModel,
+      viewport: viewportStore.get(),
+      interaction: interaction.get()
+    }))
+  }
+
+  const resolveAnchor = () => {
+    const viewport = viewportStore.get()
+    if (!attachedScrollNode || !viewport.ready || !layoutModel) {
+      return null
+    }
+
+    const projection = layoutModel.materializeWindow({
+      start: viewport.viewportTopInCanvas,
+      end: viewport.viewportTopInCanvas
+    })
+    const key = projection.items[0]?.key
+    const top = key
+      ? layoutModel.topOfKey(key)
+      : null
+
+    return key && top !== null
+      ? {
+          key,
+          top
+        }
+      : null
+  }
+
+  const compensateLayoutShift = (anchor: {
+    key: string
+    top: number
+  } | null) => {
     const scrollNode = attachedScrollNode
     const viewport = viewportStore.get()
-    if (!scrollNode || !viewport.ready || !input.previous.blocks.length || !input.next.blocks.length) {
+    if (!anchor || !scrollNode || !viewport.ready || !layoutModel) {
       return
     }
 
-    const anchorIndex = findVirtualBlockStartIndex(
-      input.previous.blocks,
-      viewport.viewportTopInCanvas
-    )
-    const previousAnchor = input.previous.blocks[anchorIndex]
-    if (!previousAnchor) {
+    const nextTop = layoutModel.topOfKey(anchor.key)
+    if (nextTop === null) {
       return
     }
 
-    const nextAnchor = input.next.blocks.find(block => block.key === previousAnchor.key)
-    if (!nextAnchor) {
-      return
-    }
-
-    const deltaTop = nextAnchor.top - previousAnchor.top
+    const deltaTop = nextTop - anchor.top
     if (!deltaTop) {
       return
     }
@@ -451,6 +369,24 @@ export const createTableVirtualRuntime = (options: {
     if (moved.top) {
       scheduleMeasure(MEASURE_SCROLL_Y | MEASURE_RESET_DIRECTION)
     }
+  }
+
+  const rebuildLayoutModel = (anchor: {
+    key: string
+    top: number
+  } | null = null) => {
+    layoutModel = currentView
+      ? TableLayoutModel.fromCurrentView({
+          currentView,
+          rowHeight: options.layout.rowHeight,
+          headerHeight: options.layout.headerHeight,
+          measuredHeights: measurementBuckets.get(currentBucketKey)
+        })
+      : null
+    layoutRevision += 1
+    publishLayout()
+    compensateLayoutShift(anchor)
+    updateWindowSnapshot()
   }
 
   const cancelFrame = () => {
@@ -465,6 +401,7 @@ export const createTableVirtualRuntime = (options: {
 
   const resetViewport = () => {
     canvasTopInScrollContent = null
+    lastPageScrollTop = 0
     viewportStore.set(createBootstrapViewportSnapshot())
   }
 
@@ -484,7 +421,7 @@ export const createTableVirtualRuntime = (options: {
     const previous = viewportStore.get()
     const deltaTop = flags & MEASURE_RESET_DIRECTION
       ? 0
-      : metrics.top - previous.pageScrollTop
+      : metrics.top - lastPageScrollTop
     const verticalDirection = deltaTop > 0
       ? SCROLL_DOWN
       : deltaTop < 0
@@ -496,10 +433,6 @@ export const createTableVirtualRuntime = (options: {
       || canvasTopInScrollContent === null
     ) {
       const pageViewport = viewportRect(scrollNode)
-      const bounds = contentBounds({
-        container,
-        canvas
-      })
       const canvasRect = canvas.getBoundingClientRect()
       const viewportTopInCanvas = Math.max(
         0,
@@ -515,20 +448,15 @@ export const createTableVirtualRuntime = (options: {
         - pageViewport.top
         + metrics.top
       )
+      lastPageScrollTop = metrics.top
 
       viewportStore.set({
         ready: true,
         viewportTopInCanvas,
         viewportBottomInCanvas: viewportTopInCanvas + pageViewport.height,
         viewportHeight: pageViewport.height,
-        viewportWidth: pageViewport.width,
-        pageScrollTop: metrics.top,
         verticalDirection,
-        scrollLeft: container.scrollLeft,
-        containerWidth: container.clientWidth,
-        containerHeight: container.clientHeight,
-        contentLeft: bounds?.left ?? 0,
-        contentRight: bounds?.right ?? 0
+        containerWidth: container.clientWidth
       })
       return
     }
@@ -536,6 +464,9 @@ export const createTableVirtualRuntime = (options: {
     const viewportTopInCanvas = flags & MEASURE_SCROLL_Y
       ? Math.max(0, metrics.top - canvasTopInScrollContent)
       : previous.viewportTopInCanvas
+    if (flags & MEASURE_SCROLL_Y) {
+      lastPageScrollTop = metrics.top
+    }
 
     viewportStore.set({
       ...previous,
@@ -544,25 +475,15 @@ export const createTableVirtualRuntime = (options: {
       viewportBottomInCanvas: flags & MEASURE_SCROLL_Y
         ? viewportTopInCanvas + previous.viewportHeight
         : previous.viewportBottomInCanvas,
-      pageScrollTop: flags & MEASURE_SCROLL_Y
-        ? metrics.top
-        : previous.pageScrollTop,
       verticalDirection: flags & MEASURE_SCROLL_Y
         ? verticalDirection
-        : previous.verticalDirection,
-      scrollLeft: flags & MEASURE_SCROLL_X
-        ? container.scrollLeft
-        : previous.scrollLeft
+        : previous.verticalDirection
     })
   }
 
   const scheduleMeasure = (flags: number) => {
-    if (
-      typeof window === 'undefined'
-    ) {
-      if (typeof window === 'undefined') {
-        measureViewport(flags)
-      }
+    if (typeof window === 'undefined') {
+      measureViewport(flags)
       return
     }
 
@@ -571,19 +492,12 @@ export const createTableVirtualRuntime = (options: {
       return
     }
 
-    frame = window.requestAnimationFrame(() => {
+    function runTableVirtualMeasureFrame() {
       measureViewport(pendingMeasureFlags)
-    })
-  }
+    }
 
-  const unsubscribeLayout = layout.subscribe(() => {
-    const nextLayoutSnapshot = layout.get()
-    compensateLayoutShift({
-      previous: previousLayoutSnapshot,
-      next: nextLayoutSnapshot
-    })
-    previousLayoutSnapshot = nextLayoutSnapshot
-  })
+    frame = window.requestAnimationFrame(runTableVirtualMeasureFrame)
+  }
 
   const detach = () => {
     cancelFrame()
@@ -597,12 +511,87 @@ export const createTableVirtualRuntime = (options: {
 
   const syncMeasurements = (input: {
     bucketKey: string | number
-    blockHeights: ReadonlyMap<string, number>
+    heightById?: ReadonlyMap<string, number>
+    changedHeightById?: ReadonlyMap<string, number>
+    removedKeys?: readonly string[]
+    reset?: boolean
   }) => {
-    measurementsStore.set({
-      bucketKey: input.bucketKey,
-      blockHeights: new Map(input.blockHeights)
+    const anchor = resolveAnchor()
+    const bucketChanged = input.bucketKey !== currentBucketKey
+    const nextBucket = measurementBuckets.get(input.bucketKey) ?? new Map<string, number>()
+    if (!measurementBuckets.has(input.bucketKey)) {
+      measurementBuckets.set(input.bucketKey, nextBucket)
+    }
+
+    if (input.reset || bucketChanged) {
+      currentBucketKey = input.bucketKey
+      measurementBuckets.set(
+        input.bucketKey,
+        input.heightById
+          ? new Map(input.heightById)
+          : nextBucket
+      )
+      rebuildLayoutModel(anchor)
+      return
+    }
+
+    let bucketChangedData = false
+
+    input.changedHeightById?.forEach((height, key) => {
+      if (nextBucket.get(key) === height) {
+        return
+      }
+
+      nextBucket.set(key, height)
+      bucketChangedData = true
     })
+
+    input.removedKeys?.forEach(key => {
+      if (!nextBucket.has(key)) {
+        return
+      }
+
+      nextBucket.delete(key)
+      bucketChangedData = true
+    })
+
+    if (input.heightById) {
+      if (nextBucket.size !== input.heightById.size) {
+        bucketChangedData = true
+      } else {
+        for (const [key, value] of input.heightById) {
+          if (nextBucket.get(key) !== value) {
+            bucketChangedData = true
+            break
+          }
+        }
+      }
+
+      if (bucketChangedData) {
+        measurementBuckets.set(input.bucketKey, new Map(input.heightById))
+      }
+    }
+
+    if (!bucketChangedData || !layoutModel || input.bucketKey !== currentBucketKey) {
+      return
+    }
+
+    const activeBucket = measurementBuckets.get(currentBucketKey)
+    const didApply = input.heightById && activeBucket
+      ? layoutModel.replaceMeasuredHeights(activeBucket)
+      : layoutModel.applyMeasuredHeightPatches({
+          changedHeights: input.changedHeightById,
+          removedKeys: input.removedKeys
+        })
+
+    if (!didApply) {
+      return
+    }
+
+    layoutRevision += 1
+    publishLayout()
+    compensateLayoutShift(anchor)
+    updateWindowSnapshot()
   }
 
   const attach = () => {
@@ -640,14 +629,11 @@ export const createTableVirtualRuntime = (options: {
     const boundCanvas = attachedCanvas
     const ownerWindow = boundContainer.ownerDocument.defaultView
     const handleScrollNodeScroll = () => {
+      if (scrollMetrics(boundScrollNode).top === lastPageScrollTop) {
+        return
+      }
+
       scheduleMeasure(MEASURE_SCROLL_Y)
-    }
-    const handleContainerScroll = () => {
-      scheduleMeasure(
-        boundContainer === boundScrollNode
-          ? MEASURE_SCROLL_Y | MEASURE_SCROLL_X
-          : MEASURE_SCROLL_X
-      )
     }
     const handleLayoutChange = () => {
       scheduleMeasure(MEASURE_LAYOUT)
@@ -657,19 +643,11 @@ export const createTableVirtualRuntime = (options: {
         boundScrollNode.removeEventListener?.('scroll', handleScrollNodeScroll)
       },
       () => {
-        if (boundContainer !== boundScrollNode) {
-          boundContainer.removeEventListener?.('scroll', handleContainerScroll)
-        }
-      },
-      () => {
         ownerWindow?.removeEventListener('resize', handleLayoutChange)
       }
     ]
 
     boundScrollNode.addEventListener?.('scroll', handleScrollNodeScroll, { passive: true })
-    if (boundContainer !== boundScrollNode) {
-      boundContainer.addEventListener?.('scroll', handleContainerScroll, { passive: true })
-    }
     ownerWindow?.addEventListener('resize', handleLayoutChange, { passive: true })
 
     unsubscribes.push(observeElementSize(boundContainer, {
@@ -692,18 +670,35 @@ export const createTableVirtualRuntime = (options: {
     )
   }
 
+  const unsubscribeCurrentView = options.currentViewStore.subscribe(() => {
+    currentView = options.currentViewStore.get()
+    rebuildLayoutModel()
+  })
+  const unsubscribeViewport = viewportStore.subscribe(() => {
+    updateWindowSnapshot()
+  })
+  const unsubscribeInteraction = interaction.subscribe(() => {
+    updateWindowSnapshot()
+  })
+
+  publishLayout()
+  updateWindowSnapshot()
+
   return {
-    layout,
+    layout: layoutStore,
     viewport: viewportStore,
     interaction,
     window: windowStore,
+    locateRow: rowId => layoutModel?.locateRow(rowId) ?? null,
     measurement: {
       sync: syncMeasurements
     },
     attach,
     detach,
     dispose: () => {
-      unsubscribeLayout()
+      unsubscribeCurrentView()
+      unsubscribeViewport()
+      unsubscribeInteraction()
       detach()
     }
   }

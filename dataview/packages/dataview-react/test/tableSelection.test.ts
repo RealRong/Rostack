@@ -4,8 +4,9 @@ import {
   createValueStore
 } from '@shared/core'
 import {
-  createSelectionApi,
-  createSelectionStore
+  createItemArraySelectionDomain,
+  createSelectionController,
+  selectionSnapshot
 } from '@dataview/react/runtime/selection'
 import {
   gridSelection
@@ -18,6 +19,42 @@ import {
   type TableSelectionRuntime
 } from '@dataview/react/views/table/selectionRuntime'
 
+const createItemListStub = (ids: readonly string[]) => ({
+  count: ids.length,
+  ids,
+  has: (id: string) => ids.includes(id),
+  indexOf: (id: string) => {
+    const index = ids.indexOf(id)
+    return index === -1
+      ? undefined
+      : index
+  },
+  at: (index: number) => ids[index],
+  prev: (id: string) => {
+    const index = ids.indexOf(id)
+    return index > 0
+      ? ids[index - 1]
+      : undefined
+  },
+  next: (id: string) => {
+    const index = ids.indexOf(id)
+    return index >= 0
+      ? ids[index + 1]
+      : undefined
+  },
+  range: (anchor: string, focus: string) => {
+    const anchorIndex = ids.indexOf(anchor)
+    const focusIndex = ids.indexOf(focus)
+    if (anchorIndex === -1 || focusIndex === -1) {
+      return []
+    }
+
+    const start = Math.min(anchorIndex, focusIndex)
+    const end = Math.max(anchorIndex, focusIndex)
+    return ids.slice(start, end + 1)
+  }
+})
+
 const createSelectionRuntimeStub = (input: {
   mode: 'none' | 'rows' | 'cells'
   rowIds?: readonly string[]
@@ -25,6 +62,18 @@ const createSelectionRuntimeStub = (input: {
 }) => {
   const rowIds = input.rowIds ?? []
   const grid = input.grid ?? null
+  const domain = createItemArraySelectionDomain(rowIds)
+  const selection = rowIds.length
+    ? selectionSnapshot.replaceIds(
+        domain,
+        rowIds,
+        0,
+        {
+          anchor: rowIds[0],
+          focus: rowIds[rowIds.length - 1]
+        }
+      )
+    : selectionSnapshot.empty<string>(0)
 
   return {
     mode: {
@@ -32,16 +81,54 @@ const createSelectionRuntimeStub = (input: {
       subscribe: () => () => {}
     },
     rows: {
-      get: () => ({
-        ids: rowIds,
-        anchor: rowIds[0],
-        focus: rowIds[rowIds.length - 1]
-      }),
-      clear: vi.fn(),
-      all: vi.fn(),
-      set: vi.fn(),
-      toggle: vi.fn(),
-      extend: vi.fn()
+      state: {
+        store: {
+          get: () => selection,
+          subscribe: () => () => {}
+        },
+        getSnapshot: () => selection,
+        subscribe: () => () => {}
+      },
+      command: {
+        restore: vi.fn(),
+        clear: vi.fn(),
+        selectAll: vi.fn(),
+        ids: {
+          replace: vi.fn(),
+          add: vi.fn(),
+          remove: vi.fn(),
+          toggle: vi.fn()
+        },
+        scope: {
+          replace: vi.fn(),
+          add: vi.fn(),
+          remove: vi.fn(),
+          toggle: vi.fn()
+        },
+        range: {
+          extendTo: vi.fn(),
+          step: vi.fn(() => false)
+        }
+      },
+      query: {
+        contains: (id: string) => rowIds.includes(id),
+        count: () => selection.selectedCount,
+        summary: () => (
+          selection.selectedCount === 0
+            ? 'none'
+            : selection.selectedCount === rowIds.length
+              ? 'all'
+              : 'some'
+        )
+      },
+      enumerate: {
+        iterate: () => rowIds.values(),
+        materialize: () => rowIds
+      },
+      store: {
+        membership: null as never,
+        scopeSummary: null as never
+      }
     },
     cells: {
       get: () => grid,
@@ -58,14 +145,12 @@ const createSelectionRuntimeStub = (input: {
 }
 
 test('table selection runtime keeps row and cell selection mutually exclusive', () => {
-  const rowSelectionStore = createSelectionStore()
-  const rowSelection = createSelectionApi({
-    store: rowSelectionStore,
-    scope: {
-      items: () => ({
-        ids: ['row_1', 'row_2'],
-        has: id => id === 'row_1' || id === 'row_2'
-      }) as never
+  const {
+    controller: rowSelection
+  } = createSelectionController<string>({
+    domainSource: {
+      get: () => createItemArraySelectionDomain(['row_1', 'row_2']),
+      subscribe: () => () => {}
     }
   })
   const currentViewStore = createValueStore({
@@ -73,13 +158,15 @@ test('table selection runtime keeps row and cell selection mutually exclusive', 
   })
   const runtime = createTableSelectionRuntime({
     currentViewStore,
-    rowSelection,
-    rowSelectionStore
+    rowSelection
   })
 
-  runtime.rows.set(['row_1'])
+  runtime.rows.command.ids.replace(['row_1'], {
+    anchor: 'row_1',
+    focus: 'row_1'
+  })
   assert.equal(runtime.mode.get(), 'rows')
-  assert.deepEqual(runtime.rows.get().ids, ['row_1'])
+  assert.deepEqual(runtime.rows.enumerate.materialize(), ['row_1'])
   assert.equal(runtime.cells.get(), null)
 
   runtime.cells.set({
@@ -87,7 +174,7 @@ test('table selection runtime keeps row and cell selection mutually exclusive', 
     fieldId: 'field_1'
   })
   assert.equal(runtime.mode.get(), 'cells')
-  assert.deepEqual(runtime.rows.get().ids, [])
+  assert.deepEqual(runtime.rows.enumerate.materialize(), [])
   assert.deepEqual(runtime.cells.get(), {
     anchor: {
       itemId: 'row_2',
@@ -99,9 +186,9 @@ test('table selection runtime keeps row and cell selection mutually exclusive', 
     }
   })
 
-  runtime.rows.toggle(['row_1'])
+  runtime.rows.command.ids.toggle(['row_1'])
   assert.equal(runtime.mode.get(), 'rows')
-  assert.deepEqual(runtime.rows.get().ids, ['row_1'])
+  assert.deepEqual(runtime.rows.enumerate.materialize(), ['row_1'])
   assert.equal(runtime.cells.get(), null)
 })
 
@@ -129,7 +216,9 @@ test('handleTableKey deletes selected rows in row mode', () => {
         }
       }
     } as never,
-    currentView: {} as never,
+    currentView: {
+      items: createItemListStub(['row_1', 'row_2'])
+    } as never,
     selection,
     locked: false,
     readCell: () => ({
@@ -142,6 +231,50 @@ test('handleTableKey deletes selected rows in row mode', () => {
 
   assert.equal(handled, true)
   expect(remove).toHaveBeenCalledWith(['row_1', 'row_2'])
+})
+
+test('handleTableKey does not reveal after select all in row mode', () => {
+  const selection = createSelectionRuntimeStub({
+    mode: 'rows',
+    rowIds: ['row_1', 'row_2']
+  })
+  const reveal = vi.fn()
+  const setKeyboardMode = vi.fn()
+
+  const handled = handleTableKey({
+    key: {
+      key: 'a',
+      modifiers: {
+        shiftKey: false,
+        metaKey: true,
+        ctrlKey: false,
+        altKey: false
+      }
+    },
+    editor: {
+      active: {
+        items: {
+          remove: vi.fn()
+        }
+      }
+    } as never,
+    currentView: {
+      items: createItemListStub(['row_1', 'row_2'])
+    } as never,
+    selection,
+    locked: false,
+    readCell: () => ({
+      exists: true
+    }),
+    openCell: vi.fn(() => false),
+    reveal,
+    setKeyboardMode
+  })
+
+  assert.equal(handled, true)
+  expect(selection.rows.command.selectAll).toHaveBeenCalledOnce()
+  expect(setKeyboardMode).toHaveBeenCalledOnce()
+  expect(reveal).not.toHaveBeenCalled()
 })
 
 test('handleTableKey keeps delete-as-clear for active cell selection in cell mode', () => {

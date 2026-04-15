@@ -1,8 +1,10 @@
 import {
+  createProjectedStore,
   createKeyedDerivedStore,
   createValueStore,
   read,
   type KeyedReadStore,
+  type ReadStore,
   type ValueStore
 } from '@shared/core'
 import type { Point } from '@shared/dom'
@@ -23,6 +25,7 @@ import {
 } from '@dataview/react/views/table/model/hover'
 
 export interface Hover {
+  target: ReadStore<TableHoverTarget | null>
   cell: KeyedReadStore<CellRef, boolean>
   row: KeyedReadStore<ItemId, boolean>
   get: () => TableHoverTarget | null
@@ -64,6 +67,11 @@ export const createHover = (): Hover => {
   }
 
   return {
+    target: createProjectedStore({
+      source: state,
+      select: current => current.target,
+      isEqual: sameHoverTarget
+    }),
     cell: createKeyedDerivedStore<CellRef, boolean>({
       keyOf: cellKey,
       get: (cell) => {

@@ -16,7 +16,6 @@ export {
   removeDocumentCustomField
 } from '@dataview/core/document/fields'
 export {
-  clearDocumentValue,
   enumerateRecords,
   getDocumentRecordById,
   getDocumentRecordIds,
@@ -25,10 +24,10 @@ export {
   hasDocumentRecord,
   insertDocumentRecords,
   patchDocumentRecord,
-  patchDocumentValues,
   removeDocumentRecords,
+  restoreDocumentRecordFieldsMany,
   replaceDocumentRecords,
-  setDocumentValue
+  writeDocumentRecordFieldsMany
 } from '@dataview/core/document/records'
 export {
   getDocumentActiveView,

@@ -1,11 +1,4 @@
-import type { ViewState as CurrentView } from '@dataview/engine'
-import type {
-  DataRecord,
-  RecordId,
-} from '@dataview/core/contracts'
-import {
-  getRecordFieldValue
-} from '@dataview/core/field'
+import type { FieldId } from '@dataview/core/contracts'
 import {
   createDerivedStore,
   createKeyedDerivedStore,
@@ -13,25 +6,18 @@ import {
   type KeyedReadStore,
   type ReadStore
 } from '@shared/core'
-import {
-  sameCellRef
-} from '@dataview/engine'
-import type {
-  CellRef
-} from '@dataview/engine'
-import {
-  fill,
-  gridSelection,
-  type GridSelection
-} from '@dataview/table'
+import type { CellRef, ItemId, ViewState as CurrentView } from '@dataview/engine'
+import { fill, gridSelection, type GridSelection } from '@dataview/table'
 import type { Capabilities } from '@dataview/react/views/table/capabilities'
-import { cellChrome, type CellChromeState } from '@dataview/react/views/table/model/chrome'
+import type { TableHoverTarget } from '@dataview/react/views/table/model/hover'
 
-export interface CellRenderState {
-  exists: boolean
-  value: unknown
-  selected: boolean
-  chrome: CellChromeState
+export interface RowRenderState {
+  selectionVisible: boolean
+  selectedFieldStart?: number
+  selectedFieldEnd?: number
+  focusFieldId?: FieldId
+  hoverFieldId?: FieldId
+  fillFieldId?: FieldId
 }
 
 interface SelectionChrome {
@@ -53,7 +39,8 @@ const equalCell = (
     return left === right
   }
 
-  return sameCellRef(left, right)
+  return left.itemId === right.itemId
+    && left.fieldId === right.fieldId
 }
 
 const equalSelectionChrome = (
@@ -68,31 +55,25 @@ const equalSelectionChrome = (
   && left.selectionVisible === right.selectionVisible
 )
 
-const equalRenderState = (
-  left: CellRenderState,
-  right: CellRenderState
-) => (
-  left.exists === right.exists
-  && Object.is(left.value, right.value)
-  && left.selected === right.selected
-  && left.chrome.selection === right.chrome.selection
-  && left.chrome.frame === right.chrome.frame
-  && left.chrome.hover === right.chrome.hover
-  && left.chrome.fill === right.chrome.fill
-)
+const equalRowRenderState = (
+  left: RowRenderState,
+  right: RowRenderState
+) => left.selectionVisible === right.selectionVisible
+  && left.selectedFieldStart === right.selectedFieldStart
+  && left.selectedFieldEnd === right.selectedFieldEnd
+  && left.focusFieldId === right.focusFieldId
+  && left.hoverFieldId === right.hoverFieldId
+  && left.fillFieldId === right.fillFieldId
 
-const cellCacheKey = (cell: CellRef) => `${cell.itemId}\u0000${cell.fieldId}`
+export type RowRender = KeyedReadStore<ItemId, RowRenderState>
 
-export type CellRender = KeyedReadStore<CellRef, CellRenderState>
-
-export const createCellRender = (options: {
+export const createRowRender = (options: {
   gridSelectionStore: ReadStore<GridSelection | null>
   valueEditorOpenStore: ReadStore<boolean>
   currentViewStore: ReadStore<CurrentView | undefined>
   capabilitiesStore: ReadStore<Capabilities>
-  hoverCellStore: KeyedReadStore<CellRef, boolean>
-  recordStore: KeyedReadStore<RecordId, DataRecord | undefined>
-}): CellRender => {
+  hoverTargetStore: ReadStore<TableHoverTarget | null>
+}): RowRender => {
   const selectionChrome = createDerivedStore<SelectionChrome>({
     get: () => {
       const currentGridSelection = read(options.gridSelectionStore)
@@ -129,52 +110,52 @@ export const createCellRender = (options: {
     isEqual: equalCell
   })
 
-  return createKeyedDerivedStore<CellRef, CellRenderState>({
-    keyOf: cellCacheKey,
-    get: (cell) => {
+  return createKeyedDerivedStore<ItemId, RowRenderState>({
+    keyOf: rowId => rowId,
+    get: rowId => {
       const currentCapabilities = read(options.capabilitiesStore)
       const currentView = read(options.currentViewStore)
-      const recordId = currentView?.items.get(cell.itemId)?.recordId
-      const record = recordId
-        ? read(options.recordStore, recordId)
-        : undefined
       const rowIndex = currentView
-        ? currentView.items.indexOf(cell.itemId)
+        ? currentView.items.indexOf(rowId)
         : undefined
-      const fieldIndex = currentView
-        ? currentView.fields.indexOf(cell.fieldId)
-        : undefined
-      const hovered = currentCapabilities.canHover
-        && read(options.hoverCellStore, cell)
       const selectionState = read(selectionChrome)
-      const currentFillCell = read(fillCell)
       const rangeEdges = selectionState.rangeEdges
       const selected = (
         rangeEdges
         && rowIndex !== undefined
-        && fieldIndex !== undefined
         && rowIndex >= rangeEdges.rowStart
         && rowIndex <= rangeEdges.rowEnd
-        && fieldIndex >= rangeEdges.fieldStart
-        && fieldIndex <= rangeEdges.fieldEnd
-      ) ?? false
-      const chrome = cellChrome({
-        selected,
-        frameActive: equalCell(selectionState.focusCell, cell),
-        hovered,
-        fillHandleActive: equalCell(currentFillCell, cell),
-        selectionVisible: selectionState.selectionVisible
-      })
+      )
+      const hoverTarget = currentCapabilities.canHover
+        ? read(options.hoverTargetStore)
+        : null
+      const fillHandleCell = read(fillCell)
 
       return {
-        exists: Boolean(record),
-        value: record
-          ? getRecordFieldValue(record, cell.fieldId)
-          : undefined,
-        selected: chrome.selection,
-        chrome
+        selectionVisible: selectionState.selectionVisible,
+        ...(selected
+          ? {
+              selectedFieldStart: rangeEdges.fieldStart,
+              selectedFieldEnd: rangeEdges.fieldEnd
+            }
+          : {}),
+        ...(selectionState.focusCell?.itemId === rowId
+          ? {
+              focusFieldId: selectionState.focusCell.fieldId
+            }
+          : {}),
+        ...(hoverTarget?.type === 'cell' && hoverTarget.cell.itemId === rowId
+          ? {
+              hoverFieldId: hoverTarget.cell.fieldId
+            }
+          : {}),
+        ...(fillHandleCell?.itemId === rowId
+          ? {
+              fillFieldId: fillHandleCell.fieldId
+            }
+          : {})
       }
     },
-    isEqual: equalRenderState
+    isEqual: equalRowRenderState
   })
 }

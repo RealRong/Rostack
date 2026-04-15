@@ -16,7 +16,6 @@ import {
 } from '@dataview/table'
 import {
   useDataView,
-  useDataViewValue
 } from '@dataview/react/dataview'
 import { useStoreValue } from '@shared/react'
 import { usePointerDragSession } from '@dataview/react/interaction/usePointerDragSession'
@@ -51,10 +50,12 @@ export const useRowReorder = (): RowReorderApi => {
 
   const layout = table.layout
   const capabilities = useStoreValue(table.capabilities)
-  const currentSelection = useDataViewValue(
-    dataView => dataView.selection.store
-  )
+  const rowSelection = useStoreValue(table.selection.rows.state.store)
   const rowIds = currentView.items.ids
+  const selectedRowIds = useMemo(
+    () => table.selection.rows.enumerate.materialize(),
+    [rowSelection, table.selection.rows]
+  )
   const rowIdSet = useMemo(
     () => new Set(rowIds),
     [rowIds]
@@ -69,10 +70,10 @@ export const useRowReorder = (): RowReorderApi => {
   const resolveDragIds = useCallback((activeId: ItemId) => {
     return rowDragIds({
       activeId,
-      selectedRowIds: currentSelection.ids,
+      selectedRowIds,
       visibleRowIdSet: rowIdSet
     })
-  }, [currentSelection.ids, rowIdSet])
+  }, [rowIdSet, selectedRowIds])
 
   const rowRect = useCallback((rowId: ItemId) => (
     table.dom.row(rowId)?.getBoundingClientRect() ?? null
@@ -148,7 +149,7 @@ export const useRowReorder = (): RowReorderApi => {
       table.rowRail.set(null)
       previewNodeRef.current = null
       if (!input.cancelled && selectionTargetRef.current) {
-        table.selection.rows.set([selectionTargetRef.current], {
+        table.selection.rows.command.ids.replace([selectionTargetRef.current], {
           anchor: selectionTargetRef.current,
           focus: selectionTargetRef.current
         })
@@ -170,7 +171,7 @@ export const useRowReorder = (): RowReorderApi => {
     selectionTargetRef.current = rowSelectionTarget({
       activeId: input.rowId,
       dragIds,
-      selectedRowIds: currentSelection.ids
+      selectedRowIds
     })
     previewNodeRef.current = cloneDragGhostNode(
       input.event.currentTarget.closest<HTMLElement>('[data-table-target="row"]')
@@ -183,7 +184,7 @@ export const useRowReorder = (): RowReorderApi => {
     })
     table.rowRail.set(null)
     drag.onPointerDown(input.rowId, input.event)
-  }, [capabilities.canRowDrag, currentSelection.ids, drag, resolveDragIds, table.dom, table.hover, table.rowRail])
+  }, [capabilities.canRowDrag, drag, resolveDragIds, selectedRowIds, table.dom, table.hover, table.rowRail])
 
   return useMemo(() => ({
     active: drag.dragIds.length > 0,

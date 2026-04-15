@@ -66,7 +66,7 @@ export const PageKeyboardHost = () => {
             return
           }
 
-          dataView.selection.all()
+          dataView.selection.command.selectAll()
           event.preventDefault()
           return true
         case 'clear-selection':
@@ -74,7 +74,7 @@ export const PageKeyboardHost = () => {
             return
           }
 
-          dataView.selection.clear()
+          dataView.selection.command.clear()
           event.preventDefault()
           return true
         case 'remove-selection':
@@ -84,7 +84,7 @@ export const PageKeyboardHost = () => {
 
           if (currentView) {
             engine.active.items.remove(
-              dataView.selection.get().ids
+              dataView.selection.enumerate.materialize()
             )
           }
           event.preventDefault()

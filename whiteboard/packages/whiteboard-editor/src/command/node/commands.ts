@@ -17,23 +17,47 @@ import type {
   NodeStyleCommands,
   NodePatchWriter
 } from '@whiteboard/editor/command/node/types'
+import {
+  resolveMeasuredTextNodeUpdate
+} from '@whiteboard/editor/command/node/layout'
 import type { EditorQueryRead } from '@whiteboard/editor/query'
 import type { LocalFeedbackActions } from '@whiteboard/editor/local/actions/feedback'
 import type { SessionActions } from '@whiteboard/editor/types/commands'
+import type { TextLayoutMeasurer } from '@whiteboard/editor/types/textLayout'
 
 const createNodePatchWriter = (
-  engine: Engine
+  engine: Engine,
+  {
+    read,
+    measureText
+  }: {
+    read: EditorQueryRead
+    measureText?: TextLayoutMeasurer
+  }
 ): NodePatchWriter => ({
   update: (id, update) => engine.execute({
     type: 'node.patch',
     updates: [{
       id,
-      update
+      update: resolveMeasuredTextNodeUpdate({
+        nodeId: id,
+        update,
+        read,
+        measureText
+      })
     }]
   }),
   updateMany: (updates, options) => engine.execute({
     type: 'node.patch',
-    updates,
+    updates: updates.map((entry) => ({
+      id: entry.id,
+      update: resolveMeasuredTextNodeUpdate({
+        nodeId: entry.id,
+        update: entry.update,
+        read,
+        measureText
+      })
+    })),
     origin: options?.origin
   })
 })
@@ -121,18 +145,24 @@ export const createNodeCommands = ({
   engine,
   read,
   preview,
+  measureText,
   session
 }: {
   engine: Engine
   read: EditorQueryRead
   preview: Pick<LocalFeedbackActions, 'node'>
+  measureText?: TextLayoutMeasurer
   session: Pick<SessionActions, 'edit' | 'selection'>
 }): NodeCommands => {
-  const patch = createNodePatchWriter(engine)
+  const patch = createNodePatchWriter(engine, {
+    read,
+    measureText
+  })
   const ctx = createNodeContext({
     read,
     patch,
     preview: preview.node,
+    measureText,
     session,
     deleteCascade: (ids) => engine.execute({
       type: 'node.deleteCascade',

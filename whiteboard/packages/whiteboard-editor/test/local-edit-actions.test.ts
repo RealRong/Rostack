@@ -60,7 +60,7 @@ describe('createLocalEditActions.startNode', () => {
       nodeId: 'node-1',
       layout: {
         wrapWidth: 180,
-        liveSize: {
+        measuredSize: {
           width: 180,
           height: 48
         }
@@ -110,7 +110,7 @@ describe('createLocalEditActions.startNode', () => {
       nodeId: 'node-2',
       layout: {
         wrapWidth: undefined,
-        liveSize: {
+        measuredSize: {
           width: 120,
           height: 24
         }

@@ -109,6 +109,7 @@ export type EditorQueryRead = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
     size: ViewportRuntime['input']['size']
   }
   feedback: {
+    node: EditorFeedbackRuntime['selectors']['node']
     draw: EditorFeedbackRuntime['selectors']['draw']
     marquee: EditorFeedbackRuntime['selectors']['marquee']
     edgeGuide: EditorFeedbackRuntime['selectors']['edgeGuide']
@@ -199,6 +200,7 @@ export const createQueryRuntime = ({
         size: local.viewport.input.size
       },
       feedback: {
+        node: local.feedback.selectors.node,
         draw: local.feedback.selectors.draw,
         marquee: local.feedback.selectors.marquee,
         edgeGuide: local.feedback.selectors.edgeGuide,

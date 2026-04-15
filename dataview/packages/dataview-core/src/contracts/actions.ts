@@ -2,6 +2,7 @@ import type {
   CustomField,
   CustomFieldId,
   CustomFieldKind,
+  FieldId,
   Filter,
   RecordId,
   DataRecord,
@@ -41,6 +42,12 @@ export interface FieldCreateInput {
   meta?: Record<string, unknown>
 }
 
+export interface RecordFieldWriteManyInput {
+  recordIds: RecordId[]
+  set?: Partial<Record<FieldId, unknown>>
+  clear?: readonly FieldId[]
+}
+
 export interface ViewCreateInput {
   id?: ViewId
   name: string
@@ -76,27 +83,15 @@ export type Action =
   | {
       type: 'record.patch'
       target: EditTarget
-      patch: Partial<Omit<DataRecord, 'id'>>
+      patch: Partial<Omit<DataRecord, 'id' | 'values'>>
     }
   | {
       type: 'record.remove'
       recordIds: RecordId[]
     }
   | {
-      type: 'value.set'
-      target: EditTarget
-      field: CustomFieldId
-      value: unknown
-    }
-  | {
-      type: 'value.patch'
-      target: EditTarget
-      patch: Record<string, unknown>
-    }
-  | {
-      type: 'value.clear'
-      target: EditTarget
-      field: CustomFieldId
+      type: 'record.fields.writeMany'
+      input: RecordFieldWriteManyInput
     }
   | {
       type: 'field.create'

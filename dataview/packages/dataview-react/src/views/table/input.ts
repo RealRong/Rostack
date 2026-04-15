@@ -8,7 +8,8 @@ import type {
   Engine
 } from '@dataview/engine'
 import {
-  selection as rowSelection
+  createItemListSelectionDomain,
+  selectionSnapshot
 } from '@dataview/react/runtime/selection'
 import {
   gridKeyAction,
@@ -49,9 +50,8 @@ export const handleTableKey = (input: {
 
   const key = currentKey(input.key)
   if (isSelectAll(key)) {
-    input.selection.rows.all()
+    input.selection.rows.command.selectAll()
     input.setKeyboardMode()
-    input.reveal()
     return true
   }
 
@@ -63,7 +63,11 @@ export const handleTableKey = (input: {
         currentGridSelection,
         input.currentView.items
       )
-      input.selection.rows.set(rowIds, {
+      if (!rowIds.length) {
+        return false
+      }
+
+      input.selection.rows.command.ids.replace(rowIds, {
         anchor: rowIds[0],
         focus: rowIds[rowIds.length - 1]
       })
@@ -117,37 +121,32 @@ export const handleTableKey = (input: {
     }
   }
 
-  const currentSelection = input.selection.rows.get()
-  if (mode !== 'rows' || !currentSelection.ids.length) {
+  const currentSelection = input.selection.rows.state.getSnapshot()
+  if (mode !== 'rows' || !currentSelection.selectedCount) {
     return false
   }
+
+  const rowDomain = createItemListSelectionDomain(input.currentView.items)
 
   switch (key.key) {
     case 'ArrowUp':
     case 'ArrowDown': {
-      const next = rowSelection.step(
-        input.currentView.items.ids,
-        currentSelection,
+      if (!input.selection.rows.command.range.step(
         key.key === 'ArrowUp' ? -1 : 1,
         {
           extend: key.modifiers.shiftKey
         }
-      )
-      if (!next) {
+      )) {
         return false
       }
 
-      input.selection.rows.set(next.ids, {
-        anchor: next.anchor,
-        focus: next.focus
-      })
       input.setKeyboardMode()
       input.reveal()
       return true
     }
     case 'ArrowRight':
     case 'Enter': {
-      const rowId = currentSelection.focus ?? currentSelection.ids[0]
+      const rowId = selectionSnapshot.primary(rowDomain, currentSelection)
       if (!rowId) {
         return false
       }
@@ -158,13 +157,17 @@ export const handleTableKey = (input: {
       return true
     }
     case 'Backspace':
-    case 'Delete':
-      input.editor.active.items.remove(
-        currentSelection.ids
-      )
+    case 'Delete': {
+      const rowIds = input.selection.rows.enumerate.materialize()
+      if (!rowIds.length) {
+        return false
+      }
+
+      input.editor.active.items.remove(rowIds)
       input.setKeyboardMode()
       input.reveal()
       return true
+    }
     default:
       return false
   }

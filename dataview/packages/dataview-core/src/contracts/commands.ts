@@ -1,12 +1,19 @@
 import type {
   CustomField,
   CustomFieldId,
+  FieldId,
   RecordId,
   DataRecord,
   View,
   ViewId
 } from '@dataview/core/contracts/state'
 import type { RowInsertTarget } from '@dataview/core/contracts/operations'
+
+export interface RecordFieldWriteManyCommandInput {
+  recordIds: readonly RecordId[]
+  set?: Partial<Record<FieldId, unknown>>
+  clear?: readonly FieldId[]
+}
 
 export type Command =
   | {
@@ -17,27 +24,15 @@ export type Command =
   | {
       type: 'record.patch'
       recordId: RecordId
-      patch: Partial<Omit<DataRecord, 'id'>>
+      patch: Partial<Omit<DataRecord, 'id' | 'values'>>
     }
   | {
       type: 'record.remove'
       recordIds: RecordId[]
     }
   | {
-      type: 'value.set'
-      recordId: RecordId
-      field: CustomFieldId
-      value: unknown
-    }
-  | {
-      type: 'value.patch'
-      recordId: RecordId
-      patch: Record<string, unknown>
-    }
-  | {
-      type: 'value.clear'
-      recordId: RecordId
-      field: CustomFieldId
+      type: 'record.fields.writeMany'
+      input: RecordFieldWriteManyCommandInput
     }
   | {
       type: 'field.put'

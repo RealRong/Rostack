@@ -2,7 +2,11 @@ import type {
   Action,
   DataDoc,
   DataRecord,
+  FieldId,
   RecordId
+} from '@dataview/core/contracts'
+import {
+  TITLE_FIELD_ID
 } from '@dataview/core/contracts'
 import type { BaseOperation } from '@dataview/core/contracts/operations'
 import {
@@ -127,8 +131,14 @@ const lowerRecordPatch = (
   if (!Object.keys(action.patch).length) {
     issues.push(createIssue(source, 'error', 'record.emptyPatch', 'record.patch patch cannot be empty', 'patch'))
   }
-  if (action.patch.values && typeof action.patch.values !== 'object') {
-    issues.push(createIssue(source, 'error', 'record.emptyPatch', 'record.patch values patch must be an object', 'patch.values'))
+  if (Object.prototype.hasOwnProperty.call(action.patch, 'values')) {
+    issues.push(createIssue(
+      source,
+      'error',
+      'record.invalidPatch',
+      'record.patch does not support values; use record.fields.writeMany',
+      'patch.values'
+    ))
   }
 
   return planResult(
@@ -163,70 +173,99 @@ const lowerRecordRemove = (
   )
 }
 
-const lowerValueSet = (
+const validateWritableField = (
   document: DataDoc,
-  action: Extract<Action, { type: 'value.set' }>,
-  index: number
-): PlannedActionResult => {
-  const source = sourceOf(index, action)
-  const issues = [
-    ...validateEditTarget(document, source, action.target),
-    ...validateFieldExists(document, source, action.field, 'field')
-  ]
-  if (!isNonEmptyString(action.field)) {
-    issues.push(createIssue(source, 'error', 'value.invalidField', 'value.set requires a non-empty field', 'field'))
+  source: ReturnType<typeof sourceOf>,
+  fieldId: FieldId,
+  path: string
+) => {
+  const issues: ReturnType<typeof validateFieldExists> = []
+
+  if (!isNonEmptyString(fieldId)) {
+    issues.push(createIssue(
+      source,
+      'error',
+      'record.fields.invalidField',
+      'record.fields.writeMany requires non-empty field ids',
+      path
+    ))
+    return issues
   }
-  return planResult(
-    issues,
-    listTargetRecordIds(action.target).map(recordId => ({
-      type: 'document.value.set',
-      recordId,
-      field: action.field,
-      value: action.value
-    }))
-  )
+
+  if (fieldId !== TITLE_FIELD_ID) {
+    issues.push(...validateFieldExists(document, source, fieldId, path))
+  }
+
+  return issues
 }
 
-const lowerValuePatch = (
+const lowerRecordFieldsWriteMany = (
   document: DataDoc,
-  action: Extract<Action, { type: 'value.patch' }>,
+  action: Extract<Action, { type: 'record.fields.writeMany' }>,
   index: number
 ): PlannedActionResult => {
   const source = sourceOf(index, action)
-  const issues = validateEditTarget(document, source, action.target)
-  if (!Object.keys(action.patch).length) {
-    issues.push(createIssue(source, 'error', 'value.emptyPatch', 'value.patch patch cannot be empty', 'patch'))
-  }
-  return planResult(
-    issues,
-    listTargetRecordIds(action.target).map(recordId => ({
-      type: 'document.value.patch',
-      recordId,
-      patch: action.patch
-    }))
-  )
-}
-
-const lowerValueClear = (
-  document: DataDoc,
-  action: Extract<Action, { type: 'value.clear' }>,
-  index: number
-): PlannedActionResult => {
-  const source = sourceOf(index, action)
+  const recordIds = [...new Set(action.input.recordIds)]
   const issues = [
-    ...validateEditTarget(document, source, action.target),
-    ...validateFieldExists(document, source, action.field, 'field')
+    ...validateRequiredCollection(source, recordIds, 'input.recordIds'),
+    ...validateRecordIdsExist(document, source, recordIds, 'input.recordIds')
   ]
-  if (!isNonEmptyString(action.field)) {
-    issues.push(createIssue(source, 'error', 'value.invalidField', 'value.clear requires a non-empty field', 'field'))
+
+  const nextSet: Partial<Record<FieldId, unknown>> = {}
+  const nextClear = new Set<FieldId>()
+
+  Object.entries(action.input.set ?? {}).forEach(([fieldId, value], indexOfField) => {
+    const typedFieldId = fieldId as FieldId
+    issues.push(...validateWritableField(document, source, typedFieldId, `input.set.${indexOfField}`))
+    if (value === undefined) {
+      nextClear.add(typedFieldId)
+      return
+    }
+
+    nextSet[typedFieldId] = value
+  })
+
+  ;(action.input.clear ?? []).forEach((fieldId, indexOfField) => {
+    issues.push(...validateWritableField(document, source, fieldId, `input.clear.${indexOfField}`))
+    nextClear.add(fieldId)
+  })
+
+  Object.keys(nextSet).forEach(fieldId => {
+    if (!nextClear.has(fieldId)) {
+      return
+    }
+
+    issues.push(createIssue(
+      source,
+      'error',
+      'record.fields.overlap',
+      `record.fields.writeMany cannot set and clear the same field: ${fieldId}`,
+      'input'
+    ))
+  })
+
+  if (!Object.keys(nextSet).length && !nextClear.size) {
+    issues.push(createIssue(
+      source,
+      'error',
+      'record.fields.emptyWrite',
+      'record.fields.writeMany requires at least one field write',
+      'input'
+    ))
   }
+
   return planResult(
     issues,
-    listTargetRecordIds(action.target).map(recordId => ({
-      type: 'document.value.clear',
-      recordId,
-      field: action.field
-    }))
+    [{
+      type: 'document.record.fields.writeMany',
+      recordIds,
+      ...(Object.keys(nextSet).length
+        ? { set: nextSet }
+        : {}),
+      ...(nextClear.size
+        ? { clear: Array.from(nextClear) }
+        : {})
+    }]
   )
 }
 
@@ -242,12 +281,8 @@ export const planRecordAction = (
       return lowerRecordPatch(document, action, index)
     case 'record.remove':
       return lowerRecordRemove(document, action, index)
-    case 'value.set':
-      return lowerValueSet(document, action, index)
-    case 'value.patch':
-      return lowerValuePatch(document, action, index)
-    case 'value.clear':
-      return lowerValueClear(document, action, index)
+    case 'record.fields.writeMany':
+      return lowerRecordFieldsWriteMany(document, action, index)
     default:
       throw new Error(`Unsupported record planner action: ${action.type}`)
   }

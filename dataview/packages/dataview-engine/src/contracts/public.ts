@@ -15,6 +15,7 @@ import type {
   GalleryCardSize,
   KanbanCardsPerColumn,
   KanbanNewRecordPosition,
+  RecordFieldWriteManyInput,
   RecordId,
   DataRecord,
   SortDirection,
@@ -49,6 +50,8 @@ import type {
   ViewRecords,
   ViewSummaries
 } from '@dataview/engine/contracts/shared'
+
+export type { RecordFieldWriteManyInput } from '@dataview/core/contracts'
 
 export type {
   CellRef,
@@ -410,9 +413,10 @@ export interface RecordsApi {
   }) => RecordId | undefined
   remove: (recordId: RecordId) => void
   removeMany: (recordIds: readonly RecordId[]) => void
-  values: {
+  fields: {
     set: (recordId: RecordId, fieldId: FieldId, value: unknown) => void
     clear: (recordId: RecordId, fieldId: FieldId) => void
+    writeMany: (input: RecordFieldWriteManyInput) => void
   }
 }
 

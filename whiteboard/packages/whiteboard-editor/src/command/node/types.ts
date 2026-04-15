@@ -51,7 +51,6 @@ export type NodeTextCommands = {
   size: (input: {
     nodeIds: readonly NodeId[]
     value?: number
-    sizeById?: Readonly<Record<NodeId, Size>>
   }) => CommandResult
   weight: (nodeIds: readonly NodeId[], weight?: number) => CommandResult
   italic: (nodeIds: readonly NodeId[], italic: boolean) => CommandResult

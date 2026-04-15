@@ -16,7 +16,7 @@ export const createCellsApi = (input: {
       return
     }
 
-    input.base.recordsApi.values.set(target.recordId, target.fieldId, value)
+    input.base.recordsApi.fields.set(target.recordId, target.fieldId, value)
   },
   clear: cell => {
     const state = input.base.readState()
@@ -29,6 +29,6 @@ export const createCellsApi = (input: {
       return
     }
 
-    input.base.recordsApi.values.clear(target.recordId, target.fieldId)
+    input.base.recordsApi.fields.clear(target.recordId, target.fieldId)
   }
 })

@@ -45,10 +45,10 @@ const readNodeTextDraft = (
   return {
     field: edit.field,
     value: edit.draft.text,
-    liveSize:
+    measuredSize:
       edit.field === 'text'
       && item.node.type === 'text'
-        ? edit.layout.liveSize
+        ? edit.layout.measuredSize
         : undefined
   }
 }

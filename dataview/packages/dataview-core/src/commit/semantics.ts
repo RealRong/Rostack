@@ -188,6 +188,71 @@ export const collectRecordPatchAspects = (
   return Array.from(aspects)
 }
 
+const hasOwn = (value: Record<string, unknown>, key: string) => Object.prototype.hasOwnProperty.call(value, key)
+
+export const collectRecordFieldWriteChanges = (input: {
+  beforeDocument: DataDoc
+  afterDocument: DataDoc
+  operation: Extract<BaseOperation, {
+    type:
+      | 'document.record.fields.writeMany'
+      | 'document.record.fields.restoreMany'
+  }>
+}) => {
+  const titleRecordIds = new Set<string>()
+  const valueRecordIds = new Set<string>()
+  const valueFieldIds = new Set<FieldId>()
+
+  const entries = input.operation.type === 'document.record.fields.writeMany'
+    ? (() => {
+        const { recordIds, set, clear } = input.operation
+        return recordIds.map(recordId => ({
+          recordId,
+          set,
+          clear
+        }))
+      })()
+    : input.operation.entries
+
+  entries.forEach(entry => {
+    const beforeRecord = getDocumentRecordById(input.beforeDocument, entry.recordId)
+    const afterRecord = getDocumentRecordById(input.afterDocument, entry.recordId)
+    if (!beforeRecord || !afterRecord) {
+      return
+    }
+
+    const touchedFieldIds = new Set<FieldId>([
+      ...(Object.keys(entry.set ?? {}) as FieldId[]),
+      ...(entry.clear ?? [])
+    ])
+
+    touchedFieldIds.forEach(fieldId => {
+      if (fieldId === TITLE_FIELD_ID) {
+        if (beforeRecord.title !== afterRecord.title) {
+          titleRecordIds.add(entry.recordId)
+        }
+        return
+      }
+
+      const beforeHas = hasOwn(beforeRecord.values, fieldId)
+      const afterHas = hasOwn(afterRecord.values, fieldId)
+      if (
+        beforeHas !== afterHas
+        || !sameJsonValue(beforeRecord.values[fieldId], afterRecord.values[fieldId])
+      ) {
+        valueRecordIds.add(entry.recordId)
+        valueFieldIds.add(fieldId)
+      }
+    })
+  })
+
+  return {
+    titleRecordIds: Array.from(titleRecordIds).sort(),
+    valueRecordIds: Array.from(valueRecordIds).sort(),
+    valueFieldIds: Array.from(valueFieldIds).sort()
+  }
+}
+
 const pushUnique = (
   target: DeltaItem[],
   item: DeltaItem
@@ -240,27 +305,30 @@ export const buildSemanticDraft = (input: {
           }
           aspects.forEach(aspect => current.add(aspect))
         }
-        if (operation.patch.values && typeof operation.patch.values === 'object') {
-          valueRecords.add(operation.recordId)
-          Object.keys(operation.patch.values).forEach(fieldId => valueFields.add(fieldId))
-        }
         return
       }
       case 'document.record.remove':
         operation.recordIds.forEach(recordId => recordRemove.add(recordId))
         return
-      case 'document.value.set':
-        valueRecords.add(operation.recordId)
-        valueFields.add(operation.field)
+      case 'document.record.fields.writeMany':
+      case 'document.record.fields.restoreMany': {
+        const changes = collectRecordFieldWriteChanges({
+          beforeDocument: input.beforeDocument,
+          afterDocument: input.afterDocument,
+          operation
+        })
+
+        changes.titleRecordIds.forEach(recordId => {
+          const current = recordPatch.get(recordId) ?? new Set<RecordPatchAspect>()
+          if (!recordPatch.has(recordId)) {
+            recordPatch.set(recordId, current)
+          }
+          current.add('title')
+        })
+        changes.valueRecordIds.forEach(recordId => valueRecords.add(recordId))
+        changes.valueFieldIds.forEach(fieldId => valueFields.add(fieldId))
         return
-      case 'document.value.patch':
-        valueRecords.add(operation.recordId)
-        Object.keys(operation.patch).forEach(fieldId => valueFields.add(fieldId))
-        return
-      case 'document.value.clear':
-        valueRecords.add(operation.recordId)
-        valueFields.add(operation.field)
-        return
+      }
       case 'document.view.put':
       case 'document.view.remove':
         touchedViewIds.add(operation.type === 'document.view.put' ? operation.view.id : operation.viewId)

@@ -1,20 +1,32 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { buildTableBlocks } from '@dataview/react/views/table/virtual/buildBlocks'
+import { TableLayoutModel } from '@dataview/react/views/table/virtual/layoutModel'
 
-test('buildTableBlocks uses measured heights for flat table blocks and recomputes tops', () => {
-  const blocks = buildTableBlocks({
-    grouped: false,
-    rowIds: ['row_1', 'row_2'],
-    sections: [],
+test('TableLayoutModel uses measured heights for flat table blocks and recomputes tops', () => {
+  const model = TableLayoutModel.fromCurrentView({
+    currentView: {
+      view: {
+        group: null
+      },
+      items: {
+        ids: ['row_1', 'row_2']
+      },
+      sections: {
+        all: []
+      }
+    } as any,
     rowHeight: 36,
     headerHeight: 40,
-    blockHeights: new Map([
+    measuredHeights: new Map([
       ['column-header:flat', 52],
       ['row:row_1', 68],
       ['column-footer:flat', 64]
     ])
   })
+  const blocks = model.materializeWindow({
+    start: 0,
+    end: 999
+  }).items
 
   assert.deepEqual(blocks.map(block => ({
     key: block.key,
@@ -44,27 +56,37 @@ test('buildTableBlocks uses measured heights for flat table blocks and recompute
   ])
 })
 
-test('buildTableBlocks uses measured heights for grouped section blocks and keeps collapsed sections compact', () => {
-  const blocks = buildTableBlocks({
-    grouped: true,
-    rowIds: ['row_1', 'row_2', 'row_3'],
-    sections: [
-      {
-        key: 'won',
-        title: 'Won',
-        collapsed: false,
-        itemIds: ['row_1', 'row_2']
+test('TableLayoutModel uses measured heights for grouped section blocks and keeps collapsed sections compact', () => {
+  const model = TableLayoutModel.fromCurrentView({
+    currentView: {
+      view: {
+        group: {
+          fieldId: 'status'
+        }
       },
-      {
-        key: 'lost',
-        title: 'Lost',
-        collapsed: true,
-        itemIds: ['row_3']
+      items: {
+        ids: ['row_1', 'row_2', 'row_3']
+      },
+      sections: {
+        all: [
+          {
+            key: 'won',
+            title: 'Won',
+            collapsed: false,
+            itemIds: ['row_1', 'row_2']
+          },
+          {
+            key: 'lost',
+            title: 'Lost',
+            collapsed: true,
+            itemIds: ['row_3']
+          }
+        ]
       }
-    ],
+    } as any,
     rowHeight: 36,
     headerHeight: 40,
-    blockHeights: new Map([
+    measuredHeights: new Map([
       ['section-header:won', 48],
       ['column-header:won', 56],
       ['row:row_2', 72],
@@ -72,6 +94,10 @@ test('buildTableBlocks uses measured heights for grouped section blocks and keep
       ['section-header:lost', 44]
     ])
   })
+  const blocks = model.materializeWindow({
+    start: 0,
+    end: 999
+  }).items
 
   assert.deepEqual(blocks.map(block => ({
     key: block.key,
@@ -109,4 +135,65 @@ test('buildTableBlocks uses measured heights for grouped section blocks and keep
       height: 44
     }
   ])
+})
+
+test('TableLayoutModel applies measured height patches incrementally and locates rows by offset', () => {
+  const model = TableLayoutModel.fromCurrentView({
+    currentView: {
+      view: {
+        group: null
+      },
+      items: {
+        ids: ['row_1', 'row_2', 'row_3']
+      },
+      sections: {
+        all: []
+      }
+    } as any,
+    rowHeight: 36,
+    headerHeight: 40
+  })
+
+  assert.equal(model.locateRow('row_3')?.top, 112)
+
+  model.applyMeasuredHeightPatches({
+    changedHeights: new Map([
+      ['row:row_1', 60],
+      ['row:row_2', 72]
+    ])
+  })
+
+  assert.equal(model.locateRow('row_3')?.top, 172)
+  assert.deepEqual(
+    model.materializeWindow({
+      start: 100,
+      end: 220
+    }).items.map(block => ({
+      key: block.key,
+      top: block.top,
+      height: block.height
+    })),
+    [
+      {
+        key: 'row:row_1',
+        top: 40,
+        height: 60
+      },
+      {
+        key: 'row:row_2',
+        top: 100,
+        height: 72
+      },
+      {
+        key: 'row:row_3',
+        top: 172,
+        height: 36
+      },
+      {
+        key: 'column-footer:flat',
+        top: 208,
+        height: 40
+      }
+    ]
+  )
 })

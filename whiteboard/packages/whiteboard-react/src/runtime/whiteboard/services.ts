@@ -13,6 +13,7 @@ import { createClipboardBridge } from '@whiteboard/react/runtime/bridge/clipboar
 import { createInsertBridge } from '@whiteboard/react/runtime/bridge/insert'
 import { createPointerBridge } from '@whiteboard/react/runtime/bridge/pointer'
 import type { WhiteboardServicesContextValue } from '@whiteboard/react/runtime/hooks/useWhiteboard'
+import { createTextLayoutMeasurer } from '@whiteboard/react/runtime/whiteboard/textLayout'
 
 const clonePoint = (
   point: Point
@@ -68,11 +69,14 @@ export const createWhiteboardServices = ({
     onDocumentChange,
     config: boardConfig
   })
-  const editor = createEditor({
+  let editor: WhiteboardServicesContextValue['editor'] | null = null
+  const measureText = createTextLayoutMeasurer(() => editor)
+  editor = createEditor({
     engine,
     initialTool: resolvedConfig.initialTool,
     initialViewport: resolvedConfig.viewport.initial,
-    registry
+    registry,
+    measureText
   })
   const insert = createInsertBridge({
     editor,

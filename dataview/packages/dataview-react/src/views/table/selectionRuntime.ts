@@ -9,8 +9,8 @@ import {
   type GridSelectionStore
 } from '@dataview/react/views/table/gridSelection'
 import type {
-  Selection,
-  SelectionApi
+  ItemSelectionController,
+  ItemSelectionSnapshot
 } from '@dataview/react/runtime/selection'
 
 export type TableSelectionMode =
@@ -18,10 +18,7 @@ export type TableSelectionMode =
   | 'rows'
   | 'cells'
 
-export interface TableRowSelectionApi extends Pick<
-  SelectionApi,
-  'get' | 'clear' | 'all' | 'set' | 'toggle' | 'extend'
-> {}
+export type TableRowSelectionApi = ItemSelectionController
 
 export interface TableSelectionRuntime {
   mode: ReadStore<TableSelectionMode>
@@ -32,21 +29,20 @@ export interface TableSelectionRuntime {
 }
 
 const hasRows = (
-  selection: Selection
-) => selection.ids.length > 0
+  selection: ItemSelectionSnapshot
+) => selection.selectedCount > 0
 
 export const createTableSelectionRuntime = (input: {
   currentViewStore: ReadStore<CurrentView | undefined>
-  rowSelection: SelectionApi
-  rowSelectionStore: ReadStore<Selection>
+  rowSelection: ItemSelectionController
 }): TableSelectionRuntime => {
   const baseCells = createGridSelection(input.currentViewStore)
   const clearRows = () => {
-    if (!hasRows(input.rowSelection.get())) {
+    if (!hasRows(input.rowSelection.state.getSnapshot())) {
       return
     }
 
-    input.rowSelection.clear()
+    input.rowSelection.command.clear()
   }
   const clearCells = () => {
     if (!baseCells.get()) {
@@ -56,23 +52,66 @@ export const createTableSelectionRuntime = (input: {
     baseCells.clear()
   }
   const rows: TableRowSelectionApi = {
-    get: input.rowSelection.get,
-    clear: input.rowSelection.clear,
-    all: () => {
-      clearCells()
-      input.rowSelection.all()
-    },
-    set: (ids, options) => {
-      clearCells()
-      input.rowSelection.set(ids, options)
-    },
-    toggle: ids => {
-      clearCells()
-      input.rowSelection.toggle(ids)
-    },
-    extend: to => {
-      clearCells()
-      input.rowSelection.extend(to)
+    state: input.rowSelection.state,
+    query: input.rowSelection.query,
+    enumerate: input.rowSelection.enumerate,
+    store: input.rowSelection.store,
+    command: {
+      restore: snapshot => {
+        clearCells()
+        input.rowSelection.command.restore(snapshot)
+      },
+      clear: input.rowSelection.command.clear,
+      selectAll: () => {
+        clearCells()
+        input.rowSelection.command.selectAll()
+      },
+      ids: {
+        replace: (ids, options) => {
+          clearCells()
+          input.rowSelection.command.ids.replace(ids, options)
+        },
+        add: ids => {
+          clearCells()
+          input.rowSelection.command.ids.add(ids)
+        },
+        remove: ids => {
+          clearCells()
+          input.rowSelection.command.ids.remove(ids)
+        },
+        toggle: ids => {
+          clearCells()
+          input.rowSelection.command.ids.toggle(ids)
+        }
+      },
+      scope: {
+        replace: (scope, options) => {
+          clearCells()
+          input.rowSelection.command.scope.replace(scope, options)
+        },
+        add: scope => {
+          clearCells()
+          input.rowSelection.command.scope.add(scope)
+        },
+        remove: scope => {
+          clearCells()
+          input.rowSelection.command.scope.remove(scope)
+        },
+        toggle: scope => {
+          clearCells()
+          input.rowSelection.command.scope.toggle(scope)
+        }
+      },
+      range: {
+        extendTo: id => {
+          clearCells()
+          input.rowSelection.command.range.extendTo(id)
+        },
+        step: (delta, options) => {
+          clearCells()
+          return input.rowSelection.command.range.step(delta, options)
+        }
+      }
     }
   }
   const cells: GridSelectionStore = {
@@ -97,7 +136,7 @@ export const createTableSelectionRuntime = (input: {
     get: () => (
       read(cells.store)
         ? 'cells'
-        : hasRows(read(input.rowSelectionStore))
+        : hasRows(read(input.rowSelection.state.store))
           ? 'rows'
           : 'none'
     ),
@@ -110,7 +149,7 @@ export const createTableSelectionRuntime = (input: {
     cells,
     clear: () => {
       baseCells.clear()
-      input.rowSelection.clear()
+      input.rowSelection.command.clear()
     },
     dispose: () => {
       baseCells.dispose()

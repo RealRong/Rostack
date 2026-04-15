@@ -16,20 +16,19 @@ import {
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
 } from '@dataview/react/dom/appearance'
-import { readSelectionIdSet } from '@dataview/react/runtime/selection/store'
 import {
   shouldCapturePointer
 } from '@shared/dom'
 import {
   useDataView,
-  useDataViewKeyedValue,
-  useDataViewValue
+  useDataViewKeyedValue
 } from '@dataview/react/dataview'
 import {
   CardContent
 } from '@dataview/react/views/shared'
 import { resolveNeutralCardStyle } from '@shared/ui/color'
 import { cn } from '@shared/ui/utils'
+import { useKeyedStoreValue } from '@shared/react'
 import type { ItemId } from '@dataview/engine'
 import { useGalleryContext } from '@dataview/react/views/gallery/context'
 import {
@@ -79,6 +78,7 @@ const GalleryCardContent = (props: {
   className?: string
   style?: CSSProperties
 }) => {
+  const dataView = useDataView()
   const {
     active,
     extra,
@@ -86,9 +86,9 @@ const GalleryCardContent = (props: {
   } = useGalleryContext()
   const viewId = active.view.id
   const fields = active.fields.custom
-  const selected = useDataViewValue(
-    current => current.selection.store,
-    selection => readSelectionIdSet(selection).has(props.itemId)
+  const selected = useKeyedStoreValue(
+    dataView.selection.store.membership,
+    props.itemId
   )
   const draggingActive = runtime.drag.activeId === props.itemId
   const draggingSelected = runtime.drag.activeId !== undefined

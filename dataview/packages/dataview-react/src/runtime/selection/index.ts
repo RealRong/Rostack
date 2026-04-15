@@ -1,13 +1,31 @@
-export { createSelectionApi } from '@dataview/react/runtime/selection/api'
 export {
-  createSelectionStore,
-  emptySelection,
-  selection,
-  syncSelection
-} from '@dataview/react/runtime/selection/store'
+  createSelectionController
+} from '@dataview/react/runtime/selection/controller'
+export {
+  createItemArraySelectionDomain,
+  createItemListSelectionDomain,
+  createItemSelectionDomainSource
+} from '@dataview/react/runtime/selection/domain'
+export {
+  createItemArraySelectionScope,
+  createItemListSelectionScope
+} from '@dataview/react/runtime/selection/scope'
+export {
+  selectionSnapshot
+} from '@dataview/react/runtime/selection/snapshot'
 export type {
-  Selection,
-  SelectionApi,
+  ItemSelectionController,
+  ItemSelectionSnapshot,
+  OrderedSelectionDomain,
+  SelectionApplyMode,
+  SelectionCommandApi,
+  SelectionController,
+  SelectionControllerInstance,
+  SelectionDomainSource,
+  SelectionEnumerateApi,
+  SelectionQueryApi,
   SelectionScope,
-  SelectionStore
+  SelectionShape,
+  SelectionSnapshot,
+  SelectionSummary
 } from '@dataview/react/runtime/selection/types'

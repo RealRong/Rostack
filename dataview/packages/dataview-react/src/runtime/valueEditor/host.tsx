@@ -202,11 +202,11 @@ export const FieldValueEditorHost = () => {
 
   const writeValue = (value: unknown | undefined) => {
     if (value === undefined) {
-      engine.records.values.clear(record.id, valueField.id)
+      engine.records.fields.clear(record.id, valueField.id)
       return
     }
 
-    engine.records.values.set(record.id, valueField.id, value)
+    engine.records.fields.set(record.id, valueField.id, value)
   }
 
   const applyInput = (input: EditInput) => {

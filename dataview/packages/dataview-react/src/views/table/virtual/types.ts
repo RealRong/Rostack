@@ -5,13 +5,16 @@ import type {
 import type {
   VirtualBlock
 } from '@dataview/react/virtual'
+import type {
+  SelectionScope
+} from '@dataview/react/runtime/selection'
 
 export interface TableColumnHeaderBlock extends VirtualBlock {
   kind: 'column-header'
   estimatedHeight: number
   measuredHeight?: number
   scopeId: string
-  rowIds: readonly ItemId[]
+  scope: SelectionScope<ItemId>
   label?: string
 }
 

@@ -1,7 +1,9 @@
 import type {
   Action,
   CustomField,
-  DataDoc
+  DataDoc,
+  FieldId,
+  RecordId
 } from '@dataview/core/contracts'
 import type { BaseOperation } from '@dataview/core/contracts/operations'
 import {
@@ -46,6 +48,37 @@ import {
 } from '@dataview/engine/mutate/planner/shared'
 
 const DEFAULT_OPTION_NAME = 'Option'
+
+const toRecordFieldWriteMany = (input: {
+  recordIds: readonly RecordId[]
+  set?: Partial<Record<FieldId, unknown>>
+  clear?: readonly FieldId[]
+}): BaseOperation => ({
+  type: 'document.record.fields.writeMany',
+  recordIds: input.recordIds,
+  ...(input.set && Object.keys(input.set).length
+    ? { set: input.set }
+    : {}),
+  ...(input.clear?.length
+    ? { clear: input.clear }
+    : {})
+})
+
+const toSingleRecordFieldWrite = (
+  recordId: RecordId,
+  fieldId: FieldId,
+  value: unknown | undefined
+): BaseOperation => value === undefined
+  ? toRecordFieldWriteMany({
+      recordIds: [recordId],
+      clear: [fieldId]
+    })
+  : toRecordFieldWriteMany({
+      recordIds: [recordId],
+      set: {
+        [fieldId]: value
+      }
+    })
 
 const buildCreateFieldViewOps = (
   document: DataDoc,
@@ -289,12 +322,11 @@ const lowerFieldDuplicate = (
 
   const recordOps: BaseOperation[] = getDocumentRecords(document).flatMap(record => (
     Object.prototype.hasOwnProperty.call(record.values, sourceField.id)
-      ? [{
-          type: 'document.value.set' as const,
-          recordId: record.id,
-          field: nextFieldId,
-          value: structuredClone(record.values[sourceField.id])
-        }]
+      ? [toSingleRecordFieldWrite(
+          record.id,
+          nextFieldId,
+          structuredClone(record.values[sourceField.id])
+        )]
       : []
   ))
 
@@ -503,15 +535,20 @@ const lowerFieldOptionRemove = (
   const valueOps: BaseOperation[] = []
 
   if (context.field.kind === 'select' || context.field.kind === 'status') {
+    const clearedRecordIds: RecordId[] = []
+
     getDocumentRecords(document).forEach(record => {
       if (record.values[context.field.id] === optionId) {
-        valueOps.push({
-          type: 'document.value.clear',
-          recordId: record.id,
-          field: context.field.id
-        })
+        clearedRecordIds.push(record.id)
       }
     })
+
+    if (clearedRecordIds.length) {
+      valueOps.push(toRecordFieldWriteMany({
+        recordIds: clearedRecordIds,
+        clear: [context.field.id]
+      }))
+    }
   } else {
     getDocumentRecords(document).forEach(record => {
       const currentValue = record.values[context.field.id]
@@ -524,20 +561,13 @@ const lowerFieldOptionRemove = (
         return
       }
 
-      valueOps.push(
+      valueOps.push(toSingleRecordFieldWrite(
+        record.id,
+        context.field.id,
         nextValue.length
-          ? {
-              type: 'document.value.set',
-              recordId: record.id,
-              field: context.field.id,
-              value: nextValue
-            }
-          : {
-              type: 'document.value.clear',
-              recordId: record.id,
-              field: context.field.id
-            }
-      )
+          ? nextValue
+          : undefined
+      ))
     })
   }
 

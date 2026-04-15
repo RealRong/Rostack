@@ -1,4 +1,4 @@
-export { buildTableBlocks } from '@dataview/react/views/table/virtual/buildBlocks'
+export { TableLayoutModel } from '@dataview/react/views/table/virtual/layoutModel'
 export {
   createTableVirtualRuntime,
   resolveTableWindowOverscan,

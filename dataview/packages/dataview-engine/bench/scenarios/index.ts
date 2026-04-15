@@ -12,7 +12,7 @@ const SCENARIOS = [
     id: 'record.value.points.single',
     title: 'Single numeric value update',
     run: (engine, fixture) => {
-      engine.records.values.set(fixture.ids.target, fixture.fields.points, fixture.recordCount + 1)
+      engine.records.fields.set(fixture.ids.target, fixture.fields.points, fixture.recordCount + 1)
     }
   }),
   scenario({
@@ -22,7 +22,7 @@ const SCENARIOS = [
       openView(engine, fixture.viewId).group.set(fixture.fields.status)
     },
     run: (engine, fixture) => {
-      engine.records.values.set(fixture.ids.groupTarget, fixture.fields.status, STATUS_OPTIONS[2].id)
+      engine.records.fields.set(fixture.ids.groupTarget, fixture.fields.status, STATUS_OPTIONS[2].id)
     }
   }),
   scenario({
@@ -33,7 +33,7 @@ const SCENARIOS = [
       openView(engine, fixture.viewId).summary.set(fixture.fields.points, 'sum')
     },
     run: (engine, fixture) => {
-      engine.records.values.set(fixture.ids.target, fixture.fields.points, fixture.recordCount + 1)
+      engine.records.fields.set(fixture.ids.target, fixture.fields.points, fixture.recordCount + 1)
     }
   }),
   scenario({
@@ -80,7 +80,7 @@ const SCENARIOS = [
       openView(engine, fixture.viewId).summary.set(fixture.fields.points, 'sum')
     },
     prepare: (engine, fixture) => {
-      engine.records.values.set(fixture.ids.groupTarget, fixture.fields.status, STATUS_OPTIONS[2].id)
+      engine.records.fields.set(fixture.ids.groupTarget, fixture.fields.status, STATUS_OPTIONS[2].id)
     },
     run: engine => {
       engine.history.undo()
@@ -94,7 +94,7 @@ const SCENARIOS = [
       openView(engine, fixture.viewId).summary.set(fixture.fields.points, 'sum')
     },
     prepare: (engine, fixture) => {
-      engine.records.values.set(fixture.ids.groupTarget, fixture.fields.status, STATUS_OPTIONS[2].id)
+      engine.records.fields.set(fixture.ids.groupTarget, fixture.fields.status, STATUS_OPTIONS[2].id)
       engine.history.undo()
     },
     run: engine => {

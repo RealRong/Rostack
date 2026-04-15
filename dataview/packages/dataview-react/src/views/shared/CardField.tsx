@@ -75,10 +75,10 @@ export const CardField = (props: CardFieldProps) => {
       return
     }
 
-    dataView.selection.set([props.field.itemId])
+    dataView.selection.command.ids.replace([props.field.itemId])
     applyRecordValue({
-      set: engine.records.values.set,
-      clear: engine.records.values.clear,
+      set: engine.records.fields.set,
+      clear: engine.records.fields.clear,
       recordId: props.field.recordId,
       fieldId: customField.id,
       value: action.value
@@ -97,7 +97,7 @@ export const CardField = (props: CardFieldProps) => {
       field: props.field,
       element,
       focusOwner: () => {
-        dataView.selection.set([props.field.itemId])
+        dataView.selection.command.ids.replace([props.field.itemId])
       }
     })
   }
@@ -130,7 +130,7 @@ export const CardField = (props: CardFieldProps) => {
         }
 
         event.stopPropagation()
-        dataView.selection.set([props.field.itemId])
+        dataView.selection.command.ids.replace([props.field.itemId])
       }}
       onDoubleClick={event => {
         if (props.openOnClick) {
@@ -141,7 +141,7 @@ export const CardField = (props: CardFieldProps) => {
 
         event.preventDefault()
         event.stopPropagation()
-        dataView.selection.set([props.field.itemId])
+        dataView.selection.command.ids.replace([props.field.itemId])
         open(event.currentTarget)
       }}
       className={cn('min-w-0 select-none text-left', props.className)}

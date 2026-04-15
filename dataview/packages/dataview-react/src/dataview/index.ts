@@ -25,8 +25,12 @@ export type {
   InlineSessionTarget
 } from '@dataview/react/runtime/inlineSession'
 export type {
-  Selection,
-  SelectionApi
+  ItemSelectionController,
+  ItemSelectionSnapshot,
+  SelectionController,
+  SelectionScope,
+  SelectionSnapshot,
+  SelectionSummary
 } from '@dataview/react/runtime/selection'
 export type {
   PageLock,

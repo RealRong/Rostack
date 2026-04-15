@@ -1,4 +1,4 @@
-import { memo, useCallback } from 'react'
+import { memo } from 'react'
 import type { Field, RecordId, ViewId } from '@dataview/core/contracts'
 import {
   canQuickToggleFieldValue,
@@ -10,13 +10,13 @@ import {
 import { useDataView } from '@dataview/react/dataview'
 import { fieldAttrs } from '@dataview/react/dom/field'
 import { useTableContext } from '@dataview/react/views/table/context'
-import { useKeyedStoreValue } from '@shared/react'
 import { cn } from '@shared/ui/utils'
 import { CellValue } from '@dataview/react/views/table/components/cell/CellValue'
 import {
   TABLE_CELL_BLOCK_PADDING,
   TABLE_CELL_INLINE_PADDING
 } from '@dataview/react/views/table/layout'
+import type { CellChromeState } from '@dataview/react/views/table/model/chrome'
 
 export interface CellProps {
   itemId: ItemId
@@ -25,6 +25,10 @@ export interface CellProps {
   showVerticalLines: boolean
   wrapCells: boolean
   field: Field
+  value: unknown
+  exists: boolean
+  selected: boolean
+  chrome: CellChromeState
 }
 
 const same = (left: CellProps, right: CellProps) => (
@@ -34,48 +38,61 @@ const same = (left: CellProps, right: CellProps) => (
   && left.showVerticalLines === right.showVerticalLines
   && left.wrapCells === right.wrapCells
   && left.field === right.field
+  && left.exists === right.exists
+  && Object.is(left.value, right.value)
+  && left.selected === right.selected
+  && left.chrome.selection === right.chrome.selection
+  && left.chrome.frame === right.chrome.frame
+  && left.chrome.hover === right.chrome.hover
+  && left.chrome.fill === right.chrome.fill
 )
 
 const View = (props: CellProps) => {
   const engine = useDataView().engine
   const table = useTableContext()
-  const cell = {
-    itemId: props.itemId,
-    fieldId: props.field.id
-  }
-  const cellRef = useCallback((node: HTMLDivElement | null) => {
-    table.nodes.registerCell(cell, node)
-  }, [cell.itemId, cell.fieldId, table.nodes])
-  const cellRender = useKeyedStoreValue(table.cellRender, cell)
   const canQuickToggle = canQuickToggleFieldValue(props.field)
 
   const onQuickToggle = () => {
     const action = resolveFieldPrimaryAction({
-      exists: cellRender.exists,
+      exists: props.exists,
       field: props.field,
-      value: cellRender.value
+      value: props.value
     })
     if (action.kind !== 'quickToggle') {
       return
     }
 
-    table.selection.cells.set(cell)
+    table.selection.cells.set({
+      itemId: props.itemId,
+      fieldId: props.field.id
+    })
     table.focus()
     if (action.value === undefined) {
-      engine.active.cells.clear(cell)
+      engine.active.cells.clear({
+        itemId: props.itemId,
+        fieldId: props.field.id
+      })
       return
     }
 
-    engine.active.cells.set(cell, action.value)
+    engine.active.cells.set({
+      itemId: props.itemId,
+      fieldId: props.field.id
+    }, action.value)
   }
 
-  if (!cellRender.exists || !props.recordId) {
+  if (!props.exists || !props.recordId) {
     return null
   }
 
   return (
     <div
-      ref={cellRef}
+      ref={node => {
+        table.nodes.registerCell({
+          itemId: props.itemId,
+          fieldId: props.field.id
+        }, node)
+      }}
       data-table-target="cell"
       data-table-cell="true"
       data-row-id={props.itemId}
@@ -87,7 +104,7 @@ const View = (props: CellProps) => {
         fieldId: props.field.id
       })}
       role="gridcell"
-      aria-selected={cellRender.selected}
+      aria-selected={props.selected}
       onClick={event => {
         event.stopPropagation()
       }}
@@ -96,20 +113,20 @@ const View = (props: CellProps) => {
         props.showVerticalLines && 'border-r border-divider'
       )}
     >
-      {cellRender.chrome.selection || cellRender.chrome.frame ? (
+      {props.chrome.selection || props.chrome.frame ? (
         <div
           aria-hidden="true"
           className={cn(
             'pointer-events-none absolute inset-0',
-            cellRender.chrome.selection && 'bg-accent-overlay',
-            cellRender.chrome.frame && 'rounded-[2px] border-2 border-accent-frame'
+            props.chrome.selection && 'bg-accent-overlay',
+            props.chrome.frame && 'rounded-[2px] border-2 border-accent-frame'
           )}
         />
       ) : null}
       <div
         className={cn(
           'relative z-10 box-border flex min-h-full min-w-0 items-start gap-2 outline-none transition-colors',
-          cellRender.chrome.hover && 'bg-muted/50'
+          props.chrome.hover && 'bg-muted/50'
         )}
         style={{
           paddingInline: TABLE_CELL_INLINE_PADDING,
@@ -119,14 +136,14 @@ const View = (props: CellProps) => {
         <div className="min-w-0 flex-1">
           <CellValue
             field={props.field}
-            value={cellRender.value}
+            value={props.value}
             canQuickToggle={canQuickToggle}
             onQuickToggle={onQuickToggle}
             multiline={props.wrapCells}
           />
         </div>
       </div>
-      {cellRender.chrome.fill ? (
+      {props.chrome.fill ? (
         <button
           type="button"
           aria-label="Fill"

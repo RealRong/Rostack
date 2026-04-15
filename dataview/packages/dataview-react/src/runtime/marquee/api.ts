@@ -1,6 +1,5 @@
 import {
   sameBox,
-  sameOrder,
   samePoint
 } from '@shared/core'
 import type {
@@ -29,7 +28,7 @@ const sameSession = (
     && samePoint(left.start, right.start)
     && samePoint(left.current, right.current)
     && sameBox(left.box, right.box)
-    && sameOrder(left.baseSelectedIds, right.baseSelectedIds)
+    && left.baseSelection === right.baseSelection
 }
 
 export const createMarqueeApi = (): MarqueeApi => {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { gridSelection } from '@dataview/table'
-import { resolveFillActions } from '@dataview/react/views/table/hooks/usePointer'
+import { resolveFillWriteManyInput } from '@dataview/react/views/table/hooks/usePointer'
 
 const createCurrentViewStub = () => ({
   items: {
@@ -35,8 +35,8 @@ const createCurrentViewStub = () => ({
   }
 })
 
-test('resolveFillActions batches non-title fill by field across all target rows', () => {
-  const actions = resolveFillActions({
+test('resolveFillWriteManyInput batches non-title fill by field across all target rows', () => {
+  const input = resolveFillWriteManyInput({
     selection: gridSelection.set(
       {
         itemId: 'row_3',
@@ -58,19 +58,16 @@ test('resolveFillActions batches non-title fill by field across all target rows'
     })
   })
 
-  assert.deepEqual(actions, [{
-    type: 'value.set',
-    target: {
-      type: 'records',
-      recordIds: ['rec_2', 'rec_3']
-    },
-    field: 'points',
-    value: 42
-  }])
+  assert.deepEqual(input, {
+    recordIds: ['rec_2', 'rec_3'],
+    set: {
+      points: 42
+    }
+  })
 })
 
-test('resolveFillActions uses record.patch for title fill and dedupes repeated records', () => {
-  const actions = resolveFillActions({
+test('resolveFillWriteManyInput includes title writes and dedupes repeated records', () => {
+  const input = resolveFillWriteManyInput({
     selection: gridSelection.set(
       {
         itemId: 'row_4',
@@ -92,20 +89,16 @@ test('resolveFillActions uses record.patch for title fill and dedupes repeated r
     })
   })
 
-  assert.deepEqual(actions, [{
-    type: 'record.patch',
-    target: {
-      type: 'records',
-      recordIds: ['rec_2', 'rec_3']
-    },
-    patch: {
+  assert.deepEqual(input, {
+    recordIds: ['rec_2', 'rec_3'],
+    set: {
       title: 'Seed title'
     }
-  }])
+  })
 })
 
-test('resolveFillActions emits value.clear when source field is empty', () => {
-  const actions = resolveFillActions({
+test('resolveFillWriteManyInput emits clear when source field is empty', () => {
+  const input = resolveFillWriteManyInput({
     selection: gridSelection.set(
       {
         itemId: 'row_3',
@@ -127,12 +120,8 @@ test('resolveFillActions emits value.clear when source field is empty', () => {
     })
   })
 
-  assert.deepEqual(actions, [{
-    type: 'value.clear',
-    target: {
-      type: 'records',
-      recordIds: ['rec_2', 'rec_3']
-    },
-    field: 'points'
-  }])
+  assert.deepEqual(input, {
+    recordIds: ['rec_2', 'rec_3'],
+    clear: ['points']
+  })
 })

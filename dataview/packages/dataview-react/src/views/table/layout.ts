@@ -10,6 +10,10 @@ export interface TableLayout {
 
 export const DEFAULT_COLUMN_WIDTH = 160
 export const MIN_COLUMN_WIDTH = 96
+export const TABLE_REORDER_HANDLE_SIZE = 18
+export const TABLE_REORDER_GUTTER_WIDTH = 36
+export const TABLE_SELECTION_COLUMN_WIDTH = 36
+export const TABLE_SELECTION_CHECKBOX_SIZE = 16
 
 const DEFAULT_WIDTHS_BY_KIND: Readonly<Record<Field['kind'], number>> = {
   title: 320,
@@ -40,27 +44,10 @@ export const gridTemplate = (
 ) => columns
   .map(field => `${resolveColumnWidth(field, widths)}px`)
   .join(' ')
-
-export const TABLE_REORDER_HANDLE_SIZE = 18
-export const TABLE_REORDER_RAIL_WIDTH = 18
-export const TABLE_REORDER_RAIL_GAP = 8
-export const TABLE_SELECTION_SLOT_WIDTH = 16
 export const TABLE_TRAILING_ACTION_WIDTH = 116
 export const TABLE_CELL_INLINE_PADDING = 8
 export const TABLE_CELL_BLOCK_PADDING = 7.5
 export const TABLE_HEADER_BLOCK_PADDING = 6
-const TABLE_SELECTION_OFFSET = 36
-const TABLE_SELECTION_CENTER_OFFSET = TABLE_SELECTION_OFFSET / 2
-const TABLE_REORDER_HANDLE_CENTER_OFFSET = (
-  TABLE_SELECTION_CENTER_OFFSET
-  + TABLE_SELECTION_SLOT_WIDTH / 2
-  + TABLE_REORDER_RAIL_GAP
-  + TABLE_REORDER_HANDLE_SIZE / 2
-)
-export const TABLE_SURFACE_LEADING_OFFSET = (
-  TABLE_REORDER_HANDLE_CENTER_OFFSET
-  + TABLE_REORDER_RAIL_WIDTH / 2
-)
 
 export interface ContentBounds {
   left: number

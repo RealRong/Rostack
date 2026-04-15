@@ -35,7 +35,7 @@ export const PageInlineSessionHost = () => {
       dataView.inlineSession.exit({
         reason: 'escape'
       })
-      dataView.selection.set([session.itemId], {
+      dataView.selection.command.ids.replace([session.itemId], {
         anchor: session.itemId,
         focus: session.itemId
       })

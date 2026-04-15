@@ -3,6 +3,7 @@ export type {
   ActionType,
   EditTarget,
   FieldCreateInput,
+  RecordFieldWriteManyInput,
   RowCreateInput,
   ViewCreateInput,
   ViewPatch
@@ -23,6 +24,7 @@ export type {
 export type {
   Command,
   CommandType,
+  RecordFieldWriteManyCommandInput
 } from '@dataview/core/contracts/commands'
 export type {
   GalleryCardSize,
@@ -43,10 +45,11 @@ export type {
 } from '@dataview/core/contracts/kanban'
 export type {
   BaseOperation,
+  DocumentRecordFieldRestoreEntry,
   OperationPayload,
   OperationType,
+  RecordFieldWriteManyOperationInput,
   RowInsertTarget,
-  ValuePatch
 } from '@dataview/core/contracts/operations'
 export type {
   CustomFieldId,

@@ -50,16 +50,22 @@ export const applyTypography = (
   style: CSSStyleDeclaration,
   {
     fontSize,
-    lineHeight
+    lineHeight,
+    fontStyle,
+    fontWeight
   }: {
     fontSize: number
     lineHeight: number
+    fontStyle?: string
+    fontWeight?: string | number
   }
 ) => {
   element.style.fontFamily = style.fontFamily
   element.style.fontSize = `${fontSize}px`
-  element.style.fontStyle = style.fontStyle
-  element.style.fontWeight = style.fontWeight
+  element.style.fontStyle = fontStyle ?? style.fontStyle
+  element.style.fontWeight = fontWeight === undefined
+    ? style.fontWeight
+    : `${fontWeight}`
   element.style.lineHeight = `${lineHeight}px`
   element.style.letterSpacing = style.letterSpacing
   element.style.textTransform = style.textTransform

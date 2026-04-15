@@ -82,7 +82,7 @@ export const createLocalEditActions = ({
       },
       layout: {
         baseRect: item.rect,
-        liveSize: {
+        measuredSize: {
           width: item.rect.width,
           height: item.rect.height
         },

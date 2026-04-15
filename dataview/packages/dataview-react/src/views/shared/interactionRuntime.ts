@@ -14,18 +14,18 @@ import type {
 import {
   useDataView
 } from '@dataview/react/dataview'
-import { read } from '@shared/core'
-import { readSelectionIdSet } from '@dataview/react/runtime/selection/store'
 import type {
   AutoPanTargets
 } from '@dataview/react/interaction/autoPan'
 import {
   createVisualTargetRegistry,
   type MarqueeAdapter,
+  type MarqueeMode,
   type SelectionTarget,
   type VisualTargetRegistry
 } from '@dataview/react/runtime/marquee'
 import { useStoreValue } from '@shared/react'
+import { createItemArraySelectionDomain } from '@dataview/react/runtime/selection'
 import type {
   ItemInteractionRuntime
 } from '@dataview/react/views/shared/types'
@@ -43,21 +43,29 @@ export const useRegisterMarqueeAdapter = (
 
 export const useItemSelectionRuntime = (): ItemInteractionRuntime['selection'] => {
   const dataView = useDataView()
-  const select = useCallback((id: ItemId, mode: 'replace' | 'toggle' = 'replace') => {
+  const select = useCallback((id: ItemId, mode: MarqueeMode | 'replace' = 'replace') => {
     if (mode === 'toggle') {
-      dataView.selection.toggle([id])
+      dataView.selection.command.ids.toggle([id])
       return
     }
 
-    dataView.selection.set([id])
+    if (mode === 'add') {
+      dataView.selection.command.ids.add([id])
+      return
+    }
+
+    dataView.selection.command.ids.replace([id], {
+      anchor: id,
+      focus: id
+    })
   }, [dataView.selection])
   const getSelectedIds = useCallback(
-    () => read(dataView.selection.store).ids,
-    [dataView.selection.store]
+    () => dataView.selection.enumerate.materialize(),
+    [dataView.selection]
   )
   const isSelected = useCallback(
-    (id: ItemId) => readSelectionIdSet(read(dataView.selection.store)).has(id),
-    [dataView.selection.store]
+    (id: ItemId) => dataView.selection.query.contains(id),
+    [dataView.selection]
   )
 
   return useMemo(() => ({
@@ -91,7 +99,7 @@ export const useItemInteractionRuntime = (input: {
     disabled: input.disabled,
     canStart: input.canStart,
     getTargets: input.getTargets ?? (() => visualTargets.getTargets(input.itemIds)),
-    order: () => input.itemIds,
+    domain: () => createItemArraySelectionDomain(input.itemIds),
     resolveAutoPanTargets: input.resolveAutoPanTargets,
     onStart: session => {
       visualTargets.clearFrozen()

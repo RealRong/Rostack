@@ -228,7 +228,7 @@ export const clearNodeTextPreviewSize = (
   nodeId: NodeId
 ): NodeTextFeedbackState => {
   const patch = readTextPreviewEntry(state.patches, nodeId)
-  if (!patch?.size) {
+  if (!patch?.size && !patch?.position) {
     return state
   }
 
@@ -237,14 +237,12 @@ export const clearNodeTextPreviewSize = (
       state.patches,
       nodeId,
       hasTextPreviewPatch({
-        position: patch.position,
         fontSize: patch.fontSize,
         mode: patch.mode,
         wrapWidth: patch.wrapWidth,
         handle: patch.handle
       })
         ? {
-            position: patch.position,
             fontSize: patch.fontSize,
             mode: patch.mode,
             wrapWidth: patch.wrapWidth,

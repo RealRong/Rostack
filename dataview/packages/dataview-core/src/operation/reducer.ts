@@ -1,18 +1,17 @@
 import type { BaseOperation } from '@dataview/core/contracts/operations'
 import type { DataDoc } from '@dataview/core/contracts/state'
 import {
-  clearDocumentValue,
   insertDocumentRecords,
   patchDocumentCustomField,
   patchDocumentRecord,
-  patchDocumentValues,
   putDocumentCustomField,
   setDocumentActiveViewId,
   putDocumentView,
   removeDocumentCustomField,
   removeDocumentRecords,
   removeDocumentView,
-  setDocumentValue
+  restoreDocumentRecordFieldsMany,
+  writeDocumentRecordFieldsMany
 } from '@dataview/core/document'
 
 export const reduceOperation = (
@@ -26,12 +25,10 @@ export const reduceOperation = (
       return patchDocumentRecord(document, operation.recordId, operation.patch)
     case 'document.record.remove':
       return removeDocumentRecords(document, operation.recordIds)
-    case 'document.value.set':
-      return setDocumentValue(document, operation.recordId, operation.field, operation.value)
-    case 'document.value.patch':
-      return patchDocumentValues(document, operation.recordId, operation.patch)
-    case 'document.value.clear':
-      return clearDocumentValue(document, operation.recordId, operation.field)
+    case 'document.record.fields.writeMany':
+      return writeDocumentRecordFieldsMany(document, operation)
+    case 'document.record.fields.restoreMany':
+      return restoreDocumentRecordFieldsMany(document, operation.entries)
     case 'document.view.put':
       return putDocumentView(document, operation.view)
     case 'document.activeView.set':

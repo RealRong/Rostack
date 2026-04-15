@@ -71,7 +71,7 @@ export const EditableSlot = ({
     }
   ) => {
     const nextPatch: {
-      liveSize?: {
+      measuredSize?: {
         width: number
         height: number
       }
@@ -85,7 +85,7 @@ export const EditableSlot = ({
     }
 
     if (measure) {
-      nextPatch.liveSize = measureTextNodeSize({
+      nextPatch.measuredSize = measureTextNodeSize({
         node: measure.node,
         rect: {
           width: measure.baseWidth

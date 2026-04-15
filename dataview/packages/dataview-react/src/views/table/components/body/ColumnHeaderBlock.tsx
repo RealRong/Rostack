@@ -11,13 +11,15 @@ import type {
 import type {
   ItemId
 } from '@dataview/engine'
+import type {
+  SelectionScope
+} from '@dataview/react/runtime/selection'
 import { useTableContext } from '@dataview/react/views/table/context'
-import { RowScopeSelectionRail } from '@dataview/react/views/table/components/row/RowScopeSelectionRail'
 import { ColumnHeaderRow } from '@dataview/react/views/table/components/column/ColumnHeaderRow'
 
 export interface ColumnHeaderBlockProps {
   scopeId: string
-  rowIds: readonly ItemId[]
+  scope: SelectionScope<ItemId>
   label?: string
   measureRef?: (node: HTMLDivElement | null) => void
   columns: readonly Field[]
@@ -41,12 +43,10 @@ const View = (props: ColumnHeaderBlockProps) => {
         minHeight: table.layout.headerHeight
       }}
     >
-      <RowScopeSelectionRail
-        rowIds={props.rowIds}
-        label={props.label}
-      />
       <ColumnHeaderRow
         scopeId={props.scopeId}
+        scope={props.scope}
+        label={props.label}
         columns={props.columns}
         wrapCells={props.wrapCells}
         template={props.template}
@@ -62,7 +62,9 @@ const same = (
   right: ColumnHeaderBlockProps
 ) => (
   left.scopeId === right.scopeId
-  && left.rowIds === right.rowIds
+  && left.scope.key === right.scope.key
+  && left.scope.revision === right.scope.revision
+  && left.scope.count === right.scope.count
   && left.label === right.label
   && left.measureRef === right.measureRef
   && left.columns === right.columns

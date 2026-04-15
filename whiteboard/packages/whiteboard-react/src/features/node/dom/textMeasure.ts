@@ -89,6 +89,8 @@ const measureTextContent = ({
   minWidth,
   maxWidth,
   fontSize,
+  fontStyle,
+  fontWeight,
   caretWidth = 2
 }: {
   content: string
@@ -97,6 +99,8 @@ const measureTextContent = ({
   minWidth: number
   maxWidth: number
   fontSize?: number
+  fontStyle?: string
+  fontWeight?: string | number
   caretWidth?: number
 }): Size | undefined => {
   const elements = ensureTextMeasureElements()
@@ -119,11 +123,15 @@ const measureTextContent = ({
 
   applyTypography(elements.line, sourceStyle, {
     fontSize: resolvedFontSize,
-    lineHeight: resolvedLineHeight
+    lineHeight: resolvedLineHeight,
+    fontStyle,
+    fontWeight
   })
   applyTypography(elements.block, sourceStyle, {
     fontSize: resolvedFontSize,
-    lineHeight: resolvedLineHeight
+    lineHeight: resolvedLineHeight,
+    fontStyle,
+    fontWeight
   })
 
   elements.line.textContent = normalizeMeasureContent(measuredContent)
@@ -154,6 +162,8 @@ export const measureTextNodeSize = ({
   minWidth,
   maxWidth,
   fontSize,
+  fontStyle,
+  fontWeight,
   widthMode,
   wrapWidth
 }: {
@@ -165,6 +175,8 @@ export const measureTextNodeSize = ({
   minWidth?: number
   maxWidth?: number
   fontSize?: number
+  fontStyle?: string
+  fontWeight?: string | number
   widthMode?: TextWidthMode
   wrapWidth?: number
 }): Size | undefined => {
@@ -182,7 +194,9 @@ export const measureTextNodeSize = ({
       source,
       minWidth: resolvedWrapWidth,
       maxWidth: resolvedWrapWidth,
-      fontSize
+      fontSize,
+      fontStyle,
+      fontWeight
     })
   }
 
@@ -202,6 +216,8 @@ export const measureTextNodeSize = ({
     source,
     minWidth: resolvedMinWidth,
     maxWidth: resolvedMaxWidth,
-    fontSize
+    fontSize,
+    fontStyle,
+    fontWeight
   })
 }

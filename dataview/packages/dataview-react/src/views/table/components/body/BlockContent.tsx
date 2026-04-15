@@ -74,7 +74,9 @@ const sameBlock = (
       return right.kind === 'column-header'
         && left.scopeId === right.scopeId
         && left.label === right.label
-        && sameOrder(left.rowIds, right.rowIds)
+        && left.scope.key === right.scope.key
+        && left.scope.revision === right.scope.revision
+        && left.scope.count === right.scope.count
     case 'column-footer':
       return right.kind === 'column-footer'
         && left.scopeId === right.scopeId
@@ -128,7 +130,7 @@ const RenderedBlocksView = (props: RenderedBlocksProps) => {
               <ColumnHeaderBlock
                 key={block.key}
                 scopeId={block.scopeId}
-                rowIds={block.rowIds}
+                scope={block.scope}
                 label={block.label}
                 measureRef={blockMeasureRef}
                 columns={props.columns}
@@ -248,15 +250,22 @@ export const BlockContent = (props: BlockContentProps) => {
   const onMeasurementsChange = useCallback((input: {
     bucketKey: string | number
     heightById: ReadonlyMap<string, number>
+    changedHeightById?: ReadonlyMap<string, number>
+    removedIds?: readonly string[]
+    reset?: boolean
   }) => {
     table.virtual.measurement.sync({
       bucketKey: input.bucketKey,
-      blockHeights: input.heightById
+      heightById: input.heightById,
+      changedHeightById: input.changedHeightById,
+      removedKeys: input.removedIds,
+      reset: input.reset
     })
   }, [table.virtual])
   const measured = useMeasuredHeights<string>({
     ids: measurementIds,
     bucketKey: measurementBucketKey,
+    debugName: 'flushTableBlockMeasurementsMicrotask',
     reactive: false,
     onMeasurementsChange
   })

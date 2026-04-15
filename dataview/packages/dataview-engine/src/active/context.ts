@@ -10,7 +10,6 @@ import type {
   ViewPatch
 } from '@dataview/core/contracts'
 import {
-  createRecordFieldWriteAction,
   createUniqueFieldName,
   isTitleFieldId
 } from '@dataview/core/field'
@@ -54,7 +53,7 @@ export interface ActiveContextOptions {
   select: DocumentSelectApi
   dispatch: (action: Action | readonly Action[]) => ActionResult
   fields: Pick<FieldsApi, 'list' | 'create'>
-  records: Pick<RecordsApi, 'values'>
+  records: Pick<RecordsApi, 'fields'>
 }
 
 export interface ActiveViewContext {
@@ -82,7 +81,7 @@ export interface ActiveViewContext {
     kind?: CustomFieldKind
   }) => CustomFieldId | undefined
   documentSelect: DocumentSelectApi
-  recordsApi: Pick<RecordsApi, 'values'>
+  recordsApi: Pick<RecordsApi, 'fields'>
   dispatch: ActiveContextOptions['dispatch']
 }
 
@@ -142,7 +141,20 @@ export const createGroupValueActions = (input: {
       continue
     }
 
-    actions.push(createRecordFieldWriteAction(recordId, fieldId, currentValue))
+    actions.push({
+      type: 'record.fields.writeMany',
+      input: currentValue === undefined
+        ? {
+            recordIds: [recordId],
+            clear: [fieldId]
+          }
+        : {
+            recordIds: [recordId],
+            set: {
+              [fieldId]: currentValue
+            }
+          }
+    })
   }
 
   return actions

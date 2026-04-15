@@ -1,6 +1,7 @@
 import type { ViewState as CurrentView } from '@dataview/engine'
 import type {
-  Action,
+  FieldId,
+  RecordFieldWriteManyInput,
   RecordId
 } from '@dataview/core/contracts'
 import {
@@ -96,7 +97,7 @@ type FillPointerState = Extract<PointerState, {
   mode: 'fill'
 }>
 
-export const resolveFillActions = (input: {
+export const resolveFillWriteManyInput = (input: {
   selection: ReturnType<typeof gridSelection.set> | null
   anchor: CellRef
   currentView: Pick<CurrentView, 'items' | 'fields'>
@@ -104,9 +105,9 @@ export const resolveFillActions = (input: {
     exists: boolean
     value: unknown
   }
-}): readonly Action[] => {
+}): RecordFieldWriteManyInput | undefined => {
   if (!input.selection) {
-    return []
+    return undefined
   }
 
   const fieldIds = gridSelection.fieldIds(
@@ -114,7 +115,7 @@ export const resolveFillActions = (input: {
     input.currentView.fields
   )
   if (!fieldIds.length) {
-    return []
+    return undefined
   }
 
   const targetRecordIds: RecordId[] = []
@@ -137,51 +138,37 @@ export const resolveFillActions = (input: {
   })
 
   if (!targetRecordIds.length) {
-    return []
+    return undefined
   }
 
-  return fieldIds.map(fieldId => {
+  const set: Partial<Record<FieldId, unknown>> = {}
+  const clear: FieldId[] = []
+
+  fieldIds.forEach(fieldId => {
     const value = input.readCell({
       itemId: input.anchor.itemId,
       fieldId
     }).value
 
-    if (isTitleFieldId(fieldId)) {
-      return {
-        type: 'record.patch',
-        target: {
-          type: 'records',
-          recordIds: targetRecordIds
-        },
-        patch: {
-          title: value === undefined
-            ? ''
-            : String(value ?? '')
-        }
-      } satisfies Action
-    }
-
     if (value === undefined) {
-      return {
-        type: 'value.clear',
-        target: {
-          type: 'records',
-          recordIds: targetRecordIds
-        },
-        field: fieldId
-      } satisfies Action
+      clear.push(fieldId)
+      return
     }
 
-    return {
-      type: 'value.set',
-      target: {
-        type: 'records',
-        recordIds: targetRecordIds
-      },
-      field: fieldId,
-      value
-    } satisfies Action
+    set[fieldId] = isTitleFieldId(fieldId)
+      ? String(value ?? '')
+      : value
   })
+
+  return {
+    recordIds: targetRecordIds,
+    ...(Object.keys(set).length
+      ? { set }
+      : {}),
+    ...(clear.length
+      ? { clear }
+      : {})
+  }
 }
 
 interface RowHoverContext {
@@ -637,18 +624,18 @@ export const usePointer = (
   }, [readCell, readColumn, readGridSelection, selectCell, table, writeCell])
 
   const fillSelection = useCallback((current: FillPointerState) => {
-    const actions = resolveFillActions({
+    const input = resolveFillWriteManyInput({
       selection: table.selection.cells.get(),
       anchor: current.anchor,
       currentView,
       readCell
     })
-    if (!actions.length) {
+    if (!input) {
       table.focus()
       return
     }
 
-    editor.dispatch(actions)
+    editor.records.fields.writeMany(input)
     table.focus()
   }, [
     currentView.items,
@@ -688,7 +675,7 @@ export const usePointer = (
         : current.cell
       const nextTarget = target ?? current.cell
 
-      table.selection.rows.clear()
+      table.selection.rows.command.clear()
       stateRef.current = {
         type: 'drag',
         mode: 'pointer',

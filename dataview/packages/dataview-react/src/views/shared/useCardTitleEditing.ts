@@ -5,9 +5,11 @@ import {
   useState
 } from 'react'
 import type {
-  TitleFieldId,
   DataRecord,
   ViewId
+} from '@dataview/core/contracts'
+import {
+  TITLE_FIELD_ID
 } from '@dataview/core/contracts'
 import {
   useDataView,
@@ -71,7 +73,7 @@ export const useCardTitleEditing = (input: {
 
   const enterEdit = useCallback(() => {
     setTitleDraft(readCardTitleText(input.record))
-    dataView.selection.clear()
+    dataView.selection.command.clear()
     dataView.inlineSession.enter({
       viewId: input.viewId,
       itemId: input.itemId
@@ -95,7 +97,7 @@ export const useCardTitleEditing = (input: {
     }
 
     committedTitleRef.current = nextValue
-    engine.records.values.set(input.record.id, 'title' as TitleFieldId, nextValue)
+    engine.records.fields.set(input.record.id, TITLE_FIELD_ID, nextValue)
   }, [
     engine,
     input.record.id

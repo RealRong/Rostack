@@ -12,14 +12,13 @@ import {
 } from '@dataview/react/interaction'
 import type { ItemId } from '@dataview/engine'
 import type {
-  Selection,
-  SelectionApi
+  ItemSelectionController,
+  ItemSelectionSnapshot
 } from '@dataview/react/runtime/selection'
-import type {
-  MarqueeSessionState
-} from '@dataview/react/runtime/marquee'
+import type { MarqueeSessionState } from '@dataview/react/runtime/marquee'
 import {
-  selection as selectionHelpers
+  createItemListSelectionDomain,
+  selectionSnapshot
 } from '@dataview/react/runtime/selection'
 import {
   createDerivedStore,
@@ -51,7 +50,6 @@ import {
 } from '@dataview/react/views/table/dom/rowHit'
 import { createHover, type Hover } from '@dataview/react/views/table/hover'
 import type { TableLayout } from '@dataview/react/views/table/layout'
-import { createCellRender, type CellRender } from '@dataview/react/views/table/cellRender'
 import {
   createTableVirtualRuntime,
   type TableVirtualRuntime
@@ -60,14 +58,13 @@ import {
   createTableSelectionRuntime,
   type TableSelectionRuntime
 } from '@dataview/react/views/table/selectionRuntime'
-import type { TableVirtualLayoutSnapshot } from '@dataview/react/views/table/virtual/runtime'
-
+import { createRowRender, type RowRender } from '@dataview/react/views/table/rowRender'
 export interface TableController {
   currentView: ReadStore<CurrentView | undefined>
   locked: ReadStore<boolean>
   valueEditorOpen: ReadStore<boolean>
   selection: TableSelectionRuntime
-  marqueeSelection: ValueStore<Selection | null>
+  marqueeSelection: ValueStore<ItemSelectionSnapshot | null>
   rowRail: ValueStore<ItemId | null>
   layout: TableLayout
   virtual: TableVirtualRuntime
@@ -79,7 +76,7 @@ export interface TableController {
   interaction: InteractionApi
   capabilities: ReadStore<Capabilities>
   hover: Hover
-  cellRender: CellRender
+  rowRender: RowRender
   revealCursor: () => void
   revealRow: (rowId: ItemId) => void
   dispose: () => void
@@ -88,65 +85,43 @@ export interface TableController {
 export type {
   Capabilities,
   CellOpenInput,
-  CellRender,
+  RowRender,
   TableSelectionRuntime
 }
 
-const rowTargetFromLayout = (input: {
-  layout: TableVirtualLayoutSnapshot
-  rowId: ItemId
-}): {
-  rowId: ItemId
-  top: number
-  bottom: number
-} | null => {
-  const block = input.layout.blocks.find(candidate => (
-    candidate.kind === 'row'
-    && candidate.rowId === input.rowId
-  ))
-  if (!block) {
-    return null
-  }
-
-  return {
-    rowId: input.rowId,
-    top: block.top,
-    bottom: block.top + block.height
-  }
-}
-
 const selectionRow = (input: {
-  layout: TableVirtualLayoutSnapshot
-  selection: Selection
+  locateRow: (rowId: ItemId) => {
+    rowId: ItemId
+    top: number
+    bottom: number
+  } | null
+  currentView: CurrentView | undefined
+  selection: ItemSelectionSnapshot
   gridSelection: ReturnType<TableSelectionRuntime['cells']['get']>
 }): {
   rowId: ItemId
   top: number
   bottom: number
 } | null => {
-  if (!input.layout.blocks.length) {
-    return null
-  }
-
   const rowId = input.gridSelection?.focus.itemId
-    ?? input.selection.focus
-    ?? input.selection.ids[0]
+    ?? selectionSnapshot.primary(
+      input.currentView
+        ? createItemListSelectionDomain(input.currentView.items)
+        : undefined,
+      input.selection
+    )
   if (!rowId) {
     return null
   }
 
-  return rowTargetFromLayout({
-    layout: input.layout,
-    rowId
-  })
+  return input.locateRow(rowId)
 }
 
 export const createTableController = (options: {
   engine: Engine
   pageStore: ReadStore<PageState>
   currentViewStore: ReadStore<CurrentView | undefined>
-  selectionApi: SelectionApi
-  selectionStore: ReadStore<Selection>
+  selection: ItemSelectionController
   marqueeStore: ReadStore<MarqueeSessionState | null>
   valueEditor: ValueEditorApi
   layout: TableLayout
@@ -155,10 +130,9 @@ export const createTableController = (options: {
   const currentView = options.currentViewStore
   const selection = createTableSelectionRuntime({
     currentViewStore: currentView,
-    rowSelection: options.selectionApi,
-    rowSelectionStore: options.selectionStore
+    rowSelection: options.selection
   })
-  const marqueeSelection = createValueStore<Selection | null>({
+  const marqueeSelection = createValueStore<ItemSelectionSnapshot | null>({
     initial: null,
     isEqual: (left, right) => {
       if (left === right) {
@@ -169,7 +143,7 @@ export const createTableController = (options: {
         return false
       }
 
-      return selectionHelpers.equal(left, right)
+      return selectionSnapshot.equal(left, right)
     }
   })
   const rowRail = createValueStore<ItemId | null>({
@@ -237,10 +211,7 @@ export const createTableController = (options: {
     })
   }
   const revealRow = (rowId: ItemId) => {
-    const target = rowTargetFromLayout({
-      layout: virtual.layout.get(),
-      rowId
-    })
+    const target = virtual.locateRow(rowId)
     if (!target) {
       return
     }
@@ -249,8 +220,9 @@ export const createTableController = (options: {
   }
   const revealCursor = () => {
     const target = selectionRow({
-      layout: virtual.layout.get(),
-      selection: options.selectionStore.get(),
+      locateRow: virtual.locateRow,
+      currentView: currentView.get(),
+      selection: selection.rows.state.getSnapshot(),
       gridSelection: selection.cells.get()
     })
     if (!target) {
@@ -276,13 +248,12 @@ export const createTableController = (options: {
     revealCursor,
     focus
   })
-  const cellRender = createCellRender({
+  const rowRender = createRowRender({
     gridSelectionStore: selection.cells.store,
     valueEditorOpenStore,
     currentViewStore: currentView,
     capabilitiesStore: capabilities,
-    hoverCellStore: hover.cell,
-    recordStore: options.engine.select.records.byId
+    hoverTargetStore: hover.target
   })
 
   return {
@@ -302,7 +273,7 @@ export const createTableController = (options: {
     interaction: interaction.api,
     capabilities,
     hover,
-    cellRender,
+    rowRender,
     revealCursor,
     revealRow,
     dispose: () => {

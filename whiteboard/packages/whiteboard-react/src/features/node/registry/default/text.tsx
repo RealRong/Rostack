@@ -5,8 +5,14 @@ import {
   useState,
   type CSSProperties
 } from 'react'
+import { useKeyedStoreValue } from '@shared/react'
 import { isSizeEqual } from '@whiteboard/core/geometry'
 import { WHITEBOARD_TEXT_DEFAULT_COLOR } from '@whiteboard/core/node'
+import type { ResizeDirection } from '@whiteboard/core/node'
+import {
+  resolveAnchoredRect,
+  resolveTextHandle
+} from '@whiteboard/core/node'
 import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
 import {
   useEdit,
@@ -112,6 +118,30 @@ const useNodeTextSourceBinding = (
   }
 }
 
+const isRectPositionEqual = (
+  left: Pick<NodeRenderProps['rect'], 'x' | 'y'> | undefined,
+  right: Pick<NodeRenderProps['rect'], 'x' | 'y'> | undefined
+) => (
+  left?.x === right?.x
+  && left?.y === right?.y
+)
+
+const isMeasuredPreviewRectEqual = (
+  left: {
+    position: Pick<NodeRenderProps['rect'], 'x' | 'y'>
+    size: Pick<NodeRenderProps['rect'], 'width' | 'height'>
+  } | null,
+  right: {
+    position: Pick<NodeRenderProps['rect'], 'x' | 'y'>
+    size: Pick<NodeRenderProps['rect'], 'width' | 'height'>
+  } | null
+) => (
+  left !== null
+  && right !== null
+  && isRectPositionEqual(left.position, right.position)
+  && isSizeEqual(left.size, right.size)
+)
+
 export const resolveTextMeasureInput = ({
   node,
   rect,
@@ -169,14 +199,16 @@ export const resolveTextLayoutStyle = ({
   }
 }
 
-const useSyncedTextNodeSize = ({
+const useSyncTextComputedSize = ({
   node,
   rect,
   source,
   content,
   placeholder,
   fontSize,
-  editing
+  editing,
+  previewHandle,
+  previewBaseRect
 }: {
   node: NodeRenderProps['node']
   rect: NodeRenderProps['rect']
@@ -185,11 +217,20 @@ const useSyncedTextNodeSize = ({
   placeholder: string
   fontSize: number
   editing: boolean
+  previewHandle?: ResizeDirection
+  previewBaseRect?: NodeRenderProps['rect']
 }) => {
   const editor = useEditor()
-  const pendingSizeRef = useRef<{
+  const previewHandleMode = previewHandle
+    ? resolveTextHandle(previewHandle)
+    : undefined
+  const pendingDocumentSizeRef = useRef<{
     width: number
     height: number
+  } | null>(null)
+  const pendingPreviewRectRef = useRef<{
+    position: Pick<NodeRenderProps['rect'], 'x' | 'y'>
+    size: Pick<NodeRenderProps['rect'], 'width' | 'height'>
   } | null>(null)
 
   useLayoutEffect(() => {
@@ -207,8 +248,23 @@ const useSyncedTextNodeSize = ({
       width: rect.width,
       height: rect.height
     }
-    if (pendingSizeRef.current && isSizeEqual(pendingSizeRef.current, currentSize)) {
-      pendingSizeRef.current = null
+    if (
+      pendingDocumentSizeRef.current
+      && isSizeEqual(pendingDocumentSizeRef.current, currentSize)
+    ) {
+      pendingDocumentSizeRef.current = null
+    }
+    const currentPreviewRect = previewHandleMode === 'reflow'
+      ? {
+          position: {
+            x: rect.x,
+            y: rect.y
+          },
+          size: currentSize
+        }
+      : null
+    if (isMeasuredPreviewRectEqual(pendingPreviewRectRef.current, currentPreviewRect)) {
+      pendingPreviewRectRef.current = null
     }
 
     const measuredSize = measureTextNodeSize({
@@ -226,29 +282,80 @@ const useSyncedTextNodeSize = ({
       wrapWidth: measure.wrapWidth
     })
 
+    if (!measuredSize) {
+      return
+    }
+
+    if (previewHandleMode === 'reflow' && previewHandle && previewBaseRect) {
+      const anchoredRect = resolveAnchoredRect({
+        rect: previewBaseRect,
+        handle: previewHandle,
+        width: measuredSize.width,
+        height: measuredSize.height
+      })
+      const nextPreviewRect = {
+        position: {
+          x: anchoredRect.x,
+          y: anchoredRect.y
+        },
+        size: {
+          width: anchoredRect.width,
+          height: anchoredRect.height
+        }
+      }
+
+      if (
+        isMeasuredPreviewRectEqual(currentPreviewRect, nextPreviewRect)
+        || isMeasuredPreviewRectEqual(pendingPreviewRectRef.current, nextPreviewRect)
+      ) {
+        return
+      }
+
+      pendingPreviewRectRef.current = nextPreviewRect
+      editor.actions.node.text.preview({
+        nodeId: node.id,
+        position: nextPreviewRect.position,
+        size: nextPreviewRect.size
+      })
+      return
+    }
+
     if (
-      !measuredSize
-      || isSizeEqual(measuredSize, currentSize)
-      || (pendingSizeRef.current && isSizeEqual(pendingSizeRef.current, measuredSize))
+      isSizeEqual(measuredSize, currentSize)
+      || (
+        pendingDocumentSizeRef.current
+        && isSizeEqual(pendingDocumentSizeRef.current, measuredSize)
+      )
     ) {
       return
     }
 
-    pendingSizeRef.current = measuredSize
-    editor.actions.node.patch([node.id], {
-      fields: {
-        size: measuredSize
+    pendingDocumentSizeRef.current = measuredSize
+    editor.actions.node.patch(
+      [node.id],
+      {
+        fields: {
+          size: measuredSize
+        }
+      },
+      {
+        origin: 'system'
       }
-    }, {
-      origin: 'system'
-    })
+    )
   }, [
     content,
     editing,
     editor.actions.node,
+    editor.actions.node.text,
     fontSize,
     node,
     placeholder,
+    previewBaseRect?.height,
+    previewBaseRect?.width,
+    previewBaseRect?.x,
+    previewBaseRect?.y,
+    previewHandle,
+    previewHandleMode,
     rect,
     source
   ])
@@ -258,6 +365,7 @@ const TextNodeRenderer = ({
   node,
   rect
 }: NodeRenderProps) => {
+  const editor = useEditor()
   const edit = useEdit()
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
   const placeholder = TEXT_PLACEHOLDER
@@ -274,6 +382,7 @@ const TextNodeRenderer = ({
   ) ?? 'var(--ui-text-primary)'
   const nodeEdit = matchNodeEdit(edit, node.id, 'text')
   const editing = nodeEdit !== null
+  const nodeFeedback = useKeyedStoreValue(editor.read.feedback.node, node.id)
   const widthMode = editing
     ? (
         nodeEdit.layout.wrapWidth !== undefined
@@ -295,6 +404,15 @@ const TextNodeRenderer = ({
     color,
     ...textLayoutStyle
   }
+  const committedRect = editor.read.node.committed.get(node.id)?.rect
+  const previewBaseRect = nodeFeedback.patch
+    ? {
+        x: nodeFeedback.patch.position?.x ?? committedRect?.x ?? rect.x,
+        y: nodeFeedback.patch.position?.y ?? committedRect?.y ?? rect.y,
+        width: nodeFeedback.patch.size?.width ?? committedRect?.width ?? rect.width,
+        height: nodeFeedback.patch.size?.height ?? committedRect?.height ?? rect.height
+      }
+    : undefined
   const measure = resolveTextMeasureInput({
     node,
     rect,
@@ -304,14 +422,16 @@ const TextNodeRenderer = ({
     wrapWidth
   })
 
-  useSyncedTextNodeSize({
+  useSyncTextComputedSize({
     node,
     rect,
     source: sourceElement,
     content: text,
     placeholder,
     fontSize,
-    editing
+    editing,
+    previewHandle: nodeFeedback.text?.handle,
+    previewBaseRect
   })
 
   return (

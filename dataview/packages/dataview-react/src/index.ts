@@ -58,8 +58,12 @@ export type {
   InlineSessionTarget
 } from '@dataview/react/dataview'
 export type {
-  Selection,
-  SelectionApi
+  ItemSelectionController,
+  ItemSelectionSnapshot,
+  SelectionController,
+  SelectionScope,
+  SelectionSnapshot,
+  SelectionSummary
 } from '@dataview/react/dataview'
 export type {
   PageLock,

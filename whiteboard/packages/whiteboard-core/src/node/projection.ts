@@ -24,7 +24,7 @@ type NodeTextPreviewPatch = {
 type NodeTextDraft = {
   field: string
   value: string
-  liveSize?: Size
+  measuredSize?: Size
 }
 
 const patchNodeRect = (
@@ -152,11 +152,11 @@ export const applyNodeTextDraft = <
     ...(item.node.data ?? {}),
     [draft.field]: draft.value
   }
-  const nextRect = draft.liveSize && !isSizeEqual(draft.liveSize, item.rect)
+  const nextRect = draft.measuredSize && !isSizeEqual(draft.measuredSize, item.rect)
     ? {
         ...item.rect,
-        width: draft.liveSize.width,
-        height: draft.liveSize.height
+        width: draft.measuredSize.width,
+        height: draft.measuredSize.height
       }
     : item.rect
 

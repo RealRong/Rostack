@@ -99,9 +99,7 @@ const planAction = (
     case 'record.create':
     case 'record.patch':
     case 'record.remove':
-    case 'value.set':
-    case 'value.patch':
-    case 'value.clear':
+    case 'record.fields.writeMany':
       return planRecordAction(document, action, index)
     case 'field.create':
     case 'field.patch':

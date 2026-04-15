@@ -369,7 +369,7 @@ test('kanban cards per column defaults to all and persists through the view api'
 
   assert.equal(
     createDefaultViewOptions('kanban', fields).kanban.cardsPerColumn,
-    'all'
+    25
   )
 
   const document = createDocument()
@@ -739,7 +739,7 @@ test('engine.active sync reuses unaffected grouped sections and summaries on dat
     ? itemsBefore?.get(doingSectionBefore.itemIds[0])
     : undefined
 
-  engine.records.values.set('rec_1', FIELD_STATUS, 'done')
+  engine.records.fields.set('rec_1', FIELD_STATUS, 'done')
 
   const stateAfter = readViewState(engine)
   const recordsAfter = stateAfter?.records
@@ -772,10 +772,10 @@ test('engine.active reconcile keeps undo redo equivalent across sequential delta
 
   const initial = viewSnapshot(engine)
 
-  engine.records.values.set('rec_1', FIELD_POINTS, 10)
+  engine.records.fields.set('rec_1', FIELD_POINTS, 10)
   const afterPoints = viewSnapshot(engine)
 
-  engine.records.values.set('rec_1', FIELD_STATUS, 'doing')
+  engine.records.fields.set('rec_1', FIELD_STATUS, 'doing')
   const afterGroupMove = viewSnapshot(engine)
 
   assert.equal(engine.history.canUndo(), true)
@@ -809,7 +809,7 @@ test('engine.performance traces active view derive and snapshot behavior for inc
   engine.performance.traces.clear()
   engine.performance.stats.clear()
 
-  engine.records.values.set('rec_1', FIELD_STATUS, 'done')
+  engine.records.fields.set('rec_1', FIELD_STATUS, 'done')
 
   const trace = engine.performance.traces.last()
   const stats = engine.performance.stats.snapshot()

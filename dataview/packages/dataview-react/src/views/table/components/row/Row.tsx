@@ -2,25 +2,30 @@ import {
   memo,
   useCallback,
   useLayoutEffect,
+  useMemo,
   useRef,
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import type {
+  DataRecord,
   RecordId,
   Field,
   ViewId
 } from '@dataview/core/contracts'
+import {
+  getRecordFieldValue
+} from '@dataview/core/field'
+import type { ItemId } from '@dataview/engine'
 import type {
-  ItemId
-} from '@dataview/engine'
-import type {
-  SelectionApi
+  SelectionCommandApi
 } from '@dataview/react/runtime/selection'
-import { readSelectionIdSet } from '@dataview/react/runtime/selection/store'
+import {
+  createItemListSelectionDomain,
+  selectionSnapshot
+} from '@dataview/react/runtime/selection'
 import { shouldCapturePointer } from '@shared/dom'
 import {
-  useDataView,
-  useDataViewValue
+  useDataView
 } from '@dataview/react/dataview'
 import { rowRailState } from '@dataview/react/views/table/model/rowRail'
 import { useTableContext } from '@dataview/react/views/table/context'
@@ -29,6 +34,12 @@ import { Cell } from '@dataview/react/views/table/components/cell/Cell'
 import { RowRail } from '@dataview/react/views/table/components/row/RowRail'
 import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
 import { TABLE_TRAILING_ACTION_WIDTH } from '@dataview/react/views/table/layout'
+import { cellChrome } from '@dataview/react/views/table/model/chrome'
+import {
+  useKeyedStoreValue,
+  useOptionalKeyedStoreValue,
+  useStoreValue
+} from '@shared/react'
 
 export interface RowProps {
   itemId: ItemId
@@ -66,22 +77,28 @@ const same = (left: RowProps, right: RowProps) => (
 )
 
 export const applyRowCheckboxSelection = (input: {
-  selection: Pick<SelectionApi, 'extend' | 'toggle'>
+  selection: Pick<SelectionCommandApi<ItemId>, 'range' | 'ids'>
   rowId: ItemId
   shiftKey: boolean
 }) => {
   if (input.shiftKey) {
-    input.selection.extend(input.rowId)
+    input.selection.range.extendTo(input.rowId)
     return
   }
 
-  input.selection.toggle([input.rowId])
+  input.selection.ids.toggle([input.rowId])
 }
 
 const View = (props: RowProps) => {
   const table = useTableContext()
   const dataView = useDataView()
+  const currentView = useStoreValue(table.currentView)
   const rowNodeRef = useRef<HTMLDivElement | null>(null)
+  const selectionDomain = useMemo(() => (
+    currentView
+      ? createItemListSelectionDomain(currentView.items)
+      : undefined
+  ), [currentView])
 
   const rowRef = useCallback((node: HTMLDivElement | null) => {
     rowNodeRef.current = node
@@ -111,12 +128,21 @@ const View = (props: RowProps) => {
   const previewSelected = useStoreSelector(
     table.marqueeSelection,
     selection => selection
-      ? readSelectionIdSet(selection).has(props.itemId)
+      ? selectionSnapshot.contains(selectionDomain, selection, props.itemId)
       : null
   )
-  const committedSelected = useDataViewValue(
-    dataView => dataView.selection.store,
-    selection => readSelectionIdSet(selection).has(props.itemId)
+  const committedSelected = useKeyedStoreValue(
+    dataView.selection.store.membership,
+    props.itemId
+  )
+  const rowRender = useKeyedStoreValue(
+    table.rowRender,
+    props.itemId
+  )
+  const record = useOptionalKeyedStoreValue<RecordId, DataRecord | undefined>(
+    dataView.engine.select.records.byId,
+    props.recordId,
+    undefined
   )
   const selected = previewSelected ?? committedSelected
   const rail = rowRailState({
@@ -147,7 +173,7 @@ const View = (props: RowProps) => {
       capture: false,
       up: () => {
         applyRowCheckboxSelection({
-          selection: table.selection.rows,
+          selection: table.selection.rows.command,
           rowId: props.itemId,
           shiftKey: event.shiftKey
         })
@@ -155,7 +181,7 @@ const View = (props: RowProps) => {
         table.focus()
       }
     })
-  }, [dataView.selection, props.itemId, table])
+  }, [props.itemId, table])
 
   return (
     <div
@@ -171,33 +197,33 @@ const View = (props: RowProps) => {
         boxSizing: 'border-box'
       }}
     >
-      <RowRail
-        rowId={props.itemId}
-        selected={selected}
-        state={rail}
-        marqueeActive={props.marqueeActive}
-        onSelectionPointerStart={onSelectionPointerStart}
-        onDragPointerStart={event => {
-          table.rowRail.set(null)
-          props.onDragStart({
-            rowId: props.itemId,
-            event
-          })
-        }}
-      />
       <div
         className={cn(
           'flex min-w-full w-max items-stretch',
           rowTone
         )}
       >
+        <RowRail
+          rowId={props.itemId}
+          selected={selected}
+          state={rail}
+          marqueeActive={props.marqueeActive}
+          onSelectionPointerStart={onSelectionPointerStart}
+          onDragPointerStart={event => {
+            table.rowRail.set(null)
+            props.onDragStart({
+              rowId: props.itemId,
+              event
+            })
+          }}
+        />
         <div
           className="inline-grid min-w-0 flex-none items-stretch"
           style={{
             gridTemplateColumns: props.template
           }}
         >
-          {props.columns.map(field => (
+          {props.columns.map((field, index) => (
             <Cell
               key={field.id}
               itemId={props.itemId}
@@ -206,6 +232,29 @@ const View = (props: RowProps) => {
               showVerticalLines={props.showVerticalLines}
               wrapCells={props.wrapCells}
               field={field}
+              value={record
+                ? getRecordFieldValue(record, field.id)
+                : undefined}
+              exists={Boolean(record)}
+              selected={(
+                rowRender.selectionVisible
+                && rowRender.selectedFieldStart !== undefined
+                && rowRender.selectedFieldEnd !== undefined
+                && index >= rowRender.selectedFieldStart
+                && index <= rowRender.selectedFieldEnd
+              )}
+              chrome={cellChrome({
+                selected: (
+                  rowRender.selectedFieldStart !== undefined
+                  && rowRender.selectedFieldEnd !== undefined
+                  && index >= rowRender.selectedFieldStart
+                  && index <= rowRender.selectedFieldEnd
+                ),
+                frameActive: rowRender.focusFieldId === field.id,
+                hovered: rowRender.hoverFieldId === field.id,
+                fillHandleActive: rowRender.fillFieldId === field.id,
+                selectionVisible: rowRender.selectionVisible
+              })}
             />
           ))}
         </div>

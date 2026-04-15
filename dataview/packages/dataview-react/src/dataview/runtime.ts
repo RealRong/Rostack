@@ -15,12 +15,10 @@ import {
   createPageStateStore
 } from '@dataview/react/page/state'
 import {
-  createSelectionApi,
-  createSelectionStore,
-  emptySelection,
-  selection as selectionHelpers,
-  syncSelection,
-  type SelectionApi
+  createItemSelectionDomainSource,
+  createSelectionController,
+  selectionSnapshot,
+  type ItemSelectionController
 } from '@dataview/react/runtime/selection'
 import {
   createInlineSessionApi,
@@ -42,26 +40,6 @@ import type {
 import type {
   DataViewSession
 } from '@dataview/react/dataview/types'
-
-const bindSelectionToAppearances = (input: {
-  items: ReadStore<ItemList | undefined>
-  selection: SelectionApi
-}) => {
-  const sync = () => {
-    const items = input.items.get()
-    if (!items) {
-      if (!selectionHelpers.equal(input.selection.get(), emptySelection)) {
-        input.selection.store.set(emptySelection)
-      }
-      return
-    }
-
-    syncSelection(input.selection.store, items.ids)
-  }
-
-  sync()
-  return input.items.subscribe(sync)
-}
 
 const bindInlineSessionToView = (input: {
   activeView: ReadStore<View | undefined>
@@ -98,7 +76,7 @@ const bindInlineSessionToView = (input: {
 }
 
 const bindInlineSessionToSelection = (input: {
-  selection: SelectionApi
+  selection: ItemSelectionController
   inlineSession: InlineSessionApi
 }) => joinUnsubscribes([
   input.inlineSession.store.subscribe(() => {
@@ -107,13 +85,12 @@ const bindInlineSessionToSelection = (input: {
       return
     }
 
-    if (!selectionHelpers.equal(input.selection.get(), emptySelection)) {
-      input.selection.store.set(emptySelection)
+    if (input.selection.query.count() > 0) {
+      input.selection.command.clear()
     }
   }),
-  input.selection.store.subscribe(() => {
-    const selection = input.selection.store.get()
-    if (!selection.ids.length) {
+  input.selection.state.store.subscribe(() => {
+    if (!input.selection.query.count()) {
       return
     }
 
@@ -150,19 +127,18 @@ export const createDataViewSession = (input: {
   initialPage?: PageSessionInput
 }): DataViewSession => {
   const page = createPageSessionApi(input.initialPage)
-  const selectionStore = createSelectionStore()
   const marquee = createMarqueeApi()
   const inlineSession = createInlineSessionApi()
   const valueEditor = createValueEditorApi()
   const activeAppearances = input.engine.active.select(
     state => state?.items
   )
-  const selection = createSelectionApi({
-    store: selectionStore,
-    scope: {
-      items: () => activeAppearances.get()
-    }
+  const selectionRuntime = createSelectionController({
+    domainSource: createItemSelectionDomainSource({
+      store: activeAppearances
+    })
   })
+  const selection = selectionRuntime.controller
   const pageStateStore = createPageStateStore({
     document: input.engine.select.document,
     activeViewId: input.engine.active.id,
@@ -172,10 +148,6 @@ export const createDataViewSession = (input: {
   })
 
   const disposeBindings = joinUnsubscribes([
-    bindSelectionToAppearances({
-      items: activeAppearances,
-      selection
-    }),
     bindMarqueeToView({
       activeView: input.engine.active.config,
       marquee
@@ -203,6 +175,7 @@ export const createDataViewSession = (input: {
     valueEditor,
     dispose: () => {
       disposeBindings()
+      selectionRuntime.dispose()
       page.dispose()
     }
   }

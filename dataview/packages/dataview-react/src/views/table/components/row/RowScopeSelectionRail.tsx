@@ -1,23 +1,28 @@
 import {
   memo,
-  useCallback
+  useCallback,
+  useMemo
 } from 'react'
 import {
-  selection
+  createItemListSelectionDomain,
+  selectionSnapshot,
+  type SelectionScope
 } from '@dataview/react/runtime/selection'
 import type {
   ItemId
 } from '@dataview/engine'
 import {
-  useDataView,
-  useDataViewValue,
+  useDataView
 } from '@dataview/react/dataview'
-import { useStoreValue } from '@shared/react'
+import {
+  useKeyedStoreValue,
+  useStoreValue
+} from '@shared/react'
 import { useTableContext } from '@dataview/react/views/table/context'
-import { RowSelectionButton, TableLeadingRail } from '@dataview/react/views/table/components/row/RowRail'
+import { RowSelectionButton } from '@dataview/react/views/table/components/row/RowRail'
 import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
 export interface RowScopeSelectionRailProps {
-  rowIds: readonly ItemId[]
+  scope: SelectionScope<ItemId>
   label?: string
 }
 
@@ -29,67 +34,38 @@ const View = (props: RowScopeSelectionRailProps) => {
     throw new Error('Table row scope selection requires an active current view.')
   }
 
+  const selectionDomain = useMemo(
+    () => createItemListSelectionDomain(currentView.items),
+    [currentView]
+  )
   const previewSelection = useStoreSelector(
     table.marqueeSelection,
     selection => selection
+      ? selectionSnapshot.summary(selectionDomain, selection, props.scope)
+      : null
   )
-  const committedSelection = useDataViewValue(
-    dataView => dataView.selection.store
+  const committedSelection = useKeyedStoreValue(
+    dataView.selection.store.scopeSummary,
+    props.scope
   )
-  const currentSelection = previewSelection ?? committedSelection
-  const selectedRowIds = currentSelection.ids
-  const selectedRowIdSet = new Set(selectedRowIds)
-  const rowCount = props.rowIds.length
-  const selectedRowCount = props.rowIds.reduce((count, rowId) => (
-    selectedRowIdSet.has(rowId)
-      ? count + 1
-      : count
-  ), 0)
-  const allSelected = rowCount > 0 && selectedRowCount === rowCount
-  const someSelected = selectedRowCount > 0 && !allSelected
-  const disabled = rowCount === 0
+  const summary = previewSelection ?? committedSelection
+  const allSelected = summary === 'all'
+  const someSelected = summary === 'some'
+  const disabled = props.scope.count === 0
 
   const onPress = useCallback(() => {
-    if (allSelected) {
-      const scopeSet = new Set(props.rowIds)
-      const nextIds = currentSelection.ids.filter(rowId => !scopeSet.has(rowId))
-      table.selection.rows.set(nextIds, {
-        anchor: currentSelection.anchor,
-        focus: currentSelection.focus
-      })
-    } else {
-      const nextIds = selection.normalize(currentView.items.ids, [
-        ...currentSelection.ids,
-        ...props.rowIds
-      ])
-      table.selection.rows.set(nextIds, {
-        anchor: currentSelection.anchor ?? nextIds[0],
-        focus: currentSelection.focus ?? nextIds[nextIds.length - 1]
-      })
-    }
-
+    table.selection.rows.command.scope.toggle(props.scope)
     table.focus()
-  }, [
-    allSelected,
-    currentSelection,
-    props.rowIds,
-    table,
-    currentView.items.ids
-  ])
+  }, [props.scope, table])
 
   return (
-    <TableLeadingRail
-      className="bg-inherit"
-      selection={(
-        <RowSelectionButton
-          selected={allSelected}
-          indeterminate={someSelected}
-          disabled={disabled}
-          onPress={onPress}
-          label={props.label ?? 'Select rows'}
-          showOnHover
-        />
-      )}
+    <RowSelectionButton
+      selected={allSelected}
+      indeterminate={someSelected}
+      disabled={disabled}
+      onPress={onPress}
+      label={props.label ?? 'Select rows'}
+      showOnHover
     />
   )
 }
@@ -98,7 +74,9 @@ const same = (
   left: RowScopeSelectionRailProps,
   right: RowScopeSelectionRailProps
 ) => (
-  left.rowIds === right.rowIds
+  left.scope.key === right.scope.key
+  && left.scope.revision === right.scope.revision
+  && left.scope.count === right.scope.count
   && left.label === right.label
 )
 

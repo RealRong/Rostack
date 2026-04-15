@@ -890,13 +890,15 @@ export const projectResizeTransformPatches = <TNode extends Node>(options: {
   nextRect: Rect
   targets: readonly TransformSelectionMember<TNode>[]
   family?: TransformOperationFamily
+  handle: ResizeDirection
 }): readonly TransformPreviewPatch[] => (
   options.targets.length === 1
     ? [
         toSingleResizeTransformPatch(
           options.targets[0]!,
           options.nextRect,
-          options.family
+          options.family,
+          options.handle
         )
       ]
     : projectResizePatches({
@@ -909,7 +911,8 @@ export const projectResizeTransformPatches = <TNode extends Node>(options: {
 const toSingleResizeTransformPatch = <TNode extends Node>(
   target: TransformSelectionMember<TNode>,
   nextRect: Rect,
-  family?: TransformOperationFamily
+  family?: TransformOperationFamily,
+  handle?: ResizeDirection
 ): TransformPreviewPatch => {
   const preview: TransformPreviewPatch = {
     id: target.id,
@@ -930,6 +933,7 @@ const toSingleResizeTransformPatch = <TNode extends Node>(
   if (family === 'resize-x') {
     return {
       ...preview,
+      handle,
       mode: 'wrap',
       wrapWidth: nextRect.width
     }
@@ -943,6 +947,7 @@ const toSingleResizeTransformPatch = <TNode extends Node>(
     })
     return {
       ...preview,
+      handle,
       fontSize: Math.max(
         1,
         readTextFontSize(target.node) * scale
@@ -1012,7 +1017,8 @@ const readTextFontSize = (
 const toTransformPreviewPatch = <TNode extends Node>(
   member: SelectionTransformMember<TNode>,
   nextRect: Rect,
-  family: TransformOperationFamily
+  family: TransformOperationFamily,
+  handle: ResizeDirection
 ): TransformPreviewPatch => {
   const preview: TransformPreviewPatch = {
     id: member.id,
@@ -1033,6 +1039,7 @@ const toTransformPreviewPatch = <TNode extends Node>(
   if (family === 'resize-x') {
     return {
       ...preview,
+      handle,
       mode: 'wrap',
       wrapWidth: nextRect.width
     }
@@ -1046,6 +1053,7 @@ const toTransformPreviewPatch = <TNode extends Node>(
     })
     return {
       ...preview,
+      handle,
       fontSize: Math.max(
         1,
         readTextFontSize(member.node) * scale
@@ -1064,6 +1072,7 @@ export const projectSelectionTransform = <TNode extends Node>(input: {
   plan: SelectionTransformPlan<TNode>
   family: TransformOperationFamily
   nextRect: Rect
+  handle: ResizeDirection
 }): readonly TransformPreviewPatch[] => input.plan.members.map((member) => (
     toTransformPreviewPatch(
       member,
@@ -1073,7 +1082,8 @@ export const projectSelectionTransform = <TNode extends Node>(input: {
         nextRect: input.nextRect,
         member
       }),
-      input.family
+      input.family,
+      input.handle
     )
   ))
 
@@ -1175,13 +1185,18 @@ const stepResizeTransform = <
           : undefined
       })()
     : undefined
+  const usesUniformScale = selectionFamily === 'scale-xy' || (
+    state.kind === 'single-resize'
+    && state.target.node.type === 'text'
+    && singleFamily === 'scale-xy'
+  )
   const rawRect = computeResizeRect({
     drag: state.drag,
     currentScreen: input.screen,
     zoom: Math.max(input.zoom, input.zoomEpsilon ?? ZOOM_EPSILON),
     minSize: input.minSize,
     altKey: input.modifiers.alt,
-    shiftKey: input.modifiers.shift || selectionFamily === 'scale-xy',
+    shiftKey: input.modifiers.shift || usesUniformScale,
     zoomEpsilon: input.zoomEpsilon
   }).rect
   const { sourceX, sourceY } = getResizeSourceEdges(state.drag.handle)
@@ -1199,7 +1214,7 @@ const stepResizeTransform = <
     disabled: input.modifiers.alt || state.drag.startRotation !== 0
   })
   const guides = snap?.guides ?? []
-  const nextRect = selectionFamily === 'scale-xy'
+  const nextRect = usesUniformScale
     ? resolveUniformScaleRect({
         drag: state.drag,
         rawRect,
@@ -1214,14 +1229,16 @@ const stepResizeTransform = <
         startRect: state.target.rect,
         nextRect,
         targets: [state.target],
-        family: singleFamily
+        family: singleFamily,
+        handle: state.drag.handle
       })
     : (
         selectionFamily
           ? projectSelectionTransform({
               plan: state.plan,
               family: selectionFamily,
-              nextRect
+              nextRect,
+              handle: state.drag.handle
             })
           : []
       )

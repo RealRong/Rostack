@@ -23,9 +23,6 @@ import type {
   ViewId
 } from '@dataview/core/contracts/state'
 import {
-  TITLE_FIELD_ID
-} from '@dataview/core/contracts/state'
-import {
   getDocumentCustomFieldById,
   getDocumentRecordById,
   getDocumentViewById
@@ -33,6 +30,7 @@ import {
 import {
   collectCalculationFields,
   collectFieldSchemaAspects,
+  collectRecordFieldWriteChanges,
   collectRecordPatchAspects,
   collectViewLayoutAspects,
   collectViewQueryAspects
@@ -194,19 +192,20 @@ export const createDeltaCollector = (
           })
           return
         }
-        case 'document.value.set': {
-          valueRecords.add(operation.recordId)
-          valueFields.add(operation.field)
-          return
-        }
-        case 'document.value.patch': {
-          valueRecords.add(operation.recordId)
-          Object.keys(operation.patch).forEach(fieldId => valueFields.add(fieldId))
-          return
-        }
-        case 'document.value.clear': {
-          valueRecords.add(operation.recordId)
-          valueFields.add(operation.field)
+        case 'document.record.fields.writeMany':
+        case 'document.record.fields.restoreMany': {
+          const changes = collectRecordFieldWriteChanges({
+            beforeDocument,
+            afterDocument,
+            operation
+          })
+
+          changes.titleRecordIds.forEach(recordId => {
+            records.markUpdate(recordId)
+            addMapAspects(recordPatch as Map<string, Set<RecordPatchAspect>>, recordId, ['title'])
+          })
+          changes.valueRecordIds.forEach(recordId => valueRecords.add(recordId))
+          changes.valueFieldIds.forEach(fieldId => valueFields.add(fieldId))
           return
         }
         case 'document.view.put': {

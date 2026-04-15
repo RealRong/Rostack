@@ -24,8 +24,8 @@ import {
 } from '@dataview/react/dataview'
 import { useOverlay } from '@shared/ui/overlay'
 import {
-  selection as selectionHelpers,
-  type Selection
+  selectionSnapshot,
+  type ItemSelectionSnapshot
 } from '@dataview/react/runtime/selection'
 import { useStoreValue } from '@shared/react'
 import type {
@@ -46,40 +46,6 @@ const resolveMarqueeMode = (input: {
   return input.metaKey || input.ctrlKey
     ? 'toggle'
     : 'replace'
-}
-
-const addSelection = (input: {
-  order: readonly string[]
-  baseSelectedIds: readonly string[]
-  hitIds: readonly string[]
-}): Selection => {
-  const baseIdSet = new Set(input.baseSelectedIds)
-  const hitIdSet = new Set(input.hitIds)
-  return selectionHelpers.set(
-    input.order,
-    input.order.filter(id => baseIdSet.has(id) || hitIdSet.has(id))
-  )
-}
-
-const resolveMarqueeSelection = (input: {
-  order: readonly string[]
-  baseSelectedIds: readonly string[]
-  hitIds: readonly string[]
-  mode: MarqueeMode
-}): Selection => {
-  switch (input.mode) {
-    case 'toggle':
-      return selectionHelpers.toggle(
-        input.order,
-        selectionHelpers.set(input.order, input.baseSelectedIds),
-        input.hitIds
-      )
-    case 'add':
-      return addSelection(input)
-    case 'replace':
-    default:
-      return selectionHelpers.set(input.order, input.hitIds)
-  }
 }
 
 interface ScrollAnchorState {
@@ -139,7 +105,7 @@ export const PageMarqueeHost = () => {
   const anchorRef = useRef<Point | null>(null)
   const scrollAnchorRef = useRef<ScrollAnchorState>({})
   const frameRef = useRef<number | null>(null)
-  const selectionRef = useRef<Selection | null>(null)
+  const selectionRef = useRef<ItemSelectionSnapshot | null>(null)
 
   const resolveAdapter = useCallback((viewId?: string): MarqueeAdapter | undefined => (
     viewId
@@ -147,27 +113,25 @@ export const PageMarqueeHost = () => {
       : undefined
   ), [dataView.marquee])
 
-  const commitSelection = useCallback((nextSelection: Selection) => {
-    dataView.selection.set(nextSelection.ids, {
-      anchor: nextSelection.anchor,
-      focus: nextSelection.focus
-    })
+  const commitSelection = useCallback((nextSelection: ItemSelectionSnapshot) => {
+    dataView.selection.command.restore(nextSelection)
   }, [dataView.selection])
 
   const applySelection = useCallback((nextSession: MarqueeSessionState, adapter: MarqueeAdapter) => {
-    const order = adapter.order()
+    const domain = adapter.domain()
     const hitIds = adapter.getHitIds?.(nextSession)
       ?? idsInRect(
-        order,
+        [...domain.iterate()],
         adapter.getTargets?.() ?? [],
         nextSession.box
       )
-    const nextSelection = resolveMarqueeSelection({
-      order,
-      baseSelectedIds: nextSession.baseSelectedIds,
+    const nextSelection = selectionSnapshot.applyIds(
+      domain,
+      nextSession.baseSelection,
       hitIds,
-      mode: nextSession.mode
-    })
+      nextSession.mode,
+      dataView.selection.state.getSnapshot().domainRevision
+    )
     selectionRef.current = nextSelection
 
     if (adapter.previewSelection) {
@@ -177,7 +141,7 @@ export const PageMarqueeHost = () => {
 
     commitSelection(nextSelection)
     return nextSelection
-  }, [commitSelection])
+  }, [commitSelection, dataView.selection.state])
 
   const update = useCallback(() => {
     const currentSession = dataView.marquee.get()
@@ -303,21 +267,15 @@ export const PageMarqueeHost = () => {
 
       const adapter = resolveAdapter(currentSession.ownerViewId)
       const nextSelection = selectionRef.current
-        ?? selectionHelpers.set(
-          adapter?.order() ?? currentSession.baseSelectedIds,
-          currentSession.baseSelectedIds
-        )
+        ?? currentSession.baseSelection
 
       if (event.type === 'pointercancel') {
         adapter?.onCancel?.(currentSession, nextSelection)
         if (adapter?.previewSelection) {
-          commitSelection(selectionHelpers.set(
-            adapter.order(),
-            currentSession.baseSelectedIds
-          ))
+          commitSelection(currentSession.baseSelection)
           adapter.clearPreviewSelection?.()
         } else {
-          dataView.selection.set(currentSession.baseSelectedIds)
+          dataView.selection.command.restore(currentSession.baseSelection)
         }
       } else {
         if (adapter?.previewSelection) {
@@ -342,7 +300,7 @@ export const PageMarqueeHost = () => {
       window.removeEventListener('pointerup', end, true)
       window.removeEventListener('pointercancel', end, true)
     }
-  }, [dataView.marquee, dataView.selection, scheduleUpdate, update])
+  }, [commitSelection, dataView.marquee, dataView.selection, resolveAdapter, scheduleUpdate, update])
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -398,7 +356,7 @@ export const PageMarqueeHost = () => {
         start,
         current: start,
         box: rectFromPoints(start, start),
-        baseSelectedIds: dataView.selection.get().ids
+        baseSelection: dataView.selection.state.getSnapshot()
       }
 
       dataView.marquee.start(nextSession)
@@ -415,10 +373,10 @@ export const PageMarqueeHost = () => {
     currentView,
     dataView.inlineSession,
     dataView.marquee,
-    dataView.selection,
-    dataView.valueEditor,
-    overlay.topLayerId,
-    resolveAdapter,
+      dataView.selection,
+      dataView.valueEditor,
+      overlay.topLayerId,
+      resolveAdapter,
     valueEditorOpen
   ])
 
@@ -437,19 +395,13 @@ export const PageMarqueeHost = () => {
       event.stopPropagation()
       const adapter = resolveAdapter(currentSession.ownerViewId)
       const nextSelection = selectionRef.current
-        ?? selectionHelpers.set(
-          adapter?.order() ?? currentSession.baseSelectedIds,
-          currentSession.baseSelectedIds
-        )
+        ?? currentSession.baseSelection
       adapter?.onCancel?.(currentSession, nextSelection)
       if (adapter?.previewSelection) {
-        commitSelection(selectionHelpers.set(
-          adapter.order(),
-          currentSession.baseSelectedIds
-        ))
+        commitSelection(currentSession.baseSelection)
         adapter.clearPreviewSelection?.()
       } else {
-        dataView.selection.set(currentSession.baseSelectedIds)
+        dataView.selection.command.restore(currentSession.baseSelection)
       }
       pointerRef.current = null
       anchorRef.current = null

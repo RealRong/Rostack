@@ -1,6 +1,7 @@
 import {
-  finishTransform,
+  buildTransformCommitUpdates,
   getResizeUpdateRect,
+  resolveTextHandle,
   startTransform,
   stepTransform,
   type TransformPreviewPatch,
@@ -55,6 +56,45 @@ const readTransformTextPreview = (
       handle: patch.handle
     }
 
+type TransformProjectInput = Pick<
+  PointerDownInput,
+  'screen' | 'world' | 'modifiers'
+>
+
+const isTransformProjectInputEqual = (
+  left: TransformProjectInput | null,
+  right: TransformProjectInput
+) => (
+  left !== null
+  && left.screen.x === right.screen.x
+  && left.screen.y === right.screen.y
+  && left.world.x === right.world.x
+  && left.world.y === right.world.y
+  && left.modifiers.alt === right.modifiers.alt
+  && left.modifiers.shift === right.modifiers.shift
+  && left.modifiers.ctrl === right.modifiers.ctrl
+  && left.modifiers.meta === right.modifiers.meta
+)
+
+const copyTransformProjectInput = (
+  input: TransformProjectInput
+): TransformProjectInput => ({
+  screen: {
+    x: input.screen.x,
+    y: input.screen.y
+  },
+  world: {
+    x: input.world.x,
+    y: input.world.y
+  },
+  modifiers: {
+    alt: input.modifiers.alt,
+    shift: input.modifiers.shift,
+    ctrl: input.modifiers.ctrl,
+    meta: input.modifiers.meta
+  }
+})
+
 export const createTransformSession = (
   ctx: InteractionContext,
   spec: TransformSpec<Node>,
@@ -63,10 +103,11 @@ export const createTransformSession = (
   let state = startTransform(spec)
   let modifiers = start.modifiers
   let activeTextPreviewIds: readonly string[] = []
+  let lastProjectedInput: TransformProjectInput | null = null
   let interaction = null as InteractionSession | null
 
   const project = (
-    input: Pick<PointerDownInput, 'screen' | 'world' | 'modifiers'>
+    input: TransformProjectInput
   ) => {
     modifiers = input.modifiers
     const result = stepTransform({
@@ -89,18 +130,32 @@ export const createTransformSession = (
     })
     state = result.state
 
-    activeTextPreviewIds.forEach((nodeId) => {
-      ctx.local.feedback.node.text.clear(nodeId)
+    const nextActiveTextPreviewIds = result.draft.nodePatches.flatMap((patch) => {
+      const textPreview = readTransformTextPreview(patch)
+      if (!textPreview) {
+        return []
+      }
+
+      return [patch.id]
     })
-    activeTextPreviewIds = result.draft.nodePatches
-      .filter((patch) => readTransformTextPreview(patch))
-      .map((patch) => {
-        const textPreview = readTransformTextPreview(patch)
-        if (textPreview) {
-          ctx.local.feedback.node.text.set(patch.id, textPreview)
-        }
-        return patch.id
-      })
+    const nextActiveTextPreviewIdSet = new Set(nextActiveTextPreviewIds)
+
+    activeTextPreviewIds.forEach((nodeId) => {
+      if (!nextActiveTextPreviewIdSet.has(nodeId)) {
+        ctx.local.feedback.node.text.clear(nodeId)
+      }
+    })
+
+    result.draft.nodePatches.forEach((patch) => {
+      const textPreview = readTransformTextPreview(patch)
+      if (!textPreview) {
+        return
+      }
+
+      ctx.local.feedback.node.text.clearSize(patch.id)
+      ctx.local.feedback.node.text.set(patch.id, textPreview)
+    })
+    activeTextPreviewIds = nextActiveTextPreviewIds
 
     interaction!.gesture = createSelectionGesture(
       'selection-transform',
@@ -112,6 +167,7 @@ export const createTransformSession = (
         guides: result.draft.guides
       }
     )
+    lastProjectedInput = copyTransformProjectInput(input)
   }
 
   interaction = {
@@ -132,9 +188,43 @@ export const createTransformSession = (
       project(input)
     },
     up: (input) => {
-      project(input)
+      if (!isTransformProjectInputEqual(lastProjectedInput, input)) {
+        project(input)
+      }
 
-      const updates = finishTransform(state)
+      const updates = buildTransformCommitUpdates({
+        targets: state.commitTargets,
+        patches: state.patches.map((patch) => {
+          const target = state.commitTargets.find((entry) => entry.id === patch.id)
+          if (
+            !target
+            || target.node.type !== 'text'
+            || !readTransformTextPreview(patch)
+            || patch.handle === undefined
+            || resolveTextHandle(patch.handle) !== 'reflow'
+          ) {
+            return patch
+          }
+
+          const item = ctx.query.node.item.get(patch.id)
+          if (!item) {
+            return patch
+          }
+
+          return {
+            ...patch,
+            position: {
+              x: item.rect.x,
+              y: item.rect.y
+            },
+            size: {
+              width: item.rect.width,
+              height: item.rect.height
+            }
+          }
+        }),
+        commitTargetIds: state.commitIds
+      })
       if (updates.length > 0) {
         ctx.command.node.updateMany(updates)
       }
@@ -143,6 +233,7 @@ export const createTransformSession = (
         ctx.local.feedback.node.text.clear(nodeId)
       })
       activeTextPreviewIds = []
+      lastProjectedInput = null
 
       return FINISH
     },
@@ -151,6 +242,7 @@ export const createTransformSession = (
         ctx.local.feedback.node.text.clear(nodeId)
       })
       activeTextPreviewIds = []
+      lastProjectedInput = null
     }
   }
 

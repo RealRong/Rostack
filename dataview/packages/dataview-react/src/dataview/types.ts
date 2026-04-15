@@ -6,7 +6,7 @@ import type {
   PageSessionApi,
   PageSessionInput
 } from '@dataview/react/page/session/types'
-import type { SelectionApi } from '@dataview/react/runtime/selection'
+import type { ItemSelectionController } from '@dataview/react/runtime/selection'
 import type { InlineSessionApi } from '@dataview/react/runtime/inlineSession'
 import type { ValueEditorController } from '@dataview/react/runtime/valueEditor'
 import type { MarqueeApi } from '@dataview/react/runtime/marquee'
@@ -16,7 +16,7 @@ export interface DataViewContextValue {
   page: PageSessionApi & {
     store: ReadStore<PageState>
   }
-  selection: SelectionApi
+  selection: ItemSelectionController
   marquee: MarqueeApi
   inlineSession: InlineSessionApi
   valueEditor: ValueEditorController

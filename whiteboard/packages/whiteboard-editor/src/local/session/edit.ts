@@ -36,7 +36,7 @@ export type EditSnapshot = {
 
 export type EditLayout = {
   baseRect?: Rect
-  liveSize?: Size
+  measuredSize?: Size
   wrapWidth?: number
   composing: boolean
 }
@@ -203,7 +203,7 @@ export const isEditLayoutEqual = (
   right: EditLayout
 ) => (
   isEditRectEqual(left.baseRect, right.baseRect)
-  && isEditMeasureEqual(left.liveSize, right.liveSize)
+  && isEditMeasureEqual(left.measuredSize, right.measuredSize)
   && left.wrapWidth === right.wrapWidth
   && left.composing === right.composing
 )

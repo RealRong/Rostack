@@ -119,32 +119,12 @@ export const createNodeTextCommands = (
   ),
   size: ({
     nodeIds,
-    value,
-    sizeById
+    value
   }) => ctx.write.updateMany(
-    nodeIds.map((id) => {
-      const committed = ctx.read.committed(id)
-      const nextMeasuredSize = committed?.node.type === 'text'
-        ? sizeById?.[id]
-        : undefined
-      const sizeUpdate = committed && nextMeasuredSize && !isSizeEqual(nextMeasuredSize, committed.rect)
-        ? nextMeasuredSize
-        : undefined
-
-      return {
-        id,
-        update: mergeNodeUpdates(
-          compileNodeStyleUpdate('fontSize', value),
-          sizeUpdate
-            ? {
-                fields: {
-                  size: sizeUpdate
-                }
-              }
-            : undefined
-        )
-      }
-    })
+    nodeIds.map((id) => ({
+      id,
+      update: compileNodeStyleUpdate('fontSize', value)
+    }))
   ),
   weight: (nodeIds, weight) => ctx.write.updateMany(
     toNodeStyleBatchUpdates(nodeIds, 'fontWeight', weight)

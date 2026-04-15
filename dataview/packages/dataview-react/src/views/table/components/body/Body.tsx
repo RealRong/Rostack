@@ -40,6 +40,7 @@ import { BlockContent } from '@dataview/react/views/table/components/body/BlockC
 import { Surface } from '@dataview/react/views/table/components/body/Surface'
 import { useRegisterMarqueeAdapter } from '@dataview/react/views/shared/interactionRuntime'
 import type { MarqueeAdapter } from '@dataview/react/runtime/marquee'
+import { createItemListSelectionDomain } from '@dataview/react/runtime/selection'
 
 const View = () => {
   const dataView = useDataView()
@@ -89,7 +90,7 @@ const View = () => {
       )
     },
     getHitIds: session => table.nodes.hitRows(currentView.items.ids, session.box),
-    order: () => currentView.items.ids,
+    domain: () => createItemListSelectionDomain(currentView.items),
     previewSelection: nextSelection => {
       table.marqueeSelection.set(nextSelection)
     },
@@ -112,6 +113,7 @@ const View = () => {
       table.nodes.endRowMarquee()
     }
   }), [
+    currentView.items,
     currentView.items.ids,
     currentView.view.id,
     marqueeDisabled,

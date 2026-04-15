@@ -29,7 +29,7 @@ export const createActiveViewApi = (options: {
   select: DocumentSelectApi
   dispatch: (action: Action | readonly Action[]) => ActionResult
   fields: Pick<FieldsApi, 'list' | 'create'>
-  records: Pick<RecordsApi, 'values'>
+  records: Pick<RecordsApi, 'fields'>
 }): ActiveViewApi => {
   const base = createActiveContext(options)
   const readApi = createActiveViewReadApi({

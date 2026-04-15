@@ -3,6 +3,7 @@ import type { EditorQueryRead } from '@whiteboard/editor/query'
 import type { LocalFeedbackActions } from '@whiteboard/editor/local/actions/feedback'
 import type { SessionActions } from '@whiteboard/editor/types/commands'
 import type { NodePatchWriter } from '@whiteboard/editor/command/node/types'
+import type { TextLayoutMeasurer } from '@whiteboard/editor/types/textLayout'
 
 export type NodeContext = {
   read: {
@@ -13,6 +14,9 @@ export type NodeContext = {
     deleteCascade: (ids: NodeId[]) => ReturnType<NodePatchWriter['update']> | undefined
   }
   preview: Pick<LocalFeedbackActions['node'], 'text'>
+  layout: {
+    measureText?: TextLayoutMeasurer
+  }
   edit: Pick<SessionActions['edit'], 'clear'>
   selection: Pick<SessionActions['selection'], 'clear'>
 }
@@ -21,12 +25,14 @@ export const createNodeContext = ({
   read,
   patch,
   preview,
+  measureText,
   session,
   deleteCascade
 }: {
   read: EditorQueryRead
   patch: NodePatchWriter
   preview: Pick<LocalFeedbackActions['node'], 'text'>
+  measureText?: TextLayoutMeasurer
   session: Pick<SessionActions, 'edit' | 'selection'>
   deleteCascade: (ids: NodeId[]) => ReturnType<NodePatchWriter['update']> | undefined
 }): NodeContext => ({
@@ -40,6 +46,9 @@ export const createNodeContext = ({
     deleteCascade
   },
   preview,
+  layout: {
+    measureText
+  },
   edit: {
     clear: session.edit.clear
   },

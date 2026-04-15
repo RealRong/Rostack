@@ -72,10 +72,10 @@ const createEditActions = ({
       const size = (
         committed.node.type === 'text'
         && currentEdit.field === 'text'
-        && currentEdit.layout.liveSize
-        && !isSizeEqual(currentEdit.layout.liveSize, committed.rect)
+        && currentEdit.layout.measuredSize
+        && !isSizeEqual(currentEdit.layout.measuredSize, committed.rect)
       )
-        ? currentEdit.layout.liveSize
+        ? currentEdit.layout.measuredSize
         : undefined
 
       return command.node.text.commit({

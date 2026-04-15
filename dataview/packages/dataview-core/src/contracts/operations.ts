@@ -1,10 +1,20 @@
-import type { CustomFieldId, CustomField, DataRecord, View, RecordId, ViewId } from '@dataview/core/contracts/state'
+import type { CustomFieldId, CustomField, DataRecord, FieldId, View, RecordId, ViewId } from '@dataview/core/contracts/state'
 
 export interface RowInsertTarget {
   index?: number
 }
 
-export type ValuePatch = Partial<Record<CustomFieldId, unknown>>
+export interface RecordFieldWriteManyOperationInput {
+  recordIds: readonly RecordId[]
+  set?: Partial<Record<FieldId, unknown>>
+  clear?: readonly FieldId[]
+}
+
+export interface DocumentRecordFieldRestoreEntry {
+  recordId: RecordId
+  set?: Partial<Record<FieldId, unknown>>
+  clear?: readonly FieldId[]
+}
 
 export type BaseOperation =
   | {
@@ -15,27 +25,21 @@ export type BaseOperation =
   | {
       type: 'document.record.patch'
       recordId: RecordId
-      patch: Partial<Omit<DataRecord, 'id'>>
+      patch: Partial<Omit<DataRecord, 'id' | 'values'>>
     }
   | {
       type: 'document.record.remove'
       recordIds: RecordId[]
     }
   | {
-      type: 'document.value.set'
-      recordId: RecordId
-      field: CustomFieldId
-      value: unknown
+      type: 'document.record.fields.writeMany'
+      recordIds: readonly RecordId[]
+      set?: Partial<Record<FieldId, unknown>>
+      clear?: readonly FieldId[]
     }
   | {
-      type: 'document.value.patch'
-      recordId: RecordId
-      patch: ValuePatch
-    }
-  | {
-      type: 'document.value.clear'
-      recordId: RecordId
-      field: CustomFieldId
+      type: 'document.record.fields.restoreMany'
+      entries: readonly DocumentRecordFieldRestoreEntry[]
     }
   | {
       type: 'document.view.put'

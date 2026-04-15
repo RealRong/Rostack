@@ -116,6 +116,7 @@ module.exports = {
         popover: 'var(--ui-popover-shadow)'
       },
       colors: {
+        canvas: alphaColor('--ui-canvas'),
         border: alphaColor('--border'),
         input: alphaColor('--input'),
         ring: alphaColor('--ring'),

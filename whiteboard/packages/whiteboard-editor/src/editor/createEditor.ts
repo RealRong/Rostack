@@ -16,6 +16,7 @@ import { createQueryRuntime } from '@whiteboard/editor/query'
 import { createCommandRuntime } from '@whiteboard/editor/command'
 import { createEditorInput } from '@whiteboard/editor/editor/input'
 import { createEditorFacade } from '@whiteboard/editor/editor/facade'
+import type { TextLayoutMeasurer } from '@whiteboard/editor/types/textLayout'
 
 export const createEditor = ({
   engine,
@@ -23,12 +24,14 @@ export const createEditor = ({
   initialDrawState = DEFAULT_DRAW_STATE,
   initialViewport,
   registry,
+  measureText,
 }: {
   engine: Engine
   initialTool: Tool
   initialDrawState?: DrawState
   initialViewport: Viewport
   registry: NodeRegistry
+  measureText?: TextLayoutMeasurer
 }): Editor => {
   const local = createLocalRuntime({
     initialTool,
@@ -46,7 +49,8 @@ export const createEditor = ({
   const command = createCommandRuntime({
     engine,
     read: query.read,
-    local
+    local,
+    measureText
   })
   const snap = createSnapRuntime({
     readZoom: () => local.viewport.read.get().zoom,

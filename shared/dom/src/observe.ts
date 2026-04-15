@@ -36,6 +36,7 @@ export interface ObserveElementSizeOptions<ElementType extends Element> {
 }
 
 export interface MeasuredElementObserverOptions<Key, ElementType extends Element> {
+  debugName?: string
   emitInitial?: boolean
   isEqual?: ElementSizeEquality
   readEntrySize?: ReadResizeEntrySize<ElementType>
@@ -57,7 +58,8 @@ const sameSize = (
 
 const createScheduleTask = (
   flush: () => void,
-  schedule: ElementMeasureSchedule
+  schedule: ElementMeasureSchedule,
+  debugName?: string
 ) => {
   if (schedule === 'raf') {
     return createRafTask(flush, {
@@ -83,14 +85,27 @@ const createScheduleTask = (
         const currentToken = token + 1
         token = currentToken
 
-        queueMicrotask(() => {
-          if (!queued || currentToken !== token) {
-            return
-          }
+        const runMicrotask = debugName
+          ? ({
+              [debugName]: () => {
+                if (!queued || currentToken !== token) {
+                  return
+                }
 
-          queued = false
-          flush()
-        })
+                queued = false
+                flush()
+              }
+            })[debugName]!
+          : function runMeasuredElementObserverMicrotask() {
+              if (!queued || currentToken !== token) {
+                return
+              }
+
+              queued = false
+              flush()
+            }
+
+        queueMicrotask(runMicrotask)
       }
     }
   }
@@ -212,7 +227,8 @@ export const createMeasuredElementObserver = <Key, ElementType extends Element>(
 
   const flushTask = createScheduleTask(
     flush,
-    options.schedule ?? 'sync'
+    options.schedule ?? 'sync',
+    options.debugName
   )
 
   const queueChange = (

@@ -1,16 +1,15 @@
 import type {
   Action,
-  FieldId,
   RecordId
 } from '@dataview/core/contracts'
 import {
   read,
   unique
 } from '@shared/core'
-import { createRecordFieldWriteAction } from '@dataview/core/field'
 import type {
   ActionResult,
   DocumentSelectApi,
+  RecordFieldWriteManyInput,
   RecordsApi
 } from '@dataview/engine/contracts/public'
 
@@ -18,12 +17,19 @@ export const createRecordsApi = (options: {
   select: DocumentSelectApi
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }): RecordsApi => {
-  const writeField = (
-    recordId: RecordId,
-    fieldId: FieldId,
-    value: unknown | undefined
-  ) => {
-    options.dispatch(createRecordFieldWriteAction(recordId, fieldId, value))
+  const writeMany = (input: RecordFieldWriteManyInput) => {
+    const recordIds = unique(input.recordIds)
+    if (!recordIds.length) {
+      return
+    }
+
+    options.dispatch({
+      type: 'record.fields.writeMany',
+      input: {
+        ...input,
+        recordIds
+      }
+    })
   }
 
   return {
@@ -55,13 +61,22 @@ export const createRecordsApi = (options: {
         recordIds: nextRecordIds
       })
     },
-    values: {
+    fields: {
       set: (recordId, fieldId, value) => {
-        writeField(recordId, fieldId, value)
+        writeMany({
+          recordIds: [recordId],
+          set: {
+            [fieldId]: value
+          }
+        })
       },
       clear: (recordId, fieldId) => {
-        writeField(recordId, fieldId, undefined)
-      }
+        writeMany({
+          recordIds: [recordId],
+          clear: [fieldId]
+        })
+      },
+      writeMany
     }
   }
 }

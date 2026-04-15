@@ -8,15 +8,24 @@ import {
   horizontalListSortingStrategy
 } from '@dnd-kit/sortable'
 import type {
+  ItemId
+} from '@dataview/engine'
+import type {
+  SelectionScope
+} from '@dataview/react/runtime/selection'
+import type {
   Field,
   FieldId
 } from '@dataview/core/contracts'
 import { columnSortId } from '@dataview/react/views/table/hooks/useColumnReorder'
 import { ColumnHeader } from '@dataview/react/views/table/components/column/ColumnHeader'
 import { ColumnAddPropertyAction } from '@dataview/react/views/table/components/column/ColumnAddPropertyAction'
+import { RowScopeSelectionRail } from '@dataview/react/views/table/components/row/RowScopeSelectionRail'
 
 export interface ColumnHeaderRowProps {
   scopeId: string
+  scope: SelectionScope<ItemId>
+  label?: string
   columns: readonly Field[]
   wrapCells: boolean
   template: string
@@ -37,6 +46,10 @@ const View = (props: ColumnHeaderRowProps) => {
     <div
       className="flex min-w-full w-max items-stretch"
     >
+      <RowScopeSelectionRail
+        scope={props.scope}
+        label={props.label}
+      />
       <SortableContext
         items={sortIds}
         strategy={horizontalListSortingStrategy}
@@ -73,6 +86,10 @@ const same = (
   right: ColumnHeaderRowProps
 ) => (
   left.scopeId === right.scopeId
+  && left.scope.key === right.scope.key
+  && left.scope.revision === right.scope.revision
+  && left.scope.count === right.scope.count
+  && left.label === right.label
   && left.columns === right.columns
   && left.wrapCells === right.wrapCells
   && left.template === right.template

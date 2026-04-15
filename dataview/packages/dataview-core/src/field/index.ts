@@ -1,10 +1,8 @@
 import type {
-  Action,
   Field,
   FieldId,
   CustomField,
   DataRecord,
-  RecordId,
   ViewGroup
 } from '@dataview/core/contracts'
 import {
@@ -123,44 +121,6 @@ const resolveTitleGroupMeta = (
 export const isTitleFieldId = (
   fieldId: FieldId
 ): fieldId is typeof TITLE_FIELD_ID => fieldId === TITLE_FIELD_ID
-
-export const createRecordFieldWriteAction = (
-  recordId: RecordId,
-  fieldId: FieldId,
-  value: unknown | undefined
-): Action => (
-  isTitleFieldId(fieldId)
-    ? {
-        type: 'record.patch',
-        target: {
-          type: 'record',
-          recordId
-        },
-        patch: {
-          title: value === undefined
-            ? ''
-            : String(value ?? '')
-        }
-      }
-    : value === undefined
-      ? {
-          type: 'value.clear',
-          target: {
-            type: 'record',
-            recordId
-          },
-          field: fieldId
-        }
-      : {
-          type: 'value.set',
-          target: {
-            type: 'record',
-            recordId
-          },
-          field: fieldId,
-          value
-        }
-)
 
 export const isTitleField = (
   field: Pick<Field, 'kind'> | undefined

@@ -1,19 +1,125 @@
 import type {
   Action,
+  DataRecord,
+  Field,
   FieldId,
-  RecordId
+  RecordId,
+  ViewGroup
 } from '@dataview/core/contracts'
 import { isTitleFieldId } from '@dataview/core/field'
 import { group as groupCore } from '@dataview/core/group'
-import { trimToUndefined, unique } from '@shared/core'
+import { reorderViewOrders } from '@dataview/core/view'
+import { sameJsonValue, trimToUndefined, unique } from '@shared/core'
 import { createRecordId } from '@dataview/engine/mutate/entityId'
 import type {
   ActiveItemsApi,
   ActiveViewReadApi,
+  ItemId,
+  ItemList,
   MovePlan,
   Placement
 } from '@dataview/engine/contracts/public'
-import { createGroupValueActions, type ActiveViewContext } from '@dataview/engine/active/context'
+import type { ActiveViewContext } from '@dataview/engine/active/context'
+
+const createMoveOrderAction = (
+  base: ActiveViewContext,
+  recordIds: readonly RecordId[],
+  beforeRecordId?: RecordId
+): Extract<Action, { type: 'view.patch' }> | undefined => {
+  const view = base.view()
+  const viewId = base.reader.views.activeId()
+  if (!view || !viewId || !recordIds.length) {
+    return undefined
+  }
+
+  return {
+    type: 'view.patch',
+    viewId,
+    patch: {
+      orders: reorderViewOrders({
+        allRecordIds: base.reader.document().records.order,
+        currentOrder: view.orders,
+        movingRecordIds: recordIds,
+        beforeRecordId
+      })
+    }
+  }
+}
+
+const createGroupValueActions = (input: {
+  readRecord: (recordId: RecordId) => DataRecord | undefined
+  group: ViewGroup
+  field: Field
+  items: ItemList
+  itemIds: readonly ItemId[]
+  targetSection: string
+}): readonly Action[] | undefined => {
+  const fieldId = input.group.field
+  const itemIdsByRecordId = new Map<RecordId, ItemId[]>()
+
+  input.itemIds.forEach(itemId => {
+    const recordId = input.items.get(itemId)?.recordId
+    if (!recordId) {
+      return
+    }
+
+    const ids = itemIdsByRecordId.get(recordId)
+    if (ids) {
+      ids.push(itemId)
+      return
+    }
+
+    itemIdsByRecordId.set(recordId, [itemId])
+  })
+
+  const actions: Action[] = []
+
+  for (const [recordId, itemIds] of itemIdsByRecordId) {
+    const record = input.readRecord(recordId)
+    const initialValue = isTitleFieldId(fieldId)
+      ? record?.title
+      : record?.values[fieldId]
+    let currentValue = initialValue
+
+    for (const itemId of itemIds) {
+      const next = groupCore.write.next({
+        field: input.field,
+        group: input.group,
+        currentValue,
+        fromKey: input.items.get(itemId)?.sectionKey,
+        toKey: input.targetSection
+      })
+      if (next.kind === 'invalid') {
+        return undefined
+      }
+
+      currentValue = next.kind === 'clear'
+        ? undefined
+        : next.value
+    }
+
+    if (sameJsonValue(initialValue, currentValue)) {
+      continue
+    }
+
+    actions.push({
+      type: 'record.fields.writeMany',
+      input: currentValue === undefined
+        ? {
+            recordIds: [recordId],
+            clear: [fieldId]
+          }
+        : {
+            recordIds: [recordId],
+            set: {
+              [fieldId]: currentValue
+            }
+          }
+    })
+  }
+
+  return actions
+}
 
 export const planMove = (
   itemIds: readonly string[],
@@ -88,9 +194,9 @@ export const createActiveItemsApi = (input: {
   base: ActiveViewContext
   read: ActiveViewReadApi
 }): ActiveItemsApi => ({
-  planMove: (itemIds, target) => planMove(itemIds, target, input.base.readState),
+  planMove: (itemIds, target) => planMove(itemIds, target, input.base.snapshot),
   move: (itemIds, target) => {
-    const state = input.base.readState()
+    const state = input.base.snapshot()
     if (!state) {
       return
     }
@@ -101,7 +207,7 @@ export const createActiveItemsApi = (input: {
           field: state.query.group.field
         }
       : undefined
-    const plan = planMove(itemIds, target, input.base.readState)
+    const plan = planMove(itemIds, target, input.base.snapshot)
     if (!plan.changed || !plan.itemIds.length || !plan.recordIds.length) {
       return
     }
@@ -129,7 +235,8 @@ export const createActiveItemsApi = (input: {
     }
 
     if (!state.view.sort.length) {
-      const moveAction = input.base.createMoveOrderAction(
+      const moveAction = createMoveOrderAction(
+        input.base,
         plan.recordIds,
         plan.target.beforeRecordId
       )
@@ -143,7 +250,7 @@ export const createActiveItemsApi = (input: {
     }
   },
   create: createInput => {
-    const state = input.base.readState()
+    const state = input.base.snapshot()
     if (!state) {
       return undefined
     }
@@ -204,7 +311,7 @@ export const createActiveItemsApi = (input: {
       && !state.view.sort.length
     ) {
       const beforeRecordId = state.sections.get(createInput.section)?.recordIds[0]
-      const moveAction = input.base.createMoveOrderAction([recordId], beforeRecordId)
+      const moveAction = createMoveOrderAction(input.base, [recordId], beforeRecordId)
       if (moveAction) {
         actions.push(moveAction)
       }
@@ -216,7 +323,7 @@ export const createActiveItemsApi = (input: {
       : undefined
   },
   remove: itemIds => {
-    const state = input.base.readState()
+    const state = input.base.snapshot()
     if (!state) {
       return
     }

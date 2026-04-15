@@ -1,25 +1,21 @@
 import type {
   FieldId
 } from '@dataview/core/contracts'
-import {
-  getDocumentFieldById
-} from '@dataview/core/document'
 import { read, type ReadStore } from '@shared/core'
 import type {
   ActiveViewReadApi,
   CellRef,
-  DocumentSelectApi,
   ViewCell,
   ViewState
 } from '@dataview/engine/contracts/public'
+import type { DocumentReader } from '@dataview/engine/document/reader'
 
 export const createActiveViewReadApi = (input: {
-  select: DocumentSelectApi
-  state: ReadStore<ViewState | undefined>
+  reader: DocumentReader
+  stateStore: ReadStore<ViewState | undefined>
 }): ActiveViewReadApi => {
-  const readDocument = () => read(input.select.document)
-  const readState = () => read(input.state)
-  const readField = (fieldId: FieldId) => getDocumentFieldById(readDocument(), fieldId)
+  const readState = () => read(input.stateStore)
+  const readField = (fieldId: FieldId) => input.reader.fields.get(fieldId)
   const readSection = (sectionKey: string) => readState()?.sections.get(sectionKey)
   const readItem = (itemId: string) => readState()?.items.get(itemId)
   const readCell = (cell: CellRef): ViewCell | undefined => {
@@ -33,7 +29,7 @@ export const createActiveViewReadApi = (input: {
       return undefined
     }
 
-    const record = read(input.select.records.byId, item.recordId)
+    const record = input.reader.records.get(item.recordId)
     if (!record) {
       return undefined
     }
@@ -52,7 +48,7 @@ export const createActiveViewReadApi = (input: {
   }
 
   return {
-    record: recordId => read(input.select.records.byId, recordId),
+    record: recordId => input.reader.records.get(recordId),
     field: readField,
     section: readSection,
     item: readItem,

@@ -1,7 +1,3 @@
-import {
-  readTextWrapWidth,
-  readTextWidthMode
-} from '@whiteboard/core/node'
 import type { EditorQueryRead } from '@whiteboard/editor/query'
 import type { SessionActions } from '@whiteboard/editor/types/commands'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
@@ -10,14 +6,14 @@ import {
   type EditField
 } from '@whiteboard/editor/local/session/edit'
 import type { EditorLocalState } from '@whiteboard/editor/local/runtime'
+import type { LayoutRuntime } from '@whiteboard/editor/layout/runtime'
 
 export type LocalEditActions = SessionActions['edit']
 
 const DEFAULT_EDGE_LABEL_CAPABILITY: EditCapability = {
   placeholder: 'Label',
   multiline: true,
-  empty: 'remove',
-  measure: 'none'
+  empty: 'remove'
 }
 
 const resolveNodeCapability = ({
@@ -33,11 +29,13 @@ const resolveNodeCapability = ({
 export const createLocalEditActions = ({
   state,
   registry,
-  getRead
+  getRead,
+  getLayout
 }: {
   state: Pick<EditorLocalState, 'edit'>
   registry: Pick<NodeRegistry, 'get'>
   getRead: () => Pick<EditorQueryRead, 'node' | 'edge'> | null
+  getLayout: () => LayoutRuntime | null
 }): LocalEditActions => {
   const startNode: LocalEditActions['startNode'] = (
     nodeId,
@@ -66,9 +64,12 @@ export const createLocalEditActions = ({
     const text = typeof item.node.data?.[field] === 'string'
       ? item.node.data[field] as string
       : ''
-    const wrapWidth = readTextWidthMode(item.node) === 'wrap'
-      ? (readTextWrapWidth(item.node) ?? item.rect.width)
-      : undefined
+    const layout = getLayout()
+    const nextLayout = layout?.editNode({
+      nodeId,
+      field,
+      text
+    })
 
     state.edit.mutate.set({
       kind: 'node',
@@ -81,12 +82,16 @@ export const createLocalEditActions = ({
         text
       },
       layout: {
-        baseRect: item.rect,
-        measuredSize: {
+        size: nextLayout?.size ?? {
           width: item.rect.width,
           height: item.rect.height
         },
-        wrapWidth,
+        fontSize: nextLayout?.fontSize ?? (
+          typeof item.node.style?.fontSize === 'number'
+            ? item.node.style.fontSize
+            : undefined
+        ),
+        wrapWidth: nextLayout?.wrapWidth,
         composing: false
       },
       caret: options?.caret ?? { kind: 'end' },
@@ -135,9 +140,24 @@ export const createLocalEditActions = ({
   return {
     startNode,
     startEdgeLabel,
-    input: state.edit.mutate.input,
+    input: (text) => {
+      state.edit.mutate.input(text)
+
+      const current = state.edit.source.get()
+      if (!current || current.kind !== 'node') {
+        return
+      }
+
+      const layout = getLayout()
+      const nextLayout = layout?.editNode({
+        nodeId: current.nodeId,
+        field: current.field,
+        text
+      })
+      state.edit.mutate.layout(nextLayout ?? {})
+    },
     caret: state.edit.mutate.caret,
-    measure: state.edit.mutate.measure,
+    layout: state.edit.mutate.layout,
     clear: state.edit.mutate.clear
   }
 }

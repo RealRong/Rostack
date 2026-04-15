@@ -1,28 +1,26 @@
-import type {
-  CommitImpact,
-  DataDoc,
-  FieldId,
-  RecordId
-} from '@dataview/core/contracts'
 import {
   buildRecordDefaultSearchText,
   buildRecordFieldSearchText
 } from '@dataview/core/search'
-import {
-  createFieldSyncContext,
-  shouldDropFieldIndex,
-  shouldRebuildFieldIndex,
-  shouldSyncFieldIndex
-} from '@dataview/engine/active/index/sync'
-import {
-  hasIndexChanges
-} from '@dataview/engine/active/index/shared'
 import type {
+  FieldId,
+  RecordId
+} from '@dataview/core/contracts'
+import { createMapPatchBuilder } from '@dataview/engine/active/index/builder'
+import type {
+  IndexDeriveContext,
+  IndexReadContext,
   RecordIndex,
   SearchDemand,
   SearchIndex,
   SearchTextIndex
 } from '@dataview/engine/active/index/contracts'
+import {
+  ensureFieldIndexes,
+  shouldDropFieldIndex,
+  shouldRebuildFieldIndex,
+  shouldSyncFieldIndex
+} from '@dataview/engine/active/index/sync'
 
 const buildTextIndex = (input: {
   ids: readonly RecordId[]
@@ -49,38 +47,40 @@ const updateTextIndex = (input: {
   touchedRecords: ReadonlySet<RecordId>
   readText: (recordId: RecordId) => string | undefined
 }): SearchTextIndex => {
-  const texts = new Map(input.previous.texts)
-  let changed = false
+  const previous = input.previous.texts
+  const texts = createMapPatchBuilder(previous)
 
   input.touchedRecords.forEach(recordId => {
-    const previousText = texts.get(recordId)
+    const previousHas = previous.has(recordId)
+    const previousText = previous.get(recordId)
     const nextText = input.readText(recordId)
-    if (previousText === nextText) {
+    const nextHas = Boolean(nextText)
+
+    if (previousHas === nextHas && previousText === nextText) {
       return
     }
 
     if (nextText) {
       texts.set(recordId, nextText)
-    } else {
-      texts.delete(recordId)
+      return
     }
 
-    changed = true
+    texts.delete(recordId)
   })
 
-  return changed
+  return texts.changed()
     ? {
-        texts
+        texts: texts.finish()
       }
     : input.previous
 }
 
 const buildFieldIndex = (
-  document: DataDoc,
+  context: IndexReadContext,
   records: RecordIndex,
   fieldId: FieldId
 ): SearchTextIndex => {
-  if (fieldId !== 'title' && !document.fields.byId[fieldId]) {
+  if (fieldId !== 'title' && !context.fieldIdSet.has(fieldId)) {
     return {
       texts: new Map()
     }
@@ -89,39 +89,29 @@ const buildFieldIndex = (
   return buildTextIndex({
     ids: records.ids,
     readText: recordId => {
-      const record = records.rows.get(recordId)
+      const record = records.byId[recordId]
       return record
-        ? buildRecordFieldSearchText(record, fieldId, document)
+        ? buildRecordFieldSearchText(record, fieldId, context.document)
         : undefined
     }
   })
 }
 
 const buildAllIndex = (
-  document: DataDoc,
+  context: IndexReadContext,
   records: RecordIndex
 ): SearchTextIndex => buildTextIndex({
     ids: records.ids,
     readText: recordId => {
-      const record = records.rows.get(recordId)
+      const record = records.byId[recordId]
       return record
-        ? buildRecordDefaultSearchText(record, document)
+        ? buildRecordDefaultSearchText(record, context.document)
         : undefined
     }
   })
 
-const normalizeDemand = (
-  demand?: SearchDemand
-): {
-  all: boolean
-  fields: ReadonlySet<FieldId>
-} => ({
-  all: demand?.all === true,
-  fields: new Set(demand?.fields ?? [])
-})
-
 export const buildSearchIndex = (
-  document: DataDoc,
+  context: IndexReadContext,
   records: RecordIndex,
   demand?: SearchDemand,
   rev = 1
@@ -130,7 +120,7 @@ export const buildSearchIndex = (
     fields: new Map(),
     rev
   }
-  const built = ensureSearchIndex(base, document, records, demand)
+  const built = ensureSearchIndex(base, context, records, demand)
 
   return built === base
     ? base
@@ -142,33 +132,35 @@ export const buildSearchIndex = (
 
 export const ensureSearchIndex = (
   previous: SearchIndex,
-  document: DataDoc,
+  context: IndexReadContext,
   records: RecordIndex,
   demand?: SearchDemand
 ): SearchIndex => {
-  const normalized = normalizeDemand(demand)
-  let changed = false
   let nextAll = previous.all
-  const nextFields = new Map(previous.fields)
 
-  if (normalized.all && !previous.all) {
-    nextAll = buildAllIndex(document, records)
-    changed = true
+  if (demand?.all && !previous.all) {
+    nextAll = buildAllIndex(context, records)
   }
 
-  normalized.fields.forEach(fieldId => {
-    if (nextFields.has(fieldId)) {
-      return
-    }
-
-    nextFields.set(fieldId, buildFieldIndex(document, records, fieldId))
-    changed = true
+  const ensured = ensureFieldIndexes({
+    previous: previous.fields,
+    hasField: fieldId => context.fieldIdSet.has(fieldId),
+    fieldIds: demand?.fields ?? [],
+    build: fieldId => buildFieldIndex(context, records, fieldId)
   })
 
-  return changed
+  if (!previous.all && nextAll) {
+    return {
+      all: nextAll,
+      fields: ensured.fields,
+      rev: previous.rev + 1
+    }
+  }
+
+  return ensured.changed
     ? {
         ...(nextAll ? { all: nextAll } : {}),
-        fields: nextFields,
+        fields: ensured.fields,
         rev: previous.rev + 1
       }
     : previous
@@ -176,103 +168,80 @@ export const ensureSearchIndex = (
 
 export const syncSearchIndex = (
   previous: SearchIndex,
-  document: DataDoc,
-  records: RecordIndex,
-  impact: CommitImpact
+  context: IndexDeriveContext,
+  records: RecordIndex
 ): SearchIndex => {
-  if (!hasIndexChanges(impact)) {
+  if (!context.impact.changed) {
     return previous
   }
 
   const hasLoadedAll = Boolean(previous.all)
-  const loadedFieldIds = new Set(previous.fields.keys())
-  if (!hasLoadedAll && !loadedFieldIds.size) {
+  if (!hasLoadedAll && !previous.fields.size) {
     return previous
   }
 
-  const context = createFieldSyncContext(impact, {
-    includeTitlePatch: true,
-    includeRecordSetChange: true
-  })
-
-  const rebuildAll = hasLoadedAll && (
-    context.schemaFields.size > 0
-    || context.touchedRecords === 'all'
-  )
-  const rebuildFieldIds = new Set<FieldId>(
-    Array.from(loadedFieldIds).filter(fieldId => (
-      shouldRebuildFieldIndex(context, fieldId)
-    ))
-  )
-
-  let changed = false
+  const fields = createMapPatchBuilder(previous.fields)
   let nextAll = previous.all
-  const nextFields = new Map(previous.fields)
 
-  if (rebuildAll) {
-    nextAll = buildAllIndex(document, records)
-    changed = true
-  } else if (hasLoadedAll && context.touchedRecords !== 'all' && context.touchedRecords.size) {
+  if (hasLoadedAll && (
+    context.impact.schemaFields.size > 0
+    || context.impact.touchedRecords === 'all'
+  )) {
+    nextAll = buildAllIndex(context, records)
+  } else if (hasLoadedAll && context.impact.touchedRecords !== 'all' && context.impact.touchedRecords.size) {
     const next = updateTextIndex({
       previous: previous.all!,
-      touchedRecords: context.touchedRecords,
+      touchedRecords: context.impact.touchedRecords,
       readText: recordId => {
-        const record = records.rows.get(recordId)
+        const record = records.byId[recordId]
         return record
-          ? buildRecordDefaultSearchText(record, document)
+          ? buildRecordDefaultSearchText(record, context.document)
           : undefined
       }
     })
     if (next !== previous.all) {
       nextAll = next
-      changed = true
     }
   }
 
-  Array.from(loadedFieldIds).forEach(fieldId => {
-    if (shouldDropFieldIndex(document, context, fieldId)) {
-      nextFields.delete(fieldId)
-      changed = true
+  previous.fields.forEach((previousField, fieldId) => {
+    if (shouldDropFieldIndex(id => context.fieldIdSet.has(id), context.impact, fieldId)) {
+      fields.delete(fieldId)
       return
     }
 
-    if (rebuildFieldIds.has(fieldId)) {
-      nextFields.set(fieldId, buildFieldIndex(document, records, fieldId))
-      changed = true
+    if (shouldRebuildFieldIndex(context.impact, fieldId)) {
+      fields.set(fieldId, buildFieldIndex(context, records, fieldId))
       return
     }
 
-    if (!shouldSyncFieldIndex(context, fieldId)) {
-      return
-    }
-
-    const previousField = previous.fields.get(fieldId)
-    if (!previousField) {
+    if (!shouldSyncFieldIndex(context.impact, fieldId)) {
       return
     }
 
     const nextField = updateTextIndex({
       previous: previousField,
-      touchedRecords: context.touchedRecords,
+      touchedRecords: context.impact.touchedRecords,
       readText: recordId => {
-        const record = records.rows.get(recordId)
+        const record = records.byId[recordId]
         return record
-          ? buildRecordFieldSearchText(record, fieldId, document)
+          ? buildRecordFieldSearchText(record, fieldId, context.document)
           : undefined
       }
     })
 
     if (nextField !== previousField) {
-      nextFields.set(fieldId, nextField)
-      changed = true
+      fields.set(fieldId, nextField)
     }
   })
 
-  return changed
-    ? {
-        ...(nextAll ? { all: nextAll } : {}),
-        fields: nextFields,
-        rev: previous.rev + 1
-      }
-    : previous
+  if (nextAll === previous.all && !fields.changed()) {
+    return previous
+  }
+
+  return {
+    ...(nextAll ? { all: nextAll } : {}),
+    fields: fields.finish(),
+    rev: previous.rev + 1
+  }
 }

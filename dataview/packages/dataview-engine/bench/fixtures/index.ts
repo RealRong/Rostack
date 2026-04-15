@@ -146,7 +146,10 @@ const createFixture = (size: keyof typeof SIZE_TO_COUNT) => {
   }
 
   const middle = Math.floor(recordCount / 2)
-  const batchCount = Math.min(100, recordCount)
+  const batchCount = Math.min(
+    Math.max(Math.floor(recordCount / 20), 100),
+    5000
+  )
 
   return {
     size,

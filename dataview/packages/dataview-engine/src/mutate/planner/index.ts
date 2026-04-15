@@ -10,10 +10,9 @@ import {
 } from '@dataview/engine/mutate/issues'
 import { planRecordAction } from '@dataview/engine/mutate/planner/records'
 import {
-  planResult,
-  sourceOf,
+  createPlannerScope,
   type PlannedActionResult
-} from '@dataview/engine/mutate/planner/shared'
+} from '@dataview/engine/mutate/planner/scope'
 import { planViewAction } from '@dataview/engine/mutate/planner/views'
 
 export interface PlannedWriteBatch {
@@ -31,7 +30,14 @@ export const planActions = (input: {
   let workingDocument = input.document
 
   for (const [index, action] of input.actions.entries()) {
-    const planned = planAction(workingDocument, action, index)
+    const planned = planAction(
+      createPlannerScope({
+        document: workingDocument,
+        action,
+        index
+      }),
+      action
+    )
     issues.push(...planned.issues)
     if (hasValidationErrors(planned.issues)) {
       return {
@@ -66,32 +72,33 @@ export type {
 } from '@dataview/engine/mutate/issues'
 
 const lowerExternalBump = (
-  _document: DataDoc,
-  action: Extract<Action, { type: 'external.bumpVersion' }>,
-  index: number
+  scope: ReturnType<typeof createPlannerScope>,
+  action: Extract<Action, { type: 'external.bumpVersion' }>
 ): PlannedActionResult => {
-  const source = sourceOf(index, action)
-  const issues = isNonEmptyString(action.source)
-    ? []
-    : [createIssue(source, 'error', 'external.invalidSource', 'external.bumpVersion requires a non-empty source', 'source')]
+  if (!isNonEmptyString(action.source)) {
+    scope.issue(
+      'external.invalidSource',
+      'external.bumpVersion requires a non-empty source',
+      'source'
+    )
+  }
 
-  return planResult(issues, [{
+  return scope.finish({
     type: 'external.version.bump',
     source: action.source
-  }])
+  })
 }
 
 const planAction = (
-  document: DataDoc,
-  action: Action,
-  index: number
+  scope: ReturnType<typeof createPlannerScope>,
+  action: Action
 ): PlannedActionResult => {
   switch (action.type) {
     case 'record.create':
     case 'record.patch':
     case 'record.remove':
     case 'record.fields.writeMany':
-      return planRecordAction(document, action, index)
+      return planRecordAction(scope, action)
     case 'field.create':
     case 'field.patch':
     case 'field.replace':
@@ -102,14 +109,14 @@ const planAction = (
     case 'field.option.update':
     case 'field.option.remove':
     case 'field.remove':
-      return planFieldAction(document, action, index)
+      return planFieldAction(scope, action)
     case 'view.create':
     case 'view.patch':
     case 'view.open':
     case 'view.remove':
-      return planViewAction(document, action, index)
+      return planViewAction(scope, action)
     case 'external.bumpVersion':
-      return lowerExternalBump(document, action, index)
+      return lowerExternalBump(scope, action)
     default: {
       const unexpectedAction: never = action
       throw new Error(`Unsupported action: ${unexpectedAction}`)

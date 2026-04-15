@@ -4,7 +4,7 @@ const scenario = (definition) => definition
 
 const openView = (engine, viewId) => {
   engine.views.open(viewId)
-  return engine.view
+  return engine.active
 }
 
 const SCENARIOS = [
@@ -13,6 +13,18 @@ const SCENARIOS = [
     title: 'Single numeric value update',
     run: (engine, fixture) => {
       engine.records.fields.set(fixture.ids.target, fixture.fields.points, fixture.recordCount + 1)
+    }
+  }),
+  scenario({
+    id: 'record.value.points.bulk',
+    title: 'Bulk numeric value update',
+    run: (engine, fixture) => {
+      engine.records.fields.writeMany({
+        recordIds: fixture.ids.batch,
+        set: {
+          [fixture.fields.points]: fixture.recordCount + 1
+        }
+      })
     }
   }),
   scenario({
@@ -26,6 +38,21 @@ const SCENARIOS = [
     }
   }),
   scenario({
+    id: 'record.value.status.bulk.grouped',
+    title: 'Bulk group field update in grouped view',
+    setup: (engine, fixture) => {
+      openView(engine, fixture.viewId).group.set(fixture.fields.status)
+    },
+    run: (engine, fixture) => {
+      engine.records.fields.writeMany({
+        recordIds: fixture.ids.batch,
+        set: {
+          [fixture.fields.status]: STATUS_OPTIONS[2].id
+        }
+      })
+    }
+  }),
+  scenario({
     id: 'record.value.points.grouped.summary',
     title: 'Single summary field update in grouped summarized view',
     setup: (engine, fixture) => {
@@ -34,6 +61,22 @@ const SCENARIOS = [
     },
     run: (engine, fixture) => {
       engine.records.fields.set(fixture.ids.target, fixture.fields.points, fixture.recordCount + 1)
+    }
+  }),
+  scenario({
+    id: 'record.value.points.bulk.grouped.summary',
+    title: 'Bulk summary field update in grouped summarized view',
+    setup: (engine, fixture) => {
+      openView(engine, fixture.viewId).group.set(fixture.fields.status)
+      openView(engine, fixture.viewId).summary.set(fixture.fields.points, 'sum')
+    },
+    run: (engine, fixture) => {
+      engine.records.fields.writeMany({
+        recordIds: fixture.ids.batch,
+        set: {
+          [fixture.fields.points]: fixture.recordCount + 1
+        }
+      })
     }
   }),
   scenario({

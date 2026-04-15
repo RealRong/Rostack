@@ -6,10 +6,14 @@ import type {
 import { sameOrder } from '@shared/core'
 import {
   buildSectionAggregateState,
-  patchSectionAggregateState,
+  createAggregateBuilder,
   sameAggregateEntry
 } from '@dataview/engine/active/index/aggregate'
+import {
+  createMapPatchBuilder
+} from '@dataview/engine/active/index/builder'
 import type {
+  AggregateEntry,
   IndexState,
   SectionAggregateState
 } from '@dataview/engine/active/index/contracts'
@@ -23,17 +27,31 @@ import {
 } from '@dataview/engine/summary/empty'
 import { readCalcFields } from '@dataview/engine/active/snapshot/summary/compute'
 
+const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
+const EMPTY_FIELD_ENTRIES = new Map<RecordId, AggregateEntry>()
+const EMPTY_FIELD_SUMMARIES = new Map<FieldId, SectionAggregateState>()
+const EMPTY_FIELD_STATE = buildSectionAggregateState(EMPTY_FIELD_ENTRIES)
+
 const buildSectionFieldState = (input: {
-  sectionIds: readonly string[]
-  entries: ReadonlyMap<string, import('@dataview/engine/active/index/contracts').AggregateEntry>
-}): SectionAggregateState => buildSectionAggregateState(new Map(
-  input.sectionIds.flatMap(recordId => {
+  sectionIds: readonly RecordId[]
+  entries: ReadonlyMap<RecordId, AggregateEntry>
+}): SectionAggregateState => {
+  if (!input.entries.size || !input.sectionIds.length) {
+    return EMPTY_FIELD_STATE
+  }
+
+  const next = new Map<RecordId, AggregateEntry>()
+  input.sectionIds.forEach(recordId => {
     const entry = input.entries.get(recordId)
-    return entry
-      ? [[recordId, entry] as const]
-      : []
+    if (entry) {
+      next.set(recordId, entry)
+    }
   })
-))
+
+  return next.size
+    ? buildSectionAggregateState(next)
+    : EMPTY_FIELD_STATE
+}
 
 const buildSummaryState = (input: {
   sections: SectionState
@@ -81,9 +99,54 @@ const isRecordInSection = (
   sections: SectionState,
   sectionKey: SectionKey,
   recordId: RecordId
-) => (sections.byRecord.get(recordId) ?? []).includes(sectionKey)
+) => (sections.byRecord.get(recordId) ?? EMPTY_SECTION_KEYS).includes(sectionKey)
 
-const buildEmptyFieldState = (): SectionAggregateState => buildSectionAggregateState(new Map())
+const collectTouchedSectionRecords = (input: {
+  previousSections: SectionState
+  sections: SectionState
+  touchedRecords: ReadonlySet<RecordId>
+}) => {
+  const recordsBySection = new Map<SectionKey, RecordId[]>()
+  const membershipChanged = new Set<SectionKey>()
+  const addRecord = (
+    sectionKey: SectionKey,
+    recordId: RecordId
+  ) => {
+    const ids = recordsBySection.get(sectionKey)
+    if (ids) {
+      ids.push(recordId)
+      return
+    }
+
+    recordsBySection.set(sectionKey, [recordId])
+  }
+
+  input.touchedRecords.forEach(recordId => {
+    const previousKeys = input.previousSections.byRecord.get(recordId) ?? EMPTY_SECTION_KEYS
+    const nextKeys = input.sections.byRecord.get(recordId) ?? EMPTY_SECTION_KEYS
+
+    previousKeys.forEach(sectionKey => {
+      addRecord(sectionKey, recordId)
+    })
+    nextKeys.forEach(sectionKey => {
+      if (!previousKeys.includes(sectionKey)) {
+        addRecord(sectionKey, recordId)
+      }
+    })
+
+    if (sameOrder(previousKeys, nextKeys)) {
+      return
+    }
+
+    previousKeys.forEach(sectionKey => membershipChanged.add(sectionKey))
+    nextKeys.forEach(sectionKey => membershipChanged.add(sectionKey))
+  })
+
+  return {
+    recordsBySection,
+    membershipChanged
+  }
+}
 
 export const syncSummaryState = (input: {
   previous?: SummaryState
@@ -126,12 +189,12 @@ export const syncSummaryState = (input: {
   const previous = input.previous
   const previousSections = input.previousSections
   const touchedRecords = input.touchedRecords as ReadonlySet<RecordId>
-  const touchedSectionKeys = new Set<SectionKey>()
-
-  touchedRecords.forEach(recordId => {
-    ;(previousSections.byRecord.get(recordId) ?? []).forEach(sectionKey => touchedSectionKeys.add(sectionKey))
-    ;(input.sections.byRecord.get(recordId) ?? []).forEach(sectionKey => touchedSectionKeys.add(sectionKey))
+  const touchedSections = collectTouchedSectionRecords({
+    previousSections,
+    sections: input.sections,
+    touchedRecords
   })
+  let changed = previous.bySection.size !== input.sections.order.length
 
   const bySection = new Map<SectionKey, ReadonlyMap<FieldId, SectionAggregateState>>()
 
@@ -142,44 +205,39 @@ export const syncSummaryState = (input: {
       return
     }
 
-    if (!touchedSectionKeys.has(sectionKey)) {
-      bySection.set(sectionKey, previous.bySection.get(sectionKey) ?? new Map())
+    const previousByField = previous.bySection.get(sectionKey) ?? EMPTY_FIELD_SUMMARIES
+    const sectionTouchedRecords = touchedSections.recordsBySection.get(sectionKey)
+    if (!sectionTouchedRecords?.length) {
+      bySection.set(sectionKey, previousByField)
       return
     }
 
-    const previousByField = previous.bySection.get(sectionKey) ?? new Map()
-    const nextByField = new Map<FieldId, SectionAggregateState>()
+    const nextByField = createMapPatchBuilder(previousByField)
+    const membershipChanged = !previousSection || touchedSections.membershipChanged.has(sectionKey)
 
     calcFields.forEach(fieldId => {
       const fieldIndex = input.index.calculations.fields.get(fieldId)
-      const fieldEntries = fieldIndex?.entries ?? new Map()
+      const fieldEntries = fieldIndex?.entries ?? EMPTY_FIELD_ENTRIES
       const previousFieldState = previousByField.get(fieldId)
+      const fieldTouched = input.touchedFields === 'all' || input.touchedFields.has(fieldId)
 
       if (!previousSection || !previousFieldState) {
-        nextByField.set(
-          fieldId,
-          fieldEntries.size
-            ? buildSectionFieldState({
-                sectionIds: currentSection.recordIds,
-                entries: fieldEntries
-              })
-            : buildEmptyFieldState()
-        )
+        nextByField.set(fieldId, buildSectionFieldState({
+          sectionIds: currentSection.recordIds,
+          entries: fieldEntries
+        }))
         return
       }
 
-      if (
-        input.touchedFields !== 'all'
-        && !input.touchedFields.has(fieldId)
-        && sameOrder(previousSection.recordIds, currentSection.recordIds)
-      ) {
-        nextByField.set(fieldId, previousFieldState)
+      if (!membershipChanged && !fieldTouched) {
         return
       }
 
-      let state = previousFieldState
+      const entries = createMapPatchBuilder(previousFieldState.entries)
+      const aggregate = createAggregateBuilder(previousFieldState)
+      let fieldChanged = false
 
-      touchedRecords.forEach(recordId => {
+      sectionTouchedRecords.forEach(recordId => {
         const wasInSection = isRecordInSection(previousSections, sectionKey, recordId)
         const isInSection = isRecordInSection(input.sections, sectionKey, recordId)
 
@@ -188,7 +246,7 @@ export const syncSummaryState = (input: {
         }
 
         const previousEntry = wasInSection
-          ? state.entries.get(recordId)
+          ? previousFieldState.entries.get(recordId)
           : undefined
         const nextEntry = isInSection
           ? fieldEntries.get(recordId)
@@ -198,26 +256,36 @@ export const syncSummaryState = (input: {
           return
         }
 
-        state = patchSectionAggregateState({
-          state,
-          recordId,
-          previous: previousEntry,
-          next: nextEntry
-        })
+        fieldChanged = true
+        if (nextEntry) {
+          entries.set(recordId, nextEntry)
+        } else {
+          entries.delete(recordId)
+        }
+        aggregate.apply(previousEntry, nextEntry)
       })
 
-      nextByField.set(fieldId, state)
+      if (!fieldChanged) {
+        return
+      }
+
+      const nextEntries = entries.finish()
+      nextByField.set(fieldId, {
+        ...aggregate.finish(nextEntries),
+        entries: nextEntries
+      })
     })
 
-    bySection.set(
-      sectionKey,
-      Array.from(nextByField.entries()).every(([fieldId, state]) => previousByField.get(fieldId) === state)
-        ? previousByField
-        : nextByField
-    )
+    const nextByFieldMap = nextByField.finish()
+    bySection.set(sectionKey, nextByFieldMap)
+    if (nextByFieldMap !== previousByField) {
+      changed = true
+    }
   })
 
-  return {
-    bySection
-  }
+  return changed
+    ? {
+        bySection
+      }
+    : previous
 }

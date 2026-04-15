@@ -1,9 +1,7 @@
 import { isTextContentEmpty } from '@whiteboard/core/node'
-import { isSizeEqual } from '@whiteboard/core/geometry'
 import {
   compileNodeDataUpdate,
-  compileNodeStyleUpdate,
-  mergeNodeUpdates
+  compileNodeStyleUpdate
 } from '@whiteboard/core/schema'
 import type { NodeId } from '@whiteboard/core/types'
 import type { NodeContext } from '@whiteboard/editor/command/node/context'
@@ -56,8 +54,7 @@ export const createNodeTextCommands = (
   commit: ({
     nodeId,
     field,
-    value,
-    size
+    value
   }) => {
     const committed = ctx.read.committed(nodeId)
     if (!committed) {
@@ -69,20 +66,6 @@ export const createNodeTextCommands = (
     const currentValue = typeof committed.node.data?.[field] === 'string'
       ? committed.node.data[field] as string
       : ''
-    const previewItem = ctx.read.live(nodeId)
-    const nextMeasuredSize = committed.node.type === 'text' && field === 'text'
-      ? size ?? (
-          previewItem
-            ? {
-                width: previewItem.rect.width,
-                height: previewItem.rect.height
-              }
-            : undefined
-        )
-      : undefined
-    const sizeUpdate = nextMeasuredSize && !isSizeEqual(nextMeasuredSize, committed.rect)
-      ? nextMeasuredSize
-      : undefined
 
     ctx.preview.text.clear(nodeId)
     ctx.edit.clear()
@@ -96,23 +79,11 @@ export const createNodeTextCommands = (
       return ctx.write.deleteCascade([nodeId])
     }
 
-    if (value === currentValue && !sizeUpdate) {
+    if (value === currentValue) {
       return undefined
     }
 
-    return ctx.write.update(
-      nodeId,
-      mergeNodeUpdates(
-        compileNodeDataUpdate(field, value),
-        sizeUpdate
-          ? {
-              fields: {
-                size: sizeUpdate
-              }
-            }
-          : undefined
-      )
-    )
+    return ctx.write.update(nodeId, compileNodeDataUpdate(field, value))
   },
   color: (nodeIds, color) => ctx.write.updateMany(
     toNodeStyleBatchUpdates(nodeIds, 'color', color)

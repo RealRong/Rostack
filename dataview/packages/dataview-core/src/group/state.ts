@@ -252,7 +252,7 @@ const patchGroup = (
   })
 }
 
-export const clearGroup = (
+export const clear = (
   group: ViewGroup | undefined
 ): ViewGroup | undefined => (
   group
@@ -260,7 +260,7 @@ export const clearGroup = (
     : group
 )
 
-export const setGroup = (
+export const set = (
   group: ViewGroup | undefined,
   field: Field
 ): ViewGroup | undefined => {
@@ -278,16 +278,16 @@ export const setGroup = (
     : nextGroup
 }
 
-export const toggleGroup = (
+export const toggle = (
   group: ViewGroup | undefined,
   field: Field
 ): ViewGroup | undefined => (
   group?.field === field.id
-    ? clearGroup(group)
-    : setGroup(group, field)
+    ? clear(group)
+    : set(group, field)
 )
 
-export const setGroupMode = (
+export const setMode = (
   group: ViewGroup | undefined,
   field: Field,
   mode: string
@@ -300,7 +300,7 @@ export const setGroupMode = (
     : nextGroup
 }
 
-export const setGroupBucketSort = (
+export const setSort = (
   group: ViewGroup | undefined,
   field: Field,
   bucketSort: ViewGroup['bucketSort']
@@ -313,7 +313,7 @@ export const setGroupBucketSort = (
     : nextGroup
 }
 
-export const setGroupBucketInterval = (
+export const setInterval = (
   group: ViewGroup | undefined,
   field: Field,
   bucketInterval: ViewGroup['bucketInterval']
@@ -326,7 +326,7 @@ export const setGroupBucketInterval = (
     : nextGroup
 }
 
-export const setGroupShowEmpty = (
+export const setShowEmpty = (
   group: ViewGroup | undefined,
   field: Field,
   showEmpty: boolean
@@ -339,7 +339,7 @@ export const setGroupShowEmpty = (
     : nextGroup
 }
 
-export const setGroupBucketHidden = (
+export const setBucketHidden = (
   group: ViewGroup | undefined,
   field: Field,
   key: string,
@@ -359,7 +359,7 @@ export const setGroupBucketHidden = (
     : nextGroup
 }
 
-export const setGroupBucketCollapsed = (
+export const setBucketCollapsed = (
   group: ViewGroup | undefined,
   field: Field,
   key: string,
@@ -379,7 +379,7 @@ export const setGroupBucketCollapsed = (
     : nextGroup
 }
 
-export const toggleGroupBucketCollapsed = (
+export const toggleBucketCollapsed = (
   group: ViewGroup | undefined,
   field: Field,
   key: string
@@ -388,7 +388,7 @@ export const toggleGroupBucketCollapsed = (
     return group
   }
 
-  return setGroupBucketCollapsed(
+  return setBucketCollapsed(
     group,
     field,
     key,

@@ -4,10 +4,6 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import {
-  getDocumentFieldById,
-  getDocumentViewById
-} from '@dataview/core/document'
-import {
   createGroupDemand
 } from '@dataview/engine/active/index/group/demand'
 import {
@@ -16,13 +12,15 @@ import {
 import type {
   IndexDemand
 } from '@dataview/engine/active/index/contracts'
+import { createStaticDocumentReader } from '@dataview/engine/document/reader'
 
 export const resolveViewDemand = (
   document: DataDoc,
   activeViewId?: ViewId
 ): IndexDemand => {
+  const reader = createStaticDocumentReader(document)
   const view = activeViewId
-    ? getDocumentViewById(document, activeViewId)
+    ? reader.views.get(activeViewId)
     : undefined
   if (!view) {
     return {}
@@ -31,7 +29,7 @@ export const resolveViewDemand = (
   const filterGroupFields = new Set<FieldId>()
   const filterSortFields = new Set<FieldId>()
   view.filter.rules.forEach(rule => {
-    const field = getDocumentFieldById(document, rule.fieldId)
+    const field = reader.fields.get(rule.fieldId)
     switch (field?.kind) {
       case 'status':
       case 'select':

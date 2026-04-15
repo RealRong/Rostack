@@ -1,37 +1,34 @@
 import {
-  estimateTextAutoFont,
   resolveTextAutoFont,
-  resolveTextContentBox,
   TEXT_DEFAULT_FONT_SIZE
 } from '@whiteboard/core/node'
-import type { Rect } from '@whiteboard/core/types'
+import type { Size } from '@whiteboard/core/types'
 import {
   readLineHeightPx,
-  readNumber,
   readPx
 } from '@whiteboard/react/features/node/dom/textTypography'
 
-type StickyFitElements = {
+type TextFitElements = {
   frame: HTMLDivElement
   content: HTMLDivElement
 }
 
-let stickyFitElements: StickyFitElements | null = null
+let textFitElements: TextFitElements | null = null
 
-const ensureStickyFitElements = (): StickyFitElements | null => {
+const ensureTextFitElements = (): TextFitElements | null => {
   if (typeof document === 'undefined') {
     return null
   }
 
-  if (stickyFitElements) {
-    return stickyFitElements
+  if (textFitElements) {
+    return textFitElements
   }
 
   const host = document.createElement('div')
   const frame = document.createElement('div')
   const content = document.createElement('div')
 
-  host.setAttribute('data-wb-sticky-fit-measure', 'true')
+  host.setAttribute('data-wb-text-fit-measure', 'true')
   host.style.position = 'fixed'
   host.style.left = '-100000px'
   host.style.top = '-100000px'
@@ -58,28 +55,32 @@ const ensureStickyFitElements = (): StickyFitElements | null => {
   host.appendChild(frame)
   document.body.appendChild(host)
 
-  stickyFitElements = {
+  textFitElements = {
     frame,
     content
   }
 
-  return stickyFitElements
+  return textFitElements
 }
 
-const readStickyFitSignature = ({
+const readTextFitSignature = ({
   text,
-  width,
-  height,
-  style
+  box,
+  style,
+  textAlign,
+  minFontSize,
+  maxFontSize
 }: {
   text: string
-  width: number
-  height: number
+  box: Size
   style: CSSStyleDeclaration
+  textAlign?: 'left' | 'center' | 'right'
+  minFontSize: number
+  maxFontSize: number
 }) => [
   text,
-  Math.round(width * 100) / 100,
-  Math.round(height * 100) / 100,
+  Math.round(box.width * 100) / 100,
+  Math.round(box.height * 100) / 100,
   style.fontFamily,
   style.fontStyle,
   style.fontWeight,
@@ -88,75 +89,66 @@ const readStickyFitSignature = ({
   style.textTransform,
   style.whiteSpace,
   style.wordBreak,
-  style.overflowWrap
+  style.overflowWrap,
+  textAlign,
+  minFontSize,
+  maxFontSize
 ].join('|')
 
 const fontSizeCache = new Map<string, number>()
 
-export const measureStickyFontSize = ({
+export const measureFitFontSize = ({
   text,
-  rect,
+  box,
   source,
-  frame,
-  maxFontSize
+  minFontSize,
+  maxFontSize,
+  textAlign
 }: {
   text: string
-  rect: Rect
+  box: Size
   source: HTMLElement
-  frame: HTMLElement
+  minFontSize?: number
   maxFontSize?: number
+  textAlign?: 'left' | 'center' | 'right'
 }) => {
   const resolvedText = text.trim()
-  const fallback = estimateTextAutoFont('sticky', rect)
-  if (!resolvedText) {
+  const range = resolveTextAutoFont('sticky', box)
+  const fallback = Math.max(
+    range.min,
+    Math.min(range.max, range.initial)
+  )
+  if (!resolvedText || box.width <= 0 || box.height <= 0) {
     return fallback
   }
 
-  const elements = ensureStickyFitElements()
+  const elements = ensureTextFitElements()
   if (!elements) {
-    return fallback
-  }
-
-  const frameRect = frame.getBoundingClientRect()
-  if (frameRect.width <= 0 || frameRect.height <= 0) {
     return fallback
   }
 
   const sourceStyle = window.getComputedStyle(source)
   const sourceFontSize = readPx(sourceStyle.fontSize, TEXT_DEFAULT_FONT_SIZE)
-  const contentBox = resolveTextContentBox({
-    width: frameRect.width,
-    height: frameRect.height,
-    paddingTop: readNumber(sourceStyle.paddingTop),
-    paddingRight: readNumber(sourceStyle.paddingRight),
-    paddingBottom: readNumber(sourceStyle.paddingBottom),
-    paddingLeft: readNumber(sourceStyle.paddingLeft),
-    borderTop: readNumber(sourceStyle.borderTopWidth),
-    borderRight: readNumber(sourceStyle.borderRightWidth),
-    borderBottom: readNumber(sourceStyle.borderBottomWidth),
-    borderLeft: readNumber(sourceStyle.borderLeftWidth)
-  })
-  const range = resolveTextAutoFont('sticky', contentBox)
+  const resolvedMinFontSize = Math.max(1, Math.floor(minFontSize ?? range.min))
   const resolvedMaxFontSize = Math.max(
-    range.min,
-    Math.min(
-      range.max,
-      Math.floor(maxFontSize ?? range.initial)
-    )
+    resolvedMinFontSize,
+    Math.floor(maxFontSize ?? range.max)
   )
-  const signature = readStickyFitSignature({
+  const signature = readTextFitSignature({
     text: resolvedText,
-    width: contentBox.width,
-    height: contentBox.height,
-    style: sourceStyle
-  }) + `|${resolvedMaxFontSize}`
+    box,
+    style: sourceStyle,
+    textAlign,
+    minFontSize: resolvedMinFontSize,
+    maxFontSize: resolvedMaxFontSize
+  })
   const cached = fontSizeCache.get(signature)
   if (cached !== undefined) {
     return cached
   }
 
-  elements.frame.style.width = `${contentBox.width}px`
-  elements.frame.style.height = `${contentBox.height}px`
+  elements.frame.style.width = `${box.width}px`
+  elements.frame.style.height = `${box.height}px`
 
   elements.content.style.fontFamily = sourceStyle.fontFamily
   elements.content.style.fontStyle = sourceStyle.fontStyle
@@ -166,11 +158,12 @@ export const measureStickyFontSize = ({
   elements.content.style.whiteSpace = sourceStyle.whiteSpace
   elements.content.style.wordBreak = sourceStyle.wordBreak
   elements.content.style.overflowWrap = sourceStyle.overflowWrap
+  elements.content.style.textAlign = textAlign ?? sourceStyle.textAlign
   elements.content.textContent = resolvedText
 
-  let low = range.min
+  let low = resolvedMinFontSize
   let high = resolvedMaxFontSize
-  let best = resolvedMaxFontSize
+  let best = fallback
 
   while (low <= high) {
     const mid = Math.floor((low + high) / 2)
@@ -182,8 +175,8 @@ export const measureStickyFontSize = ({
     )}px`
 
     const fits = (
-      elements.frame.scrollWidth <= contentBox.width
-      && elements.frame.scrollHeight <= contentBox.height
+      elements.frame.scrollWidth <= box.width
+      && elements.frame.scrollHeight <= box.height
     )
 
     if (fits) {

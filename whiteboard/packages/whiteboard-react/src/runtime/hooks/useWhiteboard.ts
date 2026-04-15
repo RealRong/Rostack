@@ -6,11 +6,13 @@ import type { ClipboardBridge } from '@whiteboard/react/runtime/bridge/clipboard
 import type { InsertBridge } from '@whiteboard/react/runtime/bridge/insert'
 import type { PointerBridge } from '@whiteboard/react/runtime/bridge/pointer'
 import type { Engine } from '@whiteboard/engine'
+import type { TextSourceStore } from '@whiteboard/react/features/node/dom/textSourceStore'
 
 export type WhiteboardServicesContextValue = {
   editor: WhiteboardRuntime
   engine: Engine
   registry: NodeRegistry
+  textSources: TextSourceStore
   pointer: PointerBridge
   clipboard: ClipboardBridge
   insert: InsertBridge

@@ -7,33 +7,32 @@ import {
 } from '@dataview/core/view'
 import type { ActiveViewApi } from '@dataview/engine/contracts/public'
 import type { ActiveViewContext } from '@dataview/engine/active/context'
-import { withViewPatch } from '@dataview/engine/active/commands/shared'
 
 export const createDisplayApi = (
   base: ActiveViewContext
 ): ActiveViewApi['display'] => ({
   replace: fieldIds => {
-    withViewPatch(base, () => ({
+    base.patch(() => ({
       display: replaceDisplayFields(fieldIds)
     }))
   },
   move: (fieldIds, beforeFieldId) => {
-    withViewPatch(base, view => ({
+    base.patch(view => ({
       display: moveDisplayFields(view.display, fieldIds, beforeFieldId)
     }))
   },
   show: (fieldId, beforeFieldId) => {
-    withViewPatch(base, view => ({
+    base.patch(view => ({
       display: showDisplayField(view.display, fieldId, beforeFieldId)
     }))
   },
   hide: fieldId => {
-    withViewPatch(base, view => ({
+    base.patch(view => ({
       display: hideDisplayField(view.display, fieldId)
     }))
   },
   clear: () => {
-    withViewPatch(base, () => ({
+    base.patch(() => ({
       display: clearDisplayFields()
     }))
   }

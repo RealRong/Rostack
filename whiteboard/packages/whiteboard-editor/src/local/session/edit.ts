@@ -10,14 +10,12 @@ import { createCommandState } from '@whiteboard/editor/local/session/store'
 
 export type EditField = 'text' | 'title'
 export type EditEmptyBehavior = 'keep' | 'remove' | 'default'
-export type EditMeasureMode = 'none' | 'text'
 export type EditStatus = 'active' | 'committing'
 
 export type EditCapability = {
   placeholder?: string
   multiline: boolean
   empty: EditEmptyBehavior
-  measure: EditMeasureMode
   defaultText?: string
 }
 
@@ -35,8 +33,8 @@ export type EditSnapshot = {
 }
 
 export type EditLayout = {
-  baseRect?: Rect
-  measuredSize?: Size
+  size?: Size
+  fontSize?: number
   wrapWidth?: number
   composing: boolean
 }
@@ -73,7 +71,7 @@ export type EditMutate = {
   set: (session: NonNullable<EditSession>) => void
   input: (text: string) => void
   caret: (caret: EditCaret) => void
-  measure: (patch: Partial<EditLayout>) => void
+  layout: (patch: Partial<EditLayout>) => void
   status: (status: EditStatus) => void
   clear: () => void
 }
@@ -136,7 +134,7 @@ export const createEditState = (): EditState => {
               }
         })
       },
-      measure: (patch) => {
+      layout: (patch) => {
         state.update((current) => {
           if (!current) {
             return current
@@ -202,8 +200,8 @@ export const isEditLayoutEqual = (
   left: EditLayout,
   right: EditLayout
 ) => (
-  isEditRectEqual(left.baseRect, right.baseRect)
-  && isEditMeasureEqual(left.measuredSize, right.measuredSize)
+  isEditMeasureEqual(left.size, right.size)
+  && left.fontSize === right.fontSize
   && left.wrapWidth === right.wrapWidth
   && left.composing === right.composing
 )

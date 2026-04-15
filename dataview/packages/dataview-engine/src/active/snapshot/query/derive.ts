@@ -12,9 +12,6 @@ import {
   trimLowercase
 } from '@shared/core'
 import {
-  getDocumentFieldById
-} from '@dataview/core/document'
-import {
   compareFieldValues
 } from '@dataview/core/field'
 import {
@@ -23,8 +20,7 @@ import {
   readFilterOptionSetValue
 } from '@dataview/core/filter'
 import {
-  applyRecordOrder,
-  normalizeRecordOrderIds
+  applyRecordOrder
 } from '@dataview/core/view/order'
 import {
   readGroupFieldIndex
@@ -37,6 +33,10 @@ import type {
 import type {
   QueryState
 } from '@dataview/engine/contracts/internal'
+import {
+  createStaticDocumentReader,
+  type DocumentReader
+} from '@dataview/engine/document/reader'
 
 type EffectiveFilterRule = {
   fieldId: string
@@ -60,21 +60,36 @@ type SearchPlan = {
   candidates?: readonly RecordId[]
 }
 
+const EMPTY_VALUE_MAP = new Map<RecordId, unknown>()
+
 const projectIdsToCurrentOrder = (
   orderedIds: readonly RecordId[],
-  currentIds: readonly RecordId[]
+  currentIds: readonly RecordId[],
+  reverse = false
 ): readonly RecordId[] => {
   if (!orderedIds.length || !currentIds.length) {
     return []
   }
 
   const currentIdSet = new Set(currentIds)
-  return orderedIds.filter(recordId => currentIdSet.has(recordId))
+  if (!reverse) {
+    return orderedIds.filter(recordId => currentIdSet.has(recordId))
+  }
+
+  const projected: RecordId[] = []
+  for (let index = orderedIds.length - 1; index >= 0; index -= 1) {
+    const recordId = orderedIds[index]
+    if (currentIdSet.has(recordId)) {
+      projected.push(recordId)
+    }
+  }
+
+  return projected
 }
 
 const sortRecordIds = (input: {
   ids: readonly RecordId[]
-  document: DataDoc
+  reader: DocumentReader
   index: IndexState
   view: View
 }): readonly RecordId[] => {
@@ -87,18 +102,17 @@ const sortRecordIds = (input: {
     const fieldIndex = input.index.sort.fields.get(sorter.field)
     if (fieldIndex) {
       return projectIdsToCurrentOrder(
-        sorter.direction === 'asc'
-          ? fieldIndex.asc
-          : fieldIndex.desc,
-        input.ids
+        fieldIndex.asc,
+        input.ids,
+        sorter.direction === 'desc'
       )
     }
   }
 
   const sorters = input.view.sort.map(sorter => ({
     direction: sorter.direction,
-    field: getDocumentFieldById(input.document, sorter.field),
-    values: input.index.records.values.get(sorter.field)
+    field: input.reader.fields.get(sorter.field),
+    values: input.index.records.values.get(sorter.field)?.byRecord
   }))
 
   return input.ids.slice().sort((leftId, rightId) => {
@@ -123,16 +137,14 @@ const sortRecordIds = (input: {
 
 const applyViewOrders = (
   ids: readonly RecordId[],
-  view: View
+  view: View,
+  reader: DocumentReader
 ) => {
   if (view.sort.length > 0 || !view.orders.length) {
     return ids
   }
 
-  const normalizedOrders = normalizeRecordOrderIds(
-    view.orders,
-    new Set(ids)
-  )
+  const normalizedOrders = reader.records.normalize(view.orders, ids)
   return normalizedOrders.length
     ? applyRecordOrder(ids, normalizedOrders)
     : ids
@@ -260,10 +272,10 @@ const matchesSearch = (
 }
 
 const resolveEffectiveFilterRules = (
-  document: DataDoc,
+  reader: DocumentReader,
   view: View
 ): readonly EffectiveFilterRule[] => view.filter.rules.flatMap(rule => {
-  const field = getDocumentFieldById(document, rule.fieldId)
+  const field = reader.fields.get(rule.fieldId)
   return isFilterRuleEffective(field, rule)
     ? [{
         fieldId: rule.fieldId,
@@ -283,7 +295,7 @@ const matchesFilter = (input: {
     return true
   }
 
-  const row = input.index.records.rows.get(input.recordId)
+  const row = input.index.records.byId[input.recordId]
   if (!row) {
     return false
   }
@@ -459,7 +471,7 @@ const resolveSortedFilterCandidates = (input: {
   if (input.rule.presetId === 'exists_true') {
     return {
       ids: sortIdsByRecordOrder(
-        Array.from(input.index.records.values.get(input.fieldId)?.keys() ?? []),
+        input.index.records.values.get(input.fieldId)?.ids ?? [],
         input.index.records.order
       ),
       exact: true
@@ -467,7 +479,7 @@ const resolveSortedFilterCandidates = (input: {
   }
 
   const expected = input.rule.value
-  const values = input.index.records.values.get(input.fieldId) ?? new Map<RecordId, unknown>()
+  const values = input.index.records.values.get(input.fieldId)?.byRecord ?? EMPTY_VALUE_MAP
   const compare = (recordId: RecordId) => compareFieldValues(
     input.field,
     values.get(recordId),
@@ -674,12 +686,13 @@ export const buildQueryState = (input: {
   index: IndexState
   previous?: QueryState
 }): QueryState => {
+  const reader = createStaticDocumentReader(input.document)
   const searchPlan = resolveSearchPlan({
     search: input.view.search,
     index: input.index.search,
     recordOrder: input.index.records.order
   })
-  const effectiveRules = resolveEffectiveFilterRules(input.document, input.view)
+  const effectiveRules = resolveEffectiveFilterRules(reader, input.view)
   const filterPlans = resolveFilterPlans({
     rules: effectiveRules,
     index: input.index
@@ -698,11 +711,11 @@ export const buildQueryState = (input: {
 
   const matched = sortRecordIds({
     ids: input.index.records.ids,
-    document: input.document,
+    reader,
     index: input.index,
     view: input.view
   })
-  const ordered = applyViewOrders(matched, input.view)
+  const ordered = applyViewOrders(matched, input.view, reader)
   const candidatePool = (
     searchPlan.candidates && filterCandidates
       ? intersectCandidates(searchPlan.candidates, filterCandidates)

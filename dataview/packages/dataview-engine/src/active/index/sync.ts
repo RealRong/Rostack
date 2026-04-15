@@ -1,70 +1,41 @@
 import type {
-  CommitImpact,
-  DataDoc,
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
-import {
-  hasDocumentField
-} from '@dataview/core/document'
-import {
-  collectSchemaFieldIds,
-  collectTouchedRecordIds,
-  collectValueFieldIds,
-  hasRecordSetChange
-} from '@dataview/engine/active/index/shared'
+import { createMapPatchBuilder } from '@dataview/engine/active/index/builder'
 import type { FieldSyncContext } from '@dataview/engine/active/index/contracts'
-
-export const createFieldSyncContext = (
-  impact: CommitImpact,
-  options?: {
-    includeTitlePatch?: boolean
-    includeRecordSetChange?: boolean
-  }
-): FieldSyncContext => ({
-  schemaFields: collectSchemaFieldIds(impact),
-  valueFields: collectValueFieldIds(impact, {
-    includeTitlePatch: options?.includeTitlePatch
-  }),
-  touchedRecords: collectTouchedRecordIds(impact),
-  recordSetChanged: options?.includeRecordSetChange === true
-    ? hasRecordSetChange(impact)
-    : false
-})
 
 export const ensureFieldIndexes = <T>(input: {
   previous: ReadonlyMap<FieldId, T>
-  document: DataDoc
+  hasField: (fieldId: FieldId) => boolean
   fieldIds: readonly FieldId[]
   build: (fieldId: FieldId) => T
 }): {
-  fields: Map<FieldId, T>
+  fields: ReadonlyMap<FieldId, T>
   changed: boolean
 } => {
-  let changed = false
-  const fields = new Map(input.previous)
+  const fields = createMapPatchBuilder(input.previous)
 
   input.fieldIds.forEach(fieldId => {
-    if (fields.has(fieldId) || !hasDocumentField(input.document, fieldId)) {
+    if (fields.has(fieldId) || !input.hasField(fieldId)) {
       return
     }
 
     fields.set(fieldId, input.build(fieldId))
-    changed = true
   })
 
   return {
-    fields,
-    changed
+    fields: fields.finish(),
+    changed: fields.changed()
   }
 }
 
 export const shouldDropFieldIndex = (
-  document: DataDoc,
+  hasField: (fieldId: FieldId) => boolean,
   context: FieldSyncContext,
   fieldId: FieldId
 ): boolean => context.schemaFields.has(fieldId)
-  && !hasDocumentField(document, fieldId)
+  && !hasField(fieldId)
 
 export const shouldRebuildFieldIndex = (
   context: FieldSyncContext,

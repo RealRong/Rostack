@@ -13,49 +13,18 @@ import type {
   QueryState,
   SectionState
 } from '@dataview/engine/contracts/internal'
+import type { SectionKey } from '@dataview/engine/contracts/public'
 import {
   buildSectionNode,
   buildSectionState,
-  sameSectionNode,
-  resolveSectionKeys
+  sameSectionNode
 } from '@dataview/engine/active/snapshot/sections/derive'
 import {
-  readQueryOrder
+  readQueryVisibleSet
 } from '@dataview/engine/contracts/internal'
 
-const insertOrdered = (
-  ids: RecordId[],
-  recordId: RecordId,
-  order: ReadonlyMap<RecordId, number>
-): void => {
-  if (ids.includes(recordId)) {
-    return
-  }
-
-  const nextOrder = order.get(recordId) ?? Number.MAX_SAFE_INTEGER
-  const index = ids.findIndex(current => (
-    (order.get(current) ?? Number.MAX_SAFE_INTEGER) > nextOrder
-  ))
-
-  if (index < 0) {
-    ids.push(recordId)
-    return
-  }
-
-  ids.splice(index, 0, recordId)
-}
-
-const removeId = (
-  ids: RecordId[],
-  recordId: RecordId
-): void => {
-  const index = ids.indexOf(recordId)
-  if (index < 0) {
-    return
-  }
-
-  ids.splice(index, 1)
-}
+const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
+const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 
 export const syncSectionState = (input: {
   previous?: SectionState
@@ -96,87 +65,106 @@ export const syncSectionState = (input: {
   }
 
   const previous = input.previous
-  const queryOrder = readQueryOrder(input.query)
-  const idsByKey = new Map<import('@dataview/engine/contracts/public').SectionKey, RecordId[]>()
-  let byRecord: Map<RecordId, readonly import('@dataview/engine/contracts/public').SectionKey[]> | undefined
-  const ensureIds = (
-    key: import('@dataview/engine/contracts/public').SectionKey
-  ) => {
-    const cached = idsByKey.get(key)
-    if (cached) {
-      return cached
-    }
-
-    const next = [...(previous.byKey.get(key)?.recordIds ?? [])]
-    idsByKey.set(key, next)
-    return next
+  const groupIndex = readGroupFieldIndex(input.index.group, input.view.group)
+  if (!groupIndex) {
+    return buildSectionState({
+      view: input.view,
+      query: input.query,
+      index: input.index,
+      previous: input.previous
+    })
   }
-  const ensureByRecord = () => {
-    if (!byRecord) {
-      byRecord = new Map(previous.byRecord)
-    }
 
-    return byRecord
-  }
+  const queryVisible = readQueryVisibleSet(input.query)
+  const touchedSectionKeys = new Set<SectionKey>()
+  let byRecord: Map<RecordId, readonly SectionKey[]> | undefined
 
   input.touchedRecords.forEach(recordId => {
-    const before = previous.byRecord.get(recordId) ?? []
-    const after = resolveSectionKeys({
-      recordId,
-      query: input.query,
-      view: input.view,
-      index: input.index
-    })
+    const before = previous.byRecord.get(recordId) ?? EMPTY_SECTION_KEYS
+    const after = queryVisible.has(recordId)
+      ? groupIndex.recordBuckets.get(recordId) ?? EMPTY_SECTION_KEYS
+      : EMPTY_SECTION_KEYS
 
     if (sameOrder(before, after)) {
       return
     }
 
-    before.forEach(key => {
-      removeId(ensureIds(key), recordId)
-    })
-    after.forEach(key => {
-      insertOrdered(
-        ensureIds(key),
-        recordId,
-        queryOrder
-      )
-    })
+    before.forEach(key => touchedSectionKeys.add(key))
+    after.forEach(key => touchedSectionKeys.add(key))
+
+    if (!byRecord) {
+      byRecord = new Map(previous.byRecord)
+    }
 
     if (after.length) {
-      ensureByRecord().set(recordId, after)
+      byRecord.set(recordId, after)
       return
     }
 
-    ensureByRecord().delete(recordId)
+    byRecord.delete(recordId)
   })
 
-  if (!idsByKey.size && !byRecord) {
+  if (!byRecord || !touchedSectionKeys.size) {
     return previous
   }
 
-  const order = readGroupFieldIndex(input.index.group, input.view.group)?.order ?? []
-  const byKey = new Map(previous.byKey)
-  byKey.clear()
+  const idsByKey = new Map<SectionKey, RecordId[]>()
+  input.query.records.visible.forEach(recordId => {
+    const keys = groupIndex.recordBuckets.get(recordId) ?? EMPTY_SECTION_KEYS
+    if (!keys.some(key => touchedSectionKeys.has(key))) {
+      return
+    }
+
+    keys.forEach(key => {
+      if (!touchedSectionKeys.has(key)) {
+        return
+      }
+
+      const ids = idsByKey.get(key)
+      if (ids) {
+        ids.push(recordId)
+        return
+      }
+
+      idsByKey.set(key, [recordId])
+    })
+  })
+
+  const order = groupIndex.order
+  const nextOrder = sameOrder(previous.order, order)
+    ? previous.order
+    : order
+  const byKey = new Map<SectionKey, ReturnType<typeof buildSectionNode>>()
+  let changed = nextOrder !== previous.order || previous.byKey.size !== order.length
 
   order.forEach(key => {
-    const ids = idsByKey.get(key) ?? previous.byKey.get(key)?.recordIds ?? []
+    const previousNode = previous.byKey.get(key)
+    const ids = touchedSectionKeys.has(key)
+      ? idsByKey.get(key) ?? EMPTY_RECORD_IDS
+      : previousNode?.recordIds ?? EMPTY_RECORD_IDS
     const nextNode = buildSectionNode({
       key,
       recordIds: ids,
       group: input.view.group,
       index: input.index,
-      previous: previous.byKey.get(key)
+      previous: previousNode
     })
-    const previousNode = previous.byKey.get(key)
-    byKey.set(key, previousNode && sameSectionNode(previousNode, nextNode) ? previousNode : nextNode)
+    const publishedNode = previousNode && sameSectionNode(previousNode, nextNode)
+      ? previousNode
+      : nextNode
+    byKey.set(key, publishedNode)
+    if (publishedNode !== previousNode) {
+      changed = true
+    }
   })
 
+  if (!changed && byRecord === previous.byRecord) {
+    return previous
+  }
+
   return {
-    order: sameOrder(previous.order, order)
-      ? previous.order
-      : order,
+    order: nextOrder,
     byKey,
-    byRecord: byRecord ?? previous.byRecord
+    byRecord
   }
 }

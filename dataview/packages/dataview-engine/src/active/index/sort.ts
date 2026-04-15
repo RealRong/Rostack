@@ -1,35 +1,32 @@
 import type {
-  CommitImpact,
-  DataDoc,
+  Field,
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
 import {
-  getDocumentFieldById
-} from '@dataview/core/document'
-import {
   compareFieldValues
 } from '@dataview/core/field'
+import { sameOrder } from '@shared/core'
+import { createMapPatchBuilder } from '@dataview/engine/active/index/builder'
+import type {
+  IndexDeriveContext,
+  IndexReadContext,
+  RecordIndex,
+  SortFieldIndex,
+  SortIndex
+} from '@dataview/engine/active/index/contracts'
 import {
-  createFieldSyncContext,
   ensureFieldIndexes,
   shouldDropFieldIndex,
   shouldRebuildFieldIndex,
   shouldSyncFieldIndex
 } from '@dataview/engine/active/index/sync'
-import {
-  hasIndexChanges
-} from '@dataview/engine/active/index/shared'
-import type {
-  RecordIndex,
-  SortFieldIndex,
-  SortIndex
-} from '@dataview/engine/active/index/contracts'
 
 const MAX_INCREMENTAL_TOUCHES = 64
+const EMPTY_VALUE_MAP = new Map<RecordId, unknown>()
 
 const compareSortValues = (
-  field: ReturnType<typeof getDocumentFieldById>,
+  field: Field | undefined,
   left: unknown,
   right: unknown
 ): number => {
@@ -41,7 +38,7 @@ const compareSortValues = (
 }
 
 const compareRecordIds = (input: {
-  field: ReturnType<typeof getDocumentFieldById>
+  field: Field | undefined
   values: ReadonlyMap<RecordId, unknown>
   order: ReadonlyMap<RecordId, number>
   leftId: RecordId
@@ -62,12 +59,12 @@ const compareRecordIds = (input: {
 }
 
 const buildFieldSortIndex = (
-  document: DataDoc,
+  context: IndexReadContext,
   records: RecordIndex,
   fieldId: FieldId
 ): SortFieldIndex => {
-  const field = getDocumentFieldById(document, fieldId)
-  const values = records.values.get(fieldId) ?? new Map<RecordId, unknown>()
+  const field = context.reader.fields.get(fieldId)
+  const values = records.values.get(fieldId)?.byRecord ?? EMPTY_VALUE_MAP
   const asc = records.ids.slice().sort((leftId, rightId) => compareRecordIds({
     field,
     values,
@@ -77,95 +74,99 @@ const buildFieldSortIndex = (
   }))
 
   return {
-    asc,
-    desc: asc.slice().reverse()
+    asc
   }
 }
 
-const indexOfId = (
-  ids: readonly RecordId[],
-  target: RecordId
-): number => ids.findIndex(id => id === target)
+const mergeSortedIds = (input: {
+  left: readonly RecordId[]
+  right: readonly RecordId[]
+  compare: (leftId: RecordId, rightId: RecordId) => number
+}): readonly RecordId[] => {
+  const merged: RecordId[] = []
+  let leftIndex = 0
+  let rightIndex = 0
 
-const insertAscId = (input: {
-  ids: RecordId[]
-  recordId: RecordId
-  field: ReturnType<typeof getDocumentFieldById>
-  values: ReadonlyMap<RecordId, unknown>
-  order: ReadonlyMap<RecordId, number>
-}): void => {
-  let low = 0
-  let high = input.ids.length
-
-  while (low < high) {
-    const middle = Math.floor((low + high) / 2)
-    const current = input.ids[middle]
-    const comparison = compareRecordIds({
-      field: input.field,
-      values: input.values,
-      order: input.order,
-      leftId: current,
-      rightId: input.recordId
-    })
-
-    if (comparison <= 0) {
-      low = middle + 1
+  while (leftIndex < input.left.length && rightIndex < input.right.length) {
+    if (input.compare(input.left[leftIndex], input.right[rightIndex]) <= 0) {
+      merged.push(input.left[leftIndex])
+      leftIndex += 1
       continue
     }
 
-    high = middle
+    merged.push(input.right[rightIndex])
+    rightIndex += 1
   }
 
-  input.ids.splice(low, 0, input.recordId)
+  while (leftIndex < input.left.length) {
+    merged.push(input.left[leftIndex])
+    leftIndex += 1
+  }
+  while (rightIndex < input.right.length) {
+    merged.push(input.right[rightIndex])
+    rightIndex += 1
+  }
+
+  return merged
 }
 
 const syncFieldSortIndex = (input: {
   previous: SortFieldIndex
-  document: DataDoc
+  context: IndexDeriveContext
   records: RecordIndex
   fieldId: FieldId
   touchedRecords: ReadonlySet<RecordId>
 }): SortFieldIndex => {
   if (input.touchedRecords.size > MAX_INCREMENTAL_TOUCHES) {
-    return buildFieldSortIndex(input.document, input.records, input.fieldId)
+    return buildFieldSortIndex(input.context, input.records, input.fieldId)
   }
 
-  const field = getDocumentFieldById(input.document, input.fieldId)
-  const values = input.records.values.get(input.fieldId) ?? new Map<RecordId, unknown>()
-  let nextAsc: RecordId[] | undefined
+  const field = input.context.reader.fields.get(input.fieldId)
+  const values = input.records.values.get(input.fieldId)?.byRecord ?? EMPTY_VALUE_MAP
+  const remaining = input.previous.asc.filter(recordId => (
+    !input.touchedRecords.has(recordId)
+    && input.records.order.has(recordId)
+  ))
+  const moving = Array.from(input.touchedRecords).filter(recordId => input.records.order.has(recordId))
 
-  input.touchedRecords.forEach(recordId => {
-    const target = nextAsc ?? input.previous.asc.slice()
-    const index = indexOfId(target, recordId)
-    if (index >= 0) {
-      target.splice(index, 1)
-    }
+  if (!moving.length) {
+    return remaining.length === input.previous.asc.length
+      && sameOrder(remaining, input.previous.asc)
+      ? input.previous
+      : {
+          asc: remaining
+        }
+  }
 
-    if (!input.records.order.has(recordId)) {
-      nextAsc = target
-      return
-    }
+  moving.sort((leftId, rightId) => compareRecordIds({
+    field,
+    values,
+    order: input.records.order,
+    leftId,
+    rightId
+  }))
 
-    insertAscId({
-      ids: target,
-      recordId,
+  const asc = mergeSortedIds({
+    left: remaining,
+    right: moving,
+    compare: (leftId, rightId) => compareRecordIds({
       field,
       values,
-      order: input.records.order
+      order: input.records.order,
+      leftId,
+      rightId
     })
-    nextAsc = target
   })
 
-  return !nextAsc
+  return sameOrder(asc, input.previous.asc)
     ? input.previous
     : {
-        asc: nextAsc,
-        desc: nextAsc.slice().reverse()
+        asc
       }
 }
 
 export const buildSortIndex = (
-  document: DataDoc,
+  context: IndexReadContext,
   records: RecordIndex,
   fieldIds: readonly FieldId[] = [],
   rev = 1
@@ -174,7 +175,7 @@ export const buildSortIndex = (
     fields: new Map(),
     rev
   }
-  const built = ensureSortIndex(base, document, records, fieldIds)
+  const built = ensureSortIndex(base, context, records, fieldIds)
 
   return built === base
     ? base
@@ -186,15 +187,15 @@ export const buildSortIndex = (
 
 export const ensureSortIndex = (
   previous: SortIndex,
-  document: DataDoc,
+  context: IndexReadContext,
   records: RecordIndex,
   fieldIds: readonly FieldId[] = []
 ): SortIndex => {
   const ensured = ensureFieldIndexes({
     previous: previous.fields,
-    document,
+    hasField: fieldId => context.fieldIdSet.has(fieldId),
     fieldIds,
-    build: fieldId => buildFieldSortIndex(document, records, fieldId)
+    build: fieldId => buildFieldSortIndex(context, records, fieldId)
   })
 
   return ensured.changed
@@ -207,59 +208,45 @@ export const ensureSortIndex = (
 
 export const syncSortIndex = (
   previous: SortIndex,
-  document: DataDoc,
-  records: RecordIndex,
-  impact: CommitImpact
+  context: IndexDeriveContext,
+  records: RecordIndex
 ): SortIndex => {
-  if (!hasIndexChanges(impact) || !previous.fields.size) {
+  if (!context.impact.changed || !previous.fields.size) {
     return previous
   }
 
-  const loadedFieldIds = new Set(previous.fields.keys())
-  const context = createFieldSyncContext(impact, {
-    includeTitlePatch: true
-  })
-  let changed = false
-  const nextFields = new Map(previous.fields)
+  const fields = createMapPatchBuilder(previous.fields)
 
-  Array.from(loadedFieldIds).forEach(fieldId => {
-    if (shouldDropFieldIndex(document, context, fieldId)) {
-      nextFields.delete(fieldId)
-      changed = true
+  previous.fields.forEach((previousField, fieldId) => {
+    if (shouldDropFieldIndex(id => context.fieldIdSet.has(id), context.impact, fieldId)) {
+      fields.delete(fieldId)
       return
     }
 
-    if (shouldRebuildFieldIndex(context, fieldId)) {
-      nextFields.set(fieldId, buildFieldSortIndex(document, records, fieldId))
-      changed = true
+    if (shouldRebuildFieldIndex(context.impact, fieldId)) {
+      fields.set(fieldId, buildFieldSortIndex(context, records, fieldId))
       return
     }
 
-    if (!shouldSyncFieldIndex(context, fieldId)) {
-      return
-    }
-
-    const previousField = previous.fields.get(fieldId)
-    if (!previousField) {
+    if (!shouldSyncFieldIndex(context.impact, fieldId)) {
       return
     }
 
     const nextField = syncFieldSortIndex({
       previous: previousField,
-      document,
+      context,
       records,
       fieldId,
-      touchedRecords: context.touchedRecords
+      touchedRecords: context.impact.touchedRecords
     })
     if (nextField !== previousField) {
-      nextFields.set(fieldId, nextField)
-      changed = true
+      fields.set(fieldId, nextField)
     }
   })
 
-  return changed
+  return fields.changed()
     ? {
-        fields: nextFields,
+        fields: fields.finish(),
         rev: previous.rev + 1
       }
     : previous

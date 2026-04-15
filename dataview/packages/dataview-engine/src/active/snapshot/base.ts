@@ -8,10 +8,6 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import {
-  getDocumentFields,
-  getDocumentViewById
-} from '@dataview/core/document'
-import {
   formatFilterRuleValueText,
   getFilterEditorKind,
   getFilterPresetIds,
@@ -44,11 +40,15 @@ import {
   sameOptionalList,
   sameOptionalProjection
 } from '@dataview/engine/active/snapshot/reuse'
+import {
+  createStaticDocumentReader,
+  type DocumentReader
+} from '@dataview/engine/document/reader'
 
 const resolveFieldsById = (
-  document: DataDoc
+  reader: DocumentReader
 ): ReadonlyMap<FieldId, Field> => new Map(
-  getDocumentFields(document).map(field => [field.id, field] as const)
+  reader.fields.list().map(field => [field.id, field] as const)
 )
 
 const createFields = (input: {
@@ -271,8 +271,9 @@ export const publishViewBase = (input: {
   query?: ActiveViewQuery
   fields?: FieldList
 } => {
+  const reader = createStaticDocumentReader(input.document)
   const view = input.viewId
-    ? getDocumentViewById(input.document, input.viewId)
+    ? reader.views.get(input.viewId)
     : undefined
   if (!view || !input.viewId) {
     return {
@@ -282,7 +283,7 @@ export const publishViewBase = (input: {
     }
   }
 
-  const fieldsById = resolveFieldsById(input.document)
+  const fieldsById = resolveFieldsById(reader)
   const nextSearch = createSearchProjection(view.search)
   const nextFilter = createFilterProjection({
     view,

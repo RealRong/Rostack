@@ -1,7 +1,10 @@
 import type {
-  CommitImpact,
   FieldId,
   RecordId
+} from '@dataview/core/contracts'
+import type {
+  CommitImpact,
+  DataDoc
 } from '@dataview/core/contracts'
 import {
   TITLE_FIELD_ID
@@ -9,34 +12,21 @@ import {
 import {
   sameOrder as sameIds
 } from '@shared/core'
+import { createArrayPatchBuilder, createMapPatchBuilder } from '@dataview/engine/active/index/builder'
 import type {
-  DataDoc
-} from '@dataview/core/contracts'
-import type {
-  RecordIndex
+  IndexDeriveContext,
+  IndexReadContext,
+  RecordIndex,
+  RecordValueIndex
 } from '@dataview/engine/active/index/contracts'
 import {
-  collectTouchedFieldIds,
-  collectTouchedRecordIds,
-  hasIndexChanges,
-  createOrderIndex
+  createOrderIndex,
+  insertOrderedIdInPlace,
+  removeOrderedIdInPlace
 } from '@dataview/engine/active/index/shared'
 
-const toValueMap = (
-  document: DataDoc,
-  fieldId: FieldId
-): ReadonlyMap<RecordId, unknown> => new Map(
-  document.records.order.flatMap(recordId => {
-    const row = document.records.byId[recordId]
-    const value = fieldId === TITLE_FIELD_ID
-      ? row?.title
-      : row?.values[fieldId]
-
-    return value === undefined
-      ? []
-      : [[recordId, value] as const]
-  })
-)
+const EMPTY_VALUE_MAP = new Map<RecordId, unknown>()
+const EMPTY_RECORD_IDS: readonly RecordId[] = []
 
 const readFieldValue = (
   row: DataDoc['records']['byId'][RecordId] | undefined,
@@ -47,181 +37,198 @@ const readFieldValue = (
     : row?.values[fieldId]
 )
 
-const buildRows = (
-  document: DataDoc
-): ReadonlyMap<RecordId, DataDoc['records']['byId'][RecordId]> => new Map(
-  document.records.order.flatMap(recordId => {
-    const row = document.records.byId[recordId]
-    return row
-      ? [[recordId, row] as const]
-      : []
+const buildValueIndex = (
+  document: DataDoc,
+  fieldId: FieldId
+): RecordValueIndex => {
+  const byRecord = new Map<RecordId, unknown>()
+  const ids: RecordId[] = []
+
+  document.records.order.forEach(recordId => {
+    const value = readFieldValue(document.records.byId[recordId], fieldId)
+    if (value === undefined) {
+      return
+    }
+
+    byRecord.set(recordId, value)
+    ids.push(recordId)
   })
-)
+
+  return {
+    byRecord,
+    ids
+  }
+}
+
+const syncValueIndex = (input: {
+  previous: RecordValueIndex
+  document: DataDoc
+  fieldId: FieldId
+  order: ReadonlyMap<RecordId, number>
+  touchedRecords: ReadonlySet<RecordId>
+}): RecordValueIndex => {
+  const previousValues = input.previous.byRecord
+  let values = createMapPatchBuilder(previousValues)
+  let ids = createArrayPatchBuilder(input.previous.ids)
+  let valuesUsed = false
+  let idsUsed = false
+  let changed = false
+
+  input.touchedRecords.forEach(recordId => {
+    const previousHas = previousValues.has(recordId)
+    const previousValue = previousValues.get(recordId)
+    const nextValue = readFieldValue(input.document.records.byId[recordId], input.fieldId)
+    const nextHas = nextValue !== undefined
+
+    if (previousHas === nextHas && previousValue === nextValue) {
+      return
+    }
+
+    changed = true
+
+    if (nextHas) {
+      values.set(recordId, nextValue)
+    } else {
+      values.delete(recordId)
+    }
+    valuesUsed = true
+
+    if (previousHas === nextHas) {
+      return
+    }
+
+    ids.mutate(draft => {
+      if (nextHas) {
+        insertOrderedIdInPlace(draft, recordId, input.order)
+        return
+      }
+
+      removeOrderedIdInPlace(draft, recordId)
+    })
+    idsUsed = true
+  })
+
+  return !changed
+    ? input.previous
+    : {
+        byRecord: valuesUsed ? values.finish() : previousValues,
+        ids: idsUsed ? ids.finish() : input.previous.ids
+      }
+}
+
+const shouldRebuildRecordIndex = (
+  impact: CommitImpact,
+  context: IndexDeriveContext
+): boolean => impact.reset
+  || context.impact.touchedRecords === 'all'
+  || context.impact.valueFields === 'all'
 
 export const buildRecordIndex = (
-  document: DataDoc,
+  context: IndexReadContext,
   fieldIds: readonly FieldId[] = [],
   rev = 1
 ): RecordIndex => ({
-  ids: [...document.records.order],
+  ids: [...context.document.records.order],
   fieldIds: [...fieldIds],
-  order: createOrderIndex(document.records.order),
-  rows: buildRows(document),
+  order: createOrderIndex(context.document.records.order),
+  byId: context.document.records.byId,
   values: new Map(
-    fieldIds.map(fieldId => [fieldId, toValueMap(document, fieldId)] as const)
+    fieldIds.map(fieldId => [fieldId, buildValueIndex(context.document, fieldId)] as const)
   ),
   rev
 })
 
 export const syncRecordIndex = (
   previous: RecordIndex,
-  document: DataDoc,
+  context: IndexDeriveContext,
   impact: CommitImpact,
   fieldIds: readonly FieldId[] = previous.fieldIds
 ): RecordIndex => {
-  if (!hasIndexChanges(impact)) {
+  if (!context.impact.changed) {
     return previous
   }
 
-  const nextFieldIds = [...fieldIds]
+  const nextFieldIds = sameIds(previous.fieldIds, fieldIds)
+    ? previous.fieldIds
+    : [...fieldIds]
 
-  if (
-    impact.reset
-    || impact.records?.touched === 'all'
-    || impact.records?.valueChangedFields === 'all'
-  ) {
-    return buildRecordIndex(document, nextFieldIds, previous.rev + 1)
+  if (shouldRebuildRecordIndex(impact, context)) {
+    return buildRecordIndex(context, nextFieldIds, previous.rev + 1)
   }
 
-  const touchedRecordIds = collectTouchedRecordIds(impact)
-  if (touchedRecordIds === 'all') {
-    return buildRecordIndex(document, nextFieldIds, previous.rev + 1)
+  const touchedRecords = context.impact.touchedRecords
+  if (touchedRecords === 'all') {
+    return buildRecordIndex(context, nextFieldIds, previous.rev + 1)
   }
 
-  const fieldIdsChanged = !sameIds(previous.fieldIds, nextFieldIds)
+  const fieldIdsChanged = previous.fieldIds !== nextFieldIds
+  const orderChanged = !sameIds(previous.ids, context.document.records.order)
+  const nextOrder = orderChanged
+    ? createOrderIndex(context.document.records.order)
+    : previous.order
   const nextFieldSet = new Set(nextFieldIds)
-  const recordSetChanged = Boolean(
-    impact.records?.recordSetChanged
-  )
+  const values = createMapPatchBuilder(previous.values)
 
-  let rows: Map<RecordId, DataDoc['records']['byId'][RecordId]> | undefined
-  const ensureRows = () => {
-    if (!rows) {
-      rows = new Map(previous.rows)
-    }
+  if (fieldIdsChanged) {
+    previous.fieldIds.forEach(fieldId => {
+      if (!nextFieldSet.has(fieldId)) {
+        values.delete(fieldId)
+      }
+    })
 
-    return rows
-  }
-
-  impact.records?.removed?.forEach(recordId => {
-    if (!previous.rows.has(recordId)) {
-      return
-    }
-
-    ensureRows().delete(recordId)
-  })
-
-  touchedRecordIds.forEach(recordId => {
-    const row = document.records.byId[recordId]
-    const previousRow = previous.rows.get(recordId)
-    if (row === previousRow) {
-      return
-    }
-
-    const nextRows = ensureRows()
-    if (row) {
-      nextRows.set(recordId, row)
-      return
-    }
-
-    nextRows.delete(recordId)
-  })
-
-  const touchedFields = new Set<FieldId>()
-  if (recordSetChanged) {
-    nextFieldIds.forEach(fieldId => touchedFields.add(fieldId))
-  }
-
-  const deltaTouchedFields = collectTouchedFieldIds(impact, {
-    includeTitlePatch: true
-  })
-  if (deltaTouchedFields !== 'all') {
-    deltaTouchedFields.forEach(fieldId => {
-      if (nextFieldSet.has(fieldId)) {
-        touchedFields.add(fieldId)
+    nextFieldIds.forEach(fieldId => {
+      if (!previous.values.has(fieldId)) {
+        values.set(fieldId, buildValueIndex(context.document, fieldId))
       }
     })
   }
 
-  const mutableColumns = new Map<FieldId, Map<RecordId, unknown>>()
-  const readColumn = (
-    fieldId: FieldId
-  ): ReadonlyMap<RecordId, unknown> => mutableColumns.get(fieldId)
-    ?? previous.values.get(fieldId)
-    ?? new Map()
-  const ensureColumn = (
-    fieldId: FieldId
-  ): Map<RecordId, unknown> => {
-    const cached = mutableColumns.get(fieldId)
-    if (cached) {
-      return cached
-    }
-
-    const nextColumn = new Map(readColumn(fieldId))
-    mutableColumns.set(fieldId, nextColumn)
-    return nextColumn
+  let fieldsToSync = nextFieldIds
+  const touchedFields = context.impact.touchedFields
+  if (!context.impact.recordSetChanged && touchedFields !== 'all') {
+    fieldsToSync = nextFieldIds.filter(fieldId => touchedFields.has(fieldId))
   }
 
-  touchedFields.forEach(fieldId => {
-    const column = ensureColumn(fieldId)
-    touchedRecordIds.forEach(recordId => {
-      const nextValue = readFieldValue(document.records.byId[recordId], fieldId)
-      if (nextValue === undefined) {
-        column.delete(recordId)
-        return
+  fieldsToSync.forEach(fieldId => {
+    const previousColumn = values.get(fieldId)
+      ?? previous.values.get(fieldId)
+      ?? {
+        byRecord: EMPTY_VALUE_MAP,
+        ids: EMPTY_RECORD_IDS
       }
-
-      column.set(recordId, nextValue)
+    const nextColumn = syncValueIndex({
+      previous: previousColumn,
+      document: context.document,
+      fieldId,
+      order: nextOrder,
+      touchedRecords
     })
-  })
 
-  const orderChanged = !sameIds(previous.ids, document.records.order)
-  const rowsChanged = Boolean(rows)
-  const valuesChanged = fieldIdsChanged || mutableColumns.size > 0
-
-  if (!rowsChanged && !valuesChanged && !orderChanged) {
-    return previous
-  }
-
-  const values = new Map<FieldId, ReadonlyMap<RecordId, unknown>>()
-  nextFieldIds.forEach(fieldId => {
-    const column = mutableColumns.get(fieldId)
-    if (column) {
-      values.set(fieldId, column)
-      return
+    if (nextColumn !== previousColumn) {
+      values.set(fieldId, nextColumn)
     }
-
-    const previousColumn = previous.values.get(fieldId)
-    if (previousColumn) {
-      values.set(fieldId, previousColumn)
-      return
-    }
-
-    values.set(fieldId, toValueMap(document, fieldId))
   })
 
   const ids = orderChanged
-    ? [...document.records.order]
+    ? [...context.document.records.order]
     : previous.ids
+  const byId = context.document.records.byId
+
+  if (
+    !fieldIdsChanged
+    && !orderChanged
+    && !values.changed()
+    && byId === previous.byId
+  ) {
+    return previous
+  }
 
   return {
     ids,
     fieldIds: nextFieldIds,
-    order: orderChanged
-      ? createOrderIndex(ids)
-      : previous.order,
-    rows: rows ?? previous.rows,
-    values,
+    order: nextOrder,
+    byId,
+    values: values.finish(),
     rev: previous.rev + 1
   }
 }

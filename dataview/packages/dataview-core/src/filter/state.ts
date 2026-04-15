@@ -77,12 +77,12 @@ export const findFilterIndex = (
   fieldId: string
 ) => filter.rules.findIndex(rule => rule.fieldId === fieldId)
 
-export const addFilterRule = (
+export const add = (
   filter: Filter,
   field: Field
 ): Filter => {
   if (findFilterIndex(filter, field.id) !== -1) {
-    return cloneFilter(filter)
+    return filter
   }
 
   const next = cloneFilter(filter)
@@ -90,13 +90,13 @@ export const addFilterRule = (
   return next
 }
 
-export const replaceFilterRule = (
+export const replace = (
   filter: Filter,
   index: number,
   rule: FilterRule
 ): Filter => {
   if (!filter.rules[index]) {
-    return cloneFilter(filter)
+    return filter
   }
 
   const next = cloneFilter(filter)
@@ -104,7 +104,7 @@ export const replaceFilterRule = (
   return next
 }
 
-export const setFilterPreset = (
+export const setPreset = (
   filter: Filter,
   index: number,
   field: Field | undefined,
@@ -112,15 +112,20 @@ export const setFilterPreset = (
 ): Filter => {
   const currentRule = filter.rules[index]
   if (!currentRule) {
-    return cloneFilter(filter)
+    return filter
+  }
+
+  const nextRule = applyFilterPreset(field, currentRule, presetId)
+  if (sameFilterRule(currentRule, nextRule)) {
+    return filter
   }
 
   const next = cloneFilter(filter)
-  next.rules[index] = applyFilterPreset(field, currentRule, presetId)
+  next.rules[index] = nextRule
   return next
 }
 
-export const setFilterValue = (
+export const setValue = (
   filter: Filter,
   index: number,
   field: Field | undefined,
@@ -128,20 +133,25 @@ export const setFilterValue = (
 ): Filter => {
   const currentRule = filter.rules[index]
   if (!currentRule) {
-    return cloneFilter(filter)
+    return filter
+  }
+
+  const nextRule = setFilterRuleValue(field, currentRule, value)
+  if (sameFilterRule(currentRule, nextRule)) {
+    return filter
   }
 
   const next = cloneFilter(filter)
-  next.rules[index] = setFilterRuleValue(field, currentRule, value)
+  next.rules[index] = nextRule
   return next
 }
 
-export const setFilterMode = (
+export const setMode = (
   filter: Filter,
   mode: Filter['mode']
 ): Filter => {
   if (filter.mode === mode) {
-    return cloneFilter(filter)
+    return filter
   }
 
   return {
@@ -150,15 +160,36 @@ export const setFilterMode = (
   }
 }
 
-export const removeFilterRule = (
+export const remove = (
   filter: Filter,
   index: number
 ): Filter => {
   if (index < 0 || index >= filter.rules.length) {
-    return cloneFilter(filter)
+    return filter
   }
 
   const next = cloneFilter(filter)
   next.rules.splice(index, 1)
   return next
 }
+
+export const clear = (
+  filter: Filter
+): Filter => (
+  filter.rules.length
+    ? {
+        ...cloneFilter(filter),
+        rules: []
+      }
+    : filter
+)
+
+export const filter = {
+  add,
+  replace,
+  setPreset,
+  setValue,
+  setMode,
+  remove,
+  clear
+} as const

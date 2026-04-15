@@ -1,7 +1,6 @@
 import {
   buildTransformCommitUpdates,
   getResizeUpdateRect,
-  resolveTextHandle,
   startTransform,
   stepTransform,
   type TransformPreviewPatch,
@@ -128,9 +127,13 @@ export const createTransformSession = (
         }
       }
     })
-    state = result.state
+    const nextPatches = ctx.layout.resolvePreviewPatches(result.state.patches)
+    state = {
+      ...result.state,
+      patches: nextPatches
+    }
 
-    const nextActiveTextPreviewIds = result.draft.nodePatches.flatMap((patch) => {
+    const nextActiveTextPreviewIds = nextPatches.flatMap((patch) => {
       const textPreview = readTransformTextPreview(patch)
       if (!textPreview) {
         return []
@@ -146,7 +149,7 @@ export const createTransformSession = (
       }
     })
 
-    result.draft.nodePatches.forEach((patch) => {
+    nextPatches.forEach((patch) => {
       const textPreview = readTransformTextPreview(patch)
       if (!textPreview) {
         return
@@ -160,7 +163,7 @@ export const createTransformSession = (
     interaction!.gesture = createSelectionGesture(
       'selection-transform',
       {
-        nodePatches: toTransformNodePatches(result.draft.nodePatches),
+        nodePatches: toTransformNodePatches(nextPatches),
         edgePatches: [],
         frameHoverId: undefined,
         marquee: undefined,
@@ -194,35 +197,7 @@ export const createTransformSession = (
 
       const updates = buildTransformCommitUpdates({
         targets: state.commitTargets,
-        patches: state.patches.map((patch) => {
-          const target = state.commitTargets.find((entry) => entry.id === patch.id)
-          if (
-            !target
-            || target.node.type !== 'text'
-            || !readTransformTextPreview(patch)
-            || patch.handle === undefined
-            || resolveTextHandle(patch.handle) !== 'reflow'
-          ) {
-            return patch
-          }
-
-          const item = ctx.query.node.item.get(patch.id)
-          if (!item) {
-            return patch
-          }
-
-          return {
-            ...patch,
-            position: {
-              x: item.rect.x,
-              y: item.rect.y
-            },
-            size: {
-              width: item.rect.width,
-              height: item.rect.height
-            }
-          }
-        }),
+        patches: state.patches,
         commitTargetIds: state.commitIds
       })
       if (updates.length > 0) {

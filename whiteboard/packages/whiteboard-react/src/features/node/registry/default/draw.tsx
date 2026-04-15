@@ -33,6 +33,9 @@ export const DrawNodeDefinition: NodeDefinition = {
   canResize: false,
   canRotate: false,
   schema: drawSchema,
+  layout: {
+    kind: 'none'
+  },
   render: ({ node, selected }) => {
     const points = readDrawPoints(node)
     const baseSize = readDrawBaseSize(node)

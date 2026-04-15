@@ -48,6 +48,7 @@ import type {
   InteractionSession,
   InteractionSessionTransition
 } from '@whiteboard/editor/input/core/types'
+import type { LayoutRuntime } from '@whiteboard/editor/layout/runtime'
 
 type SessionMeta = Readonly<{
   id: number
@@ -94,6 +95,7 @@ export type EditorLocalRuntime = {
   feedback: EditorFeedbackRuntime
   actions: EditorLocalActions
   bindQuery: (read: EditorQueryRead) => void
+  bindLayout: (layout: LayoutRuntime) => void
   bindInteractions: (bindings: readonly InteractionBinding[]) => void
   reset: () => void
   reconcileAfterCommit: (read: ReadNodeEdge) => void
@@ -479,6 +481,7 @@ export const createLocalRuntime = ({
   })
 
   let readRuntime: EditorQueryRead | null = null
+  let layoutRuntime: LayoutRuntime | null = null
   let bindings: readonly InteractionBinding[] = []
 
   const state: EditorLocalState = {
@@ -514,7 +517,8 @@ export const createLocalRuntime = ({
     edit: createLocalEditActions({
       state,
       registry,
-      getRead: () => readRuntime
+      getRead: () => readRuntime,
+      getLayout: () => layoutRuntime
     }),
     viewport: createLocalViewportActions({
       state,
@@ -537,6 +541,9 @@ export const createLocalRuntime = ({
     actions,
     bindQuery: (read) => {
       readRuntime = read
+    },
+    bindLayout: (layout) => {
+      layoutRuntime = layout
     },
     bindInteractions: (nextBindings) => {
       bindings = nextBindings

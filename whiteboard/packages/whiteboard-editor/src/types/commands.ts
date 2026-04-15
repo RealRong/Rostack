@@ -276,7 +276,7 @@ export type SessionEditActions = {
   ) => void
   input: (text: string) => void
   caret: (caret: EditCaret) => void
-  measure: (patch: Partial<EditLayout>) => void
+  layout: (patch: Partial<EditLayout>) => void
   clear: () => void
 }
 

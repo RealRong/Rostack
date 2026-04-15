@@ -1,66 +1,64 @@
-import type {
-  CommitImpact,
-  DataDoc,
-  FieldId,
-  RecordId
-} from '@dataview/core/contracts'
-import {
-  getDocumentFieldById
-} from '@dataview/core/document'
 import {
   getRecordFieldValue
 } from '@dataview/core/field'
+import type {
+  FieldId,
+  RecordId
+} from '@dataview/core/contracts'
+import { createMapPatchBuilder } from '@dataview/engine/active/index/builder'
 import {
   buildAggregateState,
+  createAggregateBuilder,
   createAggregateEntry,
-  patchAggregateState
+  sameAggregateEntry
 } from '@dataview/engine/active/index/aggregate'
-import {
-  ensureFieldIndexes,
-  createFieldSyncContext,
-  shouldDropFieldIndex,
-  shouldRebuildFieldIndex,
-  shouldSyncFieldIndex
-} from '@dataview/engine/active/index/sync'
-import {
-  hasIndexChanges
-} from '@dataview/engine/active/index/shared'
 import type {
   AggregateEntry,
   CalculationIndex,
   FieldCalcIndex,
+  IndexDeriveContext,
+  IndexReadContext,
   RecordIndex
 } from '@dataview/engine/active/index/contracts'
+import {
+  ensureFieldIndexes,
+  shouldDropFieldIndex,
+  shouldRebuildFieldIndex,
+  shouldSyncFieldIndex
+} from '@dataview/engine/active/index/sync'
 
 const buildFieldEntries = (
-  document: DataDoc,
+  context: IndexReadContext,
   records: RecordIndex,
   fieldId: FieldId
 ): ReadonlyMap<RecordId, AggregateEntry> => {
-  const field = getDocumentFieldById(document, fieldId)
+  const field = context.reader.fields.get(fieldId)
   if (!field) {
-    return new Map()
+    return new Map<RecordId, AggregateEntry>()
   }
 
-  return new Map(
-    records.ids.flatMap(recordId => {
-      const row = records.rows.get(recordId)
-      return row
-        ? [[
-            recordId,
-            createAggregateEntry(field, getRecordFieldValue(row, fieldId))
-          ] as const]
-        : []
-    })
-  )
+  const entries = new Map<RecordId, AggregateEntry>()
+  records.ids.forEach(recordId => {
+    const row = records.byId[recordId]
+    if (!row) {
+      return
+    }
+
+    entries.set(
+      recordId,
+      createAggregateEntry(field, getRecordFieldValue(row, fieldId))
+    )
+  })
+
+  return entries
 }
 
 const buildFieldCalcIndex = (
-  document: DataDoc,
+  context: IndexReadContext,
   records: RecordIndex,
   fieldId: FieldId
 ): FieldCalcIndex => {
-  const entries = buildFieldEntries(document, records, fieldId)
+  const entries = buildFieldEntries(context, records, fieldId)
 
   return {
     entries,
@@ -69,7 +67,7 @@ const buildFieldCalcIndex = (
 }
 
 export const buildCalculationIndex = (
-  document: DataDoc,
+  context: IndexReadContext,
   records: RecordIndex,
   fieldIds: readonly FieldId[] = [],
   rev = 1
@@ -78,7 +76,7 @@ export const buildCalculationIndex = (
     fields: new Map(),
     rev
   }
-  const built = ensureCalculationIndex(base, document, records, fieldIds)
+  const built = ensureCalculationIndex(base, context, records, fieldIds)
 
   return built === base
     ? base
@@ -90,15 +88,15 @@ export const buildCalculationIndex = (
 
 export const ensureCalculationIndex = (
   previous: CalculationIndex,
-  document: DataDoc,
+  context: IndexReadContext,
   records: RecordIndex,
   fieldIds: readonly FieldId[] = []
 ): CalculationIndex => {
   const ensured = ensureFieldIndexes({
     previous: previous.fields,
-    document,
+    hasField: fieldId => context.fieldIdSet.has(fieldId),
     fieldIds,
-    build: fieldId => buildFieldCalcIndex(document, records, fieldId)
+    build: fieldId => buildFieldCalcIndex(context, records, fieldId)
   })
 
   return ensured.changed
@@ -111,80 +109,71 @@ export const ensureCalculationIndex = (
 
 export const syncCalculationIndex = (
   previous: CalculationIndex,
-  document: DataDoc,
-  records: RecordIndex,
-  impact: CommitImpact
+  context: IndexDeriveContext,
+  records: RecordIndex
 ): CalculationIndex => {
-  if (!hasIndexChanges(impact) || !previous.fields.size) {
+  if (!context.impact.changed || !previous.fields.size) {
     return previous
   }
 
-  const loadedFieldIds = new Set(previous.fields.keys())
-  const context = createFieldSyncContext(impact, {
-    includeTitlePatch: true
-  })
-  let changed = false
-  const nextFields = new Map(previous.fields)
+  const fields = createMapPatchBuilder(previous.fields)
 
-  Array.from(loadedFieldIds).forEach(fieldId => {
-    if (shouldDropFieldIndex(document, context, fieldId)) {
-      nextFields.delete(fieldId)
-      changed = true
+  previous.fields.forEach((previousField, fieldId) => {
+    if (shouldDropFieldIndex(id => context.fieldIdSet.has(id), context.impact, fieldId)) {
+      fields.delete(fieldId)
       return
     }
 
-    if (shouldRebuildFieldIndex(context, fieldId)) {
-      nextFields.set(fieldId, buildFieldCalcIndex(document, records, fieldId))
-      changed = true
+    if (shouldRebuildFieldIndex(context.impact, fieldId)) {
+      fields.set(fieldId, buildFieldCalcIndex(context, records, fieldId))
       return
     }
 
-    if (!shouldSyncFieldIndex(context, fieldId)) {
+    if (!shouldSyncFieldIndex(context.impact, fieldId)) {
       return
     }
 
-    const previousField = previous.fields.get(fieldId)
-    const field = getDocumentFieldById(document, fieldId)
-    if (!previousField || !field) {
+    const field = context.reader.fields.get(fieldId)
+    if (!field) {
       return
     }
 
-    const nextEntries = new Map(previousField.entries)
-    let nextGlobal = previousField.global
+    const entries = createMapPatchBuilder(previousField.entries)
+    const aggregate = createAggregateBuilder(previousField.global)
 
-    context.touchedRecords.forEach(recordId => {
-      const previousEntry = nextEntries.get(recordId)
-      const row = records.rows.get(recordId)
-      if (!row) {
-        nextEntries.delete(recordId)
-        nextGlobal = patchAggregateState({
-          state: nextGlobal,
-          previous: previousEntry,
-          entries: nextEntries
-        })
+    context.impact.touchedRecords.forEach(recordId => {
+      const previousEntry = previousField.entries.get(recordId)
+      const row = records.byId[recordId]
+      const nextEntry = row
+        ? createAggregateEntry(field, getRecordFieldValue(row, fieldId))
+        : undefined
+
+      if (sameAggregateEntry(previousEntry, nextEntry)) {
         return
       }
 
-      const nextEntry = createAggregateEntry(field, getRecordFieldValue(row, fieldId))
-      nextEntries.set(recordId, nextEntry)
-      nextGlobal = patchAggregateState({
-        state: nextGlobal,
-        previous: previousEntry,
-        next: nextEntry,
-        entries: nextEntries
-      })
+      if (nextEntry) {
+        entries.set(recordId, nextEntry)
+      } else {
+        entries.delete(recordId)
+      }
+      aggregate.apply(previousEntry, nextEntry)
     })
 
-    nextFields.set(fieldId, {
+    if (!entries.changed()) {
+      return
+    }
+
+    const nextEntries = entries.finish()
+    fields.set(fieldId, {
       entries: nextEntries,
-      global: nextGlobal
+      global: aggregate.finish(nextEntries)
     })
-    changed = true
   })
 
-  return changed
+  return fields.changed()
     ? {
-        fields: nextFields,
+        fields: fields.finish(),
         rev: previous.rev + 1
       }
     : previous

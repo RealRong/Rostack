@@ -11,51 +11,39 @@ import {
   createNodeTextCommands
 } from '@whiteboard/editor/command/node/text'
 import type {
+  NodeLayoutCommands,
   NodeCommands,
   NodeLockCommands,
   NodeShapeCommands,
   NodeStyleCommands,
   NodePatchWriter
 } from '@whiteboard/editor/command/node/types'
-import {
-  resolveMeasuredTextNodeUpdate
-} from '@whiteboard/editor/command/node/layout'
+import type { LayoutRuntime } from '@whiteboard/editor/layout/runtime'
 import type { EditorQueryRead } from '@whiteboard/editor/query'
 import type { LocalFeedbackActions } from '@whiteboard/editor/local/actions/feedback'
 import type { SessionActions } from '@whiteboard/editor/types/commands'
-import type { TextLayoutMeasurer } from '@whiteboard/editor/types/textLayout'
 
 const createNodePatchWriter = (
   engine: Engine,
   {
-    read,
-    measureText
+    layout
   }: {
-    read: EditorQueryRead
-    measureText?: TextLayoutMeasurer
+    layout: LayoutRuntime
   }
 ): NodePatchWriter => ({
   update: (id, update) => engine.execute({
     type: 'node.patch',
     updates: [{
       id,
-      update: resolveMeasuredTextNodeUpdate({
-        nodeId: id,
-        update,
-        read,
-        measureText
-      })
+      update: layout.patchNodeUpdate(id, update)
     }]
   }),
   updateMany: (updates, options) => engine.execute({
     type: 'node.patch',
     updates: updates.map((entry) => ({
       id: entry.id,
-      update: resolveMeasuredTextNodeUpdate({
-        nodeId: entry.id,
-        update: entry.update,
-        read,
-        measureText
+      update: layout.patchNodeUpdate(entry.id, entry.update, {
+        origin: options?.origin
       })
     })),
     origin: options?.origin
@@ -141,28 +129,49 @@ const createNodeStyleCommands = (
   )
 })
 
+const createNodeLayoutCommands = (
+  ctx: NodeContext
+): NodeLayoutCommands => ({
+  sync: (nodeIds) => {
+    const updates = nodeIds.flatMap((id) => {
+      const update = ctx.layout.syncNode(id)
+      return update
+        ? [{
+            id,
+            update
+          }]
+        : []
+    })
+
+    return updates.length > 0
+      ? ctx.write.updateMany(updates, {
+          origin: 'system'
+        })
+      : undefined
+  }
+})
+
 export const createNodeCommands = ({
   engine,
   read,
   preview,
-  measureText,
+  layout,
   session
 }: {
   engine: Engine
   read: EditorQueryRead
   preview: Pick<LocalFeedbackActions, 'node'>
-  measureText?: TextLayoutMeasurer
+  layout: LayoutRuntime
   session: Pick<SessionActions, 'edit' | 'selection'>
 }): NodeCommands => {
   const patch = createNodePatchWriter(engine, {
-    read,
-    measureText
+    layout
   })
   const ctx = createNodeContext({
     read,
     patch,
     preview: preview.node,
-    measureText,
+    layout,
     session,
     deleteCascade: (ids) => engine.execute({
       type: 'node.deleteCascade',
@@ -226,6 +235,7 @@ export const createNodeCommands = ({
     lock: createNodeLockCommands(ctx),
     shape: createNodeShapeCommands(ctx),
     style: createNodeStyleCommands(ctx),
-    text: createNodeTextCommands(ctx)
+    text: createNodeTextCommands(ctx),
+    layout: createNodeLayoutCommands(ctx)
   }
 }

@@ -1,4 +1,3 @@
-import { isSizeEqual } from '@whiteboard/core/geometry'
 import {
   createDerivedStore,
   read as readValue
@@ -69,15 +68,6 @@ const createEditActions = ({
         return undefined
       }
 
-      const size = (
-        committed.node.type === 'text'
-        && currentEdit.field === 'text'
-        && currentEdit.layout.measuredSize
-        && !isSizeEqual(currentEdit.layout.measuredSize, committed.rect)
-      )
-        ? currentEdit.layout.measuredSize
-        : undefined
-
       return command.node.text.commit({
         nodeId: currentEdit.nodeId,
         field: currentEdit.field,
@@ -85,8 +75,7 @@ const createEditActions = ({
           text: currentEdit.draft.text,
           empty: currentEdit.capabilities.empty,
           defaultText: currentEdit.capabilities.defaultText
-        }),
-        size
+        })
       })
     }
 

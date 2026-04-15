@@ -45,7 +45,6 @@ export type NodeTextCommands = {
     nodeId: NodeId
     field: 'text' | 'title'
     value: string
-    size?: Size
   }) => CommandResult | undefined
   color: (nodeIds: readonly NodeId[], color: string) => CommandResult
   size: (input: {
@@ -58,6 +57,10 @@ export type NodeTextCommands = {
     nodeIds: readonly NodeId[],
     align?: 'left' | 'center' | 'right'
   ) => CommandResult
+}
+
+export type NodeLayoutCommands = {
+  sync: (nodeIds: readonly NodeId[]) => CommandResult | undefined
 }
 
 export type NodeLockCommands = {
@@ -98,4 +101,5 @@ export type NodeCommands = {
   shape: NodeShapeCommands
   style: NodeStyleCommands
   text: NodeTextCommands
+  layout: NodeLayoutCommands
 }

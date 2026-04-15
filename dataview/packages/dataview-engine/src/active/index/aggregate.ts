@@ -19,6 +19,20 @@ import type {
   SectionAggregateState
 } from '@dataview/engine/active/index/contracts'
 
+interface MutableAggregateState {
+  count: number
+  nonEmpty: number
+  sum: number
+  hasNumber: boolean
+  min?: number | string | null
+  max?: number | string | null
+  distribution: Map<string, number>
+  uniqueCounts: Map<string, number>
+  numberCounts: Map<number, number>
+  optionCounts: Map<string, number>
+  mustRecomputeRange: boolean
+}
+
 const asPlainString = (value: unknown) => (
   trimToUndefined(value) ?? ''
 )
@@ -326,6 +340,159 @@ export const sameAggregateEntry = (
     && left?.uniqueKey === right?.uniqueKey
     && sameOptionIds(left?.optionIds, right?.optionIds)
   )
+
+const createMutableAggregateState = (
+  state: AggregateState
+): MutableAggregateState => ({
+  count: state.count,
+  nonEmpty: state.nonEmpty,
+  sum: state.sum ?? 0,
+  hasNumber: state.sum !== undefined,
+  min: state.min,
+  max: state.max,
+  distribution: new Map(state.distribution),
+  uniqueCounts: new Map(state.uniqueCounts),
+  numberCounts: new Map(state.numberCounts),
+  optionCounts: new Map(state.optionCounts),
+  mustRecomputeRange: false
+})
+
+const applyAggregateEntryDelta = (
+  state: MutableAggregateState,
+  previous?: AggregateEntry,
+  next?: AggregateEntry
+) => {
+  if (sameAggregateEntry(previous, next)) {
+    return false
+  }
+
+  if (previous) {
+    state.count -= 1
+    if (!previous.empty) {
+      state.nonEmpty -= 1
+      decrementMapCount(state.distribution, previous.label)
+      decrementMapCount(state.uniqueCounts, previous.uniqueKey)
+      decrementMapCount(state.numberCounts, previous.number)
+      decrementMapCounts(state.optionCounts, previous.optionIds)
+      if (previous.number !== undefined) {
+        state.sum -= previous.number
+        state.hasNumber = state.numberCounts.size > 0
+      }
+      if (
+        previous.comparable !== undefined
+        && (
+          previous.comparable === state.min
+          || previous.comparable === state.max
+        )
+      ) {
+        state.mustRecomputeRange = true
+      }
+    }
+  }
+
+  if (next) {
+    state.count += 1
+    if (!next.empty) {
+      state.nonEmpty += 1
+      incrementMapCount(state.distribution, next.label)
+      incrementMapCount(state.uniqueCounts, next.uniqueKey)
+      incrementMapCount(state.numberCounts, next.number)
+      incrementMapCounts(state.optionCounts, next.optionIds)
+      if (next.number !== undefined) {
+        state.sum += next.number
+        state.hasNumber = true
+      }
+    }
+  }
+
+  if (
+    !state.mustRecomputeRange
+    && next
+    && !next.empty
+    && next.comparable !== undefined
+  ) {
+    if (typeof next.comparable === 'number') {
+      state.min = state.min === undefined
+        ? next.comparable
+        : Math.min(state.min as number, next.comparable)
+      state.max = state.max === undefined
+        ? next.comparable
+        : Math.max(state.max as number, next.comparable)
+    } else {
+      state.min = state.min === undefined
+        ? next.comparable
+        : String(state.min) < next.comparable ? state.min : next.comparable
+      state.max = state.max === undefined
+        ? next.comparable
+        : String(state.max) > next.comparable ? state.max : next.comparable
+    }
+  }
+
+  return true
+}
+
+export interface AggregateBuilder {
+  apply(previous?: AggregateEntry, next?: AggregateEntry): void
+  changed(): boolean
+  finish(entries?: ReadonlyMap<RecordId, AggregateEntry>): AggregateState
+}
+
+export const createAggregateBuilder = (
+  previous: AggregateState
+): AggregateBuilder => {
+  let next: MutableAggregateState | undefined
+
+  const ensure = () => {
+    if (!next) {
+      next = createMutableAggregateState(previous)
+    }
+
+    return next
+  }
+
+  return {
+    apply: (previousEntry, nextEntry) => {
+      if (sameAggregateEntry(previousEntry, nextEntry)) {
+        return
+      }
+
+      applyAggregateEntryDelta(
+        next ?? ensure(),
+        previousEntry,
+        nextEntry
+      )
+    },
+    changed: () => next !== undefined,
+    finish: entries => {
+      if (!next) {
+        return previous
+      }
+
+      const range = next.mustRecomputeRange
+        ? (
+            entries
+              ? readRange(entries)
+              : readNumberRange(next.numberCounts)
+          )
+        : {
+            ...(next.min !== undefined ? { min: next.min } : {}),
+            ...(next.max !== undefined ? { max: next.max } : {})
+          }
+
+      return {
+        count: next.count,
+        nonEmpty: next.nonEmpty,
+        ...(next.hasNumber ? { sum: next.sum } : {}),
+        ...(range.min !== undefined ? { min: range.min } : {}),
+        ...(range.max !== undefined ? { max: range.max } : {}),
+        distribution: next.distribution,
+        uniqueCounts: next.uniqueCounts,
+        numberCounts: next.numberCounts,
+        optionCounts: next.optionCounts
+      }
+    }
+  }
+}
 
 export const patchAggregateState = (input: {
   state: AggregateState

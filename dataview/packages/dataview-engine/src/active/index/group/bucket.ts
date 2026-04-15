@@ -1,5 +1,4 @@
 import type {
-  DataDoc,
   Field,
   RecordId,
   ViewGroup
@@ -7,9 +6,6 @@ import type {
 import {
   KANBAN_EMPTY_BUCKET_KEY
 } from '@dataview/core/contracts'
-import {
-  getDocumentFieldById
-} from '@dataview/core/document'
 import {
   compareGroupBuckets,
   getFieldGroupMeta,
@@ -155,8 +151,19 @@ const sameBucket = (
 const sameBuckets = (
   left: ReadonlyMap<BucketKey, Bucket>,
   right: ReadonlyMap<BucketKey, Bucket>
-) => left.size === right.size
-  && Array.from(left.entries()).every(([key, bucket]) => sameBucket(bucket, right.get(key)))
+) => {
+  if (left.size !== right.size) {
+    return false
+  }
+
+  for (const [key, bucket] of left) {
+    if (!sameBucket(bucket, right.get(key))) {
+      return false
+    }
+  }
+
+  return true
+}
 
 export const resolveBucketKeys = (
   field: Field | undefined,
@@ -172,13 +179,13 @@ export const resolveBucketKeys = (
 )
 
 export const buildBucketState = (input: {
-  document: DataDoc
+  field: Field | undefined
   records: RecordIndex
   demand: GroupDemand
   bucketRecords: ReadonlyMap<BucketKey, SortedIdSet<RecordId>>
   previous?: GroupFieldIndex
 }): Pick<GroupFieldIndex, 'buckets' | 'order'> => {
-  const field = getDocumentFieldById(input.document, input.demand.fieldId)
+  const field = input.field
   if (!field) {
     return {
       buckets: input.previous?.buckets ?? new Map(),
@@ -199,7 +206,7 @@ export const buildBucketState = (input: {
 
     const recordId = ids[0]
     const record = recordId
-      ? input.records.rows.get(recordId)
+      ? input.records.byId[recordId]
       : undefined
     const descriptor = record
       ? resolveFieldGroupBucketEntries(
@@ -220,7 +227,7 @@ export const buildBucketState = (input: {
         })
   })
 
-  const nextOrder = Array.from(nextBuckets.values())
+  const nextOrder = [...nextBuckets.values()]
     .sort((left, right) => compareResolvedGroupBuckets(left, right, field, groupOptions))
     .map(bucket => bucket.key as BucketKey)
 

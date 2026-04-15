@@ -1,102 +1,63 @@
 import {
-  collectSchemaFieldIds,
-  collectTouchedFieldIds,
-  collectTouchedRecordIds,
-  collectValueFieldIds,
-  hasRecordSetChange
+  touchedFieldCountOfImpact,
+  touchedRecordCountOfImpact
 } from '@dataview/core/commit/impact'
 import type {
-  CommitImpact,
-  DataDoc,
-  FieldId,
-  RecordId
+  CommitImpact
 } from '@dataview/core/contracts'
-import {
-  hasDocumentField,
-  getDocumentFieldIds
-} from '@dataview/core/document'
 
 export const createOrderIndex = <T extends string>(
   ids: readonly T[]
-): ReadonlyMap<T, number> => new Map(
-  ids.map((id, index) => [id, index] as const)
-)
+): ReadonlyMap<T, number> => {
+  const order = new Map<T, number>()
 
-export const removeOrderedId = <T extends string>(
-  ids: readonly T[],
-  id: T
-): readonly T[] => {
-  const index = ids.indexOf(id)
-  if (index < 0) {
-    return ids
-  }
+  ids.forEach((id, index) => {
+    order.set(id, index)
+  })
 
-  return [
-    ...ids.slice(0, index),
-    ...ids.slice(index + 1)
-  ]
+  return order
 }
 
-export const insertOrderedId = <T extends string>(
-  ids: readonly T[],
+export const removeOrderedIdInPlace = <T extends string>(
+  ids: T[],
+  id: T
+): boolean => {
+  const index = ids.indexOf(id)
+  if (index < 0) {
+    return false
+  }
+
+  ids.splice(index, 1)
+  return true
+}
+
+export const insertOrderedIdInPlace = <T extends string>(
+  ids: T[],
   id: T,
   order: ReadonlyMap<T, number>
-): readonly T[] => {
+): boolean => {
   if (ids.includes(id)) {
-    return ids
+    return false
   }
 
   const nextOrder = order.get(id) ?? Number.MAX_SAFE_INTEGER
-  const next = [...ids]
-  const index = next.findIndex(current => (
+  const index = ids.findIndex(current => (
     (order.get(current) ?? Number.MAX_SAFE_INTEGER) > nextOrder
   ))
 
   if (index < 0) {
-    next.push(id)
-    return next
+    ids.push(id)
+    return true
   }
 
-  next.splice(index, 0, id)
-  return next
+  ids.splice(index, 0, id)
+  return true
 }
 
-export const allFieldIdsOf = (
-  document: DataDoc,
-  previous?: ReadonlyMap<FieldId, unknown>
-): readonly FieldId[] => {
-  const ids = new Set<FieldId>(getDocumentFieldIds(document))
-  previous?.forEach((_value, fieldId) => ids.add(fieldId))
-  return Array.from(ids)
-}
-
-export {
-  collectSchemaFieldIds,
-  collectValueFieldIds,
-  collectTouchedFieldIds,
-  collectTouchedRecordIds,
-  hasRecordSetChange
-}
-
-export const hasField = (
-  document: DataDoc,
-  fieldId: FieldId
-): boolean => hasDocumentField(document, fieldId)
-
-export const hasIndexChanges = (
+export const touchedRecordCountOf = (
   impact: CommitImpact
-): boolean => Boolean(
-  impact.reset
-  || impact.records
-  || impact.fields?.schema
-)
+): number | 'all' | undefined => touchedRecordCountOfImpact(impact)
 
-export const touchesRecord = (
-  impact: CommitImpact,
-  recordId: RecordId
-): boolean => {
-  const touched = collectTouchedRecordIds(impact)
-  return touched === 'all'
-    ? true
-    : touched.has(recordId)
-}
+export const touchedFieldCountOf = (
+  impact: CommitImpact
+): number | 'all' | undefined => touchedFieldCountOfImpact(impact)

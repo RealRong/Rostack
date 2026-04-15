@@ -327,7 +327,9 @@ export type LayoutBackend = {
 
 ```ts
 export const createLayoutBackend: (
-  readEditor: () => WhiteboardRuntime | null
+  input: {
+    textSources: TextSourceStore
+  }
 ) => LayoutBackend
 ```
 
@@ -343,7 +345,132 @@ export const createLayoutBackend: (
 - 不 patch document
 - 不关心 transform / toolbar / edit 的业务语义
 
-## 5.5 `LayoutRuntime`
+## 5.5 注入方式
+
+React 侧给 editor 提供 layout 能力，最终应当走 `createEditor` 的构造参数注入。
+
+原因：
+
+- `layout` 会被 `node.patch`、`edit`、`transform.preview` 这些底层路径使用
+- 它属于 editor 的基础能力，不是 renderer 层的可选附属行为
+- 构造期注入最容易做测试、做 headless、做平台替换
+
+但最终形态不应该继续停留在当前这种：
+
+```ts
+createEditor({
+  ...,
+  measureText
+})
+```
+
+这只是 `text` 阶段的过渡方案。
+
+长期最优应该直接收敛成：
+
+```ts
+export type EditorServices = {
+  layout?: LayoutBackend
+}
+
+export const createEditor = ({
+  engine,
+  initialTool,
+  initialViewport,
+  registry,
+  services
+}: {
+  engine: Engine
+  initialTool: Tool
+  initialViewport: Viewport
+  registry: NodeRegistry
+  services?: EditorServices
+}): Editor
+```
+
+也就是：
+
+- editor 不直接接收 `measureText`
+- editor 接收 `services.layout`
+
+这样做的好处：
+
+- `text` 的 `size` 和 `sticky` 的 `fit` 共用一个注入点
+- 以后不会继续长出 `measureStickyFont`、`measureShapeLabel` 之类的新散参数
+- editor 的平台边界保持稳定
+
+React 侧的推荐装配方式：
+
+```ts
+const textSources = createTextSourceStore()
+const layout = createLayoutBackend({
+  textSources
+})
+
+const editor = createEditor({
+  engine,
+  initialTool,
+  initialViewport,
+  registry,
+  services: {
+    layout
+  }
+})
+```
+
+## 5.6 `TextSourceStore`
+
+layout backend 需要访问当前 node 的文本 source DOM，但这不意味着它应该反向依赖 editor 实例。
+
+长期最优做法不是：
+
+- 在 `WeakMap<editor, registry>` 上挂 source registry
+
+而是引入一个很小的独立宿主：
+
+```ts
+export type TextField = 'text' | 'title'
+
+export type TextSourceStore = {
+  set: (
+    nodeId: NodeId,
+    field: TextField,
+    element: HTMLElement | null
+  ) => void
+  get: (
+    nodeId: NodeId,
+    field: TextField
+  ) => HTMLElement | undefined
+}
+```
+
+建议实现名：
+
+```ts
+export const createTextSourceStore: () => TextSourceStore
+```
+
+React renderer 负责：
+
+- 在节点挂载/卸载时调用 `textSources.set(...)`
+
+layout backend 负责：
+
+- 在测量时调用 `textSources.get(...)`
+
+这样可以避免：
+
+- layout backend 持有 editor 闭包
+- text source registry 和 editor 生命周期硬绑定
+- 平台测量层反向耦合 editor runtime
+
+一句话总结：
+
+- `editor` 接收 `services.layout`
+- `react` 提供 `createLayoutBackend(...)`
+- `renderer` 与 `layout backend` 通过 `TextSourceStore` 共享 DOM source
+
+## 5.7 `LayoutRuntime`
 
 真正的中轴在 editor 里：
 
@@ -648,6 +775,8 @@ transform preview 也必须走同一条 `layout.preview`。
 - 新增 `core/node/layout.ts`
 - 新增 `editor/layout`
 - 新增 `react/runtime/layout`
+- 把 `createEditor(..., measureText)` 收敛为 `createEditor(..., services.layout)`
+- 引入独立的 `TextSourceStore`
 
 验收标准：
 

@@ -55,9 +55,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   const active = createActiveViewApi({
     store,
     select,
-    dispatch,
-    fields,
-    records
+    dispatch
   })
   const views = createViewsApi({
     select,

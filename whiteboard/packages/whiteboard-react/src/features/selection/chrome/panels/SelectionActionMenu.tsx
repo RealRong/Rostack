@@ -10,20 +10,6 @@ const ORDER_ITEMS = [
   { key: 'order.back', label: 'Send to back', mode: 'back' as const }
 ] as const
 
-const ALIGN_ITEMS = [
-  { key: 'align.left', label: 'Align left', mode: 'left' as const },
-  { key: 'align.center-x', label: 'Align center', mode: 'horizontal' as const },
-  { key: 'align.right', label: 'Align right', mode: 'right' as const },
-  { key: 'align.top', label: 'Align top', mode: 'top' as const },
-  { key: 'align.center-y', label: 'Align middle', mode: 'vertical' as const },
-  { key: 'align.bottom', label: 'Align bottom', mode: 'bottom' as const }
-] as const
-
-const DISTRIBUTE_ITEMS = [
-  { key: 'distribute.horizontal', label: 'Distribute horizontally', mode: 'horizontal' as const },
-  { key: 'distribute.vertical', label: 'Distribute vertically', mode: 'vertical' as const }
-] as const
-
 const readRectCenter = (
   box: {
     x: number
@@ -147,38 +133,6 @@ export const SelectionActionMenu = ({
         }
       }))
     },
-    ...(pureNodeSelection
-      ? [
-          {
-            kind: 'submenu' as const,
-            key: 'align',
-            label: 'Align',
-            disabled: !selectionCan.align,
-            items: ALIGN_ITEMS.map((item) => ({
-              kind: 'action' as const,
-              key: item.key,
-              label: item.label,
-              onSelect: () => {
-                editor.actions.node.align(nodeIds, item.mode)
-              }
-            }))
-          },
-          {
-            kind: 'submenu' as const,
-            key: 'distribute',
-            label: 'Distribute',
-            disabled: !selectionCan.distribute,
-            items: DISTRIBUTE_ITEMS.map((item) => ({
-              kind: 'action' as const,
-              key: item.key,
-              label: item.label,
-              onSelect: () => {
-                editor.actions.node.distribute(nodeIds, item.mode)
-              }
-            }))
-          }
-        ]
-      : []),
     ...(selectionCan.makeGroup
       ? [
           {

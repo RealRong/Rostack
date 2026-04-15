@@ -50,7 +50,7 @@ export const sameSearch = (
   && sameFieldIds(left.fields, right.fields)
 )
 
-export const setSearchQuery = (
+export const set = (
   search: Search,
   value: string
 ): Search => {
@@ -63,6 +63,10 @@ export const setSearchQuery = (
     query: value
   }
 }
+
+export const search = {
+  set
+} as const
 
 const sameFieldIds = (
   left: readonly string[] | undefined,

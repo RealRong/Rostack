@@ -1,28 +1,61 @@
+import type {
+  CustomFieldId,
+  CustomFieldKind
+} from '@dataview/core/contracts'
+import {
+  createUniqueFieldName
+} from '@dataview/core/field'
 import {
   resolveDisplayInsertBeforeFieldId,
   setTableColumnWidths,
   setTableVerticalLines,
   setTableWrapCells
 } from '@dataview/core/view'
+import { meta, renderMessage } from '@dataview/meta'
 import type { ActiveViewApi } from '@dataview/engine/contracts/public'
 import type { ActiveViewContext } from '@dataview/engine/active/context'
-import { withViewPatch } from '@dataview/engine/active/commands/shared'
+
+const createField = (
+  base: ActiveViewContext,
+  input?: {
+    name?: string
+    kind?: CustomFieldKind
+  }
+): CustomFieldId | undefined => {
+  const kind = input?.kind ?? 'text'
+  const explicitName = input?.name?.trim()
+  const name = explicitName || createUniqueFieldName(
+    renderMessage(meta.field.kind.get(kind).defaultName),
+    base.reader.fields.list()
+  )
+  if (!name) {
+    return undefined
+  }
+
+  return base.dispatch({
+    type: 'field.create',
+    input: {
+      name,
+      kind
+    }
+  }).created?.fields?.[0]
+}
 
 export const createTableApi = (input: {
   base: ActiveViewContext
   display: ActiveViewApi['display']
 }): ActiveViewApi['table'] => ({
-  setColumnWidths: widths => withViewPatch(input.base, view => ({
+  setColumnWidths: widths => input.base.patch(view => ({
     options: setTableColumnWidths(view.options, widths)
   })),
-  setVerticalLines: value => withViewPatch(input.base, view => ({
+  setVerticalLines: value => input.base.patch(view => ({
     options: setTableVerticalLines(view.options, value)
   })),
-  setWrapCells: value => withViewPatch(input.base, view => ({
+  setWrapCells: value => input.base.patch(view => ({
     options: setTableWrapCells(view.options, value)
   })),
   insertFieldLeft: (anchorFieldId, fieldInput) => {
-    const fieldId = input.base.createField(fieldInput)
+    const fieldId = createField(input.base, fieldInput)
     if (!fieldId) {
       return undefined
     }
@@ -30,7 +63,7 @@ export const createTableApi = (input: {
     input.display.show(
       fieldId,
       resolveDisplayInsertBeforeFieldId(
-        input.base.readConfig()?.display.fields ?? [],
+        input.base.view()?.display.fields ?? [],
         anchorFieldId,
         'left'
       )
@@ -38,7 +71,7 @@ export const createTableApi = (input: {
     return fieldId
   },
   insertFieldRight: (anchorFieldId, fieldInput) => {
-    const fieldId = input.base.createField(fieldInput)
+    const fieldId = createField(input.base, fieldInput)
     if (!fieldId) {
       return undefined
     }
@@ -46,7 +79,7 @@ export const createTableApi = (input: {
     input.display.show(
       fieldId,
       resolveDisplayInsertBeforeFieldId(
-        input.base.readConfig()?.display.fields ?? [],
+        input.base.view()?.display.fields ?? [],
         anchorFieldId,
         'right'
       )

@@ -20,15 +20,10 @@ export {
   setFilterRuleValue
 } from '@dataview/core/filter/spec'
 export {
-  addFilterRule,
   cloneFilter,
   findFilterIndex,
+  filter,
   normalizeFilter,
-  removeFilterRule,
-  replaceFilterRule,
   sameFilter,
-  sameFilterRule,
-  setFilterMode,
-  setFilterPreset,
-  setFilterValue
+  sameFilterRule
 } from '@dataview/core/filter/state'

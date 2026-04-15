@@ -15,6 +15,6 @@ export {
 export {
   cloneSearch,
   normalizeSearch,
-  sameSearch,
-  setSearchQuery
+  search,
+  sameSearch
 } from '@dataview/core/search/state'

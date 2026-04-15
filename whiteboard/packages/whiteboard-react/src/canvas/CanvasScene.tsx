@@ -10,12 +10,14 @@ import {
   EDGE_ARROW_END_ID,
   EDGE_ARROW_START_ID
 } from '@whiteboard/react/features/edge/constants'
+import { useEdgeLabelSizeObserver } from '@whiteboard/react/features/edge/dom/labelSizeObserver'
 
 export const CanvasScene = () => {
   const editor = useEditorRuntime()
   const scene = useStoreValue(editor.read.scene.list)
   const selection = useStoreValue(editor.store.selection)
   const registerMeasuredElement = useNodeSizeObserver()
+  const edgeLabelObserver = useEdgeLabelSizeObserver()
 
   return (
     <div className="wb-scene">
@@ -54,6 +56,7 @@ export const CanvasScene = () => {
                 key={`edge:${ref.id}`}
                 edgeId={ref.id}
                 selected={selection.edgeIds.includes(ref.id)}
+                edgeLabelObserver={edgeLabelObserver}
               />
             )
           : (

@@ -66,13 +66,13 @@ export const findSorterIndex = (
   fieldId: string
 ) => sorters.findIndex(sorter => sorter.field === fieldId)
 
-export const addSorter = (
+export const add = (
   sorters: readonly Sorter[],
   fieldId: string,
   direction: SortDirection = 'asc'
 ): Sorter[] => {
   if (findSorterIndex(sorters, fieldId) !== -1) {
-    return cloneSorters(sorters)
+    return sorters as Sorter[]
   }
 
   return [
@@ -84,22 +84,31 @@ export const addSorter = (
   ]
 }
 
-export const setSorter = (
+export const set = (
   sorters: readonly Sorter[],
   fieldId: string,
   direction: SortDirection
 ): Sorter[] => {
-  const next = cloneSorters(sorters)
-  const index = findSorterIndex(next, fieldId)
+  const index = findSorterIndex(sorters, fieldId)
 
   if (index === -1) {
-    next.push({
-      field: fieldId,
-      direction
-    })
-    return next
+    return [
+      ...cloneSorters(sorters),
+      {
+        field: fieldId,
+        direction
+      }
+    ]
   }
 
+  if (
+    sorters[index]?.field === fieldId
+    && sorters[index]?.direction === direction
+  ) {
+    return sorters as Sorter[]
+  }
+
+  const next = cloneSorters(sorters)
   next[index] = {
     field: fieldId,
     direction
@@ -107,7 +116,7 @@ export const setSorter = (
   return next
 }
 
-export const setOnlySorter = (
+export const keepOnly = (
   sorters: readonly Sorter[],
   fieldId: string,
   direction: SortDirection
@@ -117,7 +126,7 @@ export const setOnlySorter = (
     && sorters[0]?.field === fieldId
     && sorters[0]?.direction === direction
   ) {
-    return cloneSorters(sorters)
+    return sorters as Sorter[]
   }
 
   return [{
@@ -126,13 +135,20 @@ export const setOnlySorter = (
   }]
 }
 
-export const replaceSorter = (
+export const replace = (
   sorters: readonly Sorter[],
   index: number,
   sorter: Sorter
 ): Sorter[] => {
   if (!sorters[index]) {
-    return cloneSorters(sorters)
+    return sorters as Sorter[]
+  }
+
+  if (
+    sorters[index]?.field === sorter.field
+    && sorters[index]?.direction === sorter.direction
+  ) {
+    return sorters as Sorter[]
   }
 
   const next = cloneSorters(sorters)
@@ -140,12 +156,12 @@ export const replaceSorter = (
   return next
 }
 
-export const removeSorter = (
+export const remove = (
   sorters: readonly Sorter[],
   index: number
 ): Sorter[] => {
   if (index < 0 || index >= sorters.length) {
-    return cloneSorters(sorters)
+    return sorters as Sorter[]
   }
 
   const next = cloneSorters(sorters)
@@ -153,7 +169,7 @@ export const removeSorter = (
   return next
 }
 
-export const moveSorter = (
+export const move = (
   sorters: readonly Sorter[],
   from: number,
   to: number
@@ -165,23 +181,33 @@ export const moveSorter = (
     || to >= sorters.length
     || from === to
   ) {
-    return cloneSorters(sorters)
+    return sorters as Sorter[]
   }
 
   const next = cloneSorters(sorters)
   const [sorter] = next.splice(from, 1)
   if (!sorter) {
-    return next
+    return sorters as Sorter[]
   }
 
   next.splice(to, 0, sorter)
   return next
 }
 
-export const clearSorters = (
+export const clear = (
   sorters: readonly Sorter[]
 ): Sorter[] => (
   sorters.length
     ? []
-    : cloneSorters(sorters)
+    : sorters as Sorter[]
 )
+
+export const sort = {
+  add,
+  set,
+  keepOnly,
+  replace,
+  remove,
+  move,
+  clear
+} as const

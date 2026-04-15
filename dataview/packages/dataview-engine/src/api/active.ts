@@ -2,9 +2,7 @@ import type { Action } from '@dataview/core/contracts'
 import type {
   ActionResult,
   ActiveViewApi,
-  DocumentSelectApi,
-  FieldsApi,
-  RecordsApi
+  DocumentSelectApi
 } from '@dataview/engine/contracts/public'
 import { createActiveContext } from '@dataview/engine/active/context'
 import { createActiveViewReadApi } from '@dataview/engine/active/read'
@@ -28,26 +26,24 @@ export const createActiveViewApi = (options: {
   store: RuntimeStore
   select: DocumentSelectApi
   dispatch: (action: Action | readonly Action[]) => ActionResult
-  fields: Pick<FieldsApi, 'list' | 'create'>
-  records: Pick<RecordsApi, 'fields'>
 }): ActiveViewApi => {
   const base = createActiveContext(options)
   const readApi = createActiveViewReadApi({
-    select: options.select,
-    state: base.state
+    reader: base.reader,
+    stateStore: base.stateStore
   })
   const display = createDisplayApi(base)
 
   return {
     id: base.id,
     config: base.config,
-    state: base.state,
+    state: base.stateStore,
     select: base.select,
     read: readApi,
     changeType: type => {
-      base.commitPatch({
+      base.patch(() => ({
         type
-      })
+      }))
     },
     search: createSearchApi(base),
     filters: createFiltersApi(base),

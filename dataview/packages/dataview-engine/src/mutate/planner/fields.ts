@@ -1,17 +1,11 @@
 import type {
   Action,
   CustomField,
-  DataDoc,
   FieldId,
-  RecordId
+  RecordId,
+  View
 } from '@dataview/core/contracts'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
-import {
-  getDocumentCustomFieldById,
-  getDocumentCustomFields,
-  getDocumentRecords,
-  getDocumentViews
-} from '@dataview/core/document'
 import {
   createDefaultCustomField,
   createUniqueFieldName,
@@ -20,6 +14,7 @@ import {
   findFieldOptionByName,
   getFieldOptions,
   hasFieldOptions,
+  isCustomField,
   replaceFieldOptions
 } from '@dataview/core/field'
 import {
@@ -31,23 +26,29 @@ import {
   trimToUndefined
 } from '@shared/core'
 import { createFieldId } from '@dataview/engine/mutate/entityId'
-import {
-  createIssue,
-  hasValidationErrors,
-  type IssueSource,
-  type ValidationIssue
-} from '@dataview/engine/mutate/issues'
-import { validateFieldExists } from '@dataview/engine/mutate/validate/entity'
 import { validateField } from '@dataview/engine/mutate/validate/field'
-import {
-  planResult,
-  sourceOf,
-  toFieldPatch,
-  toViewPut,
-  type PlannedActionResult
-} from '@dataview/engine/mutate/planner/shared'
+import type {
+  PlannedActionResult,
+  PlannerScope
+} from '@dataview/engine/mutate/planner/scope'
 
 const DEFAULT_OPTION_NAME = 'Option'
+
+const toViewPut = (
+  view: View
+): DocumentOperation => ({
+  type: 'document.view.put',
+  view
+})
+
+const toFieldPatch = (
+  fieldId: string,
+  patch: Partial<Omit<CustomField, 'id'>>
+): DocumentOperation => ({
+  type: 'document.field.patch',
+  fieldId,
+  patch
+})
 
 const toRecordFieldWriteMany = (input: {
   recordIds: readonly RecordId[]
@@ -81,10 +82,10 @@ const toSingleRecordFieldWrite = (
     })
 
 const buildCreateFieldViewOps = (
-  document: DataDoc,
+  views: readonly View[],
   field: CustomField
 ): DocumentOperation[] => (
-  getDocumentViews(document)
+  views
     .filter(view => view.type === 'table')
     .flatMap(view => (
       view.display.fields.includes(field.id)
@@ -99,10 +100,10 @@ const buildCreateFieldViewOps = (
 )
 
 const buildRemovedFieldViewOps = (
-  document: DataDoc,
+  views: readonly View[],
   fieldId: string
 ): DocumentOperation[] => (
-  getDocumentViews(document)
+  views
     .flatMap(view => {
       const nextView = repairViewForRemovedField(view, fieldId)
       return nextView === view
@@ -112,10 +113,10 @@ const buildRemovedFieldViewOps = (
 )
 
 const buildConvertedFieldViewOps = (
-  document: DataDoc,
+  views: readonly View[],
   field: CustomField
 ): DocumentOperation[] => (
-  getDocumentViews(document)
+  views
     .flatMap(view => {
       const nextView = repairViewForConvertedField(view, field)
       return nextView === view
@@ -161,49 +162,71 @@ const createNextFieldOption = (
   }
 }
 
+const requireCustomField = (
+  scope: PlannerScope,
+  fieldId: string,
+  path = 'fieldId'
+): CustomField | undefined => {
+  const field = scope.reader.fields.get(fieldId)
+  if (!isCustomField(field)) {
+    scope.issue(
+      'field.notFound',
+      `Unknown field: ${fieldId}`,
+      path
+    )
+    return undefined
+  }
+
+  return field
+}
+
 const requireOptionField = (
-  document: DataDoc,
-  source: IssueSource,
+  scope: PlannerScope,
   fieldId: string
 ) => {
-  const issues = validateFieldExists(document, source, fieldId)
-  const field = getDocumentCustomFieldById(document, fieldId)
-  if (!field || hasValidationErrors(issues)) {
-    return {
-      issues
-    }
+  const field = requireCustomField(scope, fieldId)
+  if (!field) {
+    return undefined
   }
   if (!hasFieldOptions(field)) {
-    issues.push(createIssue(source, 'error', 'field.invalid', 'Field does not support options', 'fieldId'))
-    return {
-      issues
-    }
+    scope.issue(
+      'field.invalid',
+      'Field does not support options',
+      'fieldId'
+    )
+    return undefined
   }
+
   return {
-    issues,
     field,
     options: getFieldOptions(field)
   }
 }
 
 const lowerFieldCreate = (
-  document: DataDoc,
-  action: Extract<Action, { type: 'field.create' }>,
-  index: number
+  scope: PlannerScope,
+  action: Extract<Action, { type: 'field.create' }>
 ): PlannedActionResult => {
-  const source = sourceOf(index, action)
+  const document = scope.reader.document()
+  const views = scope.reader.views.list()
   const explicitFieldId = trimToUndefined(action.input.id)
-  const issues: ValidationIssue[] = []
 
   if (action.input.id !== undefined && !explicitFieldId) {
-    issues.push(createIssue(source, 'error', 'field.invalid', 'Field id must be a non-empty string', 'input.id'))
+    scope.issue(
+      'field.invalid',
+      'Field id must be a non-empty string',
+      'input.id'
+    )
   }
-  if (explicitFieldId && getDocumentCustomFieldById(document, explicitFieldId)) {
-    issues.push(createIssue(source, 'error', 'field.invalid', `Field already exists: ${explicitFieldId}`, 'input.id'))
+  if (explicitFieldId && scope.reader.fields.has(explicitFieldId)) {
+    scope.issue(
+      'field.invalid',
+      `Field already exists: ${explicitFieldId}`,
+      'input.id'
+    )
   }
-
-  if (hasValidationErrors(issues)) {
-    return planResult(issues)
+  if ((action.input.id !== undefined && !explicitFieldId) || (explicitFieldId && scope.reader.fields.has(explicitFieldId))) {
+    return scope.finish()
   }
 
   const field = createDefaultCustomField({
@@ -213,75 +236,75 @@ const lowerFieldCreate = (
     meta: action.input.meta
   })
 
-  const fieldIssues = validateField(document, source, field, 'input')
-  return planResult(
-    [...issues, ...fieldIssues],
-    [
-      {
-        type: 'document.field.put',
-        field
-      },
-      ...buildCreateFieldViewOps(document, field)
-    ]
+  scope.report(...validateField(document, scope.source, field, 'input'))
+  return scope.finish(
+    {
+      type: 'document.field.put',
+      field
+    },
+    ...buildCreateFieldViewOps(views, field)
   )
 }
 
 const lowerFieldPatch = (
-  document: DataDoc,
-  action: Extract<Action, { type: 'field.patch' }>,
-  index: number
+  scope: PlannerScope,
+  action: Extract<Action, { type: 'field.patch' }>
 ): PlannedActionResult => {
-  const source = sourceOf(index, action)
-  const issues = validateFieldExists(document, source, action.fieldId)
-  const field = getDocumentCustomFieldById(document, action.fieldId)
-
-  if (!field || hasValidationErrors(issues)) {
-    return planResult(issues)
+  const document = scope.reader.document()
+  const views = scope.reader.views.list()
+  const field = requireCustomField(scope, action.fieldId)
+  if (!field) {
+    return scope.finish()
   }
 
   if (!Object.keys(action.patch).length) {
-    issues.push(createIssue(source, 'error', 'field.invalid', 'field.patch patch cannot be empty', 'patch'))
-    return planResult(issues)
+    scope.issue(
+      'field.invalid',
+      'field.patch patch cannot be empty',
+      'patch'
+    )
+    return scope.finish()
   }
 
   const nextField = {
     ...field,
     ...(action.patch as Partial<CustomField>)
   } as CustomField
-  issues.push(...validateField(document, source, nextField, 'patch'))
+  scope.report(...validateField(document, scope.source, nextField, 'patch'))
 
-  return planResult(issues, [toFieldPatch(action.fieldId, action.patch)])
+  return scope.finish(toFieldPatch(action.fieldId, action.patch))
 }
 
 const lowerFieldReplace = (
-  document: DataDoc,
-  action: Extract<Action, { type: 'field.replace' }>,
-  index: number
+  scope: PlannerScope,
+  action: Extract<Action, { type: 'field.replace' }>
 ): PlannedActionResult => {
-  const source = sourceOf(index, action)
-  const issues = validateFieldExists(document, source, action.fieldId)
+  const document = scope.reader.document()
+  if (!requireCustomField(scope, action.fieldId)) {
+    return scope.finish()
+  }
+
   const field = {
     ...structuredClone(action.field),
     id: action.fieldId
   } satisfies CustomField
 
-  issues.push(...validateField(document, source, field, 'field'))
-  return planResult(issues, [{
+  scope.report(...validateField(document, scope.source, field, 'field'))
+  return scope.finish({
     type: 'document.field.put',
     field
-  }])
+  })
 }
 
 const lowerFieldConvert = (
-  document: DataDoc,
-  action: Extract<Action, { type: 'field.convert' }>,
-  index: number
+  scope: PlannerScope,
+  action: Extract<Action, { type: 'field.convert' }>
 ): PlannedActionResult => {
-  const source = sourceOf(index, action)
-  const issues = validateFieldExists(document, source, action.fieldId)
-  const field = getDocumentCustomFieldById(document, action.fieldId)
-  if (!field || hasValidationErrors(issues)) {
-    return planResult(issues)
+  const document = scope.reader.document()
+  const views = scope.reader.views.list()
+  const field = requireCustomField(scope, action.fieldId)
+  if (!field) {
+    return scope.finish()
   }
 
   const patch = createFieldConvertPatch(field, action.input)
@@ -289,38 +312,38 @@ const lowerFieldConvert = (
     ...field,
     ...patch
   } as CustomField
-  issues.push(...validateField(document, source, nextField, 'input'))
+  scope.report(...validateField(document, scope.source, nextField, 'input'))
 
-  return planResult(
-    issues,
-    [
-      toFieldPatch(action.fieldId, patch),
-      ...buildConvertedFieldViewOps(document, nextField)
-    ]
+  return scope.finish(
+    toFieldPatch(action.fieldId, patch),
+    ...buildConvertedFieldViewOps(views, nextField)
   )
 }
 
 const lowerFieldDuplicate = (
-  document: DataDoc,
-  action: Extract<Action, { type: 'field.duplicate' }>,
-  index: number
+  scope: PlannerScope,
+  action: Extract<Action, { type: 'field.duplicate' }>
 ): PlannedActionResult => {
-  const source = sourceOf(index, action)
-  const issues = validateFieldExists(document, source, action.fieldId)
-  const sourceField = getDocumentCustomFieldById(document, action.fieldId)
-  if (!sourceField || hasValidationErrors(issues)) {
-    return planResult(issues)
+  const document = scope.reader.document()
+  const views = scope.reader.views.list()
+  const records = scope.reader.records.list()
+  const sourceField = requireCustomField(scope, action.fieldId)
+  if (!sourceField) {
+    return scope.finish()
   }
 
   const nextFieldId = createFieldId()
   const nextField: CustomField = {
     ...structuredClone(sourceField),
     id: nextFieldId,
-    name: createUniqueFieldName(`${sourceField.name} Copy`, getDocumentCustomFields(document))
+    name: createUniqueFieldName(
+      `${sourceField.name} Copy`,
+      scope.reader.fields.list().filter(isCustomField)
+    )
   }
-  issues.push(...validateField(document, source, nextField, 'field'))
+  scope.report(...validateField(document, scope.source, nextField, 'field'))
 
-  const recordOps: DocumentOperation[] = getDocumentRecords(document).flatMap(record => (
+  const recordOps: DocumentOperation[] = records.flatMap(record => (
     Object.prototype.hasOwnProperty.call(record.values, sourceField.id)
       ? [toSingleRecordFieldWrite(
           record.id,
@@ -330,7 +353,7 @@ const lowerFieldDuplicate = (
       : []
   ))
 
-  const viewOps: DocumentOperation[] = getDocumentViews(document).flatMap(view => {
+  const viewOps: DocumentOperation[] = views.flatMap(view => {
     const sourceFieldIds = view.display.fields
     const currentFieldIds = view.type === 'table' && !sourceFieldIds.includes(nextFieldId)
       ? [...sourceFieldIds, nextFieldId]
@@ -361,38 +384,37 @@ const lowerFieldDuplicate = (
     })]
   })
 
-  return planResult(
-    issues,
-    [
-      {
-        type: 'document.field.put',
-        field: nextField
-      },
-      ...buildCreateFieldViewOps(document, nextField),
-      ...recordOps,
-      ...viewOps
-    ]
+  return scope.finish(
+    {
+      type: 'document.field.put',
+      field: nextField
+    },
+    ...buildCreateFieldViewOps(views, nextField),
+    ...recordOps,
+    ...viewOps
   )
 }
 
 const lowerFieldOptionCreate = (
-  document: DataDoc,
-  action: Extract<Action, { type: 'field.option.create' }>,
-  index: number
+  scope: PlannerScope,
+  action: Extract<Action, { type: 'field.option.create' }>
 ): PlannedActionResult => {
-  const source = sourceOf(index, action)
-  const context = requireOptionField(document, source, action.fieldId)
-  if (!context.field || !context.options || hasValidationErrors(context.issues)) {
-    return planResult(context.issues)
+  const context = requireOptionField(scope, action.fieldId)
+  if (!context) {
+    return scope.finish()
   }
 
   const explicitName = trimToUndefined(action.input?.name)
   if (action.input?.name !== undefined && !explicitName) {
-    context.issues.push(createIssue(source, 'error', 'field.invalid', 'Field option name must be a non-empty string', 'input.name'))
-    return planResult(context.issues)
+    scope.issue(
+      'field.invalid',
+      'Field option name must be a non-empty string',
+      'input.name'
+    )
+    return scope.finish()
   }
   if (explicitName && findFieldOptionByName(context.options, explicitName)) {
-    return planResult(context.issues)
+    return scope.finish()
   }
 
   const nextOption = createNextFieldOption(
@@ -400,19 +422,21 @@ const lowerFieldOptionCreate = (
     context.options,
     explicitName ?? createOptionName(context.options)
   )
-  const patch = replaceFieldOptions(context.field, [...context.options, nextOption]) as Partial<Omit<CustomField, 'id'>>
-  return planResult(context.issues, [toFieldPatch(action.fieldId, patch)])
+  const patch = replaceFieldOptions(
+    context.field,
+    [...context.options, nextOption]
+  ) as Partial<Omit<CustomField, 'id'>>
+
+  return scope.finish(toFieldPatch(action.fieldId, patch))
 }
 
 const lowerFieldOptionReorder = (
-  document: DataDoc,
-  action: Extract<Action, { type: 'field.option.reorder' }>,
-  index: number
+  scope: PlannerScope,
+  action: Extract<Action, { type: 'field.option.reorder' }>
 ): PlannedActionResult => {
-  const source = sourceOf(index, action)
-  const context = requireOptionField(document, source, action.fieldId)
-  if (!context.field || !context.options || hasValidationErrors(context.issues)) {
-    return planResult(context.issues)
+  const context = requireOptionField(scope, action.fieldId)
+  if (!context) {
+    return scope.finish()
   }
 
   const optionMap = new Map(context.options.map(option => [option.id, option] as const))
@@ -432,46 +456,65 @@ const lowerFieldOptionReorder = (
     nextOptions.length === context.options.length
     && nextOptions.every((option, optionIndex) => option?.id === context.options[optionIndex]?.id)
   ) {
-    return planResult(context.issues)
+    return scope.finish()
   }
 
-  return planResult(context.issues, [toFieldPatch(action.fieldId, replaceFieldOptions(context.field, nextOptions) as Partial<Omit<CustomField, 'id'>>)])
+  return scope.finish(
+    toFieldPatch(
+      action.fieldId,
+      replaceFieldOptions(context.field, nextOptions) as Partial<Omit<CustomField, 'id'>>
+    )
+  )
 }
 
 const lowerFieldOptionUpdate = (
-  document: DataDoc,
-  action: Extract<Action, { type: 'field.option.update' }>,
-  index: number
+  scope: PlannerScope,
+  action: Extract<Action, { type: 'field.option.update' }>
 ): PlannedActionResult => {
-  const source = sourceOf(index, action)
-  const context = requireOptionField(document, source, action.fieldId)
-  if (!context.field || !context.options || hasValidationErrors(context.issues)) {
-    return planResult(context.issues)
+  const context = requireOptionField(scope, action.fieldId)
+  if (!context) {
+    return scope.finish()
   }
 
   const optionId = trimToUndefined(action.optionId)
   if (!optionId) {
-    context.issues.push(createIssue(source, 'error', 'field.invalid', 'Field option id must be a non-empty string', 'optionId'))
-    return planResult(context.issues)
+    scope.issue(
+      'field.invalid',
+      'Field option id must be a non-empty string',
+      'optionId'
+    )
+    return scope.finish()
   }
 
   const target = context.options.find(option => option.id === optionId)
   if (!target) {
-    context.issues.push(createIssue(source, 'error', 'field.invalid', `Unknown field option: ${optionId}`, 'optionId'))
-    return planResult(context.issues)
+    scope.issue(
+      'field.invalid',
+      `Unknown field option: ${optionId}`,
+      'optionId'
+    )
+    return scope.finish()
   }
 
   const nextName = trimToUndefined(action.patch.name)
   if (action.patch.name !== undefined) {
     if (!nextName) {
-      context.issues.push(createIssue(source, 'error', 'field.invalid', 'Field option name must be a non-empty string', 'patch.name'))
-      return planResult(context.issues)
+      scope.issue(
+        'field.invalid',
+        'Field option name must be a non-empty string',
+        'patch.name'
+      )
+      return scope.finish()
     }
 
     const conflicting = findFieldOptionByName(context.options, nextName)
     if (conflicting && conflicting.id !== optionId) {
-      context.issues.push(createIssue(source, 'error', 'field.invalid', `Duplicate field option name: ${nextName}`, 'patch.name'))
-      return planResult(context.issues)
+      scope.issue(
+        'field.invalid',
+        `Duplicate field option name: ${nextName}`,
+        'patch.name'
+      )
+      return scope.finish()
     }
   }
 
@@ -490,7 +533,7 @@ const lowerFieldOptionUpdate = (
   }
 
   if (sameJsonValue(nextOption, target)) {
-    return planResult(context.issues)
+    return scope.finish()
   }
 
   const patch = replaceFieldOptions(
@@ -498,28 +541,35 @@ const lowerFieldOptionUpdate = (
     context.options.map(option => option.id === optionId ? nextOption : option)
   ) as Partial<Omit<CustomField, 'id'>>
 
-  return planResult(context.issues, [toFieldPatch(action.fieldId, patch)])
+  return scope.finish(toFieldPatch(action.fieldId, patch))
 }
 
 const lowerFieldOptionRemove = (
-  document: DataDoc,
-  action: Extract<Action, { type: 'field.option.remove' }>,
-  index: number
+  scope: PlannerScope,
+  action: Extract<Action, { type: 'field.option.remove' }>
 ): PlannedActionResult => {
-  const source = sourceOf(index, action)
-  const context = requireOptionField(document, source, action.fieldId)
-  if (!context.field || !context.options || hasValidationErrors(context.issues)) {
-    return planResult(context.issues)
+  const records = scope.reader.records.list()
+  const context = requireOptionField(scope, action.fieldId)
+  if (!context) {
+    return scope.finish()
   }
 
   const optionId = trimToUndefined(action.optionId)
   if (!optionId) {
-    context.issues.push(createIssue(source, 'error', 'field.invalid', 'Field option id must be a non-empty string', 'optionId'))
-    return planResult(context.issues)
+    scope.issue(
+      'field.invalid',
+      'Field option id must be a non-empty string',
+      'optionId'
+    )
+    return scope.finish()
   }
   if (!context.options.some(option => option.id === optionId)) {
-    context.issues.push(createIssue(source, 'error', 'field.invalid', `Unknown field option: ${optionId}`, 'optionId'))
-    return planResult(context.issues)
+    scope.issue(
+      'field.invalid',
+      `Unknown field option: ${optionId}`,
+      'optionId'
+    )
+    return scope.finish()
   }
 
   const patch = {
@@ -537,7 +587,7 @@ const lowerFieldOptionRemove = (
   if (context.field.kind === 'select' || context.field.kind === 'status') {
     const clearedRecordIds: RecordId[] = []
 
-    getDocumentRecords(document).forEach(record => {
+    records.forEach(record => {
       if (record.values[context.field.id] === optionId) {
         clearedRecordIds.push(record.id)
       }
@@ -550,7 +600,7 @@ const lowerFieldOptionRemove = (
       }))
     }
   } else {
-    getDocumentRecords(document).forEach(record => {
+    records.forEach(record => {
       const currentValue = record.values[context.field.id]
       if (!Array.isArray(currentValue)) {
         return
@@ -571,54 +621,55 @@ const lowerFieldOptionRemove = (
     })
   }
 
-  return planResult(context.issues, [toFieldPatch(action.fieldId, patch), ...valueOps])
+  return scope.finish(
+    toFieldPatch(action.fieldId, patch),
+    ...valueOps
+  )
 }
 
 const lowerFieldRemove = (
-  document: DataDoc,
-  action: Extract<Action, { type: 'field.remove' }>,
-  index: number
+  scope: PlannerScope,
+  action: Extract<Action, { type: 'field.remove' }>
 ): PlannedActionResult => {
-  const source = sourceOf(index, action)
-  const issues = validateFieldExists(document, source, action.fieldId)
-  return planResult(
-    issues,
-    [
-      ...buildRemovedFieldViewOps(document, action.fieldId),
-      {
-        type: 'document.field.remove',
-        fieldId: action.fieldId
-      }
-    ]
+  const views = scope.reader.views.list()
+  if (!requireCustomField(scope, action.fieldId)) {
+    return scope.finish()
+  }
+
+  return scope.finish(
+    ...buildRemovedFieldViewOps(views, action.fieldId),
+    {
+      type: 'document.field.remove',
+      fieldId: action.fieldId
+    }
   )
 }
 
 export const planFieldAction = (
-  document: DataDoc,
-  action: Action,
-  index: number
+  scope: PlannerScope,
+  action: Action
 ): PlannedActionResult => {
   switch (action.type) {
     case 'field.create':
-      return lowerFieldCreate(document, action, index)
+      return lowerFieldCreate(scope, action)
     case 'field.patch':
-      return lowerFieldPatch(document, action, index)
+      return lowerFieldPatch(scope, action)
     case 'field.replace':
-      return lowerFieldReplace(document, action, index)
+      return lowerFieldReplace(scope, action)
     case 'field.convert':
-      return lowerFieldConvert(document, action, index)
+      return lowerFieldConvert(scope, action)
     case 'field.duplicate':
-      return lowerFieldDuplicate(document, action, index)
+      return lowerFieldDuplicate(scope, action)
     case 'field.option.create':
-      return lowerFieldOptionCreate(document, action, index)
+      return lowerFieldOptionCreate(scope, action)
     case 'field.option.reorder':
-      return lowerFieldOptionReorder(document, action, index)
+      return lowerFieldOptionReorder(scope, action)
     case 'field.option.update':
-      return lowerFieldOptionUpdate(document, action, index)
+      return lowerFieldOptionUpdate(scope, action)
     case 'field.option.remove':
-      return lowerFieldOptionRemove(document, action, index)
+      return lowerFieldOptionRemove(scope, action)
     case 'field.remove':
-      return lowerFieldRemove(document, action, index)
+      return lowerFieldRemove(scope, action)
     default:
       throw new Error(`Unsupported field planner action: ${action.type}`)
   }

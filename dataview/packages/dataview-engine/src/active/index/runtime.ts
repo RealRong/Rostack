@@ -11,6 +11,10 @@ import {
   syncCalculationIndex
 } from '@dataview/engine/active/index/calculations'
 import {
+  createIndexDeriveContext,
+  createIndexReadContext
+} from '@dataview/engine/active/index/context'
+import {
   normalizeIndexDemand,
   sameFieldIdList,
   sameGroupDemand,
@@ -39,8 +43,8 @@ import {
   createIndexStageTrace,
   fullRebuildFrom,
   searchEntryCountOf,
-  touchedFieldCountOf,
-  touchedRecordCountOf
+  touchedFieldCountOfImpact,
+  touchedRecordCountOfImpact
 } from '@dataview/engine/active/index/trace'
 import type {
   IndexDemand,
@@ -56,14 +60,15 @@ const buildState = (
   document: DataDoc,
   demand: NormalizedIndexDemand
 ): IndexState => {
-  const records = buildRecordIndex(document, demand.recordFields)
+  const context = createIndexReadContext(document)
+  const records = buildRecordIndex(context, demand.recordFields)
 
   return {
     records,
-    search: buildSearchIndex(document, records, demand.search),
-    group: buildGroupIndex(document, records, demand.groups),
-    sort: buildSortIndex(document, records, demand.sortFields),
-    calculations: buildCalculationIndex(document, records, demand.calculationFields)
+    search: buildSearchIndex(context, records, demand.search),
+    group: buildGroupIndex(context, records, demand.groups),
+    sort: buildSortIndex(context, records, demand.sortFields),
+    calculations: buildCalculationIndex(context, records, demand.calculationFields)
   }
 }
 
@@ -115,15 +120,16 @@ export const deriveIndex = (input: {
   const nextDemand = input.demand
     ? normalizeIndexDemand(input.demand)
     : input.previousDemand
+  const context = createIndexDeriveContext(input.document, input.impact)
   const totalStart = now()
-  const touchedRecordCount = touchedRecordCountOf(input.impact)
-  const touchedFieldCount = touchedFieldCountOf(input.impact)
+  const touchedRecordCount = touchedRecordCountOfImpact(input.impact)
+  const touchedFieldCount = touchedFieldCountOfImpact(input.impact)
   const rebuild = fullRebuildFrom(input.impact)
 
   const recordsStart = now()
   const records = syncRecordIndex(
     previous.records,
-    input.document,
+    context,
     input.impact,
     nextDemand.recordFields
   )
@@ -134,9 +140,9 @@ export const deriveIndex = (input: {
     previousDemand: input.previousDemand.search,
     nextDemand: nextDemand.search,
     sameDemand: sameSearchDemand,
-    sync: current => syncSearchIndex(current, input.document, records, input.impact),
-    ensure: current => ensureSearchIndex(current, input.document, records, nextDemand.search),
-    build: rev => buildSearchIndex(input.document, records, nextDemand.search, rev)
+    sync: current => syncSearchIndex(current, context, records),
+    ensure: current => ensureSearchIndex(current, context, records, nextDemand.search),
+    build: rev => buildSearchIndex(context, records, nextDemand.search, rev)
   })
 
   const groupStage = runIndexDemandStage({
@@ -144,9 +150,9 @@ export const deriveIndex = (input: {
     previousDemand: input.previousDemand.groups,
     nextDemand: nextDemand.groups,
     sameDemand: sameGroupDemand,
-    sync: current => syncGroupIndex(current, input.document, records, input.impact),
-    ensure: current => ensureGroupIndex(current, input.document, records, nextDemand.groups),
-    build: rev => buildGroupIndex(input.document, records, nextDemand.groups, rev)
+    sync: current => syncGroupIndex(current, context, records),
+    ensure: current => ensureGroupIndex(current, context, records, nextDemand.groups),
+    build: rev => buildGroupIndex(context, records, nextDemand.groups, rev)
   })
 
   const sortStage = runIndexDemandStage({
@@ -154,9 +160,9 @@ export const deriveIndex = (input: {
     previousDemand: input.previousDemand.sortFields,
     nextDemand: nextDemand.sortFields,
     sameDemand: sameFieldIdList,
-    sync: current => syncSortIndex(current, input.document, records, input.impact),
-    ensure: current => ensureSortIndex(current, input.document, records, nextDemand.sortFields),
-    build: rev => buildSortIndex(input.document, records, nextDemand.sortFields, rev)
+    sync: current => syncSortIndex(current, context, records),
+    ensure: current => ensureSortIndex(current, context, records, nextDemand.sortFields),
+    build: rev => buildSortIndex(context, records, nextDemand.sortFields, rev)
   })
 
   const summariesStage = runIndexDemandStage({
@@ -164,9 +170,9 @@ export const deriveIndex = (input: {
     previousDemand: input.previousDemand.calculationFields,
     nextDemand: nextDemand.calculationFields,
     sameDemand: sameFieldIdList,
-    sync: current => syncCalculationIndex(current, input.document, records, input.impact),
-    ensure: current => ensureCalculationIndex(current, input.document, records, nextDemand.calculationFields),
-    build: rev => buildCalculationIndex(input.document, records, nextDemand.calculationFields, rev)
+    sync: current => syncCalculationIndex(current, context, records),
+    ensure: current => ensureCalculationIndex(current, context, records, nextDemand.calculationFields),
+    build: rev => buildCalculationIndex(context, records, nextDemand.calculationFields, rev)
   })
 
   const search = searchStage.state

@@ -12,7 +12,6 @@ export type {
   EditLayout,
   EditSession,
   EditField,
-  EditMeasureMode,
   EditEmptyBehavior
 } from '@whiteboard/editor/local/session/edit'
 export type {
@@ -97,6 +96,13 @@ export type {
   NodeMeta,
   NodeFamily
 } from '@whiteboard/editor/types/node'
+export type {
+  LayoutBackend,
+  LayoutKind,
+  LayoutRequest,
+  LayoutResult,
+  NodeLayoutSpec
+} from '@whiteboard/editor/types/layout'
 export type {
   SelectionOverlay,
   SelectionEdgeTypeInfo,

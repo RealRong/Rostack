@@ -3,10 +3,6 @@ import type {
   DataDoc,
   ViewId
 } from '@dataview/core/contracts'
-import {
-  getDocumentFields,
-  getDocumentViewById
-} from '@dataview/core/document'
 import type { IndexState } from '@dataview/engine/active/index/contracts'
 import type {
   DeriveAction,
@@ -25,6 +21,7 @@ import { buildStageMetrics } from '@dataview/engine/active/snapshot/trace'
 import { runQueryStage } from '@dataview/engine/active/snapshot/query/runtime'
 import { runSectionsStage } from '@dataview/engine/active/snapshot/sections/runtime'
 import { runSummaryStage } from '@dataview/engine/active/snapshot/summary/runtime'
+import { createStaticDocumentReader } from '@dataview/engine/document/reader'
 
 interface ViewRunResult {
   cache: ViewCache
@@ -43,8 +40,9 @@ export const deriveViewSnapshot = (input: {
 }): ViewRunResult => {
   const totalStart = now()
   const stageTraces: ViewStageTrace[] = []
+  const reader = createStaticDocumentReader(input.document)
   const view = input.activeViewId
-    ? getDocumentViewById(input.document, input.activeViewId)
+    ? reader.views.get(input.activeViewId)
     : undefined
 
   const timeStage = <T extends { action: DeriveAction },>(
@@ -108,7 +106,7 @@ export const deriveViewSnapshot = (input: {
   const activeViewId = input.activeViewId
   const previousViewId = input.previousSnapshot?.view.id
   const fieldsById = new Map(
-    getDocumentFields(input.document).map(field => [field.id, field] as const)
+    reader.fields.list().map(field => [field.id, field] as const)
   )
 
   const query = timeStage(

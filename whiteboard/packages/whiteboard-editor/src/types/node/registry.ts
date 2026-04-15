@@ -9,6 +9,7 @@ import type {
   EditCapability,
   EditField
 } from '@whiteboard/editor/local/session/edit'
+import type { NodeLayoutSpec } from '@whiteboard/editor/types/layout'
 
 export type NodeHit = 'box' | 'path' | 'none'
 export type NodeFamily = 'text' | 'shape' | 'frame' | 'draw'
@@ -31,6 +32,7 @@ export type NodeDefinition = BaseNodeDefinition & {
   canRotate?: boolean
   canResize?: boolean
   autoMeasure?: boolean
+  layout?: NodeLayoutSpec
   enter?: boolean
   edit?: {
     fields?: Partial<Record<EditField, EditCapability>>

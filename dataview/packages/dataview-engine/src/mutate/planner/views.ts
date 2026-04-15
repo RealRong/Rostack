@@ -1,6 +1,5 @@
 import type {
   Action,
-  DataDoc,
   FieldId,
   Filter,
   Search,
@@ -17,14 +16,6 @@ import {
 } from '@dataview/core/contracts/kanban'
 import type { TableOptions } from '@dataview/core/contracts/viewOptions'
 import {
-  hasDocumentField,
-  getDocumentFieldById,
-  getDocumentFields,
-  getDocumentRecordById,
-  getDocumentViewById,
-  getDocumentViews
-} from '@dataview/core/document'
-import {
   isCalculationMetric,
   normalizeViewCalculations,
   supportsFieldCalculationMetric
@@ -38,9 +29,9 @@ import {
 } from '@dataview/core/filter'
 import {
   cloneGroup,
+  group,
   normalizeGroup,
-  sameGroup,
-  setGroup
+  sameGroup
 } from '@dataview/core/group'
 import {
   cloneSearch,
@@ -79,18 +70,23 @@ import {
   type IssueSource,
   type ValidationIssue
 } from '@dataview/engine/mutate/issues'
-import { validateViewExists } from '@dataview/engine/mutate/validate/entity'
 import {
-  planResult,
-  sourceOf,
-  toViewPut,
-  type PlannedActionResult
-} from '@dataview/engine/mutate/planner/shared'
+  type PlannedActionResult,
+  type PlannerScope
+} from '@dataview/engine/mutate/planner/scope'
+import type { DocumentReader } from '@dataview/engine/document/reader'
 
 const sameRecordOrder = sameOrder<string>
 
+const toViewPut = (
+  view: View
+): import('@dataview/core/contracts/operations').DocumentOperation => ({
+  type: 'document.view.put',
+  view
+})
+
 const validateFieldIdList = (
-  document: DataDoc,
+  reader: DocumentReader,
   source: IssueSource,
   fieldIds: readonly unknown[],
   path: string
@@ -108,7 +104,7 @@ const validateFieldIdList = (
       return
     }
     seen.add(fieldId)
-    if (!hasDocumentField(document, fieldId)) {
+    if (!reader.fields.has(fieldId)) {
       issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${fieldId}`, `${path}.${index}`))
     }
   })
@@ -117,7 +113,7 @@ const validateFieldIdList = (
 }
 
 const validateSearch = (
-  document: DataDoc,
+  reader: DocumentReader,
   source: IssueSource,
   search: Search,
   path = 'view.search'
@@ -127,13 +123,13 @@ const validateSearch = (
     issues.push(createIssue(source, 'error', 'view.invalidProjection', 'Search query must be a string', `${path}.query`))
   }
   if (search.fields) {
-    issues.push(...validateFieldIdList(document, source, search.fields, `${path}.fields`))
+    issues.push(...validateFieldIdList(reader, source, search.fields, `${path}.fields`))
   }
   return issues
 }
 
 const validateFilter = (
-  document: DataDoc,
+  reader: DocumentReader,
   source: IssueSource,
   filter: Filter,
   path = 'view.filter'
@@ -148,7 +144,7 @@ const validateFilter = (
       issues.push(createIssue(source, 'error', 'view.invalidProjection', 'Filter preset id must be a non-empty string', `${path}.rules.${index}.presetId`))
       return
     }
-    const field = getDocumentFieldById(document, rule.fieldId)
+    const field = reader.fields.get(rule.fieldId)
     if (!field) {
       issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${rule.fieldId}`, `${path}.rules.${index}.fieldId`))
       return
@@ -161,7 +157,7 @@ const validateFilter = (
 }
 
 const validateSorters = (
-  document: DataDoc,
+  reader: DocumentReader,
   source: IssueSource,
   sorters: readonly Sorter[],
   path = 'view.sort'
@@ -171,7 +167,7 @@ const validateSorters = (
   sorters.forEach((sorter, index) => {
     if (!isNonEmptyString(sorter.field)) {
       issues.push(createIssue(source, 'error', 'view.invalidProjection', 'Sorter field must be a non-empty string', `${path}.${index}.field`))
-    } else if (!hasDocumentField(document, sorter.field)) {
+    } else if (!reader.fields.has(sorter.field)) {
       issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${sorter.field}`, `${path}.${index}.field`))
     } else if (seen.has(sorter.field)) {
       issues.push(createIssue(source, 'error', 'view.invalidProjection', `Duplicate sorter field: ${sorter.field}`, `${path}.${index}.field`))
@@ -187,7 +183,7 @@ const validateSorters = (
 }
 
 const validateGroup = (
-  document: DataDoc,
+  reader: DocumentReader,
   source: IssueSource,
   group: ViewGroup | undefined,
   path = 'view.group'
@@ -201,7 +197,7 @@ const validateGroup = (
     : [createIssue(source, 'error', 'view.invalidProjection', 'group field must be a non-empty string', `${path}.field`)]
 
   const field = isNonEmptyString(group.field)
-    ? getDocumentFieldById(document, group.field)
+    ? reader.fields.get(group.field)
     : undefined
   const fieldGroupMeta = field ? getFieldGroupMeta(field) : undefined
   const fieldGroupMetaForMode = field ? getFieldGroupMeta(field, { mode: group.mode }) : undefined
@@ -230,14 +226,14 @@ const validateGroup = (
 }
 
 const validateDisplay = (
-  document: DataDoc,
+  reader: DocumentReader,
   source: IssueSource,
   display: ViewDisplay,
   path = 'view.display'
-) => validateFieldIdList(document, source, display.fields, `${path}.fields`)
+) => validateFieldIdList(reader, source, display.fields, `${path}.fields`)
 
 const validateTableOptions = (
-  document: DataDoc,
+  reader: DocumentReader,
   source: IssueSource,
   table: TableOptions,
   path: string
@@ -248,7 +244,7 @@ const validateTableOptions = (
       issues.push(createIssue(source, 'error', 'view.invalidProjection', 'width field id must be a non-empty string', `${path}.widths`))
       return
     }
-    if (!hasDocumentField(document, fieldId)) {
+    if (!reader.fields.has(fieldId)) {
       issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${fieldId}`, `${path}.widths.${fieldId}`))
     }
     if (typeof width !== 'number' || !Number.isFinite(width) || width <= 0) {
@@ -298,18 +294,18 @@ const validateKanbanOptions = (
 }
 
 const validateViewOptions = (
-  document: DataDoc,
+  reader: DocumentReader,
   source: IssueSource,
   options: View['options'],
   path = 'view.options'
 ) => [
-  ...validateTableOptions(document, source, options.table, `${path}.table`),
+  ...validateTableOptions(reader, source, options.table, `${path}.table`),
   ...validateGalleryOptions(source, options.gallery, `${path}.gallery`),
   ...validateKanbanOptions(source, options.kanban, `${path}.kanban`)
 ]
 
 const validateOrders = (
-  document: DataDoc,
+  reader: DocumentReader,
   source: IssueSource,
   orders: readonly string[],
   path = 'view.orders'
@@ -326,7 +322,7 @@ const validateOrders = (
       return
     }
     seen.add(recordId)
-    if (!getDocumentRecordById(document, recordId)) {
+    if (!reader.records.has(recordId)) {
       issues.push(createIssue(source, 'error', 'record.notFound', `Unknown record: ${recordId}`, `${path}.${index}`))
     }
   })
@@ -334,7 +330,7 @@ const validateOrders = (
 }
 
 const validateCalc = (
-  document: DataDoc,
+  reader: DocumentReader,
   source: IssueSource,
   calc: ViewCalc,
   path = 'view.calc'
@@ -345,7 +341,7 @@ const validateCalc = (
       issues.push(createIssue(source, 'error', 'view.invalidProjection', 'Calculation field must be a non-empty string', path))
       return
     }
-    const field = getDocumentFieldById(document, fieldId as FieldId)
+    const field = reader.fields.get(fieldId as FieldId)
     if (!field) {
       issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${fieldId}`, `${path}.${fieldId}`))
       return
@@ -362,7 +358,7 @@ const validateCalc = (
 }
 
 const validateView = (
-  document: DataDoc,
+  reader: DocumentReader,
   source: IssueSource,
   view: View
 ) => {
@@ -378,14 +374,14 @@ const validateView = (
   }
 
   issues.push(
-    ...validateSearch(document, source, view.search),
-    ...validateFilter(document, source, view.filter),
-    ...validateSorters(document, source, view.sort),
-    ...validateGroup(document, source, view.group),
-    ...validateCalc(document, source, view.calc),
-    ...validateDisplay(document, source, view.display),
-    ...validateViewOptions(document, source, view.options),
-    ...validateOrders(document, source, view.orders)
+    ...validateSearch(reader, source, view.search),
+    ...validateFilter(reader, source, view.filter),
+    ...validateSorters(reader, source, view.sort),
+    ...validateGroup(reader, source, view.group),
+    ...validateCalc(reader, source, view.calc),
+    ...validateDisplay(reader, source, view.display),
+    ...validateViewOptions(reader, source, view.options),
+    ...validateOrders(reader, source, view.orders)
   )
 
   return issues
@@ -445,10 +441,10 @@ const applyViewPatch = (
 }
 
 const normalizeView = (
-  document: DataDoc,
+  reader: DocumentReader,
   view: View
 ): View => {
-  const fields = getDocumentFields(document)
+  const fields = reader.fields.list()
   const group = normalizeGroup(view.group)
 
   return {
@@ -468,9 +464,9 @@ const normalizeView = (
 }
 
 const resolveDefaultKanbanGroup = (
-  document: DataDoc
+  reader: DocumentReader
 ): ViewGroup | undefined => {
-  const fields = getDocumentFields(document)
+  const fields = reader.fields.list()
   const isGroupable = (field: (typeof fields)[number]) => (
     field.kind !== 'title'
     && getFieldGroupMeta(field).modes.length > 0
@@ -488,19 +484,19 @@ const resolveDefaultKanbanGroup = (
   )
 
   return field
-    ? setGroup(undefined, field)
+    ? group.set(undefined, field)
     : undefined
 }
 
 const ensureKanbanGroup = (
-  document: DataDoc,
+  reader: DocumentReader,
   view: View
 ): View => {
   if (view.type !== 'kanban' || view.group) {
     return view
   }
 
-  const group = resolveDefaultKanbanGroup(document)
+  const group = resolveDefaultKanbanGroup(reader)
   return group
     ? {
         ...view,
@@ -510,33 +506,42 @@ const ensureKanbanGroup = (
 }
 
 const lowerViewCreate = (
-  document: DataDoc,
-  action: Extract<Action, { type: 'view.create' }>,
-  index: number
+  scope: PlannerScope,
+  action: Extract<Action, { type: 'view.create' }>
 ): PlannedActionResult => {
-  const source = sourceOf(index, action)
   const explicitViewId = trimToUndefined(action.input.id)
   const preferredName = trimToUndefined(action.input.name) ?? ''
-  const issues: ValidationIssue[] = []
 
   if (action.input.id !== undefined && !explicitViewId) {
-    issues.push(createIssue(source, 'error', 'view.invalid', 'View id must be a non-empty string', 'input.id'))
+    scope.issue(
+      'view.invalid',
+      'View id must be a non-empty string',
+      'input.id'
+    )
   }
-  if (explicitViewId && getDocumentViewById(document, explicitViewId)) {
-    issues.push(createIssue(source, 'error', 'view.invalid', `View already exists: ${explicitViewId}`, 'input.id'))
+  if (explicitViewId && scope.reader.views.has(explicitViewId)) {
+    scope.issue(
+      'view.invalid',
+      `View already exists: ${explicitViewId}`,
+      'input.id'
+    )
   }
   if (!preferredName) {
-    issues.push(createIssue(source, 'error', 'view.invalid', 'View name must be a non-empty string', 'input.name'))
+    scope.issue(
+      'view.invalid',
+      'View name must be a non-empty string',
+      'input.name'
+    )
   }
-  if (hasValidationErrors(issues)) {
-    return planResult(issues)
+  if (!preferredName || (action.input.id !== undefined && !explicitViewId) || (explicitViewId && scope.reader.views.has(explicitViewId))) {
+    return scope.finish()
   }
 
-  const fields = getDocumentFields(document)
-  const view = ensureKanbanGroup(document, normalizeView(document, {
+  const fields = scope.reader.fields.list()
+  const view = ensureKanbanGroup(scope.reader, normalizeView(scope.reader, {
     id: explicitViewId || createViewId(),
     name: resolveUniqueViewName({
-      views: getDocumentViews(document),
+      views: scope.reader.views.list(),
       preferredName
     }),
     type: action.input.type,
@@ -554,80 +559,92 @@ const lowerViewCreate = (
     orders: action.input.orders ? [...action.input.orders] : []
   } satisfies View))
 
-  issues.push(...validateView(document, source, view))
-  return planResult(issues, [toViewPut(view)])
+  scope.report(...validateView(scope.reader, scope.source, view))
+  return scope.finish(toViewPut(view))
 }
 
 const lowerViewPatch = (
-  document: DataDoc,
-  action: Extract<Action, { type: 'view.patch' }>,
-  index: number
+  scope: PlannerScope,
+  action: Extract<Action, { type: 'view.patch' }>
 ): PlannedActionResult => {
-  const source = sourceOf(index, action)
-  const issues = validateViewExists(document, source, action.viewId)
-  const view = getDocumentViewById(document, action.viewId)
-  if (!view || hasValidationErrors(issues)) {
-    return planResult(issues)
+  const view = scope.require(
+    scope.reader.views.get(action.viewId),
+    {
+      code: 'view.notFound',
+      message: `Unknown view: ${action.viewId}`,
+      path: 'viewId'
+    }
+  )
+  if (!view) {
+    return scope.finish()
   }
 
   const nextView = (
     action.patch.type === 'kanban'
-      ? ensureKanbanGroup(document, normalizeView(document, applyViewPatch(view, action.patch)))
-      : normalizeView(document, applyViewPatch(view, action.patch))
+      ? ensureKanbanGroup(scope.reader, normalizeView(scope.reader, applyViewPatch(view, action.patch)))
+      : normalizeView(scope.reader, applyViewPatch(view, action.patch))
   )
   if (sameJsonValue(nextView, view)) {
-    return planResult(issues)
+    return scope.finish()
   }
 
-  issues.push(...validateView(document, source, nextView))
-  return planResult(issues, [toViewPut(nextView)])
+  scope.report(...validateView(scope.reader, scope.source, nextView))
+  return scope.finish(toViewPut(nextView))
 }
 
 const lowerViewOpen = (
-  document: DataDoc,
-  action: Extract<Action, { type: 'view.open' }>,
-  index: number
+  scope: PlannerScope,
+  action: Extract<Action, { type: 'view.open' }>
 ): PlannedActionResult => {
-  const source = sourceOf(index, action)
-  const issues = validateViewExists(document, source, action.viewId)
-  return planResult(
-    issues,
-    getDocumentViewById(document, action.viewId)
-      ? [{
-          type: 'document.activeView.set',
-          viewId: action.viewId
-        }]
-      : []
+  const view = scope.require(
+    scope.reader.views.get(action.viewId),
+    {
+      code: 'view.notFound',
+      message: `Unknown view: ${action.viewId}`,
+      path: 'viewId'
+    }
   )
+  return view
+    ? scope.finish({
+        type: 'document.activeView.set',
+        viewId: view.id
+      })
+    : scope.finish()
 }
 
 const lowerViewRemove = (
-  document: DataDoc,
-  action: Extract<Action, { type: 'view.remove' }>,
-  index: number
+  scope: PlannerScope,
+  action: Extract<Action, { type: 'view.remove' }>
 ): PlannedActionResult => {
-  const source = sourceOf(index, action)
-  const issues = validateViewExists(document, source, action.viewId)
-  return planResult(issues, [{
-    type: 'document.view.remove',
-    viewId: action.viewId
-  }])
+  const view = scope.require(
+    scope.reader.views.get(action.viewId),
+    {
+      code: 'view.notFound',
+      message: `Unknown view: ${action.viewId}`,
+      path: 'viewId'
+    }
+  )
+  return view
+    ? scope.finish({
+        type: 'document.view.remove',
+        viewId: view.id
+      })
+    : scope.finish()
 }
 
 export const planViewAction = (
-  document: DataDoc,
-  action: Action,
-  index: number
+  scope: PlannerScope,
+  action: Action
 ): PlannedActionResult => {
   switch (action.type) {
     case 'view.create':
-      return lowerViewCreate(document, action, index)
+      return lowerViewCreate(scope, action)
     case 'view.patch':
-      return lowerViewPatch(document, action, index)
+      return lowerViewPatch(scope, action)
     case 'view.open':
-      return lowerViewOpen(document, action, index)
+      return lowerViewOpen(scope, action)
     case 'view.remove':
-      return lowerViewRemove(document, action, index)
+      return lowerViewRemove(scope, action)
     default:
       throw new Error(`Unsupported view planner action: ${action.type}`)
   }

@@ -16,20 +16,22 @@ export const fullRebuildFrom = (
   impact: CommitImpact
 ) => impact.reset === true
 
-export const touchedRecordCountOf = (
-  impact: CommitImpact
-): number | 'all' | undefined => touchedRecordCountOfImpact(impact)
-
-export const touchedFieldCountOf = (
-  impact: CommitImpact
-): number | 'all' | undefined => touchedFieldCountOfImpact(impact)
+export {
+  touchedRecordCountOfImpact,
+  touchedFieldCountOfImpact
+}
 
 export const searchEntryCountOf = (
   search: SearchIndex
-): number => (
-  (search.all?.texts.size ?? 0)
-  + Array.from(search.fields.values()).reduce((count, field) => count + field.texts.size, 0)
-)
+): number => {
+  let count = search.all?.texts.size ?? 0
+
+  search.fields.forEach(field => {
+    count += field.texts.size
+  })
+
+  return count
+}
 
 export const createIndexStageTrace = (input: {
   previous: unknown

@@ -12,8 +12,9 @@ import { createClipboardHostAdapter } from '@whiteboard/react/dom/host/clipboard
 import { createClipboardBridge } from '@whiteboard/react/runtime/bridge/clipboard'
 import { createInsertBridge } from '@whiteboard/react/runtime/bridge/insert'
 import { createPointerBridge } from '@whiteboard/react/runtime/bridge/pointer'
+import { createTextSourceStore } from '@whiteboard/react/features/node/dom/textSourceStore'
 import type { WhiteboardServicesContextValue } from '@whiteboard/react/runtime/hooks/useWhiteboard'
-import { createTextLayoutMeasurer } from '@whiteboard/react/runtime/whiteboard/textLayout'
+import { createLayoutBackend } from '@whiteboard/react/runtime/whiteboard/layout'
 
 const clonePoint = (
   point: Point
@@ -69,14 +70,17 @@ export const createWhiteboardServices = ({
     onDocumentChange,
     config: boardConfig
   })
-  let editor: WhiteboardServicesContextValue['editor'] | null = null
-  const measureText = createTextLayoutMeasurer(() => editor)
-  editor = createEditor({
+  const textSources = createTextSourceStore()
+  const editor = createEditor({
     engine,
     initialTool: resolvedConfig.initialTool,
     initialViewport: resolvedConfig.viewport.initial,
     registry,
-    measureText
+    services: {
+      layout: createLayoutBackend({
+        textSources
+      })
+    }
   })
   const insert = createInsertBridge({
     editor,
@@ -128,6 +132,7 @@ export const createWhiteboardServices = ({
     editor,
     engine,
     registry,
+    textSources,
     pointer,
     clipboard,
     insert

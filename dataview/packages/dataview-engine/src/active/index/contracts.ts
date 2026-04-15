@@ -4,7 +4,6 @@ import type {
   Field,
   FieldId,
   RecordId,
-  DataRecord,
   ViewGroup
 } from '@dataview/core/contracts'
 import type {
@@ -16,14 +15,18 @@ import type {
 
 export type SortedIdSet<T extends string> = readonly T[]
 export type BucketKey = string
-export type SortKey = unknown
+
+export interface RecordValueIndex {
+  byRecord: ReadonlyMap<RecordId, unknown>
+  ids: readonly RecordId[]
+}
 
 export interface RecordIndex {
   ids: readonly RecordId[]
   fieldIds: readonly FieldId[]
   order: ReadonlyMap<RecordId, number>
-  rows: ReadonlyMap<RecordId, DataRecord>
-  values: ReadonlyMap<FieldId, ReadonlyMap<RecordId, unknown>>
+  byId: DataDoc['records']['byId']
+  values: ReadonlyMap<FieldId, RecordValueIndex>
   rev: number
 }
 
@@ -67,16 +70,12 @@ export interface SearchTextIndex {
   texts: ReadonlyMap<RecordId, string>
 }
 
-export interface RecordBucketLookup {
-  get(recordId: RecordId): readonly BucketKey[] | undefined
-}
-
 export interface GroupFieldIndex {
   fieldId: FieldId
   mode?: ViewGroup['mode']
   bucketSort?: ViewGroup['bucketSort']
   bucketInterval?: ViewGroup['bucketInterval']
-  recordBuckets: RecordBucketLookup
+  recordBuckets: ReadonlyMap<RecordId, readonly BucketKey[]>
   bucketRecords: ReadonlyMap<BucketKey, SortedIdSet<RecordId>>
   buckets: ReadonlyMap<BucketKey, Bucket>
   order: readonly BucketKey[]
@@ -89,7 +88,6 @@ export interface GroupIndex {
 
 export interface SortFieldIndex {
   asc: readonly RecordId[]
-  desc: readonly RecordId[]
 }
 
 export interface SortIndex {
@@ -150,6 +148,22 @@ export interface FieldSyncContext {
   valueFields: ReadonlySet<FieldId> | 'all'
   touchedRecords: ReadonlySet<RecordId> | 'all'
   recordSetChanged: boolean
+}
+
+export interface IndexReadContext {
+  document: DataDoc
+  reader: import('@dataview/engine/document/reader').DocumentReader
+  fieldIds: readonly FieldId[]
+  fieldIdSet: ReadonlySet<FieldId>
+}
+
+export interface IndexImpactView extends FieldSyncContext {
+  touchedFields: ReadonlySet<FieldId> | 'all'
+  changed: boolean
+}
+
+export interface IndexDeriveContext extends IndexReadContext {
+  impact: IndexImpactView
 }
 
 export interface IndexDeriveResult {

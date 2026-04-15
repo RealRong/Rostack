@@ -1,17 +1,11 @@
 import {
-  readTextWrapWidth,
-  readTextWidthMode,
   TEXT_AUTO_MAX_WIDTH,
   TEXT_AUTO_MIN_WIDTH,
   TEXT_DEFAULT_FONT_SIZE,
   TEXT_LAYOUT_MIN_WIDTH,
   type TextWidthMode
 } from '@whiteboard/core/node'
-import type {
-  Node,
-  Rect,
-  Size
-} from '@whiteboard/core/types'
+import type { Size } from '@whiteboard/core/types'
 import {
   applyTypography,
   normalizeMeasureContent,
@@ -153,41 +147,31 @@ const measureTextContent = ({
   }
 }
 
-export const measureTextNodeSize = ({
-  node,
-  rect,
+export const measureTextSize = ({
   content,
   placeholder,
   source,
-  minWidth,
-  maxWidth,
   fontSize,
   fontStyle,
   fontWeight,
   widthMode,
   wrapWidth
 }: {
-  node: Pick<Node, 'type' | 'data'>
-  rect: Pick<Rect, 'width'>
   content: string
   placeholder: string
   source: HTMLElement
-  minWidth?: number
-  maxWidth?: number
   fontSize?: number
   fontStyle?: string
   fontWeight?: string | number
-  widthMode?: TextWidthMode
+  widthMode: TextWidthMode
   wrapWidth?: number
 }): Size | undefined => {
-  const resolvedWidthMode = widthMode ?? readTextWidthMode(node)
-  const resolvedWidth = Math.max(TEXT_LAYOUT_MIN_WIDTH, Math.ceil(rect.width))
-  const resolvedWrapWidth = Math.max(
-    TEXT_LAYOUT_MIN_WIDTH,
-    Math.ceil(wrapWidth ?? readTextWrapWidth(node) ?? maxWidth ?? resolvedWidth)
-  )
+  if (widthMode === 'wrap') {
+    const resolvedWrapWidth = Math.max(
+      TEXT_LAYOUT_MIN_WIDTH,
+      Math.ceil(wrapWidth ?? TEXT_LAYOUT_MIN_WIDTH)
+    )
 
-  if (resolvedWidthMode === 'wrap') {
     return measureTextContent({
       content,
       placeholder,
@@ -200,22 +184,12 @@ export const measureTextNodeSize = ({
     })
   }
 
-  const resolvedMinWidth = Math.max(
-    TEXT_AUTO_MIN_WIDTH,
-    Math.ceil(minWidth ?? TEXT_AUTO_MIN_WIDTH)
-  )
-  const resolvedMaxWidth = Math.max(
-    resolvedWidth,
-    TEXT_AUTO_MAX_WIDTH,
-    Math.ceil(maxWidth ?? TEXT_AUTO_MAX_WIDTH)
-  )
-
   return measureTextContent({
     content,
     placeholder,
     source,
-    minWidth: resolvedMinWidth,
-    maxWidth: resolvedMaxWidth,
+    minWidth: TEXT_AUTO_MIN_WIDTH,
+    maxWidth: TEXT_AUTO_MAX_WIDTH,
     fontSize,
     fontStyle,
     fontWeight

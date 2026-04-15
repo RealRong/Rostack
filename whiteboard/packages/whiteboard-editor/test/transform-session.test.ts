@@ -62,7 +62,8 @@ const createPointerInput = (
 const createTransformContext = ({
   node,
   projectedRect,
-  updates
+  updates,
+  resolvePreviewPatches = (patches: any) => patches
 }: {
   node: Node
   projectedRect: {
@@ -92,6 +93,7 @@ const createTransformContext = ({
       }[]
     }
   }[]
+  resolvePreviewPatches?: (patches: any) => any
 }) => ({
   query: {
     node: {
@@ -139,6 +141,9 @@ const createTransformContext = ({
       }
     }
   },
+  layout: {
+    resolvePreviewPatches
+  },
   snap: {
     node: {
       resize: (input: {
@@ -161,7 +166,7 @@ const createTransformContext = ({
 }) as any
 
 describe('createTransformSession', () => {
-  it('commits text geometry from the live projected rect', () => {
+  it('commits text geometry from the resolved layout preview rect', () => {
     const node = createTextNode()
     const updates: {
       id: string
@@ -193,7 +198,18 @@ describe('createTransformSession', () => {
     const ctx = createTransformContext({
       node,
       projectedRect,
-      updates
+      updates,
+      resolvePreviewPatches: (patches) => patches.map((patch: any) => ({
+        ...patch,
+        position: {
+          x: projectedRect.x,
+          y: projectedRect.y
+        },
+        size: {
+          width: projectedRect.width,
+          height: projectedRect.height
+        }
+      }))
     })
 
     const session = createTransformSession(

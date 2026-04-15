@@ -10,8 +10,9 @@
     "build": "tsdown --config tsdown.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --config vitest.config.ts",
-    "bench": "tsx bench/runner/index.ts",
-    "bench:compare": "tsx bench/runner/compare.ts"
+    "bench": "node --import ../../../node_modules/tsx/dist/loader.mjs bench/runner/index.ts",
+    "bench:profile": "node --expose-gc --import ../../../node_modules/tsx/dist/loader.mjs bench/profile.ts",
+    "bench:compare": "node --import ../../../node_modules/tsx/dist/loader.mjs bench/runner/compare.ts"
   },
   "dependencies": {
     "@dataview/core": "workspace:*",

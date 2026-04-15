@@ -173,9 +173,11 @@ export {
   estimateTextAutoFont,
   isTextContentEmpty,
   isTextNode,
+  readStickyFontMode,
   readTextWrapWidth,
   readTextWidthMode,
   resolveTextHandle,
+  setStickyFontMode,
   setTextWrapWidth,
   setTextWidthMode,
   TEXT_AUTO_MAX_WIDTH,
@@ -189,6 +191,7 @@ export {
   TEXT_DEFAULT_FONT_SIZE
 } from '@whiteboard/core/node/text'
 export type {
+  StickyFontMode,
   TextAutoFont,
   TextContentBox,
   TextFrameMetrics,

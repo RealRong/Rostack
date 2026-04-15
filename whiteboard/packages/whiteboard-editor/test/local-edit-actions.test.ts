@@ -1,19 +1,44 @@
 import { describe, expect, it } from 'vitest'
 import { createEditState } from '../src/local/session/edit'
 import { createLocalEditActions } from '../src/local/actions/edit'
+import type { LayoutRuntime } from '../src/layout/runtime'
 
 const createRegistry = () => ({
   get: () => ({
+    layout: {
+      kind: 'size' as const
+    },
     edit: {
       fields: {
         text: {
           multiline: true,
-          empty: 'remove' as const,
-          measure: 'text' as const
+          empty: 'remove' as const
         }
       }
     }
   })
+})
+
+const createLayout = (): LayoutRuntime => ({
+  patchNodeUpdate: (_, update) => update,
+  syncNode: () => undefined,
+  editNode: ({ nodeId }) => nodeId === 'node-1'
+    ? {
+        size: {
+          width: 180,
+          height: 48
+        },
+        wrapWidth: 180
+      }
+    : nodeId === 'node-2'
+      ? {
+          size: {
+            width: 120,
+            height: 24
+          }
+        }
+      : undefined,
+  resolvePreviewPatches: (patches) => patches
 })
 
 describe('createLocalEditActions.startNode', () => {
@@ -24,6 +49,7 @@ describe('createLocalEditActions.startNode', () => {
     const actions = createLocalEditActions({
       state,
       registry: createRegistry(),
+      getLayout: () => createLayout(),
       getRead: () => ({
         node: {
           item: new Map([
@@ -60,7 +86,7 @@ describe('createLocalEditActions.startNode', () => {
       nodeId: 'node-1',
       layout: {
         wrapWidth: 180,
-        measuredSize: {
+        size: {
           width: 180,
           height: 48
         }
@@ -75,6 +101,7 @@ describe('createLocalEditActions.startNode', () => {
     const actions = createLocalEditActions({
       state,
       registry: createRegistry(),
+      getLayout: () => createLayout(),
       getRead: () => ({
         node: {
           item: new Map([
@@ -110,7 +137,7 @@ describe('createLocalEditActions.startNode', () => {
       nodeId: 'node-2',
       layout: {
         wrapWidth: undefined,
-        measuredSize: {
+        size: {
           width: 120,
           height: 24
         }

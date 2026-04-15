@@ -24,7 +24,8 @@ type NodeTextPreviewPatch = {
 type NodeTextDraft = {
   field: string
   value: string
-  measuredSize?: Size
+  size?: Size
+  fontSize?: number
 }
 
 const patchNodeRect = (
@@ -96,7 +97,7 @@ export const applyNodeTextPreview = <
   item: TItem,
   preview?: NodeTextPreviewPatch
 ): TItem => {
-  if (!preview || item.node.type !== 'text') {
+  if (!preview || (item.node.type !== 'text' && item.node.type !== 'sticky')) {
     return item
   }
 
@@ -109,13 +110,17 @@ export const applyNodeTextPreview = <
         ...(item.node.style ?? {}),
         fontSize: preview.fontSize
       }
-  const data = preview.mode === undefined || preview.mode === readTextWidthMode(item.node)
+  const data = item.node.type !== 'text'
+    ? item.node.data
+    : preview.mode === undefined || preview.mode === readTextWidthMode(item.node)
     ? item.node.data
     : setTextWidthMode(item.node, preview.mode)
-  const nextWrapWidth = preview.mode === 'auto'
+  const nextWrapWidth = item.node.type !== 'text'
     ? undefined
-    : preview.wrapWidth
-  const dataWithWrapWidth = nextWrapWidth === readTextWrapWidth(item.node)
+    : preview.mode === 'auto'
+      ? undefined
+      : preview.wrapWidth
+  const dataWithWrapWidth = item.node.type !== 'text' || nextWrapWidth === readTextWrapWidth(item.node)
     ? data
     : setTextWrapWidth({ data }, nextWrapWidth)
   const nextRect = patchNodeRect(item.rect, preview)
@@ -152,21 +157,30 @@ export const applyNodeTextDraft = <
     ...(item.node.data ?? {}),
     [draft.field]: draft.value
   }
-  const nextRect = draft.measuredSize && !isSizeEqual(draft.measuredSize, item.rect)
+  const nextRect = draft.size && !isSizeEqual(draft.size, item.rect)
     ? {
         ...item.rect,
-        width: draft.measuredSize.width,
-        height: draft.measuredSize.height
+        width: draft.size.width,
+        height: draft.size.height
       }
     : item.rect
+  const nextStyle = draft.fontSize === undefined
+    ? item.node.style
+    : {
+        ...(item.node.style ?? {}),
+        fontSize: draft.fontSize
+      }
 
-  return nextRect === item.rect && draft.value === item.node.data?.[draft.field]
+  return nextRect === item.rect
+    && nextStyle === item.node.style
+    && draft.value === item.node.data?.[draft.field]
     ? item
     : {
         ...item,
         node: {
           ...item.node,
-          data: nextData
+          data: nextData,
+          style: nextStyle
         },
         rect: nextRect
       }

@@ -1,28 +1,65 @@
 import {
-  setGroupBucketCollapsed,
-  setGroupBucketHidden,
-  toggleGroupBucketCollapsed
+  group
 } from '@dataview/core/group'
 import type { ActiveViewApi } from '@dataview/engine/contracts/public'
 import type { ActiveViewContext } from '@dataview/engine/active/context'
-import { withGroupFieldPatch } from '@dataview/engine/active/commands/shared'
 
 export const createSectionsApi = (
   base: ActiveViewContext
 ): ActiveViewApi['sections'] => ({
-  show: key => withGroupFieldPatch(base, (view, field) => ({
-    group: setGroupBucketHidden(view.group, field, key, false) ?? null
-  })),
-  hide: key => withGroupFieldPatch(base, (view, field) => ({
-    group: setGroupBucketHidden(view.group, field, key, true) ?? null
-  })),
-  collapse: key => withGroupFieldPatch(base, (view, field) => ({
-    group: setGroupBucketCollapsed(view.group, field, key, true) ?? null
-  })),
-  expand: key => withGroupFieldPatch(base, (view, field) => ({
-    group: setGroupBucketCollapsed(view.group, field, key, false) ?? null
-  })),
-  toggleCollapse: key => withGroupFieldPatch(base, (view, field) => ({
-    group: toggleGroupBucketCollapsed(view.group, field, key) ?? null
-  }))
+  show: key => base.patch((view, reader) => {
+    const fieldId = view.group?.field
+    const field = fieldId
+      ? reader.fields.get(fieldId)
+      : undefined
+    return field
+      ? {
+          group: group.setBucketHidden(view.group, field, key, false) ?? null
+        }
+      : undefined
+  }),
+  hide: key => base.patch((view, reader) => {
+    const fieldId = view.group?.field
+    const field = fieldId
+      ? reader.fields.get(fieldId)
+      : undefined
+    return field
+      ? {
+          group: group.setBucketHidden(view.group, field, key, true) ?? null
+        }
+      : undefined
+  }),
+  collapse: key => base.patch((view, reader) => {
+    const fieldId = view.group?.field
+    const field = fieldId
+      ? reader.fields.get(fieldId)
+      : undefined
+    return field
+      ? {
+          group: group.setBucketCollapsed(view.group, field, key, true) ?? null
+        }
+      : undefined
+  }),
+  expand: key => base.patch((view, reader) => {
+    const fieldId = view.group?.field
+    const field = fieldId
+      ? reader.fields.get(fieldId)
+      : undefined
+    return field
+      ? {
+          group: group.setBucketCollapsed(view.group, field, key, false) ?? null
+        }
+      : undefined
+  }),
+  toggleCollapse: key => base.patch((view, reader) => {
+    const fieldId = view.group?.field
+    const field = fieldId
+      ? reader.fields.get(fieldId)
+      : undefined
+    return field
+      ? {
+          group: group.toggleBucketCollapsed(view.group, field, key) ?? null
+        }
+      : undefined
+  })
 })

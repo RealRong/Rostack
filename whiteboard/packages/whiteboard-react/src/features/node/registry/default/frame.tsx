@@ -11,8 +11,7 @@ import {
 import type { NodeDefinition } from '@whiteboard/react/types/node'
 import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
 import { matchNodeEdit } from '@whiteboard/react/features/edit/session'
-import { useEdit, useEditor, usePickRef } from '@whiteboard/react/runtime/hooks'
-import { bindNodeTextSource } from '@whiteboard/react/features/node/text'
+import { useEdit, usePickRef, useWhiteboardServices } from '@whiteboard/react/runtime/hooks'
 import { resolvePaletteColorOr } from '@whiteboard/react/features/palette'
 import {
   createSchema,
@@ -49,18 +48,20 @@ export const FrameNodeChrome = ({
   node
 }: FrameNodeChromeProps) => {
   const edit = useEdit()
-  const editor = useEditor()
+  const { textSources } = useWhiteboardServices()
   const titleRef = useRef<HTMLDivElement | null>(null)
   const bindTitleRef = useCallback((element: HTMLDivElement | null) => {
-    bindNodeTextSource({
-      editor,
-      nodeId: node.id,
-      field: 'title',
-      current: titleRef.current,
-      next: element
-    })
+    if (titleRef.current === element) {
+      return
+    }
+
+    if (titleRef.current) {
+      textSources.set(node.id, 'title', null)
+    }
+
+    textSources.set(node.id, 'title', element)
     titleRef.current = element
-  }, [editor, node.id])
+  }, [node.id, textSources])
   const pickTitleRef = usePickRef({
     kind: 'node',
     id: node.id,
@@ -148,6 +149,9 @@ export const FrameNodeDefinition: NodeDefinition = {
   geometry: 'rect',
   hit: 'none',
   schema: frameSchema,
+  layout: {
+    kind: 'none'
+  },
   defaultData: {
     title: FRAME_DEFAULT_TITLE
   },
@@ -157,8 +161,7 @@ export const FrameNodeDefinition: NodeDefinition = {
       title: {
         multiline: false,
         empty: 'default',
-        defaultText: FRAME_DEFAULT_TITLE,
-        measure: 'none'
+        defaultText: FRAME_DEFAULT_TITLE
       }
     }
   },

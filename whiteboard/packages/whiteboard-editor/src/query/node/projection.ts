@@ -45,11 +45,12 @@ const readNodeTextDraft = (
   return {
     field: edit.field,
     value: edit.draft.text,
-    measuredSize:
-      edit.field === 'text'
-      && item.node.type === 'text'
-        ? edit.layout.measuredSize
-        : undefined
+    size: edit.field === 'text' && item.node.type === 'text'
+      ? edit.layout.size
+      : undefined,
+    fontSize: edit.field === 'text' && item.node.type === 'sticky'
+      ? edit.layout.fontSize
+      : undefined
   }
 }
 

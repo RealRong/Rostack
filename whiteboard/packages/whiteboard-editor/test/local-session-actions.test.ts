@@ -29,8 +29,7 @@ const seedEditSession = (
     status: 'active',
     capabilities: {
       multiline: false,
-      empty: 'keep',
-      measure: 'none'
+      empty: 'keep'
     }
   })
 }

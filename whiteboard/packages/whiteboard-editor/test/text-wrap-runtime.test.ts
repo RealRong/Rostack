@@ -7,18 +7,24 @@ import {
 } from '@whiteboard/core/schema'
 import { createEngine } from '@whiteboard/engine'
 import { createEditor } from '../src'
-import type { NodeRegistry } from '../src'
-import type { TextLayoutMeasureInput } from '../src/types/textLayout'
+import type {
+  LayoutBackend,
+  NodeRegistry
+} from '../src'
 
 const createRegistry = (): NodeRegistry => ({
-  get: (type) => type === 'text'
-    ? {
+  get: (type) => {
+    if (type === 'text') {
+      return {
         type: 'text',
         meta: {
           name: 'Text',
           family: 'text',
           icon: 'text',
           controls: []
+        },
+        layout: {
+          kind: 'size'
         },
         role: 'content',
         canResize: true,
@@ -28,13 +34,68 @@ const createRegistry = (): NodeRegistry => ({
           fields: {
             text: {
               multiline: true,
-              empty: 'remove',
-              measure: 'text'
+              empty: 'remove'
             }
           }
         }
       }
-    : undefined
+    }
+
+    if (type === 'sticky') {
+      return {
+        type: 'sticky',
+        meta: {
+          name: 'Sticky',
+          family: 'text',
+          icon: 'sticky',
+          controls: []
+        },
+        layout: {
+          kind: 'fit'
+        },
+        role: 'content',
+        canResize: true,
+        canRotate: true,
+        enter: true,
+        edit: {
+          fields: {
+            text: {
+              multiline: true,
+              empty: 'keep'
+            }
+          }
+        }
+      }
+    }
+
+    return undefined
+  }
+})
+
+const createLayoutBackend = (): LayoutBackend => ({
+  measure: (request) => {
+    if (request.kind === 'size') {
+      return {
+        kind: 'size',
+        size: {
+          width: request.widthMode === 'wrap'
+            ? (request.wrapWidth ?? 100)
+            : 100,
+          height:
+            request.fontSize >= 20
+              ? 48
+              : 24
+        }
+      }
+    }
+
+    return {
+      kind: 'fit',
+      fontSize: request.box.width <= 120
+        ? 18
+        : 28
+    }
+  }
 })
 
 const createTextDocument = () => {
@@ -61,22 +122,33 @@ const createTextDocument = () => {
   return document
 }
 
-const createMeasureText = () => (
-  input: TextLayoutMeasureInput
-) => input.node.type === 'text'
-  ? {
-      width: input.node.data?.widthMode === 'wrap'
-        ? (typeof input.node.data?.wrapWidth === 'number'
-            ? input.node.data.wrapWidth
-            : input.rect.width)
-        : input.rect.width,
-      height:
-        typeof input.node.style?.fontSize === 'number'
-        && input.node.style.fontSize >= 20
-          ? 48
-          : 24
+const createStickyDocument = () => {
+  const document = createDocument('doc_sticky_layout_runtime')
+  document.nodes['sticky-1'] = {
+    id: 'sticky-1',
+    type: 'sticky',
+    position: {
+      x: 0,
+      y: 0
+    },
+    size: {
+      width: 180,
+      height: 140
+    },
+    data: {
+      text: 'sticky',
+      fontMode: 'auto'
+    },
+    style: {
+      fontSize: 28
     }
-  : undefined
+  }
+  document.order = [{
+    kind: 'node',
+    id: 'sticky-1'
+  }]
+  return document
+}
 
 const createTextEditor = () => createEditor({
   engine: createEngine({
@@ -93,7 +165,29 @@ const createTextEditor = () => createEditor({
     zoom: 1
   },
   registry: createRegistry(),
-  measureText: createMeasureText()
+  services: {
+    layout: createLayoutBackend()
+  }
+})
+
+const createStickyEditor = () => createEditor({
+  engine: createEngine({
+    document: createStickyDocument()
+  }),
+  initialTool: {
+    type: 'select'
+  },
+  initialViewport: {
+    center: {
+      x: 0,
+      y: 0
+    },
+    zoom: 1
+  },
+  registry: createRegistry(),
+  services: {
+    layout: createLayoutBackend()
+  }
 })
 
 describe('text wrap runtime', () => {
@@ -117,10 +211,6 @@ describe('text wrap runtime', () => {
       widthMode: 'wrap',
       wrapWidth: 180
     })
-    expect(editor.read.node.item.get('text-1')?.node.data).toMatchObject({
-      widthMode: 'wrap',
-      wrapWidth: 180
-    })
     expect(editor.read.node.item.get('text-1')?.rect).toMatchObject({
       width: 180,
       height: 24
@@ -133,7 +223,7 @@ describe('text wrap runtime', () => {
       nodeId: 'text-1',
       layout: {
         wrapWidth: 180,
-        measuredSize: {
+        size: {
           width: 180,
           height: 24
         }
@@ -198,6 +288,66 @@ describe('text wrap runtime', () => {
     expect(editor.read.node.committed.get('text-1')?.rect).toMatchObject({
       width: 180,
       height: 48
+    })
+  })
+})
+
+describe('sticky fit runtime', () => {
+  it('does not recompute auto font size when sticky only rotates', () => {
+    const editor = createStickyEditor()
+
+    editor.actions.node.patch(
+      ['sticky-1'],
+      {
+        fields: {
+          rotation: 45
+        }
+      }
+    )
+
+    expect(editor.read.node.committed.get('sticky-1')?.node.rotation).toBe(45)
+    expect(editor.read.node.committed.get('sticky-1')?.node.style).toMatchObject({
+      fontSize: 28
+    })
+  })
+
+  it('recomputes auto font size when sticky size changes', () => {
+    const editor = createStickyEditor()
+
+    editor.actions.node.patch(
+      ['sticky-1'],
+      {
+        fields: {
+          size: {
+            width: 100,
+            height: 140
+          }
+        }
+      }
+    )
+
+    expect(editor.read.node.committed.get('sticky-1')?.node.style).toMatchObject({
+      fontSize: 18
+    })
+    expect(editor.read.node.committed.get('sticky-1')?.rect).toMatchObject({
+      width: 100,
+      height: 140
+    })
+  })
+
+  it('switches sticky to fixed mode when font size is manually set', () => {
+    const editor = createStickyEditor()
+
+    editor.actions.node.patch(
+      ['sticky-1'],
+      compileNodeStyleUpdate('fontSize', 32)
+    )
+
+    expect(editor.read.node.committed.get('sticky-1')?.node.data).toMatchObject({
+      fontMode: 'fixed'
+    })
+    expect(editor.read.node.committed.get('sticky-1')?.node.style).toMatchObject({
+      fontSize: 32
     })
   })
 })

@@ -7,12 +7,12 @@ import { useCallback, useRef, type CSSProperties } from 'react'
 import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
 import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
 import { matchNodeEdit } from '@whiteboard/react/features/edit/session'
-import { useEdit, useEditor } from '@whiteboard/react/runtime/hooks'
+import { useEdit, useWhiteboardServices } from '@whiteboard/react/runtime/hooks'
 import { resolvePaletteColorOr } from '@whiteboard/react/features/palette'
 import {
   ShapeGlyph
 } from '@whiteboard/react/features/node/shape'
-import { bindNodeTextSource, TEXT_DEFAULT_FONT_SIZE } from '@whiteboard/react/features/node/text'
+import { TEXT_DEFAULT_FONT_SIZE } from '@whiteboard/react/features/node/text'
 import {
   createSchema,
   createTextField,
@@ -85,19 +85,21 @@ const ShapeLabel = ({
   textAlign: string
 }) => {
   const edit = useEdit()
-  const editor = useEditor()
+  const { textSources } = useWhiteboardServices()
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
   const labelRef = useRef<HTMLDivElement | null>(null)
   const bindRef = useCallback((element: HTMLDivElement | null) => {
-    bindNodeTextSource({
-      editor,
-      nodeId: node.id,
-      field: 'text',
-      current: labelRef.current,
-      next: element
-    })
+    if (labelRef.current === element) {
+      return
+    }
+
+    if (labelRef.current) {
+      textSources.set(node.id, 'text', null)
+    }
+
+    textSources.set(node.id, 'text', element)
     labelRef.current = element
-  }, [editor, node.id])
+  }, [node.id, textSources])
 
   const shellStyle: CSSProperties = {
     ...readShapeSpec(kind).labelInset,
@@ -209,13 +211,15 @@ export const ShapeNodeDefinition: NodeDefinition = {
   role: 'content',
   geometry: 'shape',
   schema: shapeSchema,
+  layout: {
+    kind: 'none'
+  },
   enter: true,
   edit: {
     fields: {
       text: {
         multiline: true,
-        empty: 'keep',
-        measure: 'none'
+        empty: 'keep'
       }
     }
   },

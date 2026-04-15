@@ -6,6 +6,9 @@ import {
   deriveIndex
 } from '@dataview/engine/active/index/runtime'
 import {
+  buildQueryState
+} from '@dataview/engine/active/snapshot/query/derive'
+import {
   computeCalculationFromState
 } from '@dataview/engine/active/snapshot/summary/compute'
 
@@ -177,7 +180,6 @@ test('engine.active.index sync patches search/group/sort/calculation on record v
 
   const pointSort = state.sort.fields.get(FIELD_POINTS)
   assert.deepEqual(pointSort.asc, ['rec_1', 'rec_3', 'rec_2'])
-  assert.deepEqual(pointSort.desc, ['rec_2', 'rec_3', 'rec_1'])
 
   const pointCalc = state.calculations.fields.get(FIELD_POINTS)
   assert.equal(pointCalc.global.sum, 9)
@@ -350,4 +352,44 @@ test('engine.active calculations support select and multiSelect option distribut
   assert.deepEqual(tagResult.items.map(item => item.key), ['bug', 'backend', 'frontend'])
   assert.deepEqual(tagResult.items.map(item => item.label), ['Bug', 'Backend', 'Frontend'])
   assert.deepEqual(tagResult.items.map(item => item.count), [2, 2, 1])
+})
+
+test('engine.active.query derives descending order from single asc sort index', () => {
+  const document = createDocument()
+  const index = createIndexState(document, {
+    sortFields: [FIELD_POINTS]
+  })
+
+  const query = buildQueryState({
+    document,
+    index: index.state,
+    view: {
+      id: 'view_points_desc',
+      name: 'Points Desc',
+      type: 'table',
+      search: {
+        query: ''
+      },
+      filter: {
+        mode: 'and',
+        rules: []
+      },
+      sort: [{
+        field: FIELD_POINTS,
+        direction: 'desc'
+      }],
+      calc: {},
+      display: {},
+      options: {
+        table: {},
+        gallery: {},
+        kanban: {}
+      },
+      orders: []
+    }
+  })
+
+  assert.deepEqual(query.records.matched, ['rec_3', 'rec_2', 'rec_1'])
+  assert.deepEqual(query.records.ordered, ['rec_3', 'rec_2', 'rec_1'])
+  assert.deepEqual(query.records.visible, ['rec_3', 'rec_2', 'rec_1'])
 })

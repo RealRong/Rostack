@@ -31,7 +31,7 @@ import {
   createNodeCommands
 } from '@whiteboard/editor/command/node/commands'
 import type { NodeCommands } from '@whiteboard/editor/command/node/types'
-import type { TextLayoutMeasurer } from '@whiteboard/editor/types/textLayout'
+import type { LayoutRuntime } from '@whiteboard/editor/layout/runtime'
 
 export type EditorCommandRuntime = {
   document: DocumentCommands
@@ -47,19 +47,19 @@ export const createCommandRuntime = ({
   engine,
   read,
   local,
-  measureText
+  layout
 }: {
   engine: Engine
   read: EditorQueryRead
   local: Pick<EditorLocalRuntime, 'actions' | 'stores' | 'viewport'>
-  measureText?: TextLayoutMeasurer
+  layout: LayoutRuntime
 }): EditorCommandRuntime => {
   const history = createHistoryCommands(engine)
   const document = createDocumentCommands(engine)
   const node = createNodeCommands({
     engine,
     read,
-    measureText,
+    layout,
     preview: local.actions.feedback,
     session: {
       edit: local.actions.edit,

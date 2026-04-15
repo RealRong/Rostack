@@ -6,14 +6,12 @@ import type {
 } from '@dataview/core/contracts'
 import {
   collectTouchedFieldIds,
+  collectTouchedRecordIds,
   getViewChange,
   hasActiveViewImpact,
   hasFieldSchemaAspect
 } from '@dataview/core/commit/impact'
 import { viewCalcFields } from '@dataview/core/view'
-import {
-  collectTouchedRecordIds
-} from '@dataview/engine/active/index/shared'
 import type { IndexState } from '@dataview/engine/active/index/contracts'
 import type {
   DeriveAction,

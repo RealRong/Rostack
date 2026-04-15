@@ -1,29 +1,21 @@
 import {
   useCallback,
-  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties
 } from 'react'
-import { useKeyedStoreValue } from '@shared/react'
-import { isSizeEqual } from '@whiteboard/core/geometry'
-import { WHITEBOARD_TEXT_DEFAULT_COLOR } from '@whiteboard/core/node'
-import type { ResizeDirection } from '@whiteboard/core/node'
 import {
-  resolveAnchoredRect,
-  resolveTextHandle
+  estimateTextAutoFont,
+  WHITEBOARD_TEXT_DEFAULT_COLOR
 } from '@whiteboard/core/node'
 import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
 import {
   useEdit,
-  useEditor
+  useWhiteboardServices
 } from '@whiteboard/react/runtime/hooks'
 import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
 import { matchNodeEdit } from '@whiteboard/react/features/edit/session'
-import { useStickyFontSize } from '@whiteboard/react/features/node/hooks/useStickyFontSize'
 import {
-  bindNodeTextSource,
-  measureTextNodeSize,
   type TextWidthMode,
   readTextWidthMode,
   readTextWrapWidth,
@@ -36,6 +28,7 @@ import { resolvePaletteColorOr } from '@whiteboard/react/features/palette'
 import {
   createSchema,
   createTextField,
+  dataField,
   getStyleNumber,
   getStyleString,
   styleField
@@ -52,6 +45,18 @@ const textSchema = createSchema('text', 'Text', [
 
 const stickySchema = createSchema('sticky', 'Sticky', [
   createTextField('text'),
+  dataField('fontMode', 'Font mode', 'enum', {
+    options: [
+      {
+        label: 'Auto',
+        value: 'auto'
+      },
+      {
+        label: 'Fixed',
+        value: 'fixed'
+      }
+    ]
+  }),
   styleField('fill', 'Fill', 'color'),
   styleField('color', 'Text color', 'color'),
   styleField('fontSize', 'Font size', 'number', { min: 8, step: 1 }),
@@ -93,91 +98,31 @@ const useElementBinding = <
 const useNodeTextSourceBinding = (
   nodeId: NodeRenderProps['node']['id']
 ) => {
-  const editor = useEditor()
+  const { editor, textSources } = useWhiteboardServices()
   const {
     ref: sourceRef,
-    element: sourceElement,
-    bind: bindElement
+    bind
   } = useElementBinding<HTMLDivElement>()
 
   const bindRef = useCallback((element: HTMLDivElement | null) => {
-    bindNodeTextSource({
-      editor,
-      nodeId,
-      field: 'text',
-      current: sourceRef.current,
-      next: element
-    })
-    bindElement(element)
-  }, [bindElement, editor, nodeId])
+    if (sourceRef.current === element) {
+      return
+    }
+
+    if (sourceRef.current) {
+      textSources.set(nodeId, 'text', null)
+    }
+
+    textSources.set(nodeId, 'text', element)
+    bind(element)
+
+    if (element) {
+      editor.actions.node.layout.sync([nodeId])
+    }
+  }, [bind, editor.actions.node.layout, nodeId, sourceRef, textSources])
 
   return {
-    sourceRef,
-    sourceElement,
     bindRef
-  }
-}
-
-const isRectPositionEqual = (
-  left: Pick<NodeRenderProps['rect'], 'x' | 'y'> | undefined,
-  right: Pick<NodeRenderProps['rect'], 'x' | 'y'> | undefined
-) => (
-  left?.x === right?.x
-  && left?.y === right?.y
-)
-
-const isMeasuredPreviewRectEqual = (
-  left: {
-    position: Pick<NodeRenderProps['rect'], 'x' | 'y'>
-    size: Pick<NodeRenderProps['rect'], 'width' | 'height'>
-  } | null,
-  right: {
-    position: Pick<NodeRenderProps['rect'], 'x' | 'y'>
-    size: Pick<NodeRenderProps['rect'], 'width' | 'height'>
-  } | null
-) => (
-  left !== null
-  && right !== null
-  && isRectPositionEqual(left.position, right.position)
-  && isSizeEqual(left.size, right.size)
-)
-
-export const resolveTextMeasureInput = ({
-  node,
-  rect,
-  placeholder,
-  fontSize,
-  widthMode,
-  wrapWidth
-}: {
-  node: NodeRenderProps['node']
-  rect: Pick<NodeRenderProps['rect'], 'width'>
-  placeholder: string
-  fontSize: number
-  widthMode?: TextWidthMode
-  wrapWidth?: number
-}) => {
-  const resolvedWidthMode = widthMode ?? readTextWidthMode(node)
-  const resolvedWrapWidth = resolvedWidthMode === 'wrap'
-    ? (wrapWidth ?? readTextWrapWidth(node) ?? rect.width)
-    : undefined
-  const baseWidth = resolvedWidthMode === 'wrap'
-    ? (resolvedWrapWidth ?? rect.width)
-    : rect.width
-
-  return {
-    node,
-    baseWidth,
-    placeholder,
-    minWidth: resolvedWidthMode === 'wrap'
-      ? baseWidth
-      : undefined,
-    maxWidth: resolvedWidthMode === 'wrap'
-      ? baseWidth
-      : undefined,
-    fontSize,
-    widthMode: resolvedWidthMode,
-    wrapWidth: resolvedWrapWidth
   }
 }
 
@@ -199,180 +144,15 @@ export const resolveTextLayoutStyle = ({
   }
 }
 
-const useSyncTextComputedSize = ({
-  node,
-  rect,
-  source,
-  content,
-  placeholder,
-  fontSize,
-  editing,
-  previewHandle,
-  previewBaseRect
-}: {
-  node: NodeRenderProps['node']
-  rect: NodeRenderProps['rect']
-  source: HTMLDivElement | null
-  content: string
-  placeholder: string
-  fontSize: number
-  editing: boolean
-  previewHandle?: ResizeDirection
-  previewBaseRect?: NodeRenderProps['rect']
-}) => {
-  const editor = useEditor()
-  const previewHandleMode = previewHandle
-    ? resolveTextHandle(previewHandle)
-    : undefined
-  const pendingDocumentSizeRef = useRef<{
-    width: number
-    height: number
-  } | null>(null)
-  const pendingPreviewRectRef = useRef<{
-    position: Pick<NodeRenderProps['rect'], 'x' | 'y'>
-    size: Pick<NodeRenderProps['rect'], 'width' | 'height'>
-  } | null>(null)
-
-  useLayoutEffect(() => {
-    if (!source?.isConnected || editing) {
-      return
-    }
-
-    const measure = resolveTextMeasureInput({
-      node,
-      rect,
-      placeholder,
-      fontSize
-    })
-    const currentSize = {
-      width: rect.width,
-      height: rect.height
-    }
-    if (
-      pendingDocumentSizeRef.current
-      && isSizeEqual(pendingDocumentSizeRef.current, currentSize)
-    ) {
-      pendingDocumentSizeRef.current = null
-    }
-    const currentPreviewRect = previewHandleMode === 'reflow'
-      ? {
-          position: {
-            x: rect.x,
-            y: rect.y
-          },
-          size: currentSize
-        }
-      : null
-    if (isMeasuredPreviewRectEqual(pendingPreviewRectRef.current, currentPreviewRect)) {
-      pendingPreviewRectRef.current = null
-    }
-
-    const measuredSize = measureTextNodeSize({
-      node: measure.node,
-      rect: {
-        width: measure.baseWidth
-      },
-      content,
-      placeholder: measure.placeholder,
-      source,
-      minWidth: measure.minWidth,
-      maxWidth: measure.maxWidth,
-      fontSize: measure.fontSize,
-      widthMode: measure.widthMode,
-      wrapWidth: measure.wrapWidth
-    })
-
-    if (!measuredSize) {
-      return
-    }
-
-    if (previewHandleMode === 'reflow' && previewHandle && previewBaseRect) {
-      const anchoredRect = resolveAnchoredRect({
-        rect: previewBaseRect,
-        handle: previewHandle,
-        width: measuredSize.width,
-        height: measuredSize.height
-      })
-      const nextPreviewRect = {
-        position: {
-          x: anchoredRect.x,
-          y: anchoredRect.y
-        },
-        size: {
-          width: anchoredRect.width,
-          height: anchoredRect.height
-        }
-      }
-
-      if (
-        isMeasuredPreviewRectEqual(currentPreviewRect, nextPreviewRect)
-        || isMeasuredPreviewRectEqual(pendingPreviewRectRef.current, nextPreviewRect)
-      ) {
-        return
-      }
-
-      pendingPreviewRectRef.current = nextPreviewRect
-      editor.actions.node.text.preview({
-        nodeId: node.id,
-        position: nextPreviewRect.position,
-        size: nextPreviewRect.size
-      })
-      return
-    }
-
-    if (
-      isSizeEqual(measuredSize, currentSize)
-      || (
-        pendingDocumentSizeRef.current
-        && isSizeEqual(pendingDocumentSizeRef.current, measuredSize)
-      )
-    ) {
-      return
-    }
-
-    pendingDocumentSizeRef.current = measuredSize
-    editor.actions.node.patch(
-      [node.id],
-      {
-        fields: {
-          size: measuredSize
-        }
-      },
-      {
-        origin: 'system'
-      }
-    )
-  }, [
-    content,
-    editing,
-    editor.actions.node,
-    editor.actions.node.text,
-    fontSize,
-    node,
-    placeholder,
-    previewBaseRect?.height,
-    previewBaseRect?.width,
-    previewBaseRect?.x,
-    previewBaseRect?.y,
-    previewHandle,
-    previewHandleMode,
-    rect,
-    source
-  ])
-}
-
 const TextNodeRenderer = ({
-  node,
-  rect
+  node
 }: NodeRenderProps) => {
-  const editor = useEditor()
   const edit = useEdit()
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
-  const placeholder = TEXT_PLACEHOLDER
   const {
-    sourceElement,
     bindRef
   } = useNodeTextSourceBinding(node.id)
+  const placeholder = TEXT_PLACEHOLDER
   const fontSize = getStyleNumber(node, 'fontSize') ?? TEXT_DEFAULT_FONT_SIZE
   const fontWeight = getStyleNumber(node, 'fontWeight') ?? 400
   const fontStyle = getStyleString(node, 'fontStyle') ?? 'normal'
@@ -382,7 +162,6 @@ const TextNodeRenderer = ({
   ) ?? 'var(--ui-text-primary)'
   const nodeEdit = matchNodeEdit(edit, node.id, 'text')
   const editing = nodeEdit !== null
-  const nodeFeedback = useKeyedStoreValue(editor.read.feedback.node, node.id)
   const widthMode = editing
     ? (
         nodeEdit.layout.wrapWidth !== undefined
@@ -393,46 +172,16 @@ const TextNodeRenderer = ({
   const wrapWidth = editing
     ? (nodeEdit.layout.wrapWidth ?? readTextWrapWidth(node))
     : readTextWrapWidth(node)
-  const textLayoutStyle = resolveTextLayoutStyle({
-    widthMode,
-    wrapWidth
-  })
   const textStyle: CSSProperties = {
     fontSize,
     fontWeight,
     fontStyle,
     color,
-    ...textLayoutStyle
+    ...resolveTextLayoutStyle({
+      widthMode,
+      wrapWidth
+    })
   }
-  const committedRect = editor.read.node.committed.get(node.id)?.rect
-  const previewBaseRect = nodeFeedback.patch
-    ? {
-        x: nodeFeedback.patch.position?.x ?? committedRect?.x ?? rect.x,
-        y: nodeFeedback.patch.position?.y ?? committedRect?.y ?? rect.y,
-        width: nodeFeedback.patch.size?.width ?? committedRect?.width ?? rect.width,
-        height: nodeFeedback.patch.size?.height ?? committedRect?.height ?? rect.height
-      }
-    : undefined
-  const measure = resolveTextMeasureInput({
-    node,
-    rect,
-    placeholder,
-    fontSize,
-    widthMode,
-    wrapWidth
-  })
-
-  useSyncTextComputedSize({
-    node,
-    rect,
-    source: sourceElement,
-    content: text,
-    placeholder,
-    fontSize,
-    editing,
-    previewHandle: nodeFeedback.text?.handle,
-    previewBaseRect
-  })
 
   return (
     <div className="wb-text-node-viewport">
@@ -445,7 +194,6 @@ const TextNodeRenderer = ({
             multiline
             className="wb-default-text-editor"
             style={textStyle}
-            measure={measure}
           />
         ) : (
           <div
@@ -471,28 +219,19 @@ const StickyNodeRenderer = ({
   const edit = useEdit()
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
   const {
-    sourceElement,
     bindRef
   } = useNodeTextSourceBinding(node.id)
-  const {
-    element: frameElement,
-    bind: bindFrame
-  } = useElementBinding<HTMLDivElement>()
-  const autoFontSize = useStickyFontSize({
-    text,
-    rect,
-    source: sourceElement,
-    frame: frameElement
-  })
-  const fontSize = getStyleNumber(node, 'fontSize') ?? autoFontSize
+  const nodeEdit = matchNodeEdit(edit, node.id, 'text')
+  const editing = nodeEdit !== null
+  const fontSize = nodeEdit?.layout.fontSize
+    ?? getStyleNumber(node, 'fontSize')
+    ?? estimateTextAutoFont('sticky', rect)
   const fontWeight = getStyleNumber(node, 'fontWeight') ?? 400
   const fontStyle = getStyleString(node, 'fontStyle') ?? 'normal'
   const color = resolvePaletteColorOr(
     getStyleString(node, 'color'),
     STICKY_DEFAULT_TEXT_COLOR
   ) ?? 'var(--ui-text-primary)'
-  const nodeEdit = matchNodeEdit(edit, node.id, 'text')
-  const editing = nodeEdit !== null
   const textStyle: CSSProperties = {
     fontSize,
     fontWeight,
@@ -503,10 +242,7 @@ const StickyNodeRenderer = ({
 
   return (
     <div className="wb-sticky-node">
-      <div
-        ref={bindFrame}
-        className="wb-sticky-node-shell"
-      >
+      <div className="wb-sticky-node-shell">
         {editing ? (
           <EditableSlot
             bindRef={bindRef}
@@ -574,6 +310,9 @@ export const TextNodeDefinition: NodeDefinition = {
   role: 'content',
   geometry: 'rect',
   schema: textSchema,
+  layout: {
+    kind: 'size'
+  },
   defaultData: { text: '' },
   enter: true,
   edit: {
@@ -581,8 +320,7 @@ export const TextNodeDefinition: NodeDefinition = {
       text: {
         placeholder: TEXT_PLACEHOLDER,
         multiline: true,
-        empty: 'keep',
-        measure: 'text'
+        empty: 'keep'
       }
     }
   },
@@ -601,15 +339,20 @@ export const StickyNodeDefinition: NodeDefinition = {
   role: 'content',
   geometry: 'rect',
   schema: stickySchema,
-  defaultData: { text: '' },
+  layout: {
+    kind: 'fit'
+  },
+  defaultData: {
+    text: '',
+    fontMode: 'auto'
+  },
   enter: true,
   edit: {
     fields: {
       text: {
         placeholder: '',
         multiline: true,
-        empty: 'keep',
-        measure: 'none'
+        empty: 'keep'
       }
     }
   },

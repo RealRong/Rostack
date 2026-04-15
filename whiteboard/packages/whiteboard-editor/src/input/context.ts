@@ -4,12 +4,14 @@ import type { EditorCommandRuntime } from '@whiteboard/editor/command'
 import type { EditorLocalActions } from '@whiteboard/editor/local/runtime'
 import type { SnapRuntime } from '@whiteboard/editor/input/core/snap'
 import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
+import type { LayoutRuntime } from '@whiteboard/editor/layout/runtime'
 
 export type InteractionContext = {
   query: EditorQueryRead
   selection: SelectionModelRead
   command: EditorCommandRuntime
   local: EditorLocalActions
+  layout: LayoutRuntime
   config: Readonly<BoardConfig>
   snap: SnapRuntime
 }

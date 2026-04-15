@@ -5,6 +5,7 @@ import type {
 } from '@dataview/core/contracts'
 import {
   collectTouchedFieldIds,
+  collectTouchedRecordIds,
   hasActiveViewImpact,
   hasFieldSchemaAspect,
   hasRecordSetChange,
@@ -13,9 +14,6 @@ import {
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
-import {
-  collectTouchedRecordIds
-} from '@dataview/engine/active/index/shared'
 import type {
   DeriveAction,
   QueryState,

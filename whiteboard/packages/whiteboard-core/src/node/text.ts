@@ -4,6 +4,7 @@ import type { ResizeDirection } from '@whiteboard/core/node/transform'
 export type TextVariant = 'text' | 'sticky'
 export type TextWidthMode = 'auto' | 'wrap'
 export type TextHandleMode = 'none' | 'reflow' | 'scale'
+export type StickyFontMode = 'auto' | 'fixed'
 
 export type TextContentBox = {
   width: number
@@ -38,6 +39,7 @@ export const TEXT_RESIZE_HANDLES = ['nw', 'ne', 'e', 'se', 'sw', 'w'] as const s
 
 const TEXT_WIDTH_MODE_KEY = 'widthMode'
 const TEXT_WRAP_WIDTH_KEY = 'wrapWidth'
+const STICKY_FONT_MODE_KEY = 'fontMode'
 
 const clampBoxSize = (
   size: number
@@ -109,6 +111,29 @@ export const setTextWrapWidth = <
 ) => ({
   ...(node.data ?? {}),
   [TEXT_WRAP_WIDTH_KEY]: width
+})
+
+export const readStickyFontMode = (
+  node: {
+    type: string
+    data?: Record<string, unknown>
+  }
+): StickyFontMode => (
+  node.type === 'sticky' && node.data?.[STICKY_FONT_MODE_KEY] === 'fixed'
+    ? 'fixed'
+    : 'auto'
+)
+
+export const setStickyFontMode = <
+  TData extends Record<string, unknown> | undefined
+>(
+  node: {
+    data?: TData
+  },
+  mode: StickyFontMode
+) => ({
+  ...(node.data ?? {}),
+  [STICKY_FONT_MODE_KEY]: mode
 })
 
 export const isTextContentEmpty = (

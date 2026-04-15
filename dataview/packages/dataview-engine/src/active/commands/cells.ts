@@ -6,29 +6,33 @@ export const createCellsApi = (input: {
   read: ActiveViewApi['read']
 }): ActiveViewApi['cells'] => ({
   set: (cell, value) => {
-    const state = input.base.readState()
-    if (!state) {
-      return
-    }
-
     const target = input.read.cell(cell)
     if (!target) {
       return
     }
 
-    input.base.recordsApi.fields.set(target.recordId, target.fieldId, value)
+    input.base.dispatch({
+      type: 'record.fields.writeMany',
+      input: {
+        recordIds: [target.recordId],
+        set: {
+          [target.fieldId]: value
+        }
+      }
+    })
   },
   clear: cell => {
-    const state = input.base.readState()
-    if (!state) {
-      return
-    }
-
     const target = input.read.cell(cell)
     if (!target) {
       return
     }
 
-    input.base.recordsApi.fields.clear(target.recordId, target.fieldId)
+    input.base.dispatch({
+      type: 'record.fields.writeMany',
+      input: {
+        recordIds: [target.recordId],
+        clear: [target.fieldId]
+      }
+    })
   }
 })

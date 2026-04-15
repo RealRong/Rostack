@@ -1,46 +1,23 @@
 import {
-  addFilterRule,
   cloneFilter,
-  removeFilterRule,
-  replaceFilterRule,
-  setFilterMode,
-  setFilterPreset,
-  setFilterValue
+  filter
 } from '@dataview/core/filter'
 import {
-  clearGroup,
-  setGroup,
-  setGroupBucketInterval,
-  setGroupBucketSort,
-  setGroupMode,
-  setGroupShowEmpty,
-  toggleGroup
+  group
 } from '@dataview/core/group'
-import { setSearchQuery } from '@dataview/core/search'
+import { search } from '@dataview/core/search'
 import {
-  addSorter,
-  clearSorters,
-  moveSorter,
-  removeSorter,
-  replaceSorter,
-  setOnlySorter,
-  setSorter
+  sort
 } from '@dataview/core/sort'
 import type { ActiveViewApi } from '@dataview/engine/contracts/public'
 import type { ActiveViewContext } from '@dataview/engine/active/context'
-import {
-  withFieldPatch,
-  withFilterFieldPatch,
-  withGroupFieldPatch,
-  withViewPatch
-} from '@dataview/engine/active/commands/shared'
 
 export const createSearchApi = (
   base: ActiveViewContext
 ): ActiveViewApi['search'] => ({
   set: value => {
-    withViewPatch(base, view => ({
-      search: setSearchQuery(view.search, value)
+    base.patch(view => ({
+      search: search.set(view.search, value)
     }))
   }
 })
@@ -49,37 +26,62 @@ export const createFiltersApi = (
   base: ActiveViewContext
 ): ActiveViewApi['filters'] => ({
   add: fieldId => {
-    withFieldPatch(base, fieldId, (view, field) => ({
-      filter: addFilterRule(view.filter, field)
-    }))
+    base.patch((view, reader) => {
+      const field = reader.fields.get(fieldId)
+      return field
+        ? {
+            filter: filter.add(view.filter, field)
+          }
+        : undefined
+    })
   },
   update: (index, rule) => {
-    withViewPatch(base, view => ({
-      filter: replaceFilterRule(view.filter, index, rule)
+    base.patch(view => ({
+      filter: filter.replace(view.filter, index, rule)
     }))
   },
   setPreset: (index, presetId) => {
-    withFilterFieldPatch(base, index, (view, field) => ({
-      filter: setFilterPreset(view.filter, index, field, presetId)
-    }))
+    base.patch((view, reader) => {
+      const fieldId = view.filter.rules[index]?.fieldId
+      return {
+        filter: filter.setPreset(
+          view.filter,
+          index,
+          fieldId
+            ? reader.fields.get(fieldId)
+            : undefined,
+          presetId
+        )
+      }
+    })
   },
   setValue: (index, value) => {
-    withFilterFieldPatch(base, index, (view, field) => ({
-      filter: setFilterValue(view.filter, index, field, value)
-    }))
+    base.patch((view, reader) => {
+      const fieldId = view.filter.rules[index]?.fieldId
+      return {
+        filter: filter.setValue(
+          view.filter,
+          index,
+          fieldId
+            ? reader.fields.get(fieldId)
+            : undefined,
+          value
+        )
+      }
+    })
   },
   setMode: value => {
-    withViewPatch(base, view => ({
-      filter: setFilterMode(view.filter, value)
+    base.patch(view => ({
+      filter: filter.setMode(view.filter, value)
     }))
   },
   remove: index => {
-    withViewPatch(base, view => ({
-      filter: removeFilterRule(view.filter, index)
+    base.patch(view => ({
+      filter: filter.remove(view.filter, index)
     }))
   },
   clear: () => {
-    withViewPatch(base, view => ({
+    base.patch(view => ({
       filter: cloneFilter({
         ...view.filter,
         rules: []
@@ -92,38 +94,38 @@ export const createSortApi = (
   base: ActiveViewContext
 ): ActiveViewApi['sort'] => ({
   add: (fieldId, direction) => {
-    withViewPatch(base, view => ({
-      sort: addSorter(view.sort, fieldId, direction)
+    base.patch(view => ({
+      sort: sort.add(view.sort, fieldId, direction)
     }))
   },
   update: (fieldId, direction) => {
-    withViewPatch(base, view => ({
-      sort: setSorter(view.sort, fieldId, direction)
+    base.patch(view => ({
+      sort: sort.set(view.sort, fieldId, direction)
     }))
   },
   keepOnly: (fieldId, direction) => {
-    withViewPatch(base, view => ({
-      sort: setOnlySorter(view.sort, fieldId, direction)
+    base.patch(view => ({
+      sort: sort.keepOnly(view.sort, fieldId, direction)
     }))
   },
   replace: (index, sorter) => {
-    withViewPatch(base, view => ({
-      sort: replaceSorter(view.sort, index, sorter)
+    base.patch(view => ({
+      sort: sort.replace(view.sort, index, sorter)
     }))
   },
   remove: index => {
-    withViewPatch(base, view => ({
-      sort: removeSorter(view.sort, index)
+    base.patch(view => ({
+      sort: sort.remove(view.sort, index)
     }))
   },
   move: (from, to) => {
-    withViewPatch(base, view => ({
-      sort: moveSorter(view.sort, from, to)
+    base.patch(view => ({
+      sort: sort.move(view.sort, from, to)
     }))
   },
   clear: () => {
-    withViewPatch(base, view => ({
-      sort: clearSorters(view.sort)
+    base.patch(view => ({
+      sort: sort.clear(view.sort)
     }))
   }
 })
@@ -132,38 +134,80 @@ export const createGroupApi = (
   base: ActiveViewContext
 ): ActiveViewApi['group'] => ({
   set: fieldId => {
-    withFieldPatch(base, fieldId, (view, field) => ({
-      group: setGroup(view.group, field) ?? null
-    }))
+    base.patch((view, reader) => {
+      const field = reader.fields.get(fieldId)
+      return field
+        ? {
+            group: group.set(view.group, field) ?? null
+          }
+        : undefined
+    })
   },
   clear: () => {
-    withViewPatch(base, view => ({
-      group: clearGroup(view.group) ?? null
+    base.patch(view => ({
+      group: group.clear(view.group) ?? null
     }))
   },
   toggle: fieldId => {
-    withFieldPatch(base, fieldId, (view, field) => ({
-      group: toggleGroup(view.group, field) ?? null
-    }))
+    base.patch((view, reader) => {
+      const field = reader.fields.get(fieldId)
+      return field
+        ? {
+            group: group.toggle(view.group, field) ?? null
+          }
+        : undefined
+    })
   },
   setMode: value => {
-    withGroupFieldPatch(base, (view, field) => ({
-      group: setGroupMode(view.group, field, value) ?? null
-    }))
+    base.patch((view, reader) => {
+      const fieldId = view.group?.field
+      const field = fieldId
+        ? reader.fields.get(fieldId)
+        : undefined
+      return field
+        ? {
+            group: group.setMode(view.group, field, value) ?? null
+          }
+        : undefined
+    })
   },
   setSort: value => {
-    withGroupFieldPatch(base, (view, field) => ({
-      group: setGroupBucketSort(view.group, field, value) ?? null
-    }))
+    base.patch((view, reader) => {
+      const fieldId = view.group?.field
+      const field = fieldId
+        ? reader.fields.get(fieldId)
+        : undefined
+      return field
+        ? {
+            group: group.setSort(view.group, field, value) ?? null
+          }
+        : undefined
+    })
   },
   setInterval: value => {
-    withGroupFieldPatch(base, (view, field) => ({
-      group: setGroupBucketInterval(view.group, field, value) ?? null
-    }))
+    base.patch((view, reader) => {
+      const fieldId = view.group?.field
+      const field = fieldId
+        ? reader.fields.get(fieldId)
+        : undefined
+      return field
+        ? {
+            group: group.setInterval(view.group, field, value) ?? null
+          }
+        : undefined
+    })
   },
   setShowEmpty: value => {
-    withGroupFieldPatch(base, (view, field) => ({
-      group: setGroupShowEmpty(view.group, field, value) ?? null
-    }))
+    base.patch((view, reader) => {
+      const fieldId = view.group?.field
+      const field = fieldId
+        ? reader.fields.get(fieldId)
+        : undefined
+      return field
+        ? {
+            group: group.setShowEmpty(view.group, field, value) ?? null
+          }
+        : undefined
+    })
   }
 })

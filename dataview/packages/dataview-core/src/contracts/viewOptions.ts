@@ -5,6 +5,7 @@ import type { FieldId } from '@dataview/core/contracts/state'
 export interface TableOptions {
   widths: Readonly<Partial<Record<FieldId, number>>>
   showVerticalLines: boolean
+  wrapCells: boolean
 }
 
 export interface ViewOptions {

@@ -2,10 +2,23 @@ import type {
   Node,
   NodeFieldPatch,
   NodeId,
+  NodeRole,
+  NodeUpdateInput,
   Point,
   Rect,
   Size
 } from '@whiteboard/core/types'
+import {
+  compileNodeDataUpdate,
+  compileNodeStyleUpdate,
+  mergeNodeUpdates
+} from '@whiteboard/core/schema'
+import {
+  TEXT_DEFAULT_FONT_SIZE,
+  readTextWrapWidth,
+  readTextWidthMode,
+  type TextWidthMode
+} from '@whiteboard/core/node/text'
 import {
   getRectCenter,
   isPointEqual,
@@ -26,11 +39,29 @@ type ResizeHandleMeta = {
 
 export type ResizeDirection = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
 
+export type TransformOperationFamily =
+  | 'resize-x'
+  | 'resize-y'
+  | 'scale-xy'
+
+export type NodeTransformBehavior = {
+  kind: 'flow-text' | 'autofit-text' | 'fixed'
+  supportedFamilies: readonly TransformOperationFamily[]
+}
+
 export type TransformHandle = {
   id: string
   kind: 'resize' | 'rotate'
   direction?: ResizeDirection
   position: Point
+  cursor: string
+}
+
+export type SelectionTransformHandlePlan = {
+  id: ResizeDirection
+  visible: boolean
+  enabled: boolean
+  family?: TransformOperationFamily
   cursor: string
 }
 
@@ -76,6 +107,10 @@ export type TransformPreviewPatch = {
   position?: Point
   size?: Size
   rotation?: number
+  fontSize?: number
+  mode?: TextWidthMode
+  wrapWidth?: number
+  handle?: ResizeDirection
 }
 
 export type TransformProjectionMember = {
@@ -89,16 +124,20 @@ export type TransformSelectionMember<TNode extends Pick<Node, 'id' | 'type'>> = 
   rect: Rect
 }
 
-export type TransformSelectionTargets<TNode extends Pick<Node, 'id' | 'type'>> = {
-  targets: readonly TransformSelectionMember<TNode>[]
-  commitIds: ReadonlySet<NodeId>
+export type SelectionTransformMember<TNode extends Pick<Node, 'id' | 'type'> = Node> =
+  TransformSelectionMember<TNode> & {
+    behavior: NodeTransformBehavior
+  }
+
+export type SelectionTransformPlan<TNode extends Pick<Node, 'id' | 'type'> = Node> = {
+  box: Rect
+  handles: readonly SelectionTransformHandlePlan[]
+  members: readonly SelectionTransformMember<TNode>[]
 }
 
 export type TransformCommitUpdate = {
   id: NodeId
-  update: {
-    fields: NodeFieldPatch
-  }
+  update: NodeUpdateInput
 }
 
 export type TransformModifiers = {
@@ -143,11 +182,10 @@ export type TransformSpec<TNode extends Node> =
       startWorld: Point
     }
   | {
-      kind: 'multi-scale'
+      kind: 'selection-resize'
       pointerId: number
-      box: Rect
-      targets: readonly TransformSelectionMember<TNode>[]
-      commitIds: ReadonlySet<NodeId>
+      plan: SelectionTransformPlan<TNode>
+      rotation: number
       handle: ResizeDirection
       startScreen: Point
     }
@@ -171,9 +209,8 @@ export type TransformState<TNode extends Node> =
       drag: RotateGestureSnapshot
     })
   | (TransformStateBase<TNode> & {
-      kind: 'multi-scale'
-      box: Rect
-      targets: readonly TransformSelectionMember<TNode>[]
+      kind: 'selection-resize'
+      plan: SelectionTransformPlan<TNode>
       drag: ResizeGestureSnapshot
     })
 
@@ -224,6 +261,28 @@ export type TextScaleProjection = {
 }
 
 const ZOOM_EPSILON = 0.0001
+const TRANSFORM_HANDLE_DIRECTIONS: readonly ResizeDirection[] = [
+  'nw',
+  'n',
+  'ne',
+  'e',
+  'se',
+  's',
+  'sw',
+  'w'
+]
+const FIXED_BEHAVIOR: NodeTransformBehavior = {
+  kind: 'fixed',
+  supportedFamilies: ['resize-x', 'resize-y', 'scale-xy']
+}
+const AUTOFIT_TEXT_BEHAVIOR: NodeTransformBehavior = {
+  kind: 'autofit-text',
+  supportedFamilies: ['resize-x', 'resize-y', 'scale-xy']
+}
+const FLOW_TEXT_BEHAVIOR: NodeTransformBehavior = {
+  kind: 'flow-text',
+  supportedFamilies: ['resize-x', 'scale-xy']
+}
 
 export const resizeHandleMap: Record<ResizeDirection, ResizeHandleMeta> = {
   nw: { sx: -1, sy: -1, cursor: 'nwse-resize' },
@@ -235,6 +294,111 @@ export const resizeHandleMap: Record<ResizeDirection, ResizeHandleMeta> = {
   sw: { sx: -1, sy: 1, cursor: 'nesw-resize' },
   w: { sx: -1, sy: 0, cursor: 'ew-resize' }
 }
+
+export const resolveNodeTransformBehavior = (
+  node: Pick<Node, 'type' | 'locked'>,
+  options?: {
+    role?: NodeRole
+    resize?: boolean
+  }
+): NodeTransformBehavior | undefined => {
+  if (node.locked || options?.resize === false || options?.role === 'frame') {
+    return undefined
+  }
+
+  switch (node.type) {
+    case 'text':
+      return FLOW_TEXT_BEHAVIOR
+    case 'sticky':
+      return AUTOFIT_TEXT_BEHAVIOR
+    case 'draw':
+      return undefined
+    default:
+      return FIXED_BEHAVIOR
+  }
+}
+
+const resolveSelectionHandleFamily = (
+  behavior: NodeTransformBehavior,
+  handle: ResizeDirection
+): TransformOperationFamily | undefined => {
+  const family = isCornerResizeDirection(handle)
+    ? 'scale-xy'
+    : (handle === 'e' || handle === 'w')
+      ? 'resize-x'
+      : 'resize-y'
+
+  return behavior.supportedFamilies.includes(family)
+    ? family
+    : undefined
+}
+
+const resolveSharedHandleFamily = <
+  TNode extends Pick<Node, 'id' | 'type'>
+>(
+  members: readonly SelectionTransformMember<TNode>[],
+  handle: ResizeDirection
+): TransformOperationFamily | undefined => {
+  let family: TransformOperationFamily | undefined
+
+  for (const member of members) {
+    const nextFamily = resolveSelectionHandleFamily(member.behavior, handle)
+    if (!nextFamily) {
+      return undefined
+    }
+    if (!family) {
+      family = nextFamily
+      continue
+    }
+    if (family !== nextFamily) {
+      return undefined
+    }
+  }
+
+  return family
+}
+
+export const buildSelectionTransformPlan = <
+  TNode extends Pick<Node, 'id' | 'type'>
+>(input: {
+  box: Rect
+  members: readonly SelectionTransformMember<TNode>[]
+}): SelectionTransformPlan<TNode> | undefined => {
+  if (!input.members.length) {
+    return undefined
+  }
+
+  const hasFlowText = input.members.some((member) => member.behavior.kind === 'flow-text')
+  const hasMixedKinds = hasFlowText
+    && input.members.some((member) => member.behavior.kind !== 'flow-text')
+
+  const handles = TRANSFORM_HANDLE_DIRECTIONS.map((direction) => {
+    const family = hasMixedKinds && !isCornerResizeDirection(direction)
+      ? undefined
+      : resolveSharedHandleFamily(input.members, direction)
+
+    return {
+      id: direction,
+      visible: family !== undefined,
+      enabled: family !== undefined,
+      family,
+      cursor: resizeHandleMap[direction].cursor
+    } satisfies SelectionTransformHandlePlan
+  })
+
+  return {
+    box: input.box,
+    handles,
+    members: input.members
+  }
+}
+
+export const resolveSelectionTransformFamily = (
+  plan: SelectionTransformPlan,
+  handle: ResizeDirection
+): TransformOperationFamily | undefined => plan.handles.find(
+  (entry) => entry.id === handle && entry.enabled && entry.visible
+)?.family
 
 export const getResizeSourceEdges = (
   handle: ResizeDirection
@@ -407,9 +571,8 @@ export const toTransformCommitPatch = (
 export const buildTransformHandles = (options: {
   rect: Rect
   rotation: number
-  canResize: boolean
-  resizeDirections?: readonly ResizeDirection[]
-  canRotate: boolean
+  resizeDirections: readonly ResizeDirection[]
+  showRotateHandle: boolean
   rotateHandleOffset: number
   zoom: number
   zoomEpsilon?: number
@@ -417,9 +580,8 @@ export const buildTransformHandles = (options: {
   const {
     rect,
     rotation,
-    canResize,
     resizeDirections,
-    canRotate,
+    showRotateHandle,
     rotateHandleOffset,
     zoom,
     zoomEpsilon = 0.0001
@@ -443,16 +605,14 @@ export const buildTransformHandles = (options: {
       rotatePoint(localPositions[direction], center, rotation)
     ])
   ) as Record<ResizeDirection, Point>
-  const resizeHandles = canResize
-    ? (resizeDirections ?? (Object.keys(positions) as ResizeDirection[])).map((direction) => ({
-        id: `resize-${direction}`,
-        kind: 'resize' as const,
-        direction,
-        position: positions[direction],
-        cursor: resizeHandleMap[direction].cursor
-      }))
-    : []
-  if (!canRotate) return resizeHandles
+  const resizeHandles = resizeDirections.map((direction) => ({
+    id: `resize-${direction}`,
+    kind: 'resize' as const,
+    direction,
+    position: positions[direction],
+    cursor: resizeHandleMap[direction].cursor
+  }))
+  if (!showRotateHandle) return resizeHandles
 
   const offsetWorld = rotateHandleOffset / Math.max(zoom, zoomEpsilon)
   const diagonal = rotateVector(
@@ -561,6 +721,69 @@ export const computeResizeRect = (options: ResizeGestureInput) => {
   }
 }
 
+const readRectScaleFactor = (input: {
+  startRect: Pick<Rect, 'width' | 'height'>
+  nextRect: Pick<Rect, 'width' | 'height'>
+}): number => {
+  if (input.startRect.width > ZOOM_EPSILON) {
+    return input.nextRect.width / input.startRect.width
+  }
+  if (input.startRect.height > ZOOM_EPSILON) {
+    return input.nextRect.height / input.startRect.height
+  }
+  return 1
+}
+
+const resolveUniformScaleRect = (input: {
+  drag: Pick<
+    ResizeGestureSnapshot,
+    'handle' | 'startCenter' | 'startRotation' | 'startSize'
+  >
+  rawRect: Rect
+  candidateRect: Rect
+  guides: readonly Guide[]
+  minSize: Size
+  altKey: boolean
+}): Rect => {
+  const rawScale = readRectScaleFactor({
+    startRect: input.drag.startSize,
+    nextRect: input.rawRect
+  })
+  const hasSnapX = input.guides.some((guide) => guide.axis === 'x')
+  const hasSnapY = input.guides.some((guide) => guide.axis === 'y')
+  const scales: number[] = []
+
+  if (hasSnapX && input.drag.startSize.width > ZOOM_EPSILON) {
+    scales.push(input.candidateRect.width / input.drag.startSize.width)
+  }
+  if (hasSnapY && input.drag.startSize.height > ZOOM_EPSILON) {
+    scales.push(input.candidateRect.height / input.drag.startSize.height)
+  }
+
+  const snappedScale = scales.length > 0
+    ? [...scales].sort(
+        (left, right) => Math.abs(left - rawScale) - Math.abs(right - rawScale)
+      )[0]!
+    : rawScale
+
+  const minScale = Math.max(
+    input.drag.startSize.width > ZOOM_EPSILON
+      ? input.minSize.width / input.drag.startSize.width
+      : 1,
+    input.drag.startSize.height > ZOOM_EPSILON
+      ? input.minSize.height / input.drag.startSize.height
+      : 1
+  )
+  const scale = Math.max(minScale, snappedScale)
+
+  return resolveResizeRectFromSize({
+    drag: input.drag,
+    width: input.drag.startSize.width * scale,
+    height: input.drag.startSize.height * scale,
+    altKey: input.altKey
+  })
+}
+
 export const projectTextScale = (input: {
   drag: ResizeGestureSnapshot
   currentScreen: Point
@@ -662,29 +885,197 @@ export const projectResizePatches = (options: {
   }))
 }
 
-export const projectResizeTransformPatches = (options: {
+export const projectResizeTransformPatches = <TNode extends Node>(options: {
   startRect: Rect
   nextRect: Rect
-  targets: readonly TransformProjectionMember[]
+  targets: readonly TransformSelectionMember<TNode>[]
+  family?: TransformOperationFamily
 }): readonly TransformPreviewPatch[] => (
   options.targets.length === 1
-    ? [{
-        id: options.targets[0]!.id,
-        position: {
-          x: options.nextRect.x,
-          y: options.nextRect.y
-        },
-        size: {
-          width: options.nextRect.width,
-          height: options.nextRect.height
-        }
-      }]
+    ? [
+        toSingleResizeTransformPatch(
+          options.targets[0]!,
+          options.nextRect,
+          options.family
+        )
+      ]
     : projectResizePatches({
         startRect: options.startRect,
         nextRect: options.nextRect,
         members: options.targets
       })
 )
+
+const toSingleResizeTransformPatch = <TNode extends Node>(
+  target: TransformSelectionMember<TNode>,
+  nextRect: Rect,
+  family?: TransformOperationFamily
+): TransformPreviewPatch => {
+  const preview: TransformPreviewPatch = {
+    id: target.id,
+    position: {
+      x: nextRect.x,
+      y: nextRect.y
+    },
+    size: {
+      width: nextRect.width,
+      height: nextRect.height
+    }
+  }
+
+  if (target.node.type !== 'text' || !family) {
+    return preview
+  }
+
+  if (family === 'resize-x') {
+    return {
+      ...preview,
+      mode: 'wrap',
+      wrapWidth: nextRect.width
+    }
+  }
+
+  if (family === 'scale-xy') {
+    const startWidthMode = readTextWidthMode(target.node)
+    const scale = readRectScaleFactor({
+      startRect: target.rect,
+      nextRect
+    })
+    return {
+      ...preview,
+      fontSize: Math.max(
+        1,
+        readTextFontSize(target.node) * scale
+      ),
+      mode: startWidthMode,
+      wrapWidth: startWidthMode === 'wrap'
+        ? nextRect.width
+        : undefined
+    }
+  }
+
+  return preview
+}
+
+const projectSelectionMemberRect = (input: {
+  family: TransformOperationFamily
+  startRect: Rect
+  nextRect: Rect
+  member: TransformProjectionMember
+}): Rect => {
+  const scaleX = input.startRect.width > ZOOM_EPSILON
+    ? input.nextRect.width / input.startRect.width
+    : 1
+  const scaleY = input.startRect.height > ZOOM_EPSILON
+    ? input.nextRect.height / input.startRect.height
+    : 1
+  const scale = readRectScaleFactor({
+    startRect: input.startRect,
+    nextRect: input.nextRect
+  })
+  const x = scaleAxis(input.member.rect.x, input.startRect.x, scaleX, input.nextRect.x)
+  const y = scaleAxis(input.member.rect.y, input.startRect.y, scaleY, input.nextRect.y)
+  const width = Math.max(1, input.member.rect.width * scaleX)
+  const height = Math.max(1, input.member.rect.height * scaleY)
+
+  switch (input.family) {
+    case 'resize-x':
+      return {
+        x,
+        y: input.member.rect.y,
+        width,
+        height: input.member.rect.height
+      }
+    case 'resize-y':
+      return {
+        x: input.member.rect.x,
+        y,
+        width: input.member.rect.width,
+        height
+      }
+    case 'scale-xy':
+      return {
+        x: scaleAxis(input.member.rect.x, input.startRect.x, scale, input.nextRect.x),
+        y: scaleAxis(input.member.rect.y, input.startRect.y, scale, input.nextRect.y),
+        width: Math.max(1, input.member.rect.width * scale),
+        height: Math.max(1, input.member.rect.height * scale)
+      }
+  }
+}
+
+const readTextFontSize = (
+  node: Node
+): number => typeof node.style?.fontSize === 'number'
+  ? node.style.fontSize
+  : TEXT_DEFAULT_FONT_SIZE
+
+const toTransformPreviewPatch = <TNode extends Node>(
+  member: SelectionTransformMember<TNode>,
+  nextRect: Rect,
+  family: TransformOperationFamily
+): TransformPreviewPatch => {
+  const preview: TransformPreviewPatch = {
+    id: member.id,
+    position: {
+      x: nextRect.x,
+      y: nextRect.y
+    },
+    size: {
+      width: nextRect.width,
+      height: nextRect.height
+    }
+  }
+
+  if (member.behavior.kind !== 'flow-text') {
+    return preview
+  }
+
+  if (family === 'resize-x') {
+    return {
+      ...preview,
+      mode: 'wrap',
+      wrapWidth: nextRect.width
+    }
+  }
+
+  if (family === 'scale-xy') {
+    const startWidthMode = readTextWidthMode(member.node)
+    const scale = readRectScaleFactor({
+      startRect: member.rect,
+      nextRect
+    })
+    return {
+      ...preview,
+      fontSize: Math.max(
+        1,
+        readTextFontSize(member.node) * scale
+      ),
+      mode: startWidthMode,
+      wrapWidth: startWidthMode === 'wrap'
+        ? nextRect.width
+        : undefined
+    }
+  }
+
+  return preview
+}
+
+export const projectSelectionTransform = <TNode extends Node>(input: {
+  plan: SelectionTransformPlan<TNode>
+  family: TransformOperationFamily
+  nextRect: Rect
+}): readonly TransformPreviewPatch[] => input.plan.members.map((member) => (
+    toTransformPreviewPatch(
+      member,
+      projectSelectionMemberRect({
+        family: input.family,
+        startRect: input.plan.box,
+        nextRect: input.nextRect,
+        member
+      }),
+      input.family
+    )
+  ))
 
 export const projectRotateTransformPatches = (options: {
   targetId: NodeId
@@ -727,48 +1118,21 @@ export const startTransform = <
         patches: [],
         commitTargets: [spec.target]
       }
-    case 'multi-scale':
+    case 'selection-resize':
       return {
-        kind: 'multi-scale',
+        kind: 'selection-resize',
         pointerId: spec.pointerId,
-        box: spec.box,
-        targets: spec.targets,
+        plan: spec.plan,
         drag: createResizeDrag({
           handle: spec.handle,
-          rect: spec.box,
-          rotation: 0,
+          rect: spec.plan.box,
+          rotation: spec.rotation,
           startScreen: spec.startScreen
         }),
         patches: [],
-        commitTargets: spec.targets,
-        commitIds: spec.commitIds
+        commitTargets: spec.plan.members,
+        commitIds: new Set(spec.plan.members.map((member) => member.id))
       }
-  }
-}
-
-export const resolveSelectionTransformTargets = <
-  TNode extends Pick<Node, 'id' | 'type'>
->(
-  members: readonly TransformSelectionMember<TNode>[],
-  selectedIds: readonly NodeId[]
-): TransformSelectionTargets<TNode> | undefined => {
-  if (!members.length || !selectedIds.length) {
-    return undefined
-  }
-
-  const targetIdSet = new Set(selectedIds)
-  if (!targetIdSet.size) {
-    return undefined
-  }
-
-  const targets = members.filter((member) => targetIdSet.has(member.id))
-  if (!targets.length) {
-    return undefined
-  }
-
-  return {
-    targets,
-    commitIds: new Set(targets.map((member) => member.id))
   }
 }
 
@@ -794,17 +1158,30 @@ const stepResizeTransform = <
   TNode extends Node
 >(
   state: Extract<TransformState<TNode>, {
-    kind: 'single-resize' | 'multi-scale'
+    kind: 'single-resize' | 'selection-resize'
   }>,
   input: TransformStepInput<TNode>
 ): TransformStepResult<TNode> => {
+  const selectionFamily = state.kind === 'selection-resize'
+    ? resolveSelectionTransformFamily(state.plan, state.drag.handle)
+    : undefined
+  const singleFamily = state.kind === 'single-resize'
+    ? (() => {
+        const behavior = resolveNodeTransformBehavior(state.target.node, {
+          resize: true
+        })
+        return behavior
+          ? resolveSelectionHandleFamily(behavior, state.drag.handle)
+          : undefined
+      })()
+    : undefined
   const rawRect = computeResizeRect({
     drag: state.drag,
     currentScreen: input.screen,
     zoom: Math.max(input.zoom, input.zoomEpsilon ?? ZOOM_EPSILON),
     minSize: input.minSize,
     altKey: input.modifiers.alt,
-    shiftKey: input.modifiers.shift,
+    shiftKey: input.modifiers.shift || selectionFamily === 'scale-xy',
     zoomEpsilon: input.zoomEpsilon
   }).rect
   const { sourceX, sourceY } = getResizeSourceEdges(state.drag.handle)
@@ -818,22 +1195,36 @@ const stepResizeTransform = <
     excludeIds:
       state.kind === 'single-resize'
         ? [state.target.id]
-        : state.targets.map((target) => target.id),
+        : state.plan.members.map((target) => target.id),
     disabled: input.modifiers.alt || state.drag.startRotation !== 0
   })
-  const nextRect = snap?.rect ?? rawRect
   const guides = snap?.guides ?? []
+  const nextRect = selectionFamily === 'scale-xy'
+    ? resolveUniformScaleRect({
+        drag: state.drag,
+        rawRect,
+        candidateRect: snap?.rect ?? rawRect,
+        guides,
+        minSize: input.minSize,
+        altKey: input.modifiers.alt
+      })
+    : (snap?.rect ?? rawRect)
   const patches = state.kind === 'single-resize'
     ? projectResizeTransformPatches({
         startRect: state.target.rect,
         nextRect,
-        targets: [state.target]
+        targets: [state.target],
+        family: singleFamily
       })
-    : projectResizeTransformPatches({
-        startRect: state.box,
-        nextRect,
-        targets: state.targets
-      })
+    : (
+        selectionFamily
+          ? projectSelectionTransform({
+              plan: state.plan,
+              family: selectionFamily,
+              nextRect
+            })
+          : []
+      )
 
   return {
     state: {
@@ -883,7 +1274,7 @@ export const stepTransform = <
 ): TransformStepResult<TNode> => {
   switch (input.state.kind) {
     case 'single-resize':
-    case 'multi-scale':
+    case 'selection-resize':
       return stepResizeTransform(input.state, input)
     case 'single-rotate':
       return stepRotateTransform(input.state, input)
@@ -918,16 +1309,44 @@ export const buildTransformCommitUpdates = (options: {
       return []
     }
 
-    const patch = toTransformCommitPatch(target.node, preview)
-    if (!patch) {
+    const geometry = toTransformCommitPatch(target.node, preview)
+    const textUpdate = target.node.type === 'text'
+      ? mergeNodeUpdates(
+          preview.mode !== undefined && preview.mode !== readTextWidthMode(target.node)
+            ? compileNodeDataUpdate('widthMode', preview.mode)
+            : undefined,
+          (
+            (preview.mode ?? readTextWidthMode(target.node)) === 'wrap'
+            && preview.wrapWidth !== readTextWrapWidth(target.node)
+          )
+            ? compileNodeDataUpdate('wrapWidth', preview.wrapWidth)
+            : (
+                (preview.mode ?? readTextWidthMode(target.node)) === 'auto'
+                && readTextWrapWidth(target.node) !== undefined
+              )
+                ? compileNodeDataUpdate('wrapWidth', undefined)
+                : undefined,
+          preview.fontSize !== undefined
+            && Math.round(preview.fontSize) !== readTextFontSize(target.node)
+            ? compileNodeStyleUpdate('fontSize', Math.round(preview.fontSize))
+            : undefined
+        )
+      : undefined
+    const update = mergeNodeUpdates(
+      geometry
+        ? {
+            fields: geometry
+          }
+        : undefined,
+      textUpdate
+    )
+    if (!update.fields && !update.records?.length) {
       return []
     }
 
     return [{
       id: target.id,
-      update: {
-        fields: patch
-      }
+      update
     }]
   })
 }

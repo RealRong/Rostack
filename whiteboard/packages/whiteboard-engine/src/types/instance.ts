@@ -13,8 +13,7 @@ import type {
 } from '@whiteboard/core/kernel'
 import type { SnapCandidate } from '@whiteboard/core/node'
 import type {
-  NodeRectHitOptions,
-  TransformSelectionTargets
+  NodeRectHitOptions
 } from '@whiteboard/core/node'
 import type {
   CanvasItemRef,
@@ -70,9 +69,6 @@ export type NodeRead = {
   rect: (nodeId: NodeId) => Rect | undefined
   bounds: (nodeId: NodeId) => Rect | undefined
   idsInRect: (rect: Rect, options?: NodeRectHitOptions) => NodeId[]
-  transformTargets: (
-    nodeIds: readonly NodeId[]
-  ) => TransformSelectionTargets<Node> | undefined
 }
 
 export type FrameRead = {

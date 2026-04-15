@@ -18,6 +18,7 @@ import { useStickyFontSize } from '@whiteboard/react/features/node/hooks/useStic
 import {
   bindNodeTextSource,
   measureTextNodeSize,
+  type TextWidthMode,
   readTextWidthMode,
   readTextWrapWidth,
   STICKY_DEFAULT_FILL,
@@ -115,27 +116,56 @@ export const resolveTextMeasureInput = ({
   node,
   rect,
   placeholder,
-  fontSize
+  fontSize,
+  widthMode,
+  wrapWidth
 }: {
   node: NodeRenderProps['node']
   rect: Pick<NodeRenderProps['rect'], 'width'>
   placeholder: string
   fontSize: number
+  widthMode?: TextWidthMode
+  wrapWidth?: number
 }) => {
-  const widthMode = readTextWidthMode(node)
-  const wrapWidth = readTextWrapWidth(node)
-  const baseWidth = widthMode === 'wrap'
-    ? (wrapWidth ?? rect.width)
+  const resolvedWidthMode = widthMode ?? readTextWidthMode(node)
+  const resolvedWrapWidth = resolvedWidthMode === 'wrap'
+    ? (wrapWidth ?? readTextWrapWidth(node) ?? rect.width)
+    : undefined
+  const baseWidth = resolvedWidthMode === 'wrap'
+    ? (resolvedWrapWidth ?? rect.width)
     : rect.width
 
   return {
     node,
     baseWidth,
     placeholder,
-    maxWidth: widthMode === 'wrap'
+    minWidth: resolvedWidthMode === 'wrap'
       ? baseWidth
       : undefined,
-    fontSize
+    maxWidth: resolvedWidthMode === 'wrap'
+      ? baseWidth
+      : undefined,
+    fontSize,
+    widthMode: resolvedWidthMode,
+    wrapWidth: resolvedWrapWidth
+  }
+}
+
+export const resolveTextLayoutStyle = ({
+  widthMode,
+  wrapWidth
+}: {
+  widthMode: TextWidthMode
+  wrapWidth?: number
+}): CSSProperties => {
+  if (widthMode !== 'wrap' || typeof wrapWidth !== 'number') {
+    return {}
+  }
+
+  return {
+    width: wrapWidth,
+    minWidth: wrapWidth,
+    maxWidth: wrapWidth
   }
 }
 
@@ -189,8 +219,11 @@ const useSyncedTextNodeSize = ({
       content,
       placeholder: measure.placeholder,
       source,
+      minWidth: measure.minWidth,
       maxWidth: measure.maxWidth,
-      fontSize: measure.fontSize
+      fontSize: measure.fontSize,
+      widthMode: measure.widthMode,
+      wrapWidth: measure.wrapWidth
     })
 
     if (
@@ -241,17 +274,34 @@ const TextNodeRenderer = ({
   ) ?? 'var(--ui-text-primary)'
   const nodeEdit = matchNodeEdit(edit, node.id, 'text')
   const editing = nodeEdit !== null
+  const widthMode = editing
+    ? (
+        nodeEdit.layout.wrapWidth !== undefined
+          ? 'wrap'
+          : readTextWidthMode(node)
+      )
+    : readTextWidthMode(node)
+  const wrapWidth = editing
+    ? (nodeEdit.layout.wrapWidth ?? readTextWrapWidth(node))
+    : readTextWrapWidth(node)
+  const textLayoutStyle = resolveTextLayoutStyle({
+    widthMode,
+    wrapWidth
+  })
   const textStyle: CSSProperties = {
     fontSize,
     fontWeight,
     fontStyle,
-    color
+    color,
+    ...textLayoutStyle
   }
   const measure = resolveTextMeasureInput({
     node,
     rect,
     placeholder,
-    fontSize
+    fontSize,
+    widthMode,
+    wrapWidth
   })
 
   useSyncedTextNodeSize({

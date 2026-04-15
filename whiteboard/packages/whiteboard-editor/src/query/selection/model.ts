@@ -8,6 +8,7 @@ import {
   type SelectionTarget
 } from '@whiteboard/core/selection'
 import type { Node } from '@whiteboard/core/types'
+import { resolveNodeTransformBehavior } from '@whiteboard/core/node'
 import {
   createDerivedStore,
   read,
@@ -64,11 +65,10 @@ export const createSelectionModelRead = ({
         edges,
         readNodeRect: (entry) => read(node.rect, entry.id),
         readEdgeBounds: (entry) => read(edge.bounds, entry.id),
-        isNodeScalable: (entry) => (
-          !entry.locked
-          && node.capability(entry).role === 'content'
-        ),
-        resolveNodeTransformCapability: (entry) => readNodeTransformCapability(node, entry)
+        resolveNodeTransformBehavior: (entry) => resolveNodeTransformBehavior(entry, {
+          role: node.capability(entry).role,
+          resize: node.capability(entry).resize
+        })
       })
     },
     isEqual: isSelectionSummaryEqual

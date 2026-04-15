@@ -7,6 +7,7 @@ import {
   type KeyboardEvent,
   type RefCallback
 } from 'react'
+import type { TextWidthMode } from '@whiteboard/core/node'
 import type { Node } from '@whiteboard/core/types'
 import { readEditableText } from '@whiteboard/react/features/node/text'
 import { measureTextNodeSize } from '@whiteboard/react/features/node/dom/textMeasure'
@@ -27,6 +28,8 @@ type TextMeasureInput = {
   minWidth?: number
   maxWidth?: number
   fontSize?: number
+  widthMode?: TextWidthMode
+  wrapWidth?: number
 }
 
 export type EditableSlotProps = {
@@ -75,7 +78,9 @@ export const EditableSlot = ({
       wrapWidth?: number
       composing?: boolean
     } = {
-      wrapWidth: element.clientWidth,
+      wrapWidth: measure?.widthMode === 'wrap'
+        ? measure.wrapWidth
+        : undefined,
       composing: patch?.composing
     }
 
@@ -90,7 +95,9 @@ export const EditableSlot = ({
         source: element,
         minWidth: measure.minWidth,
         maxWidth: measure.maxWidth,
-        fontSize: measure.fontSize
+        fontSize: measure.fontSize,
+        widthMode: measure.widthMode,
+        wrapWidth: measure.wrapWidth
       })
     }
 

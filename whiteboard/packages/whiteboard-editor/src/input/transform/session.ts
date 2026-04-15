@@ -4,7 +4,6 @@ import {
   startTransform,
   stepTransform,
   type TransformPreviewPatch,
-  type TransformState,
   type TransformSelectionMember,
   type TransformSpec
 } from '@whiteboard/core/node'
@@ -14,25 +13,10 @@ import { FINISH } from '@whiteboard/editor/input/core/result'
 import { createSelectionGesture } from '@whiteboard/editor/input/core/gesture'
 import type { InteractionContext } from '@whiteboard/editor/input/context'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
-import type { TransformPickHandle } from '@whiteboard/editor/types/pick'
-import {
-  commitTextTransform,
-  projectTextTransform
-} from '@whiteboard/editor/input/transform/text'
+import type { TextPreviewPatch } from '@whiteboard/editor/local/feedback/types'
 
 export type TransformTarget = TransformSelectionMember<Node>
-export type TextTransformMode = 'reflow' | 'scale'
-export type RuntimeTransformSpec =
-  | TransformSpec<Node>
-  | {
-      kind: 'single-text'
-      mode: TextTransformMode
-      pointerId: number
-      target: TransformTarget
-      handle: NonNullable<TransformPickHandle['direction']>
-      rotation: number
-      startScreen: PointerDownInput['client']
-    }
+export type RuntimeTransformSpec = TransformSpec<Node>
 
 const RESIZE_MIN_SIZE = {
   width: 20,
@@ -55,6 +39,22 @@ const toTransformNodePatches = (
   }
 }))
 
+const readTransformTextPreview = (
+  patch: TransformPreviewPatch
+): TextPreviewPatch | undefined => (
+  patch.fontSize === undefined
+  && patch.mode === undefined
+  && patch.wrapWidth === undefined
+  && patch.handle === undefined
+)
+  ? undefined
+  : {
+      fontSize: patch.fontSize,
+      mode: patch.mode,
+      wrapWidth: patch.wrapWidth,
+      handle: patch.handle
+    }
+
 export const createTransformSession = (
   ctx: InteractionContext,
   spec: TransformSpec<Node>,
@@ -62,6 +62,7 @@ export const createTransformSession = (
 ): InteractionSession => {
   let state = startTransform(spec)
   let modifiers = start.modifiers
+  let activeTextPreviewIds: readonly string[] = []
   let interaction = null as InteractionSession | null
 
   const project = (
@@ -87,6 +88,20 @@ export const createTransformSession = (
       }
     })
     state = result.state
+
+    activeTextPreviewIds.forEach((nodeId) => {
+      ctx.local.feedback.node.text.clear(nodeId)
+    })
+    activeTextPreviewIds = result.draft.nodePatches
+      .filter((patch) => readTransformTextPreview(patch))
+      .map((patch) => {
+        const textPreview = readTransformTextPreview(patch)
+        if (textPreview) {
+          ctx.local.feedback.node.text.set(patch.id, textPreview)
+        }
+        return patch.id
+      })
+
     interaction!.gesture = createSelectionGesture(
       'selection-transform',
       {
@@ -124,105 +139,18 @@ export const createTransformSession = (
         ctx.command.node.updateMany(updates)
       }
 
-      return FINISH
-    },
-    cleanup: () => {}
-  }
-
-  return interaction
-}
-
-export const createSingleTextTransformSession = (
-  ctx: InteractionContext,
-  spec: Extract<RuntimeTransformSpec, { kind: 'single-text' }>,
-  start: Pick<PointerDownInput, 'modifiers'>
-): InteractionSession => {
-  const baseState = startTransform({
-    kind: 'single-resize',
-    pointerId: spec.pointerId,
-    target: spec.target,
-    handle: spec.handle,
-    rotation: spec.rotation,
-    startScreen: spec.startScreen
-  }) as Extract<TransformState<Node>, { kind: 'single-resize' }>
-  let modifiers = start.modifiers
-  let interaction = null as InteractionSession | null
-
-  const project = (
-    input: Pick<PointerDownInput, 'screen' | 'modifiers'>
-  ) => {
-    modifiers = input.modifiers
-    const result = projectTextTransform({
-      drag: baseState.drag,
-      mode: spec.mode,
-      target: spec.target,
-      handle: spec.handle,
-      screen: input.screen,
-      zoom: ctx.query.viewport.get().zoom,
-      minSize: RESIZE_MIN_SIZE,
-      snap: ctx.snap.node.resize
-    })
-
-    interaction!.gesture = createSelectionGesture(
-      'selection-transform',
-      {
-        nodePatches: [],
-        edgePatches: [],
-        frameHoverId: undefined,
-        marquee: undefined,
-        guides: result.guides
-      }
-    )
-
-    ctx.local.feedback.node.text.set(
-      spec.target.id,
-      result.preview
-    )
-  }
-
-  interaction = {
-    mode: 'node-transform',
-    pointerId: spec.pointerId,
-    chrome: false,
-    gesture: null,
-    autoPan: {
-      frame: (pointer) => {
-        project({
-          screen: ctx.query.viewport.screenPoint(pointer.clientX, pointer.clientY),
-          modifiers
-        })
-      }
-    },
-    move: (input) => {
-      project(input)
-    },
-    up: (input) => {
-      project(input)
-
-      const previewItem = ctx.query.node.item.get(spec.target.id)
-      ctx.local.feedback.node.text.clear(spec.target.id)
-
-      if (!previewItem) {
-        return FINISH
-      }
-
-      const update = commitTextTransform({
-        target: spec.target,
-        mode: spec.mode,
-        preview: {
-          node: previewItem.node,
-          rect: previewItem.rect
-        }
+      activeTextPreviewIds.forEach((nodeId) => {
+        ctx.local.feedback.node.text.clear(nodeId)
       })
-
-      if (update) {
-        ctx.command.node.update(spec.target.id, update)
-      }
+      activeTextPreviewIds = []
 
       return FINISH
     },
     cleanup: () => {
-      ctx.local.feedback.node.text.clear(spec.target.id)
+      activeTextPreviewIds.forEach((nodeId) => {
+        ctx.local.feedback.node.text.clear(nodeId)
+      })
+      activeTextPreviewIds = []
     }
   }
 

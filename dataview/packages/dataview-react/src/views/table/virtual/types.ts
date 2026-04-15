@@ -8,6 +8,8 @@ import type {
 
 export interface TableColumnHeaderBlock extends VirtualBlock {
   kind: 'column-header'
+  estimatedHeight: number
+  measuredHeight?: number
   scopeId: string
   rowIds: readonly ItemId[]
   label?: string
@@ -15,16 +17,22 @@ export interface TableColumnHeaderBlock extends VirtualBlock {
 
 export interface TableSectionHeaderBlock extends VirtualBlock {
   kind: 'section-header'
+  estimatedHeight: number
+  measuredHeight?: number
   section: Section
 }
 
 export interface TableColumnFooterBlock extends VirtualBlock {
   kind: 'column-footer'
+  estimatedHeight: number
+  measuredHeight?: number
   scopeId: string
 }
 
 export interface TableRowBlock extends VirtualBlock {
   kind: 'row'
+  estimatedHeight: number
+  measuredHeight?: number
   rowId: ItemId
 }
 

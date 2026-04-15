@@ -1,6 +1,5 @@
 import {
-  type NodeRectHitOptions,
-  type TransformSelectionTargets
+  type NodeRectHitOptions
 } from '@whiteboard/core/node'
 import type {
   EngineRead,
@@ -85,9 +84,6 @@ export type NodePresentationRead = {
   bounds: KeyedReadStore<NodeId, Rect | undefined>
   capability: (node: Pick<Node, 'type'> | NodeType) => NodeCapability
   idsInRect: (rect: Rect, options?: NodeRectHitOptions) => NodeId[]
-  transformTargets: (
-    nodeIds: readonly NodeId[]
-  ) => TransformSelectionTargets<Node> | undefined
   ordered: () => readonly Node[]
 }
 
@@ -331,7 +327,6 @@ export const createNodeRead = ({
     bounds,
     capability,
     idsInRect: read.node.idsInRect,
-    transformTargets: read.node.transformTargets,
     ordered: () => presentValues(readValue(read.node.list), (nodeId) => readValue(item, nodeId)?.node)
   }
 }

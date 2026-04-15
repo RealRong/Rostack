@@ -204,6 +204,7 @@ export const sameViewOptions = (
 ): boolean => (
   sameShallowRecord(left.table.widths, right.table.widths)
   && left.table.showVerticalLines === right.table.showVerticalLines
+  && left.table.wrapCells === right.table.wrapCells
   && left.gallery.showFieldLabels === right.gallery.showFieldLabels
   && left.gallery.cardSize === right.gallery.cardSize
   && left.kanban.newRecordPosition === right.kanban.newRecordPosition
@@ -235,6 +236,19 @@ export const setTableVerticalLines = (
   nextOptions.table = {
     ...nextOptions.table,
     showVerticalLines: value
+  }
+
+  return nextOptions
+}
+
+export const setTableWrapCells = (
+  options: ViewOptions,
+  value: boolean
+): ViewOptions => {
+  const nextOptions = cloneViewOptions(options)
+  nextOptions.table = {
+    ...nextOptions.table,
+    wrapCells: value
   }
 
   return nextOptions

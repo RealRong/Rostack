@@ -6,6 +6,7 @@ export interface CellValueProps {
   value: unknown
   canQuickToggle: boolean
   onQuickToggle: () => void
+  multiline?: boolean
 }
 
 export const CellValue = (props: CellValueProps) => {
@@ -17,6 +18,7 @@ export const CellValue = (props: CellValueProps) => {
         ? props.onQuickToggle
         : undefined}
       density="compact"
+      multiline={props.multiline}
     />
   )
 }

@@ -320,6 +320,7 @@ export interface ActiveViewApi {
   table: {
     setColumnWidths: (widths: Partial<Record<FieldId, number>>) => void
     setVerticalLines: (value: boolean) => void
+    setWrapCells: (value: boolean) => void
     insertFieldLeft: (
       anchorFieldId: FieldId,
       input?: {

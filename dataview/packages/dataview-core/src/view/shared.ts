@@ -26,7 +26,8 @@ export const cloneViewOptions = (
     widths: {
       ...options.table.widths
     },
-    showVerticalLines: options.table.showVerticalLines
+    showVerticalLines: options.table.showVerticalLines,
+    wrapCells: options.table.wrapCells
   },
   gallery: {
     showFieldLabels: options.gallery.showFieldLabels,

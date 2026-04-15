@@ -7,12 +7,14 @@ export interface FieldValueRendererProps {
   value: unknown
   emptyPlaceholder?: ReactNode
   className?: string
+  multiline?: boolean
 }
 
 export const FieldValueRenderer = (props: FieldValueRendererProps) => (
   <>{getFieldValueSpec(props.field).render({
     value: props.value,
     emptyPlaceholder: props.emptyPlaceholder,
-    className: props.className
+    className: props.className,
+    multiline: props.multiline
   })}</>
 )

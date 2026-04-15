@@ -56,6 +56,10 @@ const View = () => {
     state => state?.view.options.table.showVerticalLines ?? false
   ), [engine])
   const showVerticalLines = useStoreValue(showVerticalLinesStore)
+  const wrapCellsStore = useMemo(() => engine.active.select(
+    state => state?.view.options.table.wrapCells ?? false
+  ), [engine])
+  const wrapCells = useStoreValue(wrapCellsStore)
   const capabilities = useStoreValue(table.capabilities)
   const virtualInteraction = useStoreValue(table.virtual.interaction)
   const marqueeActive = virtualInteraction.marqueeActive
@@ -226,6 +230,7 @@ const View = () => {
             viewId={currentView.view.id}
             items={currentView.items}
             showVerticalLines={showVerticalLines}
+            wrapCells={wrapCells}
             template={template}
             marqueeActive={marqueeActive}
             dragActive={rowReorder.active}

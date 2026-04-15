@@ -13,6 +13,11 @@ const EMPTY_HEIGHT_MAP = new Map<never, number>()
 export interface UseMeasuredHeightsOptions<TId> {
   ids: readonly TId[]
   bucketKey?: string | number
+  reactive?: boolean
+  onMeasurementsChange?: (input: {
+    bucketKey: string | number
+    heightById: ReadonlyMap<TId, number>
+  }) => void
 }
 
 export interface UseMeasuredHeightsResult<TId> {
@@ -25,9 +30,20 @@ export const useMeasuredHeights = <TId>(
 ): UseMeasuredHeightsResult<TId> => {
   const [version, bumpVersion] = useReducer((value: number) => value + 1, 0)
   const bucketKey = input.bucketKey ?? DEFAULT_BUCKET_KEY
+  const reactive = input.reactive ?? true
   const bucketKeyRef = useRef<string | number>(bucketKey)
+  const onMeasurementsChangeRef = useRef(input.onMeasurementsChange)
   const heightMapByBucketRef = useRef<Map<string | number, Map<TId, number>>>(new Map())
   const observedIdsRef = useRef<Set<TId>>(new Set())
+  const measureRefByIdRef = useRef<Map<TId, (node: HTMLElement | null) => void>>(new Map())
+  onMeasurementsChangeRef.current = input.onMeasurementsChange
+
+  const emitMeasurementsChange = useCallback((resolvedBucketKey: string | number) => {
+    onMeasurementsChangeRef.current?.({
+      bucketKey: resolvedBucketKey,
+      heightById: heightMapByBucketRef.current.get(resolvedBucketKey) ?? EMPTY_HEIGHT_MAP
+    })
+  }, [])
   const observer = useMemo(() => createMeasuredElementObserver<TId, HTMLElement>({
     schedule: 'microtask',
     onChange: changes => {
@@ -50,19 +66,26 @@ export const useMeasuredHeights = <TId>(
       })
 
       if (changed) {
-        bumpVersion()
+        if (reactive) {
+          bumpVersion()
+        }
+        emitMeasurementsChange(resolvedBucketKey)
       }
     }
-  }), [])
+  }), [emitMeasurementsChange, reactive])
 
   bucketKeyRef.current = bucketKey
 
   useEffect(() => {
     const activeIds = new Set(input.ids)
+    let currentBucketChanged = false
 
     heightMapByBucketRef.current.forEach(heightMap => {
       Array.from(heightMap.keys()).forEach(id => {
         if (!activeIds.has(id)) {
+          if (heightMap === heightMapByBucketRef.current.get(bucketKeyRef.current)) {
+            currentBucketChanged = true
+          }
           heightMap.delete(id)
         }
       })
@@ -74,9 +97,21 @@ export const useMeasuredHeights = <TId>(
       }
 
       observedIdsRef.current.delete(id)
+      measureRefByIdRef.current.delete(id)
       observer.unobserve(id)
     })
-  }, [input.ids, observer])
+
+    if (currentBucketChanged) {
+      if (reactive) {
+        bumpVersion()
+      }
+      emitMeasurementsChange(bucketKeyRef.current)
+    }
+  }, [emitMeasurementsChange, input.ids, observer, reactive])
+
+  useEffect(() => {
+    emitMeasurementsChange(bucketKey)
+  }, [bucketKey, emitMeasurementsChange])
 
   useEffect(() => {
     return () => {
@@ -86,7 +121,12 @@ export const useMeasuredHeights = <TId>(
   }, [observer])
 
   const measure = useCallback((id: TId) => {
-    return (node: HTMLElement | null) => {
+    const cached = measureRefByIdRef.current.get(id)
+    if (cached) {
+      return cached
+    }
+
+    const ref = (node: HTMLElement | null) => {
       if (!node) {
         observedIdsRef.current.delete(id)
         observer.unobserve(id)
@@ -96,6 +136,8 @@ export const useMeasuredHeights = <TId>(
       observedIdsRef.current.add(id)
       observer.observe(id, node)
     }
+    measureRefByIdRef.current.set(id, ref)
+    return ref
   }, [observer])
 
   const heightById = useMemo<ReadonlyMap<TId, number>>(

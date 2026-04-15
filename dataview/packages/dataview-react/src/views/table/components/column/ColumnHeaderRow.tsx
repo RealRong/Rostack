@@ -18,6 +18,7 @@ import { ColumnAddPropertyAction } from '@dataview/react/views/table/components/
 export interface ColumnHeaderRowProps {
   scopeId: string
   columns: readonly Field[]
+  wrapCells: boolean
   template: string
   resizingPropertyId?: FieldId
   onResizeStart: (
@@ -33,13 +34,15 @@ const View = (props: ColumnHeaderRowProps) => {
   )
 
   return (
-    <div className="flex h-full min-w-full w-max items-stretch">
+    <div
+      className="flex min-w-full w-max items-stretch"
+    >
       <SortableContext
         items={sortIds}
         strategy={horizontalListSortingStrategy}
       >
         <div
-          className="inline-grid h-full min-w-0 flex-none items-center"
+          className="inline-grid min-w-0 flex-none items-stretch"
           style={{
             gridTemplateColumns: props.template
           }}
@@ -49,13 +52,16 @@ const View = (props: ColumnHeaderRowProps) => {
               key={field.id}
               field={field}
               sortId={sortIds[index] ?? columnSortId(props.scopeId, field.id)}
+              wrapCells={props.wrapCells}
               resizeActive={field.id === props.resizingPropertyId}
               onResizeStart={props.onResizeStart}
             />
           ))}
         </div>
       </SortableContext>
-      <div className="flex h-full shrink-0 items-stretch">
+      <div
+        className="flex shrink-0 items-stretch"
+      >
         <ColumnAddPropertyAction />
       </div>
     </div>
@@ -68,6 +74,7 @@ const same = (
 ) => (
   left.scopeId === right.scopeId
   && left.columns === right.columns
+  && left.wrapCells === right.wrapCells
   && left.template === right.template
   && left.resizingPropertyId === right.resizingPropertyId
   && left.onResizeStart === right.onResizeStart

@@ -1,4 +1,7 @@
-import { readTextWrapWidth } from '@whiteboard/core/node'
+import {
+  readTextWrapWidth,
+  readTextWidthMode
+} from '@whiteboard/core/node'
 import type { EditorQueryRead } from '@whiteboard/editor/query'
 import type { SessionActions } from '@whiteboard/editor/types/commands'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
@@ -63,6 +66,9 @@ export const createLocalEditActions = ({
     const text = typeof item.node.data?.[field] === 'string'
       ? item.node.data[field] as string
       : ''
+    const wrapWidth = readTextWidthMode(item.node) === 'wrap'
+      ? (readTextWrapWidth(item.node) ?? item.rect.width)
+      : undefined
 
     state.edit.mutate.set({
       kind: 'node',
@@ -80,7 +86,7 @@ export const createLocalEditActions = ({
           width: item.rect.width,
           height: item.rect.height
         },
-        wrapWidth: readTextWrapWidth(item.node),
+        wrapWidth,
         composing: false
       },
       caret: options?.caret ?? { kind: 'end' },

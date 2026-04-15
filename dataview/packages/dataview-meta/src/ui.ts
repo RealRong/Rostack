@@ -299,6 +299,10 @@ export const ui = {
         'meta.ui.viewSettings.layoutPanel.showVerticalLines',
         'Show vertical lines'
       ),
+      wrapCells: message(
+        'meta.ui.viewSettings.layoutPanel.wrapCells',
+        'Wrap cell content'
+      ),
       tableInlineStatus: message(
         'meta.ui.viewSettings.layoutPanel.tableInlineStatus',
         'Column widths are edited directly in the table grid.'

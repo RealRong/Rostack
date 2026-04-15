@@ -66,7 +66,15 @@ export const createTextPropertySpec = (
       }
 
       return (
-        <span className={cn('block truncate', props.className)}>
+        <span
+          className={cn(
+            'block',
+            props.multiline
+              ? 'whitespace-normal break-words [overflow-wrap:anywhere]'
+              : 'truncate',
+            props.className
+          )}
+        >
           {display}
         </span>
       )

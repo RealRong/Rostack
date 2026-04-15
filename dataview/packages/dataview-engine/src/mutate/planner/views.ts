@@ -258,6 +258,9 @@ const validateTableOptions = (
   if (typeof table.showVerticalLines !== 'boolean') {
     issues.push(createIssue(source, 'error', 'view.invalidProjection', 'table.showVerticalLines must be boolean', `${path}.showVerticalLines`))
   }
+  if (typeof table.wrapCells !== 'boolean') {
+    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'table.wrapCells must be boolean', `${path}.wrapCells`))
+  }
   return issues
 }
 

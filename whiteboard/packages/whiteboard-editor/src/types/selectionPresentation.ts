@@ -1,5 +1,5 @@
 import type { SelectionTarget } from '@whiteboard/core/selection'
-import type { ShapeKind } from '@whiteboard/core/node'
+import type { SelectionTransformPlan, ShapeKind } from '@whiteboard/core/node'
 import type {
   Edge,
   EdgeDash,
@@ -139,5 +139,5 @@ export type SelectionOverlay =
       interactive: boolean
       frame: boolean
       handles: boolean
-      canResize: boolean
+      transformPlan?: SelectionTransformPlan<Node>
     }

@@ -1,4 +1,7 @@
 import {
+  memo
+} from 'react'
+import {
   ChevronRight
 } from 'lucide-react'
 import {
@@ -15,9 +18,10 @@ import { cn } from '@shared/ui/utils'
 
 export interface SectionHeaderProps {
   section: Section
+  measureRef?: (node: HTMLDivElement | null) => void
 }
 
-export const SectionHeader = (props: SectionHeaderProps) => {
+const View = (props: SectionHeaderProps) => {
   const { engine } = useDataView()
   const table = useTableContext()
   const currentView = useStoreValue(table.currentView)
@@ -27,9 +31,13 @@ export const SectionHeader = (props: SectionHeaderProps) => {
 
   return (
     <div
+      ref={props.measureRef}
       data-table-target="group-row"
       data-group-key={props.section.key}
-      className="flex h-full min-w-full w-max items-center"
+      className="flex self-stretch min-w-full w-max items-center"
+      style={{
+        minHeight: table.layout.headerHeight
+      }}
     >
       <div className="min-w-0 flex-1">
         <Button
@@ -67,3 +75,11 @@ export const SectionHeader = (props: SectionHeaderProps) => {
     </div>
   )
 }
+
+const same = (
+  left: SectionHeaderProps,
+  right: SectionHeaderProps
+) => left.section === right.section
+  && left.measureRef === right.measureRef
+
+export const SectionHeader = memo(View, same)

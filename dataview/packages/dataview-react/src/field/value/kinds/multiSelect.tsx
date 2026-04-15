@@ -31,11 +31,20 @@ export const createMultiSelectPropertySpec = (
       label: getFieldOption(field, item)?.name ?? String(item),
       color: getFieldOption(field, item)?.color
     }))
-    const visible = values.slice(0, 2)
+    const visible = props.multiline
+      ? values
+      : values.slice(0, 2)
     const rest = values.length - visible.length
 
     return (
-      <span className={cn('inline-flex max-w-full items-center gap-1 overflow-hidden', props.className)}>
+      <span
+        className={cn(
+          props.multiline
+            ? 'inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1.5'
+            : 'inline-flex max-w-full items-center gap-1 overflow-hidden',
+          props.className
+        )}
+      >
         {visible.map(item => (
           <FieldOptionTag
             key={String(item.id)}

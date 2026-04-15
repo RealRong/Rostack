@@ -1,4 +1,9 @@
 import { applySelection, type SelectionMode } from '@whiteboard/core/node/selection'
+import {
+  buildSelectionTransformPlan,
+  type NodeTransformBehavior,
+  type SelectionTransformPlan
+} from '@whiteboard/core/node/transform'
 import { getRectsBoundingRect } from '@whiteboard/core/geometry'
 import type {
   Edge,
@@ -79,11 +84,6 @@ export const applySelectionTarget = (
   )]
 })
 
-export type SelectionTransform = {
-  move: boolean
-  resize: 'none' | 'resize' | 'scale'
-}
-
 export type SelectionSummary = {
   kind: 'none' | 'node' | 'nodes' | 'edge' | 'edges' | 'mixed'
   target: {
@@ -111,13 +111,9 @@ export type SelectionSummary = {
     count: number
     primaryId?: GroupId
   }
-  transform: SelectionTransform
+  canMove: boolean
+  transformPlan?: SelectionTransformPlan<Node>
   box?: Rect
-}
-
-const EMPTY_TRANSFORM: SelectionTransform = {
-  move: false,
-  resize: 'none'
 }
 
 export const isSelectionSummaryEqual = (
@@ -133,14 +129,49 @@ export const isSelectionSummaryEqual = (
   && left.items.edgeCount === right.items.edgeCount
   && left.groups.count === right.groups.count
   && left.groups.primaryId === right.groups.primaryId
-  && left.transform.move === right.transform.move
-  && left.transform.resize === right.transform.resize
+  && left.canMove === right.canMove
   && isOrderedArrayEqual(left.target.nodeIds, right.target.nodeIds)
   && isOrderedArrayEqual(left.target.edgeIds, right.target.edgeIds)
   && isOrderedArrayEqual(left.target.groupIds, right.target.groupIds)
   && isOrderedArrayEqual(left.items.nodes, right.items.nodes)
   && isOrderedArrayEqual(left.items.edges, right.items.edges)
+  && isSelectionTransformPlanEqual(left.transformPlan, right.transformPlan)
   && isSameOptionalRectTuple(left.box, right.box)
+)
+
+const isNodeTransformBehaviorEqual = (
+  left: NodeTransformBehavior,
+  right: NodeTransformBehavior
+) => (
+  left.kind === right.kind
+  && isOrderedArrayEqual(left.supportedFamilies, right.supportedFamilies)
+)
+
+const isSelectionTransformPlanEqual = (
+  left: SelectionTransformPlan<Node> | undefined,
+  right: SelectionTransformPlan<Node> | undefined
+) => (
+  left === right
+  || (
+    left !== undefined
+    && right !== undefined
+    && isSameOptionalRectTuple(left.box, right.box)
+    && left.handles.length === right.handles.length
+    && left.handles.every((entry, index) => (
+      entry.id === right.handles[index]?.id
+      && entry.visible === right.handles[index]?.visible
+      && entry.enabled === right.handles[index]?.enabled
+      && entry.family === right.handles[index]?.family
+      && entry.cursor === right.handles[index]?.cursor
+    ))
+    && left.members.length === right.members.length
+    && left.members.every((entry, index) => (
+      entry.id === right.members[index]?.id
+      && entry.node === right.members[index]?.node
+      && isSameOptionalRectTuple(entry.rect, right.members[index]?.rect)
+      && isNodeTransformBehaviorEqual(entry.behavior, right.members[index]!.behavior)
+    ))
+  )
 )
 
 export const deriveSelectionSummary = ({
@@ -149,19 +180,14 @@ export const deriveSelectionSummary = ({
   edges,
   readNodeRect,
   readEdgeBounds,
-  resolveNodeTransformCapability,
-  isNodeScalable
+  resolveNodeTransformBehavior
 }: {
   target: SelectionTarget
   nodes: readonly Node[]
   edges: readonly Edge[]
   readNodeRect: (node: Node) => Rect | undefined
   readEdgeBounds: (edge: Edge) => Rect | undefined
-  resolveNodeTransformCapability: (node: Node) => {
-    resize: boolean
-    rotate: boolean
-  }
-  isNodeScalable: (node: Node) => boolean
+  resolveNodeTransformBehavior: (node: Node) => NodeTransformBehavior | undefined
 }): SelectionSummary => {
   const nodeIds = nodes.length > 0
     ? nodes.map((node) => node.id)
@@ -190,31 +216,7 @@ export const deriveSelectionSummary = ({
   const nodeCount = nodeItems.length
   const edgeCount = edgeItems.length
   const count = nodeCount + edgeCount
-  const canResizeNodes = nodeCount > 0
-    && nodeItems.every((node) => (
-      !node.locked
-      && resolveNodeTransformCapability(node).resize
-    ))
-  const canScaleNodes = nodeCount > 0
-    && nodeItems.every((node) => isNodeScalable(node))
-  const transform = count > 0
-    ? {
-        move: nodeItems.every((node) => !node.locked),
-        resize: nodeCount === 0
-          ? 'none' as const
-          : nodeCount === 1
-            ? (
-                canResizeNodes
-                  ? 'resize' as const
-                  : canScaleNodes
-                    ? 'scale' as const
-                    : 'none' as const
-              )
-            : canScaleNodes
-              ? 'scale' as const
-              : 'none' as const
-      }
-    : EMPTY_TRANSFORM
+  const canMove = count > 0 && nodeItems.every((node) => !node.locked)
   const box = getRectsBoundingRect([
     ...nodeItems.flatMap((node) => {
       const rect = readNodeRect(node)
@@ -225,6 +227,30 @@ export const deriveSelectionSummary = ({
       return rect ? [rect] : []
     })
   ])
+  const transformPlan = (
+    edgeCount === 0
+    && nodeCount > 1
+    && box
+  )
+    ? buildSelectionTransformPlan({
+        box,
+        members: nodeItems.flatMap((node) => {
+          const rect = readNodeRect(node)
+          const behavior = rect
+            ? resolveNodeTransformBehavior(node)
+            : undefined
+
+          return rect && behavior
+            ? [{
+                id: node.id,
+                node,
+                rect,
+                behavior
+              }]
+            : []
+        })
+      })
+    : undefined
   return {
     kind:
       nodeCount > 0 && edgeCount > 0
@@ -263,7 +289,8 @@ export const deriveSelectionSummary = ({
       count: groupIds.length,
       primaryId: groupIds.length === 1 ? groupIds[0] : undefined
     },
-    transform,
+    canMove,
+    transformPlan,
     box
   } satisfies SelectionSummary
 }
@@ -295,6 +322,7 @@ export type SelectionAffordance = {
   canMove: boolean
   canResize: boolean
   canRotate: boolean
+  transformPlan?: SelectionTransformPlan<Node>
   showSingleNodeOverlay: boolean
 }
 
@@ -341,10 +369,10 @@ export const deriveSelectionAffordance = ({
         ownerNodeId: primaryNode.id,
         displayBox,
         moveHit:
-          selection.transform.move && Boolean(displayBox)
+          selection.canMove && Boolean(displayBox)
             ? 'body'
             : 'none',
-        canMove: selection.transform.move && Boolean(displayBox),
+        canMove: selection.canMove && Boolean(displayBox),
         canResize: !primaryNode.locked && capability.resize,
         canRotate: false,
         showSingleNodeOverlay: false
@@ -356,10 +384,10 @@ export const deriveSelectionAffordance = ({
       ownerNodeId: primaryNode.id,
       displayBox,
       moveHit:
-        selection.transform.move && Boolean(displayBox)
+        selection.canMove && Boolean(displayBox)
           ? 'body'
           : 'none',
-      canMove: selection.transform.move && Boolean(displayBox),
+      canMove: selection.canMove && Boolean(displayBox),
       canResize: !primaryNode.locked && capability.resize,
       canRotate: !primaryNode.locked && capability.rotate,
       showSingleNodeOverlay: true
@@ -370,20 +398,21 @@ export const deriveSelectionAffordance = ({
     owner: 'multi-selection',
     displayBox,
     moveHit:
-      selection.transform.move
+      selection.canMove
       && nodeCount > 0
       && Boolean(displayBox)
         ? 'body'
         : 'none',
     canMove:
-      selection.transform.move
+      selection.canMove
       && nodeCount > 0
       && Boolean(displayBox),
     canResize:
       edgeCount === 0
       && Boolean(displayBox)
-      && selection.transform.resize !== 'none',
+      && Boolean(selection.transformPlan?.handles.some((handle) => handle.enabled && handle.visible)),
     canRotate: false,
+    transformPlan: selection.transformPlan,
     showSingleNodeOverlay: false
   }
 }
@@ -398,6 +427,7 @@ export const isSelectionAffordanceEqual = (
   && left.canMove === right.canMove
   && left.canResize === right.canResize
   && left.canRotate === right.canRotate
+  && isSelectionTransformPlanEqual(left.transformPlan, right.transformPlan)
   && left.showSingleNodeOverlay === right.showSingleNodeOverlay
   && isSameOptionalRectTuple(left.displayBox, right.displayBox)
 )

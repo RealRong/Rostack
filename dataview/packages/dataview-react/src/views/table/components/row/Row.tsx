@@ -34,7 +34,9 @@ export interface RowProps {
   itemId: ItemId
   recordId?: RecordId
   viewId: ViewId
+  measureRef?: (node: HTMLDivElement | null) => void
   showVerticalLines: boolean
+  wrapCells: boolean
   columns: readonly Field[]
   template: string
   rowHeight: number
@@ -51,7 +53,9 @@ const same = (left: RowProps, right: RowProps) => (
   left.itemId === right.itemId
   && left.recordId === right.recordId
   && left.viewId === right.viewId
+  && left.measureRef === right.measureRef
   && left.showVerticalLines === right.showVerticalLines
+  && left.wrapCells === right.wrapCells
   && left.columns === right.columns
   && left.template === right.template
   && left.rowHeight === right.rowHeight
@@ -81,7 +85,8 @@ const View = (props: RowProps) => {
 
   const rowRef = useCallback((node: HTMLDivElement | null) => {
     rowNodeRef.current = node
-  }, [])
+    props.measureRef?.(node)
+  }, [props.measureRef])
 
   useLayoutEffect(() => {
     const node = rowNodeRef.current
@@ -160,9 +165,9 @@ const View = (props: RowProps) => {
       role="row"
       aria-selected={selected}
       onPointerDown={onRowPointerDown}
-      className="relative min-w-full w-max border-b border-divider text-sm text-foreground transition-colors focus:outline-none"
+      className="relative self-stretch min-w-full w-max border-b border-divider text-sm text-foreground transition-colors focus:outline-none"
       style={{
-        height: props.rowHeight,
+        minHeight: props.rowHeight,
         boxSizing: 'border-box'
       }}
     >
@@ -182,12 +187,12 @@ const View = (props: RowProps) => {
       />
       <div
         className={cn(
-          'flex h-full min-w-full w-max items-stretch',
+          'flex min-w-full w-max items-stretch',
           rowTone
         )}
       >
         <div
-          className="inline-grid h-full min-w-0 flex-none items-center"
+          className="inline-grid min-w-0 flex-none items-stretch"
           style={{
             gridTemplateColumns: props.template
           }}
@@ -199,6 +204,7 @@ const View = (props: RowProps) => {
               recordId={props.recordId}
               viewId={props.viewId}
               showVerticalLines={props.showVerticalLines}
+              wrapCells={props.wrapCells}
               field={field}
             />
           ))}

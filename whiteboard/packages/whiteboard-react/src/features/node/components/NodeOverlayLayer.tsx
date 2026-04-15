@@ -13,7 +13,7 @@ import { useNodeOverlayView } from '@whiteboard/react/features/node/hooks/useNod
 import { NodeConnectHandles } from '@whiteboard/react/features/node/components/NodeConnectHandles'
 import {
   NodeTransformHandles,
-  TransformHandles
+  SelectionTransformHandles
 } from '@whiteboard/react/features/node/components/NodeTransformHandles'
 
 const NodeInteractionGuidesLayer = ({
@@ -65,11 +65,12 @@ const NodeTransformOverlayItem = memo(({
       />
       {showHandles && !view.node.locked ? (
         <NodeTransformHandles
-          node={view.node}
+          nodeId={view.node.id}
+          nodeType={view.node.type}
           rect={view.rect}
           rotation={view.rotation}
-          canResize={view.canResize}
-          canRotate={view.canRotate}
+          showResizeChrome={view.canResize}
+          showRotateHandle={view.canRotate}
         />
       ) : null}
     </>
@@ -136,16 +137,13 @@ const SelectionHandlesOverlay = ({
 }: {
   overlay: Extract<EditorSelectionOverlay, { kind: 'selection' }>
 }) => {
-  if (!overlay.handles) {
+  if (!overlay.handles || !overlay.transformPlan) {
     return null
   }
 
   return (
-    <TransformHandles
-      rect={overlay.box}
-      rotation={0}
-      canResize={overlay.canResize}
-      canRotate={false}
+    <SelectionTransformHandles
+      plan={overlay.transformPlan}
     />
   )
 }

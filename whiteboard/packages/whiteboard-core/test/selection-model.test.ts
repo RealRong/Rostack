@@ -4,6 +4,10 @@ import {
   deriveSelectionAffordance,
   deriveSelectionSummary
 } from '@whiteboard/core/selection'
+import {
+  isCornerResizeDirection,
+  resolveNodeTransformBehavior
+} from '@whiteboard/core/node'
 import type {
   Edge,
   Node,
@@ -65,11 +69,10 @@ test('selection summary aggregates node canonical rects for node selections', ()
     edges: [],
     readNodeRect: (node) => rectById.get(node.id),
     readEdgeBounds: () => undefined,
-    resolveNodeTransformCapability: () => ({
-      resize: true,
-      rotate: true
-    }),
-    isNodeScalable: () => true
+    resolveNodeTransformBehavior: (node) => resolveNodeTransformBehavior(node, {
+      role: 'content',
+      resize: true
+    })
   })
 
   assert.deepEqual(summary.box, {
@@ -78,6 +81,9 @@ test('selection summary aggregates node canonical rects for node selections', ()
     width: 260,
     height: 110
   })
+  assert.equal(summary.transformPlan?.handles.some((handle) => handle.id === 'e' && handle.family === 'resize-x'), true)
+  assert.equal(summary.transformPlan?.handles.some((handle) => handle.id === 's' && handle.family === 'resize-y'), true)
+  assert.equal(summary.transformPlan?.handles.some((handle) => handle.id === 'se' && handle.family === 'scale-xy'), true)
 })
 
 test('mixed selections keep a single display box but disable resize handles', () => {
@@ -103,11 +109,10 @@ test('mixed selections keep a single display box but disable resize handles', ()
       width: 190,
       height: 140
     }),
-    resolveNodeTransformCapability: () => ({
-      resize: true,
-      rotate: true
-    }),
-    isNodeScalable: () => true
+    resolveNodeTransformBehavior: (node) => resolveNodeTransformBehavior(node, {
+      role: 'content',
+      resize: true
+    })
   })
 
   const affordance = deriveSelectionAffordance({
@@ -128,4 +133,74 @@ test('mixed selections keep a single display box but disable resize handles', ()
   assert.equal(affordance.owner, 'multi-selection')
   assert.equal(affordance.canResize, false)
   assert.equal(affordance.canRotate, false)
+  assert.equal(summary.transformPlan, undefined)
+})
+
+test('mixed text and shape multi-selection keeps corner scale handles only', () => {
+  const textNode = createNode('text', {
+    type: 'text'
+  })
+  const shapeNode = createNode('shape')
+
+  const summary = deriveSelectionSummary({
+    target: {
+      nodeIds: ['text', 'shape'],
+      edgeIds: []
+    },
+    nodes: [textNode, shapeNode],
+    edges: [],
+    readNodeRect: (node) => node.id === 'text'
+      ? { x: 0, y: 0, width: 100, height: 40 }
+      : { x: 180, y: 20, width: 120, height: 80 },
+    readEdgeBounds: () => undefined,
+    resolveNodeTransformBehavior: (node) => resolveNodeTransformBehavior(node, {
+      role: 'content',
+      resize: true
+    })
+  })
+
+  const visibleHandles = summary.transformPlan?.handles
+    .filter((handle) => handle.visible)
+    .map((handle) => handle.id)
+
+  assert.deepEqual(visibleHandles, ['nw', 'ne', 'se', 'sw'])
+})
+
+test('pure text multi-selection keeps corner scale and horizontal edge resize only', () => {
+  const firstText = createNode('text-1', {
+    type: 'text'
+  })
+  const secondText = createNode('text-2', {
+    type: 'text'
+  })
+
+  const summary = deriveSelectionSummary({
+    target: {
+      nodeIds: ['text-1', 'text-2'],
+      edgeIds: []
+    },
+    nodes: [firstText, secondText],
+    edges: [],
+    readNodeRect: (node) => node.id === 'text-1'
+      ? { x: 0, y: 0, width: 120, height: 48 }
+      : { x: 180, y: 20, width: 140, height: 56 },
+    readEdgeBounds: () => undefined,
+    resolveNodeTransformBehavior: (node) => resolveNodeTransformBehavior(node, {
+      role: 'content',
+      resize: true
+    })
+  })
+
+  const visibleHandles = summary.transformPlan?.handles
+    .filter((handle) => handle.visible)
+
+  const visibleCornerHandles = visibleHandles
+    ?.filter((handle) => isCornerResizeDirection(handle.id))
+    .map((handle) => handle.id)
+  const visibleEdgeHandles = visibleHandles
+    ?.filter((handle) => !isCornerResizeDirection(handle.id))
+    .map((handle) => handle.id)
+
+  assert.deepEqual(visibleCornerHandles, ['nw', 'ne', 'se', 'sw'])
+  assert.deepEqual(visibleEdgeHandles, ['e', 'w'])
 })

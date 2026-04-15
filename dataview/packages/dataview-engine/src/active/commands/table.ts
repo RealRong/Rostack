@@ -1,7 +1,8 @@
 import {
   resolveDisplayInsertBeforeFieldId,
   setTableColumnWidths,
-  setTableVerticalLines
+  setTableVerticalLines,
+  setTableWrapCells
 } from '@dataview/core/view'
 import type { ActiveViewApi } from '@dataview/engine/contracts/public'
 import type { ActiveViewContext } from '@dataview/engine/active/context'
@@ -16,6 +17,9 @@ export const createTableApi = (input: {
   })),
   setVerticalLines: value => withViewPatch(input.base, view => ({
     options: setTableVerticalLines(view.options, value)
+  })),
+  setWrapCells: value => withViewPatch(input.base, view => ({
+    options: setTableWrapCells(view.options, value)
   })),
   insertFieldLeft: (anchorFieldId, fieldInput) => {
     const fieldId = input.base.createField(fieldInput)

@@ -24,7 +24,6 @@ import {
   collectFrameMembers,
   filterNodeIdsInRect,
   readNodeRotation,
-  resolveSelectionTransformTargets,
   resolveFrameAtPoint,
   resolveNodeFrame,
   matchCanvasNodeRect
@@ -210,17 +209,6 @@ export const createRead = ({
       matchEntry: matchCanvasNodeRect
     })
   }
-
-  const readNodeTransformTargets = (
-    nodeIds: readonly NodeId[]
-  ) => resolveSelectionTransformTargets(
-    index.node.all().map((entry) => ({
-      id: entry.node.id,
-      node: entry.node,
-      rect: entry.geometry.rect
-    })),
-    nodeIds
-  )
 
   const readGroupList = () => listGroups(readDocument())
     .map((group) => group.id)
@@ -467,8 +455,7 @@ export const createRead = ({
         geometry: readProjectedNodeGeometry,
         rect: readProjectedNodeRect,
         bounds: readProjectedNodeBounds,
-        idsInRect: readNodeIdsInRect,
-        transformTargets: readNodeTransformTargets
+        idsInRect: readNodeIdsInRect
       },
       edge: {
         list: edgeProjection.list,

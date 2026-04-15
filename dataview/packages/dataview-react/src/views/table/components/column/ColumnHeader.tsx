@@ -7,6 +7,7 @@ import {
   PanelsTopLeft,
   Settings2,
   Sigma,
+  TextWrap,
   Trash2
 } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
@@ -30,10 +31,15 @@ import { useStoreValue } from '@shared/react'
 import { useTableContext } from '@dataview/react/views/table/context'
 import { meta, renderMessage } from '@dataview/meta'
 import { buildFieldKindMenuItems } from '@dataview/react/field/schema'
+import {
+  TABLE_CELL_INLINE_PADDING,
+  TABLE_HEADER_BLOCK_PADDING
+} from '@dataview/react/views/table/layout'
 
 export interface ColumnHeaderProps {
   field: Field
   sortId: string
+  wrapCells: boolean
   resizeActive?: boolean
   onResizeStart: (
     fieldId: FieldId,
@@ -234,6 +240,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   const sortDirection = sortProjection?.rules.find(
     entry => getSorterFieldId(entry.sorter) === props.field.id
   )?.sorter.direction
+  const wrapCells = props.wrapCells
   const calculationMetric = view.calc[props.field.id] as CalculationMetric | undefined
   const calculationMetrics = getFieldCalculationMetrics(props.field)
   const kind = meta.field.kind.get(props.field.kind)
@@ -405,9 +412,11 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       kind: 'toggle' as const,
       key: 'wrap',
       label: '内容换行显示',
-      checked: false,
-      disabled: true,
-      onSelect: () => undefined
+      checked: wrapCells,
+      leading: <TextWrap className="size-4" size={16} strokeWidth={1.8} />,
+      onSelect: () => {
+        viewApi.table.setWrapCells(!wrapCells)
+      }
     },
     {
       kind: 'divider' as const,
@@ -457,13 +466,15 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       {...sortable.attributes}
       {...sortable.listeners}
       className={cn(
-        'flex h-full min-w-0 items-center gap-1 px-2 text-sm font-semibold transition-colors hover:bg-muted/80',
+        'flex h-full min-w-0 items-start gap-1 text-sm font-semibold transition-colors hover:bg-muted/80',
         isDragging && 'z-10 cursor-grabbing bg-muted/80'
       )}
       style={{
         cursor: isDragging ? 'grabbing' : 'grab',
         userSelect: 'none',
-        touchAction: 'none'
+        touchAction: 'none',
+        paddingInline: TABLE_CELL_INLINE_PADDING,
+        paddingBlock: TABLE_HEADER_BLOCK_PADDING
       }}
       onPointerDownCapture={event => {
         if (event.button !== 0) {
@@ -504,7 +515,16 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
         event.stopPropagation()
       }}
     >
-      <span className="truncate">{props.field.name}</span>
+      <span
+        className={cn(
+          'block min-w-0 flex-1',
+          wrapCells
+            ? 'whitespace-normal break-words [overflow-wrap:anywhere]'
+            : 'truncate'
+        )}
+      >
+        {props.field.name}
+      </span>
     </div>
   )
 

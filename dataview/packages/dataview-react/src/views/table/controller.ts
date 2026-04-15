@@ -10,10 +10,7 @@ import {
   createInteractionCoordinator,
   type InteractionApi
 } from '@dataview/react/interaction'
-import {
-  type ItemId,
-  type Section
-} from '@dataview/engine'
+import type { ItemId } from '@dataview/engine'
 import type {
   Selection,
   SelectionApi
@@ -63,6 +60,7 @@ import {
   createTableSelectionRuntime,
   type TableSelectionRuntime
 } from '@dataview/react/views/table/selectionRuntime'
+import type { TableVirtualLayoutSnapshot } from '@dataview/react/views/table/virtual/runtime'
 
 export interface TableController {
   currentView: ReadStore<CurrentView | undefined>
@@ -94,98 +92,39 @@ export type {
   TableSelectionRuntime
 }
 
-const sectionBlockHeight = (input: {
-  section: Section
-  rowHeight: number
-  headerHeight: number
-}) => input.section.collapsed
-    ? input.headerHeight
-    : (
-      input.headerHeight
-      + input.headerHeight
-      + (input.section.itemIds.length * input.rowHeight)
-    )
-
-const flatRowTarget = (input: {
-  currentView: CurrentView
+const rowTargetFromLayout = (input: {
+  layout: TableVirtualLayoutSnapshot
   rowId: ItemId
-  rowHeight: number
-  headerHeight: number
 }): {
   rowId: ItemId
   top: number
   bottom: number
 } | null => {
-  const rowIndex = input.currentView.items.indexOf(input.rowId)
-
-  return rowIndex === undefined
-    ? null
-    : {
-      rowId: input.rowId,
-      top: input.headerHeight + (rowIndex * input.rowHeight),
-      bottom: input.headerHeight + ((rowIndex + 1) * input.rowHeight)
-    }
-}
-
-const groupedRowTarget = (input: {
-  currentView: CurrentView
-  rowId: ItemId
-  rowHeight: number
-  headerHeight: number
-}): {
-  rowId: ItemId
-  top: number
-  bottom: number
-} | null => {
-  let sectionTop = 0
-
-  for (const section of input.currentView.sections.all) {
-    const rowIndex = section.itemIds.indexOf(input.rowId)
-    if (rowIndex !== -1) {
-      const top = sectionTop + input.headerHeight + input.headerHeight + (rowIndex * input.rowHeight)
-      return {
-        rowId: input.rowId,
-        top,
-        bottom: top + input.rowHeight
-      }
-    }
-
-    sectionTop += sectionBlockHeight({
-      section,
-      rowHeight: input.rowHeight,
-      headerHeight: input.headerHeight
-    })
+  const block = input.layout.blocks.find(candidate => (
+    candidate.kind === 'row'
+    && candidate.rowId === input.rowId
+  ))
+  if (!block) {
+    return null
   }
 
-  return null
+  return {
+    rowId: input.rowId,
+    top: block.top,
+    bottom: block.top + block.height
+  }
 }
 
-const rowTarget = (input: {
-  currentView: CurrentView
-  rowId: ItemId
-  rowHeight: number
-  headerHeight: number
-}): {
-  rowId: ItemId
-  top: number
-  bottom: number
-} | null => input.currentView.view.group
-    ? groupedRowTarget(input)
-    : flatRowTarget(input)
-
 const selectionRow = (input: {
-  currentView: CurrentView | undefined
+  layout: TableVirtualLayoutSnapshot
   selection: Selection
   gridSelection: ReturnType<TableSelectionRuntime['cells']['get']>
-  rowHeight: number
-  headerHeight: number
 }): {
   rowId: ItemId
   top: number
   bottom: number
 } | null => {
-  const currentView = input.currentView
-  if (!currentView) {
+  if (!input.layout.blocks.length) {
     return null
   }
 
@@ -196,11 +135,9 @@ const selectionRow = (input: {
     return null
   }
 
-  return rowTarget({
-    currentView,
-    rowId,
-    rowHeight: input.rowHeight,
-    headerHeight: input.headerHeight
+  return rowTargetFromLayout({
+    layout: input.layout,
+    rowId
   })
 }
 
@@ -300,16 +237,9 @@ export const createTableController = (options: {
     })
   }
   const revealRow = (rowId: ItemId) => {
-    const activeCurrentView = currentView.get()
-    if (!activeCurrentView) {
-      return
-    }
-
-    const target = rowTarget({
-      currentView: activeCurrentView,
-      rowId,
-      rowHeight: options.layout.rowHeight,
-      headerHeight: options.layout.headerHeight
+    const target = rowTargetFromLayout({
+      layout: virtual.layout.get(),
+      rowId
     })
     if (!target) {
       return
@@ -319,11 +249,9 @@ export const createTableController = (options: {
   }
   const revealCursor = () => {
     const target = selectionRow({
-      currentView: currentView.get(),
+      layout: virtual.layout.get(),
       selection: options.selectionStore.get(),
-      gridSelection: selection.cells.get(),
-      rowHeight: options.layout.rowHeight,
-      headerHeight: options.layout.headerHeight
+      gridSelection: selection.cells.get()
     })
     if (!target) {
       return

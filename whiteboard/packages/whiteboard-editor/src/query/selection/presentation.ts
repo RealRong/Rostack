@@ -682,7 +682,10 @@ const resolveSelectionOverlay = ({
   }
 
   const editing = edit !== null
-  const hasTransformChrome = affordance.canResize || affordance.canRotate
+  const hasResizeHandles = Boolean(
+    affordance.transformPlan?.handles.some((handle) => handle.visible && handle.enabled)
+  )
+  const hasTransformChrome = hasResizeHandles || affordance.canRotate
   const showTransformHandles =
     tool.type === 'select'
     && !editing
@@ -704,8 +707,8 @@ const resolveSelectionOverlay = ({
         frame: affordance.owner !== 'none',
         handles:
           showTransformHandles
-          && affordance.canResize,
-        canResize: affordance.canResize
+          && hasResizeHandles,
+        transformPlan: affordance.transformPlan
       }
 }
 

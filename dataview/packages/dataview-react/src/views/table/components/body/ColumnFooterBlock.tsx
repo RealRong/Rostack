@@ -1,17 +1,26 @@
 import type {
   Field
 } from '@dataview/core/contracts'
+import {
+  memo
+} from 'react'
 import { useStoreValue } from '@shared/react'
 import { useTableContext } from '@dataview/react/views/table/context'
-import { TABLE_TRAILING_ACTION_WIDTH } from '@dataview/react/views/table/layout'
+import {
+  TABLE_CELL_BLOCK_PADDING,
+  TABLE_CELL_INLINE_PADDING,
+  TABLE_TRAILING_ACTION_WIDTH
+} from '@dataview/react/views/table/layout'
 
 export interface ColumnFooterBlockProps {
   scopeId: string
+  measureRef?: (node: HTMLDivElement | null) => void
   columns: readonly Field[]
+  wrapCells: boolean
   template: string
 }
 
-export const ColumnFooterBlock = (props: ColumnFooterBlockProps) => {
+const View = (props: ColumnFooterBlockProps) => {
   const table = useTableContext()
   const currentView = useStoreValue(table.currentView)
   if (!currentView) {
@@ -21,10 +30,14 @@ export const ColumnFooterBlock = (props: ColumnFooterBlockProps) => {
   const calculations = currentView.summaries.get(props.scopeId)
   return (
     <div
-      className="flex h-full min-w-full w-max items-center text-sm text-muted-foreground"
+      ref={props.measureRef}
+      className="flex self-stretch min-w-full w-max items-stretch text-sm text-muted-foreground"
+      style={{
+        minHeight: table.layout.headerHeight
+      }}
     >
       <div
-        className="inline-grid h-full min-w-0 flex-none items-center"
+        className="inline-grid min-w-0 flex-none items-stretch"
         style={{
           gridTemplateColumns: props.template
         }}
@@ -35,7 +48,11 @@ export const ColumnFooterBlock = (props: ColumnFooterBlockProps) => {
           return (
             <div
               key={field.id}
-              className={'min-w-0 flex items-center px-2'}
+              className={'min-w-0 box-border flex items-start'}
+              style={{
+                paddingInline: TABLE_CELL_INLINE_PADDING,
+                paddingBlock: TABLE_CELL_BLOCK_PADDING
+              }}
             >
               {result ? <><div className='leading-none'>{result?.metric}</div>: <div className='text-base ml-1 leading-none font-medium'>{result?.display}</div></> : null}
             </div>
@@ -52,3 +69,16 @@ export const ColumnFooterBlock = (props: ColumnFooterBlockProps) => {
     </div>
   )
 }
+
+const same = (
+  left: ColumnFooterBlockProps,
+  right: ColumnFooterBlockProps
+) => (
+  left.scopeId === right.scopeId
+  && left.measureRef === right.measureRef
+  && left.columns === right.columns
+  && left.wrapCells === right.wrapCells
+  && left.template === right.template
+)
+
+export const ColumnFooterBlock = memo(View, same)

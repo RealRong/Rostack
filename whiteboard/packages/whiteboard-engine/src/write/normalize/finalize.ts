@@ -12,8 +12,6 @@ import {
   samePointArray,
   sameShallowRecord
 } from '@shared/core'
-import { createNodeUpdateOperation } from '@whiteboard/core/node'
-import { compileNodeFieldUpdate } from '@whiteboard/core/schema'
 import type {
   Document,
   Edge,
@@ -24,8 +22,6 @@ import type {
   Point,
   Size
 } from '@whiteboard/core/types'
-
-const TEXT_WIDTH_MODE_KEY = 'widthMode'
 
 type NodeChange = {
   before?: Node
@@ -265,88 +261,15 @@ export const collectChanges = ({
   touched: collectTouchedIds(operations)
 })
 
-const hasNodeSizeChange = (
-  change: NodeChange
-) => {
-  if (!change.before || !change.after) {
-    return false
-  }
-
-  const before = readNodeGeometry(change.before)?.size
-  const after = readNodeGeometry(change.after)?.size
-  if (!before && !after) {
-    return false
-  }
-
-  return (
-    (before?.width ?? 0) !== (after?.width ?? 0)
-    || (before?.height ?? 0) !== (after?.height ?? 0)
-  )
-}
-
-const collectNodeDataOps = ({
-  document,
-  changes,
-  nodeSize: _nodeSize
-}: {
-  document: Document
-  changes: WriteChanges
-  nodeSize: Size
-}): Operation[] => {
-  const next: Operation[] = []
-
-  changes.nodes.forEach((change, nodeId) => {
-    if (!change.after || !change.geometry) {
-      return
-    }
-
-    const node = document.nodes[nodeId]
-    if (!node) {
-      return
-    }
-
-    let data = node.data
-
-    if (node.type === 'text' && hasNodeSizeChange(change)) {
-      if (node.data?.[TEXT_WIDTH_MODE_KEY] !== 'fixed') {
-        data = {
-          ...(data ?? {}),
-          [TEXT_WIDTH_MODE_KEY]: 'fixed'
-        }
-      }
-    }
-
-    if (isShallowEqual(node.data, data)) {
-      return
-    }
-
-    next.push(createNodeUpdateOperation(
-      nodeId,
-      compileNodeFieldUpdate(
-        { scope: 'data', path: TEXT_WIDTH_MODE_KEY },
-        'fixed'
-      )
-    ))
-  })
-
-  return next
-}
-
 export const collectFinalizeOps = ({
-  afterDocument,
-  changes,
-  nodeSize
+  afterDocument: _afterDocument,
+  changes: _changes,
+  nodeSize: _nodeSize
 }: {
   afterDocument: Document
   changes: WriteChanges
   nodeSize: Size
-}): Operation[] => {
-  return collectNodeDataOps({
-    document: afterDocument,
-    changes,
-    nodeSize
-  })
-}
+}): Operation[] => []
 
 export const collectDirtyNodeIds = (
   changes: WriteChanges

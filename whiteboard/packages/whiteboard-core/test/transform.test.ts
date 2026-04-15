@@ -1,0 +1,287 @@
+import assert from 'node:assert/strict'
+import { test } from 'vitest'
+import {
+  buildSelectionTransformPlan,
+  buildTransformCommitUpdates,
+  finishTransform,
+  type Guide,
+  resolveNodeTransformBehavior,
+  startTransform,
+  stepTransform
+} from '@whiteboard/core/node'
+import type { Node } from '@whiteboard/core/types'
+
+const createNode = (
+  id: string,
+  overrides: Partial<Node> = {}
+): Node => ({
+  id,
+  type: 'text',
+  position: {
+    x: 0,
+    y: 0
+  },
+  size: {
+    width: 100,
+    height: 40
+  },
+  locked: false,
+  ...overrides
+})
+
+const createGuide = (
+  axis: 'x' | 'y'
+): Guide => ({
+  axis,
+  value: 0,
+  from: 0,
+  to: 0,
+  targetEdge: axis === 'x' ? 'left' : 'top',
+  sourceEdge: axis === 'x' ? 'right' : 'bottom'
+})
+
+test('selection scale-xy keeps member aspect ratios after snap adjusts one axis', () => {
+  const first = createNode('first', {
+    style: {
+      fontSize: 20
+    }
+  })
+  const second = createNode('second', {
+    style: {
+      fontSize: 16
+    }
+  })
+
+  const plan = buildSelectionTransformPlan({
+    box: {
+      x: 0,
+      y: 0,
+      width: 200,
+      height: 100
+    },
+    members: [
+      {
+        id: first.id,
+        node: first,
+        rect: {
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 40
+        },
+        behavior: resolveNodeTransformBehavior(first, {
+          role: 'content',
+          resize: true
+        })!
+      },
+      {
+        id: second.id,
+        node: second,
+        rect: {
+          x: 120,
+          y: 10,
+          width: 60,
+          height: 60
+        },
+        behavior: resolveNodeTransformBehavior(second, {
+          role: 'content',
+          resize: true
+        })!
+      }
+    ]
+  })
+
+  assert.ok(plan)
+
+  const state = startTransform({
+    kind: 'selection-resize',
+    pointerId: 1,
+    plan,
+    rotation: 0,
+    handle: 'se',
+    startScreen: {
+      x: 0,
+      y: 0
+    }
+  })
+  const result = stepTransform({
+    state,
+    screen: {
+      x: 60,
+      y: 0
+    },
+    world: {
+      x: 0,
+      y: 0
+    },
+    modifiers: {
+      alt: false,
+      shift: false
+    },
+    zoom: 1,
+    minSize: {
+      width: 20,
+      height: 20
+    },
+    snap: () => ({
+      rect: {
+        x: 0,
+        y: 0,
+        width: 320,
+        height: 120
+      },
+      guides: [createGuide('x'), createGuide('y')]
+    })
+  })
+
+  const patches = result.draft.nodePatches
+  const firstPatch = patches.find((patch) => patch.id === first.id)
+  const secondPatch = patches.find((patch) => patch.id === second.id)
+
+  assert.ok(firstPatch?.size)
+  assert.ok(secondPatch?.size)
+  assert.equal(firstPatch.size.width / firstPatch.size.height, 2.5)
+  assert.equal(secondPatch.size.width / secondPatch.size.height, 1)
+  assert.equal(firstPatch.fontSize, 24)
+  assert.equal(secondPatch.fontSize, 19.2)
+})
+
+test('text resize-x commit writes wrap mode and wrap width', () => {
+  const node = createNode('text-node', {
+    data: {
+      text: 'hello world'
+    },
+    size: {
+      width: 180,
+      height: 24
+    }
+  })
+
+  const updates = buildTransformCommitUpdates({
+    targets: [{
+      id: node.id,
+      node
+    }],
+    patches: [{
+      id: node.id,
+      size: {
+        width: 120,
+        height: 24
+      },
+      mode: 'wrap',
+      wrapWidth: 120
+    }]
+  })
+
+  assert.equal(updates.length, 1)
+  assert.deepEqual(updates[0]?.update.fields, {
+    size: {
+      width: 120,
+      height: 24
+    }
+  })
+  assert.deepEqual(updates[0]?.update.records, [
+    {
+      scope: 'data',
+      op: 'set',
+      path: 'widthMode',
+      value: 'wrap'
+    },
+    {
+      scope: 'data',
+      op: 'set',
+      path: 'wrapWidth',
+      value: 120
+    }
+  ])
+})
+
+test('single text resize-x gesture produces wrap mode and wrap width updates', () => {
+  const node = createNode('text-node', {
+    data: {
+      text: 'hello world'
+    },
+    size: {
+      width: 100,
+      height: 24
+    }
+  })
+  const target = {
+    id: node.id,
+    node,
+    rect: {
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 24
+    },
+    behavior: resolveNodeTransformBehavior(node, {
+      role: 'content',
+      resize: true
+    })!
+  }
+
+  const state = startTransform({
+    kind: 'single-resize',
+    pointerId: 1,
+    target,
+    rotation: 0,
+    handle: 'e',
+    startScreen: {
+      x: 0,
+      y: 0
+    }
+  })
+
+  const result = stepTransform({
+    state,
+    screen: {
+      x: 80,
+      y: 0
+    },
+    world: {
+      x: 0,
+      y: 0
+    },
+    modifiers: {
+      alt: false,
+      shift: false
+    },
+    zoom: 1,
+    minSize: {
+      width: 20,
+      height: 20
+    }
+  })
+
+  assert.deepEqual(result.draft.nodePatches, [{
+    id: node.id,
+    position: {
+      x: 0,
+      y: 0
+    },
+    size: {
+      width: 180,
+      height: 24
+    },
+    mode: 'wrap',
+    wrapWidth: 180
+  }])
+
+  const updates = finishTransform(result.state)
+  assert.equal(updates.length, 1)
+  assert.deepEqual(updates[0]?.update.records, [
+    {
+      scope: 'data',
+      op: 'set',
+      path: 'widthMode',
+      value: 'wrap'
+    },
+    {
+      scope: 'data',
+      op: 'set',
+      path: 'wrapWidth',
+      value: 180
+    }
+  ])
+})

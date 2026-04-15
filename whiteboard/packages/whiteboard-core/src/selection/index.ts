@@ -15,6 +15,5 @@ export {
   type SelectionAffordanceMoveHit,
   type SelectionAffordanceOwner,
   type SelectionSummary,
-  type SelectionTarget,
-  type SelectionTransform,
+  type SelectionTarget
 } from '@whiteboard/core/selection/model'

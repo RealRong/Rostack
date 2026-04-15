@@ -1,6 +1,7 @@
 import {
+  buildSelectionTransformPlan,
   readNodeRotation,
-  resolveTextHandle,
+  resolveNodeTransformBehavior,
   type TransformSpec
 } from '@whiteboard/core/node'
 import type { Node, NodeId } from '@whiteboard/core/types'
@@ -9,7 +10,6 @@ import type { InteractionContext } from '@whiteboard/editor/input/context'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { TransformPickHandle } from '@whiteboard/editor/types/pick'
 import {
-  createSingleTextTransformSession,
   createTransformSession,
   type RuntimeTransformSpec,
   type TransformTarget
@@ -52,19 +52,28 @@ const readNodeTransformSpec = (
       return undefined
     }
 
-    if (entry.node.type === 'text') {
-      const mode = resolveTextHandle(handle.direction)
-      if (mode === 'none') {
+    const behavior = resolveNodeTransformBehavior(entry.node, {
+      role: capability.role,
+      resize: capability.resize
+    })
+    if (entry.node.type === 'text' && behavior) {
+      const plan = buildSelectionTransformPlan({
+        box: target.rect,
+        members: [{
+          ...target,
+          behavior
+        }]
+      })
+      if (!plan) {
         return undefined
       }
 
       return {
-        kind: 'single-text',
-        mode,
+        kind: 'selection-resize',
         pointerId: input.pointerId,
-        target,
-        handle: handle.direction,
+        plan,
         rotation: readNodeRotation(entry.node),
+        handle: handle.direction,
         startScreen: input.client
       }
     }
@@ -99,27 +108,19 @@ const readSelectionTransformSpec = (
 ): TransformSpec<Node> | undefined => {
   const selectionModel = ctx.selection.get()
   const selection = selectionModel.summary
-  const affordance = selectionModel.affordance
   if (
-    !selection.box
+    !selection.transformPlan
     || handle.kind !== 'resize'
     || !handle.direction
-    || !affordance.canResize
   ) {
     return undefined
   }
 
-  const resolved = ctx.query.node.transformTargets(selection.target.nodeIds)
-  if (!resolved?.targets.length) {
-    return undefined
-  }
-
   return {
-    kind: 'multi-scale',
+    kind: 'selection-resize',
     pointerId: input.pointerId,
-    box: selection.box,
-    targets: resolved.targets as readonly TransformTarget[],
-    commitIds: resolved.commitIds,
+    plan: selection.transformPlan,
+    rotation: 0,
     handle: handle.direction,
     startScreen: input.client
   }
@@ -153,13 +154,9 @@ const startTransformInteraction = (
   const spec = resolveTransformSpec(ctx, input)
 
   return spec
-    ? spec.kind === 'single-text'
-      ? createSingleTextTransformSession(ctx, spec, {
-          modifiers: input.modifiers
-        })
-      : createTransformSession(ctx, spec, {
-          modifiers: input.modifiers
-        })
+    ? createTransformSession(ctx, spec, {
+        modifiers: input.modifiers
+      })
     : null
 }
 

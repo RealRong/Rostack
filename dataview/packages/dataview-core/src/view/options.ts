@@ -14,7 +14,8 @@ export const cloneTableOptions = (
   widths: {
     ...table.widths
   },
-  showVerticalLines: table.showVerticalLines
+  showVerticalLines: table.showVerticalLines,
+  wrapCells: table.wrapCells
 })
 
 export const createDefaultViewDisplay = (
@@ -34,7 +35,8 @@ export const createDefaultViewOptions = (
 ): ViewOptions => ({
   table: {
     widths: {},
-    showVerticalLines: true
+    showVerticalLines: true,
+    wrapCells: false
   },
   gallery: {
     showFieldLabels: true,

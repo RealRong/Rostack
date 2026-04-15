@@ -4,7 +4,9 @@ import type {
 import { RotateCw } from 'lucide-react'
 import {
   buildTransformHandles,
+  isCornerResizeDirection,
   resizeHandleMap,
+  type SelectionTransformPlan,
   type ResizeDirection,
   type TransformHandle
 } from '@whiteboard/core/node'
@@ -15,22 +17,35 @@ import { useEditor, usePickRef } from '@whiteboard/react/runtime/hooks'
 type NodeViewNode = NodeItem['node']
 type NodeViewRect = NodeItem['rect']
 
-type TransformHandlesProps = {
-  nodeId?: NodeViewNode['id']
+type TransformPickTarget =
+  | {
+      kind: 'node'
+      nodeId: NodeViewNode['id']
+    }
+  | {
+      kind: 'selection'
+    }
+
+type TransformChromeProps = {
+  pickTarget: TransformPickTarget
   rect: NodeViewRect
   rotation: number
-  canResize: boolean
-  visibleResizeDirections?: readonly ResizeDirection[]
-  edgeResizeDirections?: readonly ResizeDirection[]
-  canRotate: boolean
+  visibleResizeDirections: readonly ResizeDirection[]
+  edgeResizeDirections: readonly ResizeDirection[]
+  showRotateHandle: boolean
+}
+
+type SelectionTransformHandlesProps = {
+  plan: SelectionTransformPlan
 }
 
 type NodeTransformHandlesProps = {
-  node: NodeViewNode
+  nodeId: NodeViewNode['id']
+  nodeType: NodeViewNode['type']
   rect: NodeViewRect
   rotation: number
-  canResize: boolean
-  canRotate: boolean
+  showResizeChrome: boolean
+  showRotateHandle: boolean
 }
 
 const NODE_TRANSFORM_HANDLE_SIZE = 10
@@ -47,6 +62,7 @@ const NODE_ROTATE_HANDLE_OFFSET = 28
 export const DEFAULT_VISIBLE_RESIZE_DIRECTIONS = ['nw', 'ne', 'se', 'sw'] as const satisfies readonly ResizeDirection[]
 export const DEFAULT_EDGE_RESIZE_DIRECTIONS = ['n', 'e', 's', 'w'] as const satisfies readonly ResizeDirection[]
 export const TEXT_EDGE_RESIZE_DIRECTIONS = ['e', 'w'] as const satisfies readonly ResizeDirection[]
+const EMPTY_RESIZE_DIRECTIONS: readonly ResizeDirection[] = []
 
 export const resolveNodeEdgeResizeDirections = (
   nodeType: NodeViewNode['type']
@@ -55,6 +71,26 @@ export const resolveNodeEdgeResizeDirections = (
     ? TEXT_EDGE_RESIZE_DIRECTIONS
     : DEFAULT_EDGE_RESIZE_DIRECTIONS
 )
+
+export const resolveSelectionVisibleResizeDirections = (
+  plan: SelectionTransformPlan
+): readonly ResizeDirection[] => plan.handles
+  .filter((handle) => (
+    handle.visible
+    && handle.enabled
+    && isCornerResizeDirection(handle.id)
+  ))
+  .map((handle) => handle.id)
+
+export const resolveSelectionEdgeResizeDirections = (
+  plan: SelectionTransformPlan
+): readonly ResizeDirection[] => plan.handles
+  .filter((handle) => (
+    handle.visible
+    && handle.enabled
+    && !isCornerResizeDirection(handle.id)
+  ))
+  .map((handle) => handle.id)
 
 export const resolveTransformChromeScreenSize = ({
   zoom,
@@ -118,16 +154,16 @@ const buildNodeTransformHandleStyle = ({
 }
 
 const buildTransformPick = ({
-  nodeId,
+  pickTarget,
   handle
 }: {
-  nodeId?: NodeViewNode['id']
+  pickTarget: TransformPickTarget
   handle: Pick<TransformHandle, 'id' | 'kind' | 'direction'>
 }) => (
-  nodeId
+  pickTarget.kind === 'node'
     ? {
         kind: 'node' as const,
-        id: nodeId,
+        id: pickTarget.nodeId,
         part: 'transform' as const,
         handle: {
           id: handle.id,
@@ -145,6 +181,12 @@ const buildTransformPick = ({
         }
       }
 )
+
+const readPickTargetNodeId = (
+  pickTarget: TransformPickTarget
+) => pickTarget.kind === 'node'
+  ? pickTarget.nodeId
+  : undefined
 
 export const resolveTransformEdgeHitAreaStyle = ({
   direction,
@@ -208,23 +250,23 @@ export const resolveTransformEdgeHitAreaStyle = ({
 }
 
 const TransformHandleItem = ({
-  nodeId,
+  pickTarget,
   handle,
   zoom
 }: {
-  nodeId?: NodeViewNode['id']
+  pickTarget: TransformPickTarget
   handle: TransformHandle
   zoom: number
 }) => {
   const ref = usePickRef(buildTransformPick({
-    nodeId,
+    pickTarget,
     handle
   }))
 
   return (
     <div
       ref={ref}
-      data-node-id={nodeId}
+      data-node-id={readPickTargetNodeId(pickTarget)}
       data-selection-ignore
       data-kind={handle.kind}
       data-transform-kind={handle.kind}
@@ -258,18 +300,18 @@ const TransformHandleItem = ({
 }
 
 const TransformEdgeHitAreaItem = ({
-  nodeId,
+  pickTarget,
   rect,
   direction,
   zoom
 }: {
-  nodeId?: NodeViewNode['id']
+  pickTarget: TransformPickTarget
   rect: NodeViewRect
   direction: ResizeDirection
   zoom: number
 }) => {
   const ref = usePickRef(buildTransformPick({
-    nodeId,
+    pickTarget,
     handle: {
       id: `resize-${direction}`,
       kind: 'resize',
@@ -280,7 +322,7 @@ const TransformEdgeHitAreaItem = ({
   return (
     <div
       ref={ref}
-      data-node-id={nodeId}
+      data-node-id={readPickTargetNodeId(pickTarget)}
       data-selection-ignore
       data-kind="resize"
       data-transform-kind="resize"
@@ -299,13 +341,13 @@ const TransformEdgeHitAreaItem = ({
 }
 
 const TransformEdgeHitAreas = ({
-  nodeId,
+  pickTarget,
   rect,
   rotation,
   directions,
   zoom
 }: {
-  nodeId?: NodeViewNode['id']
+  pickTarget: TransformPickTarget
   rect: NodeViewRect
   rotation: number
   directions: readonly ResizeDirection[]
@@ -326,7 +368,7 @@ const TransformEdgeHitAreas = ({
       {directions.map((direction) => (
         <TransformEdgeHitAreaItem
           key={direction}
-          nodeId={nodeId}
+          pickTarget={pickTarget}
           rect={rect}
           direction={direction}
           zoom={zoom}
@@ -336,30 +378,22 @@ const TransformEdgeHitAreas = ({
   )
 }
 
-export const TransformHandles = ({
-  nodeId,
+const TransformChrome = ({
+  pickTarget,
   rect,
   rotation,
-  canResize,
-  visibleResizeDirections = DEFAULT_VISIBLE_RESIZE_DIRECTIONS,
-  edgeResizeDirections = DEFAULT_EDGE_RESIZE_DIRECTIONS,
-  canRotate
-}: TransformHandlesProps) => {
+  visibleResizeDirections,
+  edgeResizeDirections,
+  showRotateHandle
+}: TransformChromeProps) => {
   const editor = useEditor()
   const zoom = useStoreValue(editor.store.viewport).zoom
-  const resolvedVisibleResizeDirections = canResize
-    ? visibleResizeDirections
-    : undefined
-  const resolvedEdgeResizeDirections = canResize
-    ? edgeResizeDirections
-    : []
 
   const handles = buildTransformHandles({
     rect,
     rotation,
-    canResize,
-    resizeDirections: resolvedVisibleResizeDirections,
-    canRotate,
+    resizeDirections: visibleResizeDirections,
+    showRotateHandle,
     rotateHandleOffset: NODE_ROTATE_HANDLE_OFFSET,
     zoom
   })
@@ -367,16 +401,16 @@ export const TransformHandles = ({
   return (
     <>
       <TransformEdgeHitAreas
-        nodeId={nodeId}
+        pickTarget={pickTarget}
         rect={rect}
         rotation={rotation}
-        directions={resolvedEdgeResizeDirections}
+        directions={edgeResizeDirections}
         zoom={zoom}
       />
       {handles.map((handle) => (
         <TransformHandleItem
           key={handle.id}
-          nodeId={nodeId}
+          pickTarget={pickTarget}
           handle={handle}
           zoom={zoom}
         />
@@ -386,19 +420,41 @@ export const TransformHandles = ({
 }
 
 export const NodeTransformHandles = ({
-  node,
+  nodeId,
+  nodeType,
   rect,
   rotation,
-  canResize,
-  canRotate
+  showResizeChrome,
+  showRotateHandle
 }: NodeTransformHandlesProps) => (
-  <TransformHandles
-    nodeId={node.id}
+  <TransformChrome
+    pickTarget={{
+      kind: 'node',
+      nodeId
+    }}
     rect={rect}
     rotation={rotation}
-    canResize={canResize}
-    visibleResizeDirections={DEFAULT_VISIBLE_RESIZE_DIRECTIONS}
-    edgeResizeDirections={resolveNodeEdgeResizeDirections(node.type)}
-    canRotate={canRotate}
+    visibleResizeDirections={showResizeChrome
+      ? DEFAULT_VISIBLE_RESIZE_DIRECTIONS
+      : EMPTY_RESIZE_DIRECTIONS}
+    edgeResizeDirections={showResizeChrome
+      ? resolveNodeEdgeResizeDirections(nodeType)
+      : EMPTY_RESIZE_DIRECTIONS}
+    showRotateHandle={showRotateHandle}
+  />
+)
+
+export const SelectionTransformHandles = ({
+  plan
+}: SelectionTransformHandlesProps) => (
+  <TransformChrome
+    pickTarget={{
+      kind: 'selection'
+    }}
+    rect={plan.box}
+    rotation={0}
+    visibleResizeDirections={resolveSelectionVisibleResizeDirections(plan)}
+    edgeResizeDirections={resolveSelectionEdgeResizeDirections(plan)}
+    showRotateHandle={false}
   />
 )

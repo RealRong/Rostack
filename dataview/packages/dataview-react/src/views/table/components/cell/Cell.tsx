@@ -13,12 +13,17 @@ import { useTableContext } from '@dataview/react/views/table/context'
 import { useKeyedStoreValue } from '@shared/react'
 import { cn } from '@shared/ui/utils'
 import { CellValue } from '@dataview/react/views/table/components/cell/CellValue'
+import {
+  TABLE_CELL_BLOCK_PADDING,
+  TABLE_CELL_INLINE_PADDING
+} from '@dataview/react/views/table/layout'
 
 export interface CellProps {
   itemId: ItemId
   recordId?: RecordId
   viewId: ViewId
   showVerticalLines: boolean
+  wrapCells: boolean
   field: Field
 }
 
@@ -27,6 +32,7 @@ const same = (left: CellProps, right: CellProps) => (
   && left.recordId === right.recordId
   && left.viewId === right.viewId
   && left.showVerticalLines === right.showVerticalLines
+  && left.wrapCells === right.wrapCells
   && left.field === right.field
 )
 
@@ -102,9 +108,13 @@ const View = (props: CellProps) => {
       ) : null}
       <div
         className={cn(
-          'relative z-10 flex h-full min-w-0 items-center gap-2 px-2 outline-none transition-colors',
+          'relative z-10 box-border flex min-h-full min-w-0 items-start gap-2 outline-none transition-colors',
           cellRender.chrome.hover && 'bg-muted/50'
         )}
+        style={{
+          paddingInline: TABLE_CELL_INLINE_PADDING,
+          paddingBlock: TABLE_CELL_BLOCK_PADDING
+        }}
       >
         <div className="min-w-0 flex-1">
           <CellValue
@@ -112,6 +122,7 @@ const View = (props: CellProps) => {
             value={cellRender.value}
             canQuickToggle={canQuickToggle}
             onQuickToggle={onQuickToggle}
+            multiline={props.wrapCells}
           />
         </div>
       </div>

@@ -4,7 +4,8 @@ import {
   TEXT_AUTO_MAX_WIDTH,
   TEXT_AUTO_MIN_WIDTH,
   TEXT_DEFAULT_FONT_SIZE,
-  TEXT_LAYOUT_MIN_WIDTH
+  TEXT_LAYOUT_MIN_WIDTH,
+  type TextWidthMode
 } from '@whiteboard/core/node'
 import type {
   Node,
@@ -152,7 +153,9 @@ export const measureTextNodeSize = ({
   source,
   minWidth,
   maxWidth,
-  fontSize
+  fontSize,
+  widthMode,
+  wrapWidth
 }: {
   node: Pick<Node, 'type' | 'data'>
   rect: Pick<Rect, 'width'>
@@ -162,15 +165,17 @@ export const measureTextNodeSize = ({
   minWidth?: number
   maxWidth?: number
   fontSize?: number
+  widthMode?: TextWidthMode
+  wrapWidth?: number
 }): Size | undefined => {
-  const mode = readTextWidthMode(node)
+  const resolvedWidthMode = widthMode ?? readTextWidthMode(node)
   const resolvedWidth = Math.max(TEXT_LAYOUT_MIN_WIDTH, Math.ceil(rect.width))
   const resolvedWrapWidth = Math.max(
     TEXT_LAYOUT_MIN_WIDTH,
-    Math.ceil(readTextWrapWidth(node) ?? maxWidth ?? resolvedWidth)
+    Math.ceil(wrapWidth ?? readTextWrapWidth(node) ?? maxWidth ?? resolvedWidth)
   )
 
-  if (mode === 'wrap') {
+  if (resolvedWidthMode === 'wrap') {
     return measureTextContent({
       content,
       placeholder,

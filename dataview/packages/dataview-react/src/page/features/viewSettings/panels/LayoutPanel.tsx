@@ -9,7 +9,6 @@ import { meta, renderMessage } from '@dataview/meta'
 import { buildChoiceSubmenuItem } from '@dataview/react/menu-builders'
 import { usesOptionGroupingColors } from '@dataview/react/views/shared/optionGrouping'
 import { Menu, type MenuItem } from '@shared/ui/menu'
-import { Switch } from '@shared/ui/switch'
 import { cn } from '@shared/ui/utils'
 
 const SUPPORTED_LAYOUT_TYPES = ['table', 'kanban', 'gallery'] as const satisfies readonly ViewType[]
@@ -57,34 +56,6 @@ const LayoutTypeCard = (props: {
   )
 }
 
-const LayoutSwitchRow = (props: {
-  label: string
-  description?: string
-  checked: boolean
-  disabled?: boolean
-  onCheckedChange: (checked: boolean) => void
-}) => (
-  <div className="flex items-start gap-3">
-    <div className="min-w-0 flex-1">
-      <div className="text-sm font-medium text-foreground">
-        {props.label}
-      </div>
-      {props.description ? (
-        <div className="mt-0.5 text-xs text-muted-foreground">
-          {props.description}
-        </div>
-      ) : null}
-    </div>
-    <Switch
-      checked={props.checked}
-      onCheckedChange={props.onCheckedChange}
-      disabled={props.disabled}
-      aria-label={props.label}
-      className="mt-0.5"
-    />
-  </div>
-)
-
 export const LayoutPanel = () => {
   const dataView = useDataView()
   const engine = dataView.engine
@@ -106,6 +77,31 @@ export const LayoutPanel = () => {
   if (!view || !viewApi) {
     return <div className="min-h-0 flex-1 overflow-y-auto" />
   }
+
+  const tableItems: readonly MenuItem[] = view.type === 'table'
+    ? [
+        {
+          kind: 'toggle',
+          key: 'showVerticalLines',
+          label: renderMessage(meta.ui.viewSettings.layoutPanel.showVerticalLines),
+          checked: view.options.table.showVerticalLines,
+          indicator: 'switch',
+          onSelect: () => {
+            viewApi.table.setVerticalLines(!view.options.table.showVerticalLines)
+          }
+        },
+        {
+          kind: 'toggle',
+          key: 'wrapCells',
+          label: renderMessage(meta.ui.viewSettings.layoutPanel.wrapCells),
+          checked: view.options.table.wrapCells,
+          indicator: 'switch',
+          onSelect: () => {
+            viewApi.table.setWrapCells(!view.options.table.wrapCells)
+          }
+        }
+      ]
+    : []
 
   const kanbanItems: readonly MenuItem[] = view.type === 'kanban'
     ? [
@@ -165,12 +161,10 @@ export const LayoutPanel = () => {
 
       {view.type === 'table' ? (
         <div className="mt-3">
-          <LayoutSwitchRow
-            label={renderMessage(meta.ui.viewSettings.layoutPanel.showVerticalLines)}
-            checked={view.options.table.showVerticalLines}
-            onCheckedChange={checked => {
-              viewApi.table.setVerticalLines(checked)
-            }}
+          <Menu
+            items={tableItems}
+            autoFocus={false}
+            submenuOpenPolicy="click"
           />
         </div>
       ) : null}

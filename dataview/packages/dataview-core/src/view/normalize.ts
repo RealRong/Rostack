@@ -47,6 +47,12 @@ const normalizeShowVerticalLines = (value: unknown) => (
     : true
 )
 
+const normalizeWrapCells = (value: unknown) => (
+  typeof value === 'boolean'
+    ? value
+    : false
+)
+
 export const normalizeViewOptions = (
   options: unknown,
   context: NormalizeViewOptionsContext = {}
@@ -61,7 +67,8 @@ export const normalizeViewOptions = (
   return {
     table: {
       widths: normalizeWidths(table?.widths, validFieldIds),
-      showVerticalLines: normalizeShowVerticalLines(table?.showVerticalLines)
+      showVerticalLines: normalizeShowVerticalLines(table?.showVerticalLines),
+      wrapCells: normalizeWrapCells(table?.wrapCells)
     },
     gallery: normalizeGalleryOptions(root?.gallery),
     kanban: normalizeKanbanOptions(root?.kanban)

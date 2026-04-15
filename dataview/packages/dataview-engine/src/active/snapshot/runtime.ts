@@ -1,5 +1,5 @@
 import type {
-  CommitDelta,
+  CommitImpact,
   DataDoc,
   ViewId
 } from '@dataview/core/contracts'
@@ -35,7 +35,7 @@ interface ViewRunResult {
 export const deriveViewSnapshot = (input: {
   document: DataDoc
   activeViewId?: ViewId
-  delta: CommitDelta
+  impact: CommitImpact
   index: IndexState
   previousCache: ViewCache
   previousSnapshot?: ViewState
@@ -117,7 +117,7 @@ export const deriveViewSnapshot = (input: {
       document: input.document,
       activeViewId,
       previousViewId,
-      delta: input.delta,
+      impact: input.impact,
       view,
       index: input.index,
       previous: input.previousCache.query,
@@ -147,7 +147,7 @@ export const deriveViewSnapshot = (input: {
     () => runSectionsStage({
       activeViewId,
       previousViewId,
-      delta: input.delta,
+      impact: input.impact,
       view,
       query: query.state,
       previous: input.previousCache.sections,
@@ -184,7 +184,7 @@ export const deriveViewSnapshot = (input: {
     () => runSummaryStage({
       activeViewId,
       previousViewId,
-      delta: input.delta,
+      impact: input.impact,
       view,
       previous: input.previousCache.summary,
       previousSections: input.previousCache.sections,

@@ -1,5 +1,12 @@
+import {
+  collectSchemaFieldIds,
+  collectTouchedFieldIds,
+  collectTouchedRecordIds,
+  collectValueFieldIds,
+  hasRecordSetChange
+} from '@dataview/core/commit/impact'
 import type {
-  CommitDelta,
+  CommitImpact,
   DataDoc,
   FieldId,
   RecordId
@@ -63,112 +70,33 @@ export const allFieldIdsOf = (
   return Array.from(ids)
 }
 
-export const collectSchemaFieldIds = (
-  delta: CommitDelta
-): ReadonlySet<FieldId> => {
-  const ids = new Set<FieldId>()
-  delta.entities.fields?.add?.forEach(fieldId => ids.add(fieldId))
-  if (Array.isArray(delta.entities.fields?.update)) {
-    delta.entities.fields.update.forEach(fieldId => ids.add(fieldId))
-  }
-  delta.entities.fields?.remove?.forEach(fieldId => ids.add(fieldId))
-  delta.semantics.forEach(item => {
-    if (item.kind === 'field.schema') {
-      ids.add(item.fieldId)
-    }
-  })
-  return ids
+export {
+  collectSchemaFieldIds,
+  collectValueFieldIds,
+  collectTouchedFieldIds,
+  collectTouchedRecordIds,
+  hasRecordSetChange
 }
-
-export const collectValueFieldIds = (
-  delta: CommitDelta,
-  options?: {
-    includeTitlePatch?: boolean
-  }
-): ReadonlySet<FieldId> => {
-  const ids = new Set<FieldId>()
-  if (Array.isArray(delta.entities.values?.fields)) {
-    delta.entities.values.fields.forEach(fieldId => ids.add(fieldId))
-  }
-  delta.semantics.forEach(item => {
-    if (item.kind === 'record.values' && Array.isArray(item.fields)) {
-      item.fields.forEach(fieldId => ids.add(fieldId))
-    }
-  })
-
-  if (options?.includeTitlePatch) {
-    delta.semantics.forEach(item => {
-      if (item.kind === 'record.patch' && item.aspects.includes('title')) {
-        ids.add('title')
-      }
-    })
-  }
-
-  return ids
-}
-
-export const collectTouchedFieldIds = (
-  delta: CommitDelta,
-  options?: {
-    includeTitlePatch?: boolean
-  }
-): ReadonlySet<FieldId> | 'all' => {
-  if (
-    delta.entities.fields?.update === 'all'
-    || delta.entities.values?.fields === 'all'
-  ) {
-    return 'all'
-  }
-
-  return new Set([
-    ...collectSchemaFieldIds(delta),
-    ...collectValueFieldIds(delta, {
-      includeTitlePatch: options?.includeTitlePatch
-    })
-  ])
-}
-
-export const collectTouchedRecordIds = (
-  delta: CommitDelta
-): ReadonlySet<RecordId> | 'all' => {
-  if (
-    delta.entities.records?.update === 'all'
-    || delta.entities.values?.records === 'all'
-  ) {
-    return 'all'
-  }
-
-  const ids = new Set<RecordId>()
-  delta.entities.records?.add?.forEach(id => ids.add(id))
-  if (Array.isArray(delta.entities.records?.update)) {
-    delta.entities.records.update.forEach(id => ids.add(id))
-  }
-  delta.entities.records?.remove?.forEach(id => ids.add(id))
-  if (Array.isArray(delta.entities.values?.records)) {
-    delta.entities.values.records.forEach(id => ids.add(id))
-  }
-  delta.semantics.forEach(item => {
-    if (item.kind === 'record.add' || item.kind === 'record.remove') {
-      item.ids.forEach(id => ids.add(id))
-    }
-    if (item.kind === 'record.patch') {
-      item.ids.forEach(id => ids.add(id))
-    }
-    if (item.kind === 'record.values' && Array.isArray(item.records)) {
-      item.records.forEach(id => ids.add(id))
-    }
-  })
-  return ids
-}
-
-export const hasRecordSetChange = (
-  delta: CommitDelta
-): boolean => Boolean(
-  delta.entities.records?.add?.length
-  || delta.entities.records?.remove?.length
-)
 
 export const hasField = (
   document: DataDoc,
   fieldId: FieldId
 ): boolean => hasDocumentField(document, fieldId)
+
+export const hasIndexChanges = (
+  impact: CommitImpact
+): boolean => Boolean(
+  impact.reset
+  || impact.records
+  || impact.fields?.schema
+)
+
+export const touchesRecord = (
+  impact: CommitImpact,
+  recordId: RecordId
+): boolean => {
+  const touched = collectTouchedRecordIds(impact)
+  return touched === 'all'
+    ? true
+    : touched.has(recordId)
+}

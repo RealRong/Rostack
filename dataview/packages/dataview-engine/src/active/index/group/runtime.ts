@@ -1,5 +1,5 @@
 import type {
-  CommitDelta,
+  CommitImpact,
   DataDoc,
   RecordId
 } from '@dataview/core/contracts'
@@ -16,6 +16,9 @@ import {
   shouldRebuildFieldIndex,
   shouldSyncFieldIndex
 } from '@dataview/engine/active/index/sync'
+import {
+  hasIndexChanges
+} from '@dataview/engine/active/index/shared'
 import type {
   BucketKey,
   GroupDemand,
@@ -340,13 +343,13 @@ export const syncGroupIndex = (
   previous: GroupIndex,
   document: DataDoc,
   records: RecordIndex,
-  delta: CommitDelta
+  impact: CommitImpact
 ): GroupIndex => {
-  if (!delta.summary.indexes || !previous.groups.size) {
+  if (!hasIndexChanges(impact) || !previous.groups.size) {
     return previous
   }
 
-  const context = createFieldSyncContext(delta, {
+  const context = createFieldSyncContext(impact, {
     includeTitlePatch: true
   })
   let changed = false

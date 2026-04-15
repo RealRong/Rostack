@@ -1,8 +1,15 @@
 import type {
-  CommitDelta,
+  CommitImpact,
   View,
   ViewId
 } from '@dataview/core/contracts'
+import {
+  collectTouchedFieldIds,
+  hasActiveViewImpact,
+  hasFieldSchemaAspect,
+  hasRecordSetChange,
+  hasViewQueryImpact
+} from '@dataview/core/commit/impact'
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
@@ -28,7 +35,7 @@ import {
 const resolveSectionsAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  delta: CommitDelta
+  impact: CommitImpact
   view: View
   previous?: SectionState
   previousQuery?: QueryState
@@ -38,7 +45,7 @@ const resolveSectionsAction = (input: {
     !input.previous
     || !input.previousQuery
     || input.previousViewId !== input.activeViewId
-    || input.delta.semantics.some(item => item.kind === 'activeView.set')
+    || hasActiveViewImpact(input.impact)
   ) {
     return 'rebuild'
   }
@@ -55,31 +62,19 @@ const resolveSectionsAction = (input: {
     return 'reuse'
   }
 
-  for (const item of input.delta.semantics) {
-    switch (item.kind) {
-      case 'view.query':
-        if (item.viewId === input.activeViewId && item.aspects.includes('group')) {
-          return 'rebuild'
-        }
-        break
-      case 'field.schema':
-        if (item.fieldId === groupField) {
-          return 'rebuild'
-        }
-        break
-      case 'record.add':
-      case 'record.remove':
-        return 'rebuild'
-      case 'record.patch':
-        break
-      case 'record.values':
-        if (item.fields === 'all' || item.fields.includes(groupField)) {
-          return 'sync'
-        }
-        break
-      default:
-        break
-    }
+  if (
+    hasViewQueryImpact(input.impact, input.activeViewId, ['group'])
+    || hasFieldSchemaAspect(input.impact, groupField)
+    || hasRecordSetChange(input.impact)
+  ) {
+    return 'rebuild'
+  }
+
+  const touchedFields = collectTouchedFieldIds(input.impact, {
+    includeTitlePatch: true
+  })
+  if (touchedFields === 'all' || touchedFields.has(groupField)) {
+    return 'sync'
   }
 
   return 'reuse'
@@ -88,7 +83,7 @@ const resolveSectionsAction = (input: {
 export const runSectionsStage = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  delta: CommitDelta
+  impact: CommitImpact
   view: View
   query: QueryState
   previous?: SectionState
@@ -113,11 +108,11 @@ export const runSectionsStage = (input: {
         items: input.previousPublished.items
       }
     : undefined
-  const touchedRecords = collectTouchedRecordIds(input.delta)
+  const touchedRecords = collectTouchedRecordIds(input.impact)
   const action = resolveSectionsAction({
     activeViewId: input.activeViewId,
     previousViewId: input.previousViewId,
-    delta: input.delta,
+    impact: input.impact,
     view: input.view,
     previous: input.previous,
     previousQuery: input.previousQuery,

@@ -1,4 +1,4 @@
-import type { BaseOperation } from '@dataview/core/contracts/operations'
+import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import type {
   CommitResult,
   HistoryState
@@ -50,7 +50,7 @@ export const pushUndo = (
 
 export const takeUndo = (history: EngineRuntimeState['history']): {
   history: EngineRuntimeState['history']
-  operations?: BaseOperation[]
+  operations?: DocumentOperation[]
 } => {
   const entry = history.undo.at(-1)
   if (!entry) {
@@ -71,7 +71,7 @@ export const takeUndo = (history: EngineRuntimeState['history']): {
 
 export const takeRedo = (history: EngineRuntimeState['history']): {
   history: EngineRuntimeState['history']
-  operations?: BaseOperation[]
+  operations?: DocumentOperation[]
 } => {
   const entry = history.redo.at(-1)
   if (!entry) {
@@ -110,7 +110,7 @@ export const createWriteHistory = (input: {
   store: RuntimeStore
   replay: (
     kind: 'undo' | 'redo',
-    operations: readonly BaseOperation[],
+    operations: readonly DocumentOperation[],
     history: EngineRuntimeState['history']
   ) => CommitResult
 }) => ({

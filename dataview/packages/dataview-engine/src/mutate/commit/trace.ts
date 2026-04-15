@@ -1,4 +1,12 @@
-import type { CommitResult, TraceDeltaSummary } from '@dataview/engine/contracts/public'
+import {
+  hasIndexImpact,
+  summarizeCommitImpact,
+  touchedFieldCountOfImpact,
+  touchedRecordCountOfImpact,
+  touchedViewCountOfImpact
+} from '@dataview/core/commit/impact'
+import type { CommitImpact } from '@dataview/core/contracts'
+import type { TraceImpactSummary } from '@dataview/engine/contracts/public'
 
 type WriteKind =
   | 'write'
@@ -6,63 +14,51 @@ type WriteKind =
   | 'redo'
   | 'load'
 
-const touchedCount = (
-  all: boolean,
-  ids: readonly string[]
-): number | 'all' | undefined => {
-  if (all) {
-    return 'all'
+const addFact = (
+  facts: Map<string, number>,
+  kind: string,
+  count: number | undefined
+) => {
+  if (!count) {
+    return
   }
-  return ids.length
-    ? new Set(ids).size
-    : undefined
+
+  facts.set(kind, (facts.get(kind) ?? 0) + count)
 }
 
-export const summarizeDelta = (
-  delta: NonNullable<CommitResult['changes']>
-): TraceDeltaSummary => {
-  const semantics = new Map<string, number>()
-  delta.semantics.forEach(item => {
-    semantics.set(item.kind, (semantics.get(item.kind) ?? 0) + 1)
-  })
+export const summarizeImpact = (
+  impact: CommitImpact
+): TraceImpactSummary => {
+  const summary = summarizeCommitImpact(impact)
+  const facts = new Map<string, number>()
+
+  addFact(facts, 'record.insert', impact.records?.inserted?.size)
+  addFact(facts, 'record.remove', impact.records?.removed?.size)
+  addFact(facts, 'record.patch', impact.records?.patched?.size)
+  addFact(facts, 'record.title', impact.records?.titleChanged?.size)
+  addFact(facts, 'field.insert', impact.fields?.inserted?.size)
+  addFact(facts, 'field.remove', impact.fields?.removed?.size)
+  addFact(facts, 'field.schema', impact.fields?.schema?.size)
+  addFact(facts, 'view.insert', impact.views?.inserted?.size)
+  addFact(facts, 'view.remove', impact.views?.removed?.size)
+  addFact(facts, 'view.change', impact.views?.changed?.size)
+  addFact(facts, 'activeView.set', impact.activeView ? 1 : undefined)
+  addFact(facts, 'external.version.bump', impact.external?.versionBumped ? 1 : undefined)
+  addFact(facts, 'reset', impact.reset ? 1 : undefined)
 
   return {
     summary: {
-      ...delta.summary
+      ...summary,
+      indexes: hasIndexImpact(impact)
     },
-    semantics: Array.from(semantics.entries()).map(([kind, count]) => ({
+    facts: Array.from(facts.entries()).map(([kind, count]) => ({
       kind,
       ...(count > 1 ? { count } : {})
     })),
     entities: {
-      touchedRecordCount: touchedCount(
-        delta.entities.records?.update === 'all'
-        || delta.entities.values?.records === 'all',
-        [
-          ...(delta.entities.records?.add ?? []),
-          ...(Array.isArray(delta.entities.records?.update) ? delta.entities.records.update : []),
-          ...(delta.entities.records?.remove ?? []),
-          ...(Array.isArray(delta.entities.values?.records) ? delta.entities.values.records : [])
-        ]
-      ),
-      touchedFieldCount: touchedCount(
-        delta.entities.fields?.update === 'all'
-        || delta.entities.values?.fields === 'all',
-        [
-          ...(delta.entities.fields?.add ?? []),
-          ...(Array.isArray(delta.entities.fields?.update) ? delta.entities.fields.update : []),
-          ...(delta.entities.fields?.remove ?? []),
-          ...(Array.isArray(delta.entities.values?.fields) ? delta.entities.values.fields : [])
-        ]
-      ),
-      touchedViewCount: touchedCount(
-        delta.entities.views?.update === 'all',
-        [
-          ...(delta.entities.views?.add ?? []),
-          ...(Array.isArray(delta.entities.views?.update) ? delta.entities.views.update : []),
-          ...(delta.entities.views?.remove ?? [])
-        ]
-      )
+      touchedRecordCount: touchedRecordCountOfImpact(impact),
+      touchedFieldCount: touchedFieldCountOfImpact(impact),
+      touchedViewCount: touchedViewCountOfImpact(impact)
     }
   }
 }

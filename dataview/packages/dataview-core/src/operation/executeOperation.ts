@@ -1,0 +1,887 @@
+import type {
+  CommitImpact,
+  CommitImpactViewChange,
+  FieldSchemaAspect,
+  RecordPatchAspect,
+  ViewLayoutAspect,
+  ViewQueryAspect
+} from '@dataview/core/contracts/commit'
+import type {
+  DocumentOperation,
+  DocumentRecordFieldRestoreEntry
+} from '@dataview/core/contracts/operations'
+import type {
+  CustomField,
+  CustomFieldId,
+  DataDoc,
+  DataRecord,
+  FieldId,
+  RecordId,
+  ViewId
+} from '@dataview/core/contracts/state'
+import {
+  TITLE_FIELD_ID
+} from '@dataview/core/contracts/state'
+import {
+  collectCalculationFields,
+  collectFieldSchemaAspects,
+  collectRecordPatchAspects,
+  collectViewLayoutAspects,
+  collectViewQueryAspects
+} from '@dataview/core/commit/aspects'
+import {
+  enumerateRecords,
+  getDocumentActiveViewId,
+  getDocumentCustomFieldById,
+  getDocumentRecordById,
+  getDocumentRecordIndex,
+  getDocumentViewById,
+  insertDocumentRecords,
+  patchDocumentCustomField,
+  patchDocumentRecord,
+  putDocumentCustomField,
+  putDocumentView,
+  removeDocumentCustomField,
+  removeDocumentRecords,
+  removeDocumentView,
+  restoreDocumentRecordFieldsMany,
+  setDocumentActiveViewId,
+  writeDocumentRecordFieldsMany
+} from '@dataview/core/document'
+import {
+  sameJsonValue
+} from '@shared/core'
+
+export interface ExecuteOperationResult {
+  document: DataDoc
+  inverse: readonly DocumentOperation[]
+}
+
+const hasOwn = (
+  value: Record<string, unknown>,
+  key: string
+): boolean => Object.prototype.hasOwnProperty.call(value, key)
+
+const readObjectValue = (
+  value: unknown,
+  key: string
+): unknown => (value as Record<string, unknown>)[key]
+
+const addSetValue = <T>(
+  current: Set<T> | undefined,
+  value: T
+): Set<T> => {
+  const next = current ?? new Set<T>()
+  next.add(value)
+  return next
+}
+
+const addSetValues = <T>(
+  current: Set<T> | undefined,
+  values: readonly T[]
+): Set<T> | undefined => {
+  if (!values.length) {
+    return current
+  }
+
+  const next = current ?? new Set<T>()
+  values.forEach(value => next.add(value))
+  return next
+}
+
+const ensurePatchedRecord = (
+  impact: CommitImpact,
+  recordId: RecordId
+): Set<RecordPatchAspect> => {
+  const records = impact.records ?? (impact.records = {})
+  const patched = records.patched ?? (records.patched = new Map())
+  const aspects = patched.get(recordId) ?? new Set<RecordPatchAspect>()
+  if (!patched.has(recordId)) {
+    patched.set(recordId, aspects)
+  }
+  return aspects
+}
+
+const ensureFieldSchema = (
+  impact: CommitImpact,
+  fieldId: FieldId
+): Set<FieldSchemaAspect> => {
+  const fields = impact.fields ?? (impact.fields = {})
+  const schema = fields.schema ?? (fields.schema = new Map())
+  const aspects = schema.get(fieldId) ?? new Set<FieldSchemaAspect>()
+  if (!schema.has(fieldId)) {
+    schema.set(fieldId, aspects)
+  }
+  return aspects
+}
+
+const ensureViewChange = (
+  impact: CommitImpact,
+  viewId: ViewId
+): CommitImpactViewChange => {
+  const views = impact.views ?? (impact.views = {})
+  const changed = views.changed ?? (views.changed = new Map())
+  const change = changed.get(viewId) ?? {}
+  if (!changed.has(viewId)) {
+    changed.set(viewId, change)
+  }
+  return change
+}
+
+const markTouchedRecord = (
+  impact: CommitImpact,
+  recordId: RecordId
+) => {
+  if (impact.records?.touched === 'all') {
+    return
+  }
+
+  const records = impact.records ?? (impact.records = {})
+  records.touched = addSetValue(records.touched as Set<RecordId> | undefined, recordId)
+}
+
+const markTitleChanged = (
+  impact: CommitImpact,
+  recordId: RecordId
+) => {
+  const records = impact.records ?? (impact.records = {})
+  records.titleChanged = addSetValue(records.titleChanged, recordId)
+}
+
+const markValueFieldChanged = (
+  impact: CommitImpact,
+  fieldId: FieldId
+) => {
+  if (impact.records?.valueChangedFields === 'all') {
+    return
+  }
+
+  const records = impact.records ?? (impact.records = {})
+  records.valueChangedFields = addSetValue(records.valueChangedFields as Set<FieldId> | undefined, fieldId)
+}
+
+const markRecordPatch = (
+  impact: CommitImpact,
+  recordId: RecordId,
+  aspects: readonly RecordPatchAspect[]
+) => {
+  if (!aspects.length) {
+    return
+  }
+
+  markTouchedRecord(impact, recordId)
+  const target = ensurePatchedRecord(impact, recordId)
+  aspects.forEach(aspect => {
+    target.add(aspect)
+    if (aspect === 'title') {
+      markTitleChanged(impact, recordId)
+    }
+  })
+}
+
+const markFieldSchema = (
+  impact: CommitImpact,
+  fieldId: FieldId,
+  aspects: readonly FieldSchemaAspect[]
+) => {
+  if (!aspects.length) {
+    return
+  }
+
+  const target = ensureFieldSchema(impact, fieldId)
+  aspects.forEach(aspect => target.add(aspect))
+}
+
+const markViewQuery = (
+  impact: CommitImpact,
+  viewId: ViewId,
+  aspects: readonly ViewQueryAspect[]
+) => {
+  if (!aspects.length) {
+    return
+  }
+
+  const change = ensureViewChange(impact, viewId)
+  change.queryAspects = addSetValues(change.queryAspects, aspects)
+}
+
+const markViewLayout = (
+  impact: CommitImpact,
+  viewId: ViewId,
+  aspects: readonly ViewLayoutAspect[]
+) => {
+  if (!aspects.length) {
+    return
+  }
+
+  const change = ensureViewChange(impact, viewId)
+  change.layoutAspects = addSetValues(change.layoutAspects, aspects)
+}
+
+const markViewCalculations = (
+  impact: CommitImpact,
+  viewId: ViewId,
+  fieldIds: readonly FieldId[] | undefined
+) => {
+  if (!fieldIds?.length) {
+    return
+  }
+
+  const change = ensureViewChange(impact, viewId)
+  if (change.calculationFields === 'all') {
+    return
+  }
+
+  change.calculationFields = addSetValues(change.calculationFields, fieldIds)
+}
+
+const mergeActiveViewImpact = (
+  impact: CommitImpact,
+  before: ViewId | undefined,
+  after: ViewId | undefined
+) => {
+  if (before === after) {
+    return
+  }
+
+  impact.activeView = impact.activeView
+    ? {
+        before: impact.activeView.before,
+        after
+      }
+    : {
+        before,
+        after
+      }
+}
+
+const trackActiveViewChange = (
+  impact: CommitImpact,
+  beforeDocument: DataDoc,
+  afterDocument: DataDoc
+) => mergeActiveViewImpact(
+  impact,
+  getDocumentActiveViewId(beforeDocument),
+  getDocumentActiveViewId(afterDocument)
+)
+
+const collectInsertedRecordIds = (
+  records: readonly DataRecord[]
+): readonly RecordId[] => {
+  const ids: RecordId[] = []
+  enumerateRecords(records, entry => {
+    ids.push(entry.record.id)
+  })
+  return ids
+}
+
+const captureRecordEntries = (
+  document: DataDoc,
+  recordIds: readonly RecordId[]
+) => recordIds
+  .map(recordId => {
+    const record = getDocumentRecordById(document, recordId)
+    const index = getDocumentRecordIndex(document, recordId)
+    if (!record || index < 0) {
+      return undefined
+    }
+
+    return {
+      record,
+      index
+    }
+  })
+  .filter((entry): entry is { record: DataRecord; index: number } => Boolean(entry))
+  .sort((left, right) => left.index - right.index)
+
+const patchRecordFieldWrites = (input: {
+  impact: CommitImpact
+  beforeDocument: DataDoc
+  afterDocument: DataDoc
+  entries: readonly DocumentRecordFieldRestoreEntry[]
+}): readonly DocumentRecordFieldRestoreEntry[] => {
+  const inverse: DocumentRecordFieldRestoreEntry[] = []
+
+  input.entries.forEach(entry => {
+    const beforeRecord = getDocumentRecordById(input.beforeDocument, entry.recordId)
+    const afterRecord = getDocumentRecordById(input.afterDocument, entry.recordId)
+    if (!beforeRecord || !afterRecord) {
+      return
+    }
+
+    const fieldIds = [
+      ...new Set<FieldId>([
+        ...(Object.keys(entry.set ?? {}) as FieldId[]),
+        ...(entry.clear ?? [])
+      ])
+    ]
+
+    const restoreSet: Partial<Record<FieldId, unknown>> = {}
+    const restoreClear: FieldId[] = []
+    let recordChanged = false
+
+    fieldIds.forEach(fieldId => {
+      if (fieldId === TITLE_FIELD_ID) {
+        if (beforeRecord.title === afterRecord.title) {
+          return
+        }
+
+        recordChanged = true
+        markTouchedRecord(input.impact, entry.recordId)
+        markTitleChanged(input.impact, entry.recordId)
+        if (beforeRecord.title === '') {
+          restoreClear.push(fieldId)
+          return
+        }
+
+        restoreSet[fieldId] = beforeRecord.title
+        return
+      }
+
+      const beforeHas = hasOwn(beforeRecord.values, fieldId)
+      const afterHas = hasOwn(afterRecord.values, fieldId)
+      const beforeValue = beforeRecord.values[fieldId]
+      const afterValue = afterRecord.values[fieldId]
+
+      if (
+        beforeHas === afterHas
+        && sameJsonValue(beforeValue, afterValue)
+      ) {
+        return
+      }
+
+      recordChanged = true
+      markTouchedRecord(input.impact, entry.recordId)
+      markValueFieldChanged(input.impact, fieldId)
+      if (beforeHas) {
+        restoreSet[fieldId] = beforeValue
+        return
+      }
+
+      restoreClear.push(fieldId)
+    })
+
+    if (!recordChanged) {
+      return
+    }
+
+    inverse.push({
+      recordId: entry.recordId,
+      ...(Object.keys(restoreSet).length
+        ? { set: restoreSet }
+        : {}),
+      ...(restoreClear.length
+        ? { clear: restoreClear }
+        : {})
+    })
+  })
+
+  return inverse
+}
+
+const deletePatchedRecord = (
+  impact: CommitImpact,
+  recordId: RecordId
+) => {
+  impact.records?.patched?.delete(recordId)
+  impact.records?.titleChanged?.delete(recordId)
+  if (impact.records?.touched !== 'all') {
+    impact.records?.touched?.delete(recordId)
+  }
+}
+
+const deleteFieldImpact = (
+  impact: CommitImpact,
+  fieldId: CustomFieldId
+) => {
+  impact.fields?.schema?.delete(fieldId)
+}
+
+const deleteViewImpact = (
+  impact: CommitImpact,
+  viewId: ViewId
+) => {
+  impact.views?.changed?.delete(viewId)
+}
+
+const executeRecordInsert = (
+  document: DataDoc,
+  operation: Extract<DocumentOperation, { type: 'document.record.insert' }>,
+  impact: CommitImpact
+): ExecuteOperationResult => {
+  const nextDocument = insertDocumentRecords(document, operation.records, operation.target?.index)
+  if (nextDocument === document) {
+    return {
+      document,
+      inverse: []
+    }
+  }
+
+  const recordIds = collectInsertedRecordIds(operation.records)
+  if (!recordIds.length) {
+    return {
+      document,
+      inverse: []
+    }
+  }
+
+  const records = impact.records ?? (impact.records = {})
+  recordIds.forEach(recordId => {
+    if (records.removed?.delete(recordId)) {
+      markTouchedRecord(impact, recordId)
+      return
+    }
+
+    records.inserted = addSetValue(records.inserted, recordId)
+    markTouchedRecord(impact, recordId)
+  })
+
+  return {
+    document: nextDocument,
+    inverse: [{
+      type: 'document.record.remove',
+      recordIds: [...recordIds]
+    }]
+  }
+}
+
+const executeRecordPatch = (
+  document: DataDoc,
+  operation: Extract<DocumentOperation, { type: 'document.record.patch' }>,
+  impact: CommitImpact
+): ExecuteOperationResult => {
+  const beforeRecord = getDocumentRecordById(document, operation.recordId)
+  if (!beforeRecord) {
+    return {
+      document,
+      inverse: []
+    }
+  }
+
+  const nextDocument = patchDocumentRecord(document, operation.recordId, operation.patch)
+  if (nextDocument === document) {
+    return {
+      document,
+      inverse: []
+    }
+  }
+
+  const afterRecord = getDocumentRecordById(nextDocument, operation.recordId)
+  const aspects = collectRecordPatchAspects(beforeRecord, afterRecord)
+  markRecordPatch(impact, operation.recordId, aspects)
+
+  return {
+    document: nextDocument,
+    inverse: [{
+      type: 'document.record.patch',
+      recordId: operation.recordId,
+      patch: Object.fromEntries(
+        Object.keys(operation.patch).map(key => [key, readObjectValue(beforeRecord, key)])
+      ) as Partial<Omit<DataRecord, 'id' | 'values'>>
+    }]
+  }
+}
+
+const executeRecordRemove = (
+  document: DataDoc,
+  operation: Extract<DocumentOperation, { type: 'document.record.remove' }>,
+  impact: CommitImpact
+): ExecuteOperationResult => {
+  const removedEntries = captureRecordEntries(document, operation.recordIds)
+  if (!removedEntries.length) {
+    return {
+      document,
+      inverse: []
+    }
+  }
+
+  const nextDocument = removeDocumentRecords(document, operation.recordIds)
+  if (nextDocument === document) {
+    return {
+      document,
+      inverse: []
+    }
+  }
+
+  const records = impact.records ?? (impact.records = {})
+  removedEntries.forEach(entry => {
+    if (records.inserted?.delete(entry.record.id)) {
+      deletePatchedRecord(impact, entry.record.id)
+      return
+    }
+
+    records.removed = addSetValue(records.removed, entry.record.id)
+    markTouchedRecord(impact, entry.record.id)
+  })
+
+  return {
+    document: nextDocument,
+    inverse: removedEntries.map(entry => ({
+      type: 'document.record.insert',
+      records: [entry.record],
+      target: {
+        index: entry.index
+      }
+    }))
+  }
+}
+
+const executeRecordFieldWrite = (
+  document: DataDoc,
+  operation: Extract<DocumentOperation, {
+    type:
+      | 'document.record.fields.writeMany'
+      | 'document.record.fields.restoreMany'
+  }>,
+  impact: CommitImpact
+): ExecuteOperationResult => {
+  const entries = operation.type === 'document.record.fields.writeMany'
+    ? operation.recordIds.map(recordId => ({
+        recordId,
+        set: operation.set,
+        clear: operation.clear
+      }))
+    : operation.entries
+
+  const nextDocument = operation.type === 'document.record.fields.writeMany'
+    ? writeDocumentRecordFieldsMany(document, operation)
+    : restoreDocumentRecordFieldsMany(document, operation.entries)
+
+  if (nextDocument === document) {
+    return {
+      document,
+      inverse: []
+    }
+  }
+
+  const inverseEntries = patchRecordFieldWrites({
+    impact,
+    beforeDocument: document,
+    afterDocument: nextDocument,
+    entries
+  })
+
+  return {
+    document: nextDocument,
+    inverse: inverseEntries.length
+      ? [{
+          type: 'document.record.fields.restoreMany',
+          entries: inverseEntries
+        }]
+      : []
+  }
+}
+
+const executeFieldPut = (
+  document: DataDoc,
+  operation: Extract<DocumentOperation, { type: 'document.field.put' }>,
+  impact: CommitImpact
+): ExecuteOperationResult => {
+  const beforeField = getDocumentCustomFieldById(document, operation.field.id)
+  const nextDocument = putDocumentCustomField(document, operation.field)
+  const afterField = getDocumentCustomFieldById(nextDocument, operation.field.id)
+  const aspects = collectFieldSchemaAspects(beforeField, afterField)
+
+  if (!beforeField && !afterField) {
+    return {
+      document,
+      inverse: []
+    }
+  }
+
+  if (beforeField && afterField && !aspects.length) {
+    return {
+      document,
+      inverse: []
+    }
+  }
+
+  const fields = impact.fields ?? (impact.fields = {})
+  if (!beforeField) {
+    if (fields.removed?.delete(operation.field.id)) {
+      markFieldSchema(impact, operation.field.id, ['all'])
+    } else {
+      fields.inserted = addSetValue(fields.inserted, operation.field.id)
+      markFieldSchema(impact, operation.field.id, ['all'])
+    }
+  } else {
+    markFieldSchema(impact, operation.field.id, aspects)
+  }
+
+  return {
+    document: nextDocument,
+    inverse: beforeField
+      ? [{
+          type: 'document.field.put',
+          field: beforeField
+        }]
+      : [{
+          type: 'document.field.remove',
+          fieldId: operation.field.id
+        }]
+  }
+}
+
+const executeFieldPatch = (
+  document: DataDoc,
+  operation: Extract<DocumentOperation, { type: 'document.field.patch' }>,
+  impact: CommitImpact
+): ExecuteOperationResult => {
+  const beforeField = getDocumentCustomFieldById(document, operation.fieldId)
+  if (!beforeField) {
+    return {
+      document,
+      inverse: []
+    }
+  }
+
+  const nextDocument = patchDocumentCustomField(document, operation.fieldId, operation.patch)
+  if (nextDocument === document) {
+    return {
+      document,
+      inverse: []
+    }
+  }
+
+  const afterField = getDocumentCustomFieldById(nextDocument, operation.fieldId)
+  markFieldSchema(
+    impact,
+    operation.fieldId,
+    collectFieldSchemaAspects(beforeField, afterField)
+  )
+
+  return {
+    document: nextDocument,
+    inverse: [{
+      type: 'document.field.patch',
+      fieldId: operation.fieldId,
+      patch: Object.fromEntries(
+        Object.keys(operation.patch).map(key => [key, readObjectValue(beforeField, key)])
+      ) as Partial<Omit<CustomField, 'id'>>
+    }]
+  }
+}
+
+const executeFieldRemove = (
+  document: DataDoc,
+  operation: Extract<DocumentOperation, { type: 'document.field.remove' }>,
+  impact: CommitImpact
+): ExecuteOperationResult => {
+  const beforeField = getDocumentCustomFieldById(document, operation.fieldId)
+  if (!beforeField) {
+    return {
+      document,
+      inverse: []
+    }
+  }
+
+  const nextDocument = removeDocumentCustomField(document, operation.fieldId)
+  if (nextDocument === document) {
+    return {
+      document,
+      inverse: []
+    }
+  }
+
+  const fields = impact.fields ?? (impact.fields = {})
+  if (fields.inserted?.delete(operation.fieldId)) {
+    deleteFieldImpact(impact, operation.fieldId)
+  } else {
+    fields.removed = addSetValue(fields.removed, operation.fieldId)
+    markFieldSchema(impact, operation.fieldId, ['all'])
+  }
+
+  return {
+    document: nextDocument,
+    inverse: [{
+      type: 'document.field.put',
+      field: beforeField
+    }]
+  }
+}
+
+const executeViewPut = (
+  document: DataDoc,
+  operation: Extract<DocumentOperation, { type: 'document.view.put' }>,
+  impact: CommitImpact
+): ExecuteOperationResult => {
+  const beforeView = getDocumentViewById(document, operation.view.id)
+  const nextDocument = putDocumentView(document, operation.view)
+  const afterView = getDocumentViewById(nextDocument, operation.view.id)
+  const beforeActiveViewId = getDocumentActiveViewId(document)
+  const afterActiveViewId = getDocumentActiveViewId(nextDocument)
+
+  if (!afterView) {
+    return {
+      document,
+      inverse: []
+    }
+  }
+
+  const queryAspects = beforeView
+    ? collectViewQueryAspects(beforeView, afterView)
+    : []
+  const layoutAspects = beforeView
+    ? collectViewLayoutAspects(beforeView, afterView)
+    : []
+  const calculationFields = beforeView
+    ? collectCalculationFields(beforeView, afterView)
+    : undefined
+
+  if (
+    beforeView
+    && !queryAspects.length
+    && !layoutAspects.length
+    && !calculationFields?.length
+    && beforeActiveViewId === afterActiveViewId
+    && sameJsonValue(beforeView, afterView)
+  ) {
+    return {
+      document,
+      inverse: []
+    }
+  }
+
+  const views = impact.views ?? (impact.views = {})
+  if (!beforeView) {
+    if (views.removed?.delete(operation.view.id)) {
+      const change = ensureViewChange(impact, operation.view.id)
+      change.queryAspects = addSetValues(change.queryAspects, ['search', 'filter', 'sort', 'group', 'order'])
+      change.layoutAspects = addSetValues(change.layoutAspects, ['name', 'type', 'display', 'options'])
+      change.calculationFields = 'all'
+    } else {
+      views.inserted = addSetValue(views.inserted, operation.view.id)
+    }
+  } else {
+    markViewQuery(impact, operation.view.id, queryAspects)
+    markViewLayout(impact, operation.view.id, layoutAspects)
+    markViewCalculations(impact, operation.view.id, calculationFields)
+  }
+
+  mergeActiveViewImpact(impact, beforeActiveViewId, afterActiveViewId)
+
+  return {
+    document: nextDocument,
+    inverse: beforeView
+      ? [{
+          type: 'document.view.put',
+          view: beforeView
+        }]
+      : [{
+          type: 'document.view.remove',
+          viewId: operation.view.id
+        }]
+  }
+}
+
+const executeActiveViewSet = (
+  document: DataDoc,
+  operation: Extract<DocumentOperation, { type: 'document.activeView.set' }>,
+  impact: CommitImpact
+): ExecuteOperationResult => {
+  const beforeViewId = getDocumentActiveViewId(document)
+  const nextDocument = setDocumentActiveViewId(document, operation.viewId)
+  const afterViewId = getDocumentActiveViewId(nextDocument)
+  if (beforeViewId === afterViewId) {
+    return {
+      document,
+      inverse: []
+    }
+  }
+
+  mergeActiveViewImpact(impact, beforeViewId, afterViewId)
+  return {
+    document: nextDocument,
+    inverse: [{
+      type: 'document.activeView.set',
+      viewId: beforeViewId
+    }]
+  }
+}
+
+const executeViewRemove = (
+  document: DataDoc,
+  operation: Extract<DocumentOperation, { type: 'document.view.remove' }>,
+  impact: CommitImpact
+): ExecuteOperationResult => {
+  const beforeView = getDocumentViewById(document, operation.viewId)
+  if (!beforeView) {
+    return {
+      document,
+      inverse: []
+    }
+  }
+
+  const beforeActiveViewId = getDocumentActiveViewId(document)
+  const nextDocument = removeDocumentView(document, operation.viewId)
+  const afterActiveViewId = getDocumentActiveViewId(nextDocument)
+
+  const views = impact.views ?? (impact.views = {})
+  if (views.inserted?.delete(operation.viewId)) {
+    deleteViewImpact(impact, operation.viewId)
+  } else {
+    views.removed = addSetValue(views.removed, operation.viewId)
+    deleteViewImpact(impact, operation.viewId)
+  }
+
+  mergeActiveViewImpact(impact, beforeActiveViewId, afterActiveViewId)
+
+  return {
+    document: nextDocument,
+    inverse: [{
+      type: 'document.view.put',
+      view: beforeView
+    }]
+  }
+}
+
+const executeExternalBump = (
+  document: DataDoc,
+  operation: Extract<DocumentOperation, { type: 'external.version.bump' }>,
+  impact: CommitImpact
+): ExecuteOperationResult => {
+  impact.external = {
+    versionBumped: true,
+    source: operation.source
+  }
+
+  return {
+    document,
+    inverse: [{
+      type: 'external.version.bump',
+      source: operation.source
+    }]
+  }
+}
+
+export const executeOperation = (
+  document: DataDoc,
+  operation: DocumentOperation,
+  impact: CommitImpact
+): ExecuteOperationResult => {
+  switch (operation.type) {
+    case 'document.record.insert':
+      return executeRecordInsert(document, operation, impact)
+    case 'document.record.patch':
+      return executeRecordPatch(document, operation, impact)
+    case 'document.record.remove':
+      return executeRecordRemove(document, operation, impact)
+    case 'document.record.fields.writeMany':
+    case 'document.record.fields.restoreMany':
+      return executeRecordFieldWrite(document, operation, impact)
+    case 'document.field.put':
+      return executeFieldPut(document, operation, impact)
+    case 'document.field.patch':
+      return executeFieldPatch(document, operation, impact)
+    case 'document.field.remove':
+      return executeFieldRemove(document, operation, impact)
+    case 'document.view.put':
+      return executeViewPut(document, operation, impact)
+    case 'document.activeView.set':
+      return executeActiveViewSet(document, operation, impact)
+    case 'document.view.remove':
+      return executeViewRemove(document, operation, impact)
+    case 'external.version.bump':
+      return executeExternalBump(document, operation, impact)
+  }
+}

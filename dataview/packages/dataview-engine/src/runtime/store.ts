@@ -1,4 +1,4 @@
-import { createResetDelta } from '@dataview/core/commit/delta'
+import { createResetCommitImpact } from '@dataview/core/commit/impact'
 import type { DataDoc } from '@dataview/core/contracts'
 import {
   createValueStore,
@@ -24,7 +24,7 @@ export const createRuntimeState = (input: {
   const currentView = createViewRuntime({
     doc: input.doc,
     index: index.state,
-    delta: createResetDelta(undefined, input.doc),
+    impact: createResetCommitImpact(undefined, input.doc),
     capturePerf: input.capturePerf
   })
 

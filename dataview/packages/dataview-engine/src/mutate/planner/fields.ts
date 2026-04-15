@@ -5,7 +5,7 @@ import type {
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
-import type { BaseOperation } from '@dataview/core/contracts/operations'
+import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import {
   getDocumentCustomFieldById,
   getDocumentCustomFields,
@@ -53,7 +53,7 @@ const toRecordFieldWriteMany = (input: {
   recordIds: readonly RecordId[]
   set?: Partial<Record<FieldId, unknown>>
   clear?: readonly FieldId[]
-}): BaseOperation => ({
+}): DocumentOperation => ({
   type: 'document.record.fields.writeMany',
   recordIds: input.recordIds,
   ...(input.set && Object.keys(input.set).length
@@ -68,7 +68,7 @@ const toSingleRecordFieldWrite = (
   recordId: RecordId,
   fieldId: FieldId,
   value: unknown | undefined
-): BaseOperation => value === undefined
+): DocumentOperation => value === undefined
   ? toRecordFieldWriteMany({
       recordIds: [recordId],
       clear: [fieldId]
@@ -83,7 +83,7 @@ const toSingleRecordFieldWrite = (
 const buildCreateFieldViewOps = (
   document: DataDoc,
   field: CustomField
-): BaseOperation[] => (
+): DocumentOperation[] => (
   getDocumentViews(document)
     .filter(view => view.type === 'table')
     .flatMap(view => (
@@ -101,7 +101,7 @@ const buildCreateFieldViewOps = (
 const buildRemovedFieldViewOps = (
   document: DataDoc,
   fieldId: string
-): BaseOperation[] => (
+): DocumentOperation[] => (
   getDocumentViews(document)
     .flatMap(view => {
       const nextView = repairViewForRemovedField(view, fieldId)
@@ -114,7 +114,7 @@ const buildRemovedFieldViewOps = (
 const buildConvertedFieldViewOps = (
   document: DataDoc,
   field: CustomField
-): BaseOperation[] => (
+): DocumentOperation[] => (
   getDocumentViews(document)
     .flatMap(view => {
       const nextView = repairViewForConvertedField(view, field)
@@ -320,7 +320,7 @@ const lowerFieldDuplicate = (
   }
   issues.push(...validateField(document, source, nextField, 'field'))
 
-  const recordOps: BaseOperation[] = getDocumentRecords(document).flatMap(record => (
+  const recordOps: DocumentOperation[] = getDocumentRecords(document).flatMap(record => (
     Object.prototype.hasOwnProperty.call(record.values, sourceField.id)
       ? [toSingleRecordFieldWrite(
           record.id,
@@ -330,7 +330,7 @@ const lowerFieldDuplicate = (
       : []
   ))
 
-  const viewOps: BaseOperation[] = getDocumentViews(document).flatMap(view => {
+  const viewOps: DocumentOperation[] = getDocumentViews(document).flatMap(view => {
     const sourceFieldIds = view.display.fields
     const currentFieldIds = view.type === 'table' && !sourceFieldIds.includes(nextFieldId)
       ? [...sourceFieldIds, nextFieldId]
@@ -532,7 +532,7 @@ const lowerFieldOptionRemove = (
       : {})
   } as Partial<Omit<CustomField, 'id'>>
 
-  const valueOps: BaseOperation[] = []
+  const valueOps: DocumentOperation[] = []
 
   if (context.field.kind === 'select' || context.field.kind === 'status') {
     const clearedRecordIds: RecordId[] = []

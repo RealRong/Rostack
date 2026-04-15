@@ -125,13 +125,13 @@ const cloneTrace = (
   timings: {
     ...trace.timings
   },
-  delta: {
+  impact: {
     summary: {
-      ...trace.delta.summary
+      ...trace.impact.summary
     },
-    semantics: trace.delta.semantics.map(item => ({ ...item })),
+    facts: trace.impact.facts.map(item => ({ ...item })),
     entities: {
-      ...trace.delta.entities
+      ...trace.impact.entities
     }
   },
   index: {

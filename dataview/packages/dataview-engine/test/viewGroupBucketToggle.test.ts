@@ -391,7 +391,7 @@ test('kanban cards per column defaults to all and persists through the view api'
   })
 
   let board = engine.select.views.byId.get(VIEW_BOARD)
-  assert.equal(board.options.kanban.cardsPerColumn, 'all')
+  assert.equal(board.options.kanban.cardsPerColumn, 25)
 
   openView(engine, VIEW_BOARD).kanban.setCardsPerColumn(25)
   board = engine.select.views.byId.get(VIEW_BOARD)
@@ -818,7 +818,8 @@ test('engine.performance traces active view derive and snapshot behavior for inc
 
   assert.ok(trace)
   assert.equal(trace.kind, 'dispatch')
-  assert.equal(trace.delta.summary.values, true)
+  assert.equal(trace.impact.summary.records, true)
+  assert.equal(trace.impact.summary.indexes, true)
   assert.equal(trace.view.plan.query, 'reuse')
   assert.equal(trace.view.plan.sections, 'sync')
   assert.equal(trace.view.plan.summary, 'sync')

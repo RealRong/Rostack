@@ -8,7 +8,7 @@ import type {
 import {
   TITLE_FIELD_ID
 } from '@dataview/core/contracts'
-import type { BaseOperation } from '@dataview/core/contracts/operations'
+import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import {
   getDocumentCustomFields,
   getDocumentRecordById,
@@ -43,7 +43,7 @@ import {
 const buildRecordRemoveViewOps = (
   document: DataDoc,
   recordIds: readonly RecordId[]
-): BaseOperation[] => {
+): DocumentOperation[] => {
   const removedRecordIdSet = new Set(recordIds)
   return getDocumentViews(document).flatMap(view => {
     const nextOrders = normalizeViewOrders(document, view.orders.filter(recordId => !removedRecordIdSet.has(recordId)))

@@ -1,5 +1,4 @@
 import type { ActionType } from '@dataview/core/contracts/actions'
-import type { CommandType } from '@dataview/core/contracts/commands'
 
 export type ValidationSeverity = 'error' | 'warning'
 
@@ -27,14 +26,14 @@ export interface ValidationIssue {
   severity: ValidationSeverity
   code: ValidationCode
   message: string
-  commandIndex: number
-  commandType: ActionType | CommandType
+  actionIndex: number
+  actionType: ActionType
   path?: string
 }
 
 export interface IssueSource {
   index: number
-  type: ActionType | CommandType
+  type: ActionType
 }
 
 export const createIssue = (
@@ -47,8 +46,8 @@ export const createIssue = (
   severity,
   code,
   message,
-  commandIndex: source.index,
-  commandType: source.type,
+  actionIndex: source.index,
+  actionType: source.type,
   path
 })
 

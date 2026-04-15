@@ -5,7 +5,7 @@ import type {
   RecordId,
   View
 } from '@dataview/core/contracts'
-import type { BaseOperation } from '@dataview/core/contracts/operations'
+import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import { unique } from '@shared/core'
 import {
   hasValidationErrors,
@@ -21,12 +21,12 @@ export const uniqueRecordIds = (target: EditTarget): string[] => (
 
 export interface PlannedActionResult {
   issues: ValidationIssue[]
-  operations: BaseOperation[]
+  operations: DocumentOperation[]
 }
 
 export const planResult = (
   issues: ValidationIssue[],
-  operations: BaseOperation[] = []
+  operations: DocumentOperation[] = []
 ): PlannedActionResult => ({
   issues,
   operations: hasValidationErrors(issues)
@@ -48,7 +48,7 @@ export const listTargetRecordIds = (
 
 export const toViewPut = (
   view: View
-): BaseOperation => ({
+): DocumentOperation => ({
   type: 'document.view.put',
   view
 })
@@ -56,7 +56,7 @@ export const toViewPut = (
 export const toFieldPatch = (
   fieldId: string,
   patch: Partial<Omit<CustomField, 'id'>>
-): BaseOperation => ({
+): DocumentOperation => ({
   type: 'document.field.patch',
   fieldId,
   patch

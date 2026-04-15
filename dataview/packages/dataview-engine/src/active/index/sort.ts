@@ -1,5 +1,5 @@
 import type {
-  CommitDelta,
+  CommitImpact,
   DataDoc,
   FieldId,
   RecordId
@@ -17,6 +17,9 @@ import {
   shouldRebuildFieldIndex,
   shouldSyncFieldIndex
 } from '@dataview/engine/active/index/sync'
+import {
+  hasIndexChanges
+} from '@dataview/engine/active/index/shared'
 import type {
   RecordIndex,
   SortFieldIndex,
@@ -206,14 +209,14 @@ export const syncSortIndex = (
   previous: SortIndex,
   document: DataDoc,
   records: RecordIndex,
-  delta: CommitDelta
+  impact: CommitImpact
 ): SortIndex => {
-  if (!delta.summary.indexes || !previous.fields.size) {
+  if (!hasIndexChanges(impact) || !previous.fields.size) {
     return previous
   }
 
   const loadedFieldIds = new Set(previous.fields.keys())
-  const context = createFieldSyncContext(delta, {
+  const context = createFieldSyncContext(impact, {
     includeTitlePatch: true
   })
   let changed = false

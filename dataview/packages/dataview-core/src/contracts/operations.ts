@@ -16,7 +16,7 @@ export interface DocumentRecordFieldRestoreEntry {
   clear?: readonly FieldId[]
 }
 
-export type BaseOperation =
+export type DocumentOperation =
   | {
       type: 'document.record.insert'
       records: DataRecord[]
@@ -71,6 +71,6 @@ export type BaseOperation =
       source: string
     }
 
-export type OperationType = BaseOperation['type']
+export type OperationType = DocumentOperation['type']
 
-export type OperationPayload<TType extends OperationType> = Omit<Extract<BaseOperation, { type: TType }>, 'type'>
+export type OperationPayload<TType extends OperationType> = Omit<Extract<DocumentOperation, { type: TType }>, 'type'>

@@ -1,14 +1,13 @@
 import {
-  createDeltaCollector
-} from '@dataview/core/commit/collector'
-import {
-  createResetDelta
-} from '@dataview/core/commit/delta'
+  createResetCommitImpact,
+  summarizeCommitImpact
+} from '@dataview/core/commit/impact'
 import type {
+  CommitImpact,
   DataDoc
 } from '@dataview/core/contracts'
 import type {
-  BaseOperation
+  DocumentOperation
 } from '@dataview/core/contracts/operations'
 import {
   applyOperations
@@ -47,7 +46,7 @@ import {
   pushUndo
 } from '@dataview/engine/runtime/history'
 import {
-  summarizeDelta,
+  summarizeImpact,
   toTraceKind
 } from '@dataview/engine/mutate/commit/trace'
 
@@ -67,7 +66,7 @@ type Draft<TResult extends CommitResult = CommitResult> =
       kind: Kind
       doc: DataDoc
       history: EngineRuntimeState['history']
-      delta: NonNullable<CommitResult['changes']>
+      impact: CommitImpact
       result: TResult
       ms?: number
     }
@@ -76,17 +75,19 @@ type Plan<TResult extends CommitResult = CommitResult> = (
   base: EngineRuntimeState
 ) => Draft<TResult>
 
-const createdFromChanges = (
-  changes?: CommitResult['changes']
-): CreatedEntities | undefined => {
-  if (!changes) {
-    return undefined
-  }
+const toCreatedIds = <T extends string>(
+  values?: ReadonlySet<T>
+): readonly T[] | undefined => values?.size
+  ? Array.from(values)
+  : undefined
 
+const createdFromImpact = (
+  impact: CommitImpact
+): CreatedEntities | undefined => {
   const created = {
-    records: changes.entities.records?.add,
-    fields: changes.entities.fields?.add,
-    views: changes.entities.views?.add
+    records: toCreatedIds(impact.records?.inserted),
+    fields: toCreatedIds(impact.fields?.inserted),
+    views: toCreatedIds(impact.views?.inserted)
   }
 
   return created.records?.length || created.fields?.length || created.views?.length
@@ -97,7 +98,7 @@ const createdFromChanges = (
 const replayResult = (
   base: EngineRuntimeState,
   kind: 'undo' | 'redo',
-  operations: readonly BaseOperation[],
+  operations: readonly DocumentOperation[],
   history: EngineRuntimeState['history']
 ): Draft<CommitResult> => {
   const startedAt = now()
@@ -108,11 +109,11 @@ const replayResult = (
     kind,
     doc: applied.document,
     history,
-    delta: applied.delta,
+    impact: applied.impact,
     result: {
       issues: [],
       applied: true,
-      changes: applied.delta
+      summary: summarizeCommitImpact(applied.impact)
     },
     ms: now() - startedAt
   }
@@ -132,11 +133,7 @@ const writePlan = (
   }
 
   const startedAt = now()
-  const applied = applyOperations(
-    base.doc,
-    batch.operations,
-    createDeltaCollector(base.doc, batch.deltaDraft)
-  )
+  const applied = applyOperations(base.doc, batch.operations)
   const history = clearRedo(base.history)
   const nextHistory = base.history.cap > 0
     ? pushUndo(history, {
@@ -150,12 +147,12 @@ const writePlan = (
     kind: 'write',
     doc: applied.document,
     history: nextHistory,
-    delta: applied.delta,
+    impact: applied.impact,
     result: {
       issues: batch.issues,
       applied: true,
-      changes: applied.delta,
-      created: createdFromChanges(applied.delta)
+      summary: summarizeCommitImpact(applied.impact),
+      created: createdFromImpact(applied.impact)
     },
     ms: now() - startedAt
   }
@@ -163,25 +160,25 @@ const writePlan = (
 
 const replayPlan = (
   kind: 'undo' | 'redo',
-  operations: readonly BaseOperation[],
+  operations: readonly DocumentOperation[],
   history: EngineRuntimeState['history']
 ): Plan<CommitResult> => base => replayResult(base, kind, operations, history)
 
 const loadPlan = (
   doc: DataDoc
 ): Plan<CommitResult> => base => {
-  const delta = createResetDelta(base.doc, doc)
+  const impact = createResetCommitImpact(base.doc, doc)
 
   return {
     ok: true,
     kind: 'load',
     doc,
     history: clearHistory(base.history),
-    delta,
+    impact,
     result: {
       issues: [],
       applied: true,
-      changes: delta
+      summary: summarizeCommitImpact(impact)
     },
     ms: 0
   }
@@ -204,7 +201,7 @@ const commit = <TResult extends CommitResult>(input: {
     previous: base.currentView.index,
     previousDemand: base.currentView.demand,
     document: draft.doc,
-    delta: draft.delta,
+    impact: draft.impact,
     demand: resolveViewDemand(draft.doc, draft.doc.activeViewId)
   })
   const nextView = deriveViewRuntime({
@@ -212,7 +209,7 @@ const commit = <TResult extends CommitResult>(input: {
     cache: base.currentView.cache,
     doc: draft.doc,
     index: nextIndex.state,
-    delta: draft.delta,
+    impact: draft.impact,
     capturePerf: input.capturePerf
   })
 
@@ -244,7 +241,7 @@ const commit = <TResult extends CommitResult>(input: {
         viewMs: nextView.trace.view.timings.totalMs,
         snapshotMs: nextView.trace.snapshotMs
       },
-      delta: summarizeDelta(draft.delta),
+      impact: summarizeImpact(draft.impact),
       index: nextIndex.trace,
       view: nextView.trace.view,
       snapshot: nextView.trace.snapshot
@@ -276,7 +273,7 @@ export const createWriteControl = (input: {
       store: input.store,
       replay: (
         kind: 'undo' | 'redo',
-        operations: readonly BaseOperation[],
+        operations: readonly DocumentOperation[],
         history: EngineRuntimeState['history']
       ) => runPlan(replayPlan(kind, operations, history))
     })

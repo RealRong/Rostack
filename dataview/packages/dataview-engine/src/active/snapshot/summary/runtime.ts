@@ -1,14 +1,18 @@
 import type {
-  CommitDelta,
+  CommitImpact,
   FieldId,
   View,
   ViewId
 } from '@dataview/core/contracts'
-import { TITLE_FIELD_ID } from '@dataview/core/contracts'
+import {
+  collectTouchedFieldIds,
+  getViewChange,
+  hasActiveViewImpact,
+  hasFieldSchemaAspect
+} from '@dataview/core/commit/impact'
 import { viewCalcFields } from '@dataview/core/view'
 import {
-  collectTouchedRecordIds,
-  collectTouchedFieldIds
+  collectTouchedRecordIds
 } from '@dataview/engine/active/index/shared'
 import type { IndexState } from '@dataview/engine/active/index/contracts'
 import type {
@@ -43,16 +47,10 @@ const hasIntersection = (
   return false
 }
 
-const collectTouchedFields = (
-  delta: CommitDelta
-): ReadonlySet<FieldId> | 'all' => collectTouchedFieldIds(delta, {
-  includeTitlePatch: true
-})
-
 const resolveSummaryAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  delta: CommitDelta
+  impact: CommitImpact
   view: View
   previous?: SummaryState
   previousSections?: SectionState
@@ -62,7 +60,7 @@ const resolveSummaryAction = (input: {
     !input.previous
     || !input.previousSections
     || input.previousViewId !== input.activeViewId
-    || input.delta.semantics.some(item => item.kind === 'activeView.set')
+    || hasActiveViewImpact(input.impact)
   ) {
     return 'rebuild'
   }
@@ -73,48 +71,36 @@ const resolveSummaryAction = (input: {
 
   const calcFields = viewCalcFields(input.view)
   const groupField = input.view.group?.field
+  const viewChange = getViewChange(input.impact, input.activeViewId)
 
-  for (const item of input.delta.semantics) {
-    switch (item.kind) {
-      case 'view.calculations':
-        if (item.viewId === input.activeViewId) {
-          return 'rebuild'
-        }
-        break
-      case 'field.schema':
-        if (calcFields.has(item.fieldId) || item.fieldId === groupField) {
-          return 'rebuild'
-        }
-        break
-      default:
-        break
+  if (viewChange?.calculationFields) {
+    return 'rebuild'
+  }
+
+  for (const fieldId of calcFields) {
+    if (hasFieldSchemaAspect(input.impact, fieldId)) {
+      return 'rebuild'
     }
+  }
+  if (groupField && hasFieldSchemaAspect(input.impact, groupField)) {
+    return 'rebuild'
   }
 
   if (input.sectionsAction === 'sync') {
     return 'sync'
   }
 
-  const touchedFields = collectTouchedFields(input.delta)
+  const touchedFields = collectTouchedFieldIds(input.impact, {
+    includeTitlePatch: true
+  })
   if (touchedFields === 'all') {
     return calcFields.size > 0
       ? 'sync'
       : 'reuse'
   }
 
-  const changedFields = new Set<FieldId>(touchedFields)
-  if (changedFields.size > 0 && hasIntersection(calcFields, changedFields)) {
+  if (touchedFields.size > 0 && hasIntersection(calcFields, touchedFields)) {
     return 'sync'
-  }
-
-  for (const item of input.delta.semantics) {
-    if (
-      item.kind === 'record.patch'
-      && item.aspects.includes('title')
-      && calcFields.has(TITLE_FIELD_ID)
-    ) {
-      return 'sync'
-    }
   }
 
   return 'reuse'
@@ -123,7 +109,7 @@ const resolveSummaryAction = (input: {
 export const runSummaryStage = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  delta: CommitDelta
+  impact: CommitImpact
   view: View
   previous?: SummaryState
   previousSections?: SectionState
@@ -139,12 +125,14 @@ export const runSummaryStage = (input: {
   deriveMs: number
   publishMs: number
 } => {
-  const touchedRecords = collectTouchedRecordIds(input.delta)
-  const touchedFields = collectTouchedFields(input.delta)
+  const touchedRecords = collectTouchedRecordIds(input.impact)
+  const touchedFields = collectTouchedFieldIds(input.impact, {
+    includeTitlePatch: true
+  })
   const action = resolveSummaryAction({
     activeViewId: input.activeViewId,
     previousViewId: input.previousViewId,
-    delta: input.delta,
+    impact: input.impact,
     view: input.view,
     previous: input.previous,
     previousSections: input.previousSections,

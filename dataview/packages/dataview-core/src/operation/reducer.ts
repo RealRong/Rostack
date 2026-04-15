@@ -1,4 +1,4 @@
-import type { BaseOperation } from '@dataview/core/contracts/operations'
+import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import type { DataDoc } from '@dataview/core/contracts/state'
 import {
   insertDocumentRecords,
@@ -16,7 +16,7 @@ import {
 
 export const reduceOperation = (
   document: DataDoc,
-  operation: BaseOperation
+  operation: DocumentOperation
 ): DataDoc => {
   switch (operation.type) {
     case 'document.record.insert':
@@ -48,7 +48,7 @@ export const reduceOperation = (
 
 export const reduceOperations = (
   document: DataDoc,
-  operations: readonly BaseOperation[]
+  operations: readonly DocumentOperation[]
 ): DataDoc => {
   let nextDocument = document
 

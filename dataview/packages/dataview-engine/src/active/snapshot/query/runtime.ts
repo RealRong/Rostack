@@ -1,12 +1,16 @@
 import type {
-  CommitDelta,
+  CommitImpact,
   FieldId,
   View,
   ViewId
 } from '@dataview/core/contracts'
 import {
-  TITLE_FIELD_ID
-} from '@dataview/core/contracts'
+  collectTouchedFieldIds,
+  hasActiveViewImpact,
+  hasFieldSchemaAspect,
+  hasRecordSetChange,
+  hasViewQueryImpact
+} from '@dataview/core/commit/impact'
 import {
   trimToUndefined
 } from '@shared/core'
@@ -15,9 +19,6 @@ import {
   viewSearchFields,
   viewSortFields
 } from '@dataview/core/view'
-import {
-  collectValueFieldIds
-} from '@dataview/engine/active/index/shared'
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
@@ -56,7 +57,7 @@ const queryUsesChangedFields = (
 const resolveQueryAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  delta: CommitDelta
+  impact: CommitImpact
   view: View
   previous?: QueryState
 }): DeriveAction => {
@@ -65,9 +66,13 @@ const resolveQueryAction = (input: {
   if (
     !input.previous
     || input.previousViewId !== input.activeViewId
-    || input.delta.semantics.some(item => item.kind === 'activeView.set')
+    || hasActiveViewImpact(input.impact)
   ) {
     return 'rebuild'
+  }
+
+  if (hasViewQueryImpact(input.impact, input.activeViewId, ['search', 'filter', 'sort', 'order'])) {
+    return 'sync'
   }
 
   const queryFields = {
@@ -76,100 +81,52 @@ const resolveQueryAction = (input: {
     sort: viewSortFields(input.view)
   }
 
-  let action: DeriveAction = 'reuse'
-
-  for (const item of input.delta.semantics) {
-    switch (item.kind) {
-      case 'view.query':
-        if (
-          item.viewId === input.activeViewId
-          && (
-            item.aspects.includes('search')
-            || item.aspects.includes('filter')
-            || item.aspects.includes('sort')
-            || item.aspects.includes('order')
-          )
-        ) {
-          return 'sync'
-        }
-        break
-      case 'field.schema': {
-        const changedField = item.fieldId
-        if (
-          queryFields.filter.has(changedField)
-          || queryFields.sort.has(changedField)
-          || (
-            hasSearchQuery
-            && queryUsesChangedFields(queryFields.search, new Set([changedField]))
-          )
-        ) {
-          return 'sync'
-        }
-        break
-      }
-      case 'record.add':
-      case 'record.remove':
-        return 'sync'
-      case 'record.patch': {
-        const changedFields = new Set<FieldId>(
-          item.aspects.includes('title')
-            ? [TITLE_FIELD_ID]
-            : []
-        )
-        if (
-          changedFields.size > 0
-          && (
-            hasIntersection(queryFields.filter, changedFields)
-            || hasIntersection(queryFields.sort, changedFields)
-            || (
-              hasSearchQuery
-              && queryUsesChangedFields(queryFields.search, changedFields)
-            )
-          )
-        ) {
-          return 'sync'
-        }
-        break
-      }
-      case 'record.values': {
-        const changedFields = item.fields === 'all'
-          ? 'all'
-          : new Set(item.fields)
-        if (
-          changedFields === 'all'
-          || (
-            changedFields.size > 0
-            && (
-              hasIntersection(queryFields.filter, changedFields)
-              || hasIntersection(queryFields.sort, changedFields)
-              || (
-                hasSearchQuery
-                && queryUsesChangedFields(queryFields.search, changedFields)
-              )
-            )
-          )
-        ) {
-          return 'sync'
-        }
-        break
-      }
-      default:
-        break
+  for (const fieldId of queryFields.filter) {
+    if (hasFieldSchemaAspect(input.impact, fieldId)) {
+      return 'sync'
+    }
+  }
+  for (const fieldId of queryFields.sort) {
+    if (hasFieldSchemaAspect(input.impact, fieldId)) {
+      return 'sync'
     }
   }
 
-  if (collectValueFieldIds(input.delta, { includeTitlePatch: true }).size > 0) {
-    action = 'reuse'
+  const changedFields = collectTouchedFieldIds(input.impact, {
+    includeTitlePatch: true
+  })
+  if (changedFields === 'all') {
+    return 'sync'
   }
 
-  return action
+  if (hasSearchQuery) {
+    for (const fieldId of changedFields) {
+      if (hasFieldSchemaAspect(input.impact, fieldId)) {
+        return 'sync'
+      }
+    }
+  }
+
+  if (
+    hasRecordSetChange(input.impact)
+    || hasIntersection(queryFields.filter, changedFields)
+    || hasIntersection(queryFields.sort, changedFields)
+    || (
+      hasSearchQuery
+      && queryUsesChangedFields(queryFields.search, changedFields)
+    )
+  ) {
+    return 'sync'
+  }
+
+  return 'reuse'
 }
 
 export const runQueryStage = (input: {
   document: import('@dataview/core/contracts').DataDoc
   activeViewId: ViewId
   previousViewId?: ViewId
-  delta: CommitDelta
+  impact: CommitImpact
   view: View
   index: IndexState
   previous?: QueryState

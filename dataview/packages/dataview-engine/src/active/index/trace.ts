@@ -1,53 +1,28 @@
 import type {
-  CommitDelta
+  CommitImpact
 } from '@dataview/core/contracts'
+import {
+  touchedFieldCountOfImpact,
+  touchedRecordCountOfImpact
+} from '@dataview/core/commit/impact'
 import type {
   IndexStageTrace
 } from '@dataview/engine/contracts/public'
 import type {
   SearchIndex
 } from '@dataview/engine/active/index/contracts'
-import {
-  createFieldSyncContext
-} from '@dataview/engine/active/index/sync'
 
 export const fullRebuildFrom = (
-  delta: CommitDelta
-) => (
-  delta.entities.records?.update === 'all'
-  || delta.entities.fields?.update === 'all'
-  || delta.entities.values?.records === 'all'
-  || delta.entities.values?.fields === 'all'
-)
+  impact: CommitImpact
+) => impact.reset === true
 
 export const touchedRecordCountOf = (
-  delta: CommitDelta
-): number | 'all' | undefined => {
-  const touched = createFieldSyncContext(delta).touchedRecords
-  return touched === 'all'
-    ? 'all'
-    : touched.size || undefined
-}
+  impact: CommitImpact
+): number | 'all' | undefined => touchedRecordCountOfImpact(impact)
 
 export const touchedFieldCountOf = (
-  delta: CommitDelta
-): number | 'all' | undefined => {
-  if (
-    delta.entities.fields?.update === 'all'
-    || delta.entities.values?.fields === 'all'
-  ) {
-    return 'all'
-  }
-
-  const context = createFieldSyncContext(delta, {
-    includeTitlePatch: true
-  })
-  const touched = new Set([
-    ...context.schemaFields,
-    ...context.valueFields
-  ])
-  return touched.size || undefined
-}
+  impact: CommitImpact
+): number | 'all' | undefined => touchedFieldCountOfImpact(impact)
 
 export const searchEntryCountOf = (
   search: SearchIndex

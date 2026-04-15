@@ -1,5 +1,5 @@
 import type { DataDoc } from '@dataview/core/contracts'
-import type { BaseOperation } from '@dataview/core/contracts/operations'
+import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import type {
   IndexState,
   NormalizedIndexDemand
@@ -8,8 +8,8 @@ import type { ViewCache } from '@dataview/engine/contracts/internal'
 import type { ViewState } from '@dataview/engine/contracts/public'
 
 export interface HistoryEntry {
-  undo: BaseOperation[]
-  redo: BaseOperation[]
+  undo: DocumentOperation[]
+  redo: DocumentOperation[]
 }
 
 export interface RuntimeHistory {

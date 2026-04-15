@@ -114,31 +114,19 @@ const createDocument = (input = {}) => {
   }
 }
 
-const createDelta = (input = {}) => ({
-  summary: {
-    records: false,
-    fields: false,
-    views: false,
-    values: false,
-    activeView: false,
-    indexes: true,
-    ...input.summary
-  },
-  entities: input.entities ?? {},
-  semantics: input.semantics ?? []
-})
+const createImpact = (input = {}) => input
 
 const createIndexHarness = (document, demand) => {
   let current = createIndexState(document, demand)
 
   return {
     state: () => current.state,
-    sync: (nextDocument, delta, nextDemand) => {
+    sync: (nextDocument, impact, nextDemand) => {
       current = deriveIndex({
         previous: current.state,
         previousDemand: current.demand,
         document: nextDocument,
-        delta,
+        impact,
         ...(nextDemand ? { demand: nextDemand } : {})
       })
       return current
@@ -170,29 +158,12 @@ test('engine.active.index sync patches search/group/sort/calculation on record v
     }
   }
 
-  const state = index.sync(updatedDocument, createDelta({
-    summary: {
-      records: true,
-      values: true
-    },
-    entities: {
-      values: {
-        records: ['rec_2'],
-        fields: [FIELD_STATUS, FIELD_POINTS]
-      }
-    },
-    semantics: [
-      {
-        kind: 'record.patch',
-        ids: ['rec_2'],
-        aspects: ['title']
-      },
-      {
-        kind: 'record.values',
-        records: ['rec_2'],
-        fields: [FIELD_STATUS, FIELD_POINTS]
-      }
-    ]
+  const state = index.sync(updatedDocument, createImpact({
+    records: {
+      touched: new Set(['rec_2']),
+      titleChanged: new Set(['rec_2']),
+      valueChangedFields: new Set([FIELD_STATUS, FIELD_POINTS])
+    }
   })).state
 
   const titleSearch = state.search.fields.get(TITLE_FIELD_ID)
@@ -238,22 +209,12 @@ test('engine.active.index sync rebuilds only touched field semantics on schema c
     fieldDefs: renamedFields
   })
 
-  const state = index.sync(updatedDocument, createDelta({
-    summary: {
-      fields: true
-    },
-    entities: {
-      fields: {
-        update: [FIELD_STATUS]
-      }
-    },
-    semantics: [
-      {
-        kind: 'field.schema',
-        fieldId: FIELD_STATUS,
-        aspects: ['options']
-      }
-    ]
+  const state = index.sync(updatedDocument, createImpact({
+    fields: {
+      schema: new Map([
+        [FIELD_STATUS, new Set(['options'])]
+      ])
+    }
   })).state
 
   assert.equal(state.sort.fields.get(FIELD_POINTS), before.sort.fields.get(FIELD_POINTS))

@@ -1,3 +1,5 @@
 export { applyOperations } from '@dataview/core/operation/applyOperations'
 export type { ApplyOperationsResult } from '@dataview/core/operation/applyOperations'
+export { executeOperation } from '@dataview/core/operation/executeOperation'
+export type { ExecuteOperationResult } from '@dataview/core/operation/executeOperation'
 export { reduceOperation, reduceOperations } from '@dataview/core/operation/reducer'

@@ -9,23 +9,14 @@ export type {
   ViewPatch
 } from '@dataview/core/contracts/actions'
 export type {
-  CommitDelta,
-  DeltaEntities,
-  DeltaEntityIds,
-  DeltaIds,
-  DeltaItem,
-  DeltaSummary,
-  DeltaValueIds,
+  CommitImpact,
+  CommitImpactViewChange,
+  CommitSummary,
   FieldSchemaAspect,
   RecordPatchAspect,
   ViewLayoutAspect,
   ViewQueryAspect
-} from '@dataview/core/contracts/delta'
-export type {
-  Command,
-  CommandType,
-  RecordFieldWriteManyCommandInput
-} from '@dataview/core/contracts/commands'
+} from '@dataview/core/contracts/commit'
 export type {
   GalleryCardSize,
   GalleryOptions
@@ -44,7 +35,7 @@ export type {
   KanbanOptions
 } from '@dataview/core/contracts/kanban'
 export type {
-  BaseOperation,
+  DocumentOperation,
   DocumentRecordFieldRestoreEntry,
   OperationPayload,
   OperationType,

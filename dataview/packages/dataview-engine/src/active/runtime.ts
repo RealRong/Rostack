@@ -1,5 +1,5 @@
 import type {
-  CommitDelta,
+  CommitImpact,
   DataDoc,
   ViewId
 } from '@dataview/core/contracts'
@@ -47,14 +47,14 @@ const createSnapshotTrace = (
 export const createViewRuntime = (input: {
   doc: DataDoc
   index: IndexState
-  delta: CommitDelta
+  impact: CommitImpact
   capturePerf: boolean
 }): ViewRuntimeResult => deriveViewRuntime({
   previous: undefined,
   cache: emptyViewCache(),
   doc: input.doc,
   index: input.index,
-  delta: input.delta,
+  impact: input.impact,
   capturePerf: input.capturePerf
 })
 
@@ -63,13 +63,13 @@ export const deriveViewRuntime = (input: {
   cache: ViewCache
   doc: DataDoc
   index: IndexState
-  delta: CommitDelta
+  impact: CommitImpact
   capturePerf: boolean
 }): ViewRuntimeResult => {
   const runResult = deriveViewSnapshot({
     document: input.doc,
     activeViewId: input.doc.activeViewId as ViewId | undefined,
-    delta: input.delta,
+    impact: input.impact,
     index: input.index,
     previousCache: input.cache,
     previousSnapshot: input.previous,

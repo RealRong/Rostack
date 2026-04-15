@@ -78,7 +78,7 @@ export interface CreateEngineOptions {
 export interface CommitResult {
   issues: readonly ValidationIssue[]
   applied: boolean
-  changes?: import('@dataview/core/contracts').CommitDelta
+  summary?: import('@dataview/core/contracts').CommitSummary
 }
 
 export interface CreatedEntities {
@@ -461,16 +461,16 @@ export type ViewStageName =
   | 'sections'
   | 'summary'
 
-export interface TraceDeltaSummary {
+export interface TraceImpactSummary {
   summary: {
     records: boolean
     fields: boolean
     views: boolean
-    values: boolean
     activeView: boolean
+    external: boolean
     indexes: boolean
   }
-  semantics: readonly {
+  facts: readonly {
     kind: string
     count?: number
   }[]
@@ -557,7 +557,7 @@ export interface CommitTrace {
     viewMs?: number
     snapshotMs?: number
   }
-  delta: TraceDeltaSummary
+  impact: TraceImpactSummary
   index: IndexTrace
   view: ViewTrace
   snapshot: SnapshotTrace

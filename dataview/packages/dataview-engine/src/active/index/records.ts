@@ -1,5 +1,5 @@
 import type {
-  CommitDelta,
+  CommitImpact,
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
@@ -18,6 +18,7 @@ import type {
 import {
   collectTouchedFieldIds,
   collectTouchedRecordIds,
+  hasIndexChanges,
   createOrderIndex
 } from '@dataview/engine/active/index/shared'
 
@@ -75,24 +76,24 @@ export const buildRecordIndex = (
 export const syncRecordIndex = (
   previous: RecordIndex,
   document: DataDoc,
-  delta: CommitDelta,
+  impact: CommitImpact,
   fieldIds: readonly FieldId[] = previous.fieldIds
 ): RecordIndex => {
-  if (!delta.summary.indexes) {
+  if (!hasIndexChanges(impact)) {
     return previous
   }
 
   const nextFieldIds = [...fieldIds]
 
   if (
-    delta.entities.records?.update === 'all'
-    || delta.entities.values?.records === 'all'
-    || delta.entities.values?.fields === 'all'
+    impact.reset
+    || impact.records?.touched === 'all'
+    || impact.records?.valueChangedFields === 'all'
   ) {
     return buildRecordIndex(document, nextFieldIds, previous.rev + 1)
   }
 
-  const touchedRecordIds = collectTouchedRecordIds(delta)
+  const touchedRecordIds = collectTouchedRecordIds(impact)
   if (touchedRecordIds === 'all') {
     return buildRecordIndex(document, nextFieldIds, previous.rev + 1)
   }
@@ -100,8 +101,7 @@ export const syncRecordIndex = (
   const fieldIdsChanged = !sameIds(previous.fieldIds, nextFieldIds)
   const nextFieldSet = new Set(nextFieldIds)
   const recordSetChanged = Boolean(
-    delta.entities.records?.add?.length
-    || delta.entities.records?.remove?.length
+    impact.records?.recordSetChanged
   )
 
   let rows: Map<RecordId, DataDoc['records']['byId'][RecordId]> | undefined
@@ -113,7 +113,7 @@ export const syncRecordIndex = (
     return rows
   }
 
-  delta.entities.records?.remove?.forEach(recordId => {
+  impact.records?.removed?.forEach(recordId => {
     if (!previous.rows.has(recordId)) {
       return
     }
@@ -142,7 +142,7 @@ export const syncRecordIndex = (
     nextFieldIds.forEach(fieldId => touchedFields.add(fieldId))
   }
 
-  const deltaTouchedFields = collectTouchedFieldIds(delta, {
+  const deltaTouchedFields = collectTouchedFieldIds(impact, {
     includeTitlePatch: true
   })
   if (deltaTouchedFields !== 'all') {

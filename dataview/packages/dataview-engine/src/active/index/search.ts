@@ -1,5 +1,5 @@
 import type {
-  CommitDelta,
+  CommitImpact,
   DataDoc,
   FieldId,
   RecordId
@@ -14,6 +14,9 @@ import {
   shouldRebuildFieldIndex,
   shouldSyncFieldIndex
 } from '@dataview/engine/active/index/sync'
+import {
+  hasIndexChanges
+} from '@dataview/engine/active/index/shared'
 import type {
   RecordIndex,
   SearchDemand,
@@ -175,9 +178,9 @@ export const syncSearchIndex = (
   previous: SearchIndex,
   document: DataDoc,
   records: RecordIndex,
-  delta: CommitDelta
+  impact: CommitImpact
 ): SearchIndex => {
-  if (!delta.summary.indexes) {
+  if (!hasIndexChanges(impact)) {
     return previous
   }
 
@@ -187,7 +190,7 @@ export const syncSearchIndex = (
     return previous
   }
 
-  const context = createFieldSyncContext(delta, {
+  const context = createFieldSyncContext(impact, {
     includeTitlePatch: true,
     includeRecordSetChange: true
   })

@@ -1,7 +1,5 @@
-import { buildSemanticDraft } from '@dataview/core/commit/semantics'
 import type { Action, DataDoc } from '@dataview/core/contracts'
-import type { DeltaItem } from '@dataview/core/contracts'
-import type { BaseOperation } from '@dataview/core/contracts/operations'
+import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import { reduceOperations } from '@dataview/core/operation'
 import { isNonEmptyString } from '@shared/core'
 import { planFieldAction } from '@dataview/engine/mutate/planner/fields'
@@ -19,8 +17,7 @@ import {
 import { planViewAction } from '@dataview/engine/mutate/planner/views'
 
 export interface PlannedWriteBatch {
-  operations: readonly BaseOperation[]
-  deltaDraft: readonly DeltaItem[]
+  operations: readonly DocumentOperation[]
   issues: ValidationIssue[]
   canApply: boolean
 }
@@ -29,10 +26,8 @@ export const planActions = (input: {
   document: DataDoc
   actions: readonly Action[]
 }): PlannedWriteBatch => {
-  // The write path plans directly to canonical operations for the single active runtime.
   const issues: ValidationIssue[] = []
-  const operations: BaseOperation[] = []
-  const deltaDraft: DeltaItem[] = []
+  const operations: DocumentOperation[] = []
   let workingDocument = input.document
 
   for (const [index, action] of input.actions.entries()) {
@@ -41,7 +36,6 @@ export const planActions = (input: {
     if (hasValidationErrors(planned.issues)) {
       return {
         operations: [],
-        deltaDraft: [],
         issues,
         canApply: false
       }
@@ -51,19 +45,16 @@ export const planActions = (input: {
       continue
     }
 
-    const nextDocument = reduceOperations(workingDocument, planned.operations)
-    deltaDraft.push(...buildSemanticDraft({
-      beforeDocument: workingDocument,
-      afterDocument: nextDocument,
-      operations: planned.operations
-    }))
     operations.push(...planned.operations)
-    workingDocument = nextDocument
+
+    // Only advance planner state when later actions still depend on the mutated document.
+    if (index < input.actions.length - 1) {
+      workingDocument = reduceOperations(workingDocument, planned.operations)
+    }
   }
 
   return {
     operations,
-    deltaDraft,
     issues,
     canApply: true
   }

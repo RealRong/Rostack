@@ -1,5 +1,5 @@
 import type {
-  CommitDelta,
+  CommitImpact,
   DataDoc
 } from '@dataview/core/contracts'
 import type {
@@ -108,7 +108,7 @@ export const deriveIndex = (input: {
   previous: IndexState
   previousDemand: NormalizedIndexDemand
   document: DataDoc
-  delta: CommitDelta
+  impact: CommitImpact
   demand?: IndexDemand
 }): IndexDeriveResult => {
   const previous = input.previous
@@ -116,15 +116,15 @@ export const deriveIndex = (input: {
     ? normalizeIndexDemand(input.demand)
     : input.previousDemand
   const totalStart = now()
-  const touchedRecordCount = touchedRecordCountOf(input.delta)
-  const touchedFieldCount = touchedFieldCountOf(input.delta)
-  const rebuild = fullRebuildFrom(input.delta)
+  const touchedRecordCount = touchedRecordCountOf(input.impact)
+  const touchedFieldCount = touchedFieldCountOf(input.impact)
+  const rebuild = fullRebuildFrom(input.impact)
 
   const recordsStart = now()
   const records = syncRecordIndex(
     previous.records,
     input.document,
-    input.delta,
+    input.impact,
     nextDemand.recordFields
   )
   const recordsMs = now() - recordsStart
@@ -134,7 +134,7 @@ export const deriveIndex = (input: {
     previousDemand: input.previousDemand.search,
     nextDemand: nextDemand.search,
     sameDemand: sameSearchDemand,
-    sync: current => syncSearchIndex(current, input.document, records, input.delta),
+    sync: current => syncSearchIndex(current, input.document, records, input.impact),
     ensure: current => ensureSearchIndex(current, input.document, records, nextDemand.search),
     build: rev => buildSearchIndex(input.document, records, nextDemand.search, rev)
   })
@@ -144,7 +144,7 @@ export const deriveIndex = (input: {
     previousDemand: input.previousDemand.groups,
     nextDemand: nextDemand.groups,
     sameDemand: sameGroupDemand,
-    sync: current => syncGroupIndex(current, input.document, records, input.delta),
+    sync: current => syncGroupIndex(current, input.document, records, input.impact),
     ensure: current => ensureGroupIndex(current, input.document, records, nextDemand.groups),
     build: rev => buildGroupIndex(input.document, records, nextDemand.groups, rev)
   })
@@ -154,7 +154,7 @@ export const deriveIndex = (input: {
     previousDemand: input.previousDemand.sortFields,
     nextDemand: nextDemand.sortFields,
     sameDemand: sameFieldIdList,
-    sync: current => syncSortIndex(current, input.document, records, input.delta),
+    sync: current => syncSortIndex(current, input.document, records, input.impact),
     ensure: current => ensureSortIndex(current, input.document, records, nextDemand.sortFields),
     build: rev => buildSortIndex(input.document, records, nextDemand.sortFields, rev)
   })
@@ -164,7 +164,7 @@ export const deriveIndex = (input: {
     previousDemand: input.previousDemand.calculationFields,
     nextDemand: nextDemand.calculationFields,
     sameDemand: sameFieldIdList,
-    sync: current => syncCalculationIndex(current, input.document, records, input.delta),
+    sync: current => syncCalculationIndex(current, input.document, records, input.impact),
     ensure: current => ensureCalculationIndex(current, input.document, records, nextDemand.calculationFields),
     build: rev => buildCalculationIndex(input.document, records, nextDemand.calculationFields, rev)
   })

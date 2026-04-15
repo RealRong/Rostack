@@ -1,5 +1,5 @@
 import type {
-  CommitDelta,
+  CommitImpact,
   DataDoc,
   FieldId,
   RecordId
@@ -16,19 +16,19 @@ import {
 import type { FieldSyncContext } from '@dataview/engine/active/index/contracts'
 
 export const createFieldSyncContext = (
-  delta: CommitDelta,
+  impact: CommitImpact,
   options?: {
     includeTitlePatch?: boolean
     includeRecordSetChange?: boolean
   }
 ): FieldSyncContext => ({
-  schemaFields: collectSchemaFieldIds(delta),
-  valueFields: collectValueFieldIds(delta, {
+  schemaFields: collectSchemaFieldIds(impact),
+  valueFields: collectValueFieldIds(impact, {
     includeTitlePatch: options?.includeTitlePatch
   }),
-  touchedRecords: collectTouchedRecordIds(delta),
+  touchedRecords: collectTouchedRecordIds(impact),
   recordSetChanged: options?.includeRecordSetChange === true
-    ? hasRecordSetChange(delta)
+    ? hasRecordSetChange(impact)
     : false
 })
 
@@ -78,5 +78,9 @@ export const shouldSyncFieldIndex = (
 ): context is FieldSyncContext & { touchedRecords: ReadonlySet<RecordId> } => (
   context.touchedRecords !== 'all'
   && context.touchedRecords.size > 0
-  && (context.valueFields.has(fieldId) || context.recordSetChanged)
+  && (
+    context.valueFields === 'all'
+    || context.valueFields.has(fieldId)
+    || context.recordSetChanged
+  )
 )

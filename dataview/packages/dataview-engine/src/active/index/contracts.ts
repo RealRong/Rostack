@@ -1,5 +1,5 @@
 import type {
-  CommitDelta,
+  CommitImpact,
   DataDoc,
   Field,
   FieldId,
@@ -147,7 +147,7 @@ export interface FieldContext {
 
 export interface FieldSyncContext {
   schemaFields: ReadonlySet<FieldId>
-  valueFields: ReadonlySet<FieldId>
+  valueFields: ReadonlySet<FieldId> | 'all'
   touchedRecords: ReadonlySet<RecordId> | 'all'
   recordSetChanged: boolean
 }
@@ -162,6 +162,6 @@ export interface IndexDeriveInput {
   previous: IndexState
   previousDemand: NormalizedIndexDemand
   document: DataDoc
-  delta: CommitDelta
+  impact: CommitImpact
   demand?: IndexDemand
 }

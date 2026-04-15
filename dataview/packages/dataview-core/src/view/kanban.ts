@@ -12,7 +12,7 @@ import {
 
 const DEFAULT_NEW_RECORD_POSITION: KanbanNewRecordPosition = 'end'
 const DEFAULT_FILL_COLUMN_COLOR = true
-const DEFAULT_CARDS_PER_COLUMN: KanbanCardsPerColumn = 'all'
+const DEFAULT_CARDS_PER_COLUMN: KanbanCardsPerColumn = 25
 
 const normalizeCardsPerColumn = (
   value: unknown

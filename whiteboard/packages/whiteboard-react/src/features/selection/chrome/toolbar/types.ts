@@ -1,15 +1,7 @@
-export type ToolbarSelectionKind =
-  | 'shape'
-  | 'text'
-  | 'sticky'
-  | 'frame'
-  | 'draw'
-  | 'group'
-  | 'mixed'
-  | 'none'
-
 export type ToolbarItemKey =
-  | 'filter'
+  | 'scope'
+  | 'align'
+  | 'group'
   | 'shape-kind'
   | 'font-size'
   | 'bold'
@@ -18,6 +10,9 @@ export type ToolbarItemKey =
   | 'text-color'
   | 'stroke'
   | 'fill'
+  | 'edge-line'
+  | 'edge-markers'
+  | 'edge-text'
   | 'lock'
   | 'more'
 
@@ -26,11 +21,15 @@ export type ToolbarRecipeItem =
   | { kind: 'divider' }
 
 export type ToolbarPanelKey =
-  | 'filter'
+  | 'scope'
+  | 'align'
   | 'shape-kind'
   | 'font-size'
   | 'text-align'
   | 'text-color'
   | 'stroke'
   | 'fill'
+  | 'edge-line'
+  | 'edge-markers'
+  | 'edge-text'
   | 'more'

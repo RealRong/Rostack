@@ -311,17 +311,19 @@
   position: absolute;
   left: 0;
   top: 0;
+  box-sizing: border-box;
   pointer-events: auto;
   cursor: move;
-  box-shadow: inset 0 0 0 calc(1px / var(--wb-zoom, 1)) rgb(from var(--ui-accent) r g b / 0.9);
+  border: calc(1px / var(--wb-zoom, 1)) solid rgb(from var(--ui-accent) r g b / 0.9);
 }
 
 .wb-node-transform-frame {
   position: absolute;
   left: 0;
   top: 0;
+  box-sizing: border-box;
   pointer-events: none;
-  box-shadow: inset 0 0 0 calc(1px / var(--wb-zoom, 1)) rgb(from var(--ui-accent) r g b / 0.9);
+  border: calc(1px / var(--wb-zoom, 1)) solid rgb(from var(--ui-accent) r g b / 0.9);
 }
 
 .wb-drag-guides-layer {
@@ -454,21 +456,26 @@
 }
 
 .wb-node-transform-handle {
+  --wb-node-transform-handle-size: calc(var(--wb-node-handle-size, 10px) / var(--wb-zoom, 1));
+  --wb-node-transform-handle-stroke: calc(1px / var(--wb-zoom, 1));
   position: absolute;
   left: 0;
   top: 0;
   z-index: 2;
-  width: calc(var(--wb-node-handle-size, 10px) / var(--wb-zoom, 1));
-  height: calc(var(--wb-node-handle-size, 10px) / var(--wb-zoom, 1));
+  box-sizing: border-box;
+  width: var(--wb-node-transform-handle-size);
+  height: var(--wb-node-transform-handle-size);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--ui-accent);
+  border: var(--wb-node-transform-handle-stroke) solid var(--ui-accent);
   background: white;
   color: var(--ui-accent);
-  /* box-shadow: 0 2px 6px rgb(from var(--ui-accent) r g b / 0.25); */
+  box-shadow: 0 1px 4px rgb(from var(--ui-accent) r g b / 0.18);
   pointer-events: auto;
-  transform: translate(var(--wb-node-handle-x, 0px), var(--wb-node-handle-y, 0px));
+  transform:
+    translate(var(--wb-node-handle-center-x, 0px), var(--wb-node-handle-center-y, 0px))
+    translate(calc(var(--wb-node-transform-handle-size) / -2), calc(var(--wb-node-transform-handle-size) / -2));
 }
 
 .wb-node-transform-edge-hit-area-layer {
@@ -525,24 +532,24 @@
 }
 
 .wb-edge-endpoint-handle {
+  --wb-edge-handle-size: calc(10px / var(--wb-zoom, 1));
   position: absolute;
   left: 0;
   top: 0;
   z-index: 1;
-  width: calc(12px / var(--wb-zoom, 1));
-  height: calc(12px / var(--wb-zoom, 1));
+  width: var(--wb-edge-handle-size);
+  height: var(--wb-edge-handle-size);
   border: calc(2px / var(--wb-zoom, 1)) solid var(--ui-accent);
   border-radius: 999px;
-  background: var(--ui-surface);
-  box-shadow: 0 4px 10px rgb(from var(--ui-accent) r g b / 0.35);
+  background: white;
   cursor: grab;
   pointer-events: auto;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   transform: translate(
-    calc(var(--wb-edge-endpoint-x, 0) * 1px - calc(12px / var(--wb-zoom, 1) / 2)),
-    calc(var(--wb-edge-endpoint-y, 0) * 1px - calc(12px / var(--wb-zoom, 1) / 2))
+    calc(var(--wb-edge-endpoint-x, 0) * 1px - var(--wb-edge-handle-size) / 2),
+    calc(var(--wb-edge-endpoint-y, 0) * 1px - var(--wb-edge-handle-size) / 2)
   );
 }
 
@@ -555,36 +562,29 @@
 }
 
 .wb-edge-control-point-handle {
+  --wb-edge-handle-size: calc(10px / var(--wb-zoom, 1));
   position: absolute;
   left: 0;
   top: 0;
-  width: calc(10px / var(--wb-zoom, 1));
-  height: calc(10px / var(--wb-zoom, 1));
+  width: var(--wb-edge-handle-size);
+  height: var(--wb-edge-handle-size);
   border: calc(2px / var(--wb-zoom, 1)) solid var(--ui-accent);
   border-radius: 999px;
-  background: var(--ui-surface);
-  box-shadow: 0 2px 6px rgb(from var(--ui-accent) r g b / 0.25);
+  background: white;
   cursor: grab;
   pointer-events: auto;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
-  transition: box-shadow 120ms ease;
   transform: translate(
-      calc(var(--wb-edge-control-point-x, 0) * 1px - calc(10px / var(--wb-zoom, 1) / 2)),
-      calc(var(--wb-edge-control-point-y, 0) * 1px - calc(10px / var(--wb-zoom, 1) / 2))
+      calc(var(--wb-edge-control-point-x, 0) * 1px - var(--wb-edge-handle-size) / 2),
+      calc(var(--wb-edge-control-point-y, 0) * 1px - var(--wb-edge-handle-size) / 2)
     )
     scale(var(--wb-edge-control-point-scale, 1));
 }
 
-.wb-edge-control-point-handle:hover,
-.wb-edge-control-point-handle:focus-visible,
-.wb-edge-control-point-handle[data-active='true'] {
-  box-shadow: 0 4px 10px rgb(from var(--ui-accent) r g b / 0.35);
-}
-
 .wb-edge-control-point-handle[data-kind='insert'] {
-  border-color: var(--ui-accent);
+  border-color: white;
   background: var(--ui-accent);
 }
 

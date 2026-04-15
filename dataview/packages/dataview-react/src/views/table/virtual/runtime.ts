@@ -53,6 +53,10 @@ const EMPTY_BLOCKS = [] as readonly TableBlock[]
 const SCROLL_DOWN = 1 as const
 const SCROLL_IDLE = 0 as const
 const SCROLL_UP = -1 as const
+const MEASURE_SCROLL_Y = 1 << 0
+const MEASURE_SCROLL_X = 1 << 1
+const MEASURE_LAYOUT = 1 << 2
+const MEASURE_RESET_DIRECTION = 1 << 3
 
 export type TableVerticalDirection =
   | typeof SCROLL_UP
@@ -369,6 +373,8 @@ export const createTableVirtualRuntime = (options: {
   let attachedScrollNode: ScrollNode | null = null
   let cleanupListeners = () => {}
   let frame: number | null = null
+  let pendingMeasureFlags = 0
+  let canvasTopInScrollContent: number | null = null
 
   const cancelFrame = () => {
     if (typeof window === 'undefined' || frame === null) {
@@ -377,14 +383,17 @@ export const createTableVirtualRuntime = (options: {
 
     window.cancelAnimationFrame(frame)
     frame = null
+    pendingMeasureFlags = 0
   }
 
   const resetViewport = () => {
+    canvasTopInScrollContent = null
     viewportStore.set(createBootstrapViewportSnapshot())
   }
 
-  const measureViewport = (scrollNodeChanged: boolean) => {
+  const measureViewport = (flags: number) => {
     frame = null
+    pendingMeasureFlags = 0
 
     const container = attachedContainer
     const canvas = attachedCanvas
@@ -394,54 +403,99 @@ export const createTableVirtualRuntime = (options: {
       return
     }
 
-    const pageViewport = viewportRect(scrollNode)
     const metrics = scrollMetrics(scrollNode)
-    const bounds = contentBounds({
-      container,
-      canvas
-    })
-    const canvasRect = canvas.getBoundingClientRect()
     const previous = viewportStore.get()
-    const deltaTop = scrollNodeChanged
+    const deltaTop = flags & MEASURE_RESET_DIRECTION
       ? 0
       : metrics.top - previous.pageScrollTop
+    const verticalDirection = deltaTop > 0
+      ? SCROLL_DOWN
+      : deltaTop < 0
+        ? SCROLL_UP
+        : SCROLL_IDLE
+
+    if (
+      flags & MEASURE_LAYOUT
+      || canvasTopInScrollContent === null
+    ) {
+      const pageViewport = viewportRect(scrollNode)
+      const bounds = contentBounds({
+        container,
+        canvas
+      })
+      const canvasRect = canvas.getBoundingClientRect()
+      const viewportTopInCanvas = Math.max(
+        0,
+        metrics.top - (
+          canvasRect.top
+          - pageViewport.top
+          + metrics.top
+        )
+      )
+
+      canvasTopInScrollContent = (
+        canvasRect.top
+        - pageViewport.top
+        + metrics.top
+      )
+
+      viewportStore.set({
+        ready: true,
+        viewportTopInCanvas,
+        viewportBottomInCanvas: viewportTopInCanvas + pageViewport.height,
+        viewportHeight: pageViewport.height,
+        viewportWidth: pageViewport.width,
+        pageScrollTop: metrics.top,
+        verticalDirection,
+        scrollLeft: container.scrollLeft,
+        containerWidth: container.clientWidth,
+        containerHeight: container.clientHeight,
+        contentLeft: bounds?.left ?? 0,
+        contentRight: bounds?.right ?? 0
+      })
+      return
+    }
+
+    const viewportTopInCanvas = flags & MEASURE_SCROLL_Y
+      ? Math.max(0, metrics.top - canvasTopInScrollContent)
+      : previous.viewportTopInCanvas
 
     viewportStore.set({
+      ...previous,
       ready: true,
-      viewportTopInCanvas: Math.max(0, pageViewport.top - canvasRect.top),
-      viewportBottomInCanvas: Math.max(
-        0,
-        pageViewport.bottom - canvasRect.top
-      ),
-      viewportHeight: pageViewport.height,
-      viewportWidth: pageViewport.width,
-      pageScrollTop: metrics.top,
-      verticalDirection: deltaTop > 0
-        ? SCROLL_DOWN
-        : deltaTop < 0
-          ? SCROLL_UP
-          : SCROLL_IDLE,
-      scrollLeft: container.scrollLeft,
-      containerWidth: container.clientWidth,
-      containerHeight: container.clientHeight,
-      contentLeft: bounds?.left ?? 0,
-      contentRight: bounds?.right ?? 0
+      viewportTopInCanvas,
+      viewportBottomInCanvas: flags & MEASURE_SCROLL_Y
+        ? viewportTopInCanvas + previous.viewportHeight
+        : previous.viewportBottomInCanvas,
+      pageScrollTop: flags & MEASURE_SCROLL_Y
+        ? metrics.top
+        : previous.pageScrollTop,
+      verticalDirection: flags & MEASURE_SCROLL_Y
+        ? verticalDirection
+        : previous.verticalDirection,
+      scrollLeft: flags & MEASURE_SCROLL_X
+        ? container.scrollLeft
+        : previous.scrollLeft
     })
   }
 
-  const scheduleMeasure = (scrollNodeChanged = false) => {
+  const scheduleMeasure = (flags: number) => {
     if (
       typeof window === 'undefined'
-      || frame !== null
     ) {
       if (typeof window === 'undefined') {
-        measureViewport(scrollNodeChanged)
+        measureViewport(flags)
       }
       return
     }
 
+    pendingMeasureFlags |= flags
+    if (frame !== null) {
+      return
+    }
+
     frame = window.requestAnimationFrame(() => {
-      measureViewport(scrollNodeChanged)
+      measureViewport(pendingMeasureFlags)
     })
   }
 
@@ -489,40 +543,57 @@ export const createTableVirtualRuntime = (options: {
     const boundContainer = attachedContainer
     const boundCanvas = attachedCanvas
     const ownerWindow = boundContainer.ownerDocument.defaultView
-    const handleChange = () => {
-      scheduleMeasure(false)
+    const handleScrollNodeScroll = () => {
+      scheduleMeasure(MEASURE_SCROLL_Y)
+    }
+    const handleContainerScroll = () => {
+      scheduleMeasure(
+        boundContainer === boundScrollNode
+          ? MEASURE_SCROLL_Y | MEASURE_SCROLL_X
+          : MEASURE_SCROLL_X
+      )
+    }
+    const handleLayoutChange = () => {
+      scheduleMeasure(MEASURE_LAYOUT)
     }
     const unsubscribes = [
       () => {
-        boundScrollNode.removeEventListener?.('scroll', handleChange)
+        boundScrollNode.removeEventListener?.('scroll', handleScrollNodeScroll)
       },
       () => {
-        boundContainer.removeEventListener?.('scroll', handleChange)
+        if (boundContainer !== boundScrollNode) {
+          boundContainer.removeEventListener?.('scroll', handleContainerScroll)
+        }
       },
       () => {
-        ownerWindow?.removeEventListener('resize', handleChange)
+        ownerWindow?.removeEventListener('resize', handleLayoutChange)
       }
     ]
 
-    boundScrollNode.addEventListener?.('scroll', handleChange, { passive: true })
-    boundContainer.addEventListener?.('scroll', handleChange, { passive: true })
-    ownerWindow?.addEventListener('resize', handleChange, { passive: true })
+    boundScrollNode.addEventListener?.('scroll', handleScrollNodeScroll, { passive: true })
+    if (boundContainer !== boundScrollNode) {
+      boundContainer.addEventListener?.('scroll', handleContainerScroll, { passive: true })
+    }
+    ownerWindow?.addEventListener('resize', handleLayoutChange, { passive: true })
 
     unsubscribes.push(observeElementSize(boundContainer, {
       emitInitial: false,
       onChange: () => {
-        scheduleMeasure(false)
+        handleLayoutChange()
       }
     }))
     unsubscribes.push(observeElementSize(boundCanvas, {
       emitInitial: false,
       onChange: () => {
-        scheduleMeasure(false)
+        handleLayoutChange()
       }
     }))
 
     cleanupListeners = joinUnsubscribes(unsubscribes)
-    measureViewport(scrollNodeChanged)
+    measureViewport(
+      MEASURE_LAYOUT
+      | (scrollNodeChanged ? MEASURE_RESET_DIRECTION : 0)
+    )
   }
 
   return {

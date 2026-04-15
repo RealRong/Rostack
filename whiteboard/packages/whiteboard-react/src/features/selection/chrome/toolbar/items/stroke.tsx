@@ -7,64 +7,78 @@ export const strokeItem: ToolbarItemSpec = {
   key: 'stroke',
   panelKey: 'stroke',
   renderButton: ({
-    context,
+    activeScope,
     activePanelKey,
     togglePanel,
     registerPanelButton
-  }) => (
-    <ToolbarIconButton
-      ref={(element) => {
-        registerPanelButton('stroke', element)
-      }}
-      active={activePanelKey === 'stroke'}
-      onClick={() => {
-        togglePanel('stroke')
-      }}
-      title="Border"
-      aria-label="Border"
-    >
-      <ToolbarStrokeIcon
-        stroke={resolvePaletteColor(context.stroke) ?? context.stroke}
-        strokeWidth={context.strokeWidth}
-        strokeDash={context.canEditStrokeDash ? context.strokeDash : undefined}
-        opacity={context.canEditStrokeOpacity
-          ? context.strokeOpacity
-          : context.opacity}
-      />
-    </ToolbarIconButton>
-  ),
-  renderPanel: ({
-    context,
-    editor
-  }) => (
-    <BorderPanel
-      stroke={context.stroke}
-      strokeWidth={context.strokeWidth}
-      opacity={context.canEditStrokeOpacity
-        ? context.strokeOpacity
-        : context.opacity}
-      strokeDash={context.canEditStrokeDash ? context.strokeDash : undefined}
-      showStyle={context.canEditStrokeDash}
-      showOpacity={context.canEditStrokeOpacity || context.canEditNodeOpacity}
-      onStrokeChange={(value) => {
-        editor.actions.node.style.stroke(context.nodeIds, value)
-      }}
-      onStrokeWidthChange={(value) => {
-        editor.actions.node.style.strokeWidth(context.nodeIds, value)
-      }}
-      onOpacityChange={(value) => {
-        if (context.canEditStrokeOpacity) {
-          editor.actions.node.style.strokeOpacity(context.nodeIds, value)
-          return
-        }
+  }) => {
+    const node = activeScope.node
+    if (!node) {
+      return null
+    }
 
-        if (context.canEditNodeOpacity) {
-          editor.actions.node.style.opacity(context.nodeIds, value)
-        }
-      }}
-      onStrokeDashChange={context.canEditStrokeDash
-        ? (value) => editor.actions.node.style.strokeDash(context.nodeIds, value)
-        : undefined}
-    />
-  )
+    return (
+      <ToolbarIconButton
+        ref={(element) => {
+          registerPanelButton('stroke', element)
+        }}
+        active={activePanelKey === 'stroke'}
+        onClick={() => {
+          togglePanel('stroke')
+        }}
+        title="Border"
+        aria-label="Border"
+      >
+        <ToolbarStrokeIcon
+          stroke={resolvePaletteColor(node.stroke) ?? node.stroke}
+          strokeWidth={node.strokeWidth}
+          strokeDash={node.canEditStrokeDash ? node.strokeDash : undefined}
+          opacity={node.canEditStrokeOpacity
+            ? node.strokeOpacity
+            : node.opacity}
+        />
+      </ToolbarIconButton>
+    )
+  },
+  renderPanel: ({
+    activeScope,
+    editor
+  }) => {
+    const node = activeScope.node
+    if (!node) {
+      return null
+    }
+
+    return (
+      <BorderPanel
+        stroke={node.stroke}
+        strokeWidth={node.strokeWidth}
+        opacity={node.canEditStrokeOpacity
+          ? node.strokeOpacity
+          : node.opacity}
+        strokeDash={node.canEditStrokeDash ? node.strokeDash : undefined}
+        showStyle={node.canEditStrokeDash}
+        showOpacity={node.canEditStrokeOpacity || node.canEditNodeOpacity}
+        onStrokeChange={(value) => {
+          editor.actions.node.style.stroke(node.nodeIds, value)
+        }}
+        onStrokeWidthChange={(value) => {
+          editor.actions.node.style.strokeWidth(node.nodeIds, value)
+        }}
+        onOpacityChange={(value) => {
+          if (node.canEditStrokeOpacity) {
+            editor.actions.node.style.strokeOpacity(node.nodeIds, value)
+            return
+          }
+
+          if (node.canEditNodeOpacity) {
+            editor.actions.node.style.opacity(node.nodeIds, value)
+          }
+        }}
+        onStrokeDashChange={node.canEditStrokeDash
+          ? (value) => editor.actions.node.style.strokeDash(node.nodeIds, value)
+          : undefined}
+      />
+    )
+  }
 }

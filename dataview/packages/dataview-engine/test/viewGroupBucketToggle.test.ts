@@ -596,6 +596,54 @@ test('engine.active.state records honor search filter sort and manual order', ()
   )
 })
 
+test('engine.active.state removes deleted records from sorted query results and item lists', () => {
+  const engine = createEngineForTest({
+    document: createDocument()
+  })
+
+  openView(engine, VIEW_TABLE).sort.keepOnly(FIELD_POINTS, 'desc')
+  engine.records.remove('rec_2')
+
+  const state = readViewState(engine)
+
+  assert.deepEqual(state?.records.matched, ['rec_3', 'rec_1'])
+  assert.deepEqual(state?.records.ordered, ['rec_3', 'rec_1'])
+  assert.deepEqual(state?.records.visible, ['rec_3', 'rec_1'])
+  assert.deepEqual(
+    state?.items.ids.map(itemId => state.items.get(itemId)?.recordId),
+    ['rec_3', 'rec_1']
+  )
+})
+
+test('engine.active.state removes deleted records from filtered query results and item lists', () => {
+  const engine = createEngineForTest({
+    document: createDocument()
+  })
+
+  openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).filters.update(0, {
+    fieldId: FIELD_STATUS,
+    presetId: 'eq',
+    value: 'doing'
+  })
+  engine.records.remove('rec_2')
+
+  const state = readViewState(engine)
+
+  assert.deepEqual(state?.records.visible, [])
+  assert.deepEqual(state?.items.ids, [])
+  assert.deepEqual(
+    state?.sections.all.map(section => ({
+      key: section.key,
+      recordIds: section.itemIds.map(itemId => state.items.get(itemId)?.recordId)
+    })),
+    [{
+      key: 'root',
+      recordIds: []
+    }]
+  )
+})
+
 test('engine.active.state grouped sections keep visible record order inside each bucket', () => {
   const document = createDocument()
   document.records.byId.rec_4 = {

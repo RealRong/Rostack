@@ -1,5 +1,16 @@
+import type { SelectionTarget } from '@whiteboard/core/selection'
 import type { ShapeKind } from '@whiteboard/core/node'
-import type { Node, NodeId, Rect } from '@whiteboard/core/types'
+import type {
+  Edge,
+  EdgeDash,
+  EdgeId,
+  EdgeMarker,
+  EdgeTextMode,
+  EdgeType,
+  Node,
+  NodeId,
+  Rect
+} from '@whiteboard/core/types'
 import type { NodeFamily } from '@whiteboard/editor/types/node'
 
 export type SelectionNodeTypeInfo = {
@@ -11,12 +22,20 @@ export type SelectionNodeTypeInfo = {
   nodeIds: readonly NodeId[]
 }
 
+export type SelectionEdgeTypeInfo = {
+  key: string
+  name: string
+  count: number
+  edgeIds: readonly EdgeId[]
+  edgeType?: EdgeType
+}
+
 export type SelectionNodeInfo = {
   lock: 'none' | 'mixed' | 'all'
   types: readonly SelectionNodeTypeInfo[]
 }
 
-export type ToolbarSelectionKind =
+export type SelectionToolbarNodeKind =
   | 'shape'
   | 'text'
   | 'sticky'
@@ -25,19 +44,22 @@ export type ToolbarSelectionKind =
   | 'group'
   | 'mixed'
 
-export type NodeToolbarFilter = {
-  label: string
-  types: readonly SelectionNodeTypeInfo[]
-}
+export type SelectionToolbarScopeKind =
+  | 'nodes'
+  | 'node-type'
+  | 'edges'
+  | 'edge-type'
 
-export type NodeToolbarContext = {
-  box: Rect
-  key: string
-  kind: ToolbarSelectionKind
+export type SelectionToolbarLockState =
+  | 'none'
+  | 'mixed'
+  | 'all'
+
+export type SelectionToolbarNodeScope = {
+  kind: SelectionToolbarNodeKind
   nodeIds: readonly NodeId[]
   nodes: readonly Node[]
   primaryNode?: Node
-  filter?: NodeToolbarFilter
   canChangeShapeKind: boolean
   canEditFontSize: boolean
   canEditFontWeight: boolean
@@ -64,7 +86,45 @@ export type NodeToolbarContext = {
   strokeOpacity?: number
   strokeDash?: readonly number[]
   opacity?: number
-  locked: SelectionNodeInfo['lock']
+}
+
+export type SelectionToolbarEdgeScope = {
+  edgeIds: readonly EdgeId[]
+  edges: readonly Edge[]
+  primaryEdgeId?: EdgeId
+  single: boolean
+  type?: EdgeType
+  color?: string
+  width?: number
+  dash?: EdgeDash
+  start?: EdgeMarker
+  end?: EdgeMarker
+  textMode?: EdgeTextMode
+  labelCount: number
+}
+
+export type SelectionToolbarScope = {
+  key: string
+  kind: SelectionToolbarScopeKind
+  label: string
+  count: number
+  target: SelectionTarget
+  icon?: string
+  edgeType?: EdgeType
+  node?: SelectionToolbarNodeScope
+  edge?: SelectionToolbarEdgeScope
+}
+
+export type SelectionToolbarContext = {
+  box: Rect
+  key: string
+  selectionKind: 'nodes' | 'edges' | 'mixed'
+  target: SelectionTarget
+  nodes: readonly Node[]
+  edges: readonly Edge[]
+  scopes: readonly SelectionToolbarScope[]
+  defaultScopeKey: string
+  locked: SelectionToolbarLockState
 }
 
 export type SelectionOverlay =

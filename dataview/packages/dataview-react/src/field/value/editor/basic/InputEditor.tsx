@@ -41,7 +41,7 @@ export const InputEditor = (props: InputEditorProps) => {
     <input
       ref={inputRef}
       {...inputAttributes}
-      className='w-full px-2 py-2'
+      className='w-full px-2 py-2 bg-transparent'
       value={props.draft}
       onChange={event => props.onDraftChange(event.target.value)}
       onKeyDown={event => {

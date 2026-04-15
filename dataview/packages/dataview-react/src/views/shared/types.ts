@@ -20,8 +20,8 @@ export interface TypedRuntimeInput<TType extends View['type'], TExtra> {
 }
 
 export interface SelectableItemRuntime {
-  selectedIds: readonly ItemId[]
-  selectedIdSet: ReadonlySet<ItemId>
+  getSelectedIds: () => readonly ItemId[]
+  isSelected: (id: ItemId) => boolean
   select: (id: ItemId, mode?: 'replace' | 'toggle') => void
 }
 

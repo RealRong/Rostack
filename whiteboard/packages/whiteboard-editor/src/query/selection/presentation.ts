@@ -21,15 +21,21 @@ import {
 } from '@shared/core'
 import type {
   SelectionAffordance,
-  SelectionSummary
+  SelectionSummary,
+  SelectionTarget
 } from '@whiteboard/core/selection'
-import type { Node, NodeSchema, Rect } from '@whiteboard/core/types'
+import type { Edge, Node, NodeSchema, Rect } from '@whiteboard/core/types'
 import type {
+  SelectionEdgeTypeInfo,
   SelectionNodeInfo,
   SelectionNodeTypeInfo,
   SelectionOverlay,
-  NodeToolbarContext,
-  ToolbarSelectionKind
+  SelectionToolbarContext,
+  SelectionToolbarEdgeScope,
+  SelectionToolbarLockState,
+  SelectionToolbarNodeKind,
+  SelectionToolbarNodeScope,
+  SelectionToolbarScope
 } from '@whiteboard/editor/types/selectionPresentation'
 import type {
   ControlId,
@@ -47,7 +53,7 @@ export type SelectionRead = {
   box: ReadStore<Rect | undefined>
   node: ReadStore<SelectionNodeInfo | undefined>
   overlay: ReadStore<SelectionOverlay | undefined>
-  nodeToolbar: ReadStore<NodeToolbarContext | undefined>
+  toolbar: ReadStore<SelectionToolbarContext | undefined>
 }
 
 type StyleFieldKind = 'string' | 'number' | 'numberArray'
@@ -58,15 +64,24 @@ type SelectionNodeStats = {
   hasGroup: boolean
   lock: SelectionNodeInfo['lock']
   types: readonly SelectionNodeTypeInfo[]
-  mixed: boolean
+}
+
+type SelectionEdgeStats = {
+  ids: readonly string[]
+  count: number
+  types: readonly SelectionEdgeTypeInfo[]
 }
 
 const UI_TEXT_PRIMARY = WHITEBOARD_TEXT_DEFAULT_COLOR
 const EMPTY_CONTROLS: readonly ControlId[] = []
 
-const readObjectCountLabel = (
+const readNodeCountLabel = (
   count: number
-) => count === 1 ? '1 object' : `${count} objects`
+) => count === 1 ? '1 node' : `${count} nodes`
+
+const readEdgeCountLabel = (
+  count: number
+) => count === 1 ? '1 edge' : `${count} edges`
 
 const readNodeMeta = (
   registry: Pick<NodeRegistry, 'get'>,
@@ -220,15 +235,77 @@ const readSelectionNodeStats = ({
           : lockedCount === 0
             ? 'none'
             : 'mixed',
-    types,
-    mixed: types.length > 1
+    types
   }
 }
 
-const resolveToolbarSelectionKind = (
+const readEdgeTypeName = (
+  type: string
+) => (
+  type === 'straight'
+    ? 'Straight'
+    : type === 'elbow'
+      ? 'Elbow'
+      : type === 'curve'
+        ? 'Curve'
+        : type
+)
+
+const readSelectionEdgeStats = (
+  summary: SelectionSummary
+): SelectionEdgeStats => {
+  const edges = summary.items.edges
+  const ids = summary.target.edgeIds
+  const count = ids.length
+  const statsByType = new Map<string, {
+    key: string
+    name: string
+    edgeType?: string
+    count: number
+    edgeIds: string[]
+  }>()
+
+  edges.forEach((edge) => {
+    const key = edge.type
+    const current = statsByType.get(key)
+    if (current) {
+      current.count += 1
+      current.edgeIds.push(edge.id)
+      return
+    }
+
+    statsByType.set(key, {
+      key,
+      name: readEdgeTypeName(key),
+      edgeType: edge.type,
+      count: 1,
+      edgeIds: [edge.id]
+    })
+  })
+
+  const types = [...statsByType.values()]
+    .sort((left, right) => (
+      right.count - left.count || left.key.localeCompare(right.key)
+    ))
+    .map((entry) => ({
+      key: entry.key,
+      name: entry.name,
+      count: entry.count,
+      edgeIds: entry.edgeIds,
+      edgeType: entry.edgeType
+    }))
+
+  return {
+    ids,
+    count,
+    types
+  }
+}
+
+const resolveToolbarNodeKind = (
   nodes: readonly Node[],
   summary: SelectionNodeStats
-): ToolbarSelectionKind => {
+): SelectionToolbarNodeKind => {
   if (nodes.every((node) => node.type === 'shape')) {
     return 'shape'
   }
@@ -285,10 +362,10 @@ const readDefaultStroke = (
   ?? (node.type === 'sticky'
     ? STICKY_DEFAULT_STROKE
     : node.type === 'frame'
-    ? FRAME_DEFAULT_STROKE
-    : node.type === 'draw'
-      ? UI_TEXT_PRIMARY
-      : undefined)
+      ? FRAME_DEFAULT_STROKE
+      : node.type === 'draw'
+        ? UI_TEXT_PRIMARY
+        : undefined)
 
 const readStroke = (
   node: Node
@@ -301,10 +378,10 @@ const readDefaultStrokeWidth = (
   : node.type === 'sticky'
     ? STICKY_DEFAULT_STROKE_WIDTH
     : node.type === 'frame'
-    ? FRAME_DEFAULT_STROKE_WIDTH
-    : node.type === 'draw'
-      ? 2
-      : undefined
+      ? FRAME_DEFAULT_STROKE_WIDTH
+      : node.type === 'draw'
+        ? 2
+        : undefined
 
 const readStrokeWidth = (
   node: Node
@@ -371,6 +448,167 @@ const readToolbarValue = <TValue,>(
 ) => enabled
   ? readUniformValue(nodes, readValue, equal)
   : undefined
+
+const readNodeScope = ({
+  nodes,
+  nodeIds,
+  primaryNode,
+  registry,
+  nodeStats
+}: {
+  nodes: readonly Node[]
+  nodeIds: readonly string[]
+  primaryNode?: Node
+  registry: Pick<NodeRegistry, 'get'>
+  nodeStats: SelectionNodeStats
+}): SelectionToolbarNodeScope => {
+  const nodeKind = resolveToolbarNodeKind(nodes, {
+    ...nodeStats,
+    ids: nodeIds,
+    count: nodeIds.length,
+    lock:
+      nodeIds.length === 0
+        ? 'none'
+        : nodes.every((node) => node.locked)
+          ? 'all'
+          : nodes.some((node) => node.locked)
+            ? 'mixed'
+            : 'none',
+    hasGroup: nodes.some((node) => Boolean(node.groupId)),
+    types: nodeStats.types.filter((entry) => entry.nodeIds.some((id) => nodeIds.includes(id)))
+  })
+  const canEditFill = hasControl(nodes, registry, 'fill')
+  const canEditStroke = hasControl(nodes, registry, 'stroke')
+  const canEditTextColor = hasControl(nodes, registry, 'text')
+    && supportsStyleField(nodes, registry, 'color', 'string')
+  const styleSupport = {
+    fontSize: supportsStyleField(nodes, registry, 'fontSize', 'number'),
+    fontWeight: supportsStyleField(nodes, registry, 'fontWeight', 'number'),
+    fontStyle: supportsStyleField(nodes, registry, 'fontStyle', 'string'),
+    textAlign: supportsStyleField(nodes, registry, 'textAlign', 'string'),
+    fillOpacity: supportsStyleField(nodes, registry, 'fillOpacity', 'number'),
+    strokeOpacity: supportsStyleField(nodes, registry, 'strokeOpacity', 'number'),
+    strokeDash: supportsStyleField(nodes, registry, 'strokeDash', 'numberArray'),
+    opacity: supportsStyleField(nodes, registry, 'opacity', 'number')
+  }
+  const canEditFillOpacity = canEditFill && styleSupport.fillOpacity
+  const canEditStrokeOpacity = canEditStroke && styleSupport.strokeOpacity
+  const canEditStrokeDash = canEditStroke && styleSupport.strokeDash
+
+  return {
+    kind: nodeKind,
+    nodeIds,
+    nodes,
+    primaryNode,
+    canChangeShapeKind: nodeKind === 'shape',
+    canEditFontSize: styleSupport.fontSize,
+    canEditFontWeight: styleSupport.fontWeight,
+    canEditFontStyle: styleSupport.fontStyle,
+    canEditTextAlign: styleSupport.textAlign,
+    canEditTextColor,
+    canEditFill,
+    canEditFillOpacity,
+    canEditStroke,
+    canEditStrokeOpacity,
+    canEditStrokeDash,
+    canEditNodeOpacity: styleSupport.opacity,
+    shapeKind:
+      nodeKind === 'shape' && primaryNode
+        ? readShapeKind(primaryNode)
+        : undefined,
+    shapeKindValue:
+      nodeKind === 'shape'
+        ? readUniformValue(nodes, readShapeKind)
+        : undefined,
+    fontSize: readToolbarValue(styleSupport.fontSize, nodes, readFontSize),
+    fontWeight: readToolbarValue(styleSupport.fontWeight, nodes, readFontWeight),
+    fontStyle: readToolbarValue(styleSupport.fontStyle, nodes, readFontStyle),
+    textAlign: readToolbarValue(styleSupport.textAlign, nodes, readTextAlign),
+    textColor: readToolbarValue(canEditTextColor, nodes, readTextColor),
+    fill: readToolbarValue(canEditFill, nodes, readFill),
+    fillOpacity: readToolbarValue(canEditFillOpacity, nodes, readFillOpacity),
+    stroke: readToolbarValue(canEditStroke, nodes, readStroke),
+    strokeWidth: readToolbarValue(canEditStroke, nodes, readStrokeWidth),
+    strokeOpacity: readToolbarValue(canEditStrokeOpacity, nodes, readStrokeOpacity),
+    strokeDash: readToolbarValue(
+      canEditStrokeDash,
+      nodes,
+      readStrokeDash,
+      (left, right) => isSameOptionalNumberArray(
+        normalizeDash(left),
+        normalizeDash(right)
+      )
+    ),
+    opacity: readToolbarValue(styleSupport.opacity, nodes, readOpacity)
+  }
+}
+
+const readEdgeScope = ({
+  edges,
+  edgeIds,
+  primaryEdge
+}: {
+  edges: readonly Edge[]
+  edgeIds: readonly string[]
+  primaryEdge?: Edge
+}): SelectionToolbarEdgeScope => ({
+    edgeIds,
+    edges,
+    primaryEdgeId: primaryEdge?.id,
+    single: edgeIds.length === 1,
+    type: readUniformValue(edges, (entry) => entry.type),
+    color: readUniformValue(edges, (entry) => entry.style?.color),
+    width: readUniformValue(edges, (entry) => entry.style?.width),
+    dash: readUniformValue(edges, (entry) => entry.style?.dash),
+    start: readUniformValue(edges, (entry) => entry.style?.start),
+    end: readUniformValue(edges, (entry) => entry.style?.end),
+    textMode: edgeIds.length === 1
+      ? primaryEdge?.textMode ?? 'horizontal'
+      : undefined,
+    labelCount: primaryEdge?.labels?.length ?? 0
+  })
+
+const filterNodesByIds = (
+  nodes: readonly Node[],
+  ids: readonly string[]
+) => {
+  const allowed = new Set(ids)
+  return nodes.filter((node) => allowed.has(node.id))
+}
+
+const filterEdgesByIds = (
+  edges: readonly Edge[],
+  ids: readonly string[]
+) => {
+  const allowed = new Set(ids)
+  return edges.filter((edge) => allowed.has(edge.id))
+}
+
+const createSelectionTarget = ({
+  nodeIds = [],
+  edgeIds = []
+}: {
+  nodeIds?: readonly string[]
+  edgeIds?: readonly string[]
+}): SelectionTarget => ({
+    nodeIds,
+    edgeIds
+  })
+
+const readSelectionToolbarLockState = (
+  nodeStats: SelectionNodeStats,
+  edgeCount: number
+): SelectionToolbarLockState => {
+  if (nodeStats.count === 0 && edgeCount === 0) {
+    return 'none'
+  }
+
+  if (nodeStats.count === 0) {
+    return 'none'
+  }
+
+  return nodeStats.lock
+}
 
 const isSelectionNodeInfoEqual = (
   left: SelectionNodeInfo | undefined,
@@ -471,13 +709,22 @@ const resolveSelectionOverlay = ({
       }
 }
 
+const isEdgeEditingInteraction = (
+  mode: ReturnType<InteractionRuntime['mode']['get']>
+) => (
+  mode === 'edge-drag'
+  || mode === 'edge-connect'
+  || mode === 'edge-route'
+)
+
 const resolveSelectionToolbar = ({
   summary,
   affordance,
   registry,
   tool,
   edit,
-  interactionChrome
+  interactionChrome,
+  interactionMode
 }: {
   summary: SelectionSummary
   affordance: SelectionAffordance
@@ -485,102 +732,149 @@ const resolveSelectionToolbar = ({
   tool: Tool
   edit: EditSession
   interactionChrome: boolean
-}): NodeToolbarContext | undefined => {
+  interactionMode: ReturnType<InteractionRuntime['mode']['get']>
+}): SelectionToolbarContext | undefined => {
   const box = affordance.displayBox
   if (!box) {
     return undefined
   }
 
-  const pureNodeSelection =
-    summary.items.nodeCount > 0
-    && summary.items.edgeCount === 0
   if (
-    !pureNodeSelection
+    summary.items.count === 0
     || tool.type !== 'select'
     || !interactionChrome
+    || edit?.kind === 'edge-label'
+    || isEdgeEditingInteraction(interactionMode)
   ) {
     return undefined
   }
 
-  const nodes = summary.items.nodes
-  const nodeSummary = readSelectionNodeStats({
+  const nodeStats = readSelectionNodeStats({
     summary,
     registry
   })
-  const selectionKind = resolveToolbarSelectionKind(nodes, nodeSummary)
-  const canEditFill = hasControl(nodes, registry, 'fill')
-  const canEditStroke = hasControl(nodes, registry, 'stroke')
-  const canEditTextColor = hasControl(nodes, registry, 'text')
-    && supportsStyleField(nodes, registry, 'color', 'string')
-  const styleSupport = {
-    fontSize: supportsStyleField(nodes, registry, 'fontSize', 'number'),
-    fontWeight: supportsStyleField(nodes, registry, 'fontWeight', 'number'),
-    fontStyle: supportsStyleField(nodes, registry, 'fontStyle', 'string'),
-    textAlign: supportsStyleField(nodes, registry, 'textAlign', 'string'),
-    fillOpacity: supportsStyleField(nodes, registry, 'fillOpacity', 'number'),
-    strokeOpacity: supportsStyleField(nodes, registry, 'strokeOpacity', 'number'),
-    strokeDash: supportsStyleField(nodes, registry, 'strokeDash', 'numberArray'),
-    opacity: supportsStyleField(nodes, registry, 'opacity', 'number')
+  const edgeStats = readSelectionEdgeStats(summary)
+  const scopes: SelectionToolbarScope[] = []
+
+  if (nodeStats.count > 0) {
+    scopes.push({
+      key: 'nodes',
+      kind: 'nodes',
+      label: readNodeCountLabel(nodeStats.count),
+      count: nodeStats.count,
+      target: createSelectionTarget({
+        nodeIds: nodeStats.ids
+      }),
+      icon:
+        nodeStats.types.length === 1
+          ? nodeStats.types[0]?.icon
+          : 'shape',
+      node: readNodeScope({
+        nodes: summary.items.nodes,
+        nodeIds: nodeStats.ids,
+        primaryNode: summary.items.primaryNode,
+        registry,
+        nodeStats
+      })
+    })
+
+    if (nodeStats.types.length > 1) {
+      nodeStats.types.forEach((type) => {
+        const scopedNodes = filterNodesByIds(summary.items.nodes, type.nodeIds)
+
+        scopes.push({
+          key: `node-type:${type.key}`,
+          kind: 'node-type',
+          label: `${type.name} (${type.count})`,
+          count: type.count,
+          target: createSelectionTarget({
+            nodeIds: type.nodeIds
+          }),
+          icon: type.icon,
+          node: readNodeScope({
+            nodes: scopedNodes,
+            nodeIds: type.nodeIds,
+            primaryNode: scopedNodes[0],
+            registry,
+            nodeStats: {
+              ids: type.nodeIds,
+              count: type.count,
+              hasGroup: scopedNodes.some((node) => Boolean(node.groupId)),
+              lock:
+                scopedNodes.length === 0
+                  ? 'none'
+                  : scopedNodes.every((node) => node.locked)
+                    ? 'all'
+                    : scopedNodes.some((node) => node.locked)
+                      ? 'mixed'
+                      : 'none',
+              types: [type]
+            }
+          })
+        })
+      })
+    }
   }
-  const canEditFillOpacity = canEditFill && styleSupport.fillOpacity
-  const canEditStrokeOpacity = canEditStroke && styleSupport.strokeOpacity
-  const canEditStrokeDash = canEditStroke && styleSupport.strokeDash
+
+  if (edgeStats.count > 0) {
+    scopes.push({
+      key: 'edges',
+      kind: 'edges',
+      label: readEdgeCountLabel(edgeStats.count),
+      count: edgeStats.count,
+      target: createSelectionTarget({
+        edgeIds: edgeStats.ids
+      }),
+      edge: readEdgeScope({
+        edges: summary.items.edges,
+        edgeIds: edgeStats.ids,
+        primaryEdge: summary.items.primaryEdge
+      })
+    })
+
+    if (edgeStats.types.length > 1) {
+      edgeStats.types.forEach((type) => {
+        const scopedEdges = filterEdgesByIds(summary.items.edges, type.edgeIds)
+
+        scopes.push({
+          key: `edge-type:${type.key}`,
+          kind: 'edge-type',
+          label: `${type.name} (${type.count})`,
+          count: type.count,
+          target: createSelectionTarget({
+            edgeIds: type.edgeIds
+          }),
+          edgeType: type.edgeType,
+          edge: readEdgeScope({
+            edges: scopedEdges,
+            edgeIds: type.edgeIds,
+            primaryEdge: scopedEdges[0]
+          })
+        })
+      })
+    }
+  }
+
+  const defaultScopeKey = nodeStats.count > 0 ? 'nodes' : 'edges'
+  const selectionKind = summary.items.nodeCount > 0 && summary.items.edgeCount > 0
+    ? 'mixed'
+    : summary.items.nodeCount > 0
+      ? 'nodes'
+      : 'edges'
 
   return {
     box,
-    key: nodes.map((node) => node.id).join('\0'),
-    kind: selectionKind,
-    nodeIds: nodeSummary.ids,
-    nodes,
-    primaryNode: summary.items.primaryNode,
-    filter:
-      nodeSummary.count > 1 && nodeSummary.types.length > 1
-        ? {
-            label: readObjectCountLabel(nodeSummary.count),
-            types: nodeSummary.types
-          }
-        : undefined,
-    canChangeShapeKind: selectionKind === 'shape',
-    canEditFontSize: styleSupport.fontSize,
-    canEditFontWeight: styleSupport.fontWeight,
-    canEditFontStyle: styleSupport.fontStyle,
-    canEditTextAlign: styleSupport.textAlign,
-    canEditTextColor,
-    canEditFill,
-    canEditFillOpacity,
-    canEditStroke,
-    canEditStrokeOpacity,
-    canEditStrokeDash,
-    canEditNodeOpacity: styleSupport.opacity,
-    shapeKind:
-      selectionKind === 'shape' && summary.items.primaryNode
-        ? readShapeKind(summary.items.primaryNode)
-        : undefined,
-    shapeKindValue:
-      selectionKind === 'shape'
-        ? readUniformValue(nodes, readShapeKind)
-        : undefined,
-    fontSize: readToolbarValue(styleSupport.fontSize, nodes, readFontSize),
-    fontWeight: readToolbarValue(styleSupport.fontWeight, nodes, readFontWeight),
-    fontStyle: readToolbarValue(styleSupport.fontStyle, nodes, readFontStyle),
-    textAlign: readToolbarValue(styleSupport.textAlign, nodes, readTextAlign),
-    textColor: readToolbarValue(canEditTextColor, nodes, readTextColor),
-    fill: readToolbarValue(canEditFill, nodes, readFill),
-    fillOpacity: readToolbarValue(canEditFillOpacity, nodes, readFillOpacity),
-    stroke: readToolbarValue(canEditStroke, nodes, readStroke),
-    strokeWidth: readToolbarValue(canEditStroke, nodes, readStrokeWidth),
-    strokeOpacity: readToolbarValue(canEditStrokeOpacity, nodes, readStrokeOpacity),
-    strokeDash: readToolbarValue(
-      canEditStrokeDash,
-      nodes,
-      readStrokeDash,
-      (left, right) => isSameOptionalNumberArray(
-        normalizeDash(left),
-        normalizeDash(right)
-      )
-    ),
-    opacity: readToolbarValue(styleSupport.opacity, nodes, readOpacity),
-    locked: nodeSummary.lock
+    key: `${summary.target.nodeIds.join('\0')}\u0001${summary.target.edgeIds.join('\0')}`,
+    selectionKind,
+    target: createSelectionTarget({
+      nodeIds: summary.target.nodeIds,
+      edgeIds: summary.target.edgeIds
+    }),
+    nodes: summary.items.nodes,
+    edges: summary.items.edges,
+    scopes,
+    defaultScopeKey,
+    locked: readSelectionToolbarLockState(nodeStats, edgeStats.count)
   }
 }
 
@@ -625,7 +919,7 @@ export const createSelectionPresentationRead = ({
     }
   })
 
-  const nodeToolbar = createDerivedStore<NodeToolbarContext | undefined>({
+  const toolbar = createDerivedStore<SelectionToolbarContext | undefined>({
     get: () => {
       const resolvedModel = read(model)
 
@@ -635,7 +929,8 @@ export const createSelectionPresentationRead = ({
         registry,
         tool: read(tool),
         edit: read(edit),
-        interactionChrome: read(interaction.chrome)
+        interactionChrome: read(interaction.chrome),
+        interactionMode: read(interaction.mode)
       })
     }
   })
@@ -644,6 +939,6 @@ export const createSelectionPresentationRead = ({
     box,
     node: nodeInfo,
     overlay,
-    nodeToolbar
+    toolbar
   }
 }

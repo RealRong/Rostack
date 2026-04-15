@@ -13,6 +13,7 @@ import type {
 } from '@dataview/core/contracts'
 import { columnSortId } from '@dataview/react/views/table/hooks/useColumnReorder'
 import { ColumnHeader } from '@dataview/react/views/table/components/column/ColumnHeader'
+import { ColumnAddPropertyAction } from '@dataview/react/views/table/components/column/ColumnAddPropertyAction'
 
 export interface ColumnHeaderRowProps {
   scopeId: string
@@ -32,27 +33,32 @@ const View = (props: ColumnHeaderRowProps) => {
   )
 
   return (
-    <SortableContext
-      items={sortIds}
-      strategy={horizontalListSortingStrategy}
-    >
-      <div
-        className="grid h-full min-w-0 flex-1 items-center"
-        style={{
-          gridTemplateColumns: props.template
-        }}
+    <div className="flex h-full min-w-full w-max items-stretch">
+      <SortableContext
+        items={sortIds}
+        strategy={horizontalListSortingStrategy}
       >
-        {props.columns.map((field, index) => (
-          <ColumnHeader
-            key={field.id}
-            field={field}
-            sortId={sortIds[index] ?? columnSortId(props.scopeId, field.id)}
-            resizeActive={field.id === props.resizingPropertyId}
-            onResizeStart={props.onResizeStart}
-          />
-        ))}
+        <div
+          className="inline-grid h-full min-w-0 flex-none items-center"
+          style={{
+            gridTemplateColumns: props.template
+          }}
+        >
+          {props.columns.map((field, index) => (
+            <ColumnHeader
+              key={field.id}
+              field={field}
+              sortId={sortIds[index] ?? columnSortId(props.scopeId, field.id)}
+              resizeActive={field.id === props.resizingPropertyId}
+              onResizeStart={props.onResizeStart}
+            />
+          ))}
+        </div>
+      </SortableContext>
+      <div className="flex h-full shrink-0 items-stretch">
+        <ColumnAddPropertyAction />
       </div>
-    </SortableContext>
+    </div>
   )
 }
 

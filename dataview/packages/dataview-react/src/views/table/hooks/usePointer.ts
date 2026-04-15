@@ -1,4 +1,8 @@
 import type { ViewState as CurrentView } from '@dataview/engine'
+import type {
+  Action,
+  RecordId
+} from '@dataview/core/contracts'
 import {
   useEffect,
   useCallback,
@@ -10,7 +14,6 @@ import {
 } from 'react'
 import type { Point } from '@shared/dom'
 import {
-  fill,
   gridSelection
 } from '@dataview/table'
 import {
@@ -23,6 +26,7 @@ import {
   sameCellRef
 } from '@dataview/engine'
 import {
+  isTitleFieldId,
   getRecordFieldValue,
   resolveFieldPrimaryAction
 } from '@dataview/core/field'
@@ -91,6 +95,94 @@ type FillPointerState = Extract<PointerState, {
   type: 'drag'
   mode: 'fill'
 }>
+
+export const resolveFillActions = (input: {
+  selection: ReturnType<typeof gridSelection.set> | null
+  anchor: CellRef
+  currentView: Pick<CurrentView, 'items' | 'fields'>
+  readCell: (cell: CellRef) => {
+    exists: boolean
+    value: unknown
+  }
+}): readonly Action[] => {
+  if (!input.selection) {
+    return []
+  }
+
+  const fieldIds = gridSelection.fieldIds(
+    input.selection,
+    input.currentView.fields
+  )
+  if (!fieldIds.length) {
+    return []
+  }
+
+  const targetRecordIds: RecordId[] = []
+  const targetRecordIdSet = new Set<RecordId>()
+  gridSelection.itemIds(
+    input.selection,
+    input.currentView.items
+  ).forEach(itemId => {
+    if (itemId === input.anchor.itemId) {
+      return
+    }
+
+    const recordId = input.currentView.items.get(itemId)?.recordId
+    if (!recordId || targetRecordIdSet.has(recordId)) {
+      return
+    }
+
+    targetRecordIdSet.add(recordId)
+    targetRecordIds.push(recordId)
+  })
+
+  if (!targetRecordIds.length) {
+    return []
+  }
+
+  return fieldIds.map(fieldId => {
+    const value = input.readCell({
+      itemId: input.anchor.itemId,
+      fieldId
+    }).value
+
+    if (isTitleFieldId(fieldId)) {
+      return {
+        type: 'record.patch',
+        target: {
+          type: 'records',
+          recordIds: targetRecordIds
+        },
+        patch: {
+          title: value === undefined
+            ? ''
+            : String(value ?? '')
+        }
+      } satisfies Action
+    }
+
+    if (value === undefined) {
+      return {
+        type: 'value.clear',
+        target: {
+          type: 'records',
+          recordIds: targetRecordIds
+        },
+        field: fieldId
+      } satisfies Action
+    }
+
+    return {
+      type: 'value.set',
+      target: {
+        type: 'records',
+        recordIds: targetRecordIds
+      },
+      field: fieldId,
+      value
+    } satisfies Action
+  })
+}
 
 interface RowHoverContext {
   container: HTMLElement | null
@@ -420,7 +512,7 @@ export const usePointer = (
     enabled: options.enabled
   })
 
-  const readGridSelection = useCallback(() => table.gridSelection.get(), [table])
+  const readGridSelection = useCallback(() => table.selection.cells.get(), [table])
   const readColumn = useCallback((fieldId: string) => (
     currentView.fields.all.find((field: { id: string }) => field.id === fieldId)
   ), [currentView.fields.all])
@@ -442,7 +534,7 @@ export const usePointer = (
     cell: CellRef,
     anchor: CellRef = cell
   ) => {
-    table.gridSelection.set(cell, anchor)
+    table.selection.cells.set(cell, anchor)
     table.focus()
   }, [table])
 
@@ -545,28 +637,26 @@ export const usePointer = (
   }, [readCell, readColumn, readGridSelection, selectCell, table, writeCell])
 
   const fillSelection = useCallback((current: FillPointerState) => {
-    const currentSelection = table.gridSelection.get()
-    const entries = fill.plan(
-      currentSelection,
-      currentView.items,
-      currentView.fields,
+    const actions = resolveFillActions({
+      selection: table.selection.cells.get(),
+      anchor: current.anchor,
+      currentView,
       readCell
-    )
-    if (!entries.length) {
+    })
+    if (!actions.length) {
       table.focus()
       return
     }
 
-    entries.forEach(entry => {
-      writeCell(entry.cell, entry.value)
-    })
+    editor.dispatch(actions)
     table.focus()
   }, [
     currentView.items,
     currentView.fields,
+    currentView,
+    editor,
     readCell,
     table,
-    writeCell
   ])
 
   const move = useCallback((event: PointerEvent) => {
@@ -598,7 +688,7 @@ export const usePointer = (
         : current.cell
       const nextTarget = target ?? current.cell
 
-      dataView.selection.clear()
+      table.selection.rows.clear()
       stateRef.current = {
         type: 'drag',
         mode: 'pointer',
@@ -613,7 +703,6 @@ export const usePointer = (
 
     setDragTarget(target)
   }, [
-    dataView.selection,
     currentView.items,
     currentView.fields,
     readGridSelection,

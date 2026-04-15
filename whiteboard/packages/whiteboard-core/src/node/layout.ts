@@ -127,15 +127,26 @@ const sortEntriesByAxis = (
 ) => entries
   .map((entry, index) => ({ entry, index }))
   .sort((left, right) => {
-    const leftValue = mode === 'horizontal'
-      ? left.entry.bounds.x
-      : left.entry.bounds.y
-    const rightValue = mode === 'horizontal'
-      ? right.entry.bounds.x
-      : right.entry.bounds.y
+    const leftEdges = getRectEdges(left.entry.bounds)
+    const rightEdges = getRectEdges(right.entry.bounds)
+    const comparisons = mode === 'horizontal'
+      ? [
+          leftEdges.left - rightEdges.left,
+          leftEdges.centerX - rightEdges.centerX,
+          leftEdges.top - rightEdges.top,
+          leftEdges.centerY - rightEdges.centerY
+        ]
+      : [
+          leftEdges.top - rightEdges.top,
+          leftEdges.centerY - rightEdges.centerY,
+          leftEdges.left - rightEdges.left,
+          leftEdges.centerX - rightEdges.centerX
+        ]
 
-    if (leftValue !== rightValue) {
-      return leftValue - rightValue
+    for (const value of comparisons) {
+      if (value !== 0) {
+        return value
+      }
     }
 
     return left.index - right.index

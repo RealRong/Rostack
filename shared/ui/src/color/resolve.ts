@@ -8,6 +8,7 @@ import {
 } from '@shared/ui/color/types'
 
 const OPTION_COLOR_ID_SET = new Set<UiOptionColorId>(UI_OPTION_COLOR_IDS)
+const DEFAULT_SURFACE_COLOR_ID: UiOptionColorId = 'gray'
 
 const OPTION_COLOR_TOKEN_SUFFIX: Record<UiOptionColorTokenUsage, string> = {
   'badge-bg': 'bg-strong',
@@ -70,7 +71,24 @@ export const normalizeOptionColorId = (
 export const resolveOptionColorToken = (
   color: string | null | undefined,
   usage: UiOptionColorTokenUsage
-) => `var(--ui-${normalizeOptionColorId(color)}-${OPTION_COLOR_TOKEN_SUFFIX[usage]})`
+) => {
+  const normalized = normalizeOptionColorId(color)
+  const resolved = normalized === 'default' && (
+    usage === 'column-bg'
+    || usage === 'column-border'
+    || usage === 'bg-card'
+    || usage === 'card-border'
+    || usage === 'bg-card-hover'
+    || usage === 'bg-card-pressed'
+    || usage === 'surface'
+    || usage === 'surface-hover'
+    || usage === 'surface-pressed'
+  )
+    ? DEFAULT_SURFACE_COLOR_ID
+    : normalized
+
+  return `var(--ui-${resolved}-${OPTION_COLOR_TOKEN_SUFFIX[usage]})`
+}
 
 export const resolveOptionBadgeStyle = (
   color: string | null | undefined

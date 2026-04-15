@@ -33,10 +33,16 @@ type NodeTransformHandlesProps = {
   canRotate: boolean
 }
 
-const NODE_TRANSFORM_HANDLE_SIZE = 8
+const NODE_TRANSFORM_HANDLE_SIZE = 10
+const NODE_TRANSFORM_HANDLE_MIN_SIZE = 8
+const NODE_TRANSFORM_HANDLE_MAX_SIZE = 10
 const NODE_TRANSFORM_EDGE_HIT_SIZE = 16
-const NODE_ROTATE_HANDLE_SIZE = 22
+const NODE_ROTATE_HANDLE_SIZE = 24
+const NODE_ROTATE_HANDLE_MIN_SIZE = 16
+const NODE_ROTATE_HANDLE_MAX_SIZE = 28
 const NODE_ROTATE_ICON_SIZE = 18
+const NODE_ROTATE_ICON_MIN_SIZE = 12
+const NODE_ROTATE_ICON_MAX_SIZE = 20
 const NODE_ROTATE_HANDLE_OFFSET = 28
 export const DEFAULT_VISIBLE_RESIZE_DIRECTIONS = ['nw', 'ne', 'se', 'sw'] as const satisfies readonly ResizeDirection[]
 export const DEFAULT_EDGE_RESIZE_DIRECTIONS = ['n', 'e', 's', 'w'] as const satisfies readonly ResizeDirection[]
@@ -49,6 +55,22 @@ export const resolveNodeEdgeResizeDirections = (
     ? TEXT_EDGE_RESIZE_DIRECTIONS
     : DEFAULT_EDGE_RESIZE_DIRECTIONS
 )
+
+export const resolveTransformChromeScreenSize = ({
+  zoom,
+  base,
+  min,
+  max
+}: {
+  zoom: number
+  base: number
+  min: number
+  max: number
+}): number => {
+  const safeZoom = Math.max(zoom, 0.0001)
+  const scaled = base * Math.sqrt(safeZoom)
+  return Math.min(max, Math.max(min, scaled))
+}
 
 const buildTransformOverlayStyle = ({
   rect,
@@ -76,12 +98,21 @@ const buildNodeTransformHandleStyle = ({
   zoom: number
   size: number
 }): CSSProperties => {
-  const half = size / Math.max(zoom, 0.0001) / 2
+  const screenSize = resolveTransformChromeScreenSize({
+    zoom,
+    base: size,
+    min: handle.kind === 'rotate'
+      ? NODE_ROTATE_HANDLE_MIN_SIZE
+      : NODE_TRANSFORM_HANDLE_MIN_SIZE,
+    max: handle.kind === 'rotate'
+      ? NODE_ROTATE_HANDLE_MAX_SIZE
+      : NODE_TRANSFORM_HANDLE_MAX_SIZE
+  })
 
   return {
-    '--wb-node-handle-size': `${size}px`,
-    '--wb-node-handle-x': `${handle.position.x - half}px`,
-    '--wb-node-handle-y': `${handle.position.y - half}px`,
+    '--wb-node-handle-size': `${screenSize}px`,
+    '--wb-node-handle-center-x': `${handle.position.x}px`,
+    '--wb-node-handle-center-y': `${handle.position.y}px`,
     cursor: handle.cursor
   } as CSSProperties
 }
@@ -129,8 +160,14 @@ export const resolveTransformEdgeHitAreaStyle = ({
   edgeSize?: number
 }): CSSProperties => {
   const safeZoom = Math.max(zoom, 0.0001)
+  const resolvedHandleSize = resolveTransformChromeScreenSize({
+    zoom: safeZoom,
+    base: handleSize,
+    min: NODE_TRANSFORM_HANDLE_MIN_SIZE,
+    max: NODE_TRANSFORM_HANDLE_MAX_SIZE
+  })
   const thickness = edgeSize / safeZoom
-  const cornerReserve = (handleSize + edgeSize) / safeZoom / 2
+  const cornerReserve = (resolvedHandleSize + edgeSize) / safeZoom / 2
   const horizontalInset = Math.min(rect.width / 2, cornerReserve)
   const verticalInset = Math.min(rect.height / 2, cornerReserve)
   const horizontalLength = Math.max(thickness, rect.width - horizontalInset * 2)
@@ -204,7 +241,14 @@ const TransformHandleItem = ({
       {handle.kind === 'rotate' ? (
         <RotateCw
           className="wb-node-transform-handle-icon text-muted-foreground"
-          size={NODE_ROTATE_ICON_SIZE / Math.max(zoom, 0.0001)}
+          size={
+            resolveTransformChromeScreenSize({
+              zoom,
+              base: NODE_ROTATE_ICON_SIZE,
+              min: NODE_ROTATE_ICON_MIN_SIZE,
+              max: NODE_ROTATE_ICON_MAX_SIZE
+            }) / Math.max(zoom, 0.0001)
+          }
           strokeWidth={1}
           absoluteStrokeWidth
         />

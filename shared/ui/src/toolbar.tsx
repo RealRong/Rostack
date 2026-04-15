@@ -11,7 +11,7 @@ export const ToolbarBar = React.forwardRef<HTMLDivElement, FloatingSurfaceProps>
   ({ className, ...props }, ref) => (
     <FloatingSurface
       ref={ref}
-      className={cn('inline-flex items-center gap-1 px-2 py-1.5', className)}
+      className={cn('inline-flex items-center gap-1 p-1.5', className)}
       {...props}
     />
   )
@@ -25,7 +25,7 @@ export const ToolbarButton = React.forwardRef<HTMLButtonElement, ToolbarButtonPr
       ref={ref}
       variant={variant}
       pressed={pressed ?? active}
-      className={cn('h-9 min-w-0 rounded-xl px-3 text-sm font-medium text-fg', className)}
+      className={cn('h-9 min-w-0 rounded-lg px-3 text-sm font-medium text-fg', className)}
       {...props}
     />
   )
@@ -103,7 +103,7 @@ export const ToolbarFillIcon = ({
   opacity?: number
 }) => (
   <div
-    className="size-5 rounded-md border border-default"
+    className="size-5 rounded-md"
     style={{
       background: fill ?? 'var(--ui-gray-bg-soft)',
       opacity: opacity ?? 1

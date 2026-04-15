@@ -17,6 +17,7 @@ import type {
 } from '@dataview/react/runtime/selection/types'
 
 const emptyIds = [] as readonly ItemId[]
+const selectionIdSetCache = new WeakMap<readonly ItemId[], ReadonlySet<ItemId>>()
 
 export const emptySelection: Selection = {
   ids: emptyIds
@@ -33,6 +34,19 @@ const includesId = (
   }
 
   return ids.includes(id)
+}
+
+export const readSelectionIdSet = (
+  value: Selection
+): ReadonlySet<ItemId> => {
+  const cached = selectionIdSetCache.get(value.ids)
+  if (cached) {
+    return cached
+  }
+
+  const next = new Set(value.ids)
+  selectionIdSetCache.set(value.ids, next)
+  return next
 }
 
 const createSelection = (

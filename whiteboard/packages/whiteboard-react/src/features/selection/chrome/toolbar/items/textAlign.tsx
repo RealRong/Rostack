@@ -17,37 +17,51 @@ export const textAlignItem: ToolbarItemSpec = {
   key: 'text-align',
   panelKey: 'text-align',
   renderButton: ({
-    context,
+    activeScope,
     activePanelKey,
     togglePanel,
     registerPanelButton
-  }) => (
-    <ToolbarIconButton
-      ref={(element) => {
-        registerPanelButton('text-align', element)
-      }}
-      active={activePanelKey === 'text-align'}
-      onClick={() => {
-        togglePanel('text-align')
-      }}
-      title="Text align"
-      aria-label="Text align"
-    >
-      {(() => {
-        const Icon = TEXT_ALIGN_OPTIONS.find((option) => option.key === context.textAlign)?.icon ?? AlignLeft
-        return <Icon size={18} strokeWidth={1.9} />
-      })()}
-    </ToolbarIconButton>
-  ),
+  }) => {
+    const node = activeScope.node
+    if (!node) {
+      return null
+    }
+
+    return (
+      <ToolbarIconButton
+        ref={(element) => {
+          registerPanelButton('text-align', element)
+        }}
+        active={activePanelKey === 'text-align'}
+        onClick={() => {
+          togglePanel('text-align')
+        }}
+        title="Text align"
+        aria-label="Text align"
+      >
+        {(() => {
+          const Icon = TEXT_ALIGN_OPTIONS.find((option) => option.key === node.textAlign)?.icon ?? AlignLeft
+          return <Icon size={18} strokeWidth={1.9} />
+        })()}
+      </ToolbarIconButton>
+    )
+  },
   renderPanel: ({
-    context,
+    activeScope,
     editor
-  }) => (
-    <TextAlignPanel
-      value={context.textAlign}
-      onChange={(value) => {
-        editor.actions.node.text.align(context.nodeIds, value)
-      }}
-    />
-  )
+  }) => {
+    const node = activeScope.node
+    if (!node) {
+      return null
+    }
+
+    return (
+      <TextAlignPanel
+        value={node.textAlign}
+        onChange={(value) => {
+          editor.actions.node.text.align(node.nodeIds, value)
+        }}
+      />
+    )
+  }
 }

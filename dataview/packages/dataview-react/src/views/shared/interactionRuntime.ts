@@ -12,9 +12,10 @@ import type {
   ItemId
 } from '@dataview/engine'
 import {
-  useDataView,
-  useDataViewValue
+  useDataView
 } from '@dataview/react/dataview'
+import { read } from '@shared/core'
+import { readSelectionIdSet } from '@dataview/react/runtime/selection/store'
 import type {
   AutoPanTargets
 } from '@dataview/react/interaction/autoPan'
@@ -42,15 +43,6 @@ export const useRegisterMarqueeAdapter = (
 
 export const useItemSelectionRuntime = (): ItemInteractionRuntime['selection'] => {
   const dataView = useDataView()
-  const selectionState = useDataViewValue(
-    current => current.selection.store
-  )
-
-  const selectedIdSet = useMemo<ReadonlySet<ItemId>>(
-    () => new Set(selectionState.ids),
-    [selectionState.ids]
-  )
-
   const select = useCallback((id: ItemId, mode: 'replace' | 'toggle' = 'replace') => {
     if (mode === 'toggle') {
       dataView.selection.toggle([id])
@@ -59,12 +51,20 @@ export const useItemSelectionRuntime = (): ItemInteractionRuntime['selection'] =
 
     dataView.selection.set([id])
   }, [dataView.selection])
+  const getSelectedIds = useCallback(
+    () => read(dataView.selection.store).ids,
+    [dataView.selection.store]
+  )
+  const isSelected = useCallback(
+    (id: ItemId) => readSelectionIdSet(read(dataView.selection.store)).has(id),
+    [dataView.selection.store]
+  )
 
   return useMemo(() => ({
-    selectedIds: selectionState.ids,
-    selectedIdSet,
+    getSelectedIds,
+    isSelected,
     select
-  }), [select, selectedIdSet, selectionState.ids])
+  }), [getSelectedIds, isSelected, select])
 }
 
 export const useItemInteractionRuntime = (input: {
@@ -158,12 +158,11 @@ export const useItemDragRuntime = (input: {
     [input.itemIds]
   )
   const getDragIds = useCallback((activeId: ItemId) => (
-    interaction.selection.selectedIdSet.has(activeId)
-      ? interaction.selection.selectedIds.filter(id => itemIdSet.has(id))
+    interaction.selection.isSelected(activeId)
+      ? interaction.selection.getSelectedIds().filter(id => itemIdSet.has(id))
       : [activeId]
   ), [
-    interaction.selection.selectedIdSet,
-    interaction.selection.selectedIds,
+    interaction.selection,
     itemIdSet
   ])
 

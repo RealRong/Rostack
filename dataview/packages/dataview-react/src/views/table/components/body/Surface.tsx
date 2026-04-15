@@ -30,7 +30,7 @@ export const Surface = (props: SurfaceProps) => {
 
   useLayoutEffect(() => {
     table.virtual.attach()
-  })
+  }, [table.virtual])
 
   useEffect(() => () => {
     table.virtual.detach()
@@ -57,10 +57,10 @@ export const Surface = (props: SurfaceProps) => {
         ref={layout.canvasRef}
         style={{
           position: 'relative',
+          width: 'max-content',
           minWidth: '100%',
-          display: 'inline-block',
-          verticalAlign: 'top',
           boxSizing: 'border-box',
+          float: 'inline-start',
           overflowAnchor: 'none',
           paddingInline: PAGE_INLINE_INSET_CSS,
           paddingBottom: PAGE_PADDING_BOTTOM

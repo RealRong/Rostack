@@ -16,12 +16,14 @@ import {
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
 } from '@dataview/react/dom/appearance'
+import { readSelectionIdSet } from '@dataview/react/runtime/selection/store'
 import {
   shouldCapturePointer
 } from '@shared/dom'
 import {
   useDataView,
-  useDataViewKeyedValue
+  useDataViewKeyedValue,
+  useDataViewValue
 } from '@dataview/react/dataview'
 import {
   CardContent
@@ -84,7 +86,10 @@ const GalleryCardContent = (props: {
   } = useGalleryContext()
   const viewId = active.view.id
   const fields = active.fields.custom
-  const selected = runtime.selection.selectedIdSet.has(props.itemId)
+  const selected = useDataViewValue(
+    current => current.selection.store,
+    selection => readSelectionIdSet(selection).has(props.itemId)
+  )
   const draggingActive = runtime.drag.activeId === props.itemId
   const draggingSelected = runtime.drag.activeId !== undefined
     && runtime.drag.dragIdSet.has(props.itemId)
@@ -186,7 +191,7 @@ const GalleryCardContent = (props: {
       slots={{
         root: cn(
           'relative h-full rounded-xl p-3 transition-colors',
-          selected && 'border-primary bg-primary/[0.05]'
+          selected && 'bg-accent-overlay'
         ),
         title: {
           row: cn(
@@ -199,7 +204,7 @@ const GalleryCardContent = (props: {
         },
         property: {
           list: 'flex flex-col gap-2',
-          item: 'min-w-0',
+          item: 'min-w-0 h-fit flex items-center',
           value: 'text-[12px]'
         }
       }}

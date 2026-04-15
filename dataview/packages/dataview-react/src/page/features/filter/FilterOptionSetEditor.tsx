@@ -134,66 +134,48 @@ export const FilterOptionSetEditor = (
   const selectedIds = readFilterOptionSetValue(props.value).optionIds
   const selectedSet = new Set(selectedIds)
 
-  return (
-    <div className="flex flex-col">
-      <div className="px-1.5 pb-2 pt-1">
-        {groups.map((group, groupIndex) => {
-          const selectedCount = group.optionIds.filter(optionId => selectedSet.has(optionId)).length
-          const checked = group.optionIds.length > 0 && selectedCount === group.optionIds.length
-          const indeterminate = selectedCount > 0 && !checked
-          const showGroupToggle = Boolean(group.label)
+  return <div>
+    {groups.map((group, groupIndex) => {
+      const selectedCount = group.optionIds.filter(optionId => selectedSet.has(optionId)).length
+      const checked = group.optionIds.length > 0 && selectedCount === group.optionIds.length
+      const indeterminate = selectedCount > 0 && !checked
+      const showGroupToggle = Boolean(group.label)
 
-          return (
-            <div
-              key={group.key}
-              className={cn(groupIndex > 0 && 'mt-1 border-t border-divider pt-1')}
+      return (
+        <div
+          key={group.key}
+          className={cn(groupIndex > 0 && 'mt-1 border-t border-divider pt-1')}
+        >
+          {showGroupToggle ? (
+            <button
+              type="button"
+              onClick={() => {
+                props.onChange(toggleOptionGroup(selectedIds, group.optionIds))
+              }}
+              className={optionRowClassName}
             >
-              {showGroupToggle ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    props.onChange(toggleOptionGroup(selectedIds, group.optionIds))
-                  }}
-                  className={optionRowClassName}
-                >
-                  <Checkbox
-                    checked={checked}
-                    indeterminate={indeterminate}
-                    interactive={false}
-                  />
-                  <span className="font-medium text-foreground">{group.label}</span>
-                </button>
-              ) : null}
+              <Checkbox
+                checked={checked}
+                indeterminate={indeterminate}
+                interactive={false}
+              />
+              <span className="font-medium text-foreground">{group.label}</span>
+            </button>
+          ) : null}
 
-              {group.options.map(option => (
-                <OptionRow
-                  key={option.id}
-                  option={option}
-                  selected={selectedSet.has(option.id)}
-                  inset={showGroupToggle}
-                  onClick={() => {
-                    props.onChange(toggleOptionId(selectedIds, option.id))
-                  }}
-                />
-              ))}
-            </div>
-          )
-        })}
-      </div>
-
-      {selectedIds.length ? (
-        <div className="border-t p-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              props.onChange(createFilterOptionSetValue())
-            }}
-            className="w-full rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-hover hover:text-foreground"
-          >
-            {renderMessage(meta.ui.filter.clearSelection)}
-          </button>
+          {group.options.map(option => (
+            <OptionRow
+              key={option.id}
+              option={option}
+              selected={selectedSet.has(option.id)}
+              inset={showGroupToggle}
+              onClick={() => {
+                props.onChange(toggleOptionId(selectedIds, option.id))
+              }}
+            />
+          ))}
         </div>
-      ) : null}
-    </div>
-  )
+      )
+    })}
+  </div>
 }

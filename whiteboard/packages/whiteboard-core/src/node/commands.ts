@@ -19,7 +19,10 @@ import {
   type NodeLayoutEntry,
   type NodeLayoutUpdate
 } from '@whiteboard/core/node/layout'
-import { getNodeRect } from '@whiteboard/core/node/geometry'
+import {
+  getNodeBoundsByNode,
+  getNodeRect
+} from '@whiteboard/core/node/geometry'
 import { createNodeFieldsUpdateOperation } from '@whiteboard/core/node/update'
 
 type NodeCreateOperationResult =
@@ -67,7 +70,7 @@ const readLayoutEntries = ({
       return err('invalid', `Node ${id} not found.`)
     }
 
-    const bounds = getNodeRect(node, nodeSize)
+    const bounds = getNodeBoundsByNode(node, nodeSize) ?? getNodeRect(node, nodeSize)
 
     entries.push({
       id: node.id,

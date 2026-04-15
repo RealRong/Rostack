@@ -15,7 +15,8 @@ import {
   type Section
 } from '@dataview/engine'
 import type {
-  Selection
+  Selection,
+  SelectionApi
 } from '@dataview/react/runtime/selection'
 import type {
   MarqueeSessionState
@@ -55,19 +56,19 @@ import { createHover, type Hover } from '@dataview/react/views/table/hover'
 import type { TableLayout } from '@dataview/react/views/table/layout'
 import { createCellRender, type CellRender } from '@dataview/react/views/table/cellRender'
 import {
-  createGridSelection,
-  type GridSelectionStore
-} from '@dataview/react/views/table/gridSelection'
-import {
   createTableVirtualRuntime,
   type TableVirtualRuntime
 } from '@dataview/react/views/table/virtual/runtime'
+import {
+  createTableSelectionRuntime,
+  type TableSelectionRuntime
+} from '@dataview/react/views/table/selectionRuntime'
 
 export interface TableController {
   currentView: ReadStore<CurrentView | undefined>
   locked: ReadStore<boolean>
   valueEditorOpen: ReadStore<boolean>
-  gridSelection: GridSelectionStore
+  selection: TableSelectionRuntime
   marqueeSelection: ValueStore<Selection | null>
   rowRail: ValueStore<ItemId | null>
   layout: TableLayout
@@ -89,8 +90,8 @@ export interface TableController {
 export type {
   Capabilities,
   CellOpenInput,
-  GridSelectionStore,
-  CellRender
+  CellRender,
+  TableSelectionRuntime
 }
 
 const sectionBlockHeight = (input: {
@@ -175,7 +176,7 @@ const rowTarget = (input: {
 const selectionRow = (input: {
   currentView: CurrentView | undefined
   selection: Selection
-  gridSelection: ReturnType<GridSelectionStore['get']>
+  gridSelection: ReturnType<TableSelectionRuntime['cells']['get']>
   rowHeight: number
   headerHeight: number
 }): {
@@ -207,6 +208,7 @@ export const createTableController = (options: {
   engine: Engine
   pageStore: ReadStore<PageState>
   currentViewStore: ReadStore<CurrentView | undefined>
+  selectionApi: SelectionApi
   selectionStore: ReadStore<Selection>
   marqueeStore: ReadStore<MarqueeSessionState | null>
   valueEditor: ValueEditorApi
@@ -214,7 +216,11 @@ export const createTableController = (options: {
   nodes: Nodes
 }): TableController => {
   const currentView = options.currentViewStore
-  const gridSelection = createGridSelection(currentView)
+  const selection = createTableSelectionRuntime({
+    currentViewStore: currentView,
+    rowSelection: options.selectionApi,
+    rowSelectionStore: options.selectionStore
+  })
   const marqueeSelection = createValueStore<Selection | null>({
     initial: null,
     isEqual: (left, right) => {
@@ -315,7 +321,7 @@ export const createTableController = (options: {
     const target = selectionRow({
       currentView: currentView.get(),
       selection: options.selectionStore.get(),
-      gridSelection: gridSelection.get(),
+      gridSelection: selection.cells.get(),
       rowHeight: options.layout.rowHeight,
       headerHeight: options.layout.headerHeight
     })
@@ -337,13 +343,13 @@ export const createTableController = (options: {
         : undefined
     },
     currentView: currentView.get,
-    gridSelection,
+    gridSelection: selection.cells,
     dom,
     revealCursor,
     focus
   })
   const cellRender = createCellRender({
-    gridSelectionStore: gridSelection.store,
+    gridSelectionStore: selection.cells.store,
     valueEditorOpenStore,
     currentViewStore: currentView,
     capabilitiesStore: capabilities,
@@ -355,7 +361,7 @@ export const createTableController = (options: {
     currentView,
     locked: lockedStore,
     valueEditorOpen: valueEditorOpenStore,
-    gridSelection,
+    selection,
     marqueeSelection,
     rowRail,
     layout: options.layout,
@@ -373,7 +379,7 @@ export const createTableController = (options: {
     revealRow,
     dispose: () => {
       interaction.api.cancel()
-      gridSelection.dispose()
+      selection.dispose()
       marqueeSelection.set(null)
       rowRail.set(null)
       virtual.dispose()

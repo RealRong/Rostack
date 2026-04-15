@@ -53,7 +53,7 @@ const View = (props: RowScopeSelectionRailProps) => {
     if (allSelected) {
       const scopeSet = new Set(props.rowIds)
       const nextIds = currentSelection.ids.filter(rowId => !scopeSet.has(rowId))
-      dataView.selection.set(nextIds, {
+      table.selection.rows.set(nextIds, {
         anchor: currentSelection.anchor,
         focus: currentSelection.focus
       })
@@ -62,22 +62,19 @@ const View = (props: RowScopeSelectionRailProps) => {
         ...currentSelection.ids,
         ...props.rowIds
       ])
-      dataView.selection.set(nextIds, {
+      table.selection.rows.set(nextIds, {
         anchor: currentSelection.anchor ?? nextIds[0],
         focus: currentSelection.focus ?? nextIds[nextIds.length - 1]
       })
     }
 
-    table.gridSelection.clear()
     table.focus()
   }, [
     allSelected,
     currentSelection,
-    dataView.selection,
     props.rowIds,
     table,
-    table.gridSelection,
-    table.interaction
+    currentView.items.ids
   ])
 
   return (

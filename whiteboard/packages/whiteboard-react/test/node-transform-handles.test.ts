@@ -3,6 +3,7 @@ import {
   DEFAULT_EDGE_RESIZE_DIRECTIONS,
   DEFAULT_VISIBLE_RESIZE_DIRECTIONS,
   resolveNodeEdgeResizeDirections,
+  resolveTransformChromeScreenSize,
   resolveTransformEdgeHitAreaStyle
 } from '../src/features/node/components/NodeTransformHandles'
 
@@ -31,6 +32,29 @@ describe('NodeTransformHandles direction config', () => {
 })
 
 describe('resolveTransformEdgeHitAreaStyle', () => {
+  it('eases visible transform chrome with sqrt zoom and clamps extremes', () => {
+    expect(resolveTransformChromeScreenSize({
+      zoom: 0.25,
+      base: 12,
+      min: 8,
+      max: 14
+    })).toBe(8)
+
+    expect(resolveTransformChromeScreenSize({
+      zoom: 1,
+      base: 12,
+      min: 8,
+      max: 14
+    })).toBe(12)
+
+    expect(resolveTransformChromeScreenSize({
+      zoom: 4,
+      base: 12,
+      min: 8,
+      max: 14
+    })).toBe(14)
+  })
+
   it('creates a top edge hit area with corner padding', () => {
     expect(resolveTransformEdgeHitAreaStyle({
       direction: 'n',
@@ -40,9 +64,9 @@ describe('resolveTransformEdgeHitAreaStyle', () => {
       },
       zoom: 2
     })).toEqual({
-      left: 6,
+      left: 7.5,
       top: -4,
-      width: 108,
+      width: 105,
       height: 8
     })
   })

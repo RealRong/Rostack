@@ -159,7 +159,6 @@ export const STICKY_INSERT_PRESETS: readonly NodeInsertPreset[] = STICKY_INSERT_
     focus: 'text',
     input: () => createStickyNodeInput({
       fill: option.tone.fillKey,
-      stroke: option.tone.borderKey,
       size: {
         width: option.format.width,
         height: option.format.height

@@ -7,34 +7,48 @@ export const textColorItem: ToolbarItemSpec = {
   key: 'text-color',
   panelKey: 'text-color',
   renderButton: ({
-    context,
+    activeScope,
     activePanelKey,
     togglePanel,
     registerPanelButton
-  }) => (
-    <ToolbarIconButton
-      ref={(element) => {
-        registerPanelButton('text-color', element)
-      }}
-      active={activePanelKey === 'text-color'}
-      onClick={() => {
-        togglePanel('text-color')
-      }}
-      title="Text color"
-      aria-label="Text color"
-    >
-      <ToolbarTextColorIcon color={resolvePaletteColor(context.textColor) ?? context.textColor} />
-    </ToolbarIconButton>
-  ),
+  }) => {
+    const node = activeScope.node
+    if (!node) {
+      return null
+    }
+
+    return (
+      <ToolbarIconButton
+        ref={(element) => {
+          registerPanelButton('text-color', element)
+        }}
+        active={activePanelKey === 'text-color'}
+        onClick={() => {
+          togglePanel('text-color')
+        }}
+        title="Text color"
+        aria-label="Text color"
+      >
+        <ToolbarTextColorIcon color={resolvePaletteColor(node.textColor) ?? node.textColor} />
+      </ToolbarIconButton>
+    )
+  },
   renderPanel: ({
-    context,
+    activeScope,
     editor
-  }) => (
-    <TextColorPanel
-      value={context.textColor}
-      onChange={(value) => {
-        editor.actions.node.style.textColor(context.nodeIds, value)
-      }}
-    />
-  )
+  }) => {
+    const node = activeScope.node
+    if (!node) {
+      return null
+    }
+
+    return (
+      <TextColorPanel
+        value={node.textColor}
+        onChange={(value) => {
+          editor.actions.node.style.textColor(node.nodeIds, value)
+        }}
+      />
+    )
+  }
 }

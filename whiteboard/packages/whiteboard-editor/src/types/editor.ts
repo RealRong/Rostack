@@ -96,8 +96,7 @@ export type EditorChromePresentation = {
 }
 
 export type EditorPanelPresentation = {
-  nodeToolbar: ReturnType<EditorQueryRead['selection']['nodeToolbar']['get']>
-  edgeToolbar: ReturnType<EditorQueryRead['edge']['toolbar']['get']>
+  selectionToolbar: ReturnType<EditorQueryRead['selection']['toolbar']['get']>
   history: HistoryState
   draw: DrawState
 }

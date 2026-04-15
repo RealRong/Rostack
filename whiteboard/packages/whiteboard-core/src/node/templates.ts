@@ -97,11 +97,9 @@ export const createTextNodeInput = (): Omit<SpatialNodeInput, 'position'> => ({
 
 export const createStickyNodeInput = ({
   fill = STICKY_DEFAULT_FILL,
-  stroke = STICKY_DEFAULT_STROKE,
   size = STICKY_START_SIZE
 }: {
   fill?: string
-  stroke?: string
   size?: {
     width: number
     height: number
@@ -114,9 +112,7 @@ export const createStickyNodeInput = ({
   },
   style: {
     fill,
-    color: STICKY_DEFAULT_TEXT_COLOR,
-    stroke,
-    strokeWidth: STICKY_DEFAULT_STROKE_WIDTH
+    color: STICKY_DEFAULT_TEXT_COLOR
   }
 })
 

@@ -28,7 +28,7 @@ export const FillPanel = ({
   onFillChange: (value: string) => void
   onFillOpacityChange?: (value: number) => void
 }) => (
-  <Panel className='w-[384px]'>
+  <Panel>
     {onFillOpacityChange ? (
       <>
         <SliderSection

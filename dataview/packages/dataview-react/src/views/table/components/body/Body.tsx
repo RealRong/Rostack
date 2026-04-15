@@ -44,7 +44,6 @@ import type { MarqueeAdapter } from '@dataview/react/runtime/marquee'
 const View = () => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const selection = dataView.selection
   const table = useTableContext()
   const currentView = useStoreValue(table.currentView)
   if (!currentView) {
@@ -53,6 +52,10 @@ const View = () => {
 
   const locked = useStoreValue(table.locked)
   const columns = currentView.fields.all
+  const showVerticalLinesStore = useMemo(() => engine.active.select(
+    state => state?.view.options.table.showVerticalLines ?? false
+  ), [engine])
+  const showVerticalLines = useStoreValue(showVerticalLinesStore)
   const capabilities = useStoreValue(table.capabilities)
   const virtualInteraction = useStoreValue(table.virtual.interaction)
   const marqueeActive = virtualInteraction.marqueeActive
@@ -93,12 +96,13 @@ const View = () => {
     onStart: () => {
       table.nodes.startRowMarquee(currentView.items.ids)
       table.marqueeSelection.set(null)
-      table.gridSelection.clear()
+      table.selection.cells.clear()
       table.rowRail.set(null)
       table.hover.clear()
     },
     onEnd: () => {
       table.nodes.endRowMarquee()
+      table.focus()
     },
     onCancel: () => {
       table.nodes.endRowMarquee()
@@ -146,11 +150,9 @@ const View = () => {
       },
       editor: engine,
       currentView,
-      selection: selection.get(),
-      selectionApi: selection,
+      selection: table.selection,
       locked,
       readCell,
-      gridSelection: table.gridSelection,
       openCell: table.openCell,
       reveal: table.revealCursor,
       setKeyboardMode: () => {
@@ -167,11 +169,10 @@ const View = () => {
     engine,
     locked,
     readCell,
-    selection,
     table
   ])
   const onPaste = useCallback<ClipboardEventHandler<HTMLDivElement>>(event => {
-    const currentGridSelection = table.gridSelection.get()
+    const currentGridSelection = table.selection.cells.get()
     if (locked || !currentGridSelection) {
       return
     }
@@ -222,6 +223,9 @@ const View = () => {
           ) : null}
           <BlockContent
             columns={columns}
+            viewId={currentView.view.id}
+            items={currentView.items}
+            showVerticalLines={showVerticalLines}
             template={template}
             marqueeActive={marqueeActive}
             dragActive={rowReorder.active}

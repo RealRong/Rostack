@@ -4,13 +4,13 @@ import { Slider } from '@shared/ui/slider'
 import { cn } from '@shared/ui/utils'
 
 const SWATCH_SIZE_CLASS_NAMES = {
-  sm: 'h-7 w-7',
-  md: 'h-10 w-10'
+  sm: 'size-[20px]',
+  md: 'size-[32px]'
 } as const
 
 const SWATCH_SIZE_PX = {
-  sm: 28,
-  md: 40
+  sm: 20,
+  md: 32
 } as const
 
 export const PANEL_SECTION_TITLE_CLASSNAME = 'text-xs font-semibold text-fg-muted'
@@ -124,7 +124,7 @@ export const SwatchButton = ({
     className={cn(
       SWATCH_SIZE_CLASS_NAMES[size],
       shape === 'square' ? 'rounded-md' : 'rounded-full',
-      'relative border border-default transition-[transform,box-shadow,border-color] duration-150 hover:scale-[1.03] hover:border-strong',
+      'relative border border-default transition-[transform,box-shadow,border-color] duration-150 hover:border-accent',
       active && 'border-accent [box-shadow:0_0_0_2px_rgb(from_var(--ui-accent)_r_g_b_/_0.18)]',
       className
     )}

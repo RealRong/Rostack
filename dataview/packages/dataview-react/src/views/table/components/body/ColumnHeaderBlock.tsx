@@ -25,7 +25,7 @@ export interface ColumnHeaderBlockProps {
 }
 
 export const ColumnHeaderBlock = (props: ColumnHeaderBlockProps) => (
-  <div className="relative h-full border-b border-divider bg-transparent text-muted-foreground">
+  <div className="relative h-full min-w-full w-max border-b border-divider bg-transparent text-muted-foreground">
     <RowScopeSelectionRail
       rowIds={props.rowIds}
       label={props.label}

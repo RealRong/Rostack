@@ -44,6 +44,7 @@ input,
 select,
 textarea {
   font: inherit;
+  outline: none;
 }
 
 button {

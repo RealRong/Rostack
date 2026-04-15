@@ -148,11 +148,10 @@ export const useRowReorder = (): RowReorderApi => {
       table.rowRail.set(null)
       previewNodeRef.current = null
       if (!input.cancelled && selectionTargetRef.current) {
-        dataView.selection.set([selectionTargetRef.current], {
+        table.selection.rows.set([selectionTargetRef.current], {
           anchor: selectionTargetRef.current,
           focus: selectionTargetRef.current
         })
-        table.gridSelection.clear()
       }
       selectionTargetRef.current = null
       table.focus()

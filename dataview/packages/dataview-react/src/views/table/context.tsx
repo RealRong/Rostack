@@ -60,6 +60,7 @@ export const TableProvider = (props: TableProviderProps) => {
     engine,
     pageStore: dataView.page.store,
     currentViewStore: currentView,
+    selectionApi: dataView.selection,
     selectionStore: dataView.selection.store,
     marqueeStore: dataView.marquee.store,
     valueEditor: dataView.valueEditor,
@@ -68,6 +69,7 @@ export const TableProvider = (props: TableProviderProps) => {
   }), [
     dataView.marquee.store,
     dataView.page.store,
+    dataView.selection,
     dataView.selection.store,
     dataView.valueEditor,
     currentView,

@@ -11,46 +11,60 @@ export const fillItem: ToolbarItemSpec = {
   key: 'fill',
   panelKey: 'fill',
   renderButton: ({
-    context,
+    activeScope,
     activePanelKey,
     togglePanel,
     registerPanelButton
-  }) => (
-    <ToolbarIconButton
-      ref={(element) => {
-        registerPanelButton('fill', element)
-      }}
-      active={activePanelKey === 'fill'}
-      onClick={() => {
-        togglePanel('fill')
-      }}
-      title="Fill"
-      aria-label="Fill"
-    >
-      <ToolbarFillIcon
-        fill={resolvePaletteColor(context.fill) ?? context.fill}
-        opacity={context.fillOpacity}
-      />
-    </ToolbarIconButton>
-  ),
+  }) => {
+    const node = activeScope.node
+    if (!node) {
+      return null
+    }
+
+    return (
+      <ToolbarIconButton
+        ref={(element) => {
+          registerPanelButton('fill', element)
+        }}
+        active={activePanelKey === 'fill'}
+        onClick={() => {
+          togglePanel('fill')
+        }}
+        title="Fill"
+        aria-label="Fill"
+      >
+        <ToolbarFillIcon
+          fill={resolvePaletteColor(node.fill) ?? node.fill}
+          opacity={node.fillOpacity}
+        />
+      </ToolbarIconButton>
+    )
+  },
   renderPanel: ({
-    context,
+    activeScope,
     editor
-  }) => (
-    <FillPanel
-      fill={context.fill}
-      fillOpacity={context.fillOpacity}
-      options={context.kind === 'sticky'
-        ? WHITEBOARD_STICKY_FILL_OPTIONS
-        : WHITEBOARD_FILL_COLOR_OPTIONS}
-      onFillChange={(value) => {
-        editor.actions.node.style.fill(context.nodeIds, value)
-      }}
-      onFillOpacityChange={context.canEditFillOpacity
-        ? (value) => {
-            editor.actions.node.style.fillOpacity(context.nodeIds, value)
-          }
-        : undefined}
-    />
-  )
+  }) => {
+    const node = activeScope.node
+    if (!node) {
+      return null
+    }
+
+    return (
+      <FillPanel
+        fill={node.fill}
+        fillOpacity={node.fillOpacity}
+        options={node.kind === 'sticky'
+          ? WHITEBOARD_STICKY_FILL_OPTIONS
+          : WHITEBOARD_FILL_COLOR_OPTIONS}
+        onFillChange={(value) => {
+          editor.actions.node.style.fill(node.nodeIds, value)
+        }}
+        onFillOpacityChange={node.canEditFillOpacity
+          ? (value) => {
+              editor.actions.node.style.fillOpacity(node.nodeIds, value)
+            }
+          : undefined}
+      />
+    )
+  }
 }

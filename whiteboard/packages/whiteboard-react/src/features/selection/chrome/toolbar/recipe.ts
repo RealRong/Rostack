@@ -1,173 +1,156 @@
-import type { NodeToolbarContext } from '@whiteboard/editor'
+import type {
+  SelectionToolbarContext,
+  SelectionToolbarScope
+} from '@whiteboard/editor'
+import type { SelectionCan } from '@whiteboard/react/features/selection/capability'
 import type {
   ToolbarItemKey,
   ToolbarRecipeItem
 } from '@whiteboard/react/features/selection/chrome/toolbar/types'
 
-const DIVIDER = { kind: 'divider' } as const
-
-const shapeRecipe = [
-  { kind: 'item', key: 'filter' },
-  DIVIDER,
-  { kind: 'item', key: 'shape-kind' },
-  DIVIDER,
-  { kind: 'item', key: 'font-size' },
-  DIVIDER,
-  { kind: 'item', key: 'bold' },
-  { kind: 'item', key: 'italic' },
-  { kind: 'item', key: 'text-align' },
-  { kind: 'item', key: 'text-color' },
-  DIVIDER,
-  { kind: 'item', key: 'stroke' },
-  { kind: 'item', key: 'fill' },
-  DIVIDER,
-  { kind: 'item', key: 'lock' },
-  { kind: 'item', key: 'more' }
-] satisfies readonly ToolbarRecipeItem[]
-
-const textRecipe = [
-  { kind: 'item', key: 'filter' },
-  DIVIDER,
-  { kind: 'item', key: 'font-size' },
-  DIVIDER,
-  { kind: 'item', key: 'bold' },
-  { kind: 'item', key: 'italic' },
-  { kind: 'item', key: 'text-align' },
-  { kind: 'item', key: 'text-color' },
-  { kind: 'item', key: 'fill' },
-  DIVIDER,
-  { kind: 'item', key: 'lock' },
-  { kind: 'item', key: 'more' }
-] satisfies readonly ToolbarRecipeItem[]
-
-const stickyRecipe = [
-  { kind: 'item', key: 'filter' },
-  DIVIDER,
-  { kind: 'item', key: 'text-color' },
-  { kind: 'item', key: 'fill' },
-  DIVIDER,
-  { kind: 'item', key: 'lock' },
-  { kind: 'item', key: 'more' }
-] satisfies readonly ToolbarRecipeItem[]
-
-const frameRecipe = [
-  { kind: 'item', key: 'filter' },
-  DIVIDER,
-  { kind: 'item', key: 'text-color' },
-  DIVIDER,
-  { kind: 'item', key: 'stroke' },
-  { kind: 'item', key: 'fill' },
-  DIVIDER,
-  { kind: 'item', key: 'lock' },
-  { kind: 'item', key: 'more' }
-] satisfies readonly ToolbarRecipeItem[]
-
-const drawRecipe = [
-  { kind: 'item', key: 'filter' },
-  DIVIDER,
-  { kind: 'item', key: 'stroke' },
-  DIVIDER,
-  { kind: 'item', key: 'lock' },
-  { kind: 'item', key: 'more' }
-] satisfies readonly ToolbarRecipeItem[]
-
-const groupRecipe = [
-  { kind: 'item', key: 'filter' },
-  DIVIDER,
-  { kind: 'item', key: 'lock' },
-  { kind: 'item', key: 'more' }
-] satisfies readonly ToolbarRecipeItem[]
-
-const mixedRecipe = [
-  { kind: 'item', key: 'filter' },
-  DIVIDER,
-  { kind: 'item', key: 'lock' },
-  { kind: 'item', key: 'more' }
-] satisfies readonly ToolbarRecipeItem[]
-
-const isItemVisible = (
-  context: NodeToolbarContext,
-  key: ToolbarItemKey
+const appendSection = (
+  recipe: ToolbarRecipeItem[],
+  keys: readonly ToolbarItemKey[]
 ) => {
-  switch (key) {
-    case 'filter':
-      return Boolean(context.filter)
-    case 'shape-kind':
-      return context.canChangeShapeKind
-    case 'font-size':
-      return context.canEditFontSize
-    case 'bold':
-      return context.canEditFontWeight
-    case 'italic':
-      return context.canEditFontStyle
-    case 'text-align':
-      return context.canEditTextAlign
-    case 'text-color':
-      return context.canEditTextColor
-    case 'stroke':
-      return context.canEditStroke
-    case 'fill':
-      return context.canEditFill
-    case 'lock':
-      return context.nodeIds.length > 0
-    case 'more':
-      return context.nodeIds.length > 0
+  if (!keys.length) {
+    return
   }
-}
 
-const normalizeRecipe = (
-  recipe: readonly ToolbarRecipeItem[],
-  context: NodeToolbarContext
-) => {
-  const normalized: ToolbarRecipeItem[] = []
+  if (recipe.length) {
+    recipe.push({ kind: 'divider' })
+  }
 
-  recipe.forEach((entry) => {
-    if (entry.kind === 'item') {
-      if (isItemVisible(context, entry.key)) {
-        normalized.push(entry)
-      }
-      return
-    }
-
-    if (!normalized.length || normalized[normalized.length - 1]?.kind === 'divider') {
-      return
-    }
-
-    normalized.push(entry)
+  keys.forEach((key) => {
+    recipe.push({
+      kind: 'item',
+      key
+    })
   })
-
-  while (normalized[normalized.length - 1]?.kind === 'divider') {
-    normalized.pop()
-  }
-
-  return normalized
 }
 
-const resolveTemplate = (
-  context: NodeToolbarContext
-) => {
-  if (context.locked !== 'none') {
-    return groupRecipe
-  }
-
-  switch (context.kind) {
-    case 'shape':
-      return shapeRecipe
-    case 'text':
-      return textRecipe
-    case 'sticky':
-      return stickyRecipe
-    case 'frame':
-      return frameRecipe
-    case 'draw':
-      return drawRecipe
+const isItemVisible = ({
+  context,
+  activeScope,
+  selectionCan,
+  scopeCan,
+  key
+}: {
+  context: SelectionToolbarContext
+  activeScope: SelectionToolbarScope
+  selectionCan: SelectionCan
+  scopeCan: SelectionCan
+  key: ToolbarItemKey
+}) => {
+  switch (key) {
+    case 'scope':
+      return context.scopes.length > 1
+    case 'align':
+      return Boolean(activeScope.node) && scopeCan.align
     case 'group':
-      return groupRecipe
-    case 'mixed':
-      return mixedRecipe
+      return selectionCan.makeGroup || selectionCan.ungroup
+    case 'shape-kind':
+      return activeScope.node?.canChangeShapeKind ?? false
+    case 'font-size':
+      return activeScope.node?.canEditFontSize ?? false
+    case 'bold':
+      return activeScope.node?.canEditFontWeight ?? false
+    case 'italic':
+      return activeScope.node?.canEditFontStyle ?? false
+    case 'text-align':
+      return activeScope.node?.canEditTextAlign ?? false
+    case 'text-color':
+      return activeScope.node?.canEditTextColor ?? false
+    case 'stroke':
+      return activeScope.node?.canEditStroke ?? false
+    case 'fill':
+      return activeScope.node?.canEditFill ?? false
+    case 'edge-line':
+      return Boolean(activeScope.edge)
+    case 'edge-markers':
+      return Boolean(activeScope.edge)
+    case 'edge-text':
+      return Boolean(activeScope.edge?.single)
+    case 'lock':
+      return context.target.nodeIds.length > 0
+    case 'more':
+      return context.target.nodeIds.length + context.target.edgeIds.length > 0
   }
 }
 
-export const resolveToolbarRecipe = (
-  context: NodeToolbarContext
-): readonly ToolbarRecipeItem[] => normalizeRecipe(resolveTemplate(context), context)
+export const resolveToolbarRecipe = ({
+  context,
+  activeScope,
+  selectionCan,
+  scopeCan
+}: {
+  context: SelectionToolbarContext
+  activeScope: SelectionToolbarScope
+  selectionCan: SelectionCan
+  scopeCan: SelectionCan
+}): readonly ToolbarRecipeItem[] => {
+  const recipe: ToolbarRecipeItem[] = []
+  const selectionKeys = ([
+    'scope'
+  ] as const).filter((key) => isItemVisible({
+    context,
+    activeScope,
+    selectionCan,
+    scopeCan,
+    key
+  }))
+  const structureKeys = ([
+    'align',
+    'group'
+  ] as const).filter((key) => isItemVisible({
+    context,
+    activeScope,
+    selectionCan,
+    scopeCan,
+    key
+  }))
+  const styleKeys = activeScope.node
+    ? ([
+        'shape-kind',
+        'font-size',
+        'bold',
+        'italic',
+        'text-align',
+        'text-color',
+        'stroke',
+        'fill'
+      ] as const).filter((key) => isItemVisible({
+        context,
+        activeScope,
+        selectionCan,
+        scopeCan,
+        key
+      }))
+    : ([
+        'edge-line',
+        'edge-markers',
+        'edge-text'
+      ] as const).filter((key) => isItemVisible({
+        context,
+        activeScope,
+        selectionCan,
+        scopeCan,
+        key
+      }))
+  const utilityKeys = ([
+    'lock',
+    'more'
+  ] as const).filter((key) => isItemVisible({
+    context,
+    activeScope,
+    selectionCan,
+    scopeCan,
+    key
+  }))
+
+  appendSection(recipe, selectionKeys)
+  appendSection(recipe, structureKeys)
+  appendSection(recipe, styleKeys)
+  appendSection(recipe, utilityKeys)
+
+  return recipe
+}

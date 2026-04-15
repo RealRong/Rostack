@@ -60,6 +60,18 @@ type SearchPlan = {
   candidates?: readonly RecordId[]
 }
 
+const projectIdsToCurrentOrder = (
+  orderedIds: readonly RecordId[],
+  currentIds: readonly RecordId[]
+): readonly RecordId[] => {
+  if (!orderedIds.length || !currentIds.length) {
+    return []
+  }
+
+  const currentIdSet = new Set(currentIds)
+  return orderedIds.filter(recordId => currentIdSet.has(recordId))
+}
+
 const sortRecordIds = (input: {
   ids: readonly RecordId[]
   document: DataDoc
@@ -74,9 +86,12 @@ const sortRecordIds = (input: {
     const sorter = input.view.sort[0]
     const fieldIndex = input.index.sort.fields.get(sorter.field)
     if (fieldIndex) {
-      return sorter.direction === 'asc'
-        ? fieldIndex.asc
-        : fieldIndex.desc
+      return projectIdsToCurrentOrder(
+        sorter.direction === 'asc'
+          ? fieldIndex.asc
+          : fieldIndex.desc,
+        input.ids
+      )
     }
   }
 
@@ -126,12 +141,15 @@ const applyViewOrders = (
 const sortIdsByRecordOrder = (
   ids: readonly RecordId[],
   order: ReadonlyMap<RecordId, number>
-): readonly RecordId[] => ids.length <= 1
-  ? ids
-  : ids.slice().sort((left, right) => (
-      (order.get(left) ?? Number.MAX_SAFE_INTEGER)
-      - (order.get(right) ?? Number.MAX_SAFE_INTEGER)
-    ))
+): readonly RecordId[] => {
+  const presentIds = ids.filter(recordId => order.has(recordId))
+  return presentIds.length <= 1
+    ? presentIds
+    : presentIds.slice().sort((left, right) => (
+        (order.get(left) ?? Number.MAX_SAFE_INTEGER)
+        - (order.get(right) ?? Number.MAX_SAFE_INTEGER)
+      ))
+}
 
 const intersectCandidates = (
   left: readonly RecordId[],
@@ -638,6 +656,18 @@ const filterVisibleIds = (input: {
   })
 })
 
+const projectCandidatesToOrderedIds = (
+  ordered: readonly RecordId[],
+  candidates: readonly RecordId[]
+): readonly RecordId[] => {
+  if (!candidates.length) {
+    return []
+  }
+
+  const candidateSet = new Set(candidates)
+  return ordered.filter(recordId => candidateSet.has(recordId))
+}
+
 export const buildQueryState = (input: {
   document: DataDoc
   view: View
@@ -673,13 +703,13 @@ export const buildQueryState = (input: {
     view: input.view
   })
   const ordered = applyViewOrders(matched, input.view)
-  const canUseRecordOrderCandidates = ordered === input.index.records.ids
-  const candidateIds = canUseRecordOrderCandidates
-    ? (
-        searchPlan.candidates && filterCandidates
-          ? intersectCandidates(searchPlan.candidates, filterCandidates)
-          : searchPlan.candidates ?? filterCandidates
-      )
+  const candidatePool = (
+    searchPlan.candidates && filterCandidates
+      ? intersectCandidates(searchPlan.candidates, filterCandidates)
+      : searchPlan.candidates ?? filterCandidates
+  )
+  const candidateIds = candidatePool
+    ? projectCandidatesToOrderedIds(ordered, candidatePool)
     : undefined
   const visible = !hasSearch && !hasFilter
     ? ordered

@@ -164,14 +164,12 @@ export const createEditorFacade = ({
   })
   const panel = createDerivedStore({
     get: () => ({
-      nodeToolbar: readValue(query.read.selection.nodeToolbar),
-      edgeToolbar: readValue(query.read.edge.toolbar),
+      selectionToolbar: readValue(query.read.selection.toolbar),
       history: readValue(query.read.history),
       draw: readValue(query.read.draw)
     }),
     isEqual: (left, right) => (
-      left.nodeToolbar === right.nodeToolbar
-      && left.edgeToolbar === right.edgeToolbar
+      left.selectionToolbar === right.selectionToolbar
       && left.history === right.history
       && left.draw === right.draw
     )

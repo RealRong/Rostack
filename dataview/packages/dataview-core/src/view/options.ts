@@ -43,7 +43,7 @@ export const createDefaultViewOptions = (
   kanban: {
     newRecordPosition: 'end',
     fillColumnColor: true,
-    cardsPerColumn: 'all'
+    cardsPerColumn: 25
   }
 })
 

@@ -1,5 +1,6 @@
 import { type CSSProperties } from 'react'
 import { OverlayProvider } from '@shared/ui/overlay'
+import { PageTitle } from '@dataview/react/page/PageTitle'
 import { ViewQueryBar } from '@dataview/react/page/features/viewQuery/ViewQueryBar'
 import {
   PageInlineSessionHost,
@@ -43,6 +44,7 @@ export const Page = (props: PageProps) => {
               className="flex flex-col gap-2"
               style={chromeStyle}
             >
+              <PageTitle />
               <PageToolbar />
               <ViewQueryBar />
             </div>

@@ -5,10 +5,6 @@ import {
   type CellRef
 } from '@dataview/engine'
 import type {
-  Selection,
-  SelectionApi
-} from '@dataview/react/runtime/selection'
-import type {
   Engine
 } from '@dataview/engine'
 import {
@@ -23,7 +19,7 @@ import {
   type TableKeyInput
 } from '@dataview/table'
 import type { CellOpenInput } from '@dataview/react/views/table/openCell'
-import type { GridSelectionStore } from '@dataview/react/views/table/gridSelection'
+import type { TableSelectionRuntime } from '@dataview/react/views/table/selectionRuntime'
 
 const currentKey = (
   input: TableKeyInput | KeyInput
@@ -38,13 +34,11 @@ export const handleTableKey = (input: {
   key: TableKeyInput | KeyInput
   editor: Engine
   currentView: CurrentView
-  selection: Selection
-  selectionApi: Pick<SelectionApi, 'all' | 'set'>
+  selection: TableSelectionRuntime
   locked: boolean
   readCell: (cell: CellRef) => {
     exists: boolean
   }
-  gridSelection: GridSelectionStore
   openCell: (input: CellOpenInput) => boolean
   reveal: () => void
   setKeyboardMode: () => void
@@ -55,25 +49,24 @@ export const handleTableKey = (input: {
 
   const key = currentKey(input.key)
   if (isSelectAll(key)) {
-    input.selectionApi.all()
-    input.gridSelection.clear()
+    input.selection.rows.all()
     input.setKeyboardMode()
     input.reveal()
     return true
   }
 
-  const currentGridSelection = input.gridSelection.get()
-  if (currentGridSelection) {
+  const mode = input.selection.mode.get()
+  const currentGridSelection = input.selection.cells.get()
+  if (mode === 'cells' && currentGridSelection) {
     if (key.key === 'Escape') {
       const rowIds = gridSelection.itemIds(
         currentGridSelection,
         input.currentView.items
       )
-      input.selectionApi.set(rowIds, {
+      input.selection.rows.set(rowIds, {
         anchor: rowIds[0],
         focus: rowIds[rowIds.length - 1]
       })
-      input.gridSelection.clear()
       input.setKeyboardMode()
       input.reveal()
       return true
@@ -97,7 +90,7 @@ export const handleTableKey = (input: {
 
     switch (action.kind) {
       case 'move-cell':
-        input.gridSelection.move(action.rowDelta, action.columnDelta, {
+        input.selection.cells.move(action.rowDelta, action.columnDelta, {
           extend: action.extend,
           wrap: action.wrap
         })
@@ -124,8 +117,8 @@ export const handleTableKey = (input: {
     }
   }
 
-  const currentSelection = input.selection
-  if (!currentSelection.ids.length) {
+  const currentSelection = input.selection.rows.get()
+  if (mode !== 'rows' || !currentSelection.ids.length) {
     return false
   }
 
@@ -144,7 +137,7 @@ export const handleTableKey = (input: {
         return false
       }
 
-      input.selectionApi.set(next.ids, {
+      input.selection.rows.set(next.ids, {
         anchor: next.anchor,
         focus: next.focus
       })
@@ -159,7 +152,7 @@ export const handleTableKey = (input: {
         return false
       }
 
-      input.gridSelection.first(rowId)
+      input.selection.cells.first(rowId)
       input.setKeyboardMode()
       input.reveal()
       return true
@@ -180,7 +173,7 @@ export const handleTableKey = (input: {
 export const applyPaste = (input: {
   editor: Engine
   currentView: CurrentView | undefined
-  gridSelection: ReturnType<GridSelectionStore['get']>
+  gridSelection: ReturnType<TableSelectionRuntime['cells']['get']>
   text: string
 }) => {
   if (!input.currentView) {

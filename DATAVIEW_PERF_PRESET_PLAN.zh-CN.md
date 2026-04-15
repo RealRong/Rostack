@@ -542,30 +542,292 @@
 - 页面有亮点
 - 仍然能暴露真实性能问题
 
-## 实施建议
+## 中轴化实施方案
 
-建议分三阶段做。
+这块实现要尽量中轴化，避免散成一堆：
+
+- `preset 常量文件`
+- `生成器 util 文件`
+- `视图 patch 文件`
+- `假数据字段文件`
+- `按钮组件文件`
+- `dropdown 组装文件`
+
+这种拆法短期看起来整洁，长期会让维护成本和认知负担迅速上升。
+
+第一版更适合采用“单入口 + 单模块 + 少量薄包装”的结构。
+
+### 目标结构
+
+建议第一版最多只增加 2-3 个文件：
+
+1. `dataview/packages/dataview-react/src/page/Page.tsx`
+
+- 只负责挂载入口
+- 只保留很薄的一层 UI 组合
+- 不承担数据生成细节
+
+2. `dataview/packages/dataview-react/src/page/perfPresets.ts`
+
+- 这是整个方案的中轴文件
+- 统一放：
+  - preset 定义
+  - seed
+  - 数据生成入口
+  - 默认 view 配置入口
+  - menu item 映射入口
+- 第一版尽量不要再拆成 `presets/roadmap.ts`、`presets/sales.ts` 这种多文件结构
+
+3. 可选：`dataview/packages/dataview-react/src/page/PageTitle.tsx`
+
+- 如果 `Page.tsx` 里 UI 变得太长，可以把标题 + dropdown 薄抽出来
+- 这个文件只做展示，不做 preset 逻辑
+
+如果 `Page.tsx` 里代码量还能接受，甚至可以连 `PageTitle.tsx` 都先不拆。
+
+### 为什么要这样收口
+
+因为这套能力本质上不是 dataview 的核心领域模型，而是：
+
+- demo tooling
+- perf tooling
+- seed data tooling
+
+这类代码最怕“还没稳定就先目录工程化”。
+
+第一版更应该优先保证：
+
+- 好找
+- 好删
+- 好改
+- 好理解
+
+而不是先追求文件颗粒度优雅。
+
+### `perfPresets.ts` 应该承担什么
+
+建议这个文件收口成一个单模块，暴露极少数顶层 API。
+
+例如概念上只需要这几类导出：
+
+- `PERF_PRESETS`
+  - 所有预设定义
+- `buildPerfPresetMenuItems(...)`
+  - 把预设转成 dropdown items
+- `applyPerfPreset(...)`
+  - 执行某个预设，生成数据并应用默认视图
+
+如果要继续细分，也尽量保持在同一文件内部用私有函数，而不是再拆文件。
+
+文件内部可以有这些私有结构：
+
+- `createRoadmapPresetDocument`
+- `createSalesPresetDocument`
+- `createEngineeringPresetDocument`
+- `applyPresetViewState`
+- `createSeededRandom`
+- `pickWeighted`
+- `buildOwnerPool`
+
+重点是：
+
+- 可以有多个私有函数
+- 但先不要扩散成多个模块
+
+### UI 层应该尽量薄
+
+`Page.tsx` 或 `PageTitle.tsx` 不应该知道：
+
+- 各个字段怎么生成
+- 各个 preset 的 seed 是什么
+- 默认视图怎么 patch
+- faker 文案怎么选
+
+UI 层只应该知道：
+
+- 当前有哪些 preset
+- 点击某个 preset 时调用哪个入口函数
+
+也就是说，UI 层只做：
+
+- Button
+- Dropdown
+- Loading / busy state
+- 当前 preset 名称展示
+
+不要把生成逻辑塞到 React hook 里。
+
+### 数据模型也尽量不要单独抽象一套“配置系统”
+
+第一版不要做成这种重量方案：
+
+- `PresetDescriptor`
+- `FieldRecipe`
+- `ValueSampler`
+- `ViewPresetDescriptor`
+- `NarrativeDescriptor`
+- `MenuDescriptor`
+
+这种设计理论上很优雅，但会明显过度工程化。
+
+更合适的方式是：
+
+- 每个 preset 就是一条明确对象
+- 对象里直接定义：
+  - `id`
+  - `label`
+  - `seed`
+  - `scale`
+  - `generate()`
+  - `applyView()`
+
+需要共用逻辑时，再抽私有 helper。
+
+### 生成流程建议收口成一条主链路
+
+不要让“生成字段”“生成记录”“应用视图”“切换 view”分散在不同事件回调里。
+
+建议内部流程严格固定成：
+
+1. 解析 preset
+2. 初始化 seeded random
+3. 生成 document
+4. 生成或修正 views
+5. 写入当前 page / dataView
+6. 聚焦到默认 view
+7. 记录本次 preset 元信息
+
+这样后续排查性能或数据问题时，链路非常明确。
+
+### 文案素材也不要一开始拆成很多词库文件
+
+如果需要更真实的演示数据，第一版可以接受把少量词库直接放在 `perfPresets.ts` 内部：
+
+- owner names
+- company names
+- team names
+- campaigns
+- labels
+- roadmap initiatives
+
+只要规模还可控，就先内聚。
+
+等满足下面任一条件，再考虑拆分：
+
+- 单文件已经明显超过可维护阈值
+- 词库已经被多个模块共享
+- 需要支持多语言
+
+### fakerjs 的落点也要集中
+
+如果后续引入 `fakerjs`，也建议只在 `perfPresets.ts` 里使用。
+
+不要让 repo 里出现这种扩散：
+
+- 有的 preset 用 faker
+- 有的 preset 用手写 random
+- 有的 preset 在 UI 层拼 title
+- 有的 preset 在 helper 层拼 company
+
+应该统一成：
+
+- 所有 demo/perf 数据生成都从 `perfPresets.ts` 进入
+- faker 只是该模块内部的一个素材工具
+
+### 默认视图配置也要集中应用
+
+不要把默认 view 配置写在：
+
+- `Page.tsx` 一部分
+- generator 一部分
+- 某个 `applyPresetView.ts` 一部分
+
+建议每个 preset 自己声明默认视图意图，再由统一入口应用：
+
+- 默认 view type
+- group
+- sort
+- filters
+- visible fields
+- summaries
+
+这样“数据生成”和“视图落地”仍然是同一条受控链路。
+
+### 第一版文件边界建议
+
+推荐最小实现：
+
+- `Page.tsx`
+  - 增加 `PageTitle` 入口或直接内联一段 UI
+- `perfPresets.ts`
+  - 所有 preset 定义和实现都放这里
+
+推荐稍微清爽一点的实现：
+
+- `Page.tsx`
+- `PageTitle.tsx`
+- `perfPresets.ts`
+
+不推荐第一版就引入：
+
+- `page/perfPresets/roadmap.ts`
+- `page/perfPresets/sales.ts`
+- `page/perfPresets/shared/random.ts`
+- `page/perfPresets/shared/faker.ts`
+- `page/perfPresets/menu.ts`
+- `page/perfPresets/view.ts`
+
+除非这块已经被证明会长期演进成正式能力，否则不值得先拆这么细。
+
+## 分阶段落地建议
 
 ### 阶段 1：最小可用
 
 - 在 `Page.tsx` 顶部增加 `PageTitle`
-- 下挂一个 dropdown
-- 先提供 4-6 个预设
-- 每个预设生成固定 seed 数据
-- 每个预设附带默认 view 配置
+- dropdown 中先提供 4-6 个 preset
+- 只新增 `perfPresets.ts`
+- 每个 preset：
+  - 固定 seed
+  - 生成 document
+  - 附带默认 view 配置
+
+阶段 1 的目标不是“最优架构”，而是：
+
+- 一天内可落地
+- 演示可用
+- 性能可测
+- 后续容易改
 
 ### 阶段 2：真实感增强
 
-- 引入 `fakerjs` 作为文案素材来源
-- 加入更真实的 title / company / owner / campaign 文案
-- 优化 option / tag 命名体系
+- 引入 `fakerjs` 或自定义词库
+- 改善 title / company / owner / campaign 的真实感
+- 增强热门值 / 长尾值 / 空值分布
+- 保持文件边界不变，仍尽量集中在 `perfPresets.ts`
 
-### 阶段 3：压测能力增强
+### 阶段 3：能力增强
 
 - 支持更高规模档位
-- 支持生成后自动记录耗时
-- 支持切换 preset 后自动聚焦到对应视图
-- 支持“重新生成同一 preset”
+- 支持生成耗时统计
+- 支持重新生成当前 preset
+- 支持保存最近一次 preset
+- 如果这时单文件已经明显过大，再考虑按“场景”拆分
+
+## 实施上的硬约束
+
+为了防止方案失控，建议一开始就明确这些约束：
+
+- 第一版新增文件数尽量不超过 3 个
+- preset 逻辑只允许有一个中轴模块
+- UI 文件不承担数据生成逻辑
+- 数据生成和默认视图应用必须走同一入口函数
+- faker 或词库能力不得散落在多个模块
+
+如果后面需要演进，也应该先满足一个条件：
+
+- 现有单模块已经明显影响维护效率
+
+而不是因为“看起来可以拆”就提前拆。
 
 ## 最终建议
 

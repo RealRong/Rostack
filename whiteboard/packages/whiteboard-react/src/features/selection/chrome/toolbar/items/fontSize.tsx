@@ -7,41 +7,55 @@ export const fontSizeItem: ToolbarItemSpec = {
   panelKey: 'font-size',
   units: 2,
   renderButton: ({
-    context,
+    activeScope,
     editor,
     togglePanel,
     registerPanelButton
-  }) => (
-    <FontSizeControl
-      value={context.fontSize}
-      registerAnchor={(element) => {
-        registerPanelButton('font-size', element)
-      }}
-      onTogglePanel={() => {
-        togglePanel('font-size')
-      }}
-      onCommit={(value) => {
-        editor.actions.node.text.size({
-          nodeIds: context.nodeIds,
-          value
-        })
-      }}
-    />
-  ),
+  }) => {
+    const node = activeScope.node
+    if (!node) {
+      return null
+    }
+
+    return (
+      <FontSizeControl
+        value={node.fontSize}
+        registerAnchor={(element) => {
+          registerPanelButton('font-size', element)
+        }}
+        onTogglePanel={() => {
+          togglePanel('font-size')
+        }}
+        onCommit={(value) => {
+          editor.actions.node.text.size({
+            nodeIds: node.nodeIds,
+            value
+          })
+        }}
+      />
+    )
+  },
   renderPanel: ({
-    context,
+    activeScope,
     editor,
     closePanel
-  }) => (
-    <FontSizePanel
-      value={context.fontSize}
-      onChange={(value) => {
-        closePanel()
-        editor.actions.node.text.size({
-          nodeIds: context.nodeIds,
-          value
-        })
-      }}
-    />
-  )
+  }) => {
+    const node = activeScope.node
+    if (!node) {
+      return null
+    }
+
+    return (
+      <FontSizePanel
+        value={node.fontSize}
+        onChange={(value) => {
+          closePanel()
+          editor.actions.node.text.size({
+            nodeIds: node.nodeIds,
+            value
+          })
+        }}
+      />
+    )
+  }
 }

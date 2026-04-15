@@ -34,22 +34,25 @@ const createEntityTableAccess = <TId extends string, TEntity extends { id: TId }
 })
 
 export const listEntityTable = <TId extends string, TEntity extends { id: TId }>(table: EntityTable<TId, TEntity>): TEntity[] => {
-  return createEntityTableAccess(table).all.slice()
+  return table.order.flatMap(entityId => {
+    const entity = table.byId[entityId]
+    return entity ? [entity] : []
+  })
 }
 
 export const getEntityTableIds = <TId extends string, TEntity extends { id: TId }>(table: EntityTable<TId, TEntity>): TId[] => {
-  return createEntityTableAccess(table).ids.slice()
+  return table.order.slice()
 }
 
 export const getEntityTableById = <TId extends string, TEntity extends { id: TId }>(
   table: EntityTable<TId, TEntity>,
   entityId: TId
-): TEntity | undefined => createEntityTableAccess(table).get(entityId)
+): TEntity | undefined => table.byId[entityId]
 
 export const hasEntityTableId = <TId extends string, TEntity extends { id: TId }>(
   table: EntityTable<TId, TEntity>,
   entityId: TId
-) => createEntityTableAccess(table).has(entityId)
+) => Boolean(table.byId[entityId])
 
 export const cloneEntityTable = <TId extends string, TEntity extends { id: TId }>(table: EntityTable<TId, TEntity>): EntityTable<TId, TEntity> => {
   const byId = {} as Record<TId, TEntity>

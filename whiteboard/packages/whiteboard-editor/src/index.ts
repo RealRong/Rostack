@@ -98,13 +98,15 @@ export type {
   NodeFamily
 } from '@whiteboard/editor/types/node'
 export type {
-  EdgeToolbarContext
-} from '@whiteboard/editor/types/edgePresentation'
-export type {
   SelectionOverlay,
-  NodeToolbarContext,
-  NodeToolbarFilter,
+  SelectionEdgeTypeInfo,
   SelectionNodeInfo,
   SelectionNodeTypeInfo,
-  ToolbarSelectionKind
+  SelectionToolbarContext,
+  SelectionToolbarEdgeScope,
+  SelectionToolbarLockState,
+  SelectionToolbarNodeKind,
+  SelectionToolbarNodeScope,
+  SelectionToolbarScope,
+  SelectionToolbarScopeKind
 } from '@whiteboard/editor/types/selectionPresentation'

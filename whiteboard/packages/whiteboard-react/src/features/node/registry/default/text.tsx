@@ -21,7 +21,6 @@ import {
   readTextWidthMode,
   readTextWrapWidth,
   STICKY_DEFAULT_FILL,
-  STICKY_DEFAULT_STROKE,
   STICKY_DEFAULT_TEXT_COLOR,
   TEXT_DEFAULT_FONT_SIZE,
   TEXT_PLACEHOLDER
@@ -61,17 +60,6 @@ const readStickyFill = (
   getStyleString(node, 'fill'),
   STICKY_DEFAULT_FILL
 ) ?? STICKY_DEFAULT_FILL
-
-const readStickyStroke = (
-  node: NodeRenderProps['node']
-) => resolvePaletteColorOr(
-  getStyleString(node, 'stroke'),
-  STICKY_DEFAULT_STROKE
-) ?? STICKY_DEFAULT_STROKE
-
-const readStickyStrokeWidth = (
-  node: NodeRenderProps['node']
-) => getStyleNumber(node, 'strokeWidth') ?? 1
 
 const useElementBinding = <
   TElement extends HTMLDivElement
@@ -235,8 +223,7 @@ const useSyncedTextNodeSize = ({
 
 const TextNodeRenderer = ({
   node,
-  rect,
-  selected
+  rect
 }: NodeRenderProps) => {
   const edit = useEdit()
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
@@ -258,8 +245,7 @@ const TextNodeRenderer = ({
     fontSize,
     fontWeight,
     fontStyle,
-    color,
-    opacity: selected ? 1 : 0.9
+    color
   }
   const measure = resolveTextMeasureInput({
     node,
@@ -392,17 +378,13 @@ const createTextStyle = (variant: 'text' | 'sticky') => (props: NodeRenderProps)
     }
   }
 
-  const stickyStroke = readStickyStroke(props.node)
-  const stickyStrokeWidth = readStickyStrokeWidth(props.node)
-
   return {
     '--wb-sticky-fill': readStickyFill(props.node),
-    '--wb-sticky-stroke': stickyStroke,
     background: 'var(--wb-sticky-fill, var(--wb-palette-sticky-13))',
     border: 'none',
     boxSizing: 'border-box',
     borderRadius: 0,
-    boxShadow: `inset 0 0 0 ${stickyStrokeWidth}px var(--wb-sticky-stroke), inset 0 1px 0 rgb(from var(--ui-surface) r g b / 0.38), 0 1px 2px rgb(from var(--ui-text-primary) r g b / 0.04)`,
+    boxShadow: 'none',
     display: 'block',
     isolation: 'isolate',
     overflow: 'visible',

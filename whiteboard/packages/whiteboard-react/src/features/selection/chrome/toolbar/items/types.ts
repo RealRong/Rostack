@@ -1,20 +1,32 @@
 import type { ReactNode } from 'react'
-import type { NodeToolbarContext } from '@whiteboard/editor'
+import type {
+  SelectionToolbarContext,
+  SelectionToolbarScope
+} from '@whiteboard/editor'
 import type { WhiteboardRuntime } from '@whiteboard/react/types/runtime'
+import type { SelectionCan } from '@whiteboard/react/features/selection/capability'
 import type { ToolbarItemKey, ToolbarPanelKey } from '@whiteboard/react/features/selection/chrome/toolbar/types'
 
 export type ToolbarButtonRendererProps = {
-  context: NodeToolbarContext
+  context: SelectionToolbarContext
+  activeScope: SelectionToolbarScope
+  selectionCan: SelectionCan
+  scopeCan: SelectionCan
   editor: WhiteboardRuntime
   activePanelKey: ToolbarPanelKey | null
   togglePanel: (key: ToolbarPanelKey) => void
   registerPanelButton: (key: ToolbarPanelKey, element: HTMLElement | null) => void
+  setActiveScope: (key: string) => void
 }
 
 export type ToolbarPanelRendererProps = {
-  context: NodeToolbarContext
+  context: SelectionToolbarContext
+  activeScope: SelectionToolbarScope
+  selectionCan: SelectionCan
+  scopeCan: SelectionCan
   editor: WhiteboardRuntime
   closePanel: () => void
+  setActiveScope: (key: string) => void
 }
 
 export type ToolbarItemSpec = {

@@ -6,7 +6,6 @@ import type {
   DrawMode,
   DrawState
 } from '@whiteboard/editor/local/draw'
-import type { EdgeToolbarContext } from '@whiteboard/editor/types/edgePresentation'
 import type {
   EdgePresetKey,
   InsertPresetKey,
@@ -33,7 +32,6 @@ import {
   createSelectionPresentationRead,
   type SelectionRead
 } from '@whiteboard/editor/query/selection/presentation'
-import { createEdgeToolbarRead } from '@whiteboard/editor/query/selection/edgeToolbar'
 import {
   createTargetRead,
   type RuntimeTargetRead
@@ -96,9 +94,7 @@ export type EditorQueryRead = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
   group: EngineRead['group']
   target: RuntimeTargetRead
   node: NodePresentationRead
-  edge: EdgePresentationRead & {
-    toolbar: ReadStore<EdgeToolbarContext | undefined>
-  }
+  edge: EdgePresentationRead
   mindmap: MindmapPresentationRead
   selection: SelectionRead
   tool: ToolRead
@@ -176,13 +172,6 @@ export const createQueryRuntime = ({
     edit: edit.source,
     interaction: local.interaction
   })
-  const edgeToolbar = createEdgeToolbarRead({
-    selection: selection.source,
-    target: targetRead,
-    tool,
-    edit: edit.source,
-    interaction: local.interaction
-  })
   const toolRead = createToolRead(tool)
 
   return {
@@ -193,10 +182,7 @@ export const createQueryRuntime = ({
       target: targetRead,
       history,
       node: nodeRead,
-      edge: {
-        ...edgeRead,
-        toolbar: edgeToolbar
-      },
+      edge: edgeRead,
       mindmap: mindmapRead,
       scene: engineRead.scene,
       selection: selectionRead,

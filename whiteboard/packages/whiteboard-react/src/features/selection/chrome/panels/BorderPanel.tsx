@@ -46,7 +46,7 @@ export const BorderPanel = ({
   onOpacityChange?: (value: number) => void
   onStrokeDashChange?: (value?: readonly number[]) => void
 }) => (
-  <Panel className="min-w-[384px] p-3">
+  <Panel>
     {showStyle ? (
       <PanelSection title="Style">
         <div className="flex items-center gap-2">

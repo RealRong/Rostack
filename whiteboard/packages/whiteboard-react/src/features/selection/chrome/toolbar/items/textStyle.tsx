@@ -8,17 +8,21 @@ import type { ToolbarItemSpec } from '@whiteboard/react/features/selection/chrom
 export const boldItem: ToolbarItemSpec = {
   key: 'bold',
   renderButton: ({
-    context,
+    activeScope,
     editor
   }) => {
-    const active = (context.fontWeight ?? 400) >= 600
+    const node = activeScope.node
+    if (!node) {
+      return null
+    }
+    const active = (node.fontWeight ?? 400) >= 600
 
     return (
       <ToolbarIconButton
         active={active}
         title="Bold"
         onClick={() => {
-          editor.actions.node.text.weight(context.nodeIds, active ? 400 : 700)
+          editor.actions.node.text.weight(node.nodeIds, active ? 400 : 700)
         }}
       >
         <Bold size={18} strokeWidth={1.9} />
@@ -30,17 +34,21 @@ export const boldItem: ToolbarItemSpec = {
 export const italicItem: ToolbarItemSpec = {
   key: 'italic',
   renderButton: ({
-    context,
+    activeScope,
     editor
   }) => {
-    const active = context.fontStyle === 'italic'
+    const node = activeScope.node
+    if (!node) {
+      return null
+    }
+    const active = node.fontStyle === 'italic'
 
     return (
       <ToolbarIconButton
         active={active}
         title="Italic"
         onClick={() => {
-          editor.actions.node.text.italic(context.nodeIds, !active)
+          editor.actions.node.text.italic(node.nodeIds, !active)
         }}
       >
         <Italic size={18} strokeWidth={1.9} />

@@ -1,5 +1,5 @@
-import { memo, useCallback, useMemo } from 'react'
-import type { Field } from '@dataview/core/contracts'
+import { memo, useCallback } from 'react'
+import type { Field, RecordId, ViewId } from '@dataview/core/contracts'
 import {
   canQuickToggleFieldValue,
   resolveFieldPrimaryAction
@@ -10,32 +10,29 @@ import {
 import { useDataView } from '@dataview/react/dataview'
 import { fieldAttrs } from '@dataview/react/dom/field'
 import { useTableContext } from '@dataview/react/views/table/context'
-import { useKeyedStoreValue, useStoreValue } from '@shared/react'
+import { useKeyedStoreValue } from '@shared/react'
 import { cn } from '@shared/ui/utils'
 import { CellValue } from '@dataview/react/views/table/components/cell/CellValue'
 
 export interface CellProps {
   itemId: ItemId
+  recordId?: RecordId
+  viewId: ViewId
+  showVerticalLines: boolean
   field: Field
 }
 
 const same = (left: CellProps, right: CellProps) => (
   left.itemId === right.itemId
+  && left.recordId === right.recordId
+  && left.viewId === right.viewId
+  && left.showVerticalLines === right.showVerticalLines
   && left.field === right.field
 )
 
 const View = (props: CellProps) => {
   const engine = useDataView().engine
   const table = useTableContext()
-  const currentView = useStoreValue(table.currentView)
-  if (!currentView) {
-    throw new Error('Table cell requires an active current view.')
-  }
-  const showVerticalLinesStore = useMemo(() => engine.active.select(
-    state => state?.view.options.table.showVerticalLines ?? false
-  ), [engine])
-  const showVerticalLines = useStoreValue(showVerticalLinesStore)
-
   const cell = {
     itemId: props.itemId,
     fieldId: props.field.id
@@ -44,7 +41,6 @@ const View = (props: CellProps) => {
     table.nodes.registerCell(cell, node)
   }, [cell.itemId, cell.fieldId, table.nodes])
   const cellRender = useKeyedStoreValue(table.cellRender, cell)
-  const recordId = currentView.items.get(props.itemId)?.recordId
   const canQuickToggle = canQuickToggleFieldValue(props.field)
 
   const onQuickToggle = () => {
@@ -57,7 +53,7 @@ const View = (props: CellProps) => {
       return
     }
 
-    table.gridSelection.set(cell)
+    table.selection.cells.set(cell)
     table.focus()
     if (action.value === undefined) {
       engine.active.cells.clear(cell)
@@ -67,7 +63,7 @@ const View = (props: CellProps) => {
     engine.active.cells.set(cell, action.value)
   }
 
-  if (!cellRender.exists || !recordId) {
+  if (!cellRender.exists || !props.recordId) {
     return null
   }
 
@@ -79,9 +75,9 @@ const View = (props: CellProps) => {
       data-row-id={props.itemId}
       data-field-id={props.field.id}
       {...fieldAttrs({
-        viewId: currentView.view.id,
+        viewId: props.viewId,
         itemId: props.itemId,
-        recordId,
+        recordId: props.recordId,
         fieldId: props.field.id
       })}
       role="gridcell"
@@ -91,7 +87,7 @@ const View = (props: CellProps) => {
       }}
       className={cn(
         'relative box-border h-full min-w-0',
-        showVerticalLines && 'border-r border-divider'
+        props.showVerticalLines && 'border-r border-divider'
       )}
     >
       {cellRender.chrome.selection || cellRender.chrome.frame ? (

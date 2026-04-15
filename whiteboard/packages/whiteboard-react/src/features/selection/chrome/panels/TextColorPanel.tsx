@@ -12,7 +12,7 @@ export const TextColorPanel = ({
   value?: string
   onChange: (value: string) => void
 }) => (
-  <Panel className="min-w-[384px]">
+  <Panel>
     <PanelSection title="Text color">
       <ColorSwatchGrid
         options={WHITEBOARD_TEXT_COLOR_OPTIONS}

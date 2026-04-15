@@ -8,42 +8,56 @@ export const shapeKindItem: ToolbarItemSpec = {
   panelKey: 'shape-kind',
   units: 2,
   renderButton: ({
-    context,
+    activeScope,
     activePanelKey,
     togglePanel,
     registerPanelButton
-  }) => (
-    <ToolbarButton
-      ref={(element) => {
-        registerPanelButton('shape-kind', element)
-      }}
-      active={activePanelKey === 'shape-kind'}
-      className="px-2.5"
-      onClick={() => {
-        togglePanel('shape-kind')
-      }}
-      title="Shape"
-      aria-label="Shape"
-    >
-      <ShapeGlyph
-        kind={context.shapeKind ?? 'rect'}
-        width={24}
-        height={18}
-        fill="var(--ui-surface)"
-        stroke="currentColor"
-        strokeWidth={4}
-      />
-    </ToolbarButton>
-  ),
+  }) => {
+    const node = activeScope.node
+    if (!node) {
+      return null
+    }
+
+    return (
+      <ToolbarButton
+        ref={(element) => {
+          registerPanelButton('shape-kind', element)
+        }}
+        active={activePanelKey === 'shape-kind'}
+        className="px-2.5"
+        onClick={() => {
+          togglePanel('shape-kind')
+        }}
+        title="Shape"
+        aria-label="Shape"
+      >
+        <ShapeGlyph
+          kind={node.shapeKind ?? 'rect'}
+          width={24}
+          height={18}
+          fill="var(--ui-surface)"
+          stroke="currentColor"
+          strokeWidth={4}
+        />
+      </ToolbarButton>
+    )
+  },
   renderPanel: ({
-    context,
+    activeScope,
     editor
-  }) => (
-    <ShapePickerPanel
-      value={context.shapeKindValue ?? context.shapeKind}
-      onChange={(value) => {
-        editor.actions.node.shape.set(context.nodeIds, value)
-      }}
-    />
-  )
+  }) => {
+    const node = activeScope.node
+    if (!node) {
+      return null
+    }
+
+    return (
+      <ShapePickerPanel
+        value={node.shapeKindValue ?? node.shapeKind}
+        onChange={(value) => {
+          editor.actions.node.shape.set(node.nodeIds, value)
+        }}
+      />
+    )
+  }
 }

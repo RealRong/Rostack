@@ -15,10 +15,12 @@ import type {
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
 } from '@dataview/react/dom/appearance'
+import { readSelectionIdSet } from '@dataview/react/runtime/selection/store'
 import { shouldCapturePointer } from '@shared/dom'
 import {
   useDataView,
-  useDataViewKeyedValue
+  useDataViewKeyedValue,
+  useDataViewValue
 } from '@dataview/react/dataview'
 import {
   CardContent
@@ -47,7 +49,10 @@ export const Card = (props: {
     current => current.engine.select.records.byId,
     recordId
   )
-  const selected = runtime.selection.selectedIdSet.has(props.itemId)
+  const selected = useDataViewValue(
+    current => current.selection.store,
+    selection => readSelectionIdSet(selection).has(props.itemId)
+  )
   const draggingActive = runtime.drag.activeId === props.itemId
   const draggingSelected = runtime.drag.activeId !== undefined
     && runtime.drag.dragIdSet.has(props.itemId)

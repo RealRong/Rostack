@@ -3,10 +3,12 @@ import type {
 } from 'react'
 import type {
   Field,
-  FieldId
+  FieldId,
+  ViewId
 } from '@dataview/core/contracts'
 import type {
-  ItemId
+  ItemId,
+  ItemList
 } from '@dataview/engine'
 import {
   useStoreValue
@@ -19,6 +21,9 @@ import { SectionHeader } from '@dataview/react/views/table/components/body/Secti
 
 export interface BlockContentProps {
   columns: readonly Field[]
+  viewId: ViewId
+  items: ItemList
+  showVerticalLines: boolean
   template: string
   marqueeActive: boolean
   dragActive: boolean
@@ -41,19 +46,16 @@ export const BlockContent = (props: BlockContentProps) => {
 
   return (
     <div
+      className="relative min-w-full"
       style={{
         overflowAnchor: 'none',
-        position: 'relative',
         height: window.totalHeight
       }}
     >
       {blocks.length ? (
         <div
+          className="relative min-w-full w-max"
           style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 0,
             transform: `translateY(${window.startTop}px)`
           }}
         >
@@ -99,6 +101,10 @@ export const BlockContent = (props: BlockContentProps) => {
                   >
                     <Row
                       itemId={block.rowId}
+                      recordId={props.items.get(block.rowId)?.recordId}
+                      viewId={props.viewId}
+                      showVerticalLines={props.showVerticalLines}
+                      columns={props.columns}
                       template={props.template}
                       rowHeight={table.layout.rowHeight}
                       marqueeActive={props.marqueeActive}

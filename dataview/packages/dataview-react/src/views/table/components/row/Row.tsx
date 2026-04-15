@@ -6,11 +6,17 @@ import {
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import type {
+  RecordId,
+  Field,
+  ViewId
+} from '@dataview/core/contracts'
+import type {
   ItemId
 } from '@dataview/engine'
 import type {
   SelectionApi
 } from '@dataview/react/runtime/selection'
+import { readSelectionIdSet } from '@dataview/react/runtime/selection/store'
 import { shouldCapturePointer } from '@shared/dom'
 import {
   useDataView,
@@ -18,14 +24,18 @@ import {
 } from '@dataview/react/dataview'
 import { rowRailState } from '@dataview/react/views/table/model/rowRail'
 import { useTableContext } from '@dataview/react/views/table/context'
-import { useStoreValue } from '@shared/react'
 import { cn } from '@shared/ui/utils'
 import { Cell } from '@dataview/react/views/table/components/cell/Cell'
 import { RowRail } from '@dataview/react/views/table/components/row/RowRail'
 import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
+import { TABLE_TRAILING_ACTION_WIDTH } from '@dataview/react/views/table/layout'
 
 export interface RowProps {
   itemId: ItemId
+  recordId?: RecordId
+  viewId: ViewId
+  showVerticalLines: boolean
+  columns: readonly Field[]
   template: string
   rowHeight: number
   marqueeActive: boolean
@@ -39,6 +49,10 @@ export interface RowProps {
 
 const same = (left: RowProps, right: RowProps) => (
   left.itemId === right.itemId
+  && left.recordId === right.recordId
+  && left.viewId === right.viewId
+  && left.showVerticalLines === right.showVerticalLines
+  && left.columns === right.columns
   && left.template === right.template
   && left.rowHeight === right.rowHeight
   && left.marqueeActive === right.marqueeActive
@@ -63,11 +77,6 @@ export const applyRowCheckboxSelection = (input: {
 const View = (props: RowProps) => {
   const table = useTableContext()
   const dataView = useDataView()
-  const currentView = useStoreValue(table.currentView)
-  if (!currentView) {
-    throw new Error('Table row requires an active current view.')
-  }
-  const columns = currentView.fields.all
   const rowNodeRef = useRef<HTMLDivElement | null>(null)
 
   const rowRef = useCallback((node: HTMLDivElement | null) => {
@@ -86,23 +95,28 @@ const View = (props: RowProps) => {
       table.nodes.registerRow(props.itemId, null)
     }
   }, [props.itemId, table.nodes])
-  const capabilities = useStoreValue(table.capabilities)
-  const rowRail = useStoreValue(table.rowRail)
-  const exposed = rowRail === props.itemId
+  const canRowDrag = useStoreSelector(
+    table.capabilities,
+    capabilities => capabilities.canRowDrag
+  )
+  const exposed = useStoreSelector(
+    table.rowRail,
+    rowId => rowId === props.itemId
+  )
   const previewSelected = useStoreSelector(
     table.marqueeSelection,
     selection => selection
-      ? selection.ids.includes(props.itemId)
+      ? readSelectionIdSet(selection).has(props.itemId)
       : null
   )
   const committedSelected = useDataViewValue(
     dataView => dataView.selection.store,
-    selection => selection.ids.includes(props.itemId)
+    selection => readSelectionIdSet(selection).has(props.itemId)
   )
   const selected = previewSelected ?? committedSelected
   const rail = rowRailState({
     dragActive: props.dragActive,
-    dragDisabled: !capabilities.canRowDrag,
+    dragDisabled: !canRowDrag,
     marqueeActive: props.marqueeActive,
     exposed,
     selected
@@ -128,11 +142,10 @@ const View = (props: RowProps) => {
       capture: false,
       up: () => {
         applyRowCheckboxSelection({
-          selection: dataView.selection,
+          selection: table.selection.rows,
           rowId: props.itemId,
           shiftKey: event.shiftKey
         })
-        table.gridSelection.clear()
         table.rowRail.set(props.itemId)
         table.focus()
       }
@@ -147,7 +160,7 @@ const View = (props: RowProps) => {
       role="row"
       aria-selected={selected}
       onPointerDown={onRowPointerDown}
-      className="relative border-b border-divider text-sm text-foreground transition-colors focus:outline-none"
+      className="relative min-w-full w-max border-b border-divider text-sm text-foreground transition-colors focus:outline-none"
       style={{
         height: props.rowHeight,
         boxSizing: 'border-box'
@@ -169,20 +182,34 @@ const View = (props: RowProps) => {
       />
       <div
         className={cn(
-          'grid h-full min-w-0 items-center',
+          'flex h-full min-w-full w-max items-stretch',
           rowTone
         )}
-        style={{
-          gridTemplateColumns: props.template
-        }}
       >
-        {columns.map(field => (
-          <Cell
-            key={field.id}
-            itemId={props.itemId}
-            field={field}
-          />
-        ))}
+        <div
+          className="inline-grid h-full min-w-0 flex-none items-center"
+          style={{
+            gridTemplateColumns: props.template
+          }}
+        >
+          {props.columns.map(field => (
+            <Cell
+              key={field.id}
+              itemId={props.itemId}
+              recordId={props.recordId}
+              viewId={props.viewId}
+              showVerticalLines={props.showVerticalLines}
+              field={field}
+            />
+          ))}
+        </div>
+        <div
+          className="shrink-0"
+          aria-hidden="true"
+          style={{
+            width: TABLE_TRAILING_ACTION_WIDTH
+          }}
+        />
       </div>
     </div>
   )

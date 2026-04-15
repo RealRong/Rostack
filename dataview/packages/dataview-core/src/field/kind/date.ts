@@ -3,7 +3,6 @@ import {
   differenceInCalendarDays,
   format,
   isValid,
-  parse,
   startOfMonth,
   startOfQuarter,
   startOfWeek,
@@ -52,6 +51,52 @@ interface DateTimeParts extends DateOnlyParts {
 type DateLike = Date
 
 const pad2 = (value: number) => String(value).padStart(2, '0')
+const isDigitCode = (code: number) => code >= 48 && code <= 57
+const read2Digits = (value: string, offset: number) => {
+  const left = value.charCodeAt(offset)
+  const right = value.charCodeAt(offset + 1)
+  if (!isDigitCode(left) || !isDigitCode(right)) {
+    return undefined
+  }
+
+  return ((left - 48) * 10) + (right - 48)
+}
+
+const read4Digits = (value: string, offset: number) => {
+  const a = value.charCodeAt(offset)
+  const b = value.charCodeAt(offset + 1)
+  const c = value.charCodeAt(offset + 2)
+  const d = value.charCodeAt(offset + 3)
+  if (!isDigitCode(a) || !isDigitCode(b) || !isDigitCode(c) || !isDigitCode(d)) {
+    return undefined
+  }
+
+  return (
+    ((a - 48) * 1000)
+    + ((b - 48) * 100)
+    + ((c - 48) * 10)
+    + (d - 48)
+  )
+}
+
+const isLeapYear = (year: number) => (
+  year % 4 === 0
+  && (year % 100 !== 0 || year % 400 === 0)
+)
+
+const daysInMonth = (year: number, month: number) => {
+  switch (month) {
+    case 2:
+      return isLeapYear(year) ? 29 : 28
+    case 4:
+    case 6:
+    case 9:
+    case 11:
+      return 30
+    default:
+      return 31
+  }
+}
 
 const toDateOnlyString = (parts: DateOnlyParts) => (
   `${String(parts.year).padStart(4, '0')}-${pad2(parts.month)}-${pad2(parts.day)}`
@@ -77,29 +122,72 @@ const readDateTimeParts = (
   minute: value.getMinutes()
 })
 
-const parseExact = (
-  value: string,
-  pattern: string
-): Date | undefined => {
+const parseDateOnlyPartsExact = (
+  value: string
+): DateOnlyParts | undefined => {
+  if (value.length !== 10 || value.charCodeAt(4) !== 45 || value.charCodeAt(7) !== 45) {
+    return undefined
+  }
+
+  const year = read4Digits(value, 0)
+  const month = read2Digits(value, 5)
+  const day = read2Digits(value, 8)
+  if (
+    year === undefined
+    || month === undefined
+    || day === undefined
+    || month < 1
+    || month > 12
+    || day < 1
+    || day > daysInMonth(year, month)
+  ) {
+    return undefined
+  }
+
+  return {
+    year,
+    month,
+    day
+  }
+}
+
+const parseDateOnly = (value: string): DateOnlyParts | undefined => {
   const trimmed = value.trim()
   if (!trimmed) {
     return undefined
   }
 
-  const parsed = parse(trimmed, pattern, new Date(0))
-  return isValid(parsed) && format(parsed, pattern) === trimmed
-    ? parsed
-    : undefined
-}
-
-const parseDateOnly = (value: string): DateOnlyParts | undefined => {
-  const parsed = parseExact(value, DATE_ONLY_FORMAT)
-  return parsed ? readDateOnlyParts(parsed) : undefined
+  return parseDateOnlyPartsExact(trimmed)
 }
 
 const parseDateTime = (value: string): DateTimeParts | undefined => {
-  const parsed = parseExact(value, DATE_TIME_FORMAT)
-  return parsed ? readDateTimeParts(parsed) : undefined
+  const trimmed = value.trim()
+  if (
+    trimmed.length !== 16
+    || trimmed.charCodeAt(10) !== 84
+    || trimmed.charCodeAt(13) !== 58
+  ) {
+    return undefined
+  }
+
+  const date = parseDateOnlyPartsExact(trimmed.slice(0, 10))
+  const hour = read2Digits(trimmed, 11)
+  const minute = read2Digits(trimmed, 14)
+  if (
+    !date
+    || hour === undefined
+    || minute === undefined
+    || hour > 23
+    || minute > 59
+  ) {
+    return undefined
+  }
+
+  return {
+    ...date,
+    hour,
+    minute
+  }
 }
 
 const parseDateTimeDraft = (value: string): DateTimeParts | undefined => {
@@ -113,24 +201,46 @@ const parseDateTimeDraft = (value: string): DateTimeParts | undefined => {
     return undefined
   }
 
-  const draftParsed = parseExact(normalized, DATE_TIME_DRAFT_FORMAT)
-  return draftParsed ? readDateTimeParts(draftParsed) : undefined
+  if (normalized.length !== 16 || normalized.charCodeAt(10) !== 32 || normalized.charCodeAt(13) !== 58) {
+    return undefined
+  }
+
+  const date = parseDateOnlyPartsExact(normalized.slice(0, 10))
+  const hour = read2Digits(normalized, 11)
+  const minute = read2Digits(normalized, 14)
+  if (
+    !date
+    || hour === undefined
+    || minute === undefined
+    || hour > 23
+    || minute > 59
+  ) {
+    return undefined
+  }
+
+  return {
+    ...date,
+    hour,
+    minute
+  }
 }
 
 const createLocalDate = (
   parts: DateOnlyParts
-): Date => parse(
-  toDateOnlyString(parts),
-  DATE_ONLY_FORMAT,
-  new Date(0)
+): Date => new Date(
+  parts.year,
+  parts.month - 1,
+  parts.day
 )
 
 const createLocalDateTime = (
   parts: DateTimeParts
-): Date => parse(
-  toDateTimeString(parts),
-  DATE_TIME_FORMAT,
-  new Date(0)
+): Date => new Date(
+  parts.year,
+  parts.month - 1,
+  parts.day,
+  parts.hour,
+  parts.minute
 )
 
 const createZonedDateTime = (

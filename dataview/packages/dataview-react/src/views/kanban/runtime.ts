@@ -56,7 +56,7 @@ const resolveInitialVisibleCount = (
 const readSectionLengths = (
   sections: readonly Section[]
 ) => new Map(
-  sections.map(section => [section.key, section.itemIds.length] as const)
+  sections.map(section => [section.key, section.items.count] as const)
 )
 
 const useSectionVisibility = (input: {
@@ -111,21 +111,21 @@ const useSectionVisibility = (input: {
             Math.max(previousInitialVisibleCount, previousExpandedCount)
           )
         const currentVisibleCount = next[section.key] === undefined
-          ? resolveInitialVisibleCount(input.cardsPerColumn, section.itemIds.length)
+          ? resolveInitialVisibleCount(input.cardsPerColumn, section.items.count)
           : Math.min(
-            section.itemIds.length,
+            section.items.count,
             Math.max(
-              resolveInitialVisibleCount(input.cardsPerColumn, section.itemIds.length),
+              resolveInitialVisibleCount(input.cardsPerColumn, section.items.count),
               next[section.key]!
             )
           )
 
         if (
-          section.itemIds.length > previousLength
+          section.items.count > previousLength
           && previousVisibleCount >= previousLength
-          && currentVisibleCount < section.itemIds.length
+          && currentVisibleCount < section.items.count
         ) {
-          next[section.key] = section.itemIds.length
+          next[section.key] = section.items.count
           changed = true
         }
       })
@@ -142,13 +142,13 @@ const useSectionVisibility = (input: {
     input.sections.map(section => {
       const initialVisibleCount = resolveInitialVisibleCount(
         input.cardsPerColumn,
-        section.itemIds.length
+        section.items.count
       )
       const expandedCount = expandedCountBySectionKey[section.key]
       const visibleCount = expandedCount === undefined
         ? initialVisibleCount
-        : Math.min(section.itemIds.length, Math.max(initialVisibleCount, expandedCount))
-      const hiddenCount = Math.max(0, section.itemIds.length - visibleCount)
+        : Math.min(section.items.count, Math.max(initialVisibleCount, expandedCount))
+      const hiddenCount = Math.max(0, section.items.count - visibleCount)
       const showMoreCount = input.cardsPerColumn === 'all'
         ? hiddenCount
         : Math.min(hiddenCount, input.cardsPerColumn)
@@ -156,7 +156,7 @@ const useSectionVisibility = (input: {
       return [
         section.key,
         {
-          visibleIds: section.itemIds.slice(0, visibleCount),
+          visibleIds: section.items.ids.slice(0, visibleCount),
           visibleCount,
           hiddenCount,
           showMoreCount
@@ -166,7 +166,7 @@ const useSectionVisibility = (input: {
   ), [expandedCountBySectionKey, input.cardsPerColumn, input.sections])
 
   const sectionIdsByKey = useMemo(() => new Map(
-    input.sections.map(section => [section.key, section.itemIds] as const)
+    input.sections.map(section => [section.key, section.items.ids] as const)
   ), [input.sections])
 
   const showMore = useCallback((sectionKey: SectionKey) => {

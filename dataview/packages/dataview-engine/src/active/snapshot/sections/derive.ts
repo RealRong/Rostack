@@ -17,12 +17,13 @@ import type {
   QueryState,
   SectionState
 } from '@dataview/engine/contracts/internal'
-import { createItemId } from '@dataview/engine/active/snapshot/sections/publish'
 import {
   readQueryVisibleSet
 } from '@dataview/engine/contracts/internal'
 
 export const ROOT_SECTION_KEY = 'root' as SectionKey
+const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
+const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 
 const sameBucket = (
   left: import('@dataview/engine/contracts/internal').SectionNodeState['bucket'],
@@ -78,17 +79,10 @@ export const buildSectionNode = (input: {
   recordIds: readonly RecordId[]
   group: ViewGroup | undefined
   index: IndexState
-  previous?: import('@dataview/engine/contracts/internal').SectionNodeState
 }): import('@dataview/engine/contracts/internal').SectionNodeState => {
   const bucket = input.group
     ? readGroupFieldIndex(input.index.group, input.group)?.buckets.get(input.key)
     : undefined
-  const itemIds = input.previous && sameOrder(input.previous.recordIds, input.recordIds)
-    ? input.previous.itemIds
-    : input.recordIds.map(recordId => createItemId({
-        section: input.key,
-        recordId
-      }))
 
   return {
     key: input.key,
@@ -107,7 +101,6 @@ export const buildSectionNode = (input: {
         }
       : {}),
     recordIds: input.recordIds,
-    itemIds,
     visible: visibleOf(input.recordIds, input.group, input.key),
     collapsed: collapsedOf(input.group, input.key)
   }
@@ -138,20 +131,14 @@ export const buildSectionState = (input: {
   previous?: SectionState
 }): SectionState => {
   if (!input.view.group) {
-    const previousRoot = input.previous?.byKey.get(ROOT_SECTION_KEY)
     const root = {
       key: ROOT_SECTION_KEY,
       title: 'All',
       recordIds: input.query.records.visible,
-      itemIds: previousRoot && sameOrder(previousRoot.recordIds, input.query.records.visible)
-        ? previousRoot.itemIds
-        : input.query.records.visible.map(recordId => createItemId({
-            section: ROOT_SECTION_KEY,
-            recordId
-          })),
       visible: true,
       collapsed: false
     }
+    const previousRoot = input.previous?.byKey.get(ROOT_SECTION_KEY)
 
     return {
       order: [ROOT_SECTION_KEY],
@@ -165,31 +152,41 @@ export const buildSectionState = (input: {
   }
 
   const groupIndex = readGroupFieldIndex(input.index.group, input.view.group)
-  const byRecord = new Map<RecordId, readonly SectionKey[]>()
-  const idsByKey = new Map<SectionKey, RecordId[]>()
+  const useGroupProjection = input.query.records.visible === input.index.records.ids
+  const byRecord = useGroupProjection
+    ? groupIndex?.recordBuckets ?? new Map<RecordId, readonly SectionKey[]>()
+    : new Map<RecordId, readonly SectionKey[]>()
+  const idsByKey = new Map<SectionKey, readonly RecordId[]>()
 
-  input.query.records.visible.forEach(recordId => {
-    const keys = groupIndex?.recordBuckets.get(recordId) ?? []
-    byRecord.set(recordId, keys)
-    keys.forEach(key => {
-      const ids = idsByKey.get(key) ?? []
-      if (!idsByKey.has(key)) {
-        idsByKey.set(key, ids)
-      }
-      ids.push(recordId)
+  if (useGroupProjection) {
+    groupIndex?.bucketRecords.forEach((ids, key) => {
+      idsByKey.set(key, ids)
     })
-  })
+  } else {
+    input.query.records.visible.forEach(recordId => {
+      const keys = groupIndex?.recordBuckets.get(recordId) ?? EMPTY_SECTION_KEYS
+      ;(byRecord as Map<RecordId, readonly SectionKey[]>).set(recordId, keys)
+      keys.forEach(key => {
+        const ids = idsByKey.get(key)
+        if (ids) {
+          ;(ids as RecordId[]).push(recordId)
+          return
+        }
+
+        idsByKey.set(key, [recordId])
+      })
+    })
+  }
 
   const order = groupIndex?.order ?? []
   const byKey = new Map<SectionKey, ReturnType<typeof buildSectionNode>>()
   order.forEach(key => {
-    const ids = idsByKey.get(key) ?? []
+    const ids = idsByKey.get(key) ?? EMPTY_RECORD_IDS
     const nextNode = buildSectionNode({
       key,
       recordIds: ids,
       group: input.view.group,
-      index: input.index,
-      previous: input.previous?.byKey.get(key)
+      index: input.index
     })
     const previousNode = input.previous?.byKey.get(key)
     byKey.set(key, previousNode && sameSectionNode(previousNode, nextNode) ? previousNode : nextNode)

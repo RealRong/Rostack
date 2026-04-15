@@ -29,6 +29,46 @@ export type EdgeLabelPlacement = {
 const EDGE_LABEL_COLLISION_EPSILON = 0.001
 const EDGE_LABEL_COLLISION_BINARY_STEPS = 12
 const EDGE_LABEL_COLLISION_MAX_PUSH = 4096
+export const EDGE_LABEL_RAIL_OFFSET = 24
+export const EDGE_LABEL_CENTER_TOLERANCE = 20
+export const EDGE_LABEL_TANGENT_SIDE_GAP = 4
+export const EDGE_LABEL_HORIZONTAL_SIDE_GAP = 24
+export const EDGE_LABEL_LINE_HEIGHT = 1.4
+export const EDGE_LABEL_DEFAULT_SIZE = 14
+
+export const readEdgeLabelSideGap = (
+  textMode: EdgeTextMode
+) => textMode === 'horizontal'
+  ? EDGE_LABEL_HORIZONTAL_SIDE_GAP
+  : EDGE_LABEL_TANGENT_SIDE_GAP
+
+export const resolveEdgeLabelPlacementSize = ({
+  textMode,
+  measuredSize,
+  text,
+  fontSize
+}: {
+  textMode: EdgeTextMode
+  measuredSize?: Size
+  text: string
+  fontSize?: number
+}): Size | undefined => {
+  if (!measuredSize) {
+    return undefined
+  }
+
+  if (textMode !== 'tangent') {
+    return measuredSize
+  }
+
+  const lineCount = Math.max(1, text.split('\n').length)
+  const resolvedFontSize = fontSize ?? EDGE_LABEL_DEFAULT_SIZE
+
+  return {
+    ...measuredSize,
+    height: Math.ceil(lineCount * resolvedFontSize * EDGE_LABEL_LINE_HEIGHT)
+  }
+}
 
 const clamp = (
   value: number,

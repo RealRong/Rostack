@@ -26,7 +26,7 @@ export const Grid = () => {
   const indicator = runtime.indicator
   const empty = active.items.ids.length === 0
   const sectionSizeByKey = new Map(
-    active.sections.all.map(section => [section.key, section.itemIds.length] as const)
+    active.sections.all.map(section => [section.key, section.items.count] as const)
   )
   const lastBlock = blocks[blocks.length - 1]
   const bottomSpacerHeight = lastBlock

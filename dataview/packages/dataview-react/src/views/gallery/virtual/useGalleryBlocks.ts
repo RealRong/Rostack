@@ -47,7 +47,7 @@ export const useGalleryBlocks = (input: {
 }) => {
   const [containerVersion, bumpContainerVersion] = useReducer((value: number) => value + 1, 0)
   const ids = useMemo(
-    () => input.sections.flatMap(section => section.itemIds),
+    () => input.sections.flatMap(section => section.items.ids),
     [input.sections]
   )
 

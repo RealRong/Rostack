@@ -142,7 +142,7 @@ export const planMove = (
   const validIds = itemIds.filter(id => state.items.has(id))
   const movingSet = new Set(validIds)
   const section = state.sections.get(target.section)
-  const sectionItemIds = section?.itemIds ?? []
+  const sectionItemIds = section?.items.ids ?? []
   const beforeItemId = target.before && sectionItemIds.includes(target.before)
     ? target.before
     : undefined

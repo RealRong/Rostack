@@ -101,7 +101,13 @@ export type {
   LayoutKind,
   LayoutRequest,
   LayoutResult,
-  NodeLayoutSpec
+  NodeLayoutSpec,
+  TextSourceField,
+  TextSourceId
+} from '@whiteboard/editor/types/layout'
+export {
+  readEdgeLabelTextSourceId,
+  readNodeTextSourceId
 } from '@whiteboard/editor/types/layout'
 export type {
   SelectionOverlay,

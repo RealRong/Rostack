@@ -17,7 +17,7 @@ export const ColumnHeader = (props: {
     && groupField
     && bucket
   )
-  const count = props.section.itemIds.length
+  const count = props.section.items.count
 
   return (
     <div className="flex items-center gap-3">

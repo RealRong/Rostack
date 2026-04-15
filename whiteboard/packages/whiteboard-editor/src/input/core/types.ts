@@ -18,6 +18,7 @@ type InteractionMode =
   | 'mindmap-drag'
   | 'node-transform'
   | 'edge-drag'
+  | 'edge-label'
   | 'edge-connect'
   | 'edge-route'
 

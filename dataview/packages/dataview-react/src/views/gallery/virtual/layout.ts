@@ -124,7 +124,7 @@ export const buildGalleryLayout = (input: {
       return
     }
 
-    if (!section.itemIds.length) {
+    if (!section.items.count) {
       if (!input.grouped) {
         return
       }
@@ -144,7 +144,7 @@ export const buildGalleryLayout = (input: {
       return
     }
 
-    const sectionRows = chunkIds(section.itemIds, columnCount)
+    const sectionRows = chunkIds(section.items.ids, columnCount)
     sectionRows.forEach((rowIds, rowIndex) => {
       const height = rowHeight({
         ids: rowIds,

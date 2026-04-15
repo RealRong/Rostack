@@ -6,6 +6,9 @@ import {
   deriveIndex
 } from '@dataview/engine/active/index/runtime'
 import {
+  resolveViewDemand
+} from '@dataview/engine/active/demand'
+import {
   buildQueryState
 } from '@dataview/engine/active/snapshot/query/derive'
 import {
@@ -119,6 +122,27 @@ const createDocument = (input = {}) => {
 
 const createImpact = (input = {}) => input
 
+const createTableView = (input = {}) => ({
+  id: 'view_table',
+  type: 'table',
+  name: 'Tasks',
+  filter: {
+    mode: 'and',
+    rules: []
+  },
+  search: {
+    query: ''
+  },
+  sort: [],
+  calc: {},
+  display: {
+    fields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS]
+  },
+  options: {},
+  orders: [],
+  ...input
+})
+
 const createIndexHarness = (document, demand) => {
   let current = createIndexState(document, demand)
 
@@ -186,6 +210,63 @@ test('engine.active.index sync patches search/group/sort/calculation on record v
 
   const statusCalc = state.calculations.fields.get(FIELD_STATUS)
   assert.deepEqual(statusCalc.global.distribution.get('Done'), 2)
+})
+
+test('engine.active.resolveViewDemand skips idle search/sort indexes while keeping display record values', () => {
+  const view = createTableView()
+  const document = createDocument({
+    activeViewId: view.id,
+    views: {
+      byId: {
+        [view.id]: view
+      },
+      order: [view.id]
+    }
+  })
+
+  const demand = resolveViewDemand(document, view.id)
+  const index = createIndexState(document, demand).state
+
+  assert.equal(demand.search, undefined)
+  assert.equal(demand.sortFields, undefined)
+  assert.equal(index.search.all, undefined)
+  assert.equal(index.search.fields.size, 0)
+  assert.equal(index.sort.fields.size, 0)
+  assert.equal(index.records.values.size, 0)
+})
+
+test('engine.active.resolveViewDemand requests search and numeric sort indexes only when query/filter need them', () => {
+  const view = createTableView({
+    search: {
+      query: 'task'
+    },
+    filter: {
+      mode: 'and',
+      rules: [{
+        fieldId: FIELD_POINTS,
+        presetId: 'gt',
+        value: 1
+      }]
+    }
+  })
+  const document = createDocument({
+    activeViewId: view.id,
+    views: {
+      byId: {
+        [view.id]: view
+      },
+      order: [view.id]
+    }
+  })
+
+  const demand = resolveViewDemand(document, view.id)
+  const index = createIndexState(document, demand).state
+
+  assert.deepEqual(demand.search, { all: true })
+  assert.deepEqual(demand.sortFields, [FIELD_POINTS])
+  assert.equal(index.search.all?.texts.size, 3)
+  assert.deepEqual(Array.from(index.sort.fields.keys()), [FIELD_POINTS])
+  assert.deepEqual(Array.from(index.records.values.keys()), [FIELD_POINTS])
 })
 
 test('engine.active.index sync rebuilds only touched field semantics on schema changes', () => {

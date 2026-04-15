@@ -4,10 +4,13 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import {
+  trimToUndefined
+} from '@shared/core'
+import {
   createGroupDemand
 } from '@dataview/engine/active/index/group/demand'
 import {
-  viewSortDemandFields,
+  viewSortFields,
 } from '@dataview/core/view'
 import type {
   IndexDemand
@@ -46,9 +49,12 @@ export const resolveViewDemand = (
     }
   })
 
-  const search = view.search.fields?.length
-    ? { fields: view.search.fields }
-    : { all: true }
+  const hasSearchQuery = Boolean(trimToUndefined(view.search.query))
+  const search = !hasSearchQuery
+    ? undefined
+    : view.search.fields?.length
+      ? { fields: view.search.fields }
+      : { all: true }
   const groups = view.group
     ? [
         createGroupDemand(view.group),
@@ -56,12 +62,12 @@ export const resolveViewDemand = (
       ]
     : Array.from(filterGroupFields).map(fieldId => ({ fieldId }))
   const sortFields = Array.from(new Set([
-    ...viewSortDemandFields(view),
+    ...viewSortFields(view),
     ...filterSortFields
   ]))
 
   return {
-    search,
+    ...(search ? { search } : {}),
     ...(groups.length ? { groups } : {}),
     ...(sortFields.length
       ? { sortFields }

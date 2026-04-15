@@ -1,20 +1,33 @@
 import type { EdgeConnectState } from '@whiteboard/core/edge'
 import type { BoardConfig } from '@whiteboard/core/config'
 import type { EdgeId } from '@whiteboard/core/types'
-import type { InteractionBinding } from '@whiteboard/editor/input/core/types'
 import { HANDLED } from '@whiteboard/editor/input/core/result'
+import type { InteractionBinding } from '@whiteboard/editor/input/core/types'
 import type { InteractionContext } from '@whiteboard/editor/input/context'
-import type { PointerDownInput } from '@whiteboard/editor/types/input'
-import type { Tool } from '@whiteboard/editor/types/tool'
-import type { SessionActions } from '@whiteboard/editor/types/commands'
-import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
-import type { NodePresentationRead } from '@whiteboard/editor/query/node/read'
 import { createEdgeConnectSession } from '@whiteboard/editor/input/edge/connect/session'
 import { startEdgeConnect } from '@whiteboard/editor/input/edge/connect/start'
+import {
+  createEdgeLabelPressSession,
+  startEdgeLabelPress
+} from '@whiteboard/editor/input/edge/label/session'
 import { createEdgeBodyMoveSession } from '@whiteboard/editor/input/edge/move/session'
-import { startEdgeMove, type EdgeMoveState } from '@whiteboard/editor/input/edge/move/start'
-import { createEdgeRouteSession, createEdgeRoutePointSession } from '@whiteboard/editor/input/edge/route/session'
-import { startEdgeRoute, type EdgeRouteHandleState, type EdgeRouteStart } from '@whiteboard/editor/input/edge/route/start'
+import {
+  startEdgeMove,
+  type EdgeMoveState
+} from '@whiteboard/editor/input/edge/move/start'
+import {
+  createEdgeRoutePressSession
+} from '@whiteboard/editor/input/edge/route/session'
+import {
+  startEdgeRoute,
+  type EdgeRouteHandleState,
+  type EdgeRouteStart
+} from '@whiteboard/editor/input/edge/route/start'
+import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
+import type { NodePresentationRead } from '@whiteboard/editor/query/node/read'
+import type { SessionActions } from '@whiteboard/editor/types/commands'
+import type { PointerDownInput } from '@whiteboard/editor/types/input'
+import type { Tool } from '@whiteboard/editor/types/tool'
 
 type EdgeInteractionStart =
   | {
@@ -28,6 +41,11 @@ type EdgeInteractionStart =
   | {
       kind: 'route'
       state: EdgeRouteHandleState
+    }
+  | {
+      kind: 'label'
+      edgeId: EdgeId
+      labelId: string
     }
   | Extract<EdgeRouteStart, { kind: 'insert' | 'remove' }>
   | {
@@ -94,7 +112,31 @@ const startEdgeBodyInteraction = (input: {
       }
 }
 
+const startEdgeLabelInteraction = (input: {
+  ctx: InteractionContext
+  pointer: PointerDownInput
+}): EdgeInteractionStart | undefined => {
+  const result = startEdgeLabelPress(
+    input.ctx,
+    input.pointer
+  )
+  if (!result) {
+    return undefined
+  }
+
+  return result === 'handled'
+    ? {
+        kind: 'handled'
+      }
+    : {
+        kind: 'label',
+        edgeId: result.edgeId,
+        labelId: result.labelId
+      }
+}
+
 const startEdgeInteraction = (input: {
+  ctx: InteractionContext
   tool: Tool
   pointer: PointerDownInput
   node: Pick<NodePresentationRead, 'canvas' | 'capability'>
@@ -129,6 +171,13 @@ const startEdgeInteraction = (input: {
     return undefined
   }
 
+  if (input.pointer.pick.part === 'label') {
+    return startEdgeLabelInteraction({
+      ctx: input.ctx,
+      pointer: input.pointer
+    })
+  }
+
   if (input.pointer.pick.part === 'path') {
     return startEdgeRouteInteraction({
       edge: input.edge,
@@ -156,6 +205,7 @@ export const createEdgeInteraction = (
   key: 'edge',
   start: (input) => {
     const action = startEdgeInteraction({
+      ctx,
       tool: ctx.query.tool.get(),
       pointer: input,
       node: ctx.query.node,
@@ -176,29 +226,21 @@ export const createEdgeInteraction = (
       case 'move':
         return createEdgeBodyMoveSession(ctx, action.state)
       case 'route':
-        return createEdgeRouteSession(ctx, action.state)
+        return createEdgeRoutePressSession(ctx, input, {
+          kind: 'route',
+          state: action.state
+        })
       case 'remove':
         ctx.command.edge.route.remove(action.edgeId, action.index)
         ctx.local.feedback.edge.clearPatches()
         return HANDLED
-      case 'insert': {
-        const result = ctx.command.edge.route.insert(
-          action.edgeId,
-          action.point
-        )
-        if (!result.ok) {
-          ctx.local.feedback.edge.clearPatches()
-          return HANDLED
-        }
-
-        return createEdgeRoutePointSession(ctx, {
+      case 'insert':
+        return createEdgeRoutePressSession(ctx, input, action)
+      case 'label':
+        return createEdgeLabelPressSession(ctx, input, {
           edgeId: action.edgeId,
-          index: result.data.index,
-          pointerId: action.pointerId,
-          startWorld: action.startWorld,
-          origin: action.origin
+          labelId: action.labelId
         })
-      }
       case 'handled':
         return HANDLED
     }

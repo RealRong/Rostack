@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo } from 'react'
 import { createKeyedStore, type KeyedReadStore } from '@shared/core'
 import {
+  readEdgeLabelTextSourceId
+} from '@whiteboard/editor'
+import {
   createMeasuredElementObserver,
   type ElementSize
 } from '@shared/dom'
@@ -32,7 +35,7 @@ const isValidSize = (
 export const readEdgeLabelMeasureKey = (
   edgeId: string,
   labelId: string
-) => `${edgeId}:${labelId}`
+) => readEdgeLabelTextSourceId(edgeId, labelId)
 
 export type EdgeLabelSizeObserver = {
   sizes: KeyedReadStore<string, ElementSize | undefined>

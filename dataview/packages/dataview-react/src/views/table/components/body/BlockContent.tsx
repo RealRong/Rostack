@@ -85,7 +85,7 @@ const sameBlock = (
         && left.section.key === right.section.key
         && left.section.title === right.section.title
         && left.section.collapsed === right.section.collapsed
-        && sameOrder(left.section.itemIds, right.section.itemIds)
+        && sameOrder(left.section.recordIds, right.section.recordIds)
   }
 }
 
@@ -238,7 +238,7 @@ export const BlockContent = (props: BlockContentProps) => {
         : [
             `section-header:${section.key}`,
             `column-header:${section.key}`,
-            ...section.itemIds.map(id => `row:${id}`),
+            ...section.items.ids.map(id => `row:${id}`),
             `column-footer:${section.key}`
           ]
     ))

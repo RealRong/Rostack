@@ -96,10 +96,11 @@ const isFeedbackStateEqual = (
 const isEdgeGestureKind = (
   gesture: ActiveGesture | null
 ): gesture is Extract<ActiveGesture, {
-  kind: 'edge-connect' | 'edge-move' | 'edge-route'
+  kind: 'edge-connect' | 'edge-move' | 'edge-label' | 'edge-route'
 }> => (
   gesture?.kind === 'edge-connect'
   || gesture?.kind === 'edge-move'
+  || gesture?.kind === 'edge-label'
   || gesture?.kind === 'edge-route'
 )
 

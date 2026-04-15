@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { readNodeTextSourceId } from '@whiteboard/editor'
 import { resolveTextLayoutStyle } from '../src/features/node/registry/default/text'
 import { createTextSourceStore } from '../src/features/node/dom/textSourceStore'
 
@@ -22,14 +23,15 @@ describe('resolveTextLayoutStyle', () => {
 })
 
 describe('createTextSourceStore', () => {
-  it('stores and clears text sources by node id and field', () => {
+  it('stores and clears text sources by source id', () => {
     const store = createTextSourceStore()
     const element = {} as HTMLElement
+    const sourceId = readNodeTextSourceId('node-1', 'text')
 
-    store.set('node-1', 'text', element)
-    expect(store.get('node-1', 'text')).toBe(element)
+    store.set(sourceId, element)
+    expect(store.get(sourceId)).toBe(element)
 
-    store.set('node-1', 'text', null)
-    expect(store.get('node-1', 'text')).toBeUndefined()
+    store.set(sourceId, null)
+    expect(store.get(sourceId)).toBeUndefined()
   })
 })

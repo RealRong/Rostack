@@ -2,6 +2,9 @@ import { useCallback, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import type { Node } from '@whiteboard/core/types'
 import {
+  readNodeTextSourceId
+} from '@whiteboard/editor'
+import {
   FRAME_DEFAULT_FILL,
   FRAME_DEFAULT_STROKE,
   FRAME_DEFAULT_STROKE_WIDTH,
@@ -50,18 +53,19 @@ export const FrameNodeChrome = ({
   const edit = useEdit()
   const { textSources } = useWhiteboardServices()
   const titleRef = useRef<HTMLDivElement | null>(null)
+  const sourceId = readNodeTextSourceId(node.id, 'title')
   const bindTitleRef = useCallback((element: HTMLDivElement | null) => {
     if (titleRef.current === element) {
       return
     }
 
     if (titleRef.current) {
-      textSources.set(node.id, 'title', null)
+      textSources.set(sourceId, null)
     }
 
-    textSources.set(node.id, 'title', element)
+    textSources.set(sourceId, element)
     titleRef.current = element
-  }, [node.id, textSources])
+  }, [sourceId, textSources])
   const pickTitleRef = usePickRef({
     kind: 'node',
     id: node.id,

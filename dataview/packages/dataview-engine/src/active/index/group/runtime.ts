@@ -2,8 +2,6 @@ import {
   getRecordFieldValue
 } from '@dataview/core/field'
 import {
-  type ArrayPatchBuilder,
-  createArrayPatchBuilder,
   createMapPatchBuilder
 } from '@dataview/engine/active/index/builder'
 import type {
@@ -26,10 +24,6 @@ import {
 import {
   createGroupDemandKey
 } from '@dataview/engine/active/index/group/demand'
-import {
-  insertOrderedIdInPlace,
-  removeOrderedIdInPlace
-} from '@dataview/engine/active/index/shared'
 import {
   shouldDropFieldIndex,
   shouldRebuildFieldIndex,
@@ -108,22 +102,8 @@ const syncGroupFieldIndex = (input: {
   }
 
   const recordBuckets = createMapPatchBuilder(input.previous.recordBuckets)
-  const bucketRecords = createMapPatchBuilder(input.previous.bucketRecords)
-  const bucketIds = new Map<BucketKey, ArrayPatchBuilder<RecordId>>()
+  const touchedBuckets = new Set<BucketKey>()
   let changed = false
-
-  const ensureBucketIds = (bucketKey: BucketKey) => {
-    const cached = bucketIds.get(bucketKey)
-    if (cached) {
-      return cached
-    }
-
-    const nextIds = createArrayPatchBuilder(
-      bucketRecords.get(bucketKey) ?? EMPTY_RECORD_IDS
-    )
-    bucketIds.set(bucketKey, nextIds)
-    return nextIds
-  }
 
   input.touchedRecords.forEach(recordId => {
     const before = input.previous.recordBuckets.get(recordId) ?? EMPTY_BUCKET_KEYS
@@ -140,18 +120,8 @@ const syncGroupFieldIndex = (input: {
     }
 
     changed = true
-
-    before.forEach(bucketKey => {
-      ensureBucketIds(bucketKey).mutate(ids => {
-        removeOrderedIdInPlace(ids, recordId)
-      })
-    })
-
-    after.forEach(bucketKey => {
-      ensureBucketIds(bucketKey).mutate(ids => {
-        insertOrderedIdInPlace(ids, recordId, input.records.order)
-      })
-    })
+    before.forEach(bucketKey => touchedBuckets.add(bucketKey))
+    after.forEach(bucketKey => touchedBuckets.add(bucketKey))
 
     if (after.length) {
       recordBuckets.set(recordId, after)
@@ -165,9 +135,34 @@ const syncGroupFieldIndex = (input: {
     return input.previous
   }
 
-  bucketIds.forEach((builder, bucketKey) => {
-    const ids = builder.finish()
-    if (ids.length) {
+  const nextRecordBuckets = recordBuckets.finish()
+  const bucketRecords = createMapPatchBuilder(input.previous.bucketRecords)
+  const rebuiltBucketRecords = new Map<BucketKey, RecordId[]>()
+
+  input.records.ids.forEach(recordId => {
+    const bucketKeys = nextRecordBuckets.get(recordId) ?? EMPTY_BUCKET_KEYS
+    if (!bucketKeys.some(bucketKey => touchedBuckets.has(bucketKey))) {
+      return
+    }
+
+    bucketKeys.forEach(bucketKey => {
+      if (!touchedBuckets.has(bucketKey)) {
+        return
+      }
+
+      const ids = rebuiltBucketRecords.get(bucketKey)
+      if (ids) {
+        ids.push(recordId)
+        return
+      }
+
+      rebuiltBucketRecords.set(bucketKey, [recordId])
+    })
+  })
+
+  touchedBuckets.forEach(bucketKey => {
+    const ids = rebuiltBucketRecords.get(bucketKey)
+    if (ids?.length) {
       bucketRecords.set(bucketKey, ids)
       return
     }
@@ -183,7 +178,6 @@ const syncGroupFieldIndex = (input: {
     bucketRecords: nextBucketRecords,
     previous: input.previous
   })
-  const nextRecordBuckets = recordBuckets.finish()
 
   return {
     fieldId: demand.fieldId,

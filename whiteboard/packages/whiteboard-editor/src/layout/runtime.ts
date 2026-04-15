@@ -34,6 +34,9 @@ import type {
   LayoutKind,
   LayoutRequest
 } from '@whiteboard/editor/types/layout'
+import {
+  readNodeTextSourceId
+} from '@whiteboard/editor/types/layout'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
 
 const SIZE_LAYOUT_STYLE_PATHS = new Set([
@@ -168,6 +171,7 @@ const buildLayoutRequest = ({
     return {
       kind: 'size',
       nodeId,
+      sourceId: readNodeTextSourceId(nodeId, 'text'),
       text: readTextValue(node),
       placeholder: TEXT_PLACEHOLDER,
       widthMode,
@@ -188,6 +192,7 @@ const buildLayoutRequest = ({
     return {
       kind: 'fit',
       nodeId,
+      sourceId: readNodeTextSourceId(nodeId, 'text'),
       text: readTextValue(node),
       box: resolveTextBox('sticky', rect),
       fontWeight: readFontWeight(node),
@@ -296,6 +301,9 @@ const toLayoutResultUpdate = ({
 }
 
 export type LayoutRuntime = {
+  measureText: (
+    input: Omit<Extract<LayoutRequest, { kind: 'text-size' }>, 'kind'>
+  ) => Size | undefined
   patchNodeUpdate: (
     nodeId: NodeId,
     update: NodeUpdateInput,
@@ -343,6 +351,16 @@ export const createLayoutRuntime = ({
   })
 
   return {
+    measureText: (input) => {
+      const result = backend?.measure({
+        kind: 'text-size',
+        ...input
+      })
+
+      return result?.kind === 'size'
+        ? result.size
+        : undefined
+    },
     patchNodeUpdate: (nodeId, update, options) => {
       const committed = read.node.committed.get(nodeId)
       if (!committed) {

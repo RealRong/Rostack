@@ -22,7 +22,7 @@ import {
   shouldSyncFieldIndex
 } from '@dataview/engine/active/index/sync'
 
-const MAX_INCREMENTAL_TOUCHES = 64
+const MAX_INCREMENTAL_TOUCH_RATIO = 0.25
 const EMPTY_VALUE_MAP = new Map<RecordId, unknown>()
 
 const compareSortValues = (
@@ -37,25 +37,26 @@ const compareSortValues = (
   return compareFieldValues(field, left, right)
 }
 
-const compareRecordIds = (input: {
+const createRecordComparator = (input: {
   field: Field | undefined
   values: ReadonlyMap<RecordId, unknown>
   order: ReadonlyMap<RecordId, number>
-  leftId: RecordId
+}) => (
+  leftId: RecordId,
   rightId: RecordId
-}) => {
+) => {
   const result = compareSortValues(
     input.field,
-    input.values.get(input.leftId),
-    input.values.get(input.rightId)
+    input.values.get(leftId),
+    input.values.get(rightId)
   )
 
   if (result !== 0) {
     return result
   }
 
-  return (input.order.get(input.leftId) ?? Number.MAX_SAFE_INTEGER)
-    - (input.order.get(input.rightId) ?? Number.MAX_SAFE_INTEGER)
+  return (input.order.get(leftId) ?? Number.MAX_SAFE_INTEGER)
+    - (input.order.get(rightId) ?? Number.MAX_SAFE_INTEGER)
 }
 
 const buildFieldSortIndex = (
@@ -65,13 +66,12 @@ const buildFieldSortIndex = (
 ): SortFieldIndex => {
   const field = context.reader.fields.get(fieldId)
   const values = records.values.get(fieldId)?.byRecord ?? EMPTY_VALUE_MAP
-  const asc = records.ids.slice().sort((leftId, rightId) => compareRecordIds({
+  const compare = createRecordComparator({
     field,
     values,
-    order: records.order,
-    leftId,
-    rightId
-  }))
+    order: records.order
+  })
+  const asc = records.ids.slice().sort(compare)
 
   return {
     asc
@@ -117,12 +117,17 @@ const syncFieldSortIndex = (input: {
   fieldId: FieldId
   touchedRecords: ReadonlySet<RecordId>
 }): SortFieldIndex => {
-  if (input.touchedRecords.size > MAX_INCREMENTAL_TOUCHES) {
+  if (input.touchedRecords.size > input.previous.asc.length * MAX_INCREMENTAL_TOUCH_RATIO) {
     return buildFieldSortIndex(input.context, input.records, input.fieldId)
   }
 
   const field = input.context.reader.fields.get(input.fieldId)
   const values = input.records.values.get(input.fieldId)?.byRecord ?? EMPTY_VALUE_MAP
+  const compare = createRecordComparator({
+    field,
+    values,
+    order: input.records.order
+  })
   const remaining = input.previous.asc.filter(recordId => (
     !input.touchedRecords.has(recordId)
     && input.records.order.has(recordId)
@@ -138,24 +143,12 @@ const syncFieldSortIndex = (input: {
         }
   }
 
-  moving.sort((leftId, rightId) => compareRecordIds({
-    field,
-    values,
-    order: input.records.order,
-    leftId,
-    rightId
-  }))
+  moving.sort(compare)
 
   const asc = mergeSortedIds({
     left: remaining,
     right: moving,
-    compare: (leftId, rightId) => compareRecordIds({
-      field,
-      values,
-      order: input.records.order,
-      leftId,
-      rightId
-    })
+    compare
   })
 
   return sameOrder(asc, input.previous.asc)

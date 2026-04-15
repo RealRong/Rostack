@@ -32,8 +32,8 @@ export interface SectionData {
   color?: string
   bucket?: SectionBucket
   collapsed: boolean
-  itemIds: readonly ItemId[]
   recordIds: readonly RecordId[]
+  items: ItemList
 }
 
 export type Section = SectionData

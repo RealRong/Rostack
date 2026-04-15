@@ -5,9 +5,9 @@ import type { TextSourceStore } from '@whiteboard/react/features/node/dom/textSo
 
 const readSource = (
   textSources: TextSourceStore,
-  nodeId: LayoutRequest['nodeId']
+  sourceId: LayoutRequest['sourceId']
 ) => {
-  const source = textSources.get(nodeId, 'text')
+  const source = textSources.get(sourceId)
   return source?.isConnected
     ? source
     : undefined
@@ -19,12 +19,12 @@ export const createLayoutBackend = ({
   textSources: TextSourceStore
 }): LayoutBackend => ({
   measure: (request) => {
-    const source = readSource(textSources, request.nodeId)
+    const source = readSource(textSources, request.sourceId)
     if (!source) {
       return undefined
     }
 
-    if (request.kind === 'size') {
+    if (request.kind === 'size' || request.kind === 'text-size') {
       const size = measureTextSize({
         content: request.text,
         placeholder: request.placeholder,

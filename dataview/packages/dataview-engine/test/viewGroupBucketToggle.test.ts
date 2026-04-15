@@ -280,12 +280,7 @@ const openView = (engine, viewId) => {
 
 const viewSectionRecordIds = (engine, sectionKey) => {
   const state = readViewState(engine)
-  return (
-    state?.sections.get(sectionKey)?.itemIds
-      .map(itemId => state.items.get(itemId)?.recordId)
-      .filter(Boolean)
-    ?? []
-  )
+  return [...(state?.sections.get(sectionKey)?.recordIds ?? [])]
 }
 
 const viewSnapshot = engine => {
@@ -635,7 +630,7 @@ test('engine.active.state removes deleted records from filtered query results an
   assert.deepEqual(
     state?.sections.all.map(section => ({
       key: section.key,
-      recordIds: section.itemIds.map(itemId => state.items.get(itemId)?.recordId)
+      recordIds: section.recordIds
     })),
     [{
       key: 'root',
@@ -666,11 +661,9 @@ test('engine.active.state grouped sections keep visible record order inside each
 
   const state = readViewState(engine)
   const sections = state?.sections.all
-  const items = state?.items
   const todoIds = sections
     ?.find(section => section.key === 'todo')
-    ?.itemIds
-    .map(id => items?.get(id)?.recordId)
+    ?.recordIds
 
   assert.deepEqual(todoIds, ['rec_4', 'rec_1'])
 })
@@ -735,8 +728,8 @@ test('engine.active sync reuses unaffected grouped sections and summaries on dat
   const doneSectionBefore = sectionsBefore?.find(section => section.key === 'done')
   const doingSummaryBefore = summariesBefore?.get('doing')
   const doneSummaryBefore = summariesBefore?.get('done')
-  const doingItemBefore = doingSectionBefore?.itemIds[0]
-    ? itemsBefore?.get(doingSectionBefore.itemIds[0])
+  const doingItemBefore = doingSectionBefore?.items.ids[0]
+    ? itemsBefore?.get(doingSectionBefore.items.ids[0])
     : undefined
 
   engine.records.fields.set('rec_1', FIELD_STATUS, 'done')
@@ -748,8 +741,8 @@ test('engine.active sync reuses unaffected grouped sections and summaries on dat
   const summariesAfter = stateAfter?.summaries
   const doingSectionAfter = sectionsAfter?.find(section => section.key === 'doing')
   const doneSectionAfter = sectionsAfter?.find(section => section.key === 'done')
-  const doingItemAfter = doingSectionAfter?.itemIds[0]
-    ? itemsAfter?.get(doingSectionAfter.itemIds[0])
+  const doingItemAfter = doingSectionAfter?.items.ids[0]
+    ? itemsAfter?.get(doingSectionAfter.items.ids[0])
     : undefined
 
   assert.equal(recordsAfter, recordsBefore)

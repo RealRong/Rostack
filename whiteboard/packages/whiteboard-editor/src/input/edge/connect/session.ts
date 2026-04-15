@@ -87,6 +87,7 @@ export const createEdgeConnectSession = (
   interaction = {
     mode: 'edge-connect',
     pointerId: state.pointerId,
+    chrome: false,
     gesture: createEdgeGesture(
       'edge-connect',
       initialProjection.gesture

@@ -50,6 +50,7 @@ export const createEdgeBodyMoveSession = (
   interaction = {
     mode: 'edge-drag',
     pointerId: state.pointerId,
+    chrome: false,
     gesture: null,
     autoPan: {
       frame: (pointer) => step(ctx.query.viewport.pointer(pointer).world)

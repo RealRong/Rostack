@@ -1,6 +1,5 @@
 import type { ViewState as CurrentView, ItemId } from '@dataview/engine'
 import {
-  createItemArraySelectionScope,
   createItemListSelectionScope,
   type SelectionScope
 } from '@dataview/react/runtime/selection'
@@ -261,14 +260,14 @@ const buildDescriptors = (input: {
         kind: 'column-header',
         estimatedHeight: input.headerHeight,
         scopeId: section.key,
-        scope: createItemArraySelectionScope({
+        scope: createItemListSelectionScope({
           key: section.key,
-          ids: section.itemIds
+          items: section.items
         }),
         label: `Select rows in ${section.title}`
       })
 
-      section.itemIds.forEach(rowId => {
+      section.items.ids.forEach(rowId => {
         push({
           key: `row:${rowId}`,
           kind: 'row',

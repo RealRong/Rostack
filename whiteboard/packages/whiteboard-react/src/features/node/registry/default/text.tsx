@@ -8,6 +8,9 @@ import {
   estimateTextAutoFont,
   WHITEBOARD_TEXT_DEFAULT_COLOR
 } from '@whiteboard/core/node'
+import {
+  readNodeTextSourceId
+} from '@whiteboard/editor'
 import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
 import {
   useEdit,
@@ -103,6 +106,7 @@ const useNodeTextSourceBinding = (
     ref: sourceRef,
     bind
   } = useElementBinding<HTMLDivElement>()
+  const sourceId = readNodeTextSourceId(nodeId, 'text')
 
   const bindRef = useCallback((element: HTMLDivElement | null) => {
     if (sourceRef.current === element) {
@@ -110,16 +114,16 @@ const useNodeTextSourceBinding = (
     }
 
     if (sourceRef.current) {
-      textSources.set(nodeId, 'text', null)
+      textSources.set(sourceId, null)
     }
 
-    textSources.set(nodeId, 'text', element)
+    textSources.set(sourceId, element)
     bind(element)
 
     if (element) {
       editor.actions.node.layout.sync([nodeId])
     }
-  }, [bind, editor.actions.node.layout, nodeId, sourceRef, textSources])
+  }, [bind, editor.actions.node.layout, nodeId, sourceId, sourceRef, textSources])
 
   return {
     bindRef

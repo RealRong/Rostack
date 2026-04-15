@@ -6,7 +6,6 @@ import type {
   SectionAggregateState
 } from '@dataview/engine/active/index/contracts'
 import type {
-  ItemId,
   SectionBucket,
   SectionKey,
   ViewRecords
@@ -38,7 +37,6 @@ export interface SectionNodeState {
   color?: string
   bucket?: SectionBucket
   collapsed: boolean
-  itemIds: readonly ItemId[]
   recordIds: readonly RecordId[]
   visible: boolean
 }

@@ -40,7 +40,6 @@ const equalSection = (
   && left.title === right.title
   && left.color === right.color
   && left.collapsed === right.collapsed
-  && equalIds(left.itemIds, right.itemIds)
   && equalIds(left.recordIds, right.recordIds)
   && sameJsonValue(left.bucket, right.bucket)
 )

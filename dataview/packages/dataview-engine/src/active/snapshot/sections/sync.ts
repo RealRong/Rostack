@@ -108,27 +108,36 @@ export const syncSectionState = (input: {
     return previous
   }
 
-  const idsByKey = new Map<SectionKey, RecordId[]>()
-  input.query.records.visible.forEach(recordId => {
-    const keys = groupIndex.recordBuckets.get(recordId) ?? EMPTY_SECTION_KEYS
-    if (!keys.some(key => touchedSectionKeys.has(key))) {
-      return
-    }
-
-    keys.forEach(key => {
-      if (!touchedSectionKeys.has(key)) {
-        return
+  const idsByKey = new Map<SectionKey, readonly RecordId[]>()
+  if (input.query.records.visible === input.index.records.ids) {
+    touchedSectionKeys.forEach(key => {
+      const ids = groupIndex.bucketRecords.get(key)
+      if (ids?.length) {
+        idsByKey.set(key, ids)
       }
-
-      const ids = idsByKey.get(key)
-      if (ids) {
-        ids.push(recordId)
-        return
-      }
-
-      idsByKey.set(key, [recordId])
     })
-  })
+  } else {
+    input.query.records.visible.forEach(recordId => {
+      const keys = groupIndex.recordBuckets.get(recordId) ?? EMPTY_SECTION_KEYS
+      if (!keys.some(key => touchedSectionKeys.has(key))) {
+        return
+      }
+
+      keys.forEach(key => {
+        if (!touchedSectionKeys.has(key)) {
+          return
+        }
+
+        const ids = idsByKey.get(key)
+        if (ids) {
+          ;(ids as RecordId[]).push(recordId)
+          return
+        }
+
+        idsByKey.set(key, [recordId])
+      })
+    })
+  }
 
   const order = groupIndex.order
   const nextOrder = sameOrder(previous.order, order)
@@ -146,8 +155,7 @@ export const syncSectionState = (input: {
       key,
       recordIds: ids,
       group: input.view.group,
-      index: input.index,
-      previous: previousNode
+      index: input.index
     })
     const publishedNode = previousNode && sameSectionNode(previousNode, nextNode)
       ? previousNode

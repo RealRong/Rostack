@@ -3,6 +3,9 @@ import {
   readShapeMeta,
   readShapeSpec
 } from '@whiteboard/core/node'
+import {
+  readNodeTextSourceId
+} from '@whiteboard/editor'
 import { useCallback, useRef, type CSSProperties } from 'react'
 import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
 import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
@@ -88,18 +91,19 @@ const ShapeLabel = ({
   const { textSources } = useWhiteboardServices()
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
   const labelRef = useRef<HTMLDivElement | null>(null)
+  const sourceId = readNodeTextSourceId(node.id, 'text')
   const bindRef = useCallback((element: HTMLDivElement | null) => {
     if (labelRef.current === element) {
       return
     }
 
     if (labelRef.current) {
-      textSources.set(node.id, 'text', null)
+      textSources.set(sourceId, null)
     }
 
-    textSources.set(node.id, 'text', element)
+    textSources.set(sourceId, element)
     labelRef.current = element
-  }, [node.id, textSources])
+  }, [sourceId, textSources])
 
   const shellStyle: CSSProperties = {
     ...readShapeSpec(kind).labelInset,

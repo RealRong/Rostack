@@ -35,6 +35,11 @@ export type EdgeMoveGesture = {
   draft: EdgeGestureDraft
 }
 
+export type EdgeLabelGesture = {
+  kind: 'edge-label'
+  draft: EdgeGestureDraft
+}
+
 export type EdgeRouteGesture = {
   kind: 'edge-route'
   draft: EdgeGestureDraft
@@ -46,6 +51,7 @@ export type ActiveGesture =
   | TransformGesture
   | EdgeConnectGesture
   | EdgeMoveGesture
+  | EdgeLabelGesture
   | EdgeRouteGesture
 
 export type SelectionGestureKind = ActiveGesture['kind'] & (
@@ -57,6 +63,7 @@ export type SelectionGestureKind = ActiveGesture['kind'] & (
 export type EdgeGestureKind = ActiveGesture['kind'] & (
   | 'edge-connect'
   | 'edge-move'
+  | 'edge-label'
   | 'edge-route'
 )
 
@@ -105,6 +112,7 @@ export const readEdgeGestureFeedbackState = (
 ): EdgeFeedbackState => (
   gesture?.kind === 'edge-connect'
   || gesture?.kind === 'edge-move'
+  || gesture?.kind === 'edge-label'
   || gesture?.kind === 'edge-route'
 )
   ? {

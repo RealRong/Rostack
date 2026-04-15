@@ -716,6 +716,7 @@ const isEdgeEditingInteraction = (
   mode: ReturnType<InteractionRuntime['mode']['get']>
 ) => (
   mode === 'edge-drag'
+  || mode === 'edge-label'
   || mode === 'edge-connect'
   || mode === 'edge-route'
 )

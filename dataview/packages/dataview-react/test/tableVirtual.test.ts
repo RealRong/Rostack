@@ -2,6 +2,51 @@ import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { TableLayoutModel } from '@dataview/react/views/table/virtual/layoutModel'
 
+const createMockItemList = (ids: readonly string[]) => ({
+  ids,
+  count: ids.length,
+  get: (id: string) => (
+    ids.includes(id)
+      ? {
+          id,
+          recordId: id,
+          sectionKey: 'section'
+        }
+      : undefined
+  ),
+  has: (id: string) => ids.includes(id),
+  indexOf: (id: string) => {
+    const index = ids.indexOf(id)
+    return index === -1
+      ? undefined
+      : index
+  },
+  at: (index: number) => ids[index],
+  prev: (id: string) => {
+    const index = ids.indexOf(id)
+    return index > 0
+      ? ids[index - 1]
+      : undefined
+  },
+  next: (id: string) => {
+    const index = ids.indexOf(id)
+    return index >= 0
+      ? ids[index + 1]
+      : undefined
+  },
+  range: (anchor: string, focus: string) => {
+    const anchorIndex = ids.indexOf(anchor)
+    const focusIndex = ids.indexOf(focus)
+    if (anchorIndex === -1 || focusIndex === -1) {
+      return []
+    }
+
+    const start = Math.min(anchorIndex, focusIndex)
+    const end = Math.max(anchorIndex, focusIndex)
+    return ids.slice(start, end + 1)
+  }
+})
+
 test('TableLayoutModel uses measured heights for flat table blocks and recomputes tops', () => {
   const model = TableLayoutModel.fromCurrentView({
     currentView: {
@@ -73,13 +118,13 @@ test('TableLayoutModel uses measured heights for grouped section blocks and keep
             key: 'won',
             title: 'Won',
             collapsed: false,
-            itemIds: ['row_1', 'row_2']
+            items: createMockItemList(['row_1', 'row_2'])
           },
           {
             key: 'lost',
             title: 'Lost',
             collapsed: true,
-            itemIds: ['row_3']
+            items: createMockItemList(['row_3'])
           }
         ]
       }

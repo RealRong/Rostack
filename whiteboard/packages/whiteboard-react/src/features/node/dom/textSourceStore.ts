@@ -1,37 +1,27 @@
-import type { NodeId } from '@whiteboard/core/types'
-
-export type TextField = 'text' | 'title'
+export type TextSourceId = string
 
 export type TextSourceStore = {
   set: (
-    nodeId: NodeId,
-    field: TextField,
+    sourceId: TextSourceId,
     element: HTMLElement | null
   ) => void
   get: (
-    nodeId: NodeId,
-    field: TextField
+    sourceId: TextSourceId
   ) => HTMLElement | undefined
 }
-
-const toSourceKey = (
-  nodeId: NodeId,
-  field: TextField
-) => `${nodeId}:${field}`
 
 export const createTextSourceStore = (): TextSourceStore => {
   const registry = new Map<string, HTMLElement>()
 
   return {
-    set: (nodeId, field, element) => {
-      const key = toSourceKey(nodeId, field)
+    set: (sourceId, element) => {
       if (element) {
-        registry.set(key, element)
+        registry.set(sourceId, element)
         return
       }
 
-      registry.delete(key)
+      registry.delete(sourceId)
     },
-    get: (nodeId, field) => registry.get(toSourceKey(nodeId, field))
+    get: (sourceId) => registry.get(sourceId)
   }
 }

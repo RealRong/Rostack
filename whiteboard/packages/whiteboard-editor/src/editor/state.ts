@@ -37,6 +37,7 @@ export const createEditorState = ({
           || mode === 'node-transform',
         editingEdge:
           mode === 'edge-drag'
+          || mode === 'edge-label'
           || mode === 'edge-connect'
           || mode === 'edge-route',
         space: read(runtime.state.space)

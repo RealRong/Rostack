@@ -29,10 +29,3 @@ export const viewCalcFields = (
 export const viewDisplayFields = (
   view: View
 ): ReadonlySet<FieldId> => new Set(view.display.fields)
-
-export const viewSortDemandFields = (
-  view: View
-): readonly FieldId[] => Array.from(new Set([
-  ...view.display.fields,
-  ...view.sort.map(sorter => sorter.field)
-]))

@@ -1,10 +1,8 @@
 import type {
-  CSSProperties,
-  PointerEvent
+  CSSProperties
 } from 'react'
 import {
   useCallback,
-  useEffect,
   useId,
   memo,
   useMemo,
@@ -12,66 +10,58 @@ import {
   useState
 } from 'react'
 import {
-  useKeyedStoreValue,
-  useStoreValue
+  useKeyedStoreValue
 } from '@shared/react'
 import {
-  projectPointToEdgeLabelPlacement,
-  resolveEdgeLabelPlacement
+  readEdgeLabelSideGap,
+  resolveEdgeLabelPlacement,
+  resolveEdgeLabelPlacementSize
 } from '@whiteboard/core/edge'
 import {
   WHITEBOARD_TEXT_DEFAULT_COLOR
 } from '@whiteboard/core/node'
 import type { EdgeId } from '@whiteboard/core/types'
 import {
+  readEdgeLabelTextSourceId
+} from '@whiteboard/editor'
+import {
   useEdit,
   useEditorRuntime,
   usePickRef,
-  useResolvedConfig
+  useResolvedConfig,
+  useWhiteboardServices
 } from '@whiteboard/react/runtime/hooks'
 import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
 import { matchEdgeLabelEdit } from '@whiteboard/react/features/edit/session'
 import { useEdgeView } from '@whiteboard/react/features/edge/hooks/useEdgeView'
-import { EDGE_ARROW_END_ID, EDGE_ARROW_START_ID, resolveEdgeDash } from '@whiteboard/react/features/edge/constants'
+import {
+  EDGE_ARROW_END_ID,
+  EDGE_ARROW_START_ID,
+  resolveEdgeDash
+} from '@whiteboard/react/features/edge/constants'
 import {
   buildEdgeLabelMaskRect,
   readEdgeLabelMaskTransform
 } from '@whiteboard/react/features/edge/dom/labelMask'
-import type { EdgeLabelSizeObserver } from '@whiteboard/react/features/edge/dom/labelSizeObserver'
-import { readEdgeLabelMeasureKey } from '@whiteboard/react/features/edge/dom/labelSizeObserver'
-import { resolvePaletteColor, resolvePaletteColorOr } from '@whiteboard/react/features/palette'
+import type {
+  EdgeLabelSizeObserver
+} from '@whiteboard/react/features/edge/dom/labelSizeObserver'
+import {
+  readEdgeLabelMeasureKey
+} from '@whiteboard/react/features/edge/dom/labelSizeObserver'
+import {
+  resolvePaletteColor,
+  resolvePaletteColorOr
+} from '@whiteboard/react/features/palette'
 import type { EdgeView } from '@whiteboard/react/types/edge'
 
-const EDGE_LABEL_DRAG_DISTANCE = 3
-const EDGE_LABEL_RAIL_OFFSET = 24
-const EDGE_LABEL_CENTER_TOLERANCE = 20
-const EDGE_LABEL_TANGENT_SIDE_GAP = 4
-const EDGE_LABEL_HORIZONTAL_SIDE_GAP = 24
 const EDGE_LABEL_PLACEHOLDER = 'Label'
-const EDGE_LABEL_LINE_HEIGHT = 1.4
-const EDGE_LABEL_DEFAULT_SIZE = 14
 
 type EdgeItemProps = {
   edgeId: EdgeId
   selected?: boolean
   edgeLabelObserver: EdgeLabelSizeObserver
 }
-
-type DragDraft = {
-  t: number
-  offset: number
-}
-
-type DragState = {
-  pointerId: number
-  startClient: {
-    x: number
-    y: number
-  }
-  draft?: DragDraft
-}
-
-type EdgeLabelDragDrafts = Record<string, DragDraft | undefined>
 
 const resolveMarker = (value: string | undefined, fallbackId: string) => {
   if (!value) return undefined
@@ -120,12 +110,6 @@ const resolveTextStyle = ({
   fontStyle: italic ? 'italic' : 'normal'
 })
 
-const readEdgeLabelSideGap = (
-  textMode: EdgeView['edge']['textMode']
-) => textMode === 'horizontal'
-  ? EDGE_LABEL_HORIZONTAL_SIDE_GAP
-  : EDGE_LABEL_TANGENT_SIDE_GAP
-
 const useStableMeasuredSize = (
   size?: {
     width: number
@@ -141,71 +125,23 @@ const useStableMeasuredSize = (
   return size ?? sizeRef.current
 }
 
-const readTangentPlacementSize = ({
-  measuredSize,
-  text,
-  fontSize
-}: {
-  measuredSize?: {
-    width: number
-    height: number
-  }
-  text: string
-  fontSize?: number
-}) => {
-  if (!measuredSize) {
-    return undefined
-  }
-
-  const lineCount = Math.max(1, text.split('\n').length)
-  const resolvedFontSize = fontSize ?? EDGE_LABEL_DEFAULT_SIZE
-
-  return {
-    ...measuredSize,
-    height: Math.ceil(lineCount * resolvedFontSize * EDGE_LABEL_LINE_HEIGHT)
-  }
-}
-
-const readPlacementLabelSize = ({
-  textMode,
-  measuredSize,
-  text,
-  fontSize
-}: {
-  textMode: EdgeView['edge']['textMode']
-  measuredSize?: {
-    width: number
-    height: number
-  }
-  text: string
-  fontSize?: number
-}) => textMode === 'tangent'
-  ? readTangentPlacementSize({
-      measuredSize,
-      text,
-      fontSize
-    })
-  : measuredSize
-
 const resolveLabelPlacement = ({
   path,
   label,
-  draft,
   textMode,
   labelSize
 }: {
   path: EdgeView['path']
   label: NonNullable<EdgeView['edge']['labels']>[number]
-  draft?: DragDraft
-  textMode: EdgeView['edge']['textMode']
+  textMode: NonNullable<EdgeView['edge']['textMode']>
   labelSize?: {
     width: number
     height: number
   }
 }) => resolveEdgeLabelPlacement({
   path,
-  t: draft?.t ?? label.t ?? 0.5,
-  offset: draft?.offset ?? label.offset ?? 0,
+  t: label.t ?? 0.5,
+  offset: label.offset ?? 0,
   textMode,
   labelSize,
   sideGap: readEdgeLabelSideGap(textMode)
@@ -220,8 +156,7 @@ const EdgeLabelItem = ({
   path,
   textMode,
   label,
-  edgeLabelObserver,
-  onDragDraftChange
+  edgeLabelObserver
 }: {
   edgeId: EdgeId
   labelId: string
@@ -232,28 +167,23 @@ const EdgeLabelItem = ({
     y: number
   }
   path: EdgeView['path']
-  textMode: EdgeView['edge']['textMode']
+  textMode: NonNullable<EdgeView['edge']['textMode']>
   label: NonNullable<EdgeView['edge']['labels']>[number]
   edgeLabelObserver: EdgeLabelSizeObserver
-  onDragDraftChange: (
-    labelId: string,
-    draft: DragDraft | undefined
-  ) => void
 }) => {
-  const editor = useEditorRuntime()
-  const selection = useStoreValue(editor.store.selection)
+  const { textSources } = useWhiteboardServices()
   const edit = useEdit()
-  const ref = usePickRef({
+  const pickRef = usePickRef({
     kind: 'edge',
     id: edgeId,
     part: 'label',
     labelId
   })
-  const [drag, setDrag] = useState<DragState | null>(null)
+  const sourceRef = useRef<HTMLDivElement | null>(null)
   const measureKey = readEdgeLabelMeasureKey(edgeId, labelId)
+  const sourceId = readEdgeLabelTextSourceId(edgeId, labelId)
   const labelSize = useKeyedStoreValue(edgeLabelObserver.sizes, measureKey)
   const stableLabelSize = useStableMeasuredSize(labelSize)
-
   const text = readLabelText(label.text)
   const labelEdit = matchEdgeLabelEdit(edit, edgeId, labelId)
   const editing = labelEdit !== null
@@ -262,154 +192,36 @@ const EdgeLabelItem = ({
     draft: labelEdit?.draft.text
   })
   const displayText = readLabelDisplayText(activeText, editing)
-  const placementLabelSize = readPlacementLabelSize({
+  const placementLabelSize = resolveEdgeLabelPlacementSize({
     textMode,
     measuredSize: stableLabelSize,
     text: displayText,
     fontSize: label.style?.size
   })
-  const singleSelected =
-    selection.nodeIds.length === 0
-    && selection.edgeIds.length === 1
-    && selection.edgeIds[0] === edgeId
-
   const placement = useMemo(() => resolveLabelPlacement({
     path,
     label,
-    draft: drag?.draft,
     textMode,
     labelSize: placementLabelSize
-  }), [drag?.draft, label, path, placementLabelSize, textMode])
+  }), [label, path, placementLabelSize, textMode])
 
-  useEffect(
-    () => () => {
-      onDragDraftChange(labelId, undefined)
-    },
-    [labelId, onDragDraftChange]
-  )
+  const bindLabelRef = useCallback((element: HTMLDivElement | null) => {
+    if (sourceRef.current === element) {
+      return
+    }
 
-  if (!placement) {
+    if (sourceRef.current) {
+      textSources.set(sourceId, null)
+    }
+
+    textSources.set(sourceId, element)
+    pickRef(element)
+    edgeLabelObserver.register(measureKey, element)
+    sourceRef.current = element
+  }, [edgeLabelObserver, measureKey, pickRef, sourceId, textSources])
+
+  if (!placement || !displayText.trim()) {
     return null
-  }
-
-  if (!displayText.trim()) {
-    return null
-  }
-
-  const onPointerDown = (
-    event: PointerEvent<HTMLDivElement>
-  ) => {
-    if (event.button !== 0 || editing) {
-      return
-    }
-
-    event.stopPropagation()
-
-    if (!singleSelected) {
-      editor.actions.selection.replace({
-        edgeIds: [edgeId]
-      })
-      return
-    }
-
-    event.currentTarget.setPointerCapture(event.pointerId)
-    setDrag({
-      pointerId: event.pointerId,
-      startClient: {
-        x: event.clientX,
-        y: event.clientY
-      }
-    })
-  }
-
-  const onPointerMove = (
-    event: PointerEvent<HTMLDivElement>
-  ) => {
-    if (!drag || drag.pointerId !== event.pointerId) {
-      return
-    }
-
-    event.stopPropagation()
-
-    const dx = event.clientX - drag.startClient.x
-    const dy = event.clientY - drag.startClient.y
-    if (!drag.draft && Math.hypot(dx, dy) < EDGE_LABEL_DRAG_DISTANCE) {
-      return
-    }
-
-    const world = editor.read.viewport.pointer({
-      clientX: event.clientX,
-      clientY: event.clientY
-    }).world
-    const projected = projectPointToEdgeLabelPlacement({
-      path,
-      point: world,
-      maxOffset: EDGE_LABEL_RAIL_OFFSET,
-      centerTolerance: EDGE_LABEL_CENTER_TOLERANCE,
-      textMode,
-      labelSize: placementLabelSize,
-      sideGap: readEdgeLabelSideGap(textMode)
-    })
-    if (!projected) {
-      return
-    }
-
-    setDrag({
-      ...drag,
-      draft: {
-        t: projected.t,
-        offset: projected.offset
-      }
-    })
-    onDragDraftChange(labelId, {
-      t: projected.t,
-      offset: projected.offset
-    })
-  }
-
-  const onPointerUp = (
-    event: PointerEvent<HTMLDivElement>
-  ) => {
-    if (!drag || drag.pointerId !== event.pointerId) {
-      return
-    }
-
-    event.stopPropagation()
-    event.currentTarget.releasePointerCapture(event.pointerId)
-
-    if (drag.draft) {
-      editor.actions.edge.label.patch(edgeId, labelId, drag.draft)
-      onDragDraftChange(labelId, undefined)
-      setDrag(null)
-      return
-    }
-
-    onDragDraftChange(labelId, undefined)
-    setDrag(null)
-    editor.actions.selection.replace({
-      edgeIds: [edgeId]
-    })
-    editor.actions.edit.startEdgeLabel(edgeId, labelId, {
-      caret: {
-        kind: 'point',
-        client: {
-          x: event.clientX,
-          y: event.clientY
-        }
-      }
-    })
-  }
-
-  const onPointerCancel = (
-    event: PointerEvent<HTMLDivElement>
-  ) => {
-    if (!drag || drag.pointerId !== event.pointerId) {
-      return
-    }
-
-    event.stopPropagation()
-    onDragDraftChange(labelId, undefined)
-    setDrag(null)
   }
 
   const angle = textMode === 'tangent'
@@ -424,10 +236,6 @@ const EdgeLabelItem = ({
   })
   const x = placement.point.x - origin.x + pad
   const y = placement.point.y - origin.y + pad
-  const bindLabelRef = useCallback((element: HTMLDivElement | null) => {
-    ref(element)
-    edgeLabelObserver.register(measureKey, element)
-  }, [edgeLabelObserver, measureKey, ref])
 
   return (
     <div
@@ -438,10 +246,6 @@ const EdgeLabelItem = ({
       style={{
         transform: `translate(${x}px, ${y}px) translate(-50%, -50%) rotate(${angle}deg)`
       }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerCancel}
     >
       {editing ? (
         <EditableSlot
@@ -476,16 +280,14 @@ const EdgeLabelMaskHole = ({
   path,
   textMode,
   label,
-  edgeLabelObserver,
-  draft
+  edgeLabelObserver
 }: {
   edgeId: EdgeId
   labelId: string
   path: EdgeView['path']
-  textMode: EdgeView['edge']['textMode']
+  textMode: NonNullable<EdgeView['edge']['textMode']>
   label: NonNullable<EdgeView['edge']['labels']>[number]
   edgeLabelObserver: EdgeLabelSizeObserver
-  draft?: DragDraft
 }) => {
   const edit = useEdit()
   const measureKey = readEdgeLabelMeasureKey(edgeId, labelId)
@@ -499,7 +301,7 @@ const EdgeLabelMaskHole = ({
     draft: labelEdit?.draft.text
   })
   const displayText = readLabelDisplayText(activeText, editing)
-  const placementLabelSize = readPlacementLabelSize({
+  const placementLabelSize = resolveEdgeLabelPlacementSize({
     textMode,
     measuredSize: stableSize,
     text: displayText,
@@ -508,10 +310,9 @@ const EdgeLabelMaskHole = ({
   const placement = useMemo(() => resolveLabelPlacement({
     path,
     label,
-    draft,
     textMode,
     labelSize: placementLabelSize
-  }), [draft, label, path, placementLabelSize, textMode])
+  }), [label, path, placementLabelSize, textMode])
 
   if (!stableSize || !placement || !displayText.trim()) {
     return null
@@ -552,7 +353,6 @@ const EdgeItemBase = ({
   const box = editor.read.edge.box(edgeId)
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)
-  const [labelDragDrafts, setLabelDragDrafts] = useState<EdgeLabelDragDrafts>({})
   const instanceId = useId()
 
   const ref = usePickRef({
@@ -600,6 +400,7 @@ const EdgeItemBase = ({
   }
 
   const edge = entry.edge
+  const textMode = edge.textMode ?? 'horizontal'
   const showAccent = !selected && (hovered || focused)
   const accentStroke = stroke
   const accentStrokeWidth = hoverStrokeWidth
@@ -615,42 +416,6 @@ const EdgeItemBase = ({
     : undefined
   const viewBoxOriginX = box.rect.x - box.pad
   const viewBoxOriginY = box.rect.y - box.pad
-  const setLabelDragDraft = useCallback((
-    labelId: string,
-    draft: DragDraft | undefined
-  ) => {
-    setLabelDragDrafts((current) => {
-      const previous = current[labelId]
-      if (
-        (previous === undefined && draft === undefined)
-        || (
-          previous !== undefined
-          && draft !== undefined
-          && previous.t === draft.t
-          && previous.offset === draft.offset
-        )
-      ) {
-        return current
-      }
-
-      if (draft === undefined) {
-        if (!(labelId in current)) {
-          return current
-        }
-
-        const next = {
-          ...current
-        }
-        delete next[labelId]
-        return next
-      }
-
-      return {
-        ...current,
-        [labelId]: draft
-      }
-    })
-  }, [])
 
   return (
     <div
@@ -695,9 +460,8 @@ const EdgeItemBase = ({
                   labelId={label.id}
                   label={label}
                   path={entry.path}
-                  textMode={edge.textMode}
+                  textMode={textMode}
                   edgeLabelObserver={edgeLabelObserver}
-                  draft={labelDragDrafts[label.id]}
                 />
               ))}
             </mask>
@@ -768,9 +532,8 @@ const EdgeItemBase = ({
             y: box.rect.y
           }}
           path={entry.path}
-          textMode={edge.textMode}
+          textMode={textMode}
           edgeLabelObserver={edgeLabelObserver}
-          onDragDraftChange={setLabelDragDraft}
         />
       ))}
     </div>

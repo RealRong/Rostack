@@ -22,7 +22,7 @@ import {
   sameList
 } from '@dataview/engine/active/snapshot/reuse'
 
-const equalIds = <T extends string>(
+const equalIds = <T,>(
   left: readonly T[],
   right: readonly T[]
 ) => sameOrder(left, right)

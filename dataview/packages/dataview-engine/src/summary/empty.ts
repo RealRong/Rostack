@@ -6,20 +6,20 @@ import type {
   FieldId
 } from '@dataview/core/contracts'
 import type {
-  AggregateState
-} from '@dataview/engine/active/index/contracts'
+  FieldReducerState
+} from '@dataview/engine/active/shared/calculation'
 import type {
   SectionKey,
   ViewSummaries
 } from '@dataview/engine/contracts/shared'
 
 export interface SummaryStateShape {
-  bySection: ReadonlyMap<SectionKey, ReadonlyMap<FieldId, AggregateState>>
+  bySection: ReadonlyMap<SectionKey, ReadonlyMap<FieldId, FieldReducerState>>
 }
 
-export const EMPTY_SECTION_SUMMARY_AGGREGATES = new Map<FieldId, AggregateState>()
+export const EMPTY_SECTION_SUMMARY_AGGREGATES = new Map<FieldId, FieldReducerState>()
 
-const EMPTY_SUMMARY_BY_SECTION = new Map<SectionKey, ReadonlyMap<FieldId, AggregateState>>()
+const EMPTY_SUMMARY_BY_SECTION = new Map<SectionKey, ReadonlyMap<FieldId, FieldReducerState>>()
 
 export const EMPTY_SUMMARY_STATE: SummaryStateShape = {
   bySection: EMPTY_SUMMARY_BY_SECTION

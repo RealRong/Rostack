@@ -12,7 +12,11 @@ export {
   getRectsBoundingRect
 } from '@whiteboard/core/geometry/rect'
 
-export { rotatePoint } from '@whiteboard/core/geometry/point'
+export {
+  rotatePoint,
+  quantizePointToAngleStep,
+  quantizePointToOctilinear
+} from '@whiteboard/core/geometry/point'
 export { getAnchorPoint } from '@whiteboard/core/geometry/anchor'
 export {
   normalizePolylinePoints,

@@ -122,7 +122,7 @@ const createGroupValueActions = (input: {
 }
 
 export const planMove = (
-  itemIds: readonly string[],
+  itemIds: readonly ItemId[],
   target: Placement,
   readState: () => import('@dataview/engine/contracts/public').ViewState | undefined
 ): MovePlan => {

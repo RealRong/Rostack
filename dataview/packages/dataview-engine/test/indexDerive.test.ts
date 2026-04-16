@@ -9,6 +9,9 @@ import {
   createActiveImpact
 } from '@dataview/engine/active/shared/impact'
 import {
+  createCalculationDemand
+} from '@dataview/engine/active/shared/calculation'
+import {
   resolveViewDemand
 } from '@dataview/engine/active/demand'
 import {
@@ -172,10 +175,14 @@ test('engine.active.index sync patches search/group/sort/calculation on record v
       fields: [TITLE_FIELD_ID]
     },
     groups: [{
-      fieldId: FIELD_STATUS
+      fieldId: FIELD_STATUS,
+      capability: 'section'
     }],
     sortFields: [FIELD_POINTS],
-    calculationFields: [FIELD_STATUS, FIELD_POINTS]
+    calculations: [
+      createCalculationDemand(FIELD_STATUS, 'countByOption'),
+      createCalculationDemand(FIELD_POINTS, 'sum')
+    ]
   })
 
   const updatedDocument = createDocument()
@@ -202,18 +209,18 @@ test('engine.active.index sync patches search/group/sort/calculation on record v
   assert.equal(titleSearch.texts.get('rec_1'), 'task 1')
 
   const statusGroup = Array.from(state.group.groups.values())
-    .find(group => group.fieldId === FIELD_STATUS)
-  assert.equal(statusGroup.bucketRecords.get('doing'), undefined)
-  assert.deepEqual(statusGroup.bucketRecords.get('done'), ['rec_2', 'rec_3'])
+    .find(group => group.fieldId === FIELD_STATUS && group.capability === 'section')
+  assert.equal(statusGroup?.sectionRecords.get('doing'), undefined)
+  assert.deepEqual(statusGroup?.sectionRecords.get('done'), ['rec_2', 'rec_3'])
 
   const pointSort = state.sort.fields.get(FIELD_POINTS)
   assert.deepEqual(pointSort.asc, ['rec_1', 'rec_3', 'rec_2'])
 
   const pointCalc = state.calculations.fields.get(FIELD_POINTS)
-  assert.equal(pointCalc.global.sum, 9)
+  assert.equal(pointCalc?.global.numeric?.sum, 9)
 
   const statusCalc = state.calculations.fields.get(FIELD_STATUS)
-  assert.deepEqual(statusCalc.global.distribution.get('Done'), 2)
+  assert.equal(statusCalc?.global.option?.counts.get('done'), 2)
 })
 
 test('engine.active.resolveViewDemand skips idle search/sort indexes while keeping display record values', () => {
@@ -280,7 +287,9 @@ test('engine.active.index sync rebuilds only touched field semantics on schema c
       fields: [FIELD_STATUS]
     },
     sortFields: [FIELD_STATUS, FIELD_POINTS],
-    calculationFields: [FIELD_STATUS]
+    calculations: [
+      createCalculationDemand(FIELD_STATUS, 'countByOption')
+    ]
   })
   const before = index.state()
 
@@ -312,8 +321,17 @@ test('engine.active.index sync rebuilds only touched field semantics on schema c
   assert.ok(statusSearch.texts.get('rec_3')?.includes('finished'))
 
   const statusCalc = state.calculations.fields.get(FIELD_STATUS)
-  assert.equal(statusCalc.global.distribution.get('Done'), undefined)
-  assert.equal(statusCalc.global.distribution.get('Finished'), 1)
+  const statusCalcResult = computeCalculationFromState({
+    field: updatedDocument.fields.byId[FIELD_STATUS],
+    metric: 'countByOption',
+    state: statusCalc!.global
+  })
+  assert.equal(statusCalc?.global.option?.counts.get('done'), 1)
+  assert.equal(statusCalcResult.kind, 'distribution')
+  if (statusCalcResult.kind !== 'distribution') {
+    throw new Error('Expected distribution result for status option counts.')
+  }
+  assert.deepEqual(statusCalcResult.items.map(item => item.label), ['Todo', 'Doing', 'Finished'])
 })
 
 test('engine.active calculations support select and multiSelect option distributions', () => {
@@ -401,7 +419,10 @@ test('engine.active calculations support select and multiSelect option distribut
   })
 
   const index = createIndexHarness(document, {
-    calculationFields: [FIELD_PRIORITY, FIELD_TAGS]
+    calculations: [
+      createCalculationDemand(FIELD_PRIORITY, 'countByOption'),
+      createCalculationDemand(FIELD_TAGS, 'countByOption')
+    ]
   })
   const state = index.state()
   const priorityField = document.fields.byId[FIELD_PRIORITY]
@@ -409,30 +430,36 @@ test('engine.active calculations support select and multiSelect option distribut
   const priorityCalc = state.calculations.fields.get(FIELD_PRIORITY)
   const tagCalc = state.calculations.fields.get(FIELD_TAGS)
 
-  assert.equal(priorityCalc.global.optionCounts.get('high'), 2)
-  assert.equal(priorityCalc.global.optionCounts.get('low'), 1)
-  assert.equal(tagCalc.global.optionCounts.get('bug'), 2)
-  assert.equal(tagCalc.global.optionCounts.get('backend'), 2)
-  assert.equal(tagCalc.global.optionCounts.get('frontend'), 1)
+  assert.equal(priorityCalc?.global.option?.counts.get('high'), 2)
+  assert.equal(priorityCalc?.global.option?.counts.get('low'), 1)
+  assert.equal(tagCalc?.global.option?.counts.get('bug'), 2)
+  assert.equal(tagCalc?.global.option?.counts.get('backend'), 2)
+  assert.equal(tagCalc?.global.option?.counts.get('frontend'), 1)
 
   const priorityResult = computeCalculationFromState({
     field: priorityField,
     metric: 'percentByOption',
-    state: priorityCalc.global
+    state: priorityCalc!.global
   })
   const tagResult = computeCalculationFromState({
     field: tagField,
     metric: 'countByOption',
-    state: tagCalc.global
+    state: tagCalc!.global
   })
 
   assert.equal(priorityResult.kind, 'distribution')
+  if (priorityResult.kind !== 'distribution') {
+    throw new Error('Expected priority option summary to be a distribution result.')
+  }
   assert.equal(priorityResult.denominator, 3)
   assert.deepEqual(priorityResult.items.map(item => item.key), ['high', 'low'])
   assert.deepEqual(priorityResult.items.map(item => item.label), ['High', 'Low'])
   assert.deepEqual(priorityResult.items.map(item => item.percent), [2 / 3, 1 / 3])
 
   assert.equal(tagResult.kind, 'distribution')
+  if (tagResult.kind !== 'distribution') {
+    throw new Error('Expected tag option summary to be a distribution result.')
+  }
   assert.equal(tagResult.denominator, 5)
   assert.deepEqual(tagResult.items.map(item => item.key), ['bug', 'backend', 'frontend'])
   assert.deepEqual(tagResult.items.map(item => item.label), ['Bug', 'Backend', 'Frontend'])

@@ -1,241 +1,106 @@
-import type { RecordId } from '@dataview/core/contracts'
-import { sameOrder } from '@shared/core'
+import type {
+  RecordId
+} from '@dataview/core/contracts'
+import {
+  sameOrder
+} from '@shared/core'
 import {
   createOrderedKeyedListAccess,
   createOrderedKeyedListCollection
 } from '@dataview/engine/active/snapshot/list'
+import {
+  createItemIdentityBuilder,
+  type ItemIdentityCache,
+  type ItemIdentityTable
+} from '@dataview/engine/active/shared/itemIdentity'
 import type {
   ItemId,
   ItemList,
   Section,
   SectionKey,
-  SectionList,
-  ViewItem
+  SectionList
 } from '@dataview/engine/contracts/public'
 import type { SectionState } from '@dataview/engine/contracts/internal'
-const SEPARATOR = '\u0000'
-const SECTION_PREFIX = 'section:'
-const RECORD_PREFIX = 'record:'
 
-export const createItemId = (input: {
-  section: SectionKey
-  recordId: RecordId
-}): ItemId => `section:${input.section}\u0000record:${input.recordId}`
-
-const parseItemId = (
-  id: ItemId
-): ViewItem | undefined => {
-  const split = id.indexOf(SEPARATOR)
-  if (split < 0 || !id.startsWith(SECTION_PREFIX)) {
-    return undefined
-  }
-
-  const section = id.slice(SECTION_PREFIX.length, split)
-  const record = id.slice(split + SEPARATOR.length)
-  if (!record.startsWith(RECORD_PREFIX)) {
-    return undefined
-  }
-
-  return {
-    id,
-    sectionKey: section,
-    recordId: record.slice(RECORD_PREFIX.length) as RecordId
-  }
-}
-
-export const createItemList = (input: {
+const createItemList = (input: {
   ids: readonly ItemId[]
   count: number
+  table: ItemIdentityTable
   previous?: ItemList
 }): ItemList => {
-  const cache = new Map<ItemId, ViewItem>()
+  if (
+    input.previous
+    && input.previous.ids === input.ids
+    && input.previous.count === input.count
+  ) {
+    return input.previous
+  }
+
+  let indexById: ReadonlyMap<ItemId, number> | undefined
+  const ensureIndexById = () => {
+    if (indexById) {
+      return indexById
+    }
+
+    const next = new Map<ItemId, number>()
+    for (let index = 0; index < input.ids.length; index += 1) {
+      next.set(input.ids[index]!, index)
+    }
+    indexById = next
+    return indexById
+  }
+
   const items = createOrderedKeyedListAccess({
     ids: input.ids,
-    get: id => {
-      const cached = cache.get(id)
-      if (cached) {
-        return cached
-      }
-
-      const parsed = parseItemId(id)
-      if (!parsed) {
-        return undefined
-      }
-
-      const reused = input.previous?.get(id)
-      const next = reused ?? parsed
-      cache.set(id, next)
-      return next
-    }
+    get: id => input.table.get(id)
   })
 
   return {
     ...items,
-    count: input.count
-  }
-}
-
-const createSectionItemList = (input: {
-  sectionKey: SectionKey
-  recordIds: readonly RecordId[]
-  previous?: ItemList
-}): ItemList => {
-  let ids: readonly ItemId[] | undefined
-  let indexByRecordId: ReadonlyMap<RecordId, number> | undefined
-  const cache = new Map<ItemId, ViewItem>()
-  const ensureIds = () => {
-    if (ids) {
-      return ids
-    }
-
-    const nextIds = new Array<ItemId>(input.recordIds.length)
-    for (let index = 0; index < input.recordIds.length; index += 1) {
-      nextIds[index] = createItemId({
-        section: input.sectionKey,
-        recordId: input.recordIds[index]!
-      })
-    }
-    ids = nextIds
-    return ids
-  }
-  const ensureIndexByRecordId = () => {
-    if (indexByRecordId) {
-      return indexByRecordId
-    }
-
-    const nextIndexByRecordId = new Map<RecordId, number>()
-    for (let index = 0; index < input.recordIds.length; index += 1) {
-      nextIndexByRecordId.set(input.recordIds[index]!, index)
-    }
-    indexByRecordId = nextIndexByRecordId
-    return indexByRecordId
-  }
-  const resolveItem = (id: ItemId) => {
-    const cached = cache.get(id)
-    if (cached) {
-      return cached
-    }
-
-    const parsed = parseItemId(id)
-    if (!parsed || parsed.sectionKey !== input.sectionKey) {
-      return undefined
-    }
-
-    const index = ensureIndexByRecordId().get(parsed.recordId)
-    if (index === undefined) {
-      return undefined
-    }
-
-    const canonicalId = ensureIds()[index] ?? id
-    const reused = input.previous?.get(canonicalId)
-    const next = reused ?? {
-      id: canonicalId,
-      sectionKey: input.sectionKey,
-      recordId: parsed.recordId
-    }
-    cache.set(canonicalId, next)
-    if (canonicalId !== id) {
-      cache.set(id, next)
-    }
-    return next
-  }
-  const indexOf = (id: ItemId) => {
-    const parsed = parseItemId(id)
-    if (!parsed || parsed.sectionKey !== input.sectionKey) {
-      return undefined
-    }
-
-    return ensureIndexByRecordId().get(parsed.recordId)
-  }
-
-  return {
-    get ids() {
-      return ensureIds()
-    },
-    count: input.recordIds.length,
-    get: resolveItem,
-    has: id => indexOf(id) !== undefined,
-    indexOf,
-    at: index => ensureIds()[index],
+    count: input.count,
+    indexOf: id => ensureIndexById().get(id),
     prev: id => {
-      const currentIndex = indexOf(id)
-      return currentIndex === undefined || currentIndex <= 0
+      const index = ensureIndexById().get(id)
+      return index === undefined || index <= 0
         ? undefined
-        : ensureIds()[currentIndex - 1]
+        : input.ids[index - 1]
     },
     next: id => {
-      const currentIndex = indexOf(id)
-      return currentIndex === undefined || currentIndex >= input.recordIds.length - 1
+      const index = ensureIndexById().get(id)
+      return index === undefined || index >= input.ids.length - 1
         ? undefined
-        : ensureIds()[currentIndex + 1]
+        : input.ids[index + 1]
     },
     range: (anchor, focus) => {
-      const anchorIndex = indexOf(anchor)
-      const focusIndex = indexOf(focus)
+      const anchorIndex = ensureIndexById().get(anchor)
+      const focusIndex = ensureIndexById().get(focus)
       if (anchorIndex === undefined || focusIndex === undefined) {
         return []
       }
 
       const start = Math.min(anchorIndex, focusIndex)
       const end = Math.max(anchorIndex, focusIndex)
-      return ensureIds().slice(start, end + 1)
+      return input.ids.slice(start, end + 1)
     }
   }
 }
 
-export const buildItemList = (input: {
-  sections: SectionList
-  previous?: ItemList
-}): ItemList => {
-  const previous = input.previous
-  let totalIdCount = 0
-  let visibleIdCount = 0
-
-  for (const section of input.sections.all) {
-    const count = section.items.count
-    totalIdCount += count
-    if (!section.collapsed) {
-      visibleIdCount += count
-    }
+const resolvePreviousItem = (input: {
+  previous?: {
+    items?: ItemList
+    sections?: SectionList
   }
+  id: ItemId
+  sectionKey: SectionKey
+}) => input.previous?.items?.get(input.id)
+  ?? input.previous?.sections?.get(input.sectionKey)?.items.get(input.id)
 
-  const ids = new Array<ItemId>(visibleIdCount)
-  let writeIndex = 0
-
-  for (const section of input.sections.all) {
-    if (section.collapsed) {
-      continue
-    }
-
-    for (const id of section.items.ids) {
-      ids[writeIndex] = id
-      writeIndex += 1
-    }
-  }
-
-  const publishedIds = previous && sameOrder(previous.ids, ids)
-    ? previous.ids
-    : ids
-
-  if (
-    previous
-    && previous.ids === publishedIds
-    && previous.count === totalIdCount
-  ) {
-    return previous
-  }
-
-  return createItemList({
-    ids: publishedIds,
-    count: totalIdCount,
-    previous
-  })
-}
-
-export const buildSections = (input: {
+const buildSections = (input: {
   sections: SectionState
   previous?: SectionList
   previousSections?: SectionState
+  table: ItemIdentityTable
+  idsBySection: ReadonlyMap<SectionKey, readonly ItemId[]>
 }): SectionList => {
   const previous = input.previous
   const sections: Section[] = []
@@ -248,14 +113,17 @@ export const buildSections = (input: {
       return
     }
 
+    const nextItemIds = input.idsBySection.get(node.key) ?? []
     const previousSection = previous?.get(node.key)
-    const items = previousSection && previousSection.recordIds === node.recordIds
-      ? previousSection.items
-      : createSectionItemList({
-          sectionKey: node.key,
-          recordIds: node.recordIds,
-          previous: previousSection?.items
-        })
+    const publishedItemIds = previousSection && sameOrder(previousSection.items.ids, nextItemIds)
+      ? previousSection.items.ids
+      : nextItemIds
+    const items = createItemList({
+      ids: publishedItemIds,
+      count: node.recordIds.length,
+      table: input.table,
+      previous: previousSection?.items
+    })
     const canReuse = Boolean(
       previousSection
       && input.previousSections?.byKey.get(node.key) === node
@@ -311,28 +179,101 @@ export const buildSections = (input: {
   }
 }
 
+const buildItemList = (input: {
+  sections: SectionList
+  table: ItemIdentityTable
+  previous?: ItemList
+}): ItemList => {
+  const previous = input.previous
+  let totalIdCount = 0
+  let visibleIdCount = 0
+
+  for (const section of input.sections.all) {
+    const count = section.items.count
+    totalIdCount += count
+    if (!section.collapsed) {
+      visibleIdCount += count
+    }
+  }
+
+  const ids = new Array<ItemId>(visibleIdCount)
+  let writeIndex = 0
+
+  for (const section of input.sections.all) {
+    if (section.collapsed) {
+      continue
+    }
+
+    for (const id of section.items.ids) {
+      ids[writeIndex] = id
+      writeIndex += 1
+    }
+  }
+
+  const publishedIds = previous && sameOrder(previous.ids, ids)
+    ? previous.ids
+    : ids
+
+  return createItemList({
+    ids: publishedIds,
+    count: totalIdCount,
+    table: input.table,
+    previous
+  })
+}
+
 export const publishSections = (input: {
   sections: SectionState
   previousSections?: SectionState
+  previousIdentity: ItemIdentityCache
   previous?: {
     items?: ItemList
     sections?: SectionList
   }
 }): {
+  identity: ItemIdentityCache
   items: ItemList
   sections: SectionList
 } => {
+  const identity = createItemIdentityBuilder({
+    previous: input.previousIdentity,
+    resolvePreviousItem: (id, sectionKey) => resolvePreviousItem({
+      previous: input.previous,
+      id,
+      sectionKey
+    })
+  })
+  const idsBySection = new Map<SectionKey, readonly ItemId[]>()
+
+  input.sections.order.forEach(sectionKey => {
+    const section = input.sections.byKey.get(sectionKey)
+    if (!section) {
+      return
+    }
+
+    const ids = new Array<ItemId>(section.recordIds.length)
+    for (let index = 0; index < section.recordIds.length; index += 1) {
+      ids[index] = identity.intern(sectionKey, section.recordIds[index]!)
+    }
+    idsBySection.set(sectionKey, ids)
+  })
+
+  const builtIdentity = identity.finish()
   const sections = buildSections({
     sections: input.sections,
     previous: input.previous?.sections,
-    previousSections: input.previousSections
+    previousSections: input.previousSections,
+    table: builtIdentity.table,
+    idsBySection
   })
   const items = buildItemList({
     sections,
+    table: builtIdentity.table,
     previous: input.previous?.items
   })
 
   return {
+    identity: builtIdentity.cache,
     items,
     sections
   }

@@ -13,6 +13,7 @@ import type {
 } from '@dataview/engine/active/index/contracts'
 import type {
   DeriveAction,
+  ItemIdentityCache,
   SectionState
 } from '@dataview/engine/contracts/internal'
 import { runSnapshotStage } from '@dataview/engine/active/snapshot/stage'
@@ -91,10 +92,12 @@ export const runSectionsStage = (input: {
     sections?: import('@dataview/engine/contracts/public').SectionList
     items?: import('@dataview/engine/contracts/public').ItemList
   }
+  previousIdentity: ItemIdentityCache
   index: IndexState
 }): {
   action: DeriveAction
   state: SectionState
+  identity: ItemIdentityCache
   sections: import('@dataview/engine/contracts/public').SectionList
   items: import('@dataview/engine/contracts/public').ItemList
   deriveMs: number
@@ -104,7 +107,8 @@ export const runSectionsStage = (input: {
     && input.previousPublished.items
     ? {
         sections: input.previousPublished.sections,
-        items: input.previousPublished.items
+        items: input.previousPublished.items,
+        identity: input.previousIdentity
       }
     : undefined
   const action = resolveSectionsAction({
@@ -130,6 +134,7 @@ export const runSectionsStage = (input: {
     publish: state => publishSections({
       sections: state,
       previousSections: input.previous,
+      previousIdentity: input.previousIdentity,
       previous: {
         items: previousPublished?.items,
         sections: previousPublished?.sections
@@ -144,6 +149,7 @@ export const runSectionsStage = (input: {
   return {
     action: stage.action,
     state: stage.state,
+    identity: stage.published.identity,
     sections: stage.published.sections,
     items: stage.published.items,
     deriveMs: stage.deriveMs,

@@ -27,7 +27,7 @@ export interface OverlaySize {
   height: number
 }
 
-interface PendingSession<TId extends string> {
+interface PendingSession<TId> {
   recordId: TId
   pointerId: number
   start: PointerPosition
@@ -36,7 +36,7 @@ interface PendingSession<TId extends string> {
   ownerDocument: Document
 }
 
-export interface PointerDragSessionOptions<TId extends string, TItem, TTarget> {
+export interface PointerDragSessionOptions<TId, TItem, TTarget> {
   containerRef: RefObject<HTMLElement | null>
   canDrag: boolean
   itemMap: ReadonlyMap<TId, TItem>
@@ -66,7 +66,7 @@ export interface PointerDragSessionOptions<TId extends string, TItem, TTarget> {
   suppressClickMs?: number
 }
 
-export interface PointerDragSession<TId extends string, TItem, TTarget> {
+export interface PointerDragSession<TId, TItem, TTarget> {
   activeId: TId | undefined
   activeItem: TItem | undefined
   dragIds: readonly TId[]
@@ -85,7 +85,7 @@ const dragDistance = (
   current: PointerPosition
 ) => Math.hypot(current.x - start.x, current.y - start.y)
 
-export const usePointerDragSession = <TId extends string, TItem, TTarget>(
+export const usePointerDragSession = <TId, TItem, TTarget>(
   options: PointerDragSessionOptions<TId, TItem, TTarget>
 ): PointerDragSession<TId, TItem, TTarget> => {
   const activationDistance = options.activationDistance ?? DEFAULT_ACTIVATION_DISTANCE

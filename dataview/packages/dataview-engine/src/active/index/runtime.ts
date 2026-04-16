@@ -16,6 +16,7 @@ import {
 import {
   normalizeIndexDemand,
   sameFieldIdList,
+  sameCalculationDemand,
   sameGroupDemand,
   sameSearchDemand
 } from '@dataview/engine/active/index/demand'
@@ -25,7 +26,8 @@ import {
   syncGroupIndex
 } from '@dataview/engine/active/index/group/runtime'
 import {
-  createGroupDemandKey
+  createGroupDemandKey,
+  readSectionGroupDemand
 } from '@dataview/engine/active/index/group/demand'
 import {
   buildRecordIndex,
@@ -76,7 +78,7 @@ const buildState = (
     search: buildSearchIndex(context, records, demand.search),
     group: buildGroupIndex(context, records, demand.groups),
     sort: buildSortIndex(context, records, demand.sortFields),
-    calculations: buildCalculationIndex(context, records, demand.calculationFields)
+    calculations: buildCalculationIndex(context, records, demand.calculations)
   }
 }
 
@@ -161,18 +163,17 @@ export const deriveIndex = (input: {
       current,
       context,
       records,
-      input.impact,
-      nextDemand.sectionGroup
+      input.impact
     ),
     ensure: current => ensureGroupIndex(current, context, records, nextDemand.groups),
     build: rev => buildGroupIndex(context, records, nextDemand.groups, rev)
   })
 
-  const previousSectionGroupKey = input.previousDemand.sectionGroup
-    ? createGroupDemandKey(input.previousDemand.sectionGroup)
+  const previousSectionGroupKey = readSectionGroupDemand(input.previousDemand.groups)
+    ? createGroupDemandKey(readSectionGroupDemand(input.previousDemand.groups)!)
     : undefined
-  const nextSectionGroupKey = nextDemand.sectionGroup
-    ? createGroupDemandKey(nextDemand.sectionGroup)
+  const nextSectionGroupKey = readSectionGroupDemand(nextDemand.groups)
+    ? createGroupDemandKey(readSectionGroupDemand(nextDemand.groups)!)
     : undefined
   if (
     nextSectionGroupKey
@@ -193,12 +194,12 @@ export const deriveIndex = (input: {
 
   const summariesStage = runIndexDemandStage({
     previous: previous.calculations,
-    previousDemand: input.previousDemand.calculationFields,
-    nextDemand: nextDemand.calculationFields,
-    sameDemand: sameFieldIdList,
+    previousDemand: input.previousDemand.calculations,
+    nextDemand: nextDemand.calculations,
+    sameDemand: sameCalculationDemand,
     sync: current => syncCalculationIndex(current, context, records, input.impact),
-    ensure: current => ensureCalculationIndex(current, context, records, nextDemand.calculationFields),
-    build: rev => buildCalculationIndex(context, records, nextDemand.calculationFields, rev)
+    ensure: current => ensureCalculationIndex(current, context, records, nextDemand.calculations),
+    build: rev => buildCalculationIndex(context, records, nextDemand.calculations, rev)
   })
 
   const search = searchStage.state

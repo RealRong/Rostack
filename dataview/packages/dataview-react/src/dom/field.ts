@@ -47,7 +47,7 @@ export const fieldAttrs = (
   field: ViewFieldRef
 ) => ({
   [FIELD_VIEW_ID_ATTR]: field.viewId,
-  [FIELD_APPEARANCE_ID_ATTR]: field.itemId,
+  [FIELD_APPEARANCE_ID_ATTR]: String(field.itemId),
   [FIELD_RECORD_ID_ATTR]: field.recordId,
   [FIELD_FIELD_ID_ATTR]: field.fieldId
 })
@@ -64,7 +64,7 @@ export const fieldElement = (
   for (const node of nodes) {
     if (
       node.dataset.valueEditorViewId === field.viewId
-      && node.dataset.valueEditorAppearanceId === field.itemId
+      && node.dataset.valueEditorAppearanceId === String(field.itemId)
       && node.dataset.valueEditorRecordId === field.recordId
       && node.dataset.valueEditorFieldId === field.fieldId
     ) {

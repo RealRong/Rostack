@@ -7,7 +7,7 @@ import { useNodeSizeObserver } from '@whiteboard/react/features/node/dom/nodeSiz
 import { NodeItem } from '@whiteboard/react/features/node/components/NodeItem'
 import { EdgeItem } from '@whiteboard/react/features/edge/components/EdgeItem'
 import { useEdgeLabelSizeObserver } from '@whiteboard/react/features/edge/dom/labelSizeObserver'
-import { EdgeCanvasMarkerDefs } from '@whiteboard/react/features/edge/ui/glyphs'
+import { EdgeCanvasMarkerDefs } from '@whiteboard/react/features/edge/ui/marker'
 
 export const CanvasScene = () => {
   const editor = useEditorRuntime()

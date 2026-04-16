@@ -82,7 +82,8 @@ export const deriveViewSnapshot = (input: {
       cache: {
         query: input.previousCache.query,
         sections: input.previousCache.sections,
-        summary: input.previousCache.summary
+        summary: input.previousCache.summary,
+        items: input.previousCache.items
       },
       snapshot: undefined,
       ...(input.capturePerf
@@ -149,6 +150,7 @@ export const deriveViewSnapshot = (input: {
         sections: input.previousSnapshot?.sections,
         items: input.previousSnapshot?.items
       },
+      previousIdentity: input.previousCache.items,
       index: input.index
     }),
     input.previousSnapshot,
@@ -179,6 +181,7 @@ export const deriveViewSnapshot = (input: {
       previousViewId,
       impact: input.impact,
       view,
+      query: query.state,
       previous: input.previousCache.summary,
       previousSections: input.previousCache.sections,
       previousPublished: input.previousSnapshot?.summaries,
@@ -245,7 +248,8 @@ export const deriveViewSnapshot = (input: {
     cache: {
       query: query.state,
       sections: sections.state,
-      summary: summary.state
+      summary: summary.state,
+      items: sections.identity
     },
     snapshot: publishedSnapshot,
     ...(input.capturePerf

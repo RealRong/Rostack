@@ -12,6 +12,7 @@ import { viewCalcFields } from '@dataview/core/view'
 import type { IndexState } from '@dataview/engine/active/index/contracts'
 import type {
   DeriveAction,
+  QueryState,
   SectionState,
   SummaryState
 } from '@dataview/engine/contracts/internal'
@@ -24,6 +25,12 @@ import {
 import type {
   ActiveImpact
 } from '@dataview/engine/active/shared/impact'
+import {
+  readSectionGroupIndex
+} from '@dataview/engine/active/index/group/demand'
+import {
+  createSectionMembershipResolver
+} from '@dataview/engine/active/shared/sections'
 import { publishSummaries } from '@dataview/engine/active/snapshot/summary/publish'
 import {
   syncSummaryState
@@ -93,6 +100,7 @@ export const runSummaryStage = (input: {
   previousViewId?: ViewId
   impact: ActiveImpact
   view: View
+  query: QueryState
   previous?: SummaryState
   previousSections?: SectionState
   previousPublished?: ReadonlyMap<SectionKey, import('@dataview/core/calculation').CalculationCollection>
@@ -123,6 +131,13 @@ export const runSummaryStage = (input: {
     derive: () => syncSummaryState({
       previous: input.previous,
       sections: input.sections,
+      resolver: createSectionMembershipResolver({
+        query: input.query,
+        view: input.view,
+        sectionGroup: input.view.group
+          ? readSectionGroupIndex(input.index.group, input.view.group)
+          : undefined
+      }),
       view: input.view,
       index: input.index,
       impact: input.impact,

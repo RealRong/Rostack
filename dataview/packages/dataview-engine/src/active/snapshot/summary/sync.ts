@@ -4,14 +4,14 @@ import type {
   View
 } from '@dataview/core/contracts'
 import {
-  buildAggregateState,
-  buildAggregateStateForRecordIds,
-  createAggregateBuilder,
-  sameAggregateEntry
-} from '@dataview/engine/active/index/aggregate'
+  buildFieldReducerState,
+  createFieldReducerBuilder,
+  getEmptyFieldReducerState,
+  sameCalculationEntry,
+  type CalculationEntry,
+  type FieldReducerState
+} from '@dataview/engine/active/shared/calculation'
 import type {
-  AggregateState,
-  AggregateEntry,
   IndexState
 } from '@dataview/engine/active/index/contracts'
 import type {
@@ -21,6 +21,9 @@ import type {
 import {
   createMapPatchBuilder
 } from '@dataview/engine/active/shared/patch'
+import type {
+  SectionMembershipResolver
+} from '@dataview/engine/active/shared/sections'
 import type { SectionKey } from '@dataview/engine/contracts/public'
 import type {
   SectionState,
@@ -31,28 +34,22 @@ import {
 } from '@dataview/engine/summary/empty'
 import { readCalcFields } from '@dataview/engine/active/snapshot/summary/compute'
 
-const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
-const EMPTY_FIELD_ENTRIES = new Map<RecordId, AggregateEntry>()
-const EMPTY_FIELD_SUMMARIES = new Map<FieldId, AggregateState>()
-const EMPTY_FIELD_STATE = buildAggregateState(EMPTY_FIELD_ENTRIES)
+const EMPTY_FIELD_ENTRIES = new Map<RecordId, CalculationEntry>()
+const EMPTY_FIELD_SUMMARIES = new Map<FieldId, FieldReducerState>()
 
 const buildSectionFieldState = (input: {
   sectionIds: readonly RecordId[]
-  entries: ReadonlyMap<RecordId, AggregateEntry>
-}): AggregateState => {
-  if (!input.entries.size || !input.sectionIds.length) {
-    return EMPTY_FIELD_STATE
-  }
-
-  const next = buildAggregateStateForRecordIds({
-    recordIds: input.sectionIds,
-    entries: input.entries
-  })
-
-  return next.count
-    ? next
-    : EMPTY_FIELD_STATE
-}
+  entries: ReadonlyMap<RecordId, CalculationEntry>
+  capabilities: import('@dataview/engine/active/shared/calculation').ReducerCapabilitySet
+}): FieldReducerState => (
+  input.sectionIds.length
+    ? buildFieldReducerState({
+        entries: input.entries,
+        capabilities: input.capabilities,
+        recordIds: input.sectionIds
+      })
+    : getEmptyFieldReducerState(input.capabilities)
+)
 
 const buildSummaryState = (input: {
   sections: SectionState
@@ -68,7 +65,7 @@ const buildSummaryState = (input: {
     return buildEmptySummaryState(sectionKeys) as SummaryState
   }
 
-  const bySection = new Map<SectionKey, ReadonlyMap<FieldId, AggregateState>>()
+  const bySection = new Map<SectionKey, ReadonlyMap<FieldId, FieldReducerState>>()
 
   input.sections.order.forEach(sectionKey => {
     const section = input.sections.byKey.get(sectionKey)
@@ -76,16 +73,17 @@ const buildSummaryState = (input: {
       return
     }
 
-    const byField = new Map<FieldId, AggregateState>()
+    const byField = new Map<FieldId, FieldReducerState>()
     calcFields.forEach(fieldId => {
-      const entries = input.index.calculations.fields.get(fieldId)?.entries
-      if (!entries) {
+      const fieldIndex = input.index.calculations.fields.get(fieldId)
+      if (!fieldIndex) {
         return
       }
 
       byField.set(fieldId, buildSectionFieldState({
         sectionIds: section.recordIds,
-        entries
+        entries: fieldIndex.entries,
+        capabilities: fieldIndex.capabilities
       }))
     })
     bySection.set(sectionKey, byField)
@@ -110,10 +108,10 @@ const addTouchedSectionKeys = (
 }
 
 const readPreviousEntry = (
-  change: EntryChange<RecordId, AggregateEntry> | undefined,
-  currentEntries: ReadonlyMap<RecordId, AggregateEntry>,
+  change: EntryChange<RecordId, CalculationEntry> | undefined,
+  currentEntries: ReadonlyMap<RecordId, CalculationEntry>,
   recordId: RecordId
-): AggregateEntry | undefined => {
+): CalculationEntry | undefined => {
   if (change?.previousById.has(recordId)) {
     return change.previousById.get(recordId)
   }
@@ -122,10 +120,10 @@ const readPreviousEntry = (
 }
 
 const readNextEntry = (
-  change: EntryChange<RecordId, AggregateEntry> | undefined,
-  currentEntries: ReadonlyMap<RecordId, AggregateEntry>,
+  change: EntryChange<RecordId, CalculationEntry> | undefined,
+  currentEntries: ReadonlyMap<RecordId, CalculationEntry>,
   recordId: RecordId
-): AggregateEntry | undefined => {
+): CalculationEntry | undefined => {
   if (change?.nextById.has(recordId)) {
     return change.nextById.get(recordId)
   }
@@ -135,7 +133,7 @@ const readNextEntry = (
 
 const collectTouchedSections = (input: {
   impact: ActiveImpact
-  sections: SectionState
+  resolver: SectionMembershipResolver
   calcFields: readonly FieldId[]
 }): ReadonlySet<SectionKey> => {
   const touched = new Set<SectionKey>()
@@ -148,17 +146,29 @@ const collectTouchedSections = (input: {
     }
 
     fieldChange.changedIds.forEach(recordId => {
-      const keys = input.sections.byRecord.get(recordId) ?? EMPTY_SECTION_KEYS
-      keys.forEach(key => touched.add(key))
+      input.resolver.keysOf(recordId).forEach(key => touched.add(key))
     })
   })
 
   return touched
 }
 
+const sameSectionOrder = (
+  previous: SummaryState,
+  nextSectionKeys: readonly SectionKey[]
+) => {
+  if (previous.bySection.size !== nextSectionKeys.length) {
+    return false
+  }
+
+  const previousKeys = [...previous.bySection.keys()]
+  return previousKeys.every((key, index) => key === nextSectionKeys[index])
+}
+
 export const syncSummaryState = (input: {
   previous?: SummaryState
   sections: SectionState
+  resolver: SectionMembershipResolver
   view: View
   index: IndexState
   impact: ActiveImpact
@@ -170,10 +180,13 @@ export const syncSummaryState = (input: {
   }
 
   const calcFields = readCalcFields(input.view)
+  const sectionKeys = input.sections.order.filter(
+    sectionKey => input.sections.byKey.get(sectionKey) !== undefined
+  )
 
   if (!calcFields.length) {
     return buildEmptySummaryState(
-      input.sections.order.filter(sectionKey => input.sections.byKey.get(sectionKey) !== undefined),
+      sectionKeys,
       previousState
     ) as SummaryState
   }
@@ -192,16 +205,16 @@ export const syncSummaryState = (input: {
   const previous = input.previous
   const touchedSections = collectTouchedSections({
     impact: input.impact,
-    sections: input.sections,
+    resolver: input.resolver,
     calcFields
   })
-  let changed = previous.bySection.size !== input.sections.order.length
+  let changed = !sameSectionOrder(previous, sectionKeys)
 
   if (!touchedSections.size && !changed) {
     return previous
   }
 
-  const bySection = new Map<SectionKey, ReadonlyMap<FieldId, AggregateState>>()
+  const bySection = new Map<SectionKey, ReadonlyMap<FieldId, FieldReducerState>>()
 
   input.sections.order.forEach(sectionKey => {
     const currentSection = input.sections.byKey.get(sectionKey)
@@ -220,19 +233,29 @@ export const syncSummaryState = (input: {
     const nextByField = createMapPatchBuilder(previousByField)
 
     calcFields.forEach(fieldId => {
-      const currentEntries = input.index.calculations.fields.get(fieldId)?.entries ?? EMPTY_FIELD_ENTRIES
+      const fieldIndex = input.index.calculations.fields.get(fieldId)
+      if (!fieldIndex) {
+        nextByField.delete(fieldId)
+        return
+      }
+
+      const currentEntries = fieldIndex.entries ?? EMPTY_FIELD_ENTRIES
       const previousFieldState = previousByField.get(fieldId)
-      const fieldChange = input.impact.calculations?.byField.get(fieldId)
 
       if (!previousFieldState) {
         nextByField.set(fieldId, buildSectionFieldState({
           sectionIds: currentSection.recordIds,
-          entries: currentEntries
+          entries: currentEntries,
+          capabilities: fieldIndex.capabilities
         }))
         return
       }
 
-      const aggregate = createAggregateBuilder(previousFieldState)
+      const fieldChange = input.impact.calculations?.byField.get(fieldId)
+      const reducer = createFieldReducerBuilder({
+        previous: previousFieldState,
+        capabilities: fieldIndex.capabilities
+      })
       let fieldChanged = false
       const processed = new Set<RecordId>()
 
@@ -244,7 +267,7 @@ export const syncSummaryState = (input: {
         }
 
         fieldChanged = true
-        aggregate.apply(previousEntry, undefined)
+        reducer.apply(previousEntry, undefined)
       })
 
       addedBySection?.forEach(recordId => {
@@ -255,34 +278,29 @@ export const syncSummaryState = (input: {
         }
 
         fieldChanged = true
-        aggregate.apply(undefined, nextEntry)
+        reducer.apply(undefined, nextEntry)
       })
 
       fieldChange?.changedIds.forEach(recordId => {
-        if (processed.has(recordId)) {
-          return
-        }
-
-        const sectionKeys = input.sections.byRecord.get(recordId) ?? EMPTY_SECTION_KEYS
-        if (!sectionKeys.includes(sectionKey)) {
+        if (processed.has(recordId) || !input.resolver.has(recordId, sectionKey)) {
           return
         }
 
         const previousEntry = fieldChange.previousById.get(recordId)
         const nextEntry = fieldChange.nextById.get(recordId)
-        if (sameAggregateEntry(previousEntry, nextEntry)) {
+        if (sameCalculationEntry(previousEntry, nextEntry)) {
           return
         }
 
         fieldChanged = true
-        aggregate.apply(previousEntry, nextEntry)
+        reducer.apply(previousEntry, nextEntry)
       })
 
       if (!fieldChanged) {
         return
       }
 
-      nextByField.set(fieldId, aggregate.finish())
+      nextByField.set(fieldId, reducer.finish())
     })
 
     const nextByFieldMap = nextByField.finish()

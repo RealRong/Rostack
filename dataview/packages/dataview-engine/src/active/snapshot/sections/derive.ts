@@ -1,15 +1,24 @@
 import type {
   RecordId,
-  ViewGroup,
-  View
+  View,
+  ViewGroup
 } from '@dataview/core/contracts'
-import { sameOrder } from '@shared/core'
 import {
-  readGroupFieldIndex
+  sameOrder
+} from '@shared/core'
+import {
+  readSectionGroupIndex
 } from '@dataview/engine/active/index/group/demand'
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
+import {
+  createSectionMembershipResolver,
+  projectRecordIdsBySection,
+  ROOT_SECTION_KEY,
+  ROOT_SECTION_KEYS,
+  ROOT_SECTION_ORDER
+} from '@dataview/engine/active/shared/sections'
 import type {
   SectionKey
 } from '@dataview/engine/contracts/public'
@@ -21,22 +30,7 @@ import {
   readQueryVisibleSet
 } from '@dataview/engine/contracts/internal'
 
-export const ROOT_SECTION_KEY = 'root' as SectionKey
-export const ROOT_SECTION_KEYS = [ROOT_SECTION_KEY] as readonly SectionKey[]
-export const ROOT_SECTION_ORDER = [ROOT_SECTION_KEY] as readonly SectionKey[]
-const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
-
-export const buildRootSectionByRecord = (
-  recordIds: readonly RecordId[]
-): ReadonlyMap<RecordId, readonly SectionKey[]> => {
-  const byRecord = new Map<RecordId, readonly SectionKey[]>()
-  recordIds.forEach(recordId => {
-    byRecord.set(recordId, ROOT_SECTION_KEYS)
-  })
-
-  return byRecord
-}
 
 const sameBucket = (
   left: import('@dataview/engine/contracts/internal').SectionNodeState['bucket'],
@@ -94,7 +88,7 @@ export const buildSectionNode = (input: {
   index: IndexState
 }): import('@dataview/engine/contracts/internal').SectionNodeState => {
   const bucket = input.group
-    ? readGroupFieldIndex(input.index.group, input.group)?.buckets.get(input.key)
+    ? readSectionGroupIndex(input.index.group, input.group)?.buckets.get(input.key)
     : undefined
 
   return {
@@ -134,7 +128,7 @@ export const resolveSectionKeys = (input: {
     return ROOT_SECTION_KEYS
   }
 
-  return readGroupFieldIndex(input.index.group, group)?.recordBuckets.get(input.recordId) ?? []
+  return readSectionGroupIndex(input.index.group, group)?.recordSections.get(input.recordId) ?? []
 }
 
 export const buildSectionState = (input: {
@@ -157,40 +151,25 @@ export const buildSectionState = (input: {
       order: ROOT_SECTION_ORDER,
       byKey: new Map([
         [ROOT_SECTION_KEY, previousRoot && sameSectionNode(previousRoot, root) ? previousRoot : root] as const
-      ]),
-      byRecord: buildRootSectionByRecord(input.query.records.visible)
+      ])
     }
   }
 
-  const groupIndex = readGroupFieldIndex(input.index.group, input.view.group)
+  const groupIndex = readSectionGroupIndex(input.index.group, input.view.group)
   const useGroupProjection = input.query.records.visible === input.index.records.ids
-  const byRecord = useGroupProjection
-    ? groupIndex?.recordBuckets ?? new Map<RecordId, readonly SectionKey[]>()
-    : new Map<RecordId, readonly SectionKey[]>()
-  const idsByKey = new Map<SectionKey, readonly RecordId[]>()
-
-  if (useGroupProjection) {
-    groupIndex?.bucketRecords.forEach((ids, key) => {
-      idsByKey.set(key, ids)
-    })
-  } else {
-    input.query.records.visible.forEach(recordId => {
-      const keys = groupIndex?.recordBuckets.get(recordId) ?? EMPTY_SECTION_KEYS
-      ;(byRecord as Map<RecordId, readonly SectionKey[]>).set(recordId, keys)
-      keys.forEach(key => {
-        const ids = idsByKey.get(key)
-        if (ids) {
-          ;(ids as RecordId[]).push(recordId)
-          return
-        }
-
-        idsByKey.set(key, [recordId])
+  const idsByKey = useGroupProjection
+    ? groupIndex?.sectionRecords ?? new Map<SectionKey, readonly RecordId[]>()
+    : projectRecordIdsBySection({
+        recordIds: input.query.records.visible,
+        resolver: createSectionMembershipResolver({
+          query: input.query,
+          view: input.view,
+          sectionGroup: groupIndex
+        })
       })
-    })
-  }
-
   const order = groupIndex?.order ?? []
   const byKey = new Map<SectionKey, ReturnType<typeof buildSectionNode>>()
+
   order.forEach(key => {
     const ids = idsByKey.get(key) ?? EMPTY_RECORD_IDS
     const nextNode = buildSectionNode({
@@ -207,7 +186,12 @@ export const buildSectionState = (input: {
     order: input.previous && sameOrder(input.previous.order, order)
       ? input.previous.order
       : order,
-    byKey,
-    byRecord
+    byKey
   }
 }
+
+export {
+  ROOT_SECTION_KEY,
+  ROOT_SECTION_KEYS,
+  ROOT_SECTION_ORDER
+} from '@dataview/engine/active/shared/sections'

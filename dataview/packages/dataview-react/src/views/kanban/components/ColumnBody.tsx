@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { DATAVIEW_APPEARANCE_ID_ATTR } from '@dataview/react/dom/appearance'
 import { Button } from '@shared/ui/button'
 import { cn } from '@shared/ui/utils'
-import type { Section } from '@dataview/engine'
+import type { ItemId, Section } from '@dataview/engine'
 import { useKanbanContext } from '@dataview/react/views/kanban/context'
 import { Card } from '@dataview/react/views/kanban/components/Card'
 import { ColumnDropIndicator } from '@dataview/react/views/kanban/components/ColumnDropIndicator'
@@ -11,10 +11,10 @@ const CARD_GAP = 8
 
 const findCardNode = (
   container: HTMLElement,
-  itemId: string
+  itemId: ItemId
 ) => Array.from(
   container.querySelectorAll<HTMLElement>(`[${DATAVIEW_APPEARANCE_ID_ATTR}]`)
-).find(node => node.getAttribute(DATAVIEW_APPEARANCE_ID_ATTR) === itemId)
+).find(node => node.getAttribute(DATAVIEW_APPEARANCE_ID_ATTR) === String(itemId))
 
 export const ColumnBody = (props: {
   section: Section

@@ -3,7 +3,8 @@ import {
   type Rect
 } from '@shared/dom'
 import {
-  DATAVIEW_APPEARANCE_ID_ATTR
+  DATAVIEW_APPEARANCE_ID_ATTR,
+  parseItemIdValue
 } from '@dataview/react/dom/appearance'
 import type {
   ItemId,
@@ -68,7 +69,9 @@ export const readBoardLayout = (
         bodyTarget.querySelectorAll<HTMLElement>(`[${DATAVIEW_APPEARANCE_ID_ATTR}]`)
       )
         .map(cardNode => {
-          const id = cardNode.getAttribute(DATAVIEW_APPEARANCE_ID_ATTR)
+          const id = parseItemIdValue(
+            cardNode.getAttribute(DATAVIEW_APPEARANCE_ID_ATTR)
+          )
           if (!id) {
             return undefined
           }

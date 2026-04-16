@@ -26,8 +26,8 @@ import {
 import type {
   BucketKey,
   GroupDemand,
-  GroupFieldIndex,
   RecordIndex,
+  SectionGroupIndex,
   SortedIdSet
 } from '@dataview/engine/active/index/contracts'
 import {
@@ -183,8 +183,8 @@ export const buildBucketState = (input: {
   records: RecordIndex
   demand: GroupDemand
   bucketRecords: ReadonlyMap<BucketKey, SortedIdSet<RecordId>>
-  previous?: GroupFieldIndex
-}): Pick<GroupFieldIndex, 'buckets' | 'order'> => {
+  previous?: SectionGroupIndex
+}): Pick<SectionGroupIndex, 'buckets' | 'order'> => {
   const field = input.field
   if (!field) {
     return {

@@ -1,7 +1,6 @@
 import type { ComponentProps, ComponentType } from 'react'
 import type {
   EdgeDash,
-  EdgeMarker,
   EdgeStyle,
   EdgeTextMode,
   EdgeType
@@ -20,8 +19,7 @@ import {
   ArrowPolyline
 } from '@whiteboard/react/icons/menu-line-types'
 import {
-  EdgeLineGlyph,
-  EdgeMarkerGlyph
+  EdgeLineGlyph
 } from '@whiteboard/react/features/edge/ui/glyphs'
 
 type EdgeIconProps = Omit<ComponentProps<'svg'>, 'opacity'>
@@ -36,13 +34,6 @@ export type EdgeTypeOption = {
 export type EdgeDashOption = {
   value: EdgeDash
   label: string
-  glyph: EdgeIcon
-}
-
-export type EdgeMarkerOption = {
-  key: EdgeMarker | 'none'
-  label: string
-  value?: EdgeMarker
   glyph: EdgeIcon
 }
 
@@ -112,33 +103,6 @@ const DottedGlyph: EdgeIcon = (props) => (
   />
 )
 
-const NoneStartGlyph: EdgeIcon = (props) => (
-  <EdgeMarkerGlyph
-    {...props}
-    side="start"
-  />
-)
-
-const NoneEndGlyph: EdgeIcon = (props) => (
-  <EdgeMarkerGlyph
-    {...props}
-    side="end"
-  />
-)
-
-const createMarkerGlyph = (
-  marker: EdgeMarker,
-  side: 'start' | 'end'
-): EdgeIcon => (
-  props
-) => (
-    <EdgeMarkerGlyph
-      {...props}
-      marker={marker}
-      side={side}
-    />
-  )
-
 export const EDGE_UI = {
   palette: {
     group: 'line',
@@ -184,144 +148,6 @@ export const EDGE_UI = {
     }
   ] as const satisfies readonly EdgeDashOption[],
   widths: [1, 2, 3, 4, 6, 8, 12, 16] as const,
-  markers: {
-    start: [
-      {
-        key: 'none',
-        label: 'None',
-        value: undefined,
-        glyph: NoneStartGlyph
-      },
-      {
-        key: 'arrow',
-        label: 'Arrow',
-        value: 'arrow',
-        glyph: createMarkerGlyph('arrow', 'start')
-      },
-      {
-        key: 'arrow-fill',
-        label: 'Arrow fill',
-        value: 'arrow-fill',
-        glyph: createMarkerGlyph('arrow-fill', 'start')
-      },
-      {
-        key: 'circle',
-        label: 'Circle',
-        value: 'circle',
-        glyph: createMarkerGlyph('circle', 'start')
-      },
-      {
-        key: 'circle-fill',
-        label: 'Circle fill',
-        value: 'circle-fill',
-        glyph: createMarkerGlyph('circle-fill', 'start')
-      },
-      {
-        key: 'diamond',
-        label: 'Diamond',
-        value: 'diamond',
-        glyph: createMarkerGlyph('diamond', 'start')
-      },
-      {
-        key: 'diamond-fill',
-        label: 'Diamond fill',
-        value: 'diamond-fill',
-        glyph: createMarkerGlyph('diamond-fill', 'start')
-      },
-      {
-        key: 'bar',
-        label: 'Bar',
-        value: 'bar',
-        glyph: createMarkerGlyph('bar', 'start')
-      },
-      {
-        key: 'double-bar',
-        label: 'Double bar',
-        value: 'double-bar',
-        glyph: createMarkerGlyph('double-bar', 'start')
-      },
-      {
-        key: 'circle-arrow',
-        label: 'Circle arrow',
-        value: 'circle-arrow',
-        glyph: createMarkerGlyph('circle-arrow', 'start')
-      },
-      {
-        key: 'circle-bar',
-        label: 'Circle bar',
-        value: 'circle-bar',
-        glyph: createMarkerGlyph('circle-bar', 'start')
-      }
-    ] as const satisfies readonly EdgeMarkerOption[],
-    end: [
-      {
-        key: 'none',
-        label: 'None',
-        value: undefined,
-        glyph: NoneEndGlyph
-      },
-      {
-        key: 'arrow',
-        label: 'Arrow',
-        value: 'arrow',
-        glyph: createMarkerGlyph('arrow', 'end')
-      },
-      {
-        key: 'arrow-fill',
-        label: 'Arrow fill',
-        value: 'arrow-fill',
-        glyph: createMarkerGlyph('arrow-fill', 'end')
-      },
-      {
-        key: 'circle',
-        label: 'Circle',
-        value: 'circle',
-        glyph: createMarkerGlyph('circle', 'end')
-      },
-      {
-        key: 'circle-fill',
-        label: 'Circle fill',
-        value: 'circle-fill',
-        glyph: createMarkerGlyph('circle-fill', 'end')
-      },
-      {
-        key: 'diamond',
-        label: 'Diamond',
-        value: 'diamond',
-        glyph: createMarkerGlyph('diamond', 'end')
-      },
-      {
-        key: 'diamond-fill',
-        label: 'Diamond fill',
-        value: 'diamond-fill',
-        glyph: createMarkerGlyph('diamond-fill', 'end')
-      },
-      {
-        key: 'bar',
-        label: 'Bar',
-        value: 'bar',
-        glyph: createMarkerGlyph('bar', 'end')
-      },
-      {
-        key: 'double-bar',
-        label: 'Double bar',
-        value: 'double-bar',
-        glyph: createMarkerGlyph('double-bar', 'end')
-      },
-      {
-        key: 'circle-arrow',
-        label: 'Circle arrow',
-        value: 'circle-arrow',
-        glyph: createMarkerGlyph('circle-arrow', 'end')
-      },
-      {
-        key: 'circle-bar',
-        label: 'Circle bar',
-        value: 'circle-bar',
-        glyph: createMarkerGlyph('circle-bar', 'end')
-      }
-    ] as const satisfies readonly EdgeMarkerOption[]
-  },
   textModes: [
     {
       value: 'horizontal',

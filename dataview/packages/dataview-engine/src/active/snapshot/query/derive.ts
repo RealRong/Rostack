@@ -22,7 +22,7 @@ import {
   applyRecordOrder
 } from '@dataview/core/view/order'
 import {
-  readGroupFieldIndex
+  readFilterBucketIndex
 } from '@dataview/engine/active/index/group/demand'
 import type {
   IndexState,
@@ -62,30 +62,159 @@ const EMPTY_VALUE_MAP = new Map<RecordId, unknown>()
 const EMPTY_SEARCH_SOURCES = [] as readonly SearchTextIndex[]
 const EMPTY_SEARCH_TERMS = [] as readonly string[]
 
-const projectIdsToCurrentOrder = (
-  orderedIds: readonly RecordId[],
-  currentIds: readonly RecordId[],
-  reverse = false
-): readonly RecordId[] => {
-  if (!orderedIds.length || !currentIds.length) {
+interface CandidateScratch {
+  count: Uint32Array
+  generation: number
+  seenList: Uint32Array
+  stamp: Uint32Array
+}
+
+const CANDIDATE_SCRATCH_BY_RECORDS = new WeakMap<readonly RecordId[], CandidateScratch>()
+
+const readCandidateScratch = (
+  recordIds: readonly RecordId[]
+): CandidateScratch => {
+  const cached = CANDIDATE_SCRATCH_BY_RECORDS.get(recordIds)
+  if (cached) {
+    return cached
+  }
+
+  const created: CandidateScratch = {
+    stamp: new Uint32Array(recordIds.length),
+    count: new Uint32Array(recordIds.length),
+    seenList: new Uint32Array(recordIds.length),
+    generation: 1
+  }
+  CANDIDATE_SCRATCH_BY_RECORDS.set(recordIds, created)
+  return created
+}
+
+const nextScratchGeneration = (
+  scratch: CandidateScratch
+): number => {
+  if (scratch.generation === 0xffffffff) {
+    scratch.stamp.fill(0)
+    scratch.count.fill(0)
+    scratch.seenList.fill(0)
+    scratch.generation = 1
+    return scratch.generation
+  }
+
+  scratch.generation += 1
+  return scratch.generation
+}
+
+const projectIdsByMembership = (input: {
+  orderedIds: readonly RecordId[]
+  candidateIds: readonly RecordId[]
+  allRecordIds: readonly RecordId[]
+  order: ReadonlyMap<RecordId, number>
+  reverse?: boolean
+}): readonly RecordId[] => {
+  if (!input.orderedIds.length || !input.candidateIds.length) {
     return []
   }
 
-  const currentIdSet = new Set(currentIds)
-  if (!reverse) {
-    return orderedIds.filter(recordId => currentIdSet.has(recordId))
-  }
+  const scratch = readCandidateScratch(input.allRecordIds)
+  const generation = nextScratchGeneration(scratch)
+  input.candidateIds.forEach(recordId => {
+    const ordinal = input.order.get(recordId)
+    if (ordinal !== undefined) {
+      scratch.stamp[ordinal] = generation
+    }
+  })
 
   const projected: RecordId[] = []
-  for (let index = orderedIds.length - 1; index >= 0; index -= 1) {
-    const recordId = orderedIds[index]
-    if (currentIdSet.has(recordId)) {
+  if (!input.reverse) {
+    for (let index = 0; index < input.orderedIds.length; index += 1) {
+      const recordId = input.orderedIds[index]!
+      const ordinal = input.order.get(recordId)
+      if (ordinal !== undefined && scratch.stamp[ordinal] === generation) {
+        projected.push(recordId)
+      }
+    }
+    return projected
+  }
+
+  for (let index = input.orderedIds.length - 1; index >= 0; index -= 1) {
+    const recordId = input.orderedIds[index]!
+    const ordinal = input.order.get(recordId)
+    if (ordinal !== undefined && scratch.stamp[ordinal] === generation) {
       projected.push(recordId)
     }
   }
 
   return projected
 }
+
+const collectCandidateLists = (input: {
+  lists: readonly (readonly RecordId[])[]
+  scanOrder: readonly RecordId[]
+  allRecordIds: readonly RecordId[]
+  order: ReadonlyMap<RecordId, number>
+  requireAll?: boolean
+}): readonly RecordId[] => {
+  if (!input.lists.length || !input.scanOrder.length) {
+    return []
+  }
+
+  const scratch = readCandidateScratch(input.allRecordIds)
+  const generation = nextScratchGeneration(scratch)
+
+  input.lists.forEach((list, listIndex) => {
+    const listToken = listIndex + 1
+    list.forEach(recordId => {
+      const ordinal = input.order.get(recordId)
+      if (ordinal === undefined) {
+        return
+      }
+
+      if (scratch.stamp[ordinal] !== generation) {
+        scratch.stamp[ordinal] = generation
+        scratch.count[ordinal] = 0
+        scratch.seenList[ordinal] = 0
+      }
+
+      if (scratch.seenList[ordinal] === listToken) {
+        return
+      }
+
+      scratch.seenList[ordinal] = listToken
+      scratch.count[ordinal] += 1
+    })
+  })
+
+  const requiredCount = input.requireAll
+    ? input.lists.length
+    : 1
+  const collected: RecordId[] = []
+  input.scanOrder.forEach(recordId => {
+    const ordinal = input.order.get(recordId)
+    if (
+      ordinal !== undefined
+      && scratch.stamp[ordinal] === generation
+      && scratch.count[ordinal] >= requiredCount
+    ) {
+      collected.push(recordId)
+    }
+  })
+
+  return collected
+}
+
+const projectIdsToCurrentOrder = (
+  orderedIds: readonly RecordId[],
+  currentIds: readonly RecordId[],
+  allRecordIds: readonly RecordId[],
+  order: ReadonlyMap<RecordId, number>,
+  reverse = false
+): readonly RecordId[] => projectIdsByMembership({
+  orderedIds,
+  candidateIds: currentIds,
+  allRecordIds,
+  order,
+  reverse
+})
 
 const sortRecordIds = (input: {
   ids: readonly RecordId[]
@@ -104,6 +233,8 @@ const sortRecordIds = (input: {
       return projectIdsToCurrentOrder(
         fieldIndex.asc,
         input.ids,
+        input.index.records.ids,
+        input.index.records.order,
         sorter.direction === 'desc'
       )
     }
@@ -152,40 +283,38 @@ const applyViewOrders = (
 
 const sortIdsByRecordOrder = (
   ids: readonly RecordId[],
+  allRecordIds: readonly RecordId[],
   order: ReadonlyMap<RecordId, number>
-): readonly RecordId[] => {
-  const presentIds = ids.filter(recordId => order.has(recordId))
-  return presentIds.length <= 1
-    ? presentIds
-    : presentIds.slice().sort((left, right) => (
-        (order.get(left) ?? Number.MAX_SAFE_INTEGER)
-        - (order.get(right) ?? Number.MAX_SAFE_INTEGER)
-      ))
-}
+): readonly RecordId[] => collectCandidateLists({
+  lists: [ids],
+  scanOrder: allRecordIds,
+  allRecordIds,
+  order
+})
 
 const intersectCandidates = (
   left: readonly RecordId[],
-  right: readonly RecordId[]
-): readonly RecordId[] => {
-  if (!left.length || !right.length) {
-    return []
-  }
-
-  const rightSet = new Set(right)
-  return left.filter(recordId => rightSet.has(recordId))
-}
+  right: readonly RecordId[],
+  allRecordIds: readonly RecordId[],
+  order: ReadonlyMap<RecordId, number>
+): readonly RecordId[] => collectCandidateLists({
+  lists: [left, right],
+  scanOrder: allRecordIds,
+  allRecordIds,
+  order,
+  requireAll: true
+})
 
 const unionCandidates = (
   lists: readonly (readonly RecordId[])[],
+  allRecordIds: readonly RecordId[],
   order: ReadonlyMap<RecordId, number>
-): readonly RecordId[] => {
-  const ids = new Set<RecordId>()
-  lists.forEach(list => {
-    list.forEach(recordId => ids.add(recordId))
-  })
-
-  return sortIdsByRecordOrder(Array.from(ids), order)
-}
+): readonly RecordId[] => collectCandidateLists({
+  lists,
+  scanOrder: allRecordIds,
+  allRecordIds,
+  order
+})
 
 const resolveSearchSources = (
   search: View['search'],
@@ -277,6 +406,7 @@ const resolveSearchCandidatesForSource = (
 const resolveSearchPlan = (input: {
   search: View['search']
   index: SearchIndex
+  allRecordIds: readonly RecordId[]
   recordOrder: ReadonlyMap<RecordId, number>
 }): SearchPlan => {
   const query = trimLowercase(input.search.query)
@@ -301,8 +431,8 @@ const resolveSearchPlan = (input: {
     query,
     sources,
     ...(candidateLists.length
-      ? {
-          candidates: unionCandidates(candidateLists, input.recordOrder)
+        ? {
+          candidates: unionCandidates(candidateLists, input.allRecordIds, input.recordOrder)
         }
       : {})
   }
@@ -386,9 +516,7 @@ const resolveGroupFilterCandidates = (input: {
   rule: View['filter']['rules'][number]
   index: IndexState
 }): FilterCandidate | undefined => {
-  const groupIndex = readGroupFieldIndex(input.index.group, {
-    field: input.fieldId
-  })
+  const groupIndex = readFilterBucketIndex(input.index.group, input.fieldId)
   if (!groupIndex) {
     return undefined
   }
@@ -396,6 +524,7 @@ const resolveGroupFilterCandidates = (input: {
   const readBucketIds = (keys: readonly string[]) => (
     unionCandidates(
       keys.map(key => groupIndex.bucketRecords.get(key) ?? []),
+      input.index.records.ids,
       input.index.records.order
     )
   )
@@ -403,6 +532,7 @@ const resolveGroupFilterCandidates = (input: {
     unionCandidates(
       Array.from(groupIndex.bucketRecords.entries())
         .flatMap(([key, ids]) => excludedKeys.has(key) ? [] : [ids]),
+      input.index.records.ids,
       input.index.records.order
     )
   )
@@ -529,6 +659,7 @@ const resolveSortedFilterCandidates = (input: {
     return {
       ids: sortIdsByRecordOrder(
         input.index.records.values.get(input.fieldId)?.ids ?? [],
+        input.index.records.ids,
         input.index.records.order
       ),
       exact: true
@@ -558,6 +689,7 @@ const resolveSortedFilterCandidates = (input: {
       return {
         ids: sortIdsByRecordOrder(
           sortIndex.asc.slice(start, end),
+          input.index.records.ids,
           input.index.records.order
         ),
         exact: true
@@ -572,6 +704,7 @@ const resolveSortedFilterCandidates = (input: {
       return {
         ids: sortIdsByRecordOrder(
           sortIndex.asc.slice(start),
+          input.index.records.ids,
           input.index.records.order
         ),
         exact: true
@@ -586,6 +719,7 @@ const resolveSortedFilterCandidates = (input: {
       return {
         ids: sortIdsByRecordOrder(
           sortIndex.asc.slice(start),
+          input.index.records.ids,
           input.index.records.order
         ),
         exact: true
@@ -600,6 +734,7 @@ const resolveSortedFilterCandidates = (input: {
       return {
         ids: sortIdsByRecordOrder(
           sortIndex.asc.slice(0, end),
+          input.index.records.ids,
           input.index.records.order
         ),
         exact: true
@@ -614,6 +749,7 @@ const resolveSortedFilterCandidates = (input: {
       return {
         ids: sortIdsByRecordOrder(
           sortIndex.asc.slice(0, end),
+          input.index.records.ids,
           input.index.records.order
         ),
         exact: true
@@ -672,7 +808,11 @@ const resolveFilterCandidates = (input: {
       candidateLists.push([...plan.candidate.ids])
     }
 
-    return unionCandidates(candidateLists, input.index.records.order)
+    return unionCandidates(
+      candidateLists,
+      input.index.records.ids,
+      input.index.records.order
+    )
   }
 
   let candidates: readonly RecordId[] | undefined
@@ -682,7 +822,12 @@ const resolveFilterCandidates = (input: {
     }
 
     candidates = candidates
-      ? intersectCandidates(candidates, plan.candidate.ids)
+      ? intersectCandidates(
+          candidates,
+          plan.candidate.ids,
+          input.index.records.ids,
+          input.index.records.order
+        )
       : plan.candidate.ids
   })
 
@@ -740,15 +885,15 @@ const filterVisibleIds = (input: {
 
 const projectCandidatesToOrderedIds = (
   ordered: readonly RecordId[],
-  candidates: readonly RecordId[]
-): readonly RecordId[] => {
-  if (!candidates.length) {
-    return []
-  }
-
-  const candidateSet = new Set(candidates)
-  return ordered.filter(recordId => candidateSet.has(recordId))
-}
+  candidates: readonly RecordId[],
+  allRecordIds: readonly RecordId[],
+  order: ReadonlyMap<RecordId, number>
+): readonly RecordId[] => projectIdsByMembership({
+  orderedIds: ordered,
+  candidateIds: candidates,
+  allRecordIds,
+  order
+})
 
 export const buildQueryState = (input: {
   reader: DocumentReader
@@ -759,6 +904,7 @@ export const buildQueryState = (input: {
   const searchPlan = resolveSearchPlan({
     search: input.view.search,
     index: input.index.search,
+    allRecordIds: input.index.records.ids,
     recordOrder: input.index.records.order
   })
   const effectiveRules = resolveEffectiveFilterRules(input.reader, input.view)
@@ -787,11 +933,21 @@ export const buildQueryState = (input: {
   const ordered = applyViewOrders(matched, input.view, input.reader)
   const candidatePool = (
     searchPlan.candidates && filterCandidates
-      ? intersectCandidates(searchPlan.candidates, filterCandidates)
+      ? intersectCandidates(
+          searchPlan.candidates,
+          filterCandidates,
+          input.index.records.ids,
+          input.index.records.order
+        )
       : searchPlan.candidates ?? filterCandidates
   )
   const candidateIds = candidatePool
-    ? projectCandidatesToOrderedIds(ordered, candidatePool)
+    ? projectCandidatesToOrderedIds(
+        ordered,
+        candidatePool,
+        input.index.records.ids,
+        input.index.records.order
+      )
     : undefined
   const visible = !hasSearch && !hasFilter
     ? ordered

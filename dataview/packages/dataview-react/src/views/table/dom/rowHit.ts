@@ -6,6 +6,7 @@ import {
   type Rect
 } from '@shared/dom'
 import type { ItemId } from '@dataview/engine'
+import { parseItemIdValue } from '@dataview/react/dom/appearance'
 import {
   rowGapHitAtPoint,
   rowIdAtPoint,
@@ -38,8 +39,8 @@ const collectRowRects = (input: {
 
   return mountedRows
     .flatMap(node => {
-      const rowId = node.dataset.rowId as ItemId | undefined
-      if (!rowId || !rowOrder.has(rowId)) {
+      const rowId = parseItemIdValue(node.dataset.rowId ?? null)
+      if (rowId === undefined || !rowOrder.has(rowId)) {
         return []
       }
 

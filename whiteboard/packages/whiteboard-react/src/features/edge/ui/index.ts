@@ -1,11 +1,14 @@
 export { EDGE_UI } from '@whiteboard/react/features/edge/ui/catalog'
 export {
+  EdgeLineGlyph
+} from '@whiteboard/react/features/edge/ui/glyphs'
+export {
   EdgeCanvasMarkerDefs,
-  EdgeLineGlyph,
   EdgeMarkerGlyph,
+  readEdgeMarkerChoices,
   readEdgeMarkerId,
   resolveEdgeMarkerUrl
-} from '@whiteboard/react/features/edge/ui/glyphs'
+} from '@whiteboard/react/features/edge/ui/marker'
 export {
   EdgeGeometryPanel,
   EdgeMarkerPanel,

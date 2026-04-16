@@ -4,18 +4,17 @@ import type {
 } from '@dataview/core/calculation'
 import type {
   CalculationMetric,
-  FieldId,
   Field,
+  FieldId,
   View
 } from '@dataview/core/contracts'
 import {
   getFieldOption,
-  getFieldOptions,
-  hasFieldOptions
+  getFieldOptions
 } from '@dataview/core/field'
 import type {
-  AggregateState
-} from '@dataview/engine/active/index/contracts'
+  FieldReducerState
+} from '@dataview/engine/active/shared/calculation'
 
 export const readCalcFields = (
   view: View
@@ -115,12 +114,28 @@ const createDistributionResult = (input: {
 )
 
 const readNumericCount = (
-  state: AggregateState
-) => Array.from(state.numberCounts.values()).reduce((sum, count) => sum + count, 0)
+  state: FieldReducerState
+) => {
+  const counts = state.numeric?.counts
+  if (!counts?.size) {
+    return 0
+  }
+
+  let total = 0
+  counts.forEach(count => {
+    total += count
+  })
+  return total
+}
 
 const readMedian = (
-  state: AggregateState
+  state: FieldReducerState
 ): number | undefined => {
+  const counts = state.numeric?.counts
+  if (!counts?.size) {
+    return undefined
+  }
+
   const total = readNumericCount(state)
   if (!total) {
     return undefined
@@ -132,7 +147,7 @@ const readMedian = (
   const values: number[] = []
   let current = 0
 
-  Array.from(state.numberCounts.entries())
+  ;[...counts.entries()]
     .sort((left, right) => left[0] - right[0])
     .forEach(([value, count]) => {
       const start = current + 1
@@ -152,52 +167,76 @@ const readMedian = (
   return values.reduce((sum, value) => sum + value, 0) / values.length
 }
 
-const computeOptionDistribution = (
-  field: Extract<Field, {
-    kind: 'select' | 'multiSelect' | 'status'
-  }> | undefined,
-  metric: CalculationMetric,
-  state: AggregateState
-): CalculationResult => {
-  if (!field) {
-    return emptyResult(metric)
+const readNumericRange = (
+  state: FieldReducerState
+): {
+  min?: number
+  max?: number
+} => {
+  const counts = state.numeric?.counts
+  if (!counts?.size) {
+    return {}
   }
 
-  const counts = new Map<string, number>()
+  const values = [...counts.keys()].sort((left, right) => left - right)
+  return {
+    min: values[0],
+    max: values[values.length - 1]
+  }
+}
+
+const computeOptionDistribution = (input: {
+  field: Extract<Field, {
+    kind: 'select' | 'multiSelect' | 'status'
+  }> | undefined
+  metric: CalculationMetric
+  state: FieldReducerState
+}): CalculationResult => {
+  if (!input.field) {
+    return emptyResult(input.metric)
+  }
+
+  const counts = input.state.option?.counts
+  if (!counts?.size) {
+    return emptyResult(input.metric)
+  }
+
   const orderedOptionIds: string[] = []
-
-  getFieldOptions(field).forEach(option => {
+  getFieldOptions(input.field).forEach(option => {
     orderedOptionIds.push(option.id)
-    counts.set(option.id, state.optionCounts.get(option.id) ?? 0)
   })
-
-  state.optionCounts.forEach((_count, optionId) => {
+  counts.forEach((_count, optionId) => {
     if (!orderedOptionIds.includes(optionId)) {
       orderedOptionIds.push(optionId)
     }
   })
 
-  const denominator = Array.from(state.optionCounts.values()).reduce((sum, count) => sum + count, 0)
+  let denominator = 0
   const items = orderedOptionIds
     .map(optionId => {
-      const count = counts.get(optionId) ?? state.optionCounts.get(optionId) ?? 0
+      const count = counts.get(optionId) ?? 0
       if (count <= 0) {
         return undefined
       }
 
-      const option = getFieldOption(field, optionId)
+      denominator += count
+      const option = getFieldOption(input.field, optionId)
       return {
         key: optionId,
         label: option?.name ?? optionId,
         count,
-        percent: denominator > 0 ? count / denominator : 0,
+        percent: 0,
         ...(option?.color ? { color: option.color } : {})
       } satisfies CalculationDistributionItem
     })
     .filter((item): item is CalculationDistributionItem => Boolean(item))
+    .map(item => ({
+      ...item,
+      percent: denominator > 0 ? item.count / denominator : 0
+    }))
 
   return createDistributionResult({
-    metric,
+    metric: input.metric,
     denominator,
     items
   })
@@ -206,36 +245,48 @@ const computeOptionDistribution = (
 export const computeCalculationFromState = (input: {
   field: Field | undefined
   metric: CalculationMetric
-  state: AggregateState
+  state: FieldReducerState
 }): CalculationResult => {
-  const allCount = input.state.count
-  const valueCount = input.state.nonEmpty
+  const allCount = input.state.count?.count ?? 0
+  const valueCount = input.state.count?.nonEmpty ?? 0
   const emptyCount = allCount - valueCount
 
   switch (input.metric) {
     case 'countAll':
-      return scalarResult(input.metric, allCount)
+      return input.state.count
+        ? scalarResult(input.metric, allCount)
+        : emptyResult(input.metric)
     case 'countValues':
     case 'countNonEmpty':
-      return scalarResult(input.metric, valueCount)
+      return input.state.count
+        ? scalarResult(input.metric, valueCount)
+        : emptyResult(input.metric)
     case 'countEmpty':
-      return scalarResult(input.metric, emptyCount)
+      return input.state.count
+        ? scalarResult(input.metric, emptyCount)
+        : emptyResult(input.metric)
     case 'percentEmpty':
-      return percentResult(input.metric, emptyCount, allCount)
+      return input.state.count
+        ? percentResult(input.metric, emptyCount, allCount)
+        : emptyResult(input.metric)
     case 'percentNonEmpty':
-      return percentResult(input.metric, valueCount, allCount)
+      return input.state.count
+        ? percentResult(input.metric, valueCount, allCount)
+        : emptyResult(input.metric)
     case 'countUniqueValues':
-      return scalarResult(input.metric, input.state.uniqueCounts.size)
+      return input.state.unique
+        ? scalarResult(input.metric, input.state.unique.counts.size)
+        : emptyResult(input.metric)
     case 'sum': {
       const numericCount = readNumericCount(input.state)
       return numericCount
-        ? scalarResult(input.metric, input.state.sum ?? 0)
+        ? scalarResult(input.metric, input.state.numeric?.sum ?? 0)
         : emptyResult(input.metric)
     }
     case 'average': {
       const numericCount = readNumericCount(input.state)
       return numericCount
-        ? scalarResult(input.metric, (input.state.sum ?? 0) / numericCount)
+        ? scalarResult(input.metric, (input.state.numeric?.sum ?? 0) / numericCount)
         : emptyResult(input.metric)
     }
     case 'median': {
@@ -244,25 +295,33 @@ export const computeCalculationFromState = (input: {
         ? emptyResult(input.metric)
         : scalarResult(input.metric, value)
     }
-    case 'min':
-      return typeof input.state.min === 'number'
-        ? scalarResult(input.metric, input.state.min)
-        : emptyResult(input.metric)
-    case 'max':
-      return typeof input.state.max === 'number'
-        ? scalarResult(input.metric, input.state.max)
-        : emptyResult(input.metric)
-    case 'range':
-      return typeof input.state.min === 'number' && typeof input.state.max === 'number'
-        ? scalarResult(input.metric, input.state.max - input.state.min)
-        : emptyResult(input.metric)
+    case 'min': {
+      const range = readNumericRange(input.state)
+      return range.min === undefined
+        ? emptyResult(input.metric)
+        : scalarResult(input.metric, range.min)
+    }
+    case 'max': {
+      const range = readNumericRange(input.state)
+      return range.max === undefined
+        ? emptyResult(input.metric)
+        : scalarResult(input.metric, range.max)
+    }
+    case 'range': {
+      const range = readNumericRange(input.state)
+      return range.min === undefined || range.max === undefined
+        ? emptyResult(input.metric)
+        : scalarResult(input.metric, range.max - range.min)
+    }
     case 'countByOption':
     case 'percentByOption':
-      return computeOptionDistribution(
-        hasFieldOptions(input.field) ? input.field : undefined,
-        input.metric,
-        input.state
-      )
+      return computeOptionDistribution({
+        field: input.field?.kind === 'select' || input.field?.kind === 'multiSelect' || input.field?.kind === 'status'
+          ? input.field
+          : undefined,
+        metric: input.metric,
+        state: input.state
+      })
     default:
       return emptyResult(input.metric)
   }

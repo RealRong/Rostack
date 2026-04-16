@@ -14,9 +14,11 @@ import {
   sameOrder
 } from '@shared/core'
 import type {
-  AggregateEntry,
   BucketKey
 } from '@dataview/engine/active/index/contracts'
+import type {
+  CalculationEntry
+} from '@dataview/engine/active/shared/calculation'
 import type {
   SectionKey
 } from '@dataview/engine/contracts/public'
@@ -52,7 +54,7 @@ export interface EntryChange<TId extends string, TEntry> {
 }
 
 export interface ActiveCalculationImpact {
-  byField: Map<FieldId, EntryChange<RecordId, AggregateEntry>>
+  byField: Map<FieldId, EntryChange<RecordId, CalculationEntry>>
 }
 
 export interface ActiveImpact {
@@ -147,7 +149,7 @@ export const ensureSectionChange = (
 export const ensureCalculationFieldChange = (
   impact: ActiveImpact,
   fieldId: FieldId
-): EntryChange<RecordId, AggregateEntry> => {
+): EntryChange<RecordId, CalculationEntry> => {
   if (!impact.calculations) {
     impact.calculations = {
       byField: new Map()
@@ -159,7 +161,7 @@ export const ensureCalculationFieldChange = (
     return existing
   }
 
-  const created = createEntryChange<RecordId, AggregateEntry>()
+  const created = createEntryChange<RecordId, CalculationEntry>()
   impact.calculations.byField.set(fieldId, created)
   return created
 }

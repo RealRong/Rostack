@@ -9,6 +9,9 @@ import {
   createGroupDemand
 } from '@dataview/engine/active/index/group/demand'
 import {
+  createCalculationDemand
+} from '@dataview/engine/active/shared/calculation'
+import {
   viewSortFields,
 } from '@dataview/core/view'
 import type {
@@ -59,10 +62,16 @@ export const resolveViewDemand = (
       : { all: true }
   const groups = view.group
     ? [
-        createGroupDemand(view.group),
-        ...Array.from(filterGroupFields).map(fieldId => ({ fieldId }))
+        createGroupDemand(view.group, 'section'),
+        ...Array.from(filterGroupFields).map(fieldId => ({
+          fieldId,
+          capability: 'filter' as const
+        }))
       ]
-    : Array.from(filterGroupFields).map(fieldId => ({ fieldId }))
+    : Array.from(filterGroupFields).map(fieldId => ({
+        fieldId,
+        capability: 'filter' as const
+      }))
   const sortFields = Array.from(new Set([
     ...viewSortFields(view),
     ...filterSortFields
@@ -71,18 +80,15 @@ export const resolveViewDemand = (
   return {
     ...(search ? { search } : {}),
     ...(groups.length ? { groups } : {}),
-    ...(view.group
-      ? {
-          sectionGroup: createGroupDemand(view.group)
-        }
-      : {}),
     ...(sortFields.length
       ? { sortFields }
       : {}),
     ...(Object.entries(view.calc).some(([, metric]) => Boolean(metric))
       ? {
-          calculationFields: Object.entries(view.calc)
-            .flatMap(([fieldId, metric]) => metric ? [fieldId as FieldId] : [])
+          calculations: Object.entries(view.calc)
+            .flatMap(([fieldId, metric]) => metric
+              ? [createCalculationDemand(fieldId as FieldId, metric)]
+              : [])
         }
       : {})
   }

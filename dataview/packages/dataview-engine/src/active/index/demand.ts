@@ -3,7 +3,6 @@ import type {
 } from '@dataview/core/contracts'
 import {
   sameOrder,
-  uniqueBy,
   uniqueSorted
 } from '@shared/core'
 import type {
@@ -11,22 +10,35 @@ import type {
   IndexDemand,
   NormalizedIndexDemand
 } from '@dataview/engine/active/index/contracts'
+import {
+  normalizeCalculationDemands,
+  sameCalculationDemand
+} from '@dataview/engine/active/shared/calculation'
 
 const uniqueGroups = (
   groups: readonly GroupDemand[] = []
 ): readonly GroupDemand[] => {
-  return uniqueBy(groups, group => [
+  const seen = new Map<string, GroupDemand>()
+
+  groups.forEach(group => {
+    seen.set([
+      group.capability,
       group.fieldId,
       group.mode ?? '',
       group.bucketSort ?? '',
       group.bucketInterval ?? ''
-    ].join('\u0000'))
+    ].join('\u0000'), group)
+  })
+
+  return [...seen.values()]
     .sort((left, right) => [
+      left.capability,
       left.fieldId,
       left.mode ?? '',
       left.bucketSort ?? '',
       left.bucketInterval ?? ''
     ].join('\u0000').localeCompare([
+      right.capability,
       right.fieldId,
       right.mode ?? '',
       right.bucketSort ?? '',
@@ -47,13 +59,8 @@ export const normalizeIndexDemand = (
       fields: uniqueSorted(demand?.search?.fields ?? [])
     },
     groups,
-    ...(demand?.sectionGroup
-      ? {
-          sectionGroup: demand.sectionGroup
-        }
-      : {}),
     sortFields,
-    calculationFields: uniqueSorted(demand?.calculationFields ?? [])
+    calculations: normalizeCalculationDemands(demand?.calculations)
   }
 }
 
@@ -75,8 +82,13 @@ export const sameGroupDemand = (
   && left.every((group, index) => {
     const next = right[index]
     return next !== undefined
+      && group.capability === next.capability
       && group.fieldId === next.fieldId
       && group.mode === next.mode
       && group.bucketSort === next.bucketSort
       && group.bucketInterval === next.bucketInterval
   })
+
+export {
+  sameCalculationDemand
+}

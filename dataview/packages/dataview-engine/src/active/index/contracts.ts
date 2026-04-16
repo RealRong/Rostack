@@ -14,6 +14,12 @@ import type {
 import type {
   ActiveImpact
 } from '@dataview/engine/active/shared/impact'
+import type {
+  CalculationDemand,
+  CalculationEntry,
+  FieldReducerState,
+  ReducerCapabilitySet
+} from '@dataview/engine/active/shared/calculation'
 
 export type SortedIdSet<T extends string> = readonly T[]
 export type BucketKey = string
@@ -37,8 +43,11 @@ export interface SearchDemand {
   fields?: readonly FieldId[]
 }
 
+export type GroupCapability = 'filter' | 'section'
+
 export interface GroupDemand {
   fieldId: FieldId
+  capability: GroupCapability
   mode?: ViewGroup['mode']
   bucketSort?: ViewGroup['bucketSort']
   bucketInterval?: ViewGroup['bucketInterval']
@@ -47,9 +56,8 @@ export interface GroupDemand {
 export interface IndexDemand {
   search?: SearchDemand
   groups?: readonly GroupDemand[]
-  sectionGroup?: GroupDemand
   sortFields?: readonly FieldId[]
-  calculationFields?: readonly FieldId[]
+  calculations?: readonly CalculationDemand[]
 }
 
 export interface NormalizedIndexDemand {
@@ -59,9 +67,8 @@ export interface NormalizedIndexDemand {
     fields: readonly FieldId[]
   }
   groups: readonly GroupDemand[]
-  sectionGroup?: GroupDemand
   sortFields: readonly FieldId[]
-  calculationFields: readonly FieldId[]
+  calculations: readonly CalculationDemand[]
 }
 
 export interface SearchIndex {
@@ -74,16 +81,27 @@ export interface SearchTextIndex {
   texts: ReadonlyMap<RecordId, string>
 }
 
-export interface GroupFieldIndex {
+export interface FilterBucketIndex {
+  capability: 'filter'
+  fieldId: FieldId
+  bucketRecords: ReadonlyMap<BucketKey, SortedIdSet<RecordId>>
+}
+
+export interface SectionGroupIndex {
+  capability: 'section'
   fieldId: FieldId
   mode?: ViewGroup['mode']
   bucketSort?: ViewGroup['bucketSort']
   bucketInterval?: ViewGroup['bucketInterval']
-  recordBuckets: ReadonlyMap<RecordId, readonly BucketKey[]>
-  bucketRecords: ReadonlyMap<BucketKey, SortedIdSet<RecordId>>
+  recordSections: ReadonlyMap<RecordId, readonly BucketKey[]>
+  sectionRecords: ReadonlyMap<BucketKey, SortedIdSet<RecordId>>
   buckets: ReadonlyMap<BucketKey, Bucket>
   order: readonly BucketKey[]
 }
+
+export type GroupFieldIndex =
+  | FilterBucketIndex
+  | SectionGroupIndex
 
 export interface GroupIndex {
   groups: ReadonlyMap<string, GroupFieldIndex>
@@ -99,34 +117,11 @@ export interface SortIndex {
   rev: number
 }
 
-export interface AggregateState {
-  count: number
-  nonEmpty: number
-  sum?: number
-  min?: number | string | null
-  max?: number | string | null
-  distribution: ReadonlyMap<string, number>
-  uniqueCounts: ReadonlyMap<string, number>
-  numberCounts: ReadonlyMap<number, number>
-  optionCounts: ReadonlyMap<string, number>
-}
-
-export interface SectionAggregateState extends AggregateState {
-  entries: ReadonlyMap<RecordId, AggregateEntry>
-}
-
-export interface AggregateEntry {
-  empty: boolean
-  label?: string
-  number?: number
-  comparable?: number | string
-  uniqueKey?: string
-  optionIds?: readonly string[]
-}
-
 export interface FieldCalcIndex {
-  entries: ReadonlyMap<RecordId, AggregateEntry>
-  global: AggregateState
+  fieldId: FieldId
+  capabilities: ReducerCapabilitySet
+  entries: ReadonlyMap<RecordId, CalculationEntry>
+  global: FieldReducerState
 }
 
 export interface CalculationIndex {

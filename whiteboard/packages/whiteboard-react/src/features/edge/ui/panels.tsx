@@ -17,6 +17,10 @@ import {
   WHITEBOARD_PALETTE_SWATCH_SHAPE
 } from '@whiteboard/react/features/palette'
 import { EDGE_UI } from '@whiteboard/react/features/edge/ui/catalog'
+import {
+  EdgeMarkerGlyph,
+  readEdgeMarkerChoices
+} from '@whiteboard/react/features/edge/ui/marker'
 
 export const EdgeStrokePanel = ({
   color,
@@ -123,24 +127,21 @@ export const EdgeMarkerPanel = ({
   value?: EdgeMarker
   onChange: (value: EdgeMarker | undefined) => void
 }) => (
-  <Panel className="min-w-[280px]">
-    <PanelSection title={side === 'start' ? 'Line start' : 'Line end'}>
-      <div className="flex flex-wrap gap-2">
-        {EDGE_UI.markers[side].map((option) => {
-          const Glyph = option.glyph
-
-          return (
-            <SegmentedButton
-              key={`${side}:${option.key}`}
-              active={value === option.value}
-              onClick={() => onChange(option.value)}
-              title={option.label}
-            >
-              <Glyph className="size-6" />
-            </SegmentedButton>
-          )
-        })}
-      </div>
-    </PanelSection>
-  </Panel>
+  <div className="grid grid-cols-2 gap-1">
+    {readEdgeMarkerChoices(side).map((option) => (
+      <SegmentedButton
+        className='w-10 h-10'
+        key={`${side}:${option.key}`}
+        active={value === option.value}
+        onClick={() => onChange(option.value)}
+        title={option.label}
+      >
+        <EdgeMarkerGlyph
+          marker={option.value}
+          side={side}
+          className="size-6 shrink-0"
+        />
+      </SegmentedButton>
+    ))}
+  </div>
 )

@@ -3,8 +3,14 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import type {
-  AggregateState
-} from '@dataview/engine/active/index/contracts'
+  FieldReducerState
+} from '@dataview/engine/active/shared/calculation'
+import type {
+  ItemIdentityCache,
+} from '@dataview/engine/active/shared/itemIdentity'
+import {
+  emptyItemIdentityCache
+} from '@dataview/engine/active/shared/itemIdentity'
 import type {
   SectionBucket,
   SectionKey,
@@ -13,6 +19,9 @@ import type {
 import {
   EMPTY_SUMMARY_STATE as EMPTY_INTERNAL_SUMMARY_STATE
 } from '@dataview/engine/summary/empty'
+export type {
+  ItemIdentityCache
+} from '@dataview/engine/active/shared/itemIdentity'
 export type {
   ActiveRuntimeState,
   EngineRuntimeState,
@@ -44,17 +53,17 @@ export interface SectionNodeState {
 export interface SectionState {
   order: readonly SectionKey[]
   byKey: ReadonlyMap<SectionKey, SectionNodeState>
-  byRecord: ReadonlyMap<RecordId, readonly SectionKey[]>
 }
 
 export interface SummaryState {
-  bySection: ReadonlyMap<SectionKey, ReadonlyMap<FieldId, AggregateState>>
+  bySection: ReadonlyMap<SectionKey, ReadonlyMap<FieldId, FieldReducerState>>
 }
 
 export interface ViewCache {
   query: QueryState
   sections: SectionState
   summary: SummaryState
+  items: ItemIdentityCache
 }
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
@@ -70,8 +79,7 @@ export const emptyQueryState = (): QueryState => ({
 
 export const emptySectionState = (): SectionState => ({
   order: [],
-  byKey: new Map(),
-  byRecord: new Map()
+  byKey: new Map()
 })
 
 export const emptySummaryState = (): SummaryState => EMPTY_INTERNAL_SUMMARY_STATE
@@ -79,7 +87,8 @@ export const emptySummaryState = (): SummaryState => EMPTY_INTERNAL_SUMMARY_STAT
 export const emptyViewCache = (): ViewCache => ({
   query: emptyQueryState(),
   sections: emptySectionState(),
-  summary: emptySummaryState()
+  summary: emptySummaryState(),
+  items: emptyItemIdentityCache()
 })
 
 export const emptyViewRecords = (): ViewRecords => EMPTY_VIEW_RECORDS

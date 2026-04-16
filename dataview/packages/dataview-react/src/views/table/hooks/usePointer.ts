@@ -37,6 +37,7 @@ import {
   shouldCapturePointer
 } from '@shared/dom'
 import { useDataView } from '@dataview/react/dataview'
+import { parseItemIdValue } from '@dataview/react/dom/appearance'
 import {
   resolveDefaultAutoPanTargets,
   useAutoPan
@@ -217,12 +218,13 @@ const rowHoverTargetFromElement = (
     closestTableTargetElement(target, 'row')
     ?? closestTableTargetElement(target, 'row-rail')
   )
-  const rowId = (
+  const rowId = parseItemIdValue(
     rowElement?.dataset.rowId
     ?? rowElement?.dataset.rowRailRowId
-  ) as ItemId | undefined
+    ?? null
+  )
 
-  return rowId
+  return rowId !== undefined
     ? {
         type: 'row-rail',
         rowId

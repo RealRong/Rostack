@@ -53,7 +53,7 @@ import {
 } from '@whiteboard/react/features/palette'
 import {
   resolveEdgeMarkerUrl
-} from '@whiteboard/react/features/edge/ui/glyphs'
+} from '@whiteboard/react/features/edge/ui/marker'
 import type { EdgeView } from '@whiteboard/react/types/edge'
 
 const EDGE_LABEL_PLACEHOLDER = 'Label'

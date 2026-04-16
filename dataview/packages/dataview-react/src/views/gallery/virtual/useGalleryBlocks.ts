@@ -20,8 +20,8 @@ import {
   resolveGalleryGridMetrics
 } from '@dataview/react/views/gallery/virtual/layout'
 
-const resolveEstimatedHeight = (
-  heightById: ReadonlyMap<string, number>,
+const resolveEstimatedHeight = <TId,>(
+  heightById: ReadonlyMap<TId, number>,
   fallback: number
 ) => {
   const values = Array.from(heightById.values())

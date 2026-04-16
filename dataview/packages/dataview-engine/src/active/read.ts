@@ -5,6 +5,7 @@ import { read, type ReadStore } from '@shared/core'
 import type {
   ActiveViewReadApi,
   CellRef,
+  ItemId,
   ViewCell,
   ViewState
 } from '@dataview/engine/contracts/public'
@@ -17,7 +18,7 @@ export const createActiveViewReadApi = (input: {
   const readState = () => read(input.stateStore)
   const readField = (fieldId: FieldId) => input.reader.fields.get(fieldId)
   const readSection = (sectionKey: string) => readState()?.sections.get(sectionKey)
-  const readItem = (itemId: string) => readState()?.items.get(itemId)
+  const readItem = (itemId: ItemId) => readState()?.items.get(itemId)
   const readCell = (cell: CellRef): ViewCell | undefined => {
     const state = readState()
     if (!state) {

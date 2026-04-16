@@ -16,7 +16,7 @@ import {
   resolveEdgeDash
 } from '@whiteboard/react/features/edge/constants'
 import { resolvePaletteColorOr } from '@whiteboard/react/features/palette'
-import { resolveEdgeMarkerUrl } from '@whiteboard/react/features/edge/ui/glyphs'
+import { resolveEdgeMarkerUrl } from '@whiteboard/react/features/edge/ui/marker'
 
 const EdgeHintOverlay = () => {
   const editor = useEditorRuntime()

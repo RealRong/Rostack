@@ -14,9 +14,11 @@ import type {
 } from '@whiteboard/react/features/selection/chrome/toolbar/types'
 import { EDGE_UI } from '@whiteboard/react/features/edge/ui/catalog'
 import {
-  EdgeLineGlyph,
-  EdgeMarkerGlyph
+  EdgeLineGlyph
 } from '@whiteboard/react/features/edge/ui/glyphs'
+import {
+  EdgeMarkerGlyph
+} from '@whiteboard/react/features/edge/ui/marker'
 import {
   EdgeGeometryPanel,
   EdgeMarkerPanel,

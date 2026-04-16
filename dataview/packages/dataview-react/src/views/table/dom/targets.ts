@@ -1,5 +1,6 @@
 import type { Point } from '@shared/dom'
 import { targetElement } from '@shared/dom'
+import { parseItemIdValue } from '@dataview/react/dom/appearance'
 import {
   type ItemList,
   type FieldList
@@ -61,14 +62,17 @@ export const closestTableTargetElement = (
 
 const cellIdFromElement = (
   element: HTMLElement | null
-): CellRef | null => (
-  element?.dataset.rowId && element.dataset.fieldId
+): CellRef | null => {
+  const itemId = parseItemIdValue(element?.dataset.rowId ?? null)
+  const fieldId = element?.dataset.fieldId
+
+  return itemId !== undefined && fieldId
     ? {
-        itemId: element.dataset.rowId as ItemId,
-        fieldId: element.dataset.fieldId
+        itemId,
+        fieldId
       }
     : null
-)
+}
 
 const resolveCellId = (
   items: Pick<ItemList, 'has'>,

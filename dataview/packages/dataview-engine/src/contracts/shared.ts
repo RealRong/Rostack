@@ -8,7 +8,7 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 
-export type ItemId = string
+export type ItemId = number
 export type SectionKey = string
 
 export interface SectionBucket {

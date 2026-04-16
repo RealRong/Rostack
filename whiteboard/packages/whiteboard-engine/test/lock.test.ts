@@ -33,14 +33,17 @@ const createTextNode = ({
 const createEdge = ({
   id,
   sourceId,
-  targetId
+  targetId,
+  locked = false
 }: {
   id: string
   sourceId: string
   targetId: string
+  locked?: boolean
 }) => ({
   id,
   type: 'straight' as const,
+  locked,
   source: {
     kind: 'node' as const,
     nodeId: sourceId
@@ -84,6 +87,46 @@ const createLockedDocument = () => {
     {
       kind: 'node',
       id: freeNode.id
+    },
+    {
+      kind: 'edge',
+      id: edge.id
+    }
+  ]
+
+  return document
+}
+
+const createEdgeLockedDocument = () => {
+  const document = createDocument('doc_edge_lock')
+  const firstNode = createTextNode({
+    id: 'node_1',
+    x: 0,
+    y: 0
+  })
+  const secondNode = createTextNode({
+    id: 'node_2',
+    x: 240,
+    y: 0
+  })
+  const edge = createEdge({
+    id: 'edge_locked',
+    sourceId: firstNode.id,
+    targetId: secondNode.id,
+    locked: true
+  })
+
+  document.nodes[firstNode.id] = firstNode
+  document.nodes[secondNode.id] = secondNode
+  document.edges[edge.id] = edge
+  document.order = [
+    {
+      kind: 'node',
+      id: firstNode.id
+    },
+    {
+      kind: 'node',
+      id: secondNode.id
     },
     {
       kind: 'edge',
@@ -206,4 +249,59 @@ test('engine allows remote unlock then delete in the same operation batch', () =
     return
   }
   assert.equal(result.commit.doc.nodes.node_locked, undefined)
+})
+
+test('engine blocks modifying a locked edge', () => {
+  const engine = createEngine({
+    document: createEdgeLockedDocument()
+  })
+
+  const result = engine.execute({
+    type: 'edge.patch',
+    updates: [{
+      id: 'edge_locked',
+      patch: {
+        textMode: 'tangent'
+      }
+    }]
+  })
+
+  assert.equal(result.ok, false)
+  if (result.ok) {
+    return
+  }
+  assert.equal(result.error.code, 'cancelled')
+  assert.equal(result.error.message, 'Locked edges cannot be modified.')
+})
+
+test('engine allows remote unlock then edge update in the same batch', () => {
+  const engine = createEngine({
+    document: createEdgeLockedDocument()
+  })
+
+  const result = engine.applyOperations([
+    {
+      type: 'edge.update',
+      id: 'edge_locked',
+      patch: {
+        locked: false
+      }
+    },
+    {
+      type: 'edge.update',
+      id: 'edge_locked',
+      patch: {
+        textMode: 'tangent'
+      }
+    }
+  ], {
+    origin: 'remote'
+  })
+
+  assert.equal(result.ok, true)
+  if (!result.ok) {
+    return
+  }
+  assert.equal(result.commit.doc.edges.edge_locked?.locked, false)
+  assert.equal(result.commit.doc.edges.edge_locked?.textMode, 'tangent')
 })

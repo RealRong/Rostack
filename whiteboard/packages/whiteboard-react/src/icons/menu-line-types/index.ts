@@ -1,0 +1,5 @@
+export { Arrow } from '@whiteboard/react/icons/menu-line-types/Arrow'
+export { ArrowCurve } from '@whiteboard/react/icons/menu-line-types/ArrowCurve'
+export { ArrowFillet } from '@whiteboard/react/icons/menu-line-types/ArrowFillet'
+export { ArrowLine } from '@whiteboard/react/icons/menu-line-types/ArrowLine'
+export { ArrowPolyline } from '@whiteboard/react/icons/menu-line-types/ArrowPolyline'

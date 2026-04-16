@@ -49,12 +49,12 @@ describe('createLocalSessionActions.tool.set', () => {
 
     actions.tool.set({
       type: 'edge',
-      preset: 'edge.straight'
+      preset: 'edge.arrow'
     })
 
     expect(state.tool.get()).toEqual({
       type: 'edge',
-      preset: 'edge.straight'
+      preset: 'edge.arrow'
     })
     expect(state.selection.source.get()).toEqual({
       nodeIds: [],

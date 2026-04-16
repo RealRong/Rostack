@@ -1,6 +1,7 @@
 import {
   WHITEBOARD_BG_PALETTE_INDICES,
   WHITEBOARD_BORDER_PALETTE_INDICES,
+  WHITEBOARD_LINE_PALETTE_INDICES,
   WHITEBOARD_STICKY_PALETTE_INDICES,
   WHITEBOARD_TEXT_PALETTE_INDICES,
   createWhiteboardPaletteKey,
@@ -122,6 +123,11 @@ const TEXT_PALETTE_OPTIONS = createPaletteOptions(
   flattenSections(TEXT_PALETTE_SECTIONS).filter((index) => WHITEBOARD_TEXT_PALETTE_INDICES.includes(index))
 )
 
+const LINE_PALETTE_OPTIONS = createPaletteOptions(
+  'line',
+  flattenSections(BORDER_PALETTE_SECTIONS).filter((index) => WHITEBOARD_LINE_PALETTE_INDICES.includes(index))
+)
+
 export const WHITEBOARD_PALETTE_GRID_COLUMNS = 10
 export const WHITEBOARD_PALETTE_SWATCH_SHAPE = 'square' as const
 
@@ -138,6 +144,7 @@ export const WHITEBOARD_FILL_COLOR_OPTIONS: readonly WhiteboardColorOption[] = [
 export const WHITEBOARD_STICKY_FILL_OPTIONS: readonly WhiteboardColorOption[] = STICKY_PALETTE_OPTIONS
 
 export const WHITEBOARD_STROKE_COLOR_OPTIONS: readonly WhiteboardColorOption[] = BORDER_PALETTE_OPTIONS
+export const WHITEBOARD_LINE_COLOR_OPTIONS: readonly WhiteboardColorOption[] = LINE_PALETTE_OPTIONS
 
 export const WHITEBOARD_TEXT_COLOR_OPTIONS: readonly WhiteboardColorOption[] = TEXT_PALETTE_OPTIONS
 

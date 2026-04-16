@@ -2,6 +2,12 @@ export {
   createEditor
 } from '@whiteboard/editor/editor/createEditor'
 export {
+  DEFAULT_EDGE_PRESET_KEY,
+  EDGE_PRESET_KEYS,
+  readEdgePresetCreate,
+  type EdgePresetCreate
+} from '@whiteboard/editor/tool/edgePresets'
+export {
   createClipboardPacket,
   parseClipboardPacket,
   serializeClipboardPacket

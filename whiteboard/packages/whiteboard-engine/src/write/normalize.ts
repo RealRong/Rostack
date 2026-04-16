@@ -103,9 +103,12 @@ export const createWritePipeline = ({
         'cancelled',
         violation.reason === 'locked-relation'
           ? 'Locked node relations cannot be modified.'
+          : violation.reason === 'locked-edge'
+            ? 'Locked edges cannot be modified.'
           : 'Locked nodes cannot be modified.',
         {
           lockedNodeIds: violation.lockedNodeIds,
+          lockedEdgeIds: violation.lockedEdgeIds,
           operation: violation.operation
         }
       )

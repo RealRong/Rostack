@@ -8,6 +8,7 @@ import {
   type DrawState,
 } from '@whiteboard/editor/draw'
 import {
+  DEFAULT_EDGE_PRESET_KEY,
   type Tool
 } from '@whiteboard/editor'
 import {
@@ -26,8 +27,6 @@ import type {
   ToolPaletteMemory,
   ToolPaletteView
 } from '@whiteboard/react/types/toolbox'
-
-const DEFAULT_EDGE_PRESET_KEY = 'edge.straight'
 
 const readToolPaletteBrushState = (
   state: DrawState,

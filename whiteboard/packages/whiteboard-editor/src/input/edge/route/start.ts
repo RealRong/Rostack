@@ -198,7 +198,7 @@ export const startEdgeRoute = (input: {
   const item = input.edge.item.get(target.edgeId)
   const view = readEditableRouteView(input.edge, target.edgeId)
 
-  if (item?.edge.type === 'elbow' && view) {
+  if ((item?.edge.type === 'elbow' || item?.edge.type === 'fillet') && view) {
     return {
       kind: 'session',
       state: startEdgeRouteSegment({

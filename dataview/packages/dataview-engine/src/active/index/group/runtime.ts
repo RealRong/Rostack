@@ -2,9 +2,8 @@ import {
   getRecordFieldValue
 } from '@dataview/core/field'
 import {
-  createArrayPatchBuilder,
   createMapPatchBuilder
-} from '@dataview/engine/active/index/builder'
+} from '@dataview/engine/active/shared/patch'
 import type {
   RecordId
 } from '@dataview/core/contracts'
@@ -17,6 +16,10 @@ import type {
   IndexReadContext,
   RecordIndex
 } from '@dataview/engine/active/index/contracts'
+import type {
+  ActiveImpact,
+  MembershipChange
+} from '@dataview/engine/active/shared/impact'
 import {
   buildBucketState,
   resolveBucketKeys,
@@ -26,9 +29,12 @@ import {
   createGroupDemandKey
 } from '@dataview/engine/active/index/group/demand'
 import {
-  insertOrderedIdInPlace,
-  removeOrderedIdInPlace
-} from '@dataview/engine/active/index/shared'
+  applyOrderedIdDelta
+} from '@dataview/engine/active/shared/ordered'
+import {
+  applyMembershipTransition,
+  ensureGroupChange
+} from '@dataview/engine/active/shared/impact'
 import {
   shouldDropFieldIndex,
   shouldRebuildFieldIndex,
@@ -37,6 +43,20 @@ import {
 
 const EMPTY_BUCKET_KEYS: readonly BucketKey[] = []
 const EMPTY_RECORD_IDS: readonly RecordId[] = []
+
+const addBucketRecord = <T extends string>(
+  target: Map<T, RecordId[]>,
+  key: T,
+  recordId: RecordId
+) => {
+  const records = target.get(key)
+  if (records) {
+    records.push(recordId)
+    return
+  }
+
+  target.set(key, [recordId])
+}
 
 const buildGroupFieldIndex = (
   context: IndexReadContext,
@@ -94,6 +114,7 @@ const syncGroupFieldIndex = (input: {
   context: IndexDeriveContext
   records: RecordIndex
   touchedRecords: ReadonlySet<RecordId>
+  groupChange?: MembershipChange<BucketKey, RecordId>
 }): GroupFieldIndex => {
   const demand: GroupDemand = {
     fieldId: input.previous.fieldId,
@@ -108,6 +129,8 @@ const syncGroupFieldIndex = (input: {
 
   const recordBuckets = createMapPatchBuilder(input.previous.recordBuckets)
   const touchedBuckets = new Set<BucketKey>()
+  const removedByBucket = new Map<BucketKey, RecordId[]>()
+  const addedByBucket = new Map<BucketKey, RecordId[]>()
   let changed = false
 
   input.touchedRecords.forEach(recordId => {
@@ -125,8 +148,21 @@ const syncGroupFieldIndex = (input: {
     }
 
     changed = true
-    before.forEach(bucketKey => touchedBuckets.add(bucketKey))
-    after.forEach(bucketKey => touchedBuckets.add(bucketKey))
+    if (input.groupChange) {
+      applyMembershipTransition(input.groupChange, recordId, before, after)
+    }
+    before.forEach(bucketKey => {
+      touchedBuckets.add(bucketKey)
+      if (!after.includes(bucketKey)) {
+        addBucketRecord(removedByBucket, bucketKey, recordId)
+      }
+    })
+    after.forEach(bucketKey => {
+      touchedBuckets.add(bucketKey)
+      if (!before.includes(bucketKey)) {
+        addBucketRecord(addedByBucket, bucketKey, recordId)
+      }
+    })
 
     if (after.length) {
       recordBuckets.set(recordId, after)
@@ -142,45 +178,17 @@ const syncGroupFieldIndex = (input: {
 
   const nextRecordBuckets = recordBuckets.finish()
   const bucketRecords = createMapPatchBuilder(input.previous.bucketRecords)
-  const bucketBuilders = new Map<BucketKey, ReturnType<typeof createArrayPatchBuilder<RecordId>>>()
-
-  const ensureBucketBuilder = (bucketKey: BucketKey) => {
-    const current = bucketBuilders.get(bucketKey)
-    if (current) {
-      return current
-    }
-
-    const builder = createArrayPatchBuilder(
-      bucketRecords.get(bucketKey) ?? input.previous.bucketRecords.get(bucketKey) ?? EMPTY_RECORD_IDS
-    )
-    bucketBuilders.set(bucketKey, builder)
-    return builder
-  }
-
-  input.touchedRecords.forEach(recordId => {
-    const before = input.previous.recordBuckets.get(recordId) ?? EMPTY_BUCKET_KEYS
-    const after = nextRecordBuckets.get(recordId) ?? EMPTY_BUCKET_KEYS
-    if (sameBucketKeys(before, after)) {
-      return
-    }
-
-    before.forEach(bucketKey => {
-      const builder = ensureBucketBuilder(bucketKey)
-      builder.mutate(draft => {
-        removeOrderedIdInPlace(draft, recordId)
-      })
-    })
-    after.forEach(bucketKey => {
-      const builder = ensureBucketBuilder(bucketKey)
-      builder.mutate(draft => {
-        insertOrderedIdInPlace(draft, recordId, input.records.order)
-      })
-    })
-  })
 
   touchedBuckets.forEach(bucketKey => {
-    const builder = bucketBuilders.get(bucketKey)
-    const ids = builder?.finish() ?? bucketRecords.get(bucketKey) ?? input.previous.bucketRecords.get(bucketKey)
+    const removed = removedByBucket.get(bucketKey)
+    const ids = applyOrderedIdDelta({
+      previous: input.previous.bucketRecords.get(bucketKey) ?? EMPTY_RECORD_IDS,
+      remove: removed?.length
+        ? new Set(removed)
+        : undefined,
+      add: addedByBucket.get(bucketKey),
+      order: input.records.order
+    })
     if (ids?.length) {
       bucketRecords.set(bucketKey, ids)
       return
@@ -258,17 +266,26 @@ export const ensureGroupIndex = (
 export const syncGroupIndex = (
   previous: GroupIndex,
   context: IndexDeriveContext,
-  records: RecordIndex
+  records: RecordIndex,
+  impact: ActiveImpact,
+  sectionGroup?: GroupDemand
 ): GroupIndex => {
   if (!context.changed || !previous.groups.size) {
     return previous
   }
 
   const nextGroups = createMapPatchBuilder(previous.groups)
+  const sectionGroupKey = sectionGroup
+    ? createGroupDemandKey(sectionGroup)
+    : undefined
 
   previous.groups.forEach((groupIndex, key) => {
     const fieldId = groupIndex.fieldId
+    const isSectionGroup = sectionGroupKey === key
     if (shouldDropFieldIndex(id => context.fieldIdSet.has(id), context, fieldId)) {
+      if (isSectionGroup) {
+        ensureGroupChange(impact).rebuild = true
+      }
       nextGroups.delete(key)
       return
     }
@@ -281,6 +298,9 @@ export const syncGroupIndex = (
     }
 
     if (shouldRebuildFieldIndex(context, fieldId)) {
+      if (isSectionGroup) {
+        ensureGroupChange(impact).rebuild = true
+      }
       nextGroups.set(key, buildGroupFieldIndex(context, records, demand, groupIndex))
       return
     }
@@ -293,7 +313,12 @@ export const syncGroupIndex = (
       previous: groupIndex,
       context,
       records,
-      touchedRecords: context.touchedRecords
+      touchedRecords: context.touchedRecords,
+      ...(isSectionGroup
+        ? {
+            groupChange: ensureGroupChange(impact)
+          }
+        : {})
     })
     if (nextGroup !== groupIndex) {
       nextGroups.set(key, nextGroup)

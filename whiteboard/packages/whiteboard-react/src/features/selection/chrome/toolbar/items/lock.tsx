@@ -5,17 +5,34 @@ import type { ToolbarItemSpec } from '@whiteboard/react/features/selection/chrom
 export const lockItem: ToolbarItemSpec = {
   key: 'lock',
   renderButton: ({
+    activeScope,
     context,
     editor
-  }) => (
-    <ToolbarIconButton
-      active={context.locked === 'all'}
-      title={context.locked === 'all' ? 'Unlock' : 'Lock'}
-      onClick={() => {
-        editor.actions.node.lock.set(context.target.nodeIds, context.locked !== 'all')
-      }}
-    >
-      <Lock size={18} strokeWidth={1.9} />
-    </ToolbarIconButton>
-  )
+  }) => {
+    const edge = activeScope.edge
+    const node = activeScope.node
+    const locked = edge
+      ? edge.lock === 'all'
+      : context.locked === 'all'
+    const title = locked ? 'Unlock' : 'Lock'
+
+    return (
+      <ToolbarIconButton
+        active={locked}
+        title={title}
+        onClick={() => {
+          if (edge) {
+            editor.actions.edge.lock.set(edge.edgeIds, !locked)
+            return
+          }
+
+          if (node) {
+            editor.actions.node.lock.set(node.nodeIds, !locked)
+          }
+        }}
+      >
+        <Lock size={18} strokeWidth={1.9} />
+      </ToolbarIconButton>
+    )
+  }
 }

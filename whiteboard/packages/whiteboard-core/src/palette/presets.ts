@@ -29,6 +29,7 @@ type WhiteboardDrawBrushPreset = {
 
 export const WHITEBOARD_TEXT_DEFAULT_COLOR = createWhiteboardPaletteKey('text', 0)
 export const WHITEBOARD_STROKE_DEFAULT_COLOR = createWhiteboardPaletteKey('border', 0)
+export const WHITEBOARD_LINE_DEFAULT_COLOR = createWhiteboardPaletteKey('line', 0)
 export const WHITEBOARD_SURFACE_DEFAULT_FILL = createWhiteboardPaletteKey('bg', 7)
 
 export const WHITEBOARD_STICKY_DEFAULTS: Readonly<Required<WhiteboardPaintPreset>> = {

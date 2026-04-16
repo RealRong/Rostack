@@ -32,8 +32,9 @@ export const useSelectedEdgeView = (): SelectedEdgeView | undefined => {
       return undefined
     }
 
+    const capability = editor.read.edge.capability(entry.edge)
     const isStepManual =
-      entry.edge.type === 'elbow'
+      (entry.edge.type === 'elbow' || entry.edge.type === 'fillet')
       && entry.edge.route?.kind === 'manual'
     const routePoints: SelectedEdgeRoutePointView[] = entry.handles.flatMap<SelectedEdgeRoutePointView>((handle: EdgeView['handles'][number]) => {
       if (handle.kind === 'anchor') {
@@ -78,9 +79,12 @@ export const useSelectedEdgeView = (): SelectedEdgeView | undefined => {
     return {
       edgeId,
       ends: entry.ends,
+      canReconnectSource: capability.reconnectSource,
+      canReconnectTarget: capability.reconnectTarget,
+      canEditRoute: capability.editRoute,
       routePoints
     }
-  }, [edgeId, entry])
+  }, [edgeId, editor.read.edge, entry])
 }
 
 export type {

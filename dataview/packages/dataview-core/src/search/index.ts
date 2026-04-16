@@ -4,7 +4,9 @@ export {
 export {
   buildFieldSearchText,
   buildRecordDefaultSearchText,
+  buildRecordDefaultSearchTextFromFields,
   buildRecordFieldSearchText,
+  buildRecordFieldSearchTextFromField,
   buildRecordSearchTexts,
   isDefaultSearchField,
   joinSearchTokens,

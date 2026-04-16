@@ -134,9 +134,12 @@ export const duplicate = (
       'cancelled',
       locked.reason === 'locked-relation'
         ? 'Locked node relations cannot be duplicated.'
+        : locked.reason === 'locked-edge'
+          ? 'Locked edges cannot be duplicated.'
         : 'Locked nodes cannot be duplicated.',
       {
-        lockedNodeIds: locked.lockedNodeIds
+        lockedNodeIds: locked.lockedNodeIds,
+        lockedEdgeIds: locked.lockedEdgeIds
       }
     )
   }

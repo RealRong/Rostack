@@ -1,11 +1,10 @@
 import type {
-  CommitImpact,
   FieldId,
+  RecordId,
   View,
   ViewId
 } from '@dataview/core/contracts'
 import {
-  collectTouchedFieldIds,
   hasActiveViewImpact,
   hasFieldSchemaAspect,
   hasRecordSetChange,
@@ -23,6 +22,12 @@ import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
 import { runSnapshotStage } from '@dataview/engine/active/snapshot/stage'
+import {
+  ensureQueryImpact
+} from '@dataview/engine/active/shared/impact'
+import type {
+  ActiveImpact
+} from '@dataview/engine/active/shared/impact'
 import type {
   DeriveAction,
   QueryState
@@ -54,24 +59,61 @@ const queryUsesChangedFields = (
   ? changedFields.size > 0
   : hasIntersection(fields, changedFields)
 
+const collectVisibleDiff = (input: {
+  previous: readonly RecordId[]
+  next: readonly RecordId[]
+}): {
+  added: RecordId[]
+  removed: RecordId[]
+} => {
+  if (input.previous === input.next) {
+    return {
+      added: [],
+      removed: []
+    }
+  }
+
+  const nextSet = new Set(input.next)
+  const previousSet = new Set(input.previous)
+  const added: RecordId[] = []
+  const removed: RecordId[] = []
+
+  input.next.forEach(recordId => {
+    if (!previousSet.has(recordId)) {
+      added.push(recordId)
+    }
+  })
+  input.previous.forEach(recordId => {
+    if (!nextSet.has(recordId)) {
+      removed.push(recordId)
+    }
+  })
+
+  return {
+    added,
+    removed
+  }
+}
+
 const resolveQueryAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  impact: CommitImpact
+  impact: ActiveImpact
   view: View
   previous?: QueryState
 }): DeriveAction => {
   const hasSearchQuery = Boolean(trimToUndefined(input.view.search.query))
+  const commit = input.impact.commit
 
   if (
     !input.previous
     || input.previousViewId !== input.activeViewId
-    || hasActiveViewImpact(input.impact)
+    || hasActiveViewImpact(commit)
   ) {
     return 'rebuild'
   }
 
-  if (hasViewQueryImpact(input.impact, input.activeViewId, ['search', 'filter', 'sort', 'order'])) {
+  if (hasViewQueryImpact(commit, input.activeViewId, ['search', 'filter', 'sort', 'order'])) {
     return 'sync'
   }
 
@@ -82,33 +124,31 @@ const resolveQueryAction = (input: {
   }
 
   for (const fieldId of queryFields.filter) {
-    if (hasFieldSchemaAspect(input.impact, fieldId)) {
+    if (hasFieldSchemaAspect(commit, fieldId)) {
       return 'sync'
     }
   }
   for (const fieldId of queryFields.sort) {
-    if (hasFieldSchemaAspect(input.impact, fieldId)) {
+    if (hasFieldSchemaAspect(commit, fieldId)) {
       return 'sync'
     }
   }
 
-  const changedFields = collectTouchedFieldIds(input.impact, {
-    includeTitlePatch: true
-  })
+  const changedFields = input.impact.base.touchedFields
   if (changedFields === 'all') {
     return 'sync'
   }
 
   if (hasSearchQuery) {
     for (const fieldId of changedFields) {
-      if (hasFieldSchemaAspect(input.impact, fieldId)) {
+      if (hasFieldSchemaAspect(commit, fieldId)) {
         return 'sync'
       }
     }
   }
 
   if (
-    hasRecordSetChange(input.impact)
+    hasRecordSetChange(commit)
     || hasIntersection(queryFields.filter, changedFields)
     || hasIntersection(queryFields.sort, changedFields)
     || (
@@ -126,7 +166,7 @@ export const runQueryStage = (input: {
   reader: import('@dataview/engine/document/reader').DocumentReader
   activeViewId: ViewId
   previousViewId?: ViewId
-  impact: CommitImpact
+  impact: ActiveImpact
   view: View
   index: IndexState
   previous?: QueryState
@@ -160,6 +200,34 @@ export const runQueryStage = (input: {
         : state.records
     )
   })
+
+  if (stage.action === 'rebuild') {
+    ensureQueryImpact(input.impact).rebuild = true
+  } else if (stage.action === 'sync' && input.previous) {
+    const previousRecords = input.previous.records
+    const nextRecords = stage.state.records
+    const diff = collectVisibleDiff({
+      previous: previousRecords.visible,
+      next: nextRecords.visible
+    })
+
+    if (
+      diff.added.length
+      || diff.removed.length
+      || previousRecords.ordered !== nextRecords.ordered
+    ) {
+      const queryImpact = ensureQueryImpact(input.impact)
+      if (diff.added.length) {
+        queryImpact.visibleAdded.push(...diff.added)
+      }
+      if (diff.removed.length) {
+        queryImpact.visibleRemoved.push(...diff.removed)
+      }
+      if (previousRecords.ordered !== nextRecords.ordered) {
+        queryImpact.orderChanged = true
+      }
+    }
+  }
 
   return {
     action: stage.action,

@@ -32,13 +32,19 @@ export type EdgeCommands = {
   label: EdgeApi['labels']
   style: {
     color: (edgeIds: readonly EdgeId[], value?: string) => CommandResult | undefined
+    opacity: (edgeIds: readonly EdgeId[], value?: number) => CommandResult | undefined
     width: (edgeIds: readonly EdgeId[], value?: number) => CommandResult | undefined
     dash: (edgeIds: readonly EdgeId[], value?: EdgeDash) => CommandResult | undefined
     start: (edgeIds: readonly EdgeId[], value?: EdgeMarker) => CommandResult | undefined
     end: (edgeIds: readonly EdgeId[], value?: EdgeMarker) => CommandResult | undefined
+    swapMarkers: (edgeIds: readonly EdgeId[]) => CommandResult | undefined
   }
   type: {
     set: (edgeIds: readonly EdgeId[], value: EdgeType) => CommandResult | undefined
+  }
+  lock: {
+    set: (edgeIds: readonly EdgeId[], locked: boolean) => CommandResult | undefined
+    toggle: (edgeIds: readonly EdgeId[]) => CommandResult | undefined
   }
   textMode: {
     set: (edgeIds: readonly EdgeId[], value?: EdgeTextMode) => CommandResult | undefined
@@ -350,13 +356,40 @@ export const createEdgeCommands = ({
   },
   style: {
     color: (edgeIds, value) => patchEdgeStyle(edgeIds, read, engine, 'color', value),
+    opacity: (edgeIds, value) => patchEdgeStyle(edgeIds, read, engine, 'opacity', value),
     width: (edgeIds, value) => patchEdgeStyle(edgeIds, read, engine, 'width', value),
     dash: (edgeIds, value) => patchEdgeStyle(edgeIds, read, engine, 'dash', value),
     start: (edgeIds, value) => patchEdgeStyle(edgeIds, read, engine, 'start', value),
-    end: (edgeIds, value) => patchEdgeStyle(edgeIds, read, engine, 'end', value)
+    end: (edgeIds, value) => patchEdgeStyle(edgeIds, read, engine, 'end', value),
+    swapMarkers: (edgeIds) => patchEdgesBy(edgeIds, read, engine, (edge) => {
+      const start = edge.style?.start
+      const end = edge.style?.end
+      if (start === end) {
+        return undefined
+      }
+
+      return {
+        style: {
+          ...(edge.style ?? {}),
+          start: end,
+          end: start
+        }
+      }
+    })
   },
   type: {
     set: (edgeIds, value) => patchEdgeType(edgeIds, read, engine, value)
+  },
+  lock: {
+    set: (edgeIds, locked) => patchExistingEdges(read, engine, edgeIds, {
+      locked
+    }),
+    toggle: (edgeIds) => {
+      const shouldLock = edgeIds.some((id) => !readCommittedEdge(read, id)?.locked)
+      return patchExistingEdges(read, engine, edgeIds, {
+        locked: shouldLock
+      })
+    }
   },
   textMode: {
     set: (edgeIds, value) => patchEdgesBy(edgeIds, read, engine, (edge) => (

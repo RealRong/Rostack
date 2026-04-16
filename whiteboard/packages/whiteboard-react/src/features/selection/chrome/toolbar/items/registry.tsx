@@ -4,11 +4,9 @@ import type {
 } from '@whiteboard/editor'
 import type { WhiteboardRuntime } from '@whiteboard/react/types/runtime'
 import type { SelectionCan } from '@whiteboard/react/features/selection/capability'
+import { edgeToolbarItemSpecs } from '@whiteboard/react/features/edge/ui/toolbar'
 import type { ToolbarItemKey, ToolbarPanelKey } from '@whiteboard/react/features/selection/chrome/toolbar/types'
 import { alignItem } from '@whiteboard/react/features/selection/chrome/toolbar/items/align'
-import { edgeLineItem } from '@whiteboard/react/features/selection/chrome/toolbar/items/edgeLine'
-import { edgeMarkersItem } from '@whiteboard/react/features/selection/chrome/toolbar/items/edgeMarkers'
-import { edgeTextItem } from '@whiteboard/react/features/selection/chrome/toolbar/items/edgeText'
 import { boldItem, italicItem } from '@whiteboard/react/features/selection/chrome/toolbar/items/textStyle'
 import { fillItem } from '@whiteboard/react/features/selection/chrome/toolbar/items/fill'
 import { fontSizeItem } from '@whiteboard/react/features/selection/chrome/toolbar/items/fontSize'
@@ -34,11 +32,9 @@ const itemSpecs: Record<ToolbarItemKey, ToolbarItemSpec> = {
   'text-color': textColorItem,
   stroke: strokeItem,
   fill: fillItem,
-  'edge-line': edgeLineItem,
-  'edge-markers': edgeMarkersItem,
-  'edge-text': edgeTextItem,
   lock: lockItem,
-  more: moreItem
+  more: moreItem,
+  ...edgeToolbarItemSpecs
 }
 
 export const readToolbarItemSpec = (

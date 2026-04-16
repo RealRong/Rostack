@@ -75,9 +75,19 @@ export type EdgeAnchor = {
   offset: number
 }
 
-export type EdgeBaseType = 'straight' | 'elbow' | 'curve' | 'custom'
+export type EdgeBaseType = 'straight' | 'elbow' | 'fillet' | 'curve' | 'custom'
 export type EdgeType = EdgeBaseType | (string & {})
-export type EdgeMarker = 'none' | 'arrow'
+export type EdgeMarker =
+  | 'arrow'
+  | 'arrow-fill'
+  | 'circle'
+  | 'circle-fill'
+  | 'diamond'
+  | 'diamond-fill'
+  | 'bar'
+  | 'double-bar'
+  | 'circle-arrow'
+  | 'circle-bar'
 export type EdgeDash = 'solid' | 'dashed' | 'dotted'
 export type EdgeTextMode = 'horizontal' | 'tangent'
 export type OrderMode =
@@ -113,6 +123,7 @@ export type EdgeRoute =
 
 export type EdgeStyle = {
   color?: string
+  opacity?: number
   width?: number
   dash?: EdgeDash
   start?: EdgeMarker
@@ -140,6 +151,7 @@ export interface Edge {
   source: EdgeEnd
   target: EdgeEnd
   type: EdgeType
+  locked?: boolean
   groupId?: GroupId
   route?: EdgeRoute
   style?: EdgeStyle

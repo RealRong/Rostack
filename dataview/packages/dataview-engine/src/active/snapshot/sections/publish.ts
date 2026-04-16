@@ -238,9 +238,6 @@ export const buildSections = (input: {
   previousSections?: SectionState
 }): SectionList => {
   const previous = input.previous
-  const previousByKey = new Map(
-    (previous?.all ?? []).map(section => [section.key, section] as const)
-  )
   const sections: Section[] = []
   const byKey = new Map<SectionKey, Section>()
   const ids: SectionKey[] = []
@@ -251,7 +248,7 @@ export const buildSections = (input: {
       return
     }
 
-    const previousSection = previousByKey.get(node.key)
+    const previousSection = previous?.get(node.key)
     const items = previousSection && previousSection.recordIds === node.recordIds
       ? previousSection.items
       : createSectionItemList({
@@ -289,16 +286,6 @@ export const buildSections = (input: {
     && previous.all.every((section, index) => section === sections[index])
     ? previous.all
     : sections
-  const publishedByKey = previous
-    && previous.ids === publishedIds
-    && previous.all === publishedSections
-      ? new Map(publishedSections.map(section => [section.key, section] as const))
-      : byKey
-  const sectionList = createOrderedKeyedListCollection({
-    ids: publishedIds,
-    all: publishedSections,
-    get: key => publishedByKey.get(key)
-  })
 
   if (
     previous
@@ -307,6 +294,12 @@ export const buildSections = (input: {
   ) {
     return previous
   }
+
+  const sectionList = createOrderedKeyedListCollection({
+    ids: publishedIds,
+    all: publishedSections,
+    get: key => byKey.get(key)
+  })
 
   return {
     ids: sectionList.ids,

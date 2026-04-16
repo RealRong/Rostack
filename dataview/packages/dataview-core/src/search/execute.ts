@@ -17,5 +17,5 @@ export const matchSearchRecord = (
 
   const candidates = buildRecordSearchTexts(record, search, document)
 
-  return candidates.some(candidate => candidate.toLowerCase().includes(query))
+  return candidates.some(candidate => candidate.includes(query))
 }

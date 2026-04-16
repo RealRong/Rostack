@@ -8,6 +8,7 @@ export const createEdgeDuplicateInput = (
   targetNodeId: NodeId
 ): EdgeInput => ({
   type: edge.type,
+  locked: edge.locked,
   source: edge.source.kind === 'node'
     ? { ...edge.source, nodeId: sourceNodeId }
     : { ...edge.source, point: clonePoint(edge.source.point) },

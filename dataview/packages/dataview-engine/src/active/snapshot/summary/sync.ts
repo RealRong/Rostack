@@ -3,21 +3,24 @@ import type {
   RecordId,
   View
 } from '@dataview/core/contracts'
-import { sameOrder } from '@shared/core'
 import {
   buildAggregateState,
   buildAggregateStateForRecordIds,
   createAggregateBuilder,
   sameAggregateEntry
 } from '@dataview/engine/active/index/aggregate'
-import {
-  createMapPatchBuilder
-} from '@dataview/engine/active/index/builder'
 import type {
   AggregateState,
   AggregateEntry,
-  IndexState,
+  IndexState
 } from '@dataview/engine/active/index/contracts'
+import type {
+  ActiveImpact,
+  EntryChange
+} from '@dataview/engine/active/shared/impact'
+import {
+  createMapPatchBuilder
+} from '@dataview/engine/active/shared/patch'
 import type { SectionKey } from '@dataview/engine/contracts/public'
 import type {
   SectionState,
@@ -93,69 +96,73 @@ const buildSummaryState = (input: {
   }
 }
 
-const isRecordInSection = (
-  sections: SectionState,
-  sectionKey: SectionKey,
-  recordId: RecordId
-) => (sections.byRecord.get(recordId) ?? EMPTY_SECTION_KEYS).includes(sectionKey)
-
-const collectTouchedSectionRecords = (input: {
-  previousSections: SectionState
-  sections: SectionState
-  touchedRecords: ReadonlySet<RecordId>
-}) => {
-  const recordsBySection = new Map<SectionKey, RecordId[]>()
-  const membershipChanged = new Set<SectionKey>()
-  const addRecord = (
-    sectionKey: SectionKey,
-    recordId: RecordId
-  ) => {
-    const ids = recordsBySection.get(sectionKey)
-    if (ids) {
-      ids.push(recordId)
-      return
-    }
-
-    recordsBySection.set(sectionKey, [recordId])
+const addTouchedSectionKeys = (
+  target: Set<SectionKey>,
+  keys?: Iterable<SectionKey>
+) => {
+  if (!keys) {
+    return
   }
 
-  input.touchedRecords.forEach(recordId => {
-    const previousKeys = input.previousSections.byRecord.get(recordId) ?? EMPTY_SECTION_KEYS
-    const nextKeys = input.sections.byRecord.get(recordId) ?? EMPTY_SECTION_KEYS
+  for (const key of keys) {
+    target.add(key)
+  }
+}
 
-    previousKeys.forEach(sectionKey => {
-      addRecord(sectionKey, recordId)
-    })
-    nextKeys.forEach(sectionKey => {
-      if (!previousKeys.includes(sectionKey)) {
-        addRecord(sectionKey, recordId)
-      }
-    })
+const readPreviousEntry = (
+  change: EntryChange<RecordId, AggregateEntry> | undefined,
+  currentEntries: ReadonlyMap<RecordId, AggregateEntry>,
+  recordId: RecordId
+): AggregateEntry | undefined => {
+  if (change?.previousById.has(recordId)) {
+    return change.previousById.get(recordId)
+  }
 
-    if (sameOrder(previousKeys, nextKeys)) {
+  return currentEntries.get(recordId)
+}
+
+const readNextEntry = (
+  change: EntryChange<RecordId, AggregateEntry> | undefined,
+  currentEntries: ReadonlyMap<RecordId, AggregateEntry>,
+  recordId: RecordId
+): AggregateEntry | undefined => {
+  if (change?.nextById.has(recordId)) {
+    return change.nextById.get(recordId)
+  }
+
+  return currentEntries.get(recordId)
+}
+
+const collectTouchedSections = (input: {
+  impact: ActiveImpact
+  sections: SectionState
+  calcFields: readonly FieldId[]
+}): ReadonlySet<SectionKey> => {
+  const touched = new Set<SectionKey>()
+  addTouchedSectionKeys(touched, input.impact.sections?.touchedKeys)
+
+  input.calcFields.forEach(fieldId => {
+    const fieldChange = input.impact.calculations?.byField.get(fieldId)
+    if (!fieldChange?.changedIds.size) {
       return
     }
 
-    previousKeys.forEach(sectionKey => membershipChanged.add(sectionKey))
-    nextKeys.forEach(sectionKey => membershipChanged.add(sectionKey))
+    fieldChange.changedIds.forEach(recordId => {
+      const keys = input.sections.byRecord.get(recordId) ?? EMPTY_SECTION_KEYS
+      keys.forEach(key => touched.add(key))
+    })
   })
 
-  return {
-    recordsBySection,
-    membershipChanged
-  }
+  return touched
 }
 
 export const syncSummaryState = (input: {
   previous?: SummaryState
-  previousSections?: SectionState
-  previousIndex?: IndexState
   sections: SectionState
   view: View
   index: IndexState
+  impact: ActiveImpact
   action: 'reuse' | 'sync' | 'rebuild'
-  touchedRecords: ReadonlySet<string> | 'all'
-  touchedFields: ReadonlySet<FieldId> | 'all'
 }): SummaryState => {
   const previousState = input.previous
   if (input.action === 'reuse' && previousState) {
@@ -173,11 +180,7 @@ export const syncSummaryState = (input: {
 
   if (
     !input.previous
-    || !input.previousSections
-    || !input.previousIndex
     || input.action === 'rebuild'
-    || input.touchedRecords === 'all'
-    || input.touchedFields === 'all'
   ) {
     return buildSummaryState({
       sections: input.sections,
@@ -187,71 +190,86 @@ export const syncSummaryState = (input: {
   }
 
   const previous = input.previous
-  const previousSections = input.previousSections
-  const previousIndex = input.previousIndex
-  const touchedRecords = input.touchedRecords as ReadonlySet<RecordId>
-  const touchedSections = collectTouchedSectionRecords({
-    previousSections,
+  const touchedSections = collectTouchedSections({
+    impact: input.impact,
     sections: input.sections,
-    touchedRecords
+    calcFields
   })
   let changed = previous.bySection.size !== input.sections.order.length
+
+  if (!touchedSections.size && !changed) {
+    return previous
+  }
 
   const bySection = new Map<SectionKey, ReadonlyMap<FieldId, AggregateState>>()
 
   input.sections.order.forEach(sectionKey => {
     const currentSection = input.sections.byKey.get(sectionKey)
-    const previousSection = previousSections.byKey.get(sectionKey)
     if (!currentSection) {
       return
     }
 
     const previousByField = previous.bySection.get(sectionKey) ?? EMPTY_FIELD_SUMMARIES
-    const sectionTouchedRecords = touchedSections.recordsBySection.get(sectionKey)
-    if (!sectionTouchedRecords?.length) {
+    if (!touchedSections.has(sectionKey)) {
       bySection.set(sectionKey, previousByField)
       return
     }
 
+    const removedBySection = input.impact.sections?.removedByKey.get(sectionKey)
+    const addedBySection = input.impact.sections?.addedByKey.get(sectionKey)
     const nextByField = createMapPatchBuilder(previousByField)
-    const membershipChanged = !previousSection || touchedSections.membershipChanged.has(sectionKey)
 
     calcFields.forEach(fieldId => {
-      const previousFieldEntries = previousIndex.calculations.fields.get(fieldId)?.entries ?? EMPTY_FIELD_ENTRIES
-      const fieldEntries = input.index.calculations.fields.get(fieldId)?.entries ?? EMPTY_FIELD_ENTRIES
+      const currentEntries = input.index.calculations.fields.get(fieldId)?.entries ?? EMPTY_FIELD_ENTRIES
       const previousFieldState = previousByField.get(fieldId)
-      const fieldTouched = input.touchedFields === 'all' || input.touchedFields.has(fieldId)
+      const fieldChange = input.impact.calculations?.byField.get(fieldId)
 
-      if (!previousSection || !previousFieldState) {
+      if (!previousFieldState) {
         nextByField.set(fieldId, buildSectionFieldState({
           sectionIds: currentSection.recordIds,
-          entries: fieldEntries
+          entries: currentEntries
         }))
-        return
-      }
-
-      if (!membershipChanged && !fieldTouched) {
         return
       }
 
       const aggregate = createAggregateBuilder(previousFieldState)
       let fieldChanged = false
+      const processed = new Set<RecordId>()
 
-      sectionTouchedRecords.forEach(recordId => {
-        const wasInSection = isRecordInSection(previousSections, sectionKey, recordId)
-        const isInSection = isRecordInSection(input.sections, sectionKey, recordId)
-
-        if (!wasInSection && !isInSection) {
+      removedBySection?.forEach(recordId => {
+        processed.add(recordId)
+        const previousEntry = readPreviousEntry(fieldChange, currentEntries, recordId)
+        if (!previousEntry) {
           return
         }
 
-        const previousEntry = wasInSection
-          ? previousFieldEntries.get(recordId)
-          : undefined
-        const nextEntry = isInSection
-          ? fieldEntries.get(recordId)
-          : undefined
+        fieldChanged = true
+        aggregate.apply(previousEntry, undefined)
+      })
 
+      addedBySection?.forEach(recordId => {
+        processed.add(recordId)
+        const nextEntry = readNextEntry(fieldChange, currentEntries, recordId)
+        if (!nextEntry) {
+          return
+        }
+
+        fieldChanged = true
+        aggregate.apply(undefined, nextEntry)
+      })
+
+      fieldChange?.changedIds.forEach(recordId => {
+        if (processed.has(recordId)) {
+          return
+        }
+
+        const sectionKeys = input.sections.byRecord.get(recordId) ?? EMPTY_SECTION_KEYS
+        if (!sectionKeys.includes(sectionKey)) {
+          return
+        }
+
+        const previousEntry = fieldChange.previousById.get(recordId)
+        const nextEntry = fieldChange.nextById.get(recordId)
         if (sameAggregateEntry(previousEntry, nextEntry)) {
           return
         }

@@ -5,6 +5,11 @@ import type {
 } from '@whiteboard/core/types'
 import { sameEdgeEnd } from '@whiteboard/core/edge/equality'
 
+const hasOwn = (
+  target: object,
+  key: PropertyKey
+) => Object.prototype.hasOwnProperty.call(target, key)
+
 const cloneEdgeLabels = (
   labels: readonly EdgeLabel[]
 ): EdgeLabel[] => labels.map((label) => ({
@@ -104,6 +109,16 @@ export const applyEdgePatch = (
       data: {
         ...patch.data
       }
+    }
+  }
+
+  if (
+    hasOwn(patch, 'locked')
+    && patch.locked !== next.locked
+  ) {
+    next = {
+      ...next,
+      locked: patch.locked
     }
   }
 

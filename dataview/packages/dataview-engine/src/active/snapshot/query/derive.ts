@@ -59,6 +59,8 @@ type SearchPlan = {
 }
 
 const EMPTY_VALUE_MAP = new Map<RecordId, unknown>()
+const EMPTY_SEARCH_SOURCES = [] as readonly SearchTextIndex[]
+const EMPTY_SEARCH_TERMS = [] as readonly string[]
 
 const projectIdsToCurrentOrder = (
   orderedIds: readonly RecordId[],
@@ -188,27 +190,64 @@ const unionCandidates = (
 const resolveSearchSources = (
   search: View['search'],
   index: SearchIndex
-): readonly SearchTextIndex[] => (
-  search.fields?.length
-    ? search.fields.flatMap(fieldId => {
-        const source = index.fields.get(fieldId)
-        return source ? [source] : []
-      })
-    : index.all
+): readonly SearchTextIndex[] => {
+  if (!search.fields?.length) {
+    return index.all
       ? [index.all]
-      : []
-)
+      : EMPTY_SEARCH_SOURCES
+  }
+
+  const sources: SearchTextIndex[] = []
+  for (let indexOfField = 0; indexOfField < search.fields.length; indexOfField += 1) {
+    const fieldId = search.fields[indexOfField]!
+    const source = index.fields.get(fieldId)
+    if (source) {
+      sources.push(source)
+    }
+  }
+
+  return sources.length
+    ? sources
+    : EMPTY_SEARCH_SOURCES
+}
 
 const splitSearchTerms = (
   query: string
-): readonly string[] => Array.from(new Set(
-  query
-    .split(/\s+/)
-    .flatMap(token => {
-      const normalized = trimLowercase(token)
-      return normalized ? [normalized] : []
-    })
-))
+): readonly string[] => {
+  const terms: string[] = []
+  const seen = new Set<string>()
+  let start = -1
+
+  for (let index = 0; index <= query.length; index += 1) {
+    const character = index < query.length
+      ? query.charCodeAt(index)
+      : 32
+
+    if (character <= 32) {
+      if (start < 0) {
+        continue
+      }
+
+      const term = trimLowercase(query.slice(start, index))
+      start = -1
+      if (!term || seen.has(term)) {
+        continue
+      }
+
+      seen.add(term)
+      terms.push(term)
+      continue
+    }
+
+    if (start < 0) {
+      start = index
+    }
+  }
+
+  return terms.length
+    ? terms
+    : EMPTY_SEARCH_TERMS
+}
 
 const resolveSearchCandidatesForSource = (
   source: SearchTextIndex,
@@ -218,11 +257,21 @@ const resolveSearchCandidatesForSource = (
     return undefined
   }
 
-  return Array.from(source.texts.entries()).flatMap(([recordId, text]) => (
-    terms.every(term => text.includes(term))
-      ? [recordId]
-      : []
-  ))
+  const candidates: RecordId[] = []
+
+  scan: for (const [recordId, text] of source.texts) {
+    for (let index = 0; index < terms.length; index += 1) {
+      if (!text.includes(terms[index]!)) {
+        continue scan
+      }
+    }
+
+    candidates.push(recordId)
+  }
+
+  return candidates.length
+    ? candidates
+    : undefined
 }
 
 const resolveSearchPlan = (input: {
@@ -239,11 +288,14 @@ const resolveSearchPlan = (input: {
 
   const sources = resolveSearchSources(input.search, input.index)
   const terms = splitSearchTerms(query)
-  const candidateLists = sources
-    .flatMap(source => {
-      const candidates = resolveSearchCandidatesForSource(source, terms)
-      return candidates ? [candidates] : []
-    })
+  const candidateLists: RecordId[][] = []
+
+  for (let index = 0; index < sources.length; index += 1) {
+    const candidates = resolveSearchCandidatesForSource(sources[index]!, terms)
+    if (candidates?.length) {
+      candidateLists.push(candidates as RecordId[])
+    }
+  }
 
   return {
     query,
@@ -272,16 +324,23 @@ const matchesSearch = (
 const resolveEffectiveFilterRules = (
   reader: DocumentReader,
   view: View
-): readonly EffectiveFilterRule[] => view.filter.rules.flatMap(rule => {
-  const field = reader.fields.get(rule.fieldId)
-  return isFilterRuleEffective(field, rule)
-    ? [{
+): readonly EffectiveFilterRule[] => {
+  const rules: EffectiveFilterRule[] = []
+
+  for (let index = 0; index < view.filter.rules.length; index += 1) {
+    const rule = view.filter.rules[index]!
+    const field = reader.fields.get(rule.fieldId)
+    if (isFilterRuleEffective(field, rule)) {
+      rules.push({
         fieldId: rule.fieldId,
         field,
         rule
-      }]
-    : []
-})
+      })
+    }
+  }
+
+  return rules
+}
 
 const matchesFilter = (input: {
   recordId: RecordId
@@ -640,11 +699,15 @@ const resolveFilterPredicateRules = (input: {
       : input.plans.map(plan => plan.rule)
   }
 
-  return input.plans.flatMap(plan => (
-    plan.candidate?.exact
-      ? []
-      : [plan.rule]
-  ))
+  const rules: EffectiveFilterRule[] = []
+  for (let index = 0; index < input.plans.length; index += 1) {
+    const plan = input.plans[index]!
+    if (!plan.candidate?.exact) {
+      rules.push(plan.rule)
+    }
+  }
+
+  return rules
 }
 
 const filterVisibleIds = (input: {
@@ -653,18 +716,27 @@ const filterVisibleIds = (input: {
   searchPlan: SearchPlan
   filterRules: readonly EffectiveFilterRule[]
   filterMode: View['filter']['mode']
-}): readonly RecordId[] => input.ids.filter(recordId => {
-  if (!matchesSearch(recordId, input.searchPlan)) {
-    return false
+}): readonly RecordId[] => {
+  const visible: RecordId[] = []
+
+  for (let index = 0; index < input.ids.length; index += 1) {
+    const recordId = input.ids[index]!
+    if (!matchesSearch(recordId, input.searchPlan)) {
+      continue
+    }
+
+    if (matchesFilter({
+      recordId,
+      mode: input.filterMode,
+      rules: input.filterRules,
+      index: input.index
+    })) {
+      visible.push(recordId)
+    }
   }
 
-  return matchesFilter({
-    recordId,
-    mode: input.filterMode,
-    rules: input.filterRules,
-    index: input.index
-  })
-})
+  return visible
+}
 
 const projectCandidatesToOrderedIds = (
   ordered: readonly RecordId[],

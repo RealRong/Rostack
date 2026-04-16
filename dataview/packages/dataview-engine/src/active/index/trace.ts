@@ -1,25 +1,28 @@
 import type {
-  CommitImpact
-} from '@dataview/core/contracts'
-import {
-  touchedFieldCountOfImpact,
-  touchedRecordCountOfImpact
-} from '@dataview/core/commit/impact'
-import type {
   IndexStageTrace
 } from '@dataview/engine/contracts/public'
 import type {
   SearchIndex
 } from '@dataview/engine/active/index/contracts'
+import type {
+  ActiveImpact
+} from '@dataview/engine/active/shared/impact'
 
 export const fullRebuildFrom = (
-  impact: CommitImpact
-) => impact.reset === true
+  impact: ActiveImpact
+) => impact.commit.reset === true
 
-export {
-  touchedRecordCountOfImpact,
-  touchedFieldCountOfImpact
-}
+export const touchedRecordCountOfImpact = (
+  impact: ActiveImpact
+): number | 'all' | undefined => impact.base.touchedRecords === 'all'
+  ? 'all'
+  : impact.base.touchedRecords.size || undefined
+
+export const touchedFieldCountOfImpact = (
+  impact: ActiveImpact
+): number | 'all' | undefined => impact.base.touchedFields === 'all'
+  ? 'all'
+  : impact.base.touchedFields.size || undefined
 
 export const searchEntryCountOf = (
   search: SearchIndex

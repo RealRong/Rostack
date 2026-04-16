@@ -1,5 +1,4 @@
 import type {
-  CommitImpact,
   ViewId
 } from '@dataview/core/contracts'
 import type { IndexState } from '@dataview/engine/active/index/contracts'
@@ -23,6 +22,9 @@ import { runSummaryStage } from '@dataview/engine/active/snapshot/summary/runtim
 import type {
   DocumentReadContext
 } from '@dataview/engine/document/reader'
+import type {
+  ActiveImpact
+} from '@dataview/engine/active/shared/impact'
 
 interface ViewRunResult {
   cache: ViewCache
@@ -32,9 +34,8 @@ interface ViewRunResult {
 
 export const deriveViewSnapshot = (input: {
   documentContext: DocumentReadContext
-  impact: CommitImpact
+  impact: ActiveImpact
   index: IndexState
-  previousIndex?: IndexState
   previousCache: ViewCache
   previousSnapshot?: ViewState
   capturePerf: boolean
@@ -144,7 +145,6 @@ export const deriveViewSnapshot = (input: {
       view,
       query: query.state,
       previous: input.previousCache.sections,
-      previousQuery: input.previousCache.query,
       previousPublished: {
         sections: input.previousSnapshot?.sections,
         items: input.previousSnapshot?.items
@@ -180,7 +180,6 @@ export const deriveViewSnapshot = (input: {
       impact: input.impact,
       view,
       previous: input.previousCache.summary,
-      previousIndex: input.previousIndex,
       previousSections: input.previousCache.sections,
       previousPublished: input.previousSnapshot?.summaries,
       sections: sections.state,

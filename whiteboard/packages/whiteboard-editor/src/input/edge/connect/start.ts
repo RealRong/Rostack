@@ -20,11 +20,14 @@ import type {
   EdgeAnchor,
   EdgeEnd,
   EdgeId,
-  EdgeType,
   NodeId
 } from '@whiteboard/core/types'
+import {
+  readEdgePresetCreate,
+  type EdgePresetCreate
+} from '@whiteboard/editor/tool/edgePresets'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
-import type { EdgePresetKey, Tool } from '@whiteboard/editor/types/tool'
+import type { Tool } from '@whiteboard/editor/types/tool'
 import type { EdgeGestureDraft } from '@whiteboard/editor/input/core/gesture'
 import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
 import type { NodeCanvasSnapshot, NodePresentationRead } from '@whiteboard/editor/query/node/read'
@@ -64,16 +67,6 @@ type ConnectNodeEntry = NonNullable<
   ReturnType<EdgeConnectNodeRead['canvas']['get']>
 >
 
-const EDGE_PRESET_TYPE = {
-  'edge.straight': 'straight',
-  'edge.elbow': 'elbow',
-  'edge.curve': 'curve'
-} as const satisfies Record<EdgePresetKey, EdgeType>
-
-const readEdgePresetType = (
-  preset: EdgePresetKey
-): EdgeType => EDGE_PRESET_TYPE[preset]
-
 const readConnectNode = (
   node: EdgeConnectNodeRead,
   nodeId: NodeId
@@ -104,23 +97,25 @@ const shouldBlockFreeCreateStart = (
 
 const startFreeEdgeCreate = (
   pointer: PointerDownInput,
-  edgeType: EdgeType
+  create: EdgePresetCreate
 ): EdgeConnectState => startEdgeCreate({
   pointerId: pointer.pointerId,
-  edgeType,
+  edgeType: create.type,
+  style: create.style,
   from: toEdgeDraftEnd(pointer.world),
   to: toEdgeDraftEnd(pointer.world)
 })
 
 const startNodeEdgeCreate = (input: {
   pointer: PointerDownInput
-  edgeType: EdgeType
+  create: EdgePresetCreate
   nodeId: NodeId
   anchor: EdgeAnchor
   point: PointerDownInput['world']
 }): EdgeConnectState => startEdgeCreate({
   pointerId: input.pointer.pointerId,
-  edgeType: input.edgeType,
+  edgeType: input.create.type,
+  style: input.create.style,
   from: {
     kind: 'node',
     nodeId: input.nodeId,
@@ -133,7 +128,7 @@ const startNodeEdgeCreate = (input: {
 const resolveNodeHandleStart = (input: {
   node: EdgeConnectNodeRead
   pointer: PointerDownInput
-  edgeType: EdgeType
+  create: EdgePresetCreate
 }): EdgeConnectState | undefined => {
   const pick = input.pointer.pick
   if (
@@ -156,7 +151,7 @@ const resolveNodeHandleStart = (input: {
 
   return startNodeEdgeCreate({
     pointer: input.pointer,
-    edgeType: input.edgeType,
+    create: input.create,
     nodeId: pick.id,
     anchor,
     point: getNodeAnchor(
@@ -171,7 +166,7 @@ const resolveNodeHandleStart = (input: {
 const resolveNodeBodyStart = (input: {
   node: EdgeConnectNodeRead
   pointer: PointerDownInput
-  edgeType: EdgeType
+  create: EdgePresetCreate
   zoom: number
   config: BoardConfig['edge']
 }): EdgeConnectState | undefined => {
@@ -199,7 +194,7 @@ const resolveNodeBodyStart = (input: {
 
   return startNodeEdgeCreate({
     pointer: input.pointer,
-    edgeType: input.edgeType,
+    create: input.create,
     nodeId: pick.id,
     anchor: resolved.anchor,
     point: resolved.point
@@ -209,7 +204,7 @@ const resolveNodeBodyStart = (input: {
 const resolveCreateStart = (input: {
   node: EdgeConnectNodeRead
   pointer: PointerDownInput
-  edgeType: EdgeType
+  create: EdgePresetCreate
   zoom: number
   config: BoardConfig['edge']
 }): EdgeConnectState | undefined => (
@@ -254,7 +249,7 @@ export const startEdgeConnect = (
   input: EdgeConnectStartInput
 ): EdgeConnectState | undefined => {
   if (input.tool.type === 'edge') {
-    const edgeType = readEdgePresetType(input.tool.preset)
+    const create = readEdgePresetCreate(input.tool.preset)
 
     if (
       !isNodeHandleConnectPick(input.pointer)
@@ -266,10 +261,10 @@ export const startEdgeConnect = (
     return resolveCreateStart({
       node: input.node,
       pointer: input.pointer,
-      edgeType,
+      create,
       zoom: input.zoom,
       config: input.config
-    }) ?? startFreeEdgeCreate(input.pointer, edgeType)
+    }) ?? startFreeEdgeCreate(input.pointer, create)
   }
 
   if (
@@ -316,6 +311,8 @@ const createPreviewEdge = (
     source: toPreviewEdgeEnd(state.from),
     target: toPreviewEdgeEnd(state.to),
     type: state.edgeType,
+    style: state.style,
+    textMode: state.textMode,
     route: { kind: 'auto' }
   }
 }

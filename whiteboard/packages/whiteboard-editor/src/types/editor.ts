@@ -134,7 +134,7 @@ export type EditorNodeActions = Omit<
 
 export type EditorEdgeActions = Pick<
   RuntimeEdgeCommands,
-  'create' | 'patch' | 'move' | 'reconnect' | 'delete' | 'route' | 'label' | 'style' | 'type' | 'textMode'
+  'create' | 'patch' | 'move' | 'reconnect' | 'delete' | 'route' | 'label' | 'style' | 'type' | 'lock' | 'textMode'
 >
 
 export type EditorActions = {

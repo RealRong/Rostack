@@ -31,6 +31,13 @@ test('sticky palette registry exposes 30 fill swatches', () => {
   assert.equal(WHITEBOARD_PALETTE_KEYS.sticky[29], 'palette:sticky:29')
 })
 
+test('line palette registry exposes 30 dedicated line swatches', () => {
+  assert.equal(WHITEBOARD_PALETTE_REGISTRY.line.length, 30)
+  assert.equal(WHITEBOARD_PALETTE_KEYS.line.length, 30)
+  assert.equal(WHITEBOARD_PALETTE_KEYS.line[0], 'palette:line:0')
+  assert.equal(WHITEBOARD_PALETTE_KEYS.line[29], 'palette:line:29')
+})
+
 test('sticky defaults and insert tone presets use sticky fill keys instead of bg keys', () => {
   assert.equal(WHITEBOARD_STICKY_DEFAULTS.fill, 'palette:sticky:13')
   assert.ok(

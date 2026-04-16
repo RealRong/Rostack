@@ -253,6 +253,7 @@ export const createEditorFacade = ({
         label: command.edge.label,
         style: command.edge.style,
         type: command.edge.type,
+        lock: command.edge.lock,
         textMode: command.edge.textMode
       },
       mindmap: command.mindmap,

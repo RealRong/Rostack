@@ -7,6 +7,7 @@ import {
 import { resolveViewDemand } from '@dataview/engine/active/demand'
 import { createIndexState } from '@dataview/engine/active/index/runtime'
 import { createViewRuntime } from '@dataview/engine/active/runtime'
+import { createActiveImpact } from '@dataview/engine/active/shared/impact'
 import { createStaticDocumentReadContext } from '@dataview/engine/document/reader'
 import type { EngineRuntimeState } from '@dataview/engine/runtime/state'
 
@@ -26,7 +27,7 @@ export const createRuntimeState = (input: {
   const currentView = createViewRuntime({
     documentContext,
     index: index.state,
-    impact: createResetCommitImpact(undefined, input.doc),
+    impact: createActiveImpact(createResetCommitImpact(undefined, input.doc)),
     capturePerf: input.capturePerf
   })
 

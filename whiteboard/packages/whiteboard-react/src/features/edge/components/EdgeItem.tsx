@@ -18,7 +18,7 @@ import {
   resolveEdgeLabelPlacementSize
 } from '@whiteboard/core/edge'
 import {
-  WHITEBOARD_TEXT_DEFAULT_COLOR
+  WHITEBOARD_LINE_DEFAULT_COLOR
 } from '@whiteboard/core/node'
 import type { EdgeId } from '@whiteboard/core/types'
 import {
@@ -35,8 +35,6 @@ import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
 import { matchEdgeLabelEdit } from '@whiteboard/react/features/edit/session'
 import { useEdgeView } from '@whiteboard/react/features/edge/hooks/useEdgeView'
 import {
-  EDGE_ARROW_END_ID,
-  EDGE_ARROW_START_ID,
   resolveEdgeDash
 } from '@whiteboard/react/features/edge/constants'
 import {
@@ -53,6 +51,9 @@ import {
   resolvePaletteColor,
   resolvePaletteColorOr
 } from '@whiteboard/react/features/palette'
+import {
+  resolveEdgeMarkerUrl
+} from '@whiteboard/react/features/edge/ui/glyphs'
 import type { EdgeView } from '@whiteboard/react/types/edge'
 
 const EDGE_LABEL_PLACEHOLDER = 'Label'
@@ -61,14 +62,6 @@ type EdgeItemProps = {
   edgeId: EdgeId
   selected?: boolean
   edgeLabelObserver: EdgeLabelSizeObserver
-}
-
-const resolveMarker = (value: string | undefined, fallbackId: string) => {
-  if (!value) return undefined
-  if (value === 'none') return undefined
-  if (value.startsWith('url(')) return value
-  if (value === 'arrow') return `url(#${fallbackId})`
-  return `url(#${value})`
 }
 
 const readLabelText = (
@@ -367,20 +360,22 @@ const EdgeItemBase = ({
     dash,
     markerStart,
     markerEnd,
+    strokeOpacity,
     hitWidth,
     hoverStrokeWidth
   } = useMemo(() => {
     const edge = entry?.edge
     const baseStroke = resolvePaletteColorOr(
       edge?.style?.color,
-      WHITEBOARD_TEXT_DEFAULT_COLOR
-    ) ?? 'var(--ui-text-primary)'
+      WHITEBOARD_LINE_DEFAULT_COLOR
+    ) ?? 'currentColor'
     const stroke = baseStroke
     const baseWidth = edge?.style?.width ?? 2
     const strokeWidth = baseWidth
     const dash = resolveEdgeDash(edge?.style?.dash)
-    const markerStart = resolveMarker(edge?.style?.start, EDGE_ARROW_START_ID)
-    const markerEnd = resolveMarker(edge?.style?.end, EDGE_ARROW_END_ID)
+    const markerStart = resolveEdgeMarkerUrl(edge?.style?.start, 'start')
+    const markerEnd = resolveEdgeMarkerUrl(edge?.style?.end, 'end')
+    const strokeOpacity = edge?.style?.opacity ?? 1
     const hitWidth = Math.max(6, strokeWidth + hitTestThresholdScreen)
     const hoverStrokeWidth = Math.max(strokeWidth + 1, 3)
 
@@ -390,6 +385,7 @@ const EdgeItemBase = ({
       dash,
       markerStart,
       markerEnd,
+      strokeOpacity,
       hitWidth,
       hoverStrokeWidth
     }
@@ -490,6 +486,7 @@ const EdgeItemBase = ({
           strokeDasharray={dash}
           markerStart={markerStart}
           markerEnd={markerEnd}
+          opacity={strokeOpacity}
           vectorEffect="non-scaling-stroke"
           pointerEvents="none"
           mask={maskUrl}

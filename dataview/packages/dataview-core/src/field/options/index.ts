@@ -82,7 +82,9 @@ export const getFieldOptionTokens = (
     return typeof optionId === 'string' && optionId.trim() ? [optionId] : []
   }
 
-  return Array.from(new Set([option.name, option.id]))
+  return option.name === option.id
+    ? [option.id]
+    : [option.name, option.id]
 }
 
 export const getFieldOptionOrder = (

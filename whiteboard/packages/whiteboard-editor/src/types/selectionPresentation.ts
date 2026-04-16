@@ -93,8 +93,10 @@ export type SelectionToolbarEdgeScope = {
   edges: readonly Edge[]
   primaryEdgeId?: EdgeId
   single: boolean
+  lock: SelectionToolbarLockState
   type?: EdgeType
   color?: string
+  opacity?: number
   width?: number
   dash?: EdgeDash
   start?: EdgeMarker

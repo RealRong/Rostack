@@ -1,6 +1,3 @@
-import type {
-  CommitImpact
-} from '@dataview/core/contracts'
 import { now } from '@dataview/engine/runtime/clock'
 import type { IndexState } from '@dataview/engine/active/index/contracts'
 import type { ViewCache } from '@dataview/engine/contracts/internal'
@@ -17,6 +14,9 @@ import {
 import {
   deriveViewSnapshot
 } from '@dataview/engine/active/snapshot/runtime'
+import type {
+  ActiveImpact
+} from '@dataview/engine/active/shared/impact'
 import type {
   DocumentReadContext
 } from '@dataview/engine/document/reader'
@@ -48,7 +48,7 @@ const createSnapshotTrace = (
 export const createViewRuntime = (input: {
   documentContext: DocumentReadContext
   index: IndexState
-  impact: CommitImpact
+  impact: ActiveImpact
   capturePerf: boolean
 }): ViewRuntimeResult => deriveViewRuntime({
   previous: undefined,
@@ -61,18 +61,16 @@ export const createViewRuntime = (input: {
 
 export const deriveViewRuntime = (input: {
   previous?: ViewState
-  previousIndex?: IndexState
   cache: ViewCache
   documentContext: DocumentReadContext
   index: IndexState
-  impact: CommitImpact
+  impact: ActiveImpact
   capturePerf: boolean
 }): ViewRuntimeResult => {
   const runResult = deriveViewSnapshot({
     documentContext: input.documentContext,
     impact: input.impact,
     index: input.index,
-    previousIndex: input.previousIndex,
     previousCache: input.cache,
     previousSnapshot: input.previous,
     capturePerf: input.capturePerf

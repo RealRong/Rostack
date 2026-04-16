@@ -2,7 +2,7 @@ import type {
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
-import { createMapPatchBuilder } from '@dataview/engine/active/index/builder'
+import { createMapPatchBuilder } from '@dataview/engine/active/shared/patch'
 import type { FieldSyncContext } from '@dataview/engine/active/index/contracts'
 
 export const ensureFieldIndexes = <T>(input: {

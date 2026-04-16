@@ -98,9 +98,11 @@ export const readQueryOrder = (
   state: QueryState
 ): ReadonlyMap<RecordId, number> => {
   if (!state.order) {
-    state.order = new Map(
-      state.records.ordered.map((id, index) => [id, index] as const)
-    )
+    const order = new Map<RecordId, number>()
+    for (let index = 0; index < state.records.ordered.length; index += 1) {
+      order.set(state.records.ordered[index]!, index)
+    }
+    state.order = order
   }
 
   return state.order

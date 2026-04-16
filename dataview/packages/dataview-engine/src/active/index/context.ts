@@ -1,12 +1,4 @@
-import {
-  collectSchemaFieldIds,
-  collectTouchedFieldIds,
-  collectTouchedRecordIds,
-  collectValueFieldIds,
-  hasRecordSetChange
-} from '@dataview/core/commit/impact'
 import type {
-  CommitImpact,
   DataDoc
 } from '@dataview/core/contracts'
 import {
@@ -16,6 +8,9 @@ import type {
   IndexDeriveContext,
   IndexReadContext
 } from '@dataview/engine/active/index/contracts'
+import type {
+  ActiveImpact
+} from '@dataview/engine/active/shared/impact'
 
 export const createIndexReadContext = (
   document: DataDoc
@@ -32,22 +27,17 @@ export const createIndexReadContext = (
 
 export const createIndexDeriveContext = (
   document: DataDoc,
-  impact: CommitImpact
+  impact: ActiveImpact
 ): IndexDeriveContext => ({
   ...createIndexReadContext(document),
-  impact,
-  schemaFields: collectSchemaFieldIds(impact),
-  valueFields: collectValueFieldIds(impact, {
-    includeTitlePatch: true
-  }),
-  touchedFields: collectTouchedFieldIds(impact, {
-    includeTitlePatch: true
-  }),
-  touchedRecords: collectTouchedRecordIds(impact),
-  recordSetChanged: hasRecordSetChange(impact),
+  schemaFields: impact.base.schemaFields,
+  valueFields: impact.base.valueFields,
+  touchedFields: impact.base.touchedFields,
+  touchedRecords: impact.base.touchedRecords,
+  recordSetChanged: impact.base.recordSetChanged,
   changed: Boolean(
-    impact.reset
-    || impact.records
-    || impact.fields?.schema
+    impact.commit.reset
+    || impact.commit.records
+    || impact.commit.fields?.schema
   )
 })

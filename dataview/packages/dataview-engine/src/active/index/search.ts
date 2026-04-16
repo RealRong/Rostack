@@ -1,12 +1,14 @@
 import {
-  buildRecordDefaultSearchText,
-  buildRecordFieldSearchText
+  buildRecordDefaultSearchTextFromFields,
+  buildRecordFieldSearchTextFromField,
+  isDefaultSearchField
 } from '@dataview/core/search'
 import type {
+  CustomField,
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
-import { createMapPatchBuilder } from '@dataview/engine/active/index/builder'
+import { createMapPatchBuilder } from '@dataview/engine/active/shared/patch'
 import type {
   IndexDeriveContext,
   IndexReadContext,
@@ -22,20 +24,44 @@ import {
   shouldSyncFieldIndex
 } from '@dataview/engine/active/index/sync'
 
+const EMPTY_SEARCH_TEXTS = new Map<RecordId, string>()
+
+const resolveSearchField = (
+  context: Pick<IndexReadContext, 'reader'>,
+  fieldId: FieldId
+) => fieldId === 'title'
+  ? undefined
+  : context.reader.fields.get(fieldId)
+
+const resolveDefaultSearchFields = (
+  context: Pick<IndexReadContext, 'document' | 'reader'>
+): readonly CustomField[] => {
+  const fields: CustomField[] = []
+
+  for (let index = 0; index < context.document.fields.order.length; index += 1) {
+    const fieldId = context.document.fields.order[index]!
+    const field = context.reader.fields.get(fieldId)
+    if (field && field.kind !== 'title' && isDefaultSearchField(field)) {
+      fields.push(field)
+    }
+  }
+
+  return fields
+}
+
 const buildTextIndex = (input: {
   ids: readonly RecordId[]
   readText: (recordId: RecordId) => string | undefined
 }): SearchTextIndex => {
   const texts = new Map<RecordId, string>()
 
-  input.ids.forEach(recordId => {
+  for (let index = 0; index < input.ids.length; index += 1) {
+    const recordId = input.ids[index]!
     const text = input.readText(recordId)
-    if (!text) {
-      return
+    if (text) {
+      texts.set(recordId, text)
     }
-
-    texts.set(recordId, text)
-  })
+  }
 
   return {
     texts
@@ -50,23 +76,23 @@ const updateTextIndex = (input: {
   const previous = input.previous.texts
   const texts = createMapPatchBuilder(previous)
 
-  input.touchedRecords.forEach(recordId => {
+  for (const recordId of input.touchedRecords) {
     const previousHas = previous.has(recordId)
     const previousText = previous.get(recordId)
     const nextText = input.readText(recordId)
     const nextHas = Boolean(nextText)
 
     if (previousHas === nextHas && previousText === nextText) {
-      return
+      continue
     }
 
     if (nextText) {
       texts.set(recordId, nextText)
-      return
+      continue
     }
 
     texts.delete(recordId)
-  })
+  }
 
   return texts.changed()
     ? {
@@ -80,9 +106,10 @@ const buildFieldIndex = (
   records: RecordIndex,
   fieldId: FieldId
 ): SearchTextIndex => {
-  if (fieldId !== 'title' && !context.fieldIdSet.has(fieldId)) {
+  const field = resolveSearchField(context, fieldId)
+  if (fieldId !== 'title' && !field) {
     return {
-      texts: new Map()
+      texts: EMPTY_SEARCH_TEXTS
     }
   }
 
@@ -91,7 +118,7 @@ const buildFieldIndex = (
     readText: recordId => {
       const record = records.byId[recordId]
       return record
-        ? buildRecordFieldSearchText(record, fieldId, context.document)
+        ? buildRecordFieldSearchTextFromField(record, fieldId, field)
         : undefined
     }
   })
@@ -100,15 +127,19 @@ const buildFieldIndex = (
 const buildAllIndex = (
   context: IndexReadContext,
   records: RecordIndex
-): SearchTextIndex => buildTextIndex({
+): SearchTextIndex => {
+  const fields = resolveDefaultSearchFields(context)
+
+  return buildTextIndex({
     ids: records.ids,
     readText: recordId => {
       const record = records.byId[recordId]
       return record
-        ? buildRecordDefaultSearchText(record, context.document)
+        ? buildRecordDefaultSearchTextFromFields(record, fields)
         : undefined
     }
   })
+}
 
 export const buildSearchIndex = (
   context: IndexReadContext,
@@ -189,13 +220,14 @@ export const syncSearchIndex = (
   )) {
     nextAll = buildAllIndex(context, records)
   } else if (hasLoadedAll && context.touchedRecords !== 'all' && context.touchedRecords.size) {
+    const defaultFields = resolveDefaultSearchFields(context)
     const next = updateTextIndex({
       previous: previous.all!,
       touchedRecords: context.touchedRecords,
       readText: recordId => {
         const record = records.byId[recordId]
         return record
-          ? buildRecordDefaultSearchText(record, context.document)
+          ? buildRecordDefaultSearchTextFromFields(record, defaultFields)
           : undefined
       }
     })
@@ -205,6 +237,7 @@ export const syncSearchIndex = (
   }
 
   previous.fields.forEach((previousField, fieldId) => {
+    const field = resolveSearchField(context, fieldId)
     if (shouldDropFieldIndex(id => context.fieldIdSet.has(id), context, fieldId)) {
       fields.delete(fieldId)
       return
@@ -225,7 +258,7 @@ export const syncSearchIndex = (
       readText: recordId => {
         const record = records.byId[recordId]
         return record
-          ? buildRecordFieldSearchText(record, fieldId, context.document)
+          ? buildRecordFieldSearchTextFromField(record, fieldId, field)
           : undefined
       }
     })

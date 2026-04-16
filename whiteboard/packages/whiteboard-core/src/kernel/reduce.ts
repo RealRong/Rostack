@@ -86,6 +86,7 @@ const EDGE_GEOMETRY_KEYS = new Set<keyof EdgePatch>([
 ])
 
 const EDGE_VALUE_KEYS = new Set<keyof EdgePatch>([
+  'locked',
   'style',
   'textMode',
   'labels',
@@ -120,6 +121,7 @@ const toEdgeSnapshotPatch = (
   source: edge.source,
   target: edge.target,
   type: edge.type,
+  locked: edge.locked,
   route: edge.route,
   style: edge.style,
   textMode: edge.textMode,

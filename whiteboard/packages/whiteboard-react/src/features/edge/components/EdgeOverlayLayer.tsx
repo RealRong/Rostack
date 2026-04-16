@@ -2,7 +2,7 @@ import type {
   CSSProperties
 } from 'react'
 import { useStoreValue } from '@shared/react'
-import { WHITEBOARD_TEXT_DEFAULT_COLOR } from '@whiteboard/core/node'
+import { WHITEBOARD_LINE_DEFAULT_COLOR } from '@whiteboard/core/node'
 import {
   useEditorRuntime,
   useInteraction,
@@ -15,19 +15,10 @@ import type {
 } from '@whiteboard/react/types/edge'
 import { useSelectedEdgeView } from '@whiteboard/react/features/edge/hooks/useEdgeView'
 import {
-  EDGE_ARROW_END_ID,
-  EDGE_ARROW_START_ID,
   resolveEdgeDash
 } from '@whiteboard/react/features/edge/constants'
 import { resolvePaletteColorOr } from '@whiteboard/react/features/palette'
-
-const resolveMarker = (value: string | undefined, fallbackId: string) => {
-  if (!value) return undefined
-  if (value === 'none') return undefined
-  if (value.startsWith('url(')) return value
-  if (value === 'arrow') return `url(#${fallbackId})`
-  return `url(#${value})`
-}
+import { resolveEdgeMarkerUrl } from '@whiteboard/react/features/edge/ui/glyphs'
 
 const EdgeHintOverlay = () => {
   const editor = useEditorRuntime()
@@ -44,12 +35,13 @@ const EdgeHintOverlay = () => {
   const snapRadius = 6 / Math.max(zoom, 0.0001)
   const stroke = resolvePaletteColorOr(
     path?.style?.color,
-    WHITEBOARD_TEXT_DEFAULT_COLOR
-  ) ?? 'var(--ui-text-primary)'
+    WHITEBOARD_LINE_DEFAULT_COLOR
+  ) ?? 'currentColor'
   const strokeWidth = path?.style?.width ?? 2
   const dash = resolveEdgeDash(path?.style?.dash)
-  const markerStart = resolveMarker(path?.style?.start, EDGE_ARROW_START_ID)
-  const markerEnd = resolveMarker(path?.style?.end, EDGE_ARROW_END_ID)
+  const markerStart = resolveEdgeMarkerUrl(path?.style?.start, 'start')
+  const markerEnd = resolveEdgeMarkerUrl(path?.style?.end, 'end')
+  const strokeOpacity = path?.style?.opacity ?? 1
 
   if (!path && !snap) {
     return null
@@ -72,6 +64,7 @@ const EdgeHintOverlay = () => {
           strokeDasharray={dash}
           markerStart={markerStart}
           markerEnd={markerEnd}
+          opacity={strokeOpacity}
           vectorEffect="non-scaling-stroke"
           pointerEvents="none"
           className="wb-edge-visible-path"
@@ -186,19 +179,25 @@ const EdgeSelectedOverlay = ({
   view: SelectedEdgeView
 }) => (
   <>
-    <div className="wb-edge-endpoint-layer">
-      <EdgeEndpointHandle
-        edgeId={view.edgeId}
-        end="source"
-        point={view.ends.source.point}
-      />
-      <EdgeEndpointHandle
-        edgeId={view.edgeId}
-        end="target"
-        point={view.ends.target.point}
-      />
-    </div>
-    {view.routePoints.length > 0 && (
+    {(view.canReconnectSource || view.canReconnectTarget) && (
+      <div className="wb-edge-endpoint-layer">
+        {view.canReconnectSource ? (
+          <EdgeEndpointHandle
+            edgeId={view.edgeId}
+            end="source"
+            point={view.ends.source.point}
+          />
+        ) : null}
+        {view.canReconnectTarget ? (
+          <EdgeEndpointHandle
+            edgeId={view.edgeId}
+            end="target"
+            point={view.ends.target.point}
+          />
+        ) : null}
+      </div>
+    )}
+    {view.canEditRoute && view.routePoints.length > 0 && (
       <div className="wb-edge-control-point-layer">
         {view.routePoints.map((point) => (
           <EdgeRoutePointHandle

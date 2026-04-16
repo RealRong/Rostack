@@ -3,10 +3,11 @@ export type WhiteboardPaletteGroup =
   | 'sticky'
   | 'border'
   | 'text'
+  | 'line'
 
 export type WhiteboardPaletteKey = `palette:${WhiteboardPaletteGroup}:${number}`
 
-const PALETTE_KEY_RE = /^palette:(bg|sticky|border|text):(\d+)$/
+const PALETTE_KEY_RE = /^palette:(bg|sticky|border|text|line):(\d+)$/
 
 export const createWhiteboardPaletteKey = (
   group: WhiteboardPaletteGroup,

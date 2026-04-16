@@ -441,6 +441,8 @@ export type EdgeConnectState =
   | (EdgeConnectBase & {
       kind: 'create'
       edgeType: EdgeType
+      style?: Edge['style']
+      textMode?: Edge['textMode']
     })
   | (EdgeConnectBase & {
       kind: 'reconnect'
@@ -516,17 +518,33 @@ export const toEdgeEnd = (
 export const startEdgeCreate = ({
   pointerId,
   edgeType,
+  style,
+  textMode,
   from,
   to
 }: {
   pointerId: number
   edgeType: EdgeType
+  style?: Edge['style']
+  textMode?: Edge['textMode']
   from: EdgeDraftEnd
   to: EdgeDraftEnd
 }): EdgeConnectState => ({
   kind: 'create',
   pointerId,
   edgeType,
+  ...(style
+    ? {
+        style: {
+          ...style
+        }
+      }
+    : {}),
+  ...(textMode
+    ? {
+        textMode
+      }
+    : {}),
   from,
   to
 })
@@ -617,7 +635,19 @@ export const toEdgeConnectCommit = (
     input: {
       source: toEdgeEnd(state.from),
       target: toEdgeEnd(state.to),
-      type: state.edgeType
+      type: state.edgeType,
+      ...(state.style
+        ? {
+            style: {
+              ...state.style
+            }
+          }
+        : {}),
+      ...(state.textMode
+        ? {
+            textMode: state.textMode
+          }
+        : {})
     }
   }
 }

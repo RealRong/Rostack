@@ -6,6 +6,9 @@ import {
   deriveIndex
 } from '@dataview/engine/active/index/runtime'
 import {
+  createActiveImpact
+} from '@dataview/engine/active/shared/impact'
+import {
   resolveViewDemand
 } from '@dataview/engine/active/demand'
 import {
@@ -121,7 +124,7 @@ const createDocument = (input = {}) => {
   }
 }
 
-const createImpact = (input = {}) => input
+const createImpact = (input = {}) => createActiveImpact(input)
 
 const createTableView = (input = {}) => ({
   id: 'view_table',

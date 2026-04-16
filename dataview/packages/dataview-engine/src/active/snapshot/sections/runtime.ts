@@ -1,11 +1,8 @@
 import type {
-  CommitImpact,
   View,
   ViewId
 } from '@dataview/core/contracts'
 import {
-  collectTouchedFieldIds,
-  collectTouchedRecordIds,
   hasActiveViewImpact,
   hasFieldSchemaAspect,
   hasRecordSetChange,
@@ -16,10 +13,16 @@ import type {
 } from '@dataview/engine/active/index/contracts'
 import type {
   DeriveAction,
-  QueryState,
   SectionState
 } from '@dataview/engine/contracts/internal'
 import { runSnapshotStage } from '@dataview/engine/active/snapshot/stage'
+import {
+  hasMembershipChanges,
+  hasQueryChanges
+} from '@dataview/engine/active/shared/impact'
+import type {
+  ActiveImpact
+} from '@dataview/engine/active/shared/impact'
 import {
   publishSections
 } from '@dataview/engine/active/snapshot/sections/publish'
@@ -33,59 +36,57 @@ import {
 const resolveSectionsAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  impact: CommitImpact
+  impact: ActiveImpact
   view: View
   previous?: SectionState
-  previousQuery?: QueryState
-  query: QueryState
+  query: import('@dataview/engine/contracts/internal').QueryState
 }): DeriveAction => {
+  const commit = input.impact.commit
+
   if (
     !input.previous
-    || !input.previousQuery
     || input.previousViewId !== input.activeViewId
-    || hasActiveViewImpact(input.impact)
+    || hasActiveViewImpact(commit)
   ) {
     return 'rebuild'
   }
 
-  if (
-    input.previousQuery.records.visible !== input.query.records.visible
-    || input.previousQuery.records.ordered !== input.query.records.ordered
-  ) {
+  if (input.impact.query?.rebuild || input.impact.group?.rebuild) {
     return 'rebuild'
   }
 
   const groupField = input.view.group?.field
   if (!groupField) {
-    return 'reuse'
+    return hasQueryChanges(input.impact)
+      ? 'sync'
+      : 'reuse'
   }
 
   if (
-    hasViewQueryImpact(input.impact, input.activeViewId, ['group'])
-    || hasFieldSchemaAspect(input.impact, groupField)
-    || hasRecordSetChange(input.impact)
+    hasViewQueryImpact(commit, input.activeViewId, ['group'])
+    || hasFieldSchemaAspect(commit, groupField)
+    || hasRecordSetChange(commit)
   ) {
     return 'rebuild'
   }
 
-  const touchedFields = collectTouchedFieldIds(input.impact, {
-    includeTitlePatch: true
-  })
+  const touchedFields = input.impact.base.touchedFields
   if (touchedFields === 'all' || touchedFields.has(groupField)) {
     return 'sync'
   }
 
-  return 'reuse'
+  return hasQueryChanges(input.impact) || hasMembershipChanges(input.impact.group)
+    ? 'sync'
+    : 'reuse'
 }
 
 export const runSectionsStage = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  impact: CommitImpact
+  impact: ActiveImpact
   view: View
-  query: QueryState
+  query: import('@dataview/engine/contracts/internal').QueryState
   previous?: SectionState
-  previousQuery?: QueryState
   previousPublished: {
     sections?: import('@dataview/engine/contracts/public').SectionList
     items?: import('@dataview/engine/contracts/public').ItemList
@@ -106,14 +107,12 @@ export const runSectionsStage = (input: {
         items: input.previousPublished.items
       }
     : undefined
-  const touchedRecords = collectTouchedRecordIds(input.impact)
   const action = resolveSectionsAction({
     activeViewId: input.activeViewId,
     previousViewId: input.previousViewId,
     impact: input.impact,
     view: input.view,
     previous: input.previous,
-    previousQuery: input.previousQuery,
     query: input.query
   })
   const stage = runSnapshotStage({
@@ -122,11 +121,10 @@ export const runSectionsStage = (input: {
     previousPublished,
     derive: () => syncSectionState({
       previous: input.previous,
-      previousQuery: input.previousQuery,
       view: input.view,
       query: input.query,
       index: input.index,
-      touchedRecords,
+      impact: input.impact,
       action
     }),
     publish: state => publishSections({

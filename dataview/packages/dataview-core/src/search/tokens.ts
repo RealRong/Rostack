@@ -14,8 +14,7 @@ import {
   getFieldSearchTokens
 } from '@dataview/core/field'
 import {
-  trimLowercase,
-  unique
+  trimLowercase
 } from '@shared/core'
 
 const EMPTY_TEXTS = [] as readonly string[]
@@ -39,20 +38,48 @@ export const isDefaultSearchField = (
   }
 }
 
+const appendNormalizedSearchTokens = (
+  target: Set<string>,
+  values: readonly string[]
+) => {
+  for (let index = 0; index < values.length; index += 1) {
+    const token = trimLowercase(values[index]!)
+    if (token) {
+      target.add(token)
+    }
+  }
+}
+
+const joinSearchTokenSet = (
+  tokens: ReadonlySet<string>
+): string | undefined => tokens.size
+  ? Array.from(tokens).join(SEARCH_TOKEN_SEPARATOR)
+  : undefined
+
 export const normalizeSearchTokens = (
   values: readonly string[]
-): readonly string[] => unique(values.flatMap(value => {
-  const token = trimLowercase(value)
-  return token ? [token] : []
-}))
+): readonly string[] => {
+  if (!values.length) {
+    return EMPTY_TEXTS
+  }
+
+  const tokens = new Set<string>()
+  appendNormalizedSearchTokens(tokens, values)
+  return tokens.size
+    ? Array.from(tokens)
+    : EMPTY_TEXTS
+}
 
 export const joinSearchTokens = (
   values: readonly string[]
 ): string | undefined => {
-  const tokens = normalizeSearchTokens(values)
-  return tokens.length
-    ? tokens.join(SEARCH_TOKEN_SEPARATOR)
-    : undefined
+  if (!values.length) {
+    return undefined
+  }
+
+  const tokens = new Set<string>()
+  appendNormalizedSearchTokens(tokens, values)
+  return joinSearchTokenSet(tokens)
 }
 
 export const splitSearchText = (
@@ -64,16 +91,22 @@ export const splitSearchText = (
 export const buildFieldSearchText = (
   field: Field | undefined,
   value: unknown
-): string | undefined => joinSearchTokens(
-  getFieldSearchTokens(field, value)
-)
+): string | undefined => {
+  const tokens = getFieldSearchTokens(field, value)
+  if (!tokens.length) {
+    return undefined
+  }
 
-export const buildRecordFieldSearchText = (
+  const normalized = new Set<string>()
+  appendNormalizedSearchTokens(normalized, tokens)
+  return joinSearchTokenSet(normalized)
+}
+
+export const buildRecordFieldSearchTextFromField = (
   record: DataRecord,
   fieldId: FieldId,
-  document: DataDoc
+  field?: Field
 ): string | undefined => {
-  const field = getDocumentFieldById(document, fieldId)
   if (!field && fieldId !== 'title') {
     return undefined
   }
@@ -86,31 +119,58 @@ export const buildRecordFieldSearchText = (
   )
 }
 
+export const buildRecordFieldSearchText = (
+  record: DataRecord,
+  fieldId: FieldId,
+  document: DataDoc
+): string | undefined => {
+  const field = getDocumentFieldById(document, fieldId)
+  return buildRecordFieldSearchTextFromField(record, fieldId, field)
+}
+
+const appendRecordDefaultSearchTokens = (
+  target: Set<string>,
+  record: DataRecord,
+  fields: readonly CustomField[]
+) => {
+  const titleTokens = getFieldSearchTokens(undefined, record.title)
+  if (titleTokens.length) {
+    appendNormalizedSearchTokens(target, titleTokens)
+  }
+
+  for (let index = 0; index < fields.length; index += 1) {
+    const field = fields[index]!
+    const tokens = getFieldSearchTokens(field, record.values[field.id])
+    if (tokens.length) {
+      appendNormalizedSearchTokens(target, tokens)
+    }
+  }
+}
+
+export const buildRecordDefaultSearchTextFromFields = (
+  record: DataRecord,
+  fields: readonly CustomField[]
+): string | undefined => {
+  const tokens = new Set<string>()
+  appendRecordDefaultSearchTokens(tokens, record, fields)
+  return joinSearchTokenSet(tokens)
+}
+
 export const buildRecordDefaultSearchText = (
   record: DataRecord,
   document: DataDoc
 ): string | undefined => {
-  const tokens = new Set<string>()
-  const addText = (value: string | undefined) => {
-    splitSearchText(value).forEach(token => {
-      tokens.add(token)
-    })
+  const fields: CustomField[] = []
+
+  for (let index = 0; index < document.fields.order.length; index += 1) {
+    const fieldId = document.fields.order[index]!
+    const field = getDocumentCustomFieldById(document, fieldId)
+    if (field && isDefaultSearchField(field)) {
+      fields.push(field)
+    }
   }
 
-  addText(buildFieldSearchText(undefined, record.title))
-
-  document.fields.order.forEach(fieldId => {
-    const field = getDocumentCustomFieldById(document, fieldId)
-    if (!isDefaultSearchField(field)) {
-      return
-    }
-
-    addText(buildFieldSearchText(field, record.values[fieldId]))
-  })
-
-  return tokens.size
-    ? Array.from(tokens).join(SEARCH_TOKEN_SEPARATOR)
-    : undefined
+  return buildRecordDefaultSearchTextFromFields(record, fields)
 }
 
 export const buildRecordSearchTexts = (
@@ -119,10 +179,19 @@ export const buildRecordSearchTexts = (
   document: DataDoc
 ): readonly string[] => {
   if (search.fields?.length) {
-    return search.fields.flatMap(fieldId => {
+    const texts: string[] = []
+
+    for (let index = 0; index < search.fields.length; index += 1) {
+      const fieldId = search.fields[index]!
       const text = buildRecordFieldSearchText(record, fieldId, document)
-      return text ? [text] : []
-    })
+      if (text) {
+        texts.push(text)
+      }
+    }
+
+    return texts.length
+      ? texts
+      : EMPTY_TEXTS
   }
 
   const text = buildRecordDefaultSearchText(record, document)

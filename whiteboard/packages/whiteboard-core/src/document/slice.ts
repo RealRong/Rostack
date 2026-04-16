@@ -126,6 +126,7 @@ const cloneNode = (node: Node): Node => {
 
 const cloneEdge = (edge: Edge): Edge => ({
   ...cloneValue(edge),
+  locked: edge.locked,
   source: cloneEdgeEnd(edge.source),
   target: cloneEdgeEnd(edge.target),
   route: edge.route ? cloneValue(edge.route) : undefined,

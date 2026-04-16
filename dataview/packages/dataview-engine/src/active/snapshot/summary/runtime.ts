@@ -1,12 +1,9 @@
 import type {
-  CommitImpact,
   FieldId,
   View,
   ViewId
 } from '@dataview/core/contracts'
 import {
-  collectTouchedFieldIds,
-  collectTouchedRecordIds,
   getViewChange,
   hasActiveViewImpact,
   hasFieldSchemaAspect
@@ -20,6 +17,13 @@ import type {
 } from '@dataview/engine/contracts/internal'
 import type { SectionKey } from '@dataview/engine/contracts/public'
 import { runSnapshotStage } from '@dataview/engine/active/snapshot/stage'
+import {
+  hasCalculationChanges,
+  hasMembershipChanges
+} from '@dataview/engine/active/shared/impact'
+import type {
+  ActiveImpact
+} from '@dataview/engine/active/shared/impact'
 import { publishSummaries } from '@dataview/engine/active/snapshot/summary/publish'
 import {
   syncSummaryState
@@ -32,72 +36,52 @@ export {
   syncSummaryState
 } from '@dataview/engine/active/snapshot/summary/sync'
 
-const hasIntersection = (
-  left: ReadonlySet<FieldId>,
-  right: ReadonlySet<FieldId>
-) => {
-  for (const value of left) {
-    if (right.has(value)) {
-      return true
-    }
-  }
-
-  return false
-}
-
 const resolveSummaryAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  impact: CommitImpact
+  impact: ActiveImpact
   view: View
   previous?: SummaryState
   previousSections?: SectionState
   sectionsAction: DeriveAction
 }): DeriveAction => {
+  const commit = input.impact.commit
+
   if (
     !input.previous
     || !input.previousSections
     || input.previousViewId !== input.activeViewId
-    || hasActiveViewImpact(input.impact)
+    || hasActiveViewImpact(commit)
   ) {
     return 'rebuild'
   }
 
-  if (input.sectionsAction === 'rebuild') {
+  if (input.sectionsAction === 'rebuild' || input.impact.sections?.rebuild) {
     return 'rebuild'
   }
 
   const calcFields = viewCalcFields(input.view)
   const groupField = input.view.group?.field
-  const viewChange = getViewChange(input.impact, input.activeViewId)
+  const viewChange = getViewChange(commit, input.activeViewId)
 
   if (viewChange?.calculationFields) {
     return 'rebuild'
   }
 
   for (const fieldId of calcFields) {
-    if (hasFieldSchemaAspect(input.impact, fieldId)) {
+    if (hasFieldSchemaAspect(commit, fieldId)) {
       return 'rebuild'
     }
   }
-  if (groupField && hasFieldSchemaAspect(input.impact, groupField)) {
+  if (groupField && hasFieldSchemaAspect(commit, groupField)) {
     return 'rebuild'
   }
 
-  if (input.sectionsAction === 'sync') {
+  if (input.sectionsAction === 'sync' || hasMembershipChanges(input.impact.sections)) {
     return 'sync'
   }
 
-  const touchedFields = collectTouchedFieldIds(input.impact, {
-    includeTitlePatch: true
-  })
-  if (touchedFields === 'all') {
-    return calcFields.size > 0
-      ? 'sync'
-      : 'reuse'
-  }
-
-  if (touchedFields.size > 0 && hasIntersection(calcFields, touchedFields)) {
+  if (hasCalculationChanges(input.impact, Array.from(calcFields))) {
     return 'sync'
   }
 
@@ -107,10 +91,9 @@ const resolveSummaryAction = (input: {
 export const runSummaryStage = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  impact: CommitImpact
+  impact: ActiveImpact
   view: View
   previous?: SummaryState
-  previousIndex?: IndexState
   previousSections?: SectionState
   previousPublished?: ReadonlyMap<SectionKey, import('@dataview/core/calculation').CalculationCollection>
   sections: SectionState
@@ -124,10 +107,6 @@ export const runSummaryStage = (input: {
   deriveMs: number
   publishMs: number
 } => {
-  const touchedRecords = collectTouchedRecordIds(input.impact)
-  const touchedFields = collectTouchedFieldIds(input.impact, {
-    includeTitlePatch: true
-  })
   const action = resolveSummaryAction({
     activeViewId: input.activeViewId,
     previousViewId: input.previousViewId,
@@ -143,14 +122,11 @@ export const runSummaryStage = (input: {
     previousPublished: input.previousPublished,
     derive: () => syncSummaryState({
       previous: input.previous,
-      previousIndex: input.previousIndex,
-      previousSections: input.previousSections,
       sections: input.sections,
       view: input.view,
       index: input.index,
+      impact: input.impact,
       action,
-      touchedRecords,
-      touchedFields
     }),
     publish: state => publishSummaries({
       summary: state,

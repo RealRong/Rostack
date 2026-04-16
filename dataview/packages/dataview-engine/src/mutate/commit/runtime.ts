@@ -18,6 +18,9 @@ import {
 import {
   deriveViewRuntime
 } from '@dataview/engine/active/runtime'
+import {
+  createActiveImpact
+} from '@dataview/engine/active/shared/impact'
 import { createStaticDocumentReadContext } from '@dataview/engine/document/reader'
 import type {
   PlannedWriteBatch
@@ -201,20 +204,20 @@ const commit = <TResult extends CommitResult>(input: {
   }
 
   const documentContext = createStaticDocumentReadContext(draft.doc)
+  const activeImpact = createActiveImpact(draft.impact)
   const nextIndex = deriveIndex({
     previous: base.currentView.index,
     previousDemand: base.currentView.demand,
     document: draft.doc,
-    impact: draft.impact,
+    impact: activeImpact,
     demand: resolveViewDemand(documentContext, documentContext.activeViewId)
   })
   const nextView = deriveViewRuntime({
     previous: base.currentView.snapshot,
-    previousIndex: base.currentView.index,
     cache: base.currentView.cache,
     documentContext,
     index: nextIndex.state,
-    impact: draft.impact,
+    impact: activeImpact,
     capturePerf: input.capturePerf
   })
 

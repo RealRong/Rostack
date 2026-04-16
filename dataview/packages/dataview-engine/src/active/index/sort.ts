@@ -7,7 +7,7 @@ import {
   compareFieldValues
 } from '@dataview/core/field'
 import { sameOrder } from '@shared/core'
-import { createMapPatchBuilder } from '@dataview/engine/active/index/builder'
+import { createMapPatchBuilder } from '@dataview/engine/active/shared/patch'
 import type {
   IndexDeriveContext,
   IndexReadContext,

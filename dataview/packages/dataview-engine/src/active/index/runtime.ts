@@ -1,5 +1,4 @@
 import type {
-  CommitImpact,
   DataDoc
 } from '@dataview/core/contracts'
 import type {
@@ -25,6 +24,9 @@ import {
   ensureGroupIndex,
   syncGroupIndex
 } from '@dataview/engine/active/index/group/runtime'
+import {
+  createGroupDemandKey
+} from '@dataview/engine/active/index/group/demand'
 import {
   buildRecordIndex,
   syncRecordIndex
@@ -55,6 +57,12 @@ import type {
 import {
   now
 } from '@dataview/engine/runtime/clock'
+import type {
+  ActiveImpact
+} from '@dataview/engine/active/shared/impact'
+import {
+  ensureGroupChange
+} from '@dataview/engine/active/shared/impact'
 
 const buildState = (
   document: DataDoc,
@@ -113,7 +121,7 @@ export const deriveIndex = (input: {
   previous: IndexState
   previousDemand: NormalizedIndexDemand
   document: DataDoc
-  impact: CommitImpact
+  impact: ActiveImpact
   demand?: IndexDemand
 }): IndexDeriveResult => {
   const previous = input.previous
@@ -130,7 +138,6 @@ export const deriveIndex = (input: {
   const records = syncRecordIndex(
     previous.records,
     context,
-    input.impact,
     nextDemand.recordFields
   )
   const recordsMs = now() - recordsStart
@@ -150,10 +157,29 @@ export const deriveIndex = (input: {
     previousDemand: input.previousDemand.groups,
     nextDemand: nextDemand.groups,
     sameDemand: sameGroupDemand,
-    sync: current => syncGroupIndex(current, context, records),
+    sync: current => syncGroupIndex(
+      current,
+      context,
+      records,
+      input.impact,
+      nextDemand.sectionGroup
+    ),
     ensure: current => ensureGroupIndex(current, context, records, nextDemand.groups),
     build: rev => buildGroupIndex(context, records, nextDemand.groups, rev)
   })
+
+  const previousSectionGroupKey = input.previousDemand.sectionGroup
+    ? createGroupDemandKey(input.previousDemand.sectionGroup)
+    : undefined
+  const nextSectionGroupKey = nextDemand.sectionGroup
+    ? createGroupDemandKey(nextDemand.sectionGroup)
+    : undefined
+  if (
+    nextSectionGroupKey
+    && previousSectionGroupKey !== nextSectionGroupKey
+  ) {
+    ensureGroupChange(input.impact).rebuild = true
+  }
 
   const sortStage = runIndexDemandStage({
     previous: previous.sort,
@@ -170,7 +196,7 @@ export const deriveIndex = (input: {
     previousDemand: input.previousDemand.calculationFields,
     nextDemand: nextDemand.calculationFields,
     sameDemand: sameFieldIdList,
-    sync: current => syncCalculationIndex(current, context, records),
+    sync: current => syncCalculationIndex(current, context, records, input.impact),
     ensure: current => ensureCalculationIndex(current, context, records, nextDemand.calculationFields),
     build: rev => buildCalculationIndex(context, records, nextDemand.calculationFields, rev)
   })

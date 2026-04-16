@@ -1,5 +1,4 @@
 import type {
-  CommitImpact,
   DataDoc,
   Field,
   FieldId,
@@ -12,6 +11,9 @@ import type {
 import type {
   IndexTrace
 } from '@dataview/engine/contracts/public'
+import type {
+  ActiveImpact
+} from '@dataview/engine/active/shared/impact'
 
 export type SortedIdSet<T extends string> = readonly T[]
 export type BucketKey = string
@@ -45,6 +47,7 @@ export interface GroupDemand {
 export interface IndexDemand {
   search?: SearchDemand
   groups?: readonly GroupDemand[]
+  sectionGroup?: GroupDemand
   sortFields?: readonly FieldId[]
   calculationFields?: readonly FieldId[]
 }
@@ -56,6 +59,7 @@ export interface NormalizedIndexDemand {
     fields: readonly FieldId[]
   }
   groups: readonly GroupDemand[]
+  sectionGroup?: GroupDemand
   sortFields: readonly FieldId[]
   calculationFields: readonly FieldId[]
 }
@@ -158,9 +162,8 @@ export interface IndexReadContext {
 }
 
 export interface IndexDeriveContext extends IndexReadContext, FieldSyncContext {
-  impact: CommitImpact
-  touchedFields: ReadonlySet<FieldId> | 'all'
   changed: boolean
+  touchedFields: ReadonlySet<FieldId> | 'all'
 }
 
 export interface IndexDeriveResult {
@@ -173,6 +176,6 @@ export interface IndexDeriveInput {
   previous: IndexState
   previousDemand: NormalizedIndexDemand
   document: DataDoc
-  impact: CommitImpact
+  impact: ActiveImpact
   demand?: IndexDemand
 }

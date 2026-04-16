@@ -3,6 +3,7 @@ import type {
   SelectionToolbarScope
 } from '@whiteboard/editor'
 import type { SelectionCan } from '@whiteboard/react/features/selection/capability'
+import { EDGE_TOOLBAR_RECIPE } from '@whiteboard/react/features/edge/ui/toolbar'
 import type {
   ToolbarItemKey,
   ToolbarRecipeItem
@@ -26,6 +27,38 @@ const appendSection = (
       key
     })
   })
+}
+
+const appendRecipeSection = (
+  recipe: ToolbarRecipeItem[],
+  items: readonly ToolbarRecipeItem[]
+) => {
+  const normalized: ToolbarRecipeItem[] = []
+
+  items.forEach((entry) => {
+    if (
+      entry.kind === 'divider'
+      && (!normalized.length || normalized[normalized.length - 1]?.kind === 'divider')
+    ) {
+      return
+    }
+
+    normalized.push(entry)
+  })
+
+  while (normalized[normalized.length - 1]?.kind === 'divider') {
+    normalized.pop()
+  }
+
+  if (!normalized.length) {
+    return
+  }
+
+  if (recipe.length) {
+    recipe.push({ kind: 'divider' })
+  }
+
+  recipe.push(...normalized)
 }
 
 const isItemVisible = ({
@@ -64,14 +97,22 @@ const isItemVisible = ({
       return activeScope.node?.canEditStroke ?? false
     case 'fill':
       return activeScope.node?.canEditFill ?? false
-    case 'edge-line':
+    case 'edge-stroke':
       return Boolean(activeScope.edge)
-    case 'edge-markers':
+    case 'edge-geometry':
       return Boolean(activeScope.edge)
-    case 'edge-text':
+    case 'edge-marker-start':
+      return Boolean(activeScope.edge)
+    case 'edge-marker-swap':
       return Boolean(activeScope.edge?.single)
+    case 'edge-marker-end':
+      return Boolean(activeScope.edge)
+    case 'edge-add-label':
+      return Boolean(activeScope.edge?.single)
+    case 'edge-text-mode':
+      return Boolean(activeScope.edge)
     case 'lock':
-      return context.target.nodeIds.length > 0
+      return Boolean(activeScope.node || activeScope.edge)
     case 'more':
       return context.target.nodeIds.length + context.target.edgeIds.length > 0
   }
@@ -108,34 +149,22 @@ export const resolveToolbarRecipe = ({
     scopeCan,
     key
   }))
-  const styleKeys = activeScope.node
-    ? ([
-        'shape-kind',
-        'font-size',
-        'bold',
-        'italic',
-        'text-align',
-        'text-color',
-        'stroke',
-        'fill'
-      ] as const).filter((key) => isItemVisible({
-        context,
-        activeScope,
-        selectionCan,
-        scopeCan,
-        key
-      }))
-    : ([
-        'edge-line',
-        'edge-markers',
-        'edge-text'
-      ] as const).filter((key) => isItemVisible({
-        context,
-        activeScope,
-        selectionCan,
-        scopeCan,
-        key
-      }))
+  const nodeStyleKeys = ([
+    'shape-kind',
+    'font-size',
+    'bold',
+    'italic',
+    'text-align',
+    'text-color',
+    'stroke',
+    'fill'
+  ] as const).filter((key) => isItemVisible({
+    context,
+    activeScope,
+    selectionCan,
+    scopeCan,
+    key
+  }))
   const utilityKeys = ([
     'lock',
     'more'
@@ -148,9 +177,28 @@ export const resolveToolbarRecipe = ({
   }))
 
   appendSection(recipe, selectionKeys)
-  appendSection(recipe, structureKeys)
-  appendSection(recipe, styleKeys)
-  appendSection(recipe, utilityKeys)
+  if (activeScope.node) {
+    appendSection(recipe, structureKeys)
+    appendSection(recipe, nodeStyleKeys)
+    appendSection(recipe, utilityKeys)
+    return recipe
+  }
+
+  const edgeRecipe = EDGE_TOOLBAR_RECIPE.filter((entry) => {
+    if (entry.kind === 'divider') {
+      return true
+    }
+
+    return isItemVisible({
+      context,
+      activeScope,
+      selectionCan,
+      scopeCan,
+      key: entry.key
+    })
+  })
+
+  appendRecipeSection(recipe, edgeRecipe)
 
   return recipe
 }

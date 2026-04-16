@@ -1,9 +1,11 @@
 import type { DrawMode } from '@whiteboard/editor/local/draw/model'
 
 export type EdgePresetKey =
-  | 'edge.straight'
-  | 'edge.elbow'
-  | 'edge.curve'
+  | 'edge.line'
+  | 'edge.arrow'
+  | 'edge.elbow-arrow'
+  | 'edge.fillet-arrow'
+  | 'edge.curve-arrow'
 
 export type InsertPresetKey = string
 

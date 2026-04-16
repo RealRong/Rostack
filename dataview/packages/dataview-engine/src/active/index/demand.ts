@@ -47,6 +47,11 @@ export const normalizeIndexDemand = (
       fields: uniqueSorted(demand?.search?.fields ?? [])
     },
     groups,
+    ...(demand?.sectionGroup
+      ? {
+          sectionGroup: demand.sectionGroup
+        }
+      : {}),
     sortFields,
     calculationFields: uniqueSorted(demand?.calculationFields ?? [])
   }

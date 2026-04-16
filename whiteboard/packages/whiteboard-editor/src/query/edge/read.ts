@@ -1,6 +1,7 @@
 import { isPointEqual } from '@whiteboard/core/geometry'
 import {
   getEdgePathBounds,
+  isNodeEdgeEnd,
   isPointEdgeEnd,
   sameEdgeAnchor,
   sameResolvedEdgeEnd,
@@ -45,6 +46,7 @@ export type EdgeCapability = {
   reconnectSource: boolean
   reconnectTarget: boolean
   editRoute: boolean
+  editLabel: boolean
 }
 
 export type EdgeBox = {
@@ -62,7 +64,8 @@ export type EdgeView = CoreEdgeView & {
 const EDGE_CAPABILITY_BASE = {
   reconnectSource: true,
   reconnectTarget: true,
-  editRoute: true
+  editRoute: true,
+  editLabel: true
 } as const
 
 const isEdgeItemEqual = (
@@ -160,11 +163,24 @@ const isEdgeViewEqual = (
 )
 
 const resolveEdgeCapability = (
-  edge: EdgeItem['edge']
-): EdgeCapability => ({
-  ...EDGE_CAPABILITY_BASE,
-  move: isPointEdgeEnd(edge.source) && isPointEdgeEnd(edge.target)
-})
+  edge: EdgeItem['edge'],
+  readNodeLocked: (nodeId: NodeId) => boolean
+): EdgeCapability => {
+  const locked = Boolean(edge.locked)
+  const relationLocked = [edge.source, edge.target].some((end) => (
+    isNodeEdgeEnd(end) && readNodeLocked(end.nodeId)
+  ))
+  const canEdit = !locked
+
+  return {
+    ...EDGE_CAPABILITY_BASE,
+    reconnectSource: canEdit && !relationLocked,
+    reconnectTarget: canEdit && !relationLocked,
+    editRoute: canEdit,
+    editLabel: canEdit,
+    move: canEdit && isPointEdgeEnd(edge.source) && isPointEdgeEnd(edge.target)
+  }
+}
 
 export type EdgePresentationRead = {
   list: EngineRead['edge']['list']
@@ -317,6 +333,9 @@ export const createEdgeRead = ({
 
     return candidates
   }
+  const readNodeLocked = (
+    nodeId: NodeId
+  ) => Boolean(readValue(node.canvas, nodeId)?.node.locked)
 
   return {
     list: read.edge.list,
@@ -331,7 +350,7 @@ export const createEdgeRead = ({
       readValue(bounds, edgeId),
       readValue(item, edgeId)?.edge
     ),
-    capability: resolveEdgeCapability,
+    capability: (edge) => resolveEdgeCapability(edge, readNodeLocked),
     related: read.edge.related,
     idsInRect: (rect, options) => readValue(read.edge.list).filter((edgeId) => {
       const nextResolved = readValue(resolved, edgeId)

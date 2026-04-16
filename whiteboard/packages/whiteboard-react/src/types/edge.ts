@@ -35,5 +35,8 @@ export type SelectedEdgeRoutePointView = {
 export type SelectedEdgeView = {
   edgeId: EdgeId
   ends: EdgeView['ends']
+  canReconnectSource: boolean
+  canReconnectTarget: boolean
+  canEditRoute: boolean
   routePoints: readonly SelectedEdgeRoutePointView[]
 }

@@ -3,7 +3,6 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import type {
-  CommitImpact,
   DataDoc
 } from '@dataview/core/contracts'
 import {
@@ -12,7 +11,10 @@ import {
 import {
   sameOrder as sameIds
 } from '@shared/core'
-import { createArrayPatchBuilder, createMapPatchBuilder } from '@dataview/engine/active/index/builder'
+import {
+  createArrayPatchBuilder,
+  createMapPatchBuilder
+} from '@dataview/engine/active/shared/patch'
 import type {
   IndexDeriveContext,
   IndexReadContext,
@@ -23,7 +25,7 @@ import {
   createOrderIndex,
   insertOrderedIdInPlace,
   removeOrderedIdInPlace
-} from '@dataview/engine/active/index/shared'
+} from '@dataview/engine/active/shared/ordered'
 
 const EMPTY_VALUE_MAP = new Map<RecordId, unknown>()
 const EMPTY_RECORD_IDS: readonly RecordId[] = []
@@ -103,7 +105,7 @@ const syncValueIndex = (input: {
         return
       }
 
-      removeOrderedIdInPlace(draft, recordId)
+      removeOrderedIdInPlace(draft, recordId, input.order)
     })
     idsUsed = true
   })
@@ -117,10 +119,8 @@ const syncValueIndex = (input: {
 }
 
 const shouldRebuildRecordIndex = (
-  impact: CommitImpact,
   context: IndexDeriveContext
-): boolean => impact.reset
-  || context.touchedRecords === 'all'
+): boolean => context.touchedRecords === 'all'
   || context.valueFields === 'all'
 
 export const buildRecordIndex = (
@@ -141,7 +141,6 @@ export const buildRecordIndex = (
 export const syncRecordIndex = (
   previous: RecordIndex,
   context: IndexDeriveContext,
-  impact: CommitImpact,
   fieldIds: readonly FieldId[] = previous.fieldIds
 ): RecordIndex => {
   if (!context.changed) {
@@ -152,7 +151,7 @@ export const syncRecordIndex = (
     ? previous.fieldIds
     : [...fieldIds]
 
-  if (shouldRebuildRecordIndex(impact, context)) {
+  if (shouldRebuildRecordIndex(context)) {
     return buildRecordIndex(context, nextFieldIds, previous.rev + 1)
   }
 

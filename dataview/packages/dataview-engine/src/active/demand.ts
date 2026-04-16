@@ -71,6 +71,11 @@ export const resolveViewDemand = (
   return {
     ...(search ? { search } : {}),
     ...(groups.length ? { groups } : {}),
+    ...(view.group
+      ? {
+          sectionGroup: createGroupDemand(view.group)
+        }
+      : {}),
     ...(sortFields.length
       ? { sortFields }
       : {}),

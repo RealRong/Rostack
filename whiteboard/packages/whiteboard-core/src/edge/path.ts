@@ -11,6 +11,7 @@ import { readEdgeRoutePoints } from '@whiteboard/core/edge/route'
 const DEFAULT_ORTHO_OFFSET = 50
 const DEFAULT_CURVE_CURVATURE = 0.35
 const DEFAULT_STEP_ENDPOINT_OFFSET = 24
+const DEFAULT_FILLET_RADIUS = 16
 
 const EDGE_SIDE_VECTOR: Record<EdgeAnchor['side'], Point> = {
   left: { x: -1, y: 0 },
@@ -56,6 +57,71 @@ const buildPolylinePath = (points: Point[]) => {
   return points
     .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
     .join(' ')
+}
+
+const buildFilletPath = (
+  points: readonly Point[],
+  radius = DEFAULT_FILLET_RADIUS
+) => {
+  if (points.length === 0) {
+    return ''
+  }
+  if (points.length === 1) {
+    return `M ${points[0]!.x} ${points[0]!.y}`
+  }
+
+  let path = `M ${points[0]!.x} ${points[0]!.y}`
+
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const previous = points[index - 1]!
+    const current = points[index]!
+    const next = points[index + 1]!
+    const inLength = getDistance(previous, current)
+    const outLength = getDistance(current, next)
+    const turn =
+      (current.x - previous.x) * (next.y - current.y)
+      - (current.y - previous.y) * (next.x - current.x)
+
+    if (
+      inLength === 0
+      || outLength === 0
+      || Math.abs(turn) < 0.001
+    ) {
+      path += ` L ${current.x} ${current.y}`
+      continue
+    }
+
+    const filletRadius = Math.min(radius, inLength / 2, outLength / 2)
+    if (filletRadius <= 0) {
+      path += ` L ${current.x} ${current.y}`
+      continue
+    }
+
+    const inVector = {
+      x: (current.x - previous.x) / inLength,
+      y: (current.y - previous.y) / inLength
+    }
+    const outVector = {
+      x: (next.x - current.x) / outLength,
+      y: (next.y - current.y) / outLength
+    }
+    const beforeCorner = {
+      x: current.x - inVector.x * filletRadius,
+      y: current.y - inVector.y * filletRadius
+    }
+    const afterCorner = {
+      x: current.x + outVector.x * filletRadius,
+      y: current.y + outVector.y * filletRadius
+    }
+
+    path += ` L ${beforeCorner.x} ${beforeCorner.y}`
+    path += ` Q ${current.x} ${current.y} ${afterCorner.x} ${afterCorner.y}`
+  }
+
+  const last = points[points.length - 1]!
+  path += ` L ${last.x} ${last.y}`
+
+  return path
 }
 
 const getMidPoint = (
@@ -968,10 +1034,19 @@ const curveRouter: EdgeRouter = ({ edge, source, target }) => {
 }
 
 const customRouter: EdgeRouter = (input) => linearRouter(input)
+const filletRouter: EdgeRouter = (input) => {
+  const path = stepRouter(input)
+
+  return {
+    ...path,
+    svgPath: buildFilletPath(path.points)
+  }
+}
 
 const EDGE_ROUTERS: Record<string, EdgeRouter> = {
   straight: linearRouter,
   elbow: stepRouter,
+  fillet: filletRouter,
   curve: curveRouter,
   custom: customRouter
 }

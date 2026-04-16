@@ -195,7 +195,12 @@ const createEdgeLabelDragState = (
   const item = ctx.query.edge.item.get(input.edgeId)
   const view = ctx.query.edge.resolved.get(input.edgeId)
   const label = item?.edge.labels?.find((entry) => entry.id === input.labelId)
-  if (!item || !view || !label) {
+  if (
+    !item
+    || !view
+    || !label
+    || !ctx.query.edge.capability(item.edge).editLabel
+  ) {
     return null
   }
 
@@ -305,6 +310,11 @@ export const startEdgeLabelPress = (
     ctx.local.session.selection.replace({
       edgeIds: [pointer.pick.id]
     })
+    return 'handled'
+  }
+
+  const item = ctx.query.edge.item.get(pointer.pick.id)
+  if (!item || !ctx.query.edge.capability(item.edge).editLabel) {
     return 'handled'
   }
 

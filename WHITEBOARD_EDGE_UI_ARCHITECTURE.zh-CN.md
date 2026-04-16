@@ -8,6 +8,8 @@ Edge 的 UI 需要收敛到一个中轴模块，而不是继续分散在 toolbar
 
 - `edge` 的视觉语义只认一套数据模型：`type / color / opacity / width / dash / start / end / textMode / locked`
 - `fillet` 是真实的 `EdgeType`，不是 menu-only preset
+- marker 采用单一 `EdgeMarker` 语义，不做 `parts`，不做组合 builder
+- UI 最终开放的 marker：`arrow / arrow-fill / circle / circle-fill / diamond / diamond-fill / bar / double-bar / circle-arrow / circle-bar`
 - edge line color 使用独立的 `line` palette，不再复用 node border palette
 - React 侧新增单一 owner 模块 `whiteboard/packages/whiteboard-react/src/features/edge/ui`
 - 这个模块集中持有 edge 的 toolbar schema、menu preset、marker/text/type catalog、glyph 绑定、panel 复用
@@ -30,6 +32,7 @@ Edge 的 UI 需要收敛到一个中轴模块，而不是继续分散在 toolbar
 
 - 改 toolbar 会波及 panel、menu、icon switch 多处
 - 新增一个 edge type 或 marker，需要改多层重复代码
+- marker 只要想支持更多样式，就会立刻遇到 enum 爆炸和图标散落问题
 - palette 无法表达“线条颜色”和“节点描边颜色”是两套产品语义
 - toolbox 的 edge menu 和 toolbar 的 edge type 无法保证长期一致
 
@@ -50,8 +53,16 @@ export type EdgeType =
   | (string & {})
 
 export type EdgeMarker =
-  | 'none'
   | 'arrow'
+  | 'arrow-fill'
+  | 'circle'
+  | 'circle-fill'
+  | 'diamond'
+  | 'diamond-fill'
+  | 'bar'
+  | 'double-bar'
+  | 'circle-arrow'
+  | 'circle-bar'
 
 export type EdgeDash =
   | 'solid'
@@ -91,10 +102,52 @@ export interface Edge {
 - `fillet` 必须进入 `EdgeType`
 - `opacity` 必须进入 `EdgeStyle`
 - `locked` 必须进入 `Edge`
+- `start / end` 的空值代表 `none`
+- `none` 只是一种 UI 选择，不单独进入持久化 `EdgeMarker`
+- 不做 `parts` 模型，document 里只保存稳定的 `EdgeMarker` 语义
 - `textMode` 保持 edge 级别，不放到 label 上
 - `preset` 不是 document model 字段，preset 只属于“创建时默认 patch”
 
-### 3.2 Preset 语义
+### 3.2 Marker 语义
+
+marker 不应走这两条路：
+
+```ts
+type EdgeMarker = {
+  parts: readonly string[]
+}
+```
+
+也不建议让用户或业务层直接面对组合 builder。
+
+长期最优模型是：
+
+- core 只认识稳定的 `EdgeMarker`
+- panel 只展示预定义 marker 选项
+- render 统一走单一 resolver，不额外维护 `parts` 语义
+- 如果未来要新增 marker，直接新增 `EdgeMarker` 成员和对应 resolver 规则
+
+最终产品支持这些 marker：
+
+- `none`
+- `arrow`
+- `arrow-fill`
+- `circle`
+- `circle-fill`
+- `diamond`
+- `diamond-fill`
+- `bar`
+- `double-bar`
+- `circle-arrow`
+- `circle-bar`
+
+这样分层以后：
+
+- document 持久化的是产品语义，而不是渲染细节
+- toolbar 和 panel 只认一个 `EdgeMarker`
+- render 只有一套实现，不会再裂成 `preset -> parts -> glyph` 多跳结构
+
+### 3.3 Preset 语义
 
 `whiteboard/packages/whiteboard-editor/src/types/tool.ts`
 
@@ -102,26 +155,34 @@ export interface Edge {
 
 ```ts
 export type EdgePresetKey =
-  | 'edge.straight'
-  | 'edge.elbow'
-  | 'edge.fillet'
-  | 'edge.curve'
+  | 'edge.line'
+  | 'edge.arrow'
+  | 'edge.elbow-arrow'
+  | 'edge.fillet-arrow'
+  | 'edge.curve-arrow'
 ```
 
-每个 preset 都是一个创建 patch，而不是另一个类型系统。
+每个 preset 都是“创建模板”，而不是 `EdgeType` 的别名。
 
 例如：
 
-- `edge.straight` -> `{ type: 'straight', style: { end: 'arrow' } }`
-- `edge.elbow` -> `{ type: 'elbow', style: { end: 'arrow' } }`
-- `edge.fillet` -> `{ type: 'fillet', style: { end: 'arrow' } }`
-- `edge.curve` -> `{ type: 'curve', style: { end: 'arrow' } }`
+- `edge.line` -> `{ type: 'straight', style: { start: undefined, end: undefined } }`
+- `edge.arrow` -> `{ type: 'straight', style: { start: undefined, end: 'arrow' } }`
+- `edge.elbow-arrow` -> `{ type: 'elbow', style: { start: undefined, end: 'arrow' } }`
+- `edge.fillet-arrow` -> `{ type: 'fillet', style: { start: undefined, end: 'arrow' } }`
+- `edge.curve-arrow` -> `{ type: 'curve', style: { start: undefined, end: 'arrow' } }`
 
 toolbox menu 负责挑 preset。
 toolbar 负责编辑真实 edge 字段。
 二者消费同一套 catalog，但语义层级不同，不能混。
 
-### 3.3 Selection presentation
+这也意味着：
+
+- `preset` 和 `type` 不是一一对应关系
+- `straight` 至少应有两个模板：`edge.line` 和 `edge.arrow`
+- 以后如果还要增加“虚线直线箭头”之类，新增的也是 preset，而不是 `EdgeType`
+
+### 3.4 Selection presentation
 
 `whiteboard/packages/whiteboard-editor/src/types/selectionPresentation.ts`
 
@@ -216,7 +277,7 @@ export const EDGE_UI = {
 - `types`：`straight / elbow / fillet / curve`
 - `dashes`：`solid / dashed / dotted`
 - `widths`：line width 的推荐离散值；slider 仍可自由输入
-- `markers`：`none / arrow`
+- `markers`：start/end panel 展示的唯一 marker 目录
 - `textModes`：`horizontal / tangent`
 - `presets`：toolbox edge menu 使用的 preset 列表
 - `toolbar`：selection toolbar 最终布局
@@ -240,13 +301,19 @@ type EdgeTypeOption = {
 type EdgePresetOption = {
   key: EdgePresetKey
   label: string
-  type: EdgeType
   glyph: React.ComponentType<{ className?: string }>
   create: {
     type: EdgeType
     style?: Partial<EdgeStyle>
     textMode?: EdgeTextMode
   }
+}
+
+type EdgeMarkerOption = {
+  key: EdgeMarker | 'none'
+  label: string
+  value?: EdgeMarker
+  glyph: React.ComponentType<{ className?: string }>
 }
 ```
 
@@ -255,6 +322,13 @@ type EdgePresetOption = {
 - 业务代码只允许消费 `EDGE_UI`
 - 不再允许在 `EdgeMenu.tsx`、`EdgePanels.tsx`、toolbar item 文件里声明新的 edge option 数组
 - 图标和语义的绑定只能出现一次
+
+marker 额外规则：
+
+- panel 只渲染 `EDGE_UI.markers`
+- 选项顺序由 `EDGE_UI.markers` 决定
+- `none` 作为一个普通 UI option 存在，但 document 中仍写成 `undefined`
+- 后续如果要加 `double-bar` 或 `circle-arrow`，直接扩展 `EdgeMarker`，不引入第二层 marker 结构
 
 ## 6. 最终 Toolbar 结构
 
@@ -314,6 +388,8 @@ panel 内容：
 panel：
 
 - 复用 `EdgeMarkerPanel side="start"`
+- 直接展示最终 marker 集：`none / arrow / arrow-fill / circle / circle-fill / diamond / diamond-fill / bar / double-bar / circle-arrow / circle-bar`
+- 不做折叠菜单，不做二级 panel
 
 ### 6.4 `edge-marker-swap`
 
@@ -336,6 +412,8 @@ panel：
 panel：
 
 - 复用 `EdgeMarkerPanel side="end"`
+- 直接展示最终 marker 集：`none / arrow / arrow-fill / circle / circle-fill / diamond / diamond-fill / bar / double-bar / circle-arrow / circle-bar`
+- 不做折叠菜单，不做二级 panel
 
 ### 6.6 `edge-add-label`
 
@@ -426,7 +504,7 @@ export const EdgeGeometryPanel = (props: {
 export const EdgeMarkerPanel = (props: {
   side: 'start' | 'end'
   value?: EdgeMarker
-  onChange: (value: EdgeMarker) => void
+  onChange: (value: EdgeMarker | undefined) => void
 }) => ...
 ```
 
@@ -437,6 +515,13 @@ export const EdgeMarkerPanel = (props: {
 - add label 是 direct action
 - text mode 是 direct toggle
 - 这两件事不值得再占一个 panel
+
+`EdgeMarkerPanel` 的额外约束：
+
+- 只消费 `EDGE_UI.markers`
+- 不做“自由组合 builder”
+- 不做 `parts` 派生逻辑
+- `none` 选项点击后直接写 `undefined`
 
 ## 8. Toolbox EdgeMenu 最终设计
 
@@ -452,21 +537,32 @@ EDGE_UI.presets.map((preset) => ...)
 
 最终 preset：
 
-- `edge.straight`
-- `edge.elbow`
-- `edge.fillet`
-- `edge.curve`
+- `edge.line`
+- `edge.arrow`
+- `edge.elbow-arrow`
+- `edge.fillet-arrow`
+- `edge.curve-arrow`
 
 要求：
 
-- 使用同一套 preset glyph
-- glyph 默认带 arrow end，符合工具菜单“即将创建什么”的语义
-- `fillet` 和 `elbow` 在 menu 和 toolbar 中都是真实同级类型
+- 使用 `whiteboard/packages/whiteboard-react/src/icons/menu-line-types` 里的现成图标
+- preset glyph 必须和创建模板一一对应，而不是只对应几何类型
+- 菜单里同时提供“直线无箭头”和“直线箭头”
+- `LinePointingArrow.tsx` 不使用
+
+图标绑定应固定为：
+
+- `edge.line` -> `ArrowLine.tsx`
+- `edge.arrow` -> `Arrow.tsx`
+- `edge.elbow-arrow` -> `ArrowPolyline.tsx`
+- `edge.fillet-arrow` -> `ArrowFillet.tsx`
+- `edge.curve-arrow` -> `ArrowCurve.tsx`
 
 这意味着：
 
-- `whiteboard/packages/whiteboard-editor/src/input/edge/connect/start.ts` 的 preset -> type 映射必须加入 `fillet`
-- `whiteboard/packages/whiteboard-react/src/features/toolbox/model.ts` 的默认 preset 也要允许 `fillet`
+- `whiteboard/packages/whiteboard-editor/src/input/edge/connect/start.ts` 不能只做 `preset -> type` 映射，而要做 `preset -> create patch` 映射
+- `whiteboard/packages/whiteboard-react/src/features/toolbox/model.ts` 的默认 preset 建议改为 `edge.arrow`
+- `whiteboard/packages/whiteboard-react/src/icons/menu-line-types/LinePointingArrow.tsx` 不进入 preset catalog
 
 ## 9. Line Palette 最终设计
 
@@ -528,7 +624,7 @@ export const WHITEBOARD_LINE_COLOR_OPTIONS: readonly WhiteboardColorOption[]
 
 取值直接来自 `colors.md` 的 `LINES`。
 
-## 10. `fillet / opacity / lock` 的实现语义
+## 10. `fillet / opacity / lock / marker` 的实现语义
 
 ### 10.1 `fillet`
 
@@ -581,6 +677,24 @@ export const WHITEBOARD_LINE_COLOR_OPTIONS: readonly WhiteboardColorOption[]
 - hit testing / interaction guard
 - reconnect / route point drag / label drag 的能力判断
 
+### 10.4 `marker`
+
+marker 的长期最优不是做 `parts` 抽象，而是统一 `EdgeMarker -> marker spec` 的 resolver。
+
+核心原则：
+
+- start 和 end 共用同一套 marker layout 逻辑，只是切线方向相反
+- 每个 `EdgeMarker` 只有一个 spec owner
+- 不同 marker 的视觉间距、缩放、命中区都由一个 resolver 统一计算
+- 即使内部有少量几何复用，也不要暴露第二套 marker 数据模型
+
+这意味着：
+
+- render 层要有单一 `resolveEdgeMarkerLayout`
+- `arrow / circle / diamond / bar` 等 glyph 都从同一 catalog 读取
+- 新增一个 `EdgeMarker`，通常只改 core type、catalog 和 render resolver
+- 不允许再出现 `preset -> parts -> glyph` 这种多跳映射链
+
 ## 11. 删除与收敛
 
 以下旧结构应直接删除，不保留兼容：
@@ -604,6 +718,7 @@ export const WHITEBOARD_LINE_COLOR_OPTIONS: readonly WhiteboardColorOption[]
 - 增加 `Edge.locked`
 - 增加 `EdgeStyle.opacity`
 - 增加 `EdgeType.fillet`
+- 扩展 `EdgeMarker`
 - 增加 `WhiteboardPaletteGroup.line`
 - 增加 `WHITEBOARD_LINE_COLOR_OPTIONS`
 
@@ -612,14 +727,16 @@ export const WHITEBOARD_LINE_COLOR_OPTIONS: readonly WhiteboardColorOption[]
 - path/router/render 支持 `fillet`
 - action/query/reduce 支持 `opacity`
 - action/query/interaction 支持 `lock`
+- render/hit/query 支持统一的 endpoint marker resolver
 - selection edge scope 暴露 `lock / opacity`
-- edge create preset 加入 `edge.fillet`
+- edge create 改成 `preset -> create patch`
 
 ### 阶段 3：React edge UI 中轴化
 
 - 新建 `features/edge/ui`
 - 建立 `EDGE_UI`
 - 新建 `EdgeStrokePanel / EdgeGeometryPanel / EdgeMarkerPanel`
+- 建立 `markers`
 - 新建新的 edge toolbar item schema
 - `EdgeMenu` 改成 catalog-driven
 
@@ -635,7 +752,7 @@ export const WHITEBOARD_LINE_COLOR_OPTIONS: readonly WhiteboardColorOption[]
 完成后应满足以下标准：
 
 - 新增一个 edge type，只改 core type 和 `EDGE_UI`
-- 新增一个 edge marker，只改 model 和 `EDGE_UI`
+- 新增一个 edge marker，只改 core model、render resolver 和 `EDGE_UI`
 - toolbox menu 与 selection toolbar 的 edge 语义天然一致
 - edge 颜色和 node border 颜色彻底分离
 - 任何 edge 图标与业务语义的绑定都只能在一个地方找到

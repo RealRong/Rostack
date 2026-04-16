@@ -5,7 +5,7 @@ import type {
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
-import { createMapPatchBuilder } from '@dataview/engine/active/index/builder'
+import { createMapPatchBuilder } from '@dataview/engine/active/shared/patch'
 import {
   buildAggregateState,
   createAggregateBuilder,
@@ -20,6 +20,13 @@ import type {
   IndexReadContext,
   RecordIndex
 } from '@dataview/engine/active/index/contracts'
+import type {
+  ActiveImpact
+} from '@dataview/engine/active/shared/impact'
+import {
+  applyEntryChange,
+  ensureCalculationFieldChange
+} from '@dataview/engine/active/shared/impact'
 import {
   ensureFieldIndexes,
   shouldDropFieldIndex,
@@ -110,7 +117,8 @@ export const ensureCalculationIndex = (
 export const syncCalculationIndex = (
   previous: CalculationIndex,
   context: IndexDeriveContext,
-  records: RecordIndex
+  records: RecordIndex,
+  impact: ActiveImpact
 ): CalculationIndex => {
   if (!context.changed || !previous.fields.size) {
     return previous
@@ -125,6 +133,7 @@ export const syncCalculationIndex = (
     }
 
     if (shouldRebuildFieldIndex(context, fieldId)) {
+      ensureCalculationFieldChange(impact, fieldId).rebuild = true
       fields.set(fieldId, buildFieldCalcIndex(context, records, fieldId))
       return
     }
@@ -152,6 +161,13 @@ export const syncCalculationIndex = (
         return
       }
 
+      applyEntryChange(
+        ensureCalculationFieldChange(impact, fieldId),
+        recordId,
+        previousEntry,
+        nextEntry,
+        sameAggregateEntry
+      )
       if (nextEntry) {
         entries.set(recordId, nextEntry)
       } else {

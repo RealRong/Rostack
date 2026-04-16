@@ -3,6 +3,7 @@ import {
   FRAME_DEFAULT_STROKE,
   FRAME_DEFAULT_STROKE_WIDTH,
   FRAME_DEFAULT_TEXT_COLOR,
+  WHITEBOARD_LINE_DEFAULT_COLOR,
   STICKY_DEFAULT_FILL,
   STICKY_DEFAULT_STROKE,
   STICKY_DEFAULT_STROKE_WIDTH,
@@ -246,6 +247,8 @@ const readEdgeTypeName = (
     ? 'Straight'
     : type === 'elbow'
       ? 'Elbow'
+      : type === 'fillet'
+        ? 'Fillet'
       : type === 'curve'
         ? 'Curve'
         : type
@@ -556,15 +559,22 @@ const readEdgeScope = ({
     edges,
     primaryEdgeId: primaryEdge?.id,
     single: edgeIds.length === 1,
+    lock:
+      edgeIds.length === 0
+        ? 'none'
+        : edges.every((edge) => edge.locked)
+          ? 'all'
+          : edges.some((edge) => edge.locked)
+            ? 'mixed'
+            : 'none',
     type: readUniformValue(edges, (entry) => entry.type),
-    color: readUniformValue(edges, (entry) => entry.style?.color),
-    width: readUniformValue(edges, (entry) => entry.style?.width),
-    dash: readUniformValue(edges, (entry) => entry.style?.dash),
+    color: readUniformValue(edges, (entry) => entry.style?.color ?? WHITEBOARD_LINE_DEFAULT_COLOR),
+    opacity: readUniformValue(edges, (entry) => entry.style?.opacity ?? 1),
+    width: readUniformValue(edges, (entry) => entry.style?.width ?? 2),
+    dash: readUniformValue(edges, (entry) => entry.style?.dash ?? 'solid'),
     start: readUniformValue(edges, (entry) => entry.style?.start),
     end: readUniformValue(edges, (entry) => entry.style?.end),
-    textMode: edgeIds.length === 1
-      ? primaryEdge?.textMode ?? 'horizontal'
-      : undefined,
+    textMode: readUniformValue(edges, (entry) => entry.textMode ?? 'horizontal'),
     labelCount: primaryEdge?.labels?.length ?? 0
   })
 

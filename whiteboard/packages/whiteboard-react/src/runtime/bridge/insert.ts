@@ -40,7 +40,7 @@ export type InsertBridge = {
     at: Point
   }) => InsertResult | undefined
   mindmap: (options: {
-    templateKey?: string
+    presetKey?: string
     at: Point
   }) => InsertResult | undefined
 }
@@ -121,38 +121,41 @@ const insertMindmapPreset = ({
   world: Point
 }): InsertResult | undefined => {
   const result = editor.actions.mindmap.create({
-    rootData: preset.template.root
+    preset: preset.preset,
+    seed: preset.seed
   })
   if (!result.ok) {
     return undefined
   }
 
-  preset.template.children?.forEach((child) => {
-    editor.actions.mindmap.insert(result.data.mindmapId, {
-      kind: 'child',
-      parentId: result.data.rootId,
-      payload: child.data,
-      options: {
-        side: child.side
-      }
-    })
-  })
-
-  const rect = editor.read.node.item.get(result.data.mindmapId)?.rect
-  const width = rect?.width ?? 260
-  const height = rect?.height ?? 180
+  const bbox = editor.read.mindmap.render.get(result.data.mindmapId)?.bbox
+  const rootRect = editor.read.node.item.get(result.data.rootId)?.rect
+  const anchorX = bbox
+    ? bbox.x + bbox.width / 2
+    : rootRect
+      ? rootRect.width / 2
+      : 0
+  const anchorY = bbox
+    ? bbox.y + bbox.height / 2
+    : rootRect
+      ? rootRect.height / 2
+      : 0
 
   editor.actions.mindmap.moveRoot({
     nodeId: result.data.mindmapId,
     position: {
-      x: world.x - width / 2,
-      y: world.y - height / 2
+      x: world.x - anchorX,
+      y: world.y - anchorY
     },
     threshold: 0
   })
 
   return {
-    nodeId: result.data.mindmapId
+    nodeId: result.data.rootId,
+    edit: {
+      nodeId: result.data.rootId,
+      field: 'text'
+    }
   }
 }
 
@@ -240,9 +243,9 @@ const createInsertCommands = ({
         presetKey: catalog.defaults.shape(kind),
         options: { at }
       }),
-    mindmap: ({ templateKey = catalog.defaults.mindmap, at }) =>
+    mindmap: ({ presetKey = catalog.defaults.mindmap, at }) =>
       insertPresetByKey({
-        presetKey: templateKey,
+        presetKey,
         options: { at }
       })
   }

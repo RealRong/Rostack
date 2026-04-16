@@ -13,7 +13,7 @@ import type {
   MindmapMoveSubtreeInput,
   MindmapNodeId,
   MindmapRemoveSubtreeInput,
-  MindmapUpdateNodeInput,
+  MindmapTreePatch,
   NodeId,
   NodeInput,
   NodeUpdateInput,
@@ -208,9 +208,9 @@ export type EngineCommand =
       input: MindmapCloneSubtreeInput
     }
   | {
-      type: 'mindmap.patchNode'
+      type: 'mindmap.patch'
       id: MindmapId
-      input: MindmapUpdateNodeInput
+      input: MindmapTreePatch
     }
 
 export type ReplaceDocumentCommand = Extract<

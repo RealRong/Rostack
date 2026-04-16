@@ -1,8 +1,9 @@
 import type {
   MindmapId,
-  MindmapLayoutOptions,
-  MindmapNodeData,
-  MindmapNodeId
+  MindmapLayoutSpec,
+  MindmapNodeId,
+  MindmapPresetKey,
+  MindmapSeedKey
 } from '@whiteboard/core/mindmap/types'
 
 export type DocumentId = string
@@ -56,6 +57,7 @@ export type BaseNode = {
   layer?: NodeLayer
   zIndex?: number
   groupId?: GroupId
+  mindmapId?: MindmapId
   locked?: boolean
   data?: NodeData
   style?: NodeStyle
@@ -238,13 +240,13 @@ export type EdgeSchema = {
 export type MindmapCreateInput = {
   id?: MindmapId
   rootId?: MindmapNodeId
-  rootData?: MindmapNodeData
+  preset?: MindmapPresetKey
+  seed?: MindmapSeedKey
+  position?: Point
 }
 
-export type MindmapLayoutHint = {
+export type MindmapLayoutHint = Partial<MindmapLayoutSpec> & {
   nodeSize?: Size
-  mode?: 'simple' | 'tidy'
-  options?: MindmapLayoutOptions
   anchorId?: MindmapNodeId
 }
 

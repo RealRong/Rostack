@@ -13,12 +13,13 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import type { ViewType } from '@dataview/core/contracts'
-import { message, meta, type MessageSpec } from '@dataview/meta'
+import { meta, type Token } from '@dataview/meta'
+import { token } from '@shared/i18n'
 
 export interface CreateViewItem {
   id: string
   type: ViewType | string
-  label: MessageSpec
+  label: Token
   Icon: LucideIcon
   enabled: boolean
 }
@@ -27,56 +28,56 @@ const COMING_SOON_ITEMS: readonly CreateViewItem[] = [
   {
     id: 'list',
     type: 'list',
-    label: message('meta.view.list', 'List'),
+    label: token('meta.view.list', 'List'),
     Icon: List,
     enabled: false
   },
   {
     id: 'chart',
     type: 'chart',
-    label: message('meta.view.chart', 'Chart'),
+    label: token('meta.view.chart', 'Chart'),
     Icon: PieChart,
     enabled: false
   },
   {
     id: 'dashboard',
     type: 'dashboard',
-    label: message('meta.view.dashboard', 'Dashboard'),
+    label: token('meta.view.dashboard', 'Dashboard'),
     Icon: LayoutDashboard,
     enabled: false
   },
   {
     id: 'timeline',
     type: 'timeline',
-    label: message('meta.view.timeline', 'Timeline'),
+    label: token('meta.view.timeline', 'Timeline'),
     Icon: Clock3,
     enabled: false
   },
   {
     id: 'feed',
     type: 'feed',
-    label: message('meta.view.feed', 'Feed'),
+    label: token('meta.view.feed', 'Feed'),
     Icon: Newspaper,
     enabled: false
   },
   {
     id: 'map',
     type: 'map',
-    label: message('meta.view.map', 'Map'),
+    label: token('meta.view.map', 'Map'),
     Icon: Map,
     enabled: false
   },
   {
     id: 'calendar',
     type: 'calendar',
-    label: message('meta.view.calendar', 'Calendar'),
+    label: token('meta.view.calendar', 'Calendar'),
     Icon: Calendar,
     enabled: false
   },
   {
     id: 'form',
     type: 'form',
-    label: message('meta.view.form', 'Form'),
+    label: token('meta.view.form', 'Form'),
     Icon: FileText,
     enabled: false
   }
@@ -86,21 +87,21 @@ export const CREATE_VIEW_ITEMS: readonly CreateViewItem[] = [
   {
     id: 'table',
     type: 'table',
-    label: meta.view.get('table').message,
+    label: meta.view.get('table').token,
     Icon: Table2,
     enabled: true
   },
   {
     id: 'kanban',
     type: 'kanban',
-    label: meta.view.get('kanban').message,
+    label: meta.view.get('kanban').token,
     Icon: KanbanSquare,
     enabled: true
   },
   {
     id: 'gallery',
     type: 'gallery',
-    label: meta.view.get('gallery').message,
+    label: meta.view.get('gallery').token,
     Icon: LayoutGrid,
     enabled: true
   },

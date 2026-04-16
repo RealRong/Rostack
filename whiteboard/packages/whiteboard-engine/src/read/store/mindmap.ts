@@ -1,47 +1,21 @@
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
-import type { MindmapLayoutConfig } from '@whiteboard/core/mindmap'
 import type { MindmapItem } from '@whiteboard/engine/types/projection'
 import type { Node, NodeId, SpatialNode } from '@whiteboard/core/types'
 import type { BoardConfig } from '@whiteboard/engine/types/instance'
-import { DEFAULT_TUNING } from '@whiteboard/engine/config'
 import {
-  buildMindmapLines,
   computeMindmapLayout,
-  getMindmapLabel,
-  getMindmapTree
+  getMindmapTree,
+  getSubtreeIds,
+  resolveMindmapRender
 } from '@whiteboard/core/mindmap'
 import type { ReadSnapshot } from '@whiteboard/engine/types/internal/read'
 import { createProjectionRuntime } from '@whiteboard/engine/read/store/projection'
 
-type MindmapTreeCacheKey = {
-  treeId: string
-  rootId: string
-  rootRef: Node
-  treeNodesRef: MindmapItem['tree']['nodes']
-  treeChildrenRef: MindmapItem['tree']['children']
-  rootPositionX: number
-  rootPositionY: number
-  rootWidth: number | undefined
-  rootHeight: number | undefined
-  mode: 'simple' | 'tidy'
-  hGap: number | undefined
-  vGap: number | undefined
-  side: 'left' | 'right' | 'both' | undefined
-  nodeWidth: number
-  nodeHeight: number
-}
-
-type MindmapTreeCacheEntry = {
-  key: MindmapTreeCacheKey
-  tree: MindmapItem
-}
-
 type MindmapProjectionState = {
-  treeCache: Map<NodeId, MindmapTreeCacheEntry>
   entryById: Map<NodeId, MindmapItem>
   ids: readonly NodeId[]
   visibleNodesRef?: readonly Node[]
-  layoutRef?: MindmapLayoutConfig
+  allNodesRef?: readonly Node[]
 }
 
 type MindmapProjectionUpdate = {
@@ -49,24 +23,6 @@ type MindmapProjectionUpdate = {
   idsChanged: boolean
   changedTreeIds: Set<NodeId>
 }
-
-const MINDMAP_CACHE_SCALAR_KEYS = [
-  'treeId',
-  'rootId',
-  'rootRef',
-  'treeNodesRef',
-  'treeChildrenRef',
-  'rootPositionX',
-  'rootPositionY',
-  'rootWidth',
-  'rootHeight',
-  'mode',
-  'hGap',
-  'vGap',
-  'side',
-  'nodeWidth',
-  'nodeHeight'
-] as const satisfies readonly (keyof MindmapTreeCacheKey)[]
 
 const isSameIds = (left: readonly NodeId[], right: readonly NodeId[]) => {
   if (left === right) return true
@@ -77,48 +33,10 @@ const isSameIds = (left: readonly NodeId[], right: readonly NodeId[]) => {
   return true
 }
 
-const toCacheKey = ({
-  tree,
-  root,
-  layout,
-  nodeSize
-}: {
-  tree: MindmapItem['tree']
-  root: SpatialNode
-  layout: MindmapLayoutConfig
-  nodeSize: { width: number; height: number }
-}): MindmapTreeCacheKey => {
-  return {
-  treeId: tree.id,
-  rootId: tree.rootId,
-  rootRef: root,
-  treeNodesRef: tree.nodes,
-  treeChildrenRef: tree.children,
-  rootPositionX: root.position.x,
-  rootPositionY: root.position.y,
-  rootWidth: root.size?.width,
-  rootHeight: root.size?.height,
-  mode: layout.mode === 'tidy' ? 'tidy' : 'simple',
-  hGap: layout.options?.hGap,
-  vGap: layout.options?.vGap,
-  side: layout.options?.side,
-  nodeWidth: nodeSize.width,
-  nodeHeight: nodeSize.height
-  }
-}
-
-const isSameCacheKey = (left: MindmapTreeCacheKey, right: MindmapTreeCacheKey) => {
-  for (const key of MINDMAP_CACHE_SCALAR_KEYS) {
-    if (left[key] !== right[key]) return false
-  }
-  return true
-}
-
 export const createMindmapProjection = (
   initialSnapshot: ReadSnapshot,
   deps: {
     config: BoardConfig
-    mindmapLayout: () => MindmapLayoutConfig
   }
 ) => {
   const config = deps.config
@@ -132,33 +50,42 @@ export const createMindmapProjection = (
   })
   let snapshotRef: ReadSnapshot = initialSnapshot
   let state: MindmapProjectionState = {
-    treeCache: new Map<NodeId, MindmapTreeCacheEntry>(),
     entryById: new Map<NodeId, MindmapItem>(),
     ids: []
   }
 
   const buildTree = (
     root: SpatialNode,
-    tree: MindmapItem['tree'],
-    layout: MindmapLayoutConfig
+    tree: MindmapItem['tree']
   ): MindmapItem => {
-    const computed = computeMindmapLayout(tree, config.mindmapNodeSize, layout)
-    const shiftX = -computed.bbox.x
-    const shiftY = -computed.bbox.y
-    const labels = Object.fromEntries(
-      Object.entries(tree.nodes).map(([nodeId, node]) => [nodeId, getMindmapLabel(node)])
+    const allNodeById = snapshotRef.model.canvas.nodeById
+    const childNodeIds = getSubtreeIds(tree, tree.rootNodeId)
+    const computed = computeMindmapLayout(
+      tree,
+      (nodeId) => {
+        const node = allNodeById.get(nodeId)
+        return {
+          width: Math.max(node?.size?.width ?? config.mindmapNodeSize.width, 1),
+          height: Math.max(node?.size?.height ?? config.mindmapNodeSize.height, 1)
+        }
+      },
+      tree.layout
     )
+    const render = resolveMindmapRender({
+      tree,
+      computed
+    })
 
     return {
       id: root.id,
       node: root,
       tree,
-      layout,
+      layout: tree.layout,
       computed,
-      shiftX,
-      shiftY,
-      lines: buildMindmapLines(tree, computed),
-      labels
+      shiftX: -computed.bbox.x,
+      shiftY: -computed.bbox.y,
+      childNodeIds,
+      connectors: render.connectors
     }
   }
 
@@ -170,8 +97,8 @@ export const createMindmapProjection = (
     current: MindmapProjectionState
   ): MindmapProjectionUpdate => {
     const visibleNodes = snapshotRef.model.nodes.visible
-    const layout = deps.mindmapLayout()
-    if (visibleNodes === current.visibleNodesRef && layout === current.layoutRef) {
+    const allNodes = snapshotRef.model.nodes.all
+    if (visibleNodes === current.visibleNodesRef && allNodes === current.allNodesRef) {
       return {
         nextState: current,
         idsChanged: false,
@@ -182,14 +109,8 @@ export const createMindmapProjection = (
     const roots = visibleNodes.filter(
       (node): node is SpatialNode & { type: 'mindmap' } => node.type === 'mindmap'
     )
-    const resolvedLayout: MindmapLayoutConfig = {
-      mode: layout.mode ?? DEFAULT_TUNING.mindmap.defaultMode,
-      options: layout.options
-    }
-
     const previousIds = current.ids
     const previousById = current.entryById
-    const nextCache = new Map<NodeId, MindmapTreeCacheEntry>()
     const nextById = new Map<NodeId, MindmapItem>()
     const nextIds: NodeId[] = []
     const changedTreeIds = new Set<NodeId>()
@@ -199,29 +120,12 @@ export const createMindmapProjection = (
       const tree = getMindmapTree(root)
       if (!tree) return
 
-      const cacheKey = toCacheKey({
-        tree,
-        root,
-        layout: resolvedLayout,
-        nodeSize: config.mindmapNodeSize
-      })
-      const previous = current.treeCache.get(root.id)
-      const nextTree = previous && isSameCacheKey(previous.key, cacheKey)
-        ? previous.tree
-        : buildTree(root, tree, resolvedLayout)
-      const nextCacheEntry = {
-        key: cacheKey,
-        tree: nextTree
-      }
-
-      nextCache.set(root.id, nextCacheEntry)
+      const nextTree = buildTree(root, tree)
       nextById.set(root.id, nextTree)
       nextIds.push(root.id)
-
       if (previousById.get(root.id) !== nextTree) {
         changedTreeIds.add(root.id)
       }
-
       previousTreeIds.delete(root.id)
     })
 
@@ -233,11 +137,10 @@ export const createMindmapProjection = (
 
     return {
       nextState: {
-        treeCache: nextCache,
         entryById: nextById,
         ids: idsChanged ? nextIds : previousIds,
         visibleNodesRef: visibleNodes,
-        layoutRef: layout
+        allNodesRef: allNodes
       },
       idsChanged,
       changedTreeIds
@@ -257,7 +160,7 @@ export const createMindmapProjection = (
 
   const applyChange = (impact: KernelReadImpact, snapshot: ReadSnapshot) => {
     snapshotRef = snapshot
-    if (!impact.reset && !impact.mindmap.view && !impact.node.list && !impact.node.geometry) {
+    if (!impact.reset && !impact.node.value && !impact.node.list && !impact.node.geometry) {
       return
     }
 

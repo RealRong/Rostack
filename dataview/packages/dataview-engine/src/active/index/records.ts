@@ -143,13 +143,40 @@ export const syncRecordIndex = (
   context: IndexDeriveContext,
   fieldIds: readonly FieldId[] = previous.fieldIds
 ): RecordIndex => {
-  if (!context.changed) {
-    return previous
-  }
-
   const nextFieldIds = sameIds(previous.fieldIds, fieldIds)
     ? previous.fieldIds
     : [...fieldIds]
+  const fieldIdsChanged = previous.fieldIds !== nextFieldIds
+
+  if (!context.changed) {
+    if (!fieldIdsChanged) {
+      return previous
+    }
+
+    const nextFieldSet = new Set(nextFieldIds)
+    const values = createMapPatchBuilder(previous.values)
+
+    previous.fieldIds.forEach(fieldId => {
+      if (!nextFieldSet.has(fieldId)) {
+        values.delete(fieldId)
+      }
+    })
+
+    nextFieldIds.forEach(fieldId => {
+      if (!previous.values.has(fieldId)) {
+        values.set(fieldId, buildValueIndex(context.document, fieldId))
+      }
+    })
+
+    return {
+      ids: previous.ids,
+      fieldIds: nextFieldIds,
+      order: previous.order,
+      byId: previous.byId,
+      values: values.finish(),
+      rev: previous.rev + 1
+    }
+  }
 
   if (shouldRebuildRecordIndex(context)) {
     return buildRecordIndex(context, nextFieldIds, previous.rev + 1)
@@ -160,7 +187,6 @@ export const syncRecordIndex = (
     return buildRecordIndex(context, nextFieldIds, previous.rev + 1)
   }
 
-  const fieldIdsChanged = previous.fieldIds !== nextFieldIds
   const orderChanged = !sameIds(previous.ids, context.document.records.order)
   const nextOrder = orderChanged
     ? createOrderIndex(context.document.records.order)

@@ -2,79 +2,43 @@ import {
   createKeyedDerivedStore,
   read as readValue,
   sameRect,
-  sameOptionalRect,
-  type KeyedReadStore,
-  type ReadStore
+  type KeyedReadStore
 } from '@shared/core'
-import type {
-  MindmapLine,
-  MindmapNodeId,
-  NodeId,
-  Point,
-  Rect
-} from '@whiteboard/core/types'
+import type { NodeId, Rect } from '@whiteboard/core/types'
 import type { EngineRead, MindmapItem } from '@whiteboard/engine'
-import type { MindmapDragFeedback } from '@whiteboard/editor/local/feedback/types'
+import type { MindmapRenderConnector } from '@whiteboard/core/mindmap/render'
 
-export type MindmapNodeView = {
-  id: MindmapNodeId
-  rect: Rect
-  label: string
-  dragActive: boolean
-  attachTarget: boolean
-  showActions: boolean
-  dragPreviewActive: boolean
-}
-
-export type MindmapView = {
+export type MindmapRenderView = {
   treeId: NodeId
   rootId: NodeId
-  rootPosition: Point
   tree: MindmapItem['tree']
-  layout: MindmapItem['layout']
   bbox: Rect
-  shiftX: number
-  shiftY: number
-  lines: MindmapItem['lines']
-  nodes: readonly MindmapNodeView[]
-  ghost?: Rect
-  connectionLine?: MindmapLine
-  insertLine?: MindmapLine
+  childNodeIds: readonly NodeId[]
+  connectors: readonly MindmapRenderConnector[]
 }
 
 export type MindmapPresentationRead = EngineRead['mindmap'] & {
   tree: KeyedReadStore<NodeId, MindmapItem['tree'] | undefined>
-  rootPosition: KeyedReadStore<NodeId, Point | undefined>
-  view: KeyedReadStore<NodeId, MindmapView | undefined>
+  render: KeyedReadStore<NodeId, MindmapRenderView | undefined>
 }
 
-const isMindmapNodeViewEqual = (
-  left: MindmapNodeView,
-  right: MindmapNodeView
+const isConnectorEqual = (
+  left: MindmapRenderConnector,
+  right: MindmapRenderConnector
 ) => (
   left.id === right.id
-  && sameRect(left.rect, right.rect)
-  && left.label === right.label
-  && left.dragActive === right.dragActive
-  && left.attachTarget === right.attachTarget
-  && left.showActions === right.showActions
-  && left.dragPreviewActive === right.dragPreviewActive
+  && left.parentId === right.parentId
+  && left.childId === right.childId
+  && left.path === right.path
+  && left.style.color === right.style.color
+  && left.style.line === right.style.line
+  && left.style.width === right.style.width
+  && left.style.stroke === right.style.stroke
 )
 
-const isLineEqual = (
-  left: MindmapLine | MindmapView['lines'][number],
-  right: MindmapLine | MindmapView['lines'][number]
-) => (
-  ('id' in left ? left.id : undefined) === ('id' in right ? right.id : undefined)
-  && left.x1 === right.x1
-  && left.y1 === right.y1
-  && left.x2 === right.x2
-  && left.y2 === right.y2
-)
-
-const isMindmapViewEqual = (
-  left: MindmapView | undefined,
-  right: MindmapView | undefined
+const isMindmapRenderViewEqual = (
+  left: MindmapRenderView | undefined,
+  right: MindmapRenderView | undefined
 ) => (
   left === right
   || (
@@ -82,120 +46,47 @@ const isMindmapViewEqual = (
     && right !== undefined
     && left.treeId === right.treeId
     && left.rootId === right.rootId
-    && left.rootPosition.x === right.rootPosition.x
-    && left.rootPosition.y === right.rootPosition.y
     && left.tree === right.tree
-    && left.layout === right.layout
     && sameRect(left.bbox, right.bbox)
-    && left.shiftX === right.shiftX
-    && left.shiftY === right.shiftY
-    && left.lines.length === right.lines.length
-    && left.lines.every((line, index) => isLineEqual(line, right.lines[index]!))
-    && left.nodes.length === right.nodes.length
-    && left.nodes.every((node, index) => isMindmapNodeViewEqual(node, right.nodes[index]!))
-    && sameOptionalRect(left.ghost, right.ghost)
-    && left.connectionLine?.x1 === right.connectionLine?.x1
-    && left.connectionLine?.y1 === right.connectionLine?.y1
-    && left.connectionLine?.x2 === right.connectionLine?.x2
-    && left.connectionLine?.y2 === right.connectionLine?.y2
-    && left.insertLine?.x1 === right.insertLine?.x1
-    && left.insertLine?.y1 === right.insertLine?.y1
-    && left.insertLine?.x2 === right.insertLine?.x2
-    && left.insertLine?.y2 === right.insertLine?.y2
+    && left.childNodeIds.length === right.childNodeIds.length
+    && left.childNodeIds.every((nodeId, index) => nodeId === right.childNodeIds[index])
+    && left.connectors.length === right.connectors.length
+    && left.connectors.every((connector, index) => isConnectorEqual(connector, right.connectors[index]!))
   )
 )
 
-const toMindmapView = (
+const toMindmapRenderView = (
   treeId: NodeId,
-  treeView: MindmapItem,
-  drag: MindmapDragFeedback | undefined
-): MindmapView | undefined => {
-  const root = treeView.node
-  if (!root.position) {
-    return undefined
-  }
-
-  const dragPreview = drag?.treeId === treeId ? drag.preview : undefined
-
-  return {
-    treeId,
-    rootId: root.id,
-    rootPosition: root.position,
-    tree: treeView.tree,
-    layout: treeView.layout,
-    bbox: treeView.computed.bbox,
-    shiftX: treeView.shiftX,
-    shiftY: treeView.shiftY,
-    lines: treeView.lines,
-    nodes: Object.entries(treeView.computed.node).map(([id, rect]) => ({
-      id,
-      rect,
-      label: treeView.labels[id] ?? 'mindmap',
-      dragActive: dragPreview?.nodeId === id,
-      attachTarget: dragPreview?.drop?.type === 'attach' && dragPreview.drop.targetId === id,
-      showActions: !dragPreview,
-      dragPreviewActive: Boolean(dragPreview)
-    })),
-    ghost: dragPreview?.ghost,
-    connectionLine: dragPreview?.drop?.connectionLine,
-    insertLine: dragPreview?.drop?.insertLine
-  }
-}
-
-export const createMindmapViewStore = ({
-  item,
-  drag
-}: {
-  item: EngineRead['mindmap']['item']
-  drag: ReadStore<MindmapDragFeedback | undefined>
-}): KeyedReadStore<NodeId, MindmapView | undefined> => createKeyedDerivedStore({
-  get: (treeId: NodeId) => {
-    const treeView = readValue(item, treeId)
-    if (!treeView) {
-      return undefined
-    }
-
-    return toMindmapView(
-      treeId,
-      treeView,
-      readValue(drag)
-    )
-  },
-  isEqual: isMindmapViewEqual
+  treeView: MindmapItem
+): MindmapRenderView => ({
+  treeId,
+  rootId: treeView.tree.rootNodeId,
+  tree: treeView.tree,
+  bbox: treeView.computed.bbox,
+  childNodeIds: treeView.childNodeIds,
+  connectors: treeView.connectors
 })
 
 export const createMindmapRead = ({
-  read,
-  drag
+  read
 }: {
   read: EngineRead['mindmap']
-  drag: ReadStore<MindmapDragFeedback | undefined>
 }): MindmapPresentationRead => {
   const tree: MindmapPresentationRead['tree'] = createKeyedDerivedStore({
     get: (treeId: NodeId) => readValue(read.item, treeId)?.tree,
     isEqual: (left, right) => left === right
   })
-  const rootPosition: MindmapPresentationRead['rootPosition'] = createKeyedDerivedStore({
-    get: (treeId: NodeId) => readValue(read.item, treeId)?.node.position,
-    isEqual: (left, right) => (
-      left === right
-      || (
-        left !== undefined
-        && right !== undefined
-        && left.x === right.x
-        && left.y === right.y
-      )
-    )
-  })
-  const view = createMindmapViewStore({
-    item: read.item,
-    drag
+  const render: MindmapPresentationRead['render'] = createKeyedDerivedStore({
+    get: (treeId: NodeId) => {
+      const treeView = readValue(read.item, treeId)
+      return treeView ? toMindmapRenderView(treeId, treeView) : undefined
+    },
+    isEqual: isMindmapRenderViewEqual
   })
 
   return {
     ...read,
     tree,
-    rootPosition,
-    view
+    render
   }
 }

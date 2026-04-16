@@ -8,6 +8,9 @@ import {
   hasActiveViewImpact,
   hasFieldSchemaAspect
 } from '@dataview/core/commit/impact'
+import {
+  sameOrder
+} from '@shared/core'
 import { viewCalcFields } from '@dataview/core/view'
 import type { IndexState } from '@dataview/engine/active/index/contracts'
 import type {
@@ -50,9 +53,11 @@ const resolveSummaryAction = (input: {
   view: View
   previous?: SummaryState
   previousSections?: SectionState
+  sections: SectionState
   sectionsAction: DeriveAction
 }): DeriveAction => {
   const commit = input.impact.commit
+  const calcFields = viewCalcFields(input.view)
 
   if (
     !input.previous
@@ -63,11 +68,16 @@ const resolveSummaryAction = (input: {
     return 'rebuild'
   }
 
+  if (!calcFields.size) {
+    return sameOrder(input.previousSections.order, input.sections.order)
+      ? 'reuse'
+      : 'sync'
+  }
+
   if (input.sectionsAction === 'rebuild' || input.impact.sections?.rebuild) {
     return 'rebuild'
   }
 
-  const calcFields = viewCalcFields(input.view)
   const groupField = input.view.group?.field
   const viewChange = getViewChange(commit, input.activeViewId)
 
@@ -84,7 +94,10 @@ const resolveSummaryAction = (input: {
     return 'rebuild'
   }
 
-  if (input.sectionsAction === 'sync' || hasMembershipChanges(input.impact.sections)) {
+  if (
+    !sameOrder(input.previousSections.order, input.sections.order)
+    || hasMembershipChanges(input.impact.sections)
+  ) {
     return 'sync'
   }
 
@@ -122,27 +135,30 @@ export const runSummaryStage = (input: {
     view: input.view,
     previous: input.previous,
     previousSections: input.previousSections,
+    sections: input.sections,
     sectionsAction: input.sectionsAction
   })
   const stage = runSnapshotStage({
     action,
     previousState: input.previous,
     previousPublished: input.previousPublished,
-    derive: () => syncSummaryState({
-      previous: input.previous,
-      sections: input.sections,
-      resolver: createSectionMembershipResolver({
-        query: input.query,
-        view: input.view,
-        sectionGroup: input.view.group
-          ? readSectionGroupIndex(input.index.group, input.view.group)
-          : undefined
-      }),
-      view: input.view,
-      index: input.index,
-      impact: input.impact,
-      action,
-    }),
+    derive: () => action === 'reuse' && input.previous
+      ? input.previous
+      : syncSummaryState({
+          previous: input.previous,
+          sections: input.sections,
+          resolver: createSectionMembershipResolver({
+            query: input.query,
+            view: input.view,
+            sectionGroup: input.view.group
+              ? readSectionGroupIndex(input.index.group, input.view.group)
+              : undefined
+          }),
+          view: input.view,
+          index: input.index,
+          impact: input.impact,
+          action,
+        }),
     canReusePublished: stageInput => (
       stageInput.state === input.previous
       && stageInput.previousPublished !== undefined

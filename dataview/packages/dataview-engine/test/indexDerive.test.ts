@@ -223,7 +223,7 @@ test('engine.active.index sync patches search/group/sort/calculation on record v
   assert.equal(statusCalc?.global.option?.counts.get('done'), 2)
 })
 
-test('engine.active.resolveViewDemand skips idle search/sort indexes while keeping display record values', () => {
+test('engine.active.resolveViewDemand provisions idle search substrate and shared record values', () => {
   const view = createTableView()
   const document = createDocument({
     activeViewId: view.id,
@@ -238,15 +238,15 @@ test('engine.active.resolveViewDemand skips idle search/sort indexes while keepi
   const demand = resolveViewDemand(createStaticDocumentReadContext(document), view.id)
   const index = createIndexState(document, demand).state
 
-  assert.equal(demand.search, undefined)
+  assert.deepEqual(demand.search, { all: true })
   assert.equal(demand.sortFields, undefined)
-  assert.equal(index.search.all, undefined)
+  assert.equal(index.search.all?.texts.size, 3)
   assert.equal(index.search.fields.size, 0)
   assert.equal(index.sort.fields.size, 0)
-  assert.equal(index.records.values.size, 0)
+  assert.deepEqual(Array.from(index.records.values.keys()), [FIELD_POINTS, FIELD_STATUS, TITLE_FIELD_ID])
 })
 
-test('engine.active.resolveViewDemand requests search and numeric sort indexes only when query/filter need them', () => {
+test('engine.active.resolveViewDemand unions search and numeric filter substrates into shared record values', () => {
   const view = createTableView({
     search: {
       query: 'task'
@@ -277,7 +277,7 @@ test('engine.active.resolveViewDemand requests search and numeric sort indexes o
   assert.deepEqual(demand.sortFields, [FIELD_POINTS])
   assert.equal(index.search.all?.texts.size, 3)
   assert.deepEqual(Array.from(index.sort.fields.keys()), [FIELD_POINTS])
-  assert.deepEqual(Array.from(index.records.values.keys()), [FIELD_POINTS])
+  assert.deepEqual(Array.from(index.records.values.keys()), [FIELD_POINTS, FIELD_STATUS, TITLE_FIELD_ID])
 })
 
 test('engine.active.index sync rebuilds only touched field semantics on schema changes', () => {
@@ -331,7 +331,11 @@ test('engine.active.index sync rebuilds only touched field semantics on schema c
   if (statusCalcResult.kind !== 'distribution') {
     throw new Error('Expected distribution result for status option counts.')
   }
-  assert.deepEqual(statusCalcResult.items.map(item => item.label), ['Todo', 'Doing', 'Finished'])
+  assert.deepEqual(statusCalcResult.items.map(item => item.value), [
+    'Todo',
+    'Doing',
+    'Finished'
+  ])
 })
 
 test('engine.active calculations support select and multiSelect option distributions', () => {
@@ -453,7 +457,10 @@ test('engine.active calculations support select and multiSelect option distribut
   }
   assert.equal(priorityResult.denominator, 3)
   assert.deepEqual(priorityResult.items.map(item => item.key), ['high', 'low'])
-  assert.deepEqual(priorityResult.items.map(item => item.label), ['High', 'Low'])
+  assert.deepEqual(priorityResult.items.map(item => item.value), [
+    'High',
+    'Low'
+  ])
   assert.deepEqual(priorityResult.items.map(item => item.percent), [2 / 3, 1 / 3])
 
   assert.equal(tagResult.kind, 'distribution')
@@ -462,7 +469,11 @@ test('engine.active calculations support select and multiSelect option distribut
   }
   assert.equal(tagResult.denominator, 5)
   assert.deepEqual(tagResult.items.map(item => item.key), ['bug', 'backend', 'frontend'])
-  assert.deepEqual(tagResult.items.map(item => item.label), ['Bug', 'Backend', 'Frontend'])
+  assert.deepEqual(tagResult.items.map(item => item.value), [
+    'Bug',
+    'Backend',
+    'Frontend'
+  ])
   assert.deepEqual(tagResult.items.map(item => item.count), [2, 2, 1])
 })
 

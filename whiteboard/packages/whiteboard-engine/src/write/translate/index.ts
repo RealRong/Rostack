@@ -79,7 +79,7 @@ export const translateWrite = <C extends TranslateCommand>(
     case 'mindmap.move':
     case 'mindmap.remove':
     case 'mindmap.clone':
-    case 'mindmap.patchNode':
+    case 'mindmap.patch':
       return translateMindmap(command as MindmapCommand, ctx) as TranslateResult<CommandOutput<C>>
     default:
       return invalid('Unsupported write action domain.') as TranslateResult<CommandOutput<C>>

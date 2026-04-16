@@ -71,10 +71,6 @@ export type KernelReadImpact = {
     list: boolean
     value: boolean
   }
-  mindmap: {
-    ids: readonly NodeId[]
-    view: boolean
-  }
 }
 
 export type KernelReduceData = {

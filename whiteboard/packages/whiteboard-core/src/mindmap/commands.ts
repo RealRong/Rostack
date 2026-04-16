@@ -1,45 +1,74 @@
 import { createId } from '@whiteboard/core/id'
 import { err, ok } from '@whiteboard/core/result'
-import { applyPathMutation } from '@whiteboard/core/utils/recordMutation'
+import {
+  createMindmapTree
+} from '@whiteboard/core/mindmap/schema'
 import type {
+  MindmapBranchStyle,
   MindmapCommandResult,
   MindmapCloneSubtreeInput,
-  MindmapDataMutation,
+  MindmapCreateInput,
   MindmapIdGenerator,
   MindmapInsertInput,
   MindmapMoveSubtreeInput,
-  MindmapNode,
-  MindmapNodeData,
   MindmapNodeId,
-  MindmapNodeUpdateInput,
   MindmapRemoveSubtreeInput,
   MindmapTree,
-  MindmapUpdateNodeInput
+  MindmapTreePatch
 } from '@whiteboard/core/mindmap/types'
-import type { MindmapInsertPayload } from '@whiteboard/core/types/mindmap'
 
 type TreeDraft = MindmapTree
 
-const createFailure = (message: string) => err('invalid', message)
+const DEFAULT_BRANCH: MindmapBranchStyle = {
+  color: 'var(--ui-text-primary)',
+  line: 'curve',
+  width: 2,
+  stroke: 'solid'
+}
 
+const createFailure = (message: string) => err('invalid', message)
 const getDefaultNodeId = () => createId('mnode')
-const getDefaultTreeId = () => createId('mindmap')
+
+const cloneBranch = (
+  branch: MindmapBranchStyle
+): MindmapBranchStyle => ({
+  ...branch
+})
 
 const cloneTree = (tree: MindmapTree): TreeDraft => ({
   ...tree,
-  nodes: { ...tree.nodes },
-  children: Object.fromEntries(Object.entries(tree.children).map(([id, list]) => [id, [...list]])),
+  nodes: Object.fromEntries(
+    Object.entries(tree.nodes).map(([id, node]) => [
+      id,
+      {
+        ...node,
+        branch: cloneBranch(node.branch)
+      }
+    ])
+  ),
+  children: Object.fromEntries(
+    Object.entries(tree.children).map(([id, list]) => [id, [...list]])
+  ),
+  layout: {
+    ...tree.layout
+  },
   meta: tree.meta ? { ...tree.meta } : undefined
 })
 
-const ensureChildren = (tree: TreeDraft, id: MindmapNodeId) => {
+const ensureChildren = (
+  tree: TreeDraft,
+  id: MindmapNodeId
+) => {
   if (!tree.children[id]) {
     tree.children[id] = []
   }
   return tree.children[id]
 }
 
-const ensureNode = (tree: MindmapTree, id: MindmapNodeId) => tree.nodes[id]
+const ensureNode = (
+  tree: MindmapTree,
+  id: MindmapNodeId
+) => tree.nodes[id]
 
 const updateMeta = (tree: TreeDraft, timestamp = new Date().toISOString()) => {
   if (!tree.meta) {
@@ -50,14 +79,10 @@ const updateMeta = (tree: TreeDraft, timestamp = new Date().toISOString()) => {
   }
 }
 
-const applyDataMutation = (
-  current: unknown,
-  mutation: MindmapDataMutation
-): { ok: true; value: unknown } | { ok: false; message: string } => {
-  return applyPathMutation(current, mutation)
-}
-
-const collectSubtreeIds = (tree: MindmapTree, rootId: MindmapNodeId) => {
+const collectSubtreeIds = (
+  tree: MindmapTree,
+  rootId: MindmapNodeId
+) => {
   const result: MindmapNodeId[] = []
   const stack: MindmapNodeId[] = [rootId]
   const visited = new Set<MindmapNodeId>()
@@ -66,16 +91,21 @@ const collectSubtreeIds = (tree: MindmapTree, rootId: MindmapNodeId) => {
     if (visited.has(current)) continue
     visited.add(current)
     result.push(current)
-    const children = tree.children[current] ?? []
-    children.forEach((childId) => stack.push(childId))
+    ;(tree.children[current] ?? []).forEach((childId) => stack.push(childId))
   }
   return result
 }
 
-const isAncestorOf = (tree: MindmapTree, ancestorId: MindmapNodeId, nodeId: MindmapNodeId) => {
+const isAncestorOf = (
+  tree: MindmapTree,
+  ancestorId: MindmapNodeId,
+  nodeId: MindmapNodeId
+) => {
   let current = tree.nodes[nodeId]?.parentId
   while (current) {
-    if (current === ancestorId) return true
+    if (current === ancestorId) {
+      return true
+    }
     current = tree.nodes[current]?.parentId
   }
   return false
@@ -99,57 +129,71 @@ const normalizeMoveIndex = ({
   return Math.max(0, requestedIndex - 1)
 }
 
-export const createMindmap = (
-  options: {
-    id?: MindmapTree['id']
-    rootId?: MindmapNodeId
-    rootData?: MindmapNodeData
-    idGenerator?: MindmapIdGenerator
-  } = {}
-): MindmapTree => {
-  const createTreeId = options.idGenerator?.treeId ?? getDefaultTreeId
-  const createNodeId = options.idGenerator?.nodeId ?? getDefaultNodeId
-  const id = options.id ?? createTreeId()
-  const rootId = options.rootId ?? createNodeId()
-  const rootNode: MindmapNode = {
-    id: rootId,
-    data: options.rootData ?? { kind: 'text', text: '' }
-  }
-  const now = new Date().toISOString()
-  return {
-    id,
-    rootId,
-    nodes: { [rootId]: rootNode },
-    children: { [rootId]: [] },
-    meta: { createdAt: now, updatedAt: now }
-  }
+const cloneTreeNode = (
+  tree: MindmapTree,
+  sourceId: MindmapNodeId,
+  overrides: Partial<MindmapTree['nodes'][MindmapNodeId]> = {}
+) => ({
+  parentId: overrides.parentId ?? tree.nodes[sourceId]?.parentId,
+  side: overrides.side ?? tree.nodes[sourceId]?.side,
+  collapsed: overrides.collapsed ?? tree.nodes[sourceId]?.collapsed,
+  branch: cloneBranch(overrides.branch ?? tree.nodes[sourceId]?.branch ?? DEFAULT_BRANCH)
+})
+
+const resolveInsertedBranch = (
+  tree: MindmapTree,
+  parentId: MindmapNodeId,
+  side?: 'left' | 'right'
+) => {
+  const siblings = tree.children[parentId] ?? []
+  const siblingId = side
+    ? siblings.find((childId) => tree.nodes[childId]?.side === side)
+    : siblings[0]
+  return cloneBranch(
+    (siblingId ? tree.nodes[siblingId]?.branch : undefined)
+      ?? tree.nodes[parentId]?.branch
+      ?? DEFAULT_BRANCH
+  )
 }
+
+export const createMindmap = (
+  input: MindmapCreateInput = {},
+  options?: {
+    idGenerator?: MindmapIdGenerator
+  }
+): MindmapTree => createMindmapTree({
+  preset: input.preset,
+  seed: input.seed,
+  rootId: input.rootId,
+  idGenerator: options?.idGenerator
+})
 
 export const addChild = (
   tree: MindmapTree,
   parentId: MindmapNodeId,
-  payload?: MindmapNodeData | MindmapInsertPayload,
-  options?: { index?: number; side?: 'left' | 'right'; idGenerator?: MindmapIdGenerator }
+  _payload?: unknown,
+  options?: {
+    index?: number
+    side?: 'left' | 'right'
+    idGenerator?: MindmapIdGenerator
+  }
 ): MindmapCommandResult<{ nodeId: MindmapNodeId }> => {
   if (!ensureNode(tree, parentId)) {
     return createFailure(`Parent node ${parentId} not found.`)
   }
+
   const createNodeId = options?.idGenerator?.nodeId ?? getDefaultNodeId
   const nodeId = createNodeId()
   if (tree.nodes[nodeId]) {
     return createFailure(`Node ${nodeId} already exists.`)
   }
+
   const draft = cloneTree(tree)
-  const parent = draft.nodes[parentId]
-  const node: MindmapNode = {
-    id: nodeId,
-    parentId: parentId,
-    data: payload
+  draft.nodes[nodeId] = {
+    parentId,
+    side: parentId === draft.rootNodeId ? (options?.side ?? 'right') : undefined,
+    branch: resolveInsertedBranch(draft, parentId, options?.side)
   }
-  if (parentId === draft.rootId) {
-    node.side = options?.side ?? 'right'
-  }
-  draft.nodes[nodeId] = node
   ensureChildren(draft, nodeId)
   const children = ensureChildren(draft, parentId)
   const index = options?.index
@@ -158,82 +202,20 @@ export const addChild = (
   } else {
     children.splice(index, 0, nodeId)
   }
-  updateMeta(draft)
-  return ok({ tree: draft, nodeId })
-}
-
-export const addSibling = (
-  tree: MindmapTree,
-  nodeId: MindmapNodeId,
-  position: 'before' | 'after',
-  payload?: MindmapNodeData | MindmapInsertPayload,
-  options?: { idGenerator?: MindmapIdGenerator }
-): MindmapCommandResult<{ nodeId: MindmapNodeId }> => {
-  const node = ensureNode(tree, nodeId)
-  if (!node) return createFailure(`Node ${nodeId} not found.`)
-  if (!node.parentId) return createFailure('Root node has no siblings.')
-  const parentId = node.parentId
-  const children = tree.children[parentId] ?? []
-  const index = children.indexOf(nodeId)
-  if (index < 0) return createFailure(`Node ${nodeId} not found in parent children.`)
-  const insertIndex = position === 'before' ? index : index + 1
-  const side = parentId === tree.rootId ? node.side : undefined
-  return addChild(tree, parentId, payload, { index: insertIndex, side, idGenerator: options?.idGenerator })
-}
-
-export const insertParent = (
-  tree: MindmapTree,
-  nodeId: MindmapNodeId,
-  payload?: MindmapNodeData | MindmapInsertPayload,
-  options?: { side?: 'left' | 'right'; idGenerator?: MindmapIdGenerator }
-): MindmapCommandResult<{ nodeId: MindmapNodeId }> => {
-  if (nodeId === tree.rootId) return createFailure('Root node cannot be wrapped.')
-  const node = ensureNode(tree, nodeId)
-  if (!node) return createFailure(`Node ${nodeId} not found.`)
-  const parentId = node.parentId
-  if (!parentId) return createFailure('Node parent missing.')
-
-  const children = tree.children[parentId] ?? []
-  const index = children.indexOf(nodeId)
-  if (index < 0) return createFailure(`Node ${nodeId} not found in parent children.`)
-
-  const createNodeId = options?.idGenerator?.nodeId ?? getDefaultNodeId
-  const insertedNodeId = createNodeId()
-  if (tree.nodes[insertedNodeId]) {
-    return createFailure(`Node ${insertedNodeId} already exists.`)
-  }
-
-  const draft = cloneTree(tree)
-  const nextParent: MindmapNode = {
-    id: insertedNodeId,
-    parentId,
-    data: payload
-  }
-  if (parentId === draft.rootId) {
-    nextParent.side = options?.side ?? node.side ?? 'right'
-  }
-
-  draft.nodes[insertedNodeId] = nextParent
-  draft.children[insertedNodeId] = [nodeId]
-  ensureChildren(draft, parentId)[index] = insertedNodeId
-
-  const nextNode = {
-    ...draft.nodes[nodeId],
-    parentId: insertedNodeId
-  }
-  if (nextNode.side) {
-    delete nextNode.side
-  }
-  draft.nodes[nodeId] = nextNode
 
   updateMeta(draft)
-  return ok({ tree: draft, nodeId: insertedNodeId })
+  return ok({
+    tree: draft,
+    nodeId
+  })
 }
 
 export const insertNode = (
   tree: MindmapTree,
   input: MindmapInsertInput,
-  options?: { idGenerator?: MindmapIdGenerator }
+  options?: {
+    idGenerator?: MindmapIdGenerator
+  }
 ): MindmapCommandResult<{ nodeId: MindmapNodeId }> => {
   switch (input.kind) {
     case 'child':
@@ -242,23 +224,69 @@ export const insertNode = (
         side: input.options?.side,
         idGenerator: options?.idGenerator
       })
-    case 'sibling':
-      return addSibling(
-        tree,
-        input.nodeId,
-        input.position,
-        input.payload,
-        {
-          idGenerator: options?.idGenerator
-        }
-      )
-    case 'parent':
-      return insertParent(tree, input.nodeId, input.payload, {
-        side: input.options?.side,
+    case 'sibling': {
+      const target = tree.nodes[input.nodeId]
+      const parentId = target?.parentId
+      if (!target || !parentId) {
+        return createFailure(`Node ${input.nodeId} cannot create a sibling.`)
+      }
+      const siblings = tree.children[parentId] ?? []
+      const currentIndex = siblings.indexOf(input.nodeId)
+      const index = currentIndex < 0
+        ? undefined
+        : input.position === 'before'
+          ? currentIndex
+          : currentIndex + 1
+      return addChild(tree, parentId, input.payload, {
+        index,
+        side: target.side,
         idGenerator: options?.idGenerator
       })
+    }
+    case 'parent': {
+      if (input.nodeId === tree.rootNodeId) {
+        return createFailure('Root node cannot be wrapped.')
+      }
+      const target = tree.nodes[input.nodeId]
+      const parentId = target?.parentId
+      if (!target || !parentId) {
+        return createFailure(`Node ${input.nodeId} not found.`)
+      }
+      const createNodeId = options?.idGenerator?.nodeId ?? getDefaultNodeId
+      const nodeId = createNodeId()
+      if (tree.nodes[nodeId]) {
+        return createFailure(`Node ${nodeId} already exists.`)
+      }
+
+      const draft = cloneTree(tree)
+      const siblings = ensureChildren(draft, parentId)
+      const siblingIndex = siblings.indexOf(input.nodeId)
+      if (siblingIndex < 0) {
+        return createFailure(`Node ${input.nodeId} is detached.`)
+      }
+
+      draft.nodes[nodeId] = {
+        parentId,
+        side: parentId === draft.rootNodeId
+          ? (target.side ?? input.options?.side ?? 'right')
+          : undefined,
+        branch: resolveInsertedBranch(draft, parentId, target.side)
+      }
+      ensureChildren(draft, nodeId).push(input.nodeId)
+      siblings.splice(siblingIndex, 1, nodeId)
+      draft.nodes[input.nodeId] = {
+        ...draft.nodes[input.nodeId]!,
+        parentId: nodeId,
+        side: undefined
+      }
+      updateMeta(draft)
+      return ok({
+        tree: draft,
+        nodeId
+      })
+    }
     default:
-      return createFailure('Unsupported insert input.')
+      return createFailure('Unsupported insert mode.')
   }
 }
 
@@ -266,186 +294,177 @@ export const moveSubtree = (
   tree: MindmapTree,
   input: MindmapMoveSubtreeInput
 ): MindmapCommandResult => {
-  const {
-    nodeId,
-    parentId: newParentId,
-    index,
-    side
-  } = input
-  if (nodeId === tree.rootId) return createFailure('Root node cannot be moved.')
-  const node = ensureNode(tree, nodeId)
-  if (!node) return createFailure(`Node ${nodeId} not found.`)
-  if (!ensureNode(tree, newParentId)) return createFailure(`Parent node ${newParentId} not found.`)
-  if (isAncestorOf(tree, nodeId, newParentId)) return createFailure('Cannot move node into its own subtree.')
+  if (input.nodeId === tree.rootNodeId) {
+    return createFailure('Root node cannot be moved as a subtree.')
+  }
+  const node = tree.nodes[input.nodeId]
+  const nextParent = tree.nodes[input.parentId]
+  if (!node || !nextParent) {
+    return createFailure('Mindmap move target not found.')
+  }
+  if (isAncestorOf(tree, input.nodeId, input.parentId)) {
+    return createFailure('A node cannot move into its own subtree.')
+  }
+  const prevParentId = node.parentId
+  if (!prevParentId) {
+    return createFailure('Mindmap node parent missing.')
+  }
 
   const draft = cloneTree(tree)
-  const prevParentId = node.parentId
-  if (!prevParentId) return createFailure('Node parent missing.')
-  const prevChildren = draft.children[prevParentId] ?? []
-  const prevIndex = prevChildren.indexOf(nodeId)
-  if (prevIndex >= 0) {
-    prevChildren.splice(prevIndex, 1)
+  const prevChildren = ensureChildren(draft, prevParentId)
+  const prevIndex = prevChildren.indexOf(input.nodeId)
+  if (prevIndex < 0) {
+    return createFailure('Mindmap node is detached.')
   }
+  prevChildren.splice(prevIndex, 1)
 
-  const nextChildren = ensureChildren(draft, newParentId)
-  const insertIndex = normalizeMoveIndex({
+  const nextChildren = ensureChildren(draft, input.parentId)
+  const normalizedIndex = normalizeMoveIndex({
     prevParentId,
-    nextParentId: newParentId,
+    nextParentId: input.parentId,
     prevIndex,
-    requestedIndex: index
+    requestedIndex: input.index
   })
-  if (insertIndex === undefined || insertIndex < 0 || insertIndex > nextChildren.length) {
-    nextChildren.push(nodeId)
+  if (
+    normalizedIndex === undefined
+    || normalizedIndex < 0
+    || normalizedIndex > nextChildren.length
+  ) {
+    nextChildren.push(input.nodeId)
   } else {
-    nextChildren.splice(insertIndex, 0, nodeId)
+    nextChildren.splice(normalizedIndex, 0, input.nodeId)
   }
 
-  const nextNode = { ...draft.nodes[nodeId], parentId: newParentId }
-  if (newParentId === draft.rootId) {
-    nextNode.side = side ?? nextNode.side ?? 'right'
-  } else if (nextNode.side) {
-    delete nextNode.side
+  draft.nodes[input.nodeId] = {
+    ...draft.nodes[input.nodeId]!,
+    parentId: input.parentId,
+    side: input.parentId === draft.rootNodeId
+      ? (input.side ?? draft.nodes[input.nodeId]!.side ?? 'right')
+      : undefined
   }
-  draft.nodes[nodeId] = nextNode
+
   updateMeta(draft)
-  return ok({ tree: draft })
+  return ok({
+    tree: draft
+  })
 }
 
 export const removeSubtree = (
   tree: MindmapTree,
   input: MindmapRemoveSubtreeInput
-): MindmapCommandResult => {
-  const { nodeId } = input
-  if (nodeId === tree.rootId) return createFailure('Root node cannot be removed.')
-  const node = ensureNode(tree, nodeId)
-  if (!node) return createFailure(`Node ${nodeId} not found.`)
-  const draft = cloneTree(tree)
-  const parentId = node.parentId
-  if (parentId) {
-    const siblings = draft.children[parentId] ?? []
-    const index = siblings.indexOf(nodeId)
-    if (index >= 0) siblings.splice(index, 1)
+): MindmapCommandResult<{ removedIds: MindmapNodeId[] }> => {
+  if (input.nodeId === tree.rootNodeId) {
+    return createFailure('Root node cannot be removed from the tree.')
   }
-  const subtreeIds = collectSubtreeIds(tree, nodeId)
-  subtreeIds.forEach((id) => {
+  const node = tree.nodes[input.nodeId]
+  if (!node) {
+    return createFailure(`Node ${input.nodeId} not found.`)
+  }
+
+  const draft = cloneTree(tree)
+  const removedIds = collectSubtreeIds(draft, input.nodeId)
+  const parentId = node.parentId!
+  draft.children[parentId] = (draft.children[parentId] ?? [])
+    .filter((childId) => childId !== input.nodeId)
+
+  removedIds.forEach((id) => {
     delete draft.nodes[id]
     delete draft.children[id]
   })
   updateMeta(draft)
-  return ok({ tree: draft })
+  return ok({
+    tree: draft,
+    removedIds
+  })
 }
 
 export const cloneSubtree = (
   tree: MindmapTree,
   input: MindmapCloneSubtreeInput,
-  options?: { idGenerator?: MindmapIdGenerator }
-): MindmapCommandResult<{ nodeId: MindmapNodeId; map: Record<MindmapNodeId, MindmapNodeId> }> => {
-  const {
-    nodeId,
-    parentId: explicitParentId,
-    index,
-    side
-  } = input
-  const node = ensureNode(tree, nodeId)
-  if (!node) return createFailure(`Node ${nodeId} not found.`)
-  const parentId = explicitParentId ?? node.parentId
-  if (!parentId) return createFailure('Root clone requires explicit parentId.')
-  if (!ensureNode(tree, parentId)) return createFailure(`Parent node ${parentId} not found.`)
-  if (isAncestorOf(tree, nodeId, parentId)) return createFailure('Cannot clone into its own subtree.')
+  options?: {
+    idGenerator?: MindmapIdGenerator
+  }
+): MindmapCommandResult<{
+  nodeId: MindmapNodeId
+  map: Record<MindmapNodeId, MindmapNodeId>
+}> => {
+  const source = tree.nodes[input.nodeId]
+  if (!source) {
+    return createFailure(`Node ${input.nodeId} not found.`)
+  }
+  const parentId = input.parentId ?? source.parentId
+  if (!parentId || !tree.nodes[parentId]) {
+    return createFailure('Clone destination parent not found.')
+  }
 
   const createNodeId = options?.idGenerator?.nodeId ?? getDefaultNodeId
-  const subtreeIds = collectSubtreeIds(tree, nodeId)
-  const idMap: Record<MindmapNodeId, MindmapNodeId> = {}
-  subtreeIds.forEach((id) => {
-    idMap[id] = createNodeId()
+  const sourceIds = collectSubtreeIds(tree, input.nodeId)
+  const map: Record<MindmapNodeId, MindmapNodeId> = {}
+  sourceIds.forEach((sourceId) => {
+    let nextId = createNodeId()
+    while (tree.nodes[nextId] || map[sourceIds.find((id) => map[id] === nextId) ?? '']) {
+      nextId = createNodeId()
+    }
+    map[sourceId] = nextId
   })
 
   const draft = cloneTree(tree)
-  subtreeIds.forEach((id) => {
-    const source = tree.nodes[id]
-    const nextId = idMap[id]
-    const nextParentId = source.parentId ? idMap[source.parentId] : undefined
-    const nextNode: MindmapNode = {
-      ...source,
-      id: nextId,
-      parentId: id === nodeId ? parentId : nextParentId
+  sourceIds.forEach((sourceId) => {
+    const targetId = map[sourceId]!
+    const cloned = cloneTreeNode(draft, sourceId)
+    const sourceParentId = sourceId === input.nodeId
+      ? parentId
+      : map[tree.nodes[sourceId]!.parentId!]
+    draft.nodes[targetId] = {
+      ...cloned,
+      parentId: sourceParentId,
+      side: sourceId === input.nodeId
+        ? (parentId === draft.rootNodeId ? (input.side ?? source.side) : undefined)
+        : cloned.side
     }
-    if (id === nodeId && parentId === draft.rootId) {
-      nextNode.side = side ?? source.side ?? 'right'
-    } else if (nextNode.side && parentId !== draft.rootId) {
-      delete nextNode.side
-    }
-    draft.nodes[nextId] = nextNode
+    draft.children[targetId] = []
   })
 
-  subtreeIds.forEach((id) => {
-    const sourceChildren = tree.children[id] ?? []
-    const nextId = idMap[id]
-    draft.children[nextId] = sourceChildren.map((childId) => idMap[childId])
+  sourceIds.forEach((sourceId) => {
+    const targetId = map[sourceId]!
+    const sourceChildren = tree.children[sourceId] ?? []
+    draft.children[targetId] = sourceChildren.map((childId) => map[childId]!)
   })
 
-  const insertTarget = ensureChildren(draft, parentId)
-  const rootCloneId = idMap[nodeId]
-  const insertIndex = index
-  if (insertIndex === undefined || insertIndex < 0 || insertIndex > insertTarget.length) {
-    insertTarget.push(rootCloneId)
+  const children = ensureChildren(draft, parentId)
+  const index = input.index
+  if (index === undefined || index < 0 || index > children.length) {
+    children.push(map[input.nodeId]!)
   } else {
-    insertTarget.splice(insertIndex, 0, rootCloneId)
+    children.splice(index, 0, map[input.nodeId]!)
   }
 
   updateMeta(draft)
-  return ok({ tree: draft, nodeId: rootCloneId, map: idMap })
+  return ok({
+    tree: draft,
+    nodeId: map[input.nodeId]!,
+    map
+  })
 }
 
-export const updateNode = (
+export const patchMindmap = (
   tree: MindmapTree,
-  input: MindmapUpdateNodeInput
+  patch: MindmapTreePatch
 ): MindmapCommandResult => {
-  const {
-    nodeId,
-    update
-  } = input
-  const node = ensureNode(tree, nodeId)
-  if (!node) return createFailure(`Node ${nodeId} not found.`)
-
-  const hasRecords = Boolean(update.records?.length)
-  const hasCollapsed = typeof update.collapsed === 'boolean'
-  const hasSide = typeof update.side !== 'undefined'
-  if (!hasRecords && !hasCollapsed && !hasSide) {
-    return createFailure('No node updates provided.')
+  const layoutPatch = patch.layout
+  if (!layoutPatch) {
+    return ok({
+      tree
+    })
   }
 
   const draft = cloneTree(tree)
-  const nextNode: MindmapNode = {
-    ...draft.nodes[nodeId]
+  draft.layout = {
+    ...draft.layout,
+    ...layoutPatch
   }
-
-  if (hasRecords) {
-    let nextData = nextNode.data
-
-    for (const record of update.records ?? []) {
-      const result = applyDataMutation(nextData, record)
-      if (!result.ok) {
-        return createFailure(result.message)
-      }
-      nextData = result.value as MindmapNode['data']
-    }
-
-    nextNode.data = nextData
-  }
-
-  if (hasCollapsed) {
-    nextNode.collapsed = update.collapsed
-  }
-
-  if (hasSide) {
-    if (node.parentId !== tree.rootId) {
-      return createFailure('Only root-level children can have side.')
-    }
-    nextNode.side = update.side
-  }
-
-  draft.nodes[nodeId] = nextNode
   updateMeta(draft)
-  return ok({ tree: draft })
+  return ok({
+    tree: draft
+  })
 }

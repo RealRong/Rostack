@@ -264,7 +264,7 @@ const buildDescriptors = (input: {
           key: section.key,
           items: section.items
         }),
-        label: `Select rows in ${section.title}`
+        label: `Select rows in ${section.key}`
       })
 
       section.items.ids.forEach(rowId => {

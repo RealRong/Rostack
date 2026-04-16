@@ -9,9 +9,11 @@ import type {
   View
 } from '@dataview/core/contracts'
 import {
-  getFieldOption,
   getFieldOptions
 } from '@dataview/core/field'
+import type {
+  Token
+} from '@shared/i18n'
 import type {
   FieldReducerState
 } from '@dataview/engine/active/shared/calculation'
@@ -21,47 +23,11 @@ export const readCalcFields = (
 ): readonly FieldId[] => Object.entries(view.calc)
   .flatMap(([fieldId, metric]) => metric ? [fieldId as FieldId] : [])
 
-const EMPTY_DISPLAY = '--'
-const NUMBER_FORMATTERS = new Map<string, Intl.NumberFormat>()
-
-const getNumberFormatter = (
-  options: Intl.NumberFormatOptions
-): Intl.NumberFormat => {
-  const key = JSON.stringify({
-    maximumFractionDigits: options.maximumFractionDigits,
-    minimumFractionDigits: options.minimumFractionDigits
-  })
-  const cached = NUMBER_FORMATTERS.get(key)
-  if (cached) {
-    return cached
-  }
-
-  const formatter = new Intl.NumberFormat(undefined, options)
-  NUMBER_FORMATTERS.set(key, formatter)
-  return formatter
-}
-
-const formatNumber = (
-  value: number,
-  options: Intl.NumberFormatOptions = {}
-) => getNumberFormatter({
-  maximumFractionDigits: Number.isInteger(value) ? 0 : 2,
-  ...options
-}).format(value)
-
-const formatPercent = (value: number) => `${formatNumber(value * 100, {
-  minimumFractionDigits: value !== 0 && value !== 1 && !Number.isInteger(value * 100)
-    ? 1
-    : 0,
-  maximumFractionDigits: 1
-})}%`
-
 const emptyResult = (
   metric: CalculationMetric
 ): CalculationResult => ({
   kind: 'empty',
-  metric,
-  display: EMPTY_DISPLAY
+  metric
 })
 
 const scalarResult = (
@@ -70,8 +36,7 @@ const scalarResult = (
 ): CalculationResult => ({
   kind: 'scalar',
   metric,
-  value,
-  display: formatNumber(value)
+  value
 })
 
 const percentResult = (
@@ -86,8 +51,7 @@ const percentResult = (
         metric,
         numerator,
         denominator,
-        value: numerator / denominator,
-        display: formatPercent(numerator / denominator)
+        value: numerator / denominator
       }
 )
 
@@ -102,14 +66,7 @@ const createDistributionResult = (input: {
         kind: 'distribution',
         metric: input.metric,
         denominator: input.denominator,
-        items: input.items,
-        display: input.items
-          .map(item => (
-            input.metric === 'percentByOption'
-              ? `${item.label} ${formatPercent(item.percent)}`
-              : `${item.label} ${formatNumber(item.count)}`
-          ))
-          .join(' · ')
+        items: input.items
       }
 )
 
@@ -201,15 +158,18 @@ const computeOptionDistribution = (input: {
     return emptyResult(input.metric)
   }
 
-  const orderedOptionIds: string[] = []
-  getFieldOptions(input.field).forEach(option => {
-    orderedOptionIds.push(option.id)
-  })
+  const options = getFieldOptions(input.field)
+  const optionIds = new Set(options.map(option => option.id))
+  const orderedOptionIds: string[] = options.map(option => option.id)
   counts.forEach((_count, optionId) => {
-    if (!orderedOptionIds.includes(optionId)) {
+    if (!optionIds.has(optionId)) {
       orderedOptionIds.push(optionId)
     }
   })
+
+  const toValueToken = (
+    optionId: string
+  ): Token => options.find(option => option.id === optionId)?.name ?? optionId
 
   let denominator = 0
   const items = orderedOptionIds
@@ -220,10 +180,10 @@ const computeOptionDistribution = (input: {
       }
 
       denominator += count
-      const option = getFieldOption(input.field, optionId)
+      const option = options.find(entry => entry.id === optionId)
       return {
         key: optionId,
-        label: option?.name ?? optionId,
+        value: toValueToken(optionId),
         count,
         percent: 0,
         ...(option?.color ? { color: option.color } : {})

@@ -2,22 +2,25 @@ import type {
   SortDirection,
   Sorter
 } from '@dataview/core/contracts'
-import { message } from '@dataview/meta/message'
 import { defineMetaCollection } from '@dataview/meta/shared'
+import {
+  token,
+  type Token
+} from '@shared/i18n'
 
 export interface SortDirectionDescriptor {
   id: SortDirection | string
-  message: ReturnType<typeof message>
+  token: Token
 }
 
 const SORT_DIRECTION_ITEMS = [
   {
     id: 'asc',
-    message: message('meta.sort.direction.asc', 'Ascending')
+    token: token('meta.sort.direction.asc', 'Ascending')
   },
   {
     id: 'desc',
-    message: message('meta.sort.direction.desc', 'Descending')
+    token: token('meta.sort.direction.desc', 'Descending')
   }
 ] as const satisfies readonly SortDirectionDescriptor[]
 
@@ -26,15 +29,15 @@ export const sort = {
     defaultId: 'asc',
     fallback: (id?: string) => ({
       id: id ?? 'asc',
-      message: message('meta.sort.direction.unknown', id ?? 'Ascending')
+      token: token('meta.sort.direction.unknown', id ?? 'Ascending')
     })
   }),
   summary: (sorters: readonly Sorter[]) => ({
-    message: !sorters.length
-      ? message('meta.sort.summary.empty', 'Sort')
+    token: !sorters.length
+      ? token('meta.sort.summary.empty', 'Sort')
       : sorters.length === 1
-        ? message('meta.sort.summary.single', '1 sort')
-        : message('meta.sort.summary.multiple', '{count} sorts', {
+        ? token('meta.sort.summary.single', '1 sort')
+        : token('meta.sort.summary.multiple', '{{count}} sorts', {
             count: sorters.length
           })
   })

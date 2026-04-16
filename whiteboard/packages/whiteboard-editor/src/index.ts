@@ -91,7 +91,6 @@ export type {
   InsertPreset,
   InsertPresetGroup,
   MindmapInsertPreset,
-  MindmapTemplate,
   NodeInsertPreset
 } from '@whiteboard/editor/types/insert'
 export type {

@@ -1,5 +1,4 @@
 import type { BoardConfig } from '@whiteboard/core/config'
-import type { MindmapLayoutConfig } from '@whiteboard/core/mindmap'
 import type { SliceExportResult } from '@whiteboard/core/document'
 import type {
   CanvasNode,
@@ -151,7 +150,6 @@ export type EngineRead = {
 }
 
 export type EngineRuntimeOptions = {
-  mindmapLayout: MindmapLayoutConfig
   history?: Partial<HistoryConfig>
 }
 

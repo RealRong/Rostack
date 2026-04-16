@@ -3,15 +3,11 @@ import type {
   CustomFieldKind
 } from '@dataview/core/contracts'
 import {
-  createUniqueFieldName
-} from '@dataview/core/field'
-import {
   resolveDisplayInsertBeforeFieldId,
   setTableColumnWidths,
   setTableVerticalLines,
   setTableWrapCells
 } from '@dataview/core/view'
-import { meta, renderMessage } from '@dataview/meta'
 import type { ActiveViewApi } from '@dataview/engine/contracts/public'
 import type { ActiveViewContext } from '@dataview/engine/active/context'
 
@@ -24,10 +20,7 @@ const createField = (
 ): CustomFieldId | undefined => {
   const kind = input?.kind ?? 'text'
   const explicitName = input?.name?.trim()
-  const name = explicitName || createUniqueFieldName(
-    renderMessage(meta.field.kind.get(kind).defaultName),
-    base.reader.fields.list()
-  )
+  const name = explicitName
   if (!name) {
     return undefined
   }

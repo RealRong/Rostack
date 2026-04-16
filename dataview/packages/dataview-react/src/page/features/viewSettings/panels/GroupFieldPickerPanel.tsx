@@ -4,11 +4,13 @@ import {
   useDataViewValue
 } from '@dataview/react/dataview'
 import { Menu, type MenuItem } from '@shared/ui/menu'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
 import { buildFieldToggleItem } from '@dataview/react/menu-builders'
 import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
+import { useTranslation } from '@shared/i18n/react'
 
 export const GroupFieldPickerPanel = () => {
+  const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
   const document = useDataViewValue(dataView => dataView.engine.select.document)
@@ -28,7 +30,7 @@ export const GroupFieldPickerPanel = () => {
     {
       kind: 'toggle',
       key: 'none',
-      label: renderMessage(meta.ui.viewSettings.none),
+      label: t(meta.ui.viewSettings.none),
       checked: !groupProjection?.active,
       onSelect: () => {
         currentViewDomain?.group.clear()

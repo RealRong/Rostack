@@ -18,12 +18,14 @@ const isSameModelRefs = (
   {
     visibleNodes,
     canvasNodes,
+    allNodes,
     visibleEdges,
     nodeById,
     nodeIds
   }: {
     visibleNodes: Node[]
     canvasNodes: Node[]
+    allNodes: Node[]
     visibleEdges: Edge[]
     nodeById: ReadModel['canvas']['nodeById']
     nodeIds: ReadModel['canvas']['nodeIds']
@@ -33,6 +35,7 @@ const isSameModelRefs = (
   return (
     cache.nodes.visible === visibleNodes &&
     cache.nodes.canvas === canvasNodes &&
+    cache.nodes.all === allNodes &&
     cache.edges.visible === visibleEdges &&
     cache.canvas.nodeById === nodeById &&
     cache.canvas.nodeIds === nodeIds
@@ -53,6 +56,7 @@ export const createReadModel = ({
   let previousNodesRef: Document['nodes'] | undefined
   let visibleNodesCache: Node[] = EMPTY_NODES
   let canvasNodesCache: Node[] = EMPTY_NODES
+  let allNodesCache: Node[] = EMPTY_NODES
   let canvasNodeByIdCache: Map<NodeId, Node> = EMPTY_NODE_MAP
   let canvasNodeIdsCache: NodeId[] = EMPTY_NODE_IDS
   let canvasCache: ReadModel['canvas'] = {
@@ -81,6 +85,7 @@ export const createReadModel = ({
       previousNodesRef = nodes
       visibleNodesCache = EMPTY_NODES
       canvasNodesCache = EMPTY_NODES
+      allNodesCache = EMPTY_NODES
       canvasNodeByIdCache = EMPTY_NODE_MAP
       canvasNodeIdsCache = EMPTY_NODE_IDS
       canvasCache = {
@@ -92,6 +97,7 @@ export const createReadModel = ({
       const next = deriveNodeReadSlices(doc)
       const normalizedVisible = next.visible.length ? next.visible : EMPTY_NODES
       const normalizedCanvas = next.canvas.length ? next.canvas : EMPTY_NODES
+      const normalizedAll = next.all.length ? next.all : EMPTY_NODES
       const normalizedCanvasNodeById = next.canvasNodeById.size
         ? next.canvasNodeById
         : EMPTY_NODE_MAP
@@ -105,6 +111,9 @@ export const createReadModel = ({
       canvasNodesCache = isSameRefOrder(canvasNodesCache, normalizedCanvas)
         ? canvasNodesCache
         : normalizedCanvas
+      allNodesCache = isSameRefOrder(allNodesCache, normalizedAll)
+        ? allNodesCache
+        : normalizedAll
       canvasNodeByIdCache = canvasNodesCache === previousCanvasNodesCache ||
         isSameMapValueRefs(canvasNodeByIdCache, normalizedCanvasNodeById)
         ? canvasNodeByIdCache
@@ -156,6 +165,7 @@ export const createReadModel = ({
     if (isSameModelRefs(cache, {
       visibleNodes: visibleNodesCache,
       canvasNodes: canvasNodesCache,
+      allNodes: allNodesCache,
       visibleEdges: visibleEdgesCache,
       nodeById: canvasCache.nodeById,
       nodeIds: canvasCache.nodeIds
@@ -166,7 +176,8 @@ export const createReadModel = ({
     cache = {
       nodes: {
         visible: visibleNodesCache,
-        canvas: canvasNodesCache
+        canvas: canvasNodesCache,
+        all: allNodesCache
       },
       edges: {
         visible: visibleEdgesCache

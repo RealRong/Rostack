@@ -17,7 +17,8 @@
   "dependencies": {
     "@dataview/core": "workspace:*",
     "@dataview/meta": "workspace:*",
-    "@shared/core": "workspace:*"
+    "@shared/core": "workspace:*",
+    "@shared/i18n": "workspace:*"
   },
   "files": [
     "src",

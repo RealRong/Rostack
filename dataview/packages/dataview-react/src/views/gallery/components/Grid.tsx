@@ -3,6 +3,8 @@ import {
   useDataView
 } from '@dataview/react/dataview'
 import { resolveOptionDotStyle } from '@shared/ui/color'
+import { token } from '@shared/i18n'
+import { useTranslation } from '@shared/i18n/react'
 import { useGalleryContext } from '@dataview/react/views/gallery/context'
 import { GALLERY_CARD_GAP } from '@dataview/react/views/gallery/virtual'
 import { Card } from '@dataview/react/views/gallery/components/Card'
@@ -13,6 +15,7 @@ const contentInsetStyle = {
 } as const
 
 export const Grid = () => {
+  const { t } = useTranslation()
   const {
     active,
     extra,
@@ -32,6 +35,7 @@ export const Grid = () => {
   const bottomSpacerHeight = lastBlock
     ? Math.max(0, layout.totalHeight - lastBlock.top - lastBlock.height)
     : 0
+  const groupField = active.query.group.field
 
   return (
     <div className="flex flex-col gap-6">
@@ -57,7 +61,7 @@ export const Grid = () => {
 
         {empty ? (
           <div className="rounded-3xl border border-dashed bg-card px-6 py-14 text-center text-sm text-muted-foreground">
-            No records in this gallery view.
+            {t(token('dataview.react.gallery.emptyView', 'No records in this gallery view.'))}
           </div>
         ) : (
           <div className="relative">
@@ -87,7 +91,7 @@ export const Grid = () => {
                         />
                       ) : null}
                       <h3 className="text-sm font-semibold text-foreground">
-                        {block.section.title}
+                        {t(block.section.label)}
                         <span className="ml-2 text-xs font-medium text-muted-foreground">
                           {sectionSizeByKey.get(block.section.key) ?? 0}
                         </span>
@@ -104,7 +108,7 @@ export const Grid = () => {
                         marginTop
                       }}
                     >
-                      No records in this section.
+                      {t(token('dataview.react.gallery.emptySection', 'No records in this section.'))}
                     </div>
                   )
                 case 'row':

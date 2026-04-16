@@ -53,8 +53,12 @@ export const merge = ({
   }
 
   for (const id of nodeIdsIn) {
-    if (!getNode(doc, id)) {
+    const node = getNode(doc, id)
+    if (!node) {
       return err('invalid', `Node ${id} not found.`)
+    }
+    if (node.type === 'mindmap' || node.mindmapId) {
+      return err('invalid', 'Mindmap nodes cannot be grouped.')
     }
   }
   for (const id of edgeIdsIn) {

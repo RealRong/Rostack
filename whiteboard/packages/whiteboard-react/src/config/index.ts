@@ -19,7 +19,6 @@ const DEFAULT_CONFIG: ResolvedConfig = {
   style: undefined,
   nodeSize: DEFAULT_BOARD_CONFIG.nodeSize,
   mindmapNodeSize: DEFAULT_BOARD_CONFIG.mindmapNodeSize,
-  mindmapLayout: {},
   viewport: {
     initial: DEFAULT_VIEWPORT,
     minZoom: 0.1,
@@ -44,7 +43,6 @@ type ConfigBundle = {
   resolvedConfig: ResolvedConfig
   boardConfig: EngineBoardConfig
   editorConfig: {
-    mindmapLayout: ResolvedConfig['mindmapLayout']
     history: ResolvedConfig['history']
   }
   viewportLimits: {
@@ -105,7 +103,6 @@ export const resolveConfig = (
     resolvedConfig,
     boardConfig: toBoardConfig(resolvedConfig),
     editorConfig: {
-      mindmapLayout: resolvedConfig.mindmapLayout,
       history: resolvedConfig.history
     },
     viewportLimits: {

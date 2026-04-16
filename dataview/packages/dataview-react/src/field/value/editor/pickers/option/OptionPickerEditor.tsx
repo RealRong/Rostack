@@ -2,7 +2,7 @@ import {
   useEffect,
   useRef
 } from 'react'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
 import {
   OptionToken
 } from '@dataview/react/field/options'
@@ -13,6 +13,7 @@ import {
 import { focusInputWithoutScroll } from '@shared/dom'
 import { PickerInputBar } from '@dataview/react/field/value/editor/shared/PickerInputBar'
 import { usePickerKeydown } from '@dataview/react/field/value/editor/shared/usePickerKeydown'
+import { useTranslation } from '@shared/i18n/react'
 import {
   type OptionPickerControllerInput,
   type PickerMode,
@@ -28,6 +29,7 @@ export interface OptionPickerEditorProps extends OptionPickerControllerInput {
 export const OptionPickerEditor = (
   props: OptionPickerEditorProps
 ) => {
+  const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement | null>(null)
   const menuRef = useRef<MenuHandle | null>(null)
   const controller = useOptionPickerController(props)
@@ -73,7 +75,7 @@ export const OptionPickerEditor = (
           onValueChange={controller.onQueryChange}
           placeholder={controller.selectedOptions.length
             ? ''
-            : renderMessage(meta.ui.field.options.selectOrCreate(props.mode === 'multi'))}
+            : t(meta.ui.field.options.selectOrCreate(props.mode === 'multi'))}
         >
           {controller.selectedOptions.map(option => (
             <OptionToken
@@ -91,7 +93,7 @@ export const OptionPickerEditor = (
 
       <div className="flex min-h-0 flex-1 flex-col border-t border-divider">
         <div className="px-3 py-2 text-[12px] font-medium text-muted-foreground">
-          {renderMessage(meta.ui.field.options.selectOrCreate(props.mode === 'multi'))}
+          {t(meta.ui.field.options.selectOrCreate(props.mode === 'multi'))}
         </div>
 
         <div className="max-h-72 overflow-y-auto px-2 pb-2">

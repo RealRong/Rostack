@@ -5,11 +5,12 @@ import {
 } from '@dataview/core/contracts'
 import { getDocumentFields } from '@dataview/core/document'
 import { useDataView, useDataViewValue } from '@dataview/react/dataview'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
 import { buildChoiceSubmenuItem } from '@dataview/react/menu-builders'
 import { usesOptionGroupingColors } from '@dataview/react/views/shared/optionGrouping'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { cn } from '@shared/ui/utils'
+import { useTranslation } from '@shared/i18n/react'
 
 const SUPPORTED_LAYOUT_TYPES = ['table', 'kanban', 'gallery'] as const satisfies readonly ViewType[]
 
@@ -34,6 +35,7 @@ const LayoutTypeCard = (props: {
   selected: boolean
   onClick: () => void
 }) => {
+  const { t } = useTranslation()
   const descriptor = meta.view.get(props.type)
   const Icon = descriptor.Icon
 
@@ -50,13 +52,14 @@ const LayoutTypeCard = (props: {
     >
       <Icon className="size-5 shrink-0" size={18} strokeWidth={1.8} />
       <span className="truncate text-xs font-medium">
-        {renderMessage(meta.ui.viewSettings.layoutPanel.viewTypeOption(props.type))}
+        {t(meta.ui.viewSettings.layoutPanel.viewTypeOption(props.type))}
       </span>
     </button>
   )
 }
 
 export const LayoutPanel = () => {
+  const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
   const document = useDataViewValue(dataView => dataView.engine.select.document)
@@ -71,7 +74,7 @@ export const LayoutPanel = () => {
   const canFillKanbanColumns = usesOptionGroupingColors(groupField)
   const cardsPerColumnOptions = KANBAN_CARDS_PER_COLUMN_OPTIONS.map(value => ({
     value: String(value),
-    label: renderMessage(meta.ui.viewSettings.layoutPanel.cardsPerColumnOption(value))
+    label: t(meta.ui.viewSettings.layoutPanel.cardsPerColumnOption(value))
   }))
 
   if (!view || !viewApi) {
@@ -83,7 +86,7 @@ export const LayoutPanel = () => {
         {
           kind: 'toggle',
           key: 'showVerticalLines',
-          label: renderMessage(meta.ui.viewSettings.layoutPanel.showVerticalLines),
+          label: t(meta.ui.viewSettings.layoutPanel.showVerticalLines),
           checked: view.options.table.showVerticalLines,
           indicator: 'switch',
           onSelect: () => {
@@ -93,7 +96,7 @@ export const LayoutPanel = () => {
         {
           kind: 'toggle',
           key: 'wrapCells',
-          label: renderMessage(meta.ui.viewSettings.layoutPanel.wrapCells),
+          label: t(meta.ui.viewSettings.layoutPanel.wrapCells),
           checked: view.options.table.wrapCells,
           indicator: 'switch',
           onSelect: () => {
@@ -107,8 +110,8 @@ export const LayoutPanel = () => {
     ? [
         buildChoiceSubmenuItem({
           key: 'cardsPerColumn',
-          label: renderMessage(meta.ui.viewSettings.layoutPanel.cardsPerColumn),
-          suffix: renderMessage(
+          label: t(meta.ui.viewSettings.layoutPanel.cardsPerColumn),
+          suffix: t(
             meta.ui.viewSettings.layoutPanel.cardsPerColumnOption(
               view.options.kanban.cardsPerColumn
             )
@@ -129,7 +132,7 @@ export const LayoutPanel = () => {
         {
           kind: 'toggle',
           key: 'fillColumnColor',
-          label: renderMessage(meta.ui.viewSettings.layoutPanel.fillColumnColor),
+          label: t(meta.ui.viewSettings.layoutPanel.fillColumnColor),
           checked: view.options.kanban.fillColumnColor,
           disabled: !canFillKanbanColumns,
           indicator: 'switch',

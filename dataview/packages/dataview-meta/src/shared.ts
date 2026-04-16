@@ -1,8 +1,5 @@
-import type { MessageSpec } from '@dataview/meta/message'
-
 export interface MetaDescriptor {
   id: string
-  message: MessageSpec
 }
 
 export interface MetaCollection<TItem extends MetaDescriptor> {

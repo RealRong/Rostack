@@ -114,7 +114,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
               <span className={cn(
                 'min-w-0 truncate',
                 shouldFlexLabel && 'flex-1',
-                isRow && (isGhostDestructive ? 'text-[13px] text-destructive' : 'text-[13px] text-foreground')
+                isRow && (isGhostDestructive ? 'text-destructive' : 'text-foreground')
               )}>
                 {children}
               </span>

@@ -1,62 +1,50 @@
 import { useCallback, useMemo } from 'react'
 import type { MindmapNodeId, NodeId } from '@whiteboard/core/types'
 import { useKeyedStoreValue } from '@shared/react'
-import {
-  useEditorRuntime,
-  useResolvedConfig
-} from '@whiteboard/react/runtime/hooks'
+import { useEditorRuntime } from '@whiteboard/react/runtime/hooks'
 import type { MindmapTreeViewData } from '@whiteboard/react/types/mindmap'
 
 export const useMindmapTreeView = (
   treeId: NodeId
 ): MindmapTreeViewData | undefined => {
   const editor = useEditorRuntime()
-  const config = useResolvedConfig()
-  const view = useKeyedStoreValue(editor.read.mindmap.view, treeId)
-  const tree = view?.tree
-  const rootId = view?.rootId
-  const layout = view?.layout
-  const nodeSize = config.mindmapNodeSize
+  const render = useKeyedStoreValue(editor.read.mindmap.render, treeId)
+  const tree = render?.tree
+  const mindmapId = treeId
 
   const onAddChild = useCallback(
     (nodeId: MindmapNodeId, placement: 'left' | 'right' | 'up' | 'down') => {
-      if (!tree || !rootId || !layout) {
+      if (!tree) {
         return
       }
 
       editor.actions.mindmap.insertByPlacement({
-        id: rootId,
+        id: mindmapId,
         tree,
         targetNodeId: nodeId,
         placement,
-        nodeSize,
-        layout,
+        layout: tree.layout,
         payload: { kind: 'text', text: '' }
       })
     },
-    [editor, layout, nodeSize, rootId, tree]
+    [editor, mindmapId, tree]
   )
 
   return useMemo(
     () => {
-      if (!view) {
+      if (!render) {
         return undefined
       }
 
       return {
         treeId,
-        baseOffset: view.rootPosition,
-        bbox: view.bbox,
-        shiftX: view.shiftX,
-        shiftY: view.shiftY,
-        lines: view.lines,
-        nodes: view.nodes,
-        ghost: view.ghost,
-        connectionLine: view.connectionLine,
-        insertLine: view.insertLine,
+        rootNodeId: render.rootId,
+        bbox: render.bbox,
+        connectors: render.connectors,
+        childNodeIds: render.childNodeIds.filter((nodeId) => nodeId !== render.rootId),
         onAddChild
       }
     },
-    [onAddChild, treeId, view]
+    [onAddChild, render, treeId]
   )
 }

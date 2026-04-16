@@ -7,10 +7,10 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import {
-  formatFilterRuleValueText,
   getFilterEditorKind,
   getFilterPresetIds,
   isFilterRuleEffective,
+  projectFilterRuleValue,
   sameFilterRule
 } from '@dataview/core/filter'
 import {
@@ -39,6 +39,9 @@ import {
   sameOptionalList,
   sameOptionalProjection
 } from '@dataview/engine/active/snapshot/reuse'
+import {
+  sameJsonValue
+} from '@shared/core'
 import {
   type DocumentReader
 } from '@dataview/engine/document/reader'
@@ -95,11 +98,11 @@ const createFilterRuleProjection = (
   return {
     rule,
     field,
-    fieldLabel: field?.name ?? 'Deleted field',
+    fieldMissing: !field,
     activePresetId: rule.presetId,
     effective: isFilterRuleEffective(field, rule),
     editorKind,
-    valueText: formatFilterRuleValueText(field, rule),
+    value: projectFilterRuleValue(field, rule),
     bodyLayout: editorKind === 'none'
       ? 'none'
       : editorKind === 'option-set'
@@ -205,11 +208,11 @@ const equalFilterRuleProjection = (
   right: FilterRuleProjection
 ) => (
   sameFilterRule(left.rule, right.rule)
-  && left.fieldLabel === right.fieldLabel
+  && left.fieldMissing === right.fieldMissing
   && left.activePresetId === right.activePresetId
   && left.effective === right.effective
   && left.editorKind === right.editorKind
-  && left.valueText === right.valueText
+  && sameJsonValue(left.value, right.value)
   && left.bodyLayout === right.bodyLayout
   && sameList(left.conditions, right.conditions, equalFilterCondition)
 )

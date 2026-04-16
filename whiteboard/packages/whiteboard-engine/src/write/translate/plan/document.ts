@@ -1,13 +1,20 @@
 import type { CommandOutput, DocumentCommand } from '@whiteboard/engine/types/command'
 import {
   buildInsertSliceOperations,
-  exportSliceFromSelection
+  exportSliceFromSelection,
+  getNode
 } from '@whiteboard/core/document'
+import {
+  getMindmapTreeFromDocument,
+  getSubtreeIds,
+  removeSubtree as removeMindmapSubtree
+} from '@whiteboard/core/mindmap'
 import {
   resolveLockDecision
 } from '@whiteboard/core/lock'
 import { err, ok } from '@whiteboard/core/result'
 import type { CanvasItemRef, EdgeId } from '@whiteboard/core/types'
+import type { MindmapTree } from '@whiteboard/core/mindmap'
 import { DEFAULT_TUNING } from '@whiteboard/engine/config'
 import type { WriteTranslateContext } from '@whiteboard/engine/write/translate'
 import { normalizeOrder } from '@whiteboard/engine/write/translate/order/policy'
@@ -52,6 +59,13 @@ const insertOut = (data: {
   allEdgeIds: data.allEdgeIds
 })
 
+const getSubtreeDeleteOps = (
+  tree: MindmapTree
+) => getSubtreeIds(tree, tree.rootNodeId).map((id) => ({
+  type: 'node.delete' as const,
+  id
+}))
+
 export const insert = (
   command: Insert,
   ctx: WriteTranslateContext
@@ -85,10 +99,89 @@ export const remove = (
     return err('cancelled', 'No items selected.')
   }
 
+  const rootDeletes = new Set<string>()
+  const childDeletes = new Map<string, string[]>()
+  nodeIds.forEach((nodeId) => {
+    const node = getNode(ctx.doc, nodeId)
+    if (!node) {
+      return
+    }
+    if (node.type === 'mindmap') {
+      rootDeletes.add(node.id)
+      return
+    }
+    if (node.mindmapId) {
+      const bucket = childDeletes.get(node.mindmapId)
+      if (bucket) {
+        bucket.push(node.id)
+      } else {
+        childDeletes.set(node.mindmapId, [node.id])
+      }
+    }
+  })
+
+  const operations: Array<
+    | { type: 'edge.delete'; id: EdgeId }
+    | { type: 'node.delete'; id: string }
+    | { type: 'node.update'; id: string; update: { records: readonly [{ scope: 'data'; op: 'set'; value: unknown }] } }
+  > = []
+
+  rootDeletes.forEach((mindmapId) => {
+    const tree = getMindmapTreeFromDocument(ctx.doc, mindmapId)
+    if (!tree) {
+      return
+    }
+    operations.push(
+      ...getSubtreeDeleteOps(tree),
+      { type: 'node.delete', id: mindmapId }
+    )
+    childDeletes.delete(mindmapId)
+  })
+
+  childDeletes.forEach((childIds, mindmapId) => {
+    const tree = getMindmapTreeFromDocument(ctx.doc, mindmapId)
+    if (!tree) {
+      return
+    }
+    let nextTree = tree
+    const removed = new Set<string>()
+    childIds.forEach((childId) => {
+      if (removed.has(childId) || !nextTree.nodes[childId]) {
+        return
+      }
+      const result = removeMindmapSubtree(nextTree, {
+        nodeId: childId
+      })
+      if (!result.ok) {
+        return
+      }
+      result.data.removedIds.forEach((id) => removed.add(id))
+      nextTree = result.data.tree
+    })
+    if (!removed.size) {
+      return
+    }
+    operations.push({
+      type: 'node.update',
+      id: mindmapId,
+      update: {
+        records: [{
+          scope: 'data',
+          op: 'set',
+          value: nextTree
+        }]
+      }
+    })
+    operations.push(...Array.from(removed).map((id) => ({ type: 'node.delete' as const, id })))
+  })
+
   const cascade = nodeIds.length > 0
     ? cascadeDeleteTargets({
         doc: ctx.doc,
-        ids: nodeIds,
+        ids: nodeIds.filter((nodeId) => {
+          const node = getNode(ctx.doc, nodeId)
+          return Boolean(node && !node.mindmapId && node.type !== 'mindmap')
+        }),
         nodeSize: ctx.config.nodeSize
       })
     : {
@@ -101,11 +194,14 @@ export const remove = (
     ...cascade.edgeIds
   ]))
   if (!cascade.nodeIds.length && !allEdgeIds.length) {
-    return err('cancelled', 'No items selected.')
+    if (!operations.length) {
+      return err('cancelled', 'No items selected.')
+    }
   }
 
   return ok({
     operations: [
+      ...operations,
       ...allEdgeIds.map((id) => ({ type: 'edge.delete' as const, id })),
       ...cascade.nodeIds.map((id) => ({ type: 'node.delete' as const, id }))
     ],
@@ -120,6 +216,12 @@ export const duplicate = (
   const { nodeIds, edgeIds } = pickRefs(command.refs)
   if (!nodeIds.length && !edgeIds.length) {
     return err('cancelled', 'No items selected.')
+  }
+  if (nodeIds.some((nodeId) => {
+    const node = getNode(ctx.doc, nodeId)
+    return node?.type === 'mindmap' || Boolean(node?.mindmapId)
+  })) {
+    return err('invalid', 'Mindmap nodes do not support generic duplicate.')
   }
   const locked = resolveLockDecision({
     document: ctx.doc,
@@ -197,6 +299,15 @@ export const order = (
   command: Order,
   ctx: WriteTranslateContext
 ): Step => {
+  if (command.refs.some((ref) => {
+    if (ref.kind !== 'node') {
+      return false
+    }
+    const node = getNode(ctx.doc, ref.id)
+    return node?.type === 'mindmap' || Boolean(node?.mindmapId)
+  })) {
+    return err('invalid', 'Mindmap nodes do not support generic order changes.')
+  }
   const next = normalizeOrder({
     doc: ctx.doc,
     refs: command.refs,

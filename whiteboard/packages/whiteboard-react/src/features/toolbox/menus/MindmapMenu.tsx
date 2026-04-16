@@ -1,64 +1,142 @@
-import { PickerOptionButton, PickerSection } from '@shared/ui'
 import {
-  MINDMAP_INSERT_PRESETS,
-  MINDMAP_INSERT_TEMPLATES
-} from '@whiteboard/react/features/toolbox/presets'
+  createMindmapPreviewModel,
+  computeMindmapLayout,
+  listMindmapPresets,
+  resolveMindmapRender,
+  type MindmapNodeStyle
+} from '@whiteboard/core/mindmap'
+import { PickerOptionButton, PickerSection } from '@shared/ui'
 
-const MindmapTemplatePreview = ({
-  templateKey
+const PREVIEW_NODE_SIZE = {
+  width: 84,
+  height: 28
+}
+
+const previewStrokeDasharray = (stroke: 'solid' | 'dashed' | 'dotted') => {
+  switch (stroke) {
+    case 'dashed':
+      return '6 4'
+    case 'dotted':
+      return '2 4'
+    default:
+      return undefined
+  }
+}
+
+const renderNodeShell = ({
+  id,
+  style,
+  x,
+  y,
+  width,
+  height
 }: {
-  templateKey: string
+  id: string
+  style: MindmapNodeStyle
+  x: number
+  y: number
+  width: number
+  height: number
 }) => {
-  const template = MINDMAP_INSERT_TEMPLATES.find((item) => item.key === templateKey)
-  const children = template?.children ?? []
+  if (style.frame.kind === 'ellipse') {
+    return (
+      <rect
+        key={id}
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        rx={height / 2}
+        fill={style.fill}
+        stroke={style.frame.color}
+        strokeWidth={style.frame.width}
+      />
+    )
+  }
+
+  if (style.frame.kind === 'underline') {
+    return (
+      <line
+        key={id}
+        x1={x}
+        y1={y + height}
+        x2={x + width}
+        y2={y + height}
+        stroke={style.frame.color}
+        strokeWidth={style.frame.width}
+      />
+    )
+  }
+
+  return (
+    <rect
+      key={id}
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      fill={style.fill}
+      stroke={style.frame.color}
+      strokeWidth={style.frame.width}
+    />
+  )
+}
+
+const MindmapPresetPreview = ({
+  presetKey
+}: {
+  presetKey: string
+}) => {
+  const preview = createMindmapPreviewModel({
+    preset: presetKey,
+    seed: 'project'
+  })
+  const computed = computeMindmapLayout(
+    preview.tree,
+    () => PREVIEW_NODE_SIZE
+  )
+  const render = resolveMindmapRender({
+    tree: preview.tree,
+    computed
+  })
 
   return (
     <svg
-      viewBox="0 0 72 48"
+      viewBox={`${render.bbox.x} ${render.bbox.y} ${render.bbox.width} ${render.bbox.height}`}
       aria-hidden="true"
       className="block h-10 w-16"
     >
-      <rect
-        x="26"
-        y="17"
-        width="20"
-        height="14"
-        rx="7"
-        fill="var(--ui-yellow-surface)"
-        stroke="currentColor"
-        strokeWidth="1"
-      />
-      {children.slice(0, 4).map((child, index) => {
-        const left = child.side === 'left'
-        const y = 8 + index * 10
-        const targetX = left ? 8 : 52
-        const lineStartX = left ? 26 : 46
-        const lineEndX = left ? 20 : 52
-        return (
-          <g key={`${templateKey}:${index}`}>
-            <path
-              d={`M${lineStartX} 24 C${left ? 22 : 50} 24, ${left ? 18 : 54} ${y + 4}, ${lineEndX} ${y + 4}`}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              opacity="0.75"
-            />
-            <rect
-              x={targetX}
-              y={y}
-              width="12"
-              height="8"
-              rx="4"
-              fill="var(--ui-surface)"
-              stroke="currentColor"
-              strokeWidth="1"
-            />
-          </g>
-        )
+      {render.connectors.map((connector) => (
+        <path
+          key={connector.id}
+          d={connector.path}
+          fill="none"
+          stroke={connector.style.color}
+          strokeWidth={connector.style.width}
+          strokeDasharray={previewStrokeDasharray(connector.style.stroke)}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      ))}
+      {Object.entries(computed.node).map(([nodeId, rect]) => {
+        const style = preview.nodeStyles[nodeId]
+        return style
+          ? renderNodeShell({
+              id: nodeId,
+              style,
+              x: rect.x,
+              y: rect.y,
+              width: rect.width,
+              height: rect.height
+            })
+          : null
       })}
     </svg>
   )
 }
+
+const PRESETS = listMindmapPresets()
 
 export const MindmapMenu = ({
   value,
@@ -69,7 +147,7 @@ export const MindmapMenu = ({
 }) => (
   <PickerSection title="Mindmap">
     <div className="flex flex-col gap-1">
-      {MINDMAP_INSERT_PRESETS.map((preset) => (
+      {PRESETS.map((preset) => (
         <PickerOptionButton
           key={preset.key}
           type="button"
@@ -78,7 +156,7 @@ export const MindmapMenu = ({
           onClick={() => onChange(preset.key)}
         >
           <span className="inline-flex h-12 w-[72px] items-center justify-center rounded-lg bg-surface-subtle text-fg-muted">
-            <MindmapTemplatePreview templateKey={preset.key} />
+            <MindmapPresetPreview presetKey={preset.key} />
           </span>
           <span className="flex min-w-0 flex-col gap-0.5">
             <span className="text-sm leading-5 text-fg">{preset.label}</span>

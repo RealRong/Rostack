@@ -1,14 +1,20 @@
 import {
-  buildRecordDefaultSearchTextFromFields,
-  buildRecordFieldSearchTextFromField,
-  isDefaultSearchField
+  buildFieldSearchText,
+  isDefaultSearchField,
+  joinSearchTokens,
+  splitSearchText
 } from '@dataview/core/search'
 import type {
-  CustomField,
+  Field,
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
-import { createMapPatchBuilder } from '@dataview/engine/active/shared/patch'
+import {
+  createMapPatchBuilder
+} from '@dataview/engine/active/shared/patch'
+import {
+  applyOrderedIdDelta
+} from '@dataview/engine/active/shared/ordered'
 import type {
   IndexDeriveContext,
   IndexReadContext,
@@ -25,28 +31,141 @@ import {
 } from '@dataview/engine/active/index/sync'
 
 const EMPTY_SEARCH_TEXTS = new Map<RecordId, string>()
+const EMPTY_SEARCH_POSTINGS = new Map<string, readonly RecordId[]>()
+const EMPTY_RECORD_IDS = [] as readonly RecordId[]
+const EMPTY_GRAMS = [] as readonly string[]
 
 const resolveSearchField = (
   context: Pick<IndexReadContext, 'reader'>,
   fieldId: FieldId
-) => fieldId === 'title'
+): Field | undefined => fieldId === 'title'
   ? undefined
   : context.reader.fields.get(fieldId)
 
-const resolveDefaultSearchFields = (
+const resolveDefaultSearchFieldIds = (
   context: Pick<IndexReadContext, 'document' | 'reader'>
-): readonly CustomField[] => {
-  const fields: CustomField[] = []
+): readonly FieldId[] => {
+  const fieldIds: FieldId[] = ['title']
 
   for (let index = 0; index < context.document.fields.order.length; index += 1) {
     const fieldId = context.document.fields.order[index]!
     const field = context.reader.fields.get(fieldId)
     if (field && field.kind !== 'title' && isDefaultSearchField(field)) {
-      fields.push(field)
+      fieldIds.push(fieldId)
     }
   }
 
-  return fields
+  return fieldIds
+}
+
+const createRecordIdSet = (
+  ids?: readonly RecordId[]
+): ReadonlySet<RecordId> | undefined => ids?.length
+  ? new Set(ids)
+  : undefined
+
+const collectSearchGrams = (
+  text: string | undefined,
+  size: 2 | 3
+): readonly string[] => {
+  if (!text || text.length < size) {
+    return EMPTY_GRAMS
+  }
+
+  const grams = new Set<string>()
+  const maxStart = text.length - size
+
+  for (let start = 0; start <= maxStart; start += 1) {
+    grams.add(text.slice(start, start + size))
+  }
+
+  return grams.size
+    ? [...grams]
+    : EMPTY_GRAMS
+}
+
+const addPosting = (
+  target: Map<string, RecordId[]>,
+  key: string,
+  recordId: RecordId
+) => {
+  const current = target.get(key)
+  if (current) {
+    current.push(recordId)
+    return
+  }
+
+  target.set(key, [recordId])
+}
+
+const collectPostingDelta = (input: {
+  previousText: string | undefined
+  nextText: string | undefined
+  recordId: RecordId
+  size: 2 | 3
+  touchedKeys: Set<string>
+  removedByKey: Map<string, RecordId[]>
+  addedByKey: Map<string, RecordId[]>
+}) => {
+  const previousKeys = collectSearchGrams(input.previousText, input.size)
+  const nextKeys = collectSearchGrams(input.nextText, input.size)
+  if (
+    previousKeys.length === nextKeys.length
+    && previousKeys.every(key => nextKeys.includes(key))
+  ) {
+    return
+  }
+
+  previousKeys.forEach(key => {
+    input.touchedKeys.add(key)
+    if (!nextKeys.includes(key)) {
+      addPosting(input.removedByKey, key, input.recordId)
+    }
+  })
+  nextKeys.forEach(key => {
+    input.touchedKeys.add(key)
+    if (!previousKeys.includes(key)) {
+      addPosting(input.addedByKey, key, input.recordId)
+    }
+  })
+}
+
+const readFieldSearchText = (input: {
+  records: RecordIndex
+  recordId: RecordId
+  fieldId: FieldId
+  field: Field | undefined
+}): string | undefined => buildFieldSearchText(
+  input.field,
+  input.records.values.get(input.fieldId)?.byRecord.get(input.recordId)
+)
+
+const readCombinedSearchText = (input: {
+  records: RecordIndex
+  recordId: RecordId
+  fields: readonly {
+    fieldId: FieldId
+    field: Field | undefined
+  }[]
+}): string | undefined => {
+  const tokens: string[] = []
+
+  for (let index = 0; index < input.fields.length; index += 1) {
+    const entry = input.fields[index]!
+    const text = readFieldSearchText({
+      records: input.records,
+      recordId: input.recordId,
+      fieldId: entry.fieldId,
+      field: entry.field
+    })
+    if (text) {
+      tokens.push(...splitSearchText(text))
+    }
+  }
+
+  return tokens.length
+    ? joinSearchTokens(tokens)
+    : undefined
 }
 
 const buildTextIndex = (input: {
@@ -54,51 +173,123 @@ const buildTextIndex = (input: {
   readText: (recordId: RecordId) => string | undefined
 }): SearchTextIndex => {
   const texts = new Map<RecordId, string>()
+  const bigrams = new Map<string, RecordId[]>()
+  const trigrams = new Map<string, RecordId[]>()
 
   for (let index = 0; index < input.ids.length; index += 1) {
     const recordId = input.ids[index]!
     const text = input.readText(recordId)
-    if (text) {
-      texts.set(recordId, text)
+    if (!text) {
+      continue
     }
+
+    texts.set(recordId, text)
+    collectSearchGrams(text, 2).forEach(key => {
+      addPosting(bigrams, key, recordId)
+    })
+    collectSearchGrams(text, 3).forEach(key => {
+      addPosting(trigrams, key, recordId)
+    })
   }
 
   return {
-    texts
+    texts,
+    bigrams,
+    trigrams
   }
 }
 
 const updateTextIndex = (input: {
   previous: SearchTextIndex
   touchedRecords: ReadonlySet<RecordId>
+  records: RecordIndex
   readText: (recordId: RecordId) => string | undefined
 }): SearchTextIndex => {
-  const previous = input.previous.texts
-  const texts = createMapPatchBuilder(previous)
+  const previousTexts = input.previous.texts
+  const texts = createMapPatchBuilder(previousTexts)
+  const bigrams = createMapPatchBuilder(input.previous.bigrams)
+  const trigrams = createMapPatchBuilder(input.previous.trigrams)
+  const touchedBigrams = new Set<string>()
+  const touchedTrigrams = new Set<string>()
+  const removedBigrams = new Map<string, RecordId[]>()
+  const addedBigrams = new Map<string, RecordId[]>()
+  const removedTrigrams = new Map<string, RecordId[]>()
+  const addedTrigrams = new Map<string, RecordId[]>()
+  let changed = false
 
-  for (const recordId of input.touchedRecords) {
-    const previousHas = previous.has(recordId)
-    const previousText = previous.get(recordId)
+  input.touchedRecords.forEach(recordId => {
+    const previousText = previousTexts.get(recordId)
     const nextText = input.readText(recordId)
-    const nextHas = Boolean(nextText)
-
-    if (previousHas === nextHas && previousText === nextText) {
-      continue
+    if (previousText === nextText) {
+      return
     }
 
+    changed = true
     if (nextText) {
       texts.set(recordId, nextText)
-      continue
+    } else {
+      texts.delete(recordId)
     }
 
-    texts.delete(recordId)
+    collectPostingDelta({
+      previousText,
+      nextText,
+      recordId,
+      size: 2,
+      touchedKeys: touchedBigrams,
+      removedByKey: removedBigrams,
+      addedByKey: addedBigrams
+    })
+    collectPostingDelta({
+      previousText,
+      nextText,
+      recordId,
+      size: 3,
+      touchedKeys: touchedTrigrams,
+      removedByKey: removedTrigrams,
+      addedByKey: addedTrigrams
+    })
+  })
+
+  if (!changed) {
+    return input.previous
   }
 
-  return texts.changed()
-    ? {
-        texts: texts.finish()
-      }
-    : input.previous
+  touchedBigrams.forEach(key => {
+    const nextIds = applyOrderedIdDelta({
+      previous: input.previous.bigrams.get(key) ?? EMPTY_RECORD_IDS,
+      remove: createRecordIdSet(removedBigrams.get(key)),
+      add: addedBigrams.get(key),
+      order: input.records.order
+    })
+    if (nextIds.length) {
+      bigrams.set(key, nextIds)
+      return
+    }
+
+    bigrams.delete(key)
+  })
+
+  touchedTrigrams.forEach(key => {
+    const nextIds = applyOrderedIdDelta({
+      previous: input.previous.trigrams.get(key) ?? EMPTY_RECORD_IDS,
+      remove: createRecordIdSet(removedTrigrams.get(key)),
+      add: addedTrigrams.get(key),
+      order: input.records.order
+    })
+    if (nextIds.length) {
+      trigrams.set(key, nextIds)
+      return
+    }
+
+    trigrams.delete(key)
+  })
+
+  return {
+    texts: texts.finish(),
+    bigrams: bigrams.finish(),
+    trigrams: trigrams.finish()
+  }
 }
 
 const buildFieldIndex = (
@@ -109,18 +300,20 @@ const buildFieldIndex = (
   const field = resolveSearchField(context, fieldId)
   if (fieldId !== 'title' && !field) {
     return {
-      texts: EMPTY_SEARCH_TEXTS
+      texts: EMPTY_SEARCH_TEXTS,
+      bigrams: EMPTY_SEARCH_POSTINGS,
+      trigrams: EMPTY_SEARCH_POSTINGS
     }
   }
 
   return buildTextIndex({
     ids: records.ids,
-    readText: recordId => {
-      const record = records.byId[recordId]
-      return record
-        ? buildRecordFieldSearchTextFromField(record, fieldId, field)
-        : undefined
-    }
+    readText: recordId => readFieldSearchText({
+      records,
+      recordId,
+      fieldId,
+      field
+    })
   })
 }
 
@@ -128,16 +321,18 @@ const buildAllIndex = (
   context: IndexReadContext,
   records: RecordIndex
 ): SearchTextIndex => {
-  const fields = resolveDefaultSearchFields(context)
+  const fields = resolveDefaultSearchFieldIds(context).map(fieldId => ({
+    fieldId,
+    field: resolveSearchField(context, fieldId)
+  }))
 
   return buildTextIndex({
     ids: records.ids,
-    readText: recordId => {
-      const record = records.byId[recordId]
-      return record
-        ? buildRecordDefaultSearchTextFromFields(record, fields)
-        : undefined
-    }
+    readText: recordId => readCombinedSearchText({
+      records,
+      recordId,
+      fields
+    })
   })
 }
 
@@ -220,16 +415,19 @@ export const syncSearchIndex = (
   )) {
     nextAll = buildAllIndex(context, records)
   } else if (hasLoadedAll && context.touchedRecords !== 'all' && context.touchedRecords.size) {
-    const defaultFields = resolveDefaultSearchFields(context)
+    const allFields = resolveDefaultSearchFieldIds(context).map(fieldId => ({
+      fieldId,
+      field: resolveSearchField(context, fieldId)
+    }))
     const next = updateTextIndex({
       previous: previous.all!,
       touchedRecords: context.touchedRecords,
-      readText: recordId => {
-        const record = records.byId[recordId]
-        return record
-          ? buildRecordDefaultSearchTextFromFields(record, defaultFields)
-          : undefined
-      }
+      records,
+      readText: recordId => readCombinedSearchText({
+        records,
+        recordId,
+        fields: allFields
+      })
     })
     if (next !== previous.all) {
       nextAll = next
@@ -255,12 +453,13 @@ export const syncSearchIndex = (
     const nextField = updateTextIndex({
       previous: previousField,
       touchedRecords: context.touchedRecords,
-      readText: recordId => {
-        const record = records.byId[recordId]
-        return record
-          ? buildRecordFieldSearchTextFromField(record, fieldId, field)
-          : undefined
-      }
+      records,
+      readText: recordId => readFieldSearchText({
+        records,
+        recordId,
+        fieldId,
+        field
+      })
     })
 
     if (nextField !== previousField) {

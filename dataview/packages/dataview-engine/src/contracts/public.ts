@@ -10,6 +10,8 @@ import type {
   FieldId,
   FieldOption,
   Filter,
+  FilterConditionProjection as FilterConditionProjectionCore,
+  FilterValuePreview,
   FilterPresetId,
   FilterRule,
   GalleryCardSize,
@@ -98,21 +100,18 @@ export const sameCellRef = (
   right: CellRef
 ) => left.itemId === right.itemId && left.fieldId === right.fieldId
 
-export interface FilterConditionProjection {
-  id: FilterPresetId
-  selected: boolean
-}
+export type FilterConditionProjection = FilterConditionProjectionCore
 
 export interface FilterRuleProjection {
   rule: FilterRule
   field?: Field
-  fieldLabel: string
+  fieldMissing: boolean
   activePresetId: FilterPresetId
   effective: boolean
   editorKind: FilterEditorKind
-  valueText: string
+  value: FilterValuePreview
   bodyLayout: 'none' | 'inset' | 'flush'
-  conditions: readonly FilterConditionProjection[]
+  conditions: readonly FilterConditionProjectionCore[]
 }
 
 export interface ViewFilterProjection {

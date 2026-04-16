@@ -14,8 +14,9 @@ import {
   useDataViewValue
 } from '@dataview/react/dataview'
 import { FieldPicker } from '@dataview/react/field/picker'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
 import { SortRuleRow } from '@dataview/react/page/features/sort/SortRuleRow'
+import { useTranslation } from '@shared/i18n/react'
 import {
   getAvailableSorterFields,
 } from '@dataview/react/page/features/query/fields'
@@ -30,6 +31,7 @@ export interface SortPopoverProps {
 }
 
 export const SortPopover = (props: SortPopoverProps) => {
+  const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
   const document = useDataViewValue(dataView => dataView.engine.select.document)
@@ -52,7 +54,7 @@ export const SortPopover = (props: SortPopoverProps) => {
       ? [{
           kind: 'submenu' as const,
           key: 'add',
-          label: renderMessage(meta.ui.sort.add),
+          label: t(meta.ui.sort.add),
           leading: <Plus className="size-4 shrink-0" size={16} strokeWidth={1.8} />,
           presentation: 'dropdown' as const,
           placement: 'bottom-start' as const,
@@ -75,7 +77,7 @@ export const SortPopover = (props: SortPopoverProps) => {
     {
       kind: 'action',
       key: 'clear',
-      label: renderMessage(meta.ui.sort.clear),
+      label: t(meta.ui.sort.clear),
       leading: <Trash2 className="size-4 shrink-0" size={16} strokeWidth={1.8} />,
       tone: 'destructive',
       onSelect: () => {
@@ -108,7 +110,7 @@ export const SortPopover = (props: SortPopoverProps) => {
           leading={<ArrowUpDown className="size-[14px] shrink-0" size={14} strokeWidth={1.8} />}
           trailing={<ChevronDown className="size-[14px] shrink-0" size={14} strokeWidth={1.8} />}
         >
-          {renderMessage(meta.sort.summary(sorters).message)}
+          {t(meta.sort.summary(sorters).token)}
         </QueryChip>
       </Popover.Trigger>
       <Popover.Content

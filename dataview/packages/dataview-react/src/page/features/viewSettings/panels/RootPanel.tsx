@@ -21,10 +21,12 @@ import {
 } from '@dataview/react/dataview'
 import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem } from '@shared/ui/menu'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
 import { buildNavigationItem } from '@dataview/react/menu-builders'
 import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
 import { supportsGroupSettings } from '@dataview/react/page/session/settings'
+import type { TokenTranslator } from '@shared/i18n'
+import { useTranslation } from '@shared/i18n/react'
 
 type RootRouteKind = 'layout' | 'viewProperties' | 'fieldList' | 'filter' | 'sort' | 'group'
 
@@ -41,6 +43,7 @@ const ViewSettingsIdentitySection = (props: {
   onRename: (name: string) => void
   autoFocusName?: boolean
 }) => {
+  const { t } = useTranslation()
   const [name, setName] = useState(props.currentView?.name ?? '')
   const inputRef = useRef<HTMLInputElement | null>(null)
   const Icon = meta.view.get(props.currentView?.type).Icon
@@ -95,9 +98,9 @@ const ViewSettingsIdentitySection = (props: {
                 commit()
               }
             }}
-            placeholder={renderMessage(meta.ui.viewSettings.viewNamePlaceholder)}
+            placeholder={t(meta.ui.viewSettings.viewNamePlaceholder)}
             disabled={!props.currentView}
-            className="h-8 px-2 text-[13px] font-medium rounded-lg"
+            className="h-8 px-2 text-sm font-medium rounded-lg"
           />
         </div>
       </div>
@@ -111,11 +114,12 @@ const ViewSettingsActionsSection = (props: {
   onDuplicate: () => void
   onRemove: () => void
 }) => {
+  const { t } = useTranslation()
   const items: readonly MenuItem[] = [
     {
       kind: 'action',
       key: 'duplicate',
-      label: renderMessage(meta.ui.viewSettings.duplicate),
+      label: t(meta.ui.viewSettings.duplicate),
       leading: <Copy className="size-4" size={14} strokeWidth={1.8} />,
       disabled: props.disabled,
       onSelect: props.onDuplicate
@@ -123,7 +127,7 @@ const ViewSettingsActionsSection = (props: {
     {
       kind: 'action',
       key: 'remove',
-      label: renderMessage(meta.ui.viewSettings.remove),
+      label: t(meta.ui.viewSettings.remove),
       leading: <Trash2 className="size-4" size={14} strokeWidth={1.8} />,
       tone: 'destructive',
       disabled: props.disabled || !props.canRemove,
@@ -143,7 +147,8 @@ const ViewSettingsActionsSection = (props: {
 
 const readGroupModeLabel = (
   field: Field | undefined,
-  mode: string
+  mode: string,
+  t: TokenTranslator
 ) => {
   if (!field) {
     return undefined
@@ -152,30 +157,33 @@ const readGroupModeLabel = (
   switch (field.kind) {
     case 'status':
       return mode === 'category'
-        ? renderMessage(meta.ui.viewSettings.groupByCategory)
-        : renderMessage(meta.ui.viewSettings.groupByStatus)
+        ? t(meta.ui.viewSettings.groupByCategory)
+        : t(meta.ui.viewSettings.groupByStatus)
     case 'select':
     case 'multiSelect':
-      return renderMessage(meta.ui.viewSettings.groupByOption)
+      return t(meta.ui.viewSettings.groupByOption)
     case 'number':
-      return renderMessage(meta.ui.viewSettings.groupByRange)
+      return t(meta.ui.viewSettings.groupByRange)
     default:
       return undefined
   }
 }
 
-const readBucketSortLabel = (bucketSort: BucketSort | undefined) => {
+const readBucketSortLabel = (
+  bucketSort: BucketSort | undefined,
+  t: TokenTranslator
+) => {
   switch (bucketSort) {
     case 'manual':
-      return renderMessage(meta.ui.viewSettings.bucketSortManual)
+      return t(meta.ui.viewSettings.bucketSortManual)
     case 'labelAsc':
-      return renderMessage(meta.ui.viewSettings.bucketSortLabelAsc)
+      return t(meta.ui.viewSettings.bucketSortLabelAsc)
     case 'labelDesc':
-      return renderMessage(meta.ui.viewSettings.bucketSortLabelDesc)
+      return t(meta.ui.viewSettings.bucketSortLabelDesc)
     case 'valueAsc':
-      return renderMessage(meta.ui.viewSettings.bucketSortValueAsc)
+      return t(meta.ui.viewSettings.bucketSortValueAsc)
     case 'valueDesc':
-      return renderMessage(meta.ui.viewSettings.bucketSortValueDesc)
+      return t(meta.ui.viewSettings.bucketSortValueDesc)
     default:
       return undefined
   }
@@ -188,15 +196,18 @@ const readGroupSummary = (
     mode: string
     bucketSort?: BucketSort
     bucketInterval?: number
-  }
+  },
+  t?: TokenTranslator
 ) => {
   if (!group?.active || !group.field) {
-    return renderMessage(meta.ui.viewSettings.none)
+    return t
+      ? t(meta.ui.viewSettings.none)
+      : ''
   }
 
   const parts = [group.field.name]
-  const modeLabel = readGroupModeLabel(group.field, group.mode)
-  const bucketSortLabel = readBucketSortLabel(group.bucketSort)
+  const modeLabel = t ? readGroupModeLabel(group.field, group.mode, t) : undefined
+  const bucketSortLabel = t ? readBucketSortLabel(group.bucketSort, t) : undefined
 
   if (modeLabel) {
     parts.push(modeLabel)
@@ -212,6 +223,7 @@ const readGroupSummary = (
 }
 
 export const RootPanel = () => {
+  const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
   const document = useDataViewValue(dataView => dataView.engine.select.document)
@@ -237,37 +249,37 @@ export const RootPanel = () => {
   const menuItems: RootMenuItemConfig[] = [
     {
       icon: Settings2,
-      label: renderMessage(meta.ui.viewSettings.layout),
-      suffix: renderMessage(meta.view.get(currentView?.type).message),
+      label: t(meta.ui.viewSettings.layout),
+      suffix: t(meta.view.get(currentView?.type).token),
       panel: 'layout'
     },
     {
       icon: Eye,
-      label: renderMessage(meta.ui.viewSettings.visibleFields),
-      suffix: renderMessage(meta.ui.viewSettings.shown(propertyCount)),
+      label: t(meta.ui.viewSettings.visibleFields),
+      suffix: t(meta.ui.viewSettings.shown(propertyCount)),
       panel: 'viewProperties'
     },
     {
       icon: SquarePen,
-      label: renderMessage(meta.ui.viewSettings.editFields),
+      label: t(meta.ui.viewSettings.editFields),
       panel: 'fieldList'
     },
     {
       icon: Filter,
-      label: renderMessage(meta.ui.viewSettings.filter),
-      suffix: renderMessage(meta.ui.viewSettings.filterSummary(filterProjection?.rules.map(entry => entry.rule) ?? [], fields)),
+      label: t(meta.ui.viewSettings.filter),
+      suffix: t(meta.ui.viewSettings.filterSummary(filterProjection?.rules.map(entry => entry.rule) ?? [], fields)),
       panel: 'filter'
     },
     {
       icon: ArrowUpDown,
-      label: renderMessage(meta.ui.viewSettings.sort),
-      suffix: renderMessage(meta.ui.viewSettings.sortSummary(sortProjection?.rules.map(entry => entry.sorter) ?? [], fields)),
+      label: t(meta.ui.viewSettings.sort),
+      suffix: t(meta.ui.viewSettings.sortSummary(sortProjection?.rules.map(entry => entry.sorter) ?? [], fields)),
       panel: 'sort'
     },
     {
       icon: PanelsTopLeft,
-      label: renderMessage(meta.ui.viewSettings.group),
-      suffix: readGroupSummary(groupProjection),
+      label: t(meta.ui.viewSettings.group),
+      suffix: readGroupSummary(groupProjection, t),
       panel: 'group',
       visible: currentView
         ? supportsGroupSettings(currentView.type)
@@ -291,7 +303,7 @@ export const RootPanel = () => {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="px-3 pb-1 pt-3 text-[11px] font-medium text-muted-foreground">
-        {renderMessage(meta.ui.viewSettings.title)}
+        {t(meta.ui.viewSettings.title)}
       </div>
       <ViewSettingsIdentitySection
         currentView={currentView}

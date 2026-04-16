@@ -1,6 +1,7 @@
 import type {
   Field,
   FieldId,
+  FilterValuePreview,
   FilterOperator,
   FilterPresetId,
   FilterRule,
@@ -29,5 +30,5 @@ export interface FilterSpec {
   getEditorKind: (field: Field | undefined, rule: FilterRule) => FilterEditorKind
   isEffective: (field: Field | undefined, rule: FilterRule) => boolean
   match: (field: Field | undefined, recordValue: unknown, rule: FilterRule) => boolean
-  formatValueText: (field: Field | undefined, rule: FilterRule) => string
+  projectValue: (field: Field | undefined, rule: FilterRule) => FilterValuePreview
 }

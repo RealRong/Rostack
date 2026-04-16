@@ -40,7 +40,7 @@ export {
   useDataViewKeyedValue,
   useDataViewValue
 } from '@dataview/react/dataview'
-export { meta, renderMessage } from '@dataview/meta'
+export { meta } from '@dataview/meta'
 export type {
   DataViewContextValue,
   DataViewSession,

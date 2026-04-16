@@ -16,6 +16,7 @@ import type {
   ItemList
 } from '@dataview/engine'
 import {
+  sameJsonValue,
   sameOrder
 } from '@shared/core'
 import {
@@ -83,7 +84,7 @@ const sameBlock = (
     case 'section-header':
       return right.kind === 'section-header'
         && left.section.key === right.section.key
-        && left.section.title === right.section.title
+        && sameJsonValue(left.section.label, right.section.label)
         && left.section.collapsed === right.section.collapsed
         && sameOrder(left.section.recordIds, right.section.recordIds)
   }

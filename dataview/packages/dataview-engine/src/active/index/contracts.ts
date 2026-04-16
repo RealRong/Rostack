@@ -56,6 +56,7 @@ export interface GroupDemand {
 export interface IndexDemand {
   search?: SearchDemand
   groups?: readonly GroupDemand[]
+  displayFields?: readonly FieldId[]
   sortFields?: readonly FieldId[]
   calculations?: readonly CalculationDemand[]
 }
@@ -79,11 +80,14 @@ export interface SearchIndex {
 
 export interface SearchTextIndex {
   texts: ReadonlyMap<RecordId, string>
+  bigrams: ReadonlyMap<string, SortedIdSet<RecordId>>
+  trigrams: ReadonlyMap<string, SortedIdSet<RecordId>>
 }
 
 export interface FilterBucketIndex {
   capability: 'filter'
   fieldId: FieldId
+  recordBuckets: ReadonlyMap<RecordId, readonly BucketKey[]>
   bucketRecords: ReadonlyMap<BucketKey, SortedIdSet<RecordId>>
 }
 

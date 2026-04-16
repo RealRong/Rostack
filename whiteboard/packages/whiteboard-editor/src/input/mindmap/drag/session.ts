@@ -68,7 +68,6 @@ export const createMindmapSession = (
           nodeId: commit.nodeId,
           drop: commit.drop,
           origin: commit.origin,
-          nodeSize: ctx.config.mindmapNodeSize,
           layout: commit.layout
         })
       }

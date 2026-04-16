@@ -95,6 +95,10 @@ const readNodeType = (
     : node.type
 )
 
+const isSelectableNode = (
+  node: Pick<Node, 'type'> | undefined
+) => node?.type !== 'mindmap'
+
 const isNodeItemEqual = (
   left: NodeItem | undefined,
   right: NodeItem | undefined
@@ -173,19 +177,26 @@ const isNodeCanvasSnapshotEqual = (
 )
 
 const resolveNodeCapability = (
+  node: Pick<Node, 'type' | 'mindmapId'>,
   definition?: NodeDefinition
 ): NodeCapability => {
   const role = definition?.role ?? 'content'
+  const mindmapOwned = Boolean(node.mindmapId)
+  const mindmapRoot = node.type === 'mindmap'
 
   return {
     role,
-    connect: definition?.connect ?? true,
+    connect: !mindmapOwned && !mindmapRoot && (definition?.connect ?? true),
     enter: definition?.enter ?? false,
-    resize: definition?.canResize ?? true,
+    resize: !mindmapOwned && !mindmapRoot && (definition?.canResize ?? true),
     rotate:
-      typeof definition?.canRotate === 'boolean'
-        ? definition.canRotate
-        : role === 'content'
+      !mindmapOwned
+      && !mindmapRoot
+      && (
+        typeof definition?.canRotate === 'boolean'
+          ? definition.canRotate
+          : role === 'content'
+      )
   }
 }
 
@@ -268,9 +279,9 @@ export const createNodeRead = ({
   })
   const capability: NodePresentationRead['capability'] = (
     node: Pick<Node, 'type'> | NodeType
-  ) => resolveNodeCapability(
-    registry.get(readNodeType(node))
-  )
+  ) => typeof node === 'string'
+    ? resolveNodeCapability({ type: node }, registry.get(node))
+    : resolveNodeCapability(node, registry.get(node.type))
   const view: NodePresentationRead['view'] = createKeyedDerivedStore({
     get: (nodeId: NodeId) => {
       const resolvedItem = readValue(item, nodeId)
@@ -319,14 +330,25 @@ export const createNodeRead = ({
     list: read.node.list,
     committed: read.node.item,
     item,
-    nodes: (nodeIds) => presentValues(nodeIds, (nodeId) => readValue(item, nodeId)?.node),
+    nodes: (nodeIds) => presentValues(nodeIds, (nodeId) => {
+      const node = readValue(item, nodeId)?.node
+      return isSelectableNode(node)
+        ? node
+        : undefined
+    }),
     state,
     view,
     canvas,
     rect,
     bounds,
     capability,
-    idsInRect: read.node.idsInRect,
-    ordered: () => presentValues(readValue(read.node.list), (nodeId) => readValue(item, nodeId)?.node)
+    idsInRect: (rect, options) => read.node.idsInRect(rect, options)
+      .filter((nodeId) => isSelectableNode(read.node.item.get(nodeId)?.node)),
+    ordered: () => presentValues(readValue(read.node.list), (nodeId) => {
+      const node = readValue(item, nodeId)?.node
+      return isSelectableNode(node)
+        ? node
+        : undefined
+    })
   }
 }

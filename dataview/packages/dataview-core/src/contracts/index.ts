@@ -43,6 +43,14 @@ export type {
   RowInsertTarget,
 } from '@dataview/core/contracts/operations'
 export type {
+  FilterConditionProjection,
+  FilterValuePreview,
+  SystemValueId
+} from '@dataview/core/contracts/presentation'
+export type {
+  Token
+} from '@shared/i18n'
+export type {
   CustomFieldId,
   Field,
   FieldId,

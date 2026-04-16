@@ -37,7 +37,7 @@ const equalSection = (
   right: Section
 ) => (
   left.key === right.key
-  && left.title === right.title
+  && sameJsonValue(left.label, right.label)
   && left.color === right.color
   && left.collapsed === right.collapsed
   && equalIds(left.recordIds, right.recordIds)
@@ -49,7 +49,7 @@ const equalCalculationDistributionItem = (
   right: CalculationDistributionItem
 ) => (
   left.key === right.key
-  && left.label === right.label
+  && sameJsonValue(left.value, right.value)
   && left.count === right.count
   && left.percent === right.percent
   && left.color === right.color
@@ -59,7 +59,7 @@ const equalCalculationResult = (
   left: CalculationResult,
   right: CalculationResult
 ) => {
-  if (left.kind !== right.kind || left.metric !== right.metric || left.display !== right.display) {
+  if (left.kind !== right.kind || left.metric !== right.metric) {
     return false
   }
 

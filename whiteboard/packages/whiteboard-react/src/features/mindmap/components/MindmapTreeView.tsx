@@ -1,101 +1,83 @@
-import { MindmapNodeItem } from '@whiteboard/react/features/mindmap/components/MindmapNodeItem'
+import type { NodeId } from '@whiteboard/core/types'
+import { CanvasNodeSceneItem } from '@whiteboard/react/features/node/components/CanvasNodeSceneItem'
 import type { MindmapTreeViewData } from '@whiteboard/react/types/mindmap'
 
 type MindmapTreeViewProps = {
   view: MindmapTreeViewData
+  registerMeasuredElement: (
+    nodeId: NodeId,
+    element: HTMLDivElement | null,
+    enabled: boolean
+  ) => void
+  selectedNodeIds: readonly NodeId[]
+}
+
+const strokeDasharray = (
+  stroke: 'solid' | 'dashed' | 'dotted'
+) => {
+  switch (stroke) {
+    case 'dashed':
+      return '6 4'
+    case 'dotted':
+      return '2 4'
+    default:
+      return undefined
+  }
 }
 
 export const MindmapTreeView = ({
-  view
+  view,
+  registerMeasuredElement,
+  selectedNodeIds
 }: MindmapTreeViewProps) => {
-  const {
-    treeId,
-    baseOffset,
-    bbox,
-    shiftX,
-    shiftY,
-    lines,
-    nodes,
-    ghost,
-    connectionLine,
-    insertLine,
-    onAddChild
-  } = view
+  const selectedSet = new Set(selectedNodeIds)
 
   return (
-    <div
-      className="wb-mindmap-tree"
-      data-mindmap-tree-id={treeId}
-      style={{ transform: `translate(${baseOffset.x}px, ${baseOffset.y}px)` }}
-    >
-      <svg width={bbox.width} height={bbox.height} className="wb-mindmap-tree-canvas">
-        {lines.map((line) => (
-          <line
-            key={line.id}
-            x1={line.x1 + shiftX}
-            y1={line.y1 + shiftY}
-            x2={line.x2 + shiftX}
-            y2={line.y2 + shiftY}
-            stroke="var(--ui-text-primary)"
-            strokeWidth={2}
-            vectorEffect="non-scaling-stroke"
-            style={{ transition: ghost ? 'none' : 'all 160ms ease' }}
-          />
-        ))}
-      </svg>
-      {nodes.map((node) => (
-        <MindmapNodeItem
-          key={node.id}
-          treeId={treeId}
-          id={node.id}
-          rect={node.rect}
-          shiftX={shiftX}
-          shiftY={shiftY}
-          label={node.label}
-          dragActive={node.dragActive}
-          attachTarget={node.attachTarget}
-          showActions={node.showActions}
-          dragPreviewActive={node.dragPreviewActive}
-          onAddChild={onAddChild}
+    <>
+      <div
+        className="wb-mindmap-tree"
+        data-mindmap-tree-id={view.treeId}
+        style={{
+          width: view.bbox.width,
+          height: view.bbox.height,
+          transform: `translate(${view.bbox.x}px, ${view.bbox.y}px)`,
+          pointerEvents: 'none'
+        }}
+      >
+        <svg
+          width={view.bbox.width}
+          height={view.bbox.height}
+          viewBox={`${view.bbox.x} ${view.bbox.y} ${view.bbox.width} ${view.bbox.height}`}
+          className="wb-mindmap-tree-canvas"
+        >
+          {view.connectors.map((connector) => (
+            <path
+              key={connector.id}
+              d={connector.path}
+              fill="none"
+              stroke={connector.style.color}
+              strokeWidth={connector.style.width}
+              strokeDasharray={strokeDasharray(connector.style.stroke)}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+        </svg>
+      </div>
+      <CanvasNodeSceneItem
+        nodeId={view.rootNodeId}
+        registerMeasuredElement={registerMeasuredElement}
+        selected={selectedSet.has(view.rootNodeId)}
+      />
+      {view.childNodeIds.map((nodeId) => (
+        <CanvasNodeSceneItem
+          key={nodeId}
+          nodeId={nodeId}
+          registerMeasuredElement={registerMeasuredElement}
+          selected={selectedSet.has(nodeId)}
         />
       ))}
-      {ghost && (
-        <>
-          <svg width={bbox.width} height={bbox.height} className="wb-mindmap-tree-canvas">
-            {connectionLine && (
-              <line
-                x1={connectionLine.x1 - baseOffset.x}
-                y1={connectionLine.y1 - baseOffset.y}
-                x2={connectionLine.x2 - baseOffset.x}
-                y2={connectionLine.y2 - baseOffset.y}
-                stroke="rgb(from var(--ui-accent) r g b / 0.9)"
-                strokeWidth={2}
-                strokeDasharray="4 4"
-                vectorEffect="non-scaling-stroke"
-              />
-            )}
-            {insertLine && (
-              <line
-                x1={insertLine.x1 - baseOffset.x}
-                y1={insertLine.y1 - baseOffset.y}
-                x2={insertLine.x2 - baseOffset.x}
-                y2={insertLine.y2 - baseOffset.y}
-                stroke="rgb(from var(--ui-accent) r g b / 0.9)"
-                strokeWidth={2}
-                vectorEffect="non-scaling-stroke"
-              />
-            )}
-          </svg>
-          <div
-            className="wb-mindmap-tree-ghost"
-            style={{
-              width: ghost.width,
-              height: ghost.height,
-              transform: `translate(${ghost.x - baseOffset.x}px, ${ghost.y - baseOffset.y}px)`
-            }}
-          />
-        </>
-      )}
-    </div>
+    </>
   )
 }

@@ -5,12 +5,12 @@ import {
 } from '@dataview/core/field'
 import {
   meta,
-  renderMessage,
   type FieldDateValueKindId,
   type FieldDisplayDateFormatId,
   type FieldDisplayTimeFormatId,
   type FieldNumberFormatId
 } from '@dataview/meta'
+import type { TokenTranslator } from '@shared/i18n'
 import type { MenuItem } from '@shared/ui/menu'
 import { buildChoiceSubmenuItem } from '@dataview/react/menu-builders'
 import { FIELD_DROPDOWN_MENU_PROPS } from '@dataview/react/field/dropdown'
@@ -20,6 +20,7 @@ const FLOATING_TIMEZONE_ID = '__floating__'
 export const buildFieldFormatMenuItems = (props: {
   field: CustomField
   update: (patch: Partial<Omit<CustomField, 'id'>>) => void
+  t: TokenTranslator
 }): readonly MenuItem[] => {
   const numberFormat = props.field.kind === 'number'
     ? meta.field.number.format.get(props.field.format)
@@ -79,12 +80,12 @@ export const buildFieldFormatMenuItems = (props: {
     return [
       buildChoiceSubmenuItem({
         key: 'number-format',
-        label: renderMessage(meta.ui.field.editor.format),
-        suffix: renderMessage(numberFormat.message),
+        label: props.t(meta.ui.field.editor.format),
+        suffix: props.t(numberFormat.token),
         value: numberFormat.id as FieldNumberFormatId,
         options: meta.field.number.format.list.map(option => ({
           id: option.id as FieldNumberFormatId,
-          label: renderMessage(option.message)
+          label: props.t(option.token)
         })),
         ...FIELD_DROPDOWN_MENU_PROPS,
         onSelect: setNumberFormat
@@ -97,7 +98,7 @@ export const buildFieldFormatMenuItems = (props: {
       {
         kind: 'toggle',
         key: 'display-full-url',
-        label: renderMessage(meta.ui.field.editor.displayFullUrl),
+        label: props.t(meta.ui.field.editor.displayFullUrl),
         checked: urlConfig.displayFullUrl,
         indicator: 'switch',
         onSelect: () => setUrlConfig({
@@ -114,12 +115,12 @@ export const buildFieldFormatMenuItems = (props: {
   return [
     buildChoiceSubmenuItem({
       key: 'display-date-format',
-      label: renderMessage(meta.ui.field.editor.displayDateFormat),
-      suffix: renderMessage(displayDateFormat.message),
+      label: props.t(meta.ui.field.editor.displayDateFormat),
+      suffix: props.t(displayDateFormat.token),
       value: displayDateFormat.id as FieldDisplayDateFormatId,
       options: meta.field.date.displayDateFormat.list.map(option => ({
         id: option.id as FieldDisplayDateFormatId,
-        label: renderMessage(option.message)
+        label: props.t(option.token)
       })),
       ...FIELD_DROPDOWN_MENU_PROPS,
       onSelect: value => {
@@ -130,12 +131,12 @@ export const buildFieldFormatMenuItems = (props: {
     }),
     buildChoiceSubmenuItem({
       key: 'display-time-format',
-      label: renderMessage(meta.ui.field.editor.displayTimeFormat),
-      suffix: renderMessage(displayTimeFormat.message),
+      label: props.t(meta.ui.field.editor.displayTimeFormat),
+      suffix: props.t(displayTimeFormat.token),
       value: displayTimeFormat.id as FieldDisplayTimeFormatId,
       options: meta.field.date.displayTimeFormat.list.map(option => ({
         id: option.id as FieldDisplayTimeFormatId,
-        label: renderMessage(option.message)
+        label: props.t(option.token)
       })),
       ...FIELD_DROPDOWN_MENU_PROPS,
       onSelect: value => {
@@ -146,12 +147,12 @@ export const buildFieldFormatMenuItems = (props: {
     }),
     buildChoiceSubmenuItem({
       key: 'default-value-kind',
-      label: renderMessage(meta.ui.field.editor.defaultValueKind),
-      suffix: renderMessage(defaultValueKind.message),
+      label: props.t(meta.ui.field.editor.defaultValueKind),
+      suffix: props.t(defaultValueKind.token),
       value: defaultValueKind.id as FieldDateValueKindId,
       options: meta.field.date.defaultValueKind.list.map(option => ({
         id: option.id as FieldDateValueKindId,
-        label: renderMessage(option.message)
+        label: props.t(option.token)
       })),
       ...FIELD_DROPDOWN_MENU_PROPS,
       onSelect: value => {
@@ -163,7 +164,7 @@ export const buildFieldFormatMenuItems = (props: {
     ...(dateConfig.defaultValueKind === 'datetime'
       ? [buildChoiceSubmenuItem({
           key: 'default-timezone',
-          label: renderMessage(meta.ui.field.editor.defaultTimezone),
+          label: props.t(meta.ui.field.editor.defaultTimezone),
           suffix: formatTimeZoneLabel(dateConfig.defaultTimezone ?? null),
           size: 'lg',
           value: (dateConfig.defaultTimezone ?? FLOATING_TIMEZONE_ID) as string,

@@ -88,7 +88,7 @@ export const layoutMindmap = (
     })
   }
 
-  const rootId = tree.rootId
+  const rootId = tree.rootNodeId
   const rootSize = getSize(rootId)
   layout[rootId] = { x: 0, y: 0, width: rootSize.width, height: rootSize.height }
 
@@ -304,7 +304,7 @@ const buildTidyTree = (
   }
   const rawChildren = getChildren(tree, nodeId)
   const children =
-    nodeId === tree.rootId
+      nodeId === tree.rootNodeId
       ? rawChildren.filter((childId) => {
           const child = tree.nodes[childId]
           const childSide = child?.side ?? 'right'
@@ -324,7 +324,7 @@ const buildCenterY = (
   side: 'left' | 'right',
   vGap: number
 ) => {
-  const root = buildTidyTree(tree, tree.rootId, getNodeSize, side)
+  const root = buildTidyTree(tree, tree.rootNodeId, getNodeSize, side)
   if (!root) return {}
   const separation = (a: TidyNode, b: TidyNode) => a.height / 2 + b.height / 2 + vGap
   firstWalk(root, separation)
@@ -359,7 +359,7 @@ const buildCenterY = (
     children.forEach((childId) => alignChain(childId))
   }
 
-  alignChain(tree.rootId)
+  alignChain(tree.rootNodeId)
   return positions
 }
 
@@ -411,11 +411,11 @@ export const layoutMindmapTidy = (
       }
     })
   })
-  centerY[tree.rootId] = 0
+  centerY[tree.rootNodeId] = 0
 
   const centerX: Record<MindmapNodeId, number> = {}
-  centerX[tree.rootId] = 0
-  const rootChildren = getChildren(tree, tree.rootId)
+  centerX[tree.rootNodeId] = 0
+  const rootChildren = getChildren(tree, tree.rootNodeId)
   sides.forEach((side) => {
     rootChildren
       .filter((childId) => {
@@ -424,7 +424,7 @@ export const layoutMindmapTidy = (
         return childSide === side
       })
       .forEach((childId) => {
-        applyHorizontal(tree, childId, getNodeSize, hGap, side, centerX, tree.rootId)
+        applyHorizontal(tree, childId, getNodeSize, hGap, side, centerX, tree.rootNodeId)
       })
   })
 

@@ -1,3 +1,6 @@
+import { X } from 'lucide-react'
+import { meta } from '@dataview/meta'
+import { useTranslation } from '@shared/i18n/react'
 import {
   resolveOptionBadgeStyle,
   resolveOptionStatusDotStyle
@@ -7,25 +10,21 @@ import { cn } from '@shared/ui/utils'
 export interface FieldOptionTagProps {
   label: string
   color?: string
-  size?: 'sm' | 'md'
   variant?: 'default' | 'status'
+  onRemove?: () => void
   interactive?: boolean
   className?: string
 }
 
-const defaultSizeClassName: Record<NonNullable<FieldOptionTagProps['size']>, string> = {
-  sm: 'h-5 rounded-[4px] px-1.5 text-[12px] leading-5',
-  md: 'h-6 rounded-[5px] px-2 text-[13px] leading-6'
-}
-
-const statusSizeClassName: Record<NonNullable<FieldOptionTagProps['size']>, string> = {
-  sm: 'h-6 rounded-full px-2 text-[12px]',
-  md: 'h-6 rounded-full px-2 text-[12px]'
-}
+const defaultTagClassName = 'h-[20px] rounded-[3px] px-1.5'
+const defaultRemovableTagClassName = 'h-[20px] gap-1 rounded-[3px] pl-1.5 pr-1'
+const statusTagClassName = 'h-[20px] gap-[5px] rounded-full pl-[7px] pr-[9px]'
+const statusRemovableTagClassName = 'h-[20px] gap-[5px] rounded-full pl-[7px] pr-1'
 
 export const FieldOptionTag = (props: FieldOptionTagProps) => {
-  const size = props.size ?? 'sm'
+  const { t } = useTranslation()
   const variant = props.variant ?? 'default'
+  const removable = Boolean(props.onRemove)
 
   return (
     <span
@@ -33,8 +32,12 @@ export const FieldOptionTag = (props: FieldOptionTagProps) => {
       className={cn(
         'inline-flex min-w-0 max-w-full items-center whitespace-nowrap font-medium',
         variant === 'status'
-          ? cn('gap-1.5', statusSizeClassName[size])
-          : defaultSizeClassName[size],
+          ? removable
+            ? statusRemovableTagClassName
+            : statusTagClassName
+          : removable
+            ? defaultRemovableTagClassName
+            : defaultTagClassName,
         props.interactive && 'transition-colors',
         props.className
       )}
@@ -45,9 +48,27 @@ export const FieldOptionTag = (props: FieldOptionTagProps) => {
           style={resolveOptionStatusDotStyle(props.color)}
         />
       ) : null}
-      <span className="min-w-0 truncate">
+      <span className="min-w-0 truncate text-sm leading-5">
         {props.label}
       </span>
+      {props.onRemove ? (
+        <button
+          type="button"
+          className="inline-flex size-4 shrink-0 items-center justify-center text-current"
+          aria-label={t(meta.ui.field.options.clear(props.label))}
+          onMouseDown={event => {
+            event.preventDefault()
+            event.stopPropagation()
+          }}
+          onClick={event => {
+            event.preventDefault()
+            event.stopPropagation()
+            props.onRemove?.()
+          }}
+        >
+          <X className="size-3 opacity-70" size={14} strokeWidth={1.8} />
+        </button>
+      ) : null}
     </span>
   )
 }

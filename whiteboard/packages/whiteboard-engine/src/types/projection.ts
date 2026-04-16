@@ -1,10 +1,10 @@
 import type {
-  MindmapConnectionLine,
   MindmapLayout,
-  MindmapLayoutConfig,
+  MindmapLayoutSpec,
   MindmapNodeId,
   MindmapTree
 } from '@whiteboard/core/mindmap'
+import type { MindmapRenderConnector } from '@whiteboard/core/mindmap/render'
 import type { ResolvedEdgeEnds } from '@whiteboard/core/edge'
 import type {
   Edge,
@@ -31,12 +31,12 @@ export type MindmapItem = {
   id: NodeId
   node: SpatialNode
   tree: MindmapTree
-  layout: MindmapLayoutConfig
+  layout: MindmapLayoutSpec
   computed: MindmapLayout
   shiftX: number
   shiftY: number
-  lines: MindmapConnectionLine[]
-  labels: Record<MindmapNodeId, string>
+  childNodeIds: readonly MindmapNodeId[]
+  connectors: readonly MindmapRenderConnector[]
 }
 
 export type NodeItem = {

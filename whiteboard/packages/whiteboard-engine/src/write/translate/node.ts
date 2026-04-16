@@ -15,7 +15,7 @@ export const translateNode = <C extends NodeCommand>(
         ({ output }) => output
       ) as TranslateResult<CommandOutput<C>>
     case 'node.patch':
-      return fromOps(plan.updateMany(command, ctx.doc)) as TranslateResult<CommandOutput<C>>
+      return fromOps(plan.updateMany(command, ctx)) as TranslateResult<CommandOutput<C>>
     case 'node.move':
       return fromOps(plan.move(command, ctx)) as TranslateResult<CommandOutput<C>>
     case 'node.align':

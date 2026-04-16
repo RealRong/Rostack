@@ -157,8 +157,7 @@ export const createQueryRuntime = ({
     capability: nodeRead.capability
   })
   const mindmapRead = createMindmapRead({
-    read: engineRead.mindmap,
-    drag: local.feedback.selectors.mindmapDrag
+    read: engineRead.mindmap
   })
   const targetRead = createTargetRead({
     node: nodeRead,

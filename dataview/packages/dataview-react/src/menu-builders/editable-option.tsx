@@ -1,7 +1,8 @@
 import { MoreHorizontal } from 'lucide-react'
 import type { MenuItemRow } from '@shared/ui/menu'
 import { Button } from '@shared/ui/button'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
+import type { TokenTranslator } from '@shared/i18n'
 import { OptionEditorPopover } from '@dataview/react/field/options'
 import {
   buildOptionTagLabel,
@@ -12,6 +13,7 @@ import {
 export const buildEditableOptionItem = (input: {
   fieldId: string
   option: MenuOptionLike
+  t: TokenTranslator
   open: boolean
   editing?: boolean
   variant?: 'default' | 'status'
@@ -25,7 +27,7 @@ export const buildEditableOptionItem = (input: {
   className: input.editing
     ? 'bg-hover text-fg'
     : undefined,
-  label: buildOptionTagLabel(input.option, {
+  label: buildOptionTagLabel(input.option, input.t, {
     variant: input.variant,
     className: 'max-w-full'
   }),
@@ -43,7 +45,7 @@ export const buildEditableOptionItem = (input: {
         <Button
           variant="plain"
           size="iconBare"
-          aria-label={renderMessage(meta.ui.field.options.edit(readOptionLabel(input.option)))}
+          aria-label={input.t(meta.ui.field.options.edit(readOptionLabel(input.option, input.t)))}
         >
           <MoreHorizontal className="size-4" size={16} strokeWidth={1.8} />
         </Button>

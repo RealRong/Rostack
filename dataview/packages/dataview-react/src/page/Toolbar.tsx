@@ -31,7 +31,9 @@ import {
   useDataView,
   useDataViewValue,
 } from '@dataview/react/dataview'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
+import { token } from '@shared/i18n'
+import { useTranslation } from '@shared/i18n/react'
 
 interface ViewTabProps {
   view: View
@@ -48,20 +50,21 @@ interface ViewTabProps {
 }
 
 const ViewTab = (props: ViewTabProps) => {
+  const { t } = useTranslation()
   const viewType = meta.view.get(props.view.type)
   const Icon = viewType.Icon
   const items: readonly MenuItem[] = [
     {
       kind: 'action',
       key: 'rename',
-      label: '重命名',
+      label: t(token('dataview.react.toolbar.view.rename', 'Rename')),
       leading: <SquarePen className="size-4" size={16} strokeWidth={1.8} />,
       onSelect: props.onRename
     },
     {
       kind: 'action',
       key: 'edit',
-      label: '编辑视图',
+      label: t(meta.ui.toolbar.settings(props.view.type)),
       leading: <Settings2 className="size-4" size={16} strokeWidth={1.8} />,
       onSelect: props.onEdit
     },
@@ -72,14 +75,14 @@ const ViewTab = (props: ViewTabProps) => {
     {
       kind: 'action',
       key: 'duplicate',
-      label: '创建视图副本',
+      label: t(meta.ui.viewSettings.duplicate),
       leading: <Copy className="size-4" size={16} strokeWidth={1.8} />,
       onSelect: props.onDuplicate
     },
     {
       kind: 'action',
       key: 'remove',
-      label: '删除视图',
+      label: t(meta.ui.viewSettings.remove),
       leading: <Trash2 className="size-4" size={16} strokeWidth={1.8} />,
       tone: 'destructive',
       disabled: !props.canRemove,
@@ -136,6 +139,7 @@ const ViewTab = (props: ViewTabProps) => {
 export interface PageToolbarProps { }
 
 export const PageToolbar = () => {
+  const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
   const page = dataView.page
@@ -252,7 +256,7 @@ export const PageToolbar = () => {
           <div className="flex items-center overflow-hidden">
             <Button
               size="icon"
-              aria-label={renderMessage(meta.ui.toolbar.search)}
+              aria-label={t(meta.ui.toolbar.search)}
               onClick={() => {
                 setSearchExpanded(true)
                 window.requestAnimationFrame(() => {
@@ -288,7 +292,7 @@ export const PageToolbar = () => {
                 onBlur={() => {
                   setSearchExpanded(false)
                 }}
-                placeholder={renderMessage(meta.ui.toolbar.search)}
+                placeholder={t(meta.ui.toolbar.search)}
                 className="h-9 w-full outline-none border-0 bg-transparent px-0 shadow-none"
               />
             </div>
@@ -297,8 +301,8 @@ export const PageToolbar = () => {
             <Button
               size="icon"
               pressed={Boolean(filterCount)}
-              title={renderMessage(meta.ui.toolbar.filterButton(filterCount))}
-              aria-label={renderMessage(meta.ui.toolbar.filterButton(filterCount))}
+              title={t(meta.ui.toolbar.filterButton(filterCount))}
+              aria-label={t(meta.ui.toolbar.filterButton(filterCount))}
               disabled={!currentView}
               onClick={() => {
                 if (queryBar.visible) {
@@ -333,8 +337,8 @@ export const PageToolbar = () => {
                 <Button
                   size="icon"
                   pressed={toolbarRoute === 'addFilter'}
-                  title={renderMessage(meta.ui.toolbar.filter)}
-                  aria-label={renderMessage(meta.ui.toolbar.filter)}
+                  title={t(meta.ui.toolbar.filter)}
+                  aria-label={t(meta.ui.toolbar.filter)}
                   disabled={!currentView}
                 >
                   <Filter className="size-4" size={15} strokeWidth={1} />
@@ -366,8 +370,8 @@ export const PageToolbar = () => {
             <Button
               size="icon"
               pressed={Boolean(sortCount)}
-              title={renderMessage(meta.ui.toolbar.sortButton(sortCount))}
-              aria-label={renderMessage(meta.ui.toolbar.sortButton(sortCount))}
+              title={t(meta.ui.toolbar.sortButton(sortCount))}
+              aria-label={t(meta.ui.toolbar.sortButton(sortCount))}
               disabled={!currentView}
               onClick={() => {
                 if (queryBar.visible) {
@@ -402,8 +406,8 @@ export const PageToolbar = () => {
                 <Button
                   size="icon"
                   pressed={toolbarRoute === 'addSort'}
-                  title={renderMessage(meta.ui.toolbar.sort)}
-                  aria-label={renderMessage(meta.ui.toolbar.sort)}
+                  title={t(meta.ui.toolbar.sort)}
+                  aria-label={t(meta.ui.toolbar.sort)}
                   disabled={!currentView}
                 >
                   <ArrowUpDown className="size-4" size={15} strokeWidth={1} />

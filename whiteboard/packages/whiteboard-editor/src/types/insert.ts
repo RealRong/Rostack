@@ -1,6 +1,7 @@
 import type { ShapeKind } from '@whiteboard/core/node'
 import type {
-  MindmapNodeData,
+  MindmapPresetKey,
+  MindmapSeedKey,
   Point,
   SpatialNodeInput
 } from '@whiteboard/core/types'
@@ -29,22 +30,12 @@ export type NodeInsertPreset = InsertPresetBase & {
   input: (world: Point) => Omit<SpatialNodeInput, 'position'>
 }
 
-export type MindmapTemplate = {
-  key: string
-  label: string
-  description: string
-  root: MindmapNodeData
-  children?: readonly {
-    data: MindmapNodeData
-    side?: 'left' | 'right'
-  }[]
-}
-
 export type MindmapInsertPreset = InsertPresetBase & {
   kind: 'mindmap'
   group: 'mindmap'
-  description: string
-  template: MindmapTemplate
+  description?: string
+  preset: MindmapPresetKey
+  seed?: MindmapSeedKey
 }
 
 export type InsertPreset =

@@ -7,13 +7,16 @@ import type {
   RecordId,
   ViewId
 } from '@dataview/core/contracts'
+import type {
+  Token
+} from '@shared/i18n'
 
 export type ItemId = number
 export type SectionKey = string
 
 export interface SectionBucket {
   key: string
-  title: string
+  label: Token
   value: unknown
   clearValue?: unknown
   empty?: boolean
@@ -28,7 +31,7 @@ export interface ViewItem {
 
 export interface SectionData {
   key: SectionKey
-  title: string
+  label: Token
   color?: string
   bucket?: SectionBucket
   collapsed: boolean

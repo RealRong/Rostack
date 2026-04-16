@@ -9,11 +9,10 @@ import type {
   ExecuteResult,
   TranslateCommand
 } from '@whiteboard/engine/types/command'
-import type { MindmapLayoutConfig } from '@whiteboard/core/mindmap'
 import { createRegistries } from '@whiteboard/core/kernel'
 import { resolveBoardConfig } from '@whiteboard/engine/config'
 import { createRead } from '@whiteboard/engine/read'
-import { MINDMAP_LAYOUT_READ_IMPACT, RESET_READ_IMPACT } from '@whiteboard/engine/read/impacts'
+import { RESET_READ_IMPACT } from '@whiteboard/engine/read/impacts'
 import { createWrite } from '@whiteboard/engine/write'
 import { createDocumentSource } from '@whiteboard/engine/instance/document'
 import { normalizeDocument } from '@whiteboard/engine/document/normalize'
@@ -23,7 +22,6 @@ import type { Draft } from '@whiteboard/engine/types/write'
 import { success } from '@whiteboard/engine/result'
 import { createValueStore } from '@shared/core'
 
-const EMPTY_MINDMAP_LAYOUT: MindmapLayoutConfig = {}
 const readCommitAt = (): number => Date.now()
 
 export const createEngine = ({
@@ -36,11 +34,9 @@ export const createEngine = ({
   const resolvedRegistries = registries ?? createRegistries()
   const documentSource = createDocumentSource(normalizeDocument(document, config))
   const commitStore = createValueStore<Commit | null>(null)
-  let mindmapLayout = EMPTY_MINDMAP_LAYOUT
 
   const readControl = createRead({
     document: documentSource,
-    mindmapLayout: () => mindmapLayout,
     config
   })
 
@@ -138,16 +134,11 @@ export const createEngine = ({
   }
 
   const configure = ({
-    history,
-    mindmapLayout: nextMindmapLayout = EMPTY_MINDMAP_LAYOUT
+    history
   }: EngineRuntimeOptions) => {
     if (history) {
       writer.history.configure(history)
     }
-
-    if (Object.is(mindmapLayout, nextMindmapLayout)) return
-    mindmapLayout = nextMindmapLayout
-    readControl.invalidate(MINDMAP_LAYOUT_READ_IMPACT)
   }
 
   const dispose = () => {}

@@ -6,8 +6,9 @@ import {
   useDataView,
   useDataViewValue
 } from '@dataview/react/dataview'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
 import { FieldSchemaEditor } from '@dataview/react/field/schema'
+import { useTranslation } from '@shared/i18n/react'
 import {
   ViewSettingsContext,
 } from '@dataview/react/page/features/viewSettings/context'
@@ -21,6 +22,7 @@ import { RootPanel } from '@dataview/react/page/features/viewSettings/panels/Roo
 import { ViewFieldsPanel } from '@dataview/react/page/features/viewSettings/panels/ViewFieldsPanel'
 
 export const ViewSettingsPopover = () => {
+  const { t } = useTranslation()
   const dataView = useDataView()
   const page = dataView.page
   const currentView = useDataViewValue(
@@ -86,8 +88,8 @@ export const ViewSettingsPopover = () => {
           <Button
             size="icon"
             pressed={open}
-            title={renderMessage(meta.ui.toolbar.settings(currentView?.type))}
-            aria-label={renderMessage(meta.ui.toolbar.settings(currentView?.type))}
+            title={t(meta.ui.toolbar.settings(currentView?.type))}
+            aria-label={t(meta.ui.toolbar.settings(currentView?.type))}
             disabled={!currentView}
           >
             <Settings2 className="size-4" size={15} strokeWidth={1} />
@@ -114,7 +116,7 @@ export const ViewSettingsPopover = () => {
           >
             {resolvedRoute.kind === 'root' ? null : (
               <PanelHeader
-                title={renderMessage(meta.ui.viewSettings.routeTitle(resolvedRoute.kind))}
+                title={t(meta.ui.viewSettings.routeTitle(resolvedRoute.kind))}
                 onBack={router.back}
               />
             )}

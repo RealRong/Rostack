@@ -7,10 +7,9 @@ import {
 import type {
   ViewFieldRef
 } from '@dataview/engine'
-import {
-  meta,
-  renderMessage
-} from '@dataview/meta'
+import { meta } from '@dataview/meta'
+import { token } from '@shared/i18n'
+import { useTranslation } from '@shared/i18n/react'
 import { cn } from '@shared/ui/utils'
 import { openCardField } from '@dataview/react/views/shared/openCardField'
 
@@ -22,11 +21,12 @@ export interface AddCardFieldTriggerProps {
 }
 
 export const AddCardFieldTrigger = (props: AddCardFieldTriggerProps) => {
+  const { t } = useTranslation()
   const dataView = useDataView()
 
   const kind = meta.field.kind.get(props.customField.kind)
   const Icon = kind.Icon
-  const label = props.customField.name.trim() || renderMessage(kind.defaultName)
+  const label = props.customField.name.trim() || t(kind.defaultName)
 
   return (
     <button
@@ -52,7 +52,9 @@ export const AddCardFieldTrigger = (props: AddCardFieldTriggerProps) => {
     >
       <Icon className="size-4 shrink-0 text-muted-foreground transition-colors group-hover/empty-field:text-foreground" size={16} strokeWidth={1.8} />
       <span className="min-w-0 truncate text-[13px] font-medium">
-        {`添加 ${label}`}
+        {t(token('dataview.react.card.addField', 'Add {{label}}', {
+          label
+        }))}
       </span>
     </button>
   )

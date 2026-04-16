@@ -2,17 +2,19 @@ import { useMemo, useState } from 'react'
 import type { Field, FieldId } from '@dataview/core/contracts'
 import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem } from '@shared/ui/menu'
-import { meta, renderMessage, type MessageSpec } from '@dataview/meta'
+import { meta, type Token } from '@dataview/meta'
+import { useTranslation } from '@shared/i18n/react'
 import { buildFieldToggleItem } from '@dataview/react/menu-builders'
 
 export interface FieldPickerProps {
   fields: readonly Field[]
   selectedFieldId?: FieldId
-  emptyMessage?: MessageSpec
+  emptyMessage?: Token
   onSelect: (fieldId: FieldId) => void
 }
 
 export const FieldPicker = (props: FieldPickerProps) => {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const normalizedQuery = query.trim().toLowerCase()
   const visibleFields = props.fields.filter(field => (
@@ -22,11 +24,11 @@ export const FieldPicker = (props: FieldPickerProps) => {
     const kind = meta.field.kind.get(field.kind)
 
     return buildFieldToggleItem(field, {
-      suffix: renderMessage(kind.message),
+      suffix: t(kind.token),
       checked: field.id === props.selectedFieldId,
       onSelect: () => props.onSelect(field.id)
     })
-  }), [props.onSelect, props.selectedFieldId, visibleFields])
+  }), [props.onSelect, props.selectedFieldId, t, visibleFields])
   const emptyMessage = normalizedQuery
     ? meta.ui.fieldPicker.empty
     : (props.emptyMessage ?? meta.ui.fieldPicker.empty)
@@ -37,7 +39,7 @@ export const FieldPicker = (props: FieldPickerProps) => {
         <Input
           value={query}
           onChange={event => setQuery(event.target.value)}
-          placeholder={renderMessage(meta.ui.fieldPicker.searchPlaceholder)}
+          placeholder={t(meta.ui.fieldPicker.searchPlaceholder)}
         />
       </div>
 
@@ -49,7 +51,7 @@ export const FieldPicker = (props: FieldPickerProps) => {
           />
         ) : (
           <div className="px-1.5 py-2 text-[12px] text-muted-foreground">
-            {renderMessage(emptyMessage)}
+            {t(emptyMessage)}
           </div>
         )}
       </div>

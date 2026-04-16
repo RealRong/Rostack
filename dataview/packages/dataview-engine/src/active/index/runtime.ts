@@ -112,7 +112,8 @@ export const createIndexState = (
   document: DataDoc,
   demand?: IndexDemand
 ): IndexDeriveResult => {
-  const normalized = normalizeIndexDemand(demand)
+  const context = createIndexReadContext(document)
+  const normalized = normalizeIndexDemand(context, demand)
   return {
     state: buildState(document, normalized),
     demand: normalized
@@ -127,10 +128,10 @@ export const deriveIndex = (input: {
   demand?: IndexDemand
 }): IndexDeriveResult => {
   const previous = input.previous
-  const nextDemand = input.demand
-    ? normalizeIndexDemand(input.demand)
-    : input.previousDemand
   const context = createIndexDeriveContext(input.document, input.impact)
+  const nextDemand = input.demand
+    ? normalizeIndexDemand(context, input.demand)
+    : input.previousDemand
   const totalStart = now()
   const touchedRecordCount = touchedRecordCountOfImpact(input.impact)
   const touchedFieldCount = touchedFieldCountOfImpact(input.impact)

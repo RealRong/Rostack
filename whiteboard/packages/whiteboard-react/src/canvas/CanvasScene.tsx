@@ -39,6 +39,7 @@ export const CanvasScene = () => {
                 nodeId={ref.id}
                 registerMeasuredElement={registerMeasuredElement}
                 selected={selection.nodeIds.includes(ref.id)}
+                selectedNodeIds={selection.nodeIds}
               />
             )
       ))}

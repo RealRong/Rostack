@@ -28,8 +28,10 @@ import {
   useDataView,
 } from '@dataview/react/dataview'
 import { useStoreValue } from '@shared/react'
+import { token, type Token, type TokenTranslator } from '@shared/i18n'
+import { useTranslation } from '@shared/i18n/react'
 import { useTableContext } from '@dataview/react/views/table/context'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
 import { buildFieldKindMenuItems } from '@dataview/react/field/schema'
 import {
   TABLE_CELL_INLINE_PADDING,
@@ -47,28 +49,10 @@ export interface ColumnHeaderProps {
   ) => void
 }
 
-const CALCULATION_LABELS: Record<CalculationMetric, string> = {
-  countAll: '总数',
-  countValues: '值的总数',
-  countUniqueValues: '唯一值的总数',
-  countEmpty: '空单元格的总数',
-  countNonEmpty: '非空单元格的总数',
-  percentEmpty: '空单元格百分比',
-  percentNonEmpty: '非空单元格百分比',
-  sum: '总和',
-  average: '平均数',
-  median: '中位数',
-  min: '最小值',
-  max: '最大值',
-  range: '范围',
-  countByOption: '每个选项总数',
-  percentByOption: '每个选项百分比'
-}
-
 const CALCULATION_MENU_GROUPS = [
   {
     key: 'counts',
-    label: '总数',
+    label: token('meta.calculation.group.counts', 'Counts'),
     metrics: [
       'countAll',
       'countValues',
@@ -79,7 +63,7 @@ const CALCULATION_MENU_GROUPS = [
   },
   {
     key: 'percentages',
-    label: '百分比',
+    label: token('meta.calculation.group.percentages', 'Percentages'),
     metrics: [
       'percentEmpty',
       'percentNonEmpty'
@@ -87,7 +71,7 @@ const CALCULATION_MENU_GROUPS = [
   },
   {
     key: 'options',
-    label: '按选项',
+    label: token('meta.calculation.group.options', 'By option'),
     metrics: [
       'countByOption',
       'percentByOption'
@@ -95,7 +79,7 @@ const CALCULATION_MENU_GROUPS = [
   },
   {
     key: 'advanced',
-    label: '更多选择',
+    label: token('meta.calculation.group.advanced', 'More'),
     metrics: [
       'sum',
       'average',
@@ -107,18 +91,19 @@ const CALCULATION_MENU_GROUPS = [
   }
 ] as const satisfies readonly {
   key: string
-  label: string
+  label: Token
   metrics: readonly CalculationMetric[]
 }[]
 
 const buildCalculationMetricItems = (input: {
+  t: TokenTranslator
   metrics: readonly CalculationMetric[]
   currentMetric?: CalculationMetric
   onSelectMetric: (metric: CalculationMetric) => void
 }): readonly MenuItem[] => input.metrics.map(metric => ({
   kind: 'toggle' as const,
   key: `calculation:${metric}`,
-  label: CALCULATION_LABELS[metric],
+  label: input.t(meta.calculation.metric.get(metric).token),
   checked: input.currentMetric === metric,
   onSelect: () => {
     input.onSelectMetric(metric)
@@ -126,6 +111,7 @@ const buildCalculationMetricItems = (input: {
 }))
 
 const buildCalculationMenuItems = (input: {
+  t: TokenTranslator
   metrics: readonly CalculationMetric[]
   currentMetric?: CalculationMetric
   onClear: () => void
@@ -143,13 +129,14 @@ const buildCalculationMenuItems = (input: {
     return [{
       kind: 'submenu' as const,
       key: `calculation-group:${group.key}`,
-      label: group.label,
+      label: input.t(group.label),
       ...(selectedMetric
         ? {
-            suffix: CALCULATION_LABELS[selectedMetric]
+            suffix: input.t(meta.calculation.metric.get(selectedMetric).token)
           }
         : {}),
       items: buildCalculationMetricItems({
+        t: input.t,
         metrics,
         currentMetric: input.currentMetric,
         onSelectMetric: input.onSelectMetric
@@ -161,7 +148,7 @@ const buildCalculationMenuItems = (input: {
     {
       kind: 'toggle' as const,
       key: 'calculation:none',
-      label: '无',
+      label: input.t(token('meta.calculation.none', 'None')),
       checked: !input.currentMetric,
       onSelect: input.onClear
     },
@@ -202,6 +189,7 @@ const ResizeHandle = (props: ResizeHandleProps) => (
 )
 
 export const ColumnHeader = (props: ColumnHeaderProps) => {
+  const { t } = useTranslation()
   const dataView = useDataView()
   const editor = dataView.engine
   const page = dataView.page
@@ -260,15 +248,18 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   const viewApi = editor.active
 
   const insertProperty = (side: 'left' | 'right') => {
+    const name = t(meta.field.kind.get('text').defaultName)
     if (side === 'left') {
       viewApi.table.insertFieldLeft(props.field.id, {
-        kind: 'text'
+        kind: 'text',
+        name
       })
       return
     }
 
     viewApi.table.insertFieldRight(props.field.id, {
-      kind: 'text'
+      kind: 'text',
+      name
     })
   }
 
@@ -277,7 +268,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       ? [{
         kind: 'toggle' as const,
         key: 'displayFullUrl',
-        label: renderMessage(meta.ui.field.editor.displayFullUrl),
+        label: t(meta.ui.field.editor.displayFullUrl),
         checked: urlConfig.displayFullUrl,
         indicator: 'switch' as const,
         closeOnSelect: false,
@@ -292,11 +283,12 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       ? [{
         kind: 'submenu' as const,
         key: 'changeType',
-        label: '更改类型',
+        label: t(token('dataview.react.table.column.changeType', 'Change type')),
         leading: <ArrowLeftRight className="size-4" size={16} strokeWidth={1.8} />,
-        suffix: renderMessage(kind.message),
+        suffix: t(kind.token),
         size: 'lg' as const,
         items: buildFieldKindMenuItems({
+          t,
           kind: customField.kind,
           isTitleProperty: false,
           onSelect: kind => {
@@ -310,7 +302,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       ? [{
         kind: 'action' as const,
         key: 'editProperty',
-        label: '编辑属性',
+        label: t(token('dataview.react.table.column.editProperty', 'Edit field')),
         leading: <Settings2 className="size-4" size={16} strokeWidth={1.8} />,
         onSelect: () => {
           setMenuOpen(false)
@@ -326,7 +318,9 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
     {
       kind: 'action' as const,
       key: 'group',
-      label: grouped ? '取消分组' : '按此列分组',
+      label: grouped
+        ? t(token('dataview.react.table.column.ungroup', 'Ungroup by this field'))
+        : t(token('dataview.react.table.column.group', 'Group by this field')),
       leading: <PanelsTopLeft className="size-4" size={16} strokeWidth={1.8} />,
       onSelect: () => {
         if (grouped) {
@@ -340,7 +334,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
     {
       kind: 'action' as const,
       key: 'filter',
-      label: '筛选',
+      label: t(meta.ui.filter.label),
       leading: <Filter className="size-4" size={16} strokeWidth={1.8} />,
       onSelect: () => {
         viewApi.filters.add(props.field.id)
@@ -353,16 +347,16 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
     {
       kind: 'submenu' as const,
       key: 'sort',
-      label: '排序',
+      label: t(meta.ui.sort.label),
       leading: <ArrowUpDown className="size-4" size={16} strokeWidth={1.8} />,
       suffix: sortDirectionMeta
-        ? renderMessage(sortDirectionMeta.message)
+        ? t(sortDirectionMeta.token)
         : undefined,
       items: [
         {
           kind: 'toggle' as const,
           key: 'sortAsc',
-          label: renderMessage(meta.sort.direction.get('asc').message),
+          label: t(meta.sort.direction.get('asc').token),
           checked: sortDirection === 'asc',
           onSelect: () => {
             viewApi.sort.keepOnly(props.field.id, 'asc')
@@ -371,7 +365,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
         {
           kind: 'toggle' as const,
           key: 'sortDesc',
-          label: renderMessage(meta.sort.direction.get('desc').message),
+          label: t(meta.sort.direction.get('desc').token),
           checked: sortDirection === 'desc',
           onSelect: () => {
             viewApi.sort.keepOnly(props.field.id, 'desc')
@@ -382,12 +376,13 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
     {
       kind: 'submenu' as const,
       key: 'calculation',
-      label: '计算',
+      label: t(token('dataview.react.table.column.calculation', 'Calculation')),
       leading: <Sigma className="size-4" size={16} strokeWidth={1.8} />,
       suffix: calculationMetric
-        ? CALCULATION_LABELS[calculationMetric]
-        : '无',
+        ? t(meta.calculation.metric.get(calculationMetric).token)
+        : t(token('meta.calculation.none', 'None')),
       items: buildCalculationMenuItems({
+        t,
         metrics: calculationMetrics,
         currentMetric: calculationMetric,
         onClear: () => {
@@ -401,7 +396,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
     {
       kind: 'action' as const,
       key: 'hide',
-      label: '隐藏',
+      label: t(token('dataview.react.table.column.hide', 'Hide')),
       leading: <EyeOff className="size-4" size={16} strokeWidth={1.8} />,
       disabled: false,
       onSelect: () => {
@@ -411,7 +406,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
     {
       kind: 'toggle' as const,
       key: 'wrap',
-      label: '内容换行显示',
+      label: t(token('dataview.react.table.column.wrap', 'Wrap cell content')),
       checked: wrapCells,
       leading: <TextWrap className="size-4" size={16} strokeWidth={1.8} />,
       onSelect: () => {
@@ -425,7 +420,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
     {
       kind: 'action' as const,
       key: 'insertLeft',
-      label: '在左侧插入',
+      label: t(token('dataview.react.table.column.insertLeft', 'Insert left')),
       onSelect: () => {
         insertProperty('left')
       }
@@ -433,7 +428,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
     {
       kind: 'action' as const,
       key: 'insertRight',
-      label: '在右侧插入',
+      label: t(token('dataview.react.table.column.insertRight', 'Insert right')),
       onSelect: () => {
         insertProperty('right')
       }
@@ -442,7 +437,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       ? [{
           kind: 'action' as const,
           key: 'duplicate',
-          label: '创建属性副本',
+          label: t(token('dataview.react.table.column.duplicateField', 'Duplicate field')),
           leading: <Copy className="size-4" size={16} strokeWidth={1.8} />,
           onSelect: () => {
             editor.fields.duplicate(customField.id)
@@ -450,7 +445,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
         }, {
           kind: 'action' as const,
           key: 'delete',
-          label: '删除属性',
+          label: t(token('dataview.react.table.column.deleteField', 'Delete field')),
           leading: <Trash2 className="size-4" size={16} strokeWidth={1.8} />,
           tone: 'destructive' as const,
           disabled: false,

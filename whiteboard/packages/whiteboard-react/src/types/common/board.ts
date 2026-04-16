@@ -1,7 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { HistoryConfig as KernelHistoryConfig } from '@whiteboard/core/kernel'
 import type { CoreRegistries, Document } from '@whiteboard/core/types'
-import type { MindmapLayoutConfig } from '@whiteboard/core/mindmap'
 import type { Tool } from '@whiteboard/editor'
 import type { NodeRegistry } from '@whiteboard/react/types/node'
 import type { Size, ViewportConfig, EdgeConfig, NodeConfig } from '@whiteboard/react/types/common/base'
@@ -15,7 +14,6 @@ export type WhiteboardOptions = {
   style?: CSSProperties
   nodeSize?: Size
   mindmapNodeSize?: Size
-  mindmapLayout?: MindmapLayoutConfig
   viewport?: ViewportConfig
   node?: NodeConfig
   edge?: EdgeConfig

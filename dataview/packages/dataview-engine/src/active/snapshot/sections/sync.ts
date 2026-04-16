@@ -39,11 +39,16 @@ import {
   sameSectionNode
 } from '@dataview/engine/active/snapshot/sections/derive'
 import {
-  readQueryOrder
+  readQueryOrder,
+  readQueryVisibleSet
 } from '@dataview/engine/contracts/internal'
+import {
+  tokenRef
+} from '@shared/i18n'
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_TOUCHED_SECTIONS = new Set<string>()
+const ROOT_SECTION_LABEL = tokenRef('dataview.systemValue', 'section.all')
 
 const addChangedRecordIds = (
   target: Set<RecordId>,
@@ -77,6 +82,61 @@ const createRecordIdSet = (
   ? new Set(ids)
   : undefined
 
+const cloneVisibleGroupChangeToSections = (
+  impact: ActiveImpact,
+  visible: ReadonlySet<RecordId>
+) => {
+  const groupChange = impact.group
+  if (!groupChange?.touchedKeys.size) {
+    return impact.sections
+  }
+
+  let sectionChange = impact.sections
+  let changed = false
+
+  groupChange.removedByKey.forEach((recordIds, key) => {
+    const visibleRecordIds = recordIds.filter(recordId => visible.has(recordId))
+    if (!visibleRecordIds.length) {
+      return
+    }
+
+    sectionChange ??= ensureSectionChange(impact)
+    sectionChange.touchedKeys.add(key)
+    sectionChange.removedByKey.set(key, visibleRecordIds)
+    changed = true
+  })
+
+  groupChange.addedByKey.forEach((recordIds, key) => {
+    const visibleRecordIds = recordIds.filter(recordId => visible.has(recordId))
+    if (!visibleRecordIds.length) {
+      return
+    }
+
+    sectionChange ??= ensureSectionChange(impact)
+    sectionChange.touchedKeys.add(key)
+    sectionChange.addedByKey.set(key, visibleRecordIds)
+    changed = true
+  })
+
+  groupChange.nextKeysByItem.forEach((keys, recordId) => {
+    if (!visible.has(recordId)) {
+      return
+    }
+
+    sectionChange ??= ensureSectionChange(impact)
+    if (keys.length) {
+      sectionChange.nextKeysByItem.set(recordId, keys)
+    } else {
+      sectionChange.nextKeysByItem.delete(recordId)
+    }
+    changed = true
+  })
+
+  return changed
+    ? sectionChange
+    : impact.sections
+}
+
 const syncRootSectionState = (input: {
   previous: SectionState
   query: import('@dataview/engine/contracts/internal').QueryState
@@ -100,7 +160,7 @@ const syncRootSectionState = (input: {
 
   const nextRoot = {
     key: ROOT_SECTION_KEY,
-    title: 'All',
+    label: ROOT_SECTION_LABEL,
     recordIds: input.query.records.visible,
     visible: true,
     collapsed: false
@@ -169,26 +229,44 @@ export const syncSectionState = (input: {
   }
 
   const previous = input.previous
-  const previousResolver = createSectionMembershipResolverFromState(previous, {
-    recordIds: changedRecordIds
-  })
-  const nextResolver = createSectionMembershipResolver({
-    query: input.query,
-    view: input.view,
-    sectionGroup
-  })
-  let sectionChange = input.impact.sections
-
-  changedRecordIds.forEach(recordId => {
-    const before = previousResolver.keysOf(recordId)
-    const after = nextResolver.keysOf(recordId)
-    if (sameSectionKeys(before, after)) {
-      return
+  const hasVisibleDelta = Boolean(
+    input.impact.query?.visibleAdded.length
+    || input.impact.query?.visibleRemoved.length
+  )
+  let nextResolver: ReturnType<typeof createSectionMembershipResolver> | undefined
+  const ensureNextResolver = () => {
+    if (nextResolver) {
+      return nextResolver
     }
 
-    sectionChange ??= ensureSectionChange(input.impact)
-    applyMembershipTransition(sectionChange, recordId, before, after)
-  })
+    nextResolver = createSectionMembershipResolver({
+      query: input.query,
+      view: input.view,
+      sectionGroup
+    })
+    return nextResolver
+  }
+  let sectionChange = !hasVisibleDelta && !input.impact.sections
+    ? cloneVisibleGroupChangeToSections(input.impact, readQueryVisibleSet(input.query))
+    : input.impact.sections
+
+  if (!sectionChange && changedRecordIds.size) {
+    const previousResolver = createSectionMembershipResolverFromState(previous, {
+      recordIds: changedRecordIds
+    })
+    const resolver = ensureNextResolver()
+
+    changedRecordIds.forEach(recordId => {
+      const before = previousResolver.keysOf(recordId)
+      const after = resolver.keysOf(recordId)
+      if (sameSectionKeys(before, after)) {
+        return
+      }
+
+      sectionChange ??= ensureSectionChange(input.impact)
+      applyMembershipTransition(sectionChange, recordId, before, after)
+    })
+  }
 
   const nextOrder = sameOrder(previous.order, sectionGroup.order)
     ? previous.order
@@ -197,7 +275,7 @@ export const syncSectionState = (input: {
   if (input.impact.query?.orderChanged) {
     const projectedIds = projectRecordIdsBySection({
       recordIds: input.query.records.visible,
-      resolver: nextResolver
+      resolver: ensureNextResolver()
     })
     const byKey = new Map<string, ReturnType<typeof buildSectionNode>>()
     let changed = nextOrder !== previous.order
@@ -229,7 +307,9 @@ export const syncSectionState = (input: {
   }
 
   const touchedSections = sectionChange?.touchedKeys ?? EMPTY_TOUCHED_SECTIONS
-  const queryOrder = readQueryOrder(input.query)
+  const queryOrder = input.query.records.ordered === input.index.records.ids
+    ? input.index.records.order
+    : readQueryOrder(input.query)
   const byKey = new Map<string, ReturnType<typeof buildSectionNode>>()
   let changed = nextOrder !== previous.order
     || previous.byKey.size !== sectionGroup.order.length

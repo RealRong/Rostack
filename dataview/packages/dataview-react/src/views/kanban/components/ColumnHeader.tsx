@@ -1,11 +1,13 @@
 import type { Section } from '@dataview/engine'
 import { FieldValueContent } from '@dataview/react/field/value'
+import { useTranslation } from '@shared/i18n/react'
 import { cn } from '@shared/ui/utils'
 import { useKanbanContext } from '@dataview/react/views/kanban/context'
 
 export const ColumnHeader = (props: {
   section: Section
 }) => {
+  const { t } = useTranslation()
   const {
     active,
     extra
@@ -26,7 +28,9 @@ export const ColumnHeader = (props: {
         <FieldValueContent
           field={groupField}
           value={bucket?.value}
-          emptyPlaceholder={bucket?.title ?? props.section.title}
+          emptyPlaceholder={bucket
+            ? t(bucket.label)
+            : t(props.section.label)}
           className={cn(
             'max-w-full',
             !extra.groupUsesOptionColors && 'text-sm font-semibold text-foreground'
@@ -34,7 +38,7 @@ export const ColumnHeader = (props: {
         />
       ) : (
         <h3 className="truncate text-sm font-semibold text-foreground">
-          {props.section.title}
+          {t(props.section.label)}
         </h3>
       )}
 

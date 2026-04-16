@@ -8,6 +8,7 @@ import {
   createNodeUpdateOperation
 } from '@whiteboard/core/node'
 import { createDocument } from '@whiteboard/core/document'
+import { createMindmap } from '@whiteboard/core/mindmap'
 
 const FIXED_TIMESTAMP = Date.parse('2024-01-01T00:00:00.000Z')
 const FIXED_ISO = new Date(FIXED_TIMESTAMP).toISOString()
@@ -180,18 +181,17 @@ test('node.update inverse 为 splice 生成反向 splice 回滚', () => {
   assert.deepEqual(reverted.next, node)
 })
 
-test('node.update 会为 mindmap data mutation 标记 mindmap.view', () => {
+test('node.update 会为 direct mindmap data mutation 标记 node.value', () => {
+  const tree = createMindmap({}, {
+    idGenerator: {
+      nodeId: () => 'topic_1'
+    }
+  })
   const doc = createDocWithNode({
     id: 'mind_1',
     type: 'mindmap',
     position: { x: 0, y: 0 },
-    data: {
-      mindmap: {
-        meta: {
-          title: 'old'
-        }
-      }
-    }
+    data: tree
   })
 
   const result = reduceOperations(doc, [{
@@ -201,7 +201,7 @@ test('node.update 会为 mindmap data mutation 标记 mindmap.view', () => {
       records: [{
         scope: 'data',
         op: 'set',
-        path: 'mindmap.meta.title',
+        path: 'meta.title',
         value: 'new'
       }]
     }
@@ -210,8 +210,8 @@ test('node.update 会为 mindmap data mutation 标记 mindmap.view', () => {
   })
 
   assert.ok(result.ok)
-  assert.equal(result.data.read.mindmap.view, true)
-  assert.deepEqual(result.data.read.mindmap.ids, ['mind_1'])
+  assert.equal(result.data.read.node.value, true)
+  assert.deepEqual(result.data.read.node.ids, ['mind_1'])
 })
 
 test('applyNodeUpdate 允许 frame 几何写入，并拒绝穿透 primitive 容器的 path set', () => {

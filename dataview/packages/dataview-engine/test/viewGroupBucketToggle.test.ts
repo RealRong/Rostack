@@ -693,6 +693,27 @@ test('engine.active.state grouped sections reorder when sort changes after group
   assert.deepEqual(viewSectionRecordIds(engine, 'todo'), ['rec_4', 'rec_1'])
 })
 
+test('engine.active.state sort reorders records without reallocating item ids', () => {
+  const engine = createEngineForTest({
+    document: createDocument()
+  })
+
+  const rec1ItemId = itemIdByRecordId(engine, 'rec_1')
+  const rec2ItemId = itemIdByRecordId(engine, 'rec_2')
+  const rec3ItemId = itemIdByRecordId(engine, 'rec_3')
+
+  openView(engine, VIEW_TABLE).sort.keepOnly(FIELD_POINTS, 'desc')
+  const state = readViewState(engine)
+  const itemRecordIds = state
+    ? state.items.ids.map(itemId => state.items.get(itemId)?.recordId)
+    : undefined
+
+  assert.deepEqual(itemRecordIds, ['rec_3', 'rec_2', 'rec_1'])
+  assert.equal(itemIdByRecordId(engine, 'rec_1'), rec1ItemId)
+  assert.equal(itemIdByRecordId(engine, 'rec_2'), rec2ItemId)
+  assert.equal(itemIdByRecordId(engine, 'rec_3'), rec3ItemId)
+})
+
 test('engine.active.state summaries are derived from index aggregates', () => {
   const document = createDocument()
   document.records.byId.rec_4 = {
@@ -734,6 +755,34 @@ test('engine.active.state summaries are derived from index aggregates', () => {
   assert.equal(todoStatus?.kind, 'distribution')
   assert.equal(todoStatus?.items[0]?.key, 'todo')
   assert.equal(todoStatus?.items[0]?.percent, 1)
+})
+
+test('engine.performance reuses summaries when sort only reorders records', () => {
+  const engine = createEngineForTest({
+    document: createDocument(),
+    perf: {
+      trace: true,
+      stats: true
+    }
+  })
+
+  openView(engine, VIEW_TABLE).summary.set(FIELD_POINTS, 'sum')
+  const summariesBefore = readViewState(engine)?.summaries
+  engine.performance.traces.clear()
+  engine.performance.stats.clear()
+
+  openView(engine, VIEW_TABLE).sort.keepOnly(FIELD_POINTS, 'desc')
+
+  const trace = engine.performance.traces.last()
+  const summaryStage = trace?.view.stages.find(stage => stage.stage === 'summary')
+
+  assert.equal(readViewState(engine)?.summaries, summariesBefore)
+  assert.ok(trace)
+  assert.equal(trace.view.plan.query, 'sync')
+  assert.equal(trace.view.plan.sections, 'sync')
+  assert.equal(trace.view.plan.summary, 'reuse')
+  assert.equal(summaryStage?.action, 'reuse')
+  assert.equal(trace.snapshot.changedStores.includes('summaries'), false)
 })
 
 test('engine.active sync reuses unaffected grouped sections and summaries on data changes', () => {

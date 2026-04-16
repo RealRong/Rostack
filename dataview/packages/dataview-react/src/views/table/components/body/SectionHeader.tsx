@@ -15,6 +15,7 @@ import { useTableContext } from '@dataview/react/views/table/context'
 import { TABLE_TRAILING_ACTION_WIDTH } from '@dataview/react/views/table/layout'
 import { Button } from '@shared/ui/button'
 import { cn } from '@shared/ui/utils'
+import { useTranslation } from '@shared/i18n/react'
 
 export interface SectionHeaderProps {
   section: Section
@@ -22,12 +23,14 @@ export interface SectionHeaderProps {
 }
 
 const View = (props: SectionHeaderProps) => {
+  const { t } = useTranslation()
   const { engine } = useDataView()
   const table = useTableContext()
   const currentView = useStoreValue(table.currentView)
   if (!currentView) {
     throw new Error('Table section header requires an active current view.')
   }
+  const groupField = currentView.query.group.field
 
   return (
     <div
@@ -62,7 +65,7 @@ const View = (props: SectionHeaderProps) => {
             table.focus()
           }}
         >
-          {props.section.title}
+          {t(props.section.label)}
         </Button>
       </div>
       <div

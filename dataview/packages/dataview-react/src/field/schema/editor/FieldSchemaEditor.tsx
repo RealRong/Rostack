@@ -9,17 +9,19 @@ import {
 } from '@dataview/react/dataview'
 import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem } from '@shared/ui/menu'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
 import { FIELD_DROPDOWN_MENU_PROPS } from '@dataview/react/field/dropdown'
 import { buildFieldKindMenuItems } from '@dataview/react/field/schema/FieldKindPicker'
 import { buildFieldFormatMenuItems } from '@dataview/react/field/schema/editor/FieldFormatSection'
 import { FieldOptionsSection } from '@dataview/react/field/schema/editor/FieldOptionsSection'
+import { useTranslation } from '@shared/i18n/react'
 
 export interface FieldSchemaEditorProps {
   fieldId: CustomFieldId
 }
 
 export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
+  const { t } = useTranslation()
   const editor = useDataView().engine
   const field = useDataViewKeyedValue(
     dataView => dataView.engine.select.fields.byId,
@@ -48,11 +50,12 @@ export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
   const typeItems: readonly MenuItem[] = [{
     kind: 'submenu',
     key: 'type',
-    label: renderMessage(meta.ui.field.editor.type),
-    suffix: renderMessage(kind.message),
+    label: t(meta.ui.field.editor.type),
+    suffix: t(kind.token),
     size: 'lg',
     ...FIELD_DROPDOWN_MENU_PROPS,
     items: buildFieldKindMenuItems({
+      t,
       kind: field.kind,
       isTitleProperty: false,
       onSelect: nextKind => {
@@ -62,7 +65,8 @@ export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
   }]
   const formatItems = buildFieldFormatMenuItems({
     field,
-    update
+    update,
+    t
   })
 
   const commitName = () => {
@@ -98,7 +102,7 @@ export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
                 event.preventDefault()
                 commitName()
               }}
-              placeholder={renderMessage(meta.ui.field.editor.fieldNamePlaceholder)}
+              placeholder={t(meta.ui.field.editor.fieldNamePlaceholder)}
             />
           </div>
         </div>

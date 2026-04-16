@@ -19,11 +19,12 @@ import {
   type MenuItem
 } from '@shared/ui/menu'
 import { useDataView } from '@dataview/react/dataview'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
 import {
   OptionToken
 } from '@dataview/react/field/options'
 import type { EditorSubmitTrigger } from '@dataview/react/interaction'
+import { useTranslation } from '@shared/i18n/react'
 import {
   buildEditableOptionItem,
   readOptionLabel
@@ -35,13 +36,15 @@ import { useDraftCommit } from '@dataview/react/field/value/editor/shared/useDra
 import { usePickerKeydown } from '@dataview/react/field/value/editor/shared/usePickerKeydown'
 
 const optionLabel = (
-  option: ReturnType<typeof getFieldOptions>[number]
-) => readOptionLabel(option)
+  option: ReturnType<typeof getFieldOptions>[number],
+  t: ReturnType<typeof useTranslation>['t']
+) => readOptionLabel(option, t)
 type StatusPickerEntry = MenuItem
 
 export const StatusValueEditor = (
   props: FieldValueDraftEditorProps<string>
 ) => {
+  const { t } = useTranslation()
   const dataView = useDataView()
   const page = dataView.page
   const valueEditor = dataView.valueEditor
@@ -122,6 +125,7 @@ export const StatusValueEditor = (
       ...section.options.map(option => buildEditableOptionItem({
         fieldId,
         option,
+        t,
         variant: 'status',
         open: editingOptionId === option.id,
         editing: editingOptionId === option.id,
@@ -156,7 +160,8 @@ export const StatusValueEditor = (
     props.draft,
     props.onDraftChange,
     visibleSections,
-    selectOption
+    selectOption,
+    t
   ])
 
   if (!field) {
@@ -212,11 +217,11 @@ export const StatusValueEditor = (
           }}
           placeholder={selectedOption
             ? ''
-            : renderMessage(meta.ui.field.status.searchPlaceholder)}
+            : t(meta.ui.field.status.searchPlaceholder)}
         >
           {selectedOption ? (
             <OptionToken
-              label={optionLabel(selectedOption)}
+              label={optionLabel(selectedOption, t)}
               color={selectedOption.color ?? undefined}
               variant="status"
               onRemove={clearSelection}
@@ -242,7 +247,7 @@ export const StatusValueEditor = (
           items={[{
             kind: 'action',
             key: 'fieldSchema',
-            label: renderMessage(meta.ui.viewSettings.routeTitle('fieldSchema')),
+            label: t(meta.ui.viewSettings.routeTitle('fieldSchema')),
             leading: <Settings2 className="size-4" size={16} strokeWidth={1.8} />,
             onSelect: () => {
               valueEditor.close({

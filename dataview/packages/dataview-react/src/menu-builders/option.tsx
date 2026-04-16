@@ -2,7 +2,8 @@ import { Check } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { StatusCategory } from '@dataview/core/contracts'
 import { getStatusCategoryLabel } from '@dataview/core/field'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
+import type { TokenTranslator } from '@shared/i18n'
 import { resolveOptionDotStyle, resolveOptionColorToken } from '@shared/ui/color'
 import type { MenuItem, MenuReorderItem, MenuSurfaceSize } from '@shared/ui/menu'
 import { FieldOptionTag, type FieldOptionTagProps } from '@dataview/react/field/options'
@@ -13,19 +14,23 @@ export interface MenuOptionLike {
   color?: string | null
 }
 
-export const readOptionLabel = (option: Pick<MenuOptionLike, 'name'>) => (
-  option.name.trim() || renderMessage(meta.ui.field.options.untitled)
+export const readOptionLabel = (
+  option: Pick<MenuOptionLike, 'name'>,
+  t: TokenTranslator
+) => (
+  option.name.trim() || t(meta.ui.field.options.untitled)
 )
 
 export const buildOptionTagLabel = (
   option: MenuOptionLike,
+  t: TokenTranslator,
   input?: {
     variant?: FieldOptionTagProps['variant']
     className?: string
   }
 ) => (
   <FieldOptionTag
-    label={readOptionLabel(option)}
+    label={readOptionLabel(option, t)}
     color={option.color ?? undefined}
     variant={input?.variant}
     className={input?.className ?? 'max-w-full'}
@@ -34,6 +39,7 @@ export const buildOptionTagLabel = (
 
 export const buildOptionPanelItem = (input: {
   option: MenuOptionLike
+  t: TokenTranslator
   content: () => ReactNode
   key?: string
   leading?: ReactNode
@@ -49,7 +55,7 @@ export const buildOptionPanelItem = (input: {
 }): MenuItem => ({
   kind: 'submenu',
   key: input.key ?? input.option.id,
-  label: buildOptionTagLabel(input.option, {
+  label: buildOptionTagLabel(input.option, input.t, {
     variant: input.variant,
     className: 'max-w-full'
   }),
@@ -67,6 +73,7 @@ export const buildOptionPanelItem = (input: {
 
 export const buildOptionPanelReorderItem = (input: {
   option: MenuOptionLike
+  t: TokenTranslator
   content: () => ReactNode
   handleAriaLabel: string
   leading?: ReactNode
@@ -80,7 +87,7 @@ export const buildOptionPanelReorderItem = (input: {
   contentClassName?: string
 }): MenuReorderItem => ({
   key: input.option.id,
-  label: buildOptionTagLabel(input.option, {
+  label: buildOptionTagLabel(input.option, input.t, {
     variant: input.variant,
     className: 'max-w-full'
   }),
@@ -99,16 +106,17 @@ export const buildOptionPanelReorderItem = (input: {
 export const buildOptionColorItems = (input: {
   selectedColor?: string
   onSelect: (colorId: string) => void
+  t: TokenTranslator
 }): MenuItem[] => [
   {
     kind: 'label',
     key: 'color-label',
-    label: renderMessage(meta.ui.field.options.color)
+    label: input.t(meta.ui.field.options.color)
   },
   ...meta.option.color.list.map<MenuItem>(color => ({
     kind: 'action',
     key: `color-${color.id || 'default'}`,
-    label: renderMessage(color.message),
+    label: input.t(color.token),
     leading: (
       <span
         className="inline-flex h-3 w-3 shrink-0 rounded-full border"

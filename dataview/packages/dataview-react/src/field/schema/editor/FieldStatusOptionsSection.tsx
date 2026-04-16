@@ -10,13 +10,14 @@ import type {
 } from '@dataview/core/contracts'
 import { getFieldOptions, getStatusSections } from '@dataview/core/field'
 import { useDataView } from '@dataview/react/dataview'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
 import { Button } from '@shared/ui/button'
 import {
   Menu,
   type MenuReorderItem
 } from '@shared/ui/menu'
 import { cn } from '@shared/ui/utils'
+import { useTranslation } from '@shared/i18n/react'
 import {
   OptionEditorPanel,
 } from '@dataview/react/field/options'
@@ -53,6 +54,7 @@ type StatusSectionItem = MenuReorderItem
 export const FieldStatusOptionsSection = (props: {
   field: CustomField
 }) => {
+  const { t } = useTranslation()
   const editor = useDataView().engine
   const [editingOptionId, setEditingOptionId] = useState<string>()
   const options = getFieldOptions(props.field)
@@ -90,7 +92,7 @@ export const FieldStatusOptionsSection = (props: {
               <Button
                 variant="plain"
                 size="iconBare"
-                aria-label={renderMessage(meta.ui.field.options.add)}
+                aria-label={t(meta.ui.field.options.add)}
                 onClick={() => appendOption(section.category)}
               >
                 <Plus className="size-4 text-muted-foreground" size={14} strokeWidth={1.8} />
@@ -101,13 +103,14 @@ export const FieldStatusOptionsSection = (props: {
               <Menu.Reorder
                 items={section.options.map<StatusSectionItem>(option => buildOptionPanelReorderItem({
                   option,
+                  t,
                   className: editingOptionId === option.id
                     ? 'bg-hover text-fg'
                     : undefined,
                   ...FIELD_DROPDOWN_MENU_PROPS,
                   offset: 8,
-                  handleAriaLabel: renderMessage(meta.ui.field.options.reorder(
-                    readOptionLabel(option)
+                  handleAriaLabel: t(meta.ui.field.options.reorder(
+                    readOptionLabel(option, t)
                   )),
                   variant: 'status',
                   content: () => (
@@ -154,7 +157,7 @@ export const FieldStatusOptionsSection = (props: {
                   leading={<Plus className="size-4" size={14} strokeWidth={1.8} />}
                   onClick={() => appendOption(section.category)}
                 >
-                  {renderMessage(meta.ui.field.options.add)}
+                  {t(meta.ui.field.options.add)}
                 </Button>
               </div>
             ) : null}

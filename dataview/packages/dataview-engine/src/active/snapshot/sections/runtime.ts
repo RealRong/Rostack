@@ -13,9 +13,12 @@ import type {
 } from '@dataview/engine/active/index/contracts'
 import type {
   DeriveAction,
-  ItemIdentityCache,
+  ItemProjectionCache,
   SectionState
 } from '@dataview/engine/contracts/internal'
+import {
+  readSectionGroupIndex
+} from '@dataview/engine/active/index/group/demand'
 import { runSnapshotStage } from '@dataview/engine/active/snapshot/stage'
 import {
   hasMembershipChanges,
@@ -92,12 +95,12 @@ export const runSectionsStage = (input: {
     sections?: import('@dataview/engine/contracts/public').SectionList
     items?: import('@dataview/engine/contracts/public').ItemList
   }
-  previousIdentity: ItemIdentityCache
+  previousProjection: ItemProjectionCache
   index: IndexState
 }): {
   action: DeriveAction
   state: SectionState
-  identity: ItemIdentityCache
+  projection: ItemProjectionCache
   sections: import('@dataview/engine/contracts/public').SectionList
   items: import('@dataview/engine/contracts/public').ItemList
   deriveMs: number
@@ -108,7 +111,7 @@ export const runSectionsStage = (input: {
     ? {
         sections: input.previousPublished.sections,
         items: input.previousPublished.items,
-        identity: input.previousIdentity
+        projection: input.previousProjection
       }
     : undefined
   const action = resolveSectionsAction({
@@ -132,9 +135,18 @@ export const runSectionsStage = (input: {
       action
     }),
     publish: state => publishSections({
+      mode: input.view.group
+        ? 'grouped'
+        : 'root',
       sections: state,
       previousSections: input.previous,
-      previousIdentity: input.previousIdentity,
+      previousProjection: input.previousProjection,
+      allRecordIds: input.index.records.ids,
+      ...(input.view.group
+        ? {
+            groupMembership: readSectionGroupIndex(input.index.group, input.view.group)?.sectionRecords
+          }
+        : {}),
       previous: {
         items: previousPublished?.items,
         sections: previousPublished?.sections
@@ -149,7 +161,7 @@ export const runSectionsStage = (input: {
   return {
     action: stage.action,
     state: stage.state,
-    identity: stage.published.identity,
+    projection: stage.published.projection,
     sections: stage.published.sections,
     items: stage.published.items,
     deriveMs: stage.deriveMs,

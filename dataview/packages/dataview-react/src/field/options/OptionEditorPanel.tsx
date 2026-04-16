@@ -22,7 +22,7 @@ import {
   useDataView,
   useDataViewKeyedValue
 } from '@dataview/react/dataview'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
 import {
   buildChoiceSubmenuItem,
   buildOptionColorItems
@@ -30,6 +30,7 @@ import {
 import { FIELD_DROPDOWN_MENU_PROPS } from '@dataview/react/field/dropdown'
 import type { OptionLike } from '@dataview/react/field/options/OptionEditorPopover'
 import { buildStatusIdsAfterCategoryMove } from '@dataview/react/field/options/statusOptionMenu'
+import { useTranslation } from '@shared/i18n/react'
 
 export interface OptionEditorPanelProps {
   fieldId: string
@@ -39,6 +40,7 @@ export interface OptionEditorPanelProps {
 }
 
 export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
+  const { t } = useTranslation()
   const editor = useDataView().engine
   const field = useDataViewKeyedValue(
     dataView => dataView.engine.select.fields.byId,
@@ -106,6 +108,7 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
 
   const colorItems = useMemo<MenuItem[]>(() => buildOptionColorItems({
     selectedColor: optionColor ?? '',
+    t,
     onSelect: colorId => {
       editor.fields.options.update(props.fieldId, props.option.id, {
         color: colorId
@@ -115,7 +118,8 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
     editor.fields.options,
     optionColor,
     props.fieldId,
-    props.option.id
+    props.option.id,
+    t
   ])
 
   const actionItems = useMemo<MenuItem[]>(() => {
@@ -125,7 +129,7 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
       items.push({
         kind: 'action',
         key: 'set-default',
-        label: renderMessage(meta.ui.field.status.setDefault),
+        label: t(meta.ui.field.status.setDefault),
         leading: <Flag className="size-4" size={16} strokeWidth={1.8} />,
         trailing: isDefaultStatusOption
           ? <Check className="size-4 text-foreground" size={16} strokeWidth={1.8} />
@@ -141,7 +145,7 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
       if (statusCategory) {
         items.push(buildChoiceSubmenuItem({
           key: 'status-group',
-          label: renderMessage(meta.ui.field.status.group),
+          label: t(meta.ui.field.status.group),
           leading: <Settings2 className="size-4" size={16} strokeWidth={1.8} />,
           suffix: getStatusCategoryLabel(statusCategory),
           value: statusCategory,
@@ -160,7 +164,7 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
     items.unshift({
       kind: 'action',
       key: 'delete-option',
-      label: renderMessage(meta.ui.field.options.remove),
+      label: t(meta.ui.field.options.remove),
       leading: <Trash2 className="size-4" size={16} strokeWidth={1.8} />,
       tone: 'destructive',
       onSelect: () => {
@@ -179,7 +183,8 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
     props.onDeleted,
     props.onRequestClose,
     props.option.id,
-    statusCategory
+    statusCategory,
+    t
   ])
 
   return (
@@ -199,7 +204,7 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
           event.preventDefault()
           commitName()
         }}
-        placeholder={renderMessage(meta.ui.field.options.namePlaceholder)}
+        placeholder={t(meta.ui.field.options.namePlaceholder)}
       />
 
       <Menu

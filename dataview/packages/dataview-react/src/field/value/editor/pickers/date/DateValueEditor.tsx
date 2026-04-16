@@ -18,7 +18,8 @@ import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { cn } from '@shared/ui/utils'
 import { useDataView } from '@dataview/react/dataview'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
+import { useTranslation } from '@shared/i18n/react'
 import { buildChoiceSubmenuItem } from '@dataview/react/menu-builders'
 import type { FieldValueDraftEditorProps } from '@dataview/react/field/value/editor/contracts'
 import { focusInputWithoutScroll } from '@shared/dom'
@@ -86,6 +87,7 @@ const DateBoundarySection = (props: {
 export const DateValueEditor = (
   props: FieldValueDraftEditorProps<DateValueDraft>
 ) => {
+  const { t } = useTranslation()
   const editor = useDataView().engine
   const startDateRef = useRef<HTMLInputElement | null>(null)
   const field = props.field?.kind === 'date'
@@ -194,12 +196,12 @@ export const DateValueEditor = (
         ...buildChoiceSubmenuItem({
           key: 'display-date-format',
           label: '日期格式',
-          suffix: renderMessage(displayDateFormat.message),
+          suffix: t(displayDateFormat.token),
           size: 'md',
           value: dateConfig.displayDateFormat,
           options: meta.field.date.displayDateFormat.list.map(option => ({
             id: option.id as DateDisplayFormat,
-            label: renderMessage(option.message)
+            label: t(option.token)
           })),
           onSelect: value => updateFieldConfig({
             displayDateFormat: value
@@ -213,12 +215,12 @@ export const DateValueEditor = (
         buildChoiceSubmenuItem({
           key: 'display-time-format',
           label: '时间格式',
-          suffix: renderMessage(displayTimeFormat.message),
+          suffix: t(displayTimeFormat.token),
           size: 'md',
           value: dateConfig.displayTimeFormat,
           options: meta.field.date.displayTimeFormat.list.map(option => ({
             id: option.id as TimeDisplayFormat,
-            label: renderMessage(option.message)
+            label: t(option.token)
           })),
           onSelect: value => updateFieldConfig({
             displayTimeFormat: value
@@ -269,10 +271,11 @@ export const DateValueEditor = (
     commitDraft,
     dateConfig,
     defaultTimezone,
-    displayDateFormat.message,
-    displayTimeFormat.message,
+    displayDateFormat.token,
+    displayTimeFormat.token,
     props.draft,
     setDraft,
+    t,
     timezones
   ])
 

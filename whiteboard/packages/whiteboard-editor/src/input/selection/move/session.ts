@@ -14,6 +14,8 @@ import type {
 } from '@whiteboard/editor/input/core/types'
 import type { InteractionContext } from '@whiteboard/editor/input/context'
 import { createSelectionGesture } from '@whiteboard/editor/input/core/gesture'
+import { createMindmapSession } from '@whiteboard/editor/input/mindmap/drag/session'
+import { startMindmapDragForNode } from '@whiteboard/editor/input/mindmap/drag/start'
 import type {
   PointerDownInput
 } from '@whiteboard/editor/types/input'
@@ -72,6 +74,51 @@ export const createMoveInteraction = (
   ctx: InteractionContext,
   input: MoveInteractionInput
 ): InteractionSession | null => {
+  const pickedNodeId = (
+    input.start.pick.kind === 'node'
+    && input.start.pick.part === 'body'
+    && input.target.edgeIds.length === 0
+    && input.target.nodeIds.length === 1
+    && input.target.nodeIds[0] === input.start.pick.id
+  )
+    ? input.start.pick.id
+    : undefined
+  const restoreSelection = input.visibility.kind === 'temporary'
+    ? input.visibility.restore
+    : undefined
+
+  if (
+    input.visibility.kind === 'show'
+    || input.visibility.kind === 'temporary'
+  ) {
+    ctx.local.session.selection.replace(input.visibility.selection)
+  }
+
+  if (pickedNodeId) {
+    const mindmapState = startMindmapDragForNode({
+      nodeId: pickedNodeId,
+      pointerId: input.start.pointerId,
+      world: input.start.world,
+      mindmap: ctx.query.mindmap,
+      node: ctx.query.node
+    })
+
+    if (mindmapState) {
+      const session = createMindmapSession(ctx, mindmapState)
+      const cleanup = session.cleanup
+
+      return {
+        ...session,
+        cleanup: () => {
+          cleanup?.()
+          if (restoreSelection) {
+            ctx.local.session.selection.replace(restoreSelection)
+          }
+        }
+      }
+    }
+  }
+
   const initialState = startMoveState({
     nodes: ctx.query.node.ordered(),
     edges: ctx.query.edge.edges(ctx.query.edge.list.get()),
@@ -83,16 +130,6 @@ export const createMoveInteraction = (
     return null
   }
   let state = initialState
-  const restoreSelection = input.visibility.kind === 'temporary'
-    ? input.visibility.restore
-    : undefined
-
-  if (
-    input.visibility.kind === 'show'
-    || input.visibility.kind === 'temporary'
-  ) {
-    ctx.local.session.selection.replace(input.visibility.selection)
-  }
   let modifiers = input.start.modifiers
   let interaction = null as InteractionSession | null
 

@@ -12,13 +12,15 @@ import {
 } from '@dataview/react/dataview'
 import { FieldPicker } from '@dataview/react/field/picker'
 import { Popover } from '@shared/ui/popover'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
+import { useTranslation } from '@shared/i18n/react'
 import type { QueryBarEntry } from '@dataview/react/page/session/types'
 import { QueryChip } from '@dataview/react/page/features/query'
 
 export type ViewQueryOpenEntry = QueryBarEntry
 
 export const ViewQueryBar = () => {
+  const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
   const page = dataView.page
@@ -127,7 +129,7 @@ export const ViewQueryBar = () => {
               state={queryBar.route?.kind === 'addFilter' ? 'open' : 'add'}
               trailing={<ChevronDown className="size-[14px] shrink-0" size={14} strokeWidth={1.8} />}
             >
-              {`+ ${renderMessage(meta.ui.filter.label)}`}
+              {`+ ${t(meta.ui.filter.label)}`}
             </QueryChip>
           </Popover.Trigger>
           <Popover.Content
@@ -172,7 +174,7 @@ export const ViewQueryBar = () => {
               state={queryBar.route?.kind === 'addSort' ? 'open' : 'add'}
               trailing={<ChevronDown className="size-[14px] shrink-0" size={14} strokeWidth={1.8} />}
             >
-              {`+ ${renderMessage(meta.ui.sort.label)}`}
+              {`+ ${t(meta.ui.sort.label)}`}
             </QueryChip>
           </Popover.Trigger>
           <Popover.Content

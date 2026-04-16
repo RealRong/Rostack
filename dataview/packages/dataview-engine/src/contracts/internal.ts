@@ -6,10 +6,13 @@ import type {
   FieldReducerState
 } from '@dataview/engine/active/shared/calculation'
 import type {
-  ItemIdentityCache,
+  Token
+} from '@shared/i18n'
+import type {
+  ItemProjectionCache,
 } from '@dataview/engine/active/shared/itemIdentity'
 import {
-  emptyItemIdentityCache
+  emptyItemProjectionCache
 } from '@dataview/engine/active/shared/itemIdentity'
 import type {
   SectionBucket,
@@ -20,7 +23,7 @@ import {
   EMPTY_SUMMARY_STATE as EMPTY_INTERNAL_SUMMARY_STATE
 } from '@dataview/engine/summary/empty'
 export type {
-  ItemIdentityCache
+  ItemProjectionCache
 } from '@dataview/engine/active/shared/itemIdentity'
 export type {
   ActiveRuntimeState,
@@ -31,6 +34,12 @@ export type {
 
 export interface QueryState {
   records: ViewRecords
+  search?: {
+    query: string
+    sourceKey: string
+    sourceRev: number
+    matched: readonly RecordId[]
+  }
   visibleSet?: ReadonlySet<RecordId>
   order?: ReadonlyMap<RecordId, number>
 }
@@ -42,7 +51,7 @@ export type DeriveAction =
 
 export interface SectionNodeState {
   key: SectionKey
-  title: string
+  label: Token
   color?: string
   bucket?: SectionBucket
   collapsed: boolean
@@ -63,7 +72,7 @@ export interface ViewCache {
   query: QueryState
   sections: SectionState
   summary: SummaryState
-  items: ItemIdentityCache
+  items: ItemProjectionCache
 }
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
@@ -88,7 +97,7 @@ export const emptyViewCache = (): ViewCache => ({
   query: emptyQueryState(),
   sections: emptySectionState(),
   summary: emptySummaryState(),
-  items: emptyItemIdentityCache()
+  items: emptyItemProjectionCache()
 })
 
 export const emptyViewRecords = (): ViewRecords => EMPTY_VIEW_RECORDS

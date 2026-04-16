@@ -15,7 +15,9 @@ import {
 import { buildOptionTagLabel } from '@dataview/react/menu-builders'
 import { Checkbox } from '@shared/ui/checkbox'
 import { cn } from '@shared/ui/utils'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
+import type { TokenTranslator } from '@shared/i18n'
+import { useTranslation } from '@shared/i18n/react'
 
 export interface FilterOptionSetEditorProps {
   field?: Field
@@ -90,6 +92,7 @@ const getOptionGroups = (
 
 const OptionRow = (props: {
   option: FieldOption
+  t: TokenTranslator
   selected: boolean
   onClick: () => void
   inset?: boolean
@@ -104,7 +107,7 @@ const OptionRow = (props: {
       interactive={false}
     />
     <span className="min-w-0 flex-1">
-      {buildOptionTagLabel(props.option, {
+      {buildOptionTagLabel(props.option, props.t, {
         variant: 'category' in props.option ? 'status' : undefined
       })}
     </span>
@@ -114,10 +117,11 @@ const OptionRow = (props: {
 export const FilterOptionSetEditor = (
   props: FilterOptionSetEditorProps
 ) => {
+  const { t } = useTranslation()
   if (!props.field || !isCustomField(props.field)) {
     return (
       <div className="px-1.5 py-2 text-[12px] text-muted-foreground">
-        {renderMessage(meta.ui.filter.noOptions)}
+        {t(meta.ui.filter.noOptions)}
       </div>
     )
   }
@@ -126,7 +130,7 @@ export const FilterOptionSetEditor = (
   if (!groups.length) {
     return (
       <div className="px-1.5 py-2 text-[12px] text-muted-foreground">
-        {renderMessage(meta.ui.filter.noOptions)}
+        {t(meta.ui.filter.noOptions)}
       </div>
     )
   }
@@ -167,6 +171,7 @@ export const FilterOptionSetEditor = (
             <OptionRow
               key={option.id}
               option={option}
+              t={t}
               selected={selectedSet.has(option.id)}
               inset={showGroupToggle}
               onClick={() => {

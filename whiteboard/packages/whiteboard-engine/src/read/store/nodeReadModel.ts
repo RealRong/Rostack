@@ -9,6 +9,7 @@ export type NodeReadSlices = {
   ordered: Node[]
   visible: Node[]
   canvas: Node[]
+  all: Node[]
   canvasNodeById: Map<NodeId, Node>
 }
 
@@ -38,26 +39,30 @@ export const deriveNodeReadSlices = (
       ordered: EMPTY_NODES,
       visible: EMPTY_NODES,
       canvas: EMPTY_NODES,
+      all: EMPTY_NODES,
       canvasNodeById: EMPTY_NODE_MAP
     }
   }
 
   const visible: Node[] = []
   const canvas: Node[] = []
+  const all = Object.values(document.nodes)
   const canvasNodeById = new Map<NodeId, Node>()
+
+  all.forEach((node) => {
+    canvas.push(node)
+    canvasNodeById.set(node.id, node)
+  })
 
   ordered.forEach((node) => {
     visible.push(node)
-    if (node.type !== 'mindmap') {
-      canvas.push(node)
-      canvasNodeById.set(node.id, node)
-    }
   })
 
   return {
     ordered,
     visible,
     canvas,
+    all,
     canvasNodeById
   }
 }

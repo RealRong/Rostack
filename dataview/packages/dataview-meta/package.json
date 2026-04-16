@@ -12,6 +12,7 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
+    "@shared/i18n": "workspace:*",
     "lucide-react": "^0.577.0",
     "react": "^19.1.1"
   },

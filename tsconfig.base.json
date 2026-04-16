@@ -11,6 +11,8 @@
       "@shared/core/*": ["shared/core/src/*"],
       "@shared/dom": ["shared/dom/src/index.ts"],
       "@shared/dom/*": ["shared/dom/src/*"],
+      "@shared/i18n": ["shared/i18n/src/index.ts"],
+      "@shared/i18n/*": ["shared/i18n/src/*"],
       "@shared/react": ["shared/react/src/index.ts"],
       "@shared/react/*": ["shared/react/src/*"],
       "@shared/ui": ["shared/ui/src/index.ts"],

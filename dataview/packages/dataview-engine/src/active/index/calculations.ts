@@ -1,6 +1,3 @@
-import {
-  getRecordFieldValue
-} from '@dataview/core/field'
 import type {
   FieldId,
   RecordId
@@ -49,16 +46,12 @@ const buildFieldEntries = (input: {
     return EMPTY_ENTRIES
   }
 
+  const values = input.records.values.get(input.demand.fieldId)?.byRecord
   const entries = new Map<RecordId, CalculationEntry>()
   input.records.ids.forEach(recordId => {
-    const record = input.records.byId[recordId]
-    if (!record) {
-      return
-    }
-
     entries.set(recordId, createCalculationEntry({
       field,
-      value: getRecordFieldValue(record, input.demand.fieldId),
+      value: values?.get(recordId),
       capabilities: input.demand.capabilities
     }))
   })
@@ -174,6 +167,7 @@ export const syncCalculationIndex = (
       return
     }
 
+    const values = records.values.get(fieldId)?.byRecord
     const entries = createMapPatchBuilder(previousField.entries)
     const reducer = createFieldReducerBuilder({
       previous: previousField.global,
@@ -182,11 +176,10 @@ export const syncCalculationIndex = (
 
     context.touchedRecords.forEach(recordId => {
       const previousEntry = previousField.entries.get(recordId)
-      const record = records.byId[recordId]
-      const nextEntry = record
+      const nextEntry = records.order.has(recordId)
         ? createCalculationEntry({
             field,
-            value: getRecordFieldValue(record, fieldId),
+            value: values?.get(recordId),
             capabilities: previousField.capabilities
           })
         : undefined

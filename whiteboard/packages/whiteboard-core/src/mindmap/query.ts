@@ -1,74 +1,38 @@
 import {
-  type MindmapLayoutConfig,
+  type GetNodeSize,
   type MindmapLayout,
-  type MindmapId,
-  type MindmapNode,
+  type MindmapLayoutSpec,
   type MindmapNodeId,
-  type MindmapTree
+  type MindmapTree,
+  type MindmapTreeNode
 } from '@whiteboard/core/mindmap/types'
 import type {
-  MindmapConnectionLine,
   MindmapInsertPlacement,
   MindmapInsertPlan
 } from '@whiteboard/core/types/mindmap'
 import { layoutMindmap, layoutMindmapTidy } from '@whiteboard/core/mindmap/layout'
-import {
-  createNodeFieldsUpdateOperation,
-  createNodeUpdateOperation
-} from '@whiteboard/core/node/update'
-import { compileNodeFieldUpdate } from '@whiteboard/core/schema'
 import { getNode } from '@whiteboard/core/document'
 import type {
   Document,
-  MindmapLayoutHint,
   Operation,
-  Size,
   SpatialNode
 } from '@whiteboard/core/types'
 import { cloneValue } from '@whiteboard/core/value'
 
-const computeConnectionLine = (
-  parent: { x: number; y: number; width: number; height: number },
-  child: { x: number; y: number; width: number; height: number },
-  side?: 'left' | 'right'
-) => {
-  const parentCenterX = parent.x + parent.width / 2
-  const parentCenterY = parent.y + parent.height / 2
-  const childCenterY = child.y + child.height / 2
-  if (side === 'left') {
-    return {
-      x1: parent.x,
-      y1: parentCenterY,
-      x2: child.x + child.width,
-      y2: childCenterY
-    }
-  }
-  if (side === 'right') {
-    return {
-      x1: parent.x + parent.width,
-      y1: parentCenterY,
-      x2: child.x,
-      y2: childCenterY
-    }
-  }
-  const childCenterX = child.x + child.width / 2
-  if (childCenterX >= parentCenterX) {
-    return {
-      x1: parent.x + parent.width,
-      y1: parentCenterY,
-      x2: child.x,
-      y2: childCenterY
-    }
-  }
-  return {
-    x1: parent.x,
-    y1: parentCenterY,
-    x2: child.x + child.width,
-    y2: childCenterY
-  }
-}
+const resolveMindmapLayoutSpec = (
+  tree: MindmapTree,
+  layout?: Partial<MindmapLayoutSpec>
+): MindmapLayoutSpec => ({
+  mode: layout?.mode ?? tree.layout.mode,
+  side: layout?.side ?? tree.layout.side,
+  hGap: layout?.hGap ?? tree.layout.hGap,
+  vGap: layout?.vGap ?? tree.layout.vGap
+})
 
-export const getSubtreeIds = (tree: MindmapTree, rootId: MindmapNodeId) => {
+export const getSubtreeIds = (
+  tree: MindmapTree,
+  rootId: MindmapNodeId
+) => {
   const result: MindmapNodeId[] = []
   const stack: MindmapNodeId[] = [rootId]
   const visited = new Set<MindmapNodeId>()
@@ -77,23 +41,26 @@ export const getSubtreeIds = (tree: MindmapTree, rootId: MindmapNodeId) => {
     if (visited.has(current)) continue
     visited.add(current)
     result.push(current)
-    const children = tree.children[current] ?? []
-    children.forEach((childId) => stack.push(childId))
+    ;(tree.children[current] ?? []).forEach((childId) => stack.push(childId))
   }
   return result
 }
 
-export const getSide = (tree: MindmapTree, nodeId: MindmapNodeId): 'left' | 'right' | undefined => {
-  if (nodeId === tree.rootId) return
+export const getSide = (
+  tree: MindmapTree,
+  nodeId: MindmapNodeId
+): 'left' | 'right' | undefined => {
+  if (nodeId === tree.rootNodeId) return undefined
   let current: MindmapNodeId | undefined = nodeId
   while (current) {
     const parent: MindmapNodeId | undefined = tree.nodes[current]?.parentId
-    if (!parent) return
-    if (parent === tree.rootId) {
+    if (!parent) return undefined
+    if (parent === tree.rootNodeId) {
       return tree.nodes[current]?.side
     }
     current = parent
   }
+  return undefined
 }
 
 export const resolveInsertPlan = ({
@@ -109,7 +76,7 @@ export const resolveInsertPlan = ({
   layoutSide?: 'left' | 'right' | 'both'
   defaultSide?: 'left' | 'right'
 }): MindmapInsertPlan => {
-  if (targetNodeId === tree.rootId) {
+  if (targetNodeId === tree.rootNodeId) {
     const children = tree.children[targetNodeId] ?? []
     const index = placement === 'up' ? 0 : placement === 'down' ? children.length : undefined
     const side =
@@ -138,7 +105,8 @@ export const resolveInsertPlan = ({
 
   const targetSide = getSide(tree, targetNodeId) ?? defaultSide
   const towardRoot =
-    (placement === 'left' && targetSide === 'right') || (placement === 'right' && targetSide === 'left')
+    (placement === 'left' && targetSide === 'right')
+    || (placement === 'right' && targetSide === 'left')
 
   if (towardRoot) {
     return {
@@ -153,23 +121,38 @@ export const resolveInsertPlan = ({
   }
 }
 
-const isMindmapTree = (value: unknown): value is MindmapTree => {
+const isMindmapTreeNode = (
+  value: unknown
+): value is MindmapTreeNode => (
+  Boolean(value)
+  && typeof value === 'object'
+  && typeof (value as MindmapTreeNode).branch === 'object'
+)
+
+const isMindmapTree = (
+  value: unknown
+): value is MindmapTree => {
   if (!value || typeof value !== 'object') return false
   const tree = value as MindmapTree
-  return typeof tree.rootId === 'string' && typeof tree.nodes === 'object' && typeof tree.children === 'object'
+  return (
+    typeof tree.rootNodeId === 'string'
+    && typeof tree.nodes === 'object'
+    && typeof tree.children === 'object'
+    && typeof tree.layout === 'object'
+    && Object.values(tree.nodes).every(isMindmapTreeNode)
+  )
 }
 
-export const getMindmapTreeFromNode = (node: SpatialNode | undefined): MindmapTree | undefined => {
-  if (!node || node.type !== 'mindmap') return
-  const data = node.data as Record<string, unknown> | undefined
-  if (!data || typeof data !== 'object') return
-  const tree = data.mindmap
-  return isMindmapTree(tree) ? tree : undefined
+export const getMindmapTreeFromNode = (
+  node: SpatialNode | undefined
+): MindmapTree | undefined => {
+  if (!node || node.type !== 'mindmap') return undefined
+  return isMindmapTree(node.data) ? node.data : undefined
 }
 
 export const getMindmapTreeFromDocument = (
   document: Pick<Document, 'nodes'>,
-  id: MindmapId
+  id: string
 ): MindmapTree | undefined => {
   const node = getNode(document, id)
   return node?.type === 'mindmap' ? getMindmapTreeFromNode(node) : undefined
@@ -177,179 +160,35 @@ export const getMindmapTreeFromDocument = (
 
 export const getMindmapTree = getMindmapTreeFromNode
 
-const normalizeMindmapTree = (
-  id: MindmapId,
-  tree: MindmapTree
-): MindmapTree => (tree.id === id ? tree : { ...tree, id })
-
-const buildMindmapNodeData = (
-  data: SpatialNode['data'] | undefined,
-  tree: MindmapTree
-): SpatialNode['data'] => ({
-  ...(data && typeof data === 'object'
-    ? data
-    : {}),
-  mindmap: cloneValue(tree)
-})
-
-export const getMindmapLabel = (node: MindmapNode | undefined) => {
-  if (!node?.data || typeof node.data !== 'object' || !('kind' in node.data)) return 'mindmap'
-  const data = node.data as { kind: string; text?: string; name?: string; title?: string; url?: string }
-  switch (data.kind) {
-    case 'text':
-      return data.text?.trim() ? data.text : 'Text'
-    case 'file':
-      return data.name?.trim() ? data.name : 'File'
-    case 'link':
-      return data.title?.trim() ? data.title : data.url ?? 'Link'
-    case 'ref':
-      return data.title?.trim() ? data.title : 'Ref'
-    default:
-      return data.kind ?? 'mindmap'
-  }
-}
-
 export const computeMindmapLayout = (
   tree: MindmapTree,
-  nodeSize: Size,
-  layout: MindmapLayoutConfig
+  getNodeSize: GetNodeSize,
+  layout?: Partial<MindmapLayoutSpec>
 ): MindmapLayout => {
-  const mode = layout.mode === 'tidy' ? 'tidy' : 'simple'
-  const getNodeSize = () => nodeSize
-  const layoutFn = mode === 'tidy' ? layoutMindmapTidy : layoutMindmap
-  return layoutFn(tree, getNodeSize, layout.options)
-}
-
-const resolveAnchorWorld = ({
-  tree,
-  hint,
-  nodePosition
-}: {
-  tree: MindmapTree
-  hint: MindmapLayoutHint
-  nodePosition?: SpatialNode['position']
-}) => {
-  if (!hint.nodeSize || !nodePosition) return undefined
-  const layout = computeMindmapLayout(tree, hint.nodeSize, {
-    mode: hint.mode,
-    options: hint.options
-  })
-  const anchorId = hint.anchorId ?? tree.rootId
-  const rect = layout.node[anchorId]
-  if (!rect) return undefined
-  const shiftX = -layout.bbox.x
-  const shiftY = -layout.bbox.y
-  return {
-    x: nodePosition.x + rect.x + shiftX + rect.width / 2,
-    y: nodePosition.y + rect.y + shiftY + rect.height / 2
-  }
-}
-
-const resolveAnchorPatch = ({
-  beforeTree,
-  afterTree,
-  hint,
-  nodePosition,
-  threshold = 0.5
-}: {
-  beforeTree: MindmapTree
-  afterTree: MindmapTree
-  hint?: MindmapLayoutHint
-  nodePosition?: SpatialNode['position']
-  threshold?: number
-}): { position: SpatialNode['position'] } | undefined => {
-  if (!hint?.nodeSize || !hint.anchorId || !nodePosition) return undefined
-  const before = resolveAnchorWorld({ tree: beforeTree, hint, nodePosition })
-  const after = resolveAnchorWorld({ tree: afterTree, hint, nodePosition })
-  if (!before || !after) return undefined
-  const dx = before.x - after.x
-  const dy = before.y - after.y
-  if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) return undefined
-  return {
-    position: {
-      x: nodePosition.x + dx,
-      y: nodePosition.y + dy
-    }
-  }
+  const resolvedLayout = resolveMindmapLayoutSpec(tree, layout)
+  const layoutFn = resolvedLayout.mode === 'tidy'
+    ? layoutMindmapTidy
+    : layoutMindmap
+  return layoutFn(tree, getNodeSize, resolvedLayout)
 }
 
 export const createMindmapCreateOp = ({
   id,
-  tree
+  tree,
+  position = {
+    x: 0,
+    y: 0
+  }
 }: {
-  id: MindmapId
+  id: string
   tree: MindmapTree
+  position?: SpatialNode['position']
 }): Operation => ({
   type: 'node.create',
   node: {
     id,
     type: 'mindmap',
-    position: cloneValue(tree.meta?.position ?? { x: 0, y: 0 }),
-    data: buildMindmapNodeData(undefined, normalizeMindmapTree(id, tree))
+    position: cloneValue(position),
+    data: cloneValue(tree) as unknown as SpatialNode['data']
   }
 })
-
-export const createMindmapDeleteOps = (ids: readonly MindmapId[]): Operation[] =>
-  ids.map((id) => ({
-    type: 'node.delete',
-    id
-  }))
-
-export const createMindmapUpdateOps = ({
-  beforeTree,
-  afterTree,
-  hint,
-  node
-}: {
-  beforeTree: MindmapTree
-  afterTree: MindmapTree
-  hint?: MindmapLayoutHint
-  node: SpatialNode
-}): Operation[] => {
-  const nextTree = normalizeMindmapTree(node.id, afterTree)
-  const operations: Operation[] = [createNodeUpdateOperation(
-    node.id,
-    compileNodeFieldUpdate(
-      { scope: 'data', path: 'mindmap' },
-      cloneValue(nextTree)
-    )
-  )]
-
-  const anchorPatch = resolveAnchorPatch({
-    beforeTree,
-    afterTree: nextTree,
-    hint,
-    nodePosition: node.position
-  })
-  if (!anchorPatch) return operations
-
-  return [
-    ...operations,
-    createNodeFieldsUpdateOperation(node.id, anchorPatch)
-  ]
-}
-
-export const buildMindmapLines = (
-  tree: MindmapTree,
-  computed: MindmapLayout
-): MindmapConnectionLine[] => {
-  const result: MindmapConnectionLine[] = []
-  Object.entries(tree.children).forEach(([parentId, childIds]) => {
-    const parent = computed.node[parentId]
-    if (!parent) return
-    childIds.forEach((childId) => {
-      const child = computed.node[childId]
-      if (!child) return
-      const side = parentId === tree.rootId ? tree.nodes[childId]?.side : undefined
-      const line = computeConnectionLine(parent, child, side)
-      result.push({
-        id: `${parentId}-${childId}`,
-        x1: line.x1,
-        y1: line.y1,
-        x2: line.x2,
-        y2: line.y2
-      })
-    })
-  })
-  return result
-}

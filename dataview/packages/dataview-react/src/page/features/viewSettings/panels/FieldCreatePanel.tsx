@@ -1,9 +1,11 @@
 import { FieldKindPicker } from '@dataview/react/field/schema'
 import { useDataView } from '@dataview/react/dataview'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
+import { useTranslation } from '@shared/i18n/react'
 import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
 
 export const FieldCreatePanel = () => {
+  const { t } = useTranslation()
   const editor = useDataView().engine
   const router = useViewSettings()
 
@@ -14,7 +16,7 @@ export const FieldCreatePanel = () => {
       onSelect={kind => {
         const fieldId = editor.fields.create({
           kind,
-          name: renderMessage(meta.field.kind.get(kind).defaultName)
+          name: t(meta.field.kind.get(kind).defaultName)
         })
         if (!fieldId) {
           return

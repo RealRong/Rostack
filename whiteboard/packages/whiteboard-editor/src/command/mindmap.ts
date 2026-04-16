@@ -17,13 +17,13 @@ const readNodePosition = ({
 }: {
   read: EditorQueryRead
   nodeId: NodeId
-}) => read.mindmap.rootPosition.get(nodeId)
+}) => read.node.item.get(nodeId)?.node.position
 
 const createMindmapCoreCommands = (
   execute: MindmapExecute
 ): Pick<
   MindmapCommands,
-  'create' | 'delete' | 'insert' | 'moveSubtree' | 'removeSubtree' | 'cloneSubtree' | 'updateNode'
+  'create' | 'delete' | 'patch' | 'insert' | 'moveSubtree' | 'removeSubtree' | 'cloneSubtree'
 > => ({
   create: (payload) => execute({
     type: 'mindmap.create',
@@ -32,6 +32,11 @@ const createMindmapCoreCommands = (
   delete: (ids) => execute({
     type: 'mindmap.delete',
     ids
+  }),
+  patch: (id, input) => execute({
+    type: 'mindmap.patch',
+    id,
+    input
   }),
   insert: (id, input) => execute({
     type: 'mindmap.insert',
@@ -50,11 +55,6 @@ const createMindmapCoreCommands = (
   }),
   cloneSubtree: (id, input) => execute({
     type: 'mindmap.clone',
-    id,
-    input
-  }),
-  updateNode: (id, input) => execute({
-    type: 'mindmap.patchNode',
     id,
     input
   })

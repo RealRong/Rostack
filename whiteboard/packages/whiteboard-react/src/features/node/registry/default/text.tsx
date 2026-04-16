@@ -14,6 +14,7 @@ import {
 import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
 import {
   useEdit,
+  usePickRef,
   useWhiteboardServices
 } from '@whiteboard/react/runtime/hooks'
 import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
@@ -101,7 +102,7 @@ const useElementBinding = <
 const useNodeTextSourceBinding = (
   nodeId: NodeRenderProps['node']['id']
 ) => {
-  const { editor, textSources } = useWhiteboardServices()
+  const { textSources } = useWhiteboardServices()
   const {
     ref: sourceRef,
     bind
@@ -119,11 +120,7 @@ const useNodeTextSourceBinding = (
 
     textSources.set(sourceId, element)
     bind(element)
-
-    if (element) {
-      editor.actions.node.layout.sync([nodeId])
-    }
-  }, [bind, editor.actions.node.layout, nodeId, sourceId, sourceRef, textSources])
+  }, [bind, sourceId, sourceRef, textSources])
 
   return {
     bindRef
@@ -164,6 +161,12 @@ const TextNodeRenderer = ({
     getStyleString(node, 'color'),
     WHITEBOARD_TEXT_DEFAULT_COLOR
   ) ?? 'var(--ui-text-primary)'
+  const pickTextRef = usePickRef({
+    kind: 'node',
+    id: node.id,
+    part: 'field',
+    field: 'text'
+  })
   const nodeEdit = matchNodeEdit(edit, node.id, 'text')
   const editing = nodeEdit !== null
   const widthMode = editing
@@ -181,18 +184,23 @@ const TextNodeRenderer = ({
     fontWeight,
     fontStyle,
     color,
+    padding: 0,
     ...resolveTextLayoutStyle({
       widthMode,
       wrapWidth
     })
   }
+  const bindFieldRef = useCallback((element: HTMLDivElement | null) => {
+    bindRef(element)
+    pickTextRef(element)
+  }, [bindRef, pickTextRef])
 
   return (
     <div className="wb-text-node-viewport">
       <div className="wb-text-node-content">
         {editing ? (
           <EditableSlot
-            bindRef={bindRef}
+            bindRef={bindFieldRef}
             value={nodeEdit.draft.text}
             caret={nodeEdit.caret}
             multiline
@@ -201,7 +209,7 @@ const TextNodeRenderer = ({
           />
         ) : (
           <div
-            ref={bindRef}
+            ref={bindFieldRef}
             data-edit-node-id={node.id}
             data-edit-field="text"
             className="wb-default-text-display"
@@ -236,6 +244,12 @@ const StickyNodeRenderer = ({
     getStyleString(node, 'color'),
     STICKY_DEFAULT_TEXT_COLOR
   ) ?? 'var(--ui-text-primary)'
+  const pickTextRef = usePickRef({
+    kind: 'node',
+    id: node.id,
+    part: 'field',
+    field: 'text'
+  })
   const textStyle: CSSProperties = {
     fontSize,
     fontWeight,
@@ -243,13 +257,17 @@ const StickyNodeRenderer = ({
     color,
     opacity: text ? 1 : selected ? 1 : 0.72
   }
+  const bindFieldRef = useCallback((element: HTMLDivElement | null) => {
+    bindRef(element)
+    pickTextRef(element)
+  }, [bindRef, pickTextRef])
 
   return (
     <div className="wb-sticky-node">
       <div className="wb-sticky-node-shell">
         {editing ? (
           <EditableSlot
-            bindRef={bindRef}
+            bindRef={bindFieldRef}
             value={nodeEdit.draft.text}
             caret={nodeEdit.caret}
             multiline
@@ -258,7 +276,7 @@ const StickyNodeRenderer = ({
           />
         ) : (
           <div
-            ref={bindRef}
+            ref={bindFieldRef}
             data-edit-node-id={node.id}
             data-edit-field="text"
             className="wb-sticky-node-text"
@@ -275,15 +293,33 @@ const StickyNodeRenderer = ({
 const createTextStyle = (variant: 'text' | 'sticky') => (props: NodeRenderProps): CSSProperties => {
   const isSticky = variant === 'sticky'
   if (!isSticky) {
+    const stroke = getStyleString(props.node, 'stroke')
+    const strokeWidth = getStyleNumber(props.node, 'strokeWidth') ?? 0
+    const paddingX = getStyleNumber(props.node, 'paddingX') ?? 0
+    const paddingY = getStyleNumber(props.node, 'paddingY') ?? 0
+    const frameKind = getStyleString(props.node, 'frameKind')
+    const borderRadius = frameKind === 'ellipse'
+      ? 999
+      : 0
+    const borderStyle = frameKind === 'underline'
+      ? {
+          borderTop: 'none',
+          borderLeft: 'none',
+          borderRight: 'none',
+          borderBottom: `${strokeWidth}px solid ${stroke ?? 'transparent'}`
+        }
+      : {
+          border: `${strokeWidth}px solid ${stroke ?? 'transparent'}`
+        }
     return {
       background: getStyleString(props.node, 'fill') ?? 'transparent',
-      border: 'none',
-      borderRadius: 0,
+      ...borderStyle,
+      borderRadius,
       boxShadow: 'none',
       boxSizing: 'border-box',
       display: 'block',
       overflow: 'hidden',
-      padding: 0,
+      padding: `${paddingY}px ${paddingX}px`,
       textAlign: 'left'
     }
   }

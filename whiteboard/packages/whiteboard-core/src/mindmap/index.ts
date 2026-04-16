@@ -1,4 +1,6 @@
 export * from '@whiteboard/core/mindmap/types'
+export * from '@whiteboard/core/mindmap/schema'
+export * from '@whiteboard/core/mindmap/render'
 export {
   DEFAULT_ROOT_MOVE_THRESHOLD,
   planMindmapInsertByPlacement,

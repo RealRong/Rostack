@@ -11,7 +11,6 @@ import {
   hasViewQueryImpact
 } from '@dataview/core/commit/impact'
 import {
-  sameOrder,
   trimToUndefined
 } from '@shared/core'
 import {
@@ -209,6 +208,7 @@ export const runQueryStage = (input: {
   } else if (stage.action === 'sync' && input.previous) {
     const previousRecords = input.previous.records
     const nextRecords = stage.state.records
+    const orderChanged = previousRecords.ordered !== nextRecords.ordered
     const diff = (
       !input.impact.base.recordSetChanged
       && previousRecords.visible === previousRecords.ordered
@@ -224,7 +224,7 @@ export const runQueryStage = (input: {
     if (
       diff.added.length
       || diff.removed.length
-      || !sameOrder(previousRecords.ordered, nextRecords.ordered)
+      || orderChanged
     ) {
       const queryImpact = ensureQueryImpact(input.impact)
       if (diff.added.length) {
@@ -233,7 +233,7 @@ export const runQueryStage = (input: {
       if (diff.removed.length) {
         queryImpact.visibleRemoved.push(...diff.removed)
       }
-      if (!sameOrder(previousRecords.ordered, nextRecords.ordered)) {
+      if (orderChanged) {
         queryImpact.orderChanged = true
       }
     }

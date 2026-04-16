@@ -12,6 +12,7 @@ import {
   TITLE_FIELD_ID
 } from '@dataview/core/contracts'
 import { EngineProvider, Page } from '@dataview/react'
+import { I18nProvider } from '@shared/i18n/react'
 
 const FIELD_STATUS = 'status'
 const FIELD_POINTS = 'points'
@@ -196,7 +197,9 @@ const engine = createEngine({
 })
 
 createRoot(root).render(
-  <EngineProvider engine={engine}>
-    <DemoTable />
-  </EngineProvider>
+  <I18nProvider lang="en">
+    <EngineProvider engine={engine}>
+      <DemoTable />
+    </EngineProvider>
+  </I18nProvider>
 )

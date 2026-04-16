@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import type { CustomField } from '@dataview/core/contracts'
 import { getFieldOptions } from '@dataview/core/field'
 import { useDataView } from '@dataview/react/dataview'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
 import {
   OptionEditorPanel,
 } from '@dataview/react/field/options'
@@ -11,11 +11,13 @@ import { buildOptionPanelItem } from '@dataview/react/menu-builders'
 import { FIELD_DROPDOWN_MENU_PROPS } from '@dataview/react/field/dropdown'
 import { Button } from '@shared/ui/button'
 import { Menu, type MenuItem } from '@shared/ui/menu'
+import { useTranslation } from '@shared/i18n/react'
 import { FieldStatusOptionsSection } from '@dataview/react/field/schema/editor/FieldStatusOptionsSection'
 
 const PlainFieldOptionsSection = (props: {
   field: CustomField
 }) => {
+  const { t } = useTranslation()
   const editor = useDataView().engine
   const [openOptionId, setOpenOptionId] = useState<string | null>(null)
   const options = getFieldOptions(props.field)
@@ -27,6 +29,7 @@ const PlainFieldOptionsSection = (props: {
   }, [openOptionId, options])
   const optionItems: readonly MenuItem[] = options.map(option => buildOptionPanelItem({
     option,
+    t,
     surface: 'panel',
     size: 'md',
     ...FIELD_DROPDOWN_MENU_PROPS,
@@ -47,7 +50,7 @@ const PlainFieldOptionsSection = (props: {
     <div className="space-y-1.5 pt-1">
       <div className="flex items-center justify-between gap-3">
         <div className="px-1.5 text-[11px] font-medium text-muted-foreground">
-          {renderMessage(meta.ui.field.options.title)}
+          {t(meta.ui.field.options.title)}
         </div>
       </div>
 
@@ -71,7 +74,7 @@ const PlainFieldOptionsSection = (props: {
         }}
         className="w-full"
       >
-        {renderMessage(meta.ui.field.options.add)}
+        {t(meta.ui.field.options.add)}
       </Button>
     </div>
   )

@@ -69,7 +69,6 @@ export type {
   MoveSnapResolver,
   MoveStepResult
 } from '@whiteboard/core/node/moveState'
-export { deriveCanvasNodes, deriveVisibleNodes } from '@whiteboard/core/node/visibility'
 export {
   buildTransformCommitUpdates,
   buildSelectionTransformPlan,

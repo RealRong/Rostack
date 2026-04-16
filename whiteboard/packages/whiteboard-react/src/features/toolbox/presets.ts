@@ -7,8 +7,10 @@ import {
   isShapeKind,
   type ShapeKind
 } from '@whiteboard/core/node'
+import {
+  listMindmapPresets
+} from '@whiteboard/core/mindmap'
 import type {
-  MindmapNodeData,
   Point,
   SpatialNodeInput
 } from '@whiteboard/core/types'
@@ -18,7 +20,6 @@ import type {
   InsertPresetCatalog,
   InsertPresetGroup,
   MindmapInsertPreset,
-  MindmapTemplate,
   NodeInsertPreset
 } from '@whiteboard/editor'
 import {
@@ -32,63 +33,6 @@ const firstPresetKey = <T extends {
   items: readonly T[],
   fallback: string
 ) => items[0]?.key ?? fallback
-
-export const MINDMAP_INSERT_TEMPLATES: readonly MindmapTemplate[] = [
-  {
-    key: 'mindmap.blank',
-    label: 'Blank map',
-    description: 'Central topic only',
-    root: {
-      kind: 'text',
-      text: 'Central topic'
-    }
-  },
-  {
-    key: 'mindmap.project',
-    label: 'Project',
-    description: 'Goals, timeline, tasks, notes',
-    root: {
-      kind: 'text',
-      text: 'Project'
-    },
-    children: [
-      { data: { kind: 'text', text: 'Goals' }, side: 'left' },
-      { data: { kind: 'text', text: 'Timeline' }, side: 'right' },
-      { data: { kind: 'text', text: 'Tasks' }, side: 'left' },
-      { data: { kind: 'text', text: 'Notes' }, side: 'right' }
-    ]
-  },
-  {
-    key: 'mindmap.research',
-    label: 'Research',
-    description: 'Question, sources, findings, next',
-    root: {
-      kind: 'text',
-      text: 'Research'
-    },
-    children: [
-      { data: { kind: 'text', text: 'Question' }, side: 'left' },
-      { data: { kind: 'text', text: 'Sources' }, side: 'right' },
-      { data: { kind: 'text', text: 'Findings' }, side: 'left' },
-      { data: { kind: 'text', text: 'Next steps' }, side: 'right' }
-    ]
-  },
-  {
-    key: 'mindmap.meeting',
-    label: 'Meeting',
-    description: 'Agenda, discussion, decisions, actions',
-    root: {
-      kind: 'text',
-      text: 'Meeting'
-    },
-    children: [
-      { data: { kind: 'text', text: 'Agenda' }, side: 'left' },
-      { data: { kind: 'text', text: 'Discussion' }, side: 'right' },
-      { data: { kind: 'text', text: 'Decisions' }, side: 'left' },
-      { data: { kind: 'text', text: 'Action items' }, side: 'right' }
-    ]
-  }
-] as const
 
 const createNodePreset = ({
   key,
@@ -117,16 +61,14 @@ const createNodePreset = ({
   input
 })
 
-const createMindmapPreset = (
-  template: MindmapTemplate
-): MindmapInsertPreset => ({
+export const MINDMAP_INSERT_PRESETS: readonly MindmapInsertPreset[] = listMindmapPresets().map((preset) => ({
   kind: 'mindmap',
-  key: template.key,
+  key: preset.key,
   group: 'mindmap',
-  label: template.label,
-  description: template.description,
-  template
-})
+  label: preset.label,
+  description: preset.description,
+  preset: preset.key
+}))
 
 export const TEXT_INSERT_PRESET = createNodePreset({
   key: 'text',
@@ -177,8 +119,6 @@ export const SHAPE_INSERT_PRESETS: readonly NodeInsertPreset[] = SHAPE_SPECS.map
   })
 )
 
-export const MINDMAP_INSERT_PRESETS: readonly MindmapInsertPreset[] = MINDMAP_INSERT_TEMPLATES.map(createMindmapPreset)
-
 export const INSERT_PRESETS: readonly InsertPreset[] = [
   TEXT_INSERT_PRESET,
   FRAME_INSERT_PRESET,
@@ -203,7 +143,7 @@ export const DEFAULT_SHAPE_PRESET_KEY = firstPresetKey(
 
 export const DEFAULT_MINDMAP_PRESET_KEY = firstPresetKey(
   MINDMAP_INSERT_PRESETS,
-  'mindmap.blank'
+  'mindmap.capsule-outline'
 )
 
 export const readShapePresetKind = (
@@ -255,6 +195,5 @@ export type {
   InsertPresetGroup,
   InsertPresetCatalog,
   MindmapInsertPreset,
-  MindmapTemplate,
   NodeInsertPreset
 }

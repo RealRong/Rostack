@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Field } from '@dataview/core/contracts'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
 import type { MenuItem, MenuReorderItem } from '@shared/ui/menu'
 
 const buildFieldContent = (field: Field, input?: {
@@ -61,7 +61,7 @@ export const buildFieldActionItem = (field: Field, input: {
 })
 
 export const buildFieldReorderItem = (field: Field, input: {
-  handleAriaLabel?: string
+  handleAriaLabel: string
   onSelect: () => void
   key?: string
   suffix?: ReactNode
@@ -74,9 +74,7 @@ export const buildFieldReorderItem = (field: Field, input: {
   ...buildFieldContent(field, {
     suffix: input.suffix
   }),
-  handleAriaLabel: input.handleAriaLabel ?? renderMessage(
-    meta.ui.viewSettings.fieldsPanel.reorder(field.name)
-  ),
+  handleAriaLabel: input.handleAriaLabel,
   disabled: input.disabled,
   accessory: input.accessory,
   trailing: input.trailing,

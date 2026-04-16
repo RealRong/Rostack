@@ -2,7 +2,8 @@ import { Plus } from 'lucide-react'
 import { useMemo } from 'react'
 import { buildFieldKindMenuItems } from '@dataview/react/field/schema'
 import { useDataView } from '@dataview/react/dataview'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
+import { useTranslation } from '@shared/i18n/react'
 import { Menu } from '@shared/ui/menu'
 import { Button } from '@shared/ui/button'
 import { TABLE_TRAILING_ACTION_WIDTH } from '@dataview/react/views/table/layout'
@@ -19,16 +20,18 @@ const openNextFrame = (callback: () => void) => {
 }
 
 export const ColumnAddPropertyAction = () => {
+  const { t } = useTranslation()
   const dataView = useDataView()
   const editor = dataView.engine
   const page = dataView.page
   const items = useMemo(() => buildFieldKindMenuItems({
+    t,
     kind: undefined,
     isTitleProperty: false,
     onSelect: kind => {
       const fieldId = editor.fields.create({
         kind,
-        name: renderMessage(meta.field.kind.get(kind).defaultName)
+        name: t(meta.field.kind.get(kind).defaultName)
       })
       if (!fieldId) {
         return
@@ -42,7 +45,7 @@ export const ColumnAddPropertyAction = () => {
         })
       })
     }
-  }), [editor, page.settings])
+  }), [editor, page.settings, t])
 
   return (
     <div
@@ -64,7 +67,7 @@ export const ColumnAddPropertyAction = () => {
             leading={<Plus className="size-4" size={16} strokeWidth={1.8} />}
             className="h-full w-full justify-start rounded-none px-3 text-sm font-semibold text-muted-foreground hover:bg-muted/80"
           >
-            添加属性
+            {t(meta.ui.viewSettings.fieldsPanel.add)}
           </Button>
         )}
       />

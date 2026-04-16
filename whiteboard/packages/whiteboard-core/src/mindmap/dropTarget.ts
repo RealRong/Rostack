@@ -2,8 +2,7 @@ import type { Point, Rect, NodeId } from '@whiteboard/core/types'
 import type {
   MindmapDragDropTarget,
   MindmapLayout,
-  MindmapLayoutConfig,
-  MindmapLayoutOptions,
+  MindmapLayoutSpec,
   MindmapNodeId,
   MindmapTree
 } from '@whiteboard/core/mindmap/types'
@@ -37,7 +36,7 @@ const DEFAULT_REORDER_LINE_OVERFLOW = 12
 type MindmapTreeView = {
   id: NodeId
   tree: MindmapTree
-  layout: MindmapLayoutConfig
+  layout: MindmapLayoutSpec
   computed: MindmapLayout
   shiftX: number
   shiftY: number
@@ -50,13 +49,13 @@ const getNodeSide = (
 ) => getSide(tree, nodeId) ?? defaultSide
 
 const getRootSide = (
-  options: MindmapLayoutOptions | undefined,
+  layout: MindmapLayoutSpec,
   rootRect: Rect,
   pointer: { x: number; y: number },
   defaultSide: 'left' | 'right',
   preferred?: 'left' | 'right'
 ): 'left' | 'right' => {
-  const mode = options?.side
+  const mode = layout.side
   if (mode === 'left' || mode === 'right') return mode
   if (preferred) return preferred
   const centerX = rootRect.x + rootRect.width / 2
@@ -173,7 +172,7 @@ export const computeSubtreeDropTarget = ({
   ghost,
   dragNodeId,
   dragExcludeIds,
-  layoutOptions,
+  layout,
   snapThreshold = DEFAULT_DROP_SNAP_THRESHOLD,
   defaultSide = DEFAULT_SIDE,
   reorderLineGap = DEFAULT_REORDER_LINE_GAP,
@@ -198,22 +197,22 @@ export const computeSubtreeDropTarget = ({
   if (!hoveredId || !hoveredRect || !hoveredAlign) return
   if (hoveredDistance > snapThreshold) return
 
-  const rootRect = nodeRects.get(tree.rootId)
+  const rootRect = nodeRects.get(tree.rootNodeId)
   if (!rootRect) return
 
   const ghostCenter = { x: ghost.x + ghost.width / 2, y: ghost.y + ghost.height / 2 }
   const isHorizontal = hoveredAlign.key === 'left-to-right' || hoveredAlign.key === 'right-to-left'
-  const isAttach = hoveredId === tree.rootId || isHorizontal
+  const isAttach = hoveredId === tree.rootNodeId || isHorizontal
 
   if (isAttach) {
     const parentId = hoveredId
     const children = (tree.children[parentId] ?? []).filter((id) => id !== dragNodeId)
     const side =
-      parentId === tree.rootId
-        ? getRootSide(layoutOptions, rootRect, ghostCenter, defaultSide)
+      parentId === tree.rootNodeId
+        ? getRootSide(layout, rootRect, ghostCenter, defaultSide)
         : undefined
     const index =
-      parentId === tree.rootId && side
+      parentId === tree.rootNodeId && side
         ? mapSideIndexToGlobalIndex(tree, children, side, children.length, defaultSide)
         : children.length
 
@@ -236,11 +235,11 @@ export const computeSubtreeDropTarget = ({
 
   const before = ghostCenter.y < hoveredRect.y + hoveredRect.height / 2
   const side =
-    parentId === tree.rootId
-      ? getRootSide(layoutOptions, rootRect, ghostCenter, defaultSide, tree.nodes[hoveredId]?.side)
+    parentId === tree.rootNodeId
+      ? getRootSide(layout, rootRect, ghostCenter, defaultSide, tree.nodes[hoveredId]?.side)
       : undefined
   const index =
-    parentId === tree.rootId && side
+    parentId === tree.rootNodeId && side
       ? mapSideIndexToGlobalIndex(
           tree,
           filteredChildren,
@@ -353,7 +352,7 @@ const projectSubtreeDrop = (
         ghost,
         dragNodeId: active.nodeId,
         dragExcludeIds: new Set(active.excludeIds),
-        layoutOptions: treeView.layout.options
+        layout: treeView.layout
       })
     : active.drop
 )

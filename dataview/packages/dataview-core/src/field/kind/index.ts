@@ -3,11 +3,10 @@ import type {
   CustomField,
   CustomFieldKind,
   ViewGroup
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/contracts'
 import { KANBAN_EMPTY_BUCKET_KEY } from '@dataview/core/contracts/kanban'
 import {
   createDateGroupKey,
-  formatDateGroupTitle,
   formatDateValue,
   readDateGroupStart,
   getDateSearchTokens,
@@ -19,7 +18,6 @@ import {
 import {
   compareStatusFieldValues,
   getStatusCategoryColor,
-  getStatusCategoryLabel,
   getStatusCategoryOrder,
   getStatusDefaultOption,
   getStatusOptionCategory,
@@ -38,6 +36,7 @@ import {
   compareGroupSortValues,
   compareLabels,
   readBucketOrder,
+  readBucketSortLabel,
   readBucketSortValue,
   type Bucket,
   type ResolvedBucket
@@ -54,6 +53,12 @@ import {
   readNumberValue,
   type FieldDraftParseResult
 } from '@dataview/core/field/kind/shared'
+import type {
+  Token
+} from '@shared/i18n'
+import {
+  tokenRef
+} from '@shared/i18n'
 
 type FieldInput = CustomField | undefined
 
@@ -254,6 +259,14 @@ const compareDisplayText = (
   getFieldKind(field)?.display(field, right)
 )
 
+const systemValueToken = (
+  id: import('@dataview/core/contracts').SystemValueId
+): Token => tokenRef('dataview.systemValue', id)
+
+const rawValueToken = (
+  text: string
+): Token => text
+
 const compareNumberValues = (
   left: unknown,
   right: unknown
@@ -395,10 +408,11 @@ const createObservedScalarBucket = (
   if (isEmptyFieldValue(value)) {
     return {
       key: KANBAN_EMPTY_BUCKET_KEY,
-      title: 'Empty',
+      label: systemValueToken('value.empty'),
       clearValue: true,
       empty: true,
       order,
+      sortLabel: '',
       sortValue: null
     }
   }
@@ -410,13 +424,18 @@ const createObservedScalarBucket = (
 
   return {
     key: toScalarKey(value),
-    title: normalizedStringValue && normalizedStringValue.length
-      ? normalizedStringValue
-      : displayValue ?? String(value),
+    label: rawValueToken(
+      normalizedStringValue && normalizedStringValue.length
+        ? normalizedStringValue
+        : displayValue ?? String(value)
+    ),
     value,
     clearValue: false,
     empty: false,
     order,
+    sortLabel: normalizedStringValue && normalizedStringValue.length
+      ? normalizedStringValue
+      : displayValue ?? String(value),
     sortValue: scalarSortValue(value)
   }
 }
@@ -436,12 +455,13 @@ const createOptionBucket = (
   value: unknown = option.id
 ): ResolvedBucket => ({
   key: option.id,
-  title: option.name,
+  label: option.name || option.id,
   value,
   clearValue: false,
   color: option.color ?? undefined,
   empty: false,
   order,
+  sortLabel: option.name,
   sortValue: option.name
 })
 
@@ -462,9 +482,11 @@ const createNumberRangeBucket = (
   interval: number
 ): ResolvedBucket => ({
   key: `range:${start}:${interval}`,
-  title: Number.isInteger(start) && Number.isInteger(interval)
-    ? integerRangeTitle(start, interval)
-    : decimalRangeTitle(start, interval),
+  label: rawValueToken(
+    Number.isInteger(start) && Number.isInteger(interval)
+      ? integerRangeTitle(start, interval)
+      : decimalRangeTitle(start, interval)
+  ),
   value: {
     start,
     end: start + interval
@@ -472,6 +494,9 @@ const createNumberRangeBucket = (
   clearValue: false,
   empty: false,
   order: start,
+  sortLabel: Number.isInteger(start) && Number.isInteger(interval)
+    ? integerRangeTitle(start, interval)
+    : decimalRangeTitle(start, interval),
   sortValue: start
 })
 
@@ -480,7 +505,10 @@ const createDateGroupBucket = (
   start: string
 ): ResolvedBucket => ({
   key: createDateGroupKey(mode, start),
-  title: formatDateGroupTitle(start, mode),
+  label: tokenRef('dataview.dateBucket', undefined, {
+    mode,
+    start
+  }),
   value: start,
   clearValue: false,
   empty: false,
@@ -488,6 +516,7 @@ const createDateGroupBucket = (
     kind: 'date',
     start
   }) ?? Number.MAX_SAFE_INTEGER,
+  sortLabel: start,
   sortValue: readDateComparableTimestamp({
     kind: 'date',
     start
@@ -501,21 +530,23 @@ const createBooleanBucket = (
   if (key === KANBAN_EMPTY_BUCKET_KEY) {
     return {
       key,
-      title: 'Empty',
+      label: systemValueToken('value.empty'),
       clearValue: true,
       empty: true,
       order,
+      sortLabel: '',
       sortValue: null
     }
   }
 
   return {
     key,
-      title: key === 'true' ? 'Checked' : 'Unchecked',
+    label: systemValueToken(key === 'true' ? 'value.checked' : 'value.unchecked'),
     value: key === 'true',
     clearValue: false,
     empty: false,
     order,
+    sortLabel: key,
     sortValue: key === 'true'
   }
 }
@@ -527,19 +558,21 @@ const createPresenceBucket = (
   key === KANBAN_EMPTY_BUCKET_KEY
     ? {
         key,
-        title: 'Empty',
+        label: systemValueToken('value.empty'),
         clearValue: true,
         empty: true,
         order,
+        sortLabel: '',
         sortValue: null
       }
     : {
         key,
-        title: 'Has value',
+        label: systemValueToken('value.hasValue'),
         value: true,
         clearValue: false,
         empty: false,
         order,
+        sortLabel: 'present',
         sortValue: true
       }
 )
@@ -549,13 +582,14 @@ const createStatusCategoryBucket = (
   category: typeof STATUS_CATEGORIES[number]
 ): ResolvedBucket => ({
   key: category,
-  title: getStatusCategoryLabel(category),
+  label: tokenRef('dataview.statusCategory', category),
   value: getStatusDefaultOption(field, category)?.id,
   clearValue: false,
   color: getStatusCategoryColor(category),
   empty: false,
   order: getStatusCategoryOrder(category),
-  sortValue: getStatusCategoryLabel(category)
+  sortLabel: category,
+  sortValue: getStatusCategoryOrder(category)
 })
 
 const BUCKET_SORTS = new Set<BucketSort>([
@@ -1013,19 +1047,19 @@ export const compareGroupBuckets = (
 
   switch (bucketSort) {
     case 'labelAsc':
-      return compareLabels(left.title, right.title) || leftOrder - rightOrder
+      return compareLabels(readBucketSortLabel(left), readBucketSortLabel(right)) || leftOrder - rightOrder
     case 'labelDesc':
-      return compareLabels(right.title, left.title) || leftOrder - rightOrder
+      return compareLabels(readBucketSortLabel(right), readBucketSortLabel(left)) || leftOrder - rightOrder
     case 'valueAsc':
       return compareGroupSortValues(readBucketSortValue(left), readBucketSortValue(right))
-        || compareLabels(left.title, right.title)
+        || compareLabels(readBucketSortLabel(left), readBucketSortLabel(right))
         || leftOrder - rightOrder
     case 'valueDesc':
       return compareGroupSortValues(readBucketSortValue(right), readBucketSortValue(left))
-        || compareLabels(left.title, right.title)
+        || compareLabels(readBucketSortLabel(left), readBucketSortLabel(right))
         || leftOrder - rightOrder
     case 'manual':
     default:
-      return leftOrder - rightOrder || compareLabels(left.title, right.title)
+      return leftOrder - rightOrder || compareLabels(readBucketSortLabel(left), readBucketSortLabel(right))
   }
 }

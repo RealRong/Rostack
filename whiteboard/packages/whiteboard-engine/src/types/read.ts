@@ -5,6 +5,7 @@ export type ReadModel = {
   nodes: {
     visible: Node[]
     canvas: Node[]
+    all: Node[]
   }
   edges: {
     visible: Edge[]

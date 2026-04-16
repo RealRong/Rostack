@@ -192,7 +192,6 @@ export const createEditorFacade = ({
         export: () => engine.document.get(),
         configure: (config) => {
           engine.configure({
-            mindmapLayout: config.mindmapLayout,
             history: config.history
           })
         },

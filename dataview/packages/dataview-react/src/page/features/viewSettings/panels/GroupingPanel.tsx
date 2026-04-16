@@ -7,16 +7,19 @@ import {
 } from '@dataview/react/dataview'
 import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem } from '@shared/ui/menu'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
 import {
   buildChoiceSubmenuItem,
   buildNavigationItem
 } from '@dataview/react/menu-builders'
 import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
+import type { TokenTranslator } from '@shared/i18n'
+import { useTranslation } from '@shared/i18n/react'
 
 const readGroupModeLabel = (
   field: Field | undefined,
-  mode: string
+  mode: string,
+  t: TokenTranslator
 ) => {
   if (!field) {
     return undefined
@@ -28,28 +31,28 @@ const readGroupModeLabel = (
     case 'url':
     case 'email':
     case 'phone':
-      return renderMessage(meta.ui.viewSettings.groupByValue)
+      return t(meta.ui.viewSettings.groupByValue)
     case 'status':
       return mode === 'category'
-        ? renderMessage(meta.ui.viewSettings.groupByCategory)
-        : renderMessage(meta.ui.viewSettings.groupByStatus)
+        ? t(meta.ui.viewSettings.groupByCategory)
+        : t(meta.ui.viewSettings.groupByStatus)
     case 'select':
     case 'multiSelect':
-      return renderMessage(meta.ui.viewSettings.groupByOption)
+      return t(meta.ui.viewSettings.groupByOption)
     case 'number':
-      return renderMessage(meta.ui.viewSettings.groupByRange)
+      return t(meta.ui.viewSettings.groupByRange)
     case 'date':
       switch (mode) {
         case 'day':
-          return renderMessage(meta.ui.viewSettings.groupByDay)
+          return t(meta.ui.viewSettings.groupByDay)
         case 'week':
-          return renderMessage(meta.ui.viewSettings.groupByWeek)
+          return t(meta.ui.viewSettings.groupByWeek)
         case 'month':
-          return renderMessage(meta.ui.viewSettings.groupByMonth)
+          return t(meta.ui.viewSettings.groupByMonth)
         case 'quarter':
-          return renderMessage(meta.ui.viewSettings.groupByQuarter)
+          return t(meta.ui.viewSettings.groupByQuarter)
         case 'year':
-          return renderMessage(meta.ui.viewSettings.groupByYear)
+          return t(meta.ui.viewSettings.groupByYear)
         default:
           return undefined
       }
@@ -58,24 +61,28 @@ const readGroupModeLabel = (
   }
 }
 
-const readBucketSortLabel = (bucketSort: BucketSort | undefined) => {
+const readBucketSortLabel = (
+  bucketSort: BucketSort | undefined,
+  t: TokenTranslator
+) => {
   switch (bucketSort) {
     case 'manual':
-      return renderMessage(meta.ui.viewSettings.bucketSortManual)
+      return t(meta.ui.viewSettings.bucketSortManual)
     case 'labelAsc':
-      return renderMessage(meta.ui.viewSettings.bucketSortLabelAsc)
+      return t(meta.ui.viewSettings.bucketSortLabelAsc)
     case 'labelDesc':
-      return renderMessage(meta.ui.viewSettings.bucketSortLabelDesc)
+      return t(meta.ui.viewSettings.bucketSortLabelDesc)
     case 'valueAsc':
-      return renderMessage(meta.ui.viewSettings.bucketSortValueAsc)
+      return t(meta.ui.viewSettings.bucketSortValueAsc)
     case 'valueDesc':
-      return renderMessage(meta.ui.viewSettings.bucketSortValueDesc)
+      return t(meta.ui.viewSettings.bucketSortValueDesc)
     default:
       return undefined
   }
 }
 
 export const GroupingPanel = () => {
+  const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
   const router = useViewSettings()
@@ -134,8 +141,8 @@ export const GroupingPanel = () => {
   const settingItems: MenuItem[] = [
     buildNavigationItem({
       key: 'field',
-      label: renderMessage(meta.ui.viewSettings.groupField),
-      suffix: groupField?.name ?? renderMessage(meta.ui.viewSettings.none),
+      label: t(meta.ui.viewSettings.groupField),
+      suffix: groupField?.name ?? t(meta.ui.viewSettings.none),
       onSelect: () => {
         router.push({ kind: 'groupField' })
       }
@@ -143,12 +150,12 @@ export const GroupingPanel = () => {
     ...(groupField && availableModes.length > 1
       ? [buildChoiceSubmenuItem({
           key: 'mode',
-          label: renderMessage(meta.ui.viewSettings.groupMode),
-          suffix: readGroupModeLabel(groupField, group.mode),
+          label: t(meta.ui.viewSettings.groupMode),
+          suffix: readGroupModeLabel(groupField, group.mode, t),
           value: group.mode,
           options: availableModes.map(mode => ({
             id: mode,
-            label: readGroupModeLabel(groupField, mode) ?? mode
+            label: readGroupModeLabel(groupField, mode, t) ?? mode
           })),
           onSelect: mode => {
             if (!groupField) {
@@ -164,12 +171,12 @@ export const GroupingPanel = () => {
     ...(groupField && availableBucketSorts.length > 0
       ? [buildChoiceSubmenuItem({
           key: 'sort',
-          label: renderMessage(meta.ui.viewSettings.bucketSort),
-          suffix: readBucketSortLabel(group.bucketSort),
+          label: t(meta.ui.viewSettings.bucketSort),
+          suffix: readBucketSortLabel(group.bucketSort, t),
           value: group.bucketSort,
           options: availableBucketSorts.map(bucketSort => ({
             id: bucketSort,
-            label: readBucketSortLabel(bucketSort) ?? bucketSort
+            label: readBucketSortLabel(bucketSort, t) ?? bucketSort
           })),
           onSelect: bucketSort => {
             if (!groupField) {
@@ -201,7 +208,7 @@ export const GroupingPanel = () => {
       {showBucketInterval ? (
         <div className="mt-3 border-t border-divider px-2 pb-1 pt-3">
           <div className="mb-2 text-[11px] font-medium text-muted-foreground">
-            {renderMessage(meta.ui.viewSettings.bucketInterval)}
+            {t(meta.ui.viewSettings.bucketInterval)}
           </div>
           <Input
             value={intervalDraft}

@@ -8,7 +8,8 @@ import { Input } from '@shared/ui/input'
 import { Menu } from '@shared/ui/menu'
 import { Popover } from '@shared/ui/popover'
 import { cn } from '@shared/ui/utils'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
+import { useTranslation } from '@shared/i18n/react'
 import { QueryChip } from '@dataview/react/page/features/query'
 import { FilterOptionSetEditor } from '@dataview/react/page/features/filter/FilterOptionSetEditor'
 import {
@@ -71,6 +72,7 @@ const applyFilterDraft = (
 }
 
 export const FilterRulePopover = (props: FilterRulePopoverProps) => {
+  const { t } = useTranslation()
   const [conditionOpen, setConditionOpen] = useState(false)
   const committedDraft = readFilterDraft(props.entry, props.entry.rule.value)
   const [draft, setDraft] = useState(() => committedDraft)
@@ -78,7 +80,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
   const field = props.entry.field
   const active = props.entry.effective
   const bodyLayout = props.entry.bodyLayout
-  const fieldLabel = props.entry.fieldLabel || renderMessage(meta.ui.filter.deletedField)
+  const fieldLabel = field?.name ?? t(meta.systemValue.get('field.deleted').token)
   const fieldKind = field
     ? meta.field.kind.get(field.kind)
     : undefined
@@ -137,7 +139,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
                     items={props.entry.conditions.map(item => ({
                       kind: 'toggle' as const,
                       key: item.id,
-                      label: getFilterPresetLabel(field, item.id),
+                      label: t(getFilterPresetLabel(field, item.id)),
                       checked: item.id === props.entry.activePresetId,
                       onSelect: () => {
                         props.onPresetChange(item.id)
@@ -146,7 +148,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
                     }))}
                     trigger={(
                       <div className="flex h-5 text-sm cursor-pointer items-center gap-1 rounded-md px-1 font-semibold text-muted-foreground transition-[background-color,color] hover:bg-hover hover:text-foreground">
-                        {getFilterPresetLabel(field, props.entry.activePresetId)}
+                        {t(getFilterPresetLabel(field, props.entry.activePresetId))}
                         <ChevronDown className="opacity-70" size={12} strokeWidth={2} />
                       </div>
                     )}
@@ -157,7 +159,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
               {props.onRemove ? (
                 <Button
                   size="icon"
-                  aria-label={renderMessage(meta.ui.filter.remove)}
+                  aria-label={t(meta.ui.filter.remove)}
                   onClick={() => {
                     props.onRemove?.()
                     props.onOpenChange(false)
@@ -196,7 +198,12 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
                   }}
                   type={editorKind === 'date' ? 'date' : 'text'}
                   inputMode={editorKind === 'number' ? 'decimal' : undefined}
-                  placeholder={getFilterValuePlaceholder(field)}
+                  placeholder={(() => {
+                    const placeholder = getFilterValuePlaceholder(field)
+                    return placeholder
+                      ? t(placeholder)
+                      : undefined
+                  })()}
                 />
               )}
             </div>

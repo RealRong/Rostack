@@ -7,7 +7,7 @@ import { createProjectionRuntime } from '@whiteboard/engine/read/store/projectio
 export const createNodeProjection = (initialSnapshot: ReadSnapshot) => {
   const cacheById = new Map<NodeId, NodeItem>()
   const projection = createProjectionRuntime<NodeId, NodeItem | undefined>({
-    initialList: initialSnapshot.model.canvas.nodeIds as readonly NodeId[],
+    initialList: initialSnapshot.model.nodes.all.map((node) => node.id) as readonly NodeId[],
     emptyValue: undefined,
     read: (nodeId) => readCached(nodeId)
   })
@@ -58,7 +58,7 @@ export const createNodeProjection = (initialSnapshot: ReadSnapshot) => {
   ) => {
     snapshotRef = snapshot
     const prevIds = projection.list.get()
-    const nextIds = snapshotRef.model.canvas.nodeIds as readonly NodeId[]
+    const nextIds = snapshotRef.model.nodes.all.map((node) => node.id) as readonly NodeId[]
     const idsChanged = prevIds !== nextIds
 
     if (idsChanged) {

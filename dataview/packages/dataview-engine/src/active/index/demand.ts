@@ -2,12 +2,16 @@ import type {
   FieldId
 } from '@dataview/core/contracts'
 import {
+  isDefaultSearchField
+} from '@dataview/core/search'
+import {
   sameOrder,
   uniqueSorted
 } from '@shared/core'
 import type {
   GroupDemand,
   IndexDemand,
+  IndexReadContext,
   NormalizedIndexDemand
 } from '@dataview/engine/active/index/contracts'
 import {
@@ -46,14 +50,52 @@ const uniqueGroups = (
     ].join('\u0000')))
 }
 
+const resolveSearchFieldIds = (
+  context: Pick<IndexReadContext, 'document' | 'reader'>,
+  demand?: IndexDemand
+): readonly FieldId[] => {
+  if (demand?.search?.fields?.length) {
+    return uniqueSorted(demand.search.fields)
+  }
+
+  if (!demand?.search?.all) {
+    return []
+  }
+
+  const fieldIds: FieldId[] = ['title']
+  for (let index = 0; index < context.document.fields.order.length; index += 1) {
+    const fieldId = context.document.fields.order[index]!
+    const field = context.reader.fields.get(fieldId)
+    if (field && field.kind !== 'title' && isDefaultSearchField(field)) {
+      fieldIds.push(fieldId)
+    }
+  }
+
+  return uniqueSorted(fieldIds)
+}
+
 export const normalizeIndexDemand = (
+  context: Pick<IndexReadContext, 'document' | 'reader'>,
   demand?: IndexDemand
 ): NormalizedIndexDemand => {
   const groups = uniqueGroups(demand?.groups)
   const sortFields = uniqueSorted(demand?.sortFields ?? [])
+  const searchFields = resolveSearchFieldIds(context, demand)
+  const displayFields = uniqueSorted(demand?.displayFields ?? [])
+  const calculationFields = uniqueSorted(
+    (demand?.calculations ?? []).map(item => item.fieldId)
+  )
+  const groupFields = uniqueSorted(groups.map(item => item.fieldId))
+  const recordFields = uniqueSorted([
+    ...displayFields,
+    ...sortFields,
+    ...searchFields,
+    ...groupFields,
+    ...calculationFields
+  ])
 
   return {
-    recordFields: sortFields,
+    recordFields,
     search: {
       all: demand?.search?.all === true,
       fields: uniqueSorted(demand?.search?.fields ?? [])

@@ -1,0 +1,27 @@
+{
+  "name": "@shared/i18n",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/react.tsx"
+  },
+  "scripts": {
+    "build": "tsdown --config tsdown.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "i18next": "^25.6.0",
+    "react": "^19.1.1",
+    "react-i18next": "^16.2.4"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.12"
+  },
+  "files": [
+    "src",
+    "dist"
+  ]
+}

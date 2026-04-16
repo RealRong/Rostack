@@ -14,6 +14,19 @@ export interface ArrayPatchBuilder<T> {
   finish(): readonly T[]
 }
 
+const MAP_OVERLAY_DEPTH = new WeakMap<object, number>()
+const MAX_MAP_OVERLAY_DEPTH = 8
+const MIN_LARGE_MAP_DELTA = 128
+
+const readOverlayDepth = (
+  value: unknown
+): number => (
+  typeof value === 'object'
+  && value !== null
+    ? MAP_OVERLAY_DEPTH.get(value as object) ?? 0
+    : 0
+)
+
 export const createMapOverlay = <K, V>(input: {
   previous: ReadonlyMap<K, V>
   set?: ReadonlyMap<K, V>
@@ -24,6 +37,7 @@ export const createMapOverlay = <K, V>(input: {
   if (!updated?.size && !removed?.size) {
     return input.previous
   }
+  const nextDepth = readOverlayDepth(input.previous) + 1
 
   let cachedSize: number | undefined
   const readSize = () => {
@@ -89,6 +103,17 @@ export const createMapOverlay = <K, V>(input: {
     }
   }
 
+  const deltaSize = (updated?.size ?? 0) + (removed?.size ?? 0)
+  if (
+    nextDepth >= MAX_MAP_OVERLAY_DEPTH
+    || (
+      deltaSize >= MIN_LARGE_MAP_DELTA
+      && deltaSize * 2 > input.previous.size
+    )
+  ) {
+    return new Map(entries())
+  }
+
   const overlay = {
     get size() {
       return readSize()
@@ -121,6 +146,7 @@ export const createMapOverlay = <K, V>(input: {
     values: values as unknown as ReadonlyMap<K, V>['values'],
     [Symbol.iterator]: entries as unknown as ReadonlyMap<K, V>[typeof Symbol.iterator]
   }
+  MAP_OVERLAY_DEPTH.set(overlay, nextDepth)
 
   return overlay as ReadonlyMap<K, V>
 }
@@ -128,36 +154,78 @@ export const createMapOverlay = <K, V>(input: {
 export const createMapPatchBuilder = <K, V>(
   previous: ReadonlyMap<K, V>
 ): MapPatchBuilder<K, V> => {
-  let next: Map<K, V> | undefined
+  let updated: Map<K, V> | undefined
+  let removed: Set<K> | undefined
 
-  const current = () => next ?? previous
-  const ensure = () => {
-    if (!next) {
-      next = new Map(previous)
+  const cleanup = () => {
+    if (!updated?.size) {
+      updated = undefined
     }
-
-    return next
+    if (!removed?.size) {
+      removed = undefined
+    }
   }
 
+  const hasCurrent = (key: K) => updated?.has(key)
+    ? true
+    : removed?.has(key)
+      ? false
+      : previous.has(key)
+
+  const getCurrent = (key: K) => updated?.has(key)
+    ? updated.get(key)
+    : removed?.has(key)
+      ? undefined
+      : previous.get(key)
+
   return {
-    get: key => current().get(key),
-    has: key => current().has(key),
+    get: getCurrent,
+    has: hasCurrent,
     set: (key, value) => {
-      if (current().get(key) === value && current().has(key)) {
+      if (previous.has(key) && previous.get(key) === value) {
+        updated?.delete(key)
+        removed?.delete(key)
+        cleanup()
         return
       }
 
-      ensure().set(key, value)
+      if (updated?.has(key) && updated.get(key) === value && !removed?.has(key)) {
+        return
+      }
+
+      removed?.delete(key)
+      updated ??= new Map()
+      updated.set(key, value)
+      cleanup()
     },
     delete: key => {
-      if (!current().has(key)) {
+      if (removed?.has(key)) {
         return
       }
 
-      ensure().delete(key)
+      if (updated?.has(key)) {
+        updated.delete(key)
+      }
+
+      if (!previous.has(key)) {
+        cleanup()
+        return
+      }
+
+      removed ??= new Set()
+      removed.add(key)
+      cleanup()
     },
-    changed: () => next !== undefined,
-    finish: () => next ?? previous
+    changed: () => Boolean(updated?.size || removed?.size),
+    finish: () => (
+      updated?.size || removed?.size
+        ? createMapOverlay({
+            previous,
+            ...(updated?.size ? { set: updated } : {}),
+            ...(removed?.size ? { delete: removed } : {})
+          })
+        : previous
+    )
   }
 }
 

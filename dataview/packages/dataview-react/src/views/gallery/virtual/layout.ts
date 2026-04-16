@@ -111,7 +111,7 @@ export const buildGalleryLayout = (input: {
         height: GALLERY_SECTION_HEADER_HEIGHT,
         section: {
           key: section.key,
-          title: section.title,
+          label: section.label,
           color: section.color
         }
       }
@@ -136,7 +136,7 @@ export const buildGalleryLayout = (input: {
         height: GALLERY_SECTION_EMPTY_HEIGHT,
         section: {
           key: section.key,
-          title: section.title
+          label: section.label
         }
       }
       blocks.push(emptyBlock)

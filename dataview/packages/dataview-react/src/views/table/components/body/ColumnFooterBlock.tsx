@@ -4,6 +4,8 @@ import type {
 import {
   memo
 } from 'react'
+import { meta } from '@dataview/meta'
+import { useTranslation } from '@shared/i18n/react'
 import { useStoreValue } from '@shared/react'
 import { useTableContext } from '@dataview/react/views/table/context'
 import {
@@ -21,6 +23,11 @@ export interface ColumnFooterBlockProps {
 }
 
 const View = (props: ColumnFooterBlockProps) => {
+  const {
+    t,
+    formatNumber,
+    formatPercent
+  } = useTranslation()
   const table = useTableContext()
   const currentView = useStoreValue(table.currentView)
   if (!currentView) {
@@ -44,6 +51,63 @@ const View = (props: ColumnFooterBlockProps) => {
       >
         {props.columns.map(field => {
           const result = calculations?.get(field.id)
+          const content = (() => {
+            if (!result) {
+              return null
+            }
+
+            switch (result.kind) {
+              case 'empty':
+                return (
+                  <div className="text-sm text-muted-foreground">
+                    {t(meta.systemValue.get('value.empty').token)}
+                  </div>
+                )
+              case 'scalar':
+                return (
+                  <>
+                    <div className="text-[11px] leading-none text-muted-foreground">
+                      {t(meta.calculation.metric.get(result.metric).token)}
+                    </div>
+                    <div className="text-base ml-1 leading-none font-medium">
+                      {formatNumber(result.value)}
+                    </div>
+                  </>
+                )
+              case 'percent':
+                return (
+                  <>
+                    <div className="text-[11px] leading-none text-muted-foreground">
+                      {t(meta.calculation.metric.get(result.metric).token)}
+                    </div>
+                    <div className="text-base ml-1 leading-none font-medium">
+                      {formatPercent(result.value)}
+                    </div>
+                  </>
+                )
+              case 'distribution':
+                return (
+                  <div className="min-w-0 flex flex-col gap-1">
+                    <div className="text-[11px] leading-none text-muted-foreground">
+                      {t(meta.calculation.metric.get(result.metric).token)}
+                    </div>
+                    <div className="min-w-0 text-xs leading-snug text-foreground">
+                      {result.items.slice(0, 3).map((item, index) => (
+                        <div key={`${item.key}:${index}`} className="truncate">
+                          {t(item.value)}
+                          {': '}
+                          {result.metric === 'percentByOption'
+                            ? formatPercent(item.percent)
+                            : formatNumber(item.count)}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              default:
+                return null
+            }
+          })()
 
           return (
             <div
@@ -54,7 +118,7 @@ const View = (props: ColumnFooterBlockProps) => {
                 paddingBlock: TABLE_CELL_BLOCK_PADDING
               }}
             >
-              {result ? <><div className='leading-none'>{result?.metric}</div>: <div className='text-base ml-1 leading-none font-medium'>{result?.display}</div></> : null}
+              {content}
             </div>
           )
         })}

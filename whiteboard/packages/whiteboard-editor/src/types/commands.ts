@@ -23,12 +23,13 @@ import type {
   MindmapCreateInput,
   MindmapId,
   MindmapInsertInput,
+  MindmapLayoutSpec,
   MindmapMoveSubtreeInput,
-  MindmapNodeData,
   MindmapNodeId,
   MindmapRemoveSubtreeInput,
   MindmapTree,
-  MindmapUpdateNodeInput,
+  MindmapTreePatch,
+  MindmapTopicData,
   NodeId,
   NodeInput,
   NodeUpdateInput,
@@ -44,7 +45,6 @@ import type {
   DrawState
 } from '@whiteboard/editor/local/draw/state'
 import type { DrawMode, DrawSlot } from '@whiteboard/editor/local/draw/model'
-import type { MindmapLayoutConfig } from '@whiteboard/editor/types/mindmap'
 import type { PointerSample } from '@whiteboard/editor/types/input'
 import type {
   EdgePresetKey,
@@ -191,6 +191,10 @@ export type MindmapCommands = {
     rootId: MindmapNodeId
   }>
   delete: (ids: MindmapId[]) => CommandResult
+  patch: (
+    id: MindmapId,
+    input: MindmapTreePatch
+  ) => CommandResult
   insert: (
     id: MindmapId,
     input: MindmapInsertInput
@@ -210,18 +214,13 @@ export type MindmapCommands = {
     nodeId: MindmapNodeId
     map: Record<MindmapNodeId, MindmapNodeId>
   }>
-  updateNode: (
-    id: MindmapId,
-    input: MindmapUpdateNodeInput
-  ) => CommandResult
   insertByPlacement: (input: {
     id: NodeId
     tree: MindmapTree
     targetNodeId: MindmapNodeId
     placement: 'left' | 'right' | 'up' | 'down'
-    nodeSize: Size
-    layout: MindmapLayoutConfig
-    payload?: MindmapNodeData
+    layout: MindmapLayoutSpec
+    payload?: MindmapTopicData
   }) => CommandResult<{ nodeId: MindmapNodeId }> | undefined
   moveByDrop: (input: {
     id: NodeId
@@ -235,8 +234,7 @@ export type MindmapCommands = {
       parentId?: MindmapNodeId
       index?: number
     }
-    nodeSize: Size
-    layout: MindmapLayoutConfig
+    layout: MindmapLayoutSpec
   }) => CommandResult | undefined
   moveRoot: (input: {
     nodeId: NodeId
@@ -330,7 +328,6 @@ export type ToolActions = {
 }
 
 export type AppConfig = {
-  mindmapLayout: MindmapLayoutConfig
   history?: KernelHistoryConfig
 }
 

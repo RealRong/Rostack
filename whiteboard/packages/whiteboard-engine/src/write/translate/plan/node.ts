@@ -18,6 +18,10 @@ import {
   resolveMoveEffect
 } from '@whiteboard/core/node'
 import {
+  computeMindmapLayout,
+  getMindmapTreeFromDocument
+} from '@whiteboard/core/mindmap'
+import {
   resolveLockDecision
 } from '@whiteboard/core/lock'
 import { err, ok } from '@whiteboard/core/result'
@@ -66,8 +70,19 @@ const takeOps = (updates: readonly UpdateMany['updates'][number][], doc: WriteTr
     operations.push(createNodeUpdateOperation(id, update))
   }
 
-  return ok(operations)
+  return ok({
+    operations,
+    nextById
+  })
 }
+
+const hasMindmapNode = (
+  doc: WriteTranslateContext['doc'],
+  ids: readonly NodeId[]
+) => ids.some((id) => {
+  const node = getNode(doc, id)
+  return node?.type === 'mindmap' || Boolean(node?.mindmapId)
+})
 
 export const create = (
   command: Create,
@@ -93,18 +108,67 @@ export const create = (
 
 export const updateMany = (
   command: UpdateMany,
-  doc: WriteTranslateContext['doc']
+  ctx: WriteTranslateContext
 ): Step => {
-  const next = takeOps(command.updates, doc)
+  const next = takeOps(command.updates, ctx.doc)
   if (!next.ok) {
     return next
   }
-  if (!next.data.length) {
+  if (!next.data.operations.length) {
     return err('cancelled', 'No node updates provided.')
   }
 
+  const relayoutOps: Array<{
+    type: 'node.update'
+    id: NodeId
+    update: UpdateMany['updates'][number]['update']
+  }> = []
+  const mindmapIds = new Set<string>()
+  command.updates.forEach(({ id }) => {
+    const node = next.data.nextById.get(id) ?? getNode(ctx.doc, id)
+    if (node?.type === 'mindmap') {
+      mindmapIds.add(node.id)
+      return
+    }
+    if (node?.mindmapId) {
+      mindmapIds.add(node.mindmapId)
+    }
+  })
+
+  mindmapIds.forEach((mindmapId) => {
+    const tree = getMindmapTreeFromDocument(ctx.doc, mindmapId)
+    const root = next.data.nextById.get(mindmapId) ?? getNode(ctx.doc, mindmapId)
+    if (!tree || !root || root.type !== 'mindmap') {
+      return
+    }
+    const computed = computeMindmapLayout(
+      tree,
+      (nodeId) => {
+        const node = next.data.nextById.get(nodeId) ?? getNode(ctx.doc, nodeId)
+        return {
+          width: node?.size?.width ?? ctx.config.mindmapNodeSize.width,
+          height: node?.size?.height ?? ctx.config.mindmapNodeSize.height
+        }
+      },
+      tree.layout
+    )
+    Object.entries(computed.node).forEach(([nodeId, rect]) => {
+      relayoutOps.push(createNodeUpdateOperation(nodeId, {
+        fields: {
+          position: {
+            x: root.position.x + rect.x,
+            y: root.position.y + rect.y
+          }
+        }
+      }))
+    })
+  })
+
   return ok({
-    operations: next.data,
+    operations: [
+      ...next.data.operations,
+      ...relayoutOps
+    ],
     output: undefined
   })
 }
@@ -118,6 +182,9 @@ export const move = (
   }
   if (command.delta.x === 0 && command.delta.y === 0) {
     return err('cancelled', 'Nodes are already current.')
+  }
+  if (hasMindmapNode(ctx.doc, command.ids)) {
+    return err('invalid', 'Mindmap nodes do not support generic move.')
   }
 
   const selected = buildMoveSet({
@@ -165,6 +232,9 @@ export const align = (
   if (command.ids.length < 2) {
     return err('cancelled', 'At least two nodes are required.')
   }
+  if (hasMindmapNode(ctx.doc, command.ids)) {
+    return err('invalid', 'Mindmap nodes do not support generic align.')
+  }
 
   const next = buildNodeAlignOperations({
     ids: command.ids,
@@ -191,6 +261,9 @@ export const distribute = (
 ): Step => {
   if (command.ids.length < 3) {
     return err('cancelled', 'At least three nodes are required.')
+  }
+  if (hasMindmapNode(ctx.doc, command.ids)) {
+    return err('invalid', 'Mindmap nodes do not support generic distribute.')
   }
 
   const next = buildNodeDistributeOperations({
@@ -231,6 +304,9 @@ export const removeCascade = (
   if (!command.ids.length) {
     return err('cancelled', 'No nodes selected.')
   }
+  if (hasMindmapNode(ctx.doc, command.ids)) {
+    return err('invalid', 'Mindmap nodes do not support generic delete.')
+  }
 
   const next = cascadeDeleteTargets({
     doc: ctx.doc,
@@ -256,6 +332,9 @@ export const duplicate = (
 ): Step<{ nodeIds: NodeId[]; edgeIds: EdgeId[] }> => {
   if (!command.ids.length) {
     return err('cancelled', 'No nodes selected.')
+  }
+  if (hasMindmapNode(ctx.doc, command.ids)) {
+    return err('invalid', 'Mindmap nodes do not support generic duplicate.')
   }
   const locked = resolveLockDecision({
     document: ctx.doc,

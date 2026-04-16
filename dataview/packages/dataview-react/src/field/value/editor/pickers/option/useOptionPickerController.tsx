@@ -6,13 +6,14 @@ import {
 } from 'react'
 import { flushSync } from 'react-dom'
 import { getFieldOptions } from '@dataview/core/field'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
 import {
   type MenuItem,
   type MenuReorderItem
 } from '@shared/ui/menu'
 import { useDataView } from '@dataview/react/dataview'
 import type { EditorSubmitTrigger } from '@dataview/react/interaction'
+import { useTranslation } from '@shared/i18n/react'
 import {
   buildEditableOptionItem,
   readOptionLabel
@@ -38,10 +39,6 @@ const moveItem = <Item,>(items: readonly Item[], from: number, to: number) => {
   next.splice(to, 0, moved)
   return next
 }
-
-const optionLabel = (
-  option: ReturnType<typeof getFieldOptions>[number]
-) => readOptionLabel(option)
 
 const filterOptionsByQuery = (
   options: ReturnType<typeof getFieldOptions>,
@@ -69,6 +66,7 @@ type ReorderableOptionPickerItem = MenuReorderItem
 export const useOptionPickerController = (
   input: OptionPickerControllerInput
 ) => {
+  const { t } = useTranslation()
   const editor = useDataView().engine
   const [query, setQuery] = useState('')
   const [editingOptionId, setEditingOptionId] = useState<string>()
@@ -118,10 +116,10 @@ export const useOptionPickerController = (
       .filter((option): option is NonNullable<typeof option> => Boolean(option))
       .map(option => ({
         id: option.id,
-        label: optionLabel(option),
+        label: readOptionLabel(option, t),
         color: option.color ?? undefined
       })),
-    [options, selectedKeys]
+    [options, selectedKeys, t]
   )
 
   const applyDraft = useCallback((nextDraft: string) => {
@@ -252,6 +250,7 @@ export const useOptionPickerController = (
   ) => buildEditableOptionItem({
     fieldId,
     option,
+    t,
     open: editingOptionId === option.id,
     editing: editingOptionId === option.id,
     onOpenChange: open => {
@@ -289,7 +288,8 @@ export const useOptionPickerController = (
     input.onDraftChange,
     selectOption,
     selectedKeySet,
-    selectedKeys
+    selectedKeys,
+    t
   ])
 
   const pickerItems = useMemo<OptionPickerEntry[]>(() => [
@@ -300,7 +300,7 @@ export const useOptionPickerController = (
           key: CREATE_OPTION_KEY,
           label: (
             <span className="truncate">
-              {renderMessage(meta.ui.field.options.create(query.trim()))}
+              {t(meta.ui.field.options.create(query.trim()))}
             </span>
           ),
           onSelect: () => {
@@ -317,14 +317,16 @@ export const useOptionPickerController = (
     createOption,
     filteredOptions,
     input.mode,
-    query
+    query,
+    t
   ])
   const reorderableItems = useMemo<ReorderableOptionPickerItem[]>(() => options.map(option => ({
     ...buildOptionItem(option),
-    handleAriaLabel: renderMessage(meta.ui.field.options.reorder(optionLabel(option)))
+    handleAriaLabel: t(meta.ui.field.options.reorder(readOptionLabel(option, t)))
   })), [
     buildOptionItem,
-    options
+    options,
+    t
   ])
 
   const handleCommit = useCallback((

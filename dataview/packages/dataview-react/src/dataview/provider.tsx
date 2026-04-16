@@ -12,8 +12,13 @@ import type {
 import {
   createDataViewSession
 } from '@dataview/react/dataview/runtime'
+import {
+  ensureDataviewTokenResolvers
+} from '@dataview/react/i18n/register'
 
 const DataViewContext = createContext<DataViewContextValue | null>(null)
+ensureDataviewTokenResolvers()
+
 export const EngineProvider = (props: EngineProviderProps) => (
   <EngineProviderInner {...props} />
 )

@@ -7,81 +7,35 @@ import type {
   ViewItem
 } from '@dataview/engine/contracts/public'
 
-export interface ItemIdentityCache {
+export interface ItemProjectionCache {
   nextId: number
-  bySection: ReadonlyMap<SectionKey, ReadonlyMap<RecordId, ItemId>>
+  byId: ReadonlyMap<ItemId, ViewItem>
+  rootByRecord: ReadonlyMap<RecordId, ItemId>
+  grouped: ReadonlyMap<SectionKey, GroupedItemProjection>
 }
 
-export interface ItemIdentityTable {
+export interface GroupedItemProjection {
+  ids: readonly ItemId[]
+  byRecord: ReadonlyMap<RecordId, ItemId>
+}
+
+export interface ItemProjectionTable {
   get(id: ItemId): ViewItem | undefined
-  idOf(sectionKey: SectionKey, recordId: RecordId): ItemId | undefined
 }
 
-const EMPTY_ITEM_IDENTITIES = new Map<SectionKey, ReadonlyMap<RecordId, ItemId>>()
+const EMPTY_ITEMS_BY_ID = new Map<ItemId, ViewItem>()
+const EMPTY_ROOT_IDENTITIES = new Map<RecordId, ItemId>()
+const EMPTY_GROUPED_IDENTITIES = new Map<SectionKey, GroupedItemProjection>()
 
-export const emptyItemIdentityCache = (): ItemIdentityCache => ({
+export const emptyItemProjectionCache = (): ItemProjectionCache => ({
   nextId: 1,
-  bySection: EMPTY_ITEM_IDENTITIES
+  byId: EMPTY_ITEMS_BY_ID,
+  rootByRecord: EMPTY_ROOT_IDENTITIES,
+  grouped: EMPTY_GROUPED_IDENTITIES
 })
 
-export const createItemIdentityBuilder = (input: {
-  previous: ItemIdentityCache
-  resolvePreviousItem?: (id: ItemId, sectionKey: SectionKey) => ViewItem | undefined
-}) => {
-  const bySection = new Map<SectionKey, Map<RecordId, ItemId>>()
-  const byId = new Map<ItemId, ViewItem>()
-  let nextId = input.previous.nextId
-
-  const intern = (
-    sectionKey: SectionKey,
-    recordId: RecordId
-  ): ItemId => {
-    const existingSection = bySection.get(sectionKey)
-    const existingId = existingSection?.get(recordId)
-    if (existingId !== undefined) {
-      return existingId
-    }
-
-    const reusedId = input.previous.bySection.get(sectionKey)?.get(recordId)
-    const id = reusedId ?? nextId++
-    const sectionMap = existingSection ?? new Map<RecordId, ItemId>()
-    sectionMap.set(recordId, id)
-    if (!existingSection) {
-      bySection.set(sectionKey, sectionMap)
-    }
-
-    if (!byId.has(id)) {
-      byId.set(
-        id,
-        input.resolvePreviousItem?.(id, sectionKey) ?? {
-          id,
-          sectionKey,
-          recordId
-        }
-      )
-    }
-
-    return id
-  }
-
-  const table: ItemIdentityTable = {
-    get: id => byId.get(id),
-    idOf: (sectionKey, recordId) => bySection.get(sectionKey)?.get(recordId)
-  }
-
-  return {
-    intern,
-    finish(): {
-      cache: ItemIdentityCache
-      table: ItemIdentityTable
-    } {
-      return {
-        cache: {
-          nextId,
-          bySection
-        },
-        table
-      }
-    }
-  }
-}
+export const createItemProjectionTable = (
+  cache: Pick<ItemProjectionCache, 'byId'>
+): ItemProjectionTable => ({
+  get: id => cache.byId.get(id)
+})

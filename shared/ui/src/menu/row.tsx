@@ -43,7 +43,7 @@ export const Content = (props: ContentProps) => {
 
       <span className={cn(
         'min-w-0 flex-1 truncate',
-        destructive ? 'text-[13px] text-destructive' : 'text-[13px] text-foreground'
+        destructive ? 'text-destructive' : 'text-foreground'
       )}>
         {props.label}
       </span>

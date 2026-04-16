@@ -1,7 +1,6 @@
 import type {
   MindmapDragDropTarget,
-  MindmapLayoutConfig,
-  MindmapLayoutOptions,
+  MindmapLayoutSpec,
   MindmapNodeId,
   MindmapTree
 } from '@whiteboard/core/mindmap/types'
@@ -53,7 +52,7 @@ export type SubtreeDropTargetOptions = {
   ghost: Rect
   dragNodeId: MindmapNodeId
   dragExcludeIds: Set<MindmapNodeId>
-  layoutOptions?: MindmapLayoutOptions
+  layout: MindmapLayoutSpec
   snapThreshold?: number
   defaultSide?: 'left' | 'right'
   reorderLineGap?: number
@@ -81,7 +80,7 @@ export type SubtreeMindmapDrag = {
   rect: Rect
   ghost: Rect
   excludeIds: MindmapNodeId[]
-  layout: MindmapLayoutConfig
+  layout: MindmapLayoutSpec
   drop?: MindmapDragDropTarget
 }
 

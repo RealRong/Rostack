@@ -8,7 +8,6 @@ export {
   cloneFilterRule,
   createDefaultFilterRule,
   createFilterOptionSetValue,
-  formatFilterRuleValueText,
   getFilterEditorKind,
   getFilterPresetIds,
   getFilterSpec,
@@ -16,6 +15,7 @@ export {
   isFilterRuleEffective,
   matchFilterRule,
   normalizeFilterRule,
+  projectFilterRuleValue,
   readFilterOptionSetValue,
   setFilterRuleValue
 } from '@dataview/core/filter/spec'

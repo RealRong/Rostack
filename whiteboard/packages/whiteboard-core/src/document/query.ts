@@ -11,6 +11,10 @@ import type {
 
 const EMPTY_ORDER: CanvasItemRef[] = []
 
+const isTopLevelNode = (
+  node: Node | undefined
+) => Boolean(node && !node.mindmapId)
+
 const isCanvasItemRefEqual = (
   left: CanvasItemRef,
   right: CanvasItemRef
@@ -35,7 +39,9 @@ export const listCanvasItemRefs = (
   const order = document.order ?? EMPTY_ORDER
   if (!order.length) {
     return [
-      ...Object.keys(document.nodes).map((id) => ({ kind: 'node', id }) as const),
+      ...Object.values(document.nodes)
+        .filter(isTopLevelNode)
+        .map((node) => ({ kind: 'node', id: node.id }) as const),
       ...Object.keys(document.edges).map((id) => ({ kind: 'edge', id }) as const)
     ]
   }
@@ -45,7 +51,7 @@ export const listCanvasItemRefs = (
 
   order.forEach((ref) => {
     if (ref.kind === 'node') {
-      if (!document.nodes[ref.id]) {
+      if (!isTopLevelNode(document.nodes[ref.id])) {
         return
       }
     } else if (!document.edges[ref.id]) {
@@ -59,7 +65,9 @@ export const listCanvasItemRefs = (
   appendMissingCanvasRefs(
     ordered,
     visited,
-    Object.keys(document.nodes).map((id) => ({ kind: 'node', id }) as const)
+    Object.values(document.nodes)
+      .filter(isTopLevelNode)
+      .map((node) => ({ kind: 'node', id: node.id }) as const)
   )
   appendMissingCanvasRefs(
     ordered,

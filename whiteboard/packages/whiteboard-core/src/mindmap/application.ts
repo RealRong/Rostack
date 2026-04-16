@@ -2,18 +2,17 @@ import type {
   MindmapCommandOptions,
   MindmapInsertPayload,
   NodeUpdateInput,
-  Point,
-  Size
+  Point
 } from '@whiteboard/core/types'
 import type {
   MindmapInsertPlacement
 } from '@whiteboard/core/types/mindmap'
 import type {
   MindmapInsertInput,
-  MindmapLayoutConfig,
+  MindmapLayoutSpec,
   MindmapMoveSubtreeInput,
-  MindmapNodeData,
   MindmapNodeId,
+  MindmapTopicData,
   MindmapTree
 } from '@whiteboard/core/mindmap/types'
 import {
@@ -26,16 +25,12 @@ const DEFAULT_MINDMAP_SIDE: 'left' | 'right' = 'right'
 
 const createLayoutHint = ({
   anchorId,
-  nodeSize,
   layout
 }: {
   anchorId: MindmapNodeId
-  nodeSize: Size
-  layout: MindmapLayoutConfig
+  layout: MindmapLayoutSpec
 }): MindmapCommandOptions['layout'] => ({
-  nodeSize,
-  mode: layout.mode,
-  options: layout.options,
+  ...layout,
   anchorId
 })
 
@@ -43,20 +38,18 @@ export const planMindmapInsertByPlacement = ({
   tree,
   targetNodeId,
   placement,
-  nodeSize,
   layout,
   payload
 }: {
   tree: MindmapTree
   targetNodeId: MindmapNodeId
   placement: MindmapInsertPlacement
-  nodeSize: Size
-  layout: MindmapLayoutConfig
-  payload?: MindmapNodeData | MindmapInsertPayload
+  layout: MindmapLayoutSpec
+  payload?: MindmapTopicData | MindmapInsertPayload
 }): MindmapInsertInput & {
   options?: MindmapCommandOptions | Pick<MindmapCommandOptions, 'side' | 'layout'>
 } => {
-  const normalizedPayload: MindmapNodeData | MindmapInsertPayload = payload ?? {
+  const normalizedPayload: MindmapTopicData | MindmapInsertPayload = payload ?? {
     kind: 'text',
     text: ''
   }
@@ -64,7 +57,7 @@ export const planMindmapInsertByPlacement = ({
     tree,
     targetNodeId,
     placement,
-    layoutSide: layout.options?.side,
+    layoutSide: layout.side,
     defaultSide: DEFAULT_MINDMAP_SIDE
   })
 
@@ -78,7 +71,6 @@ export const planMindmapInsertByPlacement = ({
         side: plan.side,
         layout: createLayoutHint({
           anchorId: targetNodeId,
-          nodeSize,
           layout
         })
       }
@@ -94,7 +86,6 @@ export const planMindmapInsertByPlacement = ({
       options: {
         layout: createLayoutHint({
           anchorId: targetNodeId,
-          nodeSize,
           layout
         })
       }
@@ -108,7 +99,6 @@ export const planMindmapInsertByPlacement = ({
     options: {
       layout: createLayoutHint({
         anchorId: targetNodeId,
-        nodeSize,
         layout
       })
     }
@@ -119,7 +109,6 @@ export const planMindmapSubtreeMove = ({
   nodeId,
   drop,
   origin,
-  nodeSize,
   layout
 }: {
   nodeId: MindmapNodeId
@@ -132,8 +121,7 @@ export const planMindmapSubtreeMove = ({
     parentId?: MindmapNodeId
     index?: number
   }
-  nodeSize: Size
-  layout: MindmapLayoutConfig
+  layout: MindmapLayoutSpec
 }): (MindmapMoveSubtreeInput & {
   layout: MindmapCommandOptions['layout']
 }) | undefined => {
@@ -153,7 +141,6 @@ export const planMindmapSubtreeMove = ({
     side: drop.side,
     layout: createLayoutHint({
       anchorId: drop.parentId,
-      nodeSize,
       layout
     })
   }

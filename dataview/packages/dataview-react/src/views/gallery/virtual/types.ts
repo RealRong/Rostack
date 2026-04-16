@@ -27,7 +27,7 @@ export interface GalleryCardLayout {
 
 export interface GallerySectionHeaderBlock extends VirtualBlock {
   kind: 'section-header'
-  section: Pick<Section, 'key' | 'title' | 'color'>
+  section: Pick<Section, 'key' | 'label' | 'color'>
 }
 
 export interface GalleryRowBlock extends VirtualBlock {
@@ -37,7 +37,7 @@ export interface GalleryRowBlock extends VirtualBlock {
 
 export interface GallerySectionEmptyBlock extends VirtualBlock {
   kind: 'section-empty'
-  section: Pick<Section, 'key' | 'title'>
+  section: Pick<Section, 'key' | 'label'>
 }
 
 export type GalleryBlock =

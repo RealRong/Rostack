@@ -3,7 +3,7 @@ import {
   createSubtreeDrag,
   projectMindmapDrag,
   type MindmapDragState as CoreMindmapDragState,
-  type MindmapLayoutConfig,
+  type MindmapLayoutSpec,
   type MindmapNodeId
 } from '@whiteboard/core/mindmap'
 import type { NodeId, Point } from '@whiteboard/core/types'
@@ -11,6 +11,8 @@ import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { MindmapDragFeedback } from '@whiteboard/editor/local/feedback'
 import type { MindmapPresentationRead } from '@whiteboard/editor/query/mindmap/read'
+import type { NodePresentationRead } from '@whiteboard/editor/query/node/read'
+import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
 
 export type MindmapDragState = CoreMindmapDragState
 
@@ -34,7 +36,7 @@ export type MindmapDragCommit =
         parentId?: MindmapNodeId
         index?: number
       }
-      layout: MindmapLayoutConfig
+      layout: MindmapLayoutSpec
     }
 
 export const previewMindmapDrag = (
@@ -63,13 +65,35 @@ export const previewMindmapDrag = (
 export const startMindmapDrag = (input: {
   tool: Tool
   pointer: PointerDownInput
-  mindmap: Pick<MindmapPresentationRead, 'item' | 'rootPosition'>
-  locked?: boolean
+  mindmap: Pick<MindmapPresentationRead, 'item'>
+  node: Pick<NodePresentationRead, 'item'>
+  selection: Pick<SelectionModelRead, 'get'>
 }): MindmapDragState | undefined => {
+  const pick = input.pointer.pick
+  const pickedNode = pick.kind === 'node'
+    ? input.node.item.get(pick.id)?.node
+    : undefined
+  const treeId = pick.kind === 'mindmap'
+    ? pick.treeId
+    : pickedNode?.mindmapId
+  const nodeId = pick.kind === 'mindmap'
+    ? pick.nodeId
+    : pick.kind === 'node' && pick.part !== 'field'
+      ? pick.id
+      : undefined
+  const locked = Boolean(
+    (treeId ? input.node.item.get(treeId)?.node.locked : undefined)
+    || pickedNode?.locked
+  )
+  const selectedNodeIds = input.selection.get().summary.target.nodeIds
+  const selected = Boolean(nodeId && selectedNodeIds.includes(nodeId))
+
   if (
     input.tool.type !== 'select'
-    || input.pointer.pick.kind !== 'mindmap'
-    || input.locked
+    || !treeId
+    || !nodeId
+    || !selected
+    || locked
     || input.pointer.editable
     || input.pointer.ignoreInput
     || input.pointer.ignoreSelection
@@ -77,30 +101,74 @@ export const startMindmapDrag = (input: {
     return undefined
   }
 
-  const treeView = input.mindmap.item.get(input.pointer.pick.treeId)
-  const rootPosition = input.mindmap.rootPosition.get(input.pointer.pick.treeId)
-  if (!treeView || !rootPosition) {
+  const treeView = input.mindmap.item.get(treeId)
+  if (!treeView) {
     return undefined
   }
 
   const baseOffset = {
-    x: rootPosition.x,
-    y: rootPosition.y
+    x: treeView.node.position.x,
+    y: treeView.node.position.y
   }
 
-  return input.pointer.pick.nodeId === treeView.tree.rootId
+  return nodeId === treeView.tree.rootNodeId
     ? createRootDrag({
-        treeId: input.pointer.pick.treeId,
+        treeId,
         pointerId: input.pointer.pointerId,
         start: input.pointer.world,
         origin: baseOffset
       })
     : createSubtreeDrag({
-        treeId: input.pointer.pick.treeId,
+        treeId,
         treeView,
-        nodeId: input.pointer.pick.nodeId,
+        nodeId,
         pointerId: input.pointer.pointerId,
         world: input.pointer.world,
+        baseOffset
+      })
+}
+
+export const startMindmapDragForNode = (input: {
+  nodeId: NodeId
+  pointerId: number
+  world: Point
+  mindmap: Pick<MindmapPresentationRead, 'item'>
+  node: Pick<NodePresentationRead, 'item'>
+}): MindmapDragState | undefined => {
+  const pickedNode = input.node.item.get(input.nodeId)?.node
+  const treeId = pickedNode?.mindmapId
+  const locked = Boolean(
+    pickedNode?.locked
+    || (treeId ? input.node.item.get(treeId)?.node.locked : undefined)
+  )
+
+  if (!pickedNode || !treeId || locked) {
+    return undefined
+  }
+
+  const treeView = input.mindmap.item.get(treeId)
+  if (!treeView) {
+    return undefined
+  }
+
+  const baseOffset = {
+    x: treeView.node.position.x,
+    y: treeView.node.position.y
+  }
+
+  return input.nodeId === treeView.tree.rootNodeId
+    ? createRootDrag({
+        treeId,
+        pointerId: input.pointerId,
+        start: input.world,
+        origin: baseOffset
+      })
+    : createSubtreeDrag({
+        treeId,
+        treeView,
+        nodeId: input.nodeId,
+        pointerId: input.pointerId,
+        world: input.world,
         baseOffset
       })
 }

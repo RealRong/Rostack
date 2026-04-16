@@ -1,7 +1,4 @@
 import {
-  getRecordFieldValue
-} from '@dataview/core/field'
-import {
   createMapPatchBuilder
 } from '@dataview/engine/active/shared/patch'
 import type {
@@ -72,50 +69,24 @@ const createRecordIdSet = (
   ? new Set(ids)
   : undefined
 
-const createBucketResolver = (
-  bucketRecords: ReadonlyMap<BucketKey, readonly RecordId[]>
-) => {
-  let byRecord: ReadonlyMap<RecordId, readonly BucketKey[]> | undefined
-
-  return {
-    keysOf(recordId: RecordId): readonly BucketKey[] {
-      if (!byRecord) {
-        const next = new Map<RecordId, BucketKey[]>()
-        bucketRecords.forEach((recordIds, bucketKey) => {
-          recordIds.forEach(currentRecordId => {
-            const keys = next.get(currentRecordId)
-            if (keys) {
-              keys.push(bucketKey)
-              return
-            }
-
-            next.set(currentRecordId, [bucketKey])
-          })
-        })
-        byRecord = next
-      }
-
-      return byRecord.get(recordId) ?? EMPTY_BUCKET_KEYS
-    }
-  }
-}
-
 const buildFilterBucketIndex = (
   context: IndexReadContext,
   records: RecordIndex,
   demand: GroupDemand
 ): FilterBucketIndex => {
   const field = context.reader.fields.get(demand.fieldId)
+  const values = records.values.get(demand.fieldId)?.byRecord
+  const recordBuckets = new Map<RecordId, readonly BucketKey[]>()
   const bucketRecords = new Map<BucketKey, RecordId[]>()
 
   if (field) {
     records.ids.forEach(recordId => {
-      const record = records.byId[recordId]
       const buckets = resolveBucketKeys(
         field,
-        record ? getRecordFieldValue(record, demand.fieldId) : undefined,
+        values?.get(recordId),
         demand
       )
+      recordBuckets.set(recordId, buckets)
       buckets.forEach(bucketKey => {
         addBucketRecord(bucketRecords, bucketKey, recordId)
       })
@@ -125,6 +96,7 @@ const buildFilterBucketIndex = (
   return {
     capability: 'filter',
     fieldId: demand.fieldId,
+    recordBuckets,
     bucketRecords
   }
 }
@@ -136,15 +108,15 @@ const buildSectionGroupIndex = (
   previous?: SectionGroupIndex
 ): SectionGroupIndex => {
   const field = context.reader.fields.get(demand.fieldId)
+  const values = records.values.get(demand.fieldId)?.byRecord
   const recordSections = new Map<RecordId, readonly BucketKey[]>()
   const sectionRecords = new Map<BucketKey, RecordId[]>()
 
   if (field) {
     records.ids.forEach(recordId => {
-      const record = records.byId[recordId]
       const sections = resolveBucketKeys(
         field,
-        record ? getRecordFieldValue(record, demand.fieldId) : undefined,
+        values?.get(recordId),
         demand
       )
       recordSections.set(recordId, sections)
@@ -158,6 +130,7 @@ const buildSectionGroupIndex = (
     field,
     records,
     demand,
+    values,
     bucketRecords: sectionRecords,
     previous
   })
@@ -199,19 +172,19 @@ const syncFilterBucketIndex = (input: {
     return buildFilterBucketIndex(input.context, input.records, demand)
   }
 
-  const previousMembership = createBucketResolver(input.previous.bucketRecords)
+  const values = input.records.values.get(demand.fieldId)?.byRecord
   const touchedBuckets = new Set<BucketKey>()
+  const recordBuckets = createMapPatchBuilder(input.previous.recordBuckets)
   const removedByBucket = new Map<BucketKey, RecordId[]>()
   const addedByBucket = new Map<BucketKey, RecordId[]>()
   let changed = false
 
   input.touchedRecords.forEach(recordId => {
-    const before = previousMembership.keysOf(recordId)
-    const record = input.records.byId[recordId]
+    const before = input.previous.recordBuckets.get(recordId) ?? EMPTY_BUCKET_KEYS
     const after = input.records.order.has(recordId)
       ? resolveBucketKeys(
           field,
-          record ? getRecordFieldValue(record, demand.fieldId) : undefined,
+          values?.get(recordId),
           demand
         )
       : EMPTY_BUCKET_KEYS
@@ -221,6 +194,11 @@ const syncFilterBucketIndex = (input: {
     }
 
     changed = true
+    if (after.length) {
+      recordBuckets.set(recordId, after)
+    } else {
+      recordBuckets.delete(recordId)
+    }
     before.forEach(bucketKey => {
       touchedBuckets.add(bucketKey)
       if (!after.includes(bucketKey)) {
@@ -258,6 +236,7 @@ const syncFilterBucketIndex = (input: {
   return {
     capability: 'filter',
     fieldId: demand.fieldId,
+    recordBuckets: recordBuckets.finish(),
     bucketRecords: bucketRecords.finish()
   }
 }
@@ -281,6 +260,7 @@ const syncSectionGroupIndex = (input: {
     return buildSectionGroupIndex(input.context, input.records, demand)
   }
 
+  const values = input.records.values.get(demand.fieldId)?.byRecord
   const recordSections = createMapPatchBuilder(input.previous.recordSections)
   const localTouchedSections = input.groupChange
     ? undefined
@@ -298,9 +278,8 @@ const syncSectionGroupIndex = (input: {
 
   input.touchedRecords.forEach(recordId => {
     const before = input.previous.recordSections.get(recordId) ?? EMPTY_BUCKET_KEYS
-    const record = input.records.byId[recordId]
-    const nextValue = input.records.order.has(recordId) && record
-      ? getRecordFieldValue(record, demand.fieldId)
+    const nextValue = input.records.order.has(recordId)
+      ? values?.get(recordId)
       : undefined
     const after = input.records.order.has(recordId)
       ? resolveBucketKeys(field, nextValue, demand)
@@ -363,6 +342,7 @@ const syncSectionGroupIndex = (input: {
     field,
     records: input.records,
     demand,
+    values,
     bucketRecords: nextSectionRecords,
     previous: input.previous
   })

@@ -1,4 +1,4 @@
-import { renderMessage } from '@dataview/meta'
+import { useTranslation } from '@shared/i18n/react'
 import { cn } from '@shared/ui/utils'
 import type { CreateViewItem } from '@dataview/react/page/features/createView/catalog'
 
@@ -8,8 +8,9 @@ export interface ViewTypeCardProps {
 }
 
 export const ViewTypeCard = (props: ViewTypeCardProps) => {
+  const { t } = useTranslation()
   const { item } = props
-  const label = renderMessage(item.label)
+  const label = t(item.label)
   const Icon = item.Icon
 
   return (

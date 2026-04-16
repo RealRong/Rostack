@@ -150,7 +150,7 @@ export const deriveViewSnapshot = (input: {
         sections: input.previousSnapshot?.sections,
         items: input.previousSnapshot?.items
       },
-      previousIdentity: input.previousCache.items,
+      previousProjection: input.previousCache.items,
       index: input.index
     }),
     input.previousSnapshot,
@@ -249,7 +249,7 @@ export const deriveViewSnapshot = (input: {
       query: query.state,
       sections: sections.state,
       summary: summary.state,
-      items: sections.identity
+      items: sections.projection
     },
     snapshot: publishedSnapshot,
     ...(input.capturePerf

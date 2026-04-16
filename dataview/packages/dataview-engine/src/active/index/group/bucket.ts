@@ -9,7 +9,6 @@ import {
 import {
   compareGroupBuckets,
   getFieldGroupMeta,
-  getRecordFieldValue,
   resolveFieldGroupBucketDomain,
   resolveFieldGroupBucketEntries
 } from '@dataview/core/field'
@@ -20,6 +19,7 @@ import {
   compareGroupSortValues,
   compareLabels,
   readBucketOrder,
+  readBucketSortLabel,
   readBucketSortValue,
   type Bucket
 } from '@dataview/core/field/kind/group'
@@ -39,6 +39,21 @@ export const sameBucketKeys = (
   right: readonly BucketKey[]
 ) => left.length === right.length
   && left.every((value, index) => value === right[index])
+
+const SINGLE_BUCKET_KEYS = new Map<BucketKey, readonly BucketKey[]>()
+
+const readSingleBucketKeys = (
+  key: BucketKey
+): readonly BucketKey[] => {
+  const cached = SINGLE_BUCKET_KEYS.get(key)
+  if (cached) {
+    return cached
+  }
+
+  const created = [key] as readonly BucketKey[]
+  SINGLE_BUCKET_KEYS.set(key, created)
+  return created
+}
 
 const toScalarBucketKey = (
   value: unknown
@@ -83,20 +98,20 @@ const compareResolvedGroupBuckets = (
     const bucketSort = getFieldGroupMeta(field, group).sort || 'manual'
     switch (bucketSort) {
       case 'labelAsc':
-        return compareLabels(left.title, right.title) || readBucketOrder(left) - readBucketOrder(right)
+        return compareLabels(readBucketSortLabel(left), readBucketSortLabel(right)) || readBucketOrder(left) - readBucketOrder(right)
       case 'labelDesc':
-        return compareLabels(right.title, left.title) || readBucketOrder(left) - readBucketOrder(right)
+        return compareLabels(readBucketSortLabel(right), readBucketSortLabel(left)) || readBucketOrder(left) - readBucketOrder(right)
       case 'valueAsc':
         return compareGroupSortValues(readBucketSortValue(left), readBucketSortValue(right))
-          || compareLabels(left.title, right.title)
+          || compareLabels(readBucketSortLabel(left), readBucketSortLabel(right))
           || readBucketOrder(left) - readBucketOrder(right)
       case 'valueDesc':
         return compareGroupSortValues(readBucketSortValue(right), readBucketSortValue(left))
-          || compareLabels(left.title, right.title)
+          || compareLabels(readBucketSortLabel(left), readBucketSortLabel(right))
           || readBucketOrder(left) - readBucketOrder(right)
       case 'manual':
       default:
-        return readBucketOrder(left) - readBucketOrder(right) || compareLabels(left.title, right.title)
+        return readBucketOrder(left) - readBucketOrder(right) || compareLabels(readBucketSortLabel(left), readBucketSortLabel(right))
     }
   }
 
@@ -110,17 +125,19 @@ const resolveFastBucketKeys = (
   switch (field?.kind) {
     case 'status':
     case 'select':
-      return [toScalarBucketKey(value)]
+      return readSingleBucketKeys(toScalarBucketKey(value))
     case 'multiSelect':
       return Array.isArray(value) && value.length
-        ? value.map(item => toScalarBucketKey(item))
-        : [KANBAN_EMPTY_BUCKET_KEY]
+        ? value.length === 1
+          ? readSingleBucketKeys(toScalarBucketKey(value[0]))
+          : value.map(item => toScalarBucketKey(item))
+        : readSingleBucketKeys(KANBAN_EMPTY_BUCKET_KEY)
     case 'boolean':
       return value === true
-        ? ['true']
+        ? readSingleBucketKeys('true')
         : value === false
-          ? ['false']
-          : [KANBAN_EMPTY_BUCKET_KEY]
+          ? readSingleBucketKeys('false')
+          : readSingleBucketKeys(KANBAN_EMPTY_BUCKET_KEY)
     default:
       return undefined
   }
@@ -139,7 +156,7 @@ const sameBucket = (
   }
 
   return left.key === right.key
-    && left.title === right.title
+    && readBucketSortLabel(left) === readBucketSortLabel(right)
     && left.value === right.value
     && left.clearValue === right.clearValue
     && left.empty === right.empty
@@ -182,6 +199,7 @@ export const buildBucketState = (input: {
   field: Field | undefined
   records: RecordIndex
   demand: GroupDemand
+  values?: ReadonlyMap<RecordId, unknown>
   bucketRecords: ReadonlyMap<BucketKey, SortedIdSet<RecordId>>
   previous?: SectionGroupIndex
 }): Pick<SectionGroupIndex, 'buckets' | 'order'> => {
@@ -205,13 +223,10 @@ export const buildBucketState = (input: {
     }
 
     const recordId = ids[0]
-    const record = recordId
-      ? input.records.byId[recordId]
-      : undefined
-    const descriptor = record
+    const descriptor = recordId
       ? resolveFieldGroupBucketEntries(
         field,
-        getRecordFieldValue(record, input.demand.fieldId),
+        input.values?.get(recordId),
         groupOptions
       ).find(bucket => String(bucket.key) === key)
       : undefined
@@ -220,10 +235,11 @@ export const buildBucketState = (input: {
       ? cloneBucket(descriptor)
       : {
           key,
-          title: key,
+          label: key,
           value: key,
           clearValue: false,
-          empty: false
+          empty: false,
+          sortLabel: key
         })
   })
 

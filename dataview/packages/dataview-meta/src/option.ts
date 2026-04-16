@@ -1,5 +1,8 @@
-import { message } from '@dataview/meta/message'
 import { defineMetaCollection } from '@dataview/meta/shared'
+import {
+  token,
+  type Token
+} from '@shared/i18n'
 
 export type OptionColorId =
   | ''
@@ -15,49 +18,49 @@ export type OptionColorId =
 
 export interface OptionColorDescriptor {
   id: OptionColorId | string
-  message: ReturnType<typeof message>
+  token: Token
 }
 
 const OPTION_COLOR_ITEMS = [
   {
     id: '',
-    message: message('meta.option.color.default', 'Default')
+    token: token('meta.option.color.default', 'Default')
   },
   {
     id: 'gray',
-    message: message('meta.option.color.gray', 'Gray')
+    token: token('meta.option.color.gray', 'Gray')
   },
   {
     id: 'brown',
-    message: message('meta.option.color.brown', 'Brown')
+    token: token('meta.option.color.brown', 'Brown')
   },
   {
     id: 'orange',
-    message: message('meta.option.color.orange', 'Orange')
+    token: token('meta.option.color.orange', 'Orange')
   },
   {
     id: 'yellow',
-    message: message('meta.option.color.yellow', 'Yellow')
+    token: token('meta.option.color.yellow', 'Yellow')
   },
   {
     id: 'green',
-    message: message('meta.option.color.green', 'Green')
+    token: token('meta.option.color.green', 'Green')
   },
   {
     id: 'blue',
-    message: message('meta.option.color.blue', 'Blue')
+    token: token('meta.option.color.blue', 'Blue')
   },
   {
     id: 'purple',
-    message: message('meta.option.color.purple', 'Purple')
+    token: token('meta.option.color.purple', 'Purple')
   },
   {
     id: 'pink',
-    message: message('meta.option.color.pink', 'Pink')
+    token: token('meta.option.color.pink', 'Pink')
   },
   {
     id: 'red',
-    message: message('meta.option.color.red', 'Red')
+    token: token('meta.option.color.red', 'Red')
   }
 ] as const satisfies readonly OptionColorDescriptor[]
 
@@ -66,7 +69,7 @@ export const option = {
     defaultId: '',
     fallback: (id?: string) => ({
       id: id ?? '',
-      message: message('meta.option.color.unknown', id ?? 'Default')
+      token: token('meta.option.color.unknown', id ?? 'Default')
     })
   })
 } as const

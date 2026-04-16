@@ -1,10 +1,15 @@
+import type {
+  Token
+} from '@shared/i18n'
+
 export interface Bucket {
   key: string
-  title: string
+  label: Token
   value?: unknown
   clearValue: boolean
   empty: boolean
   color?: string
+  sortLabel?: string
 }
 
 export type BucketSortValue = string | number | boolean | null | undefined
@@ -34,6 +39,14 @@ export const compareLabels = (
   left: string,
   right: string
 ) => labelCollator.compare(left, right)
+
+export const readBucketSortLabel = (
+  bucket: Bucket
+) => bucket.sortLabel ?? (
+  typeof bucket.label === 'string'
+    ? bucket.label
+    : bucket.key
+)
 
 export const compareGroupSortValues = (
   left: BucketSortValue,

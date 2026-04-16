@@ -3,10 +3,12 @@ import { getDocumentCustomFields } from '@dataview/core/document'
 import { FieldPicker } from '@dataview/react/field/picker'
 import { Menu } from '@shared/ui/menu'
 import { useDataViewValue } from '@dataview/react/dataview'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
+import { useTranslation } from '@shared/i18n/react'
 import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
 
 export const FieldListPanel = () => {
+  const { t } = useTranslation()
   const router = useViewSettings()
   const document = useDataViewValue(dataView => dataView.engine.select.document)
   const fields = getDocumentCustomFields(document)
@@ -28,7 +30,7 @@ export const FieldListPanel = () => {
           items={[{
             kind: 'action',
             key: 'create',
-            label: renderMessage(meta.ui.viewSettings.fieldsPanel.add),
+            label: t(meta.ui.viewSettings.fieldsPanel.add),
             leading: <Plus className="size-4 shrink-0" size={16} strokeWidth={1.8} />,
             onSelect: () => router.push({ kind: 'fieldCreate' })
           }]}

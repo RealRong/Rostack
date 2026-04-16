@@ -5,7 +5,7 @@ import type {
   Sorter,
   ViewType
 } from '@dataview/core/contracts'
-import { message, renderMessage, type MessageSpec } from '@dataview/meta/message'
+import { token, type Token } from '@shared/i18n'
 import { sort } from '@dataview/meta/sort'
 import { view } from '@dataview/meta/view'
 
@@ -40,145 +40,145 @@ const summarizeCount = (
   singular: string,
   plural: string,
   count: number
-): MessageSpec => (
+): Token => (
   count === 1
-    ? message(`${key}.single`, singular, { count })
-    : message(`${key}.multiple`, plural, { count })
+    ? token(`${key}.single`, singular, { count })
+    : token(`${key}.multiple`, plural, { count })
 )
 
 export const ui = {
   fieldPicker: {
-    searchPlaceholder: message('meta.ui.fieldPicker.searchPlaceholder', 'Search fields'),
-    empty: message('meta.ui.fieldPicker.empty', 'No matching fields.'),
-    noAvailable: message('meta.ui.fieldPicker.noAvailable', 'No available fields.'),
-    allFiltered: message('meta.ui.fieldPicker.allFiltered', 'All fields are already filtered.'),
-    allSorted: message('meta.ui.fieldPicker.allSorted', 'All fields are already sorted.')
+    searchPlaceholder: token('meta.ui.fieldPicker.searchPlaceholder', 'Search fields'),
+    empty: token('meta.ui.fieldPicker.empty', 'No matching fields.'),
+    noAvailable: token('meta.ui.fieldPicker.noAvailable', 'No available fields.'),
+    allFiltered: token('meta.ui.fieldPicker.allFiltered', 'All fields are already filtered.'),
+    allSorted: token('meta.ui.fieldPicker.allSorted', 'All fields are already sorted.')
   },
   toolbar: {
-    newView: message('meta.ui.toolbar.newView', 'New view'),
-    search: message('meta.ui.toolbar.search', 'Search'),
-    filter: message('meta.ui.toolbar.filter', 'Filter'),
-    sort: message('meta.ui.toolbar.sort', 'Sort'),
+    newView: token('meta.ui.toolbar.newView', 'New view'),
+    search: token('meta.ui.toolbar.search', 'Search'),
+    filter: token('meta.ui.toolbar.filter', 'Filter'),
+    sort: token('meta.ui.toolbar.sort', 'Sort'),
     createView: {
-      title: message('meta.ui.toolbar.createView.title', 'Create View'),
-      description: message('meta.ui.toolbar.createView.description', 'Add a new view to the current page.'),
-      nameLabel: message('meta.ui.toolbar.createView.nameLabel', 'Name'),
-      namePlaceholder: message('meta.ui.toolbar.createView.namePlaceholder', 'View name'),
-      typeLabel: message('meta.ui.toolbar.createView.typeLabel', 'Type'),
-      close: message('meta.ui.toolbar.createView.close', 'Close'),
-      create: message('meta.ui.toolbar.createView.create', 'Create')
+      title: token('meta.ui.toolbar.createView.title', 'Create View'),
+      description: token('meta.ui.toolbar.createView.description', 'Add a new view to the current page.'),
+      nameLabel: token('meta.ui.toolbar.createView.nameLabel', 'Name'),
+      namePlaceholder: token('meta.ui.toolbar.createView.namePlaceholder', 'View name'),
+      typeLabel: token('meta.ui.toolbar.createView.typeLabel', 'Type'),
+      close: token('meta.ui.toolbar.createView.close', 'Close'),
+      create: token('meta.ui.toolbar.createView.create', 'Create')
     },
     filterButton: (count: number) => (
       count === 1
-        ? message('meta.ui.toolbar.filterButton.single', 'Filter · 1 filter')
-        : message('meta.ui.toolbar.filterButton.multiple', 'Filter · {count} filters', { count })
+        ? token('meta.ui.toolbar.filterButton.single', 'Filter · 1 filter')
+        : token('meta.ui.toolbar.filterButton.multiple', 'Filter · {{count}} filters', { count })
     ),
     sortButton: (count: number) => (
       count === 1
-        ? message('meta.ui.toolbar.sortButton.single', 'Sort · 1 sort')
-        : message('meta.ui.toolbar.sortButton.multiple', 'Sort · {count} sorts', { count })
+        ? token('meta.ui.toolbar.sortButton.single', 'Sort · 1 sort')
+        : token('meta.ui.toolbar.sortButton.multiple', 'Sort · {{count}} sorts', { count })
     ),
     settings: (viewType?: ViewType | string) => (
       viewType
-        ? message('meta.ui.toolbar.settings.currentView', 'Settings · {view}', {
-            view: renderMessage(view.get(viewType).message)
+        ? token('meta.ui.toolbar.settings.currentView', 'Settings · {{view}}', {
+            view: view.get(viewType).token
           })
-        : message('meta.ui.toolbar.settings.default', 'Settings')
+        : token('meta.ui.toolbar.settings.default', 'Settings')
     )
   },
   field: {
     editor: {
-      fieldNamePlaceholder: message('meta.ui.field.editor.fieldNamePlaceholder', 'Field name'),
-      type: message('meta.ui.field.editor.type', 'Type'),
-      format: message('meta.ui.field.editor.format', 'Format'),
-      displayFullUrl: message('meta.ui.field.editor.displayFullUrl', 'Show full URL'),
-      displayDateFormat: message('meta.ui.field.editor.displayDateFormat', 'Date format'),
-      displayTimeFormat: message('meta.ui.field.editor.displayTimeFormat', 'Time format'),
-      defaultValueKind: message('meta.ui.field.editor.defaultValueKind', 'Default value'),
-      defaultTimezone: message('meta.ui.field.editor.defaultTimezone', 'Default timezone'),
-      duplicate: message('meta.ui.field.editor.duplicate', 'Duplicate field'),
-      remove: message('meta.ui.field.editor.remove', 'Delete field')
+      fieldNamePlaceholder: token('meta.ui.field.editor.fieldNamePlaceholder', 'Field name'),
+      type: token('meta.ui.field.editor.type', 'Type'),
+      format: token('meta.ui.field.editor.format', 'Format'),
+      displayFullUrl: token('meta.ui.field.editor.displayFullUrl', 'Show full URL'),
+      displayDateFormat: token('meta.ui.field.editor.displayDateFormat', 'Date format'),
+      displayTimeFormat: token('meta.ui.field.editor.displayTimeFormat', 'Time format'),
+      defaultValueKind: token('meta.ui.field.editor.defaultValueKind', 'Default value'),
+      defaultTimezone: token('meta.ui.field.editor.defaultTimezone', 'Default timezone'),
+      duplicate: token('meta.ui.field.editor.duplicate', 'Duplicate field'),
+      remove: token('meta.ui.field.editor.remove', 'Delete field')
     },
     options: {
-      title: message('meta.ui.field.options.title', 'Options'),
-      add: message('meta.ui.field.options.add', 'Add option'),
-      color: message('meta.ui.field.options.color', 'Color'),
-      untitled: message('meta.ui.field.options.untitled', 'Untitled'),
-      namePlaceholder: message('meta.ui.field.options.namePlaceholder', 'Option name'),
-      remove: message('meta.ui.field.options.remove', 'Delete option'),
+      title: token('meta.ui.field.options.title', 'Options'),
+      add: token('meta.ui.field.options.add', 'Add option'),
+      color: token('meta.ui.field.options.color', 'Color'),
+      untitled: token('meta.ui.field.options.untitled', 'Untitled'),
+      namePlaceholder: token('meta.ui.field.options.namePlaceholder', 'Option name'),
+      remove: token('meta.ui.field.options.remove', 'Delete option'),
       selectOrCreate: (multiple: boolean) => (
         multiple
-          ? message('meta.ui.field.options.selectOrCreate.multiple', 'Select or create options')
-          : message('meta.ui.field.options.selectOrCreate.single', 'Select or create an option')
+          ? token('meta.ui.field.options.selectOrCreate.multiple', 'Select or create options')
+          : token('meta.ui.field.options.selectOrCreate.single', 'Select or create an option')
       ),
-      create: (name: string) => message('meta.ui.field.options.create', 'Create "{name}"', { name }),
-      clear: (name: string) => message('meta.ui.field.options.clear', 'Clear {name}', { name }),
-      edit: (name: string) => message('meta.ui.field.options.edit', 'Edit {name}', { name }),
-      reorder: (name: string) => message('meta.ui.field.options.reorder', 'Reorder {name}', { name })
+      create: (name: string) => token('meta.ui.field.options.create', 'Create "{{name}}"', { name }),
+      clear: (name: string) => token('meta.ui.field.options.clear', 'Clear {{name}}', { name }),
+      edit: (name: string) => token('meta.ui.field.options.edit', 'Edit {{name}}', { name }),
+      reorder: (name: string) => token('meta.ui.field.options.reorder', 'Reorder {{name}}', { name })
     },
     status: {
-      todo: message('meta.ui.field.status.todo', 'To do'),
-      inProgress: message('meta.ui.field.status.inProgress', 'In progress'),
-      complete: message('meta.ui.field.status.complete', 'Complete'),
-      setDefault: message('meta.ui.field.status.setDefault', 'Set as default'),
-      group: message('meta.ui.field.status.group', 'Group'),
-      moveTo: message('meta.ui.field.status.moveTo', 'Move to'),
-      searchPlaceholder: message('meta.ui.field.status.searchPlaceholder', 'Search options')
+      todo: token('meta.ui.field.status.todo', 'To do'),
+      inProgress: token('meta.ui.field.status.inProgress', 'In progress'),
+      complete: token('meta.ui.field.status.complete', 'Complete'),
+      setDefault: token('meta.ui.field.status.setDefault', 'Set as default'),
+      group: token('meta.ui.field.status.group', 'Group'),
+      moveTo: token('meta.ui.field.status.moveTo', 'Move to'),
+      searchPlaceholder: token('meta.ui.field.status.searchPlaceholder', 'Search options')
     }
   },
   filter: {
-    label: message('meta.ui.filter.label', 'Filter'),
-    deletedField: message('meta.ui.filter.deletedField', 'Deleted field'),
-    remove: message('meta.ui.filter.remove', 'Remove filter'),
-    noOptions: message('meta.ui.filter.noOptions', 'No options.'),
-    clearSelection: message('meta.ui.filter.clearSelection', 'Clear selection')
+    label: token('meta.ui.filter.label', 'Filter'),
+    deletedField: token('meta.ui.filter.deletedField', 'Deleted field'),
+    remove: token('meta.ui.filter.remove', 'Remove filter'),
+    noOptions: token('meta.ui.filter.noOptions', 'No options.'),
+    clearSelection: token('meta.ui.filter.clearSelection', 'Clear selection')
   },
   sort: {
-    label: message('meta.ui.sort.label', 'Sort'),
-    deletedField: message('meta.ui.sort.deletedField', 'Deleted field'),
-    add: message('meta.ui.sort.add', 'Add sort'),
-    clear: message('meta.ui.sort.clear', 'Delete sorts'),
-    remove: message('meta.ui.sort.remove', 'Remove sort'),
-    reorder: (name: string) => message('meta.ui.sort.reorder', 'Reorder {name}', { name })
+    label: token('meta.ui.sort.label', 'Sort'),
+    deletedField: token('meta.ui.sort.deletedField', 'Deleted field'),
+    add: token('meta.ui.sort.add', 'Add sort'),
+    clear: token('meta.ui.sort.clear', 'Delete sorts'),
+    remove: token('meta.ui.sort.remove', 'Remove sort'),
+    reorder: (name: string) => token('meta.ui.sort.reorder', 'Reorder {{name}}', { name })
   },
   viewSettings: {
-    title: message('meta.ui.viewSettings.title', 'View settings'),
-    viewNamePlaceholder: message('meta.ui.viewSettings.viewNamePlaceholder', 'View name'),
-    layout: message('meta.ui.viewSettings.layout', 'Layout'),
-    visibleFields: message('meta.ui.viewSettings.visibleFields', 'Visible fields'),
-    editFields: message('meta.ui.viewSettings.editFields', 'Edit fields'),
-    filter: message('meta.ui.viewSettings.filter', 'Filter'),
-    sort: message('meta.ui.viewSettings.sort', 'Sort'),
-    group: message('meta.ui.viewSettings.group', 'Group'),
-    groupField: message('meta.ui.viewSettings.groupField', 'Field'),
-    groupMode: message('meta.ui.viewSettings.groupMode', 'Mode'),
-    groupByValue: message('meta.ui.viewSettings.groupByValue', 'By value'),
-    groupByOption: message('meta.ui.viewSettings.groupByOption', 'By option'),
-    groupByRange: message('meta.ui.viewSettings.groupByRange', 'By range'),
-    groupByDay: message('meta.ui.viewSettings.groupByDay', 'By day'),
-    groupByWeek: message('meta.ui.viewSettings.groupByWeek', 'By week'),
-    groupByMonth: message('meta.ui.viewSettings.groupByMonth', 'By month'),
-    groupByQuarter: message('meta.ui.viewSettings.groupByQuarter', 'By quarter'),
-    groupByYear: message('meta.ui.viewSettings.groupByYear', 'By year'),
-    groupByStatus: message('meta.ui.viewSettings.groupByStatus', 'By status'),
-    groupByCategory: message('meta.ui.viewSettings.groupByCategory', 'By category'),
-    bucketSort: message('meta.ui.viewSettings.bucketSort', 'Group order'),
-    bucketInterval: message('meta.ui.viewSettings.bucketInterval', 'Range interval'),
-    bucketSortManual: message('meta.ui.viewSettings.bucketSort.manual', 'Manual'),
-    bucketSortLabelAsc: message('meta.ui.viewSettings.bucketSort.labelAsc', 'A to Z'),
-    bucketSortLabelDesc: message('meta.ui.viewSettings.bucketSort.labelDesc', 'Z to A'),
-    bucketSortValueAsc: message('meta.ui.viewSettings.bucketSort.valueAsc', 'Ascending'),
-    bucketSortValueDesc: message('meta.ui.viewSettings.bucketSort.valueDesc', 'Descending'),
-    none: message('meta.ui.viewSettings.none', 'None'),
-    duplicate: message('meta.ui.viewSettings.duplicate', 'Duplicate'),
-    remove: message('meta.ui.viewSettings.remove', 'Remove'),
-    shown: (count: number) => message('meta.ui.viewSettings.shown', '{count} shown', { count }),
+    title: token('meta.ui.viewSettings.title', 'View settings'),
+    viewNamePlaceholder: token('meta.ui.viewSettings.viewNamePlaceholder', 'View name'),
+    layout: token('meta.ui.viewSettings.layout', 'Layout'),
+    visibleFields: token('meta.ui.viewSettings.visibleFields', 'Visible fields'),
+    editFields: token('meta.ui.viewSettings.editFields', 'Edit fields'),
+    filter: token('meta.ui.viewSettings.filter', 'Filter'),
+    sort: token('meta.ui.viewSettings.sort', 'Sort'),
+    group: token('meta.ui.viewSettings.group', 'Group'),
+    groupField: token('meta.ui.viewSettings.groupField', 'Field'),
+    groupMode: token('meta.ui.viewSettings.groupMode', 'Mode'),
+    groupByValue: token('meta.ui.viewSettings.groupByValue', 'By value'),
+    groupByOption: token('meta.ui.viewSettings.groupByOption', 'By option'),
+    groupByRange: token('meta.ui.viewSettings.groupByRange', 'By range'),
+    groupByDay: token('meta.ui.viewSettings.groupByDay', 'By day'),
+    groupByWeek: token('meta.ui.viewSettings.groupByWeek', 'By week'),
+    groupByMonth: token('meta.ui.viewSettings.groupByMonth', 'By month'),
+    groupByQuarter: token('meta.ui.viewSettings.groupByQuarter', 'By quarter'),
+    groupByYear: token('meta.ui.viewSettings.groupByYear', 'By year'),
+    groupByStatus: token('meta.ui.viewSettings.groupByStatus', 'By status'),
+    groupByCategory: token('meta.ui.viewSettings.groupByCategory', 'By category'),
+    bucketSort: token('meta.ui.viewSettings.bucketSort', 'Group order'),
+    bucketInterval: token('meta.ui.viewSettings.bucketInterval', 'Range interval'),
+    bucketSortManual: token('meta.ui.viewSettings.bucketSort.manual', 'Manual'),
+    bucketSortLabelAsc: token('meta.ui.viewSettings.bucketSort.labelAsc', 'A to Z'),
+    bucketSortLabelDesc: token('meta.ui.viewSettings.bucketSort.labelDesc', 'Z to A'),
+    bucketSortValueAsc: token('meta.ui.viewSettings.bucketSort.valueAsc', 'Ascending'),
+    bucketSortValueDesc: token('meta.ui.viewSettings.bucketSort.valueDesc', 'Descending'),
+    none: token('meta.ui.viewSettings.none', 'None'),
+    duplicate: token('meta.ui.viewSettings.duplicate', 'Duplicate'),
+    remove: token('meta.ui.viewSettings.remove', 'Remove'),
+    shown: (count: number) => token('meta.ui.viewSettings.shown', '{{count}} shown', { count }),
     filterSummary: (
       rules: readonly FilterRule[],
       fields: readonly Field[]
     ) => {
       if (!rules.length) {
-        return message('meta.ui.viewSettings.filterSummary.empty', 'No filters')
+        return token('meta.ui.viewSettings.filterSummary.empty', 'No filters')
       }
 
       if (rules.length > 1) {
@@ -192,15 +192,15 @@ export const ui = {
 
       const field = findField(fields, rules[0]?.fieldId)
       return field
-        ? message('meta.ui.viewSettings.filterSummary.field', '{field}', { field: field.name })
-        : message('meta.ui.viewSettings.filterSummary.single', '1 filter')
+        ? token('meta.ui.viewSettings.filterSummary.field', '{{field}}', { field: field.name })
+        : token('meta.ui.viewSettings.filterSummary.single', '1 filter')
     },
     sortSummary: (
       sorters: readonly Sorter[],
       fields: readonly Field[]
     ) => {
       if (!sorters.length) {
-        return message('meta.ui.viewSettings.sortSummary.empty', 'Manual')
+        return token('meta.ui.viewSettings.sortSummary.empty', 'Manual')
       }
 
       if (sorters.length > 1) {
@@ -215,168 +215,168 @@ export const ui = {
       const sorterItem = sorters[0]
       const field = findField(fields, sorterItem?.field)
       if (!field) {
-        return message('meta.ui.viewSettings.sortSummary.single', '1 sort')
+        return token('meta.ui.viewSettings.sortSummary.single', '1 sort')
       }
 
-      return message('meta.ui.viewSettings.sortSummary.field', '{field} · {direction}', {
+      return token('meta.ui.viewSettings.sortSummary.field', '{{field}} · {{direction}}', {
         field: field.name,
-        direction: renderMessage(sort.direction.get(sorterItem.direction).message)
+        direction: sort.direction.get(sorterItem.direction).token
       })
     },
     routeTitle: (kind: SettingsRouteKind) => {
       switch (kind) {
         case 'layout':
-          return message('meta.ui.viewSettings.route.layout', 'Layout')
+          return token('meta.ui.viewSettings.route.layout', 'Layout')
         case 'group':
-          return message('meta.ui.viewSettings.route.group', 'Group')
+          return token('meta.ui.viewSettings.route.group', 'Group')
         case 'groupField':
-          return message('meta.ui.viewSettings.route.groupField', 'Field')
+          return token('meta.ui.viewSettings.route.groupField', 'Field')
         case 'viewProperties':
-          return message('meta.ui.viewSettings.route.viewProperties', 'Visible fields')
+          return token('meta.ui.viewSettings.route.viewProperties', 'Visible fields')
         case 'fieldList':
-          return message('meta.ui.viewSettings.route.propertyList', 'Edit fields')
+          return token('meta.ui.viewSettings.route.propertyList', 'Edit fields')
         case 'fieldCreate':
-          return message('meta.ui.viewSettings.route.propertyCreate', 'New field')
+          return token('meta.ui.viewSettings.route.propertyCreate', 'New field')
         case 'fieldSchema':
-          return message('meta.ui.viewSettings.route.propertySchema', 'Edit field')
+          return token('meta.ui.viewSettings.route.propertySchema', 'Edit field')
         case 'filter':
-          return message('meta.ui.viewSettings.route.filter', 'Filter')
+          return token('meta.ui.viewSettings.route.filter', 'Filter')
         case 'sort':
-          return message('meta.ui.viewSettings.route.sort', 'Sort')
+          return token('meta.ui.viewSettings.route.sort', 'Sort')
         case 'root':
         default:
-          return message('meta.ui.viewSettings.route.root', 'View Settings')
+          return token('meta.ui.viewSettings.route.root', 'View Settings')
       }
     },
     fieldsPanel: {
-      shownIn: (viewType?: ViewType | string) => message(
+      shownIn: (viewType?: ViewType | string) => token(
         'meta.ui.viewSettings.fieldsPanel.shownIn',
-        'Shown in {view}',
+        'Shown in {{view}}',
         {
-          view: renderMessage(view.get(viewType).message)
+          view: view.get(viewType).token
         }
       ),
-      hideAll: message('meta.ui.viewSettings.fieldsPanel.hideAll', 'Hide all'),
-      add: message('meta.ui.viewSettings.fieldsPanel.add', 'Add field'),
-      reorder: (name: string) => message(
+      hideAll: token('meta.ui.viewSettings.fieldsPanel.hideAll', 'Hide all'),
+      add: token('meta.ui.viewSettings.fieldsPanel.add', 'Add field'),
+      reorder: (name: string) => token(
         'meta.ui.viewSettings.fieldsPanel.reorder',
         'Reorder {name}',
         { name }
       ),
-      hide: (name: string) => message(
+      hide: (name: string) => token(
         'meta.ui.viewSettings.fieldsPanel.hide',
         'Hide {name}',
         { name }
       ),
-      show: (name: string) => message(
+      show: (name: string) => token(
         'meta.ui.viewSettings.fieldsPanel.show',
         'Show {name}',
         { name }
       )
     },
     layoutPanel: {
-      viewTypeFieldDescription: message(
+      viewTypeFieldDescription: token(
         'meta.ui.viewSettings.layoutPanel.viewTypeFieldDescription',
         'Choose how this database is presented.'
       ),
       viewTypeOption: (value: LayoutTypeId) => {
         switch (value) {
           case 'gallery':
-            return message('meta.ui.viewSettings.layoutPanel.viewTypeOption.gallery', 'Gallery')
+            return token('meta.ui.viewSettings.layoutPanel.viewTypeOption.gallery', 'Gallery')
           case 'kanban':
-            return message('meta.ui.viewSettings.layoutPanel.viewTypeOption.kanban', 'Kanban')
+            return token('meta.ui.viewSettings.layoutPanel.viewTypeOption.kanban', 'Kanban')
           case 'table':
           default:
-            return message('meta.ui.viewSettings.layoutPanel.viewTypeOption.table', 'Table')
+            return token('meta.ui.viewSettings.layoutPanel.viewTypeOption.table', 'Table')
         }
       },
-      tableTitle: message('meta.ui.viewSettings.layoutPanel.tableTitle', 'Table'),
-      tableDescription: message(
+      tableTitle: token('meta.ui.viewSettings.layoutPanel.tableTitle', 'Table'),
+      tableDescription: token(
         'meta.ui.viewSettings.layoutPanel.tableDescription',
         'Table-specific layout settings will live here.'
       ),
-      showVerticalLines: message(
+      showVerticalLines: token(
         'meta.ui.viewSettings.layoutPanel.showVerticalLines',
         'Show vertical lines'
       ),
-      wrapCells: message(
+      wrapCells: token(
         'meta.ui.viewSettings.layoutPanel.wrapCells',
         'Wrap cell content'
       ),
-      tableInlineStatus: message(
+      tableInlineStatus: token(
         'meta.ui.viewSettings.layoutPanel.tableInlineStatus',
         'Column widths are edited directly in the table grid.'
       ),
-      galleryTitle: message('meta.ui.viewSettings.layoutPanel.galleryTitle', 'Gallery'),
-      galleryDescription: message(
+      galleryTitle: token('meta.ui.viewSettings.layoutPanel.galleryTitle', 'Gallery'),
+      galleryDescription: token(
         'meta.ui.viewSettings.layoutPanel.galleryDescription',
         'Control how cards render in gallery layout.'
       ),
-      showFieldLabels: message(
+      showFieldLabels: token(
         'meta.ui.viewSettings.layoutPanel.showFieldLabels',
         'Show field labels'
       ),
-      showFieldLabelsDescription: message(
+      showFieldLabelsDescription: token(
         'meta.ui.viewSettings.layoutPanel.showFieldLabelsDescription',
         'Display field names above each value.'
       ),
-      cardSize: message('meta.ui.viewSettings.layoutPanel.cardSize', 'Card size'),
-      cardSizeDescription: message(
+      cardSize: token('meta.ui.viewSettings.layoutPanel.cardSize', 'Card size'),
+      cardSizeDescription: token(
         'meta.ui.viewSettings.layoutPanel.cardSizeDescription',
         'Adjust the minimum width of gallery cards.'
       ),
       cardSizeOption: (value: CardSizeId) => {
         switch (value) {
           case 'sm':
-            return message('meta.ui.viewSettings.layoutPanel.cardSizeOption.sm', 'Small')
+            return token('meta.ui.viewSettings.layoutPanel.cardSizeOption.sm', 'Small')
           case 'lg':
-            return message('meta.ui.viewSettings.layoutPanel.cardSizeOption.lg', 'Large')
+            return token('meta.ui.viewSettings.layoutPanel.cardSizeOption.lg', 'Large')
           case 'md':
           default:
-            return message('meta.ui.viewSettings.layoutPanel.cardSizeOption.md', 'Medium')
+            return token('meta.ui.viewSettings.layoutPanel.cardSizeOption.md', 'Medium')
         }
       },
-      kanbanTitle: message('meta.ui.viewSettings.layoutPanel.kanbanTitle', 'Kanban'),
-      kanbanDescription: message(
+      kanbanTitle: token('meta.ui.viewSettings.layoutPanel.kanbanTitle', 'Kanban'),
+      kanbanDescription: token(
         'meta.ui.viewSettings.layoutPanel.kanbanDescription',
         'Control how cards behave inside each column.'
       ),
-      fillColumnColor: message(
+      fillColumnColor: token(
         'meta.ui.viewSettings.layoutPanel.fillColumnColor',
         'Fill column color'
       ),
-      cardsPerColumn: message(
+      cardsPerColumn: token(
         'meta.ui.viewSettings.layoutPanel.cardsPerColumn',
         'Cards per column'
       ),
       cardsPerColumnOption: (value: CardsPerColumnId) => {
         switch (value) {
           case 25:
-            return message('meta.ui.viewSettings.layoutPanel.cardsPerColumnOption.25', '25')
+            return token('meta.ui.viewSettings.layoutPanel.cardsPerColumnOption.25', '25')
           case 50:
-            return message('meta.ui.viewSettings.layoutPanel.cardsPerColumnOption.50', '50')
+            return token('meta.ui.viewSettings.layoutPanel.cardsPerColumnOption.50', '50')
           case 100:
-            return message('meta.ui.viewSettings.layoutPanel.cardsPerColumnOption.100', '100')
+            return token('meta.ui.viewSettings.layoutPanel.cardsPerColumnOption.100', '100')
           case 'all':
           default:
-            return message('meta.ui.viewSettings.layoutPanel.cardsPerColumnOption.all', 'All')
+            return token('meta.ui.viewSettings.layoutPanel.cardsPerColumnOption.all', 'All')
         }
       },
-      newCardPosition: message(
+      newCardPosition: token(
         'meta.ui.viewSettings.layoutPanel.newCardPosition',
         'New card position'
       ),
-      newCardPositionDescription: message(
+      newCardPositionDescription: token(
         'meta.ui.viewSettings.layoutPanel.newCardPositionDescription',
         'Choose where newly created cards appear in a column.'
       ),
       newCardPositionOption: (value: NewRecordPositionId) => {
         switch (value) {
           case 'end':
-            return message('meta.ui.viewSettings.layoutPanel.newCardPositionOption.end', 'Bottom')
+            return token('meta.ui.viewSettings.layoutPanel.newCardPositionOption.end', 'Bottom')
           case 'start':
           default:
-            return message('meta.ui.viewSettings.layoutPanel.newCardPositionOption.start', 'Top')
+            return token('meta.ui.viewSettings.layoutPanel.newCardPositionOption.start', 'Top')
         }
       }
     }

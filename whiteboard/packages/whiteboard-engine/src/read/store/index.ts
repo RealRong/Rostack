@@ -2,7 +2,6 @@ import type { ReadModel } from '@whiteboard/engine/types/read'
 import type { EngineDocument, EngineRead, EngineReadIndex } from '@whiteboard/engine/types/instance'
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import type { BoardConfig } from '@whiteboard/core/config'
-import type { MindmapLayoutConfig } from '@whiteboard/core/mindmap'
 import {
   getEdgePath,
   getEdgePathBounds
@@ -59,11 +58,9 @@ const EMPTY_GROUP_IDS: readonly string[] = []
 
 export const createRead = ({
   document,
-  mindmapLayout,
   config
 }: {
   document: EngineDocument
-  mindmapLayout: () => MindmapLayoutConfig
   config: BoardConfig
 }): {
   read: EngineRead
@@ -116,7 +113,6 @@ export const createRead = ({
   const edgeProjection = createEdgeProjection(initialSnapshot)
   const mindmapProjection = createMindmapProjection(initialSnapshot, {
     config,
-    mindmapLayout
   })
 
   const readCanvasNode = (
@@ -353,17 +349,14 @@ export const createRead = ({
     if (!item) {
       return undefined
     }
-    const position = item.node.position
-    if (!position) {
+    const rects = item.childNodeIds.flatMap((nodeId) => {
+      const bounds = readProjectedNodeBounds(nodeId)
+      return bounds ? [bounds] : []
+    })
+    if (!rects.length) {
       return undefined
     }
-
-    return {
-      x: position.x + item.computed.bbox.x,
-      y: position.y + item.computed.bbox.y,
-      width: item.computed.bbox.width,
-      height: item.computed.bbox.height
-    }
+    return getRectsBoundingRect(rects)
   }
 
   const readDocumentBounds = (): Rect | undefined => {

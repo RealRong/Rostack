@@ -3,61 +3,74 @@ import { test } from 'vitest'
 import {
   addChild,
   createMindmap,
-  createMindmapUpdateOps,
   insertNode,
   layoutMindmap,
   layoutMindmapTidy,
+  materializeMindmapCreate,
   moveSubtree,
-  removeSubtree,
-  updateNode
+  patchMindmap,
+  removeSubtree
 } from '@whiteboard/core/mindmap'
 
-test('mindmap commands', () => {
+test('mindmap commands mutate the authored tree directly', () => {
   let nodeSeq = 1
   const idGenerator = {
-    treeId: () => 'mindmap_1',
     nodeId: () => `node_${nodeSeq++}`
   }
 
-  const tree = createMindmap({ idGenerator })
-  assert.equal(tree.id, 'mindmap_1')
-  assert.equal(tree.rootId, 'node_1')
+  const tree = createMindmap({}, { idGenerator })
+  assert.equal(tree.rootNodeId, 'node_1')
+  assert.deepEqual(tree.children[tree.rootNodeId], [])
 
-  const addOne = addChild(tree, tree.rootId, { kind: 'text', text: 'child-1' }, { side: 'right', idGenerator })
-  assert.ok(addOne.ok)
-  const tree1 = addOne.data.tree
-  const addTwo = addChild(tree1, tree1.rootId, { kind: 'text', text: 'child-2' }, { side: 'left', idGenerator })
-  assert.ok(addTwo.ok)
-  const tree2 = addTwo.data.tree
+  const addRight = addChild(
+    tree,
+    tree.rootNodeId,
+    { kind: 'text', text: 'child-1' },
+    { side: 'right', idGenerator }
+  )
+  assert.ok(addRight.ok)
 
-  const children = tree2.children[tree2.rootId]
-  assert.equal(children.length, 2)
+  const addLeft = addChild(
+    addRight.data.tree,
+    tree.rootNodeId,
+    { kind: 'text', text: 'child-2' },
+    { side: 'left', idGenerator }
+  )
+  assert.ok(addLeft.ok)
+
+  const tree2 = addLeft.data.tree
+  const [rightChildId, leftChildId] = tree2.children[tree2.rootNodeId]
+  assert.equal(tree2.nodes[rightChildId]?.side, 'right')
+  assert.equal(tree2.nodes[leftChildId]?.side, 'left')
 
   const move = moveSubtree(tree2, {
-    nodeId: children[1],
-    parentId: children[0]
+    nodeId: leftChildId,
+    parentId: rightChildId
   })
   assert.ok(move.ok)
-  const tree3 = move.data.tree
-  assert.equal(tree3.nodes[children[1]].parentId, children[0])
+  assert.equal(move.data.tree.nodes[leftChildId]?.parentId, rightChildId)
+  assert.equal(move.data.tree.nodes[leftChildId]?.side, undefined)
 
-  const removed = removeSubtree(tree3, {
-    nodeId: children[0]
+  const removed = removeSubtree(move.data.tree, {
+    nodeId: rightChildId
   })
   assert.ok(removed.ok)
-  const tree4 = removed.data.tree
-  assert.ok(tree4.nodes[children[0]] === undefined)
-  assert.ok(tree4.rootId)
+  assert.equal(removed.data.tree.nodes[rightChildId], undefined)
+  assert.equal(removed.data.tree.nodes[leftChildId], undefined)
 })
 
-test('mindmap layout outputs coordinates', () => {
+test('mindmap layout outputs coordinates for authored nodes', () => {
   let nodeSeq = 1
   const idGenerator = {
-    treeId: () => 'mindmap_layout',
     nodeId: () => `node_${nodeSeq++}`
   }
-  const tree = createMindmap({ idGenerator })
-  const add = addChild(tree, tree.rootId, { kind: 'text', text: 'child' }, { side: 'right', idGenerator })
+  const tree = createMindmap({}, { idGenerator })
+  const add = addChild(
+    tree,
+    tree.rootNodeId,
+    { kind: 'text', text: 'child' },
+    { side: 'right', idGenerator }
+  )
   assert.ok(add.ok)
   const tree1 = add.data.tree
 
@@ -65,151 +78,83 @@ test('mindmap layout outputs coordinates', () => {
   const layout = layoutMindmap(tree1, getNodeSize)
   const tidy = layoutMindmapTidy(tree1, getNodeSize)
 
-  assert.ok(layout.node[tree1.rootId])
-  assert.ok(tidy.node[tree1.rootId])
+  assert.ok(layout.node[tree1.rootNodeId])
+  assert.ok(tidy.node[tree1.rootNodeId])
   assert.ok(layout.bbox.width >= 0 && layout.bbox.height >= 0)
   assert.ok(tidy.bbox.width >= 0 && tidy.bbox.height >= 0)
 })
 
-test('mindmap updateNode 支持 canonical data mutations 和字段更新', () => {
-  let nodeSeq = 1
-  const idGenerator = {
-    treeId: () => 'mindmap_mutation',
-    nodeId: () => `node_${nodeSeq++}`
-  }
-
-  const tree = createMindmap({
-    idGenerator,
-    rootData: {
-      kind: 'custom',
-      text: 'root',
-      tags: ['a', 'b']
+test('mindmap patch only updates layout authored data', () => {
+  const tree = createMindmap()
+  const result = patchMindmap(tree, {
+    layout: {
+      mode: 'tidy',
+      hGap: 180
     }
   })
 
-  const setResult = updateNode(tree, {
-    nodeId: tree.rootId,
-    update: {
-      records: [{
-        op: 'set',
-        path: 'meta.title',
-        value: 'Board'
-      }]
-    }
-  })
-  assert.ok(setResult.ok)
-  assert.equal(setResult.data.tree.nodes[tree.rootId].data.meta.title, 'Board')
-
-  const unsetResult = updateNode(setResult.data.tree, {
-    nodeId: tree.rootId,
-    update: {
-      records: [{
-        op: 'unset',
-        path: 'meta.title'
-      }]
-    }
-  })
-  assert.ok(unsetResult.ok)
-  assert.equal('title' in unsetResult.data.tree.nodes[tree.rootId].data.meta, false)
-
-  const spliceResult = updateNode(unsetResult.data.tree, {
-    nodeId: tree.rootId,
-    update: {
-      records: [{
-        op: 'splice',
-        path: 'tags',
-        index: 1,
-        deleteCount: 1,
-        values: ['x', 'y']
-      }]
-    }
-  })
-  assert.ok(spliceResult.ok)
-  assert.deepEqual(spliceResult.data.tree.nodes[tree.rootId].data.tags, ['a', 'x', 'y'])
-
-  const collapseResult = updateNode(spliceResult.data.tree, {
-    nodeId: tree.rootId,
-    update: {
-      collapsed: true
-    }
-  })
-  assert.ok(collapseResult.ok)
-  assert.equal(collapseResult.data.tree.nodes[tree.rootId].collapsed, true)
+  assert.ok(result.ok)
+  assert.equal(result.data.tree.rootNodeId, tree.rootNodeId)
+  assert.equal(result.data.tree.layout.mode, 'tidy')
+  assert.equal(result.data.tree.layout.hGap, 180)
+  assert.equal(result.data.tree.layout.vGap, tree.layout.vGap)
+  assert.deepEqual(result.data.tree.children, tree.children)
 })
 
-test('mindmap insertNode 会在目标节点上方插入新父节点', () => {
+test('mindmap insertNode inserts a new parent in the authored tree', () => {
   let nodeSeq = 1
   const idGenerator = {
-    treeId: () => 'mindmap_parent',
     nodeId: () => `node_${nodeSeq++}`
   }
 
-  const tree = createMindmap({ idGenerator })
+  const tree = createMindmap({}, { idGenerator })
   const childResult = addChild(
     tree,
-    tree.rootId,
+    tree.rootNodeId,
     { kind: 'text', text: 'child' },
     { side: 'left', idGenerator }
   )
   assert.ok(childResult.ok)
 
-  const wrapResult = insertNode(childResult.data.tree, {
-    kind: 'parent',
-    nodeId: childResult.data.nodeId,
-    payload: { kind: 'text', text: 'parent' }
-  }, { idGenerator })
+  const wrapResult = insertNode(
+    childResult.data.tree,
+    {
+      kind: 'parent',
+      nodeId: childResult.data.nodeId,
+      payload: { kind: 'text', text: 'parent' }
+    },
+    { idGenerator }
+  )
   assert.ok(wrapResult.ok)
 
   const nextTree = wrapResult.data.tree
   const parentId = wrapResult.data.nodeId
   const childId = childResult.data.nodeId
 
-  assert.equal(nextTree.nodes[parentId].parentId, nextTree.rootId)
-  assert.equal(nextTree.nodes[parentId].side, 'left')
-  assert.equal(nextTree.nodes[childId].parentId, parentId)
+  assert.equal(nextTree.nodes[parentId]?.parentId, nextTree.rootNodeId)
+  assert.equal(nextTree.nodes[parentId]?.side, 'left')
+  assert.equal(nextTree.nodes[childId]?.parentId, parentId)
   assert.deepEqual(nextTree.children[parentId], [childId])
-  assert.equal(nextTree.children[nextTree.rootId][0], parentId)
+  assert.equal(nextTree.children[nextTree.rootNodeId]?.[0], parentId)
 })
 
-test('createMindmapUpdateOps 将整树更新编译为 path scoped node.update record', () => {
+test('materializeMindmapCreate produces root and child node inputs for owned nodes', () => {
   let nodeSeq = 1
   const idGenerator = {
-    treeId: () => 'mindmap_update',
     nodeId: () => `node_${nodeSeq++}`
   }
 
-  const beforeTree = createMindmap({ idGenerator })
-  const addResult = addChild(
-    beforeTree,
-    beforeTree.rootId,
-    { kind: 'text', text: 'child' },
-    { side: 'right', idGenerator }
-  )
-  assert.ok(addResult.ok)
-
-  const operations = createMindmapUpdateOps({
-    beforeTree,
-    afterTree: addResult.data.tree,
-    node: {
-      id: beforeTree.id,
-      type: 'mindmap',
-      position: { x: 0, y: 0 },
-      data: {
-        title: 'keep-root-fields'
-      }
-    }
+  const result = materializeMindmapCreate({
+    rootId: 'node_root',
+    idGenerator
   })
 
-  assert.deepEqual(operations[0], {
-    type: 'node.update',
-    id: beforeTree.id,
-    update: {
-      records: [{
-        scope: 'data',
-        op: 'set',
-        path: 'mindmap',
-        value: addResult.data.tree
-      }]
-    }
+  const rootId = result.tree.rootNodeId
+  assert.equal(rootId, 'node_root')
+  assert.equal(result.nodeInputs[rootId]?.type, 'text')
+
+  const rootChildren = result.tree.children[rootId] ?? []
+  rootChildren.forEach((childId) => {
+    assert.equal(result.nodeInputs[childId]?.type, 'text')
   })
 })

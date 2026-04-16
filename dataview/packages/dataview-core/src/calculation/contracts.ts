@@ -2,10 +2,13 @@ import type {
   CalculationMetric,
   FieldId
 } from '@dataview/core/contracts/state'
+import type {
+  Token
+} from '@shared/i18n'
 
 export interface CalculationDistributionItem {
   key: string
-  label: string
+  value: Token
   count: number
   percent: number
   color?: string
@@ -16,7 +19,6 @@ export type CalculationResult =
       kind: 'scalar'
       metric: CalculationMetric
       value: number
-      display: string
     }
   | {
       kind: 'percent'
@@ -24,19 +26,16 @@ export type CalculationResult =
       numerator: number
       denominator: number
       value: number
-      display: string
     }
   | {
       kind: 'distribution'
       metric: CalculationMetric
       denominator: number
       items: readonly CalculationDistributionItem[]
-      display: string
     }
   | {
       kind: 'empty'
       metric: CalculationMetric
-      display: string
     }
 
 export interface CalculationCollection {

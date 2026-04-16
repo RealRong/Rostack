@@ -30,8 +30,8 @@ export const translateMindmap = <C extends MindmapCommand>(
         plan.cloneSubtree(command, ctx),
         ({ output }) => output
       ) as TranslateResult<CommandOutput<C>>
-    case 'mindmap.patchNode':
-      return fromOps(plan.updateNode(command, ctx)) as TranslateResult<CommandOutput<C>>
+    case 'mindmap.patch':
+      return fromOps(plan.patch(command, ctx)) as TranslateResult<CommandOutput<C>>
     default:
       return invalid('Unsupported mindmap command type.') as TranslateResult<CommandOutput<C>>
   }

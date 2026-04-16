@@ -1,15 +1,14 @@
 import type {
   DateValue,
   Field,
+  FilterValuePreview,
   FilterOptionSetValue,
   FilterPresetId,
   FilterRule
 } from '@dataview/core/contracts'
 import {
   compareFieldValues,
-  getFieldDisplayValue,
   getFieldOption,
-  getFieldOptions,
   isEmptyFieldValue,
   normalizeSearchableValue,
   readDateComparableTimestamp
@@ -19,6 +18,13 @@ import type {
   FilterPreset,
   FilterSpec
 } from '@dataview/core/filter/types'
+import type {
+  Token
+} from '@shared/i18n'
+import {
+  tokenDate,
+  tokenRef
+} from '@shared/i18n'
 
 const defineFilterPreset = (
   id: FilterPresetId,
@@ -296,22 +302,32 @@ const matchOptionSet = (
   return typeof value === 'string' && optionIds.includes(value)
 }
 
-const formatOptionSetValueText = (
+const projectSingleValue = (
+  value: Token
+): FilterValuePreview => ({
+  kind: 'single',
+  value
+})
+
+const projectOptionSetValue = (
   field: Field | undefined,
   value: unknown
-) => {
+): FilterValuePreview => {
   const optionIds = readFilterOptionSetValue(value).optionIds
   if (!optionIds.length) {
-    return ''
+    return {
+      kind: 'none'
+    }
   }
 
-  return optionIds
-    .map(optionId => (
+  return {
+    kind: 'multi',
+    values: optionIds.map(optionId => (
       field && field.kind !== 'title'
         ? getFieldOption(field, optionId)?.name ?? optionId
         : optionId
     ))
-    .join(', ')
+  }
 }
 
 const createFilterSpec = (input: {
@@ -320,7 +336,7 @@ const createFilterSpec = (input: {
   getEditorKind: (field: Field | undefined, rule: FilterRule) => FilterEditorKind
   isEffective: (field: Field | undefined, rule: FilterRule) => boolean
   match: (field: Field | undefined, recordValue: unknown, rule: FilterRule) => boolean
-  formatValueText: (field: Field | undefined, rule: FilterRule) => string
+  projectValue: (field: Field | undefined, rule: FilterRule) => FilterValuePreview
 }): FilterSpec => {
   const presetById = new Map(input.presets.map(preset => [preset.id, preset] as const))
 
@@ -377,7 +393,7 @@ const createFilterSpec = (input: {
     getEditorKind: input.getEditorKind,
     isEffective: input.isEffective,
     match: input.match,
-    formatValueText: input.formatValueText
+    projectValue: input.projectValue
   }
 }
 
@@ -411,7 +427,13 @@ const textFilterSpec = createFilterSpec({
 
     return comparePrimitive(field, recordValue, expected) !== 0
   },
-  formatValueText: (_field, rule) => typeof rule.value === 'string' ? rule.value : ''
+  projectValue: (_field, rule) => (
+    typeof rule.value === 'string' && rule.value.length
+      ? projectSingleValue(rule.value)
+      : {
+          kind: 'none'
+        }
+  )
 })
 
 const numberFilterSpec = createFilterSpec({
@@ -453,7 +475,13 @@ const numberFilterSpec = createFilterSpec({
         return comparison <= 0
     }
   },
-  formatValueText: (_field, rule) => typeof rule.value === 'number' ? String(rule.value) : ''
+  projectValue: (_field, rule) => (
+    typeof rule.value === 'number' && Number.isFinite(rule.value)
+      ? projectSingleValue(rule.value)
+      : {
+          kind: 'none'
+        }
+  )
 })
 
 const dateFilterSpec = createFilterSpec({
@@ -495,7 +523,13 @@ const dateFilterSpec = createFilterSpec({
         return comparison <= 0
     }
   },
-  formatValueText: (field, rule) => getFieldDisplayValue(field, rule.value) ?? ''
+  projectValue: (_field, rule) => (
+    rule.value && typeof rule.value === 'object' && ('kind' in rule.value)
+      ? projectSingleValue(tokenDate(rule.value as DateValue))
+      : {
+          kind: 'none'
+        }
+  )
 })
 
 const optionFilterSpec = createFilterSpec({
@@ -523,7 +557,7 @@ const optionFilterSpec = createFilterSpec({
     const match = matchOptionSet(field, recordValue, expected)
     return preset.operator === 'neq' ? !match : match
   },
-  formatValueText: formatOptionSetValueText
+  projectValue: projectOptionSetValue
 })
 
 const optionSetFilterSpec = createFilterSpec({
@@ -550,7 +584,7 @@ const optionSetFilterSpec = createFilterSpec({
 
     return matchOptionSet(field, recordValue, expected)
   },
-  formatValueText: formatOptionSetValueText
+  projectValue: projectOptionSetValue
 })
 
 const booleanFilterSpec = createFilterSpec({
@@ -569,7 +603,19 @@ const booleanFilterSpec = createFilterSpec({
 
     return recordValue === expected
   },
-  formatValueText: () => ''
+  projectValue: (field, rule) => {
+    if (rule.presetId === 'checked') {
+      return projectSingleValue(tokenRef('dataview.systemValue', 'value.checked'))
+    }
+
+    if (rule.presetId === 'unchecked') {
+      return projectSingleValue(tokenRef('dataview.systemValue', 'value.unchecked'))
+    }
+
+    return {
+      kind: 'none'
+    }
+  }
 })
 
 const presenceFilterSpec = createFilterSpec({
@@ -584,7 +630,15 @@ const presenceFilterSpec = createFilterSpec({
       ? isEmptyFieldValue(recordValue)
       : !isEmptyFieldValue(recordValue)
   },
-  formatValueText: () => ''
+  projectValue: (_field, rule) => (
+    rule.presetId === 'exists_true'
+      ? projectSingleValue(tokenRef('dataview.systemValue', 'value.hasValue'))
+      : rule.presetId === 'exists_false'
+        ? projectSingleValue(tokenRef('dataview.systemValue', 'value.empty'))
+        : {
+            kind: 'none'
+          }
+  )
 })
 
 const filterSpecsByKind = {
@@ -641,10 +695,10 @@ export const matchFilterRule = (
   rule: FilterRule
 ): boolean => getFilterSpec(field).match(field, recordValue, rule)
 
-export const formatFilterRuleValueText = (
+export const projectFilterRuleValue = (
   field: Field | undefined,
   rule: FilterRule
-): string => getFilterSpec(field).formatValueText(field, rule)
+): FilterValuePreview => getFilterSpec(field).projectValue(field, rule)
 
 export const setFilterRuleValue = (
   field: Field | undefined,

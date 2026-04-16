@@ -12,7 +12,8 @@ import { Menu } from '@shared/ui/menu'
 import { Popover } from '@shared/ui/popover'
 import type { VerticalReorderItemState } from '@shared/ui/vertical-reorder-list'
 import { cn } from '@shared/ui/utils'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
+import { useTranslation } from '@shared/i18n/react'
 import { buildChoiceToggleItems } from '@dataview/react/menu-builders'
 import {
   findSorterField,
@@ -33,11 +34,12 @@ export interface SortRuleRowProps {
 }
 
 export const SortRuleRow = (props: SortRuleRowProps) => {
+  const { t } = useTranslation()
   const [fieldOpen, setFieldOpen] = useState(false)
   const [directionOpen, setDirectionOpen] = useState(false)
   const field = findSorterField(props.fields, props.sorter)
   const availableFields = getAvailableSorterFieldsForIndex(props.fields, props.sorters, props.index)
-  const fieldLabel = field?.name ?? renderMessage(meta.ui.sort.deletedField)
+  const fieldLabel = field?.name ?? t(meta.ui.sort.deletedField)
   const fieldKind = field
     ? meta.field.kind.get(field.kind)
     : undefined
@@ -55,7 +57,7 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
         {...props.drag?.handle.attributes}
         {...props.drag?.handle.listeners}
         aria-label={props.drag
-          ? renderMessage(meta.ui.sort.reorder(fieldLabel))
+          ? t(meta.ui.sort.reorder(fieldLabel))
           : undefined}
         disabled={!props.drag}
         size="icon"
@@ -116,7 +118,7 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
         items={buildChoiceToggleItems({
           options: SORT_DIRECTIONS.map(direction => ({
             id: direction,
-            label: renderMessage(meta.sort.direction.get(direction).message)
+            label: t(meta.sort.direction.get(direction).token)
           })),
           value: props.sorter.direction,
           onSelect: direction => {
@@ -132,14 +134,14 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
             pressed={directionOpen}
             trailing={<ChevronDown className="size-4 shrink-0" size={16} strokeWidth={1.8} />}
           >
-            {renderMessage(meta.sort.direction.get(props.sorter.direction).message)}
+            {t(meta.sort.direction.get(props.sorter.direction).token)}
           </Button>
         )}
       />
 
       <Button
         size="icon"
-        aria-label={renderMessage(meta.ui.sort.remove)}
+        aria-label={t(meta.ui.sort.remove)}
         onClick={props.onRemove}
       >
         <X className="size-4" size={16} strokeWidth={1.8} />

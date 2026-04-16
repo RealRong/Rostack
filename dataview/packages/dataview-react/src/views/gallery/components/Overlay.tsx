@@ -93,7 +93,7 @@ export const Overlay = () => {
               property: {
                 list: 'flex flex-col gap-2',
                 item: 'min-w-0',
-                value: 'text-[13px] leading-6 text-foreground'
+                value: 'text-sm leading-6 text-foreground'
               }
             }}
             titleLeading={(

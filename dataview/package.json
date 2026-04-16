@@ -25,6 +25,7 @@
     "@dataview/table": "workspace:*",
     "@shared/core": "workspace:*",
     "@shared/dom": "workspace:*",
+    "@shared/i18n": "workspace:*",
     "@shared/react": "workspace:*",
     "@shared/ui": "workspace:*",
     "@date-fns/tz": "^1.4.1",

@@ -4,6 +4,7 @@ import type {
   ViewGroup
 } from '@dataview/core/contracts'
 import {
+  sameJsonValue,
   sameOrder
 } from '@shared/core'
 import {
@@ -29,8 +30,12 @@ import type {
 import {
   readQueryVisibleSet
 } from '@dataview/engine/contracts/internal'
+import {
+  tokenRef
+} from '@shared/i18n'
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
+const ROOT_SECTION_LABEL = tokenRef('dataview.systemValue', 'section.all')
 
 const sameBucket = (
   left: import('@dataview/engine/contracts/internal').SectionNodeState['bucket'],
@@ -41,7 +46,7 @@ const sameBucket = (
   }
 
   return left.key === right.key
-    && left.title === right.title
+    && sameJsonValue(left.label, right.label)
     && left.value === right.value
     && left.clearValue === right.clearValue
     && left.empty === right.empty
@@ -52,7 +57,7 @@ export const sameSectionNode = (
   left: import('@dataview/engine/contracts/internal').SectionNodeState,
   right: import('@dataview/engine/contracts/internal').SectionNodeState
 ) => left.key === right.key
-  && left.title === right.title
+  && sameJsonValue(left.label, right.label)
   && left.color === right.color
   && left.visible === right.visible
   && left.collapsed === right.collapsed
@@ -93,13 +98,13 @@ export const buildSectionNode = (input: {
 
   return {
     key: input.key,
-    title: bucket?.title ?? input.key,
+    label: bucket?.label ?? input.key,
     color: bucket?.color,
     ...(bucket
       ? {
           bucket: {
             key: bucket.key as SectionKey,
-            title: bucket.title,
+            label: bucket.label,
             value: bucket.value,
             clearValue: bucket.clearValue,
             empty: bucket.empty,
@@ -140,7 +145,7 @@ export const buildSectionState = (input: {
   if (!input.view.group) {
     const root = {
       key: ROOT_SECTION_KEY,
-      title: 'All',
+      label: ROOT_SECTION_LABEL,
       recordIds: input.query.records.visible,
       visible: true,
       collapsed: false

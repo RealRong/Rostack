@@ -28,6 +28,7 @@ export type NodeFieldPatch = {
   layer?: NodeLayer
   zIndex?: number
   groupId?: GroupId
+  mindmapId?: NodeId
   locked?: boolean
 }
 

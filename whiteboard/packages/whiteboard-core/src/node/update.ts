@@ -18,7 +18,6 @@ export type NodeUpdateImpact = {
   geometry: boolean
   list: boolean
   value: boolean
-  mindmapView: boolean
 }
 
 const NODE_FIELD_KEYS: Array<keyof NodeFieldPatch> = [
@@ -28,6 +27,7 @@ const NODE_FIELD_KEYS: Array<keyof NodeFieldPatch> = [
   'layer',
   'zIndex',
   'groupId',
+  'mindmapId',
   'locked'
 ]
 
@@ -40,7 +40,8 @@ const NODE_GEOMETRY_KEYS = new Set<keyof NodeFieldPatch>([
 const NODE_LIST_KEYS = new Set<keyof NodeFieldPatch>([
   'layer',
   'zIndex',
-  'groupId'
+  'groupId',
+  'mindmapId'
 ])
 
 const NODE_VALUE_KEYS = new Set<keyof NodeFieldPatch>([
@@ -51,11 +52,6 @@ const hasOwn = <T extends object>(
   target: T,
   key: PropertyKey
 ) => Object.prototype.hasOwnProperty.call(target, key)
-
-const isMindmapDataPath = (path?: string) =>
-  !path
-  || path === 'mindmap'
-  || path.startsWith('mindmap.')
 
 const applyFieldPatch = (
   fields?: NodeFieldPatch
@@ -301,8 +297,7 @@ export const classifyNodeUpdate = (
   const impact: NodeUpdateImpact = {
     geometry: false,
     list: false,
-    value: false,
-    mindmapView: false
+    value: false
   }
 
   for (const key of NODE_FIELD_KEYS) {
@@ -324,9 +319,6 @@ export const classifyNodeUpdate = (
 
   for (const record of update.records ?? []) {
     impact.value = true
-    if (record.scope === 'data' && isMindmapDataPath(record.path)) {
-      impact.mindmapView = true
-    }
   }
 
   return impact

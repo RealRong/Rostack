@@ -1,13 +1,15 @@
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
-import { meta, renderMessage } from '@dataview/meta'
+import { meta } from '@dataview/meta'
 import { useDataView } from '@dataview/react/dataview'
 import { Button } from '@shared/ui/button'
 import { Popover } from '@shared/ui/popover'
+import { useTranslation } from '@shared/i18n/react'
 import { CREATE_VIEW_ITEMS, type CreateViewItem } from '@dataview/react/page/features/createView/catalog'
 import { ViewTypeCard } from '@dataview/react/page/features/createView/ViewTypeCard'
 
 export const CreateViewPopover = () => {
+  const { t } = useTranslation()
   const dataView = useDataView()
   const [open, setOpen] = useState(false)
 
@@ -17,7 +19,7 @@ export const CreateViewPopover = () => {
     }
 
     const viewId = dataView.engine.views.create({
-      name: renderMessage(item.label),
+      name: t(item.label),
       type: item.type
     })
     if (!viewId) {
@@ -39,7 +41,7 @@ export const CreateViewPopover = () => {
         <Button
           size="icon"
           pressed={open}
-          aria-label={renderMessage(meta.ui.toolbar.newView)}
+          aria-label={t(meta.ui.toolbar.newView)}
         >
           <Plus className="size-4" size={15} strokeWidth={1} />
         </Button>
@@ -52,7 +54,7 @@ export const CreateViewPopover = () => {
         <div className="flex flex-col gap-5 p-4">
           <div className="space-y-1">
             <h3 className="text-sm text-muted-foreground">
-              {renderMessage(meta.ui.toolbar.createView.title)}
+              {t(meta.ui.toolbar.createView.title)}
             </h3>
           </div>
 

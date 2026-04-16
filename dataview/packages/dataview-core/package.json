@@ -27,6 +27,7 @@
   "dependencies": {
     "@date-fns/tz": "^1.4.1",
     "@shared/core": "workspace:*",
+    "@shared/i18n": "workspace:*",
     "date-fns": "^4.1.0"
   },
   "files": [

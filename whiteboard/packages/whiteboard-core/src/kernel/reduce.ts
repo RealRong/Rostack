@@ -39,17 +39,11 @@ type EdgeImpactState = {
   value: boolean
 }
 
-type MindmapImpactState = {
-  ids: Set<NodeId>
-  view: boolean
-}
-
 type ReadImpactState = {
   full: boolean
   document: boolean
   node: NodeImpactState
   edge: EdgeImpactState
-  mindmap: MindmapImpactState
 }
 
 type ReduceDraft = {
@@ -93,26 +87,12 @@ const EDGE_VALUE_KEYS = new Set<keyof EdgePatch>([
   'data'
 ])
 
-const isMindmapNode = (node: Node | undefined) =>
-  node?.type === 'mindmap'
-
-const isCanvasNode = (node: Node | undefined) =>
-  Boolean(node && node.type !== 'mindmap')
-
 const addNodeId = (ids: Set<NodeId>, id: NodeId) => {
   ids.add(id)
 }
 
 const addEdgeId = (ids: Set<EdgeId>, id: EdgeId) => {
   ids.add(id)
-}
-
-const markMindmapView = (
-  state: MindmapImpactState,
-  id: NodeId
-) => {
-  state.ids.add(id)
-  state.view = true
 }
 
 const toEdgeSnapshotPatch = (
@@ -166,10 +146,6 @@ const createReadImpactState = (operationCount: number): ReadImpactState => ({
     geometry: false,
     list: false,
     value: false
-  },
-  mindmap: {
-    ids: new Set<NodeId>(),
-    view: false
   }
 })
 
@@ -186,11 +162,6 @@ const trackReadImpact = (
       return
     }
     case 'node.create': {
-      if (isMindmapNode(operation.node)) {
-        markMindmapView(state.mindmap, operation.node.id)
-        return
-      }
-
       const { node } = state
       node.geometry = true
       node.list = true
@@ -199,12 +170,6 @@ const trackReadImpact = (
       return
     }
     case 'node.delete': {
-      const before = getNode(document, operation.id)
-      if (isMindmapNode(before)) {
-        markMindmapView(state.mindmap, operation.id)
-        return
-      }
-
       const { node } = state
       node.geometry = true
       node.list = true
@@ -219,21 +184,15 @@ const trackReadImpact = (
       }
       const impact = classifyNodeUpdate(operation.update)
 
-      if (isCanvasNode(before)) {
-        const { node } = state
-        node.geometry ||= impact.geometry
-        node.list ||= impact.list
-        node.value ||= impact.value
-        if (impact.geometry || impact.list || impact.value) {
-          addNodeId(node.ids, operation.id)
-        }
+      const { node } = state
+      node.geometry ||= impact.geometry
+      node.list ||= impact.list
+      node.value ||= impact.value
+      if (impact.geometry || impact.list || impact.value) {
+        addNodeId(node.ids, operation.id)
       }
 
-      if (isMindmapNode(before) && impact.mindmapView) {
-        markMindmapView(state.mindmap, operation.id)
-      }
-
-      if (impact.geometry && isCanvasNode(before)) {
+      if (impact.geometry) {
         state.edge.geometry = true
         addNodeId(state.edge.nodeIds, operation.id)
       }
@@ -271,7 +230,6 @@ const trackReadImpact = (
     case 'canvas.order.set': {
       state.node.list = true
       state.edge.list = true
-      state.mindmap.view = true
       return
     }
   }
@@ -284,8 +242,7 @@ const finalizeReadImpact = (
     state.full ||
     state.node.ids.size > DEFAULT_MAX_IDS ||
     state.edge.ids.size > DEFAULT_MAX_IDS ||
-    state.edge.nodeIds.size > DEFAULT_MAX_IDS ||
-    state.mindmap.ids.size > DEFAULT_MAX_IDS
+    state.edge.nodeIds.size > DEFAULT_MAX_IDS
   ) {
     return {
       reset: true,
@@ -302,10 +259,6 @@ const finalizeReadImpact = (
         geometry: false,
         list: false,
         value: false
-      },
-      mindmap: {
-        ids: EMPTY_NODE_IDS,
-        view: false
       }
     }
   }
@@ -325,10 +278,6 @@ const finalizeReadImpact = (
       geometry: state.edge.geometry,
       list: state.edge.list,
       value: state.edge.value
-    },
-    mindmap: {
-      ids: Array.from(state.mindmap.ids),
-      view: state.mindmap.view
     }
   }
 }

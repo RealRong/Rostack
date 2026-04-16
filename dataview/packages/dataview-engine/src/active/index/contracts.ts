@@ -157,13 +157,10 @@ export interface IndexReadContext {
   fieldIdSet: ReadonlySet<FieldId>
 }
 
-export interface IndexImpactView extends FieldSyncContext {
+export interface IndexDeriveContext extends IndexReadContext, FieldSyncContext {
+  impact: CommitImpact
   touchedFields: ReadonlySet<FieldId> | 'all'
   changed: boolean
-}
-
-export interface IndexDeriveContext extends IndexReadContext {
-  impact: IndexImpactView
 }
 
 export interface IndexDeriveResult {

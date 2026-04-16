@@ -120,8 +120,8 @@ const shouldRebuildRecordIndex = (
   impact: CommitImpact,
   context: IndexDeriveContext
 ): boolean => impact.reset
-  || context.impact.touchedRecords === 'all'
-  || context.impact.valueFields === 'all'
+  || context.touchedRecords === 'all'
+  || context.valueFields === 'all'
 
 export const buildRecordIndex = (
   context: IndexReadContext,
@@ -144,7 +144,7 @@ export const syncRecordIndex = (
   impact: CommitImpact,
   fieldIds: readonly FieldId[] = previous.fieldIds
 ): RecordIndex => {
-  if (!context.impact.changed) {
+  if (!context.changed) {
     return previous
   }
 
@@ -156,7 +156,7 @@ export const syncRecordIndex = (
     return buildRecordIndex(context, nextFieldIds, previous.rev + 1)
   }
 
-  const touchedRecords = context.impact.touchedRecords
+  const touchedRecords = context.touchedRecords
   if (touchedRecords === 'all') {
     return buildRecordIndex(context, nextFieldIds, previous.rev + 1)
   }
@@ -184,8 +184,8 @@ export const syncRecordIndex = (
   }
 
   let fieldsToSync = nextFieldIds
-  const touchedFields = context.impact.touchedFields
-  if (!context.impact.recordSetChanged && touchedFields !== 'all') {
+  const touchedFields = context.touchedFields
+  if (!context.recordSetChanged && touchedFields !== 'all') {
     fieldsToSync = nextFieldIds.filter(fieldId => touchedFields.has(fieldId))
   }
 

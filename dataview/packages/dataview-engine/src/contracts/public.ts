@@ -552,6 +552,7 @@ export interface CommitTrace {
   kind: 'dispatch' | 'undo' | 'redo' | 'replace'
   timings: {
     totalMs: number
+    planMs?: number
     commitMs?: number
     indexMs?: number
     viewMs?: number
@@ -596,6 +597,7 @@ export interface PerformanceStats {
   }
   timings: {
     totalMs: RunningStat
+    planMs: RunningStat
     indexMs: RunningStat
     viewMs: RunningStat
   }

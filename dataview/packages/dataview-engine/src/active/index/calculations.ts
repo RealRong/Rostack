@@ -112,24 +112,24 @@ export const syncCalculationIndex = (
   context: IndexDeriveContext,
   records: RecordIndex
 ): CalculationIndex => {
-  if (!context.impact.changed || !previous.fields.size) {
+  if (!context.changed || !previous.fields.size) {
     return previous
   }
 
   const fields = createMapPatchBuilder(previous.fields)
 
   previous.fields.forEach((previousField, fieldId) => {
-    if (shouldDropFieldIndex(id => context.fieldIdSet.has(id), context.impact, fieldId)) {
+    if (shouldDropFieldIndex(id => context.fieldIdSet.has(id), context, fieldId)) {
       fields.delete(fieldId)
       return
     }
 
-    if (shouldRebuildFieldIndex(context.impact, fieldId)) {
+    if (shouldRebuildFieldIndex(context, fieldId)) {
       fields.set(fieldId, buildFieldCalcIndex(context, records, fieldId))
       return
     }
 
-    if (!shouldSyncFieldIndex(context.impact, fieldId)) {
+    if (!shouldSyncFieldIndex(context, fieldId)) {
       return
     }
 
@@ -141,7 +141,7 @@ export const syncCalculationIndex = (
     const entries = createMapPatchBuilder(previousField.entries)
     const aggregate = createAggregateBuilder(previousField.global)
 
-    context.impact.touchedRecords.forEach(recordId => {
+    context.touchedRecords.forEach(recordId => {
       const previousEntry = previousField.entries.get(recordId)
       const row = records.byId[recordId]
       const nextEntry = row

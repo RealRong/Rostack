@@ -256,6 +256,75 @@ export const buildAggregateState = (
   }
 }
 
+export const buildAggregateStateForRecordIds = (input: {
+  recordIds: readonly RecordId[]
+  entries: ReadonlyMap<RecordId, AggregateEntry>
+}): AggregateState => {
+  if (!input.recordIds.length || !input.entries.size) {
+    return buildAggregateState(new Map())
+  }
+
+  let count = 0
+  let nonEmpty = 0
+  let sum = 0
+  let hasNumber = false
+  const distribution = new Map<string, number>()
+  const uniqueCounts = new Map<string, number>()
+  const numberCounts = new Map<number, number>()
+  const optionCounts = new Map<string, number>()
+  let min: number | string | null | undefined
+  let max: number | string | null | undefined
+
+  for (const recordId of input.recordIds) {
+    const entry = input.entries.get(recordId)
+    if (!entry) {
+      continue
+    }
+
+    count += 1
+    if (entry.empty) {
+      continue
+    }
+
+    nonEmpty += 1
+    if (entry.label) {
+      distribution.set(entry.label, (distribution.get(entry.label) ?? 0) + 1)
+    }
+    if (entry.uniqueKey) {
+      uniqueCounts.set(entry.uniqueKey, (uniqueCounts.get(entry.uniqueKey) ?? 0) + 1)
+    }
+    if (entry.number !== undefined) {
+      sum += entry.number
+      hasNumber = true
+      numberCounts.set(entry.number, (numberCounts.get(entry.number) ?? 0) + 1)
+    }
+    entry.optionIds?.forEach(optionId => {
+      optionCounts.set(optionId, (optionCounts.get(optionId) ?? 0) + 1)
+    })
+    if (entry.comparable !== undefined) {
+      if (typeof entry.comparable === 'number') {
+        min = min === undefined ? entry.comparable : Math.min(min as number, entry.comparable)
+        max = max === undefined ? entry.comparable : Math.max(max as number, entry.comparable)
+      } else {
+        min = min === undefined ? entry.comparable : String(min) < entry.comparable ? min : entry.comparable
+        max = max === undefined ? entry.comparable : String(max) > entry.comparable ? max : entry.comparable
+      }
+    }
+  }
+
+  return {
+    count,
+    nonEmpty,
+    ...(hasNumber ? { sum } : {}),
+    ...(min !== undefined ? { min } : {}),
+    ...(max !== undefined ? { max } : {}),
+    distribution,
+    uniqueCounts,
+    numberCounts,
+    optionCounts
+  }
+}
+
 export const buildSectionAggregateState = (
   entries: ReadonlyMap<RecordId, AggregateEntry>
 ): SectionAggregateState => ({

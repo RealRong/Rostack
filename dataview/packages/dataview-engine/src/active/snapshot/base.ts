@@ -1,6 +1,5 @@
 import type {
   CustomField,
-  DataDoc,
   Field,
   FieldId,
   FilterRule,
@@ -41,27 +40,31 @@ import {
   sameOptionalProjection
 } from '@dataview/engine/active/snapshot/reuse'
 import {
-  createStaticDocumentReader,
   type DocumentReader
 } from '@dataview/engine/document/reader'
-
-const resolveFieldsById = (
-  reader: DocumentReader
-): ReadonlyMap<FieldId, Field> => new Map(
-  reader.fields.list().map(field => [field.id, field] as const)
-)
 
 const createFields = (input: {
   fieldIds: readonly FieldId[]
   byId: ReadonlyMap<FieldId, Field>
 }): FieldList => {
-  const all = input.fieldIds.flatMap(fieldId => {
+  const all: Field[] = []
+  const ids: FieldId[] = []
+  const custom: CustomField[] = []
+  const visibleById = new Map<FieldId, Field>()
+
+  input.fieldIds.forEach(fieldId => {
     const field = input.byId.get(fieldId)
-    return field ? [field] : []
+    if (!field) {
+      return
+    }
+
+    all.push(field)
+    ids.push(field.id)
+    visibleById.set(field.id, field)
+    if (isCustomField(field)) {
+      custom.push(field)
+    }
   })
-  const ids = all.map(field => field.id)
-  const custom = all.filter(isCustomField) as readonly CustomField[]
-  const visibleById = new Map(all.map(field => [field.id, field] as const))
   const fields = createOrderedKeyedListCollection({
     ids,
     all,
@@ -259,7 +262,8 @@ const equalGroupProjection = (
 ))
 
 export const publishViewBase = (input: {
-  document: DataDoc
+  reader: DocumentReader
+  fieldsById: ReadonlyMap<FieldId, Field>
   viewId?: ViewId
   previous?: {
     view?: View
@@ -271,9 +275,8 @@ export const publishViewBase = (input: {
   query?: ActiveViewQuery
   fields?: FieldList
 } => {
-  const reader = createStaticDocumentReader(input.document)
   const view = input.viewId
-    ? reader.views.get(input.viewId)
+    ? input.reader.views.get(input.viewId)
     : undefined
   if (!view || !input.viewId) {
     return {
@@ -283,23 +286,22 @@ export const publishViewBase = (input: {
     }
   }
 
-  const fieldsById = resolveFieldsById(reader)
   const nextSearch = createSearchProjection(view.search)
   const nextFilter = createFilterProjection({
     view,
-    fieldsById
+    fieldsById: input.fieldsById
   })
   const nextSort = createSortProjection({
     view,
-    fieldsById
+    fieldsById: input.fieldsById
   })
   const nextGroup = createGroupProjection({
     view,
-    fieldsById
+    fieldsById: input.fieldsById
   })
   const nextFields = createFields({
     fieldIds: view.display.fields,
-    byId: fieldsById
+    byId: input.fieldsById
   })
 
   return {

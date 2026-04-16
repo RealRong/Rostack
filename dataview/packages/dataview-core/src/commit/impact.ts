@@ -17,6 +17,10 @@ import {
   getDocumentActiveViewId
 } from '@dataview/core/document'
 
+const EMPTY_FIELD_IDS = new Set<FieldId>()
+const EMPTY_RECORD_IDS = new Set<RecordId>()
+const EMPTY_VIEW_IDS = new Set<ViewId>()
+
 const setSize = <T>(
   value: ReadonlySet<T> | 'all' | undefined
 ): number => value === 'all'
@@ -63,6 +67,12 @@ export const createResetCommitImpact = (
     records: {
       touched: 'all',
       valueChangedFields: 'all'
+    },
+    fields: {
+      touched: 'all'
+    },
+    views: {
+      touched: 'all'
     },
     ...(beforeActiveViewId === afterActiveViewId
       ? {}
@@ -111,6 +121,8 @@ export const finalizeCommitImpact = (
   if (impact.fields) {
     impact.fields.inserted = cleanupPlainSet(impact.fields.inserted)
     impact.fields.removed = cleanupPlainSet(impact.fields.removed)
+    impact.fields.schemaTouched = cleanupPlainSet(impact.fields.schemaTouched)
+    impact.fields.touched = cleanupSet(impact.fields.touched)
 
     impact.fields.schema?.forEach((aspects, fieldId) => {
       if (!aspects.size) {
@@ -119,7 +131,13 @@ export const finalizeCommitImpact = (
     })
     impact.fields.schema = cleanupMap(impact.fields.schema)
 
-    if (!impact.fields.inserted && !impact.fields.removed && !impact.fields.schema) {
+    if (
+      !impact.fields.inserted
+      && !impact.fields.removed
+      && !impact.fields.schema
+      && !impact.fields.schemaTouched
+      && !impact.fields.touched
+    ) {
       impact.fields = undefined
     }
   }
@@ -127,6 +145,7 @@ export const finalizeCommitImpact = (
   if (impact.views) {
     impact.views.inserted = cleanupPlainSet(impact.views.inserted)
     impact.views.removed = cleanupPlainSet(impact.views.removed)
+    impact.views.touched = cleanupSet(impact.views.touched)
 
     impact.views.changed?.forEach((change, viewId) => {
       change.queryAspects = cleanupPlainSet(change.queryAspects)
@@ -138,7 +157,7 @@ export const finalizeCommitImpact = (
     })
     impact.views.changed = cleanupMap(impact.views.changed)
 
-    if (!impact.views.inserted && !impact.views.removed && !impact.views.changed) {
+    if (!impact.views.inserted && !impact.views.removed && !impact.views.changed && !impact.views.touched) {
       impact.views = undefined
     }
   }
@@ -203,11 +222,14 @@ export const hasViewQueryImpact = (
 
 export const collectSchemaFieldIds = (
   impact: CommitImpact
-): ReadonlySet<FieldId> => new Set<FieldId>(
-  impact.fields?.schema
-    ? Array.from(impact.fields.schema.keys())
-    : []
-)
+): ReadonlySet<FieldId> => impact.reset
+  ? EMPTY_FIELD_IDS
+  : impact.fields?.schemaTouched
+    ?? (
+      impact.fields?.schema?.size
+        ? new Set<FieldId>(impact.fields.schema.keys())
+        : EMPTY_FIELD_IDS
+    )
 
 export const collectValueFieldIds = (
   impact: CommitImpact,
@@ -219,9 +241,11 @@ export const collectValueFieldIds = (
     return 'all'
   }
 
-  const ids = new Set<FieldId>(impact.records?.valueChangedFields ?? [])
+  const ids = impact.records?.valueChangedFields ?? EMPTY_FIELD_IDS
   if (options?.includeTitlePatch && impact.records?.titleChanged?.size) {
-    ids.add(TITLE_FIELD_ID)
+    const next = new Set<FieldId>(ids)
+    next.add(TITLE_FIELD_ID)
+    return next
   }
 
   return ids
@@ -233,8 +257,16 @@ export const collectTouchedFieldIds = (
     includeTitlePatch?: boolean
   }
 ): ReadonlySet<FieldId> | 'all' => {
-  if (impact.reset) {
+  if (impact.reset || impact.fields?.touched === 'all') {
     return 'all'
+  }
+
+  if (options?.includeTitlePatch && impact.fields?.touched) {
+    return impact.fields.touched
+  }
+
+  if (impact.fields?.touched) {
+    return impact.fields.touched
   }
 
   const valueFields = collectValueFieldIds(impact, {
@@ -257,13 +289,25 @@ export const collectTouchedRecordIds = (
     return 'all'
   }
 
-  const ids = new Set<RecordId>()
-  impact.records?.inserted?.forEach(recordId => ids.add(recordId))
-  impact.records?.removed?.forEach(recordId => ids.add(recordId))
-  impact.records?.touched?.forEach(recordId => ids.add(recordId))
-  impact.records?.patched?.forEach((_aspects, recordId) => ids.add(recordId))
-  impact.records?.titleChanged?.forEach(recordId => ids.add(recordId))
-  return ids
+  if (impact.records?.touched) {
+    return impact.records.touched
+  }
+
+  if (
+    !impact.records?.inserted?.size
+    && !impact.records?.removed?.size
+    && !impact.records?.patched?.size
+    && !impact.records?.titleChanged?.size
+  ) {
+    return EMPTY_RECORD_IDS
+  }
+
+  const touched = new Set<RecordId>()
+  impact.records?.inserted?.forEach(recordId => touched.add(recordId))
+  impact.records?.removed?.forEach(recordId => touched.add(recordId))
+  impact.records?.patched?.forEach((_, recordId) => touched.add(recordId))
+  impact.records?.titleChanged?.forEach(recordId => touched.add(recordId))
+  return touched
 }
 
 export const collectTouchedViewIds = (
@@ -273,11 +317,23 @@ export const collectTouchedViewIds = (
     return 'all'
   }
 
-  const ids = new Set<ViewId>()
-  impact.views?.inserted?.forEach(viewId => ids.add(viewId))
-  impact.views?.removed?.forEach(viewId => ids.add(viewId))
-  impact.views?.changed?.forEach((_change, viewId) => ids.add(viewId))
-  return ids
+  if (impact.views?.touched) {
+    return impact.views.touched
+  }
+
+  if (
+    !impact.views?.inserted?.size
+    && !impact.views?.removed?.size
+    && !impact.views?.changed?.size
+  ) {
+    return EMPTY_VIEW_IDS
+  }
+
+  const touched = new Set<ViewId>()
+  impact.views?.inserted?.forEach(viewId => touched.add(viewId))
+  impact.views?.removed?.forEach(viewId => touched.add(viewId))
+  impact.views?.changed?.forEach((_, viewId) => touched.add(viewId))
+  return touched
 }
 
 export const hasRecordSetChange = (

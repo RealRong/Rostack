@@ -8,6 +8,7 @@ import type {
   Engine
 } from '@dataview/engine/contracts/public'
 import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
+import { now } from '@dataview/engine/runtime/clock'
 import { createActiveViewApi } from '@dataview/engine/api/active'
 import { createDocumentSelectApi } from '@dataview/engine/api/documentSelect'
 import { createFieldsApi } from '@dataview/engine/api/fields'
@@ -36,14 +37,28 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     perf: performance,
     capturePerf: capturePerformance
   })
-  const dispatch = (action: Action | readonly Action[]) => write.run(
-    planActions({
+  const dispatch = (action: Action | readonly Action[]) => {
+    const actions = Array.isArray(action)
+      ? action
+      : [action]
+    if (!capturePerformance) {
+      return write.run(planActions({
+        document: store.get().doc,
+        actions
+      }))
+    }
+
+    const planStart = now()
+    const batch = planActions({
       document: store.get().doc,
-      actions: Array.isArray(action)
-        ? action
-        : [action]
+      actions
     })
-  )
+
+    return write.run({
+      ...batch,
+      planMs: now() - planStart
+    })
+  }
   const fields = createFieldsApi({
     select,
     dispatch

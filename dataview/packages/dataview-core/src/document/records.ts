@@ -13,6 +13,9 @@ import type {
   RecordFieldWriteManyOperationInput
 } from '@dataview/core/contracts/operations'
 import {
+  sameJsonValue
+} from '@shared/core'
+import {
   createEntityOverlay,
   getEntityTableById,
   getEntityTableIds,
@@ -29,22 +32,54 @@ export interface RecordEntry {
   index: number
 }
 
+export interface AppliedDocumentRecordFieldWrite {
+  recordId: RecordId
+  changedFields: readonly FieldId[]
+  restoreSet?: Partial<Record<FieldId, unknown>>
+  restoreClear?: readonly FieldId[]
+}
+
+export interface DocumentRecordFieldWriteResult {
+  document: DataDoc
+  changes: readonly AppliedDocumentRecordFieldWrite[]
+}
+
 interface CompiledRecordFieldWrite {
   setEntries: readonly [FieldId, unknown][]
   clear: readonly FieldId[]
 }
 
+interface CompiledRecordFieldWriteResult {
+  nextRecord: DataRecord
+  changedFields: readonly FieldId[]
+  restoreSet?: Partial<Record<FieldId, unknown>>
+  restoreClear?: readonly FieldId[]
+}
+
 const hasOwn = (value: Record<string, unknown>, key: string) => Object.prototype.hasOwnProperty.call(value, key)
+
+const EMPTY_FIELD_IDS = [] as readonly FieldId[]
+const EMPTY_RECORD_FIELD_WRITES = [] as readonly AppliedDocumentRecordFieldWrite[]
 
 const compileRecordFieldWrite = (
   write: Pick<RecordFieldWriteManyOperationInput, 'set' | 'clear'>
 ): CompiledRecordFieldWrite | undefined => {
-  const setEntries = Object.entries(write.set ?? {}) as [FieldId, unknown][]
-  const clear = [...new Set(write.clear ?? [])]
+  const nextSetEntries: [FieldId, unknown][] = []
+  const clearSet = new Set<FieldId>(write.clear ?? [])
 
-  return setEntries.length || clear.length
+  for (const [fieldId, value] of Object.entries(write.set ?? {}) as [FieldId, unknown][]) {
+    if (value === undefined) {
+      clearSet.add(fieldId)
+      continue
+    }
+    nextSetEntries.push([fieldId, value])
+  }
+
+  const clear = Array.from(clearSet)
+
+  return nextSetEntries.length || clear.length
     ? {
-        setEntries,
+        setEntries: nextSetEntries,
         clear
       }
     : undefined
@@ -53,11 +88,35 @@ const compileRecordFieldWrite = (
 const applyCompiledRecordFieldWrite = (
   record: DataRecord,
   write: CompiledRecordFieldWrite
-): DataRecord => {
+): CompiledRecordFieldWriteResult | undefined => {
   let nextTitle = record.title
   let titleChanged = false
   let nextValues = record.values
   let valuesChanged = false
+  let restoreSet: Partial<Record<FieldId, unknown>> | undefined
+  let restoreClear: FieldId[] | undefined
+  let changedFields: FieldId[] | undefined
+
+  const markChanged = (fieldId: FieldId) => {
+    if (!changedFields) {
+      changedFields = []
+    }
+    changedFields.push(fieldId)
+  }
+
+  const rememberRestoreValue = (fieldId: FieldId, value: unknown) => {
+    if (!restoreSet) {
+      restoreSet = {}
+    }
+    restoreSet[fieldId] = value
+  }
+
+  const rememberRestoreClear = (fieldId: FieldId) => {
+    if (!restoreClear) {
+      restoreClear = []
+    }
+    restoreClear.push(fieldId)
+  }
 
   const clearValue = (fieldId: FieldId) => {
     if (fieldId === TITLE_FIELD_ID) {
@@ -65,6 +124,12 @@ const applyCompiledRecordFieldWrite = (
         return
       }
 
+      markChanged(fieldId)
+      if (record.title === '') {
+        rememberRestoreClear(fieldId)
+      } else {
+        rememberRestoreValue(fieldId, record.title)
+      }
       nextTitle = ''
       titleChanged = true
       return
@@ -74,6 +139,8 @@ const applyCompiledRecordFieldWrite = (
       return
     }
 
+    markChanged(fieldId)
+    rememberRestoreValue(fieldId, record.values[fieldId])
     if (!valuesChanged) {
       nextValues = { ...nextValues }
       valuesChanged = true
@@ -94,15 +161,29 @@ const applyCompiledRecordFieldWrite = (
         return
       }
 
+      markChanged(fieldId)
+      if (record.title === '') {
+        rememberRestoreClear(fieldId)
+      } else {
+        rememberRestoreValue(fieldId, record.title)
+      }
       nextTitle = nextValue
       titleChanged = true
       return
     }
 
-    if (hasOwn(nextValues, fieldId) && Object.is(nextValues[fieldId], value)) {
+    const beforeHas = hasOwn(record.values, fieldId)
+    const beforeValue = record.values[fieldId]
+    if (beforeHas && sameJsonValue(beforeValue, value)) {
       return
     }
 
+    if (!beforeHas) {
+      rememberRestoreClear(fieldId)
+    } else {
+      rememberRestoreValue(fieldId, beforeValue)
+    }
+    markChanged(fieldId)
     if (!valuesChanged) {
       nextValues = { ...nextValues }
       valuesChanged = true
@@ -113,17 +194,26 @@ const applyCompiledRecordFieldWrite = (
 
   write.clear.forEach(clearValue)
 
-  if (!titleChanged && !valuesChanged) {
-    return record
+  if (!changedFields?.length) {
+    return undefined
   }
 
   return {
-    ...record,
-    ...(titleChanged
-      ? { title: nextTitle }
+    nextRecord: {
+      ...record,
+      ...(titleChanged
+        ? { title: nextTitle }
+        : {}),
+      ...(valuesChanged
+        ? { values: nextValues }
+        : {})
+    },
+    changedFields,
+    ...(restoreSet
+      ? { restoreSet }
       : {}),
-    ...(valuesChanged
-      ? { values: nextValues }
+    ...(restoreClear?.length
+      ? { restoreClear }
       : {})
   }
 }
@@ -134,13 +224,16 @@ const applyRecordFieldWriteEntries = (
     recordId: RecordId
     write: CompiledRecordFieldWrite
   }[]
-): DataDoc => {
+): DocumentRecordFieldWriteResult => {
   if (!entries.length) {
-    return document
+    return {
+      document,
+      changes: EMPTY_RECORD_FIELD_WRITES
+    }
   }
 
   let nextById: Record<RecordId, DataRecord> | undefined
-  let changed = false
+  const changes: AppliedDocumentRecordFieldWrite[] = []
 
   entries.forEach(entry => {
     const current = document.records.byId[entry.recordId]
@@ -148,8 +241,8 @@ const applyRecordFieldWriteEntries = (
       return
     }
 
-    const nextRecord = applyCompiledRecordFieldWrite(current, entry.write)
-    if (nextRecord === current) {
+    const applied = applyCompiledRecordFieldWrite(current, entry.write)
+    if (!applied) {
       return
     }
 
@@ -157,18 +250,33 @@ const applyRecordFieldWriteEntries = (
       nextById = createEntityOverlay(document.records)
     }
 
-    nextById[entry.recordId] = nextRecord
-    changed = true
+    nextById[entry.recordId] = applied.nextRecord
+    changes.push({
+      recordId: entry.recordId,
+      changedFields: applied.changedFields,
+      ...(applied.restoreSet
+        ? { restoreSet: applied.restoreSet }
+        : {}),
+      ...(applied.restoreClear?.length
+        ? { restoreClear: applied.restoreClear }
+        : {})
+    })
   })
 
-  if (!changed || !nextById) {
-    return document
+  if (!changes.length || !nextById) {
+    return {
+      document,
+      changes: EMPTY_RECORD_FIELD_WRITES
+    }
   }
 
-  return replaceDocumentTable(document, 'records', {
-    byId: nextById,
-    order: document.records.order
-  })
+  return {
+    document: replaceDocumentTable(document, 'records', {
+      byId: nextById,
+      order: document.records.order
+    }),
+    changes
+  }
 }
 
 export const enumerateRecords = (
@@ -298,21 +406,65 @@ export const writeDocumentRecordFieldsMany = (
       recordId,
       write
     }))
-  )
+  ).document
 }
 
 export const restoreDocumentRecordFieldsMany = (
   document: DataDoc,
   entries: readonly DocumentRecordFieldRestoreEntry[]
-): DataDoc => applyRecordFieldWriteEntries(
-  document,
-  entries.flatMap(entry => {
+): DataDoc => restoreDocumentRecordFieldsManyWithChanges(document, entries).document
+
+export const writeDocumentRecordFieldsManyWithChanges = (
+  document: DataDoc,
+  input: RecordFieldWriteManyOperationInput
+): DocumentRecordFieldWriteResult => {
+  const write = compileRecordFieldWrite(input)
+  if (!write || !input.recordIds.length) {
+    return {
+      document,
+      changes: EMPTY_RECORD_FIELD_WRITES
+    }
+  }
+
+  const writeEntries = new Array<{
+    recordId: RecordId
+    write: CompiledRecordFieldWrite
+  }>(input.recordIds.length)
+  for (let index = 0; index < input.recordIds.length; index += 1) {
+    writeEntries[index] = {
+      recordId: input.recordIds[index]!,
+      write
+    }
+  }
+
+  return applyRecordFieldWriteEntries(document, writeEntries)
+}
+
+export const restoreDocumentRecordFieldsManyWithChanges = (
+  document: DataDoc,
+  entries: readonly DocumentRecordFieldRestoreEntry[]
+): DocumentRecordFieldWriteResult => {
+  if (!entries.length) {
+    return {
+      document,
+      changes: EMPTY_RECORD_FIELD_WRITES
+    }
+  }
+
+  const writeEntries: {
+    recordId: RecordId
+    write: CompiledRecordFieldWrite
+  }[] = []
+  for (const entry of entries) {
     const write = compileRecordFieldWrite(entry)
-    return write
-      ? [{
-          recordId: entry.recordId,
-          write
-        }]
-      : []
-  })
-)
+    if (!write) {
+      continue
+    }
+    writeEntries.push({
+      recordId: entry.recordId,
+      write
+    })
+  }
+
+  return applyRecordFieldWriteEntries(document, writeEntries)
+}

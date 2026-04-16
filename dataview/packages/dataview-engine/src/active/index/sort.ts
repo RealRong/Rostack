@@ -204,24 +204,24 @@ export const syncSortIndex = (
   context: IndexDeriveContext,
   records: RecordIndex
 ): SortIndex => {
-  if (!context.impact.changed || !previous.fields.size) {
+  if (!context.changed || !previous.fields.size) {
     return previous
   }
 
   const fields = createMapPatchBuilder(previous.fields)
 
   previous.fields.forEach((previousField, fieldId) => {
-    if (shouldDropFieldIndex(id => context.fieldIdSet.has(id), context.impact, fieldId)) {
+    if (shouldDropFieldIndex(id => context.fieldIdSet.has(id), context, fieldId)) {
       fields.delete(fieldId)
       return
     }
 
-    if (shouldRebuildFieldIndex(context.impact, fieldId)) {
+    if (shouldRebuildFieldIndex(context, fieldId)) {
       fields.set(fieldId, buildFieldSortIndex(context, records, fieldId))
       return
     }
 
-    if (!shouldSyncFieldIndex(context.impact, fieldId)) {
+    if (!shouldSyncFieldIndex(context, fieldId)) {
       return
     }
 
@@ -230,7 +230,7 @@ export const syncSortIndex = (
       context,
       records,
       fieldId,
-      touchedRecords: context.impact.touchedRecords
+      touchedRecords: context.touchedRecords
     })
     if (nextField !== previousField) {
       fields.set(fieldId, nextField)

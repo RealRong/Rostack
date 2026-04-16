@@ -110,6 +110,7 @@ export const runSummaryStage = (input: {
   impact: CommitImpact
   view: View
   previous?: SummaryState
+  previousIndex?: IndexState
   previousSections?: SectionState
   previousPublished?: ReadonlyMap<SectionKey, import('@dataview/core/calculation').CalculationCollection>
   sections: SectionState
@@ -142,6 +143,7 @@ export const runSummaryStage = (input: {
     previousPublished: input.previousPublished,
     derive: () => syncSummaryState({
       previous: input.previous,
+      previousIndex: input.previousIndex,
       previousSections: input.previousSections,
       sections: input.sections,
       view: input.view,

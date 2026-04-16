@@ -3,7 +3,7 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import type {
-  SectionAggregateState
+  AggregateState
 } from '@dataview/engine/active/index/contracts'
 import type {
   SectionBucket,
@@ -48,7 +48,7 @@ export interface SectionState {
 }
 
 export interface SummaryState {
-  bySection: ReadonlyMap<SectionKey, ReadonlyMap<FieldId, SectionAggregateState>>
+  bySection: ReadonlyMap<SectionKey, ReadonlyMap<FieldId, AggregateState>>
 }
 
 export interface ViewCache {

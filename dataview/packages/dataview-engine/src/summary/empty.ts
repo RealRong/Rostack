@@ -6,7 +6,7 @@ import type {
   FieldId
 } from '@dataview/core/contracts'
 import type {
-  SectionAggregateState
+  AggregateState
 } from '@dataview/engine/active/index/contracts'
 import type {
   SectionKey,
@@ -14,12 +14,12 @@ import type {
 } from '@dataview/engine/contracts/shared'
 
 export interface SummaryStateShape {
-  bySection: ReadonlyMap<SectionKey, ReadonlyMap<FieldId, SectionAggregateState>>
+  bySection: ReadonlyMap<SectionKey, ReadonlyMap<FieldId, AggregateState>>
 }
 
-export const EMPTY_SECTION_SUMMARY_AGGREGATES = new Map<FieldId, SectionAggregateState>()
+export const EMPTY_SECTION_SUMMARY_AGGREGATES = new Map<FieldId, AggregateState>()
 
-const EMPTY_SUMMARY_BY_SECTION = new Map<SectionKey, ReadonlyMap<FieldId, SectionAggregateState>>()
+const EMPTY_SUMMARY_BY_SECTION = new Map<SectionKey, ReadonlyMap<FieldId, AggregateState>>()
 
 export const EMPTY_SUMMARY_STATE: SummaryStateShape = {
   bySection: EMPTY_SUMMARY_BY_SECTION
@@ -44,6 +44,19 @@ const sameEmptySectionMap = <T,>(
   && sectionKeys.every(sectionKey => previous.get(sectionKey) === emptyValue)
 )
 
+const createEmptySectionMap = <T,>(
+  sectionKeys: readonly SectionKey[],
+  value: T
+): ReadonlyMap<SectionKey, T> => {
+  const map = new Map<SectionKey, T>()
+
+  sectionKeys.forEach(sectionKey => {
+    map.set(sectionKey, value)
+  })
+
+  return map
+}
+
 export const buildEmptySummaryState = (
   sectionKeys: readonly SectionKey[],
   previous?: SummaryStateShape
@@ -53,9 +66,7 @@ export const buildEmptySummaryState = (
   }
 
   return {
-    bySection: new Map(
-      sectionKeys.map(sectionKey => [sectionKey, EMPTY_SECTION_SUMMARY_AGGREGATES] as const)
-    )
+    bySection: createEmptySectionMap(sectionKeys, EMPTY_SECTION_SUMMARY_AGGREGATES)
   }
 }
 
@@ -67,7 +78,5 @@ export const buildEmptyPublishedSummaries = (
     return previous as ViewSummaries
   }
 
-  return new Map(
-    sectionKeys.map(sectionKey => [sectionKey, EMPTY_SUMMARY_COLLECTION] as const)
-  )
+  return createEmptySectionMap(sectionKeys, EMPTY_SUMMARY_COLLECTION)
 }

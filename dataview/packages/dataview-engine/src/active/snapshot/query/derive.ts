@@ -1,5 +1,4 @@
 import type {
-  DataDoc,
   Field,
   RecordId,
   View
@@ -34,7 +33,6 @@ import type {
   QueryState
 } from '@dataview/engine/contracts/internal'
 import {
-  createStaticDocumentReader,
   type DocumentReader
 } from '@dataview/engine/document/reader'
 
@@ -681,18 +679,17 @@ const projectCandidatesToOrderedIds = (
 }
 
 export const buildQueryState = (input: {
-  document: DataDoc
+  reader: DocumentReader
   view: View
   index: IndexState
   previous?: QueryState
 }): QueryState => {
-  const reader = createStaticDocumentReader(input.document)
   const searchPlan = resolveSearchPlan({
     search: input.view.search,
     index: input.index.search,
     recordOrder: input.index.records.order
   })
-  const effectiveRules = resolveEffectiveFilterRules(reader, input.view)
+  const effectiveRules = resolveEffectiveFilterRules(input.reader, input.view)
   const filterPlans = resolveFilterPlans({
     rules: effectiveRules,
     index: input.index
@@ -711,11 +708,11 @@ export const buildQueryState = (input: {
 
   const matched = sortRecordIds({
     ids: input.index.records.ids,
-    reader,
+    reader: input.reader,
     index: input.index,
     view: input.view
   })
-  const ordered = applyViewOrders(matched, input.view, reader)
+  const ordered = applyViewOrders(matched, input.view, input.reader)
   const candidatePool = (
     searchPlan.candidates && filterCandidates
       ? intersectCandidates(searchPlan.candidates, filterCandidates)

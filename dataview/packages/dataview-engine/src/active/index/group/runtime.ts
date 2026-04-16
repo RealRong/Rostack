@@ -2,6 +2,7 @@ import {
   getRecordFieldValue
 } from '@dataview/core/field'
 import {
+  createArrayPatchBuilder,
   createMapPatchBuilder
 } from '@dataview/engine/active/index/builder'
 import type {
@@ -24,6 +25,10 @@ import {
 import {
   createGroupDemandKey
 } from '@dataview/engine/active/index/group/demand'
+import {
+  insertOrderedIdInPlace,
+  removeOrderedIdInPlace
+} from '@dataview/engine/active/index/shared'
 import {
   shouldDropFieldIndex,
   shouldRebuildFieldIndex,
@@ -137,31 +142,45 @@ const syncGroupFieldIndex = (input: {
 
   const nextRecordBuckets = recordBuckets.finish()
   const bucketRecords = createMapPatchBuilder(input.previous.bucketRecords)
-  const rebuiltBucketRecords = new Map<BucketKey, RecordId[]>()
+  const bucketBuilders = new Map<BucketKey, ReturnType<typeof createArrayPatchBuilder<RecordId>>>()
 
-  input.records.ids.forEach(recordId => {
-    const bucketKeys = nextRecordBuckets.get(recordId) ?? EMPTY_BUCKET_KEYS
-    if (!bucketKeys.some(bucketKey => touchedBuckets.has(bucketKey))) {
+  const ensureBucketBuilder = (bucketKey: BucketKey) => {
+    const current = bucketBuilders.get(bucketKey)
+    if (current) {
+      return current
+    }
+
+    const builder = createArrayPatchBuilder(
+      bucketRecords.get(bucketKey) ?? input.previous.bucketRecords.get(bucketKey) ?? EMPTY_RECORD_IDS
+    )
+    bucketBuilders.set(bucketKey, builder)
+    return builder
+  }
+
+  input.touchedRecords.forEach(recordId => {
+    const before = input.previous.recordBuckets.get(recordId) ?? EMPTY_BUCKET_KEYS
+    const after = nextRecordBuckets.get(recordId) ?? EMPTY_BUCKET_KEYS
+    if (sameBucketKeys(before, after)) {
       return
     }
 
-    bucketKeys.forEach(bucketKey => {
-      if (!touchedBuckets.has(bucketKey)) {
-        return
-      }
-
-      const ids = rebuiltBucketRecords.get(bucketKey)
-      if (ids) {
-        ids.push(recordId)
-        return
-      }
-
-      rebuiltBucketRecords.set(bucketKey, [recordId])
+    before.forEach(bucketKey => {
+      const builder = ensureBucketBuilder(bucketKey)
+      builder.mutate(draft => {
+        removeOrderedIdInPlace(draft, recordId)
+      })
+    })
+    after.forEach(bucketKey => {
+      const builder = ensureBucketBuilder(bucketKey)
+      builder.mutate(draft => {
+        insertOrderedIdInPlace(draft, recordId, input.records.order)
+      })
     })
   })
 
   touchedBuckets.forEach(bucketKey => {
-    const ids = rebuiltBucketRecords.get(bucketKey)
+    const builder = bucketBuilders.get(bucketKey)
+    const ids = builder?.finish() ?? bucketRecords.get(bucketKey) ?? input.previous.bucketRecords.get(bucketKey)
     if (ids?.length) {
       bucketRecords.set(bucketKey, ids)
       return
@@ -241,7 +260,7 @@ export const syncGroupIndex = (
   context: IndexDeriveContext,
   records: RecordIndex
 ): GroupIndex => {
-  if (!context.impact.changed || !previous.groups.size) {
+  if (!context.changed || !previous.groups.size) {
     return previous
   }
 
@@ -249,7 +268,7 @@ export const syncGroupIndex = (
 
   previous.groups.forEach((groupIndex, key) => {
     const fieldId = groupIndex.fieldId
-    if (shouldDropFieldIndex(id => context.fieldIdSet.has(id), context.impact, fieldId)) {
+    if (shouldDropFieldIndex(id => context.fieldIdSet.has(id), context, fieldId)) {
       nextGroups.delete(key)
       return
     }
@@ -261,12 +280,12 @@ export const syncGroupIndex = (
       bucketInterval: groupIndex.bucketInterval
     }
 
-    if (shouldRebuildFieldIndex(context.impact, fieldId)) {
+    if (shouldRebuildFieldIndex(context, fieldId)) {
       nextGroups.set(key, buildGroupFieldIndex(context, records, demand, groupIndex))
       return
     }
 
-    if (!shouldSyncFieldIndex(context.impact, fieldId)) {
+    if (!shouldSyncFieldIndex(context, fieldId)) {
       return
     }
 
@@ -274,7 +293,7 @@ export const syncGroupIndex = (
       previous: groupIndex,
       context,
       records,
-      touchedRecords: context.impact.touchedRecords
+      touchedRecords: context.touchedRecords
     })
     if (nextGroup !== groupIndex) {
       nextGroups.set(key, nextGroup)

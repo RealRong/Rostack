@@ -1,6 +1,5 @@
 import type {
   CommitImpact,
-  DataDoc,
   ViewId
 } from '@dataview/core/contracts'
 import type { IndexState } from '@dataview/engine/active/index/contracts'
@@ -21,7 +20,9 @@ import { buildStageMetrics } from '@dataview/engine/active/snapshot/trace'
 import { runQueryStage } from '@dataview/engine/active/snapshot/query/runtime'
 import { runSectionsStage } from '@dataview/engine/active/snapshot/sections/runtime'
 import { runSummaryStage } from '@dataview/engine/active/snapshot/summary/runtime'
-import { createStaticDocumentReader } from '@dataview/engine/document/reader'
+import type {
+  DocumentReadContext
+} from '@dataview/engine/document/reader'
 
 interface ViewRunResult {
   cache: ViewCache
@@ -30,20 +31,18 @@ interface ViewRunResult {
 }
 
 export const deriveViewSnapshot = (input: {
-  document: DataDoc
-  activeViewId?: ViewId
+  documentContext: DocumentReadContext
   impact: CommitImpact
   index: IndexState
+  previousIndex?: IndexState
   previousCache: ViewCache
   previousSnapshot?: ViewState
   capturePerf: boolean
 }): ViewRunResult => {
   const totalStart = now()
   const stageTraces: ViewStageTrace[] = []
-  const reader = createStaticDocumentReader(input.document)
-  const view = input.activeViewId
-    ? reader.views.get(input.activeViewId)
-    : undefined
+  const activeViewId = input.documentContext.activeViewId as ViewId | undefined
+  const view = input.documentContext.activeView
 
   const timeStage = <T extends { action: DeriveAction },>(
     stage: ViewStageName,
@@ -77,7 +76,7 @@ export const deriveViewSnapshot = (input: {
     return result
   }
 
-  if (!view || !input.activeViewId) {
+  if (!view || !activeViewId) {
     return {
       cache: {
         query: input.previousCache.query,
@@ -103,16 +102,12 @@ export const deriveViewSnapshot = (input: {
     }
   }
 
-  const activeViewId = input.activeViewId
   const previousViewId = input.previousSnapshot?.view.id
-  const fieldsById = new Map(
-    reader.fields.list().map(field => [field.id, field] as const)
-  )
 
   const query = timeStage(
     'query',
     () => runQueryStage({
-      document: input.document,
+      reader: input.documentContext.reader,
       activeViewId,
       previousViewId,
       impact: input.impact,
@@ -185,12 +180,13 @@ export const deriveViewSnapshot = (input: {
       impact: input.impact,
       view,
       previous: input.previousCache.summary,
+      previousIndex: input.previousIndex,
       previousSections: input.previousCache.sections,
       previousPublished: input.previousSnapshot?.summaries,
       sections: sections.state,
       sectionsAction: sections.action,
       index: input.index,
-      fieldsById
+      fieldsById: input.documentContext.fieldsById
     }),
     input.previousSnapshot,
     result => input.previousSnapshot
@@ -212,7 +208,8 @@ export const deriveViewSnapshot = (input: {
   )
 
   const base = publishViewBase({
-    document: input.document,
+    reader: input.documentContext.reader,
+    fieldsById: input.documentContext.fieldsById,
     viewId: activeViewId,
     previous: input.previousSnapshot
       ? {

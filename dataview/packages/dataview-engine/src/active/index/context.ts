@@ -10,17 +10,32 @@ import type {
   DataDoc
 } from '@dataview/core/contracts'
 import {
-  createStaticDocumentReader
+  createStaticDocumentReadContext
 } from '@dataview/engine/document/reader'
 import type {
   IndexDeriveContext,
-  IndexImpactView,
   IndexReadContext
 } from '@dataview/engine/active/index/contracts'
 
-const createIndexImpactView = (
+export const createIndexReadContext = (
+  document: DataDoc
+): IndexReadContext => {
+  const context = createStaticDocumentReadContext(document)
+
+  return {
+    document: context.document,
+    reader: context.reader,
+    fieldIds: context.fieldIds,
+    fieldIdSet: context.fieldIdSet
+  }
+}
+
+export const createIndexDeriveContext = (
+  document: DataDoc,
   impact: CommitImpact
-): IndexImpactView => ({
+): IndexDeriveContext => ({
+  ...createIndexReadContext(document),
+  impact,
   schemaFields: collectSchemaFieldIds(impact),
   valueFields: collectValueFieldIds(impact, {
     includeTitlePatch: true
@@ -35,26 +50,4 @@ const createIndexImpactView = (
     || impact.records
     || impact.fields?.schema
   )
-})
-
-export const createIndexReadContext = (
-  document: DataDoc
-): IndexReadContext => {
-  const reader = createStaticDocumentReader(document)
-  const fieldIds = reader.fields.ids()
-
-  return {
-    document,
-    reader,
-    fieldIds,
-    fieldIdSet: new Set(fieldIds)
-  }
-}
-
-export const createIndexDeriveContext = (
-  document: DataDoc,
-  impact: CommitImpact
-): IndexDeriveContext => ({
-  ...createIndexReadContext(document),
-  impact: createIndexImpactView(impact)
 })

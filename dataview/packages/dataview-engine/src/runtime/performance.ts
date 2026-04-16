@@ -73,6 +73,7 @@ const createPerformanceStats = (): PerformanceStats => ({
   },
   timings: {
     totalMs: createRunningStat(),
+    planMs: createRunningStat(),
     indexMs: createRunningStat(),
     viewMs: createRunningStat()
   },
@@ -96,6 +97,7 @@ const clonePerformanceStats = (
   },
   timings: {
     totalMs: cloneRunningStat(stats.timings.totalMs),
+    planMs: cloneRunningStat(stats.timings.planMs),
     indexMs: cloneRunningStat(stats.timings.indexMs),
     viewMs: cloneRunningStat(stats.timings.viewMs)
   },
@@ -235,6 +237,7 @@ export const createPerformanceRuntime = (
       stats.commits.total += 1
       stats.commits[nextTrace.kind] += 1
       updateRunningStat(stats.timings.totalMs, nextTrace.timings.totalMs)
+      updateRunningStat(stats.timings.planMs, nextTrace.timings.planMs)
       updateRunningStat(stats.timings.indexMs, nextTrace.timings.indexMs)
       updateRunningStat(stats.timings.viewMs, nextTrace.timings.viewMs)
 

@@ -1,5 +1,4 @@
 import type {
-  DataDoc,
   FieldId,
   ViewId
 } from '@dataview/core/contracts'
@@ -15,16 +14,19 @@ import {
 import type {
   IndexDemand
 } from '@dataview/engine/active/index/contracts'
-import { createStaticDocumentReader } from '@dataview/engine/document/reader'
+import type {
+  DocumentReadContext
+} from '@dataview/engine/document/reader'
 
 export const resolveViewDemand = (
-  document: DataDoc,
+  context: DocumentReadContext,
   activeViewId?: ViewId
 ): IndexDemand => {
-  const reader = createStaticDocumentReader(document)
-  const view = activeViewId
-    ? reader.views.get(activeViewId)
-    : undefined
+  const view = activeViewId === context.activeViewId
+    ? context.activeView
+    : activeViewId
+      ? context.reader.views.get(activeViewId)
+      : undefined
   if (!view) {
     return {}
   }
@@ -32,7 +34,7 @@ export const resolveViewDemand = (
   const filterGroupFields = new Set<FieldId>()
   const filterSortFields = new Set<FieldId>()
   view.filter.rules.forEach(rule => {
-    const field = reader.fields.get(rule.fieldId)
+    const field = context.reader.fields.get(rule.fieldId)
     switch (field?.kind) {
       case 'status':
       case 'select':

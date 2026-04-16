@@ -123,7 +123,7 @@ const resolveQueryAction = (input: {
 }
 
 export const runQueryStage = (input: {
-  document: import('@dataview/core/contracts').DataDoc
+  reader: import('@dataview/engine/document/reader').DocumentReader
   activeViewId: ViewId
   previousViewId?: ViewId
   impact: CommitImpact
@@ -146,7 +146,7 @@ export const runQueryStage = (input: {
     derive: () => action === 'reuse' && input.previous
       ? input.previous
       : buildQueryState({
-          document: input.document,
+          reader: input.reader,
           view: input.view,
           index: input.index,
           previous: input.previous

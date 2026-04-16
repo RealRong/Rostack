@@ -52,11 +52,14 @@ export interface CommitImpact {
     inserted?: Set<CustomFieldId>
     removed?: Set<CustomFieldId>
     schema?: Map<FieldId, Set<FieldSchemaAspect>>
+    schemaTouched?: Set<FieldId>
+    touched?: Set<FieldId> | 'all'
   }
   views?: {
     inserted?: Set<ViewId>
     removed?: Set<ViewId>
     changed?: Map<ViewId, CommitImpactViewChange>
+    touched?: Set<ViewId> | 'all'
   }
   activeView?: {
     before?: ViewId

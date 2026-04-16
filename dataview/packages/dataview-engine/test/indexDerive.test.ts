@@ -14,6 +14,7 @@ import {
 import {
   computeCalculationFromState
 } from '@dataview/engine/active/snapshot/summary/compute'
+import { createStaticDocumentReadContext } from '@dataview/engine/document/reader'
 
 const TITLE_FIELD_ID = 'title'
 const FIELD_STATUS = 'status'
@@ -224,7 +225,7 @@ test('engine.active.resolveViewDemand skips idle search/sort indexes while keepi
     }
   })
 
-  const demand = resolveViewDemand(document, view.id)
+  const demand = resolveViewDemand(createStaticDocumentReadContext(document), view.id)
   const index = createIndexState(document, demand).state
 
   assert.equal(demand.search, undefined)
@@ -259,7 +260,7 @@ test('engine.active.resolveViewDemand requests search and numeric sort indexes o
     }
   })
 
-  const demand = resolveViewDemand(document, view.id)
+  const demand = resolveViewDemand(createStaticDocumentReadContext(document), view.id)
   const index = createIndexState(document, demand).state
 
   assert.deepEqual(demand.search, { all: true })
@@ -442,7 +443,7 @@ test('engine.active.query derives descending order from single asc sort index', 
   })
 
   const query = buildQueryState({
-    document,
+    reader: createStaticDocumentReadContext(document).reader,
     index: index.state,
     view: {
       id: 'view_points_desc',

@@ -30,6 +30,7 @@ import {
   collectViewQueryAspects
 } from '@dataview/core/commit/aspects'
 import {
+  type AppliedDocumentRecordFieldWrite,
   enumerateRecords,
   getDocumentActiveViewId,
   getDocumentCustomFieldById,
@@ -44,9 +45,9 @@ import {
   removeDocumentCustomField,
   removeDocumentRecords,
   removeDocumentView,
-  restoreDocumentRecordFieldsMany,
+  restoreDocumentRecordFieldsManyWithChanges,
   setDocumentActiveViewId,
-  writeDocumentRecordFieldsMany
+  writeDocumentRecordFieldsManyWithChanges
 } from '@dataview/core/document'
 import {
   sameJsonValue
@@ -146,6 +147,10 @@ const markTitleChanged = (
 ) => {
   const records = impact.records ?? (impact.records = {})
   records.titleChanged = addSetValue(records.titleChanged, recordId)
+  const fields = impact.fields ?? (impact.fields = {})
+  if (fields.touched !== 'all') {
+    fields.touched = addSetValue(fields.touched as Set<FieldId> | undefined, TITLE_FIELD_ID)
+  }
 }
 
 const markValueFieldChanged = (
@@ -158,6 +163,10 @@ const markValueFieldChanged = (
 
   const records = impact.records ?? (impact.records = {})
   records.valueChangedFields = addSetValue(records.valueChangedFields as Set<FieldId> | undefined, fieldId)
+  const fields = impact.fields ?? (impact.fields = {})
+  if (fields.touched !== 'all') {
+    fields.touched = addSetValue(fields.touched as Set<FieldId> | undefined, fieldId)
+  }
 }
 
 const markRecordPatch = (
@@ -189,7 +198,22 @@ const markFieldSchema = (
   }
 
   const target = ensureFieldSchema(impact, fieldId)
+  const fields = impact.fields ?? (impact.fields = {})
+  fields.schemaTouched = addSetValue(fields.schemaTouched, fieldId)
+  if (fields.touched !== 'all') {
+    fields.touched = addSetValue(fields.touched as Set<FieldId> | undefined, fieldId)
+  }
   aspects.forEach(aspect => target.add(aspect))
+}
+
+const markTouchedView = (
+  impact: CommitImpact,
+  viewId: ViewId
+) => {
+  const views = impact.views ?? (impact.views = {})
+  if (views.touched !== 'all') {
+    views.touched = addSetValue(views.touched as Set<ViewId> | undefined, viewId)
+  }
 }
 
 const markViewQuery = (
@@ -202,6 +226,7 @@ const markViewQuery = (
   }
 
   const change = ensureViewChange(impact, viewId)
+  markTouchedView(impact, viewId)
   change.queryAspects = addSetValues(change.queryAspects, aspects)
 }
 
@@ -215,6 +240,7 @@ const markViewLayout = (
   }
 
   const change = ensureViewChange(impact, viewId)
+  markTouchedView(impact, viewId)
   change.layoutAspects = addSetValues(change.layoutAspects, aspects)
 }
 
@@ -228,6 +254,7 @@ const markViewCalculations = (
   }
 
   const change = ensureViewChange(impact, viewId)
+  markTouchedView(impact, viewId)
   if (change.calculationFields === 'all') {
     return
   }
@@ -294,89 +321,30 @@ const captureRecordEntries = (
   .filter((entry): entry is { record: DataRecord; index: number } => Boolean(entry))
   .sort((left, right) => left.index - right.index)
 
-const patchRecordFieldWrites = (input: {
-  impact: CommitImpact
-  beforeDocument: DataDoc
-  afterDocument: DataDoc
-  entries: readonly DocumentRecordFieldRestoreEntry[]
-}): readonly DocumentRecordFieldRestoreEntry[] => {
-  const inverse: DocumentRecordFieldRestoreEntry[] = []
+const createRecordFieldRestoreEntry = (
+  change: AppliedDocumentRecordFieldWrite
+): DocumentRecordFieldRestoreEntry => ({
+  recordId: change.recordId,
+  ...(change.restoreSet
+    ? { set: change.restoreSet }
+    : {}),
+  ...(change.restoreClear?.length
+    ? { clear: change.restoreClear }
+    : {})
+})
 
-  input.entries.forEach(entry => {
-    const beforeRecord = getDocumentRecordById(input.beforeDocument, entry.recordId)
-    const afterRecord = getDocumentRecordById(input.afterDocument, entry.recordId)
-    if (!beforeRecord || !afterRecord) {
-      return
+const applyRecordFieldWriteImpact = (
+  impact: CommitImpact,
+  change: AppliedDocumentRecordFieldWrite
+) => {
+  markTouchedRecord(impact, change.recordId)
+  for (const fieldId of change.changedFields) {
+    if (fieldId === TITLE_FIELD_ID) {
+      markTitleChanged(impact, change.recordId)
+      continue
     }
-
-    const fieldIds = [
-      ...new Set<FieldId>([
-        ...(Object.keys(entry.set ?? {}) as FieldId[]),
-        ...(entry.clear ?? [])
-      ])
-    ]
-
-    const restoreSet: Partial<Record<FieldId, unknown>> = {}
-    const restoreClear: FieldId[] = []
-    let recordChanged = false
-
-    fieldIds.forEach(fieldId => {
-      if (fieldId === TITLE_FIELD_ID) {
-        if (beforeRecord.title === afterRecord.title) {
-          return
-        }
-
-        recordChanged = true
-        markTouchedRecord(input.impact, entry.recordId)
-        markTitleChanged(input.impact, entry.recordId)
-        if (beforeRecord.title === '') {
-          restoreClear.push(fieldId)
-          return
-        }
-
-        restoreSet[fieldId] = beforeRecord.title
-        return
-      }
-
-      const beforeHas = hasOwn(beforeRecord.values, fieldId)
-      const afterHas = hasOwn(afterRecord.values, fieldId)
-      const beforeValue = beforeRecord.values[fieldId]
-      const afterValue = afterRecord.values[fieldId]
-
-      if (
-        beforeHas === afterHas
-        && sameJsonValue(beforeValue, afterValue)
-      ) {
-        return
-      }
-
-      recordChanged = true
-      markTouchedRecord(input.impact, entry.recordId)
-      markValueFieldChanged(input.impact, fieldId)
-      if (beforeHas) {
-        restoreSet[fieldId] = beforeValue
-        return
-      }
-
-      restoreClear.push(fieldId)
-    })
-
-    if (!recordChanged) {
-      return
-    }
-
-    inverse.push({
-      recordId: entry.recordId,
-      ...(Object.keys(restoreSet).length
-        ? { set: restoreSet }
-        : {}),
-      ...(restoreClear.length
-        ? { clear: restoreClear }
-        : {})
-    })
-  })
-
-  return inverse
+    markValueFieldChanged(impact, fieldId)
+  }
 }
 
 const deletePatchedRecord = (
@@ -395,6 +363,19 @@ const deleteFieldImpact = (
   fieldId: CustomFieldId
 ) => {
   impact.fields?.schema?.delete(fieldId)
+  impact.fields?.schemaTouched?.delete(fieldId)
+  if (impact.fields?.touched !== 'all') {
+    impact.fields?.touched?.delete(fieldId)
+  }
+}
+
+const clearTouchedView = (
+  impact: CommitImpact,
+  viewId: ViewId
+) => {
+  if (impact.views?.touched !== 'all') {
+    impact.views?.touched?.delete(viewId)
+  }
 }
 
 const deleteViewImpact = (
@@ -535,34 +516,24 @@ const executeRecordFieldWrite = (
   }>,
   impact: CommitImpact
 ): ExecuteOperationResult => {
-  const entries = operation.type === 'document.record.fields.writeMany'
-    ? operation.recordIds.map(recordId => ({
-        recordId,
-        set: operation.set,
-        clear: operation.clear
-      }))
-    : operation.entries
+  const applied = operation.type === 'document.record.fields.writeMany'
+    ? writeDocumentRecordFieldsManyWithChanges(document, operation)
+    : restoreDocumentRecordFieldsManyWithChanges(document, operation.entries)
 
-  const nextDocument = operation.type === 'document.record.fields.writeMany'
-    ? writeDocumentRecordFieldsMany(document, operation)
-    : restoreDocumentRecordFieldsMany(document, operation.entries)
-
-  if (nextDocument === document) {
+  if (applied.document === document) {
     return {
       document,
       inverse: []
     }
   }
 
-  const inverseEntries = patchRecordFieldWrites({
-    impact,
-    beforeDocument: document,
-    afterDocument: nextDocument,
-    entries
+  const inverseEntries = applied.changes.map(change => {
+    applyRecordFieldWriteImpact(impact, change)
+    return createRecordFieldRestoreEntry(change)
   })
 
   return {
-    document: nextDocument,
+    document: applied.document,
     inverse: inverseEntries.length
       ? [{
           type: 'document.record.fields.restoreMany',
@@ -746,11 +717,13 @@ const executeViewPut = (
   if (!beforeView) {
     if (views.removed?.delete(operation.view.id)) {
       const change = ensureViewChange(impact, operation.view.id)
+      markTouchedView(impact, operation.view.id)
       change.queryAspects = addSetValues(change.queryAspects, ['search', 'filter', 'sort', 'group', 'order'])
       change.layoutAspects = addSetValues(change.layoutAspects, ['name', 'type', 'display', 'options'])
       change.calculationFields = 'all'
     } else {
       views.inserted = addSetValue(views.inserted, operation.view.id)
+      markTouchedView(impact, operation.view.id)
     }
   } else {
     markViewQuery(impact, operation.view.id, queryAspects)
@@ -819,8 +792,10 @@ const executeViewRemove = (
   const views = impact.views ?? (impact.views = {})
   if (views.inserted?.delete(operation.viewId)) {
     deleteViewImpact(impact, operation.viewId)
+    clearTouchedView(impact, operation.viewId)
   } else {
     views.removed = addSetValue(views.removed, operation.viewId)
+    markTouchedView(impact, operation.viewId)
     deleteViewImpact(impact, operation.viewId)
   }
 

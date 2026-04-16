@@ -48,6 +48,16 @@ export interface DocumentReader {
   }
 }
 
+export interface DocumentReadContext {
+  document: DataDoc
+  reader: DocumentReader
+  fieldIds: readonly FieldId[]
+  fieldIdSet: ReadonlySet<FieldId>
+  fieldsById: ReadonlyMap<FieldId, Field>
+  activeViewId?: ViewId
+  activeView?: View
+}
+
 const createEntityReader = <TId extends string, TEntity>(input: {
   readDocument: () => DataDoc
   ids: (document: DataDoc) => readonly TId[]
@@ -112,3 +122,33 @@ export const createLiveDocumentReader = (
 export const createStaticDocumentReader = (
   document: DataDoc
 ): DocumentReader => createLiveDocumentReader(() => document)
+
+export const createStaticDocumentReadContext = (
+  document: DataDoc
+): DocumentReadContext => {
+  const reader = createStaticDocumentReader(document)
+  const fields = reader.fields.list()
+  const fieldIds: FieldId[] = []
+  const fieldsById = new Map<FieldId, Field>()
+
+  fields.forEach(field => {
+    fieldIds.push(field.id)
+    fieldsById.set(field.id, field)
+  })
+
+  const activeView = reader.views.active()
+
+  return {
+    document,
+    reader,
+    fieldIds,
+    fieldIdSet: new Set(fieldIds),
+    fieldsById,
+    ...(activeView
+      ? {
+          activeViewId: activeView.id,
+          activeView
+        }
+      : {})
+  }
+}

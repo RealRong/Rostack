@@ -18,6 +18,7 @@ import {
 import {
   deriveViewRuntime
 } from '@dataview/engine/active/runtime'
+import { createStaticDocumentReadContext } from '@dataview/engine/document/reader'
 import type {
   PlannedWriteBatch
 } from '@dataview/engine/mutate/planner'
@@ -68,6 +69,7 @@ type Draft<TResult extends CommitResult = CommitResult> =
       history: EngineRuntimeState['history']
       impact: CommitImpact
       result: TResult
+      planMs?: number
       ms?: number
     }
 
@@ -154,6 +156,7 @@ const writePlan = (
       summary: summarizeCommitImpact(applied.impact),
       created: createdFromImpact(applied.impact)
     },
+    planMs: batch.planMs,
     ms: now() - startedAt
   }
 }
@@ -197,17 +200,19 @@ const commit = <TResult extends CommitResult>(input: {
     return draft.result
   }
 
+  const documentContext = createStaticDocumentReadContext(draft.doc)
   const nextIndex = deriveIndex({
     previous: base.currentView.index,
     previousDemand: base.currentView.demand,
     document: draft.doc,
     impact: draft.impact,
-    demand: resolveViewDemand(draft.doc, draft.doc.activeViewId)
+    demand: resolveViewDemand(documentContext, documentContext.activeViewId)
   })
   const nextView = deriveViewRuntime({
     previous: base.currentView.snapshot,
+    previousIndex: base.currentView.index,
     cache: base.currentView.cache,
-    doc: draft.doc,
+    documentContext,
     index: nextIndex.state,
     impact: draft.impact,
     capturePerf: input.capturePerf
@@ -236,6 +241,7 @@ const commit = <TResult extends CommitResult>(input: {
       kind: toTraceKind(draft.kind),
       timings: {
         totalMs: now() - startedAt,
+        planMs: draft.planMs,
         commitMs: draft.ms,
         indexMs: nextIndex.trace.timings.totalMs,
         viewMs: nextView.trace.view.timings.totalMs,

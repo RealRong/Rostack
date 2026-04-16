@@ -171,7 +171,7 @@ export const syncSearchIndex = (
   context: IndexDeriveContext,
   records: RecordIndex
 ): SearchIndex => {
-  if (!context.impact.changed) {
+  if (!context.changed) {
     return previous
   }
 
@@ -184,14 +184,14 @@ export const syncSearchIndex = (
   let nextAll = previous.all
 
   if (hasLoadedAll && (
-    context.impact.schemaFields.size > 0
-    || context.impact.touchedRecords === 'all'
+    context.schemaFields.size > 0
+    || context.touchedRecords === 'all'
   )) {
     nextAll = buildAllIndex(context, records)
-  } else if (hasLoadedAll && context.impact.touchedRecords !== 'all' && context.impact.touchedRecords.size) {
+  } else if (hasLoadedAll && context.touchedRecords !== 'all' && context.touchedRecords.size) {
     const next = updateTextIndex({
       previous: previous.all!,
-      touchedRecords: context.impact.touchedRecords,
+      touchedRecords: context.touchedRecords,
       readText: recordId => {
         const record = records.byId[recordId]
         return record
@@ -205,23 +205,23 @@ export const syncSearchIndex = (
   }
 
   previous.fields.forEach((previousField, fieldId) => {
-    if (shouldDropFieldIndex(id => context.fieldIdSet.has(id), context.impact, fieldId)) {
+    if (shouldDropFieldIndex(id => context.fieldIdSet.has(id), context, fieldId)) {
       fields.delete(fieldId)
       return
     }
 
-    if (shouldRebuildFieldIndex(context.impact, fieldId)) {
+    if (shouldRebuildFieldIndex(context, fieldId)) {
       fields.set(fieldId, buildFieldIndex(context, records, fieldId))
       return
     }
 
-    if (!shouldSyncFieldIndex(context.impact, fieldId)) {
+    if (!shouldSyncFieldIndex(context, fieldId)) {
       return
     }
 
     const nextField = updateTextIndex({
       previous: previousField,
-      touchedRecords: context.impact.touchedRecords,
+      touchedRecords: context.touchedRecords,
       readText: recordId => {
         const record = records.byId[recordId]
         return record

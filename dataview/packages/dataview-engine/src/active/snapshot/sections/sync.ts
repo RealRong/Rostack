@@ -7,6 +7,10 @@ import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
 import {
+  insertOrderedIdInPlace,
+  removeOrderedIdInPlace
+} from '@dataview/engine/active/index/shared'
+import {
   readGroupFieldIndex
 } from '@dataview/engine/active/index/group/demand'
 import type {
@@ -20,6 +24,7 @@ import {
   sameSectionNode
 } from '@dataview/engine/active/snapshot/sections/derive'
 import {
+  readQueryOrder,
   readQueryVisibleSet
 } from '@dataview/engine/contracts/internal'
 
@@ -76,7 +81,20 @@ export const syncSectionState = (input: {
   }
 
   const queryVisible = readQueryVisibleSet(input.query)
+  const queryOrder = readQueryOrder(input.query)
   const touchedSectionKeys = new Set<SectionKey>()
+  const touchedRecordsBySection = new Map<SectionKey, RecordId[]>()
+  const addTouchedRecord = (
+    sectionKey: SectionKey,
+    recordId: RecordId
+  ) => {
+    const ids = touchedRecordsBySection.get(sectionKey)
+    if (ids) {
+      ids.push(recordId)
+      return
+    }
+    touchedRecordsBySection.set(sectionKey, [recordId])
+  }
   let byRecord: Map<RecordId, readonly SectionKey[]> | undefined
 
   input.touchedRecords.forEach(recordId => {
@@ -91,6 +109,8 @@ export const syncSectionState = (input: {
 
     before.forEach(key => touchedSectionKeys.add(key))
     after.forEach(key => touchedSectionKeys.add(key))
+    before.forEach(key => addTouchedRecord(key, recordId))
+    after.forEach(key => addTouchedRecord(key, recordId))
 
     if (!byRecord) {
       byRecord = new Map(previous.byRecord)
@@ -109,35 +129,34 @@ export const syncSectionState = (input: {
   }
 
   const idsByKey = new Map<SectionKey, readonly RecordId[]>()
-  if (input.query.records.visible === input.index.records.ids) {
-    touchedSectionKeys.forEach(key => {
-      const ids = groupIndex.bucketRecords.get(key)
-      if (ids?.length) {
-        idsByKey.set(key, ids)
-      }
-    })
-  } else {
-    input.query.records.visible.forEach(recordId => {
-      const keys = groupIndex.recordBuckets.get(recordId) ?? EMPTY_SECTION_KEYS
-      if (!keys.some(key => touchedSectionKeys.has(key))) {
+  touchedSectionKeys.forEach(key => {
+    const previousNode = previous.byKey.get(key)
+    const nextIds = previousNode
+      ? [...previousNode.recordIds]
+      : []
+    const sectionTouchedRecords = touchedRecordsBySection.get(key) ?? EMPTY_RECORD_IDS
+
+    sectionTouchedRecords.forEach(recordId => {
+      const before = previous.byRecord.get(recordId) ?? EMPTY_SECTION_KEYS
+      const after = byRecord?.get(recordId) ?? EMPTY_SECTION_KEYS
+      const wasInSection = before.includes(key)
+      const isInSection = after.includes(key)
+      if (wasInSection === isInSection) {
         return
       }
 
-      keys.forEach(key => {
-        if (!touchedSectionKeys.has(key)) {
-          return
-        }
+      if (isInSection) {
+        insertOrderedIdInPlace(nextIds, recordId, queryOrder)
+        return
+      }
 
-        const ids = idsByKey.get(key)
-        if (ids) {
-          ;(ids as RecordId[]).push(recordId)
-          return
-        }
-
-        idsByKey.set(key, [recordId])
-      })
+      removeOrderedIdInPlace(nextIds, recordId)
     })
-  }
+
+    if (nextIds.length) {
+      idsByKey.set(key, nextIds)
+    }
+  })
 
   const order = groupIndex.order
   const nextOrder = sameOrder(previous.order, order)

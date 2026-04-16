@@ -1,6 +1,18 @@
 import type { Action, DataDoc } from '@dataview/core/contracts'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
-import { reduceOperations } from '@dataview/core/operation'
+import {
+  insertDocumentRecords,
+  patchDocumentCustomField,
+  patchDocumentRecord,
+  putDocumentCustomField,
+  putDocumentView,
+  removeDocumentCustomField,
+  removeDocumentRecords,
+  removeDocumentView,
+  restoreDocumentRecordFieldsMany,
+  setDocumentActiveViewId,
+  writeDocumentRecordFieldsMany
+} from '@dataview/core/document'
 import { isNonEmptyString } from '@shared/core'
 import { planFieldAction } from '@dataview/engine/mutate/planner/fields'
 import {
@@ -19,6 +31,56 @@ export interface PlannedWriteBatch {
   operations: readonly DocumentOperation[]
   issues: ValidationIssue[]
   canApply: boolean
+  planMs?: number
+}
+
+const applyPlannerOperation = (
+  document: DataDoc,
+  operation: DocumentOperation
+): DataDoc => {
+  switch (operation.type) {
+    case 'document.record.insert':
+      return insertDocumentRecords(document, operation.records, operation.target?.index)
+    case 'document.record.patch':
+      return patchDocumentRecord(document, operation.recordId, operation.patch)
+    case 'document.record.remove':
+      return removeDocumentRecords(document, operation.recordIds)
+    case 'document.record.fields.writeMany':
+      return writeDocumentRecordFieldsMany(document, operation)
+    case 'document.record.fields.restoreMany':
+      return restoreDocumentRecordFieldsMany(document, operation.entries)
+    case 'document.view.put':
+      return putDocumentView(document, operation.view)
+    case 'document.activeView.set':
+      return setDocumentActiveViewId(document, operation.viewId)
+    case 'document.view.remove':
+      return removeDocumentView(document, operation.viewId)
+    case 'document.field.put':
+      return putDocumentCustomField(document, operation.field)
+    case 'document.field.patch':
+      return patchDocumentCustomField(document, operation.fieldId, operation.patch)
+    case 'document.field.remove':
+      return removeDocumentCustomField(document, operation.fieldId)
+    case 'external.version.bump':
+      return document
+    default: {
+      const unexpectedOperation: never = operation
+      throw new Error(`Unsupported planner operation: ${unexpectedOperation}`)
+    }
+  }
+}
+
+const applyPlannerOperations = (
+  document: DataDoc,
+  operations: readonly DocumentOperation[]
+): DataDoc => {
+  let nextDocument = document
+
+  for (const operation of operations) {
+    nextDocument = applyPlannerOperation(nextDocument, operation)
+  }
+
+  return nextDocument
 }
 
 export const planActions = (input: {
@@ -55,7 +117,7 @@ export const planActions = (input: {
 
     // Only advance planner state when later actions still depend on the mutated document.
     if (index < input.actions.length - 1) {
-      workingDocument = reduceOperations(workingDocument, planned.operations)
+      workingDocument = applyPlannerOperations(workingDocument, planned.operations)
     }
   }
 

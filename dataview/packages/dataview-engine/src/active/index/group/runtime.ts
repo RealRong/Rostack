@@ -128,9 +128,18 @@ const syncGroupFieldIndex = (input: {
   }
 
   const recordBuckets = createMapPatchBuilder(input.previous.recordBuckets)
-  const touchedBuckets = new Set<BucketKey>()
-  const removedByBucket = new Map<BucketKey, RecordId[]>()
-  const addedByBucket = new Map<BucketKey, RecordId[]>()
+  const localTouchedBuckets = input.groupChange
+    ? undefined
+    : new Set<BucketKey>()
+  const localRemovedByBucket = input.groupChange
+    ? undefined
+    : new Map<BucketKey, RecordId[]>()
+  const localAddedByBucket = input.groupChange
+    ? undefined
+    : new Map<BucketKey, RecordId[]>()
+  const touchedBuckets = input.groupChange?.touchedKeys ?? localTouchedBuckets!
+  const removedByBucket = input.groupChange?.removedByKey ?? localRemovedByBucket!
+  const addedByBucket = input.groupChange?.addedByKey ?? localAddedByBucket!
   let changed = false
 
   input.touchedRecords.forEach(recordId => {
@@ -150,19 +159,20 @@ const syncGroupFieldIndex = (input: {
     changed = true
     if (input.groupChange) {
       applyMembershipTransition(input.groupChange, recordId, before, after)
+    } else {
+      before.forEach(bucketKey => {
+        touchedBuckets.add(bucketKey)
+        if (!after.includes(bucketKey)) {
+          addBucketRecord(removedByBucket, bucketKey, recordId)
+        }
+      })
+      after.forEach(bucketKey => {
+        touchedBuckets.add(bucketKey)
+        if (!before.includes(bucketKey)) {
+          addBucketRecord(addedByBucket, bucketKey, recordId)
+        }
+      })
     }
-    before.forEach(bucketKey => {
-      touchedBuckets.add(bucketKey)
-      if (!after.includes(bucketKey)) {
-        addBucketRecord(removedByBucket, bucketKey, recordId)
-      }
-    })
-    after.forEach(bucketKey => {
-      touchedBuckets.add(bucketKey)
-      if (!before.includes(bucketKey)) {
-        addBucketRecord(addedByBucket, bucketKey, recordId)
-      }
-    })
 
     if (after.length) {
       recordBuckets.set(recordId, after)

@@ -10,6 +10,7 @@ import {
 
 type EdgeGlyphProps = ComponentProps<'svg'>
 type MarkerSide = 'start' | 'end'
+type MarkerPaint = 'currentColor' | 'context-stroke'
 
 const MARKER_VIEW_BOX = '0 0 12 12'
 const MARKER_SIZE = 4.75
@@ -43,14 +44,15 @@ const readEdgeDashArray = (
 }
 
 const renderEndMarkerShape = (
-  marker: EdgeMarker
+  marker: EdgeMarker,
+  paint: MarkerPaint
 ): ReactNode => {
   switch (marker) {
     case 'arrow':
       return (
         <path
           d="M3 2 L10 6 L3 10"
-          stroke="currentColor"
+          stroke={paint}
           strokeWidth={1.6}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -61,7 +63,7 @@ const renderEndMarkerShape = (
       return (
         <path
           d="M2.5 2 L10 6 L2.5 10 Z"
-          fill="currentColor"
+          fill={paint}
         />
       )
     case 'circle':
@@ -70,7 +72,7 @@ const renderEndMarkerShape = (
           cx={6.5}
           cy={6}
           r={3.25}
-          stroke="currentColor"
+          stroke={paint}
           strokeWidth={1.4}
           fill="none"
         />
@@ -81,14 +83,14 @@ const renderEndMarkerShape = (
           cx={6.5}
           cy={6}
           r={3.25}
-          fill="currentColor"
+          fill={paint}
         />
       )
     case 'diamond':
       return (
         <path
           d="M3 6 L6.5 2.5 L10 6 L6.5 9.5 Z"
-          stroke="currentColor"
+          stroke={paint}
           strokeWidth={1.4}
           strokeLinejoin="round"
           fill="none"
@@ -98,14 +100,14 @@ const renderEndMarkerShape = (
       return (
         <path
           d="M3 6 L6.5 2.5 L10 6 L6.5 9.5 Z"
-          fill="currentColor"
+          fill={paint}
         />
       )
     case 'bar':
       return (
         <path
           d="M10 2 L10 10"
-          stroke="currentColor"
+          stroke={paint}
           strokeWidth={1.8}
           strokeLinecap="round"
         />
@@ -115,13 +117,13 @@ const renderEndMarkerShape = (
         <>
           <path
             d="M7.2 2 L7.2 10"
-            stroke="currentColor"
+            stroke={paint}
             strokeWidth={1.7}
             strokeLinecap="round"
           />
           <path
             d="M10 2 L10 10"
-            stroke="currentColor"
+            stroke={paint}
             strokeWidth={1.7}
             strokeLinecap="round"
           />
@@ -134,13 +136,13 @@ const renderEndMarkerShape = (
             cx={4.25}
             cy={6}
             r={2.75}
-            stroke="currentColor"
+            stroke={paint}
             strokeWidth={1.35}
             fill="none"
           />
           <path
             d="M6.6 2.5 L10 6 L6.6 9.5"
-            stroke="currentColor"
+            stroke={paint}
             strokeWidth={1.5}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -155,13 +157,13 @@ const renderEndMarkerShape = (
             cx={5}
             cy={6}
             r={3}
-            stroke="currentColor"
+            stroke={paint}
             strokeWidth={1.35}
             fill="none"
           />
           <path
             d="M10 2 L10 10"
-            stroke="currentColor"
+            stroke={paint}
             strokeWidth={1.8}
             strokeLinecap="round"
           />
@@ -172,12 +174,13 @@ const renderEndMarkerShape = (
 
 const renderMarkerShape = (
   marker: EdgeMarker,
-  side: MarkerSide
+  side: MarkerSide,
+  paint: MarkerPaint
 ) => side === 'end'
-  ? renderEndMarkerShape(marker)
+  ? renderEndMarkerShape(marker, paint)
   : (
       <g transform="translate(12 0) scale(-1 1)">
-        {renderEndMarkerShape(marker)}
+        {renderEndMarkerShape(marker, paint)}
       </g>
     )
 
@@ -213,7 +216,7 @@ export const EdgeCanvasMarkerDefs = () => (
         orient="auto"
         markerUnits="strokeWidth"
       >
-        {renderMarkerShape(marker, 'start')}
+        {renderMarkerShape(marker, 'start', 'context-stroke')}
       </marker>,
       <marker
         key={`${marker}:end`}
@@ -226,7 +229,7 @@ export const EdgeCanvasMarkerDefs = () => (
         orient="auto"
         markerUnits="strokeWidth"
       >
-        {renderMarkerShape(marker, 'end')}
+        {renderMarkerShape(marker, 'end', 'context-stroke')}
       </marker>
     ]))}
   </>
@@ -255,7 +258,7 @@ export const EdgeMarkerGlyph = ({
     />
     {marker ? (
       <g transform={`translate(${side === 'start' ? 2 : 10} 6)`}>
-        {renderMarkerShape(marker, side)}
+        {renderMarkerShape(marker, side, 'currentColor')}
       </g>
     ) : null}
   </svg>

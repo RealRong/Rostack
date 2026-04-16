@@ -228,19 +228,23 @@ export const hasMembershipChanges = <TKey extends string, TItem extends string>(
 
 export const hasCalculationChanges = (
   impact: ActiveImpact,
-  fieldIds?: readonly FieldId[]
+  fieldIds?: Iterable<FieldId>
 ): boolean => {
   const calculations = impact.calculations
   if (!calculations?.byField.size) {
     return false
   }
 
-  if (!fieldIds?.length) {
+  if (!fieldIds) {
     return true
   }
 
-  return fieldIds.some(fieldId => {
+  for (const fieldId of fieldIds) {
     const change = calculations.byField.get(fieldId)
-    return Boolean(change?.rebuild || change?.changedIds.size)
-  })
+    if (change?.rebuild || change?.changedIds.size) {
+      return true
+    }
+  }
+
+  return false
 }

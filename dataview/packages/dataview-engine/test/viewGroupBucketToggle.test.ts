@@ -668,6 +668,31 @@ test('engine.active.state grouped sections keep visible record order inside each
   assert.deepEqual(todoIds, ['rec_4', 'rec_1'])
 })
 
+test('engine.active.state grouped sections reorder when sort changes after grouping', () => {
+  const document = createDocument()
+  document.records.byId.rec_4 = {
+    id: 'rec_4',
+    title: 'Task 4',
+    type: 'task',
+    values: {
+      [FIELD_STATUS]: 'todo',
+      [FIELD_POINTS]: 4
+    }
+  }
+  document.records.order = ['rec_1', 'rec_2', 'rec_3', 'rec_4']
+
+  const engine = createEngineForTest({
+    document
+  })
+
+  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
+  assert.deepEqual(viewSectionRecordIds(engine, 'todo'), ['rec_1', 'rec_4'])
+
+  openView(engine, VIEW_TABLE).sort.keepOnly(FIELD_POINTS, 'desc')
+
+  assert.deepEqual(viewSectionRecordIds(engine, 'todo'), ['rec_4', 'rec_1'])
+})
+
 test('engine.active.state summaries are derived from index aggregates', () => {
   const document = createDocument()
   document.records.byId.rec_4 = {

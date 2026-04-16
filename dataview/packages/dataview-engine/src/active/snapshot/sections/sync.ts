@@ -12,6 +12,9 @@ import {
   readGroupFieldIndex
 } from '@dataview/engine/active/index/group/demand'
 import {
+  createMapOverlay
+} from '@dataview/engine/active/shared/patch'
+import {
   applyOrderedIdDelta
 } from '@dataview/engine/active/shared/ordered'
 import {
@@ -26,9 +29,12 @@ import type {
 } from '@dataview/engine/contracts/internal'
 import type { SectionKey } from '@dataview/engine/contracts/public'
 import {
+  buildRootSectionByRecord,
   buildSectionNode,
   buildSectionState,
   ROOT_SECTION_KEY,
+  ROOT_SECTION_KEYS,
+  ROOT_SECTION_ORDER,
   sameSectionNode
 } from '@dataview/engine/active/snapshot/sections/derive'
 import {
@@ -53,34 +59,6 @@ const addSectionRecord = <T extends string>(
   target.set(key, [recordId])
 }
 
-const appendUniqueRecordIds = (
-  target: RecordId[],
-  seen: Set<RecordId>,
-  values?: readonly RecordId[]
-) => {
-  if (!values?.length) {
-    return
-  }
-
-  values.forEach(recordId => {
-    if (seen.has(recordId)) {
-      return
-    }
-
-    seen.add(recordId)
-    target.push(recordId)
-  })
-}
-
-const addUniqueRecordIdsToSet = (
-  target: Set<RecordId>,
-  values?: readonly RecordId[]
-) => {
-  values?.forEach(recordId => {
-    target.add(recordId)
-  })
-}
-
 const addChangedRecordIds = (
   target: Set<RecordId>,
   values?: readonly RecordId[]
@@ -90,7 +68,7 @@ const addChangedRecordIds = (
   })
 }
 
-const resolveChangedRecordIds = (
+const resolveMembershipChangedRecordIds = (
   impact: ActiveImpact
 ): ReadonlySet<RecordId> | 'all' => {
   if (impact.base.touchedRecords === 'all') {
@@ -104,37 +82,77 @@ const resolveChangedRecordIds = (
     changed.add(recordId)
   })
 
-  if (impact.query?.orderChanged) {
-    impact.base.touchedRecords.forEach(recordId => {
-      changed.add(recordId)
-    })
-  }
-
   return changed
+}
+
+const projectSectionRecordIds = (input: {
+  recordIds: readonly RecordId[]
+  byRecord: ReadonlyMap<RecordId, readonly SectionKey[]>
+}): ReadonlyMap<SectionKey, readonly RecordId[]> => {
+  const projected = new Map<SectionKey, RecordId[]>()
+
+  input.recordIds.forEach(recordId => {
+    const keys = input.byRecord.get(recordId) ?? EMPTY_SECTION_KEYS
+    keys.forEach(key => {
+      addSectionRecord(projected, key, recordId)
+    })
+  })
+
+  return projected
 }
 
 const syncRootSectionState = (input: {
   previous: SectionState
-  view: View
   query: import('@dataview/engine/contracts/internal').QueryState
-  index: IndexState
   impact: ActiveImpact
 }): SectionState => {
-  const change = ensureSectionChange(input.impact)
+  const previousRoot = input.previous.byKey.get(ROOT_SECTION_KEY)
+  let change = input.impact.sections
+  const hasVisibleDelta = Boolean(
+    input.impact.query?.visibleAdded.length
+    || input.impact.query?.visibleRemoved.length
+  )
 
   input.impact.query?.visibleRemoved.forEach(recordId => {
-    applyMembershipTransition(change, recordId, [ROOT_SECTION_KEY], EMPTY_SECTION_KEYS)
+    change ??= ensureSectionChange(input.impact)
+    applyMembershipTransition(change, recordId, ROOT_SECTION_KEYS, EMPTY_SECTION_KEYS)
   })
   input.impact.query?.visibleAdded.forEach(recordId => {
-    applyMembershipTransition(change, recordId, EMPTY_SECTION_KEYS, [ROOT_SECTION_KEY])
+    change ??= ensureSectionChange(input.impact)
+    applyMembershipTransition(change, recordId, EMPTY_SECTION_KEYS, ROOT_SECTION_KEYS)
   })
 
-  return buildSectionState({
-    view: input.view,
-    query: input.query,
-    index: input.index,
-    previous: input.previous
-  })
+  const nextOrder = sameOrder(input.previous.order, ROOT_SECTION_ORDER)
+    ? input.previous.order
+    : ROOT_SECTION_ORDER
+  const nextRoot = {
+    key: ROOT_SECTION_KEY,
+    title: 'All',
+    recordIds: input.query.records.visible,
+    visible: true,
+    collapsed: false
+  }
+  const publishedRoot = previousRoot && sameSectionNode(previousRoot, nextRoot)
+    ? previousRoot
+    : nextRoot
+
+  if (
+    publishedRoot === previousRoot
+    && nextOrder === input.previous.order
+    && !hasVisibleDelta
+  ) {
+    return input.previous
+  }
+
+  return {
+    order: nextOrder,
+    byKey: new Map([
+      [ROOT_SECTION_KEY, publishedRoot] as const
+    ]),
+    byRecord: hasVisibleDelta
+      ? buildRootSectionByRecord(input.query.records.visible)
+      : input.previous.byRecord
+  }
 }
 
 export const syncSectionState = (input: {
@@ -164,15 +182,13 @@ export const syncSectionState = (input: {
   if (!input.view.group) {
     return syncRootSectionState({
       previous: input.previous,
-      view: input.view,
       query: input.query,
-      index: input.index,
       impact: input.impact
     })
   }
 
   const groupIndex = readGroupFieldIndex(input.index.group, input.view.group)
-  const changedRecordIds = resolveChangedRecordIds(input.impact)
+  const changedRecordIds = resolveMembershipChangedRecordIds(input.impact)
   if (!groupIndex || changedRecordIds === 'all') {
     return buildSectionState({
       view: input.view,
@@ -183,97 +199,124 @@ export const syncSectionState = (input: {
   }
 
   const previous = input.previous
-  const queryVisible = readQueryVisibleSet(input.query)
-  const queryOrder = readQueryOrder(input.query)
-  const sectionChange = ensureSectionChange(input.impact)
-  const touchedSectionKeys = new Set<SectionKey>()
-  const removedBySection = new Map<SectionKey, RecordId[]>()
-  const addedBySection = new Map<SectionKey, RecordId[]>()
-  const reorderedBySection = new Map<SectionKey, RecordId[]>()
-  let byRecord: Map<RecordId, readonly SectionKey[]> | undefined
+  const nextByRecordEntries = new Map<RecordId, readonly SectionKey[]>()
+  const removedByRecord = new Set<RecordId>()
+  let byRecordChanged = false
+  let sectionChange = input.impact.sections
+  let queryVisible: ReadonlySet<RecordId> | undefined
+  const ensureQueryVisible = () => {
+    if (!queryVisible) {
+      queryVisible = readQueryVisibleSet(input.query)
+    }
+
+    return queryVisible
+  }
 
   changedRecordIds.forEach(recordId => {
     const before = previous.byRecord.get(recordId) ?? EMPTY_SECTION_KEYS
-    const after = queryVisible.has(recordId)
+    const after = ensureQueryVisible().has(recordId)
       ? input.impact.group?.nextKeysByItem.get(recordId)
         ?? groupIndex.recordBuckets.get(recordId)
         ?? EMPTY_SECTION_KEYS
       : EMPTY_SECTION_KEYS
-    const membershipChanged = !sameOrder(before, after)
-
-    if (!membershipChanged && !input.impact.query?.orderChanged) {
+    if (sameOrder(before, after)) {
       return
     }
 
-    if (membershipChanged) {
-      applyMembershipTransition(sectionChange, recordId, before, after)
-      before.forEach(key => {
-        touchedSectionKeys.add(key)
-        if (!after.includes(key)) {
-          addSectionRecord(removedBySection, key, recordId)
-        }
-      })
-      after.forEach(key => {
-        touchedSectionKeys.add(key)
-        if (!before.includes(key)) {
-          addSectionRecord(addedBySection, key, recordId)
-        }
-      })
-
-      if (!byRecord) {
-        byRecord = new Map(previous.byRecord)
-      }
-
-      if (after.length) {
-        byRecord.set(recordId, after)
-      } else {
-        byRecord.delete(recordId)
-      }
+    sectionChange ??= ensureSectionChange(input.impact)
+    applyMembershipTransition(sectionChange, recordId, before, after)
+    byRecordChanged = true
+    if (after.length) {
+      removedByRecord.delete(recordId)
+      nextByRecordEntries.set(recordId, after)
+      return
     }
 
-    if (input.impact.query?.orderChanged) {
-      const reorderedKeys = membershipChanged
-        ? after.filter(key => before.includes(key))
-        : after
-      reorderedKeys.forEach(key => {
-        touchedSectionKeys.add(key)
-        addSectionRecord(reorderedBySection, key, recordId)
-      })
-    }
+    nextByRecordEntries.delete(recordId)
+    removedByRecord.add(recordId)
   })
 
+  const nextByRecord = byRecordChanged
+    ? createMapOverlay({
+        previous: previous.byRecord,
+        set: nextByRecordEntries,
+        delete: removedByRecord
+      })
+    : previous.byRecord
   const nextOrder = sameOrder(previous.order, groupIndex.order)
     ? previous.order
     : groupIndex.order
-  if (!touchedSectionKeys.size && nextOrder === previous.order && byRecord === undefined) {
+
+  if (input.impact.query?.orderChanged) {
+    const projectedIds = projectSectionRecordIds({
+      recordIds: input.query.records.visible,
+      byRecord: nextByRecord
+    })
+    const byKey = new Map<SectionKey, ReturnType<typeof buildSectionNode>>()
+    let changed = nextOrder !== previous.order
+      || previous.byKey.size !== groupIndex.order.length
+      || byRecordChanged
+
+    groupIndex.order.forEach(key => {
+      const previousNode = previous.byKey.get(key)
+      const nextNode = buildSectionNode({
+        key,
+        recordIds: projectedIds.get(key) ?? EMPTY_RECORD_IDS,
+        group: input.view.group,
+        index: input.index
+      })
+      const publishedNode = previousNode && sameSectionNode(previousNode, nextNode)
+        ? previousNode
+        : nextNode
+      byKey.set(key, publishedNode)
+      if (publishedNode !== previousNode) {
+        changed = true
+      }
+    })
+
+    return changed
+      ? {
+          order: nextOrder,
+          byKey,
+          byRecord: nextByRecord
+        }
+      : previous
+  }
+
+  const touchedSectionKeys = sectionChange?.touchedKeys
+  if (
+    !touchedSectionKeys?.size
+    && nextOrder === previous.order
+    && !byRecordChanged
+  ) {
     return previous
   }
 
   const byKey = new Map<SectionKey, ReturnType<typeof buildSectionNode>>()
-  let changed = nextOrder !== previous.order || previous.byKey.size !== groupIndex.order.length
+  let changed = nextOrder !== previous.order
+    || previous.byKey.size !== groupIndex.order.length
+    || byRecordChanged
+  let queryOrder: ReadonlyMap<RecordId, number> | undefined
+  const ensureQueryOrder = () => {
+    if (!queryOrder) {
+      queryOrder = readQueryOrder(input.query)
+    }
+
+    return queryOrder
+  }
 
   groupIndex.order.forEach(key => {
     const previousNode = previous.byKey.get(key)
-    const ids = touchedSectionKeys.has(key)
+    const ids = touchedSectionKeys?.has(key)
       ? (() => {
-          const remove = new Set<RecordId>()
-          addUniqueRecordIdsToSet(remove, removedBySection.get(key))
-          addUniqueRecordIdsToSet(remove, reorderedBySection.get(key))
-
-          const add: RecordId[] = []
-          const seenAdd = new Set<RecordId>()
-          appendUniqueRecordIds(add, seenAdd, addedBySection.get(key))
-          appendUniqueRecordIds(add, seenAdd, reorderedBySection.get(key))
-
+          const removed = sectionChange?.removedByKey.get(key)
           return applyOrderedIdDelta({
             previous: previousNode?.recordIds ?? EMPTY_RECORD_IDS,
-            remove: remove.size
-              ? remove
+            remove: removed?.length
+              ? new Set(removed)
               : undefined,
-            add: add.length
-              ? add
-              : undefined,
-            order: queryOrder
+            add: sectionChange?.addedByKey.get(key),
+            order: ensureQueryOrder()
           })
         })()
       : previousNode?.recordIds ?? EMPTY_RECORD_IDS
@@ -293,13 +336,13 @@ export const syncSectionState = (input: {
     }
   })
 
-  if (!changed && byRecord === undefined) {
+  if (!changed) {
     return previous
   }
 
   return {
     order: nextOrder,
     byKey,
-    byRecord: byRecord ?? previous.byRecord
+    byRecord: nextByRecord
   }
 }

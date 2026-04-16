@@ -11,6 +11,7 @@ import {
   hasViewQueryImpact
 } from '@dataview/core/commit/impact'
 import {
+  sameOrder,
   trimToUndefined
 } from '@shared/core'
 import {
@@ -59,6 +60,12 @@ const queryUsesChangedFields = (
   ? changedFields.size > 0
   : hasIntersection(fields, changedFields)
 
+const EMPTY_RECORD_IDS = [] as RecordId[]
+const EMPTY_VISIBLE_DIFF = {
+  added: EMPTY_RECORD_IDS,
+  removed: EMPTY_RECORD_IDS
+} as const
+
 const collectVisibleDiff = (input: {
   previous: readonly RecordId[]
   next: readonly RecordId[]
@@ -67,27 +74,19 @@ const collectVisibleDiff = (input: {
   removed: RecordId[]
 } => {
   if (input.previous === input.next) {
-    return {
-      added: [],
-      removed: []
-    }
+    return EMPTY_VISIBLE_DIFF
   }
 
-  const nextSet = new Set(input.next)
-  const previousSet = new Set(input.previous)
+  const remainingPrevious = new Set(input.previous)
   const added: RecordId[] = []
-  const removed: RecordId[] = []
-
   input.next.forEach(recordId => {
-    if (!previousSet.has(recordId)) {
+    if (!remainingPrevious.delete(recordId)) {
       added.push(recordId)
     }
   })
-  input.previous.forEach(recordId => {
-    if (!nextSet.has(recordId)) {
-      removed.push(recordId)
-    }
-  })
+  const removed = remainingPrevious.size
+    ? [...remainingPrevious]
+    : EMPTY_RECORD_IDS
 
   return {
     added,
@@ -191,6 +190,10 @@ export const runQueryStage = (input: {
           index: input.index,
           previous: input.previous
         }),
+    canReusePublished: stageInput => (
+      stageInput.state === input.previous
+      && stageInput.previousPublished !== undefined
+    ),
     publish: state => (
       input.previousPublished
       && input.previousPublished.matched === state.records.matched
@@ -206,15 +209,22 @@ export const runQueryStage = (input: {
   } else if (stage.action === 'sync' && input.previous) {
     const previousRecords = input.previous.records
     const nextRecords = stage.state.records
-    const diff = collectVisibleDiff({
-      previous: previousRecords.visible,
-      next: nextRecords.visible
-    })
+    const diff = (
+      !input.impact.base.recordSetChanged
+      && previousRecords.visible === previousRecords.ordered
+      && nextRecords.visible === nextRecords.ordered
+      && previousRecords.visible.length === nextRecords.visible.length
+    )
+      ? EMPTY_VISIBLE_DIFF
+      : collectVisibleDiff({
+          previous: previousRecords.visible,
+          next: nextRecords.visible
+        })
 
     if (
       diff.added.length
       || diff.removed.length
-      || previousRecords.ordered !== nextRecords.ordered
+      || !sameOrder(previousRecords.ordered, nextRecords.ordered)
     ) {
       const queryImpact = ensureQueryImpact(input.impact)
       if (diff.added.length) {
@@ -223,7 +233,7 @@ export const runQueryStage = (input: {
       if (diff.removed.length) {
         queryImpact.visibleRemoved.push(...diff.removed)
       }
-      if (previousRecords.ordered !== nextRecords.ordered) {
+      if (!sameOrder(previousRecords.ordered, nextRecords.ordered)) {
         queryImpact.orderChanged = true
       }
     }

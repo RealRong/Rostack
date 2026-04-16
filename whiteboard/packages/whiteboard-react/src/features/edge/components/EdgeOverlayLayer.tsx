@@ -5,15 +5,13 @@ import { useStoreValue } from '@shared/react'
 import { WHITEBOARD_LINE_DEFAULT_COLOR } from '@whiteboard/core/node'
 import {
   useEditorRuntime,
-  useInteraction,
-  usePickRef,
-  useTool
+  usePickRef
 } from '@whiteboard/react/runtime/hooks'
 import type {
-  SelectedEdgeRoutePointView,
-  SelectedEdgeView
+  SelectedEdgeChrome,
+  SelectedEdgeRoutePoint
 } from '@whiteboard/react/types/edge'
-import { useSelectedEdgeView } from '@whiteboard/react/features/edge/hooks/useEdgeView'
+import { useSelectedEdgeChrome } from '@whiteboard/react/features/edge/hooks/useEdgeView'
 import {
   resolveEdgeDash
 } from '@whiteboard/react/features/edge/constants'
@@ -59,7 +57,6 @@ const EdgeHintOverlay = () => {
           d={path.svgPath}
           fill="none"
           stroke={stroke}
-          color={stroke}
           strokeWidth={strokeWidth}
           strokeDasharray={dash}
           markerStart={markerStart}
@@ -91,7 +88,7 @@ const EdgeEndpointHandle = ({
   end,
   point
 }: {
-  edgeId: SelectedEdgeView['edgeId']
+  edgeId: SelectedEdgeChrome['edgeId']
   end: 'source' | 'target'
   point: {
     x: number
@@ -121,7 +118,7 @@ const EdgeEndpointHandle = ({
 const EdgeRoutePointHandle = ({
   point
 }: {
-  point: SelectedEdgeRoutePointView
+  point: SelectedEdgeRoutePoint
 }) => {
   const editor = useEditorRuntime()
   const ref = usePickRef(
@@ -174,32 +171,32 @@ const EdgeRoutePointHandle = ({
 }
 
 const EdgeSelectedOverlay = ({
-  view
+  chrome
 }: {
-  view: SelectedEdgeView
+  chrome: SelectedEdgeChrome
 }) => (
   <>
-    {(view.canReconnectSource || view.canReconnectTarget) && (
+    {chrome.showEditHandles && (chrome.canReconnectSource || chrome.canReconnectTarget) && (
       <div className="wb-edge-endpoint-layer">
-        {view.canReconnectSource ? (
+        {chrome.canReconnectSource ? (
           <EdgeEndpointHandle
-            edgeId={view.edgeId}
+            edgeId={chrome.edgeId}
             end="source"
-            point={view.ends.source.point}
+            point={chrome.ends.source.point}
           />
         ) : null}
-        {view.canReconnectTarget ? (
+        {chrome.canReconnectTarget ? (
           <EdgeEndpointHandle
-            edgeId={view.edgeId}
+            edgeId={chrome.edgeId}
             end="target"
-            point={view.ends.target.point}
+            point={chrome.ends.target.point}
           />
         ) : null}
       </div>
     )}
-    {view.canEditRoute && view.routePoints.length > 0 && (
+    {chrome.showEditHandles && chrome.canEditRoute && chrome.routePoints.length > 0 && (
       <div className="wb-edge-control-point-layer">
-        {view.routePoints.map((point) => (
+        {chrome.routePoints.map((point) => (
           <EdgeRoutePointHandle
             key={point.key}
             point={point}
@@ -211,20 +208,13 @@ const EdgeSelectedOverlay = ({
 )
 
 export const EdgeOverlayLayer = () => {
-  const interaction = useInteraction()
-  const tool = useTool()
-  const selectedEdgeView = useSelectedEdgeView()
-  const showEdgeControls =
-    selectedEdgeView !== undefined
-    && interaction.chrome
-    && !interaction.editingEdge
-    && tool.type === 'select'
+  const selectedEdgeChrome = useSelectedEdgeChrome()
 
   return (
     <>
-      {showEdgeControls && selectedEdgeView ? (
+      {selectedEdgeChrome ? (
         <EdgeSelectedOverlay
-          view={selectedEdgeView}
+          chrome={selectedEdgeChrome}
         />
       ) : null}
       <EdgeHintOverlay />

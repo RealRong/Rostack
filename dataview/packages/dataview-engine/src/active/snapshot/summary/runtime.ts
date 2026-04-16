@@ -81,7 +81,7 @@ const resolveSummaryAction = (input: {
     return 'sync'
   }
 
-  if (hasCalculationChanges(input.impact, Array.from(calcFields))) {
+  if (hasCalculationChanges(input.impact, calcFields)) {
     return 'sync'
   }
 
@@ -128,6 +128,10 @@ export const runSummaryStage = (input: {
       impact: input.impact,
       action,
     }),
+    canReusePublished: stageInput => (
+      stageInput.state === input.previous
+      && stageInput.previousPublished !== undefined
+    ),
     publish: state => publishSummaries({
       summary: state,
       previousSummary: input.previous,

@@ -189,7 +189,6 @@ const edgeGeometryItem: ToolbarItemSpec = {
         <EdgeLineGlyph
           type={edge.type}
           dash={edge.dash}
-          color={resolvePaletteColor(edge.color) ?? edge.color ?? WHITEBOARD_LINE_DEFAULT_COLOR}
         />
       </ToolbarIconButton>
     )

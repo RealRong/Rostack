@@ -481,7 +481,6 @@ const EdgeItemBase = ({
           d={entry.path.svgPath}
           fill="none"
           stroke={stroke}
-          color={stroke}
           strokeWidth={strokeWidth}
           strokeDasharray={dash}
           markerStart={markerStart}

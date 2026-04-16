@@ -7,8 +7,8 @@ export type {
 } from '@whiteboard/react/types/toolbox'
 export type {
   EdgeView,
-  SelectedEdgeRoutePointView,
-  SelectedEdgeView
+  SelectedEdgeChrome,
+  SelectedEdgeRoutePoint
 } from '@whiteboard/react/types/edge'
 export type {
   MindmapLineView,

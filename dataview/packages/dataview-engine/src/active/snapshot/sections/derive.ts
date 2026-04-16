@@ -22,8 +22,21 @@ import {
 } from '@dataview/engine/contracts/internal'
 
 export const ROOT_SECTION_KEY = 'root' as SectionKey
+export const ROOT_SECTION_KEYS = [ROOT_SECTION_KEY] as readonly SectionKey[]
+export const ROOT_SECTION_ORDER = [ROOT_SECTION_KEY] as readonly SectionKey[]
 const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
+
+export const buildRootSectionByRecord = (
+  recordIds: readonly RecordId[]
+): ReadonlyMap<RecordId, readonly SectionKey[]> => {
+  const byRecord = new Map<RecordId, readonly SectionKey[]>()
+  recordIds.forEach(recordId => {
+    byRecord.set(recordId, ROOT_SECTION_KEYS)
+  })
+
+  return byRecord
+}
 
 const sameBucket = (
   left: import('@dataview/engine/contracts/internal').SectionNodeState['bucket'],
@@ -118,7 +131,7 @@ export const resolveSectionKeys = (input: {
 
   const group = input.view.group
   if (!group) {
-    return [ROOT_SECTION_KEY]
+    return ROOT_SECTION_KEYS
   }
 
   return readGroupFieldIndex(input.index.group, group)?.recordBuckets.get(input.recordId) ?? []
@@ -141,13 +154,11 @@ export const buildSectionState = (input: {
     const previousRoot = input.previous?.byKey.get(ROOT_SECTION_KEY)
 
     return {
-      order: [ROOT_SECTION_KEY],
+      order: ROOT_SECTION_ORDER,
       byKey: new Map([
         [ROOT_SECTION_KEY, previousRoot && sameSectionNode(previousRoot, root) ? previousRoot : root] as const
       ]),
-      byRecord: new Map(
-        input.query.records.visible.map(recordId => [recordId, [ROOT_SECTION_KEY]] as const)
-      )
+      byRecord: buildRootSectionByRecord(input.query.records.visible)
     }
   }
 

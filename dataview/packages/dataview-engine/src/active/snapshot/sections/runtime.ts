@@ -136,8 +136,7 @@ export const runSectionsStage = (input: {
       }
     }),
     canReusePublished: stageInput => (
-      stageInput.action === 'reuse'
-      && stageInput.state === input.previous
+      stageInput.state === input.previous
       && stageInput.previousPublished !== undefined
     )
   })

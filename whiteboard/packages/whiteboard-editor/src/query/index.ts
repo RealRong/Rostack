@@ -151,6 +151,9 @@ export const createQueryRuntime = ({
     node: nodeRead,
     feedback: local.feedback.selectors.edge,
     edit: edit.source,
+    selection: selection.source,
+    tool,
+    interaction: local.interaction,
     capability: nodeRead.capability
   })
   const mindmapRead = createMindmapRead({

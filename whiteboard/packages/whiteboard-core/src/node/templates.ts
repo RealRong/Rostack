@@ -7,7 +7,7 @@ import { readTextWrapWidth } from '@whiteboard/core/node/text'
 
 export const TEXT_START_SIZE = {
   width: 144,
-  height: 24
+  height: 20
 } as const
 
 export const STICKY_SQUARE_SIZE = {

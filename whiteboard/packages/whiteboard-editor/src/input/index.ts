@@ -1,17 +1,17 @@
 import type { InteractionContext } from '@whiteboard/editor/input/context'
-import type { InteractionBinding } from '@whiteboard/editor/input/core/types'
-import { createDrawInteraction } from '@whiteboard/editor/input/draw'
-import { createEdgeInteraction } from '@whiteboard/editor/input/edge/start'
-import { createSelectionInteraction } from '@whiteboard/editor/input/selection'
-import { createTransformInteraction } from '@whiteboard/editor/input/transform/start'
-import { createViewportInteraction } from '@whiteboard/editor/input/viewport/session'
+import type { InteractionBinding } from '@whiteboard/editor/input/types'
+import { createDrawBinding } from '@whiteboard/editor/input/draw'
+import { createEdgeBinding } from '@whiteboard/editor/input/edge'
+import { createSelectionBinding } from '@whiteboard/editor/input/selection/press'
+import { createTransformBinding } from '@whiteboard/editor/input/transform'
+import { createViewportBinding } from '@whiteboard/editor/input/viewport'
 
 export const createEditorInteractions = (
   ctx: InteractionContext
 ): readonly InteractionBinding[] => ([
-  createViewportInteraction(ctx),
-  createDrawInteraction(ctx),
-  createEdgeInteraction(ctx),
-  createTransformInteraction(ctx),
-  createSelectionInteraction(ctx)
+  createViewportBinding(ctx),
+  createDrawBinding(ctx),
+  createEdgeBinding(ctx),
+  createTransformBinding(ctx),
+  createSelectionBinding(ctx)
 ])

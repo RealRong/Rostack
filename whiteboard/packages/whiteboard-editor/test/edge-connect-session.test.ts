@@ -6,7 +6,7 @@ import type {
   EdgePatch
 } from '@whiteboard/core/types'
 import type { InteractionContext } from '../src/input/context'
-import { createEdgeConnectSession } from '../src/input/edge/connect/session'
+import { createEdgeConnectSession } from '../src/input/edge/connect'
 
 const createInteractionContext = () => {
   const patch = vi.fn(() => ({ ok: true }))

@@ -1,0 +1,396 @@
+import { getSegmentBounds } from '@whiteboard/core/geometry'
+import {
+  resolveDrawPoints,
+  resolveDrawStroke
+} from '@whiteboard/core/node'
+import type {
+  NodeId,
+  NodeInput,
+  Point,
+  Rect
+} from '@whiteboard/core/types'
+import {
+  hasDrawBrush,
+  readDrawStyle,
+  type DrawBrush,
+  type DrawPreview,
+  type DrawState,
+  type DrawStyle
+} from '@whiteboard/editor/local/draw'
+import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/types'
+import { FINISH } from '@whiteboard/editor/input/result'
+import type { InteractionContext } from '@whiteboard/editor/input/context'
+import type { PointerDownInput, PointerSample } from '@whiteboard/editor/types/input'
+import type { Tool } from '@whiteboard/editor/types/tool'
+
+const DRAW_MIN_LENGTH_SCREEN = 4
+const SAMPLE_DISTANCE_SCREEN = 1
+const ERASER_HIT_EPSILON_SCREEN = 2
+const ZOOM_EPSILON = 0.0001
+
+type DrawPointer = {
+  samples: readonly PointerSample[]
+}
+
+type DrawStrokeState = {
+  brush: DrawBrush
+  style: DrawStyle
+  points: readonly Point[]
+  lastScreen: Point
+  lengthScreen: number
+}
+
+type EraseState = {
+  ids: readonly NodeId[]
+  lastWorld: Point
+}
+
+const hasMovedEnough = (
+  left: Point,
+  right: Point
+) => {
+  const dx = right.x - left.x
+  const dy = right.y - left.y
+  return (dx * dx) + (dy * dy) >= SAMPLE_DISTANCE_SCREEN * SAMPLE_DISTANCE_SCREEN
+}
+
+const appendStrokeSample = (
+  state: DrawStrokeState,
+  sample: PointerSample,
+  force = false
+): DrawStrokeState => {
+  const previous = state.points[state.points.length - 1]
+
+  if (!force && !hasMovedEnough(state.lastScreen, sample.screen)) {
+    return state
+  }
+
+  if (
+    previous
+    && previous.x === sample.world.x
+    && previous.y === sample.world.y
+  ) {
+    return state.lastScreen.x === sample.screen.x
+      && state.lastScreen.y === sample.screen.y
+      ? state
+      : {
+          ...state,
+          lastScreen: sample.screen
+        }
+  }
+
+  return {
+    ...state,
+    points: [...state.points, sample.world],
+    lengthScreen:
+      state.lengthScreen
+      + Math.hypot(
+          sample.screen.x - state.lastScreen.x,
+          sample.screen.y - state.lastScreen.y
+        ),
+    lastScreen: sample.screen
+  }
+}
+
+const resolveStrokePoints = (
+  points: readonly Point[],
+  zoom: number
+) => resolveDrawPoints({
+  points,
+  zoom
+})
+
+const tryStartDrawStroke = (input: {
+  tool: Tool
+  pointer: PointerDownInput
+  state: DrawState
+}): DrawStrokeState | undefined => {
+  if (
+    input.tool.type !== 'draw'
+    || !hasDrawBrush(input.tool.mode)
+    || input.pointer.pick.kind !== 'background'
+    || input.pointer.editable
+    || input.pointer.ignoreInput
+    || input.pointer.ignoreSelection
+  ) {
+    return undefined
+  }
+
+  return {
+    brush: input.tool.mode,
+    style: readDrawStyle(input.state, input.tool.mode),
+    points: [input.pointer.world],
+    lastScreen: input.pointer.screen,
+    lengthScreen: 0
+  }
+}
+
+const stepDrawStroke = (
+  state: DrawStrokeState,
+  input: DrawPointer,
+  options?: {
+    force?: boolean
+  }
+): DrawStrokeState => {
+  let nextState = state
+
+  for (let index = 0; index < input.samples.length; index += 1) {
+    nextState = appendStrokeSample(
+      nextState,
+      input.samples[index]!,
+      options?.force === true && index === input.samples.length - 1
+    )
+  }
+
+  return nextState
+}
+
+const previewDrawStroke = (
+  state: DrawStrokeState,
+  input: {
+    zoom: number
+  }
+): DrawPreview => ({
+  kind: state.brush,
+  style: state.style,
+  points: resolveStrokePoints(state.points, input.zoom)
+})
+
+const commitDrawStroke = (
+  state: DrawStrokeState,
+  input: {
+    zoom: number
+  }
+): NodeInput | undefined => {
+  if (
+    state.points.length < 2
+    || state.lengthScreen < DRAW_MIN_LENGTH_SCREEN
+  ) {
+    return undefined
+  }
+
+  const stroke = resolveDrawStroke({
+    points: resolveStrokePoints(state.points, input.zoom),
+    width: state.style.width
+  })
+  if (!stroke) {
+    return undefined
+  }
+
+  return {
+    type: 'draw',
+    position: stroke.position,
+    size: stroke.size,
+    data: {
+      points: stroke.points,
+      baseSize: stroke.size
+    },
+    style: {
+      stroke: state.style.color,
+      strokeWidth: state.style.width,
+      opacity: state.style.opacity
+    }
+  }
+}
+
+const queryDrawNodeIdsInRect = (
+  ctx: InteractionContext,
+  rect: Rect
+): readonly NodeId[] => ctx.query.node.idsInRect(rect, {
+  match: 'touch'
+}).filter((nodeId) => (
+  ctx.query.node.item.get(nodeId)?.node.type === 'draw'
+))
+
+const collectErasePoint = (
+  ctx: InteractionContext,
+  state: EraseState,
+  world: Point
+): EraseState => {
+  const halfWorld =
+    ERASER_HIT_EPSILON_SCREEN
+    / Math.max(ctx.query.viewport.get().zoom, ZOOM_EPSILON)
+  const nodeIds = queryDrawNodeIdsInRect(
+    ctx,
+    getSegmentBounds(state.lastWorld, world, halfWorld)
+  )
+  const knownIds = new Set(state.ids)
+  const nextIds = [...state.ids]
+
+  for (let index = 0; index < nodeIds.length; index += 1) {
+    const nodeId = nodeIds[index]!
+    if (knownIds.has(nodeId)) {
+      continue
+    }
+
+    knownIds.add(nodeId)
+    nextIds.push(nodeId)
+  }
+
+  const ids = nextIds.length === state.ids.length
+    ? state.ids
+    : nextIds
+
+  return (
+    ids === state.ids
+    && state.lastWorld.x === world.x
+    && state.lastWorld.y === world.y
+  )
+    ? state
+    : {
+        ...state,
+        ids,
+        lastWorld: world
+      }
+}
+
+const tryStartErase = (
+  ctx: InteractionContext,
+  input: PointerDownInput
+): EraseState | null => {
+  const tool = ctx.query.tool.get()
+
+  if (
+    tool.type !== 'draw'
+    || tool.mode !== 'eraser'
+    || input.editable
+    || input.ignoreInput
+    || input.ignoreSelection
+  ) {
+    return null
+  }
+
+  return collectErasePoint(ctx, {
+    ids: [],
+    lastWorld: input.world
+  }, input.world)
+}
+
+const stepEraseState = (
+  ctx: InteractionContext,
+  state: EraseState,
+  input: DrawPointer
+) => {
+  let nextState = state
+
+  for (let index = 0; index < input.samples.length; index += 1) {
+    nextState = collectErasePoint(ctx, nextState, input.samples[index]!.world)
+  }
+
+  return nextState
+}
+
+const createDrawStrokeSession = (
+  ctx: InteractionContext,
+  initial: DrawStrokeState
+): InteractionSession => {
+  let state = initial
+
+  const step = (
+    input: DrawPointer,
+    force = false
+  ) => {
+    const nextState = stepDrawStroke(
+      state,
+      input,
+      {
+        force
+      }
+    )
+    if (nextState.points !== state.points) {
+      ctx.local.feedback.draw.setPreview(
+        previewDrawStroke(nextState, {
+          zoom: ctx.query.viewport.get().zoom
+        })
+      )
+    }
+    state = nextState
+  }
+
+  return {
+    mode: 'draw',
+    move: (input) => {
+      step(input)
+    },
+    up: (input) => {
+      step(input, true)
+      const commit = commitDrawStroke(state, {
+        zoom: ctx.query.viewport.get().zoom
+      })
+      if (commit) {
+        ctx.command.node.create(commit)
+      }
+      return FINISH
+    },
+    cleanup: () => {
+      ctx.local.feedback.draw.setPreview(null)
+    }
+  }
+}
+
+const createEraseSession = (
+  ctx: InteractionContext,
+  initial: EraseState
+): InteractionSession => {
+  let state = initial
+
+  if (state.ids.length > 0) {
+    ctx.local.feedback.draw.setHidden(state.ids)
+  }
+
+  const step = (
+    input: DrawPointer
+  ) => {
+    const nextState = stepEraseState(ctx, state, input)
+    if (nextState.ids !== state.ids) {
+      ctx.local.feedback.draw.setHidden(nextState.ids)
+    }
+    state = nextState
+  }
+
+  return {
+    mode: 'draw',
+    move: (input) => {
+      step(input)
+    },
+    up: (input) => {
+      step(input)
+      if (state.ids.length > 0) {
+        ctx.command.node.delete([...state.ids])
+      }
+      return FINISH
+    },
+    cleanup: () => {
+      ctx.local.feedback.draw.clear()
+    }
+  }
+}
+
+export const createDrawBinding = (
+  ctx: InteractionContext
+): InteractionBinding => ({
+  key: 'draw',
+  start: (input) => {
+    const tool = ctx.query.tool.get()
+
+    if (tool.type !== 'draw') {
+      return null
+    }
+
+    if (tool.mode === 'eraser') {
+      const state = tryStartErase(ctx, input)
+      return state
+        ? createEraseSession(ctx, state)
+        : null
+    }
+
+    const state = tryStartDrawStroke({
+      tool,
+      pointer: input,
+      state: ctx.query.draw.get()
+    })
+    return state
+      ? createDrawStrokeSession(ctx, state)
+      : null
+  }
+})

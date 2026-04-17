@@ -1,0 +1,293 @@
+import {
+  createRootDrag,
+  createSubtreeDrag,
+  projectMindmapDrag,
+  type MindmapDragState as CoreMindmapDragState,
+  type MindmapLayoutSpec,
+  type MindmapNodeId
+} from '@whiteboard/core/mindmap'
+import type { NodeId, Point } from '@whiteboard/core/types'
+import type { InteractionSession } from '@whiteboard/editor/input/types'
+import { FINISH } from '@whiteboard/editor/input/result'
+import type { PointerDownInput } from '@whiteboard/editor/types/input'
+import type { Tool } from '@whiteboard/editor/types/tool'
+import type { MindmapPreviewState } from '@whiteboard/editor/local/feedback'
+import type { InteractionContext } from '@whiteboard/editor/input/context'
+import type { MindmapPresentationRead } from '@whiteboard/editor/query/mindmap/read'
+import type { NodePresentationRead } from '@whiteboard/editor/query/node/read'
+import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
+
+export type MindmapDragState = CoreMindmapDragState
+
+export type MindmapDragCommit =
+  | {
+      kind: 'root'
+      nodeId: NodeId
+      position: Point
+      origin?: Point
+    }
+  | {
+      kind: 'subtree'
+      id: NodeId
+      nodeId: MindmapNodeId
+      drop: {
+        parentId: MindmapNodeId
+        index: number
+        side?: 'left' | 'right'
+      }
+      origin: {
+        parentId?: MindmapNodeId
+        index?: number
+      }
+      layout: MindmapLayoutSpec
+    }
+
+const previewMindmapDrag = (
+  state: MindmapDragState
+): MindmapPreviewState => {
+  if (state.kind === 'root') {
+    return {
+      rootMove: {
+        treeId: state.treeId,
+        delta: {
+          x: state.position.x - state.origin.x,
+          y: state.position.y - state.origin.y
+        }
+      }
+    }
+  }
+
+  return {
+    subtreeMove: {
+      treeId: state.treeId,
+      nodeId: state.nodeId,
+      ghost: state.ghost,
+      drop: state.drop
+    }
+  }
+}
+
+const applyMindmapPreview = (
+  ctx: InteractionContext,
+  state: MindmapDragState
+) => {
+  ctx.local.feedback.mindmap.setPreview(
+    previewMindmapDrag(state)
+  )
+}
+
+export const tryStartMindmapDrag = (input: {
+  tool: Tool
+  pointer: PointerDownInput
+  mindmap: Pick<MindmapPresentationRead, 'item'>
+  node: Pick<NodePresentationRead, 'item'>
+  selection: Pick<SelectionModelRead, 'get'>
+}): MindmapDragState | undefined => {
+  const pick = input.pointer.pick
+  const pickedNode = pick.kind === 'node'
+    ? input.node.item.get(pick.id)?.node
+    : undefined
+  const treeId = pick.kind === 'mindmap'
+    ? pick.treeId
+    : pickedNode?.mindmapId
+  const nodeId = pick.kind === 'mindmap'
+    ? pick.nodeId
+    : pick.kind === 'node' && pick.part !== 'field'
+      ? pick.id
+      : undefined
+  const locked = Boolean(
+    (treeId ? input.node.item.get(treeId)?.node.locked : undefined)
+    || pickedNode?.locked
+  )
+  const selectedNodeIds = input.selection.get().summary.target.nodeIds
+  const selected = Boolean(nodeId && selectedNodeIds.includes(nodeId))
+
+  if (
+    input.tool.type !== 'select'
+    || !treeId
+    || !nodeId
+    || !selected
+    || locked
+    || input.pointer.editable
+    || input.pointer.ignoreInput
+    || input.pointer.ignoreSelection
+  ) {
+    return undefined
+  }
+
+  const treeView = input.mindmap.item.get(treeId)
+  if (!treeView) {
+    return undefined
+  }
+
+  return nodeId === treeView.tree.rootNodeId
+    ? createRootDrag({
+        treeId,
+        pointerId: input.pointer.pointerId,
+        start: input.pointer.world,
+        origin: {
+          x: treeView.node.position.x,
+          y: treeView.node.position.y
+        }
+      })
+    : createSubtreeDrag({
+        treeId,
+        treeView,
+        nodeId,
+        pointerId: input.pointer.pointerId,
+        world: input.pointer.world
+      })
+}
+
+export const tryStartMindmapDragForNode = (input: {
+  nodeId: NodeId
+  pointerId: number
+  world: Point
+  mindmap: Pick<MindmapPresentationRead, 'item'>
+  node: Pick<NodePresentationRead, 'item'>
+}): MindmapDragState | undefined => {
+  const pickedNode = input.node.item.get(input.nodeId)?.node
+  const treeId = pickedNode?.mindmapId
+  const locked = Boolean(
+    pickedNode?.locked
+    || (treeId ? input.node.item.get(treeId)?.node.locked : undefined)
+  )
+
+  if (!pickedNode || !treeId || locked) {
+    return undefined
+  }
+
+  const treeView = input.mindmap.item.get(treeId)
+  if (!treeView) {
+    return undefined
+  }
+
+  return input.nodeId === treeView.tree.rootNodeId
+    ? createRootDrag({
+        treeId,
+        pointerId: input.pointerId,
+        start: input.world,
+        origin: {
+          x: treeView.node.position.x,
+          y: treeView.node.position.y
+        }
+      })
+    : createSubtreeDrag({
+        treeId,
+        treeView,
+        nodeId: input.nodeId,
+        pointerId: input.pointerId,
+        world: input.world
+      })
+}
+
+const stepMindmapDrag = (input: {
+  state: MindmapDragState
+  world: Point
+  mindmap: Pick<MindmapPresentationRead, 'item'>
+}): MindmapDragState => projectMindmapDrag({
+  active: input.state,
+  world: input.world,
+  treeView:
+    input.state.kind === 'subtree'
+      ? input.mindmap.item.get(input.state.treeId)
+      : undefined
+})
+
+const commitMindmapDrag = (
+  state: MindmapDragState
+): MindmapDragCommit | undefined => {
+  if (state.kind === 'root') {
+    return {
+      kind: 'root',
+      nodeId: state.treeId,
+      position: state.position,
+      origin: state.origin
+    }
+  }
+
+  if (!state.drop) {
+    return undefined
+  }
+
+  return {
+    kind: 'subtree',
+    id: state.treeId,
+    nodeId: state.nodeId,
+    drop: {
+      parentId: state.drop.parentId,
+      index: state.drop.index,
+      side: state.drop.side
+    },
+    origin: {
+      parentId: state.originParentId,
+      index: state.originIndex
+    },
+    layout: state.layout
+  }
+}
+
+export const createMindmapDragSession = (
+  ctx: InteractionContext,
+  initial: MindmapDragState
+): InteractionSession => {
+  let state = initial
+  applyMindmapPreview(ctx, state)
+
+  const project = (
+    world: {
+      x: number
+      y: number
+    }
+  ) => {
+    state = stepMindmapDrag({
+      state,
+      world,
+      mindmap: ctx.query.mindmap
+    })
+    applyMindmapPreview(ctx, state)
+  }
+
+  return {
+    mode: 'mindmap-drag',
+    pointerId: state.pointerId,
+    chrome: false,
+    autoPan: {
+      frame: (pointer) => {
+        project(
+          ctx.query.viewport.pointer(pointer).world
+        )
+      }
+    },
+    move: (next) => {
+      project(next.world)
+    },
+    up: () => {
+      const commit = commitMindmapDrag(state)
+      ctx.local.feedback.mindmap.clear()
+
+      if (commit?.kind === 'root') {
+        ctx.command.mindmap.moveRoot({
+          nodeId: commit.nodeId,
+          position: commit.position,
+          origin: commit.origin
+        })
+      }
+
+      if (commit?.kind === 'subtree') {
+        ctx.command.mindmap.moveByDrop({
+          id: commit.id,
+          nodeId: commit.nodeId,
+          drop: commit.drop,
+          origin: commit.origin,
+          layout: commit.layout
+        })
+      }
+
+      return FINISH
+    },
+    cleanup: () => {
+      ctx.local.feedback.mindmap.clear()
+    }
+  }
+}

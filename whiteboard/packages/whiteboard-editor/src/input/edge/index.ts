@@ -1,0 +1,243 @@
+import type { EdgeConnectState } from '@whiteboard/core/edge'
+import type { BoardConfig } from '@whiteboard/core/config'
+import type { EdgeId } from '@whiteboard/core/types'
+import { HANDLED } from '@whiteboard/editor/input/result'
+import type { InteractionBinding } from '@whiteboard/editor/input/types'
+import type { InteractionContext } from '@whiteboard/editor/input/context'
+import { createEdgeConnectSession, tryStartEdgeConnect } from '@whiteboard/editor/input/edge/connect'
+import {
+  createEdgeLabelPressSession,
+  startEdgeLabelPress
+} from '@whiteboard/editor/input/edge/label'
+import { createEdgeMoveSession, startEdgeMove, type EdgeMoveState } from '@whiteboard/editor/input/edge/move'
+import {
+  createEdgeRoutePressSession,
+} from '@whiteboard/editor/input/edge/route'
+import {
+  tryStartEdgeRoute,
+  type EdgeRouteHandleState,
+  type EdgeRouteStart
+} from '@whiteboard/editor/input/edge/route'
+import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
+import type { NodePresentationRead } from '@whiteboard/editor/query/node/read'
+import type { SessionActions } from '@whiteboard/editor/types/commands'
+import type { PointerDownInput } from '@whiteboard/editor/types/input'
+import type { Tool } from '@whiteboard/editor/types/tool'
+
+type EdgeInteractionStart =
+  | {
+      kind: 'connect'
+      state: EdgeConnectState
+    }
+  | {
+      kind: 'move'
+      state: EdgeMoveState
+    }
+  | {
+      kind: 'route'
+      state: EdgeRouteHandleState
+    }
+  | {
+      kind: 'label'
+      edgeId: EdgeId
+      labelId: string
+    }
+  | Extract<EdgeRouteStart, { kind: 'insert' | 'remove' }>
+  | {
+      kind: 'handled'
+    }
+
+const selectEdgeInteraction = (
+  session: Pick<SessionActions, 'selection'>,
+  edgeId: EdgeId
+) => {
+  session.selection.replace({
+    edgeIds: [edgeId]
+  })
+}
+
+const startEdgeRouteInteraction = (input: {
+  edge: Pick<EdgePresentationRead, 'item' | 'resolved' | 'capability'>
+  pointer: PointerDownInput
+  session: Pick<SessionActions, 'selection'>
+}): EdgeInteractionStart | undefined => {
+  const route = tryStartEdgeRoute({
+    edge: input.edge,
+    pointer: input.pointer
+  })
+  if (!route) {
+    return undefined
+  }
+
+  selectEdgeInteraction(
+    input.session,
+    route.kind === 'session'
+      ? route.state.edgeId
+      : route.edgeId
+  )
+
+  return route.kind === 'session'
+    ? {
+        kind: 'route',
+        state: route.state
+      }
+    : route
+}
+
+const startEdgeBodyInteraction = (input: {
+  edge: Pick<EdgePresentationRead, 'item' | 'capability'>
+  edgeId: EdgeId
+  pointerId: number
+  start: PointerDownInput['world']
+}): EdgeInteractionStart => {
+  const state = startEdgeMove({
+    edge: input.edge,
+    edgeId: input.edgeId,
+    pointerId: input.pointerId,
+    start: input.start
+  })
+
+  return state.edge
+    ? {
+        kind: 'move',
+        state
+      }
+    : {
+        kind: 'handled'
+      }
+}
+
+const startEdgeLabelInteraction = (input: {
+  ctx: InteractionContext
+  pointer: PointerDownInput
+}): EdgeInteractionStart | undefined => {
+  const result = startEdgeLabelPress(
+    input.ctx,
+    input.pointer
+  )
+  if (!result) {
+    return undefined
+  }
+
+  return result === 'handled'
+    ? {
+        kind: 'handled'
+      }
+    : {
+        kind: 'label',
+        edgeId: result.edgeId,
+        labelId: result.labelId
+      }
+}
+
+const startEdgeInteraction = (input: {
+  ctx: InteractionContext
+  tool: Tool
+  pointer: PointerDownInput
+  node: Pick<NodePresentationRead, 'canvas' | 'capability'>
+  edge: Pick<EdgePresentationRead, 'item' | 'resolved' | 'capability'>
+  zoom: number
+  config: BoardConfig['edge']
+  session: Pick<SessionActions, 'selection'>
+}): EdgeInteractionStart | undefined => {
+  const connect = tryStartEdgeConnect({
+    tool: input.tool,
+    pointer: input.pointer,
+    node: input.node,
+    edge: input.edge,
+    zoom: input.zoom,
+    config: input.config
+  })
+  if (connect) {
+    if (connect.kind === 'reconnect') {
+      selectEdgeInteraction(input.session, connect.edgeId)
+    }
+
+    return {
+      kind: 'connect',
+      state: connect
+    }
+  }
+
+  if (
+    input.tool.type !== 'select'
+    || input.pointer.pick.kind !== 'edge'
+  ) {
+    return undefined
+  }
+
+  if (input.pointer.pick.part === 'label') {
+    return startEdgeLabelInteraction({
+      ctx: input.ctx,
+      pointer: input.pointer
+    })
+  }
+
+  if (input.pointer.pick.part === 'path') {
+    return startEdgeRouteInteraction({
+      edge: input.edge,
+      pointer: input.pointer,
+      session: input.session
+    })
+  }
+
+  if (input.pointer.pick.part !== 'body') {
+    return undefined
+  }
+
+  selectEdgeInteraction(input.session, input.pointer.pick.id)
+  return startEdgeBodyInteraction({
+    edge: input.edge,
+    edgeId: input.pointer.pick.id,
+    pointerId: input.pointer.pointerId,
+    start: input.pointer.world
+  })
+}
+
+export const createEdgeBinding = (
+  ctx: InteractionContext
+): InteractionBinding => ({
+  key: 'edge',
+  start: (input) => {
+    const action = startEdgeInteraction({
+      ctx,
+      tool: ctx.query.tool.get(),
+      pointer: input,
+      node: ctx.query.node,
+      edge: ctx.query.edge,
+      zoom: ctx.query.viewport.get().zoom,
+      config: ctx.config.edge,
+      session: {
+        selection: ctx.local.session.selection
+      }
+    })
+    if (!action) {
+      return null
+    }
+
+    switch (action.kind) {
+      case 'connect':
+        return createEdgeConnectSession(ctx, action.state)
+      case 'move':
+        return createEdgeMoveSession(ctx, action.state)
+      case 'route':
+        return createEdgeRoutePressSession(ctx, input, {
+          kind: 'session',
+          state: action.state
+        })
+      case 'remove':
+        ctx.command.edge.route.remove(action.edgeId, action.index)
+        ctx.local.feedback.edge.clearPatches()
+        return HANDLED
+      case 'insert':
+        return createEdgeRoutePressSession(ctx, input, action)
+      case 'label':
+        return createEdgeLabelPressSession(ctx, input, {
+          edgeId: action.edgeId,
+          labelId: action.labelId
+        })
+      case 'handled':
+        return HANDLED
+    }
+  }
+})

@@ -18,7 +18,7 @@ import type {
 import type { Size } from '@whiteboard/core/types'
 import type { KeyedReadStore, ReadStore } from '@shared/core'
 import type { DrawPreview } from '@whiteboard/editor/local/draw'
-import type { MarqueeMatch } from '@whiteboard/editor/input/selection/shared'
+import type { MarqueeMatch } from '@whiteboard/editor/input/selection/marquee'
 
 export type NodePatch = Pick<
   NodeFieldPatch,

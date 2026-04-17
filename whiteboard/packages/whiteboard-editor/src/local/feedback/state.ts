@@ -8,7 +8,7 @@ import {
   readEdgeGestureFeedbackState,
   readSelectionGesturePreview,
   type ActiveGesture
-} from '@whiteboard/editor/input/core/gesture'
+} from '@whiteboard/editor/input/gesture'
 import {
   EMPTY_EDGE_GUIDE,
   EMPTY_EDGE_FEEDBACK,

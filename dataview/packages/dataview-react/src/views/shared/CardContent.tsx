@@ -118,6 +118,7 @@ export const CardContent = forwardRef<HTMLElement, CardContentProps>((props, ref
           text={editing.committedTitle}
           draft={editing.titleDraft}
           placeholder={titlePlaceholder}
+          wrap={wrap}
           rootClassName={slots?.title?.content}
           textClassName={slots?.title?.text}
           inputClassName={slots?.title?.input}

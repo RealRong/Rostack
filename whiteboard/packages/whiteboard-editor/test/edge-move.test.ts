@@ -2,8 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { applyEdgePatch } from '@whiteboard/core/edge'
 import type { Edge } from '@whiteboard/core/types'
 import type { InteractionContext } from '../src/input/context'
-import { createEdgeBodyMoveSession } from '../src/input/edge/move/session'
-import { stepEdgeMove, type EdgeMoveState } from '../src/input/edge/move/start'
+import { createEdgeMoveSession, stepEdgeMove, type EdgeMoveState } from '../src/input/edge/move'
 import type { PointerMoveInput } from '../src/types/input'
 
 const createMovableEdge = (): Edge => ({
@@ -56,11 +55,11 @@ describe('stepEdgeMove', () => {
   })
 })
 
-describe('createEdgeBodyMoveSession', () => {
+describe('createEdgeMoveSession', () => {
   it('clears the preview when the edge returns to its origin', () => {
     const edge = createMovableEdge()
     const move = vi.fn()
-    const session = createEdgeBodyMoveSession(
+    const session = createEdgeMoveSession(
       {
         command: {
           edge: { move }

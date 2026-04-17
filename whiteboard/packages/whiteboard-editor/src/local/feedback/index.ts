@@ -1,6 +1,6 @@
 import type { ReadStore } from '@shared/core'
 import type { ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
-import { type ActiveGesture } from '@whiteboard/editor/input/core/gesture'
+import { type ActiveGesture } from '@whiteboard/editor/input/gesture'
 import { createFeedbackSelectors } from '@whiteboard/editor/local/feedback/selectors'
 import { createFeedbackState } from '@whiteboard/editor/local/feedback/state'
 import type { EditorFeedbackRuntime } from '@whiteboard/editor/local/feedback/types'

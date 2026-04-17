@@ -3,7 +3,7 @@ import {
   read
 } from '@shared/core'
 import type { Editor, EditorInteractionState } from '@whiteboard/editor/types/editor'
-import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
+import type { InteractionRuntime } from '@whiteboard/editor/input/types'
 import type { EditorLocalRuntime } from '@whiteboard/editor/local/runtime'
 import type { ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
 

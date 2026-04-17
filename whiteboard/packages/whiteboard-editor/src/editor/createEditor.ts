@@ -7,10 +7,10 @@ import {
   type DrawState
 } from '@whiteboard/editor/local/draw/state'
 import type { Editor } from '@whiteboard/editor/types/editor'
-import { createSnapRuntime } from '@whiteboard/editor/input/core'
+import { createSnapRuntime } from '@whiteboard/editor/input/snap'
 import type { InteractionContext } from '@whiteboard/editor/input/context'
 import { createEditorInteractions } from '@whiteboard/editor/input'
-import { createEdgeHoverService } from '@whiteboard/editor/input/edge/hover'
+import { createEdgeHoverService } from '@whiteboard/editor/input/hover/edge'
 import { createLocalRuntime } from '@whiteboard/editor/local/runtime'
 import { createQueryRuntime } from '@whiteboard/editor/query'
 import { createCommandRuntime } from '@whiteboard/editor/command'

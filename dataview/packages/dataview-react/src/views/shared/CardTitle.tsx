@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
 import { focusInputWithoutScroll } from '@shared/dom'
-import { Input } from '@shared/ui/input'
 import { cn } from '@shared/ui/utils'
 
 export interface CardTitleProps {
@@ -8,6 +7,7 @@ export interface CardTitleProps {
   text: string
   draft?: string
   placeholder: string
+  wrap?: boolean
   rootClassName?: string
   textClassName?: string
   inputClassName?: string
@@ -63,7 +63,9 @@ export const CardTitle = (props: CardTitleProps) => {
     <div
       className={cn(
         'min-w-0',
-        'truncate',
+        props.wrap
+          ? 'whitespace-normal break-words [overflow-wrap:anywhere]'
+          : 'truncate',
         props.rootClassName,
         props.text.trim()
           ? 'text-foreground'

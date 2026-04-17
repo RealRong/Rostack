@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Node } from '@whiteboard/core/types'
-import { createTransformSession } from '../src/input/transform/session'
+import { createTransformSession } from '../src/input/transform'
 
 const createTextNode = (
   overrides: Partial<Node> = {}

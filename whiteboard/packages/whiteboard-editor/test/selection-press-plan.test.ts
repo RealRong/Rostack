@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { resolveSelectionPressPlan } from '../src/input/selection/press/plan'
-import type { SelectionPressSubject } from '../src/input/selection/press/resolve'
+import {
+  resolveSelectionPressPlan,
+  type SelectionPressSubject
+} from '../src/input/selection/press'
 
 const createTextSubject = (
   overrides: Partial<Extract<SelectionPressSubject<'text'>, { kind: 'node' }>> = {}

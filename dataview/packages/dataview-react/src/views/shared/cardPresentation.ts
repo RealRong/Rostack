@@ -14,58 +14,16 @@ export const resolveCardPresentation = (input: {
   propertyDensity: NonNullable<CardContentProps['propertyDensity']>
   slots: NonNullable<CardContentProps['slots']>
 } => {
-  const rootPadding = (() => {
-    switch (input.size) {
-      case 'sm':
-        return input.layout === 'stacked'
-          ? 'p-2.5'
-          : 'px-2.5 py-2'
-      case 'lg':
-        return input.layout === 'stacked'
-          ? 'p-4'
-          : 'px-3.5 py-3'
-      case 'md':
-      default:
-        return input.layout === 'stacked'
-          ? 'p-3'
-          : 'px-3 py-2.5'
-    }
-  })()
+  const rootPadding = input.layout === 'stacked'
+    ? 'p-3'
+    : 'px-3 py-2.5'
 
   if (input.layout === 'stacked') {
-    const titleText = (() => {
-      switch (input.size) {
-        case 'sm':
-          return 'text-sm font-semibold leading-5'
-        case 'lg':
-          return 'text-lg font-semibold leading-7'
-        case 'md':
-        default:
-          return 'text-base font-semibold leading-6'
-      }
-    })()
-    const valueText = (() => {
-      switch (input.size) {
-        case 'sm':
-          return 'text-[11px]'
-        case 'lg':
-          return 'text-sm'
-        case 'md':
-        default:
-          return 'text-[12px]'
-      }
-    })()
-    const propertyGap = input.size === 'lg'
-      ? 'gap-2.5'
-      : input.size === 'sm'
-        ? 'gap-1.5'
-        : 'gap-2'
+    const titleText = 'text-base font-semibold leading-6'
+    const valueText = 'text-[12px]'
+    const propertyGap = 'gap-1.5'
     const titlePadding = input.hasVisibleFields
-      ? input.size === 'lg'
-        ? 'pb-2.5'
-        : input.size === 'sm'
-          ? 'pb-1.5'
-          : 'pb-2'
+      ? 'pb-1.5'
       : ''
 
     return {
@@ -91,25 +49,9 @@ export const resolveCardPresentation = (input: {
     }
   }
 
-  const compactTitleText = (() => {
-    switch (input.size) {
-      case 'sm':
-        return 'text-sm font-semibold leading-5'
-      case 'lg':
-        return 'text-[15px] font-semibold leading-6'
-      case 'md':
-      default:
-        return 'font-semibold'
-    }
-  })()
-  const compactValueText = input.size === 'sm'
-    ? 'text-xs text-foreground'
-    : 'text-sm text-foreground'
-  const compactGap = input.size === 'lg'
-    ? 'gap-2.5 mt-1.5'
-    : input.size === 'sm'
-      ? 'gap-1.5 mt-1'
-      : 'gap-2 mt-1'
+  const compactTitleText = 'font-semibold'
+  const compactValueText = 'text-sm text-foreground'
+  const compactGap = 'gap-1.5 mt-1'
 
   return {
     propertyDensity: 'compact',

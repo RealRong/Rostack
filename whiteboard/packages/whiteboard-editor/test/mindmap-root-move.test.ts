@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createDocument } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
-import { createMindmapSession } from '../src/input/mindmap/drag/session'
+import { createMindmapDragSession } from '../src/input/mindmap/drag'
 import { createEditor } from '../src'
 import type { NodeRegistry } from '../src'
 
@@ -114,7 +114,7 @@ describe('mindmap root move', () => {
     const clear = vi.fn()
     const moveRoot = vi.fn()
 
-    const session = createMindmapSession({
+    const session = createMindmapDragSession({
       local: {
         feedback: {
           mindmap: {

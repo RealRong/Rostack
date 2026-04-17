@@ -1,7 +1,6 @@
 import type {
   Guide,
-  ResizeDirection,
-  TextWidthMode
+  TransformPreviewPatch
 } from '@whiteboard/core/node'
 import type { ConnectResolution } from '@whiteboard/core/edge'
 import type { MindmapDragDropTarget } from '@whiteboard/core/mindmap'
@@ -25,19 +24,14 @@ export type NodePatch = Pick<
   'position' | 'size' | 'rotation'
 >
 
-export type NodePatchEntry = {
+export type NodePreviewPatch = Omit<TransformPreviewPatch, 'id'>
+
+export type NodePreviewEntry = {
   id: NodeId
-  patch: NodePatch
+  patch: NodePreviewPatch
 }
 
-export type TextPreviewPatch = {
-  position?: Point
-  size?: Size
-  fontSize?: number
-  mode?: TextWidthMode
-  wrapWidth?: number
-  handle?: ResizeDirection
-}
+export type TextPreviewPatch = Omit<NodePreviewPatch, 'rotation'>
 
 export type TextPreviewEntry = {
   id: NodeId
@@ -45,7 +39,7 @@ export type TextPreviewEntry = {
 }
 
 export type NodeSelectionFeedbackState = {
-  patches: readonly NodePatchEntry[]
+  patches: readonly NodePreviewEntry[]
   frameHoverId?: NodeId
 }
 
@@ -140,7 +134,7 @@ export type SelectionFeedbackState = {
 }
 
 export type SelectionPreviewState = {
-  nodePatches: readonly NodePatchEntry[]
+  nodePatches: readonly NodePreviewEntry[]
   edgePatches: readonly EdgeFeedbackEntry[]
   frameHoverId?: NodeId
   marquee?: MarqueeFeedbackState

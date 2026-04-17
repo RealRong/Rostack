@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 
-import { TITLE_FIELD_ID } from '@dataview/core/contracts'
+import {
+  KANBAN_EMPTY_BUCKET_KEY,
+  TITLE_FIELD_ID
+} from '@dataview/core/contracts'
+import { createFilterOptionSetValue } from '@dataview/core/filter'
 import { createDefaultViewOptions } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
 
@@ -712,6 +716,158 @@ test('engine.active.state sort reorders records without reallocating item ids', 
   assert.equal(itemIdByRecordId(engine, 'rec_1'), rec1ItemId)
   assert.equal(itemIdByRecordId(engine, 'rec_2'), rec2ItemId)
   assert.equal(itemIdByRecordId(engine, 'rec_3'), rec3ItemId)
+})
+
+test('engine.active.records.create inserts before the target item when sort is inactive', () => {
+  const engine = createEngineForTest({
+    document: createDocument()
+  })
+
+  const beforeItemId = itemIdByRecordId(engine, 'rec_2')
+  const createdId = openView(engine, VIEW_TABLE).records.create({
+    before: beforeItemId,
+    set: {
+      [TITLE_FIELD_ID]: 'Inserted'
+    }
+  })
+
+  assert.ok(createdId)
+  assert.deepEqual(
+    readViewState(engine)?.records.visible,
+    ['rec_1', createdId, 'rec_2', 'rec_3']
+  )
+})
+
+test('engine.active.records.create derives the group field from sectionKey', () => {
+  const engine = createEngineForTest({
+    document: createDocument()
+  })
+
+  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
+  const createdId = openView(engine, VIEW_TABLE).records.create({
+    sectionKey: 'doing',
+    set: {
+      [TITLE_FIELD_ID]: 'Grouped'
+    }
+  })
+
+  assert.ok(createdId)
+  assert.equal(engine.records.get(createdId)?.values[FIELD_STATUS], 'doing')
+  assert.deepEqual(viewSectionRecordIds(engine, 'doing'), ['rec_2', createdId])
+})
+
+test('engine.active.records.create clears status defaults when creating in the empty bucket', () => {
+  const engine = createEngineForTest({
+    document: createDocument()
+  })
+
+  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
+  const createdId = openView(engine, VIEW_TABLE).records.create({
+    sectionKey: KANBAN_EMPTY_BUCKET_KEY,
+    set: {
+      [TITLE_FIELD_ID]: 'Inbox'
+    }
+  })
+
+  assert.ok(createdId)
+  assert.equal(engine.records.get(createdId)?.values[FIELD_STATUS], undefined)
+  assert.deepEqual(
+    viewSectionRecordIds(engine, KANBAN_EMPTY_BUCKET_KEY),
+    [createdId]
+  )
+})
+
+test('engine.active.records.create derives supported filter defaults', () => {
+  const engine = createEngineForTest({
+    document: createDocument()
+  })
+
+  openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).filters.update(0, {
+    fieldId: FIELD_STATUS,
+    presetId: 'eq',
+    value: createFilterOptionSetValue(['doing'])
+  })
+
+  const createdId = openView(engine, VIEW_TABLE).records.create({
+    set: {
+      [TITLE_FIELD_ID]: 'Filtered'
+    }
+  })
+
+  assert.ok(createdId)
+  assert.equal(engine.records.get(createdId)?.values[FIELD_STATUS], 'doing')
+  assert.deepEqual(readViewState(engine)?.records.visible, ['rec_2', createdId])
+})
+
+test('engine.active.records.create rejects unsupported effective filter rules', () => {
+  const engine = createEngineForTest({
+    document: createDocument()
+  })
+  const beforeOrder = [...engine.select.records.ids.get()]
+
+  openView(engine, VIEW_TABLE).filters.add(TITLE_FIELD_ID)
+  openView(engine, VIEW_TABLE).filters.update(0, {
+    fieldId: TITLE_FIELD_ID,
+    presetId: 'contains',
+    value: 'Task'
+  })
+
+  const createdId = openView(engine, VIEW_TABLE).records.create({
+    set: {
+      [TITLE_FIELD_ID]: 'Blocked'
+    }
+  })
+
+  assert.equal(createdId, undefined)
+  assert.deepEqual(engine.select.records.ids.get(), beforeOrder)
+})
+
+test('engine.active.records.create rejects conflicting group and filter defaults', () => {
+  const engine = createEngineForTest({
+    document: createDocument()
+  })
+  const beforeOrder = [...engine.select.records.ids.get()]
+
+  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).filters.update(0, {
+    fieldId: FIELD_STATUS,
+    presetId: 'eq',
+    value: createFilterOptionSetValue(['doing'])
+  })
+
+  const createdId = openView(engine, VIEW_TABLE).records.create({
+    sectionKey: 'todo',
+    set: {
+      [TITLE_FIELD_ID]: 'Conflict'
+    }
+  })
+
+  assert.equal(createdId, undefined)
+  assert.deepEqual(engine.select.records.ids.get(), beforeOrder)
+})
+
+test('engine.active.records.create uses before as context only when sort is active', () => {
+  const engine = createEngineForTest({
+    document: createDocument()
+  })
+
+  openView(engine, VIEW_TABLE).sort.keepOnly(FIELD_POINTS, 'desc')
+  const beforeItemId = itemIdByRecordId(engine, 'rec_1')
+  const createdId = openView(engine, VIEW_TABLE).records.create({
+    before: beforeItemId,
+    set: {
+      [TITLE_FIELD_ID]: 'Low Priority',
+      [FIELD_POINTS]: 0
+    }
+  })
+
+  assert.ok(createdId)
+  assert.deepEqual(
+    readViewState(engine)?.records.visible,
+    ['rec_3', 'rec_2', 'rec_1', createdId]
+  )
 })
 
 test('engine.active.state summaries are derived from index aggregates', () => {

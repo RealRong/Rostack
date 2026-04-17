@@ -2,15 +2,13 @@ import type {
   Action,
   DataRecord,
   Field,
-  FieldId,
   RecordId,
   ViewGroup
 } from '@dataview/core/contracts'
 import { isTitleFieldId } from '@dataview/core/field'
 import { group as groupCore } from '@dataview/core/group'
 import { reorderViewOrders } from '@dataview/core/view'
-import { sameJsonValue, trimToUndefined, unique } from '@shared/core'
-import { createRecordId } from '@dataview/engine/mutate/entityId'
+import { sameJsonValue, unique } from '@shared/core'
 import type {
   ActiveItemsApi,
   ActiveViewReadApi,
@@ -248,67 +246,6 @@ export const createActiveItemsApi = (input: {
     if (actions.length) {
       input.base.dispatch(actions)
     }
-  },
-  create: createInput => {
-    const state = input.base.snapshot()
-    if (!state) {
-      return undefined
-    }
-
-    const groupWrite = state.view.group && state.query.group.field
-      ? {
-          group: state.view.group,
-          field: state.query.group.field
-        }
-      : undefined
-    if (state.view.group && !groupWrite) {
-      return undefined
-    }
-
-    const values: Partial<Record<FieldId, unknown>> = {
-      ...(createInput.values ?? {})
-    }
-    let title = trimToUndefined(createInput.title)
-
-    if (groupWrite) {
-      const fieldId = groupWrite.group.field
-      const next = groupCore.write.next({
-        field: groupWrite.field,
-        group: groupWrite.group,
-        currentValue: isTitleFieldId(fieldId)
-          ? title
-          : values[fieldId],
-        toKey: createInput.section
-      })
-      if (next.kind === 'invalid') {
-        return undefined
-      }
-
-      if (isTitleFieldId(fieldId)) {
-        title = next.kind === 'clear'
-          ? ''
-          : String(next.value ?? '')
-      } else if (next.kind === 'clear') {
-        delete values[fieldId]
-      } else {
-        values[fieldId] = next.value
-      }
-    }
-
-    const recordId = createRecordId()
-    const actions: Action[] = [{
-      type: 'record.create',
-      input: {
-        id: recordId,
-        ...(title ? { title } : {}),
-        values
-      }
-    }]
-
-    const result = input.base.dispatch(actions)
-    return result.applied
-      ? recordId
-      : undefined
   },
   remove: itemIds => {
     const state = input.base.snapshot()

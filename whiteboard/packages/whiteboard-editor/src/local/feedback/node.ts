@@ -5,7 +5,8 @@ import type {
   NodeFeedbackProjection,
   NodeFeedbackState,
   NodePatch,
-  NodePatchEntry,
+  NodePreviewEntry,
+  NodePreviewPatch,
   NodeSelectionFeedbackState,
   NodeTextFeedbackState,
   TextPreviewEntry,
@@ -13,7 +14,7 @@ import type {
 } from '@whiteboard/editor/local/feedback/types'
 import { mergeEntryById } from '@whiteboard/editor/local/feedback/merge'
 
-export const EMPTY_NODE_PATCHES: readonly NodePatchEntry[] = []
+export const EMPTY_NODE_PATCHES: readonly NodePreviewEntry[] = []
 export const EMPTY_TEXT_PREVIEW_PATCHES: readonly TextPreviewEntry[] = []
 export const EMPTY_NODE_HIDDEN: readonly NodeId[] = []
 
@@ -56,6 +57,44 @@ const isTextPreviewPatchEqual = (
   && left?.wrapWidth === right?.wrapWidth
   && left?.handle === right?.handle
 )
+
+const toNodeGeometryPatch = (
+  patch: NodePreviewPatch
+): NodePatch | undefined => {
+  if (
+    !patch.position
+    && !patch.size
+    && patch.rotation === undefined
+  ) {
+    return undefined
+  }
+
+  return {
+    position: patch.position,
+    size: patch.size,
+    rotation: patch.rotation
+  }
+}
+
+const toNodeSelectionTextPreview = (
+  patch: NodePreviewPatch
+): TextPreviewPatch | undefined => {
+  if (
+    patch.fontSize === undefined
+    && patch.mode === undefined
+    && patch.wrapWidth === undefined
+    && patch.handle === undefined
+  ) {
+    return undefined
+  }
+
+  return {
+    fontSize: patch.fontSize,
+    mode: patch.mode,
+    wrapWidth: patch.wrapWidth,
+    handle: patch.handle
+  }
+}
 
 const readEntryPatch = <TPatch, TEntry extends {
   id: NodeId
@@ -316,14 +355,22 @@ export const toNodeFeedbackMap = (
 
   for (let index = 0; index < state.selection.node.patches.length; index += 1) {
     const entry = state.selection.node.patches[index]!
+    const geometryPatch = toNodeGeometryPatch(entry.patch)
+    const textPatch = toNodeSelectionTextPreview(entry.patch)
+
     mergeEntryById(next, entry.id, (current) => ({
-      patch: current?.patch
+      patch: current?.patch && geometryPatch
         ? {
             ...current.patch,
-            ...entry.patch
+            ...geometryPatch
           }
-        : entry.patch,
-      text: current?.text,
+        : geometryPatch ?? current?.patch,
+      text: current?.text && textPatch
+        ? {
+            ...current.text,
+            ...textPatch
+          }
+        : textPatch ?? current?.text,
       hovered: state.selection.node.frameHoverId === entry.id,
       hidden: hiddenSet.has(entry.id)
     }))

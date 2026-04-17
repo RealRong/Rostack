@@ -215,7 +215,7 @@ export const RecordCard = (props: RecordCardProps) => {
       record={record}
       fields={props.fields}
       titlePlaceholder={resolveTitlePlaceholder(props.titlePlaceholder, record)}
-      showEditAction={props.showEditAction && !editing && !draggingActive}
+      showEditAction={props.showEditAction && hovered && !editing && !draggingActive}
       propertyDensity={presentation.propertyDensity}
       wrap={props.wrap}
     />

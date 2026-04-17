@@ -32,7 +32,6 @@ export const ColumnBody = (props: {
   const sectionOverTarget = overTarget?.sectionKey === props.section.key
     ? overTarget
     : undefined
-  const isColumnTarget = !!sectionOverTarget && !sectionOverTarget.beforeItemId
   const indicatorTop = (() => {
     const bodyNode = bodyRef.current
     if (!sectionOverTarget || !bodyNode) {
@@ -88,7 +87,7 @@ export const ColumnBody = (props: {
             />
           ))}
           {hiddenCount ? (
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed bg-surface/70 px-3 py-2.5">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed px-3 py-2.5">
               <div className="min-w-0">
                 <div className="text-xs font-medium text-foreground">
                   {`Showing ${visibleCount} / ${props.section.items.count}`}
@@ -112,10 +111,8 @@ export const ColumnBody = (props: {
         </div>
       ) : (
         <div
-          className={cn(
-            'flex h-full items-center justify-center rounded-2xl border border-dashed bg-surface-muted/55 px-4 py-8 text-center text-sm text-fg-muted',
-            isColumnTarget && 'border-primary/40 bg-primary/[0.04] text-foreground/80'
-          )}
+          style={{ minHeight: Math.max(runtime.layout.columnMinHeight, props.section.items.count ? 0 : 120) }}
+          className={'flex h-full flex-1 min-h-full items-center justify-center px-4 py-8 text-center text-sm text-fg-muted'}
         >
           Drop a card here or add the first one.
         </div>

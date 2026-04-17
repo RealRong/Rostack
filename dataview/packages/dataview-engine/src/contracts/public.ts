@@ -264,12 +264,15 @@ export interface ActiveItemsApi {
     itemIds: readonly ItemId[],
     target: Placement
   ) => void
-  create: (input: {
-    section: SectionKey
-    title?: string
-    values?: Partial<Record<CustomFieldId, unknown>>
-  }) => RecordId | undefined
   remove: (itemIds: readonly ItemId[]) => void
+}
+
+export interface ActiveRecordsApi {
+  create: (input?: {
+    sectionKey?: SectionKey
+    before?: ItemId
+    set?: Partial<Record<FieldId, unknown>>
+  }) => RecordId | undefined
 }
 
 export interface ActiveCellsApi {
@@ -352,6 +355,7 @@ export interface ActiveViewApi {
   }
   gallery: GalleryApi
   kanban: KanbanApi
+  records: ActiveRecordsApi
   items: ActiveItemsApi
   cells: ActiveCellsApi
 }

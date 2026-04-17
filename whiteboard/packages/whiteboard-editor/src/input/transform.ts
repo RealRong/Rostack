@@ -17,7 +17,6 @@ import { createGesture } from '@whiteboard/editor/input/gesture'
 import type { InteractionContext } from '@whiteboard/editor/input/context'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { TransformPickHandle } from '@whiteboard/editor/types/pick'
-import type { TextPreviewPatch } from '@whiteboard/editor/local/feedback/types'
 
 export type TransformTarget = TransformSelectionMember<Node>
 export type RuntimeTransformSpec = TransformSpec<Node>
@@ -31,33 +30,11 @@ const toTransformNodePatches = (
   patches: readonly TransformPreviewPatch[]
 ) => patches.map(({
   id,
-  position,
-  size,
-  rotation
+  ...patch
 }) => ({
   id,
-  patch: {
-    position,
-    size,
-    rotation
-  }
+  patch
 }))
-
-const toTextTransformPreview = (
-  patch: TransformPreviewPatch
-): TextPreviewPatch | undefined => (
-  patch.fontSize === undefined
-  && patch.mode === undefined
-  && patch.wrapWidth === undefined
-  && patch.handle === undefined
-)
-  ? undefined
-  : {
-      fontSize: patch.fontSize,
-      mode: patch.mode,
-      wrapWidth: patch.wrapWidth,
-      handle: patch.handle
-    }
 
 const readNodeTransformSpec = (
   ctx: InteractionContext,
@@ -169,49 +146,6 @@ const resolveTransformSpec = (
   }
 }
 
-const clearTransformTextPreview = (
-  ctx: InteractionContext,
-  nodeIds: readonly string[]
-) => {
-  nodeIds.forEach((nodeId) => {
-    ctx.local.feedback.node.text.clear(nodeId)
-  })
-}
-
-const syncTransformTextPreview = (
-  ctx: InteractionContext,
-  activeNodeIds: readonly string[],
-  patches: readonly TransformPreviewPatch[]
-) => {
-  const nextActiveNodeIds = patches.flatMap((patch) => {
-    const textPreview = toTextTransformPreview(patch)
-    if (!textPreview) {
-      return []
-    }
-
-    return [patch.id]
-  })
-  const nextActiveNodeIdSet = new Set(nextActiveNodeIds)
-
-  activeNodeIds.forEach((nodeId) => {
-    if (!nextActiveNodeIdSet.has(nodeId)) {
-      ctx.local.feedback.node.text.clear(nodeId)
-    }
-  })
-
-  patches.forEach((patch) => {
-    const textPreview = toTextTransformPreview(patch)
-    if (!textPreview) {
-      return
-    }
-
-    ctx.local.feedback.node.text.clearSize(patch.id)
-    ctx.local.feedback.node.text.set(patch.id, textPreview)
-  })
-
-  return nextActiveNodeIds
-}
-
 export const createTransformSession = (
   ctx: InteractionContext,
   spec: TransformSpec<Node>,
@@ -219,7 +153,6 @@ export const createTransformSession = (
 ): InteractionSession => {
   let state = startTransform(spec)
   let modifiers = start.modifiers
-  let activeTextPreviewIds: readonly string[] = []
   let interaction = null as InteractionSession | null
 
   const project = (
@@ -249,11 +182,6 @@ export const createTransformSession = (
       ...result.state,
       patches: nextPatches
     }
-    activeTextPreviewIds = syncTransformTextPreview(
-      ctx,
-      activeTextPreviewIds,
-      nextPatches
-    )
 
     interaction!.gesture = createGesture(
       'selection-transform',
@@ -296,15 +224,9 @@ export const createTransformSession = (
         ctx.command.node.updateMany(updates)
       }
 
-      clearTransformTextPreview(ctx, activeTextPreviewIds)
-      activeTextPreviewIds = []
-
       return FINISH
     },
-    cleanup: () => {
-      clearTransformTextPreview(ctx, activeTextPreviewIds)
-      activeTextPreviewIds = []
-    }
+    cleanup: () => {}
   }
 
   return interaction

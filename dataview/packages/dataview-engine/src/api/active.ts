@@ -19,6 +19,7 @@ import { createDisplayApi } from '@dataview/engine/active/commands/display'
 import { createTableApi } from '@dataview/engine/active/commands/table'
 import { createGalleryApi } from '@dataview/engine/active/commands/gallery'
 import { createKanbanApi } from '@dataview/engine/active/commands/kanban'
+import { createActiveRecordsApi } from '@dataview/engine/active/commands/records'
 import { createActiveItemsApi } from '@dataview/engine/active/commands/items'
 import { createCellsApi } from '@dataview/engine/active/commands/cells'
 
@@ -57,6 +58,9 @@ export const createActiveViewApi = (options: {
     }),
     gallery: createGalleryApi(base),
     kanban: createKanbanApi(base),
+    records: createActiveRecordsApi({
+      base
+    }),
     items: createActiveItemsApi({
       base,
       read: readApi

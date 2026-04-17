@@ -97,6 +97,10 @@ const isItemVisible = ({
       return activeScope.node?.canEditStroke ?? false
     case 'fill':
       return activeScope.node?.canEditFill ?? false
+    case 'mindmap-branch':
+      return activeScope.node?.mindmap?.canEditBranch ?? false
+    case 'mindmap-border':
+      return activeScope.node?.mindmap?.canEditBorder ?? false
     case 'edge-stroke':
       return Boolean(activeScope.edge)
     case 'edge-geometry':
@@ -175,11 +179,22 @@ export const resolveToolbarRecipe = ({
     scopeCan,
     key
   }))
+  const mindmapKeys = ([
+    'mindmap-branch',
+    'mindmap-border'
+  ] as const).filter((key) => isItemVisible({
+    context,
+    activeScope,
+    selectionCan,
+    scopeCan,
+    key
+  }))
 
   appendSection(recipe, selectionKeys)
   if (activeScope.node) {
     appendSection(recipe, structureKeys)
     appendSection(recipe, nodeStyleKeys)
+    appendSection(recipe, mindmapKeys)
     appendSection(recipe, utilityKeys)
     return recipe
   }

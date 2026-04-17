@@ -6,6 +6,7 @@ import type {
   PageSessionApi,
   PageSessionInput
 } from '@dataview/react/page/session/types'
+import type { DragApi } from '@dataview/react/page/drag'
 import type { ItemSelectionController } from '@dataview/react/runtime/selection'
 import type { InlineSessionApi } from '@dataview/react/runtime/inlineSession'
 import type { ValueEditorController } from '@dataview/react/runtime/valueEditor'
@@ -15,6 +16,7 @@ export interface DataViewContextValue {
   engine: Engine
   page: PageSessionApi & {
     store: ReadStore<PageState>
+    drag: DragApi
   }
   selection: ItemSelectionController
   marquee: MarqueeApi

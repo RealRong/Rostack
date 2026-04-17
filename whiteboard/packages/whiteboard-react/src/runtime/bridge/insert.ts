@@ -165,6 +165,8 @@ const insertMindmapPreset = ({
   const result = editor.actions.mindmap.create({
     preset: preset.preset,
     seed: preset.seed
+  }, {
+    focus: 'edit-root'
   })
   if (!result.ok) {
     return undefined
@@ -188,11 +190,7 @@ const insertMindmapPreset = ({
   })
 
   return {
-    nodeId: result.data.rootId,
-    edit: {
-      nodeId: result.data.rootId,
-      field: 'text'
-    }
+    nodeId: result.data.rootId
   }
 }
 

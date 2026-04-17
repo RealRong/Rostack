@@ -25,7 +25,7 @@ import type {
   SelectionSummary,
   SelectionTarget
 } from '@whiteboard/core/selection'
-import type { Edge, Node, NodeSchema, Rect } from '@whiteboard/core/types'
+import type { Edge, MindmapNodeId, Node, NodeSchema, Rect } from '@whiteboard/core/types'
 import type {
   SelectionEdgeTypeInfo,
   SelectionNodeInfo,
@@ -49,6 +49,7 @@ import type { EditSession } from '@whiteboard/editor/local/session/edit'
 import { readUniformValue } from '@whiteboard/editor/query/utils'
 import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
 import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
+import type { MindmapPresentationRead } from '@whiteboard/editor/query/mindmap/read'
 
 export type SelectionRead = {
   box: ReadStore<Rect | undefined>
@@ -457,13 +458,15 @@ const readNodeScope = ({
   nodeIds,
   primaryNode,
   registry,
-  nodeStats
+  nodeStats,
+  mindmap
 }: {
   nodes: readonly Node[]
   nodeIds: readonly string[]
   primaryNode?: Node
   registry: Pick<NodeRegistry, 'get'>
   nodeStats: SelectionNodeStats
+  mindmap: Pick<MindmapPresentationRead, 'tree'>
 }): SelectionToolbarNodeScope => {
   const nodeKind = resolveToolbarNodeKind(nodes, {
     ...nodeStats,
@@ -497,6 +500,30 @@ const readNodeScope = ({
   const canEditFillOpacity = canEditFill && styleSupport.fillOpacity
   const canEditStrokeOpacity = canEditStroke && styleSupport.strokeOpacity
   const canEditStrokeDash = canEditStroke && styleSupport.strokeDash
+  const mindmapOwned = nodes.length > 0
+    && nodes.every((entry) => entry.type === 'text' && Boolean(entry.mindmapId))
+  const treeIds = mindmapOwned
+    ? [...new Set(nodes.map((entry) => entry.mindmapId).filter(Boolean))]
+    : []
+  const mindmapTreeId = treeIds.length === 1
+    ? treeIds[0]
+    : undefined
+  const mindmapTree = mindmapTreeId
+    ? read(mindmap.tree, mindmapTreeId)
+    : undefined
+  const readMindmapBranchValue = <TValue,>(
+    select: (branch: NonNullable<typeof mindmapTree>['nodes'][MindmapNodeId]['branch']) => TValue
+  ) => (
+    mindmapTreeId && mindmapTree
+      ? readUniformValue(
+          nodeIds as readonly MindmapNodeId[],
+          (nodeId) => {
+            const branch = mindmapTree.nodes[nodeId]?.branch
+            return branch ? select(branch) : undefined
+          }
+        )
+      : undefined
+  )
 
   return {
     kind: nodeKind,
@@ -530,8 +557,8 @@ const readNodeScope = ({
     textColor: readToolbarValue(canEditTextColor, nodes, readTextColor),
     fill: readToolbarValue(canEditFill, nodes, readFill),
     fillOpacity: readToolbarValue(canEditFillOpacity, nodes, readFillOpacity),
-    stroke: readToolbarValue(canEditStroke, nodes, readStroke),
-    strokeWidth: readToolbarValue(canEditStroke, nodes, readStrokeWidth),
+    stroke: readUniformValue(nodes, readStroke),
+    strokeWidth: readUniformValue(nodes, readStrokeWidth),
     strokeOpacity: readToolbarValue(canEditStrokeOpacity, nodes, readStrokeOpacity),
     strokeDash: readToolbarValue(
       canEditStrokeDash,
@@ -542,7 +569,26 @@ const readNodeScope = ({
         normalizeDash(right)
       )
     ),
-    opacity: readToolbarValue(styleSupport.opacity, nodes, readOpacity)
+    opacity: readToolbarValue(styleSupport.opacity, nodes, readOpacity),
+    mindmap: mindmapOwned
+      ? {
+          treeId: mindmapTreeId,
+          nodeIds: nodeIds as readonly MindmapNodeId[],
+          primaryNodeId: primaryNode?.id as MindmapNodeId | undefined,
+          canEditBranch: Boolean(mindmapTreeId && mindmapTree),
+          branchColor: readMindmapBranchValue((branch) => branch.color),
+          branchLine: readMindmapBranchValue((branch) => branch.line),
+          branchWidth: readMindmapBranchValue((branch) => branch.width),
+          branchStroke: readMindmapBranchValue((branch) => branch.stroke),
+          canEditBorder: true,
+          borderKind: readUniformValue(nodes, (entry) => {
+            const value = readString(entry, 'frameKind')
+            return value === 'ellipse' || value === 'rect' || value === 'underline'
+              ? value
+              : undefined
+          })
+        }
+      : undefined
   }
 }
 
@@ -735,6 +781,7 @@ const resolveSelectionToolbar = ({
   summary,
   affordance,
   registry,
+  mindmap,
   tool,
   edit,
   interactionChrome,
@@ -743,6 +790,7 @@ const resolveSelectionToolbar = ({
   summary: SelectionSummary
   affordance: SelectionAffordance
   registry: Pick<NodeRegistry, 'get'>
+  mindmap: Pick<MindmapPresentationRead, 'tree'>
   tool: Tool
   edit: EditSession
   interactionChrome: boolean
@@ -788,7 +836,8 @@ const resolveSelectionToolbar = ({
         nodeIds: nodeStats.ids,
         primaryNode: summary.items.primaryNode,
         registry,
-        nodeStats
+        nodeStats,
+        mindmap
       })
     })
 
@@ -823,7 +872,8 @@ const resolveSelectionToolbar = ({
                       ? 'mixed'
                       : 'none',
               types: [type]
-            }
+            },
+            mindmap
           })
         })
       })
@@ -895,12 +945,14 @@ const resolveSelectionToolbar = ({
 export const createSelectionPresentationRead = ({
   model,
   registry,
+  mindmap,
   tool,
   edit,
   interaction
 }: {
   model: SelectionModelRead
   registry: Pick<NodeRegistry, 'get'>
+  mindmap: Pick<MindmapPresentationRead, 'tree'>
   tool: ReadStore<Tool>
   edit: ReadStore<EditSession>
   interaction: Pick<InteractionRuntime, 'mode' | 'chrome'>
@@ -941,6 +993,7 @@ export const createSelectionPresentationRead = ({
         summary: resolvedModel.summary,
         affordance: resolvedModel.affordance,
         registry,
+        mindmap,
         tool: read(tool),
         edit: read(edit),
         interactionChrome: read(interaction.chrome),

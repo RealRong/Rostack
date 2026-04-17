@@ -79,9 +79,15 @@ export const createCommandRuntime = ({
     engine,
     read,
     node: {
-      update: node.update
+      update: node.update,
+      updateMany: node.updateMany
     },
-    layout
+    layout,
+    feedback: local.actions.feedback,
+    session: {
+      edit: local.actions.edit,
+      selection: local.actions.session.selection
+    }
   })
   const selection = createSelectionCommands({
     read,

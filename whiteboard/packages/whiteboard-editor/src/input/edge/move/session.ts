@@ -69,7 +69,10 @@ export const createEdgeBodyMoveSession = (
 
       const commit = commitEdgeMove(state)
       if (commit) {
-        ctx.command.edge.move(commit.edgeId, commit.delta)
+        ctx.command.edge.move({
+          ids: [commit.edgeId],
+          delta: commit.delta
+        })
       }
 
       return FINISH

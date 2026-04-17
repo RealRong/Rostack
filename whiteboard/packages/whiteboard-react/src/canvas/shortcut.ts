@@ -17,10 +17,77 @@ export const DefaultShortcutBindings: readonly ShortcutBinding[] = [
   { key: 'Mod+D', action: 'selection.duplicate' },
   { key: 'Mod+Z', action: 'history.undo' },
   { key: 'Shift+Mod+Z', action: 'history.redo' },
-  { key: 'Mod+Y', action: 'history.redo' }
+  { key: 'Mod+Y', action: 'history.redo' },
+  { key: 'ArrowLeft', action: 'mindmap.navigate.parent' },
+  { key: 'ArrowRight', action: 'mindmap.navigate.first-child' },
+  { key: 'ArrowUp', action: 'mindmap.navigate.prev-sibling' },
+  { key: 'ArrowDown', action: 'mindmap.navigate.next-sibling' },
+  { key: 'Tab', action: 'mindmap.insert.child' },
+  { key: 'Enter', action: 'mindmap.insert.sibling' },
+  { key: 'Shift+Tab', action: 'mindmap.insert.parent' }
 ] as const
 
 type ShortcutState = ReturnType<typeof readShortcutState>
+
+type ActiveMindmapShortcut = {
+  treeId: string
+  nodeId: string
+}
+
+const DEFAULT_SHORTCUT_INSERT_BEHAVIOR = {
+  focus: 'keep-current',
+  enter: 'from-anchor'
+} as const
+
+const readActiveMindmapShortcut = (
+  editor: Editor
+): ActiveMindmapShortcut | undefined => {
+  const selection = editor.store.selection.get()
+  if (
+    editor.store.edit.get() !== null
+    || selection.edgeIds.length > 0
+    || selection.nodeIds.length !== 1
+  ) {
+    return undefined
+  }
+
+  const node = editor.read.node.render.get(selection.nodeIds[0] ?? '')?.node
+  if (!node?.mindmapId || node.type !== 'text') {
+    return undefined
+  }
+
+  return {
+    treeId: node.mindmapId,
+    nodeId: node.id
+  }
+}
+
+const readMindmapInsertPlacement = ({
+  action,
+  tree,
+  nodeId
+}: {
+  action: 'mindmap.insert.child' | 'mindmap.insert.sibling' | 'mindmap.insert.parent'
+  tree: NonNullable<ReturnType<Editor['read']['mindmap']['render']['get']>>['tree']
+  nodeId: string
+}) => {
+  const isRoot = nodeId === tree.rootNodeId
+  const side = isRoot
+    ? 'right'
+    : tree.nodes[nodeId]?.side ?? 'right'
+
+  switch (action) {
+    case 'mindmap.insert.child':
+      return side === 'left' ? 'left' : 'right'
+    case 'mindmap.insert.sibling':
+      return isRoot ? 'right' : 'down'
+    case 'mindmap.insert.parent':
+      if (isRoot) {
+        return undefined
+      }
+      return side === 'left' ? 'right' : 'left'
+  }
+}
 
 const readShortcutState = (
   editor: Editor
@@ -46,7 +113,8 @@ const readShortcutState = (
     canDuplicate: readSelectionCan({
       editor,
       target: selection
-    }).duplicate
+    }).duplicate,
+    mindmap: readActiveMindmapShortcut(editor)
   }
 }
 
@@ -71,6 +139,14 @@ const canRunShortcut = (
     case 'history.undo':
     case 'history.redo':
       return true
+    case 'mindmap.navigate.parent':
+    case 'mindmap.navigate.first-child':
+    case 'mindmap.navigate.prev-sibling':
+    case 'mindmap.navigate.next-sibling':
+    case 'mindmap.insert.child':
+    case 'mindmap.insert.sibling':
+    case 'mindmap.insert.parent':
+      return Boolean(state.mindmap)
     default:
       return false
   }
@@ -86,6 +162,7 @@ export const runShortcut = (
   }
 
   const { selection } = state
+  const activeMindmap = state.mindmap
 
   switch (action) {
     case 'selection.selectAll':
@@ -112,6 +189,68 @@ export const runShortcut = (
       return editor.actions.history.undo().ok
     case 'history.redo':
       return editor.actions.history.redo().ok
+    case 'mindmap.navigate.parent':
+    case 'mindmap.navigate.first-child':
+    case 'mindmap.navigate.prev-sibling':
+    case 'mindmap.navigate.next-sibling': {
+      if (!activeMindmap) {
+        return false
+      }
+
+      const target = editor.actions.mindmap.navigate({
+        id: activeMindmap.treeId,
+        fromNodeId: activeMindmap.nodeId,
+        direction: action === 'mindmap.navigate.parent'
+          ? 'parent'
+          : action === 'mindmap.navigate.first-child'
+            ? 'first-child'
+            : action === 'mindmap.navigate.prev-sibling'
+              ? 'prev-sibling'
+              : 'next-sibling'
+      })
+      if (!target) {
+        return false
+      }
+
+      editor.actions.selection.replace({
+        nodeIds: [target]
+      })
+      return true
+    }
+    case 'mindmap.insert.child':
+    case 'mindmap.insert.sibling':
+    case 'mindmap.insert.parent': {
+      if (!activeMindmap) {
+        return false
+      }
+
+      const tree = editor.read.mindmap.render.get(activeMindmap.treeId)?.tree
+      if (!tree) {
+        return false
+      }
+
+      const placement = readMindmapInsertPlacement({
+        action,
+        tree,
+        nodeId: activeMindmap.nodeId
+      })
+      if (!placement) {
+        return false
+      }
+
+      return Boolean(editor.actions.mindmap.insertByPlacement({
+        id: activeMindmap.treeId,
+        tree,
+        targetNodeId: activeMindmap.nodeId,
+        placement,
+        layout: tree.layout,
+        payload: {
+          kind: 'text',
+          text: ''
+        },
+        behavior: DEFAULT_SHORTCUT_INSERT_BEHAVIOR
+      })?.ok)
+    }
     default:
       return false
   }

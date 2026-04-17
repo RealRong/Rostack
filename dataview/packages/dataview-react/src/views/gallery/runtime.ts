@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useMemo,
   useRef
 } from 'react'
@@ -72,6 +73,35 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
       })
     }
   })
+
+  useEffect(() => {
+    if (!drag.activeId || !drag.dragIds.length) {
+      dataView.page.drag.clear()
+      return
+    }
+
+    dataView.page.drag.set({
+      active: true,
+      kind: 'card',
+      source: drag.sourceRef.current,
+      pointerRef: drag.pointerRef,
+      offsetRef: drag.overlayOffsetRef,
+      size: drag.overlaySize,
+      extraCount: Math.max(0, drag.dragIds.length - 1)
+    })
+
+    return () => {
+      dataView.page.drag.clear()
+    }
+  }, [
+    dataView.page.drag,
+    drag.activeId,
+    drag.dragIds,
+    drag.overlayOffsetRef,
+    drag.overlaySize,
+    drag.pointerRef,
+    drag.sourceRef
+  ])
 
   const indicator = useMemo(() => {
     if (!drag.overTarget || !drag.dragIds.length) {

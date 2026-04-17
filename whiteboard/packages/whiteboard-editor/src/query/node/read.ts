@@ -236,7 +236,7 @@ const resolveNodeCapability = (
 
   return {
     role,
-    connect: !mindmapOwned && !mindmapRoot && (definition?.connect ?? true),
+    connect: !mindmapRoot && (definition?.connect ?? true),
     enter: definition?.enter ?? false,
     resize: !mindmapOwned && !mindmapRoot && (definition?.canResize ?? true),
     rotate:

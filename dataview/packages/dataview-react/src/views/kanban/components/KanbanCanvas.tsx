@@ -1,7 +1,6 @@
 import { PAGE_INLINE_INSET_CSS } from '@dataview/react/page/layout'
 import { useKanbanContext } from '@dataview/react/views/kanban/context'
 import { Column } from '@dataview/react/views/kanban/components/Column'
-import { Overlay } from '@dataview/react/views/kanban/components/Overlay'
 
 const PAGE_PADDING_BOTTOM = 180
 
@@ -45,7 +44,6 @@ export const KanbanCanvas = () => {
           </div>
         </div>
       </div>
-      <Overlay />
     </div>
   )
 }

@@ -244,6 +244,40 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
     }
   })
 
+  useEffect(() => {
+    if (!drag.activeId || !drag.dragIds.length) {
+      dataView.page.drag.clear()
+      return
+    }
+
+    dataView.page.drag.set({
+      active: true,
+      kind: 'card',
+      source: drag.sourceRef.current,
+      pointerRef: drag.pointerRef,
+      offsetRef: drag.overlayOffsetRef,
+      size: {
+        width: drag.overlaySize.width || Math.max(220, input.columnWidth - 32),
+        height: drag.overlaySize.height
+      },
+      extraCount: Math.max(0, drag.dragIds.length - 1)
+    })
+
+    return () => {
+      dataView.page.drag.clear()
+    }
+  }, [
+    dataView.page.drag,
+    drag.activeId,
+    drag.dragIds,
+    drag.overlayOffsetRef,
+    drag.overlaySize.height,
+    drag.overlaySize.width,
+    drag.pointerRef,
+    drag.sourceRef,
+    input.columnWidth
+  ])
+
   return useMemo(() => ({
     layout: {
       columnWidth: input.columnWidth,

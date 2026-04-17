@@ -1,4 +1,9 @@
-import { useCallback, type RefObject } from 'react'
+import {
+  useCallback,
+  useRef,
+  type RefObject,
+  type PointerEvent as ReactPointerEvent
+} from 'react'
 import type { ItemId } from '@dataview/engine'
 import { pointIn } from '@shared/dom'
 import {
@@ -35,6 +40,7 @@ const sameTarget = (
 )
 
 export const useCardReorder = (options: Options) => {
+  const sourceRef = useRef<HTMLElement | null>(null)
   const resolveTarget = useCallback((pointer: PointerPosition | null, dragIds: readonly ItemId[]) => {
     const container = options.containerRef.current
     if (!container || !pointer) {
@@ -54,8 +60,16 @@ export const useCardReorder = (options: Options) => {
     resolveTarget,
     sameTarget,
     onDrop: options.onDrop,
-    onDraggingChange: options.onDraggingChange
+    onDraggingChange: options.onDraggingChange,
+    onFinish: () => {
+      sourceRef.current = null
+    }
   })
+
+  const onPointerDown = useCallback((recordId: ItemId, event: ReactPointerEvent<HTMLElement>) => {
+    sourceRef.current = event.currentTarget
+    session.onPointerDown(recordId, event)
+  }, [session])
 
   return {
     activeId: session.activeId,
@@ -65,7 +79,8 @@ export const useCardReorder = (options: Options) => {
     overTarget: session.overTarget,
     overlayOffsetRef: session.overlayOffsetRef,
     pointerRef: session.pointerRef,
+    sourceRef,
     shouldIgnoreClick: session.shouldIgnoreClick,
-    onPointerDown: session.onPointerDown
+    onPointerDown
   }
 }

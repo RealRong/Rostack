@@ -1,10 +1,10 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   type PointerEvent as ReactPointerEvent
 } from 'react'
-import { cloneDragGhostNode } from '@dataview/react/dom/dragGhost'
 import type { ItemId } from '@dataview/engine'
 import {
   rowDragIds,
@@ -21,19 +21,10 @@ import { useStoreValue } from '@shared/react'
 import { usePointerDragSession } from '@dataview/react/interaction/usePointerDragSession'
 import { useTableContext } from '@dataview/react/views/table/context'
 
-export interface RowReorderOverlayModel {
-  active: boolean
-  node: HTMLElement | null
-  extraCount: number
-  pointerRef: ReturnType<typeof usePointerDragSession<ItemId, ItemId, TableRowReorderHint>>['pointerRef']
-  overlayOffsetRef: ReturnType<typeof usePointerDragSession<ItemId, ItemId, TableRowReorderHint>>['overlayOffsetRef']
-}
-
 export interface RowReorderApi {
   active: boolean
   dragIdSet: ReadonlySet<ItemId>
   hint: TableRowReorderHint | null
-  overlay: RowReorderOverlayModel
   startDrag: (input: {
     rowId: ItemId
     event: ReactPointerEvent<HTMLButtonElement>
@@ -65,7 +56,7 @@ export const useRowReorder = (): RowReorderApi => {
     [rowIds]
   )
   const selectionTargetRef = useRef<ItemId | null>(null)
-  const previewNodeRef = useRef<HTMLElement | null>(null)
+  const sourceNodeRef = useRef<HTMLElement | null>(null)
 
   const resolveDragIds = useCallback((activeId: ItemId) => {
     return rowDragIds({
@@ -147,7 +138,7 @@ export const useRowReorder = (): RowReorderApi => {
     onFinish: input => {
       table.hover.clear()
       table.rowRail.set(null)
-      previewNodeRef.current = null
+      sourceNodeRef.current = null
       if (!input.cancelled && selectionTargetRef.current) {
         table.selection.rows.command.ids.replace([selectionTargetRef.current], {
           anchor: selectionTargetRef.current,
@@ -173,7 +164,7 @@ export const useRowReorder = (): RowReorderApi => {
       dragIds,
       selectedRowIds
     })
-    previewNodeRef.current = cloneDragGhostNode(
+    sourceNodeRef.current = (
       input.event.currentTarget.closest<HTMLElement>('[data-table-target="row"]')
       ?? table.dom.row(input.rowId)
     )
@@ -186,25 +177,44 @@ export const useRowReorder = (): RowReorderApi => {
     drag.onPointerDown(input.rowId, input.event)
   }, [capabilities.canRowDrag, drag, resolveDragIds, selectedRowIds, table.dom, table.hover, table.rowRail])
 
+  useEffect(() => {
+    if (!drag.dragIds.length) {
+      dataView.page.drag.clear()
+      return
+    }
+
+    dataView.page.drag.set({
+      active: true,
+      kind: 'row',
+      source: sourceNodeRef.current,
+      pointerRef: drag.pointerRef,
+      offsetRef: drag.overlayOffsetRef,
+      size: drag.overlaySize,
+      extraCount: Math.max(0, drag.dragIds.length - 1),
+      scrubSelectors: ['[data-table-target="row-rail"]']
+    })
+
+    return () => {
+      dataView.page.drag.clear()
+    }
+  }, [
+    dataView.page.drag,
+    drag.dragIds,
+    drag.overlayOffsetRef,
+    drag.overlaySize,
+    drag.pointerRef
+  ])
+
   return useMemo(() => ({
     active: drag.dragIds.length > 0,
     dragIdSet: drag.dragIdSet,
     hint: drag.overTarget ?? null,
-    startDrag,
-    overlay: {
-      active: drag.dragIds.length > 0,
-      node: previewNodeRef.current,
-      extraCount: Math.max(0, drag.dragIds.length - 1),
-      pointerRef: drag.pointerRef,
-      overlayOffsetRef: drag.overlayOffsetRef
-    }
+    startDrag
   }), [
     drag.dragIdSet,
     drag.dragIds,
     drag.dragIds.length,
-    drag.overlayOffsetRef,
     drag.overTarget,
-    drag.pointerRef,
-    startDrag,
+    startDrag
   ])
 }

@@ -1295,8 +1295,7 @@ const createRoadmapDocument = (recordCount: number, seed: number): DataDoc => {
       gallery: {
         card: {
           wrap: false,
-          size: 'lg'
-          ,
+          size: 'lg',
           layout: 'stacked'
         }
       }
@@ -1524,8 +1523,7 @@ const createSalesDocument = (recordCount: number, seed: number): DataDoc => {
       gallery: {
         card: {
           wrap: false,
-          size: 'lg'
-          ,
+          size: 'lg',
           layout: 'stacked'
         }
       }
@@ -1671,8 +1669,7 @@ const createContentDocument = (recordCount: number, seed: number): DataDoc => {
       gallery: {
         card: {
           wrap: false,
-          size: 'lg'
-          ,
+          size: 'lg',
           layout: 'stacked'
         }
       }

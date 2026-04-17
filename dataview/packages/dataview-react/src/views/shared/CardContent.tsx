@@ -96,6 +96,7 @@ export const CardContent = forwardRef<HTMLElement, CardContentProps>((props, ref
     >
       {showEditAction && !editing.editing ? (
         <Button
+          data-drag-clone-hidden=""
           size="icon"
           variant="ghost"
           className={cn('absolute right-2 top-2.5 z-10', slots?.editAction)}

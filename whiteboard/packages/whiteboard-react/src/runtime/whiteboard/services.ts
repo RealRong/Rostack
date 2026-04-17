@@ -110,12 +110,6 @@ export const createWhiteboardServices = ({
       }
 
       editor.actions.tool.select()
-      editor.actions.selection.replace({
-        nodeIds: [result.nodeId]
-      })
-      if (result.edit) {
-        editor.actions.edit.startNode(result.edit.nodeId, result.edit.field)
-      }
       return true
     }
   })

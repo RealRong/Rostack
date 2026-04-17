@@ -10,7 +10,6 @@ import {
   DndContext
 } from '@dnd-kit/core'
 import { modifiers } from '@dataview/react/interaction'
-import { DragGhost } from '@dataview/react/dom/dragGhost'
 import {
   closestTarget,
   hasInteractiveTarget,
@@ -245,17 +244,6 @@ const View = () => {
           />
         </Surface>
       </DndContext>
-      <DragGhost
-        active={rowReorder.overlay.active}
-        node={rowReorder.overlay.node}
-        pointerRef={rowReorder.overlay.pointerRef}
-        offsetRef={rowReorder.overlay.overlayOffsetRef}
-        badge={rowReorder.overlay.extraCount ? (
-          <span className="rounded-full border border-accent-divider bg-accent-tint px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-accent">
-            +{rowReorder.overlay.extraCount}
-          </span>
-        ) : undefined}
-      />
     </>
   )
 }

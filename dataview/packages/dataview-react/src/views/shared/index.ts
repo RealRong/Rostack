@@ -1,6 +1,5 @@
 export { CardField, type CardFieldProps } from '@dataview/react/views/shared/CardField'
 export { CardContent, type CardContentProps } from '@dataview/react/views/shared/CardContent'
-export { CardPreview, type CardPreviewProps } from '@dataview/react/views/shared/CardPreview'
 export { CardTitle, type CardTitleProps } from '@dataview/react/views/shared/CardTitle'
 export {
   AddCardFieldTrigger,

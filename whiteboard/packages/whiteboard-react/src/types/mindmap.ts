@@ -11,12 +11,12 @@ export type MindmapTreeViewData = {
   bbox: Rect
   connectors: readonly MindmapRenderConnector[]
   childNodeIds: readonly MindmapNodeId[]
-  addChild?: {
-    visible: true
+  addChildren: readonly {
+    targetNodeId: MindmapNodeId
     x: number
     y: number
-    placement: 'right'
-  }
+    placement: 'left' | 'right'
+  }[]
   onAddChild: (
     nodeId: MindmapNodeId,
     placement: 'left' | 'right' | 'up' | 'down'

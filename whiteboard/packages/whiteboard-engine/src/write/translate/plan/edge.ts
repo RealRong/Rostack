@@ -148,10 +148,41 @@ export const create = (
 export const move = (
   command: Move,
   ctx: WriteTranslateContext
-): Step =>
-  routePatch(command.edgeId, ctx, (edge) =>
-    moveEdge(edge, command.delta)
-  )
+): Step => {
+  const ids = Array.from(new Set(command.ids))
+  if (!ids.length) {
+    return err('cancelled', 'No edges selected.')
+  }
+
+  const updates: EdgeBatchUpdate[] = []
+
+  for (const edgeId of ids) {
+    const edge = getEdge(ctx.doc, edgeId)
+    if (!edge) {
+      continue
+    }
+
+    const patch = moveEdge(edge, command.delta)
+    if (!patch || !Object.keys(patch).length) {
+      continue
+    }
+
+    updates.push({
+      id: edgeId,
+      patch
+    })
+  }
+
+  const operations = mergePatches(updates)
+  if (!operations.length) {
+    return err('cancelled', 'No edge move generated.')
+  }
+
+  return ok({
+    operations,
+    output: undefined
+  })
+}
 
 export const updateMany = (command: UpdateMany): Step => {
   const updates = command.type === 'edge.reconnect'

@@ -14,23 +14,6 @@ type DrawPointer = {
   samples: readonly PointerSample[]
 }
 
-const clearStrokePreview = (
-  ctx: InteractionContext
-) => {
-  ctx.local.feedback.draw.setPreview(null)
-}
-
-const writeStrokePreview = (
-  ctx: InteractionContext,
-  state: DrawStrokeState
-) => {
-  ctx.local.feedback.draw.setPreview(
-    previewDrawStroke(state, {
-      zoom: ctx.query.viewport.get().zoom
-    })
-  )
-}
-
 export const startStrokeState = (
   ctx: InteractionContext,
   input: PointerDownInput
@@ -58,7 +41,11 @@ export const createStrokeSession = (
       }
     )
     if (nextState.points !== state.points) {
-      writeStrokePreview(ctx, nextState)
+      ctx.local.feedback.draw.setPreview(
+        previewDrawStroke(nextState, {
+          zoom: ctx.query.viewport.get().zoom
+        })
+      )
     }
     state = nextState
   }
@@ -79,7 +66,7 @@ export const createStrokeSession = (
       return FINISH
     },
     cleanup: () => {
-      clearStrokePreview(ctx)
+      ctx.local.feedback.draw.setPreview(null)
     }
   }
 }

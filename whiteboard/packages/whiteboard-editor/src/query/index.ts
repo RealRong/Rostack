@@ -182,6 +182,7 @@ export const createQueryRuntime = ({
   const selectionRead = createSelectionPresentationRead({
     model: selectionModel,
     registry,
+    mindmap: mindmapRead,
     tool,
     edit: edit.source,
     interaction: local.interaction

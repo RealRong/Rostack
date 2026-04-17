@@ -53,6 +53,11 @@ export type EdgeBatchUpdate = {
   patch: EdgePatch
 }
 
+export type EdgeMoveInput = {
+  ids: readonly EdgeId[]
+  delta: Point
+}
+
 export type EngineCommand =
   | {
       type: 'document.replace'
@@ -142,9 +147,7 @@ export type EngineCommand =
     }
   | {
       type: 'edge.move'
-      edgeId: EdgeId
-      delta: Point
-    }
+    } & EdgeMoveInput
   | {
       type: 'edge.reconnect'
       edgeId: EdgeId

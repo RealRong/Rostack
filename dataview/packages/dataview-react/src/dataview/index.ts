@@ -33,6 +33,11 @@ export type {
   SelectionSummary
 } from '@dataview/react/runtime/selection'
 export type {
+  DragApi,
+  DragKind,
+  DragSpec
+} from '@dataview/react/page/drag'
+export type {
   PageLock,
   PageState,
   PageSessionApi,

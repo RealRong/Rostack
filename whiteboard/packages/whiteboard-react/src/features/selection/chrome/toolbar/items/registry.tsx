@@ -5,6 +5,7 @@ import type {
 import type { WhiteboardRuntime } from '@whiteboard/react/types/runtime'
 import type { SelectionCan } from '@whiteboard/react/features/selection/capability'
 import { edgeToolbarItemSpecs } from '@whiteboard/react/features/edge/ui/toolbar'
+import { mindmapToolbarItemSpecs } from '@whiteboard/react/features/mindmap/ui/toolbar'
 import type { ToolbarItemKey, ToolbarPanelKey } from '@whiteboard/react/features/selection/chrome/toolbar/types'
 import { alignItem } from '@whiteboard/react/features/selection/chrome/toolbar/items/align'
 import { boldItem, italicItem } from '@whiteboard/react/features/selection/chrome/toolbar/items/textStyle'
@@ -34,6 +35,7 @@ const itemSpecs: Record<ToolbarItemKey, ToolbarItemSpec> = {
   fill: fillItem,
   lock: lockItem,
   more: moreItem,
+  ...mindmapToolbarItemSpecs,
   ...edgeToolbarItemSpecs
 }
 

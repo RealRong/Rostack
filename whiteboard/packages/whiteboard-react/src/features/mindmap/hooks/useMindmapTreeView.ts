@@ -18,13 +18,17 @@ export const useMindmapTreeView = (
         return
       }
 
-      const result = editor.actions.mindmap.insertByPlacement({
+      editor.actions.mindmap.insertByPlacement({
         id: mindmapId,
         tree,
         targetNodeId: nodeId,
         placement,
         layout: tree.layout,
-        payload: { kind: 'text', text: '' }
+        payload: { kind: 'text', text: '' },
+        behavior: {
+          focus: 'edit-new',
+          enter: 'from-anchor'
+        }
       })
     },
     [editor, mindmapId, tree]
@@ -42,7 +46,7 @@ export const useMindmapTreeView = (
         bbox: render.bbox,
         connectors: render.connectors,
         childNodeIds: render.childNodeIds.filter((nodeId) => nodeId !== render.rootId),
-        addChild: render.addChild,
+        addChildren: render.addChildren,
         onAddChild
       }
     },

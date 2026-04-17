@@ -19,9 +19,7 @@ import type {
   EdgeId,
   EdgeInput,
   EdgePatch,
-  MindmapBranchLineKind,
   MindmapNodeFrameKind,
-  MindmapStrokeStyle,
   MindmapCloneSubtreeInput,
   MindmapCreateInput,
   MindmapId,
@@ -42,6 +40,10 @@ import type {
   Rect,
   Size
 } from '@whiteboard/core/types'
+import type {
+  MindmapBranchLineKind,
+  MindmapStrokeStyle
+} from '@whiteboard/core/mindmap'
 import type { ClipboardPacket } from '@whiteboard/editor/command/clipboard/packet'
 import type {
   BrushStylePatch,
@@ -164,7 +166,10 @@ export type EdgeApi = {
     edgeIds: readonly EdgeId[],
     patch: EdgePatch
   ) => CommandResult | undefined
-  move: (edgeId: EdgeId, delta: Point) => CommandResult
+  move: (input: {
+    ids: readonly EdgeId[]
+    delta: Point
+  }) => CommandResult
   reconnect: (
     edgeId: EdgeId,
     end: 'source' | 'target',

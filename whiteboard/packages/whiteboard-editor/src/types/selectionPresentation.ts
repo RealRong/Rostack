@@ -7,15 +7,17 @@ import type {
   EdgeMarker,
   EdgeTextMode,
   EdgeType,
-  MindmapBranchLineKind,
   MindmapId,
   MindmapNodeFrameKind,
   MindmapNodeId,
-  MindmapStrokeStyle,
   Node,
   NodeId,
   Rect
 } from '@whiteboard/core/types'
+import type {
+  MindmapBranchLineKind,
+  MindmapStrokeStyle
+} from '@whiteboard/core/mindmap'
 import type { NodeFamily } from '@whiteboard/editor/types/node'
 
 export type SelectionNodeTypeInfo = {

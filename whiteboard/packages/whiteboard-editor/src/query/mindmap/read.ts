@@ -1,5 +1,6 @@
 import {
   createKeyedDerivedStore,
+  createValueStore,
   read as readValue,
   sameRect,
   type KeyedReadStore,
@@ -27,18 +28,60 @@ export type MindmapRenderView = {
   rootLocked: boolean
   childNodeIds: readonly NodeId[]
   connectors: readonly MindmapRenderConnector[]
-  addChild?: {
-    visible: true
+  addChildren: readonly {
+    targetNodeId: NodeId
     x: number
     y: number
-    placement: 'right'
-  }
+    placement: 'left' | 'right'
+  }[]
 }
 
 export type MindmapPresentationRead = Omit<EngineRead['mindmap'], 'item'> & {
   item: KeyedReadStore<NodeId, MindmapItem | undefined>
   tree: KeyedReadStore<NodeId, MindmapItem['tree'] | undefined>
   render: KeyedReadStore<NodeId, MindmapRenderView | undefined>
+}
+
+const interpolateRect = (
+  from: Rect,
+  to: Rect,
+  progress: number
+): Rect => ({
+  x: from.x + (to.x - from.x) * progress,
+  y: from.y + (to.y - from.y) * progress,
+  width: from.width + (to.width - from.width) * progress,
+  height: from.height + (to.height - from.height) * progress
+})
+
+const readEnterProgress = (
+  startedAt: number,
+  durationMs: number,
+  now: number
+) => {
+  if (durationMs <= 0) {
+    return 1
+  }
+
+  return Math.max(0, Math.min(1, (now - startedAt) / durationMs))
+}
+
+const scheduleFrame = (
+  callback: () => void
+) => (
+  typeof requestAnimationFrame === 'function'
+    ? requestAnimationFrame(callback)
+    : globalThis.setTimeout(callback, 16)
+)
+
+const cancelFrame = (
+  handle: number
+) => {
+  if (typeof requestAnimationFrame === 'function') {
+    cancelAnimationFrame(handle)
+    return
+  }
+
+  globalThis.clearTimeout(handle)
 }
 
 const isConnectorEqual = (
@@ -73,18 +116,91 @@ const isMindmapRenderViewEqual = (
     && left.childNodeIds.every((nodeId, index) => nodeId === right.childNodeIds[index])
     && left.connectors.length === right.connectors.length
     && left.connectors.every((connector, index) => isConnectorEqual(connector, right.connectors[index]!))
-    && left.addChild?.visible === right.addChild?.visible
-    && left.addChild?.x === right.addChild?.x
-    && left.addChild?.y === right.addChild?.y
-    && left.addChild?.placement === right.addChild?.placement
+    && left.addChildren.length === right.addChildren.length
+    && left.addChildren.every((entry, index) => (
+      entry.targetNodeId === right.addChildren[index]?.targetNodeId
+      && entry.x === right.addChildren[index]?.x
+      && entry.y === right.addChildren[index]?.y
+      && entry.placement === right.addChildren[index]?.placement
+    ))
   )
 )
+
+const MINDMAP_ADD_BUTTON_OFFSET = 12
+
+const readAddButtonY = (
+  rect: Rect
+) => rect.y + Math.max(rect.height / 2 - 14, 0)
+
+const readAddChildren = ({
+  tree,
+  computed,
+  selection,
+  edit,
+  node
+}: {
+  tree: MindmapItem['tree']
+  computed: MindmapItem['computed']
+  selection: SelectionTarget
+  edit: EditSession
+  node: EngineRead['node']['item']
+}) => {
+  const selectedNodeId = selection.nodeIds.length === 1
+    ? selection.nodeIds[0]
+    : undefined
+  if (!selectedNodeId || tree.nodes[selectedNodeId] === undefined) {
+    return []
+  }
+
+  if (edit?.kind === 'node' && edit.nodeId === selectedNodeId) {
+    return []
+  }
+
+  if (readValue(node, selectedNodeId)?.node.locked) {
+    return []
+  }
+
+  const rect = computed.node[selectedNodeId]
+  if (!rect) {
+    return []
+  }
+
+  if (selectedNodeId === tree.rootNodeId) {
+    return [
+      {
+        targetNodeId: selectedNodeId,
+        x: rect.x - 28 - MINDMAP_ADD_BUTTON_OFFSET,
+        y: readAddButtonY(rect),
+        placement: 'left' as const
+      },
+      {
+        targetNodeId: selectedNodeId,
+        x: rect.x + rect.width + MINDMAP_ADD_BUTTON_OFFSET,
+        y: readAddButtonY(rect),
+        placement: 'right' as const
+      }
+    ]
+  }
+
+  const side = tree.nodes[selectedNodeId]?.side ?? 'right'
+  return [{
+    targetNodeId: selectedNodeId,
+    x: side === 'left'
+      ? rect.x - 28 - MINDMAP_ADD_BUTTON_OFFSET
+      : rect.x + rect.width + MINDMAP_ADD_BUTTON_OFFSET,
+    y: readAddButtonY(rect),
+    placement: side === 'left'
+      ? 'left' as const
+      : 'right' as const
+  }]
+}
 
 const toMindmapRenderView = (
   treeId: NodeId,
   treeView: MindmapItem,
   selection: SelectionTarget,
-  edit: EditSession
+  edit: EditSession,
+  node: EngineRead['node']['item']
 ): MindmapRenderView => {
   const rootRect = treeView.computed.node[treeView.tree.rootNodeId] ?? {
     x: treeView.node.position.x,
@@ -92,12 +208,6 @@ const toMindmapRenderView = (
     width: 0,
     height: 0
   }
-  const rootSelected = (
-    selection.nodeIds.length === 1
-    && selection.nodeIds[0] === treeView.tree.rootNodeId
-  )
-  const rootEditing = edit?.kind === 'node'
-    && edit.nodeId === treeView.tree.rootNodeId
   const rootLocked = Boolean((treeView as MindmapItem & {
     rootLocked?: boolean
   }).rootLocked)
@@ -111,14 +221,13 @@ const toMindmapRenderView = (
     rootLocked,
     childNodeIds: treeView.childNodeIds,
     connectors: treeView.connectors,
-    addChild: rootSelected && !rootEditing && !rootLocked
-      ? {
-          visible: true,
-          x: rootRect.x + rootRect.width + 12,
-          y: rootRect.y + Math.max(rootRect.height / 2 - 14, 0),
-          placement: 'right'
-        }
-      : undefined
+    addChildren: readAddChildren({
+      tree: treeView.tree,
+      computed: treeView.computed,
+      selection,
+      edit,
+      node
+    })
   }
 }
 
@@ -140,13 +249,15 @@ const readProjectedMindmapItem = ({
   base,
   node,
   preview,
-  edit
+  edit,
+  now
 }: {
   treeId: NodeId
   base: MindmapItem
   node: EngineRead['node']['item']
   preview: MindmapPreviewState | undefined
   edit: EditSession
+  now: number
 }): MindmapItem => {
   const liveEdit = edit?.kind === 'node'
     && edit.field === 'text'
@@ -157,8 +268,9 @@ const readProjectedMindmapItem = ({
   const rootMove = preview?.rootMove?.treeId === treeId
     ? preview.rootMove
     : undefined
+  const enter = preview?.enter?.filter((entry) => entry.treeId === treeId) ?? []
 
-  if (!liveEdit && !rootMove) {
+  if (!liveEdit && !rootMove && enter.length === 0) {
     return base
   }
 
@@ -198,6 +310,24 @@ const readProjectedMindmapItem = ({
     computed = translateMindmapLayout(computed, rootMove.delta)
   }
 
+  if (enter.length > 0) {
+    computed = {
+      ...computed,
+      node: {
+        ...computed.node
+      }
+    }
+
+    enter.forEach((entry) => {
+      const targetRect = computed.node[entry.nodeId] ?? entry.toRect
+      computed.node[entry.nodeId] = interpolateRect(
+        entry.fromRect,
+        targetRect,
+        readEnterProgress(entry.startedAt, entry.durationMs, now)
+      )
+    })
+  }
+
   const render = resolveMindmapRender({
     tree: base.tree,
     computed
@@ -234,16 +364,59 @@ export const createMindmapRead = ({
   edit: ReadStore<EditSession>
   selection: ReadStore<SelectionTarget>
 }): MindmapPresentationRead => {
+  const clock = createValueStore(0)
+  let frame = 0
+
+  const stopClock = () => {
+    if (!frame) {
+      return
+    }
+
+    cancelFrame(frame)
+    frame = 0
+  }
+
+  const tickClock = () => {
+    clock.set(
+      typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now()
+        : Date.now()
+    )
+    if (readValue(preview)?.enter?.length) {
+      frame = scheduleFrame(tickClock)
+      return
+    }
+
+    frame = 0
+  }
+
+  preview.subscribe(() => {
+    if (!readValue(preview)?.enter?.length) {
+      stopClock()
+      return
+    }
+
+    if (frame) {
+      return
+    }
+
+    tickClock()
+  })
+
   const item: MindmapPresentationRead['item'] = createKeyedDerivedStore({
     get: (treeId: NodeId) => {
       const treeView = readValue(read.item, treeId)
+      const currentPreview = readValue(preview)
       return treeView
         ? readProjectedMindmapItem({
             treeId,
             base: treeView,
             node,
-            preview: readValue(preview),
-            edit: readValue(edit)
+            preview: currentPreview,
+            edit: readValue(edit),
+            now: currentPreview?.enter?.length
+              ? readValue(clock)
+              : 0
           })
         : undefined
     },
@@ -269,7 +442,8 @@ export const createMindmapRead = ({
             treeId,
             treeView,
             readValue(selection),
-            readValue(edit)
+            readValue(edit),
+            node
           )
         : undefined
     },

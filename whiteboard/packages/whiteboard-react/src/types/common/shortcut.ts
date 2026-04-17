@@ -7,6 +7,13 @@ export type ShortcutAction =
   | 'selection.duplicate'
   | 'history.undo'
   | 'history.redo'
+  | 'mindmap.navigate.parent'
+  | 'mindmap.navigate.first-child'
+  | 'mindmap.navigate.prev-sibling'
+  | 'mindmap.navigate.next-sibling'
+  | 'mindmap.insert.child'
+  | 'mindmap.insert.sibling'
+  | 'mindmap.insert.parent'
 
 export type ShortcutBinding = {
   key: string

@@ -8,7 +8,6 @@ import { useTranslation } from '@shared/i18n/react'
 import { useGalleryContext } from '@dataview/react/views/gallery/context'
 import { GALLERY_CARD_GAP } from '@dataview/react/views/gallery/virtual'
 import { Card } from '@dataview/react/views/gallery/components/Card'
-import { Overlay } from '@dataview/react/views/gallery/components/Overlay'
 
 const contentInsetStyle = {
   paddingInline: PAGE_INLINE_INSET_CSS
@@ -144,7 +143,6 @@ export const Grid = () => {
           </div>
         )}
       </div>
-      <Overlay />
     </div>
   )
 }

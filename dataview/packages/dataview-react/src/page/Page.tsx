@@ -3,6 +3,7 @@ import { OverlayProvider } from '@shared/ui/overlay'
 import { PageTitle } from '@dataview/react/page/PageTitle'
 import { ViewQueryBar } from '@dataview/react/page/features/viewQuery/ViewQueryBar'
 import {
+  DragHost,
   PageInlineSessionHost,
   PageKeyboardHost,
   PageMarqueeHost
@@ -54,6 +55,7 @@ export const Page = (props: PageProps) => {
             />
           </div>
         </div>
+        <DragHost />
         <PageInlineSessionHost />
         <PageMarqueeHost />
         <PageKeyboardHost />

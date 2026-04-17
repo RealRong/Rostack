@@ -217,9 +217,9 @@ export const createEdgeCommands = ({
 
     return patchExistingEdges(read, engine, edgeIds, patch)
   },
-  move: (edgeId, delta) => engine.execute({
+  move: ({ ids, delta }) => engine.execute({
     type: 'edge.move',
-    edgeId,
+    ids,
     delta
   }),
   reconnect: (edgeId, end, target) => engine.execute({

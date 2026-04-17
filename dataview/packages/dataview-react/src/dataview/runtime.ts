@@ -8,6 +8,7 @@ import {
 import {
   createPageSessionApi
 } from '@dataview/react/page/session/api'
+import { createDragApi } from '@dataview/react/page/drag'
 import type {
   PageSessionInput
 } from '@dataview/react/page/session/types'
@@ -17,7 +18,6 @@ import {
 import {
   createItemSelectionDomainSource,
   createSelectionController,
-  selectionSnapshot,
   type ItemSelectionController
 } from '@dataview/react/runtime/selection'
 import {
@@ -127,6 +127,7 @@ export const createDataViewSession = (input: {
   initialPage?: PageSessionInput
 }): DataViewSession => {
   const page = createPageSessionApi(input.initialPage)
+  const drag = createDragApi()
   const marquee = createMarqueeApi()
   const inlineSession = createInlineSessionApi()
   const valueEditor = createValueEditorApi()
@@ -167,13 +168,15 @@ export const createDataViewSession = (input: {
     engine: input.engine,
     page: {
       ...page,
-      store: pageStateStore
+      store: pageStateStore,
+      drag
     },
     selection,
     marquee,
     inlineSession,
     valueEditor,
     dispose: () => {
+      drag.clear()
       disposeBindings()
       selectionRuntime.dispose()
       page.dispose()

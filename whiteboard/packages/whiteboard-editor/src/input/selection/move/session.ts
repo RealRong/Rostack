@@ -76,7 +76,10 @@ export const createMoveInteraction = (
 ): InteractionSession | null => {
   const pickedNodeId = (
     input.start.pick.kind === 'node'
-    && input.start.pick.part === 'body'
+    && (
+      input.start.pick.part === 'body'
+      || input.start.pick.part === 'field'
+    )
     && input.target.edgeIds.length === 0
     && input.target.nodeIds.length === 1
     && input.target.nodeIds[0] === input.start.pick.id

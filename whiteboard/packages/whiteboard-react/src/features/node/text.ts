@@ -27,5 +27,5 @@ export {
   readEditableText
 } from '@shared/dom'
 export {
-  measureTextSize
+  measureTextOuterSize
 } from '@whiteboard/react/features/node/dom/textMeasure'

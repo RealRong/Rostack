@@ -3,6 +3,7 @@ import type { MindmapItem } from '@whiteboard/engine/types/projection'
 import type { Node, NodeId, SpatialNode } from '@whiteboard/core/types'
 import type { BoardConfig } from '@whiteboard/engine/types/instance'
 import {
+  anchorMindmapLayout,
   computeMindmapLayout,
   getMindmapTree,
   getSubtreeIds,
@@ -71,9 +72,14 @@ export const createMindmapProjection = (
       },
       tree.layout
     )
+    const anchored = anchorMindmapLayout({
+      tree,
+      computed,
+      position: root.position
+    })
     const render = resolveMindmapRender({
       tree,
-      computed
+      computed: anchored
     })
 
     return {
@@ -81,9 +87,8 @@ export const createMindmapProjection = (
       node: root,
       tree,
       layout: tree.layout,
-      computed,
-      shiftX: -computed.bbox.x,
-      shiftY: -computed.bbox.y,
+      computed: anchored,
+      rootLocked: Boolean(allNodeById.get(tree.rootNodeId)?.locked),
       childNodeIds,
       connectors: render.connectors
     }

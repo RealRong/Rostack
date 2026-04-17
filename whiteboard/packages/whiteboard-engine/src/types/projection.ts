@@ -33,8 +33,7 @@ export type MindmapItem = {
   tree: MindmapTree
   layout: MindmapLayoutSpec
   computed: MindmapLayout
-  shiftX: number
-  shiftY: number
+  rootLocked?: boolean
   childNodeIds: readonly MindmapNodeId[]
   connectors: readonly MindmapRenderConnector[]
 }

@@ -1,7 +1,9 @@
+import { isSizeEqual } from '@whiteboard/core/geometry'
 import { isTextContentEmpty } from '@whiteboard/core/node'
 import {
   compileNodeDataUpdate,
-  compileNodeStyleUpdate
+  compileNodeStyleUpdate,
+  mergeNodeUpdates
 } from '@whiteboard/core/schema'
 import type { NodeId } from '@whiteboard/core/types'
 import type { NodeContext } from '@whiteboard/editor/command/node/context'
@@ -54,7 +56,10 @@ export const createNodeTextCommands = (
   commit: ({
     nodeId,
     field,
-    value
+    value,
+    size,
+    fontSize,
+    wrapWidth
   }) => {
     const committed = ctx.read.committed(nodeId)
     if (!committed) {
@@ -80,10 +85,41 @@ export const createNodeTextCommands = (
     }
 
     if (value === currentValue) {
-      return undefined
+      if (
+        isSizeEqual(size, committed.rect)
+        && (
+          fontSize === undefined
+          || committed.node.style?.fontSize === fontSize
+        )
+        && (
+          wrapWidth === undefined
+          || committed.node.data?.wrapWidth === wrapWidth
+        )
+      ) {
+        return undefined
+      }
     }
 
-    return ctx.write.update(nodeId, compileNodeDataUpdate(field, value))
+    const update = mergeNodeUpdates(
+      value === currentValue
+        ? undefined
+        : compileNodeDataUpdate(field, value),
+      size && !isSizeEqual(size, committed.rect)
+        ? {
+            fields: {
+              size
+            }
+          }
+        : undefined,
+      fontSize !== undefined && committed.node.style?.fontSize !== fontSize
+        ? compileNodeStyleUpdate('fontSize', fontSize)
+        : undefined,
+      committed.node.type === 'text' && committed.node.data?.wrapWidth !== wrapWidth
+        ? compileNodeDataUpdate('wrapWidth', wrapWidth)
+        : undefined
+    )
+
+    return ctx.write.update(nodeId, update)
   },
   color: (nodeIds, color) => ctx.write.updateMany(
     toNodeStyleBatchUpdates(nodeIds, 'color', color)

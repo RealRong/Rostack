@@ -9,11 +9,15 @@ import {
   type MindmapCommandResult
 } from '@whiteboard/core/mindmap'
 import {
+  anchorMindmapLayout,
   computeMindmapLayout,
   createMindmapCreateOp,
   getMindmapTreeFromDocument,
   getSubtreeIds
 } from '@whiteboard/core/mindmap'
+import {
+  resolveNodeBootstrapSize
+} from '@whiteboard/core/node'
 import {
   getMindmapTopicLabel,
   materializeMindmapCreate
@@ -104,7 +108,9 @@ const toNode = (
     y: position.y
   },
   type: input.type,
-  size: input.size ? { ...input.size } : undefined,
+  size: input.size
+    ? { ...input.size }
+    : resolveNodeBootstrapSize(input),
   rotation: input.rotation,
   layer: input.layer,
   zIndex: input.zIndex,
@@ -150,6 +156,10 @@ const buildLayoutOps = (input: {
   update: {
     fields: {
       position: SpatialNode['position']
+      size: {
+        width: number
+        height: number
+      }
     }
   }
 }> => {
@@ -158,15 +168,24 @@ const buildLayoutOps = (input: {
     (nodeId) => readNodeSize(input.nodeById.get(nodeId), input.config.mindmapNodeSize),
     input.tree.layout
   )
+  const anchored = anchorMindmapLayout({
+    tree: input.tree,
+    computed,
+    position: input.root.position
+  })
 
-  return Object.entries(computed.node).map(([nodeId, rect]) => ({
+  return Object.entries(anchored.node).map(([nodeId, rect]) => ({
     type: 'node.update' as const,
     id: nodeId,
     update: {
       fields: {
         position: {
-          x: input.root.position.x + rect.x,
-          y: input.root.position.y + rect.y
+          x: rect.x,
+          y: rect.y
+        },
+        size: {
+          width: rect.width,
+          height: rect.height
         }
       }
     }

@@ -75,7 +75,10 @@ const createEditActions = ({
           text: currentEdit.draft.text,
           empty: currentEdit.capabilities.empty,
           defaultText: currentEdit.capabilities.defaultText
-        })
+        }),
+        size: currentEdit.layout.size,
+        fontSize: currentEdit.layout.fontSize,
+        wrapWidth: currentEdit.layout.wrapWidth
       })
     }
 

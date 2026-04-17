@@ -10,6 +10,6 @@ export {
   STICKY_DEFAULT_TEXT_COLOR,
   TEXT_DEFAULT_FONT_SIZE,
   focusEditableEnd,
-  measureTextSize,
+  measureTextOuterSize,
   readEditableText
 } from '@whiteboard/react/features/node/text'

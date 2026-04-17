@@ -9,7 +9,7 @@ import type {
   EdgeGuide,
   EdgeFeedbackEntry,
   EditorFeedbackRuntime,
-  MindmapDragFeedback,
+  MindmapPreviewState,
   TextPreviewPatch
 } from '@whiteboard/editor/local/feedback/types'
 import {
@@ -38,7 +38,7 @@ export type LocalFeedbackActions = {
     clear: () => void
   }
   mindmap: {
-    setDrag: (drag?: MindmapDragFeedback) => void
+    setPreview: (preview?: MindmapPreviewState) => void
     clear: () => void
   }
 }
@@ -130,14 +130,14 @@ export const createLocalFeedbackActions = ({
     ))
   },
   mindmap: {
-    setDrag: (drag) => updateFeedbackNestedBranch(
+    setPreview: (preview) => updateFeedbackNestedBranch(
       feedback,
       'mindmap',
-      'drag',
-      (current) => current === drag ? current : drag
+      'preview',
+      (current) => current === preview ? current : preview
     ),
     clear: () => updateFeedbackBranch(feedback, 'mindmap', (current) => (
-      current.drag === undefined
+      current.preview === undefined
         ? current
         : {}
     ))

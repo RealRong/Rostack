@@ -2,22 +2,34 @@ import {
   createKeyedDerivedStore,
   read as readValue,
   sameRect,
-  type KeyedReadStore
+  type KeyedReadStore,
+  type ReadStore
 } from '@shared/core'
-import type { NodeId, Rect } from '@whiteboard/core/types'
+import type { NodeId, Rect, Size } from '@whiteboard/core/types'
 import type { EngineRead, MindmapItem } from '@whiteboard/engine'
-import type { MindmapRenderConnector } from '@whiteboard/core/mindmap/render'
+import {
+  anchorMindmapLayout,
+  computeMindmapLayout,
+  resolveMindmapRender,
+  translateMindmapLayout,
+  type MindmapRenderConnector
+} from '@whiteboard/core/mindmap'
+import type { MindmapPreviewState } from '@whiteboard/editor/local/feedback/types'
+import type { EditSession } from '@whiteboard/editor/local/session/edit'
 
 export type MindmapRenderView = {
   treeId: NodeId
   rootId: NodeId
   tree: MindmapItem['tree']
   bbox: Rect
+  rootRect: Rect
+  rootLocked: boolean
   childNodeIds: readonly NodeId[]
   connectors: readonly MindmapRenderConnector[]
 }
 
-export type MindmapPresentationRead = EngineRead['mindmap'] & {
+export type MindmapPresentationRead = Omit<EngineRead['mindmap'], 'item'> & {
+  item: KeyedReadStore<NodeId, MindmapItem | undefined>
   tree: KeyedReadStore<NodeId, MindmapItem['tree'] | undefined>
   render: KeyedReadStore<NodeId, MindmapRenderView | undefined>
 }
@@ -48,6 +60,8 @@ const isMindmapRenderViewEqual = (
     && left.rootId === right.rootId
     && left.tree === right.tree
     && sameRect(left.bbox, right.bbox)
+    && sameRect(left.rootRect, right.rootRect)
+    && left.rootLocked === right.rootLocked
     && left.childNodeIds.length === right.childNodeIds.length
     && left.childNodeIds.every((nodeId, index) => nodeId === right.childNodeIds[index])
     && left.connectors.length === right.connectors.length
@@ -58,34 +72,178 @@ const isMindmapRenderViewEqual = (
 const toMindmapRenderView = (
   treeId: NodeId,
   treeView: MindmapItem
-): MindmapRenderView => ({
+): MindmapRenderView => {
+  const rootRect = treeView.computed.node[treeView.tree.rootNodeId] ?? {
+    x: treeView.node.position.x,
+    y: treeView.node.position.y,
+    width: 0,
+    height: 0
+  }
+
+  return {
+    treeId,
+    rootId: treeView.tree.rootNodeId,
+    tree: treeView.tree,
+    bbox: treeView.computed.bbox,
+    rootRect,
+    rootLocked: Boolean((treeView as MindmapItem & {
+      rootLocked?: boolean
+    }).rootLocked),
+    childNodeIds: treeView.childNodeIds,
+    connectors: treeView.connectors
+  }
+}
+
+const readCommittedMindmapNodeSize = (
+  read: EngineRead['node']['item'],
+  nodeId: NodeId
+): Size | undefined => {
+  const item = readValue(read, nodeId)
+  return item
+    ? {
+        width: item.rect.width,
+        height: item.rect.height
+      }
+    : undefined
+}
+
+const readProjectedMindmapItem = ({
   treeId,
-  rootId: treeView.tree.rootNodeId,
-  tree: treeView.tree,
-  bbox: treeView.computed.bbox,
-  childNodeIds: treeView.childNodeIds,
-  connectors: treeView.connectors
-})
+  base,
+  node,
+  preview,
+  edit
+}: {
+  treeId: NodeId
+  base: MindmapItem
+  node: EngineRead['node']['item']
+  preview: MindmapPreviewState | undefined
+  edit: EditSession
+}): MindmapItem => {
+  const liveEdit = edit?.kind === 'node'
+    && edit.field === 'text'
+    && base.tree.nodes[edit.nodeId] !== undefined
+    && edit.layout.size
+      ? edit
+      : null
+  const rootMove = preview?.rootMove?.treeId === treeId
+    ? preview.rootMove
+    : undefined
+
+  if (!liveEdit && !rootMove) {
+    return base
+  }
+
+  let computed = base.computed
+
+  if (liveEdit) {
+    const nextComputed = computeMindmapLayout(
+      base.tree,
+      (nodeId) => {
+        if (nodeId === liveEdit.nodeId) {
+          return liveEdit.layout.size!
+        }
+
+        return readCommittedMindmapNodeSize(node, nodeId) ?? (
+          base.computed.node[nodeId]
+            ? {
+                width: base.computed.node[nodeId]!.width,
+                height: base.computed.node[nodeId]!.height
+              }
+            : {
+                width: 1,
+                height: 1
+              }
+        )
+      },
+      base.tree.layout
+    )
+
+    computed = anchorMindmapLayout({
+      tree: base.tree,
+      computed: nextComputed,
+      position: base.node.position
+    })
+  }
+
+  if (rootMove) {
+    computed = translateMindmapLayout(computed, rootMove.delta)
+  }
+
+  const render = resolveMindmapRender({
+    tree: base.tree,
+    computed
+  })
+  const rootLocked = Boolean(readValue(node, base.tree.rootNodeId)?.node.locked)
+
+  return {
+    ...base,
+    node: rootMove
+      ? {
+          ...base.node,
+          position: {
+            x: base.node.position.x + rootMove.delta.x,
+            y: base.node.position.y + rootMove.delta.y
+          }
+        }
+      : base.node,
+    rootLocked,
+    computed,
+    connectors: render.connectors
+  }
+}
 
 export const createMindmapRead = ({
-  read
+  read,
+  node,
+  preview,
+  edit
 }: {
   read: EngineRead['mindmap']
+  node: EngineRead['node']['item']
+  preview: ReadStore<MindmapPreviewState | undefined>
+  edit: ReadStore<EditSession>
 }): MindmapPresentationRead => {
+  const item: MindmapPresentationRead['item'] = createKeyedDerivedStore({
+    get: (treeId: NodeId) => {
+      const treeView = readValue(read.item, treeId)
+      return treeView
+        ? readProjectedMindmapItem({
+            treeId,
+            base: treeView,
+            node,
+            preview: readValue(preview),
+            edit: readValue(edit)
+          })
+        : undefined
+    },
+    isEqual: (left, right) => left === right || (
+      left !== undefined
+      && right !== undefined
+      && left.node === right.node
+      && left.tree === right.tree
+      && sameRect(left.computed.bbox, right.computed.bbox)
+      && left.childNodeIds === right.childNodeIds
+      && left.connectors === right.connectors
+    )
+  })
   const tree: MindmapPresentationRead['tree'] = createKeyedDerivedStore({
-    get: (treeId: NodeId) => readValue(read.item, treeId)?.tree,
+    get: (treeId: NodeId) => readValue(item, treeId)?.tree,
     isEqual: (left, right) => left === right
   })
   const render: MindmapPresentationRead['render'] = createKeyedDerivedStore({
     get: (treeId: NodeId) => {
-      const treeView = readValue(read.item, treeId)
-      return treeView ? toMindmapRenderView(treeId, treeView) : undefined
+      const treeView = readValue(item, treeId)
+      return treeView
+        ? toMindmapRenderView(treeId, treeView)
+        : undefined
     },
     isEqual: isMindmapRenderViewEqual
   })
 
   return {
     ...read,
+    item,
     tree,
     render
   }

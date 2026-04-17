@@ -12,7 +12,10 @@ import type {
 } from '@whiteboard/core/types'
 import type { NodeItem } from '@whiteboard/engine'
 import type { EditSession } from '@whiteboard/editor/local/session/edit'
-import type { NodeFeedbackProjection } from '@whiteboard/editor/local/feedback/types'
+import type {
+  NodeFeedbackProjection
+} from '@whiteboard/editor/local/feedback/types'
+import type { MindmapItem } from '@whiteboard/engine'
 
 export const readNodeProjectionRotation = (
   node: NodeItem['node']
@@ -54,13 +57,42 @@ const readNodeTextDraft = (
   }
 }
 
+const applyMindmapProjectedLayout = (
+  item: NodeItem,
+  mindmap: MindmapItem | undefined
+) => {
+  if (!mindmap) {
+    return item
+  }
+
+  const rect = mindmap.computed.node[item.node.id]
+  if (!rect) {
+    return item
+  }
+
+  return applyNodeGeometryPatch(item, {
+    position: {
+      x: rect.x,
+      y: rect.y
+    },
+    size: {
+      width: rect.width,
+      height: rect.height
+    }
+  })
+}
+
 export const projectNodeItem = (
   item: NodeItem,
   feedback: NodeFeedbackProjection,
-  edit: EditSession
+  edit: EditSession,
+  mindmap?: MindmapItem
 ): NodeItem => applyNodeTextDraft(
   applyNodeTextPreview(
-    applyNodeGeometryPatch(item, feedback.patch),
+    applyMindmapProjectedLayout(
+      applyNodeGeometryPatch(item, feedback.patch),
+      mindmap
+    ),
     feedback.text
   ),
   readNodeTextDraft(item, edit)

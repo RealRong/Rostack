@@ -9,6 +9,8 @@ export type MindmapTreeViewData = {
   treeId: NodeId
   rootNodeId: MindmapNodeId
   bbox: Rect
+  rootRect: Rect
+  rootLocked: boolean
   connectors: readonly MindmapRenderConnector[]
   childNodeIds: readonly MindmapNodeId[]
   onAddChild: (

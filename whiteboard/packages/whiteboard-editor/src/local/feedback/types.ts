@@ -103,17 +103,21 @@ export type MarqueeFeedback = {
   match: MarqueeMatch
 }
 
-type MindmapDragPreview = {
+type MindmapSubtreeMovePreview = {
+  treeId: NodeId
   nodeId: MindmapNodeId
   ghost: Rect
   drop?: MindmapDragDropTarget
 }
 
-export type MindmapDragFeedback = {
+export type MindmapRootMovePreview = {
   treeId: NodeId
-  kind: 'root' | 'subtree'
-  baseOffset: Point
-  preview?: MindmapDragPreview
+  delta: Point
+}
+
+export type MindmapPreviewState = {
+  rootMove?: MindmapRootMovePreview
+  subtreeMove?: MindmapSubtreeMovePreview
 }
 
 export type SelectionFeedbackState = {
@@ -140,7 +144,7 @@ export type EditorFeedbackState = {
   }
   selection: SelectionFeedbackState
   mindmap: {
-    drag?: MindmapDragFeedback
+    preview?: MindmapPreviewState
   }
 }
 
@@ -149,7 +153,7 @@ export type EditorFeedbackSelectors = {
   edge: KeyedReadStore<EdgeId, EdgeFeedbackProjection>
   draw: ReadStore<DrawPreview | null>
   marquee: ReadStore<MarqueeFeedback | undefined>
-  mindmapDrag: ReadStore<MindmapDragFeedback | undefined>
+  mindmapPreview: ReadStore<MindmapPreviewState | undefined>
   edgeGuide: ReadStore<EdgeGuide>
   snap: ReadStore<readonly Guide[]>
 }

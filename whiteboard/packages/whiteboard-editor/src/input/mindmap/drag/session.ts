@@ -12,7 +12,7 @@ const applyMindmapPreview = (
   ctx: InteractionContext,
   state: MindmapDragState
 ) => {
-  ctx.local.feedback.mindmap.setDrag(
+  ctx.local.feedback.mindmap.setPreview(
     previewMindmapDrag(state)
   )
 }
@@ -54,6 +54,8 @@ export const createMindmapSession = (
     },
     up: () => {
       const commit = commitMindmapDrag(state)
+      ctx.local.feedback.mindmap.clear()
+
       if (commit?.kind === 'root') {
         ctx.command.mindmap.moveRoot({
           nodeId: commit.nodeId,

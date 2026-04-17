@@ -1,5 +1,6 @@
 import type { NodeId } from '@whiteboard/core/types'
 import { CanvasNodeSceneItem } from '@whiteboard/react/features/node/components/CanvasNodeSceneItem'
+import { MindmapTreeChrome } from '@whiteboard/react/features/mindmap/components/MindmapTreeChrome'
 import type { MindmapTreeViewData } from '@whiteboard/react/types/mindmap'
 
 type MindmapTreeViewProps = {
@@ -31,6 +32,7 @@ export const MindmapTreeView = ({
   selectedNodeIds
 }: MindmapTreeViewProps) => {
   const selectedSet = new Set(selectedNodeIds)
+  const rootSelected = selectedSet.has(view.rootNodeId)
 
   return (
     <>
@@ -68,7 +70,11 @@ export const MindmapTreeView = ({
       <CanvasNodeSceneItem
         nodeId={view.rootNodeId}
         registerMeasuredElement={registerMeasuredElement}
-        selected={selectedSet.has(view.rootNodeId)}
+        selected={rootSelected}
+      />
+      <MindmapTreeChrome
+        view={view}
+        selectedNodeIds={selectedNodeIds}
       />
       {view.childNodeIds.map((nodeId) => (
         <CanvasNodeSceneItem

@@ -28,6 +28,7 @@ import type {
   NodeRegistry
 } from '@whiteboard/editor/types/node'
 import type {
+  MindmapPreviewState,
   NodeFeedbackProjection,
 } from '@whiteboard/editor/local/feedback/types'
 import type { EditSession } from '@whiteboard/editor/local/session/edit'
@@ -249,11 +250,13 @@ export const createNodeRead = ({
   read,
   registry,
   feedback,
+  mindmap,
   edit
 }: {
   read: EngineRead
   registry: NodeRegistry
   feedback: KeyedReadStore<NodeId, NodeFeedbackProjection>
+  mindmap: KeyedReadStore<NodeId, import('@whiteboard/engine').MindmapItem | undefined>
   edit: ReadStore<EditSession>
 }): NodePresentationRead => {
   const item: NodePresentationRead['item'] = createKeyedDerivedStore({
@@ -263,10 +266,18 @@ export const createNodeRead = ({
         return undefined
       }
 
+      const treeId = current.node.type === 'mindmap'
+        ? current.node.id
+        : current.node.mindmapId
+      const mindmapItem = treeId
+        ? readValue(mindmap, treeId)
+        : undefined
+
       return projectNodeItem(
         current,
         readValue(feedback, nodeId),
-        readValue(edit)
+        readValue(edit),
+        mindmapItem
       )
     },
     isEqual: isNodeItemEqual

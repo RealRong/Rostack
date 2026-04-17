@@ -112,6 +112,7 @@ export type EditorQueryRead = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
     node: EditorFeedbackRuntime['selectors']['node']
     draw: EditorFeedbackRuntime['selectors']['draw']
     marquee: EditorFeedbackRuntime['selectors']['marquee']
+    mindmapPreview: EditorFeedbackRuntime['selectors']['mindmapPreview']
     edgeGuide: EditorFeedbackRuntime['selectors']['edgeGuide']
     snap: EditorFeedbackRuntime['selectors']['snap']
   }
@@ -140,10 +141,17 @@ export const createQueryRuntime = ({
     space,
     tool
   } = local.state
+  const mindmapRead = createMindmapRead({
+    read: engineRead.mindmap,
+    node: engineRead.node.item,
+    preview: local.feedback.selectors.mindmapPreview,
+    edit: edit.source
+  })
   const nodeRead: NodePresentationRead = createNodeRead({
     read: engineRead,
     registry,
     feedback: local.feedback.selectors.node,
+    mindmap: mindmapRead.item,
     edit: edit.source
   })
   const edgeRead = createEdgeRead({
@@ -155,9 +163,6 @@ export const createQueryRuntime = ({
     tool,
     interaction: local.interaction,
     capability: nodeRead.capability
-  })
-  const mindmapRead = createMindmapRead({
-    read: engineRead.mindmap
   })
   const targetRead = createTargetRead({
     node: nodeRead,
@@ -205,6 +210,7 @@ export const createQueryRuntime = ({
         node: local.feedback.selectors.node,
         draw: local.feedback.selectors.draw,
         marquee: local.feedback.selectors.marquee,
+        mindmapPreview: local.feedback.selectors.mindmapPreview,
         edgeGuide: local.feedback.selectors.edgeGuide,
         snap: local.feedback.selectors.snap
       }

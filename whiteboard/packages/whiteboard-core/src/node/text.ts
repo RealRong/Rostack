@@ -24,6 +24,8 @@ export type TextFrameMetrics = {
   borderLeft: number
 }
 
+export type TextFrameInsets = Omit<TextFrameMetrics, 'width' | 'height'>
+
 export type TextAutoFont = {
   min: number
   max: number
@@ -163,6 +165,76 @@ export const resolveTextContentBox = (
   height: clampBoxSize(
     metrics.height - metrics.paddingTop - metrics.paddingBottom - metrics.borderTop - metrics.borderBottom - TEXT_FIT_VERTICAL_MARGIN
   )
+})
+
+const readNumberStyle = (
+  node: {
+    style?: Record<string, unknown>
+  },
+  key: string
+) => {
+  const value = node.style?.[key]
+  return typeof value === 'number' ? value : undefined
+}
+
+const readStringStyle = (
+  node: {
+    style?: Record<string, unknown>
+  },
+  key: string
+) => {
+  const value = node.style?.[key]
+  return typeof value === 'string' ? value : undefined
+}
+
+export const readTextFrameInsets = (
+  node: {
+    type: string
+    style?: Record<string, unknown>
+  }
+): TextFrameInsets => {
+  if (node.type !== 'text') {
+    return {
+      paddingTop: 0,
+      paddingRight: 0,
+      paddingBottom: 0,
+      paddingLeft: 0,
+      borderTop: 0,
+      borderRight: 0,
+      borderBottom: 0,
+      borderLeft: 0
+    }
+  }
+
+  const paddingX = Math.max(0, readNumberStyle(node, 'paddingX') ?? 0)
+  const paddingY = Math.max(0, readNumberStyle(node, 'paddingY') ?? 0)
+  const strokeWidth = Math.max(0, readNumberStyle(node, 'strokeWidth') ?? 0)
+  const frameKind = readStringStyle(node, 'frameKind')
+  const underline = frameKind === 'underline'
+
+  return {
+    paddingTop: paddingY,
+    paddingRight: paddingX,
+    paddingBottom: paddingY,
+    paddingLeft: paddingX,
+    borderTop: underline ? 0 : strokeWidth,
+    borderRight: underline ? 0 : strokeWidth,
+    borderBottom: strokeWidth,
+    borderLeft: underline ? 0 : strokeWidth
+  }
+}
+
+export const resolveTextFrameMetrics = (input: {
+  node: {
+    type: string
+    style?: Record<string, unknown>
+  }
+  width: number
+  height: number
+}): TextFrameMetrics => ({
+  width: input.width,
+  height: input.height,
+  ...readTextFrameInsets(input.node)
 })
 
 export const resolveTextAutoFont = (

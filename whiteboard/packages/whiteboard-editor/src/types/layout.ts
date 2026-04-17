@@ -1,4 +1,4 @@
-import type { TextWidthMode } from '@whiteboard/core/node'
+import type { TextFrameMetrics, TextWidthMode } from '@whiteboard/core/node'
 import type {
   EdgeId,
   NodeId,
@@ -27,12 +27,13 @@ export const readEdgeLabelTextSourceId = (
 export type LayoutRequest =
   | {
       kind: 'size'
-      nodeId: NodeId
+      nodeId?: NodeId
       sourceId: TextSourceId
       text: string
       placeholder: string
       widthMode: TextWidthMode
       wrapWidth?: number
+      frame: TextFrameMetrics
       fontSize: number
       fontWeight?: number | string
       fontStyle?: string
@@ -48,17 +49,6 @@ export type LayoutRequest =
       fontWeight?: number | string
       fontStyle?: string
       textAlign?: 'left' | 'center' | 'right'
-    }
-  | {
-      kind: 'text-size'
-      sourceId: TextSourceId
-      text: string
-      placeholder: string
-      widthMode: TextWidthMode
-      wrapWidth?: number
-      fontSize: number
-      fontWeight?: number | string
-      fontStyle?: string
     }
 
 export type LayoutResult =

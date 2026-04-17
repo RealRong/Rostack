@@ -18,6 +18,7 @@ import {
   resolveMoveEffect
 } from '@whiteboard/core/node'
 import {
+  anchorMindmapLayout,
   computeMindmapLayout,
   getMindmapTreeFromDocument
 } from '@whiteboard/core/mindmap'
@@ -152,12 +153,21 @@ export const updateMany = (
       },
       tree.layout
     )
-    Object.entries(computed.node).forEach(([nodeId, rect]) => {
+    const anchored = anchorMindmapLayout({
+      tree,
+      computed,
+      position: root.position
+    })
+    Object.entries(anchored.node).forEach(([nodeId, rect]) => {
       relayoutOps.push(createNodeUpdateOperation(nodeId, {
         fields: {
           position: {
-            x: root.position.x + rect.x,
-            y: root.position.y + rect.y
+            x: rect.x,
+            y: rect.y
+          },
+          size: {
+            width: rect.width,
+            height: rect.height
           }
         }
       }))

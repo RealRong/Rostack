@@ -87,7 +87,52 @@ describe('mindmap insert position', () => {
     expect(result).toBeDefined()
     const rootRect = editor.read.node.item.get(result!.nodeId)?.rect
     expect(rootRect).toBeDefined()
+    expect(rootRect!.width).toBe(144)
+    expect(rootRect!.height).toBe(44)
     expect(rootRect!.x + rootRect!.width / 2).toBe(at.x)
     expect(rootRect!.y + rootRect!.height / 2).toBe(at.y)
+  })
+
+  it('keeps the root anchor stable when the root width grows', () => {
+    const editor = createEditor({
+      engine: createEngine({
+        document: createDocument('doc_mindmap_root_anchor')
+      }),
+      initialTool: {
+        type: 'select'
+      },
+      initialViewport: {
+        center: { x: 0, y: 0 },
+        zoom: 1
+      },
+      registry
+    })
+
+    const created = editor.actions.mindmap.create({
+      preset: 'mindmap.underline-split'
+    })
+
+    expect(created.ok).toBe(true)
+    if (!created.ok) {
+      return
+    }
+
+    const beforeRoot = editor.read.node.item.get(created.data.rootId)?.rect
+    expect(beforeRoot).toBeDefined()
+
+    editor.actions.node.patch([created.data.rootId], {
+      fields: {
+        size: {
+          width: 320,
+          height: beforeRoot!.height
+        }
+      }
+    })
+
+    const afterRoot = editor.read.node.item.get(created.data.rootId)?.rect
+    expect(afterRoot).toBeDefined()
+    expect(afterRoot!.x).toBe(beforeRoot!.x)
+    expect(afterRoot!.y).toBe(beforeRoot!.y)
+    expect(afterRoot!.width).toBe(320)
   })
 })

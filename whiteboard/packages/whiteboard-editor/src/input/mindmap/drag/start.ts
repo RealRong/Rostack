@@ -9,7 +9,7 @@ import {
 import type { NodeId, Point } from '@whiteboard/core/types'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
-import type { MindmapDragFeedback } from '@whiteboard/editor/local/feedback'
+import type { MindmapPreviewState } from '@whiteboard/editor/local/feedback'
 import type { MindmapPresentationRead } from '@whiteboard/editor/query/mindmap/read'
 import type { NodePresentationRead } from '@whiteboard/editor/query/node/read'
 import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
@@ -41,20 +41,22 @@ export type MindmapDragCommit =
 
 export const previewMindmapDrag = (
   state: MindmapDragState
-): MindmapDragFeedback => {
+): MindmapPreviewState => {
   if (state.kind === 'root') {
     return {
-      treeId: state.treeId,
-      kind: 'root',
-      baseOffset: state.position
+      rootMove: {
+        treeId: state.treeId,
+        delta: {
+          x: state.position.x - state.origin.x,
+          y: state.position.y - state.origin.y
+        }
+      }
     }
   }
 
   return {
-    treeId: state.treeId,
-    kind: 'subtree',
-    baseOffset: state.baseOffset,
-    preview: {
+    subtreeMove: {
+      treeId: state.treeId,
       nodeId: state.nodeId,
       ghost: state.ghost,
       drop: state.drop
@@ -106,25 +108,22 @@ export const startMindmapDrag = (input: {
     return undefined
   }
 
-  const baseOffset = {
-    x: treeView.node.position.x,
-    y: treeView.node.position.y
-  }
-
   return nodeId === treeView.tree.rootNodeId
     ? createRootDrag({
         treeId,
         pointerId: input.pointer.pointerId,
         start: input.pointer.world,
-        origin: baseOffset
+        origin: {
+          x: treeView.node.position.x,
+          y: treeView.node.position.y
+        }
       })
     : createSubtreeDrag({
         treeId,
         treeView,
         nodeId,
         pointerId: input.pointer.pointerId,
-        world: input.pointer.world,
-        baseOffset
+        world: input.pointer.world
       })
 }
 
@@ -151,25 +150,22 @@ export const startMindmapDragForNode = (input: {
     return undefined
   }
 
-  const baseOffset = {
-    x: treeView.node.position.x,
-    y: treeView.node.position.y
-  }
-
   return input.nodeId === treeView.tree.rootNodeId
     ? createRootDrag({
         treeId,
         pointerId: input.pointerId,
         start: input.world,
-        origin: baseOffset
+        origin: {
+          x: treeView.node.position.x,
+          y: treeView.node.position.y
+        }
       })
     : createSubtreeDrag({
         treeId,
         treeView,
         nodeId: input.nodeId,
         pointerId: input.pointerId,
-        world: input.world,
-        baseOffset
+        world: input.world
       })
 }
 

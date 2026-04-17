@@ -196,6 +196,7 @@ const resolveNodeTapPlan = <TField extends string>(
   const explicitFieldEdit = (
     subject.mode === 'replace'
     && Boolean(subject.target.field)
+    && subject.selected
     && !subject.node.locked
     && !subject.promoteToGroup
     && !subject.groupSelected

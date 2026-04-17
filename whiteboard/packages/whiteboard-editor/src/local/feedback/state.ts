@@ -56,7 +56,7 @@ const normalizeFeedbackState = (
   const edge = normalizeEdgeFeedbackState(state.edge)
   const selection = normalizeSelectionFeedbackState(state.selection)
   const draw = normalizeDrawFeedbackState(state.draw)
-  const mindmapDrag = state.mindmap.drag
+  const mindmapPreview = state.mindmap.preview
 
   if (
     node === EMPTY_NODE_FEEDBACK
@@ -64,7 +64,7 @@ const normalizeFeedbackState = (
     && selection === EMPTY_SELECTION_FEEDBACK
     && draw.preview === null
     && draw.hidden === EMPTY_NODE_HIDDEN
-    && mindmapDrag === undefined
+    && mindmapPreview === undefined
   ) {
     return EMPTY_FEEDBACK_STATE
   }
@@ -75,7 +75,7 @@ const normalizeFeedbackState = (
     draw,
     selection,
     mindmap: {
-      drag: mindmapDrag
+      preview: mindmapPreview
     }
   }
 }
@@ -90,7 +90,7 @@ const isFeedbackStateEqual = (
   && left.draw.preview === right.draw.preview
   && left.draw.hidden === right.draw.hidden
   && isSelectionFeedbackStateEqual(left.selection, right.selection)
-  && left.mindmap.drag === right.mindmap.drag
+  && left.mindmap.preview === right.mindmap.preview
 )
 
 const isEdgeGestureKind = (

@@ -733,6 +733,29 @@
   pointer-events: none;
 }
 
+.wb-mindmap-add-child-button {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1.5px solid var(--ui-accent);
+  border-radius: 999px;
+  background: var(--ui-surface);
+  color: var(--ui-accent);
+  box-shadow: 0 2px 10px rgb(from var(--ui-accent) r g b / 0.18);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.wb-mindmap-add-child-button:hover {
+  background: rgb(from var(--ui-accent) r g b / 0.08);
+}
+
 .wb-default-text-editor {
   display: block;
   width: 100%;
@@ -758,39 +781,30 @@
   user-select: text;
 }
 
-.wb-text-node-viewport {
-  position: relative;
+.wb-default-text-host {
   display: block;
-  width: 100%;
-  height: 100%;
   min-width: 0;
-  min-height: 0;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.wb-text-node-content {
-  width: 100%;
-  height: 100%;
-  min-width: 0;
-  min-height: 0;
-  box-sizing: border-box;
-}
-
-.wb-default-text-display {
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-height: 100%;
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
   overflow: hidden;
   color: var(--ui-text-primary);
+  font-family: inherit;
   font-size: 14px;
   line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
   overflow-wrap: break-word;
   cursor: inherit;
+}
+
+.wb-default-text-host[data-editable='true'] {
+  outline: none;
+  caret-color: currentColor;
+  user-select: text;
+}
+
+.wb-default-text-host[data-editable='false'] {
   user-select: none;
 }
 

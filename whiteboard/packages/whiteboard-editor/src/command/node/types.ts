@@ -45,6 +45,9 @@ export type NodeTextCommands = {
     nodeId: NodeId
     field: 'text' | 'title'
     value: string
+    size?: Size
+    fontSize?: number
+    wrapWidth?: number
   }) => CommandResult | undefined
   color: (nodeIds: readonly NodeId[], color: string) => CommandResult
   size: (input: {

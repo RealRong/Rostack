@@ -1,0 +1,187 @@
+import { describe, expect, it, vi } from 'vitest'
+import { createMoveInteraction } from '../src/input/selection/move/session'
+
+describe('mindmap field drag', () => {
+  it('routes selected mindmap root field drags into mindmap drag instead of generic node drag', () => {
+    const session = createMoveInteraction({
+      query: {
+        mindmap: {
+          item: {
+            get: () => ({
+              tree: {
+                rootNodeId: 'root-1',
+                nodes: {
+                  'root-1': {
+                    branch: {
+                      color: '#111827',
+                      line: 'curve',
+                      width: 2,
+                      stroke: 'solid'
+                    }
+                  }
+                },
+                children: {
+                  'root-1': []
+                },
+                layout: {
+                  side: 'both',
+                  mode: 'tidy',
+                  hGap: 28,
+                  vGap: 18
+                }
+              },
+              layout: {
+                side: 'both',
+                mode: 'tidy',
+                hGap: 28,
+                vGap: 18
+              },
+              node: {
+                id: 'mind-1',
+                type: 'mindmap',
+                position: { x: 100, y: 120 },
+                data: {}
+              }
+            })
+          }
+        },
+        node: {
+          item: {
+            get: (id: string) => {
+              if (id === 'root-1') {
+                return {
+                  node: {
+                    id: 'root-1',
+                    type: 'text',
+                    mindmapId: 'mind-1',
+                    position: { x: 100, y: 120 },
+                    size: { width: 144, height: 44 },
+                    data: {
+                      text: 'Central topic'
+                    }
+                  },
+                  rect: {
+                    x: 100,
+                    y: 120,
+                    width: 144,
+                    height: 44
+                  }
+                }
+              }
+
+              if (id === 'mind-1') {
+                return {
+                  node: {
+                    id: 'mind-1',
+                    type: 'mindmap',
+                    position: { x: 100, y: 120 },
+                    data: {}
+                  },
+                  rect: {
+                    x: 100,
+                    y: 120,
+                    width: 144,
+                    height: 44
+                  }
+                }
+              }
+
+              return undefined
+            }
+          },
+          ordered: vi.fn()
+        },
+        edge: {
+          edges: vi.fn()
+        },
+        frame: {
+          at: vi.fn(),
+          of: vi.fn()
+        },
+        tool: {
+          is: () => true
+        },
+        viewport: {
+          pointer: vi.fn()
+        }
+      },
+      local: {
+        session: {
+          selection: {
+            replace: vi.fn()
+          }
+        },
+        feedback: {
+          mindmap: {
+            setPreview: vi.fn(),
+            clear: vi.fn()
+          }
+        }
+      },
+      command: {
+        mindmap: {
+          moveRoot: vi.fn(),
+          moveByDrop: vi.fn()
+        },
+        node: {
+          move: vi.fn()
+        },
+        edge: {
+          updateMany: vi.fn()
+        }
+      },
+      selection: {
+        get: vi.fn()
+      },
+      snap: {
+        node: {
+          move: vi.fn()
+        }
+      },
+      config: {
+        nodeSize: {
+          width: 120,
+          height: 72
+        }
+      },
+      layout: {} as never
+    } as never, {
+      start: {
+        phase: 'down',
+        pointerId: 1,
+        button: 0,
+        buttons: 1,
+        detail: 1,
+        client: { x: 110, y: 130 },
+        screen: { x: 110, y: 130 },
+        world: { x: 110, y: 130 },
+        samples: [],
+        modifiers: {
+          alt: false,
+          shift: false,
+          ctrl: false,
+          meta: false
+        },
+        pick: {
+          kind: 'node',
+          id: 'root-1',
+          part: 'field',
+          field: 'text'
+        },
+        editable: false,
+        ignoreInput: false,
+        ignoreSelection: false,
+        ignoreContextMenu: false
+      },
+      target: {
+        nodeIds: ['root-1'],
+        edgeIds: []
+      },
+      visibility: {
+        kind: 'none'
+      }
+    })
+
+    expect(session?.mode).toBe('mindmap-drag')
+  })
+})

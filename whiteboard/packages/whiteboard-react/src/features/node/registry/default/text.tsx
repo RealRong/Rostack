@@ -1,11 +1,12 @@
 import {
   useCallback,
   useRef,
-  useState,
   type CSSProperties
 } from 'react'
 import {
   estimateTextAutoFont,
+  resolveTextContentBox,
+  resolveTextFrameMetrics,
   WHITEBOARD_TEXT_DEFAULT_COLOR
 } from '@whiteboard/core/node'
 import {
@@ -17,7 +18,7 @@ import {
   usePickRef,
   useWhiteboardServices
 } from '@whiteboard/react/runtime/hooks'
-import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
+import { TextSlot } from '@whiteboard/react/features/edit/TextSlot'
 import { matchNodeEdit } from '@whiteboard/react/features/edit/session'
 import {
   type TextWidthMode,
@@ -81,7 +82,6 @@ const useElementBinding = <
   TElement extends HTMLDivElement
 >() => {
   const ref = useRef<TElement | null>(null)
-  const [element, setElement] = useState<TElement | null>(null)
 
   const bind = useCallback((next: TElement | null) => {
     if (ref.current === next) {
@@ -89,12 +89,10 @@ const useElementBinding = <
     }
 
     ref.current = next
-    setElement(next)
   }, [])
 
   return {
     ref,
-    element,
     bind
   }
 }
@@ -128,9 +126,11 @@ const useNodeTextSourceBinding = (
 }
 
 export const resolveTextLayoutStyle = ({
+  node,
   widthMode,
   wrapWidth
 }: {
+  node: NodeRenderProps['node']
   widthMode: TextWidthMode
   wrapWidth?: number
 }): CSSProperties => {
@@ -138,10 +138,18 @@ export const resolveTextLayoutStyle = ({
     return {}
   }
 
+  const contentWidth = resolveTextContentBox(
+    resolveTextFrameMetrics({
+      node,
+      width: wrapWidth,
+      height: 1
+    })
+  ).width
+
   return {
-    width: wrapWidth,
-    minWidth: wrapWidth,
-    maxWidth: wrapWidth
+    width: contentWidth,
+    minWidth: contentWidth,
+    maxWidth: contentWidth
   }
 }
 
@@ -186,6 +194,7 @@ const TextNodeRenderer = ({
     color,
     padding: 0,
     ...resolveTextLayoutStyle({
+      node,
       widthMode,
       wrapWidth
     })
@@ -196,30 +205,18 @@ const TextNodeRenderer = ({
   }, [bindRef, pickTextRef])
 
   return (
-    <div className="wb-text-node-viewport">
-      <div className="wb-text-node-content">
-        {editing ? (
-          <EditableSlot
-            bindRef={bindFieldRef}
-            value={nodeEdit.draft.text}
-            caret={nodeEdit.caret}
-            multiline
-            className="wb-default-text-editor"
-            style={textStyle}
-          />
-        ) : (
-          <div
-            ref={bindFieldRef}
-            data-edit-node-id={node.id}
-            data-edit-field="text"
-            className="wb-default-text-display"
-            style={textStyle}
-          >
-            {text || placeholder}
-          </div>
-        )}
-      </div>
-    </div>
+    <TextSlot
+      bindRef={bindFieldRef}
+      value={editing ? nodeEdit.draft.text : text}
+      displayValue={text || placeholder}
+      caret={nodeEdit?.caret}
+      editable={editing}
+      multiline
+      nodeId={node.id}
+      field="text"
+      className="wb-default-text-host"
+      style={textStyle}
+    />
   )
 }
 
@@ -265,26 +262,17 @@ const StickyNodeRenderer = ({
   return (
     <div className="wb-sticky-node">
       <div className="wb-sticky-node-shell">
-        {editing ? (
-          <EditableSlot
-            bindRef={bindFieldRef}
-            value={nodeEdit.draft.text}
-            caret={nodeEdit.caret}
-            multiline
-            className="wb-sticky-node-text wb-default-text-editor"
-            style={textStyle}
-          />
-        ) : (
-          <div
-            ref={bindFieldRef}
-            data-edit-node-id={node.id}
-            data-edit-field="text"
-            className="wb-sticky-node-text"
-            style={textStyle}
-          >
-            {text}
-          </div>
-        )}
+        <TextSlot
+          bindRef={bindFieldRef}
+          value={editing ? nodeEdit.draft.text : text}
+          caret={nodeEdit?.caret}
+          editable={editing}
+          multiline
+          nodeId={node.id}
+          field="text"
+          className="wb-sticky-node-text wb-default-text-host"
+          style={textStyle}
+        />
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 import type { LayoutBackend, LayoutRequest } from '@whiteboard/editor'
 import { measureFitFontSize } from '@whiteboard/react/features/node/dom/textFit'
-import { measureTextSize } from '@whiteboard/react/features/node/dom/textMeasure'
+import { measureTextOuterSize } from '@whiteboard/react/features/node/dom/textMeasure'
 import type { TextSourceStore } from '@whiteboard/react/features/node/dom/textSourceStore'
 
 const readSource = (
@@ -24,8 +24,8 @@ export const createLayoutBackend = ({
       return undefined
     }
 
-    if (request.kind === 'size' || request.kind === 'text-size') {
-      const size = measureTextSize({
+    if (request.kind === 'size') {
+      const size = measureTextOuterSize({
         content: request.text,
         placeholder: request.placeholder,
         source,
@@ -33,7 +33,8 @@ export const createLayoutBackend = ({
         fontStyle: request.fontStyle,
         fontWeight: request.fontWeight,
         widthMode: request.widthMode,
-        wrapWidth: request.wrapWidth
+        wrapWidth: request.wrapWidth,
+        frame: request.frame
       })
 
       return size

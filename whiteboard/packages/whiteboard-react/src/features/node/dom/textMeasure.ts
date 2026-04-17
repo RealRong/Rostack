@@ -3,6 +3,8 @@ import {
   TEXT_AUTO_MIN_WIDTH,
   TEXT_DEFAULT_FONT_SIZE,
   TEXT_LAYOUT_MIN_WIDTH,
+  resolveTextContentBox,
+  type TextFrameMetrics,
   type TextWidthMode
 } from '@whiteboard/core/node'
 import type { Size } from '@whiteboard/core/types'
@@ -147,7 +149,7 @@ const measureTextContent = ({
   }
 }
 
-export const measureTextSize = ({
+export const measureTextOuterSize = ({
   content,
   placeholder,
   source,
@@ -155,7 +157,8 @@ export const measureTextSize = ({
   fontStyle,
   fontWeight,
   widthMode,
-  wrapWidth
+  wrapWidth,
+  frame
 }: {
   content: string
   placeholder: string
@@ -165,14 +168,29 @@ export const measureTextSize = ({
   fontWeight?: string | number
   widthMode: TextWidthMode
   wrapWidth?: number
+  frame?: TextFrameMetrics
 }): Size | undefined => {
+  const horizontalInset = frame
+    ? frame.paddingLeft + frame.paddingRight + frame.borderLeft + frame.borderRight
+    : 0
+  const verticalInset = frame
+    ? frame.paddingTop + frame.paddingBottom + frame.borderTop + frame.borderBottom
+    : 0
+
   if (widthMode === 'wrap') {
-    const resolvedWrapWidth = Math.max(
+    const resolvedOuterWrapWidth = Math.max(
       TEXT_LAYOUT_MIN_WIDTH,
       Math.ceil(wrapWidth ?? TEXT_LAYOUT_MIN_WIDTH)
     )
+    const resolvedWrapWidth = frame
+      ? resolveTextContentBox({
+          ...frame,
+          width: resolvedOuterWrapWidth,
+          height: Math.max(frame.height, verticalInset + 1)
+        }).width
+      : resolvedOuterWrapWidth
 
-    return measureTextContent({
+    const measured = measureTextContent({
       content,
       placeholder,
       source,
@@ -182,16 +200,32 @@ export const measureTextSize = ({
       fontStyle,
       fontWeight
     })
+
+    return measured
+      ? {
+          width: measured.width + horizontalInset,
+          height: measured.height + verticalInset
+        }
+      : undefined
   }
 
-  return measureTextContent({
+  const resolvedMinWidth = Math.max(TEXT_AUTO_MIN_WIDTH - horizontalInset, 1)
+  const resolvedMaxWidth = Math.max(TEXT_AUTO_MAX_WIDTH - horizontalInset, resolvedMinWidth)
+  const measured = measureTextContent({
     content,
     placeholder,
     source,
-    minWidth: TEXT_AUTO_MIN_WIDTH,
-    maxWidth: TEXT_AUTO_MAX_WIDTH,
+    minWidth: resolvedMinWidth,
+    maxWidth: resolvedMaxWidth,
     fontSize,
     fontStyle,
     fontWeight
   })
+
+  return measured
+    ? {
+        width: measured.width + horizontalInset,
+        height: measured.height + verticalInset
+      }
+    : undefined
 }

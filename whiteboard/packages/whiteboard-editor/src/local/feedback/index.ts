@@ -10,7 +10,7 @@ export type {
   EdgeGuide,
   EdgeFeedbackEntry,
   EditorFeedbackRuntime,
-  MindmapDragFeedback
+  MindmapPreviewState
 } from '@whiteboard/editor/local/feedback/types'
 
 export const createFeedback = ({

@@ -75,7 +75,6 @@ export type SubtreeMindmapDrag = {
   nodeId: MindmapNodeId
   originParentId?: MindmapNodeId
   originIndex?: number
-  baseOffset: Point
   offset: Point
   rect: Rect
   ghost: Rect

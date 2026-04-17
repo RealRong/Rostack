@@ -63,9 +63,9 @@ export const createFeedbackSelectors = ({
     isEqual: isEdgeGuideEqual,
     schedule: 'raf'
   })
-  const mindmapDrag = createProjectedStore({
+  const mindmapPreview = createProjectedStore({
     source: state,
-    select: (next) => next.mindmap.drag,
+    select: (next) => next.mindmap.preview,
     isEqual: (left, right) => left === right,
     schedule: 'raf'
   })
@@ -98,7 +98,7 @@ export const createFeedbackSelectors = ({
     edge,
     draw,
     marquee,
-    mindmapDrag,
+    mindmapPreview,
     edgeGuide,
     snap
   }

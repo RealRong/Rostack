@@ -1,7 +1,9 @@
 import { isSizeEqual } from '@whiteboard/core/geometry'
 import {
+  readTextFrameInsets,
   applyNodeUpdate,
   readStickyFontMode,
+  TEXT_LAYOUT_MIN_WIDTH,
   readTextWrapWidth,
   readTextWidthMode,
   resolveAnchoredRect,
@@ -178,6 +180,11 @@ const buildLayoutRequest = ({
       wrapWidth: widthMode === 'wrap'
         ? (readTextWrapWidth(node) ?? rect.width)
         : undefined,
+      frame: {
+        width: rect.width,
+        height: rect.height,
+        ...readTextFrameInsets(node)
+      },
       fontSize: readFontSize(node),
       fontWeight: readFontWeight(node),
       fontStyle: readFontStyle(node)
@@ -302,7 +309,7 @@ const toLayoutResultUpdate = ({
 
 export type LayoutRuntime = {
   measureText: (
-    input: Omit<Extract<LayoutRequest, { kind: 'text-size' }>, 'kind'>
+    input: Omit<Extract<LayoutRequest, { kind: 'size' }>, 'kind' | 'frame'>
   ) => Size | undefined
   patchNodeUpdate: (
     nodeId: NodeId,
@@ -353,8 +360,20 @@ export const createLayoutRuntime = ({
   return {
     measureText: (input) => {
       const result = backend?.measure({
-        kind: 'text-size',
-        ...input
+        kind: 'size',
+        ...input,
+        frame: {
+          width: input.wrapWidth ?? TEXT_LAYOUT_MIN_WIDTH,
+          height: 1,
+          paddingTop: 0,
+          paddingRight: 0,
+          paddingBottom: 0,
+          paddingLeft: 0,
+          borderTop: 0,
+          borderRight: 0,
+          borderBottom: 0,
+          borderLeft: 0
+        }
       })
 
       return result?.kind === 'size'

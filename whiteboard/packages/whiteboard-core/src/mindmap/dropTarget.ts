@@ -38,8 +38,6 @@ type MindmapTreeView = {
   tree: MindmapTree
   layout: MindmapLayoutSpec
   computed: MindmapLayout
-  shiftX: number
-  shiftY: number
 }
 
 const getNodeSide = (
@@ -139,15 +137,14 @@ const computeEdgeAlignment = (ghost: Rect, target: Rect): ComputeEdgeAlignmentRe
 }
 
 const buildNodeRectMap = (
-  item: MindmapTreeView,
-  baseOffset: Point
+  item: MindmapTreeView
 ) => {
   const rectMap = new Map<MindmapNodeId, Rect>()
   Object.entries(item.computed.node).forEach(([id, rect]) => {
     if (!rect) return
     rectMap.set(id as MindmapNodeId, {
-      x: rect.x + item.shiftX + baseOffset.x,
-      y: rect.y + item.shiftY + baseOffset.y,
+      x: rect.x,
+      y: rect.y,
       width: rect.width,
       height: rect.height
     })
@@ -288,17 +285,15 @@ export const createSubtreeDrag = (options: {
   nodeId: MindmapNodeId
   pointerId: number
   world: Point
-  baseOffset: Point
 }): SubtreeMindmapDrag | undefined => {
   const {
     treeId,
     treeView,
     nodeId,
     pointerId,
-    world,
-    baseOffset
+    world
   } = options
-  const nodeRects = buildNodeRectMap(treeView, baseOffset)
+  const nodeRects = buildNodeRectMap(treeView)
   const rect = nodeRects.get(nodeId)
   if (!rect) {
     return undefined
@@ -317,7 +312,6 @@ export const createSubtreeDrag = (options: {
     nodeId,
     originParentId,
     originIndex,
-    baseOffset,
     offset: {
       x: world.x - rect.x,
       y: world.y - rect.y
@@ -348,7 +342,7 @@ const projectSubtreeDrop = (
   treeView
     ? computeSubtreeDropTarget({
         tree: treeView.tree,
-        nodeRects: buildNodeRectMap(treeView, active.baseOffset),
+        nodeRects: buildNodeRectMap(treeView),
         ghost,
         dragNodeId: active.nodeId,
         dragExcludeIds: new Set(active.excludeIds),

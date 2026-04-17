@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createMoveInteraction } from '../src/input/selection/move'
+import { createMoveInteraction } from '../src/input/features/selection/move'
 
 describe('mindmap field drag', () => {
   it('routes selected mindmap root field drags into mindmap drag instead of generic node drag', () => {

@@ -5,7 +5,7 @@ import type {
 import type { EditorQueryRead } from '@whiteboard/editor/query'
 import type { EditorLocalRuntime } from '@whiteboard/editor/local/runtime'
 import type { ContextMenuIntent } from '@whiteboard/editor/types/input'
-import type { InteractionRuntime } from '@whiteboard/editor/input/types'
+import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
 import type { EdgeHoverService } from '@whiteboard/editor/input/hover/edge'
 
 const readSelectionIntent = (

@@ -1,6 +1,7 @@
 import { createRafTask } from '@shared/core'
 import type { Point } from '@whiteboard/core/types'
-import type { InteractionContext } from '@whiteboard/editor/input/context'
+import type { InteractionContext } from '@whiteboard/editor/input/core/context'
+import type { HoverStore } from '@whiteboard/editor/input/hover/store'
 
 export type EdgeHoverService = {
   move: (world: Point) => void
@@ -8,35 +9,37 @@ export type EdgeHoverService = {
 }
 
 export const createEdgeHoverService = (
-  ctx: InteractionContext
+  ctx: InteractionContext,
+  hover: Pick<HoverStore, 'set' | 'reset'>
 ): EdgeHoverService => {
   let hoverPoint: Point | null = null
 
   const hoverTask = createRafTask(() => {
     if (!hoverPoint || ctx.query.tool.get().type !== 'edge') {
-      ctx.local.feedback.edge.clearGuide()
+      hover.reset()
       return
     }
 
     const evaluation = ctx.snap.edge.connect({
       pointerWorld: hoverPoint
     })
-    ctx.local.feedback.edge.setGuide(
-      evaluation.focusedNodeId || evaluation.resolution.mode !== 'free'
-        ? {
-            connect: {
-              focusedNodeId: evaluation.focusedNodeId,
-              resolution: evaluation.resolution
+    hover.set({
+      edgeGuide:
+        evaluation.focusedNodeId || evaluation.resolution.mode !== 'free'
+          ? {
+              connect: {
+                focusedNodeId: evaluation.focusedNodeId,
+                resolution: evaluation.resolution
+              }
             }
-          }
-        : undefined
-    )
+          : undefined
+    })
   })
 
   const clear = () => {
     hoverTask.cancel()
     hoverPoint = null
-    ctx.local.feedback.edge.clearGuide()
+    hover.reset()
   }
 
   return {

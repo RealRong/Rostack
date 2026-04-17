@@ -17,9 +17,10 @@ import {
   type DrawState,
   type DrawStyle
 } from '@whiteboard/editor/local/draw'
-import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/types'
-import { FINISH } from '@whiteboard/editor/input/result'
-import type { InteractionContext } from '@whiteboard/editor/input/context'
+import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
+import { FINISH } from '@whiteboard/editor/input/session/result'
+import { createGesture } from '@whiteboard/editor/input/core/gesture'
+import type { InteractionContext } from '@whiteboard/editor/input/core/context'
 import type { PointerDownInput, PointerSample } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 
@@ -285,6 +286,7 @@ const createDrawStrokeSession = (
   initial: DrawStrokeState
 ): InteractionSession => {
   let state = initial
+  let interaction = null as InteractionSession | null
 
   const step = (
     input: DrawPointer,
@@ -297,18 +299,17 @@ const createDrawStrokeSession = (
         force
       }
     )
-    if (nextState.points !== state.points) {
-      ctx.local.feedback.draw.setPreview(
-        previewDrawStroke(nextState, {
-          zoom: ctx.query.viewport.get().zoom
-        })
-      )
-    }
     state = nextState
+    interaction!.gesture = createGesture('draw', {
+      drawPreview: previewDrawStroke(state, {
+        zoom: ctx.query.viewport.get().zoom
+      })
+    })
   }
 
-  return {
+  interaction = {
     mode: 'draw',
+    gesture: createGesture('draw'),
     move: (input) => {
       step(input)
     },
@@ -322,10 +323,10 @@ const createDrawStrokeSession = (
       }
       return FINISH
     },
-    cleanup: () => {
-      ctx.local.feedback.draw.setPreview(null)
-    }
+    cleanup: () => {}
   }
+
+  return interaction
 }
 
 const createEraseSession = (
@@ -333,23 +334,23 @@ const createEraseSession = (
   initial: EraseState
 ): InteractionSession => {
   let state = initial
-
-  if (state.ids.length > 0) {
-    ctx.local.feedback.draw.setHidden(state.ids)
-  }
+  let interaction = null as InteractionSession | null
 
   const step = (
     input: DrawPointer
   ) => {
     const nextState = stepEraseState(ctx, state, input)
-    if (nextState.ids !== state.ids) {
-      ctx.local.feedback.draw.setHidden(nextState.ids)
-    }
     state = nextState
+    interaction!.gesture = createGesture('draw', {
+      hiddenNodeIds: state.ids
+    })
   }
 
-  return {
+  interaction = {
     mode: 'draw',
+    gesture: createGesture('draw', {
+      hiddenNodeIds: state.ids
+    }),
     move: (input) => {
       step(input)
     },
@@ -360,10 +361,10 @@ const createEraseSession = (
       }
       return FINISH
     },
-    cleanup: () => {
-      ctx.local.feedback.draw.clear()
-    }
+    cleanup: () => {}
   }
+
+  return interaction
 }
 
 export const createDrawBinding = (

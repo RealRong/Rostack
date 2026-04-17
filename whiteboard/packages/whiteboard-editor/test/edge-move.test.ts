@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { applyEdgePatch } from '@whiteboard/core/edge'
 import type { Edge } from '@whiteboard/core/types'
-import type { InteractionContext } from '../src/input/context'
-import { createEdgeMoveSession, stepEdgeMove, type EdgeMoveState } from '../src/input/edge/move'
+import type { InteractionContext } from '../src/input/core/context'
+import { createEdgeMoveSession, stepEdgeMove, type EdgeMoveState } from '../src/input/features/edge/move'
 import type { PointerMoveInput } from '../src/types/input'
 
 const createMovableEdge = (): Edge => ({

@@ -28,6 +28,7 @@ import { useTableContext } from '@dataview/react/views/table/context'
 import { Row } from '@dataview/react/views/table/components/row/Row'
 import { ColumnFooterBlock } from '@dataview/react/views/table/components/body/ColumnFooterBlock'
 import { ColumnHeaderBlock } from '@dataview/react/views/table/components/body/ColumnHeaderBlock'
+import { CreateRecordBlock } from '@dataview/react/views/table/components/body/CreateRecordBlock'
 import { SectionHeader } from '@dataview/react/views/table/components/body/SectionHeader'
 import type {
   TableBlock
@@ -83,6 +84,9 @@ const sameBlock = (
     case 'column-footer':
       return right.kind === 'column-footer'
         && left.scopeId === right.scopeId
+    case 'create-record':
+      return right.kind === 'create-record'
+        && left.sectionKey === right.sectionKey
     case 'section-header':
       return right.kind === 'section-header'
         && left.section.key === right.section.key
@@ -173,6 +177,17 @@ const RenderedBlocksView = (props: RenderedBlocksProps) => {
                 template={props.template}
               />
             )
+          case 'create-record':
+            return (
+              <CreateRecordBlock
+                key={block.key}
+                sectionKey={block.sectionKey}
+                measureRef={blockMeasureRef}
+                columns={props.columns}
+                showVerticalLines={props.showVerticalLines}
+                template={props.template}
+              />
+            )
         }
       })}
     </div>
@@ -226,6 +241,7 @@ export const BlockContent = (props: BlockContentProps) => {
       return [
         'column-header:flat',
         ...props.items.ids.map(id => `row:${id}`),
+        'create-record:flat',
         'column-footer:flat'
       ]
     }
@@ -237,6 +253,7 @@ export const BlockContent = (props: BlockContentProps) => {
             `section-header:${section.key}`,
             `column-header:${section.key}`,
             ...section.items.ids.map(id => `row:${id}`),
+            `create-record:${section.key}`,
             `column-footer:${section.key}`
           ]
     ))

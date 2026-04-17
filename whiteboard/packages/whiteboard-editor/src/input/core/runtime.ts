@@ -4,14 +4,14 @@ import {
   read
 } from '@shared/core'
 import type { ViewportInputRuntime } from '@whiteboard/editor/local/viewport/runtime'
-import { createAutoPan } from '@whiteboard/editor/input/autoPan'
-import type { ActiveGesture } from '@whiteboard/editor/input/gesture'
+import { createAutoPan } from '@whiteboard/editor/input/session/autoPan'
+import type { ActiveGesture } from '@whiteboard/editor/input/core/gesture'
 import type {
   InteractionBinding,
   InteractionRuntime,
   InteractionSession,
   InteractionSessionTransition
-} from '@whiteboard/editor/input/types'
+} from '@whiteboard/editor/input/core/types'
 
 type SessionMeta = Readonly<{
   id: number

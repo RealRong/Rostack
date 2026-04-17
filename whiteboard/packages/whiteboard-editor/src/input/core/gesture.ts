@@ -1,103 +1,46 @@
+import type { Guide } from '@whiteboard/core/node'
+import type { NodeId } from '@whiteboard/core/types'
+import type { DrawPreview } from '@whiteboard/editor/local/draw'
 import type {
-  EdgeGuide,
   EdgeFeedbackEntry,
-  EdgeFeedbackState,
-  SelectionPreviewState
+  EdgeGuide,
+  MarqueeFeedbackState,
+  MindmapPreviewState,
+  NodePreviewEntry
 } from '@whiteboard/editor/local/feedback/types'
 
-export type MoveGesture = {
-  kind: 'selection-move'
-  draft: SelectionPreviewState
+export type GestureKind =
+  | 'selection-move'
+  | 'selection-marquee'
+  | 'selection-transform'
+  | 'edge-connect'
+  | 'edge-move'
+  | 'edge-label'
+  | 'edge-route'
+  | 'draw'
+  | 'mindmap-drag'
+
+export type InteractionDraft = {
+  nodePatches?: readonly NodePreviewEntry[]
+  edgePatches?: readonly EdgeFeedbackEntry[]
+  frameHoverId?: NodeId
+  marquee?: MarqueeFeedbackState
+  guides?: readonly Guide[]
+  edgeGuide?: EdgeGuide
+  drawPreview?: DrawPreview | null
+  hiddenNodeIds?: readonly NodeId[]
+  mindmap?: MindmapPreviewState
 }
 
-export type MarqueeGesture = {
-  kind: 'selection-marquee'
-  draft: SelectionPreviewState
+export type ActiveGesture = {
+  kind: GestureKind
+  draft: InteractionDraft
 }
 
-export type TransformGesture = {
-  kind: 'selection-transform'
-  draft: SelectionPreviewState
-}
-
-export type EdgeGestureDraft = {
-  patches: readonly EdgeFeedbackEntry[]
-  guide?: EdgeGuide
-}
-
-export type EdgeConnectGesture = {
-  kind: 'edge-connect'
-  draft: EdgeGestureDraft
-}
-
-export type EdgeMoveGesture = {
-  kind: 'edge-move'
-  draft: EdgeGestureDraft
-}
-
-export type EdgeLabelGesture = {
-  kind: 'edge-label'
-  draft: EdgeGestureDraft
-}
-
-export type EdgeRouteGesture = {
-  kind: 'edge-route'
-  draft: EdgeGestureDraft
-}
-
-export type ActiveGesture =
-  | MoveGesture
-  | MarqueeGesture
-  | TransformGesture
-  | EdgeConnectGesture
-  | EdgeMoveGesture
-  | EdgeLabelGesture
-  | EdgeRouteGesture
-
-export type GestureKind = ActiveGesture['kind']
-
-export const EMPTY_SELECTION_PREVIEW: SelectionPreviewState = {
-  nodePatches: [],
-  edgePatches: [],
-  guides: []
-}
-
-export const EMPTY_EDGE_GESTURE_PREVIEW: EdgeGestureDraft = {
-  patches: []
-}
-
-export const createGesture = <
-  TKind extends GestureKind
->(
-  kind: TKind,
-  draft: Extract<ActiveGesture, { kind: TKind }>['draft']
-): Extract<ActiveGesture, { kind: TKind }> => ({
-    kind,
-    draft
-  }) as Extract<ActiveGesture, { kind: TKind }>
-
-export const readSelectionGesturePreview = (
-  gesture: ActiveGesture | null | undefined
-): SelectionPreviewState => (
-  gesture?.kind === 'selection-move'
-  || gesture?.kind === 'selection-marquee'
-  || gesture?.kind === 'selection-transform'
-)
-  ? gesture.draft
-  : EMPTY_SELECTION_PREVIEW
-
-export const readEdgeGestureFeedbackState = (
-  gesture: ActiveGesture | null | undefined
-): EdgeFeedbackState => (
-  gesture?.kind === 'edge-connect'
-  || gesture?.kind === 'edge-move'
-  || gesture?.kind === 'edge-label'
-  || gesture?.kind === 'edge-route'
-)
-  ? {
-      interaction: gesture.draft.patches,
-      guide: gesture.draft.guide
-    }
-  : {
-      interaction: EMPTY_EDGE_GESTURE_PREVIEW.patches
-    }
+export const createGesture = (
+  kind: GestureKind,
+  draft: InteractionDraft = {}
+): ActiveGesture => ({
+  kind,
+  draft
+})

@@ -7,12 +7,13 @@ import {
   type MindmapNodeId
 } from '@whiteboard/core/mindmap'
 import type { NodeId, Point } from '@whiteboard/core/types'
-import type { InteractionSession } from '@whiteboard/editor/input/types'
-import { FINISH } from '@whiteboard/editor/input/result'
+import type { InteractionSession } from '@whiteboard/editor/input/core/types'
+import { FINISH } from '@whiteboard/editor/input/session/result'
+import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { MindmapPreviewState } from '@whiteboard/editor/local/feedback'
-import type { InteractionContext } from '@whiteboard/editor/input/context'
+import type { InteractionContext } from '@whiteboard/editor/input/core/context'
 import type { MindmapPresentationRead } from '@whiteboard/editor/query/mindmap/read'
 import type { NodePresentationRead } from '@whiteboard/editor/query/node/read'
 import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
@@ -65,15 +66,6 @@ const previewMindmapDrag = (
       drop: state.drop
     }
   }
-}
-
-const applyMindmapPreview = (
-  ctx: InteractionContext,
-  state: MindmapDragState
-) => {
-  ctx.local.feedback.mindmap.setPreview(
-    previewMindmapDrag(state)
-  )
 }
 
 export const tryStartMindmapDrag = (input: {
@@ -232,7 +224,7 @@ export const createMindmapDragSession = (
   initial: MindmapDragState
 ): InteractionSession => {
   let state = initial
-  applyMindmapPreview(ctx, state)
+  let interaction = null as InteractionSession | null
 
   const project = (
     world: {
@@ -245,13 +237,18 @@ export const createMindmapDragSession = (
       world,
       mindmap: ctx.query.mindmap
     })
-    applyMindmapPreview(ctx, state)
+    interaction!.gesture = createGesture('mindmap-drag', {
+      mindmap: previewMindmapDrag(state)
+    })
   }
 
-  return {
+  interaction = {
     mode: 'mindmap-drag',
     pointerId: state.pointerId,
     chrome: false,
+    gesture: createGesture('mindmap-drag', {
+      mindmap: previewMindmapDrag(state)
+    }),
     autoPan: {
       frame: (pointer) => {
         project(
@@ -264,7 +261,6 @@ export const createMindmapDragSession = (
     },
     up: () => {
       const commit = commitMindmapDrag(state)
-      ctx.local.feedback.mindmap.clear()
 
       if (commit?.kind === 'root') {
         ctx.command.mindmap.moveRoot({
@@ -286,8 +282,8 @@ export const createMindmapDragSession = (
 
       return FINISH
     },
-    cleanup: () => {
-      ctx.local.feedback.mindmap.clear()
-    }
+    cleanup: () => {}
   }
+
+  return interaction
 }

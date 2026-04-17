@@ -17,7 +17,7 @@ import type {
 import type { Size } from '@whiteboard/core/types'
 import type { KeyedReadStore, ReadStore } from '@shared/core'
 import type { DrawPreview } from '@whiteboard/editor/local/draw'
-import type { MarqueeMatch } from '@whiteboard/editor/input/selection/marquee'
+import type { MarqueeMatch } from '@whiteboard/editor/input/features/selection/marquee'
 
 export type NodePatch = Pick<
   NodeFieldPatch,
@@ -129,14 +129,6 @@ export type MindmapEnterPreview = {
 export type SelectionFeedbackState = {
   node: NodeSelectionFeedbackState
   edge: readonly EdgeFeedbackEntry[]
-  marquee?: MarqueeFeedbackState
-  guides: readonly Guide[]
-}
-
-export type SelectionPreviewState = {
-  nodePatches: readonly NodePreviewEntry[]
-  edgePatches: readonly EdgeFeedbackEntry[]
-  frameHoverId?: NodeId
   marquee?: MarqueeFeedbackState
   guides: readonly Guide[]
 }

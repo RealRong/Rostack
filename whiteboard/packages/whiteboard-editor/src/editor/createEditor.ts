@@ -7,8 +7,7 @@ import {
   type DrawState
 } from '@whiteboard/editor/local/draw/state'
 import type { Editor } from '@whiteboard/editor/types/editor'
-import { createSnapRuntime } from '@whiteboard/editor/input/snap'
-import type { InteractionContext } from '@whiteboard/editor/input/context'
+import { createSnapRuntime } from '@whiteboard/editor/input/core/snap'
 import { createEditorInteractions } from '@whiteboard/editor/input'
 import { createEdgeHoverService } from '@whiteboard/editor/input/hover/edge'
 import { createLocalRuntime } from '@whiteboard/editor/local/runtime'
@@ -18,6 +17,7 @@ import { createEditorInput } from '@whiteboard/editor/editor/input'
 import { createEditorFacade } from '@whiteboard/editor/editor/facade'
 import { createLayoutRuntime } from '@whiteboard/editor/layout/runtime'
 import type { LayoutBackend } from '@whiteboard/editor/types/layout'
+import type { InputLocal, InteractionContext } from '@whiteboard/editor/input/core/context'
 
 export const createEditor = ({
   engine,
@@ -79,16 +79,33 @@ export const createEditor = ({
     }
   })
 
+  const inputLocal: InputLocal = {
+    tool: {
+      set: local.actions.session.tool.set
+    },
+    selection: {
+      replace: local.actions.session.selection.replace,
+      clear: local.actions.session.selection.clear
+    },
+    edit: {
+      startNode: local.actions.edit.startNode,
+      startEdgeLabel: local.actions.edit.startEdgeLabel
+    },
+    viewport: {
+      panScreenBy: local.actions.viewport.viewport.panScreenBy
+    }
+  }
+
   const interactionContext: InteractionContext = {
     query: query.read,
     selection: query.selectionModel,
     command,
-    local: local.actions,
+    local: inputLocal,
     layout,
     config: engine.config,
     snap
   }
-  const edgeHover = createEdgeHoverService(interactionContext)
+  const edgeHover = createEdgeHoverService(interactionContext, local.hover)
 
   local.bindInteractions(
     createEditorInteractions(interactionContext)

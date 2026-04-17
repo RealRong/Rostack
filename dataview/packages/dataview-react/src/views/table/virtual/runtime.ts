@@ -168,6 +168,9 @@ const sameWindowBlock = (
     case 'column-footer':
       return right.kind === 'column-footer'
         && left.scopeId === right.scopeId
+    case 'create-record':
+      return right.kind === 'create-record'
+        && left.sectionKey === right.sectionKey
     case 'section-header':
       return right.kind === 'section-header'
         && left.section === right.section

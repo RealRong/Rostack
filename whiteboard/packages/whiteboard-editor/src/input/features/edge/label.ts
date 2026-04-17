@@ -12,19 +12,19 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import type { EdgePathResult } from '@whiteboard/core/types/edge'
-import { createGesture } from '@whiteboard/editor/input/gesture'
+import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import {
   FINISH
-} from '@whiteboard/editor/input/result'
-import type { InteractionContext } from '@whiteboard/editor/input/context'
-import type { InteractionSession } from '@whiteboard/editor/input/types'
+} from '@whiteboard/editor/input/session/result'
+import type { InteractionContext } from '@whiteboard/editor/input/core/context'
+import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import {
   readEdgeLabelTextSourceId
 } from '@whiteboard/editor/types/layout'
 import type {
   PointerDownInput
 } from '@whiteboard/editor/types/input'
-import { createPressDragSession } from '@whiteboard/editor/input/press'
+import { createPressDragSession } from '@whiteboard/editor/input/session/press'
 
 const EDGE_LABEL_PLACEHOLDER = 'Label'
 
@@ -139,7 +139,7 @@ const createEdgeLabelDragSession = (
       ? createGesture(
           'edge-label',
           {
-            patches: [{
+            edgePatches: [{
               id: state.edgeId,
               patch
             }]
@@ -257,7 +257,7 @@ export const createEdgeLabelPressSession = (
     )
   },
   onTap: (nextInput) => {
-    ctx.local.session.selection.replace({
+    ctx.local.selection.replace({
       edgeIds: [input.edgeId]
     })
     ctx.local.edit.startEdgeLabel(input.edgeId, input.labelId, {
@@ -287,7 +287,7 @@ export const startEdgeLabelPress = (
   }
 
   if (!isSingleSelectedEdge(ctx, pointer.pick.id)) {
-    ctx.local.session.selection.replace({
+    ctx.local.selection.replace({
       edgeIds: [pointer.pick.id]
     })
     return 'handled'

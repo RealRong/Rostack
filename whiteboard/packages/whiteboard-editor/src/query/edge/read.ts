@@ -37,7 +37,7 @@ import {
 import type {
   EdgeFeedbackProjection
 } from '@whiteboard/editor/local/feedback/types'
-import type { InteractionRuntime } from '@whiteboard/editor/input/types'
+import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
 import type { NodeCanvasSnapshot, NodePresentationRead } from '@whiteboard/editor/query/node/read'
 import type { EditSession } from '@whiteboard/editor/local/session/edit'
 import type { Tool } from '@whiteboard/editor/types/tool'

@@ -4,7 +4,7 @@ import type { Edge } from '@whiteboard/core/types'
 import {
   startEdgeRoutePoint,
   stepEdgeRoute
-} from '../src/input/edge/route'
+} from '../src/input/features/edge/route'
 
 const createManualRouteEdge = (): Edge => ({
   id: 'edge-1',

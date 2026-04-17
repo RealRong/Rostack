@@ -5,8 +5,8 @@ import {
 import type {
   EdgePatch
 } from '@whiteboard/core/types'
-import type { InteractionContext } from '../src/input/context'
-import { createEdgeConnectSession } from '../src/input/edge/connect'
+import type { InteractionContext } from '../src/input/core/context'
+import { createEdgeConnectSession } from '../src/input/features/edge/connect'
 
 const createInteractionContext = () => {
   const patch = vi.fn(() => ({ ok: true }))
@@ -72,13 +72,19 @@ const createInteractionContext = () => {
         }
       },
       local: {
-        session: {
-          tool: {
-            set: vi.fn()
-          },
-          selection: {
-            replace: vi.fn()
-          }
+        tool: {
+          set: vi.fn()
+        },
+        selection: {
+          replace: vi.fn(),
+          clear: vi.fn()
+        },
+        edit: {
+          startNode: vi.fn(),
+          startEdgeLabel: vi.fn()
+        },
+        viewport: {
+          panScreenBy: vi.fn()
         }
       }
     } as unknown as InteractionContext
@@ -109,7 +115,7 @@ const createReconnectSession = () => {
 const readSessionPatch = (
   session: ReturnType<typeof createReconnectSession>['session']
 ): EdgePatch | undefined => session.gesture?.kind === 'edge-connect'
-  ? session.gesture.draft.patches[0]?.patch
+  ? session.gesture.draft.edgePatches?.[0]?.patch
   : undefined
 
 describe('createEdgeConnectSession', () => {

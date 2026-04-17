@@ -34,10 +34,10 @@ import {
 } from '@whiteboard/editor/tool/edgePresets'
 import type { PointerDownInput, KeyboardInput, ModifierKeys } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
-import type { InteractionSession } from '@whiteboard/editor/input/types'
-import { FINISH } from '@whiteboard/editor/input/result'
-import { createGesture, type EdgeGestureDraft } from '@whiteboard/editor/input/gesture'
-import type { InteractionContext } from '@whiteboard/editor/input/context'
+import type { InteractionSession } from '@whiteboard/editor/input/core/types'
+import { FINISH } from '@whiteboard/editor/input/session/result'
+import { createGesture } from '@whiteboard/editor/input/core/gesture'
+import type { InteractionContext } from '@whiteboard/editor/input/core/context'
 import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
 import type { NodeCanvasSnapshot, NodePresentationRead } from '@whiteboard/editor/query/node/read'
 
@@ -411,7 +411,10 @@ const hasConnectGuide = (
 const readReconnectPreviewPatches = (
   state: EdgeConnectState,
   preview: EdgeConnectPreview | undefined
-): EdgeGestureDraft['patches'] => (
+): readonly {
+  id: EdgeId
+  patch: EdgePatch
+}[] => (
   state.kind === 'reconnect' && preview?.patch
     ? [{
         id: state.edgeId,
@@ -422,7 +425,7 @@ const readReconnectPreviewPatches = (
 
 const readEdgeConnectGesture = (
   input: EdgeConnectGestureInput
-): EdgeGestureDraft => {
+): Parameters<typeof createGesture>[1] => {
   const preview = resolveEdgeConnectPreview(
     input.state,
     input.showPreviewPath
@@ -431,8 +434,8 @@ const readEdgeConnectGesture = (
   )
 
   return {
-    patches: readReconnectPreviewPatches(input.state, preview),
-    guide: preview || hasConnectGuide(input.evaluation)
+    edgePatches: readReconnectPreviewPatches(input.state, preview),
+    edgeGuide: preview || hasConnectGuide(input.evaluation)
       ? {
           path: preview?.path,
           connect: {
@@ -469,7 +472,7 @@ const stepEdgeConnect = (
   input: EdgeConnectStepInput
 ): {
   state: EdgeConnectState
-  gesture: EdgeGestureDraft
+  gesture: Parameters<typeof createGesture>[1]
 } => {
   const evaluation = input.snap({
     pointerWorld: input.world
@@ -590,10 +593,10 @@ const commitConnectState = (
     return
   }
 
-  ctx.local.session.tool.set({
+  ctx.local.tool.set({
     type: 'select'
   })
-  ctx.local.session.selection.replace({
+  ctx.local.selection.replace({
     edgeIds: [result.data.edgeId]
   })
 }
@@ -659,7 +662,7 @@ export const createEdgeConnectSession = (
       state.kind === 'reconnect'
         ? {
             ...result.gesture,
-            patches: (() => {
+            edgePatches: (() => {
               const patch = readReconnectPatch(state, reconnectDraftPatch)
               return patch
                 ? [{

@@ -11,10 +11,10 @@ import {
   type TransformSpec
 } from '@whiteboard/core/node'
 import type { Node, NodeId } from '@whiteboard/core/types'
-import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/types'
-import { FINISH } from '@whiteboard/editor/input/result'
-import { createGesture } from '@whiteboard/editor/input/gesture'
-import type { InteractionContext } from '@whiteboard/editor/input/context'
+import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
+import { FINISH } from '@whiteboard/editor/input/session/result'
+import { createGesture } from '@whiteboard/editor/input/core/gesture'
+import type { InteractionContext } from '@whiteboard/editor/input/core/context'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { TransformPickHandle } from '@whiteboard/editor/types/pick'
 

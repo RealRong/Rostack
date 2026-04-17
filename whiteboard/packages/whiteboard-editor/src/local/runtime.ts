@@ -40,8 +40,9 @@ import {
 import type {
   InteractionBinding,
   InteractionRuntime
-} from '@whiteboard/editor/input/types'
-import { createInteractionRuntime } from '@whiteboard/editor/input/runtime'
+} from '@whiteboard/editor/input/core/types'
+import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
+import { createHoverStore, type HoverStore } from '@whiteboard/editor/input/hover/store'
 import type { LayoutRuntime } from '@whiteboard/editor/layout/runtime'
 
 type ReadNodeEdge = Pick<EditorQueryRead, 'node' | 'edge'>
@@ -71,6 +72,7 @@ export type EditorLocalRuntime = {
   }
   viewport: ViewportRuntime
   interaction: InteractionRuntime
+  hover: HoverStore
   feedback: EditorFeedbackRuntime
   actions: EditorLocalActions
   bindQuery: (read: EditorQueryRead) => void
@@ -126,9 +128,11 @@ export const createLocalRuntime = ({
     getBindings: () => bindings,
     space
   })
+  const hover = createHoverStore()
   const feedback = createFeedback({
     viewport: viewport.read,
-    gesture: interaction.gesture
+    gesture: interaction.gesture,
+    hover
   })
   const actions: EditorLocalActions = {
     session: createLocalSessionActions({
@@ -158,6 +162,7 @@ export const createLocalRuntime = ({
     stores,
     viewport,
     interaction,
+    hover,
     feedback,
     actions,
     bindQuery: (read) => {
@@ -173,6 +178,7 @@ export const createLocalRuntime = ({
       pointer.set(null)
       space.set(false)
       interaction.cancel()
+      hover.reset()
       feedback.reset()
       edit.mutate.clear()
       selection.mutate.clear()

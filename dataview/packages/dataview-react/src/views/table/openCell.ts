@@ -4,6 +4,7 @@ import type {
   ViewFieldRef
 } from '@dataview/engine'
 import type {
+  ValueEditorAnchor,
   ValueEditorApi,
 } from '@dataview/react/runtime/valueEditor'
 import type { GridSelectionStore } from '@dataview/react/views/table/gridSelection'
@@ -15,14 +16,18 @@ import {
 
 export interface CellOpenInput {
   cell: CellRef
+  selectionCell?: CellRef
   element?: Element | null
+  fallbackAnchor?: (element?: Element | null) => ValueEditorAnchor | undefined
   seedDraft?: string
 }
 
 interface OpenTarget {
   cell: CellOpenInput['cell']
+  selectionCell?: CellOpenInput['selectionCell']
   field: ViewFieldRef
   element?: Element | null
+  fallbackAnchor?: CellOpenInput['fallbackAnchor']
   seedDraft?: string
 }
 
@@ -51,17 +56,19 @@ export const resolveTableCloseAction = (trigger: 'enter' | 'tab-next' | 'tab-pre
 
 const createTableSessionPolicy = (input: {
   cell: CellRef
+  selectionCell?: CellRef
   gridSelection: GridSelectionStore
   revealSelection: () => void
   focus: () => void
 }) => {
+  const selectionCell = input.selectionCell ?? input.cell
   const finish = () => {
     input.revealSelection()
     input.focus()
   }
 
   const focusOwner = () => {
-    input.gridSelection.set(input.cell)
+    input.gridSelection.set(selectionCell)
     finish()
     return true
   }
@@ -117,7 +124,7 @@ export const createCellOpener = (options: {
   focus: () => void
 }) => {
   const syncTarget = (target: OpenTarget) => {
-    options.gridSelection.set(target.cell)
+    options.gridSelection.set(target.selectionCell ?? target.cell)
     options.revealCursor()
   }
 
@@ -129,8 +136,10 @@ export const createCellOpener = (options: {
       field: target.field,
       element: target.element ?? options.dom.cell(target.cell),
       seedDraft: target.seedDraft,
+      fallbackAnchor: target.fallbackAnchor,
       policy: createTableSessionPolicy({
         cell: target.cell,
+        selectionCell: target.selectionCell,
         gridSelection: options.gridSelection,
         revealSelection: options.revealCursor,
         focus: options.focus
@@ -162,7 +171,9 @@ export const createCellOpener = (options: {
         recordId: resolved.recordId,
         fieldId: resolved.fieldId
       },
+      selectionCell: input.selectionCell,
       element: input.element,
+      fallbackAnchor: input.fallbackAnchor,
       seedDraft: input.seedDraft
     })
   }

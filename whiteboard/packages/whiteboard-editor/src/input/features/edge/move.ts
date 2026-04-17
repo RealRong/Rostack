@@ -7,13 +7,13 @@ import type {
 } from '@whiteboard/core/types'
 import type {
   InteractionSession
-} from '@whiteboard/editor/input/types'
+} from '@whiteboard/editor/input/core/types'
 import {
   CANCEL,
   FINISH
-} from '@whiteboard/editor/input/result'
-import { createGesture } from '@whiteboard/editor/input/gesture'
-import type { InteractionContext } from '@whiteboard/editor/input/context'
+} from '@whiteboard/editor/input/session/result'
+import { createGesture } from '@whiteboard/editor/input/core/gesture'
+import type { InteractionContext } from '@whiteboard/editor/input/core/context'
 import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
 
 export type EdgeMoveState = {
@@ -117,7 +117,7 @@ const readMoveGesture = (
   ? createGesture(
       'edge-move',
       {
-        patches: [{
+        edgePatches: [{
           id: state.edgeId,
           patch
         }]

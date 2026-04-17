@@ -11,19 +11,26 @@ import {
 import type { SelectionMode } from '@whiteboard/core/node'
 import {
   createGesture
-} from '@whiteboard/editor/input/gesture'
+} from '@whiteboard/editor/input/core/gesture'
 import {
   FINISH
-} from '@whiteboard/editor/input/result'
-import type { InteractionContext } from '@whiteboard/editor/input/context'
+} from '@whiteboard/editor/input/session/result'
+import type { InteractionContext } from '@whiteboard/editor/input/core/context'
 import type {
   InteractionSession
-} from '@whiteboard/editor/input/types'
+} from '@whiteboard/editor/input/core/types'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
-import type { SelectionMarqueePlan } from '@whiteboard/editor/input/selection/press'
-import { GestureTuning } from '@whiteboard/editor/input/tuning'
+import { GestureTuning } from '@whiteboard/editor/input/session/tuning'
 
 export type MarqueeMatch = 'touch' | 'contain'
+
+type SelectionMarqueeAction = {
+  kind: 'marquee'
+  match: MarqueeMatch
+  mode: SelectionMode
+  base: SelectionTarget
+  clearOnStart?: boolean
+}
 
 type MarqueeSelectionBaseState = {
   pointerId: number
@@ -48,17 +55,6 @@ type MarqueeSelectionState =
       worldRect?: Rect
     })
 
-type MarqueeSelectionEffect =
-  | {
-      type: 'selection.replace'
-      selection: SelectionTarget
-    }
-  | {
-      type: 'preview.set'
-      worldRect: Rect
-      match: MarqueeMatch
-    }
-
 type MarqueeSelectionEvent =
   | {
       type: 'pointer.move' | 'pointer.up'
@@ -69,11 +65,6 @@ type MarqueeSelectionEvent =
     }
   | {
       type: 'cancel'
-    }
-
-type MarqueeSelectionTransition = {
-  state: MarqueeSelectionState
-  effects: readonly MarqueeSelectionEffect[]
 }
 
 const createMarqueeRect = (
@@ -85,7 +76,7 @@ const readMatchedSelection = (
   input: {
     ctx: InteractionContext
     rect: Rect
-    match: SelectionMarqueePlan['match']
+    match: SelectionMarqueeAction['match']
   }
 ): SelectionTarget => ({
   nodeIds: input.ctx.query.node.idsInRect(input.rect, {
@@ -155,30 +146,6 @@ const toMarqueeSelectionState = (
   }
 }
 
-const toMarqueeSelectionEffects = (
-  previous: MarqueeSelectionState,
-  next: MarqueeSelectionState
-): readonly MarqueeSelectionEffect[] => {
-  if (next.kind === 'armed' || next.kind === 'finished') {
-    return []
-  }
-
-  const effects: MarqueeSelectionEffect[] = [{
-    type: 'preview.set',
-    worldRect: next.worldRect,
-    match: next.match
-  }]
-
-  if (!isSelectionTargetEqual(previous.selection, next.selection)) {
-    effects.push({
-      type: 'selection.replace',
-      selection: next.selection
-    })
-  }
-
-  return effects
-}
-
 const startMarqueeSelection = (
   input: {
     pointerId: number
@@ -202,66 +169,50 @@ const startMarqueeSelection = (
 const reduceMarqueeSelection = (
   state: MarqueeSelectionState,
   event: MarqueeSelectionEvent
-): MarqueeSelectionTransition => {
+): MarqueeSelectionState => {
   if (state.kind === 'finished') {
-    return {
-      state,
-      effects: []
-    }
+    return state
   }
 
   if (event.type === 'cancel') {
     return {
-      state: {
-        ...state,
-        kind: 'finished'
-      },
-      effects: []
+      ...state,
+      kind: 'finished'
     }
   }
 
-  const next = toMarqueeSelectionState({
+  return toMarqueeSelectionState({
     previous: state,
     event
   })
-
-  return {
-    state: next,
-    effects: toMarqueeSelectionEffects(state, next)
-  }
 }
 
-const applyMarqueeEffect = (
+const syncMarqueeInteraction = (
   ctx: InteractionContext,
   interaction: InteractionSession,
-  effect: MarqueeSelectionEffect
+  previous: MarqueeSelectionState,
+  next: MarqueeSelectionState
 ) => {
-  switch (effect.type) {
-    case 'selection.replace':
-      ctx.local.session.selection.replace(effect.selection)
-      return
-    case 'preview.set':
-      interaction.gesture = createGesture(
-        'selection-marquee',
-        {
-          nodePatches: [],
-          edgePatches: [],
-          frameHoverId: undefined,
-          guides: [],
-          marquee: {
-            worldRect: effect.worldRect,
-            match: effect.match
-          }
-        }
-      )
+  if (!isSelectionTargetEqual(previous.selection, next.selection)) {
+    ctx.local.selection.replace(next.selection)
   }
+
+  interaction.gesture = next.kind === 'active'
+    ? createGesture('selection-marquee', {
+        marquee: {
+          worldRect: next.worldRect,
+          match: next.match
+        },
+        guides: []
+      })
+    : null
 }
 
 export const createMarqueeSession = (
   ctx: InteractionContext,
   input: {
     start: PointerDownInput
-    action: SelectionMarqueePlan
+    action: SelectionMarqueeAction
   }
 ): InteractionSession => {
   let state = startMarqueeSelection({
@@ -275,17 +226,15 @@ export const createMarqueeSession = (
   let interaction = null as InteractionSession | null
 
   if (input.action.clearOnStart) {
-    ctx.local.session.selection.clear()
+    ctx.local.selection.clear()
   }
 
   const dispatch = (
     event: MarqueeSelectionEvent
   ) => {
-    const result = reduceMarqueeSelection(state, event)
-    state = result.state
-    result.effects.forEach((effect) => {
-      applyMarqueeEffect(ctx, interaction!, effect)
-    })
+    const previous = state
+    state = reduceMarqueeSelection(state, event)
+    syncMarqueeInteraction(ctx, interaction!, previous, state)
   }
 
   const step = (

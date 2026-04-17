@@ -8,17 +8,17 @@ import {
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import {
   FINISH
-} from '@whiteboard/editor/input/result'
+} from '@whiteboard/editor/input/session/result'
 import type {
   InteractionSession
-} from '@whiteboard/editor/input/types'
-import type { InteractionContext } from '@whiteboard/editor/input/context'
-import { createGesture } from '@whiteboard/editor/input/gesture'
-import { createMindmapDragSession, tryStartMindmapDragForNode } from '@whiteboard/editor/input/mindmap/drag'
+} from '@whiteboard/editor/input/core/types'
+import type { InteractionContext } from '@whiteboard/editor/input/core/context'
+import { createGesture } from '@whiteboard/editor/input/core/gesture'
+import { createMindmapDragSession, tryStartMindmapDragForNode } from '@whiteboard/editor/input/features/mindmap/drag'
 import type {
   PointerDownInput
 } from '@whiteboard/editor/types/input'
-import type { SelectionMoveVisibility } from '@whiteboard/editor/input/selection/press'
+import type { SelectionMoveVisibility } from '@whiteboard/editor/input/features/selection/press'
 
 const toMoveNodePatches = (
   result: MoveStepResult
@@ -93,7 +93,7 @@ export const createMoveInteraction = (
     input.visibility.kind === 'show'
     || input.visibility.kind === 'temporary'
   ) {
-    ctx.local.session.selection.replace(input.visibility.selection)
+    ctx.local.selection.replace(input.visibility.selection)
   }
 
   if (pickedNodeId) {
@@ -114,7 +114,7 @@ export const createMoveInteraction = (
         cleanup: () => {
           cleanup?.()
           if (restoreSelection) {
-            ctx.local.session.selection.replace(restoreSelection)
+            ctx.local.selection.replace(restoreSelection)
           }
         }
       }
@@ -167,8 +167,7 @@ export const createMoveInteraction = (
         nodePatches: toMoveNodePatches(result),
         edgePatches: toMoveEdgePatches(result),
         frameHoverId: resolveFrameHoverId(ctx, state, nextInput.world),
-        guides,
-        marquee: undefined
+        guides
       }
     )
   }
@@ -210,7 +209,7 @@ export const createMoveInteraction = (
     },
     cleanup: () => {
       if (restoreSelection) {
-        ctx.local.session.selection.replace(restoreSelection)
+        ctx.local.selection.replace(restoreSelection)
       }
     }
   }

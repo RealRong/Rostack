@@ -7,6 +7,7 @@ import type {
   TableBlock,
   TableColumnFooterBlock,
   TableColumnHeaderBlock,
+  TableCreateRecordBlock,
   TableRowBlock,
   TableSectionHeaderBlock
 } from '@dataview/react/views/table/virtual/types'
@@ -34,6 +35,11 @@ interface TableColumnFooterDescriptor extends TableBlockDescriptorBase {
   scopeId: string
 }
 
+interface TableCreateRecordDescriptor extends TableBlockDescriptorBase {
+  kind: 'create-record'
+  sectionKey: string
+}
+
 interface TableSectionHeaderDescriptor extends TableBlockDescriptorBase {
   kind: 'section-header'
   section: CurrentView['sections']['all'][number]
@@ -43,6 +49,7 @@ export type TableBlockDescriptor =
   | TableRowDescriptor
   | TableColumnHeaderDescriptor
   | TableColumnFooterDescriptor
+  | TableCreateRecordDescriptor
   | TableSectionHeaderDescriptor
 
 export interface TableWindowProjection {
@@ -189,6 +196,18 @@ const materializeBlock = (input: {
       }
       return block
     }
+    case 'create-record': {
+      const block: TableCreateRecordBlock = {
+        key: input.descriptor.key,
+        kind: 'create-record',
+        top: input.top,
+        height: input.height,
+        estimatedHeight: input.descriptor.estimatedHeight,
+        measuredHeight,
+        sectionKey: input.descriptor.sectionKey
+      }
+      return block
+    }
     case 'section-header': {
       const block: TableSectionHeaderBlock = {
         key: input.descriptor.key,
@@ -243,6 +262,12 @@ const buildDescriptors = (input: {
       })
     })
     push({
+      key: 'create-record:flat',
+      kind: 'create-record',
+      estimatedHeight: input.rowHeight,
+      sectionKey: scopeId
+    })
+    push({
       key: 'column-footer:flat',
       kind: 'column-footer',
       estimatedHeight: input.headerHeight,
@@ -282,6 +307,12 @@ const buildDescriptors = (input: {
         })
       })
 
+      push({
+        key: `create-record:${section.key}`,
+        kind: 'create-record',
+        estimatedHeight: input.rowHeight,
+        sectionKey: section.key
+      })
       push({
         key: `column-footer:${section.key}`,
         kind: 'column-footer',

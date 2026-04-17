@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createDocument } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
-import { createMindmapDragSession } from '../src/input/mindmap/drag'
+import { createMindmapDragSession } from '../src/input/features/mindmap/drag'
 import { createEditor } from '../src'
 import type { NodeRegistry } from '../src'
 
@@ -110,19 +110,10 @@ describe('mindmap root move', () => {
     })
   })
 
-  it('clears preview before committing root move', () => {
-    const clear = vi.fn()
+  it('keeps root move preview on the interaction draft until commit', () => {
     const moveRoot = vi.fn()
 
     const session = createMindmapDragSession({
-      local: {
-        feedback: {
-          mindmap: {
-            setPreview: vi.fn(),
-            clear
-          }
-        }
-      },
       command: {
         mindmap: {
           moveRoot,
@@ -148,16 +139,20 @@ describe('mindmap root move', () => {
       position: { x: 100, y: 0 }
     })
 
+    expect(session.gesture?.kind).toBe('mindmap-drag')
+    expect(session.gesture?.draft.mindmap).toEqual({
+      rootMove: {
+        treeId: 'mindmap_1',
+        delta: { x: 50, y: 0 }
+      }
+    })
+
     session.up?.()
 
-    expect(clear).toHaveBeenCalled()
     expect(moveRoot).toHaveBeenCalledWith({
       nodeId: 'mindmap_1',
       position: { x: 100, y: 0 },
       origin: { x: 50, y: 0 }
     })
-    expect(clear.mock.invocationCallOrder[0]).toBeLessThan(
-      moveRoot.mock.invocationCallOrder[0]
-    )
   })
 })

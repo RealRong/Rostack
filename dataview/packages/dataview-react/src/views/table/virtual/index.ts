@@ -8,6 +8,7 @@ export type {
   TableBlock,
   TableColumnFooterBlock,
   TableColumnHeaderBlock,
+  TableCreateRecordBlock,
   TableRowBlock,
   TableSectionHeaderBlock
 } from '@dataview/react/views/table/virtual/types'

@@ -5,10 +5,9 @@ import {
   type ReadStore
 } from '@shared/core'
 import {
-  readEdgeGestureFeedbackState,
-  readSelectionGesturePreview,
   type ActiveGesture
-} from '@whiteboard/editor/input/gesture'
+} from '@whiteboard/editor/input/core/gesture'
+import type { HoverState } from '@whiteboard/editor/input/hover/store'
 import {
   EMPTY_EDGE_GUIDE,
   EMPTY_EDGE_FEEDBACK,
@@ -23,11 +22,17 @@ import {
 } from '@whiteboard/editor/local/feedback/node'
 import {
   EMPTY_SELECTION_FEEDBACK,
+  EMPTY_GUIDES,
   isSelectionFeedbackStateEqual,
   normalizeSelectionFeedbackState,
-  toSelectionFeedbackState
 } from '@whiteboard/editor/local/feedback/selection'
 import type { EditorFeedbackRuntime, EditorFeedbackState } from '@whiteboard/editor/local/feedback/types'
+import {
+  EMPTY_EDGE_FEEDBACK_ENTRIES
+} from '@whiteboard/editor/local/feedback/edge'
+import {
+  EMPTY_NODE_PATCHES
+} from '@whiteboard/editor/local/feedback/node'
 
 const normalizeDrawFeedbackState = (
   state: EditorFeedbackState['draw']
@@ -93,42 +98,72 @@ const isFeedbackStateEqual = (
   && left.mindmap.preview === right.mindmap.preview
 )
 
-const isEdgeGestureKind = (
-  gesture: ActiveGesture | null
-): gesture is Extract<ActiveGesture, {
-  kind: 'edge-connect' | 'edge-move' | 'edge-label' | 'edge-route'
-}> => (
-  gesture?.kind === 'edge-connect'
-  || gesture?.kind === 'edge-move'
-  || gesture?.kind === 'edge-label'
-  || gesture?.kind === 'edge-route'
-)
+const mergeMindmapPreview = (
+  base: EditorFeedbackState['mindmap']['preview'],
+  draft: ActiveGesture['draft']['mindmap']
+): EditorFeedbackState['mindmap']['preview'] => {
+  if (!base) {
+    return draft
+  }
+
+  if (!draft) {
+    return base
+  }
+
+  return {
+    ...base,
+    ...draft,
+    enter: draft.enter ?? base.enter
+  }
+}
 
 const composeFeedbackState = ({
   base,
-  gesture
+  gesture,
+  hover
 }: {
   base: EditorFeedbackState
   gesture: ActiveGesture | null
+  hover: HoverState
 }): EditorFeedbackState => {
-  const nextSelection = toSelectionFeedbackState(
-    readSelectionGesturePreview(gesture)
-  )
-  const nextEdge = isEdgeGestureKind(gesture)
-    ? normalizeEdgeFeedbackState(readEdgeGestureFeedbackState(gesture))
-    : base.edge
+  const draft = gesture?.draft
+  const nextSelection = normalizeSelectionFeedbackState({
+    node: {
+      patches: draft?.nodePatches ?? EMPTY_NODE_PATCHES,
+      frameHoverId: draft?.frameHoverId
+    },
+    edge: draft?.edgePatches ?? EMPTY_EDGE_FEEDBACK_ENTRIES,
+    marquee: draft?.marquee,
+    guides: draft?.guides ?? EMPTY_GUIDES
+  })
+  const nextEdge = normalizeEdgeFeedbackState({
+    interaction: EMPTY_EDGE_FEEDBACK.interaction,
+    guide: draft?.edgeGuide ?? hover.edgeGuide
+  })
 
   return normalizeFeedbackState({
     ...base,
+    draw: normalizeDrawFeedbackState({
+      preview: draft?.drawPreview ?? null,
+      hidden: draft?.hiddenNodeIds ?? EMPTY_NODE_HIDDEN
+    }),
     selection: nextSelection,
-    edge: nextEdge
+    edge: nextEdge,
+    mindmap: {
+      preview: mergeMindmapPreview(
+        base.mindmap.preview,
+        draft?.mindmap
+      )
+    }
   })
 }
 
 export const createFeedbackState = ({
-  gesture
+  gesture,
+  hover
 }: {
   gesture: Pick<ReadStore<ActiveGesture | null>, 'get' | 'subscribe'>
+  hover: Pick<ReadStore<HoverState>, 'get' | 'subscribe'>
 }): Pick<EditorFeedbackRuntime, 'get' | 'subscribe' | 'set' | 'reset'> => {
   const baseState = createValueStore<EditorFeedbackState>(EMPTY_FEEDBACK_STATE, {
     isEqual: isFeedbackStateEqual
@@ -136,7 +171,8 @@ export const createFeedbackState = ({
   const composedState = createDerivedStore<EditorFeedbackState>({
     get: () => composeFeedbackState({
       base: read(baseState),
-      gesture: read(gesture)
+      gesture: read(gesture),
+      hover: read(hover)
     }),
     isEqual: isFeedbackStateEqual
   })

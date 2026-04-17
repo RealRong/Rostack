@@ -1,9 +1,9 @@
 import type {
   InteractionBinding,
   InteractionSession
-} from '@whiteboard/editor/input/types'
-import { FINISH } from '@whiteboard/editor/input/result'
-import type { InteractionContext } from '@whiteboard/editor/input/context'
+} from '@whiteboard/editor/input/core/types'
+import { FINISH } from '@whiteboard/editor/input/session/result'
+import type { InteractionContext } from '@whiteboard/editor/input/core/context'
 
 type PanState = {
   lastClient: {
@@ -46,7 +46,7 @@ const updatePan = (
     x: input.client.x,
     y: input.client.y
   }
-  ctx.local.viewport.viewport.panScreenBy({
+  ctx.local.viewport.panScreenBy({
     x: -deltaX,
     y: -deltaY
   })

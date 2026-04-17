@@ -29,7 +29,7 @@
 
 ### 2.1 交互生命周期边界
 
-`input/runtime.ts` 是唯一的 session 生命周期中轴：
+`input/core/runtime.ts` 是唯一的 session 生命周期中轴：
 
 - 启动 binding
 - 挂载 active session
@@ -327,8 +327,12 @@ export type HoverStore = {
 基于当前代码，最终只保留：
 
 - node text preview
+- mindmap enter preview
 
-也就是当前 `local.feedback.node.text` 这条线。
+也就是两条真正非 pointer-interaction 的线：
+
+- `local.feedback.node.text`
+- `local.feedback.mindmap.preview.enter`
 
 最终不再允许以下东西留在 `baseFeedback`：
 
@@ -366,7 +370,10 @@ composed.marquee =
   draft.marquee
 
 composed.mindmap.preview =
-  draft.mindmap
+  mergeMindmapPreview(
+    base.mindmap.preview,
+    draft.mindmap
+  )
 
 composed.snap =
   draft.guides ?? []
@@ -379,6 +386,7 @@ composed.edgeGuide =
 
 - interaction draft 优先于 hover
 - hover 只在 interaction 没给 `edgeGuide` 时生效
+- mindmap enter preview 保留在 base，mindmap drag preview 走 interaction，并在 compose 时合并
 
 原因：
 
@@ -582,18 +590,18 @@ viewport 读写最终明确分离：
 
 ## 7.1 保留
 
-- `input/runtime.ts`
-- `input/types.ts`
-- `input/context.ts`
-- `input/press.ts`
-- `input/gesture.ts`
-- `input/selection/*`
-- `input/edge/*`
-- `input/draw.ts`
-- `input/transform.ts`
-- `input/mindmap/drag.ts`
+- `input/core/runtime.ts`
+- `input/core/types.ts`
+- `input/core/context.ts`
+- `input/session/press.ts`
+- `input/core/gesture.ts`
+- `input/features/selection/*`
+- `input/features/edge/*`
+- `input/features/draw.ts`
+- `input/features/transform.ts`
+- `input/features/mindmap/drag.ts`
 - `input/hover/edge.ts`
-- `input/viewport.ts`
+- `input/features/viewport.ts`
 - `local/feedback/state.ts`
 
 ---
@@ -617,25 +625,25 @@ viewport 读写最终明确分离：
 
 从长期最优看，优先重写这些：
 
-1. `input/gesture.ts`
+1. `input/core/gesture.ts`
    统一成单一 `ActiveGesture`
 2. `local/feedback/types.ts`
    删除 `SelectionPreviewState` / `EdgeGestureDraft`
 3. `local/feedback/state.ts`
    改成 `base + interaction + hover` compose
-4. `input/context.ts`
+4. `input/core/context.ts`
    收窄到最终 `InputLocal`
-5. `input/draw.ts`
+5. `input/features/draw.ts`
    去掉 `local.feedback.draw.*`
-6. `input/mindmap/drag.ts`
+6. `input/features/mindmap/drag.ts`
    去掉 `local.feedback.mindmap.*`
 7. `input/hover/edge.ts`
    去掉 `local.feedback.edge.*`
-8. `input/selection/press.ts`
+8. `input/features/selection/press.ts`
    去掉 plan/apply 结构化思路，直接闭包化
-9. `input/edge/index.ts`
+9. `input/features/edge/index.ts`
    去掉中间 union，直接分支
-10. `input/edge/label.ts`
+10. `input/features/edge/label.ts`
    去掉 `EdgeLabelPressPlan`
 
 ---
@@ -660,7 +668,8 @@ viewport 读写最终明确分离：
 
 完成：
 
-- draw/mindmap/edge hover 全部移出 `local.feedback actions`
+- draw/mindmap drag/edge hover 移出 `local.feedback actions`
+- `local.feedback` 只保留 node text preview 与 mindmap enter preview
 - `local/feedback/state.ts` 改成 `base + interaction + hover`
 
 验收：

@@ -10,14 +10,14 @@ import { isPointEqual } from '@whiteboard/core/geometry'
 import type { Edge, EdgeId, EdgePatch, Point } from '@whiteboard/core/types'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
-import { createGesture } from '@whiteboard/editor/input/gesture'
+import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import {
   CANCEL,
   FINISH
-} from '@whiteboard/editor/input/result'
-import type { InteractionContext } from '@whiteboard/editor/input/context'
-import type { InteractionSession } from '@whiteboard/editor/input/types'
-import { createPressDragSession } from '@whiteboard/editor/input/press'
+} from '@whiteboard/editor/input/session/result'
+import type { InteractionContext } from '@whiteboard/editor/input/core/context'
+import type { InteractionSession } from '@whiteboard/editor/input/core/types'
+import { createPressDragSession } from '@whiteboard/editor/input/session/press'
 
 export type EdgeRouteHandleState =
   | {
@@ -358,7 +358,7 @@ const readRouteGesture = (
 ) => createGesture(
   'edge-route',
   {
-    patches: [{
+    edgePatches: [{
       id: state.edgeId,
       activeRouteIndex: state.index,
       ...(patch?.patch
@@ -455,7 +455,6 @@ const createInsertedRouteSession = (
     input.point
   )
   if (!result.ok) {
-    ctx.local.feedback.edge.clearPatches()
     return null
   }
 

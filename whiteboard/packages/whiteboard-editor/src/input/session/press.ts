@@ -1,10 +1,10 @@
 import { createTimeoutTask, type TimeoutTask } from '@shared/core'
-import { GestureTuning } from '@whiteboard/editor/input/tuning'
+import { GestureTuning } from '@whiteboard/editor/input/session/tuning'
 import {
   FINISH,
   replaceSession
-} from '@whiteboard/editor/input/result'
-import type { InteractionSession, InteractionSessionTransition } from '@whiteboard/editor/input/types'
+} from '@whiteboard/editor/input/session/result'
+import type { InteractionSession, InteractionSessionTransition } from '@whiteboard/editor/input/core/types'
 import type {
   PointerDownInput,
   PointerMoveInput,

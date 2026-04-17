@@ -35,6 +35,7 @@ const View = (props: ColumnFooterBlockProps) => {
   }
 
   const calculations = currentView.summaries.get(props.scopeId)
+  
   return (
     <div
       ref={props.measureRef}
@@ -111,7 +112,7 @@ const View = (props: ColumnFooterBlockProps) => {
               className={'min-w-0 box-border flex items-start'}
               style={{
                 paddingInline: TABLE_CELL_INLINE_PADDING,
-                paddingBlock: TABLE_CELL_BLOCK_PADDING
+                paddingBlock: 12
               }}
             >
               {content}

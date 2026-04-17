@@ -12,7 +12,6 @@ import {
 import type {
   MarqueeFeedback,
   MarqueeFeedbackState,
-  SelectionPreviewState,
   SelectionFeedbackState
 } from '@whiteboard/editor/local/feedback/types'
 
@@ -100,18 +99,6 @@ export const normalizeSelectionFeedbackState = (
     guides
   }
 }
-
-export const toSelectionFeedbackState = (
-  preview: SelectionPreviewState
-): SelectionFeedbackState => normalizeSelectionFeedbackState({
-  node: {
-    patches: preview.nodePatches,
-    frameHoverId: preview.frameHoverId
-  },
-  edge: preview.edgePatches,
-  marquee: preview.marquee,
-  guides: preview.guides
-})
 
 export const projectWorldRect = (
   viewport: ViewportRuntime['read'],

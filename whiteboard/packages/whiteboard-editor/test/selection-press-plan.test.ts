@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  resolveSelectionPressPlan,
+  createSelectionPressBehavior,
   type SelectionPressSubject
-} from '../src/input/selection/press'
+} from '../src/input/features/selection/press'
 
 const createTextSubject = (
   overrides: Partial<Extract<SelectionPressSubject<'text'>, { kind: 'node' }>> = {}
@@ -37,11 +37,11 @@ const createTextSubject = (
   ...overrides
 })
 
-describe('resolveSelectionPressPlan', () => {
+describe('createSelectionPressBehavior', () => {
   it('selects on first field click before entering edit mode', () => {
-    const plan = resolveSelectionPressPlan(createTextSubject(), 'replace')
+    const behavior = createSelectionPressBehavior(createTextSubject(), 'replace')
 
-    expect(plan?.tap).toEqual({
+    expect(behavior?.tap).toEqual({
       kind: 'select',
       target: {
         nodeIds: ['text-1'],
@@ -51,7 +51,7 @@ describe('resolveSelectionPressPlan', () => {
   })
 
   it('enters field edit only when the node is already selected', () => {
-    const plan = resolveSelectionPressPlan(createTextSubject({
+    const behavior = createSelectionPressBehavior(createTextSubject({
       selected: true,
       currentSelection: {
         nodeIds: ['text-1'],
@@ -59,7 +59,7 @@ describe('resolveSelectionPressPlan', () => {
       }
     }), 'replace')
 
-    expect(plan?.tap).toEqual({
+    expect(behavior?.tap).toEqual({
       kind: 'edit-field',
       nodeId: 'text-1',
       field: 'text',

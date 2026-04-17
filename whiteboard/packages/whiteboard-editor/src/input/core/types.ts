@@ -1,5 +1,5 @@
 import type { ReadStore } from '@shared/core'
-import type { ActiveGesture } from '@whiteboard/editor/input/gesture'
+import type { ActiveGesture } from '@whiteboard/editor/input/core/gesture'
 import type {
   KeyboardInput,
   PointerDownInput,

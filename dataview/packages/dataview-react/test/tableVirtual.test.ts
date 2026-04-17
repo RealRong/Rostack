@@ -90,8 +90,13 @@ test('TableLayoutModel uses measured heights for flat table blocks and recompute
       height: 36
     },
     {
-      key: 'column-footer:flat',
+      key: 'create-record:flat',
       top: 156,
+      height: 36
+    },
+    {
+      key: 'column-footer:flat',
+      top: 192,
       height: 64
     }
   ])
@@ -160,13 +165,18 @@ test('TableLayoutModel uses measured heights for grouped section blocks and keep
       height: 72
     },
     {
-      key: 'column-footer:won',
+      key: 'create-record:won',
       top: 212,
+      height: 36
+    },
+    {
+      key: 'column-footer:won',
+      top: 248,
       height: 60
     },
     {
       key: 'section-header:lost',
-      top: 272,
+      top: 308,
       height: 44
     }
   ])
@@ -221,9 +231,9 @@ test('TableLayoutModel applies measured height patches incrementally and locates
         height: 36
       },
       {
-        key: 'column-footer:flat',
+        key: 'create-record:flat',
         top: 208,
-        height: 40
+        height: 36
       }
     ]
   )

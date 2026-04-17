@@ -1,11 +1,11 @@
 import type { EditorQueryRead } from '@whiteboard/editor/query'
 import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
-import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/types'
-import type { InteractionContext } from '@whiteboard/editor/input/context'
-import { createMoveInteraction } from '@whiteboard/editor/input/selection/move'
-import { createMarqueeSession, type MarqueeMatch } from '@whiteboard/editor/input/selection/marquee'
-import { createPressDragSession } from '@whiteboard/editor/input/press'
+import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
+import type { InteractionContext } from '@whiteboard/editor/input/core/context'
+import { createMoveInteraction } from '@whiteboard/editor/input/features/selection/move'
+import { createMarqueeSession, type MarqueeMatch } from '@whiteboard/editor/input/features/selection/marquee'
+import { createPressDragSession } from '@whiteboard/editor/input/session/press'
 import {
   EMPTY_SELECTION_TARGET,
   applySelectionTarget,
@@ -32,7 +32,7 @@ export type SelectionPressTarget<TField extends string = string> =
       field?: TField
     }
 
-export type SelectionPressTapPlan<TField extends string = string> =
+type SelectionTapAction<TField extends string = string> =
   | { kind: 'clear' }
   | {
       kind: 'select'
@@ -61,7 +61,7 @@ export type SelectionMoveVisibility =
       restore: SelectionTarget
     }
 
-export type SelectionPressDragPlan =
+type SelectionDragAction =
   | {
       kind: 'move'
       target: SelectionTarget
@@ -75,21 +75,16 @@ export type SelectionPressDragPlan =
       clearOnStart?: boolean
     }
 
-export type SelectionMarqueePlan = Extract<
-  SelectionPressDragPlan,
+type SelectionMarqueeAction = Extract<
+  SelectionDragAction,
   { kind: 'marquee' }
 >
 
-export type SelectionPressPlan<TField extends string = string> = {
+type SelectionPressBehavior<TField extends string = string> = {
   chrome: boolean
-  tap?: SelectionPressTapPlan<TField>
-  drag?: SelectionPressDragPlan
-  hold?: SelectionMarqueePlan
-}
-
-export type SelectionPressResolution<TField extends string = string> = {
-  target: SelectionPressTarget<TField>
-  plan: SelectionPressPlan<TField>
+  tap?: SelectionTapAction<TField>
+  drag?: SelectionDragAction
+  hold?: SelectionMarqueeAction
 }
 
 type SelectionPressDeps = {
@@ -171,7 +166,7 @@ const createSelectionSession = (
   input: {
     ctx: InteractionContext
     start: PointerDownInput
-    decision: SelectionPressDragPlan | SelectionMarqueePlan | undefined
+    decision: SelectionDragAction | SelectionMarqueeAction | undefined
   }
 ) => {
   if (!input.decision) {
@@ -380,7 +375,7 @@ const resolveSelectionPressSubject = <TField extends string>(
   }
 }
 
-const HOLD_TO_CONTAIN_MARQUEE: SelectionMarqueePlan = {
+const HOLD_TO_CONTAIN_MARQUEE: SelectionMarqueeAction = {
   kind: 'marquee',
   match: 'contain',
   mode: 'replace',
@@ -415,10 +410,10 @@ const showTemporarySelection = (
   restore
 })
 
-const planBackgroundPress = <TField extends string>(
+const createBackgroundBehavior = <TField extends string>(
   subject: Extract<SelectionPressSubject<TField>, { kind: 'background' }>,
   mode: SelectionMode
-): SelectionPressPlan<TField> => ({
+): SelectionPressBehavior<TField> => ({
   chrome: false,
   tap: mode === 'replace'
     ? { kind: 'clear' }
@@ -431,9 +426,9 @@ const planBackgroundPress = <TField extends string>(
   }
 })
 
-const planSelectionBoxPress = <TField extends string>(
+const createSelectionBoxBehavior = <TField extends string>(
   subject: Extract<SelectionPressSubject<TField>, { kind: 'selection-box' }>
-): SelectionPressPlan<TField> | undefined => {
+): SelectionPressBehavior<TField> | undefined => {
   if (
     !subject.currentSelection.nodeIds.length
     && !subject.currentSelection.edgeIds.length
@@ -458,9 +453,9 @@ const planSelectionBoxPress = <TField extends string>(
   }
 }
 
-const planGroupPress = <TField extends string>(
+const createGroupBehavior = <TField extends string>(
   subject: Extract<SelectionPressSubject<TField>, { kind: 'group' }>
-): SelectionPressPlan<TField> => {
+): SelectionPressBehavior<TField> => {
   const nextSelection = subject.mode === 'replace'
     ? subject.groupSelection
     : applySelectionTarget(
@@ -555,10 +550,10 @@ const resolveNodeDragVisibility = <TField extends string>(
   return showSelection(readNodeOnlySelection(dragTarget.nodeIds))
 }
 
-const resolveNodeTapPlan = <TField extends string>(
+const resolveNodeTapAction = <TField extends string>(
   subject: Extract<SelectionPressSubject<TField>, { kind: 'node' }>,
   nextSelection: SelectionTarget
-): SelectionPressTapPlan<TField> => {
+): SelectionTapAction<TField> => {
   const explicitFieldEdit = (
     subject.mode === 'replace'
     && Boolean(subject.target.field)
@@ -598,9 +593,9 @@ const resolveNodeTapPlan = <TField extends string>(
   }
 }
 
-const planNodePress = <TField extends string>(
+const createNodeBehavior = <TField extends string>(
   subject: Extract<SelectionPressSubject<TField>, { kind: 'node' }>
-): SelectionPressPlan<TField> => {
+): SelectionPressBehavior<TField> => {
   const nextSelection = resolveNodeNextSelection(subject)
   const dragTarget = resolveNodeDragTarget(subject, nextSelection)
   const canDrag =
@@ -612,7 +607,7 @@ const planNodePress = <TField extends string>(
 
   return {
     chrome: subject.selected || subject.groupSelected,
-    tap: resolveNodeTapPlan(subject, nextSelection),
+    tap: resolveNodeTapAction(subject, nextSelection),
     drag: canDrag
       ? {
           kind: 'move',
@@ -624,19 +619,19 @@ const planNodePress = <TField extends string>(
   }
 }
 
-export const resolveSelectionPressPlan = <TField extends string>(
+export const createSelectionPressBehavior = <TField extends string>(
   subject: SelectionPressSubject<TField>,
   mode: SelectionMode
-): SelectionPressPlan<TField> | undefined => {
+): SelectionPressBehavior<TField> | undefined => {
   switch (subject.kind) {
     case 'background':
-      return planBackgroundPress(subject, mode)
+      return createBackgroundBehavior(subject, mode)
     case 'selection-box':
-      return planSelectionBoxPress(subject)
+      return createSelectionBoxBehavior(subject)
     case 'group':
-      return planGroupPress(subject)
+      return createGroupBehavior(subject)
     case 'node':
-      return planNodePress(subject)
+      return createNodeBehavior(subject)
   }
 }
 
@@ -666,15 +661,15 @@ const matchSelectionTap = <TField extends string>(
 
 const applySelectionTap = (
   ctx: InteractionContext,
-  tap: SelectionPressTapPlan<SelectionPressField>,
+  tap: SelectionTapAction<SelectionPressField>,
   input: Pick<PointerDownInput, 'client'>
 ) => {
   switch (tap.kind) {
     case 'clear':
-      ctx.local.session.selection.clear()
+      ctx.local.selection.clear()
       return
     case 'select':
-      ctx.local.session.selection.replace(tap.target)
+      ctx.local.selection.replace(tap.target)
       return
     case 'edit-node': {
       const field = resolveSelectionEditField(
@@ -694,7 +689,7 @@ const applySelectionTap = (
     }
     case 'edit-field':
       if (!isSelectionTargetEqual(ctx.selection.get().summary.target, tap.selection)) {
-        ctx.local.session.selection.replace(tap.selection)
+        ctx.local.selection.replace(tap.selection)
       }
       ctx.local.edit.startNode(tap.nodeId, tap.field, {
         caret: {
@@ -710,18 +705,18 @@ const createSelectionPressSession = (
   start: PointerDownInput,
   resolved: {
     target: SelectionPressTarget<SelectionPressField>
-    plan: SelectionPressPlan<SelectionPressField>
+    behavior: SelectionPressBehavior<SelectionPressField>
   }
 ): InteractionSession => createPressDragSession({
   start,
-  chrome: resolved.plan.chrome,
+  chrome: resolved.behavior.chrome,
   createDragSession: (nextInput) => createSelectionSession({
     ctx,
     start,
-    decision: resolved.plan.drag
+    decision: resolved.behavior.drag
   }),
   onTap: (input) => {
-    const tap = resolved.plan.tap
+    const tap = resolved.behavior.tap
     if (!tap) {
       return
     }
@@ -736,7 +731,7 @@ const createSelectionPressSession = (
   onHold: () => createSelectionSession({
     ctx,
     start,
-    decision: resolved.plan.hold
+    decision: resolved.behavior.hold
   })
 })
 
@@ -788,14 +783,14 @@ const tryStartSelectionPress = (
     return null
   }
 
-  const plan = resolveSelectionPressPlan(subject, mode)
-  if (!plan) {
+  const behavior = createSelectionPressBehavior(subject, mode)
+  if (!behavior) {
     return null
   }
 
-  const resolved: SelectionPressResolution<SelectionPressField> = {
+  const resolved = {
     target,
-    plan
+    behavior
   }
 
   return resolved

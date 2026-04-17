@@ -7,7 +7,7 @@ export interface FieldValueRendererProps {
   value: unknown
   emptyPlaceholder?: ReactNode
   className?: string
-  multiline?: boolean
+  wrap?: boolean
 }
 
 export const FieldValueRenderer = (props: FieldValueRendererProps) => (
@@ -15,6 +15,6 @@ export const FieldValueRenderer = (props: FieldValueRendererProps) => (
     value: props.value,
     emptyPlaceholder: props.emptyPlaceholder,
     className: props.className,
-    multiline: props.multiline
+    wrap: props.wrap
   })}</>
 )

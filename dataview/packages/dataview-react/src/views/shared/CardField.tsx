@@ -61,7 +61,7 @@ export const CardField = (props: CardFieldProps) => {
         emptyPlaceholder={props.emptyPlaceholder}
         className={props.valueClassName}
         density={props.density}
-        multiline={props.wrap}
+        wrap={props.wrap}
       />
     )
   }
@@ -113,7 +113,7 @@ export const CardField = (props: CardFieldProps) => {
           emptyPlaceholder={props.emptyPlaceholder}
           className={props.valueClassName}
           density={props.density}
-          multiline={props.wrap}
+          wrap={props.wrap}
           onQuickToggle={onQuickToggle}
         />
       </div>
@@ -155,7 +155,7 @@ export const CardField = (props: CardFieldProps) => {
         emptyPlaceholder={props.emptyPlaceholder}
         className={props.valueClassName}
         density={props.density}
-        multiline={props.wrap}
+        wrap={props.wrap}
       />
     </button>
   )

@@ -27,7 +27,7 @@ export interface ColumnHeaderRowProps {
   scope: SelectionScope<ItemId>
   label?: string
   columns: readonly Field[]
-  wrapCells: boolean
+  wrap: boolean
   template: string
   resizingPropertyId?: FieldId
   onResizeStart: (
@@ -65,7 +65,7 @@ const View = (props: ColumnHeaderRowProps) => {
               key={field.id}
               field={field}
               sortId={sortIds[index] ?? columnSortId(props.scopeId, field.id)}
-              wrapCells={props.wrapCells}
+              wrap={props.wrap}
               resizeActive={field.id === props.resizingPropertyId}
               onResizeStart={props.onResizeStart}
             />
@@ -91,7 +91,7 @@ const same = (
   && left.scope.count === right.scope.count
   && left.label === right.label
   && left.columns === right.columns
-  && left.wrapCells === right.wrapCells
+  && left.wrap === right.wrap
   && left.template === right.template
   && left.resizingPropertyId === right.resizingPropertyId
   && left.onResizeStart === right.onResizeStart

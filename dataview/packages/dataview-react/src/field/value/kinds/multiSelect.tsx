@@ -31,7 +31,7 @@ export const createMultiSelectPropertySpec = (
       label: getFieldOption(field, item)?.name ?? String(item),
       color: getFieldOption(field, item)?.color
     }))
-    const visible = props.multiline
+    const visible = props.wrap
       ? values
       : values.slice(0, 2)
     const rest = values.length - visible.length
@@ -39,7 +39,7 @@ export const createMultiSelectPropertySpec = (
     return (
       <span
         className={cn(
-          props.multiline
+          props.wrap
             ? 'inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1.5'
             : 'inline-flex max-w-full items-center gap-1 overflow-hidden',
           props.className

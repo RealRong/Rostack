@@ -46,7 +46,7 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
   const virtual = useGalleryBlocks({
     grouped: input.active.query.group.active,
     sections: input.active.sections.all,
-    minCardWidth: GALLERY_CARD_MIN_WIDTH[input.extra.cardSize],
+    minCardWidth: GALLERY_CARD_MIN_WIDTH[input.extra.card.size],
     containerRef,
     overscan: interaction.dragging ? 1200 : 640
   })

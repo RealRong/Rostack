@@ -18,7 +18,7 @@ export interface ColumnFooterBlockProps {
   scopeId: string
   measureRef?: (node: HTMLDivElement | null) => void
   columns: readonly Field[]
-  wrapCells: boolean
+  wrap: boolean
   template: string
 }
 
@@ -137,7 +137,7 @@ const same = (
   left.scopeId === right.scopeId
   && left.measureRef === right.measureRef
   && left.columns === right.columns
-  && left.wrapCells === right.wrapCells
+  && left.wrap === right.wrap
   && left.template === right.template
 )
 

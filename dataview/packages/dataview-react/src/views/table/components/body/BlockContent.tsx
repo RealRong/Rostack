@@ -40,7 +40,7 @@ export interface BlockContentProps {
   sections: SectionList
   grouped: boolean
   showVerticalLines: boolean
-  wrapCells: boolean
+  wrap: boolean
   template: string
   marqueeActive: boolean
   dragActive: boolean
@@ -137,7 +137,7 @@ const RenderedBlocksView = (props: RenderedBlocksProps) => {
                 label={block.label}
                 measureRef={blockMeasureRef}
                 columns={props.columns}
-                wrapCells={props.wrapCells}
+                wrap={props.wrap}
                 template={props.template}
                 resizingPropertyId={props.resizingPropertyId}
                 onResizeStart={props.onResizeStart}
@@ -152,7 +152,7 @@ const RenderedBlocksView = (props: RenderedBlocksProps) => {
                 viewId={props.viewId}
                 measureRef={blockMeasureRef}
                 showVerticalLines={props.showVerticalLines}
-                wrapCells={props.wrapCells}
+                wrap={props.wrap}
                 columns={props.columns}
                 template={props.template}
                 rowHeight={table.layout.rowHeight}
@@ -169,7 +169,7 @@ const RenderedBlocksView = (props: RenderedBlocksProps) => {
                 scopeId={block.scopeId}
                 measureRef={blockMeasureRef}
                 columns={props.columns}
-                wrapCells={props.wrapCells}
+                wrap={props.wrap}
                 template={props.template}
               />
             )
@@ -190,7 +190,7 @@ const sameRenderedBlocks = (
   && left.viewId === right.viewId
   && left.items === right.items
   && left.showVerticalLines === right.showVerticalLines
-  && left.wrapCells === right.wrapCells
+  && left.wrap === right.wrap
   && left.template === right.template
   && left.marqueeActive === right.marqueeActive
   && left.dragActive === right.dragActive
@@ -242,8 +242,8 @@ export const BlockContent = (props: BlockContentProps) => {
     ))
   }, [props.grouped, props.items, props.sections])
   const measurementBucketKey = useMemo(
-    () => `${containerWidth}:${props.wrapCells ? 'wrap' : 'nowrap'}`,
-    [containerWidth, props.wrapCells]
+    () => `${containerWidth}:${props.wrap ? 'wrap' : 'nowrap'}`,
+    [containerWidth, props.wrap]
   )
   const onMeasurementsChange = useCallback((input: {
     bucketKey: string | number

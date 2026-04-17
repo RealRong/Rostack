@@ -37,6 +37,7 @@ import {
 import {
   useCardEditingState
 } from '@dataview/react/views/shared/useCardTitleEditing'
+import { resolveCardPresentation } from '@dataview/react/views/shared/cardPresentation'
 
 export const Card = (props: {
   itemId: ItemId
@@ -108,6 +109,12 @@ const GalleryCardContent = (props: {
     editing
     || !isEmptyFieldValue(props.record.values[field.id])
   )), [editing, fields, props.record])
+  const presentation = resolveCardPresentation({
+    size: extra.card.size,
+    layout: extra.card.layout,
+    selected,
+    hasVisibleFields
+  })
   const surfaceStyle = !selected
     ? resolveNeutralCardStyle(hovered && !editing ? 'hover' : 'default', 'preview')
     : undefined
@@ -188,32 +195,15 @@ const GalleryCardContent = (props: {
         ...surfaceStyle,
         ...props.style
       }}
-      slots={{
-        root: cn(
-          'relative h-full rounded-xl p-3 transition-colors',
-          selected && 'bg-accent-overlay'
-        ),
-        title: {
-          row: cn(
-            'flex min-w-0 items-start gap-2.5',
-            hasVisibleFields && 'pb-2'
-          ),
-          content: 'min-w-0 flex-1',
-          text: 'text-base font-semibold leading-6',
-          input: 'text-base font-semibold leading-6 text-foreground'
-        },
-        property: {
-          list: 'flex flex-col gap-2',
-          item: 'min-w-0 h-fit flex items-center',
-          value: 'text-[12px]'
-        }
-      }}
+      slots={presentation.slots}
       viewId={viewId}
       itemId={props.itemId}
       record={props.record}
       fields={fields}
       titlePlaceholder={CARD_TITLE_PLACEHOLDER}
       showEditAction={hovered && !editing && !draggingActive}
+      propertyDensity={presentation.propertyDensity}
+      wrap={extra.card.wrap}
     />
   )
 }

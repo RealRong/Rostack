@@ -230,11 +230,19 @@ const patchViewOptions = (
     },
     gallery: {
       ...base.gallery,
-      ...patch.gallery
+      ...patch.gallery,
+      card: {
+        ...base.gallery.card,
+        ...patch.gallery?.card
+      }
     },
     kanban: {
       ...base.kanban,
-      ...patch.kanban
+      ...patch.kanban,
+      card: {
+        ...base.kanban.card,
+        ...patch.kanban?.card
+      }
     }
   }
 }
@@ -1285,8 +1293,12 @@ const createRoadmapDocument = (recordCount: number, seed: number): DataDoc => {
     }],
     options: {
       gallery: {
-        cardSize: 'lg',
-        showFieldLabels: true
+        card: {
+          wrap: false,
+          size: 'lg'
+          ,
+          layout: 'stacked'
+        }
       }
     }
   })
@@ -1510,8 +1522,12 @@ const createSalesDocument = (recordCount: number, seed: number): DataDoc => {
     ],
     options: {
       gallery: {
-        cardSize: 'lg',
-        showFieldLabels: true
+        card: {
+          wrap: false,
+          size: 'lg'
+          ,
+          layout: 'stacked'
+        }
       }
     }
   })
@@ -1653,8 +1669,12 @@ const createContentDocument = (recordCount: number, seed: number): DataDoc => {
     },
     options: {
       gallery: {
-        cardSize: 'lg',
-        showFieldLabels: true
+        card: {
+          wrap: false,
+          size: 'lg'
+          ,
+          layout: 'stacked'
+        }
       }
     }
   })

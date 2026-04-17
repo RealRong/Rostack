@@ -9,7 +9,7 @@ export interface RenderProps {
   value: unknown
   emptyPlaceholder?: ReactNode
   className?: string
-  multiline?: boolean
+  wrap?: boolean
 }
 
 export type FieldValueEditorPanelWidth = 'default' | 'picker' | 'calendar'

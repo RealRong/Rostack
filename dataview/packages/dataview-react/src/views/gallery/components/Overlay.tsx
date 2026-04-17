@@ -13,10 +13,12 @@ import { useGalleryContext } from '@dataview/react/views/gallery/context'
 import {
   CARD_TITLE_PLACEHOLDER
 } from '@dataview/react/views/shared/cardTitleValue'
+import { resolveCardPresentation } from '@dataview/react/views/shared/cardPresentation'
 
 export const Overlay = () => {
   const {
     active,
+    extra,
     runtime
   } = useGalleryContext()
   const engine = useDataView().engine
@@ -58,6 +60,13 @@ export const Overlay = () => {
     return null
   }
 
+  const presentation = resolveCardPresentation({
+    size: extra.card.size,
+    layout: extra.card.layout,
+    hasVisibleFields: active.fields.custom.some(field => record.values[field.id] !== undefined),
+    selected: false
+  })
+
   return createPortal(
     <div
       ref={overlayRef}
@@ -82,20 +91,9 @@ export const Overlay = () => {
             record={record}
             fields={active.fields.custom}
             titlePlaceholder={CARD_TITLE_PLACEHOLDER}
-            slots={{
-              root: 'relative h-full rounded-xl p-3 transition-colors',
-              title: {
-                row: 'flex min-w-0 items-start gap-2.5',
-                rowWhenProperties: 'pb-2',
-                content: 'min-w-0 flex-1',
-                text: 'text-base font-semibold leading-6'
-              },
-              property: {
-                list: 'flex flex-col gap-2',
-                item: 'min-w-0',
-                value: 'text-sm leading-6 text-foreground'
-              }
-            }}
+            slots={presentation.slots}
+            propertyDensity={presentation.propertyDensity}
+            wrap={extra.card.wrap}
             titleLeading={(
               <FileText className="mt-0.5 size-5 shrink-0 text-muted-foreground" size={18} strokeWidth={1.8} />
             )}

@@ -7,6 +7,11 @@ import type {
   EdgeMarker,
   EdgeTextMode,
   EdgeType,
+  MindmapBranchLineKind,
+  MindmapId,
+  MindmapNodeFrameKind,
+  MindmapNodeId,
+  MindmapStrokeStyle,
   Node,
   NodeId,
   Rect
@@ -55,6 +60,19 @@ export type SelectionToolbarLockState =
   | 'mixed'
   | 'all'
 
+export type SelectionToolbarMindmapScope = {
+  treeId?: MindmapId
+  nodeIds: readonly MindmapNodeId[]
+  primaryNodeId?: MindmapNodeId
+  canEditBranch: boolean
+  branchColor?: string
+  branchLine?: MindmapBranchLineKind
+  branchWidth?: number
+  branchStroke?: MindmapStrokeStyle
+  canEditBorder: boolean
+  borderKind?: MindmapNodeFrameKind
+}
+
 export type SelectionToolbarNodeScope = {
   kind: SelectionToolbarNodeKind
   nodeIds: readonly NodeId[]
@@ -86,6 +104,7 @@ export type SelectionToolbarNodeScope = {
   strokeOpacity?: number
   strokeDash?: readonly number[]
   opacity?: number
+  mindmap?: SelectionToolbarMindmapScope
 }
 
 export type SelectionToolbarEdgeScope = {

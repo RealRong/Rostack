@@ -23,7 +23,7 @@ export interface CellProps {
   recordId?: RecordId
   viewId: ViewId
   showVerticalLines: boolean
-  wrapCells: boolean
+  wrap: boolean
   field: Field
   value: unknown
   exists: boolean
@@ -36,7 +36,7 @@ const same = (left: CellProps, right: CellProps) => (
   && left.recordId === right.recordId
   && left.viewId === right.viewId
   && left.showVerticalLines === right.showVerticalLines
-  && left.wrapCells === right.wrapCells
+  && left.wrap === right.wrap
   && left.field === right.field
   && left.exists === right.exists
   && Object.is(left.value, right.value)
@@ -139,7 +139,7 @@ const View = (props: CellProps) => {
             value={props.value}
             canQuickToggle={canQuickToggle}
             onQuickToggle={onQuickToggle}
-            multiline={props.wrapCells}
+            wrap={props.wrap}
           />
         </div>
       </div>

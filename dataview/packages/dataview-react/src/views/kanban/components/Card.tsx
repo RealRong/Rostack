@@ -1,6 +1,7 @@
 import {
   useCallback,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties
@@ -12,6 +13,9 @@ import {
 import type {
   RecordId
 } from '@dataview/core/contracts'
+import {
+  isEmptyFieldValue
+} from '@dataview/core/field'
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
 } from '@dataview/react/dom/appearance'
@@ -30,6 +34,7 @@ import { useKanbanContext } from '@dataview/react/views/kanban/context'
 import {
   useCardEditingState
 } from '@dataview/react/views/shared/useCardTitleEditing'
+import { resolveCardPresentation } from '@dataview/react/views/shared/cardPresentation'
 
 export const Card = (props: {
   itemId: ItemId
@@ -76,6 +81,16 @@ export const Card = (props: {
   const contentRef = useCallback((node: HTMLElement | null) => {
     cardNodeRef.current = node
   }, [])
+  const hasVisibleFields = useMemo(() => active.fields.custom.some(field => (
+    editing
+    || !isEmptyFieldValue(record?.values[field.id])
+  )), [active.fields.custom, editing, record])
+  const presentation = resolveCardPresentation({
+    size: extra.card.size,
+    layout: extra.card.layout,
+    hasVisibleFields,
+    selected: false
+  })
 
   useLayoutEffect(() => {
     const node = cardNodeRef.current
@@ -158,28 +173,15 @@ export const Card = (props: {
           : undefined),
         ...props.style
       }}
-      slots={{
-        root: cn(
-          'relative rounded-xl px-3 py-2.5 transition-colors'
-        ),
-        title: {
-          content: 'min-w-0 flex-1 w-full',
-          text: 'font-semibold',
-          input: 'font-semibold text-foreground'
-        },
-        property: {
-          list: 'flex flex-wrap items-center gap-2 mt-1',
-          item: 'inline-flex min-w-0 max-w-full',
-          value: 'text-sm text-foreground'
-        }
-      }}
+      slots={presentation.slots}
       viewId={active.view.id}
       itemId={props.itemId}
       record={record}
       fields={active.fields.custom}
       titlePlaceholder={record.id}
       showEditAction={hovered && !editing && !draggingActive}
-      propertyDensity="compact"
+      propertyDensity={presentation.propertyDensity}
+      wrap={extra.card.wrap}
     />
   )
 }

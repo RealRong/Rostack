@@ -47,7 +47,7 @@ export interface RowProps {
   viewId: ViewId
   measureRef?: (node: HTMLDivElement | null) => void
   showVerticalLines: boolean
-  wrapCells: boolean
+  wrap: boolean
   columns: readonly Field[]
   template: string
   rowHeight: number
@@ -66,7 +66,7 @@ const same = (left: RowProps, right: RowProps) => (
   && left.viewId === right.viewId
   && left.measureRef === right.measureRef
   && left.showVerticalLines === right.showVerticalLines
-  && left.wrapCells === right.wrapCells
+  && left.wrap === right.wrap
   && left.columns === right.columns
   && left.template === right.template
   && left.rowHeight === right.rowHeight
@@ -230,7 +230,7 @@ const View = (props: RowProps) => {
               recordId={props.recordId}
               viewId={props.viewId}
               showVerticalLines={props.showVerticalLines}
-              wrapCells={props.wrapCells}
+              wrap={props.wrap}
               field={field}
               value={record
                 ? getRecordFieldValue(record, field.id)

@@ -48,7 +48,7 @@ import {
 export interface ColumnHeaderProps {
   field: Field
   sortId: string
-  wrapCells: boolean
+  wrap: boolean
   resizeActive?: boolean
   onResizeStart: (
     fieldId: FieldId,
@@ -228,7 +228,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   const sortDirection = sortProjection?.rules.find(
     entry => getSorterFieldId(entry.sorter) === props.field.id
   )?.sorter.direction
-  const wrapCells = props.wrapCells
+  const wrap = props.wrap
   const calculationMetric = view.calc[props.field.id] as CalculationMetric | undefined
   const calculationMetrics = getFieldCalculationMetrics(props.field)
   const kind = meta.field.kind.get(props.field.kind)
@@ -431,11 +431,11 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
     {
       kind: 'toggle',
       key: 'wrap',
-      label: t(meta.ui.viewSettings.layoutPanel.wrapCells),
-      checked: wrapCells,
+      label: t(meta.ui.viewSettings.layoutPanel.wrap),
+      checked: wrap,
       leading: <TextWrap className="size-4" size={16} strokeWidth={1.8} />,
       onSelect: () => {
-        viewApi.table.setWrapCells(!wrapCells)
+        viewApi.table.setWrap(!wrap)
       }
     },
     {
@@ -524,7 +524,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       <span
         className={cn(
           'block min-w-0 flex-1',
-          wrapCells
+          wrap
             ? 'whitespace-normal break-words [overflow-wrap:anywhere]'
             : 'truncate'
         )}

@@ -11,7 +11,7 @@ export interface FieldValueContentProps {
   className?: string
   onQuickToggle?: () => void
   density?: 'default' | 'compact'
-  multiline?: boolean
+  wrap?: boolean
 }
 
 const QuickToggleButton = (props: {
@@ -66,7 +66,7 @@ export const FieldValueContent = (props: FieldValueContentProps) => {
       value={props.value}
       emptyPlaceholder={props.emptyPlaceholder}
       className={props.className}
-      multiline={props.multiline}
+      wrap={props.wrap}
     />
   )
 }

@@ -19,6 +19,9 @@ import type {
   EdgeId,
   EdgeInput,
   EdgePatch,
+  MindmapBranchLineKind,
+  MindmapNodeFrameKind,
+  MindmapStrokeStyle,
   MindmapCloneSubtreeInput,
   MindmapCreateInput,
   MindmapId,
@@ -186,7 +189,12 @@ export type EdgeApi = {
 }
 
 export type MindmapCommands = {
-  create: (payload?: MindmapCreateInput) => CommandResult<{
+  create: (
+    payload?: MindmapCreateInput,
+    options?: {
+      focus?: 'edit-root' | 'select-root' | 'none'
+    }
+  ) => CommandResult<{
     mindmapId: MindmapId
     rootId: MindmapNodeId
   }>
@@ -197,8 +205,16 @@ export type MindmapCommands = {
   ) => CommandResult
   insert: (
     id: MindmapId,
-    input: MindmapInsertInput
+    input: MindmapInsertInput,
+    options?: {
+      behavior?: MindmapInsertBehavior
+    }
   ) => CommandResult<{ nodeId: MindmapNodeId }>
+  navigate: (input: {
+    id: MindmapId
+    fromNodeId: MindmapNodeId
+    direction: 'parent' | 'first-child' | 'prev-sibling' | 'next-sibling'
+  }) => MindmapNodeId | undefined
   moveSubtree: (
     id: MindmapId,
     input: MindmapMoveSubtreeInput
@@ -221,6 +237,7 @@ export type MindmapCommands = {
     placement: 'left' | 'right' | 'up' | 'down'
     layout: MindmapLayoutSpec
     payload?: MindmapTopicData
+    behavior?: MindmapInsertBehavior
   }) => CommandResult<{ nodeId: MindmapNodeId }> | undefined
   moveByDrop: (input: {
     id: NodeId
@@ -241,6 +258,48 @@ export type MindmapCommands = {
     position: Point
     origin?: Point
     threshold?: number
+  }) => CommandResult | undefined
+  style: MindmapStyleCommands
+}
+
+export type MindmapInsertFocus =
+  | 'edit-new'
+  | 'select-new'
+  | 'keep-current'
+
+export type MindmapInsertEnter =
+  | 'none'
+  | 'from-anchor'
+
+export type MindmapInsertBehavior = {
+  focus?: MindmapInsertFocus
+  enter?: MindmapInsertEnter
+}
+
+export type MindmapBranchPatch = Partial<{
+  color: string
+  line: MindmapBranchLineKind
+  width: number
+  stroke: MindmapStrokeStyle
+}>
+
+export type MindmapBorderPatch = Partial<{
+  frameKind: MindmapNodeFrameKind
+  stroke: string
+  strokeWidth: number
+  fill: string
+}>
+
+export type MindmapStyleCommands = {
+  branch: (input: {
+    id: MindmapId
+    nodeIds: readonly MindmapNodeId[]
+    patch: MindmapBranchPatch
+    scope?: 'node' | 'subtree'
+  }) => CommandResult | undefined
+  topic: (input: {
+    nodeIds: readonly NodeId[]
+    patch: MindmapBorderPatch
   }) => CommandResult | undefined
 }
 

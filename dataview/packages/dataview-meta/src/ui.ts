@@ -1,4 +1,6 @@
 import type {
+  CardLayout,
+  CardSize,
   KanbanCardsPerColumn,
   Field,
   FilterRule,
@@ -21,8 +23,8 @@ type SettingsRouteKind =
   | 'filter'
   | 'sort'
 
-type CardSizeId = 'sm' | 'md' | 'lg'
-type NewRecordPositionId = 'start' | 'end'
+type CardSizeId = CardSize
+type CardLayoutId = CardLayout
 type CardsPerColumnId = KanbanCardsPerColumn
 type LayoutTypeId = 'table' | 'kanban' | 'gallery'
 
@@ -299,8 +301,8 @@ export const ui = {
         'meta.ui.viewSettings.layoutPanel.showVerticalLines',
         'Show vertical lines'
       ),
-      wrapCells: token(
-        'meta.ui.viewSettings.layoutPanel.wrapCells',
+      wrap: token(
+        'meta.ui.viewSettings.layoutPanel.wrap',
         'Wrap content'
       ),
       tableInlineStatus: token(
@@ -312,18 +314,10 @@ export const ui = {
         'meta.ui.viewSettings.layoutPanel.galleryDescription',
         'Control how cards render in gallery layout.'
       ),
-      showFieldLabels: token(
-        'meta.ui.viewSettings.layoutPanel.showFieldLabels',
-        'Show field labels'
-      ),
-      showFieldLabelsDescription: token(
-        'meta.ui.viewSettings.layoutPanel.showFieldLabelsDescription',
-        'Display field names above each value.'
-      ),
       cardSize: token('meta.ui.viewSettings.layoutPanel.cardSize', 'Card size'),
       cardSizeDescription: token(
         'meta.ui.viewSettings.layoutPanel.cardSizeDescription',
-        'Adjust the minimum width of gallery cards.'
+        'Adjust the card density and recommended width.'
       ),
       cardSizeOption: (value: CardSizeId) => {
         switch (value) {
@@ -334,6 +328,16 @@ export const ui = {
           case 'md':
           default:
             return token('meta.ui.viewSettings.layoutPanel.cardSizeOption.md', 'Medium')
+        }
+      },
+      cardLayout: token('meta.ui.viewSettings.layoutPanel.cardLayout', 'Layout'),
+      cardLayoutOption: (value: CardLayoutId) => {
+        switch (value) {
+          case 'compact':
+            return token('meta.ui.viewSettings.layoutPanel.cardLayoutOption.compact', 'Compact')
+          case 'stacked':
+          default:
+            return token('meta.ui.viewSettings.layoutPanel.cardLayoutOption.stacked', 'Stacked')
         }
       },
       kanbanTitle: token('meta.ui.viewSettings.layoutPanel.kanbanTitle', 'Kanban'),
@@ -362,23 +366,6 @@ export const ui = {
             return token('meta.ui.viewSettings.layoutPanel.cardsPerColumnOption.all', 'All')
         }
       },
-      newCardPosition: token(
-        'meta.ui.viewSettings.layoutPanel.newCardPosition',
-        'New card position'
-      ),
-      newCardPositionDescription: token(
-        'meta.ui.viewSettings.layoutPanel.newCardPositionDescription',
-        'Choose where newly created cards appear in a column.'
-      ),
-      newCardPositionOption: (value: NewRecordPositionId) => {
-        switch (value) {
-          case 'end':
-            return token('meta.ui.viewSettings.layoutPanel.newCardPositionOption.end', 'Bottom')
-          case 'start':
-          default:
-            return token('meta.ui.viewSettings.layoutPanel.newCardPositionOption.start', 'Top')
-        }
-      }
     }
   }
 } as const

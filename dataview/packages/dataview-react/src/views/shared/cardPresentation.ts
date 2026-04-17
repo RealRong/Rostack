@@ -114,7 +114,11 @@ export const resolveCardPresentation = (input: {
   return {
     propertyDensity: 'compact',
     slots: {
-      root: cn('relative rounded-xl transition-colors', rootPadding),
+      root: cn(
+        'relative rounded-xl transition-colors',
+        rootPadding,
+        input.selected && 'bg-accent-overlay'
+      ),
       title: {
         content: 'min-w-0 flex-1 w-full',
         text: compactTitleText,

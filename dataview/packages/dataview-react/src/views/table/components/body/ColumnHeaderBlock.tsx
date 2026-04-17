@@ -23,7 +23,7 @@ export interface ColumnHeaderBlockProps {
   label?: string
   measureRef?: (node: HTMLDivElement | null) => void
   columns: readonly Field[]
-  wrapCells: boolean
+  wrap: boolean
   template: string
   resizingPropertyId?: FieldId
   onResizeStart: (
@@ -48,7 +48,7 @@ const View = (props: ColumnHeaderBlockProps) => {
         scope={props.scope}
         label={props.label}
         columns={props.columns}
-        wrapCells={props.wrapCells}
+        wrap={props.wrap}
         template={props.template}
         resizingPropertyId={props.resizingPropertyId}
         onResizeStart={props.onResizeStart}
@@ -68,7 +68,7 @@ const same = (
   && left.label === right.label
   && left.measureRef === right.measureRef
   && left.columns === right.columns
-  && left.wrapCells === right.wrapCells
+  && left.wrap === right.wrap
   && left.template === right.template
   && left.resizingPropertyId === right.resizingPropertyId
   && left.onResizeStart === right.onResizeStart

@@ -33,6 +33,7 @@ export interface CardPreviewProps extends Omit<ComponentPropsWithoutRef<'article
   titleLeading?: ReactNode
   badge?: ReactNode
   propertyDensity?: 'default' | 'compact'
+  wrap?: boolean
   showEmptyProperties?: boolean
   emptyPlaceholder?: string
 }
@@ -46,6 +47,7 @@ export const CardPreview = (props: CardPreviewProps) => {
     titleLeading,
     badge,
     propertyDensity,
+    wrap,
     showEmptyProperties,
     emptyPlaceholder,
     className,
@@ -90,6 +92,7 @@ export const CardPreview = (props: CardPreviewProps) => {
                 className={slots?.property?.value}
                 emptyPlaceholder={emptyPlaceholder}
                 density={propertyDensity}
+                wrap={wrap}
               />
             </div>
           ))}

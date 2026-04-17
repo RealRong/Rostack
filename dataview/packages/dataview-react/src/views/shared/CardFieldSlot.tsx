@@ -18,6 +18,7 @@ export interface CardFieldSlotProps {
   className?: string
   valueClassName?: string
   density?: 'default' | 'compact'
+  wrap?: boolean
   openOnClick?: boolean
 }
 
@@ -44,6 +45,7 @@ export const CardFieldSlot = (props: CardFieldSlotProps) => {
       className={props.className}
       valueClassName={props.valueClassName}
       density={props.density}
+      wrap={props.wrap}
       openOnClick={props.openOnClick}
     />
   )

@@ -1,6 +1,7 @@
 import {
   setGalleryCardSize,
-  setGalleryShowFieldLabels
+  setGalleryCardLayout,
+  setGalleryCardWrap
 } from '@dataview/core/view'
 import type { ActiveViewApi } from '@dataview/engine/contracts/public'
 import type { ActiveViewContext } from '@dataview/engine/active/context'
@@ -8,11 +9,14 @@ import type { ActiveViewContext } from '@dataview/engine/active/context'
 export const createGalleryApi = (
   base: ActiveViewContext
 ): ActiveViewApi['gallery'] => ({
-  setLabels: value => base.patch(view => ({
-    options: setGalleryShowFieldLabels(view.options, value)
+  setWrap: value => base.patch(view => ({
+    options: setGalleryCardWrap(view.options, value)
   })),
-  setCardSize: value => base.patch(view => ({
+  setSize: value => base.patch(view => ({
     options: setGalleryCardSize(view.options, value)
+  })),
+  setLayout: value => base.patch(view => ({
+    options: setGalleryCardLayout(view.options, value)
   })),
   state: base.galleryState
 })

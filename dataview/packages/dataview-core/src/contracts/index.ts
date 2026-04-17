@@ -18,7 +18,11 @@ export type {
   ViewQueryAspect
 } from '@dataview/core/contracts/commit'
 export type {
-  GalleryCardSize,
+  CardLayout,
+  CardOptions,
+  CardSize
+} from '@dataview/core/contracts/card'
+export type {
   GalleryOptions
 } from '@dataview/core/contracts/gallery'
 export type {
@@ -31,7 +35,6 @@ export {
 } from '@dataview/core/contracts/kanban'
 export type {
   KanbanCardsPerColumn,
-  KanbanNewRecordPosition,
   KanbanOptions
 } from '@dataview/core/contracts/kanban'
 export type {

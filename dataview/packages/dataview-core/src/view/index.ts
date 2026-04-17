@@ -1,3 +1,4 @@
+export * from '@dataview/core/view/card'
 export * from '@dataview/core/view/demand'
 export * from '@dataview/core/view/duplicate'
 export * from '@dataview/core/view/gallery'

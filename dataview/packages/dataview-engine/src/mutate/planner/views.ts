@@ -254,8 +254,8 @@ const validateTableOptions = (
   if (typeof table.showVerticalLines !== 'boolean') {
     issues.push(createIssue(source, 'error', 'view.invalidProjection', 'table.showVerticalLines must be boolean', `${path}.showVerticalLines`))
   }
-  if (typeof table.wrapCells !== 'boolean') {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'table.wrapCells must be boolean', `${path}.wrapCells`))
+  if (typeof table.wrap !== 'boolean') {
+    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'table.wrap must be boolean', `${path}.wrap`))
   }
   return issues
 }
@@ -266,11 +266,14 @@ const validateGalleryOptions = (
   path: string
 ) => {
   const issues: ValidationIssue[] = []
-  if (typeof gallery.showFieldLabels !== 'boolean') {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'gallery.showFieldLabels must be boolean', `${path}.showFieldLabels`))
+  if (typeof gallery.card.wrap !== 'boolean') {
+    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'gallery.card.wrap must be boolean', `${path}.card.wrap`))
   }
-  if (!['sm', 'md', 'lg'].includes(gallery.cardSize)) {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'gallery.cardSize is invalid', `${path}.cardSize`))
+  if (!['sm', 'md', 'lg'].includes(gallery.card.size)) {
+    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'gallery.card.size is invalid', `${path}.card.size`))
+  }
+  if (gallery.card.layout !== 'compact' && gallery.card.layout !== 'stacked') {
+    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'gallery.card.layout is invalid', `${path}.card.layout`))
   }
   return issues
 }
@@ -281,8 +284,14 @@ const validateKanbanOptions = (
   path: string
 ) => {
   const issues: ValidationIssue[] = []
-  if (kanban.newRecordPosition !== 'start' && kanban.newRecordPosition !== 'end') {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'kanban.newRecordPosition is invalid', `${path}.newRecordPosition`))
+  if (typeof kanban.card.wrap !== 'boolean') {
+    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'kanban.card.wrap must be boolean', `${path}.card.wrap`))
+  }
+  if (!['sm', 'md', 'lg'].includes(kanban.card.size)) {
+    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'kanban.card.size is invalid', `${path}.card.size`))
+  }
+  if (kanban.card.layout !== 'compact' && kanban.card.layout !== 'stacked') {
+    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'kanban.card.layout is invalid', `${path}.card.layout`))
   }
   if (typeof kanban.fillColumnColor !== 'boolean') {
     issues.push(createIssue(source, 'error', 'view.invalidProjection', 'kanban.fillColumnColor must be boolean', `${path}.fillColumnColor`))

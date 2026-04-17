@@ -1,9 +1,9 @@
 import type {
   CalculationMetric,
+  CardLayout,
+  CardSize,
   FieldId,
-  GalleryCardSize,
   KanbanCardsPerColumn,
-  KanbanNewRecordPosition,
   RecordId,
   ViewCalc,
   ViewDisplay,
@@ -204,10 +204,13 @@ export const sameViewOptions = (
 ): boolean => (
   sameShallowRecord(left.table.widths, right.table.widths)
   && left.table.showVerticalLines === right.table.showVerticalLines
-  && left.table.wrapCells === right.table.wrapCells
-  && left.gallery.showFieldLabels === right.gallery.showFieldLabels
-  && left.gallery.cardSize === right.gallery.cardSize
-  && left.kanban.newRecordPosition === right.kanban.newRecordPosition
+  && left.table.wrap === right.table.wrap
+  && left.gallery.card.wrap === right.gallery.card.wrap
+  && left.gallery.card.size === right.gallery.card.size
+  && left.gallery.card.layout === right.gallery.card.layout
+  && left.kanban.card.wrap === right.kanban.card.wrap
+  && left.kanban.card.size === right.kanban.card.size
+  && left.kanban.card.layout === right.kanban.card.layout
   && left.kanban.fillColumnColor === right.kanban.fillColumnColor
   && left.kanban.cardsPerColumn === right.kanban.cardsPerColumn
 )
@@ -241,27 +244,30 @@ export const setTableVerticalLines = (
   return nextOptions
 }
 
-export const setTableWrapCells = (
+export const setTableWrap = (
   options: ViewOptions,
   value: boolean
 ): ViewOptions => {
   const nextOptions = cloneViewOptions(options)
   nextOptions.table = {
     ...nextOptions.table,
-    wrapCells: value
+    wrap: value
   }
 
   return nextOptions
 }
 
-export const setGalleryShowFieldLabels = (
+export const setGalleryCardWrap = (
   options: ViewOptions,
   value: boolean
 ): ViewOptions => {
   const nextOptions = cloneViewOptions(options)
   nextOptions.gallery = {
     ...nextOptions.gallery,
-    showFieldLabels: value
+    card: {
+      ...nextOptions.gallery.card,
+      wrap: value
+    }
   }
 
   return nextOptions
@@ -269,25 +275,79 @@ export const setGalleryShowFieldLabels = (
 
 export const setGalleryCardSize = (
   options: ViewOptions,
-  value: GalleryCardSize
+  value: CardSize
 ): ViewOptions => {
   const nextOptions = cloneViewOptions(options)
   nextOptions.gallery = {
     ...nextOptions.gallery,
-    cardSize: value
+    card: {
+      ...nextOptions.gallery.card,
+      size: value
+    }
   }
 
   return nextOptions
 }
 
-export const setKanbanNewRecordPosition = (
+export const setGalleryCardLayout = (
   options: ViewOptions,
-  value: KanbanNewRecordPosition
+  value: CardLayout
+): ViewOptions => {
+  const nextOptions = cloneViewOptions(options)
+  nextOptions.gallery = {
+    ...nextOptions.gallery,
+    card: {
+      ...nextOptions.gallery.card,
+      layout: value
+    }
+  }
+
+  return nextOptions
+}
+
+export const setKanbanCardWrap = (
+  options: ViewOptions,
+  value: boolean
 ): ViewOptions => {
   const nextOptions = cloneViewOptions(options)
   nextOptions.kanban = {
     ...nextOptions.kanban,
-    newRecordPosition: value
+    card: {
+      ...nextOptions.kanban.card,
+      wrap: value
+    }
+  }
+
+  return nextOptions
+}
+
+export const setKanbanCardSize = (
+  options: ViewOptions,
+  value: CardSize
+): ViewOptions => {
+  const nextOptions = cloneViewOptions(options)
+  nextOptions.kanban = {
+    ...nextOptions.kanban,
+    card: {
+      ...nextOptions.kanban.card,
+      size: value
+    }
+  }
+
+  return nextOptions
+}
+
+export const setKanbanCardLayout = (
+  options: ViewOptions,
+  value: CardLayout
+): ViewOptions => {
+  const nextOptions = cloneViewOptions(options)
+  nextOptions.kanban = {
+    ...nextOptions.kanban,
+    card: {
+      ...nextOptions.kanban.card,
+      layout: value
+    }
   }
 
   return nextOptions

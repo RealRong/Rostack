@@ -305,18 +305,6 @@ export const createActiveItemsApi = (input: {
       }
     }]
 
-    if (
-      state.view.type === 'kanban'
-      && state.view.options.kanban.newRecordPosition === 'start'
-      && !state.view.sort.length
-    ) {
-      const beforeRecordId = state.sections.get(createInput.section)?.recordIds[0]
-      const moveAction = createMoveOrderAction(input.base, [recordId], beforeRecordId)
-      if (moveAction) {
-        actions.push(moveAction)
-      }
-    }
-
     const result = input.base.dispatch(actions)
     return result.applied
       ? recordId

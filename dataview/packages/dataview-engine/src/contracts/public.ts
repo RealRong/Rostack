@@ -1,6 +1,8 @@
 import type {
   Action,
   BucketSort,
+  CardLayout,
+  CardSize,
   CalculationMetric,
   CustomField,
   CustomFieldId,
@@ -14,9 +16,7 @@ import type {
   FilterValuePreview,
   FilterPresetId,
   FilterRule,
-  GalleryCardSize,
   KanbanCardsPerColumn,
-  KanbanNewRecordPosition,
   RecordFieldWriteManyInput,
   RecordId,
   DataRecord,
@@ -213,11 +213,20 @@ export interface ActiveViewReadApi {
 export interface GalleryState {
   groupUsesOptionColors: boolean
   canReorder: boolean
-  cardSize: GalleryCardSize
+  card: {
+    wrap: boolean
+    size: CardSize
+    layout: CardLayout
+  }
 }
 
 export interface KanbanState {
   groupUsesOptionColors: boolean
+  card: {
+    wrap: boolean
+    size: CardSize
+    layout: CardLayout
+  }
   cardsPerColumn: KanbanCardsPerColumn
   fillColumnColor: boolean
   canReorder: boolean
@@ -232,13 +241,16 @@ export interface ActiveViewSelectApi {
 
 export interface GalleryApi {
   state: ReadStore<GalleryState | undefined>
-  setLabels: (value: boolean) => void
-  setCardSize: (value: GalleryCardSize) => void
+  setWrap: (value: boolean) => void
+  setSize: (value: CardSize) => void
+  setLayout: (value: CardLayout) => void
 }
 
 export interface KanbanApi {
   state: ReadStore<KanbanState | undefined>
-  setNewRecordPosition: (value: KanbanNewRecordPosition) => void
+  setWrap: (value: boolean) => void
+  setSize: (value: CardSize) => void
+  setLayout: (value: CardLayout) => void
   setFillColor: (value: boolean) => void
   setCardsPerColumn: (value: KanbanCardsPerColumn) => void
 }
@@ -322,7 +334,7 @@ export interface ActiveViewApi {
   table: {
     setColumnWidths: (widths: Partial<Record<FieldId, number>>) => void
     setVerticalLines: (value: boolean) => void
-    setWrapCells: (value: boolean) => void
+    setWrap: (value: boolean) => void
     insertFieldLeft: (
       anchorFieldId: FieldId,
       input?: {

@@ -1,8 +1,8 @@
 import type {
   KanbanCardsPerColumn,
-  KanbanNewRecordPosition,
   KanbanOptions
 } from '@dataview/core/contracts/kanban'
+import { cloneCardOptions, normalizeCardOptions } from '@dataview/core/view/card'
 import {
   isJsonObject
 } from '@dataview/core/view/shared'
@@ -10,7 +10,6 @@ import {
   KANBAN_CARDS_PER_COLUMN_OPTIONS
 } from '@dataview/core/contracts/kanban'
 
-const DEFAULT_NEW_RECORD_POSITION: KanbanNewRecordPosition = 'end'
 const DEFAULT_FILL_COLUMN_COLOR = true
 const DEFAULT_CARDS_PER_COLUMN: KanbanCardsPerColumn = 25
 
@@ -30,9 +29,9 @@ export const normalizeKanbanOptions = (
   const kanban = isJsonObject(value) ? value : undefined
 
   return {
-    newRecordPosition: kanban?.newRecordPosition === 'start'
-      ? 'start'
-      : DEFAULT_NEW_RECORD_POSITION,
+    card: normalizeCardOptions(kanban?.card, {
+      layout: 'compact'
+    }),
     fillColumnColor: typeof kanban?.fillColumnColor === 'boolean'
       ? kanban.fillColumnColor
       : DEFAULT_FILL_COLUMN_COLOR,
@@ -43,7 +42,7 @@ export const normalizeKanbanOptions = (
 export const cloneKanbanOptions = (
   options: KanbanOptions
 ): KanbanOptions => ({
-  newRecordPosition: options.newRecordPosition,
+  card: cloneCardOptions(options.card),
   fillColumnColor: options.fillColumnColor,
   cardsPerColumn: options.cardsPerColumn
 })

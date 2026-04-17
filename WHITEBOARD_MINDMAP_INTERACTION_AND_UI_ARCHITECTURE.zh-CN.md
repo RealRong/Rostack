@@ -4,7 +4,7 @@
 
 这一轮 mindmap 优化要一次性解决四件事：
 
-1. 新增子节点时，节点要从 root 沿 branch 路径过渡到最终位置，branch 从一开始就连上并随节点一起过渡。
+1. 新增子节点时，节点要从本次插入锚点沿 branch 路径过渡到最终位置，branch 从一开始就连上并随节点一起过渡。
 2. mindmap toolbar 要补齐 branch style 和 border style，而不是只复用普通 text toolbar。
 3. 通过按钮或 toolbar 新增子节点后，要自动选中并进入该子节点编辑态。
 4. 增加 mindmap 专属快捷键，包括导航和快速创建；快捷键创建不切走当前焦点，不进入新节点编辑态。
@@ -117,7 +117,7 @@ export type MindmapInsertFocus =
 
 export type MindmapInsertEnter =
   | 'none'
-  | 'from-root'
+  | 'from-anchor'
 
 export type MindmapInsertBehavior = {
   focus?: MindmapInsertFocus
@@ -130,19 +130,25 @@ export type MindmapInsertBehavior = {
 - `edit-new`: 新建后选中新节点并进入编辑态
 - `select-new`: 新建后只选中新节点
 - `keep-current`: 新建后保持当前节点选择与焦点不变
-- `from-root`: 启动从 root 出发的 enter transition
+- `from-anchor`: 启动从本次插入锚点出发的 enter transition
+
+这里的 `anchor` 不是固定 root，而是本次 insert 的起始锚点：
+
+- `child` 插入：anchor = `parentId`
+- `sibling` 插入：anchor = 目标 sibling 所依附的插入锚点
+- `parent` 插入：anchor = 被包裹的原节点
 
 默认策略：
 
 ```ts
 const DEFAULT_BUTTON_INSERT_BEHAVIOR = {
   focus: 'edit-new',
-  enter: 'from-root'
+  enter: 'from-anchor'
 } satisfies MindmapInsertBehavior
 
 const DEFAULT_SHORTCUT_INSERT_BEHAVIOR = {
   focus: 'keep-current',
-  enter: 'from-root'
+  enter: 'from-anchor'
 } satisfies MindmapInsertBehavior
 ```
 
@@ -460,7 +466,7 @@ Shift+Tab   -> mindmap.insert.parent
 
 1. document 立刻提交最终 tree 和最终 node position
 2. 同时启动 enter preview
-3. 新节点从 root 沿 route 移向最终位置
+3. 新节点从本次插入锚点沿 route 移向最终位置
 4. root 到该节点的 branch 从第一帧就存在，线尾始终跟随移动中的节点
 5. 动画结束后，preview 清除，只剩最终静态状态
 
@@ -555,7 +561,7 @@ now >= startedAt + durationMs
 ```ts
 behavior = {
   focus: 'edit-new',
-  enter: 'from-root'
+  enter: 'from-anchor'
 }
 ```
 
@@ -572,7 +578,7 @@ behavior = {
 ```ts
 behavior = {
   focus: 'keep-current',
-  enter: 'from-root'
+  enter: 'from-anchor'
 }
 ```
 
@@ -627,7 +633,7 @@ behavior = {
 
 ## 阶段 5：UI 入口统一
 
-1. `MindmapTreeChrome` 的 add child 改为走 `behavior: edit-new + from-root`
+1. `MindmapTreeChrome` 的 add child 改为走 `behavior: edit-new + from-anchor`
 2. 未来 toolbar 上的 add child 走同一命令
 3. insert bridge 创建 root 时，root focus 策略改由 `mindmap.create(..., { focus })` 控制
 

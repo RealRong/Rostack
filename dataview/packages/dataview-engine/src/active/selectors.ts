@@ -49,7 +49,9 @@ const sameGalleryState = (
   && !!right
   && left.groupUsesOptionColors === right.groupUsesOptionColors
   && left.canReorder === right.canReorder
-  && left.cardSize === right.cardSize
+  && left.card.wrap === right.card.wrap
+  && left.card.size === right.card.size
+  && left.card.layout === right.card.layout
 )
 
 const sameKanbanState = (
@@ -59,6 +61,9 @@ const sameKanbanState = (
   !!left
   && !!right
   && left.groupUsesOptionColors === right.groupUsesOptionColors
+  && left.card.wrap === right.card.wrap
+  && left.card.size === right.card.size
+  && left.card.layout === right.card.layout
   && left.cardsPerColumn === right.cardsPerColumn
   && left.fillColumnColor === right.fillColumnColor
   && left.canReorder === right.canReorder
@@ -98,7 +103,11 @@ export const createGalleryStateStore = (
     return {
       groupUsesOptionColors,
       canReorder,
-      cardSize: current.view.options.gallery.cardSize
+      card: {
+        wrap: current.view.options.gallery.card.wrap,
+        size: current.view.options.gallery.card.size,
+        layout: current.view.options.gallery.card.layout
+      }
     }
   },
   isEqual: sameGalleryState
@@ -118,6 +127,11 @@ export const createKanbanStateStore = (
 
     return {
       groupUsesOptionColors,
+      card: {
+        wrap: current.view.options.kanban.card.wrap,
+        size: current.view.options.kanban.card.size,
+        layout: current.view.options.kanban.card.layout
+      },
       cardsPerColumn: current.view.options.kanban.cardsPerColumn,
       fillColumnColor: groupUsesOptionColors && current.view.options.kanban.fillColumnColor,
       canReorder: current.query.group.active && current.query.sort.rules.length === 0

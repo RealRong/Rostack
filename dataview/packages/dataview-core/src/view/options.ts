@@ -15,7 +15,7 @@ export const cloneTableOptions = (
     ...table.widths
   },
   showVerticalLines: table.showVerticalLines,
-  wrapCells: table.wrapCells
+  wrap: table.wrap
 })
 
 export const createDefaultViewDisplay = (
@@ -36,14 +36,21 @@ export const createDefaultViewOptions = (
   table: {
     widths: {},
     showVerticalLines: true,
-    wrapCells: false
+    wrap: false
   },
   gallery: {
-    showFieldLabels: true,
-    cardSize: 'md'
+    card: {
+      wrap: false,
+      size: 'md',
+      layout: 'stacked'
+    }
   },
   kanban: {
-    newRecordPosition: 'end',
+    card: {
+      wrap: false,
+      size: 'md',
+      layout: 'compact'
+    },
     fillColumnColor: true,
     cardsPerColumn: 25
   }

@@ -59,6 +59,7 @@ export interface CardContentProps extends Omit<ComponentPropsWithoutRef<'article
   showEditAction?: boolean
   titleLeading?: ReactNode
   propertyDensity?: 'default' | 'compact'
+  wrap?: boolean
 }
 
 export const CardContent = forwardRef<HTMLElement, CardContentProps>((props, ref) => {
@@ -72,6 +73,7 @@ export const CardContent = forwardRef<HTMLElement, CardContentProps>((props, ref
     showEditAction,
     titleLeading,
     propertyDensity,
+    wrap,
     className,
     ...rootProps
   } = props
@@ -140,6 +142,7 @@ export const CardContent = forwardRef<HTMLElement, CardContentProps>((props, ref
                 mode={editing.mode}
                 openOnClick
                 density={propertyDensity}
+                wrap={wrap}
                 valueClassName={slots?.property?.value}
               />
             </div>

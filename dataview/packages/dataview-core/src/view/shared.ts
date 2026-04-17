@@ -27,14 +27,21 @@ export const cloneViewOptions = (
       ...options.table.widths
     },
     showVerticalLines: options.table.showVerticalLines,
-    wrapCells: options.table.wrapCells
+    wrap: options.table.wrap
   },
   gallery: {
-    showFieldLabels: options.gallery.showFieldLabels,
-    cardSize: options.gallery.cardSize
+    card: {
+      wrap: options.gallery.card.wrap,
+      size: options.gallery.card.size,
+      layout: options.gallery.card.layout
+    }
   },
   kanban: {
-    newRecordPosition: options.kanban.newRecordPosition,
+    card: {
+      wrap: options.kanban.card.wrap,
+      size: options.kanban.card.size,
+      layout: options.kanban.card.layout
+    },
     fillColumnColor: options.kanban.fillColumnColor,
     cardsPerColumn: options.kanban.cardsPerColumn
   }

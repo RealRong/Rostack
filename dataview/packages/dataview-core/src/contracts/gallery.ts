@@ -1,6 +1,5 @@
-export type GalleryCardSize = 'sm' | 'md' | 'lg'
+import type { CardOptions } from '@dataview/core/contracts/card'
 
 export interface GalleryOptions {
-  showFieldLabels: boolean
-  cardSize: GalleryCardSize
+  card: CardOptions
 }

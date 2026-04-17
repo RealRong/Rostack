@@ -76,11 +76,12 @@ export const createCommandRuntime = ({
     }
   })
   const mindmap = createMindmapCommands({
-    execute: engine.execute,
+    engine,
     read,
     node: {
       update: node.update
-    }
+    },
+    layout
   })
   const selection = createSelectionCommands({
     read,

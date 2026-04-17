@@ -172,7 +172,7 @@ test('engine.active.index sync patches search/group/sort/calculation on record v
   const document = createDocument()
   const index = createIndexHarness(document, {
     search: {
-      fields: [TITLE_FIELD_ID]
+      fieldIds: [TITLE_FIELD_ID]
     },
     groups: [{
       fieldId: FIELD_STATUS,
@@ -238,10 +238,13 @@ test('engine.active.resolveViewDemand provisions idle search substrate and share
   const demand = resolveViewDemand(createStaticDocumentReadContext(document), view.id)
   const index = createIndexState(document, demand).state
 
-  assert.deepEqual(demand.search, { all: true })
+  assert.deepEqual(demand.search, {
+    fieldIds: [FIELD_STATUS, TITLE_FIELD_ID]
+  })
   assert.equal(demand.sortFields, undefined)
-  assert.equal(index.search.all?.texts.size, 3)
-  assert.equal(index.search.fields.size, 0)
+  assert.equal(index.search.fields.size, 2)
+  assert.equal(index.search.fields.get(TITLE_FIELD_ID)?.texts.size, 3)
+  assert.equal(index.search.fields.get(FIELD_STATUS)?.texts.size, 3)
   assert.equal(index.sort.fields.size, 0)
   assert.deepEqual(Array.from(index.records.values.keys()), [FIELD_POINTS, FIELD_STATUS, TITLE_FIELD_ID])
 })
@@ -273,9 +276,13 @@ test('engine.active.resolveViewDemand unions search and numeric filter substrate
   const demand = resolveViewDemand(createStaticDocumentReadContext(document), view.id)
   const index = createIndexState(document, demand).state
 
-  assert.deepEqual(demand.search, { all: true })
+  assert.deepEqual(demand.search, {
+    fieldIds: [FIELD_STATUS, TITLE_FIELD_ID]
+  })
   assert.deepEqual(demand.sortFields, [FIELD_POINTS])
-  assert.equal(index.search.all?.texts.size, 3)
+  assert.equal(index.search.fields.size, 2)
+  assert.equal(index.search.fields.get(TITLE_FIELD_ID)?.texts.size, 3)
+  assert.equal(index.search.fields.get(FIELD_STATUS)?.texts.size, 3)
   assert.deepEqual(Array.from(index.sort.fields.keys()), [FIELD_POINTS])
   assert.deepEqual(Array.from(index.records.values.keys()), [FIELD_POINTS, FIELD_STATUS, TITLE_FIELD_ID])
 })
@@ -284,7 +291,7 @@ test('engine.active.index sync rebuilds only touched field semantics on schema c
   const document = createDocument()
   const index = createIndexHarness(document, {
     search: {
-      fields: [FIELD_STATUS]
+      fieldIds: [FIELD_STATUS]
     },
     sortFields: [FIELD_STATUS, FIELD_POINTS],
     calculations: [

@@ -231,6 +231,8 @@ const View = () => {
             columns={columns}
             viewId={currentView.view.id}
             items={currentView.items}
+            sections={currentView.sections}
+            grouped={Boolean(currentView.view.group)}
             showVerticalLines={showVerticalLines}
             wrapCells={wrapCells}
             template={template}

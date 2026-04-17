@@ -1,4 +1,4 @@
-import type { TextFrameMetrics, TextWidthMode } from '@whiteboard/core/node'
+import type { TextFrameInsets, TextWidthMode } from '@whiteboard/core/node'
 import type {
   EdgeId,
   NodeId,
@@ -10,6 +10,13 @@ export type LayoutKind = 'none' | 'size' | 'fit'
 export type NodeLayoutSpec = {
   kind: LayoutKind
 }
+
+export type TextTypographyProfile =
+  | 'default-text'
+  | 'sticky-text'
+  | 'edge-label'
+  | 'frame-title'
+  | 'shape-label'
 
 export type TextSourceField = 'text' | 'title'
 export type TextSourceId = string
@@ -28,12 +35,15 @@ export type LayoutRequest =
   | {
       kind: 'size'
       nodeId?: NodeId
-      sourceId: TextSourceId
+      sourceId?: TextSourceId
+      typography: TextTypographyProfile
       text: string
       placeholder: string
       widthMode: TextWidthMode
       wrapWidth?: number
-      frame: TextFrameMetrics
+      frame: TextFrameInsets
+      minWidth?: number
+      maxWidth?: number
       fontSize: number
       fontWeight?: number | string
       fontStyle?: string
@@ -41,7 +51,8 @@ export type LayoutRequest =
   | {
       kind: 'fit'
       nodeId: NodeId
-      sourceId: TextSourceId
+      sourceId?: TextSourceId
+      typography: TextTypographyProfile
       text: string
       box: Size
       minFontSize?: number

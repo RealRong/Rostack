@@ -6,6 +6,9 @@ import {
   createGroupDemand
 } from '@dataview/engine/active/index/group/demand'
 import {
+  resolveDefaultSearchFieldIds
+} from '@dataview/engine/active/index/demand'
+import {
   createCalculationDemand
 } from '@dataview/engine/active/shared/calculation'
 import {
@@ -52,9 +55,11 @@ export const resolveViewDemand = (
     }
   })
 
-  const search = view.search.fields?.length
-    ? { fields: view.search.fields }
-    : { all: true }
+  const search = {
+    fieldIds: view.search.fields?.length
+      ? [...view.search.fields]
+      : resolveDefaultSearchFieldIds(context)
+  }
   const groups = view.group
     ? [
         createGroupDemand(view.group, 'section'),

@@ -208,6 +208,7 @@ const createEdgeLabelDragState = (
   const fontSize = label.style?.size ?? 14
   const measuredSize = ctx.layout.measureText({
     sourceId: readEdgeLabelTextSourceId(input.edgeId, input.labelId),
+    typography: 'edge-label',
     text,
     placeholder: EDGE_LABEL_PLACEHOLDER,
     widthMode: 'auto',

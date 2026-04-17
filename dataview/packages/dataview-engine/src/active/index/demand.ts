@@ -50,18 +50,9 @@ const uniqueGroups = (
     ].join('\u0000')))
 }
 
-const resolveSearchFieldIds = (
+export const resolveDefaultSearchFieldIds = (
   context: Pick<IndexReadContext, 'document' | 'reader'>,
-  demand?: IndexDemand
 ): readonly FieldId[] => {
-  if (demand?.search?.fields?.length) {
-    return uniqueSorted(demand.search.fields)
-  }
-
-  if (!demand?.search?.all) {
-    return []
-  }
-
   const fieldIds: FieldId[] = ['title']
   for (let index = 0; index < context.document.fields.order.length; index += 1) {
     const fieldId = context.document.fields.order[index]!
@@ -80,7 +71,7 @@ export const normalizeIndexDemand = (
 ): NormalizedIndexDemand => {
   const groups = uniqueGroups(demand?.groups)
   const sortFields = uniqueSorted(demand?.sortFields ?? [])
-  const searchFields = resolveSearchFieldIds(context, demand)
+  const searchFields = uniqueSorted(demand?.search?.fieldIds ?? [])
   const displayFields = uniqueSorted(demand?.displayFields ?? [])
   const calculationFields = uniqueSorted(
     (demand?.calculations ?? []).map(item => item.fieldId)
@@ -96,10 +87,7 @@ export const normalizeIndexDemand = (
 
   return {
     recordFields,
-    search: {
-      all: demand?.search?.all === true,
-      fields: uniqueSorted(demand?.search?.fields ?? [])
-    },
+    search: searchFields,
     groups,
     sortFields,
     calculations: normalizeCalculationDemands(demand?.calculations)
@@ -110,12 +98,6 @@ export const sameFieldIdList = (
   left: readonly FieldId[],
   right: readonly FieldId[]
 ) => sameOrder(left, right)
-
-export const sameSearchDemand = (
-  left: NormalizedIndexDemand['search'],
-  right: NormalizedIndexDemand['search']
-) => left.all === right.all
-  && sameFieldIdList(left.fields, right.fields)
 
 export const sameGroupDemand = (
   left: readonly GroupDemand[],

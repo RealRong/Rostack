@@ -103,7 +103,9 @@ export const applyNodeDefaults = (input: NodeInput, registries: CoreRegistries):
   if (schema?.fields) {
     applyFieldDefaults(next, schema.fields)
   }
-  const bootstrapSize = resolveNodeBootstrapSize(next)
+  const bootstrapSize = type === 'text'
+    ? undefined
+    : resolveNodeBootstrapSize(next)
   if (bootstrapSize) {
     next.size = bootstrapSize
   }

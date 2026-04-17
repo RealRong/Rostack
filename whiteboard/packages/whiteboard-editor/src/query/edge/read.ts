@@ -536,6 +536,7 @@ const readEdgeLabelRender = ({
   const sourceId = readEdgeLabelTextSourceId(edgeId, label.id)
   const measuredSize = layout.measureText({
     sourceId,
+    typography: 'edge-label',
     text,
     placeholder: EDGE_LABEL_PLACEHOLDER,
     widthMode: 'auto',

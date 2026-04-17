@@ -13,16 +13,16 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   ItemId,
-  ItemList
+  ItemList,
+  SectionList
 } from '@dataview/engine'
 import {
   sameJsonValue,
   sameOrder
 } from '@shared/core'
 import {
-  useStoreValue
-} from '@shared/react'
-import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
+  useStoreSelector
+} from '@dataview/react/dataview/storeSelector'
 import { useMeasuredHeights } from '@dataview/react/virtual'
 import { useTableContext } from '@dataview/react/views/table/context'
 import { Row } from '@dataview/react/views/table/components/row/Row'
@@ -37,6 +37,8 @@ export interface BlockContentProps {
   columns: readonly Field[]
   viewId: ViewId
   items: ItemList
+  sections: SectionList
+  grouped: boolean
   showVerticalLines: boolean
   wrapCells: boolean
   template: string
@@ -202,7 +204,6 @@ const RenderedBlocks = memo(RenderedBlocksView, sameRenderedBlocks)
 
 export const BlockContent = (props: BlockContentProps) => {
   const table = useTableContext()
-  const currentView = useStoreValue(table.currentView)
   const totalHeight = useStoreSelector(
     table.virtual.window,
     snapshot => snapshot.totalHeight
@@ -221,19 +222,15 @@ export const BlockContent = (props: BlockContentProps) => {
     snapshot => snapshot.containerWidth
   )
   const measurementIds = useMemo(() => {
-    if (!currentView) {
-      return [] as string[]
-    }
-
-    if (!currentView.view.group) {
+    if (!props.grouped) {
       return [
         'column-header:flat',
-        ...currentView.items.ids.map(id => `row:${id}`),
+        ...props.items.ids.map(id => `row:${id}`),
         'column-footer:flat'
       ]
     }
 
-    return currentView.sections.all.flatMap(section => (
+    return props.sections.all.flatMap(section => (
       section.collapsed
         ? [`section-header:${section.key}`]
         : [
@@ -243,10 +240,10 @@ export const BlockContent = (props: BlockContentProps) => {
             `column-footer:${section.key}`
           ]
     ))
-  }, [currentView])
+  }, [props.grouped, props.items, props.sections])
   const measurementBucketKey = useMemo(
-    () => `${props.template}:${containerWidth}:${props.wrapCells ? 'wrap' : 'nowrap'}`,
-    [containerWidth, props.template, props.wrapCells]
+    () => `${containerWidth}:${props.wrapCells ? 'wrap' : 'nowrap'}`,
+    [containerWidth, props.wrapCells]
   )
   const onMeasurementsChange = useCallback((input: {
     bucketKey: string | number

@@ -15,6 +15,7 @@ import {
   createNodeFieldsUpdateOperation,
   createNodeUpdateOperation,
   isNodeUpdateEmpty,
+  resolveNodeBootstrapSize,
   resolveMoveEffect
 } from '@whiteboard/core/node'
 import {
@@ -146,9 +147,12 @@ export const updateMany = (
       tree,
       (nodeId) => {
         const node = next.data.nextById.get(nodeId) ?? getNode(ctx.doc, nodeId)
+        const bootstrap = node
+          ? resolveNodeBootstrapSize(node)
+          : undefined
         return {
-          width: node?.size?.width ?? ctx.config.mindmapNodeSize.width,
-          height: node?.size?.height ?? ctx.config.mindmapNodeSize.height
+          width: node?.size?.width ?? bootstrap?.width ?? ctx.config.mindmapNodeSize.width,
+          height: node?.size?.height ?? bootstrap?.height ?? ctx.config.mindmapNodeSize.height
         }
       },
       tree.layout

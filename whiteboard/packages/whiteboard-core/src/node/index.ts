@@ -169,11 +169,14 @@ export {
   isNodeProjectionPatchEqual
 } from '@whiteboard/core/node/projection'
 export {
+  buildTextLayoutKey,
   estimateTextAutoFont,
   isTextContentEmpty,
   isTextNode,
+  readTextComputedSize,
   readStickyFontMode,
   readTextFrameInsets,
+  readTextLayoutInput,
   readTextWrapWidth,
   readTextWidthMode,
   resolveTextFrameMetrics,
@@ -181,6 +184,7 @@ export {
   setStickyFontMode,
   setTextWrapWidth,
   setTextWidthMode,
+  shouldPatchTextLayout,
   TEXT_AUTO_MAX_WIDTH,
   TEXT_AUTO_MIN_WIDTH,
   TEXT_FIT_VERTICAL_MARGIN,
@@ -196,6 +200,7 @@ export type {
   TextAutoFont,
   TextContentBox,
   TextFrameInsets,
+  TextLayoutInput,
   TextFrameMetrics,
   TextHandleMode,
   TextVariant,

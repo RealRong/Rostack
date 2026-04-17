@@ -53,6 +53,12 @@ export interface TableWindowProjection {
   startTop: number
 }
 
+export interface TableLayoutSource {
+  grouped: boolean
+  items: CurrentView['items']
+  sections: CurrentView['sections']
+}
+
 class FenwickTree {
   private readonly values: number[]
   private readonly tree: number[]
@@ -199,7 +205,7 @@ const materializeBlock = (input: {
 }
 
 const buildDescriptors = (input: {
-  currentView: CurrentView
+  source: TableLayoutSource
   rowHeight: number
   headerHeight: number
 }) => {
@@ -216,8 +222,8 @@ const buildDescriptors = (input: {
     }
   }
 
-  if (!input.currentView.view.group) {
-    const scopeId = input.currentView.sections.all[0]?.key ?? 'root'
+  if (!input.source.grouped) {
+    const scopeId = input.source.sections.all[0]?.key ?? 'root'
     push({
       key: 'column-header:flat',
       kind: 'column-header',
@@ -225,10 +231,10 @@ const buildDescriptors = (input: {
       scopeId,
       scope: createItemListSelectionScope({
         key: scopeId,
-        items: input.currentView.items
+        items: input.source.items
       })
     })
-    input.currentView.items.ids.forEach(rowId => {
+    input.source.items.ids.forEach(rowId => {
       push({
         key: `row:${rowId}`,
         kind: 'row',
@@ -243,7 +249,7 @@ const buildDescriptors = (input: {
       scopeId
     })
   } else {
-    input.currentView.sections.all.forEach(section => {
+    input.source.sections.all.forEach(section => {
       push({
         key: `section-header:${section.key}`,
         kind: 'section-header',
@@ -301,7 +307,7 @@ export class TableLayoutModel {
   private readonly heightTree: FenwickTree
 
   static fromCurrentView(input: {
-    currentView: CurrentView
+    source: TableLayoutSource
     rowHeight: number
     headerHeight: number
     measuredHeights?: ReadonlyMap<string, number>
@@ -310,7 +316,11 @@ export class TableLayoutModel {
       descriptors,
       blockIndexByKey,
       rowBlockIndexById
-    } = buildDescriptors(input)
+    } = buildDescriptors({
+      source: input.source,
+      rowHeight: input.rowHeight,
+      headerHeight: input.headerHeight
+    })
 
     const defaultHeights = descriptors.map(descriptor => descriptor.estimatedHeight)
     const resolvedHeights = descriptors.map((descriptor, index) => (

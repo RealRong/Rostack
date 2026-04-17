@@ -7,6 +7,10 @@ const readSource = (
   textSources: TextSourceStore,
   sourceId: LayoutRequest['sourceId']
 ) => {
+  if (!sourceId) {
+    return undefined
+  }
+
   const source = textSources.get(sourceId)
   return source?.isConnected
     ? source
@@ -20,21 +24,21 @@ export const createLayoutBackend = ({
 }): LayoutBackend => ({
   measure: (request) => {
     const source = readSource(textSources, request.sourceId)
-    if (!source) {
-      return undefined
-    }
 
     if (request.kind === 'size') {
       const size = measureTextOuterSize({
         content: request.text,
         placeholder: request.placeholder,
         source,
+        typography: request.typography,
         fontSize: request.fontSize,
         fontStyle: request.fontStyle,
         fontWeight: request.fontWeight,
         widthMode: request.widthMode,
         wrapWidth: request.wrapWidth,
-        frame: request.frame
+        frame: request.frame,
+        minWidth: request.minWidth,
+        maxWidth: request.maxWidth
       })
 
       return size
@@ -51,6 +55,7 @@ export const createLayoutBackend = ({
         text: request.text,
         box: request.box,
         source,
+        typography: request.typography,
         minFontSize: request.minFontSize,
         maxFontSize: request.maxFontSize,
         textAlign: request.textAlign

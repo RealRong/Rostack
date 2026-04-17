@@ -4,20 +4,29 @@ import type {
 } from '@dataview/core/contracts'
 import {
   resolveDisplayInsertBeforeFieldId,
+  showDisplayField,
   setTableColumnWidths,
   setTableVerticalLines,
   setTableWrapCells
 } from '@dataview/core/view'
 import type { ActiveViewApi } from '@dataview/engine/contracts/public'
 import type { ActiveViewContext } from '@dataview/engine/active/context'
+import { createFieldId } from '@dataview/engine/mutate/entityId'
 
-const createField = (
+const insertField = (
   base: ActiveViewContext,
+  anchorFieldId: string,
+  side: 'left' | 'right',
   input?: {
     name?: string
     kind?: CustomFieldKind
   }
 ): CustomFieldId | undefined => {
+  const view = base.view()
+  if (!view) {
+    return undefined
+  }
+
   const kind = input?.kind ?? 'text'
   const explicitName = input?.name?.trim()
   const name = explicitName
@@ -25,18 +34,37 @@ const createField = (
     return undefined
   }
 
-  return base.dispatch({
-    type: 'field.create',
-    input: {
-      name,
-      kind
+  const fieldId = createFieldId()
+  const beforeFieldId = resolveDisplayInsertBeforeFieldId(
+    view.display.fields,
+    anchorFieldId,
+    side
+  )
+  const result = base.dispatch([
+    {
+      type: 'field.create',
+      input: {
+        id: fieldId,
+        name,
+        kind
+      }
+    },
+    {
+      type: 'view.patch',
+      viewId: view.id,
+      patch: {
+        display: showDisplayField(view.display, fieldId, beforeFieldId)
+      }
     }
-  }).created?.fields?.[0]
+  ])
+
+  return result.applied
+    ? fieldId
+    : undefined
 }
 
 export const createTableApi = (input: {
   base: ActiveViewContext
-  display: ActiveViewApi['display']
 }): ActiveViewApi['table'] => ({
   setColumnWidths: widths => input.base.patch(view => ({
     options: setTableColumnWidths(view.options, widths)
@@ -48,35 +76,9 @@ export const createTableApi = (input: {
     options: setTableWrapCells(view.options, value)
   })),
   insertFieldLeft: (anchorFieldId, fieldInput) => {
-    const fieldId = createField(input.base, fieldInput)
-    if (!fieldId) {
-      return undefined
-    }
-
-    input.display.show(
-      fieldId,
-      resolveDisplayInsertBeforeFieldId(
-        input.base.view()?.display.fields ?? [],
-        anchorFieldId,
-        'left'
-      )
-    )
-    return fieldId
+    return insertField(input.base, anchorFieldId, 'left', fieldInput)
   },
   insertFieldRight: (anchorFieldId, fieldInput) => {
-    const fieldId = createField(input.base, fieldInput)
-    if (!fieldId) {
-      return undefined
-    }
-
-    input.display.show(
-      fieldId,
-      resolveDisplayInsertBeforeFieldId(
-        input.base.view()?.display.fields ?? [],
-        anchorFieldId,
-        'right'
-      )
-    )
-    return fieldId
+    return insertField(input.base, anchorFieldId, 'right', fieldInput)
   }
 })

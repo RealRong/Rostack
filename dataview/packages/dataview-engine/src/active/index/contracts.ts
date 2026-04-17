@@ -39,8 +39,7 @@ export interface RecordIndex {
 }
 
 export interface SearchDemand {
-  all?: boolean
-  fields?: readonly FieldId[]
+  fieldIds: readonly FieldId[]
 }
 
 export type GroupCapability = 'filter' | 'section'
@@ -63,25 +62,22 @@ export interface IndexDemand {
 
 export interface NormalizedIndexDemand {
   recordFields: readonly FieldId[]
-  search: {
-    all: boolean
-    fields: readonly FieldId[]
-  }
+  search: readonly FieldId[]
   groups: readonly GroupDemand[]
   sortFields: readonly FieldId[]
   calculations: readonly CalculationDemand[]
 }
 
 export interface SearchIndex {
-  all?: SearchTextIndex
-  fields: ReadonlyMap<FieldId, SearchTextIndex>
-  rev: number
+  fields: ReadonlyMap<FieldId, SearchFieldIndex>
 }
 
-export interface SearchTextIndex {
+export interface SearchFieldIndex {
+  fieldId: FieldId
   texts: ReadonlyMap<RecordId, string>
-  bigrams: ReadonlyMap<string, SortedIdSet<RecordId>>
-  trigrams: ReadonlyMap<string, SortedIdSet<RecordId>>
+  grams2: ReadonlyMap<string, SortedIdSet<RecordId>>
+  grams3: ReadonlyMap<string, SortedIdSet<RecordId>>
+  rev: number
 }
 
 export interface FilterBucketIndex {

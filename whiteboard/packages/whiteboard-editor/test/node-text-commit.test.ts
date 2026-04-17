@@ -41,8 +41,8 @@ describe('createNodeTextCommands.commit', () => {
         }
       },
       layout: {
+        patchNodeCreatePayload: (payload) => payload,
         patchNodeUpdate: (_, next) => next,
-        syncNode: () => undefined,
         editNode: () => undefined,
         measureText: () => undefined,
         resolvePreviewPatches: (patches) => patches

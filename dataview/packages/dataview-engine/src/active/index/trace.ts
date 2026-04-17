@@ -27,7 +27,7 @@ export const touchedFieldCountOfImpact = (
 export const searchEntryCountOf = (
   search: SearchIndex
 ): number => {
-  let count = search.all?.texts.size ?? 0
+  let count = 0
 
   search.fields.forEach(field => {
     count += field.texts.size

@@ -18,7 +18,7 @@ export const useMindmapTreeView = (
         return
       }
 
-      editor.actions.mindmap.insertByPlacement({
+      const result = editor.actions.mindmap.insertByPlacement({
         id: mindmapId,
         tree,
         targetNodeId: nodeId,

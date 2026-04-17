@@ -1,7 +1,7 @@
 import { isSizeEqual } from '@whiteboard/core/geometry'
 import {
-  readTextFrameInsets,
   applyNodeUpdate,
+  readTextLayoutInput,
   readStickyFontMode,
   TEXT_LAYOUT_MIN_WIDTH,
   readTextWrapWidth,
@@ -9,8 +9,8 @@ import {
   resolveAnchoredRect,
   resolveTextBox,
   resolveTextHandle,
-  setTextWidthMode,
-  setTextWrapWidth,
+  resolveNodeBootstrapSize,
+  shouldPatchTextLayout,
   TEXT_DEFAULT_FONT_SIZE,
   TEXT_PLACEHOLDER
 } from '@whiteboard/core/node'
@@ -23,6 +23,7 @@ import {
 import type {
   Node,
   NodeId,
+  NodeInput,
   NodeUpdateInput,
   Rect,
   Size,
@@ -71,12 +72,6 @@ const readLayoutKind = (
   registry: Pick<NodeRegistry, 'get'>,
   node: Pick<Node, 'type'>
 ): LayoutKind => registry.get(node.type)?.layout?.kind ?? 'none'
-
-const readTextValue = (
-  node: Pick<Node, 'data'>
-) => typeof node.data?.text === 'string'
-  ? node.data.text
-  : ''
 
 const readFontSize = (
   node: Pick<Node, 'style'>
@@ -132,16 +127,22 @@ const applyPreviewNode = (
         }
   }
 
-  const widthMode = preview.mode ?? readTextWidthMode(node)
-  const dataWithMode = preview.mode === undefined
+  const nextData = {
+    ...(node.data ?? {})
+  }
+  const nextWidthMode = preview.mode ?? readTextWidthMode(node)
+  nextData.widthMode = nextWidthMode
+  if (nextWidthMode === 'wrap') {
+    nextData.wrapWidth = preview.wrapWidth ?? readTextWrapWidth(node)
+  } else {
+    delete nextData.wrapWidth
+  }
+  const data = (
+    nextData.widthMode === node.data?.widthMode
+    && nextData.wrapWidth === node.data?.wrapWidth
+  )
     ? node.data
-    : setTextWidthMode(node, widthMode)
-  const nextWrapWidth = widthMode === 'wrap'
-    ? (preview.wrapWidth ?? readTextWrapWidth(node))
-    : undefined
-  const data = nextWrapWidth === readTextWrapWidth(node)
-    ? dataWithMode
-    : setTextWrapWidth({ data: dataWithMode }, nextWrapWidth)
+    : nextData
 
   return (
     style === node.style
@@ -167,31 +168,34 @@ const buildLayoutRequest = ({
   kind: LayoutKind
 }): LayoutRequest | undefined => {
   if (kind === 'size' && node.type === 'text') {
-    const widthMode = readTextWidthMode(node)
+    const input = readTextLayoutInput(node, {
+      width: rect.width,
+      height: rect.height
+    })
+    if (!input) {
+      return undefined
+    }
 
     return {
       kind: 'size',
       nodeId,
       sourceId: readNodeTextSourceId(nodeId, 'text'),
-      text: readTextValue(node),
+      typography: 'default-text',
+      text: input.text,
       placeholder: TEXT_PLACEHOLDER,
-      widthMode,
-      wrapWidth: widthMode === 'wrap'
-        ? (readTextWrapWidth(node) ?? rect.width)
-        : undefined,
-      frame: {
-        width: rect.width,
-        height: rect.height,
-        ...readTextFrameInsets(node)
-      },
-      fontSize: readFontSize(node),
-      fontWeight: readFontWeight(node),
-      fontStyle: readFontStyle(node)
+      widthMode: input.widthMode,
+      wrapWidth: input.wrapWidth,
+      frame: input.frame,
+      minWidth: input.minWidth,
+      maxWidth: input.maxWidth,
+      fontSize: input.fontSize,
+      fontWeight: input.fontWeight,
+      fontStyle: input.fontStyle
     }
   }
 
   if (
-    kind === 'fit'
+      kind === 'fit'
     && node.type === 'sticky'
     && readStickyFontMode(node) === 'auto'
   ) {
@@ -199,7 +203,10 @@ const buildLayoutRequest = ({
       kind: 'fit',
       nodeId,
       sourceId: readNodeTextSourceId(nodeId, 'text'),
-      text: readTextValue(node),
+      typography: 'sticky-text',
+      text: typeof node.data?.text === 'string'
+        ? node.data.text
+        : '',
       box: resolveTextBox('sticky', rect),
       fontWeight: readFontWeight(node),
       fontStyle: readFontStyle(node),
@@ -284,7 +291,7 @@ const toLayoutResultUpdate = ({
   size?: Size
 }) => {
   if (kind === 'size' && request.kind === 'size' && size) {
-    return !isSizeEqual(size, committed.rect)
+    return shouldPatchTextLayout(committed.node, size)
       ? {
           fields: {
             size
@@ -308,8 +315,13 @@ const toLayoutResultUpdate = ({
 
 export type LayoutRuntime = {
   measureText: (
-    input: Omit<Extract<LayoutRequest, { kind: 'size' }>, 'kind' | 'frame'>
+    input: Omit<Extract<LayoutRequest, { kind: 'size' }>, 'kind' | 'frame'> & {
+      frame?: Extract<LayoutRequest, { kind: 'size' }>['frame']
+    }
   ) => Size | undefined
+  patchNodeCreatePayload: (
+    payload: NodeInput
+  ) => NodeInput
   patchNodeUpdate: (
     nodeId: NodeId,
     update: NodeUpdateInput,
@@ -317,9 +329,6 @@ export type LayoutRuntime = {
       origin?: Origin
     }
   ) => NodeUpdateInput
-  syncNode: (
-    nodeId: NodeId
-  ) => NodeUpdateInput | undefined
   editNode: (
     input: {
       nodeId: NodeId
@@ -365,14 +374,93 @@ export const createLayoutRuntime = ({
     kind: readLayoutKind(registry, node)
   })
 
+  const patchCreatePayload = (
+    payload: NodeInput
+  ): NodeInput => {
+    if (!backend || !payload.type) {
+      return payload
+    }
+
+    const kind = readLayoutKind(registry, payload)
+    if (kind === 'none') {
+      return payload
+    }
+
+    const bootstrapSize = resolveNodeBootstrapSize(payload) ?? {
+      width: 1,
+      height: 1
+    }
+    const position = payload.position ?? {
+      x: 0,
+      y: 0
+    }
+    const node = {
+      id: payload.id ?? '__layout_create__',
+      type: payload.type,
+      position,
+      size: payload.size ?? bootstrapSize,
+      rotation: payload.rotation,
+      layer: payload.layer,
+      zIndex: payload.zIndex,
+      locked: payload.locked,
+      data: payload.data,
+      style: payload.style
+    } satisfies Node
+    const request = buildLayoutRequest({
+      nodeId: node.id,
+      node,
+      rect: {
+        x: position.x,
+        y: position.y,
+        width: node.size?.width ?? bootstrapSize.width,
+        height: node.size?.height ?? bootstrapSize.height
+      },
+      kind
+    })
+    if (!request) {
+      return payload
+    }
+
+    const result = backend.measure(request)
+    if (!result) {
+      return payload
+    }
+
+    if (request.kind === 'size' && result.kind === 'size') {
+      return isSizeEqual(payload.size, result.size)
+        ? payload
+        : {
+            ...payload,
+            size: result.size
+          }
+    }
+
+    if (request.kind === 'fit' && result.kind === 'fit') {
+      const currentFontSize = typeof payload.style?.fontSize === 'number'
+        ? payload.style.fontSize
+        : undefined
+      if (currentFontSize === result.fontSize) {
+        return payload
+      }
+
+      return {
+        ...payload,
+        style: {
+          ...(payload.style ?? {}),
+          fontSize: result.fontSize
+        }
+      }
+    }
+
+    return payload
+  }
+
   return {
     measureText: (input) => {
       const result = backend?.measure({
         kind: 'size',
         ...input,
-        frame: {
-          width: input.wrapWidth ?? TEXT_LAYOUT_MIN_WIDTH,
-          height: 1,
+        frame: input.frame ?? {
           paddingTop: 0,
           paddingRight: 0,
           paddingBottom: 0,
@@ -388,6 +476,7 @@ export const createLayoutRuntime = ({
         ? result.size
         : undefined
     },
+    patchNodeCreatePayload: patchCreatePayload,
     patchNodeUpdate: (nodeId, update, options) => {
       const committed = read.node.committed.get(nodeId)
       if (!committed) {
@@ -433,40 +522,6 @@ export const createLayoutRuntime = ({
           size: result.kind === 'size' ? result.size : undefined
         })
       )
-    },
-
-    syncNode: (nodeId) => {
-      const committed = read.node.committed.get(nodeId)
-      if (!backend || !committed) {
-        return undefined
-      }
-
-      const kind = readLayoutKind(registry, committed.node)
-      if (kind === 'none') {
-        return undefined
-      }
-
-      const request = resolveNodeRequest({
-        nodeId,
-        node: committed.node,
-        rect: committed.rect
-      })
-      if (!request) {
-        return undefined
-      }
-
-      const result = backend.measure(request)
-      if (!result) {
-        return undefined
-      }
-
-      return toLayoutResultUpdate({
-        kind,
-        committed,
-        request,
-        fontSize: result.kind === 'fit' ? result.fontSize : undefined,
-        size: result.kind === 'size' ? result.size : undefined
-      })
     },
 
     editNode: ({

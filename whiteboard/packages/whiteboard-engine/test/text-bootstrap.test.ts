@@ -26,7 +26,7 @@ test('normalizeDocument 为缺失 size 的 text 节点补齐系统尺寸', () =>
   assert.notEqual(normalized, document)
   assert.deepEqual(normalized.nodes.node_1.size, {
     width: 144,
-    height: 24
+    height: 20
   })
 })
 
@@ -59,6 +59,6 @@ test('engine 会清洗直接下发的 text node.create 缺失尺寸', () => {
 
   assert.deepEqual(result.commit.doc.nodes.node_1.size, {
     width: 144,
-    height: 24
+    height: 20
   })
 })

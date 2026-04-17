@@ -12,8 +12,10 @@ import {
   applyTypography,
   normalizeMeasureContent,
   readLineHeightPx,
-  readPx
+  readPx,
+  readTypographyStyle
 } from '@whiteboard/react/features/node/dom/textTypography'
+import type { TextTypographyProfile } from '@whiteboard/editor'
 
 type TextMeasureElements = {
   line: HTMLDivElement
@@ -82,6 +84,7 @@ const measureTextContent = ({
   content,
   placeholder,
   source,
+  typography,
   minWidth,
   maxWidth,
   fontSize,
@@ -91,7 +94,8 @@ const measureTextContent = ({
 }: {
   content: string
   placeholder: string
-  source: HTMLElement
+  source?: HTMLElement
+  typography: TextTypographyProfile
   minWidth: number
   maxWidth: number
   fontSize?: number
@@ -104,7 +108,10 @@ const measureTextContent = ({
     return undefined
   }
 
-  const sourceStyle = window.getComputedStyle(source)
+  const sourceStyle = readTypographyStyle(source, typography)
+  if (!sourceStyle) {
+    return undefined
+  }
   const sourceFontSize = readPx(sourceStyle.fontSize, TEXT_DEFAULT_FONT_SIZE)
   const resolvedFontSize = fontSize ?? sourceFontSize
   const resolvedLineHeight = readLineHeightPx(
@@ -153,22 +160,28 @@ export const measureTextOuterSize = ({
   content,
   placeholder,
   source,
+  typography,
   fontSize,
   fontStyle,
   fontWeight,
   widthMode,
   wrapWidth,
-  frame
+  frame,
+  minWidth,
+  maxWidth
 }: {
   content: string
   placeholder: string
-  source: HTMLElement
+  source?: HTMLElement
+  typography: TextTypographyProfile
   fontSize?: number
   fontStyle?: string
   fontWeight?: string | number
   widthMode: TextWidthMode
   wrapWidth?: number
-  frame?: TextFrameMetrics
+  frame?: Omit<TextFrameMetrics, 'width' | 'height'>
+  minWidth?: number
+  maxWidth?: number
 }): Size | undefined => {
   const horizontalInset = frame
     ? frame.paddingLeft + frame.paddingRight + frame.borderLeft + frame.borderRight
@@ -178,15 +191,26 @@ export const measureTextOuterSize = ({
     : 0
 
   if (widthMode === 'wrap') {
-    const resolvedOuterWrapWidth = Math.max(
+    const resolvedOuterMinWidth = Math.max(
       TEXT_LAYOUT_MIN_WIDTH,
-      Math.ceil(wrapWidth ?? TEXT_LAYOUT_MIN_WIDTH)
+      Math.ceil(minWidth ?? TEXT_LAYOUT_MIN_WIDTH)
+    )
+    const resolvedOuterMaxWidth = Math.max(
+      resolvedOuterMinWidth,
+      Math.ceil(maxWidth ?? wrapWidth ?? resolvedOuterMinWidth)
+    )
+    const resolvedOuterWrapWidth = Math.min(
+      resolvedOuterMaxWidth,
+      Math.max(
+        resolvedOuterMinWidth,
+        Math.ceil(wrapWidth ?? resolvedOuterMinWidth)
+      )
     )
     const resolvedWrapWidth = frame
       ? resolveTextContentBox({
           ...frame,
           width: resolvedOuterWrapWidth,
-          height: Math.max(frame.height, verticalInset + 1)
+          height: verticalInset + 1
         }).width
       : resolvedOuterWrapWidth
 
@@ -194,6 +218,7 @@ export const measureTextOuterSize = ({
       content,
       placeholder,
       source,
+      typography,
       minWidth: resolvedWrapWidth,
       maxWidth: resolvedWrapWidth,
       fontSize,
@@ -209,12 +234,21 @@ export const measureTextOuterSize = ({
       : undefined
   }
 
-  const resolvedMinWidth = Math.max(TEXT_AUTO_MIN_WIDTH - horizontalInset, 1)
-  const resolvedMaxWidth = Math.max(TEXT_AUTO_MAX_WIDTH - horizontalInset, resolvedMinWidth)
+  const resolvedOuterMinWidth = Math.max(
+    TEXT_AUTO_MIN_WIDTH,
+    Math.ceil(minWidth ?? TEXT_AUTO_MIN_WIDTH)
+  )
+  const resolvedOuterMaxWidth = Math.max(
+    resolvedOuterMinWidth,
+    Math.ceil(maxWidth ?? TEXT_AUTO_MAX_WIDTH)
+  )
+  const resolvedMinWidth = Math.max(resolvedOuterMinWidth - horizontalInset, 1)
+  const resolvedMaxWidth = Math.max(resolvedOuterMaxWidth - horizontalInset, resolvedMinWidth)
   const measured = measureTextContent({
     content,
     placeholder,
     source,
+    typography,
     minWidth: resolvedMinWidth,
     maxWidth: resolvedMaxWidth,
     fontSize,

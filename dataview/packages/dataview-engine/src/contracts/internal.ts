@@ -37,7 +37,7 @@ export interface QueryState {
   search?: {
     query: string
     sourceKey: string
-    sourceRev: number
+    sourceRevisionKey: string
     matched: readonly RecordId[]
   }
   visibleSet?: ReadonlySet<RecordId>

@@ -5,8 +5,10 @@ import {
 import type { Size } from '@whiteboard/core/types'
 import {
   readLineHeightPx,
-  readPx
+  readPx,
+  readTypographyStyle
 } from '@whiteboard/react/features/node/dom/textTypography'
+import type { TextTypographyProfile } from '@whiteboard/editor'
 
 type TextFitElements = {
   frame: HTMLDivElement
@@ -101,13 +103,15 @@ export const measureFitFontSize = ({
   text,
   box,
   source,
+  typography,
   minFontSize,
   maxFontSize,
   textAlign
 }: {
   text: string
   box: Size
-  source: HTMLElement
+  source?: HTMLElement
+  typography: TextTypographyProfile
   minFontSize?: number
   maxFontSize?: number
   textAlign?: 'left' | 'center' | 'right'
@@ -127,7 +131,10 @@ export const measureFitFontSize = ({
     return fallback
   }
 
-  const sourceStyle = window.getComputedStyle(source)
+  const sourceStyle = readTypographyStyle(source, typography)
+  if (!sourceStyle) {
+    return fallback
+  }
   const sourceFontSize = readPx(sourceStyle.fontSize, TEXT_DEFAULT_FONT_SIZE)
   const resolvedMinFontSize = Math.max(1, Math.floor(minFontSize ?? range.min))
   const resolvedMaxFontSize = Math.max(

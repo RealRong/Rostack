@@ -81,24 +81,6 @@ const toSingleRecordFieldWrite = (
       }
     })
 
-const buildCreateFieldViewOps = (
-  views: readonly View[],
-  field: CustomField
-): DocumentOperation[] => (
-  views
-    .filter(view => view.type === 'table')
-    .flatMap(view => (
-      view.display.fields.includes(field.id)
-        ? []
-        : [toViewPut({
-            ...view,
-            display: {
-              fields: [...view.display.fields, field.id]
-            }
-          })]
-    ))
-)
-
 const buildRemovedFieldViewOps = (
   views: readonly View[],
   fieldId: string
@@ -208,7 +190,6 @@ const lowerFieldCreate = (
   action: Extract<Action, { type: 'field.create' }>
 ): PlannedActionResult => {
   const document = scope.reader.document()
-  const views = scope.reader.views.list()
   const explicitFieldId = trimToUndefined(action.input.id)
 
   if (action.input.id !== undefined && !explicitFieldId) {
@@ -237,13 +218,10 @@ const lowerFieldCreate = (
   })
 
   scope.report(...validateField(document, scope.source, field, 'input'))
-  return scope.finish(
-    {
-      type: 'document.field.put',
-      field
-    },
-    ...buildCreateFieldViewOps(views, field)
-  )
+  return scope.finish({
+    type: 'document.field.put',
+    field
+  })
 }
 
 const lowerFieldPatch = (
@@ -389,7 +367,6 @@ const lowerFieldDuplicate = (
       type: 'document.field.put',
       field: nextField
     },
-    ...buildCreateFieldViewOps(views, nextField),
     ...recordOps,
     ...viewOps
   )

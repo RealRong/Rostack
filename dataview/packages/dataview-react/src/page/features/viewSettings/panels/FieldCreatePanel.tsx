@@ -22,6 +22,7 @@ export const FieldCreatePanel = () => {
           return
         }
 
+        editor.active.display.show(fieldId)
         router.push({
           kind: 'fieldSchema',
           fieldId

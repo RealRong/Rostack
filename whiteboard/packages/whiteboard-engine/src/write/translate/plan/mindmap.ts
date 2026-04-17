@@ -75,23 +75,13 @@ const readNodeSize = (
   node: Pick<Node, 'size' | 'style' | 'type'> | undefined,
   fallback: WriteTranslateContext['config']['mindmapNodeSize']
 ) => {
-  const minWidth = typeof node?.style?.minWidth === 'number'
-    ? node.style.minWidth
-    : 0
-  const paddingY = typeof node?.style?.paddingY === 'number'
-    ? node.style.paddingY
-    : 0
-  const strokeWidth = typeof node?.style?.strokeWidth === 'number'
-    ? node.style.strokeWidth
-    : 0
-  const fontSize = typeof node?.style?.fontSize === 'number'
-    ? node.style.fontSize
-    : 14
-  const estimatedHeight = Math.ceil(fontSize * 1.4 + paddingY * 2 + strokeWidth * 2)
+  const bootstrap = node
+    ? resolveNodeBootstrapSize(node)
+    : undefined
 
   return {
-    width: Math.max(node?.size?.width ?? fallback.width, minWidth),
-    height: Math.max(node?.size?.height ?? fallback.height, estimatedHeight)
+    width: Math.max(node?.size?.width ?? bootstrap?.width ?? fallback.width, 1),
+    height: Math.max(node?.size?.height ?? bootstrap?.height ?? fallback.height, 1)
   }
 }
 
@@ -124,9 +114,7 @@ const createBlankTextNodeInput = (
   template?: Node
 ): Omit<NodeInput, 'id' | 'position'> => ({
   type: template?.type ?? 'text',
-  size: template?.size ? { ...template.size } : undefined,
   data: {
-    ...(template?.data ?? {}),
     text: getMindmapTopicLabel(topic as any)
   },
   style: cloneNodeStyle(template?.style)

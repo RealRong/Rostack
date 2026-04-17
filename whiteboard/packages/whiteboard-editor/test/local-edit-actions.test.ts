@@ -20,8 +20,8 @@ const createRegistry = () => ({
 })
 
 const createLayout = (): LayoutRuntime => ({
+  patchNodeCreatePayload: (payload) => payload,
   patchNodeUpdate: (_, update) => update,
-  syncNode: () => undefined,
   editNode: ({ nodeId }) => nodeId === 'node-1'
     ? {
         size: {

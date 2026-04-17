@@ -1,4 +1,4 @@
-import type { Rect } from '@whiteboard/core/types'
+import type { Rect, Size } from '@whiteboard/core/types'
 import type { ResizeDirection } from '@whiteboard/core/node/transform'
 
 export type TextVariant = 'text' | 'sticky'
@@ -30,6 +30,19 @@ export type TextAutoFont = {
   min: number
   max: number
   initial: number
+}
+
+export type TextLayoutInput = {
+  nodeId?: string
+  text: string
+  widthMode: TextWidthMode
+  wrapWidth?: number
+  fontSize: number
+  fontWeight?: number | string
+  fontStyle?: string
+  frame: TextFrameInsets
+  minWidth?: number
+  maxWidth?: number
 }
 
 export const TEXT_DEFAULT_FONT_SIZE = 14
@@ -187,6 +200,18 @@ const readStringStyle = (
   return typeof value === 'string' ? value : undefined
 }
 
+const readPositiveStyleNumber = (
+  node: {
+    style?: Record<string, unknown>
+  },
+  key: string
+) => {
+  const value = readNumberStyle(node, key)
+  return typeof value === 'number' && value > 0
+    ? value
+    : undefined
+}
+
 export const readTextFrameInsets = (
   node: {
     type: string
@@ -236,6 +261,99 @@ export const resolveTextFrameMetrics = (input: {
   height: input.height,
   ...readTextFrameInsets(input.node)
 })
+
+export const readTextComputedSize = (
+  node: {
+    type: string
+    size?: Size
+  },
+  fallback?: Size
+): Size | undefined => {
+  if (node.type !== 'text') {
+    return fallback
+  }
+
+  const width = node.size?.width
+  const height = node.size?.height
+
+  return (
+    typeof width === 'number'
+    && width > 0
+    && typeof height === 'number'
+    && height > 0
+  )
+    ? {
+        width,
+        height
+      }
+    : fallback
+}
+
+export const readTextLayoutInput = (
+  node: {
+    id?: string
+    type: string
+    size?: Size
+    data?: Record<string, unknown>
+    style?: Record<string, unknown>
+  },
+  fallback?: Size
+): TextLayoutInput | undefined => {
+  if (node.type !== 'text') {
+    return undefined
+  }
+
+  const widthMode = readTextWidthMode(node)
+  const computedSize = readTextComputedSize(node, fallback)
+  const wrapWidth = widthMode === 'wrap'
+    ? (
+        readTextWrapWidth(node)
+        ?? computedSize?.width
+      )
+    : undefined
+
+  return {
+    nodeId: node.id,
+    text: typeof node.data?.text === 'string'
+      ? node.data.text
+      : '',
+    widthMode,
+    wrapWidth,
+    fontSize: readNumberStyle(node, 'fontSize') ?? TEXT_DEFAULT_FONT_SIZE,
+    fontWeight: (() => {
+      const value = node.style?.fontWeight
+      return (
+        typeof value === 'number'
+        || typeof value === 'string'
+      )
+        ? value
+        : undefined
+    })(),
+    fontStyle: readStringStyle(node, 'fontStyle'),
+    frame: readTextFrameInsets(node),
+    minWidth: readPositiveStyleNumber(node, 'minWidth'),
+    maxWidth: readPositiveStyleNumber(node, 'maxWidth')
+  }
+}
+
+export const buildTextLayoutKey = (
+  input: Omit<TextLayoutInput, 'nodeId'>
+): string => JSON.stringify(input)
+
+export const shouldPatchTextLayout = (
+  node: {
+    type: string
+    size?: Size
+  },
+  nextSize: Size
+): boolean => {
+  const current = readTextComputedSize(node)
+  return !(
+    current
+    && current.width === nextSize.width
+    && current.height === nextSize.height
+  )
+}
 
 export const resolveTextAutoFont = (
   variant: TextVariant,

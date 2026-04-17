@@ -62,10 +62,6 @@ export type NodeTextCommands = {
   ) => CommandResult
 }
 
-export type NodeLayoutCommands = {
-  sync: (nodeIds: readonly NodeId[]) => CommandResult | undefined
-}
-
 export type NodeLockCommands = {
   set: (nodeIds: readonly NodeId[], locked: boolean) => CommandResult
   toggle: (nodeIds: readonly NodeId[]) => CommandResult
@@ -104,5 +100,4 @@ export type NodeCommands = {
   shape: NodeShapeCommands
   style: NodeStyleCommands
   text: NodeTextCommands
-  layout: NodeLayoutCommands
 }

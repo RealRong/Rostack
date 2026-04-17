@@ -107,6 +107,7 @@ export type {
   LayoutRequest,
   LayoutResult,
   NodeLayoutSpec,
+  TextTypographyProfile,
   TextSourceField,
   TextSourceId
 } from '@whiteboard/editor/types/layout'

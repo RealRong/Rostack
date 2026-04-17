@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDocument } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
-import { createEditor } from '@whiteboard/editor'
+import { createEditor, type LayoutBackend } from '@whiteboard/editor'
 import type { NodeRegistry } from '@whiteboard/editor'
 import { INSERT_PRESET_CATALOG } from '../src/features/toolbox/presets'
 import { createInsertBridge } from '../src/runtime/bridge/insert'
@@ -56,6 +56,27 @@ const registry: NodeRegistry = {
   }
 }
 
+const layout: LayoutBackend = {
+  measure: (request) => {
+    if (request.kind === 'fit') {
+      return {
+        kind: 'fit',
+        fontSize: 14
+      }
+    }
+
+    return {
+      kind: 'size',
+      size: {
+        width: request.widthMode === 'wrap'
+          ? (request.wrapWidth ?? request.minWidth ?? 144)
+          : (request.minWidth ?? 132),
+        height: 44
+      }
+    }
+  }
+}
+
 describe('mindmap insert position', () => {
   it('centers the inserted blank mindmap on the requested point', () => {
     const editor = createEditor({
@@ -69,7 +90,10 @@ describe('mindmap insert position', () => {
         center: { x: 0, y: 0 },
         zoom: 1
       },
-      registry
+      registry,
+      services: {
+        layout
+      }
     })
     const insert = createInsertBridge({
       editor,
@@ -87,7 +111,7 @@ describe('mindmap insert position', () => {
     expect(result).toBeDefined()
     const rootRect = editor.read.node.render.get(result!.nodeId)?.rect
     expect(rootRect).toBeDefined()
-    expect(rootRect!.width).toBe(144)
+    expect(rootRect!.width).toBe(132)
     expect(rootRect!.height).toBe(44)
     expect(rootRect!.x + rootRect!.width / 2).toBe(at.x)
     expect(rootRect!.y + rootRect!.height / 2).toBe(at.y)
@@ -105,7 +129,10 @@ describe('mindmap insert position', () => {
         center: { x: 0, y: 0 },
         zoom: 1
       },
-      registry
+      registry,
+      services: {
+        layout
+      }
     })
 
     const created = editor.actions.mindmap.create({

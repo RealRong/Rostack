@@ -16,7 +16,10 @@ import {
   type ReadStore
 } from '@shared/core'
 import type { TableLayout } from '@dataview/react/views/table/layout'
-import { TableLayoutModel } from '@dataview/react/views/table/virtual/layoutModel'
+import {
+  TableLayoutModel,
+  type TableLayoutSource
+} from '@dataview/react/views/table/virtual/layoutModel'
 import type { TableBlock } from '@dataview/react/views/table/virtual/types'
 
 const BOOTSTRAP_VIEWPORT_HEIGHT = () => (
@@ -181,6 +184,27 @@ const sameWindowSnapshot = (
   && left.items.length === right.items.length
   && left.items.every((block, index) => sameWindowBlock(block, right.items[index]!))
 
+const toLayoutSource = (
+  currentView: CurrentView | undefined
+): TableLayoutSource | null => currentView
+  ? {
+      grouped: Boolean(currentView.view.group),
+      items: currentView.items,
+      sections: currentView.sections
+    }
+  : null
+
+const sameLayoutSource = (
+  left: TableLayoutSource | null,
+  right: TableLayoutSource | null
+) => left === right || (
+  !!left
+  && !!right
+  && left.grouped === right.grouped
+  && left.items === right.items
+  && left.sections === right.sections
+)
+
 export const resolveTableWindowOverscan = (input: {
   marqueeActive: boolean
   verticalDirection: TableVerticalDirection
@@ -291,11 +315,11 @@ export const createTableVirtualRuntime = (options: {
   let canvasTopInScrollContent: number | null = null
   let lastPageScrollTop = 0
   let currentBucketKey: string | number = '__default__'
-  let currentView = options.currentViewStore.get()
+  let currentLayoutSource = toLayoutSource(options.currentViewStore.get())
   let layoutRevision = 0
-  let layoutModel = currentView
+  let layoutModel = currentLayoutSource
     ? TableLayoutModel.fromCurrentView({
-        currentView,
+        source: currentLayoutSource,
         rowHeight: options.layout.rowHeight,
         headerHeight: options.layout.headerHeight,
         measuredHeights: measurementBuckets.get(currentBucketKey)
@@ -375,9 +399,9 @@ export const createTableVirtualRuntime = (options: {
     key: string
     top: number
   } | null = null) => {
-    layoutModel = currentView
+    layoutModel = currentLayoutSource
       ? TableLayoutModel.fromCurrentView({
-          currentView,
+          source: currentLayoutSource,
           rowHeight: options.layout.rowHeight,
           headerHeight: options.layout.headerHeight,
           measuredHeights: measurementBuckets.get(currentBucketKey)
@@ -525,17 +549,31 @@ export const createTableVirtualRuntime = (options: {
 
     if (input.reset || bucketChanged) {
       currentBucketKey = input.bucketKey
-      measurementBuckets.set(
-        input.bucketKey,
-        input.heightById
-          ? new Map(input.heightById)
-          : nextBucket
-      )
-      rebuildLayoutModel(anchor)
+      const activeBucket = input.heightById
+        ? new Map(input.heightById)
+        : nextBucket
+      measurementBuckets.set(input.bucketKey, activeBucket)
+      if (!layoutModel) {
+        publishLayout()
+        updateWindowSnapshot()
+        return
+      }
+
+      const didApply = layoutModel.replaceMeasuredHeights(activeBucket)
+      if (didApply) {
+        layoutRevision += 1
+        publishLayout()
+        compensateLayoutShift(anchor)
+      }
+      updateWindowSnapshot()
       return
     }
 
     let bucketChangedData = false
+    const hasPatchChanges = Boolean(
+      input.changedHeightById?.size
+      || input.removedKeys?.length
+    )
 
     input.changedHeightById?.forEach((height, key) => {
       if (nextBucket.get(key) === height) {
@@ -555,7 +593,7 @@ export const createTableVirtualRuntime = (options: {
       bucketChangedData = true
     })
 
-    if (input.heightById) {
+    if (input.heightById && !hasPatchChanges) {
       if (nextBucket.size !== input.heightById.size) {
         bucketChangedData = true
       } else {
@@ -576,13 +614,14 @@ export const createTableVirtualRuntime = (options: {
       return
     }
 
-    const activeBucket = measurementBuckets.get(currentBucketKey)
-    const didApply = input.heightById && activeBucket
-      ? layoutModel.replaceMeasuredHeights(activeBucket)
-      : layoutModel.applyMeasuredHeightPatches({
+    const didApply = hasPatchChanges
+      ? layoutModel.applyMeasuredHeightPatches({
           changedHeights: input.changedHeightById,
           removedKeys: input.removedKeys
         })
+      : layoutModel.replaceMeasuredHeights(
+          measurementBuckets.get(currentBucketKey) ?? new Map<string, number>()
+        )
 
     if (!didApply) {
       return
@@ -671,7 +710,12 @@ export const createTableVirtualRuntime = (options: {
   }
 
   const unsubscribeCurrentView = options.currentViewStore.subscribe(() => {
-    currentView = options.currentViewStore.get()
+    const nextLayoutSource = toLayoutSource(options.currentViewStore.get())
+    if (sameLayoutSource(currentLayoutSource, nextLayoutSource)) {
+      return
+    }
+
+    currentLayoutSource = nextLayoutSource
     rebuildLayoutModel()
   })
   const unsubscribeViewport = viewportStore.subscribe(() => {

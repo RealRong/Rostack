@@ -85,6 +85,40 @@ const toInsertResult = ({
     : undefined
 })
 
+const recenterNode = ({
+  editor,
+  nodeId,
+  center
+}: {
+  editor: WhiteboardRuntime
+  nodeId: NodeId
+  center: Point
+}) => {
+  const rect = editor.read.node.render.get(nodeId)?.rect
+  if (!rect) {
+    return
+  }
+
+  const nextPosition = {
+    x: center.x - rect.width / 2,
+    y: center.y - rect.height / 2
+  }
+  const current = editor.read.node.render.get(nodeId)?.node.position
+  if (
+    current
+    && current.x === nextPosition.x
+    && current.y === nextPosition.y
+  ) {
+    return
+  }
+
+  editor.actions.node.patch([nodeId], {
+    fields: {
+      position: nextPosition
+    }
+  })
+}
+
 const insertNodePreset = ({
   editor,
   preset,
@@ -103,6 +137,14 @@ const insertNodePreset = ({
   )
   if (!result.ok) {
     return undefined
+  }
+
+  if (preset.placement !== 'point') {
+    recenterNode({
+      editor,
+      nodeId: result.data.nodeId,
+      center: world
+    })
   }
 
   return toInsertResult({

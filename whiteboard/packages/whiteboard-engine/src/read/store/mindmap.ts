@@ -9,6 +9,9 @@ import {
   getSubtreeIds,
   resolveMindmapRender
 } from '@whiteboard/core/mindmap'
+import {
+  resolveNodeBootstrapSize
+} from '@whiteboard/core/node'
 import type { ReadSnapshot } from '@whiteboard/engine/types/internal/read'
 import { createProjectionRuntime } from '@whiteboard/engine/read/store/projection'
 
@@ -65,9 +68,12 @@ export const createMindmapProjection = (
       tree,
       (nodeId) => {
         const node = allNodeById.get(nodeId)
+        const bootstrap = node
+          ? resolveNodeBootstrapSize(node)
+          : undefined
         return {
-          width: Math.max(node?.size?.width ?? config.mindmapNodeSize.width, 1),
-          height: Math.max(node?.size?.height ?? config.mindmapNodeSize.height, 1)
+          width: Math.max(node?.size?.width ?? bootstrap?.width ?? config.mindmapNodeSize.width, 1),
+          height: Math.max(node?.size?.height ?? bootstrap?.height ?? config.mindmapNodeSize.height, 1)
         }
       },
       tree.layout

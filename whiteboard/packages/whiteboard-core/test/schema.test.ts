@@ -93,10 +93,10 @@ test('compileNodeFieldUpdate 与 compileNodeFieldUpdates 只输出 canonical rec
   )
 })
 
-test('applyNodeDefaults 为 auto text 节点补齐系统初始尺寸', () => {
+test('applyNodeDefaults 不再为 auto text 节点写入 bootstrap size', () => {
   const registries = createRegistries()
 
-  assert.deepEqual(
+  assert.equal(
     applyNodeDefaults({
       type: 'text',
       position: {
@@ -107,17 +107,14 @@ test('applyNodeDefaults 为 auto text 节点补齐系统初始尺寸', () => {
         text: 'hello'
       }
     }, registries).size,
-    {
-      width: 144,
-      height: 24
-    }
+    undefined
   )
 })
 
-test('applyNodeDefaults 为 wrap text 节点使用 wrapWidth 作为初始宽度', () => {
+test('applyNodeDefaults 不再为 wrap text 节点写入 bootstrap size', () => {
   const registries = createRegistries()
 
-  assert.deepEqual(
+  assert.equal(
     applyNodeDefaults({
       type: 'text',
       position: {
@@ -130,9 +127,6 @@ test('applyNodeDefaults 为 wrap text 节点使用 wrapWidth 作为初始宽度'
         wrapWidth: 240
       }
     }, registries).size,
-    {
-      width: 240,
-      height: 24
-    }
+    undefined
   )
 })

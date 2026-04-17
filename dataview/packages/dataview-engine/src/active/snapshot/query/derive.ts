@@ -26,8 +26,8 @@ import {
 } from '@dataview/engine/active/index/group/demand'
 import type {
   IndexState,
+  SearchFieldIndex,
   SearchIndex,
-  SearchTextIndex
 } from '@dataview/engine/active/index/contracts'
 import type {
   QueryState
@@ -55,14 +55,14 @@ type FilterRulePlan = {
 type SearchMatches = {
   query: string
   sourceKey: string
-  sourceRev: number
-  sources: readonly SearchTextIndex[]
+  sourceRevisionKey: string
+  sources: readonly SearchFieldIndex[]
   matched: readonly RecordId[]
 }
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_VALUE_MAP = new Map<RecordId, unknown>()
-const EMPTY_SEARCH_SOURCES = [] as readonly SearchTextIndex[]
+const EMPTY_SEARCH_SOURCES = [] as readonly SearchFieldIndex[]
 const EMPTY_SEARCH_GRAMS = [] as readonly string[]
 const SEARCH_SOURCE_SEPARATOR = '\u0000'
 const REVERSED_SORT_IDS = new WeakMap<readonly RecordId[], readonly RecordId[]>()
@@ -347,25 +347,21 @@ const unionCandidates = (
   order
 })
 
-const resolveSearchSources = (
+const resolveSearchScope = (
   search: View['search'],
   index: SearchIndex
 ): {
   key: string
-  sources: readonly SearchTextIndex[]
+  revisionKey: string
+  sources: readonly SearchFieldIndex[]
 } => {
-  if (!search.fields?.length) {
-    return {
-      key: 'all',
-      sources: index.all
-        ? [index.all]
-        : EMPTY_SEARCH_SOURCES
-    }
-  }
+  const fieldIds = search.fields?.length
+    ? search.fields
+    : Array.from(index.fields.keys())
+  const sources: SearchFieldIndex[] = []
 
-  const sources: SearchTextIndex[] = []
-  for (let indexOfField = 0; indexOfField < search.fields.length; indexOfField += 1) {
-    const fieldId = search.fields[indexOfField]!
+  for (let indexOfField = 0; indexOfField < fieldIds.length; indexOfField += 1) {
+    const fieldId = fieldIds[indexOfField]!
     const source = index.fields.get(fieldId)
     if (source) {
       sources.push(source)
@@ -373,7 +369,12 @@ const resolveSearchSources = (
   }
 
   return {
-    key: search.fields.join(SEARCH_SOURCE_SEPARATOR),
+    key: fieldIds.length
+      ? fieldIds.join(SEARCH_SOURCE_SEPARATOR)
+      : 'none',
+    revisionKey: sources.length
+      ? sources.map(source => `${source.fieldId}:${source.rev}`).join(SEARCH_SOURCE_SEPARATOR)
+      : '',
     sources: sources.length
       ? sources
       : EMPTY_SEARCH_SOURCES
@@ -404,7 +405,7 @@ const collectSearchGrams = (
 }
 
 const resolveIndexedSearchCandidatesForSource = (input: {
-  source: SearchTextIndex
+  source: SearchFieldIndex
   query: string
   allRecordIds: readonly RecordId[]
   recordOrder: ReadonlyMap<RecordId, number>
@@ -415,8 +416,8 @@ const resolveIndexedSearchCandidatesForSource = (input: {
   }
 
   const postings = input.query.length >= 3
-    ? input.source.trigrams
-    : input.source.bigrams
+    ? input.source.grams3
+    : input.source.grams2
   const lists: RecordId[][] = []
 
   for (let index = 0; index < grams.length; index += 1) {
@@ -438,7 +439,7 @@ const resolveIndexedSearchCandidatesForSource = (input: {
 }
 
 const resolveExactSearchCandidatesForSource = (
-  source: SearchTextIndex,
+  source: SearchFieldIndex,
   query: string
 ): readonly RecordId[] => {
   const candidates: RecordId[] = []
@@ -457,7 +458,7 @@ const resolveExactSearchCandidatesForSource = (
 const filterExactSearchCandidates = (input: {
   ids: readonly RecordId[]
   query: string
-  sources: readonly SearchTextIndex[]
+  sources: readonly SearchFieldIndex[]
 }): readonly RecordId[] => {
   const candidates: RecordId[] = []
 
@@ -485,13 +486,13 @@ const resolveSearchMatches = (input: {
     return undefined
   }
 
-  const resolvedSources = resolveSearchSources(input.search, input.index)
-  if (!resolvedSources.sources.length) {
+  const scope = resolveSearchScope(input.search, input.index)
+  if (!scope.sources.length) {
     return {
       query,
-      sourceKey: resolvedSources.key,
-      sourceRev: input.index.rev,
-      sources: resolvedSources.sources,
+      sourceKey: scope.key,
+      sourceRevisionKey: scope.revisionKey,
+      sources: scope.sources,
       matched: EMPTY_RECORD_IDS
     }
   }
@@ -499,34 +500,34 @@ const resolveSearchMatches = (input: {
   const previousSearch = input.previous?.search
   if (
     previousSearch
-    && previousSearch.sourceKey === resolvedSources.key
-    && previousSearch.sourceRev === input.index.rev
+    && previousSearch.sourceKey === scope.key
+    && previousSearch.sourceRevisionKey === scope.revisionKey
     && query.startsWith(previousSearch.query)
   ) {
     return {
       query,
-      sourceKey: resolvedSources.key,
-      sourceRev: input.index.rev,
-      sources: resolvedSources.sources,
+      sourceKey: scope.key,
+      sourceRevisionKey: scope.revisionKey,
+      sources: scope.sources,
       matched: filterExactSearchCandidates({
         ids: previousSearch.matched,
         query,
-        sources: resolvedSources.sources
+        sources: scope.sources
       })
     }
   }
 
   return {
     query,
-    sourceKey: resolvedSources.key,
-    sourceRev: input.index.rev,
-    sources: resolvedSources.sources,
+    sourceKey: scope.key,
+    sourceRevisionKey: scope.revisionKey,
+    sources: scope.sources,
     matched: (() => {
       const exactCandidateLists: RecordId[][] = []
 
       if (query.length < 2) {
-        for (let index = 0; index < resolvedSources.sources.length; index += 1) {
-          const candidates = resolveExactSearchCandidatesForSource(resolvedSources.sources[index]!, query)
+        for (let index = 0; index < scope.sources.length; index += 1) {
+          const candidates = resolveExactSearchCandidatesForSource(scope.sources[index]!, query)
           if (candidates.length) {
             exactCandidateLists.push(candidates as RecordId[])
           }
@@ -538,9 +539,9 @@ const resolveSearchMatches = (input: {
       }
 
       const candidateLists: RecordId[][] = []
-      for (let index = 0; index < resolvedSources.sources.length; index += 1) {
+      for (let index = 0; index < scope.sources.length; index += 1) {
         const candidates = resolveIndexedSearchCandidatesForSource({
-          source: resolvedSources.sources[index]!,
+          source: scope.sources[index]!,
           query,
           allRecordIds: input.allRecordIds,
           recordOrder: input.recordOrder
@@ -556,7 +557,7 @@ const resolveSearchMatches = (input: {
       return filterExactSearchCandidates({
         ids: candidatePool,
         query,
-        sources: resolvedSources.sources
+        sources: scope.sources
       })
     })()
   }
@@ -1045,17 +1046,17 @@ const publishQueryState = (input: {
   return {
     records: nextRecords,
     ...(input.search
-      ? {
-          search: previous?.search
+        ? {
+            search: previous?.search
             && previous.search.query === input.search.query
             && previous.search.sourceKey === input.search.sourceKey
-            && previous.search.sourceRev === input.search.sourceRev
+            && previous.search.sourceRevisionKey === input.search.sourceRevisionKey
             && sameOrder(previous.search.matched, input.search.matched)
               ? previous.search
               : {
                   query: input.search.query,
                   sourceKey: input.search.sourceKey,
-                  sourceRev: input.search.sourceRev,
+                  sourceRevisionKey: input.search.sourceRevisionKey,
                   matched: input.search.matched
                 }
         }

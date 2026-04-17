@@ -49,13 +49,9 @@ const createMockItemList = (ids: readonly string[]) => ({
 
 test('TableLayoutModel uses measured heights for flat table blocks and recomputes tops', () => {
   const model = TableLayoutModel.fromCurrentView({
-    currentView: {
-      view: {
-        group: null
-      },
-      items: {
-        ids: ['row_1', 'row_2']
-      },
+    source: {
+      grouped: false,
+      items: createMockItemList(['row_1', 'row_2']),
       sections: {
         all: []
       }
@@ -103,26 +99,20 @@ test('TableLayoutModel uses measured heights for flat table blocks and recompute
 
 test('TableLayoutModel uses measured heights for grouped section blocks and keeps collapsed sections compact', () => {
   const model = TableLayoutModel.fromCurrentView({
-    currentView: {
-      view: {
-        group: {
-          fieldId: 'status'
-        }
-      },
-      items: {
-        ids: ['row_1', 'row_2', 'row_3']
-      },
+    source: {
+      grouped: true,
+      items: createMockItemList(['row_1', 'row_2', 'row_3']),
       sections: {
         all: [
           {
             key: 'won',
-            title: 'Won',
+            label: 'Won',
             collapsed: false,
             items: createMockItemList(['row_1', 'row_2'])
           },
           {
             key: 'lost',
-            title: 'Lost',
+            label: 'Lost',
             collapsed: true,
             items: createMockItemList(['row_3'])
           }
@@ -184,13 +174,9 @@ test('TableLayoutModel uses measured heights for grouped section blocks and keep
 
 test('TableLayoutModel applies measured height patches incrementally and locates rows by offset', () => {
   const model = TableLayoutModel.fromCurrentView({
-    currentView: {
-      view: {
-        group: null
-      },
-      items: {
-        ids: ['row_1', 'row_2', 'row_3']
-      },
+    source: {
+      grouped: false,
+      items: createMockItemList(['row_1', 'row_2', 'row_3']),
       sections: {
         all: []
       }

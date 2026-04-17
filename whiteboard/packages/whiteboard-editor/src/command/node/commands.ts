@@ -11,7 +11,6 @@ import {
   createNodeTextCommands
 } from '@whiteboard/editor/command/node/text'
 import type {
-  NodeLayoutCommands,
   NodeCommands,
   NodeLockCommands,
   NodeShapeCommands,
@@ -129,28 +128,6 @@ const createNodeStyleCommands = (
   )
 })
 
-const createNodeLayoutCommands = (
-  ctx: NodeContext
-): NodeLayoutCommands => ({
-  sync: (nodeIds) => {
-    const updates = nodeIds.flatMap((id) => {
-      const update = ctx.layout.syncNode(id)
-      return update
-        ? [{
-            id,
-            update
-          }]
-        : []
-    })
-
-    return updates.length > 0
-      ? ctx.write.updateMany(updates, {
-          origin: 'system'
-        })
-      : undefined
-  }
-})
-
 export const createNodeCommands = ({
   engine,
   read,
@@ -180,10 +157,14 @@ export const createNodeCommands = ({
   })
 
   return {
-    create: (payload) => engine.execute({
-      type: 'node.create',
-      payload
-    }),
+    create: (payload) => {
+      const nextPayload = layout.patchNodeCreatePayload(payload)
+      const result = engine.execute({
+        type: 'node.create',
+        payload: nextPayload
+      })
+      return result
+    },
     patch: (ids, update, options) => {
       if (isNodeUpdateEmpty(update)) {
         return undefined
@@ -235,7 +216,6 @@ export const createNodeCommands = ({
     lock: createNodeLockCommands(ctx),
     shape: createNodeShapeCommands(ctx),
     style: createNodeStyleCommands(ctx),
-    text: createNodeTextCommands(ctx),
-    layout: createNodeLayoutCommands(ctx)
+    text: createNodeTextCommands(ctx)
   }
 }

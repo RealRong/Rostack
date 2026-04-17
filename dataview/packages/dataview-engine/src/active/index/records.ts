@@ -29,6 +29,10 @@ import {
 
 const EMPTY_VALUE_MAP = new Map<RecordId, unknown>()
 const EMPTY_RECORD_IDS: readonly RecordId[] = []
+const EMPTY_VALUE_INDEX: RecordValueIndex = {
+  byRecord: EMPTY_VALUE_MAP,
+  ids: EMPTY_RECORD_IDS
+}
 
 const readFieldValue = (
   row: DataDoc['records']['byId'][RecordId] | undefined,
@@ -138,6 +142,17 @@ export const buildRecordIndex = (
   rev
 })
 
+const createAddedFieldValueIndex = (input: {
+  context: IndexDeriveContext
+  fieldId: FieldId
+}): RecordValueIndex => (
+  input.context.schemaFields.has(input.fieldId)
+  && input.context.touchedRecords !== 'all'
+  && !input.context.recordSetChanged
+)
+  ? EMPTY_VALUE_INDEX
+  : buildValueIndex(input.context.document, input.fieldId)
+
 export const syncRecordIndex = (
   previous: RecordIndex,
   context: IndexDeriveContext,
@@ -203,7 +218,10 @@ export const syncRecordIndex = (
 
     nextFieldIds.forEach(fieldId => {
       if (!previous.values.has(fieldId)) {
-        values.set(fieldId, buildValueIndex(context.document, fieldId))
+        values.set(fieldId, createAddedFieldValueIndex({
+          context,
+          fieldId
+        }))
       }
     })
   }

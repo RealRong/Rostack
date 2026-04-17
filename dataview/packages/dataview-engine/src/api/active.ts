@@ -53,8 +53,7 @@ export const createActiveViewApi = (options: {
     summary: createSummaryApi(base),
     display,
     table: createTableApi({
-      base,
-      display
+      base
     }),
     gallery: createGalleryApi(base),
     kanban: createKanbanApi(base),

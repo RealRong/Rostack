@@ -17,8 +17,7 @@ import {
   normalizeIndexDemand,
   sameFieldIdList,
   sameCalculationDemand,
-  sameGroupDemand,
-  sameSearchDemand
+  sameGroupDemand
 } from '@dataview/engine/active/index/demand'
 import {
   buildGroupIndex,
@@ -83,7 +82,7 @@ const buildState = (
 }
 
 const runIndexDemandStage = <
-  TState extends { rev: number },
+  TState,
   TDemand
 >(input: {
   previous: TState
@@ -92,7 +91,7 @@ const runIndexDemandStage = <
   sameDemand: (left: TDemand, right: TDemand) => boolean
   sync: (previous: TState) => TState
   ensure: (state: TState) => TState
-  build: (rev: number) => TState
+  build: (previous: TState) => TState
 }): {
   state: TState
   durationMs: number
@@ -100,7 +99,7 @@ const runIndexDemandStage = <
   const start = now()
   const state = input.sameDemand(input.previousDemand, input.nextDemand)
     ? input.ensure(input.sync(input.previous))
-    : input.build(input.previous.rev + 1)
+    : input.build(input.previous)
 
   return {
     state,
@@ -145,15 +144,19 @@ export const deriveIndex = (input: {
   )
   const recordsMs = now() - recordsStart
 
-  const searchStage = runIndexDemandStage({
-    previous: previous.search,
-    previousDemand: input.previousDemand.search,
-    nextDemand: nextDemand.search,
-    sameDemand: sameSearchDemand,
-    sync: current => syncSearchIndex(current, context, records),
-    ensure: current => ensureSearchIndex(current, context, records, nextDemand.search),
-    build: rev => buildSearchIndex(context, records, nextDemand.search, rev)
-  })
+  const searchStart = now()
+  const syncedSearch = syncSearchIndex(
+    previous.search,
+    context,
+    records
+  )
+  const search = ensureSearchIndex(
+    syncedSearch,
+    context,
+    records,
+    nextDemand.search
+  )
+  const searchMs = now() - searchStart
 
   const groupStage = runIndexDemandStage({
     previous: previous.group,
@@ -167,7 +170,7 @@ export const deriveIndex = (input: {
       input.impact
     ),
     ensure: current => ensureGroupIndex(current, context, records, nextDemand.groups),
-    build: rev => buildGroupIndex(context, records, nextDemand.groups, rev)
+    build: current => buildGroupIndex(context, records, nextDemand.groups, current.rev + 1)
   })
 
   const previousSectionGroupKey = readSectionGroupDemand(input.previousDemand.groups)
@@ -190,7 +193,7 @@ export const deriveIndex = (input: {
     sameDemand: sameFieldIdList,
     sync: current => syncSortIndex(current, context, records),
     ensure: current => ensureSortIndex(current, context, records, nextDemand.sortFields),
-    build: rev => buildSortIndex(context, records, nextDemand.sortFields, rev)
+    build: current => buildSortIndex(context, records, nextDemand.sortFields, current.rev + 1)
   })
 
   const summariesStage = runIndexDemandStage({
@@ -200,14 +203,12 @@ export const deriveIndex = (input: {
     sameDemand: sameCalculationDemand,
     sync: current => syncCalculationIndex(current, context, records, input.impact),
     ensure: current => ensureCalculationIndex(current, context, records, nextDemand.calculations),
-    build: rev => buildCalculationIndex(context, records, nextDemand.calculations, rev)
+    build: current => buildCalculationIndex(context, records, nextDemand.calculations, current.rev + 1)
   })
 
-  const search = searchStage.state
   const group = groupStage.state
   const sort = sortStage.state
   const summaries = summariesStage.state
-  const searchMs = searchStage.durationMs
   const groupMs = groupStage.durationMs
   const sortMs = sortStage.durationMs
   const summariesMs = summariesStage.durationMs

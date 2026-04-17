@@ -301,7 +301,7 @@ export const ui = {
       ),
       wrapCells: token(
         'meta.ui.viewSettings.layoutPanel.wrapCells',
-        'Wrap cell content'
+        'Wrap content'
       ),
       tableInlineStatus: token(
         'meta.ui.viewSettings.layoutPanel.tableInlineStatus',

@@ -10,43 +10,23 @@ import {
   useState
 } from 'react'
 import {
-  useKeyedStoreValue
-} from '@shared/react'
-import {
-  readEdgeLabelSideGap,
-  resolveEdgeLabelPlacement,
-  resolveEdgeLabelPlacementSize
-} from '@whiteboard/core/edge'
-import {
   WHITEBOARD_LINE_DEFAULT_COLOR
 } from '@whiteboard/core/node'
 import type { EdgeId } from '@whiteboard/core/types'
 import {
-  readEdgeLabelTextSourceId
-} from '@whiteboard/editor'
+  readEdgeLabelMaskTransform,
+  type EdgeLabelMaskRect
+} from '@whiteboard/core/edge'
 import {
-  useEdit,
-  useEditorRuntime,
   usePickRef,
   useResolvedConfig,
   useWhiteboardServices
 } from '@whiteboard/react/runtime/hooks'
 import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
-import { matchEdgeLabelEdit } from '@whiteboard/react/features/edit/session'
 import { useEdgeView } from '@whiteboard/react/features/edge/hooks/useEdgeView'
 import {
   resolveEdgeDash
 } from '@whiteboard/react/features/edge/constants'
-import {
-  buildEdgeLabelMaskRect,
-  readEdgeLabelMaskTransform
-} from '@whiteboard/react/features/edge/dom/labelMask'
-import type {
-  EdgeLabelSizeObserver
-} from '@whiteboard/react/features/edge/dom/labelSizeObserver'
-import {
-  readEdgeLabelMeasureKey
-} from '@whiteboard/react/features/edge/dom/labelSizeObserver'
 import {
   resolvePaletteColor,
   resolvePaletteColorOr
@@ -56,32 +36,9 @@ import {
 } from '@whiteboard/react/features/edge/ui/marker'
 import type { EdgeView } from '@whiteboard/react/types/edge'
 
-const EDGE_LABEL_PLACEHOLDER = 'Label'
-
 type EdgeItemProps = {
   edgeId: EdgeId
-  selected?: boolean
-  edgeLabelObserver: EdgeLabelSizeObserver
 }
-
-const readLabelText = (
-  value: string | undefined
-) => typeof value === 'string'
-  ? value
-  : ''
-
-const readLabelDisplayText = (
-  value: string,
-  editing: boolean
-) => value || (editing ? EDGE_LABEL_PLACEHOLDER : '')
-
-const readActiveLabelText = ({
-  committed,
-  draft
-}: {
-  committed: string
-  draft?: string
-}) => draft ?? committed
 
 const resolveTextStyle = ({
   color,
@@ -103,123 +60,44 @@ const resolveTextStyle = ({
   fontStyle: italic ? 'italic' : 'normal'
 })
 
-const useStableMeasuredSize = (
-  size?: {
-    width: number
-    height: number
-  }
-) => {
-  const sizeRef = useRef<typeof size>(size)
-
-  if (size) {
-    sizeRef.current = size
-  }
-
-  return size ?? sizeRef.current
-}
-
-const resolveLabelPlacement = ({
-  path,
-  label,
-  textMode,
-  labelSize
-}: {
-  path: EdgeView['path']
-  label: NonNullable<EdgeView['edge']['labels']>[number]
-  textMode: NonNullable<EdgeView['edge']['textMode']>
-  labelSize?: {
-    width: number
-    height: number
-  }
-}) => resolveEdgeLabelPlacement({
-  path,
-  t: label.t ?? 0.5,
-  offset: label.offset ?? 0,
-  textMode,
-  labelSize,
-  sideGap: readEdgeLabelSideGap(textMode)
-})
-
 const EdgeLabelItem = ({
   edgeId,
-  labelId,
+  label,
   selected,
   pad,
-  origin,
-  path,
-  textMode,
-  label,
-  edgeLabelObserver
+  origin
 }: {
   edgeId: EdgeId
-  labelId: string
+  label: EdgeView['labels'][number]
   selected: boolean
   pad: number
   origin: {
     x: number
     y: number
   }
-  path: EdgeView['path']
-  textMode: NonNullable<EdgeView['edge']['textMode']>
-  label: NonNullable<EdgeView['edge']['labels']>[number]
-  edgeLabelObserver: EdgeLabelSizeObserver
 }) => {
   const { textSources } = useWhiteboardServices()
-  const edit = useEdit()
   const pickRef = usePickRef({
     kind: 'edge',
     id: edgeId,
     part: 'label',
-    labelId
+    labelId: label.id
   })
   const sourceRef = useRef<HTMLDivElement | null>(null)
-  const measureKey = readEdgeLabelMeasureKey(edgeId, labelId)
-  const sourceId = readEdgeLabelTextSourceId(edgeId, labelId)
-  const labelSize = useKeyedStoreValue(edgeLabelObserver.sizes, measureKey)
-  const stableLabelSize = useStableMeasuredSize(labelSize)
-  const text = readLabelText(label.text)
-  const labelEdit = matchEdgeLabelEdit(edit, edgeId, labelId)
-  const editing = labelEdit !== null
-  const activeText = readActiveLabelText({
-    committed: text,
-    draft: labelEdit?.draft.text
-  })
-  const displayText = readLabelDisplayText(activeText, editing)
-  const placementLabelSize = resolveEdgeLabelPlacementSize({
-    textMode,
-    measuredSize: stableLabelSize,
-    text: displayText,
-    fontSize: label.style?.size
-  })
-  const placement = useMemo(() => resolveLabelPlacement({
-    path,
-    label,
-    textMode,
-    labelSize: placementLabelSize
-  }), [label, path, placementLabelSize, textMode])
-
   const bindLabelRef = useCallback((element: HTMLDivElement | null) => {
     if (sourceRef.current === element) {
       return
     }
 
     if (sourceRef.current) {
-      textSources.set(sourceId, null)
+      textSources.set(label.sourceId, null)
     }
 
-    textSources.set(sourceId, element)
+    textSources.set(label.sourceId, element)
     pickRef(element)
-    edgeLabelObserver.register(measureKey, element)
     sourceRef.current = element
-  }, [edgeLabelObserver, measureKey, pickRef, sourceId, textSources])
+  }, [label.sourceId, pickRef, textSources])
 
-  if (!placement || !displayText.trim()) {
-    return null
-  }
-
-  const angle = textMode === 'tangent'
-    ? placement.angle
-    : 0
   const style = resolveTextStyle({
     color: label.style?.color,
     bg: label.style?.bg,
@@ -227,24 +105,24 @@ const EdgeLabelItem = ({
     weight: label.style?.weight,
     italic: label.style?.italic
   })
-  const x = placement.point.x - origin.x + pad
-  const y = placement.point.y - origin.y + pad
+  const x = label.point.x - origin.x + pad
+  const y = label.point.y - origin.y + pad
 
   return (
     <div
       data-selection-ignore
       className="wb-edge-label"
       data-selected={selected ? 'true' : undefined}
-      data-editing={editing ? 'true' : undefined}
+      data-editing={label.editable ? 'true' : undefined}
       style={{
-        transform: `translate(${x}px, ${y}px) translate(-50%, -50%) rotate(${angle}deg)`
+        transform: `translate(${x}px, ${y}px) translate(-50%, -50%) rotate(${label.angle}deg)`
       }}
     >
-      {editing ? (
+      {label.editable ? (
         <EditableSlot
           bindRef={bindLabelRef}
-          value={labelEdit.draft.text}
-          caret={labelEdit.caret}
+          value={label.text}
+          caret={label.caret ?? { kind: 'end' }}
           multiline
           className="wb-edge-label-content wb-edge-label-content-editing wb-default-text-editor"
           style={style}
@@ -253,14 +131,14 @@ const EdgeLabelItem = ({
           <div
             ref={bindLabelRef}
             data-edit-edge-id={edgeId}
-            data-edit-label-id={labelId}
+            data-edit-label-id={label.id}
             className="wb-edge-label-content"
             style={{
               ...style,
-              opacity: text ? 1 : 0.48
+              opacity: label.text ? 1 : 0.48
             }}
           >
-            {displayText}
+            {label.displayText}
           </div>
         )}
     </div>
@@ -268,82 +146,28 @@ const EdgeLabelItem = ({
 }
 
 const EdgeLabelMaskHole = ({
-  edgeId,
-  labelId,
-  path,
-  textMode,
-  label,
-  edgeLabelObserver
+  label
 }: {
-  edgeId: EdgeId
-  labelId: string
-  path: EdgeView['path']
-  textMode: NonNullable<EdgeView['edge']['textMode']>
-  label: NonNullable<EdgeView['edge']['labels']>[number]
-  edgeLabelObserver: EdgeLabelSizeObserver
-}) => {
-  const edit = useEdit()
-  const measureKey = readEdgeLabelMeasureKey(edgeId, labelId)
-  const size = useKeyedStoreValue(edgeLabelObserver.sizes, measureKey)
-  const stableSize = useStableMeasuredSize(size)
-  const labelEdit = matchEdgeLabelEdit(edit, edgeId, labelId)
-  const editing = labelEdit !== null
-  const text = readLabelText(label.text)
-  const activeText = readActiveLabelText({
-    committed: text,
-    draft: labelEdit?.draft.text
-  })
-  const displayText = readLabelDisplayText(activeText, editing)
-  const placementLabelSize = resolveEdgeLabelPlacementSize({
-    textMode,
-    measuredSize: stableSize,
-    text: displayText,
-    fontSize: label.style?.size
-  })
-  const placement = useMemo(() => resolveLabelPlacement({
-    path,
-    label,
-    textMode,
-    labelSize: placementLabelSize
-  }), [label, path, placementLabelSize, textMode])
-
-  if (!stableSize || !placement || !displayText.trim()) {
-    return null
-  }
-
-  const angle = textMode === 'tangent'
-    ? placement.angle
-    : 0
-  const maskRect = buildEdgeLabelMaskRect({
-    center: placement.point,
-    size: stableSize,
-    angle
-  })
-
-  return (
-    <rect
-      x={maskRect.x}
-      y={maskRect.y}
-      width={maskRect.width}
-      height={maskRect.height}
-      rx={maskRect.radius}
-      ry={maskRect.radius}
-      fill="black"
-      transform={readEdgeLabelMaskTransform(maskRect)}
-    />
-  )
-}
+  label: EdgeView['labels'][number]
+}) => (
+  <rect
+    x={label.maskRect.x}
+    y={label.maskRect.y}
+    width={label.maskRect.width}
+    height={label.maskRect.height}
+    rx={label.maskRect.radius}
+    ry={label.maskRect.radius}
+    fill="black"
+    transform={readEdgeLabelMaskTransform(label.maskRect as Pick<EdgeLabelMaskRect, 'angle' | 'center'>)}
+  />
+)
 
 const EdgeItemBase = ({
-  edgeId,
-  selected = false,
-  edgeLabelObserver
+  edgeId
 }: EdgeItemProps) => {
-  const editor = useEditorRuntime()
   const config = useResolvedConfig()
   const entry = useEdgeView(edgeId)
   const hitTestThresholdScreen = config.edge.hitTestThresholdScreen
-  const box = editor.read.edge.box(edgeId)
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)
   const instanceId = useId()
@@ -391,19 +215,19 @@ const EdgeItemBase = ({
     }
   }, [entry?.edge, hitTestThresholdScreen])
 
-  if (!entry || !box) {
+  if (!entry) {
     return null
   }
 
   const edge = entry.edge
-  const textMode = edge.textMode ?? 'horizontal'
-  const showAccent = !selected && (hovered || focused)
+  const box = entry.box
+  const showAccent = !entry.selected && (hovered || focused)
   const accentStroke = stroke
   const accentStrokeWidth = hoverStrokeWidth
   const accentOpacity = 1
   const width = box.rect.width + box.pad * 2
   const height = box.rect.height + box.pad * 2
-  const labels = edge.labels ?? []
+  const labels = entry.labels
   const maskId = labels.length > 0
     ? `wb_edge_label_mask_${edge.id}_${instanceId.replaceAll(':', '_')}`
     : undefined
@@ -417,7 +241,7 @@ const EdgeItemBase = ({
     <div
       className="wb-edge-item"
       data-edge-id={edge.id}
-      data-selected={selected ? 'true' : 'false'}
+      data-selected={entry.selected ? 'true' : 'false'}
       style={{
         width,
         height,
@@ -449,15 +273,10 @@ const EdgeItemBase = ({
                 height={height}
                 fill="white"
               />
-              {labels.map((label: NonNullable<typeof edge.labels>[number]) => (
+              {labels.map((label) => (
                 <EdgeLabelMaskHole
                   key={`mask:${edge.id}:${label.id}`}
-                  edgeId={edge.id}
-                  labelId={label.id}
                   label={label}
-                  path={entry.path}
-                  textMode={textMode}
-                  edgeLabelObserver={edgeLabelObserver}
                 />
               ))}
             </mask>
@@ -515,21 +334,17 @@ const EdgeItemBase = ({
           }}
         />
       </svg>
-      {labels.map((label: NonNullable<typeof edge.labels>[number]) => (
+      {labels.map((label) => (
         <EdgeLabelItem
           key={`${edge.id}:${label.id}`}
           edgeId={edge.id}
-          labelId={label.id}
           label={label}
-          selected={selected}
+          selected={entry.selected}
           pad={box.pad}
           origin={{
             x: box.rect.x,
             y: box.rect.y
           }}
-          path={entry.path}
-          textMode={textMode}
-          edgeLabelObserver={edgeLabelObserver}
         />
       ))}
     </div>

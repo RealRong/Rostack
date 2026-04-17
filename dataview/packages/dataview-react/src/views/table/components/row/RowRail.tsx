@@ -73,6 +73,7 @@ export interface RowSelectionButtonProps {
   label?: string
   className?: string
   showOnHover?: boolean
+  fillHeight?: boolean
   onPointerStart?: (event: PointerEvent<HTMLElement>) => void
   onPress?: () => void
 }
@@ -116,7 +117,9 @@ export const RowSelectionButton = (props: RowSelectionButtonProps) => {
           insetInlineStart: -TABLE_SELECTION_COLUMN_WIDTH,
           insetBlockStart: 0,
           width: TABLE_SELECTION_COLUMN_WIDTH,
-          height: TABLE_SELECTION_COLUMN_WIDTH
+          height: props.fillHeight
+            ? '100%'
+            : TABLE_SELECTION_COLUMN_WIDTH
         }}
       >
         <Checkbox

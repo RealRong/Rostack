@@ -49,7 +49,7 @@ export const ColumnAddPropertyAction = () => {
 
   return (
     <div
-      className="shrink-0"
+      className="h-full shrink-0"
       style={{
         width: TABLE_TRAILING_ACTION_WIDTH
       }}

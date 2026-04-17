@@ -45,6 +45,7 @@ export {
   type MenuReorderProps,
   type MenuSelectionAppearance,
   type MenuSelectionMode,
+  type MenuSurfacePadding,
   type MenuSurfaceSize,
   type MenuSubmenuOpenPolicy
 } from '@shared/ui/menu'

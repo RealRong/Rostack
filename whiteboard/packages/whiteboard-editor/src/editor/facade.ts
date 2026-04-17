@@ -183,10 +183,35 @@ export const createEditorFacade = ({
   return {
     store: state,
     read: {
-      ...query.read,
+      document: {
+        background: query.read.document.background,
+        bounds: query.read.document.bounds
+      },
+      group: {
+        exactIds: query.read.group.exactIds
+      },
+      history: query.read.history,
+      mindmap: {
+        render: query.read.mindmap.render
+      },
+      node: {
+        render: query.read.node.render
+      },
+      edge: {
+        render: query.read.edge.render,
+        selectedChrome: query.read.edge.selectedChrome
+      },
+      scene: {
+        list: query.read.scene.list
+      },
+      selection: {
+        node: query.read.selection.node,
+        box: query.read.selection.box
+      },
+      tool: query.read.tool,
+      viewport: query.read.viewport,
       chrome,
-      panel,
-      selectionModel: query.selectionModel
+      panel
     },
     actions: {
       app: {

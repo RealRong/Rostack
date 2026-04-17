@@ -44,7 +44,7 @@ const View = (props: ColumnHeaderRowProps) => {
 
   return (
     <div
-      className="flex min-w-full w-max items-stretch"
+      className="flex h-full min-w-full w-max items-stretch"
     >
       <RowScopeSelectionRail
         scope={props.scope}
@@ -55,7 +55,7 @@ const View = (props: ColumnHeaderRowProps) => {
         strategy={horizontalListSortingStrategy}
       >
         <div
-          className="inline-grid min-w-0 flex-none items-stretch"
+          className="inline-grid h-full min-w-0 flex-none items-stretch"
           style={{
             gridTemplateColumns: props.template
           }}
@@ -73,7 +73,7 @@ const View = (props: ColumnHeaderRowProps) => {
         </div>
       </SortableContext>
       <div
-        className="flex shrink-0 items-stretch"
+        className="flex h-full shrink-0 items-stretch"
       >
         <ColumnAddPropertyAction />
       </div>

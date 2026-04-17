@@ -78,6 +78,7 @@ export interface SubmenuItem {
   items?: readonly MenuItem[]
   content?: MenuPopoverContent
   size?: PopoverSurfaceSize
+  padding?: PopoverSurfacePadding
   surface?: 'list' | 'panel'
   contentClassName?: string
   className?: string
@@ -114,6 +115,7 @@ export interface ReorderItem extends Omit<Item, 'kind'> {
 
 export type SubmenuOpenPolicy = 'hover' | 'click'
 export type SurfaceSize = PopoverSurfaceSize
+export type SurfacePadding = PopoverSurfacePadding
 export type SelectionMode = 'none' | 'single' | 'multiple'
 export type SelectionAppearance = 'none' | 'content' | 'row'
 export type SubmenuOpenSource = 'pointer' | 'keyboard'

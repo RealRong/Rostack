@@ -30,7 +30,6 @@ import type {
 } from '@whiteboard/core/types'
 import type { TextPreviewPatch } from '@whiteboard/editor/local/feedback/types'
 import type { EditField, EditLayout } from '@whiteboard/editor/local/session/edit'
-import type { EditorQueryRead } from '@whiteboard/editor/query'
 import type {
   LayoutBackend,
   LayoutKind,
@@ -338,7 +337,16 @@ export const createLayoutRuntime = ({
   registry,
   backend
 }: {
-  read: Pick<EditorQueryRead, 'node'>
+  read: {
+    node: {
+      committed: {
+        get: (nodeId: NodeId) => {
+          node: Node
+          rect: Rect
+        } | undefined
+      }
+    }
+  }
   registry: Pick<NodeRegistry, 'get'>
   backend?: LayoutBackend
 }): LayoutRuntime => {

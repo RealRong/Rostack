@@ -1,3 +1,4 @@
+import { Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type {
   CustomFieldId,
@@ -14,6 +15,7 @@ import { FIELD_DROPDOWN_MENU_PROPS } from '@dataview/react/field/dropdown'
 import { buildFieldKindMenuItems } from '@dataview/react/field/schema/FieldKindPicker'
 import { buildFieldFormatMenuItems } from '@dataview/react/field/schema/editor/FieldFormatSection'
 import { FieldOptionsSection } from '@dataview/react/field/schema/editor/FieldOptionsSection'
+import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
 import { useTranslation } from '@shared/i18n/react'
 
 export interface FieldSchemaEditorProps {
@@ -23,6 +25,7 @@ export interface FieldSchemaEditorProps {
 export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
   const { t } = useTranslation()
   const editor = useDataView().engine
+  const router = useViewSettings()
   const field = useDataViewKeyedValue(
     dataView => dataView.engine.select.fields.byId,
     props.fieldId
@@ -63,11 +66,28 @@ export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
       }
     })
   }]
-  const formatItems = buildFieldFormatMenuItems({
-    field,
-    update,
-    t
-  })
+  const formatItems: readonly MenuItem[] = [
+    ...buildFieldFormatMenuItems({
+      field,
+      update,
+      t
+    }),
+    {
+      kind: 'divider',
+      key: 'field-remove-divider'
+    },
+    {
+      kind: 'action',
+      key: 'field-remove',
+      label: t(meta.ui.field.editor.remove),
+      leading: <Trash2 className="size-4" size={16} strokeWidth={1.8} />,
+      tone: 'destructive',
+      onSelect: () => {
+        editor.fields.remove(field.id)
+        router.back()
+      }
+    }
+  ]
 
   const commitName = () => {
     const nextName = nameDraft.trim()
@@ -108,7 +128,7 @@ export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 pb-3">
+      <div className="flex-1 overflow-y-auto px-2 pb-2">
         <div className="flex flex-col gap-0.5">
           <Menu
             items={typeItems}

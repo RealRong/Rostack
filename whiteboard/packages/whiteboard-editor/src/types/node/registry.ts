@@ -31,7 +31,6 @@ export type NodeDefinition = BaseNodeDefinition & {
   connect?: boolean
   canRotate?: boolean
   canResize?: boolean
-  autoMeasure?: boolean
   layout?: NodeLayoutSpec
   enter?: boolean
   edit?: {

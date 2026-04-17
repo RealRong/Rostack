@@ -23,6 +23,7 @@ import type {
   NodeType,
   Rect
 } from '@whiteboard/core/types'
+import type { SelectionTarget } from '@whiteboard/core/selection'
 import type {
   NodeDefinition,
   NodeRegistry
@@ -58,6 +59,7 @@ export type NodeView = {
   nodeId: NodeId
   node: NodeItem['node']
   rect: NodeItem['rect']
+  bounds: Rect
   rotation: number
   hovered: boolean
   hidden: boolean
@@ -66,6 +68,16 @@ export type NodeView = {
   canConnect: boolean
   canResize: boolean
   canRotate: boolean
+}
+
+export type NodeRenderEdit = {
+  field: Extract<NonNullable<EditSession>, { kind: 'node' }>['field']
+  caret: Extract<NonNullable<EditSession>, { kind: 'node' }>['caret']
+}
+
+export type NodeRender = NodeView & {
+  selected: boolean
+  edit: NodeRenderEdit | undefined
 }
 
 export type NodeCanvasSnapshot = {
@@ -80,6 +92,7 @@ export type NodePresentationRead = {
   nodes: (nodeIds: readonly NodeId[]) => readonly Node[]
   state: KeyedReadStore<NodeId, NodeRuntimeState>
   view: KeyedReadStore<NodeId, NodeView | undefined>
+  render: KeyedReadStore<NodeId, NodeRender | undefined>
   canvas: KeyedReadStore<NodeId, NodeCanvasSnapshot | undefined>
   rect: KeyedReadStore<NodeId, Rect | undefined>
   bounds: KeyedReadStore<NodeId, Rect | undefined>
@@ -134,6 +147,7 @@ const isNodeViewEqual = (
     && right !== undefined
     && left.node === right.node
     && sameRect(left.rect, right.rect)
+    && sameRect(left.bounds, right.bounds)
     && left.rotation === right.rotation
     && left.hovered === right.hovered
     && left.hidden === right.hidden
@@ -142,6 +156,41 @@ const isNodeViewEqual = (
     && left.canConnect === right.canConnect
     && left.canResize === right.canResize
     && left.canRotate === right.canRotate
+  )
+)
+
+const isNodeRenderEditEqual = (
+  left: NodeRenderEdit | undefined,
+  right: NodeRenderEdit | undefined
+) => (
+  left === right
+  || (
+    left !== undefined
+    && right !== undefined
+    && left.field === right.field
+    && left.caret.kind === right.caret.kind
+    && (
+      left.caret.kind !== 'point'
+      || (
+        right.caret.kind === 'point'
+        && left.caret.client.x === right.caret.client.x
+        && left.caret.client.y === right.caret.client.y
+      )
+    )
+  )
+)
+
+const isNodeRenderEqual = (
+  left: NodeRender | undefined,
+  right: NodeRender | undefined
+) => (
+  left === right
+  || (
+    left !== undefined
+    && right !== undefined
+    && isNodeViewEqual(left, right)
+    && left.selected === right.selected
+    && isNodeRenderEditEqual(left.edit, right.edit)
   )
 )
 
@@ -213,6 +262,7 @@ const toNodeView = (
     nodeId,
     node: item.node,
     rect: item.rect,
+    bounds: getNodeItemBounds(item),
     rotation,
     hovered: state.hovered,
     hidden: state.hidden,
@@ -223,6 +273,24 @@ const toNodeView = (
     canRotate: capability.rotate
   }
 }
+
+const isNodeSelected = (
+  selection: SelectionTarget,
+  nodeId: NodeId
+) => selection.nodeIds.includes(nodeId)
+
+const toNodeRenderEdit = (
+  edit: EditSession,
+  nodeId: NodeId
+): NodeRenderEdit | undefined => (
+  edit?.kind === 'node'
+  && edit.nodeId === nodeId
+    ? {
+        field: edit.field,
+        caret: edit.caret
+      }
+    : undefined
+)
 
 const getNodeItemBounds = (
   item: NodeItem
@@ -251,13 +319,15 @@ export const createNodeRead = ({
   registry,
   feedback,
   mindmap,
-  edit
+  edit,
+  selection
 }: {
   read: EngineRead
   registry: NodeRegistry
   feedback: KeyedReadStore<NodeId, NodeFeedbackProjection>
   mindmap: KeyedReadStore<NodeId, import('@whiteboard/engine').MindmapItem | undefined>
   edit: ReadStore<EditSession>
+  selection: ReadStore<SelectionTarget>
 }): NodePresentationRead => {
   const item: NodePresentationRead['item'] = createKeyedDerivedStore({
     get: (nodeId: NodeId) => {
@@ -309,6 +379,21 @@ export const createNodeRead = ({
     },
     isEqual: isNodeViewEqual
   })
+  const render: NodePresentationRead['render'] = createKeyedDerivedStore({
+    get: (nodeId: NodeId) => {
+      const resolvedView = readValue(view, nodeId)
+      if (!resolvedView) {
+        return undefined
+      }
+
+      return {
+        ...resolvedView,
+        selected: isNodeSelected(readValue(selection), nodeId),
+        edit: toNodeRenderEdit(readValue(edit), nodeId)
+      }
+    },
+    isEqual: isNodeRenderEqual
+  })
   const canvas: NodePresentationRead['canvas'] = createKeyedDerivedStore({
     get: (nodeId: NodeId) => {
       const resolvedItem = readValue(item, nodeId)
@@ -349,6 +434,7 @@ export const createNodeRead = ({
     }),
     state,
     view,
+    render,
     canvas,
     rect,
     bounds,

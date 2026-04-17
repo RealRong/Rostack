@@ -64,9 +64,8 @@ export type NodeOverlayView = {
   canRotate: NodeView['canRotate']
 }
 type RuntimeNodeView = NonNullable<
-  ReturnType<ReturnType<typeof useEditorRuntime>['read']['node']['view']['get']>
+  ReturnType<ReturnType<typeof useEditorRuntime>['read']['node']['render']['get']>
 >
-
 const resolveNodeOverlayViewState = (
   view: RuntimeNodeView
 ): NodeOverlayView => {
@@ -86,7 +85,6 @@ const resolveNodeViewState = (
   editor: Pick<ReturnType<typeof useEditorRuntime>, 'actions'>,
   registry: Pick<NodeRegistry, 'get'>,
   baseView: RuntimeNodeView,
-  selected: boolean
 ): NodeView => {
   const definition = registry.get(baseView.node.type)
   const write: NodeWrite = {
@@ -97,8 +95,9 @@ const resolveNodeViewState = (
   const renderProps: NodeRenderProps = {
     node: baseView.node,
     rect: baseView.rect,
-    selected,
+    selected: baseView.selected,
     hovered: baseView.hovered,
+    edit: baseView.edit,
     write
   }
   const nodeStyle = definition?.style
@@ -124,17 +123,12 @@ const resolveNodeViewState = (
 }
 
 export const useNodeView = (
-  nodeId: NodeId | undefined,
-  {
-    selected = false
-  }: {
-    selected?: boolean
-  } = {}
+  nodeId: NodeId | undefined
 ): NodeView | undefined => {
   const editor = useEditorRuntime()
   const registry = useNodeRegistry()
   const view = useOptionalKeyedStoreValue(
-    editor.read.node.view,
+    editor.read.node.render,
     nodeId,
     undefined
   )
@@ -145,9 +139,9 @@ export const useNodeView = (
         return undefined
       }
 
-      return resolveNodeViewState(editor, registry, view, selected)
+      return resolveNodeViewState(editor, registry, view)
     },
-    [editor, registry, nodeId, selected, view]
+    [editor, registry, nodeId, view]
   )
 }
 
@@ -156,7 +150,7 @@ export const useNodeOverlayView = (
 ): NodeOverlayView | undefined => {
   const editor = useEditorRuntime()
   const view = useOptionalKeyedStoreValue(
-    editor.read.node.view,
+    editor.read.node.render,
     nodeId,
     undefined
   )

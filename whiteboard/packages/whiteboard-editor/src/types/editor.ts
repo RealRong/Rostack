@@ -33,7 +33,6 @@ import type {
 } from '@whiteboard/editor/types/commands'
 import type { NodeCommands as RuntimeNodeCommands } from '@whiteboard/editor/command/node/types'
 import type { EdgeCommands as RuntimeEdgeCommands } from '@whiteboard/editor/command/edge'
-import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
 import type {
   ViewportInputRuntime,
   ViewportRead
@@ -101,10 +100,19 @@ export type EditorPanelPresentation = {
   draw: DrawState
 }
 
-export type EditorPublicRead = EditorQueryRead & {
+export type EditorPublicRead = {
+  document: Pick<EditorQueryRead['document'], 'background' | 'bounds'>
+  group: Pick<EditorQueryRead['group'], 'exactIds'>
+  history: EditorQueryRead['history']
+  mindmap: Pick<EditorQueryRead['mindmap'], 'render'>
+  node: Pick<EditorQueryRead['node'], 'render'>
+  edge: Pick<EditorQueryRead['edge'], 'render' | 'selectedChrome'>
+  scene: Pick<EditorQueryRead['scene'], 'list'>
+  selection: Pick<EditorQueryRead['selection'], 'node' | 'box'>
+  tool: EditorQueryRead['tool']
+  viewport: EditorQueryRead['viewport']
   chrome: ReadStore<EditorChromePresentation>
   panel: ReadStore<EditorPanelPresentation>
-  selectionModel: SelectionModelRead
 }
 
 export type EditorSelectionActions = {

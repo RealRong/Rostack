@@ -1,6 +1,10 @@
 import type { ReactNode } from 'react'
 import type { Placement } from '@floating-ui/react'
-import type { MenuItem, MenuSurfaceSize } from '@shared/ui/menu'
+import type {
+  MenuItem,
+  MenuSurfacePadding,
+  MenuSurfaceSize
+} from '@shared/ui/menu'
 
 export interface ChoiceOption<TValue extends string> {
   id: TValue
@@ -38,6 +42,7 @@ export const buildChoiceSubmenuItem = <TValue extends string>(input: {
   options: readonly ChoiceOption<TValue>[]
   onSelect: (value: TValue) => void
   size?: MenuSurfaceSize
+  padding?: MenuSurfacePadding
   presentation?: 'cascade' | 'dropdown'
   placement?: Placement
   closeOnSelect?: boolean
@@ -48,6 +53,7 @@ export const buildChoiceSubmenuItem = <TValue extends string>(input: {
   leading: input.leading,
   suffix: input.suffix,
   size: input.size ?? 'md',
+  padding: input.padding,
   ...(input.presentation ? { presentation: input.presentation } : {}),
   ...(input.placement ? { placement: input.placement } : {}),
   items: buildChoiceToggleItems({

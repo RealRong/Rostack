@@ -42,19 +42,24 @@ export const createEditor = ({
     initialViewport,
     registry
   })
-  const query = createQueryRuntime({
-    engineRead: engine.read,
-    registry,
-    history: engine.history,
-    local
-  })
-  local.bindQuery(query.read)
   const layout = createLayoutRuntime({
-    read: query.read,
+    read: {
+      node: {
+        committed: engine.read.node.item
+      }
+    },
     registry,
     backend: services?.layout
   })
   local.bindLayout(layout)
+  const query = createQueryRuntime({
+    engineRead: engine.read,
+    registry,
+    history: engine.history,
+    local,
+    layout
+  })
+  local.bindQuery(query.read)
   const command = createCommandRuntime({
     engine,
     read: query.read,

@@ -129,17 +129,12 @@ const insertMindmapPreset = ({
   }
 
   const bbox = editor.read.mindmap.render.get(result.data.mindmapId)?.bbox
-  const rootRect = editor.read.node.item.get(result.data.rootId)?.rect
   const anchorX = bbox
     ? bbox.x + bbox.width / 2
-    : rootRect
-      ? rootRect.width / 2
-      : 0
+    : 0
   const anchorY = bbox
     ? bbox.y + bbox.height / 2
-    : rootRect
-      ? rootRect.height / 2
-      : 0
+    : 0
 
   editor.actions.mindmap.moveRoot({
     nodeId: result.data.mindmapId,

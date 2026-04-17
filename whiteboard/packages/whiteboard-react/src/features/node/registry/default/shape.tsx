@@ -9,8 +9,7 @@ import {
 import { useCallback, useRef, type CSSProperties } from 'react'
 import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
 import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
-import { matchNodeEdit } from '@whiteboard/react/features/edit/session'
-import { useEdit, useWhiteboardServices } from '@whiteboard/react/runtime/hooks'
+import { useWhiteboardServices } from '@whiteboard/react/runtime/hooks'
 import { resolvePaletteColorOr } from '@whiteboard/react/features/palette'
 import {
   ShapeGlyph
@@ -73,6 +72,7 @@ const readShapeColors = (
 
 const ShapeLabel = ({
   node,
+  edit,
   color,
   fontSize,
   fontWeight,
@@ -87,7 +87,6 @@ const ShapeLabel = ({
   fontStyle: string
   textAlign: string
 }) => {
-  const edit = useEdit()
   const { textSources } = useWhiteboardServices()
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
   const labelRef = useRef<HTMLDivElement | null>(null)
@@ -122,8 +121,7 @@ const ShapeLabel = ({
     textAlign: textAlign as CSSProperties['textAlign'],
     opacity: text ? 1 : 0.48
   }
-  const nodeEdit = matchNodeEdit(edit, node.id, 'text')
-  const editing = nodeEdit !== null
+  const editing = edit?.field === 'text'
 
   return (
     <div
@@ -133,8 +131,8 @@ const ShapeLabel = ({
       {editing ? (
         <EditableSlot
           bindRef={bindRef}
-          value={nodeEdit.draft.text}
-          caret={nodeEdit.caret}
+          value={text}
+          caret={edit.caret}
           multiline
           className="wb-shape-node-label-content wb-default-text-editor"
           style={contentStyle}

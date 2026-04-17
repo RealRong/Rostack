@@ -1,21 +1,16 @@
 import { Plus } from 'lucide-react'
-import { useEdit } from '@whiteboard/react/runtime/hooks'
 import type { MindmapTreeViewData } from '@whiteboard/react/types/mindmap'
 
 type MindmapTreeChromeProps = {
   view: MindmapTreeViewData
-  selectedNodeIds: readonly string[]
 }
 
 export const MindmapTreeChrome = ({
-  view,
-  selectedNodeIds
+  view
 }: MindmapTreeChromeProps) => {
-  const edit = useEdit()
-  const rootSelected = selectedNodeIds.includes(view.rootNodeId)
-  const rootEditing = edit?.kind === 'node' && edit.nodeId === view.rootNodeId
+  const addChild = view.addChild
 
-  if (!rootSelected || rootEditing || view.rootLocked) {
+  if (!addChild?.visible) {
     return null
   }
 
@@ -29,7 +24,7 @@ export const MindmapTreeChrome = ({
       data-selection-ignore="true"
       data-context-menu-ignore="true"
       style={{
-        transform: `translate(${view.rootRect.x + view.rootRect.width + 12}px, ${view.rootRect.y + Math.max(view.rootRect.height / 2 - 14, 0)}px)`
+        transform: `translate(${addChild.x}px, ${addChild.y}px)`
       }}
       onPointerDown={(event) => {
         event.preventDefault()
@@ -38,7 +33,7 @@ export const MindmapTreeChrome = ({
       onClick={(event) => {
         event.preventDefault()
         event.stopPropagation()
-        view.onAddChild(view.rootNodeId, 'right')
+        view.onAddChild(view.rootNodeId, addChild.placement)
       }}
     >
       <Plus size={16} strokeWidth={2.2} />

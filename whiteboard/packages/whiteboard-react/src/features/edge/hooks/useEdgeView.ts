@@ -12,7 +12,7 @@ export const useEdgeView = (
 ): EdgeView | undefined => {
   const editor = useEditorRuntime()
   return useOptionalKeyedStoreValue(
-    editor.read.edge.view,
+    editor.read.edge.render,
     edgeId,
     undefined
   )

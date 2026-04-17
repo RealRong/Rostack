@@ -499,7 +499,7 @@ export const Level = (props: LevelProps) => {
             <Popover.Content
               initialFocus={surface === 'list' ? -1 : 0}
               size={item.size ?? (surface === 'list' ? 'sm' : undefined)}
-              padding={surface === 'list' ? 'menu' : 'panel'}
+              padding={item.padding ?? (surface === 'list' ? 'menu' : 'panel')}
               contentClassName={cn('min-w-0', item.contentClassName)}
             >
               <div className="flex max-h-[72vh] flex-col">

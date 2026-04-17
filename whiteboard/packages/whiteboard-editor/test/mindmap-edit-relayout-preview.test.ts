@@ -79,7 +79,7 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const tree = editor.read.mindmap.tree.get(created.data.mindmapId)
+    const tree = editor.read.mindmap.render.get(created.data.mindmapId)?.tree
     expect(tree).toBeDefined()
 
     const insert = editor.actions.mindmap.insertByPlacement({
@@ -99,8 +99,8 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const beforeRoot = editor.read.node.item.get(created.data.rootId)?.rect
-    const beforeChild = editor.read.node.item.get(insert.data.nodeId)?.rect
+    const beforeRoot = editor.read.node.render.get(created.data.rootId)?.rect
+    const beforeChild = editor.read.node.render.get(insert.data.nodeId)?.rect
 
     expect(beforeRoot).toBeDefined()
     expect(beforeChild).toBeDefined()
@@ -113,8 +113,8 @@ describe('mindmap edit relayout preview', () => {
       }
     })
 
-    const liveRoot = editor.read.node.item.get(created.data.rootId)?.rect
-    const liveChild = editor.read.node.item.get(insert.data.nodeId)?.rect
+    const liveRoot = editor.read.node.render.get(created.data.rootId)?.rect
+    const liveChild = editor.read.node.render.get(insert.data.nodeId)?.rect
 
     expect(liveRoot).toBeDefined()
     expect(liveChild).toBeDefined()

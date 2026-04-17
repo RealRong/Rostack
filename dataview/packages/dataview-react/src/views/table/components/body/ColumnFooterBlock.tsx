@@ -58,40 +58,36 @@ const View = (props: ColumnFooterBlockProps) => {
 
             switch (result.kind) {
               case 'empty':
-                return (
-                  <div className="text-sm text-muted-foreground">
-                    {t(meta.systemValue.get('value.empty').token)}
-                  </div>
-                )
+                return null
               case 'scalar':
                 return (
-                  <>
-                    <div className="text-[11px] leading-none text-muted-foreground">
+                  <div className='flex items-center justify-end w-full ml-auto'>
+                    <div className="text-sm leading-none text-muted-foreground">
                       {t(meta.calculation.metric.get(result.metric).token)}
                     </div>
-                    <div className="text-base ml-1 leading-none font-medium">
+                    <div className="ml-2 leading-none font-medium">
                       {formatNumber(result.value)}
                     </div>
-                  </>
+                  </div>
                 )
               case 'percent':
                 return (
-                  <>
-                    <div className="text-[11px] leading-none text-muted-foreground">
+                  <div className='flex items-center justify-end w-full ml-auto'>
+                    <div className="text-sm leading-none text-muted-foreground">
                       {t(meta.calculation.metric.get(result.metric).token)}
                     </div>
-                    <div className="text-base ml-1 leading-none font-medium">
+                    <div className="ml-2 leading-none font-medium">
                       {formatPercent(result.value)}
                     </div>
-                  </>
+                  </div>
                 )
               case 'distribution':
                 return (
-                  <div className="min-w-0 flex flex-col gap-1">
-                    <div className="text-[11px] leading-none text-muted-foreground">
+                  <div className="min-w-0 flex flex-col gap-1.5">
+                    <div className="text-xs leading-none text-muted-foreground">
                       {t(meta.calculation.metric.get(result.metric).token)}
                     </div>
-                    <div className="min-w-0 text-xs leading-snug text-foreground">
+                    <div className="min-w-0 text-xs flex flex-col gap-1 leading-snug text-foreground">
                       {result.items.slice(0, 3).map((item, index) => (
                         <div key={`${item.key}:${index}`} className="truncate">
                           {t(item.value)}

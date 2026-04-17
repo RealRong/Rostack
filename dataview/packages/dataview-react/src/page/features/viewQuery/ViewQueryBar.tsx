@@ -127,7 +127,7 @@ export const ViewQueryBar = () => {
           <Popover.Trigger>
             <QueryChip
               state={queryBar.route?.kind === 'addFilter' ? 'open' : 'add'}
-              trailing={<ChevronDown className="size-[14px] shrink-0" size={14} strokeWidth={1.8} />}
+              trailing={<ChevronDown className="shrink-0" size={14} strokeWidth={1.8} />}
             >
               {`+ ${t(meta.ui.filter.label)}`}
             </QueryChip>
@@ -172,7 +172,7 @@ export const ViewQueryBar = () => {
           <Popover.Trigger>
             <QueryChip
               state={queryBar.route?.kind === 'addSort' ? 'open' : 'add'}
-              trailing={<ChevronDown className="size-[14px] shrink-0" size={14} strokeWidth={1.8} />}
+              trailing={<ChevronDown className="shrink-0" size={14} strokeWidth={1.8} />}
             >
               {`+ ${t(meta.ui.sort.label)}`}
             </QueryChip>

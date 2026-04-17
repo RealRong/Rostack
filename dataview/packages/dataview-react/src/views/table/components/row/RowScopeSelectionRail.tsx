@@ -65,6 +65,7 @@ const View = (props: RowScopeSelectionRailProps) => {
       disabled={disabled}
       onPress={onPress}
       label={props.label ?? 'Select rows'}
+      fillHeight
       showOnHover
     />
   )

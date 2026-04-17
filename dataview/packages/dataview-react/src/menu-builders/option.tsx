@@ -5,7 +5,12 @@ import { getStatusCategoryLabel } from '@dataview/core/field'
 import { meta } from '@dataview/meta'
 import type { TokenTranslator } from '@shared/i18n'
 import { resolveOptionDotStyle, resolveOptionColorToken } from '@shared/ui/color'
-import type { MenuItem, MenuReorderItem, MenuSurfaceSize } from '@shared/ui/menu'
+import type {
+  MenuItem,
+  MenuReorderItem,
+  MenuSurfacePadding,
+  MenuSurfaceSize
+} from '@shared/ui/menu'
 import { FieldOptionTag, type FieldOptionTagProps } from '@dataview/react/field/options'
 
 export interface MenuOptionLike {
@@ -44,6 +49,7 @@ export const buildOptionPanelItem = (input: {
   key?: string
   leading?: ReactNode
   size?: MenuSurfaceSize
+  padding?: MenuSurfacePadding
   surface?: 'list' | 'panel'
   presentation?: 'cascade' | 'dropdown'
   placement?: import('@floating-ui/react').Placement
@@ -61,6 +67,7 @@ export const buildOptionPanelItem = (input: {
   }),
   leading: input.leading,
   size: input.size,
+  padding: input.padding,
   surface: input.surface,
   presentation: input.presentation,
   placement: input.placement,

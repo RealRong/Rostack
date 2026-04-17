@@ -229,14 +229,14 @@ describe('node edit selection chrome', () => {
     })
     editor.actions.edit.startNode('text-1', 'text')
 
-    expect(editor.read.selection.toolbar.get()).toMatchObject({
+    expect(editor.read.panel.get().selectionToolbar).toMatchObject({
       selectionKind: 'nodes',
       target: {
         nodeIds: ['text-1'],
         edgeIds: []
       }
     })
-    expect(editor.read.selection.overlay.get()).toMatchObject({
+    expect(editor.read.chrome.get().selection).toMatchObject({
       kind: 'node',
       nodeId: 'text-1',
       handles: false
@@ -251,14 +251,14 @@ describe('node edit selection chrome', () => {
     })
     editor.actions.edit.startNode('root-1', 'text')
 
-    expect(editor.read.selection.toolbar.get()).toMatchObject({
+    expect(editor.read.panel.get().selectionToolbar).toMatchObject({
       selectionKind: 'nodes',
       target: {
         nodeIds: ['root-1'],
         edgeIds: []
       }
     })
-    expect(editor.read.selection.overlay.get()).toMatchObject({
+    expect(editor.read.chrome.get().selection).toMatchObject({
       kind: 'node',
       nodeId: 'root-1',
       handles: false
@@ -273,6 +273,6 @@ describe('node edit selection chrome', () => {
     })
     editor.actions.edit.startEdgeLabel('edge-1', 'label-1')
 
-    expect(editor.read.selection.toolbar.get()).toBeUndefined()
+    expect(editor.read.panel.get().selectionToolbar).toBeUndefined()
   })
 })

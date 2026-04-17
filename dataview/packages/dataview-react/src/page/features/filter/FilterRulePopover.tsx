@@ -5,7 +5,7 @@ import { parseDateInputDraft, readDatePrimaryString } from '@dataview/core/field
 import type { FilterRuleProjection } from '@dataview/engine'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
-import { Menu } from '@shared/ui/menu'
+import { Menu, type MenuToggleItem } from '@shared/ui/menu'
 import { Popover } from '@shared/ui/popover'
 import { cn } from '@shared/ui/utils'
 import { meta } from '@dataview/meta'
@@ -14,7 +14,8 @@ import { QueryChip } from '@dataview/react/page/features/query'
 import { FilterOptionSetEditor } from '@dataview/react/page/features/filter/FilterOptionSetEditor'
 import {
   getFilterPresetLabel,
-  getFilterValuePlaceholder
+  getFilterValuePlaceholder,
+  readFilterSummary
 } from '@dataview/react/page/features/filter/filterText'
 
 export interface FilterRulePopoverProps {
@@ -81,6 +82,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
   const active = props.entry.effective
   const bodyLayout = props.entry.bodyLayout
   const fieldLabel = field?.name ?? t(meta.systemValue.get('field.deleted').token)
+  const chipLabel = readFilterSummary(props.entry, t)
   const fieldKind = field
     ? meta.field.kind.get(field.kind)
     : undefined
@@ -108,10 +110,10 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
       <Popover.Trigger>
         <QueryChip
           state={active ? 'active' : props.open ? 'open' : 'idle'}
-          leading={<FieldIcon className="size-[14px] shrink-0" size={14} strokeWidth={1.8} />}
+          leading={<FieldIcon className="shrink-0" size={14} strokeWidth={1.8} />}
           trailing={<ChevronDown className="size-[14px]" size={14} strokeWidth={1.8} />}
         >
-          {fieldLabel}
+          {chipLabel}
         </QueryChip>
       </Popover.Trigger>
       <Popover.Content
@@ -136,8 +138,8 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
                     placement="bottom-start"
                     offset={6}
                     size="md"
-                    items={props.entry.conditions.map(item => ({
-                      kind: 'toggle' as const,
+                    items={props.entry.conditions.map<MenuToggleItem>(item => ({
+                      kind: 'toggle',
                       key: item.id,
                       label: t(getFilterPresetLabel(field, item.id)),
                       checked: item.id === props.entry.activePresetId,
@@ -172,7 +174,7 @@ export const FilterRulePopover = (props: FilterRulePopoverProps) => {
           </div>
 
           {bodyLayout !== 'none' ? (
-          <div className={cn(
+            <div className={cn(
               bodyLayout === 'inset' ? 'px-2.5 pb-2.5 pt-1' : 'px-1.5 pb-2 pt-1'
             )}>
               {editorKind === 'option-set' ? (

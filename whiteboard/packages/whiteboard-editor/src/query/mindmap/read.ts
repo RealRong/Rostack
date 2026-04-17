@@ -6,6 +6,7 @@ import {
   type ReadStore
 } from '@shared/core'
 import type { NodeId, Rect, Size } from '@whiteboard/core/types'
+import type { SelectionTarget } from '@whiteboard/core/selection'
 import type { EngineRead, MindmapItem } from '@whiteboard/engine'
 import {
   anchorMindmapLayout,
@@ -26,6 +27,12 @@ export type MindmapRenderView = {
   rootLocked: boolean
   childNodeIds: readonly NodeId[]
   connectors: readonly MindmapRenderConnector[]
+  addChild?: {
+    visible: true
+    x: number
+    y: number
+    placement: 'right'
+  }
 }
 
 export type MindmapPresentationRead = Omit<EngineRead['mindmap'], 'item'> & {
@@ -66,12 +73,18 @@ const isMindmapRenderViewEqual = (
     && left.childNodeIds.every((nodeId, index) => nodeId === right.childNodeIds[index])
     && left.connectors.length === right.connectors.length
     && left.connectors.every((connector, index) => isConnectorEqual(connector, right.connectors[index]!))
+    && left.addChild?.visible === right.addChild?.visible
+    && left.addChild?.x === right.addChild?.x
+    && left.addChild?.y === right.addChild?.y
+    && left.addChild?.placement === right.addChild?.placement
   )
 )
 
 const toMindmapRenderView = (
   treeId: NodeId,
-  treeView: MindmapItem
+  treeView: MindmapItem,
+  selection: SelectionTarget,
+  edit: EditSession
 ): MindmapRenderView => {
   const rootRect = treeView.computed.node[treeView.tree.rootNodeId] ?? {
     x: treeView.node.position.x,
@@ -79,6 +92,15 @@ const toMindmapRenderView = (
     width: 0,
     height: 0
   }
+  const rootSelected = (
+    selection.nodeIds.length === 1
+    && selection.nodeIds[0] === treeView.tree.rootNodeId
+  )
+  const rootEditing = edit?.kind === 'node'
+    && edit.nodeId === treeView.tree.rootNodeId
+  const rootLocked = Boolean((treeView as MindmapItem & {
+    rootLocked?: boolean
+  }).rootLocked)
 
   return {
     treeId,
@@ -86,11 +108,17 @@ const toMindmapRenderView = (
     tree: treeView.tree,
     bbox: treeView.computed.bbox,
     rootRect,
-    rootLocked: Boolean((treeView as MindmapItem & {
-      rootLocked?: boolean
-    }).rootLocked),
+    rootLocked,
     childNodeIds: treeView.childNodeIds,
-    connectors: treeView.connectors
+    connectors: treeView.connectors,
+    addChild: rootSelected && !rootEditing && !rootLocked
+      ? {
+          visible: true,
+          x: rootRect.x + rootRect.width + 12,
+          y: rootRect.y + Math.max(rootRect.height / 2 - 14, 0),
+          placement: 'right'
+        }
+      : undefined
   }
 }
 
@@ -197,12 +225,14 @@ export const createMindmapRead = ({
   read,
   node,
   preview,
-  edit
+  edit,
+  selection
 }: {
   read: EngineRead['mindmap']
   node: EngineRead['node']['item']
   preview: ReadStore<MindmapPreviewState | undefined>
   edit: ReadStore<EditSession>
+  selection: ReadStore<SelectionTarget>
 }): MindmapPresentationRead => {
   const item: MindmapPresentationRead['item'] = createKeyedDerivedStore({
     get: (treeId: NodeId) => {
@@ -235,7 +265,12 @@ export const createMindmapRead = ({
     get: (treeId: NodeId) => {
       const treeView = readValue(item, treeId)
       return treeView
-        ? toMindmapRenderView(treeId, treeView)
+        ? toMindmapRenderView(
+            treeId,
+            treeView,
+            readValue(selection),
+            readValue(edit)
+          )
         : undefined
     },
     isEqual: isMindmapRenderViewEqual

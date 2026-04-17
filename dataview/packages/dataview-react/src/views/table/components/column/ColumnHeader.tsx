@@ -1,5 +1,7 @@
 import {
   ArrowLeftRight,
+  ArrowLeftToLine,
+  ArrowRightToLine,
   ArrowUpDown,
   Copy,
   EyeOff,
@@ -19,7 +21,12 @@ import {
   type PointerEvent
 } from 'react'
 import type { CalculationMetric, Field, FieldId, CustomField } from '@dataview/core/contracts'
-import { Menu, type MenuItem } from '@shared/ui/menu'
+import {
+  Menu,
+  type MenuItem,
+  type MenuSubmenuItem,
+  type MenuToggleItem
+} from '@shared/ui/menu'
 import { cn } from '@shared/ui/utils'
 import { isCustomField } from '@dataview/core/field'
 import { getFieldCalculationMetrics } from '@dataview/core/calculation'
@@ -100,8 +107,8 @@ const buildCalculationMetricItems = (input: {
   metrics: readonly CalculationMetric[]
   currentMetric?: CalculationMetric
   onSelectMetric: (metric: CalculationMetric) => void
-}): readonly MenuItem[] => input.metrics.map(metric => ({
-  kind: 'toggle' as const,
+}): readonly MenuToggleItem[] => input.metrics.map(metric => ({
+  kind: 'toggle',
   key: `calculation:${metric}`,
   label: input.t(meta.calculation.metric.get(metric).token),
   checked: input.currentMetric === metric,
@@ -118,23 +125,16 @@ const buildCalculationMenuItems = (input: {
   onSelectMetric: (metric: CalculationMetric) => void
 }): readonly MenuItem[] => {
   const availableMetrics = new Set<CalculationMetric>(input.metrics)
-  const groupItems = CALCULATION_MENU_GROUPS.flatMap(group => {
+  const groupItems = CALCULATION_MENU_GROUPS.flatMap<MenuSubmenuItem>(group => {
     const metrics = group.metrics.filter(metric => availableMetrics.has(metric))
     if (!metrics.length) {
       return []
     }
 
-    const selectedMetric = metrics.find(metric => metric === input.currentMetric)
-
     return [{
-      kind: 'submenu' as const,
+      kind: 'submenu',
       key: `calculation-group:${group.key}`,
       label: input.t(group.label),
-      ...(selectedMetric
-        ? {
-            suffix: input.t(meta.calculation.metric.get(selectedMetric).token)
-          }
-        : {}),
       items: buildCalculationMetricItems({
         t: input.t,
         metrics,
@@ -146,7 +146,7 @@ const buildCalculationMenuItems = (input: {
 
   return [
     {
-      kind: 'toggle' as const,
+      kind: 'toggle',
       key: 'calculation:none',
       label: input.t(token('meta.calculation.none', 'None')),
       checked: !input.currentMetric,
@@ -232,6 +232,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   const calculationMetric = view.calc[props.field.id] as CalculationMetric | undefined
   const calculationMetrics = getFieldCalculationMetrics(props.field)
   const kind = meta.field.kind.get(props.field.kind)
+  const KindIcon = kind.Icon
   const sortDirectionMeta = sortDirection
     ? meta.sort.direction.get(sortDirection)
     : undefined
@@ -263,60 +264,84 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
     })
   }
 
-  const items: readonly MenuItem[] = [
-    ...(urlConfig
-      ? [{
-        kind: 'toggle' as const,
-        key: 'displayFullUrl',
-        label: t(meta.ui.field.editor.displayFullUrl),
-        checked: urlConfig.displayFullUrl,
-        indicator: 'switch' as const,
-        closeOnSelect: false,
-        onSelect: () => {
-          editor.fields.update(urlConfig.id, {
-            displayFullUrl: !urlConfig.displayFullUrl
-          } as Partial<Omit<CustomField, 'id'>>)
-        }
-      }]
-      : []),
-    ...(customField
-      ? [{
-        kind: 'submenu' as const,
-        key: 'changeType',
-        label: t(token('dataview.react.table.column.changeType', 'Change type')),
-        leading: <ArrowLeftRight className="size-4" size={16} strokeWidth={1.8} />,
-        suffix: t(kind.token),
-        size: 'lg' as const,
-        items: buildFieldKindMenuItems({
-          t,
-          kind: customField.kind,
-          isTitleProperty: false,
-          onSelect: kind => {
-            editor.fields.changeType(customField.id, { kind })
-            setMenuOpen(false)
-          }
-        })
-      }]
-      : []),
-    ...(!urlConfig && customField
-      ? [{
-        kind: 'action' as const,
-        key: 'editProperty',
-        label: t(token('dataview.react.table.column.editProperty', 'Edit field')),
-        leading: <Settings2 className="size-4" size={16} strokeWidth={1.8} />,
-        onSelect: () => {
+  const urlItems: readonly MenuItem[] = urlConfig
+    ? [{
+      kind: 'toggle',
+      key: 'displayFullUrl',
+      label: t(meta.ui.field.editor.displayFullUrl),
+      checked: urlConfig.displayFullUrl,
+      indicator: 'switch',
+      closeOnSelect: false,
+      onSelect: () => {
+        editor.fields.update(urlConfig.id, {
+          displayFullUrl: !urlConfig.displayFullUrl
+        } as Partial<Omit<CustomField, 'id'>>)
+      }
+    }]
+    : []
+  const changeTypeItems: readonly MenuItem[] = customField
+    ? [{
+      kind: 'submenu',
+      key: 'changeType',
+      label: t(token('dataview.react.table.column.changeType', 'Change type')),
+      leading: <ArrowLeftRight className="size-4" size={16} strokeWidth={1.8} />,
+      suffix: t(kind.token),
+      size: 'lg',
+      items: buildFieldKindMenuItems({
+        t,
+        kind: customField.kind,
+        isTitleProperty: false,
+        onSelect: kind => {
+          editor.fields.changeType(customField.id, { kind })
           setMenuOpen(false)
-          window.requestAnimationFrame(() => {
-            page.settings.open({
-              kind: 'fieldSchema',
-              fieldId: customField.id
-            })
-          })
         }
-      }]
-      : []),
+      })
+    }]
+    : []
+  const editItems: readonly MenuItem[] = !urlConfig && customField
+    ? [{
+      kind: 'action',
+      key: 'editProperty',
+      label: t(token('dataview.react.table.column.editProperty', 'Edit field')),
+      leading: <Settings2 className="size-4" size={16} strokeWidth={1.8} />,
+      onSelect: () => {
+        setMenuOpen(false)
+        window.requestAnimationFrame(() => {
+          page.settings.open({
+            kind: 'fieldSchema',
+            fieldId: customField.id
+          })
+        })
+      }
+    }]
+    : []
+  const customFieldItems: readonly MenuItem[] = customField
+    ? [{
+      kind: 'action',
+      key: 'duplicate',
+      label: t(token('dataview.react.table.column.duplicateField', 'Duplicate field')),
+      leading: <Copy className="size-4" size={16} strokeWidth={1.8} />,
+      onSelect: () => {
+        editor.fields.duplicate(customField.id)
+      }
+    }, {
+      kind: 'action',
+      key: 'delete',
+      label: t(token('dataview.react.table.column.deleteField', 'Delete field')),
+      leading: <Trash2 className="size-4" size={16} strokeWidth={1.8} />,
+      tone: 'destructive',
+      disabled: false,
+      onSelect: () => {
+        editor.fields.remove(customField.id)
+      }
+    }]
+    : []
+  const items: readonly MenuItem[] = [
+    ...urlItems,
+    ...changeTypeItems,
+    ...editItems,
     {
-      kind: 'action' as const,
+      kind: 'action',
       key: 'group',
       label: grouped
         ? t(token('dataview.react.table.column.ungroup', 'Ungroup by this field'))
@@ -332,7 +357,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       }
     },
     {
-      kind: 'action' as const,
+      kind: 'action',
       key: 'filter',
       label: t(meta.ui.filter.label),
       leading: <Filter className="size-4" size={16} strokeWidth={1.8} />,
@@ -345,7 +370,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       }
     },
     {
-      kind: 'submenu' as const,
+      kind: 'submenu',
       key: 'sort',
       label: t(meta.ui.sort.label),
       leading: <ArrowUpDown className="size-4" size={16} strokeWidth={1.8} />,
@@ -354,7 +379,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
         : undefined,
       items: [
         {
-          kind: 'toggle' as const,
+          kind: 'toggle',
           key: 'sortAsc',
           label: t(meta.sort.direction.get('asc').token),
           checked: sortDirection === 'asc',
@@ -363,7 +388,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
           }
         },
         {
-          kind: 'toggle' as const,
+          kind: 'toggle',
           key: 'sortDesc',
           label: t(meta.sort.direction.get('desc').token),
           checked: sortDirection === 'desc',
@@ -374,7 +399,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       ]
     },
     {
-      kind: 'submenu' as const,
+      kind: 'submenu',
       key: 'calculation',
       label: t(token('dataview.react.table.column.calculation', 'Calculation')),
       leading: <Sigma className="size-4" size={16} strokeWidth={1.8} />,
@@ -394,7 +419,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       })
     },
     {
-      kind: 'action' as const,
+      kind: 'action',
       key: 'hide',
       label: t(token('dataview.react.table.column.hide', 'Hide')),
       leading: <EyeOff className="size-4" size={16} strokeWidth={1.8} />,
@@ -404,9 +429,9 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       }
     },
     {
-      kind: 'toggle' as const,
+      kind: 'toggle',
       key: 'wrap',
-      label: t(token('dataview.react.table.column.wrap', 'Wrap cell content')),
+      label: t(meta.ui.viewSettings.layoutPanel.wrapCells),
       checked: wrapCells,
       leading: <TextWrap className="size-4" size={16} strokeWidth={1.8} />,
       onSelect: () => {
@@ -414,11 +439,12 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       }
     },
     {
-      kind: 'divider' as const,
+      kind: 'divider',
       key: 'divider-structure'
     },
     {
-      kind: 'action' as const,
+      kind: 'action',
+      leading: <ArrowLeftToLine className="size-4" size={16} strokeWidth={1.8} />,
       key: 'insertLeft',
       label: t(token('dataview.react.table.column.insertLeft', 'Insert left')),
       onSelect: () => {
@@ -426,34 +452,15 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       }
     },
     {
-      kind: 'action' as const,
+      kind: 'action',
       key: 'insertRight',
+      leading: <ArrowRightToLine className="size-4" size={16} strokeWidth={1.8} />,
       label: t(token('dataview.react.table.column.insertRight', 'Insert right')),
       onSelect: () => {
         insertProperty('right')
       }
     },
-    ...(customField
-      ? [{
-          kind: 'action' as const,
-          key: 'duplicate',
-          label: t(token('dataview.react.table.column.duplicateField', 'Duplicate field')),
-          leading: <Copy className="size-4" size={16} strokeWidth={1.8} />,
-          onSelect: () => {
-            editor.fields.duplicate(customField.id)
-          }
-        }, {
-          kind: 'action' as const,
-          key: 'delete',
-          label: t(token('dataview.react.table.column.deleteField', 'Delete field')),
-          leading: <Trash2 className="size-4" size={16} strokeWidth={1.8} />,
-          tone: 'destructive' as const,
-          disabled: false,
-          onSelect: () => {
-            editor.fields.remove(customField.id)
-          }
-        }]
-      : [])
+    ...customFieldItems
   ]
 
   const trigger = (
@@ -461,7 +468,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       {...sortable.attributes}
       {...sortable.listeners}
       className={cn(
-        'flex h-full min-w-0 items-start gap-1 text-sm font-semibold transition-colors hover:bg-muted/80',
+        'flex h-full min-w-0 items-center gap-1.5 text-sm font-semibold transition-colors hover:bg-muted/80',
         isDragging && 'z-10 cursor-grabbing bg-muted/80'
       )}
       style={{
@@ -510,6 +517,10 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
         event.stopPropagation()
       }}
     >
+      <span className="inline-flex shrink-0 items-center justify-center text-muted-foreground">
+        <KindIcon className="size-4 shrink-0" size={16} strokeWidth={1.8} />
+      </span>
+
       <span
         className={cn(
           'block min-w-0 flex-1',

@@ -1,5 +1,6 @@
 import {
   Calendar,
+  CaseSensitive,
   CheckSquare,
   CircleDot,
   File,
@@ -57,6 +58,15 @@ export interface FieldFormatDescriptor<TId extends string = string> {
 }
 
 const PROPERTY_KIND_ITEMS = [
+  {
+    id: 'title',
+    token: token('meta.field.kind.title', 'Title'),
+    defaultName: token('meta.field.kind.title.defaultName', '标题'),
+    Icon: CaseSensitive,
+    supports: {
+      options: false
+    }
+  },
   {
     id: 'text',
     token: token('meta.field.kind.text', 'Text'),

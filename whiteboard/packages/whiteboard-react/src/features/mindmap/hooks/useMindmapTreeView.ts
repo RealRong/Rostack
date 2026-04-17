@@ -40,10 +40,9 @@ export const useMindmapTreeView = (
         treeId,
         rootNodeId: render.rootId,
         bbox: render.bbox,
-        rootRect: render.rootRect,
-        rootLocked: render.rootLocked,
         connectors: render.connectors,
         childNodeIds: render.childNodeIds.filter((nodeId) => nodeId !== render.rootId),
+        addChild: render.addChild,
         onAddChild
       }
     },

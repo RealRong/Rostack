@@ -85,7 +85,7 @@ describe('mindmap insert position', () => {
     })
 
     expect(result).toBeDefined()
-    const rootRect = editor.read.node.item.get(result!.nodeId)?.rect
+    const rootRect = editor.read.node.render.get(result!.nodeId)?.rect
     expect(rootRect).toBeDefined()
     expect(rootRect!.width).toBe(144)
     expect(rootRect!.height).toBe(44)
@@ -117,7 +117,7 @@ describe('mindmap insert position', () => {
       return
     }
 
-    const beforeRoot = editor.read.node.item.get(created.data.rootId)?.rect
+    const beforeRoot = editor.read.node.render.get(created.data.rootId)?.rect
     expect(beforeRoot).toBeDefined()
 
     editor.actions.node.patch([created.data.rootId], {
@@ -129,7 +129,7 @@ describe('mindmap insert position', () => {
       }
     })
 
-    const afterRoot = editor.read.node.item.get(created.data.rootId)?.rect
+    const afterRoot = editor.read.node.render.get(created.data.rootId)?.rect
     expect(afterRoot).toBeDefined()
     expect(afterRoot!.x).toBe(beforeRoot!.x)
     expect(afterRoot!.y).toBe(beforeRoot!.y)

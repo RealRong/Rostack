@@ -1,4 +1,6 @@
+import type { MenuSubmenuItem } from '@shared/ui/menu'
+
 export const FIELD_DROPDOWN_MENU_PROPS = {
-  presentation: 'dropdown' as const,
-  placement: 'bottom-end' as const
-}
+  presentation: 'dropdown',
+  placement: 'bottom-end'
+} satisfies Pick<MenuSubmenuItem, 'presentation' | 'placement'>

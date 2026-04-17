@@ -11,10 +11,9 @@ import {
   FRAME_DEFAULT_TEXT_COLOR,
   FRAME_DEFAULT_TITLE
 } from '@whiteboard/core/node'
-import type { NodeDefinition } from '@whiteboard/react/types/node'
+import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
 import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
-import { matchNodeEdit } from '@whiteboard/react/features/edit/session'
-import { useEdit, usePickRef, useWhiteboardServices } from '@whiteboard/react/runtime/hooks'
+import { usePickRef, useWhiteboardServices } from '@whiteboard/react/runtime/hooks'
 import { resolvePaletteColorOr } from '@whiteboard/react/features/palette'
 import {
   createSchema,
@@ -45,12 +44,13 @@ const frameSchema = createSchema('frame', 'Frame', [
 
 type FrameNodeChromeProps = {
   node: Node
+  edit?: NodeRenderProps['edit']
 }
 
 export const FrameNodeChrome = ({
-  node
+  node,
+  edit
 }: FrameNodeChromeProps) => {
-  const edit = useEdit()
   const { textSources } = useWhiteboardServices()
   const titleRef = useRef<HTMLDivElement | null>(null)
   const sourceId = readNodeTextSourceId(node.id, 'title')
@@ -78,8 +78,7 @@ export const FrameNodeChrome = ({
     getStyleString(node, 'color'),
     FRAME_DEFAULT_TEXT_COLOR
   ) ?? FRAME_DEFAULT_TEXT_COLOR
-  const nodeEdit = matchNodeEdit(edit, node.id, 'title')
-  const editing = nodeEdit !== null
+  const editing = edit?.field === 'title'
   const bindFieldRef = useCallback((element: HTMLDivElement | null) => {
     bindTitleRef(element)
     pickTitleRef(element)
@@ -90,8 +89,8 @@ export const FrameNodeChrome = ({
       {editing ? (
         <EditableSlot
           bindRef={bindFieldRef}
-          value={nodeEdit.draft.text}
-          caret={nodeEdit.caret}
+          value={rawTitle}
+          caret={edit.caret}
           multiline={false}
           className="wb-frame-title wb-default-text-editor"
           style={{
@@ -169,9 +168,10 @@ export const FrameNodeDefinition: NodeDefinition = {
       }
     }
   },
-  render: ({ node }) => (
+  render: ({ node, edit }) => (
     <FrameNodeChrome
       node={node}
+      edit={edit}
     />
   ),
   style: (props) => frameStyle(props.node),

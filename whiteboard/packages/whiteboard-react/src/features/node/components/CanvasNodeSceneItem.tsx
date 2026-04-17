@@ -5,20 +5,12 @@ import { useNodeView } from '@whiteboard/react/features/node/hooks/useNodeView'
 
 type CanvasNodeSceneItemProps = {
   nodeId: NodeId
-  registerMeasuredElement: (
-    nodeId: NodeId,
-    element: HTMLDivElement | null,
-    enabled: boolean
-  ) => void
-  selected: boolean
 }
 
 export const CanvasNodeSceneItem = memo(({
-  nodeId,
-  registerMeasuredElement,
-  selected
+  nodeId
 }: CanvasNodeSceneItemProps) => {
-  const view = useNodeView(nodeId, { selected })
+  const view = useNodeView(nodeId)
 
   if (!view || view.hidden || view.node.type === 'mindmap') {
     return null
@@ -27,13 +19,11 @@ export const CanvasNodeSceneItem = memo(({
   const {
     node: resolvedNode,
     rect,
-    resizing,
     nodeStyle,
     transformStyle,
     definition,
     renderProps
   } = view
-  const shouldAutoMeasure = Boolean(definition?.autoMeasure) && !resizing
   const hit = definition?.hit ?? 'box'
   const bindPickElement = usePickRef({
     kind: 'node',
@@ -51,15 +41,6 @@ export const CanvasNodeSceneItem = memo(({
     }
   }, [bindPickElement, hit])
 
-  useEffect(() => {
-    const element = rootRef.current
-    registerMeasuredElement(nodeId, element, shouldAutoMeasure)
-
-    return () => {
-      registerMeasuredElement(nodeId, null, false)
-    }
-  }, [nodeId, registerMeasuredElement, shouldAutoMeasure])
-
   const rootStyle: CSSProperties = {
     ...nodeStyle,
     pointerEvents: hit === 'path' ? 'none' : 'auto',
@@ -74,7 +55,7 @@ export const CanvasNodeSceneItem = memo(({
       data-node-id={nodeId}
       data-node-type={resolvedNode.type}
       data-node-hit={hit}
-      data-selected={selected ? 'true' : undefined}
+      data-selected={view.renderProps.selected ? 'true' : undefined}
       style={{
         width: rect.width,
         height: rect.height,

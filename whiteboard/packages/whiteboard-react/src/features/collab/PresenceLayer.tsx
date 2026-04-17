@@ -43,7 +43,7 @@ const PresenceNodeSelection = ({
   viewport: unknown
 }) => {
   const editor = useEditorRuntime()
-  const item = useKeyedStoreValue(editor.read.node.item, nodeId)
+  const item = useKeyedStoreValue(editor.read.node.render, nodeId)
 
   if (!item) {
     return null
@@ -55,7 +55,7 @@ const PresenceNodeSelection = ({
     <div
       className="wb-presence-selection"
       style={{
-        ...toScreenRect(editor, editor.read.node.bounds.get(nodeId) ?? item.rect),
+        ...toScreenRect(editor, item.bounds),
         borderColor: color,
         backgroundColor: `${color}18`
       }}
@@ -73,7 +73,7 @@ const PresenceEdgeSelection = ({
   viewport: unknown
 }) => {
   const editor = useEditorRuntime()
-  const edge = useKeyedStoreValue(editor.read.edge.resolved, edgeId)
+  const edge = useKeyedStoreValue(editor.read.edge.render, edgeId)
 
   if (!edge) {
     return null
@@ -81,7 +81,7 @@ const PresenceEdgeSelection = ({
 
   void viewport
 
-  const bounds = editor.read.edge.bounds.get(edgeId)
+  const bounds = edge.box.rect
   if (!bounds) {
     return null
   }

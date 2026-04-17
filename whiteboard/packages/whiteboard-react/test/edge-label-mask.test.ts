@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildEdgeLabelMaskRect,
   readEdgeLabelMaskTransform
-} from '../src/features/edge/dom/labelMask'
+} from '@whiteboard/core/edge'
 
 describe('buildEdgeLabelMaskRect', () => {
   it('expands the measured label box into a centered mask rect', () => {

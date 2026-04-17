@@ -7,23 +7,12 @@ import { CanvasNodeSceneItem } from '@whiteboard/react/features/node/components/
 
 type NodeItemProps = {
   nodeId: NodeId
-  registerMeasuredElement: (
-    nodeId: NodeId,
-    element: HTMLDivElement | null,
-    enabled: boolean
-  ) => void
-  selected: boolean
-  selectedNodeIds?: readonly NodeId[]
 }
 
 const MindmapSceneItem = ({
-  treeId,
-  registerMeasuredElement,
-  selectedNodeIds
+  treeId
 }: {
   treeId: NodeId
-  registerMeasuredElement: NodeItemProps['registerMeasuredElement']
-  selectedNodeIds: readonly NodeId[]
 }) => {
   const view = useMindmapTreeView(treeId)
 
@@ -34,19 +23,14 @@ const MindmapSceneItem = ({
   return (
     <MindmapTreeView
       view={view}
-      registerMeasuredElement={registerMeasuredElement}
-      selectedNodeIds={selectedNodeIds}
     />
   )
 }
 
 export const NodeItem = memo(({
-  nodeId,
-  registerMeasuredElement,
-  selected,
-  selectedNodeIds = []
+  nodeId
 }: NodeItemProps) => {
-  const view = useNodeView(nodeId, { selected })
+  const view = useNodeView(nodeId)
 
   if (!view) return null
   if (view.hidden) return null
@@ -54,8 +38,6 @@ export const NodeItem = memo(({
     return (
       <MindmapSceneItem
         treeId={nodeId}
-        registerMeasuredElement={registerMeasuredElement}
-        selectedNodeIds={selectedNodeIds}
       />
     )
   }
@@ -63,8 +45,6 @@ export const NodeItem = memo(({
   return (
     <CanvasNodeSceneItem
       nodeId={nodeId}
-      registerMeasuredElement={registerMeasuredElement}
-      selected={selected}
     />
   )
 })

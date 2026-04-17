@@ -1,5 +1,4 @@
-import type { ElementSize } from '@shared/dom'
-import type { Point } from '@whiteboard/core/types'
+import type { Point, Size } from '@whiteboard/core/types'
 
 const EDGE_LABEL_MASK_MARGIN = 0
 const EDGE_LABEL_MASK_RADIUS = 0
@@ -21,7 +20,7 @@ export const buildEdgeLabelMaskRect = ({
   margin = EDGE_LABEL_MASK_MARGIN
 }: {
   center: Point
-  size: ElementSize
+  size: Size
   angle?: number
   margin?: number
 }): EdgeLabelMaskRect => ({

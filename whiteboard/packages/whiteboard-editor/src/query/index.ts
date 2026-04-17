@@ -38,6 +38,7 @@ import {
 } from '@whiteboard/editor/query/target'
 import type { ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
 import type { EditorFeedbackRuntime } from '@whiteboard/editor/local/feedback'
+import type { LayoutRuntime } from '@whiteboard/editor/layout/runtime'
 
 export type ToolRead = {
   get: () => Tool
@@ -127,12 +128,14 @@ export const createQueryRuntime = ({
   engineRead,
   registry,
   history,
-  local
+  local,
+  layout
 }: {
   engineRead: EngineRead
   registry: NodeRegistry
   history: ReadStore<HistoryState>
   local: Pick<EditorLocalRuntime, 'state' | 'interaction' | 'feedback' | 'viewport'>
+  layout: LayoutRuntime
 }): QueryRuntime => {
   const {
     draw,
@@ -145,14 +148,16 @@ export const createQueryRuntime = ({
     read: engineRead.mindmap,
     node: engineRead.node.item,
     preview: local.feedback.selectors.mindmapPreview,
-    edit: edit.source
+    edit: edit.source,
+    selection: selection.source
   })
   const nodeRead: NodePresentationRead = createNodeRead({
     read: engineRead,
     registry,
     feedback: local.feedback.selectors.node,
     mindmap: mindmapRead.item,
-    edit: edit.source
+    edit: edit.source,
+    selection: selection.source
   })
   const edgeRead = createEdgeRead({
     read: engineRead,
@@ -162,6 +167,7 @@ export const createQueryRuntime = ({
     selection: selection.source,
     tool,
     interaction: local.interaction,
+    layout,
     capability: nodeRead.capability
   })
   const targetRead = createTargetRead({

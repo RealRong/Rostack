@@ -24,6 +24,7 @@ export type {
   ReorderProps as MenuReorderProps,
   SelectionAppearance as MenuSelectionAppearance,
   SelectionMode as MenuSelectionMode,
+  SurfacePadding as MenuSurfacePadding,
   SubmenuItem as MenuSubmenuItem,
   SubmenuOpenPolicy as MenuSubmenuOpenPolicy,
   SurfaceSize as MenuSurfaceSize,

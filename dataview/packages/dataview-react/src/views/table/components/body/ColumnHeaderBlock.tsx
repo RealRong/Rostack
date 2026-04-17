@@ -40,7 +40,7 @@ const View = (props: ColumnHeaderBlockProps) => {
       ref={props.measureRef}
       className="relative self-stretch min-w-full w-max border-b border-divider bg-transparent text-muted-foreground"
       style={{
-        minHeight: table.layout.headerHeight
+        height: table.layout.headerHeight
       }}
     >
       <ColumnHeaderRow

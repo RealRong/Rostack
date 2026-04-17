@@ -12,6 +12,10 @@ import type {
   NodeHit,
   NodeMeta
 } from '@whiteboard/editor'
+import type {
+  EditCaret,
+  EditField
+} from '@whiteboard/editor'
 import type { CSSProperties, ReactNode } from 'react'
 
 export type {
@@ -31,6 +35,10 @@ export type NodeRenderProps = {
   rect: Rect
   selected: boolean
   hovered: boolean
+  edit?: {
+    field: EditField
+    caret: EditCaret
+  }
   write: NodeWrite
 }
 

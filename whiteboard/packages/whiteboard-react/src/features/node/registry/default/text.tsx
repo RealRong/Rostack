@@ -14,12 +14,10 @@ import {
 } from '@whiteboard/editor'
 import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
 import {
-  useEdit,
   usePickRef,
   useWhiteboardServices
 } from '@whiteboard/react/runtime/hooks'
 import { TextSlot } from '@whiteboard/react/features/edit/TextSlot'
-import { matchNodeEdit } from '@whiteboard/react/features/edit/session'
 import {
   type TextWidthMode,
   readTextWidthMode,
@@ -154,9 +152,9 @@ export const resolveTextLayoutStyle = ({
 }
 
 const TextNodeRenderer = ({
-  node
+  node,
+  edit
 }: NodeRenderProps) => {
-  const edit = useEdit()
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
   const {
     bindRef
@@ -175,18 +173,9 @@ const TextNodeRenderer = ({
     part: 'field',
     field: 'text'
   })
-  const nodeEdit = matchNodeEdit(edit, node.id, 'text')
-  const editing = nodeEdit !== null
-  const widthMode = editing
-    ? (
-        nodeEdit.layout.wrapWidth !== undefined
-          ? 'wrap'
-          : readTextWidthMode(node)
-      )
-    : readTextWidthMode(node)
-  const wrapWidth = editing
-    ? (nodeEdit.layout.wrapWidth ?? readTextWrapWidth(node))
-    : readTextWrapWidth(node)
+  const editing = edit?.field === 'text'
+  const widthMode = readTextWidthMode(node)
+  const wrapWidth = readTextWrapWidth(node)
   const textStyle: CSSProperties = {
     fontSize,
     fontWeight,
@@ -207,9 +196,9 @@ const TextNodeRenderer = ({
   return (
     <TextSlot
       bindRef={bindFieldRef}
-      value={editing ? nodeEdit.draft.text : text}
+      value={text}
       displayValue={text || placeholder}
-      caret={nodeEdit?.caret}
+      caret={edit?.caret}
       editable={editing}
       multiline
       nodeId={node.id}
@@ -223,17 +212,15 @@ const TextNodeRenderer = ({
 const StickyNodeRenderer = ({
   node,
   rect,
-  selected
+  selected,
+  edit
 }: NodeRenderProps) => {
-  const edit = useEdit()
   const text = typeof node.data?.text === 'string' ? node.data.text : ''
   const {
     bindRef
   } = useNodeTextSourceBinding(node.id)
-  const nodeEdit = matchNodeEdit(edit, node.id, 'text')
-  const editing = nodeEdit !== null
-  const fontSize = nodeEdit?.layout.fontSize
-    ?? getStyleNumber(node, 'fontSize')
+  const editing = edit?.field === 'text'
+  const fontSize = getStyleNumber(node, 'fontSize')
     ?? estimateTextAutoFont('sticky', rect)
   const fontWeight = getStyleNumber(node, 'fontWeight') ?? 400
   const fontStyle = getStyleString(node, 'fontStyle') ?? 'normal'
@@ -264,8 +251,8 @@ const StickyNodeRenderer = ({
       <div className="wb-sticky-node-shell">
         <TextSlot
           bindRef={bindFieldRef}
-          value={editing ? nodeEdit.draft.text : text}
-          caret={nodeEdit?.caret}
+          value={text}
+          caret={edit?.caret}
           editable={editing}
           multiline
           nodeId={node.id}

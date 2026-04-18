@@ -3,7 +3,7 @@ import {
   ArrowLeftRight,
   MessageSquarePlus
 } from 'lucide-react'
-import { WHITEBOARD_LINE_DEFAULT_COLOR } from '@whiteboard/core/node'
+import { WHITEBOARD_LINE_DEFAULT_COLOR } from '@whiteboard/product/palette'
 import type { EdgeMarker, EdgeTextMode } from '@whiteboard/core/types'
 import { resolvePaletteColor } from '@whiteboard/react/features/palette'
 import type {

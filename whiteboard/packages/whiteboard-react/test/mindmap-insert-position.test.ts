@@ -3,7 +3,10 @@ import { createDocument } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
 import { createEditor, type LayoutBackend } from '@whiteboard/editor'
 import type { NodeRegistry } from '@whiteboard/editor'
-import { INSERT_PRESET_CATALOG } from '../src/features/toolbox/presets'
+import {
+  WHITEBOARD_INSERT_CATALOG,
+  buildWhiteboardMindmapTemplate
+} from '@whiteboard/product'
 import { createInsertBridge } from '../src/runtime/bridge/insert'
 
 const registry: NodeRegistry = {
@@ -97,7 +100,7 @@ describe('mindmap insert position', () => {
     })
     const insert = createInsertBridge({
       editor,
-      catalog: INSERT_PRESET_CATALOG
+      catalog: WHITEBOARD_INSERT_CATALOG
     })
 
     const at = {
@@ -136,7 +139,9 @@ describe('mindmap insert position', () => {
     })
 
     const created = editor.actions.mindmap.create({
-      preset: 'mindmap.underline-split'
+      template: buildWhiteboardMindmapTemplate({
+        preset: 'mindmap.underline-split'
+      })
     })
 
     expect(created.ok).toBe(true)

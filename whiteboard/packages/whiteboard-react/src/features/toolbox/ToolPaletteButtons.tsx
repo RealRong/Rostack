@@ -18,7 +18,10 @@ import {
   type Tool
 } from '@whiteboard/editor'
 import type { DrawMode } from '@whiteboard/editor/draw'
-import { readShapePreviewFill } from '@whiteboard/core/node'
+import {
+  WHITEBOARD_TEXT_INSERT_PRESET,
+  readWhiteboardShapePreviewFill
+} from '@whiteboard/product'
 import type {
   ToolPaletteView
 } from '@whiteboard/react/types/toolbox'
@@ -26,7 +29,6 @@ import {
   ShapeGlyph
 } from '@whiteboard/react/features/node'
 import { EdgePresetGlyph } from '@whiteboard/react/features/toolbox/menus/EdgeMenu'
-import { TEXT_INSERT_PRESET } from '@whiteboard/react/features/toolbox/presets'
 import type { ToolPaletteController } from '@whiteboard/react/features/toolbox/controller'
 
 const ToolIcon = ({
@@ -108,7 +110,12 @@ export const ToolPaletteButtons = ({
       </PickerIconButton>
       <PickerIconButton
         type="button"
-        pressed={tool.type === 'insert' && tool.preset === TEXT_INSERT_PRESET.key}
+        pressed={
+          tool.type === 'insert'
+          && tool.template.kind === WHITEBOARD_TEXT_INSERT_PRESET.template.kind
+          && tool.template.kind === 'node'
+          && tool.template.template.type === 'text'
+        }
         onClick={controller.activateTextTool}
         title="Text"
       >
@@ -132,7 +139,7 @@ export const ToolPaletteButtons = ({
               width={22}
               height={22}
               strokeWidth={4}
-              fill={readShapePreviewFill(palette.shapeKind)}
+              fill={readWhiteboardShapePreviewFill(palette.shapeKind)}
               stroke="currentColor"
             />
           </span>

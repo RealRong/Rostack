@@ -1,4 +1,4 @@
-import { resolveWhiteboardPaletteValue } from '@whiteboard/core/node'
+import { resolveWhiteboardPaletteValue } from '@whiteboard/product/palette'
 
 export const resolvePaletteColor = (
   value: string | null | undefined

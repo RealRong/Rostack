@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDocument } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
+import { buildWhiteboardMindmapTemplate } from '@whiteboard/product'
 import { createEditor, type LayoutBackend, type NodeRegistry } from '../src'
 
 const registry: NodeRegistry = {
@@ -124,13 +125,15 @@ describe('transactional create layout', () => {
     const editor = createTestEditor()
 
     const result = editor.actions.node.create({
-      type: 'text',
       position: {
         x: 40,
         y: 24
       },
-      data: {
-        text: 'hello'
+      template: {
+        type: 'text',
+        data: {
+          text: 'hello'
+        }
       }
     })
 
@@ -149,17 +152,19 @@ describe('transactional create layout', () => {
     const editor = createTestEditor()
 
     const result = editor.actions.node.create({
-      type: 'sticky',
       position: {
         x: 0,
         y: 0
       },
-      size: {
-        width: 180,
-        height: 120
-      },
-      data: {
-        text: 'sticky'
+      template: {
+        type: 'sticky',
+        size: {
+          width: 180,
+          height: 120
+        },
+        data: {
+          text: 'sticky'
+        }
       }
     })
 
@@ -175,7 +180,9 @@ describe('transactional create layout', () => {
     const editor = createTestEditor()
 
     const created = editor.actions.mindmap.create({
-      preset: 'mindmap.underline-split'
+      template: buildWhiteboardMindmapTemplate({
+        preset: 'mindmap.underline-split'
+      })
     })
 
     expect(created.ok).toBe(true)

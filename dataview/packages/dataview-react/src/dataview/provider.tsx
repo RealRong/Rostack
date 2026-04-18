@@ -5,18 +5,18 @@ import {
   useMemo
 } from 'react'
 import type {
-  DataViewContextValue,
-  DataViewSession,
+  DataViewReactContextValue,
+  DataViewReactSession,
   EngineProviderProps
 } from '@dataview/react/dataview/types'
 import {
-  createDataViewSession
+  createDataViewReactSession
 } from '@dataview/react/dataview/runtime'
 import {
   ensureDataviewTokenResolvers
 } from '@dataview/react/i18n/register'
 
-const DataViewContext = createContext<DataViewContextValue | null>(null)
+const DataViewContext = createContext<DataViewReactContextValue | null>(null)
 ensureDataviewTokenResolvers()
 
 export const EngineProvider = (props: EngineProviderProps) => (
@@ -24,7 +24,7 @@ export const EngineProvider = (props: EngineProviderProps) => (
 )
 
 const EngineProviderInner = (props: EngineProviderProps) => {
-  const runtime = useMemo<DataViewSession>(() => createDataViewSession({
+  const runtime = useMemo<DataViewReactSession>(() => createDataViewReactSession({
     engine: props.engine,
     initialPage: props.initialPage
   }), [props.engine])
@@ -40,7 +40,7 @@ const EngineProviderInner = (props: EngineProviderProps) => {
   )
 }
 
-export const useDataView = (): DataViewContextValue => {
+export const useDataView = (): DataViewReactContextValue => {
   const value = useContext(DataViewContext)
   if (!value) {
     throw new Error('Missing <EngineProvider>.')

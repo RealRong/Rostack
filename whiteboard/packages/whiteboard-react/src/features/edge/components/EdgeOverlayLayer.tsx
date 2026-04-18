@@ -2,7 +2,7 @@ import type {
   CSSProperties
 } from 'react'
 import { useStoreValue } from '@shared/react'
-import { WHITEBOARD_LINE_DEFAULT_COLOR } from '@whiteboard/core/node'
+import { WHITEBOARD_LINE_DEFAULT_COLOR } from '@whiteboard/product/palette'
 import {
   useEditorRuntime,
   usePickRef

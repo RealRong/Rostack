@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createDocument } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
+import { buildWhiteboardMindmapTemplate } from '@whiteboard/product'
 import { createMindmapDragSession } from '../src/input/features/mindmap/drag'
 import { createEditor } from '../src'
 import type { NodeRegistry } from '../src'
@@ -72,7 +73,9 @@ describe('mindmap root move', () => {
     })
 
     const created = editor.actions.mindmap.create({
-      preset: 'mindmap.underline-split'
+      template: buildWhiteboardMindmapTemplate({
+        preset: 'mindmap.underline-split'
+      })
     })
 
     expect(created.ok).toBe(true)

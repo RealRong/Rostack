@@ -75,8 +75,10 @@ export const Surface = ({
         className="wb-root-container"
         data-tool={tool.type}
         data-tool-value={
-          tool.type === 'edge' || tool.type === 'insert'
-            ? tool.preset
+          tool.type === 'insert'
+            ? tool.template.kind
+            : tool.type === 'edge'
+              ? tool.template.type
             : tool.type === 'draw'
               ? tool.mode
               : undefined

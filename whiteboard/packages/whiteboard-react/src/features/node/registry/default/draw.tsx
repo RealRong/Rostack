@@ -1,5 +1,7 @@
 import {
-  WHITEBOARD_TEXT_DEFAULT_COLOR,
+  WHITEBOARD_TEXT_DEFAULT_COLOR
+} from '@whiteboard/product/palette'
+import {
   readDrawBaseSize,
   readDrawPoints
 } from '@whiteboard/core/node'

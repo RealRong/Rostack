@@ -5,9 +5,9 @@ import {
   WHITEBOARD_STICKY_PALETTE_INDICES,
   WHITEBOARD_TEXT_PALETTE_INDICES,
   createWhiteboardPaletteKey,
+  resolveWhiteboardPaletteValue,
   type WhiteboardPaletteGroup
-} from '@whiteboard/core/node'
-import { resolvePaletteColor } from '@whiteboard/react/features/palette/render'
+} from '@whiteboard/product/palette'
 
 type WhiteboardPaletteSection = {
   key: string
@@ -94,7 +94,7 @@ const createPaletteOptions = (
   return {
     label: `${group} ${index}`,
     value,
-    color: resolvePaletteColor(value),
+    color: resolveWhiteboardPaletteValue(value),
     ariaLabel: `${group} ${index}`
   }
 })

@@ -111,3 +111,14 @@ export type {
   ValueEditorSessionPolicy,
   ViewFieldRef
 } from '@dataview/runtime/valueEditor'
+
+export {
+  createMarqueeController
+} from '@dataview/runtime/marquee'
+export type {
+  MarqueeController,
+  MarqueeIntentApi,
+  MarqueeMode,
+  MarqueeSessionApi,
+  MarqueeSessionState
+} from '@dataview/runtime/marquee'

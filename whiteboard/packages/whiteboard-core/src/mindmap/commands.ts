@@ -1,8 +1,9 @@
 import { createId } from '@whiteboard/core/id'
 import { err, ok } from '@whiteboard/core/result'
 import {
-  createMindmapTree
-} from '@whiteboard/core/mindmap/schema'
+  createBlankMindmapTemplate,
+  instantiateMindmapTemplate
+} from '@whiteboard/core/mindmap/template'
 import type {
   MindmapBranchStyle,
   MindmapCommandResult,
@@ -157,16 +158,15 @@ const resolveInsertedBranch = (
 }
 
 export const createMindmap = (
-  input: MindmapCreateInput = {},
+  input: Partial<MindmapCreateInput> = {},
   options?: {
     idGenerator?: MindmapIdGenerator
   }
-): MindmapTree => createMindmapTree({
-  preset: input.preset,
-  seed: input.seed,
-  rootId: input.rootId,
-  idGenerator: options?.idGenerator
-})
+): MindmapTree => instantiateMindmapTemplate({
+  template: input.template ?? createBlankMindmapTemplate(),
+  rootId: options?.idGenerator?.nodeId?.(),
+  createNodeId: options?.idGenerator?.nodeId ?? getDefaultNodeId
+}).tree
 
 export const addChild = (
   tree: MindmapTree,

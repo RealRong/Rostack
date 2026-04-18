@@ -1,12 +1,10 @@
-import { createFrameNodeInput } from '@whiteboard/core/node'
 import {
   normalizeSelectionTarget,
   type SelectionTarget
 } from '@whiteboard/core/selection'
 import type {
   CanvasItemRef,
-  GroupId,
-  NodeInput
+  GroupId
 } from '@whiteboard/core/types'
 import type { EditorQuery } from '@whiteboard/editor/query'
 import type {
@@ -85,18 +83,28 @@ const createFrame = (
   },
   padding: number
 ) => {
-  const frame = createFrameNodeInput()
   const result = node.create({
-    ...frame,
     position: {
       x: bounds.x - padding,
       y: bounds.y - padding
     },
-    size: {
-      width: bounds.width + padding * 2,
-      height: bounds.height + padding * 2
+    template: {
+      type: 'frame',
+      size: {
+        width: bounds.width + padding * 2,
+        height: bounds.height + padding * 2
+      },
+      data: {
+        title: 'Frame'
+      },
+      style: {
+        fill: 'transparent',
+        stroke: 'var(--wb-palette-border-4)',
+        strokeWidth: 1,
+        color: 'var(--wb-palette-text-4)'
+      }
     }
-  } satisfies NodeInput)
+  })
   if (!result.ok) {
     return false
   }

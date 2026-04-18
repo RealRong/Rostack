@@ -179,11 +179,11 @@ export const useRowReorder = (): RowReorderApi => {
 
   useEffect(() => {
     if (!drag.dragIds.length) {
-      dataView.page.drag.clear()
+      dataView.react.drag.clear()
       return
     }
 
-    dataView.page.drag.set({
+    dataView.react.drag.set({
       active: true,
       kind: 'row',
       source: sourceNodeRef.current,
@@ -195,10 +195,10 @@ export const useRowReorder = (): RowReorderApi => {
     })
 
     return () => {
-      dataView.page.drag.clear()
+      dataView.react.drag.clear()
     }
   }, [
-    dataView.page.drag,
+    dataView.react.drag,
     drag.dragIds,
     drag.overlayOffsetRef,
     drag.overlaySize,

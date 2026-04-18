@@ -12,7 +12,7 @@ import type {
   NodeTypeDefinition,
   SchemaField
 } from '@whiteboard/core/types'
-import { resolveNodeBootstrapSize } from '@whiteboard/core/node/templates'
+import { resolveNodeBootstrapSize } from '@whiteboard/core/node/bootstrap'
 import { cloneValue } from '@whiteboard/core/value'
 import { getValueByPath, hasValueByPath, setValueByPath } from '@whiteboard/core/utils/objectPath'
 

@@ -1,5 +1,4 @@
 import type { Point } from '@whiteboard/core/types'
-import { WHITEBOARD_DRAW_DEFAULTS } from '@whiteboard/core/node'
 import {
   DEFAULT_DRAW_OPACITY,
   DRAW_BRUSHES,
@@ -7,6 +6,43 @@ import {
   type DrawBrush,
   type DrawSlot
 } from '@whiteboard/editor/session/draw/model'
+
+const WHITEBOARD_DRAW_DEFAULTS = {
+  pen: {
+    slot: '1',
+    slots: {
+      '1': {
+        color: 'var(--wb-palette-border-0)',
+        width: 2
+      },
+      '2': {
+        color: 'var(--wb-palette-border-26)',
+        width: 4
+      },
+      '3': {
+        color: 'var(--wb-palette-border-29)',
+        width: 8
+      }
+    }
+  },
+  highlighter: {
+    slot: '1',
+    slots: {
+      '1': {
+        color: 'var(--wb-palette-border-23)',
+        width: 12
+      },
+      '2': {
+        color: 'var(--wb-palette-border-24)',
+        width: 12
+      },
+      '3': {
+        color: 'var(--wb-palette-border-29)',
+        width: 12
+      }
+    }
+  }
+} as const satisfies DrawState
 
 export type BrushStyle = Readonly<{
   color: string

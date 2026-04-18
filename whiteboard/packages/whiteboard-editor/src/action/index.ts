@@ -35,6 +35,20 @@ import {
 
 const DEFAULT_MINDMAP_ENTER_DURATION_MS = 220
 
+const stringifyToolPayload = (
+  tool: Tool
+) => {
+  switch (tool.type) {
+    case 'edge':
+    case 'insert':
+      return JSON.stringify(tool.template)
+    case 'draw':
+      return tool.mode
+    default:
+      return tool.type
+  }
+}
+
 const readNow = () => (
   typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now()
@@ -61,9 +75,11 @@ const isSameTool = (
 
   switch (left.type) {
     case 'edge':
-      return right.type === 'edge' && left.preset === right.preset
+      return right.type === 'edge'
+        && stringifyToolPayload(left) === stringifyToolPayload(right)
     case 'insert':
-      return right.type === 'insert' && left.preset === right.preset
+      return right.type === 'insert'
+        && stringifyToolPayload(left) === stringifyToolPayload(right)
     case 'draw':
       return right.type === 'draw' && left.mode === right.mode
     default:
@@ -593,11 +609,11 @@ export const createEditorActions = ({
     draw: (mode) => {
       tool.set({ type: 'draw', mode })
     },
-    edge: (preset) => {
-      tool.set({ type: 'edge', preset })
+    edge: (template) => {
+      tool.set({ type: 'edge', template })
     },
-    insert: (preset) => {
-      tool.set({ type: 'insert', preset })
+    insert: (template) => {
+      tool.set({ type: 'insert', template })
     },
     hand: () => {
       tool.set({ type: 'hand' })

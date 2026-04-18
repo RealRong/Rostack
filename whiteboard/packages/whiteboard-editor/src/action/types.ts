@@ -8,10 +8,10 @@ import type {
 } from '@whiteboard/core/kernel'
 import type {
   Document,
+  EdgeTemplate,
   EdgeDash,
   EdgeEnd,
   EdgeId,
-  EdgeInput,
   EdgeMarker,
   EdgePatch,
   EdgeTextMode,
@@ -22,8 +22,8 @@ import type {
   MindmapLayoutSpec,
   MindmapNodeId,
   MindmapTopicData,
+  NodeTemplate,
   NodeId,
-  NodeInput,
   NodeUpdateInput,
   Origin,
   Point
@@ -42,8 +42,7 @@ import type {
 } from '@whiteboard/editor/session/edit'
 import type { ViewportCommands } from '@whiteboard/editor/session/viewport'
 import type {
-  EdgePresetKey,
-  InsertPresetKey,
+  InsertTemplate,
   Tool
 } from '@whiteboard/editor/types/tool'
 import type {
@@ -90,8 +89,8 @@ export type ToolActions = {
   set: (tool: Tool) => void
   select: () => void
   draw: (mode: DrawMode) => void
-  edge: (preset: EdgePresetKey) => void
-  insert: (preset: InsertPresetKey) => void
+  edge: (template: EdgeTemplate) => void
+  insert: (template: InsertTemplate) => void
   hand: () => void
 }
 
@@ -172,7 +171,10 @@ export type EditActions = {
 }
 
 export type NodeActions = {
-  create: (payload: NodeInput) => CommandResult<{ nodeId: NodeId }>
+  create: (input: {
+    position: Point
+    template: NodeTemplate
+  }) => CommandResult<{ nodeId: NodeId }>
   patch: (
     ids: readonly NodeId[],
     update: NodeUpdateInput,
@@ -238,7 +240,11 @@ export type NodeActions = {
 }
 
 export type EdgeActions = {
-  create: (payload: EdgeInput) => CommandResult<{ edgeId: EdgeId }>
+  create: (input: {
+    from: EdgeEnd
+    to: EdgeEnd
+    template: EdgeTemplate
+  }) => CommandResult<{ edgeId: EdgeId }>
   patch: (
     edgeIds: readonly EdgeId[],
     patch: EdgePatch
@@ -291,7 +297,7 @@ export type EdgeActions = {
 
 export type MindmapActions = {
   create: (
-    payload?: MindmapCreateInput,
+    payload: MindmapCreateInput,
     options?: {
       focus?: 'edit-root' | 'select-root' | 'none'
     }

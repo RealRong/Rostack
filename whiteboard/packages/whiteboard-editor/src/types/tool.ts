@@ -1,13 +1,10 @@
+import type {
+  EdgeTemplate,
+  MindmapTemplate,
+  NodeTemplate
+} from '@whiteboard/core/types'
 import type { DrawMode } from '@whiteboard/editor/session/draw/model'
-
-export type EdgePresetKey =
-  | 'edge.line'
-  | 'edge.arrow'
-  | 'edge.elbow-arrow'
-  | 'edge.fillet-arrow'
-  | 'edge.curve-arrow'
-
-export type InsertPresetKey = string
+import type { EditField } from '@whiteboard/editor/session/edit'
 
 export type SelectTool = {
   type: 'select'
@@ -19,12 +16,25 @@ export type HandTool = {
 
 export type EdgeTool = {
   type: 'edge'
-  preset: EdgePresetKey
+  template: EdgeTemplate
 }
+
+export type InsertTemplate =
+  | {
+      kind: 'node'
+      template: NodeTemplate
+      placement?: 'point' | 'center'
+      editField?: EditField
+    }
+  | {
+      kind: 'mindmap'
+      template: MindmapTemplate
+      focus?: 'edit-root' | 'select-root'
+    }
 
 export type InsertTool = {
   type: 'insert'
-  preset: InsertPresetKey
+  template: InsertTemplate
 }
 
 export type DrawTool = {

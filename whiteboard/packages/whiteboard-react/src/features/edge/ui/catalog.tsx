@@ -1,14 +1,12 @@
 import type { ComponentProps, ComponentType } from 'react'
 import type {
   EdgeDash,
+  EdgeTemplate,
   EdgeStyle,
   EdgeTextMode,
   EdgeType
 } from '@whiteboard/core/types'
-import {
-  readEdgePresetCreate,
-  type EdgePresetKey
-} from '@whiteboard/editor'
+import { WHITEBOARD_EDGE_PRESETS } from '@whiteboard/product'
 import { Horizontal } from '@whiteboard/react/icons/Horizontal'
 import { Tangent } from '@whiteboard/react/icons/Tangent'
 import {
@@ -44,14 +42,10 @@ export type EdgeTextModeOption = {
 }
 
 export type EdgePresetOption = {
-  key: EdgePresetKey
+  key: string
   label: string
   glyph: EdgeIcon
-  create: {
-    type: EdgeType
-    style?: Partial<EdgeStyle>
-    textMode?: EdgeTextMode
-  }
+  template: EdgeTemplate
 }
 
 const StraightGlyph: EdgeIcon = (props) => (
@@ -165,31 +159,31 @@ export const EDGE_UI = {
       key: 'edge.line',
       label: 'Line',
       glyph: ArrowLine,
-      create: readEdgePresetCreate('edge.line')
+      template: WHITEBOARD_EDGE_PRESETS.find((entry) => entry.key === 'edge.line')!.template
     },
     {
       key: 'edge.arrow',
       label: 'Arrow',
       glyph: Arrow,
-      create: readEdgePresetCreate('edge.arrow')
+      template: WHITEBOARD_EDGE_PRESETS.find((entry) => entry.key === 'edge.arrow')!.template
     },
     {
       key: 'edge.elbow-arrow',
       label: 'Elbow',
       glyph: ArrowPolyline,
-      create: readEdgePresetCreate('edge.elbow-arrow')
+      template: WHITEBOARD_EDGE_PRESETS.find((entry) => entry.key === 'edge.elbow-arrow')!.template
     },
     {
       key: 'edge.fillet-arrow',
       label: 'Fillet',
       glyph: ArrowFillet,
-      create: readEdgePresetCreate('edge.fillet-arrow')
+      template: WHITEBOARD_EDGE_PRESETS.find((entry) => entry.key === 'edge.fillet-arrow')!.template
     },
     {
       key: 'edge.curve-arrow',
       label: 'Curve',
       glyph: ArrowCurve,
-      create: readEdgePresetCreate('edge.curve-arrow')
+      template: WHITEBOARD_EDGE_PRESETS.find((entry) => entry.key === 'edge.curve-arrow')!.template
     }
   ] as const satisfies readonly EdgePresetOption[]
 } as const

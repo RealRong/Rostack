@@ -6,7 +6,7 @@ export {
   resolveWhiteboardPaletteVariable,
   type WhiteboardPaletteGroup,
   type WhiteboardPaletteKey
-} from '@whiteboard/core/palette/schema'
+} from '@whiteboard/product/palette/key'
 export {
   WHITEBOARD_BG_PALETTE_INDICES,
   WHITEBOARD_BORDER_PALETTE_INDICES,
@@ -16,7 +16,7 @@ export {
   WHITEBOARD_STICKY_PALETTE_INDICES,
   WHITEBOARD_TEXT_PALETTE_INDICES,
   type WhiteboardPaletteRegistry
-} from '@whiteboard/core/palette/registry'
+} from '@whiteboard/product/palette/registry'
 export {
   WHITEBOARD_DRAW_DEFAULTS,
   WHITEBOARD_FRAME_DEFAULTS,
@@ -30,4 +30,4 @@ export {
   WHITEBOARD_TEXT_DEFAULT_COLOR,
   type WhiteboardPaintPreset,
   type WhiteboardStickyTonePreset
-} from '@whiteboard/core/palette/presets'
+} from '@whiteboard/product/palette/defaults'

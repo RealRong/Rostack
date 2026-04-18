@@ -1,0 +1,21 @@
+{
+  "name": "@whiteboard/product",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./theme/whiteboard.css": "./src/theme/whiteboard.css"
+  },
+  "files": [
+    "src",
+    "dist"
+  ],
+  "dependencies": {
+    "@shared/i18n": "workspace:*",
+    "@whiteboard/core": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsdown --config tsdown.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

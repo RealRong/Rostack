@@ -1,19 +1,14 @@
-import type { EdgeInput } from '@whiteboard/core/types'
-import type { EdgePresetKey } from '@whiteboard/editor/types/tool'
+import type { EdgeTemplate } from '@whiteboard/core/types'
 
-export type EdgePresetCreate = Pick<EdgeInput, 'type' | 'style'>
+export type WhiteboardEdgePresetKey = string
 
-export const EDGE_PRESET_KEYS = [
-  'edge.line',
-  'edge.arrow',
-  'edge.elbow-arrow',
-  'edge.fillet-arrow',
-  'edge.curve-arrow'
-] as const satisfies readonly EdgePresetKey[]
+export type WhiteboardEdgePreset = {
+  key: WhiteboardEdgePresetKey
+  label: string
+  template: EdgeTemplate
+}
 
-export const DEFAULT_EDGE_PRESET_KEY: EdgePresetKey = 'edge.arrow'
-
-const EDGE_PRESET_CREATE: Record<EdgePresetKey, EdgePresetCreate> = {
+const WHITEBOARD_EDGE_PRESET_TEMPLATES: Record<WhiteboardEdgePresetKey, EdgeTemplate> = {
   'edge.line': {
     type: 'straight'
   },
@@ -43,19 +38,61 @@ const EDGE_PRESET_CREATE: Record<EdgePresetKey, EdgePresetCreate> = {
   }
 }
 
-export const readEdgePresetCreate = (
-  preset: EdgePresetKey
-): EdgePresetCreate => {
-  const create = EDGE_PRESET_CREATE[preset]
+const WHITEBOARD_EDGE_PRESET_LABELS: Record<WhiteboardEdgePresetKey, string> = {
+  'edge.line': 'Line',
+  'edge.arrow': 'Arrow',
+  'edge.elbow-arrow': 'Elbow',
+  'edge.fillet-arrow': 'Fillet',
+  'edge.curve-arrow': 'Curve'
+}
+
+export const WHITEBOARD_EDGE_PRESET_KEYS = Object.keys(
+  WHITEBOARD_EDGE_PRESET_TEMPLATES
+) as readonly WhiteboardEdgePresetKey[]
+
+export const DEFAULT_WHITEBOARD_EDGE_PRESET_KEY: WhiteboardEdgePresetKey = 'edge.arrow'
+
+export const resolveWhiteboardEdgeTemplate = (
+  preset: string
+): EdgeTemplate | undefined => {
+  const template = WHITEBOARD_EDGE_PRESET_TEMPLATES[preset]
+  if (!template) {
+    return undefined
+  }
 
   return {
-    type: create.type,
-    ...(create.style
+    type: template.type,
+    ...(template.style
       ? {
           style: {
-            ...create.style
+            ...template.style
           }
+        }
+      : {}),
+    ...(template.textMode
+      ? {
+          textMode: template.textMode
         }
       : {})
   }
 }
+
+export const getWhiteboardEdgePreset = (
+  preset: string
+): WhiteboardEdgePreset | undefined => {
+  const template = resolveWhiteboardEdgeTemplate(preset)
+  if (!template) {
+    return undefined
+  }
+
+  return {
+    key: preset,
+    label: WHITEBOARD_EDGE_PRESET_LABELS[preset] ?? preset,
+    template
+  }
+}
+
+export const WHITEBOARD_EDGE_PRESETS: readonly WhiteboardEdgePreset[] =
+  WHITEBOARD_EDGE_PRESET_KEYS
+    .map((key) => getWhiteboardEdgePreset(key))
+    .filter((preset): preset is WhiteboardEdgePreset => preset !== undefined)

@@ -2,7 +2,7 @@ import {
   createWhiteboardPaletteKey,
   type WhiteboardPaletteGroup,
   type WhiteboardPaletteKey
-} from '@whiteboard/core/palette/schema'
+} from '@whiteboard/product/palette/key'
 
 const range = (
   start: number,

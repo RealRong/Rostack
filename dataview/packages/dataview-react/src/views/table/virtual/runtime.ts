@@ -1,5 +1,4 @@
 import type { ViewState as CurrentView, ItemId } from '@dataview/engine'
-import type { MarqueeSessionState } from '@dataview/react/runtime/marquee'
 import {
   observeElementSize,
   pageScrollNode,
@@ -269,15 +268,15 @@ export const resolveTableWindowSnapshot = (input: {
 
 const resolveMarqueeActive = (input: {
   currentView: CurrentView | undefined
-  session: MarqueeSessionState | null
+  active: boolean
 }) => Boolean(
   input.currentView
-  && input.session
+  && input.active
 )
 
 export const createTableVirtualRuntime = (options: {
   currentViewStore: ReadStore<CurrentView | undefined>
-  marqueeStore: ReadStore<MarqueeSessionState | null>
+  marqueeActiveStore: ReadStore<boolean>
   layout: TableLayout
 }): TableVirtualRuntime => {
   const layoutStore = createValueStore<TableVirtualLayoutSnapshot>({
@@ -292,7 +291,7 @@ export const createTableVirtualRuntime = (options: {
     get: () => {
       const marqueeActive = resolveMarqueeActive({
         currentView: read(options.currentViewStore),
-        session: read(options.marqueeStore)
+        active: read(options.marqueeActiveStore)
       })
       const overscan = resolveTableWindowOverscan({
         marqueeActive,

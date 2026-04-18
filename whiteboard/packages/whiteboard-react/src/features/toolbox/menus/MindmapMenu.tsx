@@ -1,10 +1,12 @@
 import {
-  createMindmapPreviewModel,
   computeMindmapLayout,
-  listMindmapPresets,
   resolveMindmapRender,
   type MindmapNodeStyle
 } from '@whiteboard/core/mindmap'
+import {
+  createWhiteboardMindmapPreview,
+  listWhiteboardMindmapPresets
+} from '@whiteboard/product'
 import { PickerOptionButton, PickerSection } from '@shared/ui'
 
 const PREVIEW_NODE_SIZE = {
@@ -87,7 +89,7 @@ const MindmapPresetPreview = ({
 }: {
   presetKey: string
 }) => {
-  const preview = createMindmapPreviewModel({
+  const preview = createWhiteboardMindmapPreview({
     preset: presetKey,
     seed: 'project'
   })
@@ -136,7 +138,7 @@ const MindmapPresetPreview = ({
   )
 }
 
-const PRESETS = listMindmapPresets()
+const PRESETS = listWhiteboardMindmapPresets()
 
 export const MindmapMenu = ({
   value,

@@ -18,10 +18,14 @@ export const serializePresenceTool = (
 ): WhiteboardPresenceTool => {
   switch (tool.type) {
     case 'edge':
+      return {
+        type: tool.type,
+        value: tool.template.type
+      }
     case 'insert':
       return {
         type: tool.type,
-        value: tool.preset
+        value: tool.template.kind
       }
     case 'draw':
       return {

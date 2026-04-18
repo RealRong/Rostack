@@ -3,10 +3,11 @@ import { test } from 'vitest'
 import {
   addChild,
   createMindmap,
+  createBlankMindmapTemplate,
+  instantiateMindmapTemplate,
   insertNode,
   layoutMindmap,
   layoutMindmapTidy,
-  materializeMindmapCreate,
   moveSubtree,
   patchMindmap,
   removeSubtree
@@ -138,23 +139,20 @@ test('mindmap insertNode inserts a new parent in the authored tree', () => {
   assert.equal(nextTree.children[nextTree.rootNodeId]?.[0], parentId)
 })
 
-test('materializeMindmapCreate produces root and child node inputs for owned nodes', () => {
+test('instantiateMindmapTemplate produces root and child node templates for owned nodes', () => {
   let nodeSeq = 1
-  const idGenerator = {
-    nodeId: () => `node_${nodeSeq++}`
-  }
-
-  const result = materializeMindmapCreate({
+  const result = instantiateMindmapTemplate({
+    template: createBlankMindmapTemplate(),
     rootId: 'node_root',
-    idGenerator
+    createNodeId: () => `node_${++nodeSeq}`
   })
 
   const rootId = result.tree.rootNodeId
   assert.equal(rootId, 'node_root')
-  assert.equal(result.nodeInputs[rootId]?.type, 'text')
+  assert.equal(result.nodes[rootId]?.type, 'text')
 
   const rootChildren = result.tree.children[rootId] ?? []
   rootChildren.forEach((childId) => {
-    assert.equal(result.nodeInputs[childId]?.type, 'text')
+    assert.equal(result.nodes[childId]?.type, 'text')
   })
 })

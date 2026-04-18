@@ -21,6 +21,7 @@ import {
 } from '@whiteboard/core/geometry'
 import type {
   Edge,
+  EdgeTemplate,
   EdgeAnchor,
   EdgeEnd,
   EdgeId,
@@ -28,10 +29,6 @@ import type {
   EdgePatch,
   Point
 } from '@whiteboard/core/types'
-import {
-  readEdgePresetCreate,
-  type EdgePresetCreate
-} from '@whiteboard/editor/tool/edgePresets'
 import type { PointerDownInput, KeyboardInput, ModifierKeys } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
@@ -137,25 +134,25 @@ const shouldBlockFreeCreateStart = (
 
 const startFreeEdgeCreate = (
   pointer: PointerDownInput,
-  create: EdgePresetCreate
+  template: EdgeTemplate
 ): EdgeConnectState => startEdgeCreate({
   pointerId: pointer.pointerId,
-  edgeType: create.type,
-  style: create.style,
+  edgeType: template.type,
+  style: template.style,
   from: toEdgeDraftEnd(pointer.world),
   to: toEdgeDraftEnd(pointer.world)
 })
 
 const startNodeEdgeCreate = (input: {
   pointer: PointerDownInput
-  create: EdgePresetCreate
+  template: EdgeTemplate
   nodeId: NodeId
   anchor: EdgeAnchor
   point: PointerDownInput['world']
 }): EdgeConnectState => startEdgeCreate({
   pointerId: input.pointer.pointerId,
-  edgeType: input.create.type,
-  style: input.create.style,
+  edgeType: input.template.type,
+  style: input.template.style,
   from: {
     kind: 'node',
     nodeId: input.nodeId,
@@ -168,7 +165,7 @@ const startNodeEdgeCreate = (input: {
 const resolveNodeHandleStart = (input: {
   node: EdgeConnectNodeRead
   pointer: PointerDownInput
-  create: EdgePresetCreate
+  template: EdgeTemplate
 }): EdgeConnectState | undefined => {
   const pick = input.pointer.pick
   if (
@@ -191,7 +188,7 @@ const resolveNodeHandleStart = (input: {
 
   return startNodeEdgeCreate({
     pointer: input.pointer,
-    create: input.create,
+    template: input.template,
     nodeId: pick.id,
     anchor,
     point: getNodeAnchor(
@@ -206,7 +203,7 @@ const resolveNodeHandleStart = (input: {
 const resolveNodeBodyStart = (input: {
   node: EdgeConnectNodeRead
   pointer: PointerDownInput
-  create: EdgePresetCreate
+  template: EdgeTemplate
   zoom: number
   config: BoardConfig['edge']
 }): EdgeConnectState | undefined => {
@@ -234,7 +231,7 @@ const resolveNodeBodyStart = (input: {
 
   return startNodeEdgeCreate({
     pointer: input.pointer,
-    create: input.create,
+    template: input.template,
     nodeId: pick.id,
     anchor: resolved.anchor,
     point: resolved.point
@@ -244,7 +241,7 @@ const resolveNodeBodyStart = (input: {
 const resolveCreateStart = (input: {
   node: EdgeConnectNodeRead
   pointer: PointerDownInput
-  create: EdgePresetCreate
+  template: EdgeTemplate
   zoom: number
   config: BoardConfig['edge']
 }): EdgeConnectState | undefined => (
@@ -289,8 +286,6 @@ export const tryStartEdgeConnect = (
   input: EdgeConnectStartInput
 ): EdgeConnectState | undefined => {
   if (input.tool.type === 'edge') {
-    const create = readEdgePresetCreate(input.tool.preset)
-
     if (
       !isNodeHandleConnectPick(input.pointer)
       && shouldBlockFreeCreateStart(input.pointer)
@@ -301,10 +296,10 @@ export const tryStartEdgeConnect = (
     return resolveCreateStart({
       node: input.node,
       pointer: input.pointer,
-      create,
+      template: input.tool.template,
       zoom: input.zoom,
       config: input.config
-    }) ?? startFreeEdgeCreate(input.pointer, create)
+    }) ?? startFreeEdgeCreate(input.pointer, input.tool.template)
   }
 
   if (
@@ -588,7 +583,15 @@ const commitConnectState = (
     return
   }
 
-  const result = ctx.write.edge.create(commit.input)
+  const result = ctx.write.edge.create({
+    from: commit.input.source,
+    to: commit.input.target,
+    template: {
+      type: commit.input.type,
+      style: commit.input.style,
+      textMode: commit.input.textMode
+    }
+  })
   if (!result.ok) {
     return
   }

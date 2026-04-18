@@ -9,9 +9,11 @@ import {
   useDataView
 } from '@dataview/react/dataview'
 import type {
-  MarqueeMode,
   MarqueeScene
-} from '@dataview/react/runtime/marquee'
+} from '@dataview/react/page/marqueeBridge'
+import type {
+  MarqueeMode
+} from '@dataview/runtime'
 import { useStoreValue } from '@shared/react'
 import type {
   ItemInteractionRuntime
@@ -27,8 +29,8 @@ export const useRegisterMarqueeScene = (
       return
     }
 
-    return dataView.marquee.registerScene(scene)
-  }, [dataView.marquee, scene])
+    return dataView.react.marquee.registerScene(scene)
+  }, [dataView.react.marquee, scene])
 }
 
 export const useItemSelectionRuntime = (): ItemInteractionRuntime['selection'] => {
@@ -68,7 +70,7 @@ export const useItemSelectionRuntime = (): ItemInteractionRuntime['selection'] =
 export const useItemInteractionRuntime = (): ItemInteractionRuntime => {
   const dataView = useDataView()
   const selection = useItemSelectionRuntime()
-  const marqueeActive = useStoreValue(dataView.marquee.store) !== null
+  const marqueeActive = useStoreValue(dataView.session.marquee.activeStore)
 
   return useMemo(() => ({
     selection,

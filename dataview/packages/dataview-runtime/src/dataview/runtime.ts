@@ -24,8 +24,12 @@ import {
   createPageStateStore
 } from '@dataview/runtime/page/state'
 import {
+  createMarqueeController
+} from '@dataview/runtime/marquee'
+import {
   createItemSelectionDomainSource,
   createSelectionController,
+  createItemListSelectionDomain,
   type ItemSelectionController
 } from '@dataview/runtime/selection'
 import type {
@@ -98,6 +102,25 @@ const bindInlineSessionToSelection = (input: {
   })
 ])
 
+const bindMarqueeToView = (input: {
+  activeView: ReadStore<View | undefined>
+  marquee: Pick<ReturnType<typeof createMarqueeController>, 'get' | 'clear'>
+}) => {
+  let previousViewId = input.activeView.get()?.id
+
+  const sync = () => {
+    const nextViewId = input.activeView.get()?.id
+    if (previousViewId !== nextViewId && input.marquee.get()) {
+      input.marquee.clear()
+    }
+
+    previousViewId = nextViewId
+  }
+
+  sync()
+  return input.activeView.subscribe(sync)
+}
+
 export const createDataViewRuntime = (
   input: CreateDataViewRuntimeInput
 ): DataViewRuntime => {
@@ -116,6 +139,15 @@ export const createDataViewRuntime = (
     })
   })
   const selection = selectionRuntime.controller
+  const marquee = createMarqueeController({
+    selection,
+    resolveDomain: () => {
+      const items = activeItems.get()
+      return items
+        ? createItemListSelectionDomain(items)
+        : undefined
+    }
+  })
   const pageStateStore = createPageStateStore({
     document: input.engine.select.document,
     activeViewId: input.engine.active.id,
@@ -138,6 +170,10 @@ export const createDataViewRuntime = (
     bindInlineSessionToSelection({
       selection,
       inlineSession
+    }),
+    bindMarqueeToView({
+      activeView: input.engine.active.config,
+      marquee
     }),
     bindInlineSessionToView({
       activeView: input.engine.active.config,
@@ -174,6 +210,7 @@ export const createDataViewRuntime = (
         valueEditor
       },
       creation: createRecord,
+      marquee,
       select: {
         isValueEditorOpen: () => pageStateStore.get().valueEditorOpen,
         pageLock: () => pageStateStore.get().lock,
@@ -181,6 +218,7 @@ export const createDataViewRuntime = (
         canStartMarquee: () => (
           !pageStateStore.get().valueEditorOpen
           && inlineSession.store.get() === null
+          && marquee.get() === null
         )
       }
     },
@@ -191,7 +229,8 @@ export const createDataViewRuntime = (
         inline: inlineSession,
         valueEditor
       },
-      createRecord
+      createRecord,
+      marquee
     },
     page: {
       ...page,
@@ -203,6 +242,7 @@ export const createDataViewRuntime = (
     valueEditor,
     dispose: () => {
       createRecord.cancel()
+      marquee.clear()
       disposeBindings()
       selectionRuntime.dispose()
       page.dispose()

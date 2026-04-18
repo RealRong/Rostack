@@ -1,9 +1,11 @@
 import {
-  STICKY_RECTANGLE_SIZE,
-  STICKY_SQUARE_SIZE,
-  WHITEBOARD_STICKY_TONE_PRESETS
-} from '@whiteboard/core/node'
-import { resolvePaletteColor } from '@whiteboard/react/features/palette/render'
+  WHITEBOARD_STICKY_RECTANGLE_SIZE,
+  WHITEBOARD_STICKY_SQUARE_SIZE
+} from '@whiteboard/product/node/templates'
+import {
+  WHITEBOARD_STICKY_TONE_PRESETS,
+  resolveWhiteboardPaletteValue
+} from '@whiteboard/product/palette'
 
 const STICKY_TONE_LABELS = [
   'Soft yellow',
@@ -48,9 +50,9 @@ export const STICKY_TONE_OPTIONS: readonly StickyTone[] = WHITEBOARD_STICKY_TONE
   id: preset.id,
   label: STICKY_TONE_LABELS[offset] ?? `Sticky ${preset.id}`,
   fillKey: preset.fillKey,
-  fill: resolvePaletteColor(preset.fillKey) ?? preset.fillKey,
+  fill: resolveWhiteboardPaletteValue(preset.fillKey) ?? preset.fillKey,
   borderKey: preset.strokeKey,
-  border: resolvePaletteColor(preset.strokeKey) ?? preset.strokeKey
+  border: resolveWhiteboardPaletteValue(preset.strokeKey) ?? preset.strokeKey
 }))
 
 export const STICKY_FORMAT_OPTIONS: readonly StickyFormat[] = [
@@ -58,8 +60,8 @@ export const STICKY_FORMAT_OPTIONS: readonly StickyFormat[] = [
     key: 'square',
     label: '1:1',
     title: 'Square (1:1)',
-    width: STICKY_SQUARE_SIZE.width,
-    height: STICKY_SQUARE_SIZE.height,
+    width: WHITEBOARD_STICKY_SQUARE_SIZE.width,
+    height: WHITEBOARD_STICKY_SQUARE_SIZE.height,
     columns: 4,
     aspectClassName: 'aspect-square'
   },
@@ -67,8 +69,8 @@ export const STICKY_FORMAT_OPTIONS: readonly StickyFormat[] = [
     key: 'rectangle',
     label: 'Rectangle 2:1',
     title: 'Rectangle (2:1)',
-    width: STICKY_RECTANGLE_SIZE.width,
-    height: STICKY_RECTANGLE_SIZE.height,
+    width: WHITEBOARD_STICKY_RECTANGLE_SIZE.width,
+    height: WHITEBOARD_STICKY_RECTANGLE_SIZE.height,
     columns: 2,
     aspectClassName: 'aspect-[2/1]'
   }

@@ -3,10 +3,6 @@ import type {
   Point,
   SpatialNodeInput
 } from '@whiteboard/core/types'
-import {
-  WHITEBOARD_SHAPE_DEFAULTS,
-  WHITEBOARD_SHAPE_PRESET_PAINTS
-} from '@whiteboard/core/palette'
 
 export type ShapeKind =
   | 'rect'
@@ -104,10 +100,22 @@ export type ShapeDescriptor = ShapeSpec & {
 }
 
 const DEFAULT_SHAPE_KIND: ShapeKind = 'rect'
-const DEFAULT_FILL = WHITEBOARD_SHAPE_DEFAULTS.fill
-const DEFAULT_STROKE = WHITEBOARD_SHAPE_DEFAULTS.stroke
-const DEFAULT_TEXT = WHITEBOARD_SHAPE_DEFAULTS.color
-const DEFAULT_PREVIEW_FILL = WHITEBOARD_SHAPE_PRESET_PAINTS.default.previewFill
+const DEFAULT_FILL = 'var(--wb-palette-bg-7)'
+const DEFAULT_STROKE = 'var(--wb-palette-border-0)'
+const DEFAULT_TEXT = 'var(--wb-palette-text-0)'
+const DEFAULT_PREVIEW_FILL = 'var(--wb-color-bg-7)'
+const ARROW_STICKER_PAINT = {
+  fill: 'var(--wb-palette-bg-25)',
+  stroke: 'var(--wb-palette-border-26)',
+  color: 'var(--wb-palette-border-26)',
+  previewFill: 'var(--wb-color-bg-25)'
+} as const
+const HIGHLIGHT_PAINT = {
+  fill: 'var(--wb-palette-bg-22)',
+  stroke: 'var(--wb-palette-border-23)',
+  color: 'var(--wb-palette-text-0)',
+  previewFill: 'var(--wb-color-bg-12)'
+} as const
 const SHAPE_META_CONTROLS = ['fill', 'stroke', 'text'] as const
 const OUTLINE_VIEWBOX = 100
 const CURVE_SEGMENTS = 12
@@ -1651,11 +1659,11 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     defaultSize: { width: 220, height: 110 },
     defaultText: 'Arrow',
     defaults: {
-      fill: WHITEBOARD_SHAPE_PRESET_PAINTS.arrowSticker.fill,
-      stroke: WHITEBOARD_SHAPE_PRESET_PAINTS.arrowSticker.stroke,
-      color: WHITEBOARD_SHAPE_PRESET_PAINTS.arrowSticker.color
+      fill: ARROW_STICKER_PAINT.fill,
+      stroke: ARROW_STICKER_PAINT.stroke,
+      color: ARROW_STICKER_PAINT.color
     },
-    previewFill: WHITEBOARD_SHAPE_PRESET_PAINTS.arrowSticker.previewFill,
+    previewFill: ARROW_STICKER_PAINT.previewFill,
     labelInset: {
       top: '14%',
       right: '40%',
@@ -1684,11 +1692,11 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
     defaultSize: { width: 220, height: 90 },
     defaultText: 'Highlight',
     defaults: {
-      fill: WHITEBOARD_SHAPE_PRESET_PAINTS.highlight.fill,
-      stroke: WHITEBOARD_SHAPE_PRESET_PAINTS.highlight.stroke,
-      color: WHITEBOARD_SHAPE_PRESET_PAINTS.highlight.color
+      fill: HIGHLIGHT_PAINT.fill,
+      stroke: HIGHLIGHT_PAINT.stroke,
+      color: HIGHLIGHT_PAINT.color
     },
-    previewFill: WHITEBOARD_SHAPE_PRESET_PAINTS.highlight.previewFill,
+    previewFill: HIGHLIGHT_PAINT.previewFill,
     labelInset: {
       top: '18%',
       right: '10%',

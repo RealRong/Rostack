@@ -1,6 +1,3 @@
-import type {
-  EdgePresetKey
-} from '@whiteboard/editor'
 import { PickerOptionButton } from '@shared/ui'
 import { EDGE_UI } from '@whiteboard/react/features/edge/ui/catalog'
 
@@ -8,7 +5,7 @@ export const EdgePresetGlyph = ({
   preset,
   className = 'block size-8 overflow-visible'
 }: {
-  preset: EdgePresetKey
+  preset: string
   className?: string
 }) => {
   const option = EDGE_UI.presets.find((entry) => entry.key === preset)!
@@ -26,8 +23,8 @@ export const EdgeMenu = ({
   value,
   onChange
 }: {
-  value: EdgePresetKey
-  onChange: (value: EdgePresetKey) => void
+  value: string
+  onChange: (value: string) => void
 }) => (
   <div className="flex flex-col gap-1">
     {EDGE_UI.presets.map((option) => {

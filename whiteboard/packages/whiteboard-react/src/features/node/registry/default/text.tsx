@@ -6,9 +6,9 @@ import {
 import {
   estimateTextAutoFont,
   resolveTextContentBox,
-  resolveTextFrameMetrics,
-  WHITEBOARD_TEXT_DEFAULT_COLOR
+  resolveTextFrameMetrics
 } from '@whiteboard/core/node'
+import { WHITEBOARD_TEXT_DEFAULT_COLOR } from '@whiteboard/product/palette'
 import {
   readNodeTextSourceId
 } from '@whiteboard/editor'

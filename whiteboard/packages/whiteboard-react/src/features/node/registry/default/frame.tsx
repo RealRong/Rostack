@@ -5,12 +5,12 @@ import {
   readNodeTextSourceId
 } from '@whiteboard/editor'
 import {
-  FRAME_DEFAULT_FILL,
-  FRAME_DEFAULT_STROKE,
-  FRAME_DEFAULT_STROKE_WIDTH,
-  FRAME_DEFAULT_TEXT_COLOR,
-  FRAME_DEFAULT_TITLE
-} from '@whiteboard/core/node'
+  WHITEBOARD_FRAME_DEFAULT_FILL as FRAME_DEFAULT_FILL,
+  WHITEBOARD_FRAME_DEFAULT_STROKE as FRAME_DEFAULT_STROKE,
+  WHITEBOARD_FRAME_DEFAULT_STROKE_WIDTH as FRAME_DEFAULT_STROKE_WIDTH,
+  WHITEBOARD_FRAME_DEFAULT_TEXT_COLOR as FRAME_DEFAULT_TEXT_COLOR,
+  WHITEBOARD_FRAME_DEFAULT_TITLE as FRAME_DEFAULT_TITLE
+} from '@whiteboard/product/node/templates'
 import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
 import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
 import { usePickRef, useWhiteboardServices } from '@whiteboard/react/runtime/hooks'

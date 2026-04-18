@@ -9,17 +9,17 @@ import type {
   DragApi
 } from '@dataview/react/page/drag'
 import type {
-  MarqueeApi
-} from '@dataview/react/runtime/marquee'
+  MarqueeBridgeApi
+} from '@dataview/react/page/marqueeBridge'
 
-export interface DataViewContextValue extends DataViewRuntime {
-  marquee: MarqueeApi
-  page: DataViewRuntime['page'] & {
+export interface DataViewReactContextValue extends DataViewRuntime {
+  react: {
     drag: DragApi
+    marquee: MarqueeBridgeApi
   }
 }
 
-export interface DataViewSession extends DataViewContextValue {
+export interface DataViewReactSession extends DataViewReactContextValue {
   dispose(): void
 }
 

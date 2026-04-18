@@ -17,7 +17,7 @@ const cardStackStyle = (radius: string | undefined, opacity: number) => ({
 })
 
 export const DragHost = () => {
-  const drag = useDataViewValue(dataView => dataView.page.drag.store)
+  const drag = useDataViewValue(dataView => dataView.react.drag.store)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
   const pointer = drag?.pointerRef.current

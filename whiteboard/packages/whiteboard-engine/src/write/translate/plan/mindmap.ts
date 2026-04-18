@@ -13,15 +13,12 @@ import {
   computeMindmapLayout,
   createMindmapCreateOp,
   getMindmapTreeFromDocument,
+  instantiateMindmapTemplate,
   getSubtreeIds
 } from '@whiteboard/core/mindmap'
 import {
   resolveNodeBootstrapSize
 } from '@whiteboard/core/node'
-import {
-  getMindmapTopicLabel,
-  materializeMindmapCreate
-} from '@whiteboard/core/mindmap/schema'
 import { err, ok } from '@whiteboard/core/result'
 import type {
   Document,
@@ -115,10 +112,40 @@ const createBlankTextNodeInput = (
 ): Omit<NodeInput, 'id' | 'position'> => ({
   type: template?.type ?? 'text',
   data: {
-    text: getMindmapTopicLabel(topic as any)
+    text: readMindmapInsertText(topic)
   },
   style: cloneNodeStyle(template?.style)
 })
+
+const readMindmapInsertText = (
+  topic?: unknown
+) => {
+  if (!topic || typeof topic !== 'object') {
+    return 'Topic'
+  }
+
+  const entry = topic as {
+    text?: unknown
+    title?: unknown
+    name?: unknown
+    url?: unknown
+  }
+
+  if (typeof entry.text === 'string' && entry.text.trim()) {
+    return entry.text
+  }
+  if (typeof entry.title === 'string' && entry.title.trim()) {
+    return entry.title
+  }
+  if (typeof entry.name === 'string' && entry.name.trim()) {
+    return entry.name
+  }
+  if (typeof entry.url === 'string' && entry.url.trim()) {
+    return entry.url
+  }
+
+  return 'Topic'
+}
 
 const findInsertTemplateNode = (input: {
   doc: Document
@@ -274,13 +301,9 @@ export const create = (
   }
 
   const mindmapId = payload?.id ?? ctx.ids.mindmap()
-  const materialized = materializeMindmapCreate({
-    preset: payload?.preset,
-    seed: payload?.seed,
-    rootId: payload?.rootId,
-    idGenerator: {
-      nodeId: ctx.ids.mindmapNode
-    }
+  const materialized = instantiateMindmapTemplate({
+    template: payload.template,
+    createNodeId: ctx.ids.mindmapNode
   })
   const rootPosition = payload?.position ?? { x: 0, y: 0 }
   const rootNode = {
@@ -290,7 +313,7 @@ export const create = (
     data: materialized.tree as unknown as NodeData
   } satisfies Node
   const nodeById = new Map<MindmapNodeId, Node>()
-  Object.entries(materialized.nodeInputs).forEach(([nodeId, inputValue]) => {
+  Object.entries(materialized.nodes).forEach(([nodeId, inputValue]) => {
     nodeById.set(nodeId, toNode(
       nodeId,
       mindmapId,

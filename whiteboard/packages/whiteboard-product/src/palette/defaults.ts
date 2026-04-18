@@ -2,7 +2,7 @@ import {
   createWhiteboardPaletteKey,
   resolveWhiteboardPaletteVariable,
   type WhiteboardPaletteKey
-} from '@whiteboard/core/palette/schema'
+} from '@whiteboard/product/palette/key'
 
 export type WhiteboardPaintPreset = {
   fill?: string

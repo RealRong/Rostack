@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDocument } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
+import { buildWhiteboardMindmapTemplate } from '@whiteboard/product'
 import { createEditor } from '../src'
 import type { NodeRegistry } from '../src'
 
@@ -71,7 +72,9 @@ describe('mindmap edit relayout preview', () => {
     })
 
     const created = editor.actions.mindmap.create({
-      preset: 'mindmap.underline-split'
+      template: buildWhiteboardMindmapTemplate({
+        preset: 'mindmap.underline-split'
+      })
     })
 
     expect(created.ok).toBe(true)

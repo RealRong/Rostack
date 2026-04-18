@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { createDocument } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
+import { buildWhiteboardMindmapTemplate } from '@whiteboard/product'
 
 test('engine exposes created mindmap roots through node read projection', () => {
   const engine = createEngine({
@@ -11,7 +12,9 @@ test('engine exposes created mindmap roots through node read projection', () => 
   const result = engine.execute({
     type: 'mindmap.create',
     payload: {
-      preset: 'mindmap.capsule-outline'
+      template: buildWhiteboardMindmapTemplate({
+        preset: 'mindmap.capsule-outline'
+      })
     }
   })
 

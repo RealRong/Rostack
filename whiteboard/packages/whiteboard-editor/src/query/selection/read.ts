@@ -1,15 +1,5 @@
 import {
-  FRAME_DEFAULT_FILL,
-  FRAME_DEFAULT_STROKE,
-  FRAME_DEFAULT_STROKE_WIDTH,
-  FRAME_DEFAULT_TEXT_COLOR,
-  WHITEBOARD_LINE_DEFAULT_COLOR,
-  STICKY_DEFAULT_FILL,
-  STICKY_DEFAULT_STROKE,
-  STICKY_DEFAULT_STROKE_WIDTH,
-  STICKY_DEFAULT_TEXT_COLOR,
   TEXT_DEFAULT_FONT_SIZE,
-  WHITEBOARD_TEXT_DEFAULT_COLOR,
   readShapeKind,
   readShapeSpec
 } from '@whiteboard/core/node'
@@ -50,6 +40,17 @@ import { readUniformValue } from '@whiteboard/editor/query/utils'
 import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
 import type { EditorInputState } from '@whiteboard/editor/session/interaction'
 import type { MindmapPresentationRead } from '@whiteboard/editor/query/mindmap/read'
+
+const FRAME_DEFAULT_FILL = 'transparent'
+const FRAME_DEFAULT_STROKE = 'var(--wb-palette-border-4)'
+const FRAME_DEFAULT_STROKE_WIDTH = 1
+const FRAME_DEFAULT_TEXT_COLOR = 'var(--wb-palette-text-4)'
+const WHITEBOARD_LINE_DEFAULT_COLOR = 'var(--wb-palette-line-0)'
+const STICKY_DEFAULT_FILL = 'var(--wb-palette-sticky-13)'
+const STICKY_DEFAULT_STROKE = 'var(--wb-palette-border-4)'
+const STICKY_DEFAULT_STROKE_WIDTH = 1
+const STICKY_DEFAULT_TEXT_COLOR = 'var(--wb-palette-text-0)'
+const WHITEBOARD_TEXT_DEFAULT_COLOR = 'var(--wb-palette-text-0)'
 
 export type SelectionRead = {
   box: ReadStore<Rect | undefined>

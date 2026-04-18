@@ -6,6 +6,7 @@ export * from '@whiteboard/core/types/document'
 export * from '@whiteboard/core/types/edge'
 export * from '@whiteboard/core/types/kernel'
 export * from '@whiteboard/core/types/mindmap'
+export * from '@whiteboard/core/types/template'
 export type {
   GetNodeSize,
   LayoutMindmap,
@@ -26,8 +27,6 @@ export type {
   MindmapMoveSubtreeInput,
   MindmapNodeStyle,
   MindmapNodeId,
-  MindmapPresetKey,
-  MindmapSeedKey,
   MindmapTopicData,
   MindmapTreeNode,
   MindmapTreeNodeStyle,

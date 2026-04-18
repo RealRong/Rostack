@@ -11,8 +11,7 @@ import {
   resolveTextHandle,
   resolveNodeBootstrapSize,
   shouldPatchTextLayout,
-  TEXT_DEFAULT_FONT_SIZE,
-  TEXT_PLACEHOLDER
+  TEXT_DEFAULT_FONT_SIZE
 } from '@whiteboard/core/node'
 import type { TransformPreviewPatch } from '@whiteboard/core/node'
 import {
@@ -40,6 +39,8 @@ import {
   readNodeTextSourceId
 } from '@whiteboard/editor/types/layout'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
+
+const TEXT_PLACEHOLDER = 'Text'
 
 const SIZE_LAYOUT_STYLE_PATHS = new Set([
   'fontSize',

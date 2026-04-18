@@ -1,19 +1,20 @@
-import {
-  type EdgePresetKey,
-  type Tool
-} from '@whiteboard/editor'
+import { type Tool } from '@whiteboard/editor'
 import type {
   BrushStylePatch,
   DrawMode,
   DrawSlot
 } from '@whiteboard/editor/draw'
+import {
+  WHITEBOARD_TEXT_INSERT_PRESET,
+  getWhiteboardInsertPreset,
+  resolveWhiteboardEdgeTemplate
+} from '@whiteboard/product'
 import type { Dispatch, SetStateAction } from 'react'
 import type { WhiteboardRuntime as Editor } from '@whiteboard/react/types/runtime'
 import type {
   ToolPaletteMenuKey,
   ToolPaletteView
 } from '@whiteboard/react/types/toolbox'
-import { TEXT_INSERT_PRESET } from '@whiteboard/react/features/toolbox/presets'
 
 type MenuSetter = Dispatch<SetStateAction<ToolPaletteMenuKey | null>>
 type DrawPanelSetter = Dispatch<SetStateAction<boolean>>
@@ -27,7 +28,7 @@ export type ToolPaletteController = {
   selectDrawMode: (value: DrawMode) => void
   selectDrawSlot: (value: DrawSlot) => void
   patchDrawStyle: (patch: BrushStylePatch) => void
-  selectEdgePreset: (value: EdgePresetKey) => void
+  selectEdgePreset: (value: string) => void
   selectInsertPreset: (value: string) => void
 }
 
@@ -70,7 +71,11 @@ export const createToolPaletteController = ({
   },
   toggleEdgeMenu: () => {
     if (tool.type !== 'edge') {
-      editor.actions.tool.edge(palette.edgePreset)
+      const template = resolveWhiteboardEdgeTemplate(palette.edgePreset)
+      if (!template) {
+        return
+      }
+      editor.actions.tool.edge(template)
       setOpenMenu('edge')
       return
     }
@@ -82,7 +87,7 @@ export const createToolPaletteController = ({
   },
   activateTextTool: () => {
     closeMenu()
-    editor.actions.tool.insert(TEXT_INSERT_PRESET.key)
+    editor.actions.tool.insert(WHITEBOARD_TEXT_INSERT_PRESET.template)
   },
   toggleDrawMenu: () => {
     if (tool.type !== 'draw') {
@@ -117,11 +122,19 @@ export const createToolPaletteController = ({
     editor.actions.draw.patch(patch)
   },
   selectEdgePreset: (value) => {
+    const template = resolveWhiteboardEdgeTemplate(value)
+    if (!template) {
+      return
+    }
     closeMenu()
-    editor.actions.tool.edge(value)
+    editor.actions.tool.edge(template)
   },
   selectInsertPreset: (value) => {
+    const preset = getWhiteboardInsertPreset(value)
+    if (!preset) {
+      return
+    }
     closeMenu()
-    editor.actions.tool.insert(value)
+    editor.actions.tool.insert(preset.template)
   }
 })

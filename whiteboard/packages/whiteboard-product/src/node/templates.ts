@@ -1,44 +1,44 @@
-import type { Size, SpatialNodeInput } from '@whiteboard/core/types'
+import type { NodeTemplate, SpatialNodeInput } from '@whiteboard/core/types'
+import { readTextWrapWidth } from '@whiteboard/core/node/text'
 import {
   WHITEBOARD_FRAME_DEFAULTS,
   WHITEBOARD_STICKY_DEFAULTS
-} from '@whiteboard/core/palette'
-import { readTextWrapWidth } from '@whiteboard/core/node/text'
+} from '@whiteboard/product/palette'
 
-export const TEXT_START_SIZE = {
+export const WHITEBOARD_TEXT_START_SIZE = {
   width: 144,
   height: 20
 } as const
 
-export const STICKY_SQUARE_SIZE = {
+export const WHITEBOARD_STICKY_SQUARE_SIZE = {
   width: 180,
   height: 180
 } as const
 
-export const STICKY_RECTANGLE_SIZE = {
+export const WHITEBOARD_STICKY_RECTANGLE_SIZE = {
   width: 240,
   height: 120
 } as const
 
-export const STICKY_START_SIZE = STICKY_SQUARE_SIZE
+export const WHITEBOARD_STICKY_START_SIZE = WHITEBOARD_STICKY_SQUARE_SIZE
 
-export const TEXT_PLACEHOLDER = 'Text'
-export const STICKY_PLACEHOLDER = 'Sticky'
-export const STICKY_DEFAULT_FILL = WHITEBOARD_STICKY_DEFAULTS.fill
-export const STICKY_DEFAULT_TEXT_COLOR = WHITEBOARD_STICKY_DEFAULTS.color
-export const STICKY_DEFAULT_STROKE = WHITEBOARD_STICKY_DEFAULTS.stroke
-export const STICKY_DEFAULT_STROKE_WIDTH = WHITEBOARD_STICKY_DEFAULTS.strokeWidth
+export const WHITEBOARD_TEXT_PLACEHOLDER = 'Text'
+export const WHITEBOARD_STICKY_PLACEHOLDER = 'Sticky'
+export const WHITEBOARD_STICKY_DEFAULT_FILL = WHITEBOARD_STICKY_DEFAULTS.fill
+export const WHITEBOARD_STICKY_DEFAULT_TEXT_COLOR = WHITEBOARD_STICKY_DEFAULTS.color
+export const WHITEBOARD_STICKY_DEFAULT_STROKE = WHITEBOARD_STICKY_DEFAULTS.stroke
+export const WHITEBOARD_STICKY_DEFAULT_STROKE_WIDTH = WHITEBOARD_STICKY_DEFAULTS.strokeWidth
 
-export const FRAME_START_SIZE = {
+export const WHITEBOARD_FRAME_START_SIZE = {
   width: 520,
   height: 320
 } as const
 
-export const FRAME_DEFAULT_TITLE = 'Frame'
-export const FRAME_DEFAULT_FILL = WHITEBOARD_FRAME_DEFAULTS.fill
-export const FRAME_DEFAULT_STROKE = WHITEBOARD_FRAME_DEFAULTS.stroke
-export const FRAME_DEFAULT_TEXT_COLOR = WHITEBOARD_FRAME_DEFAULTS.color
-export const FRAME_DEFAULT_STROKE_WIDTH = WHITEBOARD_FRAME_DEFAULTS.strokeWidth
+export const WHITEBOARD_FRAME_DEFAULT_TITLE = 'Frame'
+export const WHITEBOARD_FRAME_DEFAULT_FILL = WHITEBOARD_FRAME_DEFAULTS.fill
+export const WHITEBOARD_FRAME_DEFAULT_STROKE = WHITEBOARD_FRAME_DEFAULTS.stroke
+export const WHITEBOARD_FRAME_DEFAULT_TEXT_COLOR = WHITEBOARD_FRAME_DEFAULTS.color
+export const WHITEBOARD_FRAME_DEFAULT_STROKE_WIDTH = WHITEBOARD_FRAME_DEFAULTS.strokeWidth
 
 const isFinitePositive = (
   value: unknown
@@ -46,65 +46,35 @@ const isFinitePositive = (
   && Number.isFinite(value)
   && value > 0
 
-const resolveExplicitSize = (
-  size: SpatialNodeInput['size']
-): Size | undefined => {
-  if (!size) {
-    return undefined
-  }
-
-  const width = isFinitePositive(size.width) ? size.width : undefined
-  const height = isFinitePositive(size.height) ? size.height : undefined
-
-  if (width === undefined || height === undefined) {
-    return undefined
-  }
-
-  return {
-    width,
-    height
-  }
-}
-
-export const resolveTextNodeBootstrapSize = (
+export const resolveWhiteboardTextBootstrapSize = (
   node: Pick<SpatialNodeInput, 'size' | 'data'>
-): Size => ({
+) => ({
   width: isFinitePositive(node.size?.width)
     ? node.size.width
     : (readTextWrapWidth({
         type: 'text',
         data: node.data
-      }) ?? TEXT_START_SIZE.width),
+      }) ?? WHITEBOARD_TEXT_START_SIZE.width),
   height: isFinitePositive(node.size?.height)
     ? node.size.height
-    : TEXT_START_SIZE.height
+    : WHITEBOARD_TEXT_START_SIZE.height
 })
 
-export const resolveNodeBootstrapSize = (
-  node: Pick<SpatialNodeInput, 'type' | 'size' | 'data'>
-): Size | undefined => {
-  if (node.type === 'text') {
-    return resolveTextNodeBootstrapSize(node)
-  }
-
-  return resolveExplicitSize(node.size)
-}
-
-export const createTextNodeInput = (): Omit<SpatialNodeInput, 'position'> => ({
+export const createWhiteboardTextTemplate = (): NodeTemplate => ({
   type: 'text',
   data: { text: '' }
 })
 
-export const createStickyNodeInput = ({
-  fill = STICKY_DEFAULT_FILL,
-  size = STICKY_START_SIZE
+export const createWhiteboardStickyTemplate = ({
+  fill = WHITEBOARD_STICKY_DEFAULT_FILL,
+  size = WHITEBOARD_STICKY_START_SIZE
 }: {
   fill?: string
   size?: {
     width: number
     height: number
   }
-} = {}): Omit<SpatialNodeInput, 'position'> => ({
+} = {}): NodeTemplate => ({
   type: 'sticky',
   size: { ...size },
   data: {
@@ -112,20 +82,20 @@ export const createStickyNodeInput = ({
   },
   style: {
     fill,
-    color: STICKY_DEFAULT_TEXT_COLOR
+    color: WHITEBOARD_STICKY_DEFAULT_TEXT_COLOR
   }
 })
 
-export const createFrameNodeInput = (): Omit<SpatialNodeInput, 'position'> => ({
+export const createWhiteboardFrameTemplate = (): NodeTemplate => ({
   type: 'frame',
-  size: { ...FRAME_START_SIZE },
+  size: { ...WHITEBOARD_FRAME_START_SIZE },
   data: {
-    title: FRAME_DEFAULT_TITLE
+    title: WHITEBOARD_FRAME_DEFAULT_TITLE
   },
   style: {
-    fill: FRAME_DEFAULT_FILL,
-    stroke: FRAME_DEFAULT_STROKE,
-    strokeWidth: FRAME_DEFAULT_STROKE_WIDTH,
-    color: FRAME_DEFAULT_TEXT_COLOR
+    fill: WHITEBOARD_FRAME_DEFAULT_FILL,
+    stroke: WHITEBOARD_FRAME_DEFAULT_STROKE,
+    strokeWidth: WHITEBOARD_FRAME_DEFAULT_STROKE_WIDTH,
+    color: WHITEBOARD_FRAME_DEFAULT_TEXT_COLOR
   }
 })

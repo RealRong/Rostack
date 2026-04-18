@@ -1,10 +1,9 @@
 import type {
   MindmapId,
   MindmapLayoutSpec,
-  MindmapNodeId,
-  MindmapPresetKey,
-  MindmapSeedKey
+  MindmapNodeId
 } from '@whiteboard/core/mindmap/types'
+import type { MindmapTemplate } from '@whiteboard/core/types/template'
 
 export type DocumentId = string
 export type NodeId = string
@@ -239,10 +238,8 @@ export type EdgeSchema = {
 
 export type MindmapCreateInput = {
   id?: MindmapId
-  rootId?: MindmapNodeId
-  preset?: MindmapPresetKey
-  seed?: MindmapSeedKey
   position?: Point
+  template: MindmapTemplate
 }
 
 export type MindmapLayoutHint = Partial<MindmapLayoutSpec> & {

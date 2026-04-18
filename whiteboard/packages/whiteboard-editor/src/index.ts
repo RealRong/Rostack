@@ -2,12 +2,6 @@ export {
   createEditor
 } from '@whiteboard/editor/editor/createEditor'
 export {
-  DEFAULT_EDGE_PRESET_KEY,
-  EDGE_PRESET_KEYS,
-  readEdgePresetCreate,
-  type EdgePresetCreate
-} from '@whiteboard/editor/tool/edgePresets'
-export {
   createClipboardPacket,
   parseClipboardPacket,
   serializeClipboardPacket
@@ -81,20 +75,11 @@ export type {
 } from '@whiteboard/editor/types/pick'
 export type {
   DrawTool,
-  EdgePresetKey,
   EdgeTool,
-  InsertPresetKey,
+  InsertTemplate,
   InsertTool,
   Tool
 } from '@whiteboard/editor/types/tool'
-export type {
-  InsertPresetCatalog,
-  InsertPlacement,
-  InsertPreset,
-  InsertPresetGroup,
-  MindmapInsertPreset,
-  NodeInsertPreset
-} from '@whiteboard/editor/types/insert'
 export type {
   ControlId,
   NodeDefinition,

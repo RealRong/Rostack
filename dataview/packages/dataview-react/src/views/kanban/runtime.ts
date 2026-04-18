@@ -2,8 +2,10 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
-  useState
+  useState,
+  type RefObject
 } from 'react'
 import type {
   KanbanCardsPerColumn
@@ -15,7 +17,8 @@ import {
   useDataView
 } from '@dataview/react/dataview'
 import {
-  intersects,
+  elementRectIn,
+  observeElementSize,
   rectIn
 } from '@shared/dom'
 import {
@@ -24,7 +27,8 @@ import {
   SectionKey
 } from '@dataview/engine'
 import {
-  readBoardLayout
+  buildBoardLayout,
+  hitTestBoardLayout
 } from '@dataview/react/views/kanban/drag'
 import {
   useDrag
@@ -38,7 +42,10 @@ import {
   useItemDragRuntime,
   useRegisterMarqueeScene
 } from '@dataview/react/views/shared/interactionRuntime'
-import type { MarqueeScene } from '@dataview/react/runtime/marquee'
+import type { MarqueeScene } from '@dataview/react/page/marqueeBridge'
+import {
+  useMeasuredHeights
+} from '@dataview/react/virtual'
 
 const resolveInitialVisibleCount = (
   limit: KanbanCardsPerColumn,
@@ -206,6 +213,119 @@ const useSectionVisibility = (input: {
   }
 }
 
+const useKanbanGeometry = (input: {
+  containerRef: RefObject<HTMLDivElement | null>
+  sections: readonly Section[]
+  visibilityBySection: ReadonlyMap<SectionKey, KanbanSectionVisibility>
+}) => {
+  const [bodyVersion, bumpBodyVersion] = useReducer((value: number) => value + 1, 0)
+  const bodyNodeBySectionKeyRef = useRef(new Map<SectionKey, HTMLDivElement>())
+  const cleanupBySectionKeyRef = useRef(new Map<SectionKey, () => void>())
+  const bodyMeasureRefBySectionKeyRef = useRef(new Map<SectionKey, (node: HTMLDivElement | null) => void>())
+  const visibleIds = useMemo(
+    () => input.sections.flatMap(section => (
+      input.visibilityBySection.get(section.key)?.visibleIds ?? section.items.ids
+    )),
+    [input.sections, input.visibilityBySection]
+  )
+  const measured = useMeasuredHeights({
+    ids: visibleIds
+  })
+
+  useEffect(() => {
+    const activeSectionKeys = new Set(input.sections.map(section => section.key))
+    Array.from(bodyNodeBySectionKeyRef.current.keys()).forEach(sectionKey => {
+      if (activeSectionKeys.has(sectionKey)) {
+        return
+      }
+
+      cleanupBySectionKeyRef.current.get(sectionKey)?.()
+      cleanupBySectionKeyRef.current.delete(sectionKey)
+      bodyNodeBySectionKeyRef.current.delete(sectionKey)
+      bodyMeasureRefBySectionKeyRef.current.delete(sectionKey)
+      bumpBodyVersion()
+    })
+  }, [input.sections])
+
+  useEffect(() => () => {
+    cleanupBySectionKeyRef.current.forEach(cleanup => {
+      cleanup()
+    })
+    cleanupBySectionKeyRef.current.clear()
+    bodyNodeBySectionKeyRef.current.clear()
+    bodyMeasureRefBySectionKeyRef.current.clear()
+  }, [])
+
+  const measureBody = useCallback((sectionKey: SectionKey) => {
+    const cached = bodyMeasureRefBySectionKeyRef.current.get(sectionKey)
+    if (cached) {
+      return cached
+    }
+
+    const ref = (node: HTMLDivElement | null) => {
+      const previousNode = bodyNodeBySectionKeyRef.current.get(sectionKey)
+      if (previousNode === node) {
+        return
+      }
+
+      cleanupBySectionKeyRef.current.get(sectionKey)?.()
+      cleanupBySectionKeyRef.current.delete(sectionKey)
+
+      if (!node) {
+        bodyNodeBySectionKeyRef.current.delete(sectionKey)
+        bumpBodyVersion()
+        return
+      }
+
+      bodyNodeBySectionKeyRef.current.set(sectionKey, node)
+      cleanupBySectionKeyRef.current.set(sectionKey, observeElementSize(node, {
+        emitInitial: false,
+        onChange: () => {
+          bumpBodyVersion()
+        }
+      }))
+      bumpBodyVersion()
+    }
+
+    bodyMeasureRefBySectionKeyRef.current.set(sectionKey, ref)
+    return ref
+  }, [])
+
+  const bodyRectBySectionKey = useMemo(() => {
+    const container = input.containerRef.current
+    if (!container) {
+      return new Map<SectionKey, ReturnType<typeof elementRectIn>>()
+    }
+
+    return new Map(
+      input.sections.flatMap(section => {
+        const node = bodyNodeBySectionKeyRef.current.get(section.key)
+        return node
+          ? [[section.key, elementRectIn(container, node)] as const]
+          : []
+      })
+    )
+  }, [bodyVersion, input.containerRef, input.sections])
+
+  const layout = useMemo(() => buildBoardLayout({
+    sections: input.sections,
+    visibilityBySection: input.visibilityBySection,
+    bodyRectBySectionKey,
+    heightById: measured.heightById
+  }), [
+    bodyRectBySectionKey,
+    input.sections,
+    input.visibilityBySection,
+    measured.heightById
+  ])
+
+  return {
+    layout,
+    measureCard: measured.measure,
+    measureBody
+  }
+}
+
 export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime => {
   const dataView = useDataView()
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -217,6 +337,11 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
     viewId: input.active.view.id,
     sections: input.active.sections.all,
     cardsPerColumn: input.extra.cardsPerColumn
+  })
+  const geometry = useKanbanGeometry({
+    containerRef: scrollRef,
+    sections: input.active.sections.all,
+    visibilityBySection: visibility.bySection
   })
   const marqueeScene = useMemo<MarqueeScene>(() => ({
     hitTest: rect => {
@@ -230,16 +355,9 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
         return []
       }
 
-      const layout = readBoardLayout(container)
-      if (!layout) {
-        return []
-      }
-
-      return layout.columns.flatMap(column => column.cards.filter(card => (
-        intersects(localRect, card.rect)
-      )).map(card => card.id))
+      return hitTestBoardLayout(geometry.layout, localRect)
     }
-  }), [visibility.bySection])
+  }), [geometry.layout])
 
   useRegisterMarqueeScene(marqueeScene)
 
@@ -247,7 +365,7 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
     containerRef: scrollRef,
     canDrag: input.extra.canReorder,
     itemMap: interaction.itemMap,
-    getLayout: () => readBoardLayout(scrollRef.current),
+    getLayout: () => geometry.layout,
     getDragIds: interaction.getDragIds,
     onDraggingChange: interaction.onDraggingChange,
     onDrop: (cardIds, target) => {
@@ -260,11 +378,11 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
 
   useEffect(() => {
     if (!drag.activeId || !drag.dragIds.length) {
-      dataView.page.drag.clear()
+      dataView.react.drag.clear()
       return
     }
 
-    dataView.page.drag.set({
+    dataView.react.drag.set({
       active: true,
       kind: 'card',
       source: drag.sourceRef.current,
@@ -278,10 +396,10 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
     })
 
     return () => {
-      dataView.page.drag.clear()
+      dataView.react.drag.clear()
     }
   }, [
-    dataView.page.drag,
+    dataView.react.drag,
     drag.activeId,
     drag.dragIds,
     drag.overlayOffsetRef,
@@ -297,12 +415,18 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
       columnWidth: input.columnWidth,
       columnMinHeight: input.columnMinHeight
     },
+    geometry: {
+      measureCard: geometry.measureCard,
+      measureBody: geometry.measureBody
+    },
     scrollRef,
     ...interaction,
     drag,
     visibility
   }), [
     drag,
+    geometry.measureBody,
+    geometry.measureCard,
     input.columnMinHeight,
     input.columnWidth,
     interaction,

@@ -4,10 +4,10 @@ import type {
 } from '@whiteboard/core/node'
 import type {
   Edge,
+  EdgeTemplate,
   EdgeDash,
   EdgeEnd,
   EdgeId,
-  EdgeInput,
   EdgeMarker,
   EdgePatch,
   EdgeTextMode,
@@ -24,8 +24,8 @@ import type {
   MindmapTopicData,
   MindmapTree,
   MindmapTreePatch,
+  NodeTemplate,
   NodeId,
-  NodeInput,
   NodeUpdateInput,
   OrderMode,
   Origin,
@@ -157,7 +157,10 @@ export type NodeStyleWrite = {
 }
 
 export type NodeWrite = {
-  create: (payload: NodeInput) => CommandResult<{ nodeId: NodeId }>
+  create: (input: {
+    position: Point
+    template: NodeTemplate
+  }) => CommandResult<{ nodeId: NodeId }>
   patch: (
     ids: readonly NodeId[],
     update: NodeUpdateInput,
@@ -226,7 +229,11 @@ export type EdgeTextModeWrite = {
 }
 
 export type EdgeWrite = {
-  create: (payload: EdgeInput) => CommandResult<{ edgeId: EdgeId }>
+  create: (input: {
+    from: EdgeEnd
+    to: EdgeEnd
+    template: EdgeTemplate
+  }) => CommandResult<{ edgeId: EdgeId }>
   patch: (
     edgeIds: readonly EdgeId[],
     patch: EdgePatch
@@ -285,7 +292,7 @@ export type MindmapStyleWrite = {
 
 export type MindmapWrite = {
   create: (
-    payload?: MindmapCreateInput
+    payload: MindmapCreateInput
   ) => CommandResult<{
     mindmapId: MindmapId
     rootId: MindmapNodeId

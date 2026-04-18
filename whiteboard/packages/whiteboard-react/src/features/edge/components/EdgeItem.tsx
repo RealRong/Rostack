@@ -9,9 +9,7 @@ import {
   useRef,
   useState
 } from 'react'
-import {
-  WHITEBOARD_LINE_DEFAULT_COLOR
-} from '@whiteboard/core/node'
+import { WHITEBOARD_LINE_DEFAULT_COLOR } from '@whiteboard/product/palette'
 import type { EdgeId } from '@whiteboard/core/types'
 import {
   readEdgeLabelMaskTransform,

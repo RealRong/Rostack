@@ -287,7 +287,274 @@ marquee 不应该“整块”放在任意一层。
 
 也就是说，这一层应从“半个 runtime”退回“React wrapper”。
 
-## 9. 最终结论
+## 9. 最终 API 设计
+
+下面给出最终建议的 API 设计。目标只有三个：
+
+- 边界清楚
+- 长期可复用
+- 不再出现 react 装配层承载 headless binding 的情况
+
+### 9.1 `dataview-runtime` 的最终公开接口
+
+建议把 marquee 正式收进 `DataViewRuntime`。
+
+也就是：
+
+```ts
+interface MarqueeSessionState {
+  mode: 'replace' | 'add' | 'toggle'
+  start: Point
+  current: Point
+  rect: Box
+  hitIds: readonly ItemId[]
+  baseSelection: ItemSelectionSnapshot
+}
+```
+
+```ts
+interface MarqueeSessionApi {
+  store: ReadStore<MarqueeSessionState | null>
+  get(): MarqueeSessionState | null
+}
+```
+
+```ts
+interface MarqueeIntentApi {
+  start(input: {
+    mode: 'replace' | 'add' | 'toggle'
+    start: Point
+    baseSelection: ItemSelectionSnapshot
+  }): void
+  update(input: {
+    current: Point
+    rect: Box
+    hitIds: readonly ItemId[]
+  }): void
+  commit(): void
+  cancel(): void
+  clear(): void
+}
+```
+
+然后 `DataViewRuntime` 的最终 shape 建议变成：
+
+```ts
+interface DataViewSessionApi {
+  store: ReadStore<DataViewSessionState>
+  page: PageSessionApi & {
+    store: ReadStore<PageState>
+  }
+  selection: ItemSelectionController
+  editing: {
+    inline: InlineSessionApi
+    valueEditor: ValueEditorController
+  }
+  creation: CreateRecordApi
+  marquee: MarqueeSessionApi
+  select: {
+    isValueEditorOpen(): boolean
+    pageLock(): PageLock
+    activeInlineTarget(): InlineSessionTarget | null
+    canStartMarquee(): boolean
+  }
+}
+```
+
+```ts
+interface DataViewIntentApi {
+  page: PageSessionApi
+  selection: ItemSelectionController['command']
+  editing: {
+    inline: InlineSessionApi
+    valueEditor: ValueEditorController
+  }
+  createRecord: CreateRecordApi
+  marquee: MarqueeIntentApi
+}
+```
+
+也就是说，runtime 内部形成一套很清楚的划分：
+
+- `session.marquee` 只负责读本地 marquee 状态
+- `intent.marquee` 只负责改本地 marquee 状态并做 commit/cancel
+
+### 9.2 `dataview-runtime` 内部应新增的绑定
+
+`bindMarqueeToView(...)` 应下沉到 runtime，并且与 inline session 的绑定放在一起。
+
+建议的内部形式：
+
+```ts
+const bindMarqueeToView = (input: {
+  activeView: ReadStore<View | undefined>
+  marquee: MarqueeIntentApi & MarqueeSessionApi
+}) => { ... }
+```
+
+职责只有一个：
+
+- active view 变化时，如果 marquee 仍在进行，则直接 `clear()` 或 `cancel()`
+
+同层还可以继续收纳：
+
+- marquee 与 inline session 的互斥
+- marquee 与 value editor open 的约束
+
+也就是所有 “session validity rule” 都进入 runtime，而不是散落在 react wrapper。
+
+### 9.3 `createDataViewRuntime(...)` 的最终职责
+
+建议最终由 `createDataViewRuntime(...)` 直接创建：
+
+- page
+- selection
+- inline session
+- value editor
+- create record
+- marquee
+
+也就是：
+
+```ts
+function createDataViewRuntime(input: CreateDataViewRuntimeInput): DataViewRuntime
+```
+
+这里返回的 `DataViewRuntime` 已经是完整的 headless runtime，不需要 react 层再补一个 headless `marquee`。
+
+### 9.4 `dataview-react` 的最终公开接口
+
+react 层不再创建 headless marquee controller，而只负责 React/DOM bridge。
+
+建议新增一个很小的 bridge API：
+
+```ts
+interface MarqueeScene {
+  hitTest(rect: Box): readonly ItemId[]
+}
+```
+
+```ts
+interface MarqueeBridgeApi {
+  shouldStartMarquee(event: PointerEvent): boolean
+  registerScene(scene: MarqueeScene): () => void
+  getScene(): MarqueeScene | undefined
+  resolveAutoPanRoot(): HTMLElement | null
+}
+```
+
+这里的边界非常清楚：
+
+- `shouldStartMarquee(event)` 是 page DOM policy
+- `registerScene(scene)` 是 view geometry bridge
+- `resolveAutoPanRoot()` 是 page scroll bridge
+
+这些都不是 runtime 语义，所以留在 react。
+
+### 9.5 `createDataViewReactSession(...)` 的最终 shape
+
+react 层最终只是在 runtime 之上包一层 React 专属能力。
+
+建议最终形态：
+
+```ts
+interface DataViewReactSession extends DataViewRuntime {
+  react: {
+    drag: DragApi
+    marquee: MarqueeBridgeApi
+  }
+}
+```
+
+并对应：
+
+```ts
+function createDataViewReactSession(input: {
+  engine: Engine
+  initialPage?: PageSessionInput
+}): DataViewReactSession
+```
+
+为什么这里要保留一个 `react` 命名空间：
+
+- 避免把 DOM 专属能力继续铺到顶层
+- 避免和 runtime 的 `session.marquee` / `intent.marquee` 冲突
+- 一眼就能看出哪些 API 不能离开 React/DOM 单独存在
+
+### 9.6 `dataview-react/src/dataview/runtime.ts` 的最终实现方向
+
+长期应收成下面这种形式：
+
+```ts
+export const createDataViewReactSession = (input: {
+  engine: Engine
+  initialPage?: PageSessionInput
+}): DataViewReactSession => {
+  const runtime = createDataViewRuntime(input)
+
+  return {
+    ...runtime,
+    react: {
+      drag: createDragApi(),
+      marquee: createMarqueeBridgeApi()
+    },
+    dispose: () => {
+      // clear react-only bridge state
+      runtime.dispose()
+    }
+  }
+}
+```
+
+注意这里已经不再允许：
+
+- `bindMarqueeToView(...)`
+- 任何 headless session binding
+- 任何依赖 active view 的 runtime rule
+
+react wrapper 只负责创建 react-only bridge。
+
+### 9.7 为什么不建议把 drag 也设计成同样模式
+
+因为 drag 现在还没有稳定的 headless 层。
+
+也就是说目前最合理的状态是：
+
+`dataview-runtime`
+- 有 marquee runtime
+- 没有 drag runtime
+
+`dataview-react`
+- 有 `react.marquee` bridge
+- 有 `react.drag` bridge
+
+如果以后 drag 也完成拆层，再单独补：
+
+- `session.drag`
+- `intent.drag`
+
+但现在不要为了对称而预设计。
+
+### 9.8 一句话 API 结论
+
+最终推荐的命名和边界就是：
+
+`dataview-runtime`
+- `session.marquee`
+- `intent.marquee`
+- `createDataViewRuntime(...)`
+
+`dataview-react`
+- `react.marquee`
+- `react.drag`
+- `createDataViewReactSession(...)`
+
+这样以后用户只要看到名字，就能直接判断归属：
+
+- `session/intention` 是 headless runtime
+- `react.*` 是 DOM bridge
+
+## 10. 最终结论
 
 我的判断是：
 

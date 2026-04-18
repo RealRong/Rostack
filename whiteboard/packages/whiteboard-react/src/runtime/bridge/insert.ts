@@ -1,26 +1,32 @@
-import {
-  type InsertPresetKey,
-  type InsertPlacement,
-  type InsertPreset,
-  type InsertPresetCatalog,
-  type MindmapInsertPreset,
-  type NodeInsertPreset
-} from '@whiteboard/editor'
 import { resolveNodeBootstrapSize } from '@whiteboard/core/node'
-import type { NodeId, Point, SpatialNodeInput } from '@whiteboard/core/types'
+import type { NodeId, Point } from '@whiteboard/core/types'
+import type {
+  WhiteboardInsertCatalog,
+  WhiteboardInsertEditField,
+  WhiteboardInsertPlacement,
+  WhiteboardInsertPreset,
+  WhiteboardMindmapInsertPreset,
+  WhiteboardNodeInsertPreset
+} from '@whiteboard/product/insert/types'
 import type { WhiteboardRuntime } from '@whiteboard/react/types/runtime'
 
 type InsertResult = {
   nodeId: NodeId
   edit?: {
     nodeId: NodeId
-    field: NonNullable<NodeInsertPreset['focus']>
+    field: WhiteboardInsertEditField
   }
 }
 
 export type InsertBridge = {
+  template: (
+    template: WhiteboardInsertPreset['template'],
+    options: {
+      at: Point
+    }
+  ) => InsertResult | undefined
   preset: (
-    preset: InsertPresetKey,
+    presetKey: string,
     options: {
       at: Point
     }
@@ -36,7 +42,7 @@ export type InsertBridge = {
     at: Point
   }) => InsertResult | undefined
   shape: (options: {
-    kind: Parameters<InsertPresetCatalog['defaults']['shape']>[0]
+    kind: Parameters<WhiteboardInsertCatalog['defaults']['shape']>[0]
     at: Point
   }) => InsertResult | undefined
   mindmap: (options: {
@@ -45,27 +51,27 @@ export type InsertBridge = {
   }) => InsertResult | undefined
 }
 
-const placeNodeInput = ({
+const placeNode = ({
   world,
-  input,
+  template,
   placement = 'center'
 }: {
   world: Point
-  input: Omit<SpatialNodeInput, 'position'>
-  placement?: InsertPlacement
-}): SpatialNodeInput => {
-  const bootstrapSize = resolveNodeBootstrapSize(input)
+  template: WhiteboardNodeInsertPreset['template']['template']
+  placement?: WhiteboardInsertPlacement
+}) => {
+  const bootstrapSize = resolveNodeBootstrapSize(template)
   const width = bootstrapSize?.width ?? 160
   const height = bootstrapSize?.height ?? 80
 
   return {
-    ...input,
     position: placement === 'point'
       ? world
       : {
           x: world.x - width / 2,
           y: world.y - height / 2
-        }
+        },
+    template
   }
 }
 
@@ -74,7 +80,7 @@ const toInsertResult = ({
   field
 }: {
   nodeId: NodeId
-  field?: NodeInsertPreset['focus']
+  field?: WhiteboardInsertEditField
 }): InsertResult => ({
   nodeId,
   edit: field
@@ -125,21 +131,21 @@ const insertNodePreset = ({
   world
 }: {
   editor: WhiteboardRuntime
-  preset: NodeInsertPreset
+  preset: WhiteboardNodeInsertPreset
   world: Point
 }): InsertResult | undefined => {
   const result = editor.actions.node.create(
-    placeNodeInput({
+    placeNode({
       world,
-      input: preset.input(world),
-      placement: preset.placement
+      template: preset.template.template,
+      placement: preset.template.placement
     })
   )
   if (!result.ok) {
     return undefined
   }
 
-  if (preset.placement !== 'point') {
+  if (preset.template.placement !== 'point') {
     recenterNode({
       editor,
       nodeId: result.data.nodeId,
@@ -149,7 +155,7 @@ const insertNodePreset = ({
 
   return toInsertResult({
     nodeId: result.data.nodeId,
-    field: preset.focus
+    field: preset.template.editField
   })
 }
 
@@ -159,14 +165,17 @@ const insertMindmapPreset = ({
   world
 }: {
   editor: WhiteboardRuntime
-  preset: MindmapInsertPreset
+  preset: WhiteboardMindmapInsertPreset
   world: Point
 }): InsertResult | undefined => {
   const result = editor.actions.mindmap.create({
-    preset: preset.preset,
-    seed: preset.seed
+    position: {
+      x: 0,
+      y: 0
+    },
+    template: preset.template.template
   }, {
-    focus: 'edit-root'
+    focus: preset.template.focus ?? 'edit-root'
   })
   if (!result.ok) {
     return undefined
@@ -200,15 +209,15 @@ const runInsertPreset = ({
   at
 }: {
   editor: WhiteboardRuntime
-  preset: InsertPreset
+  preset: WhiteboardInsertPreset
   at: Point
 }): InsertResult | undefined => {
   const result = preset.kind === 'node'
     ? insertNodePreset({
-      editor,
-      preset,
-      world: at
-    })
+        editor,
+        preset,
+        world: at
+      })
     : insertMindmapPreset({
         editor,
         preset,
@@ -230,13 +239,13 @@ const runInsertPreset = ({
   return result
 }
 
-const createInsertCommands = ({
+export const createInsertBridge = ({
   editor,
   catalog
 }: {
   editor: WhiteboardRuntime
-  catalog: InsertPresetCatalog
-}): Omit<InsertBridge, 'pointerDown'> => {
+  catalog: WhiteboardInsertCatalog
+}): InsertBridge => {
   const insertPresetByKey = (input: {
     presetKey: string
     options: {
@@ -255,7 +264,26 @@ const createInsertCommands = ({
     })
   }
 
+  const insertByTemplate = (input: {
+    template: WhiteboardInsertPreset['template']
+    at: Point
+  }) => runInsertPreset({
+    editor,
+    preset: {
+      key: '',
+      group: input.template.kind === 'mindmap' ? 'mindmap' : 'text',
+      label: '',
+      kind: input.template.kind,
+      template: input.template as never
+    } as WhiteboardInsertPreset,
+    at: input.at
+  })
+
   return {
+    template: (template, options) => insertByTemplate({
+      template,
+      at: options.at
+    }),
     preset: (presetKey, options) => insertPresetByKey({
       presetKey,
       options
@@ -284,17 +312,4 @@ const createInsertCommands = ({
         options: { at }
       })
   }
-}
-
-export const createInsertBridge = ({
-  editor,
-  catalog
-}: {
-  editor: WhiteboardRuntime
-  catalog: InsertPresetCatalog
-}): InsertBridge => {
-  return createInsertCommands({
-    editor,
-    catalog
-  })
 }

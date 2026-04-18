@@ -37,7 +37,7 @@ import { Surface } from '@dataview/react/views/table/components/body/Surface'
 import {
   useRegisterMarqueeScene
 } from '@dataview/react/views/shared/interactionRuntime'
-import type { MarqueeScene } from '@dataview/react/runtime/marquee'
+import type { MarqueeScene } from '@dataview/react/page/marqueeBridge'
 
 const View = () => {
   const dataView = useDataView()

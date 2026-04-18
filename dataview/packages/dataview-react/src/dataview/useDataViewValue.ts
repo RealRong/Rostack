@@ -8,20 +8,20 @@ import {
   useStoreValue
 } from '@shared/react'
 import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
-import type { DataViewContextValue } from '@dataview/react/dataview/types'
+import type { DataViewReactContextValue } from '@dataview/react/dataview/types'
 import { useDataView } from '@dataview/react/dataview/provider'
 import type { DataViewSessionState } from '@dataview/runtime'
 
 export function useDataViewValue<TState>(
-  resolveStore: (dataView: DataViewContextValue) => ReadStore<TState>
+  resolveStore: (dataView: DataViewReactContextValue) => ReadStore<TState>
 ): TState
 export function useDataViewValue<TState, TResult>(
-  resolveStore: (dataView: DataViewContextValue) => ReadStore<TState>,
+  resolveStore: (dataView: DataViewReactContextValue) => ReadStore<TState>,
   selector: (state: TState) => TResult,
   isEqual?: Equality<TResult>
 ): TResult
 export function useDataViewValue<TState, TResult>(
-  resolveStore: (dataView: DataViewContextValue) => ReadStore<TState>,
+  resolveStore: (dataView: DataViewReactContextValue) => ReadStore<TState>,
   selector?: (state: TState) => TResult,
   isEqual?: Equality<TResult>
 ): TState | TResult {
@@ -36,7 +36,7 @@ export function useDataViewValue<TState, TResult>(
 }
 
 export const useDataViewKeyedValue = <K, T>(
-  resolveStore: (dataView: DataViewContextValue) => KeyedReadStore<K, T>,
+  resolveStore: (dataView: DataViewReactContextValue) => KeyedReadStore<K, T>,
   key: K
 ): T => {
   const dataView = useDataView()

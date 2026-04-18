@@ -1,25 +1,19 @@
 import {
-  elementRectIn,
+  intersects,
   type Rect
 } from '@shared/dom'
-import {
-  DATAVIEW_APPEARANCE_ID_ATTR,
-  parseItemIdValue
-} from '@dataview/react/dom/appearance'
 import type {
   ItemId,
+  Section,
   SectionKey
 } from '@dataview/engine'
+import type {
+  KanbanSectionVisibility
+} from '@dataview/react/views/kanban/types'
 
 export interface CardLayout {
   id: ItemId
   rect: Rect
-}
-
-export interface CardPosition {
-  id: ItemId
-  top: number
-  height: number
 }
 
 export interface ColumnLayout {
@@ -33,67 +27,85 @@ export interface BoardLayout {
   columns: readonly ColumnLayout[]
 }
 
-export const readBoardLayout = (
-  container: HTMLElement | null,
-  positionsByColumnKey?: ReadonlyMap<SectionKey, readonly CardPosition[]>
-): BoardLayout | null => {
-  if (!container) {
-    return null
-  }
+export const KANBAN_CARD_GAP = 8
+export const KANBAN_CARD_ESTIMATED_HEIGHT = 132
 
-  const columns = Array.from(
-    container.querySelectorAll<HTMLElement>('[data-kanban-column-key]')
-  ).reduce<ColumnLayout[]>((result, columnNode) => {
-    const key = columnNode.dataset.kanbanColumnKey
-    if (!key) {
-      return result
+export const buildBoardLayout = (input: {
+  sections: readonly Section[]
+  visibilityBySection: ReadonlyMap<SectionKey, KanbanSectionVisibility>
+  bodyRectBySectionKey: ReadonlyMap<SectionKey, Rect>
+  heightById: ReadonlyMap<ItemId, number>
+  estimatedHeight?: number
+}): BoardLayout | null => {
+  const estimatedHeight = input.estimatedHeight ?? KANBAN_CARD_ESTIMATED_HEIGHT
+  const columns = input.sections.flatMap<ColumnLayout>(section => {
+    const bodyRect = input.bodyRectBySectionKey.get(section.key)
+    if (!bodyRect) {
+      return []
     }
 
-    const bodyNode = columnNode.querySelector<HTMLElement>('[data-kanban-column-body]')
-    const bodyTarget = bodyNode ?? columnNode
-    const bodyRect = elementRectIn(container, bodyTarget)
-    const positions = positionsByColumnKey?.get(key)
-    const cards: CardLayout[] = positions
-      ? positions.map(position => ({
-        id: position.id,
-        rect: {
-          left: bodyRect.left,
-          right: bodyRect.right,
-          top: bodyRect.top + position.top,
-          bottom: bodyRect.top + position.top + position.height,
-          width: bodyRect.width,
-          height: position.height
-        }
-      }))
-      : Array.from(
-        bodyTarget.querySelectorAll<HTMLElement>(`[${DATAVIEW_APPEARANCE_ID_ATTR}]`)
-      )
-        .map(cardNode => {
-          const id = parseItemIdValue(
-            cardNode.getAttribute(DATAVIEW_APPEARANCE_ID_ATTR)
-          )
-          if (!id) {
-            return undefined
-          }
-
-          return {
-            id,
-            rect: elementRectIn(container, cardNode)
-          } satisfies CardLayout
-        })
-        .filter((card): card is CardLayout => Boolean(card))
-
-    result.push({
-      key,
-      rect: elementRectIn(container, columnNode),
-      bodyRect,
-      cards
+    const visibleIds = input.visibilityBySection.get(section.key)?.visibleIds ?? section.items.ids
+    let top = bodyRect.top
+    const cards = visibleIds.map<CardLayout>(id => {
+      const height = input.heightById.get(id) ?? estimatedHeight
+      const rect = {
+        left: bodyRect.left,
+        right: bodyRect.right,
+        top,
+        bottom: top + height,
+        width: bodyRect.width,
+        height
+      }
+      top += height + KANBAN_CARD_GAP
+      return {
+        id,
+        rect
+      }
     })
 
-    return result
-  }, [])
+    return [{
+      key: section.key,
+      rect: bodyRect,
+      bodyRect,
+      cards
+    }]
+  })
 
-  return {
-    columns
+  return columns.length
+    ? {
+        columns
+      }
+    : null
+}
+
+export const hitTestBoardLayout = (
+  layout: BoardLayout | null,
+  rect: Rect
+): readonly ItemId[] => {
+  if (!layout) {
+    return []
   }
+
+  return layout.columns.flatMap(column => {
+    if (
+      rect.right <= column.bodyRect.left
+      || rect.left >= column.bodyRect.right
+    ) {
+      return []
+    }
+
+    return column.cards.flatMap(card => {
+      if (card.rect.bottom <= rect.top) {
+        return []
+      }
+
+      if (card.rect.top >= rect.bottom) {
+        return []
+      }
+
+      return intersects(rect, card.rect)
+        ? [card.id]
+        : []
+    })
+  })
 }

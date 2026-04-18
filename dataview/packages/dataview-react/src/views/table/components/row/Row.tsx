@@ -115,11 +115,9 @@ const View = (props: RowProps) => {
     table.rowRail,
     rowId => rowId === props.itemId
   )
-  const hitSelected = useStoreSelector(
-    dataView.marquee.store,
-    session => session
-      ? session.hitIds.includes(props.itemId)
-      : null
+  const previewSelected = useKeyedStoreValue(
+    dataView.session.marquee.preview.membership,
+    props.itemId
   )
   const committedSelected = useKeyedStoreValue(
     dataView.selection.store.membership,
@@ -134,7 +132,7 @@ const View = (props: RowProps) => {
     props.recordId,
     undefined
   )
-  const selected = hitSelected ?? committedSelected
+  const selected = previewSelected ?? committedSelected
   const rail = rowRailState({
     dragActive: props.dragActive,
     dragDisabled: !canRowDrag,

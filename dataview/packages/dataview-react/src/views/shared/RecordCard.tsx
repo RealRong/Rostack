@@ -21,7 +21,6 @@ import {
   useDataView,
   useDataViewKeyedValue
 } from '@dataview/react/dataview'
-import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
 import { shouldCapturePointer } from '@shared/dom'
 import { useKeyedStoreValue } from '@shared/react'
 import { cn } from '@shared/ui/utils'
@@ -87,11 +86,9 @@ export const RecordCard = (props: RecordCardProps) => {
     dataView.selection.store.membership,
     props.itemId
   )
-  const marqueeSelected = useStoreSelector(
-    dataView.marquee.store,
-    session => session
-      ? session.hitIds.includes(props.itemId)
-      : null
+  const previewSelected = useKeyedStoreValue(
+    dataView.session.marquee.preview.membership,
+    props.itemId
   )
   const draggingActive = props.drag.activeId === props.itemId
   const draggingSelected = props.drag.activeId !== undefined
@@ -101,7 +98,7 @@ export const RecordCard = (props: RecordCardProps) => {
     viewId: props.viewId,
     itemId: props.itemId
   })
-  const selected = marqueeSelected ?? committedSelected
+  const selected = previewSelected ?? committedSelected
 
   const hasVisibleFields = useMemo(() => props.fields.some(field => (
     editing

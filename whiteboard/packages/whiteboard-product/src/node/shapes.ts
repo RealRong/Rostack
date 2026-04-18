@@ -1,0 +1,22 @@
+export {
+  SHAPE_MENU_SECTIONS as WHITEBOARD_SHAPE_MENU_SECTIONS,
+  SHAPE_SPECS as WHITEBOARD_SHAPE_SPECS,
+  createShapeNodeInput as createWhiteboardShapeTemplate,
+  isShapeKind,
+  readShapeDescriptor,
+  readShapeMeta as readWhiteboardShapeMeta,
+  readShapePreviewFill as readWhiteboardShapePreviewFill,
+  readShapeSpec as getWhiteboardShapeSpec,
+  type ShapeControlId as WhiteboardShapeControlId,
+  type ShapeDescriptor as WhiteboardShapeDescriptor,
+  type ShapeGroup as WhiteboardShapeGroup,
+  type ShapeKind,
+  type ShapeLabelInset as WhiteboardShapeLabelInset,
+  type ShapeMenuSection as WhiteboardShapeMenuSection,
+  type ShapeMeta as WhiteboardShapeMeta,
+  type ShapeOutlineSide,
+  type ShapeOutlineSpec,
+  type ShapePathSpec,
+  type ShapeSpec as WhiteboardShapeSpec,
+  type ShapeVisualSpec
+} from '@whiteboard/core/node/shape'

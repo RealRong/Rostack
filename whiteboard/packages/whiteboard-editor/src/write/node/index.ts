@@ -148,8 +148,14 @@ export const createNodeWrite = ({
   })
 
   return {
-    create: (payload) => {
-      const nextPayload = layout.patchNodeCreatePayload(payload)
+    create: (input) => {
+      const nextPayload = layout.patchNodeCreatePayload({
+        ...input.template,
+        position: {
+          x: input.position.x,
+          y: input.position.y
+        }
+      })
       const result = engine.execute({
         type: 'node.create',
         payload: nextPayload

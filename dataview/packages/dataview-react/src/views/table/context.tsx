@@ -51,13 +51,13 @@ export const TableProvider = (props: TableProviderProps) => {
     pageStore: dataView.page.store,
     currentViewStore: currentView,
     selection: dataView.selection,
-    marqueeStore: dataView.marquee.store,
+    marqueeActiveStore: dataView.session.marquee.activeStore,
     valueEditor: dataView.valueEditor,
     layout,
     nodes
   }), [
-    dataView.marquee.store,
     dataView.page.store,
+    dataView.session.marquee.activeStore,
     dataView.selection,
     dataView.valueEditor,
     currentView,

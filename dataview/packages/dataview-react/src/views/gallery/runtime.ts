@@ -23,7 +23,7 @@ import {
   useItemDragRuntime,
   useRegisterMarqueeScene
 } from '@dataview/react/views/shared/interactionRuntime'
-import type { MarqueeScene } from '@dataview/react/runtime/marquee'
+import type { MarqueeScene } from '@dataview/react/page/marqueeBridge'
 
 export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntime => {
   const dataView = useDataView()
@@ -39,6 +39,9 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
     containerRef,
     overscan: interaction.dragging ? 1200 : 640
   })
+  const cardRectById = useMemo(() => new Map(
+    virtual.layout.cards.map(card => [card.id, card.rect] as const)
+  ), [virtual.layout.cards])
   const marqueeScene = useMemo<MarqueeScene>(() => ({
     hitTest: rect => {
       const container = containerRef.current
@@ -51,11 +54,23 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
         return []
       }
 
-      return virtual.layout.cards
-        .filter(card => intersects(localRect, card.rect))
-        .map(card => card.id)
+      return virtual.layout.rows.flatMap(row => {
+        if (
+          localRect.bottom <= row.top
+          || localRect.top >= row.top + row.height
+        ) {
+          return []
+        }
+
+        return row.ids.filter(id => {
+          const cardRect = cardRectById.get(id)
+          return cardRect
+            ? intersects(localRect, cardRect)
+            : false
+        })
+      })
     }
-  }), [virtual.layout])
+  }), [cardRectById, virtual.layout.rows])
 
   useRegisterMarqueeScene(marqueeScene)
 
@@ -83,11 +98,11 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
 
   useEffect(() => {
     if (!drag.activeId || !drag.dragIds.length) {
-      dataView.page.drag.clear()
+      dataView.react.drag.clear()
       return
     }
 
-    dataView.page.drag.set({
+    dataView.react.drag.set({
       active: true,
       kind: 'card',
       source: drag.sourceRef.current,
@@ -98,10 +113,10 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
     })
 
     return () => {
-      dataView.page.drag.clear()
+      dataView.react.drag.clear()
     }
   }, [
-    dataView.page.drag,
+    dataView.react.drag,
     drag.activeId,
     drag.dragIds,
     drag.overlayOffsetRef,

@@ -3,17 +3,20 @@ import type { MindmapInsertPayload } from '@whiteboard/core/types/mindmap'
 import type {
   MindmapCommandOptions,
   NodeStyle,
+  Point,
   Rect,
   Size
 } from '@whiteboard/core/types/model'
-import type { NodeInput } from '@whiteboard/core/types/operations'
+import type {
+  MindmapTemplate,
+  MindmapTemplateNode
+} from '@whiteboard/core/types/template'
 
 export type { MindmapInsertPayload } from '@whiteboard/core/types/mindmap'
+export type { MindmapTemplate, MindmapTemplateNode } from '@whiteboard/core/types/template'
 
 export type MindmapId = string
 export type MindmapNodeId = string
-export type MindmapPresetKey = string
-export type MindmapSeedKey = string
 
 export type MindmapTopicData =
   | { kind: 'text'; text?: string }
@@ -121,9 +124,8 @@ export interface MindmapIdGenerator {
 
 export type MindmapCreateInput = {
   id?: MindmapId
-  rootId?: MindmapNodeId
-  preset?: MindmapPresetKey
-  seed?: MindmapSeedKey
+  position?: Point
+  template: MindmapTemplate
 }
 
 export type MindmapTreePatch = Partial<{
@@ -170,29 +172,10 @@ export type MindmapCloneSubtreeInput = {
   side?: 'left' | 'right'
 }
 
-export type MindmapTemplateNode = {
-  label: string
-  node: Omit<NodeInput, 'id' | 'position'>
-  style: MindmapNodeStyle
-  branch: MindmapBranchStyle
-  side?: 'left' | 'right'
-}
-
-export type MindmapTemplate = {
-  layout: MindmapLayoutSpec
-  root: MindmapTemplateNode
-  children: readonly MindmapTemplateNode[]
-}
-
 export type MindmapPreviewModel = {
   tree: MindmapTree
   labels: Record<MindmapNodeId, string>
   nodeStyles: Record<MindmapNodeId, MindmapNodeStyle>
-}
-
-export type MindmapMaterializedCreate = {
-  tree: MindmapTree
-  nodeInputs: Record<MindmapNodeId, Omit<NodeInput, 'id' | 'position'>>
 }
 
 export type MindmapDragDropLine = {

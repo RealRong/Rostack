@@ -167,9 +167,13 @@ export const createEdgeWrite = ({
   engine: Engine
   read: EditorQuery
 }): EdgeWrite => ({
-  create: (payload) => engine.execute({
+  create: (input) => engine.execute({
     type: 'edge.create',
-    payload
+    payload: {
+      ...input.template,
+      source: input.from,
+      target: input.to
+    }
   }),
   patch: (edgeIds, patch) => {
     if (!hasEdgePatchContent(patch)) {

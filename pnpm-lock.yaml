@@ -139,6 +139,9 @@ importers:
       '@dataview/react':
         specifier: workspace:*
         version: link:packages/dataview-react
+      '@dataview/runtime':
+        specifier: workspace:*
+        version: link:packages/dataview-runtime
       '@dataview/table':
         specifier: workspace:*
         version: link:packages/dataview-table
@@ -284,6 +287,9 @@ importers:
       '@dataview/meta':
         specifier: workspace:*
         version: link:../dataview-meta
+      '@dataview/runtime':
+        specifier: workspace:*
+        version: link:../dataview-runtime
       '@dataview/table':
         specifier: workspace:*
         version: link:../dataview-table
@@ -323,6 +329,21 @@ importers:
       react-dom:
         specifier: ^19.1.1
         version: 19.2.4(react@19.2.4)
+
+  dataview/packages/dataview-runtime:
+    dependencies:
+      '@dataview/core':
+        specifier: workspace:*
+        version: link:../dataview-core
+      '@dataview/engine':
+        specifier: workspace:*
+        version: link:../dataview-engine
+      '@shared/core':
+        specifier: workspace:*
+        version: link:../../../shared/core
+      '@shared/i18n':
+        specifier: workspace:*
+        version: link:../../../shared/i18n
 
   dataview/packages/dataview-table:
     dependencies:
@@ -465,6 +486,15 @@ importers:
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
+      '@whiteboard/core':
+        specifier: workspace:*
+        version: link:../whiteboard-core
+
+  whiteboard/packages/whiteboard-product:
+    dependencies:
+      '@shared/i18n':
+        specifier: workspace:*
+        version: link:../../../shared/i18n
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core

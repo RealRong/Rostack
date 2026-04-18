@@ -184,7 +184,7 @@ export type EngineCommand =
     }
   | {
       type: 'mindmap.create'
-      payload?: MindmapCreateInput
+      payload: MindmapCreateInput
     }
   | {
       type: 'mindmap.delete'

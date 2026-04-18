@@ -6,7 +6,7 @@ import type {
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
 import { createEditor } from '@whiteboard/editor'
-import { INSERT_PRESET_CATALOG } from '@whiteboard/react/features/toolbox/presets'
+import { WHITEBOARD_INSERT_CATALOG } from '@whiteboard/product'
 import type { ResolvedConfig } from '@whiteboard/react/types/common/config'
 import { createClipboardHostAdapter } from '@whiteboard/react/dom/host/clipboard'
 import { createClipboardBridge } from '@whiteboard/react/runtime/bridge/clipboard'
@@ -84,7 +84,7 @@ export const createWhiteboardServices = ({
   })
   const insert = createInsertBridge({
     editor,
-    catalog: INSERT_PRESET_CATALOG
+    catalog: WHITEBOARD_INSERT_CATALOG
   })
   const point = createPointState()
   const pointer = createPointerBridge({
@@ -102,7 +102,7 @@ export const createWhiteboardServices = ({
         return false
       }
 
-      const result = insert.preset(tool.preset, {
+      const result = insert.template(tool.template, {
         at: input.world
       })
       if (!result) {

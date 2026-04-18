@@ -15,7 +15,7 @@ import type {
   ItemSelectionController,
   ItemSelectionSnapshot
 } from '@dataview/runtime/selection'
-import type { MarqueeSessionState } from '@dataview/react/runtime/marquee'
+import type { ReadStore } from '@shared/core'
 import {
   createItemListSelectionDomain,
   selectionSnapshot
@@ -23,8 +23,7 @@ import {
 import {
   createDerivedStore,
   createValueStore,
-  read,
-  type ReadStore
+  read
 } from '@shared/core'
 import type {
   ValueStore
@@ -121,7 +120,7 @@ export const createTableController = (options: {
   pageStore: ReadStore<PageState>
   currentViewStore: ReadStore<CurrentView | undefined>
   selection: ItemSelectionController
-  marqueeStore: ReadStore<MarqueeSessionState | null>
+  marqueeActiveStore: ReadStore<boolean>
   valueEditor: ValueEditorApi
   layout: TableLayout
   nodes: Nodes
@@ -150,7 +149,7 @@ export const createTableController = (options: {
   const hover = createHover()
   const virtual = createTableVirtualRuntime({
     currentViewStore: currentView,
-    marqueeStore: options.marqueeStore,
+    marqueeActiveStore: options.marqueeActiveStore,
     layout: options.layout
   })
   const dom = createDom({

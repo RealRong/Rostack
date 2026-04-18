@@ -319,7 +319,14 @@ const createDrawStrokeSession = (
         zoom: ctx.query.viewport.get().zoom
       })
       if (commit) {
-        ctx.write.node.create(commit)
+        const {
+          position,
+          ...template
+        } = commit
+        ctx.write.node.create({
+          position,
+          template
+        })
       }
       return FINISH
     },

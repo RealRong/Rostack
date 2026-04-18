@@ -16,6 +16,7 @@ import { useKanbanContext } from '@dataview/react/views/kanban/context'
 
 export const Card = (props: {
   itemId: ItemId
+  measureRef?: (node: HTMLElement | null) => void
   className?: string
   style?: CSSProperties
 }) => {
@@ -45,6 +46,7 @@ export const Card = (props: {
       selection={runtime.selection}
       titlePlaceholder={record => record.id}
       showEditAction
+      measureRef={props.measureRef}
       className={props.className}
       style={props.style}
       selectedStyle={{

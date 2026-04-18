@@ -1,0 +1,5 @@
+export * from '@whiteboard/product/i18n/keys'
+export * from '@whiteboard/product/i18n/tokens'
+export * from '@whiteboard/product/i18n/register'
+export * from '@whiteboard/product/i18n/resources/en'
+export * from '@whiteboard/product/i18n/resources/zh-CN'

@@ -7,8 +7,6 @@ import type {
   DrawState
 } from '@whiteboard/editor/session/draw'
 import type {
-  EdgePresetKey,
-  InsertPresetKey,
   Tool
 } from '@whiteboard/editor/types/tool'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
@@ -43,18 +41,16 @@ import type { EditorInputPreview } from '@whiteboard/editor/session/preview'
 export type ToolRead = {
   get: () => Tool
   type: () => Tool['type']
-  value: () => EdgePresetKey | InsertPresetKey | DrawMode | undefined
+  value: () => DrawMode | undefined
   is: (type: Tool['type'], value?: string) => boolean
 }
 
 const readToolValue = (
   tool: Tool
 ) => (
-  'preset' in tool
-    ? tool.preset
-    : 'mode' in tool
-      ? tool.mode
-      : undefined
+  'mode' in tool
+    ? tool.mode
+    : undefined
 )
 
 const isToolMatch = (
@@ -70,15 +66,9 @@ const isToolMatch = (
     return true
   }
 
-  switch (tool.type) {
-    case 'edge':
-    case 'insert':
-      return tool.preset === value
-    case 'draw':
-      return tool.mode === value
-    default:
-      return false
-  }
+  return tool.type === 'draw'
+    ? tool.mode === value
+    : false
 }
 
 const createToolRead = (

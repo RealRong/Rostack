@@ -59,7 +59,10 @@ export const ColumnBody = (props: {
 
   return (
     <div
-      ref={bodyRef}
+      ref={node => {
+        bodyRef.current = node
+        runtime.geometry.measureBody(props.section.key)(node)
+      }}
       data-kanban-column-body
       className="relative"
       style={{
@@ -84,6 +87,7 @@ export const ColumnBody = (props: {
             <Card
               key={id}
               itemId={id}
+              measureRef={runtime.geometry.measureCard(id)}
             />
           ))}
           {hiddenCount ? (

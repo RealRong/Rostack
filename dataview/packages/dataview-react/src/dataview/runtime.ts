@@ -1,15 +1,6 @@
 import type {
-  View
-} from '@dataview/core/contracts'
-import type {
   Engine
 } from '@dataview/engine'
-import type {
-  ReadStore
-} from '@shared/core'
-import {
-  joinUnsubscribes
-} from '@shared/core'
 import {
   createDataViewRuntime,
   type PageSessionInput
@@ -18,68 +9,28 @@ import {
   createDragApi
 } from '@dataview/react/page/drag'
 import {
-  createMarqueeApi,
-  type MarqueeApi
-} from '@dataview/react/runtime/marquee'
+  createMarqueeBridgeApi
+} from '@dataview/react/page/marqueeBridge'
 import type {
-  DataViewSession
+  DataViewReactSession
 } from '@dataview/react/dataview/types'
 
-const bindMarqueeToView = (input: {
-  activeView: ReadStore<View | undefined>
-  marquee: MarqueeApi
-}) => {
-  let previousViewId = input.activeView.get()?.id
-
-  const sync = () => {
-    const nextViewId = input.activeView.get()?.id
-    if (previousViewId !== nextViewId && input.marquee.get()) {
-      input.marquee.clear()
-    }
-
-    previousViewId = nextViewId
-  }
-
-  sync()
-  return input.activeView.subscribe(sync)
-}
-
-export const createDataViewSession = (input: {
+export const createDataViewReactSession = (input: {
   engine: Engine
   initialPage?: PageSessionInput
-}): DataViewSession => {
+}): DataViewReactSession => {
   const runtime = createDataViewRuntime(input)
   const drag = createDragApi()
-  const marquee = createMarqueeApi()
-
-  const disposeBindings = joinUnsubscribes([
-    bindMarqueeToView({
-      activeView: runtime.read.activeView,
-      marquee
-    })
-  ])
+  const marquee = createMarqueeBridgeApi()
 
   return {
     ...runtime,
-    page: {
-      ...runtime.page,
-      drag
-    },
-    marquee,
-    session: {
-      ...runtime.session,
-      select: {
-        ...runtime.session.select,
-        canStartMarquee: () => (
-          runtime.session.select.canStartMarquee()
-          && marquee.get() === null
-        )
-      }
+    react: {
+      drag,
+      marquee
     },
     dispose: () => {
       drag.clear()
-      marquee.clear()
-      disposeBindings()
       runtime.dispose()
     }
   }

@@ -29,6 +29,10 @@ import type {
   ItemSelectionSnapshot
 } from '@dataview/runtime/selection'
 import type {
+  MarqueeIntentApi,
+  MarqueeSessionApi
+} from '@dataview/runtime/marquee'
+import type {
   ValueEditorController,
   ValueEditorSession
 } from '@dataview/runtime/valueEditor'
@@ -76,6 +80,7 @@ export interface DataViewSessionApi {
     valueEditor: ValueEditorController
   }
   creation: CreateRecordApi
+  marquee: MarqueeSessionApi
   select: DataViewSessionSelectors
 }
 
@@ -87,6 +92,7 @@ export interface DataViewIntentApi {
     valueEditor: ValueEditorController
   }
   createRecord: CreateRecordApi
+  marquee: MarqueeIntentApi
 }
 
 export interface CreateDataViewRuntimeInput {

@@ -5,8 +5,6 @@ import {
   planMindmapRootMove,
   planMindmapSubtreeMove,
   getMindmapTreeFromDocument,
-  materializeMindmapCreate,
-  getMindmapTopicLabel,
   insertNode,
   computeMindmapLayout,
   anchorMindmapLayout,
@@ -22,6 +20,8 @@ import type {
   MindmapId,
   MindmapInsertInput,
   MindmapNodeId,
+  MindmapTemplate,
+  MindmapTemplateNode,
   MindmapTree,
   Node,
   NodeData,
@@ -92,10 +92,41 @@ const toTextNodeInput = (
 ): Omit<NodeInput, 'id' | 'position'> => ({
   type: template?.type ?? 'text',
   data: {
-    text: getMindmapTopicLabel(topic as never)
+    text: readMindmapInsertText(topic)
   },
   style: cloneNodeStyle(template?.style)
 })
+
+const readMindmapInsertText = (
+  topic?: unknown
+) => {
+  if (!topic || typeof topic !== 'object') {
+    return 'Topic'
+  }
+
+  const entry = topic as {
+    kind?: string
+    text?: unknown
+    title?: unknown
+    name?: unknown
+    url?: unknown
+  }
+
+  if (typeof entry.text === 'string' && entry.text.trim()) {
+    return entry.text
+  }
+  if (typeof entry.title === 'string' && entry.title.trim()) {
+    return entry.title
+  }
+  if (typeof entry.name === 'string' && entry.name.trim()) {
+    return entry.name
+  }
+  if (typeof entry.url === 'string' && entry.url.trim()) {
+    return entry.url
+  }
+
+  return 'Topic'
+}
 
 const findInsertTemplateNode = (input: {
   doc: ReturnType<Engine['document']['get']>
@@ -123,6 +154,61 @@ const measureCreatePayload = (
   layout: Pick<EditorLayout, 'patchNodeCreatePayload'>,
   payload: NodeInput
 ) => layout.patchNodeCreatePayload(payload)
+
+const toNodeTemplate = (
+  input: NodeInput
+) => {
+  const {
+    id: _id,
+    position: _position,
+    ...template
+  } = input
+  return template
+}
+
+const measureMindmapTemplateNode = (input: {
+  node: MindmapTemplateNode
+  layout: Pick<EditorLayout, 'patchNodeCreatePayload'>
+  mindmapId: MindmapId
+  position: SpatialNode['position']
+  createNodeId: () => MindmapNodeId
+}): MindmapTemplateNode => {
+  const nodeId = input.createNodeId()
+  const measured = measureCreatePayload(input.layout, {
+    id: nodeId,
+    mindmapId: input.mindmapId,
+    position: input.position,
+    ...input.node.node
+  })
+
+  return {
+    ...input.node,
+    node: toNodeTemplate(measured),
+    children: input.node.children?.map((child) => measureMindmapTemplateNode({
+      ...input,
+      node: child
+    }))
+  }
+}
+
+const measureMindmapTemplate = (input: {
+  template: MindmapTemplate
+  layout: Pick<EditorLayout, 'patchNodeCreatePayload'>
+  mindmapId: MindmapId
+  position: SpatialNode['position']
+  createNodeId: () => MindmapNodeId
+}): MindmapTemplate => ({
+  layout: {
+    ...input.template.layout
+  },
+  root: measureMindmapTemplateNode({
+    node: input.template.root,
+    layout: input.layout,
+    mindmapId: input.mindmapId,
+    position: input.position,
+    createNodeId: input.createNodeId
+  })
+})
 
 const toNode = ({
   id,
@@ -403,46 +489,28 @@ export const createMindmapWrite = ({
 
   const create: MindmapWrite['create'] = (payload) => {
     const doc = engine.document.get()
-    const mindmapId = payload?.id ?? createIdFactory(doc, 'mindmap')()
-    if (doc.nodes[mindmapId]) {
-      return invalid(`Mindmap ${mindmapId} already exists.`)
-    }
-
-    const createMindmapNodeId = createIdFactory(doc, 'mnode')
-    const materialized = materializeMindmapCreate({
-      preset: payload?.preset,
-      seed: payload?.seed,
-      rootId: payload?.rootId,
-      idGenerator: {
-        nodeId: createMindmapNodeId
-      }
-    })
-    const position = payload?.position ?? {
+    const mindmapId = payload.id ?? createIdFactory(doc, 'mindmap')()
+    const position = payload.position ?? {
       x: 0,
       y: 0
     }
-    const measuredNodeInputs = Object.fromEntries(
-      Object.entries(materialized.nodeInputs).map(([nodeId, input]) => {
-        const measured = measureCreatePayload(layout, {
-          id: nodeId,
-          mindmapId,
-          position,
-          ...input
-        })
-        return [nodeId, measured]
-      })
-    ) as Record<MindmapNodeId, NodeInput>
-    const result = engine.applyOperations(
-      buildMindmapCreateOperations({
-        mindmapId,
-        tree: materialized.tree,
-        measuredNodeInputs,
-        position
-      })
-    )
-    return withData(result, {
+
+    const template = measureMindmapTemplate({
+      template: payload.template,
+      layout,
       mindmapId,
-      rootId: materialized.tree.rootNodeId
+      position,
+      createNodeId: createIdFactory(doc, 'mnode')
+    })
+
+    return engine.execute({
+      type: 'mindmap.create',
+      payload: {
+        ...payload,
+        id: mindmapId,
+        position,
+        template
+      }
     })
   }
 

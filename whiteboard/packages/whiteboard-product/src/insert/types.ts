@@ -1,49 +1,61 @@
-import type { ShapeKind } from '@whiteboard/core/node'
 import type {
-  MindmapPresetKey,
-  MindmapSeedKey,
-  Point,
-  SpatialNodeInput
+  MindmapTemplate,
+  NodeTemplate
 } from '@whiteboard/core/types'
-import type { EditField } from '@whiteboard/editor/session/edit'
+import type { ShapeKind } from '@whiteboard/core/node'
 
-export type InsertPresetGroup =
+export type WhiteboardInsertGroup =
   | 'text'
   | 'frame'
   | 'sticky'
   | 'shape'
   | 'mindmap'
 
-export type InsertPlacement = 'center' | 'point'
+export type WhiteboardInsertPlacement = 'center' | 'point'
+export type WhiteboardInsertEditField = 'text' | 'title'
+export type WhiteboardMindmapInsertFocus = 'edit-root' | 'select-root'
 
-type InsertPresetBase = {
+export type WhiteboardInsertTemplate =
+  | {
+      kind: 'node'
+      template: NodeTemplate
+      placement?: WhiteboardInsertPlacement
+      editField?: WhiteboardInsertEditField
+    }
+  | {
+      kind: 'mindmap'
+      template: MindmapTemplate
+      focus?: WhiteboardMindmapInsertFocus
+    }
+
+type WhiteboardInsertPresetBase = {
   key: string
-  group: InsertPresetGroup
+  group: WhiteboardInsertGroup
   label: string
   description?: string
 }
 
-export type NodeInsertPreset = InsertPresetBase & {
+export type WhiteboardNodeInsertPreset = WhiteboardInsertPresetBase & {
   kind: 'node'
-  focus?: EditField
-  placement?: InsertPlacement
-  input: (world: Point) => Omit<SpatialNodeInput, 'position'>
+  template: WhiteboardInsertTemplate & {
+    kind: 'node'
+  }
 }
 
-export type MindmapInsertPreset = InsertPresetBase & {
+export type WhiteboardMindmapInsertPreset = WhiteboardInsertPresetBase & {
   kind: 'mindmap'
   group: 'mindmap'
-  description?: string
-  preset: MindmapPresetKey
-  seed?: MindmapSeedKey
+  template: WhiteboardInsertTemplate & {
+    kind: 'mindmap'
+  }
 }
 
-export type InsertPreset =
-  | NodeInsertPreset
-  | MindmapInsertPreset
+export type WhiteboardInsertPreset =
+  | WhiteboardNodeInsertPreset
+  | WhiteboardMindmapInsertPreset
 
-export type InsertPresetCatalog = {
-  get: (key: string) => InsertPreset | undefined
+export type WhiteboardInsertCatalog = {
+  get: (key: string) => WhiteboardInsertPreset | undefined
   defaults: {
     text: string
     frame: string

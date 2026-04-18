@@ -24,6 +24,10 @@ export interface KanbanViewRuntime extends ItemInteractionRuntime {
     columnWidth: number
     columnMinHeight: number
   }
+  geometry: {
+    measureCard: (id: ItemId) => (node: HTMLElement | null) => void
+    measureBody: (sectionKey: SectionKey) => (node: HTMLDivElement | null) => void
+  }
   scrollRef: RefObject<HTMLDivElement | null>
   drag: ReturnType<typeof import('@dataview/react/views/kanban/drag').useDrag>
   visibility: {

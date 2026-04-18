@@ -17,7 +17,7 @@ export {
   type StickyFormat,
   type StickyInsertOption,
   type StickyTone
-} from '@whiteboard/react/features/palette/sticky'
+} from '@whiteboard/product/palette/sticky'
 export {
   WHITEBOARD_DRAW_COLOR_OPTIONS,
   WHITEBOARD_FILL_COLOR_OPTIONS,
@@ -28,4 +28,4 @@ export {
   WHITEBOARD_STROKE_COLOR_OPTIONS,
   WHITEBOARD_TEXT_COLOR_OPTIONS,
   type WhiteboardColorOption
-} from '@whiteboard/react/features/palette/ui'
+} from '@whiteboard/product/palette/ui'

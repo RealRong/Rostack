@@ -17,24 +17,13 @@ import {
   useAutoPan
 } from '@dataview/react/interaction/autoPan'
 import {
-  useDataView,
-  useDataViewValue
+  useDataView
 } from '@dataview/react/dataview'
 import { useOverlay } from '@shared/ui/overlay'
-import {
-  createItemListSelectionDomain,
-  selectionSnapshot,
-  type ItemSelectionSnapshot
-} from '@dataview/runtime/selection'
 import { useStoreValue } from '@shared/react'
 import type {
-  MarqueeMode,
-  MarqueeSessionState
-} from '@dataview/react/runtime/marquee'
-import {
-  resolvePageMarqueeScrollRoot,
-  shouldStartMarquee
-} from '@dataview/react/runtime/marquee/policy'
+  MarqueeMode
+} from '@dataview/runtime'
 
 const resolveMarqueeMode = (input: {
   shiftKey: boolean
@@ -81,8 +70,9 @@ const resolveScrolledAnchor = (
   )
 })
 
-const resolveAutoPanTargets = (): AutoPanTargets | null => {
-  const root = resolvePageMarqueeScrollRoot()
+const resolveAutoPanTargets = (
+  root: HTMLElement | null
+): AutoPanTargets | null => {
   const node = root
     ? pageScrollNode(root) ?? root
     : null
@@ -98,37 +88,18 @@ const resolveAutoPanTargets = (): AutoPanTargets | null => {
 export const PageMarqueeHost = () => {
   const dataView = useDataView()
   const overlay = useOverlay()
-  const valueEditorOpen = useDataViewValue(
-    dataView => dataView.page.store,
-    state => state.valueEditorOpen
-  )
-  const session = useStoreValue(dataView.marquee.store)
+  const session = useStoreValue(dataView.session.marquee.store)
   const pointerRef = useRef<Point | null>(null)
   const anchorRef = useRef<Point | null>(null)
   const scrollAnchorRef = useRef<ScrollAnchorState | null>(null)
   const frameRef = useRef<number | null>(null)
-
-  const resolveNextSelection = useCallback((currentSession: MarqueeSessionState): ItemSelectionSnapshot => {
-    const activeItems = dataView.read.activeItems.get()
-    if (!activeItems) {
-      return currentSession.baseSelection
-    }
-
-    return selectionSnapshot.applyIds(
-      createItemListSelectionDomain(activeItems),
-      currentSession.baseSelection,
-      currentSession.hitIds,
-      currentSession.mode,
-      dataView.selection.state.getSnapshot().domainRevision
-    )
-  }, [dataView.read.activeItems, dataView.selection.state])
-  const commitSelection = useCallback((currentSession: MarqueeSessionState) => {
-    dataView.selection.command.restore(resolveNextSelection(currentSession))
-  }, [dataView.selection, resolveNextSelection])
+  const resolveAutoPanTargetsForScene = useCallback(() => resolveAutoPanTargets(
+    dataView.react.marquee.resolveAutoPanRoot()
+  ), [dataView.react.marquee])
 
   const update = useCallback(() => {
-    const currentSession = dataView.marquee.get()
-    const scene = dataView.marquee.getScene()
+    const currentSession = dataView.session.marquee.get()
+    const scene = dataView.react.marquee.getScene()
     const anchor = anchorRef.current
     const pointer = pointerRef.current
     if (!currentSession || !scene || !anchor || !pointer) {
@@ -139,13 +110,12 @@ export const PageMarqueeHost = () => {
       resolveScrolledAnchor(anchor, scrollAnchorRef.current),
       pointer
     )
-    dataView.marquee.update({
-      ...currentSession,
+    dataView.intent.marquee.update({
       current: pointer,
       rect,
       hitIds: scene.hitTest(rect)
     })
-  }, [dataView.marquee])
+  }, [dataView.intent.marquee, dataView.react.marquee, dataView.session.marquee])
   const scheduleUpdate = useCallback(() => {
     if (typeof window === 'undefined') {
       update()
@@ -170,8 +140,8 @@ export const PageMarqueeHost = () => {
     pointerRef.current = null
     anchorRef.current = null
     scrollAnchorRef.current = null
-    dataView.marquee.clear()
-  }, [dataView.marquee])
+    dataView.intent.marquee.cancel()
+  }, [dataView.intent.marquee])
 
   useEffect(() => () => {
     if (typeof window !== 'undefined' && frameRef.current !== null) {
@@ -191,7 +161,7 @@ export const PageMarqueeHost = () => {
   const autoPanState = useAutoPan({
     active: session !== null,
     pointerRef,
-    resolveTargets: resolveAutoPanTargets,
+    resolveTargets: resolveAutoPanTargetsForScene,
     onPan: scheduleUpdate
   })
 
@@ -221,7 +191,7 @@ export const PageMarqueeHost = () => {
     }
 
     const onPointerMove = (event: PointerEvent) => {
-      if (!dataView.marquee.get()) {
+      if (!dataView.session.marquee.get()) {
         return
       }
 
@@ -233,7 +203,7 @@ export const PageMarqueeHost = () => {
     }
 
     const end = (event: PointerEvent) => {
-      if (!dataView.marquee.get()) {
+      if (!dataView.session.marquee.get()) {
         return
       }
 
@@ -243,13 +213,12 @@ export const PageMarqueeHost = () => {
       }
       update()
 
-      const currentSession = dataView.marquee.get()
-      if (!currentSession) {
+      if (!dataView.session.marquee.get()) {
         return
       }
 
       if (event.type !== 'pointercancel') {
-        commitSelection(currentSession)
+        dataView.intent.marquee.commit()
       }
 
       reset()
@@ -263,7 +232,7 @@ export const PageMarqueeHost = () => {
       window.removeEventListener('pointerup', end, true)
       window.removeEventListener('pointercancel', end, true)
     }
-  }, [commitSelection, dataView.marquee, reset, scheduleUpdate, update])
+  }, [dataView.intent.marquee, dataView.session.marquee, reset, scheduleUpdate, update])
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -274,24 +243,22 @@ export const PageMarqueeHost = () => {
       if (
         event.button !== 0
         || overlay.topLayerId !== null
-        || valueEditorOpen
-        || dataView.valueEditor.openStore.get()
-        || dataView.page.drag.get()
-        || dataView.marquee.get()
+        || dataView.react.drag.get()
+        || dataView.session.marquee.get()
         || !dataView.session.select.canStartMarquee()
       ) {
         return
       }
 
-      const scene = dataView.marquee.getScene()
-      if (!scene || !shouldStartMarquee(event)) {
+      const scene = dataView.react.marquee.getScene()
+      if (!scene || !dataView.react.marquee.shouldStartMarquee(event)) {
         return
       }
 
       event.preventDefault()
 
-      if (dataView.inlineSession.store.get()) {
-        dataView.inlineSession.exit({
+      if (dataView.intent.editing.inline.store.get()) {
+        dataView.intent.editing.inline.exit({
           reason: 'selection'
         })
       }
@@ -304,20 +271,22 @@ export const PageMarqueeHost = () => {
       anchorRef.current = start
       pointerRef.current = start
       scrollAnchorRef.current = readScrollAnchorState(
-        resolvePageMarqueeScrollRoot()
+        dataView.react.marquee.resolveAutoPanRoot()
       )
 
-      dataView.marquee.start({
+      dataView.intent.marquee.start({
         mode: resolveMarqueeMode({
           shiftKey: event.shiftKey,
           metaKey: event.metaKey,
           ctrlKey: event.ctrlKey
         }),
         start,
+        baseSelection: dataView.selection.state.getSnapshot()
+      })
+      dataView.intent.marquee.update({
         current: start,
         rect,
-        hitIds: scene.hitTest(rect),
-        baseSelection: dataView.selection.state.getSnapshot()
+        hitIds: scene.hitTest(rect)
       })
     }
 
@@ -326,14 +295,14 @@ export const PageMarqueeHost = () => {
       document.removeEventListener('pointerdown', onPointerDown, true)
     }
   }, [
-    dataView.inlineSession,
-    dataView.marquee,
-    dataView.page.drag,
+    dataView.intent.editing.inline,
+    dataView.intent.marquee,
+    dataView.react.drag,
+    dataView.react.marquee,
     dataView.selection.state,
     dataView.session.select,
-    dataView.valueEditor,
-    overlay.topLayerId,
-    valueEditorOpen
+    dataView.session.marquee,
+    overlay.topLayerId
   ])
 
   useEffect(() => {
@@ -342,7 +311,7 @@ export const PageMarqueeHost = () => {
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!dataView.marquee.get() || event.key !== 'Escape') {
+      if (!dataView.session.marquee.get() || event.key !== 'Escape') {
         return
       }
 
@@ -355,7 +324,7 @@ export const PageMarqueeHost = () => {
     return () => {
       document.removeEventListener('keydown', onKeyDown, true)
     }
-  }, [dataView.marquee, reset])
+  }, [dataView.session.marquee, reset])
 
   if (!session || typeof document === 'undefined') {
     return null

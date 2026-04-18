@@ -13,17 +13,15 @@ export {
 } from '@dataview/react/dataview/useDataViewValue'
 
 export type {
-  DataViewContextValue,
-  DataViewSession,
+  DataViewReactContextValue,
+  DataViewReactSession,
   EngineProviderProps
 } from '@dataview/react/dataview/types'
 
 export type {
-  MarqueeApi,
-  MarqueeMode,
-  MarqueeScene,
-  MarqueeSessionState,
-} from '@dataview/react/runtime/marquee'
+  MarqueeBridgeApi,
+  MarqueeScene
+} from '@dataview/react/page/marqueeBridge'
 export type {
   CloseValueEditorOptions,
   CreateRecordApi,
@@ -31,6 +29,10 @@ export type {
   CreateRecordRequest,
   DataViewIntentApi,
   DataViewReadApi,
+  MarqueeIntentApi,
+  MarqueeMode,
+  MarqueeSessionApi,
+  MarqueeSessionState,
   DataViewSessionApi,
   DataViewSessionSelectors,
   DataViewSessionState,

@@ -700,12 +700,20 @@ export const createTableVirtualRuntime = (options: {
         handleLayoutChange()
       }
     }))
-    unsubscribes.push(observeElementSize(boundCanvas, {
-      emitInitial: false,
-      onChange: () => {
-        handleLayoutChange()
-      }
-    }))
+    const boundViewportElement = (
+      typeof Window !== 'undefined' && boundScrollNode instanceof Window
+    )
+      ? null
+      : boundScrollNode as HTMLElement
+
+    if (boundViewportElement) {
+      unsubscribes.push(observeElementSize(boundViewportElement, {
+        emitInitial: false,
+        onChange: () => {
+          handleLayoutChange()
+        }
+      }))
+    }
 
     cleanupListeners = joinUnsubscribes(unsubscribes)
     measureViewport(

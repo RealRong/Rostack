@@ -1,4 +1,8 @@
-import { useRef } from 'react'
+import {
+  useCallback,
+  useMemo,
+  useRef
+} from 'react'
 import { DATAVIEW_APPEARANCE_ID_ATTR } from '@dataview/react/dom/appearance'
 import { Button } from '@shared/ui/button'
 import type { ItemId, SectionKey } from '@dataview/engine'
@@ -29,6 +33,14 @@ export const ColumnBody = (props: {
     return null
   }
   const bodyRef = useRef<HTMLDivElement | null>(null)
+  const measureBodyRef = useMemo(
+    () => runtime.geometry.measureBody(section.key),
+    [runtime.geometry.measureBody, section.key]
+  )
+  const setBodyRef = useCallback((node: HTMLDivElement | null) => {
+    bodyRef.current = node
+    measureBodyRef(node)
+  }, [measureBodyRef])
   const visibleIds = section.visibleIds
   const visibleCount = section.visibleCount
   const hiddenCount = section.hiddenCount
@@ -64,10 +76,7 @@ export const ColumnBody = (props: {
 
   return (
     <div
-      ref={node => {
-        bodyRef.current = node
-        runtime.geometry.measureBody(section.key)(node)
-      }}
+      ref={setBodyRef}
       data-kanban-column-body
       className="relative"
       style={{

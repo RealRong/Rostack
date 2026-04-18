@@ -560,10 +560,7 @@ const View = (props: ColumnHeaderProps) => {
 
   return (
     <div
-      ref={node => {
-        sortable.setNodeRef(node)
-        columnRef(node)
-      }}
+      ref={columnRef}
       data-table-target="column"
       data-column-id={props.field.id}
       className={cn(

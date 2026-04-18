@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useMemo,
   useRef,
   type RefObject,
   type PointerEvent as ReactPointerEvent
@@ -71,7 +72,7 @@ export const useCardReorder = (options: Options) => {
     session.onPointerDown(recordId, event)
   }, [session])
 
-  return {
+  return useMemo(() => ({
     activeId: session.activeId,
     overlaySize: session.overlaySize,
     dragIds: session.dragIds,
@@ -82,5 +83,15 @@ export const useCardReorder = (options: Options) => {
     sourceRef,
     shouldIgnoreClick: session.shouldIgnoreClick,
     onPointerDown
-  }
+  }), [
+    onPointerDown,
+    session.activeId,
+    session.dragIdSet,
+    session.dragIds,
+    session.overTarget,
+    session.overlayOffsetRef,
+    session.overlaySize,
+    session.pointerRef,
+    session.shouldIgnoreClick
+  ])
 }

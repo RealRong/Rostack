@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useMemo,
   useRef,
   type RefObject,
   type PointerEvent as ReactPointerEvent
@@ -64,7 +65,7 @@ export const useDrag = (options: Options) => {
     session.onPointerDown(recordId, event)
   }, [session])
 
-  return {
+  return useMemo(() => ({
     activeId: session.activeId,
     dragIds: session.dragIds,
     dragIdSet: session.dragIdSet,
@@ -75,5 +76,15 @@ export const useDrag = (options: Options) => {
     sourceRef,
     shouldIgnoreClick: session.shouldIgnoreClick,
     onPointerDown
-  }
+  }), [
+    onPointerDown,
+    session.activeId,
+    session.dragIdSet,
+    session.dragIds,
+    session.overTarget,
+    session.overlayOffsetRef,
+    session.overlaySize,
+    session.pointerRef,
+    session.shouldIgnoreClick
+  ])
 }

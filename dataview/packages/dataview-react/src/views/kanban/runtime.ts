@@ -248,10 +248,10 @@ const useSectionVisibility = (input: {
     })
   }, [input.cardsPerColumn, sectionIdsByKey])
 
-  return {
+  return useMemo(() => ({
     bySection,
     showMore
-  }
+  }), [bySection, showMore])
 }
 
 const useKanbanGeometry = (input: {
@@ -360,11 +360,15 @@ const useKanbanGeometry = (input: {
     measured.heightById
   ])
 
-  return {
+  return useMemo(() => ({
     layout,
     measureCard: measured.measure,
     measureBody
-  }
+  }), [
+    layout,
+    measured.measure,
+    measureBody
+  ])
 }
 
 export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime => {

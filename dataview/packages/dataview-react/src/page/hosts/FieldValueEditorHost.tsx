@@ -170,6 +170,7 @@ export const FieldValueEditorHost = () => {
     }
 
     return observeElementSize(panel, {
+      isEqual: (left, right) => left.height === right.height,
       readInitialSize: element => ({
         width: element.clientWidth,
         height: element.scrollHeight

@@ -59,6 +59,15 @@ export const useGalleryBlocks = (input: {
 
     return observeElementSize(node, {
       emitInitial: false,
+      isEqual: (left, right) => left.width === right.width,
+      readInitialSize: element => ({
+        width: element.clientWidth,
+        height: 0
+      }),
+      readEntrySize: (_entry, element) => ({
+        width: element.clientWidth,
+        height: 0
+      }),
       onChange: () => {
         bumpContainerVersion()
       }
@@ -126,10 +135,14 @@ export const useGalleryBlocks = (input: {
     overscan: input.overscan
   })
 
-  return {
+  return useMemo(() => ({
     layout,
     blocks: virtual.items,
     totalHeight: layout.totalHeight,
     measure: measured.measure
-  }
+  }), [
+    layout,
+    measured.measure,
+    virtual.items
+  ])
 }

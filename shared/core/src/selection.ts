@@ -1,7 +1,7 @@
 import {
   sameValue,
   type Equality
-} from '@shared/core/equality'
+} from './equality'
 
 export interface AnchorFocusPair<T> {
   anchor: T

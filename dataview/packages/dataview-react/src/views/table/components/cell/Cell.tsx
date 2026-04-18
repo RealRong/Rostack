@@ -1,4 +1,7 @@
-import { memo } from 'react'
+import {
+  memo,
+  useCallback
+} from 'react'
 import type { Field, RecordId, ViewId } from '@dataview/core/contracts'
 import {
   canQuickToggleFieldValue,
@@ -51,6 +54,16 @@ const View = (props: CellProps) => {
   const engine = useDataView().engine
   const table = useTableContext()
   const canQuickToggle = canQuickToggleFieldValue(props.field)
+  const cellRef = useCallback((node: HTMLDivElement | null) => {
+    table.nodes.registerCell({
+      itemId: props.itemId,
+      fieldId: props.field.id
+    }, node)
+  }, [
+    props.field.id,
+    props.itemId,
+    table.nodes
+  ])
 
   const onQuickToggle = () => {
     const action = resolveFieldPrimaryAction({
@@ -87,12 +100,7 @@ const View = (props: CellProps) => {
 
   return (
     <div
-      ref={node => {
-        table.nodes.registerCell({
-          itemId: props.itemId,
-          fieldId: props.field.id
-        }, node)
-      }}
+      ref={cellRef}
       data-table-target="cell"
       data-table-cell="true"
       data-row-id={props.itemId}

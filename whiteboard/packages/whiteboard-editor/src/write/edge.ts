@@ -11,10 +11,12 @@ import type {
 import type { Engine } from '@whiteboard/engine'
 import type { CommandResult } from '@whiteboard/engine/types/result'
 import type { EditorQuery } from '@whiteboard/editor/query'
+import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type {
   EdgeLabelPatch,
   EdgeWrite
 } from '@whiteboard/editor/write/types'
+import { buildEdgeLabelTextMetricsSpec } from '@whiteboard/editor/edge/label'
 
 const DEFAULT_EDGE_LABEL = {
   t: 0.5,
@@ -162,10 +164,12 @@ const mergeEdgeLabelPatch = (
 
 export const createEdgeWrite = ({
   engine,
-  read
+  read,
+  layout
 }: {
   engine: Engine
   read: EditorQuery
+  layout: Pick<EditorLayout, 'text'>
 }): EdgeWrite => ({
   create: (input) => engine.execute({
     type: 'edge.create',
@@ -238,6 +242,10 @@ export const createEdgeWrite = ({
       }
 
       const labelId = createId('edge_label')
+      layout.text.ensure(buildEdgeLabelTextMetricsSpec({
+        text: '',
+        style: undefined
+      }))
       const nextLabels = [
         ...(currentEdge.labels ?? []),
         {
@@ -268,6 +276,14 @@ export const createEdgeWrite = ({
       const nextLabels = mergeEdgeLabelPatch(currentEdge, labelId, patch)
       if (!nextLabels) {
         return undefined
+      }
+
+      const nextLabel = nextLabels.find((entry) => entry.id === labelId)
+      if (nextLabel) {
+        layout.text.ensure(buildEdgeLabelTextMetricsSpec({
+          text: nextLabel.text,
+          style: nextLabel.style
+        }))
       }
 
       return engine.execute({

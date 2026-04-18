@@ -17,10 +17,36 @@ import {
   DEFAULT_EDITOR_DEFAULTS,
   type EditorDefaults
 } from '@whiteboard/editor/types/defaults'
-import type { LayoutBackend } from '@whiteboard/editor/types/layout'
+import type {
+  LayoutBackend,
+  TextMetricsCache,
+  TextMetricsSpec
+} from '@whiteboard/editor/types/layout'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import { createEditorWrite } from '@whiteboard/editor/write'
+import { listEdgeLabelTextMetricsSpecs } from '@whiteboard/editor/edge/label'
+
+const prewarmCommittedEdgeLabelMetrics = ({
+  edgeList,
+  edgeItem,
+  text
+}: {
+  edgeList: Pick<Engine['read']['edge']['list'], 'get'>
+  edgeItem: Pick<Engine['read']['edge']['item'], 'get'>
+  text: Pick<TextMetricsCache, 'ensureMany'>
+}) => {
+  const specs = edgeList.get().flatMap((edgeId) => {
+    const edge = edgeItem.get(edgeId)?.edge
+    return edge
+      ? listEdgeLabelTextMetricsSpecs(edge)
+      : []
+  }) as readonly TextMetricsSpec[]
+
+  if (specs.length > 0) {
+    text.ensureMany(specs)
+  }
+}
 
 export const createEditor = ({
   engine,
@@ -54,12 +80,17 @@ export const createEditor = ({
     registry,
     backend: services?.layout
   })
+  prewarmCommittedEdgeLabelMetrics({
+    edgeList: engine.read.edge.list,
+    edgeItem: engine.read.edge.item,
+    text: layout.text
+  })
   const defaults = services?.defaults ?? DEFAULT_EDITOR_DEFAULTS
   const query = createEditorQuery({
     engineRead: engine.read,
     registry,
     history: engine.history,
-    layout,
+    textMetrics: layout.text,
     session,
     defaults: defaults.selection
   })

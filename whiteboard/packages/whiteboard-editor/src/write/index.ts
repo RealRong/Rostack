@@ -38,7 +38,8 @@ export const createEditorWrite = ({
   })
   const edge = createEdgeWrite({
     engine,
-    read: query
+    read: query,
+    layout
   })
   const mindmap = createMindmapWrite({
     engine,

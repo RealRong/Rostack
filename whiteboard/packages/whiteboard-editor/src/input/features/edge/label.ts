@@ -22,8 +22,7 @@ import type {
 } from '@whiteboard/editor/types/input'
 import { createPressDragSession } from '@whiteboard/editor/input/session/press'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-
-const EDGE_LABEL_PLACEHOLDER = 'Label'
+import { buildEdgeLabelTextMetricsSpec } from '@whiteboard/editor/edge/label'
 
 type EdgeLabelDragDraft = {
   t: number
@@ -40,12 +39,6 @@ type EdgeLabelDragState = {
   labelSize?: Size
   draft?: EdgeLabelDragDraft
 }
-
-const readLabelText = (
-  value: string | undefined
-) => typeof value === 'string'
-  ? value
-  : ''
 
 const isSingleSelectedEdge = (
   ctx: Pick<EditorHostDeps, 'query'>,
@@ -187,34 +180,36 @@ const createEdgeLabelDragState = (
 ): EdgeLabelDragState | null => {
   const item = ctx.query.edge.item.get(input.edgeId)
   const view = ctx.query.edge.resolved.get(input.edgeId)
-  const label = item?.edge.labels?.find((entry) => entry.id === input.labelId)
+  const ref = {
+    edgeId: input.edgeId,
+    labelId: input.labelId
+  } as const
   if (
     !item
     || !view
-    || !label
     || !ctx.query.edge.capability(item.edge).editLabel
   ) {
     return null
   }
 
-  const text = readLabelText(label.text)
-  const fontSize = label.style?.size ?? 14
-  const measuredSize = ctx.layout.measureText({
-    source: {
-      kind: 'edge-label',
-      edgeId: input.edgeId,
-      labelId: input.labelId
-    },
-    typography: 'edge-label',
-    text,
-    placeholder: EDGE_LABEL_PLACEHOLDER,
-    widthMode: 'auto',
-    fontSize,
-    fontWeight: label.style?.weight ?? 400,
-    fontStyle: label.style?.italic
-      ? 'italic'
-      : 'normal'
-  })
+  let labelSize = ctx.query.edge.label.metrics(ref)
+  if (!labelSize) {
+    const label = item.edge.labels?.find((entry) => entry.id === input.labelId)
+    if (!label) {
+      return null
+    }
+
+    const measuredSize = ctx.layout.text.ensure(buildEdgeLabelTextMetricsSpec({
+      text: label.text,
+      style: label.style
+    }))
+    labelSize = resolveEdgeLabelPlacementSize({
+      textMode: item.edge.textMode ?? 'horizontal',
+      measuredSize,
+      text: typeof label.text === 'string' ? label.text : '',
+      fontSize: label.style?.size ?? 14
+    })
+  }
 
   return {
     edge: item.edge,
@@ -223,12 +218,7 @@ const createEdgeLabelDragState = (
     pointerId: input.pointerId,
     path: view.path,
     textMode: item.edge.textMode,
-    labelSize: resolveEdgeLabelPlacementSize({
-      textMode: item.edge.textMode ?? 'horizontal',
-      measuredSize,
-      text,
-      fontSize
-    })
+    labelSize
   }
 }
 

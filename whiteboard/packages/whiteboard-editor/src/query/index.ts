@@ -38,8 +38,8 @@ import {
   type RuntimeTargetRead
 } from '@whiteboard/editor/query/target'
 import type { ViewportRuntime } from '@whiteboard/editor/session/viewport'
-import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { EditorInputPreview } from '@whiteboard/editor/session/preview'
+import type { TextMetricsCache } from '@whiteboard/editor/types/layout'
 
 export type ToolRead = {
   get: () => Tool
@@ -117,14 +117,14 @@ export const createEditorQuery = ({
   registry,
   history,
   session,
-  layout,
+  textMetrics,
   defaults
 }: {
   engineRead: EngineRead
   registry: NodeRegistry
   history: ReadStore<HistoryState>
   session: Pick<EditorSession, 'state' | 'viewport' | 'interaction' | 'preview'>
-  layout: EditorLayout
+  textMetrics: Pick<TextMetricsCache, 'read'>
   defaults: EditorDefaults['selection']
 }): EditorQuery => {
   const {
@@ -156,7 +156,7 @@ export const createEditorQuery = ({
     selection,
     tool,
     interaction: session.interaction.read,
-    layout,
+    textMetrics,
     capability: nodeRead.capability
   })
   const targetRead = createTargetRead({

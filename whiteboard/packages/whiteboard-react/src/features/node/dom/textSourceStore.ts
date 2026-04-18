@@ -1,12 +1,8 @@
-import type { LayoutRequest } from '@whiteboard/editor'
-
-export type TextSourceRef = NonNullable<LayoutRequest['source']>
+import type { TextSourceRef } from '@whiteboard/editor/types/layout'
 
 const readTextSourceStoreKey = (
   source: TextSourceRef
-) => source.kind === 'node'
-  ? `node:${source.nodeId}:${source.field}`
-  : `edge:${source.edgeId}:label:${source.labelId}`
+) => `node:${source.nodeId}:${source.field}`
 
 export type TextSourceStore = {
   set: (

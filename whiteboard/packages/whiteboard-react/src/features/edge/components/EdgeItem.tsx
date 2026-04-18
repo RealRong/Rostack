@@ -6,7 +6,6 @@ import {
   useId,
   memo,
   useMemo,
-  useRef,
   useState
 } from 'react'
 import { WHITEBOARD_LINE_DEFAULT_COLOR } from '@whiteboard/product/palette'
@@ -17,8 +16,7 @@ import {
 } from '@whiteboard/core/edge'
 import {
   usePickRef,
-  useResolvedConfig,
-  useWhiteboardServices
+  useResolvedConfig
 } from '@whiteboard/react/runtime/hooks'
 import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
 import { useEdgeView } from '@whiteboard/react/features/edge/hooks/useEdgeView'
@@ -74,27 +72,15 @@ const EdgeLabelItem = ({
     y: number
   }
 }) => {
-  const { textSources } = useWhiteboardServices()
   const pickRef = usePickRef({
     kind: 'edge',
     id: edgeId,
     part: 'label',
     labelId: label.id
   })
-  const sourceRef = useRef<HTMLDivElement | null>(null)
   const bindLabelRef = useCallback((element: HTMLDivElement | null) => {
-    if (sourceRef.current === element) {
-      return
-    }
-
-    if (sourceRef.current) {
-      textSources.set(label.source, null)
-    }
-
-    textSources.set(label.source, element)
     pickRef(element)
-    sourceRef.current = element
-  }, [label.source, pickRef, textSources])
+  }, [pickRef])
 
   const style = resolveTextStyle({
     color: label.style?.color,

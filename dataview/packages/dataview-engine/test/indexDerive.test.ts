@@ -9,7 +9,11 @@ import {
   createActiveImpact
 } from '@dataview/engine/active/shared/impact'
 import {
+  buildFieldReducerState,
   createCalculationDemand
+} from '@dataview/engine/active/shared/calculation'
+import {
+  createFieldReducerBuilder
 } from '@dataview/engine/active/shared/calculation'
 import {
   resolveViewDemand
@@ -482,6 +486,35 @@ test('engine.active calculations support select and multiSelect option distribut
     'Frontend'
   ])
   assert.deepEqual(tagResult.items.map(item => item.count), [2, 2, 1])
+})
+
+test('engine.active field reducer builder reuses previous state when net deltas cancel out', () => {
+  const entry = {
+    empty: false,
+    uniqueKey: 'text:todo',
+    number: 3,
+    optionIds: ['todo']
+  } as const
+  const capabilities = {
+    count: true,
+    unique: true,
+    numeric: true,
+    option: true
+  } as const
+  const previous = buildFieldReducerState({
+    entries: new Map([
+      ['rec_1', entry]
+    ]),
+    capabilities
+  })
+  const reducer = createFieldReducerBuilder({
+    previous,
+    capabilities
+  })
+
+  assert.equal(reducer.apply(entry, undefined), true)
+  assert.equal(reducer.apply(undefined, entry), true)
+  assert.equal(reducer.finish(), previous)
 })
 
 test('engine.active.query derives descending order from single asc sort index', () => {

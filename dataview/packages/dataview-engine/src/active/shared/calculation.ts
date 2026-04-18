@@ -15,9 +15,6 @@ import {
   sameOrder,
   trimToUndefined
 } from '@shared/core'
-import {
-  createMapPatchBuilder
-} from '@dataview/engine/active/shared/patch'
 
 export interface ReducerCapabilitySet {
   count?: true
@@ -391,40 +388,74 @@ export const sameCalculationEntry = (
   && sameOrder(left?.optionIds ?? EMPTY_OPTION_IDS, right?.optionIds ?? EMPTY_OPTION_IDS)
 )
 
+const sameCountMap = <K,>(
+  left: ReadonlyMap<K, number>,
+  right: ReadonlyMap<K, number>
+) => left === right || (
+  left.size === right.size
+  && [...left.entries()].every(([key, value]) => right.get(key) === value)
+)
+
+interface CounterMapBuilder<K> {
+  adjust: (key: K | undefined, delta: number) => void
+  finish: () => ReadonlyMap<K, number>
+}
+
+const createCounterMapBuilder = <K,>(
+  previous: ReadonlyMap<K, number>
+): CounterMapBuilder<K> => {
+  let next: Map<K, number> | undefined
+
+  const ensure = () => {
+    if (!next) {
+      next = new Map(previous)
+    }
+
+    return next
+  }
+
+  return {
+    adjust: (key, delta) => {
+      if (key === undefined || delta === 0) {
+        return
+      }
+
+      const target = ensure()
+      const current = target.get(key) ?? 0
+      const value = current + delta
+      if (value > 0) {
+        target.set(key, value)
+        return
+      }
+
+      target.delete(key)
+    },
+    finish: () => {
+      if (!next) {
+        return previous
+      }
+
+      return sameCountMap(previous, next)
+        ? previous
+        : next
+    }
+  }
+}
+
 const applyCountDelta = (
-  builder: ReturnType<typeof createMapPatchBuilder<string, number>>,
+  builder: CounterMapBuilder<string>,
   key: string | undefined,
   delta: number
 ) => {
-  if (!key) {
-    return
-  }
-
-  const next = (builder.get(key) ?? 0) + delta
-  if (next > 0) {
-    builder.set(key, next)
-    return
-  }
-
-  builder.delete(key)
+  builder.adjust(key, delta)
 }
 
 const applyNumberDelta = (
-  builder: ReturnType<typeof createMapPatchBuilder<number, number>>,
+  builder: CounterMapBuilder<number>,
   value: number | undefined,
   delta: number
 ) => {
-  if (value === undefined) {
-    return
-  }
-
-  const next = (builder.get(value) ?? 0) + delta
-  if (next > 0) {
-    builder.set(value, next)
-    return
-  }
-
-  builder.delete(value)
+  builder.adjust(value, delta)
 }
 
 const finalizeCountState = (
@@ -647,13 +678,13 @@ export const createFieldReducerBuilder = (input: {
       }
     : undefined
   const uniqueCounts = input.capabilities.unique
-    ? createMapPatchBuilder(input.previous.unique?.counts ?? EMPTY_STRING_COUNTS)
+    ? createCounterMapBuilder(input.previous.unique?.counts ?? EMPTY_STRING_COUNTS)
     : undefined
   const numericCounts = input.capabilities.numeric
-    ? createMapPatchBuilder(input.previous.numeric?.counts ?? EMPTY_NUMBER_COUNTS)
+    ? createCounterMapBuilder(input.previous.numeric?.counts ?? EMPTY_NUMBER_COUNTS)
     : undefined
   const optionCounts = input.capabilities.option
-    ? createMapPatchBuilder(input.previous.option?.counts ?? EMPTY_STRING_COUNTS)
+    ? createCounterMapBuilder(input.previous.option?.counts ?? EMPTY_STRING_COUNTS)
     : undefined
   let numericSum = input.capabilities.numeric
     ? input.previous.numeric?.sum ?? 0
@@ -661,9 +692,9 @@ export const createFieldReducerBuilder = (input: {
   let changed = false
 
   return {
-    apply(previousEntry?: CalculationEntry, nextEntry?: CalculationEntry): void {
+    apply(previousEntry?: CalculationEntry, nextEntry?: CalculationEntry): boolean {
       if (sameCalculationEntry(previousEntry, nextEntry)) {
-        return
+        return false
       }
 
       changed = true
@@ -707,6 +738,8 @@ export const createFieldReducerBuilder = (input: {
           applyCountDelta(optionCounts, optionId, 1)
         })
       }
+
+      return true
     },
     finish(): FieldReducerState {
       if (!changed) {

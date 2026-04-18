@@ -4,6 +4,9 @@ import type {
   View,
   ViewId
 } from '@dataview/core/contracts'
+import type {
+  ViewStageMetrics
+} from '@dataview/engine/contracts/public'
 import {
   hasActiveViewImpact,
   hasFieldSchemaAspect,
@@ -175,6 +178,7 @@ export const runQueryStage = (input: {
   records: import('@dataview/engine/contracts/public').ViewRecords
   deriveMs: number
   publishMs: number
+  metrics: ViewStageMetrics
 } => {
   const action = resolveQueryAction(input)
   const stage = runSnapshotStage({
@@ -203,6 +207,7 @@ export const runQueryStage = (input: {
     )
   })
 
+  let changedRecordCount = 0
   if (stage.action === 'rebuild') {
     ensureQueryImpact(input.impact).rebuild = true
   } else if (stage.action === 'sync' && input.previous) {
@@ -226,6 +231,7 @@ export const runQueryStage = (input: {
       || diff.removed.length
       || orderChanged
     ) {
+      changedRecordCount = diff.added.length + diff.removed.length
       const queryImpact = ensureQueryImpact(input.impact)
       if (diff.added.length) {
         queryImpact.visibleAdded.push(...diff.added)
@@ -244,6 +250,23 @@ export const runQueryStage = (input: {
     state: stage.state,
     records: stage.published,
     deriveMs: stage.deriveMs,
-    publishMs: stage.publishMs
+    publishMs: stage.publishMs,
+    metrics: {
+      inputCount: input.previousPublished?.visible.length,
+      outputCount: stage.published.visible.length,
+      reusedNodeCount: (
+        (input.previousPublished?.matched === stage.published.matched ? 1 : 0)
+        + (input.previousPublished?.ordered === stage.published.ordered ? 1 : 0)
+        + (input.previousPublished?.visible === stage.published.visible ? 1 : 0)
+      ),
+      rebuiltNodeCount: (
+        3 - (
+          (input.previousPublished?.matched === stage.published.matched ? 1 : 0)
+          + (input.previousPublished?.ordered === stage.published.ordered ? 1 : 0)
+          + (input.previousPublished?.visible === stage.published.visible ? 1 : 0)
+        )
+      ),
+      changedRecordCount
+    }
   }
 }

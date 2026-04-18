@@ -7,7 +7,6 @@ import type {
   ViewCache
 } from '@dataview/engine/contracts/internal'
 import type {
-  ViewStageMetrics,
   ViewStageName,
   ViewStageTrace,
   ViewState,
@@ -15,7 +14,6 @@ import type {
 } from '@dataview/engine/contracts/public'
 import { now } from '@dataview/engine/runtime/clock'
 import { publishViewBase } from '@dataview/engine/active/snapshot/base'
-import { buildStageMetrics } from '@dataview/engine/active/snapshot/trace'
 import { runQueryStage } from '@dataview/engine/active/snapshot/query/runtime'
 import { runSectionsStage } from '@dataview/engine/active/snapshot/sections/runtime'
 import { runSummaryStage } from '@dataview/engine/active/snapshot/summary/runtime'
@@ -49,8 +47,7 @@ export const deriveViewSnapshot = (input: {
     stage: ViewStageName,
     run: () => T,
     previousSnapshot: ViewState | undefined,
-    nextSnapshot: (result: T) => ViewState | undefined,
-    buildMetrics?: (result: T) => ViewStageMetrics | undefined
+    nextSnapshot: (result: T) => ViewState | undefined
   ): T => {
     const result = run()
     if (input.capturePerf) {
@@ -69,9 +66,11 @@ export const deriveViewSnapshot = (input: {
         durationMs: deriveMs + publishMs,
         deriveMs,
         publishMs,
-        ...(buildMetrics
-          ? { metrics: buildMetrics(result) }
-          : {})
+        ...(
+          'metrics' in result && result.metrics
+            ? { metrics: result.metrics }
+            : {}
+        )
       })
     }
     return result
@@ -124,17 +123,7 @@ export const deriveViewSnapshot = (input: {
           ...input.previousSnapshot,
           records: result.records
         }
-      : undefined,
-    result => buildStageMetrics(
-      'query',
-      input.previousSnapshot,
-      input.previousSnapshot
-        ? {
-            ...input.previousSnapshot,
-            records: result.records
-          }
-        : undefined
-    )
+      : undefined
   )
 
   const sections = timeStage(
@@ -160,18 +149,7 @@ export const deriveViewSnapshot = (input: {
           sections: result.sections,
           items: result.items
         }
-      : undefined,
-    result => buildStageMetrics(
-      'sections',
-      input.previousSnapshot,
-      input.previousSnapshot
-        ? {
-            ...input.previousSnapshot,
-            sections: result.sections,
-            items: result.items
-          }
-        : undefined
-    )
+      : undefined
   )
 
   const summary = timeStage(
@@ -196,17 +174,7 @@ export const deriveViewSnapshot = (input: {
           ...input.previousSnapshot,
           summaries: result.summaries
         }
-      : undefined,
-    result => buildStageMetrics(
-      'summary',
-      input.previousSnapshot,
-      input.previousSnapshot
-        ? {
-            ...input.previousSnapshot,
-            summaries: result.summaries
-          }
-        : undefined
-    )
+      : undefined
   )
 
   const base = publishViewBase({

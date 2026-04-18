@@ -13,6 +13,7 @@ import {
   readDateComparableTimestamp
 } from '@dataview/core/field'
 import {
+  matchFilterRule,
   readFilterOptionSetValue
 } from '@dataview/core/filter'
 import {
@@ -66,7 +67,6 @@ const createMoveOrderAction = (
 interface CreateDraftState {
   title?: string
   values: Partial<Record<FieldId, unknown>>
-  explicitFieldIds: Set<FieldId>
   clearFieldIds: Set<FieldId>
 }
 
@@ -75,7 +75,6 @@ const createDraftState = (
   hasField?: (fieldId: FieldId) => boolean
 ): CreateDraftState | undefined => {
   const values: Partial<Record<FieldId, unknown>> = {}
-  const explicitFieldIds = new Set<FieldId>()
   let title: string | undefined
 
   for (const [fieldId, value] of Object.entries(set ?? {}) as [FieldId, unknown][]) {
@@ -86,7 +85,6 @@ const createDraftState = (
       continue
     }
 
-    explicitFieldIds.add(fieldId)
     if (isTitleFieldId(fieldId)) {
       title = String(value ?? '')
       continue
@@ -98,7 +96,6 @@ const createDraftState = (
   return {
     title,
     values,
-    explicitFieldIds,
     clearFieldIds: new Set<FieldId>()
   }
 }
@@ -237,10 +234,10 @@ const resolveFilterRuleDefault = (input: {
       }
 
       const optionIds = readFilterOptionSetValue(input.rule.value).optionIds
-      return optionIds.length === 1
+      return optionIds.length
         ? {
             fieldId: input.field.id,
-            value: [optionIds[0]]
+            value: [...optionIds]
           }
         : undefined
     }
@@ -272,6 +269,15 @@ const applyFilterDefaults = (input: {
       return false
     }
 
+    const fieldId = field.id
+    const currentValue = readDraftValue(input.draft, fieldId)
+    if (matchFilterRule(field, currentValue, projection.rule)) {
+      continue
+    }
+    if (currentValue !== undefined) {
+      return false
+    }
+
     const next = resolveFilterRuleDefault({
       field,
       rule: projection.rule
@@ -279,10 +285,6 @@ const applyFilterDefaults = (input: {
     if (!next) {
       return false
     }
-    if (input.draft.explicitFieldIds.has(next.fieldId)) {
-      continue
-    }
-
     const current = derived.get(next.fieldId)
     if (current !== undefined && !sameJsonValue(current, next.value)) {
       return false
@@ -310,9 +312,6 @@ const applyGroupDefault = (input: {
   }
   if (!field) {
     return false
-  }
-  if (input.draft.explicitFieldIds.has(group.field)) {
-    return true
   }
 
   const currentValue = readDraftValue(input.draft, group.field)
@@ -408,17 +407,17 @@ export const createActiveRecordsApi = (input: {
       return undefined
     }
 
-    if (!applyFilterDefaults({
-      state,
-      draft
-    })) {
-      return undefined
-    }
-
     if (!applyGroupDefault({
       state,
       draft,
       sectionKey: context.sectionKey
+    })) {
+      return undefined
+    }
+
+    if (!applyFilterDefaults({
+      state,
+      draft
     })) {
       return undefined
     }

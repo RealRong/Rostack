@@ -257,43 +257,46 @@ export const syncSummaryState = (input: {
         capabilities: fieldIndex.capabilities
       })
       let fieldChanged = false
-      const processed = new Set<RecordId>()
+      let processed: Set<RecordId> | undefined
 
       removedBySection?.forEach(recordId => {
-        processed.add(recordId)
-        const previousEntry = readPreviousEntry(fieldChange, currentEntries, recordId)
+        if (fieldChange?.changedIds.size) {
+          processed ??= new Set<RecordId>()
+          processed.add(recordId)
+        }
+        const previousEntry = fieldChange
+          ? readPreviousEntry(fieldChange, currentEntries, recordId)
+          : currentEntries.get(recordId)
         if (!previousEntry) {
           return
         }
 
-        fieldChanged = true
-        reducer.apply(previousEntry, undefined)
+        fieldChanged = reducer.apply(previousEntry, undefined) || fieldChanged
       })
 
       addedBySection?.forEach(recordId => {
-        processed.add(recordId)
-        const nextEntry = readNextEntry(fieldChange, currentEntries, recordId)
+        if (fieldChange?.changedIds.size) {
+          processed ??= new Set<RecordId>()
+          processed.add(recordId)
+        }
+        const nextEntry = fieldChange
+          ? readNextEntry(fieldChange, currentEntries, recordId)
+          : currentEntries.get(recordId)
         if (!nextEntry) {
           return
         }
 
-        fieldChanged = true
-        reducer.apply(undefined, nextEntry)
+        fieldChanged = reducer.apply(undefined, nextEntry) || fieldChanged
       })
 
       fieldChange?.changedIds.forEach(recordId => {
-        if (processed.has(recordId) || !input.resolver.has(recordId, sectionKey)) {
+        if (processed?.has(recordId) || !input.resolver.has(recordId, sectionKey)) {
           return
         }
 
         const previousEntry = fieldChange.previousById.get(recordId)
         const nextEntry = fieldChange.nextById.get(recordId)
-        if (sameCalculationEntry(previousEntry, nextEntry)) {
-          return
-        }
-
-        fieldChanged = true
-        reducer.apply(previousEntry, nextEntry)
+        fieldChanged = reducer.apply(previousEntry, nextEntry) || fieldChanged
       })
 
       if (!fieldChanged) {

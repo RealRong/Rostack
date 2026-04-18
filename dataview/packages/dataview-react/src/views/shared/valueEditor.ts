@@ -29,11 +29,10 @@ export const createFocusOwnerSessionPolicy = (input: {
 const resolveEditorAnchor = (input: {
   field: ViewFieldRef
   element?: Element | null
-  fallbackAnchor?: (element?: Element | null) => ValueEditorAnchor | undefined
 }) => resolveFieldAnchor(
   ownerDocumentOf(input.element),
   input.field
-) ?? input.fallbackAnchor?.(input.element)
+)
 
 export const openFieldValueEditor = (input: {
   valueEditor: ValueEditorApi
@@ -43,15 +42,27 @@ export const openFieldValueEditor = (input: {
   seedDraft?: string
   beforeResolve?: () => void
   fallbackAnchor?: (element?: Element | null) => ValueEditorAnchor | undefined
+  fallbackStrategy?: 'immediate' | 'after-retry'
   retryFrames?: number
   onFailure?: () => void
 }): boolean => {
+  const maxRetryFrames = input.retryFrames ?? 0
+
   const tryOpen = (
     attempt: number
   ): boolean => {
     input.beforeResolve?.()
 
-    const anchor = resolveEditorAnchor(input)
+    const resolvedAnchor = resolveEditorAnchor(input)
+    const fallbackAllowed = (
+      input.fallbackStrategy !== 'after-retry'
+      || attempt >= maxRetryFrames
+    )
+    const anchor = resolvedAnchor ?? (
+      fallbackAllowed
+        ? input.fallbackAnchor?.(input.element)
+        : undefined
+    )
     if (anchor) {
       const opened = input.valueEditor.open({
         field: input.field,
@@ -66,7 +77,7 @@ export const openFieldValueEditor = (input: {
 
     if (
       typeof window === 'undefined'
-      || attempt >= (input.retryFrames ?? 0)
+      || attempt >= maxRetryFrames
     ) {
       input.onFailure?.()
       return false

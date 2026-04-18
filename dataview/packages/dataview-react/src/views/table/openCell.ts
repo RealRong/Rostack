@@ -19,6 +19,8 @@ export interface CellOpenInput {
   selectionCell?: CellRef
   element?: Element | null
   fallbackAnchor?: (element?: Element | null) => ValueEditorAnchor | undefined
+  fallbackStrategy?: 'immediate' | 'after-retry'
+  retryFrames?: number
   seedDraft?: string
 }
 
@@ -28,6 +30,8 @@ interface OpenTarget {
   field: ViewFieldRef
   element?: Element | null
   fallbackAnchor?: CellOpenInput['fallbackAnchor']
+  fallbackStrategy?: CellOpenInput['fallbackStrategy']
+  retryFrames?: CellOpenInput['retryFrames']
   seedDraft?: string
 }
 
@@ -137,6 +141,7 @@ export const createCellOpener = (options: {
       element: target.element ?? options.dom.cell(target.cell),
       seedDraft: target.seedDraft,
       fallbackAnchor: target.fallbackAnchor,
+      fallbackStrategy: target.fallbackStrategy,
       policy: createTableSessionPolicy({
         cell: target.cell,
         selectionCell: target.selectionCell,
@@ -147,7 +152,7 @@ export const createCellOpener = (options: {
       beforeResolve: () => {
         syncTarget(target)
       },
-      retryFrames: 2,
+      retryFrames: target.retryFrames ?? 2,
       onFailure: options.focus
     })
   }
@@ -174,6 +179,8 @@ export const createCellOpener = (options: {
       selectionCell: input.selectionCell,
       element: input.element,
       fallbackAnchor: input.fallbackAnchor,
+      fallbackStrategy: input.fallbackStrategy,
+      retryFrames: input.retryFrames,
       seedDraft: input.seedDraft
     })
   }

@@ -800,6 +800,78 @@ test('engine.active.records.create derives supported filter defaults', () => {
   assert.deepEqual(readViewState(engine)?.records.visible, ['rec_2', createdId])
 })
 
+test('engine.active.records.create resolves grouped status against multi-option filters', () => {
+  const engine = createEngineForTest({
+    document: createDocument()
+  })
+
+  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).filters.update(0, {
+    fieldId: FIELD_STATUS,
+    presetId: 'eq',
+    value: createFilterOptionSetValue(['todo', 'doing'])
+  })
+
+  const createdId = openView(engine, VIEW_TABLE).records.create({
+    sectionKey: 'doing',
+    set: {
+      [TITLE_FIELD_ID]: 'Grouped Filtered'
+    }
+  })
+
+  assert.ok(createdId)
+  assert.equal(engine.records.get(createdId)?.values[FIELD_STATUS], 'doing')
+  assert.deepEqual(viewSectionRecordIds(engine, 'doing'), ['rec_2', createdId])
+})
+
+test('engine.active.records.create rejects ambiguous multi-option status filters without a concrete value', () => {
+  const engine = createEngineForTest({
+    document: createDocument()
+  })
+  const beforeOrder = [...engine.select.records.ids.get()]
+
+  openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).filters.update(0, {
+    fieldId: FIELD_STATUS,
+    presetId: 'eq',
+    value: createFilterOptionSetValue(['todo', 'doing'])
+  })
+
+  const createdId = openView(engine, VIEW_TABLE).records.create({
+    set: {
+      [TITLE_FIELD_ID]: 'Ambiguous'
+    }
+  })
+
+  assert.equal(createdId, undefined)
+  assert.deepEqual(engine.select.records.ids.get(), beforeOrder)
+})
+
+test('engine.active.records.create accepts explicit status values that satisfy multi-option filters', () => {
+  const engine = createEngineForTest({
+    document: createDocument()
+  })
+
+  openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).filters.update(0, {
+    fieldId: FIELD_STATUS,
+    presetId: 'eq',
+    value: createFilterOptionSetValue(['todo', 'doing'])
+  })
+
+  const createdId = openView(engine, VIEW_TABLE).records.create({
+    set: {
+      [TITLE_FIELD_ID]: 'Explicit',
+      [FIELD_STATUS]: 'doing'
+    }
+  })
+
+  assert.ok(createdId)
+  assert.equal(engine.records.get(createdId)?.values[FIELD_STATUS], 'doing')
+  assert.deepEqual(readViewState(engine)?.records.visible, ['rec_1', 'rec_2', createdId])
+})
+
 test('engine.active.records.create rejects unsupported effective filter rules', () => {
   const engine = createEngineForTest({
     document: createDocument()
@@ -816,6 +888,26 @@ test('engine.active.records.create rejects unsupported effective filter rules', 
   const createdId = openView(engine, VIEW_TABLE).records.create({
     set: {
       [TITLE_FIELD_ID]: 'Blocked'
+    }
+  })
+
+  assert.equal(createdId, undefined)
+  assert.deepEqual(engine.select.records.ids.get(), beforeOrder)
+})
+
+test('engine.active.records.create rejects explicit values that conflict with the target section', () => {
+  const engine = createEngineForTest({
+    document: createDocument()
+  })
+  const beforeOrder = [...engine.select.records.ids.get()]
+
+  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
+
+  const createdId = openView(engine, VIEW_TABLE).records.create({
+    sectionKey: 'doing',
+    set: {
+      [TITLE_FIELD_ID]: 'Wrong Group',
+      [FIELD_STATUS]: 'todo'
     }
   })
 

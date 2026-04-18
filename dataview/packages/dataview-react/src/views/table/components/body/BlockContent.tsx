@@ -141,6 +141,7 @@ const RenderedBlocksView = (props: RenderedBlocksProps) => {
                 label={block.label}
                 measureRef={blockMeasureRef}
                 columns={props.columns}
+                showVerticalLines={props.showVerticalLines}
                 wrap={props.wrap}
                 template={props.template}
                 resizingPropertyId={props.resizingPropertyId}

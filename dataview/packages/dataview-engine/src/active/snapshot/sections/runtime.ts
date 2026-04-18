@@ -2,6 +2,9 @@ import type {
   View,
   ViewId
 } from '@dataview/core/contracts'
+import type {
+  ViewStageMetrics
+} from '@dataview/engine/contracts/public'
 import {
   hasActiveViewImpact,
   hasFieldSchemaAspect,
@@ -105,6 +108,7 @@ export const runSectionsStage = (input: {
   items: import('@dataview/engine/contracts/public').ItemList
   deriveMs: number
   publishMs: number
+  metrics: ViewStageMetrics
 } => {
   const previousPublished = input.previousPublished.sections
     && input.previousPublished.items
@@ -158,6 +162,18 @@ export const runSectionsStage = (input: {
     )
   })
 
+  const outputCount = stage.published.sections.all.length
+  const changedSectionCount = stage.action === 'reuse'
+    ? 0
+    : stage.action === 'rebuild'
+      ? outputCount
+      : Math.min(
+          outputCount,
+          input.impact.sections?.touchedKeys.size
+            ?? (input.previousPublished.sections === stage.published.sections ? 0 : 1)
+        )
+  const reusedNodeCount = Math.max(0, outputCount - changedSectionCount)
+
   return {
     action: stage.action,
     state: stage.state,
@@ -165,6 +181,13 @@ export const runSectionsStage = (input: {
     sections: stage.published.sections,
     items: stage.published.items,
     deriveMs: stage.deriveMs,
-    publishMs: stage.publishMs
+    publishMs: stage.publishMs,
+    metrics: {
+      inputCount: input.previousPublished.sections?.all.length,
+      outputCount,
+      reusedNodeCount,
+      rebuiltNodeCount: outputCount - reusedNodeCount,
+      changedSectionCount
+    }
   }
 }

@@ -66,6 +66,10 @@ const EMPTY_SEARCH_SOURCES = [] as readonly SearchFieldIndex[]
 const EMPTY_SEARCH_GRAMS = [] as readonly string[]
 const SEARCH_SOURCE_SEPARATOR = '\u0000'
 const REVERSED_SORT_IDS = new WeakMap<readonly RecordId[], readonly RecordId[]>()
+const ORDER_ORDINALS_BY_IDS = new WeakMap<
+  readonly RecordId[],
+  WeakMap<ReadonlyMap<RecordId, number>, Int32Array>
+>()
 
 interface CandidateScratch {
   count: Uint32Array
@@ -109,6 +113,30 @@ const nextScratchGeneration = (
   return scratch.generation
 }
 
+const readOrderOrdinals = (
+  ids: readonly RecordId[],
+  order: ReadonlyMap<RecordId, number>
+): Int32Array => {
+  const cachedByOrder = ORDER_ORDINALS_BY_IDS.get(ids)
+  const cached = cachedByOrder?.get(order)
+  if (cached) {
+    return cached
+  }
+
+  const ordinals = new Int32Array(ids.length)
+  for (let index = 0; index < ids.length; index += 1) {
+    ordinals[index] = order.get(ids[index]!) ?? -1
+  }
+
+  const nextByOrder = cachedByOrder ?? new WeakMap<ReadonlyMap<RecordId, number>, Int32Array>()
+  nextByOrder.set(order, ordinals)
+  if (!cachedByOrder) {
+    ORDER_ORDINALS_BY_IDS.set(ids, nextByOrder)
+  }
+
+  return ordinals
+}
+
 const projectIdsByMembership = (input: {
   orderedIds: readonly RecordId[]
   candidateIds: readonly RecordId[]
@@ -122,19 +150,21 @@ const projectIdsByMembership = (input: {
 
   const scratch = readCandidateScratch(input.allRecordIds)
   const generation = nextScratchGeneration(scratch)
-  input.candidateIds.forEach(recordId => {
-    const ordinal = input.order.get(recordId)
-    if (ordinal !== undefined) {
+  const candidateOrdinals = readOrderOrdinals(input.candidateIds, input.order)
+  for (let index = 0; index < input.candidateIds.length; index += 1) {
+    const ordinal = candidateOrdinals[index]!
+    if (ordinal >= 0) {
       scratch.stamp[ordinal] = generation
     }
-  })
+  }
 
   const projected: RecordId[] = []
+  const orderedOrdinals = readOrderOrdinals(input.orderedIds, input.order)
   if (!input.reverse) {
     for (let index = 0; index < input.orderedIds.length; index += 1) {
       const recordId = input.orderedIds[index]!
-      const ordinal = input.order.get(recordId)
-      if (ordinal !== undefined && scratch.stamp[ordinal] === generation) {
+      const ordinal = orderedOrdinals[index]!
+      if (ordinal >= 0 && scratch.stamp[ordinal] === generation) {
         projected.push(recordId)
       }
     }
@@ -143,8 +173,8 @@ const projectIdsByMembership = (input: {
 
   for (let index = input.orderedIds.length - 1; index >= 0; index -= 1) {
     const recordId = input.orderedIds[index]!
-    const ordinal = input.order.get(recordId)
-    if (ordinal !== undefined && scratch.stamp[ordinal] === generation) {
+    const ordinal = orderedOrdinals[index]!
+    if (ordinal >= 0 && scratch.stamp[ordinal] === generation) {
       projected.push(recordId)
     }
   }
@@ -166,12 +196,14 @@ const collectCandidateLists = (input: {
   const scratch = readCandidateScratch(input.allRecordIds)
   const generation = nextScratchGeneration(scratch)
 
-  input.lists.forEach((list, listIndex) => {
+  for (let listIndex = 0; listIndex < input.lists.length; listIndex += 1) {
+    const list = input.lists[listIndex]!
     const listToken = listIndex + 1
-    list.forEach(recordId => {
-      const ordinal = input.order.get(recordId)
-      if (ordinal === undefined) {
-        return
+    const ordinals = readOrderOrdinals(list, input.order)
+    for (let index = 0; index < list.length; index += 1) {
+      const ordinal = ordinals[index]!
+      if (ordinal < 0) {
+        continue
       }
 
       if (scratch.stamp[ordinal] !== generation) {
@@ -181,28 +213,29 @@ const collectCandidateLists = (input: {
       }
 
       if (scratch.seenList[ordinal] === listToken) {
-        return
+        continue
       }
 
       scratch.seenList[ordinal] = listToken
       scratch.count[ordinal] += 1
-    })
-  })
+    }
+  }
 
   const requiredCount = input.requireAll
     ? input.lists.length
     : 1
   const collected: RecordId[] = []
-  input.scanOrder.forEach(recordId => {
-    const ordinal = input.order.get(recordId)
+  const scanOrdinals = readOrderOrdinals(input.scanOrder, input.order)
+  for (let index = 0; index < input.scanOrder.length; index += 1) {
+    const ordinal = scanOrdinals[index]!
     if (
-      ordinal !== undefined
+      ordinal >= 0
       && scratch.stamp[ordinal] === generation
       && scratch.count[ordinal] >= requiredCount
     ) {
-      collected.push(recordId)
+      collected.push(input.scanOrder[index]!)
     }
-  })
+  }
 
   return collected
 }

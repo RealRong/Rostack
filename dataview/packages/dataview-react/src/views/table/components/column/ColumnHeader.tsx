@@ -14,13 +14,19 @@ import {
 } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import {
+  memo,
   useCallback,
   useMemo,
   useRef,
   useState,
   type PointerEvent
 } from 'react'
-import type { CalculationMetric, Field, FieldId, CustomField } from '@dataview/core/contracts'
+import type {
+  CalculationMetric,
+  CustomField,
+  Field,
+  FieldId
+} from '@dataview/core/contracts'
 import {
   Menu,
   type MenuItem,
@@ -31,10 +37,8 @@ import { cn } from '@shared/ui/utils'
 import { isCustomField } from '@dataview/core/field'
 import { getFieldCalculationMetrics } from '@dataview/core/calculation'
 import { getSorterFieldId } from '@dataview/react/page/features/query/fields'
-import {
-  useDataView,
-} from '@dataview/react/dataview'
-import { useStoreValue } from '@shared/react'
+import { useDataView } from '@dataview/react/dataview'
+import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
 import { token, type Token, type TokenTranslator } from '@shared/i18n'
 import { useTranslation } from '@shared/i18n/react'
 import { useTableContext } from '@dataview/react/views/table/context'
@@ -48,6 +52,7 @@ import {
 export interface ColumnHeaderProps {
   field: Field
   sortId: string
+  showVerticalLines: boolean
   wrap: boolean
   resizeActive?: boolean
   onResizeStart: (
@@ -188,7 +193,24 @@ const ResizeHandle = (props: ResizeHandleProps) => (
   </button>
 )
 
-export const ColumnHeader = (props: ColumnHeaderProps) => {
+const EMPTY_MENU_ITEMS = [] as readonly MenuItem[]
+
+const sameHeaderState = (
+  left: {
+    grouped: boolean
+    sortDirection?: 'asc' | 'desc'
+    calculationMetric?: CalculationMetric
+  },
+  right: {
+    grouped: boolean
+    sortDirection?: 'asc' | 'desc'
+    calculationMetric?: CalculationMetric
+  }
+) => left.grouped === right.grouped
+  && left.sortDirection === right.sortDirection
+  && left.calculationMetric === right.calculationMetric
+
+const View = (props: ColumnHeaderProps) => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const editor = dataView.engine
@@ -200,18 +222,26 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
   } | null>(null)
   const suppressClickRef = useRef(false)
   const table = useTableContext()
-  const currentView = useStoreValue(table.currentView)
-  if (!currentView) {
-    throw new Error('Table column header requires an active current view.')
-  }
+  const headerState = useStoreSelector(
+    table.currentView,
+    currentView => {
+      if (!currentView) {
+        throw new Error('Table column header requires an active current view.')
+      }
 
-  const view = currentView.view
-  const groupProjection = currentView.query.group
-  const sortProjection = currentView.query.sort
-  const showVerticalLinesStore = useMemo(() => editor.active.select(
-    state => state?.view.options.table.showVerticalLines ?? false
-  ), [editor])
-  const showVerticalLines = useStoreValue(showVerticalLinesStore)
+      return {
+        grouped: (
+          currentView.query.group.active === true
+          && currentView.query.group.fieldId === props.field.id
+        ),
+        sortDirection: currentView.query.sort.rules.find(
+          entry => getSorterFieldId(entry.sorter) === props.field.id
+        )?.sorter.direction,
+        calculationMetric: currentView.view.calc[props.field.id] as CalculationMetric | undefined
+      }
+    },
+    sameHeaderState
+  )
   const sortable = useSortable({
     id: props.sortId,
     transition: {
@@ -223,13 +253,10 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
     ? `translate3d(${Math.round(sortable.transform.x)}px, 0, 0)`
     : undefined
   const isDragging = sortable.isDragging
-  const grouped = groupProjection?.active === true
-    && groupProjection.fieldId === props.field.id
-  const sortDirection = sortProjection?.rules.find(
-    entry => getSorterFieldId(entry.sorter) === props.field.id
-  )?.sorter.direction
+  const grouped = headerState.grouped
+  const sortDirection = headerState.sortDirection
   const wrap = props.wrap
-  const calculationMetric = view.calc[props.field.id] as CalculationMetric | undefined
+  const calculationMetric = headerState.calculationMetric
   const calculationMetrics = getFieldCalculationMetrics(props.field)
   const kind = meta.field.kind.get(props.field.kind)
   const KindIcon = kind.Icon
@@ -248,7 +275,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
     : undefined
   const viewApi = editor.active
 
-  const insertProperty = (side: 'left' | 'right') => {
+  const insertProperty = useCallback((side: 'left' | 'right') => {
     const name = t(meta.field.kind.get('text').defaultName)
     if (side === 'left') {
       viewApi.table.insertFieldLeft(props.field.id, {
@@ -262,206 +289,233 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       kind: 'text',
       name
     })
-  }
+  }, [props.field.id, t, viewApi.table])
 
-  const urlItems: readonly MenuItem[] = urlConfig
-    ? [{
-      kind: 'toggle',
-      key: 'displayFullUrl',
-      label: t(meta.ui.field.editor.displayFullUrl),
-      checked: urlConfig.displayFullUrl,
-      indicator: 'switch',
-      closeOnSelect: false,
-      onSelect: () => {
-        editor.fields.update(urlConfig.id, {
-          displayFullUrl: !urlConfig.displayFullUrl
-        } as Partial<Omit<CustomField, 'id'>>)
-      }
-    }]
-    : []
-  const changeTypeItems: readonly MenuItem[] = customField
-    ? [{
-      kind: 'submenu',
-      key: 'changeType',
-      label: t(token('dataview.react.table.column.changeType', 'Change type')),
-      leading: <ArrowLeftRight className="size-4" size={16} strokeWidth={1.8} />,
-      suffix: t(kind.token),
-      size: 'lg',
-      items: buildFieldKindMenuItems({
-        t,
-        kind: customField.kind,
-        isTitleProperty: false,
-        onSelect: kind => {
-          editor.fields.changeType(customField.id, { kind })
+  const items = useMemo<readonly MenuItem[]>(() => {
+    if (!menuOpen) {
+      return EMPTY_MENU_ITEMS
+    }
+
+    const urlItems: readonly MenuItem[] = urlConfig
+      ? [{
+        kind: 'toggle',
+        key: 'displayFullUrl',
+        label: t(meta.ui.field.editor.displayFullUrl),
+        checked: urlConfig.displayFullUrl,
+        indicator: 'switch',
+        closeOnSelect: false,
+        onSelect: () => {
+          editor.fields.update(urlConfig.id, {
+            displayFullUrl: !urlConfig.displayFullUrl
+          } as Partial<Omit<CustomField, 'id'>>)
+        }
+      }]
+      : []
+    const changeTypeItems: readonly MenuItem[] = customField
+      ? [{
+        kind: 'submenu',
+        key: 'changeType',
+        label: t(token('dataview.react.table.column.changeType', 'Change type')),
+        leading: <ArrowLeftRight className="size-4" size={16} strokeWidth={1.8} />,
+        suffix: t(kind.token),
+        size: 'lg',
+        items: buildFieldKindMenuItems({
+          t,
+          kind: customField.kind,
+          isTitleProperty: false,
+          onSelect: nextKind => {
+            editor.fields.changeType(customField.id, { kind: nextKind })
+            setMenuOpen(false)
+          }
+        })
+      }]
+      : []
+    const editItems: readonly MenuItem[] = !urlConfig && customField
+      ? [{
+        kind: 'action',
+        key: 'editProperty',
+        label: t(token('dataview.react.table.column.editProperty', 'Edit field')),
+        leading: <Settings2 className="size-4" size={16} strokeWidth={1.8} />,
+        onSelect: () => {
           setMenuOpen(false)
-        }
-      })
-    }]
-    : []
-  const editItems: readonly MenuItem[] = !urlConfig && customField
-    ? [{
-      kind: 'action',
-      key: 'editProperty',
-      label: t(token('dataview.react.table.column.editProperty', 'Edit field')),
-      leading: <Settings2 className="size-4" size={16} strokeWidth={1.8} />,
-      onSelect: () => {
-        setMenuOpen(false)
-        window.requestAnimationFrame(() => {
-          page.settings.open({
-            kind: 'fieldSchema',
-            fieldId: customField.id
+          window.requestAnimationFrame(() => {
+            page.settings.open({
+              kind: 'fieldSchema',
+              fieldId: customField.id
+            })
           })
-        })
-      }
-    }]
-    : []
-  const customFieldItems: readonly MenuItem[] = customField
-    ? [{
-      kind: 'action',
-      key: 'duplicate',
-      label: t(token('dataview.react.table.column.duplicateField', 'Duplicate field')),
-      leading: <Copy className="size-4" size={16} strokeWidth={1.8} />,
-      onSelect: () => {
-        editor.fields.duplicate(customField.id)
-      }
-    }, {
-      kind: 'action',
-      key: 'delete',
-      label: t(token('dataview.react.table.column.deleteField', 'Delete field')),
-      leading: <Trash2 className="size-4" size={16} strokeWidth={1.8} />,
-      tone: 'destructive',
-      disabled: false,
-      onSelect: () => {
-        editor.fields.remove(customField.id)
-      }
-    }]
-    : []
-  const items: readonly MenuItem[] = [
-    ...urlItems,
-    ...changeTypeItems,
-    ...editItems,
-    {
-      kind: 'action',
-      key: 'group',
-      label: grouped
-        ? t(token('dataview.react.table.column.ungroup', 'Ungroup by this field'))
-        : t(token('dataview.react.table.column.group', 'Group by this field')),
-      leading: <PanelsTopLeft className="size-4" size={16} strokeWidth={1.8} />,
-      onSelect: () => {
-        if (grouped) {
-          viewApi.group.clear()
-          return
         }
+      }]
+      : []
+    const customFieldItems: readonly MenuItem[] = customField
+      ? [{
+        kind: 'action',
+        key: 'duplicate',
+        label: t(token('dataview.react.table.column.duplicateField', 'Duplicate field')),
+        leading: <Copy className="size-4" size={16} strokeWidth={1.8} />,
+        onSelect: () => {
+          editor.fields.duplicate(customField.id)
+        }
+      }, {
+        kind: 'action',
+        key: 'delete',
+        label: t(token('dataview.react.table.column.deleteField', 'Delete field')),
+        leading: <Trash2 className="size-4" size={16} strokeWidth={1.8} />,
+        tone: 'destructive',
+        disabled: false,
+        onSelect: () => {
+          editor.fields.remove(customField.id)
+        }
+      }]
+      : []
 
-        viewApi.group.set(props.field.id)
-      }
-    },
-    {
-      kind: 'action',
-      key: 'filter',
-      label: t(meta.ui.filter.label),
-      leading: <Filter className="size-4" size={16} strokeWidth={1.8} />,
-      onSelect: () => {
-        viewApi.filters.add(props.field.id)
-        page.query.open({
-          kind: 'filter',
-          index: currentView.query.filters.rules.length
+    return [
+      ...urlItems,
+      ...changeTypeItems,
+      ...editItems,
+      {
+        kind: 'action',
+        key: 'group',
+        label: grouped
+          ? t(token('dataview.react.table.column.ungroup', 'Ungroup by this field'))
+          : t(token('dataview.react.table.column.group', 'Group by this field')),
+        leading: <PanelsTopLeft className="size-4" size={16} strokeWidth={1.8} />,
+        onSelect: () => {
+          if (grouped) {
+            viewApi.group.clear()
+            return
+          }
+
+          viewApi.group.set(props.field.id)
+        }
+      },
+      {
+        kind: 'action',
+        key: 'filter',
+        label: t(meta.ui.filter.label),
+        leading: <Filter className="size-4" size={16} strokeWidth={1.8} />,
+        onSelect: () => {
+          viewApi.filters.add(props.field.id)
+          const index = table.currentView.get()?.query.filters.rules.length ?? 0
+          page.query.open({
+            kind: 'filter',
+            index
+          })
+        }
+      },
+      {
+        kind: 'submenu',
+        key: 'sort',
+        label: t(meta.ui.sort.label),
+        leading: <ArrowUpDown className="size-4" size={16} strokeWidth={1.8} />,
+        suffix: sortDirectionMeta
+          ? t(sortDirectionMeta.token)
+          : undefined,
+        items: [
+          {
+            kind: 'toggle',
+            key: 'sortAsc',
+            label: t(meta.sort.direction.get('asc').token),
+            checked: sortDirection === 'asc',
+            onSelect: () => {
+              viewApi.sort.keepOnly(props.field.id, 'asc')
+            }
+          },
+          {
+            kind: 'toggle',
+            key: 'sortDesc',
+            label: t(meta.sort.direction.get('desc').token),
+            checked: sortDirection === 'desc',
+            onSelect: () => {
+              viewApi.sort.keepOnly(props.field.id, 'desc')
+            }
+          }
+        ]
+      },
+      {
+        kind: 'submenu',
+        key: 'calculation',
+        label: t(token('dataview.react.table.column.calculation', 'Calculation')),
+        leading: <Sigma className="size-4" size={16} strokeWidth={1.8} />,
+        suffix: calculationMetric
+          ? t(meta.calculation.metric.get(calculationMetric).token)
+          : t(token('meta.calculation.none', 'None')),
+        items: buildCalculationMenuItems({
+          t,
+          metrics: calculationMetrics,
+          currentMetric: calculationMetric,
+          onClear: () => {
+            viewApi.summary.set(props.field.id, null)
+          },
+          onSelectMetric: metric => {
+            viewApi.summary.set(props.field.id, metric)
+          }
         })
-      }
-    },
-    {
-      kind: 'submenu',
-      key: 'sort',
-      label: t(meta.ui.sort.label),
-      leading: <ArrowUpDown className="size-4" size={16} strokeWidth={1.8} />,
-      suffix: sortDirectionMeta
-        ? t(sortDirectionMeta.token)
-        : undefined,
-      items: [
-        {
-          kind: 'toggle',
-          key: 'sortAsc',
-          label: t(meta.sort.direction.get('asc').token),
-          checked: sortDirection === 'asc',
-          onSelect: () => {
-            viewApi.sort.keepOnly(props.field.id, 'asc')
-          }
-        },
-        {
-          kind: 'toggle',
-          key: 'sortDesc',
-          label: t(meta.sort.direction.get('desc').token),
-          checked: sortDirection === 'desc',
-          onSelect: () => {
-            viewApi.sort.keepOnly(props.field.id, 'desc')
-          }
+      },
+      {
+        kind: 'action',
+        key: 'hide',
+        label: t(token('dataview.react.table.column.hide', 'Hide')),
+        leading: <EyeOff className="size-4" size={16} strokeWidth={1.8} />,
+        disabled: false,
+        onSelect: () => {
+          viewApi.display.hide(props.field.id)
         }
-      ]
-    },
-    {
-      kind: 'submenu',
-      key: 'calculation',
-      label: t(token('dataview.react.table.column.calculation', 'Calculation')),
-      leading: <Sigma className="size-4" size={16} strokeWidth={1.8} />,
-      suffix: calculationMetric
-        ? t(meta.calculation.metric.get(calculationMetric).token)
-        : t(token('meta.calculation.none', 'None')),
-      items: buildCalculationMenuItems({
-        t,
-        metrics: calculationMetrics,
-        currentMetric: calculationMetric,
-        onClear: () => {
-          viewApi.summary.set(props.field.id, null)
-        },
-        onSelectMetric: metric => {
-          viewApi.summary.set(props.field.id, metric)
+      },
+      {
+        kind: 'toggle',
+        key: 'wrap',
+        label: t(meta.ui.viewSettings.layoutPanel.wrap),
+        checked: wrap,
+        leading: <TextWrap className="size-4" size={16} strokeWidth={1.8} />,
+        onSelect: () => {
+          viewApi.table.setWrap(!wrap)
         }
-      })
-    },
-    {
-      kind: 'action',
-      key: 'hide',
-      label: t(token('dataview.react.table.column.hide', 'Hide')),
-      leading: <EyeOff className="size-4" size={16} strokeWidth={1.8} />,
-      disabled: false,
-      onSelect: () => {
-        viewApi.display.hide(props.field.id)
-      }
-    },
-    {
-      kind: 'toggle',
-      key: 'wrap',
-      label: t(meta.ui.viewSettings.layoutPanel.wrap),
-      checked: wrap,
-      leading: <TextWrap className="size-4" size={16} strokeWidth={1.8} />,
-      onSelect: () => {
-        viewApi.table.setWrap(!wrap)
-      }
-    },
-    {
-      kind: 'divider',
-      key: 'divider-structure'
-    },
-    {
-      kind: 'action',
-      leading: <ArrowLeftToLine className="size-4" size={16} strokeWidth={1.8} />,
-      key: 'insertLeft',
-      label: t(token('dataview.react.table.column.insertLeft', 'Insert left')),
-      onSelect: () => {
-        insertProperty('left')
-      }
-    },
-    {
-      kind: 'action',
-      key: 'insertRight',
-      leading: <ArrowRightToLine className="size-4" size={16} strokeWidth={1.8} />,
-      label: t(token('dataview.react.table.column.insertRight', 'Insert right')),
-      onSelect: () => {
-        insertProperty('right')
-      }
-    },
-    ...customFieldItems
-  ]
+      },
+      {
+        kind: 'divider',
+        key: 'divider-structure'
+      },
+      {
+        kind: 'action',
+        leading: <ArrowLeftToLine className="size-4" size={16} strokeWidth={1.8} />,
+        key: 'insertLeft',
+        label: t(token('dataview.react.table.column.insertLeft', 'Insert left')),
+        onSelect: () => {
+          insertProperty('left')
+        }
+      },
+      {
+        kind: 'action',
+        key: 'insertRight',
+        leading: <ArrowRightToLine className="size-4" size={16} strokeWidth={1.8} />,
+        label: t(token('dataview.react.table.column.insertRight', 'Insert right')),
+        onSelect: () => {
+          insertProperty('right')
+        }
+      },
+      ...customFieldItems
+    ]
+  }, [
+    calculationMetric,
+    calculationMetrics,
+    customField,
+    editor.fields,
+    grouped,
+    insertProperty,
+    kind.token,
+    menuOpen,
+    page.query,
+    page.settings,
+    props.field.id,
+    sortDirection,
+    sortDirectionMeta,
+    t,
+    table.currentView,
+    urlConfig,
+    viewApi,
+    wrap
+  ])
 
   const trigger = (
     <div
@@ -544,7 +598,7 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
       data-column-id={props.field.id}
       className={cn(
         'group/header relative box-border h-full min-w-0',
-        showVerticalLines && 'border-r border-divider'
+        props.showVerticalLines && 'border-r border-divider'
       )}
       style={{
         transform: translate,
@@ -571,3 +625,17 @@ export const ColumnHeader = (props: ColumnHeaderProps) => {
     </div>
   )
 }
+
+const same = (
+  left: ColumnHeaderProps,
+  right: ColumnHeaderProps
+) => (
+  left.field === right.field
+  && left.sortId === right.sortId
+  && left.showVerticalLines === right.showVerticalLines
+  && left.wrap === right.wrap
+  && left.resizeActive === right.resizeActive
+  && left.onResizeStart === right.onResizeStart
+)
+
+export const ColumnHeader = memo(View, same)

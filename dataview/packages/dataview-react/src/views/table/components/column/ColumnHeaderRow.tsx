@@ -27,6 +27,7 @@ export interface ColumnHeaderRowProps {
   scope: SelectionScope<ItemId>
   label?: string
   columns: readonly Field[]
+  showVerticalLines: boolean
   wrap: boolean
   template: string
   resizingPropertyId?: FieldId
@@ -36,12 +37,68 @@ export interface ColumnHeaderRowProps {
   ) => void
 }
 
-const View = (props: ColumnHeaderRowProps) => {
+interface ColumnHeaderFieldsProps {
+  scopeId: string
+  columns: readonly Field[]
+  showVerticalLines: boolean
+  wrap: boolean
+  template: string
+  resizingPropertyId?: FieldId
+  onResizeStart: (
+    fieldId: FieldId,
+    event: PointerEvent<HTMLButtonElement>
+  ) => void
+}
+
+const ColumnHeaderFieldsView = (props: ColumnHeaderFieldsProps) => {
   const sortIds = useMemo(
     () => props.columns.map(field => columnSortId(props.scopeId, field.id)),
     [props.columns, props.scopeId]
   )
 
+  return (
+    <SortableContext
+      items={sortIds}
+      strategy={horizontalListSortingStrategy}
+    >
+      <div
+        className="inline-grid h-full min-w-0 flex-none items-stretch"
+        style={{
+          gridTemplateColumns: props.template
+        }}
+      >
+        {props.columns.map((field, index) => (
+          <ColumnHeader
+            key={field.id}
+            field={field}
+            sortId={sortIds[index] ?? columnSortId(props.scopeId, field.id)}
+            showVerticalLines={props.showVerticalLines}
+            wrap={props.wrap}
+            resizeActive={field.id === props.resizingPropertyId}
+            onResizeStart={props.onResizeStart}
+          />
+        ))}
+      </div>
+    </SortableContext>
+  )
+}
+
+const sameHeaderFields = (
+  left: ColumnHeaderFieldsProps,
+  right: ColumnHeaderFieldsProps
+) => (
+  left.scopeId === right.scopeId
+  && left.columns === right.columns
+  && left.showVerticalLines === right.showVerticalLines
+  && left.wrap === right.wrap
+  && left.template === right.template
+  && left.resizingPropertyId === right.resizingPropertyId
+  && left.onResizeStart === right.onResizeStart
+)
+
+const ColumnHeaderFields = memo(ColumnHeaderFieldsView, sameHeaderFields)
+
+const View = (props: ColumnHeaderRowProps) => {
   return (
     <div
       className="flex h-full min-w-full w-max items-stretch"
@@ -50,28 +107,15 @@ const View = (props: ColumnHeaderRowProps) => {
         scope={props.scope}
         label={props.label}
       />
-      <SortableContext
-        items={sortIds}
-        strategy={horizontalListSortingStrategy}
-      >
-        <div
-          className="inline-grid h-full min-w-0 flex-none items-stretch"
-          style={{
-            gridTemplateColumns: props.template
-          }}
-        >
-          {props.columns.map((field, index) => (
-            <ColumnHeader
-              key={field.id}
-              field={field}
-              sortId={sortIds[index] ?? columnSortId(props.scopeId, field.id)}
-              wrap={props.wrap}
-              resizeActive={field.id === props.resizingPropertyId}
-              onResizeStart={props.onResizeStart}
-            />
-          ))}
-        </div>
-      </SortableContext>
+      <ColumnHeaderFields
+        scopeId={props.scopeId}
+        columns={props.columns}
+        showVerticalLines={props.showVerticalLines}
+        wrap={props.wrap}
+        template={props.template}
+        resizingPropertyId={props.resizingPropertyId}
+        onResizeStart={props.onResizeStart}
+      />
       <div
         className="flex h-full shrink-0 items-stretch"
       >
@@ -91,6 +135,7 @@ const same = (
   && left.scope.count === right.scope.count
   && left.label === right.label
   && left.columns === right.columns
+  && left.showVerticalLines === right.showVerticalLines
   && left.wrap === right.wrap
   && left.template === right.template
   && left.resizingPropertyId === right.resizingPropertyId

@@ -3,6 +3,9 @@ import type {
   View,
   ViewId
 } from '@dataview/core/contracts'
+import type {
+  ViewStageMetrics
+} from '@dataview/engine/contracts/public'
 import {
   getViewChange,
   hasActiveViewImpact,
@@ -127,6 +130,7 @@ export const runSummaryStage = (input: {
   summaries: ReadonlyMap<SectionKey, import('@dataview/core/calculation').CalculationCollection>
   deriveMs: number
   publishMs: number
+  metrics: ViewStageMetrics
 } => {
   const action = resolveSummaryAction({
     activeViewId: input.activeViewId,
@@ -172,11 +176,30 @@ export const runSummaryStage = (input: {
     })
   })
 
+  const outputCount = stage.published.size
+  const changedSectionCount = stage.action === 'reuse'
+    ? 0
+    : stage.action === 'rebuild'
+      ? outputCount
+      : Math.min(
+          outputCount,
+          input.impact.sections?.touchedKeys.size
+            ?? (input.previousPublished === stage.published ? 0 : outputCount)
+        )
+  const reusedNodeCount = Math.max(0, outputCount - changedSectionCount)
+
   return {
     action: stage.action,
     state: stage.state,
     summaries: stage.published,
     deriveMs: stage.deriveMs,
-    publishMs: stage.publishMs
+    publishMs: stage.publishMs,
+    metrics: {
+      inputCount: input.previousPublished?.size,
+      outputCount,
+      reusedNodeCount,
+      rebuiltNodeCount: outputCount - reusedNodeCount,
+      changedSectionCount
+    }
   }
 }

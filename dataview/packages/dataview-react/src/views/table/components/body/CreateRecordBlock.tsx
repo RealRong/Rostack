@@ -90,6 +90,8 @@ const View = (props: CreateRecordBlockProps) => {
       },
       element: triggerRef.current,
       fallbackAnchor: element => fieldAnchor(element),
+      fallbackStrategy: 'after-retry',
+      retryFrames: MAX_OPEN_ATTEMPTS,
       seedDraft: ''
     })
   }, [table])

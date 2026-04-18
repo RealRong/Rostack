@@ -64,7 +64,7 @@ const createInteractionDeps = () => {
           })
         }
       },
-      commands: {
+      write: {
         edge: {
           patch,
           create: vi.fn()

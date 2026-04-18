@@ -10,10 +10,10 @@ import {
   createEdgeRoutePressSession,
   tryStartEdgeRoute
 } from '@whiteboard/editor/input/features/edge/route'
-import type { EditorServices } from '@whiteboard/editor/editor/services'
+import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 
 const selectEdge = (
-  ctx: Pick<EditorServices, 'actions'>,
+  ctx: Pick<EditorHostDeps, 'actions'>,
   edgeId: string
 ) => {
   ctx.actions.selection.replace({
@@ -22,7 +22,7 @@ const selectEdge = (
 }
 
 export const createEdgeBinding = (
-  ctx: Pick<EditorServices, 'engine' | 'query' | 'commands' | 'actions' | 'layout' | 'snap' | 'local'>
+  ctx: Pick<EditorHostDeps, 'engine' | 'query' | 'write' | 'actions' | 'layout' | 'snap' | 'session'>
 ): InteractionBinding => ({
   key: 'edge',
   start: (input) => {
@@ -78,7 +78,7 @@ export const createEdgeBinding = (
       )
 
       if (route.kind === 'remove') {
-        ctx.commands.edge.route.remove(route.edgeId, route.index)
+        ctx.write.edge.route.remove(route.edgeId, route.index)
         return HANDLED
       }
 

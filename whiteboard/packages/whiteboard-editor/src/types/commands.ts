@@ -44,7 +44,7 @@ import type {
   MindmapBranchLineKind,
   MindmapStrokeStyle
 } from '@whiteboard/core/mindmap'
-import type { ClipboardPacket } from '@whiteboard/editor/command/clipboard/packet'
+import type { ClipboardPacket } from '@whiteboard/editor/clipboard/packet'
 import type {
   BrushStylePatch,
   DrawState
@@ -400,5 +400,4 @@ export type AppActions = {
   replace: (document: Document) => CommandResult
   export: () => Document
   configure: (config: AppConfig) => void
-  dispose: () => void
 }

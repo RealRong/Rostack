@@ -16,7 +16,7 @@ import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { TransformPickHandle } from '@whiteboard/editor/types/pick'
-import type { EditorServices } from '@whiteboard/editor/editor/services'
+import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 
 export type TransformTarget = TransformSelectionMember<Node>
 export type RuntimeTransformSpec = TransformSpec<Node>
@@ -37,7 +37,7 @@ const toTransformNodePatches = (
 }))
 
 const readNodeTransformSpec = (
-  ctx: Pick<EditorServices, 'query'>,
+  ctx: Pick<EditorHostDeps, 'query'>,
   nodeId: NodeId,
   handle: TransformPickHandle,
   input: PointerDownInput
@@ -110,7 +110,7 @@ const readNodeTransformSpec = (
 }
 
 const resolveTransformSpec = (
-  ctx: Pick<EditorServices, 'query'>,
+  ctx: Pick<EditorHostDeps, 'query'>,
   input: PointerDownInput
 ): RuntimeTransformSpec | null => {
   const tool = ctx.query.tool.get()
@@ -147,7 +147,7 @@ const resolveTransformSpec = (
 }
 
 export const createTransformSession = (
-  ctx: Pick<EditorServices, 'query' | 'layout' | 'snap' | 'commands'>,
+  ctx: Pick<EditorHostDeps, 'query' | 'layout' | 'snap' | 'write'>,
   spec: TransformSpec<Node>,
   start: Pick<PointerDownInput, 'modifiers'>
 ): InteractionSession => {
@@ -221,7 +221,7 @@ export const createTransformSession = (
         commitTargetIds: state.commitIds
       })
       if (updates.length > 0) {
-        ctx.commands.node.updateMany(updates)
+        ctx.write.node.updateMany(updates)
       }
 
       return FINISH
@@ -233,7 +233,7 @@ export const createTransformSession = (
 }
 
 export const createTransformBinding = (
-  ctx: Pick<EditorServices, 'query' | 'layout' | 'snap' | 'commands'>
+  ctx: Pick<EditorHostDeps, 'query' | 'layout' | 'snap' | 'write'>
 ): InteractionBinding => ({
   key: 'transform',
   start: (input) => {

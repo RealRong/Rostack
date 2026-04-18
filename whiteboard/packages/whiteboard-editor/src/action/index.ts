@@ -1,13 +1,13 @@
 import type { Engine } from '@whiteboard/engine'
-import type { CommandResult } from '@whiteboard/engine/types/result'
 import type { SelectionInput } from '@whiteboard/core/selection'
-import type { NodeId } from '@whiteboard/core/types'
+import type { MindmapId, MindmapNodeId, Rect } from '@whiteboard/core/types'
 import type {
   AppActions,
   AppConfig,
   ClipboardCommands,
   HistoryCommands,
   MindmapCommands,
+  MindmapInsertBehavior,
   ToolActions
 } from '@whiteboard/editor/types/commands'
 import type {
@@ -15,19 +15,28 @@ import type {
   EditorEditActions,
   EditorSelectionActions
 } from '@whiteboard/editor/types/editor'
-import type { EditorLocal } from '@whiteboard/editor/local/runtime'
+import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { EditorQuery } from '@whiteboard/editor/query'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
 import type { EditCapability, EditField } from '@whiteboard/editor/local/session/edit'
-import type { EditorCommands } from '@whiteboard/editor/command'
+import type { EditorWrite } from '@whiteboard/editor/write'
 import type { Tool } from '@whiteboard/editor/types/tool'
+import type { MindmapEnterPreview, MindmapPreviewState } from '@whiteboard/editor/session/preview/types'
 import {
   createSelectionCommands
-} from '@whiteboard/editor/command/selection'
+} from '@whiteboard/editor/action/selection'
 import {
   createClipboardCommands
-} from '@whiteboard/editor/command/clipboard'
+} from '@whiteboard/editor/action/clipboard'
+
+const DEFAULT_MINDMAP_ENTER_DURATION_MS = 220
+
+const readNow = () => (
+  typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now()
+)
 
 const resolveNodeCommitValue = (input: {
   text: string
@@ -60,36 +69,36 @@ const isSameTool = (
 }
 
 const applySelectionMutation = (
-  local: Pick<EditorLocal, 'mutate'>,
+  session: Pick<EditorSession, 'mutate'>,
   apply: () => boolean
 ) => {
   if (!apply()) {
     return
   }
 
-  local.mutate.edit.clear()
+  session.mutate.edit.clear()
 }
 
 const createSelectionSession = (
-  local: Pick<EditorLocal, 'mutate'>
+  session: Pick<EditorSession, 'mutate'>
 ) => ({
   replace: (input: SelectionInput) => {
-    applySelectionMutation(local, () => local.mutate.selection.replace(input))
+    applySelectionMutation(session, () => session.mutate.selection.replace(input))
   },
   add: (input: SelectionInput) => {
-    applySelectionMutation(local, () => local.mutate.selection.add(input))
+    applySelectionMutation(session, () => session.mutate.selection.add(input))
   },
   remove: (input: SelectionInput) => {
-    applySelectionMutation(local, () => local.mutate.selection.remove(input))
+    applySelectionMutation(session, () => session.mutate.selection.remove(input))
   },
   toggle: (input: SelectionInput) => {
-    applySelectionMutation(local, () => local.mutate.selection.toggle(input))
+    applySelectionMutation(session, () => session.mutate.selection.toggle(input))
   },
   selectAll: () => {
     return
   },
   clear: () => {
-    applySelectionMutation(local, () => local.mutate.selection.clear())
+    applySelectionMutation(session, () => session.mutate.selection.clear())
   }
 })
 
@@ -110,15 +119,15 @@ const resolveNodeCapability = ({
 }) => registry.get(nodeType)?.edit?.fields?.[field]
 
 const createEditActions = ({
-  local,
+  session,
   query,
-  commands,
+  write,
   registry,
   layout
 }: {
-  local: Pick<EditorLocal, 'source' | 'mutate'>
+  session: Pick<EditorSession, 'state' | 'mutate'>
   query: Pick<EditorQuery, 'node' | 'edge'>
-  commands: Pick<EditorCommands, 'node' | 'edge'>
+  write: Pick<EditorWrite, 'node' | 'edge'>
   registry: Pick<NodeRegistry, 'get'>
   layout: Pick<EditorLayout, 'editNode'>
 }): EditorEditActions => {
@@ -150,7 +159,7 @@ const createEditActions = ({
       text
     })
 
-    local.mutate.edit.set({
+    session.mutate.edit.set({
       kind: 'node',
       nodeId,
       field,
@@ -192,7 +201,7 @@ const createEditActions = ({
 
     const text = typeof label.text === 'string' ? label.text : ''
 
-    local.mutate.edit.set({
+    session.mutate.edit.set({
       kind: 'edge-label',
       edgeId,
       labelId,
@@ -215,9 +224,9 @@ const createEditActions = ({
     startNode,
     startEdgeLabel,
     input: (text) => {
-      local.mutate.edit.input(text)
+      session.mutate.edit.input(text)
 
-      const current = local.source.edit.get()
+      const current = session.state.edit.get()
       if (!current || current.kind !== 'node') {
         return
       }
@@ -227,17 +236,17 @@ const createEditActions = ({
         field: current.field,
         text
       })
-      local.mutate.edit.layout(nextLayout ?? {})
+      session.mutate.edit.layout(nextLayout ?? {})
     },
-    layout: local.mutate.edit.layout,
-    caret: local.mutate.edit.caret,
+    layout: session.mutate.edit.layout,
+    caret: session.mutate.edit.caret,
     cancel: () => {
-      const currentEdit = local.source.edit.get()
+      const currentEdit = session.state.edit.get()
       if (!currentEdit) {
         return undefined
       }
 
-      local.mutate.edit.clear()
+      session.mutate.edit.clear()
 
       if (
         currentEdit.kind === 'edge-label'
@@ -249,28 +258,28 @@ const createEditActions = ({
           return undefined
         }
 
-        return commands.edge.label.remove(currentEdit.edgeId, currentEdit.labelId)
+        return write.edge.label.remove(currentEdit.edgeId, currentEdit.labelId)
       }
 
       return undefined
     },
     commit: () => {
-      const currentEdit = local.source.edit.get()
+      const currentEdit = session.state.edit.get()
       if (!currentEdit) {
         return undefined
       }
 
-      local.mutate.edit.status('committing')
+      session.mutate.edit.status('committing')
 
       if (currentEdit.kind === 'node') {
         const committed = query.node.committed.get(currentEdit.nodeId)
         if (!committed) {
-          local.mutate.edit.clear()
+          session.mutate.edit.clear()
           return undefined
         }
 
-        local.mutate.edit.clear()
-        return commands.node.text.commit({
+        session.mutate.edit.clear()
+        return write.node.text.commit({
           nodeId: currentEdit.nodeId,
           field: currentEdit.field,
           value: resolveNodeCommitValue({
@@ -284,16 +293,16 @@ const createEditActions = ({
         })
       }
 
-      local.mutate.edit.clear()
+      session.mutate.edit.clear()
 
       if (
         currentEdit.capabilities.empty === 'remove'
         && !currentEdit.draft.text.trim()
       ) {
-        return commands.edge.label.remove(currentEdit.edgeId, currentEdit.labelId)
+        return write.edge.label.remove(currentEdit.edgeId, currentEdit.labelId)
       }
 
-      return commands.edge.label.patch(
+      return write.edge.label.patch(
         currentEdit.edgeId,
         currentEdit.labelId,
         {
@@ -304,28 +313,213 @@ const createEditActions = ({
   }
 }
 
+const withMindmapPreview = (
+  session: Pick<EditorSession, 'preview'>,
+  project: (current: MindmapPreviewState | undefined) => MindmapPreviewState | undefined
+) => {
+  session.preview.write.set((current) => {
+    const nextPreview = project(current.mindmap.preview)
+    if (nextPreview === current.mindmap.preview) {
+      return current
+    }
+
+    if (!nextPreview) {
+      return current.mindmap.preview === undefined
+        ? current
+        : {
+            ...current,
+            mindmap: {}
+          }
+    }
+
+    return {
+      ...current,
+      mindmap: {
+        ...current.mindmap,
+        preview: nextPreview
+      }
+    }
+  })
+}
+
+const appendMindmapEnterPreview = (
+  session: Pick<EditorSession, 'preview'>,
+  entry: MindmapEnterPreview
+) => {
+  withMindmapPreview(session, (current) => ({
+    ...current,
+    enter: [
+      ...(current?.enter ?? []).filter((preview) => (
+        preview.treeId !== entry.treeId || preview.nodeId !== entry.nodeId
+      )),
+      entry
+    ]
+  }))
+
+  setTimeout(() => {
+    withMindmapPreview(session, (current) => {
+      const nextEnter = current?.enter?.filter((preview) => (
+        preview.treeId !== entry.treeId || preview.nodeId !== entry.nodeId
+      ))
+      if (!current) {
+        return undefined
+      }
+
+      return {
+        ...current,
+        enter: nextEnter?.length ? nextEnter : undefined
+      }
+    })
+  }, entry.durationMs + 34)
+}
+
+const toRectCenter = (
+  rect: Rect
+) => ({
+  x: rect.x + rect.width / 2,
+  y: rect.y + rect.height / 2
+})
+
+const readInsertAnchorId = (
+  input: Parameters<MindmapCommands['insert']>[1]
+) => {
+  const anchorId = input.options?.layout?.anchorId
+  if (anchorId) {
+    return anchorId
+  }
+
+  switch (input.kind) {
+    case 'child':
+      return input.parentId
+    case 'sibling':
+    case 'parent':
+      return input.nodeId
+  }
+}
+
+const buildMindmapEnterPreview = ({
+  query,
+  treeId,
+  nodeId,
+  anchorId
+}: {
+  query: Pick<EditorQuery, 'mindmap'>
+  treeId: MindmapId
+  nodeId: MindmapNodeId
+  anchorId?: MindmapNodeId
+}): MindmapEnterPreview | undefined => {
+  const item = query.mindmap.item.get(treeId)
+  if (!item) {
+    return undefined
+  }
+
+  const parentId = item.tree.nodes[nodeId]?.parentId
+  const toRect = item.computed.node[nodeId]
+  const anchorRect = item.computed.node[anchorId ?? parentId ?? '']
+  if (!toRect || !parentId || !anchorRect) {
+    return undefined
+  }
+
+  const anchorCenter = toRectCenter(anchorRect)
+  const targetCenter = toRectCenter(toRect)
+
+  return {
+    treeId,
+    nodeId,
+    parentId,
+    route: [anchorCenter, targetCenter],
+    fromRect: {
+      x: anchorCenter.x - toRect.width / 2,
+      y: anchorCenter.y - toRect.height / 2,
+      width: toRect.width,
+      height: toRect.height
+    },
+    toRect: {
+      ...toRect
+    },
+    startedAt: readNow(),
+    durationMs: DEFAULT_MINDMAP_ENTER_DURATION_MS
+  }
+}
+
+const focusMindmapNode = ({
+  nodeId,
+  behavior,
+  selection,
+  edit,
+  delayMs = 0
+}: {
+  nodeId: MindmapNodeId
+  behavior: MindmapInsertBehavior | undefined
+  selection: Pick<EditorSelectionActions, 'replace'>
+  edit: Pick<EditorEditActions, 'startNode'>
+  delayMs?: number
+}) => {
+  const focus = behavior?.focus ?? 'select-new'
+  if (focus === 'keep-current') {
+    return
+  }
+
+  const apply = () => {
+    selection.replace({
+      nodeIds: [nodeId]
+    })
+    if (focus === 'edit-new') {
+      edit.startNode(nodeId, 'text')
+    }
+  }
+
+  if (delayMs > 0) {
+    setTimeout(apply, delayMs)
+    return
+  }
+
+  apply()
+}
+
+const focusMindmapRoot = ({
+  nodeId,
+  focus,
+  selection,
+  edit
+}: {
+  nodeId: MindmapNodeId
+  focus: 'edit-root' | 'select-root' | 'none' | undefined
+  selection: Pick<EditorSelectionActions, 'replace'>
+  edit: Pick<EditorEditActions, 'startNode'>
+}) => {
+  if (!focus || focus === 'none') {
+    return
+  }
+
+  selection.replace({
+    nodeIds: [nodeId]
+  })
+  if (focus === 'edit-root') {
+    edit.startNode(nodeId, 'text')
+  }
+}
+
 export const createEditorActions = ({
   engine,
-  local,
+  session,
   query,
   layout,
-  commands,
-  registry,
-  dispose
+  write,
+  registry
 }: {
   engine: Engine
-  local: EditorLocal
+  session: EditorSession
   query: EditorQuery
   layout: EditorLayout
-  commands: EditorCommands
+  write: EditorWrite
   registry: NodeRegistry
-  dispose: () => void
 }): EditorActions => {
-  const selectionSession = createSelectionSession(local)
+  const selectionSession = createSelectionSession(session)
   const selectionActionsCore = createSelectionCommands({
     read: query,
-    document: commands.document,
-    node: commands.node,
+    document: write.document,
+    node: write.node,
     session: {
       selection: selectionSession
     }
@@ -333,7 +527,7 @@ export const createEditorActions = ({
   const clipboard: ClipboardCommands = createClipboardCommands({
     editor: {
       read: query,
-      document: commands.document,
+      document: write.document,
       session: {
         selection: selectionSession
       },
@@ -341,15 +535,15 @@ export const createEditorActions = ({
         delete: selectionActionsCore.delete
       },
       state: {
-        viewport: local.viewport.read,
-        selection: local.source.selection
+        viewport: session.viewport.read,
+        selection: session.state.selection
       }
     }
   })
   const edit = createEditActions({
-    local,
+    session,
     query,
-    commands,
+    write,
     registry,
     layout
   })
@@ -360,7 +554,7 @@ export const createEditorActions = ({
     remove: selectionSession.remove,
     toggle: selectionSession.toggle,
     selectAll: () => {
-      applySelectionMutation(local, () => local.mutate.selection.replace({
+      applySelectionMutation(session, () => session.mutate.selection.replace({
         nodeIds: query.node.list.get(),
         edgeIds: query.edge.list.get()
       }))
@@ -376,19 +570,19 @@ export const createEditorActions = ({
 
   const tool: ToolActions = {
     set: (nextTool) => {
-      const currentTool = local.source.tool.get()
+      const currentTool = session.state.tool.get()
       const toolChanged = !isSameTool(currentTool, nextTool)
 
       if (toolChanged || nextTool.type === 'draw') {
-        local.mutate.edit.clear()
-        local.mutate.selection.clear()
+        session.mutate.edit.clear()
+        session.mutate.selection.clear()
       }
 
       if (!toolChanged) {
         return
       }
 
-      local.mutate.tool.set(nextTool)
+      session.mutate.tool.set(nextTool)
     },
     select: () => {
       tool.set({ type: 'select' })
@@ -407,44 +601,117 @@ export const createEditorActions = ({
     }
   }
 
+  const mindmap: MindmapCommands = {
+    ...write.mindmap,
+    create: (payload, options) => {
+      const result = write.mindmap.create(payload, options)
+      if (result.ok) {
+        focusMindmapRoot({
+          nodeId: result.data.rootId,
+          focus: options?.focus,
+          selection,
+          edit
+        })
+      }
+      return result
+    },
+    insert: (id, input, options) => {
+      const result = write.mindmap.insert(id, input, options)
+      if (!result.ok) {
+        return result
+      }
+
+      let focusDelayMs = 0
+      if (options?.behavior?.enter === 'from-anchor') {
+        const preview = buildMindmapEnterPreview({
+          query,
+          treeId: id,
+          nodeId: result.data.nodeId,
+          anchorId: readInsertAnchorId(input)
+        })
+        if (preview) {
+          focusDelayMs = preview.durationMs
+          appendMindmapEnterPreview(session, preview)
+        }
+      }
+
+      focusMindmapNode({
+        nodeId: result.data.nodeId,
+        behavior: options?.behavior,
+        selection,
+        edit,
+        delayMs: focusDelayMs
+      })
+      return result
+    },
+    insertByPlacement: (input) => {
+      const result = write.mindmap.insertByPlacement(input)
+      if (!result?.ok) {
+        return result
+      }
+
+      let focusDelayMs = 0
+      if (input.behavior?.enter === 'from-anchor') {
+        const preview = buildMindmapEnterPreview({
+          query,
+          treeId: input.id,
+          nodeId: result.data.nodeId,
+          anchorId: input.targetNodeId
+        })
+        if (preview) {
+          focusDelayMs = preview.durationMs
+          appendMindmapEnterPreview(session, preview)
+        }
+      }
+
+      focusMindmapNode({
+        nodeId: result.data.nodeId,
+        behavior: input.behavior,
+        selection,
+        edit,
+        delayMs: focusDelayMs
+      })
+      return result
+    }
+  }
+
   return {
     app: {
       reset: () => {
-        local.reset()
+        session.reset()
       },
-      replace: commands.document.replace,
+      replace: write.document.replace,
       export: () => engine.document.get(),
       configure: (config: AppConfig) => {
         engine.configure({
           history: config.history
         })
-      },
-      dispose
+      }
     } satisfies AppActions,
     tool,
     viewport: {
-      set: local.viewport.commands.set,
-      panBy: local.viewport.commands.panBy,
-      zoomTo: local.viewport.commands.zoomTo,
-      fit: local.viewport.commands.fit,
-      reset: local.viewport.commands.reset,
-      setRect: local.viewport.setRect,
-      setLimits: local.viewport.setLimits
+      set: session.viewport.commands.set,
+      panBy: session.viewport.commands.panBy,
+      zoomTo: session.viewport.commands.zoomTo,
+      fit: session.viewport.commands.fit,
+      reset: session.viewport.commands.reset,
+      setRect: session.viewport.setRect,
+      setLimits: session.viewport.setLimits
     },
     draw: {
-      set: local.mutate.draw.set,
-      slot: local.mutate.draw.slot,
-      patch: local.mutate.draw.patch
+      set: session.mutate.draw.set,
+      slot: session.mutate.draw.slot,
+      patch: session.mutate.draw.patch
     },
     selection,
     edit,
-    node: commands.node,
+    node: write.node,
     edge: {
-      ...commands.edge,
+      ...write.edge,
       label: {
-        ...commands.edge.label,
+        ...write.edge.label,
         add: (edgeId) => {
-          const currentEdit = local.source.edit.get()
+          const currentEdit = session.state.edit.get()
           if (
             currentEdit
             && currentEdit.kind === 'edge-label'
@@ -453,7 +720,7 @@ export const createEditorActions = ({
             return undefined
           }
 
-          const labelId = commands.edge.label.add(edgeId)
+          const labelId = write.edge.label.add(edgeId)
           if (!labelId) {
             return undefined
           }
@@ -465,22 +732,22 @@ export const createEditorActions = ({
           return labelId
         },
         remove: (edgeId, labelId) => {
-          const currentEdit = local.source.edit.get()
+          const currentEdit = session.state.edit.get()
           if (
             currentEdit
             && currentEdit.kind === 'edge-label'
             && currentEdit.edgeId === edgeId
             && currentEdit.labelId === labelId
           ) {
-            local.mutate.edit.clear()
+            session.mutate.edit.clear()
           }
 
-          return commands.edge.label.remove(edgeId, labelId)
+          return write.edge.label.remove(edgeId, labelId)
         }
       }
     },
-    mindmap: commands.mindmap as MindmapCommands,
+    mindmap,
     clipboard,
-    history: commands.history as HistoryCommands
+    history: write.history as HistoryCommands
   }
 }

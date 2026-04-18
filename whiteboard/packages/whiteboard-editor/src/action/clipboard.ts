@@ -12,9 +12,9 @@ import type {
 import {
   createClipboardPacket,
   type ClipboardPacket
-} from '@whiteboard/editor/command/clipboard/packet'
-import type { DocumentCommands } from '@whiteboard/editor/command/document'
-import type { SelectionCommands } from '@whiteboard/editor/command/selection'
+} from '@whiteboard/editor/clipboard/packet'
+import type { DocumentCommands } from '@whiteboard/editor/write/document'
+import type { SelectionCommands } from '@whiteboard/editor/action/selection'
 
 type ClipboardCommandsHost = {
   read: EditorQuery

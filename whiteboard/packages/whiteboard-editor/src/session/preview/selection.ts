@@ -4,16 +4,16 @@ import type { Rect } from '@whiteboard/core/types'
 import type { ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
 import {
   EMPTY_EDGE_FEEDBACK_ENTRIES
-} from '@whiteboard/editor/input/preview/edge'
+} from '@whiteboard/editor/session/preview/edge'
 import {
   EMPTY_NODE_PATCHES,
   EMPTY_NODE_SELECTION_FEEDBACK
-} from '@whiteboard/editor/input/preview/node'
+} from '@whiteboard/editor/session/preview/node'
 import type {
   MarqueePreview,
   MarqueePreviewState,
   SelectionPreviewState
-} from '@whiteboard/editor/input/preview/types'
+} from '@whiteboard/editor/session/preview/types'
 
 export const EMPTY_GUIDES: readonly Guide[] = []
 

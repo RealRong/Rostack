@@ -98,7 +98,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
   useImperativeHandle(ref, () => editor, [editor])
 
   useEffect(() => () => {
-    editor.actions.app.dispose()
+    editor.dispose()
   }, [editor])
 
   useEffect(() => {

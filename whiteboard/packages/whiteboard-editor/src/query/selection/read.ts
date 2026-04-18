@@ -48,7 +48,7 @@ import type { Tool } from '@whiteboard/editor/types/tool'
 import type { EditSession } from '@whiteboard/editor/local/session/edit'
 import { readUniformValue } from '@whiteboard/editor/query/utils'
 import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
-import type { EditorInputState } from '@whiteboard/editor/input/state'
+import type { EditorInputState } from '@whiteboard/editor/session/interaction'
 import type { MindmapPresentationRead } from '@whiteboard/editor/query/mindmap/read'
 
 export type SelectionRead = {

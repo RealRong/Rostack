@@ -6,8 +6,8 @@ import {
   mergeNodeUpdates
 } from '@whiteboard/core/schema'
 import type { NodeId } from '@whiteboard/core/types'
-import type { NodeContext } from '@whiteboard/editor/command/node/context'
-import type { NodeTextCommands } from '@whiteboard/editor/command/node/types'
+import type { NodeContext } from '@whiteboard/editor/write/node/context'
+import type { NodeTextCommands } from '@whiteboard/editor/write/node/types'
 
 const toNodeStyleBatchUpdates = (
   nodeIds: readonly NodeId[],

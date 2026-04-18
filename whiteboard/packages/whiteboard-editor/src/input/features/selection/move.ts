@@ -18,7 +18,7 @@ import type {
   PointerDownInput
 } from '@whiteboard/editor/types/input'
 import type { SelectionMoveVisibility } from '@whiteboard/editor/input/features/selection/press'
-import type { EditorServices } from '@whiteboard/editor/editor/services'
+import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 
 const toMoveNodePatches = (
   result: MoveStepResult
@@ -41,12 +41,12 @@ const toMoveEdgePatches = (
 }))
 
 const findParentFrameId = (
-  ctx: Pick<EditorServices, 'query'>,
+  ctx: Pick<EditorHostDeps, 'query'>,
   nodeId: string
 ) => ctx.query.frame.of(nodeId)
 
 const resolveFrameHoverId = (
-  ctx: Pick<EditorServices, 'query'>,
+  ctx: Pick<EditorHostDeps, 'query'>,
   state: Parameters<typeof finishMoveState>[0],
   pointerWorld: {
     x: number
@@ -70,7 +70,7 @@ type MoveInteractionInput = {
 }
 
 export const createMoveInteraction = (
-  ctx: Pick<EditorServices, 'engine' | 'query' | 'snap' | 'commands' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'query' | 'snap' | 'write' | 'actions'>,
   input: MoveInteractionInput
 ): InteractionSession | null => {
   const pickedNodeId = (
@@ -195,14 +195,14 @@ export const createMoveInteraction = (
       const commit = finishMoveState(state)
 
       if (commit.delta) {
-        ctx.commands.node.move({
+        ctx.write.node.move({
           ids: state.move.rootIds,
           delta: commit.delta
         })
       }
 
       if (commit.edges.length > 0) {
-        ctx.commands.edge.updateMany(commit.edges)
+        ctx.write.edge.updateMany(commit.edges)
       }
 
       return FINISH

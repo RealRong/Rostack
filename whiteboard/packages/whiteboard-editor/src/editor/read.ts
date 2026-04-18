@@ -9,7 +9,7 @@ import type {
 } from '@whiteboard/editor/types/editor'
 import type { EditorQuery } from '@whiteboard/editor/query'
 
-export const projectEditorRead = (
+export const createEditorRead = (
   query: EditorQuery
 ): EditorRead => {
   const chrome = createDerivedStore<EditorChromePresentation>({

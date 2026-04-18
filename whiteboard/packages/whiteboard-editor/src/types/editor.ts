@@ -28,8 +28,8 @@ import type {
   ToolActions,
   ViewportActions
 } from '@whiteboard/editor/types/commands'
-import type { NodeCommands as RuntimeNodeCommands } from '@whiteboard/editor/command/node/types'
-import type { EdgeCommands as RuntimeEdgeCommands } from '@whiteboard/editor/command/edge'
+import type { NodeCommands as RuntimeNodeCommands } from '@whiteboard/editor/write/node/types'
+import type { EdgeCommands as RuntimeEdgeCommands } from '@whiteboard/editor/write/edge'
 import type {
   ViewportRead
 } from '@whiteboard/editor/local/viewport/runtime'
@@ -188,4 +188,5 @@ export type Editor = {
   actions: EditorActions
   input: EditorInputHost
   events: EditorEvents
+  dispose: () => void
 }

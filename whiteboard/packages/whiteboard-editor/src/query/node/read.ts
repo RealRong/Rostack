@@ -31,7 +31,7 @@ import type {
 import type {
   MindmapPreviewState,
   NodePreviewProjection,
-} from '@whiteboard/editor/input/preview/types'
+} from '@whiteboard/editor/session/preview/types'
 import type { EditSession } from '@whiteboard/editor/local/session/edit'
 import {
   projectNodeItem,

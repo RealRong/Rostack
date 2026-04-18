@@ -114,7 +114,7 @@ describe('mindmap root move', () => {
     const moveRoot = vi.fn()
 
     const session = createMindmapDragSession({
-      commands: {
+      write: {
         mindmap: {
           moveRoot,
           moveByDrop: vi.fn()

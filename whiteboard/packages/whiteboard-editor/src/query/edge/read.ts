@@ -36,8 +36,8 @@ import {
 } from '@shared/core'
 import type {
   EdgePreviewProjection
-} from '@whiteboard/editor/input/preview/types'
-import type { EditorInputState } from '@whiteboard/editor/input/state'
+} from '@whiteboard/editor/session/preview/types'
+import type { EditorInputState } from '@whiteboard/editor/session/interaction'
 import type { NodeCanvasSnapshot, NodePresentationRead } from '@whiteboard/editor/query/node/read'
 import type { EditSession } from '@whiteboard/editor/local/session/edit'
 import type { Tool } from '@whiteboard/editor/types/tool'

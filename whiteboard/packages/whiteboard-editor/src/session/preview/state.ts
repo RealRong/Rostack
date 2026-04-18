@@ -13,29 +13,29 @@ import {
   EMPTY_EDGE_FEEDBACK,
   isEdgeGuideEqual,
   normalizeEdgeFeedbackState
-} from '@whiteboard/editor/input/preview/edge'
+} from '@whiteboard/editor/session/preview/edge'
 import {
   EMPTY_NODE_HIDDEN,
   EMPTY_NODE_FEEDBACK,
   isNodeFeedbackStateEqual,
   normalizeNodeFeedbackState
-} from '@whiteboard/editor/input/preview/node'
+} from '@whiteboard/editor/session/preview/node'
 import {
   EMPTY_SELECTION_FEEDBACK,
   EMPTY_GUIDES,
   isSelectionFeedbackStateEqual,
   normalizeSelectionFeedbackState,
-} from '@whiteboard/editor/input/preview/selection'
+} from '@whiteboard/editor/session/preview/selection'
 import type {
   EditorInputPreviewState,
   EditorInputPreviewWrite
-} from '@whiteboard/editor/input/preview/types'
+} from '@whiteboard/editor/session/preview/types'
 import {
   EMPTY_EDGE_FEEDBACK_ENTRIES
-} from '@whiteboard/editor/input/preview/edge'
+} from '@whiteboard/editor/session/preview/edge'
 import {
   EMPTY_NODE_PATCHES
-} from '@whiteboard/editor/input/preview/node'
+} from '@whiteboard/editor/session/preview/node'
 
 const normalizeDrawFeedbackState = (
   state: EditorInputPreviewState['draw']

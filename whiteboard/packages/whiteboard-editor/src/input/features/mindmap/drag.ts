@@ -12,8 +12,8 @@ import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
-import type { MindmapPreviewState } from '@whiteboard/editor/input/preview'
-import type { EditorServices } from '@whiteboard/editor/editor/services'
+import type { MindmapPreviewState } from '@whiteboard/editor/session/preview'
+import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 import type { MindmapPresentationRead } from '@whiteboard/editor/query/mindmap/read'
 import type { NodePresentationRead } from '@whiteboard/editor/query/node/read'
 import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
@@ -220,7 +220,7 @@ const commitMindmapDrag = (
 }
 
 export const createMindmapDragSession = (
-  ctx: Pick<EditorServices, 'query' | 'commands'>,
+  ctx: Pick<EditorHostDeps, 'query' | 'write'>,
   initial: MindmapDragState
 ): InteractionSession => {
   let state = initial
@@ -263,7 +263,7 @@ export const createMindmapDragSession = (
       const commit = commitMindmapDrag(state)
 
       if (commit?.kind === 'root') {
-        ctx.commands.mindmap.moveRoot({
+        ctx.write.mindmap.moveRoot({
           nodeId: commit.nodeId,
           position: commit.position,
           origin: commit.origin
@@ -271,7 +271,7 @@ export const createMindmapDragSession = (
       }
 
       if (commit?.kind === 'subtree') {
-        ctx.commands.mindmap.moveByDrop({
+        ctx.write.mindmap.moveByDrop({
           id: commit.id,
           nodeId: commit.nodeId,
           drop: commit.drop,

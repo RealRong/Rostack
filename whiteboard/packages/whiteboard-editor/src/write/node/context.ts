@@ -1,6 +1,6 @@
 import type { NodeId } from '@whiteboard/core/types'
 import type { EditorQuery } from '@whiteboard/editor/query'
-import type { NodePatchWriter } from '@whiteboard/editor/command/node/types'
+import type { NodePatchWriter } from '@whiteboard/editor/write/node/types'
 
 export type NodeContext = {
   read: {

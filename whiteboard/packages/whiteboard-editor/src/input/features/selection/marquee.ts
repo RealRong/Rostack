@@ -20,7 +20,7 @@ import type {
 } from '@whiteboard/editor/input/core/types'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import { GestureTuning } from '@whiteboard/editor/input/session/tuning'
-import type { EditorServices } from '@whiteboard/editor/editor/services'
+import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 
 export type MarqueeMatch = 'touch' | 'contain'
 
@@ -74,7 +74,7 @@ const createMarqueeRect = (
 
 const readMatchedSelection = (
   input: {
-    ctx: Pick<EditorServices, 'query'>
+    ctx: Pick<EditorHostDeps, 'query'>
     rect: Rect
     match: SelectionMarqueeAction['match']
   }
@@ -188,7 +188,7 @@ const reduceMarqueeSelection = (
 }
 
 const syncMarqueeInteraction = (
-  ctx: Pick<EditorServices, 'actions'>,
+  ctx: Pick<EditorHostDeps, 'actions'>,
   interaction: InteractionSession,
   previous: MarqueeSelectionState,
   next: MarqueeSelectionState
@@ -209,7 +209,7 @@ const syncMarqueeInteraction = (
 }
 
 export const createMarqueeSession = (
-  ctx: Pick<EditorServices, 'query' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'query' | 'actions'>,
   input: {
     start: PointerDownInput
     action: SelectionMarqueeAction

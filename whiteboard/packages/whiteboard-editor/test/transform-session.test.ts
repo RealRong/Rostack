@@ -123,7 +123,7 @@ const createTransformContext = ({
       })
     }
   },
-  commands: {
+  write: {
     node: {
       updateMany: (nextUpdates: typeof updates) => {
         updates.push(...nextUpdates)

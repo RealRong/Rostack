@@ -2,12 +2,12 @@ import type { ReadStore } from '@shared/core'
 import type { ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
 import { type ActiveGesture } from '@whiteboard/editor/input/core/gesture'
 import type { HoverStore } from '@whiteboard/editor/input/hover/store'
-import { createInputPreviewSelectors } from '@whiteboard/editor/input/preview/selectors'
-import { createInputPreviewState } from '@whiteboard/editor/input/preview/state'
+import { createInputPreviewSelectors } from '@whiteboard/editor/session/preview/selectors'
+import { createInputPreviewState } from '@whiteboard/editor/session/preview/state'
 import type {
   EditorInputPreview,
   EditorInputPreviewWrite
-} from '@whiteboard/editor/input/preview/types'
+} from '@whiteboard/editor/session/preview/types'
 
 export type {
   EdgeConnectFeedback,
@@ -17,7 +17,7 @@ export type {
   EditorInputPreviewState,
   EditorInputPreviewWrite,
   MindmapPreviewState
-} from '@whiteboard/editor/input/preview/types'
+} from '@whiteboard/editor/session/preview/types'
 
 export const createEditorInputPreview = ({
   viewport,

@@ -5,18 +5,18 @@ import {
 } from '@whiteboard/core/schema'
 import type { NodeId } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
-import { createNodeContext } from '@whiteboard/editor/command/node/context'
-import type { NodeContext } from '@whiteboard/editor/command/node/context'
+import { createNodeContext } from '@whiteboard/editor/write/node/context'
+import type { NodeContext } from '@whiteboard/editor/write/node/context'
 import {
   createNodeTextCommands
-} from '@whiteboard/editor/command/node/text'
+} from '@whiteboard/editor/write/node/text'
 import type {
   NodeCommands,
   NodeLockCommands,
   NodeShapeCommands,
   NodeStyleCommands,
   NodePatchWriter
-} from '@whiteboard/editor/command/node/types'
+} from '@whiteboard/editor/write/node/types'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { EditorQuery } from '@whiteboard/editor/query'
 

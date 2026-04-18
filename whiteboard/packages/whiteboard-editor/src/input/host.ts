@@ -4,11 +4,10 @@ import type {
   EditorStore
 } from '@whiteboard/editor/types/editor'
 import type { EditorQuery } from '@whiteboard/editor/query'
-import type { EditorLocal } from '@whiteboard/editor/local/runtime'
+import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ContextMenuIntent } from '@whiteboard/editor/types/input'
 import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
 import type { EdgeHoverService } from '@whiteboard/editor/input/hover/edge'
-import type { EditorInputStateController } from '@whiteboard/editor/input/state'
 
 const readSelectionIntent = (
   selection: EditorStore['selection'],
@@ -29,17 +28,15 @@ const readSelectionIntent = (
 
 export const createEditorInputHost = ({
   interaction,
-  state,
   edgeHover,
   query,
-  local,
+  session,
   actions
 }: {
   interaction: InteractionRuntime
-  state: Pick<EditorInputStateController, 'state' | 'pointer'>
   edgeHover: EdgeHoverService
   query: EditorQuery
-  local: Pick<EditorLocal, 'source' | 'viewport'>
+  session: Pick<EditorSession, 'state' | 'viewport' | 'interaction'>
   actions: Pick<EditorActions, 'selection'>
 }): EditorInputHost => {
   const writePointer = (sample: {
@@ -47,7 +44,7 @@ export const createEditorInputHost = ({
     screen: { x: number, y: number }
     world: { x: number, y: number }
   }) => {
-    state.pointer.set({
+    session.interaction.write.setPointer({
       client: sample.client,
       screen: sample.screen,
       world: sample.world
@@ -55,7 +52,7 @@ export const createEditorInputHost = ({
   }
 
   const clearPointer = () => {
-    state.pointer.clear()
+    session.interaction.write.setPointer(null)
   }
 
   const clearTransientState = () => {
@@ -72,29 +69,29 @@ export const createEditorInputHost = ({
       writePointer(input)
       edgeHover.clear()
 
-      if (state.state.busy.get() || input.ignoreContextMenu) {
+      if (session.interaction.read.busy.get() || input.ignoreContextMenu) {
         return null
       }
 
       switch (input.pick.kind) {
         case 'selection-box': {
-          return readSelectionIntent(local.source.selection, input.screen) ?? {
+          return readSelectionIntent(session.state.selection, input.screen) ?? {
             kind: 'canvas',
             screen: input.screen,
             world: input.world
           }
         }
         case 'node': {
-          const current = local.source.selection.get()
+          const current = session.state.selection.get()
           const reuseCurrentSelection = current.nodeIds.includes(input.pick.id)
           if (reuseCurrentSelection) {
-            return readSelectionIntent(local.source.selection, input.screen)
+            return readSelectionIntent(session.state.selection, input.screen)
           }
 
           actions.selection.replace({
             nodeIds: [input.pick.id]
           })
-          return readSelectionIntent(local.source.selection, input.screen)
+          return readSelectionIntent(session.state.selection, input.screen)
         }
         case 'group': {
           const target = query.group.target(input.pick.id)
@@ -107,7 +104,7 @@ export const createEditorInputHost = ({
           }
 
           actions.selection.replace(target)
-          return readSelectionIntent(local.source.selection, input.screen)
+          return readSelectionIntent(session.state.selection, input.screen)
         }
         case 'edge':
           actions.selection.replace({
@@ -137,7 +134,7 @@ export const createEditorInputHost = ({
 
       return {
         handled,
-        continuePointer: handled && state.state.busy.get()
+        continuePointer: handled && session.interaction.read.busy.get()
       }
     },
     pointerMove: (input) => {
@@ -167,7 +164,7 @@ export const createEditorInputHost = ({
         return true
       }
 
-      local.viewport.input.wheel(
+      session.viewport.input.wheel(
         {
           deltaX: input.deltaX,
           deltaY: input.deltaY,

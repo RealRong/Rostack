@@ -17,7 +17,7 @@ import type {
 } from '@whiteboard/core/selection'
 import type { SelectionMode } from '@whiteboard/core/node'
 import type { GroupId, Node, NodeId } from '@whiteboard/core/types'
-import type { EditorServices } from '@whiteboard/editor/editor/services'
+import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 
 export type SelectionPressTarget<TField extends string = string> =
   | { kind: 'background' }
@@ -164,7 +164,7 @@ const resolveSelectionEditField = (
 
 const createSelectionSession = (
   input: {
-    ctx: Pick<EditorServices, 'engine' | 'query' | 'layout' | 'snap' | 'commands' | 'actions' | 'local'>
+    ctx: Pick<EditorHostDeps, 'engine' | 'query' | 'layout' | 'snap' | 'write' | 'actions' | 'session'>
     start: PointerDownInput
     decision: SelectionDragAction | SelectionMarqueeAction | undefined
   }
@@ -660,7 +660,7 @@ const matchSelectionTap = <TField extends string>(
 }
 
 const applySelectionTap = (
-  ctx: Pick<EditorServices, 'query' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'query' | 'actions'>,
   tap: SelectionTapAction<SelectionPressField>,
   input: Pick<PointerDownInput, 'client'>
 ) => {
@@ -701,7 +701,7 @@ const applySelectionTap = (
 }
 
 const createSelectionPressSession = (
-  ctx: Pick<EditorServices, 'engine' | 'query' | 'layout' | 'snap' | 'commands' | 'actions' | 'local'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'query' | 'layout' | 'snap' | 'write' | 'actions' | 'session'>,
   start: PointerDownInput,
   resolved: {
     target: SelectionPressTarget<SelectionPressField>
@@ -736,7 +736,7 @@ const createSelectionPressSession = (
 })
 
 const tryStartSelectionPress = (
-  ctx: Pick<EditorServices, 'engine' | 'query' | 'layout' | 'snap' | 'commands' | 'actions' | 'local'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'query' | 'layout' | 'snap' | 'write' | 'actions' | 'session'>,
   input: PointerDownInput
 ): InteractionSession | null => {
   const tool = ctx.query.tool.get()
@@ -799,7 +799,7 @@ const tryStartSelectionPress = (
 }
 
 export const createSelectionBinding = (
-  ctx: Pick<EditorServices, 'engine' | 'query' | 'layout' | 'snap' | 'commands' | 'actions' | 'local'>
+  ctx: Pick<EditorHostDeps, 'engine' | 'query' | 'layout' | 'snap' | 'write' | 'actions' | 'session'>
 ): InteractionBinding => ({
   key: 'selection',
   start: (input) => tryStartSelectionPress(ctx, input)

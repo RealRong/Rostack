@@ -11,7 +11,7 @@ import type {
 } from '@whiteboard/engine'
 import type {
   EdgePreviewProjection
-} from '@whiteboard/editor/input/preview/types'
+} from '@whiteboard/editor/session/preview/types'
 import type { NodeCanvasSnapshot, NodePresentationRead } from '@whiteboard/editor/query/node/read'
 import type {
   EditSession

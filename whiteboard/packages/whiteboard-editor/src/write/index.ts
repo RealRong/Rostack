@@ -6,28 +6,25 @@ import type {
 import type { EditorQuery } from '@whiteboard/editor/query'
 import {
   createDocumentCommands
-} from '@whiteboard/editor/command/document'
-import type { DocumentCommands } from '@whiteboard/editor/command/document'
+} from '@whiteboard/editor/write/document'
+import type { DocumentCommands } from '@whiteboard/editor/write/document'
 import {
   createHistoryCommands
-} from '@whiteboard/editor/command/history'
+} from '@whiteboard/editor/write/history'
 import {
   createEdgeCommands,
   type EdgeCommands
-} from '@whiteboard/editor/command/edge'
+} from '@whiteboard/editor/write/edge'
 import {
-  createMindmapCommands
-} from '@whiteboard/editor/command/mindmap'
+  createMindmapWrite
+} from '@whiteboard/editor/write/mindmap'
 import {
   createNodeCommands
-} from '@whiteboard/editor/command/node/commands'
-import type { NodeCommands } from '@whiteboard/editor/command/node/types'
+} from '@whiteboard/editor/write/node'
+import type { NodeCommands } from '@whiteboard/editor/write/node/types'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
-import type { EditorInputPreviewWrite } from '@whiteboard/editor/input/preview'
-import type { EditCaret, EditField } from '@whiteboard/editor/local/session/edit'
-import type { EdgeId, NodeId } from '@whiteboard/core/types'
 
-export type EditorCommands = {
+export type EditorWrite = {
   document: DocumentCommands
   node: NodeCommands
   edge: EdgeCommands
@@ -35,62 +32,15 @@ export type EditorCommands = {
   history: HistoryCommands
 }
 
-export type EditorCommandSession = {
-  selection: {
-    replace: (input: {
-      nodeIds?: readonly NodeId[]
-      edgeIds?: readonly string[]
-    }) => void
-    add: (input: {
-      nodeIds?: readonly NodeId[]
-      edgeIds?: readonly string[]
-    }) => void
-    remove: (input: {
-      nodeIds?: readonly NodeId[]
-      edgeIds?: readonly string[]
-    }) => void
-    toggle: (input: {
-      nodeIds?: readonly NodeId[]
-      edgeIds?: readonly string[]
-    }) => void
-    selectAll: () => void
-    clear: () => void
-  }
-  edit: {
-    startNode: (
-      nodeId: NodeId,
-      field: EditField,
-      options?: {
-        caret?: EditCaret
-      }
-    ) => void
-    startEdgeLabel: (
-      edgeId: EdgeId,
-      labelId: string,
-      options?: {
-        caret?: EditCaret
-      }
-    ) => void
-    input: (text: string) => void
-    caret: (caret: EditCaret) => void
-    layout: (patch: Partial<import('@whiteboard/editor/local/session/edit').EditLayout>) => void
-    clear: () => void
-  }
-}
-
-export const createEditorCommands = ({
+export const createEditorWrite = ({
   engine,
   query,
-  layout,
-  preview: previewWrite,
-  session
+  layout
 }: {
   engine: Engine
   query: EditorQuery
   layout: EditorLayout
-  preview: EditorInputPreviewWrite
-  session: EditorCommandSession
-}): EditorCommands => {
+}): EditorWrite => {
   const history = createHistoryCommands(engine)
   const document = createDocumentCommands(engine)
   const node = createNodeCommands({
@@ -102,42 +52,14 @@ export const createEditorCommands = ({
     engine,
     read: query
   })
-  const mindmap = createMindmapCommands({
+  const mindmap = createMindmapWrite({
     engine,
     read: query,
     node: {
       update: node.update,
       updateMany: node.updateMany
     },
-    layout,
-    feedback: {
-      mindmap: {
-        setPreview: (nextPreview) => {
-          previewWrite.set((current) => (
-            current.mindmap.preview === nextPreview
-              ? current
-              : {
-                  ...current,
-                  mindmap: {
-                    ...current.mindmap,
-                    preview: nextPreview
-                  }
-                }
-          ))
-        },
-        clear: () => {
-          previewWrite.set((current) => (
-            current.mindmap.preview === undefined
-              ? current
-              : {
-                  ...current,
-                  mindmap: {}
-                }
-          ))
-        }
-      }
-    },
-    session
+    layout
   })
 
   return {

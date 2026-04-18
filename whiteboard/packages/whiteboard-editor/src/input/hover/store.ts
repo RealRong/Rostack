@@ -1,5 +1,5 @@
 import { createValueStore, type ReadStore } from '@shared/core'
-import type { EdgeGuide } from '@whiteboard/editor/input/preview/types'
+import type { EdgeGuide } from '@whiteboard/editor/session/preview/types'
 
 export type HoverState = {
   edgeGuide?: EdgeGuide

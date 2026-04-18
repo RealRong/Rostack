@@ -11,8 +11,8 @@ import type {
   NodeTextPreviewState,
   TextPreviewEntry,
   TextPreviewPatch
-} from '@whiteboard/editor/input/preview/types'
-import { mergeEntryById } from '@whiteboard/editor/input/preview/merge'
+} from '@whiteboard/editor/session/preview/types'
+import { mergeEntryById } from '@whiteboard/editor/session/preview/merge'
 
 export const EMPTY_NODE_PATCHES: readonly NodePreviewEntry[] = []
 export const EMPTY_TEXT_PREVIEW_PATCHES: readonly TextPreviewEntry[] = []

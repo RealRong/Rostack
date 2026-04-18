@@ -14,7 +14,7 @@ import type { NodeItem } from '@whiteboard/engine'
 import type { EditSession } from '@whiteboard/editor/local/session/edit'
 import type {
   NodePreviewProjection
-} from '@whiteboard/editor/input/preview/types'
+} from '@whiteboard/editor/session/preview/types'
 import type { MindmapItem } from '@whiteboard/engine'
 
 export const readNodeProjectionRotation = (

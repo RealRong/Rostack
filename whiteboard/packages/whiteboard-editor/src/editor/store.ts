@@ -3,24 +3,16 @@ import {
   read
 } from '@shared/core'
 import type { EditorInteractionState, EditorStore } from '@whiteboard/editor/types/editor'
-import type { EditorLocal } from '@whiteboard/editor/local/runtime'
-import type { ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
-import type { EditorInputState } from '@whiteboard/editor/input/state'
+import type { EditorSession } from '@whiteboard/editor/session/runtime'
 
-export const projectEditorStore = ({
-  local,
-  input,
-  viewport
-}: {
-  local: Pick<EditorLocal, 'source'>
-  input: EditorInputState
-  viewport: ViewportRuntime['read']
-}): EditorStore => {
+export const createEditorStore = (
+  session: Pick<EditorSession, 'state' | 'interaction' | 'viewport'>
+): EditorStore => {
   const interactionState = createDerivedStore<EditorInteractionState>({
     get: () => {
-      const mode = read(input.mode)
-      const busy = read(input.busy)
-      const chrome = read(input.chrome)
+      const mode = read(session.interaction.read.mode)
+      const busy = read(session.interaction.read.busy)
+      const chrome = read(session.interaction.read.chrome)
       const transforming = mode === 'node-transform'
 
       return {
@@ -40,7 +32,7 @@ export const projectEditorStore = ({
           || mode === 'edge-label'
           || mode === 'edge-connect'
           || mode === 'edge-route',
-        space: read(input.space)
+        space: read(session.interaction.read.space)
       }
     },
     isEqual: (left, right) => (
@@ -56,11 +48,11 @@ export const projectEditorStore = ({
   })
 
   return {
-    tool: local.source.tool,
-    draw: local.source.draw,
-    edit: local.source.edit,
-    selection: local.source.selection,
-    viewport,
+    tool: session.state.tool,
+    draw: session.state.draw,
+    edit: session.state.edit,
+    selection: session.state.selection,
+    viewport: session.viewport.read,
     interaction: interactionState
   }
 }

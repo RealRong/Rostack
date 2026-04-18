@@ -3,7 +3,7 @@ import type {
   InteractionSession
 } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
-import type { EditorServices } from '@whiteboard/editor/editor/services'
+import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 
 type PanState = {
   lastClient: {
@@ -20,8 +20,8 @@ type PanPointer = {
 }
 
 type ViewportServices = Pick<
-  EditorServices,
-  'query' | 'local'
+  EditorHostDeps,
+  'query' | 'session'
 >
 
 const allowsLeftDrag = (
@@ -46,7 +46,7 @@ const updatePan = (
     x: input.client.x,
     y: input.client.y
   }
-  ctx.local.viewport.input.panScreenBy({
+  ctx.session.viewport.input.panScreenBy({
     x: -deltaX,
     y: -deltaY
   })

@@ -8,8 +8,8 @@ import type {
   EdgePreviewProjection,
   EdgePreviewState,
   EditorInputPreviewState
-} from '@whiteboard/editor/input/preview/types'
-import { mergeEntryById } from '@whiteboard/editor/input/preview/merge'
+} from '@whiteboard/editor/session/preview/types'
+import { mergeEntryById } from '@whiteboard/editor/session/preview/merge'
 
 export const EMPTY_EDGE_FEEDBACK_ENTRIES: readonly EdgeFeedbackEntry[] = []
 export const EMPTY_EDGE_GUIDE: EdgeGuide = {}

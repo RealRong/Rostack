@@ -14,8 +14,8 @@ import type {
   SessionActions,
   SelectionApi
 } from '@whiteboard/editor/types/commands'
-import type { DocumentCommands } from '@whiteboard/editor/command/document'
-import type { NodeCommands } from '@whiteboard/editor/command/node/types'
+import type { DocumentCommands } from '@whiteboard/editor/write/document'
+import type { NodeCommands } from '@whiteboard/editor/write/node/types'
 
 const DEFAULT_FRAME_PADDING = 32
 

@@ -37,7 +37,7 @@ import type { Tool } from '@whiteboard/editor/types/tool'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
-import type { EditorServices } from '@whiteboard/editor/editor/services'
+import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
 import type { NodeCanvasSnapshot, NodePresentationRead } from '@whiteboard/editor/query/node/read'
 
@@ -508,7 +508,7 @@ const readReconnectPatch = (
   : undefined
 
 const readReconnectFixedPoint = (
-  ctx: Pick<EditorServices, 'query'>,
+  ctx: Pick<EditorHostDeps, 'query'>,
   state: EdgeConnectState
 ): Point | undefined => {
   if (state.kind !== 'reconnect') {
@@ -569,7 +569,7 @@ const readReconnectWorld = ({
   : world
 
 const commitConnectState = (
-  ctx: Pick<EditorServices, 'commands' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'write' | 'actions'>,
   state: EdgeConnectState,
   reconnectDraftPatch?: EdgePatch
 ) => {
@@ -584,11 +584,11 @@ const commitConnectState = (
       return
     }
 
-    ctx.commands.edge.patch([commit.edgeId], patch)
+    ctx.write.edge.patch([commit.edgeId], patch)
     return
   }
 
-  const result = ctx.commands.edge.create(commit.input)
+  const result = ctx.write.edge.create(commit.input)
   if (!result.ok) {
     return
   }
@@ -602,7 +602,7 @@ const commitConnectState = (
 }
 
 export const createEdgeConnectSession = (
-  ctx: Pick<EditorServices, 'query' | 'snap' | 'commands' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'query' | 'snap' | 'write' | 'actions'>,
   initial: EdgeConnectState
 ): InteractionSession => {
   let state = initial

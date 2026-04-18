@@ -1,7 +1,8 @@
 import { createRafTask } from '@shared/core'
 import type { Point } from '@whiteboard/core/types'
-import type { HoverStore } from '@whiteboard/editor/input/hover/store'
-import type { EditorServices } from '@whiteboard/editor/editor/services'
+import type { EditorQuery } from '@whiteboard/editor/query'
+import type { SnapRuntime } from '@whiteboard/editor/input/core/snap'
+import type { HoverState } from '@whiteboard/editor/input/hover/store'
 
 export type EdgeHoverService = {
   move: (world: Point) => void
@@ -9,21 +10,27 @@ export type EdgeHoverService = {
 }
 
 export const createEdgeHoverService = (
-  ctx: Pick<EditorServices, 'query' | 'snap'>,
-  hover: Pick<HoverStore, 'set' | 'reset'>
+  ctx: {
+    query: EditorQuery
+    snap: SnapRuntime
+  },
+  hover: {
+    setHover: (hover: HoverState) => void
+    clearHover: () => void
+  }
 ): EdgeHoverService => {
   let hoverPoint: Point | null = null
 
   const hoverTask = createRafTask(() => {
     if (!hoverPoint || ctx.query.tool.get().type !== 'edge') {
-      hover.reset()
+      hover.clearHover()
       return
     }
 
     const evaluation = ctx.snap.edge.connect({
       pointerWorld: hoverPoint
     })
-    hover.set({
+    hover.setHover({
       edgeGuide:
         evaluation.focusedNodeId || evaluation.resolution.mode !== 'free'
           ? {
@@ -39,7 +46,7 @@ export const createEdgeHoverService = (
   const clear = () => {
     hoverTask.cancel()
     hoverPoint = null
-    hover.reset()
+    hover.clearHover()
   }
 
   return {

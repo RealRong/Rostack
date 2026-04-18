@@ -11,7 +11,7 @@ export {
   createClipboardPacket,
   parseClipboardPacket,
   serializeClipboardPacket
-} from '@whiteboard/editor/command/clipboard/packet'
+} from '@whiteboard/editor/clipboard/packet'
 export type {
   EditCapability,
   EditCaret,
@@ -56,7 +56,7 @@ export type {
 } from '@whiteboard/editor/query'
 export type {
   ClipboardPacket
-} from '@whiteboard/editor/command/clipboard/packet'
+} from '@whiteboard/editor/clipboard/packet'
 export type {
   ContextMenuInput,
   ContextMenuIntent,

@@ -1,5 +1,6 @@
 import {
   createValueStore,
+  type ReadStore,
   type ValueStore
 } from '@shared/core'
 import type { Viewport } from '@whiteboard/core/types'
@@ -28,15 +29,27 @@ import {
   createViewport,
   type ViewportRuntime
 } from '@whiteboard/editor/local/viewport/runtime'
+import type { ActiveGesture } from '@whiteboard/editor/input/core/gesture'
+import type { InteractionMode } from '@whiteboard/editor/input/core/types'
+import type { HoverStore } from '@whiteboard/editor/input/hover/store'
+import type { PointerSample } from '@whiteboard/editor/types/input'
+import {
+  createEditorInputState,
+  type EditorInputStateController
+} from '@whiteboard/editor/session/interaction'
+import {
+  createEditorInputPreview,
+  type EditorInputPreview
+} from '@whiteboard/editor/session/preview'
 
-export type EditorLocalSource = {
+export type EditorSessionState = {
   tool: ValueStore<Tool>
   draw: ReturnType<typeof createDrawStateStore>['store']
   selection: ReturnType<typeof createSelectionState>['source']
   edit: ValueStore<EditSession>
 }
 
-export type EditorLocalMutate = {
+export type EditorSessionMutate = {
   tool: {
     set: (tool: Tool) => void
   }
@@ -57,10 +70,37 @@ export type EditorLocalMutate = {
   edit: Pick<EditMutate, 'set' | 'input' | 'caret' | 'layout' | 'status' | 'clear'>
 }
 
-export type EditorLocal = {
-  source: EditorLocalSource
-  mutate: EditorLocalMutate
+export type EditorSessionInteractionRead = {
+  mode: ReadStore<InteractionMode>
+  busy: ReadStore<boolean>
+  chrome: ReadStore<boolean>
+  gesture: ReadStore<ActiveGesture | null>
+  pointer: ReadStore<PointerSample | null>
+  space: ReadStore<boolean>
+  hover: Pick<HoverStore, 'get' | 'subscribe'>
+}
+
+export type EditorSessionInteractionWrite = {
+  setActive: EditorInputStateController['interaction']['setActive']
+  setGesture: EditorInputStateController['interaction']['setGesture']
+  setPointer: (sample: PointerSample | null) => void
+  setSpace: (value: boolean) => void
+  setHover: HoverStore['set']
+  clearHover: () => void
+  reset: () => void
+}
+
+export type EditorSession = {
+  state: EditorSessionState
+  mutate: EditorSessionMutate
   viewport: ViewportRuntime
+  interaction: {
+    read: EditorSessionInteractionRead
+    write: EditorSessionInteractionWrite
+  }
+  preview: EditorInputPreview
+  resetDocument: () => void
+  resetInteraction: () => void
   reset: () => void
 }
 
@@ -70,7 +110,7 @@ const resolveDrawBrush = (
   ? tool.mode
   : DEFAULT_DRAW_BRUSH
 
-export const createEditorLocal = ({
+export const createEditorSession = ({
   initialTool,
   initialDrawState,
   initialViewport
@@ -78,7 +118,7 @@ export const createEditorLocal = ({
   initialTool: Tool
   initialDrawState: DrawState
   initialViewport: Viewport
-}): EditorLocal => {
+}): EditorSession => {
   const tool = createValueStore<Tool>(initialTool)
   const draw = createDrawStateStore(initialDrawState)
   const selection = createSelectionState()
@@ -86,15 +126,21 @@ export const createEditorLocal = ({
   const viewport = createViewport({
     initialViewport
   })
+  const interaction = createEditorInputState()
+  const preview = createEditorInputPreview({
+    viewport: viewport.read,
+    gesture: interaction.state.gesture,
+    hover: interaction.state.hover
+  })
 
-  const source: EditorLocalSource = {
+  const state: EditorSessionState = {
     tool,
     draw: draw.store,
     selection: selection.source,
     edit: edit.source
   }
 
-  const mutate: EditorLocalMutate = {
+  const mutate: EditorSessionMutate = {
     tool: {
       set: (nextTool) => {
         tool.set(nextTool)
@@ -130,13 +176,45 @@ export const createEditorLocal = ({
     }
   }
 
+  const resetDocument = () => {
+    edit.mutate.clear()
+    selection.mutate.clear()
+  }
+
+  const resetInteraction = () => {
+    interaction.reset()
+    preview.write.reset()
+  }
+
   return {
-    source,
+    state,
     mutate,
     viewport,
+    interaction: {
+      read: interaction.state,
+      write: {
+        setActive: interaction.interaction.setActive,
+        setGesture: interaction.interaction.setGesture,
+        setPointer: (sample) => {
+          if (sample) {
+            interaction.pointer.set(sample)
+            return
+          }
+
+          interaction.pointer.clear()
+        },
+        setSpace: interaction.space.set,
+        setHover: interaction.hover.set,
+        clearHover: interaction.hover.reset,
+        reset: interaction.reset
+      }
+    },
+    preview,
+    resetDocument,
+    resetInteraction,
     reset: () => {
-      edit.mutate.clear()
-      selection.mutate.clear()
+      resetDocument()
+      resetInteraction()
     }
   }
 }

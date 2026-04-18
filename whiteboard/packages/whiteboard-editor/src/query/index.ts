@@ -11,7 +11,7 @@ import type {
   InsertPresetKey,
   Tool
 } from '@whiteboard/editor/types/tool'
-import type { EditorLocal } from '@whiteboard/editor/local/runtime'
+import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import {
   createNodeRead,
   type NodePresentationRead
@@ -37,9 +37,8 @@ import {
   type RuntimeTargetRead
 } from '@whiteboard/editor/query/target'
 import type { ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
-import type { EditorInputRuntime } from '@whiteboard/editor/input/runtime'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
-import type { EditorInputPreview } from '@whiteboard/editor/input/preview'
+import type { EditorInputPreview } from '@whiteboard/editor/session/preview'
 
 export type ToolRead = {
   get: () => Tool
@@ -124,15 +123,13 @@ export const createEditorQuery = ({
   engineRead,
   registry,
   history,
-  local,
-  input,
+  session,
   layout
 }: {
   engineRead: EngineRead
   registry: NodeRegistry
   history: ReadStore<HistoryState>
-  local: Pick<EditorLocal, 'source' | 'viewport'>
-  input: Pick<EditorInputRuntime, 'state' | 'preview'>
+  session: Pick<EditorSession, 'state' | 'viewport' | 'interaction' | 'preview'>
   layout: EditorLayout
 }): EditorQuery => {
   const {
@@ -140,18 +137,18 @@ export const createEditorQuery = ({
     edit,
     selection,
     tool
-  } = local.source
+  } = session.state
   const mindmapRead = createMindmapRead({
     read: engineRead.mindmap,
     node: engineRead.node.item,
-    preview: input.preview.selectors.mindmapPreview,
+    preview: session.preview.selectors.mindmapPreview,
     edit,
     selection
   })
   const nodeRead: NodePresentationRead = createNodeRead({
     read: engineRead,
     registry,
-    feedback: input.preview.selectors.node,
+    feedback: session.preview.selectors.node,
     mindmap: mindmapRead.item,
     edit,
     selection
@@ -159,11 +156,11 @@ export const createEditorQuery = ({
   const edgeRead = createEdgeRead({
     read: engineRead,
     node: nodeRead,
-    feedback: input.preview.selectors.edge,
+    feedback: session.preview.selectors.edge,
     edit,
     selection,
     tool,
-    interaction: input.state,
+    interaction: session.interaction.read,
     layout,
     capability: nodeRead.capability
   })
@@ -182,7 +179,7 @@ export const createEditorQuery = ({
     mindmap: mindmapRead,
     tool,
     edit,
-    interaction: input.state
+    interaction: session.interaction.read
   })
   const toolRead = createToolRead(tool)
 
@@ -203,20 +200,20 @@ export const createEditorQuery = ({
     slice: engineRead.slice,
     tool: toolRead,
     draw,
-    space: input.state.space,
+    space: session.interaction.read.space,
     viewport: {
-      get: local.viewport.read.get,
-      subscribe: local.viewport.read.subscribe,
-      pointer: local.viewport.read.pointer,
-      worldToScreen: local.viewport.read.worldToScreen,
-      screenPoint: local.viewport.input.screenPoint,
-      size: local.viewport.input.size
+      get: session.viewport.read.get,
+      subscribe: session.viewport.read.subscribe,
+      pointer: session.viewport.read.pointer,
+      worldToScreen: session.viewport.read.worldToScreen,
+      screenPoint: session.viewport.input.screenPoint,
+      size: session.viewport.input.size
     },
     chrome: {
-      draw: input.preview.selectors.draw,
-      marquee: input.preview.selectors.marquee,
-      edgeGuide: input.preview.selectors.edgeGuide,
-      snap: input.preview.selectors.snap
+      draw: session.preview.selectors.draw,
+      marquee: session.preview.selectors.marquee,
+      edgeGuide: session.preview.selectors.edgeGuide,
+      snap: session.preview.selectors.snap
     }
   }
 }

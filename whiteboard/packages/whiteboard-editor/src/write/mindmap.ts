@@ -32,19 +32,13 @@ import type {
 } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { CommandResult } from '@whiteboard/engine/types/result'
-import type {
-  MindmapEnterPreview,
-  MindmapPreviewState
-} from '@whiteboard/editor/input/preview/types'
 import type { EditorQuery } from '@whiteboard/editor/query'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type {
   MindmapBorderPatch,
-  MindmapCommands,
-  MindmapInsertBehavior,
-  SessionActions
+  MindmapCommands
 } from '@whiteboard/editor/types/commands'
-import type { NodeCommands } from '@whiteboard/editor/command/node/types'
+import type { NodeCommands } from '@whiteboard/editor/write/node/types'
 
 const invalid = <T = void>(
   message: string
@@ -83,14 +77,6 @@ const createIdFactory = (
     return id
   }
 }
-
-const readNow = () => (
-  typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now()
-    : Date.now()
-)
-
-const DEFAULT_INSERT_ENTER_DURATION_MS = 220
 
 const readNodePosition = ({
   read,
@@ -407,208 +393,6 @@ const cloneTree = (
   meta: tree.meta ? { ...tree.meta } : undefined
 })
 
-const updateMindmapPreview = ({
-  read,
-  feedback,
-  project
-}: {
-  read: EditorQuery
-  feedback: {
-    mindmap: {
-      setPreview: (
-        preview?: MindmapPreviewState
-      ) => void
-      clear: () => void
-    }
-  }
-  project: (
-    current: MindmapPreviewState | undefined
-  ) => MindmapPreviewState | undefined
-}) => {
-  const next = project(read.mindmap.preview.get())
-  if (!next || (
-    !next.rootMove
-    && !next.subtreeMove
-    && (!next.enter || next.enter.length === 0)
-  )) {
-    feedback.mindmap.clear()
-    return
-  }
-
-  feedback.mindmap.setPreview(next)
-}
-
-const appendMindmapEnterPreview = ({
-  read,
-  feedback,
-  entry
-}: {
-  read: EditorQuery
-  feedback: {
-    mindmap: {
-      setPreview: (
-        preview?: MindmapPreviewState
-      ) => void
-      clear: () => void
-    }
-  }
-  entry: MindmapEnterPreview
-}) => {
-  updateMindmapPreview({
-    read,
-    feedback,
-    project: (current) => ({
-      ...current,
-      enter: [
-        ...(current?.enter ?? []).filter((preview) => (
-          preview.treeId !== entry.treeId || preview.nodeId !== entry.nodeId
-        )),
-        entry
-      ]
-    })
-  })
-
-  setTimeout(() => {
-    updateMindmapPreview({
-      read,
-      feedback,
-      project: (current) => {
-        const nextEnter = current?.enter?.filter((preview) => (
-          preview.treeId !== entry.treeId || preview.nodeId !== entry.nodeId
-        ))
-        if (!current) {
-          return undefined
-        }
-
-        return {
-          ...current,
-          enter: nextEnter?.length ? nextEnter : undefined
-        }
-      }
-    })
-  }, entry.durationMs + 34)
-}
-
-const focusMindmapNode = ({
-  nodeId,
-  behavior,
-  session,
-  delayMs = 0
-}: {
-  nodeId: MindmapNodeId
-  behavior: MindmapInsertBehavior | undefined
-  session: Pick<SessionActions, 'selection' | 'edit'>
-  delayMs?: number
-}) => {
-  const focus = behavior?.focus ?? 'select-new'
-  if (focus === 'keep-current') {
-    return
-  }
-
-  const apply = () => {
-    session.selection.replace({
-      nodeIds: [nodeId]
-    })
-    if (focus === 'edit-new') {
-      session.edit.startNode(nodeId, 'text')
-    }
-  }
-
-  if (delayMs > 0) {
-    setTimeout(apply, delayMs)
-    return
-  }
-
-  apply()
-}
-
-const focusMindmapRoot = ({
-  nodeId,
-  focus,
-  session
-}: {
-  nodeId: MindmapNodeId
-  focus: 'edit-root' | 'select-root' | 'none' | undefined
-  session: Pick<SessionActions, 'selection' | 'edit'>
-}) => {
-  if (!focus || focus === 'none') {
-    return
-  }
-
-  session.selection.replace({
-    nodeIds: [nodeId]
-  })
-  if (focus === 'edit-root') {
-    session.edit.startNode(nodeId, 'text')
-  }
-}
-
-const readInsertAnchorId = (
-  input: MindmapInsertInput
-) => {
-  const anchorId = input.options?.layout?.anchorId
-  if (anchorId) {
-    return anchorId
-  }
-
-  switch (input.kind) {
-    case 'child':
-      return input.parentId
-    case 'sibling':
-    case 'parent':
-      return input.nodeId
-  }
-}
-
-const toRectCenter = (
-  rect: MindmapLayout['bbox']
-) => ({
-  x: rect.x + rect.width / 2,
-  y: rect.y + rect.height / 2
-})
-
-const buildMindmapEnterPreview = ({
-  treeId,
-  newNodeId,
-  nextTree,
-  anchored,
-  anchorId
-}: {
-  treeId: MindmapId
-  newNodeId: MindmapNodeId
-  nextTree: MindmapTree
-  anchored: MindmapLayout
-  anchorId?: MindmapNodeId
-}): MindmapEnterPreview | undefined => {
-  const toRect = anchored.node[newNodeId]
-  const parentId = nextTree.nodes[newNodeId]?.parentId
-  const anchorRect = anchored.node[anchorId ?? parentId ?? '']
-  if (!toRect || !parentId || !anchorRect) {
-    return undefined
-  }
-
-  const anchorCenter = toRectCenter(anchorRect)
-  const targetCenter = toRectCenter(toRect)
-
-  return {
-    treeId,
-    nodeId: newNodeId,
-    parentId,
-    route: [anchorCenter, targetCenter],
-    fromRect: {
-      x: anchorCenter.x - toRect.width / 2,
-      y: anchorCenter.y - toRect.height / 2,
-      width: toRect.width,
-      height: toRect.height
-    },
-    toRect: {
-      ...toRect
-    },
-    startedAt: readNow(),
-    durationMs: DEFAULT_INSERT_ENTER_DURATION_MS
-  }
-}
-
 const toTreeUpdateOperation = (
   id: MindmapId,
   tree: MindmapTree
@@ -641,27 +425,16 @@ const buildMindmapTopicUpdate = (
     : undefined
 )
 
-export const createMindmapCommands = ({
+export const createMindmapWrite = ({
   engine,
   read,
   node,
-  layout,
-  feedback,
-  session
+  layout
 }: {
   engine: Engine
   read: EditorQuery
   node: Pick<NodeCommands, 'update' | 'updateMany'>
   layout: Pick<EditorLayout, 'patchNodeCreatePayload'>
-  feedback: {
-    mindmap: {
-      setPreview: (
-        preview?: MindmapPreviewState
-      ) => void
-      clear: () => void
-    }
-  }
-  session: Pick<SessionActions, 'selection' | 'edit'>
 }): MindmapCommands => {
   const commands = createMindmapCoreCommands(engine.execute)
 
@@ -704,19 +477,10 @@ export const createMindmapCommands = ({
         position
       })
     )
-    const output = withData(result, {
+    return withData(result, {
       mindmapId,
       rootId: materialized.tree.rootNodeId
     })
-    if (output.ok) {
-      focusMindmapRoot({
-        nodeId: output.data.rootId,
-        focus: options?.focus,
-        session
-      })
-    }
-
-    return output
   }
 
   const insert: MindmapCommands['insert'] = (id, input, options) => {
@@ -776,40 +540,9 @@ export const createMindmapCommands = ({
         anchored
       })
     )
-    const output = withData(result, {
+    return withData(result, {
       nodeId
     })
-    if (!output.ok) {
-      return output
-    }
-
-    let focusDelayMs = 0
-    if (options?.behavior?.enter === 'from-anchor') {
-      const enterPreview = buildMindmapEnterPreview({
-        treeId: id,
-        newNodeId: nodeId,
-        nextTree,
-        anchored,
-        anchorId: readInsertAnchorId(input)
-      })
-      if (enterPreview) {
-        focusDelayMs = enterPreview.durationMs
-        appendMindmapEnterPreview({
-          read,
-          feedback,
-          entry: enterPreview
-        })
-      }
-    }
-
-    focusMindmapNode({
-      nodeId,
-      behavior: options?.behavior,
-      session,
-      delayMs: focusDelayMs
-    })
-
-    return output
   }
 
   const navigate: MindmapCommands['navigate'] = (input) => {
@@ -893,10 +626,7 @@ export const createMindmapCommands = ({
     navigate,
     insertByPlacement: (input) => insert(
       input.id,
-      planMindmapInsertByPlacement(input),
-      {
-        behavior: input.behavior
-      }
+      planMindmapInsertByPlacement(input)
     ),
     moveByDrop: (input) => {
       const command = planMindmapSubtreeMove(input)

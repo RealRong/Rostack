@@ -24,7 +24,7 @@ import type {
   PointerDownInput
 } from '@whiteboard/editor/types/input'
 import { createPressDragSession } from '@whiteboard/editor/input/session/press'
-import type { EditorServices } from '@whiteboard/editor/editor/services'
+import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 
 const EDGE_LABEL_PLACEHOLDER = 'Label'
 
@@ -51,7 +51,7 @@ const readLabelText = (
   : ''
 
 const isSingleSelectedEdge = (
-  ctx: Pick<EditorServices, 'query'>,
+  ctx: Pick<EditorHostDeps, 'query'>,
   edgeId: EdgeId
 ) => {
   const target = ctx.query.selection.model.get().summary.target
@@ -98,7 +98,7 @@ const readEdgeLabelPatch = (
 }
 
 const createEdgeLabelDragSession = (
-  ctx: Pick<EditorServices, 'query' | 'commands'>,
+  ctx: Pick<EditorHostDeps, 'query' | 'write'>,
   initial: EdgeLabelDragState
 ): InteractionSession => {
   let state = initial
@@ -165,7 +165,7 @@ const createEdgeLabelDragSession = (
       step(input.world)
 
       if (state.draft) {
-        ctx.commands.edge.label.patch(
+        ctx.write.edge.label.patch(
           state.edgeId,
           state.labelId,
           state.draft
@@ -181,7 +181,7 @@ const createEdgeLabelDragSession = (
 }
 
 const createEdgeLabelDragState = (
-  ctx: Pick<EditorServices, 'query' | 'layout'>,
+  ctx: Pick<EditorHostDeps, 'query' | 'layout'>,
   input: {
     edgeId: EdgeId
     labelId: string
@@ -232,7 +232,7 @@ const createEdgeLabelDragState = (
 }
 
 export const createEdgeLabelPressSession = (
-  ctx: Pick<EditorServices, 'query' | 'layout' | 'commands' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'query' | 'layout' | 'write' | 'actions'>,
   start: PointerDownInput,
   input: {
     edgeId: EdgeId
@@ -270,7 +270,7 @@ export const createEdgeLabelPressSession = (
 })
 
 export const startEdgeLabelPress = (
-  ctx: Pick<EditorServices, 'query' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'query' | 'actions'>,
   pointer: PointerDownInput
 ): {
   edgeId: EdgeId

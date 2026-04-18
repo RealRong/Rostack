@@ -13,22 +13,22 @@ import {
   isEdgeGuideEqual,
   isEdgeProjectionEqual,
   toEdgeFeedbackMap
-} from '@whiteboard/editor/input/preview/edge'
+} from '@whiteboard/editor/session/preview/edge'
 import {
   EMPTY_NODE_FEEDBACK_PROJECTION,
   isNodeProjectionEqual,
   toNodeFeedbackMap
-} from '@whiteboard/editor/input/preview/node'
+} from '@whiteboard/editor/session/preview/node'
 import {
   EMPTY_GUIDES,
   isMarqueeFeedbackEqual,
   projectWorldRect
-} from '@whiteboard/editor/input/preview/selection'
+} from '@whiteboard/editor/session/preview/selection'
 import type {
   EditorInputPreview,
   EditorInputPreviewState,
   MarqueePreview
-} from '@whiteboard/editor/input/preview/types'
+} from '@whiteboard/editor/session/preview/types'
 
 export const createInputPreviewSelectors = ({
   state,

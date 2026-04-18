@@ -52,9 +52,11 @@ export const createInteractionRuntime = ({
   getViewport: () => Pick<ViewportInputRuntime, 'panScreenBy' | 'screenPoint' | 'size'> | null
   getBindings: () => readonly InteractionBinding[]
   state: Pick<
-    import('@whiteboard/editor/input/state').EditorInputStateController,
-    'interaction' | 'space'
-  >
+    import('@whiteboard/editor/session/runtime').EditorSessionInteractionWrite,
+    'setActive' | 'setGesture' | 'setSpace'
+  > & {
+    getSpace: () => boolean
+  }
 }): InteractionRuntime => {
   let nextId = 1
   let current: RunningSession | null = null
@@ -75,12 +77,12 @@ export const createInteractionRuntime = ({
 
   const syncActive = (running: RunningSession | null) => {
     if (!running) {
-      state.interaction.setActive(null)
+      state.setActive(null)
       syncGesture(null)
       return
     }
 
-    state.interaction.setActive({
+    state.setActive({
       mode: running.session.mode,
       chrome: running.session.chrome
     })
@@ -90,7 +92,7 @@ export const createInteractionRuntime = ({
   const syncGesture = (
     running: RunningSession | null
   ) => {
-    state.interaction.setGesture(running?.session.gesture ?? null)
+    state.setGesture(running?.session.gesture ?? null)
   }
 
   const refreshAutoPan = () => {
@@ -295,8 +297,8 @@ export const createInteractionRuntime = ({
       let handled = false
 
       if (input.code === 'Space') {
-        if (!state.space.get()) {
-          state.space.set(true)
+        if (!state.getSpace()) {
+          state.setSpace(true)
         }
         handled = true
       }
@@ -321,8 +323,8 @@ export const createInteractionRuntime = ({
       let handled = false
 
       if (input.code === 'Space') {
-        if (state.space.get()) {
-          state.space.set(false)
+        if (state.getSpace()) {
+          state.setSpace(false)
         }
         handled = true
       }
@@ -339,8 +341,8 @@ export const createInteractionRuntime = ({
       return true
     },
     handleBlur: () => {
-      if (state.space.get()) {
-        state.space.set(false)
+      if (state.getSpace()) {
+        state.setSpace(false)
       }
 
       const running = current

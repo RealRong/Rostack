@@ -436,6 +436,7 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
     visibilityStore
   ])
   const card = dataView.model.kanban.card
+  const content = dataView.model.kanban.content
 
   useEffect(() => {
     configStore.set({
@@ -521,6 +522,7 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
     board,
     section,
     card,
+    content,
     layout: {
       columnWidth: input.columnWidth,
       columnMinHeight: input.columnMinHeight
@@ -536,6 +538,7 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
   }), [
     board,
     card,
+    content,
     drag,
     geometry.measureBody,
     geometry.measureCard,

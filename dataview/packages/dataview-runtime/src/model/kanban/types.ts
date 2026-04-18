@@ -1,7 +1,4 @@
 import type {
-  CardLayout,
-  CardSize,
-  CustomField,
   Field,
   KanbanCardsPerColumn,
   ViewId
@@ -15,6 +12,10 @@ import type {
   KeyedReadStore,
   ReadStore
 } from '@shared/core'
+import type {
+  RecordCardContentData,
+  RecordCardData
+} from '@dataview/runtime/model/shared'
 
 export interface KanbanBoardBase {
   viewId: ViewId
@@ -35,15 +36,7 @@ export interface KanbanSectionBase {
   color?: string
 }
 
-export interface KanbanCardData {
-  viewId: ViewId
-  fields: readonly CustomField[]
-  size: CardSize
-  layout: CardLayout
-  wrap: boolean
-  canDrag: boolean
-  selected: boolean
-  editing: boolean
+export interface KanbanCardData extends RecordCardData {
   color?: string
 }
 
@@ -51,4 +44,5 @@ export interface DataViewKanbanModel {
   boardBase: ReadStore<KanbanBoardBase | null>
   sectionBase: KeyedReadStore<SectionKey, KanbanSectionBase | undefined>
   card: KeyedReadStore<ItemId, KanbanCardData | undefined>
+  content: KeyedReadStore<ItemId, RecordCardContentData | undefined>
 }

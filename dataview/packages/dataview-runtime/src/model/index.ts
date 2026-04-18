@@ -46,7 +46,10 @@ export type {
 } from '@dataview/runtime/model/table/types'
 
 export type {
-  ActiveTypedViewState
+  ActiveTypedViewState,
+  RecordCardContentData,
+  RecordCardData,
+  RecordCardPropertyData
 } from '@dataview/runtime/model/shared'
 export {
   readActiveTypedViewState

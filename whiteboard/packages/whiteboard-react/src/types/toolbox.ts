@@ -1,11 +1,11 @@
 import type { ShapeKind } from '@whiteboard/core/node'
 import type {
-  DrawBrushState,
-  DrawBrush,
   DrawMode,
-  DrawSlot,
-  DrawStyle
+  Editor
 } from '@whiteboard/editor'
+import type {
+  WhiteboardDrawView
+} from '@whiteboard/product'
 import type {
   StickyFormat,
   StickyTone
@@ -19,11 +19,10 @@ export type ToolPaletteMenuKey =
   | 'shape'
   | 'mindmap'
 
-export type ToolPaletteBrushState = {
-  brush: DrawBrush
-  state: DrawBrushState
-  slot: DrawSlot
-}
+export type ToolPaletteDrawBrush = WhiteboardDrawView['brush']
+export type ToolPaletteDrawSlot = WhiteboardDrawView['slot']
+export type ToolPaletteBrushStyle = WhiteboardDrawView['state']['slots'][ToolPaletteDrawSlot]
+export type ToolPaletteBrushStylePatch = Parameters<Editor['actions']['draw']['patch']>[0]
 
 export type ToolPaletteMemory = {
   drawMode: DrawMode
@@ -43,7 +42,5 @@ export type ToolPaletteView = {
   mindmapPreset: string
   edgePreset: string
   drawMode: DrawMode
-  drawBrush: ToolPaletteBrushState
-  drawStyle: DrawStyle
-  drawButtonStyle?: DrawStyle
+  draw: WhiteboardDrawView
 }

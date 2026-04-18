@@ -10,7 +10,6 @@ import type {
   KeyboardInput,
   EditorPick,
   PointerInput,
-  PointerPhase,
   PointerSample,
   WheelInput
 } from '@whiteboard/editor'
@@ -152,7 +151,7 @@ export const resolvePoint = ({
   }
 }
 
-export const resolvePointerInput = <Phase extends PointerPhase>({
+export const resolvePointerInput = <Phase extends PointerInput['phase']>({
   phase,
   editor,
   pick,

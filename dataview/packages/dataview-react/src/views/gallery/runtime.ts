@@ -98,6 +98,7 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
   ])
   const section = dataView.model.gallery.section
   const card = dataView.model.gallery.card
+  const content = dataView.model.gallery.content
 
   useEffect(() => {
     layoutStore.set({
@@ -220,6 +221,7 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
     body: bodyStore,
     section,
     card,
+    content,
     containerRef,
     virtual: {
       layout: virtual.layout,
@@ -232,6 +234,7 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
   }), [
     bodyStore,
     card,
+    content,
     containerRef,
     drag,
     indicator,

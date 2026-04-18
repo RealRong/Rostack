@@ -6,11 +6,7 @@ import type {
   Rect
 } from '@whiteboard/core/types'
 import type {
-  ControlId,
-  NodeDefinition as EditorNodeDefinition,
-  NodeFamily,
-  NodeHit,
-  NodeMeta
+  NodeDefinition as EditorNodeDefinition
 } from '@whiteboard/editor'
 import type {
   EditCaret,
@@ -18,11 +14,12 @@ import type {
 } from '@whiteboard/editor'
 import type { CSSProperties, ReactNode } from 'react'
 
+export type NodeMeta = EditorNodeDefinition['meta']
+export type NodeFamily = NodeMeta['family']
+export type ControlId = NodeMeta['controls'][number]
+export type NodeHit = NonNullable<EditorNodeDefinition['hit']>
+
 export type {
-  ControlId,
-  NodeFamily,
-  NodeHit,
-  NodeMeta,
   NodeRole
 }
 

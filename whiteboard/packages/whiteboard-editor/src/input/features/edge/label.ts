@@ -17,9 +17,6 @@ import {
   FINISH
 } from '@whiteboard/editor/input/session/result'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
-import {
-  readEdgeLabelTextSourceId
-} from '@whiteboard/editor/types/layout'
 import type {
   PointerDownInput
 } from '@whiteboard/editor/types/input'
@@ -203,7 +200,11 @@ const createEdgeLabelDragState = (
   const text = readLabelText(label.text)
   const fontSize = label.style?.size ?? 14
   const measuredSize = ctx.layout.measureText({
-    sourceId: readEdgeLabelTextSourceId(input.edgeId, input.labelId),
+    source: {
+      kind: 'edge-label',
+      edgeId: input.edgeId,
+      labelId: input.labelId
+    },
     typography: 'edge-label',
     text,
     placeholder: EDGE_LABEL_PLACEHOLDER,

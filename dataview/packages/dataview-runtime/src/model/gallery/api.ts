@@ -1,4 +1,8 @@
 import type {
+  DataRecord,
+  RecordId
+} from '@dataview/core/contracts'
+import type {
   ViewState
 } from '@dataview/engine'
 import type {
@@ -16,7 +20,9 @@ import type {
   GallerySectionData
 } from '@dataview/runtime/model/gallery/types'
 import {
-  readActiveTypedViewState
+  readActiveTypedViewState,
+  type RecordCardContentData,
+  type RecordCardPropertyData
 } from '@dataview/runtime/model/shared'
 import {
   createDerivedStore,
@@ -24,9 +30,16 @@ import {
   read,
   sameIdOrder,
   sameMap,
+  sameOrder,
+  sameValue,
   type KeyedReadStore,
   type ReadStore
 } from '@shared/core'
+import {
+  isEmptyFieldValue
+} from '@dataview/core/field'
+
+const DEFAULT_GALLERY_TITLE_PLACEHOLDER = '输入名称...'
 
 const sameBodyBase = (
   left: GalleryBodyBase | null,
@@ -59,6 +72,8 @@ const sameCard = (
   !!left
   && !!right
   && left.viewId === right.viewId
+  && left.itemId === right.itemId
+  && left.recordId === right.recordId
   && sameIdOrder(left.fields, right.fields)
   && left.size === right.size
   && left.layout === right.layout
@@ -68,9 +83,28 @@ const sameCard = (
   && left.editing === right.editing
 )
 
+const sameProperty = (
+  left: RecordCardPropertyData,
+  right: RecordCardPropertyData
+) => left.field.id === right.field.id
+  && sameValue(left.value, right.value)
+
+const sameContent = (
+  left: RecordCardContentData | undefined,
+  right: RecordCardContentData | undefined
+) => left === right || (
+  !!left
+  && !!right
+  && left.titleText === right.titleText
+  && left.placeholderText === right.placeholderText
+  && left.hasProperties === right.hasProperties
+  && sameOrder(left.properties, right.properties, sameProperty)
+)
+
 export const createGalleryModel = (input: {
   activeStateStore: ReadStore<ViewState | undefined>
   extraStateStore: ReadStore<GalleryState | undefined>
+  recordStore: KeyedReadStore<RecordId, DataRecord | undefined>
   selectionMembershipStore: KeyedReadStore<ItemId, boolean>
   previewSelectionMembershipStore: KeyedReadStore<ItemId, boolean | null>
   inline: DataViewInlineRuntime
@@ -117,12 +151,15 @@ export const createGalleryModel = (input: {
     get: itemId => {
       const active = readActiveTypedViewState(read(input.activeStateStore), 'gallery')
       const extra = read(input.extraStateStore)
-      if (!active || !extra || !active.items.has(itemId)) {
+      const item = active?.items.get(itemId)
+      if (!active || !extra || !item) {
         return undefined
       }
 
       return {
         viewId: active.view.id,
+        itemId,
+        recordId: item.recordId,
         fields: active.fields.custom,
         size: extra.card.size,
         layout: extra.card.layout,
@@ -144,9 +181,37 @@ export const createGalleryModel = (input: {
     isEqual: sameCard
   })
 
+  const content = createKeyedDerivedStore<ItemId, RecordCardContentData | undefined>({
+    keyOf: itemId => itemId,
+    get: itemId => {
+      const active = readActiveTypedViewState(read(input.activeStateStore), 'gallery')
+      const item = active?.items.get(itemId)
+      const record = item
+        ? read(input.recordStore, item.recordId)
+        : undefined
+      if (!active || !item || !record) {
+        return undefined
+      }
+
+      const properties = active.fields.custom.map(field => ({
+        field,
+        value: record.values[field.id]
+      }))
+
+      return {
+        titleText: record.title,
+        placeholderText: DEFAULT_GALLERY_TITLE_PLACEHOLDER,
+        properties,
+        hasProperties: properties.some(property => !isEmptyFieldValue(property.value))
+      }
+    },
+    isEqual: sameContent
+  })
+
   return {
     bodyBase,
     section,
-    card
+    card,
+    content
   }
 }

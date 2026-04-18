@@ -49,6 +49,7 @@ export interface KanbanViewRuntime extends ItemInteractionRuntime {
   board: ReadStore<KanbanBoard>
   section: KeyedReadStore<SectionKey, KanbanSectionData | undefined>
   card: DataViewKanbanModel['card']
+  content: DataViewKanbanModel['content']
   layout: {
     columnWidth: number
     columnMinHeight: number

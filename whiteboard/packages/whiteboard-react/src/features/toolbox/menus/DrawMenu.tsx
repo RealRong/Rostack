@@ -13,24 +13,24 @@ import {
   Slider
 } from '@shared/ui'
 import type {
-  BrushStyle,
-  BrushStylePatch,
-  DrawBrush,
   DrawMode,
-  DrawSlot
 } from '@whiteboard/editor'
 import {
-  DRAW_MODES,
-  DRAW_SLOTS
-} from '@whiteboard/editor'
-import {
-  hasDrawBrush
-} from '@whiteboard/editor'
+  WHITEBOARD_DRAW_MODES,
+  WHITEBOARD_DRAW_SLOTS,
+  WHITEBOARD_DRAW_WIDTH_RANGE
+} from '@whiteboard/product'
 import {
   WHITEBOARD_DRAW_COLOR_OPTIONS,
   WHITEBOARD_PALETTE_SWATCH_SHAPE,
   resolvePaletteColor
 } from '@whiteboard/react/features/palette'
+import type {
+  ToolPaletteBrushStyle,
+  ToolPaletteBrushStylePatch,
+  ToolPaletteDrawBrush,
+  ToolPaletteDrawSlot
+} from '@whiteboard/react/types/toolbox'
 
 const DRAW_MODE_ICONS = {
   pen: Pencil,
@@ -38,23 +38,13 @@ const DRAW_MODE_ICONS = {
   eraser: Eraser
 } as const satisfies Record<DrawMode, typeof Pencil>
 
-const DRAW_WIDTH_RANGE = {
-  pen: {
-    min: 1,
-    max: 16
-  },
-  highlighter: {
-    min: 6,
-    max: 24
-  }
-} as const satisfies Record<DrawBrush, { min: number, max: number }>
-
 const resolveSlotSize = (
   width: number
 ) => Math.max(6, Math.min(16, width + 2))
 
 export const DrawMenu = ({
   mode,
+  brush,
   activeSlot,
   slots,
   panelOpen = false,
@@ -63,16 +53,14 @@ export const DrawMenu = ({
   onPatch
 }: {
   mode: DrawMode
-  activeSlot?: DrawSlot
-  slots?: Readonly<Record<DrawSlot, BrushStyle>>
+  brush?: ToolPaletteDrawBrush
+  activeSlot?: ToolPaletteDrawSlot
+  slots?: Readonly<Record<ToolPaletteDrawSlot, ToolPaletteBrushStyle>>
   panelOpen?: boolean
   onMode: (value: DrawMode) => void
-  onSlot: (value: DrawSlot) => void
-  onPatch: (patch: BrushStylePatch) => void
+  onSlot: (value: ToolPaletteDrawSlot) => void
+  onPatch: (patch: ToolPaletteBrushStylePatch) => void
 }) => {
-  const brush = hasDrawBrush(mode)
-    ? mode
-    : undefined
   const style =
     brush && activeSlot && slots
       ? slots[activeSlot]
@@ -89,7 +77,7 @@ export const DrawMenu = ({
           role="toolbar"
           aria-label="Draw mode"
         >
-          {DRAW_MODES.map((value) => {
+          {WHITEBOARD_DRAW_MODES.map((value) => {
             const Icon = DRAW_MODE_ICONS[value]
             return (
               <PickerIconButton
@@ -113,7 +101,7 @@ export const DrawMenu = ({
               role="toolbar"
               aria-label="Draw slot"
             >
-              {DRAW_SLOTS.map((slot) => {
+              {WHITEBOARD_DRAW_SLOTS.map((slot) => {
                 const slotStyle = slots[slot]
                 return (
                   <PickerIconButton
@@ -145,8 +133,8 @@ export const DrawMenu = ({
             <PickerSection title="Width">
               <div className="flex flex-col gap-2.5">
                 <Slider
-                  min={DRAW_WIDTH_RANGE[brush].min}
-                  max={DRAW_WIDTH_RANGE[brush].max}
+                  min={WHITEBOARD_DRAW_WIDTH_RANGE[brush].min}
+                  max={WHITEBOARD_DRAW_WIDTH_RANGE[brush].max}
                   step={1}
                   value={style.width}
                   onValueChange={(value) => {

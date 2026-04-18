@@ -88,13 +88,13 @@ const EdgeLabelItem = ({
     }
 
     if (sourceRef.current) {
-      textSources.set(label.sourceId, null)
+      textSources.set(label.source, null)
     }
 
-    textSources.set(label.sourceId, element)
+    textSources.set(label.source, element)
     pickRef(element)
     sourceRef.current = element
-  }, [label.sourceId, pickRef, textSources])
+  }, [label.source, pickRef, textSources])
 
   const style = resolveTextStyle({
     color: label.style?.color,

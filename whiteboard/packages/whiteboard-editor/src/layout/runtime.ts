@@ -35,9 +35,6 @@ import type {
   LayoutKind,
   LayoutRequest
 } from '@whiteboard/editor/types/layout'
-import {
-  readNodeTextSourceId
-} from '@whiteboard/editor/types/layout'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
 
 const TEXT_PLACEHOLDER = 'Text'
@@ -180,7 +177,11 @@ const buildLayoutRequest = ({
     return {
       kind: 'size',
       nodeId,
-      sourceId: readNodeTextSourceId(nodeId, 'text'),
+      source: {
+        kind: 'node',
+        nodeId,
+        field: 'text'
+      },
       typography: 'default-text',
       text: input.text,
       placeholder: TEXT_PLACEHOLDER,
@@ -203,7 +204,11 @@ const buildLayoutRequest = ({
     return {
       kind: 'fit',
       nodeId,
-      sourceId: readNodeTextSourceId(nodeId, 'text'),
+      source: {
+        kind: 'node',
+        nodeId,
+        field: 'text'
+      },
       typography: 'sticky-text',
       text: typeof node.data?.text === 'string'
         ? node.data.text

@@ -1,4 +1,6 @@
 import {
+  memo,
+  useMemo,
   type CSSProperties
 } from 'react'
 import {
@@ -8,13 +10,22 @@ import { resolveNeutralCardStyle } from '@shared/ui/color'
 import type { ItemId } from '@dataview/engine'
 import { useGalleryRuntimeContext } from '@dataview/react/views/gallery/GalleryView'
 import {
-  CARD_TITLE_PLACEHOLDER
-} from '@dataview/react/views/shared/cardTitleValue'
-import {
   useKeyedStoreValue
 } from '@shared/react'
 
-export const Card = (props: {
+const GALLERY_APPEARANCE = {
+  showEditAction: true,
+  resolveSurface: ({ selected }: { selected: boolean }) => (
+    selected
+      ? undefined
+      : {
+          default: resolveNeutralCardStyle('default', 'preview'),
+          hover: resolveNeutralCardStyle('hover', 'preview')
+        }
+  )
+} as const
+
+const CardComponent = (props: {
   itemId: ItemId
   measureRef?: (node: HTMLElement | null) => void
   className?: string
@@ -22,32 +33,30 @@ export const Card = (props: {
 }) => {
   const runtime = useGalleryRuntimeContext()
   const card = useKeyedStoreValue(runtime.card, props.itemId)
-  if (!card) {
+  const content = useKeyedStoreValue(runtime.content, props.itemId)
+  if (!card || !content) {
     return null
   }
 
+  const interaction = useMemo(() => ({
+    drag: runtime.drag,
+    selection: runtime.selection
+  }), [runtime.drag, runtime.selection])
+  const mount = useMemo(() => ({
+    measureRef: props.measureRef,
+    className: props.className,
+    style: props.style
+  }), [props.className, props.measureRef, props.style])
+
   return (
     <RecordCard
-      viewId={card.viewId}
-      itemId={props.itemId}
-      fields={card.fields}
-      size={card.size}
-      layout={card.layout}
-      wrap={card.wrap}
-      canDrag={card.canDrag}
-      drag={runtime.drag}
-      selection={runtime.selection}
-      titlePlaceholder={CARD_TITLE_PLACEHOLDER}
-      showEditAction
-      presentationSelected
-      measureRef={props.measureRef}
-      className={props.className}
-      style={props.style}
-      resolveSurfaceStyle={({ hovered, editing, selected }) => (
-        !selected
-          ? resolveNeutralCardStyle(hovered && !editing ? 'hover' : 'default', 'preview')
-          : undefined
-      )}
+      card={card}
+      content={content}
+      interaction={interaction}
+      appearance={GALLERY_APPEARANCE}
+      mount={mount}
     />
   )
 }
+
+export const Card = memo(CardComponent)

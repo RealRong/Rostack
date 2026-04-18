@@ -41,7 +41,7 @@ import type { EditorInputState } from '@whiteboard/editor/session/interaction'
 import type { NodeCanvasSnapshot, NodePresentationRead } from '@whiteboard/editor/query/node/read'
 import type { EditSession } from '@whiteboard/editor/session/edit'
 import type { Tool } from '@whiteboard/editor/types/tool'
-import { readEdgeLabelTextSourceId } from '@whiteboard/editor/types/layout'
+import type { TextSourceRef } from '@whiteboard/editor/types/layout'
 import {
   projectEdgeItem,
   readProjectedEdgeView
@@ -110,7 +110,7 @@ export type EdgeLabelRender = {
   style: NonNullable<Edge['labels']>[number]['style']
   editable: boolean
   caret?: Extract<NonNullable<EditSession>, { kind: 'edge-label' }>['caret']
-  sourceId: string
+  source: TextSourceRef
   point: Point
   angle: number
   size: Size
@@ -319,7 +319,23 @@ const isEdgeLabelRenderEqual = (
     && left.displayText === right.displayText
     && left.style === right.style
     && left.editable === right.editable
-    && left.sourceId === right.sourceId
+    && left.source.kind === right.source.kind
+    && (
+      left.source.kind !== 'node'
+      || (
+        right.source.kind === 'node'
+        && left.source.nodeId === right.source.nodeId
+        && left.source.field === right.source.field
+      )
+    )
+    && (
+      left.source.kind !== 'edge-label'
+      || (
+        right.source.kind === 'edge-label'
+        && left.source.edgeId === right.source.edgeId
+        && left.source.labelId === right.source.labelId
+      )
+    )
     && left.angle === right.angle
     && isPointEqual(left.point, right.point)
     && left.size.width === right.size.width
@@ -533,9 +549,13 @@ const readEdgeLabelRender = ({
 
   const style = label.style
   const fontSize = style?.size ?? 14
-  const sourceId = readEdgeLabelTextSourceId(edgeId, label.id)
+  const source: TextSourceRef = {
+    kind: 'edge-label',
+    edgeId,
+    labelId: label.id
+  }
   const measuredSize = layout.measureText({
-    sourceId,
+    source,
     typography: 'edge-label',
     text,
     placeholder: EDGE_LABEL_PLACEHOLDER,
@@ -579,7 +599,7 @@ const readEdgeLabelRender = ({
     style,
     editable: editing,
     caret: editing ? edit.caret : undefined,
-    sourceId,
+    source,
     point: placement.point,
     angle,
     size: placementSize,

@@ -148,7 +148,7 @@ export const createDataViewRuntime = (
   const marquee = createMarqueeController({
     selection,
     resolveDomain: () => {
-      const items = activeItems.get()
+      const items = read(activeItems)
       return items
         ? createItemListSelectionDomain(items)
         : undefined
@@ -190,6 +190,7 @@ export const createDataViewRuntime = (
     gallery: createGalleryModel({
       activeStateStore: input.engine.active.state,
       extraStateStore: input.engine.active.gallery.state,
+      recordStore: input.engine.select.records.byId,
       selectionMembershipStore: selection.store.membership,
       previewSelectionMembershipStore: marquee.preview.membership,
       inline
@@ -197,6 +198,7 @@ export const createDataViewRuntime = (
     kanban: createKanbanModel({
       activeStateStore: input.engine.active.state,
       extraStateStore: input.engine.active.kanban.state,
+      recordStore: input.engine.select.records.byId,
       selectionMembershipStore: selection.store.membership,
       previewSelectionMembershipStore: marquee.preview.membership,
       inline

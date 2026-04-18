@@ -1,8 +1,6 @@
 import { type Tool } from '@whiteboard/editor'
 import type {
-  BrushStylePatch,
-  DrawMode,
-  DrawSlot
+  DrawMode
 } from '@whiteboard/editor'
 import {
   WHITEBOARD_TEXT_INSERT_PRESET,
@@ -12,6 +10,8 @@ import {
 import type { Dispatch, SetStateAction } from 'react'
 import type { WhiteboardRuntime as Editor } from '@whiteboard/react/types/runtime'
 import type {
+  ToolPaletteBrushStylePatch,
+  ToolPaletteDrawSlot,
   ToolPaletteMenuKey,
   ToolPaletteView
 } from '@whiteboard/react/types/toolbox'
@@ -26,8 +26,8 @@ export type ToolPaletteController = {
   activateTextTool: () => void
   toggleDrawMenu: () => void
   selectDrawMode: (value: DrawMode) => void
-  selectDrawSlot: (value: DrawSlot) => void
-  patchDrawStyle: (patch: BrushStylePatch) => void
+  selectDrawSlot: (value: ToolPaletteDrawSlot) => void
+  patchDrawStyle: (patch: ToolPaletteBrushStylePatch) => void
   selectEdgePreset: (value: string) => void
   selectInsertPreset: (value: string) => void
 }
@@ -110,7 +110,7 @@ export const createToolPaletteController = ({
     editor.actions.tool.draw(value)
   },
   selectDrawSlot: (value) => {
-    if (value === palette.drawBrush.slot) {
+    if (value === palette.draw.slot) {
       setDrawPanelOpen((current) => !current)
       return
     }

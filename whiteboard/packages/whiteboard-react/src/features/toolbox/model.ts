@@ -1,9 +1,4 @@
 import {
-  readDrawSlot,
-  readDrawStyle,
-  DEFAULT_DRAW_BRUSH,
-  DEFAULT_DRAW_MODE,
-  hasDrawBrush,
   type DrawMode,
   type DrawState,
 } from '@whiteboard/editor'
@@ -13,6 +8,7 @@ import {
   readStickyInsertTone
 } from '@whiteboard/react/features/palette'
 import {
+  WHITEBOARD_DRAW_DEFAULT_MODE,
   DEFAULT_WHITEBOARD_EDGE_PRESET_KEY,
   DEFAULT_WHITEBOARD_MINDMAP_PRESET,
   DEFAULT_WHITEBOARD_SHAPE_PRESET,
@@ -20,10 +16,10 @@ import {
   WHITEBOARD_EDGE_PRESETS,
   WHITEBOARD_INSERT_PRESETS,
   getWhiteboardInsertPreset,
+  readWhiteboardDrawView,
   readWhiteboardShapePresetKind
 } from '@whiteboard/product'
 import type {
-  ToolPaletteBrushState,
   ToolPaletteMemory,
   ToolPaletteView
 } from '@whiteboard/react/types/toolbox'
@@ -45,24 +41,8 @@ const readEdgePresetKey = (
   isSameTemplate(preset.template, tool.template)
 ))?.key
 
-const readToolPaletteBrushState = (
-  state: DrawState,
-  mode: DrawMode
-): ToolPaletteBrushState => {
-  const brush = hasDrawBrush(mode)
-    ? mode
-    : DEFAULT_DRAW_BRUSH
-  const nextState = state[brush]
-
-  return {
-    brush,
-    state: nextState,
-    slot: readDrawSlot(state, brush)
-  }
-}
-
 export const DEFAULT_TOOL_PALETTE_MEMORY: ToolPaletteMemory = {
-  drawMode: DEFAULT_DRAW_MODE,
+  drawMode: WHITEBOARD_DRAW_DEFAULT_MODE,
   edgePreset: DEFAULT_WHITEBOARD_EDGE_PRESET_KEY,
   stickyPreset: DEFAULT_WHITEBOARD_STICKY_PRESET,
   shapePreset: DEFAULT_WHITEBOARD_SHAPE_PRESET,
@@ -152,8 +132,10 @@ export const readToolPaletteView = ({
   const drawMode = tool.type === 'draw'
     ? tool.mode
     : memory.drawMode
-  const drawBrush = readToolPaletteBrushState(drawState, drawMode)
-  const drawStyle = readDrawStyle(drawState, drawBrush.brush)
+  const draw = readWhiteboardDrawView({
+    state: drawState,
+    mode: drawMode
+  })
 
   return {
     insertGroup,
@@ -165,10 +147,6 @@ export const readToolPaletteView = ({
     mindmapPreset,
     edgePreset,
     drawMode,
-    drawBrush,
-    drawStyle,
-    drawButtonStyle: hasDrawBrush(drawMode)
-      ? drawStyle
-      : undefined
+    draw
   }
 }

@@ -1,6 +1,5 @@
 export type { WhiteboardInstance, WhiteboardRuntime } from '@whiteboard/react/types/runtime'
 export type {
-  ToolPaletteBrushState,
   ToolPaletteMemory,
   ToolPaletteMenuKey,
   ToolPaletteView

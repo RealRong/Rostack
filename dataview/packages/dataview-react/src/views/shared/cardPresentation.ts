@@ -3,7 +3,7 @@ import type {
   CardSize
 } from '@dataview/core/contracts'
 import { cn } from '@shared/ui/utils'
-import type { CardContentProps } from '@dataview/react/views/shared/CardContent'
+import type { CardContentSlots } from '@dataview/react/views/shared/CardContent'
 
 export const resolveCardPresentation = (input: {
   size: CardSize
@@ -11,8 +11,8 @@ export const resolveCardPresentation = (input: {
   selected?: boolean
   hasVisibleFields: boolean
 }): {
-  propertyDensity: NonNullable<CardContentProps['propertyDensity']>
-  slots: NonNullable<CardContentProps['slots']>
+  propertyDensity: 'default' | 'compact'
+  slots: CardContentSlots
 } => {
   const rootPadding = input.layout === 'stacked'
     ? 'p-3'
@@ -49,7 +49,6 @@ export const resolveCardPresentation = (input: {
     }
   }
 
-  const compactTitleText = 'font-semibold'
   const compactValueText = 'text-sm text-foreground'
   const compactGap = 'gap-1.5 mt-1'
 
@@ -62,9 +61,10 @@ export const resolveCardPresentation = (input: {
         input.selected && 'bg-accent-overlay'
       ),
       title: {
+        row: 'min-w-0',
         content: 'min-w-0 flex-1 w-full',
-        text: compactTitleText,
-        input: cn(compactTitleText, 'text-foreground')
+        text: 'font-semibold',
+        input: 'font-semibold text-foreground'
       },
       property: {
         list: cn('flex flex-wrap items-center', compactGap),

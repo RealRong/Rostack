@@ -1,12 +1,20 @@
-export type TextSourceId = string
+import type { LayoutRequest } from '@whiteboard/editor'
+
+export type TextSourceRef = NonNullable<LayoutRequest['source']>
+
+const readTextSourceStoreKey = (
+  source: TextSourceRef
+) => source.kind === 'node'
+  ? `node:${source.nodeId}:${source.field}`
+  : `edge:${source.edgeId}:label:${source.labelId}`
 
 export type TextSourceStore = {
   set: (
-    sourceId: TextSourceId,
+    source: TextSourceRef,
     element: HTMLElement | null
   ) => void
   get: (
-    sourceId: TextSourceId
+    source: TextSourceRef
   ) => HTMLElement | undefined
 }
 
@@ -14,14 +22,15 @@ export const createTextSourceStore = (): TextSourceStore => {
   const registry = new Map<string, HTMLElement>()
 
   return {
-    set: (sourceId, element) => {
+    set: (source, element) => {
+      const key = readTextSourceStoreKey(source)
       if (element) {
-        registry.set(sourceId, element)
+        registry.set(key, element)
         return
       }
 
-      registry.delete(sourceId)
+      registry.delete(key)
     },
-    get: (sourceId) => registry.get(sourceId)
+    get: (source) => registry.get(readTextSourceStoreKey(source))
   }
 }

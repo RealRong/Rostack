@@ -1,0 +1,262 @@
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState
+} from 'react'
+import { SquarePen } from 'lucide-react'
+import {
+  TITLE_FIELD_ID,
+  type RecordId,
+  type ViewId
+} from '@dataview/core/contracts'
+import type {
+  ItemId
+} from '@dataview/engine'
+import {
+  useDataView
+} from '@dataview/react/dataview'
+import {
+  resolveInlineSessionExitEffect
+} from '@dataview/runtime/inlineSession'
+import {
+  focusInputWithoutScroll
+} from '@shared/dom'
+import { Button } from '@shared/ui/button'
+import { cn } from '@shared/ui/utils'
+import {
+  useKeyedStoreValue
+} from '@shared/react'
+
+interface EditableCardTitleState {
+  editing: boolean
+  titleDraft: string
+  setTitleDraft: (value: string) => void
+  enterEdit: () => void
+  commitTitle: () => void
+  submitTitle: () => void
+}
+
+const useEditableCardTitleState = (input: {
+  viewId: ViewId
+  itemId: ItemId
+  recordId: RecordId
+  titleText: string
+}): EditableCardTitleState => {
+  const dataView = useDataView()
+  const editing = useKeyedStoreValue(
+    dataView.model.inline.editing,
+    dataView.model.inline.key({
+      viewId: input.viewId,
+      itemId: input.itemId
+    })
+  )
+  const [titleDraft, setTitleDraft] = useState(() => input.titleText)
+  const titleDraftRef = useRef(titleDraft)
+  const committedTitleRef = useRef(input.titleText)
+  const exitEffectRef = useRef<ReturnType<typeof resolveInlineSessionExitEffect> | null>(null)
+
+  useEffect(() => {
+    titleDraftRef.current = titleDraft
+  }, [titleDraft])
+
+  useEffect(() => {
+    committedTitleRef.current = input.titleText
+  }, [input.titleText])
+
+  useEffect(() => {
+    if (editing) {
+      exitEffectRef.current = null
+      return
+    }
+
+    setTitleDraft(input.titleText)
+  }, [editing, input.titleText])
+
+  const enterEdit = useCallback(() => {
+    setTitleDraft(input.titleText)
+    dataView.selection.command.clear()
+    dataView.inlineSession.enter({
+      viewId: input.viewId,
+      itemId: input.itemId
+    })
+  }, [
+    dataView.inlineSession,
+    dataView.selection,
+    input.itemId,
+    input.titleText,
+    input.viewId
+  ])
+
+  const commitTitle = useCallback(() => {
+    if (exitEffectRef.current === 'discard') {
+      return
+    }
+
+    const nextValue = titleDraftRef.current.trim()
+    if (nextValue === committedTitleRef.current) {
+      return
+    }
+
+    committedTitleRef.current = nextValue
+    dataView.engine.records.fields.set(input.recordId, TITLE_FIELD_ID, nextValue)
+  }, [
+    dataView.engine.records.fields,
+    input.recordId
+  ])
+
+  const resetTitleDraft = useCallback(() => {
+    setTitleDraft(committedTitleRef.current)
+  }, [])
+
+  const submitTitle = useCallback(() => {
+    commitTitle()
+    dataView.inlineSession.exit({
+      reason: 'submit'
+    })
+  }, [commitTitle, dataView.inlineSession])
+
+  useEffect(() => {
+    if (!editing) {
+      return
+    }
+
+    return dataView.inlineSession.onExit(event => {
+      if (
+        event.target.viewId !== input.viewId
+        || event.target.itemId !== input.itemId
+      ) {
+        return
+      }
+
+      const exitEffect = resolveInlineSessionExitEffect(event.reason)
+      exitEffectRef.current = exitEffect
+      if (exitEffect === 'discard') {
+        resetTitleDraft()
+        return
+      }
+
+      commitTitle()
+    })
+  }, [
+    commitTitle,
+    dataView.inlineSession,
+    editing,
+    input.itemId,
+    input.viewId,
+    resetTitleDraft
+  ])
+
+  return {
+    editing,
+    titleDraft,
+    setTitleDraft,
+    enterEdit,
+    commitTitle,
+    submitTitle
+  }
+}
+
+export interface EditableCardTitleProps {
+  viewId: ViewId
+  itemId: ItemId
+  recordId: RecordId
+  titleText: string
+  placeholderText: string
+  wrap?: boolean
+  showEditAction?: boolean
+  rootClassName?: string
+  textClassName?: string
+  inputClassName?: string
+  editActionClassName?: string
+}
+
+export const EditableCardTitle = (props: EditableCardTitleProps) => {
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const state = useEditableCardTitleState({
+    viewId: props.viewId,
+    itemId: props.itemId,
+    recordId: props.recordId,
+    titleText: props.titleText
+  })
+
+  useEffect(() => {
+    if (!state.editing) {
+      return
+    }
+
+    focusInputWithoutScroll(inputRef.current)
+  }, [state.editing])
+
+  return (
+    <>
+      {props.showEditAction && !state.editing ? (
+        <Button
+          data-drag-clone-hidden=""
+          size="icon"
+          variant="ghost"
+          className={cn(
+            'absolute right-2 top-2.5 z-10 opacity-0 pointer-events-none transition-opacity',
+            'group-hover/record-card:opacity-100 group-hover/record-card:pointer-events-auto',
+            'group-focus-within/record-card:opacity-100 group-focus-within/record-card:pointer-events-auto',
+            props.editActionClassName
+          )}
+          aria-label="Edit card"
+          title="Edit card"
+          onClick={event => {
+            event.preventDefault()
+            event.stopPropagation()
+            state.enterEdit()
+          }}
+        >
+          <SquarePen className="size-4" size={15} strokeWidth={1.8} />
+        </Button>
+      ) : null}
+      {state.editing ? (
+        <input
+          ref={inputRef}
+          value={state.titleDraft}
+          placeholder={props.placeholderText}
+          className={cn(
+            'min-w-0',
+            props.rootClassName,
+            'h-auto rounded-none outline-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0',
+            props.inputClassName
+          )}
+          onClick={event => {
+            event.stopPropagation()
+          }}
+          onChange={event => {
+            state.setTitleDraft(event.target.value)
+          }}
+          onBlur={() => {
+            state.commitTitle()
+          }}
+          onKeyDown={event => {
+            event.stopPropagation()
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              state.submitTitle()
+            }
+          }}
+        />
+      ) : (
+        <div
+          className={cn(
+            'min-w-0',
+            props.wrap
+              ? 'whitespace-normal break-words [overflow-wrap:anywhere]'
+              : 'truncate',
+            props.rootClassName,
+            props.titleText.trim()
+              ? 'text-foreground'
+              : 'text-muted-foreground',
+            props.textClassName
+          )}
+        >
+          {props.titleText.trim() || props.placeholderText}
+        </div>
+      )}
+    </>
+  )
+}

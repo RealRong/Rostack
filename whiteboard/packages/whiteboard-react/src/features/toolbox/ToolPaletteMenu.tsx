@@ -26,11 +26,16 @@ export const ToolPaletteMenu = ({
   }
 
   if (openMenu === 'draw') {
+    const brush = palette.draw.buttonStyle
+      ? palette.draw.brush
+      : undefined
+
     return (
       <DrawMenu
         mode={palette.drawMode}
-        activeSlot={palette.drawBrush.slot}
-        slots={palette.drawBrush.state.slots}
+        brush={brush}
+        activeSlot={brush ? palette.draw.slot : undefined}
+        slots={brush ? palette.draw.state.slots : undefined}
         panelOpen={drawPanelOpen}
         onMode={controller.selectDrawMode}
         onSlot={controller.selectDrawSlot}

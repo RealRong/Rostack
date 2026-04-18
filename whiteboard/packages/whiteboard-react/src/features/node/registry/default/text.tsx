@@ -12,9 +12,6 @@ import {
   WHITEBOARD_STICKY_FONT_MODE_OPTIONS,
   WHITEBOARD_TEXT_DEFAULT_COLOR
 } from '@whiteboard/product'
-import {
-  readNodeTextSourceId
-} from '@whiteboard/editor'
 import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
 import {
   usePickRef,
@@ -97,7 +94,11 @@ const useNodeTextSourceBinding = (
     ref: sourceRef,
     bind
   } = useElementBinding<HTMLDivElement>()
-  const sourceId = readNodeTextSourceId(nodeId, 'text')
+  const source = {
+    kind: 'node' as const,
+    nodeId,
+    field: 'text' as const
+  }
 
   const bindRef = useCallback((element: HTMLDivElement | null) => {
     if (sourceRef.current === element) {
@@ -105,12 +106,12 @@ const useNodeTextSourceBinding = (
     }
 
     if (sourceRef.current) {
-      textSources.set(sourceId, null)
+      textSources.set(source, null)
     }
 
-    textSources.set(sourceId, element)
+    textSources.set(source, element)
     bind(element)
-  }, [bind, sourceId, sourceRef, textSources])
+  }, [bind, source, sourceRef, textSources])
 
   return {
     bindRef

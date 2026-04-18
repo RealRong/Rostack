@@ -1,7 +1,4 @@
 import type {
-  CardLayout,
-  CardSize,
-  CustomField,
   ViewId
 } from '@dataview/core/contracts'
 import type {
@@ -13,6 +10,10 @@ import type {
   KeyedReadStore,
   ReadStore
 } from '@shared/core'
+import type {
+  RecordCardContentData,
+  RecordCardData
+} from '@dataview/runtime/model/shared'
 
 export interface GalleryBodyBase {
   viewId: ViewId
@@ -28,19 +29,11 @@ export interface GallerySectionData {
   count: number
 }
 
-export interface GalleryCardData {
-  viewId: ViewId
-  fields: readonly CustomField[]
-  size: CardSize
-  layout: CardLayout
-  wrap: boolean
-  canDrag: boolean
-  selected: boolean
-  editing: boolean
-}
+export interface GalleryCardData extends RecordCardData {}
 
 export interface DataViewGalleryModel {
   bodyBase: ReadStore<GalleryBodyBase | null>
   section: KeyedReadStore<SectionKey, GallerySectionData | undefined>
   card: KeyedReadStore<ItemId, GalleryCardData | undefined>
+  content: KeyedReadStore<ItemId, RecordCardContentData | undefined>
 }

@@ -18,24 +18,23 @@ export type TextTypographyProfile =
   | 'frame-title'
   | 'shape-label'
 
-export type TextSourceField = 'text' | 'title'
-export type TextSourceId = string
-
-export const readNodeTextSourceId = (
-  nodeId: NodeId,
-  field: TextSourceField
-): TextSourceId => `node:${nodeId}:${field}`
-
-export const readEdgeLabelTextSourceId = (
-  edgeId: EdgeId,
-  labelId: string
-): TextSourceId => `edge:${edgeId}:label:${labelId}`
+export type TextSourceRef =
+  | {
+      kind: 'node'
+      nodeId: NodeId
+      field: 'text' | 'title'
+    }
+  | {
+      kind: 'edge-label'
+      edgeId: EdgeId
+      labelId: string
+    }
 
 export type LayoutRequest =
   | {
       kind: 'size'
       nodeId?: NodeId
-      sourceId?: TextSourceId
+      source?: TextSourceRef
       typography: TextTypographyProfile
       text: string
       placeholder: string
@@ -51,7 +50,7 @@ export type LayoutRequest =
   | {
       kind: 'fit'
       nodeId: NodeId
-      sourceId?: TextSourceId
+      source?: TextSourceRef
       typography: TextTypographyProfile
       text: string
       box: Size

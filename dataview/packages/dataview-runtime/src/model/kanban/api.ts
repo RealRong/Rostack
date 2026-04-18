@@ -1,4 +1,8 @@
 import type {
+  DataRecord,
+  RecordId
+} from '@dataview/core/contracts'
+import type {
   ItemId,
   KanbanState,
   SectionKey,
@@ -14,7 +18,9 @@ import type {
   KanbanSectionBase
 } from '@dataview/runtime/model/kanban/types'
 import {
-  readActiveTypedViewState
+  readActiveTypedViewState,
+  type RecordCardContentData,
+  type RecordCardPropertyData
 } from '@dataview/runtime/model/shared'
 import {
   createDerivedStore,
@@ -22,9 +28,13 @@ import {
   read,
   sameIdOrder,
   sameOrder,
+  sameValue,
   type KeyedReadStore,
   type ReadStore
 } from '@shared/core'
+import {
+  isEmptyFieldValue
+} from '@dataview/core/field'
 
 const sameBoardBase = (
   left: KanbanBoardBase | null,
@@ -62,6 +72,8 @@ const sameCard = (
   !!left
   && !!right
   && left.viewId === right.viewId
+  && left.itemId === right.itemId
+  && left.recordId === right.recordId
   && sameIdOrder(left.fields, right.fields)
   && left.size === right.size
   && left.layout === right.layout
@@ -72,9 +84,28 @@ const sameCard = (
   && left.color === right.color
 )
 
+const sameProperty = (
+  left: RecordCardPropertyData,
+  right: RecordCardPropertyData
+) => left.field.id === right.field.id
+  && sameValue(left.value, right.value)
+
+const sameContent = (
+  left: RecordCardContentData | undefined,
+  right: RecordCardContentData | undefined
+) => left === right || (
+  !!left
+  && !!right
+  && left.titleText === right.titleText
+  && left.placeholderText === right.placeholderText
+  && left.hasProperties === right.hasProperties
+  && sameOrder(left.properties, right.properties, sameProperty)
+)
+
 export const createKanbanModel = (input: {
   activeStateStore: ReadStore<ViewState | undefined>
   extraStateStore: ReadStore<KanbanState | undefined>
+  recordStore: KeyedReadStore<RecordId, DataRecord | undefined>
   selectionMembershipStore: KeyedReadStore<ItemId, boolean>
   previewSelectionMembershipStore: KeyedReadStore<ItemId, boolean | null>
   inline: DataViewInlineRuntime
@@ -131,6 +162,8 @@ export const createKanbanModel = (input: {
 
       return {
         viewId: active.view.id,
+        itemId,
+        recordId: item.recordId,
         fields: active.fields.custom,
         size: extra.card.size,
         layout: extra.card.layout,
@@ -155,9 +188,37 @@ export const createKanbanModel = (input: {
     isEqual: sameCard
   })
 
+  const content = createKeyedDerivedStore<ItemId, RecordCardContentData | undefined>({
+    keyOf: itemId => itemId,
+    get: itemId => {
+      const active = readActiveTypedViewState(read(input.activeStateStore), 'kanban')
+      const item = active?.items.get(itemId)
+      const record = item
+        ? read(input.recordStore, item.recordId)
+        : undefined
+      if (!active || !item || !record) {
+        return undefined
+      }
+
+      const properties = active.fields.custom.map(field => ({
+        field,
+        value: record.values[field.id]
+      }))
+
+      return {
+        titleText: record.title,
+        placeholderText: item.recordId,
+        properties,
+        hasProperties: properties.some(property => !isEmptyFieldValue(property.value))
+      }
+    },
+    isEqual: sameContent
+  })
+
   return {
     boardBase,
     sectionBase,
-    card
+    card,
+    content
   }
 }

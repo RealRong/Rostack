@@ -1,4 +1,6 @@
 import {
+  memo,
+  useMemo,
   type CSSProperties
 } from 'react'
 import {
@@ -15,7 +17,7 @@ import {
   useStoreValue
 } from '@shared/react'
 
-export const Card = (props: {
+const CardComponent = (props: {
   itemId: ItemId
   measureRef?: (node: HTMLElement | null) => void
   className?: string
@@ -24,35 +26,48 @@ export const Card = (props: {
   const runtime = useKanbanRuntimeContext()
   const board = useStoreValue(runtime.board)
   const card = useKeyedStoreValue(runtime.card, props.itemId)
-  if (!card) {
+  const content = useKeyedStoreValue(runtime.content, props.itemId)
+  if (!card || !content) {
     return null
   }
 
+  const interaction = useMemo(() => ({
+    drag: runtime.drag,
+    selection: runtime.selection
+  }), [runtime.drag, runtime.selection])
+  const appearance = useMemo(() => ({
+    showEditAction: true,
+    selectedStyle: {
+      boxShadow: 'var(--ui-shadow-sm), 0 0 0 2px var(--ui-accent-frame-border)'
+    } as const,
+    resolveSurface: () => {
+      const defaultState = 'default' as const
+      const hoverState = 'hover' as const
+      return {
+        default: board.fillColumnColor
+          ? resolveOptionCardStyle(card.color, defaultState)
+          : resolveNeutralCardStyle(defaultState, 'preview'),
+        hover: board.fillColumnColor
+          ? resolveOptionCardStyle(card.color, hoverState)
+          : resolveNeutralCardStyle(hoverState, 'preview')
+      }
+    }
+  }), [board.fillColumnColor, card.color])
+  const mount = useMemo(() => ({
+    measureRef: props.measureRef,
+    className: props.className,
+    style: props.style
+  }), [props.className, props.measureRef, props.style])
+
   return (
     <RecordCard
-      viewId={card.viewId}
-      itemId={props.itemId}
-      fields={card.fields}
-      size={card.size}
-      layout={card.layout}
-      wrap={card.wrap}
-      canDrag={card.canDrag}
-      drag={runtime.drag}
-      selection={runtime.selection}
-      titlePlaceholder={record => record.id}
-      showEditAction
-      measureRef={props.measureRef}
-      className={props.className}
-      style={props.style}
-      selectedStyle={{
-        boxShadow: 'var(--ui-shadow-sm), 0 0 0 2px var(--ui-accent-frame-border)'
-      }}
-      resolveSurfaceStyle={({ hovered, editing }) => {
-        const surfaceState = hovered && !editing ? 'hover' : 'default'
-        return board.fillColumnColor
-          ? resolveOptionCardStyle(card.color, surfaceState)
-          : resolveNeutralCardStyle(surfaceState, 'preview')
-      }}
+      card={card}
+      content={content}
+      interaction={interaction}
+      appearance={appearance}
+      mount={mount}
     />
   )
 }
+
+export const Card = memo(CardComponent)

@@ -525,6 +525,9 @@ importers:
       '@whiteboard/engine':
         specifier: workspace:*
         version: link:../whiteboard-engine
+      '@whiteboard/product':
+        specifier: workspace:*
+        version: link:../whiteboard-product
       lucide-react:
         specifier: ^0.577.0
         version: 0.577.0(react@19.2.4)

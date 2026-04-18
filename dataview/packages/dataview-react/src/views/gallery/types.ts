@@ -37,6 +37,7 @@ export interface GalleryViewRuntime extends ItemInteractionRuntime {
   body: ReadStore<GalleryBody>
   section: DataViewGalleryModel['section']
   card: DataViewGalleryModel['card']
+  content: DataViewGalleryModel['content']
   containerRef: RefObject<HTMLDivElement | null>
   virtual: {
     layout: GalleryLayoutCache
